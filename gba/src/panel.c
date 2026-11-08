@@ -39,7 +39,7 @@ DOOMO_STATIC_ASSERT(PANEL_COUNT <= 8, panels_fit_the_shown_byte);
 DOOMO_STATIC_ASSERT(PN_POOL <= 255, pool_index_fits);
 
 typedef struct { uint8_t x0, y0, x1, y1; } PnRect;      /* [x0, x1) x [y0, y1) */
-enum { PN_LIVE = 1, PN_KEEP = 2, PN_SPOILED = 4, PN_PAGE1 = 8 };
+enum { PN_LIVE = 1, PN_KEEP = 2, PN_SPOILED = 4, PN_PAGE1 = 8, PN_SOLID = 16 };
 typedef struct {
     uint32_t key;
     int16_t  x, y;                 /* the rect as passed            */
@@ -156,7 +156,7 @@ void pn_route(int x0, int y0, int x1, int y1)
          * routed is padded */
         if (!(p->flags & PN_KEEP) || pn_op == PN_OP_SHADE || pn_op == PN_OP_TEXT) return;
         if (x0 < p->x || y0 < p->y || x1 > p->x + p->w || y1 > p->y + p->h) { nokeep(); return; }
-        if (pn_op == PN_OP_RECT) add_rect(p, x0, y0, x1, y1);
+        if (pn_op == PN_OP_RECT && !(p->flags & PN_SOLID)) add_rect(p, x0, y0, x1, y1);   /* (solid: one rect at the end) */
     }
 }
 
@@ -256,6 +256,13 @@ static void shown_now(Pn *p, int id)
     shown |= (uint8_t)(1u << id);
 }
 
+/* CR9 (platform.h): the whole rect comes back on a kept frame: its rects become that one rect */
+void plat_panel_solid(void)
+{
+    if (cap < 0 || nest) return;
+    pn[cap].flags |= PN_SOLID;
+}
+
 void plat_panel_end(void)
 {
     Pn *p;
@@ -274,6 +281,13 @@ void plat_panel_end(void)
     if (cap < 0) return;
     p = &pn[cap];
     if (!(p->flags & PN_KEEP)) pool_free(cap);
+    else if (p->flags & PN_SOLID) {
+        /* one rect, one copy per row (its rects are the last ones in the pool) */
+        pool_free(cap);
+        p->r0 = pool_n;
+        p->nr = 0;
+        add_rect(p, clipx(p->x), clipy(p->y), clipx(p->x + p->w), clipy(p->y + p->h));
+    }
     shown_now(p, cap);
     cap = -1;
     box_shown();

@@ -158,6 +158,8 @@ static uint32_t read_pad(void)
     return b;
 }
 uint32_t gba_read_pad(void) { return read_pad(); }
+/* CR9: cycles of this frame's work so far (portrait.c portrait_pump) */
+uint32_t gba_work_now(void) { return gba_cycles() - work_c0; }
 
 /* ---------------------------------------------------------------------- */
 /* frame pacing */

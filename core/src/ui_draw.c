@@ -279,30 +279,47 @@ static void seam_row(int y, int w, uint8_t c, int phase)
     plat_checker(phase & 1, y, w - (phase & 1), 1, c);
 }
 
-/* A rect with a hole cut out of it: the same pixels as plat_rect(x, y, w, h, c) outside [hx0, hx1) x [hy0, hy1),
- * nothing inside (the hole is where a later opaque window will cover the backdrop; hx0 >= hx1 = no hole). */
-static void rect_outside(int x, int y, int w, int h, uint8_t c, int hx0, int hy0, int hx1, int hy1)
+/* A rect with holes cut out of it: the same pixels as plat_rect(x, y, w, h, c) outside every hole
+ * (h[4 * i .. 4 * i + 3] = x0, y0, x1, y1: [x0, x1) x [y0, y1)), nothing inside (a hole is where a
+ * later opaque window will cover the backdrop; x0 >= x1 = no hole). */
+static void rect_outside(int x, int y, int w, int h, uint8_t c, const int *hl, int n)
 {
-    int x1 = x + w, y1 = y + h;
-    if (hx0 >= hx1 || hy0 >= hy1 || hx0 >= x1 || hx1 <= x || hy0 >= y1 || hy1 <= y) {
+    int x1 = x + w, y1 = y + h, hx0, hy0, hx1, hy1;
+    if (w <= 0 || h <= 0) return;
+    while (n > 0 && (hl[0] >= hl[2] || hl[1] >= hl[3] || hl[0] >= x1 || hl[2] <= x || hl[1] >= y1 || hl[3] <= y)) {
+        hl += 4;                                                        /* this hole misses the rect */
+        n--;
+    }
+    if (n <= 0) {
         plat_rect(x, y, w, h, c);
         return;
     }
-    if (hy0 > y) plat_rect(x, y, w, hy0 - y, c);                       /* above the hole */
-    if (hy1 < y1) plat_rect(x, hy1, w, y1 - hy1, c);                   /* below it */
+    hx0 = hl[0]; hy0 = hl[1]; hx1 = hl[2]; hy1 = hl[3];
+    if (hy0 > y) rect_outside(x, y, w, hy0 - y, c, hl + 4, n - 1);    /* above the hole */
+    if (hy1 < y1) rect_outside(x, hy1, w, y1 - hy1, c, hl + 4, n - 1); /* below it */
     {
         int ya = DOOMO_MAX(y, hy0), yb = DOOMO_MIN(y1, hy1);           /* beside it */
-        if (hx0 > x) plat_rect(x, ya, hx0 - x, yb - ya, c);
-        if (hx1 < x1) plat_rect(hx1, ya, x1 - hx1, yb - ya, c);
+        if (hx0 > x) rect_outside(x, ya, hx0 - x, yb - ya, c, hl + 4, n - 1);
+        if (hx1 < x1) rect_outside(hx1, ya, x1 - hx1, yb - ya, c, hl + 4, n - 1);
     }
 }
 
-/* ui_backdrop with a hole: what lies wholly inside [hx0, hx1) x [hy0, hy1) is not drawn. The caller promises
- * that an opaque window drawn afterwards covers the hole, so the picture is the same pixel for pixel (MS-P2:
- * the studio's backdrop was 14 ms of every tab on the GBA, most of it under the content panel). */
-#define IN_HOLE(x, y, m) ((x) - (m) >= hx0 && (x) + (m) <= hx1 && (y) - (m) >= hy0 && (y) + (m) <= hy1)
+/* is (x, y) with margin m wholly inside one of the holes? */
+static int in_holes(int x, int y, int m, const int *hl, int n)
+{
+    int i;
+    for (i = 0; i < n; i++, hl += 4)
+        if (x - m >= hl[0] && x + m <= hl[2] && y - m >= hl[1] && y + m <= hl[3]) return 1;
+    return 0;
+}
 
-void ui_backdrop_hole(int style, uint32_t t, int hx0, int hy0, int hx1, int hy1)
+/* ui_backdrop with holes: what lies wholly inside a hole is not drawn. The caller promises that
+ * opaque windows drawn afterwards cover the holes, so the picture is the same pixel for pixel (MS-P2:
+ * the studio's backdrop was 14 ms of every tab on the GBA, most of it under the content panel; CR9:
+ * the creator's preview pane and list window). */
+#define IN_HOLE(x, y, m) in_holes((x), (y), (m), hl, n)
+
+void ui_backdrop_holes(int style, uint32_t t, const int *hl, int n)
 {
     Backdrop b;
     int w = plat_screen_w(), h = plat_screen_h();
@@ -310,9 +327,9 @@ void ui_backdrop_hole(int style, uint32_t t, int hx0, int hy0, int hx1, int hy1)
     int cell = 24, off;
     if (plat_draw_skipped()) return;
     backdrop_colors(style, &b);
-    rect_outside(0, 0, w, b1, b.top, hx0, hy0, hx1, hy1);
-    rect_outside(0, b1, w, b2 - b1, b.mid, hx0, hy0, hx1, hy1);
-    rect_outside(0, b2, w, h - b2, b.bot, hx0, hy0, hx1, hy1);
+    rect_outside(0, 0, w, b1, b.top, hl, n);
+    rect_outside(0, b1, w, b2 - b1, b.mid, hl, n);
+    rect_outside(0, b2, w, h - b2, b.bot, hl, n);
     seam_row(b1 - 1, w, b.mid, 0);
     seam_row(b1, w, b.top, 1);
     seam_row(b2 - 1, w, b.bot, 0);
@@ -351,6 +368,13 @@ void ui_backdrop_hole(int style, uint32_t t, int hx0, int hy0, int hx1, int hy1)
             ui_sparkle(sx, sy, phase, style == WIN_HELL ? b.deco : PAL_WHITE);
         }
     }
+}
+
+void ui_backdrop_hole(int style, uint32_t t, int hx0, int hy0, int hx1, int hy1)
+{
+    int hl[4];
+    hl[0] = hx0; hl[1] = hy0; hl[2] = hx1; hl[3] = hy1;
+    ui_backdrop_holes(style, t, hl, 1);
 }
 
 void ui_backdrop(int style, uint32_t t)

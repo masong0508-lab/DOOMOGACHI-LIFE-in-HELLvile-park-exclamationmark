@@ -415,6 +415,9 @@ else()
 		# CL4: the Field Guide (SCENE_LIB_HELP, the library overlay group: its pages and the lobby's eighth book)
 		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/scripts/library_help.txt
 		        --out ${_shots}/core_library_help
+		# CR9: the creator's speed gates (expect-fps floors; docs/CREATOR.md "Speed")
+		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${_hs}/creator_speed.txt
+		        --out ${_shots}/creator_speed
 		${_journeys}
 		DEPENDS disc
 		COMMENT "PCSX-Redux harness: game"

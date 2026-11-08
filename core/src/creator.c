@@ -21,6 +21,9 @@
 #include "doomo/part_meta.h"
 
 CrState *cr_sp;                         /* the scene scratch (creator_int.h) */
+#if !defined(DOOMO_PLATFORM_GBA)
+uint8_t cr_calm = 0;                    /* CR9: CR_CALM (creator_int.h; always 1 on the GBA) */
+#endif
 static void set_show(int show);
 DOOMO_STATIC_ASSERT(sizeof(CrState) <= DOOMO_SCENE_SCRATCH, creator_state_fits_the_scratch);
 static int16_t last_result = -1;
@@ -743,7 +746,7 @@ int cr_redo_count(void) { return cr.hcount - 1 - cr.hcur; }
 
 static void on_changed(void)
 {
-    cr.hop = 9;
+    if (!CR_SLICE) cr.hop = 9;          /* CR9: on the GBA / PS1 the hop comes when the new look is up */
     cr.happy = 40;
     cr.changed_t = cr.t;
 }
@@ -932,11 +935,16 @@ static void preview_update(void)
     target_look(&L, &locked);
     if (memcmp(&L, &cr.shown, sizeof(L)) != 0 || locked != cr.shown_locked) {
         /* Throttle: a new look costs a full figure render (~2 GBA ticks),
-         * so while a direction is held we refresh every few ticks only. */
-        if (cr.t - cr.shown_t >= 5 || cr.t - cr.changed_t >= 2 || cr.phase == CRP_COPY) {
+         * so while a direction is held we refresh every few ticks only.
+         * CR9: on the GBA (CR_CALM) the pane draws a new look in slices
+         * while the last one stays up (creator_draw.c pane_view): no throttle. */
+        if (CR_SLICE || cr.t - cr.shown_t >= 5 || cr.t - cr.changed_t >= 2 || cr.phase == CRP_COPY) {
             cr.shown = L;
             cr.shown_locked = locked;
             cr.shown_t = cr.t;
+            /* what the locked part is compared with, made with the look itself (CR6) */
+            if (locked) cr_lock_base(&cr.shown_base);
+            else memset(&cr.shown_base, 0, sizeof(cr.shown_base));
         }
     }
     if (cr.hop) cr.hop--;
@@ -1551,6 +1559,45 @@ static void move_row(int d)
     audio_sfx(SFX_CURSOR);
 }
 
+/* CR6: sections (a tab's rows between its captions): the first row shown after caption h (h = -1:
+ * the rows before the first caption), -1 if none; and the caption a row sits under (-1: none) */
+static int section_first(int h)
+{
+    const CrTab *tab = &cr_tabs[cr.tab];
+    int k;
+    for (k = h + 1; k < tab->nrows && tab->rows[k].kind != RK_HEADER; k++)
+        if (cr_row_shown(cr.tab, k)) return k;
+    return -1;
+}
+
+static int section_of(int r)
+{
+    while (r >= 0 && cr_tabs[cr.tab].rows[r].kind != RK_HEADER) r--;
+    return r;
+}
+
+/* SELECT + UP / DOWN: DOWN goes to the first row of the next section, UP to the first row of this
+ * one (or, from there, of the one before); both wrap around the tab */
+static void jump_section(int d)
+{
+    const CrTab *tab = &cr_tabs[cr.tab];
+    int n = tab->nrows, h = section_of(cr.row[cr.tab]), target = -1, c = h, k;
+    if (d < 0 && section_first(h) != cr.row[cr.tab]) target = section_first(h);
+    for (k = 0; target < 0 && k <= n; k++) {
+        c += d;                                   /* the captions in order: -1, then each header */
+        if (c >= n) c = -1;
+        if (c < -1) c = n - 1;
+        if (c == h) break;
+        if (c >= 0 && tab->rows[c].kind != RK_HEADER) continue;
+        target = section_first(c);
+    }
+    if (target < 0 || target == cr.row[cr.tab]) return;
+    cr.row[cr.tab] = (uint8_t)target;
+    cr.browse = -1;
+    ensure_visible();
+    audio_sfx(SFX_CURSOR);
+}
+
 /* CR6: switch the rows the tabs show; a row that is gone moves to the first one shown */
 static void set_show(int show)
 {
@@ -1756,7 +1803,7 @@ static void step_value(const CrRow *row, int d)
     cr_row_set(&cr.draft, row, v);
     if (CR_IS_AGE_ROW(row)) age_sweep(1);       /* CR12: a younger stage sheds grown-up parts */
     commit(key);
-    if (row->kind != RK_SLIDER) cr_sparkle_burst(3, -1);
+    if (row->kind != RK_SLIDER && !CR_SLICE) cr_sparkle_burst(3, -1);   /* CR9: GBA / PS1: when it lands */
     audio_sfx(SFX_CURSOR);
 }
 
@@ -1802,7 +1849,7 @@ static void press_a(const CrRow *row)
         run_action(row);
         break;
     case RK_SLIDER:
-        cr.hop = 6;
+        if (!CR_SLICE) cr.hop = 6;
         audio_sfx(SFX_BLIP);
         break;
     default:
@@ -1815,6 +1862,12 @@ static void update_main(void)
     const CrRow *row = cr_cur_row();
     if (btn_pressed(BTN_L)) { switch_tab(-1); return; }
     if (btn_pressed(BTN_R)) { switch_tab(1); return; }
+    /* CR6: SELECT + UP / DOWN jumps a section (and SELECT then does not open the turntable) */
+    if (btn_down(BTN_SELECT) && btn_repeat(BTN_UP | BTN_DOWN)) {
+        jump_section(btn_down(BTN_DOWN) ? 1 : -1);
+        cr.sel_used = 1;
+        return;
+    }
     if (btn_repeat(BTN_UP)) { move_row(-1); return; }
     if (btn_repeat(BTN_DOWN)) { move_row(1); return; }
     if (!row) return;
@@ -1845,6 +1898,7 @@ static void update_main(void)
     if (btn_pressed(BTN_Y)) { do_redo(); return; }
     /* SELECT alone (not as part of SELECT+A / SELECT+B on the GBA) */
     if (btn_down(BTN_SELECT) && (btn_down(BTN_X | BTN_Y))) cr.pick_err = 0;
+    if (btn_released(BTN_SELECT) && cr.sel_used) { cr.sel_used = 0; return; }
     if (btn_released(BTN_SELECT) && btn_held_ticks(BTN_X | BTN_Y) == 0) {
         cr.view8 = 0;
         cr.walking = 0;
@@ -2115,9 +2169,8 @@ static void cr_enter(int arg)
     if (cr.phase == CRP_HERO) hero_preview();
     cr.shown = (*RES_LOOK_VIEW(&cr.draft));
     cr.img.uid = 0;
-#if CR_CALM
-    portrait_hold(1);      /* CR9 (GBA): the figure holds one pose; a new face is drawn in slices */
-#endif
+    cr.disp.ok = cr.pend.ok = 0;
+    if (CR_CALM) portrait_hold(1);   /* CR9 (GBA): the figure holds one pose; a new face is drawn in slices */
     audio_music(SONG_CREATOR);
     cr_sparkle_burst(8, -1);
 }
@@ -2125,9 +2178,7 @@ static void cr_enter(int arg)
 static void cr_leave(void)
 {
     if (scene_scratch_mine(CR_SCRATCH_TAG)) cr.talk = NULL;
-#if CR_CALM
-    portrait_hold(0);
-#endif
+    portrait_hold(0);                /* CR9: (a no-op when the creator held nothing) */
 }
 
 static void cr_update(void)
@@ -2156,6 +2207,11 @@ static void cr_update(void)
     default: break;
     }
     cr_lock_memo_check();                       /* CR9: after this tick's grants, before its drawing */
+    {                                           /* CR9: ticks the cursor has rested on its row */
+        uint16_t at = (uint16_t)(cr.tab << 8 | cr.row[cr.tab]);
+        if (at != cr.row_at) { cr.row_at = at; cr.row_t = 0; }
+        else if (cr.row_t < 0xFFFF) cr.row_t++;
+    }
     if (scene_top() == &SCENE_CREATOR) preview_update();
 }
 

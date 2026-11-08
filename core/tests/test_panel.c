@@ -141,6 +141,21 @@ static uint32_t p_creator(int f)
     return 0;
 }
 
+/* CR9: the same with the GBA's still stage (cr_calm): the preview pane and the button bar are panels
+ * too, every creator panel is put back whole (plat_panel_solid), and a new look is drawn in slices
+ * (one layer group a tick, a fake portrait clock) while the last one stays up */
+static void s_creator_calm(void)
+{
+    portrait_cache_reset();
+    cr_calm = 1;
+    s_creator();
+}
+static uint32_t p_creator_calm(int f)
+{
+    portrait_cache_clock((uint32_t)f + 1, 1);
+    return p_creator(f);
+}
+
 /* the language switch: Spanish from frame 120 on */
 static uint32_t p_visit_lang(int f)
 {
@@ -261,6 +276,14 @@ TEST(panel_tip_card_is_pixel_identical)
 TEST(panel_creator_tabs_and_list_are_pixel_identical)
 {
     CHECK(both("creator", s_creator, p_creator, 400, 200));
+}
+
+TEST(panel_creator_calm_pane_and_bar_are_pixel_identical)
+{
+    int ok = both("creator calm", s_creator_calm, p_creator_calm, 400, 400);
+    cr_calm = 0;
+    portrait_cache_reset();
+    CHECK(ok);
 }
 
 TEST(panel_language_switch_redraws)

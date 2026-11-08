@@ -935,36 +935,54 @@ static void job_pump_body(void)
 }
 #endif
 
+/* one layer group of the (portrait / figure) job */
+static void job_step(void)
+{
+    CacheEnt *e = &ent[job.e];
+    if (job.step && pcv.gen != job.gen) {
+        job.step = 0;
+        if (job.restarts < 255) job.restarts++;
+    }
+    if (job.step == 0) {
+        pctx_init(&job.c, &job.L, job.status, job.expr, 0);
+        job.c.d = &job.D;
+        apply_phase(&job.c, &job.p);
+        if (job.kind == CK_FIGURE) setup_figure(&job.c, (uint8_t *)e->img.pix);
+        else setup_portrait(&job.c, (uint8_t *)e->img.pix);
+    }
+    draw_group(&job.c, job.step);
+    job.gen = pcv.gen;
+    steps_used++;
+    if (++job.step >= DL_STEPS) {
+        /* ready; a hair older than what is on screen, so it is not
+         * picked as the stand-in before its phase is due */
+        e->busy = 0;
+        e->stamp = cache_stamp ? cache_stamp - 1 : 0;
+        e->tick = now();
+        job.on = 0;
+    }
+}
+
 static void job_pump(void)
 {
 #if defined(DOOMO_PLATFORM_GBA)
     if (job.on && job.kind == CK_BODY) { job_pump_body(); return; }
 #endif
-    while (job.on && (steps_left() > 0 || job.restarts >= 2)) {
-        CacheEnt *e = &ent[job.e];
-        if (job.step && pcv.gen != job.gen) {
-            job.step = 0;
-            if (job.restarts < 255) job.restarts++;
-        }
-        if (job.step == 0) {
-            pctx_init(&job.c, &job.L, job.status, job.expr, 0);
-            job.c.d = &job.D;
-            apply_phase(&job.c, &job.p);
-            if (job.kind == CK_FIGURE) setup_figure(&job.c, (uint8_t *)e->img.pix);
-            else setup_portrait(&job.c, (uint8_t *)e->img.pix);
-        }
-        draw_group(&job.c, job.step);
-        job.gen = pcv.gen;
-        steps_used++;
-        if (++job.step >= DL_STEPS) {
-            /* ready; a hair older than what is on screen, so it is not
-             * picked as the stand-in before its phase is due */
-            e->busy = 0;
-            e->stamp = cache_stamp ? cache_stamp - 1 : 0;
-            e->tick = now();
-            job.on = 0;
-        }
-    }
+    while (job.on && (steps_left() > 0 || job.restarts >= 2)) job_step();
+}
+
+#if defined(DOOMO_PLATFORM_GBA)
+extern uint32_t gba_work_now(void);   /* cycles of the frame's work so far (gba/src/main.c) */
+#endif
+/* CR9 (portrait.h): more steps of a portrait_hold() job this tick, while the frame has room */
+void portrait_pump(int ms)
+{
+#if defined(DOOMO_PLATFORM_GBA)
+    uint32_t limit = (uint32_t)ms * 16780u;
+    while (job.on && job_hold && job.kind != CK_BODY && gba_work_now() < limit) job_step();
+#else
+    (void)ms;
+#endif
 }
 
 /* portrait_image / figure_image: the phase due now; while a sliced job
@@ -1083,6 +1101,16 @@ const DoomoImage *portrait_image(int resident_id, int expr)
     if (expr < 0 || expr >= EXPR_COUNT) expr = EXPR_NEUTRAL;
     look_for_stage(RES_LOOK_VIEW(r), RES_STAGE(r), &al);       /* F4: the face of their age */
     return animated(CK_PORTRAIT, resident_id, &al, status, expr);
+}
+
+/* CR9: the cached bust of any look (the creator's draft), like figure_image */
+const DoomoImage *portrait_image_look(const DoomoLook *l, int status, int expr)
+{
+    cache_init();
+    if (!l) return NULL;
+    if (expr < 0 || expr >= EXPR_COUNT) expr = EXPR_NEUTRAL;
+    if (status < 0 || status > 15) status = RES_ALIVE;
+    return animated(CK_PORTRAIT, -1, l, status, expr);
 }
 
 const DoomoImage *figure_image(const DoomoLook *l, int status, int expr)

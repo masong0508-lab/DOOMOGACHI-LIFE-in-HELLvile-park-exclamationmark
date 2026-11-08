@@ -181,6 +181,8 @@ void ui_sparkle(int cx, int cy, int phase, uint8_t c);
 void ui_backdrop(int style, uint32_t t);
 /* the same with a hole an opaque window will cover afterwards: nothing wholly inside it is drawn (hx0 >= hx1: none) */
 void ui_backdrop_hole(int style, uint32_t t, int hx0, int hy0, int hx1, int hy1);
+/* ... with n holes (holes[4 * i ..]: x0, y0, x1, y1 each) */
+void ui_backdrop_holes(int style, uint32_t t, const int *holes, int n);
 
 /* ---- text extras ------------------------------------------------------- */
 /* Width of ui_text() output (button icons are drawn as 7 px caps). */
@@ -279,6 +281,9 @@ uint32_t ui_key_int(uint32_t h, int32_t v);
 uint32_t ui_key_str(uint32_t h, const char *s);
 /* Where ui_window(x, y, w, h)'s sliding glint is this frame, -1 = none. */
 int ui_window_glint(int x, int y, int w, int h);
+/* CR9: ui_glint_hold(1): windows drawn until ui_glint_hold(0) have no sliding glint (a screen whose
+ * windows are retained panels: the GBA creator) */
+void ui_glint_hold(int on);
 /* The drop shadows of ui_window() and ui_portrait() alone: what a kept
  * panel draws (platform.h plat_panel_begin). */
 void ui_window_shadow(int x, int y, int w, int h);

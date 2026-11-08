@@ -138,10 +138,12 @@ void ui_window_shadow(int x, int y, int w, int h)
 
 /* Where ui_window(x, y, w, h)'s glint is this frame, -1 = not on it (a
  * retained panel's key, G7). */
+static int glint_held(void);  /* ui_glint_hold() (its byte lives with the toast's, below) */
+
 int ui_window_glint(int x, int y, int w, int h)
 {
     int r = (w >= 24 && h >= 20) ? 4 : 2, span, pos;
-    if (w < 6 || h < 6 || !opt_get(OPT_UI_BOUNCE) || w <= 24) return -1;
+    if (w < 6 || h < 6 || !opt_get(OPT_UI_BOUNCE) || w <= 24 || glint_held()) return -1;
     span = w - 2 * r - 8;
     pos = (frame_t() * 4 + x * 13 + y * 7) % (span + 240);
     return pos < span ? pos : -1;
@@ -802,7 +804,10 @@ static uint8_t toast_kd[TOAST_Q];       /* CL1: UI_TOAST_* of each queued line *
 static uint16_t toast_at[TOAST_Q];      /* CL1: the tick it was posted, low 16 bits (a scene change keeps that tick's toasts) */
 static int toast_n, toast_t;
 static uint8_t toast_gen;               /* changes when the line on screen is replaced (ui_toast_steady) */
-static uint8_t toast_held;              /* ui_toast_hold(): this frame's toast is already on the kept page */
+static uint8_t ui_held;                 /* bit 0: ui_toast_hold(): this frame's toast is already on the kept page;
+                                           bit 1: ui_glint_hold() (one byte: GBA EWRAM) */
+void ui_glint_hold(int on) { ui_held = (uint8_t)(on ? ui_held | 2 : ui_held & ~2); }
+static int glint_held(void) { return (ui_held & 2) != 0; }
 static int16_t toast_y = UI_TOAST_LANE_TOP;     /* CL1: this frame's lane (ui_toast_lane) */
 static int16_t toast_rect[4];           /* CL1: the last drawn toast (x, y, w, h; w 0: none) */
 static uint16_t toast_count[UI_TOAST_KINDS];    /* CL1: toasts shown per kind (tests, runner) */
@@ -911,7 +916,7 @@ void ui_toast_scene_change(int set)
         int keep = toast_at[i] == now || k == UI_TOAST_SYSTEM || (!set && k != UI_TOAST_HINT);
         if (keep) { i++; continue; }
         toast_drop(i);
-        if (i == 0) { toast_t = 0; toast_gen++; toast_held = 0; }
+        if (i == 0) { toast_t = 0; toast_gen++; ui_held &= 2; }
     }
 }
 
@@ -961,7 +966,7 @@ static int toast_show(int w)
 
 void ui_toast_clear(void)
 {
-    toast_n = 0; toast_t = 0; toast_gen++; toast_held = 0;
+    toast_n = 0; toast_t = 0; toast_gen++; ui_held &= 2;
     news_n = 0; news_quiet = 0; news_gap = 0; news_age = 0; news_told = 0;
     news_name = news_what = NULL;
 }
@@ -1012,14 +1017,14 @@ int ui_toast_steady(void)
     return 1 + toast_gen;
 }
 
-void ui_toast_hold(void) { toast_held = 1; }
+void ui_toast_hold(void) { ui_held |= 1; }   /* this frame's toast is already on the kept page */
 
 void ui_toast_draw(void)
 {
     const UiStyle *st;
     int t, w, x, y = toast_y;
-    int saved = ui_cur_style, show, over, off, kept = toast_held;
-    toast_held = 0;
+    int saved = ui_cur_style, show, over, off, kept = ui_held & 1;
+    ui_held &= 2;
     toast_y = UI_TOAST_LANE_TOP;            /* CL1: a lane lasts one frame */
     toast_rect[2] = 0;
     toast_news_tick();

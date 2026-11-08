@@ -941,6 +941,10 @@ TEST(creator_grid_filters_and_search)
         found |= cr_grid_choice(k) == HAT_TOP_HAT;
     }
     CHECK(found);
+    {                                                    /* what it found is tried on at once */
+        int v = cr_grid_choice(cr.g_sel);
+        CHECK(cr.browse == v || RES_LOOK(&cr.draft, GF_HAT) == v);
+    }
     press(BTN_SELECT);
     CHECK_EQ(cr.g_find[0], 0);
     press(BTN_B);
@@ -1018,4 +1022,99 @@ TEST(creator_every_row_has_a_help_line_that_fits)
             CHECK_MSG(ui_text_width(h) <= 224, "row %s: help \"%s\" is %d px (GBA bar 224)", row->label, h,
                       ui_text_width(h));
         }
+}
+
+/* ---- CR9: the GBA's way (cr_calm) on the host: one layer group a tick ---------------------------- */
+static uint32_t calm_tick;
+static void cframes(int n, uint32_t b)
+{
+    while (n-- > 0) {
+        portrait_cache_clock(++calm_tick, 1);
+        plat_begin_frame();
+        doomo_frame(b);
+        plat_end_frame();
+    }
+}
+
+static void calm_begin(void)
+{
+    cr_calm = 1;
+    calm_tick = 5000;
+    portrait_cache_reset();
+    scene_set(&base_scene, 0);
+    scene_push(&SCENE_CREATOR, -1);
+    cframes(3, 0);
+}
+
+static void calm_end(void)
+{
+    scene_set(&base_scene, 0);
+    cr_calm = 0;
+    portrait_cache_reset();
+}
+
+/* CR9: on the GBA a new look is drawn in slices while the last one stays up: the pane keeps the old
+ * view for a few ticks, then the new one lands (with a hop) within a bounded time; a held direction
+ * never makes a whole figure render in one tick, and the bust's camera waits for the cursor to rest */
+TEST(creator_calm_draws_a_new_look_in_slices)
+{
+    DoomoLook before;
+    int i, row, waited = -1, stand_in = 0;
+    calm_begin();
+    while (cr.tab != CR_TAB_OUTFIT) { cframes(1, BTN_R); cframes(1, 0); }
+    row = row_index(CR_TAB_OUTFIT, GF_TOP, RK_ENUM);
+    CHECK(row >= 0);
+    while (cr.row[cr.tab] != row) { cframes(1, BTN_DOWN); cframes(1, 0); }
+    cframes(30, 0);
+    CHECK(cr.disp.ok);
+    CHECK(memcmp(&cr.disp.look, &cr.shown, sizeof(DoomoLook)) == 0);
+    before = cr.disp.look;
+    cframes(1, BTN_RIGHT);                               /* a new top (or a locked one to look at) */
+    for (i = 0; i < 40; i++) {
+        cframes(1, 0);
+        if (memcmp(&cr.disp.look, &before, sizeof(DoomoLook)) == 0) stand_in++;
+        if (memcmp(&cr.disp.look, &cr.shown, sizeof(DoomoLook)) == 0) { waited = i; break; }
+    }
+    CHECK(stand_in >= 2);                                /* the old figure stayed up meanwhile */
+    CHECK(waited >= 0 && waited < 24);                   /* ... and the new one landed */
+    CHECK(cr.hop > 0);
+    /* the camera: moving onto the hat row keeps the figure until the cursor rests there */
+    row = row_index(CR_TAB_OUTFIT, GF_HAT, RK_ENUM);
+    while (cr.row[cr.tab] != row) { cframes(1, BTN_DOWN); cframes(1, 0); }
+    CHECK_EQ(cr_camera(), CAM_BUST);
+    CHECK_EQ(cr.disp.cam, CAM_FIGURE);
+    for (i = 0; i < 40 && cr.disp.cam != CAM_BUST; i++) cframes(1, 0);
+    CHECK_EQ(cr.disp.cam, CAM_BUST);
+    calm_end();
+}
+
+/* CR6: SELECT + UP / DOWN jumps between a tab's sections (and does not open the turntable) */
+TEST(creator_select_jumps_between_sections)
+{
+    int start, i, sec0, jumps = 0;
+    open_creator(-1);
+    while (cr.tab != CR_TAB_FACE) press(BTN_R);
+    start = cr.row[cr.tab];
+    sec0 = 0;
+    for (i = 0; i < cr_tabs[cr.tab].nrows; i++) sec0 += cr_tabs[cr.tab].rows[i].kind == RK_HEADER;
+    CHECK(sec0 >= 2);
+    for (i = 0; i < sec0; i++) {                         /* DOWN through every section, back to the start */
+        const char *was = cr_row_section(cr.tab, cr.row[cr.tab]);
+        frames(1, BTN_SELECT);
+        frames(1, BTN_SELECT | BTN_DOWN);
+        frames(1, BTN_SELECT);
+        frames(1, 0);
+        CHECK_EQ(cr.phase, CRP_MAIN);                    /* no turntable */
+        CHECK(cr_tabs[cr.tab].rows[cr.row[cr.tab]].kind != RK_HEADER);
+        if (strcmp(was, cr_row_section(cr.tab, cr.row[cr.tab])) != 0) jumps++;
+    }
+    CHECK_EQ(cr.row[cr.tab], start);
+    CHECK(jumps >= sec0 - 1);
+    press(BTN_DOWN);                                     /* UP: first back to the section's first row */
+    frames(1, BTN_SELECT);
+    frames(1, BTN_SELECT | BTN_UP);
+    frames(1, 0);
+    CHECK_EQ(cr.row[cr.tab], start);
+    press(BTN_SELECT);                                   /* a plain SELECT still turns the citizen */
+    CHECK_EQ(cr.phase, CRP_TURN);
 }

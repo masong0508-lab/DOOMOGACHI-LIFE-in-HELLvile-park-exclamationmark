@@ -298,6 +298,16 @@ patch then deleted):
 | the house borrows the card's block buffer | +8,192 B | `memcard.c`'s 8 KB `s_blk` joins BORROW (`memcard.c` calls `ovl_borrow_take()` before each card read / write): the house loads 53,764 B lower and ends 8 KB lower, the slot is the combat / cutscene / story groups' 118,784 B |
 | **after G0** | **131,808 B (128.7 KB)**, ends `0x801dfd10` | EXE 1,190 KB + BSS 549 KB + slot 116 KB; 66,288 B above the 64 KB stack reserve; `OVL.BIN` 1,002 KB packed (1,278 KB) in 19 groups + 4 house parts |
 
+**The creator borrows too (CRB, CR7/CR9).** The creator's packed part icons (`core/gen/part_icons_rle.c`,
+58 KB) and the part catalog (`core/gen/part_meta_data.c`, 14 KB) are generated files, and
+`ovl_plan.py`'s `group_of()` kept every `core/gen` object resident: the disc ended 62,000 B over the
+stack reserve. They now join the creator group (like `furn_data` joins the house), and the creator is
+a second `BORROW_GROUPS` member: it loads at `__ovl_borrow` over the same borrowed `.bss` (the world's
+tables, `view3d`'s lists, the combat bot's search, the card block buffer), so the 150 KB group needs
+99,828 B of slot and the slot stays the house's. Nothing of the creator draws a 3D view, syncs the
+world or does card I/O; a scene under it that does rebuilds what it overwrote (`ovl_borrow_take`).
+Measured: `_end` 0x801ed1d0, 11,824 B above the reserve (CL6's tree before it: 12,240 B).
+
 | overlay group (bytes) | `959acc8` | G0 | | overlay group (bytes) | `959acc8` | G0 |
 |---|---:|---:|---|---|---:|---:|
 | cutscene | 118,444 | 118,444 | | island | 56,212 | 56,644 |

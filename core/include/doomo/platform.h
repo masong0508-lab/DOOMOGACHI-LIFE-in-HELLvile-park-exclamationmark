@@ -131,6 +131,12 @@ enum {
 int  plat_panel_begin(int id, int x, int y, int w, int h, uint32_t key);
 void plat_panel_end(void);
 void plat_panel_hole(int x, int y, int w, int h);
+/* CR9 (additive): inside a panel being drawn, the core promises that everything under the panel's
+ * rect that is not its body (rounded corners, its drop shadow over the backdrop) is drawn the same
+ * on every frame while the panel's key is unchanged (a still backdrop: the GBA creator). A platform
+ * may then put the whole rect back (less its hole) instead of its body alone: fewer, longer copies.
+ * Weak default: nothing. */
+void plat_panel_solid(void);
 
 /* ---- 3D views ------------------------------------------------------------ */
 /* A billboard sprite placed in the world. */

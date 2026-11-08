@@ -76,6 +76,7 @@ __attribute__((weak)) void plat_panel_hole(int x, int y, int w, int h)
 {
     (void)x; (void)y; (void)w; (void)h;
 }
+__attribute__((weak)) void plat_panel_solid(void) { }
 
 /* Weak default of plat_checker (platform.h): one pixel per call. */
 __attribute__((weak)) void plat_checker(int x, int y, int w, int h, uint8_t color)

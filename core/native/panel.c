@@ -33,6 +33,7 @@ typedef struct {
     uint8_t  live;                 /* has a capture                    */
     uint8_t  keep;                 /* followed the rules               */
     uint8_t  spoiled;              /* drawn over later on its frame    */
+    uint8_t  solid;                /* plat_panel_solid: the whole rect comes back */
     uint32_t key;
     int      x, y, w, h;           /* as passed                        */
     int      hx0, hy0, hx1, hy1;   /* hole, screen coordinates         */
@@ -193,6 +194,7 @@ int plat_panel_begin(int id, int x, int y, int w, int h, uint32_t key)
     p->key = key;
     p->x = x; p->y = y; p->w = w; p->h = h;
     p->hx0 = p->hy0 = p->hx1 = p->hy1 = 0;
+    p->solid = 0;
     for (j = DOOMO_MAX(y, 0); j < DOOMO_MIN(y + h, nat_h); j++)
         for (i = DOOMO_MAX(x, 0); i < DOOMO_MIN(x + w, nat_w); i++) p->mask[j * nat_w + i] = 0;
     cap = id;
@@ -207,6 +209,12 @@ void plat_panel_hole(int x, int y, int w, int h)
     p = &pn[cap];
     if (x < p->x || y < p->y || x + w > p->x + p->w || y + h > p->y + p->h) rule("hole outside the rect");
     p->hx0 = x; p->hy0 = y; p->hx1 = x + w; p->hy1 = y + h;
+}
+
+void plat_panel_solid(void)
+{
+    if (!nat_panel_cache || cap < 0) return;
+    pn[cap].solid = 1;
 }
 
 void plat_panel_end(void)
@@ -229,6 +237,7 @@ void plat_panel_end(void)
     for (j = DOOMO_MAX(p->y, 0); j < DOOMO_MIN(p->y + p->h, nat_h); j++)
         for (i = DOOMO_MAX(p->x, 0); i < DOOMO_MIN(p->x + p->w, nat_w); i++) {
             int k = j * nat_w + i;
+            if (p->solid) p->mask[k] = 1;   /* CR9: the whole rect comes back */
             if (i >= p->hx0 && i < p->hx1 && j >= p->hy0 && j < p->hy1) p->mask[k] = 0;
             p->pix[k] = nat_fb[k];
         }

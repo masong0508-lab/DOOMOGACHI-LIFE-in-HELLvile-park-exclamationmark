@@ -50,6 +50,7 @@ are also visible.
 | `core/src/portrait_turkey.c` | `SPECIES_TURKEY` (Mayor Giggs' kind, show canon): the long neck, bare head, beak, snood and wattle, bulging eyes, the Hatter's feather tufts (`HAIR_WILD`), the tall crooked top hat (`HAT_TOP_HAT`), the tail coat's lapels and tails (`TOP_SUIT`), the floppy bow tie (`ACC_BOWTIE`) and the turkey fan (`TAIL_FEATHER_FAN`); portrait.c's `turkey_step()` draws a turkey through these and the engine's own parts for everything else |
 | `core/src/portrait_int.h` | internal model shared by the above (canvas, materials, head space, context) |
 | `core/tools/portrait_sheet.c` | host tool that writes PNG contact sheets |
+| `core/tools/part_icons.c` | host tool that renders the creator's 20x20 part icons (CR7, `make -C core gen`) |
 | `core/tests/test_portrait.c` | unit tests |
 
 ## Pipeline
@@ -186,6 +187,17 @@ finishes. A job nobody has asked about for `PC_STALE` ticks is dropped.
 chosen step budget, and `portrait_cache_reset()` goes back to the real
 clock. Tests use both.
 
+**Holding a picture (`portrait_hold`).** While `portrait_hold(1)` is on, a
+new expression of a look shown last tick is drawn as a sliced job and the
+old picture stays up; `portrait_hold(2)` does the same for a brand-new look
+but returns NULL until it is ready, so the caller shows something else (the
+title's parade, the GBA creator's last look: docs/CREATOR.md "Speed").
+CR9 added `portrait_image_look(look, status, expr)`, the cached bust of any
+look (like `figure_image` for the figure: the creator's draft), and
+`portrait_pump(ms)`: more layer groups of a held job this tick while the
+frame's work so far is under `ms` milliseconds (GBA; a no-op elsewhere,
+where a job finishes within a tick or two anyway).
+
 ## Performance
 
 Measured on GBA code generation (arm-none-eabi-gcc -O2 -mthumb, game
@@ -252,6 +264,17 @@ $B/portrait_sheet --out DIR --bust LIST [--fig]     # e.g. --bust species
 | `walk.png` | chibi walk cycles, 4 directions x 4 frames |
 | `fighter.png`, `weapons.png` | fighter views x anims, every weapon |
 | `bust_<list>.png` / `fig_<list>.png` | large close-ups of one list (`--bust`) |
+
+## Part icons (CR7, `core/tools/part_icons.c`)
+
+The creator's picture grid shows a 20x20 icon per live part, rendered by this renderer at build time
+(`make -C core gen` builds the tool from the core objects and writes `core/gen/part_icons_data.c`,
+raw, and `core/gen/part_icons_rle.c`, 4-bit packed for the PS1; `make check-gen` compares). One
+window per slot, box-sampled; slots with a "None" first choice show the part alone on a flat grey
+silhouette of the mannequin (compared with the mannequin moved the same way, for parts that move the
+citizen), the others the part in colour. `make -C core part-icons-sheet` writes the contact sheet.
+Any change to a painter or a part script changes the icons: run `make -C core gen` and commit them
+with it (check-gen fails otherwise). docs/CREATOR.md "Part icons" has the details.
 
 ## Tests (`core/tests/test_portrait.c`, run by `make -C core unit`)
 

@@ -1,0 +1,54 @@
+# creator_speed.txt - the creator's speed on the PS1 (CR9; the GBA's is gba/harness/scripts/
+# creator_scroll.txt): the same moves, measured with fps / fpsend (presented frames a second).
+# Run by the game's harness target (ps1/CMakeLists.txt). The owner's target is a steady 30
+# (DECISIONS "FPS TARGET"); the expect-fps floors are regression gates a little under today's numbers
+# (docs/CREATOR.md "Speed": idle 30.1, rows 30.0, a value held 29.9, the species grid scrolled 24.7).
+#
+#   idle        a new Hillvile citizen on the Species & Body tab, nothing pressed
+#   grid scroll RIGHT held in the species grid (each species is tried on)
+#   rows        DOWN held through the Outfit tab's rows
+#   value step  RIGHT held on the Outfit row the rows scroll stopped on (a new look every few ticks)
+scene CREATOR -1
+expect-scene CREATOR
+wait 60
+fps creator_idle
+wait 120
+fpsend creator_idle
+expect-fps 28 creator_idle
+press A
+wait 30
+down RIGHT
+fps creator_grid_scroll
+wait 120
+fpsend creator_grid_scroll
+release
+expect-fps 22 creator_grid_scroll
+shot creator_grid
+press B
+wait 20
+press R
+wait 4
+press R
+wait 4
+press R
+wait 4
+press R
+wait 30
+down DOWN
+fps creator_rows
+wait 120
+fpsend creator_rows
+release
+expect-fps 28 creator_rows
+wait 20
+press L
+wait 4
+press R
+wait 30
+down RIGHT
+fps creator_value
+wait 120
+fpsend creator_value
+release
+expect-fps 27 creator_value
+shot creator_value

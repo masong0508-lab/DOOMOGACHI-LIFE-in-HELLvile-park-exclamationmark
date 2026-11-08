@@ -118,11 +118,22 @@ enum { CM_DONE, CM_RANDOM, CM_UNDO, CM_REDO, CM_COPY,
 
 /* CR9 (GBA speed step, docs/CREATOR.md "Speed"): the preview holds still between changes (no
  * blink / breathing frames, so the figure and the bust are not drawn again every few ticks; a new
- * expression is drawn in slices while the old one stays up). Elsewhere it animates as before. */
+ * expression is drawn in slices while the old one stays up), a new look or camera is drawn in slices
+ * while the last one stays up (cr.disp / cr.pend), the stage's wallpaper, motes and backdrop stand
+ * still and the preview pane is a retained panel. Elsewhere it animates as before. A variable so
+ * the host tests can run the GBA's way too (test_panel.c); 1 on the GBA, 0 elsewhere. */
 #if defined(DOOMO_PLATFORM_GBA)
 #define CR_CALM 1
 #else
-#define CR_CALM 0
+extern uint8_t cr_calm;
+#define CR_CALM (cr_calm != 0)
+#endif
+/* CR9: the part of it the PS1 takes too: a new look or camera is drawn in slices while the last one
+ * stays up, and lands with its hop (creator_draw.c pane_view); the PS1's preview still animates */
+#if defined(DOOMO_PLATFORM_PS1)
+#define CR_SLICE 1
+#else
+#define CR_SLICE CR_CALM
 #endif
 
 /* CR9: the creator's retained panels (platform.h plat_panel_begin; GBA). The ids are cache slots
@@ -130,6 +141,8 @@ enum { CM_DONE, CM_RANDOM, CM_UNDO, CM_REDO, CM_COPY,
  * while it runs (a panel whose id, rect or key changed is simply drawn again). */
 #define PANEL_CR_TABS PANEL_OW_OBJECTIVE
 #define PANEL_CR_LIST PANEL_OW_CLOCK
+#define PANEL_CR_PANE PANEL_OW_PROMPT
+#define PANEL_CR_HINT PANEL_FP_HUD
 
 /* CR6: how many rows the tabs show (START menu "Show"): the everyday rows, or every fine-tuning
  * slider and toggle too (cr_row_level). */
@@ -155,6 +168,13 @@ typedef struct CrSpark {
  * frame). Valid while the unlock bits are unchanged (cr.lmemo_sig). */
 #define CR_LMEMO 32
 typedef struct CrLockMemo { const struct CrRow *row; int16_t idx; uint8_t val, ok; } CrLockMemo;
+
+/* CR9: what the preview pane shows: the look, the look without the browsed locked part (to show
+ * the part alone in lavender) and the camera (CAM_*). memcmp-able (zeroed when unused). */
+typedef struct CrView {
+    DoomoLook look, base;
+    uint8_t locked, cam, ok, pad;
+} CrView;
 
 /* what the shared pixel buffer currently holds */
 enum { CRB_NONE, CRB_PORTRAIT, CRB_FIGHTER, CRB_LEGS };
@@ -198,11 +218,16 @@ typedef struct CrState {
     uint8_t  happy;                 /* ticks left of the "ooh!" expression   */
     uint8_t  expr_i;
     uint16_t expr_t;
-    DoomoLook shown;                /* look on screen (throttled)            */
+    DoomoLook shown;                /* look the preview wants (throttled but on the GBA) */
+    DoomoLook shown_base;           /* ... without the browsed locked part (shown_locked) */
     uint8_t  shown_locked;          /* ... is a locked option: silhouette     */
+    uint8_t  pend_t;                /* CR9: ticks cr.pend has been drawn in slices */
+    uint16_t row_at, row_t;         /* CR9: the row the cursor is on (tab << 8 | row), ticks there */
+    uint8_t  sel_used;              /* CR6: SELECT was part of SELECT + UP / DOWN (no turntable) */
+    CrView   disp, pend;            /* CR9: the view on screen / the one being drawn (CR_CALM) */
     uint32_t shown_t, changed_t;
     CrSpark  spark[CR_SPARKS];
-    uint8_t  pix[PORTRAIT_W * PORTRAIT_H];   /* portrait / fighter render    */
+    uint8_t  pix[PORTRAIT_W * PORTRAIT_H] __attribute__((aligned(4)));   /* portrait / fighter render */
     DoomoImage img;
     uint8_t  pix_kind;              /* CRB_*                                 */
     uint32_t pix_key;
@@ -250,9 +275,13 @@ typedef struct CrState {
     uint8_t  icon_buf[PART_ICON_PIX];  /* an unpacked icon (DOOMO_ICONS_RLE builds) */
 
     /* CR6: a locked part on the citizen, the part alone in lavender (creator_draw.c) */
-    uint8_t  lockpix[FIGURE_W * FIGURE_H];
+    uint8_t  lockpix[FIGURE_W * FIGURE_H] __attribute__((aligned(4)));
     DoomoImage lockimg;
     uint32_t lockkey;
+    /* CR9: lock_compose's draft picture (its uid, colours, opaque pixels) and the dark colours */
+    uint32_t lc_uid;
+    uint16_t lc_opaque;
+    uint8_t  lc_has[32], lc_dark[32], lc_dark_ok;
 } CrState;
 
 /* (integration, memory budget) The editor state (~6.4 KB with the undo

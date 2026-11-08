@@ -77,6 +77,12 @@ const DoomoImage *figure_image(const DoomoLook *l, int status, int expr);
  * else meanwhile). While on, figures hold one still pose (no blink,
  * breathing or aura frames). */
 void portrait_hold(int on);
+/* CR9: the bust of any look, cached like figure_image (the creator's draft; portrait_hold applies). */
+const DoomoImage *portrait_image_look(const DoomoLook *l, int status, int expr);
+/* CR9: run more layer groups of a portrait_hold() job this tick while the frame's work so far is
+ * under `ms` milliseconds (GBA: a new look is ready in a few ticks instead of one group a tick).
+ * Elsewhere it does nothing (a job there finishes within a tick or two anyway). */
+void portrait_pump(int ms);
 /* Third-person shooter body: the resident's full look (outfit, hair,
  * horns, wings, tail) holding a weapon, seen from `view` (0 back,
  * 1 back-left, 2 left, 3 front-left, 4 front, mirrored for right side via

@@ -100,7 +100,10 @@ BORROW = (("world", (".bss.g_world_wtop", ".bss.g_world_corner")),
           # house's code (its group is out first: ovl_borrow_take()), and
           # the 8 KB it lends cut the slot to the combat group's size
           ("memcard", (".bss.s_blk",)))
-BORROW_GROUPS = ("home",)
+# CR7/CR9: the creator borrows the same .bss too (its part icons and catalog made it the biggest
+# group): nothing of it draws a 3D view, syncs the world or touches the card, and the scenes under
+# it rebuild what it overwrote (ovl_borrow_take) like after the house
+BORROW_GROUPS = ("home", "creator")
 # --- end H3 ---
 
 # --- H4 (for H3, SPEC C4): parts of a group. Code that only one mode of
@@ -245,6 +248,11 @@ def group_of(path):
     if "/core/gen/" in path and base(path) == "furn_data":
         return "home"
     # --- end H4 ---
+    # --- CR7/CR9: the creator's generated part icons (and its part catalog, as far as only the
+    # creator reads it) join the creator group instead of staying resident ---
+    if "/core/gen/" in path and base(path) in ("part_icons_rle", "part_meta_data"):
+        return "creator"
+    # --- end CR7 ---
     # --- H3 (SPEC C3): the PS1 house renderer is house code too ---
     if "/core/" not in path and "/src/" in path and base(path) in ("room", "room_test"):
         return "home"

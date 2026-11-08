@@ -319,6 +319,7 @@ static void draw_tabs(void)
     key = ui_key_int(ui_key_int(ui_key_int(ui_panel_key(), list_style()), cr.tab), crl.big | still << 1);
     if (still) key = ui_key_int(key, (int)cr.tab_t < 6 ? (int)cr.tab_t : 6);
     if (!panel || plat_panel_begin(PANEL_CR_TABS, 0, 0, crl.sw, pb, key)) {
+        if (panel && CR_CALM) plat_panel_solid();       /* CR9: a still backdrop */
         tab_shelf(0, crl.sw, pb, st);
         tab_bumper(0, st);
         tab_bumper(1, st);
@@ -365,65 +366,81 @@ static uint32_t look_hash(const DoomoLook *l)
     return h;
 }
 
-/* Effect frames of the close-up bust change every 2^FX_SHIFT ticks (each
- * change is a full ~0.75M-cycle bust render on the GBA). */
-#if defined(DOOMO_PLATFORM_GBA)
-#define FX_SHIFT 4
-#else
-#define FX_SHIFT 3
-#endif
-
-static uint32_t anim_phase(uint32_t t, int expr, const DoomoLook *l, int status)
+/* CR6: a locked part shown on the citizen: the part alone turns lavender (the pixels where the
+ * look wearing it differs from the draft), the rest of the citizen stays as it is.
+ * CR9: the draft picture's colours and size are kept per picture (duid; 0 = work them out), the
+ * pixels that agree are skipped a word at a time, and the dark / light choice is a table: the GBA
+ * did this in ~17 ms, now a few. */
+typedef uint32_t __attribute__((may_alias)) lc_word;
+static int lc_lavender(uint8_t c)
 {
-    uint32_t ph = 0;
-    if (CR_CALM && expr != EXPR_TALK) return 0;    /* CR9: the bust holds still between changes */
-    uint32_t am = look_anim_mask_rid(l, LOOK_ID_DRAFT, status, expr);
-    int fx = (am & LAM_FX) != 0;
-    ph |= (t % 110u) >= 106u;
-    ph |= ((t >> 5) & 1u) << 1;
-    ph |= (uint32_t)((t % 270u) >= 262u) << 2;
-    if (fx) ph |= ((t >> FX_SHIFT) & 3u) << 3;
-    if (am & LAM_TALK) ph |= ((t >> 2) & 1u) << 5;
-    return ph;
+    if (!cr.lc_dark_ok) {
+        int i;
+        memset(cr.lc_dark, 0, sizeof(cr.lc_dark));
+        for (i = 0; i < 256; i++)
+            if (palette_luma((uint8_t)i) < 100) cr.lc_dark[i >> 3] |= (uint8_t)(1 << (i & 7));
+        cr.lc_dark_ok = 1;
+    }
+    return ((cr.lc_dark[c >> 3] >> (c & 7)) & 1) ? PAL_RAMP(RAMP_VAPE, 2) : PAL_RAMP(RAMP_VAPE, 5);
 }
 
-/* CR6: a locked part shown on the citizen: the part alone turns lavender (the pixels where the
- * look wearing it differs from the draft), the rest of the citizen stays as it is. */
-static void lock_compose(uint8_t *l, const uint8_t *d, int n)
+static void lock_compose(uint8_t *l, const uint8_t *d, int n, uint32_t duid)
 {
-    uint8_t has[32];
-    int i, diff = 0, opaque = 0, strict;
-    /* a part that reshapes the head (a tall hat, big horns) moves the citizen's own pixels too:
-     * then, inside the citizen, only colours the draft does not use belong to the part */
-    memset(has, 0, sizeof(has));
+    int i, diff = 0, strict, words = ((((uintptr_t)l | (uintptr_t)d) & 3u) == 0) ? n / 4 : 0;
+    const lc_word *lw = (const lc_word *)l, *dw = (const lc_word *)d;
+    if (!duid || duid != cr.lc_uid) {
+        /* the draft's colours, and how many pixels it covers */
+        memset(cr.lc_has, 0, sizeof(cr.lc_has));
+        cr.lc_opaque = 0;
+        for (i = 0; i < n; i++)
+            if (d[i]) { cr.lc_has[d[i] >> 3] |= (uint8_t)(1 << (d[i] & 7)); cr.lc_opaque++; }
+        cr.lc_uid = duid;
+    }
     for (i = 0; i < n; i++) {
-        has[d[i] >> 3] |= (uint8_t)(1 << (d[i] & 7));
-        opaque += d[i] != 0;
+        if ((i & 3) == 0 && (i >> 2) < words && lw[i >> 2] == dw[i >> 2]) { i += 3; continue; }
         diff += d[i] && l[i] != d[i];
     }
-    strict = diff * 3 > opaque;
-    for (i = 0; i < n; i++)
-        if (l[i] && l[i] != d[i] && (!strict || !d[i] || !((has[l[i] >> 3] >> (l[i] & 7)) & 1)))
-            l[i] = palette_luma(l[i]) < 100 ? PAL_RAMP(RAMP_VAPE, 2) : PAL_RAMP(RAMP_VAPE, 5);
+    /* a part that reshapes the head (a tall hat, big horns) moves the citizen's own pixels too:
+     * then, inside the citizen, only colours the draft does not use belong to the part */
+    strict = diff * 3 > (int)cr.lc_opaque;
+    for (i = 0; i < n; i++) {
+        if ((i & 3) == 0 && (i >> 2) < words && lw[i >> 2] == dw[i >> 2]) { i += 3; continue; }
+        if (l[i] && l[i] != d[i] && (!strict || !d[i] || !((cr.lc_has[l[i] >> 3] >> (l[i] & 7)) & 1)))
+            l[i] = (uint8_t)lc_lavender(l[i]);
+    }
 }
 
-/* The close-up bust of the draft (rendered into the shared buffer). */
-static const DoomoImage *bust_image(int status, int expr)
+/* CR9: the view the pane wants this tick */
+static void want_view(CrView *v)
 {
-    int locked = cr.shown_locked;
-    uint32_t key = look_hash(&cr.shown) ^ (uint32_t)(status * 7919 + expr * 104729 + crl.big) ^
-                   (anim_phase(cr.t, expr, &cr.shown, status) * 2654435761u) ^ 0xB0570000u ^ (uint32_t)locked;
+    memset(v, 0, sizeof(*v));
+    v->look = cr.shown;
+    v->locked = cr.shown_locked;
+    if (v->locked) v->base = cr.shown_base;
+    v->cam = (uint8_t)cr_camera();
+    /* CR9 (CR_CALM): the camera moves once the cursor has rested on a row for a moment, so scrolling
+     * through the rows draws no bust / legs / back view for every row passed */
+    if (CR_SLICE && cr.disp.ok && cr.phase == CRP_MAIN && cr.row_t < 6) v->cam = cr.disp.cam;
+    v->ok = 1;
+}
+
+/* The close-up bust of a view (the portrait cache's image; composed / cropped in cr.pix). */
+static const DoomoImage *bust_image(const CrView *v, int status, int expr)
+{
+    const DoomoImage *l = portrait_image_look(&v->look, status, expr), *d = NULL;
+    uint32_t key;
+    if (!l) return NULL;
+    if (v->locked) {                          /* the look without the locked part, to compare */
+        d = portrait_image_look(&v->base, status, expr);
+        if (d && (d->w != l->w || d->h != l->h)) d = NULL;
+    }
+    if (crl.big && !d) return l;              /* as cached */
+    key = l->uid * 2654435761u ^ (d ? d->uid : 0u) ^ 0xB0570000u ^ (uint32_t)crl.big;
     if (cr.pix_kind != CRB_PORTRAIT || cr.pix_key != key || !cr.img.uid) {
-        portrait_render(&cr.shown, status, expr, (int)cr.t, cr.pix);
-        if (locked) {                         /* the draft without the locked part, to compare */
-            DoomoLook base;
-            cr_lock_base(&base);
-            portrait_render(&base, status, expr, (int)cr.t, cr.lockpix);
-            lock_compose(cr.pix, cr.lockpix, PORTRAIT_W * PORTRAIT_H);
-            cr.lockkey = 0;                   /* lockpix was reused */
-        }
-        cr.img.w = PORTRAIT_W;
-        cr.img.h = PORTRAIT_H;
+        memcpy(cr.pix, l->pix, (size_t)l->w * l->h);
+        if (d) lock_compose(cr.pix, d->pix, l->w * l->h, d->uid);
+        cr.img.w = l->w;
+        cr.img.h = l->h;
         if (!crl.big) {
             /* small screens: crop the head in place and show it at 2x */
             int r, c;
@@ -441,22 +458,18 @@ static const DoomoImage *bust_image(int status, int expr)
     return &cr.img;
 }
 
-/* CR6: the full figure; a locked part composed in lavender (cr.lockpix) */
-static const DoomoImage *body_image(int status, int expr)
+/* CR6: the full figure of a view; a locked part composed in lavender (cr.lockpix) */
+static const DoomoImage *body_image(const CrView *v, int status, int expr)
 {
-    const DoomoImage *l = figure_image(&cr.shown, status, expr), *d;
+    const DoomoImage *l = figure_image(&v->look, status, expr), *d;
     uint32_t key;
-    if (!l || !cr.shown_locked) return l;
-    {
-        DoomoLook base;
-        cr_lock_base(&base);
-        d = figure_image(&base, status, expr);
-    }
+    if (!l || !v->locked) return l;
+    d = figure_image(&v->base, status, expr);
     if (!d || d->w != l->w || d->h != l->h) return l;
     key = l->uid * 2654435761u ^ d->uid ^ 0x10C0u;
     if (cr.lockkey != key || !cr.lockimg.uid) {
         memcpy(cr.lockpix, l->pix, (size_t)l->w * l->h);
-        lock_compose(cr.lockpix, d->pix, l->w * l->h);
+        lock_compose(cr.lockpix, d->pix, l->w * l->h, d->uid);
         cr.lockimg.w = l->w;
         cr.lockimg.h = l->h;
         cr.lockimg.pix = cr.lockpix;
@@ -468,9 +481,9 @@ static const DoomoImage *body_image(int status, int expr)
 
 /* CR6: the legs close up (shoes, bottoms): the lower part of the figure, shown at 2x / 3x */
 #define LEGS_W(big) ((big) ? 36 : 40)
-static const DoomoImage *legs_image(int status, int expr)
+static const DoomoImage *legs_image(const CrView *v, int status, int expr)
 {
-    const DoomoImage *f = body_image(status, expr);
+    const DoomoImage *f = body_image(v, status, expr);
     int lw = LEGS_W(crl.big), x0 = (FIGURE_W - lw) / 2, y0 = FIGURE_H - lw, r, c;
     if (!f) return NULL;
     if (cr.pix_kind != CRB_LEGS || cr.pix_key != f->uid || !cr.img.uid) {
@@ -488,24 +501,22 @@ static const DoomoImage *legs_image(int status, int expr)
 
 /* The turntable body (fighter render, 8 directions); back = 1: the back camera (CR6, tails and
  * wings), standing still facing away. */
-static const DoomoImage *turn_image(int status, int *flip, int back)
+static const DoomoImage *turn_image(const CrView *v, int status, int *flip, int back)
 {
     static const uint8_t views[8] = { 4, 3, 2, 1, 0, 1, 2, 3 };
-    int v8 = back ? 4 : cr.view8 & 7, anim, view = views[v8], locked = cr.shown_locked;
+    int v8 = back ? 4 : cr.view8 & 7, anim, view = views[v8], locked = v->locked;
     uint32_t key;
     *flip = v8 >= 1 && v8 <= 3;
     anim = cr.roll ? 5 : cr.walking ? (int)((cr.t >> 2) & 3) : (int)((cr.t >> 4) & 1);
     if (!cr.walking && !cr.roll) anim = ((cr.t >> 4) & 1) ? 1 : 0;   /* gentle idle bob */
     if (back) anim = 0;
-    key = look_hash(&cr.shown) ^ (uint32_t)(view * 31 + anim * 977 + status * 7) ^ 0xF1670000u ^ (uint32_t)locked << 20;
+    key = look_hash(&v->look) ^ (uint32_t)(view * 31 + anim * 977 + status * 7) ^ 0xF1670000u ^ (uint32_t)locked << 20;
     if (cr.pix_kind != CRB_FIGHTER || cr.pix_key != key || !cr.img.uid) {
-        fighter_render(&cr.shown, status, view, anim, -1, cr.pix);
+        fighter_render(&v->look, status, view, anim, -1, cr.pix);
         if (locked) {
-            DoomoLook base;
-            cr_lock_base(&base);
-            fighter_render(&base, status, view, anim, -1, cr.lockpix);
-            lock_compose(cr.pix, cr.lockpix, FIGHTER_W * FIGHTER_H);
-            cr.lockkey = 0;
+            fighter_render(&v->base, status, view, anim, -1, cr.lockpix);
+            lock_compose(cr.pix, cr.lockpix, FIGHTER_W * FIGHTER_H, 0);
+            cr.lockkey = 0;                   /* lockpix was reused */
         }
         cr.img.w = FIGHTER_W;
         cr.img.h = FIGHTER_H;
@@ -515,6 +526,61 @@ static const DoomoImage *turn_image(int status, int *flip, int back)
         cr.pix_key = key;
     }
     return &cr.img;
+}
+
+/* CR9 (CR_CALM): are a view's pictures in the portrait cache? Asks for the missing one with
+ * portrait_hold(2), so the cache draws it in slices over the next ticks. */
+static int view_ready(const CrView *v, int status, int expr)
+{
+    int ok = 1;
+    portrait_hold(2);
+    switch (v->cam) {
+    case CAM_BACK:                            /* the back view is a fighter render, drawn at once */
+        break;
+    case CAM_BUST:
+        ok = portrait_image_look(&v->look, status, expr) != NULL;
+        if (ok && v->locked) ok = portrait_image_look(&v->base, status, expr) != NULL;
+        break;
+    default:
+        ok = figure_image(&v->look, status, expr) != NULL;
+        if (ok && v->locked) ok = figure_image(&v->base, status, expr) != NULL;
+        break;
+    }
+    portrait_hold(CR_CALM ? 1 : 0);           /* (the PS1's preview animates) */
+    return ok;
+}
+
+/* CR9: the view the pane shows this tick. Native, PS1, DC: the one the creator wants. GBA
+ * (CR_CALM): a new look or camera is drawn in slices by the portrait cache while the last view
+ * stays up (SPEED DEFAULTS: a stand-in for a few ticks), then it pops in with a hop; a view that is
+ * still not ready after 24 ticks (the cache could not start it) is drawn at once. */
+static const CrView *pane_view(int status, int expr)
+{
+    CrView w;
+    want_view(&w);
+    if (!CR_SLICE || !cr.disp.ok || cr.phase == CRP_TURN || cr.phase == CRP_MOVEIN) {
+        cr.disp = w;
+        cr.pend.ok = 0;
+        return &cr.disp;
+    }
+    if (memcmp(&w, &cr.disp, sizeof(w)) == 0) { cr.pend.ok = 0; return &cr.disp; }
+    if (!cr.pend.ok) {
+        /* a new look is started once it has rested two ticks (a held direction streams past) */
+        if (cr.t - cr.shown_t < 2) return &cr.disp;
+        cr.pend = w;
+        cr.pend_t = 0;
+    }
+    if (view_ready(&cr.pend, status, expr) || ++cr.pend_t >= 24) {
+        /* it lands: with a hop and a sparkle, unless the next one is already wanted (a held
+         * direction: the pane stays a still, retained panel while the looks stream past) */
+        if (memcmp(&cr.pend.look, &cr.disp.look, sizeof(DoomoLook)) != 0 && memcmp(&cr.pend, &w, sizeof(w)) == 0) {
+            cr.hop = 9;
+            cr_sparkle_burst(3, -1);
+        }
+        cr.disp = cr.pend;
+        cr.pend.ok = 0;
+    }
+    return &cr.disp;
 }
 
 static void draw_sparks(int fx, int fy, int clip_x, int clip_y, int clip_w, int clip_h)
@@ -541,7 +607,7 @@ static void draw_sparks(int fx, int fy, int clip_x, int clip_y, int clip_w, int 
 }
 
 /* soft room: wallpaper bands with polka hearts, a floor and a round rug */
-static void draw_room(int x, int y, int w, int h, int floor_y, const Stage *sg)
+static void draw_room(int x, int y, int w, int h, int floor_y, const Stage *sg, uint32_t t)
 {
     int i, b1 = y + (floor_y - y) / 3, b2 = y + (floor_y - y) * 2 / 3;
     plat_rect(x, y, w, b1 - y, sg->wall[0]);
@@ -551,7 +617,7 @@ static void draw_room(int x, int y, int w, int h, int floor_y, const Stage *sg)
     plat_checker(x, b2, w, 1, sg->wall[1]);
     /* drifting polka hearts on the wallpaper */
     for (i = 0; i < 6; i++) {
-        int hx = x + 6 + ((i * 37 + (int)(cr.t / 4)) % DOOMO_MAX(w - 12, 1));
+        int hx = x + 6 + ((i * 37 + (int)(t / 4)) % DOOMO_MAX(w - 12, 1));
         int hy = y + 8 + ((i * 53) % DOOMO_MAX(floor_y - y - 20, 1));
         if (cr_is_hellish()) ui_star(hx, hy, 2, sg->wall_dot);
         else ui_heart_flat(hx, hy, 2, sg->wall_dot);
@@ -609,21 +675,41 @@ static void speech_bubble(int x, int y, int w)
                                              PAL_PAINT(PAINT_ROSE, 1));
 }
 
-static void lock_bubble(int x, int y, int w)
+/* the unlock hint the bubble shows */
+static const char *bubble_hint(void)
 {
     const char *hint = "";
     const CrRow *row = cr_cur_row();
-    int lines, h;
     if (cr.phase == CRP_PICK || cr.phase == CRP_COLOR) hint = cr_lock_hint(row, cr.pick_sel);
     else if (cr.browse >= 0) hint = cr_lock_hint(row, cr.browse);
-    if (!hint[0]) hint = "Locked!";
+    return hint[0] ? hint : "Locked!";
+}
+
+/* the "Locked!" bubble on the preview: at the top (top = 1) or ending at y (top = 0); at most 3 lines
+ * of hint (4 on big screens): the footer always has the whole hint */
+static void lock_bubble(int x, int y, int w, int top)
+{
+    const char *hint = bubble_hint();
+    int lines, h, maxl = crl.big ? 4 : 3, chars;
     lines = ui_text_wrap(0, 0, w - 8, hint, 0, 0);
+    chars = lines > maxl ? ui_wrap_skip(hint, w - 8, maxl) : (int)strlen(hint);
+    if (lines > maxl) lines = maxl;
     h = lines * FONT_LINE + 15;
+    if (!top) y -= h;
     ui_round_rect(x, y, w, h, 3, PAL_RAMP(RAMP_VAPE, 1));
     ui_round_rect(x + 1, y + 1, w - 2, h - 2, 2, PAL_RAMP(RAMP_VAPE, 6));
     cr_padlock(x + 6, y + 3, PAL_RAMP(RAMP_VAPE, 1), PAL_RAMP(RAMP_VAPE, 6));
     ui_text(x + 14, y + 3, "Locked!", PAL_RAMP(RAMP_VAPE, 0));
-    ui_text_wrap(x + 4, y + 12, w - 8, hint, PAL_RAMP(RAMP_VAPE, 1), 1);
+    ui_text_wrap_n(x + 4, y + 12, w - 8, hint, PAL_RAMP(RAMP_VAPE, 1), chars);
+}
+
+/* CR9: is a sparkle still flying? (the pane is redrawn every tick while one is) */
+static int sparks_alive(void)
+{
+    int i;
+    for (i = 0; i < CR_SPARKS; i++)
+        if (cr.spark[i].life) return 1;
+    return 0;
 }
 
 static void draw_pane(void)
@@ -635,46 +721,69 @@ static void draw_pane(void)
     int floor_y = iy + ih * 7 / 10, feet = iy + ih - 20 - (crl.big ? 6 : 0);
     int cx = ix + iw / 2, status = cr_preview_status(), expr = cr_preview_expr();
     int hop = cr.hop ? -ui_wave((int)(9 - cr.hop) * 2, 36, crl.big ? 5 : 3) : 0;
-    int cam = cr_camera();
-    int locked = cr.shown_locked;
+    const CrView *v = pane_view(status, expr);
+    int cam = v->cam, locked = v->locked, turn = cr.phase == CRP_TURN, flip = 0, panel;
+    const DoomoImage *im;
     stage_colors(&sg);
     st = ui_style(sg.style);
     if (hop > 0) hop = -hop;
+    /* the picture first (it may be drawn now), so the panel's key knows it */
+    if (turn || cam == CAM_BACK) im = turn_image(v, status, &flip, !turn);
+    else if (cam == CAM_BUST) im = bust_image(v, status, expr);
+    else if (cam == CAM_LEGS) im = legs_image(v, status, expr);
+    else im = body_image(v, status, expr);
+    /* CR9 (CR_CALM): the stage stands still, so the pane is a retained panel (GBA): put back from
+     * the last frame while the picture, the hop, the bubbles and the name plate are unchanged */
+    panel = UI_PANELS && CR_CALM && !turn && !sparks_alive();
+    if (panel) {
+        uint32_t k = ui_key_int(ui_panel_key(), im ? (int32_t)(im->uid & 0x7FFFFFFFu) : -1);
+        k = ui_key_int(k, cam | locked << 3 | crl.big << 4 | sg.style << 5 | cr.spooky << 12 | cr.mode << 13 |
+                              cr_is_hellish() << 16 | (int)cr.hop << 17);
+        k = ui_key_int(k, ui_window_glint(x, y, w, h));
+        k = ui_key_str(k, cr.draft.name);
+        if (locked) k = ui_key_str(k, bubble_hint());
+        if (cr.talk) k = ui_key_int(ui_key_str(k, cr.talk), cr.talk_pos);
+        if (!plat_panel_begin(PANEL_CR_PANE, x, y, w + 3, DOOMO_MIN(h + 3, crl.sh - 13 - y), k)) {
+            ui_window_shadow(x, y, w, h);               /* kept: its drop shadow only */
+            plat_panel_end();
+            return;
+        }
+        plat_panel_solid();                             /* a still backdrop (CR_CALM) */
+    }
     /* frame */
     ui_window(x, y, w, h, sg.style);
     ui_round_rect(ix - 1, iy - 1, iw + 2, ih + 2, 3, st->outline);
     ui_round_rect(ix, iy, iw, ih, 2, sg.wall[0]);
-    draw_room(ix + 1, iy + 1, iw - 2, ih - 2, floor_y, &sg);
-    draw_motes(ix, iy, iw, floor_y - iy, &sg);
+    draw_room(ix + 1, iy + 1, iw - 2, ih - 2, floor_y, &sg, CR_CALM ? 0u : cr.t);
+    if (!CR_CALM) draw_motes(ix, iy, iw, floor_y - iy, &sg);
     /* rug */
     ui_fill_ellipse(cx, feet + 1, iw / 2 - 4, crl.big ? 9 : 6, sg.rug_d);
     ui_fill_ellipse(cx, feet, iw / 2 - 5, crl.big ? 8 : 5, sg.rug);
     ui_fill_ellipse(cx - 2, feet - 1, iw / 3, crl.big ? 4 : 2, sg.rug_l);
 
-    if (cr.phase == CRP_TURN || cam == CAM_BACK) {
-        int flip, sc = crl.ftr_scale;
-        const DoomoImage *im = turn_image(status, &flip, cr.phase != CRP_TURN);
+    if (turn || cam == CAM_BACK) {
+        int sc = crl.ftr_scale;
         int fw = im->w * sc, fh = im->h * sc;
         int b = ui_wave((int)cr.t, 14, 2);
         ui_fill_ellipse(cx, feet, fw / 4 + 2, crl.big ? 4 : 3, sg.shadow);
-        plat_image(cx - fw / 2, feet - fh + 2 + (cr.phase == CRP_TURN ? 0 : hop), im, sc, flip ? IMG_FLIPX : 0, 0);
-        if (cr.phase == CRP_TURN) {           /* turn arrows */
+        plat_image(cx - fw / 2, feet - fh + 2 + (turn ? 0 : hop), im, sc, flip ? IMG_FLIPX : 0, 0);
+        if (turn) {                           /* turn arrows */
             plat_text(ix + 3 - (b > 0), feet - fh / 2, STR_ICON_ARROW_L, st->accent);
             plat_text(ix + iw - 9 + (b > 0), feet - fh / 2, STR_ICON_ARROW_R, st->accent);
         } else {
             ui_text_center(cx, iy + 3, "Back view", st->text_dim);
         }
     } else if (cam == CAM_BUST) {
-        const DoomoImage *im = bust_image(status, expr);
-        int sc = crl.big ? crl.por_scale : 2, bw = im->w * sc, bh = im->h * sc;
-        int by = crl.big ? floor_y - bh + 18 + hop / 2 : iy + 6 + hop / 2;
-        int rr = crl.big ? bw / 2 : bw / 2 - 1;
-        ui_fill_circle(cx, by + bh / 2, rr + 2, sg.wall[0]);
-        ui_fill_circle(cx, by + bh / 2, rr, PAL_WHITE);
-        ui_fill_circle(cx, by + bh / 2, rr - 2, sg.wall[0]);
-        plat_image(cx - bw / 2, by, im, sc, 0, 0);
+        if (im) {
+            int sc = crl.big ? crl.por_scale : 2, bw = im->w * sc, bh = im->h * sc;
+            int by = crl.big ? floor_y - bh + 18 + hop / 2 : iy + 6 + hop / 2;
+            int rr = crl.big ? bw / 2 : bw / 2 - 1;
+            ui_fill_circle(cx, by + bh / 2, rr + 2, sg.wall[0]);
+            ui_fill_circle(cx, by + bh / 2, rr, PAL_WHITE);
+            ui_fill_circle(cx, by + bh / 2, rr - 2, sg.wall[0]);
+            plat_image(cx - bw / 2, by, im, sc, 0, 0);
+        }
     } else if (cam == CAM_LEGS) {
-        const DoomoImage *im = legs_image(status, expr);
         int sc = crl.big ? 3 : 2;
         if (im) {
             int fw = im->w * sc, fh = im->h * sc;
@@ -682,7 +791,6 @@ static void draw_pane(void)
             plat_image(cx - fw / 2, feet - fh + 2 + hop / 2, im, sc, 0, 0);
         }
     } else {
-        const DoomoImage *im = body_image(status, expr);
         int sc = crl.fig_scale;
         if (im) {
             int fw = im->w * sc, fh = im->h * sc;
@@ -694,7 +802,10 @@ static void draw_pane(void)
     draw_sparks(cx, feet, ix, iy, iw, ih);
     /* bubbles & plates */
     if (locked) {
-        lock_bubble(ix + 2, iy + ih - (crl.big ? 46 : 40), iw - 4);
+        /* CR6: on the legs camera the bubble sits at the top, clear of the shoes it is about; else
+         * at the bottom, inside the pane */
+        if (cam == CAM_LEGS) lock_bubble(ix + 2, iy + 2, iw - 4, 1);
+        else lock_bubble(ix + 2, iy + ih - 4, iw - 4, 0);
     } else {
         name_plate(cx, iy + ih - 15, iw - 8);
         if (cr.talk) speech_bubble(ix + 3, iy + 3, iw - 6);
@@ -702,7 +813,8 @@ static void draw_pane(void)
     if (cr.spooky && !locked)
         ui_text_outline(ix + 4, iy + 3 + (cr.talk ? 30 : 0), "POSSESSED!", PAL_PAINT(PAINT_CHERRY, 1),
                         PAL_RAMP(RAMP_BLOOD, 0));
-    if (cr.phase == CRP_TURN) {
+    if (panel) plat_panel_end();
+    if (turn) {
         int b = ui_wave((int)cr.t, 20, 1) > 0;
         ui_frame(x - 1 - b, y - 1 - b, w + 2 + 2 * b, h + 2 + 2 * b, PAL_UI_GOLD);
     }
@@ -771,7 +883,7 @@ static void draw_footer(const CrRow *row, int x, int y, int w)
         cr_padlock(x + 1, y + 1, PAL_PAINT(PAINT_CHERRY, 1), st->fill);
         if (crl.big) {
             ui_text(x + 9, y, cr_fit(m ? part_meta_name(m) : "Locked!", w - 10, b2), PAL_PAINT(PAINT_CHERRY, 0));
-            ui_text(x, y + 11, cr_fit(cr_lock_hint(row, idx), w, b3), PAL_PAINT(PAINT_CHERRY, 0));
+            ui_text(x, y + 11, cr_marquee(cr_lock_hint(row, idx), w, b3), PAL_PAINT(PAINT_CHERRY, 0));
         } else {
             doomo_snprintf(buf, sizeof(buf), "%s%s%s", m ? part_meta_name(m) : "", m ? ": " : "", cr_lock_hint(row, idx));
             ui_text(x + 9, y, cr_marquee(buf, w - 10, b2), PAL_PAINT(PAINT_CHERRY, 0));
@@ -999,8 +1111,9 @@ static int value_moves(const CrRow *row, int inner_r)
 static int footer_moves(const CrRow *row)
 {
     int idx;
-    if (!row || crl.big) return 0;
+    if (!row) return 0;
     idx = cr.browse >= 0 ? cr.browse : cr_row_value(&cr.draft, row);
+    if (crl.big) return cr.browse >= 0 && cr_value_locked(row, idx) && ui_text_width(cr_lock_hint(row, idx)) > crl.lw - 14;
     return cr.browse >= 0 && cr_value_locked(row, idx);
 }
 
@@ -1051,6 +1164,7 @@ static void draw_list(void)
         plat_panel_end();
         return;
     }
+    if (panel && CR_CALM) plat_panel_solid();      /* a still backdrop */
     ui_window(x, y, w, h, style);
     /* header: icon + tab name > the selected row's section + page */
     {
@@ -1542,12 +1656,17 @@ static void draw_hint(void)
                         : STR_ICON_A " Select  " STR_ICON_B " Close";
         break;
     default:
-        if ((cr.t / 120) % 3 == 2) {          /* every few seconds: a tip */
+        if ((cr.t / 120) % 4 == 2) {          /* every few seconds: a tip */
             s = crl.big ? "SELECT Turn around  Square Undo  Triangle Redo"
                         : "SELECT Turn  SEL+" STR_ICON_A " Undo  SEL+" STR_ICON_B " Redo";
             break;
         }
-        if (!crl.big && (cr.t / 120) % 3 == 1 && row && cr_row_help(row)[0]) {   /* CR6: what the row is for */
+        if ((cr.t / 120) % 4 == 3) {          /* CR6: the section jump */
+            s = crl.big ? "SELECT + Up/Down: jump to the next section   L/R Tab"
+                        : "SELECT+Up/Down: next section";
+            break;
+        }
+        if (!crl.big && (cr.t / 120) % 4 == 1 && row && cr_row_help(row)[0]) {   /* CR6: what the row is for */
             s = cr_row_help(row);
             break;
         }
@@ -1560,7 +1679,17 @@ static void draw_hint(void)
             s = STR_ICON_A " Edit " STR_ICON_ARROW_L STR_ICON_ARROW_R " Change L/R Tab START Menu";
         break;
     }
+    /* CR9: the button bar is a retained panel (GBA): put back while its text is the same */
+    if (UI_PANELS && !plat_panel_begin(PANEL_CR_HINT, 0, crl.sh - 13, crl.sw, 13,
+                                       ui_key_str(ui_key_int(ui_panel_key(), style | crl.big << 4), s))) {
+        plat_panel_end();
+        return;
+    }
+    /* a still backdrop under it: not while a window pops open (its shadow reaches into the bar) */
+    if (UI_PANELS && CR_CALM && (cr.phase == CRP_MAIN || cr.phase == CRP_GRID) && cr.phase_t >= 12)
+        plat_panel_solid();
     ui_hint(s, style);
+    if (UI_PANELS) plat_panel_end();
 }
 
 /* ====================================================================== */
@@ -1596,10 +1725,15 @@ void cr_draw(void)
     if (!scene_scratch_mine(CR_SCRATCH_TAG)) { plat_clear(PAL_UI_PINK); return; }
     cr_layout();
     if (cr.phase == CRP_MOVEIN) { draw_movein(); return; }
-    /* CR9: the list window (and every picker over it) is opaque inside its rounded corners: no
-     * backdrop under it */
-    ui_backdrop_hole(cr_is_hellish() ? WIN_DARK : WIN_CUTE, cr.t, crl.lx + 1, crl.ly + 5, crl.lx + crl.lw - 1,
-                     crl.ly + crl.lh - 5);
+    ui_glint_hold(CR_CALM);                     /* CR9 (GBA): still windows, so the panels are kept */
+    /* CR9: the list window (and every picker over it) and the preview pane are opaque inside their
+     * rounded corners: no backdrop under them; on the GBA (CR_CALM) the backdrop stands still */
+    {
+        int holes[8];
+        holes[0] = crl.lx + 1; holes[1] = crl.ly + 5; holes[2] = crl.lx + crl.lw - 1; holes[3] = crl.ly + crl.lh - 5;
+        holes[4] = crl.px + 1; holes[5] = crl.py + 5; holes[6] = crl.px + crl.pw - 1; holes[7] = crl.py + crl.ph - 5;
+        ui_backdrop_holes(cr_is_hellish() ? WIN_DARK : WIN_CUTE, CR_CALM ? 0u : cr.t, holes, 2);
+    }
     draw_pane();
     switch (cr.phase) {
     case CRP_HERO:  draw_hero(); break;
@@ -1620,4 +1754,8 @@ void cr_draw(void)
      * them, which is fine) */
     if (cr.phase != CRP_HERO) draw_tabs();
     if (cr.phase == CRP_MENU) draw_menu();
+    ui_glint_hold(0);
+    /* CR9 (GBA): a new look being drawn in slices gets what is left of this tick (one layer group a
+     * tick while a direction is held: the list keeps up, the figure catches up when it rests) */
+    if (CR_CALM && !btn_down(BTN_UP | BTN_DOWN | BTN_LEFT | BTN_RIGHT)) portrait_pump(16);
 }

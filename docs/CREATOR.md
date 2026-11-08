@@ -9,10 +9,13 @@ creator module.
 | `core/src/creator.c` | the scene: state, input, rows, undo timeline, pickers, randomiser, presets, locks, nicknames, writing into the town |
 | `core/src/creator_draw.c` | all drawing: tab strip, preview stage, option list, pickers, START menu, copy picker, turntable, the "moving in!" finale |
 | `core/src/creator_data.c` | const tables: tabs and rows, 78 species presets (Turkey and Animatronic are the show canon's), 20 outfit sets, 12 voice types, personality texts, tab icons, the creator's unlockables |
-| `core/src/creator_int.h` | private glue between the three |
-| `core/tests/test_creator.c` | headless tests (25) |
+| `core/src/creator_grid.c` | the picture grid for part rows (CR6): filters, search, try-on, locked parts |
+| `core/src/creator_int.h` | private glue between them |
+| `core/include/doomo/part_icons.h`, `core/src/part_icons.c`, `core/tools/part_icons.c`, `core/gen/part_icons_*.c` | the prerendered part icons (CR7), below |
+| `core/tests/test_creator.c`, `test_part_icons.c`, `test_panel.c` (creator case) | headless tests (33 + 3 + 1) |
 | `core/data/parts/catalog/`, `core/src/part_meta.c`, `core/src/part_age.c` | the part catalog (CR1) and the age gate for parts (CR12), below |
-| `core/tests/scripts/creator.txt`, `creator_hellvile.txt` | runner walkthroughs (47 screenshots per resolution) |
+| `core/tests/scripts/creator.txt`, `creator_hellvile.txt`, `creator_grid.txt` | runner walkthroughs (65 screenshots per resolution) |
+| `gba/harness/scripts/creator_scroll.txt` (`make -C gba test-creator`), `creator_profile.txt` | GBA speed gates and profile (CR9) |
 
 ## Opening it
 
@@ -57,8 +60,20 @@ test `creator_rows_cover_every_field` checks it). Section captions
 | Profile | name and nickname (on-screen keyboard), pronouns, who they crush on, birthday month and day, favourite food, hated food, hobby, music, favourite colour, fear, catchphrase |
 | Home | moves to Hillvile / Hellvile (new citizens only, and in the story only once the wall is down), born in (heritage, `RF_HELLBORN`), favourite (`RF_FAVORITE`), plus a live preview of the apartment block with their window lit up (floor / room of the slot, free homes) - or the protagonist's HaHaland cottage |
 
-Values show their catalog names (`doomo_*_names`). Lists cycle with
-LEFT/RIGHT; A opens a picker with every choice. Colour rows show a swatch
+The list header names the tab and the section of the selected row ("Face > Eyes"; on 240x160
+the section alone when both do not fit); SELECT + UP / DOWN jumps to the next / previous section
+(the button bar says so every few seconds). Every row has a help line saying what it is for and how to
+change it (`cr_row_help`): the button bar shows it as its tip on 240x160, and a second footer line
+shows it on 320x240. The START menu's **Rows** entry (LEFT / RIGHT or A) switches between *every
+detail* (the default, every row) and *just the basics*, which hides the fine-tuning rows
+(`cr_row_level` 1: the proportion sliders, the cheek extras but blush and freckles, the hair
+highlight, Match fur, eye count, fangs, the voice's quality / intonation / accent, the marking and
+print colours). Every part row stays in the basics.
+
+Values show their catalog names (`doomo_*_names`); a part row's footer names its themed set too
+("Top Hat 4/24 - Mayor Giggs' Tea Party"; on 240x160 only when it fits). Lists cycle with
+LEFT/RIGHT; A on a **part row** opens the picture grid (below), A on any other list opens a picker
+with every choice. Colour rows show a swatch
 and A opens a swatch grid (8 columns; skin adds the 8 natural tones;
 hair highlight has "None" in an 11-column grid). Sliders show their value
 and their two ends in the detail line ("Short <-> Tall"). Long values
@@ -70,16 +85,17 @@ ears, nose, mouth, fangs, horns, tail, wings, halo, fur marking, eye count -
 
 ## Controls
 
-| Button | Main list | Pickers | Turntable |
-|---|---|---|---|
-| UP / DOWN | row | choice | walk on/off (UP), auto-spin (DOWN) |
-| LEFT / RIGHT | change value | page (list) / move (swatches) | turn (8 directions) |
-| A | open picker / type / toggle / apply preset | choose | tumble |
-| B | back; with changes: "Discard?" | cancel (restores the value) | back |
-| L / R | tab | page | - |
-| START | creator menu | - | back |
-| SELECT (tap) | turntable | - | back |
-| X / Y | undo / redo (GBA: SELECT+A / SELECT+B) | - | - |
+| Button | Main list | Picture grid | Pickers | Turntable |
+|---|---|---|---|---|
+| UP / DOWN | row | cursor (a row of pictures) | choice | walk on/off (UP), auto-spin (DOWN) |
+| LEFT / RIGHT | change value | cursor (tries the part on) | page (list) / move (swatches) | turn (8 directions) |
+| A | open grid / picker / type / toggle / apply preset | wear it (refused, with a shake, when locked) | choose | tumble |
+| B | back; with changes: "Discard?" | back (puts the old part back) | cancel (restores the value) | back |
+| L / R | tab | filter chip | page | - |
+| START | creator menu | find by letters | - | back |
+| SELECT (tap) | turntable | show all (clears the chip and the search) | - | back |
+| SELECT + UP / DOWN | jump to the first row of the previous / next section of the tab | - | - | - |
+| X / Y | undo / redo (GBA: SELECT+A / SELECT+B) | - | - | - |
 
 The START menu lists only what applies, in five groups with a thin rule
 between them: **Move in! / All done!** | Randomise (one entry: LEFT / RIGHT
@@ -95,22 +111,29 @@ Quit. Nothing is shown greyed out. `cr.menu_sel` holds a `CM_*` id, and
   hearts or embers), bouncing on every change with sparkles, hearts and
   stars. It blinks, breathes, wags and animates its aura by itself, and
   the expression cycles through the personality's own face.
-* On the Head & Face and Hair tabs the camera zooms in: a close-up bust
-  (`portrait_render`, re-rendered only when its animation phase changes;
-  on 240x160 the head is cropped and shown at 2x).
+* The camera follows the row (`cr_camera`, CR6): on the Head & Face and Hair tabs and on the hat,
+  horn and halo rows (and their colour / size rows) a close-up bust (`portrait_render`, re-rendered
+  only when its animation phase changes; on 240x160 the head is cropped and shown at 2x); on the
+  shoes and bottom rows the legs (the lower half of the figure at 2x, 3x on 320x240); on the tail
+  and wings rows the citizen turns round ("Back view", the fighter's back view).
 * SELECT turns the preview into a turntable (`fighter_render`, 8 views,
   walk cycle, a tumble).
 * "Possessed peek" shows the citizen possessed (just for fun).
-* A locked option shows as a lavender silhouette with "???" and a bubble
-  with its unlock hint.
-* The look on screen is throttled (a new figure costs about two GBA ticks),
+* A locked part is worn by the citizen in lavender: only the part itself (the pixels where the
+  look wearing it differs from the draft without it; for a part that reshapes the head, only the
+  colours the draft does not use), with a bubble with its unlock hint (at most 3 lines, 4 on 320x240,
+  inside the pane; at the top on the legs camera, clear of the shoes; the footer always has the whole
+  hint). Other locked options (paints, presets) still show as a lavender silhouette.
+* The look on screen is throttled (a new figure costs about two GBA ticks; on the GBA it is drawn in
+  slices while the last one stays up, "Speed" below),
   so holding a direction stays smooth.
 
 ## Locks
 
 `unlock_option_ok()` / `unlock_paint_ok()` decide. A locked option can be
-browsed (silhouette, "???", hint in the detail line and the bubble, padlock
-in pickers) but never chosen: A is refused with a shake. A value the
+browsed (the part in lavender on the citizen, its name and the whole hint in the
+footer: a marquee on 240x160, two lines on 320x240; a padlock in pickers and on
+the grid's lavender icon) but never chosen: A is refused with a shake. A value the
 citizen already had when the creator opened is grandfathered (a premade
 citizen keeps their Goat Eyes). Presets containing a locked option show a
 padlock and can't be applied. The randomiser and "copy a look" replace any
@@ -234,6 +257,107 @@ slot hat list=hat name="Hat" shapes=caps,soft,tall,wide,crowns,ears,helmets,hood
 
 Today: 35 slots, 433 parts (364 live, 66 hidden, 3 VM demos), 25 sets. `python3 tools/part_budget.py`
 prints the per-slot table.
+
+## The picture grid (CR6)
+
+A on a part row (every row whose list is in the part catalog: species, body, head, eyes, brows,
+nose, mouth, ears, hair, facial hair, horns, tail, wings, halo, marking, aura, top, print, bottom,
+shoes, hat, accessory) opens `creator_grid.c` over the list window:
+
+* a grid of the row's choices as pictures (the part icons below): 6 x 3 cells of 21 px on 240x160,
+  7 x 5 of 24 px on 320x240, scrolling by rows; the citizen's original part has a gold star, a
+  locked one shows its picture as it is on a lavender cell with a padlock (you can see what it is);
+* the cursor tries each part on at once (the preview's camera follows the slot); A keeps it (one
+  undo step), B puts the old one back;
+* **filter chips**, stepped with L / R: All, Unlocked (when the slot has locked parts), the slot's
+  shape chips (hats: Caps, Soft, Tall, Wide, Crowns, Ears ...) and its themed sets (Mayor Giggs'
+  Tea Party, Hellvile Pits Punk ...); the header counts "3/8 of 24";
+* **search**: START opens the keyboard; a few letters keep the parts whose name or set name holds
+  them (`part_matches`); the letters show next to the chip; SELECT shows everything again;
+* the footer names the part and its set, or for a locked one its name and how to unlock it (the
+  whole hint: a marquee when it is longer than the line, on both screens);
+* parts above the draft's age class are not listed at all (CR12);
+* every choice's lock bit is worked out once when the grid opens (`cr.g_lock`).
+
+## Part icons (CR7)
+
+Every live part of the grid's slots (351 today) has a 20x20 icon made at build time from the real
+renderer by `core/tools/part_icons.c` (`make -C core gen`; `make check-gen` regenerates and
+compares; `make -C core part-icons-sheet` writes the contact sheet `build/sheets/part_icons.png`):
+
+* bust slots (head parts, hats, hair, horns, halo, accessory, species) are framed from the
+  portrait, body slots (body, tops, prints, bottoms, shoes, tails, wings, markings, aura) from the
+  full figure; each slot uses one window for all its icons (the pixels its choices change, squared),
+  box-sampled to 20x20 keeping the most common part colour of each box (the darkest on a tie);
+* in slots whose first choice is None / Bald / Barefoot / Solid the part is shown alone on a flat
+  grey silhouette of the mannequin (moved with parts that move the citizen, e.g. platform soles;
+  hats and horns keep only colours the mannequin does not use), and choice 0 gets a red slash; the
+  other slots (species, eyes, head shapes, mouths, ears, body types) show the part in colour on a
+  bald mannequin;
+* at most 15 colours an icon. `core/gen/part_icons_data.c` holds the raw icons (140 KB of ROM,
+  GBA and native blit them from ROM); `core/gen/part_icons_rle.c` the same packed at 4 bits a pixel
+  (57 KB, `part_icon_unpack`): the PS1 links only these, in the creator overlay group
+  (`DOOMO_ICONS_RLE`), and unpacks one icon into `cr.icon_buf` before `plat_image` uploads it to
+  the VRAM image cache (each icon has its own uid). Tests (`test_part_icons.c`): one icon per live
+  part, packed == raw, at most 15 colours, stable uids.
+
+When CR3 flips more lists live and CR4 adds parts, `make -C core gen` draws their icons too (the
+PS1's packed icons grow with them: past the creator overlay's room they move to the disc, CR10).
+
+## Speed (CR9)
+
+Measured with `make -C gba profile-creator` (the CR0 script) on the GBA (libmgba, drawn fps /
+average work of a drawn tick; a 30 Hz tick is 33.4 ms):
+
+| | before (CRA) | first CR9 pass | now |
+|---|---|---|---|
+| idle (Species & Body tab) | 12.7 / 57.2 ms | 27.2 / 32.0 ms | **30.0 / 15.6 ms** |
+| rows scrolled (Outfit) | 12.9 / 56.8 ms | 18.3 / 46.2 ms | **26.2 / 27.7 ms** |
+| hat grid scrolled | 7.6 / 95.4 ms | 17.1 / 49.5 ms | **21.1 / 39.3 ms** |
+| a value held (Outfit, Top) | 8.6 / 85.0 ms | 11.3 / 64.7 ms | **20.5 / 40.2 ms** |
+
+`make -C gba test-creator` (`creator_scroll.txt`, expect-fps floors at about 85-90% of today) measures
+idle 30.0, the species grid at rest 29.9, rows 26.8, a value held 19.8 and the species grid scrolled
+16.5. The owner's target is a steady 30 everywhere: idle and the grid at rest reach it; the gap is a
+held direction, where each step redraws the list window (~10 ms on the GBA) and each new look is a
+whole figure or bust (~0.9M cycles) drawn in slices. What landed, all on the GBA only unless said
+(`CR_CALM`, a listed speed step; native, the PS1 and the Dreamcast draw as before):
+
+* **a new look in slices** (`creator_draw.c` `pane_view`): the pane shows `cr.disp` (look, the look
+  without a browsed locked part, camera) while the portrait cache draws the wanted one, `cr.pend`,
+  in slices (`portrait_hold(2)`, one layer group a tick, more at the end of a frame with room:
+  `portrait_pump`), then it lands with a hop and a sparkle; a look is started once it has rested two
+  ticks, so a held direction streams the names past and the figure catches up when it rests; a view
+  the cache cannot start is drawn at once after 24 ticks. The bust comes from the cache too
+  (`portrait_image_look`), so a new expression is sliced as well (it was a whole ~45 ms render);
+* **the camera waits** for the cursor to rest 6 ticks on a row before it zooms (scrolling through
+  the Outfit rows draws no bust / legs view for every row passed);
+* **retained panels everywhere**: the preview pane and the button bar are panels too (the tab strip,
+  the list and the grid already were); the stage stands still (no drifting wallpaper hearts, no
+  motes, a still backdrop), windows have no sliding glint (`ui_glint_hold`), and every creator panel
+  is put back as its whole rect (`plat_panel_solid`, platform.h: one copy a row instead of one per
+  rect of its body);
+* **the backdrop is not drawn under the pane** (`ui_backdrop_holes`, two holes; every platform, the
+  same pixels);
+* **the locked-part overlay** (`lock_compose`) skips the pixels that agree a word at a time and keeps
+  the draft picture's colours per picture (~17 ms on the GBA before);
+* the first pass (still there): the lock memo, the tab / list / grid panels, the still pose.
+
+`core/tests/test_panel.c` plays the creator with the GBA's way switched on (`cr_calm`, a fake portrait
+clock at one layer group a tick): every frame is pixel-identical with the panel cache on and off;
+`test_creator.c` checks that a new look lands in slices with the old one up meanwhile, and that the
+camera waits.
+
+**PS1** (`ps1/harness/scripts/creator_speed.txt`, the same moves, run by the disc's harness target with
+expect-fps floors; PCSX-Redux): idle 30.1, rows 30.0, a value held 29.9, the species grid scrolled
+24.7 (22.0 before the PS1 took the sliced looks: `CR_SLICE`, the part of `CR_CALM` the PS1 uses; its
+preview still animates and it has no panels). The gap on the PS1 is the species grid held, where
+every step is a whole new body. Memory: the packed icons (58 KB) and the part catalog
+(`part_meta_data`, 14 KB) are generated files, which `ovl_plan.py` used to keep resident; they join
+the creator overlay group, and the creator group now loads low over the borrowed `.bss` like the
+house (`BORROW_GROUPS`; nothing of the creator draws a 3D view, syncs the world or touches the
+card), so its 150 KB need 99,828 B of slot and the disc ends 11,824 B above the 64 KB stack reserve
+(docs/PS1.md).
 
 ## Nicknames
 

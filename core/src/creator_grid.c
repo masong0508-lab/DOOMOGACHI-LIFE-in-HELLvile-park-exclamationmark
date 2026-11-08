@@ -161,6 +161,7 @@ static void cb_find(int ok)
         cr.g_filter = 0;
         cr_grid_rebuild();
     }
+    if (cr.g_n > 0) cr_pick_preview(cr_cur_row(), cr_grid_choice(cr.g_sel));   /* try on what it found */
 }
 
 void cr_grid_update(void)
@@ -229,29 +230,14 @@ void cr_grid_update(void)
 
 /* ====================================================================== */
 /* drawing                                                                  */
-/* A locked part's icon: the part in lavender, the grey mannequin as it is (so the shape still
- * shows what it is); in cr.icon_buf, with its own uid. */
-static void locked_icon(DoomoImage *im)
-{
-    const uint8_t man1 = PAL_RAMP(RAMP_STONE, 6), man2 = PAL_RAMP(RAMP_STONE, 4);
-    int i;
-    if (im->pix != cr.icon_buf) memcpy(cr.icon_buf, im->pix, PART_ICON_PIX);
-    for (i = 0; i < PART_ICON_PIX; i++) {
-        uint8_t c = cr.icon_buf[i];
-        if (c && c != man1 && c != man2)
-            cr.icon_buf[i] = palette_luma(c) < 110 ? PAL_RAMP(RAMP_VAPE, 2) : PAL_RAMP(RAMP_VAPE, 5);
-    }
-    im->pix = cr.icon_buf;
-    im->uid ^= 0x00800000u;
-}
-
 /* CR9: will the footer scroll (a marquee on small screens)? */
 static int grid_footer_moves(const CrRow *row)
 {
     char buf[96];
     int v = cr_grid_choice(cr.g_sel);
     const PartMeta *m = v >= 0 ? cr_choice_meta(row, v) : NULL;
-    if (!m || crl.big) return 0;
+    if (!m) return 0;
+    if (crl.big) return locked_at(v) && ui_text_width(cr_lock_hint(row, v)) > crl.lw - 16;
     if (locked_at(v)) {
         doomo_snprintf(buf, sizeof(buf), "%s: %s", part_meta_name(m), cr_lock_hint(row, v));
         return ui_text_width(buf) > crl.lw - 24;
@@ -286,6 +272,7 @@ void cr_grid_draw(void)
             plat_panel_end();
             return;
         }
+        if (CR_CALM) plat_panel_solid();            /* a still backdrop */
     }
     if (!ui_window_pop(x, y, w, h, WIN_CREAM, t)) { if (panel) plat_panel_end(); return; }
     st = ui_style(WIN_CREAM);
@@ -305,10 +292,12 @@ void cr_grid_draw(void)
         ui_text(x + 9, cy + 2, "L", cr.g_filter ? PAL_WHITE : st->text_dim);
         ui_text(x + 6 + cw - 9, cy + 2, "R", cr.g_filter ? PAL_WHITE : st->text_dim);
         ui_text_center(x + 6 + cw / 2, cy + 2, cr_fit(chip, cw - 24, b3), cr.g_filter ? PAL_WHITE : st->text);
-        if (cr.g_find[0]) doomo_snprintf(buf, sizeof(buf), "\"%s\"", cr.g_find);
-        else doomo_snprintf(buf, sizeof(buf), crl.big ? "START find" : "");   /* GBA: the button bar says it */
-        ui_text(x + w - 8 - ui_text_width(cr_fit(buf, w - cw - 20, b3)), cy + 2, cr_fit(buf, w - cw - 20, b3),
-                cr.g_find[0] ? st->accent : st->text_dim);
+        /* the search, if any (the button bar says START finds) */
+        if (cr.g_find[0]) {
+            doomo_snprintf(buf, sizeof(buf), "\"%s\"", cr.g_find);
+            ui_text(x + w - 8 - ui_text_width(cr_fit(buf, w - cw - 20, b3)), cy + 2, cr_fit(buf, w - cw - 20, b3),
+                    st->accent);
+        }
     }
     /* the cells */
     for (i = 0; i < rows * cols; i++) {
@@ -316,17 +305,21 @@ void cr_grid_draw(void)
         int cx = gx + (i % cols) * cell, cy = gy + (i / cols) * cell, sel = pos == cr.g_sel;
         DoomoImage im;
         if (v < 0) break;
+        /* a locked part: its picture as it is (so you can see what it is), on a lavender cell with a
+         * padlock; the footer says how to unlock it */
         if (sel) {
             int shake = cr.pick_err ? ((cr.pick_err & 2) ? 1 : -1) : 0;
             ui_round_rect(cx - 1 + shake, cy - 1, cell + 1, cell + 1, 3, st->accent);
-            ui_round_rect(cx + 1 + shake, cy + 1, cell - 3, cell - 3, 2, PAL_WHITE);
+            ui_round_rect(cx + 1 + shake, cy + 1, cell - 3, cell - 3, 2, locked_at(v) ? PAL_RAMP(RAMP_VAPE, 6) : PAL_WHITE);
+        } else if (locked_at(v)) {
+            ui_round_rect(cx, cy, cell - 1, cell - 1, 2, PAL_RAMP(RAMP_VAPE, 4));
+            ui_round_rect(cx + 1, cy + 1, cell - 3, cell - 3, 2, PAL_RAMP(RAMP_VAPE, 6));
         } else {
             ui_round_rect(cx, cy, cell - 1, cell - 1, 2, st->fill_lo);
             ui_round_rect(cx + 1, cy + 1, cell - 3, cell - 3, 2, st->fill_hi);
         }
         if (part_icon_image(cr.g_meta[pos], &im, cr.icon_buf)) {
             int ix = cx + (cell - 1 - PART_ICON_W) / 2, iy = cy + (cell - 1 - PART_ICON_W) / 2;
-            if (locked_at(v)) locked_icon(&im);
             plat_image(ix, iy, &im, 1, 0, 0);
         } else {
             ui_text_center(cx + cell / 2, cy + cell / 2 - 4, "?", st->text_dim);
@@ -354,7 +347,8 @@ void cr_grid_draw(void)
             cr_padlock(x + 8, fy + 1, PAL_PAINT(PAINT_CHERRY, 1), st->fill);
             if (crl.big) {
                 ui_text(x + 16, fy, cr_fit(part_meta_name(m), w - 24, b2), PAL_PAINT(PAINT_CHERRY, 0));
-                ui_text(x + 8, fy + 11, cr_fit(cr_lock_hint(row, v), w - 16, b3), PAL_PAINT(PAINT_CHERRY, 0));
+                /* the whole hint, never cut: it scrolls when it is longer than the line */
+                ui_text(x + 8, fy + 11, cr_marquee(cr_lock_hint(row, v), w - 16, b3), PAL_PAINT(PAINT_CHERRY, 0));
             } else {
                 ui_text(x + 16, fy, cr_marquee(buf, w - 24, b2), PAL_PAINT(PAINT_CHERRY, 0));
             }
