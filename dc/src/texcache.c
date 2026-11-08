@@ -63,16 +63,29 @@ uint32_t dc2d_twiddle_index(uint32_t x, uint32_t y, int tw, int th)
     return blk * m * m + (spread(x) << 1) + spread(y);
 }
 
+/* The index is separable: dc2d_twiddle_index(x, y) = col[x] + row[y] (the
+ * block of a rectangle goes with the longer side's coordinate), so a
+ * texture is twiddled with two small tables instead of a division and two
+ * bit spreads per texel (DC7: a 64x64 world texture went from about 2 ms
+ * of SH4 time to a fraction of that; scene changes upload a dozen). */
+static uint32_t tw_col[TEX_MAXDIM], tw_row[TEX_MAXDIM];
+
 void dc2d_twiddle8(uint16_t *dst, const uint8_t *src, int w, int h, int tw, int th)
 {
     uint8_t *d = (uint8_t *)dst;
+    uint32_t m = (uint32_t)(tw < th ? tw : th);
     int x, y;
     memset(dst, 0, (size_t)tw * (size_t)th);
+    for (x = 0; x < w; x++)
+        tw_col[x] = tw > th ? ((uint32_t)x / m) * m * m + (spread((uint32_t)x % m) << 1) : spread((uint32_t)x) << 1;
     for (y = 0; y < h; y++)
-        for (x = 0; x < w; x++) {
-            uint8_t c = src[y * w + x];
-            if (c) d[dc2d_twiddle_index((uint32_t)x, (uint32_t)y, tw, th)] = c;
-        }
+        tw_row[y] = tw > th ? spread((uint32_t)y) : ((uint32_t)y / m) * m * m + spread((uint32_t)y % m);
+    for (y = 0; y < h; y++) {
+        const uint8_t *s = src + (size_t)y * (size_t)w;
+        uint8_t *dr = d + tw_row[y];
+        for (x = 0; x < w; x++)
+            if (s[x]) dr[tw_col[x]] = s[x];
+    }
     /* the PVR reads texels as little-endian 16-bit pairs: on a big-endian
      * host this would need a swap; the SH4 and the test hosts are LE */
 }
