@@ -444,11 +444,11 @@ static void gal_draw(void)
     y += 16;
     if (room() == ROOM_PAL) {
         palette_room(sw, y, sh - y - 16);
-        lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R STR_ICON_ARROW_U STR_ICON_ARROW_D " pick  L/R room  " STR_ICON_B " back", WIN_CREAM);
+        lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R STR_ICON_ARROW_U STR_ICON_ARROW_D " Pick  L/R Room  " STR_ICON_B " Back", WIN_CREAM);
         return;
     }
     if (room() == ROOM_SKY) {
-        lib_hint(STR_ICON_ARROW_U STR_ICON_ARROW_D " sky  L/R room  " STR_ICON_B " back", WIN_CREAM);
+        lib_hint(STR_ICON_ARROW_U STR_ICON_ARROW_D " Sky  L/R Room  " STR_ICON_B " Back", WIN_CREAM);
         return;
     }
     lw = lib_big() ? 136 : 104;
@@ -462,7 +462,7 @@ static void gal_draw(void)
         ui_heart(fx + 30, fy + 20, 8, PAL_UI_PINK);
         ui_text_wrap(px + 6, fy + 52, pw - 12, lib_b.count ? "Each photo is a recipe: the house builds the room again "
                      "when you look." : "Take photos in your house (START > Photo) to fill this wing.", st->text, 1);
-        lib_hint(STR_ICON_A " look again  L/R room  " STR_ICON_B " back", WIN_CREAM);
+        lib_hint(STR_ICON_A " Look again  L/R Room  " STR_ICON_B " Back", WIN_CREAM);
         return;
     }
     if (lib_b.count > 0) {
@@ -472,10 +472,10 @@ static void gal_draw(void)
     if (lib_b.detail) {
         lib_dim_for_detail();
         detail(sw, sh);
-        lib_hint(room() == ROOM_SPR ? STR_ICON_ARROW_L STR_ICON_ARROW_R " next  SEL pause  " STR_ICON_ARROW_U STR_ICON_ARROW_D " step"
-                                    : STR_ICON_ARROW_L STR_ICON_ARROW_R " next  " STR_ICON_B " close", WIN_CREAM);
+        lib_hint(room() == ROOM_SPR ? STR_ICON_ARROW_L STR_ICON_ARROW_R " Next  SEL Pause  " STR_ICON_ARROW_U STR_ICON_ARROW_D " Step"
+                                    : STR_ICON_ARROW_L STR_ICON_ARROW_R " Next  " STR_ICON_B " Close", WIN_CREAM);
     } else {
-        lib_hint(STR_ICON_A " look  L/R room  SEL pause  " STR_ICON_B " back", WIN_CREAM);
+        lib_hint(STR_ICON_A " Look  L/R Room  SEL Pause  " STR_ICON_B " Back", WIN_CREAM);
     }
 }
 

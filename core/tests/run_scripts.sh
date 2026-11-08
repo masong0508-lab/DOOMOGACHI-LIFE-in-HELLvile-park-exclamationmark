@@ -2,7 +2,9 @@
 # run_scripts.sh RUNNER SCRIPTS_DIR SHOTS_DIR - play every runner script
 # at 240x160 (GBA) and 320x240 (PS1). Screenshots land in
 # SHOTS_DIR/<w>x<h>/<script>/. A script whose first line is
-# "# assert-no-stubs" also fails if any weak stub ran. (owner: foundation)
+# "# assert-no-stubs" also fails if any weak stub ran. A line
+# "# runner-flags: ..." among the first five passes those runner options
+# (C3: --gba-input --check-prompts). (owner: foundation)
 RUNNER=$1
 DIR=$2
 SHOTS=$3
@@ -13,6 +15,8 @@ for s in "$DIR"/*.txt; do
     name=$(basename "$s" .txt)
     extra=""
     if head -n 1 "$s" | grep -q "assert-no-stubs"; then extra="--assert-no-stubs"; fi
+    flags=$(head -n 5 "$s" | sed -n 's/^# runner-flags: *//p' | head -n 1)
+    extra="$extra $flags"
     for res in 240x160 320x240; do
         w=${res%x*}
         h=${res#*x}

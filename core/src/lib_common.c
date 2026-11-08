@@ -1008,7 +1008,7 @@ static void lobby_draw(void)
             ui_sparkle(mx, my, (int)((lob.t / 3 + s) & 15), PAL_RAMP(RAMP_CANDY, 7));
         }
     }
-    lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " browse  " STR_ICON_A " read  " STR_ICON_B " leave", WIN_CREAM);
+    lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " Browse  " STR_ICON_A " Read  " STR_ICON_B " Leave", WIN_CREAM);
 }
 
 const DoomoScene SCENE_LIBRARY = { "LIBRARY", lobby_enter, lobby_leave, lobby_update, lobby_draw, 0 };

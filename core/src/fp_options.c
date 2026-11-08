@@ -159,8 +159,29 @@ static const DoomoOptionInfo *info_of(int opt)
     return opt >= OPT2_FIRST ? &doomo_option2_info[opt - OPT2_FIRST] : &doomo_option_info[opt];
 }
 
+/* C3: the rows that name buttons say the buttons of the pad in your hands (input.h input_pad) */
+static const char *const help_controls[PAD_COUNT] = {
+    "Classic: hold L to strafe and look. Modern: D-pad strafes, R / L turn. Dual stick: two sticks.",
+    "Classic: hold L to strafe and look. Modern: D-pad strafes, R / L turn.",
+    "Classic: hold L1 to strafe/look. Modern: D-pad strafes, R1/R2 turn. Dual stick: two sticks.",
+    "Classic: hold L to strafe and look. Modern: D-pad strafes, R / L turn."
+};
+static const char *const help_turn[PAD_COUNT] = {
+    "Modern controls: Normal = R turns right, R2 / L left. Swapped turns the other way.",
+    "Modern controls: Normal = R turns right, L left. Swapped turns the other way.",
+    "Modern controls: Normal = R1 turns right, R2 / L1 left. Swapped turns the other way.",
+    "Modern controls: Normal = R turns right, L left. Swapped turns the other way."
+};
+static const char *const help_camera[PAD_COUNT] = {
+    "Default camera in the shooter (SEL toggles).", "Default camera in the shooter (SEL toggles).",
+    "Default camera in the shooter (SELECT toggles).", "Default camera in the shooter (START+Y toggles)."
+};
+
 static const char *help_of(int opt)
 {
+    if (opt == OPT_CONTROL_SCHEME) return help_controls[input_pad()];
+    if (opt == OPT_TURN_SWAP) return help_turn[input_pad()];
+    if (opt == OPT_CAMERA_DEFAULT) return help_camera[input_pad()];
     if (opt == OPT_LOSS) return "Family members can be lost over a life. Off: nobody is ever lost.";
     if (opt == OPT_RUMBLE) return "Controller rumble, apart from Screen shake.";
     if (opt == OPT_TIPS) return "A short card the first time you reach a new place: what it is and which buttons do what.";

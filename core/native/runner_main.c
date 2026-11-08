@@ -729,7 +729,7 @@ static void usage(void)
     fprintf(stderr,
             "usage: runner [--script FILE] [--shots DIR] [--w N --h N] [--frames N]\n"
             "              [--saves DIR] [--seed N] [--zoom N] [--gba-input] [--save-stream N]\n"
-            "              [--assert-no-stubs] [--quiet] [--verbose] [--wav FILE]\n"
+            "              [--assert-no-stubs] [--check-prompts] [--quiet] [--verbose] [--wav FILE]\n"
             "              [--budgets FILE]\n");
 }
 
@@ -737,7 +737,7 @@ int main(int argc, char **argv)
 {
     NatOptions o;
     const char *script = NULL;
-    int frames = -1, assert_no_stubs = 0, i;
+    int frames = -1, assert_no_stubs = 0, check_prompts = 0, i;
     memset(&o, 0, sizeof(o));
     o.w = 240; o.h = 160; o.seed = 0x5EED1234u; o.save_dir = ".";
     for (i = 1; i < argc; i++) {
@@ -754,6 +754,7 @@ int main(int argc, char **argv)
         else if (strcmp(a, "--zoom") == 0 && val) { zoom = atoi(val); i++; }
         else if (strcmp(a, "--gba-input") == 0) gba_input = 1;
         else if (strcmp(a, "--assert-no-stubs") == 0) assert_no_stubs = 1;
+        else if (strcmp(a, "--check-prompts") == 0) check_prompts = 1;      /* C3 */
         else if (strcmp(a, "--quiet") == 0) o.quiet = 1;
         else if (strcmp(a, "--verbose") == 0) o.verbose = 1;
         /* --- music: musrender (MU1, SPEC sec.16.2, row 39) --- */
@@ -795,6 +796,17 @@ int main(int argc, char **argv)
     else if (!script) step(300);
     if (jr.on) { fprintf(stderr, "runner: journey %s never ended\n", jr.name); failures++; }   /* M0 */
     if (assert_no_stubs && stub_check("during the run")) return 2;
+    /* --- C3: every prompt bar fit the screen and named only this pad's buttons --- */
+    if (check_prompts) {
+        UiPromptStats ps;
+        ui_prompt_stats(&ps, 0);
+        printf("prompts: %u bars, %u too wide, %u with a button this pad lacks\n",
+               (unsigned)ps.bars, (unsigned)ps.too_wide, (unsigned)ps.wrong_pad);
+        if (ps.too_wide || ps.wrong_pad) {
+            fprintf(stderr, "runner: prompt bar check failed, first: \"%s\"\n", ps.first_bad);
+            failures++;
+        }
+    }
     if (failures) {
         fprintf(stderr, "runner: %d failure(s)\n", failures);
         return 1;

@@ -1653,7 +1653,9 @@ static void draw_hint(void)
 {
     const CrRow *row = cr_cur_row();
     const char *s = STR_ICON_A " Edit  L/R Tab  START Menu";
-    int style = list_style();
+    const UiPrompt *bar = NULL;             /* C3: a shared prompt bar instead of s (its text: this pad's names) */
+    int style = list_style(), nbar = 0;
+    uint32_t key;
     switch (cr.phase) {
     case CRP_TURN:
         s = crl.big ? STR_ICON_ARROW_L STR_ICON_ARROW_R " Turn  " STR_ICON_ARROW_U " Walk  "
@@ -1675,13 +1677,20 @@ static void draw_hint(void)
         if (cr.menu_sel == CM_RANDOM && cr.tab != CR_TAB_HOME)
             s = STR_ICON_A " Select  " STR_ICON_ARROW_L STR_ICON_ARROW_R " Scope  " STR_ICON_B " Close";
         else
-            s = crl.big ? STR_ICON_A " Select  " STR_ICON_B " Close  (X/Y undo/redo)"
-                        : STR_ICON_A " Select  " STR_ICON_B " Close";
+            if (crl.big) {          /* C3: undo / redo under this pad's own names */
+                static const UiPrompt menu_bar[] = {
+                    { BTN_A, 0, "Select" }, { BTN_B, 0, "Close" }, { BTN_X, 1, "Undo" }, { BTN_Y, 1, "Redo" }
+                };
+                bar = menu_bar; nbar = (int)DOOMO_COUNTOF(menu_bar);
+            } else s = STR_ICON_A " Select  " STR_ICON_B " Close";
         break;
     default:
         if ((cr.t / 120) % 4 == 2) {          /* every few seconds: a tip */
-            s = crl.big ? "SELECT Turn around  Square Undo  Triangle Redo"
-                        : "SELECT Turn  SEL+" STR_ICON_A " Undo  SEL+" STR_ICON_B " Redo";
+            /* C3: this pad's names (SEL+A on a GBA, Square on a PS1) */
+            static const UiPrompt tip_bar[] = {
+                { BTN_SELECT, 0, "Turn" }, { BTN_X, 0, "Undo" }, { BTN_Y, 0, "Redo" }
+            };
+            bar = tip_bar; nbar = (int)DOOMO_COUNTOF(tip_bar);
             break;
         }
         if ((cr.t / 120) % 4 == 3) {          /* CR6: the section jump */
@@ -1693,25 +1702,33 @@ static void draw_hint(void)
             s = cr_row_help(row);
             break;
         }
-        if (row && row->kind == RK_SLIDER)
-            s = crl.big ? STR_ICON_ARROW_L STR_ICON_ARROW_R " Adjust  L/R Tab  SELECT Turn  START Menu"
-                        : STR_ICON_ARROW_L STR_ICON_ARROW_R " Adjust  L/R Tab  START Menu";
-        else if (crl.big)
-            s = STR_ICON_A " Edit  " STR_ICON_ARROW_L STR_ICON_ARROW_R " Change  L/R Tab  SELECT Turn  START Menu";
-        else
-            s = STR_ICON_A " Edit " STR_ICON_ARROW_L STR_ICON_ARROW_R " Change L/R Tab START Menu";
+        {   /* C3: the shared bar, fitted to the screen (SELECT Turn gives way first) */
+            static const UiPrompt slider_bar[] = {
+                { BTN_LEFT | BTN_RIGHT, 0, "Adjust" }, { BTN_L | BTN_R, 1, "Tab" },
+                { BTN_SELECT, 3, "Turn" }, { BTN_START, 2, "Menu" }
+            };
+            static const UiPrompt row_bar[] = {
+                { BTN_A, 0, "Edit" }, { BTN_LEFT | BTN_RIGHT, 1, "Change" }, { BTN_L | BTN_R, 2, "Tab" },
+                { BTN_SELECT, 4, "Turn" }, { BTN_START, 3, "Menu" }
+            };
+            if (row && row->kind == RK_SLIDER) { bar = slider_bar; nbar = (int)DOOMO_COUNTOF(slider_bar); }
+            else { bar = row_bar; nbar = (int)DOOMO_COUNTOF(row_bar); }
+        }
         break;
     }
-    /* CR9: the button bar is a retained panel (GBA): put back while its text is the same */
-    if (UI_PANELS && !plat_panel_begin(PANEL_CR_HINT, 0, crl.sh - 13, crl.sw, 13,
-                                       ui_key_str(ui_key_int(ui_panel_key(), style | crl.big << 4), s))) {
+    /* CR9: the button bar is a retained panel (GBA): put back while its text is the same (a C3 bar: its
+     * const items, this pad and the language, ui_panel_key, give its text) */
+    key = ui_key_int(ui_panel_key(), style | crl.big << 4);
+    key = bar ? ui_key_int(ui_key_int(key, (uint32_t)(uintptr_t)bar), (uint32_t)input_pad()) : ui_key_str(key, s);
+    if (UI_PANELS && !plat_panel_begin(PANEL_CR_HINT, 0, crl.sh - 13, crl.sw, 13, key)) {
         plat_panel_end();
         return;
     }
     /* a still backdrop under it: not while a window pops open (its shadow reaches into the bar) */
     if (UI_PANELS && CR_CALM && (cr.phase == CRP_MAIN || cr.phase == CRP_GRID) && cr.phase_t >= 12)
         plat_panel_solid();
-    ui_hint(s, style);
+    if (bar) ui_prompts(bar, nbar, style);
+    else ui_hint(s, style);
     if (UI_PANELS) plat_panel_end();
 }
 

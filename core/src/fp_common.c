@@ -597,10 +597,21 @@ void fp_marquee(int x, int y, int w, const char *s, uint8_t color, int t)
 void fp_ticker(int y, int style)
 {
     static char line[300];
-    static int built_at = -1000, built_n = -1, built_lang = -1;
+    static int built_at = -1000, built_n = -1, built_lang = -1, line_len;
     const UiStyle *st = ui_style(style);
-    int sw = fp_sw(), t = fp_t(), n = sim_news_count(), i, len, x0 = 30, x1 = sw - 6;
+    /* C3: the badge names the button that opens the News (L on the hub); built when the pad or language changes */
+    static char badge[16];
+    static int badge_pad = -1, badge_lang = -1, bw;
+    int sw = fp_sw(), t = fp_t(), n = sim_news_count(), i, len, x0, x1 = sw - 6;
     if (!opt_get(OPT_NEWS_TICKER)) return;
+    if (badge_pad != input_pad() || badge_lang != lang_get()) {
+        const char *lk = btn_name(BTN_L);
+        badge_pad = input_pad();
+        badge_lang = lang_get();
+        doomo_snprintf(badge, sizeof(badge), "%s%sNEWS", lk ? lk : "", lk ? " " : "");
+        bw = ui_text_width(badge) + 6;
+    }
+    x0 = bw + 4;
     if (n != built_n || t - built_at > 600 || lang_get() != built_lang) {
         int k = 0;
         line[0] = 0;
@@ -615,15 +626,16 @@ void fp_ticker(int y, int style)
         built_at = t;
         built_n = n;
         built_lang = lang_get();
+        line_len = (int)strlen(line);           /* (C3 speed) once a build, not every tick */
     }
     if (plat_draw_skipped()) return;
     /* G7: the bar is a retained panel; the scrolling line's strip is its
      * hole, refilled (the pill's flat fill there) and redrawn every frame */
     if (!UI_PANELS || plat_panel_begin(PANEL_FP_TICKER, 2, y, sw - 4, 12,
-                                       ui_key_int(ui_panel_key(), style | sw << 8))) {
+                                       ui_key_str(ui_key_int(ui_panel_key(), style | sw << 8), badge))) {
         fp_pill(2, y, sw - 4, 12, st->fill_hi, st->outline, PAL_WHITE);
-        fp_pill(3, y + 1, 26, 10, PAL_UI_RED, PAL_UI_RED_D, PP(PAINT_ROSE, 2));
-        ui_text(6, y + 2, "NEWS", PAL_WHITE);
+        fp_pill(3, y + 1, bw, 10, PAL_UI_RED, PAL_UI_RED_D, PP(PAINT_ROSE, 2));
+        ui_text(6, y + 2, badge, PAL_WHITE);
         if (UI_PANELS) {
             plat_panel_hole(x0, y + 2, x1 - x0, 8);
             plat_panel_end();
@@ -632,7 +644,7 @@ void fp_ticker(int y, int style)
         plat_panel_end();
         plat_rect(x0, y + 2, x1 - x0, 8, st->fill_hi);
     }
-    len = (int)strlen(line) * FONT_ADVANCE + 60;
+    len = line_len * FONT_ADVANCE + 60;
     ui_text_clip(x1 - (t % (len + (x1 - x0))), y + 2, line, st->text, x0, x1);
 }
 

@@ -1,0 +1,83 @@
+# runner-flags: --gba-input --check-prompts
+# C3: the shared prompt bar on a GBA pad (--gba-input: no X / Y, no R1 /
+# L2 / DualShock on screen; SELECT+A is drawn as "SEL+A") and fitting the
+# screen at both sizes (--check-prompts fails the run on a bar that had to
+# be cut or that names a button the pad lacks). Visits the island hub, the
+# pet (an egg), Rivet's workshop, the Music Studio, the house, the creator's
+# START menu and the shooter's Controls options page.
+scene NEW_ISLAND
+wait 10
+press A
+wait 20
+press A
+wait 2
+press A
+wait 10
+expect-scene ISLAND
+wait 40
+shot hub
+push PET
+wait 20
+press A
+wait 10
+type "Mochi\n"
+wait 30
+shot pet_egg
+press A
+wait 10
+shot pet_health
+press B
+wait 6
+press RIGHT
+wait 4
+shot pet_main
+press B
+wait 10
+expect-scene ISLAND
+push WORKSHOP
+wait 20
+shot workshop_weld
+press L
+wait 10
+shot workshop_armory
+press B
+wait 10
+push STUDIO -107
+wait 20
+shot studio_song
+press R
+wait 10
+shot studio_notes
+press L
+wait 6
+press L
+wait 10
+shot studio_file
+scene HOME -1
+wait 60
+shot home_build
+press START
+wait 20
+shot home_menu
+press B
+wait 10
+scene CREATOR -1
+wait 30
+press START
+wait 20
+shot creator_menu
+scene TITLE
+wait 2
+push COMBAT 3
+wait 70
+press START
+wait 14
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press A
+wait 12
+expect-scene OPTIONS
+wait 4
+shot options_controls

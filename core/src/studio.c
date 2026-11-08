@@ -697,7 +697,8 @@ static void draw_tabs(void)
         int beat = song_playing() ? (age < 3) : ((int)(studio.t * SS->bpm / 1800) & 1);
         char buf[12];
         int rx = sw - 4;
-        doomo_snprintf(buf, sizeof(buf), "%d", SS->bpm);
+        doomo_snprintf(buf, sizeof(buf), "%d bpm", SS->bpm);   /* C15: the heart beats the tempo: say so */
+        if (sw - 4 - ui_text_width(buf) <= x + 12) doomo_snprintf(buf, sizeof(buf), "%d", SS->bpm);
         rx -= ui_text_width(buf);
         if (rx > x + 12) {
             ui_text_outline(rx, y + 3, buf, PAL_WHITE, st->outline);
@@ -983,7 +984,10 @@ static void studio_draw(void)
     case STAB_STAGE: tab_stage_draw(r); break;
     default: tab_file_draw(r); break;
     }
-    ui_hint(tab_hint(studio.tab), WIN_CUTE);
+    {
+        UiPrompt pr[UI_PROMPTS_MAX];
+        ui_prompts(pr, tab_prompts(studio.tab, pr), WIN_CUTE);
+    }
     draw_msg();
     if (studio.pop_n) popup_draw();
     if (studio.picking) st_picker_draw();

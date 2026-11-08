@@ -307,9 +307,9 @@ static void tro_draw(void)
     if (lib_b.detail) {
         lib_dim_for_detail();
         detail(sw, sh);
-        lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " next  " STR_ICON_B " close", WIN_CREAM);
+        lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " Next  " STR_ICON_B " Close", WIN_CREAM);
     } else {
-        lib_hint(STR_ICON_A " open  L/R kind  SEL filter  " STR_ICON_B " back", WIN_CREAM);
+        lib_hint(STR_ICON_A " Open  L/R Kind  SEL Filter  " STR_ICON_B " Back", WIN_CREAM);
     }
 }
 

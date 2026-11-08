@@ -1105,8 +1105,12 @@ static void hub_over_map(FpLocDraw *ld, int style)
         if (locs[i].kind == LOC_PET)
             draw_round_button(ld[i].x, ld[i].y - 10, ICON_EGG, "Pet", i == I.sel && !I.menu_open,
                               pet_exists() && pet_calling());
-        else if (locs[i].kind == LOC_ROSTER)
+        else if (locs[i].kind == LOC_ROSTER) {
+            const char *rk = btn_name(BTN_R);
             draw_round_button(ld[i].x, ld[i].y - 10, ICON_SMILE, "Folks", i == I.sel && !I.menu_open, 0);
+            /* C3: R opens the citizens from anywhere on the hub: its key on the button */
+            if (rk && !I.menu_open) ui_text_outline(ld[i].x - 12 - ui_text_width(rk), ld[i].y - 22, rk, PAL_WHITE, ui_style(WIN_CREAM)->outline);
+        }
     }
     /* an arrow that nags toward Town Hall on an empty island */
     if (!I.menu_open && locs[I.sel].kind != LOC_TOWN_HALL && fp_island_pop() == 0) {
@@ -1122,7 +1126,15 @@ static void hub_over_map(FpLocDraw *ld, int style)
             ui_text_outline(sw / 2 - ui_text_width(nm) / 2, 18, nm, PAL_WHITE, PAL_RAMP(RAMP_SKY, 2));
         }
     }
-    if (!I.menu_open) fp_ticker(sh - 13, style);
+    if (!I.menu_open) {
+        /* C3 (1.6b): the hub's buttons, between the corner buttons above the news ticker (whose badge names L) */
+        static const UiPrompt hub_bar[] = {
+            { BTN_A, 0, "Go" }, { BTN_START, 1, "Menu" }, { BTN_SELECT, 2, "Family" },
+            { BTN_L, 3, "News" }, { BTN_R, 3, "Folks" }
+        };
+        ui_prompts_at(hub_bar, (int)DOOMO_COUNTOF(hub_bar), style, sh - 27, sw - 2 * (fp_big() ? 50 : 34) - 12);
+        fp_ticker(sh - 13, style);
+    }
     if (I.menu_open) draw_menu(0);
     fp_fx_draw();
 }

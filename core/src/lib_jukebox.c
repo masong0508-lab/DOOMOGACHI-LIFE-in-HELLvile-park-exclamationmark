@@ -365,7 +365,7 @@ static void juke_draw(void)
         if (sfx_tab()) sfx_panel(lw + 8, y + 1, sw - lw - 12, sh - y - 16);
         else song_panel(lw + 8, y + 1, sw - lw - 12, sh - y - 16);
     }
-    lib_hint(STR_ICON_A " play  L/R shelf  SEL stop  " STR_ICON_B " back", WIN_DARK);
+    lib_hint(STR_ICON_A " Play  L/R Shelf  SEL Stop  " STR_ICON_B " Back", WIN_DARK);
 }
 
 const DoomoScene SCENE_LIB_JUKEBOX = { "LIB_JUKEBOX", juke_enter, juke_leave, juke_update, juke_draw, 0 };

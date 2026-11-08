@@ -228,11 +228,18 @@ static uint8_t  ul_alias[UL_ALIAS_MAX][2];       /* (list, index) */
 static uint8_t  ul_nalias;
 #define UL_HASH(c, l, i) ((((unsigned)(c) * 37u + (unsigned)(l)) * 61u + (unsigned)(i)) & 511u)
 
+/* (C3 speed) unlock_find's answers for the categories without alternate routes (modes, places, ...): the entry a
+ * (cat, list, index) finds never changes while the tables stand, and the sim asks some every tick (sim_social:
+ * united park). A small direct-mapped memo; emptied whenever the tables are (re)read. */
+#define UL_FC 8
+static struct { int16_t cat, list, index, ok; const DoomoUnlock *u; } ul_fc[UL_FC];
+
 static void ul_init(void)
 {
     int t, i, g = 0;
     if (ul_ready) return;
     ul_ready = 1;
+    memset(ul_fc, 0, sizeof(ul_fc));
     for (i = 0; i < DOOMO_UNLOCK_BITS; i++) ul_by_id[i] = -1;
     memset(ul_part_bits, 0, sizeof(ul_part_bits));
     ul_nalias = 0;
@@ -315,13 +322,25 @@ const DoomoUnlock *unlock_find(int cat, int list, int index)
     /* (integration) with alternate routes, prefer an owned entry so every
      * caller's `u && !unlock_has(u->id)` honours all of them */
     alias = (cat == UL_CAT_PART || cat == UL_CAT_WEAPON_PART) && ul_is_alias(list, index);
-    for (t = 0; t < UL_TABLES && UL_TABLE(t); t++) {
-        const DoomoUnlock *u = UL_TABLE(t);
-        for (i = 0; i < ul_len[t]; i++)
-            if (u[i].cat == cat && u[i].list == list && u[i].index == index) {
-                if (!alias || unlock_has(u[i].id)) return &u[i];
-                if (!first) first = &u[i];
-            }
+    {
+        int memo = cat != UL_CAT_PART && cat != UL_CAT_WEAPON_PART && cat >= 0 && cat < 0x7FFF &&
+                   list >= 0 && list < 0x7FFF && index >= 0 && index < 0x7FFF;
+        unsigned slot = (unsigned)(cat * 7 + list * 3 + index) % UL_FC;
+        if (memo && ul_fc[slot].ok && ul_fc[slot].cat == cat && ul_fc[slot].list == list && ul_fc[slot].index == index)
+            return ul_fc[slot].u;
+        for (t = 0; t < UL_TABLES && UL_TABLE(t); t++) {
+            const DoomoUnlock *u = UL_TABLE(t);
+            for (i = 0; i < ul_len[t]; i++)
+                if (u[i].cat == cat && u[i].list == list && u[i].index == index) {
+                    if (!alias || unlock_has(u[i].id)) { first = &u[i]; goto found; }
+                    if (!first) first = &u[i];
+                }
+        }
+    found:
+        if (memo) {
+            ul_fc[slot].cat = (int16_t)cat; ul_fc[slot].list = (int16_t)list; ul_fc[slot].index = (int16_t)index;
+            ul_fc[slot].u = first; ul_fc[slot].ok = 1;
+        }
     }
     return first;
 }

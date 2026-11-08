@@ -56,7 +56,7 @@ static const char *const v_cursor[] = { "Heart", "Paw", "Star", "Sparkle",
 static const char *const v_filter[] = { "None", "Storybook", "VHS",
                                         "Game Pal", "Sepia", "Nightvision" };
 static const char *const v_bounce[] = { "Off", "Subtle", "Boingy" };
-static const char *const v_turn[] = { "R1 right", "R1 left" };
+static const char *const v_turn[] = { "Normal", "Swapped" };   /* C3: the help line names the pad's buttons */
 static const char *const v_fx[] = { "Low", "Normal" };
 static const char *const v_dist[] = { "Near", "Normal" };
 static const char *const v_3d[] = { "Better", "Faster" };

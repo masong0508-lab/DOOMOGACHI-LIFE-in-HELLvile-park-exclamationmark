@@ -291,6 +291,9 @@ void ui_text_clip(int x, int y, const char *s, uint8_t color, int x0, int x1)
 {
     char run[64];
     int n = 0, rx = x;
+    /* (C3 speed) the glyphs left of x0 are never drawn: step over them in a tight loop (the news ticker's line is
+     * hundreds of glyphs, most of them off to the left); the same runs as the loop below would cut */
+    while (x < x0 && *s) { s++; x += FONT_ADVANCE; }
     for (;; s++, x += FONT_ADVANCE) {
         unsigned char c = (unsigned char)*s;
         int stop = c == 0 || x + FONT_ADVANCE > x1;
@@ -1128,14 +1131,257 @@ void ui_title(int cx, int y, const char *s, int style)
     ui_sparkle(x + w - 3, y + 11, (t / 3 + 8) & 15, PAL_WHITE);
 }
 
+/* ====================================================================== */
+/* C3: the prompt bar (ui.h ui_prompts, ui_hint)                            */
+#if !defined(DOOMO_PLATFORM_GBA) && !defined(DOOMO_PLATFORM_PS1) && !defined(DOOMO_PLATFORM_DC)
+#define UI_PROMPT_CHECK 1
+static UiPromptStats pstats;
+
+/* a button word this pad does not have (only the GBA is checked: the one
+ * pad with no X / Y and no numbered shoulders) */
+static int prompt_bad_word(const char *s)
+{
+    static const char *const bad[] = { "X", "Y", "L1", "R1", "L2", "R2", "Square", "Triangle", "DualShock" };
+    char w[16];
+    int n = 0, i;
+    if (input_pad() != PAD_GBA) return 0;
+    for (;; s++) {
+        char c = *s;
+        if (c == 0 || c == ' ' || c == '/' || c == ':' || c == '(' || c == ')' || c == ',' || c == '+' ||
+            (unsigned char)c >= 0x80) {
+            w[n] = 0;
+            for (i = 0; n && i < (int)DOOMO_COUNTOF(bad); i++)
+                if (strcmp(w, bad[i]) == 0) return 1;
+            n = 0;
+            if (c == 0) return 0;
+            continue;
+        }
+        if (n < (int)sizeof(w) - 1) w[n++] = c;
+    }
+}
+
+static void prompt_note(const char *t, int cut)
+{
+    int bad = prompt_bad_word(t);
+    pstats.bars++;
+    if (cut) pstats.too_wide++;
+    if (bad) pstats.wrong_pad++;
+    doomo_snprintf(pstats.last, sizeof(pstats.last), "%s", t);
+    if ((cut || bad) && !pstats.first_bad[0])
+        doomo_snprintf(pstats.first_bad, sizeof(pstats.first_bad), "%s%s", cut ? "(too wide) " : "", t);
+}
+#else
+#define UI_PROMPT_CHECK 0
+#endif
+
+void ui_prompt_stats(UiPromptStats *out, int reset)
+{
+#if UI_PROMPT_CHECK
+    if (out) *out = pstats;
+    if (reset) memset(&pstats, 0, sizeof(pstats));
+#else
+    (void)reset;
+    if (out) memset(out, 0, sizeof(*out));
+#endif
+}
+
+int ui_prompts_maxw(void) { return plat_screen_w() - 16; }
+
+/* the longest prefix of t (cut after a whole word) that is at most maxw wide */
+static void prompt_cut(char *t, int maxw)
+{
+    int i, last = 0;
+    for (i = 0; t[i]; i++) {
+        char c = t[i];
+        t[i] = 0;
+        if (width_raw(t) > maxw) break;
+        t[i] = c;
+        if (c == ' ') last = i;
+    }
+    if (!t[i]) return;
+    t[last] = 0;
+    while (last > 0 && t[last - 1] == ' ') t[--last] = 0;
+}
+
+/* The pill. t is translated already (pieces: its runs between button caps
+ * are looked up when drawn, as ui_text does); a retained panel once a
+ * frame (a second bar on the same frame is drawn plainly). */
+static uint32_t hint_frame = 0xFFFFFFFFu;
+static void hint_pill_at(const char *t, int pieces, int style, int y)
+{
+    const UiStyle *st = ui_style(style);
+    int sw = plat_screen_w();
+    int w = width_raw(t) + 12, x = (sw - w) / 2;
+    int panel = UI_PANELS && hint_frame != doomo_frame_count();
+    if (panel) {
+        hint_frame = doomo_frame_count();
+        if (!plat_panel_begin(PANEL_PROMPT, x, y, w, 12,
+                              ui_key_int(ui_key_str(ui_panel_key(), t), style * 2 + pieces))) {
+            plat_panel_end();                 /* kept: a pill has no shadow */
+            return;
+        }
+    }
+    ui_pill(x, y, w, 12, st->title_bg, st->outline, ui_lighter(st->title_bg));
+    text_draw(x + 6, y + 2, t, st->title, pieces);
+    if (panel) plat_panel_end();
+}
+
+static void hint_pill(const char *t, int pieces, int style)
+{
+    hint_pill_at(t, pieces, style, plat_screen_h() - 13);
+}
+
 void ui_hint(const char *s, int style)
 {
-    if (plat_draw_skipped()) return;
-    const UiStyle *st = ui_style(style);
-    int sw = plat_screen_w(), sh = plat_screen_h();
-    int w = ui_text_width(s) + 12, x = (sw - w) / 2, y = sh - 13;
-    ui_pill(x, y, w, 12, st->title_bg, st->outline, ui_lighter(st->title_bg));
-    ui_text(x + 6, y + 2, s, st->title);
+    const char *t;
+    char buf[160];
+    int cut = 0, pieces = -1;
+    if (!s || plat_draw_skipped()) return;
+    t = lang_tr(s);
+    if (width_raw(t) > ui_prompts_maxw()) {
+        /* the bar's rule (ui_prompts): one space between items first, then whole words go */
+        int i, n = 0;
+        for (i = 0; t[i] && n < (int)sizeof(buf) - 1; i++)
+            if (!(t[i] == ' ' && n && buf[n - 1] == ' ')) buf[n++] = t[i];
+        buf[n] = 0;
+        if (width_raw(buf) > ui_prompts_maxw()) {
+            prompt_cut(buf, ui_prompts_maxw());
+            cut = 1;
+        }
+        t = buf;
+        pieces = 0;
+    }
+#if UI_PROMPT_CHECK
+    prompt_note(t, cut);
+#endif
+    hint_pill(t, pieces < 0 ? tr_pieces(t, s) : pieces, style);
+}
+
+/* (no printf: the GBA builds a bar on its frames) append s to g[*k] (n bytes) */
+static void pg_add(char *g, int *k, int n, const char *s)
+{
+    while (s && *s && *k < n - 1) g[(*k)++] = *s++;
+    g[*k] = 0;
+}
+
+/* one item's button part into g (n bytes); 0 = this pad has no such button */
+static int prompt_glyph(uint32_t b, char *g, int n)
+{
+    const char *a, *c;
+    int k = 0;
+    g[0] = 0;
+    if (!b) return 1;
+    if (b == BTN_A) { pg_add(g, &k, n, STR_ICON_A); return 1; }
+    if (b == BTN_B) { pg_add(g, &k, n, STR_ICON_B); return 1; }
+    if ((b & (BTN_UP | BTN_DOWN | BTN_LEFT | BTN_RIGHT)) == b) {
+        if (b & BTN_UP) pg_add(g, &k, n, STR_ICON_ARROW_U);
+        if (b & BTN_DOWN) pg_add(g, &k, n, STR_ICON_ARROW_D);
+        if (b & BTN_LEFT) pg_add(g, &k, n, STR_ICON_ARROW_L);
+        if (b & BTN_RIGHT) pg_add(g, &k, n, STR_ICON_ARROW_R);
+        return 1;
+    }
+    if (b == (BTN_L | BTN_R)) {
+        a = btn_name(BTN_L); c = btn_name(BTN_R);
+        if (!a || !c) return 0;
+        pg_add(g, &k, n, a); pg_add(g, &k, n, "/"); pg_add(g, &k, n, c);
+        return 1;
+    }
+    /* the GBA's X / Y are SELECT + the A / B cap */
+    if (input_pad() == PAD_GBA && (b == BTN_X || b == BTN_Y)) {
+        pg_add(g, &k, n, btn_name(BTN_SELECT)); pg_add(g, &k, n, "+");
+        pg_add(g, &k, n, b == BTN_X ? STR_ICON_A : STR_ICON_B);
+        return 1;
+    }
+    if ((b & BTN_SELECT) && b != BTN_SELECT) {         /* a chord with SELECT */
+        char o[24];
+        a = btn_name(BTN_SELECT);
+        if (!a || !prompt_glyph(b & ~(uint32_t)BTN_SELECT, o, (int)sizeof(o))) return 0;
+        pg_add(g, &k, n, a); pg_add(g, &k, n, "+"); pg_add(g, &k, n, o);
+        return 1;
+    }
+    a = btn_name(b);
+    if (!a) return 0;
+    pg_add(g, &k, n, a);
+    return 1;
+}
+
+static int prompt_build(char *out, int n, const UiPrompt *p, int count, const uint8_t *on, int sep)
+{
+    int i, len = 0, first = 1;
+    out[0] = 0;
+    for (i = 0; i < count; i++) {
+        char g[24];
+        const char *v;
+        if (!on[i]) continue;
+        prompt_glyph(p[i].btn, g, (int)sizeof(g));
+        v = p[i].verb && p[i].verb[0] ? lang_tr(p[i].verb) : "";
+        if (!first) pg_add(out, &len, n, sep == 2 ? "  " : " ");
+        pg_add(out, &len, n, g);
+        if (g[0] && v[0]) pg_add(out, &len, n, " ");
+        pg_add(out, &len, n, v);
+        first = 0;
+    }
+    return width_raw(out);
+}
+
+int ui_prompts_text(char *out, int n, const UiPrompt *p, int count, int maxw)
+{
+    uint8_t on[UI_PROMPTS_MAX];
+    int i, left = 0, w;
+    char g[24];
+    if (count > UI_PROMPTS_MAX) count = UI_PROMPTS_MAX;
+    for (i = 0; i < count; i++) {
+        on[i] = (uint8_t)prompt_glyph(p[i].btn, g, (int)sizeof(g));
+        left += on[i];
+    }
+    for (;;) {
+        int k = -1;
+        w = prompt_build(out, n, p, count, on, 2);
+        if (w <= maxw) return w;
+        w = prompt_build(out, n, p, count, on, 1);
+        if (w <= maxw) return w;
+        for (i = 0; i < count; i++)
+            if (on[i] && p[i].prio && (k < 0 || p[i].prio >= p[k].prio)) k = i;
+        if (k < 0 || left <= 1) return w;
+        on[k] = 0;
+        left--;
+    }
+}
+
+void ui_prompts(const UiPrompt *p, int count, int style)
+{
+    ui_prompts_at(p, count, style, plat_screen_h() - 13, ui_prompts_maxw());
+}
+
+/* the last bar built, kept: a screen asks for the same bar frame after frame (the GBA builds nothing then) */
+static struct { uint32_t key; uint8_t cut; char text[160]; } pmemo;
+
+void ui_prompts_at(const UiPrompt *p, int count, int style, int y, int maxw)
+{
+    char *buf = pmemo.text;
+    int cut, i;
+    uint32_t key = 2166136261u;
+    if (!p || count <= 0 || plat_draw_skipped()) return;
+    key = ui_key_int(key, count | maxw << 8 | input_pad() << 20 | lang_get() << 24);
+    for (i = 0; i < count; i++)
+        key = ui_key_str(ui_key_int(key, p[i].btn | p[i].prio << 16), p[i].verb ? p[i].verb : "");   /* the text: a verb may be a buffer */
+    if (!key) key = 1;
+    if (key != pmemo.key) {
+        cut = 0;
+        if (ui_prompts_text(buf, (int)sizeof(pmemo.text), p, count, maxw) > maxw) {
+            prompt_cut(buf, maxw);
+            cut = 1;
+        }
+        pmemo.key = key;
+        pmemo.cut = (uint8_t)cut;
+    }
+    cut = pmemo.cut;
+#if UI_PROMPT_CHECK
+    prompt_note(buf, cut);
+#else
+    (void)cut;
+#endif
+    hint_pill_at(buf, 0, style, y);
 }
 
 void ui_button(int x, int y, int w, const char *label, int selected, int style)

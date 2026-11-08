@@ -466,9 +466,9 @@ static void items_draw(void)
     if (lib_b.detail) {
         lib_dim_for_detail();
         detail(sw, sh);
-        lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " next  " STR_ICON_ARROW_U STR_ICON_ARROW_D " note  " STR_ICON_B " close", WIN_CUTE);
+        lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " Next  " STR_ICON_ARROW_U STR_ICON_ARROW_D " Note  " STR_ICON_B " Close", WIN_CUTE);
     } else {
-        lib_hint(STR_ICON_A " open  L/R shelf  SEL filter  " STR_ICON_B " back", WIN_CUTE);
+        lib_hint(STR_ICON_A " Open  L/R Shelf  SEL Filter  " STR_ICON_B " Back", WIN_CUTE);
     }
 }
 

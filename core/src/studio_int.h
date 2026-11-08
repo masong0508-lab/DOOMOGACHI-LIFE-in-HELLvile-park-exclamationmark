@@ -196,7 +196,7 @@ void tab_lyrics_update(void);  void tab_lyrics_draw(StRect r);
 void tab_choir_update(void);   void tab_choir_draw(StRect r);
 void tab_stage_update(void);   void tab_stage_draw(StRect r);
 void tab_file_update(void);    void tab_file_draw(StRect r);
-const char *tab_hint(int tab);
+int  tab_prompts(int tab, UiPrompt *p);        /* C3: the tab's prompt bar items (at most UI_PROMPTS_MAX) */
 extern int studio_sel_tap;          /* SELECT was tapped this tick (tools menu) */
 /* the full-screen show (PERFORM) */
 int  stage_fullscreen(void);

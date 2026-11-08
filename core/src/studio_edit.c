@@ -18,26 +18,67 @@
 
 /* ====================================================================== */
 /* hints                                                                    */
-const char *tab_hint(int tab)
+/* C3: the prompt bar of each tab (ui.h ui_prompts: the pad's own button names, "SEL+B Undo" on a GBA,
+ * "Triangle Undo" on a PS1). C15: on the SONG tab the left / right verb says what the selected row is. */
+static const char *const song_row_verb[] = {
+    "Rename", "Style", "Speed (bpm)", "Key (pitch)", "Mood (scale)", "Swing feel", "Once / loop",
+    "Instrument", "Loudness", "Instrument", "Loudness", "Instrument", "Loudness", "Drum kit", "Loudness"
+};
+
+int tab_prompts(int tab, UiPrompt *p)
 {
+    int n = 0;
+#define PR(b, pr, v) do { p[n].btn = (uint16_t)(b); p[n].prio = (uint8_t)(pr); p[n].verb = (v); n++; } while (0)
     switch (tab) {
     case STAB_SONG:
-        return STR_ICON_ARROW_L STR_ICON_ARROW_R "Change " STR_ICON_A "Edit START:Play SEL:Tools";
+        if (studio.srow == 0) PR(BTN_A, 0, "Rename");
+        else PR(BTN_LEFT | BTN_RIGHT, 0, song_row_verb[studio.srow % DOOMO_COUNTOF(song_row_verb)]);
+        PR(BTN_START, 1, "Play");
+        PR(BTN_SELECT, 3, "Tools");
+        PR(BTN_B, 2, "Exit");
+        break;
     case STAB_NOTES:
-        if (studio.a_edit) return "Hold " STR_ICON_A ": " STR_ICON_ARROW_U STR_ICON_ARROW_D "Pitch  L/R:Octave";
-        return STR_ICON_A "Note " STR_ICON_B "Erase/Tie L/R:Pattern START:Play";
+        if (studio.a_edit) { PR(BTN_UP | BTN_DOWN, 0, "Pitch"); PR(BTN_L | BTN_R, 1, "Octave"); break; }
+        PR(BTN_A, 0, "Note");
+        PR(BTN_B, 1, "Erase / tie");
+        PR(BTN_L | BTN_R, 2, "Pattern");
+        PR(BTN_START, 3, "Play");
+        PR(BTN_Y, 4, "Undo");
+        break;
     case STAB_ORDER:
-        return STR_ICON_ARROW_L STR_ICON_ARROW_R "Pattern " STR_ICON_A "Insert START:Play SEL:Tools";
+        PR(BTN_LEFT | BTN_RIGHT, 1, "Pattern");
+        PR(BTN_A, 0, "Insert");
+        PR(BTN_START, 2, "Play");
+        PR(BTN_SELECT, 3, "Tools");
+        PR(BTN_B, 4, "Exit");
+        break;
     case STAB_LYRICS:
-        return STR_ICON_A "Write " STR_ICON_ARROW_L STR_ICON_ARROW_R "Who sings START:Fit SEL:Sing";
+        PR(BTN_A, 0, "Write");
+        PR(BTN_LEFT | BTN_RIGHT, 1, "Who sings");
+        PR(BTN_START, 2, "Fit");
+        PR(BTN_SELECT, 3, "Sing");
+        break;
     case STAB_CHOIR:
-        return STR_ICON_A "Pick START:Section SEL:Quick fill " STR_ICON_B "Back";
+        PR(BTN_A, 0, "Pick");
+        PR(BTN_START, 2, "Section");
+        PR(BTN_SELECT, 3, "Quick fill");
+        PR(BTN_B, 1, "Back");
+        break;
     case STAB_STAGE:
-        if (stage_fullscreen()) return STR_ICON_B "Stop the show";
-        return STR_ICON_A "Perform! SEL:Concert Hall " STR_ICON_B "Back";
+        if (stage_fullscreen()) { PR(BTN_B, 0, "Stop the show"); break; }
+        PR(BTN_A, 0, "Perform!");
+        PR(BTN_SELECT, 2, "Concert Hall");
+        PR(BTN_B, 1, "Back");
+        break;
     default:
-        return STR_ICON_A "Choose L/R:Tabs SEL+" STR_ICON_B ":Undo " STR_ICON_B "Back";
+        PR(BTN_A, 0, "Choose");
+        PR(BTN_L | BTN_R, 2, "Tabs");
+        PR(BTN_Y, 3, "Undo");
+        PR(BTN_B, 1, "Back");
+        break;
     }
+#undef PR
+    return n;
 }
 
 /* ====================================================================== */
@@ -542,7 +583,7 @@ void tab_notes_draw(StRect r)
                 if ((int)strlen(buf) + 4 < (int)sizeof(buf)) memcpy(buf + strlen(buf), one, strlen(one) + 1);
                 n++;
             }
-        ui_text(x, r.y + 6, n ? "plays at" : "not in the song", st->text_dim);
+        ui_text(x, r.y + 6, n ? "in Order" : "not in the song", st->text_dim);   /* C15: its slots in the ORDER tab */
         if (n) ui_text(x + 54, r.y + 6, buf, st_pattern_color(studio.pat, 0));
     }
     /* track headers */

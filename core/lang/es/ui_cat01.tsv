@@ -1,6 +1,6 @@
 SECRET-ISH	¿SECRETO?	# lib_trophies.c
 All Prizes	Todos los premios	# lib_trophies.c
-\x88\x87 next  \x8C close	\x88\x87 sig.  \x8C cerrar	# lib_trophies.c
+\x88\x87 Next  \x8C Close	\x88\x87 sig.  \x8C cerrar	# lib_trophies.c
 LIB_TROPHIES		# lib_trophies.c
 Textures	Texturas	# lib_gallery.c
 Skies	Cielos	# lib_gallery.c
@@ -48,13 +48,13 @@ x3: seamless!	x3: ¡sin costuras!	# lib_gallery.c
 64x64 at 2x.	64x64 al doble.	# lib_gallery.c
  Animated!	 ¡Animado!	# lib_gallery.c
 %dx%d		# lib_gallery.c
-\x88\x87\x89\x8A pick  L/R room  \x8C back	\x88\x87\x89\x8A elegir  L/R sala  \x8C atrás	# lib_gallery.c
-\x89\x8A sky  L/R room  \x8C back	\x89\x8A cielo  L/R sala  \x8C atrás	# lib_gallery.c
+\x88\x87\x89\x8A Pick  L/R Room  \x8C Back	\x88\x87\x89\x8A elegir  L/R sala  \x8C atrás	# lib_gallery.c
+\x89\x8A Sky  L/R Room  \x8C Back	\x89\x8A cielo  L/R sala  \x8C atrás	# lib_gallery.c
 Each photo is a recipe: the house builds the room again when you look.	Cada foto es una receta: la casa reconstruye la sala al mirarla.	# lib_gallery.c
 Take photos in your house (START > Photo) to fill this wing.	Toma fotos en tu casa (START > Foto) para llenar esta ala.	# lib_gallery.c
-\x8B look again  L/R room  \x8C back	\x8B ver otra vez  L/R sala  \x8C atrás	# lib_gallery.c
-\x88\x87 next  SEL pause  \x89\x8A step	\x88\x87 sig.  SEL pausa  \x89\x8A paso	# lib_gallery.c
-\x8B look  L/R room  SEL pause  \x8C back	\x8B ver  L/R sala  SEL pausa  \x8C atrás	# lib_gallery.c
+\x8B Look again  L/R Room  \x8C Back	\x8B ver otra vez  L/R sala  \x8C atrás	# lib_gallery.c
+\x88\x87 Next  SEL Pause  \x89\x8A Step	\x88\x87 sig.  SEL pausa  \x89\x8A paso	# lib_gallery.c
+\x8B Look  L/R Room  SEL Pause  \x8C Back	\x8B ver  L/R sala  SEL pausa  \x8C atrás	# lib_gallery.c
 LIB_GALLERY		# lib_gallery.c
 Songs	Canciones	# lib_jukebox.c
 Sound FX	Efectos	# lib_jukebox.c
@@ -83,7 +83,7 @@ Keep playing!	¡Sigue jugando!	# lib_jukebox.c
 %u ms  %u Hz		# lib_jukebox.c
 Heard %d of %d	Oídas %d de %d	# lib_jukebox.c
 \x86 %d played	\x86 %d reproducidas	# lib_jukebox.c
-\x8B play  L/R shelf  SEL stop  \x8C back	\x8B tocar  L/R estante  SEL parar  \x8C atrás	# lib_jukebox.c
+\x8B Play  L/R Shelf  SEL Stop  \x8C Back	\x8B tocar  L/R estante  SEL parar  \x8C atrás	# lib_jukebox.c
 LIB_JUKEBOX		# lib_jukebox.c
 library: scene scratch lost, closing the wing		# lib_common.c
 \x81 BESTIARY	\x81 BESTIARIO	# lib_common.c
@@ -125,7 +125,7 @@ Shhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh.	Shhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh.	# lib_
 That one's locked!	¡Ese está bloqueado!	# lib_common.c
 \x82 THE GRAND LIBRARY \x82	\x82 LA GRAN BIBLIOTECA \x82	# lib_common.c
 Quillby		# lib_common.c
-\x88\x87 browse  \x8B read  \x8C leave	\x88\x87 hojear  \x8B leer  \x8C salir	# lib_common.c
+\x88\x87 Browse  \x8B Read  \x8C Leave	\x88\x87 hojear  \x8B leer  \x8C salir	# lib_common.c
 LIBRARY		# lib_common.c
 Grand Library	Gran Biblioteca	# lib_common.c
 Quillby's books: demons, folks & more	Libros de Quillby: demonios, gente y más	# lib_common.c

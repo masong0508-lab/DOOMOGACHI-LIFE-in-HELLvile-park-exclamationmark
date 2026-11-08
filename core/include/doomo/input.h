@@ -47,4 +47,22 @@ int  input_feel(void);
 /* ---- foundation additions ---- */
 void input_reset(void);              /* forget all state (tests, boot)   */
 
+/* ---- C3: the pad in the player's hands, for the names on screen ----------
+ * input_pad() says which pad the button names must fit: the console's own
+ * (compile-time DOOMO_PLATFORM_*), on the native runner PAD_GBA while the
+ * platform sets DOOMO_INPUT_SYNTH_XY (--gba-input) and PAD_HOST otherwise.
+ * input_set_pad() forces one (tests; -1 = automatic again).
+ * btn_name() is the name of ONE button (the lowest bit of b) on that pad:
+ *   GBA:  X = "SEL+A", Y = "SEL+B", SELECT = "SEL"; no L2 / R2 (NULL)
+ *   PS1:  L = "L1", R = "R1", X = "Square", Y = "Triangle", L2, R2
+ *   DC:   L / R are the triggers, SELECT = "START+Y" (dc/src/main.c); no L2 / R2
+ *   host: A B X Y L R L2 R2 START SEL
+ * A and B are drawn as button caps by the UI (STR_ICON_A / STR_ICON_B), the
+ * D-pad as arrows; btn_name() still names them ("A", "Up"). NULL = this pad
+ * has no such button: say nothing about it on screen. */
+enum { PAD_HOST, PAD_GBA, PAD_PS1, PAD_DC, PAD_COUNT };
+int  input_pad(void);
+void input_set_pad(int pad);
+const char *btn_name(uint32_t b);
+
 #endif

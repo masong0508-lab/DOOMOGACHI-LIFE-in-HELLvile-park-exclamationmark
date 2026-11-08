@@ -353,8 +353,8 @@ Melee	Cuerpo	# lib_weapons.c
 Weld:	Soldar:	# lib_weapons.c
 \x81 Brutal	\x81 Brutal	# lib_weapons.c
 \x80 Cute	\x80 Tierno	# lib_weapons.c
-\x88\x87 next L/R view SEL style \x8C close	\x88\x87 sig. L/R vista SEL estilo \x8C cerrar	# lib_weapons.c
-\x8B open L/R part SEL filter START style	\x8B abrir L/R pieza SEL filtro START estilo	# lib_weapons.c
+\x88\x87 Next L/R View SEL Style \x8C Close	\x88\x87 sig. L/R vista SEL estilo \x8C cerrar	# lib_weapons.c
+\x8B Open L/R Part SEL Filter START Style	\x8B abrir L/R pieza SEL filtro START estilo	# lib_weapons.c
 LIB_WEAPONS		# lib_weapons.c
 All Items	Todos	# lib_items.c
 Gifts	Regalos	# lib_items.c
@@ -427,8 +427,8 @@ In bag: %d	En bolsa: %d	# lib_items.c
 Not for sale	No se vende	# lib_items.c
 \x80 %d love it  \x8E %d hate it	\x80 %d aman  \x8E %d odian	# lib_items.c
 Quillby: %s	Quillby: %s	# lib_items.c
-\x88\x87 next  \x89\x8A note  \x8C close	\x88\x87 sig.  \x89\x8A nota  \x8C cerrar	# lib_items.c
-\x8B open  L/R shelf  SEL filter  \x8C back	\x8B abrir  L/R estante  SEL filtro  \x8C atrás	# lib_items.c
+\x88\x87 Next  \x89\x8A Note  \x8C Close	\x88\x87 sig.  \x89\x8A nota  \x8C cerrar	# lib_items.c
+\x8B Open  L/R Shelf  SEL Filter  \x8C Back	\x8B abrir  L/R estante  SEL filtro  \x8C atrás	# lib_items.c
 LIB_ITEMS		# lib_items.c
 the Pocket Devil	el Diablo de Bolsillo	# lib_bestiary.c
 Fireballs, hug-claws	Bolas de fuego, garras-abrazo	# lib_bestiary.c
@@ -532,8 +532,8 @@ Shots	Tiros	# lib_bestiary.c
 Attack: %s	Ataque: %s	# lib_bestiary.c
 Found: %s	Hallado: %s	# lib_bestiary.c
 SLAIN \x9C	ABATIDO \x9C	# lib_bestiary.c
-\x88\x87 page  L/R tab  SEL gore  \x8C close	\x88\x87 pág.  L/R pestaña  SEL gore  \x8C cerrar	# lib_bestiary.c
-\x8B open  L/R kind  SEL filter  \x8C back	\x8B abrir  L/R tipo  SEL filtro  \x8C atrás	# lib_bestiary.c
+\x88\x87 Page  L/R Tab  SEL Gore  \x8C Close	\x88\x87 pág.  L/R pestaña  SEL gore  \x8C cerrar	# lib_bestiary.c
+\x8B Open  L/R Kind  SEL Filter  \x8C Back	\x8B abrir  L/R tipo  SEL filtro  \x8C atrás	# lib_bestiary.c
 LIB_BESTIARY		# lib_bestiary.c
 Everyone	Todos	# lib_almanac.c
 Story Cast	Historia	# lib_almanac.c
@@ -607,9 +607,9 @@ Chat with %s to fill in this page!	¡Charla con %s para llenar esta página!	# l
 Search by first letter	Buscar por inicial	# lib_almanac.c
 %d citizens	%d ciudadanos	# lib_almanac.c
 by %s	por %s	# lib_almanac.c
-\x88\x87 next  L/R page  SEL face  \x8C close	\x88\x87 sig.  L/R pág.  SEL cara  \x8C cerrar	# lib_almanac.c
-\x8B search  \x8C cancel	\x8B buscar  \x8C cancelar	# lib_almanac.c
-\x8B open L/R shelf SEL sort START find	\x8B abrir L/R estante SEL orden START buscar	# lib_almanac.c
+\x88\x87 Next  L/R Page  SEL Face  \x8C Close	\x88\x87 sig.  L/R pág.  SEL cara  \x8C cerrar	# lib_almanac.c
+\x8B Search  \x8C Cancel	\x8B buscar  \x8C cancelar	# lib_almanac.c
+\x8B Open L/R Shelf SEL Sort START Find	\x8B abrir L/R estante SEL orden START buscar	# lib_almanac.c
 LIB_ALMANAC		# lib_almanac.c
 to win	para ganar	# lib_trophies.c
 almost there	casi listo	# lib_trophies.c

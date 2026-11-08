@@ -435,9 +435,13 @@ static void wpn_draw(void)
     if (lib_b.detail) {
         lib_dim_for_detail();
         detail(sw, sh);
-        lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " next L/R view SEL style " STR_ICON_B " close", WIN_CREAM);
+        lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " Next L/R View SEL Style " STR_ICON_B " Close", WIN_CREAM);
     } else {
-        lib_hint(STR_ICON_A " open L/R part SEL filter START style", WIN_CREAM);
+        /* C3: the shared bar fits it to the screen (START Style gives way at 240x160) */
+        static const UiPrompt bar[] = {
+            { BTN_A, 0, "Open" }, { BTN_L | BTN_R, 1, "Part" }, { BTN_SELECT, 2, "Filter" }, { BTN_START, 3, "Style" }
+        };
+        ui_prompts(bar, (int)DOOMO_COUNTOF(bar), WIN_CREAM);
     }
 }
 

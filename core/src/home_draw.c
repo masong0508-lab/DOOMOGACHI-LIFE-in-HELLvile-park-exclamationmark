@@ -1640,6 +1640,9 @@ static void update_menu(void)
     H->a_hold = 0xFFFF;                                  /* the A that closes a menu never picks up */
     if (H->menu == HMN_SCORE) {
         if (H->sc_age != 0xFF && H->sc_age < 0xF0) H->sc_age++;
+        /* C15: UP / DOWN pick a stat; the bar says what it counts */
+        if (btn_repeat(BTN_UP)) { H->sel = (int16_t)((H->sel + HS_COUNT - 1) % HS_COUNT); audio_sfx(SFX_CURSOR); }
+        if (btn_repeat(BTN_DOWN)) { H->sel = (int16_t)((H->sel + 1) % HS_COUNT); audio_sfx(SFX_CURSOR); }
         if (btn_pressed(BTN_A | BTN_B | BTN_START)) { H->menu = HMN_NONE; audio_sfx(SFX_CANCEL); }
         return;
     }
@@ -2201,12 +2204,53 @@ static void build_actors(DoomoRoomView *v)
 }
 
 /* ---- HUD, panels ---------------------------------------------------------------------------- */
-/* the bottom bar's line: the full one where it fits, else the brief one */
-static void hint(const char *full, const char *brief)
+/* C3: the bottom bar's buttons, the shared prompt bar (ui.h ui_prompts) on the house's own strip */
+#define HP(b, pr, v) do { p[n].btn = (uint16_t)(b); p[n].prio = (uint8_t)(pr); p[n].verb = (v); n++; } while (0)
+#define DPAD (BTN_UP | BTN_DOWN | BTN_LEFT | BTN_RIGHT)
+/* C15: what each score stat counts (home_score.c), for the Score panel's bar */
+static const char *const stat_help[HS_COUNT] = {
+    "Comfort: seats, bed, lamps", "Spook: creepy stuff, dark", "Style: one matching theme",
+    "Light: lamps, day windows", "Barricade: heavy by doors"
+};
+
+static void hud_prompts(char *nm, int nmcap)
 {
-    int sw = plat_screen_w();
-    ui_text(3, plat_screen_h() - 10, !brief || ui_text_width(full) <= sw - 6 ? full : brief, ui_style(WIN_CUTE)->text);
+    UiPrompt p[UI_PROMPTS_MAX];
+    int n = 0;
+    if (H->menu == HMN_SCORE) {
+        HP(BTN_UP | BTN_DOWN, 1, "");
+        HP(BTN_B, 2, "Back");
+        HP(0, 0, H->sel == HS_STYLE && (score_ctx() & HSC_CH4) ? "Style: sweet + spooky pairs"
+                                                                 : stat_help[H->sel % HS_COUNT]);
+    } else if (H->menu == HMN_CATALOG) { HP(BTN_A, 0, "Take"); HP(BTN_L | BTN_R, 1, "Tab"); HP(BTN_B, 0, "Back"); }
+    else if (H->menu == HMN_WALLS) { HP(BTN_UP | BTN_DOWN, 1, "Row"); HP(BTN_LEFT | BTN_RIGHT, 0, "Change"); HP(BTN_A, 0, "Paint"); HP(BTN_B, 2, "Back"); }
+    else if (H->menu != HMN_NONE) { HP(BTN_A, 0, "Choose"); HP(BTN_B, 0, "Back"); }
+    else if (H->mode == HM_DEFEND) HP(BTN_A, 0, "Repair / wind / comfort / plate");
+    else if (H->mode == HM_LIVE) {
+        HP(DPAD, 2, "Walk");
+        HP(BTN_A, 0, H->kind == HK_VISIT ? "Talk / look" : "Use");
+        HP(BTN_START, 1, "Menu");
+        HP(BTN_B, 0, "Leave");
+    } else if (H->nsel) { HP(DPAD, 2, "Move"); HP(BTN_L | BTN_R, 1, "Turn"); HP(BTN_START, 3, "More"); HP(BTN_A, 0, "Done"); }
+    else if (H->paint_mode) { HP(0, 2, "Recolour"); HP(BTN_L, 0, "Colour 1"); HP(BTN_R, 0, "Colour 2"); }
+    else if (H->held >= 0) {
+        const DoomoFurn *f = home_furn(H->held);
+        HP(0, 3, f ? doomo_furn_text(f->name, nm, nmcap) : "?");
+        HP(BTN_A, 0, "Put");
+        HP(BTN_L | BTN_R, 1, "Turn");
+        HP(BTN_B, 2, "Back");
+    } else if (H->plan.nghost && H->mont_n == 0) { HP(0, 0, "Grey = buy at HomeMart"); HP(BTN_START, 1, "Menu"); }
+    else {
+        HP(BTN_A, 0, "Pick up (hold: paint)");
+        HP(BTN_L | BTN_R, 2, "View");
+        HP(BTN_SELECT, 3, "Undo");
+        HP(BTN_START, 1, "Menu");
+    }
+    /* inside the house's opaque bottom band (plat_room_ui_opaque): the room renderer never draws under it */
+    ui_prompts_at(p, n, WIN_CUTE, plat_screen_h() - 12, ui_prompts_maxw());
 }
+#undef HP
+#undef DPAD
 
 static void draw_hud(void)
 {
@@ -2231,8 +2275,20 @@ static void draw_hud(void)
     }
     doomo_snprintf(buf, sizeof(buf), "%02d:%02d", doomo_town.minute / 60, doomo_town.minute % 60);
     x = 6 + ui_text_width(home_room_defs[H->room].name) + 4;
-    if (H->kind != HK_VISIT) ui_text(x, 2 + pop, buf, st->text_dim);
     rescore();
+    {   /* C15: the mode is named after the room ("Living Room  Build"), the clock where it still fits */
+        static const char *const mode_names[] = { "Live", "Build", "Photo", "Defend", "Photo" };
+        const char *mw = H->mode < DOOMO_COUNTOF(mode_names) ? mode_names[H->mode] : "";
+        char money[16];
+        int right;
+        doomo_snprintf(money, sizeof(money), "H$%u", (unsigned)doomo_town.money);
+        right = sw - 4 - 4 * 12 - 4 - ui_text_width(money) - 4;
+        if (H->kind != HK_VISIT) {
+            ui_text(x, 2 + pop, mw, st->accent);
+            x += ui_text_width(mw) + 6;
+            if (x + ui_text_width(buf) <= right) ui_text(x, 2 + pop, buf, st->text_dim);
+        }
+    }
     x = sw - 4 - 4 * 12;
     for (i = 0; i < 4; i++) {
         int v = H->score.stat[i];
@@ -2241,21 +2297,8 @@ static void draw_hud(void)
     }
     doomo_snprintf(buf, sizeof(buf), "H$%u", (unsigned)doomo_town.money);
     ui_text(x - 4 - ui_text_width(buf), 2 + pop, buf, PAL_UI_GOLD);
-    /* the bottom bar: what the buttons do */
-    if (H->menu != HMN_NONE) hint(H->menu == HMN_CATALOG ? "A:take  L/R:tab  B:back" :
-                                  H->menu == HMN_WALLS ? "Up/Dn:row  L/R:change  A:paint" : "A:choose  B:back", NULL);
-    else if (H->mode == HM_DEFEND) hint("A: repair / wind / comfort / plate", "A: repair/wind/comfort/plate");
-    else if (H->mode == HM_LIVE) hint(H->kind == HK_VISIT ? "Walk  A:talk/look  START:menu  B:leave" : "Walk  A:use  START:menu  B:leave",
-                                      H->kind == HK_VISIT ? "A:talk/look  START:menu  B:leave" : "A:use  START:menu  B:leave");
-    else if (H->nsel) hint("Group: move  L/R:turn  START:more  A:done", "L/R:turn  START:more  A:done");
-    else if (H->paint_mode) hint("Recolour: L paint A  R paint B", "L: paint A  R: paint B");
-    else if (H->held >= 0) {
-        const DoomoFurn *f = home_furn(H->held);
-        char nm[32];
-        doomo_snprintf(buf, sizeof(buf), "%s  A:put  L/R:turn", f ? doomo_furn_text(f->name, nm, sizeof(nm)) : "?");
-        hint(buf, "A:put  L/R:turn  B:back");
-    } else if (H->plan.nghost && H->mont_n == 0) hint("Grey = Buy at HomeMart  START:menu", "Grey: HomeMart  START:menu");
-    else hint("A:pick up (hold: paint)  L/R:view  SELECT:undo  START:menu", "A:pick  L/R:view  SEL:undo");
+    /* the bottom bar: what the buttons do (C3) */
+    hud_prompts(buf, (int)sizeof(buf));
 }
 
 static void draw_caption(void)
@@ -2387,7 +2430,8 @@ static void draw_menu(uint8_t *cache, uint32_t cap)
             int64_t tt = (int64_t)t * t / FIX_ONE;
             int v = (int)((int64_t)H->score.stat[i] * tt / FIX_ONE * (FIX_ONE * 4 / 5 + t / 5) / FIX_ONE);
             ry = y + 18 + i * (sh >= 200 ? 13 : 11);
-            ui_text(x + 8, ry, stat_names[i], st->text);
+            if (i == H->sel) plat_text(x + 2, ry, STR_ICON_ARROW_R, st->accent);      /* C15: the stat the bar explains */
+            ui_text(x + 8, ry, stat_names[i], i == H->sel ? st->accent : st->text);
             ui_bar(x + 72, ry + 1, w - 110, 6, v, 100, stat_cols[i]);
             doomo_snprintf(buf, sizeof(buf), "%d", v);
             ui_text(x + w - 32, ry, buf, st->text_dim);
@@ -2686,10 +2730,12 @@ static void draw_story_panel(void)
         static const char *const items[3] = { "the Picnic Crate", "the Egg Nest", "a lamp" };
         int k, ok[3];
         ok[0] = tutorial_has(-1, FURN_PICNIC_CRATE); ok[1] = tutorial_has(FR_NEST, -1); ok[2] = tutorial_has(FR_LAMP, -1);
-        ui_round_rect(2, y, 112, 36, 3, st->fill);
+        /* C15: a header says what the list is; done rows get a tick */
+        ui_round_rect(2, y, 112, 47, 3, st->fill);
+        ui_text(6, y + 2, "Place these:", st->accent);
         for (k = 0; k < 3; k++) {
-            doomo_snprintf(buf, sizeof(buf), "%s %s", ok[k] ? STR_ICON_HEART : "-", items[k]);
-            ui_text(6, y + 2 + k * 11, buf, ok[k] ? PAL_UI_MINT_D : st->text);
+            doomo_snprintf(buf, sizeof(buf), "%s %s", ok[k] ? STR_ICON_CHECK : "-", items[k]);
+            ui_text(6, y + 13 + k * 11, buf, ok[k] ? PAL_UI_MINT_D : st->text);
         }
     } else if (H->story == HSM_GOAL && H->param < HG_COUNT) {
         doomo_snprintf(buf, sizeof(buf), "Goal: %s", grade_names[H->param]);

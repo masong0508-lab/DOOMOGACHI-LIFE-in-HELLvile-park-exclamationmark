@@ -647,12 +647,12 @@ static void alm_draw(void)
     if (lib_b.detail) {
         lib_dim_for_detail();
         detail(sw, sh);
-        lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " next  L/R page  SEL face  " STR_ICON_B " close", WIN_MINT);
+        lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " Next  L/R Page  SEL Face  " STR_ICON_B " Close", WIN_MINT);
     } else if (A.picking) {
         picker_draw(sw, sh);
-        lib_hint(STR_ICON_A " search  " STR_ICON_B " cancel", WIN_MINT);
+        lib_hint(STR_ICON_A " Search  " STR_ICON_B " Cancel", WIN_MINT);
     } else {
-        lib_hint(STR_ICON_A " open L/R shelf SEL sort START find", WIN_MINT);
+        lib_hint(STR_ICON_A " Open L/R Shelf SEL Sort START Find", WIN_MINT);
     }
 }
 

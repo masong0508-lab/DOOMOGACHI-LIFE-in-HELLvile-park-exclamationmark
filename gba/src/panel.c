@@ -27,7 +27,7 @@
  * then 8 frames between tries. Tile frames (section 6b), skipped ticks and
  * the harness's expect-text never keep: they draw (or skip) as before.
  *
- * RAM: the panel table (8 x 20 B) and the 80-rect pool (320 B) in EWRAM;
+ * RAM: the panel table (9 x 20 B) and the 80-rect pool (320 B) in EWRAM;
  * pn_span 116 B of resident IWRAM code.
  */
 #include "gba_plat.h"
@@ -35,7 +35,7 @@
 #include "hcmd.h"
 
 #define PN_POOL 80
-DOOMO_STATIC_ASSERT(PANEL_COUNT <= 8, panels_fit_the_shown_byte);
+DOOMO_STATIC_ASSERT(PANEL_COUNT <= 16, panels_fit_the_shown_mask);
 DOOMO_STATIC_ASSERT(PN_POOL <= 255, pool_index_fits);
 
 typedef struct { uint8_t x0, y0, x1, y1; } PnRect;      /* [x0, x1) x [y0, y1) */
@@ -59,7 +59,7 @@ static int8_t   cap = -1;          /* panel being drawn             */
 static int8_t   put = -1;          /* kept panel, its shading drawn */
 static uint8_t  nest;              /* begin calls inside a panel     */
 static uint8_t  suspended;         /* I10: drawing into the shown page: no panel is kept, captured or put back */
-static uint8_t  shown;             /* bit i: panel i shown this frame */
+static uint16_t shown;             /* bit i: panel i shown this frame */
 static int8_t   shown_page = -1;   /* the page the last flip showed, -1 tiles */
 static uint16_t flips;             /* Mode 4 flips                   */
 uint8_t pn_op;                     /* PN_OP_* of the 2D call routing now */
@@ -118,9 +118,11 @@ static void box_screen(void)
 static void box_shown(void)
 {
     int i, x0 = SCREEN_W, y0 = SCREEN_H, x1 = 0, y1 = 0;
-    for (i = 0; i < PANEL_COUNT; i++) {
+    unsigned m;
+    /* (C3) only the shown panels' bits are walked: the loop stops after the highest */
+    for (i = 0, m = shown; m; i++, m >>= 1) {
         const Pn *p = &pn[i];
-        if (!(shown & (1u << i)) || (p->flags & PN_SPOILED)) continue;
+        if (!(m & 1u) || (p->flags & PN_SPOILED)) continue;
         x0 = DOOMO_MIN(x0, clipx(p->x)); y0 = DOOMO_MIN(y0, clipy(p->y));
         x1 = DOOMO_MAX(x1, clipx(p->x + p->w)); y1 = DOOMO_MAX(y1, clipy(p->y + p->h));
     }
@@ -138,17 +140,17 @@ int pn_active(void) { return cap >= 0 || put >= 0 || shown != 0; }
 void pn_route(int x0, int y0, int x1, int y1)
 {
     int i, spoil = 0;
+    unsigned m;
     if (x1 <= pn_box[0] || x0 >= pn_box[2] || y1 <= pn_box[1] || y0 >= pn_box[3]) return;
-    /* drawn over a panel shown earlier on this frame: not kept next frame */
-    if (shown)
-        for (i = 0; i < PANEL_COUNT; i++) {
-            Pn *p = &pn[i];
-            if (i == cap || i == put || !(shown & (1u << i)) || (p->flags & PN_SPOILED)) continue;
-            if (x1 <= p->x || x0 >= p->x + p->w || y1 <= p->y || y0 >= p->y + p->h) continue;
-            if (x0 >= p->hx0 && x1 <= p->hx1 && y0 >= p->hy0 && y1 <= p->hy1) continue;
-            p->flags |= PN_SPOILED;
-            spoil = 1;
-        }
+    /* drawn over a panel shown earlier on this frame: not kept next frame (C3: only the shown bits are walked) */
+    for (i = 0, m = shown; m; i++, m >>= 1) {
+        Pn *p = &pn[i];
+        if (!(m & 1u) || i == cap || i == put || (p->flags & PN_SPOILED)) continue;
+        if (x1 <= p->x || x0 >= p->x + p->w || y1 <= p->y || y0 >= p->y + p->h) continue;
+        if (x0 >= p->hx0 && x1 <= p->hx1 && y0 >= p->hy0 && y1 <= p->hy1) continue;
+        p->flags |= PN_SPOILED;
+        spoil = 1;
+    }
     if (spoil && cap < 0 && put < 0) box_shown();
     if (cap >= 0) {
         Pn *p = &pn[cap];
@@ -253,7 +255,7 @@ static void shown_now(Pn *p, int id)
     p->flags = (uint8_t)((p->flags & ~PN_PAGE1) | (gba_back == (uint16_t *)VRAM_PAGE1 ? PN_PAGE1 : 0));
     p->serial = (uint16_t)(flips + 1);
     p->flags &= (uint8_t)~PN_SPOILED;
-    shown |= (uint8_t)(1u << id);
+    shown |= (uint16_t)(1u << id);
 }
 
 /* CR9 (platform.h): the whole rect comes back on a kept frame: its rects become that one rect */

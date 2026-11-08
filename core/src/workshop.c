@@ -9,6 +9,10 @@
  * ARMORY tab: every welded weapon with its icon, stats and level; equip,
  * mark favourites (quick-switch cycles those), copy a design back onto the
  * table, or scrap it for half the materials.
+ *
+ * C3 / C15 (clarity): one prompt bar (ui.h ui_prompts, the pad's own
+ * button names: "SEL+A Random" on a GBA), and START asks Rivet what the
+ * stat letters mean (DMG, RATE... and the Armory's Q / Lv).
  */
 #include "weld_int.h"
 #include "doomo/tips.h"
@@ -265,9 +269,22 @@ static void workshop_update(void)
         audio_sfx(SFX_CURSOR);
         return;
     }
-    if (btn_pressed(BTN_B) || btn_pressed(BTN_START)) {
+    if (btn_pressed(BTN_B)) {
         audio_sfx(SFX_CANCEL);
         if (scene_depth() > 1) scene_pop(); else scene_set(&SCENE_TITLE, 0);
+        return;
+    }
+    /* C15: START = the stat key, from Rivet */
+    if (btn_pressed(BTN_START)) {
+        audio_sfx(SFX_SELECT);
+        if (plat_screen_h() >= 200) {   /* the labels as the stat bars spell them on this screen */
+            ui_say(ROSTER_ID_RIVET, "The bars! DMG is damage, RATE is shots a second, RNG is range, ACC is aim.");
+            ui_say(ROSTER_ID_RIVET, "AMMO is shots per load, RLD is reload speed, CTRL is recoil control, MOB is how fast you run.");
+        } else {
+            ui_say(ROSTER_ID_RIVET, "The bars! DMG is damage, RAT is fire rate, RNG is range, ACC is aim.");
+            ui_say(ROSTER_ID_RIVET, "AMM is shots per load, RLD is reload speed, CTR is recoil control, MOB is how fast you run.");
+        }
+        ui_say(ROSTER_ID_RIVET, "In the Armory, Q is the weld's quality out of 100. Lv goes up as the weapon fights.");
         return;
     }
     /* --- H4: the furniture bench (home_mart.c, HF sec.8.4) --- */
@@ -490,7 +507,7 @@ static void draw_armory_tab(int sw, int sh)
         weld_name(w, buf, sizeof(buf));
         if (maxc < (int)sizeof(buf)) buf[maxc] = 0;
         plat_text(lx + 32, ry, buf, sel ? PAL_WHITE : PAL_UI_PINK_D);
-        doomo_snprintf(buf, sizeof(buf), "Q%d Lv%d%s%s", w->quality, weld_level(w),
+        doomo_snprintf(buf, sizeof(buf), big ? "Quality %d Lv%d%s%s" : "Q%d Lv%d%s%s", w->quality, weld_level(w),
                        (w->flags & WF_FAVORITE) ? " " STR_ICON_HEART : "",
                        slots[top + i] == doomo_town.story.equipped ? " " STR_ICON_CHECK : "");
         plat_text(lx + 32, ry + 9, buf, sel ? PAL_UI_CREAM : PAL_RAMP(RAMP_PASTEL_PINK, 3));
@@ -549,10 +566,20 @@ static void workshop_draw(void)
         ui_window(sw - 58 - w, sh - 46, w, 14, WIN_MINT);
         ui_text(sw - 52 - w, sh - 43, line, PAL_RAMP(RAMP_MINT, 1));
     }
-    if (ws_tab == WT_WELD)
-        ui_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R "Part " STR_ICON_A "Weld X:Random L/R:Tab " STR_ICON_B "Exit", WIN_CUTE);
-    else
-        ui_hint(STR_ICON_A "Equip " STR_ICON_ARROW_R STR_ICON_HEART " " STR_ICON_ARROW_L "Copy X:Scrap " STR_ICON_B "Exit", WIN_CUTE);
+    /* C3: the prompt bar; at 240x160 the lower-priority items give way */
+    if (ws_tab == WT_WELD) {
+        static const UiPrompt weld_bar[] = {
+            { BTN_LEFT | BTN_RIGHT, 1, "Pick" }, { BTN_A, 0, "Weld" }, { BTN_X, 2, "Random" },
+            { BTN_L | BTN_R, 3, "Armory" }, { BTN_START, 4, "Stats?" }, { BTN_B, 0, "Exit" }
+        };
+        ui_prompts(weld_bar, (int)DOOMO_COUNTOF(weld_bar), WIN_CUTE);
+    } else {
+        static const UiPrompt arm_bar[] = {
+            { BTN_A, 0, "Equip" }, { BTN_RIGHT, 2, STR_ICON_HEART }, { BTN_LEFT, 3, "Copy" },
+            { BTN_X, 1, "Scrap" }, { BTN_START, 4, "Stats?" }, { BTN_B, 0, "Exit" }
+        };
+        ui_prompts(arm_bar, (int)DOOMO_COUNTOF(arm_bar), WIN_CUTE);
+    }
 }
 
 const DoomoScene SCENE_WORKSHOP = { "WORKSHOP", workshop_enter, NULL, workshop_update, workshop_draw, 0 };

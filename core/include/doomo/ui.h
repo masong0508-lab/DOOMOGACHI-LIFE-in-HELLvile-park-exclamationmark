@@ -204,8 +204,52 @@ int  ui_text_wrap_n(int x, int y, int w, const char *s, uint8_t color,
 /* Bytes of s consumed by its first `lines` wrapped lines at width w
  * (paging long texts). */
 int  ui_wrap_skip(const char *s, int w, int lines);
-/* "[A] Select  [B] Back" hint pill at the bottom edge of the screen. */
+/* "[A] Select  [B] Back" hint pill at the bottom edge of the screen (a
+ * retained panel, PANEL_PROMPT). Never wider than the screen: a text too
+ * wide for it loses its last words (and the native build counts it, see
+ * ui_prompt_stats). New screens use ui_prompts() instead. */
 void ui_hint(const char *s, int style);
+
+/* ---- C3: the shared prompt bar -------------------------------------------
+ * One look, one verb style ("A Open", "B Back": the button, then one
+ * capitalised verb) and button names that fit the pad in the player's
+ * hands (input.h btn_name: no X / Y / R1 on a GBA). `btn` is a BTN_* mask:
+ *   BTN_A, BTN_B             drawn as the round A / B caps
+ *   BTN_LEFT | BTN_RIGHT     the left-right arrows (UP | DOWN, one arrow,
+ *                            all four: the arrows)
+ *   BTN_L | BTN_R            "L/R" ("L1/R1" on a PS1)
+ *   BTN_X, BTN_Y, START...   btn_name() ("SEL+A" cap on a GBA)
+ *   BTN_SELECT | another     a chord: "SEL+" and the other button
+ *   0                        the verb alone (a short status word)
+ * An item whose button this pad lacks (L2 on a GBA) is left out. `prio`
+ * 0 = always shown; when the bar is too wide for the screen the single
+ * spaces between items are tried first, then the item with the highest
+ * prio (the later one on a tie) is dropped, and so on. Verbs are English
+ * and translated here, one by one. */
+typedef struct UiPrompt {
+    uint16_t btn;
+    uint8_t  prio;
+    const char *verb;
+} UiPrompt;
+#define UI_PROMPTS_MAX 8
+/* the widest text a bar may have on this screen (the pill adds 12 px) */
+int  ui_prompts_maxw(void);
+/* The bar's text (translated, button glyphs in it) into out[n]; returns its
+ * width in pixels (> maxw only when even the prio-0 items do not fit). */
+int  ui_prompts_text(char *out, int n, const UiPrompt *p, int count, int maxw);
+void ui_prompts(const UiPrompt *p, int count, int style);
+/* the same bar centred at row y, its text at most maxw wide (a screen with
+ * something of its own at the bottom edge: the island hub's news ticker) */
+void ui_prompts_at(const UiPrompt *p, int count, int style, int y, int maxw);
+/* Native checks (core/tests/test_prompts.c, runner --check-prompts): every
+ * bar drawn since the last reset; too_wide = cut to fit, wrong_pad = a
+ * button word the pad does not have (X, Y, L1, R1, L2, R2, Square,
+ * Triangle, DualShock on a GBA). Consoles keep no stats (all 0). */
+typedef struct UiPromptStats {
+    uint32_t bars, too_wide, wrong_pad;
+    char last[100], first_bad[100];
+} UiPromptStats;
+void ui_prompt_stats(UiPromptStats *out, int reset);
 /* Title plate (pill with outline) centred at cx. */
 void ui_title(int cx, int y, const char *s, int style);
 /* Pill-shaped button; selected ones bounce and glow. */

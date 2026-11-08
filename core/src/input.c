@@ -18,11 +18,14 @@ static uint32_t cur, prev;
 static uint32_t ignore;          /* held through input_eat(): wait for release */
 static uint32_t held[NBTN];
 static uint8_t  eaten;
+static uint8_t  synth_seen;      /* C3: the last raw mask had DOOMO_INPUT_SYNTH_XY */
+static int8_t   pad_forced = -1; /* C3: input_set_pad() */
 
 void input_update(uint32_t raw)
 {
     uint32_t b = raw & ((1u << NBTN) - 1);
     int i;
+    synth_seen = (raw & DOOMO_INPUT_SYNTH_XY) != 0;
     if (raw & DOOMO_INPUT_SYNTH_XY) {
         b &= ~(uint32_t)(BTN_X | BTN_Y);
         if (b & BTN_SELECT) {
@@ -101,4 +104,40 @@ void input_reset(void)
     cur = prev = ignore = 0;
     eaten = 0;
     memset(held, 0, sizeof(held));
+}
+
+/* ---- C3: button names per pad (input.h btn_name) ------------------------ */
+int input_pad(void)
+{
+    if (pad_forced >= 0) return pad_forced;
+#if defined(DOOMO_PLATFORM_GBA)
+    return PAD_GBA;
+#elif defined(DOOMO_PLATFORM_PS1)
+    return PAD_PS1;
+#elif defined(DOOMO_PLATFORM_DC)
+    return PAD_DC;
+#else
+    return synth_seen ? PAD_GBA : PAD_HOST;
+#endif
+}
+
+void input_set_pad(int pad)
+{
+    pad_forced = (int8_t)(pad >= 0 && pad < PAD_COUNT ? pad : -1);
+}
+
+/* in BTN_* bit order: UP DOWN LEFT RIGHT A B L R START SELECT X Y L2 R2 */
+static const char *const pad_names[PAD_COUNT][NBTN] = {
+    { "Up", "Down", "Left", "Right", "A", "B", "L", "R", "START", "SEL", "X", "Y", "L2", "R2" },
+    { "Up", "Down", "Left", "Right", "A", "B", "L", "R", "START", "SEL", "SEL+A", "SEL+B", 0, 0 },
+    { "Up", "Down", "Left", "Right", "A", "B", "L1", "R1", "START", "SEL", "Square", "Triangle", "L2", "R2" },
+    { "Up", "Down", "Left", "Right", "A", "B", "L", "R", "START", "START+Y", "X", "Y", 0, 0 },
+};
+
+const char *btn_name(uint32_t b)
+{
+    int i;
+    for (i = 0; i < NBTN; i++)
+        if (b & (1u << i)) return pad_names[input_pad()][i];
+    return 0;
 }
