@@ -19,7 +19,8 @@ static const char *const tabs[2] = { "Headlines", "Help wanted" };
  * Groups: 0 pentagram (possess demon monster), 1 ghost (ghost rest vanished grave), 2 heart (married wedding
  * dating love crush engaged), 3 egg (baby), 4 bolt (broke up, fight argu rival nemes), 5 smile (friend), 6 cross
  * (exorcis), 7 note (concert sing song), 8 food (picnic cake "ate "). */
-static const char *const news_kw[] = {
+/* fixed-width rows, not pointers: on the PS1 a table of string addresses makes the strings resident (ovl_plan) */
+static const char news_kw[][9] = {
     "argu", "ate ", "baby", "broke up", "crush", "concert", "cake", "demon", "dating", "engaged", "exorcis",
     "fight", "friend", "ghost", "grave", "love", "monster", "married", "nemes", "possess", "picnic", "rest",
     "rival", "sing", "song", "vanished", "wedding"

@@ -1766,6 +1766,7 @@ static int player_view_dir(fix16 camx, fix16 camy, int *flip)
     return views[sector];
 }
 
+#if !defined(DOOMO_PLATFORM_PS1)   /* (SP1) the PS1 keeps the fx_dist() sort: see combat_build_view */
 /* (perf, X5) The billboard pass's cull and nearest-first order, without a square root per actor.
  *
  * The order is the one the old code made: an insertion sort by d = fx_dist() = floor(sqrt(s)), s = rx^2 + ry^2,
@@ -1846,10 +1847,14 @@ int combat_bb_sort(fix16 ex, fix16 ey, fix16 fx, fix16 fy, int16_t *order, uint3
     }
     return cnt;
 }
+#endif
 
 void combat_build_view(DoomoView3D *v)
 {
     int n = 0, shake = combat_px.shake;
+#if defined(DOOMO_PLATFORM_PS1)
+    int i;
+#endif
     fix16 ex, ey, ez;
     int sw = plat_screen_w(), sh = plat_screen_h();
     memset(v, 0, sizeof(*v));
@@ -1891,8 +1896,32 @@ void combat_build_view(DoomoView3D *v)
     /* billboards: nearest first, capped */
     {
         static int16_t order[ACTOR_MAX];
+#if defined(DOOMO_PLATFORM_PS1)
+        /* (SP1) the PS1 keeps the fx_dist() insertion sort: combat_build_view is resident there and
+         * combat_bb_sort's code (+320..480 B) would take the disc under its 72 KB headroom plan gate (docs/PS1.md) */
+        static int32_t dist[ACTOR_MAX];
+        int cnt = 0, k;
+        fix16 fx = fx_cos(v->angle), fy = fx_sin(v->angle);
+        for (i = 0; i < ACTOR_MAX; i++) {
+            const DoomoActor *a = &doomo_actors[i];
+            fix16 rx, ry, depth, dd;
+            if (!(a->flags & AF_USED)) continue;
+            rx = a->x - ex; ry = a->y - ey;
+            depth = FIXMUL(rx, fx) + FIXMUL(ry, fy);
+            if (depth < -INT2FIX(48)) continue;
+            dd = fx_dist(rx, ry);
+            if (dd > INT2FIX(30 * CELLU)) continue;
+            for (k = cnt; k > 0 && dist[k - 1] > dd; k--) { dist[k] = dist[k - 1]; order[k] = order[k - 1]; }
+            dist[k] = dd;
+            order[k] = (int16_t)i;
+            cnt++;
+        }
+#define BB_IS_NEAR(k) (dist[k] < INT2FIX(3 * CELLU))
+#else
         static uint32_t key[ACTOR_MAX];
         int cnt = combat_bb_sort(ex, ey, fx_cos(v->angle), fx_sin(v->angle), order, key), k;
+#define BB_IS_NEAR(k) (key[k] < BB_KEY_NEAR)
+#endif
         for (k = 0; k < cnt && n < BB_MAX - 2; k++) {
             const DoomoActor *a = &doomo_actors[order[k]];
             int flags, scale, zoff;
@@ -1905,7 +1934,8 @@ void combat_build_view(DoomoView3D *v)
             bbs[n].scale = (uint16_t)scale;
             bbs[n].flags = (uint8_t)flags;
             bbs[n].light = 0;
-            if (combat_px.flash && key[k] < BB_KEY_NEAR) bbs[n].light = 4;
+            if (combat_px.flash && BB_IS_NEAR(k)) bbs[n].light = 4;
+#undef BB_IS_NEAR
             if (combat_px.zoom_t > 128 && combat_weapon()->sight == WSIGHT_THERMAL && IS_DEMON(a->type))
                 bbs[n].flags |= BB_FULLBRIGHT;
             n++;
