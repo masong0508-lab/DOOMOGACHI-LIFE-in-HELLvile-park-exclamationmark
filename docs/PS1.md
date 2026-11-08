@@ -1377,6 +1377,13 @@ of `speed2_action`. `text_emit` is compiled `-Os` on the PS1 (it runs on cache m
 code: resident RAM 96 B smaller than before, 66 KB below the stack top with the boot FMV. The GBA's held 3D view
 (`plat_view_hold`) and S2-1's modal hold are not built here (`combat_int.h`, `levels_select.c`, `ui.h`).
 
+**S2-3 (the Prize Wheel).** 22.6 / 22.7 fps (intro / spin: 56 and 79 frames of 3 vsyncs): the pie's per-span
+`fx_atan2`. With the generated octant table (`core/gen/mg_wheel_tab.c`, in the minigame overlay: `ovl_plan.py` puts
+the generated file in that group, 87 -> 96 KB, the slot is the house's 168 KB) and the rim as ring rects, every wheel
+window holds 30.00 (intro, spin, the result card, done: 2:58-2:128 with the one 3-vsync lockstep frame), exact (the
+native 320x240 shots are byte-identical). Resident RAM byte-identical, 66 KB below the stack top with the boot FMV
+(`unlocks.c` keeps its old walk here). The GBA's held frame is not built here (`ui_modal_hold` is compiled out).
+
 ## 13. Notes for the core
 
 * The 2D layer is fastest with few, large rectangles: one `plat_rect` per

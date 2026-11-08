@@ -424,6 +424,7 @@ against the LAST row, not against a figure from an older base.
 | 32 | SP8: Combat detail (governor, held pace, catch-up ticks), HUD badges as panels, faster `r3d_up2`, ARM 64-bit helpers | `950c9bd` | 2,404 B | **2,332 B** | -72 B | 6,308 B | rebased onto the shared branch after rows 26-31: "after" measured on `950c9bd` + SP8 (2,332 B free, main stack 6,308 B, ROM 6,823,116 B), "before" is after + SP8's own -72 B / +12 B stack (the figures below were measured on `696ffa6` before the rebase). `.bss`: the resolution governor 12 B, the panel table +3 entries (+60 B: `PANEL_COMBAT_FACE/HEALTH/AMMO`; `panel.c`'s shown mask 16 bits). IWRAM: `__aeabi_lmul` and the 64-by-32 `__aeabi_ldivmod` path +124 B resident; `r3d_up2` (rewritten, +~80 B) moved from the resident section into the 3D overlay group, and `r3d_tint_pass` from the 3D group to `r3d.c` (ROM), so the slot is 10,384 -> 10,352 B and the main stack 6,356 -> **6,368 B**. The 3D group must stay at least 10,304 B (the 2D group's `ow_obj.c` tail, `BB_TAIL_BYTES` 1,712 B; the linker asserts it). resident 11,176 -> 11,196 B. Measured on `696ffa6` (row 25's tree) and that tree + SP8, built the same way. ROM 4,335,572 -> 4,336,900 B (+1,328) |
 | 33 | S2-1: the modal hold (`ui_modal_hold`, docs: "Speed wave 2: S2-1" below) | `6c1d937` | 2,332 B | **2,292 B** | -40 B | 6,308 B | measured on `6c1d937` + S2-1 (ROM 6,826,460 B): the hold's state in `ui.c` (key, state, window rect, the toast band's rows: ~24 B), the library's detail signature (8 B), the studio's held flag and the fair title's tier (1 B each); no IWRAM, no buffer (the two Mode 4 pages are the copy; a toast's band goes to `plat_strip`'s page gaps). PS1: compiled out (`ui.h`), resident and overlay slot byte-identical (66 KB below the stack top with the boot FMV, the same as without S2-1) |
 | 34 | S2-2: the 3D view held under a card (`viewhold.c`, docs: "Speed wave 2: S2-2" below) | `af4eef9` | 2,292 B | **2,268 B** | -24 B | 6,308 B | measured on `af4eef9` + S2-2: the held view's state in `viewhold.c` (key, rect, rows per area, options, shade level: 20 B) and the level select's held flag (1 B, padded); the copy itself lives in VRAM that a frame without a 3D view does not use (OBJ VRAM + the two Mode 4 page gaps), no EWRAM buffer; IWRAM resident and the main stack unchanged, the pack / unpack loops in the overlay's UI group (2,720 B, which the 3D group's 10,352 B slot holds). PS1: the hold is not built there (`combat_int.h`, `levels_select.c`), resident RAM 96 B smaller than `af4eef9` with the boot FMV (66 KB below the stack top): the column-window text cache (+192 B) paid for by `text_emit` at `-Os` (it runs on cache misses only) |
+| 35 | S2-3: the Prize Wheel (tables in ROM, the held frame; docs: "Speed wave 2: S2-3" below) | `8c950fa` | 2,276 B | **2,276 B** | 0 B | 6,308 B | the held tick's state (the last full frame's tick, line, face, the POWER bar's flags: 14 B) is in the minigame arena (`MG_ARENA_BYTES`, claimed by the scene); the tables (`core/gen/mg_wheel_tab.c`: the atan octant 5.5 KB, the rims 3.6 KB, the pie rows 0.1 KB) are ROM; no IWRAM. PS1: the tables join the minigame overlay group (`ovl_plan.py`; 87 -> 96 KB, the slot is the house's), resident RAM byte-identical (66 KB below the stack top with the boot FMV) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -1085,6 +1086,49 @@ Floors: those windows close with `expect-fps 28` (the slide 15) in `speed2_actio
 (`SPEED2_GATES=1` gates them). Still short: the level select's slide (a new level's map and a render per step, 0.3 s)
 and the level select itself at 33.3 ms average (2-3 frames of 50 ms in 4 s: its animated backdrop and UI, not the
 preview). The combat windows are SP8's (14-15 drawn fps, logic 30).
+
+### Speed wave 2: S2-3, the Prize Wheel (2026-11-08)
+
+The speed audit 2's worst fair number: the Wheel of Fate at 6.5-8 drawn fps (work 120 ms a tick). The pie asked
+`fx_atan2` for the angle of each of its ~1,500 colour spans a frame (`atan_oct`'s 64-bit products: 44%), the rim was
+three filled discs ~95% hidden under the pie (~10 ms), and the whole tent, host frame and speech bubble were drawn again
+under a wheel that turns every tick.
+
+**Exact steps.** `tools/gen_wheel.py` writes `core/gen/mg_wheel_tab.c` (ROM; `make -C core gen`, `check-gen`):
+`atan_oct(n, d)` for one octant of the disc (`mg_wheel_atan2()` folds a point into it exactly as `fx_atan2` does;
+`test_minigames` checks every point of the disc and the fallback around it), the pie's row half-widths, and the rim
+for both radii (50 at 240x160, 72 bigger) as ring rects: each circle only where the next ones leave it visible, rows
+with the same piece merged (369 / 529 rects, the circles' rows are `ui_circle_dx`'s). The pie sorts each half's rays
+once a frame instead of an insertion sort a row. Frames identical (`vhash-seq` of the intro, the spin and the done
+state; native 240x160 and 320x240 shots byte-identical): 120 -> 54.7 ms, 8 -> 15 fps.
+
+**The held frame (pixel-changing).** Outside the result card the only thing that moves is the wheel, and everything
+it draws (bulbs, pegs, icons, the eyeball, the flapper) lies inside its rim's disc, which the rim and pie repaint
+opaquely. So the wheel uses S2-1's `ui_modal_hold`: after one full frame the GBA keeps it in both pages and a tick draws
+the disc only (the stand and the rim's shadow are already there): 26.9 ms. What changes with the state is painted on
+two held ticks (one per page): the new speech line, then Wagerine's face (at the held frame's tick, so her frame does
+not move), and the POWER bar while winding up; its rows' clean copy (`plat_strip`, saved in the full frame before the
+bar) takes it away when the spin starts (the toast band copy is not kept: `ui_modal_no_band`). The result card (window,
+confetti, flash, shake), a stand-in portrait job and a scene change go back to full frames. While held, the tent's
+sway, the sparkles' twinkle and the host frame's bob stand still. Wagerine's talking face is prefetched before the
+spin (`portrait_prefetch`).
+
+**And a logic spike.** `progress_set` (the day's spin is marked used when it starts) walked the unlock registry with
+an `unlock_at()` per entry, a 16-table walk each: ~23 ms of the spin's first tick. `check_rules` now walks the tables
+directly in the same order (GBA, native, DC; the PS1 keeps the shorter walk so its resident code does not grow).
+
+| window (libmgba, `speed2_fair`) | before | exact steps | + held frame |
+|---|---|---|---|
+| wheel intro | 7.9 fps, 119.9 ms | 15.4 fps, 54.7 ms | **30.0 fps, 26.9 ms** (no frame over 33 ms) |
+| wheel spin | 8.0 fps, 119.2 ms | 17.1 fps, 53.9 ms | **29.9 fps, 27.2 ms** (one 67 ms frame: the result card's first) |
+| result card (60 ticks) | ~8 fps | | 15.0 fps, 59.4 ms (full frames: confetti over the whole screen) |
+| done (60 ticks) | ~8 fps | | 26.7 fps (full frames while the confetti lasts, then held) |
+
+RAM: 0 B EWRAM / IWRAM (the held tick's state is in the minigame arena; 2,276 B EWRAM free, main stack 6,308 B);
+ROM +~11 KB (the tables). Dreamcast (Flycast, no hold there): intro, spin, result card and done all 30.0, worst tick
+14.7 ms. Floors:
+`expect-fps 28` on both wheel windows of `speed2_fair.txt`. Still short of 30: the result card (S2-4's kept backdrop
+with restored rects under the confetti would cover it) and the done state's first second.
 
 ### Where the title's time goes (`make -C gba profile-title`)
 
