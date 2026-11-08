@@ -9,6 +9,10 @@
  * a frame takes longer (heavy 3D), the next tick runs as a "catch-up"
  * tick with drawing skipped (gba_nodraw), so game speed stays 30 Hz while
  * the display drops to 20/15 fps instead of the game slowing down.
+ * (SP8, G-C1) After a 3D frame two catch-up ticks may run in a row, so the
+ * shooter's logic keeps its 30 ticks/s even when a frame takes 4-5
+ * vblanks (the display then drops to 10 fps at worst, which the
+ * resolution governor in r3d.c avoids by switching to half resolution).
  */
 #include <stdarg.h>
 #include "gba_plat.h"
@@ -31,6 +35,9 @@ __attribute__((section(".mailbox"), used)) volatile GbaMailbox gba_mailbox;
 static uint32_t last_flip_vbl;
 static uint32_t work_c0;            /* gba_cycles() at plat_begin_frame */
 static int      skipped_in_row;
+/* (SP8) catch-up ticks allowed in a row: 2 after a frame with a 3D view
+ * (the shooter keeps 30 logic ticks/s), 1 otherwise (>= 15 fps, as before) */
+static uint8_t  skip_max = 1;
 static uint32_t logic_base_vbl;     /* vblank count at logic tick 0 */
 
 /* ---------------------------------------------------------------------- */
@@ -166,7 +173,8 @@ uint32_t gba_work_now(void) { return gba_cycles() - work_c0; }
 void plat_begin_frame(void)
 {
     /* Catch up when the logic has fallen more than one tick behind the
-     * 30 Hz schedule, but never skip two frames in a row (>= 15 fps). */
+     * 30 Hz schedule, but never skip more than skip_max ticks in a row
+     * (1: >= 15 fps; SP8: 2 after a 3D frame, >= 10 fps). */
     uint32_t due = (gba_vblanks - logic_base_vbl) >> 1;
     work_c0 = gba_cycles();
     if (due > gba_frames + 6) {
@@ -174,9 +182,9 @@ void plat_begin_frame(void)
         logic_base_vbl = gba_vblanks - gba_frames * 2;
         due = gba_frames;
     }
-    if (due > gba_frames + 1 && !skipped_in_row && !gba_mailbox.draw_all) {
+    if (due > gba_frames + 1 && skipped_in_row < skip_max && !gba_mailbox.draw_all) {
         gba_nodraw = 1;
-        skipped_in_row = 1;
+        skipped_in_row++;
     } else {
 #if defined(ENGINE_TEST)
         gba_nodraw = 0;
@@ -196,7 +204,7 @@ void plat_begin_frame(void)
 void gba_drop_frame(void)
 {
     gba_nodraw = 1;
-    skipped_in_row = 1;
+    skipped_in_row = 2;                         /* >= skip_max: never skipped on top */
 }
 
 /* platform.h: a catch-up tick's drawing is skipped (all 2D/3D calls are
@@ -239,10 +247,39 @@ void video_flip(void)
     cv_pre_flip();              /* G5: finish a tile frame (or convert it) */
     postfx_pre_flip();          /* S1: squash OBJ checks + OAM (postfx.h) */
     {
-        /* (G7) Options "3D: Better": a full-resolution 3D view is shown at
-         * most 20 times a second (three vblanks), so it holds steady */
-        extern int gba_view3d_frame;
+        /* (G7) a full-resolution 3D view is shown at most 20 times a
+         * second (three vblanks), so it holds steady; a half-resolution
+         * one at most 30 (two).
+         * (SP8, from G9) and the pace holds: a 3D frame that needs more
+         * vblanks than the pace (counting the wait for the next vblank)
+         * moves it there (at most 4: 15 fps), and it comes back one step
+         * only after 8 frames in a row fit the faster pace. A view that
+         * hovers at a vblank boundary then shows at an even 20 (or 15)
+         * instead of a ragged 30/20 or 20/15 mix. The resolution governor
+         * (r3d.c, Options "Combat detail") sees every 3D frame here. */
+        extern uint8_t gba_view3d_frame, gba_view3d_pace;
+        void r3d_gov_flip(int frame, uint32_t took, uint32_t work);
         uint32_t need = gba_view3d_frame == 1 ? 3u : 2u;
+        if (gba_view3d_frame) {
+            uint32_t base = need, pace = gba_view3d_pace & 7u, fit = gba_view3d_pace >> 3;
+            uint32_t took = gba_vblanks - last_flip_vbl + (REG_VCOUNT < 160 ? 1u : 0u);
+            r3d_gov_flip(gba_view3d_frame, took, gba_work_last);
+            if (pace < base) { pace = base; fit = 0; }
+            if (took > pace) {
+                pace = took > 4u ? 4u : took;
+                fit = 0;
+            } else if (pace > base && took < pace) {
+                if (++fit >= 8u) { pace--; fit = 0; }
+            } else {
+                fit = 0;
+            }
+            gba_view3d_pace = (uint8_t)(pace | fit << 3);
+            need = pace;
+            skip_max = 2;
+        } else {
+            gba_view3d_pace = 0;
+            skip_max = 1;
+        }
 #if defined(ENGINE_TEST)
         need = 2u;
 #endif

@@ -32,6 +32,9 @@
  *                          ow_sprite and by the G1 baseline's per-pixel blit
  *                          must leave the same back buffer; logs the count
  *                          of mismatches
+ * and the options' (SP8):
+ *   GBA_HC_OPT id << 8 | v opt_set(id, v) -> opt_get(id) (the harness's
+ *                          "opt", e.g. Combat detail: scripts/view3d.txt)
  * and the tick hold of the harness's "sync on" (G1, gba_harness_hold).
  */
 #include "gba_plat.h"
@@ -227,6 +230,11 @@ void gba_harness_cmd(void)
     /* --- end H2 --- */
     case GBA_HC_OW_SPRITE_TEST:            /* G2: owtest.c */
         r = ow_sprite_selftest(arg);
+        break;
+    case GBA_HC_OPT:                       /* SP8: harness "opt ID VALUE" */
+        opt_set((int)((arg >> 8) & 0xFF), (int)(arg & 0xFF));
+        r = (uint32_t)opt_get((int)((arg >> 8) & 0xFF));
+        gba_logf("hcmd: opt %u = %u", (unsigned)((arg >> 8) & 0xFF), (unsigned)r);
         break;
     default:
         break;

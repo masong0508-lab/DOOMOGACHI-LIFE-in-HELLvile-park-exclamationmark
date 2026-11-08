@@ -39,6 +39,12 @@
  *                       (SA2) "harness: gaps LABEL: ..." the presented
  *                       frames by vblanks taken (2 = 30 fps, 3 = 50 ms)
  *   expect-fps MIN [LABEL]  fps that fails below MIN drawn frames/s
+ *   expect-logic MIN [LABEL]  (SP8) fail unless the window the last fps /
+ *                       expect-fps line measured ran >= MIN logic ticks/s
+ *   expect-2x2 X Y W H MIN MAX [LABEL]  (SP8) count the 2x2 pixel blocks
+ *                       (even X, Y) of the rect on screen that are not one
+ *                       colour; fail unless MIN <= count <= MAX (a doubled
+ *                       half-resolution 3D view: 0)
  *   vhash [LABEL]       print the FNV-1a of the emulator's output frame
  *                       (240x160 as BGR555; display-mode independent).
  *                       The last frame presented, which depends on the
@@ -56,6 +62,8 @@
  *                       the next tick)
  *   profile N           sample the PC over N instructions and print the
  *                       hottest functions (needs --nm, see below)
+ *   opt ID VALUE        (SP8) game ROM: opt_set(ID, VALUE) (mailbox); fails
+ *                       unless opt_get(ID) then reads VALUE
  *   save N / load N / expect-save N / verify N / save-must-fail N
  *                       the core's save_game / load_game / save_exists /
  *                       save_verify run inside the game ROM (mailbox
@@ -254,6 +262,7 @@ static int worklog;             /* --worklog: one line per drawn frame (tick, CP
 static int sync_mode;
 static uint32_t sync_tick;      /* the tick boundary the ROM is held at */
 static int no_fps_gates;        /* --no-fps-gates: expect-fps only reports */
+static double last_lps;         /* (SP8) logic ticks/s of the last fps window (expect-logic) */
 
 /* mailbox command (game ROM, gba/src/hcmd.c): post, run frames until the
  * ROM clears it; 0 if it never answered */
@@ -274,6 +283,8 @@ static int no_fps_gates;        /* --no-fps-gates: expect-fps only reports */
 /* --- H2: the house renderer (gba/src/room_int.h) --- */
 #define HC_ROOM_PARITY 14
 #define HC_ROOM_TEST 15
+/* (SP8) "opt ID VALUE": opt_set(ID, VALUE) in the game ROM (hcmd.c) */
+#define HC_OPT 17
 static const char *golden_path;            /* --golden FILE (room-parity) */
 
 /* "N HASH" line N of the room_ref golden; 0 if missing */
@@ -724,6 +735,20 @@ static void shot(const char *name)
  * scale), as BGR555 halfwords, low byte first. Unlike a CRC of a Mode 4
  * VRAM page this is the same thing in every display mode, so it compares
  * two ROMs that draw the same picture differently (bitmap vs tiles + OBJs). */
+/* (SP8) expect-2x2: aligned 2x2 blocks of the rect that are not one colour
+ * (a half-resolution 3D view doubled to the screen has none) */
+static int frame_blocks(int x, int y, int w, int h)
+{
+    int bx, by, n = 0;
+    x &= ~1; y &= ~1;
+    for (by = y; by + 1 < y + h && by + 1 < SCR_H; by += 2)
+        for (bx = x; bx + 1 < x + w && bx + 1 < SCR_W; bx += 2) {
+            const color_t *p = video + by * SCR_W + bx;
+            if (p[1] != p[0] || p[SCR_W] != p[0] || p[SCR_W + 1] != p[0]) n++;
+        }
+    return n;
+}
+
 static uint32_t frame_fnv(void)
 {
     uint32_t h = 2166136261u;
@@ -1000,6 +1025,24 @@ static int run_script(const char *path)
                         path, lineno, want, p2p);
                 failed = 1;
             }
+        } else if (!strcmp(argv[0], "expect-logic") && argc >= 2) {
+            /* (SP8) the logic ticks a second of the window the last fps /
+             * expect-fps line measured: fail under MIN (the game itself
+             * slowed down) */
+            char label_buf[1024];
+            const char *label = line_rest(raw, argv, argc, line, 2, label_buf, sizeof(label_buf));
+            printf("harness: logic %s%s%.1f ticks/s (want >= %s)\n", label, label[0] ? ": " : "",
+                   last_lps, argv[1]);
+            if (last_lps < atof(argv[1])) {
+                if (no_fps_gates)
+                    fprintf(stderr, "harness: %s:%d %s: %.1f logic ticks/s, under the "
+                            "floor %s (gates off)\n", path, lineno, label, last_lps, argv[1]);
+                else {
+                    fprintf(stderr, "harness: %s:%d %s: %.1f logic ticks/s, expected >= %s\n",
+                            path, lineno, label, last_lps, argv[1]);
+                    failed = 1;
+                }
+            }
         } else if (!strcmp(argv[0], "fps") || (!strcmp(argv[0], "expect-fps") && argc >= 2)) {
             /* logic ticks and presented frames per second since the last
              * "fps" (or the start); expect-fps MIN [LABEL] (H2) also fails
@@ -1015,6 +1058,7 @@ static int run_script(const char *path)
             const char *label = expect ? line_rest(raw, argv, argc, line, 2, label_buf, sizeof(label_buf))
                                        : (rest ? rest : "");
             double dfps = v > v0 ? (d - d0) * 60.0 / (v - v0) : 0.0;
+            last_lps = v > v0 ? (t - t0) * 60.0 / (v - v0) : 0.0;
             if (v > v0)
                 printf("harness: fps %s%s%.1f logic ticks/s, %.1f drawn frames/s, "
                        "work avg %.1f ms max %.1f ms (%u ticks, %u video frames)\n",
@@ -1101,6 +1145,19 @@ static int run_script(const char *path)
             if (sync_mode) run_frame();
             printf("harness: vhash %s: fnv %08x (tick %u)\n", rest ? rest : "-",
                    (unsigned)frame_fnv(), (unsigned)ticks());
+        } else if (!strcmp(argv[0], "expect-2x2") && argc >= 7) {   /* SP8 */
+            char label_buf[1024];
+            const char *label = line_rest(raw, argv, argc, line, 7, label_buf, sizeof(label_buf));
+            int n, lo = atoi(argv[5]), hi = atoi(argv[6]);
+            if (sync_mode) run_frame();
+            n = frame_blocks(atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]));
+            printf("harness: 2x2 %s: %d blocks not one colour (want %d..%d)\n",
+                   label[0] ? label : "-", n, lo, hi);
+            if (n < lo || n > hi) {
+                fprintf(stderr, "harness: %s:%d expect-2x2 %s: %d not in %d..%d\n", path, lineno,
+                        label[0] ? label : "-", n, lo, hi);
+                failed = 1;
+            }
         } else if (!strcmp(argv[0], "vhash-seq") && argc >= 2) {
             char label_buf[1024];
             const char *label = line_rest(raw, argv, argc, line, 2, label_buf, sizeof(label_buf));
@@ -1245,6 +1302,14 @@ static int run_script(const char *path)
             uint32_t r;
             if (!hcmd(HC_ROOM_TEST, (uint32_t)strtoul(argv[1], NULL, 0), &r)) failed = 1;
         /* --- end H2 --- */
+        } else if (!strcmp(argv[0], "opt") && argc >= 3) {          /* SP8 */
+            uint32_t r, id = (uint32_t)strtoul(argv[1], NULL, 0), v = (uint32_t)strtoul(argv[2], NULL, 0);
+            if (!hcmd(HC_OPT, (id & 0xFF) << 8 | (v & 0xFF), &r)) failed = 1;
+            else if (r != v) {
+                fprintf(stderr, "harness: %s:%d opt %u reads %u, not %u\n", path, lineno,
+                        (unsigned)id, (unsigned)r, (unsigned)v);
+                failed = 1;
+            }
         } else if (!strcmp(argv[0], "post") && argc >= 3) {
             core->busWrite32(core, MAILBOX_ADDR + 20, (uint32_t)atoi(argv[2]));
             core->busWrite32(core, MAILBOX_ADDR + 16, (uint32_t)atoi(argv[1]));

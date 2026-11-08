@@ -16,8 +16,10 @@ enum {
     GBA_HC_STORY_FP = 13,     /* -> story_fingerprint()                            */
     GBA_HC_ROOM_PARITY = 14,  /* arg view | path: -> FNV of the parity frame (room.c) */
     GBA_HC_ROOM_TEST = 15,    /* arg ROOM_TEST_*: the house test layout (room.c)   */
-    GBA_HC_OW_SPRITE_TEST = 16  /* (G2) arg set << 16 | n: n random ow_sprite cases
+    GBA_HC_OW_SPRITE_TEST = 16, /* (G2) arg set << 16 | n: n random ow_sprite cases
                                  * against the baseline blit -> mismatches (owtest.c) */
+    GBA_HC_OPT = 17             /* (SP8) arg id << 8 | value: opt_set(id, value)
+                                 * -> opt_get(id) (harness "opt ID VALUE") */
 };
 uint32_t ow_sprite_selftest(uint32_t n);
 

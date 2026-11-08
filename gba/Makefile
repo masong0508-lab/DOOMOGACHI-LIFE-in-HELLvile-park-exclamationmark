@@ -244,6 +244,7 @@ test:
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-ow
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-lang
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-tips
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-3d
 
 test-et: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile engine-test
@@ -329,6 +330,16 @@ test-tips: harness
 	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/tips.txt \
 	    --shots $(SHOTS)/tips --quiet
 # --- end CL4 ---
+
+# --- SP8: Options "Combat detail" in the Vape Cellar (the row, the 30 Hz
+# game speed in every mode, Smooth's doubled half-resolution view, fps
+# floors), docs/GBA.md "Combat detail" ---
+test-3d: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@mkdir -p $(SHOTS)/view3d
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/view3d.txt \
+	    --shots $(SHOTS)/view3d --quiet
+# --- end SP8 ---
 
 # --- G1: the speed tour (docs/GBA.md "Speed pass 4"): every target scene's
 # fps (expect-fps floors), screenshots and output-frame hashes, printed as a

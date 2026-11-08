@@ -36,8 +36,68 @@ uint32_t r3d_dbg[4];
 extern const uint8_t gba_missing_tex[64 * 64];
 
 /* (G7) the frame's 3D view: 0 none, 1 full resolution, 2 half (main.c's
- * pacing: a full-resolution view is shown at most 20 times a second) */
-int gba_view3d_frame;
+ * pacing: a full-resolution view is shown at most 20 times a second, a
+ * half one 30); (SP8, from G9) gba_view3d_pace is the pace video_flip
+ * holds (vblanks a 3D frame, low 3 bits) and its count of frames that beat
+ * it (the rest). Two bytes where G7's int was: no EWRAM. */
+uint8_t gba_view3d_frame, gba_view3d_pace;
+
+/* ---- (SP8, G-C1) the resolution governor -------------------------------
+ * Options "Combat detail" (OPT3D_*, town.h). Draw-side only, like the
+ * invaded map's sprite governor (overworld.c V10): it picks the resolution
+ * of the NEXT 3D view from how many vblanks the last ones took; nothing in
+ * the game ever sees it.
+ *   Smooth    half resolution always (G7's "Faster").
+ *   Balanced  full resolution while a full-resolution frame shows at 20 fps
+ *             or better (3 vblanks); a slower one switches to half
+ *             resolution. From half resolution it comes back only when the
+ *             last frame plus what full resolution costs over half (r3d
+ *             cycles measured at both) fits again, at most once per
+ *             gov_wait frames (16, doubled after every failed try, <= 240).
+ *   Max       the same with a limit of 4 vblanks (15 fps): full resolution
+ *             unless it falls below that.
+ * State: 12 bytes of .bss (EWRAM). */
+static uint8_t  gov_half;          /* the governor wants half resolution            */
+static uint8_t  gov_wait;          /* frames before the next try at full resolution */
+static uint8_t  gov_backoff = 16;  /* the wait after a try that did not fit         */
+static uint32_t gov_r3d[2];        /* r3d cycles of the last full / half view       */
+
+#define VBL_CYC 280896u            /* cycles a vblank (16.78 MHz / 59.73 Hz)        */
+
+static int view_half(void)
+{
+    int m = opt_get(OPT_3D_FAST);
+    if (m == OPT3D_SMOOTH) return 1;
+    return gov_half;
+}
+
+/* main.c video_flip: a frame with a 3D view (frame 1 full, 2 half) is about
+ * to be shown `took` vblanks after the previous one; work = its CPU cycles */
+void r3d_gov_flip(int frame, uint32_t took, uint32_t work)
+{
+    int m = opt_get(OPT_3D_FAST);
+    uint32_t limit = m == OPT3D_MAX ? 4u : 3u;
+    if (m == OPT3D_SMOOTH || !frame) return;
+    if (frame == 1) {
+        if (took > limit) {
+            gov_half = 1;
+            gov_wait = gov_backoff;
+            gov_backoff = (uint8_t)(gov_backoff >= 120 ? 240 : gov_backoff * 2);
+        } else {
+            gov_backoff = 16;
+        }
+        return;
+    }
+    if (gov_wait) { gov_wait--; return; }
+    {
+        /* full resolution costs what r3d costs over half (3x half before
+         * any full-resolution view was measured) */
+        uint32_t full = gov_r3d[0] ? gov_r3d[0] : gov_r3d[1] * 3u;
+        uint32_t est = work + (full > gov_r3d[1] ? full - gov_r3d[1] : 0);
+        if (est + VBL_CYC / 4u <= limit * VBL_CYC) gov_half = 0;     /* try it */
+        else gov_wait = 8;
+    }
+}
 /* video_loops.s: the half-resolution view at base (vh2 rows of hw
  * halfwords) doubled in place to 2 hw x 2 vh2 */
 void r3d_up2(uint16_t *base, int hw, int vh2) IWRAM_CALL;
@@ -247,7 +307,11 @@ static void draw_sprites(const DoomoView3D *v)
     int i, n = 0, count = v->sprite_count;
     if (!v->sprites || count <= 0) return;
     if (count > R3D_MAXSPR) count = R3D_MAXSPR;
-    for (i = 0; i < count; i++) {
+    /* (SP8, from G9) the list comes nearest first (combat_build_view):
+     * walked backwards it is nearly far to near already, so the insertion
+     * sort below moves little (front to back it shifted every entry: O(n^2)
+     * with the ~50 billboards of a combat map) */
+    for (i = count - 1; i >= 0; i--) {
         const DoomoBillboard *b = &v->sprites[i];
         int32_t dx, dy, depth;
         if (!b->img || !b->img->pix || !b->img->w || !b->img->h) continue;
@@ -260,11 +324,16 @@ static void draw_sprites(const DoomoView3D *v)
         spr_order[n].idx = (int16_t)i;
         n++;
     }
-    /* far to near (insertion sort, n is small) */
+    /* far to near, equal depths in list order (the order the stable sort
+     * of the list gave before: same frames) */
     for (i = 1; i < n; i++) {
         SprOrder k = spr_order[i];
         int j = i - 1;
-        while (j >= 0 && spr_order[j].depth < k.depth) { spr_order[j + 1] = spr_order[j]; j--; }
+        while (j >= 0 && (spr_order[j].depth < k.depth ||
+                          (spr_order[j].depth == k.depth && spr_order[j].idx > k.idx))) {
+            spr_order[j + 1] = spr_order[j];
+            j--;
+        }
         spr_order[j + 1] = k;
     }
     for (i = 0; i < n; i++) {
@@ -420,6 +489,29 @@ static void vtex_update(void)
     memset(r3d_texpix, 0, sizeof(r3d_texpix));
 }
 
+/* ------------------------------------------------------------------------ */
+/* view tint (damage / holy flash, vape haze): level/16 of the pixels go
+ * through the tint map, 4x4 ordered dither (reference semantics) over the
+ * 2-pixel columns, after the sprites. (SP8) THUMB in ROM: it runs once a
+ * frame and only sets up r3d_tint_rows (r3d_loops.s, the 3D overlay). */
+
+void r3d_tint_pass(const uint8_t *tm, int level)
+{
+    static const uint8_t bayer[16] = { 0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5 };
+    uint8_t thr[16];
+    int i;
+    for (i = 0; i < 16; i++) thr[i] = bayer[i] < level;
+    /* a VRAM copy of the tint map (reads as fast as IWRAM; VRAM takes
+     * halfword / word writes only) */
+    if (((uintptr_t)tm & 3) == 0) {
+        dma3_copy32(R3D_TINT_LUT, tm, 256 / 4);
+    } else {
+        volatile uint16_t *d = (volatile uint16_t *)R3D_TINT_LUT;
+        for (i = 0; i < 128; i++) d[i] = (uint16_t)(tm[2 * i] | (tm[2 * i + 1] << 8));
+    }
+    r3d_tint_rows(r3f.dst, r3f.ncol, r3f.vh, R3D_TINT_LUT, thr);
+}
+
 void plat_view3d(const DoomoView3D *v)
 {
     uint32_t t0, t1, t2, t3;
@@ -448,10 +540,11 @@ void plat_view3d(const DoomoView3D *v)
     if (vx + vw > SCREEN_W) vw = SCREEN_W - vx;
     if (vy + vh > SCREEN_H) vh = SCREEN_H - vy;
     if (vw < 8 || vh < 8) return;
-    /* (G7) Options "3D: Faster": the view at half resolution into the top
-     * left quarter of its rect, then doubled in place (r3d_up2) */
+    /* (G7) the view at half resolution into the top left quarter of its
+     * rect, then doubled in place (r3d_up2); (SP8) when Options "Combat
+     * detail" or its governor asks for it (view_half) */
 #if !defined(ENGINE_TEST)
-    half = opt_get(OPT_3D_FAST) && !(vx & 3) && !(vw & 3) && !(vh & 1) && vw >= 32 && vh >= 32;
+    half = view_half() && !(vx & 3) && !(vw & 3) && !(vh & 1) && vw >= 32 && vh >= 32;
 #endif
     if (half) { vw >>= 1; vh >>= 1; }
     gba_view3d_frame = half ? 2 : 1;
@@ -523,6 +616,7 @@ void plat_view3d(const DoomoView3D *v)
     if (half) r3d_up2(r3f.dst, vw >> 1, vh);
     t3 = gba_cycles();
 
+    gov_r3d[half] = t3 - t0;                        /* SP8: the governor's estimate */
     r3d_stats.cycles_cols = t1 - t0;
     r3d_stats.cycles_planes = t2 - t1;
     r3d_stats.cycles_sprites = t3 - t2;

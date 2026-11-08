@@ -36,6 +36,10 @@
 # hall menu to 25 (85% of 29.9, 29.9, 30.0, 15.0 and 30.0).
 # SP3 (ISLAND_SPEED.md I11, the toast band) took the island hub from 24.3
 # to 29.9 fps and its floor from 6.3 to 25 (life_speed.txt's hub too).
+# SP8 (Options "Combat detail", default Balanced: the resolution governor,
+# two catch-up ticks after a 3D frame, the HUD badges as panels) took combat
+# from 9.8 to 14.3-14.6 fps at 30 logic ticks/s and its floors 8 -> 12
+# (make -C gba test-3d gates the game speed in every mode).
 wait 40
 expect-log doomo: init
 sync on 61
@@ -151,7 +155,7 @@ push COMBAT 3
 wait 200
 fps start
 wait 130
-expect-fps 9 combat first person
+expect-fps 12 combat first person
 shot combat_fp
 vhash-seq 30 combat first person
 seed 1
@@ -163,7 +167,7 @@ press SELECT
 wait 200
 fps start
 wait 130
-expect-fps 9 combat third person
+expect-fps 12 combat third person
 shot combat_tp
 vhash-seq 30 combat third person
 

@@ -1,0 +1,92 @@
+# view3d.txt - Options "Combat detail" in the shooter on the game ROM (SP8:
+# G-C1, G-C2; docs/GBA.md "Combat detail"), `make -C gba test-3d` (part of
+# `make test`). OPT_3D_FAST is option 63 (town.h): 0 Balanced (default),
+# 1 Smooth, 2 Max detail.
+#   - the row is on the Performance page (OPTPAGE_PERF = 7);
+#   - in every mode the game keeps its 30 logic ticks a second
+#     (expect-logic: catch-up ticks after a 3D frame, main.c), however slow
+#     the view draws;
+#   - Smooth draws the Vape Cellar at half resolution doubled by r3d_up2:
+#     every 2x2 block of the view above the HUD is one colour;
+#   - Balanced and Max detail start at full resolution and the governor
+#     (r3d.c) drops to half resolution while full-resolution frames would
+#     show below 20 / 15 fps, which they do in this fight.
+# Floors (expect-fps) are about 85% of what the ROM measured when SP8 landed
+# (docs/GBA.md); expect-logic is the 30 Hz game speed less 1.
+wait 40
+expect-log doomo: init
+sync on 61
+
+# ---- the row ------------------------------------------------------------------
+seed 1
+scene TITLE
+wait 2
+push OPTIONS 7
+expect-text Combat detail
+shot options_perf
+
+# ---- Smooth, first then third person ------------------------------------------
+seed 1
+scene TITLE
+wait 2
+opt 63 1
+push COMBAT 3
+wait 200
+fps start
+wait 130
+expect-fps 12 smooth first person
+expect-logic 29 smooth first person
+expect-2x2 0 0 192 64 0 0 smooth first person
+shot smooth_fp
+seed 1
+scene TITLE
+wait 2
+push COMBAT 3
+wait 2
+press SELECT
+wait 200
+fps start
+wait 130
+expect-fps 12 smooth third person
+expect-logic 29 smooth third person
+expect-2x2 0 0 192 64 0 0 smooth third person
+shot smooth_tp
+
+# ---- Balanced (the default), first then third person --------------------------
+seed 1
+scene TITLE
+wait 2
+opt 63 0
+push COMBAT 3
+wait 200
+fps start
+wait 130
+expect-fps 12 balanced first person
+expect-logic 29 balanced first person
+shot balanced_fp
+seed 1
+scene TITLE
+wait 2
+push COMBAT 3
+wait 2
+press SELECT
+wait 200
+fps start
+wait 130
+expect-fps 12 balanced third person
+expect-logic 29 balanced third person
+shot balanced_tp
+
+# ---- Max detail, first person -------------------------------------------------
+seed 1
+scene TITLE
+wait 2
+opt 63 2
+push COMBAT 3
+wait 200
+fps start
+wait 130
+expect-fps 12 max detail first person
+expect-logic 29 max detail first person
+shot max_fp
+opt 63 0

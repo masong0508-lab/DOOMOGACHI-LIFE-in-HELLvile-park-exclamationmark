@@ -366,42 +366,69 @@ pn_span:
     .ltorg
 
 @ void r3d_up2(uint16_t *base, int hw, int vh2)
-@ G7 (r3d.c, Options "3D: Faster"): the 3D view drawn at half resolution
-@ into the top left of its rect (vh2 rows of hw halfwords, row stride 240
-@ bytes, base word aligned) doubled in place: source row r goes to rows 2r
-@ and 2r + 1, each pixel twice. Rows from the bottom up and pixels from the
-@ right, so no source pixel is overwritten before it is read.
-    .section .iwram, "ax", %progbits
+@ G7 (r3d.c, Options "Combat detail": the half-resolution view): the 3D view
+@ drawn at half resolution into the top left of its rect (vh2 rows of hw
+@ halfwords, row stride 240 bytes, base word aligned) doubled in place:
+@ source row r goes to rows 2r and 2r + 1, each pixel twice. Rows from the
+@ bottom up and pixels from the right, so no source pixel is overwritten
+@ before it is read.
+@ (SP8) Every halfword of the view is one 2-pixel column of the raycaster
+@ (both bytes equal: r3d.c, r3d_loops.s), so a source halfword "a a" is one
+@ output word "a a a a": two source words (4 columns) are read with one
+@ LDMDB and written as four words to each of the two rows with STMDB.
+@ Same pixels as the byte-wise G7 loop for such input, about half its time
+@ (5.2 -> ~2.6 ms for the 120 x 80 view).
+    .section .iwram_3d, "ax", %progbits     @ (SP8) the 3D overlay group: only plat_view3d calls it
     .arm
     .align 2
     .global r3d_up2
     .type   r3d_up2, %function
 r3d_up2:
-    push    {r4-r8, lr}
+    push    {r4-r11, lr}
     subs    r3, r2, #1                  @ r = vh2 - 1
     blt     9f
     mov     lr, #240
-1:  mla     r5, r3, lr, r0              @ source row r
+1:  mla     r4, r3, lr, r0              @ source row r
     add     r6, r3, r3
     mla     r6, lr, r6, r0              @ row 2r (Rd != Rm: ARMv4 MLA rule)
     add     r7, r6, #240                @ row 2r + 1
-    add     r5, r5, r1, lsl #1          @ their ends
+    add     r4, r4, r1, lsl #1          @ their ends
     add     r6, r6, r1, lsl #2
     add     r7, r7, r1, lsl #2
-    mov     r8, r1
-2:  ldrh    r12, [r5, #-2]!             @ pixels a (low), b (high)
-    and     r4, r12, #0xFF
-    orr     r4, r4, r4, lsl #8          @ a a
-    mov     r12, r12, lsr #8
-    orr     r12, r12, r12, lsl #8       @ b b
-    orr     r4, r4, r12, lsl #16        @ a a b b
-    str     r4, [r6, #-4]!
-    str     r4, [r7, #-4]!
-    subs    r8, r8, #1
-    bne     2b
-    subs    r3, r3, #1
+    tst     r1, #1                      @ an odd last halfword
+    beq     2f
+    ldrh    r8, [r4, #-2]!
+    orr     r8, r8, r8, lsl #16
+    str     r8, [r6, #-4]!
+    str     r8, [r7, #-4]!
+2:  mov     r12, r1, lsr #1             @ whole words
+    tst     r12, #1                     @ an odd last word
+    beq     3f
+    ldr     r8, [r4, #-4]!
+    mov     r9, r8, lsr #16
+    orr     r9, r9, r9, lsl #16         @ b b b b
+    mov     r8, r8, lsl #16
+    orr     r8, r8, r8, lsr #16         @ a a a a
+    stmdb   r6!, {r8, r9}
+    stmdb   r7!, {r8, r9}
+3:  movs    r12, r12, lsr #1            @ word pairs
+    beq     5f
+4:  ldmdb   r4!, {r8, r10}              @ "a a b b", "c c d d"
+    mov     r9, r8, lsr #16
+    orr     r9, r9, r9, lsl #16
+    mov     r8, r8, lsl #16
+    orr     r8, r8, r8, lsr #16
+    mov     r11, r10, lsr #16
+    orr     r11, r11, r11, lsl #16
+    mov     r10, r10, lsl #16
+    orr     r10, r10, r10, lsr #16
+    stmdb   r6!, {r8-r11}
+    stmdb   r7!, {r8-r11}
+    subs    r12, r12, #1
+    bne     4b
+5:  subs    r3, r3, #1
     bge     1b
-9:  pop     {r4-r8, lr}
+9:  pop     {r4-r11, lr}
     bx      lr
     .size   r3d_up2, . - r3d_up2
 
