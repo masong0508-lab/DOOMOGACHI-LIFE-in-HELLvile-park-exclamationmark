@@ -14,6 +14,7 @@
 #include "doomo/portrait.h"
 #include "doomo/sim.h"
 #include "doomo/items.h"
+#include "doomo/part_meta.h"
 #include "doomo/town.h"
 #include "doomo/story.h"
 #include "sim_int.h"
@@ -278,6 +279,7 @@ int family_resident(int id, DoomoResident *out)
     RES_SET_PRONOUN(out, f->pronoun);
     resident_set_romance(out, f->romance);
     resident_set_stage(out, fam_[i].stage);
+    part_age_filter_resident(out, -1);   /* CR12: generated as an adult, worn at their stage */
     out->status = RES_ALIVE;
     resident_sanitize(out);
     return 1;

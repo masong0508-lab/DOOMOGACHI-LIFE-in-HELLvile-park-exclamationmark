@@ -6,6 +6,7 @@
 #include "doomo/unlocks.h"
 #include "doomo/unlock_ids.h"
 #include "doomo/family.h"
+#include "doomo/part_meta.h"
 #include "doomo/playas.h"
 #include "doomo/roster.h"
 #include "doomo/save_budget.h"
@@ -408,6 +409,32 @@ TEST(family_resident_builds_the_person_from_the_identity)
     CHECK(!family_resident(PLAYAS_ID_FAMILY_FIRST + 9, &r));
     CHECK(!family_resident(a + 1, &r));
     CHECK(!family_resident(id, NULL));
+}
+
+TEST(family_resident_never_dresses_a_minor_above_their_stage)
+{
+    /* CR12: the identity's look is generated at the default (adult) stage, then the stage is
+     * set; the adult-only hat the seed rolled must not survive onto the toddler */
+    DoomoResident r, g;
+    uint32_t seed = 5000u;
+    int id, hat, i, bad = 0;
+    fresh();
+    do resident_generate(&g, ++seed); while (RES_LOOK(&g, GF_HAT) == HAT_NONE);
+    hat = RES_LOOK(&g, GF_HAT);
+    part_age_test_set(GF_HAT, hat, PAGE_ADULT);
+    id = family_pool_add(FAMROLE_CHILD, LIFE_TODDLER, seed, "Pip", PRONOUN_SHE);
+    CHECK(id >= 0);
+    CHECK(family_resident(id, &r));
+    CHECK_EQ(RES_LOOK(&r, GF_HAT), HAT_NONE);
+    CHECK_EQ(RES_LOOK(&r, GF_TOP), RES_LOOK(&g, GF_TOP));           /* only the gated part goes */
+    for (i = 0; i < 400; i++) {                                      /* a re-rolled look is gated too */
+        resident_randomize_look(&r, 0x5EED0000u + (uint32_t)i);
+        bad += RES_LOOK(&r, GF_HAT) == hat;
+    }
+    part_age_test_set(GF_HAT, hat, -1);
+    CHECK_EQ(bad, 0);
+    CHECK(family_resident(id, &r));
+    CHECK_EQ(RES_LOOK(&r, GF_HAT), hat);                             /* ungated: as rolled */
 }
 
 TEST(family_pool_section_round_trips_in_either_order)

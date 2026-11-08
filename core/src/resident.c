@@ -767,6 +767,7 @@ void resident_randomize_look(DoomoResident *r, uint32_t seed)
     res_get_look(r, &lk);
     gen_look(&lk, &rng, (r->flags & RF_HELLBORN) != 0);
     res_set_look(r, &lk);
+    part_age_filter_resident(r, -1);    /* CR12 */
 }
 
 /* ---------------------------------------------------------------------- */
