@@ -28,7 +28,7 @@ static uint32_t bd_key;
 static uint8_t buf_pix[2][NAT_MAX_W * NAT_MAX_H];
 static uint32_t buf_serial[2], serial;
 static int16_t buf_dirt[2][4];
-static int cur_buf, frame_stage, tracking, frames;
+static int cur_buf, frame_stage, tracking, frames, last_kept;
 static int16_t trk[4];
 
 /* the backdrop (id, key) drawn with `draw` into bd_pix: the screen is saved around it */
@@ -111,11 +111,15 @@ void nat_stage_frame_end(void)
         buf_dirt[cur_buf][0] = buf_dirt[cur_buf][1] = buf_dirt[cur_buf][2] = buf_dirt[cur_buf][3] = 0;
     }
     if (nat_stage_buffers == 2) memcpy(buf_pix[cur_buf], nat_fb, (size_t)nat_w * (size_t)nat_h);
+    last_kept = frame_stage;
     frame_stage = 0;
     tracking = 0;
     frames++;
     if (nat_stage_buffers == 2) cur_buf ^= 1;
 }
+
+/* (S2-4) 1 when the frame last presented was drawn over a kept backdrop (tests) */
+int nat_stage_kept(void) { return last_kept; }
 
 void nat_stage_reset(void)
 {

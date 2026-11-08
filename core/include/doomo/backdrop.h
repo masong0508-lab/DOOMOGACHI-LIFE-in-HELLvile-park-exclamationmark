@@ -17,7 +17,8 @@
 
 #include "types.h"
 
-enum { DOOMO_BACKDROP_EXO_CHURCH = 1 };
+enum { DOOMO_BACKDROP_EXO_CHURCH = 1,
+       DOOMO_BACKDROP_MG = 2 };            /* (S2-4) the Fun Fair booths' still playfields (mg.c) */
 
 typedef struct DoomoBackdrop {
     int id;                                    /* DOOMO_BACKDROP_*                     */

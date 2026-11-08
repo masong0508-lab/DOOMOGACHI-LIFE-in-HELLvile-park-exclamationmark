@@ -444,7 +444,8 @@ const MgGame mg_game_dodge = {
     MG_DODGE, PROG_HS_DODGE, SONG_VAPE_LOUNGE, 3, ROSTER_ID_LORD_VAPULA,
     { MG_DODGE_B, MG_DODGE_S, MG_DODGE_G }, 10, 60 * 30,
     { PAL_PAINT(PAINT_VAPE_PURPLE, 1), PAL_PAINT(PAINT_LAVENDER, 2), PAL_PAINT(PAINT_GRAPE, 1) },
-    dg_start, dg_update, dg_draw, dg_art, dg_bot
+    dg_start, dg_update, dg_draw, dg_art, dg_bot,
+    NULL, NULL
 };
 
 MG_DEFINE_SCENE(SCENE_MG_DODGE, "MG_DODGE", mg_game_dodge);

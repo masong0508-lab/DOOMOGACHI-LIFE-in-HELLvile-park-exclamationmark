@@ -498,7 +498,8 @@ const MgGame mg_game_derby = {
     MG_DERBY, PROG_HS_DERBY, SONG_FESTIVAL, 0, 742,       /* Eyeballer, bookie */
     { MG_DERBY_B, MG_DERBY_S, MG_DERBY_G }, 20, 0,
     { PAL_PAINT(PAINT_LIME, 1), PAL_WHITE, PAL_PAINT(PAINT_FOREST, 1) },
-    dy_start, dy_update, dy_draw, dy_art, dy_bot
+    dy_start, dy_update, dy_draw, dy_art, dy_bot,
+    NULL, NULL
 };
 
 MG_DEFINE_SCENE(SCENE_MG_DERBY, "MG_DERBY", mg_game_derby);

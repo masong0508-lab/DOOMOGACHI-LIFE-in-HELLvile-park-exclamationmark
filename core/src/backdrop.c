@@ -26,10 +26,18 @@
 /* ---- the families --------------------------------------------------------------------- */
 extern const DoomoBackdrop exo_church_family;            /* exorcism_gfx.c */
 
-int backdrop_family_count(void) { return 1; }
+#if !defined(DOOMO_PLATFORM_PS1)
+extern const DoomoBackdrop mg_backdrop_family;           /* (S2-4) mg.c: the fair booths */
+int backdrop_family_count(void) { return 2; }
+#else
+int backdrop_family_count(void) { return 1; }            /* (the PS1 never bakes) */
+#endif
 
 const DoomoBackdrop *backdrop_family(int i)
 {
+#if !defined(DOOMO_PLATFORM_PS1)
+    if (i == 1) return &mg_backdrop_family;
+#endif
     return i == 0 ? &exo_church_family : NULL;
 }
 

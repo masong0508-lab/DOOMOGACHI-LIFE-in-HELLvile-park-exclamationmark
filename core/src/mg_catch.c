@@ -388,7 +388,8 @@ const MgGame mg_game_catch = {
     MG_CATCH, PROG_HS_CATCH, SONG_FESTIVAL, 3, ROSTER_ID_NANA_PUDDING,
     { MG_CATCH_B, MG_CATCH_S, MG_CATCH_G }, 14, 60 * 30,
     { PAL_PAINT(PAINT_BUBBLEGUM, 1), PAL_WHITE, PAL_PAINT(PAINT_CHERRY, 1) },
-    ct_start, ct_update, ct_draw, ct_art, ct_bot
+    ct_start, ct_update, ct_draw, ct_art, ct_bot,
+    NULL, NULL
 };
 
 MG_DEFINE_SCENE(SCENE_MG_CATCH, "MG_CATCH", mg_game_catch);

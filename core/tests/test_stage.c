@@ -142,3 +142,132 @@ TEST(stage_church_keys_cover_every_frame)
         }
     CHECK(backdrop_family_count() >= 1 && backdrop_family(0) == &exo_church_family);
 }
+
+/* ---- (S2-4) the Fun Fair booths over their kept playfields ----------------------------------
+ * Each game with a kept playfield (mg.h) played by its bot (Sweet, Hellfire, Spicy at 320x240: the
+ * READY / GO, the round, the END banner, the results; a pause on the way) with the kept picture on
+ * and off: every frame the same, and most frames really drawn over the kept picture. */
+#include "../src/mg.h"
+extern const DoomoScene SCENE_MG_CATCH, SCENE_MG_WHACK, SCENE_MG_DODGE, SCENE_MG_GALLERY,
+       SCENE_MG_DERBY, SCENE_MG_MEMORY;
+
+static const DoomoScene *mg_scene_of(int id)
+{
+    switch (id) {
+    case MG_CATCH: return &SCENE_MG_CATCH;
+    case MG_WHACK: return &SCENE_MG_WHACK;
+    case MG_DODGE: return &SCENE_MG_DODGE;
+    case MG_GALLERY: return &SCENE_MG_GALLERY;
+    case MG_DERBY: return &SCENE_MG_DERBY;
+    default: return &SCENE_MG_MEMORY;
+    }
+}
+
+static uint32_t mg_pad(int f)
+{
+    if (f == 700 || f == 706) return BTN_START;          /* pause, and back */
+    return 0;
+}
+
+static void mg_run(const DoomoScene *sc, int arg, int n, uint32_t *out, int stage)
+{
+    int f;
+    nat_stage_on = stage;
+    nat_stage_buffers = 2;
+    nat_stage_reset();
+    test_reset();
+    doomo_init();
+    scene_set(&SCENE_TITLE, 0);
+    frame(0);
+    scene_push(sc, arg);
+    retained_n = 0;
+    for (f = 0; f < n; f++) {
+        frame(mg_pad(f));
+        out[f] = fb_hash();
+        if (nat_stage_kept()) retained_n++;
+    }
+    nat_stage_on = 0;
+}
+
+static int mg_compare(int id, int arg, int w, int h, int n)
+{
+    static uint32_t off[MAXF], on[MAXF];
+    const DoomoScene *sc = mg_scene_of(id);
+    int f;
+    set_res(w, h);
+    mg_run(sc, arg, n, off, 0);
+    mg_run(sc, arg, n, on, 1);
+    for (f = 0; f < n; f++)
+        if (off[f] != on[f]) {
+            static uint8_t a[NAT_MAX_W * NAT_MAX_H];
+            char m[300], path[600];
+            int i, x0 = w, y0 = h, x1 = -1, y1 = -1, nd = 0;
+            mg_run(sc, arg, f + 1, off, 0);
+            memcpy(a, nat_fb, (size_t)(w * h));
+            snprintf(path, sizeof(path), "%s/stage_mg%d_%dx%d_off.png", test_tmp_dir, id, w, h);
+            nat_png_write(path, nat_fb, w, h, 2);
+            mg_run(sc, arg, f + 1, on, 1);
+            snprintf(path, sizeof(path), "%s/stage_mg%d_%dx%d_on.png", test_tmp_dir, id, w, h);
+            nat_png_write(path, nat_fb, w, h, 2);
+            for (i = 0; i < w * h; i++)
+                if (a[i] != nat_fb[i]) {
+                    nd++;
+                    x0 = DOOMO_MIN(x0, i % w); x1 = DOOMO_MAX(x1, i % w);
+                    y0 = DOOMO_MIN(y0, i / w); y1 = DOOMO_MAX(y1, i / w);
+                }
+            snprintf(m, sizeof(m), "minigame %d arg %d %dx%d: frame %d differs with the stage on (%d px in %d,%d..%d,%d)",
+                     id, arg, w, h, f, nd, x0, y0, x1, y1);
+            test_fail(__FILE__, __LINE__, m);
+            return 0;
+        }
+    printf("      kept minigame %d arg %d %dx%d: %d frames, %d over the kept picture\n", id, arg, w, h, n, retained_n);
+    if (retained_n < n / 2) {
+        char m[200];
+        snprintf(m, sizeof(m), "minigame %d %dx%d: too few frames over the kept picture (%d of %d)",
+                 id, w, h, retained_n, n);
+        test_fail(__FILE__, __LINE__, m);
+        return 0;
+    }
+    return 1;
+}
+
+static const uint8_t kept_games[] = { MG_WHACK };
+
+TEST(stage_kept_minigames_are_pixel_identical)
+{
+    unsigned i;
+    int ok = 1;
+    for (i = 0; i < sizeof(kept_games) && ok; i++) {
+        int id = kept_games[i];
+        ok = mg_compare(id, 49, 240, 160, MAXF) && mg_compare(id, 51, 240, 160, MAXF) &&
+             mg_compare(id, 50, 320, 240, 900);
+    }
+    set_res(240, 160);
+    CHECK(ok);
+}
+
+/* every key a staged game asks for is in the baked list */
+TEST(stage_kept_minigame_keys_are_baked)
+{
+    static uint32_t keys[512];
+    const DoomoBackdrop *f = backdrop_family(1);
+    unsigned i;
+    int n, j, t;
+    CHECK(f && f->id == DOOMO_BACKDROP_MG);
+    n = f->keys(keys, 512);
+    CHECK(n > 0 && n <= 512);
+    for (i = 0; i < sizeof(kept_games); i++) {
+        const MgGame *g = mg_games[kept_games[i]];
+        CHECK(g->kept_key != NULL);
+        for (t = 0; t < 3000; t++) {
+            uint32_t k;
+            mg.g = g; mg.t = 0; mg.play_t = (uint16_t)t;
+            k = (uint32_t)g->id << 16 | (g->kept_key() & 0x7FFFu);
+            for (j = 0; j < n && keys[j] != k; j++) {}
+            CHECK_MSG(j < n, "game %d tick %d: key 0x%x is not baked", g->id, t, (unsigned)k);
+            for (j = 0; j < n && keys[j] != (k | MG_BK_HELL); j++) {}
+            CHECK_MSG(j < n, "game %d tick %d: hell key 0x%x is not baked", g->id, t, (unsigned)k);
+        }
+    }
+    memset(&mg, 0, sizeof(mg));
+}

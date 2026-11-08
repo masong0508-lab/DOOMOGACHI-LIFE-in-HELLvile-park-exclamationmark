@@ -69,7 +69,7 @@ push MG_WHACK 49
 wait 60
 fps start
 wait 130
-fps fair: whack play sweet
+expect-fps 19 fair: whack play sweet
 shot fair_whack_play_sweet
 seed 1
 scene TITLE
@@ -78,7 +78,7 @@ push MG_WHACK 51
 wait 60
 fps start
 wait 130
-fps fair: whack play hellfire
+expect-fps 18 fair: whack play hellfire
 shot fair_whack_play_hellfire
 
 # ---- Dodge ----------------------------------------------------------------------

@@ -74,7 +74,12 @@ void mg_blit2(int x, int y, const uint8_t *pix, int w, int h, const uint8_t pal[
 /* ---- fair scenery ---------------------------------------------------------- */
 void mg_tent(int y0, int y1, uint8_t a, uint8_t b, uint8_t trim, int t)
 {
-    int W = mg_w(), sw = mg_big() ? 20 : 16, x, i = 0, sway = ui_wave(t, 150, 2);
+    mg_tent_sway(y0, y1, a, b, trim, ui_wave(t, 150, 2));
+}
+
+void mg_tent_sway(int y0, int y1, uint8_t a, uint8_t b, uint8_t trim, int sway)
+{
+    int W = mg_w(), sw = mg_big() ? 20 : 16, x, i = 0;
     int vh = mg_big() ? 10 : 8;
     for (x = -sw + sway; x < W; x += sw, i++) {
         uint8_t c = (i & 1) ? a : b;

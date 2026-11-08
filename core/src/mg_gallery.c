@@ -456,7 +456,8 @@ const MgGame mg_game_gallery = {
     MG_GALLERY, PROG_HS_GALLERY, SONG_FESTIVAL, 0, ROSTER_ID_RIVET,
     { MG_GALLERY_B, MG_GALLERY_S, MG_GALLERY_G }, 32, 45 * 30,
     { PAL_PAINT(PAINT_SKY, 1), PAL_WHITE, PAL_PAINT(PAINT_COBALT, 1) },
-    gl_start, gl_update, gl_draw, gl_art, gl_bot
+    gl_start, gl_update, gl_draw, gl_art, gl_bot,
+    NULL, NULL
 };
 
 MG_DEFINE_SCENE(SCENE_MG_GALLERY, "MG_GALLERY", mg_game_gallery);

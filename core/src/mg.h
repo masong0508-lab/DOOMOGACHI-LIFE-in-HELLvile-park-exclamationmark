@@ -28,6 +28,7 @@
 #define DOOMO_MG_H
 
 #include "doomo/doomo.h"
+#include "doomo/plat_ext.h"
 
 enum { MG_CATCH, MG_WHACK, MG_DODGE, MG_GALLERY, MG_DERBY, MG_MEMORY,
        MG_GAME_COUNT };
@@ -97,6 +98,9 @@ typedef struct MgGame {
     void (*draw)(void);         /* the playfield, offset by mg.ox/oy     */
     void (*art)(int cx, int cy, int t);   /* title card mascot          */
     uint32_t (*bot)(void);      /* autoplay: buttons held this tick      */
+    /* (S2-4) the playfield's still parts as a kept backdrop (mg.h "kept playfield"); NULL: none */
+    uint32_t (*kept_key)(void);   /* this frame's backdrop key bits 0..14 (game id, tier added) */
+    int (*kept_keys)(uint32_t *out, int cap);    /* every key kept_key can return          */
 } MgGame;
 
 enum { MGP_TITLE, MGP_READY, MGP_PLAY, MGP_PAUSE, MGP_END, MGP_RESULTS };
@@ -203,6 +207,8 @@ int  mg_h(void);
 int  mg_big(void);                          /* 1 on 320x240-class screens */
 /* Vertical candy-stripe tent wall with a scalloped valance. */
 void mg_tent(int y0, int y1, uint8_t a, uint8_t b, uint8_t trim, int t);
+/* (S2-4) the same with the sway (-2..2) given: mg_tent's is ui_wave(t, 150, 2) */
+void mg_tent_sway(int y0, int y1, uint8_t a, uint8_t b, uint8_t trim, int sway);
 void mg_bunting(int x0, int x1, int y, int sag, int t);
 /* Pastel fair sky from y0 to y1 (gradient, clouds, ferris wheel, tents);
  * the Hellfire tier paints the hellish night version. */
@@ -239,6 +245,30 @@ DoomoImage mg_crop(const DoomoImage *src, int top, int rows);
 int  mg_host_alive(int id);
 void mg_host_frame(int x, int y, int id, int expr, int t);
 const char *mg_host_name(int id);
+/* ---- (S2-4) the kept playfield (docs/GBA.md "Speed wave 2: S2-4") ------------------------------
+ * A game with kept_key splits its playfield into STILL parts (what never changes for a key: the tent at
+ * one of its sways, the grass, the empty holes) and LIVE parts (everything that moves). Where the
+ * platform keeps the backdrop (plat_stage_begin: the GBA bakes every key into the ROM at build time
+ * with this same code; native tests), a frame is the still parts copied whole from the kept picture,
+ * then the live parts drawn over them in their usual order; elsewhere (PS1, Dreamcast, native, a
+ * shake, the results card) the game draws both as before. Modes (mg_kept_mode):
+ *   MGK_OFF   everything, as always
+ *   MGK_BAKE  the still parts only (the baker)
+ *   MGK_LIVE  the live parts only, over the kept picture
+ * A still part drawn AFTER a live one in the usual order (a hole's front over the critter rising from
+ * it) is put back from the kept picture with plat_stage_restore, in the same spans, when mg_kept(). */
+enum { MGK_OFF, MGK_BAKE, MGK_LIVE };
+#define MG_BK_HELL   0x8000u        /* key bit: the Hellfire tier (mg.hell); bits 0..14 are the game's */
+#if !defined(DOOMO_PLATFORM_PS1)
+extern uint8_t mg_kept_mode;
+extern uint32_t mg_bake_key;        /* MGK_BAKE: the key being baked (bits 0..14) */
+#else                               /* (the PS1 draws every frame whole: no code, no RAM) */
+#define mg_kept_mode ((uint8_t)MGK_OFF)
+#define mg_bake_key 0u
+#endif
+static inline int mg_still(void) { return mg_kept_mode != MGK_LIVE; }  /* draw the still parts  */
+static inline int mg_live(void) { return mg_kept_mode != MGK_BAKE; }   /* draw the live parts   */
+static inline int mg_kept(void) { return mg_kept_mode == MGK_LIVE; }   /* over the kept picture */
 /* HUD pieces */
 void mg_hud(void);
 void mg_draw_hearts(int x, int y, int n, int max);

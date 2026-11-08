@@ -3,6 +3,7 @@
  * H$ rewards, best scores (PROG_HS_*), medal unlocks and trophies, plus
  * the activities table that puts the booths on the island. See mg.h. */
 #include "mg.h"
+#include "doomo/backdrop.h"
 
 MgState mg;
 DoomoRng mg_rng;
@@ -579,6 +580,80 @@ static void draw_flash(void)
     }
 }
 
+/* ---- (S2-4) the kept playfield (mg.h "the kept playfield"; docs/GBA.md "Speed wave 2: S2-4") ---- */
+#if !defined(DOOMO_PLATFORM_PS1)
+uint8_t mg_kept_mode;
+uint32_t mg_bake_key;
+
+#define MG_BK_GAME_SHIFT 16
+static const MgGame *mg_kept_game(int id)
+{
+    int i;
+    for (i = 0; i < MG_GAME_COUNT; i++)
+        if (mg_games[i]->id == id && mg_games[i]->kept_key) return mg_games[i];
+    return NULL;
+}
+
+/* the backdrop of a key: the game's still parts as its playing frames show them (the baker and the
+ * native platform draw it with this; the GBA ROM holds every key) */
+static void mg_backdrop_draw(uint32_t key)
+{
+    MgState save = mg;
+    uint8_t mode = mg_kept_mode;
+    uint32_t bk = mg_bake_key;
+    const MgGame *g = mg_kept_game((int)(key >> MG_BK_GAME_SHIFT));
+    if (!g) { plat_clear(PAL_BLACK); return; }
+    mg.g = g;
+    mg.hell = (key & MG_BK_HELL) != 0;
+    mg.ox = mg.oy = 0;
+    mg.t = mg.play_t = 0;
+    mg.phase = MGP_PLAY;
+    mg_kept_mode = MGK_BAKE;
+    mg_bake_key = key & (MG_BK_HELL - 1u);
+    g->draw();
+    mg_kept_mode = mode;
+    mg_bake_key = bk;
+    mg = save;
+}
+
+static int mg_backdrop_keys(uint32_t *out, int cap)
+{
+    uint32_t k[32];                                /* (the baker's: on the stack, no .bss) */
+    int i, j, h, n = 0;
+    for (i = 0; i < MG_GAME_COUNT; i++) {
+        const MgGame *g = mg_games[i];
+        int m;
+        if (!g->kept_key || !g->kept_keys) continue;
+        m = DOOMO_MIN(g->kept_keys(k, 32), 32);
+        for (h = 0; h < 2; h++)
+            for (j = 0; j < m; j++) {
+                if (n < cap) out[n] = (uint32_t)g->id << MG_BK_GAME_SHIFT | (h ? MG_BK_HELL : 0u) | (k[j] & (MG_BK_HELL - 1u));
+                n++;
+            }
+    }
+    return n;
+}
+const DoomoBackdrop mg_backdrop_family = { DOOMO_BACKDROP_MG, mg_backdrop_draw, mg_backdrop_keys };
+
+/* the playfield over its kept picture: 1 when drawn that way (fx and HUD included) */
+static int mg_kept_draw(void)
+{
+    const MgGame *g = mg.g;
+    PlatStageInfo info;
+    uint32_t key;
+    if (!g->kept_key || mg.phase == MGP_RESULTS || mg.ox || mg.oy) return 0;
+    key = (uint32_t)g->id << MG_BK_GAME_SHIFT | (mg.hell ? MG_BK_HELL : 0u) | (g->kept_key() & (MG_BK_HELL - 1u));
+    if (!plat_stage_begin(DOOMO_BACKDROP_MG, key, mg_backdrop_draw, &info)) return 0;
+    plat_stage_restore(0, 0, mg_w(), mg_h());      /* the still parts, whole (GBA: a ~3.5 ms DMA) */
+    mg_kept_mode = MGK_LIVE;
+    g->draw();
+    mg_kept_mode = MGK_OFF;
+    mg_fx_draw();
+    mg_hud();
+    return 1;
+}
+#endif
+
 void mg_scene_draw(void)
 {
     if (plat_draw_skipped()) return;
@@ -602,9 +677,14 @@ void mg_scene_draw(void)
         return;
     }
     ui_modal_hold(&mg, 0, 0, 0, 0, 0);     /* the card is gone: release its hold */
-    mg.g->draw();
-    mg_fx_draw();
-    if (mg.phase != MGP_RESULTS) mg_hud();
+#if !defined(DOOMO_PLATFORM_PS1)
+    if (!mg_kept_draw())
+#endif
+    {
+        mg.g->draw();
+        mg_fx_draw();
+        if (mg.phase != MGP_RESULTS) mg_hud();
+    }
     draw_flash();
     switch (mg.phase) {
     case MGP_READY: draw_ready(); break;

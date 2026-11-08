@@ -81,6 +81,7 @@ void nat_stage_note(int x0, int y0, int x1, int y1);
 void nat_stage_frame_begin(void);
 void nat_stage_frame_end(void);
 void nat_stage_reset(void);
+int  nat_stage_kept(void);          /* (S2-4) the last frame was drawn over a kept backdrop */
 int  nat_bake_backdrops(const char *path);
 
 /* PNG writer: 8bpp indexed image -> indexed PNG with the master palette,

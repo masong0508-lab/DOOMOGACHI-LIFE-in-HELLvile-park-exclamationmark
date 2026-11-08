@@ -932,6 +932,18 @@ void ui_round_rect(int x, int y, int w, int h, int r, uint8_t c)
     rr_rows(x, y, w, h, r, c, 0, h);
 }
 
+#if !defined(DOOMO_PLATFORM_PS1)     /* (no resident code on the PS1: only the GBA's kept fair uses it) */
+/* (S2-4) the columns row `row` of ui_round_rect(x, y, w, h, r, c) leaves out at each end (-1: none of it) */
+int ui_round_rect_inset(int w, int h, int r, int row)
+{
+    if (w <= 0 || h <= 0 || row < 0 || row >= h) return -1;
+    if (r > w / 2) r = w / 2;
+    if (r > h / 2) r = h / 2;
+    if (r <= 0) return 0;
+    return rr_inset(r, h, row);
+}
+#endif
+
 /* Only rows [row0, row1) of ui_round_rect(x, y, w, h, r, c). */
 void ui_round_rect_rows(int x, int y, int w, int h, int r, uint8_t c, int row0, int row1)
 {
