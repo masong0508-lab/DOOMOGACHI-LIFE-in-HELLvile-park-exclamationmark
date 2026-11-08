@@ -53,8 +53,14 @@ type "ok\n"
 expect-ticks 3 6
 expect-log feed 111
 expect-log feed 10
-# DC4: the save-test commands and the test flags
+# DC4: the save-test commands and the test flags (CL4: no picker + no tips = 3)
+expect-log test flags 3
+# CL4: "tips on" clears PLAT_TEST_NO_TIPS in the mailbox, "tips off" sets it again
+tips on
+wait 2
 expect-log test flags 1
+tips off
+wait 2
 town-fill 4242
 town-crc
 town-fill 7

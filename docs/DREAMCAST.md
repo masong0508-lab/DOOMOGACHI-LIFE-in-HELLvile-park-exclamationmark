@@ -229,6 +229,13 @@ Dreamcast counterpart of `gba/harness` and the PS1 harness:
   off, 1x, VGA, NTSC, ...), and the Dreamcast clock boots at a fixed
   time (`--rtc`, with `TZ=UTC0` pinned because Flycast adds the host's
   local-time offset).
+- (CL4) dcrun also sets `PLAT_TEST_NO_TIPS` in the mailbox's `test_flags`
+  (DC4's word, read by `plat_test_flags()` in `dc/src/hcmd.c`), so the
+  first-time tip cards never show in a scripted run and the UI scripts stay
+  frame-for-frame with the native runner, which keeps them off too
+  (docs/GAME_DESIGN.md 4.2); a script's `tips on` clears it, as the native
+  runner's and the GBA harness's do. `--console` leaves the word at 0 (a
+  real console never writes the mailbox).
 
 `make -C dc/harness test` checks `dcrun` itself against a stand-in core
 (`dc/harness/tests/mockcore.c`): every script command, the mailbox,
@@ -338,7 +345,7 @@ the offset. It is 32-byte aligned and 4300 bytes:
 | `scene[24]` | the scene on top of the stack (from the core's `scene: set/push/pop` log lines) |
 | `log_wr`, `log[4096]` | the log ring: every `plat_log()` line plus `\n`, at `log_wr % 4096`; `log_wr` counts every byte ever written |
 | `gfx_prims` ... `gfx_tex_live` | DC3's 2D counters after each drawn frame (section 4, Counters) |
-| `test_flags` | DC4: `plat_test_flags()`; dcrun writes `PLAT_TEST_NO_PICKER` when it sees the magic (`--console`: 0) |
+| `test_flags` | DC4: `plat_test_flags()`; dcrun writes `PLAT_TEST_NO_PICKER` and (CL4) `PLAT_TEST_NO_TIPS` when it sees the magic (`--console`: 0; a script's `tips on` clears the tips bit) |
 | `snd_pushed` ... `snd_starved` | DC5's sound counters after each tick (section 6, Counters) |
 
 The cable type and the boot time are log lines (`DC: video 640x480 VGA`,
@@ -782,7 +789,8 @@ change. A record changed less than 5 s before the power goes off is lost.
 (no config record). The harness mailbox has a `test_flags` word
 (`plat_test_flags()`); dcrun sets `PLAT_TEST_NO_PICKER` as soon as it sees
 the mailbox magic, as the native runner does, and `dcrun --console` leaves
-0 (a real console).
+0 (a real console). CL4 adds `PLAT_TEST_NO_TIPS` to the same word (the
+first-time tip cards stay off unless a script says `tips on`).
 
 Measured on Flycast (2026-11-08, the CDI, emulated time; Flycast times the
 VMU's Maple traffic like the hardware, about 90 ms a block written):

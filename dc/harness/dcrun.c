@@ -28,6 +28,8 @@
  *                               up 1, exactly the native runner's)
  *   shot NAME                   SHOTS/NAME.png (640x480, or 320x240 --half)
  *   log TEXT | expect-log TEXT | expect-scene NAME
+ *   tips on | off               CL4: the first-time tip cards show in this
+ *                               run / stay off (the default; test_flags)
  *   mark-ticks | expect-ticks LO HI   ticks since mark-ticks in [LO, HI]
  *   save N | load N | expect-save N | verify N   (mailbox commands)
  *   save-must-fail N            the save must be refused (result 0; DC4)
@@ -576,8 +578,12 @@ static volatile DcMailbox *mb;        /* NULL: no mailbox */
 static int mb_up;
 /* DC4: plat_test_flags() for the game: PLAT_TEST_NO_PICKER (plat_ext.h,
  * bit 0) unless --console, so the first boot of an empty VMU skips the
- * language picker as the native runner does */
-static uint32_t test_flags = 1u;
+ * language picker as the native runner does. CL4: and PLAT_TEST_NO_TIPS
+ * (bit 1), so the first-time tip cards stay off as in the native runner and
+ * the GBA harness, unless the script says "tips on" */
+#define TEST_NO_PICKER 1u
+#define TEST_NO_TIPS   2u
+static uint32_t test_flags = TEST_NO_PICKER | TEST_NO_TIPS;
 
 static void RETRO_CALLCONV core_log(enum retro_log_level lvl, const char *fmt, ...)
 {
@@ -1291,6 +1297,13 @@ static int run_script(FILE *f)
                 if (!r) { fail("line %d: type: no text entry open", lineno); break; }
                 if (!run_ticks(1)) return 0;
             }
+        } else if (!strcmp(c, "tips") && n >= 2) {
+            /* CL4: tips on | off: let the first-time tip cards show in this run (the native
+             * runner's and the GBA harness's "tips"); the game reads the word every time */
+            if (!strcmp(v[1], "on")) test_flags &= ~TEST_NO_TIPS;
+            else if (!strcmp(v[1], "off")) test_flags |= TEST_NO_TIPS;
+            else fail("line %d: tips needs on or off, got %s", lineno, v[1]);
+            if (mb && mb_up) mb->test_flags = test_flags;
         } else if (!strcmp(c, "sync") && n >= 2) {
             if (!strcmp(v[1], "on") && !sync_mode) {
                 if (!mb_wait_up()) return 0;

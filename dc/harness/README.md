@@ -67,7 +67,7 @@ dc/harness/build/dcrun dc/harness/build/flycast_libretro.so dc/build/doomogachi.
 | `--device N TYPE` | `pad`, `keyboard`, `mouse` or `none` on port N (default: 4 pads) |
 | `--sync` | `sync on 0` before the script: the game holds before its first tick, where the native runner starts, and every wait is tick-exact (see `sync`) |
 | `--native-seed N` | `--sync`, and at that first hold the game gets the start `runner --seed N` gets (0x5EED1234 is the runner's default): `plat_entropy()` pinned to N, `doomo_rng` and the start town redone as `doomo_init()` makes them (mailbox command 17). The console boots on real entropy before the harness can reach it, so this is how a Dreamcast run starts in the native runner's state |
-| `--console` | DC4: leave the mailbox's `test_flags` at 0, as a real console (by default dcrun sets `PLAT_TEST_NO_PICKER`, so the first boot of an empty VMU skips the language picker, as the native runner does) |
+| `--console` | DC4: leave the mailbox's `test_flags` at 0, as a real console (by default dcrun sets `PLAT_TEST_NO_PICKER`, so the first boot of an empty VMU skips the language picker, and `PLAT_TEST_NO_TIPS` (CL4), so the first-time tip cards stay off, as the native runner does) |
 | `--quiet` / `--verbose` | less output / also every core log line |
 
 Exit status: 0 ok, 1 failed expectation, hang or timeout, 2 usage or load
@@ -107,6 +107,7 @@ frames, and the log is what the core logs.
 | `hold BTN.. N` / `down BTN..` / `release [BTN..]` | as the native runner |
 | `shot NAME` | write `SHOTS/NAME.png` |
 | `log TEXT` / `expect-log TEXT` | print / fail unless TEXT is in the game's log so far |
+| `tips on` / `tips off` | CL4: clear / set `PLAT_TEST_NO_TIPS` in the mailbox's `test_flags`, so the first-time tip cards show in this run (the native runner's and the GBA harness's `tips on`) / stay off (the default) |
 | `expect-scene NAME` | the mailbox's last scene, or a `scene: set NAME` log line |
 | `mark-ticks` / `expect-ticks LO HI` | fail unless the game's tick count advanced by LO..HI since `mark-ticks` (the 30 Hz check: `frames 300` must give about 150) |
 | `save N` / `load N` / `expect-save N` / `verify N` | mailbox commands, run in the game; a result of 0 fails (the GBA convention: nonzero = success) |

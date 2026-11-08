@@ -332,7 +332,8 @@ written when its card closes: the record follows at the next save
 shows once more).
 
 **Budgets.** Scripted runs never see a card: the native runner, the GBA
-harness and the PS1 harness (in lockstep) report `PLAT_TEST_NO_TIPS`
+harness, the PS1 harness (in lockstep) and the Dreamcast harness (once it
+has posted a command or holds the loop) report `PLAT_TEST_NO_TIPS`
 (`doomo/plat_ext.h`), so every journey in 4.1 keeps its presses. A script
 that wants the cards says `tips on` (runner and GBA harness);
 `expect-tip NAME` / `expect-tip none` and `tips reset` check and reset them

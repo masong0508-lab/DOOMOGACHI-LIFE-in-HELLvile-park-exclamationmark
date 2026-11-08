@@ -128,7 +128,8 @@ static uint32_t town_crc(void)
 
 /* Test flags (plat_ext.h): what the harness wrote in the mailbox; 0 on a
  * real console, which never writes it (DC4: the first-boot language picker
- * is skipped in scripted runs) */
+ * is skipped in scripted runs; CL4: so are the first-time tip cards, unless
+ * the script says "tips on") */
 uint32_t plat_test_flags(void)
 {
     return dc_mailbox.test_flags;
