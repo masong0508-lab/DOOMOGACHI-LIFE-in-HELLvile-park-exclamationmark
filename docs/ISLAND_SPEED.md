@@ -200,13 +200,17 @@ toast-strip copy (VRAM page gaps, 2 x 2,560 B, unused by the hub) so slides redr
 The I10 hub held its picture and built each refresh over 4 ticks, but a toast that MOVES (slide-in, slide-out, the scroll
 of a line wider than its pill, the next queued line) still ended the hold: ~10 full ~65 ms frames per toast.
 - Every full hub frame (one go or the last slice of a build) now asks the platform to keep a clean copy of the toast's
-  band, rows 3..20 (`ui_toast_band`), as drawn before the toast goes on top: `plat_strip(PLAT_STRIP_SAVE)` (plat_ext.h).
+  band, the 18 rows lane - 1 .. lane + 16 at the hub's CL1 toast lane (17, or 29 under the island name at 320x240;
+  `ui_toast_band`), as drawn before the toast goes on top: `plat_strip(PLAT_STRIP_SAVE)` (plat_ext.h).
   The GBA keeps it in the two Mode 4 page gaps (10 + 8 rows of 240 B, 2 DMAs, ~0.15 ms; the raycaster's colormap rows
   are marked stale, as the overworld's tile slots do; nothing else in the gaps is used by an island frame); the native
   runner keeps it in memory (so the logic is tested); PS1 / DC: weak 0, as before.
 - A held hub tick under a moving toast (`hub_toast_mode` 2) puts the band back into the page being drawn
   (`PLAT_STRIP_RESTORE`) and lets `ui_toast_draw` draw the toast where it is now; after the toast has gone, two more
   drawn ticks put the band back (one per page). A steady toast on the kept picture still only runs its timer (I8).
+  A kept frame that has a moving toast drawn on it (its last slide-out tick included), or a steady toast that goes
+  without a slide-out, marks the band dirty the same way, so no ghost of it stays on either page. A CL4 tip card
+  hides the toast (it is not drawn), so only a drawn toast counts as moving.
 - While the toast moves, a refresh build waits (the shown page is presented again during a build, so a moving toast
   would stop); a build already started finishes in that tick. So the hub's 8-tick animation step can be late by up to
   a slide (9 ticks), or a long line's scroll: the one pixel change against I10. Particles (unlock confetti) still end
