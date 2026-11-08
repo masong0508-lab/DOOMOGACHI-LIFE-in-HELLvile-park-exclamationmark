@@ -1272,3 +1272,8 @@ reads one effect's sectors into a 6 KB window (`plat_sfx_pcm`, called by the cor
 boot, after `overlay_init()`. Net: -41 KB resident; the disc ends at `0x801e8290`
 (about 95 KB below the stack top). Simpler than the ADPCM + wave table plan in
 design_grow.md (the jukebox waveform reads the PCM through the window).
+
+
+## RAM fix 2026-11-08: disc over the stack reserve with the boot FMV
+
+CI on 18be42b failed: with `INTRO.STR` and `fmv.c` linked the EXE ended at `0x801f0220`, 544 B into the 64 KB stack reserve. `pet_gfx.c` (16.5 KB resident, it was in `DOOMO_CORE_HOT` at -O2) is now compiled -Os and `fmv.c` joined the -Os cold list: resident 6.7 KB smaller, the EXE ends at `0x801ee790`, 70 KB below the stack top. The pet screen still runs 30.00 fps on PCSX-Redux (`perf_pet.txt`, CPU 24.5 ms per frame).

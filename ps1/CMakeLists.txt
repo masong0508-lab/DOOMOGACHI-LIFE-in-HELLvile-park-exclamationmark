@@ -283,7 +283,7 @@ set_source_files_properties(${PS1_SRCS} PROPERTIES
 # mailbox, the boot / frame glue, the player model build, the SPU voice setup, the portrait slice
 # scheduler's bookkeeping) are compiled for size: ~3.2 KB of resident RAM, the same pixels and timing
 # within the measurement noise.
-set(DOOMO_PS1_COLD memcard hcmd overlay txtload coreref main pslice model spu
+set(DOOMO_PS1_COLD memcard hcmd overlay txtload coreref main pslice model spu fmv
 	CACHE STRING "ps1/src files (no extension) compiled -Os instead of -O2")
 foreach(_cold ${DOOMO_PS1_COLD})
 	set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/src/${_cold}.c PROPERTIES
@@ -292,10 +292,13 @@ endforeach()
 # The whole EXE (code, art, roster, BSS) must fit in 2 MB of RAM, so the
 # core is compiled for size (-Os: ~120 KB smaller than -O2) except the
 # files that run every frame, which keep -O2 (DOOMO_CORE_HOT; measured
-# with the harness, docs/PS1.md section 3). Files that link into an overlay
+# with the harness, docs/PS1.md section 3). pet_gfx is compiled -Os since
+# 2026-11-08 (the disc ran 544 B into the stack reserve with the boot FMV
+# linked; -Os frees 6.7 KB resident and the pet still holds 30.00 fps, CPU
+# 24.5 ms, perf_pet.txt on PCSX-Redux). Files that link into an overlay
 # group (fp_island_gfx, concert_gfx, exorcism_gfx) cost no resident RAM:
 # they only grow their group, which stays below the slot size.
-set(DOOMO_CORE_HOT ui_raster ui ui_draw font fixmath map actor combat rng pet_gfx pet_scene
+set(DOOMO_CORE_HOT ui_raster ui ui_draw font fixmath map actor combat rng pet_scene
 	fp_island_gfx concert_gfx exorcism_gfx
 	CACHE STRING "core/src files (no extension) compiled -O2 instead of -Os")
 set_source_files_properties(${CORE_SRCS} PROPERTIES
