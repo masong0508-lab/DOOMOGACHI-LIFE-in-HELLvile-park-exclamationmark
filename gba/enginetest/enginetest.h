@@ -15,5 +15,6 @@ void et_build_map(DoomoMap *m);
 void et_save_test(void);
 void et_div_test(void);
 void et_blit_test(void);
+void et_blit2_test(void);       /* SP6: the UI group's scale-2 loop */
 
 #endif

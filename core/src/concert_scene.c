@@ -19,6 +19,7 @@
  * the show plays (audio_music(SONG_NONE)) and restored on leave.
  */
 #include "concert_int.h"
+#include "doomo/plat_ext.h"
 
 enum { CS_SETUP, CS_INTRO, CS_SHOW, CS_ENCORE_ASK, CS_ENCORE, CS_BOW, CS_RESULTS, CS_PARADE };
 enum { ROW_ACT, ROW_GENRE, ROW_STAGE, ROW_SIZE, ROW_LAYOUT, ROW_TAKE, ROW_START, ROW_COUNT };
@@ -1095,6 +1096,7 @@ static void stage_draw(void)
 static void concert_draw(void)
 {
     if (!scene_scratch_mine(CONCERT_SCRATCH_TAG)) { plat_clear(PAL_BLACK); return; }
+    plat_ui_loops();                   /* SP6: a plain bitmap frame: the platform's faster 2D loops */
     switch (C.state) {
     case CS_SETUP: setup_draw(); break;
     case CS_PARADE: parade_draw(); break;

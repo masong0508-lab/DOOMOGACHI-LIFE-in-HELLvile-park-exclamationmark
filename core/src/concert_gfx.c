@@ -531,15 +531,23 @@ static void draw_floor(const StageView *v, const StageLayout *L, const StagePal 
     }
 }
 
-/* beams from the truss lamps to targets on the stage */
+/* beams from the truss lamps to targets on the stage. f = (y - ay) * 256 / dy
+ * is stepped instead of divided (SP6: a division per span was a third of the
+ * beams' cost on the GBA): each step adds 3 * 256 to the numerator, i.e. q
+ * to the quotient and r to the remainder, carrying once when the remainder
+ * reaches dy (r < dy). Same f on every span, so the same spans. */
 static void beam(int ax, int ay, int tx, int ty, int hw0, int hw1, uint8_t c)
 {
-    int y, step = 3, dy = ty - ay;
+    int y, step = 3, dy = ty - ay, f = 0, rem = 0, q, r;
     if (dy <= 0) return;
+    q = step * 256 / dy;
+    r = step * 256 - q * dy;
     for (y = ay; y < ty; y += step) {
-        int f = (y - ay) * 256 / dy;
         int cx = ax + (tx - ax) * f / 256, hw = hw0 + (hw1 - hw0) * f / 256;
         cspan(cx - hw, cx + hw + 1, y, step, c);
+        f += q;
+        rem += r;
+        if (rem >= dy) { rem -= dy; f++; }
     }
 }
 

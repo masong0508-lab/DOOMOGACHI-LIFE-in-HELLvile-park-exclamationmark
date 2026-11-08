@@ -76,3 +76,5 @@ WEAK uint32_t plat_pack_read(uint32_t off, void *dst, uint32_t len)
     (void)off; (void)dst; (void)len;
     return 0;
 }
+
+WEAK int plat_ui_loops(void) { return 0; }

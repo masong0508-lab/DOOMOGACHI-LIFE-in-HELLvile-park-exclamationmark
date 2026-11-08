@@ -7,6 +7,7 @@
 #include "video_int.h"
 #include "doomo/platform.h"
 #include "enginetest.h"
+#include "iwram_ovl.h"
 
 #define LINE 120
 typedef volatile uint16_t vu16_t;
@@ -178,4 +179,54 @@ void et_blit_test(void)
         }
     gba_back = keep;
     if (!bad) gba_logf("ET blittest ok (%d cases)", n);
+}
+
+/* (SP6) vid_blit2 (src/blit2.c, the IWRAM UI group's scale-2 loop that plat_image takes while the group is in)
+ * against the same verbatim reference at scale 2 without a flip: odd and even x (the odd case merges two source
+ * pixels per halfword), clipping on all four sides, silhouette on and off, over a random background. Logs
+ * "ET blit2test ok (N cases)" or "ET blit2test FAIL ...". */
+void et_blit2_test(void)
+{
+    uint16_t *keep = gba_back;
+    int i, n = 0, bad = 0;
+    uint32_t k;
+    iwram_ovl_use(OVL_UI);
+    for (k = 0; k < (uint32_t)(LINE * 160); k++) {
+        uint16_t v = (uint16_t)next();
+        PAGE_A[k] = v; PAGE_B[k] = v;
+    }
+    for (i = 0; i < 2000 && !bad; i++) {
+        DoomoImage im;
+        int w = 1 + (int)(next() % (i & 1 ? 33 : 17)), h = 1 + (int)(next() % 16), off = (int)(next() & 3);
+        int dens = (int)(next() % 4), sil = (next() % 3) == 0;
+        int x = (int)(next() % 320) - 70, y = (int)(next() % 240) - 60;
+        uint32_t color = 1 + next() % 255;
+        int j, y0, y1, r;
+        if (i % 7 == 0) { x = (int)(next() % 8) - 4; } else if (i % 7 == 1) { x = 240 - (int)(next() % 12); }
+        else if (i % 7 == 2) { y = (int)(next() % 6) - 3; } else if (i % 7 == 3) { y = 160 - (int)(next() % 8) - 2 * h + 3; }
+        for (j = 0; j < w * h; j++) {
+            uint32_t v = next();
+            srcbuf[4 + off + j] = (uint8_t)((v >> 8) % 4 < (uint32_t)dens ? 0 : 1 + (v >> 16) % 255);
+        }
+        im.w = (uint16_t)w; im.h = (uint16_t)h; im.pix = srcbuf + 4 + off; im.uid = 1;
+        gba_back = PAGE_A; vid_blit2(x, y, &im, sil ? color : 0u);
+        gba_back = PAGE_B; ref_blit(x, y, &im, 2, sil ? IMG_SILHOUETTE : 0, color);
+        y0 = y < 0 ? 0 : y; y1 = y + h * 2 > 160 ? 160 : y + h * 2;
+        for (r = y0; r < y1 && !bad; r++)
+            for (j = 0; j < LINE; j++)
+                if (PAGE_A[r * LINE + j] != PAGE_B[r * LINE + j]) {
+                    gba_logf("ET blit2test FAIL case %d x %d y %d w %d h %d sil %d row %d hw %d: %x vs %x",
+                             i, x, y, w, h, sil, r, j, PAGE_A[r * LINE + j], PAGE_B[r * LINE + j]);
+                    bad = 1;
+                    break;
+                }
+        n++;
+    }
+    for (k = 0; k < (uint32_t)(LINE * 160) && !bad; k++)
+        if (PAGE_A[k] != PAGE_B[k]) {
+            gba_logf("ET blit2test FAIL page differs at %u", (unsigned)k);
+            bad = 1;
+        }
+    gba_back = keep;
+    if (!bad) gba_logf("ET blit2test ok (%d cases)", n);
 }

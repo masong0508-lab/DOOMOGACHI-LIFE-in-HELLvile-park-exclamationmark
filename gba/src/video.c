@@ -16,6 +16,7 @@
 #include "doomo/palette.h"
 #include "doomo/font.h"
 #include "canvas_int.h"
+#include "iwram_ovl.h"
 
 uint16_t *gba_back = (uint16_t *)VRAM_PAGE1;
 /* the font, transposed: rows[ch][r] bit c = pixel (c, r) */
@@ -373,6 +374,12 @@ void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
             cv_blit(x, y, img, scale, flags & (IMG_FLIPX | IMG_SILHOUETTE), color);
         }
         if (k != 1) return;
+    }
+    if (scale == 2 && !(flags & IMG_FLIPX) && iwram_ovl_current() == OVL_UI) {
+        /* SP6: the UI group's scale-2 loop (blit2.c), the same pixels as vid_blit_c */
+        if (flags & IMG_SHADOW) vid_blit2(x + 1, y + 1, img, PAL_BLACK);
+        vid_blit2(x, y, img, (flags & IMG_SILHOUETTE) ? color : 0u);
+        return;
     }
     if (flags & IMG_SHADOW)
         vid_blit(x + 1, y + 1, img, scale, (flags & IMG_FLIPX) | IMG_SILHOUETTE, PAL_BLACK);

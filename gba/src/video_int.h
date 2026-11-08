@@ -35,5 +35,8 @@ void vid_text(int x, int y, const char *s, uint32_t color) IWRAM_CALL;
 void vid_text_dil(int x, int y, const char *s, uint32_t color);
 extern const uint32_t gba_nibmask[16];     /* bit i set = byte i of a word */
 void vid_blit(int x, int y, const DoomoImage *img, int scale, int flags, uint32_t color) IWRAM_CALL;
+/* (SP6) scale 2, no flip, through the IWRAM UI group's loop (blit2.c): only while iwram_ovl_current() ==
+ * OVL_UI. sil != 0: every opaque pixel in that colour (IMG_SILHOUETTE). Unclipped (clips itself). */
+void vid_blit2(int x, int y, const DoomoImage *img, uint32_t sil);
 
 #endif

@@ -213,4 +213,13 @@ struct DoomoRoomView;
 void plat_room_project(const struct DoomoRoomView *v, fix16 x, fix16 y, int z,
                        int16_t *sx, int16_t *sy);
 
+/* ---- (SP6) a bitmap scene's 2D loops -------------------------------------
+ * A scene that draws a plain 2D bitmap frame (no 3D view, no tile frame, no
+ * room view) may call this at the start of its draw: the platform makes its
+ * faster 2D loops ready for this frame (GBA: the IWRAM overlay's UI group,
+ * whose scale-2 image loop then draws plat_image(.., 2, ..) without a flip;
+ * docs/GBA.md "SP6"). The pixels are exactly the same either way. Returns 1
+ * when the loops are in. Weak default: 0, nothing changes (native, PS1). */
+int plat_ui_loops(void);
+
 #endif

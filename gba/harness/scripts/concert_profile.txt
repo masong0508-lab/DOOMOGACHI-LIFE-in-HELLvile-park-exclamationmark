@@ -1,0 +1,71 @@
+# concert_profile.txt - where the Concert Hall's time goes (SP6, G-K1; docs/GBA.md "The concert at 30"):
+# `make -C gba profile-concert`. The four shows a player sees: Nana's solo (the speed tour's concert),
+# Rivet's band (the PS1 perf scene perf_concert.txt), a 12-voice choir on risers and the setup screen.
+# Each window settles (sync on: on the same ticks in any ROM), is measured (fps), shot and hashed
+# (vhash-seq: frame parity between two ROMs, gba/tools/speedtable.py --compare). `make profile-concert`
+# plays it twice: as it is, then without the hashes and with `profile N` after each fps line (a profile
+# runs N instructions, which shifts the later windows' ticks, so it never shares a run with the hashes).
+# Reports, never gates (the speed tour keeps the concert's floor).
+wait 40
+expect-log doomo: init
+sync on 61
+
+# ---- Nana's solo: the speed tour's concert (setup keys of core/tests/scripts/concert_solo.txt) ----
+seed 1
+scene CONCERT -2
+wait 20
+press DOWN
+press RIGHT
+wait 6
+press LEFT
+press UP
+wait 4
+press A
+wait 200
+fps start
+wait 130
+fps concert solo
+shot concert_solo
+vhash-seq 30 concert solo
+
+# ---- Rivet & the band (ps1/harness/scripts/perf_concert.txt's keys) -------------------------------
+seed 1
+scene CONCERT -6013
+wait 20
+expect-scene CONCERT
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press RIGHT
+wait 4
+press A
+wait 110
+fps start
+wait 120
+fps concert band
+shot concert_band
+vhash-seq 30 concert band
+
+# ---- a 12-voice choir on risers ---------------------------------------------------------------------
+seed 1
+scene CONCERT -7013
+wait 20
+expect-scene CONCERT
+press A
+wait 200
+fps start
+wait 130
+fps concert choir
+shot concert_choir
+vhash-seq 30 concert choir
+
+# ---- the setup screen (the stage dimmed behind the stage manager) -----------------------------------
+seed 1
+scene CONCERT -2
+wait 40
+fps start
+wait 90
+fps concert setup
+shot concert_setup
+vhash-seq 30 concert setup

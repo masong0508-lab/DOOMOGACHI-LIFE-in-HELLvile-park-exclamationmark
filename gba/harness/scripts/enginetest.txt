@@ -13,6 +13,7 @@ wait 21
 expect-log ENGINE TEST: boot
 expect-log ET divtest ok
 expect-log ET blittest ok
+expect-log ET blit2test ok
 expect-log ET audio: tones
 shot et01_courtyard_fp
 wait 60

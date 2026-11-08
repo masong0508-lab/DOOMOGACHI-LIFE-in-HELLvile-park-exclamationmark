@@ -139,7 +139,7 @@ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 # over the core's weak stubs, and the core's strong definitions win over both.
 ALL_OBJS  := $(GBA_OBJS) $(CORE_OBJS)
 
-.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-speed test-life profile-title profile-pause profile-invaded profile-all profile-sung profile-creator test-creator test-speed2 profile-speed2 clean sizes
+.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-speed test-life profile-title profile-pause profile-invaded profile-all profile-sung profile-creator test-creator test-speed2 profile-speed2 profile-concert clean sizes
 .DEFAULT_GOAL := all
 
 # Cartridge size (user decision 2026-11-01): the game ROM is a full 256 Mbit
@@ -448,6 +448,28 @@ profile-all: harness
 	echo "profile-all: log $(PROFILE_ALL_LOG)"; \
 	exit $$rc
 # --- end profile-all ---
+
+# --- profile-concert (SP6): where the Concert Hall's time goes (harness/scripts/concert_profile.txt): Nana's solo,
+# Rivet's band, a 12-voice choir and the setup screen; fps + work per tick, a frame hash window (vhash-seq: compare two
+# ROMs with tools/speedtable.py --compare) and the hottest functions of each. Reports, never gates.
+# Output: build/concert_profile.log ---
+CONCERT_PROFILE_LOG ?= $(BUILD)/concert_profile.log
+CONCERT_PROFILE_N ?= 6000000
+profile-concert: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@mkdir -p $(SHOTS)/concert
+	$(PREFIX)nm -n $(BUILD)/doomogachi.elf > $(BUILD)/doomogachi.nm
+	sed -e '/^vhash-seq/d' -e '/^fps concert/a profile $(CONCERT_PROFILE_N)' $(GBA)/harness/scripts/concert_profile.txt \
+	    > $(BUILD)/concert_profile_n.txt
+	@rc=0; \
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/concert_profile.txt \
+	    --shots $(SHOTS)/concert --no-fps-gates --quiet > $(CONCERT_PROFILE_LOG) 2>&1 || rc=1; \
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(BUILD)/concert_profile_n.txt \
+	    --nm $(BUILD)/doomogachi.nm --no-fps-gates --quiet >> $(CONCERT_PROFILE_LOG) 2>&1 || rc=1; \
+	grep -E "^harness: (fps concert|vhash-seq|profile)|^harness: +[0-9]" $(CONCERT_PROFILE_LOG); \
+	echo "profile-concert: log $(CONCERT_PROFILE_LOG)"; \
+	exit $$rc
+# --- end profile-concert ---
 
 # --- profile-studio: where the Music Studio's time goes (MS-P0, docs/MUSIC_STUDIO_ROADMAP.md):
 # every tab and the PERFORM show, fps + work per tick and the hottest functions, plus the
