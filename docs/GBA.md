@@ -427,6 +427,7 @@ against the LAST row, not against a figure from an older base.
 | 35 | S2-3: the Prize Wheel (tables in ROM, the held frame; docs: "Speed wave 2: S2-3" below) | `8c950fa` | 2,276 B | **2,276 B** | 0 B | 6,308 B | the held tick's state (the last full frame's tick, line, face, the POWER bar's flags: 14 B) is in the minigame arena (`MG_ARENA_BYTES`, claimed by the scene); the tables (`core/gen/mg_wheel_tab.c`: the atan octant 5.5 KB, the rims 3.6 KB, the pie rows 0.1 KB) are ROM; no IWRAM. PS1: the tables join the minigame overlay group (`ovl_plan.py`; 87 -> 96 KB, the slot is the house's), resident RAM byte-identical (66 KB below the stack top with the boot FMV) |
 | 36 | S2-6: the Unlocks gallery's grid as a retained panel, the counted owned unlocks (docs: "Speed wave 2: S2-6" below) | `9c9fb45` | 2,276 B | **2,276 B** | 0 B | 6,308 B | measured on `9c9fb45` + S2-6: no new state in RAM (the panel borrows `PANEL_OW_OBJECTIVE`'s table entry, the last frame's key lives after the gallery's id list in the scene scratch, a tile's colours are memoised on the stack); IWRAM unchanged. PS1: the grid panel is not built (`UI_PANELS` 0) and the owned-count fast path is not either (`unlocks.c` is resident there): resident RAM 12 B smaller (`unlock_at` walks the lengths only), 66 KB below the stack top with the boot FMV |
 | 37 | S2-8: the Field Guide's and the Almanac page's text as retained panels (docs: "Speed wave 2: S2-8" below) | `fc32672` | 2,276 B | **2,276 B** | 0 B | 6,308 B | measured on `fc32672` + S2-8: no new state in RAM (the panel borrows `PANEL_OW_OBJECTIVE`'s table entry; the Field Guide's preview scroll max is one byte in the wing's scene scratch, in the `help` struct's padding: `LibWingData` the same size); IWRAM unchanged; ROM 6,846,988 B (code only). PS1: nothing built (`UI_PANELS` 0), 66 KB below the stack top with the boot FMV |
+| 38 | S2-7: the credits parade (one pose, sliced bodies, the body memo; docs: "Speed wave 2: S2-7" below) | `8816f24` | 2,276 B | **1,796 B** | -480 B | 6,308 B | the body look-hash memo (`portrait.c` `blh`) grows from 40 to 48 slots of 60 B on the GBA (its new `seen` byte sits in the old padding); no IWRAM. PS1: no data (memo stays 40), resident code +836 B (`portrait.c`: the body job path, until now GBA-only, and the memo's skip), 65 KB below the stack top with the boot FMV (was 66 KB) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -1212,6 +1213,48 @@ phases re-rendered in slices, 14 ms frames with the figure cached, up to ~32 ms 
 talking figure re-renders every 4 ticks. Floors: `expect-fps 28` added on the contents window (the others had one).
 Still short in the library (not text): the lobby and jukebox (~20 fps, S2-4), the weapons wing's frames (24.9,
 S2-5), the Almanac list move (25.4: the list and the preview's portrait drawn whole on a move).
+### Speed wave 2: S2-7, the credits parade (2026-11-08)
+
+The speed audit 2's worst PS1 number (the parade at 1.5-2 fps) and the GBA's second worst (5-7 fps, 470-686 ms
+frames). Every marcher asked for its body in one of four walk frames: the ~34 marchers in the cull range (it reached
+64 units past each screen edge, and on the PS1 / Dreamcast past what their 3D view shows) needed ~140 bodies, three
+times the portrait cache's 48 blocks, so the cache drew 8-10 bodies a tick (`finish_marked`, `capsule_plain`,
+`sh_span`...: ~90% of the frame), and on the Dreamcast each re-draw was a new texture (5,124 uploads, 3,538 evictions
+in the measured window).
+
+**What changed.** Each marcher (you too) shows one pose, the side view's frame 0, and marches by the hop it already had
+(`credits.c` `CR_POSE`). The cull range follows the view (`view_range`: the GBA's flat screen plus half a billboard;
+the PS1's and Dreamcast's 3D view, ~485 units either side of the camera plus its lead): ~32 marchers + 12 fans + you,
+under the 48 blocks. A body the cache lacks is drawn by the portrait job slot over ticks and is not shown until it is
+whole (`bodyspr_lazy(3)`: V11's sliced body job, until now GBA-only, on every platform; the job is due within
+`PC_STANDIN` ticks like a stand-in's, so its slices run whatever `pslice` guesses of the room), and `build()` asks for
+the next rank before it comes on. The body look-hash memo skips slots used this tick when it replaces one (with more
+bodies a tick than slots, round-robin evicted each slot just before its next use: every body missed and redid
+`res_get_look` + the hash), and has 48 slots on the GBA (+480 B EWRAM: parade 24.5 -> 26.2 fps).
+
+| window | before | after |
+|---|---|---|
+| GBA credits (libmgba, `speed2_story`) | 7.2 fps, 136 ms avg, 460 ms max | **29.3 fps**, 30.2 ms avg, 45 ms max |
+| GBA credits parade | 5.3 fps, 192 ms avg, 673 ms max | **26.2 fps**, 34.2 ms avg, 51 ms max (no frame over 50 ms) |
+| PS1 credits (PCSX-Redux) | 10.88 fps, 33 frames of 217-283 ms | **30.00** (one 3-vsync frame) |
+| PS1 credits parade | 2.01 fps, 129 frames over 50 ms, worst 550 ms | **30.00** (one 3-vsync frame) |
+| Dreamcast credits / parade (Flycast) | 30.2 / 29.5, 73 ticks of 50-63 ms, 546 of 600 ticks drawn | **30.0 / 30.0**, no tick over 33 ms, 601 of 602 drawn, 131 texture uploads, 0 evictions |
+
+Pixel-changing (SPEED DEFAULTS: stand-ins for a few ticks): the marchers no longer swing their legs (one pose,
+hopping); a body appears once its job is done, so at the start of the credits the fans and the first ranks pop in
+over the first second or two (GBA, PS1; at once on the Dreamcast and native), and when A fast-forwards the parade
+the marchers come on a little after they would have. Native and the Dreamcast draw a body's job in the tick it starts.
+`core/tests/test_portrait_s27.c`: a lazy body is never drawn at once, at most one new body a tick, each one equal to
+a body drawn at once; the memo gives the right picture with 60 bodies a tick and still sees a look edit. Floors:
+`expect-fps 28` (credits) and `24` (parade) in `speed2_story.txt`.
+
+Still short on the GBA: the parade's frame is ~30 ms before any body work (the 2D overworld's tiles and sprites,
+`plat_overworld` + `ow_tile16` ~20%, the credit card's and ticker's text ~10%, the body lookups ~7%), so the job's
+~20 ms per body (2 bodies every 11 ticks) pushes about a third of the frames to 3 vblanks. And the GBA overworld's
+sprite governor (V14, `GBA_GOV_MS_N` 29 ms) drops the far marchers while the frame is over budget, as it did before:
+the GBA parade shows only the few marchers nearest the middle (pre-existing; the PS1, Dreamcast and native show all
+of them). Both want the parade's frame under ~26 ms: a held overworld under the parade's text (S2-4 style) or text as
+kept panels.
 
 ### Where the title's time goes (`make -C gba profile-title`)
 

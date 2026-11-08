@@ -1389,6 +1389,13 @@ next to nothing); after S2-6 the gallery, a cursor move, the new row-moves windo
 30.00 / 30.00 / 30.25 (one 50 ms frame each, the lockstep resume). The grid panel and the owned-count fast path are
 not built here (`UI_PANELS` 0, `unlocks.c` is resident): `unlock_at` walks the table lengths only, 12 B less resident
 code, 66 KB below the stack top with the boot FMV.
+**S2-7 (the credits parade).** 10.88 fps (credits) and 2.01 fps (parade: 129 frames over 50 ms, worst 550 ms): the
+portrait cache re-drew 8-10 chibis a tick (four walk frames for ~44 marchers in a cull range wider than the 3D view).
+With one pose per marcher, the range cut to what the view shows (~485 units either side plus the camera's lead) and
+the body job (`bodyspr_lazy(3)`, sliced over ticks, `pslice.c` timing it) both windows hold 30.00 (one 3-vsync frame
+each); the PS1 shots of the parade show the marchers to both screen edges. Resident: no data (the body memo
+stays 40 slots here), +836 B of `portrait.c` code (the body job path, until now built for the GBA only); 65 KB below
+the stack top with the boot FMV (was 66 KB).
 
 **S2-8 (text pages as kept panels).** Nothing is built here (`UI_PANELS` 0: the Field Guide's and the Almanac page's
 text panels compile out, `page_text` keeps its old path; the Field Guide's preview scroll byte sits in the wing's
