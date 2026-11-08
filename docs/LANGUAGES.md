@@ -36,6 +36,12 @@ the platforms' `plat_text` draw bytes as given and never translate.
 - `core/gen/lang_ids.h`, `lang_registry.c`, `lang_tab_*.c`, `lang_res_*.c`
   are generated and committed. Do not edit them by hand.
 
+**Long texts** (CL4): the Field Guide's pages (`core/src/lib_help.c`) and
+the tip cards (`core/src/tips.c`) are written as separate literals of at
+most ~200 bytes (a page's paragraphs, a card's voice line and its plain
+line), so each is one row under the 250-byte limit below. The Field Guide
+translates a page's paragraphs and joins them before it scrolls them.
+
 ## Rules the generator enforces
 
 `langpack.py` fails on: two different English keys with the same hash, one

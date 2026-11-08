@@ -271,6 +271,87 @@ Frame rates and the latency of each life-sim screen's opening press are
 measured on the consoles by `make -C gba test-life` (docs/GBA.md "Life
 tour") and `ps1/harness/scripts/perf_life.txt` (docs/PS1.md).
 
+### 4.2 First-time tips and the Field Guide (CL4: clarity C4 + C12)
+
+**Tip cards** (`core/src/tips.c`, contract `doomo/tips.h`). The first time
+the player reaches a place that needs explaining, a card pops up at the
+bottom of the screen: a speaker chip and name, one line in that character's
+voice, and one plain instruction line on its own band (what to press). The
+three speakers are Mayor Giggs (the island, Town Hall, apartments, care,
+the Boreagotchi, the Studio), Rivet (the house, Hold the Door, the shooter,
+the workshop) and Father Fuzz (exorcism, family, the Library). The voice
+line follows docs/design/story/SCRIPT_STYLE.md (abrupt indie-parody comedy,
+the odd training-tape joke); the plain line never jokes. The shooter's
+plain line follows the control scheme (Modern, Classic, Dual stick).
+
+| Tip | Where it shows (first visit) |
+|---|---|
+| island | the free play hub: the whole button map |
+| town_hall | the Town Hall menu: the two sides, creating, rent |
+| apartments | Browse homes: window icons, floors, SELECT help |
+| care | a citizen's Care tab: what each action fills |
+| house | your own house, Live or Build: modes and the START menu |
+| defend | Hold the Door: repair / wind / calm / plate (the night waits) |
+| shooter | the story fight, a Hell Breach level or the Arena intro (the fight waits) |
+| exorcism | the ritual's tool picker: tools, START, the three phases |
+| pet | the Boreagotchi LCD |
+| studio | the Music Studio tabs |
+| workshop | Rivet's workshop: parts and the stat names |
+| family | the Family screen |
+| library | the Grand Library lobby and its Field Guide |
+
+The card is **non-blocking**: the scene under it keeps running and
+animating (where a fight or the Hold the Door night would start, it waits
+instead), only the presses go to the card. It ignores presses for its
+first 14 ticks (the pop-in), and the first press after that closes it; no
+press made while it is up reaches the scene, so it is never a menu action.
+Toasts wait behind it. It belongs to the scene that asked for it: hidden
+while another scene is pushed over it, dropped if that scene goes away
+(then it shows again next time unless it was up for 2 seconds). Once it
+has boinged in it holds still as a retained panel (G7; it borrows the
+toast's panel id, no toast being drawn meanwhile), so the GBA copies it
+instead of drawing its text again, and the island hub keeps its frames
+with the card on them (`tip_steady` / `tip_hold`, as for a steady toast).
+The card sits clear of the bottom 14 rows (its drop shadow included), so a
+scene's hint pill and the island's news strip, which repaints itself on
+kept frames, never cross it. Measured on the GBA (libmgba, `make -C gba
+test-tips`): the hub draws 20.5 fps with the card up and 24.6 fps after it
+closes (10.5 fps when it kept no frame under a card), for the few seconds
+a first-time card is on screen.
+
+**Seen flags** (one bit per tip, 32 at most) are the machine's, not the
+island's: they survive New Game. Where the platform keeps the machine
+config record (PS1 memory card file) they are bytes 12..15 of it and the
+Tips switch is byte 11 (`doomo/options_store.h`); where it does not
+(native, GBA) they ride in the save's 'OPT2' chunk (version 2: the seen
+word, then the option values) and merge on load (a load never forgets a
+seen tip). A PS1 card write takes about a second, so a seen tip is not
+written when its card closes: the record follows at the next save
+(`save_game` -> `opt_config_flush`) or option change. Options > Game has
+**Tips: On / Off** and **Show all tips again** (a confirm, then every tip
+shows once more).
+
+**Budgets.** Scripted runs never see a card: the native runner, the GBA
+harness and the PS1 harness (in lockstep) report `PLAT_TEST_NO_TIPS`
+(`doomo/plat_ext.h`), so every journey in 4.1 keeps its presses. A script
+that wants the cards says `tips on` (runner and GBA harness);
+`expect-tip NAME` / `expect-tip none` and `tips reset` check and reset them
+(core/tests/scripts/clarity_tips.txt plays every card at both sizes).
+
+**The Field Guide** (`core/src/lib_help.c`, SCENE_LIB_HELP) is the
+glossary behind the tips: an eighth book on the Grand Library's shelf (not
+a wing: no completion and no unlock ids), a "Field Guide" shortcut in the
+free play Library menu, and the **Help** row of the island START menu
+(above Back to title) and of the story pause panel (above Title Screen).
+17 pages: Buttons (with the GBA's SELECT+A / SELECT+B line), H$ and rent,
+Needs, Moods, Dark, Bonds, Two sides, Exorcism, Weld stats, The house,
+House score, Hold the Door, Boreagotchi, Family, Play as, Studio words,
+Tips. The list works like every Library book (A opens a page, LEFT / RIGHT
+turn pages, UP / DOWN scroll, B closes); `HELP_ARG_PAGE(n)` opens one page
+directly. Each page is up to four paragraphs, each its own English literal
+under 250 bytes, so every paragraph is one row for the translators
+(docs/LANGUAGES.md); a language without the row shows English.
+
 ## 5. Look & feel
 **Premium, not cheap pixel art: cute, lively, constantly animated, and
 vaguely furry.** Most citizens are soft plush critter-folk (cat, fox,

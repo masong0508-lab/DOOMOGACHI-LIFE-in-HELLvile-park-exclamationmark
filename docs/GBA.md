@@ -149,8 +149,12 @@ copies/fills.
 The `.mailbox` section (the first 80 bytes of EWRAM, `GbaMailbox` in
 `gba_plat.h`) holds `{ "DMGB", logic ticks, drawn frames, fps*10 }`, the
 harness command words (cmd, arg, result, cycles), the work counters of
-`fps`, the 20-byte name argument, and (G1) `hold_at` and `draw_all` for
-the harness's `sync on` and `vhash-seq` (section 9); the test harness reads
+`fps`, the 20-byte name argument, (G1) `hold_at` and `draw_all` for
+the harness's `sync on` and `vhash-seq` (section 9), and (CL4) `test_flags`
+at +72, which `plat_test_flags()` returns (0 on a real cartridge: the boot
+code clears it; the harness writes `PLAT_TEST_NO_TIPS` once the ROM is up,
+so the first-time tip cards never eat a script's presses, or 0 after a
+script's `tips on`). 76 of the 80 bytes are used. The test harness reads
 it to count logic ticks and frame rates and posts its commands there.
 
 ### RAM usage (measured, `tools/memreport.py`)
@@ -406,6 +410,7 @@ against the LAST row, not against a figure from an older base.
 | 22 | PA0: play-as contract (`playas.h`, weak defaults), the save header's byte 47 | `16b6929` | 12,384 B | **12,368 B** | -16 B | 6,308 B | `DoomoSaveInfo` gains `flags` (header byte 47, `PLAYAS_HF_*`): 32 -> 36 B, and the title (`T`) and the save / load screen (`L`) each keep two of them in `.bss` (the plan's "0 B" missed these copies); the weak `playas_*` getters are gc'd until called, only `playas_profile_flags()` is linked (save.c). ROM 4,203,604 -> 4,203,628 B (+24); IWRAM and the overlay slot unchanged; save files byte-identical (byte 47 stays 0 with the weak default) |
 | 23 | CRA: creator part catalog, many-part drawing (slot hooks, macro ops), age gate (CR0/CR1/CR2/CR12) | `b080562` | 3,540 B | **3,540 B** | 0 | 6,356 B | measured on `b080562` (the rename) + CRA, and on `4851147` + CRA (3,556 B before and after) (rows 23+ continue from the tree's real figure: the rows after 22 were not ledgered, see CREATOR_PLAN CR0). No EWRAM / IWRAM: the catalog, the age table, the script registry (`doomo_part_minv` 128 B) and the 15 family parts are `const` in ROM; the tools-only shape mode has no variable on the GBA (`p_shape` is a 0 there); the PS1 part arena is not built for the GBA (it reads scripts raw from ROM). ROM 4,301,668 -> 4,314,712 B (+13,044; on `4851147` 4,299,852 -> 4,312,888) |
 | 24 | CL1: toast kinds, lanes, scene-change drop, unlock news (clarity C1 + C5) | `4114eb7` | 3,532 B | **3,468 B** | -64 B | 6,356 B | "before" is the tree's real figure on `4114eb7` (CL2 landed after row 23 without a row: 3,540 -> 3,532 B, -8 B); the same figures after rebasing on `fef1ccc` (Talk T3 / T4 change no GBA RAM or ROM). `ui.c`'s toast state: each queued line's kind and post tick, this frame's lane, the last drawn rect, the per-kind counters, and the unlock news (count, timers and two pointers to the first unlock's name and kind word in the ROM tables; the line is written when it is told, so no 40 B copy), plus the story HUD band's rect and lane tick (`overworld_fx.c`, 16 B). ROM 4,317,416 -> 4,320,012 B (+2,596); IWRAM resident and the overlay slot unchanged; `make -C gba test` green |
+| 25 | CL4: first-time tip cards (`tips.c`), the Field Guide (`lib_help.c`), Tips option | `b080562` | 3,540 B | **3,516 B** | -24 B | 6,356 B | measured on `b080562` built the same way (base 3,540 B free, the rows above were measured on older trees). `tips.c` state 14 B (13 B `.bss` + 1 B `.data`: the card, its scene, the seen word, flags), `options_store.c` +1 B (the Tips value), alignment; the Field Guide's open page (1,404 B) is a new member of the library's scene-scratch union (`lib_int.h` `LibWingData.help`, smaller than the Almanac's), the island's `hub_tip` 2 B is in its scene scratch, the harness's `test_flags` word fits the 80 B mailbox (76 B used). The seen flags ride in the save's `OPT2` chunk (+4 B, version 2): the GBA keeps no config record. IWRAM unchanged (resident 11,176 B, slot 10,384 B, stack 6,356 B); ROM 4,301,668 -> 4,316,936 B (+15,268: the tip and Field Guide text, the card and book code). Island hub with the island card up 20.5 drawn fps, after it 24.6 (`make -C gba test-tips`) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -1709,6 +1714,9 @@ gba/build/harness ROM.gba [--script FILE] [--shots DIR] [--save FILE]
   first finish the video frame (the ROM stays held), and `profile`
   releases the hold while it samples. A ROM from before G1 has no hold:
   `sync on` and `vhash-seq` refuse it.
+* `tips on|off` (CL4): every run keeps the first-time tip cards off (the
+  mailbox's `test_flags`, above); `tips on` lets them show, as the native
+  runner's command does (docs/GAME_DESIGN.md 4.2).
 * `vhash-seq N` fails the run unless each of the N ticks of its window
   presented exactly one frame; its summary line is `vhash-seq LABEL: N of
   N frames, ticks T0-T1, seq HASH`.

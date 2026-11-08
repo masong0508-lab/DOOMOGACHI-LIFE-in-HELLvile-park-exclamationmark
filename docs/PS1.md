@@ -492,6 +492,31 @@ Measured against `16b6929` built the same way, the disc ends at
 (within the plan's 64 B); the slot keeps its 166 KB (now from
 `0x801c7ea0`) and `OVL.BIN` its 24 groups (950 KB packed).
 
+CL4 (first-time tip cards, the Field Guide, the Tips option): resident
++5,952 B. `tips.c` is resident by design (a card shows over any scene and is
+drawn from `doomo_frame`): its code (~2.0 KB: `tips_draw` 952 B, the input,
+show and drop paths) and the 13 cards' text (~2.7 KB of string literals,
+the `tip_text` table 156 B); the rest is `options_store.c` (the Tips byte
+and the seen word in the record and the 'OPT2' chunk, `opt_config_flush`),
+`game.c`, the scene and activity tables and the lobby's Field Guide entry.
+`.bss` +28 B (the card's state, 13 B, and alignment). The Field Guide
+(`lib_help.c`, ~10 KB of code and text) is in the library overlay group:
+its list callback is in `ovl_plan.py`'s `LOCAL_CALLBACKS` and its scene
+name is a named array, so nothing resident points into its string section
+(as a literal the name pulled all 6.4 KB of page text into resident RAM).
+Measured against `b080562` built the same way, the disc ends at
+`0x801edcf0` instead of `0x801ec5b0`, **74,512 B below the stack top**
+(80,464 B before; 8,976 B above the 64 KB reserve and 784 B above the 72 KB
+plan gate); `OVL.BIN` keeps its 24 groups (966 -> 974 KB packed, 1,330 ->
+1,341 KB unpacked) and the slot its size (167 KB). The seen word is in the
+machine config record (`BASLUS-DOOMOC`, bytes 11..15 of the 48 B record):
+no new card block, and it is written with the next save (`save_game` ->
+`opt_config_flush`), not when a card closes (a card write takes about a
+second). If the plan gate is needed back: the cards' 2.7 KB of text could
+move into their callers' overlay groups and be copied into a RAM buffer
+when a card shows. The harness (in lockstep) reports `PLAT_TEST_NO_TIPS`,
+so its scripts and journeys see no card.
+
 The biggest remaining consumers of RAM: resident core code (portraits,
 UI, sim, story engine, ...) ~650 KB, merged string literals of resident
 code ~110 KB, `doomo_town` 107 KB, the display lists 112 KB + OTs 24 KB,
