@@ -17,6 +17,7 @@
  * (runner scripts), 64 = premade cast on an empty island.
  */
 #include "mg.h"
+#include "doomo/plat_ext.h"                 /* plat_strip (S2-3: the POWER bar rows of a held frame) */
 
 enum { WH_INTRO, WH_READY, WH_CHARGE, WH_SPIN, WH_RESULT, WH_DONE };
 
@@ -25,6 +26,12 @@ typedef struct Wheel {
     uint8_t st, power, wedge, last_peg, flap, autoplay, force, curse, prev_song;
     uint16_t t;
     int16_t money_delta;
+    /* S2-3 (the held frame, wh_draw_body): what the last full frame drew, so a held tick repaints only what
+     * changed since: its tick count (t), the speech line and host face, and whether the POWER bar is up */
+    int32_t full_t;
+    const char *held_line;
+    uint8_t held_expr, bar_up, bar_saved;
+    uint8_t bub_n, face_n, bar_n;  /* held ticks still to repaint it: 2 (both pages) after a change */
 } Wheel;
 MG_ARENA_FITS(Wheel);
 #define S (MG_ARENA(Wheel))
@@ -108,7 +115,7 @@ int mg_wheel_apply(int w)
     return delta;
 }
 
-static int radius(void) { return mg_big() ? 72 : 50; }
+static int radius(void) { return mg_big() ? MG_WHEEL_R_BIG : MG_WHEEL_R_SMALL; }
 static int wcx(void) { return mg_w() - radius() - (mg_big() ? 34 : 14); }
 static int wcy(void) { return mg_h() / 2 + (mg_big() ? 10 : 8); }
 
@@ -217,11 +224,40 @@ static uint8_t wedge_col(int k, int shade)
     return PAL_PAINT(wedge_paint[k], shade ? 2 : 1);
 }
 
+/* S2-3: fx_atan2 from the generated octant table (the same angle for every (x, y): it folds the point into
+ * the first octant and places it back exactly as fx_atan2 does; test_minigames checks the whole disc). Points
+ * outside the table (none today: the pie's radius is at most MG_WHEEL_ATAN_MAX) take fx_atan2. */
+int mg_wheel_atan2(int y, int x)
+{
+    int ax = x < 0 ? -x : x, ay = y < 0 ? -y : y, a;
+    if (ax > MG_WHEEL_ATAN_MAX || ay > MG_WHEEL_ATAN_MAX) return fx_atan2(y, x);
+    if (ay <= ax) a = mg_wheel_atan_oct[ax * (ax + 1) / 2 + ay];
+    else          a = 1024 - mg_wheel_atan_oct[ay * (ay + 1) / 2 + ax];
+    if (x >= 0 && y >= 0) return a & DOOMO_ANG_MASK;
+    if (x < 0 && y >= 0)  return (2048 - a) & DOOMO_ANG_MASK;
+    if (x < 0)            return (2048 + a) & DOOMO_ANG_MASK;
+    return (4096 - a) & DOOMO_ANG_MASK;
+}
+
+/* The rim: ui_fill_circle(cx + 2, cy + 3, R + 6, shadow), (cx, cy, R + 6, candy), (cx, cy, R + 4, gold), all but
+ * a ring of each hidden under the next and the pie. S2-3: the same pixels from the generated rect list of the
+ * rings (tools/gen_wheel.py), instead of three discs and their row loops */
+static void rim(int cx, int cy, int R, int held)
+{
+    const MgRimRect *r = R == MG_WHEEL_R_BIG ? mg_wheel_rim_big : mg_wheel_rim_small;
+    uint8_t col[3];
+    col[0] = PAL_RAMP(RAMP_STONE, 0); col[1] = PAL_RAMP(RAMP_CANDY, 2); col[2] = PAL_UI_GOLD;
+    for (; r->w; r++)                               /* (held: the shadow, outside the rest, is there already) */
+        if (r->hl >= 64 || !held) plat_rect(cx + r->x, cy + r->y, r->w, r->hl & 63, col[r->hl >> 6]);
+}
+
 static void pie(int cx, int cy, int R, int rot)
 {
+    const uint8_t *hws = R == MG_WHEEL_R_BIG + 1 ? mg_wheel_pie_hw_big : mg_wheel_pie_hw_small;
     int32_t cot[MG_WHEEL_WEDGES];
     int8_t up[MG_WHEEL_WEDGES];
-    int k, y;
+    uint8_t ord[2][MG_WHEEL_WEDGES], nord[2] = { 0, 0 };
+    int k, y, shade_rows = 0;
     for (k = 0; k < MG_WHEEL_WEDGES; k++) {
         int a = (rot + k * DOOMO_ANG_FULL / MG_WHEEL_WEDGES) & DOOMO_ANG_MASK;
         fix16 s = fx_sin(a), c = fx_cos(a);
@@ -231,43 +267,52 @@ static void pie(int cx, int cy, int R, int rot)
         if (cot[k] > (200 << 16)) cot[k] = 200 << 16;
         if (cot[k] < -(200 << 16)) cot[k] = -(200 << 16);
     }
+    /* S2-3: a ray's crossing x = (cot >> 8) * y >> 8 is monotonic in cot for a fixed y (non-decreasing for y > 0,
+     * non-increasing for y < 0), so each half's crossings come out sorted from one order of its rays made here
+     * (ascending cot for the lower half, descending for the upper) instead of an insertion sort every row */
+    for (k = 0; k < MG_WHEEL_WEDGES; k++) {
+        int h = up[k] == 1 ? 1 : up[k] == -1 ? 0 : -1, j;
+        if (h < 0) continue;
+        for (j = nord[h]; j > 0; j--) {
+            int32_t o = cot[ord[h][j - 1]];
+            if (h ? o <= cot[k] : o >= cot[k]) break;
+            ord[h][j] = ord[h][j - 1];
+        }
+        ord[h][j] = (uint8_t)k;
+        nord[h]++;
+    }
+    while ((shade_rows * 3) < R) shade_rows++;      /* rows y + R < shade_rows: ((y + R) * 3 / R) == 0 */
     for (y = -R; y <= R; y++) {
-        int hw = (int)fx_isqrt((uint32_t)(R * R - y * y)), xs[MG_WHEEL_WEDGES + 2], n = 0, i, j;
-        int side = y < 0 ? -1 : 1;
-        if (y == 0) side = 1;
+        int hw = hws[y < 0 ? -y : y], xs[MG_WHEEL_WEDGES + 2], n = 0, i;
+        int h = y < 0 ? 0 : 1, shade = (y + R) < shade_rows;
         xs[n++] = -hw;
-        for (k = 0; k < MG_WHEEL_WEDGES; k++) {
-            if (up[k] != side) continue;
-            {
-                int x = (int)((cot[k] >> 8) * y >> 8);
-                if (x > -hw && x < hw) xs[n++] = x;
-            }
+        for (i = 0; i < nord[h]; i++) {
+            int x = (int)((cot[ord[h][i]] >> 8) * y >> 8);
+            if (x > -hw && x < hw) xs[n++] = x;
         }
         xs[n++] = hw + 1;
-        for (i = 2; i < n - 1; i++)                 /* insertion sort */
-            for (j = i; j > 1 && xs[j - 1] > xs[j]; j--) { int tmp = xs[j]; xs[j] = xs[j - 1]; xs[j - 1] = tmp; }
         for (i = 0; i < n - 1; i++) {
             int x0 = xs[i], x1 = xs[i + 1], mx = (x0 + x1) / 2, wdg, a;
             if (x1 <= x0) continue;
-            a = (fx_atan2(y, mx) - rot) & DOOMO_ANG_MASK;
+            a = (mg_wheel_atan2(y, mx) - rot) & DOOMO_ANG_MASK;
             wdg = a * MG_WHEEL_WEDGES / DOOMO_ANG_FULL;
-            plat_rect(cx + x0, cy + y, x1 - x0, 1, wedge_col(wdg, ((y + R) * 3 / R) == 0));
+            plat_rect(cx + x0, cy + y, x1 - x0, 1, wedge_col(wdg, shade));
         }
     }
 }
 
-static void wheel(int t)
+static void wheel(int t, int held)
 {
     int cx = wcx() + mg.ox, cy = wcy() + mg.oy, R = radius(), k;
     int rot = (int)((S->ang16 >> 4) & DOOMO_ANG_MASK);
-    /* stand */
-    plat_rect(cx - 4, cy, 9, mg_h() - cy, PAL_RAMP(RAMP_WOOD, 2));
-    plat_rect(cx - 3, cy, 3, mg_h() - cy, PAL_RAMP(RAMP_WOOD, 4));
-    ui_round_rect(cx - 26, mg_h() - 12, 52, 12, 4, PAL_RAMP(RAMP_WOOD, 1));
+    /* stand (S2-3: on a held frame it is there already, and the rim and pie cover all of it they cover) */
+    if (!held) {
+        plat_rect(cx - 4, cy, 9, mg_h() - cy, PAL_RAMP(RAMP_WOOD, 2));
+        plat_rect(cx - 3, cy, 3, mg_h() - cy, PAL_RAMP(RAMP_WOOD, 4));
+        ui_round_rect(cx - 26, mg_h() - 12, 52, 12, 4, PAL_RAMP(RAMP_WOOD, 1));
+    }
     /* rim + bulbs */
-    ui_fill_circle(cx + 2, cy + 3, R + 6, PAL_RAMP(RAMP_STONE, 0));
-    ui_fill_circle(cx, cy, R + 6, PAL_RAMP(RAMP_CANDY, 2));
-    ui_fill_circle(cx, cy, R + 4, PAL_UI_GOLD);
+    rim(cx, cy, R, held);
     pie(cx, cy, R + 1, rot);
     for (k = 0; k < 20; k++) {
         int a = (rot / 2 + k * 4096 / 20) & DOOMO_ANG_MASK;
@@ -325,41 +370,125 @@ static void tent_bg(int t)
     mg_tent(0, 14, PAL_PAINT(PAINT_GRAPE, 1), PAL_PAINT(PAINT_VAPE_PURPLE, 0), PAL_UI_GOLD, t);
 }
 
+static const char *wh_line(void)
+{
+    switch (S->st) {
+    case WH_INTRO: return "One spin a day, sugar. Prizes... or CURSES. Feeling lucky?";
+    case WH_READY: return "Hold " STR_ICON_A " to wind it up, let go to spin!";
+    case WH_CHARGE: return "Wind it up... wiiiind it...";
+    case WH_SPIN: return "Round and round she goes...";
+    case WH_RESULT: return wedge_lines[S->wedge];
+    default: return mg_wheel_ready() ? "Spin again tomorrow? Or now. Whatever." : "That's your spin for today. Come back tomorrow, sugar!";
+    }
+}
+
+/* the speech bubble left of the wheel (opaque over the same rect every frame) */
+static void wh_bubble(const char *line)
+{
+    int big = mg_big(), bx = big ? 12 : 6, hy = big ? 40 : 26;
+    int bw = wcx() - radius() - 14 - bx, by = hy + (big ? 74 : 64), bh = big ? 60 : 46, i;
+    ui_round_rect(bx + 2, by + 2, bw, bh, 6, PAL_RAMP(RAMP_STONE, 0));
+    ui_round_rect(bx, by, bw, bh, 6, PAL_RAMP(RAMP_STONE, 2));
+    ui_round_rect(bx + 1, by + 1, bw - 2, bh - 2, 5, PAL_WHITE);
+    for (i = 0; i < 5; i++) plat_rect(bx + 20 + i, by - 5 + i, 6 - i, 1, PAL_WHITE);
+    ui_text_wrap(bx + 5, by + 4, bw - 10, line, PAL_RAMP(RAMP_STONE, 0), 1);
+}
+
+/* the POWER bar while winding up: rows [H - 26, H - 16) */
+#define WH_BAR_Y(H) ((H) - 26)
+#define WH_BAR_H 10
+static void wh_power_bar(void)
+{
+    int big = mg_big(), bx = big ? 12 : 6, pw = big ? 90 : 60, H = mg_h();
+    ui_round_rect(bx, WH_BAR_Y(H), pw + 4, 10, 4, PAL_RAMP(RAMP_STONE, 0));
+    ui_bar(bx + 2, H - 24, pw, 6, S->power, 100, S->power > 80 ? PAL_UI_GOLD : PAL_PAINT(PAINT_MINT, 1));
+    mg_text(bx + pw + 8, WH_BAR_Y(H), "POWER", PAL_WHITE);
+}
+
+static int wh_face(void) { return S->st == WH_SPIN ? EXPR_TALK : EXPR_HAPPY; }
+
+/* S2-3: the held frame (ui_modal_hold, GBA; docs/GBA.md "Speed wave 2: S2-3"). Outside the result card (its
+ * confetti, window, flash and shake), what changes from tick to tick is the wheel: everything it draws lies inside
+ * its rim's disc (the bulbs, pegs, icons, the eyeball, the flapper), which the rim and the pie repaint opaquely.
+ * So after one full frame the platform keeps it in both pages and a tick draws the wheel only (~27 ms instead of
+ * ~55), plus what changed with the state: the speech line, Wagerine's face (drawn at the held frame's tick, so her
+ * frame sits where it is) and the POWER bar (a clean copy of its rows is kept, plat_strip, to take it away).
+ * Pixel-changing while held: the tent's sway, the sparkles' twinkle and the host frame's bob stand still. */
+static const uint8_t wh_hold_key;
+
+static int wh_hold_ok(void)
+{
+    if (S->st == WH_RESULT || mg.shake || mg.ox || mg.oy || mg.flash_t || mg_fx_live()) return 0;
+#if !defined(DOOMO_PLATFORM_PS1)
+    if (portrait_job_on()) return 0;                /* a stand-in face may still change */
+#endif
+    return 1;
+}
+
+static int wh_draw_held(int t)
+{
+    int R = radius(), H = mg_h();
+    const char *line = wh_line();
+    if (!ui_modal_hold(&wh_hold_key, wh_hold_ok(), wcx() - R - 8, wcy() - R - 14, 2 * R + 17, 2 * R + 24))
+        return 0;
+    /* a change is painted on two held ticks: the two pages flip, each needs it */
+    if (S->bar_up && S->st != WH_CHARGE) { S->bar_up = 0; S->bar_n = 2; }
+    if (line != S->held_line) { S->held_line = line; S->bub_n = 2; }
+    if (wh_face() != S->held_expr) { S->held_expr = (uint8_t)wh_face(); S->face_n = 2; }
+    if (S->bar_n) {                                 /* the POWER bar goes: its rows' clean copy back */
+        if (!plat_strip(PLAT_STRIP_RESTORE, WH_BAR_Y(H), WH_BAR_H)) {
+            ui_modal_hold_end();                    /* the copy is gone: a full frame */
+            ui_modal_drop();
+            return 0;
+        }
+        S->bar_n--;
+    }
+    /* a new line first, then the new face (one of them a tick, so the tick stays under 33 ms) */
+    if (S->bub_n) {
+        wh_bubble(line);
+        S->bub_n--;
+    } else if (S->face_n) {
+        mg_host_frame(mg_big() ? 12 : 6, mg_big() ? 40 : 26, MG_WHEEL_HOST, wh_face(), S->full_t);
+        S->face_n--;
+    }
+    wheel(t, 1);
+    if (S->st == WH_CHARGE) {
+        if (!S->bar_saved) {                        /* no clean copy of its rows: draw it, hold no longer */
+            ui_modal_hold_end();
+            ui_modal_drop();
+            return 0;
+        }
+        wh_power_bar();
+        S->bar_up = 1;
+    }
+    ui_modal_hold_end();
+    return 1;
+}
+
 static void wh_draw_body(void)
 {
     int W = mg_w(), H = mg_h(), t = S->t + (int)doomo_frame_count(), big = mg_big();
-    int hx = big ? 12 : 6, hy = big ? 40 : 26, bx, bw;
-    const char *line;
+    int hx = big ? 12 : 6, hy = big ? 40 : 26;
+    const char *line = wh_line();
     char buf[64];
     if (plat_draw_skipped()) return;
+    /* S2-3: Wagerine talks while the wheel spins: her talking face is drawn ahead, in the idle time of the frames
+     * before (a 45 ms render in the first spin tick otherwise; the same picture) */
+    if (S->st < WH_SPIN && mg_host_alive(MG_WHEEL_HOST)) portrait_prefetch(MG_WHEEL_HOST, EXPR_TALK);
+    if (wh_draw_held(t)) return;
     tent_bg(t);
     mg_textc(hx + 28 + (big ? 38 : 30), big ? 22 : 16, "WHEEL OF FATE", PAL_UI_GOLD);
-    mg_host_frame(hx, hy, MG_WHEEL_HOST, S->st == WH_SPIN ? EXPR_TALK : EXPR_HAPPY, t);
-    wheel(t);
-    switch (S->st) {
-    case WH_INTRO: line = "One spin a day, sugar. Prizes... or CURSES. Feeling lucky?"; break;
-    case WH_READY: line = "Hold " STR_ICON_A " to wind it up, let go to spin!"; break;
-    case WH_CHARGE: line = "Wind it up... wiiiind it..."; break;
-    case WH_SPIN: line = "Round and round she goes..."; break;
-    case WH_RESULT: line = wedge_lines[S->wedge]; break;
-    default: line = mg_wheel_ready() ? "Spin again tomorrow? Or now. Whatever." : "That's your spin for today. Come back tomorrow, sugar!"; break;
-    }
-    bx = hx;
-    bw = wcx() - radius() - 14 - bx;
-    {
-        int by = hy + (big ? 74 : 64), bh = big ? 60 : 46, i;
-        ui_round_rect(bx + 2, by + 2, bw, bh, 6, PAL_RAMP(RAMP_STONE, 0));
-        ui_round_rect(bx, by, bw, bh, 6, PAL_RAMP(RAMP_STONE, 2));
-        ui_round_rect(bx + 1, by + 1, bw - 2, bh - 2, 5, PAL_WHITE);
-        for (i = 0; i < 5; i++) plat_rect(bx + 20 + i, by - 5 + i, 6 - i, 1, PAL_WHITE);
-        ui_text_wrap(bx + 5, by + 4, bw - 10, line, PAL_RAMP(RAMP_STONE, 0), 1);
-    }
-    if (S->st == WH_CHARGE) {
-        int pw = big ? 90 : 60;
-        ui_round_rect(bx, H - 26, pw + 4, 10, 4, PAL_RAMP(RAMP_STONE, 0));
-        ui_bar(bx + 2, H - 24, pw, 6, S->power, 100, S->power > 80 ? PAL_UI_GOLD : PAL_PAINT(PAINT_MINT, 1));
-        mg_text(bx + pw + 8, H - 26, "POWER", PAL_WHITE);
-    }
+    mg_host_frame(hx, hy, MG_WHEEL_HOST, wh_face(), t);
+    wheel(t, 0);
+    wh_bubble(line);
+    /* (S2-3) what a held tick needs from this frame */
+    S->full_t = t;
+    S->held_line = line;
+    S->held_expr = (uint8_t)wh_face();
+    S->bar_saved = (uint8_t)plat_strip(PLAT_STRIP_SAVE, WH_BAR_Y(H), WH_BAR_H);
+    S->bar_up = S->st == WH_CHARGE;
+    S->bub_n = S->face_n = S->bar_n = 0;
+    if (S->st == WH_CHARGE) wh_power_bar();
     mg_fx_draw();
     if (S->st == WH_RESULT && S->t > 8) {
         int w = big ? 200 : 160, h = 44, x = (W - w) / 2, y = H - h - (big ? 16 : 6);
@@ -377,11 +506,13 @@ static void wh_draw_body(void)
     if (!opt_get(OPT_REDUCE_FLASH) && mg.flash_t) { plat_checker(0, 0, W, H, mg.flash_c); mg.flash_t--; }
     ui_hint(S->st == WH_DONE || S->st == WH_RESULT ? STR_ICON_A " OK" :
             STR_ICON_A " Spin  " STR_ICON_B " Leave", WIN_CUTE);
+    ui_modal_no_band();                             /* the band copy is the POWER bar's (plat_strip has one) */
+    ui_modal_full(&wh_hold_key, wh_hold_ok());
 }
 
 static void wh_draw(void)
 {
-    if (!scene_scratch_mine(MG_SCRATCH_TAG)) { plat_clear(PAL_UI_PINK); return; }
+    if (!scene_scratch_mine(MG_SCRATCH_TAG)) { ui_modal_hold(&wh_hold_key, 0, 0, 0, 0, 0); plat_clear(PAL_UI_PINK); return; }
     wh_draw_body();
 }
 

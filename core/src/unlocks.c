@@ -548,18 +548,29 @@ int unlock_option_ok(int list, int index)
 int unlock_paint_ok(int paint) { return unlock_ok(UL_CAT_PAINT, 0, paint); }
 int unlock_mode_ok(int mode) { return unlock_ok(UL_CAT_MODE, 0, mode); }
 
+/* an automatic rule of u for `counter` (-1: any) is met and not granted yet: grant it (1 when it was granted) */
+static inline int rule_check(const DoomoUnlock *u, int counter)
+{
+    if (u->need == 0 || u->prog >= PROG_COUNT) return 0;
+    if (counter >= 0 && u->prog != counter) return 0;
+    if (doomo_town.progress[u->prog] >= u->need && !unlock_has(u->id)) return unlock_grant(u->id);
+    return 0;
+}
+
 static int check_rules(int counter)
 {
-    int i, n, granted = 0;
+    int t, i, granted = 0;
     ul_init();
-    n = ul_total;
-    for (i = 0; i < n; i++) {
-        const DoomoUnlock *u = unlock_at(i);
-        if (u->need == 0 || u->prog >= PROG_COUNT) continue;
-        if (counter >= 0 && u->prog != counter) continue;
-        if (doomo_town.progress[u->prog] >= u->need && !unlock_has(u->id))
-            granted += unlock_grant(u->id);
-    }
+#if defined(DOOMO_PLATFORM_PS1)
+    /* (the PS1 keeps the shorter unlock_at() walk: its resident code may not grow) */
+    for (i = 0; i < ul_total; i++) granted += rule_check(unlock_at(i), counter);
+    (void)t;
+#else
+    /* (S2-3) table by table, in registry order as unlock_at(0 .. ul_total - 1) visits them, instead of an
+     * unlock_at() walk over the tables per entry (~23 ms of the GBA tick a progress_set() came in: the wheel's spin) */
+    for (t = 0; t < UL_TABLES && UL_TABLE(t); t++)
+        for (i = 0; i < ul_len[t]; i++) granted += rule_check(&UL_TABLE(t)[i], counter);
+#endif
     return granted;
 }
 

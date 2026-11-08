@@ -335,6 +335,16 @@ TEST(mg_wheel_once_a_day)
     CHECK(mg_wheel_ready());
 }
 
+/* S2-3: the pie's angle table gives fx_atan2's angle for every point of the disc and beyond (the fallback) */
+TEST(mg_wheel_atan_table_is_fx_atan2)
+{
+    int x, y, bad = 0;
+    for (y = -MG_WHEEL_ATAN_MAX - 3; y <= MG_WHEEL_ATAN_MAX + 3; y++)
+        for (x = -MG_WHEEL_ATAN_MAX - 3; x <= MG_WHEEL_ATAN_MAX + 3; x++)
+            bad += mg_wheel_atan2(y, x) != fx_atan2(y, x);
+    CHECK_EQ(bad, 0);
+}
+
 TEST(mg_wheel_prizes_and_curses)
 {
     int w, curses = 0;

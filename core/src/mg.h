@@ -265,6 +265,18 @@ int  mg_wheel_ready(void);                 /* not spun yet today          */
 int  mg_wheel_apply(int wedge);
 extern const char *const mg_wheel_names[MG_WHEEL_WEDGES];
 int  mg_wheel_is_curse(int wedge);
+/* S2-3: the wheel's ROM tables (core/gen/mg_wheel_tab.c, tools/gen_wheel.py): atan_oct(n, d) for
+ * 0 <= n <= d <= MG_WHEEL_ATAN_MAX at [d * (d + 1) / 2 + n] (the pie's angles without fx_atan2's 64-bit search;
+ * mg_wheel_atan2() == fx_atan2()), and per radius (50 at 240x160, 72 bigger) the pie's row half-widths and the
+ * rim's rects */
+#define MG_WHEEL_ATAN_MAX 73
+#define MG_WHEEL_R_SMALL 50
+#define MG_WHEEL_R_BIG 72
+typedef struct MgRimRect { int8_t x, y; uint8_t w, hl; } MgRimRect;   /* hl = h | layer << 6 */
+extern const uint16_t mg_wheel_atan_oct[(MG_WHEEL_ATAN_MAX + 1) * (MG_WHEEL_ATAN_MAX + 2) / 2];
+extern const uint8_t mg_wheel_pie_hw_small[MG_WHEEL_R_SMALL + 2], mg_wheel_pie_hw_big[MG_WHEEL_R_BIG + 2];
+extern const MgRimRect mg_wheel_rim_small[], mg_wheel_rim_big[];   /* end: w == 0 */
+int  mg_wheel_atan2(int y, int x);
 
 /* Derby helpers (mg_derby.c) for tests */
 int  mg_derby_pet_speed(void);             /* your racer's speed rating   */

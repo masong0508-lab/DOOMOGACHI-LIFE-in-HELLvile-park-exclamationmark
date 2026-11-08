@@ -215,7 +215,7 @@ push MG_WHEEL 16
 wait 30
 fps start
 wait 90
-fps fair: wheel intro
+expect-fps 28 fair: wheel intro
 shot fair_wheel_intro
 press A
 wait 10
@@ -224,5 +224,5 @@ wait 20
 release A
 fps start
 wait 130
-fps fair: wheel spin
+expect-fps 28 fair: wheel spin
 shot fair_wheel_spin

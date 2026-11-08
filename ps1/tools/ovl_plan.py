@@ -267,6 +267,10 @@ def group_of(path):
     if "/core/gen/" in path and base(path) in ("part_icons_rle", "part_meta_data"):
         return "creator"
     # --- end CR7 ---
+    # --- S2-3: the Prize Wheel's generated tables (angles, pie rows, rim rects) join the minigame group ---
+    if "/core/gen/" in path and base(path) == "mg_wheel_tab":
+        return "minigame"
+    # --- end S2-3 ---
     # --- H3 (SPEC C3): the PS1 house renderer is house code too ---
     if "/core/" not in path and "/src/" in path and base(path) in ("room", "room_test"):
         return "home"
