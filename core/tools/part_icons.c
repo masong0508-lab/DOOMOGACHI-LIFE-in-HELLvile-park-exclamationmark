@@ -26,6 +26,8 @@
 #include "doomo/portrait.h"
 #include "doomo/part_meta.h"
 #include "doomo/part_icons.h"
+#include "doomo/parts.h"
+#include "doomo/look_fields.h"
 #include "../src/creator_int.h"
 #include "native.h"
 
@@ -46,6 +48,9 @@ static int is_look_list(int list)
     case GF_MOUTH_STYLE: case GF_HAIR_STYLE: case GF_FACIAL_HAIR: case GF_EARS: case GF_HORNS:
     case GF_TAIL: case GF_WINGS: case GF_HALO: case GF_MARKING: case GF_TOP: case GF_BOTTOM:
     case GF_SHOES: case GF_HAT: case GF_ACCESSORY: case GF_AURA: case GF_PATTERN:
+    /* CR3: the gene's new fields (drawn through the resolved set, look_part_set) */
+    case GF_PUPIL: case GF_SCLERA: case GF_FUR_PATTERN: case GF_GLASSES: case GF_OUTER: case GF_LEGWEAR:
+    case GF_BLUSH_STYLE: case GF_EAR_FOLD:
         return 1;
     default:
         return 0;
@@ -56,7 +61,7 @@ static int cam_of(int list)
 {
     switch (list) {
     case GF_BODY: case GF_TAIL: case GF_WINGS: case GF_TOP: case GF_BOTTOM: case GF_SHOES:
-    case GF_PATTERN: case GF_AURA: case GF_MARKING:
+    case GF_PATTERN: case GF_AURA: case GF_MARKING: case GF_FUR_PATTERN: case GF_OUTER: case GF_LEGWEAR:
         return ICAM_FIG;
     default:
         return ICAM_BUST;
@@ -76,8 +81,13 @@ static void mannequin(DoomoLook *l, int list)
     if (list == GF_FACIAL_HAIR) l->hair_color = PAINT_CHOCOLATE;
     if (list == GF_PATTERN) { l->top = TOP_TSHIRT; l->pattern_color = PAINT_CHERRY; }
     if (list == GF_HAT || list == GF_HORNS || list == GF_HALO || list == GF_HEAD_SHAPE || list == GF_EARS ||
-        list == GF_EYE_STYLE || list == GF_MOUTH_STYLE || list == GF_BROW_STYLE || list == GF_NOSE_STYLE)
+        list == GF_EYE_STYLE || list == GF_MOUTH_STYLE || list == GF_BROW_STYLE || list == GF_NOSE_STYLE ||
+        list == GF_GLASSES || list == GF_EAR_FOLD)
         l->hair_style = 0;                        /* bald: the part reads alone */
+    if (list == GF_EAR_FOLD) l->ears = EARS_BUNNY;              /* CR3: long ears show a fold */
+    if (list == GF_LEGWEAR) { l->bottom = BOTTOM_SHORTS; l->shoes = SHOES_SANDALS; l->pattern_color = PAINT_CHERRY; }
+    if (list == GF_OUTER) l->top_color = PAINT_WHITE;
+    if (list == GF_FUR_PATTERN) { l->top = TOP_NONE; l->skin = 8 + PAINT_CARAMEL; }
 }
 
 static void species_look(DoomoLook *l, int sp)
@@ -92,10 +102,10 @@ static void species_look(DoomoLook *l, int sp)
     res_get_look(&r, l);
 }
 
-static void render(int cam, const DoomoLook *l, uint8_t *out)
+static void render(int cam, const DoomoLook *l, const DoomoDeep *d, uint8_t *out)
 {
-    if (cam == ICAM_FIG) figure_render(l, RES_ALIVE, EXPR_NEUTRAL, 0, out);
-    else portrait_render(l, RES_ALIVE, EXPR_NEUTRAL, 0, out);
+    if (cam == ICAM_FIG) figure_render_deep(l, d, RES_ALIVE, EXPR_NEUTRAL, 0, out);
+    else portrait_render_deep(l, d, RES_ALIVE, EXPR_NEUTRAL, 0, out);
 }
 
 /* The mannequin of a grey icon is a flat silhouette: light grey with a mid grey rim where it meets
@@ -240,17 +250,19 @@ static void do_slot(const PartSlotInfo *sl)
     /* the mannequin (grey mode: the slot's choice 0) */
     if (grey) {
         DoomoLook l;
+        DoomoDeep d = doomo_deep_zero;
         mannequin(&l, list);
-        *((uint8_t *)&l + 1 + list) = 0;
-        render(cam, &l, base);
+        look_part_set(&l, &d, list, 0);
+        render(cam, &l, &d, base);
     }
     for (i = sl->first; i < sl->first + sl->count && n < MAXV; i++) {
         const PartMeta *m = &doomo_part_meta[i];
         DoomoLook l;
+        DoomoDeep d = doomo_deep_zero;
         if (PMF_STATE(m->flags) != PSTATE_LIVE) continue;
         if (list == PL_SPECIES) species_look(&l, m->value);
-        else { mannequin(&l, list); *((uint8_t *)&l + 1 + list) = m->value; }
-        render(cam, &l, img[n]);
+        else { mannequin(&l, list); look_part_set(&l, &d, list, m->value); }
+        render(cam, &l, &d, img[n]);
         sdx[n] = sdy[n] = 0;
         if (grey) best_shift(img[n], base, iw, ih, &sdx[n], &sdy[n]);
         rows[n++] = i;
@@ -355,21 +367,40 @@ static FILE *open_out(const char *root, const char *name)
     return f;
 }
 
+/* CR3: a part the PS1 can draw (no part-script VM until CR10: the values before the list's first
+ * script, parts.h doomo_part_minv); only these are packed for it (part_icons.h) */
+static int vm0_drawable(int row)
+{
+    const PartMeta *m = &doomo_part_meta[row];
+    return m->list >= 128 || m->value < doomo_part_minv[m->list];
+}
+
 static void write_gen(const char *root)
 {
     FILE *f;
-    int i, k;
+    int i, k, np = 0;
     uint8_t *rle = (uint8_t *)malloc((size_t)nicons * (PART_ICON_PIX + PART_ICON_PIX / 64 + 8));
     uint32_t *ofs = (uint32_t *)malloc(sizeof(uint32_t) * (size_t)(nicons + 1));
+    int *prow = (int *)malloc(sizeof(int) * (size_t)(nicons + 1));
     uint32_t total = 0;
-    for (i = 0; i < nicons; i++) { ofs[i] = total; total += (uint32_t)pack(icons[i].pix, rle + total); }
-    ofs[nicons] = total;
+    for (i = 0; i < nicons; i++) {
+        if (!vm0_drawable(icons[i].row)) continue;
+        ofs[np] = total;
+        total += (uint32_t)pack(icons[i].pix, rle + total);
+        prow[np++] = icons[i].row;
+    }
+    ofs[np] = total;
 
     f = open_out(root, "part_icons_data.c");
     fprintf(f, "/* part_icons_data.c - GENERATED by core/tools/part_icons.c (make -C core gen) from the\n"
                " * renderer and core/data/parts/catalog/. DO NOT EDIT. The raw 20x20 part icons (CR7,\n"
                " * part_icons.h): GBA and native blit these from ROM. %d icons, %d bytes. */\n"
                "#include \"doomo/part_icons.h\"\n\n", nicons, nicons * PART_ICON_PIX);
+    fprintf(f, "/* the raw icons' doomo_part_meta rows */\n");
+    fprintf(f, "const uint16_t doomo_part_icon_count = %d;\n\n", nicons);
+    fprintf(f, "const uint16_t doomo_part_icon_rows[%d] = {", nicons);
+    for (i = 0; i < nicons; i++) fprintf(f, "%s%d,", i % 16 ? " " : "\n    ", icons[i].row);
+    fprintf(f, "\n};\n\n");
     fprintf(f, "const uint8_t doomo_part_icon_pix[%d][PART_ICON_PIX] = {\n", nicons);
     for (i = 0; i < nicons; i++) {
         fprintf(f, "    {   /* %d %s */", icons[i].row, part_meta_name(&doomo_part_meta[icons[i].row]));
@@ -381,24 +412,27 @@ static void write_gen(const char *root)
 
     f = open_out(root, "part_icons_rle.c");
     fprintf(f, "/* part_icons_rle.c - GENERATED by core/tools/part_icons.c (make -C core gen). DO NOT EDIT.\n"
-               " * The part icons of part_icons_data.c, packed at 4 bits a pixel (part_icon_unpack): the PS1 links\n"
-               " * these instead, in the creator overlay group. %d icons, %u bytes. */\n"
-               "#include \"doomo/part_icons.h\"\n\n", nicons, (unsigned)total);
-    fprintf(f, "/* the icons' doomo_part_meta rows (every build links these) */\n");
-    fprintf(f, "const uint16_t doomo_part_icon_count = %d;\n\n", nicons);
-    fprintf(f, "const uint16_t doomo_part_icon_rows[%d] = {", nicons);
-    for (i = 0; i < nicons; i++) fprintf(f, "%s%d,", i % 16 ? " " : "\n    ", icons[i].row);
+               " * The part icons the PS1 can draw (CR3: no part scripts until CR10), packed at 4 bits a pixel\n"
+               " * (part_icon_unpack): the PS1 links these instead of part_icons_data.c, in the creator overlay\n"
+               " * group. %d icons, %u bytes. */\n"
+               "#include \"doomo/part_icons.h\"\n\n", np, (unsigned)total);
+    fprintf(f, "/* the packed icons' doomo_part_meta rows (every build links these) */\n");
+    fprintf(f, "const uint16_t doomo_part_icon_rle_count = %d;\n\n", np);
+    fprintf(f, "const uint16_t doomo_part_icon_rle_rows[%d] = {", np);
+    for (i = 0; i < np; i++) fprintf(f, "%s%d,", i % 16 ? " " : "\n    ", prow[i]);
     fprintf(f, "\n};\n\n");
-    fprintf(f, "const uint32_t doomo_part_icon_rle_ofs[%d] = {", nicons + 1);
-    for (i = 0; i <= nicons; i++) fprintf(f, "%s%u,", i % 12 ? " " : "\n    ", (unsigned)ofs[i]);
+    fprintf(f, "const uint32_t doomo_part_icon_rle_ofs[%d] = {", np + 1);
+    for (i = 0; i <= np; i++) fprintf(f, "%s%u,", i % 12 ? " " : "\n    ", (unsigned)ofs[i]);
     fprintf(f, "\n};\n\nconst uint8_t doomo_part_icon_rle[%u] = {", (unsigned)(total ? total : 1));
     for (k = 0; k < (int)total; k++) fprintf(f, "%s%d,", k % 24 ? "" : "\n    ", rle[k]);
     if (!total) fprintf(f, "0");
     fprintf(f, "\n};\n");
     fclose(f);
-    printf("part_icons: %d icons, raw %d B, packed %u B\n", nicons, nicons * PART_ICON_PIX, (unsigned)total);
+    printf("part_icons: %d icons, raw %d B; %d packed for the PS1, %u B\n", nicons, nicons * PART_ICON_PIX, np,
+           (unsigned)total);
     free(rle);
     free(ofs);
+    free(prow);
 }
 
 /* ---- the contact sheet ------------------------------------------------------------------- */

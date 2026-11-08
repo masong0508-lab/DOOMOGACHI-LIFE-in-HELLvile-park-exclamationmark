@@ -18,8 +18,8 @@ stored in steps of 2; radii 0..255):
     def NAME P1 P2 ..         a template (family grammar): op lines up to `enddef`, where $P1 ... are
                               replaced by the `use` arguments ($P+N, $P-N and $P*N also work)
     list FIELD VALUE          the script of one style: FIELD is a gene field of fields.txt or DF_x
-    block group=G anchor=head|torso lod=tiny,mid,big|all view=portrait,figure,fighter,chibi|all
-      mat FIELD [light|dark]      anchor head|torso    shade NAME      solid [noline,nocast,..,same]
+    block group=G anchor=head|torso|frame lod=tiny,mid,big|all view=portrait,figure,fighter,chibi|all
+      mat FIELD [light|dark]      anchor head|torso|frame    shade NAME      solid [noline,nocast,..,same]
       decal    mirror on|off    scale N (64 = 1.0)     region none|head|eye_l|eye_r|muzzle|torso
       ellipse X Y RX RY         capsule X0 Y0 X1 Y1 R0 R1      tri X0 Y0 X1 Y1 X2 Y2
       line X0 Y0 X1 Y1 C        dot X Y C              stamp NAME X Y [Q4]
@@ -31,6 +31,13 @@ stored in steps of 2; radii 0..255):
       band X Y W H              strap X0 Y0 X1 Y1 W       bow X Y S        ring X Y R T
       chain X0 Y0 X1 Y1 N SAG   frill X0 X1 Y N R         pouch X Y W H
     end
+
+ANCHORS: head (256 = the head radius, projected on the head with its yaw), torso (256 = the torso
+half size) and frame (CR3): a frame the slot's hook sets, in the hook's own units: one eye for pupils,
+eye whites and eyes (256 = the eye radius, x mirrored for the left eye), a cheek for blush, a brow for
+brows, the nose, the mouth (256 = the mouth half width), the pair of eyes for glasses (x = +-256 are
+the eye centres, radii in eye radii) and one leg for legwear (x 256 = the leg radius, y 256 = the leg's
+length from the foot up when negative). A frame block is drawn once per frame.
 
 HOOKS: a list's script is drawn by its painter's hook (src/portrait_script.c, ps_slot), in the layer
 groups that painter runs in (HOOKS below; "any" = the painter runs once and draws every block). A
@@ -70,6 +77,9 @@ HOOKS = {
     "facial_hair": {3}, "hair_style": {0, 4}, "ears": {0, 4}, "horns": {5}, "hat": {5}, "halo": {6},
     "accessory": {0, 4, 5}, "aura": {0, 6}, "top": {1, 4}, "bottom": {1}, "shoes": {1},
     "tail": None, "wings": None,
+    # CR3: the gene's new fields (their painters set frames: an eye, a cheek, the pair of eyes, a leg)
+    "pupil": {3}, "sclera": {3}, "blush_style": {3}, "glasses": {5}, "legwear": {1},
+    "outer": {0, 1, 4}, "fur_pattern": {3},
 }
 REGIONS = ["none", "head", "eye_l", "eye_r", "muzzle", "torso"]
 VIEWS = ["portrait", "figure", "fighter", "chibi"]
@@ -79,7 +89,8 @@ MAX_PART_PX = 600
 # bust-scale half sizes in px, measured on the bust (portrait.c setup_portrait: the head radius is
 # 14 + head_size / 4 px, about 18 x 16 at the largest head; the torso about 18 x 15). CR2 corrected
 # these from 36 x 42 / 20 x 26, which overstated every part's area about four times.
-NOMINAL = {"head": (18, 16), "torso": (18, 15)}
+NOMINAL = {"head": (18, 16), "torso": (18, 15), "frame": (6, 6)}
+ANCHORS = ["head", "torso", "frame"]
 
 
 class PartError(Exception):
@@ -193,8 +204,8 @@ def compile_block(lines, stamps, fields, where):
             if k == "anchor":
                 anchor = t[1]
                 if anchor not in NOMINAL:
-                    raise PartError("%s: anchor must be head or torso" % w)
-                out += bytes([OP["ANCHOR"], 0 if anchor == "head" else 1])
+                    raise PartError("%s: anchor must be head, torso or frame" % w)
+                out += bytes([OP["ANCHOR"], ANCHORS.index(anchor)])
             elif k == "mat":
                 if t[1] not in fields:
                     raise PartError("%s: unknown field %r" % (w, t[1]))
@@ -406,17 +417,17 @@ def parse(path, fields, templates=None):
                 raise PartError("%s: %s is drawn in group(s) %s, never in %d" %
                                 (w, lname, ",".join(str(x) for x in sorted(HOOKS[lname])), grp))
             if kv.get("anchor", "head") not in NOMINAL:
-                raise PartError("%s: anchor must be head or torso" % w)
+                raise PartError("%s: anchor must be head, torso or frame" % w)
             lv = mask_of(kv.get("lod", "all"), LODS, w) | (mask_of(kv.get("view", "all"), VIEWS, w) << 3)
             if cur[0] >= PL_DEEP0 and lname not in deep_chibi and (lv & 1) and (lv >> 3) & (1 << VIEWS.index("chibi")):
                 raise PartError("%s: %s is not chibi-visible: give the block lod=mid,big or no chibi view" % (w, lname))
-            block = [(grp, 0 if kv.get("anchor", "head") == "head" else 1, lv), [], w]
+            block = [(grp, ANCHORS.index(kv.get("anchor", "head")), lv), [], w]
         elif t[0] == "end":
             if block is None:
                 raise PartError("%s: end without a block" % w)
             body = list(block[1])
-            if block[0][1] == 1:
-                body.insert(0, (ln, ["anchor", "torso"]))
+            if block[0][1] != 0:
+                body.insert(0, (ln, ["anchor", ANCHORS[block[0][1]]]))
             ops, top = compile_block(body, stamps, fields, block[2])
             g, a, lv = block[0]
             entries[cur].append(bytes([g, a, lv, len(ops)]) + ops)

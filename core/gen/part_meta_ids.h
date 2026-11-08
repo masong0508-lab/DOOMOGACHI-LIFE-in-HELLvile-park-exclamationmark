@@ -7,6 +7,7 @@
 #define PART_TAG_COUNT 31
 #define PART_HIDE_COUNT 16
 #define PART_NAME_BYTES 3060
+#define PART_GENE_FIELDS 83
 #define PSLOT_BODY 0
 #define PSLOT_HEAD 1
 #define PSLOT_EYES 2

@@ -810,7 +810,7 @@ void owfx_draw_pause_ex(int settled)
     ui_title(sw / 2, y - 6, "Paused", style);
     /* you, waving */
     if (p) {
-        const DoomoImage *fig = figure_image(RES_LOOK_VIEW(p), p->status, ((t / 40) & 3) == 1 ? EXPR_HAPPY : EXPR_NEUTRAL);
+        const DoomoImage *fig = figure_image_res(p, p->status, ((t / 40) & 3) == 1 ? EXPR_HAPPY : EXPR_NEUTRAL);
         int fy = y + 12 + ui_wave((int)t, 60, 1);
         ui_fill_ellipse(x + 34, y + 12 + FIGURE_H - 1, 18, 4, st->fill_lo);
         if (fig) plat_image(x + 10, fy, fig, 1, 0, 0);

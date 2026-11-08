@@ -9,7 +9,23 @@
  * resident on every platform. Pure, no state (host tests add an override table). */
 #include "doomo/doomo.h"
 #include "doomo/part_meta.h"
+#include "doomo/parts.h"
 #include "doomo/gene.h"
+
+/* ---- CR3: live counts ------------------------------------------------------------------------ */
+int part_live_count(int gf)
+{
+    return gf >= 0 && gf < PART_GENE_FIELDS ? doomo_part_live[gf] : 0;
+}
+
+int part_live_drawable(int gf)
+{
+    int n = part_live_count(gf);
+#if defined(DOOMO_PARTS_VM) && !DOOMO_PARTS_VM
+    if (n > doomo_part_minv[gf]) n = doomo_part_minv[gf];    /* no VM: the painted values only */
+#endif
+    return n;
+}
 
 #if defined(DOOMO_PART_AGE_TEST)
 #define AGE_TEST_MAX 8

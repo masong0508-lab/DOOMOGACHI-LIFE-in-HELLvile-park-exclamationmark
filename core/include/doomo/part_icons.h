@@ -18,23 +18,29 @@
 #define PART_ICON_W   20
 #define PART_ICON_PIX (PART_ICON_W * PART_ICON_W)
 
-/* generated (core/gen/part_icons_*.c) */
-extern const uint16_t doomo_part_icon_count;                      /* part_icons_rle.c (every build)  */
+/* generated (core/gen/part_icons_*.c). CR3: the packed set holds only the parts the PS1 can draw
+ * (no part scripts there until CR10), so each file has its own rows. */
+extern const uint16_t doomo_part_icon_count;                      /* part_icons_data.c (raw)         */
 extern const uint16_t doomo_part_icon_rows[];                     /* doomo_part_meta rows, ascending */
-extern const uint8_t  doomo_part_icon_pix[][PART_ICON_PIX];       /* part_icons_data.c (raw)        */
-extern const uint32_t doomo_part_icon_rle_ofs[];                  /* part_icons_rle.c: count + 1    */
+extern const uint8_t  doomo_part_icon_pix[][PART_ICON_PIX];
+extern const uint16_t doomo_part_icon_rle_count;                  /* part_icons_rle.c (packed)       */
+extern const uint16_t doomo_part_icon_rle_rows[];                 /* doomo_part_meta rows, ascending */
+extern const uint32_t doomo_part_icon_rle_ofs[];                  /* count + 1                       */
 extern const uint8_t  doomo_part_icon_rle[];
 
-/* The icon index of doomo_part_meta row `row`, or -1 when it has none (not live, a slot the icon
- * tool does not draw). */
+/* The icon index of doomo_part_meta row `row` in this build's set (the packed one on DOOMO_ICONS_RLE
+ * builds), or -1 when it has none (not live, a slot the icon tool does not draw, a scripted part on
+ * the PS1). */
 int part_icon_index(int row);
+/* The same in a given set (tests): packed != 0 the packed rows, else the raw rows. */
+int part_icon_index_in(int row, int packed);
 /* The icon of row `row` as an image: 1 and *out filled, 0 when there is none. `buf` must hold
  * PART_ICON_PIX bytes: builds that link the packed icons (DOOMO_ICONS_RLE, the PS1) unpack into
  * it; the others point *out at ROM and leave it untouched. out->uid is stable per icon, so a
  * platform image cache keeps an icon across frames. */
 int part_icon_image(int row, DoomoImage *out, uint8_t *buf);
-/* Unpack packed icon `i` into dst (PART_ICON_PIX bytes); returns 1 on success. Every build has it
- * (the host tests check it against the raw icons). */
+/* Unpack packed icon `i` (an index into the packed rows) into dst (PART_ICON_PIX bytes); returns 1
+ * on success. Every build has it (the host tests check it against the raw icons). */
 int part_icon_unpack(int i, uint8_t *dst);
 
 #endif

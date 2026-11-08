@@ -764,7 +764,12 @@ static void eye_glossy(PCtx *c, int ex, int ey, int erx, int ery, int shear, int
         pc_decal(&ring, SH_FLAT);
         pc_ellipse_sh(ex, ey, erx + 10, ery + 8, shear);
     }
-    if (ds && big) {
+    if (dp >= doomo_part_minv[GF_PUPIL] || ds >= doomo_part_minv[GF_SCLERA])
+        ps_frame(ex, ey, phs.s * erx, ery, erx, ery);       /* CR3: this eye, for scripted pupils / whites */
+    if (big && PS_SLOT_FRAME(c, GF_SCLERA, ds, 3)) {        /* CR3: scripted eye whites */
+        ix = erx * 80 / 100;
+        iy = ery * 86 / 100;
+    } else if (ds && big) {
         /* sclera: the white of the eye shows around a smaller iris (1 white, 2 shaded) */
         PMat sc;
         pm_flat(&sc, ds == 2 ? PAL_GRAY_L : PAL_WHITE);
@@ -784,7 +789,9 @@ static void eye_glossy(PCtx *c, int ex, int ey, int erx, int ery, int shear, int
     case 4: pw = 86; ph = 30; break;
     default: break;
     }
-    if (pupil || dp) pc_ellipse_sh(ex, ey - iy / 10, ix * pw / 100 + 2, iy * ph / 100 + 2, shear);
+    if (PS_SLOT_FRAME(c, GF_PUPIL, dp, 3)) {
+        /* CR3: a scripted pupil (drawn in the eye's frame) */
+    } else if (pupil || dp) pc_ellipse_sh(ex, ey - iy / 10, ix * pw / 100 + 2, iy * ph / 100 + 2, shear);
     if (big && ery >= 48) {
         /* lighter crescent at the bottom of the iris */
         int x, xa = (ex - erx / 2) >> 4, xb = (ex + erx / 2) >> 4, yb = (ey + ery - 10) >> 4;
@@ -1123,7 +1130,29 @@ static void eyes(PCtx *c)
     int shear = (l->eye_tilt - 8) * 14;
     int X, Y, v, n = DOOMO_CLAMP(l->eye_count, 1, 3);
     int erx = F.erx, ery = F.ery;
-    if (PS_SLOT(c, GF_EYE_STYLE, l->eye_style, 3)) return;    /* CR2: scripted eyes */
+    /* CR3: the expressions that close or replace the eyes (happy arcs, sleepy, love hearts, X, a blink)
+     * draw the painter's, so scripted eyes still emote */
+    int emote = c->creepy || c->dead || c->blink || c->expr == EXPR_DEAD || c->expr == EXPR_LOVE ||
+                c->expr == EXPR_HAPPY || c->expr == EXPR_SLEEPY;
+    if (!emote && PS_SLOT(c, GF_EYE_STYLE, l->eye_style, 3)) {   /* CR2: scripted eyes (head blocks) */
+        /* CR3: and their frame blocks once per eye (256 = the eye radius, x mirrored on the left) */
+        if (n == 1) {
+            v = fpt(0, F.ey, &X, &Y);
+            if (v > 0) { ps_frame(X, Y, fshort(erx, v), ery, fshort(erx, v), ery); ps_slot_frame(c, GF_EYE_STYLE, l->eye_style, 3); }
+        } else {
+            for (phs.s = -1; phs.s <= 1; phs.s += 2) {
+                v = fpt(phs.s * F.ex, F.ey, &X, &Y);
+                if (v > 40) {
+                    int w = fshort(erx, v);
+                    ps_frame(X, Y, phs.s * w, ery, w, ery);
+                    ps_slot_frame(c, GF_EYE_STYLE, l->eye_style, 3);
+                }
+            }
+            phs.s = 1;
+        }
+        return;
+    }
+    if (l->eye_style >= EYE_COUNT) st = EYE_ROUND;            /* CR3: a scripted style, emoting */
     if (c->expr == EXPR_SICK || c->expr == EXPR_SAD) shear += (c->expr == EXPR_SAD ? 30 : 0);
     if (n == 1) {
         v = fpt(0, F.ey, &X, &Y);
@@ -1150,7 +1179,13 @@ void ph_face_over(PCtx *c)
     F.lid = face_ink(c);
     brows(c);
     if (PS_SLOT(c, GF_EYE_STYLE, l->eye_style, 4)) {
-        /* CR2: scripted eyes draw their own third eye / over-hair bits (group 4 blocks) */
+        /* CR2: scripted eyes draw their own over-hair bits (group 4 blocks); CR3: a third eye is one
+         * more frame of their eye */
+        if (l->eye_count == 3) {
+            v = fpt(0, F.by - 40, &X, &Y);
+            if (v > 0) { ps_frame(X, Y, fshort(F.erx * 3 / 4, v), F.ery * 3 / 4, fshort(F.erx * 3 / 4, v), F.ery * 3 / 4);
+                         ps_slot_frame(c, GF_EYE_STYLE, l->eye_style, 3); }
+        }
     } else if (l->eye_count == 3) {
         int st = l->eye_style % EYE_COUNT;
         v = fpt(0, F.by - 40, &X, &Y);
@@ -1200,7 +1235,18 @@ static void brows(PCtx *c)
     int st = l->brow_style, big = phs.h->lod == LOD_BIG;
     uint8_t col = c->hair.c[0], col2 = c->hair.c[1];
     int X, Y, v, w, r;
-    if (PS_SLOT(c, GF_BROW_STYLE, st, 4)) return;            /* CR2: scripted brows */
+    if (PS_SLOT(c, GF_BROW_STYLE, st, 4)) {                   /* CR2: scripted brows (head blocks) */
+        /* CR3: and their frame blocks once per brow (256 = the eye radius, x mirrored on the left) */
+        for (phs.s = -1; phs.s <= 1; phs.s += 2) {
+            v = fpt(phs.s * F.ex, F.by, &X, &Y);
+            if (v <= 40) continue;
+            w = fshort(F.erx, v);
+            ps_frame(X, Y, phs.s * w, F.ery, w, F.ery);
+            ps_slot_frame(c, GF_BROW_STYLE, st, 4);
+        }
+        phs.s = 1;
+        return;
+    }
     if (phs.h->lod == LOD_TINY) return;
     if (l->hair_style == HAIR_BALD && c->critter) { col = c->skin.c[0]; col2 = c->skin.c[1]; }
     if (palette_luma(col) > 150) { col = palette_darker(col); col2 = palette_darker(col2); }
@@ -1286,7 +1332,14 @@ static void nose(PCtx *c)
     PMat m;
     uint8_t ink = face_ink(c);
     int ny = F.ny;
-    if (PS_SLOT(c, GF_NOSE_STYLE, st, 3)) return;            /* CR2: a scripted nose */
+    if (PS_SLOT(c, GF_NOSE_STYLE, st, 3)) {                   /* CR2: a scripted nose (head blocks) */
+        /* CR3: its frame blocks at the nose (256 = the nose radius the size slider gives) */
+        v = fpt(0, F.muzzle != MZ_NONE ? F.my - 70 : ny, &X, &Y);
+        r = hr(8 + sz * 5);
+        if (!big) r = r * 3 / 4;
+        if (v > 0) { ps_frame(X, Y, r, r, r, r); ps_slot_frame(c, GF_NOSE_STYLE, st, 3); }
+        return;
+    }
     if (F.muzzle != MZ_NONE) ny = F.my - 70;
     v = fpt(0, ny, &X, &Y);
     if (v <= 0) return;
@@ -1439,7 +1492,15 @@ static void mouth(PCtx *c)
     int X, Y, v, w, W, cx, cy, k;
     uint8_t ink = face_ink(c);
     PMat m;
-    if (PS_SLOT(c, GF_MOUTH_STYLE, st, 3)) return;           /* CR2: a scripted mouth */
+    /* CR2: a scripted mouth; CR3: in a neutral face (an expression or talking draws the painter's, so
+     * the face still emotes), with its frame blocks at the mouth (256 = the mouth half width) */
+    if (!c->creepy && c->expr == EXPR_NEUTRAL && PS_SLOT(c, GF_MOUTH_STYLE, st, 3)) {
+        v = fpt(0, F.my, &X, &Y);
+        W = DOOMO_MAX(fshort(F.mw, v), 16);
+        if (v > 0) { ps_frame(X, Y + (l->mouth_size & 1) * 8, W, W, W, W); ps_slot_frame(c, GF_MOUTH_STYLE, st, 3); }
+        return;
+    }
+    if (st >= MOUTH_COUNT) st = MOUTH_SMILE;                  /* CR3: a scripted style, emoting */
     v = fpt(0, F.my, &X, &Y);
     if (v <= 0) return;
     w = DOOMO_MAX(fshort(F.mw, v) >> 4, 1);
@@ -1651,7 +1712,11 @@ static void blush(PCtx *c, int big)
         int bx = F.ex + 46;
         v = fpt(phs.s * bx, cy, &X, &Y);
         if (v <= 30) continue;
-        if (c->d->v[DF_BLUSH2]) {
+        if (c->d->v[DF_BLUSH2] >= doomo_part_minv[GF_BLUSH_STYLE]) {
+            /* CR3: a scripted blush style in this cheek's frame (256 = the blush radius) */
+            ps_frame(X, Y, phs.s * fshort(hr(52), v), hry(40), fshort(hr(52), v), hry(40));
+            (void)PS_SLOT_FRAME(c, GF_BLUSH_STYLE, c->d->v[DF_BLUSH2], 3);
+        } else if (c->d->v[DF_BLUSH2]) {
             /* wave-2 blush style on top of today's: 1 slashes, 2 wide round, 3 two dots, 4 low bar */
             int b2 = c->d->v[DF_BLUSH2];
             PMat m;
@@ -1750,6 +1815,18 @@ static void whiskers(PCtx *c, int n, int len)
 }
 
 /* face markings; most are decals masked to the head */
+/* CR3: a scripted fur pattern (spots, stripes, patches) on the head: decals masked to the head part,
+ * in the marking colour or the third fur colour (mat fur_color3) */
+static void fur_pattern(PCtx *c)
+{
+    int fp = c->d->v[DF_FUR_PATTERN];
+    if (!fp || phs.h->yaw >= 3) return;
+    pc_mask_none();
+    pc_mask_add(c->head_id);
+    (void)PS_SLOT(c, GF_FUR_PATTERN, fp, 3);
+    pc_mask_none();
+}
+
 static void markings(PCtx *c, int big)
 {
     const DoomoLook *l = c->l;
@@ -2143,6 +2220,7 @@ void ph_face_part(PCtx *c, int part)
     if (h->yaw >= 3) return;
     if (part == 0) {
         muzzle(c);
+        fur_pattern(c);
         markings(c, big);
         species_head(c, big);
         blush(c, big);

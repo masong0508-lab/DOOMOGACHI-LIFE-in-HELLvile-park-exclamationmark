@@ -424,12 +424,19 @@ static void render_figure_ctx(PCtx *c, uint8_t *out)
 
 void figure_render(const DoomoLook *l, int status, int expr, int anim, uint8_t *out)
 {
+    figure_render_deep(l, &doomo_deep_zero, status, expr, anim, out);
+}
+
+/* figure_render with a resolved set (CR3: the gene's new fields; tests, tools) */
+void figure_render_deep(const DoomoLook *l, const DoomoDeep *d, int status, int expr, int anim, uint8_t *out)
+{
     DoomoLook L;
     PCtx c;
-    if (!l || !out) return;
+    if (!l || !d || !out) return;
     L = *l;
     sanitize(&L);
     pctx_init(&c, &L, status, expr, anim);
+    c.d = d;
     render_figure_ctx(&c, out);
 }
 
@@ -464,12 +471,22 @@ static void render_body_ctx(PCtx *c, int dir, int frame, uint8_t *out)
 
 void bodyspr_render(const DoomoLook *l, int status, int dir, int frame, uint8_t *out)
 {
+    bodyspr_render_deep(l, &doomo_deep_zero, status, dir, frame, out);
+}
+
+/* bodyspr_render with a resolved set; only its DFF_CHIBI fields are drawn, like the cache (CR3) */
+void bodyspr_render_deep(const DoomoLook *l, const DoomoDeep *d, int status, int dir, int frame, uint8_t *out)
+{
     DoomoLook L;
+    DoomoDeep D;
     PCtx c;
-    if (!l || !out) return;
+    int f;
+    if (!l || !d || !out) return;
     L = *l;
     sanitize(&L);
+    for (f = 0; f < DF_COUNT; f++) D.v[f] = (doomo_df_flags[f] & DFF_CHIBI) ? d->v[f] : 0;
     pctx_init(&c, &L, status, EXPR_NEUTRAL, frame * 8);
+    c.d = &D;
     motion_pose(&c, dir, frame);
     render_body_ctx(&c, dir, frame, out);
 }
@@ -885,10 +902,10 @@ static int hold_on;   /* portrait_hold() */
 static uint8_t hold_patient;   /* portrait_hold_patient() (CR9's creator): hold jobs without the SP2 deadline */
 
 static uint32_t phase_of(int kind, int rid, int expr, int status, const DoomoLook *l,
-                         uint32_t t, Phase *p)
+                         const DoomoDeep *d, uint32_t t, Phase *p)
 {
     uint32_t off = (uint32_t)((rid + 1) * 53) & 1023u, ph;
-    int fxon = (look_anim_mask_rid(l, rid, status, expr) & LAM_FX) != 0;
+    int fxon = ((look_anim_mask(l, status, expr) | deep_anim_mask(d)) & LAM_FX) != 0;
     memset(p, 0, sizeof(*p));
     if (status == RES_EMPTY) return 0;
     /* portrait_hold() (title figures): one still pose per expression, so
@@ -949,7 +966,7 @@ static int job_hold;   /* job_hold: the job is a portrait_hold one */
 static uint8_t si_ticks = PC_STANDIN;
 
 /* claim a hidden entry and set the job up (step SL_SETUP next); soft: a look-ahead / prefetch claim */
-static int job_begin(int kind, int rid, uint32_t key, uint32_t look, const DoomoLook *l, int status, int expr,
+static int job_begin(int kind, int rid, uint32_t key, uint32_t look, const DoomoLook *l, const DoomoDeep *d, int status, int expr,
                      const Phase *p, int soft)
 {
     CacheEnt *e = cache_alloc(kind, rid, key, look, kind == CK_FIGURE ? FIGURE_W : PORTRAIT_W,
@@ -973,18 +990,18 @@ static int job_begin(int kind, int rid, uint32_t key, uint32_t look, const Doomo
     job.p = *p;
     job.L = *l;
     sanitize(&job.L);
-    look_resolve_mask(NULL, rid, LV_ALL, &job.D);
+    job.D = *d;                                     /* CR3: resolved by the caller (gene + run) */
     return 1;
 }
 
 static void job_start(int kind, int rid, uint32_t key, uint32_t look, const DoomoLook *l,
-                      int status, int expr, const Phase *p)
+                      const DoomoDeep *d, int status, int expr, const Phase *p)
 {
     if (job.on) {
         if ((int32_t)(now() - job.want) <= job_stale()) return;   /* still wanted: wait */
         job_abort();
     }
-    job_begin(kind, rid, key, look, l, status, expr, p, 1);
+    job_begin(kind, rid, key, look, l, d, status, expr, p, 1);
 }
 
 /* drop a job nobody asks about any more (frees its blocks for chibis) */
@@ -1155,17 +1172,16 @@ void portrait_hold_patient(int on) { hold_patient = (uint8_t)(on != 0); }
 static uint32_t hit_n, hit_bad;
 /* Re-render an exact hit into a scratch buffer and compare. The shared canvas is clobbered, so it is
  * a sliced job in flight simply restarts (pixels are unaffected). */
-static void hit_verify(int kind, int rid, const DoomoLook *l, int st, int expr, const Phase *p,
-                       int status, const CacheEnt *e, int w, int h)
+static void hit_verify(int kind, int rid, const DoomoLook *l, const DoomoDeep *d, int st, int expr,
+                       const Phase *p, int status, const CacheEnt *e, int w, int h)
 {
     static uint8_t buf[FIGURE_W * FIGURE_H];
     DoomoLook L = *l;
-    DoomoDeep D;
     PCtx c;
+    (void)rid;
     sanitize(&L);
     pctx_init(&c, &L, st, expr, 0);
-    look_resolve_mask(NULL, rid, LV_ALL, &D);
-    c.d = &D;
+    c.d = d;
     apply_phase(&c, p);
     if (kind == CK_FIGURE) render_figure_ctx(&c, buf);
     else render_portrait_ctx(&c, buf);
@@ -1184,8 +1200,8 @@ uint32_t portrait_hitcheck_fails(void) { return 0; }
  * show a stand-in meanwhile (an image of the same look: the same status first; any of its expressions). Returns
  * the image to show, or NULL when there is nothing to stand in: then the caller draws at once, or with `none`
  * (portrait_hold(3)) the job is started anyway (urgent) and the caller shows nothing meanwhile. */
-static CacheEnt *standin(int kind, int rid, uint32_t key, uint32_t base, uint32_t lh, const DoomoLook *l, int st,
-                         int expr, const Phase *p, int vac, int none)
+static CacheEnt *standin(int kind, int rid, uint32_t key, uint32_t base, uint32_t lh, const DoomoLook *l,
+                         const DoomoDeep *d, int st, int expr, const Phase *p, int vac, int none)
 {
     CacheEnt *o = cache_get(kind, rid, base, lh, 0x0000F000u, 0);
     if (!o) o = cache_get(kind, rid, base, lh, 0, 0);
@@ -1199,7 +1215,7 @@ static CacheEnt *standin(int kind, int rid, uint32_t key, uint32_t base, uint32_
                 o->stamp = ++cache_stamp;       /* keep the stand-in out of the claim's reach */
                 o->tick = now();
             }
-            if (job_begin(kind, rid, key, lh, l, st, expr, p, 0)) {
+            if (job_begin(kind, rid, key, lh, l, d, st, expr, p, 0)) {
                 job.urgent = !o || !recent_has(content_hash(kind, rid, lh, base));
                 job.si = 1;
                 job.vac = (uint8_t)vac;
@@ -1213,9 +1229,11 @@ static CacheEnt *standin(int kind, int rid, uint32_t key, uint32_t base, uint32_
     return o;
 }
 
-static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, int status, int expr)
+/* d: the resolved set (look_resolve_mask of the resident, or the caller's own for a bare look) */
+static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, const DoomoDeep *d, int status,
+                                  int expr)
 {
-    uint32_t lh = look_hash(l) ^ look_run_hash(rid, 0), t = now(), base, key;
+    uint32_t lh = look_hash(l) ^ deep_hash(d, 0), t = now(), base, key;
     int w = kind == CK_FIGURE ? FIGURE_W : PORTRAIT_W;
     int h = kind == CK_FIGURE ? FIGURE_H : PORTRAIT_H;
     int st = status == RES_EMPTY ? RES_ALIVE : status;
@@ -1223,7 +1241,7 @@ static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, int sta
     CacheEnt *e;
     int exact;
     base = ((uint32_t)expr << 8) | ((uint32_t)(status & 15) << 12);
-    key = base | phase_of(kind, rid, expr, status, l, t, &p);
+    key = base | phase_of(kind, rid, expr, status, l, d, t, &p);
     if (job_for(kind, rid, lh, base, 0xFFFFFF00u)) job.want = t;
     if (pf.on && kind == CK_PORTRAIT && pf.kind == kind && pf.rid == rid && pf.expr == expr)
         pf.on = 0;                                          /* asked for: no longer ahead */
@@ -1231,7 +1249,7 @@ static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, int sta
     exact = e != NULL;
     if (!e && cache_get(kind, rid, key, lh, 0xFFFFFF00u, 0)) {
         /* only the phase differs: draw it in slices */
-        if (!job_for(kind, rid, lh, key, 0xFFFFFFFFu)) job_start(kind, rid, key, lh, l, st, expr, &p);
+        if (!job_for(kind, rid, lh, key, 0xFFFFFFFFu)) job_start(kind, rid, key, lh, l, d, st, expr, &p);
         job_pump();
         e = cache_find(kind, rid, key, lh, 0xFFFFFFFFu);
         if (!e) e = cache_find(kind, rid, key, lh, 0xFFFFFF00u);
@@ -1244,7 +1262,7 @@ static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, int sta
         /* any phase of the new content will do: it is a few ticks old */
         if (!job_for(kind, rid, lh, base, 0xFFFFFF00u)) {
             if (job.on && !job_hold) job_abort();    /* a look-ahead can wait */
-            job_start(kind, rid, key, lh, l, st, expr, &p);
+            job_start(kind, rid, key, lh, l, d, st, expr, &p);
             if (job_for(kind, rid, lh, key, 0xFFFFFFFFu)) { job_hold = 1; job.urgent = !hold_patient; }
         }
         if (job_for(kind, rid, lh, base, 0xFFFFFF00u)) job.want = t;
@@ -1258,7 +1276,7 @@ static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, int sta
     if (!e && (hold_on == 3 || (!hold_on && si_ticks))) {
         /* SP2: a new expression / status of a look on screen: a few ticks of the old picture instead of a
          * whole render in this frame; portrait_hold(3) with nothing to stand in: a few ticks of nothing */
-        CacheEnt *o = standin(kind, rid, key, base, lh, l, st, expr, &p, status == RES_EMPTY, hold_on == 3);
+        CacheEnt *o = standin(kind, rid, key, base, lh, l, d, st, expr, &p, status == RES_EMPTY, hold_on == 3);
         if (o || hold_on == 3) {
             job_pump();
             e = cache_find(kind, rid, base, lh, 0xFFFFFF00u);
@@ -1273,10 +1291,8 @@ static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, int sta
         e = cache_alloc(kind, rid, key, lh, w, h, 0);
         L = *l;
         sanitize(&L);
-        DoomoDeep D;
         pctx_init(&c, &L, st, expr, 0);
-        look_resolve_mask(NULL, rid, LV_ALL, &D);
-        c.d = &D;
+        c.d = d;
         apply_phase(&c, &p);
         if (kind == CK_FIGURE) render_figure_ctx(&c, (uint8_t *)e->img.pix);
         else render_portrait_ctx(&c, (uint8_t *)e->img.pix);
@@ -1285,14 +1301,14 @@ static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, int sta
         steps_used = steps_max();       /* that was this tick's budget      */
     }
 #ifdef DOOMO_HITCHECK
-    if (exact && !hold_on) hit_verify(kind, rid, l, st, expr, &p, status, e, w, h);
+    if (exact && !hold_on) hit_verify(kind, rid, l, d, st, expr, &p, status, e, w, h);
 #endif
     (void)exact;
     /* look ahead: start on the next phase before it is due */
     if (!job.on && steps_max() < SL_N) {
-        uint32_t k2 = base | phase_of(kind, rid, expr, status, l, t + PC_AHEAD, &q);
+        uint32_t k2 = base | phase_of(kind, rid, expr, status, l, d, t + PC_AHEAD, &q);
         if (k2 != key && !cache_get(kind, rid, k2, lh, 0xFFFFFFFFu, 0))
-            job_start(kind, rid, k2, lh, l, st, expr, &q);
+            job_start(kind, rid, k2, lh, l, d, st, expr, &q);
     }
     job_pump();
     return &e->img;
@@ -1303,6 +1319,7 @@ static int pf_start(void)
 {
     const DoomoLook *l;
     DoomoLook al;
+    DoomoDeep D = doomo_deep_zero;
     uint32_t lh, base, key;
     int status, st;
     Phase p;
@@ -1316,15 +1333,16 @@ static int pf_start(void)
         const DoomoResident *r = res_of(pf.rid, &status);
         look_for_stage(RES_LOOK_VIEW(r), RES_STAGE(r), &al);
         l = &al;
+        look_resolve_mask(r, pf.rid, LV_ALL, &D);         /* CR3: the gene's new fields + the run */
     }
-    lh = look_hash(l) ^ look_run_hash(pf.rid, 0);
+    lh = look_hash(l) ^ deep_hash(&D, 0);
     base = ((uint32_t)pf.expr << 8) | ((uint32_t)(status & 15) << 12);
-    key = base | phase_of(pf.kind, pf.rid, pf.expr, status, l, now() + PC_AHEAD, &p);
+    key = base | phase_of(pf.kind, pf.rid, pf.expr, status, l, &D, now() + PC_AHEAD, &p);
     if (pf.still) { memset(&p, 0, sizeof p); key = base; }
     pf.on = 0;
     if (cache_get(pf.kind, pf.rid, key, lh, 0xFFFFFF00u, 0)) return 0;        /* already there */
     st = status == RES_EMPTY ? RES_ALIVE : status;
-    if (!job_begin(pf.kind, pf.rid, key, lh, l, st, pf.expr, &p, 1)) return 0;
+    if (!job_begin(pf.kind, pf.rid, key, lh, l, &D, st, pf.expr, &p, 1)) return 0;
     job.vac = (uint8_t)(status == RES_EMPTY);
     job.pf = 1;
     job.want = pf.until;
@@ -1334,8 +1352,11 @@ static int pf_start(void)
 /* is (kind, rid, look, status, expr) cached in some phase, or the job drawing it? */
 static int have_any(int kind, int rid, const DoomoLook *l, int status, int expr)
 {
-    uint32_t lh = look_hash(l) ^ look_run_hash(rid, 0);
-    uint32_t base = ((uint32_t)expr << 8) | ((uint32_t)(status & 15) << 12);
+    DoomoDeep D = doomo_deep_zero;
+    uint32_t lh, base = ((uint32_t)expr << 8) | ((uint32_t)(status & 15) << 12);
+    int st;
+    if (kind == CK_PORTRAIT && rid >= 0) look_resolve_mask(res_of(rid, &st), rid, LV_ALL, &D);   /* as portrait_image */
+    lh = look_hash(l) ^ deep_hash(&D, 0);
     return cache_get(kind, rid, base, lh, 0xFFFFFF00u, 0) != NULL || job_for(kind, rid, lh, base, 0xFFFFFF00u);
 }
 
@@ -1380,24 +1401,48 @@ const DoomoImage *portrait_image(int resident_id, int expr)
     int status;
     const DoomoResident *r;
     DoomoLook al;
+    DoomoDeep D;
     cache_init();
     r = res_of(resident_id, &status);
     if (expr < 0 || expr >= EXPR_COUNT) expr = EXPR_NEUTRAL;
     look_for_stage(RES_LOOK_VIEW(r), RES_STAGE(r), &al);       /* F4: the face of their age */
-    return animated(CK_PORTRAIT, resident_id, &al, status, expr);
+    look_resolve_mask(r, resident_id, LV_ALL, &D);              /* CR3: the gene's new fields + the run */
+    return animated(CK_PORTRAIT, resident_id, &al, &D, status, expr);
 }
 
-/* CR9: the cached bust of any look (the creator's draft), like figure_image */
-const DoomoImage *portrait_image_look(const DoomoLook *l, int status, int expr)
+/* CR9: the cached bust of any look (the creator's draft), like figure_image; CR3: with a resolved
+ * set (the gene's new fields), or none */
+const DoomoImage *portrait_image_look_d(const DoomoLook *l, const DoomoDeep *d, int status, int expr)
 {
     cache_init();
     if (!l) return NULL;
     if (expr < 0 || expr >= EXPR_COUNT) expr = EXPR_NEUTRAL;
     if (status < 0 || status > 15) status = RES_ALIVE;
-    return animated(CK_PORTRAIT, -1, l, status, expr);
+    return animated(CK_PORTRAIT, -1, l, d ? d : &doomo_deep_zero, status, expr);
+}
+
+const DoomoImage *portrait_image_look(const DoomoLook *l, int status, int expr)
+{
+    return portrait_image_look_d(l, NULL, status, expr);
 }
 
 const DoomoImage *figure_image(const DoomoLook *l, int status, int expr)
+{
+    return figure_image_d(l, NULL, status, expr);
+}
+
+/* CR3: the figure of a record: its saved look and the gene's new fields (glasses, outer layer ...) */
+const DoomoImage *figure_image_res(const DoomoResident *r, int status, int expr)
+{
+    DoomoLook l;
+    DoomoDeep d = doomo_deep_zero;
+    if (!r) return figure_image_d(NULL, NULL, status, expr);
+    res_get_look(r, &l);
+    look_gene_deep(r, LV_ALL, &d);
+    return figure_image_d(&l, &d, status, expr);
+}
+
+const DoomoImage *figure_image_d(const DoomoLook *l, const DoomoDeep *d, int status, int expr)
 {
     static DoomoResident def;
     static DoomoLook def_look;
@@ -1409,7 +1454,7 @@ const DoomoImage *figure_image(const DoomoLook *l, int status, int expr)
     }
     if (expr < 0 || expr >= EXPR_COUNT) expr = EXPR_NEUTRAL;
     if (status < 0 || status > 15) status = RES_ALIVE;
-    return animated(CK_FIGURE, -1, l, status, expr);
+    return animated(CK_FIGURE, -1, l, d ? d : &doomo_deep_zero, status, expr);
 }
 
 /* B (docs/STUDIO_30FPS_PLAN.md): the 48-byte gene compare of the look-hash memo, word by word. DoomoResident has no
@@ -1465,7 +1510,8 @@ void bodyspr_lazy(int on)                     /* 1: a citizen may be skipped, 2:
 #endif
     body_lazy = (uint8_t)on;
 }
-static int body_job_start(int rid, uint32_t key, uint32_t lh, const DoomoLook *L, int status, int dir, int frame)
+static int body_job_start(const DoomoResident *r, int rid, uint32_t key, uint32_t lh, const DoomoLook *L, int status,
+                          int dir, int frame)
 {
     CacheEnt *e = cache_alloc(CK_BODY, rid, key, lh, BODYSPR_W, BODYSPR_H, 1);
     if (!e) return 0;
@@ -1487,7 +1533,7 @@ static int body_job_start(int rid, uint32_t key, uint32_t lh, const DoomoLook *L
     job.bframe = (uint8_t)frame;
     job.L = *L;
     sanitize(&job.L);
-    look_resolve_mask(NULL, rid, LV_CHIBI, &job.D);
+    look_resolve_mask(r, rid, LV_CHIBI, &job.D);
     return 1;
 }
 
@@ -1542,9 +1588,11 @@ const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
         gene_same(m->gene, r->gene)) {
         lhl = m->h;
     } else {
+        DoomoDeep G = doomo_deep_zero;
         look_for_stage(RES_LOOK_VIEW(r), RES_STAGE(r), &L);    /* F4: the body of their age */
         have_look = 1;
-        lhl = look_hash(&L);
+        look_gene_deep(r, LV_CHIBI, &G);                      /* CR3: the gene's chibi-visible new fields */
+        lhl = look_hash(&L) ^ deep_hash(&G, 1);
         memcpy(m->gene, r->gene, sizeof m->gene);
         m->species = r->species;
         m->id = resident_id;
@@ -1585,7 +1633,7 @@ const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
         if (job.on && job.kind == CK_BODY && job_for(CK_BODY, resident_id, lh, key, 0xFFFFFFFFu)) {
             job.want = now();
         } else if (!job.on) {
-            if (body_job_start(resident_id, key, lh, &L, status, dir, frame) && body_lazy == 3) {
+            if (body_job_start(r, resident_id, key, lh, &L, status, dir, frame) && body_lazy == 3) {
                 /* S2-7: due like a stand-in's job (PC_STANDIN ticks): its share of slices runs every tick
                  * whatever the platform's guess of the room (a parade cannot wait for idle time) */
                 job.urgent = 1;
@@ -1615,7 +1663,7 @@ const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
     {
         DoomoDeep D;
         pctx_init(&c, &L, status == RES_EMPTY ? RES_ALIVE : status, EXPR_NEUTRAL, frame * 8);
-        look_resolve_mask(NULL, resident_id, LV_CHIBI, &D);
+        look_resolve_mask(r, resident_id, LV_CHIBI, &D);
         c.d = &D;
         render_body_ctx(&c, dir, frame, (uint8_t *)e->img.pix);
     }
@@ -1630,26 +1678,24 @@ const DoomoImage *fighter_image(int resident_id, int view, int anim, int weapon_
     CacheEnt *e;
     PCtx c;
     DoomoLook L;
+    DoomoDeep D;
     cache_init();
     r = res_of(resident_id, &status);
     view = DOOMO_CLAMP(view, 0, 4);
     anim = DOOMO_CLAMP(anim, 0, 6);
     if (weapon_frame < 0 || weapon_frame >= 64) weapon_frame = 0;
     look_for_stage(RES_LOOK_VIEW(r), RES_STAGE(r), &L);        /* F4: the body of their age */
-    lh = look_hash(&L) ^ look_run_hash(resident_id, 0);
+    look_resolve_mask(r, resident_id, LV_ALL, &D);             /* CR3: the gene's new fields + the run */
+    lh = look_hash(&L) ^ deep_hash(&D, 0);
     key = (uint32_t)(view | (anim << 3) | (weapon_frame << 6)) | ((uint32_t)status << 12);
     e = cache_find(CK_FIGHTER, resident_id, key, lh, 0xFFFFFFFFu);
     if (e) return &e->img;
     job_reap();
     e = cache_alloc(CK_FIGHTER, resident_id, key, lh, FIGHTER_W, FIGHTER_H, 0);
     sanitize(&L);
-    {
-        DoomoDeep D;
-        pctx_init(&c, &L, status == RES_EMPTY ? RES_ALIVE : status, EXPR_NEUTRAL, anim * 8);
-        look_resolve_mask(NULL, resident_id, LV_ALL, &D);
-        c.d = &D;
-        render_fighter_ctx(&c, view, anim, weapon_frame, (uint8_t *)e->img.pix);
-    }
+    pctx_init(&c, &L, status == RES_EMPTY ? RES_ALIVE : status, EXPR_NEUTRAL, anim * 8);
+    c.d = &D;
+    render_fighter_ctx(&c, view, anim, weapon_frame, (uint8_t *)e->img.pix);
     return &e->img;
 }
 
@@ -1685,12 +1731,20 @@ void portrait_invalidate(int resident_id)
 void fighter_render(const DoomoLook *l, int status, int view, int anim, int weapon_frame,
                     uint8_t *out)
 {
+    fighter_render_d(l, NULL, status, view, anim, weapon_frame, out);
+}
+
+/* CR3: the same with a resolved set (the creator's turntable, tools) */
+void fighter_render_d(const DoomoLook *l, const DoomoDeep *d, int status, int view, int anim,
+                      int weapon_frame, uint8_t *out)
+{
     DoomoLook L;
     PCtx c;
     if (!l || !out) return;
     L = *l;
     sanitize(&L);
     pctx_init(&c, &L, status, EXPR_NEUTRAL, anim * 8);
+    if (d) c.d = d;
     render_fighter_ctx(&c, view, anim, weapon_frame, out);
 }
 

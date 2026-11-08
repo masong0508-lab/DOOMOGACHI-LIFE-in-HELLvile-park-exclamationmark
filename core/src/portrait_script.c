@@ -36,9 +36,36 @@ static const PMat *base_mat(PCtx *c, int lf)
     }
 }
 
+/* a memo slot for `key` (found, or a free / overwritten one); *hit = 1 when it was there */
+static PMemo *memo_slot(PCtx *c, uint16_t key, int *hit)
+{
+    int i, free_slot = -1;
+    for (i = 0; i < 16; i++) {
+        if (c->memo[i].used && c->memo[i].key == key) { *hit = 1; return &c->memo[i]; }
+        if (!c->memo[i].used && free_slot < 0) free_slot = i;
+    }
+    *hit = 0;
+    return &c->memo[free_slot >= 0 ? free_slot : (key & 15)];   /* a full memo overwrites by key */
+}
+
+/* CR3: the third fur colour (fur_color3: 0 = the marking colour, p + 1 = paint p) */
+static const PMat *fur3_mat(PCtx *c)
+{
+    int v = c->d->v[DF_FUR_COLOR3], hit;
+    PMemo *e;
+    if (!v) return &c->mark;
+    e = memo_slot(c, (uint16_t)((GF_FUR_COLOR3 << 2) | 3), &hit);
+    if (!hit) {
+        e->used = 1;
+        e->key = (uint16_t)((GF_FUR_COLOR3 << 2) | 3);
+        pm_paint(&e->m, (uint8_t)((v - 1) % PAL_PAINT_COUNT));
+    }
+    return &e->m;
+}
+
 const PMat *pm_of(PCtx *c, int lf, int tone)
 {
-    const PMat *b = base_mat(c, lf);
+    const PMat *b = lf == GF_FUR_COLOR3 ? fur3_mat(c) : base_mat(c, lf);
     uint16_t key;
     PMemo *e;
     int i, free_slot = -1;
@@ -180,12 +207,22 @@ typedef struct VM {
 
 static int i8(const uint8_t *p, int k) { return (int8_t)p[k] * 2; }
 
+/* CR3: the frame of PA_FRAME blocks (ps_frame): origin, position units and radius units, Q4 per 256 */
+static struct { int ox, oy, px, py, rx, ry; } fr;
+
+void ps_frame(int ox, int oy, int px, int py, int rx, int ry)
+{
+    fr.ox = ox; fr.oy = oy; fr.px = px; fr.py = py;
+    fr.rx = rx < 0 ? -rx : rx; fr.ry = ry < 0 ? -ry : ry;
+}
+
 /* normalised -> Q4 for the anchor; s = +1 / -1 mirror side */
 static int vx(const VM *v, int n, int s)
 {
     PCtx *c = v->c;
     n = n * v->scale / 64 * s;
     if (v->anchor == PA_TORSO) return c->bx + n * c->bw / 256;
+    if (v->anchor == PA_FRAME) return fr.ox + n * fr.px / 256;
     phs.c = c; phs.h = &c->h; phs.s = 1; phs.z = 0;
     return hx(n);                                       /* yaw handled by the head space */
 }
@@ -194,18 +231,21 @@ static int vy(const VM *v, int n)
 {
     PCtx *c = v->c;
     n = n * v->scale / 64;
+    if (v->anchor == PA_FRAME) return fr.oy + n * fr.py / 256;
     return v->anchor == PA_TORSO ? c->by + n * c->bh / 256 : c->h.cy + n * c->h.ry / 256;
 }
 
 static int vrx(const VM *v, int r)
 {
     r = r * v->scale / 64;
+    if (v->anchor == PA_FRAME) return r * fr.rx / 256;
     return v->anchor == PA_TORSO ? r * v->c->bw / 256 : r * v->c->h.rx / 256;
 }
 
 static int vry(const VM *v, int r)
 {
     r = r * v->scale / 64;
+    if (v->anchor == PA_FRAME) return r * fr.ry / 256;
     return v->anchor == PA_TORSO ? r * v->c->bh / 256 : r * v->c->h.ry / 256;
 }
 
@@ -396,7 +436,7 @@ static int run_block(VM *v, const uint8_t *p, int len)
         switch (op) {
         case PO_END:
             return n;
-        case PO_ANCHOR:  v->anchor = a[0] == PA_TORSO ? PA_TORSO : PA_HEAD; i += 1; break;
+        case PO_ANCHOR:  v->anchor = a[0] == PA_TORSO || a[0] == PA_FRAME ? a[0] : PA_HEAD; i += 1; break;
         case PO_MAT:     v->m = pm_of(v->c, a[0], a[1]); i += 2; break;
         case PO_SHADE:   v->shade = a[0] < SH_COUNT ? a[0] : SH_BALL; i += 1; break;
         case PO_SOLID:
@@ -493,6 +533,8 @@ static int run_block(VM *v, const uint8_t *p, int len)
     return n;
 }
 
+/* anchor: PA_HEAD / PA_TORSO / PA_FRAME runs only the blocks of that anchor; -1 every block but the
+ * frame ones (they need their hook's frame: ps_slot_frame) */
 int ps_run_group(PCtx *c, int list, int value, int anchor, int group)
 {
     const PartRef *r;
@@ -504,7 +546,7 @@ int ps_run_group(PCtx *c, int list, int value, int anchor, int group)
     while (p[0] != PH_END) {
         PartHdr h;
         h.group = p[0]; h.anchor = p[1]; h.lod_views = p[2]; h.len = p[3];
-        if ((anchor < 0 || h.anchor == anchor) && (group < 0 || h.group == group) &&
+        if ((anchor < 0 ? h.anchor != PA_FRAME : h.anchor == anchor) && (group < 0 || h.group == group) &&
             ((PLV_LOD(h.lod_views) >> c->h.lod) & 1) && ((PLV_VIEW(h.lod_views) >> c->view_kind) & 1)) {
             VM v;
             v.c = c; v.set = set; v.anchor = h.anchor; v.scale = 64; v.mirror = 0; v.decal = 0;
@@ -534,6 +576,17 @@ int ps_slot(PCtx *c, int list, int value, int group)
     return 1;
 }
 
+/* CR3: the frame blocks of the worn value in group `group`, in the frame ps_frame() set; 1 if the value
+ * is scripted. A hook that sets frames calls ps_slot() once (head / torso blocks) and this per frame. */
+int ps_slot_frame(PCtx *c, int list, int value, int group)
+{
+    const PartRef *r;
+    if (list < 128 && value < doomo_part_minv[list]) return 0;
+    if (!find_set(list, value, &r)) return 0;
+    ps_run_group(c, list, value, PA_FRAME, group);
+    return 1;
+}
+
 #else  /* !DOOMO_PARTS_VM: the PS1 until CR10 frees the RAM (portrait_int.h): no script draws */
 int ps_has(int list, int value) { (void)list; (void)value; return 0; }
 int ps_top(int list, int value) { (void)list; (void)value; return 0; }
@@ -544,6 +597,8 @@ int ps_run_group(PCtx *c, int list, int value, int anchor, int group)
 }
 int ps_run(PCtx *c, int list, int value, int anchor) { (void)c; (void)list; (void)value; (void)anchor; return 0; }
 int ps_slot(PCtx *c, int list, int value, int group) { (void)c; (void)list; (void)value; (void)group; return 0; }
+void ps_frame(int ox, int oy, int px, int py, int rx, int ry) { (void)ox; (void)oy; (void)px; (void)py; (void)rx; (void)ry; }
+int ps_slot_frame(PCtx *c, int list, int value, int group) { (void)c; (void)list; (void)value; (void)group; return 0; }
 #endif
 
 /* ---- look_key (SPEC 4.5) ------------------------------------------------------------------

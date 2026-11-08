@@ -41,7 +41,9 @@ TEST(part_catalog_names_every_live_option_like_the_catalog)
         const NameList *n = &name_lists[i];
         const PartSlotInfo *s = part_slot_of_list(n->list);
         CHECK_MSG(s != NULL, "list %d has no catalog slot", n->list);
-        CHECK_MSG(s->live == n->count, "slot %s: %d live parts, the list has %d", s->key, s->live, n->count);
+        /* CR3: a list may have grown past its v1 enum (the live count is the catalog's, part_live_count) */
+        CHECK_MSG(s->live >= n->count, "slot %s: %d live parts, the list has %d", s->key, s->live, n->count);
+        if (n->list != PL_SPECIES) CHECK_EQ(part_live_count(n->list), s->live);
         for (v = 0; v < n->count; v++) {
             const PartMeta *m = part_meta_find(n->list, v);
             CHECK_MSG(m != NULL, "slot %s value %d is not catalogued", s->key, v);
@@ -50,10 +52,10 @@ TEST(part_catalog_names_every_live_option_like_the_catalog)
                       s->key, v, part_meta_name(m), n->names[v]);
         }
     }
-    /* the painted B76 halos are catalogued but not live */
+    /* the painted B76 halos are live since CR3, with their catalog.c names */
     for (v = HALO_COUNT; v < HALO_ALL_COUNT; v++) {
         const PartMeta *m = part_meta_find(GF_HALO, v);
-        CHECK(m && PMF_STATE(m->flags) == PSTATE_HIDDEN);
+        CHECK(m && PMF_STATE(m->flags) == PSTATE_LIVE);
         CHECK_STR(part_meta_name(m), doomo_halo_names[v]);
     }
 }
@@ -144,7 +146,7 @@ TEST(part_search_finds_by_name_and_by_set)
     CHECK(n >= 2);
     for (i = 0; i < n; i++) CHECK(strcmp(doomo_part_sets[doomo_part_meta[out[i]].set].name, "Royal Court") == 0 ||
                                   strstr(part_meta_name(&doomo_part_meta[out[i]]), "oyal") != NULL);
-    CHECK_EQ(part_search(slot, "", 1, NULL, 0), HAT_COUNT);
+    CHECK_EQ(part_search(slot, "", 1, NULL, 0), part_live_count(GF_HAT));
     CHECK_EQ(part_search(slot, "zzzq", 0, out, 64), 0);
     CHECK(part_search(-1, "", 0, NULL, 0) == PART_META_COUNT);
     CHECK(part_set_size(PSET_ROYAL, 1) >= 2);

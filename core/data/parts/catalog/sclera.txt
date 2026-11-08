@@ -1,7 +1,7 @@
 # core/data/parts/catalog/sclera.txt - sclera, gene field sclera (CR1; format: tools/partcat_build.py).
-# Painted (wave 2, P1.M2) but not selectable yet: state=hidden until CR3 flips the list live.
-slot sclera list=sclera name="Sclera" method=P target=15 new=F
+# Painted (wave 2, P1.M2) but not selectable yet: until CR3 flips the list live.
+slot sclera list=sclera name="Eye whites" method=P target=15 new=F
 
 0   "Plain"      set=basics tags=plain
-1   "White"      set=basics tags=plain state=hidden
-2   "Shaded"     set=spooky tags=spooky state=hidden
+1   "White"      set=basics tags=plain
+2   "Shaded"     set=spooky tags=spooky

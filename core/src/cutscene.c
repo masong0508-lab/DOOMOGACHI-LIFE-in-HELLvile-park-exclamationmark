@@ -437,7 +437,7 @@ static void draw_player_figure(int x, int y, int expr)
     const DoomoResident *p = town_res(DOOMO_PLAYER_ID);
     const DoomoImage *f;
     if (!p || p->status == RES_EMPTY) return;
-    f = figure_image(RES_LOOK_VIEW(p), p->status, expr);
+    f = figure_image_res(p, p->status, expr);
     if (f) plat_image(x, y, f, 1, IMG_SHADOW, 0);
 }
 

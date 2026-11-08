@@ -55,6 +55,18 @@
 #define CFL_aura GF_AURA
 #define CFL_pattern GF_PATTERN
 #define CFL_pattern_color GF_PATTERN_COLOR
+/* CR3: the gene's new look fields (no DoomoLook byte; resident_acc.h RES_F_IS_GENE_LOOK) */
+#define CFL_pupil GF_PUPIL
+#define CFL_sclera GF_SCLERA
+#define CFL_fur_pattern GF_FUR_PATTERN
+#define CFL_fur_color3 GF_FUR_COLOR3
+#define CFL_glasses GF_GLASSES
+#define CFL_outer GF_OUTER
+#define CFL_legwear GF_LEGWEAR
+#define CFL_blush_style GF_BLUSH_STYLE
+#define CFL_ear_fold GF_EAR_FOLD
+#define CFL_hood_up GF_HOOD_UP
+#define CFL_handedness GF_HANDEDNESS
 #define CFR_pronoun GF_PRONOUN
 #define CFR_bday_month GF_BDAY_MONTH
 #define CFR_bday_day GF_BDAY_DAY
@@ -118,6 +130,10 @@ static const char *const n_attitude[2]  = { "Serious", "Easygoing" };
 static const char *const n_quirk[2]     = { "Normal", "Unhinged" };
 static const char *const n_born[2]      = { "Hillvile", "Hellvile" };
 static const char *const n_yesno[2]     = { "No", "Yes" };
+static const char *const n_hood[2]      = { "Down", "Up" };
+static const char *const n_hand[2]      = { "Right paw", "Left paw" };
+/* CR3: a part row whose choices are all in the catalog (its live count and names: part_meta.h) */
+#define PART_L(lbl, m)              { RK_ENUM, LK(m), 1, 0, CR_NOLIST, 0, lbl, NULL }
 
 static const CrRow rows_body[] = {
     HDR("Species"),
@@ -128,6 +144,9 @@ static const CrRow rows_body[] = {
     SLIDE_L("Height", height, 16, n_height),
     SLIDE_L("Build", build, 16, n_build),
     { RK_SKIN, LK(skin), 8 + PAL_PAINT_COUNT, 0, CR_NOLIST, 0, "Skin", NULL },
+    HDR("Fur pattern"),
+    PART_L("Fur pattern", fur_pattern),
+    { RK_PAINT_NONE, LK(fur_color3), PAL_PAINT_COUNT + 1, 0, CR_NOLIST, 0, "Spot colour", NULL },
 };
 
 static const CrRow rows_face[] = {
@@ -136,6 +155,8 @@ static const CrRow rows_face[] = {
     SLIDE_L("Head size", head_size, 16, n_size),
     HDR("Eyes"),
     ENUM_L("Eyes", eye_style, EYE_COUNT, doomo_eye_names, CLIST_EYE),
+    PART_L("Pupils", pupil),
+    PART_L("Eye whites", sclera),
     PAINT_L("Eye colour", eye_color),
     SLIDE_L("Eye size", eye_size, 16, n_eye_size),
     SLIDE_L("Spacing", eye_spacing, 16, n_spacing),
@@ -153,7 +174,9 @@ static const CrRow rows_face[] = {
     ENUM_L("Fangs", fangs, 4, n_fangs, CR_NOLIST),
     HDR("Ears & cheeks"),
     ENUM_L("Ears", ears, EARS_COUNT, doomo_ear_names, CLIST_EARS),
+    PART_L("Ear fold", ear_fold),
     CHEEK("Blush", CHEEK_BLUSH),
+    PART_L("Blush style", blush_style),
     CHEEK("Freckles", CHEEK_FRECKLES),
     CHEEK("Scar", CHEEK_SCAR),
     CHEEK("Bandage", CHEEK_BANDAGE),
@@ -196,14 +219,21 @@ static const CrRow rows_outfit[] = {
     PAINT_L("Top colour", top_color),
     ENUM_L("Print", pattern, PATTERN_COUNT, doomo_pattern_names, CLIST_PATTERN),
     PAINT_L("Print colour", pattern_color),
+    ENUM_L("Hood", hood_up, 2, n_hood, CR_NOLIST),
+    HDR("Outer layer"),
+    PART_L("Outer", outer),
+    { RK_PAINT, LK(accessory_color), PAL_PAINT_COUNT, 0, CR_NOLIST, CR_AUX_SHARED, "Outer colour", NULL },
     HDR("Bottom & shoes"),
     ENUM_L("Bottom", bottom, BOTTOM_COUNT, doomo_bottom_names, CLIST_BOTTOM),
     PAINT_L("Bottom col.", bottom_color),
+    PART_L("Legwear", legwear),
+    { RK_PAINT, LK(pattern_color), PAL_PAINT_COUNT, 0, CR_NOLIST, CR_AUX_SHARED | CR_AUX_LEGS, "Legwear col.", NULL },
     ENUM_L("Shoes", shoes, SHOES_COUNT, doomo_shoes_names, CLIST_SHOES),
     PAINT_L("Shoe colour", shoes_color),
     HDR("Hat & extras"),
     ENUM_L("Hat", hat, HAT_COUNT, doomo_hat_names, CLIST_HAT),
     PAINT_L("Hat colour", hat_color),
+    PART_L("Glasses", glasses),
     ENUM_L("Accessory", accessory, ACC_COUNT, doomo_acc_names, CLIST_ACC),
     PAINT_L("Acc. colour", accessory_color),
 };
@@ -231,6 +261,7 @@ static const CrRow rows_persona[] = {
     SLIDE_R("Expression", PERS_EXPRESSION, 16, n_expr),
     SLIDE_R("Attitude", PERS_ATTITUDE, 16, n_attitude),
     SLIDE_R("Quirk", PERS_QUIRK, 16, n_quirk),
+    ENUM_L("Handed", handedness, 2, n_hand, CR_NOLIST),
     /* LS0: the saved life stage. Babies and kids never get romance, teens
      * only with teens (sim.h sim_romance_ok); the story hero stays grown */
     ENUM_RM("Age", romance, LIFE_COUNT, doomo_life_stage_names, LIFE_STAGE_MASK),
@@ -973,7 +1004,32 @@ const char *cr_row_help(const CrRow *row)
 {
     if (!row) return "";
     switch (row->kind) {
-    case RK_ENUM:
+    case RK_ENUM: {
+        /* CR3: the new rows say what the part is (named arrays: see RK_ACTION below) */
+        static const char h_pupil[] = "Middle of each eye  " STR_ICON_A " pictures";
+        static const char h_white[] = "The eye whites  " STR_ICON_A " pictures";
+        static const char h_fold[] = "Floppy ears  " STR_ICON_A " pictures";
+        static const char h_blush[] = "Cheek marks  " STR_ICON_A " pictures";
+        static const char h_fur[] = "Spots and stripes  " STR_ICON_A " pictures";
+        static const char h_outer[] = "Coats and capes  " STR_ICON_A " pictures";
+        static const char h_legs[] = "Socks and tights  " STR_ICON_A " pictures";
+        static const char h_glasses[] = "Goes with any accessory  " STR_ICON_A " pics";
+        static const char h_hood[] = "Pulls a hoodie's hood up";
+        static const char h_hand[] = "The paw they wave with";
+        switch (row->field) {
+        case LK(pupil): return h_pupil;
+        case LK(sclera): return h_white;
+        case LK(ear_fold): return h_fold;
+        case LK(blush_style): return h_blush;
+        case LK(fur_pattern): return h_fur;
+        case LK(outer): return h_outer;
+        case LK(legwear): return h_legs;
+        case LK(glasses): return h_glasses;
+        case LK(hood_up): return h_hood;
+        case LK(handedness): return h_hand;
+        default: break;
+        }
+    }
         if (cr_row_slot(row) >= 0) return STR_ICON_A " see them all as pictures";
         if (CR_IS_AGE_ROW(row)) return "Their life stage: kids grow up";
         if (row->field == OFS(pronoun)) return "How others talk about them";
@@ -985,8 +1041,14 @@ const char *cr_row_help(const CrRow *row)
         if (row->field >= OFS(VOICE_PITCH) && row->field <= OFS(VOICE_ACCENT))
             return "Then try \"Test it!\" to hear them";
         return STR_ICON_ARROW_L STR_ICON_ARROW_R " slide between the two ends";
-    case RK_PAINT: case RK_PAINT_NONE: case RK_SKIN:
+    case RK_PAINT: case RK_PAINT_NONE: case RK_SKIN: {
+        static const char h_outer_c[] = "Same as Acc. colour";
+        static const char h_legs_c[] = "Same as Print colour";
+        static const char h_spot_c[] = "Auto = the marking colour";
+        if (row->aux & CR_AUX_SHARED) return row->field == LK(accessory_color) ? h_outer_c : h_legs_c;
+        if (row->field == LK(fur_color3)) return h_spot_c;
         return STR_ICON_A " pick from the colour swatches";
+    }
     case RK_FLAG:
         return STR_ICON_A " switch it on or off";
     case RK_RFLAG:

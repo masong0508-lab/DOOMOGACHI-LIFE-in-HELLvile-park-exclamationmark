@@ -60,6 +60,7 @@ typedef struct PartSlotInfo {
     uint16_t target;    /* new parts the creator plan budgets for this slot (tools/part_budget) */
     uint8_t  nshapes;
     const char *const *shapes;
+    uint8_t  gate;      /* CR3: the shape gate's minimum bust difference for its scripted parts (px) */
 } PartSlotInfo;
 
 typedef struct PartSetInfo {
@@ -80,6 +81,7 @@ extern const char *const doomo_part_tag_names[PART_TAG_COUNT];
 extern const char *const doomo_part_hide_keys[PART_HIDE_COUNT];
 extern const PartAgeRow doomo_part_age_rows[];
 extern const uint16_t doomo_part_age_count;
+extern const uint8_t doomo_part_live[PART_GENE_FIELDS];          /* part_age_data.c (resident) */
 
 /* ---- the catalog (part_meta.c; creator side) ---------------------------------------------- */
 const PartMeta *part_meta_find(int list, int value);          /* NULL if not catalogued        */
@@ -94,6 +96,17 @@ int  part_set_size(int set, int live_only);                   /* parts in the se
 int  part_search(int slot, const char *letters, int live_only, uint16_t *out, int max);
 /* 1 if part m's name or its set's name contains `letters` (case-insensitive; "" matches all). */
 int  part_matches(const PartMeta *m, const char *letters);
+
+/* ---- live counts (CR3; part_age.c, resident) ------------------------------------------------- */
+/* How many choices of gene list `gf` (a GF_* id) are live: its values 0..N-1 are selectable, saved
+ * and kept by resident_sanitize. 0 if the field is not a catalogued part list. The same on every
+ * platform (a save never depends on the build that wrote it). */
+int  part_live_count(int gf);
+/* ... of which this build can DRAW: the leading values up to the list's first part script. The
+ * PS1 builds the renderer without the part-script VM until CR10 (DOOMO_PARTS_VM=0, docs/PORTRAIT.md),
+ * and every scripted value is appended after the painted ones, so there the creator offers only the
+ * painted values. Elsewhere it equals part_live_count(). */
+int  part_live_drawable(int gf);
 
 /* ---- the age gate (part_age.c; resident) ---------------------------------------------------- */
 /* PAGE_* of (list, value): PAGE_ALL unless the catalog says teen or adult. */

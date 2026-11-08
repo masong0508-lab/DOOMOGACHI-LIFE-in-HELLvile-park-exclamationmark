@@ -89,6 +89,20 @@ void portrait_hold(int on);
 void portrait_hold_patient(int on);
 /* CR9: the bust of any look, cached like figure_image (the creator's draft; portrait_hold applies). */
 const DoomoImage *portrait_image_look(const DoomoLook *l, int status, int expr);
+/* ---- CR3: the gene's new core fields (pupil, sclera, glasses, outer layer, legwear, blush, fur
+ * pattern, ear fold, hood, handedness) have no DoomoLook byte: they ride in the resolved set
+ * (look_fields.h DoomoDeep, look_gene_deep). portrait_image / bodyspr_image / fighter_image resolve a
+ * resident's own; for a look you hold, pass the set (NULL = none) or the record. */
+struct DoomoDeep;
+const DoomoImage *figure_image_d(const DoomoLook *l, const struct DoomoDeep *d, int status, int expr);
+const DoomoImage *figure_image_res(const DoomoResident *r, int status, int expr);
+const DoomoImage *portrait_image_look_d(const DoomoLook *l, const struct DoomoDeep *d, int status, int expr);
+void figure_render_deep(const DoomoLook *l, const struct DoomoDeep *d, int status, int expr, int anim,
+                        uint8_t *out);
+void bodyspr_render_deep(const DoomoLook *l, const struct DoomoDeep *d, int status, int dir, int frame,
+                         uint8_t *out);
+void fighter_render_d(const DoomoLook *l, const struct DoomoDeep *d, int status, int view, int anim,
+                      int weapon_frame, uint8_t *out);
 /* CR9: run more layer groups of a portrait_hold() job this tick while the frame's work so far is
  * under `ms` milliseconds (GBA: a new look is ready in a few ticks instead of one group a tick).
  * Elsewhere it does nothing (a job there finishes within a tick or two anyway). */

@@ -813,17 +813,17 @@ TEST(creator_hides_parts_above_the_drafts_age)
     CHECK(cr_value_hidden(row, HAT_TIARA));
     CHECK(!cr_value_hidden(row, HAT_NONE));
     CHECK(!cr_value_hidden(row, HAT_CAP));
-    CHECK_EQ(cr_visible_count(row), HAT_COUNT - 2);
+    CHECK_EQ(cr_visible_count(row), cr_row_count(row) - 2);
     go_row(CR_TAB_OUTFIT, hat);
-    for (i = 0; i < HAT_COUNT * 2; i++) {               /* LEFT / RIGHT never land on them */
+    for (i = 0; i < cr_row_count(row) * 2; i++) {       /* LEFT / RIGHT never land on them */
         press(BTN_RIGHT);
         CHECK(RES_LOOK(&cr.draft, GF_HAT) != HAT_TRAFFIC_CONE && RES_LOOK(&cr.draft, GF_HAT) != HAT_TIARA);
     }
     cr.browse = -1;                                      /* off any locked preview */
     press(BTN_A);                                        /* nor the grid (CR6): not even listed */
     CHECK_EQ(cr.phase, CRP_GRID);
-    CHECK_EQ(cr.g_n, HAT_COUNT - 2);
-    for (i = 0; i < HAT_COUNT * 2; i++) {
+    CHECK_EQ(cr.g_n, cr_row_count(row) - 2);
+    for (i = 0; i < cr_row_count(row) * 2; i++) {
         press(BTN_RIGHT);
         seen |= cr_grid_choice(cr.g_sel) == HAT_TRAFFIC_CONE || cr_grid_choice(cr.g_sel) == HAT_TIARA;
     }
@@ -842,7 +842,7 @@ TEST(creator_hides_parts_above_the_drafts_age)
     CHECK(!cr_value_hidden(row, HAT_TIARA));
     CHECK(cr_value_hidden(row, HAT_TRAFFIC_CONE));
     resident_set_stage(&cr.draft, LIFE_ADULT);
-    CHECK_EQ(cr_visible_count(row), HAT_COUNT);
+    CHECK_EQ(cr_visible_count(row), cr_row_count(row));
     press(BTN_B); press(BTN_A);                          /* leave (discard) */
     part_age_test_set(GF_HAT, HAT_TRAFFIC_CONE, -1);
     part_age_test_set(GF_HAT, HAT_TIARA, -1);

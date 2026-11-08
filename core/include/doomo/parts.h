@@ -29,7 +29,8 @@ typedef struct PartHdr {
 #define PLV_VIEW(m)  (((m) >> 3) & 15)
 #define PLV_ALL      0x7F
 
-enum { PA_HEAD, PA_TORSO };
+enum { PA_HEAD, PA_TORSO,
+       PA_FRAME };          /* CR3: a frame the slot's hook sets (an eye, a cheek, a leg ...; portrait_int.h) */
 
 enum {                   /* opcode (+ operand bytes)                                                */
     PO_END,              /*                                                                         */

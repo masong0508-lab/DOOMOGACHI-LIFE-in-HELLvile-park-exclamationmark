@@ -8,7 +8,9 @@ Reads core/data/parts/catalog/ and writes
                                 sorted name index (creator side: the PS1 links it into the creator
                                 overlay with src/part_meta.c)
     core/gen/part_age_data.c    the parts whose age class is not ALL, sorted (resident: the renderer,
-                                the generators and babies read it through src/part_age.c)
+                                the generators and babies read it through src/part_age.c), and the
+                                live count of every gene list (CR3: doomo_part_live[], what the
+                                creator offers and resident_sanitize keeps)
 
     python3 tools/partcat_build.py [--out-root DIR]
     python3 tools/partcat_build.py --freeze      append every live part not yet in
@@ -26,8 +28,11 @@ FILES (one `#` comment per line allowed):
     planned.txt  plan KEY kind=gene|deep target=N method=M name="..."   (tools/part_budget.py)
     <slot>.txt   one slot:
         slot KEY list=FIELD|deep=DF_X name="Name" method=P|S|F|T|C [target=N] [new=M] [shapes=a,b,..]
+             [gate=PX]
              (method: the default of the slot's rows; target / new: how many new parts the creator
-             plan budgets and their method, for tools/part_budget.py)
+             plan budgets and their method, for tools/part_budget.py; gate: the shape gate's minimum
+             bust difference for the slot's scripted parts, default 24 px (CR3: small face parts
+             such as pupils and brows use a lower one))
         VALUE "Name" set=SET tags=T1,T2 [age=all|teen|adult] [method=M] [shape=S]
                      [hides=H1,H2] [state=live|hidden|planned|test]
 
@@ -54,6 +59,7 @@ FIELDS = os.path.join(ROOT, "core", "data", "look", "fields.txt")
 LOOKF = os.path.join(ROOT, "core", "include", "doomo", "look_fields.h")
 PARTS = os.path.join(ROOT, "core", "data", "parts")
 GOLDEN = os.path.join(ROOT, "core", "tests", "golden", "part_ids.txt")
+REVIEW = os.path.join(ROOT, "core", "data", "parts", "review.txt")
 
 PL_SPECIES = 127
 PL_DEEP0 = 128
@@ -221,11 +227,15 @@ def read_catalog():
                 if a.get("new", "P") not in METHODS:
                     raise CatError("%s: unknown method for new parts" % w)
                 for k in a:
-                    if k not in ("list", "deep", "name", "method", "target", "shapes", "new"):
+                    if k not in ("list", "deep", "name", "method", "target", "shapes", "new", "gate"):
                         raise CatError("%s: unknown slot key %r" % (w, k))
+                gate = int(a.get("gate", "24"))
+                if not 1 <= gate <= 255:
+                    raise CatError("%s: gate is 1..255 px" % w)
                 slot = {"key": key, "file": f, "list": lid, "width": width, "name": a.get("name", key),
                         "method": a.get("method", "P"), "target": int(a.get("target", "0")),
-                        "new": a.get("new", a.get("method", "P")), "shapes": shapes, "parts": []}
+                        "new": a.get("new", a.get("method", "P")), "shapes": shapes, "parts": [],
+                        "gate": gate}
                 continue
             if slot is None:
                 raise CatError("%s: a part before the slot line" % w)
@@ -282,6 +292,10 @@ def read_catalog():
         if slot is None:
             raise CatError("%s: no slot line" % f)
         slot["parts"].sort(key=lambda p: p["value"])
+        live = [p["value"] for p in slot["parts"] if p["state"] == 0]
+        if live and live != list(range(len(live))):
+            raise CatError("%s: the live values must be 0..N-1 with no gap (CR3: the live count is "
+                           "what the creator offers and the sanitiser keeps)" % f)
         slots.append(slot)
     slots.sort(key=lambda s: s["list"])
     lids = [s["list"] for s in slots]
@@ -319,6 +333,43 @@ def read_catalog():
             p["cost"] = costs.get((s["key"], p["value"]), 0)
             p["scripted"] = (s["list"], p["value"]) in scripts
     return {"tags": tags, "hides": hides, "sets": sets, "slots": slots}
+
+
+def review_check(cat, path=REVIEW, golden=GOLDEN):
+    """CR3: a live part that has not shipped yet (not in the golden ids) needs a review line that covers
+    it: `review SLOT FIRST-LAST batch=.. date=.. by=.. sheets=".."` (core/data/parts/review.txt)."""
+    shipped = set()
+    if os.path.exists(golden):
+        for ln, line in lines_of(golden):
+            m = re.match(r'(\S+)\s+(\d+)\s', line)
+            if m:
+                shipped.add((m.group(1), int(m.group(2))))
+    covered = set()
+    keys = {s["key"] for s in cat["slots"]}
+    if os.path.exists(path):
+        for ln, line in lines_of(path):
+            t = toks(line)
+            w = "review.txt:%d" % ln
+            if len(t) < 3 or t[0][1] != "review":
+                raise CatError("%s: review SLOT FIRST-LAST batch=.. date=.. by=.. sheets=\"..\"" % w)
+            a = kv(t[3:], w)
+            for k in ("batch", "date", "by", "sheets"):
+                if not a.get(k):
+                    raise CatError("%s: a review line needs %s=" % (w, k))
+            if t[1][1] not in keys:
+                raise CatError("%s: unknown slot %r" % (w, t[1][1]))
+            m = re.fullmatch(r"(\d+)(?:-(\d+))?", t[2][1])
+            if not m:
+                raise CatError("%s: FIRST or FIRST-LAST" % w)
+            lo, hi = int(m.group(1)), int(m.group(2) or m.group(1))
+            for v in range(lo, hi + 1):
+                covered.add((t[1][1], v))
+    for s in cat["slots"]:
+        for p in s["parts"]:
+            k = (s["key"], p["value"])
+            if p["state"] == 0 and k not in shipped and k not in covered:
+                raise CatError("%s %d \"%s\" is live but has no review line (core/data/parts/review.txt)"
+                               % (s["key"], p["value"], p["name"]))
 
 
 def golden_check(cat, path=GOLDEN):
@@ -379,10 +430,10 @@ def emit(cat):
             L.append("static const char *const shapes_%d[%d] = { %s };" % (si, len(s["shapes"]), ", ".join(cstr(x) for x in s["shapes"])))
     L.append("const PartSlotInfo doomo_part_slots[PART_SLOT_COUNT] = {")
     for si, (s, first, n, live) in enumerate(srows):
-        L.append("    { %s, %s, %d, %d, %d, %d, %d, %d, %d, %d, %s }," % (
+        L.append("    { %s, %s, %d, %d, %d, %d, %d, %d, %d, %d, %s, %d }," % (
             cstr(s["key"]), cstr(s["name"]), s["list"], first, n, min(s["width"], 256) - 1 if s["list"] < PL_DEEP0 else 127,
             live, METHODS.index(s["method"]), s["target"], len(s["shapes"]),
-            ("shapes_%d" % si) if s["shapes"] else "0"))
+            ("shapes_%d" % si) if s["shapes"] else "0", s["gate"]))
     L.append("};")
     L.append("")
     L.append("const PartMeta doomo_part_meta[PART_META_COUNT] = {")
@@ -414,7 +465,8 @@ def emit(cat):
            "#ifndef DOOMO_PART_META_IDS_H", "#define DOOMO_PART_META_IDS_H",
            "#define PART_SLOT_COUNT %d" % len(slots), "#define PART_META_COUNT %d" % len(parts),
            "#define PART_SET_COUNT %d" % len(sets), "#define PART_TAG_COUNT %d" % len(tags),
-           "#define PART_HIDE_COUNT %d" % len(hides), "#define PART_NAME_BYTES %d" % (len(names) + 1)]
+           "#define PART_HIDE_COUNT %d" % len(hides), "#define PART_NAME_BYTES %d" % (len(names) + 1),
+           "#define PART_GENE_FIELDS %d" % len(gene_fields()[0])]
     for si, s in enumerate(slots):
         hdr.append("#define PSLOT_%s %d" % (s["key"].upper(), si))
     for i, st in enumerate(sets):
@@ -424,6 +476,11 @@ def emit(cat):
     hdr += ["#endif", ""]
 
     ages = sorted((s["list"], p["value"], p["age"]) for s, p in parts if p["age"])
+    ngf = len(gene_fields()[0])
+    livetab = [0] * ngf
+    for s in slots:
+        if s["list"] < ngf:
+            livetab[s["list"]] = sum(1 for p in s["parts"] if p["state"] == 0)
     A = ["/* part_age_data.c - GENERATED by tools/partcat_build.py from core/data/parts/catalog/ (CR12).",
          " * The parts whose age class is not ALL, sorted by (list, value): resident on every platform",
          " * (src/part_age.c, the renderer and the generators read it). DO NOT EDIT. */",
@@ -431,6 +488,12 @@ def emit(cat):
          "const PartAgeRow doomo_part_age_rows[%d] = {" % max(1, len(ages))]
     A += ["    { %d, %d, %d }," % r for r in ages] or ["    { 0xFFFF, 0, 0 },     /* none yet: a sentinel */"]
     A += ["};", "const uint16_t doomo_part_age_count = %d;" % len(ages), ""]
+    A += ["/* CR3: the live count of every gene list (index: GF_* id): its values 0..N-1 are selectable,",
+          " * saved and kept by resident_sanitize; 0 for a field that is not a catalogued part list. */",
+          "const uint8_t doomo_part_live[PART_GENE_FIELDS] = {"]
+    for i in range(0, ngf, 16):
+        A.append("    " + ", ".join(str(x) for x in livetab[i:i + 16]) + ",")
+    A += ["};", ""]
     return meta, "\n".join(hdr), "\n".join(A)
 
 
@@ -525,9 +588,11 @@ def main(argv):
     try:
         cat = read_catalog()
         if mode == "freeze":
+            review_check(cat)
             freeze(cat)
             return 0
         golden_check(cat)
+        review_check(cat)
         meta, hdr, age = emit(cat)
     except CatError as e:
         print("partcat_build: error: %s" % e, file=sys.stderr)

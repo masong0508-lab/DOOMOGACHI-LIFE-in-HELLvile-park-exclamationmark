@@ -5,15 +5,25 @@
 #include "doomo/doomo.h"
 #include "doomo/part_icons.h"
 
-int part_icon_index(int row)
+int part_icon_index_in(int row, int packed)
 {
-    int lo = 0, hi = (int)doomo_part_icon_count - 1;
+    const uint16_t *rows = packed ? doomo_part_icon_rle_rows : doomo_part_icon_rows;
+    int lo = 0, hi = (int)(packed ? doomo_part_icon_rle_count : doomo_part_icon_count) - 1;
     while (lo <= hi) {
-        int mid = (lo + hi) >> 1, r = doomo_part_icon_rows[mid];
+        int mid = (lo + hi) >> 1, r = rows[mid];
         if (r == row) return mid;
         if (r < row) lo = mid + 1; else hi = mid - 1;
     }
     return -1;
+}
+
+int part_icon_index(int row)
+{
+#if defined(DOOMO_ICONS_RLE)
+    return part_icon_index_in(row, 1);
+#else
+    return part_icon_index_in(row, 0);
+#endif
 }
 
 /* Packed form (core/tools/part_icons.c): [k colours, 1..15][k palette indices][runs over the 200
@@ -25,7 +35,7 @@ int part_icon_unpack(int i, uint8_t *dst)
     const uint8_t *p, *e, *pal;
     uint8_t *nib;
     int o = 0, k, n;
-    if (i < 0 || i >= (int)doomo_part_icon_count || !dst) return 0;
+    if (i < 0 || i >= (int)doomo_part_icon_rle_count || !dst) return 0;
     p = doomo_part_icon_rle + doomo_part_icon_rle_ofs[i];
     e = doomo_part_icon_rle + doomo_part_icon_rle_ofs[i + 1];
     if (p >= e || (k = *p++) > 15 || p + k > e) return 0;

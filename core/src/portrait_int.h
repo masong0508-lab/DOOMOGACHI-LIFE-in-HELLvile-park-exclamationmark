@@ -327,6 +327,12 @@ int  ps_top(int list, int value);          /* how far its script reaches above t
  * (its blocks of layer group `group`, or every block with -1), so the painter draws nothing for it.
  * One byte compare when no value of the list is scripted. */
 int  ps_slot(PCtx *c, int list, int value, int group);
+/* CR3: `anchor=frame` blocks are drawn in a frame the slot's hook sets before ps_slot_frame(): an eye
+ * (pupils, eye whites, scripted eyes), a cheek (blush), a brow, the nose, the mouth, the pair of eyes
+ * (glasses), a leg (legwear). Origin (Q4); position units px, py and radius units rx, ry are Q4 per
+ * 256 normalised units, a negative px mirrors (the left eye of a pair). */
+void ps_frame(int ox, int oy, int px, int py, int rx, int ry);
+int  ps_slot_frame(PCtx *c, int list, int value, int group);
 /* DOOMO_PARTS_VM 0 builds the renderer without the script VM: every hook is a constant 0, nothing
  * scripted is drawn (sanitize then clamps a scripted value to its slot's default). The PS1 builds
  * that way until CR10 frees the RAM the VM and its LZ buffers need there (about 22 KB resident with
@@ -337,8 +343,11 @@ int  ps_slot(PCtx *c, int list, int value, int group);
 #if DOOMO_PARTS_VM
 #define PS_SLOT(c, list, value, group) \
     ((value) >= doomo_part_minv[(list)] && ps_slot((c), (list), (value), (group)))
+#define PS_SLOT_FRAME(c, list, value, group) \
+    ((value) >= doomo_part_minv[(list)] && ps_slot_frame((c), (list), (value), (group)))
 #else
 #define PS_SLOT(c, list, value, group) ((void)(c), (void)(value), 0)
+#define PS_SLOT_FRAME(c, list, value, group) ((void)(c), (void)(value), 0)
 #endif
 extern const uint8_t doomo_part_minv[128];
 /* CR2 shape-only renders (contact sheets, the distinctness gate): every material of the next renders

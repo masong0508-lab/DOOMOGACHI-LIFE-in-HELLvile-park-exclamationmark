@@ -11,6 +11,7 @@
 #include "doomo/doomo.h"
 #include "doomo/part_icons.h"
 #include "doomo/part_meta.h"
+#include "doomo/look_fields.h"
 
 /* ---- tabs ------------------------------------------------------------- */
 enum { CR_TAB_BODY, CR_TAB_FACE, CR_TAB_HAIR, CR_TAB_SPOOKY, CR_TAB_OUTFIT,
@@ -41,6 +42,11 @@ enum {
 };
 #define CR_NOLIST  0xFF
 #define CR_NOFIELD 0xFF
+/* CR3: RK_PAINT rows' aux bits: a second row for a colour another row also edits (the outer
+ * layer uses the accessory colour, legwear the print colour; the help line says so), and a row
+ * whose preview is the legs close-up */
+#define CR_AUX_SHARED 1
+#define CR_AUX_LEGS   2
 
 /* actions (RK_ACTION aux) */
 enum { CA_SPECIES_PRESET, CA_OUTFIT_PRESET, CA_VOICE_PRESET, CA_TEST_VOICE,
@@ -176,6 +182,7 @@ typedef struct CrLockMemo { const struct CrRow *row; int16_t idx; uint8_t val, o
  * the part alone in lavender) and the camera (CAM_*). memcmp-able (zeroed when unused). */
 typedef struct CrView {
     DoomoLook look, base;
+    DoomoDeep dl, db;               /* CR3: their gene-only fields (glasses, outer layer ...) */
     uint8_t locked, cam, ok, pad;
 } CrView;
 
@@ -225,6 +232,7 @@ typedef struct CrState {
     uint16_t expr_t;
     DoomoLook shown;                /* look the preview wants (throttled but on the GBA) */
     DoomoLook shown_base;           /* ... without the browsed locked part (shown_locked) */
+    DoomoDeep shown_d, shown_base_d;  /* CR3: their gene-only fields (look_gene_deep) */
     uint8_t  shown_locked;          /* ... is a locked option: silhouette     */
     uint8_t  pend_t;                /* CR9: ticks cr.pend has been drawn in slices */
     uint16_t row_at, row_t;         /* CR9: the row the cursor is on (tab << 8 | row), ticks there */
@@ -345,7 +353,7 @@ const DoomoResident *cr_copy_res(int id);
 int  cr_first_selectable(int tab);
 /* The look the preview should show this tick + its status / expression. */
 int  cr_preview_status(void);
-void cr_lock_base(DoomoLook *out);       /* CR6: the draft without the browsed part */
+void cr_lock_base(DoomoLook *out, DoomoDeep *dout);   /* CR6: the draft without the browsed part */
 int  cr_preview_expr(void);
 /* Spawn sparkles around the preview (kind -1 = mixed). */
 void cr_sparkle_burst(int n, int kind);

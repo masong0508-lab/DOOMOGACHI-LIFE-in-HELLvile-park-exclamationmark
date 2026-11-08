@@ -8,9 +8,9 @@ slot halo list=halo name="Halo" method=P target=10 new=T
 3   "Flame Ring"           set=spooky tags=fire,holy
 4   "Stars"                set=cloud9 tags=holy
 5   "Thorns"               set=cathedral tags=holy,goth
-6   "Double Ring"          set=cloud9 tags=holy state=hidden
-7   "Heart Halo"           set=candy tags=cute,holy state=hidden
-8   "Square Halo"          set=cloud9 tags=holy state=hidden
-9   "Neon Glitch"          set=indieart tags=tech,silly state=hidden
-10  "Flower Ring"          set=seasons tags=nature,holy state=hidden
-11  "Saturn Ring"          set=cloud9 tags=holy state=hidden
+6   "Double Ring"          set=cloud9 tags=holy
+7   "Heart Halo"           set=candy tags=cute,holy
+8   "Square Halo"          set=cloud9 tags=holy
+9   "Neon Glitch"          set=indieart tags=tech,silly
+10  "Flower Ring"          set=seasons tags=nature,holy
+11  "Saturn Ring"          set=cloud9 tags=holy

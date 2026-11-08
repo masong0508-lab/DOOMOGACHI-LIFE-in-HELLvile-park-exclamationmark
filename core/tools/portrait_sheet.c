@@ -251,6 +251,16 @@ static void sheet_bust(const char *name, int figure)
  * view, labelled with the name and (for parts that are not live) the state. --set keeps one set;
  * --shape forces every material onto one grey ramp, so two parts that differ only in colour look
  * the same. Deep fields render through portrait_render_deep (bust and 2x only). */
+/* CR3: what a slot's review cell wears so the part reads (long ears for a fold, shorts for legwear) */
+static void sheet_stage(DoomoLook *l, int list)
+{
+    if (list == GF_EAR_FOLD) { l->ears = EARS_BUNNY; l->hair_style = HAIR_SHORT; }
+    if (list == GF_LEGWEAR) { l->bottom = BOTTOM_SHORTS; l->shoes = SHOES_SANDALS; l->pattern_color = PAINT_CHERRY; }
+    if (list == GF_OUTER) l->top_color = PAINT_WHITE;
+    if (list == GF_FUR_PATTERN) { l->top = TOP_NONE; l->skin = 8 + PAINT_CARAMEL; l->marking_color = PAINT_CHOCOLATE; }
+    if (list == GF_GLASSES || list == GF_PUPIL || list == GF_SCLERA) l->eye_size = 12;
+}
+
 static void sheet_slot(const char *key, const char *set, int shape)
 {
     static const char *const st_name[4] = { "", "hidden", "planned", "test" };
@@ -271,20 +281,15 @@ static void sheet_slot(const char *key, const char *set, int shape)
     for (i = sl->first, k = 0; i < sl->first + sl->count; i++) {
         const PartMeta *m = &doomo_part_meta[i];
         DoomoLook l = base_look();
+        DoomoDeep d = doomo_deep_zero;
         int x = 2 + (k % per) * cw, y = 14 + (k / per) * chh, deep = PL_IS_DEEP(m->list), xx, yy;
         char nm[48];
         if (set && strcmp(doomo_part_sets[m->set].key, set)) continue;
-        if (m->list == PL_SPECIES) l.species = m->value;
-        else if (!deep && m->list < GF_PATTERN_COLOR + 1) *((uint8_t *)&l + 1 + m->list) = m->value;
         l.hat_color = m->list == GF_HAT ? PAINT_LAVENDER : l.hat_color;
         l.accessory_color = PAINT_COBALT;
-        if (deep) {
-            DoomoDeep d = doomo_deep_zero;
-            d.v[m->list - PL_DEEP0] = m->value;
-            portrait_render_deep(&l, &d, RES_ALIVE, EXPR_NEUTRAL, 0, por);
-        } else {
-            portrait_render(&l, RES_ALIVE, EXPR_NEUTRAL, 0, por);
-        }
+        sheet_stage(&l, m->list);
+        look_part_set(&l, &d, m->list, m->value);             /* CR3: gene-only fields ride in d */
+        portrait_render_deep(&l, &d, RES_ALIVE, EXPR_NEUTRAL, 0, por);
         cell_bg(&s, x, y, 48, 56, k);
         sh_blit(&s, x, y, por, PORTRAIT_W, PORTRAIT_H);
         cell_bg(&s, x + 50, y, 48, 56, k + 1);              /* the head at 2x (the creator's crop) */
@@ -294,15 +299,15 @@ static void sheet_slot(const char *key, const char *set, int shape)
                 if (c) sh_rect(&s, x + 50 + xx * 2, y + yy * 2, 2, 2, c);
             }
         if (!deep) {
-            figure_render(&l, RES_ALIVE, EXPR_NEUTRAL, 0, fig);
+            figure_render_deep(&l, &d, RES_ALIVE, EXPR_NEUTRAL, 0, fig);
             cell_bg(&s, x + 100, y, 48, 80, k);
             sh_blit(&s, x + 100, y, fig, FIGURE_W, FIGURE_H);
-            bodyspr_render(&l, RES_ALIVE, 0, 0, spr);
+            bodyspr_render_deep(&l, &d, RES_ALIVE, 0, 0, spr);
             cell_bg(&s, x + 150, y, 48, 72, k + 1);
             for (yy = 0; yy < BODYSPR_H; yy++)
                 for (xx = 0; xx < BODYSPR_W; xx++)
                     if (spr[yy * BODYSPR_W + xx]) sh_rect(&s, x + 150 + xx * 3, y + yy * 3, 3, 3, spr[yy * BODYSPR_W + xx]);
-            fighter_render(&l, RES_ALIVE, 4, 0, -1, fgt);
+            fighter_render_d(&l, &d, RES_ALIVE, 4, 0, -1, fgt);
             cell_bg(&s, x + 200, y, FIGHTER_W, FIGHTER_H, k);
             sh_blit(&s, x + 200, y, fgt, FIGHTER_W, FIGHTER_H);
         }

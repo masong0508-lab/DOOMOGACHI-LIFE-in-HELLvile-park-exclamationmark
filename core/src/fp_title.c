@@ -757,7 +757,7 @@ static void draw_figures(void)
         {
             /* GBA: the figure is a set of hardware sprites (above the
              * bitmap; the footer text keeps clear of them) */
-            const DoomoImage *img = figure_image(RES_LOOK_VIEW(p), RES_ALIVE, expr);
+            const DoomoImage *img = figure_image_res(p, RES_ALIVE, expr);
             if (!img || !plat_figure_obj(k, x, y + hop, img)) fp_figure(x, y + hop, RES_LOOK_VIEW(p), RES_ALIVE, expr);
         }
         portrait_hold(0);

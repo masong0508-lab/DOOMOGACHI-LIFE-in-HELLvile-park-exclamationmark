@@ -418,8 +418,9 @@ static void want_view(CrView *v)
 {
     memset(v, 0, sizeof(*v));
     v->look = cr.shown;
+    v->dl = cr.shown_d;
     v->locked = cr.shown_locked;
-    if (v->locked) v->base = cr.shown_base;
+    if (v->locked) { v->base = cr.shown_base; v->db = cr.shown_base_d; }
     v->cam = (uint8_t)cr_camera();
     /* CR9 (CR_CALM): the camera moves once the cursor has rested on a row for a moment, so scrolling
      * through the rows draws no bust / legs / back view for every row passed */
@@ -430,11 +431,11 @@ static void want_view(CrView *v)
 /* The close-up bust of a view (the portrait cache's image; composed / cropped in cr.pix). */
 static const DoomoImage *bust_image(const CrView *v, int status, int expr)
 {
-    const DoomoImage *l = portrait_image_look(&v->look, status, expr), *d = NULL;
+    const DoomoImage *l = portrait_image_look_d(&v->look, &v->dl, status, expr), *d = NULL;
     uint32_t key;
     if (!l) return NULL;
     if (v->locked) {                          /* the look without the locked part, to compare */
-        d = portrait_image_look(&v->base, status, expr);
+        d = portrait_image_look_d(&v->base, &v->db, status, expr);
         if (d && (d->w != l->w || d->h != l->h)) d = NULL;
     }
     if (crl.big && !d) return l;              /* as cached */
@@ -464,10 +465,10 @@ static const DoomoImage *bust_image(const CrView *v, int status, int expr)
 /* CR6: the full figure of a view; a locked part composed in lavender (cr.lockpix) */
 static const DoomoImage *body_image(const CrView *v, int status, int expr)
 {
-    const DoomoImage *l = figure_image(&v->look, status, expr), *d;
+    const DoomoImage *l = figure_image_d(&v->look, &v->dl, status, expr), *d;
     uint32_t key;
     if (!l || !v->locked) return l;
-    d = figure_image(&v->base, status, expr);
+    d = figure_image_d(&v->base, &v->db, status, expr);
     if (!d || d->w != l->w || d->h != l->h) return l;
     key = l->uid * 2654435761u ^ d->uid ^ 0x10C0u;
     if (cr.lockkey != key || !cr.lockimg.uid) {
@@ -513,11 +514,12 @@ static const DoomoImage *turn_image(const CrView *v, int status, int *flip, int 
     anim = cr.roll ? 5 : cr.walking ? (int)((cr.t >> 2) & 3) : (int)((cr.t >> 4) & 1);
     if (!cr.walking && !cr.roll) anim = ((cr.t >> 4) & 1) ? 1 : 0;   /* gentle idle bob */
     if (back) anim = 0;
-    key = look_hash(&v->look) ^ (uint32_t)(view * 31 + anim * 977 + status * 7) ^ 0xF1670000u ^ (uint32_t)locked << 20;
+    key = look_hash(&v->look) ^ deep_hash(&v->dl, 0) * 3u ^ (uint32_t)(view * 31 + anim * 977 + status * 7) ^
+          0xF1670000u ^ (uint32_t)locked << 20;
     if (cr.pix_kind != CRB_FIGHTER || cr.pix_key != key || !cr.img.uid) {
-        fighter_render(&v->look, status, view, anim, -1, cr.pix);
+        fighter_render_d(&v->look, &v->dl, status, view, anim, -1, cr.pix);
         if (locked) {
-            fighter_render(&v->base, status, view, anim, -1, cr.lockpix);
+            fighter_render_d(&v->base, &v->db, status, view, anim, -1, cr.lockpix);
             lock_compose(cr.pix, cr.lockpix, FIGHTER_W * FIGHTER_H, 0);
             cr.lockkey = 0;                   /* lockpix was reused */
         }
@@ -541,12 +543,12 @@ static int view_ready(const CrView *v, int status, int expr)
     case CAM_BACK:                            /* the back view is a fighter render, drawn at once */
         break;
     case CAM_BUST:
-        ok = portrait_image_look(&v->look, status, expr) != NULL;
-        if (ok && v->locked) ok = portrait_image_look(&v->base, status, expr) != NULL;
+        ok = portrait_image_look_d(&v->look, &v->dl, status, expr) != NULL;
+        if (ok && v->locked) ok = portrait_image_look_d(&v->base, &v->db, status, expr) != NULL;
         break;
     default:
-        ok = figure_image(&v->look, status, expr) != NULL;
-        if (ok && v->locked) ok = figure_image(&v->base, status, expr) != NULL;
+        ok = figure_image_d(&v->look, &v->dl, status, expr) != NULL;
+        if (ok && v->locked) ok = figure_image_d(&v->base, &v->db, status, expr) != NULL;
         break;
     }
     portrait_hold(CR_CALM ? 1 : 0);           /* (the PS1's preview animates) */
@@ -576,7 +578,8 @@ static const CrView *pane_view(int status, int expr)
     if (view_ready(&cr.pend, status, expr) || ++cr.pend_t >= 24) {
         /* it lands: with a hop and a sparkle, unless the next one is already wanted (a held
          * direction: the pane stays a still, retained panel while the looks stream past) */
-        if (memcmp(&cr.pend.look, &cr.disp.look, sizeof(DoomoLook)) != 0 && memcmp(&cr.pend, &w, sizeof(w)) == 0) {
+        if ((memcmp(&cr.pend.look, &cr.disp.look, sizeof(DoomoLook)) != 0 ||
+             memcmp(&cr.pend.dl, &cr.disp.dl, sizeof(DoomoDeep)) != 0) && memcmp(&cr.pend, &w, sizeof(w)) == 0) {
             cr.hop = 9;
             cr_sparkle_burst(3, -1);
         }
@@ -1611,7 +1614,7 @@ static void draw_movein(void)
     if (cr.mode == CR_EDIT) draw_curtain_stage(sw, ground, t);
     else if (cr.mode == CR_PLAYER) draw_cottage(bx - (crl.big ? 8 : 4), ground, bw + (crl.big ? 16 : 8), t);
     else draw_building(bx, ground, bw, hell, t);
-    im = figure_image(RES_LOOK_VIEW(&cr.draft), RES_ALIVE, cr_preview_expr());
+    im = figure_image_res(&cr.draft, RES_ALIVE, cr_preview_expr());
     if (im) {
         int fw = im->w * sc, fh = im->h * sc, hop = movein_hop(t, walking);
         ui_fill_ellipse(fx, ground + 2, fw / 4 - hop / 3, 2 + sc,

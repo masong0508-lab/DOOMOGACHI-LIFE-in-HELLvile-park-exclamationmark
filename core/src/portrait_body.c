@@ -496,6 +496,12 @@ static void legs(PCtx *c)
                 for (y = y0; y < y1; y += 40) pc_line((x0 - r) >> 4, y >> 4, (x0 + r) >> 4, (y + 12) >> 4, skin.c[1]);
             }
         }
+        /* CR3: scripted legwear in this leg's frame: origin the foot, x 256 = the leg radius (mirrored
+         * on the left leg), y -256 = the hip; under the bottoms and the shoes */
+        if (c->d->v[DF_LEGWEAR] >= doomo_part_minv[GF_LEGWEAR]) {
+            ps_frame(x1, y1, s ? r : -r, y1 - y0, r, y1 - y0);
+            (void)PS_SLOT_FRAME(c, GF_LEGWEAR, c->d->v[DF_LEGWEAR], 1);
+        }
         if (cover && !long_top) {
             int yb = cover == 1 ? y1 - 8 : y0 + (y1 - y0) / 2;
             int rr = r + (bt == BOTTOM_SWEATS || bt == BOTTOM_CARGO ? 10 : (bt == BOTTOM_LEGGINGS ? -2 : 4));
@@ -1709,6 +1715,7 @@ static void back_acc(PCtx *c)
     const DoomoLook *l = c->l;
     int st = l->accessory;
     PMat m = c->acc;
+    (void)PS_SLOT(c, GF_OUTER, c->d->v[DF_OUTER], 0);         /* CR3: an outer layer's back (a cape's) */
     if (PS_SLOT(c, GF_ACCESSORY, st, 0)) return;             /* CR2: its back blocks (group 0, any view) */
     if (st == ACC_CAPE) {
         int bot = B.view == VK_PORTRAIT ? PX(60) : B.by + PCT((B.ground - B.by), 70);
@@ -1764,6 +1771,7 @@ void pb_draw_body_part(PCtx *c, int part)
     if (part == 1) {
         torso(c);
         (void)PS_SLOT(c, GF_TOP, l->top, 1);
+        (void)PS_SLOT(c, GF_OUTER, c->d->v[DF_OUTER], 1);     /* CR3: a coat / vest / shawl over the top */
         return;
     }
     if (!far && B.view != VK_PORTRAIT) {
@@ -1818,6 +1826,7 @@ void pb_draw_neck(PCtx *c)
 {
     collar(c);
     (void)PS_SLOT(c, GF_TOP, c->l->top, 4);                  /* CR2: a scripted top's collar blocks */
+    (void)PS_SLOT(c, GF_OUTER, c->d->v[DF_OUTER], 4);         /* CR3: an outer layer's collar / lapels */
     chest_fluff(c);
     mothkin_ruff(c);
     neck_acc(c);

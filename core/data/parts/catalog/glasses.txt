@@ -1,9 +1,9 @@
 # core/data/parts/catalog/glasses.txt - glasses, gene field glasses (CR1; format: tools/partcat_build.py).
-# Painted (wave 2, P1.M2) but not selectable yet: state=hidden until CR3 flips the list live.
+# Painted (wave 2, P1.M2) but not selectable yet: until CR3 flips the list live.
 slot glasses list=glasses name="Glasses" method=P target=31 new=F
 
 0   "None"       set=basics tags=plain
-1   "Round Frames"  set=basics tags=plain state=hidden
-2   "Square Frames" set=indieart tags=plain,work state=hidden
-3   "Half-Rim"      set=elders tags=elder,formal state=hidden
-4   "Cat-Eye"       set=teaparty tags=glam,retro state=hidden
+1   "Round Frames"  set=basics tags=plain
+2   "Square Frames" set=indieart tags=plain,work
+3   "Half-Rim"      set=elders tags=elder,formal
+4   "Cat-Eye"       set=teaparty tags=glam,retro

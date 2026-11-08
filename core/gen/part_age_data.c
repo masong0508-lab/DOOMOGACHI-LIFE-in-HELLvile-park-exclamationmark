@@ -7,3 +7,14 @@ const PartAgeRow doomo_part_age_rows[1] = {
     { 0xFFFF, 0, 0 },     /* none yet: a sentinel */
 };
 const uint16_t doomo_part_age_count = 0;
+
+/* CR3: the live count of every gene list (index: GF_* id): its values 0..N-1 are selectable,
+ * saved and kept by resident_sanitize; 0 for a field that is not a catalogued part list. */
+const uint8_t doomo_part_live[PART_GENE_FIELDS] = {
+    10, 0, 0, 0, 12, 0, 24, 0, 0, 0, 0, 0, 0, 12, 0, 12,
+    0, 20, 0, 0, 32, 0, 0, 8, 16, 16, 0, 0, 16, 10, 12, 23,
+    0, 0, 25, 0, 12, 0, 12, 0, 36, 0, 22, 0, 8, 8, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 5, 3, 0, 0, 5, 0, 0, 5, 8,
+    0, 0, 0,
+};

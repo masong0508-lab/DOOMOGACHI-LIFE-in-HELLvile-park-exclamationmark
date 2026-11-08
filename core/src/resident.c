@@ -788,6 +788,29 @@ static int fix_range(uint8_t *v, int lo, int hi, int def)
     return 0;
 }
 
+/* CR3: a part list keeps every live choice of the catalog (part_live_count): the lists grew past
+ * their v1 enums (*_COUNT, which the generators keep rolling so Classic towns stay the same) */
+static int live_n(int gf, int classic)
+{
+    int n = part_live_count(gf);
+    return n > classic ? n : classic;
+}
+
+/* CR3: the gene's new look fields (no DoomoLook byte): a part list is kept to its live count, the
+ * third fur colour to "auto" + 32 paints; hood_up and handedness are one bit (always valid) */
+static int fix_gene_looks(DoomoResident *r)
+{
+    static const uint8_t lists[] = { GF_PUPIL, GF_SCLERA, GF_FUR_PATTERN, GF_GLASSES, GF_OUTER,
+                                     GF_LEGWEAR, GF_BLUSH_STYLE, GF_EAR_FOLD };
+    int i, n = 0;
+    for (i = 0; i < (int)sizeof(lists); i++) {
+        uint32_t v = gene_get(r->gene, lists[i]);
+        if (v && (int)v >= live_n(lists[i], 1)) { gene_set(r->gene, lists[i], 0); n++; }
+    }
+    if (gene_get(r->gene, GF_FUR_COLOR3) > PAL_PAINT_COUNT) { gene_set(r->gene, GF_FUR_COLOR3, 0); n++; }
+    return n;
+}
+
 int resident_sanitize(DoomoResident *r)
 {
     DoomoLook lk, *l = &lk;          /* copy out, fix, store back: the look has no address after the flip */
@@ -795,57 +818,58 @@ int resident_sanitize(DoomoResident *r)
     res_get_look(r, &lk);
 
     n += fix_enum(&l->species, SPECIES_COUNT, SPECIES_HUMAN);
-    n += fix_enum(&l->body, BODY_COUNT, BODY_AVERAGE);
+    n += fix_enum(&l->body, live_n(GF_BODY, BODY_COUNT), BODY_AVERAGE);
     n += fix_max(&l->height, 15);
     n += fix_max(&l->build, 15);
     n += fix_max(&l->skin, 8 + PAL_PAINT_COUNT - 1);
-    n += fix_enum(&l->head_shape, HEAD_COUNT, HEAD_ROUND);
+    n += fix_enum(&l->head_shape, live_n(GF_HEAD_SHAPE, HEAD_COUNT), HEAD_ROUND);
     n += fix_max(&l->head_size, 15);
-    n += fix_enum(&l->eye_style, EYE_COUNT, EYE_ROUND);
+    n += fix_enum(&l->eye_style, live_n(GF_EYE_STYLE, EYE_COUNT), EYE_ROUND);
     n += fix_max(&l->eye_color, PAL_PAINT_COUNT - 1);
     n += fix_max(&l->eye_size, 15);
     n += fix_max(&l->eye_spacing, 15);
     n += fix_max(&l->eye_height, 15);
     n += fix_max(&l->eye_tilt, 15);
     n += fix_range(&l->eye_count, 1, 3, 2);
-    n += fix_enum(&l->brow_style, BROW_COUNT, BROW_NONE);
+    n += fix_enum(&l->brow_style, live_n(GF_BROW_STYLE, BROW_COUNT), BROW_NONE);
     n += fix_max(&l->brow_height, 15);
-    n += fix_enum(&l->nose_style, NOSE_COUNT, NOSE_DOT);
+    n += fix_enum(&l->nose_style, live_n(GF_NOSE_STYLE, NOSE_COUNT), NOSE_DOT);
     n += fix_max(&l->nose_size, 15);
-    n += fix_enum(&l->mouth_style, MOUTH_COUNT, MOUTH_SMILE);
+    n += fix_enum(&l->mouth_style, live_n(GF_MOUTH_STYLE, MOUTH_COUNT), MOUTH_SMILE);
     n += fix_max(&l->mouth_size, 15);
     n += fix_max(&l->fangs, 3);
-    n += fix_enum(&l->hair_style, HAIR_COUNT, HAIR_SHORT);
+    n += fix_enum(&l->hair_style, live_n(GF_HAIR_STYLE, HAIR_COUNT), HAIR_SHORT);
     n += fix_max(&l->hair_color, PAL_PAINT_COUNT - 1);
     if (l->hair_highlight != LOOK_NO_COLOR && l->hair_highlight >= PAL_PAINT_COUNT) {
         l->hair_highlight = LOOK_NO_COLOR;
         n++;
     }
-    n += fix_enum(&l->facial_hair, FHAIR_COUNT, FHAIR_NONE);
-    n += fix_enum(&l->ears, EARS_COUNT, EARS_NORMAL);
-    n += fix_enum(&l->horns, HORNS_COUNT, HORNS_NONE);
+    n += fix_enum(&l->facial_hair, live_n(GF_FACIAL_HAIR, FHAIR_COUNT), FHAIR_NONE);
+    n += fix_enum(&l->ears, live_n(GF_EARS, EARS_COUNT), EARS_NORMAL);
+    n += fix_enum(&l->horns, live_n(GF_HORNS, HORNS_COUNT), HORNS_NONE);
     n += fix_max(&l->horn_color, PAL_PAINT_COUNT - 1);
     n += fix_max(&l->horn_size, 15);
-    n += fix_enum(&l->tail, TAIL_COUNT, TAIL_NONE);
-    n += fix_enum(&l->wings, WINGS_COUNT, WINGS_NONE);
-    n += fix_enum(&l->halo, HALO_COUNT, HALO_NONE);
-    n += fix_enum(&l->marking, MARK_COUNT, MARK_NONE);
+    n += fix_enum(&l->tail, live_n(GF_TAIL, TAIL_COUNT), TAIL_NONE);
+    n += fix_enum(&l->wings, live_n(GF_WINGS, WINGS_COUNT), WINGS_NONE);
+    n += fix_enum(&l->halo, live_n(GF_HALO, HALO_COUNT), HALO_NONE);
+    n += fix_enum(&l->marking, live_n(GF_MARKING, MARK_COUNT), MARK_NONE);
     n += fix_max(&l->marking_color, PAL_PAINT_COUNT - 1);
     /* cheeks: every bit pattern is valid */
-    n += fix_enum(&l->top, TOP_COUNT, TOP_TSHIRT);
+    n += fix_enum(&l->top, live_n(GF_TOP, TOP_COUNT), TOP_TSHIRT);
     n += fix_max(&l->top_color, PAL_PAINT_COUNT - 1);
-    n += fix_enum(&l->bottom, BOTTOM_COUNT, BOTTOM_PANTS);
+    n += fix_enum(&l->bottom, live_n(GF_BOTTOM, BOTTOM_COUNT), BOTTOM_PANTS);
     n += fix_max(&l->bottom_color, PAL_PAINT_COUNT - 1);
-    n += fix_enum(&l->shoes, SHOES_COUNT, SHOES_SNEAKERS);
+    n += fix_enum(&l->shoes, live_n(GF_SHOES, SHOES_COUNT), SHOES_SNEAKERS);
     n += fix_max(&l->shoes_color, PAL_PAINT_COUNT - 1);
-    n += fix_enum(&l->hat, HAT_COUNT, HAT_NONE);
+    n += fix_enum(&l->hat, live_n(GF_HAT, HAT_COUNT), HAT_NONE);
     n += fix_max(&l->hat_color, PAL_PAINT_COUNT - 1);
-    n += fix_enum(&l->accessory, ACC_COUNT, ACC_NONE);
+    n += fix_enum(&l->accessory, live_n(GF_ACCESSORY, ACC_COUNT), ACC_NONE);
     n += fix_max(&l->accessory_color, PAL_PAINT_COUNT - 1);
-    n += fix_enum(&l->aura, AURA_COUNT, AURA_NONE);
-    n += fix_enum(&l->pattern, PATTERN_COUNT, PATTERN_SOLID);
+    n += fix_enum(&l->aura, live_n(GF_AURA, AURA_COUNT), AURA_NONE);
+    n += fix_enum(&l->pattern, live_n(GF_PATTERN, PATTERN_COUNT), PATTERN_SOLID);
     n += fix_max(&l->pattern_color, PAL_PAINT_COUNT - 1);
     res_set_look(r, &lk);
+    n += fix_gene_looks(r);                                 /* CR3 */
 
     /* name: printable ASCII, NUL-terminated, zero padded */
     end = DOOMO_NAME_LEN - 1;

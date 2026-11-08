@@ -1334,13 +1334,27 @@ static void glasses2(PCtx *c, int style, int r, const PMat *m)
     pc_line((X >> 4) + ((rr + 8) >> 4), (Y >> 4) - 1, (X2 >> 4) - ((rr + 8) >> 4), (Y2 >> 4) - 1, u);
 }
 
+/* CR3: scripted glasses, in the pair-of-eyes frame (x = +-256 the eye centres, radii in eye radii);
+ * their own slot, so they go with any accessory */
+static int glasses_script(PCtx *c)
+{
+    int g = c->d->v[DF_GLASSES2], X, Y, X2, Y2, r;
+    if (g < doomo_part_minv[GF_GLASSES] || BACK_VIEW) return 0;
+    eye_pos(c, -1, &X, &Y);
+    eye_pos(c, 1, &X2, &Y2);
+    r = eye_r(c);
+    if (c->l->eye_count == 1) X2 = X + r * 3;                  /* one eye: a monocle-wide pair */
+    ps_frame((X + X2) / 2, (Y + Y2) / 2, (X2 - X) / 2, r, r, r);
+    return PS_SLOT_FRAME(c, GF_GLASSES, g, 5);
+}
+
 void ph_face_acc(PCtx *c)
 {
     const DoomoLook *l = c->l;
     int st = l->accessory, X, Y, X2, Y2, r, k;
     PMat m = c->acc, dk, w;
     phs.c = c; phs.h = &c->h; phs.s = 1; phs.z = 0;
-    if (PS_SLOT(c, GF_ACCESSORY, st, 5)) return;             /* CR2: a scripted accessory */
+    if (PS_SLOT(c, GF_ACCESSORY, st, 5)) { (void)glasses_script(c); return; }   /* CR2: a scripted accessory */
     if (BACK_VIEW && st != ACC_EYEPATCH && st != ACC_BANDAGES && st != ACC_EARRINGS) return;
     r = eye_r(c);
     pm_flat(&dk, PAL_PAINT(PAINT_JET, 1));
@@ -1469,7 +1483,9 @@ void ph_face_acc(PCtx *c)
     default:
         break;
     }
-    if (c->d->v[DF_GLASSES2] && st != ACC_GLASSES && st != ACC_SUNGLASSES && st != ACC_MONOCLE)
+    if (glasses_script(c)) {
+        /* CR3: scripted glasses */
+    } else if (c->d->v[DF_GLASSES2] && st != ACC_GLASSES && st != ACC_SUNGLASSES && st != ACC_MONOCLE)
         glasses2(c, c->d->v[DF_GLASSES2], r, &m);
     pc_mask_none();
 }

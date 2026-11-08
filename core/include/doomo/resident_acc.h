@@ -125,7 +125,10 @@ void res_from_v1(const uint8_t in96[96], DoomoCitizen *out);
  *   RES_F_FLAGS         RF_* flags
  *   RES_F_NAME          the name (text; no numeric value) */
 enum { RES_F_SPECIES = 0x80, RES_F_ROMANCE, RES_F_FLAGS, RES_F_NAME };
-#define RES_F_IS_LOOK(f)  ((f) == RES_F_SPECIES || (f) <= GF_PATTERN_COLOR)
+/* CR3: the gene's new look fields (no DoomoLook byte; the renderer reads them through
+ * look_gene_deep): pupil .. handedness, but not age, look_seed or auto_style */
+#define RES_F_IS_GENE_LOOK(f) ((f) >= GF_PUPIL && (f) <= GF_HANDEDNESS)
+#define RES_F_IS_LOOK(f)  ((f) == RES_F_SPECIES || (f) <= GF_PATTERN_COLOR || RES_F_IS_GENE_LOOK(f))
 
 static inline int res_field_get(const DoomoResident *r, int f)
 {
@@ -149,7 +152,9 @@ static inline int res_field_get(const DoomoResident *r, int f)
     case GF_FEAR:        return RES_FEAR(r);
     case GF_CATCHPHRASE: return RES_CATCHPHRASE(r);
     case GF_AGE:         return RES_STAGE(r);
-    default:             return 0;
+    /* the third fur colour stores "auto" (LOOK_NO_COLOR) as 0 and paint p as p + 1 */
+    case GF_FUR_COLOR3:  return res_gget(r, f) ? (int)res_gget(r, f) - 1 : LOOK_NO_COLOR;
+    default:             return RES_F_IS_GENE_LOOK(f) ? (int)res_gget(r, f) : 0;
     }
 }
 
@@ -178,7 +183,10 @@ static inline void res_field_set(DoomoResident *r, int f, int v)
     case GF_FEAR:        RES_SET_FEAR(r, v); break;
     case GF_CATCHPHRASE: RES_SET_CATCHPHRASE(r, v); break;
     case GF_AGE:         RES_SET_STAGE(r, v); break;
-    default: break;
+    case GF_FUR_COLOR3:  res_gset(r, f, v == LOOK_NO_COLOR ? 0u : (uint32_t)v + 1u); break;
+    default:
+        if (RES_F_IS_GENE_LOOK(f)) res_gset(r, f, (uint32_t)v);
+        break;
     }
 }
 

@@ -113,7 +113,12 @@ static int nick_set(int id, const char *name, const char *nick)
     return 1;
 }
 
-/* ---- save extension: [count][id lo hi][hash lo hi][12 name bytes]... ---- */
+/* ---- save extension 'NICK': [count][id lo hi][hash lo hi][12 name bytes]...
+ * CR3 appends the gene bits the v1 save stream has no place for (look_gene.c: the new look fields
+ * such as glasses and outer layers, and the high bit of aura, print and eye count) when any record
+ * has some: [u16 n][n x 8 B]. The chunk keeps version 1: a build from before CR3 reads the nicknames
+ * and skips the trailer (its reader never needed the length to match). A town with neither
+ * nicknames nor such parts writes an empty chunk, as before. ---- */
 #define NICK_REC (4 + DOOMO_NAME_LEN)
 static int nick_count_used(void)
 {
@@ -126,7 +131,8 @@ static int nick_count_used(void)
 static uint32_t nickext_size(void)
 {
     int n = nick_count_used();
-    return n ? (uint32_t)(1 + n * NICK_REC) : 0;
+    uint32_t g = look_gene_ext_size();
+    return n || g ? (uint32_t)(1 + n * NICK_REC) + g : 0;
 }
 
 static uint32_t nickext_write(uint8_t *dst, uint32_t cap)
@@ -144,17 +150,20 @@ static uint32_t nickext_write(uint8_t *dst, uint32_t cap)
         memcpy(dst + o, nicks[i].nick, DOOMO_NAME_LEN);
         o += DOOMO_NAME_LEN;
     }
+    o += look_gene_ext_write(dst + o, cap - o);           /* CR3 (v2) */
     return o;
 }
 
 static int nickext_read(const uint8_t *src, uint32_t len, uint16_t version)
 {
     int n, i, k, ok = 1;
-    (void)version;
     nicks_reset();
     if (len < 1) return 1;
     n = src[0];
     if ((uint32_t)(1 + n * NICK_REC) > len || n > CR_NICKS) return 0;
+    (void)version;
+    if (!look_gene_ext_read(src + 1 + n * NICK_REC, len - (uint32_t)(1 + n * NICK_REC)))
+        ok = 0;                                         /* CR3: the gene bits (the town is decoded) */
     for (i = 0; i < n; i++) {
         const uint8_t *b = src + 1 + i * NICK_REC;
         int id = b[0] | (b[1] << 8);
@@ -485,11 +494,22 @@ int cr_preset_locked(const CrPreset *p, const char **hint)
 
 /* ====================================================================== */
 /* rows                                                                     */
+/* CR3: a part row offers every live choice of its catalog list that this build can draw
+ * (part_live_drawable: the PS1 leaves the scripted ones out until CR10); other rows their count */
+static int part_row_count(const CrRow *row)
+{
+    int list = cr_row_part_list(row), n;
+    if (list >= 0 && list < PART_GENE_FIELDS && !row->base && (n = part_live_drawable(list)) > 0) return n;
+    return row->count;
+}
+
 int cr_row_count(const CrRow *row)
 {
     if (!row) return 1;
     switch (row->kind) {
-    case RK_ENUM: case RK_SLIDER: case RK_PAINT: case RK_PAINT_NONE: case RK_SKIN:
+    case RK_ENUM:
+        return part_row_count(row);
+    case RK_SLIDER: case RK_PAINT: case RK_PAINT_NONE: case RK_SKIN:
         return row->count;
     case RK_FLAG: case RK_RFLAG: case RK_DISTRICT:
         return 2;
@@ -507,7 +527,7 @@ int cr_row_value(const DoomoResident *r, const CrRow *row)
     switch (row->kind) {
     case RK_ENUM:
         v = enum_get(r, row) - row->base;
-        return DOOMO_CLAMP(v, 0, row->count - 1);
+        return DOOMO_CLAMP(v, 0, part_row_count(row) - 1);
     case RK_SLIDER: case RK_PAINT: case RK_SKIN:
         v = cbyte(r, row->field);
         return DOOMO_CLAMP(v, 0, row->count - 1);
@@ -693,6 +713,12 @@ const char *cr_choice_name(const CrRow *row, int index, char *buf)
     if (!row) return buf;
     switch (row->kind) {
     case RK_ENUM:
+        /* CR3: a part past the v1 name table (or a row with none) is named by the catalog */
+        if (row->names && index >= 0 && index < row->count) return row->names[index];
+        {
+            const PartMeta *m = cr_choice_meta(row, index);
+            if (m) return part_meta_name(m);
+        }
         if (row->names) return row->names[DOOMO_CLAMP(index, 0, row->count - 1)];
         doomo_snprintf(buf, 48, "%d", row->base + index);
         return buf;
@@ -702,7 +728,8 @@ const char *cr_choice_name(const CrRow *row, int index, char *buf)
     case RK_PAINT:
         return doomo_paint_names[DOOMO_CLAMP(index, 0, PAL_PAINT_COUNT - 1)];
     case RK_PAINT_NONE:
-        return index == 0 ? "None" : doomo_paint_names[DOOMO_CLAMP(index - 1, 0, PAL_PAINT_COUNT - 1)];
+        if (index == 0) return row->field == GF_FUR_COLOR3 ? "Auto" : "None";   /* CR3: auto = marking colour */
+        return doomo_paint_names[DOOMO_CLAMP(index - 1, 0, PAL_PAINT_COUNT - 1)];
     case RK_SKIN:
         return index < PAL_SKIN_COUNT ? doomo_skin_names[index]
                                       : doomo_paint_names[DOOMO_CLAMP(index - 8, 0, PAL_PAINT_COUNT - 1)];
@@ -869,17 +896,25 @@ static void talk_update(void)
 
 /* ====================================================================== */
 /* preview                                                                  */
-static void target_look(DoomoLook *out, uint8_t *locked)
+/* CR3: a record's look and its gene-only fields (glasses, outer layer ...) as the preview draws them */
+static void view_of(const DoomoResident *r, DoomoLook *out, DoomoDeep *dout)
+{
+    res_get_look(r, out);
+    *dout = doomo_deep_zero;
+    look_gene_deep(r, LV_ALL, dout);
+}
+
+static void target_look(DoomoLook *out, DoomoDeep *dout, uint8_t *locked)
 {
     DoomoResident tmp;
     const CrRow *row = cr_cur_row();
     *locked = 0;
     if (cr.phase == CRP_COPY) {
         const DoomoResident *src = cr_copy_res(cr_copy_id_at(cr.copy_sel));
-        *out = src ? (*RES_LOOK_VIEW(src)) : (*RES_LOOK_VIEW(&cr.draft));
+        view_of(src ? src : &cr.draft, out, dout);
         return;
     }
-    *out = (*RES_LOOK_VIEW(&cr.draft));
+    view_of(&cr.draft, out, dout);
     if (cr.browse < 0 || !row) return;
     tmp = cr.draft;
     if (row->kind == RK_ACTION) {
@@ -892,18 +927,18 @@ static void target_look(DoomoLook *out, uint8_t *locked)
     } else {
         return;
     }
-    *out = (*RES_LOOK_VIEW(&tmp));
+    view_of(&tmp, out, dout);
     *locked = (uint8_t)cr_value_locked(row, cr.browse);
 }
 
 /* CR6: what a locked part is compared with to show it alone in lavender: the draft with the row's
  * part taken off (its slot's choice 0) */
-void cr_lock_base(DoomoLook *out)
+void cr_lock_base(DoomoLook *out, DoomoDeep *dout)
 {
     DoomoResident tmp = cr.draft;
     const CrRow *row = cr_cur_row();
     if (row && row->kind == RK_ENUM && row->field != CR_NOFIELD && RES_F_IS_LOOK(row->field)) cr_row_set(&tmp, row, 0);
-    res_get_look(&tmp, out);
+    view_of(&tmp, out, dout);
 }
 
 int cr_preview_status(void)
@@ -933,20 +968,23 @@ int cr_preview_expr(void)
 static void preview_update(void)
 {
     DoomoLook L;
+    DoomoDeep D;
     uint8_t locked;
-    target_look(&L, &locked);
-    if (memcmp(&L, &cr.shown, sizeof(L)) != 0 || locked != cr.shown_locked) {
+    target_look(&L, &D, &locked);
+    if (memcmp(&L, &cr.shown, sizeof(L)) != 0 || memcmp(&D, &cr.shown_d, sizeof(D)) != 0 ||
+        locked != cr.shown_locked) {
         /* Throttle: a new look costs a full figure render (~2 GBA ticks),
          * so while a direction is held we refresh every few ticks only.
          * CR9: on the GBA (CR_CALM) the pane draws a new look in slices
          * while the last one stays up (creator_draw.c pane_view): no throttle. */
         if (CR_SLICE || cr.t - cr.shown_t >= 5 || cr.t - cr.changed_t >= 2 || cr.phase == CRP_COPY) {
             cr.shown = L;
+            cr.shown_d = D;
             cr.shown_locked = locked;
             cr.shown_t = cr.t;
             /* what the locked part is compared with, made with the look itself (CR6) */
-            if (locked) cr_lock_base(&cr.shown_base);
-            else memset(&cr.shown_base, 0, sizeof(cr.shown_base));
+            if (locked) cr_lock_base(&cr.shown_base, &cr.shown_base_d);
+            else { memset(&cr.shown_base, 0, sizeof(cr.shown_base)); cr.shown_base_d = doomo_deep_zero; }
         }
     }
     if (cr.hop) cr.hop--;
@@ -1000,7 +1038,10 @@ static uint32_t roll_seed(void)
 /* Copy the identity fields (what the creator edits) from src to dst. */
 static void copy_editable(DoomoResident *dst, const DoomoResident *src, int keep_name)
 {
+    int f;
     res_set_look(dst, RES_LOOK_VIEW(src));
+    for (f = GF_PUPIL; f <= GF_HANDEDNESS; f++)            /* CR3: the gene-only look fields too */
+        if (RES_F_IS_GENE_LOOK(f)) res_gset(dst, f, res_gget(src, f));
     if (!keep_name) memcpy(dst->name, src->name, DOOMO_NAME_LEN);
     res_set_voice(dst, RES_VOICE_VIEW(src));
     res_set_persona(dst, RES_PERSONA_VIEW(src));
@@ -1634,12 +1675,14 @@ int cr_camera(void)
     int f;
     if (cr.phase == CRP_COPY || cr.phase == CRP_HERO || cr.phase == CRP_MOVEIN || !row) return CAM_FIGURE;
     f = row->field;
+    if (row->kind == RK_PAINT && (row->aux & CR_AUX_LEGS)) return CAM_LEGS;      /* CR3: legwear colour */
     switch (cr_row_part_list(row) >= 0 ? cr_row_part_list(row) : (int)f) {
-    case GF_SHOES: case GF_BOTTOM: case GF_SHOES_COLOR: case GF_BOTTOM_COLOR:
+    case GF_SHOES: case GF_BOTTOM: case GF_SHOES_COLOR: case GF_BOTTOM_COLOR: case GF_LEGWEAR:
         return CAM_LEGS;
     case GF_TAIL: case GF_WINGS:
         return CAM_BACK;
     case GF_HAT: case GF_HAT_COLOR: case GF_HORNS: case GF_HORN_COLOR: case GF_HORN_SIZE: case GF_HALO:
+    case GF_GLASSES: case GF_HOOD_UP:
         return CAM_BUST;
     default:
         break;
@@ -2212,7 +2255,7 @@ static void cr_enter(int arg)
     cr.preset_i = 0;
     refresh_home();
     if (cr.phase == CRP_HERO) hero_preview();
-    cr.shown = (*RES_LOOK_VIEW(&cr.draft));
+    view_of(&cr.draft, &cr.shown, &cr.shown_d);
     cr.img.uid = 0;
     cr.disp.ok = cr.pend.ok = 0;
     if (CR_CALM) {

@@ -1,0 +1,23 @@
+# core/data/parts/review.txt - art review sign-offs (creator plan 3.5; CR3/CR4).
+# A part goes live (state=live in core/data/parts/catalog/) only with a line here that covers it;
+# tools/partcat_build.py refuses a live part that is neither in core/tests/golden/part_ids.txt (already
+# shipped) nor covered by a review line. After the sign-off, `python3 tools/partcat_build.py --freeze`
+# freezes the new ids.
+#
+#   review SLOT FIRST-LAST batch=ID date=YYYY-MM-DD by=WHO sheets="what was looked at"
+#
+# Sheets: portrait_sheet --slot SLOT (colour) and --slot SLOT --shape (shape only), bust 1x, the
+# creator's 2x head crop, figure, chibi 3x and the fighter; the icon sheet (make -C core
+# part-icons-sheet); the creator's grid at 240x160 and 320x240 (core/tests/scripts/creator_parts.txt).
+
+# CR3: the painted-but-hidden wave-2 choices and the B76 halos, flipped live with their lists
+review pupil    1-4   batch=CR3.0 date=2026-11-08 by=claude sheets="slot_pupil, slot_pupil_shape: slit, pinpoint, wide and bar read at 2x; the chibi keeps the plain eye"
+review sclera   1-2   batch=CR3.0 date=2026-11-08 by=claude sheets="slot_sclera, slot_sclera_shape: white and shaded rims round a smaller iris"
+review glasses  1-4   batch=CR3.0 date=2026-11-08 by=claude sheets="slot_glasses, slot_glasses_shape: four frames, drawn with any accessory but the slot's own glasses"
+review blush    1-4   batch=CR3.0 date=2026-11-08 by=claude sheets="slot_blush, slot_blush_shape: slashes, wide round, dots, low bar"
+review ear_fold 1-7   batch=CR3.0 date=2026-11-08 by=claude sheets="slot_ear_fold, slot_ear_fold_shape on bunny ears: tip and half lop subtle at 1x, clear at 2x; one-side and both-down clear"
+review halo     6-11  batch=CR3.0 date=2026-11-08 by=claude sheets="slot_halo, slot_halo_shape: double ring, heart, square, glitch, flower, saturn above the bust"
+# CR2's first family batch (drawn and tested by CR2), signed off here
+review hat      24-35 batch=CR3.0 date=2026-11-08 by=claude sheets="slot_hat, slot_hat_shape: the 12 family hats (gumdrop .. lure bucket)"
+review top      24    batch=CR3.0 date=2026-11-08 by=claude sheets="slot_top: the pageant sash over a plain top"
+review accessory 20-21 batch=CR3.0 date=2026-11-08 by=claude sheets="slot_accessory: explorer satchel, pearl necklace"

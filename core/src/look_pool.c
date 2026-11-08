@@ -18,6 +18,9 @@ const uint8_t doomo_df_flags[DF_COUNT] = {
     [DF_BLUSH2] = DFF_CHIBI, [DF_GLASSES2] = DFF_CHIBI, [DF_EAR_FOLD] = DFF_CHIBI,
     [DF_HOOD_HEAD] = DFF_CHIBI,
     [DF_AURA2] = DFF_CHIBI | DFF_ANIM,
+    /* CR3: the gene-backed silhouettes and colours that show on a chibi (look_gene.c) */
+    [DF_FUR_PATTERN] = DFF_CHIBI, [DF_FUR_COLOR3] = DFF_CHIBI, [DF_OUTER] = DFF_CHIBI,
+    [DF_LEGWEAR] = DFF_CHIBI,
 };
 
 static int rec_find(int id, int kind, int *at)
@@ -74,8 +77,8 @@ void look_resolve_mask(const DoomoResident *r, int id, uint32_t lv, DoomoDeep *o
 {
     const uint8_t *run;
     int len, i;
-    (void)r;
     *out = doomo_deep_zero;
+    look_gene_deep(r, lv, out);                         /* CR3: the gene's own new fields (r may be NULL) */
     run = look_pool_find(id, RUN_DEEP, &len);
     if (!run) return;
     for (i = 0; i + 1 < len; i += 2) {
