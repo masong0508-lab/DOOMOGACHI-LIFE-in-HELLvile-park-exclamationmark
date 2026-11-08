@@ -1,0 +1,89 @@
+# core/data/talk/grammar/en/core_cool.tlk - replies to cool acts: insults, criticism,
+# teasing, mockery, complaints, blame, dismissal, cartoon threats (owner: TK; T5a starter
+# bank). Mean is fine, cruel is not (SCRIPT_STYLE R4). Syntax: core/tools/talkc_gen.py.
+
+# ---- INSULT ---------------------------------------------------------------------------
+@rule core.insult.back act: insult
+  "Wow. Okay, your hat is ugly. Now we're even."
+  "Rude! I'd insult you back, but nature beat me to it."
+  "Says the one with spinach in their soul."
+@rule core.insult.hurt act: complain
+  "Ouch. That one's going in the diary. In red."
+  "Hey! I have feelings. Small, delicate, vengeful feelings."
+  "Well that's just mean. I'm telling the Mayor. He won't care."
+@rule core.insult.dismiss act: dismiss
+  "Cute. Did you practise that in the mirror?"
+  "I've been insulted by better. Mostly by ducks."
+@rule core.insult.quirky guard: quirky act: laugh
+  "Ha! Do it again, insult my shoes! They love it!"
+@rule core.insult.blunt guard: blunt act: insult
+  "Oh, we're doing this? Great. You smell like a sock drawer."
+@rule core.insult.swear guard: blunt&adults_only&!kid_present act: complain
+  "Damn. Okay. I'll be crying in the pantry if you need me."
+@rule core.insult.memory guard: fact.insulted act: complain
+  "Again? You're really committing to being awful today."
+@rule core.insult.kid guard: kid_speaker tags: kid act: complain
+  "That's mean! Patrol rule: no mean."
+
+# ---- CRITICIZE -----------------------------------------------------------------------
+@rule core.criticize.disagree act: disagree
+  "No, it's a style. A bold style. You wouldn't get it."
+  "That's not a mistake. It's a feature. Like the curse."
+@rule core.criticize.agree act: agree
+  "Yeah. Fair. I've been meaning to fix that since spring."
+@rule core.criticize.complain act: complain
+  "Everybody's a critic. Everybody but me, I'm an artist."
+@rule core.criticize.apologize guard: polite act: apologize
+  "Oh dear, you're right. I'm so sorry. I'll do better-ish."
+
+# ---- TEASE / MOCK ----------------------------------------------------------------------
+@rule core.tease.back act: tease
+  "Oh, you think you're funny? You're a little funny."
+  "Says you. With that walk."
+  "Careful. I tease back. And I'm better at it."
+@rule core.tease.laugh act: laugh
+  "Ha! Okay, that's fair. Rude, but fair."
+@rule core.tease.complain act: complain
+  "Hey! I'm sensitive on the inside. Way inside."
+@rule core.tease.kid guard: kid_speaker tags: kid act: tease
+  "You're silly! Silly silly silly!"
+@rule core.mock.back act: mock
+  "Is that an impression of me? It's very bad. Do it again."
+@rule core.mock.complain act: complain
+  "I do NOT sound like that. {.}Do I sound like that?"
+@rule core.mock.dismiss act: dismiss
+  "Mock all you want. I've been mocked by professionals."
+
+# ---- COMPLAIN / BLAME ---------------------------------------------------------------
+@rule core.complain.sympathize act: sympathize
+  "Ugh, I know. It's the worst. The absolute worst."
+  "That sounds awful. Do you want a biscuit or a scream?"
+@rule core.complain.agree act: agree
+  "Right?! I've been saying that for years. To my plant."
+@rule core.complain.comfort act: comfort
+  "Hey. It'll be weird first, then okay."
+@rule core.complain.dismiss guard: blunt act: dismiss
+  "Life's hard. Wear a helmet."
+@rule core.complain.topic act: complain
+  "Don't talk to me about {x}. I've got complaints. A list."
+@rule core.blame.disagree act: disagree
+  "Me? I was asleep! Probably, I sleepwalk!"
+  "That wasn't me. That was a ghost. Ghosts do stuff."
+@rule core.blame.apologize act: apologize
+  "Okay, fine, it was me. But for a good reason. Mostly."
+@rule core.blame.back act: blame
+  "Me? You were holding the ladder!"
+
+# ---- DISMISS / THREATEN ------------------------------------------------------------------
+@rule core.dismiss.complain act: complain
+  "Wow, fine. I'll talk to the lamp. The lamp listens."
+  "Don't wave me off! I'm a very important person. In this room."
+@rule core.dismiss.joke act: joke
+  "Rude, but I'll allow it. I'm generous today."
+@rule core.threaten.laugh act: laugh
+  "Ha! You and which duck? I know all the ducks."
+  "Ooh, scary. I'm shaking. {.}That's the fridge."
+@rule core.threaten.dismiss act: dismiss
+  "Please. A demon threatened me twice before lunch."
+@rule core.threaten.kid guard: kid_speaker tags: kid act: complain
+  "I'm telling! I'm telling EVERYONE!"

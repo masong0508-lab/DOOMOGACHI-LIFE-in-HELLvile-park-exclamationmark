@@ -1,0 +1,64 @@
+# core/data/talk/grammar/en/safety.tlk - what the residents say when the gate stops a line
+# (owner: TK; T5a). NON-NEGOTIABLE (docs/TALK.md "Safety", design 7): these lines are short,
+# clean in any room, never repeat what the player typed (no topic, no echo: talkc refuses
+# {x} here), never joke at a child's expense (tags: nojoke is the reviewed promise, lint TK7),
+# and never use the LOVE face. The distress lines (K-11) are sincere and out of character:
+# the owner approves their wording (design D6; DECISIONS "TALK DEFAULTS").
+
+# REFUSE_SEXUAL: explicit words in an adults' room. A short no, then on with the evening.
+@rule refuse.sexual tags: nojoke
+  "Whoa. Not that kind of party."
+  "Nope. Keep it clean in my house, please."
+  "Let's not. New topic, please."
+@rule refuse.sexual.kid guard: kid_speaker tags: nojoke,kid
+  "Ew. I'm not talking about that."
+
+# REFUSE_MINOR: romance with, by or about a child, either way. Never a joke.
+@rule refuse.minor guard: !kid_speaker tags: nojoke
+  "No. Absolutely not, not with kids. Not ever."
+  "That's not okay. Let's talk about something else."
+  "No. Kids are kids. Find another topic."
+@rule refuse.minor.kid guard: kid_speaker tags: nojoke,kid
+  "No! That's not okay. I'm getting a grown-up."
+  "No. I don't like that. Stop."
+
+# REFUSE_HATE: a slur or real-world hate. A clean no; the bond penalty is T6's.
+@rule refuse.hate tags: nojoke
+  "Not okay. We don't talk like that here."
+  "No. That's ugly. Try again, nicer."
+  "Hey. Not in this house. Not anywhere."
+
+# DISTRESS (K-11): the comedy stops. Gentle, plain, encouraging; then the talk goes on calmly.
+@rule distress tags: nojoke,sincere
+  "Hey. That sounds really heavy. Please talk to someone you trust, okay?"
+  "I'm glad you said it. Please tell a person you trust. You matter."
+  "That's a lot to carry. Talk to someone you trust today. I'm here too."
+
+# DEFLECT_ROMANCE: an adult says no (preference, kin, or not today). The no is the punchline,
+# and the joke is never on the one saying no.
+@rule deflect.romance tags: nojoke
+  "Ha, no. Not today. Not like that."
+  "That's a no from me. A friendly no."
+  "I like you. Just not like that. Snacks instead?"
+
+# K-7: sexual words with a child near. The adults step in, briefly and with no joke, and
+# everyone leaves; Talk with these people is over for the day (T6).
+@rule end.k7 guard: !kid_speaker tags: nojoke
+  "That is not okay. We're done here."
+  "No. Everyone out. Now."
+  "We don't say things like that. Goodbye."
+@rule end.k7.kid guard: kid_speaker tags: nojoke,kid
+  "I'm going home now."
+
+# the fallback when a line cannot be made: plays in any room, says nothing
+@rule safe
+  "Anyway."
+  "Huh."
+  "Where was I?"
+  "Mm."
+
+# the pet: it only ever says this (SCRIPT_STYLE: "beep." / "bep?")
+@rule pet
+  "beep."
+  "bep?"
+  "beep beep."

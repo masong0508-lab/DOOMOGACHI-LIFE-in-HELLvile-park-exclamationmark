@@ -1,0 +1,158 @@
+# core/data/talk/voice/en/cast.tlk - the story cast in their own voices (owner: TK; T5a
+# starter bank; SCRIPT_STYLE section 7 "Voices"). A line with a speaker= guard wins over the
+# persona banks (8 times the weight). Kids (Pip, Wisp) are kid banks: zero register words, no
+# LOVE face (lint TK6), never the target of an adult joke. Grumbleguts' come-ons and Vex's
+# brand-deal flirting are adults-only (adults_only&!kid_present), always end on a joke, and
+# with a kid in the room Grumbleguts is a grumpy uncle.
+
+# ---- Mayor Giggs: Mad-Hatter turkey showman, lists of three, tea, hats, "Gobble gobble" ----
+@rule core.greet.mayor guard: speaker=mayor_giggs act: greet
+  "Welcome, welcome, WELCOME! Tea, hat, or tea in a hat?"
+  "Gobble gobble, {you}! Mind the hat rack. It bites."
+@rule core.ask_about.mayor guard: speaker=mayor_giggs&topic act: answer
+  "{x:cap}! A marvel, a wonder, {x.adj:indef} triumph! Hee hee."
+  "{x:cap}? Splendid! Next question, don't look behind me!"
+@rule core.ask_feeling.mayor guard: speaker=mayor_giggs act: answer
+  "Never better, never worse, never mind! Hee. Hee."
+@rule core.compliment.mayor guard: speaker=mayor_giggs act: thank
+  "Gobble gobble! I mean, thank you. The hat helps."
+@rule core.unknown.mayor guard: speaker=mayor_giggs act: joke
+  "Quite right! Absolutely! {.}What?"
+
+# ---- Nana Puddin: slow, cosy, "sweet pea", food as love, kind fibs that slip ----
+@rule core.greet.nana guard: speaker=nana_puddin act: greet
+  "Come in, sweet pea. I baked. Don't ask what's inside."
+  "Hello, dear! Sit, sit. Eat something, eat two somethings."
+@rule core.ask_about.nana guard: speaker=nana_puddin&topic act: answer
+  "{x:cap}, sweet pea? I put {x} in a pie once. {.}Mostly."
+  "Oh, {x}. Lovely. Like a warm pie with a secret in it."
+@rule core.ask_feeling.nana guard: speaker=nana_puddin act: answer
+  "Oh, I'm fine, dear. My knees are a weather report."
+@rule core.compliment.nana guard: speaker=nana_puddin act: thank
+  "Oh, sweet pea. Take a cookie. Take the tin."
+@rule core.insult.nana guard: speaker=nana_puddin act: complain
+  "Well! No pie for you. {.}Okay, a small pie."
+@rule core.farewell.nana guard: speaker=nana_puddin act: farewell
+  "Bye, sweet pea! Take a muffin. It's not cursed, mostly."
+
+# ---- Bonejangles: animatronic skeleton, "Clack!", servo, warranty, routine 4, the tapes ----
+@rule core.greet.bones guard: speaker=bonejangles act: greet
+  "Clack! Welcome to the party! It's always on, I can't turn it off."
+  "Hey hey! *servo whirr* Dance routine 4 is loading. Sorry in advance."
+@rule core.ask_about.bones guard: speaker=bonejangles&topic act: answer
+  "{x:cap}? There's a Bandstand Tape about {x}. Tape 3 of 9."
+  "{x:cap}! I'd play {x.it} a song on my ribs. Hold still."
+@rule core.ask_feeling.bones guard: speaker=bonejangles act: answer
+  "Mostly bones. Partly servo. One hundred percent under warranty."
+  "Great! My left hip squeaks in B flat. It's a feature."
+@rule core.joke.bones guard: speaker=bonejangles act: laugh
+  "Clack clack! That's my laugh. It's also my knees."
+@rule core.tell.bones guard: speaker=bonejangles act: joke
+  "Fun fact: I was built for a birthday party. In 1978. It's still going."
+@rule tag.bones guard: speaker=bonejangles
+  "Clack!"
+  "*servo noise*"
+
+# ---- Rivet: gruff, love through tools and threats ---------------------------------------
+@rule core.greet.rivet guard: speaker=rivet act: greet
+  "Oh, you. Don't touch anything, especially the red thing."
+@rule core.ask_about.rivet guard: speaker=rivet&topic act: answer
+  "{x:cap}? I could fix {x} with a wrench. Or a bigger wrench."
+@rule core.compliment.rivet guard: speaker=rivet act: dismiss
+  "Yeah, yeah. Hand me that spanner and stop being nice."
+@rule core.ask_feeling.rivet guard: speaker=rivet act: answer
+  "Fine. Covered in grease. The good kind."
+
+# ---- Pip (a child): fast, official, narrates their own bravery ---------------------------
+@rule core.greet.pip guard: speaker=pip tags: kid act: greet
+  "Halt! Patrol checkpoint! {.}Okay, you can pass."
+@rule core.ask_about.pip guard: speaker=pip&topic tags: kid act: answer
+  "{x:cap}? Patrol knows all about {x}. Patrol rules."
+@rule core.ask_feeling.pip guard: speaker=pip tags: kid act: answer
+  "Brave! Super brave! My eyes are only doing a tiny rain."
+@rule core.compliment.pip guard: speaker=pip tags: kid act: thank
+  "Thanks! That's going in my patrol report. Page one."
+
+# ---- Father Fuzz: hug theology, earnest, never ironic ------------------------------------
+@rule core.greet.fuzz guard: speaker=father_fuzz act: greet
+  "Bless you, friend! Hug? It's mandatory, spiritually."
+@rule core.ask_about.fuzz guard: speaker=father_fuzz&topic act: answer
+  "{x:cap}? Even {x} deserves a hug. Especially {x}."
+@rule core.insult.fuzz guard: speaker=father_fuzz act: complain
+  "Ouch. I forgive you with a hug. It's coming, brace."
+@rule core.ask_feeling.fuzz guard: speaker=father_fuzz act: answer
+  "Blessed! And a little tired. Hugging is cardio."
+
+# ---- Dr. Bloom: clinical fact, then a dry button ---------------------------------------
+@rule core.ask_feeling.bloom guard: speaker=dr_bloom act: answer
+  "Pulse normal. Mood stable. Coffee critical."
+@rule core.ask_about.bloom guard: speaker=dr_bloom&topic act: answer
+  "{x:cap}: clinically {x.adj}. {.}Not contagious, probably."
+@rule core.joke.bloom guard: speaker=dr_bloom act: laugh
+  "Ha. {.}That was my laugh. It's in your chart now."
+
+# ---- Hattie Haha: stand-up structure, waits for the laugh ------------------------------
+@rule core.greet.hattie guard: speaker=hattie_haha act: greet
+  "Great crowd tonight! It's one person. You."
+@rule core.joke.hattie guard: speaker=hattie_haha act: joke
+  "Knock knock. {.}Nobody's there, that's the joke. Tough room."
+@rule core.ask_about.hattie guard: speaker=hattie_haha&topic act: joke
+  "{x:cap}? What's the deal with {x}? {.}I'll wait."
+
+# ---- Vex: influencer fox, brand-speak, "sweetie", signs off "- V" -------------------
+@rule core.greet.vex guard: speaker=vex act: greet
+  "Sweetie! Hi! Smile, you're on my story. - V"
+@rule core.ask_about.vex guard: speaker=vex&topic act: answer
+  "{x:cap}? Love the brand. Hate the merch. - V"
+  "{x:cap} is SO last week, sweetie. Like and subscribe. - V"
+@rule core.compliment.vex guard: speaker=vex act: thank
+  "Obviously, sweetie. Tag me. - V"
+@rule core.flirt.vex guard: speaker=vex&adults_only&!kid_present&!pet&consent act: flirt
+  "Ooh, a collab? Send me your rates, sweetie. Kisses! - V"
+@rule core.insult.vex guard: speaker=vex act: insult
+  "Rude. Blocked, unblocked, blocked again. - V"
+
+# ---- Grumbleguts: slow purr, pet names, belly; "Needs salt."; "Open late, darlin'." ----
+@rule core.greet.grumb guard: speaker=grumbleguts&adults_only&!kid_present act: greet
+  "Well, hello, darlin'. Come on in. Mind the belly."
+  "Sugar! You came. Everybody comes back to Grumbleguts."
+@rule core.greet.grumb_kid guard: speaker=grumbleguts&kid_present act: greet
+  "Hmph, hello. Wipe both your feet. Kids."
+@rule core.ask_about.grumb guard: speaker=grumbleguts&topic act: answer
+  "{x:cap}? Six. {.}Needs salt."
+  "{x:cap}, hon? Seen better, tasted worse. Needs salt."
+@rule core.compliment.grumb guard: speaker=grumbleguts&adults_only&!kid_present&!pet act: thank
+  "Keep talking, darlin'. My belly's blushing."
+@rule core.flirt.grumb guard: speaker=grumbleguts&adults_only&!kid_present&!pet&consent act: flirt
+  "Ooh, darlin'. {.}*belly gurgles* That's a yes. Mostly hunger."
+@rule core.farewell.grumb guard: speaker=grumbleguts act: farewell
+  "Open late, darlin'."
+
+# ---- Wisp (a kid ghost): lowercase, apologetic (tags: lower keeps the line as written:
+# no capital letter added, no opener, callback, tag or hand-off) ---------------------------------------------
+@rule core.greet.wisp guard: speaker=wisp tags: kid,lower act: greet
+  "oh, hi. sorry, i floated in. is that okay?"
+@rule core.ask_about.wisp guard: speaker=wisp&topic tags: kid,lower act: answer
+  "{x}? i like {x}. sorry, is that weird?"
+@rule core.ask_feeling.wisp guard: speaker=wisp tags: kid,lower act: answer
+  "a little see-through today. sorry."
+
+# ---- Mother Nox: terse, soup, withholding ------------------------------------------------
+@rule core.greet.nox guard: speaker=mother_nox act: greet
+  "Sit. Soup."
+@rule core.ask_about.nox guard: speaker=mother_nox&topic act: answer
+  "{x:cap}. Hm. Soup would help."
+@rule core.ask_feeling.nox guard: speaker=mother_nox act: answer
+  "Fine. Eat."
+
+# ---- Clinker: tired labourer, rates everything with a number -----------------------
+@rule core.ask_about.clinker guard: speaker=clinker&topic act: answer
+  "{x:cap}. Four. {.}Needs salt."
+@rule core.ask_feeling.clinker guard: speaker=clinker act: answer
+  "Tired. Three out of ten. Rounding up."
+
+# ---- Lord Vapula: lowercase, small, sulky weather puns -----------------------------
+@rule core.greet.vapula guard: speaker=lord_vapula tags: lower act: greet
+  "oh. it's you. cloudy with a chance of ugh."
+@rule core.ask_feeling.vapula guard: speaker=lord_vapula tags: lower act: complain
+  "foggy. sulky. a light drizzle of rage."

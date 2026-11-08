@@ -1,0 +1,175 @@
+# core/data/talk/grammar/en/core_ask.tlk - replies to the player's questions (owner: TK;
+# T5a starter bank, T5b grows it; docs/TALK.md "The generator", the syntax is
+# core/tools/talkc_gen.py's). Register: docs/design/story/SCRIPT_STYLE.md (PG-21 for adults,
+# kid-safe whenever a child is in the room: the lints TK1-TK9 and the S3 output lint hold it).
+# Comedy first: one idea, the turn word last, out before anyone recovers.
+
+# ---- ASK_ABOUT(x): "what about the pie?" ------------------------------------------
+@rule core.ask_about.pro guard: stance=pro act: opine_pos
+  "{x:cap}? I love {x.it}. Ask again and I'll say it louder."
+  "{x:cap}! Finally, a question with a right answer."
+  "{x:cap} {x.is} {x.good}. That's not an opinion. It's a review."
+  "Big fan of {x}. Huge. I'd sign {x.it}."
+  "{x:cap}? Ten out of ten. {.}Okay, nine, I'm a professional."
+  "{x:cap} {x.is} the best thing in this town and I've seen the gift shop."
+  "{x:cap}? I'd fight a ghost for {x.it}. I have."
+  "Oh, {x}. Pull up a chair. Actually, two chairs."
+@rule core.ask_about.con guard: stance=con act: opine_neg
+  "{x:cap}? Ugh. {x.it:cap} knows what {x.it} did."
+  "{x:cap} {x.is} {x.bad}. I said what I said."
+  "Next question. {.}No, really. Next."
+  "{x:cap}? Hard pass, soft pass, every pass."
+  "We don't talk about {x} in this house. We mutter."
+  "{x:cap}? I'd rather be possessed. And I've done both."
+  "Ask me about anything but {x}. Ask me about taxes."
+@rule core.ask_about.neutral guard: stance=neutral act: answer
+  "{x:cap}? It's fine. {x.it:cap} exists, good for {x.it}."
+  "{x:cap}... I have one thought about {x.it}. {.}It's gone."
+  "{x:cap} {x.is} {x.adj}. That's the whole report."
+  "{x:cap}? Mm, sure, why not."
+  "Oh, {x}. I neither love nor hate {x.it}. I tolerate {x.it}, warmly."
+  "Funny you ask about {x}. {.}It isn't, but I wanted a turn."
+  "{x:cap}? Reminds me of {x.assoc:indef}. Don't ask why."
+@rule core.ask_about.food guard: root=food act: answer
+  "{x:cap}? I'd eat {x.it} off the floor. I have."
+  "{x:cap}. Needs salt. Everything needs salt."
+  "If {x} were a person I'd marry {x.it}. Twice."
+@rule core.ask_about.fear guard: root=fears act: opine_neg
+  "{x:cap}?! Don't. My knees heard you."
+  "We don't say {x} after dark. Or before."
+@rule core.ask_about.lore guard: root=lore act: answer
+  "{x:cap}? There's a whole tape about {x.it}. Tape 3 of 9."
+  "Some say {x} still haunts the old Boneyard Buffet. {.}That's the fridge."
+@rule core.ask_about.house guard: root=house act: opine_pos
+  "{x:cap}? Cozy grade: B plus. Needs a lamp."
+  "Every house needs {x:indef}. Mine has three. Don't count them."
+@rule core.ask_about.hellvile guard: root=hellvile act: answer
+  "{x:cap}? That's a Hellvile thing. Bring a fire blanket."
+  "{x:cap} smells like sulfur and bad decisions. Love {x.it}."
+@rule core.ask_about.likes guard: likes_topic act: opine_pos
+  "{x:cap}?! You found my favourite. Are you a spy?"
+  "{x:cap} is basically my whole personality. Ask anyone."
+@rule core.ask_about.notopic guard: !topic act: answer
+  "About what? Use your words, sweet pea."
+  "Ask me about what? I lost the thread. It was purple."
+  "Huh? Say the noun again. Slower."
+@rule core.ask_about.kid guard: kid_speaker tags: kid act: answer
+  "{x:cap}? I know about {x}! I know about EVERYTHING."
+  "{x:cap} is my favourite. Today. Tomorrow it's bugs."
+  "Patrol rules say I can't tell you about {x}. {.}Okay, fine. It's cool."
+
+# ---- ASK_OPINION(x): "what do you think of ...?" --------------------------------------
+@rule core.ask_opinion.pro guard: stance=pro act: opine_pos
+  "{x:cap}? Love {x.it}. Five stars, would recommend."
+  "Honestly? {x:cap} {x.is} {x.good}. Write that down."
+  "My take on {x}: yes. Big yes. Yes with a hat."
+  "{x:cap} is good, actually. Fight me. Gently."
+  "I'm pro {x}. I'd put {x.it} on a mug."
+@rule core.ask_opinion.con guard: stance=con act: opine_neg
+  "{x:cap}? Overrated, like the fog. Like brunch."
+  "My opinion of {x}? Bad. Rude, even."
+  "{x:cap} {x.is} {x.bad}. And {x.it} knows."
+  "I'd give {x} two stars. One is for effort."
+  "{x:cap}? No. Moving on, quickly."
+@rule core.ask_opinion.neutral guard: stance=neutral act: answer
+  "{x:cap}? I've got no strong feelings. I've got weak ones."
+  "Opinion on {x}? Ask me after lunch."
+  "{x:cap} is a thing. A thing I've seen. Next."
+  "On {x}, I'm a fence. A comfortable fence."
+@rule core.ask_opinion.notopic guard: !topic act: answer
+  "Think about what? I think lots. Mostly about snacks."
+  "My opinion is yes. What was the question?"
+@rule core.ask_opinion.kid guard: kid_speaker tags: kid act: opine_pos
+  "{x:cap} is AWESOME. That's my official opinion."
+  "I think {x} is cool and also maybe haunted."
+
+# ---- ASK_FEELING: "how are you?" ------------------------------------------------------
+@rule core.ask_feeling.happy guard: mood=happy act: answer
+  "Great! My happy meter is full. It's never full."
+  "Fantastic. Suspiciously fantastic. Don't jinx it."
+  "I feel like the first bite of cake. Before the bad part."
+@rule core.ask_feeling.ok guard: mood=ok act: answer
+  "Fine. Normal fine, not scary fine."
+  "Oh, you know. Alive. Mostly."
+  "I'm okay! The meters say okay. I trust the meters."
+@rule core.ask_feeling.sad guard: mood=sad act: answer
+  "Not great. My eyes keep doing a rain."
+  "A bit low, honestly. Thanks for asking. Really."
+  "Sad. But I put on a hat. Hats help."
+@rule core.ask_feeling.angry guard: mood=angry act: complain
+  "Angry! Somebody touched my stuff. In my mind."
+  "I'm FINE. {.}I'm furious."
+@rule core.ask_feeling.scared guard: mood=scared act: answer
+  "Scared. Something keeps knocking. Inside the wall."
+  "I'm jumpy. Don't say boo. Don't even think boo."
+@rule core.ask_feeling.tired guard: mood=tired act: complain
+  "Tired, hungry, grubby. A full set of bad meters."
+  "I need a nap and a snack and a different body."
+@rule core.ask_feeling.weird guard: mood=weird act: answer
+  "Never better. {.}We are never better."
+  "Purple. I feel purple. Is that a feeling?"
+@rule core.ask_feeling.ghost guard: ghost act: answer
+  "Dead, but chipper. The commute is great."
+
+# ---- ASK_FACT: "is it true that...?" -------------------------------------------------
+@rule core.ask_fact.yes act: yes
+  "Yes. Next question. I'm on a roll."
+  "Yep. Don't tell the Mayor."
+  "Yes, and I have receipts."
+  "Correct. You win nothing. Congrats."
+@rule core.ask_fact.no act: no
+  "No. Who told you that? Was it a duck?"
+  "Nope. Rumour. Started by me, actually."
+  "No. And I resent the question. Mildly."
+@rule core.ask_fact.unsure act: answer
+  "Maybe? I'd need to see a tape about it."
+  "That's classified. By me. Just now."
+  "Depends. Who's asking, and are they buying lunch?"
+
+# ---- ASK_WHO: gossip questions ---------------------------------------------------------
+@rule core.ask_who.gossip act: gossip
+  "Everyone. {.}No, wait, ask again."
+  "I can't name names. {.}Fine, I can hint. Loudly."
+  "Who? Oh, you'll find out. Everyone always finds out."
+@rule core.ask_who.other guard: other act: gossip
+  "Ask {other}. {other:cap} knows everybody's business."
+  "Don't look at me. Look at {other}. Look at {other} hard."
+@rule core.ask_who.dismiss act: dismiss
+  "I don't gossip. {.}On weekdays."
+
+# ---- ASK_ADVICE --------------------------------------------------------------------------
+@rule core.ask_advice.plain act: answer
+  "My advice? Eat something. Then decide."
+  "Sleep on it. Then sleep a bit more. Then pie."
+  "Do the brave thing. Or the funny thing. Same thing, usually."
+  "Write it down, fold it up, never look at it again. Works for me."
+  "Ask yourself what a duck would do. Then do the opposite."
+@rule core.ask_advice.encourage act: encourage
+  "You've got this. I'd bet a whole cake on you."
+  "Go for it. Worst case, it's a story."
+@rule core.ask_advice.blunt guard: blunt act: answer
+  "Stop overthinking it. Think a normal amount."
+  "Advice? Don't ask me for advice. Ask me for snacks."
+@rule core.ask_advice.kid guard: kid_speaker tags: kid act: answer
+  "Ask a grown-up. {.}No, a different one."
+  "Patrol rule one: don't panic. Patrol rule two: snacks."
+
+# ---- ASK_FAVOR ---------------------------------------------------------------------------
+@rule core.ask_favor.yes act: yes
+  "Sure! What is it? Heavy is fine, ghosts cost extra."
+  "Of course. You can owe me one. I keep a list."
+  "For you? Yes. For anyone else, a form."
+@rule core.ask_favor.no act: no
+  "No. {.}Ask nicer. {.}Still no."
+  "Can't. I'm busy. Busy lying down."
+@rule core.ask_favor.offer act: offer
+  "I can't do that, but I can give you a biscuit."
+
+# ---- ASK_REPEAT ----------------------------------------------------------------------------
+@rule core.ask_repeat.plain act: answer
+  "I said what I said. Slower, though."
+  "What I said was very clever. You missed it. Tragic."
+  "Nothing. I said nothing. Move along."
+  "I SAID... {.}I forgot what I said."
+@rule core.ask_repeat.complain act: complain
+  "Were you even listening? My voice is a gift."

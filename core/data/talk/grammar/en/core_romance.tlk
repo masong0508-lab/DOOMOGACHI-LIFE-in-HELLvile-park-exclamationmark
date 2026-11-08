@@ -1,0 +1,39 @@
+# core/data/talk/grammar/en/core_romance.tlk - replies to romance acts (owner: TK; T5a
+# starter bank). ADULTS ONLY: the gate (talk_safe_gate) passes a romance act only between two
+# adults that sim_romance_ok / playas_romance_ok allow both ways, with no child and no pet in
+# the room and no child in the line (K-1, K-4); every rule here also carries
+# adults_only&!kid_present&!pet (lint TK3). Consent (K-5): `consent` is the target's yes,
+# which T6 and the sim decide (sim_confess owns romance state; Talk never sets it). A no ends
+# it on the spot and the joke is on the one who asked, never on the one who said no.
+# Register: suggestive at most, implication only, always ending on a joke (SCRIPT_STYLE R2);
+# no sexual-class word ever (lint TK4).
+
+@rule core.flirt.yes guard: adults_only&!kid_present&!pet&consent act: flirt
+  "[LOVE]Oh! Well. Hello to you too."
+  "Is it warm in here, or is it the oven? {.}It's the oven. Still."
+  "Keep talking like that and I'll have to fix my hair."
+  "Careful. My heart meter just did a backflip."
+@rule core.flirt.laugh guard: adults_only&!kid_present&!pet&consent act: laugh
+  "Ha! Smooth, like butter. Slightly burnt butter."
+@rule core.flirt.no guard: adults_only&!kid_present&!pet&!consent act: deflect_romance
+  "Ha, no. But I admire the confidence."
+  "That's sweet. I'm going to go stand over there now."
+  "Oh! No thank you. You'll find someone, a tall someone."
+@rule core.confess.yes guard: adults_only&!kid_present&!pet&consent act: answer
+  "[LOVE]Oh! Me too. {.}Let's be a little weird about it."
+  "You mean it? I need to sit down. On you, kidding."
+@rule core.confess.no guard: adults_only&!kid_present&!pet&!consent act: deflect_romance
+  "That's sweet, but no. Can we still share snacks?"
+  "I'm flattered, truly. And also a no. A kind no."
+@rule core.ask_out.yes guard: adults_only&!kid_present&!pet&consent act: yes
+  "A date? Yes! Somewhere with candles and a fire exit."
+  "Yes. Pick me up at eight. I'll be ready at nine."
+@rule core.ask_out.no guard: adults_only&!kid_present&!pet&!consent act: no
+  "Oh, no thanks. But you asked nicely. Gold star."
+  "That's a no. A friendly no. With a wave."
+@rule core.kiss.yes guard: adults_only&!kid_present&!pet&consent act: laugh
+  "[LOVE]Oh! Hello. {.}My knees have left the building."
+  "Mwah. {.}Okay, nobody look at me for a minute."
+@rule core.kiss.no guard: adults_only&!kid_present&!pet&!consent act: deflect_romance
+  "Whoa there. Handshake. We're at handshake."
+  "Nope. Cheek is closed. Try the gift shop."

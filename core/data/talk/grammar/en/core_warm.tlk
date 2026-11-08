@@ -1,0 +1,107 @@
+# core/data/talk/grammar/en/core_warm.tlk - replies to warm acts: compliments, praise of a
+# third party, comfort, encouragement, sympathy, jokes, laughs, offers, invitations,
+# promises (owner: TK; T5a starter bank). Syntax: core/tools/talkc_gen.py.
+
+# ---- COMPLIMENT ---------------------------------------------------------------------------
+@rule core.compliment.thank act: thank
+  "Aw, stop. {.}Don't stop. Keep going, louder."
+  "Thank you! I've been told, by me, in the mirror."
+  "Thanks! I'll put that on my resume. Under skills."
+  "You're sweet. Suspiciously sweet. What do you want?"
+  "That's the nicest thing anyone's said today. It's 9am."
+@rule core.compliment.return act: compliment
+  "You're not so bad yourself. Nice face, two eyes. Classic."
+  "Takes one to know one. You're one. Hi."
+@rule core.compliment.joke act: joke
+  "I know. My happy meter just did a little dance."
+@rule core.compliment.flat guard: flat act: thank
+  "Thanks. {.}That was me being touched."
+@rule core.compliment.blunt guard: blunt act: dismiss
+  "Yeah, I know. But thanks for noticing. Finally."
+@rule core.compliment.rival guard: rel=rival act: tease
+  "A compliment? From you? Is it poisoned?"
+@rule core.compliment.memory guard: fact.complimented act: thank
+  "Twice now! I'm keeping a jar of these."
+@rule core.compliment.kid guard: kid_speaker tags: kid act: thank
+  "Thanks! I'm putting that in my patrol report!"
+
+# ---- PRAISE_OTHER: the player praises someone else ----------------------------------
+@rule core.praise_other.agree act: agree
+  "True! {.}Don't tell them I said so."
+  "Oh, totally. They're great. Annoyingly great."
+@rule core.praise_other.disagree act: disagree
+  "Hmm. Great is a big word. I'd say fine."
+@rule core.praise_other.gossip act: gossip
+  "Sure, great. Have you seen their garden though? Yikes."
+
+# ---- COMFORT / ENCOURAGE / SYMPATHIZE -------------------------------------------------
+@rule core.comfort.thank act: thank
+  "Thanks. That helps. Weirdly a lot."
+  "You're kind. My eyes are doing a rain. A small one."
+  "Okay. I feel a bit better. Like, ten percent."
+@rule core.comfort.answer guard: mood=sad act: answer
+  "It's been a week. A long one. With extra days in it."
+@rule core.comfort.joke act: joke
+  "Careful, if you keep being nice I'll start crying on your shoes."
+@rule core.encourage.thank act: thank
+  "You think so? Okay, I'm doing it! {.}Later."
+  "Thanks! I needed a push. Not a real push."
+@rule core.encourage.yes act: yes
+  "Yes, you're right, let's go! {.}Where are we going?"
+@rule core.sympathize.thank act: thank
+  "Thanks. It's nice when somebody gets it."
+@rule core.sympathize.complain act: complain
+  "Right?! And nobody else noticed! Nobody!"
+
+# ---- JOKE / LAUGH -----------------------------------------------------------------------
+@rule core.joke.laugh act: laugh
+  "Ha! Okay, that was good. Don't let it go to your head."
+  "Hah! You made me snort. Rude."
+  "Ha! I'm stealing that. It's mine now."
+  "Ha ha! {.}Wait, I get it now. HA HA!"
+@rule core.joke.flat guard: flat act: laugh
+  "Heh. {.}That was my big laugh."
+@rule core.joke.groan act: dismiss
+  "Boo. {.}Boo, but affectionately."
+  "That joke needs salt."
+@rule core.joke.top act: joke
+  "That's nothing. Knock knock. {.}Too late, I left."
+  "Want to hear a joke about pancakes? {.}Wait for it. It's flat."
+@rule core.joke.blunt guard: blunt act: mock
+  "That was a joke? Wow. Brave."
+@rule core.joke.kid guard: kid_speaker tags: kid act: laugh
+  "Hee hee! Tell it again! Tell it ten times!"
+@rule core.laugh.plain act: laugh
+  "Ha! Right?"
+  "Heh, yeah, that was funny. I'm funny."
+@rule core.laugh.tease act: tease
+  "You laugh like a broken kettle. I love it."
+@rule core.laugh.back act: backchannel
+  "Glad somebody's having fun."
+
+# ---- OFFER / INVITE / PROMISE ------------------------------------------------------------
+@rule core.offer.yes act: yes
+  "Yes please! Is it food? Say it's food."
+  "Ooh, for me? You shouldn't have. Hand it over."
+@rule core.offer.no act: no
+  "No thanks. I'm full. Of mystery."
+  "That's sweet, but I'm good. Very good. The best."
+@rule core.offer.thank act: thank
+  "That's so kind. I'm writing you into my will. In pencil."
+@rule core.invite.yes act: yes
+  "Yes! I'll bring snacks. And a second set of snacks."
+  "I'm in. Wait, is it outdoors? Still in."
+  "Count me in! Count me twice, I eat a lot."
+@rule core.invite.no act: no
+  "Can't. I've got a thing. The thing is my couch."
+  "Rain check. Fog check. Some kind of check."
+@rule core.invite.ask act: ask_about
+  "When? Is there cake? Answer the cake one first."
+@rule core.invite.kid guard: kid_speaker tags: kid act: yes
+  "YES! Can I bring my patrol badge? I'm bringing it."
+@rule core.promise.thank act: thank
+  "A promise! I'm holding you to it. Firmly."
+@rule core.promise.tease act: tease
+  "You promise? Pinky? Pinky with a witness?"
+@rule core.promise.memory guard: fact.promised act: tease
+  "Another promise? You still owe me the last one."

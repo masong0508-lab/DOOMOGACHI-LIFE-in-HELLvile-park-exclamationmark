@@ -1,0 +1,114 @@
+# core/data/talk/grammar/en/core_other.tlk - replies about third parties, the flow of the
+# talk, and gestures (owner: TK; T5a starter bank). Syntax: core/tools/talkc_gen.py.
+
+# ---- GOSSIP(x): the player gossips about someone not here -----------------------
+@rule core.gossip.more act: gossip
+  "No! Really? Tell me everything, then tell me again."
+  "I knew it. I didn't know it, but I knew it."
+  "Ooh. And I heard worse. Lean in."
+  "Shh! The walls have ears. The walls in this town really do."
+@rule core.gossip.defend act: defend
+  "Hey, be nice. They lent me a ladder once. Once."
+@rule core.gossip.disagree guard: polite act: disagree
+  "Oh, I'm sure that's not true. {.}Is it true?"
+@rule core.gossip.about guard: x.person act: gossip
+  "{x}? Oh, {x} is a whole story. A whole season."
+@rule core.gossip.kid guard: kid_speaker tags: kid act: gossip
+  "I know a secret too! {.}I forgot it. It was good."
+
+# ---- DEFEND / ACCUSE / TAKE_SIDE / MEDIATE ---------------------------------------
+@rule core.defend.thank act: thank
+  "Thanks for having my back. I've got yours. Mostly."
+@rule core.defend.agree act: agree
+  "Exactly! Thank you! Somebody with sense!"
+@rule core.accuse.disagree act: disagree
+  "Me? Never. My alibi is a cat."
+  "That's a lie. A very specific lie. Who told you?"
+@rule core.accuse.agree guard: quirky act: agree
+  "Yes, I did it. And I'd do it again. Twice."
+@rule core.take_side.thank act: thank
+  "Ha! See? I'm always right, write it down."
+@rule core.take_side.complain guard: rel=rival act: complain
+  "Oh, so you're on THEIR side now. Noted."
+@rule core.mediate.agree act: agree
+  "Fine! Truce. A tiny truce, with snacks."
+  "Okay, you're right. Peace, for now."
+@rule core.mediate.disagree guard: blunt act: disagree
+  "Stay out of it. {.}Okay, stay a little in it."
+
+# ---- CHANGE_TOPIC / CONTINUE / BACKCHANNEL / UNKNOWN ------------------------------
+@rule core.change_topic.like act: change_topic
+  "Speaking of nothing, have you tried {like}? Life-changing."
+  "New topic: {like}. I've been waiting all day."
+  "Forget that. Let's talk about {like}. My favourite."
+@rule core.change_topic.topic guard: topic act: answer
+  "Oh, {x}! Now that's a topic. That's a whole meal."
+  "{x:cap}? Fine, but you started it."
+@rule core.change_topic.plain act: answer
+  "Sure, new subject. I love a new subject."
+@rule core.continue.tell act: tell
+  "And THEN, it got worse. It always gets worse."
+  "So anyway, the duck came back. With friends."
+  "Where was I? Oh yes. The pie was hiding something."
+  "And that's how I lost my eyebrows. Again."
+@rule core.continue.topic guard: topic act: tell
+  "And {x}? Don't get me started. {.}Too late, I've started."
+@rule core.continue.dismiss guard: blunt act: dismiss
+  "That's it. That's the story. Stories end."
+@rule core.backchannel.tell act: tell
+  "Right? And there's more. There's always more."
+  "Yep. Yep yep yep. Where was I?"
+@rule core.backchannel.ask act: ask_about
+  "You're quiet. What's on your mind? Is it pie?"
+@rule core.backchannel.back act: backchannel
+  "Mm-hm."
+  "Uh huh."
+@rule core.unknown.repeat act: ask_repeat
+  "Sorry, what? I was thinking about lunch."
+  "Hm? Say that again in human."
+  "I didn't get that. I got a feeling, though."
+  "Pardon? My ears are full of fog."
+@rule core.unknown.topic guard: topic act: answer
+  "{x:cap}? Sure, love {x}. {.}Anyway."
+@rule core.unknown.joke act: joke
+  "Bees? ...Anyway."
+  "I'm going to nod like I understood. {.}Nod."
+
+# ---- gestures --------------------------------------------------------------------------
+@rule core.wave.back act: wave
+  "[HAPPY]Hi! Wave! Big wave!"
+  "Oh! Hello! *waves back with the wrong hand*"
+@rule core.nod.back act: nod
+  "*nods back* We're on the same page. Page twelve."
+@rule core.nod.tell act: tell
+  "Good, good. Glad we agree. We do agree, right?"
+@rule core.shake_head.disagree act: disagree
+  "No? Shake it all you want. I'm right."
+@rule core.shake_head.ask act: ask_repeat
+  "What, no? No to what? I asked nothing!"
+@rule core.hug.yes guard: !kid_speaker act: hug
+  "[HAPPY]Oh! A hug! Okay, hug accepted!"
+  "Aww, okay, one hug. {.}Two hugs. Fine."
+@rule core.hug.flat guard: flat&!kid_speaker act: hug
+  "Oh, a hug. {.}This is me hugging."
+@rule core.hug.kid_yes guard: kid_speaker&!rel=stranger tags: kid act: hug
+  "[HAPPY]Hug! A good one! Patrol approves!"
+  "Okay, one hug. Quick. Patrol is busy."
+@rule core.hug.kid_no guard: kid_speaker&rel=stranger tags: kid act: no
+  "Um, no thanks. I don't know you yet. High five?"
+@rule core.give.thank act: thank
+  "For me? Thank you! I'll treasure it, or eat it."
+  "A gift! I have nothing for you. That's fine, right?"
+@rule core.give.pro guard: stance=pro act: opine_pos
+  "{x:cap}! You know me so well. Too well."
+@rule core.give.con guard: stance=con act: opine_neg
+  "{x:cap}. Wow, thank you. I'll put {x.it} somewhere."
+@rule core.walk_away.bye act: farewell
+  "Leaving? Okay, bye. I'll just stand here."
+@rule core.walk_away.complain act: complain
+  "Hey! We weren't done! I had a whole bit!"
+@rule core.high_five.back act: high_five
+  "[HAPPY]Up top! {.}Nailed it."
+  "High five! Ow. Worth it."
+@rule core.high_five.kid guard: kid_speaker tags: kid act: high_five
+  "[HAPPY]High five! Now down low! Too slow!"

@@ -1,0 +1,79 @@
+# core/data/talk/grammar/en/core_open.tlk - greetings, goodbyes, thanks, apologies,
+# introductions (owner: TK; T5a starter bank). Syntax: core/tools/talkc_gen.py.
+
+# ---- GREET ------------------------------------------------------------------------------
+@rule core.greet.first guard: first act: greet
+  "Oh! {you}! Come in, mind the cursed rug."
+  "Hi, {you}! You're early, or I'm late. One of us."
+  "{you}! Perfect timing. I was about to be bored."
+  "Well, if it isn't {you}. Wipe your feet. Both of them."
+  "Hello hello! Sit anywhere. Not there."
+@rule core.greet.again act: greet
+  "Hi again! You can't stay away. Nobody can."
+  "Oh, hello. You're still here. Good, I think."
+  "Hey you. Yes, you. Hi."
+@rule core.greet.polite guard: polite act: greet
+  "Good day to you, {you}! Tea? There's always tea."
+  "Why, hello! What a lovely surprise. Truly."
+@rule core.greet.blunt guard: blunt act: greet
+  "Yo. Make it quick, I'm being fabulous."
+  "Oh. It's you. {.}Hi, I guess."
+@rule core.greet.ask act: ask_feeling
+  "Hi! How are you? Be honest, but not too honest."
+  "Hey! You look like you've got news. Spill."
+@rule core.greet.friend guard: rel=best act: greet
+  "{you}! My favourite person! Don't tell the others."
+@rule core.greet.rival guard: rel=rival act: tease
+  "Oh. You. I was having such a nice day."
+@rule core.greet.kid guard: kid_speaker tags: kid act: greet
+  "HI! I'm on patrol. You're cleared, probably."
+  "Hi! Did you bring snacks? Patrol needs snacks."
+
+# ---- FAREWELL -----------------------------------------------------------------------------
+@rule core.farewell.plain act: farewell
+  "Bye! Don't let the purple fog bite."
+  "See you! Take the long way. The short way has bats."
+  "Bye bye! Come back soon, or late. Just come back."
+  "Off you go. I'll be here, being fabulous alone."
+@rule core.farewell.promise act: promise
+  "Bye! Next time I'm baking. That's a threat."
+  "Go on. I'll save you a seat. And a grudge."
+@rule core.farewell.blunt guard: blunt act: farewell
+  "Bye. Door's that way. It's always that way."
+@rule core.farewell.night guard: night act: farewell
+  "Night! Lock your door twice. Ask me why tomorrow."
+@rule core.farewell.kid guard: kid_speaker tags: kid act: farewell
+  "Bye! Patrol out! Don't step on cracks!"
+
+# ---- THANK ----------------------------------------------------------------------------------
+@rule core.thank.plain act: answer
+  "You're welcome! I accept payment in compliments."
+  "Anytime. Well, most times. Not Tuesdays."
+  "Oh, stop. {.}No, keep going."
+  "No problem. It was a problem. I'm a hero."
+@rule core.thank.joke act: joke
+  "Thank me with cake. Words are just air with ideas."
+@rule core.thank.blunt guard: blunt act: dismiss
+  "Yeah, yeah. Don't make it a whole thing."
+@rule core.thank.kid guard: kid_speaker tags: kid act: answer
+  "You're welcome! That's a patrol badge for me."
+
+# ---- APOLOGIZE --------------------------------------------------------------------------------
+@rule core.apologize.accept act: answer
+  "It's okay. I forgive you. I'll also remember forever."
+  "Apology accepted! It was a good apology. Seven out of ten."
+  "Water under the bridge. The bridge is haunted, but still."
+@rule core.apologize.comfort act: comfort
+  "Hey, don't worry about it. Really. Have a biscuit."
+@rule core.apologize.blunt guard: blunt act: dismiss
+  "Fine. Don't do it again. Or do, and be sorry again."
+@rule core.apologize.rival guard: rel=rival act: complain
+  "Sorry? You? I'm writing this down."
+
+# ---- INTRODUCE -------------------------------------------------------------------------------
+@rule core.introduce.plain act: greet
+  "Hello! Any friend of {you} is a suspect. Kidding, hi."
+  "Nice to meet you! I've heard nothing. Good start."
+  "Hi! I'm {me}, a delight. Ask around."
+@rule core.introduce.ask act: ask_about
+  "Hello! So what's your deal? Everybody has a deal."

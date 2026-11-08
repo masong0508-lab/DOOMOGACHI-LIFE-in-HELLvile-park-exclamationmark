@@ -1,0 +1,203 @@
+# core/data/talk/grammar/en/parts.tlk - the optional parts of a line: openers, callbacks
+# (a sim fact true now), tags and hand-offs; and the reactions between residents (owner: TK;
+# T5a starter bank). Syntax: core/tools/talkc_gen.py.
+#   [opener] [core] [callback] [tag] [hand-off]
+
+# ---- openers: by the class of what was said, the mood, the voice --------------------------
+@rule open.ask guard: pact=ask
+  "Ooh-"
+  "Hm."
+  "Oh, good question."
+  "Wait-"
+  "Ah."
+@rule open.tell guard: pact=tell
+  "Huh."
+  "Oh?"
+  "Mm."
+  "Well."
+@rule open.warm guard: pact=warm
+  "Aww."
+  "Oh!"
+  "Heh."
+@rule open.cool guard: pact=cool
+  "Excuse me?"
+  "Oh, really?"
+  "Wow."
+  "Okay."
+@rule open.any
+  "Okay, so."
+  "Look."
+  "Right."
+  "So."
+@rule open.happy guard: mood=happy
+  "Ha!"
+  "Ooh!"
+@rule open.sad guard: mood=sad
+  "*sniff*"
+  "Oh."
+@rule open.angry guard: mood=angry
+  "Ugh."
+  "Hmph."
+@rule open.loud guard: loud
+  "OH!"
+  "Whoa!"
+@rule open.flat guard: flat
+  "Hm."
+  "...Right."
+@rule open.polite guard: polite
+  "Oh, dear."
+  "Well, now."
+@rule open.blunt guard: blunt
+  "Listen."
+  "Pfft."
+
+# ---- callbacks: each stands on a fact that is true now (talkc checks the guard) ----------
+@rule cb.job guard: fact.job
+  "Like at work. I'm {job:indef}. Don't ask."
+  "Speaking as {job:indef}: no comment."
+  "Which is basically my whole job. {job:cap}. Ugh."
+@rule cb.partner guard: fact.partner&!kid_speaker
+  "Don't tell {partner}."
+  "{partner:cap} says the same thing. Annoyingly."
+@rule cb.pet guard: fact.pet
+  "My pet agrees. My pet agrees with everything."
+@rule cb.news guard: fact.news
+  "I was in the paper this week. Local celebrity."
+  "Did you see the news? About me? Read it twice."
+@rule cb.problem.hungry guard: prob=hungry
+  "Also I'm starving. Just so you know."
+@rule cb.problem.dirty guard: prob=dirty
+  "I need a bath. Don't sniff."
+@rule cb.problem.bored guard: prob=bored
+  "I'm SO bored, by the way."
+@rule cb.problem.sick guard: prob=sick
+  "Achoo. Sorry. I'm sick."
+@rule cb.problem.lonely guard: prob=lonely
+  "It's been a bit lonely lately. Thanks for coming."
+@rule cb.problem.nightmare guard: prob=nightmare
+  "I had a nightmare last night. About a tape. Tape 7."
+@rule cb.problem.fight guard: prob=fight
+  "I'm fighting with someone. Not you. Today."
+@rule cb.problem.item guard: prob=wants_item
+  "I want something. I won't say what. {.}Hint: shiny."
+@rule cb.problem.friend guard: prob=wants_friend
+  "I need more friends. You count. Half."
+@rule cb.bday guard: fact.bday
+  "My birthday's soon, by the way. Just saying. Loudly."
+@rule cb.ghost guard: ghost
+  "I'm dead, by the way. Very relaxing."
+@rule cb.possessed guard: possessed
+  "We are fine. We are all fine in here."
+@rule cb.hellborn guard: hellborn
+  "Back in Hellvile we'd set that on fire. Lovingly."
+  "Hellvile manners. Sorry. Or not."
+@rule cb.night guard: night
+  "It's late. Even the bats yawned."
+@rule cb.memory guard: fact.memory
+  "You asked about {mem} last time. Still thinking about it."
+@rule cb.complimented guard: fact.complimented
+  "You were nice to me last time. I wrote it down."
+@rule cb.insulted guard: fact.insulted
+  "Still a bit mad about last time. A smidge."
+@rule cb.like guard: likes_topic
+  "{x:cap} is my favourite, you know."
+@rule cb.fear guard: fears_topic
+  "Also {x} scares me. Deeply."
+@rule cb.family guard: fact.family
+  "Living here is nice. The rent is chores."
+@rule cb.chapter.two guard: chapter=2
+  "Is it me, or does everything smell like grape lately?"
+@rule cb.chapter.three guard: chapter=3
+  "With the demons out, I keep my shoes on. Both."
+@rule cb.chapter.four guard: chapter=4
+  "Hellvile folk are nice, actually. Who knew?"
+
+# ---- tags: the speaker's catchphrase (once a conversation) or a little button ------------
+@rule tag.catch guard: catch
+  "{catch}"
+@rule tag.plain
+  "Anyway."
+  "Just saying."
+  "So there."
+  "Moving on."
+
+# ---- hand-offs: the talk goes to another participant ---------------------------------------
+@rule handoff
+  "Right, {other}?"
+  "Back me up, {other}."
+  "Isn't that right, {other}?"
+  "{other:cap}, tell them."
+  "Don't look at me like that, {other}."
+
+# ---- reactions between residents: {them} is the one who just spoke -------------------------
+@rule react.agree
+  "{them:cap}'s right. For once."
+  "What {them} said. Louder."
+  "Agreed. Write it down, {them}."
+  "Yes! Thank you, {them}."
+  "Seconded. Thirded, if I can."
+  "Finally, {them} says something sensible."
+  "{them:cap} took the words out of my mouth. Rude, but correct."
+  "I agree with {them}, and I hate that."
+@rule react.agree.pro guard: stance=pro
+  "Same! {x:cap} forever."
+  "{x:cap} fan club, right here. Two members."
+@rule react.agree.polite guard: polite
+  "Oh, well said, {them}. Very well said."
+@rule react.agree.kid guard: kid_speaker tags: kid
+  "Yeah! What {them} said!"
+@rule react.disagree
+  "Oh, come on, {them}."
+  "No, no, {them}. You're thinking of something else."
+  "I'm going to have to disagree with {them} there."
+  "Respectfully, {them}: no."
+  "That's not how I remember it, {them}."
+  "Hard disagree. Sorry, {them}. Not sorry."
+@rule react.disagree.con guard: stance=con
+  "{x:cap}? Ugh. No offence, {them}."
+  "Speak for yourself, {them}. {x:cap} is a no from me."
+@rule react.disagree.blunt guard: blunt
+  "Wrong, {them}. Very wrong."
+  "Nope. {them:cap} is making things up again."
+@rule react.disagree.kid guard: kid_speaker tags: kid
+  "Nuh-uh, {them}!"
+@rule react.laugh
+  "Ha! Good one, {them}."
+  "Heh. {them:cap}'s a riot."
+  "HA! I needed that."
+  "Pfft. Stop it, {them}. My ribs."
+  "Ha! I'm telling everyone you said that."
+  "Okay, that got me. Well done, {them}."
+@rule react.laugh.flat guard: flat
+  "Heh."
+  "...That's funny. Inside I'm laughing."
+@rule react.laugh.kid guard: kid_speaker tags: kid
+  "Hee hee! Again, {them}!"
+@rule react.tease
+  "Says {them}, who still owes me a casserole dish."
+  "Oh, {them}. Bless."
+  "{them:cap} thinks that's a fact. Adorable."
+  "This from {them}, who lost a fight with a door."
+  "{them:cap} has been practising that one all week."
+  "Big words from {them}. Small hat, though."
+@rule react.tease.rival guard: rel=rival
+  "Typical {them}. Wrong and proud of it."
+@rule react.tease.kid guard: kid_speaker tags: kid
+  "{them:cap} is SO weird. I love it."
+@rule react.joke
+  "That reminds me of a joke. {.}No it doesn't."
+  "And THAT is why nobody lets {them} near the snacks."
+  "Plot twist: {them} was a ghost the whole time."
+  "Somebody give {them} a microphone. Or take one away."
+  "I'm putting that on a mug. With your face, {them}."
+  "This is going in the town newsletter, {them}."
+@rule react.joke.quirky guard: quirky
+  "Speaking of which, has anyone seen my other shoe?"
+  "Bees. {.}Sorry, I thought we were doing a bit."
+@rule react.backchannel
+  "Mm-hm."
+  "Uh huh. Sure, {them}."
+  "Yep."
+  "Right, right."
+  "Okay, {them}."
+  "If you say so, {them}."

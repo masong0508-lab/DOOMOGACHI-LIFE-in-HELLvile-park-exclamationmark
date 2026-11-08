@@ -1,0 +1,100 @@
+# core/data/talk/grammar/en/core_tell.tlk - replies to the player's statements: telling,
+# opinions, agreeing, answers, yes and no (owner: TK; T5a starter bank). Syntax:
+# core/tools/talkc_gen.py.
+
+# ---- TELL(x): the player shares something --------------------------------------------
+@rule core.tell.back act: backchannel
+  "Uh huh. Go on. I'm listening with both ears."
+  "Mmhm. Fascinating, truly. Keep going."
+  "Wow. {.}Wow. {.}Okay, that's enough wows."
+@rule core.tell.topic_pro guard: stance=pro act: opine_pos
+  "{x:cap}! Now you're talking. Talk more."
+  "Ooh, {x}. I'd follow {x.it} into a fire."
+@rule core.tell.topic_con guard: stance=con act: opine_neg
+  "{x:cap}? Brave of you to bring that up. In my house."
+  "Oh, {x}. Right. I'll pretend I didn't hear that."
+@rule core.tell.ask act: ask_about
+  "Wait, tell me more about {x}. Slowly. With hand gestures."
+  "Hold on. {x:cap}? Since when?"
+@rule core.tell.joke act: joke
+  "That's nothing. I once saw {x:indef} wearing a hat."
+  "Cool story. Mine has {x.assoc:indef} in it. Better."
+@rule core.tell.blunt guard: blunt act: tease
+  "Cool story. Does it have an ending? Asking for me."
+@rule core.tell.kid guard: kid_speaker tags: kid act: backchannel
+  "Whoa. Is that true? Pinky swear true?"
+
+# ---- OPINE_POS(x): "I love x" ------------------------------------------------------
+@rule core.opine_pos.agree guard: stance=pro act: agree
+  "Right?! {x:cap} {x.is} {x.good}. Finally, someone gets it."
+  "Same! Team {x}. We need jackets."
+  "Yes! {x:cap} forever. Say it with me."
+@rule core.opine_pos.disagree guard: stance=con act: disagree
+  "{x:cap}? Really? We can still be friends, probably."
+  "Hm. I'll respect your wrong opinion."
+  "You like {x}? I've learned so much about you. Too much."
+@rule core.opine_pos.neutral guard: stance=neutral act: backchannel
+  "Good for you! I'm happy for you and {x}."
+  "Oh, nice. I'm neutral on {x}. Like a cozy Switzerland."
+@rule core.opine_pos.tease guard: blunt act: tease
+  "Of course you do. You would."
+@rule core.opine_pos.notopic guard: !topic act: backchannel
+  "Good for you! Love that for you."
+  "Nice. I'm happy you're happy."
+  "Big feelings! I respect it."
+@rule core.opine_pos.kid guard: kid_speaker tags: kid act: agree
+  "Me too! {x:cap} is the BEST!"
+
+# ---- OPINE_NEG(x): "I hate x" ------------------------------------------------------
+@rule core.opine_neg.agree guard: stance=con act: agree
+  "Thank you! {x:cap} {x.is} the worst. Let's start a club."
+  "Ugh, {x}. Don't get me started. You got me started."
+@rule core.opine_neg.disagree guard: stance=pro act: disagree
+  "Excuse me? {x:cap} {x.is} {x.good}. Take it back."
+  "Hey! {x:cap} did nothing to you. Probably."
+  "Wow. {x:cap} can hear you, you know."
+@rule core.opine_neg.neutral guard: stance=neutral act: sympathize
+  "Fair. Not everyone can love everything. I can't love Tuesdays."
+@rule core.opine_neg.laugh act: laugh
+  "Ha! Say that to {x:s} face. I'll sell tickets."
+@rule core.opine_neg.notopic guard: !topic act: sympathize
+  "Fair enough. Not everything's for everyone."
+  "Noted. I'll keep it away from you."
+@rule core.opine_neg.kid guard: kid_speaker tags: kid act: agree
+  "Yeah! {x:cap} is yucky. Patrol agrees."
+
+# ---- AGREE / DISAGREE (the player sides with them or not) ----------------------------------
+@rule core.agree.plain act: agree
+  "Exactly. We're geniuses. Tell everyone."
+  "See? You get it. Nobody gets it, but you get it."
+  "Right! I knew I liked you."
+@rule core.agree.laugh act: laugh
+  "Ha! Look at us, agreeing. It's a miracle."
+@rule core.disagree.plain act: disagree
+  "No, no. You're wrong in a very confident way."
+  "Agree to disagree. I win, though."
+  "I respect that. I don't agree with it. Or respect it."
+@rule core.disagree.joke act: joke
+  "Fine. We'll settle it the old way. A bake-off."
+@rule core.disagree.blunt guard: blunt act: dismiss
+  "Wrong. Next."
+@rule core.disagree.kid guard: kid_speaker tags: kid act: disagree
+  "Nuh-uh! Patrol says nuh-uh!"
+
+# ---- ANSWER / YES / NO -------------------------------------------------------------------
+@rule core.answer.plain act: backchannel
+  "Okay, noted. In my head, in pencil."
+  "Interesting. Very interesting. Slightly interesting."
+  "Huh. Learn something new every day. Mostly about you."
+@rule core.answer.ask act: ask_about
+  "Wait, really? Tell me more about {x}."
+@rule core.yes.plain act: backchannel
+  "Great! I knew you'd say yes. I felt it in my knee."
+  "Yes! Wonderful. Nobody back out now."
+@rule core.yes.thank act: thank
+  "Oh, thank you! You're a gem. A slightly sticky gem."
+@rule core.no.plain act: backchannel
+  "No? Okay. I'll be over here, being fine."
+  "Fair enough. I'll ask again later. And later."
+@rule core.no.complain act: complain
+  "No?! Well. My feelings have feelings now."

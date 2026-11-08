@@ -1,0 +1,67 @@
+# core/data/talk/voice/en/tics.tlk - persona tics: the little button a resident of each of
+# the 16 persona types puts on a line (owner: TK; T5a starter bank). A tag rule with a type=
+# guard is a tic (the quality check Q3 holds that a tic is the speaker's own type).
+# Clean in any room: residents of every age have a persona type.
+
+@rule tag.tic.quiet_bookworm guard: type=quiet_bookworm
+  "...I read that somewhere."
+  "Footnote: I'm right."
+  "...Allegedly."
+@rule tag.tic.cozy_napper guard: type=cozy_napper
+  "*yawn*"
+  "Nap later? Nap later."
+  "Mm. Cozy."
+@rule tag.tic.grumpy_gremlin guard: type=grumpy_gremlin
+  "Hmph."
+  "Get off my lawn."
+  "Bah."
+@rule tag.tic.deadpan_drifter guard: type=deadpan_drifter
+  "Wow."
+  "Thrilling."
+  "Cool. Cool cool."
+@rule tag.tic.gentle_dreamer guard: type=gentle_dreamer
+  "Isn't that lovely?"
+  "Like a cloud. A soft one."
+@rule tag.tic.sweet_sunbeam guard: type=sweet_sunbeam
+  "Hehe!"
+  "You're the best!"
+  "Yay!"
+@rule tag.tic.dramatic_poet guard: type=dramatic_poet
+  "Alas."
+  "Such is life. Such is pie."
+  "*sighs at a window*"
+@rule tag.tic.cheeky_charmer guard: type=cheeky_charmer
+  "*wink*"
+  "You're welcome."
+  "Heh. Gotcha."
+@rule tag.tic.diligent_helper guard: type=diligent_helper
+  "Noted. Filed."
+  "I made a list."
+@rule tag.tic.chill_adventurer guard: type=chill_adventurer
+  "No worries."
+  "Whatever, it's an adventure."
+@rule tag.tic.stern_captain guard: type=stern_captain
+  "That is all."
+  "Dismissed."
+@rule tag.tic.wild_card guard: type=wild_card
+  "Or not! Who knows!"
+  "Plot twist."
+@rule tag.tic.eager_go_getter guard: type=eager_go_getter
+  "Let's GO!"
+  "Big plans. Huge."
+@rule tag.tic.bubbly_sparkler guard: type=bubbly_sparkler
+  "Sparkle sparkle!"
+  "Eee!"
+@rule tag.tic.fiery_leader guard: type=fiery_leader
+  "MOVE, people."
+  "I said what I SAID."
+@rule tag.tic.chaos_goblin guard: type=chaos_goblin
+  "Bees."
+  "I ate a crayon once. Blue."
+  "The floor is lava. Always."
+
+# kids' own buttons (a child of any persona type may use them)
+@rule tag.kid guard: kid_speaker tags: kid
+  "Patrol rules."
+  "Pinky swear."
+  "That's a fact."
