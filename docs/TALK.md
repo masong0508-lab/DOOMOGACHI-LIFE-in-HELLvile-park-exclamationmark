@@ -277,7 +277,7 @@ talk_parse("Nana, what's in the pie?", &c, &u, &info);   /* ASK_ABOUT, topic pie
    sentiment; the rule classes; the safety word flags.
 4. **Classify (S1)**: `talk_safe_scan`. Explicit, hate and distress findings
    **always win** over every rule.
-5. **Rules**: `core/data/talk/rules/en.tsv`, 227 rules over 93 word
+5. **Rules**: `core/data/talk/rules/en.tsv`, 228 rules over 93 word
    classes, highest priority first. A rule is tried on the whole line and
    on the line without the names it is said to ("hey Kevin, ...", "...,
    Nana?"). The first match gives `act[0]`, the next match with another act
@@ -389,9 +389,9 @@ All figures are for `TALK_en.BIN` after the TK1 content (`talkc --stats`):
 | FORMS (Huffman) | 52,921 B | 68,653 B | yes |
 | CATS + CATNAMES | 1,944 B | 2,192 B | yes |
 | EDGES (21,254 reviewed edges) | 50,530 B | 50,530 B | no (Dreamcast, native) |
-| PARSE (T3: 11,472 words, 138 tag sets, 227 rules, 284 safety words) | 275,432 B | 275,432 B | no (Dreamcast, native) |
+| PARSE (T3: 11,468 words, 138 tag sets, 228 rules, 284 safety words) | 275,469 B | 275,469 B | no (Dreamcast, native) |
 | SAFETY (T4: 246 lint words, 128 + 160 hate hashes) | 6,428 B | 6,428 B | **yes** (the S3 lint) |
-| **Total file** | **503,260 B** | | **PS1: 176,805 B** of the 312 KB budget |
+| **Total file** | **503,324 B** | | **PS1: 176,805 B** of the 312 KB budget |
 
 (After TK2 the other banks are for 4,009 concepts: CONCEPT 32,080 B, ASSOC
 64,160 B, ATTR 18,896 B, FORMS 53,297 B.) The design estimated PARSE at
