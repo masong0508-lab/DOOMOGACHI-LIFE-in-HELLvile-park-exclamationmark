@@ -517,7 +517,10 @@ static void roster_draw(void)
     use_state();
     layout(&L);
     if (built_for != rs) { rebuild(rs); clamp_view(&L); }
-    ui_backdrop(rs->district == 2 ? WIN_DARK : WIN_CUTE, (uint32_t)t);
+    /* SP4 (G-L1): the backdrop leaves out what the list window (drawn below, opaque but for its r = 4 corners)
+     * covers: the same picture, a third of the backdrop not drawn */
+    ui_backdrop_hole(rs->district == 2 ? WIN_DARK : WIN_CUTE, (uint32_t)t,
+                     L.lx - 2 + 4, L.ly - 6, L.lx - 2 + L.lw + 4 - 4, L.ly - 6 + L.rows * UI_LIST_ROW_H + 10);
     if (rs->district == 2) style = WIN_DARK;
     st = ui_style(style);
     /* header */

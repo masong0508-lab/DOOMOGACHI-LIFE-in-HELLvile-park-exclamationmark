@@ -193,6 +193,41 @@ static int draw_syllables(int x, int y, const char *t, const uint8_t *st, int n,
     uint8_t cc[3] = { 0, 0, 0 };
     int ncol = 0, lo[3] = { 0, 0, 0 }, hi[3] = { 0, 0, 0 }, j;
     if (n > SONG_LYRIC_LEN) n = SONG_LYRIC_LEN;
+    /* SP4 (G-S1): the same three strings built a syllable at a time (a syllable is one colour: its chars are copied
+     * into that colour's string in one go) instead of a char at a time, which was 10% of the LYRICS tab on the GBA.
+     * Only for a line of printable chars with its syllable starts in order; anything else takes the loop below. */
+    if (runs && len < (int)sizeof(cb[0])) {
+        int end = DOOMO_MIN(len, maxch), ok;
+        unsigned bad = 0;
+        for (i = 0; i < end; i++) bad |= (unsigned)((unsigned char)t[i] - 32u) >= 95u;   /* (no branch a char) */
+        ok = !bad;
+        for (j = 1; j < n && ok; j++) ok = st[j - 1] <= st[j];
+        if (ok) {
+            int seg, jlast = -1;
+            for (seg = -1; seg < n; seg++) {
+                /* seg -1: the chars before the first syllable (colour c0); seg k: syllable k up to the next start */
+                int a = seg < 0 ? 0 : st[seg], b = seg + 1 < n ? st[seg + 1] : end;
+                uint8_t col = seg < 0 ? c0 : seg == hl ? PAL_PAINT(PAINT_ROSE, 0) : ((seg & 1) ? c1 : c0);
+                if (seg < 0 && n == 0) b = end;
+                if (b > end) b = end;
+                if (a >= b) continue;
+                for (j = 0; j < ncol && cc[j] != col; j++) {}
+                if (j == ncol) {
+                    memset(cb[j], ' ', sizeof(cb[j]));
+                    cc[j] = col; lo[j] = a; ncol++;
+                }
+                memcpy(cb[j] + a, t + a, (size_t)(b - a));
+                hi[j] = b - 1;
+                if (b == end) jlast = j;
+            }
+            if (jlast >= 0 && len > maxch) cb[jlast][end - 1] = '~';   /* the clipped line's last cell */
+            for (j = 0; j < ncol; j++) {
+                cb[j][hi[j] + 1] = 0;
+                plat_text(x + lo[j] * 6, y, cb[j] + lo[j], cc[j]);
+            }
+            return x + end * 6;
+        }
+    }
     for (i = 0; i < len && i < maxch; i++) {
         uint8_t col;
         while (k + 1 < n && st[k + 1] <= i) k++;

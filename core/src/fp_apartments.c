@@ -315,8 +315,12 @@ static void draw_window(const ALayout *L, int x, int y, int id, int sel)
 static void draw_facade(const ALayout *L)
 {
     int sw = fp_sw(), hell = A.district, t = A.t, i;
-    /* sky behind the tower */
-    plat_rect(0, 0, sw, fp_sh(), hell ? PAL_RAMP(RAMP_VAPE, 1) : (town_is_night() ? PAL_RAMP(RAMP_SKY, 1) : PAL_RAMP(RAMP_SKY, 6)));
+    int bx = L->wx - 8, bw = ROOMS * (L->ww + 3) + 13;
+    uint8_t sky = hell ? PAL_RAMP(RAMP_VAPE, 1) : (town_is_night() ? PAL_RAMP(RAMP_SKY, 1) : PAL_RAMP(RAMP_SKY, 6));
+    /* sky behind the tower: SP4 (G-L1) only beside it, where it shows: the tower's outline and body below cover
+     * [bx - 1, bx + bw + 1) from top to bottom (the same picture; on the GBA it was a whole screen of fill) */
+    plat_rect(0, 0, bx - 1, fp_sh(), sky);
+    plat_rect(bx + bw + 1, 0, sw - (bx + bw + 1), fp_sh(), sky);
     if (hell) {
         for (i = 0; i < 3; i++) {
             int bx = (t * (1 + i) / 2 + i * 101) % (sw + 40) - 20, by = 40 + i * 30 + ui_wave(t * 2 + i * 50, 40, 4);
@@ -332,13 +336,15 @@ static void draw_facade(const ALayout *L)
             ui_fill_ellipse(cx - 5, cy - 3, 7, 4, PAL_WHITE);
         }
     }
-    /* the building body */
+    /* the building body: its outline is the column either side of the body (SP4: the body covers the rest of it),
+     * the body between the light strip on the left and the shaded one on the right */
     {
-        int bx = L->wx - 8, bw = ROOMS * (L->ww + 3) + 13;
         uint8_t b0 = hell ? PAL_RAMP(RAMP_VAPE, 3) : PAL_PAINT(PAINT_BUBBLEGUM, 2);
         uint8_t b1 = hell ? PAL_RAMP(RAMP_VAPE, 2) : PAL_RAMP(RAMP_PASTEL_PINK, 6);
-        plat_rect(bx - 1, 0, bw + 2, fp_sh(), hell ? PAL_RAMP(RAMP_STONE, 0) : PAL_PAINT(PAINT_ROSE, 0));
-        plat_rect(bx, 0, bw, fp_sh(), b0);
+        uint8_t edge = hell ? PAL_RAMP(RAMP_STONE, 0) : PAL_PAINT(PAINT_ROSE, 0);
+        plat_rect(bx - 1, 0, 1, fp_sh(), edge);
+        plat_rect(bx + bw, 0, 1, fp_sh(), edge);
+        plat_rect(bx + 3, 0, bw - 7, fp_sh(), b0);
         plat_rect(bx, 0, 3, fp_sh(), ui_lighter(b0));
         plat_rect(bx + bw - 4, 0, 4, fp_sh(), b1);
     }

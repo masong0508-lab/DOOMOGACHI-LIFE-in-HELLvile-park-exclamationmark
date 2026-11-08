@@ -1312,7 +1312,10 @@ static void res_draw(void)
     style = window_style(r);
     st = ui_style(style);
     rlayout(&L);
-    ui_backdrop(style == WIN_CREAM ? WIN_CUTE : style, (uint32_t)t);
+    /* SP4 (G-L1): the backdrop leaves out what the content window (drawn below, opaque but for its r = 4 corners)
+     * covers: the same picture, half the backdrop not drawn */
+    ui_backdrop_hole(style == WIN_CREAM ? WIN_CUTE : style, (uint32_t)t,
+                     L.cx + 4, L.cy + 2, L.cx + L.cw - 4, L.cy + 2 + L.ch);
     if (r->status == RES_POSSESSED && (t / 6) % 7 == 0) plat_shade_rect(0, 0, sw, fp_sh(), 12);
     /* tabs (CL5: at 240x160 against the right edge, the name in the band left of them) */
     if (fp_big()) ui_tabs(L.cx + 2, 5, tab_names, TAB_COUNT, R.tab, style);
