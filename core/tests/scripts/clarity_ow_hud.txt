@@ -49,7 +49,7 @@ press DOWN
 wait 4
 press A
 wait 15
-expect-toast "No Doomogachi yet"
+expect-toast "No Boreagotchi yet"
 shot pause_toast
 press B
 wait 10
