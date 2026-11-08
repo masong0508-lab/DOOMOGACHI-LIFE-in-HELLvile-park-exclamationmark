@@ -32,6 +32,19 @@ static int64_t ref_sdiv64(int64_t n, int64_t d, int64_t *r)
     return (n < 0) != (d < 0) ? -(int64_t)q : (int64_t)q;
 }
 
+/* (G9) the low 64 bits of a product by shift-and-add (src/div.s has the
+ * ARM __aeabi_lmul) */
+static uint64_t ref_mul64(uint64_t a, uint64_t b)
+{
+    uint64_t r = 0;
+    while (b) {
+        if (b & 1) r += a;
+        a <<= 1;
+        b >>= 1;
+    }
+    return r;
+}
+
 /* operands of assorted magnitudes */
 static uint32_t pick(void)
 {
@@ -79,6 +92,18 @@ void et_div_test(void)
             la = nx; lb = ny;
             q = ref_sdiv64(nx, ny, &sr);
             if (la / lb != q || la % lb != sr) goto fail_l;
+            /* (G9) 64 by 32 (the raycast steps' (CELLU << 32) / dx) */
+            la = (int64_t)(((uint64_t)(next() & 0xFFFFF) << 32) | next());
+            if (i & 4) la = -la;
+            lb = (int32_t)y;
+            q = ref_sdiv64(la, lb, &sr);
+            if (la / lb != q || la % lb != sr) goto fail_l;
+            /* (G9) 64-bit products */
+            la = nx; lb = ny;
+            if ((uint64_t)(la * lb) != ref_mul64((uint64_t)nx, (uint64_t)ny)) goto fail_m;
+            la = (int32_t)x; lb = (int32_t)y;
+            if ((uint64_t)(la * lb) != ref_mul64((uint64_t)(int64_t)(int32_t)x, (uint64_t)(int64_t)(int32_t)y))
+                goto fail_m;
         }
         n++;
     }
@@ -93,6 +118,11 @@ fail_u:
     return;
 fail_s:
     gba_logf("ET divtest FAIL s32 %d / %d", (int)(int32_t)a, (int)(int32_t)b);
+    return;
+fail_m:
+    gba_logf("ET divtest FAIL mul64 %08x%08x * %08x%08x",
+             (unsigned)((uint64_t)la >> 32), (unsigned)la,
+             (unsigned)((uint64_t)lb >> 32), (unsigned)lb);
     return;
 fail_l:
     gba_logf("ET divtest FAIL s64 %08x%08x / %08x%08x",

@@ -159,13 +159,19 @@ __aeabi_ldivmod:
     rsbs    r2, r2, #0
     rsc     r3, r3, #0
     eor     r4, r4, #1
-2:  add     r5, sp, #8
+2:  cmp     r3, #0                  @ (G9) a nonzero divisor of 32 bits:
+    bne     .Lldiv_lib
+    cmp     r2, #0
+    bne     .Lldiv_d32              @ below
+.Lldiv_lib:
+    add     r5, sp, #8
     str     r5, [sp]
     ldr     r12, =__udivmoddi4
     mov     lr, pc
     bx      r12
     ldr     r2, [sp, #8]
     ldr     r3, [sp, #12]
+.Lldiv_signs:
     tst     r4, #1
     beq     3f
     rsbs    r0, r0, #0
@@ -177,4 +183,50 @@ __aeabi_ldivmod:
 4:  add     sp, sp, #16
     ldmfd   sp!, {r4, r5, r6, lr}
     bx      lr
+.Lldiv_d32:
+    @ (G9) |d| < 2^32 (the raycasts' (CELLU << 32) / dx in core/src/actor.c):
+    @ q_hi = n_hi / d by the 32-bit core, then (rem : n_lo) / d (rem < d,
+    @ so 32 quotient bits) by shift-subtract, 4-5 cycles a bit; libgcc's
+    @ generic __udivmoddi4 (THUMB C from the cartridge) was ~5% of a frame
+    @ in combat.
+    mov     r5, r0                  @ n_lo
+    mov     r6, r2                  @ d
+    mov     r0, r1
+    mov     r1, r2
+    bl      .Ludivmod_core          @ r0 = n_hi / d, r1 = n_hi % d
+    mov     r2, r0                  @ q_hi
+    mov     r12, #32
+5:  adds    r5, r5, r5              @ next numerator bit out of n_lo ...
+    adcs    r1, r1, r1              @ ... into the remainder (33 bits: C)
+    bcs     6f
+    cmp     r1, r6
+    blo     7f
+6:  sub     r1, r1, r6
+    orr     r5, r5, #1              @ the quotient bit, where n_lo's left
+7:  subs    r12, r12, #1
+    bne     5b
+    mov     r0, r5                  @ q = r2 : r5, remainder r1
+    mov     r5, r1
+    mov     r1, r2
+    mov     r2, r5
+    mov     r3, #0
+    b       .Lldiv_signs
     .ltorg
+
+@ ---------------------------------------------------------------------------
+@ (G9) 64-bit multiply, low 64 bits (int64_t / uint64_t '*': FIXMUL and
+@ friends in THUMB code): r1:r0 * r3:r2 -> r1:r0. libgcc's is THUMB code
+@ from the cartridge (~3% of a combat frame); this is 4 ARM instructions.
+@ ARMv4: MUL/MLA Rd != Rm, UMULL RdLo, RdHi, Rm all different.
+    .global __aeabi_lmul
+    .type   __aeabi_lmul, %function
+    .global __muldi3
+    .type   __muldi3, %function
+__aeabi_lmul:
+__muldi3:
+gba_lmul:                           @ named for the profiler
+    mul     r3, r0, r3              @ a_lo * b_hi
+    mla     r1, r2, r1, r3          @ + b_lo * a_hi
+    umull   r0, r3, r2, r0          @ a_lo * b_lo, 64 bits
+    add     r1, r1, r3
+    bx      lr
