@@ -6,7 +6,8 @@
  * replaced, and this file shrinks, as the packages land:
  *   2D layer, post effects, held frame  -> DC3: done (dc2d.h, gfx2d.c, ...)
  *   saves on the VMU                -> DC4: done (vmusave.c)
- *   3D view, house                  -> DC6 / DC8
+ *   3D view                         -> DC6
+ *   house                           -> DC8: done (room.c)
  *   overworld                       -> DC7: done (overworld.c, dc3d.c, pvr3d.c)
  *   sound                           -> DC5: done (audio.c, mixer.c, sfx.c)
  */
@@ -18,9 +19,9 @@ int plat_screen_h(void) { return DC_SCREEN_H; }
 
 /* every 2D call, the post effects and plat_hold_frame: gfx2d.c (DC3) */
 
-/* ---- 3D and the world renderers (DC6 / DC8; the overworld is DC7's) ------------ */
+/* ---- 3D and the world renderers (DC6; the overworld is DC7's, the house DC8's) ---- */
 void plat_view3d(const DoomoView3D *v) { (void)v; }
-/* plat_overworld: overworld.c (DC7) */
+/* plat_overworld: overworld.c (DC7); plat_room, plat_room_project: room.c (DC8) */
 
 /* plat_tone, plat_sample and the music hooks: audio.c (DC5) */
 

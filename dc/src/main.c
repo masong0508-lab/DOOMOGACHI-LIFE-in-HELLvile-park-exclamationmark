@@ -27,6 +27,7 @@
 #include "dc_plat.h"
 #include "dc2d.h"
 #include "dc3d.h"
+#include "room_int.h"
 #include "doomo/game.h"
 #include "doomo/input.h"
 #include "doomo/palette.h"
@@ -124,6 +125,14 @@ void plat_end_frame(void)
         dc_mailbox.g3d_polys_max = dc3d_stats.polys_max;
         dc_mailbox.g3d_bytes_max = dc3d_stats.bytes_max;
         dc_mailbox.g3d_dropped = dc3d_stats.dropped;
+        dc_mailbox.room_us = dc_room_stats.us_last;      /* DC8: the house */
+        dc_mailbox.room_us_max = dc_room_stats.us_max;
+        dc_mailbox.room_us_sum = dc_room_stats.us_sum;
+        dc_mailbox.room_n = dc_room_stats.n;
+        dc_mailbox.room_shells = dc_room_stats.shells;
+        dc_mailbox.room_shell_us_max = dc_room_stats.shell_us_max;
+        dc_mailbox.room_decodes = dc_room_stats.decodes;
+        dc_mailbox.room_prims_max = dc_room_stats.prims_max;
     }
     /* wait for the next tick's slot; the vblank wait keeps the CPU idle */
     next = logic_base_us + (uint64_t)dc_frames * DC_TICK_US;

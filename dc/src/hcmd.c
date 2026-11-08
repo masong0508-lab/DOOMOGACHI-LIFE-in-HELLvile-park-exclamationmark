@@ -33,14 +33,26 @@
  *                          the top scene called name (`expect-text`,
  *                          `skip-to`, `skip-to-scene`)
  *   DC_HC_CLOCK m          the town clock (`clock HH MM`)
+ *   DC_HC_ROOM_PARITY l    (DC8) golden line l of core/tests/room_shells.h
+ *                          drawn by plat_room (dc/src/room.c) at 320x240 as
+ *                          a picture of its own (dc2d_side_*), shown for 8
+ *                          vblanks: `room-parity L NAME` shoots it and the
+ *                          run script compares it with room_ref's frame
+ *   DC_HC_HOME_ROOM n      (DC8) the native runner's `home-room N`
+ *   DC_HC_MONEY n          (DC8) the native runner's `money N`
  * and the tick hold of the harness's "sync on" (dc_harness_hold).
  */
 #include <string.h>
+#include <dc/video.h>                         /* vid_waitvbl (DC8) */
 #include "dc_plat.h"
 #include "doomo/doomo.h"
 #include "doomo/story_vm.h"
 #include "doomo/plat_ext.h"
 #include "../../core/src/ui_internal.h"     /* UiDialogDebug (expect-text) */
+#include "../../core/src/home_int.h"        /* DC8: home_move_in, the parity rooms */
+#include "../../core/gen/furn_ids.h"
+#include "../../core/tests/room_shells.h"   /* DC8: the room_ref golden's frames */
+#include "dc2d.h"
 
 /* core/src/story_int.h (the native runner declares them the same way) */
 void story_verbs_cell(int cx, int cy);
@@ -160,6 +172,33 @@ void dc_harness_hold(void)
     }
 }
 
+/* DC8: golden line `line` drawn by plat_room as the frame on screen */
+static uint8_t parity_cache[12 * 1024];
+static DoomoRoomObj parity_objs[HOME_OBJ_MAX];
+
+static void room_parity(int line)
+{
+    HomeRoom r;
+    DoomoRoomView v;
+    int i, keep;
+    if (line < ROOM_SHELL_FIRST) rs_parity_room(&r);
+    else rs_shell_room(line - ROOM_SHELL_FIRST, &r);
+    rs_view(&v, parity_objs, &r, line);
+    v.vy = 12;
+    v.vw = (int16_t)plat_screen_w();
+    v.vh = (int16_t)(plat_screen_h() - 24);
+    v.plat_cache = parity_cache;
+    v.plat_cache_cap = sizeof(parity_cache);
+    keep = dc_nodraw;                   /* the tick before may have been a catch-up */
+    dc_nodraw = 0;
+    dc2d_side_begin();
+    plat_clear(PAL_BLACK);
+    plat_room(&v);
+    dc2d_side_end();
+    dc_nodraw = keep;
+    for (i = 0; i < 8; i++) vid_waitvbl();
+}
+
 void dc_harness_cmd(void)
 {
     uint32_t cmd = dc_mailbox.cmd, arg = dc_mailbox.arg, r = 0, c0 = dc_us();
@@ -272,6 +311,22 @@ void dc_harness_cmd(void)
         break; }
     case DC_HC_CLOCK:                   /* the native runner's `clock HH MM` */
         doomo_town.minute = (uint16_t)(arg % 1440u);
+        r = 1;
+        break;
+    /* --- DC8: the house --- */
+    case DC_HC_ROOM_PARITY:
+        if (arg < (uint32_t)ROOM_SHELL_LINES) {
+            room_parity((int)arg);
+            r = 1 + arg;
+        }
+        break;
+    case DC_HC_HOME_ROOM:               /* the native runner's `home-room N` */
+        home_move_in();
+        home_unlock_room((int)arg);
+        r = 1;
+        break;
+    case DC_HC_MONEY:                   /* the native runner's `money N` */
+        doomo_town.money = arg;
         r = 1;
         break;
     default:

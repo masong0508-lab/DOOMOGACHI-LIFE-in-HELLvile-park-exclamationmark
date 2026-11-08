@@ -80,9 +80,16 @@ typedef struct DcMailbox {
      * left out over the batch, its budget or the held batch (total) */
     uint32_t g3d_us, g3d_us_max, g3d_us_sum, g3d_n;
     uint32_t g3d_polys, g3d_polys_max, g3d_bytes_max, g3d_dropped;
+    /* DC8: the house (dc/src/room_int.h, dc_room_stats) after each drawn
+     * frame: plat_room's time in microseconds (last, worst, sum and count of
+     * the views drawn), the shell textures rendered (a change of room, view,
+     * paint or light) and the slowest render (microseconds), the piece
+     * sprites decoded, and the most prims one view had */
+    uint32_t room_us, room_us_max, room_us_sum, room_n;
+    uint32_t room_shells, room_shell_us_max, room_decodes, room_prims_max;
 } DcMailbox;
 
-_Static_assert(sizeof(DcMailbox) == 236 + DC_MB_LOG_SIZE, "DcMailbox layout");
+_Static_assert(sizeof(DcMailbox) == 268 + DC_MB_LOG_SIZE, "DcMailbox layout");
 
 /* Command ids: the same numbers as the GBA's (gba_plat.h GBA_HC_* and
  * gba/src/hcmd.h), so hcmd.c can be shared in spirit. */
@@ -91,7 +98,12 @@ enum {
     DC_HC_TOWN_CRC, DC_HC_VERIFY, DC_HC_SCENE, DC_HC_PUSH,
     DC_HC_SEED = 9, DC_HC_FLAG = 10, DC_HC_TEXT_ARM = 11, DC_HC_TEXT_HIT = 12,
     DC_HC_STORY_FP = 13,
-    /* 14 and 15 are the GBA's house commands (HC_ROOM_PARITY / _TEST) */
+    /* 14 and 15 are the GBA's house commands (HC_ROOM_PARITY / _TEST); the
+     * Dreamcast has 14 (DC8): */
+    DC_HC_ROOM_PARITY = 14,              /* room-parity LINE: golden line LINE of
+                                          * core/tests/room_shells.h drawn by plat_room
+                                          * at 320x240 and shown for 8 vblanks (dcrun
+                                          * shoots it meanwhile); result 1 + line */
     DC_HC_TEXT_FEED = 16,                /* ui_text_entry_feed(arg): the native
                                           * runner's `type`, one char per call */
     DC_HC_NATIVE_SEED = 17,              /* the native runner's `--seed arg` start
@@ -104,7 +116,10 @@ enum {
     DC_HC_SAYS = 22,                     /* result 2 when the dialogue's top line
                                           * contains name (its first 19 chars), else 1 */
     DC_HC_TOP_IS = 23,                   /* result 2 when the top scene is name, else 1 */
-    DC_HC_CLOCK = 24                     /* clock HH MM: the town clock = arg minutes */
+    DC_HC_CLOCK = 24,                    /* clock HH MM: the town clock = arg minutes */
+    /* DC8: the native runner's house commands (core/tests/scripts/home_*.txt) */
+    DC_HC_HOME_ROOM = 25,                /* home-room N: move in, room N opened */
+    DC_HC_MONEY = 26                     /* money N: the town's purse = arg */
 };
 
 #endif
