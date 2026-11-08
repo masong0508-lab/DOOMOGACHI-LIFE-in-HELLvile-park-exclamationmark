@@ -104,4 +104,15 @@ extern const uint16_t doomo_txt_pack_minutes[];
 extern const uint16_t doomo_txt_pack_bytes[];
 /* --- end S2 --- */
 
+/* --- T2 (Talk, docs/TALK.md 6.2): the codec outside the packs ---
+ * Decode one string of the shared code at s (at most nbytes of stream are
+ * read; 0xFFFFFFFF = until its end symbol) into out, always NUL-terminated;
+ * returns the length, -1 for no buffer. TALK_<lang>.BIN's string banks use
+ * this code, so Talk adds no decoder and no dictionary. */
+int      txt_decode(const uint8_t *s, uint32_t nbytes, char *out, int cap);
+/* FNV-1a 32 of the codec tables (count, symbols, dictionary): a Talk
+ * database built with another dictionary is refused. */
+uint32_t txt_codec_hash(void);
+/* --- end T2 --- */
+
 #endif

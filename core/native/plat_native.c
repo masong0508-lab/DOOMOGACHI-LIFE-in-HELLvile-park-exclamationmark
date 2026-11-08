@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "native.h"
+#include "doomo/plat_ext.h"    /* T2: plat_talk_load / read */
 #include "plat_music_native.h"     /* --- music: musrender --- */
 
 uint8_t nat_fb[NAT_MAX_W * NAT_MAX_H];
@@ -381,4 +382,46 @@ void plat_log(const char *msg)
         }
     }
     if (!quiet) fprintf(stderr, "[%5u] %s\n", ticks, msg);
+}
+
+/* ---- Talk (T2, docs/TALK.md 6.6): TALK_<code>.BIN from a directory --------
+ * $DOOMO_TALK_DIR, else NAT_TALK_DIR (the Makefile passes $(BUILD)/talk,
+ * where `make -C core talk` writes it). The whole file is read once into
+ * the heap (native may); plat_talk_read copies out of it. */
+#ifndef NAT_TALK_DIR
+#define NAT_TALK_DIR "core/build/talk"
+#endif
+static uint8_t *talk_buf;
+static uint32_t talk_size;
+
+uint32_t plat_talk_load(const char *code)
+{
+    char path[700];
+    const char *dir = getenv("DOOMO_TALK_DIR");
+    FILE *f;
+    long n;
+    free(talk_buf);
+    talk_buf = NULL;
+    talk_size = 0;
+    if (!code || !code[0] || strlen(code) > 8 || strchr(code, '/') || strchr(code, '.')) return 0;
+    snprintf(path, sizeof(path), "%s/TALK_%s.BIN", dir && dir[0] ? dir : NAT_TALK_DIR, code);
+    f = fopen(path, "rb");
+    if (!f) return 0;
+    if (fseek(f, 0, SEEK_END) != 0 || (n = ftell(f)) <= 0 || n > (16L << 20) || fseek(f, 0, SEEK_SET) != 0 ||
+        !(talk_buf = (uint8_t *)malloc((size_t)n)) || fread(talk_buf, 1, (size_t)n, f) != (size_t)n) {
+        fclose(f);
+        free(talk_buf);
+        talk_buf = NULL;
+        return 0;
+    }
+    fclose(f);
+    talk_size = (uint32_t)n;
+    return talk_size;
+}
+
+uint32_t plat_talk_read(uint32_t off, void *dst, uint32_t len)
+{
+    if (!talk_buf || !dst || off > talk_size || len > talk_size - off) return 0;
+    memcpy(dst, talk_buf + off, len);
+    return len;
 }

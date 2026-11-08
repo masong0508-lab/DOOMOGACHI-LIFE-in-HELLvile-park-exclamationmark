@@ -89,12 +89,14 @@ int txt_pack_kind(int pack)
     return (pack >= 0 && pack < (int)doomo_txt_npacks) ? doomo_txt_pack_kinds[pack] : -1;
 }
 
-/* one canonical-Huffman symbol from the stream at bit *pos */
-static int next_symbol(const uint8_t *s, uint32_t *pos)
+/* one canonical-Huffman symbol from the stream at bit *pos (0, the end,
+ * when the stream would run past `limit` bits) */
+static int next_symbol(const uint8_t *s, uint32_t *pos, uint32_t limit)
 {
     unsigned code = 0, first = 0, index = 0, l;
     for (l = 1; l <= 16; l++) {
         unsigned n = doomo_txt_huff_count[l];
+        if (*pos >= limit) return 0;
         code |= (s[*pos >> 3] >> (7 - (*pos & 7))) & 1u;
         (*pos)++;
         if (code - first < n) return doomo_txt_huff_sym[index + code - first];
@@ -109,7 +111,6 @@ int txt_get(uint16_t id, char *out, int cap)
 {
     const uint8_t *b, *s;
     unsigned idx = (unsigned)TXT_INDEX(id);
-    uint32_t pos = 0;
     int n = 0;
     if (!out || cap <= 0) return -1;
     out[0] = 0;
@@ -120,8 +121,20 @@ int txt_get(uint16_t id, char *out, int cap)
         out[n] = 0;
         return n;
     }
+    return txt_decode(s, 0xFFFFFFFFu, out, cap);
+}
+
+/* (T2, Talk) one string of the shared code from any buffer: TALK_<lang>.BIN
+ * banks are encoded with the story's dictionary and Huffman code. */
+int txt_decode(const uint8_t *s, uint32_t nbytes, char *out, int cap)
+{
+    uint32_t pos = 0, limit = nbytes >= 0x20000000u ? 0xFFFFFFFFu : nbytes * 8u;
+    int n = 0;
+    if (!out || cap <= 0) return -1;
+    out[0] = 0;
+    if (!s) return -1;
     for (;;) {
-        int sym = next_symbol(s, &pos);
+        int sym = next_symbol(s, &pos, limit);
         if (sym == 0) break;
         if (sym < 256) {
             if (n < cap - 1) out[n++] = (char)sym;
@@ -132,6 +145,25 @@ int txt_get(uint16_t id, char *out, int cap)
     }
     out[n] = 0;
     return n;
+}
+
+/* (T2, Talk) FNV-1a 32 over the codec tables, little endian: the count
+ * table, nsym, the symbols, dict_n, the dictionary offsets and characters.
+ * core/tools/talkc.py computes the same over core/gen/txt_dict.c and
+ * stores it in TALK_<lang>.BIN (talk.h dict_hash). */
+uint32_t txt_codec_hash(void)
+{
+    uint32_t h = 0x811C9DC5u;
+    unsigned i;
+#define TXH(b) (h = (h ^ (uint8_t)(b)) * 0x01000193u)
+    for (i = 0; i < 17; i++) TXH(doomo_txt_huff_count[i]);
+    TXH(doomo_txt_huff_nsym); TXH(doomo_txt_huff_nsym >> 8);
+    for (i = 0; i < doomo_txt_huff_nsym; i++) { TXH(doomo_txt_huff_sym[i]); TXH(doomo_txt_huff_sym[i] >> 8); }
+    TXH(doomo_txt_dict_n); TXH(doomo_txt_dict_n >> 8);
+    for (i = 0; i <= doomo_txt_dict_n; i++) { TXH(doomo_txt_dict_off[i]); TXH(doomo_txt_dict_off[i] >> 8); }
+    for (i = 0; i < doomo_txt_dict_off[doomo_txt_dict_n]; i++) TXH(doomo_txt_dict_chars[i]);
+#undef TXH
+    return h;
 }
 
 const StoryOp *txt_script(uint16_t script_id, int *n_ops)
