@@ -1,6 +1,6 @@
 /* fmv.c - the boot-up FMV: the Dippinn Productions ident (owner: ps1).
  *
- * Plays INTRO.STR (tools/mkintro.py: trailer/assets/dippinn_logo.mp4 encoded
+ * Plays INTRO.STR (ps1/CMakeLists.txt: trailer/assets/dippinn_logo.mp4 encoded
  * as an MDEC .STR with XA-ADPCM audio) once, before anything else is shown.
  * START or Cross skips it. If INTRO.STR is not on the disc, or anything goes
  * wrong (no frame for 3 s, a bad sector), it returns at once and the game
@@ -19,6 +19,10 @@
  *  - the frames are drawn into the game's two framebuffers (y 0 and 240), so
  *    nothing needs to be put back; the next gfx_begin() redraws everything.
  *  - the CD / MDEC callbacks are removed again, and the drive is paused.
+ *
+ * INTRO.STR must be encoded at a size psxavenc's scaler and MDEC encoder
+ * agree on (CMakeLists.txt: -s 320x176 -I); frames larger than the screen
+ * end the intro.
  */
 #ifdef DOOMO_INTRO_FMV
 #include <stdint.h>
@@ -81,6 +85,10 @@ static void sector_handler(void)
         cur = s_cur_frame;
         s_w[cur] = (uint16_t)((s_hdr.width + 15) & 0xfff0);
         s_h[cur] = (uint16_t)((s_hdr.height + 15) & 0xfff0);
+        if (s_w[cur] > SCR_W || s_h[cur] > SCR_H) {
+            s_ready = -1;                   /* bigger than the screen / slices */
+            return;
+        }
     }
     if (s_hdr.sector_id >= BS_SECTORS || s_hdr.sector_count > BS_SECTORS) {
         s_ready = -1;                       /* does not fit our buffers      */

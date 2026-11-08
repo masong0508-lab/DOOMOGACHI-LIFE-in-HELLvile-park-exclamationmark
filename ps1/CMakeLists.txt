@@ -97,8 +97,14 @@ if(DOOMO_CORE AND DOOMO_PACK_FILE)
 	message(STATUS "doomogachi: content pack ${DOOMO_PACK_FILE} -> PACK.DMP")
 endif()
 
-# Boot FMV: INTRO.STR = the ident video as MDEC .STR + XA audio (psxavenc, 320x240 fit,
+# Boot FMV: INTRO.STR = the ident video as MDEC .STR + XA audio (psxavenc, 320x176,
 # 15 fps, 2x). Without psxavenc and without DOOMO_INTRO_STR the intro is left out.
+# The size is the 16:9 source fit to 320 wide, rounded to the MDEC's 16-pixel macroblocks
+# (320x180 -> 176), and -I is REQUIRED: without it psxavenc (82f3871) shrinks the frames
+# it scales to the source's aspect (16:9 at "-s 320x240" -> 320x192) while its MDEC encoder
+# still reads them as 320x240, so every frame came out as garbage (luma, chroma and the
+# next frame mixed: picture squashed into the top 96 rows over green bands). With -I the
+# scaler and the encoder use the same size.
 set(DOOMO_ISO_INTRO "")
 set(DOOMO_INTRO_ON OFF)
 set(DOOMO_INTRO_DEP "")
@@ -114,7 +120,7 @@ if(DOOMO_INTRO_FMV AND DOOMO_CORE AND NOT DOOMO_ENGINE_TEST)
 		set(DOOMO_INTRO_FILE ${CMAKE_CURRENT_BINARY_DIR}/INTRO.STR)
 		add_custom_command(
 			OUTPUT  ${DOOMO_INTRO_FILE}
-			COMMAND ${PSXAVENC} -t str -f 37800 -c 2 -b 4 -s 320x240 -r 15 -x 2 -q
+			COMMAND ${PSXAVENC} -t str -f 37800 -c 2 -b 4 -s 320x176 -I -r 15 -x 2 -q
 			        ${_intro_src} ${DOOMO_INTRO_FILE}
 			DEPENDS ${_intro_src}
 			COMMENT "Encoding the boot FMV (psxavenc -> INTRO.STR)"

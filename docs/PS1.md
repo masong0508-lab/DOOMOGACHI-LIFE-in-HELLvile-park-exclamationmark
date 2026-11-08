@@ -60,6 +60,31 @@ What the build does (`ps1/CMakeLists.txt`):
 * `mkpsxiso` builds `doomogachi.bin/.cue` from `iso.xml`: `SYSTEM.CNF`
   (`BOOT=cdrom:\DOOMO.EXE;1`, stack `801FFFF0`), `DOOMO.EXE`, `README.TXT`.
   No license sector data is included.
+* **Boot FMV** (`DOOMO_INTRO_FMV`, default ON; `src/fmv.c`): `psxavenc`
+  encodes `trailer/assets/dippinn_logo.mp4` into `INTRO.STR` (mixed-mode
+  `.STR`: MDEC v2 video + 37.8 kHz stereo XA, 15 fps, 2x) and the disc plays
+  it before the first game frame (START / Cross skip it; no `INTRO.STR`, or
+  no frame for 3 s, boots the game as before). Without `psxavenc` on `PATH`
+  the intro is left out with a warning (CI: `-DDOOMO_INTRO_REQUIRED=ON`
+  fails instead; `-DDOOMO_INTRO_STR=file` uses a ready-made one). Build
+  `psxavenc` like CI does (`.github/actions/setup-psxavenc`: meson + the
+  libav*/libsw* dev packages, commit `82f3871`).
+  - The encode is `-s 320x176 -I`, centred at y 32 with black bars. Do
+    not drop `-I` or go back to a 4:3 `-s`: that psxavenc scales the frames
+    to the SOURCE's aspect (16:9 at `-s 320x240` -> 320x192) but encodes
+    them as the `-s` size, so every frame comes out as garbage (the picture
+    squashed into the top 96 rows over two green bands; ffmpeg decodes the
+    same garbage on the host, so it is the stream, not the player). A new
+    source with another aspect needs `-s` = its fit to 320x240 rounded to
+    16 pixels.
+  - Checking it: `ffmpeg -f psxstr -i X.str` decodes a `-t strcd` encode
+    on the host; in PCSX-Redux a Lua `GPU::Vsync` listener that calls
+    `PCSX.GPU.takeScreenShot()` every 4 vsyncs captures the ident (the
+    harness's lockstep only starts at the game loop, after the intro).
+    Fixed (fut-fmv): mean PSNR against the source 39.8 dB (was 9.5 dB).
+  - Stream limits in `fmv.c`: at most 10 sectors (20,160 B) of bitstream
+    and 0x3000 words of MDEC codes per frame, frames at most 320x240; the
+    current encode peaks at 9 sectors / 13,820 B and 8,832 words.
 
 `cmake --build --preset ps1 --target harness` (or `--preset ps1-enginetest`)
 runs the headless test suite (section 10).
@@ -125,7 +150,7 @@ BIOS pad driver (port 1). Engine-test controls: section 11.
 | GTE | every 3D vertex: rotation, perspective (RTPT/RTPS), depth for the ordering tables |
 | GPU | 320x240 15-bit, double buffered, dithering on; TILE / SPRT / POLY_FT4 for 2D, POLY_GT4/GT3 for 3D |
 | SPU | 4 tone voices (chiptune music), 20 sample voices (sound effects) |
-| CD-ROM | boot only (the EXE is loaded once; no streaming) |
+| CD-ROM | the EXE, scene overlays (`OVL.BIN`), text / SFX / pack files; the boot FMV streams `INTRO.STR` (MDEC + XA) once |
 | memory card | saves, slot 1, BIOS `bu00:` file API |
 | root counter 1 | hblank counter for CPU timing (`perf:` numbers) |
 
