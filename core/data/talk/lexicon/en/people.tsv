@@ -65,7 +65,7 @@ tenant	.	0	.	.	.	quiet,messy,new	.
 fan	.	1	.	.	superfan	loud,loyal,excited	.
 hero	.	2	.	.	.	brave,heroic,famous	.
 villain	.	-2	.	.	baddie	evil,sneaky,dramatic	.
-newcomer	.	0	.	.	new kid,newbie	nervous,new,shy	.
+newcomer	.	0	.	.	newbie	nervous,new,shy	.
 gang	.	0	.	.	crew,squad	loud,wild,sketchy	.
 club	.	1	.	.	.	secret,fun,exclusive	.
 team	.	1	.	.	.	loyal,competitive,busy	.

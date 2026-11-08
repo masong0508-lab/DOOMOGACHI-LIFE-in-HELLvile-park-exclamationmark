@@ -309,3 +309,53 @@ TEST(talk_db_native_full_network)
     /* an unknown language has no file */
     CHECK_EQ(plat_talk_load("zz"), 0u);
 }
+
+/* Every word that names a child carries TCF_MINOR_WORD in the real file:
+ * the T4 gate's K-7 rule ("sexual + a minor word" ends the conversation)
+ * reads only the flag. The whole safety.minor leaf, every school.kid roster
+ * job (generated), and the core child words; talkc.py's check_minor_words
+ * refuses a build that drops one. And no association leads from
+ * adults-only talk to a child word. */
+TEST(talk_db_native_minor_words)
+{
+    static const char *const kids[] = {
+        "kid", "child", "baby", "teen", "toddler", "student", "imp student", "new kid", "schoolkid",
+        "underage", "minor", "preteen", "schoolgirl", "schoolboy", "little girl", "little boy",
+        "infant", "kindergartener", "young child"
+    };
+    TalkConcept c, b;
+    char buf[96], cat[32];
+    int i, j, k, n, leaf = 0, kidjobs = 0, found[sizeof kids / sizeof kids[0]] = { 0 };
+    uint16_t ids[8];
+    CHECK_EQ(talk_db_open(lang_find("en")), TALK_DB_OK);
+    n = talk_db_nconcepts();
+    for (i = 1; i <= n; i++) {
+        if (!talk_db_concept(i, &c)) continue;
+        CHECK(talk_db_form(i, TF_LEMMA, buf, sizeof buf) > 0);
+        CHECK(talk_db_cat_name(c.cat, cat, sizeof cat) > 0);
+        if (strcmp(cat, "safety.minor") == 0) {
+            leaf++;
+            CHECK_MSG(c.flags & TCF_MINOR_WORD, "safety.minor '%s' lacks TCF_MINOR_WORD", buf);
+        }
+        if (strcmp(cat, "school.kid") == 0 && (c.flags & TCF_GENERATED)) {
+            kidjobs++;
+            CHECK_MSG(c.flags & TCF_MINOR_WORD, "kid-only roster job '%s' lacks TCF_MINOR_WORD", buf);
+        }
+        for (k = 0; k < (int)(sizeof kids / sizeof kids[0]); k++)
+            if (strcmp(buf, kids[k]) == 0) {
+                found[k] = 1;
+                CHECK_MSG(c.flags & TCF_MINOR_WORD, "'%s' lacks TCF_MINOR_WORD", buf);
+            }
+        if (c.age == TAGE_ADULT) {
+            int m = talk_db_assoc(i, ids, NULL);
+            for (j = 0; j < m; j++)
+                CHECK_MSG(talk_db_concept(ids[j], &b) && !(b.flags & TCF_MINOR_WORD),
+                          "edge from adults-only '%s' into a minor word %d", buf, ids[j]);
+        }
+    }
+    CHECK(leaf >= 10);
+    CHECK(kidjobs >= 20);
+    for (k = 0; k < (int)(sizeof kids / sizeof kids[0]); k++)
+        CHECK_MSG(found[k], "'%s' is not a concept", kids[k]);
+    talk_db_close();
+}

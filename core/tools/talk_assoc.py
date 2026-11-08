@@ -25,7 +25,8 @@ scores come from:
 Hard rules, here and in talkc.py's check: no edge touches a describe.* or
 safety.* concept, and an edge INTO an adults-only concept comes only FROM
 an adults-only one (activation can never walk from "cider" talk in a
-kids' room to the pub). The second form is the reviewer's tool: it copies
+kids' room to the pub), and no edge leads from an adults-only concept to a
+word that names a child (TCF_MINOR_WORD). The second form is the reviewer's tool: it copies
 the top N of each suggestion line (hand edges always kept) into
 core/data/talk/assoc_<lang>.tsv, which is what ships. Review the file
 (delete or reweight lines) before committing it: talkc.py never reads the
@@ -97,6 +98,8 @@ def allowed(a, b):
         return False
     if adult(b) and not adult(a):
         return False
+    if adult(a) and b.fl & talkc.TCF["minor"]:
+        return False        # adults-only talk never leads to a child word
     return True
 
 

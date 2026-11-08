@@ -129,7 +129,8 @@ TEST(talk_contract_room_projection)
 static uint32_t lz(uint32_t raw) { return (raw * 129u + 127u) / 128u; }
 
 /* The 'TALK' chunk (docs/TALK.md 6.8): its tag, its declared worst case, and
- * the joint worst case with it on top of K0's (test_save_budget.c). */
+ * the joint worst case with it on top of K0's (K0's own is in
+ * test_save_budget.c; this one lives here). */
 TEST(talk_contract_save_chunk)
 {
     const DoomoSaveExt *e = doomo_save_ext_talk;

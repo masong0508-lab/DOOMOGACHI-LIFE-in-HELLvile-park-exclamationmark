@@ -53,7 +53,9 @@ enum {
     TA_FLIRT, TA_CONFESS, TA_ASK_OUT, TA_KISS,
     /* gestures */
     TA_WAVE, TA_NOD, TA_SHAKE_HEAD, TA_HUG, TA_GIVE, TA_WALK_AWAY,
-    TA_HIGH_FIVE,           /* what a hug toward a non-household child becomes (D10) */
+    TA_HIGH_FIVE,           /* an ordinary gesture. A hug stays a hug toward
+                             * any child (DECISIONS.md "TALK HUG"): wholesome
+                             * only, and the child may decline by familiarity */
     /* safety: what the gate names (input classes and its rewrites); never
      * an act a resident picks on its own */
     TA_REFUSE_SEXUAL, TA_REFUSE_MINOR, TA_REFUSE_HATE, TA_DISTRESS,

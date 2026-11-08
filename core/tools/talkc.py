@@ -691,7 +691,9 @@ def seed_rows():
         holders.setdefault(j, []).append(rid)
     for j in sorted(holders):
         kid = all(re.search(r"\b(KID|TEEN)\b", traits.get(r, "")) for r in holders[j])
-        add(j, "school.kid" if kid else "work.job", lower_name(j), "", "roster job x%d" % len(holders[j]))
+        # a kid-only job names a child: TCF_MINOR_WORD (K-7, check_concepts)
+        add(j, "school.kid" if kid else "work.job", lower_name(j), "minor" if kid else "",
+            "roster job x%d" % len(holders[j]))
     return rows
 
 
@@ -981,7 +983,8 @@ def is_adult(c):
 def check_edges(edges, by_key):
     """no edge touches a describe or safety concept or a never-generated one;
     an edge INTO an adults-only concept comes only FROM an adults-only one
-    (topic activation never walks from kid-safe talk to adult talk)"""
+    (topic activation never walks from kid-safe talk to adult talk), and
+    no edge leads from adults-only talk to a word that names a child"""
     out = []
     for k, es in sorted(edges.items()):
         a = by_key[k]
@@ -994,6 +997,8 @@ def check_edges(edges, by_key):
             else:
                 if is_adult(b) and not is_adult(a):
                     out.append("assoc: %s -> %s: an edge into an adults-only concept from one that is not" % (k, o))
+                if is_adult(a) and b.fl & TCF["minor"]:
+                    out.append("assoc: %s -> %s: an edge from an adults-only concept into a minor word" % (k, o))
     return out
 
 
@@ -1003,6 +1008,36 @@ def check_edges(edges, by_key):
 def surfaces(c):
     s = [c.lemma] + ([c.plural] if c.plural else []) + c.syn
     return s
+
+
+# Words that name a child must carry TCF_MINOR_WORD: the T4 gate's K-7 rule
+# ("sexual + a minor word" ends the conversation) reads only the flag. Every
+# concept in these leaves names a child; the generated school.kid rows are
+# the roster jobs only kids hold. MINOR_KEYS are the core child words kept
+# elsewhere in the lexicon.
+MINOR_LEAVES = ("safety.minor",)
+MINOR_KEYS = ("kid", "child", "baby", "teen", "toddler", "student", "imp_student", "schoolkid",
+              "little_kid", "new_kid", "high_schooler", "niece", "nephew", "son", "daughter")
+
+
+def check_minor_words(concepts, by_key):
+    problems = []
+    for c in concepts:
+        if c.fl & TCF["minor"]:
+            continue
+        if c.cat.key in MINOR_LEAVES:
+            problems.append("%s: %s is in %s but lacks the minor flag (TCF_MINOR_WORD, K-7)"
+                            % (c.where, c.key, c.cat.key))
+        elif c.generated and c.cat.key == "school.kid":
+            problems.append("%s: %s is a kid-only roster job but lacks the minor flag (TCF_MINOR_WORD, K-7)"
+                            % (c.where, c.key))
+    for k in MINOR_KEYS:
+        c = by_key.get(k)
+        if c is None:
+            problems.append("talkc MINOR_KEYS: %s is not a concept" % k)
+        elif not c.fl & TCF["minor"]:
+            problems.append("%s: %s names a child but lacks the minor flag (TCF_MINOR_WORD, K-7)" % (c.where, k))
+    return problems
 
 
 def check_concepts(concepts, by_key, codec, register_words):
@@ -1069,11 +1104,17 @@ def u32(v):
     return (v & 0xFFFFFFFF).to_bytes(4, "little")
 
 
+STREAM_MAX = 128     # talk_db.c bank_string()'s stream buffer (s[128])
+
+
 def txt_bank(strings, codec):
     streams = [codec.encode(s) for s in strings]
     for s, st in zip(strings, streams):
         if codec.decode(st) != s:
             raise Fail("codec round trip failed for %r" % s)
+        if len(st) > STREAM_MAX:
+            raise Fail("%r encodes to %d B: talk_db.c reads at most %d B of a string's stream"
+                       % (s, len(st), STREAM_MAX))
     nblocks = (len(strings) + (1 << BLOCK_SHIFT) - 1) >> BLOCK_SHIFT
     bases, offs, data = [], [], b""
     for i, st in enumerate(streams):
@@ -1274,7 +1315,8 @@ class Build:
         edge_problems = check_edges(self.edges, self.by_key)
         self.register = sr.load_register()
         self.problems = dups + edge_problems + check_concepts(self.concepts, self.by_key, self.codec,
-                                                               self.register)
+                                                               self.register) \
+            + check_minor_words(self.concepts, self.by_key)
 
     @staticmethod
     def gen_to_row(r):
@@ -1371,7 +1413,8 @@ def selftest():
     # the edge rules (talk_assoc.py proposes, this refuses)
     b = Build("en")
     for edges, want in (({"pie": [("booze", 5)]}, "adults-only"), ({"pie": [("sweet", 3)]}, "not a talkable"),
-                        ({"pie": [("sex", 3)]}, "not a talkable")):
+                        ({"pie": [("sex", 3)]}, "not a talkable"),
+                        ({"booze": [("kid", 3)]}, "into a minor word")):
         got = "\n".join(check_edges(edges, b.by_key))
         if want not in got:
             raise Fail("check_edges(%r): expected %r, got %r" % (edges, want, got))

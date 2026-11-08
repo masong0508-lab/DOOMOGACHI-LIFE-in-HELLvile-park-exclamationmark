@@ -3,7 +3,8 @@
 # at most 16). Proposed by core/tools/talk_assoc.py, accepted here by a reviewer:
 # talkc.py ships exactly these lines (top 8 per concept in ASSOC, all in EDGES).
 # Review: TK1 agent pass (top 8 kept, hand edges always; removed by hand: wedding->onion,
-# ghost->raise), owner pass pending. A re-accept loses hand removals: edit, do not regenerate.
+# ghost->raise; and by talkc's adult->minor lint: engagement_ring->ring_bearer,
+# pub->schoolkid), owner pass pending. A re-accept loses hand removals: edit, do not regenerate.
 abroad	moon_base:2 outer_space:2 city:2 another_dimension:2 countryside:2 void:2 heaven:2 underworld:2
 accordion	bagpipes:6 harmonica:6 cowbell:2 trombone:2 saxophone:2 flute:2 organ:2 banjo:2
 acquaintance	relative:4 cousin:4 small_talk:3 introduction:3 in_law:3 pen_pal:3 host:3 stepdad:3
@@ -854,7 +855,7 @@ encore	dance_party:4 mosh_pit:4 battle_of_the_bands:4 dance_move:2 drums:2 talen
 encyclopedia	quiz_show:5 stamp_collecting:5 lore_dump:4 space_opera:4 coin_collecting:3 geocaching:3 trivia:3 sudoku:3
 enemy	villain:4 nemesis:3
 energy_drink	love_letter:2 plush_stuffing:2 blueprint:2 skull_trinket:2 plush_toy:2 gear:2 flower:2 suitcase:2
-engagement_ring	ring:12 ring_bearer:4 nose_ring:4 fairy_ring:4 dating:4 hummingbird:3 toy_car:3 shell:3
+engagement_ring	ring:12 nose_ring:4 fairy_ring:4 dating:4 hummingbird:3 toy_car:3 shell:3
 epitaph	memorial:7 mourning:5 gratitude:5 condolences:5 sorry:3 apology:3 prayer:3 compliment:3
 escape_artist	bubble_artist:4 bouquet_artist:4 lollipop_artist:4 latte_artist:4 tattoo_artist:4 stencil_artist:4 sandwich_artist:4 muffin_artist:4
 escape_room	dining_room:4 staff_room:4 hidden_room:4 utility_room:4 spare_room:4 living_room:4 escape_artist:4 twenty_questions:3
@@ -2062,7 +2063,7 @@ property_ghoul	ghoul:12 ghoul_accountant:4 ghoul_landlord:4 cabaret_ghoul:4 junk
 prophecy	afterlife:2 hillvile:2 hahaland:2 training_tape:2 urban_legend:2 legend:2 purple_fog:2 wall:2
 proposal	butterflies_in_tummy:8 date:5 crush:5 first_date:5 kiss:4 talent_show:3 recital:3 school_play:3
 protein_demon	demon:12 doorman:4 survey_demon:4 demon_lord:4 ref_demon:4 fly_demon:4 demon_horn:4 very_hungry_demon:4
-pub	pub_crawl:8 hand:4 cinema:3 mouth:3 schoolkid:3 city:2 mall:2 fire_station:2
+pub	pub_crawl:8 hand:4 cinema:3 mouth:3 city:2 mall:2 fire_station:2
 pub_crawl	pub:12 bucket_list:4 adventure:3 amusement_park:3 party_animal:3 wind:3 panic:3 booze:2
 public_speaking	being_alone:2 church_bell:2 popping_balloons:2 holy_water:2 deep_water:2 tax_season:2 silence:2 dentist:2
 pudding	onigiri:2 sulfur_soda:2 burnt_toast:2 eyeball_jelly:2 omurice:2 blood_orange:2 popcorn:2 taco:2

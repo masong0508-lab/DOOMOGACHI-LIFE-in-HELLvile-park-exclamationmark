@@ -58,6 +58,7 @@ bubble	.	2	.	bubble/bubbles	.	floaty,shiny,fun	pl
 @cat school.kid
 schoolkid	.	1	.	.	pupil	loud,sticky,silly	minor
 little_kid	.	1	.	.	.	tiny,loud,cute	minor
+new_kid	.	0	.	.	.	nervous,new,shy	minor
 best_bud	.	2	.	.	.	loyal,silly,fun	minor
 piggyback	.	2	.	.	piggyback ride	bouncy,silly,fun	.
 naptime	.	1	.	.	nap time	quiet,sleepy,short	mass

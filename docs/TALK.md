@@ -33,7 +33,7 @@ Contents:
 | Package | What | State |
 |---|---|---|
 | **T0** | the contract: `talk.h`, `PLATF_TALK`, talk framing fields, `plat_room_project`, the `'TALK'` save chunk's tag and budget, `NT_TALK_*` news | **done** (TK1) |
-| **T1** | the word network (3,971 English concepts) and its compiler `talkc.py`, the association tool `talk_assoc.py`, the test fixture | **done** (TK1) |
+| **T1** | the word network (3,972 English concepts) and its compiler `talkc.py`, the association tool `talk_assoc.py`, the test fixture | **done** (TK1) |
 | **T2** | the database reader `talk_db.c` and the native file hook | **done** (TK1) |
 | T3 | the free-text parser (Dreamcast and native) | to do |
 | T4 | the safety gate (input classifier, audience gate, output lint, property tests) | to do: **must be green before any generated line can be reached in play** |
@@ -73,8 +73,8 @@ What T0-T2 already guarantee, with a test for each:
 | The register classes agree with `core/data/story/register.tsv`, both ways. A concept marked crude, strong or sexual must have a form the list matches with that class. A form the list matches must carry that class. Every register word has a concept, so the parser will know it | `talkc.py` (`check_concepts`) |
 | Sexual, hate, realworld and distress concepts, and everything in a `safety.*` leaf, are **never generated** (age class `never`). The capped swears (the f-word, the s-word, *bastard*, and the other strong words) are never generated either. Only the everyday adult swears are left: *damn*, *crap*, "what the hell". They are adults-only, and T5 caps them at one per conversation (K-9) | `talkc.py`; `test_talk_db.c` |
 | Romance words are adults-only (`romance.*` is a gated root) | `talkc.py`; the seeded bad file `bad_romance_any.tsv` |
-| Words that name a child carry `TCF_MINOR_WORD` (kid, child, baby, toddler, teen and others), ready for K-7: sexual input plus a minor word ends the conversation | the lexicon; `test_talk_db.c` |
-| **No association walks from kid-safe talk to adult talk.** An edge into an adults-only concept must come from an adults-only concept. No edge touches a describe, safety or never-generated concept. So topic spreading cannot carry "cider" talk in a kids' room over to the pub | `talkc.py` (`check_edges`); `talk_assoc.py`; `test_talk_db.c` |
+| Words that name a child carry `TCF_MINOR_WORD`, ready for K-7: sexual input plus a minor word ends the conversation. That is the whole `safety.minor` leaf (underage, preteen, schoolgirl, infant and the rest), every kid-only roster job in `school.kid` (student, imp student, toddler and the rest: the seed sets the flag), "new kid" (its own concept, not a synonym of newcomer) and the core child words (kid, child, baby, teen, son, daughter and others) | `talkc.py` (`check_minor_words`); the seeded bad file `bad_minor_unflagged.tsv`; `test_talk_db.c` (`talk_db_native_minor_words`) |
+| **No association walks from kid-safe talk to adult talk.** An edge into an adults-only concept must come from an adults-only concept. No edge touches a describe, safety or never-generated concept. So topic spreading cannot carry "cider" talk in a kids' room over to the pub. Nor does any edge lead from an adults-only concept to a word that names a child (two such edges, engagement ring to ring bearer and pub to schoolkid, were removed) | `talkc.py` (`check_edges`); `talk_assoc.py`; `test_talk_db.c` |
 | There are no slurs anywhere in the repository. The hate concepts are generic words. T4 stores slurs only as salted hashes (design section 7.6) | `safety.tsv` |
 | The built-in text register stays PG-21 and non-explicit. The NT_TALK_* headlines are kid-safe | `story-check` (`story_register.py`); `test_contracts_talk.c` |
 
@@ -88,7 +88,7 @@ package may connect the generator to anything the player can reach.**
 
 | Where | What |
 |---|---|
-| `core/include/doomo/talk.h` | `TA_*` discourse acts. Their ids are fixed (they are saved in talk memory), and `test_contracts_talk.c` locks them. There are 59 acts plus 5 gate classes, including `TA_HIGH_FIVE` (D10) and `TA_DEFLECT_ROMANCE`. Also: `TONE_*`; the `TS_*` input safety bits; `TalkUtter` (106 B: the one record every input path produces); `TalkAudience`; the talk memory sizes; the `TALK_<lang>.BIN` format; the `talk_db_*` reader API; `home_talk_enter()` |
+| `core/include/doomo/talk.h` | `TA_*` discourse acts. Their ids are fixed (they are saved in talk memory), and `test_contracts_talk.c` locks them. There are 59 acts plus 5 gate classes, including the gesture `TA_HIGH_FIVE` and the gate rewrite `TA_DEFLECT_ROMANCE`. Also: `TONE_*`; the `TS_*` input safety bits; `TalkUtter` (106 B: the one record every input path produces); `TalkAudience`; the talk memory sizes; the `TALK_<lang>.BIN` format; the `talk_db_*` reader API; `home_talk_enter()` |
 | `plat_ext.h` | `PLATF_TALK` (bit 9). `plat_talk_load(code)` returns the file size, 0, or `PLAT_TALK_LOADING` while the PS1 is still staging it. `plat_talk_read(off, dst, len)`. `plat_room_project(view, x, y, z, &sx, &sy)` |
 | `platform.h` | `DoomoRoomView.zoom == 2` is "talk framing", with `focus_x`, `focus_y` and `focus_r` (tile space, 16.16). Renderers that do not know zoom 2 treat it as the close-up (the PS1 already does, and `room_ref` ignores zoom) |
 | `save_ext.h`, `save_budget.h` | The `'TALK'` chunk: slot 13, weak NULL until T6, `SAVE_EXT_MAX_TALK` 320 B (292 B worst case). The joint worst case with it fits both slots: a post-game story save at its worst is 29,139 B, plus the 2,048 B margin is 31,187 B, under the 32,768 B gate (36 KB minus PA10's 4 KB); free play 68,945 B of 90,112 B |
@@ -176,9 +176,9 @@ What it checks, failing the build on any problem:
 * a byte-identical rebuild;
 * the codec round trip of every string.
 
-`--selftest` builds with each of the 10 seeded bad files in
+`--selftest` builds with each of the 11 seeded bad files in
 `core/tests/talk_bad/` (each must fail with the rule its first line names).
-It also checks three bad edges, the codec and the morphology.
+It also checks four bad edges, the codec and the morphology.
 
 ---------------------------------------------------------------------------
 
@@ -226,22 +226,22 @@ All figures are for `TALK_en.BIN` after the TK1 content (`talkc --stats`):
 
 | Bank | Stored | Raw | PS1 loads |
 |---|---:|---:|:-:|
-| CONCEPT (3,971 x 8 B) | 31,776 B | 31,776 B | yes |
-| ASSOC (top 8, 16 B a concept) | 63,552 B | 63,552 B | yes |
-| ATTR (9,334 attribute links) | 18,668 B | 18,668 B | yes |
-| FORMS (Huffman) | 52,907 B | 68,636 B | yes |
+| CONCEPT (3,972 x 8 B) | 31,784 B | 31,784 B | yes |
+| ASSOC (top 8, 16 B a concept) | 63,568 B | 63,568 B | yes |
+| ATTR (9,337 attribute links) | 18,674 B | 18,674 B | yes |
+| FORMS (Huffman) | 52,921 B | 68,653 B | yes |
 | CATS + CATNAMES | 1,944 B | 2,192 B | yes |
-| EDGES (21,256 reviewed edges) | 50,458 B | 50,458 B | no (Dreamcast, native) |
-| **Total file** | **219,610 B** | | **PS1: 168,847 B** of the 312 KB budget |
+| EDGES (21,254 reviewed edges) | 50,456 B | 50,456 B | no (Dreamcast, native) |
+| **Total file** | **219,672 B** | | **PS1: 168,891 B** of the 312 KB budget |
 
 Other measurements:
 
 * **Contents**:
-  * 3,971 concepts: 1,317 generated and 2,654 authored, 95 of the authored
+  * 3,972 concepts: 1,317 generated and 2,655 authored, 95 of the authored
     ones safety-only;
-  * 7,278 surface forms (lemmas, plurals, 684 synonyms);
-  * 9,334 attributes;
-  * 21,256 edges over 2,974 concepts.
+  * 7,279 surface forms (lemmas, plurals, 683 synonyms);
+  * 9,337 attributes;
+  * 21,254 edges over 2,974 concepts.
 * **The fixture** (`core/gen/talk_fixture.c`): the 49 concepts
   `fixture.txt` names plus the 89 attributes they use (138 concepts),
   7,300 B. Only the tests link it.
@@ -273,9 +273,32 @@ Other measurements:
 | The roster's 1,000 names seeded as concepts | **Not concepts**. The cast (17 roster characters) are concepts, and Sunny, Marvin and the Boreagotchi are authored | A name the player types becomes `PERSON(id)` at runtime (design 3.2). Custom residents' names cannot be in a static network, and 1,000 name rows would cost a quarter of the 12-bit id space |
 | `plat_room_project(x, y, z, &sx, &sy)` | It takes the view as its first argument | The weak default (room_ref's projection) needs the view. A GTE platform can ignore it |
 | `'TALK'` save tag | It is a **13th** registry slot (`SAVE_EXT_SLOTS` 13); K0 had said "never a 13th" | The design's D9 (recommended yes, and listed for T0): LIFE's spare bytes are used up, and the GBA never registers this chunk. `BudgetSnap` stays 36 B |
-| 58 acts plus 4 safety classes | 59 plus 5 | `TA_HIGH_FIVE` is the D10 default ("a hug toward a non-household child becomes a high five"). `TA_DEFLECT_ROMANCE` is the gate's rewrite in design 7.2 |
-| 4,000 concepts, about 16,000 surface forms, about 32,000 edges, about 200 safety concepts | 3,971; 7,278; 21,256; 95 | The surface-form figure counts inflections, which T3's parser derives. More edges and the hashed hate list come with T3 and T4 |
+| 58 acts plus 4 safety classes | 59 plus 5 | `TA_HIGH_FIVE` is an ordinary gesture the player can offer. It is **not** a conversion of a hug: the owner overrode the D10 high-five default ("TALK HUG", below). `TA_DEFLECT_ROMANCE` is the gate's rewrite in design 7.2 |
+| 4,000 concepts, about 16,000 surface forms, about 32,000 edges, about 200 safety concepts | 3,972; 7,279; 21,254; 95 | The surface-form figure counts inflections, which T3's parser derives. More edges and the hashed hate list come with T3 and T4 |
 | The paint names as colours | Paint names that are first of all things (Cherry, Honey, Forest, Bone and others) are left to the lexicon as nouns | One lemma, one concept |
+
+
+**Known risks (from the TK1 review; open):**
+
+* **Concept-id headroom.** 3,972 of the 4,095 12-bit ids are used and the
+  lock is append-only, so renames and removals burn ids. `gen_game.tsv`
+  seeds from other packages' data (furniture, items, roster jobs, clothes,
+  paints, places): a content package adding more than about 120 names, or a
+  rewrite renaming items, makes `make -C core gen` fail there ("over the
+  12-bit limit"). T4's planned safety concepts leave even less. Rethink id
+  assignment for generated rows (or widen the id) before T4.
+* **Cross-package coupling.** Every story-text change regenerates
+  `core/gen/talk_fixture.c`, and a new game name with a character the story
+  codec lacks fails `talk-check` in the package that added it.
+* **Word forms.** Some generated plurals and articles are wrong (already
+  plural names get a second plural, mood adjectives are treated as countable
+  nouns). Nothing prints them yet; fix in `plural_en` or with explicit forms
+  before T5.
+* **Associations** are an agent's acceptance only, with visible noise from
+  shared-word matching; the owner review is pending.
+* **`txt.c`**: besides the two added functions, `next_symbol()` gained a
+  per-bit limit compare that every `txt_get()` runs on the GBA and PS1
+  (negligible: the PS1 `perf_dialogue` harness passes).
 
 ---------------------------------------------------------------------------
 
@@ -294,7 +317,13 @@ owner may override any of them.
   joke, that encourages the player to talk to someone they trust. Then Talk
   continues calmly.
 * **A language without a Talk bank** falls back to English with a notice.
-* **A hug toward a non-household child** becomes a high five.
+* **A friendly hug toward a child stays a hug** (owner decision "TALK HUG",
+  2026-11-08, which overrides the design's D10 high-five default). This holds
+  for any child, household or not. It is a plain, wholesome hug only: the
+  child reacts in character and may decline, depending on how well they know
+  the player (familiarity). It is never romantic or suggestive, and every
+  other child-safety rule (K-4 romance gate, K-7 and the rest) stays exactly
+  as designed. `TA_HIGH_FIVE` is just another gesture.
 * **Dreamcast Talk waits** for DC3, DC4 and DC8, and for the owner's
   approval of the Flycast core build.
 

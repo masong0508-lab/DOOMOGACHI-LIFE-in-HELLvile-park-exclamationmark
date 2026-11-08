@@ -12,7 +12,7 @@ mascot	lore.thing	0	.	.	.	big,smiley,creepy	.
 fallen_angel	hellvile.demon	0	.	.	.	moody,dramatic,singed	.
 spoiler	hobbies.media	-2	.	.	spoilers	rude,sudden,annoying	.
 toddler	school.kid	.	.	.	.	tiny,loud,wobbly	minor
-student	school.kid	.	.	.	.	.	.
+student	school.kid	.	.	.	.	.	minor
 high_schooler	school.kid	.	.	.	.	moody,edgy,busy	minor
 edgy_teen	school.kid	.	.	.	.	edgy,moody,loud	minor
 emo_teen	school.kid	.	.	.	.	gloomy,moody,dramatic	minor

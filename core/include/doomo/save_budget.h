@@ -100,7 +100,7 @@ uint32_t save_budget_declared_max(uint32_t tag);
 /* --- T0 (docs/TALK.md 6.8): 'TALK', the talk memory: 4 B + 24 x 12 B =
  * 292 B worst (talk.h TALK_MEM_WORST), declared 320. PS1, DC and native
  * only (the GBA never registers it), but the joint worst case holds it in
- * both slots anyway (test_save_budget.c). save_budget_declared_max() knows
+ * both slots anyway (test_contracts_talk.c). save_budget_declared_max() knows
  * its tag too. --- */
 #define SAVE_EXT_MAX_TALK     320u
 #define SAVE_BUDGET_TALK_WORST (SAVE_BUDGET_LZ_WORST(SAVE_EXT_MAX_TALK) + SAVE_BUDGET_CHUNK_HDR)
