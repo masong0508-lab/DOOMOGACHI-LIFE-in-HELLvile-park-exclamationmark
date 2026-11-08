@@ -799,7 +799,7 @@ void ui_paint_picker_draw(int x, int y, uint8_t paint, int cols)
 #define TOAST_OUT 8
 static char toast_msg[TOAST_Q][56];
 static uint8_t toast_kd[TOAST_Q];       /* CL1: UI_TOAST_* of each queued line */
-static uint32_t toast_at[TOAST_Q];      /* CL1: the tick it was posted (a scene change keeps that tick's toasts) */
+static uint16_t toast_at[TOAST_Q];      /* CL1: the tick it was posted, low 16 bits (a scene change keeps that tick's toasts) */
 static int toast_n, toast_t;
 static uint8_t toast_gen;               /* changes when the line on screen is replaced (ui_toast_steady) */
 static uint8_t toast_held;              /* ui_toast_hold(): this frame's toast is already on the kept page */
@@ -814,7 +814,7 @@ static uint16_t toast_count[UI_TOAST_KINDS];    /* CL1: toasts shown per kind (t
 #define UL_NEWS_SETTLE 45
 #define UL_NEWS_GAP (30 * 40)
 #define UL_NEWS_FIRST (30 * 20)
-static char news_first[48];
+static char news_first[40];
 static uint8_t news_n, news_told;
 static uint16_t news_quiet, news_gap, news_age;
 
@@ -854,7 +854,7 @@ void ui_toast_kind(const char *msg, int kind)
     for (i = 0; i < 55 && msg[i]; i++) toast_msg[pos][i] = msg[i];
     toast_msg[pos][i] = 0;
     toast_kd[pos] = (uint8_t)kind;
-    toast_at[pos] = doomo_frame_count();
+    toast_at[pos] = (uint16_t)doomo_frame_count();
     if (pos == 0 && toast_n > 0) toast_gen++;
     toast_n++;
 }
@@ -903,7 +903,7 @@ static void toast_news_tick(void)
 
 void ui_toast_scene_change(int set)
 {
-    uint32_t now = doomo_frame_count();
+    uint16_t now = (uint16_t)doomo_frame_count();
     int i = 0;
     while (i < toast_n) {
         int k = toast_kd[i];

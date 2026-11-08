@@ -156,11 +156,14 @@ TEST(unlock_grant_names_the_kind)
  * over the objective pill or the clock row (C1, 1.4a / 1.4b). */
 TEST(story_toasts_never_cover_the_objective)
 {
-    int i, checked = 0;
+    int i, checked = 0, calm = 0;
     town_new(TOWN_STORY, 1234, TOWN_POP_PREMADE);
     sim_init();
     scene_set(&SCENE_STORY, STORY_ARG_CONTINUE);
-    for (i = 0; i < 400 && (scene_top() != &SCENE_STORY || story_talking()); i++) {
+    /* through the chapter card and the arrival until the overworld has been calm for two seconds */
+    for (i = 0; i < 2000 && calm < 60; i++) {
+        if (scene_top() == &SCENE_STORY && !story_talking()) { calm++; frames(1); continue; }
+        calm = 0;
         plat_begin_frame(); doomo_frame(scene_top() == &SCENE_CUTSCENE ? BTN_START : BTN_A); plat_end_frame();
         frames(4);
     }
@@ -179,5 +182,5 @@ TEST(story_toasts_never_cover_the_objective)
         CHECK_MSG(ow_ == 0 || tx + tw <= ox || tx >= ox + ow_ || ty + th <= oy || ty >= oy + oh,
                   "frame %d: toast (%d,%d %dx%d) over the objective (%d,%d %dx%d)", i, tx, ty, tw, th, ox, oy, ow_, oh);
     }
-    CHECK(checked > 100);
+    CHECK_MSG(checked > 100, "only %d frames checked (top %s, talking %d)", checked, scene_top() ? scene_top()->name : "-", story_talking());
 }

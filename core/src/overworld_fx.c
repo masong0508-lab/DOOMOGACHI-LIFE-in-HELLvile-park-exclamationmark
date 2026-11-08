@@ -551,7 +551,7 @@ static void draw_banner(int style, int band)
     ui_title(sw / 2, y, ow.banner, style);
 }
 
-static void draw_compass(void)
+static void draw_compass(int band)
 {
     int map, tx, ty, sx, sy, sw = plat_screen_w(), sh = plat_screen_h();
     int32_t wx, wy, dx, dy;
@@ -586,6 +586,8 @@ static void draw_compass(void)
         }
         ex += sw / 2;
         ey += sh / 2 + 4;
+        /* CL1: the bubble (radius 7, its pointer 3 more) stays under the HUD band, off the objective's text */
+        if (ey < band + 10) ey = band + 10;
         r = 6 + ui_wave((int)t, 30, 1);
         ui_fill_circle(ex, ey, 7, PAL_RAMP(RAMP_WOOD, 2));
         ui_fill_circle(ex, ey, 6, PAL_RAMP(RAMP_CANDY, 6));
@@ -624,7 +626,7 @@ void owfx_draw_hud(void)
     if (has) draw_objective(style, &g);
     draw_clock(style);
     draw_banner(style, band);
-    draw_compass();
+    draw_compass(band);
     draw_prompt(style);
     if (ow.minimap) {
         int s = plat_screen_h() >= 200 ? 2 : 1;
