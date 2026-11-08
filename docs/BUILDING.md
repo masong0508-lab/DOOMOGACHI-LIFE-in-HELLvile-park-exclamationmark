@@ -159,9 +159,11 @@ With it installed, `make dc` builds `dc/build/doomogachi.elf` and the
 self-booting `dc/build/doomogachi.cdi`, and `make dc-test` adds the ELF
 checks and, with the Flycast core, the harness scripts (boot, DC3's UI
 comparison, DC4's VMU saves and controls: `make -C dc vmu-test`, DC5's
-sound against the native runner's `--wav`: `make -C dc audio-test`).
-`make dc-host-test` needs no KallistiOS: the 2D layer, the VMU file
-system, icons and controls, and the sound mixer on the host
+sound against the native runner's `--wav`: `make -C dc audio-test`, DC7's
+overworld against the host's software PVR: `make -C dc ow-test`).
+`make dc-host-test` needs no KallistiOS: the 2D layer, the 3D batches and
+the overworld (DC7), the VMU file system, icons and controls, and the sound
+mixer on the host
 (`dc/tests/gfx2d`, `dc/tests/vmu`, `dc/tests/audio`; `python3` for
 `dc/harness/vmu_check.py`, `python3-numpy` for `dc/tests/audio/compare.py`).
 `dc/Makefile` sources `<prefix>/kos/environ.sh` itself, so no shell setup

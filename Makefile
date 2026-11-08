@@ -17,7 +17,8 @@
 #   make dc-test    the Dreamcast build + its ELF checks + the Flycast harness
 #                   scripts (when dc/harness is in the tree)
 #   make dc-host-test  the Dreamcast 2D layer on the host (host gcc only: unit
-#                   tests + the UI scripts against the native runner, dc/tests/gfx2d),
+#                   tests + the UI scripts against the native runner, dc/tests/gfx2d;
+#                   DC7's 3D batches and overworld through the software PVR, test_dc3d),
 #                   the VMU saves / controls (dc/tests/vmu) and the sound mixer
 #                   against musrender (dc/tests/audio)
 #   make trailer    trailer/build/trailer.mp4 (needs ffmpeg)

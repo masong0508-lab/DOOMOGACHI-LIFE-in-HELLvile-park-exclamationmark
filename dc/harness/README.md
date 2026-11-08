@@ -117,6 +117,10 @@ frames, and the log is what the core logs.
 | `scene NAME [ARG]` / `push NAME [ARG]` / `seed N` / `expect-flag F [V]` | mailbox commands |
 | `audio-reset` / `audio [LABEL]` / `expect-audio MIN [LABEL]` | peak-to-peak of the 16-bit output since `audio-reset` |
 | `expect-underruns MAX` / `expect-sfx MIN` / `audio-stats [LABEL]` | DC5: the game's sound underruns plus late AICA refills (mailbox `snd_underruns` + `snd_starved`) since `audio-reset` must be at most MAX / the sound effects it started (`snd_started`) at least MIN / print the game's sound counters (slots, ring, underruns, gaps, clips, effects, the content hash, the mixer's time per tick, the longest refill interval) |
+| `side M [S]` / `talk ID` / `cell X Y` | DC7: the native runner's story commands (mission M's state, talk to resident ID, step on a cell; mailbox 18-20) |
+| `skip-talk [MAX]` / `skip-to "TEXT" [MAX]` / `skip-to-scene NAME [MAX]` | DC7: press A (1 tick, then 10 released, as the native runner) until the conversation is over / the dialogue's top line contains TEXT / NAME is the top scene; fail after MAX presses (120 / 80 / 80) |
+| `expect-text "TEXT"` | DC7: the dialogue's top line contains TEXT (the first 19 characters are compared: the mailbox's `name`) |
+| `no-stubs` / `clock HH MM` | DC7: fail if a core stub logged `STUB:` so far / set the town clock |
 | `port N` | later button, stick and trigger commands act on port N (1-4) |
 | `device N pad\|keyboard\|mouse\|none` | plug a device into port N |
 | `stick X Y` | left stick, -128..127 |
@@ -144,6 +148,9 @@ worst one (`dcrun: work over 33333 us on K of N ticks; worst ...`), next
 to the 2D layer's high-water marks (prims and vertex bytes in one frame).
 The work is the game's own `timer_us_gettime64()` from the start of
 `plat_begin_frame` to the end of `plat_end_frame`'s submit, in emulated time.
+With 3D views (DC7) the run also ends with `dcrun: 3D views N built, build
+mean / max, polygons last / max, TA bytes max, polygons left out` (the
+mailbox's `g3d_*` words).
 
 ## The mailbox
 
@@ -167,3 +174,8 @@ GBA's (1-13; 14 and 15 are the GBA's house commands); 16 (`type`) and 17
 - `vmu-shot` reads Flycast's VMU overlay, which draws the LCD with the
   overlay's colours (pixel on: black, off: Flycast's default).
 - Mouse buttons are held for one tick per `mouse` command.
+- The pinned Flycast core sometimes crashes while it unloads after a script
+  has run (SIGILL from its DEBUGBREAK, exit status 132), seen with
+  story_ch1 and the Hellvile walks also on builds without DC7: the
+  script's verdict is the final `dcrun: ... N failures` line
+  (`dc/tests/overworld/run_flycast.sh` reads it that way).

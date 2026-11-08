@@ -20,6 +20,9 @@ project plan). This document grows with it. Right now it covers:
 6. Sound (DC5): the music (the engine's legacy bridge), the voice babble
    and the sound effects, rendered per logic tick by a software mixer and
    streamed to the AICA, checked against the native runner's `--wav`.
+7. The overworld in 3D (DC7): `plat_overworld` as PVR polygons inside the
+   2D layer's painter's order (the 3D batches of `dc3d.h`, which DC6 and
+   DC8 can use too), checked on Flycast against a software PVR on the host.
 
 The SH4 compile check that runs today, with no KallistiOS at all, is the
 `sh-elf-gcc` leg of `core/tools/xcheck.sh` (docs/BUILDING.md, "Tests").
@@ -323,7 +326,8 @@ The skeleton drew only `plat_clear()`'s colour; DC3 draws all of the 2D
 | retained panels, `plat_figure_obj`, the stage sprites | the core's weak defaults (draw every frame; cheap on the PVR) | - |
 | saves | **done** (`dc/src/vmusave.c`, section 5: the VMU, a static 136 KB scratch) | DC4 |
 | `plat_tone`, `plat_sample`, `plat_sample_ex`, `plat_music_stall` | **done** (`dc/src/audio.c`, `mixer.c`, `sfx.c`, section 6); the music engine stays on the core's weak legacy bridge tier | DC5 |
-| `plat_view3d`, `plat_overworld`, `plat_room` | no-ops / weak defaults | DC6, DC7, DC8 |
+| `plat_overworld` | **done** (`dc/src/overworld.c` over `dc3d.c` / `pvr3d.c`, section 7) | DC7 |
+| `plat_view3d`, `plat_room` | no-ops / weak defaults | DC6, DC8 |
 
 `make -C dc check-elf` lists the core's weak platform defaults still in the
 link, so each package can see what it has left.
@@ -337,7 +341,7 @@ compilers. The harness finds the `dc_mailbox` symbol in the ELF
 `dc/src/misc.c` also exports the plain name as an alias) and reads and
 writes it through libretro's `RETRO_MEMORY_SYSTEM_RAM` region at
 `address & 0xFFFFFF`. `check-elf` checks the size and the alias and prints
-the offset. It is 32-byte aligned and 4300 bytes:
+the offset. It is 32-byte aligned and 4332 bytes:
 
 | field | what |
 |---|---|
@@ -347,6 +351,7 @@ the offset. It is 32-byte aligned and 4300 bytes:
 | `gfx_prims` ... `gfx_tex_live` | DC3's 2D counters after each drawn frame (section 4, Counters) |
 | `test_flags` | DC4: `plat_test_flags()`; dcrun writes `PLAT_TEST_NO_PICKER` and (CL4) `PLAT_TEST_NO_TIPS` when it sees the magic (`--console`: 0; a script's `tips on` clears the tips bit) |
 | `snd_pushed` ... `snd_starved` | DC5's sound counters after each tick (section 6, Counters) |
+| `g3d_us` ... `g3d_dropped` | DC7's 3D view counters after each drawn frame (section 7, Counters) |
 
 The cable type and the boot time are log lines (`DC: video 640x480 VGA`,
 `DC: core up in N us`), not mailbox fields.
@@ -355,9 +360,12 @@ Log lines also go to `dbgio` (the serial port on hardware, the emulator's
 console). Harness commands (`dc/src/hcmd.c`) keep the GBA's ids and
 meaning: 1 save, 2 load, 3 exists, 4 town-fill, 5 town-crc, 6 verify,
 7 scene, 8 push, 9 seed (pins `plat_entropy`), 10 story flag, 11/12 the
-text probe (dcrun has no expect-text yet), 13 story fingerprint; the
+text probe (what `plat_text` draws), 13 story fingerprint; the
 Dreamcast adds 16 text feed (`type`) and 17 the native runner's start
-(`--native-seed`), DC3. Results follow the GBA: nonzero means success (dc_mailbox.h). The harness writes `arg`
+(`--native-seed`), DC3, and DC7 the native runner's story commands: 18
+`side`, 19 `talk`, 20 `cell`, 21 the story state (`skip-talk`), 22 "does the
+dialogue say" (`expect-text`, `skip-to`; the first 19 characters, the
+mailbox's `name`), 23 "is the top scene" (`skip-to-scene`), 24 `clock`. Results follow the GBA: nonzero means success (dc_mailbox.h). The harness writes `arg`
 (and `name`), then `cmd`; the game runs it between two logic ticks.
 `dc/tests/boot.txt` is the first harness script: boot, `scene: set BOOT`,
 `scene: set TITLE`, then 300 video frames (5 s) that must advance the tick count by
@@ -390,6 +398,9 @@ card's metadata (8.7 KB): code 1,723,248 B, `.bss` 2,897,492 B, image
 7,335,972 B (7.00 MB), 8.93 MB free above `_end`. With DC5 (2026-11-08): code 1,749,488 B,
 `.bss` 3,022,932 B (the PCM ring 94,080 B, the stream's copy buffer 12,288 B), image
 7,599,060 B (7.25 MB), 8.69 MB free above `_end`, of which the effects bank takes 95,656 B of heap.
+With DC7 (2026-11-08, on the tree with Talk T3/T4 and the clarity work): code 1,772,336 B,
+`.bss` 4,277,940 B (the three 3D batches 1.13 MB, the overworld's corner tables 17 KB),
+image 8,878,784 B (8.47 MB), 7.46 MB free above `_end`.
 The ELF file is 17 MB because of debug info; the scrambled `1ST_READ.BIN` is 4.4 MB.
 
 ### Disc image (`dc/tools/mkcdi.sh`)
@@ -460,8 +471,10 @@ order. `plat_end_frame()` sends the list to the PVR as ONE translucent
 list with autosort off (`pvr_init_params_t.autosort_disabled`), depth
 compare ALWAYS and no depth writes: the PVR then draws translucent
 polygons in submission order, which is exactly the painter's order of
-the core, shading and blending included. The opaque list stays enabled
-for the 3D packages (DC6-DC8), which the PVR draws first, under the 2D.
+the core, shading and blending included. The 3D views go into the same
+list at the point the core drew them (DC7, section 7: a marker prim and
+real depth among the view's own polygons); the opaque list stays enabled
+but nothing uses it.
 A prim goes as a **sprite** (one 32 B header that also holds the colour,
 then 64 B with 16-bit UVs) when its UVs survive the 16-bit truncation,
 else as a 4-vertex polygon (128 B). A header is only sent when the mode,
@@ -547,9 +560,10 @@ centres, the sprite UV truncation, each mode's blend, an RGB565 frame
 buffer without dithering, a 4 MB texture budget), and compared with the
 native frame, all four screen pixels of each logical pixel, in RGB565.
 `NAME_dc.png` (640x480) and `NAME_diff.png` (grey equal, yellow within
-16/255, red not) are written next to the shot. The 3D views (DC6, DC7)
-are stand-ins: the native renderer draws the view and its pixels go to
-the list as an image, so the 2D drawn over them is still compared.
+16/255, red not) are written next to the shot. The 3D views are
+stand-ins here: the native renderer draws the view and its pixels go to
+the list as an image, so the 2D drawn over them is still compared
+(`DC7_OW=dc` draws the Dreamcast's own overworld instead, section 7).
 `DC3_FX=sw` draws the post effects in software on both sides (the native
 runner does not do offset, scale and palette lerps, and blends with a
 checker), so every other pixel of those shots can be compared too.
@@ -1078,6 +1092,234 @@ the core makes no sound of its own.
   The Flycast runs are far from that (worst interval 45 ms, polls at most
   about 17 ms apart); on a console, reading the AICA's play position
   against the write position at each refill would count it exactly.
+
+## 7. The overworld in 3D (DC7)
+
+```sh
+make dc-host-test        # includes dc3d_test: the 3D batches and the overworld on the host
+make -C dc ow-test       # the overworld scripts on Flycast against the host's software PVR
+make -C dc test          # ... and everything else (ow-test is its last step)
+```
+
+`plat_overworld` draws the cutesy town as real terrain with a tilted
+third-person camera, the PS1's design (`ps1/src/overworld.c`) on the PVR
+with a depth buffer, in the native runner's colours. Files (`dc/src/`):
+
+| file | what | portable |
+|---|---|---|
+| `dc3d.h`, `dc3d.c` | 3D batches in the 2D list: segments, markers, camera, near-plane clipping, culling, the TA budget, `plat_hold_frame` copies | yes |
+| `overworld.c` | `plat_overworld`: terrain, blocks, sea, billboards, shadows, light, tints | yes |
+| `pvr3d.c` | the PVR backend of the batches: headers, strips, the shadows' blob texture | KOS only |
+
+DC6 (`plat_view3d`) and DC8 (`plat_room`) can draw through the same
+batches.
+
+### A 3D view inside the painter's order
+
+The 2D layer sends a frame as ONE translucent list in presort mode
+(section 4). A view is built into a SEGMENT of the frame's batch: polygons
+already projected to the 640x480 frame, z = 64 / camera depth (bigger is
+nearer). The 2D list gets a marker prim (`DC2D_VIEW3D`) where the core
+called the view, and `pvr2d.c` sends the segment there, in the same list:
+
+- whatever the core drew before the view is under it, whatever it draws
+  after (HUD, dialogue, fades, the pause menu) is on top, exactly as on
+  the native runner; `story_draw` needs no change;
+- inside the segment the depth is real: every polygon compares GEQUAL
+  (in presort mode the PVR honours a translucent polygon's depth compare
+  and depth write); the opaque terrain writes depth (in any order, so it is
+  grouped by texture: one header per texture), the billboards and shadows
+  that follow test against it without writing, back to front;
+- the 2D prims carry z = `DC2D_Z` = 0.001, just above the background plane
+  (0.0001) and under every 3D polygon (z >= 0.0064 out to 10,000 units).
+  They compare ALWAYS and their depth write is off, but Flycast writes the
+  2D sprites' depth anyway: at z 1.0 a backdrop drawn before the view hid
+  it completely (the first Flycast run was black where the host was right).
+
+The marker keeps the segment's viewport; the 2D post effects move or scale
+its rect like any prim (screen shake), and the backend maps every vertex
+from the built viewport to the rect. A full-screen exact shade (fades)
+copies the marker with the shade's fitted per-channel factor (`pal.c`), a
+palette lerp switches the view's textures to the lerp bank, and
+`plat_hold_frame` copies the shown frame's segments into a third batch
+that lives while the hold does (the pause menu's backdrop). A shade over
+part of a view is the MUL fallback (the frame times the factor): the exact
+path would paint the remapped background over the view. The pause menu
+dims the world around its window that way, so on the Dreamcast that dim is
+the fitted multiply (a little greyer than the native colormap's
+pinker darkening).
+
+A viewport smaller than the screen is not scissored: polygons crossing its
+edge draw past it (the story overworld and the credits always use the
+whole screen; the PVR's user clip is 32-pixel tiles, so a pixel-exact
+viewport would need the polygons clipped to it on the SH4).
+
+Budgets: three batches of 12,288 vertices and 4,096 polygons (1.13 MB of
+`.bss`), at most 8 segments a frame, and 576 KB of TA data per segment
+(of the 960 KB the frame may send), so the HUD after a view always fits;
+past either a view leaves its last polygons out and counts them.
+
+### The town
+
+- **Terrain**: open cells are floor quads at their floor height (doors and
+  lifts animated: `map_floor_z`); where a neighbour is lower, a terrace
+  face drops to it on the south, east and west sides (the camera looks
+  north). Blocks (houses, hedges, fences, trees, the Wall) are boxes with
+  a roof: `ceil_h` when above `floor_h`, else a default by wall texture;
+  walls are one quad each with the texture repeating up their height,
+  roofs use `floor_tex` (else roof tiles on building fronts). Beyond the
+  map a sea of water tiles surrounds the island. The world textures have
+  no transparent texels (checked: palette index 0 never occurs), so the
+  terrain is drawn opaque.
+- **What is drawn**: the rows the ground can show in (where the screen's
+  top and bottom rays meet the lowest and the highest floor, about 9 rows
+  north and 6 south of the focus), each row only as wide as the frustum
+  there; north and south of those only the blocks tall enough to rise into
+  view (the map's tallest block decides how far: the Wall is 320-480 units
+  and shows from 12 rows beyond). About 280-370 polygons a view.
+- **Camera**: the PS1's numbers: 58 degrees down, 1,100 units back from
+  the focus, tan(hfov/2) = 0.45; the focus `(cx, cy)` (a little above its
+  floor) is the screen's centre. No smoothing of its own: the core's
+  camera already glides, and the player stays where the core's overlays
+  (the iris, spawn markers) expect it.
+- **Billboards** (residents, the pet, the player, props): rectangles
+  parallel to the screen (they never lean at the screen's sides, which
+  upright quads in perspective did), the native runner's size: 3 world
+  units per texel at scale 256, about one screen texel per logical pixel
+  at the focus (the PS1 draws them at 2). Their depth is that of an
+  upright plane through the feet: each row of the rectangle gets the z
+  where its pixels' rays meet that plane, so a house in front hides a
+  resident's legs pixel by pixel and the wall just behind never cuts a
+  head. The rectangle is 4 strips (one strip of 10 vertices), so the
+  texture's perspective step between rows stays far below a texel. Heights
+  above the floor (jumps, emote bubbles) are lifted as the native runner
+  lifts them (z / 4 pixels). Drawn back to front (north first).
+- **Shadows**: a soft blob under the feet (on the floor, not under a
+  jump): one quad with a 32x32 ARGB4444 texture of its own (the palettes
+  are ARGB1555: no soft alpha), black at 44 % in the middle.
+- **Light**: a grid corner's colour is the average over the open cells
+  around it of each cell's light colour (lava, portals, water and exits
+  tint it) and brightness as the native runner sees it (light under 8
+  darkens a cell, about 6 % a step); a per-map cache, refreshed a row every
+  other tick. Daylight is the native runner's: daylight d picks colormap
+  level 5 + d * 10 / 15, here that level's fitted per-channel factor, and
+  before d = 8 the native runner's lean to blue (the night tintmap over
+  (8 - d) / 8 of the pixels) is that tint's fit at that strength. At night
+  a corner touching a lamp cell (light >= 13) adds a warm offset colour,
+  so a lamp lights a soft pool over its cell that fades across its
+  neighbours. The far rows fade toward the sky's horizon colour (45 % at
+  the top edge). The view tint (`TINT_*`, the invaded town's red pulse,
+  Hellvile's purple) is the native tintmap fitted per channel (c * a + b:
+  rms 11-18 per channel for the colour tints, the offset colour can only
+  add, and every fitted b is positive) at level / 16, applied to every
+  vertex. A per-frame corner cache holds each corner's light, fade and
+  tint once.
+- **Backdrop**: a 2D rect of the sky's horizon colour under the view (it
+  only shows past the sea).
+
+### Counters
+
+After each drawn frame the mailbox holds `g3d_us` (the last view's build
+time, microseconds), `g3d_us_max`, `g3d_us_sum` / `g3d_n` (the views
+built), `g3d_polys` / `g3d_polys_max` (polygons of a view) and
+`g3d_bytes_max` (TA bytes), `g3d_dropped` (polygons left out); `dcrun`
+prints them at the end of a run (`dcrun: 3D views ...`).
+
+### The host test
+
+`dc/tests/gfx2d/swpvr.c` rasterises the batches as `pvr3d.c` asks the PVR
+to: triangle strips in order, the depth buffer cleared to the background
+plane, GEQUAL, depth writes by the opaque mode, perspective-correct UVs and
+colours, texel x colour + offset, each mode's blend. `test_dc3d.c` (56
+checks, also under ASan/UBSan; part of `make dc-host-test`):
+
+| test | checks |
+|---|---|
+| camera | the focus projects to the screen's centre; north is farther and higher; east is right; up is nearer |
+| clip | a quad from behind the eye to in front is cut at the near plane, every vertex in front with a finite z; one wholly behind adds nothing |
+| cover | every pixel has terrain (the depth buffer is written everywhere) at four spots on each of HaHaland, the invaded town, Hellvile and Park United, by day and night (this found the Wall missing at the screen's corner before the rows past the ground's edges were added) |
+| order | a rect drawn before the view is under it, one after is on top |
+| depth | a billboard behind a 96-unit block is hidden at its feet, one in front of it shows |
+| shade | a full-screen shade multiplies the view by the fitted factor (within 12/255); a partial one over it is the multiply |
+| hold | the held view is the same picture after two more frames; a full shade over it copies it |
+| post | `plat_post_offset` moves the view's pixels with the other prims |
+| lerp, tint | the marker is on the lerp bank; the red tint pushes red minus green up by more than 20 |
+| repeat | the same view twice gives the same vertices, byte for byte |
+| budget | each map with 400 billboards with shadows: nothing dropped (the worst view: 1,088 polygons, 242 KB of the 576 KB) |
+
+`DC7_OW=dc` makes the host runner `dc/build/host/dc2d_runner` draw the
+Dreamcast overworld through the software PVR (`NAME_dc.png` beside each
+shot) instead of DC3's stand-in, for any runner script.
+
+### On Flycast (`make -C dc ow-test`)
+
+`dc/tests/overworld/run_flycast.sh` plays story_ch1, story_ch2,
+story_invasion, fp_island and side_sample_a (`core/tests/scripts`) and two
+walks around Hellvile, the busiest hub (`dc/tests/overworld/hellvile.txt`
+by day, `hellvile_night.txt` at 21:30), in dcrun on the CDI (tick-exact
+from the native runner's start), in the native runner (the top-down
+reference, for the contact sheets) and in the host runner with
+`DC7_OW=dc`. `compare3d.py` checks every Flycast shot with a 3D view
+against the host's picture of the same tick, in RGB565: at least 97 % of
+the pixels within 24/255 (both sides draw the same polygons; the PVR's and
+the rasteriser's edge rules and Gouraud rounding differ by a level or a
+pixel along edges). No polygon and no 2D prim may be dropped. `sheet.py`
+draws contact sheets (the Dreamcast beside the native top-down reference).
+Results in `dc/build/shots/ow/` with `summary.txt`.
+
+side_sample_a needed the native runner's story commands in dcrun (`side`,
+`talk`, `cell`, `skip-talk`, `skip-to`, `skip-to-scene`, `expect-text`,
+`no-stubs`; section 3, the mailbox), and the night walk `clock`. The
+pinned Flycast core sometimes crashes while it unloads, after the script
+has passed (SIGILL from its DEBUGBREAK, exit 132; the merge base's CDI
+does the same on story_ch1 and the Hellvile walk): the run script takes the
+script's own "0 failures" line as the verdict then and says so.
+
+Measured 2026-11-08 (Flycast `e7085e20`, the CDI; times in emulated SH4
+time, a guide until a console measures them):
+
+| script | 3D shots (Flycast vs host: worst close / exact) | views built | build mean / max | work per tick mean / worst | ticks over 33.3 ms |
+|---|---|---|---|---|---|
+| story_ch1 | 8 pass (98.3 % close, 93 % exact) | 667 | 3.7 / 16.3 ms | 7.3 / 28.1 ms | 0 of 1,160 |
+| story_ch2 | 3 pass (99.6 %) | 246 | 4.2 / 16.3 ms | 5.3 / 26.7 ms | 0 of 1,291 |
+| story_invasion | 2 pass (99.9 %) | 35 | 4.6 / 17.5 ms | 6.8 / 29.0 ms | 0 of 121 |
+| fp_island | none (the island hub is 2D) | 0 | - | 18.2 / 96.6 ms | 1 of 522 (making the island, DC3's known loading tick) |
+| side_sample_a | 17 pass (99.5 %) | 3,492 | 4.2 / 16.2 ms | 7.1 / 29.2 ms | 0 of 6,100 |
+| hellvile (day) | 6 pass (99.98 %) | 250 | 3.6 / 13.7 ms | 6.7 / 18.9 ms | 0 of 250 |
+| hellvile_night | 3 pass (99.98 %) | 135 | 3.8 / 13.7 ms | 7.0 / 18.9 ms | 0 of 135 |
+
+39 of 39 shots with a 3D view pass; the 2D-only shots of the same runs
+match the host exactly (100 % in RGB565). The busiest hub, Hellvile,
+holds 30 fps with room: 6.7 ms of work a tick on average, 18.9 ms at worst,
+of which the view takes 3.6 ms (about 290 polygons, 43 KB of TA data).
+A view's worst build (13-17 ms) is the first frame on a map (the corner
+cache and the world textures' upload). That first tick was 45-56 ms
+until DC7 made texture twiddling table-driven (`texcache.c`: about 2 ms a
+64x64 texture before); now no overworld tick of these scripts passes
+33.3 ms. Against the merge base (no 3D: the overworld drew nothing) the
+Hellvile walk's work went from 2.4 to 6.7 ms a tick on average.
+
+Contact sheets of the runs are in the package's evidence (story_ch1,
+Hellvile by day and at night): the town in perspective with the native
+runner's sprites and colours; the native reference shows more of the map
+(it is top-down at 16 pixels a cell), the Dreamcast about 9 rows north and
+6 south of the player at about 20.
+
+### Owed on hardware (DC7)
+
+- The view's build time and the frame on a real SH4 and PVR (Flycast's
+  timing is not exact; `dcrun: 3D views ...` has the numbers to compare).
+- That the PVR honours depth compare and depth write on translucent
+  polygons in presort mode as Flycast does (the design rests on it; if a
+  console ignores the write, the fallback is to sort the terrain back to
+  front, which the row order nearly is already), and whether a console
+  writes the 2D sprites' depth as Flycast does (`DC2D_Z` makes it harmless
+  either way).
+- The ARGB4444 non-twiddled blob texture with bilinear filtering, and the
+  offset colour (`specular`) on translucent polygons.
+- Fill rate: the terrain is drawn through the translucent list (about 1.5
+  times the screen with roofs and faces); the PVR's translucent path is
+  slower than its opaque one, unmeasured on a console.
 
 ## Rumble (X2)
 

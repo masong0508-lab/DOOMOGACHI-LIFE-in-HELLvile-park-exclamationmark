@@ -10,8 +10,11 @@ on the PVR (DC3: the 320x240 screen at 2x, matching the native runner
 pixel for pixel on the host test). The controller, analog stick and
 keyboard work, and saves go to the VMU (DC4). The music, the voice babble
 and the sound effects play through a software mixer and one AICA stream
-(DC5). There is no 3D yet: DC6-DC8 replace the placeholders in
-`src/plat_stub.c`.
+(DC5). The overworld is real 3D on the PVR (DC7: terrain, blocks,
+billboards with depth, the native runner's light and tints), drawn inside
+the 2D layer's painter's order through the 3D batches of `src/dc3d.h`.
+DC6 (the first-person view) and DC8 (the house) replace the last
+placeholders in `src/plat_stub.c`.
 
 ## Build
 
@@ -24,7 +27,8 @@ make -C dc test                        # ELF + CDI + check-elf + the 2D host tes
 make -C dc ui-compare                  # DC3: the six UI scripts on Flycast against the native runner
 make -C dc vmu-test                    # DC4: VMU saves, full / no VMU, first boot, stick + keyboard on Flycast
 make -C dc audio-test                  # DC5: title, invaded town, combat with sound on Flycast against runner --wav
-make dc-host-test                      # the 2D layer, the VMU file system and controls, the sound mixer on the host (no KOS needed)
+make -C dc ow-test                     # DC7: the overworld scripts on Flycast against the host's software PVR
+make dc-host-test                      # the 2D layer, the 3D batches and overworld, the VMU file system and controls, the sound mixer on the host (no KOS needed)
 make -C dc clean
 ```
 
@@ -41,6 +45,7 @@ are linked directly (never through an archive) with `--gc-sections`.
 | `build/1ST_READ.BIN`, `build/IP.BIN` | the scrambled binary and the bootstrap, for other disc formats |
 | `build/doomogachi-nodebug.elf` | the ELF without debug sections, for Flycast (it cannot open an ELF over 16 MiB) |
 | `build/shots/ui/` | `ui-compare`: Dreamcast and native shots, diff pictures, `summary.txt` |
+| `build/shots/ow/` | `ow-test`: per script the Flycast, native and host shots, logs, `compare.txt`; `summary.txt` |
 
 ## Run
 
@@ -69,7 +74,10 @@ Not yet tried on hardware.
 | `src/pvr2d.c` | the 2D layer's PVR backend: init, textures, palettes, submit |
 | `src/audio.c` | the sound (DC5): `plat_tone`, `plat_sample*`, the KOS stream and its thread, the mailbox counters |
 | `src/mixer.c`, `src/sfx.c`, `src/audio_int.h` | the software mixer and the effects bank (DC5), portable C: a slot of PCM per logic tick, copied out by the stream |
-| `src/plat_stub.c` | placeholders for the platform calls DC6-DC8 implement |
+| `src/dc3d.h`, `src/dc3d.c` | the 3D batches (DC7), portable C: projected polygons in the 2D list's painter's order, segments, markers, near clipping, the held batch |
+| `src/overworld.c` | `plat_overworld` (DC7), portable C: terrain, blocks, sea, billboards, shadows, light, tints |
+| `src/pvr3d.c` | the 3D batches' PVR backend: headers, strips, the shadows' blob texture |
+| `src/plat_stub.c` | placeholders for the platform calls DC6 and DC8 implement |
 | `src/dc_plat.h` | the internal interfaces, `DcMailbox` |
 | `ip.txt` | `makeip` input: original title and maker strings |
 | `tools/mkcdi.sh` | ELF -> 1ST_READ.BIN -> ISO with IP.BIN -> CDI |
@@ -78,4 +86,5 @@ Not yet tried on hardware.
 | `tests/boot.txt` | harness script: boot, BOOT -> TITLE, 30 ticks per second |
 | `tests/gfx2d/` | the 2D layer's host test: unit tests, the dual-render runner (`tee.c`), the software PVR (`swpvr.c`), `run_compare.sh` |
 | `tests/vmu/` | DC4: `test_vmu.c` (host: VMS, the file system on a simulated VMU pulled out at every write, icons, controls), the Flycast scripts and `run_flycast.sh` |
+| `tests/overworld/` | DC7: `run_flycast.sh` (the overworld scripts on Flycast, the native runner and the host's software PVR), `compare3d.py`, `sheet.py`, the Hellvile walks |
 | `tests/audio/` | DC5: `test_audio.c` (host: the mixer's units), `sndtee.c` + `run_compare.sh` (the mixer against musrender on runner scripts), `compare.py`, the Flycast scripts and `run_flycast.sh` |
