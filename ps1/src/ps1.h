@@ -109,6 +109,8 @@ extern uint16_t g_pal15[256];     /* palette -> VRAM 15-bit (STP set)     */
 
 void  gfx_init(void);
 void  gfx_begin(void);
+void  ps1_pslice_frame_end(uint32_t cpu_us);   /* pslice.c (SP2) */
+void  ps1_pslice_idle(uint32_t t_begin);
 void  gfx_end(void);
 void *gfx_alloc(size_t bytes);    /* prim memory in the current buffer, or NULL */
 extern uint8_t *g_prim_ptr, *g_prim_end;

@@ -652,6 +652,18 @@ the new list. The CPU builds frame N+1 while the GPU draws frame N. Game
 logic runs once per frame at 30 Hz; when a frame takes longer than two
 vblanks the game slows down (no frame skipping), like the native runner.
 
+**Portrait slices (SP2).** Between the frame's CPU work and `DrawSync`,
+`gfx_end` runs the portrait cache's sliced jobs (`ps1/src/pslice.c`:
+`portrait_idle_next` / `portrait_idle_run`) while the next slice's measured
+cost still ends inside the frame's two vblanks, and `plat_portrait_slice_ok`
+lets a slice into a frame only where the last frame's own CPU time leaves
+room for it (docs/PORTRAIT.md "Idle time and stand-ins"). With stand-ins
+(a new expression shows the old picture for up to 4 frames) this took the
+Redux dialogue scene from 24.1 to 29.7 fps, the exorcism from 23.8 to 30.0,
+the concert band from 28.8 to 29.9 and the town hall menu from 21.1 to 25.0
+(the rest there is the island's drawing, P-I1/P-I2). Cost: ~4 KB of the
+image and 156 B of RAM (72 KB left below the stack top, was 78 KB).
+
 ## 5. The 3D engine (`plat_view3d`)
 
 `view3d.c` turns the live `doomo_map` into real polygons every frame; the

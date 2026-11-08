@@ -537,6 +537,9 @@ void gfx_end(void)
     {
         uint32_t t1 = timer_us();
         g_perf.cpu_us = t1 - s_t_begin;
+        ps1_pslice_frame_end(g_perf.cpu_us);   /* SP2: portrait slices in the frame's */
+        ps1_pslice_idle(s_t_begin);            /* idle CPU time (pslice.c)          */
+        t1 = timer_us();
         DrawSync(0);            /* previous frame finished drawing */
         g_perf.sync_us = timer_us() - t1;
         g_perf.prim_bytes = (uint32_t)(s_ptr - f->prim);
