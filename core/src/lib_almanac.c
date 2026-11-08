@@ -523,6 +523,24 @@ static void page_bonds(int id, int x, int y, int w, int bottom, const UiStyle *s
     ui_text(x, bottom - FONT_LINE + 1, v, st->text_dim);
 }
 
+#if UI_PANELS
+/* (S2-8) the key of the page under the tabs: the citizen's whole record (every line of Profile and Likes, the
+ * locked page's name: job_of, bio_of, persona_type and the rest read only it and the id), the page, the scroll and
+ * the rect; the up arrow bobs inside the panel (by the last line of the stats above it), so its phase while it is
+ * up; the down arrow is in the panel's hole (detail) */
+static uint32_t sub_key(int id, int known, int x, int y, int w, int bottom)
+{
+    const uint8_t *b = (const uint8_t *)res(id);
+    uint32_t k = ui_key_int(ui_panel_key(), id | lib_b.sub << 12 | known << 14 | lib_big() << 15);
+    size_t i;
+    k = ui_key_int(k, x | y << 10 | w << 20);
+    k = ui_key_int(k, bottom | lib_b.scroll << 10 | lib_b.scroll_max << 20);
+    if (lib_b.scroll > 0 && lib_b.scroll_max > 0) k = ui_key_int(k, ui_wave((int)doomo_frame_count(), 24, 1));
+    for (i = 0; i < sizeof(DoomoResident); i++) k = (k ^ b[i]) * 16777619u;
+    return ui_key_int(k, playas_slot());
+}
+#endif
+
 static void detail(int sw, int sh)
 {
     int id = A.idx[lib_b.sel], hell = RES_DISTRICT(id);
@@ -577,16 +595,53 @@ static void detail(int sw, int sh)
     {
         static const char *const subs[3] = { "Profile", "Likes", "Bonds" };
         int ty = ry + 24, bottom = y + h - 6;
+#if UI_PANELS
+        int keep, hx = 0, hyb = 0;
+#endif
         ui_tabs(rx, ty, subs, 3, lib_b.sub, style);
         ty += 15;
-        if (lib_b.sub == 0) page_profile(id, rx, ty, rw, bottom, st);
-        else if (!known) {
-            lib_b.scroll_max = 0;
-            ui_text_big(rx + rw / 2 - 15, ty + 4, "???", 2, st->text_dim, st->fill_lo);
-            doomo_snprintf(buf, sizeof(buf), "Chat with %s to fill in this page!", r->name);
-            ui_text_wrap(rx, ty + 26, rw, buf, st->text, 1);
-        } else if (lib_b.sub == 1) page_likes(id, rx, ty, rw, bottom, st);
-        else page_bonds(id, rx, ty, rw, bottom, st);
+#if UI_PANELS
+        /* (S2-8) the Profile / Likes page (and the locked one) under the tabs is a retained panel: from the tabs'
+         * bottom to the window's lower band, on the window's still body (the tabs bob above it, the figure and its
+         * sparkle stay left of it). Bonds walks the town's ties: drawn every frame as before; so are the big
+         * screen's Profile and Likes, whose persona bars shine (ui_bar). The locked page ("???") is kept too. */
+        keep = lib_b.sub == 0 ? !big : (!known || (lib_b.sub == 1 && !big));
+        if (keep && lib_b.sub == 0) {
+            /* page_profile's bio block (small screen: 5 stat lines above it) and its down arrow's bob */
+            int ly = ty + 5 * FONT_LINE, lines = (bottom - ly - 2) / FONT_LINE;
+            if (lines > 0) {
+                hyb = ly + 2 + lines * FONT_LINE - 2;
+                hx = rx + rw - 5;
+            }
+        }
+        if (keep && lib_keep_ok() &&
+            !lib_keep_begin(rx - 1, ty, rw + 2, y + h - 3 - ty, sub_key(id, known, rx, ty, rw, bottom), x, y, w, h, style)) {
+            lib_keep_end();
+        } else
+#endif
+        {
+#if UI_PANELS
+            if (hx && keep && lib_keep_ok()) plat_panel_hole(hx, hyb - 1, 5, 5);
+#endif
+            if (lib_b.sub == 0) page_profile(id, rx, ty, rw, bottom, st);
+            else if (!known) {
+                lib_b.scroll_max = 0;
+                ui_text_big(rx + rw / 2 - 15, ty + 4, "???", 2, st->text_dim, st->fill_lo);
+                doomo_snprintf(buf, sizeof(buf), "Chat with %s to fill in this page!", r->name);
+                ui_text_wrap(rx, ty + 26, rw, buf, st->text, 1);
+            } else if (lib_b.sub == 1) page_likes(id, rx, ty, rw, bottom, st);
+            else page_bonds(id, rx, ty, rw, bottom, st);
+#if UI_PANELS
+            if (keep && lib_keep_ok()) lib_keep_end();
+#endif
+        }
+#if UI_PANELS
+        if (hx && keep && lib_keep_ok()) {
+            /* the hole, on every frame: the window under it, the bio's down arrow (lib_text_block's) */
+            ui_window_rows(x, y, w, h, style, hx, hx + 5, hyb - 1, hyb + 4);
+            if (lib_b.scroll < lib_b.scroll_max) ui_scroll_arrows(hx, 0, hyb, 0, 1);
+        }
+#endif
     }
     lib_detail_end(x, y, w, h, style);
 }

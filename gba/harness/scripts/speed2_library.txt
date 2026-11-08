@@ -159,12 +159,13 @@ fps library: gallery sky
 shot lib_gallery_sky
 
 # ---- the Field Guide (CL4) --------------------------------------------------------
+# (S2-8) the contents' preview text and the open page's text are retained panels (lib_help.c)
 seed 1
 scene LIB_HELP 0
 wait 30
 fps start
 wait 90
-fps library: field guide contents
+expect-fps 28 library: field guide contents
 shot lib_help_contents
 press A
 wait 20

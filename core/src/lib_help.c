@@ -278,22 +278,51 @@ static void row(int index, int x, int y, int w, int sel)
 }
 
 /* a text block from the composed page, `lines` tall; the open page (scroll = 1) is scrolled to
- * lib_b.scroll and sets lib_b.scroll_max, the preview shows the top */
-static void page_text(int x, int y, int w, int lines, uint8_t color, int scroll)
+ * lib_b.scroll and sets lib_b.scroll_max, the preview shows the top.
+ * (S2-8) The text is a retained panel: the window's (wx, wy, ww, wh: WIN_CREAM) still body from under the title
+ * rule to the scroll arrows' column (compose() holds one page: the key is the page, its language, the scroll and
+ * the rect). The bobbing arrows are drawn right of it on every frame, from the scroll as last drawn. */
+static void page_text(int x, int y, int w, int lines, uint8_t color, int scroll, int wx, int wy, int ww, int wh)
 {
-    int total = ui_text_wrap(0, 0, w, G.text, 0, 0), skip, n, top = 0, max = DOOMO_MAX(0, total - lines);
+    int skip, n, top = 0, max;
     char keep;
-    if (scroll) {
-        lib_b.scroll_max = (int16_t)max;
-        if (lib_b.scroll > lib_b.scroll_max) lib_b.scroll = lib_b.scroll_max;
-        top = lib_b.scroll;
+#if UI_PANELS
+    int kept = 0;
+    if (lib_keep_ok()) {
+        uint32_t k = ui_key_int(ui_panel_key(), lib_b.sel | scroll << 8 | lines << 9 | lib_big() << 16);
+        k = ui_key_int(k, x | y << 10 | w << 20);
+        k = ui_key_int(k, wx | wy << 10 | ww << 20);
+        k = ui_key_int(k, wh);
+        if (scroll) k = ui_key_int(k, lib_b.scroll | lib_b.scroll_max << 12);
+        kept = !lib_keep_begin(wx + 4, wy + 27, x + w + 1 - (wx + 4), wh - 30, k, wx, wy, ww, wh, WIN_CREAM);
     }
-    skip = ui_wrap_skip(G.text, w, top);
-    n = skip + ui_wrap_skip(G.text + skip, w, lines);
-    keep = G.text[n];
-    G.text[n] = 0;
-    ui_text_wrap(x, y, w, G.text + skip, color, 1);
-    G.text[n] = keep;
+    if (kept) {
+        top = scroll ? lib_b.scroll : 0;
+        max = scroll ? lib_b.scroll_max : G.pv_max;
+    } else
+#else
+    (void)wx; (void)wy; (void)ww; (void)wh;
+#endif
+    {
+        int total = ui_text_wrap(0, 0, w, G.text, 0, 0);
+        max = DOOMO_MAX(0, total - lines);
+        if (scroll) {
+            lib_b.scroll_max = (int16_t)max;
+            if (lib_b.scroll > lib_b.scroll_max) lib_b.scroll = lib_b.scroll_max;
+            top = lib_b.scroll;
+        } else {
+            G.pv_max = (uint8_t)DOOMO_MIN(max, 255);
+        }
+        skip = ui_wrap_skip(G.text, w, top);
+        n = skip + ui_wrap_skip(G.text + skip, w, lines);
+        keep = G.text[n];
+        G.text[n] = 0;
+        ui_text_wrap(x, y, w, G.text + skip, color, 1);
+        G.text[n] = keep;
+    }
+#if UI_PANELS
+    if (lib_keep_ok()) lib_keep_end();
+#endif
     if (max > 0)
         ui_scroll_arrows(x + w + 1, y - 5, y + lines * FONT_LINE - 2, top > 0, top < max);
 }
@@ -308,7 +337,7 @@ static void preview(int x, int y, int w, int h)
     ui_text_shadow(x + 28, y + 6, title_of(lib_b.sel), st->accent, st->fill_lo);
     ui_text(x + 28, y + 16, "A: read", st->text_dim);
     compose(lib_b.sel);
-    page_text(x + 6, y + 30, w - 14, (h - 36) / FONT_LINE, st->text, 0);
+    page_text(x + 6, y + 30, w - 14, (h - 36) / FONT_LINE, st->text, 0, x, y, w, h);
 }
 
 static void detail(int sw, int sh)
@@ -324,7 +353,7 @@ static void detail(int sw, int sh)
     ui_text(x + w - 8 - ui_text_width(num), y + 5, num, st->text_dim);
     plat_rect(x + 8, y + 25, w - 16, 1, st->fill_lo);
     compose(lib_b.sel);
-    page_text(x + 8, y + 30, w - 22, (h - 36) / FONT_LINE, st->text, 1);
+    page_text(x + 8, y + 30, w - 22, (h - 36) / FONT_LINE, st->text, 1, x, y, w, h);
     lib_detail_end(x, y, w, h, WIN_CREAM);
 }
 

@@ -94,6 +94,7 @@ typedef union LibWingData {
         char     text[1400];                  /* the open page, translated  */
         int16_t  page_for;                    /* page + 1 it holds (0 none) */
         int8_t   lang_for;                    /* ... in this language       */
+        uint8_t  pv_max;                      /* (S2-8) the preview's scroll max, as last drawn */
     } help;
 } LibWingData;
 #define LIB_SCRATCH_TAG SAVE_EXT_TAG('L', 'I', 'B', 'W')
@@ -193,6 +194,25 @@ void lib_detail_end(int x, int y, int w, int h, int style);
  * backdrop's drift in the dimmed strips round the page. */
 int  lib_detail_hold(int sig);
 void lib_detail_full(void);
+/* S2-8 (docs/GBA.md "Speed wave 2: S2-8"): a still text area of a page as a retained panel (platform.h
+ * plat_panel_begin, solid: the whole rect comes back from the shown page on a kept frame). The rect must lie on
+ * the body of a ui_window (wx, wy, ww, wh, style) the caller drew before it, inside ui_window_rows' bounds, the
+ * same on every frame (the panel draws those rows again as its body), and nothing that moves may be drawn in it
+ * (the key holds everything its pixels depend on, ui_panel_key() first). if (lib_keep_begin(...)) { draw it }
+ * lib_keep_end(); the panel is never begun while the page pops in or turns (lib_keep_ok). Weak default (the PS1):
+ * always drawn, no key built. PANEL_OW_OBJECTIVE's entry: the overworld's HUD is never up in the library. */
+#if UI_PANELS
+#define PANEL_LIB_TEXT PANEL_OW_OBJECTIVE
+static inline int lib_keep_ok(void) { return lib_b.detail ? lib_b.flip ? lib_b.dt >= 8 : lib_b.dt >= 12 : 1; }
+static inline int lib_keep_begin(int x, int y, int w, int h, uint32_t key, int wx, int wy, int ww, int wh, int style)
+{
+    if (!plat_panel_begin(PANEL_LIB_TEXT, x, y, w, h, key)) return 0;
+    plat_panel_solid();
+    ui_window_rows(wx, wy, ww, wh, style, x, x + w, y, y + h);   /* its body: the window's own pixels again */
+    return 1;
+}
+static inline void lib_keep_end(void) { plat_panel_end(); }
+#endif
 /* Text block clipped to `lines` lines starting at lib_b.scroll (sets
  * lib_b.scroll_max); draws scroll arrows at the right edge. */
 void lib_text_block(int x, int y, int w, int lines, const char *s, uint8_t color, int style);

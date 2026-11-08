@@ -15,6 +15,7 @@
 #include "doomo/tips.h"
 #include "../src/creator_int.h"
 #include "../src/combat_int.h"     /* SP8: combat_hurt_player */
+#include "doomo/library.h"         /* S2-8 */
 
 #define MAXF 420
 
@@ -212,6 +213,46 @@ static uint32_t p_unlocks(int f)
     return 0;
 }
 
+/* (S2-8) the Almanac's detail page (lib_almanac.c): Profile, Likes and the locked pages under the tabs as a
+ * panel. Opens a citizen, scrolls the bio (the arrows bob inside the panel), the face toggle (the figure is left of
+ * the panel), Likes, Bonds (not a panel), the next citizens (a page turn), and back to the list. */
+static void s_almanac(void)
+{
+    test_reset();
+    portrait_cache_reset();             /* the figures drawn from scratch on every run (no stand-in from the last) */
+    scene_set(&SCENE_LIB_ALMANAC, LIB_ARG_DEMO);
+}
+static uint32_t p_almanac(int f)
+{
+    static const uint16_t at[] = { 20, 60, 80, 120, 150, 190, 230, 270, 300, 340, 380 };
+    static const uint32_t b[] = { BTN_DOWN, BTN_A, BTN_DOWN, BTN_SELECT, BTN_R, BTN_R, BTN_RIGHT, BTN_L,
+                                  BTN_RIGHT, BTN_B, BTN_DOWN };
+    unsigned i;
+    for (i = 0; i < sizeof(at) / sizeof(at[0]); i++)
+        if (f == at[i]) return b[i];
+    return 0;
+}
+
+/* (S2-8) the Field Guide (lib_help.c): the contents' preview text and the open page's text as a panel. Down the
+ * contents, open a page, scroll it down and up, turn pages, close it */
+static void s_help(void)
+{
+    test_reset();
+    scene_set(&SCENE_LIB_HELP, 0);
+}
+static uint32_t p_help(int f)
+{
+    if (f >= 20 && f < 80 && f % 15 == 0) return BTN_DOWN;
+    if (f == 100) return BTN_A;
+    if (f >= 140 && f < 200 && f % 12 == 0) return BTN_DOWN;
+    if (f == 220) return BTN_UP;
+    if (f == 250 || f == 290) return BTN_RIGHT;
+    if (f == 330) return BTN_LEFT;
+    if (f == 370) return BTN_B;
+    if (f == 390) return BTN_DOWN;
+    return 0;
+}
+
 /* the language switch: Spanish from frame 120 on */
 static uint32_t p_visit_lang(int f)
 {
@@ -351,6 +392,16 @@ TEST(panel_combat_hud_is_pixel_identical)
 TEST(panel_unlocks_grid_is_pixel_identical)
 {
     CHECK(both("unlocks", s_unlocks, p_unlocks, 420, 150));
+}
+
+TEST(panel_almanac_page_is_pixel_identical)
+{
+    CHECK(both("almanac", s_almanac, p_almanac, 420, 150));
+}
+
+TEST(panel_field_guide_text_is_pixel_identical)
+{
+    CHECK(both("help", s_help, p_help, 420, 200));
 }
 
 TEST(panel_language_switch_redraws)
