@@ -423,6 +423,7 @@ against the LAST row, not against a figure from an older base.
 | 31 | SP7: the exorcism's kept backdrop and retained stage (`docs/EXORCISM_SPEED.md`) | `7729ada` | 3,540 B | **3,348 B** | -192 B | 6,356 B | `stage.c` (34 B: the pages' serials and overlay boxes), the altar's outline rects (100 B), `backdrop.c` / the scene's pass state (~58 B); the stage's records and the true-name cache (~1.5 KB) live in the exorcism's scene scratch. IWRAM resident unchanged (11,176 B); the overlay's room group 3,248 -> 3,588 B (`stage_rows`, the partial-row restore; the slot is sized by the 3D group). ROM 4,280,388 -> 6,593,468 B (+2,266,084: the 59 baked church backdrops, `build/gen/backdrops.bin`; the rest code). Exorcism frames identical to `7729ada` (`vhash-seq` of every phase) |
 | 32 | SP8: Combat detail (governor, held pace, catch-up ticks), HUD badges as panels, faster `r3d_up2`, ARM 64-bit helpers | `950c9bd` | 2,404 B | **2,332 B** | -72 B | 6,308 B | rebased onto the shared branch after rows 26-31: "after" measured on `950c9bd` + SP8 (2,332 B free, main stack 6,308 B, ROM 6,823,116 B), "before" is after + SP8's own -72 B / +12 B stack (the figures below were measured on `696ffa6` before the rebase). `.bss`: the resolution governor 12 B, the panel table +3 entries (+60 B: `PANEL_COMBAT_FACE/HEALTH/AMMO`; `panel.c`'s shown mask 16 bits). IWRAM: `__aeabi_lmul` and the 64-by-32 `__aeabi_ldivmod` path +124 B resident; `r3d_up2` (rewritten, +~80 B) moved from the resident section into the 3D overlay group, and `r3d_tint_pass` from the 3D group to `r3d.c` (ROM), so the slot is 10,384 -> 10,352 B and the main stack 6,356 -> **6,368 B**. The 3D group must stay at least 10,304 B (the 2D group's `ow_obj.c` tail, `BB_TAIL_BYTES` 1,712 B; the linker asserts it). resident 11,176 -> 11,196 B. Measured on `696ffa6` (row 25's tree) and that tree + SP8, built the same way. ROM 4,335,572 -> 4,336,900 B (+1,328) |
 | 33 | S2-1: the modal hold (`ui_modal_hold`, docs: "Speed wave 2: S2-1" below) | `6c1d937` | 2,332 B | **2,292 B** | -40 B | 6,308 B | measured on `6c1d937` + S2-1 (ROM 6,826,460 B): the hold's state in `ui.c` (key, state, window rect, the toast band's rows: ~24 B), the library's detail signature (8 B), the studio's held flag and the fair title's tier (1 B each); no IWRAM, no buffer (the two Mode 4 pages are the copy; a toast's band goes to `plat_strip`'s page gaps). PS1: compiled out (`ui.h`), resident and overlay slot byte-identical (66 KB below the stack top with the boot FMV, the same as without S2-1) |
+| 34 | S2-2: the 3D view held under a card (`viewhold.c`, docs: "Speed wave 2: S2-2" below) | `af4eef9` | 2,292 B | **2,268 B** | -24 B | 6,308 B | measured on `af4eef9` + S2-2: the held view's state in `viewhold.c` (key, rect, rows per area, options, shade level: 20 B) and the level select's held flag (1 B, padded); the copy itself lives in VRAM that a frame without a 3D view does not use (OBJ VRAM + the two Mode 4 page gaps), no EWRAM buffer; IWRAM resident and the main stack unchanged, the pack / unpack loops in the overlay's UI group (2,720 B, which the 3D group's 10,352 B slot holds). PS1: the hold is not built there (`combat_int.h`, `levels_select.c`), resident RAM 96 B smaller than `af4eef9` with the boot FMV (66 KB below the stack top): the column-window text cache (+192 B) paid for by `text_emit` at `-Os` (it runs on cache misses only) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -1018,6 +1019,72 @@ add-member wizard (a `ui_choice` box over the family screen: the dialogue overla
 Fishdex and the kitchen's book / result card (full animated scenes, not modals: S2-4); the house's own menus that
 repaint the room live (walls); combat cards (S2-2). The care reaction and the Unlocks gallery are not modals (S2-6,
 S2-7).
+
+### Speed wave 2: S2-2, the 3D view held under a card (2026-11-08)
+
+The speed audit 2's cause C2: the Hell Breach and arena intro cards, pause menus, results and death screens rendered
+the 3D view on every frame (~80 ms of the raycaster) for a picture that stands still behind the card (the world does
+not tick there), so they ran at 8.5-11 drawn fps with the logic at 15-19 ticks/s, and the level select rendered its
+orbiting preview every frame (15-19 fps).
+
+**How.** A platform hook, `plat_view_hold(op, key)` (`plat_ext.h`; weak default 0): `PLAT_VIEW_KEEP` right after
+`plat_view3d` keeps a copy of the picture under a key, `PLAT_VIEW_PUT` puts it back instead of rendering,
+`PLAT_VIEW_PUT_SHADED(level)` puts it back already darkened as a full-screen `plat_shade_rect` would (a card's dim).
+The core's `combat_view_draw(v, still, salt, shade)` (`core/src/combat_int.h`) hashes the view (camera, viewport,
+tint, texture clock, every billboard's position, image and flags) with the world's tick count and asks for a put
+whenever the scene says the world stands still; the HUD and the card are drawn over it on every frame as before.
+`gba/src/viewhold.c`: the raycaster draws 2-pixel columns (its planes and sprites too, and `r3d_up2` doubles the
+half-resolution view), so every halfword of the view holds one pixel twice: KEEP checks that (or keeps nothing) and
+packs one byte per halfword, 120 x 160 B, into VRAM a frame without a 3D view does not use: OBJ VRAM (the
+raycaster's texture cache, claimed as `OBJV_HOLD` so the raycaster refills it and `obj.c` keeps its OBJs off) and the
+two Mode 4 page gaps (the colormap rows, rebuilt). Any `plat_view3d`, `plat_overworld`, `plat_room` or
+`PLAT_STRIP_SAVE` drops the copy first; a skipped tick (SP8's catch-up ticks build no billboards) leaves it alone.
+PUT unpacks in an ARM loop of the IWRAM overlay's UI group (eight ALU steps a packed word: ~4 ms for the full
+screen); the first shaded put darkens the copy itself once, so a dimmed card costs the same.
+
+On top of the held view, S2-1's modal hold (`ui_modal_hold`) holds the whole frame where the card or menu has a
+window: `combat_modal_hold` / `combat_pause_hold` (`combat_int.h`) for the pause menus (`pause_menu_draw`'s window,
+`pause_menu_rect` in `ui.h`; the key changes with the camera, the HUD's weapon and the hint line), the Demon Arena's
+pause and results windows, and the Hell Breach intro card once everything on it is in (t >= 26: only the banner's
+band repaints, its title wave and sparkles stay inside it; `lvd_banner_band`). The kept page has no toast band
+(`ui_modal_no_band`: the page gaps hold part of the held view). Exact steps beside the holds: the card dims are
+`ui_dim_under_window_pop` (not under the window they pop: the same pixels, ~60% fewer shaded), the banner shades
+only its rim rows (the band paints the rest), and the control card flows its lines once a frame
+(`ccard_draw_above`), and big text wider than 255 px is cached in column windows (`ur_text_big`, below).
+
+The level select renders its preview once per level change (and on each step of the slide) and holds it; where the
+platform keeps the picture (the GBA) the preview's slow orbit stops (`pv_held`).
+
+**Pixel-changing, by the owner's speed defaults (held frames), GBA only.** The level select preview no longer
+orbits. While a view is held, translucent billboards (vape clouds, ghosts) keep the checkerboard phase of the frame
+that was kept instead of alternating every frame (`r3d.iwram.c`). While a pause menu, the arena results or the
+settled Hell Breach card is held, the HUD under the dim stands still (the face's blink, a blinking Time Trial or
+challenge badge) and so does the sliding glint along window borders outside the repainted window. Measured against
+`af4eef9` with `vhash-seq` (`opt 63 1` and `2` for a fixed Combat detail): the arena results match frame for frame;
+the other windows differ only in those held motions, in the resolution SP8's governor picks for the baseline's slow
+frames (half resolution there, the held view keeps the frame it kept) and in one loading-fade frame.
+
+**Measured** (libmgba, `make -C gba test-speed2 SPEED2=action`, on `af4eef9` + S2-2; drawn fps, logic ticks/s, work
+avg ms):
+
+| window | before (`7e55f1f`) | after |
+|---|---|---|
+| level select | 18.8 fps / 30.2 / 49.9 | **29.7** / 30.1 / 33.3 |
+| level select move (the slide: a render per step) | 15.0 / 30.0 / 55.9 | 16.9 / 30.8 / 46.2 |
+| level select after a level | 18.0 / 30.0 / 50.7 | **29.7** / 30.0 / 33.3 |
+| Hell Breach intro card | 10.2 / 18.3 / 94.5 | **30.0** / 30.0 / 7.2 |
+| Hell Breach pause menu | 8.8 / 15.9 / 103.6 | **30.0** / 30.2 / 14.5 |
+| Demon Arena intro card | 9.4 / 17.0 / 94.8 | **30.0** / 30.0 / 26.7 |
+| Demon Arena pause menu | 8.5 / 15.5 / 100.5 | **30.0** / 30.0 / 5.5 |
+| Demon Arena results | 8.6 / 15.0 / 106.5 | **30.0** / 30.0 / 11.1 |
+| Boss Rush intro card / results | 11.1 / 9.8 fps | **30.0** / **30.0** (28.1 / 29.0 ms) |
+| Horde intro card / results | 11.1 / 10.3 fps | **30.0** / **30.0** (28.8 / 29.7 ms) |
+| Monster Mayhem intro card | 10.3 / 17.1 / 86.4 | **30.0** / 30.0 / 30.4 |
+
+Floors: those windows close with `expect-fps 28` (the slide 15) in `speed2_action.txt`
+(`SPEED2_GATES=1` gates them). Still short: the level select's slide (a new level's map and a render per step, 0.3 s)
+and the level select itself at 33.3 ms average (2-3 frames of 50 ms in 4 s: its animated backdrop and UI, not the
+preview). The combat windows are SP8's (14-15 drawn fps, logic 30).
 
 ### Where the title's time goes (`make -C gba profile-title`)
 

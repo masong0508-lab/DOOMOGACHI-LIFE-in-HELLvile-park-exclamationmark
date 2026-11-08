@@ -3,7 +3,8 @@
 # intro card and pause menu, the Demon Arena and the arena modes (Boss Rush, Horde, Monster Mode
 # Mayhem: intro card, one fight window for reference, the give-up results card), the welding
 # workshop and the welding minigame (pushed in practice mode, arg 1). Args: core/src/levels_int.h.
-# Window rules: speed2_fair.txt.
+# Window rules: speed2_fair.txt. S2-2: the cards, pause menus, results and the level select carry expect-fps
+# floors (make -C gba test-speed2 SPEED2=action SPEED2_GATES=1).
 wait 40
 expect-log doomo: init
 sync on 61
@@ -16,13 +17,13 @@ push LEVEL_SELECT 0
 wait 40
 fps start
 wait 130
-fps action: level select
+expect-fps 28 action: level select
 shot act_level_select
 press RIGHT
 wait 2
 fps start
 wait 20
-fps action: level select move
+expect-fps 15 action: level select move
 shot act_level_select_move
 press LEFT
 wait 20
@@ -30,7 +31,7 @@ press A
 wait 40
 fps start
 wait 90
-fps action: breach intro card
+expect-fps 28 action: breach intro card
 shot act_breach_intro
 press A
 wait 46
@@ -42,14 +43,14 @@ press START
 wait 12
 fps start
 wait 90
-fps action: breach pause menu
+expect-fps 28 action: breach pause menu
 shot act_breach_pause
 press UP
 press A
 wait 40
 fps start
 wait 90
-fps action: level select after a level
+expect-fps 28 action: level select after a level
 shot act_level_select_back
 
 # ---- the Demon Arena (free play waves) -------------------------------------------------
@@ -60,7 +61,7 @@ push ARENA
 wait 30
 fps start
 wait 90
-fps action: arena intro card
+expect-fps 28 action: arena intro card
 shot act_arena_intro
 press A
 wait 90
@@ -72,7 +73,7 @@ press START
 wait 6
 fps start
 wait 60
-fps action: arena pause menu
+expect-fps 28 action: arena pause menu
 shot act_arena_pause
 press DOWN
 press DOWN
@@ -80,7 +81,7 @@ press A
 wait 70
 fps start
 wait 90
-fps action: arena results
+expect-fps 28 action: arena results
 shot act_arena_results
 
 # ---- arena modes: Boss Rush, Horde, Monster Mode Mayhem ------------------------------
@@ -91,7 +92,7 @@ push ARENA_MODE 0
 wait 30
 fps start
 wait 90
-fps action: boss rush intro card
+expect-fps 28 action: boss rush intro card
 shot act_rush_intro
 press A
 wait 100
@@ -106,7 +107,7 @@ press A
 wait 80
 fps start
 wait 90
-fps action: boss rush results
+expect-fps 28 action: boss rush results
 shot act_rush_results
 seed 1
 scene TITLE
@@ -115,7 +116,7 @@ push ARENA_MODE 1
 wait 30
 fps start
 wait 90
-fps action: horde intro card
+expect-fps 28 action: horde intro card
 shot act_horde_intro
 press A
 wait 60
@@ -126,7 +127,7 @@ press A
 wait 80
 fps start
 wait 90
-fps action: horde results
+expect-fps 28 action: horde results
 shot act_horde_results
 seed 1
 scene TITLE
@@ -135,7 +136,7 @@ push ARENA_MODE 2
 wait 30
 fps start
 wait 90
-fps action: mayhem intro card
+expect-fps 28 action: mayhem intro card
 shot act_mayhem_intro
 press A
 wait 200

@@ -1368,6 +1368,15 @@ that look like code addresses; `mipsel-linux-gnu-addr2line -f -e build/doomogach
 the Dodge hang this way: `memcpy` <- `hash_rebuild` <- `vram_image` <- `plat_image`, the image cache retrying forever.
 After the fix the whole `fair` group plays in one run (the Dodge title card 30.17 fps, play 30.12, no frame over 33 ms).
 
+**S2-2 (the action cards).** The one action window under 30 was the Hell Breach intro card (22.9 fps: 34 of 90 frames
+at 2 vsyncs, 55 at 3): `text_emit` 24% + its run emitter ~17%, because the banner's title at scale 3 is 273 px wide and
+a cached shape stores 8-bit x and widths, so it was rasterised again on every frame. `ur_text_big` now caches a block
+wider than 255 px as column windows of 255 px, each its own shape (the runs are only cut at the window edge: the same
+pixels), and the card holds 30.00 fps (2:88 3:1, the lockstep resume) like every other card, menu and results window
+of `speed2_action`. `text_emit` is compiled `-Os` on the PS1 (it runs on cache misses only), which pays for the windows'
+code: resident RAM 96 B smaller than before, 66 KB below the stack top with the boot FMV. The GBA's held 3D view
+(`plat_view_hold`) and S2-1's modal hold are not built here (`combat_int.h`, `levels_select.c`, `ui.h`).
+
 ## 13. Notes for the core
 
 * The 2D layer is fastest with few, large rectangles: one `plat_rect` per
