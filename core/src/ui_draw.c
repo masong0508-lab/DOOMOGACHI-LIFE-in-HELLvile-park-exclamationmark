@@ -279,6 +279,7 @@ static void seam_row(int y, int w, uint8_t c, int phase)
     plat_checker(phase & 1, y, w - (phase & 1), 1, c);
 }
 
+#if !defined(DOOMO_PLATFORM_PS1)
 /* A rect with holes cut out of it: the same pixels as plat_rect(x, y, w, h, c) outside every hole
  * (h[4 * i .. 4 * i + 3] = x0, y0, x1, y1: [x0, x1) x [y0, y1)), nothing inside (a hole is where a
  * later opaque window will cover the backdrop; x0 >= x1 = no hole). */
@@ -313,13 +314,39 @@ static int in_holes(int x, int y, int m, const int *hl, int n)
     return 0;
 }
 
+#define RECT_OUTSIDE(x, y, w, h, c) rect_outside((x), (y), (w), (h), (c), hl, n)
+#define IN_HOLE(x, y, m) in_holes((x), (y), (m), hl, n)
+
 /* ui_backdrop with holes: what lies wholly inside a hole is not drawn. The caller promises that
  * opaque windows drawn afterwards cover the holes, so the picture is the same pixel for pixel (MS-P2:
  * the studio's backdrop was 14 ms of every tab on the GBA, most of it under the content panel; CR9:
  * the creator's preview pane and list window). */
-#define IN_HOLE(x, y, m) in_holes((x), (y), (m), hl, n)
-
 void ui_backdrop_holes(int style, uint32_t t, const int *hl, int n)
+#else
+/* The PS1 keeps the one-hole code from before CR9 and takes the first hole of a list: its GPU fills
+ * the backdrop for next to nothing, and its resident RAM sits at the 72 KB plan gate (docs/PS1.md).
+ * The same pixels either way (the body below is shared). */
+static void rect_outside(int x, int y, int w, int h, uint8_t c, int hx0, int hy0, int hx1, int hy1)
+{
+    int x1 = x + w, y1 = y + h;
+    if (hx0 >= hx1 || hy0 >= hy1 || hx0 >= x1 || hx1 <= x || hy0 >= y1 || hy1 <= y) {
+        plat_rect(x, y, w, h, c);
+        return;
+    }
+    if (hy0 > y) plat_rect(x, y, w, hy0 - y, c);                       /* above the hole */
+    if (hy1 < y1) plat_rect(x, hy1, w, y1 - hy1, c);                   /* below it */
+    {
+        int ya = DOOMO_MAX(y, hy0), yb = DOOMO_MIN(y1, hy1);           /* beside it */
+        if (hx0 > x) plat_rect(x, ya, hx0 - x, yb - ya, c);
+        if (hx1 < x1) plat_rect(hx1, ya, x1 - hx1, yb - ya, c);
+    }
+}
+
+#define RECT_OUTSIDE(x, y, w, h, c) rect_outside((x), (y), (w), (h), (c), hx0, hy0, hx1, hy1)
+#define IN_HOLE(x, y, m) ((x) - (m) >= hx0 && (x) + (m) <= hx1 && (y) - (m) >= hy0 && (y) + (m) <= hy1)
+
+void ui_backdrop_hole(int style, uint32_t t, int hx0, int hy0, int hx1, int hy1)
+#endif
 {
     Backdrop b;
     int w = plat_screen_w(), h = plat_screen_h();
@@ -327,9 +354,9 @@ void ui_backdrop_holes(int style, uint32_t t, const int *hl, int n)
     int cell = 24, off;
     if (plat_draw_skipped()) return;
     backdrop_colors(style, &b);
-    rect_outside(0, 0, w, b1, b.top, hl, n);
-    rect_outside(0, b1, w, b2 - b1, b.mid, hl, n);
-    rect_outside(0, b2, w, h - b2, b.bot, hl, n);
+    RECT_OUTSIDE(0, 0, w, b1, b.top);
+    RECT_OUTSIDE(0, b1, w, b2 - b1, b.mid);
+    RECT_OUTSIDE(0, b2, w, h - b2, b.bot);
     seam_row(b1 - 1, w, b.mid, 0);
     seam_row(b1, w, b.top, 1);
     seam_row(b2 - 1, w, b.bot, 0);
@@ -370,6 +397,7 @@ void ui_backdrop_holes(int style, uint32_t t, const int *hl, int n)
     }
 }
 
+#if !defined(DOOMO_PLATFORM_PS1)
 void ui_backdrop_hole(int style, uint32_t t, int hx0, int hy0, int hx1, int hy1)
 {
     int hl[4];
@@ -379,5 +407,19 @@ void ui_backdrop_hole(int style, uint32_t t, int hx0, int hy0, int hx1, int hy1)
 
 void ui_backdrop(int style, uint32_t t)
 {
+    ui_backdrop_holes(style, t, NULL, 0);
+}
+#else
+void ui_backdrop_holes(int style, uint32_t t, const int *hl, int n)
+{
+    if (n > 0) ui_backdrop_hole(style, t, hl[0], hl[1], hl[2], hl[3]);
+    else ui_backdrop_hole(style, t, 0, 0, 0, 0);
+}
+
+void ui_backdrop(int style, uint32_t t)
+{
     ui_backdrop_hole(style, t, 0, 0, 0, 0);
 }
+#endif
+#undef RECT_OUTSIDE
+#undef IN_HOLE

@@ -21,7 +21,7 @@
 #include "doomo/part_meta.h"
 
 CrState *cr_sp;                         /* the scene scratch (creator_int.h) */
-#if !defined(DOOMO_PLATFORM_GBA)
+#if !defined(DOOMO_PLATFORM_GBA) && !defined(DOOMO_PLATFORM_PS1)
 uint8_t cr_calm = 0;                    /* CR9: CR_CALM (creator_int.h; always 1 on the GBA) */
 #endif
 static void set_show(int show);

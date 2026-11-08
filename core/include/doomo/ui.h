@@ -181,7 +181,7 @@ void ui_sparkle(int cx, int cy, int phase, uint8_t c);
 void ui_backdrop(int style, uint32_t t);
 /* the same with a hole an opaque window will cover afterwards: nothing wholly inside it is drawn (hx0 >= hx1: none) */
 void ui_backdrop_hole(int style, uint32_t t, int hx0, int hy0, int hx1, int hy1);
-/* ... with n holes (holes[4 * i ..]: x0, y0, x1, y1 each) */
+/* ... with n holes (holes[4 * i ..]: x0, y0, x1, y1 each; the PS1 cuts only the first: same pixels) */
 void ui_backdrop_holes(int style, uint32_t t, const int *holes, int n);
 
 /* ---- text extras ------------------------------------------------------- */

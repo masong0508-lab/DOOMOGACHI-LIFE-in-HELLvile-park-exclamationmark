@@ -997,15 +997,23 @@ const char *cr_row_help(const CrRow *row)
         return "What friends call them (optional)";
     case RK_DISTRICT:
         return "Which side of the park they live on";
-    case RK_ACTION:
+    case RK_ACTION: {
+        /* named arrays, not literals: gcc turns this switch into a table, and a table's literals
+         * would sit in the PS1's resident .rodata.str1.4 instead of the creator's overlay */
+        static const char h_look[] = STR_ICON_ARROW_L STR_ICON_ARROW_R " try a ready-made look, " STR_ICON_A " keep it";
+        static const char h_outfit[] = STR_ICON_ARROW_L STR_ICON_ARROW_R " try a whole outfit, " STR_ICON_A " keep it";
+        static const char h_voice[] = STR_ICON_ARROW_L STR_ICON_ARROW_R " try a voice, " STR_ICON_A " keep it";
+        static const char h_test[] = STR_ICON_A " hear their catchphrase";
+        static const char h_fur[] = STR_ICON_A " hair takes the fur colour";
         switch (row->aux) {
-        case CA_SPECIES_PRESET: return STR_ICON_ARROW_L STR_ICON_ARROW_R " try a ready-made look, " STR_ICON_A " keep it";
-        case CA_OUTFIT_PRESET:  return STR_ICON_ARROW_L STR_ICON_ARROW_R " try a whole outfit, " STR_ICON_A " keep it";
-        case CA_VOICE_PRESET:   return STR_ICON_ARROW_L STR_ICON_ARROW_R " try a voice, " STR_ICON_A " keep it";
-        case CA_TEST_VOICE:     return STR_ICON_A " hear their catchphrase";
-        case CA_MATCH_FUR:      return STR_ICON_A " hair takes the fur colour";
+        case CA_SPECIES_PRESET: return h_look;
+        case CA_OUTFIT_PRESET:  return h_outfit;
+        case CA_VOICE_PRESET:   return h_voice;
+        case CA_TEST_VOICE:     return h_test;
+        case CA_MATCH_FUR:      return h_fur;
         default: return "";
         }
+    }
     default:
         return "";
     }

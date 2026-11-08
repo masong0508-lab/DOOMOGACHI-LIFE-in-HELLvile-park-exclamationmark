@@ -316,8 +316,11 @@ static void draw_tabs(void)
     int still = CR_CALM && cr.tab_t >= 6, key;
     hx0 = DOOMO_MAX(hx0, lx);
     hx1 = DOOMO_MIN(hx1, rx + 12);
-    key = ui_key_int(ui_key_int(ui_key_int(ui_panel_key(), list_style()), cr.tab), crl.big | still << 1);
-    if (still) key = ui_key_int(key, (int)cr.tab_t < 6 ? (int)cr.tab_t : 6);
+    key = 0;
+    if (panel) {                                        /* (no keys where there are no panels: the PS1) */
+        key = ui_key_int(ui_key_int(ui_key_int(ui_panel_key(), list_style()), cr.tab), crl.big | still << 1);
+        if (still) key = ui_key_int(key, (int)cr.tab_t < 6 ? (int)cr.tab_t : 6);
+    }
     if (!panel || plat_panel_begin(PANEL_CR_TABS, 0, 0, crl.sw, pb, key)) {
         if (panel && CR_CALM) plat_panel_solid();       /* CR9: a still backdrop */
         tab_shelf(0, crl.sw, pb, st);
@@ -1745,7 +1748,7 @@ void cr_draw(void)
     if (!scene_scratch_mine(CR_SCRATCH_TAG)) { plat_clear(PAL_UI_PINK); return; }
     cr_layout();
     if (cr.phase == CRP_MOVEIN) { draw_movein(); return; }
-    ui_glint_hold(CR_CALM);                     /* CR9 (GBA): still windows, so the panels are kept */
+    if (UI_PANELS) ui_glint_hold(CR_CALM);      /* CR9 (GBA): still windows, so the panels are kept */
     /* CR9: the list window (and every picker over it) and the preview pane are opaque inside their
      * rounded corners: no backdrop under them; on the GBA (CR_CALM) the backdrop stands still */
     {
@@ -1774,7 +1777,7 @@ void cr_draw(void)
      * them, which is fine) */
     if (cr.phase != CRP_HERO) draw_tabs();
     if (cr.phase == CRP_MENU) draw_menu();
-    ui_glint_hold(0);
+    if (UI_PANELS) ui_glint_hold(0);
     /* CR9 (GBA): a new look being drawn in slices gets what is left of this tick (one layer group a
      * tick while a direction is held: the list keeps up, the figure catches up when it rests) */
     if (CR_CALM && !btn_down(BTN_UP | BTN_DOWN | BTN_LEFT | BTN_RIGHT)) portrait_pump(16);

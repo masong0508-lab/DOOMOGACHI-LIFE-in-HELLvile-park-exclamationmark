@@ -121,9 +121,12 @@ enum { CM_DONE, CM_RANDOM, CM_UNDO, CM_REDO, CM_COPY,
  * expression is drawn in slices while the old one stays up), a new look or camera is drawn in slices
  * while the last one stays up (cr.disp / cr.pend), the stage's wallpaper, motes and backdrop stand
  * still and the preview pane is a retained panel. Elsewhere it animates as before. A variable so
- * the host tests can run the GBA's way too (test_panel.c); 1 on the GBA, 0 elsewhere. */
+ * the host tests can run the GBA's way too (test_panel.c); 1 on the GBA, 0 elsewhere (a constant 0
+ * on the PS1, so none of it is built there: its resident RAM sits at the 72 KB plan gate). */
 #if defined(DOOMO_PLATFORM_GBA)
 #define CR_CALM 1
+#elif defined(DOOMO_PLATFORM_PS1)
+#define CR_CALM 0
 #else
 extern uint8_t cr_calm;
 #define CR_CALM (cr_calm != 0)

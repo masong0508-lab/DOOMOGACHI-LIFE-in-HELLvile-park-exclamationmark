@@ -143,7 +143,7 @@ static int glint_held(void);  /* ui_glint_hold() (its byte lives with the toast'
 int ui_window_glint(int x, int y, int w, int h)
 {
     int r = (w >= 24 && h >= 20) ? 4 : 2, span, pos;
-    if (w < 6 || h < 6 || !opt_get(OPT_UI_BOUNCE) || w <= 24 || glint_held()) return -1;
+    if (w < 6 || h < 6 || !opt_get(OPT_UI_BOUNCE) || w <= 24 || (UI_PANELS && glint_held())) return -1;
     span = w - 2 * r - 8;
     pos = (frame_t() * 4 + x * 13 + y * 7) % (span + 240);
     return pos < span ? pos : -1;

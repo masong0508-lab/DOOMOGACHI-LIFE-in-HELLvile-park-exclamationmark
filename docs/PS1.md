@@ -306,7 +306,17 @@ a second `BORROW_GROUPS` member: it loads at `__ovl_borrow` over the same borrow
 tables, `view3d`'s lists, the combat bot's search, the card block buffer), so the 150 KB group needs
 99,828 B of slot and the slot stays the house's. Nothing of the creator draws a 3D view, syncs the
 world or does card I/O; a scene under it that does rebuilds what it overwrote (`ovl_borrow_take`).
-Measured: `_end` 0x801ed1d0, 11,824 B above the reserve (CL6's tree before it: 12,240 B).
+Measured on `7729ada`: `_end` 0x801ed1d0, 11,824 B above the reserve (CL6's tree before it: 12,240 B).
+Landed on `5bb55e7`, whose own disc ends at `0x801edfa0` (73,824 B below the stack top, 96 B above
+the 72 KB plan gate), CRB first cost 832 B of resident code and data, which put the disc 736 B under
+the gate. Four changes take that back to 80 B, all with the same picture: the creator's panel keys
+are only worked out where there are panels (`UI_PANELS`; the PS1 linked `ui_panel_key` /
+`ui_key_int` for nothing, 372 B); `CR_CALM` is a constant 0 on the PS1 (no `cr_calm` byte, no glint
+hold); the action rows' help lines are named arrays in the creator's overlay (a switch table's
+literals went to the resident `.rodata.str1.4`, 156 B); and `ui_draw.c` keeps its one-hole backdrop
+code on the PS1, where `ui_backdrop_holes()` uses the first hole only (the GPU fills the rest for
+next to nothing). Now `_end` 0x801edff0: **73,744 B below the stack top**, 8,208 B above the 64 KB
+reserve and 16 B above the 72 KB plan gate; the creator group needs 100,040 B of slot.
 
 | overlay group (bytes) | `959acc8` | G0 | | overlay group (bytes) | `959acc8` | G0 |
 |---|---:|---:|---|---|---:|---:|

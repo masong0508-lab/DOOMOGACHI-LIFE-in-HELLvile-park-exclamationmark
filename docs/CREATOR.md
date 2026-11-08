@@ -328,7 +328,8 @@ whole figure or bust (~0.9M cycles) drawn in slices. Where each change applies:
 * **every platform** (the same on native, the GBA, the PS1 and the Dreamcast): the list cursor, the
   selected row's arrows, the slider heart and the toggle hold still (no bob); the tab strip is drawn
   last; the bust comes from the portrait cache (`portrait_image_look`); the backdrop is not drawn
-  under the pane;
+  under the list window, nor under the pane but on the PS1 (its one-hole backdrop code keeps its
+  resident RAM at the 72 KB plan gate; the same pixels);
 * **the GBA and the PS1** (`CR_SLICE`): a new look or camera is drawn in slices while the last one
   stays up and lands with its hop, and the camera waits for the cursor to rest;
 * **the GBA only** (`CR_CALM`, a listed speed step): the still stage (no blink or breathing, still
@@ -351,8 +352,8 @@ What landed:
   motes, a still backdrop), windows have no sliding glint (`ui_glint_hold`), and every creator panel
   is put back as its whole rect (`plat_panel_solid`, platform.h: one copy a row instead of one per
   rect of its body);
-* **the backdrop is not drawn under the pane** (`ui_backdrop_holes`, two holes; every platform, the
-  same pixels);
+* **the backdrop is not drawn under the pane** (`ui_backdrop_holes`, two holes: the list window and
+  the pane; the PS1 takes the first only; the same pixels);
 * **the locked-part overlay** (`lock_compose`) skips the pixels that agree a word at a time and keeps
   the draft picture's colours per picture (~17 ms on the GBA before);
 * the first pass (still there): the lock memo, the tab / list / grid panels, the still pose.
@@ -364,14 +365,16 @@ camera waits.
 
 **PS1** (`ps1/harness/scripts/creator_speed.txt`, the same moves, run by the disc's harness target with
 expect-fps floors; PCSX-Redux): idle 30.1, rows 30.0, a value held 29.9, the species grid scrolled
-24.7 (22.0 before the PS1 took the sliced looks: `CR_SLICE`, the part of `CR_CALM` the PS1 uses; its
-preview still animates and it has no panels). The gap on the PS1 is the species grid held, where
+24.5 (22.0 before the PS1 took the sliced looks: `CR_SLICE`, the part of `CR_CALM` the PS1 uses; its
+preview still animates and it has no panels; 24.7 while the PS1 still cut the pane out of the
+backdrop too). The gap on the PS1 is the species grid held, where
 every step is a whole new body. Memory: the packed icons (58 KB) and the part catalog
 (`part_meta_data`, 14 KB) are generated files, which `ovl_plan.py` used to keep resident; they join
 the creator overlay group, and the creator group now loads low over the borrowed `.bss` like the
 house (`BORROW_GROUPS`; nothing of the creator draws a 3D view, syncs the world or touches the
-card), so its 150 KB need 99,828 B of slot and the disc ends 11,824 B above the 64 KB stack reserve
-(docs/PS1.md).
+card), so its 150 KB need about 100 KB of slot. Landed on `5bb55e7` the disc ends 73,744 B below the
+stack top: 8,208 B above the 64 KB reserve and 16 B above the 72 KB plan gate (CRB's resident cost
+there: 80 B; docs/PS1.md has how it was brought down from 832 B).
 
 ## Nicknames
 
