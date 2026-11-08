@@ -419,11 +419,12 @@ card's metadata (8.7 KB): code 1,723,248 B, `.bss` 2,897,492 B, image
 With DC7 (2026-11-08, on the tree with Talk T3/T4 and the clarity work): code 1,772,336 B,
 `.bss` 4,277,940 B (the three 3D batches 1.13 MB, the overworld's corner tables 17 KB),
 image 8,878,784 B (8.47 MB), 7.46 MB free above `_end`.
-With DC8 (2026-11-08): code 1,785,488 B, `.bss` 4,555,124 B (+277 KB: the
+With DC8 (2026-11-08, `make -C dc sizes` on the tree with CL6, SP1 and SP2):
+code 1,820,848 B, rodata 2,997,628 B, `.bss` 4,555,572 B (DC8's +277 KB: the
 house's shell canvas 179 KB, its sprite decode buffer 64 KB, the piece
 table 12 KB, the harness's `room-parity` scratch 12 KB, the order's edge
 matrix 5 KB, the tint maps 2 KB), image
-9,180,972 B (8.76 MB), 7.18 MB free above `_end`.
+9,380,584 B (8.95 MB), 7,324,876 B (6.99 MB) free above `_end`.
 The ELF file is 17 MB because of debug info; the scrambled `1ST_READ.BIN` is 4.4 MB.
 
 ### Disc image (`dc/tools/mkcdi.sh`)
