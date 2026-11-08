@@ -47,7 +47,7 @@ static const TipText tip_text[TIP_COUNT] = {
     /* TIP_ISLAND */
     { SPK_MAYOR, ICON_STAR,
       "Gobble! The island is yours now. It came with a tape marked DO NOT WATCH. I watched it. Needs salt.",
-      "D-pad: pick a place. A: go in. B: help the next citizen in need. START: menu. L: news. R: citizens. SELECT: family." },
+      "D-pad: pick a place. A: go in. B: help the next citizen in need. START: menu. %L: news. %R: citizens. %S: family." },
     /* TIP_TOWN_HALL */
     { SPK_MAYOR, ICON_HOUSE,
       "My office! Hillvile is the pastel side. Hellvile is over the Wall. We don't discuss the Wall.",
@@ -55,11 +55,11 @@ static const TipText tip_text[TIP_COUNT] = {
     /* TIP_APARTMENTS */
     { SPK_MAYOR, ICON_HOUSE,
       "Every window is somebody's home. Peeking is legal. I checked. I wrote the law this morning.",
-      "Icons in a window show what that citizen needs. A: visit. START: pick a floor. SELECT: what the icons mean." },
+      "Icons in a window show what that citizen needs. A: visit. START: pick a floor. %S: what the icons mean." },
     /* TIP_CARE */
     { SPK_MAYOR, ICON_HEART,
       "Citizens have eight needs. Like houseplants, but they scream. Let one hit zero and things get weird.",
-      "Pick an action, A does it. Feed fills Food, Clean fills Clean, Talk fills Social, Comfort fills Mind. L/R: tabs." },
+      "Pick an action, A does it. Feed fills Food, Clean fills Clean, Talk fills Social, Comfort fills Mind. %L/%R: tabs." },
     /* TIP_HOUSE */
     { SPK_RIVET, ICON_WRENCH,
       "Your house! I welded the plumbing myself. Do not lick the plumbing.",
@@ -71,7 +71,7 @@ static const TipText tip_text[TIP_COUNT] = {
     /* TIP_SHOOTER (the Modern scheme; tip_plain() swaps in the others) */
     { SPK_RIVET, ICON_GUN,
       "Shooty time! Aim at the demons, not the furniture. The furniture has rights now.",
-      "UP/DOWN: walk. LEFT/RIGHT: step aside. L/R: turn. A: shoot. B: jump, hold to run. START: pause." },
+      "UP/DOWN: walk. LEFT/RIGHT: step aside. %L/%R: turn. A: shoot. B: jump, hold to run. START: pause." },
     /* TIP_EXORCISM */
     { SPK_FUZZ, ICON_CROSS,
       "Bless you! A demon moved into this poor soul without paying rent. We evict it. Gently. With water.",
@@ -79,11 +79,11 @@ static const TipText tip_text[TIP_COUNT] = {
     /* TIP_PET */
     { SPK_MAYOR, ICON_EGG,
       "Your Boreagotchi! A pet, a toy and a tiny landlord. Feed it, or it files a complaint. With me.",
-      "LEFT/RIGHT: pick an icon. A: use it. SELECT: the Boredex. START: leave." },
+      "LEFT/RIGHT: pick an icon. A: use it. %S: the Boredex. START: leave." },
     /* TIP_STUDIO */
     { SPK_MAYOR, ICON_NOTE,
       "The Music Studio! I wrote the town anthem here. It is one note. It is a very good note.",
-      "L/R: switch tabs (Song, Notes, Order, Lyrics, Choir, Stage, File). A: edit the row. START: play. B: back." },
+      "%L/%R: switch tabs (Song, Notes, Order, Lyrics, Choir, Stage, File). A: edit the row. START: play. B: back." },
     /* TIP_WORKSHOP */
     { SPK_RIVET, ICON_WRENCH,
       "My workshop! Pick parts, weld them, get a gun. Keep all your fingers. Most people do.",
@@ -104,11 +104,35 @@ static const char *tip_plain(int id)
     if (id == TIP_SHOOTER) {
         int s = opt_get(OPT_CONTROL_SCHEME), lx, ly, rx, ry;
         if (s == CONTROLS_CLASSIC)
-            return "D-pad: walk and turn. Hold L: step aside and look. A: shoot. B: jump, hold to run. START: pause.";
+            return "D-pad: walk and turn. Hold %L: step aside and look. A: shoot. B: jump, hold to run. START: pause.";
         if (s == CONTROLS_DUAL_STICK && input_analog(&lx, &ly, &rx, &ry))
             return "Left stick: walk. Right stick: look. A: shoot. B: jump, hold to run. START: pause.";
     }
     return tip_text[id].plain;
+}
+
+/* %L %R %S in a plain line become the button's name on the pad in the player's hands (C3, input.h
+ * btn_name): L1 / R1 on a PS1, START+Y for SELECT on a Dreamcast, SELECT spelled out elsewhere. The
+ * English line is looked up first (lang_tr keys on it), then the names go in. */
+static const char *tip_expand(const char *s, char *out, int n)
+{
+    int o = 0;
+    s = lang_tr(s);
+    for (; *s && o < n - 1; s++) {
+        const char *w = 0;
+        if (s[0] == '%') {
+            uint32_t b = s[1] == 'L' ? BTN_L : s[1] == 'R' ? BTN_R : s[1] == 'S' ? BTN_SELECT : 0;
+            if (b) {
+                w = b == BTN_SELECT && input_pad() != PAD_DC ? "SELECT" : btn_name(b);
+                if (!w) w = "";
+                s++;
+            }
+        }
+        if (w) { while (*w && o < n - 1) out[o++] = *w++; }
+        else out[o++] = *s;
+    }
+    out[o] = 0;
+    return out;
 }
 
 /* ---- state (15 B) ------------------------------------------------------------- */
@@ -157,7 +181,10 @@ void tips_reset(void)
 void tips_test_force(int on) { s_force = (uint8_t)(on != 0); }
 
 const char *tip_voice_text(int id) { return id >= 0 && id < TIP_COUNT ? tip_text[id].voice : 0; }
-const char *tip_plain_text(int id) { return id >= 0 && id < TIP_COUNT ? tip_plain(id) : 0; }
+const char *tip_plain_text(int id, char *out, int n)
+{
+    return id >= 0 && id < TIP_COUNT && out && n > 0 ? tip_expand(tip_plain(id), out, n) : 0;
+}
 const char *tip_speaker(int id) { return id >= 0 && id < TIP_COUNT ? spk_name[tip_text[id].spk] : 0; }
 
 void tips_session_reset(void)
@@ -238,10 +265,11 @@ void tips_draw(void)
     const UiStyle *st;
     int sw, sh, big, w, x, y, h, tw, vl, pl, panel = 0, kept = s_held;
     const char *plain;
+    char pbuf[TIP_PLAIN_MAX];
     s_held = 0;
     if (!tip_active() || kept || plat_draw_skipped()) return;
     tt = &tip_text[s_cur];
-    plain = tip_plain(s_cur);
+    plain = tip_expand(tip_plain(s_cur), pbuf, (int)sizeof pbuf);
     st = ui_style(WIN_CREAM);
     sw = plat_screen_w();
     sh = plat_screen_h();
@@ -258,7 +286,7 @@ void tips_draw(void)
      * drawn while a card is up (game.c). */
     if (s_t >= TIP_SETTLED) {
         if (UI_PANELS) {
-            uint32_t key = ui_key_int(ui_panel_key(), s_cur | opt_get(OPT_CONTROL_SCHEME) << 8 | (s_t > TIP_LOCK) << 12);
+            uint32_t key = ui_key_int(ui_panel_key(), s_cur | opt_get(OPT_CONTROL_SCHEME) << 8 | (s_t > TIP_LOCK) << 12 | input_pad() << 13);
             key = ui_key_int(key, x | y << 9 | w << 18);
             key = ui_key_int(key, ui_window_glint(x, y, w, h));
             if (!plat_panel_begin(PANEL_TOAST, x, y, w + 2, h + 3, key)) {   /* + the drop shadow */

@@ -64,11 +64,13 @@ void tips_reset(void);
  * off unless tips_test_force(1) (the runner's / harness's "tips on"). */
 int  tips_enabled(void);
 void tips_test_force(int on);
-/* Tests and tools: a card's two lines (the plain one for the current control scheme), the speaker's
- * name; NULL for a bad id. tips_session_reset() forgets everything (no card, nothing seen, not
+/* Tests and tools: a card's two lines (the plain one for the current control scheme, with the button
+ * names of the pad in hand written into out, at most n bytes; TIP_PLAIN_MAX is always enough), the
+ * speaker's name; NULL for a bad id. tips_session_reset() forgets everything (no card, nothing seen, not
  * forced, not dirty) without touching the config record. */
 const char *tip_voice_text(int id);
-const char *tip_plain_text(int id);
+#define TIP_PLAIN_MAX 224
+const char *tip_plain_text(int id, char *out, int n);
 const char *tip_speaker(int id);
 void tips_session_reset(void);
 /* 1 when seen flags changed since the config record was last written. */

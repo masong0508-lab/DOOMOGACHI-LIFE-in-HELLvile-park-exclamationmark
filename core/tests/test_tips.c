@@ -96,22 +96,38 @@ TEST(cl4_tip_waits_for_a_dialogue_and_goes_with_its_scene)
 
 TEST(cl4_every_tip_has_a_voice_a_plain_line_and_fits_the_gba_screen)
 {
-    int id, scheme;
+    int id, scheme, pad;
+    char buf[TIP_PLAIN_MAX];
     test_reset();
-    for (scheme = 0; scheme < 3; scheme++) {
-        opt_set(OPT_CONTROL_SCHEME, scheme);
-        for (id = 0; id < TIP_COUNT; id++) {
-            const char *v = tip_voice_text(id), *p = tip_plain_text(id);
-            int lines;
-            CHECK(v && v[0] && p && p[0] && tip_speaker(id));
-            CHECK_MSG(strlen(v) <= 200 && strlen(p) <= 200, "tip %s: a line over 200 bytes", tip_name(id));
-            /* the card at 240x160 (tips.c: w 232, text 218 / 212 px): at most 7 text lines */
-            lines = ui_text_wrap(0, 0, 232 - 14, v, 0, 0) + ui_text_wrap(0, 0, 232 - 20, p, 0, 0);
-            CHECK_MSG(lines <= 7, "tip %s: %d lines at 240x160", tip_name(id), lines);
+    for (pad = 0; pad < PAD_COUNT; pad++) {
+        input_set_pad(pad);
+        for (scheme = 0; scheme < 3; scheme++) {
+            opt_set(OPT_CONTROL_SCHEME, scheme);
+            for (id = 0; id < TIP_COUNT; id++) {
+                const char *v = tip_voice_text(id), *p = tip_plain_text(id, buf, (int)sizeof buf);
+                int lines;
+                CHECK(v && v[0] && p && p[0] && tip_speaker(id));
+                CHECK_MSG(strlen(v) <= 200 && strlen(p) <= 200, "tip %s: a line over 200 bytes", tip_name(id));
+                /* the pad's own button names went in (C3): no token left, no button the pad lacks */
+                CHECK_MSG(!strchr(p, '%'), "tip %s: a button token left", tip_name(id));
+                CHECK_MSG(pad != PAD_DC || !strstr(p, "SELECT"), "tip %s: SELECT on a Dreamcast", tip_name(id));
+                CHECK_MSG(pad != PAD_PS1 || !strstr(p, "L/R") , "tip %s: L/R on a PS1", tip_name(id));
+                /* the card at 240x160 (tips.c: w 232, text 218 / 212 px): at most 7 text lines */
+                lines = ui_text_wrap(0, 0, 232 - 14, v, 0, 0) + ui_text_wrap(0, 0, 232 - 20, p, 0, 0);
+                CHECK_MSG(lines <= 7, "tip %s: %d lines at 240x160", tip_name(id), lines);
+            }
         }
     }
+    input_set_pad(PAD_PS1);
+    CHECK(strstr(tip_plain_text(TIP_ISLAND, buf, (int)sizeof buf), "L1: news. R1: citizens. SELECT: family."));
+    input_set_pad(PAD_DC);
+    CHECK(strstr(tip_plain_text(TIP_PET, buf, (int)sizeof buf), "START+Y: the Boredex."));
+    input_set_pad(PAD_GBA);
+    CHECK(strstr(tip_plain_text(TIP_CARE, buf, (int)sizeof buf), "L/R: tabs."));
+    input_set_pad(-1);
     opt_set(OPT_CONTROL_SCHEME, CONTROLS_MODERN);
     CHECK(tip_voice_text(TIP_COUNT) == NULL);
+    CHECK(tip_plain_text(TIP_COUNT, buf, (int)sizeof buf) == NULL);
 }
 
 TEST(cl4_options_game_page_has_tips_and_show_again)

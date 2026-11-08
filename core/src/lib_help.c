@@ -204,11 +204,15 @@ static const char *para_text(int page, int k)
     }
 }
 
-/* the X / Y line differs per machine */
+/* the X / Y line differs per machine (the pad in the player's hands, C3) */
 static const char *buttons_extra(void)
 {
-    if (plat_name()[0] == 'G') return "No X or Y on the Game Boy Advance: SELECT+A works as X and SELECT+B as Y.";
-    if (plat_name()[0] == 'P')
+    int pad = input_pad();
+    if (pad == PAD_GBA) return "No X or Y on the Game Boy Advance: SELECT+A works as X and SELECT+B as Y.";
+    if (pad == PAD_DC)
+        return "The Dreamcast pad has no SELECT: hold START and press Y instead. X and Y are extras: in the shooter "
+               "X rolls and Y swaps weapons.";
+    if (pad == PAD_PS1)
         return "On the PlayStation A is Cross, B is Circle, X is Square, Y is Triangle, L and R are L1 and R1. In the "
                "shooter Square rolls and Triangle swaps weapons.";
     return "X and Y are extras: in the shooter X rolls and Y swaps weapons.";
