@@ -104,7 +104,7 @@ frames, and the log is what the core logs.
 |---|---|
 | `wait N` / `frames N` | run N ticks / N raw 60 Hz video frames |
 | `press BTN..` | down 1 tick, up 1 tick in sync mode (the native runner's press); without sync down 2 ticks, so the maple poll cannot miss it, then up 1 |
-| `hold BTN.. N` / `down BTN..` / `release [BTN..]` | as the native runner |
+| `hold BTN.. N` / `down BTN..` / `up BTN..` / `release [BTN..]` | as the native runner (`up`: DC8) |
 | `shot NAME` | write `SHOTS/NAME.png` |
 | `log TEXT` / `expect-log TEXT` | print / fail unless TEXT is in the game's log so far |
 | `tips on` / `tips off` | CL4: clear / set `PLAT_TEST_NO_TIPS` in the mailbox's `test_flags`, so the first-time tip cards show in this run (the native runner's and the GBA harness's `tips on`) / stay off (the default) |
@@ -121,6 +121,8 @@ frames, and the log is what the core logs.
 | `skip-talk [MAX]` / `skip-to "TEXT" [MAX]` / `skip-to-scene NAME [MAX]` | DC7: press A (1 tick, then 10 released, as the native runner) until the conversation is over / the dialogue's top line contains TEXT / NAME is the top scene; fail after MAX presses (120 / 80 / 80) |
 | `expect-text "TEXT"` | DC7: the dialogue's top line contains TEXT (the first 19 characters are compared: the mailbox's `name`) |
 | `no-stubs` / `clock HH MM` | DC7: fail if a core stub logged `STUB:` so far / set the town clock |
+| `home-room N` / `money N` | DC8: the native runner's house commands (move in and open room N / set the purse; mailbox 25, 26) |
+| `room-parity LINE NAME` | DC8: the game draws golden frame LINE of `core/tests/room_shells.h` with its own `plat_room` on a screen of its own for 8 vblanks (mailbox 14); the shot NAME is taken meanwhile |
 | `port N` | later button, stick and trigger commands act on port N (1-4) |
 | `device N pad\|keyboard\|mouse\|none` | plug a device into port N |
 | `stick X Y` | left stick, -128..127 |
@@ -150,7 +152,9 @@ The work is the game's own `timer_us_gettime64()` from the start of
 `plat_begin_frame` to the end of `plat_end_frame`'s submit, in emulated time.
 With 3D views (DC7) the run also ends with `dcrun: 3D views N built, build
 mean / max, polygons last / max, TA bytes max, polygons left out` (the
-mailbox's `g3d_*` words).
+mailbox's `g3d_*` words), and with the house (DC8) with `dcrun: house views
+N drawn, mean / max, shells (slowest), sprites decoded, prims max` (the
+`room_*` words).
 
 ## The mailbox
 

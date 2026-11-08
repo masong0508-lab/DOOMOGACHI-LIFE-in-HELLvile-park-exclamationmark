@@ -86,9 +86,10 @@ for s in $SCRIPTS; do
     "$DCRUN" "$FLY" "$IMG" --nm "$NM" --fresh --native-seed 0x5EED1234 --run-dir "$d/run" \
         --script "$src" --shots "$d/dc" --timeout 1200 > "$d/dcrun.log" 2>&1
     rc=$(verdict $? "$d/dcrun.log")
-    "$RUNNER" --w 320 --h 240 --script "$src" --shots "$d/nat" --saves "$d/saves" > "$d/native.log" 2>&1
+    # --pad dc: both runners name the buttons as the Dreamcast build does (C3)
+    "$RUNNER" --w 320 --h 240 --pad dc --script "$src" --shots "$d/nat" --saves "$d/saves" > "$d/native.log" 2>&1
     nrc=$?
-    DC3_PNG=1 DC3_REPORT="$d/host/report.txt" "$HOSTRUN" --w 320 --h 240 --script "$src" \
+    DC3_PNG=1 DC3_REPORT="$d/host/report.txt" "$HOSTRUN" --w 320 --h 240 --pad dc --script "$src" \
         --shots "$d/host" --saves "$d/hsaves" > "$d/host.log" 2>&1
     hrc=$?
     rm -rf "$d/run" "$d/saves" "$d/hsaves"

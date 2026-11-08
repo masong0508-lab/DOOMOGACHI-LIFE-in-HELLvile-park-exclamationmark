@@ -1514,7 +1514,9 @@ on every shot (`run_compare.sh`).
    26), tick-exact from the native runner's start: each Flycast shot against
    the host runner's software-PVR picture of the same tick (gated:
    `compare_house.py`, exact >= 99%, within 24/255 >= 99.9%) and against the
-   native runner (reported); no prim dropped; no tick over 33.3 ms.
+   native runner (reported); no prim dropped; no tick over 33.3 ms. Both
+   host-side runners run with `--pad dc` (C3: the prompt bars name the
+   Dreamcast's buttons, as the console does).
 
 Measured 2026-11-08 (Flycast `e7085e20`, the CDI; times in emulated SH4
 time, a guide until a console measures them; "worst" is the game's own

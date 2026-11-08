@@ -343,7 +343,7 @@ static void test_effects(void)
     DoomoRoomView v;
     DoomoRoomActor act;
     const DcFrame *f;
-    int i, share, n0, sel_tex = -1, img_tex = -2;
+    int i, share, sel_tex = -1, img_tex = -2;
     view_of(&v, objs, &r, 0);
     v.nobj = 0;                                          /* an empty room */
     dc_only(&v, rgb_a);
@@ -412,8 +412,6 @@ static void test_effects(void)
     memset(&act, 0, sizeof(act));
     act.img = &chibi; act.x = INT2FIX(4); act.y = INT2FIX(1); act.sx = act.sy = 256; act.flags = BB_TRANSLUCENT;
     v.actors = &act; v.nact = 1;
-    n0 = count_mode(DC2D_GLASS, 0, 1);
-    (void)n0;
     dc_only(&v, rgb);
     CHECK(count_mode(DC2D_GLASS, 0x80FFFFFFu, 0) == 1, "effects: a translucent resident is not a 50%% GLASS prim");
 }
