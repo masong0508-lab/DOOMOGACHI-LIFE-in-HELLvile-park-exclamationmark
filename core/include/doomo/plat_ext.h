@@ -32,6 +32,7 @@
  *                            includes this header); E8 (GBA ROM blob),
  *                            E9 (PS1 disc file), E2 (native loader)
  *   plat_dots, plat_hshapes  SP4 (GBA: the pet's LCD and egg in ARM passes)
+ *   plat_view_hold           S2-2 (GBA: the 3D view held under a card)
  */
 #ifndef DOOMO_PLAT_EXT_H
 #define DOOMO_PLAT_EXT_H
@@ -291,5 +292,26 @@ int plat_ui_loops(void);
  * pixels), 0 to have the core draw them. Weak default: 0. GBA: one ARM call
  * of the UI group while plat_ui_loops() has it in. */
 int plat_beam(int ax, int ay, int tx, int ty, int hw0, int hw1, uint8_t color);
+
+/* ---- (S2-2) the 3D view held under a card -----------------------------------
+ * A scene whose 3D view stands still (an intro card, a pause menu, a results or death screen: the world does not
+ * tick, the level select's preview between two level changes) need not render it on every frame:
+ *   PLAT_VIEW_KEEP  right after plat_view3d(v), before any 2D call of the frame: keep a copy of the picture the
+ *                   view drew, under `key` (core/src/combat_int.h combat_view_key(): a hash of everything the
+ *                   picture depends on). Returns 1 when kept, 0 when not (a skipped tick, a frame kind the platform
+ *                   cannot read back, no room, the default)
+ *   PLAT_VIEW_PUT   in place of plat_view3d(v): put the kept picture back into the frame being drawn. Returns 1
+ *                   when done; 0 (nothing kept under this key, or another 3D view, overworld, room or scene change
+ *                   since: the copy is gone; a skipped tick; the default) and the caller renders plat_view3d(v)
+ *   PLAT_VIEW_PUT_SHADED(level)  the same, the picture darkened as plat_shade_rect(0, 0, screen w, screen h,
+ *                   level) would darken it (0..15): for a card whose first 2D call is that full-screen shade, which
+ *                   the caller then skips. 0 when the platform cannot (also: the view does not cover the screen);
+ *                   the caller then PUTs and shades as before
+ *   PLAT_VIEW_DROP  forget the copy. Always 0
+ * The 2D drawn over the view (the HUD, the card) is drawn again on every frame as before, so a PUT frame is the
+ * picture plat_view3d would have drawn, pixel for pixel. Weak default: 0 (PS1, DC, native render every frame). */
+enum { PLAT_VIEW_DROP = 0, PLAT_VIEW_KEEP = 1, PLAT_VIEW_PUT = 2 };
+#define PLAT_VIEW_PUT_SHADED(level) (PLAT_VIEW_PUT | ((level) + 1) << 8)
+int plat_view_hold(int op, uint32_t key);
 
 #endif

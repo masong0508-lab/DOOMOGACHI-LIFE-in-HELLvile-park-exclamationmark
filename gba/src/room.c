@@ -2330,6 +2330,7 @@ static void render(const DoomoRoomView *v)
 void plat_room(const DoomoRoomView *v)
 {
     if (!v) return;
+    view_hold_drop();                       /* (S2-2) its roof tables share the page gaps */
     if (gba_nodraw == GBA_NODRAW_CANVAS) cv_need_m4();   /* G5: the house draws into a page */
     if (gba_nodraw == GBA_NODRAW_FIRST) gba_nodraw = 0;
     if (gba_nodraw == 1) {                  /* a catch-up tick: nothing drawn */

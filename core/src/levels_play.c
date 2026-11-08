@@ -239,13 +239,29 @@ static const char *intro_rule(void)
                            br.mode == LVM_TIME_TRIAL ? CCARD_RULE_TIME : CCARD_RULE_NONE);
 }
 
-static void intro_draw(void)
+/* the card's dim: it fades in over the first ticks */
+static int intro_shade(void) { return br.t < 8 ? 8 - br.t / 2 : 4; }
+
+/* the banner's centre row: C10, it moves up for the control card */
+static int intro_cy(void) { return lvd_big() ? plat_screen_h() / 4 : 30; }
+
+/* (S2-2) once everything on the card is in (the dim, the slide, the pill, the par time, the control card, the
+ * hint: t >= 26), the card holds still but for the banner's title and sparkles, which stay inside its band: S2-1's
+ * modal hold keeps the card and repaints only the band */
+static int intro_hold(int mode)
+{
+    int y, h;
+    lvd_banner_band(intro_cy(), &y, &h);
+    return combat_modal_hold(mode, br.state == BR_INTRO && br.t >= 26, 0, y, plat_screen_w(), h, 64);
+}
+
+static void intro_draw(int shaded)
 {
     const LevelInfo *L = &lv_info[br.level];
     int sw = plat_screen_w(), sh = plat_screen_h(), t = br.t, hell = L->theme == WIN_HELL || L->theme == WIN_DARK;
-    int big = lvd_big(), cy = big ? sh / 4 : 30;          /* C10: the banner moves up for the control card */
+    int big = lvd_big(), cy = intro_cy();
     char buf[48], tb[12];
-    plat_shade_rect(0, 0, sw, sh, t < 8 ? 8 - t / 2 : 4);
+    if (!shaded) plat_shade_rect(0, 0, sw, sh, intro_shade());   /* (S2-2: else the held view came back dimmed) */
     lvd_banner(cy, L->tag, L->title, t, hell);
     if (t > 14) {
         int w = ui_text_width(L->flavor) + 16, x = sw / 2 - w / 2, y = cy + (big ? 26 : 20);
@@ -265,8 +281,8 @@ static void intro_draw(void)
         ui_text_outline(sw / 2 - ui_text_width(buf) / 2, y, buf, br.mode == LVM_BRUTAL_ONLY ? PAL_UI_RED : PAL_UI_GOLD, PAL_BLACK);
         if (!br.demo && !combat_autopilot_on()) {
             /* C10: how to play, on every difficulty and in every mode (Brutal Only included) */
-            int w = big ? 300 : 230, h = ccard_height(w, intro_goal(), intro_rule());
-            ccard_draw(sw / 2 - w / 2, sh - 17 - h, w, hell ? WIN_HELL : WIN_CUTE, intro_goal(), intro_rule());
+            int w = big ? 300 : 230;
+            ccard_draw_above(sw / 2, sh - 17, w, hell ? WIN_HELL : WIN_CUTE, intro_goal(), intro_rule());
         }
         if (lv_info[br.level].boss != LB_NONE && big && (br.demo || combat_autopilot_on())) {
             /* the mini-boss waiting at the end, in the corner */
@@ -363,7 +379,7 @@ static void done_draw(void)
     int w = big ? 280 : 228, h = big ? 176 : 132, x = sw / 2 - w / 2, y = sh / 2 - h / 2 + (big ? 8 : 6);
     int secs = (int)(s->ticks / DOOMO_TICK_HZ), t = br.t, row = big ? 15 : 13, rx = x + 6, rw = w - (big ? 84 : 66);
     char v[32], tb[12], pb[12];
-    plat_shade_rect(0, 0, sw, sh, 6);
+    ui_dim_under_window_pop(x, y, w, h, t, 6);   /* S2-2: not under the window (same pixels, fewer shaded) */
     ui_text_big(sw / 2 - ui_text_big_width("CLEARED!", 2) / 2, y - 20 + ui_wave(t, 30, 2), "CLEARED!", 2,
                 style == WIN_HELL ? PAL_RAMP(RAMP_LAVA, 7) : PAL_UI_GOLD, style == WIN_HELL ? PAL_RAMP(RAMP_BLOOD, 0) : PAL_UI_PINK_D);
     if (!ui_window_pop(x, y, w, h, style, t)) return;
@@ -416,7 +432,8 @@ static void dead_draw(void)
     int w = 180, h = 60, x = sw / 2 - w / 2, y = sh / 2 - 6;
     const char *title = combat_gore_style() == WSTYLE_CUTE ? "CUDDLED TO DEATH" : "YOU DIED";
     char buf[40];
-    plat_shade_rect(0, 0, sw, sh, 5);
+    if (br.t < 10) plat_shade_rect(0, 0, sw, sh, 5);
+    else ui_dim_under_window_pop(x, y, w, h, br.t - 10, 5);   /* S2-2: not under the window (same pixels) */
     ui_text_big(sw / 2 - ui_text_big_width(title, 2) / 2, y - 40 + ui_wave(br.t, 40, 2), title, 2, PAL_UI_RED, PAL_RAMP(RAMP_BLOOD, 0));
     doomo_snprintf(buf, sizeof(buf), "%s - %d demons down", lv_info[br.level].title, combat_stats()->kills);
     ui_text_outline(sw / 2 - ui_text_width(buf) / 2, y - 18, buf, PAL_GRAY_L, PAL_BLACK);
@@ -426,14 +443,41 @@ static void dead_draw(void)
     ui_hint(STR_ICON_A " Select", style);
 }
 
+/* (S2-2) what changes the picture around the pause window: the camera, the HUD's weapon, the hint line */
+static uint32_t pause_sig(void)
+{
+    unsigned lr = (1u << BP_MUSIC) | (1u << BP_WEAPON) | (1u << BP_CAMERA);
+    return (uint32_t)((lr >> br.sel) & 1) | (uint32_t)(doomo_player.camera & 1) << 1 |
+           (uint32_t)(doomo_player.weapon_slot & 15) << 2;
+}
+
 static void br_draw(void)
 {
     DoomoView3D v;
+    int shaded;
+    /* S2-2: S2-1's modal hold, one per frame: the pause menu over the held picture (only its window repaints), or
+     * the settled intro card (only the banner's band repaints) */
+    if (br.state == BR_INTRO ? intro_hold(0) : combat_pause_hold(0, br.state == BR_PAUSE, BP_COUNT, br.t, pause_sig())) {
+        if (br.state == BR_INTRO) {
+            const LevelInfo *L = &lv_info[br.level];
+            lvd_banner(intro_cy(), L->tag, L->title, br.t, L->theme == WIN_HELL || L->theme == WIN_DARK);
+        } else {
+            pause_draw();
+        }
+        ui_modal_hold_end();
+        return;
+    }
     combat_build_view(&v);
     lv_runtime_view(&v);
-    plat_view3d(&v);
+    /* S2-2: the world stands still under the intro card, the pause menu, the results and the death screen */
+    shaded = combat_view_draw(&v, br.state != BR_PLAY, combat_stats()->ticks,
+                              br.state == BR_INTRO ? intro_shade() : -1) == 2;
     if (plat_draw_skipped()) return;
-    if (br.state == BR_INTRO) { intro_draw(); return; }
+    if (br.state == BR_INTRO) {
+        intro_draw(shaded);
+        intro_hold(1);
+        return;
+    }
     lv_runtime_hud();
     if (br.state == BR_PLAY || br.state == BR_PAUSE) hud_extras();
     switch (br.state) {
@@ -442,6 +486,7 @@ static void br_draw(void)
     case BR_DEAD: if (br.t > 10) dead_draw(); break;
     default: break;
     }
+    combat_pause_hold(1, br.state == BR_PAUSE, BP_COUNT, br.t, pause_sig());
 }
 
 const DoomoScene SCENE_BREACH = { "BREACH", br_enter, br_leave, br_update, br_draw, 0 };

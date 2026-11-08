@@ -191,6 +191,7 @@ void lvd_rank_stamp(int cx, int cy, int rank, int t, int big);
 void lvd_time(char *buf, int cap, int seconds);
 /* Animated title banner with a ribbon and sparkles. */
 void lvd_banner(int cy, const char *kicker, const char *title, int t, int hell);
+void lvd_banner_band(int cy, int *y, int *h);   /* (S2-2) */
 /* A demon's portrait (its walk frame) at x,y (feet at y), bobbing. */
 void lvd_demon(int x, int y, int spr, int t, int scale, int flip);
 /* A wobbly toy padlock (locked levels), k = pixel scale 1..3. */

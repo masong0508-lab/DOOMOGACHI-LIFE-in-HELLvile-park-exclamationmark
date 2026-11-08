@@ -18,6 +18,9 @@
 static struct {
     uint8_t  mode, sel, launched, loaded, flash_lv;
     uint8_t  unlocked_mask;
+#if !defined(DOOMO_PLATFORM_PS1)
+    uint8_t  pv_held;                /* S2-2: the platform holds the preview: it stands still between level changes */
+#endif
     uint16_t t, pv_t, flash_t, msg_t;
     int16_t  slide;
     const char *msg;
@@ -100,7 +103,10 @@ static void launch(int demo)
 static void ls_update(void)
 {
     ls.t++;
-    ls.pv_t++;
+#if !defined(DOOMO_PLATFORM_PS1)
+    if (!ls.pv_held)                 /* S2-2: a held preview no longer orbits (GBA: rendered once per level) */
+#endif
+        ls.pv_t++;
     if (ls.msg_t) ls.msg_t--;
     if (ls.flash_t) ls.flash_t--;
     if (ls.slide) ls.slide = (int16_t)(ls.slide * 3 / 4);
@@ -215,7 +221,18 @@ static void preview(int x, int y, int w, int h)
         }
     v.sprites = bb;
     v.sprite_count = n;
-    plat_view3d(&v);
+    /* S2-2: where the platform can keep the picture (the GBA), the preview is rendered once per level change (and
+     * on each step of the slide) and held, its orbit stopped; elsewhere it orbits and renders every frame */
+#if !defined(DOOMO_PLATFORM_PS1)
+    {
+        uint32_t key = combat_view_key(&v, (uint32_t)ls.sel << 8 | ls.mode);
+        if (plat_view_hold(PLAT_VIEW_PUT, key)) return;
+        plat_view3d(&v);
+        if (plat_view_hold(PLAT_VIEW_KEEP, key)) ls.pv_held = 1;
+    }
+#else
+    plat_view3d(&v);                 /* (the PS1 holds 30 here: no copy, no resident RAM for it) */
+#endif
 }
 
 /* ---- drawing ------------------------------------------------------------------ */

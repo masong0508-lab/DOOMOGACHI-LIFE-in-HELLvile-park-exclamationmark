@@ -212,6 +212,11 @@ void ui_modal_no_band(void)
     mh_noband = 1;
 }
 
+int ui_modal_in(void)
+{
+    return mh_in;
+}
+
 void ui_modal_full(const void *key, int ok)
 {
     int noband = mh_noband;

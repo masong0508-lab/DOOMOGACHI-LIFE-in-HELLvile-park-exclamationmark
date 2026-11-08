@@ -44,6 +44,14 @@ void lvd_rank_stamp(int cx, int cy, int rank, int t, int big)
     }
 }
 
+/* (S2-2) the rows the banner's band paints over the whole width (a held intro card repaints only these) */
+void lvd_banner_band(int cy, int *y, int *h)
+{
+    int bh = (lvd_big() ? 3 : 2) * 8 + 14;
+    *y = cy - bh / 2;
+    *h = bh;
+}
+
 void lvd_banner(int cy, const char *kicker, const char *title, int t, int hell)
 {
     int sw = plat_screen_w(), sc = lvd_big() ? 3 : 2;
@@ -52,7 +60,13 @@ void lvd_banner(int cy, const char *kicker, const char *title, int t, int hell)
     uint8_t band = hell ? PAL_UI_RED_D : PAL_UI_PINK_D, band_hi = hell ? PAL_UI_RED : PAL_UI_PINK;
     if (plat_draw_skipped()) return;
     if (tw > sw - 32) { sc = 2; tw = ui_text_big_width(title, sc); }     /* room for the sparkles */
-    plat_shade_rect(0, by - 2, sw, bh + 4, 4);
+    if (slide) plat_shade_rect(0, by - 2, sw, bh + 4, 4);
+    else if (!ui_modal_in()) {                  /* (S2-2: a held card keeps its rims on the kept page) */
+        /* S2-2: the band below paints rows by .. by + bh - 1 over the whole width: only the rim rows need the
+         * shade (the same pixels, a seventh of the work) */
+        plat_shade_rect(0, by - 2, sw, 2, 4);
+        plat_shade_rect(0, by + bh, sw, 2, 4);
+    }
     plat_rect(-slide, by, sw, bh, band);
     plat_rect(-slide, by + 2, sw, 2, band_hi);
     plat_rect(-slide, by + bh - 4, sw, 2, band_hi);

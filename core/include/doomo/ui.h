@@ -7,6 +7,7 @@
 #define DOOMO_UI_H
 
 #include "types.h"
+#include "platform.h"                   /* (S2-2) plat_screen_w/h for pause_menu_rect */
 
 enum { UI_NONE = 0, UI_SELECT, UI_CANCEL, UI_CHANGED, UI_LEFT, UI_RIGHT };
 
@@ -183,6 +184,7 @@ void ui_shade_clip_off(void);
 #define ui_modal_reset()                   ((void)0)
 #define ui_modal_hold_enable(on)           ((void)(on))
 #define ui_modal_no_band()                 ((void)0)
+#define ui_modal_in()                      0
 #else
 int  ui_modal_hold(const void *key, int ok, int x, int y, int w, int h);
 void ui_modal_hold_end(void);
@@ -193,6 +195,9 @@ void ui_modal_reset(void);          /* scene.c: the stack changed */
  * whose platform code keeps its own tables where the copy goes (the GBA house's roof tables share the Mode 4 page
  * gaps with plat_strip and are only rebuilt after a frame the house did not draw). */
 void ui_modal_no_band(void);
+/* (S2-2) 1 inside a held draw (between ui_modal_hold() == 1 and ui_modal_hold_end()): a shared modal skips its
+ * full-screen dim then (the kept page has it) */
+int  ui_modal_in(void);
 /* on by default on the GBA only (the one platform these scenes miss 30 on; a held frame stops the dimmed
  * backdrop's drift, so the others keep drawing it); tests switch it on natively. Returns the holds so far. */
 int  ui_modal_hold_enable(int on);
@@ -405,6 +410,15 @@ int ui_sparkle_size(int phase);          /* ui_sparkle's size, 0 = none */
  * pause_menu_nav() moves *sel with up/down (wrapping) and returns 1 when it
  * moved. Options rows open options_open() (town.h). */
 void pause_menu_draw(const char *const *labels, int n, int sel, unsigned lr_mask, int t, int style);
+/* (S2-2) the window pause_menu_draw(.., n, ..) pops, for a modal hold (ui_modal_hold) */
+static inline void pause_menu_rect(int n, int *x, int *y, int *w, int *h)
+{
+    int big = plat_screen_h() >= 200;
+    *w = big ? 200 : 176;
+    *h = n * (big ? 18 : 16) + 24;
+    *x = plat_screen_w() / 2 - *w / 2;
+    *y = plat_screen_h() / 2 - *h / 2 + 2;
+}
 int  pause_menu_nav(int *sel, int n);
 /* U3a, the shell's quick Music row: every pause menu puts it right under Resume and lets LEFT / RIGHT
  * change OPT_MUSIC_VOL on the spot (no trip through Options). pause_music_label() writes "Music volume 7"

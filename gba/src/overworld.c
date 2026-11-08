@@ -574,6 +574,7 @@ void plat_overworld(const DoomoOverworldView *v)
     static OwLuts luts_store;        /* (V4) their EWRAM backing copy, valid while night / tint stay equal */
     OwMemo fm, tm;                   /* (G2) block fronts, block tops */
     if (gba_nodraw == 1 || !v) return;
+    view_hold_drop();                           /* (S2-2) its tile slots share the page gaps */
     if (gba_nodraw == GBA_NODRAW_CANVAS) {      /* a second world this frame */
         cv_need_m4();
         if (gba_nodraw == 1) return;

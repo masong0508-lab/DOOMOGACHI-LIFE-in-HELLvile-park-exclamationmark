@@ -39,7 +39,7 @@ void postfx_bbox_add(int x, int y, int w, int h);
 int  postfx_bbox(int *x0, int *y0, int *x1, int *y1);   /* 0 = empty      */
 
 /* ---- OBJ VRAM ownership (C7.4): r3d's texture cache vs obj.c ----------- */
-enum { OBJV_R3D, OBJV_OBJ };
+enum { OBJV_R3D, OBJV_OBJ, OBJV_HOLD };   /* OBJV_HOLD: viewhold.c (S2-2), a held 3D view */
 int      gba_objvram_claim(int who);  /* previous owner; r3d.c          */
 uint32_t gba_objvram_r3d_frame(void); /* gba_frames of r3d's last claim   */
 int      gba_objvram_owner(void);

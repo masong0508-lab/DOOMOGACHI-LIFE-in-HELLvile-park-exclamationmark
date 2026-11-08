@@ -100,6 +100,9 @@ void r3d_gov_flip(int frame, uint32_t took, uint32_t work)
         else gov_wait = 8;
     }
 }
+/* (S2-2, viewhold.c) the rect the last drawn view covered, and the frame (gba_frames) it was drawn in */
+int16_t r3d_last_x, r3d_last_y, r3d_last_w, r3d_last_h;
+uint32_t r3d_last_frame;
 /* video_loops.s: the half-resolution view at base (vh2 rows of hw
  * halfwords) doubled in place to 2 hw x 2 vh2 */
 void r3d_up2(uint16_t *base, int hw, int vh2) IWRAM_CALL;
@@ -542,6 +545,9 @@ void plat_view3d(const DoomoView3D *v)
     if (vx + vw > SCREEN_W) vw = SCREEN_W - vx;
     if (vy + vh > SCREEN_H) vh = SCREEN_H - vy;
     if (vw < 8 || vh < 8) return;
+    view_hold_drop();                         /* (S2-2) VRAM the copy lives in is the raycaster's again */
+    r3d_last_x = (int16_t)vx; r3d_last_y = (int16_t)vy; r3d_last_w = (int16_t)vw; r3d_last_h = (int16_t)vh;
+    r3d_last_frame = gba_frames;
     /* (G7) the view at half resolution into the top left quarter of its
      * rect, then doubled in place (r3d_up2); (SP8) when Options "Combat
      * detail" or its governor asks for it (view_half) */

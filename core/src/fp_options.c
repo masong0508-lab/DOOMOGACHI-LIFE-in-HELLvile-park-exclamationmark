@@ -559,10 +559,11 @@ int pause_music_nudge(int dir)
 void pause_menu_draw(const char *const *labels, int n, int sel, unsigned lr_mask, int t, int style)
 {
     int sw = plat_screen_w(), sh = plat_screen_h(), big = sh >= 200;
-    int w = big ? 200 : 176, row = big ? 18 : 16, h = n * row + 24;
-    int x = sw / 2 - w / 2, y = sh / 2 - h / 2 + 2, i;
+    int w, row = big ? 18 : 16, h, x, y, i;
     char buf[40];
-    plat_shade_rect(0, 0, sw, sh, 7);
+    pause_menu_rect(n, &x, &y, &w, &h);
+    /* S2-2: not under the window (the same pixels, fewer shaded); none on a held frame (the kept page has it) */
+    if (!ui_modal_in()) ui_dim_under_window_pop(x, y, w, h, t, 7);
     if (!ui_window_pop(x, y, w, h, style, t)) return;
     ui_title(sw / 2, y - 6, "PAUSED", style);
     for (i = 0; i < n; i++) {

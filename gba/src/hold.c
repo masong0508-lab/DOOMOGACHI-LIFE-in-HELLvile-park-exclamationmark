@@ -143,6 +143,7 @@ int plat_strip(int op, int y, int h)
     row = (uint8_t *)gba_back + y * SCREEN_W;
     a = h < STRIP_ROWS_A ? h : STRIP_ROWS_A;
     if (op == PLAT_STRIP_SAVE) {
+        view_hold_drop();                              /* (S2-2) the held 3D view's rows share the gaps */
         r3d_cmrow[0] = 0;                              /* the raycaster's rows are gone */
         dma3_copy32(STRIP_GAP_A, row, (uint32_t)(a * SCREEN_W / 4));
         if (h > a) dma3_copy32(STRIP_GAP_B, row + a * SCREEN_W, (uint32_t)((h - a) * SCREEN_W / 4));

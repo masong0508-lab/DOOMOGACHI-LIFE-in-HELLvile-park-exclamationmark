@@ -7,6 +7,7 @@
 #define DOOMO_COMBAT_INT_H
 
 #include "doomo/doomo.h"
+#include "doomo/plat_ext.h"
 
 #define CELLU        DOOMO_CELL_UNITS
 #define PLAYER_OWNER 255          /* DoomoActor.owner of the player's shots  */
@@ -233,6 +234,85 @@ const char *ccard_mode_rule(int rule);
 const char *ccard_goal(int cgoal);                /* the card's goal line for a CGOAL_* */
 int  ccard_height(int w, const char *goal, const char *rule);
 void ccard_draw(int x, int y, int w, int style, const char *goal, const char *rule);
+void ccard_draw_above(int cx, int bottom, int w, int style, const char *goal, const char *rule);   /* (S2-2) */
+
+/* (S2-2) a menu window (x, y, w, h) held over the still combat view with S2-1's modal hold (ui.h ui_modal_hold):
+ * mode 0 asks at the top of the draw (1: draw only the window, then ui_modal_hold_end(), and return), mode 1 marks
+ * the end of a full frame. `up`: the menu is up and done popping; `sig` (< 128): what changes the picture around the
+ * window (the camera, the HUD's weapon, which hint line the selected row shows): another value goes back to a full
+ * frame (64..127: another card of the same scene). The world does not move under these menus; the HUD's own idle
+ * motion (a blinking badge) stands still while
+ * one is held (the owner's held-frame default). */
+static inline int combat_modal_hold(int mode, int up, int x, int y, int w, int h, uint32_t sig)
+{
+#if defined(DOOMO_PLATFORM_PS1)
+    (void)mode; (void)up; (void)x; (void)y; (void)w; (void)h; (void)sig;
+    return 0;                                 /* (the PS1 holds 30 here; ui_modal_* is compiled out) */
+#else
+    static const char keys[128] = { 1 };
+    const void *key = &keys[sig & 127];
+    if (mode) {
+        ui_modal_no_band();                   /* (the page gaps hold part of the held view: viewhold.c) */
+        ui_modal_full(key, up);
+        return 0;
+    }
+    return ui_modal_hold(key, up, x, y, w, h);
+#endif
+}
+
+static inline int combat_pause_hold(int mode, int paused, int n, int t, uint32_t sig)
+{
+    int x, y, w, h;
+    pause_menu_rect(n, &x, &y, &w, &h);
+    return combat_modal_hold(mode, paused && t >= 12, x, y, w, h, sig);
+}
+
+/* (S2-2) the 3D view under a card. A hash of everything the picture plat_view3d draws for v depends on that can
+ * change while a scene shows it standing still (the camera, the billboards, the texture clock; `salt` adds what v
+ * does not show, e.g. the world's tick count for the doors). Static inline: the level select and the combat
+ * scenes each get their own copy (no shared code goes resident on the PS1). */
+static inline uint32_t combat_view_key(const DoomoView3D *v, uint32_t salt)
+{
+    uint32_t h = 2166136261u ^ salt;
+    int i;
+#define CVK_(x) (h = (h ^ (uint32_t)(x)) * 16777619u)
+    CVK_((uintptr_t)v->map); CVK_(v->x); CVK_(v->y); CVK_(v->z);
+    CVK_((uint16_t)v->angle | (uint32_t)(uint16_t)v->pitch << 16);
+    CVK_((uint16_t)v->bob | (uint32_t)(uint16_t)v->vx << 16);
+    CVK_((uint16_t)v->vy | (uint32_t)(uint16_t)v->vw << 16);
+    CVK_((uint16_t)v->vh | (uint32_t)v->tint << 16 | (uint32_t)v->tint_level << 24);
+    CVK_(v->time | (uint32_t)v->camera << 16 | (uint32_t)(uint8_t)v->player_sprite << 24);
+    CVK_(v->sprite_count);
+    for (i = 0; i < v->sprite_count; i++) {
+        const DoomoBillboard *b = &v->sprites[i];
+        CVK_(b->x); CVK_(b->y); CVK_(b->z);
+        CVK_((uintptr_t)b->img); CVK_(b->img ? (uintptr_t)b->img->pix ^ b->img->uid : 0);
+        CVK_(b->scale | (uint32_t)b->flags << 16 | (uint32_t)b->light << 24);
+    }
+#undef CVK_
+    return h | 1u;
+}
+
+/* (S2-2) draw the view: when `still` (the world does not move this frame: a card, a pause menu, a results or
+ * death screen) a picture the platform kept from an earlier frame with the same key is put back instead of
+ * rendered again (plat_ext.h plat_view_hold); the 2D over it is the caller's, every frame as before. `shade` >= 0:
+ * the caller's first 2D call is plat_shade_rect(0, 0, screen w, screen h, shade), which the platform may fold into
+ * the put-back picture. Returns 2 when it did (the caller skips that shade), 1 when the view was put back plainly,
+ * 0 when it was rendered. */
+static inline int combat_view_draw(const DoomoView3D *v, int still, uint32_t salt, int shade)
+{
+    uint32_t key;
+#if defined(DOOMO_PLATFORM_PS1)
+    still = 0;                                /* (the weak default: no resident call for it on the PS1) */
+#endif
+    if (!still) { plat_view3d(v); return 0; }
+    key = combat_view_key(v, salt);
+    if (shade >= 0 && plat_view_hold(PLAT_VIEW_PUT_SHADED(shade), key)) return 2;
+    if (plat_view_hold(PLAT_VIEW_PUT, key)) return 1;
+    plat_view3d(v);
+    plat_view_hold(PLAT_VIEW_KEEP, key);
+    return 0;
+}
 /* tests: the next story fight (SCENE_COMBAT | COMBAT_ARG_CARD) shows its card again, as after power-on */
 void combat_scene_card_reset(void);
 

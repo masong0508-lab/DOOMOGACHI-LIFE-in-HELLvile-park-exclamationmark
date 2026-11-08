@@ -138,7 +138,7 @@ static void weapons_draw(void)
     int rows = sh > 200 ? 10 : 6, w = sw - 24, h = rows * 18 + 26, x = 12, y = (sh - h) / 2 - 4;
     int i, cur = 0, top;
     char buf[40];
-    plat_shade_rect(0, 0, sw, sh, 7);
+    ui_dim_under_window_pop(x, y, w, h, cs_t, 7);   /* S2-2: not under the window (same pixels, fewer shaded) */
     if (!ui_window_pop(x, y, w, h, style, cs_t)) return;
     ui_title(sw / 2, y - 6, "ARMORY", style);
     for (i = 0; i < n; i++) if (slots[i] == cs_wsel) cur = i;
@@ -182,7 +182,7 @@ static void done_draw(void)
     const DoomoCombatStats *s = combat_stats();
     char buf[40];
     int secs = (int)(s->ticks / DOOMO_TICK_HZ);
-    plat_shade_rect(0, 0, sw, sh, 6);
+    ui_dim_under_window_pop(x, y, w, h, cs_t, 6);   /* S2-2: not under the window (same pixels, fewer shaded) */
     if (!ui_window_pop(x, y, w, h, style, cs_t)) return;
     ui_text_big(sw / 2 - ui_text_big_width("CLEARED!", 2) / 2, y - 18 + ui_wave(cs_t, 30, 2), "CLEARED!", 2,
                 style == WIN_HELL ? PAL_RAMP(RAMP_LAVA, 7) : PAL_UI_GOLD,
@@ -214,7 +214,7 @@ static void dead_draw(void)
     int w = 180, h = 64, x = sw / 2 - w / 2, y = sh / 2 - 10;
     const char *title = combat_gore_style() == WSTYLE_CUTE ? "CUDDLED TO DEATH" : "YOU DIED";
     int sc = sw > 260 ? 2 : 2;
-    plat_shade_rect(0, 0, sw, sh, 5);
+    ui_dim_under_window_pop(x, y, w, h, cs_t, 5);   /* S2-2: not under the window (same pixels, fewer shaded) */
     ui_text_big(sw / 2 - ui_text_big_width(title, sc) / 2, y - 36 + ui_wave(cs_t, 40, 2), title, sc,
                 PAL_UI_RED, PAL_RAMP(RAMP_BLOOD, 0));
     if (!ui_window_pop(x, y, w, h, style, cs_t)) return;
@@ -271,7 +271,7 @@ static void combat_update(void)
     }
 }
 
-static void intro_card(void)
+static void intro_card(int shaded)
 {
     int sw = plat_screen_w(), sh = plat_screen_h();
     const char *title = map_title(cs_map);
@@ -282,10 +282,10 @@ static void intro_card(void)
     int y = card ? (sh >= 200 ? sh / 4 : 30) : sh / 3, s = ui_pop_scale(t), sc = s > 270 ? 3 : 2;
     if (card) {
         /* C10: the control card (goal, the current scheme's controls, the HUD legend), title above it */
-        int w = sh >= 200 ? 300 : 230, h = ccard_height(w, ccard_goal(combat_s.goal), NULL);
-        plat_shade_rect(0, 0, sw, sh, 4);
+        int w = sh >= 200 ? 300 : 230;
+        if (!shaded) plat_shade_rect(0, 0, sw, sh, 4);      /* (S2-2: else the held view came back dimmed) */
         sc = 2;
-        ccard_draw(sw / 2 - w / 2, sh - 17 - h, w, style_now(), ccard_goal(combat_s.goal), NULL);
+        ccard_draw_above(sw / 2, sh - 17, w, style_now(), ccard_goal(combat_s.goal), NULL);
         if (cs_t > 12) ui_hint(STR_ICON_A " Start", style_now());
     } else {
         if (t > 60 || cs_state != CS_PLAY) return;
@@ -311,14 +311,29 @@ static void combat_view_detail(DoomoView3D *v)
         if (i != v->player_sprite) bb[i].flags = (uint8_t)(bb[i].flags & ~BB_SHADOW);
 }
 
+/* (S2-2) what changes the picture around the pause window: the camera, the HUD's weapon, the hint line */
+static uint32_t cs_pause_sig(void)
+{
+    return (uint32_t)((((1u << PM_CAMERA) | (1u << PM_MUSIC)) >> cs_sel) & 1) | (uint32_t)(doomo_player.camera & 1) << 1 |
+           (uint32_t)(doomo_player.weapon_slot & 15) << 2;
+}
+
 static void combat_draw(void)
 {
     DoomoView3D v;
+    int shaded;
+    /* S2-2: the pause menu over the held picture (S2-1's modal hold): only its window repaints */
+    if (combat_pause_hold(0, cs_state == CS_PAUSE, PM_COUNT, cs_t, cs_pause_sig())) {
+        pause_draw();
+        ui_modal_hold_end();
+        return;
+    }
     combat_build_view(&v);
     combat_view_detail(&v);
-    plat_view3d(&v);
+    /* S2-2: still under cards and menus (the control card's dim folded into the held view) */
+    shaded = combat_view_draw(&v, cs_state != CS_PLAY, combat_stats()->ticks, cs_state == CS_CARD ? 4 : -1) == 2;
     if (cs_state != CS_CARD) combat_draw_hud();   /* C10: the control card owns the screen */
-    intro_card();
+    intro_card(shaded);
     switch (cs_state) {
     case CS_PAUSE: pause_draw(); break;
     case CS_WEAPONS: weapons_draw(); break;
@@ -326,6 +341,7 @@ static void combat_draw(void)
     case CS_DEAD: if (cs_t > 10) dead_draw(); break;
     default: break;
     }
+    combat_pause_hold(1, cs_state == CS_PAUSE, PM_COUNT, cs_t, cs_pause_sig());
 }
 
 const DoomoScene SCENE_COMBAT = { "COMBAT", combat_enter, combat_leave, combat_update, combat_draw, 0 };

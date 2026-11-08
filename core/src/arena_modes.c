@@ -514,7 +514,7 @@ static void shop_draw(void)
     int w = big ? 240 : 212, row = big ? 17 : 14, h = SHOP_COUNT * row + (big ? 52 : 42);
     int x = sw / 2 - w / 2, y = sh / 2 - h / 2 + (big ? 4 : -1), i;
     char buf[40];
-    plat_shade_rect(0, 0, sw, sh, 6);
+    ui_dim_under_window_pop(x, y, w, h, am.t, 6);   /* S2-2: not under the window (same pixels, fewer shaded) */
     if (!ui_window_pop(x, y, w, h, WIN_CREAM, am.t)) return;
     ui_title(sw / 2, y - 6, "SHOP BREAK", WIN_CREAM);
     doomo_snprintf(buf, sizeof(buf), STR_ICON_COIN " %d loot to spend", coins());
@@ -552,7 +552,7 @@ static void results_draw(void)
     const char *title = won ? (am.mode == AM_MAYHEM ? "TIME'S UP!" : "VICTORY!") : (am.mode == AM_HORDE ? "OVERRUN!" : "DEFEATED");
     char buf[40], tb[12];
     int secs = (int)((am.end_tick - am.start_tick) / DOOMO_TICK_HZ), style = won ? WIN_CUTE : WIN_HELL;
-    plat_shade_rect(0, 0, sw, sh, 6);
+    ui_dim_under_window_pop(x, y, w, h, am.t, 6);   /* S2-2: not under the window (same pixels, fewer shaded) */
     ui_text_big(sw / 2 - ui_text_big_width(title, 2) / 2, y - 22 + ui_wave(am.t, 30, 2), title, 2,
                 won ? PAL_UI_GOLD : PAL_UI_RED, won ? PAL_UI_PINK_D : PAL_RAMP(RAMP_BLOOD, 0));
     if (!ui_window_pop(x, y, w, h, style, am.t)) return;
@@ -590,16 +590,31 @@ static void results_draw(void)
     }
 }
 
+/* (S2-2) what changes the picture around the pause window: the camera, the hint line */
+static uint32_t am_pause_sig(void)
+{
+    return (uint32_t)((((1u << 1) | (1u << 2)) >> am.sel) & 1) | (uint32_t)(doomo_player.camera & 1) << 1 |
+           (uint32_t)(doomo_player.weapon_slot & 15) << 2;
+}
+
 static void am_draw(void)
 {
     DoomoView3D v;
     int sw = plat_screen_w(), sh = plat_screen_h();
     char buf[40];
+    /* S2-2: the pause menu over the held picture (S2-1's modal hold): only its window repaints */
+    if (combat_pause_hold(0, am.state == AMS_PAUSE, 5, am.t, am_pause_sig())) {
+        pause_draw();
+        ui_modal_hold_end();
+        return;
+    }
     combat_build_view(&v);
     lv_runtime_view(&v);
     if (am.berserk_t && v.tint_level < 3) { v.tint = TINT_RED; v.tint_level = (uint8_t)(2 + ((am.t >> 2) & 1)); }
     if (am.fury_t && v.tint_level < 2) { v.tint = TINT_GOLD; v.tint_level = 2; }
-    plat_view3d(&v);
+    /* S2-2: the world waits under the mode's first card, the pause menu, the shop and the results */
+    combat_view_draw(&v, (am.state == AMS_INTRO && !am.card_seen && !combat_autopilot_on()) || am.state == AMS_PAUSE ||
+                         am.state == AMS_SHOP || am.state == AMS_OVER || am.state == AMS_WIN, combat_stats()->ticks, -1);
     if (plat_draw_skipped()) return;
     if ((am.state == AMS_INTRO && (am.card_seen || combat_autopilot_on())) || am.state == AMS_FIGHT || am.state == AMS_BREAK) {
         lv_runtime_hud();
@@ -623,8 +638,8 @@ static void am_draw(void)
                 STR_ICON_HEART " A heal between rounds.", STR_ICON_COIN " Shop every 3rd wave with your loot.",
                 STR_ICON_SKULL " Ammo never ends. 25 kills: berserk!"
             };
-            int w = lvd_big() ? 300 : 230, h = ccard_height(w, goals[am.mode], rules[am.mode]);
-            ccard_draw(sw / 2 - w / 2, sh - 17 - h, w, WIN_HELL, goals[am.mode], rules[am.mode]);
+            int w = lvd_big() ? 300 : 230;
+            ccard_draw_above(sw / 2, sh - 17, w, WIN_HELL, goals[am.mode], rules[am.mode]);
             if (am.t > 12) ui_hint(STR_ICON_A " Start", WIN_HELL);
         }
         break;
@@ -654,6 +669,7 @@ static void am_draw(void)
     case AMS_OVER: case AMS_WIN: results_draw(); break;
     default: break;
     }
+    combat_pause_hold(1, am.state == AMS_PAUSE, 5, am.t, am_pause_sig());
 }
 
 const DoomoScene SCENE_ARENA_MODE = { "ARENA_MODE", am_enter, am_leave, am_update, am_draw, 0 };

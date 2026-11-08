@@ -217,13 +217,91 @@ static void banner(const char *text, int t)
     ui_text_big(sw / 2 - ui_text_big_width(text, sc) / 2, sh / 4, text, sc, PAL_RAMP(RAMP_LAVA, 7), PAL_RAMP(RAMP_BLOOD, 0));
 }
 
+static void ar_over_rect(int *x, int *y, int *w, int *h);
+
+/* the pause window (S2-2: also drawn alone over the held picture, S2-1's modal hold) */
+static void ar_pause_rect(int *x, int *y, int *w, int *h)
+{
+    *w = 150; *h = 56;
+    *x = plat_screen_w() / 2 - *w / 2;
+    *y = plat_screen_h() / 2 - *h / 2;
+}
+
+static void ar_pause_draw(void)
+{
+    int x, y, w, h;
+    ar_pause_rect(&x, &y, &w, &h);
+    /* S2-2: not under the window (same pixels, fewer shaded); none on a held frame (the kept page has it) */
+    if (!ui_modal_in()) ui_dim_under_window_pop(x, y, w, h, 1000, 7);
+    ui_window(x, y, w, h, WIN_HELL);
+    ui_button(x + 10, y + 6, w - 20, "Resume", ar_sel == 0, WIN_HELL);
+    ui_button(x + 10, y + 21, w - 20, doomo_player.camera == CAM_FIRST_PERSON ? "Camera: 1st" : "Camera: 3rd", ar_sel == 1, WIN_HELL);
+    ui_button(x + 10, y + 36, w - 20, "Give up", ar_sel == 2, WIN_HELL);
+}
+
+static int ar_pause_hold(int mode)
+{
+    int x, y, w, h;
+    uint32_t sig = (uint32_t)(doomo_player.camera & 1) | (uint32_t)(doomo_player.weapon_slot & 15) << 2;
+    if (ar_state == AR_OVER) {
+        /* the results once popped; the hint that comes at 2 s is its own held picture */
+        ar_over_rect(&x, &y, &w, &h);
+        return combat_modal_hold(mode, ar_t >= 12, x, y, w, h, sig | (ar_t > 60 ? 2u : 0u));
+    }
+    ar_pause_rect(&x, &y, &w, &h);
+    return combat_modal_hold(mode, ar_state == AR_PAUSE, x, y, w, h, sig);
+}
+
+/* the results window (S2-2: also drawn alone over the held picture once popped, S2-1's modal hold) */
+static void ar_over_rect(int *x, int *y, int *w, int *h)
+{
+    *w = plat_screen_w() > 260 ? 220 : 200; *h = 104;
+    *x = plat_screen_w() / 2 - *w / 2;
+    *y = plat_screen_h() / 2 - *h / 2 + 6;
+}
+
+static void ar_over_draw(void)
+{
+    int sw = plat_screen_w(), x, y, w, h, waves = DOOMO_MAX(ar_wave - 1, 0);
+    char buf[40];
+    ar_over_rect(&x, &y, &w, &h);
+    /* S2-2: not under the window (same pixels, fewer shaded); none on a held frame (the kept page has it) */
+    if (!ui_modal_in()) ui_dim_under_window_pop(x, y, w, h, ar_t, 6);
+    ui_text_big(sw / 2 - ui_text_big_width("ARENA OVER", 2) / 2, y - 20, "ARENA OVER", 2, PAL_UI_RED, PAL_RAMP(RAMP_BLOOD, 0));
+    if (!ui_window_pop(x, y, w, h, WIN_HELL, ar_t)) return;
+    doomo_snprintf(buf, sizeof(buf), "%d", waves);
+    ui_value_row(x + 6, y + 8, w - 12, "Waves survived", buf, 0);
+    doomo_snprintf(buf, sizeof(buf), "%d", (int)combat_st.score);
+    ui_value_row(x + 6, y + 19, w - 12, "Score", buf, 0);
+    doomo_snprintf(buf, sizeof(buf), "%d", combat_st.kills);
+    ui_value_row(x + 6, y + 30, w - 12, "Demons", buf, 0);
+    doomo_snprintf(buf, sizeof(buf), "x%d", combat_st.best_combo);
+    ui_value_row(x + 6, y + 41, w - 12, "Best combo", buf, 0);
+    doomo_snprintf(buf, sizeof(buf), "%d", ar_best);
+    ui_value_row(x + 6, y + 52, w - 12, "Best this visit", buf, 0);
+    doomo_snprintf(buf, sizeof(buf), "+%d H$ +scrap", ar_money);
+    ui_value_row(x + 6, y + 66, w - 12, STR_ICON_COIN " You earned", buf, 0);   /* C10: not a choice: no arrows */
+    doomo_snprintf(buf, sizeof(buf), "%d arena waves total", (int)progress_get(PROG_ARENA_WAVES));
+    ui_text_center(sw / 2, y + 82, buf, ui_style(WIN_HELL)->text_dim);
+    if (ar_t > 60) ui_hint(STR_ICON_A " Continue", WIN_HELL);
+}
+
 static void ar_draw(void)
 {
     DoomoView3D v;
+    int shaded;
     int sw = plat_screen_w(), sh = plat_screen_h();
     char buf[40];
+    if (ar_pause_hold(0)) {                    /* S2-2: only the window repaints */
+        if (ar_state == AR_OVER) ar_over_draw();
+        else ar_pause_draw();
+        ui_modal_hold_end();
+        return;
+    }
     combat_build_view(&v);
-    plat_view3d(&v);
+    /* S2-2: nothing moves under the title card, the pause menu and the results */
+    shaded = combat_view_draw(&v, ar_state == AR_INTRO || ar_state == AR_PAUSE || ar_state == AR_OVER,
+                              combat_stats()->ticks, ar_state == AR_INTRO ? 5 : -1) == 2;
     if (ar_state != AR_INTRO) {                  /* C10: the title card owns the screen */
         combat_draw_hud();
         /* wave counter under the score */
@@ -233,19 +311,17 @@ static void ar_draw(void)
     switch (ar_state) {
     case AR_INTRO: {
         /* C10: a minigame-style title card: what to do, what you get, how to play */
-        int big = sh >= 200, w = big ? 300 : 230, x = sw / 2 - w / 2, h, y;
+        int big = sh >= 200, w = big ? 300 : 230, x = sw / 2 - w / 2;
         const char *goal = STR_ICON_STAR " Survive the waves. Boss every 5th.";
         const char *rule = STR_ICON_COIN " Keep H$ + scrap for every wave.";
-        plat_shade_rect(0, 0, sw, sh, 5);
+        if (!shaded) plat_shade_rect(0, 0, sw, sh, 5);      /* (S2-2: else the held view came back dimmed) */
         ui_text_big(sw / 2 - ui_text_big_width("DEMON ARENA", 2) / 2, big ? 30 : 12, "DEMON ARENA", 2,
                     PAL_RAMP(RAMP_LAVA, 7), PAL_RAMP(RAMP_BLOOD, 0));
         if (ar_best) {
             doomo_snprintf(buf, sizeof(buf), "Best this visit: wave %d", ar_best);
             ui_text_outline(sw / 2 - ui_text_width(buf) / 2, big ? 54 : 32, buf, PAL_UI_GOLD, PAL_BLACK);
         }
-        h = ccard_height(w, goal, rule);
-        y = sh - 17 - h;
-        ccard_draw(x, y, w, WIN_HELL, goal, rule);
+        ccard_draw_above(x + w / 2, sh - 17, w, WIN_HELL, goal, rule);
         if (ar_t > 12) ui_hint(STR_ICON_A " Start  " STR_ICON_B " Leave", WIN_HELL);
         break;
     }
@@ -259,41 +335,16 @@ static void ar_draw(void)
         doomo_snprintf(buf, sizeof(buf), "Next wave in %d", (120 - ar_t) / 30 + 1);
         ui_text_outline(sw / 2 - ui_text_width(buf) / 2, sh / 4 + 24, buf, PAL_UI_GOLD, PAL_RAMP(RAMP_BLOOD, 0));
         break;
-    case AR_PAUSE: {
-        int w = 150, h = 56, x = sw / 2 - w / 2, y = sh / 2 - h / 2;
-        plat_shade_rect(0, 0, sw, sh, 7);
-        ui_window(x, y, w, h, WIN_HELL);
-        ui_button(x + 10, y + 6, w - 20, "Resume", ar_sel == 0, WIN_HELL);
-        ui_button(x + 10, y + 21, w - 20, doomo_player.camera == CAM_FIRST_PERSON ? "Camera: 1st" : "Camera: 3rd", ar_sel == 1, WIN_HELL);
-        ui_button(x + 10, y + 36, w - 20, "Give up", ar_sel == 2, WIN_HELL);
+    case AR_PAUSE:
+        ar_pause_draw();
         break;
-    }
-    case AR_OVER: {
-        int w = sw > 260 ? 220 : 200, h = 104, x = sw / 2 - w / 2, y = sh / 2 - h / 2 + 6;
-        int waves = DOOMO_MAX(ar_wave - 1, 0);
-        plat_shade_rect(0, 0, sw, sh, 6);
-        ui_text_big(sw / 2 - ui_text_big_width("ARENA OVER", 2) / 2, y - 20, "ARENA OVER", 2, PAL_UI_RED, PAL_RAMP(RAMP_BLOOD, 0));
-        if (!ui_window_pop(x, y, w, h, WIN_HELL, ar_t)) break;
-        doomo_snprintf(buf, sizeof(buf), "%d", waves);
-        ui_value_row(x + 6, y + 8, w - 12, "Waves survived", buf, 0);
-        doomo_snprintf(buf, sizeof(buf), "%d", (int)combat_st.score);
-        ui_value_row(x + 6, y + 19, w - 12, "Score", buf, 0);
-        doomo_snprintf(buf, sizeof(buf), "%d", combat_st.kills);
-        ui_value_row(x + 6, y + 30, w - 12, "Demons", buf, 0);
-        doomo_snprintf(buf, sizeof(buf), "x%d", combat_st.best_combo);
-        ui_value_row(x + 6, y + 41, w - 12, "Best combo", buf, 0);
-        doomo_snprintf(buf, sizeof(buf), "%d", ar_best);
-        ui_value_row(x + 6, y + 52, w - 12, "Best this visit", buf, 0);
-        doomo_snprintf(buf, sizeof(buf), "+%d H$ +scrap", ar_money);
-        ui_value_row(x + 6, y + 66, w - 12, STR_ICON_COIN " You earned", buf, 0);   /* C10: not a choice: no arrows */
-        doomo_snprintf(buf, sizeof(buf), "%d arena waves total", (int)progress_get(PROG_ARENA_WAVES));
-        ui_text_center(sw / 2, y + 82, buf, ui_style(WIN_HELL)->text_dim);
-        if (ar_t > 60) ui_hint(STR_ICON_A " Continue", WIN_HELL);
+    case AR_OVER:
+        ar_over_draw();
         break;
-    }
     default:
         break;
     }
+    ar_pause_hold(1);
 }
 
 const DoomoScene SCENE_ARENA = { "ARENA", ar_enter, ar_leave, ar_update, ar_draw, 0 };

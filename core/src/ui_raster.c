@@ -1455,11 +1455,13 @@ void ui_glyph7(int x, int y, const char *const rows[7], const uint8_t pal[5])
  * operations and emitted as merged runs. */
 #define TW 10                            /* words per text row: 320 px     */
 #define TX_LINES 4
+#define TX_WIN 255                       /* (S2-2) widest cached window: rec_add's 8-bit x and width */
 
 typedef struct {
     const char *line[TX_LINES];
     int len[TX_LINES];
     int nlines, scale, x, y, nw, bw, bh;
+    int c0, c1;                          /* (S2-2) the block columns emitted: [c0, c1) */
 } TextBlock;
 
 /* glyph bits of block row q (block origin = text origin - (1, 1)) */
@@ -1511,6 +1513,12 @@ static void tw_dn1(uint32_t *o, const uint32_t *a, int nw)   /* o[x] = a[x+1] */
     o[nw - 1] = a[nw - 1] >> 1;
 }
 
+#if defined(DOOMO_PLATFORM_PS1)
+/* (S2-2) PS1: a text block is rasterised once and then replayed from the shape cache (the wide ones too, in
+ * column windows below), so this runs on cache misses only: compiled for size, it pays for those windows' bytes
+ * in resident RAM */
+__attribute__((optimize("Os")))
+#endif
 static void text_emit(const TextBlock *tb, const uint8_t col[4])
 {
     /* col: light, text, outline, shadow. ring[q & 7] = glyph bits of
@@ -1564,7 +1572,10 @@ static void text_emit(const TextBlock *tb, const uint8_t col[4])
                 int b = LOWBIT(v), x = (k << 5) + b, nc;
                 uint32_t bit = 1u << b;
                 v &= v - 1;
-                if (run_c >= 0) ur_run(oy + q, ox + run_x, x - run_x, (uint8_t)run_c);
+                if (run_c >= 0) {
+                    int a = DOOMO_MAX(run_x, tb->c0), e = DOOMO_MIN(x, tb->c1);
+                    if (a < e) ur_run(oy + q, ox + a, e - a, (uint8_t)run_c);
+                }
                 if (pt[k] & bit) nc = col[0];
                 else if (pc[k] & bit) nc = col[1];
                 else if (pol[k] & bit) nc = col[2];
@@ -1621,13 +1632,27 @@ int ur_text_big(int x, int y, const char *s, int scale, uint8_t color, uint8_t o
     k0 = K_TEXT | (uint32_t)scale << 8 | (uint32_t)color << 16 | (uint32_t)outline << 24;
     k1 = str_hash(s);
     k2 = (uint32_t)(p - s) + (uint32_t)maxlen * 65536u;
-    if (tb.bw > 256 || tb.bh > 256) {        /* too big for the cache */
+    tb.c0 = 0;
+    tb.c1 = tb.nw * 32;                      /* (the outline and shadow may reach past bw) */
+    if (tb.bh > 128) {                       /* too big for the cache */
         text_emit(&tb, col);
         return 1;
     }
-    if (ur_cache_draw(k0, k1, k2, x - 1, y - 1)) return 1;
-    ur_cache_begin(k0, k1, k2, x - 1, y - 1);
-    text_emit(&tb, col);
-    if (!ur_cache_end()) text_emit(&tb, col);
+    /* (S2-2) a block wider than a cached shape can be (a rect's x and width are 8 bits: the PS1 Hell Breach
+     * banner's 273 px title was rasterised again on every frame, 24% of the card's time) is cached as column
+     * windows of TX_WIN px, each its own shape: the runs are only cut at the window edges, so the pixels are the
+     * same */
+    {
+        int c;
+        for (c = 0; c < tb.bw; c += TX_WIN) {
+            uint32_t kw = k2 ^ ((uint32_t)(c / TX_WIN) << 28);
+            tb.c0 = c;
+            tb.c1 = c + TX_WIN < tb.bw ? c + TX_WIN : tb.nw * 32;
+            if (ur_cache_draw(k0, k1, kw, x - 1 + c, y - 1)) continue;
+            ur_cache_begin(k0, k1, kw, x - 1 + c, y - 1);
+            text_emit(&tb, col);
+            if (!ur_cache_end()) text_emit(&tb, col);
+        }
+    }
     return 1;
 }
