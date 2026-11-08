@@ -44,6 +44,22 @@ static void adapt_view_dist(void)
     /* Options > Performance > Draw distance: Near caps the view */
     if (opt_get(OPT_DRAW_DIST) == 0 && s_view_dist > VIEW_DIST_NEAR) s_view_dist = VIEW_DIST_NEAR;
 }
+/* (SP8, P-C1) Options "Combat detail" picks the subdivision level of the
+ * shooter's view (r3d.h g_r3_sub): Smooth the tight level 2, Balanced the
+ * capped level 1, Max detail the full level 0. Balanced and Max step one
+ * level down for at least 8 frames after a frame whose CPU time crowded the
+ * 33 ms budget (Redux: over 31 ms), so the frames that would fall below 30
+ * fps lose detail and the rest keep it. Drawing only: the game never sees it. */
+static uint8_t s_sub_hot;
+static void adapt_sub(void)
+{
+    int m = core_opt(OPT_3D_FAST, OPT3D_BALANCED);
+    if (g_perf.cpu_us > 31000) s_sub_hot = 8;
+    else if (s_sub_hot) s_sub_hot--;
+    if (m == OPT3D_SMOOTH) g_r3_sub = 2;
+    else if (m == OPT3D_MAX) g_r3_sub = s_sub_hot ? 1 : 0;
+    else g_r3_sub = s_sub_hot ? 2 : 1;
+}
 #define NRAYS     36             /* rays per 45 degrees of fan */
 
 static const DoomoMap *s_map;
@@ -451,6 +467,7 @@ void plat_view3d(const DoomoView3D *v)
     world_sync(s_map);
     r3_stats_reset();
     adapt_view_dist();
+    adapt_sub();                      /* SP8 */
 
     /* camera: pitch is a real rotation (+-256 -> +-40 degrees); the field
      * of view follows OPT_FOV like the reference renderer:
@@ -475,8 +492,10 @@ void plat_view3d(const DoomoView3D *v)
         r3_camera(ex, ey, ez, v->angle, pitch_a, v->vx, v->vy, v->vw, v->vh,
                   hp, s_view_dist * CELL, fogn, 0);
     }
-    if (!r3_begin())
+    if (!r3_begin()) {
+        g_r3_sub = 0;                 /* SP8 */
         return;
+    }
     /* The packed sky is decoded into this frame's display-list memory and
      * uploaded from there (52 KB in all): that only fits while the list is
      * still empty, so fetch it HERE, before the geometry. Done after the
@@ -571,6 +590,7 @@ void plat_view3d(const DoomoView3D *v)
             gfx_chain(t);
         }
     }
+    g_r3_sub = 0;                     /* SP8: the overworld and the house subdivide fully */
     g_r3stats.cpu_us = timer_us() - t0;
 }
 

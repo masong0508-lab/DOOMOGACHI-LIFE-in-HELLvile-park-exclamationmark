@@ -245,6 +245,14 @@ static int run_m0(const char *c, const char *a)
             reply(0, "expect-rel needs two citizens' names:", w[1]);
         else
             reply((rel_kind(x, y) >= 0) == want, want ? "never met:" : "already know each other:", w[0]);
+    } else if (!strcmp(c, "opt")) {                                /* SP8: opt ID VALUE */
+        int id = n > 0 ? h_atoi(w[0]) : -1, v = n > 1 ? h_atoi(w[1]) : 0;
+        if (n < 2 || id < 0 || !HAVE(opt_set) || !HAVE(opt_get)) {
+            reply(0, "opt needs ID VALUE:", n > 0 ? w[0] : "");
+        } else {
+            opt_set(id, v);
+            reply(opt_get(id) == v, "opt", w[0]);
+        }
     } else if (!strcmp(c, "lang") || !strcmp(c, "expect-lang")) {
         int found = HAVE(lang_find) ? lang_find(w[0]) : -1;
         if (found < 0)

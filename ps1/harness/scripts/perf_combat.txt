@@ -1,0 +1,56 @@
+# perf_combat.txt (SP8): the shooter in the Vape Cellar (COMBAT 3) in every
+# Options "Combat detail" mode (OPT_3D_FAST is option 63: 0 Balanced, the
+# default; 1 Smooth; 2 Max detail), third then first person; docs/PS1.md
+# "Combat detail and the subdivision levels". Run like the other perf
+# scripts (perfall.sh combat). Floors are about 90% of what PCSX-Redux
+# measured when SP8 landed (Redux overstates CPU time 1.5-2x).
+seed 1
+opt 63 0
+scene TITLE
+wait 2
+push COMBAT 3
+wait 2
+press SELECT
+wait 200
+fps balanced_tp
+wait 240
+fpsend balanced_tp
+expect-fps 26 balanced_tp
+shot balanced_tp
+seed 1
+scene TITLE
+wait 2
+push COMBAT 3
+wait 200
+fps balanced_fp
+wait 240
+fpsend balanced_fp
+expect-fps 27 balanced_fp
+shot balanced_fp
+seed 1
+opt 63 1
+scene TITLE
+wait 2
+push COMBAT 3
+wait 2
+press SELECT
+wait 200
+fps smooth_tp
+wait 240
+fpsend smooth_tp
+expect-fps 26 smooth_tp
+shot smooth_tp
+seed 1
+opt 63 2
+scene TITLE
+wait 2
+push COMBAT 3
+wait 2
+press SELECT
+wait 200
+fps max_tp
+wait 240
+fpsend max_tp
+expect-fps 26 max_tp
+shot max_tp
+opt 63 0

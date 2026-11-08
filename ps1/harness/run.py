@@ -46,6 +46,7 @@ when a scene renders below 30 fps:
     expect-rel WHO OTHER [0|1]   fail unless the two know each other (1) / never met (0)
     expect-money MIN   fail unless the purse holds at least MIN H$
     lang CODE / expect-lang CODE   set / check the language
+    opt ID VALUE       (SP8) opt_set(ID, VALUE), e.g. 63 1 = Combat detail: Smooth
     expect-presses NAME [<=] N     fail unless the last journey NAME took at most N presses
                     (all of these run in the game through the g_hcmd mailbox,
                     with the native runner's meaning; src/hcmd.c)
@@ -309,7 +310,7 @@ def compile_script(lines, lockstep=True):
             if got > want:
                 raise SystemExit("line %d: %d presses, more than %d, in journey %s" % (ln, got, want, arg))
         elif op in ("item", "expect-item", "problem", "expect-problem", "expect-rel",
-                    "expect-money", "lang", "expect-lang"):
+                    "expect-money", "lang", "expect-lang", "opt"):
             # the whole rest of the line goes to the game (63 chars), split there
             cmds.append(hcmd(op, 0, " ".join(parts[1:])[:63]))
         elif op == "no-stubs":

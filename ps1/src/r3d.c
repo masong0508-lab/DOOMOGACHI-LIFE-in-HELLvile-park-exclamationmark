@@ -346,12 +346,26 @@ static void __attribute__((noinline)) clip_poly(R3V **ring, int nr, const TexRef
     }
 }
 
+/* (SP8, P-C1) g_r3_sub's subdivision rules: a piece is split when it is
+ * bigger than `big_px`, or bigger than `min_px` with a depth range wide
+ * enough (size * (zmax - zmin) > k * (zmax + zmin)) for the affine warp to
+ * show, down to `depth` levels. Level 0 is the rule before SP8. Far pieces
+ * have a small depth range for their size, so the larger k and min_px of
+ * levels 1 and 2 leave far and small quads whole and still split the near,
+ * big ones (floors under the camera, walls beside it). */
+uint8_t g_r3_sub;
+static const struct { int16_t big_px, min_px, k, depth; } k_sub[3] = {
+    { 128, 20, 7, R3_MAXDEPTH },        /* 0: full (Max detail; the overworld) */
+    { 128, 32, 10, R3_MAXDEPTH },       /* 1: Balanced */
+    { 160, 48, 14, R3_MAXDEPTH - 1 },   /* 2: Smooth */
+};
+
 /* screen-space bounds test shared by quads and triangles: returns
  * -1 cull, 0 draw, 1 subdivide */
 static inline int judge(int minx, int maxx, int miny, int maxy, int32_t zmin, int32_t zmax,
                         int can_sub, int depth)
 {
-    int size, big;
+    int size, big, lv = g_r3_sub < 3 ? g_r3_sub : 2;
     if (maxx < g_cam.vx || minx >= g_cam.vx + g_cam.vw ||
         maxy < g_cam.vy || miny >= g_cam.vy + g_cam.vh) {
         g_r3stats.culled++;
@@ -369,8 +383,9 @@ static inline int judge(int minx, int maxx, int miny, int maxy, int32_t zmin, in
      * left holes in walls/floors right next to the camera. */
     if (big)
         return depth < R3_MAXDEPTH + 6 ? 1 : -1;
-    if (can_sub &&
-        (size > 128 || (size > 20 && size * (zmax - zmin) > 7 * (zmax + zmin))))
+    if (can_sub && depth < k_sub[lv].depth &&
+        (size > k_sub[lv].big_px ||
+         (size > k_sub[lv].min_px && size * (zmax - zmin) > k_sub[lv].k * (zmax + zmin))))
         return 1;
     return 0;
 }

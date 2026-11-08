@@ -63,6 +63,13 @@ typedef struct R3Cam {
 
 extern R3Cam g_cam;
 
+/* (SP8, P-C1) how hard quads and triangles are subdivided against the affine
+ * texture warp (r3d.c judge): 0 full (Options "Combat detail: Max detail"),
+ * 1 capped for far and small pieces (Balanced, the default), 2 tighter still
+ * (Smooth). view3d.c sets it every frame from the option and the last
+ * frame's CPU time; the overworld and the house keep 0. */
+extern uint8_t g_r3_sub;
+
 /* Camera setup. x,y,z: eye in 16.16 world units; ang 0..4095; pitch_a in
  * 4096-units (+ = look up). far / fog distances in world units. */
 void r3_camera(int32_t x, int32_t y, int32_t z, int ang, int pitch_a,
