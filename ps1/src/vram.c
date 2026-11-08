@@ -172,6 +172,45 @@ static void hash_rebuild(void)
     }
 }
 
+/* Evict the least recently used page not used in the frame being built:
+ * one that holds w texels across (img_alloc), or with w = 0 any page that
+ * holds entries (hash_make_room). Returns the page or -1. */
+static int page_evict(int w)
+{
+    int i, best = -1;
+    uint32_t oldest = 0xffffffffu;
+    for (i = 0; i < IMG_PAGES; i++)
+        if (s_page[i].used != s_vframe && s_page[i].used < oldest &&
+            (w ? w <= s_page[i].w : s_page[i].nshelf != 0)) {
+            oldest = s_page[i].used;
+            best = i;
+        }
+    if (best >= 0)
+        page_reset(&s_page[best]);
+    return best;
+}
+
+/* S2-12: make the hash less than 3/4 full before an insert. A rebuild drops
+ * the stale entries and tombstones; when the live entries alone fill 3/4 of
+ * the table (hundreds of small tiles cached across the six pages: the Fun
+ * Fair after Candy Catch's long session and Whack-a-Mole), whole pages are
+ * evicted, least recently used first, until there is room (a reset page has
+ * no shelves, so each page goes at most once). 0 = no room (every page with
+ * entries is in use this frame): the tile is not drawn this tick. Before
+ * S2-12 vram_image() rebuilt and retried forever here: the PS1 hang entering
+ * Vape Cloud Dodge (frame 2671 of speed2_fair). */
+#define HASH_FULL (HASH_SIZE * 3 / 4)
+static int hash_make_room(void)
+{
+    hash_rebuild();
+    while (s_hash_used >= HASH_FULL) {
+        if (page_evict(0) < 0)
+            return 0;
+        hash_rebuild();
+    }
+    return 1;
+}
+
 /* Allocate w x h texels (w includes padding). Returns page or -1. */
 static int img_alloc(int w, int h, int *ou, int *ov)
 {
@@ -203,20 +242,9 @@ static int img_alloc(int w, int h, int *ou, int *ov)
                 return i;
             }
         }
-        if (pass == 0) {
-            /* evict the least recently used page not used this frame */
-            int best = -1;
-            uint32_t oldest = 0xffffffffu;
-            for (i = 0; i < IMG_PAGES; i++)
-                if (s_page[i].used != s_vframe && s_page[i].used < oldest &&
-                    w <= s_page[i].w) {
-                    oldest = s_page[i].used;
-                    best = i;
-                }
-            if (best < 0)
-                return -1;
-            page_reset(&s_page[best]);
-        }
+        /* evict the least recently used page not used this frame */
+        if (pass == 0 && page_evict(w) < 0)
+            return -1;
     }
     return -1;
 }
@@ -241,6 +269,7 @@ int vram_image(const DoomoImage *img, int tx, int ty, TexRef *out)
     k2 = ((uint32_t)tx) | ((uint32_t)ty << 6) | ((uint32_t)flip << 12) |
          ((uint32_t)img->w << 13) | ((uint32_t)(img->h & 0x7ff) << 21) |
          (img->uid ? 0u : 0x80000000u);
+probe:
     h = hash2(k1, k2) & HASH_MASK;
     for (;;) {
         e = &s_hash[h];
@@ -258,14 +287,17 @@ int vram_image(const DoomoImage *img, int tx, int ty, TexRef *out)
     /* miss: allocate and upload */
     if (gfx_free_bytes() < (size_t)(tw + 2) * (th + 1) + 2048)
         return 0;
+    if (!free_e && s_hash_used >= HASH_FULL) {
+        /* room first, then probe again: once, as the table is now below
+         * 3/4 and the rebuild left no stale entry or tombstone to reuse */
+        if (!hash_make_room())
+            return 0;
+        goto probe;
+    }
     pg = img_alloc(tw + 2, th + 1, &u, &v);
     if (pg < 0)
         return 0;
     if (!free_e) {
-        if (s_hash_used >= HASH_SIZE * 3 / 4) {
-            hash_rebuild();
-            return vram_image(img, tx | (flip << 8), ty, out);
-        }
         free_e = e;
         s_hash_used++;
     }

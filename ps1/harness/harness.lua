@@ -252,6 +252,22 @@ local function hang_check(f)
   -- run.py --timeout covers a hang there)
   if frame_addr ~= 0 and f > 0 and vsyncs - last_change > hang_limit and not pending then
     log(string.format('HANG: no new frame for %d vsyncs (frame=%d)', vsyncs - last_change, f))
+    -- where the CPU is stuck (S2-12): pc / ra / sp and the stack words that
+    -- look like return addresses (harness/prof.py-style lookup with the map)
+    local r = PCSX.getRegisters()
+    local sp = tonumber(r.GPR.n.sp)
+    local words = {}
+    for i = 0, 63 do
+      local a = sp + i * 4
+      if a >= 0x80000000 and a < 0x80200000 then
+        local w = ffi.cast('uint32_t*', ram(a))[0]
+        if w >= 0x80010000 and w < 0x80200000 and w % 4 == 0 then
+          words[#words + 1] = string.format('%08x', tonumber(w))
+        end
+      end
+    end
+    log(string.format('HANG: pc=%08x ra=%08x sp=%08x stack-code %s', tonumber(r.pc),
+      tonumber(r.GPR.n.ra), sp, table.concat(words, ' ')))
     local ss = PCSX.GPU.takeScreenShot()
     save_slice(out .. '/hang.raw', ss.data)
     local t = io.open(out .. '/hang.txt', 'w')

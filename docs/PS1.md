@@ -647,6 +647,15 @@ Every frame is **one** linked GPU display list in painter's order
 * Uploads (cache misses) are `GP0(A0h)` packets in their own chain at the
   head of the frame, so they run strictly after the previous frame
   finished drawing and never overwrite a texture still in use.
+* The cache's 512-entry hash is kept under 3/4 full (S2-12): before an
+  insert it is rebuilt without stale entries and tombstones, and when the
+  live tiles alone still fill 384 entries (many small images across the
+  six pages: the Fun Fair after Candy Catch's long session and
+  Whack-a-Mole), whole pages are evicted, least recently used first and
+  never one used in the frame being built, until there is room. Before
+  S2-12 it rebuilt and retried forever there: the disc hung entering Vape
+  Cloud Dodge (frame 2671 of `speed2_fair`). `harness/scripts/fair_cache.txt`
+  (in the harness target) plays that sequence and gates Dodge at 29 fps.
 
 ### Frame pacing
 
@@ -1002,7 +1011,9 @@ cmake --build --preset ps1-enginetest --target harness  # the engine suite
 Scripts in `harness/scripts/`: `game_smoke.txt` (boot, title, launcher,
 UI gallery, save + load on the card), `enginetest.txt` (the full engine
 tour with screenshots and its frame rate), `thirdperson.txt`,
-`overworld.txt`, `model.txt` (3D citizens), `memcard.txt` (card self test).
+`overworld.txt`, `model.txt` (3D citizens), `memcard.txt` (card self test),
+`creator_speed.txt` (CR9's floors), `fair_cache.txt` (S2-12: the image
+cache under pressure, the old Dodge hang).
 
 `plat_test_flags()` (plat_ext.h) returns `PLAT_TEST_NO_PICKER` while the
 harness holds the lockstep `lock` in `g_hcmd` (every `run.py` script run),
@@ -1283,6 +1294,11 @@ plays it, and `tools/speed2.py table OUT/GROUP/tty.log` prints fps, the frames b
 worst frame and the overlay loads before the window (the `ovl: GROUP (N KB) in M ms` lines: the PS1's scene-change
 freeze). A single `3` at a window's first frame is the lockstep resume and is not counted. `JOBS=2` runs two groups
 at once; `PROF=1` writes PC profiles instead (`prof.py --group`).
+
+A hang (no new frame for `--hang` vsyncs) now also logs `HANG: pc=... ra=... sp=... stack-code ...` (the stack words
+that look like code addresses; `mipsel-linux-gnu-addr2line -f -e build/doomogachi.elf ADDR` names them). S2-12 found
+the Dodge hang this way: `memcpy` <- `hash_rebuild` <- `vram_image` <- `plat_image`, the image cache retrying forever.
+After the fix the whole `fair` group plays in one run (the Dodge title card 30.17 fps, play 30.12, no frame over 33 ms).
 
 ## 13. Notes for the core
 

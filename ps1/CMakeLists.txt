@@ -431,6 +431,9 @@ else()
 		# CR9: the creator's speed gates (expect-fps floors; docs/CREATOR.md "Speed")
 		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${_hs}/creator_speed.txt
 		        --out ${_shots}/creator_speed
+		# S2-12: the image cache under pressure (Candy Catch's session + Whack, then Dodge: the old hang)
+		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${_hs}/fair_cache.txt
+		        --out ${_shots}/fair_cache
 		${_journeys}
 		DEPENDS disc
 		COMMENT "PCSX-Redux harness: game"

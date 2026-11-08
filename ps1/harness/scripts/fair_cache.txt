@@ -1,0 +1,60 @@
+# fair_cache.txt - S2-12: the PS1 image cache under pressure (ps1/src/vram.c, docs/PS1.md "Image cache").
+# Candy Catch with its whole 1,500-tick autoplay session, Whack-a-Mole, then Vape Cloud Dodge: the
+# exact sequence of speed2_fair (gba/harness/scripts/speed2_fair.txt) that used to hang the disc at
+# frame 2671 entering Dodge. By then the cache holds 384 live tiles (3/4 of its 512-entry hash), and
+# vram_image() rebuilt the hash and retried forever; now whole pages are evicted (LRU, never one in
+# use this frame) until there is room. Run by the game's harness target (ps1/CMakeLists.txt): the run
+# fails on a hang (run.py's heartbeat) and on the expect-fps floors (Dodge measures 30.17 / 30.12).
+# The waits add up to speed2_fair's ticks (its fps / shot lines take none), so the cache fills the same.
+wait 40
+seed 1
+scene TITLE
+wait 2
+push MG_CATCH 1
+wait 130
+press B
+wait 2
+seed 1
+push MG_CATCH 49
+wait 1780
+seed 1
+scene TITLE
+wait 2
+push MG_CATCH 51
+wait 190
+seed 1
+scene TITLE
+wait 2
+push MG_WHACK 1
+wait 130
+press B
+wait 2
+seed 1
+push MG_WHACK 49
+wait 190
+seed 1
+scene TITLE
+wait 2
+push MG_WHACK 51
+wait 190
+seed 1
+scene TITLE
+wait 2
+push MG_DODGE 1
+wait 40
+fps fair_cache_dodge_title
+wait 90
+fpsend fair_cache_dodge_title
+expect-fps 29 fair_cache_dodge_title
+shot fair_cache_dodge_title
+press B
+wait 2
+seed 1
+push MG_DODGE 49
+wait 60
+fps fair_cache_dodge_play
+wait 130
+fpsend fair_cache_dodge_play
+expect-fps 29 fair_cache_dodge_play
+shot fair_cache_dodge_play
+expect-scene MG_DODGE
