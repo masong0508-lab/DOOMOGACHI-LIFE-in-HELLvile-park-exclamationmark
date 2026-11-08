@@ -457,6 +457,7 @@ static void apply_species_preset(DoomoResident *r, const CrPreset *p)
     apply_kv(r, p, 0);
 }
 
+static int lock_compute(const CrRow *row, int index);
 int cr_preset_locked(const CrPreset *p, const char **hint)
 {
     int i;
@@ -471,7 +472,7 @@ int cr_preset_locked(const CrPreset *p, const char **hint)
         else if (row->kind == RK_PAINT || row->kind == RK_SKIN) idx = v;
         else if (row->kind == RK_PAINT_NONE) idx = v == LOOK_NO_COLOR ? 0 : v + 1;
         else continue;
-        if (idx >= 0 && cr_value_locked(row, idx)) {
+        if (idx >= 0 && lock_compute(row, idx)) {      /* CR9: not through the memo */
             if (hint) *hint = cr_lock_hint(row, idx);
             return 1;
         }
@@ -552,7 +553,54 @@ void cr_row_set(DoomoResident *r, const CrRow *row, int index)
     }
 }
 
+static int lock_compute(const CrRow *row, int index);
+
+/* CR9: the unlock bits' signature: the memo below is valid while it is unchanged */
+static uint32_t unlock_sig(void)
+{
+    uint32_t h = 2166136261u;
+    int i;
+    for (i = 0; i < DOOMO_UNLOCK_BITS / 8; i++) h = (h ^ doomo_town.unlocks[i]) * 16777619u;
+    return h;
+}
+
+/* CR9: called at the start of every update and draw: a new unlock (granted by the creator during
+ * its update, or anywhere before this tick) clears the memo */
+void cr_lock_memo_check(void)
+{
+    uint32_t sig = unlock_sig();
+    if (sig != cr.lmemo_sig) { memset(cr.lmemo, 0, sizeof(cr.lmemo)); cr.lmemo_sig = sig; }
+}
+
 int cr_value_locked(const CrRow *row, int index)
+{
+    uint32_t sig = 0;
+    int k, key;
+    CrLockMemo *m;
+    if (!row) return 0;
+    switch (row->kind) {
+    case RK_ENUM:
+        if (CR_IS_AGE_ROW(row) || row->clist == CR_NOLIST) return lock_compute(row, index);
+        break;
+    case RK_PAINT: case RK_PAINT_NONE: case RK_SKIN: case RK_ACTION:
+        break;
+    default:
+        return lock_compute(row, index);
+    }
+    /* a species preset depends on the draft's species too */
+    key = row->kind == RK_ACTION && row->aux == CA_SPECIES_PRESET ? index + 8 * RES_SPECIES(&cr.draft) : index;
+    (void)sig;
+    k = (int)(((uintptr_t)row >> 2) * 7u + (unsigned)key) & (CR_LMEMO - 1);
+    m = &cr.lmemo[k];
+    if (m->ok && m->row == row && m->idx == key) return m->val;
+    m->row = row;
+    m->idx = (int16_t)key;
+    m->val = (uint8_t)lock_compute(row, index);
+    m->ok = 1;
+    return m->val;
+}
+
+static int lock_compute(const CrRow *row, int index)
 {
     int v;
     if (!row) return 0;
@@ -2060,12 +2108,16 @@ static void cr_enter(int arg)
     memcpy(cr.nick_orig, cr.nick, DOOMO_NAME_LEN);
     hist_reset();
     cr.show = CR_SHOW_ALL;
+    memset(cr.lmemo, 0, sizeof(cr.lmemo));      /* CR9: cr.orig is new */
     for (i = 0; i < CR_TAB_COUNT; i++) cr.row[i] = (uint8_t)cr_first_selectable(i);
     cr.preset_i = 0;
     refresh_home();
     if (cr.phase == CRP_HERO) hero_preview();
     cr.shown = (*RES_LOOK_VIEW(&cr.draft));
     cr.img.uid = 0;
+#if CR_CALM
+    portrait_hold(1);      /* CR9 (GBA): the figure holds one pose; a new face is drawn in slices */
+#endif
     audio_music(SONG_CREATOR);
     cr_sparkle_burst(8, -1);
 }
@@ -2073,6 +2125,9 @@ static void cr_enter(int arg)
 static void cr_leave(void)
 {
     if (scene_scratch_mine(CR_SCRATCH_TAG)) cr.talk = NULL;
+#if CR_CALM
+    portrait_hold(0);
+#endif
 }
 
 static void cr_update(void)
@@ -2100,6 +2155,7 @@ static void cr_update(void)
     case CRP_GRID:   cr_grid_update(); break;
     default: break;
     }
+    cr_lock_memo_check();                       /* CR9: after this tick's grants, before its drawing */
     if (scene_top() == &SCENE_CREATOR) preview_update();
 }
 

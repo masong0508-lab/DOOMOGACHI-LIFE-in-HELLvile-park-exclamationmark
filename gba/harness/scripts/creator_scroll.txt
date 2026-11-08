@@ -1,0 +1,62 @@
+# creator_scroll.txt - the creator's speed gates on the GBA (CR9): `make -C gba test-creator`.
+# The owner's target is a steady 30 drawn fps on every screen (DECISIONS "FPS TARGET"); the floors
+# below are regression gates at about 85-90% of what this ROM measures today (docs/CREATOR.md
+# "Speed" has the table and the gap to 30). Numbers belong to this script (tick-exact: sync on,
+# seed 1).
+#
+#   idle        a new Hillvile citizen on the Species & Body tab, nothing pressed
+#   grid idle   the species grid open (A on Species), the cursor resting
+#   grid scroll RIGHT held in the species grid (each species is tried on: a new figure every move)
+#   rows        DOWN held through the Outfit tab's rows (the list redraws, no new look)
+#   value step  RIGHT held on the Outfit preset row's neighbour, Top (a new look every few ticks)
+wait 40
+expect-log doomo: init
+sync on 61
+seed 1
+scene TITLE
+wait 2
+push CREATOR -1
+wait 200
+fps settle (ignore)
+wait 130
+expect-fps 24 creator idle
+shot cs_idle
+press A
+wait 40
+fps settle (ignore)
+wait 130
+expect-fps 19 creator grid idle
+shot cs_grid
+fps settle (ignore)
+down RIGHT
+wait 130
+expect-fps 9 creator grid scroll
+release
+shot cs_grid_scroll
+press B
+wait 30
+press R
+wait 4
+press R
+wait 4
+press R
+wait 4
+press R
+wait 30
+fps settle (ignore)
+down DOWN
+wait 130
+expect-fps 16 creator rows
+release
+wait 20
+press L
+wait 4
+press R
+wait 30
+fps settle (ignore)
+down RIGHT
+wait 130
+expect-fps 9 creator value step
+release
+shot cs_value
+wait 10

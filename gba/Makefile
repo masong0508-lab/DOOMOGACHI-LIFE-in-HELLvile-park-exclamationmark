@@ -135,7 +135,7 @@ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 # over the core's weak stubs, and the core's strong definitions win over both.
 ALL_OBJS  := $(GBA_OBJS) $(CORE_OBJS)
 
-.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-speed test-life profile-title profile-pause profile-invaded profile-all profile-sung profile-creator clean sizes
+.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-speed test-life profile-title profile-pause profile-invaded profile-all profile-sung profile-creator test-creator clean sizes
 .DEFAULT_GOAL := all
 
 # Cartridge size (user decision 2026-11-01): the game ROM is a full 256 Mbit
@@ -354,6 +354,21 @@ profile-creator: harness
 	echo "profile-creator: log $(CREATOR_PROFILE_LOG)"; \
 	exit $$rc
 # --- end CR0 ---
+
+# --- CR9: the creator's speed gates (harness/scripts/creator_scroll.txt: expect-fps floors for
+# idle, rows, the part grid resting and scrolling, a value held). Not part of `test` (like
+# test-speed). Output: build/creator_scroll.log ---
+CREATOR_SCROLL_LOG ?= $(BUILD)/creator_scroll.log
+test-creator: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@mkdir -p $(SHOTS)/creator
+	@rc=0; \
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/creator_scroll.txt \
+	    --shots $(SHOTS)/creator --quiet > $(CREATOR_SCROLL_LOG) 2>&1 || rc=1; \
+	grep -E "harness: fps creator|expected|HANG|FAIL" $(CREATOR_SCROLL_LOG); \
+	echo "test-creator: log $(CREATOR_SCROLL_LOG)"; \
+	exit $$rc
+# --- end CR9 ---
 
 # --- M0: the life tour (docs/GBA.md "Life tour"): the island hub, news,
 # island menu, roster, resident and apartments: fps and work ms (expect-fps

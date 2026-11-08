@@ -554,8 +554,9 @@ TEST(creator_locked_options_are_shown_but_not_chosen)
         press(BTN_RIGHT);
         CHECK(!cr_value_locked(row, RES_LOOK(&cr.draft, GF_EYE_STYLE)));
     }
-    /* once unlocked it can be chosen */
+    /* once unlocked it can be chosen (the creator sees new unlocks from its next tick: CR9 memo) */
     unlock_grant_match(UL_CAT_PART, CLIST_EYE, EYE_GOAT);
+    frames(1, 0);
     CHECK(!cr_value_locked(row, EYE_GOAT));
 }
 

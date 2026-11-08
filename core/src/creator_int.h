@@ -116,6 +116,21 @@ enum { CRP_MAIN, CRP_PICK, CRP_COLOR, CRP_MENU, CRP_COPY, CRP_TURN,
 enum { CM_DONE, CM_RANDOM, CM_UNDO, CM_REDO, CM_COPY,
        CM_SPOOKY, CM_ROWS, CM_RESET, CM_QUIT, CM_COUNT };
 
+/* CR9 (GBA speed step, docs/CREATOR.md "Speed"): the preview holds still between changes (no
+ * blink / breathing frames, so the figure and the bust are not drawn again every few ticks; a new
+ * expression is drawn in slices while the old one stays up). Elsewhere it animates as before. */
+#if defined(DOOMO_PLATFORM_GBA)
+#define CR_CALM 1
+#else
+#define CR_CALM 0
+#endif
+
+/* CR9: the creator's retained panels (platform.h plat_panel_begin; GBA). The ids are cache slots
+ * of the overworld HUD's panels: the creator never draws under the overworld, so they are free
+ * while it runs (a panel whose id, rect or key changed is simply drawn again). */
+#define PANEL_CR_TABS PANEL_OW_OBJECTIVE
+#define PANEL_CR_LIST PANEL_OW_CLOCK
+
 /* CR6: how many rows the tabs show (START menu "Show"): the everyday rows, or every fine-tuning
  * slider and toggle too (cr_row_level). */
 enum { CR_SHOW_SIMPLE, CR_SHOW_ALL, CR_SHOW_COUNT };
@@ -135,6 +150,11 @@ typedef struct CrSpark {
     uint8_t life, kind;     /* kind 0 sparkle, 1 heart, 2 star, 3 confetti  */
     uint8_t color;
 } CrSpark;
+
+/* CR9: a memo of cr_value_locked() (unlock_find walks the unlock tables; the list asks per row per
+ * frame). Valid while the unlock bits are unchanged (cr.lmemo_sig). */
+#define CR_LMEMO 32
+typedef struct CrLockMemo { const struct CrRow *row; int16_t idx; uint8_t val, ok; } CrLockMemo;
 
 /* what the shared pixel buffer currently holds */
 enum { CRB_NONE, CRB_PORTRAIT, CRB_FIGHTER, CRB_LEGS };
@@ -212,6 +232,9 @@ typedef struct CrState {
 
     /* CR6: rows shown (CR_SHOW_*) */
     uint8_t  show;
+    /* CR9: the lock memo */
+    CrLockMemo lmemo[CR_LMEMO];
+    uint32_t lmemo_sig;
 
     /* CR6: the part grid (creator_grid.c) */
     uint8_t  g_slot;                /* doomo_part_slots index of the open row */
@@ -248,6 +271,9 @@ int  cr_row_value(const DoomoResident *r, const CrRow *row);  /* index form */
 void cr_row_set(DoomoResident *r, const CrRow *row, int index);
 int  cr_row_count(const CrRow *row);                           /* choices    */
 int  cr_value_locked(const CrRow *row, int index);
+/* CR9: cr_value_locked() keeps a memo; this clears it when the unlock bits changed (the creator
+ * calls it once a tick, after the update and before the drawing) */
+void cr_lock_memo_check(void);
 /* CR12: 1 if choice `index` of a part row is above the draft's life stage (catalog age class:
  * TEEN+ for a baby / toddler / child, ADULT for any minor). Such a part is not offered at all:
  * LEFT / RIGHT and the picker skip it, the picker does not list it. A slot's default (0) never is. */

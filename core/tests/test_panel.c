@@ -11,6 +11,7 @@
 #include "../src/story_int.h"
 #include "../src/fp_island.h"
 #include "doomo/tips.h"
+#include "../src/creator_int.h"
 
 #define MAXF 420
 
@@ -121,6 +122,22 @@ static uint32_t p_island_tip(int f)
 {
     if (f == 150) return BTN_A;
     if (f == 175) ui_toast("After the card");
+    return 0;
+}
+
+/* CR9: the creator's tab strip and list (creator_draw.c): idle, rows, values, tabs, the grid */
+static void s_creator(void)
+{
+    test_reset();
+    town_new(TOWN_FREEPLAY, 4242, TOWN_POP_PREMADE);
+    scene_set(&SCENE_CREATOR, -1);
+}
+static uint32_t p_creator(int f)
+{
+    static const uint32_t seq[] = { BTN_DOWN, 0, BTN_RIGHT, 0, BTN_RIGHT, BTN_DOWN, BTN_DOWN, BTN_R, BTN_DOWN,
+                                    BTN_RIGHT, BTN_RIGHT, BTN_RIGHT, BTN_LEFT, BTN_R, BTN_R, BTN_R, BTN_DOWN,
+                                    BTN_A, BTN_RIGHT, BTN_DOWN, BTN_R, 0, 0, BTN_LEFT, BTN_B, BTN_UP, BTN_L };
+    if (f >= 60 && f < 60 + (int)(sizeof(seq) / sizeof(seq[0])) * 12 && f % 12 == 0) return seq[(f - 60) / 12];
     return 0;
 }
 
@@ -239,6 +256,11 @@ TEST(panel_tip_card_is_pixel_identical)
 {
     CHECK(both("tip", s_island_tip, p_island_tip, 240, 120));
     tips_session_reset();
+}
+
+TEST(panel_creator_tabs_and_list_are_pixel_identical)
+{
+    CHECK(both("creator", s_creator, p_creator, 400, 200));
 }
 
 TEST(panel_language_switch_redraws)

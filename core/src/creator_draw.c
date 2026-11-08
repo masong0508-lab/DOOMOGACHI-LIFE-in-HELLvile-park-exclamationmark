@@ -123,6 +123,19 @@ void cr_pill(int x, int y, int w, int h, uint8_t fill, uint8_t outline, uint8_t 
     }
 }
 
+/* ui_cursor() at rest (no bob): the creator's list is a retained panel (CR9) */
+void ui_cursor_glyph(int x, int y, int kind, uint8_t fill);
+static void still_cursor(int x, int y)
+{
+    static const uint8_t cols[6] = {
+        PAL_PAINT(PAINT_ROSE, 1), PAL_PAINT(PAINT_CARAMEL, 1), PAL_UI_GOLD,
+        PAL_UI_GOLD, PAL_PAINT(PAINT_BONE, 1), PAL_PAINT(PAINT_WHITE, 1)
+    };
+    int kind = opt_get(OPT_CURSOR);
+    if (kind < 0 || kind > 5) kind = 0;
+    ui_cursor_glyph(x - 1, y, kind, cols[kind]);
+}
+
 void cr_padlock(int x, int y, uint8_t c, uint8_t hole)
 {
     plat_rect(x + 1, y, 3, 1, c);
@@ -232,7 +245,8 @@ static void toggle_switch(int x, int y, int on, int sel)
 {
     const UiStyle *st = ui_style(list_style());
     uint8_t fill = on ? st->accent : PAL_RAMP(RAMP_STONE, 5);
-    int b = sel ? (ui_wave((int)cr.t, 16, 1) > 0) : 0;
+    int b = 0;                          /* CR9: still (the list is a retained panel) */
+    (void)sel;
     ui_round_rect(x, y, 16, 8, 3, ui_darker(ui_darker(fill)));
     ui_round_rect(x + 1, y + 1, 14, 6, 2, fill);
     plat_rect(x + 3, y + 1, 10, 1, ui_lighter(fill));
@@ -251,7 +265,7 @@ static void mini_slider(int x, int y, int w, int v, int max, int sel)
     if (kx > x + 2) plat_rect(x + 1, y + 3, kx - x - 1, 3, sel ? st->accent : st->title_bg);
     plat_rect(x + 2, y + 3, DOOMO_MAX(kx - x - 3, 0), 1, PAL_WHITE);
     if (sel) {
-        int b = ui_wave((int)cr.t, 16, 1) > 0;
+        int b = 0;                      /* CR9: still (the list is a retained panel) */
         ui_heart(kx, y + 4 - b, 3, st->accent);
     } else {
         ui_fill_circle(kx, y + 4, 2, st->outline);
@@ -261,36 +275,83 @@ static void mini_slider(int x, int y, int w, int v, int max, int sel)
 
 /* ====================================================================== */
 /* tab strip                                                                */
+/* CR9: the strip's parts that stay put: the L / R bumpers (side 0 / 1) and the dimmed tabs */
+static void tab_bumper(int side, const UiStyle *st)
+{
+    int lx = crl.tx - 15, rx = crl.tx + CR_TAB_COUNT * crl.tcell + 2, x = side ? rx : lx;
+    cr_pill(x, crl.ty + 3, 12, 11, st->fill_lo, st->outline, st->fill_hi);
+    ui_text(x + 3, crl.ty + 5, side ? "R" : "L", st->text);
+}
+
+static void tab_pill(int i, const UiStyle *st)
+{
+    int ch = crl.big ? 21 : 17, x = crl.tx + i * crl.tcell, w = crl.tcell - 2;
+    cr_pill(x, crl.ty + 2, w, ch - 2, st->fill_lo, st->outline, st->fill_hi);
+    plat_image(x + (w - CR_ICON_W) / 2, crl.ty + 2 + (ch - 2 - CR_ICON_W) / 2, dim_icon(i), 1, 0, 0);
+}
+
+/* CR9: the tab shelf: a bar across the top of the screen behind the tabs (one rect, so the tab
+ * strip is a cheap retained panel on the GBA: the pills lie on it) */
+static void tab_shelf(int x0, int x1, int pb, const UiStyle *st)
+{
+    plat_rect(x0, 0, x1 - x0, pb - 2, st->fill_hi);
+    plat_rect(x0, pb - 2, x1 - x0, 1, st->fill_lo);
+    plat_rect(x0, pb - 1, x1 - x0, 1, st->outline);
+}
+
 static void draw_tabs(void)
 {
     const UiStyle *st = ui_style(list_style());
     int i, t = (int)cr.t;
     int ch = crl.big ? 21 : 17;
     int lx = crl.tx - 15, rx = crl.tx + CR_TAB_COUNT * crl.tcell + 2;
-    /* bumper hints */
-    cr_pill(lx, crl.ty + 3, 12, 11, st->fill_lo, st->outline, st->fill_hi);
-    ui_text(lx + 3, crl.ty + 5, "L", st->text);
-    cr_pill(rx, crl.ty + 3, 12, 11, st->fill_lo, st->outline, st->fill_hi);
-    ui_text(rx + 3, crl.ty + 5, "R", st->text);
-    for (i = 0; i < CR_TAB_COUNT; i++) {
-        int x = crl.tx + i * crl.tcell, w = crl.tcell - 2;
-        if (i == cr.tab) continue;
-        cr_pill(x, crl.ty + 2, w, ch - 2, st->fill_lo, st->outline, st->fill_hi);
-        plat_image(x + (w - CR_ICON_W) / 2, crl.ty + 2 + (ch - 2 - CR_ICON_W) / 2, dim_icon(i), 1, 0, 0);
+    /* CR9: the strip is a retained panel (GBA): the shelf, bumpers and dimmed tabs are put back
+     * from the last frame; the selected tab bounces and sparkles in its hole, which also holds its
+     * two neighbours (the sparkle reaches over them), redrawn every frame */
+    int pb = crl.py;                                     /* the preview pane (drawn next) starts below */
+    int hx0 = crl.tx + (cr.tab - 1) * crl.tcell, hx1 = crl.tx + (cr.tab + 2) * crl.tcell;
+    int panel = UI_PANELS && cr.phase != CRP_HERO;
+    /* CR_CALM (GBA): the selected tab stands still too once it has popped up, so the whole strip
+     * is kept (no hole) */
+    int still = CR_CALM && cr.tab_t >= 6, key;
+    hx0 = DOOMO_MAX(hx0, lx);
+    hx1 = DOOMO_MIN(hx1, rx + 12);
+    key = ui_key_int(ui_key_int(ui_key_int(ui_panel_key(), list_style()), cr.tab), crl.big | still << 1);
+    if (still) key = ui_key_int(key, (int)cr.tab_t < 6 ? (int)cr.tab_t : 6);
+    if (!panel || plat_panel_begin(PANEL_CR_TABS, 0, 0, crl.sw, pb, key)) {
+        tab_shelf(0, crl.sw, pb, st);
+        tab_bumper(0, st);
+        tab_bumper(1, st);
+        for (i = 0; i < CR_TAB_COUNT; i++)
+            if (i != cr.tab) tab_pill(i, st);
+        if (panel && !still) plat_panel_hole(hx0, 0, hx1 - hx0, pb);
+        if (still) goto selected;
     }
+    if (panel) {
+        plat_panel_end();
+        if (still) return;
+        /* the hole: whatever of the strip lies in it */
+        tab_shelf(hx0, hx1, pb, st);
+        if (hx0 < lx + 12) tab_bumper(0, st);
+        if (hx1 > rx) tab_bumper(1, st);
+        for (i = cr.tab - 1; i <= cr.tab + 1; i += 2)
+            if (i >= 0 && i < CR_TAB_COUNT) tab_pill(i, st);
+    }
+selected:
     /* the selected tab: raised, bigger, bouncing, with a pop when it changes */
     {
-        int x = crl.tx + cr.tab * crl.tcell - 1, w = crl.tcell, b = ui_wave(t, 20, 1) > 0;
+        int x = crl.tx + cr.tab * crl.tcell - 1, w = crl.tcell, b = still ? 0 : ui_wave(t, 20, 1) > 0;
         int pop = cr.tab_t < 6 ? (6 - (int)cr.tab_t) / 2 : 0;
         int y = crl.ty - b - pop;
         uint8_t acc = PAL_PAINT(cr_tabs[cr.tab].paint, 1);
-        ui_round_rect(x + 1, y + 3, w, ch + 1, 4, PAL_RAMP(RAMP_STONE, 2));
+        ui_round_rect(x + 1, y + 3, w, DOOMO_MIN(ch + 1, pb - 2 - y - 3), 4, PAL_RAMP(RAMP_STONE, 2));
         ui_round_rect(x, y, w, ch + 1, 4, ui_darker(ui_darker(acc)));
         ui_round_rect(x + 1, y + 1, w - 2, ch - 1, 3, PAL_WHITE);
         ui_round_rect(x + 2, y + 2, w - 4, ch - 3, 2, ui_lighter(ui_lighter(acc)));
         draw_icon(x + (w - CR_ICON_W) / 2, y + (ch + 1 - CR_ICON_W) / 2, cr.tab, 1, 0);
-        ui_sparkle(x + w - 2, y + 1, (t / 3) & 15, PAL_UI_GOLD);
+        if (!still) ui_sparkle(x + w - 2, y + 1, (t / 3) & 15, PAL_UI_GOLD);
     }
+    if (panel && still) plat_panel_end();
 }
 
 /* ====================================================================== */
@@ -315,6 +376,7 @@ static uint32_t look_hash(const DoomoLook *l)
 static uint32_t anim_phase(uint32_t t, int expr, const DoomoLook *l, int status)
 {
     uint32_t ph = 0;
+    if (CR_CALM && expr != EXPR_TALK) return 0;    /* CR9: the bust holds still between changes */
     uint32_t am = look_anim_mask_rid(l, LOOK_ID_DRAFT, status, expr);
     int fx = (am & LAM_FX) != 0;
     ph |= (t % 110u) >= 106u;
@@ -728,7 +790,11 @@ static void draw_footer(const CrRow *row, int x, int y, int w)
         if (m) {                              /* CR6: a part names its themed set too */
             doomo_snprintf(buf, sizeof(buf), "%s %d/%d - %s", cr_choice_name(row, idx, b3),
                            cr_visible_pos(row, idx) + 1, cr_visible_count(row), doomo_part_sets[m->set].name);
-            ui_text(x, y, cr_marquee(buf, w, b2), c);
+            /* CR9: on small screens the set only when it fits (a still footer); the grid names it */
+            if (!crl.big && ui_text_width(buf) > w)
+                doomo_snprintf(buf, sizeof(buf), "%s %d/%d", cr_choice_name(row, idx, b3),
+                               cr_visible_pos(row, idx) + 1, cr_visible_count(row));
+            ui_text(x, y, crl.big ? cr_marquee(buf, w, b2) : cr_fit(buf, w, b2), c);
             return;
         }
         doomo_snprintf(buf, sizeof(buf), "%s  %d/%d", cr_choice_name(row, idx, b3), idx + 1,
@@ -894,6 +960,68 @@ static void draw_home_panel(int x, int y, int w, int h)
     }
 }
 
+/* one (non-header) row of the list */
+static void draw_list_row(const CrRow *row, int ry, int sel, int is_cur, int inner_r, const UiStyle *st)
+{
+    int x = crl.lx, lw;
+    if (sel || (is_cur && cr.phase != CRP_TURN)) {
+        int shake = cr.pick_err ? ((cr.pick_err & 2) ? 1 : -1) : 0;
+        cr_pill(x + 11 + shake, ry - 1, inner_r - x - 9, crl.row_h, st->accent_d,
+                ui_darker(st->accent_d), ui_lighter(st->accent_d));
+        if (sel) still_cursor(x + 3, ry + 1);
+    }
+    ui_text(x + 15, ry + 1, cr_row_label(row), is_cur ? st->text : st->text_dim);
+    lw = ui_text_width(cr_row_label(row));
+    draw_value(row, inner_r - (sel ? 9 : 4), ry + 1, inner_r - x - 15 - lw - 10 - (sel ? 16 : 6), sel);
+    if (sel && row->kind != RK_SLIDER && row->kind != RK_FLAG)
+        plat_text(inner_r - 7, ry + 1, STR_ICON_ARROW_R, st->accent);   /* CR9: still (a retained panel) */
+}
+
+/* CR9: will the selected row's value scroll (a marquee changes every 7 ticks)? draw_value's room */
+static int value_moves(const CrRow *row, int inner_r)
+{
+    char b[48];
+    int maxw, idx, locked;
+    if (!row) return 0;
+    maxw = inner_r - crl.lx - 15 - ui_text_width(cr_row_label(row)) - 10 - 16;
+    if (cr.browse >= 0) { idx = cr.browse; locked = row->kind != RK_ACTION || cr_value_locked(row, idx); }
+    else { idx = cr_row_value(&cr.draft, row); locked = 0; }
+    switch (row->kind) {
+    case RK_SLIDER: case RK_FLAG: return 0;
+    case RK_PAINT: case RK_PAINT_NONE: case RK_SKIN:
+        return ui_text_width(locked ? "???" : cr_choice_name(row, idx, b)) > maxw - 14;
+    default:
+        return ui_text_width(locked ? "???" : cr_choice_name(row, idx, b)) > maxw - (locked ? 8 : 0);
+    }
+}
+
+/* CR9: will the footer scroll (a marquee changes every 7 ticks)? */
+static int footer_moves(const CrRow *row)
+{
+    int idx;
+    if (!row || crl.big) return 0;
+    idx = cr.browse >= 0 ? cr.browse : cr_row_value(&cr.draft, row);
+    return cr.browse >= 0 && cr_value_locked(row, idx);
+}
+
+/* CR9: everything the list's pixels depend on but the selected row (in the panel's hole) */
+static uint32_t list_key(int top, int glint, int inner_r)
+{
+    uint32_t k = ui_panel_key();
+    const uint8_t *p = (const uint8_t *)&cr.draft;
+    size_t i;
+    for (i = 0; i < sizeof(cr.draft); i++) k = (k ^ p[i]) * 16777619u;
+    k = ui_key_str(k, cr.nick);
+    k = ui_key_int(k, list_style() | cr.tab << 4 | top << 8 | cr.row[cr.tab] << 16 | cr.show << 24 | crl.big << 26);
+    k = ui_key_int(k, cr.browse | cr.district << 16 | cr.district_fixed << 17 | cr.mode << 18);
+    k = ui_key_int(k, cr.preset_i | cr.outfit_i << 8 | cr.voice_i << 16);
+    k = ui_key_int(k, cr.home_id);
+    k = ui_key_int(k, DOOMO_MIN((int)cr.tab_t, 6) | glint << 4);
+    k = ui_key_int(k, cr.pick_err);                   /* the selected row shakes */
+    if (footer_moves(cr_cur_row()) || value_moves(cr_cur_row(), inner_r)) k = ui_key_int(k, (int)(cr.t / 7));
+    return k;
+}
+
 static void draw_list(void)
 {
     const UiStyle *st;
@@ -903,6 +1031,10 @@ static void draw_list(void)
     int top = cr.top[cr.tab], vis = crl.rows, i, n = tab->nrows, shown = 0, drawn = 0, top_ord = 0;
     int bar, inner_r;
     int t = (int)cr.tab_t;
+    /* CR9: on the main list the window is a retained panel (GBA): put back from the last frame while
+     * nothing in it changes (the cursor and arrow stand still). Not under the persona / home panels
+     * (animated). */
+    int panel = UI_PANELS && cr.phase == CRP_MAIN && cr.tab != CR_TAB_PERSONA && cr.tab != CR_TAB_HOME;
     /* CR6: only the rows the current mode shows (cr_row_shown) */
     for (i = 0; i < n; i++) {
         if (!cr_row_shown(cr.tab, i)) continue;
@@ -911,8 +1043,15 @@ static void draw_list(void)
     }
     bar = shown > vis;
     inner_r = x + w - (bar ? 12 : 7);
-    ui_window(x, y, w, h, style);
     st = ui_style(style);
+    /* (its rect stops above the button bar, drawn after it) */
+    if (panel && !plat_panel_begin(PANEL_CR_LIST, x, y, w + 3, DOOMO_MIN(h + 3, crl.sh - 13 - y),
+                                   list_key(top, ui_window_glint(x, y, w, h), inner_r))) {
+        ui_window_shadow(x, y, w, h);              /* kept: its drop shadow only */
+        plat_panel_end();
+        return;
+    }
+    ui_window(x, y, w, h, style);
     /* header: icon + tab name > the selected row's section + page */
     {
         char pg[8], hb[64], b2[48];
@@ -939,7 +1078,6 @@ static void draw_list(void)
         int ry = crl.rows_y + drawn * crl.row_h;
         int sel = i == cr.row[cr.tab] && cr.phase == CRP_MAIN;
         int is_cur = i == cr.row[cr.tab];
-        int lw;
         if (!cr_row_shown(cr.tab, i)) continue;
         drawn++;
         if (row->kind == RK_HEADER) {
@@ -951,27 +1089,29 @@ static void draw_list(void)
             ui_text(cx - tw / 2, ry + 1, row->label, st->title_bg);
             continue;
         }
-        if (sel || (is_cur && cr.phase != CRP_TURN)) {
-            int shake = cr.pick_err ? ((cr.pick_err & 2) ? 1 : -1) : 0;
-            cr_pill(x + 11 + shake, ry - 1, inner_r - x - 9, crl.row_h, st->accent_d,
-                    ui_darker(st->accent_d), ui_lighter(st->accent_d));
-            if (sel) ui_cursor(x + 3, ry + 1);
-        }
-        ui_text(x + 15, ry + 1, cr_row_label(row), is_cur ? st->text : st->text_dim);
-        lw = ui_text_width(cr_row_label(row));
-        draw_value(row, inner_r - (sel ? 9 : 4), ry + 1, inner_r - x - 15 - lw - 10 - (sel ? 16 : 6), sel);
-        if (sel && row->kind != RK_SLIDER && row->kind != RK_FLAG) {
-            int b = ui_wave((int)cr.t, 16, 1) > 0;
-            plat_text(inner_r - 7 + b, ry + 1, STR_ICON_ARROW_R, st->accent);
-        }
+        draw_list_row(row, ry, sel, is_cur, inner_r, st);
     }
     if (bar) {
+        /* CR9: still arrows (no bob), so the list stays put between changes */
         int bx = x + w - 8, th = vis * crl.row_h - 2;
         int thumb = DOOMO_MAX(5, th * vis / shown);
         int tyy = crl.rows_y + (th - thumb) * top_ord / DOOMO_MAX(1, shown - vis);
         ui_round_rect(bx, crl.rows_y, 3, th, 1, st->fill_lo);
         ui_round_rect(bx, tyy, 3, thumb, 1, st->accent);
-        ui_scroll_arrows(bx - 1, crl.rows_y - 5, crl.rows_y + th + 1, top_ord > 0, top_ord + vis < shown);
+        if (top_ord > 0) {                         /* ui_scroll_arrows' up arrow at rest */
+            int ax = bx - 1, ay = crl.rows_y - 5;
+            plat_rect(ax, ay + 2, 5, 1, st->outline);
+            plat_rect(ax + 1, ay + 1, 3, 1, st->accent);
+            plat_rect(ax + 2, ay, 1, 1, st->accent);
+            plat_rect(ax + 1, ay + 2, 3, 1, st->accent);
+        }
+        if (top_ord + vis < shown) {               /* ... and its down arrow */
+            int ax = bx - 1, ay = crl.rows_y + th + 1;
+            plat_rect(ax, ay, 5, 1, st->outline);
+            plat_rect(ax + 1, ay, 3, 1, st->accent);
+            plat_rect(ax + 1, ay + 1, 3, 1, st->accent);
+            plat_rect(ax + 2, ay + 2, 1, 1, st->accent);
+        }
     }
     /* extra panels under short tabs */
     {
@@ -989,6 +1129,7 @@ static void draw_list(void)
             ui_text(x + 7, crl.foot_y + 11, cr_fit(cr_row_help(cr_cur_row()), w - 14, b2), st->text_dim);
         }
     }
+    if (panel) plat_panel_end();
 }
 
 /* ====================================================================== */
@@ -1455,15 +1596,18 @@ void cr_draw(void)
     if (!scene_scratch_mine(CR_SCRATCH_TAG)) { plat_clear(PAL_UI_PINK); return; }
     cr_layout();
     if (cr.phase == CRP_MOVEIN) { draw_movein(); return; }
-    ui_backdrop(cr_is_hellish() ? WIN_DARK : WIN_CUTE, cr.t);
-    if (cr.phase != CRP_HERO) draw_tabs();
+    /* CR9: the list window (and every picker over it) is opaque inside its rounded corners: no
+     * backdrop under it */
+    ui_backdrop_hole(cr_is_hellish() ? WIN_DARK : WIN_CUTE, cr.t, crl.lx + 1, crl.ly + 5, crl.lx + crl.lw - 1,
+                     crl.ly + crl.lh - 5);
     draw_pane();
     switch (cr.phase) {
     case CRP_HERO:  draw_hero(); break;
-    case CRP_PICK:  draw_list(); draw_pick(); break;
-    case CRP_COLOR: draw_list(); draw_color(); break;
-    case CRP_COPY:  draw_list(); draw_copy(); break;
-    case CRP_GRID:  draw_list(); cr_grid_draw(); break;
+    /* CR9: a picker window covers the list window exactly once it has popped open: no list under it */
+    case CRP_PICK:  if (cr.phase_t < 12) draw_list(); draw_pick(); break;
+    case CRP_COLOR: if (cr.phase_t < 12) draw_list(); draw_color(); break;
+    case CRP_COPY:  if (cr.phase_t < 12) draw_list(); draw_copy(); break;
+    case CRP_GRID:  if (cr.phase_t < 12) draw_list(); cr_grid_draw(); break;
     case CRP_TURN:
         draw_list();
         plat_shade_rect(crl.lx, crl.ly, crl.lw + 2, crl.lh + 3, 10);
@@ -1471,5 +1615,9 @@ void cr_draw(void)
     default: draw_list(); break;
     }
     draw_hint();
+    /* CR9: the tab shelf last: a retained panel makes every later 2D call on the GBA check whether
+     * it touches it, so nothing is drawn after the panels but what lies elsewhere (the menu spoils
+     * them, which is fine) */
+    if (cr.phase != CRP_HERO) draw_tabs();
     if (cr.phase == CRP_MENU) draw_menu();
 }
