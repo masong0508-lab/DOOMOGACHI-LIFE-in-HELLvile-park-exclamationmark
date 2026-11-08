@@ -305,7 +305,12 @@ static void ul_init(void)
         for (i = 0; u[i].name; i++, g++) {
             if (u[i].id < DOOMO_UNLOCK_BITS) {
                 if (ul_by_id[u[i].id] < 0) ul_by_id[u[i].id] = (int16_t)g;
-                else plat_log("unlocks: duplicate unlock id");
+                else {
+                    plat_log("unlocks: duplicate unlock id");
+#if !defined(DOOMO_PLATFORM_PS1)
+                    ul_ready = 2;                /* (S2-6) unlock_owned_count cannot count bits */
+#endif
+                }
             }
             {
                 unsigned hb = UL_HASH(u[i].cat, u[i].list, u[i].index);
@@ -341,12 +346,11 @@ const DoomoUnlock *unlock_at(int i)
 {
     int t;
     ul_init();
-    if (i < 0) return NULL;
-    for (t = 0; t < UL_TABLES && UL_TABLE(t); t++) {
-        if (i < ul_len[t]) return &UL_TABLE(t)[i];
-        i -= ul_len[t];
-    }
-    return NULL;
+    if (i < 0 || i >= ul_total) return NULL;
+    /* (S2-6) the lengths alone (RAM): ul_init counted every table up to the first empty slot, the slots after
+     * it have length 0, and i < ul_total stops the walk inside a counted table */
+    for (t = 0; i >= ul_len[t]; t++) i -= ul_len[t];
+    return &UL_TABLE(t)[i];
 }
 
 const DoomoUnlock *unlock_by_id(int id)
@@ -580,6 +584,19 @@ int unlock_owned_count(void)
 {
     int i, n, c = 0;
     ul_init();
+#if !defined(DOOMO_PLATFORM_PS1)
+    if (ul_ready == 1) {
+        /* (S2-6 speed: the Unlocks gallery asks every frame) every id below DOOMO_UNLOCK_BITS names one entry at
+         * most (ul_init saw no duplicate), and an id at or above it is never owned: the entries owned are the
+         * owned bits whose id names an entry. Not on the PS1 (it holds 30 there; this file is resident) */
+        for (i = 0; i < DOOMO_UNLOCK_BITS / 8; i++) {
+            unsigned b = doomo_town.unlocks[i], j;
+            for (j = 0; b; j++, b >>= 1)
+                if ((b & 1) && ul_by_id[i * 8 + (int)j] >= 0) c++;
+        }
+        return c;
+    }
+#endif
     n = ul_total;
     for (i = 0; i < n; i++)
         if (unlock_has(unlock_at(i)->id)) c++;

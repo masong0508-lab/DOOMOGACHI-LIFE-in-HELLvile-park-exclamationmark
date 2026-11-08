@@ -182,6 +182,36 @@ static uint32_t p_combat(int f)
     return 0;
 }
 
+/* (S2-6) the Unlocks gallery's grid (fp_unlocks.c): a panel with the cursor's row as its hole. Some of every kind
+ * owned (paints show their swatch, owned ones sparkle under the cursor), the cursor along a row (no new capture),
+ * down the rows and past the last one (the page scrolls), a grant on the screen (the owned count is in the key),
+ * the Parts and Paints tabs, and back */
+static void s_unlocks(void)
+{
+    int i, n;
+    test_reset();
+    fp_new_island(TOWN_POP_PREMADE, 4242);
+    n = unlock_count();
+    for (i = 0; i < n; i += 3) unlock_grant_quiet(unlock_at(i)->id);
+    scene_set(&SCENE_UNLOCKS, 0);
+}
+static uint32_t p_unlocks(int f)
+{
+    if (f == 230) {
+        int i, n = unlock_count();
+        for (i = 1; i < n; i += 3)
+            if (!unlock_has(unlock_at(i)->id)) { unlock_grant(unlock_at(i)->id); break; }
+    }
+    if (f >= 40 && f < 130 && f % 9 == 0) return BTN_RIGHT;
+    if (f >= 130 && f < 220 && f % 11 == 0) return BTN_DOWN;
+    if (f >= 220 && f < 260 && f % 13 == 0) return BTN_LEFT;
+    if (f == 270 || f == 300) return BTN_R;                        /* Parts, then Paints */
+    if (f >= 310 && f < 350 && f % 7 == 0) return BTN_RIGHT;
+    if (f == 360) return BTN_L;
+    if (f >= 370 && f < 410 && f % 10 == 0) return BTN_UP;
+    return 0;
+}
+
 /* the language switch: Spanish from frame 120 on */
 static uint32_t p_visit_lang(int f)
 {
@@ -316,6 +346,11 @@ TEST(panel_creator_calm_pane_and_bar_are_pixel_identical)
 TEST(panel_combat_hud_is_pixel_identical)
 {
     CHECK(both("combat", s_combat, p_combat, 400, 300));
+}
+
+TEST(panel_unlocks_grid_is_pixel_identical)
+{
+    CHECK(both("unlocks", s_unlocks, p_unlocks, 420, 150));
 }
 
 TEST(panel_language_switch_redraws)

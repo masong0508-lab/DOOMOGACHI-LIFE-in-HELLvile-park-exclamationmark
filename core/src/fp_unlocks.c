@@ -26,11 +26,14 @@ static int tab_cat(int tab) { return tab - 1; }
 /* the index list lives in the shared scene scratch (scene.h) */
 #define UNLOCKS_TAG SAVE_EXT_TAG('F', 'P', 'U', 'L')
 static uint16_t *fp_ids;
+/* (S2-6) the grid panel's key on the last frame drawn, after the ids in the scratch (no RAM of its own: any value
+ * is safe, it only says whether this frame surely draws the grid whole) */
+#define GRID_KEY (*(uint32_t *)(void *)(fp_ids + FP_IDS_MAX))
 static void build(void);
 static void ensure(void)
 {
     if (!fp_ids || !scene_scratch_mine(UNLOCKS_TAG)) {
-        fp_ids = (uint16_t *)scene_scratch(UNLOCKS_TAG, FP_IDS_MAX * sizeof(uint16_t));
+        fp_ids = (uint16_t *)scene_scratch(UNLOCKS_TAG, FP_IDS_MAX * sizeof(uint16_t) + (UI_PANELS ? 4 : 0));
         build();
     }
 }
@@ -134,16 +137,69 @@ static uint8_t cat_color(int cat)
     return (cat >= 0 && cat < CATS) ? c[cat] : PAL_UI_GOLD;
 }
 
-static void tile(int x, int y, int s, const DoomoUnlock *u, int sel)
+/* (S2-6 speed) a tile's colours, looked up once a frame per category and state (ui_darker / ui_lighter are table
+ * walks, and a page of tiles asked them ~500 times a frame) */
+typedef struct { uint8_t ok, c, edge, hi, ink, lock; } TileInk;
+#define INKS ((CATS + 1) * 2)
+
+static const TileInk *tile_ink(TileInk *memo, int cat, int own)
+{
+    TileInk *k = &memo[(cat >= 0 && cat < CATS ? cat : CATS) * 2 + (own != 0)];
+    if (!k->ok) {
+        uint8_t c = own ? cat_color(cat) : ui_darker(ui_darker(cat_color(cat)));
+        k->ok = 1;
+        k->c = c;
+        k->edge = ui_darker(ui_darker(c));
+        k->hi = ui_lighter(c);
+        k->ink = ui_darker(c);
+        k->lock = ui_lighter(ui_lighter(c));
+    }
+    return k;
+}
+
+/* plat_rect cut in two at column xr (the same pixels: the grid panel's right edge, so the cursor's sparkle on the
+ * last column touches the panel only inside its hole) */
+static void cut_rect(int x, int y, int w, int h, uint8_t c, int xr)
+{
+    if (x < xr && x + w > xr) {
+        plat_rect(x, y, xr - x, h, c);
+        plat_rect(xr, y, x + w - xr, h, c);
+    } else {
+        plat_rect(x, y, w, h, c);
+    }
+}
+
+/* ui_sparkle(cx, cy, phase, c) with its rects cut at column xr */
+static void sparkle_cut(int cx, int cy, int phase, uint8_t c, int xr)
+{
+    int s = ui_sparkle_size(phase);
+    if (s == 0 || plat_draw_skipped()) return;
+    cut_rect(cx - s, cy, 2 * s + 1, 1, c, xr);
+    cut_rect(cx, cy - s, 1, 2 * s + 1, c, xr);
+    if (s >= 2) {
+        cut_rect(cx - 1, cy - 1, 3, 3, c, xr);
+        plat_rect(cx, cy, 1, 1, PAL_WHITE);
+    }
+    if (s >= 3) {
+        plat_rect(cx - 2, cy - 2, 1, 1, c);
+        plat_rect(cx + 2, cy + 2, 1, 1, c);
+        plat_rect(cx - 2, cy + 2, 1, 1, c);
+        plat_rect(cx + 2, cy - 2, 1, 1, c);
+    }
+}
+
+/* xr: the grid's right edge (the cursor's sparkle is cut there) */
+static void tile(int x, int y, int s, const DoomoUnlock *u, int sel, TileInk *memo, int xr)
 {
     int own = unlock_has(u->id), t = U.t;
-    uint8_t c = own ? cat_color(u->cat) : ui_darker(ui_darker(cat_color(u->cat)));
+    const TileInk *k = tile_ink(memo, u->cat, own);
+    uint8_t c = k->c;
     char g[2] = { 0, 0 };
     int b = sel ? (ui_wave(t, 20, 1) > 0) : 0;
     y -= b;
-    ui_round_rect(x, y, s - 2, s - 2, 3, ui_darker(ui_darker(c)));
+    ui_round_rect(x, y, s - 2, s - 2, 3, k->edge);
     ui_round_rect(x + 1, y + 1, s - 4, s - 4, 2, c);
-    plat_rect(x + 3, y + 1, s - 8, 1, ui_lighter(c));
+    plat_rect(x + 3, y + 1, s - 8, 1, k->hi);
     if (own && u->cat == UL_CAT_PAINT) {
         ui_round_rect(x + 3, y + 3, s - 8, s - 8, 2, PAL_PAINT(u->index % 32, 0));
         ui_round_rect(x + 4, y + 4, s - 10, s - 10, 1, PAL_PAINT(u->index % 32, 1));
@@ -153,16 +209,135 @@ static void tile(int x, int y, int s, const DoomoUnlock *u, int sel)
         plat_text(x + (s - 2) / 2 - 2, y + (s - 2) / 2 - 4, g, PAL_WHITE);
     } else {
         /* a dim silhouette of what it is, and a tiny padlock */
-        plat_checker(x + 1, y + 1, s - 4, s - 4, ui_darker(c));
+        plat_checker(x + 1, y + 1, s - 4, s - 4, k->ink);
         g[0] = (char)cat_icon(u);
-        plat_text(x + (s - 2) / 2 - 2, y + (s - 2) / 2 - 4, g, ui_lighter(c));
-        plat_rect(x + s - 7, y + s - 7, 4, 3, ui_lighter(ui_lighter(c)));
-        plat_rect(x + s - 6, y + s - 9, 2, 2, ui_lighter(ui_lighter(c)));
+        plat_text(x + (s - 2) / 2 - 2, y + (s - 2) / 2 - 4, g, k->hi);
+        plat_rect(x + s - 7, y + s - 7, 4, 3, k->lock);
+        plat_rect(x + s - 6, y + s - 9, 2, 2, k->lock);
     }
     if (sel) {
         ui_frame(x - 2, y - 2, s + 2, s + 2, (t / 6) & 1 ? PAL_UI_GOLD : PAL_WHITE);
-        if (own) ui_sparkle(x + s - 3, y, (t / 2) & 15, PAL_WHITE);
+        if (own) sparkle_cut(x + s - 3, y, (t / 2) & 15, PAL_WHITE, xr);
     }
+}
+
+/* ---- (S2-6) the grid as a retained panel (platform.h plat_panel_begin; the GBA) ----------------------------------
+ * The window is drawn whole on every frame as before; the tiles of every row but the cursor's are the panel (put
+ * back whole: plat_panel_solid, the window under it is the same on every frame), and the cursor's row is its hole,
+ * drawn again on every frame: the cursor tile bobs, blinks and sparkles, and moves along its row without a new
+ * capture. The hole reaches 4 rows above the cursor's row (the bob, the blink frame and the sparkle), so the 2 last
+ * rows of the tiles above are drawn again in it too, row-clipped (tile_rows). The key: the page (tab, scroll, row
+ * of the cursor, layout), the ids on it and what is owned (unlock_owned_count: nothing is ever taken away). */
+#define PANEL_FP_UL_GRID PANEL_OW_OBJECTIVE      /* the overworld's: never on this screen */
+
+#if UI_PANELS
+static void clip_rect(int x, int y, int w, int h, uint8_t c, int y0, int y1)
+{
+    int a = DOOMO_MAX(y, y0), b = DOOMO_MIN(y + h, y1);
+    if (a < b) plat_rect(x, a, w, b - a, c);
+}
+
+/* rows [y0, y1) of tile(x, y, s, u, 0): only its last rows are ever asked (the glyph is far above them) */
+static void tile_rows(int x, int y, int s, const DoomoUnlock *u, TileInk *memo, int y0, int y1)
+{
+    int own = unlock_has(u->id), j;
+    const TileInk *k = tile_ink(memo, u->cat, own);
+    ui_round_rect_rows(x, y, s - 2, s - 2, 3, k->edge, y0 - y, y1 - y);
+    ui_round_rect_rows(x + 1, y + 1, s - 4, s - 4, 2, k->c, y0 - y - 1, y1 - y - 1);
+    clip_rect(x + 3, y + 1, s - 8, 1, k->hi, y0, y1);
+    if (own && u->cat == UL_CAT_PAINT) {
+        ui_round_rect_rows(x + 3, y + 3, s - 8, s - 8, 2, PAL_PAINT(u->index % 32, 0), y0 - y - 3, y1 - y - 3);
+        ui_round_rect_rows(x + 4, y + 4, s - 10, s - 10, 1, PAL_PAINT(u->index % 32, 1), y0 - y - 4, y1 - y - 4);
+        clip_rect(x + 5, y + 5, 2, 1, PAL_PAINT(u->index % 32, 2), y0, y1);
+    } else if (!own) {
+        /* plat_checker's parity: row j of the rect starts at column j & 1 */
+        for (j = DOOMO_MAX(y0, y + 1); j < DOOMO_MIN(y1, y + s - 3); j++) {
+            int d = (j - (y + 1)) & 1;
+            plat_checker(x + 1 + d, j, s - 4 - d, 1, k->ink);
+        }
+        clip_rect(x + s - 7, y + s - 7, 4, 3, k->lock, y0, y1);
+        clip_rect(x + s - 6, y + s - 9, 2, 2, k->lock, y0, y1);
+    }
+}
+
+#endif
+
+/* the tiles of visible rows [r0, r1) (the cursor's tile as such only when sel) */
+static void tiles(int gx, int gy, int s, int c, int r0, int r1, int sel, TileInk *memo)
+{
+    int i;
+    for (i = r0 * c; i < r1 * c; i++) {
+        int k = U.top * c + i;
+        const DoomoUnlock *u;
+        if (k >= U.n) break;
+        u = unlock_at(fp_ids[k]);
+        if (u) tile(gx + (i % c) * s, gy + (i / c) * s, s, u, sel && k == U.sel, memo, gx + c * s);
+    }
+}
+
+#if UI_PANELS
+/* the panel's hole: the last rows of the tiles above the cursor's row, then that row */
+static void draw_hole(int gx, int gy, int s, int c, int sr, int hy0, int hy1, TileInk *memo)
+{
+    int i;
+    if (sr > 0)
+        for (i = (sr - 1) * c; i < sr * c; i++) {
+            int k = U.top * c + i;
+            const DoomoUnlock *u = k < U.n ? unlock_at(fp_ids[k]) : NULL;
+            if (u) tile_rows(gx + (i % c) * s, gy + (sr - 1) * s, s, u, memo, hy0, hy1);
+        }
+    tiles(gx, gy, s, c, sr, sr + 1, 1, memo);
+}
+#endif
+
+static void draw_grid(int gx, int gy, int s, int c, int r, int own_all)
+{
+    TileInk memo[INKS];
+#if UI_PANELS
+    int sr = U.n ? U.sel / c - U.top : -1, hy0, hy1;
+    uint32_t key;
+#endif
+    memset(memo, 0, sizeof(memo));
+#if !UI_PANELS
+    (void)own_all;
+    tiles(gx, gy, s, c, 0, r, 1, memo);
+#else
+    if (sr < 0 || sr >= r) {
+        tiles(gx, gy, s, c, 0, r, 1, memo);
+        return;
+    }
+    hy0 = gy + sr * s - 4;           /* the first row: over the window's gloss (in the hole, so the glint can slide) */
+    hy1 = gy + sr * s + s;
+    key = ui_key_int(ui_panel_key(), U.tab | U.top << 8 | sr << 20 | fp_big() << 28);
+    key = ui_key_int(key, U.n | own_all << 16);
+    key = ui_key_int(key, gx | gy << 8 | s << 16 | c << 24);
+    key = ui_key_int(key, r | fp_sw() << 8 | fp_sh() << 20);
+    /* Everything is drawn before the panel when it can: a kept frame leaves what is drawn in the hole before the
+     * panel, a solid panel keeps its whole rect as it is at plat_panel_end, however it got there, and the GBA draws
+     * before a panel on its fast path (once a panel is up, every 2D call is checked against it). A new key is
+     * never kept, so its frame draws the whole grid first; with the same key the platform may still say draw
+     * (a spoiled or skipped frame): then the other rows are drawn inside the panel and the hole again after it. */
+    if (key != GRID_KEY) {
+        tiles(gx, gy, s, c, 0, sr, 0, memo);
+        tiles(gx, gy, s, c, sr + 1, r, 0, memo);
+    }
+    draw_hole(gx, gy, s, c, sr, hy0, hy1, memo);
+    if (plat_panel_begin(PANEL_FP_UL_GRID, gx - 2, DOOMO_MIN(hy0, gy), c * s + 2, gy + r * s - DOOMO_MIN(hy0, gy), key)) {
+        plat_panel_solid();
+        plat_panel_hole(gx - 2, hy0, c * s + 2, hy1 - hy0);
+        if (key == GRID_KEY) {
+            tiles(gx, gy, s, c, 0, sr, 0, memo);
+            tiles(gx, gy, s, c, sr + 1, r, 0, memo);
+            plat_panel_end();
+            draw_hole(gx, gy, s, c, sr, hy0, hy1, memo);  /* the rows above were drawn over its top again */
+        } else {
+            plat_panel_end();
+        }
+    } else {
+        plat_panel_end();
+    }
+    GRID_KEY = key;
+#endif
 }
 
 static void draw_progress(int x, int y, int w)
@@ -185,12 +360,21 @@ static void draw_progress(int x, int y, int w)
 
 static void un_draw(void)
 {
-    int sw = fp_sw(), sh = fp_sh(), big = fp_big(), i, s = cell(), c = cols(), r = rows();
+    int sw = fp_sw(), sh = fp_sh(), big = fp_big(), s = cell(), c = cols(), r = rows();
     const UiStyle *st = ui_style(WIN_CUTE);
     int gx = (sw - c * s) / 2, gy = 44, total = unlock_count(), own_all = unlock_owned_count();
     char buf[64];
     ensure();
-    ui_backdrop(WIN_CUTE, (uint32_t)fp_t());
+    if (U.tab != TAB_PROGRESS) {
+        /* (S2-6) the backdrop leaves out what the grid and card windows (drawn below, opaque inside their rounded
+         * corners) cover: the same picture (as the studio and the creator) */
+        int cy = gy + r * s + (big ? 6 : 3), ch = sh - cy - (big ? 16 : 15), holes[8];
+        holes[0] = gx - 5; holes[1] = gy; holes[2] = gx + c * s + 3; holes[3] = gy + r * s - 2;
+        holes[4] = 7; holes[5] = cy + 5; holes[6] = sw - 7; holes[7] = cy + ch - 5;
+        ui_backdrop_holes(WIN_CUTE, (uint32_t)fp_t(), holes, 2);
+    } else {
+        ui_backdrop(WIN_CUTE, (uint32_t)fp_t());
+    }
     doomo_snprintf(buf, sizeof(buf), lang_tr("Unlocks  %d / %d"), own_all, total);
     ui_title(sw / 2, 3, buf, WIN_CUTE);
     ui_bar(sw / 2 - 50, 17, 100, 5, own_all, DOOMO_MAX(total, 1), PAL_UI_GOLD);
@@ -210,13 +394,7 @@ static void un_draw(void)
         return;
     }
     ui_window(gx - 6, gy - 5, c * s + 10, r * s + 8, WIN_CUTE);
-    for (i = 0; i < r * c; i++) {
-        int k = U.top * c + i;
-        const DoomoUnlock *u;
-        if (k >= U.n) break;
-        u = unlock_at(fp_ids[k]);
-        if (u) tile(gx + (i % c) * s, gy + (i / c) * s, s, u, k == U.sel);
-    }
+    draw_grid(gx, gy, s, c, r, own_all);
     if ((U.n + c - 1) / c > r)
         ui_scroll_arrows(gx + c * s, gy - 6, gy + r * s - 4, U.top > 0, (U.top + r) * c < U.n);
     /* the card */

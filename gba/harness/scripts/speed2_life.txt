@@ -311,19 +311,34 @@ push UNLOCKS 0
 wait 30
 fps start
 wait 90
-fps life: unlocks
+expect-fps 28 life: unlocks
 shot life_unlocks
 press RIGHT
 wait 2
 fps start
 wait 30
-fps life: unlocks cursor move
+expect-fps 28 life: unlocks cursor move
+# S2-6: the cursor down the rows and past the last one (each row change draws the grid whole once: a 50 ms frame)
+fps start
+press DOWN
+wait 10
+press DOWN
+wait 10
+press DOWN
+wait 10
+press DOWN
+wait 10
+press DOWN
+wait 10
+press UP
+wait 10
+expect-fps 27 life: unlocks row moves
 press R
 press R
 wait 20
 fps start
 wait 60
-fps life: unlocks paints tab
+expect-fps 28 life: unlocks paints tab
 shot life_unlocks_paints
 press B
 wait 10
