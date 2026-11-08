@@ -1,0 +1,43 @@
+# core/data/talk/lexicon/en/hellvile.tsv - Hellvile and its demons:
+# cartoon hell, never gore near a kid (SCRIPT_STYLE R5). Vape talk is
+# adults-only (the Cloud Nine Vapor plot is about adults).
+#
+# Columns (core/tools/talkc.py): KEY CAT SENT REG FORMS SYNONYMS ATTRS FLAGS;
+# CAT "." = the last @cat line. Authored for TK1 (T1), docs/TALK.md.
+
+@cat hellvile.demon
+demon	.	-1	.	.	devil	fiery,rude,horned	.
+imps	.	-1	.	imp gang	.	sneaky,loud,rude	.
+hellspawn	.	-1	.	.	.	fiery,rude,loud	.
+demon_lord	.	-2	.	.	.	huge,evil,dramatic	.
+possessor	.	-2	.	.	.	creepy,sneaky,spooky	.
+doorman	.	-1	.	demon doorman	.	grumpy,huge,stubborn	.
+horned_beast	.	-1	.	horned beast	.	huge,fiery,loud	.
+@cat hellvile.thing
+sulfur	.	-1	.	.	sulphur,brimstone	smelly,yellow,fiery	mass
+lava	.	-1	.	.	magma	hot,glowing,dangerous	mass
+pitchfork	.	0	.	.	.	pointy,rusty,classic	.
+hellfire	.	-1	.	hellfire	.	fiery,hot,dramatic	mass
+smog	.	-2	.	.	.	thick,grey,smelly	mass
+ash	.	-1	.	.	.	grey,dusty,hot	mass
+ember	.	0	.	.	.	glowing,hot,tiny	.
+pentagram	.	0	.	.	.	spooky,pointy,dramatic	.
+contract	.	-1	.	.	deal	sneaky,binding,long	.
+small_print	.	-1	.	small print	fine print	tiny,sneaky,binding	mass
+torment	.	-2	.	.	.	endless,awful,dramatic	mass
+inferno	.	-1	.	.	.	hot,huge,loud	.
+bagel_stand	.	1	.	bagel stand	.	smoky,busy,cheap	.
+ectoplasm	.	-1	.	ectoplasm	.	green,slimy,glowing	mass
+@cat hellvile.curse
+curse	.	-2	.	.	hex,jinx	spooky,old,nasty	.
+spell	.	0	.	.	.	magical,sparkly,risky	.
+ritual	.	0	.	.	.	spooky,long,weird	.
+summoning	.	-1	.	summoning	.	spooky,dark,risky	.
+omen	.	-1	.	.	.	bad,spooky,strange	.
+bad_luck	.	-2	.	bad luck	.	unlucky,annoying,sudden	mass
+evil_eye	.	-1	.	evil eye	.	staring,spooky,cursed	.
+haunting	.	-1	.	.	.	spooky,noisy,endless	.
+@cat hellvile.vape
+vape_shop	.	-1	.	.	.	smoky,purple,sketchy	.
+vaping	.	-2	.	.	.	smelly,purple,sketchy	gerund
+vape_cloud	.	-2	.	vape cloud	.	purple,smelly,thick	.

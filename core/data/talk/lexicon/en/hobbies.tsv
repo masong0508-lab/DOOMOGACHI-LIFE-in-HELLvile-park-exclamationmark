@@ -1,0 +1,202 @@
+# core/data/talk/lexicon/en/hobbies.tsv - hobbies, sports, games, media
+# and crafts beyond the 32 catalog hobbies (generated). No real games,
+# studios or shows are named (J7).
+#
+# Columns (core/tools/talkc.py): KEY CAT SENT REG FORMS SYNONYMS ATTRS FLAGS;
+# CAT "." = the last @cat line. Authored for TK1 (T1), docs/TALK.md.
+
+@cat hobbies.activity
+swimming	.	2	.	.	.	wet,sporty,refreshing	gerund
+hiking	.	1	.	.	.	muddy,long,tiring	gerund
+camping	.	1	.	.	.	muddy,cozy,smoky	gerund
+home_cooking	.	2	.	home cooking	.	messy,fun,hot	mass
+juggling	.	1	.	.	.	tricky,silly,impressive	gerund
+magic_tricks	.	1	.	magic trick/magic tricks	.	sneaky,impressive,silly	pl
+sewing	.	1	.	.	.	fiddly,handy,cozy	gerund
+scrapbooking	.	1	.	.	.	sticky,cute,fiddly	gerund
+journaling	.	1	.	.	.	quiet,personal,relaxing	gerund
+photography	.	1	.	.	.	arty,expensive,fun	mass
+sunbathing	.	1	.	.	.	hot,lazy,relaxing	gerund
+jogging	.	0	.	.	running	sweaty,tiring,early	gerund
+cycling	.	1	.	.	biking	fast,sweaty,fun	gerund
+roller_skating	.	2	.	.	.	fast,wobbly,fun	gerund
+ice_skating	.	1	.	.	.	cold,slippery,graceful	gerund
+shopping	.	1	.	.	.	expensive,fun,tiring	gerund
+window_shopping	.	1	.	.	.	cheap,fun,lazy	gerund
+people_watching	.	1	.	.	.	nosy,quiet,fun	gerund
+gossiping	.	0	.	.	.	juicy,nosy,fun	gerund
+daydreaming	.	1	.	.	.	lazy,dreamy,quiet	gerund
+collecting	.	1	.	.	.	nerdy,expensive,endless	gerund
+tidying	.	0	.	tidying	.	boring,satisfying,clean	gerund
+gaming	.	2	.	.	.	fun,competitive,late	mass
+streaming	.	0	.	.	.	loud,modern,endless	gerund
+blogging	.	0	.	.	.	wordy,modern,personal	gerund
+crossword	.	1	.	.	crosswords	tricky,quiet,clever	.
+puzzle	.	1	.	.	jigsaw	tricky,quiet,clever	.
+sudoku	.	0	.	.	.	tricky,quiet,nerdy	mass
+chess	.	1	.	.	.	clever,slow,serious	mass
+checkers	.	1	.	.	draughts	simple,old,fun	mass
+fortune_telling	.	0	.	.	.	mysterious,spooky,weird	gerund
+meditation	.	2	.	.	.	calm,quiet,relaxing	mass
+stretching	.	1	.	.	.	bendy,slow,healthy	gerund
+treasure_hunting	.	2	.	.	.	muddy,exciting,lucky	gerund
+bird_feeding	.	2	.	.	.	quiet,sweet,early	gerund
+volunteering	.	2	.	.	.	kind,tiring,wholesome	gerund
+@cat hobbies.sport
+football	.	1	.	.	soccer	muddy,loud,competitive	mass
+basketball	.	1	.	.	.	bouncy,loud,competitive	mass
+tennis	.	1	.	.	.	fast,sweaty,fancy	mass
+golf	.	0	.	.	.	slow,boring,fancy	mass
+boxing	.	0	.	.	.	sweaty,tough,loud	mass
+wrestling	.	1	.	.	.	sweaty,dramatic,loud	mass
+surfing	.	2	.	.	.	wet,wild,sunny	mass
+skiing	.	1	.	.	.	cold,fast,dangerous	mass
+dodgeball	.	1	.	.	.	painful,loud,fun	mass
+volleyball	.	1	.	.	.	sandy,bouncy,fun	mass
+baseball	.	1	.	.	.	slow,long,sunny	mass
+rugby	.	0	.	.	.	muddy,rough,loud	mass
+cricket	.	0	.	cricket	.	slow,long,polite	mass
+hockey	.	1	.	.	.	fast,icy,rough	mass
+badminton	.	1	.	.	.	bouncy,light,fun	mass
+table_tennis	.	1	.	.	ping-pong,ping pong	fast,bouncy,tiny	mass
+archery	.	1	.	.	.	pointy,calm,tricky	mass
+fencing	.	1	.	.	.	pointy,fancy,fast	mass
+karate	.	1	.	.	martial arts	loud,sporty,tough	mass
+gymnastics	.	1	.	.	.	bendy,impressive,tricky	mass
+marathon	.	0	.	.	.	long,sweaty,endless	.
+race	.	1	.	.	.	fast,competitive,sweaty	.
+tag	.	2	.	.	tig,it	fast,silly,fun	mass
+hopscotch	.	2	.	.	.	bouncy,simple,fun	mass
+tug_of_war	.	1	.	tug of war	.	muddy,loud,competitive	mass
+sports_day	.	1	.	.	.	sweaty,loud,competitive	.
+@cat hobbies.game
+card_game	.	1	.	.	cards	competitive,sneaky,fun	.
+dice_game	.	1	.	.	.	lucky,loud,fun	.
+hide_and_seek	.	2	.	hide and seek	hide-and-seek	sneaky,silly,fun	mass
+truth_or_dare	.	0	.	truth or dare	.	risky,silly,embarrassing	mass
+charades	.	1	.	.	.	silly,loud,awkward	mass
+trivia	.	1	.	.	quiz	nerdy,competitive,fun	mass
+bingo	.	1	.	.	.	loud,lucky,old	mass
+treasure_hunt	.	2	.	.	.	sneaky,exciting,muddy	.
+scavenger_hunt	.	2	.	.	.	busy,silly,fun	.
+musical_chairs	.	1	.	musical chairs	.	loud,silly,competitive	mass
+would_you_rather	.	1	.	would you rather	.	silly,weird,fun	mass
+twenty_questions	.	1	.	twenty questions	.	tricky,silly,long	mass
+pillow_fight	.	2	.	.	.	soft,silly,loud	.
+snowball_fight	.	2	.	.	.	cold,wild,fun	.
+water_fight	.	2	.	.	.	wet,wild,fun	.
+arcade_game	.	2	.	.	.	flashy,loud,retro	.
+claw_machine	.	0	.	.	.	rigged,flashy,annoying	.
+pinball	.	1	.	.	.	flashy,loud,retro	mass
+game_night	.	2	.	.	.	loud,competitive,fun	.
+@cat hobbies.media
+movie	.	2	.	.	film,flick	long,loud,dramatic	.
+book	.	2	.	.	novel	long,old,interesting	.
+comic	.	2	.	.	comic book,manga	colourful,silly,short	.
+cartoon	.	2	.	.	cartoons,anime	colourful,silly,loud	.
+tv_show	.	1	.	TV show	show,series	long,dramatic,popular	.
+soap_opera	.	1	.	.	.	dramatic,long,silly	.
+horror_movie	.	1	.	.	scary movie	scary,gory,dramatic	.
+romcom	.	1	.	.	rom-com	sweet,cheesy,predictable	adult
+documentary	.	1	.	.	.	long,serious,interesting	.
+podcast	.	0	.	.	.	long,chatty,weird	.
+sitcom	.	2	.	.	.	silly,cheesy,loud	.
+game_show	.	1	.	.	.	loud,flashy,silly	.
+reality_show	.	0	.	.	.	dramatic,fake,loud	.
+news	.	0	.	.	the news	grim,busy,local	mass
+magazine	.	1	.	.	.	glossy,gossipy,thin	.
+newspaper	.	0	.	.	paper	old,crumpled,boring	.
+poem	.	1	.	.	.	short,deep,weird	.
+fairy_tale	.	2	.	.	fairytale	magical,old,spooky	.
+ghost_story	.	1	.	.	.	spooky,creepy,old	.
+bedtime_story	.	2	.	.	.	sleepy,sweet,short	.
+gossip_column	.	0	.	.	.	juicy,nosy,cheap	.
+meme	.	1	.	.	.	silly,old,viral	.
+video	.	1	.	.	clip	short,silly,viral	.
+sequel	.	0	.	.	.	worse,long,expensive	.
+plot_twist	.	1	.	.	.	sudden,weird,dramatic	.
+cliffhanger	.	-1	.	.	.	rude,sudden,dramatic	.
+fan_fiction	.	0	.	fan fiction	fanfic	weird,long,dramatic	mass
+lore_dump	.	-1	.	lore dump	.	long,confusing,nerdy	.
+found_footage	.	-1	.	found footage	.	ugly,spooky,blurry	mass
+vhs_tape	.	1	.	VHS tape	videotape	old,fuzzy,creepy	.
+@cat hobbies.craft
+drawing	.	2	.	.	.	colourful,quiet,personal	gerund
+sketch	.	1	.	.	.	quick,messy,arty	.
+crochet	.	1	.	.	.	cozy,fiddly,cute	mass
+embroidery	.	1	.	.	.	fiddly,pretty,slow	mass
+quilt	.	2	.	.	.	cozy,colourful,handmade	.
+candle_making	.	1	.	.	.	waxy,fragrant,slow	gerund
+woodwork	.	1	.	.	woodworking	dusty,handy,sturdy	mass
+model_kit	.	1	.	.	.	fiddly,tiny,glued	.
+collage	.	1	.	.	.	sticky,colourful,messy	.
+finger_painting	.	2	.	.	.	messy,colourful,silly	gerund
+beadwork	.	1	.	.	.	fiddly,sparkly,tiny	mass
+soap_carving	.	0	.	.	.	slippery,fiddly,weird	gerund
+paper_mache	.	1	.	paper mache	.	sticky,messy,lumpy	mass
+sculpture	.	1	.	.	.	big,arty,weird	.
+mural	.	2	.	.	.	big,colourful,bold	.
+doodle	.	1	.	.	.	tiny,messy,silly	.
+@cat hobbies.outdoor
+nature_walk	.	2	.	nature walk	walk,stroll	muddy,fresh,peaceful	.
+kite_flying	.	2	.	.	.	windy,colourful,fun	gerund
+rock_climbing	.	1	.	.	.	steep,scary,sweaty	gerund
+fishing_trip	.	1	.	.	.	muddy,quiet,long	.
+boat_trip	.	1	.	.	.	wet,windy,fun	.
+road_trip	.	2	.	.	.	long,loud,fun	.
+day_trip	.	2	.	.	outing	short,fun,busy	.
+moon_watching	.	2	.	moon watching	.	quiet,dark,peaceful	mass
+beach_day	.	2	.	beach day	.	sunny,sandy,fun	.
+leaf_jumping	.	2	.	.	.	crunchy,messy,fun	gerund
+puddle_jumping	.	2	.	.	.	wet,muddy,fun	gerund
+@cat hobbies.activity
+sleeping_in	.	2	.	.	lie-in	lazy,cozy,late	mass gerund
+power_nap	.	2	.	power nap	.	quick,lazy,sweet	.
+bake_off	.	1	.	bake-off	.	competitive,sweet,dramatic	.
+hot_dog_contest	.	0	.	hot dog contest	.	messy,gross,competitive	.
+staring_contest	.	1	.	.	.	silly,competitive,long	.
+impression	.	1	.	impression	impressions	silly,loud,cheeky	.
+ventriloquism	.	0	.	.	.	creepy,silly,tricky	mass
+stand_up	.	1	.	stand-up comedy	.	loud,nervous,funny	mass
+improv	.	1	.	.	.	silly,loud,random	mass
+costume_contest	.	2	.	costume contest	.	silly,colourful,competitive	.
+model_trains	.	1	.	model train/model trains	.	tiny,nerdy,fiddly	pl
+stamp_collecting	.	0	.	.	.	nerdy,quiet,old	gerund
+coin_collecting	.	0	.	.	.	nerdy,shiny,quiet	gerund
+rock_collecting	.	1	.	.	.	muddy,nerdy,heavy	gerund
+shell_collecting	.	1	.	.	.	sandy,pretty,quiet	gerund
+fossil_hunting	.	1	.	.	.	muddy,ancient,nerdy	gerund
+geocaching	.	1	.	.	.	muddy,nerdy,fun	mass
+butterfly_spotting	.	2	.	butterfly spotting	.	quiet,pretty,sunny	mass
+ghost_tour	.	1	.	.	.	spooky,creaky,fun	.
+escape_room	.	1	.	.	.	tricky,loud,cramped	.
+bowling	.	1	.	.	.	loud,retro,fun	mass
+mini_golf	.	2	.	mini golf	crazy golf	silly,colourful,fun	mass
+laser_tag	.	2	.	laser tag	.	dark,loud,competitive	mass
+go_karting	.	2	.	go-karting	.	fast,loud,bumpy	mass
+trampolining	.	2	.	.	.	bouncy,wild,sweaty	gerund
+hula_hoop	.	1	.	.	.	wobbly,silly,colourful	.
+skipping	.	1	.	.	.	bouncy,cheerful,sweaty	gerund
+marbles_game	.	1	.	marble game	.	noisy,simple,old	.
+whittling	.	1	.	.	.	woody,fiddly,quiet	gerund
+calligraphy	.	1	.	.	.	fancy,slow,inky	mass
+bullet_journal	.	1	.	bullet journal	.	neat,colourful,personal	.
+@cat hobbies.media
+radio_show	.	1	.	.	.	crackly,chatty,old	.
+audiobook	.	1	.	.	.	long,soothing,personal	.
+cooking_channel	.	1	.	cooking channel	.	fancy,loud,tasty	.
+big_game	.	1	.	big game	.	loud,packed,competitive	.
+comic_strip	.	2	.	.	.	short,silly,colourful	.
+picture_book	.	2	.	.	.	colourful,short,cute	.
+encyclopedia	.	1	.	.	.	huge,old,nerdy	.
+diary_entry	.	0	.	.	.	private,secret,personal	.
+chat_show	.	0	.	chat show	talk show	loud,fake,chatty	.
+quiz_show	.	1	.	.	.	loud,flashy,nerdy	.
+nature_documentary	.	2	.	.	.	quiet,long,interesting	.
+true_crime	.	0	.	.	.	grim,dramatic,popular	mass
+murder_mystery	.	1	.	.	whodunnit	dramatic,sneaky,clever	.
+detective_story	.	1	.	.	.	sneaky,clever,dramatic	.
+space_opera	.	1	.	.	.	huge,dramatic,shiny	.
+superhero_movie	.	1	.	.	.	loud,flashy,long	.
+puppet_show	.	2	.	.	.	silly,colourful,creepy	.
+magic_show	.	2	.	.	.	sparkly,sneaky,impressive	.

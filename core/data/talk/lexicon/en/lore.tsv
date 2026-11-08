@@ -1,0 +1,53 @@
+# core/data/talk/lexicon/en/lore.tsv - the story's own nouns (the cast is
+# generated from the roster). Story callbacks are chapter-gated by the
+# generator (T5), so no topic here is a spoiler by itself. The heroes
+# Sunny and Marvin are not roster residents, so they are authored here.
+#
+# Columns (core/tools/talkc.py): KEY CAT SENT REG FORMS SYNONYMS ATTRS FLAGS;
+# CAT "." = the last @cat line. Authored for TK1 (T1), docs/TALK.md.
+
+@cat lore.cast
+sunny	.	2	.	Sunny	.	brave,cheerful,heroic	proper
+marvin	.	2	.	Marvin	.	brave,sly,heroic	proper
+@cat lore.thing
+hell_gate	.	0	.	.	hellgate	huge,spooky,sealed	the
+purple_fog	.	-2	.	.	the fog	thick,purple,creepy	the mass
+wall	.	0	.	Wall	.	tall,old,grey	the proper
+hahaland	.	1	.	HaHaland	.	loud,colourful,weird	proper
+hillvile	.	1	.	Hillvile	the good side	cozy,sweet,quiet	proper
+hellvile	.	0	.	Hellvile	the bad side	smoggy,fiery,rude	proper
+hellvile_park	.	1	.	Hellvile Park	.	weird,busy,local	proper
+ninth_cloud	.	-1	.	Ninth Cloud	.	smoggy,purple,fancy	proper the
+vapor	.	-2	.	vapor	vapour	purple,smelly,sketchy	mass adult
+possession	.	-2	.	.	.	spooky,dramatic,sudden	mass
+soul	.	0	.	.	.	precious,glowing,fragile	.
+afterlife	.	0	.	.	.	quiet,far,mysterious	the
+prophecy	.	0	.	.	.	ancient,vague,dramatic	.
+legend	.	1	.	.	.	old,famous,exaggerated	.
+urban_legend	.	0	.	urban legend	.	spooky,silly,local	.
+training_tape	.	-1	.	training tape	training video	ugly,fuzzy,creepy	.
+family_restaurant	.	-1	.	family restaurant	.	greasy,creepy,old	.
+lore	.	0	.	lore	.	deep,confusing,nerdy	mass
+@cat lore.event
+feast	.	0	.	Feast	.	huge,loud,fancy	proper the
+invasion	.	-2	.	.	.	loud,scary,sudden	the
+summit	.	0	.	.	.	tense,fancy,dramatic	the
+failed_exorcism	.	-2	.	failed exorcism	.	messy,loud,cursed	.
+town_meeting	.	0	.	.	.	long,loud,boring	.
+town_festival	.	2	.	town festival	.	busy,loud,fun	.
+grand_opening	.	2	.	.	.	shiny,loud,fancy	.
+big_storm	.	-1	.	.	.	wild,loud,dark	the
+@cat lore.item
+lucky_charm	.	2	.	.	.	lucky,tiny,shiny	.
+amulet	.	1	.	.	.	old,shiny,magical	.
+spell_book	.	0	.	.	spellbook,grimoire	old,dusty,dangerous	.
+potion	.	0	.	.	.	fizzy,glowing,suspicious	.
+crystal	.	1	.	.	.	shiny,sparkly,magical	.
+@cat lore.church
+prayer	.	1	.	.	.	quiet,sincere,long	.
+sermon	.	-1	.	.	.	long,boring,loud	.
+choir_practice	.	0	.	choir practice	.	loud,long,early	.
+blessing	.	2	.	.	.	holy,warm,kind	.
+holy_relic	.	1	.	.	relic	old,holy,dusty	.
+confession	.	0	.	.	.	secret,awkward,long	.
+church_fete	.	1	.	church fete	.	busy,cheap,sweet	.

@@ -1,0 +1,220 @@
+# core/data/talk/lexicon/en/stuff.tsv - everyday things: tech,
+# vehicles, tools, money talk, paper, cartoon weapons (THREATEN is
+# cartoon, docs/TALK.md 3.1), odds and ends. Non-food items from items.c
+# are generated.
+#
+# Columns (core/tools/talkc.py): KEY CAT SENT REG FORMS SYNONYMS ATTRS FLAGS;
+# CAT "." = the last @cat line. Authored for TK1 (T1), docs/TALK.md.
+
+@cat stuff.tech
+computer	.	1	.	.	pc,laptop	slow,old,humming	.
+games_console	.	2	.	.	.	loud,fun,flashy	.
+tv	.	1	.	TV	telly,television	loud,big,flickery	.
+camera	.	1	.	.	.	clicky,fancy,expensive	.
+app	.	0	.	app	.	buggy,free,annoying	.
+gadget	.	1	.	gadget	.	shiny,beepy,handy	.
+battery	.	0	.	.	batteries	flat,tiny,important	.
+wi_fi	.	0	.	wi-fi	wifi,internet	slow,patchy,important	mass
+password	.	-1	.	.	.	secret,forgotten,long	.
+printer	.	-2	.	.	.	jammed,slow,evil	.
+speaker	.	1	.	speaker	.	loud,booming	.
+microphone	.	1	.	.	mic	squeaky,loud,shiny	.
+calculator	.	0	.	.	.	handy,nerdy,beepy	.
+walkie_talkie	.	2	.	walkie-talkie	.	crackly,fun,loud	.
+vending_machine	.	0	.	.	.	greedy,humming,handy	.
+@cat stuff.vehicle
+car	.	1	.	.	motor	fast,loud,shiny	.
+bike	.	2	.	.	bicycle	fast,squeaky,fun	.
+bus	.	0	.	.	.	slow,packed,late	.
+train	.	1	.	.	.	fast,loud,long	.
+boat	.	1	.	.	.	wobbly,wet,slow	.
+plane	.	1	.	.	aeroplane,airplane	fast,loud,far	.
+motorbike	.	1	.	.	motorcycle	loud,fast,dangerous	.
+scooter	.	1	.	.	.	zippy,small,fun	.
+skateboard	.	1	.	.	.	fast,bumpy,cool	.
+tractor	.	1	.	.	.	slow,loud,muddy	.
+hot_air_balloon	.	2	.	.	.	floaty,colourful,slow	.
+rocket	.	2	.	.	spaceship	fast,loud,explosive	.
+ice_cream_van	.	3	.	.	ice cream truck	jingly,sweet,rare	.
+taxi	.	0	.	.	cab	yellow,expensive,late	.
+ambulance	.	0	.	.	.	loud,fast,important	.
+submarine	.	1	.	.	.	deep,yellow,cramped	.
+@cat stuff.tool
+hammer	.	0	.	.	.	heavy,loud,handy	.
+screwdriver	.	0	.	.	.	handy,pointy,lost	.
+wrench	.	0	.	.	spanner	heavy,rusty,handy	.
+saw	.	0	.	.	.	sharp,loud,dangerous	.
+power_drill	.	0	.	power drill	.	loud,noisy,handy	.
+tape	.	0	.	.	duct tape	sticky,handy,useful	mass
+glue	.	0	.	.	.	sticky,messy,handy	mass
+rope	.	0	.	.	.	long,knotty,handy	.
+shovel	.	0	.	.	spade	muddy,heavy,handy	.
+broom	.	0	.	.	.	bristly,old,handy	.
+mop	.	0	.	.	.	wet,floppy,smelly	.
+bucket	.	0	.	.	.	wet,clanky,handy	.
+welding_torch	.	1	.	.	.	hot,bright,loud	.
+magnifying_glass	.	1	.	.	.	nosy,round,handy	.
+scissors	.	0	.	scissors/scissors	.	sharp,pointy,handy	pl
+paintbrush	.	1	.	.	.	drippy,colourful,handy	.
+@cat stuff.money
+shopping_list	.	0	.	.	.	long,crumpled,forgotten	.
+coupon	.	1	.	.	voucher	cheap,crumpled,lucky	.
+gift_card	.	1	.	.	.	plastic,lazy,handy	.
+price_tag	.	0	.	.	.	tiny,shocking,sticky	.
+sale	.	2	.	.	discount	cheap,busy,loud	.
+@cat stuff.item
+bag	.	0	.	.	handbag	full,heavy,messy	.
+suitcase	.	0	.	.	.	heavy,packed,handy	.
+gift_box	.	2	.	gift box	.	wrapped,shiny,mysterious	.
+trophy	.	2	.	.	.	shiny,golden,proud	.
+medal	.	2	.	.	.	shiny,golden,proud	.
+souvenir	.	1	.	.	.	tacky,cute,cheap	.
+snow_globe	.	2	.	.	.	sparkly,round,pretty	.
+cassette	.	1	.	cassette	.	retro,tangled,old	.
+keyring	.	1	.	keyring	keychain	jingly,tiny,cheap	.
+plush_toy	.	2	.	plush toy	plush	soft,cuddly,cute	.
+@cat stuff.weapon
+sword	.	0	.	.	.	pointy,shiny,heavy	.
+shield	.	1	.	.	.	round,sturdy,heavy	.
+bow_and_arrow	.	0	.	bow and arrow	.	pointy,tricky,old	.
+laser	.	0	.	.	laser gun	zappy,bright,fast	.
+slingshot	.	0	.	.	catapult	twangy,sneaky,silly	.
+foam_sword	.	2	.	.	.	squishy,silly,safe	.
+water_balloon	.	2	.	.	.	wet,wobbly,sneaky	.
+chainsaw	.	-1	.	chainsaw	.	loud,dangerous	.
+@cat stuff.paper
+letter	.	1	.	.	note	handwritten,sweet,old	.
+postcard	.	2	.	.	.	sunny,short,cheesy	.
+map	.	1	.	.	.	old,crumpled,handy	.
+poster	.	1	.	.	.	bold,colourful,peeling	.
+sign	.	0	.	.	.	wonky,old,painted	.
+ticket	.	1	.	.	.	crumpled,lucky,important	.
+birthday_card	.	2	.	.	card	cheesy,sweet,glittery	.
+flyer	.	0	.	.	leaflet	bright,cheap,crumpled	.
+list	.	0	.	.	.	long,crumpled,important	.
+form	.	0	.	.	.	boring,long,official	.
+@cat stuff.misc
+rock	.	0	.	.	stone	hard,grey,heavy	.
+stick	.	0	.	.	.	pointy,woody,handy	.
+pebble	.	1	.	.	.	smooth,tiny,round	.
+shell	.	1	.	.	seashell	shiny,tiny,pretty	.
+mystery_box	.	1	.	mystery box	.	mysterious,heavy,suspicious	.
+treasure	.	3	.	.	.	shiny,golden,buried	mass
+junk	.	0	.	.	clutter,stuff	dusty,old,useless	mass
+thing	.	0	.	.	thingy,whatsit,thingamajig	weird,odd,mysterious	.
+noise	.	-1	.	.	sound	loud,weird,sudden	.
+smell	.	-1	.	.	whiff,pong	weird,strong,sudden	.
+mess	.	-1	.	.	.	big,sticky,gross	.
+trouble	.	-1	.	.	.	big,sudden,local	mass
+surprise_party	.	2	.	surprise party	.	loud,secret,fun	.
+drama	.	0	.	drama	.	juicy,loud,messy	mass
+idea	.	2	.	.	.	big,clever,wild	.
+question	.	0	.	.	.	big,weird,simple	.
+answer	.	0	.	.	.	short,honest,wrong	.
+story	.	1	.	.	tale	long,weird,true	.
+fact	.	0	.	.	.	true,weird,boring	.
+lie	.	-2	.	.	fib	sneaky,big,obvious	.
+truth	.	1	.	.	.	honest,awkward,big	mass the
+problem	.	-1	.	.	issue	big,tricky,local	.
+mistake	.	-1	.	.	oops moment	big,silly,honest	.
+adventure	.	2	.	.	.	wild,long,exciting	.
+quest	.	2	.	.	.	long,epic,dramatic	.
+mission	.	1	.	.	.	secret,important,tricky	.
+challenge	.	1	.	.	.	tricky,big,fun	.
+rule	.	0	.	.	rules	strict,silly,important	.
+@cat stuff.misc
+fame	.	1	.	.	.	shiny,loud,fake	mass
+jackpot	.	3	.	jackpot	.	lucky,shiny,loud	.
+artwork	.	2	.	.	.	colourful,weird,expensive	.
+experiment	.	1	.	experiment	.	explosive,messy,clever	.
+invention	.	2	.	.	.	clever,weird,new	.
+machine	.	0	.	.	.	loud,clanky,big	.
+contraption	.	1	.	contraption	.	clanky,weird,wobbly	.
+tabloid	.	-1	.	tabloid	.	juicy,cheap,loud	.
+secret_door	.	2	.	.	.	hidden,creaky,secret	.
+hidden_room	.	2	.	.	.	hidden,dusty,secret	.
+time_capsule	.	2	.	.	.	buried,old,sweet	.
+message_in_a_bottle	.	2	.	.	.	wet,old,mysterious	.
+top_hat_rabbit	.	1	.	rabbit in a hat	.	fluffy,silly,magical	.
+fortune_cookie	.	1	.	.	.	crunchy,vague,lucky	.
+tarot_card	.	0	.	tarot card	.	spooky,vague,mystical	.
+ouija_board	.	-2	.	.	.	spooky,creaky,cursed	.
+magic_mirror	.	0	.	magic mirror	.	shiny,spooky,honest	.
+wishing_well	.	2	.	.	.	deep,old,lucky	.
+four_leaf_clover	.	3	.	four-leaf clover	.	green,lucky,rare	.
+horseshoe	.	1	.	.	.	lucky,rusty,heavy	.
+snowman	.	2	.	.	.	cold,round,cheerful	.
+sand_castle	.	2	.	sand castle	.	sandy,wobbly,cute	.
+bonfire	.	1	.	.	.	hot,smoky,loud	.
+campfire	.	2	.	.	.	warm,smoky,cozy	.
+fireworks	.	2	.	firework/fireworks	.	loud,bright,sudden	.
+confetti	.	2	.	.	.	colourful,messy,sudden	mass
+party_popper	.	1	.	.	.	loud,sudden,festive	.
+balloon_animal	.	2	.	.	.	squeaky,wobbly,silly	.
+pinata	.	2	.	pinata	.	colourful,sugary,broken	.
+birthday_candle	.	2	.	birthday candle	.	tiny,flickery,waxy	.
+wrapping_paper	.	1	.	.	.	shiny,crumpled,colourful	mass
+ribbon	.	1	.	.	.	shiny,curly,pretty	.
+gift_bow	.	1	.	gift bow	.	shiny,curly,pretty	.
+rubber_band	.	0	.	.	.	stretchy,snappy,tiny	.
+paperclip	.	0	.	.	.	bent,tiny,handy	.
+safety_pin	.	0	.	.	.	pointy,tiny,handy	.
+button	.	0	.	.	.	tiny,round,lost	.
+zip	.	0	.	.	zipper	annoying,noisy,handy	.
+thread	.	0	.	.	.	thin,tangled,colourful	mass
+string	.	0	.	.	.	long,tangled,handy	mass
+bubble_wrap	.	2	.	.	.	satisfying,plastic	mass
+cardboard_box	.	1	.	.	box	empty,crumpled,handy	.
+plastic_bag	.	-1	.	.	.	crumpled,flimsy,noisy	.
+jar	.	0	.	.	.	glassy,sticky,handy	.
+bottle	.	0	.	.	.	glassy,empty,handy	.
+can	.	0	.	.	tin	dented,tinny,empty	.
+lid	.	0	.	.	.	lost,tight,round	.
+straw	.	0	.	.	.	bendy,plastic,slurpy	.
+napkin	.	0	.	.	serviette	crumpled,thin,handy	.
+tissue	.	0	.	.	hanky	soft,crumpled,handy	.
+reflection	.	0	.	reflection	.	shiny,honest,weird	.
+shadow	.	0	.	.	.	dark,long,spooky	.
+echo	.	0	.	.	.	spooky,far	.
+petrichor	.	2	.	smell of rain	.	fresh,earthy,sweet	mass
+@cat stuff.tech
+video_call	.	0	.	.	.	buggy,awkward	.
+text_message	.	1	.	.	text	short,buzzy,secret	.
+group_chat	.	-1	.	.	.	loud,endless,chaotic	.
+emoji	.	1	.	.	.	tiny,silly,colourful	.
+notification	.	-1	.	.	.	buzzy,annoying,endless	.
+low_battery	.	-2	.	low battery	.	scary,sudden,annoying	mass
+satellite_dish	.	0	.	satellite dish	.	big,round,crackly	.
+radio_tower	.	0	.	.	.	tall,bright,far	.
+robot_vacuum	.	1	.	.	robot hoover	bumpy,humming,dim	.
+smartwatch	.	1	.	.	.	beepy,tiny,bossy	.
+game_controller	.	1	.	.	controller	sticky,buzzy,handy	.
+joystick	.	1	.	.	.	retro,clicky,wobbly	.
+floppy_disk	.	1	.	.	.	retro,square,old	.
+walkman	.	1	.	walkman	.	retro,tangled,crackly	.
+headset	.	0	.	.	.	squeaky,loud,tight	.
+@cat stuff.vehicle
+canoe	.	1	.	.	kayak	wobbly,wet,slow	.
+sailboat	.	2	.	.	.	windy,graceful,slow	.
+pedalo	.	1	.	.	.	slow,silly,wet	.
+rowing_boat	.	1	.	.	rowboat	wobbly,wet,slow	.
+cable_car	.	1	.	.	.	high,wobbly,scary	.
+tram	.	1	.	.	.	slow,clanky,old	.
+hovercraft	.	1	.	.	.	loud,weird,fast	.
+unicycle	.	1	.	.	.	wobbly,silly,tricky	.
+wheelbarrow	.	0	.	.	.	muddy,wobbly,handy	.
+pram	.	1	.	.	stroller	squeaky,handy,cozy	minor
+sled	.	2	.	.	sledge	fast,icy,fun	.
+broomstick	.	1	.	.	.	witchy,wobbly,fast	.
+@cat stuff.tool
+toolbelt	.	1	.	.	.	heavy,handy,jingly	.
+measuring_tape	.	0	.	.	.	stretchy,handy,yellow	.
+level_tool	.	0	.	spirit level	.	straight,handy,fussy	.
+crowbar	.	0	.	.	.	heavy,bent,handy	.
+pliers	.	0	.	pliers/pliers	.	snappy,handy,rusty	pl
+sandpaper	.	0	.	.	.	gritty,rough,handy	mass
+paint_roller	.	1	.	.	.	drippy,fluffy,handy	.
+garden_hose	.	1	.	.	hose	long,wet,tangled	.
+watering_can	.	1	.	.	.	drippy,handy,green	.
+rake	.	0	.	.	.	pointy,leafy,handy	.
+lawnmower	.	0	.	.	.	loud,noisy,handy	.

@@ -1,0 +1,2 @@
+# expect: is in a safety leaf but may be generated
+zz_safety_any	safety.minor	.	.	zz safety word	.	.	any

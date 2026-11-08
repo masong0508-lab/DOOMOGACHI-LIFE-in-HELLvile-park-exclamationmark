@@ -1,0 +1,149 @@
+# core/data/talk/lexicon/en/house.tsv - the house: rooms, everyday
+# objects, chores and home life (the 349 catalog pieces are generated from
+# core/data/furn/catalog.txt, so residents can talk about the sofa in
+# front of them).
+#
+# Columns (core/tools/talkc.py): KEY CAT SENT REG FORMS SYNONYMS ATTRS FLAGS;
+# CAT "." = the last @cat line. Authored for TK1 (T1), docs/TALK.md.
+
+@cat house.room
+kitchen	.	1	.	.	.	warm,messy,busy	.
+living_room	.	1	.	.	lounge,front room	cozy,messy,busy	.
+bedroom	.	1	.	.	.	cozy,messy,private	.
+bathroom	.	0	.	.	loo,toilet,restroom	steamy,clean,small	.
+attic	.	0	.	.	loft	dusty,spooky,cramped	.
+cellar	.	-1	.	.	.	damp,dark,spooky	.
+hallway	.	0	.	.	hall	narrow,long,drafty	.
+porch	.	1	.	.	.	creaky,cozy,windy	.
+garage	.	0	.	.	.	cluttered,greasy,cold	.
+closet	.	0	.	.	cupboard,wardrobe space	cramped,messy,secret	.
+dining_room	.	1	.	.	.	fancy,quiet,big	.
+study	.	1	.	.	den	quiet,bookish,dusty	.
+nursery	.	2	.	.	.	cute,soft,quiet	minor
+pantry	.	1	.	.	.	full,secret,handy	.
+utility_room	.	0	.	.	.	humming,boring,handy	.
+balcony	.	1	.	.	.	windy,tiny,sunny	.
+staircase	.	0	.	.	stairs	creaky,steep,long	.
+doorway	.	0	.	.	.	narrow,drafty,busy	.
+spare_room	.	0	.	.	.	cluttered,dusty,quiet	.
+@cat house.object
+key	.	0	.	.	keys	lost,tiny,important	.
+door_handle	.	0	.	.	.	sticky,wobbly,cold	.
+light_switch	.	0	.	.	.	sticky,handy,tiny	.
+lightbulb	.	0	.	.	bulb	bright,hot,fragile	.
+curtains	.	0	.	curtain/curtains	drapes	dusty,drafty,frilly	pl
+pillow	.	2	.	.	cushion	soft,fluffy,squashed	.
+blanket	.	2	.	.	duvet,quilt cover	cozy,soft,warm	.
+towel	.	1	.	.	.	fluffy,damp,handy	.
+remote	.	0	.	.	remote control,clicker	lost,sticky,important	.
+phone	.	1	.	.	mobile,cellphone	cracked,buzzy,important	.
+charger	.	0	.	.	.	lost,tangled,important	.
+umbrella	.	0	.	.	brolly	wet,flimsy,lost	.
+alarm_clock	.	-1	.	.	.	loud,early,annoying	.
+doorbell	.	0	.	.	.	loud,sudden,jingly	.
+letterbox	.	0	.	.	mailbox	snappy,narrow,drafty	.
+mail	.	0	.	.	post,letters	boring,late,important	mass
+parcel	.	2	.	.	package	mysterious,wrapped,exciting	.
+bin	.	0	.	.	trash can,rubbish bin	smelly,full,grim	.
+recycling	.	1	.	.	.	sorted,smug,important	mass
+plant	.	1	.	.	houseplant	green,leafy,thirsty	.
+flower_pot	.	1	.	.	.	chipped,muddy,small	.
+photo_album	.	1	.	.	.	old,embarrassing,sweet	.
+picture_frame	.	1	.	.	.	crooked,fancy,dusty	.
+candle	.	1	.	.	.	flickery,fragrant,waxy	.
+torch	.	0	.	.	flashlight	dim,handy,lost	.
+ladder	.	0	.	.	.	wobbly,tall,risky	.
+toolbox	.	1	.	.	.	heavy,handy,rusty	.
+junk_drawer	.	0	.	junk drawer	.	messy,full,mysterious	.
+laundry_basket	.	0	.	.	.	full,smelly,endless	.
+sock	.	0	.	.	socks	odd,lost,smelly	.
+coat_hook	.	0	.	.	.	full,wobbly,handy	.
+radiator	.	0	.	.	.	hot,clanky,old	.
+fireplace	.	2	.	.	hearth	warm,crackly,cozy	.
+chimney	.	0	.	.	.	sooty,tall,drafty	.
+@cat house.kitchenware
+fork	.	0	.	.	.	pointy,shiny,bent	.
+spoon	.	0	.	.	.	shiny,round,bent	.
+butter_knife	.	0	.	butter knife	.	blunt,shiny,handy	.
+plate	.	0	.	.	.	chipped,round,dirty	.
+bowl	.	0	.	.	.	round,chipped,handy	.
+mug	.	1	.	.	cup	chipped,warm,big	.
+teapot	.	2	.	.	.	chubby,old,fancy	.
+tea_kettle	.	1	.	tea kettle	.	whistly,steamy,old	.
+toaster	.	0	.	.	.	crumby,hot,old	.
+microwave	.	0	.	.	.	humming,handy,beepy	.
+fridge	.	1	.	.	refrigerator	cold,humming,full	.
+freezer	.	0	.	.	.	icy,full,humming	.
+dish_rack	.	0	.	dish rack	.	drippy,full,handy	.
+blender	.	0	.	.	.	loud,noisy,handy	.
+rolling_pin	.	1	.	.	.	wooden,heavy,floury	.
+whisk	.	1	.	.	.	bendy,handy,fiddly	.
+ladle	.	0	.	.	.	big,drippy,handy	.
+tray	.	0	.	.	.	flat,handy,wobbly	.
+lunchbox	.	1	.	.	.	squashed,handy,colourful	.
+@cat house.bathroom
+bath	.	1	.	.	bathtub,tub	warm,bubbly,long	.
+shower	.	1	.	.	.	hot,steamy,quick	.
+sink	.	0	.	.	.	drippy,clean,small	.
+toothbrush	.	0	.	.	.	bristly,wet,tiny	.
+toothpaste	.	0	.	.	.	minty,squished,sticky	mass
+shampoo	.	1	.	.	.	bubbly,fragrant,slippery	mass
+bubble_bath	.	2	.	bubble bath	.	bubbly,fragrant,warm	mass
+rubber_duck	.	2	.	.	.	squeaky,yellow,cute	.
+toilet_paper	.	0	.	.	loo roll	soft,essential,low	mass
+plunger	.	-1	.	.	.	gross,handy,rubbery	.
+hairbrush	.	0	.	.	.	bristly,tangled,lost	.
+sponge	.	0	.	.	.	squishy,soggy,handy	.
+@cat house.chore
+chores	.	-1	.	chore/chores	.	boring,endless,tiring	pl
+laundry	.	-1	.	.	washing	endless,smelly,damp	mass
+dishes	.	-1	.	dish/dishes	washing-up	dirty,endless,greasy	pl
+hoovering	.	-1	.	.	vacuuming	loud,boring,dusty	gerund
+dusting	.	-1	.	.	.	dusty,boring,endless	gerund
+mopping	.	-1	.	.	.	wet,boring,slippery	gerund
+ironing	.	-1	.	.	.	hot,boring,stiff	gerund
+spring_cleaning	.	0	.	.	.	big,dusty,satisfying	mass
+bin_day	.	0	.	bin day	.	smelly,early,weekly	.
+gutter_cleaning	.	-2	.	.	.	gross,high,wet	mass
+decluttering	.	1	.	.	.	satisfying,hard,dusty	gerund
+@cat house.home
+rent	.	-2	.	.	.	expensive,monthly,late	mass
+mortgage	.	-2	.	.	.	huge,endless,expensive	.
+bills	.	-2	.	bill/bills	.	expensive,boring,endless	pl
+house_party	.	2	.	.	.	loud,messy,fun	.
+housewarming	.	2	.	.	housewarming party	fun,new,busy	.
+sleepover	.	2	.	.	.	loud,late,fun	.
+neighbourhood	.	1	.	.	neighborhood,hood	quiet,nosy,local	.
+moving_day	.	-1	.	moving day	move house	tiring,messy,busy	.
+renovation	.	0	.	.	makeover	dusty,loud,expensive	.
+interior_design	.	1	.	interior design	decor	stylish,fancy,expensive	mass
+wallpaper	.	0	.	wallpaper	.	peeling,striped,old	mass
+draught	.	-1	.	.	draft	cold,sneaky,annoying	.
+leak	.	-2	.	.	.	drippy,sneaky,annoying	.
+mould	.	-2	.	.	mold	green,gross,damp	mass
+house_rules	.	0	.	house rule/house rules	.	strict,silly,important	pl
+flat_drama	.	-1	.	household drama	.	loud,dramatic,petty	mass
+home_smell	.	2	.	smell of home	.	warm,cozy,sweet	.
+@cat house.object
+nightlight	.	2	.	.	.	dim,cozy,tiny	.
+heat_pack	.	2	.	heat pack	.	warm,squishy,cozy	.
+lamp	.	1	.	.	.	dim,cozy,handy	.
+rug	.	1	.	.	.	soft,dusty,patterned	.
+doormat	.	0	.	.	.	muddy,flat,welcoming	.
+coat	.	1	.	.	.	warm,heavy,comfy	.
+fluffy_slippers	.	2	.	fluffy slippers	.	soft,fluffy,warm	mass
+dressing_gown	.	2	.	.	bathrobe	fluffy,cozy,warm	.
+alarm	.	0	.	.	.	loud,sudden,annoying	.
+smoke_alarm	.	0	.	.	smoke detector	loud,beepy,sudden	.
+fire_extinguisher	.	0	.	.	.	red,heavy,handy	.
+first_aid_kit	.	1	.	.	.	handy,important,red	.
+sewing_kit	.	1	.	.	.	fiddly,handy,tiny	.
+spare_key	.	1	.	spare key	.	hidden,tiny,handy	.
+fridge_magnet	.	1	.	.	.	tiny,colourful,cheesy	.
+shopping_trolley	.	0	.	shopping trolley	shopping cart	wobbly,squeaky,clanky	.
+jigsaw_box	.	1	.	jigsaw box	.	dusty,heavy,missing	.
+mousetrap	.	-1	.	.	.	snappy,sneaky,cruel	.
+cobweb	.	-1	.	.	.	dusty,spooky,sticky	.
+dust_bunny	.	0	.	.	.	fluffy,dusty,secret	.
+crumbs	.	0	.	crumb/crumbs	.	tiny,messy,crunchy	pl
+sticky_note	.	1	.	.	post-it	yellow,sticky,handy	.

@@ -1,0 +1,256 @@
+# core/data/talk/lexicon/en/food.tsv - food and drink beyond the 48
+# catalog foods (generated from catalog.c). Booze is crude-register and
+# adults-only (register.tsv: booze*, drunk*, hangover*).
+#
+# Columns (core/tools/talkc.py): KEY CAT SENT REG FORMS SYNONYMS ATTRS FLAGS;
+# CAT "." = the last @cat line. Authored for TK1 (T1), docs/TALK.md.
+
+@cat food.dish
+pie	.	2	.	.	pies	warm,flaky,baked,stolen	.
+soup	.	1	.	.	.	hot,thick,filling	mass
+stew	.	1	.	.	.	thick,hearty,hot	mass
+casserole	.	0	.	.	.	beige,hearty,mysterious	.
+lasagne	.	2	.	.	lasagna	cheesy,hearty,hot	mass
+burger	.	2	.	.	hamburger,cheeseburger	greasy,juicy,big	.
+hot_dog	.	1	.	.	hotdog	greasy,long,cheap	.
+sandwich	.	1	.	.	sarnie,sammich	squashed,simple,filling	.
+toastie	.	2	.	.	toasted sandwich	cheesy,hot,crispy	.
+omelette	.	1	.	.	omelet	fluffy,eggy,quick	.
+pasta	.	2	.	.	.	cheesy,filling,buttery	mass
+noodles	.	1	.	noodle/noodles	.	slurpy,hot,long	pl
+fried_rice	.	1	.	.	.	greasy,quick,filling	mass
+risotto	.	1	.	.	.	creamy,rich,fussy	mass
+roast	.	2	.	.	roast dinner,sunday roast	hearty,big,hot	.
+pot_roast	.	1	.	.	.	hearty,old,slow	.
+meatball	.	1	.	.	.	round,saucy,juicy	.
+sausage	.	1	.	.	banger	greasy,juicy,long	.
+bacon	.	2	.	.	.	crispy,salty,greasy	mass
+fish_and_chips	.	2	.	fish and chips	.	greasy,salty,hot	mass
+chips	.	1	.	chip/chips	fries,french fries	salty,crispy,greasy	pl
+mashed_potato	.	1	.	.	mash	creamy,buttery,lumpy	mass
+baked_potato	.	1	.	.	jacket potato	hot,buttery,filling	.
+porridge	.	0	.	.	oatmeal,oats	lumpy,warm,beige	mass
+toast	.	1	.	.	.	crispy,buttery,warm	mass
+beans_on_toast	.	1	.	beans on toast	.	quick,cheap,filling	mass
+quiche	.	0	.	.	.	eggy,flaky,fancy	.
+wonton	.	1	.	wonton	.	slurpy,hot,tiny	.
+gravy	.	1	.	.	.	brown,thick,salty	mass
+pot_pie	.	2	.	.	.	flaky,hearty,hot	.
+shepherds_pie	.	2	.	shepherd's pie	.	hearty,hot,creamy	.
+kebab	.	1	.	.	.	greasy,late,messy	.
+burrito	.	1	.	.	.	huge,messy,filling	.
+nachos	.	2	.	nacho/nachos	.	cheesy,crunchy,messy	pl
+stir_fry	.	1	.	stir-fry	.	quick,hot,crunchy	.
+coleslaw	.	0	.	coleslaw	.	crunchy,creamy,cold	mass
+chili	.	1	.	chili	.	spicy,hot,thick	mass
+cheese_on_toast	.	1	.	cheese on toast	.	cheesy,hot,quick	mass
+leftovers	.	0	.	leftover food/leftovers	.	cold,mysterious,old	pl
+@cat food.snack
+crisps	.	1	.	crisp snack/crisps	potato chips	salty,crunchy,greasy	pl
+pretzel	.	1	.	.	.	salty,twisty,chewy	.
+cracker	.	0	.	.	.	dry,crunchy,plain	.
+cheese_puffs	.	1	.	cheese puff/cheese puffs	.	orange,crunchy,cheesy	pl
+trail_mix	.	1	.	.	.	nutty,healthy,crunchy	mass
+granola_bar	.	1	.	.	.	chewy,healthy,sticky	.
+peanut	.	1	.	.	.	salty,crunchy,tiny	.
+crumpet	.	1	.	.	.	buttery,spongy,warm	.
+scone	.	2	.	.	.	crumbly,buttery,fancy	.
+muffin	.	2	.	.	.	fluffy,sweet,big	.
+biscuit	.	2	.	.	cookie	crunchy,sweet,buttery	.
+rice_cake	.	-1	.	rice cake	.	dry,bland,crunchy	.
+popsicle	.	2	.	.	ice lolly	cold,sweet,sticky	.
+jelly_baby	.	2	.	jelly baby/jelly babies	.	chewy,sweet,squishy	.
+lollipop	.	2	.	.	lolly	sweet,sticky,round	.
+candy	.	2	.	.	sweets	sweet,sticky,colourful	mass
+chocolate_bar	.	2	.	.	candy bar	sweet,melty,rich	.
+marshmallow	.	2	.	.	.	fluffy,sweet,squishy	.
+toffee	.	1	.	.	.	chewy,sticky,buttery	mass
+fudge	.	2	.	.	.	sweet,rich,gooey	mass
+caramel	.	2	.	caramel	.	sweet,sticky,gooey	mass
+chocolate	.	3	.	.	choc,choccy	sweet,rich,melty	mass
+honey	.	2	.	honey	.	sweet,sticky,golden	mass
+jam	.	1	.	.	.	sweet,sticky,fruity	mass
+peanut_butter	.	1	.	.	.	sticky,nutty,thick	mass
+@cat food.dessert
+cake	.	3	.	.	.	sweet,fluffy,baked	.
+birthday_cake	.	3	.	birthday cake	.	sweet,huge,colourful	.
+cheesecake	.	2	.	.	.	creamy,rich,sweet	.
+brownie	.	3	.	.	.	gooey,rich,chocolatey	.
+cookie_dough	.	2	.	.	.	raw,sweet,gooey	mass
+tart_pastry	.	1	.	tart/tarts	.	flaky,sweet,fruity	.
+crumble	.	2	.	.	.	warm,crumbly,fruity	mass
+trifle	.	1	.	.	.	layered,sweet,wobbly	mass
+jelly	.	1	.	jelly	jello	wobbly,sweet,colourful	mass
+custard	.	1	.	.	.	yellow,sweet,warm	mass
+sundae	.	2	.	.	.	sweet,cold,huge	.
+milkshake	.	2	.	.	shake	cold,sweet,thick	.
+smoothie	.	1	.	.	.	cold,fruity,healthy	.
+sorbet	.	1	.	.	.	cold,fruity,icy	mass
+gingerbread	.	2	.	.	.	spicy,sweet,chewy	mass
+apple_pie	.	3	.	.	.	warm,flaky,sweet	.
+crepe	.	2	.	crepe	.	thin,sweet,buttery	.
+churro	.	2	.	.	.	sugary,crispy,long	.
+eclair	.	2	.	.	.	creamy,sweet,fancy	.
+cannoli	.	1	.	cannolo/cannoli	.	creamy,crunchy,sweet	.
+sprinkles	.	1	.	sprinkle/sprinkles	hundreds and thousands	colourful,tiny,sweet	pl
+frosting	.	2	.	.	icing	sweet,sugary,thick	mass
+whipped_cream	.	2	.	.	.	fluffy,sweet,white	mass
+@cat food.drink
+water	.	0	.	.	.	cold,plain,wet	mass
+tea	.	2	.	.	cuppa,brew	hot,milky,fancy	mass
+hot_chocolate	.	3	.	.	cocoa	hot,sweet,creamy	mass
+juice	.	1	.	.	.	fruity,sweet,cold	mass
+lemonade	.	2	.	.	.	fizzy,sweet,cold	mass
+soda	.	1	.	.	pop,fizzy drink	fizzy,sweet,cold	mass
+cola	.	1	.	.	.	fizzy,sweet,brown	mass
+iced_tea	.	1	.	iced tea	.	cold,sweet,refreshing	mass
+espresso	.	1	.	.	.	strong,bitter,tiny	mass
+latte	.	1	.	.	.	milky,warm,fancy	.
+cappuccino	.	1	.	.	.	frothy,warm,fancy	.
+squash	.	0	.	squash	cordial	sweet,watery,fruity	mass
+fruit_punch	.	1	.	fruit punch	.	fruity,sweet,red	mass
+herbal_tea	.	1	.	herbal tea	.	warm,healthy,weird	mass
+@cat food.booze
+booze	.	0	crude	.	.	strong,cold,fizzy	mass
+beer	.	0	clean	.	pint,lager,ale	cold,fizzy,bitter	.
+wine	.	0	clean	.	.	red,fancy,strong	mass
+cocktail	.	1	clean	.	.	fancy,fruity,strong	.
+cider	.	0	clean	.	.	fizzy,fruity,strong	mass
+whiskey	.	0	clean	.	whisky	strong,smoky,brown	mass
+champagne	.	1	clean	.	.	fizzy,fancy,expensive	mass
+hangover	.	-2	crude	.	.	awful,long,loud	.
+pub_crawl	.	0	clean	.	.	long,wild,loud	.
+@cat food.fruit
+apple	.	1	.	.	.	crunchy,juicy,red	.
+banana	.	1	.	.	.	yellow,mushy,sweet	.
+orange	.	1	.	.	.	juicy,bright,sweet	.
+pear	.	1	.	.	.	juicy,sweet,green	.
+grape	.	1	.	.	grapes	tiny,juicy,purple	.
+strawberry	.	2	.	.	.	red,juicy,sweet	.
+blueberry	.	1	.	.	.	tiny,blue,sweet	.
+raspberry	.	1	.	.	.	red,sour,soft	.
+cherry	.	2	.	.	.	red,sweet,tiny	.
+peach	.	2	.	peach	.	fuzzy,juicy,sweet	.
+plum	.	1	.	.	.	purple,juicy,sweet	.
+lemon	.	0	.	.	.	sour,yellow,zesty	.
+lime	.	0	.	lime	.	sour,green,zesty	.
+watermelon	.	2	.	.	.	huge,juicy,sweet	.
+melon	.	1	.	.	.	juicy,sweet,green	.
+pineapple	.	1	.	.	.	spiky,sweet,tangy	.
+mango	.	2	.	.	.	juicy,sweet,golden	.
+coconut	.	1	.	.	.	hard,hairy,sweet	.
+kiwi	.	0	.	.	.	fuzzy,green,sour	.
+pomegranate	.	0	.	.	.	red,seedy,fancy	.
+fig	.	0	.	.	.	squishy,purple,sweet	.
+apricot	.	1	.	.	.	bright,soft,sweet	.
+grapefruit	.	-1	.	.	.	sour,bitter,pink	.
+blackberry	.	1	.	.	.	purple,juicy,sour	.
+cranberry	.	0	.	.	.	red,sour,tiny	.
+rhubarb	.	0	.	.	.	sour,pink,stringy	mass
+avocado	.	1	.	.	.	green,creamy,fancy	.
+@cat food.veg
+carrot	.	1	.	.	.	crunchy,bright,healthy	.
+potato	.	1	.	.	spud,tater	starchy,lumpy,filling	.
+tomato	.	0	.	.	.	red,juicy,squishy	.
+onion	.	-1	.	.	.	stinky,crunchy,teary	.
+garlic	.	0	.	.	.	stinky,strong,garlicky	mass
+broccoli	.	-1	.	.	.	green,bushy,healthy	mass
+cabbage	.	-1	.	.	.	green,leafy,smelly	.
+lettuce	.	0	.	.	.	green,crunchy,watery	mass
+spinach	.	0	.	.	.	green,leafy,healthy	mass
+cucumber	.	0	.	.	.	green,cool,crunchy	.
+bell_pepper	.	0	.	bell pepper	.	crunchy,colourful,fresh	.
+mushroom	.	0	.	.	shroom	squishy,earthy,brown	.
+pumpkin	.	1	.	.	.	bright,round,big	.
+corn	.	1	.	.	sweetcorn	yellow,sweet,crunchy	mass
+peas	.	0	.	pea/peas	.	tiny,green,round	pl
+beans	.	0	.	bean/beans	.	baked,brown,filling	pl
+celery	.	-1	.	.	.	stringy,crunchy,green	mass
+radish	.	0	.	.	.	red,spicy,crunchy	.
+turnip	.	-1	.	.	.	lumpy,plain,old	.
+beetroot	.	0	.	.	beet	purple,earthy,stained	.
+leek	.	0	.	.	.	green,long,smelly	.
+cauliflower	.	0	.	.	.	white,lumpy,bland	mass
+eggplant	.	0	.	.	aubergine	purple,squishy,shiny	.
+zucchini	.	0	.	.	courgette	green,long,watery	.
+sweet_potato	.	1	.	.	.	bright,sweet,filling	.
+kale	.	-1	.	.	.	green,bitter,smug	mass
+chilli	.	0	.	chilli/chillies	chili pepper	hot,spicy,red	.
+asparagus	.	0	.	.	.	green,fancy,stinky	mass
+parsnip	.	0	.	.	.	pale,sweet,knobbly	.
+@cat food.ingredient
+butter	.	1	.	.	.	yellow,melty,rich	mass
+salt	.	0	.	.	.	salty,white,essential	mass
+sugar	.	1	.	.	.	sweet,white,sticky	mass
+flour	.	0	.	.	.	white,dusty,basic	mass
+egg	.	1	.	.	.	runny,fresh,fragile	.
+cheese	.	2	.	.	.	smelly,cheesy,yellow	mass
+cream	.	1	.	.	.	thick,white,rich	mass
+bread	.	1	.	.	.	fresh,crusty,warm	mass
+rice	.	0	.	.	.	fluffy,white,plain	mass
+oil	.	0	.	.	.	greasy,slippery,golden	mass
+vinegar	.	-1	.	.	.	sour,sharp,smelly	mass
+black_pepper	.	0	.	black pepper	pepper	peppery,sneezy,black	mass
+cinnamon	.	1	.	.	.	spicy,sweet,warm	mass
+vanilla	.	1	.	.	.	sweet,fragrant,plain	mass
+ketchup	.	1	.	.	.	red,sweet,tangy	mass
+mustard	.	0	.	.	.	yellow,spicy,tangy	mass
+mayonnaise	.	0	.	.	mayo	creamy,white,gloopy	mass
+sauce	.	1	.	.	.	saucy,thick,tangy	mass
+spice	.	1	.	.	.	spicy,fragrant,exotic	.
+herb	.	1	.	.	.	green,fragrant,fresh	.
+yeast	.	0	.	.	.	weird,alive,bubbly	mass
+dough	.	1	.	.	.	sticky,soft,raw	mass
+batter	.	0	.	.	.	runny,sticky,raw	mass
+sea_salt	.	0	.	sea salt	.	salty,crunchy,fancy	mass
+secret_ingredient	.	1	.	.	.	secret,mysterious,special	.
+cookbook	.	1	.	cookbook	.	old,stained,useful	.
+@cat food.meal
+breakfast	.	2	.	.	brekkie	early,hearty,quick	.
+brunch	.	2	.	.	.	late,fancy,lazy	.
+lunch	.	1	.	.	.	quick,busy,simple	.
+dinner	.	2	.	.	supper,tea time	hot,big,late	.
+midnight_snack	.	2	.	midnight snack	.	secret,late,crunchy	.
+picnic	.	2	.	.	.	sunny,fun,messy	.
+banquet	.	2	.	banquet	.	huge,fancy,loud	.
+barbecue	.	2	.	.	bbq,barbie	smoky,loud,sunny	.
+packed_lunch	.	1	.	.	.	squashed,cold,simple	.
+buffet	.	1	.	.	.	huge,cheap,messy	.
+potluck	.	1	.	.	.	random,homemade,loud	.
+dessert	.	2	.	.	pudding course,afters	sweet,fancy,late	mass
+takeaway	.	1	.	.	takeout	greasy,quick,lazy	.
+snack	.	1	.	.	.	quick,crunchy,tasty	.
+second_helping	.	1	.	second helping	seconds	big,greedy,warm	.
+@cat food.cooking
+recipe	.	1	.	.	.	old,secret,tricky	.
+oven	.	0	.	.	.	hot,old,greasy	.
+frying_pan	.	0	.	.	skillet	greasy,heavy,hot	.
+saucepan	.	0	.	.	pot	dented,old,handy	.
+cooking	.	2	.	.	.	messy,fun,hot	mass gerund
+bake_sale	.	2	.	bake sale	.	sweet,busy,local	.
+cooking_show	.	1	.	.	.	dramatic,shouty,fancy	.
+burnt_bits	.	0	.	burnt bit/burnt bits	.	black,crunchy,bitter	pl
+kitchen_disaster	.	-1	.	.	.	smoky,messy,loud	.
+taste_test	.	1	.	.	.	fussy,serious,fun	.
+dinner_party	.	1	.	.	.	fancy,awkward,loud	.
+food_fight	.	1	.	.	.	messy,silly,loud	.
+@cat food.snack
+cheese_board	.	2	.	cheese board	.	fancy,smelly,rich	.
+pork_scratchings	.	0	.	pork scratchings	.	salty,crunchy,greasy	mass
+dried_fruit	.	0	.	.	.	chewy,sweet,healthy	mass
+fruit_salad	.	2	.	.	.	fresh,sweet,juicy	mass
+yogurt	.	1	.	.	yoghurt	creamy,cold,tangy	mass
+breadstick	.	0	.	breadstick	.	crunchy,long,plain	.
+dip	.	1	.	.	.	creamy,messy,tasty	.
+salsa	.	1	.	.	.	spicy,chunky,red	mass
+hummus	.	1	.	.	.	creamy,beige,healthy	mass
+olive	.	0	.	.	.	salty,green,fancy	.
+@cat food.dish
+pie_and_mash	.	2	.	pie and mash	.	hearty,hot,filling	mass
+toad_in_the_hole	.	1	.	toad in the hole	.	hearty,weird,hot	mass
+hotpot	.	2	.	hotpot	.	steamy,hearty,hot	.
+fish_finger	.	1	.	.	fish stick	crispy,simple,golden	.
+chicken_nugget	.	2	.	.	nugget	crispy,golden,greasy	.
+mac_and_cheese	.	3	.	mac and cheese	macaroni cheese	cheesy,creamy,hot	mass
+sloppy_joe	.	1	.	.	.	messy,saucy,hot	.
+instant_noodles	.	0	.	instant noodles	.	salty,quick,cheap	mass

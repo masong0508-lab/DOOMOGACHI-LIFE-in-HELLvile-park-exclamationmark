@@ -1,0 +1,250 @@
+# core/data/talk/lexicon/en/people.tsv - people: family, the social
+# roles, the body (only the parts that are safe to mention anywhere),
+# looks and the personal things residents talk about. Words that name a
+# child carry `minor` (the safety classifier's minor words, T4); they may
+# still be generated ("my kid's recital"), never near anything adult.
+#
+# Columns (core/tools/talkc.py): KEY CAT SENT REG FORMS SYNONYMS ATTRS FLAGS;
+# CAT "." = the last @cat line. Authored for TK1 (T1), docs/TALK.md.
+
+@cat people.family
+mum	.	2	.	.	mom,mommy,mama,ma	loving,nosy,loud	.
+dad	.	2	.	.	daddy,papa,pa,pops	loving,loud,goofy	.
+mother	.	2	.	.	.	loving,proud,busy	.
+father	.	2	.	.	.	loving,proud,busy	.
+parent	.	1	.	.	.	busy,tired,loving	.
+sibling	.	1	.	.	.	annoying,loyal,loud	.
+brother	.	1	.	.	bro	annoying,loyal,loud	.
+sister	.	1	.	.	sis	annoying,loyal,loud	.
+cousin	.	1	.	.	.	weird,distant,loud	.
+aunt	.	1	.	.	auntie,aunty	nosy,loving,loud	.
+uncle	.	1	.	.	.	goofy,loud,weird	.
+niece	.	1	.	.	.	cute,loud,silly	minor
+nephew	.	1	.	.	.	cute,loud,silly	minor
+grandparent	.	2	.	.	.	wise,old,loving	.
+kid	.	2	.	.	kiddo,little one	cute,loud,silly	minor
+child	.	2	.	child/children	.	cute,loud,silly	minor
+baby	.	2	.	.	bub,bubba,newborn	cute,tiny,loud	minor
+teen	.	0	.	.	teenager,adolescent	moody,edgy,loud	minor
+son	.	2	.	.	.	loud,silly,proud	minor
+daughter	.	2	.	.	.	loud,silly,proud	minor
+twin	.	1	.	.	.	identical,weird,loud	.
+family	.	2	.	.	fam	loud,loving,big	.
+household	.	1	.	.	.	busy,loud,big	.
+relative	.	0	.	.	relation	distant,weird,loud	.
+in_law	.	-1	.	in-law	.	nosy,distant,loud	.
+stepmum	.	1	.	stepmum	stepmom,stepmother	busy,kind,distant	.
+stepdad	.	1	.	.	stepfather	busy,kind,distant	.
+husband	.	2	.	.	hubby	loving,loyal,grumpy	adult
+wife	.	2	.	.	wifey	loving,loyal,busy	adult
+spouse	.	2	.	.	.	loving,loyal,busy	adult
+partner	.	2	.	.	other half	loving,loyal,busy	adult
+fiance	.	2	.	.	fiancee,betrothed	nervous,loving,sweet	adult
+ex	.	-2	.	.	ex-partner	awkward,old,dramatic	adult
+godparent	.	1	.	.	.	wise,kind,distant	.
+ancestor	.	0	.	.	.	ancient,spooky,famous	.
+family_tree	.	1	.	.	.	big,old,twisty	.
+family_reunion	.	0	.	.	.	loud,awkward,big	.
+only_child	.	0	.	.	.	spoiled,quiet,lonely	minor
+firstborn	.	1	.	.	.	bossy,proud,responsible	.
+@cat people.social
+friend	.	2	.	.	pal,buddy,mate,chum	loyal,fun,kind	.
+best_friend	.	3	.	.	bestie,bff,best mate	loyal,fun,kind	.
+neighbour	.	0	.	.	neighbor	nosy,friendly,loud	.
+roommate	.	0	.	.	flatmate,housemate	messy,loud,weird	.
+stranger	.	-1	.	.	.	weird,quiet,mysterious	.
+rival	.	-1	.	.	.	competitive,smug,annoying	.
+nemesis	.	-2	.	.	arch-enemy,archenemy	evil,smug,dramatic	.
+guest	.	1	.	.	.	polite,nosy,hungry	.
+host	.	1	.	.	.	busy,polite,fancy	.
+visitor	.	0	.	.	.	nosy,polite,new	.
+crowd	.	0	.	.	.	loud,big,packed	.
+everyone	.	0	.	.	everybody,you guys,y'all,you lot	loud,busy,nosy	mass
+landlord	.	-1	.	.	landlady	stingy,grumpy,busy	.
+tenant	.	0	.	.	.	quiet,messy,new	.
+fan	.	1	.	.	superfan	loud,loyal,excited	.
+hero	.	2	.	.	.	brave,heroic,famous	.
+villain	.	-2	.	.	baddie	evil,sneaky,dramatic	.
+newcomer	.	0	.	.	new kid,newbie	nervous,new,shy	.
+gang	.	0	.	.	crew,squad	loud,wild,sketchy	.
+club	.	1	.	.	.	secret,fun,exclusive	.
+team	.	1	.	.	.	loyal,competitive,busy	.
+enemy	.	-2	.	.	foe	mean,sneaky,evil	.
+frenemy	.	-1	.	.	.	sneaky,two_faced,fun	.
+acquaintance	.	0	.	.	.	polite,distant,awkward	.
+coworker	.	0	.	.	colleague,co-worker	busy,annoying,nosy	.
+customer	.	0	.	.	client	rude,picky,busy	.
+regular	.	1	.	.	.	loyal,local,chatty	.
+sidekick	.	1	.	.	.	loyal,goofy,handy	.
+mentor	.	2	.	.	.	wise,patient,kind	.
+celebrity	.	1	.	.	celeb	famous,fancy,smug	.
+critic	.	-1	.	.	.	picky,smug,harsh	.
+know_it_all	.	-1	.	know-it-all	.	smug,annoying,clever	.
+busybody	.	-1	.	.	.	nosy,annoying,chatty	.
+party_animal	.	1	.	.	.	wild,loud,fun	.
+couch_potato	.	0	.	.	.	lazy,comfy,cozy	.
+night_owl	.	0	.	.	.	sleepy,quiet,weird	.
+early_bird	.	1	.	.	.	cheerful,early,annoying	.
+drama_queen	.	-1	.	.	.	dramatic,loud,moody	.
+grump	.	-1	.	.	grouch,sourpuss	grumpy,loud,old	.
+weirdo	.	0	.	.	oddball	weird,odd,quirky	.
+nerd	.	1	.	.	geek	clever,nerdy,quiet	.
+jock	.	0	.	.	.	sporty,loud,competitive	.
+@cat people.body
+hand	.	0	.	.	.	sticky,busy,cold	.
+foot	.	0	.	foot/feet	.	smelly,cold,tired	.
+head	.	0	.	.	.	big,hard,empty	.
+nose	.	0	.	.	.	big,runny,pointy	.
+ear	.	0	.	.	.	big,pointy,floppy	.
+eye	.	0	.	.	.	big,bright,tired	.
+mouth	.	0	.	.	gob	big,loud,sticky	.
+tooth	.	0	.	tooth/teeth	.	sharp,wobbly,sweet	.
+hair	.	0	.	.	.	messy,curly,fluffy	mass
+face	.	0	.	.	.	cute,red,tired	.
+arm	.	0	.	.	.	strong,tired,long	.
+leg	.	0	.	.	.	long,tired,wobbly	.
+knee	.	0	.	.	.	wobbly,scraped,bony	.
+elbow	.	0	.	.	.	bony,pointy,sore	.
+finger	.	0	.	.	.	sticky,long,bony	.
+toe	.	0	.	.	.	cold,stubby,smelly	.
+tummy	.	0	.	.	belly,stomach,tum	full,hungry,rumbly	.
+back	.	0	.	.	.	sore,tired,stiff	.
+shoulder	.	0	.	.	.	sore,stiff,broad	.
+neck	.	0	.	.	.	stiff,long,sore	.
+chin	.	0	.	.	.	pointy,stubbly,double	.
+cheek	.	0	.	.	.	rosy,chubby,squishy	.
+eyebrow	.	0	.	.	brow	bushy,raised,wiggly	.
+forehead	.	0	.	.	.	big,shiny,sweaty	.
+tongue	.	0	.	.	.	long,sticky,purple	.
+fingernail	.	0	.	.	nail	chipped,painted,long	.
+heart	.	1	.	heart	.	big,warm,brave	.
+brain	.	0	.	.	noggin	big,tired,clever	.
+bone	.	0	.	.	.	old,bony,white	.
+skull	.	0	.	.	.	bony,grinning,spooky	.
+tail	.	1	.	.	.	fluffy,waggy,long	.
+horn	.	0	.	.	horns	pointy,shiny,curly	.
+wing	.	1	.	.	wings	feathery,flappy,small	.
+halo	.	1	.	.	.	shiny,golden,wonky	.
+fang	.	0	.	.	.	pointy,sharp,tiny	.
+paw	.	1	.	.	.	soft,fluffy,muddy	.
+hoof	.	0	.	hoof/hooves	.	hard,muddy,clicky	.
+fur	.	1	.	.	.	fluffy,soft,shedding	mass
+feather	.	1	.	.	.	soft,fluffy,light	.
+antenna	.	0	.	antenna/antennae	.	wiggly,twitchy,long	.
+snout	.	0	.	.	.	wet,sniffy,long	.
+beak	.	0	.	.	.	pointy,sharp,noisy	.
+whisker	.	1	.	.	.	twitchy,long,fine	.
+freckle	.	1	.	.	.	cute,tiny,spotty	.
+dimple	.	2	.	.	.	cute,tiny,sweet	.
+sneeze	.	-1	.	.	achoo	sudden,loud,wet	.
+hiccup	.	-1	.	.	hiccups	sudden,loud,silly	.
+burp	.	-1	.	.	belch	loud,rude,sudden	.
+yawn	.	0	.	.	.	big,sleepy,loud	.
+snore	.	-1	.	.	snoring	loud,rattly,endless	.
+sniffle	.	-1	.	.	sniffles	wet,sad,runny	.
+goosebumps	.	-1	.	goosebumps	.	sudden,spooky,cold	mass
+blush	.	1	.	.	.	rosy,sudden,cute	.
+@cat people.look
+hairstyle	.	1	.	.	hairdo	new,bold,messy	.
+haircut	.	0	.	.	trim	new,wonky,bold	.
+beard	.	0	.	.	.	bushy,scruffy,long	.
+moustache	.	0	.	.	mustache,tache	bushy,curly,fake	.
+ponytail	.	1	.	.	.	long,bouncy,neat	.
+braid	.	1	.	.	plait	long,neat,tight	.
+mohawk	.	1	.	.	.	spiky,bold,edgy	.
+bald_spot	.	-1	.	.	.	shiny,round,secret	.
+makeup	.	1	.	.	make-up	bold,sparkly,smudged	mass
+lipstick	.	1	.	.	.	red,bold,smudged	mass
+nail_polish	.	1	.	.	.	glittery,chipped,neon	mass
+tattoo	.	0	.	.	.	bold,inky,regrettable	.
+piercing	.	0	.	.	.	shiny,bold,edgy	.
+wrinkle	.	0	.	.	.	wise,old,deep	.
+glow_up	.	2	.	glow-up	.	sudden,real,impressive	.
+outfit	.	1	.	.	fit,getup,get-up	stylish,new,bold	.
+fashion	.	1	.	.	.	bold,modern,expensive	mass
+style	.	1	.	.	drip	bold,personal,unique	mass
+uniform	.	0	.	.	.	stiff,neat,itchy	.
+costume	.	2	.	.	.	silly,elaborate,spooky	.
+disguise	.	0	.	.	.	fake,silly,bad	.
+wig	.	0	.	.	.	fake,itchy,wonky	.
+perm	.	0	.	.	.	curly,old,bold	.
+bedhead	.	-1	.	.	.	messy,wild,fluffy	mass
+smile	.	2	.	.	grin	big,warm,bright	.
+frown	.	-1	.	.	.	grumpy,deep,sour	.
+pout	.	-1	.	.	.	sulky,dramatic,tiny	.
+wink	.	1	.	.	.	cheeky,quick,sly	.
+stare	.	-1	.	.	.	long,creepy,blank	.
+posture	.	0	.	.	.	bad,slouchy,proper	mass
+@cat people.personal
+name	.	0	.	.	first name	weird,long,proper	.
+nickname	.	1	.	.	.	silly,secret,embarrassing	.
+birthday	.	2	.	.	bday,b-day	special,big,fun	.
+age	.	0	.	.	.	secret,old,young	mass
+secret	.	0	.	.	.	juicy,dark,big	.
+diary	.	0	.	.	journal	secret,private,old	.
+hometown	.	1	.	.	.	small,quiet,old	.
+dream	.	2	.	.	.	big,wild,strange	.
+wish	.	2	.	.	.	big,secret,simple	.
+goal	.	1	.	.	ambition	big,important,tricky	.
+habit	.	0	.	.	.	bad,weird,old	.
+talent	.	2	.	.	.	secret,weird,impressive	.
+pet_peeve	.	-1	.	.	.	tiny,annoying,weird	.
+catchphrase	.	1	.	.	.	catchy,silly,famous	.
+signature_move	.	1	.	.	.	flashy,famous,silly	.
+favourite_thing	.	2	.	.	favorite thing	special,secret,odd	.
+life_story	.	0	.	.	.	long,weird,dramatic	.
+memory	.	1	.	.	.	old,fuzzy,sweet	.
+plan	.	0	.	.	scheme	big,secret,wild	.
+opinion	.	0	.	.	hot take,take	strong,loud,weird	.
+reputation	.	0	.	.	rep	bad,famous,local	.
+selfie	.	1	.	.	.	blurry,cute,bold	.
+star_sign	.	0	.	.	horoscope	weird,mystical,important	.
+resolution	.	0	.	.	.	new,broken,big	.
+bucket_list	.	1	.	.	.	long,wild,secret	.
+allergy	.	-1	.	.	.	annoying,itchy,sudden	.
+flu	.	-2	.	.	the flu	awful,long,sneezy	mass
+sleep	.	1	.	.	.	deep,long,sweet	mass
+bedtime	.	0	.	.	.	late,early,cozy	.
+morning_routine	.	0	.	.	.	long,boring,early	.
+self_care	.	2	.	self-care	.	important,relaxing,gentle	mass
+life	.	1	.	.	.	long,weird,busy	.
+luck	.	1	.	.	.	bad,good,weird	mass
+fate	.	0	.	.	.	cruel,strange,big	mass
+karma	.	0	.	.	.	cruel,fair,sudden	mass
+@cat people.social
+the_mayor	.	0	.	the mayor	.	busy,loud,proud	.
+townsfolk	.	0	.	.	locals	nosy,busy,local	mass
+audience	.	1	.	.	.	loud,packed,excited	.
+committee	.	-1	.	.	.	slow,boring,bossy	.
+neighbourhood_watch	.	-1	.	neighbourhood watch	.	nosy,busy,bossy	.
+book_club	.	1	.	.	.	chatty,nosy,cozy	.
+choir_members	.	1	.	choir members	.	loud,cheerful,busy	mass
+fan_club	.	1	.	.	.	loud,loyal,excited	.
+pen_pal	.	2	.	.	.	distant,sweet,loyal	.
+plus_one	.	1	.	plus-one	.	awkward,fancy,new	.
+wingman	.	1	.	.	.	loyal,cheeky,helpful	.
+third_wheel	.	-1	.	.	.	awkward,lonely,loud	.
+peacemaker	.	2	.	.	.	calm,kind,brave	.
+troublemaker	.	-1	.	.	.	sneaky,loud,naughty	.
+tattletale	.	-1	.	.	snitch	nosy,sneaky,loud	.
+show_off	.	-1	.	show-off	.	loud,smug,flashy	.
+copycat	.	-1	.	.	.	sneaky,silly,annoying	.
+scaredy_cat	.	0	.	scaredy-cat	.	nervous,jumpy,cute	.
+smarty_pants	.	0	.	smarty-pants	.	smug,clever,annoying	.
+sleepyhead	.	1	.	.	.	sleepy,cozy,late	.
+chatterbox	.	0	.	.	.	chatty,loud,endless	.
+worrywart	.	0	.	.	.	nervous,worried,sweet	.
+@cat people.personal
+phone_number	.	0	.	.	.	secret,long,important	.
+address	.	0	.	.	.	secret,local,important	.
+birthday_wish	.	2	.	.	.	secret,sweet,big	.
+lucky_number	.	1	.	.	.	lucky,odd,personal	.
+favourite_colour	.	1	.	.	favorite color	personal,bright,odd	.
+middle_name	.	0	.	.	.	secret,embarrassing,old	.
+baby_photo	.	1	.	.	.	embarrassing,cute,old	minor
+dream_job	.	2	.	dream job	.	big,far,shiny	.
+first_job	.	0	.	.	.	awkward,old,funny	.
+childhood	.	1	.	.	.	far,sweet,blurry	mass
+old_days	.	1	.	the old days	good old days	sweet,blurry,old	mass
+inside_joke	.	2	.	.	.	secret,silly,old	.
+grudge	.	-2	.	grudge	.	old,petty,long	.

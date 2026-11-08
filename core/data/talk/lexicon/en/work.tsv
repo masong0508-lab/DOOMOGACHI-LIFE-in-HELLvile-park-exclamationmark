@@ -1,0 +1,64 @@
+# core/data/talk/lexicon/en/work.tsv - work and money (the 600-odd roster
+# jobs are generated from core/data/roster/).
+#
+# Columns (core/tools/talkc.py): KEY CAT SENT REG FORMS SYNONYMS ATTRS FLAGS;
+# CAT "." = the last @cat line. Authored for TK1 (T1), docs/TALK.md.
+
+@cat work.word
+job	.	0	.	.	work,gig	steady,boring,busy	.
+shift	.	-1	.	.	.	long,late,tiring	.
+paycheck	.	1	.	.	wages,pay,salary	small,late,important	.
+overtime	.	-2	.	.	.	long,tiring,endless	mass
+meeting	.	-2	.	.	.	long,boring,pointless	.
+due_date	.	-1	.	due date	.	close,scary,tight	.
+promotion	.	2	.	.	.	shiny,new,important	.
+interview	.	-1	.	.	job interview	nervous,awkward,important	.
+resume	.	0	.	.	CV	long,fake,important	.
+retirement	.	2	.	.	.	peaceful,far,golden	mass
+boss	.	0	.	.	manager	bossy,grumpy,busy	.
+break_time	.	2	.	break	lunch break,tea break	short,sweet,important	.
+name_tag	.	0	.	name tag	.	wonky,shiny,silly	.
+day_off	.	3	.	day off	.	lazy,sweet,rare	.
+vacation	.	3	.	vacation	holiday,hols	long,sunny,relaxing	.
+sick_day	.	0	.	.	.	sneezy,quiet,lazy	.
+side_hustle	.	1	.	.	.	busy,sketchy,small	.
+internship	.	0	.	.	.	unpaid,busy,tiring	.
+office_party	.	0	.	.	.	awkward,loud,cheap	.
+team_building	.	-1	.	team building	.	awkward,silly,pointless	mass
+customer_service	.	-1	.	customer service	.	polite,tiring,endless	mass
+complaint	.	-1	.	.	.	loud,rude,long	.
+raise	.	2	.	.	pay rise	small,rare,shiny	.
+night_shift	.	-1	.	.	.	late,sleepy,quiet	.
+commute	.	-1	.	.	.	long,grey,busy	.
+paperwork	.	-2	.	.	.	boring,endless,crumpled	mass
+email	.	-1	.	.	e-mail	long,boring,endless	.
+spreadsheet	.	-1	.	.	.	boring,nerdy,endless	.
+training_day	.	-1	.	training day	.	long,boring,awkward	.
+@cat work.money
+money	.	1	.	.	cash,dosh,moolah	important,tight,shiny	mass
+coin	.	1	.	.	coins	shiny,tiny,lucky	.
+savings	.	1	.	saving/savings	.	small,secret,important	pl
+debt	.	-2	.	.	.	big,scary,endless	.
+loan	.	-1	.	.	.	big,risky,long	.
+price	.	-1	.	.	cost	high,silly,fair	.
+bargain	.	2	.	.	.	cheap,lucky,smug	.
+receipt	.	0	.	.	.	long,crumpled,faded	.
+wallet	.	0	.	.	purse	empty,worn,lost	.
+piggy_bank	.	1	.	.	.	cute,round,empty	.
+tip	.	1	.	.	.	small,kind,lucky	.
+budget	.	-1	.	.	.	tight,boring,sensible	.
+allowance	.	1	.	.	pocket money	small,weekly,important	minor
+fortune	.	2	.	.	.	huge,golden,lucky	.
+lottery	.	0	.	.	.	lucky,silly,rigged	.
+tax_bill	.	-2	.	tax bill	.	huge,scary,boring	.
+@cat work.word
+staff_room	.	-1	.	staff room	break room	stuffy,messy,loud	.
+coffee_machine	.	0	.	.	.	broken,humming,essential	.
+water_cooler	.	1	.	.	.	gossipy,cold,humming	.
+clipboard	.	0	.	.	.	bossy,official,handy	.
+name_badge	.	0	.	.	.	wonky,shiny,silly	.
+filing_cabinet	.	-1	.	.	.	grey,dusty,full	.
+leaving_do	.	1	.	leaving do	.	awkward,sweet,cheap	.
+hairnet	.	-1	.	hairnet	.	itchy,silly,tight	.
+apron	.	1	.	.	.	stained,floury,handy	.
+hard_hat	.	0	.	.	.	yellow,sturdy,handy	.

@@ -51,7 +51,8 @@ LDFLAGS_SAN := -fsanitize=address,undefined
 endif
 CORE_CFLAGS   := $(CFLAGS_COMMON) -DDOOMO_HITCHECK -DDOOMO_PARTS_LZ_TEST -I$(CORE_INC)
 # Native platform + tests may use the host libc.
-HOST_CFLAGS   := $(CFLAGS_COMMON) -DDOOMO_PARTS_LZ_TEST -D_POSIX_C_SOURCE=200809L -I$(CORE_INC) -I$(CORE)/native
+HOST_CFLAGS   := $(CFLAGS_COMMON) -DDOOMO_PARTS_LZ_TEST -D_POSIX_C_SOURCE=200809L -I$(CORE_INC) -I$(CORE)/native \
+                 -DNAT_TALK_DIR='"$(BUILD)/talk"'
 
 NATIVE_SRCS := $(sort $(wildcard $(CORE)/native/*.c))
 NATIVE_MAIN := $(CORE)/native/runner_main.c
@@ -64,7 +65,7 @@ PLAT_OBJS   := $(call obj,$(NATIVE_PLAT))
 MAIN_OBJ    := $(call obj,$(NATIVE_MAIN))
 TEST_OBJS   := $(call obj,$(TEST_SRCS))
 
-.PHONY: all lib runner test unit scripts journeys gen check-gen xcheck sizes clean story-check
+.PHONY: all lib runner test unit scripts journeys gen check-gen xcheck sizes clean story-check talk talk-check
 .DEFAULT_GOAL := runner
 
 all: runner $(BUILD)/tests
@@ -98,10 +99,25 @@ $(BUILD)/tests: $(CORE_OBJS) $(PLAT_OBJS) $(TEST_OBJS)
 	$(CC) $(LDFLAGS_SAN) -o $@ $^
 
 # ---- tests ------------------------------------------------------------------
-test: story-check unit scripts journeys
+test: story-check talk-check unit scripts journeys
 
-unit: $(BUILD)/tests
+unit: $(BUILD)/tests talk
 	$(BUILD)/tests --golden $(CORE)/tests/golden --tmp $(BUILD)/testtmp
+
+# --- T1/T2: Talk, the word network (docs/TALK.md) ---
+# talk        $(BUILD)/talk/TALK_en.BIN (the native runner and test_talk_db
+#             read it; never committed; the disc builds make their own)
+# talk-check  every talkc.py lint and its seeded bad inputs (in test)
+TALK_DEPS := $(CORE)/tools/talkc.py $(CORE)/gen/txt_dict.c $(CORE)/data/story/register.tsv \
+             $(shell find $(CORE)/data/talk -type f 2>/dev/null)
+talk: $(BUILD)/talk/TALK_en.BIN
+$(BUILD)/talk/TALK_en.BIN: $(TALK_DEPS)
+	@mkdir -p $(dir $@)
+	@$(PYTHON) $(CORE)/tools/talkc.py --bin --lang en --out $@
+talk-check:
+	@$(PYTHON) $(CORE)/tools/talkc.py --check
+	@$(PYTHON) $(CORE)/tools/talkc.py --selftest
+# --- end T1/T2 ---
 
 scripts: $(BUILD)/runner
 	sh $(CORE)/tests/run_scripts.sh $(BUILD)/runner $(CORE)/tests/scripts $(BUILD)/shots
@@ -188,6 +204,10 @@ endif
 	@# --- S2: textpack, the story text packs (SPEC sec.5; reads core/data/story/) ---
 	@echo "gen: textpack"; mkdir -p "$(GEN_ROOT)/core/gen"; $(PYTHON) $(CORE)/tools/textpack.py --out-root "$(GEN_ROOT)"
 	@# --- end S2 ---
+	@# --- T1: talkc, the Talk word network (after textpack: it encodes with
+	@# txt_dict.c's code): gen_game.tsv, concepts.lock, talk_fixture.c ---
+	@echo "gen: talkc"; $(PYTHON) $(CORE)/tools/talkc.py --out-root "$(GEN_ROOT)"
+	@# --- end T1 ---
 	@set -e; \
 	for g in $(PY_GENS_REST); do \
 	    echo "gen: $$g"; $(PYTHON) $$g --out-root "$(GEN_ROOT)"; \

@@ -1,0 +1,159 @@
+# core/data/talk/lexicon/en/creatures.tsv - animals and myths (the 26
+# species of residents are generated from catalog.c). Pets are real,
+# non-anthropomorphic animals (DECISIONS: LIFESIM 3).
+#
+# Columns (core/tools/talkc.py): KEY CAT SENT REG FORMS SYNONYMS ATTRS FLAGS;
+# CAT "." = the last @cat line. Authored for TK1 (T1), docs/TALK.md.
+
+@cat creatures.pet
+cat	.	2	.	.	kitty,kitten,moggy	fluffy,smug,sleepy	.
+dog	.	2	.	.	doggo,puppy,pup,pooch	loyal,waggy,loud	.
+fox	.	2	.	.	.	sly,fluffy,bright	.
+bunny	.	2	.	.	rabbit	fluffy,twitchy,cute	.
+hamster	.	2	.	.	.	tiny,fluffy,busy	.
+guinea_pig	.	2	.	.	.	squeaky,round,fluffy	.
+goldfish	.	1	.	.	.	tiny,shiny,forgetful	.
+parrot	.	1	.	.	.	loud,colourful,chatty	.
+budgie	.	1	.	.	.	tiny,chirpy,blue	.
+tortoise	.	1	.	.	turtle	slow,old,wise	.
+lizard	.	0	.	.	.	scaly,still,smug	.
+ferret	.	1	.	.	.	wiggly,sneaky,stinky	.
+hedgehog	.	2	.	.	.	prickly,tiny,shy	.
+pet	.	2	.	.	.	cute,needy,loyal	.
+boreagotchi	.	2	.	Boreagotchi	Doomogachi,the pet	beepy,tiny,needy	proper
+@cat creatures.farm
+cow	.	1	.	.	.	big,muddy,calm	.
+pig	.	1	.	.	piggy	muddy,pink,clever	.
+horse	.	1	.	.	pony	big,fast,proud	.
+sheep	.	0	.	sheep/sheep	.	fluffy,woolly	.
+goat	.	0	.	.	.	stubborn,noisy,hungry	.
+chicken	.	1	.	.	hen	noisy,silly,feathery	.
+rooster	.	0	.	.	cockerel	loud,early,proud	.
+duck	.	2	.	.	.	noisy,waddly,cute	.
+goose	.	-1	.	.	.	loud,angry	.
+donkey	.	1	.	.	.	stubborn,loud,fluffy	.
+llama	.	1	.	.	alpaca	rude,fluffy,smug	.
+@cat creatures.wild
+bear	.	0	.	.	.	big,furry,grumpy	.
+wolf	.	-1	.	.	.	wild,fierce	.
+deer	.	1	.	.	.	shy,fast,graceful	.
+squirrel	.	1	.	.	.	twitchy,fluffy,sneaky	.
+raccoon	.	1	.	.	trash panda	sneaky,masked,messy	.
+badger	.	0	.	.	.	grumpy,striped,tough	.
+otter	.	2	.	.	.	cute,slippery,playful	.
+mole	.	0	.	.	.	sleepy,tiny,busy	.
+mouse	.	1	.	.	.	tiny,squeaky,sneaky	.
+bat	.	0	.	.	.	flappy,spooky,tiny	.
+frog	.	1	.	.	toad	slimy,bouncy,green	.
+monkey	.	1	.	.	.	cheeky,loud,clever	.
+lion	.	0	.	.	.	proud,loud,fierce	.
+tiger	.	0	.	.	.	striped,fierce,big	.
+elephant	.	1	.	.	.	huge,wise,grey	.
+giraffe	.	1	.	.	.	tall,spotty,gentle	.
+penguin	.	2	.	.	.	waddly,cute,formal	.
+panda	.	2	.	.	.	chubby,lazy,cute	.
+koala	.	2	.	.	.	sleepy,fluffy,grumpy	.
+sloth	.	1	.	.	.	slow,lazy,smiley	.
+hippo	.	0	.	.	.	huge,grumpy,wet	.
+crocodile	.	-1	.	.	alligator	snappy,scaly,sneaky	.
+kangaroo	.	1	.	.	.	bouncy,tough,springy	.
+@cat creatures.bird
+pigeon	.	0	.	.	.	grey,greedy,bold	.
+crow	.	0	.	.	raven	black,clever,spooky	.
+owl	.	1	.	.	.	wise,sleepy,noisy	.
+seagull	.	-1	.	.	.	loud,greedy,rude	.
+robin	.	2	.	.	.	tiny,red,cheerful	.
+sparrow	.	1	.	.	.	tiny,brown,chirpy	.
+swan	.	1	.	.	.	graceful,fierce,white	.
+flamingo	.	2	.	.	.	pink,tall,silly	.
+peacock	.	1	.	.	.	proud,flashy,loud	.
+eagle	.	1	.	.	.	proud,fierce,fast	.
+woodpecker	.	0	.	.	.	noisy,busy	.
+canary	.	1	.	.	.	yellow,chirpy,tiny	.
+@cat creatures.sea
+fish	.	1	.	fish/fish	.	slippery,shiny,wet	.
+shark	.	-1	.	.	.	snappy,scary,fast	.
+octopus	.	1	.	.	.	wiggly,clever,slimy	.
+crab	.	0	.	.	.	snappy,sideways,grumpy	.
+lobster	.	0	.	.	.	snappy,red,fancy	.
+jellyfish	.	-1	.	jellyfish/jellyfish	.	wobbly,stingy,see_through	.
+whale	.	2	.	.	.	huge,gentle	.
+dolphin	.	2	.	.	.	clever,smiley,fast	.
+seal	.	2	.	.	.	chubby,noisy,cute	.
+starfish	.	1	.	starfish/starfish	.	pointy,pink,slow	.
+squid	.	0	.	squid/squid	.	inky,wiggly,weird	.
+eel	.	-1	.	.	.	slippery,long,zappy	.
+clam	.	0	.	.	.	shy,hard,quiet	.
+snail	.	0	.	.	.	slow,slimy,hard	.
+@cat creatures.bug
+ant	.	0	.	.	.	tiny,busy,strong	.
+butterfly	.	2	.	.	.	pretty,fluttery,colourful	.
+moth	.	0	.	.	.	dusty,flappy,dim	.
+ladybird	.	2	.	.	ladybug	spotty,red,cute	.
+beetle	.	0	.	.	.	shiny,crunchy,busy	.
+worm	.	0	.	.	.	wiggly,slimy,pink	.
+caterpillar	.	1	.	.	.	fuzzy,hungry,slow	.
+fly	.	-2	.	.	.	buzzy,annoying,gross	.
+mosquito	.	-2	.	.	.	snappy,buzzy,annoying	.
+wasp	.	-2	.	.	.	stingy,angry,buzzy	.
+firefly	.	2	.	.	.	glowing,tiny,magical	.
+dragonfly	.	1	.	.	.	fast,shiny,delicate	.
+cockroach	.	-3	.	.	roach	gross,fast,tough	.
+grasshopper	.	1	.	.	cricket bug	jumpy,green,chirpy	.
+slug	.	-1	.	.	.	slimy,slow,gross	.
+centipede	.	-2	.	.	.	long,creepy,fast	.
+flea	.	-2	.	.	.	itchy,tiny,jumpy	.
+@cat creatures.myth
+dragon	.	1	.	.	.	fiery,huge,scaly	.
+unicorn	.	2	.	.	.	sparkly,magical,colourful	.
+vampire	.	-1	.	.	.	pale,snappy,dramatic	.
+werewolf	.	-1	.	.	.	hairy,wild,moody	.
+witch	.	0	.	.	.	witchy,green	.
+fairy	.	2	.	.	.	tiny,sparkly,mischievous	.
+mermaid	.	2	.	.	merman	sparkly,wet,pretty	.
+yeti	.	0	.	.	bigfoot	furry,big,shy	.
+alien	.	0	.	.	.	green,weird,far	.
+goblin	.	-1	.	.	.	sneaky,greedy,green	.
+troll	.	-1	.	.	.	grumpy,big,smelly	.
+gremlin	.	-1	.	.	.	sneaky,chaotic,tiny	.
+phoenix	.	2	.	.	.	fiery,golden,reborn	.
+kraken	.	-1	.	.	.	huge,inky,scary	.
+sea_monster	.	-1	.	.	.	huge,slimy,legendary	.
+gargoyle	.	0	.	.	.	stony,spooky,ugly	.
+banshee	.	-2	.	.	.	screechy,ghostly,sad	.
+@cat creatures.wild
+hare	.	1	.	.	.	fast,twitchy,shy	.
+stoat	.	0	.	.	.	sneaky,fast,tiny	.
+weasel	.	0	.	.	.	sneaky,fast,skinny	.
+skunk	.	-1	.	.	.	stinky,striped,shy	.
+porcupine	.	0	.	.	.	prickly,grumpy,slow	.
+armadillo	.	1	.	.	.	tough,round,shy	.
+platypus	.	1	.	.	.	weird,flat,silly	.
+meerkat	.	2	.	.	.	nosy,jumpy,cute	.
+zebra	.	1	.	.	.	striped,fast,shy	.
+rhino	.	0	.	.	.	huge,grumpy,tough	.
+gorilla	.	1	.	.	.	big,strong,gentle	.
+chameleon	.	1	.	.	.	sneaky,colourful,slow	.
+@cat creatures.bird
+ostrich	.	1	.	.	.	tall,fast,silly	.
+toucan	.	2	.	.	.	colourful,loud,noisy	.
+hummingbird	.	2	.	.	.	tiny,fast,shiny	.
+kingfisher	.	2	.	.	.	blue,fast,shiny	.
+magpie	.	0	.	.	.	nosy,shiny,sneaky	.
+vulture	.	-1	.	.	.	grim,patient,greedy	.
+puffin	.	2	.	.	.	cute,striped,chubby	.
+heron	.	1	.	.	.	tall,still,patient	.
+@cat creatures.sea
+seahorse	.	2	.	.	.	tiny,curly,cute	.
+pufferfish	.	1	.	.	.	spiky,round,grumpy	.
+manta_ray	.	1	.	.	.	flat,graceful,huge	.
+walrus	.	0	.	.	.	chubby,hairy,loud	.
+sea_turtle	.	2	.	.	.	slow,old,gentle	.
+barnacle	.	-1	.	.	.	crusty,stubborn,tiny	.
+@cat creatures.bug
+earwig	.	-1	.	.	.	snappy,creepy,fast	.
+stick_insect	.	1	.	.	.	thin,still,sneaky	.
+glow_worm	.	2	.	glow-worm	.	glowing,tiny,magical	.
+scorpion	.	-2	.	.	.	snappy,scary,sneaky	.
+tarantula	.	-2	.	.	.	hairy,creepy,big	.
+bumblebee	.	2	.	.	.	fluffy,buzzy,busy	.

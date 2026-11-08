@@ -1,0 +1,42 @@
+# core/data/talk/lexicon/en/override.tsv - hand edits of GENERATED rows
+# (gen_game.tsv; talkc.py applies them after the seed, so a regeneration
+# never loses them). Same columns as the lexicon; "." keeps the generated
+# value, anything else replaces it (FLAGS replaces the whole flag list).
+# KEY must be a generated key.
+
+grandma	people.family	2	.	.	granny,gran,nana,grandmother	wise,loving,old	.
+grandpa	people.family	2	.	.	grandad,gramps,grandfather	wise,grumpy,old	.
+wizard	creatures.myth	1	.	.	.	wise,sparkly,old	.
+poltergeist	creatures.myth	-1	.	.	.	noisy,invisible,rude	.
+mascot	lore.thing	0	.	.	.	big,smiley,creepy	.
+fallen_angel	hellvile.demon	0	.	.	.	moody,dramatic,singed	.
+spoiler	hobbies.media	-2	.	.	spoilers	rude,sudden,annoying	.
+toddler	school.kid	.	.	.	.	tiny,loud,wobbly	minor
+student	school.kid	.	.	.	.	.	.
+high_schooler	school.kid	.	.	.	.	moody,edgy,busy	minor
+edgy_teen	school.kid	.	.	.	.	edgy,moody,loud	minor
+emo_teen	school.kid	.	.	.	.	gloomy,moody,dramatic	minor
+imp_brat	school.kid	.	.	.	.	sneaky,loud,naughty	minor
+hellpup	school.kid	.	.	.	.	loud,fiery,cute	minor
+pizza	.	2	.	.	pizzas	cheesy,hot,greasy	.
+coffee	.	1	.	.	.	hot,bitter,strong	.
+milk	.	1	.	.	.	cold,white,creamy	.
+salad	.	0	.	.	.	green,crunchy,healthy	.
+cupcake	.	2	.	.	.	sweet,fluffy,colourful	pl
+ramen	.	2	.	.	.	hot,slurpy,salty	mass
+sushi	.	1	.	.	.	fresh,fancy,fishy	mass
+burnt_toast	.	-2	.	.	.	burnt,crunchy,bitter	mass
+brussels_sprout	.	-2	.	.	.	green,bitter,smelly	pl
+black_licorice	.	-1	.	.	.	black,chewy,bitter	mass
+sulfur_soda	.	-1	.	.	.	fizzy,sulfurous,yellow	mass
+grave_dirt_cake	.	1	.	.	.	gritty,spooky,chocolatey	mass
+eyeball_jelly	.	0	.	.	.	wobbly,staring,spooky	mass
+candy_eyeball	.	1	.	.	.	sweet,staring,spooky	pl
+soul_soup	.	1	.	.	.	warm,ghostly,filling	mass
+bone_broth	.	1	.	.	.	warm,bony,hearty	mass
+spider	.	-2	.	.	.	creepy,fast,hairy	pl
+clown	.	-2	.	.	.	creepy,loud,colourful	pl
+vape_pen	hellvile.vape	-2	.	.	.	purple,smelly,sketchy	adult
+cloud_nine_vapor	.	-1	.	.	.	purple,smoggy,sketchy	proper adult
+vape_factory	.	-2	.	.	.	ruined,smoggy,spooky	adult
+lovesick	.	0	.	.	.	.	adult

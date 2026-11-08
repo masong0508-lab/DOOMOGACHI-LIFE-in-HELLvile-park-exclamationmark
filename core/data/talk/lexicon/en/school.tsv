@@ -1,0 +1,66 @@
+# core/data/talk/lexicon/en/school.tsv - school and kid stuff (the
+# roster jobs only kids hold are generated into school.kid). KID_MOMENT
+# (T6) talks about these; they are clean words.
+#
+# Columns (core/tools/talkc.py): KEY CAT SENT REG FORMS SYNONYMS ATTRS FLAGS;
+# CAT "." = the last @cat line. Authored for TK1 (T1), docs/TALK.md.
+
+@cat school.word
+homework	.	-2	.	.	.	boring,endless,late	mass
+classroom	.	0	.	.	.	noisy,stuffy,busy	.
+lesson	.	0	.	.	class	long,boring,useful	.
+recess	.	3	.	.	playtime	loud,short,fun	mass
+school_lunch	.	-1	.	school lunch	dinner lady	beige,lumpy,cold	.
+satchel	.	0	.	satchel	schoolbag	heavy,messy,old	.
+pencil	.	0	.	.	.	pointy,chewed,tiny	.
+crayon	.	2	.	.	crayons	colourful,waxy,broken	.
+test	.	0	.	.	exam	scary,long,tricky	.
+report_card	.	-1	.	.	.	scary,important,honest	.
+principal	.	-1	.	.	.	strict,scary,busy	.
+detention	.	-2	.	.	.	boring,long,unfair	mass
+field_trip	.	3	.	.	school trip	fun,loud,far	.
+spelling_bee	.	0	.	.	.	nervous,tricky,competitive	.
+summer_holidays	.	3	.	.	.	long,sunny,free	mass
+school_play	.	1	.	.	.	dramatic,nervous,silly	.
+show_and_tell	.	2	.	.	.	proud,silly,weird	mass
+sticker_chart	.	1	.	sticker chart	.	colourful,proud,fair	.
+@cat school.subject
+maths	.	-1	.	.	math,sums	tricky,boring,useful	mass
+science	.	1	.	.	.	explosive,clever,messy	mass
+history	.	0	.	.	.	old,long,interesting	mass
+art_class	.	2	.	art	.	messy,colourful,fun	mass
+music_lessons	.	1	.	.	.	loud,squeaky,fun	mass
+pe	.	0	.	PE	gym class	sweaty,muddy,loud	mass
+spelling	.	0	.	spelling	.	tricky,boring,useful	mass
+geography	.	0	.	.	.	big,far,boring	mass
+@cat school.toy
+toy	.	2	.	.	toys	fun,colourful,broken	.
+teddy_bear	.	3	.	.	teddy	soft,fluffy,loyal	.
+doll	.	1	.	.	.	creepy,pretty,old	.
+action_figure	.	2	.	.	.	bendy,plastic,cool	.
+yo_yo	.	2	.	yo-yo	.	bouncy,tricky,fun	.
+balloon	.	2	.	balloon	.	floaty,colourful,fragile	.
+building_blocks	.	2	.	building block/building blocks	blocks,bricks	colourful,noisy,fun	pl
+marble	.	1	.	.	marbles	shiny,round,lost	.
+sticker	.	2	.	.	stickers	sticky,shiny,cute	.
+skipping_rope	.	1	.	.	jump rope	long,bouncy,tangled	.
+spinning_top	.	1	.	.	.	twisty,wobbly,old	.
+toy_car	.	2	.	.	.	tiny,fast,shiny	.
+bouncy_ball	.	2	.	.	.	bouncy,colourful,lost	.
+water_pistol	.	2	.	.	squirt gun	wet,fun,sneaky	.
+sandpit	.	1	.	.	sandbox	sandy,messy,fun	.
+swing	.	2	.	.	swings	creaky,high,fun	.
+slide	.	2	.	.	.	fast,slippery,fun	.
+trampoline	.	2	.	.	.	bouncy,high,wild	.
+puppet	.	1	.	.	.	floppy,silly,creepy	.
+pinwheel	.	1	.	.	.	twisty,colourful,windy	.
+bubble	.	2	.	bubble/bubbles	.	floaty,shiny,fun	pl
+@cat school.kid
+schoolkid	.	1	.	.	pupil	loud,sticky,silly	minor
+little_kid	.	1	.	.	.	tiny,loud,cute	minor
+best_bud	.	2	.	.	.	loyal,silly,fun	minor
+piggyback	.	2	.	.	piggyback ride	bouncy,silly,fun	.
+naptime	.	1	.	.	nap time	quiet,sleepy,short	mass
+tuck_in	.	2	.	tuck-in	.	warm,soft,sleepy	.
+playdate	.	2	.	.	play date	fun,loud,short	.
+sulk	.	-1	.	sulk	.	loud,dramatic,short	.

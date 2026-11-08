@@ -1,0 +1,31 @@
+# core/data/talk/assoc_hand_en.tsv - association edges a writer wants
+# whatever the game text says (owner: TK; read by core/tools/talk_assoc.py,
+# which always proposes them at full weight). KEY<TAB>OTHER OTHER ...
+# The same rules as every edge: talkable concepts only, and an edge into
+# an adults-only concept only from an adults-only one.
+nana_puddin	pie	baking	cake	butter	bakery	recipe	kitchen	grandma
+grumbleguts	wall_gate	hell_gate	salt	gatekeeper	hellvile	feast
+mayor_giggs	town_hall	turkey	top_hat	town_meeting	hillvile
+bonejangles	animatronic	mascot	failed_exorcism	training_tape	family_restaurant	music_box
+father_fuzz	st_cuddles	exorcism	holy_water	prayer	plushie	church
+rivet	workshop	welding	wrench	toolbox	hellsteel
+dr_bloom	hospital	medicine	ghoul
+hattie_haha	hahaland	joke	circus
+vex	hellvile	smog	ninth_cloud
+pip	bunny	plushie	teddy_bear
+wisp	ghost	imp	drawing
+lord_vapula	ninth_cloud	purple_fog	demon_lord
+mother_nox	mother_nox_s_chapel	church
+anvil	anvil_s_forge	hellsteel
+mascotty	mascot	hahaland	costume
+sunny	boreagotchi	hero	adventure	marvin
+marvin	fox	sunny	hero
+boreagotchi	pet	egg	boreagotchi_egg	sunny
+pie	nana_puddin	bakery	butter	apple_pie
+hell_gate	grumbleguts	wall_gate	sealed_gate	demon
+purple_fog	ninth_cloud	lord_vapula	invasion
+feast	banquet	hell_gate	grumbleguts
+halloween	costume	pumpkin	ghost	candy
+weekend	saturday	sunday
+rain	umbrella	puddle	storm
+birthday	birthday_cake	party	gift

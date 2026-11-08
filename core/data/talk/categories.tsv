@@ -1,0 +1,191 @@
+# core/data/talk/categories.tsv - the word network's category tree (owner:
+# TK, T1; docs/TALK.md "The word network"). Read by core/tools/talkc.py.
+#
+#   KEY<TAB>FLAGS<TAB>SENT<TAB>REG<TAB>AGE<TAB>ATTRS
+#
+# KEY    a root ("food"), or root.leaf ("food.dish"): two levels at most.
+#        The roots come first, in talk.h's TCR_* order (talkc checks it);
+#        each leaf follows its root's block. Ids are the line order
+#        (1 = the first root), so APPEND leaves at the end of their root's
+#        block only when nothing has saved them yet (only concept ids are
+#        saved, in talk memory; category ids are not).
+# FLAGS  talk      can be a conversation topic
+#        gated     romance: adults only, the gate decides (docs/TALK.md K-4)
+#        safety    recognised by the parser, never generated
+#        describe  the attribute vocabulary (adjectives, participles)
+#        -         none
+# SENT   the default sentiment -3..3 of the leaf's concepts (a row may say
+#        its own); REG / AGE the defaults of its rows (clean / any unless
+#        said); ATTRS the attributes a row without any gets (concept keys
+#        of describe.*, comma separated, or -).
+# A leaf inherits nothing from its root but its place in the tree.
+
+# ---- roots (TCR_* order) ----------------------------------------------------
+people	talk	0	clean	any	-
+places	talk	0	clean	any	-
+food	talk	1	clean	any	-
+music	talk	1	clean	any	-
+hobbies	talk	1	clean	any	-
+fears	talk	-2	clean	any	-
+creatures	talk	0	clean	any	-
+house	talk	0	clean	any	-
+lore	talk	0	clean	any	-
+hellvile	talk	0	clean	any	-
+feelings	talk	0	clean	any	-
+work	talk	0	clean	any	-
+time	talk	0	clean	any	-
+school	talk	0	clean	any	-
+romance	talk,gated	1	clean	adult	-
+safety	safety	0	clean	never	-
+describe	describe	0	clean	any	-
+stuff	talk	0	clean	any	-
+
+# ---- people -----------------------------------------------------------------
+people.family	talk	1	clean	any	loving,loud,nosy
+people.social	talk	0	clean	any	friendly,nosy,busy
+people.body	talk	0	clean	any	weird,tiny,itchy
+people.clothes	talk	1	clean	any	comfy,stylish,worn
+people.accessory	talk	1	clean	any	stylish,shiny,fancy
+people.look	talk	0	clean	any	stylish,messy,bold
+people.personal	talk	0	clean	any	private,important,weird
+people.persona	talk	0	clean	any	typical,weird,loud
+
+# ---- places -----------------------------------------------------------------
+places.town	talk	0	clean	any	busy,old,local
+places.nature	talk	1	clean	any	quiet,wild,pretty
+places.building	talk	0	clean	any	big,old,busy
+places.story	talk	0	clean	any	famous,local,weird
+places.venue	talk	1	clean	any	busy,local,popular
+places.far	talk	0	clean	any	far,exotic,strange
+
+# ---- food -------------------------------------------------------------------
+food.catalog	talk	1	clean	any	tasty,homemade,fresh
+food.dish	talk	1	clean	any	tasty,hot,filling
+food.snack	talk	1	clean	any	crunchy,salty,tasty
+food.dessert	talk	2	clean	any	sweet,gooey,rich
+food.drink	talk	1	clean	any	cold,fizzy,refreshing
+food.fruit	talk	1	clean	any	fresh,sweet,juicy
+food.veg	talk	0	clean	any	fresh,crunchy,healthy
+food.ingredient	talk	0	clean	any	basic,fresh,essential
+food.meal	talk	1	clean	any	big,hot,filling
+food.cooking	talk	0	clean	any	messy,tricky,hot
+food.booze	talk	0	crude	adult	strong,fizzy,cold
+
+# ---- music ------------------------------------------------------------------
+music.genre	talk	1	clean	any	loud,catchy,classic
+music.instrument	talk	1	clean	any	loud,shiny,tricky
+music.word	talk	1	clean	any	catchy,loud,live
+music.show	talk	1	clean	any	loud,live,packed
+
+# ---- hobbies ----------------------------------------------------------------
+hobbies.catalog	talk	1	clean	any	fun,relaxing,tricky
+hobbies.activity	talk	1	clean	any	fun,relaxing,tricky
+hobbies.sport	talk	1	clean	any	sweaty,fast,competitive
+hobbies.game	talk	1	clean	any	fun,competitive,silly
+hobbies.media	talk	1	clean	any	popular,long,dramatic
+hobbies.craft	talk	1	clean	any	handmade,fiddly,cute
+hobbies.outdoor	talk	1	clean	any	muddy,fresh,wild
+
+# ---- fears ------------------------------------------------------------------
+fears.catalog	talk	-2	clean	any	scary,creepy,awful
+fears.thing	talk	-2	clean	any	scary,creepy,awful
+
+# ---- creatures --------------------------------------------------------------
+creatures.species	talk	0	clean	any	odd,proud,local
+creatures.pet	talk	2	clean	any	cute,fluffy,needy
+creatures.farm	talk	1	clean	any	noisy,muddy,chunky
+creatures.wild	talk	0	clean	any	wild,shy,fast
+creatures.bird	talk	1	clean	any	noisy,feathery,fast
+creatures.sea	talk	0	clean	any	slimy,wet,strange
+creatures.bug	talk	-1	clean	any	tiny,creepy,busy
+creatures.myth	talk	0	clean	any	legendary,strange,scary
+
+# ---- house ------------------------------------------------------------------
+house.furniture	talk	1	clean	any	comfy,sturdy,cute
+house.room	talk	0	clean	any	cozy,messy,small
+house.object	talk	0	clean	any	handy,old,dusty
+house.kitchenware	talk	0	clean	any	handy,clean,sturdy
+house.bathroom	talk	0	clean	any	clean,wet,handy
+house.chore	talk	-1	clean	any	boring,endless,messy
+house.home	talk	0	clean	any	cozy,expensive,important
+
+# ---- lore -------------------------------------------------------------------
+lore.cast	talk	1	clean	any	famous,local,weird
+lore.thing	talk	0	clean	any	strange,famous,spooky
+lore.event	talk	0	clean	any	famous,strange,dramatic
+lore.item	talk	0	clean	any	handy,odd,special
+lore.church	talk	1	clean	any	holy,old,quiet
+
+# ---- hellvile ---------------------------------------------------------------
+hellvile.demon	talk	-1	clean	any	spooky,fiery,rude
+hellvile.thing	talk	0	clean	any	fiery,smelly,spooky
+hellvile.curse	talk	-1	clean	any	cursed,spooky,dramatic
+hellvile.vape	talk	-1	clean	adult	smelly,cloudy,sketchy
+
+# ---- feelings ---------------------------------------------------------------
+feelings.emotion	talk	0	clean	any	big,real,strange
+feelings.mood	talk	0	clean	any	real,strange,big
+feelings.social	talk	1	clean	any	polite,warm,real
+feelings.exclaim	-	0	clean	any	-
+
+# ---- work -------------------------------------------------------------------
+work.job	talk	0	clean	any	busy,steady,tiring
+work.word	talk	-1	clean	any	boring,busy,important
+work.money	talk	0	clean	any	important,tight,shiny
+
+# ---- time -------------------------------------------------------------------
+time.weather	talk	0	clean	any	wild,wet,cold
+time.season	talk	1	clean	any	long,pretty,busy
+time.daypart	talk	0	clean	any	quiet,early,long
+time.day	talk	0	clean	any	long,busy,normal
+time.month	talk	0	clean	any	long,busy,normal
+time.holiday	talk	2	clean	any	festive,busy,fun
+time.word	talk	0	clean	any	long,short,normal
+time.sky	talk	1	clean	any	pretty,bright,far
+
+# ---- school -----------------------------------------------------------------
+school.word	talk	0	clean	any	boring,tricky,important
+school.subject	talk	0	clean	any	tricky,boring,useful
+school.toy	talk	2	clean	any	cute,fun,colourful
+school.kid	talk	1	clean	any	cute,silly,loud
+
+# ---- romance (gated: adults only) -------------------------------------------
+romance.word	talk,gated	1	clean	adult	sweet,nervous,dramatic
+romance.date	talk,gated	1	clean	adult	sweet,fancy,nervous
+
+# ---- safety (recognised, never generated) -----------------------------------
+safety.sexual	safety	0	sexual	never	-
+safety.hate	safety	-3	hate	never	-
+safety.realworld	safety	0	realworld	never	-
+safety.distress	safety	-3	distress	never	-
+safety.minor	safety	0	clean	never	-
+safety.capped	safety	-1	strong	never	-
+
+# ---- describe (the attribute vocabulary) -----------------------------------
+describe.taste	describe	0	clean	any	-
+describe.look	describe	0	clean	any	-
+describe.texture	describe	0	clean	any	-
+describe.temp	describe	0	clean	any	-
+describe.size	describe	0	clean	any	-
+describe.sound	describe	0	clean	any	-
+describe.smell	describe	0	clean	any	-
+describe.good	describe	2	clean	any	-
+describe.bad	describe	-2	clean	any	-
+describe.state	describe	0	clean	any	-
+describe.character	describe	0	clean	any	-
+describe.spooky	describe	-1	clean	any	-
+describe.speed	describe	0	clean	any	-
+describe.colour	describe	0	clean	any	-
+describe.shape	describe	0	clean	any	-
+describe.amount	describe	0	clean	any	-
+describe.adult	describe	0	crude	adult	-
+
+# ---- stuff ------------------------------------------------------------------
+stuff.tech	talk	1	clean	any	shiny,new,broken
+stuff.vehicle	talk	1	clean	any	fast,loud,shiny
+stuff.tool	talk	0	clean	any	handy,heavy,sturdy
+stuff.money	talk	0	clean	any	important,shiny,tight
+stuff.item	talk	1	clean	any	handy,special,odd
+stuff.weapon	talk	-1	clean	any	pointy,heavy,dangerous
+stuff.misc	talk	0	clean	any	handy,odd,old
+stuff.paper	talk	0	clean	any	old,important,crumpled

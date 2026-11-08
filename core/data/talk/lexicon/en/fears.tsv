@@ -1,0 +1,31 @@
+# core/data/talk/lexicon/en/fears.tsv - scary things beyond the 24
+# catalog fears (generated). Cartoon-scary only.
+#
+# Columns (core/tools/talkc.py): KEY CAT SENT REG FORMS SYNONYMS ATTRS FLAGS;
+# CAT "." = the last @cat line. Authored for TK1 (T1), docs/TALK.md.
+
+@cat fears.thing
+nightmare	.	-2	.	.	bad dream	scary,weird,vivid	.
+monster_under_the_bed	.	-2	.	monster under the bed	.	sneaky,hairy,scary	.
+snake	.	-2	.	.	.	slippery,sneaky	.
+rat	.	-1	.	.	.	sneaky,twitchy,fast	.
+zombie	.	-2	.	.	.	slow,smelly,undead	.
+the_unknown	.	-2	.	unknown	.	dark,strange,endless	the mass
+falling	.	-2	.	.	.	sudden,scary,fast	gerund
+deadline	.	-2	.	.	.	tight,scary,close	.
+taxes	.	-2	.	tax/taxes	.	boring,scary,endless	.
+drill	.	-2	.	dentist's drill	.	whiny,scary,pointy	.
+scary_doll	.	-2	.	creepy doll	.	creepy,staring,old	.
+jump_scare	.	-2	.	jump scare	.	sudden,loud,cheap	.
+creaky_door	.	-1	.	creaky door	.	creaky,spooky,old	.
+clown_nose	.	-1	.	clown nose	.	red,squeaky,creepy	.
+being_late	.	-1	.	.	.	stressful,rushed,awkward	mass gerund
+getting_lost	.	-1	.	.	.	scary,confusing,long	mass gerund
+small_spaces	.	-1	.	small space/small spaces	.	cramped,dark,scary	pl
+crowds	.	-1	.	crowd fear/crowds	.	loud,packed,scary	pl
+dark_woods	.	-2	.	dark woods	.	spooky,dark,wild	mass
+power_cut	.	-1	.	.	blackout	dark,sudden,quiet	.
+static	.	-1	.	static	.	fuzzy,loud,creepy	mass
+dead_eyes	.	-2	.	dead eyes	.	staring,creepy,glassy	mass
+mascot_suit	.	-2	.	.	.	big,staring,creepy	.
+cursed_tape	.	-2	.	cursed tape	.	fuzzy,ugly,creepy	.

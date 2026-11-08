@@ -1,0 +1,78 @@
+# core/data/talk/lexicon/en/music.tsv - music: instruments, music words,
+# shows (the 16 genres are generated from catalog.c).
+#
+# Columns (core/tools/talkc.py): KEY CAT SENT REG FORMS SYNONYMS ATTRS FLAGS;
+# CAT "." = the last @cat line. Authored for TK1 (T1), docs/TALK.md.
+
+@cat music.instrument
+guitar	.	2	.	.	.	loud,twangy,shiny	.
+electric_guitar	.	2	.	.	.	loud,screechy,shiny	.
+bass_guitar	.	1	.	bass guitar	bass	deep,loud,booming	.
+piano	.	2	.	.	.	grand,old,loud	.
+drums	.	1	.	drum/drums	drum kit	loud,booming,sweaty	pl
+violin	.	1	.	.	fiddle	screechy,fancy,tricky	.
+cello	.	1	.	.	.	deep,sad,big	.
+trumpet	.	1	.	.	.	loud,brassy,shiny	.
+trombone	.	1	.	.	.	loud,brassy,silly	.
+tuba	.	1	.	.	.	huge,brassy,booming	.
+saxophone	.	2	.	.	sax	smooth,brassy,jazzy	.
+flute	.	1	.	.	.	breezy,shiny,thin	.
+clarinet	.	0	.	.	.	squeaky,wooden,thin	.
+recorder	.	-1	.	.	.	squeaky,shrill,cheap	.
+harp	.	2	.	.	.	sparkly,angelic,big	.
+ukulele	.	2	.	.	uke	tiny,cheerful,jingly	.
+banjo	.	1	.	.	.	twangy,jolly,loud	.
+accordion	.	0	.	.	.	wheezy,loud,old	.
+harmonica	.	1	.	.	.	wheezy,bluesy,tiny	.
+kazoo	.	1	.	.	.	buzzy,silly,cheap	.
+xylophone	.	1	.	.	.	jingly,colourful,bouncy	.
+triangle	.	0	.	.	.	tiny,jingly,lonely	.
+tambourine	.	1	.	.	.	jingly,loud,cheerful	.
+bagpipes	.	-1	.	bagpipe/bagpipes	.	loud,wheezy,ancient	pl
+organ	.	0	.	.	.	spooky,booming,grand	.
+synthesizer	.	2	.	.	synth,keyboard	retro,bleepy,neon	.
+cowbell	.	1	.	.	.	clanky,loud,silly	.
+bell	.	1	.	.	.	ringing,shiny,loud	.
+music_box	.	2	.	.	.	jingly,sweet,creepy	.
+@cat music.word
+song	.	2	.	.	tune,track	catchy,loud,old	.
+band	.	1	.	.	.	loud,scruffy,famous	.
+album	.	1	.	.	record	new,long,classic	.
+playlist	.	1	.	.	.	long,personal,random	.
+lyrics	.	1	.	lyric/lyrics	words	catchy,weird,deep	pl
+melody	.	2	.	.	.	catchy,sweet,simple	.
+beat	.	1	.	.	.	catchy,loud,steady	.
+chorus	.	2	.	.	.	catchy,loud,big	.
+verse	.	0	.	.	.	long,weird,deep	.
+rhythm	.	1	.	.	.	steady,catchy,funky	mass
+harmony	.	2	.	.	.	sweet,soft,pretty	.
+solo	.	1	.	.	.	long,flashy,loud	.
+duet	.	2	.	.	.	sweet,loud,romantic	.
+choir	.	1	.	.	.	loud,angelic,huge	.
+mixtape	.	2	.	.	.	retro,personal,sweet	.
+radio	.	1	.	.	.	crackly,loud,old	.
+earworm	.	0	.	earworm	.	catchy,annoying,endless	.
+jingle	.	1	.	.	.	catchy,annoying,short	.
+anthem	.	2	.	.	.	loud,proud,catchy	.
+ballad	.	1	.	.	.	slow,sad,long	.
+serenade	.	1	.	serenade	.	sweet,slow,dramatic	adult
+dance_move	.	1	.	.	move	wild,silly,sweaty	.
+singer	.	1	.	.	vocalist	loud,famous,dramatic	.
+musician	.	1	.	.	.	scruffy,talented,broke	.
+dj	.	1	.	DJ	.	loud,flashy,cool	.
+rockstar	.	1	.	.	rock star	wild,loud,famous	.
+pop_star	.	1	.	.	.	famous,sparkly,busy	.
+boy_band	.	1	.	.	.	sparkly,dramatic,catchy	.
+groupie	.	-1	.	.	.	loud,loyal,sketchy	adult
+@cat music.show
+concert	.	2	.	.	.	loud,live,packed	.
+karaoke_night	.	2	.	karaoke night	.	loud,silly,packed	.
+talent_show	.	1	.	.	.	loud,nervous,silly	.
+recital	.	0	.	.	.	long,nervous,quiet	.
+encore	.	2	.	.	.	loud,surprising,sweaty	.
+mosh_pit	.	0	.	.	.	loud,sweaty,wild	.
+music_festival	.	2	.	.	festival	muddy,loud,packed	.
+open_mic	.	1	.	open mic	.	nervous,loud,brave	.
+battle_of_the_bands	.	1	.	battle of the bands	.	loud,competitive,sweaty	.
+dance_party	.	2	.	.	dance,disco night,rave	loud,sweaty,fun	.
+sing_along	.	2	.	sing-along	singalong	loud,silly,cheerful	.

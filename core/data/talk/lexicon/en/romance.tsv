@@ -1,0 +1,42 @@
+# core/data/talk/lexicon/en/romance.tsv - romance words: GATED. Adults
+# only (age adult), reachable only when the gate passes (docs/TALK.md
+# K-4: both adults, sim_romance_ok, no minor or pet in the room). "flirt"
+# is a register.tsv sexual word: recognised, never generated.
+#
+# Columns (core/tools/talkc.py): KEY CAT SENT REG FORMS SYNONYMS ATTRS FLAGS;
+# CAT "." = the last @cat line. Authored for TK1 (T1), docs/TALK.md.
+
+@cat romance.word
+date	.	2	.	.	date night	nervous,sweet,fancy	.
+crush	.	1	.	.	.	secret,nervous,sweet	.
+kiss	.	2	.	.	smooch,peck	quick,sweet,sudden	.
+romance	.	2	.	romance	.	sweet,dramatic,cheesy	mass
+sweetheart	.	2	.	.	darling,honey bun	sweet,loyal,dear	.
+boyfriend	.	2	.	.	bf	loyal,sweet,goofy	.
+girlfriend	.	2	.	.	gf	loyal,sweet,bold	.
+dating	.	1	.	.	.	awkward,exciting,expensive	gerund
+wedding	.	3	.	.	.	fancy,loud,teary	.
+marriage	.	2	.	.	.	long,serious,sweet	.
+honeymoon	.	3	.	.	.	sunny,sweet,far	.
+proposal	.	2	.	.	.	nervous,sweet,sudden	.
+engagement_ring	.	2	.	.	.	shiny,expensive,tiny	.
+heartbreak	.	-3	.	.	.	awful,heavy,sad	mass
+breakup	.	-2	.	.	break-up	messy,sad,dramatic	.
+love_song	.	2	.	.	.	cheesy,sweet,catchy	.
+blind_date	.	0	.	.	.	awkward,risky,funny	.
+first_date	.	1	.	.	.	nervous,awkward,sweet	.
+love_life	.	0	.	.	.	messy,dramatic,secret	.
+soulmate	.	3	.	.	the one	rare,sweet,destined	.
+flirt	.	0	sexual	.	flirting,flirty	cheeky,bold,sudden	.
+pick_up_line	.	-1	.	pick-up line	chat-up line	cheesy,awful,bold	.
+butterflies_in_tummy	.	1	.	butterflies in the tummy	.	nervous,sweet,sudden	mass
+@cat romance.date
+candlelit_dinner	.	2	.	.	.	fancy,warm,sweet	.
+movie_date	.	1	.	.	.	dark,sweet,awkward	.
+picnic_date	.	2	.	.	.	sunny,sweet,messy	.
+slow_dance	.	2	.	.	.	slow,sweet,awkward	.
+love_mixtape	.	1	.	.	.	sweet,cheesy,personal	.
+bouquet	.	2	.	.	.	pretty,fragrant,expensive	.
+box_of_chocolates	.	2	.	box of chocolates	.	sweet,fancy,rich	.
+double_date	.	1	.	.	.	awkward,loud,fun	.
+date_night_in	.	2	.	night in	.	cozy,lazy,sweet	.

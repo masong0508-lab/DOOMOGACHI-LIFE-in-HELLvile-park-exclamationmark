@@ -1,0 +1,120 @@
+# core/data/talk/lexicon/en/time.tsv - weather, seasons, the clock, the
+# calendar, holidays (no real religious holidays: J7), and the sky.
+#
+# Columns (core/tools/talkc.py): KEY CAT SENT REG FORMS SYNONYMS ATTRS FLAGS;
+# CAT "." = the last @cat line. Authored for TK1 (T1), docs/TALK.md.
+
+@cat time.weather
+weather	.	0	.	.	.	wild,wet,weird	mass
+rain	.	0	.	.	rainy day	wet,cold,endless	mass
+snow	.	2	.	.	.	cold,white,fluffy	mass
+mist	.	-1	.	mist	fog	grey,thick,spooky	mass
+storm	.	-1	.	.	thunderstorm	loud,wild,dark	.
+wind	.	0	.	.	breeze	wild,cold,loud	mass
+sunshine	.	2	.	.	.	warm,bright,cheerful	mass
+rainbow	.	3	.	.	.	colourful,bright,rare	.
+heatwave	.	-1	.	.	.	hot,sweaty,endless	.
+hail	.	-1	.	.	.	icy,loud,sudden	mass
+drizzle	.	-1	.	.	.	wet,grey,annoying	mass
+lightning	.	-1	.	.	.	bright,sudden,scary	mass
+puddle	.	1	.	.	.	wet,muddy,deep	.
+icicle	.	1	.	.	.	pointy,icy,pretty	.
+frost	.	0	.	.	.	icy,white,pretty	mass
+cloud	.	1	.	.	.	fluffy,white,grey	.
+flood	.	-2	.	.	.	wet,huge,awful	.
+tornado	.	-2	.	.	.	wild,huge,scary	.
+drought	.	-2	.	.	.	dry,hot,endless	.
+blizzard	.	-2	.	.	.	cold,wild,white	.
+@cat time.season
+spring	.	2	.	.	springtime	green,fresh,sunny	.
+summer	.	2	.	.	summertime	hot,sunny,long	.
+autumn	.	2	.	.	fall	crunchy,golden,cozy	.
+winter	.	1	.	.	wintertime	cold,dark,cozy	.
+rainy_season	.	-1	.	.	.	wet,grey,long	.
+@cat time.daypart
+morning	.	0	.	.	a.m.	early,sleepy,fresh	.
+noon	.	0	.	.	midday,lunchtime	hot,bright,busy	mass
+afternoon	.	1	.	.	.	lazy,warm,long	.
+evening	.	1	.	.	.	cozy,quiet,golden	.
+night	.	0	.	.	nighttime,tonight	dark,quiet,spooky	.
+midnight	.	-1	.	.	.	dark,spooky,quiet	mass
+dawn	.	1	.	.	sunrise	early,pink,quiet	mass
+dusk	.	1	.	.	sunset,twilight	pink,quiet,golden	mass
+witching_hour	.	-1	.	.	.	spooky,dark,late	the
+rush_hour	.	-1	.	.	.	busy,loud,grey	.
+@cat time.day
+monday	.	-2	.	Monday	Mondays	grey,boring,long	proper
+tuesday	.	0	.	Tuesday	.	normal,plain,boring	proper
+wednesday	.	0	.	Wednesday	.	middle,plain,busy	proper
+thursday	.	0	.	Thursday	.	hopeful,busy,plain	proper
+friday	.	2	.	Friday	.	cheerful,free,loud	proper
+saturday	.	2	.	Saturday	.	lazy,free,fun	proper
+sunday	.	1	.	Sunday	.	lazy,quiet,slow	proper
+weekend	.	3	.	.	.	lazy,free,fun	.
+weekday	.	-1	.	.	.	busy,boring,long	.
+@cat time.month
+january	.	-1	.	January	.	cold,grey,long	proper
+february	.	0	.	February	.	cold,short,grey	proper
+march	.	0	.	March	.	windy,wet,green	proper
+april	.	1	.	April	.	wet,fresh,silly	proper
+may	.	1	.	May	.	green,warm,sunny	proper
+june	.	2	.	June	.	warm,sunny,long	proper
+july	.	2	.	July	.	hot,sunny,lazy	proper
+august	.	1	.	August	.	hot,sticky,lazy	proper
+september	.	0	.	September	.	busy,golden,crispy	proper
+october	.	2	.	October	.	spooky,crunchy,cozy	proper
+november	.	0	.	November	.	grey,wet,dark	proper
+december	.	1	.	December	.	cold,cozy,festive	proper
+@cat time.holiday
+halloween	.	3	.	Halloween	.	spooky,fun,sugary	proper
+new_year	.	2	.	New Year	.	loud,late,hopeful	proper
+valentines_day	.	1	.	Valentine's Day	.	pink,sweet,cheesy	proper adult
+winter_festival	.	3	.	.	midwinter	cozy,festive,bright	the
+harvest_festival	.	2	.	.	.	golden,busy,hearty	.
+bank_holiday	.	2	.	.	.	lazy,free,rare	.
+fireworks_night	.	2	.	.	fireworks	loud,bright,cold	.
+party	.	2	.	.	do,bash	loud,fun,messy	.
+birthday_party	.	2	.	.	.	loud,sugary,fun	.
+anniversary	.	2	.	.	.	special,sweet,important	.
+fair_day	.	2	.	fair day	.	busy,loud,fun	.
+@cat time.word
+today	.	0	.	.	.	busy,normal,short	mass
+tomorrow	.	1	.	.	.	far,hopeful,new	mass
+yesterday	.	0	.	.	.	old,gone,weird	mass
+this_week	.	0	.	this week	.	busy,long,normal	.
+plans	.	1	.	plans	.	big,secret,wild	mass
+clock	.	0	.	.	watch	ticking,old,loud	.
+time	.	0	.	.	.	short,endless,precious	mass
+calendar	.	0	.	.	.	busy,full,old	.
+someday	.	1	.	someday	.	far,vague,hopeful	mass
+forever	.	1	.	.	.	long,endless,sweet	mass
+moment	.	1	.	.	.	short,special,quiet	.
+ages	.	0	.	ages	.	long,endless,old	mass
+@cat time.sky
+sun	.	2	.	.	.	bright,hot,cheerful	the
+moon	.	2	.	.	.	pale,spooky,pretty	the
+star	.	2	.	.	stars	twinkly,far,bright	.
+the_sky	.	1	.	sky	.	blue,endless,big	the
+shooting_star	.	3	.	.	.	rare,fast,magical	.
+full_moon	.	0	.	.	.	bright,spooky,round	.
+comet	.	1	.	.	.	fast,rare,bright	.
+planet	.	1	.	.	.	far,round,strange	.
+constellation	.	1	.	.	.	sparkly,far,ancient	.
+northern_lights	.	3	.	.	.	glowing,magical,rare	mass the
+eclipse	.	0	.	.	.	rare,spooky,dark	.
+@cat time.word
+countdown	.	1	.	.	.	tense,loud,exciting	.
+long_weekend	.	3	.	long weekend	.	lazy,free,sunny	.
+lunch_hour	.	1	.	.	.	short,busy,hungry	.
+curfew	.	-1	.	curfew	.	strict,early,annoying	.
+payday	.	3	.	payday	.	happy,rare,shiny	.
+season_finale	.	1	.	.	.	dramatic,loud,sudden	.
+new_moon	.	0	.	.	.	dark,quiet,spooky	.
+leap_year	.	0	.	.	.	rare,odd,long	.
+@cat time.weather
+sea_breeze	.	2	.	.	.	salty,fresh,cool	.
+heat_haze	.	0	.	.	.	wobbly,hot,strange	.
+morning_dew	.	1	.	.	dew	wet,fresh,sparkly	mass
+mud	.	-1	.	mud	.	sticky,wet,brown	mass
+sleet	.	-2	.	.	.	wet,cold,grey	mass
+cold_snap	.	-1	.	.	.	sudden,icy,grey	.

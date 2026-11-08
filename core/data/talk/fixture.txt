@@ -1,0 +1,12 @@
+# core/data/talk/fixture.txt - the concepts of the unit tests' database
+# (core/gen/talk_fixture.c, talkc.py gen mode; test_talk_db.c). Ids are
+# this order (1..), then the attributes these use. Keep it small: it is
+# compiled into the test binary only.
+pie butter salt cheese apple cake tea pancake sushi
+cat dog owl sheep mouse fish
+nana_puddin grumbleguts vex pip sunny
+kid child friend
+rain weekend monday halloween
+kitchen baker knitting jazz spider dark ghost curse money
+wedding sex damn fuck happy joke gossip heart
+hell_gate purple_fog feast teddy_bear booze

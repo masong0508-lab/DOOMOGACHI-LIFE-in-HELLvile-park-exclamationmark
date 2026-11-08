@@ -1,0 +1,154 @@
+# core/data/talk/lexicon/en/places.tsv - places: the generic town and the
+# outdoors. The story's own places and the sim's venues are generated
+# (story_places.c, sim.c); real countries and cities are left out (J7:
+# the game names no real places as topics).
+#
+# Columns (core/tools/talkc.py): KEY CAT SENT REG FORMS SYNONYMS ATTRS FLAGS;
+# CAT "." = the last @cat line. Authored for TK1 (T1), docs/TALK.md.
+
+@cat places.town
+town	.	1	.	.	.	small,busy,weird	.
+street	.	0	.	.	road	busy,long,narrow	.
+alley	.	-1	.	.	alleyway	dark,narrow,smelly	.
+square	.	1	.	.	plaza	busy,old,open	.
+market	.	1	.	.	.	busy,noisy,cheap	.
+mall	.	0	.	.	shopping centre	big,busy,loud	.
+bakery	.	2	.	.	.	warm,fragrant,busy	.
+cafe	.	2	.	.	coffee shop	cozy,busy,noisy	.
+restaurant	.	1	.	.	diner	fancy,busy,expensive	.
+pub	.	-1	.	.	bar	loud,sticky,busy	adult
+cinema	.	2	.	.	movies,movie theater	dark,loud,sticky	.
+museum	.	1	.	.	.	old,quiet,dusty	.
+zoo	.	1	.	.	.	smelly,noisy,busy	.
+gym	.	0	.	.	.	sweaty,loud,smelly	.
+pool	.	1	.	.	swimming pool	wet,chlorinated,busy	.
+playground	.	2	.	.	.	noisy,busy,sandy	minor
+post_office	.	0	.	.	.	slow,busy,boring	.
+bank	.	0	.	.	.	boring,busy,stuffy	.
+police_station	.	-1	.	.	.	busy,grim,loud	.
+fire_station	.	1	.	.	.	busy,shiny,loud	.
+train_station	.	0	.	.	station	busy,loud,windy	.
+bus_stop	.	0	.	.	.	cold,boring,windy	.
+car_park	.	-1	.	.	parking lot	grey,boring,empty	.
+corner_shop	.	1	.	.	corner store	small,handy,cramped	.
+laundrette	.	-1	.	.	laundromat	warm,boring,humming	.
+hotel	.	1	.	.	.	fancy,big,expensive	.
+motel	.	-1	.	.	.	cheap,sketchy,small	.
+office	.	0	.	.	.	boring,grey,busy	.
+factory	.	-1	.	.	.	loud,smoggy,big	.
+warehouse	.	0	.	.	.	big,empty,echoey	.
+arcade	.	2	.	.	.	loud,flashy,busy	.
+bowling_alley	.	1	.	.	.	loud,retro,fun	.
+skate_park	.	1	.	.	.	loud,bumpy,wild	.
+fairground	.	2	.	.	.	loud,flashy,busy	.
+amusement_park	.	2	.	.	theme park	loud,wild,busy	.
+circus	.	1	.	.	.	loud,weird,colourful	.
+theatre	.	1	.	.	theater	grand,dramatic,old	.
+stadium	.	1	.	.	.	huge,loud,packed	.
+racetrack	.	0	.	.	.	loud,fast,dusty	.
+castle	.	1	.	.	.	old,grand,spooky	.
+tower	.	0	.	.	.	tall,old,windy	.
+lighthouse	.	1	.	.	.	tall,lonely,windy	.
+windmill	.	1	.	.	.	old,creaky,windy	.
+bridge	.	0	.	.	.	long,old,windy	.
+tunnel	.	-1	.	.	.	dark,long,echoey	.
+sewer	.	-2	.	.	.	smelly,dark,wet	.
+rooftop	.	1	.	.	roof	windy,high,quiet	.
+basement	.	-1	.	.	.	dark,damp,spooky	.
+crossroads	.	0	.	.	.	spooky,quiet,windy	.
+dump	.	-2	.	.	landfill	smelly,messy,huge	.
+junkyard	.	0	.	.	scrapyard	messy,rusty,huge	.
+@cat places.nature
+forest	.	1	.	.	woods	dark,quiet,wild	.
+lake	.	1	.	.	.	still,cold,deep	.
+river	.	1	.	.	.	wet,fast,cold	.
+pond	.	1	.	.	.	still,muddy,small	.
+waterfall	.	2	.	.	.	loud,wet,pretty	.
+mountain	.	1	.	.	.	tall,cold,rocky	.
+hill	.	1	.	.	.	green,windy,steep	.
+valley	.	1	.	.	.	green,quiet,deep	.
+cave	.	0	.	.	.	dark,damp,echoey	.
+cliff	.	0	.	.	.	high,windy,dangerous	.
+swamp	.	-1	.	.	bog,marsh	muddy,smelly,wet	.
+desert	.	-1	.	.	.	hot,dry,endless	.
+island	.	2	.	.	.	small,sandy,sunny	.
+volcano	.	0	.	.	.	hot,fiery,dangerous	.
+meadow	.	2	.	.	field	green,sunny,peaceful	.
+garden	.	2	.	.	.	green,pretty,peaceful	.
+orchard	.	2	.	.	.	leafy,sweet,quiet	.
+farm	.	1	.	.	.	muddy,smelly,busy	.
+jungle	.	0	.	.	.	wild,hot,noisy	.
+glacier	.	0	.	.	.	icy,huge,ancient	.
+canyon	.	0	.	.	.	huge,rocky,dusty	.
+seaside	.	2	.	.	coast	windy,salty,sunny	.
+sea	.	1	.	.	ocean	deep,salty,wild	.
+shore	.	1	.	.	.	sandy,windy,wet	.
+dune	.	0	.	.	.	sandy,windy,hot	.
+riverbank	.	1	.	.	.	muddy,green,quiet	.
+campsite	.	1	.	.	.	muddy,cozy,smoky	.
+picnic_spot	.	2	.	.	.	sunny,green,peaceful	.
+treehouse	.	2	.	.	.	creaky,secret,cozy	.
+@cat places.building
+house	.	1	.	.	home	cozy,old,big	.
+cottage	.	2	.	.	.	cozy,small,old	.
+mansion	.	1	.	.	.	huge,fancy,spooky	.
+apartment	.	0	.	.	.	small,cramped,noisy	.
+shed	.	0	.	.	.	dusty,creaky,small	.
+barn	.	0	.	.	.	big,smelly,old	.
+church	.	1	.	.	chapel	old,quiet,holy	.
+school	.	0	.	school	.	big,loud,boring	.
+clinic	.	0	.	clinic	.	clean,quiet,busy	.
+prison	.	-2	.	.	jail	grim,grey,cold	.
+palace	.	1	.	.	.	grand,fancy,huge	.
+ruins	.	0	.	ruins	.	ancient,spooky,crumbly	mass
+skyscraper	.	0	.	.	.	tall,shiny,modern	.
+hut	.	0	.	.	.	small,cozy,rickety	.
+igloo	.	1	.	.	.	icy,cold,round	.
+tent	.	0	.	.	.	small,muddy,flappy	.
+bunker	.	-1	.	.	.	dark,secret,cramped	.
+dungeon	.	-2	.	.	.	dark,damp,spooky	.
+crypt	.	-2	.	.	.	dark,spooky,cold	.
+haunted_house	.	-1	.	.	.	creaky,spooky,old	.
+@cat places.far
+abroad	.	1	.	.	overseas	far,exotic,strange	mass
+city	.	0	.	.	big city	big,loud,busy	.
+countryside	.	2	.	.	.	quiet,green,muddy	mass
+outer_space	.	1	.	.	space	dark,endless,cold	mass
+moon_base	.	1	.	.	.	far,cold,lonely	.
+underworld	.	-1	.	.	.	dark,fiery,deep	the
+heaven	.	2	.	.	.	bright,fluffy,far	the
+another_dimension	.	0	.	.	.	strange,far,wobbly	.
+void	.	-1	.	.	.	dark,endless,quiet	the
+@cat places.town
+reading_nook	.	2	.	reading nook	.	cozy,quiet,bookish	.
+fountain	.	1	.	fountain	.	wet,old,pretty	.
+statue	.	0	.	.	.	stony,old,proud	.
+bench	.	1	.	.	.	wooden,old,handy	.
+bus_shelter	.	0	.	.	.	grey,drafty,small	.
+phone_box	.	1	.	.	phone booth	old,red,cramped	.
+clock_tower	.	1	.	.	.	tall,old,loud	.
+bandstand	.	2	.	.	.	old,round,musical	.
+noodle_bar	.	2	.	.	.	steamy,busy,slurpy	.
+ice_cream_parlour	.	3	.	.	ice cream shop	sweet,colourful,busy	.
+toy_shop	.	3	.	.	.	colourful,loud,cute	.
+pet_shop	.	2	.	.	.	noisy,smelly,cute	.
+bookshop	.	2	.	.	bookstore	quiet,dusty,cozy	.
+charity_shop	.	1	.	.	thrift store	dusty,cheap,random	.
+flower_shop	.	2	.	.	florist's	fragrant,pretty,busy	.
+hair_salon	.	1	.	.	hairdresser's	chatty,loud,stylish	.
+tattoo_parlour	.	0	.	.	.	inky,bold,edgy	adult
+chip_shop	.	2	.	.	.	greasy,warm,busy	.
+dry_cleaner	.	0	.	dry cleaner	.	warm,boring,humming	.
+hardware_store	.	0	.	.	.	dusty,handy,big	.
+supermarket	.	0	.	.	grocery store	busy,bright,big	.
+petrol_station	.	0	.	.	gas station	smelly,bright,late	.
+@cat places.nature
+rock_pool	.	2	.	rock pool	.	wet,salty,tiny	.
+cliff_top	.	1	.	cliff top	.	windy,high,dangerous	.
+flower_field	.	3	.	.	.	colourful,fragrant,sunny	.
+pumpkin_patch	.	2	.	.	.	muddy,bright,cozy	.
+berry_bush	.	1	.	.	.	prickly,sweet,tiny	.
+oak_tree	.	2	.	oak tree	.	old,tall,wise	.
+willow	.	1	.	.	willow tree	droopy,sad,pretty	.
+pine_tree	.	1	.	.	.	tall,prickly,fragrant	.
+fairy_ring	.	1	.	fairy ring	.	magical,spooky,round	.

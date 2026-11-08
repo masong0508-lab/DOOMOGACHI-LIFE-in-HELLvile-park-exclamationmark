@@ -1,0 +1,166 @@
+# core/data/talk/lexicon/en/feelings.tsv - feelings: emotions (nouns),
+# moods beyond sim.c's (adjectives; the sim's 13 are generated), the
+# social words (thanks, sorry) and the exclamations. The everyday adult
+# swears (damn, crap, "what the hell") are adults-only and capped at one a
+# conversation in Talk (docs/TALK.md K-9); the capped words live in
+# safety.tsv and are never generated.
+#
+# Columns (core/tools/talkc.py): KEY CAT SENT REG FORMS SYNONYMS ATTRS FLAGS;
+# CAT "." = the last @cat line. Authored for TK1 (T1), docs/TALK.md.
+
+@cat feelings.emotion
+joy	.	3	.	.	happiness	pure,real,big	.
+anger	.	-2	.	.	rage	real,big,hot	.
+sadness	.	-2	.	.	sorrow	real,big,heavy	.
+fear	.	-2	.	.	.	real,cold,big	.
+boredom	.	-1	.	.	.	endless,real,heavy	.
+excitement	.	2	.	.	.	big,real,wild	.
+love	.	3	.	.	.	real,big,warm	adult
+hate	.	-3	.	.	hatred	real,cold,big	.
+jealousy	.	-2	.	.	envy	real,green,ugly	.
+pride	.	1	.	.	.	real,big,proud	.
+shame	.	-2	.	.	.	real,heavy,awkward	.
+guilt	.	-2	.	.	.	real,heavy,awkward	.
+hope	.	2	.	.	.	real,bright,small	.
+dread	.	-2	.	.	.	cold,heavy,spooky	.
+relief	.	2	.	.	.	real,sweet,sudden	.
+surprise	.	1	.	.	.	sudden,big,real	.
+confusion	.	-1	.	.	.	real,big,weird	.
+nostalgia	.	1	.	.	.	warm,sweet,old	.
+loneliness	.	-2	.	.	.	real,cold,quiet	.
+gratitude	.	2	.	.	.	real,warm,sincere	.
+regret	.	-2	.	.	.	real,heavy,old	.
+panic	.	-2	.	.	.	sudden,loud,wild	.
+calm	.	2	.	.	calmness	quiet,peaceful,real	.
+courage	.	2	.	.	bravery	real,big,brave	.
+embarrassment	.	-1	.	.	.	real,awkward,hot	.
+awe	.	2	.	.	.	big,real,quiet	.
+disgust	.	-2	.	.	.	real,gross,sudden	.
+grief	.	-2	.	.	.	real,heavy,quiet	mass
+homesickness	.	-1	.	.	.	real,heavy,quiet	.
+stress	.	-2	.	.	.	real,heavy,endless	.
+worry	.	-1	.	.	.	real,heavy,endless	.
+vibe	.	1	.	.	vibes	real,chill,weird	.
+mood_swing	.	-1	.	.	.	sudden,wild,real	.
+tantrum	.	-2	.	.	.	loud,sudden,dramatic	.
+meltdown	.	-2	.	.	.	loud,sudden,dramatic	.
+giggle_fit	.	2	.	.	.	sudden,loud,silly	.
+heartache	.	-2	.	.	.	real,heavy,sad	adult
+fomo	.	-1	.	FOMO	.	real,silly,modern	.
+second_hand_embarrassment	.	-1	.	second-hand embarrassment	.	awkward,real,weird	.
+@cat feelings.mood
+glad	.	2	.	.	.	.	.
+chipper	.	2	.	chipper	.	.	.
+grouchy	.	-1	.	grouchy	.	.	.
+bored	.	-2	.	.	.	.	.
+excited	.	2	.	.	.	.	.
+anxious	.	-2	.	.	nervy	.	.
+worried	.	-1	.	.	.	.	.
+upset	.	-2	.	.	.	.	.
+furious	.	-3	.	.	livid	.	.
+annoyed	.	-1	.	.	irritated	.	.
+jolly	.	2	.	.	.	.	.
+glum	.	-1	.	glum	.	.	.
+down	.	-1	.	down	.	.	.
+chuffed	.	2	.	chuffed	.	.	.
+content	.	1	.	.	.	.	.
+relieved	.	2	.	.	.	.	.
+confused	.	-1	.	.	.	.	.
+stressed	.	-2	.	.	.	.	.
+tired	.	-1	.	.	knackered	.	.
+exhausted	.	-2	.	.	.	.	.
+wired	.	0	.	.	.	.	.
+grumbly	.	-1	.	grumbly	.	.	.
+homesick	.	-1	.	.	.	.	.
+embarrassed	.	-1	.	.	.	.	.
+ashamed	.	-2	.	.	.	.	.
+guilty	.	-1	.	.	.	.	.
+hopeful	.	2	.	.	.	.	.
+thankful	.	2	.	.	.	.	.
+fed_up	.	-2	.	.	.	.	.
+overwhelmed	.	-2	.	.	.	.	.
+peckish	.	0	.	.	.	.	.
+stuffed	.	0	.	.	.	.	.
+heartbroken	.	-3	.	.	.	.	adult
+smitten	.	2	.	.	.	.	adult
+starstruck	.	1	.	.	.	.	.
+spooked	.	-1	.	.	.	.	.
+terrified	.	-3	.	.	.	.	.
+creeped_out	.	-2	.	.	.	.	.
+giddy	.	2	.	.	.	.	.
+hyper	.	1	.	hyper	.	.	.
+sulky	.	-1	.	.	.	.	.
+apologetic	.	0	.	apologetic	.	.	.
+@cat feelings.social
+thanks	.	2	.	.	thank you,cheers,ta	warm,polite,real	mass
+sorry	.	0	.	sorry	my bad,apologies	sincere,awkward,real	mass
+compliment	.	2	.	.	.	sweet,nice,sincere	.
+insult	.	-2	.	.	dig	rude,mean,nasty	.
+apology	.	1	.	.	.	sincere,awkward,late	.
+promise	.	1	.	.	.	important,serious,big	.
+gossip	.	0	.	gossip	goss	juicy,fresh,secret	mass
+rumour	.	-1	.	.	rumor	juicy,wild,fresh	.
+advice	.	1	.	.	.	wise,useful,free	mass
+favour	.	1	.	.	favor	big,small,important	.
+joke	.	2	.	.	gag	silly,funny,old	.
+pun	.	1	.	.	.	awful,silly,clever	.
+prank_call	.	0	.	.	.	silly,rude,old	.
+argument	.	-2	.	.	row,fight	loud,dramatic,silly	.
+truce	.	2	.	.	.	shaky,sincere,important	.
+cuddle	.	2	.	cuddle	.	warm,soft,sweet	.
+high_five	.	2	.	.	hi-five	quick,loud,cheerful	.
+handshake	.	1	.	.	.	firm,awkward,polite	.
+wave	.	1	.	wave	.	quick,friendly,polite	.
+gift	.	2	.	.	present	special,wrapped,thoughtful	.
+invitation	.	2	.	.	invite	fancy,special,important	.
+introduction	.	1	.	.	.	awkward,polite,quick	.
+farewell	.	0	.	.	goodbye	sad,quick,awkward	.
+greeting	.	1	.	.	hello	friendly,quick,polite	.
+small_talk	.	0	.	.	.	awkward,polite,boring	mass
+chat	.	1	.	.	natter	quick,friendly,long	.
+conversation	.	1	.	.	.	long,deep,interesting	.
+debate	.	0	.	.	.	loud,long,dramatic	.
+excuse	.	-1	.	.	.	lame,weird,long	.
+@cat feelings.exclaim
+wow	.	2	.	.	whoa,woah	.	.
+yikes	.	-1	.	.	.	.	.
+ugh	.	-1	.	.	urgh	.	.
+oops	.	-1	.	.	whoops,oopsie	.	.
+yay	.	2	.	.	hooray,woohoo	.	.
+phew	.	1	.	.	.	.	.
+meh	.	-1	.	.	.	.	.
+huh	.	0	.	.	.	.	.
+hmm	.	0	.	.	hmmm	.	.
+aww	.	2	.	.	aw	.	.
+eek	.	-1	.	.	.	.	.
+gosh	.	0	.	.	golly,gee	.	.
+heck	.	-1	.	.	what the heck	.	.
+blimey	.	0	.	.	.	.	.
+nope	.	-1	.	.	.	.	.
+yep	.	1	.	.	yup	.	.
+oh_no	.	-2	.	.	.	.	.
+holy_moly	.	1	.	.	.	.	.
+damn	.	-1	strong	.	damnit,dammit	.	adult
+crap	.	-1	strong	.	crappy	.	adult
+what_the_hell	.	-1	strong	.	.	.	adult
+hell_no	.	-2	strong	.	.	.	adult
+hell_yes	.	2	strong	.	.	.	adult
+go_to_hell	.	-3	strong	.	.	.	adult
+to_hell_with	.	-2	strong	.	.	.	adult
+@cat feelings.emotion
+mourning	.	-2	.	.	.	quiet,heavy,sincere	mass
+condolences	.	1	.	condolence/condolences	.	sincere,quiet,kind	pl
+loss	.	-2	.	.	.	heavy,quiet,real	.
+memorial	.	0	.	memorial	.	quiet,sincere,old	.
+funeral	.	-2	.	.	.	quiet,sad,formal	.
+epitaph	.	0	.	.	.	short,sincere,old	.
+peace_of_mind	.	2	.	peace of mind	.	quiet,calm,rare	mass
+kindness	.	3	.	.	.	warm,gentle,real	mass
+patience	.	1	.	.	.	rare,quiet,real	mass
+curiosity	.	1	.	.	.	big,wild,real	mass
+loyalty	.	2	.	.	.	real,old,strong	mass
+honesty	.	1	.	.	.	real,awkward,brave	mass
+friendship	.	3	.	.	.	warm,loyal,real	mass
+teamwork	.	2	.	.	.	busy,loud,real	mass
+trust	.	2	.	.	.	fragile,real,big	mass
+respect	.	2	.	.	.	real,quiet,proper	mass

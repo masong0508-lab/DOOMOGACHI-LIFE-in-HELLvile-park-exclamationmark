@@ -1,0 +1,117 @@
+# core/data/talk/lexicon/en/safety.tsv - SAFETY-ONLY concepts: the
+# parser recognises them, the generator never uses them (age never; the
+# T4 gate turns them into refusals). docs/TALK.md section 7.
+# - sexual: every register.tsv sexual word has a concept here (talkc checks
+# the two lists agree); refused, never echoed (K-6, K-7).
+# - hate / realworld: generic words only. Slurs are NEVER written in this
+# repository: T4 stores them as salted hashes (safety/hate.hash).
+# - distress: self-harm words stop the comedy (K-11).
+# - minor: words that only ever mean a child, for "sexual + minor" (K-7).
+# - capped: the f-word, the s-word, bastard and the other strong words
+# Talk banks may never use (K-9); everyday adult swears are in
+# feelings.tsv.
+#
+# Columns (core/tools/talkc.py): KEY CAT SENT REG FORMS SYNONYMS ATTRS FLAGS;
+# CAT "." = the last @cat line. Authored for TK1 (T1), docs/TALK.md.
+
+@cat safety.sexual
+sex	.	.	sexual	.	sexual,sexually	.	.
+sexy	.	.	sexual	.	.	.	.
+naked	.	.	sexual	.	.	.	.
+nude	.	.	sexual	.	nudes,nudity	.	.
+topless	.	.	sexual	.	.	.	.
+horny	.	.	sexual	.	.	.	.
+boobs	.	.	sexual	boob/boobs	tits,titties,knockers	.	.
+booty	.	.	sexual	.	.	.	.
+nipple	.	.	sexual	.	.	.	.
+crotch	.	.	sexual	.	.	.	.
+groin	.	.	sexual	.	.	.	.
+genitals	.	.	sexual	genital/genitals	.	.	.
+boner	.	.	sexual	.	.	.	.
+lingerie	.	.	sexual	.	.	.	mass
+panties	.	.	sexual	panties/panties	.	.	.
+thong	.	.	sexual	.	.	.	.
+stripper	.	.	sexual	.	striptease,strip club	.	.
+lap_dance	.	.	sexual	.	.	.	.
+seduce	.	.	sexual	.	seduction,seductive	.	.
+aroused	.	.	sexual	.	arousal	.	.
+kinky	.	.	sexual	.	.	.	.
+frisky	.	.	sexual	.	.	.	.
+make_love	.	.	sexual	.	making love	.	.
+one_night_stand	.	.	sexual	one-night stand	.	.	.
+hanky_panky	.	.	sexual	hanky-panky	.	.	.
+hubba_hubba	.	.	sexual	.	.	.	.
+bow_chicka_wow_wow	.	.	sexual	bow-chicka-wow-wow	.	.	.
+hottie	.	.	sexual	.	.	.	.
+foreplay	.	.	sexual	.	.	.	.
+orgasm	.	.	sexual	.	.	.	.
+erotic	.	.	sexual	.	.	.	.
+porn	.	.	sexual	.	porno,pornography	.	.
+condom	.	.	sexual	.	.	.	.
+aphrodisiac	.	.	sexual	.	.	.	.
+hooker	.	.	sexual	.	.	.	.
+@cat safety.hate
+hate_speech	.	.	hate	.	hate crime	.	.
+racism	.	.	hate	.	racist	.	.
+bigot	.	.	hate	.	bigotry,bigoted	.	.
+slur	.	.	hate	.	slurs	.	.
+nazi	.	.	hate	.	nazis,fascist	.	.
+supremacist	.	.	hate	.	supremacy	.	.
+genocide	.	.	hate	.	.	.	.
+homophobia	.	.	hate	.	homophobic,transphobic,transphobia	.	.
+sexism	.	.	hate	.	sexist	.	.
+xenophobia	.	.	hate	.	xenophobic	.	.
+terrorist	.	.	hate	.	terrorism	.	.
+@cat safety.realworld
+politics	.	.	realworld	.	political	.	mass
+election	.	.	realworld	.	.	.	.
+president	.	.	realworld	.	prime minister	.	.
+politician	.	.	realworld	.	.	.	.
+religion	.	.	realworld	.	religious	.	.
+christianity	.	.	realworld	.	christian,christians	.	.
+islam	.	.	realworld	.	muslim,muslims	.	.
+judaism	.	.	realworld	.	jewish	.	.
+hinduism	.	.	realworld	.	hindu	.	.
+buddhism	.	.	realworld	.	buddhist	.	.
+atheism	.	.	realworld	.	atheist	.	.
+war	.	.	realworld	.	.	.	.
+army	.	.	realworld	.	military	.	.
+gun	.	.	realworld	.	guns,rifle,pistol	.	.
+drugs	.	.	realworld	drug/drugs	cocaine,heroin,weed,meth	.	.
+cigarette	.	.	realworld	.	cigarettes,smoking,tobacco	.	.
+real_world	.	.	realworld	.	irl	.	.
+console_brand	.	.	realworld	console brand name	playstation,nintendo,xbox,sega,dreamcast	.	.
+social_media	.	.	realworld	.	facebook,twitter,tiktok,instagram,youtube	.	mass
+@cat safety.distress
+suicide	.	.	distress	.	suicidal,kill myself,end my life,end it all	.	.
+self_harm	.	.	distress	.	self-harm,hurt myself,cut myself,cutting myself	.	mass
+want_to_die	.	.	distress	.	wanna die,i want to die	.	.
+hopeless	.	.	distress	.	hopelessness,no hope	.	.
+worthless	.	.	distress	.	i'm worthless	.	.
+nobody_cares	.	.	distress	.	no one cares,nobody loves me	.	.
+depressed	.	.	distress	.	depression	.	.
+overdose	.	.	distress	.	.	.	.
+abuse	.	.	distress	.	abused,abusive	.	.
+bullied	.	.	distress	.	bullying	.	.
+cant_go_on	.	.	distress	can't go on	.	.	.
+@cat safety.minor
+underage	.	.	clean	.	under-age	.	.
+minor	.	.	clean	minor	.	.	.
+preteen	.	.	clean	.	pre-teen,tween	.	.
+schoolgirl	.	.	clean	.	.	.	.
+schoolboy	.	.	clean	.	.	.	.
+little_girl	.	.	clean	.	.	.	.
+little_boy	.	.	clean	.	.	.	.
+infant	.	.	clean	.	.	.	.
+kindergartener	.	.	clean	.	kindergartner	.	.
+young_child	.	.	clean	young child/young children	.	.	.
+@cat safety.capped
+fuck	.	.	strong	.	fucking,fucked,fucker	.	.
+shit	.	.	strong	.	shitty,bullshit	.	.
+bastard	.	.	strong	.	.	.	.
+bitch	.	.	strong	.	bitchy	.	.
+piss	.	.	strong	.	pissed,pissing	.	.
+asshole	.	.	strong	.	.	.	.
+ass	.	.	strong	.	.	.	.
+arse	.	.	strong	.	arsehole	.	.
+goddamn	.	.	strong	.	goddammit	.	.
