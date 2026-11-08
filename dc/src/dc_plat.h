@@ -2,8 +2,9 @@
  * (owner: dreamcast). The public contract is core/include/doomo/platform.h.
  *
  * DC2 is the skeleton: boot, the 30 Hz frame loop, the harness mailbox and
- * the disc image. The 2D layer (DC3), input and VMU saves (DC4), audio
- * (DC5) and 3D (DC6) replace the placeholders in plat_stub.c.
+ * the disc image. DC3 is the 2D layer (dc2d.h: gfx2d.c, texcache.c,
+ * font.c, pal.c, pvr2d.c). Input and VMU saves (DC4), audio (DC5) and 3D
+ * (DC6) replace the placeholders in plat_stub.c.
  */
 #ifndef DC_PLAT_H
 #define DC_PLAT_H
@@ -59,9 +60,8 @@ void dc_logf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
  * A+B+X+Y+START are held at power-on. No effect otherwise. */
 void dc_boot_egg(void);
 
-/* ---- video (main.c) ------------------------------------------------------------ */
-/* The background colour the PVR fills the frame with (plat_clear); the 2D
- * layer of DC3 draws over it. */
-void dc_set_clear(uint8_t color);
+/* ---- video (pvr2d.c) ----------------------------------------------------------- */
+/* pvr_init for the 2D layer (DC3, dc2d.h): one presorted translucent list. */
+void dc2d_be_init(void);
 
 #endif

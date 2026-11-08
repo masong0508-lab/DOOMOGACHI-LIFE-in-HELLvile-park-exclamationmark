@@ -46,9 +46,15 @@ typedef struct DcMailbox {
      * DC_MB_LOG_SIZE bytes behind (it reports a "log overrun" if it does). */
     uint32_t log_wr;
     char     log[DC_MB_LOG_SIZE];
+    /* DC3: the 2D layer (dc/src/dc2d.h, dc2d_stats) after each drawn frame:
+     * prims and vertex bytes sent to the PVR (last frame, worst so far),
+     * prims dropped over the list or vertex budget (total), texture uploads
+     * and evictions (total), textures cached now */
+    uint32_t gfx_prims, gfx_prims_max, gfx_vbytes, gfx_vbytes_max;
+    uint32_t gfx_dropped, gfx_uploads, gfx_evictions, gfx_tex_live;
 } DcMailbox;
 
-_Static_assert(sizeof(DcMailbox) == 100 + DC_MB_LOG_SIZE, "DcMailbox layout");
+_Static_assert(sizeof(DcMailbox) == 132 + DC_MB_LOG_SIZE, "DcMailbox layout");
 
 /* Command ids: the same numbers as the GBA's (gba_plat.h GBA_HC_* and
  * gba/src/hcmd.h), so hcmd.c can be shared in spirit. */

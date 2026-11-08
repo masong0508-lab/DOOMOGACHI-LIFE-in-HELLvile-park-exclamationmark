@@ -15,6 +15,7 @@ mouse, rumble, the VMU screen and audio.
 | `png.c`, `png.h` | PNG writer (a copy of `gba/harness/png.c`) |
 | `libretro.h` | the libretro API header (MIT), copied from the pinned Flycast tree |
 | `tests/` | `mockcore.c` (a stand-in core) and `selftest.sh`: tests `dcrun` with no emulator |
+| `compare.py` | DC3: Dreamcast shots (640x480, or `--half`) against the native runner's 320x240 shots of the same script, in RGB565, with diff pictures and a gate |
 
 ## Build and test
 

@@ -10,6 +10,9 @@ project plan). This document grows with it. Right now it covers:
 3. The `dc/` build (DC2): the skeleton that links the whole core, boots,
    runs the 30 Hz loop and changes scenes, the harness mailbox, the RAM
    budget and the self-booting CDI.
+4. The 2D layer (DC3): every 2D call and post effect on the PVR, the core's
+   320x240 screen drawn at 2x, with a host test that compares it pixel for
+   pixel with the native runner.
 
 The SH4 compile check that runs today, with no KallistiOS at all, is the
 `sh-elf-gcc` leg of `core/tools/xcheck.sh` (docs/BUILDING.md, "Tests").
@@ -267,17 +270,20 @@ and `-lkallisti -lm -lc -lgcc`; the link writes `dc/build/doomogachi.map`.
 the CD drive. `plat_init_hw()` sets up the mailbox, adds a vblank handler
 (a vblank counter the loop idles on) and calls
 `vid_set_mode(DM_640x480, PM_RGB565)`, which gives 480p on a VGA cable and
-interlaced 640x480 on RGB/composite, then `pvr_init_defaults()`. The core
-runs on a 320x240 logical screen (`plat_screen_w/h`), which DC3 draws at
-2x.
+interlaced 640x480 on RGB/composite, then `dc2d_be_init()` (section 4:
+one presorted translucent list, ARGB1555 palettes, dithering off) and
+`dc2d_init()`. The core runs on a 320x240 logical screen
+(`plat_screen_w/h`), which DC3 draws at 2x.
 
 The loop is the platform.h protocol. Logic runs at 30 Hz on the SH4's
 microsecond timer (`timer_us_gettime64`), not on vblanks, so the game runs
 at the same speed on 60 Hz and 50 Hz (PAL) displays. A drawn tick is one
-PVR scene: `plat_begin_frame()` waits for the PVR (`pvr_wait_ready`) and
-opens a scene, `plat_end_frame()` finishes it (KOS submits blank lists for
-lists nothing was drawn into) and the PVR shows it at the next vblank;
-then the loop sleeps on vblanks until the next tick is due. When the game
+PVR scene: the tick's drawing collects in the 2D layer's list, and
+`plat_end_frame()` submits it (`dc2d_end()`: wait for the PVR, open a
+scene, send the list, finish; KOS submits blank lists for the lists
+nothing was drawn into) and the PVR shows it at the next vblank while the
+CPU runs the next tick; then the loop sleeps on vblanks until the next
+tick is due. When the game
 falls more than a tick behind, the next tick skips its drawing
 (`plat_draw_skipped()` = 1), never two in a row; more than 6 ticks behind
 (loading) forgets the debt. Each drawn tick's work time (begin to end, in
@@ -287,13 +293,13 @@ The controller (DC4 adds the analog stick, the keyboard and pads 2-4):
 D-pad, A, B, X, Y as themselves, L/R triggers past half as L/R, START,
 and START+Y as SELECT (DECISIONS.md; the pad has no SELECT).
 
-What the skeleton draws: only `plat_clear()`'s colour, as the PVR's
-background colour. The other placeholders are in `dc/src/plat_stub.c`:
+The skeleton drew only `plat_clear()`'s colour; DC3 draws all of the 2D
+(section 4). The placeholders left are in `dc/src/plat_stub.c`:
 
 | group | today | replaced by |
 |---|---|---|
-| 2D (`plat_rect`, `plat_text`, `plat_image`, ...) | no-ops; `plat_text` feeds the harness text probe | DC3 |
-| post effects, panels, `plat_figure_obj` | the core's weak software defaults | DC3 |
+| 2D, post effects, held frame | **done** (`dc/src/gfx2d.c`, section 4) | DC3 |
+| retained panels, `plat_figure_obj`, the stage sprites | the core's weak defaults (draw every frame; cheap on the PVR) | - |
 | saves | a RAM disk (one buffer per slot, lost at power-off) and a static 136 KB scratch | DC4 (VMU) |
 | `plat_tone`, `plat_sample` | silent; the core's weak music bridge drives `plat_tone` | DC5 |
 | `plat_view3d`, `plat_overworld`, `plat_room` | no-ops / weak defaults | DC6, DC7, DC8 |
@@ -352,7 +358,9 @@ budget (`dc/tools/elfsize.sh`) and fails if less than 4 MB
 | free above `_end` (heap, stacks) | 11,770,428 | 11.23 |
 
 `.bss` includes the RAM-disk saves (128 KB) and the save scratch (136 KB)
-that DC4 replaces. The ELF file is 16 MB because of debug info; the
+that DC4 replaces. With DC3 (2026-11-08): code 1,709,680 B, `.bss`
+2,804,340 B (the 2D layer's three prim lists and texture scratch), image
+7,332,980 B (6.99 MB), 8.94 MB free above `_end`. The ELF file is 16 MB because of debug info; the
 scrambled `1ST_READ.BIN` is 4.4 MB.
 
 ### Disc image (`dc/tools/mkcdi.sh`)
@@ -380,7 +388,8 @@ IP.BIN, which the build copies next to the CDI.
 
 ### Verification so far
 
-Without the Flycast harness (DC1) in the tree, DC2 was checked with the
+DC3 (the 2D layer) is checked on the host: see section 4. Without the
+Flycast harness (DC1) in the tree, DC2 was checked with the
 KallistiOS build only: every core file compiles with gcc 15 and `-Werror`,
 the ELF links with no undefined symbols, `check-elf` passes (SH
 little-endian, entry 0x8c010000, the mailbox present, aligned and of the
@@ -388,6 +397,171 @@ right size) and the CDI builds. Booting the ELF and the CDI in Flycast
 (`dc/tests/boot.txt`: BOOT then TITLE, 30 ticks per emulated second) is
 the first thing to run once `dc/harness` lands.
 
+
+## 4. The 2D layer (DC3)
+
+```sh
+make dc-host-test        # from the repo root, host gcc only (no KOS, no emulator)
+make -C dc test          # the KOS build + check-elf + the host test + the harness
+```
+
+The core draws a 320x240 logical screen; the PVR draws it at 2x into the
+640x480 video mode, so logical pixel (x, y) is the 2x2 block at (2x, 2y).
+Files (`dc/src/`):
+
+| file | what | portable |
+|---|---|---|
+| `dc2d.h` | the prim list, the encoding rules, the backend interface | yes |
+| `gfx2d.c` | every platform.h 2D call, the post effects, `plat_hold_frame` | yes |
+| `texcache.c` | DoomoImages as twiddled PAL8 textures in video RAM, LRU | yes |
+| `font.c` | the glyph page and the outline page; the checker texture | yes |
+| `pal.c` | the four palette banks; the shade factors of the fallbacks | yes |
+| `pvr2d.c` | the PVR: init, textures, palettes, the submit | KOS only |
+
+"Portable" files are also built on the host by `dc/tests/gfx2d` (below),
+which is how this package was verified without Flycast.
+
+### How a frame is drawn
+
+Every 2D call appends axis-aligned prims (`DcPrim`: a rect of the 640x480
+frame, texture coordinates, a mode) to the tick's list, in the core's
+order. `plat_end_frame()` sends the list to the PVR as ONE translucent
+list with autosort off (`pvr_init_params_t.autosort_disabled`), depth
+compare ALWAYS and no depth writes: the PVR then draws translucent
+polygons in submission order, which is exactly the painter's order of
+the core, shading and blending included. The opaque list stays enabled
+for the 3D packages (DC6-DC8), which the PVR draws first, under the 2D.
+A prim goes as a **sprite** (one 32 B header that also holds the colour,
+then 64 B with 16-bit UVs) when its UVs survive the 16-bit truncation,
+else as a 4-vertex polygon (128 B). A header is only sent when the mode,
+texture, palette bank or (sprite) colour change.
+
+| call | on the PVR | exact? |
+|---|---|---|
+| `plat_clear` | the background plane colour; the list so far is dropped | yes |
+| `plat_rect` | an untextured sprite; a rect that continues the previous one (same colour, next to it in a row or a column) grows it instead, so the UI's thousands of 1-row spans cost few prims; an opaque full-screen rect drops the list before it | yes |
+| `plat_line` | the native runner's Bresenham walk, gathered into straight runs (one rect each) | yes |
+| `plat_checker` | an 8x8 checker texture repeating at one texel per logical pixel, times the colour (phase at the rect's corner) | yes |
+| `plat_text` | one sprite per inked glyph from the glyph page (an 8x8 cell per byte value, so no lookup), through the white palette bank times the colour | yes |
+| `plat_text_outline` | first the outline page (each glyph stamped at the 8 neighbours and at +1,+2: the ten passes of the weak default) for every character, then the glyphs: 2 sprites per character instead of 10 | yes |
+| `plat_image` | the image's texture at scale 1..4; FLIPX swaps U; SILHOUETTE is the white bank times the colour | yes |
+| `plat_image` IMG_SHADOW | the image's opaque runs merged into rects (at most 48), each an exact shade at colormap level 5; a noisier shape (or a list over 6,000 prims) gets a DARK copy (the frame times one fitted grey) | yes / close |
+| `plat_shade_rect` | see below | yes |
+| `plat_image_xform` | one quad at any Q8.8 scale (the weak default rounds to rect runs) | by design not the native look |
+| `plat_post_offset`, `plat_post_scale` | move / scale the prims drawn so far (the picture; the HUD drawn after `camfx_apply` stays put) | the native runner does not do them |
+| `plat_post_blend` | a translucent sprite at level/16 (16: solid) | the native runner uses a checker or a darken |
+| `plat_post_iris` | the weak default's exact black runs and rim, merged | yes |
+| `plat_pal_lerp` | palette bank 2 or 3 (alternating by frame, so the frame on the PVR keeps its palette) = `camfx_pal_entry()`; the prims drawn so far switch to it | the native runner does not do it |
+| `plat_hold_frame` (U4) | the last submitted list is kept and submitted under every new frame until released (it keeps no palette lerp) | yes |
+
+**Exact shading.** The native runner shades by remapping every pixel
+through `doomo_colormap[level]` (each colour walks down its own shade
+family). The PVR cannot read the frame back, but the list holds
+everything under the rect, so `plat_shade_rect` draws the rect's part of
+every earlier prim again with its colour remapped, over the remapped
+background colour: SOLID and TINT prims take `colormap[level][colour]`,
+images take a remapped COPY of their texture (`dc2d_tex_remap`: the texels
+are read back from video RAM, sent through the colormap and cached under
+the texture's key and the level); blends are drawn again as they are. A
+full-screen shade replaces the list by its copy. Prims are found through
+bounding boxes of 64-prim chunks, and anything drawn before an earlier
+shade's copy and lying wholly inside its rect is skipped (the copy hides
+it), so nested and growing shades (vignettes) stay linear. If the list
+would pass 9,000 prims the shade is a MUL sprite instead: the frame times
+the level's per-channel factor fitted to the colormap (mean error about
+15-24/255 per colour; `pal.c`).
+
+**Palettes** (ARGB1555, which holds the BGR555 master palette exactly and
+keeps the texture fetch at full speed): bank 0 the master palette (index
+0 transparent), bank 1 all white (TINT and DARK prims multiply it by the
+header colour), banks 2 and 3 the lerped palette. Dithering is off, so a
+palette colour is stored exactly in the RGB565 frame buffer.
+
+**Textures** (`texcache.c`): one power-of-two PAL8 texture (8..1024 per
+side, up to 512 K texels) per image, twiddled as the PVR reads it
+(Morton order, V in the low bit; a rectangle is a row of squares; checked
+against KOS' `pvr_txr_load_ex` by the unit test), uploaded at the draw
+call. The key is the image's uid (the core gives an image a new uid when
+its pixels change); an image without a uid is keyed by its pixel pointer
+plus a checksum of its pixels, so a buffer rebuilt in place or reused
+within a frame is never drawn stale. When video RAM or the 2,048-entry
+table is full, textures unused for 120 frames go first, then any not used
+by this frame or the last one (which the PVR may still be drawing). The
+font pages and the checker are never evicted; the pages are rebuilt when
+the language's glyph page (`DoomoLangInfo.page`) changes. Today every
+page reads the one table of `font.h` (the native runner does the same);
+`font.c`'s `glyph_cols()` is where L4's per-language charset plugs in.
+
+**Budgets.** 12,288 prims per frame (three lists of 590 KB in `.bss`: the
+frame, the last frame, the held frame) and a 1 MB vertex buffer (twice:
+the PVR keeps two), of which 960 KB is used for prims; a frame over
+either drops its last prims and counts them. The `.bss` grew by 2.1 MB
+(the three lists and a 512 KB texture scratch); 8.94 MB of RAM stays free.
+
+### Counters
+
+After each drawn frame the mailbox holds `gfx_prims`, `gfx_vbytes` (last
+frame), `gfx_prims_max`, `gfx_vbytes_max`, `gfx_dropped`, `gfx_uploads`,
+`gfx_evictions` and `gfx_tex_live`; `dcrun` prints them with the game's
+work time at the end of a run.
+
+### The host test (`dc/tests/gfx2d`)
+
+`dc2d_runner` is the native runner with its 2D calls renamed to a
+reference: `tee.c` defines the platform.h 2D calls so that each one draws
+into the native 8bpp frame AND into the Dreamcast list. At every `shot`
+the last submitted Dreamcast list is rendered by `swpvr.c`, a software
+PVR (the twiddled textures and banks as uploaded, point sampling at pixel
+centres, the sprite UV truncation, each mode's blend, an RGB565 frame
+buffer without dithering, a 4 MB texture budget), and compared with the
+native frame, all four screen pixels of each logical pixel, in RGB565.
+`NAME_dc.png` (640x480) and `NAME_diff.png` (grey equal, yellow within
+16/255, red not) are written next to the shot. The 3D views (DC6, DC7)
+are stand-ins: the native renderer draws the view and its pixels go to
+the list as an image, so the 2D drawn over them is still compared.
+`DC3_FX=sw` draws the post effects in software on both sides (the native
+runner does not do offset, scale and palette lerps, and blends with a
+checker), so every other pixel of those shots can be compared too.
+
+`make dc-host-test` = `dc2d_test` (twiddle layout vs `pvr_txr_load_ex`,
+16-bit UVs, rect merging, a 120-frame random fuzz of rects, lines,
+checkers, text, outlined text, images and irises that must match the
+native frame on every pixel, exact shades at every colormap level and
+over images, nested shades and a held backdrop, the shade and shadow
+fallbacks, the texture cache under video-RAM pressure, held frames, the
+vertex budget, the post effects) plus `run_compare.sh` on DC3's UI
+scripts (ui_gallery, fp_title, fp_screens, creator, library_lobby,
+pause_options) with a gate of 99% exact and 99.9% close per shot. CI runs
+it in the core job. `SAN=1 BUILD=...` runs it under ASan/UBSan.
+
+Measured 2026-11-08 (host, this tree):
+
+| what | result |
+|---|---|
+| `dc2d_test` | 52 checks, 0 failed (also under ASan/UBSan) |
+| the six DC3 UI scripts, hardware effects | 94 shots, **100.000% exact** on every shot; at most 2,704 prims and 223 KB of vertices a frame, nothing dropped |
+| all 80 runner scripts, `DC3_FX=sw` | 905 shots, 854 exact to the pixel, mean 99.984%; worst 98.59% (home_defend: `room_ref` reuses one uid for translucent actors whose dither changes every frame, so a uid-keyed cache shows the last pattern; the room is DC8's own renderer on the console) |
+| all 80 runner scripts, hardware effects | 905 shots, 807 exact; the rest differ where the post effects do their hardware job (shakes, palette lerps, blends) |
+| heaviest frame | home_rooms (`room_ref` through the 2D calls): 10,287 prims, 938 KB of vertices, inside the budget; DC8 draws rooms itself |
+
+`dc/harness/compare.py` does the same comparison on real Flycast shots:
+`python3 -I dc/harness/compare.py DC_SHOTS NATIVE_SHOTS --diff DIR` (shots
+of the same script from `dcrun` and from `core/build/runner --w 320 --h 240`).
+
+### Owed on Flycast and hardware
+
+The Flycast core is not built in this tree (its build needs the owner's
+permission rule in the sandbox), so the PVR side itself is unverified:
+
+- the six UI scripts in `dcrun` against the native runner with
+  `compare.py` (gate 99% exact), the shots looked at by eye;
+- the frame time of the 2D layer (the mailbox's `work_max`, and the
+  `gfx_*` counters) on the heaviest screens (island hub, creator,
+  home rooms) against the 33 ms tick, on Flycast and on a real console;
+- the PVR details the software PVR cannot prove: sprite 16-bit UVs and
+  point sampling at 2x, the presorted translucent list, the TA bins on
+  1-row spans (`opb_overflow_count` 8), MODULATEALPHA with a white
+  texture, video RAM read-back for the remapped textures.
 
 ## Rumble (X2)
 

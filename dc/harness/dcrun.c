@@ -1246,6 +1246,12 @@ int main(int argc, char **argv)
     if (wav) { wav_header(); fclose(wav); }
     printf("dcrun: %lu video frames, tick %lu, %.1f s, %d failure%s\n", frames_run,
            tick_now(), elapsed(), fails, fails == 1 ? "" : "s");
+    if (mb && mb_up)                    /* DC3: the game's own timing and 2D layer counters */
+        printf("dcrun: game drew %u of %u ticks, work mean %u us max %u us; 2D prims max %u, "
+               "vertex bytes max %u, dropped %u, texture uploads %u, evictions %u, cached %u\n",
+               mb->drawn, mb->ticks, mb->work_n ? mb->work_sum / mb->work_n : 0u, mb->work_max,
+               mb->gfx_prims_max, mb->gfx_vbytes_max, mb->gfx_dropped, mb->gfx_uploads,
+               mb->gfx_evictions, mb->gfx_tex_live);
     fflush(stdout);
     core.unload_game();
     core.deinit();

@@ -1,10 +1,10 @@
 /* plat_stub.c - placeholders for the platform calls the later Dreamcast
  * packages implement (owner: dreamcast).
  *
- * DC2 is the skeleton: the game boots, runs its 30 Hz loop and changes
- * scenes, but draws nothing except the clear colour. Each group below is
+ * DC2 was the skeleton: the game booted, ran its 30 Hz loop and changed
+ * scenes, but drew nothing except the clear colour. Each group below is
  * replaced, and this file shrinks, as the packages land:
- *   2D layer, post effects, panels  -> DC3 (gfx2d.c, postfx.c, texcache.c)
+ *   2D layer, post effects, held frame  -> DC3: done (dc2d.h, gfx2d.c, ...)
  *   saves on the VMU                -> DC4 (vmusave.c); until then a RAM disk
  *   3D view, overworld, house       -> DC6 / DC7 / DC8
  * Audio needs nothing here: the core's weak legacy bridge
@@ -15,34 +15,11 @@
 #include "dc_plat.h"
 #include "doomo/save.h"
 
-/* ---- display (DC3) ------------------------------------------------------------ */
+/* ---- display (the logical screen, dc2d.h) ------------------------------------------------------------ */
 int plat_screen_w(void) { return DC_SCREEN_W; }
 int plat_screen_h(void) { return DC_SCREEN_H; }
 
-void plat_clear(uint8_t color) { dc_set_clear(color); }
-void plat_rect(int x, int y, int w, int h, uint8_t color)
-{ (void)x; (void)y; (void)w; (void)h; (void)color; }
-void plat_shade_rect(int x, int y, int w, int h, int level)
-{ (void)x; (void)y; (void)w; (void)h; (void)level; }
-void plat_line(int x0, int y0, int x1, int y1, uint8_t color)
-{ (void)x0; (void)y0; (void)x1; (void)y1; (void)color; }
-void plat_checker(int x, int y, int w, int h, uint8_t color)
-{ (void)x; (void)y; (void)w; (void)h; (void)color; }
-
-/* text is not drawn yet, but the harness's expect-text still sees it */
-void plat_text(int x, int y, const char *s, uint8_t color)
-{
-    (void)x; (void)y; (void)color;
-    if (dc_text_armed && s) dc_text_probe(s);
-}
-void plat_text_outline(int x, int y, const char *s, uint8_t color, uint8_t outline)
-{
-    (void)outline;
-    plat_text(x, y, s, color);
-}
-
-void plat_image(int x, int y, const DoomoImage *img, int scale, int flags, uint8_t color)
-{ (void)x; (void)y; (void)img; (void)scale; (void)flags; (void)color; }
+/* every 2D call, the post effects and plat_hold_frame: gfx2d.c (DC3) */
 
 /* ---- 3D and the world renderers (DC6 / DC7 / DC8) ----------------------------- */
 void plat_view3d(const DoomoView3D *v) { (void)v; }

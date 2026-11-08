@@ -7,6 +7,8 @@
 #   make -C dc test       the ELF + disc, the symbol checks (check-elf), and
 #                         the Flycast harness scripts when dc/harness exists
 #   make -C dc check-elf  checks on the linked ELF only (no emulator)
+#   make -C dc host-test  the 2D layer on the host against the native runner
+#                         (dc/tests/gfx2d; `make dc-host-test` needs no KOS)
 #   make -C dc sizes      section sizes against the 16 MB RAM budget
 #   make -C dc PACK=/path/pack.dmpk disc
 #                         the mature disc: the pack (built with `mpack.py build`, port dc) goes on
@@ -82,7 +84,7 @@ DC_OBJS   := $(call dc_obj,$(DC_SRCS))
 CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 ALL_OBJS  := $(DC_OBJS) $(CORE_OBJS)
 
-.PHONY: all elf disc all-disc test check-elf check-packdisc harness-test sizes clean
+.PHONY: all elf disc all-disc test check-elf check-packdisc host-test harness-test sizes clean
 .DEFAULT_GOAL := all
 
 all: elf
@@ -156,7 +158,12 @@ harness-test: $(BUILD)/doomogachi.nm
 check-packdisc:
 	@sh $(DC)/tests/packdisc_host.sh
 
-test: all-disc check-elf check-packdisc harness-test
+# DC3: the portable 2D layer against the native runner, on the host
+# (dc/tests/gfx2d: unit tests + the UI scripts through the software PVR)
+host-test:
+	@$(MAKE) --no-print-directory -C $(DC)/tests/gfx2d test
+
+test: all-disc check-elf check-packdisc host-test harness-test
 
 clean:
 	rm -rf $(BUILD)

@@ -16,6 +16,8 @@
 #                   KallistiOS, dc/tools/setup_kos.sh)
 #   make dc-test    the Dreamcast build + its ELF checks + the Flycast harness
 #                   scripts (when dc/harness is in the tree)
+#   make dc-host-test  the Dreamcast 2D layer on the host (host gcc only: unit
+#                   tests + the UI scripts against the native runner, dc/tests/gfx2d)
 #   make trailer    trailer/build/trailer.mp4 (needs ffmpeg)
 #   make dist       copy the ROMs / zip the discs into dist/ (release names)
 #   make doctor     show which toolchains and tools were found
@@ -110,7 +112,7 @@ PS1_ENV := PSN00BSDK_LIBS="$(PSN00BSDK_ABS)" PATH="$(PSN00BSDK_BIN):$$PATH"
 PS1_CFG := -DPSN00BSDK_TARGET=$(PS1_TARGET) -DDOOMO_EMU=$(PCSX_REDUX) -DDOOMO_BIOS=$(PS1_BIOS)
 
 .PHONY: all test core core-test core-san xcheck check-gen gba gba-test ps1 ps1-test \
-        ps1-optional gba-test-optional ps1-test-optional dc dc-test trailer dist doctor clean \
+        ps1-optional gba-test-optional ps1-test-optional dc dc-test dc-host-test trailer dist doctor clean \
         need-host need-arm need-mgba need-ps1 need-dc
 
 # ---- aggregate targets --------------------------------------------------------------
@@ -215,6 +217,10 @@ dc: need-dc
 
 dc-test: need-dc
 	$(MAKE) -C dc $(J) test DC_PREFIX=$(DC_PREFIX)
+
+# DC3: the portable 2D layer against the native runner (no KallistiOS needed)
+dc-host-test: need-host
+	$(MAKE) -C dc/tests/gfx2d $(J) test
 
 need-dc:
 ifneq ($(DC_WHY),)

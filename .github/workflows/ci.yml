@@ -96,12 +96,17 @@ jobs:
       - name: Generated files are up to date (check-gen)
         run: make -C core check-gen
 
+      - name: Dreamcast 2D layer on the host (DC3, dc/tests/gfx2d)
+        run: make dc-host-test JOBS="$(nproc)"
+
       - name: Upload native runner screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: core-native-screenshots
-          path: core/build/shots/
+          path: |
+            core/build/shots/
+            dc/build/host/shots/
           retention-days: 14
           if-no-files-found: ignore
 

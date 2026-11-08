@@ -50,9 +50,11 @@ void plat_rumble(int strength, int ticks)
     dev = pack();
     if (!dev)
         return;
-    fx.duration = (uint8_t)dur;
-    fx.effect2 = 0;
-    fx.effect1 = (uint8_t)PURUPURU_EFFECT1_INTENSITY(level);
-    fx.special = (uint8_t)PURUPURU_SPECIAL_MOTOR1;
+    /* the same four bytes as the old named fields (special, effect1,
+     * effect2, duration), written through `raw`: KOS at the pinned commit
+     * marks those names deprecated and the build uses -Werror */
+    fx.raw = (uint32_t)PURUPURU_SPECIAL_MOTOR1 |
+             ((uint32_t)PURUPURU_EFFECT1_INTENSITY(level) << 8) |
+             ((uint32_t)dur << 24);
     purupuru_rumble(dev, &fx);
 }
