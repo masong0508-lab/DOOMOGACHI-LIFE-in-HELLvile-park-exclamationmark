@@ -7,9 +7,7 @@
  *   2D layer, post effects, held frame  -> DC3: done (dc2d.h, gfx2d.c, ...)
  *   saves on the VMU                -> DC4: done (vmusave.c)
  *   3D view, overworld, house       -> DC6 / DC7 / DC8
- * Audio needs nothing here: the core's weak legacy bridge
- * (core/src/plat_weak_music.c) drives plat_tone, which is silent until
- * DC5 (audio.c).
+ *   sound                           -> DC5: done (audio.c, mixer.c, sfx.c)
  */
 #include "dc_plat.h"
 
@@ -23,9 +21,6 @@ int plat_screen_h(void) { return DC_SCREEN_H; }
 void plat_view3d(const DoomoView3D *v) { (void)v; }
 void plat_overworld(const DoomoOverworldView *v) { (void)v; }
 
-/* ---- audio (DC5) ------------------------------------------------------------------- */
-void plat_tone(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave)
-{ (void)channel; (void)freq_hz; (void)vol; (void)wave; }
-void plat_sample(int sfx_id, uint8_t vol) { (void)sfx_id; (void)vol; }
+/* plat_tone, plat_sample and the music hooks: audio.c (DC5) */
 
 /* saves, the save scratch and the config record: vmusave.c (DC4, the VMU) */

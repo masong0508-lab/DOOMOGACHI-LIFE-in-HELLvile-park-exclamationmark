@@ -4,8 +4,9 @@
  * DC2 is the skeleton: boot, the 30 Hz frame loop, the harness mailbox and
  * the disc image. DC3 is the 2D layer (dc2d.h: gfx2d.c, texcache.c,
  * font.c, pal.c, pvr2d.c). DC4 is input (pad.c, padmap.c, dcinput.h) and
- * the VMU saves (vmusave.c, vms.c, save_icon.c; vmusave.h). Audio (DC5)
- * and 3D (DC6) replace the placeholders in plat_stub.c.
+ * the VMU saves (vmusave.c, vms.c, save_icon.c; vmusave.h). DC5 is the
+ * sound (audio.c on the AICA; mixer.c, sfx.c, audio_int.h portable). 3D
+ * (DC6) replaces the placeholders in plat_stub.c.
  */
 #ifndef DC_PLAT_H
 #define DC_PLAT_H
@@ -31,6 +32,9 @@ int dc_rumble_present(void);             /* rumble.c: a Puru Puru pack on pad 1 
 void dc_vmu_init(void);                  /* vmusave.c: at boot, before doomo_init */
 void dc_vmu_poll(void);                  /* vmusave.c: after each tick (config write-behind) */
 void dc_pacing_reset(void);              /* forget frame debt (after loads)     */
+void dc_audio_init(void);                /* audio.c: the stream, before doomo_init */
+void dc_audio_frame(void);               /* audio.c: end of every logic tick    */
+void dc_audio_stall(int on);             /* audio.c: a pause on purpose (no underrun) */
 uint32_t dc_us(void);                    /* microseconds since boot (wraps)     */
 
 /* ---- the harness mailbox (misc.c) ----------------------------------------------

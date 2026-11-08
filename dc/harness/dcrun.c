@@ -37,6 +37,12 @@
  *                               commands (mailbox 4 and 5; DC4)
  *   scene NAME [ARG] | push NAME [ARG] | seed N | expect-flag F [V]
  *   audio-reset | audio [LABEL] | expect-audio MIN [LABEL]
+ *   expect-underruns MAX        DC5: the game's sound underruns plus late
+ *                               AICA refills since audio-reset (mailbox
+ *                               snd_underruns + snd_starved) <= MAX
+ *   expect-sfx MIN              DC5: sound effects started since audio-reset
+ *                               (mailbox snd_started) >= MIN
+ *   audio-stats [LABEL]         DC5: print the game's sound counters
  * Dreamcast extensions:
  *   port N                      later button/stick/trigger commands use
  *                               controller port N (1-4; default 1)
@@ -507,6 +513,7 @@ static void RETRO_CALLCONV audio_sample(int16_t l, int16_t r)
     audio_take(s, 2);
 }
 static int audio_p2p(void) { return a_max >= a_min ? a_max - a_min : 0; }
+static uint32_t snd_under0, snd_starve0, snd_sfx0;  /* DC5: mailbox snd_underruns / snd_starved / snd_started at audio-reset */
 
 static void wav_header(void)
 {
@@ -1215,6 +1222,33 @@ static int run_script(FILE *f)
             if (r != want) fail("line %d: flag %s = %u, wanted %u", lineno, v[1], r, want);
         } else if (!strcmp(c, "audio-reset")) {
             a_min = 32767; a_max = -32768; a_frames = 0;
+            snd_under0 = mb && mb_up ? mb->snd_underruns : 0;
+            snd_starve0 = mb && mb_up ? mb->snd_starved : 0;
+            snd_sfx0 = mb && mb_up ? mb->snd_started : 0;
+        } else if (!strcmp(c, "expect-sfx") && n >= 2) {
+            uint32_t got = mb && mb_up ? mb->snd_started - snd_sfx0 : 0;
+            printf("audio: %u sound effects started since audio-reset (min %s)\n", got, v[1]);
+            if (!mb || !mb_up) fail("line %d: expect-sfx needs the game's mailbox", lineno);
+            else if (got < strtoul(v[1], NULL, 0))
+                fail("line %d: expect-sfx %s: got %u", lineno, v[1], got);
+        } else if (!strcmp(c, "expect-underruns") && n >= 2) {
+            uint32_t un = mb && mb_up ? mb->snd_underruns - snd_under0 : 0;
+            uint32_t st = mb && mb_up ? mb->snd_starved - snd_starve0 : 0, got = un + st;
+            printf("audio: %u sound underruns and %u late AICA refills since audio-reset (max %s together)\n",
+                   un, st, v[1]);
+            if (!mb || !mb_up) fail("line %d: expect-underruns needs the game's mailbox", lineno);
+            else if (got > strtoul(v[1], NULL, 0))
+                fail("line %d: expect-underruns %s: got %u", lineno, v[1], got);
+        } else if (!strcmp(c, "audio-stats")) {
+            if (mb && mb_up)
+                printf("audio-stats: %s slots %u/%u ring max %u underruns %u overruns %u dropped %u "
+                       "gaps %u frames content %u clips %u effects %u hash 0x%08x hash600 0x%08x "
+                       "mixer %u us/tick (%u ticks, max %u) refill gap max %u us, late refills %u\n",
+                       n >= 2 ? v[1] : "", mb->snd_consumed, mb->snd_pushed, mb->snd_queue_max,
+                       mb->snd_underruns, mb->snd_overruns, mb->snd_dropped, mb->snd_gap_frames,
+                       mb->snd_frames, mb->snd_clips, mb->snd_started, mb->snd_hash, mb->snd_hash600,
+                       mb->snd_us_n ? mb->snd_us_sum / mb->snd_us_n : 0u, mb->snd_us_n, mb->snd_us_max,
+                       mb->snd_cb_gap_max, mb->snd_starved);
         } else if (!strcmp(c, "audio")) {
             printf("audio: %s peak-to-peak %d over %lu frames\n", n >= 2 ? v[1] : "",
                    audio_p2p(), a_frames);
@@ -1459,6 +1493,14 @@ int main(int argc, char **argv)
                mb->drawn, mb->ticks, mb->work_n ? mb->work_sum / mb->work_n : 0u, mb->work_max,
                mb->gfx_prims_max, mb->gfx_vbytes_max, mb->gfx_dropped, mb->gfx_uploads,
                mb->gfx_evictions, mb->gfx_tex_live);
+    if (mb && mb_up && mb->snd_pushed)  /* DC5: the sound mixer and stream */
+        printf("dcrun: sound slots %u played of %u, ring max %u, underruns %u, overruns %u, "
+               "dropped %u, gap frames %u, content frames %u, clips %u, effects %u, hash600 0x%08x, "
+               "mixer mean %u us max %u us per tick (%u ticks), refill gap max %u us, late refills %u\n",
+               mb->snd_consumed, mb->snd_pushed, mb->snd_queue_max, mb->snd_underruns,
+               mb->snd_overruns, mb->snd_dropped, mb->snd_gap_frames, mb->snd_frames,
+               mb->snd_clips, mb->snd_started, mb->snd_hash600, mb->snd_us_n ? mb->snd_us_sum / mb->snd_us_n : 0u,
+               mb->snd_us_max, mb->snd_us_n, mb->snd_cb_gap_max, mb->snd_starved);
     if (mb && mb_up && wk_ticks)        /* DC3: per tick against the 30 fps budget */
         printf("dcrun: work over %u us on %lu of %lu ticks; worst %u us at tick %u (%s)\n",
                TICK_BUDGET_US, wk_over, wk_ticks, wk_worst, wk_worst_tick, wk_worst_scene);

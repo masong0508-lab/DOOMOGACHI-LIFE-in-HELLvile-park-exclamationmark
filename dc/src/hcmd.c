@@ -139,6 +139,8 @@ uint32_t plat_test_flags(void)
  * the hold by moving hold_at to the next stop */
 void dc_harness_hold(void)
 {
+    if (dc_mailbox.hold_at != dc_frames) return;
+    dc_audio_stall(1);                  /* DC5: no records while held, on purpose */
     while (dc_mailbox.hold_at == dc_frames) {
         if (dc_mailbox.cmd) dc_harness_cmd();
     }

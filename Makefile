@@ -17,8 +17,9 @@
 #   make dc-test    the Dreamcast build + its ELF checks + the Flycast harness
 #                   scripts (when dc/harness is in the tree)
 #   make dc-host-test  the Dreamcast 2D layer on the host (host gcc only: unit
-#                   tests + the UI scripts against the native runner, dc/tests/gfx2d)
-#                   and the VMU saves / controls (dc/tests/vmu)
+#                   tests + the UI scripts against the native runner, dc/tests/gfx2d),
+#                   the VMU saves / controls (dc/tests/vmu) and the sound mixer
+#                   against musrender (dc/tests/audio)
 #   make trailer    trailer/build/trailer.mp4 (needs ffmpeg)
 #   make dist       copy the ROMs / zip the discs into dist/ (release names)
 #   make doctor     show which toolchains and tools were found
@@ -220,10 +221,12 @@ dc-test: need-dc
 	$(MAKE) -C dc $(J) test DC_PREFIX=$(DC_PREFIX)
 
 # DC3: the portable 2D layer against the native runner (no KallistiOS needed);
-# DC4: the VMU file system (a card pulled out at every write), icons, controls
+# DC4: the VMU file system (a card pulled out at every write), icons, controls;
+# DC5: the sound mixer (units; its WAVs against musrender)
 dc-host-test: need-host
 	$(MAKE) -C dc/tests/gfx2d $(J) test
 	$(MAKE) -C dc/tests/vmu $(J) test
+	$(MAKE) -C dc/tests/audio $(J) test
 
 need-dc:
 ifneq ($(DC_WHY),)

@@ -1,5 +1,6 @@
 /* main.c - Dreamcast entry point, video and PVR setup, the 30 Hz frame
- * loop and its pacing (owner: dreamcast). The controls are pad.c (DC4).
+ * loop and its pacing (owner: dreamcast). The controls are pad.c (DC4),
+ * the sound audio.c (DC5: one record per logic tick, dc_audio_frame).
  *
  * Frame protocol (ARCHITECTURE.md, platform.h):
  *     plat_init_hw(); doomo_init();
@@ -96,6 +97,7 @@ void plat_end_frame(void)
     uint64_t next;
     dc_frames++;
     dc_mailbox.ticks = dc_frames;
+    dc_audio_frame();                   /* DC5: this tick's sound, queued */
     if (scene_open) {
         uint32_t w;
         dc2d_end();                     /* submit the tick's prims to the PVR */
@@ -144,6 +146,7 @@ int main(int argc, char **argv)
     plat_init_hw();
     dc_boot_egg();                      /* X8: hold A+B+X+Y+START at power-on */
     dc_vmu_init();                      /* DC4: learn the VMU once (vmusave.c) */
+    dc_audio_init();                    /* DC5: the AICA stream (audio.c) */
     doomo_init();
     dc_pad_init();                      /* DC4: analog feel on (pad.c) */
     dc_pacing_reset();
@@ -151,7 +154,10 @@ int main(int argc, char **argv)
     for (;;) {
         uint32_t b;
         dc_harness_hold();
-        if (dc_mailbox.cmd) dc_harness_cmd();
+        if (dc_mailbox.cmd) {
+            dc_audio_stall(1);          /* DC5: a harness save may take seconds */
+            dc_harness_cmd();
+        }
         b = dc_read_pad();
         plat_begin_frame();
         doomo_frame(b);

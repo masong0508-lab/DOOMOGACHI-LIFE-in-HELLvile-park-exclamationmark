@@ -1,0 +1,14 @@
+# invasion.txt - DC5: a story overworld cue on Flycast (run_flycast.sh):
+# chapter 3's invaded town (the story_invasion.txt start), 15 s of its
+# music with no input. Sound there, no underruns; the native runner plays
+# the same lines (the DC-only ones filtered out) as compare.py's reference.
+wait 1
+seed 1234
+scene STORY 219
+wait 3
+expect-scene STORY
+audio-reset
+wait 450
+audio-stats invasion
+expect-audio 4000 invasion
+expect-underruns 0

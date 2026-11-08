@@ -208,6 +208,7 @@ static int vmu_begin(VmuIo *io, int show)
     io->progress = show ? card_progress : NULL;
     io->ctx = dev;
     if (!dev) return VMU_ERR_NOFILE;
+    dc_audio_stall(1);                  /* DC5: the card blocks the tick; not an underrun */
     vmufs_mutex_lock();
     if (!s_vol_ok) {
         r = vmu_mount(&s_vol, io);

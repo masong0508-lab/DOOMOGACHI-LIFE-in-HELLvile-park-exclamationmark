@@ -8,14 +8,22 @@
 #                         the Flycast harness scripts when dc/harness exists
 #   make -C dc check-elf  checks on the linked ELF only (no emulator)
 #   make -C dc host-test  the 2D layer on the host against the native runner
-#                         (dc/tests/gfx2d) and DC4's VMU file system, icons
-#                         and controls (dc/tests/vmu); `make dc-host-test`
-#                         needs no KOS
+#                         (dc/tests/gfx2d), DC4's VMU file system, icons
+#                         and controls (dc/tests/vmu) and DC5's sound mixer
+#                         against musrender (dc/tests/audio); `make
+#                         dc-host-test` needs no KOS
 #   make -C dc vmu-test   DC4 on Flycast: saves over a power cycle, a full VMU,
 #                         no VMU, the first-boot config record, and the stick /
 #                         trigger / keyboard against the D-pad (dc/tests/vmu/
 #                         run_flycast.sh; results in build/shots/vmu); part of
 #                         `test` when Flycast is there
+#   make -C dc audio-test DC5 on Flycast: the title, the invaded town and a
+#                         combat level with sound (expect-audio, no
+#                         underruns or late AICA refills, the effects), each
+#                         compared with `runner --wav` (envelope r >= 0.9),
+#                         and the title's content hash twice (dc/tests/audio/
+#                         run_flycast.sh; results in build/shots/audio);
+#                         part of `test` when Flycast is there
 #   make -C dc ui-compare the six DC3 UI scripts on Flycast against the native
 #                         runner (dc/harness/ui_compare.sh; shots and diffs in
 #                         build/shots/ui); part of `test` when Flycast is there
@@ -95,7 +103,7 @@ DC_OBJS   := $(call dc_obj,$(DC_SRCS))
 CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 ALL_OBJS  := $(DC_OBJS) $(CORE_OBJS)
 
-.PHONY: all elf disc all-disc test check-elf check-packdisc host-test harness-test ui-compare vmu-test sizes clean
+.PHONY: all elf disc all-disc test check-elf check-packdisc host-test harness-test ui-compare vmu-test audio-test sizes clean
 .DEFAULT_GOAL := all
 
 all: elf
@@ -169,7 +177,8 @@ harness-test: $(ELF) $(CDI) $(ELF_RUN)
 	        --timeout 300 || exit 1; \
 	done; \
 	$(MAKE) --no-print-directory -f $(DC)/Makefile ui-compare || exit 1; \
-	$(MAKE) --no-print-directory -f $(DC)/Makefile vmu-test
+	$(MAKE) --no-print-directory -f $(DC)/Makefile vmu-test || exit 1; \
+	$(MAKE) --no-print-directory -f $(DC)/Makefile audio-test
 
 $(ELF_RUN): $(ELF)
 	$(STRIP) --strip-debug -o $@ $(ELF)
@@ -187,6 +196,13 @@ vmu-test: $(CDI) $(BUILD)/doomogachi.nm
 	@$(MAKE) --no-print-directory -C $(HARNESS) all
 	sh $(DC)/tests/vmu/run_flycast.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(SHOTS)/vmu
 
+# DC5: the sound on Flycast against the native runner's musrender
+audio-test: $(CDI) $(BUILD)/doomogachi.nm
+	@if [ -z "$(FLYCAST)" ]; then echo "audio-test: no Flycast core (make -C dc/harness flycast)" >&2; exit 1; fi
+	@$(MAKE) --no-print-directory -C $(HARNESS) all
+	@$(MAKE) --no-print-directory -C $(ROOT)/core runner
+	sh $(DC)/tests/audio/run_flycast.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(RUNNER) $(SHOTS)/audio
+
 $(BUILD)/doomogachi.nm: $(ELF)
 	$(NM) $(ELF) >$@
 harness-test: $(BUILD)/doomogachi.nm
@@ -197,10 +213,12 @@ check-packdisc:
 
 # DC3: the portable 2D layer against the native runner, on the host
 # (dc/tests/gfx2d: unit tests + the UI scripts through the software PVR);
-# DC4: the VMU file system, the icons and the controls (dc/tests/vmu)
+# DC4: the VMU file system, the icons and the controls (dc/tests/vmu);
+# DC5: the sound mixer's units and its WAVs against musrender (dc/tests/audio)
 host-test:
 	@$(MAKE) --no-print-directory -C $(DC)/tests/gfx2d test
 	@$(MAKE) --no-print-directory -C $(DC)/tests/vmu test
+	@$(MAKE) --no-print-directory -C $(DC)/tests/audio test
 
 test: all-disc check-elf check-packdisc host-test harness-test
 

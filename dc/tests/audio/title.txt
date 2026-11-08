@@ -1,0 +1,17 @@
+# title.txt - DC5: the title cue on Flycast (dc/tests/audio/run_flycast.sh).
+# Boot, the BOOT splash, then 15 s of the title screen and its music. The
+# sound must be there (expect-audio), and the mixer must never run out of
+# rendered ticks while the game runs at its normal pace, and the AICA must
+# never be refilled late (expect-underruns 0).
+# The same script on the native runner (`runner --wav`) is the reference
+# for compare.py.
+wait 1
+seed 1234
+expect-log DC: audio: stream 44100 Hz stereo
+wait 160
+expect-scene TITLE
+audio-reset
+wait 450
+audio-stats title
+expect-audio 4000 title
+expect-underruns 0

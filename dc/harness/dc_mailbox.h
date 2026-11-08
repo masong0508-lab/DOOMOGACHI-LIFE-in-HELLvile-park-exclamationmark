@@ -57,9 +57,25 @@ typedef struct DcMailbox {
      * leaves 0, a real console's value), so the first boot of an empty VMU
      * skips the language picker in scripted runs, as the native runner does */
     uint32_t test_flags;
+    /* DC5: the sound (dc/src/audio_int.h DcSndStats, audio.c) after each
+     * tick: tick slots rendered / begun playing, underruns (the ring empty
+     * while playing, not during a known pause), overruns (a tick pushed into
+     * a full ring), slots skipped to catch up, the fullest ring, output
+     * frames of content and of silent gaps, clipped samples, the FNV-1a
+     * hash of the rendered stream (now, and frozen after 600 slots = 20 s),
+     * the mixer's time per tick on the main thread in microseconds (sum,
+     * ticks, worst), the sound effects started (sample voices,
+     * plat_sample), the longest interval between two AICA refills in
+     * microseconds, and the refills later than the whole AICA buffer (the
+     * AICA played stale data: heard as a glitch) */
+    uint32_t snd_pushed, snd_consumed, snd_underruns, snd_overruns;
+    uint32_t snd_dropped, snd_queue_max, snd_gap_frames, snd_frames;
+    uint32_t snd_clips, snd_hash, snd_hash600;
+    uint32_t snd_us_sum, snd_us_n, snd_us_max;
+    uint32_t snd_started, snd_cb_gap_max, snd_starved;
 } DcMailbox;
 
-_Static_assert(sizeof(DcMailbox) == 136 + DC_MB_LOG_SIZE, "DcMailbox layout");
+_Static_assert(sizeof(DcMailbox) == 204 + DC_MB_LOG_SIZE, "DcMailbox layout");
 
 /* Command ids: the same numbers as the GBA's (gba_plat.h GBA_HC_* and
  * gba/src/hcmd.h), so hcmd.c can be shared in spirit. */

@@ -115,6 +115,7 @@ frames, and the log is what the core logs.
 | `shot-during FRAMES NAME` | DC4: the next mailbox command takes shot NAME FRAMES video frames in, while the game is still busy with it (the VMU card of a save) |
 | `scene NAME [ARG]` / `push NAME [ARG]` / `seed N` / `expect-flag F [V]` | mailbox commands |
 | `audio-reset` / `audio [LABEL]` / `expect-audio MIN [LABEL]` | peak-to-peak of the 16-bit output since `audio-reset` |
+| `expect-underruns MAX` / `expect-sfx MIN` / `audio-stats [LABEL]` | DC5: the game's sound underruns plus late AICA refills (mailbox `snd_underruns` + `snd_starved`) since `audio-reset` must be at most MAX / the sound effects it started (`snd_started`) at least MIN / print the game's sound counters (slots, ring, underruns, gaps, clips, effects, the content hash, the mixer's time per tick, the longest refill interval) |
 | `port N` | later button, stick and trigger commands act on port N (1-4) |
 | `device N pad\|keyboard\|mouse\|none` | plug a device into port N |
 | `stick X Y` | left stick, -128..127 |

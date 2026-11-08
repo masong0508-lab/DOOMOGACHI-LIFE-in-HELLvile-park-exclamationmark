@@ -54,7 +54,7 @@ jobs:
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q --no-install-recommends \
-            gcc make python3 \
+            gcc make python3 python3-numpy \
             gcc-arm-none-eabi libnewlib-arm-none-eabi \
             gcc-mipsel-linux-gnu \
             gcc-sh-elf binutils-sh-elf libnewlib-sh-elf-dev
@@ -96,7 +96,7 @@ jobs:
       - name: Generated files are up to date (check-gen)
         run: make -C core check-gen
 
-      - name: Dreamcast 2D layer on the host (DC3, dc/tests/gfx2d)
+      - name: Dreamcast 2D layer, VMU saves and sound mixer on the host (DC3-DC5, dc/tests)
         run: make dc-host-test JOBS="$(nproc)"
 
       - name: Upload native runner screenshots
