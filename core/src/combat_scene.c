@@ -229,6 +229,8 @@ static void combat_update(void)
     cs_t++;
     switch (cs_state) {
     case CS_CARD:                                  /* C10: the fight waits (frozen) until A */
+        if (cs_t > 4) tip_once(TIP_SHOOTER);       /* CL4: Rivet's tip, once, over the card (as the arena / levels) */
+        if (tip_active()) break;
         if (cs_t > 12 && btn_pressed(BTN_A | BTN_START)) {
             cs_card_shown = 1;
             cs_state = CS_PLAY;

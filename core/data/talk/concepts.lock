@@ -1664,7 +1664,7 @@
 1659	hellsteel
 1660	hellsteel_shelving
 1661	hellvile
-1662	hellvile_arena
+1662	hellvile_arena	retired
 1663	hellvile_park
 1664	hellvile_pits
 1665	hellvile_welcome_mat
@@ -4012,3 +4012,4 @@
 4007	rose
 4008	scar
 4009	speech
+4010	demon_arena
