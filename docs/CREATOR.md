@@ -262,12 +262,12 @@ violet room with embers, the Hellvile Pits finale).
 
 | | before (`4851147`) | after CR0-CR2 + CR12 |
 |---|---|---|
-| GBA ROM | 4,299,852 B | 4,312,888 B (+13,036: catalog names and meta, the VM macro ops and hooks, 15 family parts) |
-| GBA EWRAM free | 3,556 B | 3,556 B (0: everything new is `const`; the tools-only shape mode has no variable on the GBA) |
+| GBA ROM | 4,299,852 B (`b080562`: 4,301,668 B) | 4,312,888 B (on `b080562`: 4,314,712 B; +13,044: catalog names and meta, the VM macro ops and hooks, 15 family parts) |
+| GBA EWRAM free | 3,556 B (`b080562`: 3,540 B) | the same (0 B: everything new is `const`; the tools-only shape mode has no variable on the GBA) |
 | GBA IWRAM stack | 6,356 B | 6,356 B |
 | `sizeof(CrState)` (GBA) | 5,992 B of the 12,288 B scene scratch | unchanged (the picker's age filter keeps no state) |
 | slot 1 (free play) bound | joint worst 68,612 B of 90,112 B (2,048 B margin): 19,452 B left, so the planned `LOOK` 8,072 B + `CRPF` 256 B fit | unchanged |
-| PS1 resident (game disc) | ends `0x801ec580`: 14,976 B above the 64 KB stack reserve | ends `0x801ecce0`: 13,088 B above (+1,888 B; the part-script VM is off on the PS1 until CR10, docs/PORTRAIT.md) |
+| PS1 resident (game disc) | ends `0x801ec580`: 14,976 B above the 64 KB stack reserve | ends `0x801ecce0`: 13,088 B above (+1,888 B; the part-script VM is off on the PS1 until CR10, docs/PORTRAIT.md); on `b080562` + CRA ends `0x801ecd10` (13,040 B above) |
 | creator speed, GBA (`make -C gba profile-creator`, new) | idle 12.7 fps / 57.2 ms; a value held 8.5 / 83.6 ms; rows scrolled 13.0 / 56.1 ms; picker scrolled 8.0 / 93.9 ms | 12.7 / 57.2; 8.5 / 84.0; 12.9 / 57.0; 8.0 / 93.7 (`unlock_find` is still 13 % of the picker: CR9) |
 | creator speed, PS1 (`ps1/harness/scripts/perf_creator.txt`) | - | 30.0 fps |
 
