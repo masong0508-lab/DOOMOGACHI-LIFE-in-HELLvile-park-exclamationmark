@@ -421,6 +421,7 @@ against the LAST row, not against a figure from an older base.
 | 29 | SP6: concert loops in the IWRAM UI group (scale-2 images, word checkers, beams) | `7729ada` | 3,540 B | **3,540 B** | 0 | 6,356 B | no EWRAM, no resident IWRAM: `vid_blit2_arm`, its rows, `vid_checker_ui` and `vid_beam_ui` are 1,868 B of the overlay slot's UI group (SP4's group; the slot stays the 3D group's 10,384 B); ROM .text +3,056 B, .rodata +36 B; speed tour frame-exact (16 scenes) |
 | 30 | SP5: held dialogue backdrop, loading fades, governor resume | `87271d8` | 3,540 B | **3,468 B** | -72 B | 6,296 B | measured on `87271d8` (CRA, row 23, changed no EWRAM); the band's state 14 B (`hold.c`), `gba_big_epoch` 4 B, the dialogue hold's state in `overworld.c` 19 B, `ui_dialog.c` 5 B, `scene.c` 4 B, the loading fade 9 B (`loadfade.c`, `gba_vbl_hook`), the red map's governor budget 12 B; the band itself borrows the arena (the overworld's lit-tile cache) and needs no RAM of its own. IWRAM resident +60 B (the VBlank IRQ's hook call): main stack 6,356 -> 6,296 B (>= 6,144). ROM +~3 KB |
 | 31 | SP7: the exorcism's kept backdrop and retained stage (`docs/EXORCISM_SPEED.md`) | `7729ada` | 3,540 B | **3,348 B** | -192 B | 6,356 B | `stage.c` (34 B: the pages' serials and overlay boxes), the altar's outline rects (100 B), `backdrop.c` / the scene's pass state (~58 B); the stage's records and the true-name cache (~1.5 KB) live in the exorcism's scene scratch. IWRAM resident unchanged (11,176 B); the overlay's room group 3,248 -> 3,588 B (`stage_rows`, the partial-row restore; the slot is sized by the 3D group). ROM 4,280,388 -> 6,593,468 B (+2,266,084: the 59 baked church backdrops, `build/gen/backdrops.bin`; the rest code). Exorcism frames identical to `7729ada` (`vhash-seq` of every phase) |
+| 32 | SP8: Combat detail (governor, held pace, catch-up ticks), HUD badges as panels, faster `r3d_up2`, ARM 64-bit helpers | `696ffa6` | 3,444 B | **3,372 B** | -72 B | 6,368 B | `.bss`: the resolution governor 12 B, the panel table 8 -> 11 entries (+60 B: `PANEL_COMBAT_FACE/HEALTH/AMMO`; `panel.c`'s shown mask 16 bits). IWRAM: `__aeabi_lmul` and the 64-by-32 `__aeabi_ldivmod` path +124 B resident; `r3d_up2` (rewritten, +~80 B) moved from the resident section into the 3D overlay group, and `r3d_tint_pass` from the 3D group to `r3d.c` (ROM), so the slot is 10,384 -> 10,352 B and the main stack 6,356 -> **6,368 B**. The 3D group must stay at least 10,304 B (the 2D group's `ow_obj.c` tail, `BB_TAIL_BYTES` 1,712 B; the linker asserts it). resident 11,176 -> 11,196 B. Measured on `696ffa6` (row 25's tree) and that tree + SP8, built the same way. ROM 4,335,572 -> 4,336,900 B (+1,328) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -1313,25 +1314,131 @@ the first window includes the harness's town setup):
   the native panel tests) saved only 0.5 ms (25.8 fps) and was not kept. The banner wants a cheaper call path for
   narrow rects and shading, or a plate of OBJs (a G-area pass).
 
-### "3D: Faster / Better" (Options, Performance page)
+### Combat detail (SP8; G7's "3D: Faster / Better")
 
-`OPT_3D_FAST` (`town.h`; the row shows on the GBA only, default Better):
+`OPT_3D_FAST` (`town.h`, option 63) is the Options row **"Combat
+detail"** on the Performance page, shown on every platform (DECISIONS
+2026-11-08): `OPT3D_BALANCED` (0, the default), `OPT3D_SMOOTH` (1) and
+`OPT3D_MAX` (2). G7's saved values keep a close meaning: 0 (Better) reads
+as Balanced, 1 (Faster) as Smooth. Nothing in the game logic depends on
+it: only what is drawn and how often.
 
-* **Better** (0): the 3D view at full resolution; `video_flip` shows a
-  frame with a 3D view at most every third vblank (20 fps), so it holds
-  steady once the view is fast enough (today it is slower: combat runs at
-  ~10 fps, so nothing changes there).
-* **Faster** (1): `plat_view3d` renders the view at half resolution (half
-  width and height, the same field of view) into the top left quarter of
-  its rect, and `r3d_up2` (`video_loops.s`, ARM in IWRAM) doubles it in
-  place, from the bottom right so no source pixel is overwritten before it
-  is read; the HUD is drawn afterwards at full resolution. Measured on the
-  tour's Vape Cellar (COMBAT 3, 130 ticks): first person 9.9 -> 11.8 drawn
-  fps, logic 16.4 -> 21.3 ticks/s, work 83.5 -> 62.4 ms; third person 10.5
-  -> 12.6 fps, 78.7 -> 55.0 ms. This is the minimal version: the plan's
-  hardware scaling (BG2 affine 2x with the HUD as OBJs) and the 30 fps
-  target are G9's, which moves the combat HUD and the weapon to OBJs and
-  cuts the logic cost.
+| mode | the GBA's 3D view | pace (`video_flip`) | effects |
+|---|---|---|---|
+| Smooth | half resolution always (G7's "Faster": the view at half width and height into the top left quarter of its rect, doubled by `r3d_up2`) | at most 30 fps | drop shadows only under the player (`combat_view_detail`, `combat_scene.c`) |
+| Balanced | the resolution governor (G-C1, `r3d.c`): full resolution while a full-resolution frame shows at 20 fps or better, half resolution under load | full: at most 20 fps; half: at most 30 | all |
+| Max detail | the same governor with a 15 fps limit: full resolution unless it falls below that | as Balanced | all |
+
+* **The governor (G-C1, `r3d_gov_flip`).** Draw-side only, like the
+  invaded map's sprite governor (V10): `video_flip` hands it every 3D frame
+  with the vblanks it took. A full-resolution frame over the limit (3
+  vblanks Balanced, 4 Max) switches the next frames to half resolution;
+  from there it tries full resolution again only when the last frame plus
+  what full resolution costs over half (r3d cycles measured at both, `3x`
+  half before any full view) fits the limit, at most once every
+  16 frames (doubled after every try that did not fit, up to 240). 12 B of
+  `.bss`.
+* **Held pace (from G9).** A 3D frame that needs more vblanks than the
+  pace (counting the wait for the next vblank) moves it there (at most 4),
+  and it steps back only after 8 frames in a row that fit the faster pace,
+  so a view at a vblank boundary shows at an even 20 (or 15) instead of a
+  ragged mix. `gba_view3d_frame` + `gba_view3d_pace` are two bytes where
+  G7's `int` was.
+* **The game keeps 30 ticks a second (G-C1).** After a frame with a 3D
+  view, `plat_begin_frame` may run **two** catch-up ticks in a row instead
+  of one (`skip_max`), so a 50-80 ms combat frame no longer slows the game
+  down (the display floor of such a stretch is 10 fps instead of 15; the
+  governor keeps it well above). And a catch-up tick in combat costs less:
+  `combat_build_view` skips the billboards' cull, sort and `actor_image`
+  when `plat_draw_skipped()` (the camera, the shake's RNG draws and the
+  tints still run every tick), and `combat_draw_hud` runs only its tick
+  counters (the story caption's countdown, the FPS counter). Every drawn
+  frame is unchanged by that.
+* **The HUD badges are retained panels** (G7's `plat_panel_*`; section 4b):
+  the face badge (`PANEL_COMBAT_FACE`, keyed by the face image's `uid`, the
+  sparkle's size and the hell style; not while the face bounces from a hit),
+  the health box (`PANEL_COMBAT_HEALTH`: hp, armour, the low-health
+  heartbeat and flash) and the ammo pill (`PANEL_COMBAT_AMMO`; not when its
+  small line runs past the pill). A kept frame copies their body back from
+  the front page instead of drawing their round rects, glyphs and the
+  face (~2.3 ms of a frame on average; drawing no badges at all would save
+  ~10 ms, most of it the face's portrait renders, see below). The face crop is 34 rows instead of 36, so it ends on the badge's
+  inner window instead of running 2 rows over the outline's rounded bottom
+  corners (a 2-row change of the picture on every platform; the panel rule
+  "images lie on the body" needs it). `PANEL_COUNT` is 11: `panel.c`'s
+  shown mask is 16 bits (+60 B of panel table). `core/tests/test_panel.c`
+  plays a fight (walk, shoot, hits, low health, armour, a weapon swap,
+  third person) with the native panel cache on and off: every frame is
+  identical, 625 of 774 badges kept.
+* **`r3d_up2`** reads two halfwords a word and writes four words to each of
+  the two rows with STMDB: every halfword of the view is one 2-pixel column
+  (both bytes equal), so `a a` becomes `a a a a`. Same pixels, 5.2 -> 2.6
+  ms for the 120 x 80 view. It moved from the resident IWRAM to the 3D
+  overlay group (only `plat_view3d` calls it), and `r3d_tint_pass` (the
+  tint's once-a-frame set-up) from the 3D group to `r3d.c` (ROM), so the
+  slot did not grow.
+* **64-bit helpers (from G9, `div.s`).** `__aeabi_lmul` (every `FIXMUL`
+  in THUMB code) is 4 ARM instructions in IWRAM instead of libgcc's THUMB
+  from the cartridge, and `__aeabi_ldivmod` divides by a divisor that fits
+  32 bits (the raycasts' `(CELLU << 32) / dx`) with the 32-bit core plus 32
+  shift-subtract steps instead of `__udivmoddi4`. The engine-test boot
+  self-test (`et_divtest.c`) checks both.
+* `draw_sprites` (from G9) walks the nearest-first billboard list
+  backwards into its far-to-near insertion sort (same order, equal depths
+  in list order).
+
+**Hardware scaling: evaluated, not taken.** G-C2 asked for BG2's affine 2x
+of the half-resolution quarter with the HUD as OBJs. In Mode 4 the HUD
+would have to fit the 16 KB of OBJ VRAM above the second page (256 8bpp
+tiles, today the raycaster's texture cache), while the combat HUD covers
+130-300 tiles a frame (badges, weapon with paws, texts, crosshair, boss
+bar, pause / done / scope screens over it) and double buffering halves
+that; the affine trick would save `r3d_up2` (2.6 ms after the rewrite
+above) and cost a per-frame HUD-to-OBJ conversion and the texture cache's
+move: at best ~2 ms of a ~45 ms frame, for a new display path. The badges
+as panels (measured on the X5 tree: 48.1 -> 45.8 ms first person) and the
+faster `r3d_up2` (5.2 -> 2.6 ms) took about that much each with no new
+display mode.
+A tile mode (Mode 1: BG2 affine tiles for the view, BG0 for G5's canvas)
+would lift the VRAM limit, at the price of the raycaster writing a
+column-major tile layout and the HUD through the canvas: a package of its
+own if a future pass needs the last 3 ms.
+
+Measured (Vape Cellar, `scene TITLE; push COMBAT 3`, 200 ticks of settling,
+130 measured; libmgba 0.10.2):
+
+| tree | mode | first person: logic / drawn fps / work avg ms | third person |
+|---|---|---|---|
+| base `4114eb7` | Better (old default) | 16.6 / 9.9 / 82.2 | 16.3 / 9.8 / 82.3 |
+| base `4114eb7` | Faster | 21.6 / 12.0 / 58.6 | 21.0 / 12.1 / 58.0 |
+| SP8 | Balanced (default) | **30.0 / 14.8** / 52.9 (max 85.6) | **30.1 / 14.8** / 49.3 (max 109.7) |
+| SP8 | Smooth | 29.9 / 14.7 / 52.4 | 30.0 / 14.8 / 48.3 |
+| SP8 | Max detail | 30.0 / 14.8 / 52.9 | 30.1 / 14.8 / 49.3 |
+| SP8 + SP1's X5 (not landed when measured) | Balanced | 29.9 / 17.2 / 46.6 | 30.0 / 16.6 / 44.0 |
+| SP8 + SP1's X5 | Smooth | 30.1 / 17.4 / 45.8 | 29.9 / 16.6 / 43.5 |
+| SP8 rebased on `696ffa6` | Balanced | 30.0 / 14.8 / 52.9 | 30.1 / 15.3 / 48.6 (max 80.6) |
+| SP8 rebased on `696ffa6` | Smooth | 29.9 / 14.7 / 52.4 | 30.0 / 14.8 / 48.2 |
+
+The game now runs at full speed in combat (30 logic ticks a second,
+from 16); the picture is 14-15 fps on this tree and about 17 with X5 (the
+billboards' cull and sort without `fx_dist`, SP1), against 9.8. In this
+fight full-resolution frames never fit 20 fps, so all three modes settle
+on the half-resolution view (Max detail draws its first frames at full
+resolution). Drawn frames take 40-45 ms median with X5 (0 of 75 under
+33 ms), so **30 fps in GBA combat is not reached**: the half-resolution
+raycaster (~14 ms column pass at 60 x 80, sprites ~3 ms, `r3d_up2` 2.6 ms),
+the weapon blit (`vid_blit` ~6% of the cycles), the logic of the drawn tick
+(~5 ms) and the HUD that is not a panel (crosshair, kill counter, damage
+numbers) leave the frame at ~40 ms. The worst frames were the HUD face's
+expression changes (a 45-150 ms portrait render in one frame): a new
+expression is now drawn in slices while the face shown last stays up
+(`portrait_hold`, the title's mechanism, for 8 drawn frames after a change;
+DECISIONS 2026-11-08 "a stand-in for 2-4 ticks"), which took the worst
+frame from 133.6 to 85.6 ms (first person). `make -C gba test-3d`
+(`scripts/view3d.txt`, part of `make test`): the row, the game speed
+(`expect-logic 29`) and an fps floor of 12 in every mode, and Smooth's view
+made of one-colour 2x2 blocks (`expect-2x2`); the harness commands `opt ID
+VALUE`, `expect-logic MIN` and `expect-2x2` are new (section 9).
 
 ## 5. `plat_view3d`: the height raycaster
 
@@ -2097,6 +2204,16 @@ gba/build/harness ROM.gba [--script FILE] [--shots DIR] [--save FILE]
   swaps the house test layouts into `SCENE_HOME` (0 off, 1 steady, 2
   cellar, 3 defend crowd); `expect-fps MIN [LABEL]` is `fps` that fails
   below MIN drawn frames a second.
+* `opt ID VALUE` (SP8, game ROM): `opt_set(ID, VALUE)` through the mailbox
+  (`GBA_HC_OPT` = 17); fails unless `opt_get` then reads VALUE (the native
+  runner and the PS1 harness have the same command).
+* `expect-logic MIN [LABEL]` (SP8): fails unless the window the last `fps`
+  / `expect-fps` line measured ran at least MIN logic ticks a second (the
+  game itself slowing down, which drawn fps alone does not show).
+* `expect-2x2 X Y W H MIN MAX [LABEL]` (SP8): counts the 2x2 pixel blocks
+  (even X, Y) of a rect of the output frame that are not one colour and
+  fails unless the count is in MIN..MAX (a doubled half-resolution 3D view
+  has none).
 
 `make -C gba test`:
 

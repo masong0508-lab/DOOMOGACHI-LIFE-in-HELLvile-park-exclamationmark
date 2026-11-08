@@ -38,7 +38,7 @@
 # to 29.9 fps and its floor from 6.3 to 25 (life_speed.txt's hub too).
 # SP8 (Options "Combat detail", default Balanced: the resolution governor,
 # two catch-up ticks after a 3D frame, the HUD badges as panels) took combat
-# from 9.8 to 14.3-14.6 fps at 30 logic ticks/s and its floors 8 -> 12
+# from 9.8 to 14.3-14.6 fps at 30 logic ticks/s and its floors 9 -> 12
 # (make -C gba test-3d gates the game speed in every mode).
 wait 40
 expect-log doomo: init

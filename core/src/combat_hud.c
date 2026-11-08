@@ -173,7 +173,8 @@ static const DoomoImage *face_crop(int top, int rows)
 }
 
 /* (SP8) The badges are retained panels (platform.h, G7): a platform that still has one from the last
- * frame puts it back instead of drawing it (the GBA: ~10 ms of a combat frame). Each key holds
+ * frame puts it back instead of drawing its round rects, glyphs and face (the GBA: ~2 ms of a combat
+ * frame, docs/GBA.md "Combat detail"). Each key holds
  * everything its pixels depend on; core/tests/test_panel.c plays combat with the panel cache on and
  * off and checks every frame is identical. */
 static void face_badge(int x, int y, const HudPal *p)

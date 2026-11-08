@@ -757,6 +757,58 @@ GTE pipeline itself is `r3d.c`.
   subtractive TILE after the 3D, and `v->vx/vy/vw/vh` viewports clip the
   view anywhere on screen; 2D drawn after `plat_view3d()` lands on top.
 
+### Combat detail and the subdivision levels (SP8, P-C1)
+
+Options "Combat detail" (`OPT_3D_FAST`, `town.h` `OPT3D_*`; the row is on
+every platform) picks how hard `r3d.c` subdivides against the affine warp
+(`g_r3_sub`, `r3d.h`; `judge()`'s table `k_sub`): a piece is split when it
+is bigger than `big_px`, or bigger than `min_px` with a depth range wide
+enough (`size * (zmax - zmin) > k * (zmax + zmin)`), down to `depth`
+levels. Far pieces have a small depth range for their size, so the larger
+`k` / `min_px` leave far and small quads whole and still split the big,
+near ones (the floor under the camera, a wall beside it).
+
+| level | big_px / min_px / k / depth | used by |
+|---|---|---|
+| 0 | 128 / 20 / 7 / 3 (the rule before SP8) | Max detail; the overworld and the house (reset after every view) |
+| 1 | 128 / 32 / 10 / 3 | Balanced (the default) |
+| 2 | 160 / 48 / 14 / 2 | Smooth |
+
+`view3d.c` `adapt_sub()` sets it every frame: Balanced and Max detail go
+one level down for at least 8 frames after a frame whose CPU time crowded
+the 33 ms budget (over 31 ms), so the frames that would drop below 30 fps
+lose detail and the rest keep it (the adaptive view distance next to it
+works the same way). Smooth also keeps the drop shadow under the player
+only (`combat_view_detail`, core). Drawing only: the game never sees it.
+The HUD face's new expressions are drawn in slices with the old face as a
+stand-in (`combat_hud.c` `face_crop`, `portrait_hold`), which took the
+worst third-person frame (frame 269, 83 ms: a portrait render) away.
+
+Measured (PCSX-Redux, Vape Cellar, 240 frames after 200, scripts like
+`harness/scripts/perf_combat.txt`; vsyncs-per-frame histogram from the
+audit's harness copy: 2 = 33 ms, 3 = 50 ms, 4 = 67 ms):
+
+| mode | third person fps | histogram | first person fps |
+|---|---:|---|---:|
+| base `4114eb7` | 28.07 | 2:209 3:27 4:2 5:1 | 29.81 |
+| Balanced (default) | **29.39** | 2:229 3:9 4:1 | **30.00** |
+| Smooth | 29.39 | 2:229 3:9 4:1 | 30.00 |
+| Max detail | 29.15 | 2:224 3:15 | 29.94 |
+| Balanced + SP1's X5 (not landed then) | 29.57 | 2:233 3:4 4:2 | 29.94 |
+
+Polygons a frame (third person, `perf:` line): 520 -> 441 (Balanced). On
+Redux every combat frame's CPU time is over 31 ms (39 ms), so Balanced
+runs at level 2 and Max detail at level 1 there; on a console (Redux
+overstates CPU time 1.5-2x, section 12) they stay at 1 and 0. What is left
+in third person is the geometry itself (`quad_rec` 18.5% and `emit_gt4`
+13% of the samples, the rest idle 41%). Rebased on `696ffa6` the same
+script gives 29.39 / 30.00 / 29.45 / 29.21 (Balanced third / first person,
+Smooth, Max detail third person).
+
+RAM: +816 B resident (the governor, the level table, the `opt` harness
+command): the disc ends 78,832 B below the stack top on `696ffa6` + SP8
+(79,648 B before), 5,104 B above the 72 KB plan gate.
+
 ## 6. Overworld (`plat_overworld`)
 
 The same cells as the GBA's top-down map, as real 3D terrain seen by a
