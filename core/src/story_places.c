@@ -212,8 +212,9 @@ static void rest(void)
     doomo_town.story.hp = 100;
     story_say(-1, pet_exists() ? "You sleep like a baby. @E snores tiny snores. Good morning!" :
                                  "You sleep like a baby. Good morning, HaHaland!");
-    if (save_game(0)) ui_toast(STR_ICON_HEART " Game saved!");
-    else ui_toast("Couldn't save...");
+    /* CL1: saves and errors are SYSTEM toasts (ui.h): a scene change keeps them */
+    if (save_game(0)) ui_toast_kind(STR_ICON_HEART " Game saved!", UI_TOAST_SYSTEM);
+    else ui_toast_kind("Couldn't save...", UI_TOAST_SYSTEM);
 }
 
 static void heal(void)

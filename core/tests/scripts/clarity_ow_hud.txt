@@ -1,10 +1,11 @@
 # CL1 (clarity C1): the story HUD band. A new story's first overworld: the
 # region banner sits under the objective pill, the controls hint comes after
 # it in the bottom prompt slot, and no toast ever covers the objective or the
-# clock (hud-watch checks every frame). Then a hint toast and a save toast in
-# the overworld, a toast under the pause panel, and a scene change that drops
-# the hint.
-scene STORY 1
+# clock (hud-watch checks every frame). Then a save toast in the overworld,
+# and the same toast under the pause panel. (scene STORY 0: the new story
+# without CL2's hero cards, as story_ch1.txt; the greyed pause rows of CL2
+# buzz without a toast, so the panel is opened over the save toast instead.)
+scene STORY 0
 wait 30
 expect-scene CUTSCENE
 press START
@@ -40,21 +41,6 @@ wait 30
 shot ow_hint
 wait 100
 shot ow_after_hint
-# a refusal under the pause panel keeps the top row (the HUD is behind the panel)
-press START
-wait 20
-press DOWN
-wait 4
-press DOWN
-wait 4
-press A
-wait 15
-expect-toast "No Boreagotchi yet"
-shot pause_toast
-press B
-wait 10
-shot pause_toast_closed
-wait 90
 # START, START saves: "Game saved!" slides in under the HUD band
 press START
 wait 20
@@ -62,7 +48,16 @@ press START
 wait 15
 expect-toast "Game saved"
 shot saved_toast
-wait 40
+wait 20
 shot saved_toast_held
+# the pause panel opened under the toast: the toast keeps the top row (the HUD is behind the panel)
+press START
+wait 15
+expect-toast "Game saved"
+shot pause_toast
+press B
+wait 10
+shot pause_toast_closed
+wait 60
 hud-watch off
 toasts

@@ -363,8 +363,9 @@ void fp_live(void)
         sim_tick();
         if (autosave_bound && mode &&
             (doomo_town.day != day0 || (mode == 2 && town_hour() != h0))) {
-            if (save_game(1)) ui_toast(STR_ICON_HEART " Autosaved!");
-            else ui_toast("Autosave failed!");
+            /* CL1: saves and errors are SYSTEM toasts (ui.h): a scene change keeps them */
+            if (save_game(1)) ui_toast_kind(STR_ICON_HEART " Autosaved!", UI_TOAST_SYSTEM);
+            else ui_toast_kind("Autosave failed!", UI_TOAST_SYSTEM);
         }
     }
     fp_fx_tick();

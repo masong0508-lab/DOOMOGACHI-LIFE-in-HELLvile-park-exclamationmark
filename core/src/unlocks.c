@@ -339,36 +339,92 @@ static int grant_bit(int id)
     return 1;
 }
 
-/* CL1 (clarity C5): what kind of thing an unlock is, for its news ("New outfit: Cozy Scarf"); NULL: unknown */
-const char *unlock_kind_word(const DoomoUnlock *u)
+/* CL1 (clarity C5): what kind of thing an unlock is, for its news ("New paint: Lemon"). UL_CAT_MISC is free for
+ * each owner (unlock_ids.h), so its lists are named here one by one: a MISC entry that no row covers is a trophy
+ * (an achievement in the Unlocks screen's Secrets tab). `cut` is the kind a name already starts with
+ * ("Fishdex: Plush Koi"): the news drops it, so the kind is said once ("New Fishdex entry: Plush Koi"). */
+static const struct {
+    uint8_t list;
+    uint8_t lo, hi;             /* the owner's index range in that list */
+    const char *word, *cut;
+} misc_kinds[] = {
+    { UL_MISC_STUDIO + 0, 0, 255, "Studio sound", "Sound: " },       /* studio_int.h STUL_WAVE */
+    { UL_MISC_STUDIO + 1, 0, 255, "Studio drum kit", "Drums: " },    /* STUL_KIT */
+    { UL_MISC_STUDIO + 2, 0, 255, "Studio tune", "Tune: " },         /* STUL_TEMPLATE */
+    { UL_MISC_STUDIO + 3, 0, 255, "choir layout", NULL },            /* STUL_LAYOUT */
+    { UL_MISC_CONCERT, 0, 255, "concert stage", "Stage: " },
+    { UL_MISC_LIBRARY, 0, 15, "Bestiary entry", "Bestiary: " },      /* sightings; 16.. are library trophies */
+    { UL_MISC_LEVELS, 0, 6, "gold medal", "Gold: " },                /* the Time Trial golds */
+    { UL_MISC_STORY, 20, 39, "badge", NULL },                        /* side quests' keepsake badges */
+    { UL_MISC_STORY, 40, 42, "title screen", "Title: " },            /* unlocks_story.c MISC2 0..2 */
+    { UL_MISC_STORY, 43, 48, "Hell Breach", "Breach: " },            /* MISC2 3..8 */
+    { UL_MISC_STORY, 49, 50, "arena mode", "Arena: " },              /* MISC2 9..10 */
+    { UL_MISC_STORY, 51, 52, "Creator set", "Creator: " },           /* MISC2 11..12 */
+    { 0xF1, 0, 255, "Fishdex entry", "Fishdex: " },                  /* unlocks_fishcook.c FL_DEX */
+    { 0xF2, 0, 255, "fishing rod", NULL },                           /* FL_ROD */
+    { 0xC0, 0, 255, "recipe", "Recipe: " },                          /* FL_RECIPE */
+};
+
+/* the length of prefix p when s starts with it, else 0 */
+static int prefix_len(const char *s, const char *p)
+{
+    int n = 0;
+    if (!s || !p) return 0;
+    while (p[n]) { if (s[n] != p[n]) return 0; n++; }
+    return n;
+}
+
+const char *unlock_kind_word(const DoomoUnlock *u, const char **name)
 {
     static const char *const gal[GAL_COUNT] = { "song", "artwork", "demon file", "pet file", "cutscene" };
+    const char *word = NULL, *cut = NULL;
+    unsigned i;
+    if (name) *name = u ? u->name : NULL;
     if (!u) return NULL;
     switch (u->cat) {
     case UL_CAT_PART:
-        if (u->list == CLIST_SPECIES) return "species";
-        if (u->list >= CLIST_TOP && u->list <= CLIST_ACC) return "Creator outfit";
-        return "Creator look";
-    case UL_CAT_WEAPON_PART: return "weapon part";
-    case UL_CAT_PAINT: return "paint";
-    case UL_CAT_ITEM: return "shop item";
-    case UL_CAT_MODE: return "game mode";
-    case UL_CAT_CHEAT: return "cheat";
-    case UL_CAT_GALLERY: return u->list < GAL_COUNT ? gal[u->list] : NULL;
-    case UL_CAT_SKIN: return "style";
-    case UL_CAT_PET: return "pet form";
-    case UL_CAT_MISC: return "trophy";
-    default: return NULL;
+        if (u->list == CLIST_SPECIES) word = "species";
+        else if (u->list >= CLIST_TOP && u->list <= CLIST_ACC) word = "Creator outfit";
+        else word = "Creator look";
+        break;
+    case UL_CAT_WEAPON_PART: word = "weapon part"; break;
+    case UL_CAT_PAINT: word = "paint"; break;
+    case UL_CAT_ITEM:                       /* a recipe for a new dish is the item the shops then stock */
+        if (prefix_len(u->name, "Recipe: ")) { word = "recipe"; cut = "Recipe: "; }
+        else word = "shop item";
+        break;
+    case UL_CAT_MODE: word = "game mode"; break;
+    case UL_CAT_CHEAT: word = "cheat"; break;
+    case UL_CAT_GALLERY: word = u->list < GAL_COUNT ? gal[u->list] : NULL; break;
+    case UL_CAT_SKIN: word = "style"; break;
+    case UL_CAT_PET: word = "pet form"; break;
+    case UL_CAT_MISC:
+        word = "trophy";
+        for (i = 0; i < sizeof(misc_kinds) / sizeof(misc_kinds[0]); i++)
+            if (misc_kinds[i].list == u->list && u->index >= misc_kinds[i].lo && u->index <= misc_kinds[i].hi) {
+                word = misc_kinds[i].word;
+                cut = misc_kinds[i].cut;
+                break;
+            }
+        break;
+    default: break;
     }
+    if (name && cut) {
+        int n = prefix_len(u->name, cut);
+        if (n && u->name[n]) *name = u->name + n;
+    }
+    return word;
 }
 
 int unlock_grant(int id)
 {
     const DoomoUnlock *u;
+    const char *what, *name;
     if (!grant_bit(id)) return 0;
     u = unlock_by_id(id);
+    what = unlock_kind_word(u, &name);
     /* CL1: unlock news, told once a burst settles (ui.h ui_toast_unlock); it plays the sparkle when it is told */
-    ui_toast_unlock(u ? u->name : "???", unlock_kind_word(u));
+    ui_toast_unlock(name ? name : "???", what);
     return 1;
 }
 

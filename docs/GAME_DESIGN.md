@@ -292,7 +292,8 @@ read. The rules (`core/include/doomo/ui.h`, `core/src/ui.c`):
   under the day / clock / purse row (so "Rent collected" never covers the
   money it changes); over a place's menu they keep the top row. Every other
   screen keeps the top row.
-* **Kinds and order.** SYSTEM (saves, errors) > FEEDBACK (what you just did:
+* **Kinds and order.** SYSTEM (saves, autosaves and their errors: the story
+  pause's save, the inn, Free Play's autosave) > FEEDBACK (what you just did:
   bought, moved in, rent) > HINT (how to use this screen) > UNLOCK (news). A
   newer toast of a higher kind goes ahead of the waiting ones, never in front
   of the one on screen. A hint waits until the dialogue box is closed.
@@ -303,9 +304,17 @@ read. The rules (`core/include/doomo/ui.h`, `core/src/ui.c`):
 * **Unlock news.** Unlocks are not toasted one by one. News waits until
   nothing else is queued and no dialogue is up, and a burst is told once:
   one unlock says what it is ("New paint: Lemon"), more say "N new unlocks!
-  See Unlocks". The first news of a session gathers for 20 s from its first
-  unlock (a new island's opening minute is one digest), and after news has
-  been told the next gathers for 40 s.
+  See Unlocks". The kind comes from `unlock_kind_word()` (`unlocks.c`): the
+  category, and for the Secrets lists (`UL_CAT_MISC`, one list per owner) a
+  word per list: Fishdex entry, Bestiary entry, recipe, fishing rod, Studio
+  sound / drum kit / tune, choir layout, concert stage, gold medal, badge,
+  title screen, Hell Breach, arena mode, Creator set; every other Secrets
+  entry is a trophy. A name that already starts with its kind is shown
+  without it ("New Fishdex entry: Plush Koi", not "Fishdex: Plush Koi").
+  The line is written when it is told, whole (every unlock's line fits the
+  55-character toast; the longest is 42). The first news of a session
+  gathers for 20 s from its first unlock (a new island's opening minute is
+  one digest), and after news has been told the next gathers for 40 s.
 * **The story's first controls hint** ("A Talk  B Run  START Menu  SEL Map")
   is shown in the bottom prompt slot for 4 s once the region banner has gone,
   not as a toast.

@@ -145,11 +145,80 @@ TEST(unlock_grant_names_the_kind)
         if (c->cat == UL_CAT_PART && c->list == CLIST_ACC) { u = c; break; }
     }
     CHECK(u != NULL);
-    CHECK_STR(unlock_kind_word(u), "Creator outfit");
+    CHECK_STR(unlock_kind_word(u, NULL), "Creator outfit");
     ui_toast_clear();
     CHECK(unlock_grant(u->id));
     CHECK_EQ(ui_toast_pending(), 0);                 /* news, not a toast straight away */
     CHECK_EQ(ui_toast_news_waiting(), 1);
+}
+
+/* Every unlock's news names the right kind of thing and fits a toast line whole (the CL1 review: the Secrets lists
+ * all said "trophy", and a 40-byte copy cut "New Creator outfit: Sharpshooter Eyepatch" mid-word). */
+static void news_line(const DoomoUnlock *u, char *buf, int n)
+{
+    const char *name, *what = unlock_kind_word(u, &name);
+    if (what) snprintf(buf, (size_t)n, "New %s: %s", what, name);
+    else snprintf(buf, (size_t)n, "NEW UNLOCK! %s", name);
+}
+
+TEST(unlock_news_names_every_kind)
+{
+    static const struct { int id; const char *what, *name; } want[] = {
+        { 989, "Fishdex entry", NULL }, { 1006, "recipe", "Marshmallow Cupcakes" }, { 994, "recipe", "Tempura Roll" },
+        { 991, "fishing rod", "Hellsteel Rod" }, { 384, "Bestiary entry", "Impling" }, { 400, "trophy", NULL },
+        { 240, "Studio sound", "Tiny Pulse" }, { 243, "Studio drum kit", "Toy Box" }, { 247, "Studio tune", NULL },
+        { 252, "choir layout", "Choir Pyramid" }, { 908, "concert stage", "Disco Inferno" },
+        { 864, "gold medal", "Vape Cellar" }, { 871, "trophy", "Time Trial" }, { 660, "badge", "Cupid's Arrow Pin" },
+        { 644, "trophy", "Welcome Home" }, { 698, "title screen", "On Fire" }, { 701, "Hell Breach", "The Bakery" },
+        { 707, "arena mode", "The Exes" }, { 709, "Creator set", "Stitched Parts" }, { 760, "trophy", "Dice Roller" },
+        { 1009, "trophy", "First Bite" }, { 564, "trophy", "Home Sweet Home" }, { 832, "trophy", NULL },
+    };
+    int i, longest = 0;
+    char buf[128];
+    for (i = 0; i < (int)(sizeof(want) / sizeof(want[0])); i++) {
+        const DoomoUnlock *u = unlock_by_id(want[i].id);
+        const char *name = NULL;
+        CHECK_MSG(u != NULL, "no unlock %d", want[i].id);
+        if (!u) continue;
+        CHECK_STR(unlock_kind_word(u, &name), want[i].what);
+        if (want[i].name) CHECK_STR(name, want[i].name);
+        CHECK_MSG(strchr(name, ':') == NULL, "unlock %d: the news still shows \"%s\"", want[i].id, name);
+    }
+    for (i = 0; i < unlock_count(); i++) {
+        const DoomoUnlock *u = unlock_at(i);
+        int len;
+        news_line(u, buf, (int)sizeof(buf));
+        len = (int)strlen(buf);
+        if (len > longest) longest = len;
+        CHECK_MSG(unlock_kind_word(u, NULL) != NULL, "unlock %d (%s) has no kind word", u->id, u->name);
+        CHECK_MSG(len <= UI_TOAST_MAX, "unlock %d: \"%s\" is %d characters, a toast holds %d", u->id, buf, len,
+                  UI_TOAST_MAX);
+    }
+    CHECK(longest > 40);                             /* the lines the 40-byte copy cut are among them */
+}
+
+/* The news line is written whole when it is told: the longest names arrive in the toast uncut. */
+TEST(unlock_news_line_is_not_cut)
+{
+    static const int ids[] = { 847, 989 };
+    int k, n;
+    char want[128];
+    scene_set(&SCENE_UI_GALLERY, 0);
+    frames(2);
+    for (k = 0; k < 2; k++) {
+        const DoomoUnlock *u = unlock_by_id(ids[k]);
+        CHECK(u != NULL);
+        if (!u) continue;
+        news_line(u, want, (int)sizeof(want));
+        CHECK_MSG(strlen(want) > 39, "unlock %d: \"%s\" is no longer a long line", ids[k], want);
+        ui_toast_clear();
+        doomo_town.unlocks[u->id >> 3] &= (uint8_t)~(1u << (u->id & 7));
+        CHECK(unlock_grant(u->id));
+        for (n = 0; n < 700 && !ui_toast_pending(); n++) frames(1);
+        CHECK(ui_toast_pending());
+        if (ui_toast_text(0)) CHECK_STR(ui_toast_text(0), want);
+    }
+    ui_toast_clear();
 }
 
 /* The story HUD band: with toasts coming and going over a new story's first minute, no toast is ever drawn

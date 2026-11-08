@@ -797,7 +797,7 @@ void ui_paint_picker_draw(int x, int y, uint8_t paint, int cols)
 #define TOAST_IN 9
 #define TOAST_SHOW 75
 #define TOAST_OUT 8
-static char toast_msg[TOAST_Q][56];
+static char toast_msg[TOAST_Q][UI_TOAST_MAX + 1];
 static uint8_t toast_kd[TOAST_Q];       /* CL1: UI_TOAST_* of each queued line */
 static uint16_t toast_at[TOAST_Q];      /* CL1: the tick it was posted, low 16 bits (a scene change keeps that tick's toasts) */
 static int toast_n, toast_t;
@@ -814,7 +814,7 @@ static uint16_t toast_count[UI_TOAST_KINDS];    /* CL1: toasts shown per kind (t
 #define UL_NEWS_SETTLE 45
 #define UL_NEWS_GAP (30 * 40)
 #define UL_NEWS_FIRST (30 * 20)
-static char news_first[40];
+static const char *news_name, *news_what;   /* the first unlock of the news (kept, not copied: ui.h) */
 static uint8_t news_n, news_told;
 static uint16_t news_quiet, news_gap, news_age;
 
@@ -822,7 +822,7 @@ static uint16_t news_quiet, news_gap, news_age;
 static void toast_drop(int i)
 {
     for (i++; i < toast_n; i++) {
-        memcpy(toast_msg[i - 1], toast_msg[i], 56);
+        memcpy(toast_msg[i - 1], toast_msg[i], UI_TOAST_MAX + 1);
         toast_kd[i - 1] = toast_kd[i];
         toast_at[i - 1] = toast_at[i];
     }
@@ -847,11 +847,11 @@ void ui_toast_kind(const char *msg, int kind)
     pos = toast_n;
     while (pos > lo && toast_kd[pos - 1] < kind) pos--;
     for (i = toast_n; i > pos; i--) {
-        memcpy(toast_msg[i], toast_msg[i - 1], 56);
+        memcpy(toast_msg[i], toast_msg[i - 1], UI_TOAST_MAX + 1);
         toast_kd[i] = toast_kd[i - 1];
         toast_at[i] = toast_at[i - 1];
     }
-    for (i = 0; i < 55 && msg[i]; i++) toast_msg[pos][i] = msg[i];
+    for (i = 0; i < UI_TOAST_MAX && msg[i]; i++) toast_msg[pos][i] = msg[i];
     toast_msg[pos][i] = 0;
     toast_kd[pos] = (uint8_t)kind;
     toast_at[pos] = (uint16_t)doomo_frame_count();
@@ -866,8 +866,8 @@ void ui_toast_unlock(const char *name, const char *what)
     if (!name) name = "???";
     if (!news_n) {
         news_age = 0;
-        if (what && what[0]) doomo_snprintf(news_first, sizeof(news_first), "New %s: %s", what, name);
-        else doomo_snprintf(news_first, sizeof(news_first), "NEW UNLOCK! %s", name);
+        news_name = name;
+        news_what = what && what[0] ? what : NULL;
     }
     if (news_n < 99) news_n++;
     news_quiet = 0;
@@ -889,10 +889,11 @@ static void toast_news_tick(void)
     if (news_age < UL_NEWS_FIRST) news_age++;
     if (news_quiet < UL_NEWS_SETTLE || news_gap || toast_n || ui_dialog_active()) return;
     if (!news_told && news_age < UL_NEWS_FIRST) return;
-    if (news_n == 1) ui_toast_kind(news_first, UI_TOAST_UNLOCK);
-    else {
-        char buf[48];
-        doomo_snprintf(buf, sizeof(buf), "%d new unlocks! See Unlocks", (int)news_n);
+    {
+        char buf[UI_TOAST_MAX + 1];     /* the line is written now, into a whole toast line (no shorter copy) */
+        if (news_n > 1) doomo_snprintf(buf, sizeof(buf), "%d new unlocks! See Unlocks", (int)news_n);
+        else if (news_what) doomo_snprintf(buf, sizeof(buf), "New %s: %s", news_what, news_name);
+        else doomo_snprintf(buf, sizeof(buf), "NEW UNLOCK! %s", news_name);
         ui_toast_kind(buf, UI_TOAST_UNLOCK);
     }
     news_n = 0;
@@ -962,6 +963,7 @@ void ui_toast_clear(void)
 {
     toast_n = 0; toast_t = 0; toast_gen++; toast_held = 0;
     news_n = 0; news_quiet = 0; news_gap = 0; news_age = 0; news_told = 0;
+    news_name = news_what = NULL;
 }
 
 /* The toast's left edge on its tick t (width w): slides in, holds, slides out. */

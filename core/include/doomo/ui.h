@@ -72,11 +72,14 @@ void ui_toast_draw(void);               /* called by doomo_frame */
  * the tick of the change belongs to the new screen and stays ("Welcome back!" then scene_set). */
 enum { UI_TOAST_UNLOCK, UI_TOAST_HINT, UI_TOAST_FEEDBACK, UI_TOAST_SYSTEM, UI_TOAST_KINDS };
 void ui_toast_kind(const char *msg, int kind);
-/* Unlock news (unlocks.c unlock_grant): name is the unlock, what the kind of thing it is ("Creator", "paint",
- * NULL: unknown). News waits until nothing else is queued, no dialogue is up and no other unlock came for a
- * moment, so a burst is told once: one unlock says "New paint: Lemon", more say "3 new unlocks! See Unlocks".
- * The first news of a session gathers for 20 s from its first unlock (the opening minute of a new island tells one
- * digest), and after unlock news has been shown the next gathers for 40 s (UL_NEWS_* in ui.c). */
+#define UI_TOAST_MAX 55                 /* the characters a toast line holds */
+/* Unlock news (unlocks.c unlock_grant): name is the unlock, what the kind of thing it is ("Creator outfit",
+ * "paint", NULL: unknown; unlocks.h unlock_kind_word). Both are kept, not copied, until the news is told (the line
+ * is written then, up to UI_TOAST_MAX characters), so pass static text such as the unlock tables' strings, never a
+ * buffer. News waits until nothing else is queued, no dialogue is up and no other unlock came for a moment, so a
+ * burst is told once: one unlock says "New paint: Lemon", more say "3 new unlocks! See Unlocks". The first news of
+ * a session gathers for 20 s from its first unlock (the opening minute of a new island tells one digest), and
+ * after unlock news has been shown the next gathers for 40 s (UL_NEWS_* in ui.c). */
 void ui_toast_unlock(const char *name, const char *what);
 /* The toast lane (C1): a screen with a HUD band says, on each frame before the HUD is drawn, which row the
  * toast may use (its top edge, y); the lane goes back to the default (the top edge, y 4) after the toast is

@@ -108,9 +108,11 @@ int  unlock_has(int id);
 /* Grants and tells the unlock news (CL1: ui.h ui_toast_unlock, "New paint: Lemon", a burst as one digest).
  * Returns 1 if newly granted. */
 int  unlock_grant(int id);
-/* (CL1, additive) The kind of thing an unlock is, as its news names it ("Creator outfit", "trophy"); NULL if
- * unknown. */
-const char *unlock_kind_word(const DoomoUnlock *u);
+/* (CL1, additive) The kind of thing an unlock is, as its news names it ("Creator outfit", "Fishdex entry",
+ * "trophy"; a UL_CAT_MISC list is named per owner, unlocks.c misc_kinds); NULL if unknown. If name is not NULL it
+ * gets the name the news shows: u->name without a leading kind the word already says ("Fishdex: Plush Koi" ->
+ * "Plush Koi"), a pointer into the table's string. */
+const char *unlock_kind_word(const DoomoUnlock *u, const char **name);
 /* Grants without the unlock news or sound, for ids that have no table
  * entry and announce themselves (the household tiers, family.h). Returns 1 if
  * newly granted. */
