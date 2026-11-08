@@ -7,6 +7,9 @@ in core/data/story/**/*.dsc) tells the player where to go. It must have
   * a parenthetical with a compass word: "(NW)", "(park, S)", "(W, @0/5)", or
   * a parenthetical with a landmark the player is standing at or has on the
     map from the start: "(here)", "(home)", "(plaza)", "(anywhere)", or
+    "(arrow, ...)" when the goal arrow points at the next of several
+    targets and the line must stay short (Ep 3.3 is drawn under the
+    invaded map's hint toast: one line is cheaper on the GBA), or
   * the words "follow the arrow" (the objective has more than one target; the
     HUD compass points at the next one).
 It must also fit the pill: at most two lines of 148 px at 240x160 (the
@@ -30,7 +33,7 @@ STORY = CORE / "data" / "story"
 SRC = CORE / "src"
 
 COMPASS = {"N", "NE", "E", "SE", "S", "SW", "W", "NW"}
-LANDMARKS = {"here", "home", "plaza", "anywhere"}
+LANDMARKS = {"here", "home", "plaza", "anywhere", "arrow"}   # "arrow": the goal arrow (several targets, one line)
 ARROW = "follow the arrow"
 OBJ_RE = re.compile(r'^string (OBJ_[A-Z0-9_]+|O[A-Z0-9]{2}_[A-Z0-9_]+) "(.*)"')
 

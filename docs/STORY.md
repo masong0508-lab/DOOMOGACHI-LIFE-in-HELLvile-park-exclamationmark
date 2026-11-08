@@ -64,7 +64,10 @@ the whole story (see `story_full_playthrough_reaches_the_credits`).
 * **Wayfinding (clarity C7, CL6).** Every story objective says where:
   a compass word from the plaza fountain ("(NW)", "(park, S, @0/3)"), a
   landmark the player stands at ("(here)", "(home)", "(plaza)"), or
-  "follow the arrow" when it has several targets. `core/tools/
+  "follow the arrow" / "(arrow, @0/4)" when it has several targets (the
+  arrow points at the next one; Ep 3.3's "Clear nests (arrow, 0/4)" is
+  kept to one line because the invaded map draws it under a toast, and
+  a second line cost the GBA 0.5 ms there). `core/tools/
   story_wayfind.py` (in `story-check`) refuses an objective without one,
   or one that needs a third line in the pill at 240x160; the test
   `clarity_c7_every_objective_names_where_and_fits_the_pill` decodes all

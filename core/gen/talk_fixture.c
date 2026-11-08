@@ -2,13 +2,13 @@
 /* The unit tests' Talk database (test_talk_db.c): the concepts fixture.txt names
  * and the attributes they use, ids 1..138 in that order, their reviewed
  * associations among themselves, every category. Encoded with the story codec
- * of core/gen/txt_dict.c (dict_hash 0xAE3C613B): a story text change regenerates it
+ * of core/gen/txt_dict.c (dict_hash 0x690EFB0B): a story text change regenerates it
  * (make -C core gen). Little endian u32 words. Linked only by the tests. */
 #include <stdint.h>
 
 const uint32_t doomo_talk_fixture_size = 7366u;
 const uint32_t doomo_talk_fixture[1842] = {
-    0x4B4C4154u, 0x00000001u, 0xAE3C613Bu, 0x008A0007u, 0x00001CC6u, 0x00000001u,
+    0x4B4C4154u, 0x00000001u, 0x690EFB0Bu, 0x008A0007u, 0x00001CC6u, 0x00000001u,
     0x000000C0u, 0x00000458u, 0x00000458u, 0xCA91DF59u, 0x00000002u, 0x00000540u,
     0x000008B0u, 0x000008B0u, 0x6B6BC3F6u, 0x00000003u, 0x00000E00u, 0x00000120u,
     0x00000120u, 0xEFF83713u, 0x00010004u, 0x00000F40u, 0x00000422u, 0x0000042Au,

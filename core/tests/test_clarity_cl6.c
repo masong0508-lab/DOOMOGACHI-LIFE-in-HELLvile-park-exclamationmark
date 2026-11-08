@@ -34,7 +34,7 @@ static const uint16_t objectives[] = {
 /* the story_wayfind.py rule: a parenthetical naming a compass point or a landmark, or "follow the arrow" */
 static int names_where(const char *s)
 {
-    static const char *const words[] = { "N", "NE", "E", "SE", "S", "SW", "W", "NW", "here", "home", "plaza", "anywhere" };
+    static const char *const words[] = { "N", "NE", "E", "SE", "S", "SW", "W", "NW", "here", "home", "plaza", "anywhere", "arrow" };
     const char *p = s;
     if (strstr(s, "follow the arrow")) return 1;
     while ((p = strchr(p, '(')) != NULL) {

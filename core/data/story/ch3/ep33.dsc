@@ -6,7 +6,7 @@
 # lets its citizens out with one line (N33_*, picked by story_rng).
 @pack ep33 kind=episode chapter=3 minutes=60
 
-string O33_NESTS "Clear the demon nests: follow the arrow (@0/4)"
+string O33_NESTS "Clear nests (arrow, @0/4)"
 string O33_HEART "Beat the nest's boss (follow the arrow)"
 string O33_RIVET "Go see Rivet at the Workshop (NE)"
 
