@@ -227,6 +227,38 @@ void et_blit2_test(void)
                 }
         n++;
     }
+    /* (S2-5) the group's any-scale loop (vid_blitn) against the same reference: scales 2..4, flips, silhouettes,
+     * widths up to 80 (lines wider than the screen), odd and even x, every clip (700 cases: the save test boots
+     * this ROM too, inside the harness's 60 s boot watchdog) */
+    for (i = 0; i < 700 && !bad; i++) {
+        DoomoImage im;
+        int w = 1 + (int)(next() % (i & 1 ? 80 : 17)), h = 1 + (int)(next() % 14), off = (int)(next() & 3);
+        int dens = (int)(next() % 4), scale = 2 + (int)(next() % 3), flags = (int)(next() % 8) & ~2;
+        int x = (int)(next() % 320) - 70, y = (int)(next() % 240) - 60;
+        uint32_t color = 1 + next() % 255;
+        int j, y0, y1, r;
+        if (i % 7 == 0) { x = (int)(next() % 8) - 4; } else if (i % 7 == 1) { x = 240 - (int)(next() % 12); }
+        else if (i % 7 == 2) { y = (int)(next() % 6) - 3; } else if (i % 7 == 3) { y = 160 - (int)(next() % 8) - scale * h + 3; }
+        if (w * h > 64 * 20) h = 64 * 20 / w;
+        for (j = 0; j < w * h; j++) {
+            uint32_t v = next();
+            srcbuf[4 + off + j] = (uint8_t)((v >> 8) % 4 < (uint32_t)dens ? 0 : 1 + (v >> 16) % 255);
+        }
+        if (i % 5 == 4) for (j = 0; j < w * h; j++) if (!srcbuf[4 + off + j]) srcbuf[4 + off + j] = 7;   /* all opaque */
+        im.w = (uint16_t)w; im.h = (uint16_t)h; im.pix = srcbuf + 4 + off; im.uid = 1;
+        gba_back = PAGE_A; vid_blitn(x, y, &im, scale, flags, color);
+        gba_back = PAGE_B; ref_blit(x, y, &im, scale, flags, color);
+        y0 = y < 0 ? 0 : y; y1 = y + h * scale > 160 ? 160 : y + h * scale;
+        for (r = y0; r < y1 && !bad; r++)
+            for (j = 0; j < LINE; j++)
+                if (PAGE_A[r * LINE + j] != PAGE_B[r * LINE + j]) {
+                    gba_logf("ET blit2test FAIL blitn case %d x %d y %d w %d h %d sc %d fl %d row %d hw %d: %x vs %x",
+                             i, x, y, w, h, scale, flags, r, j, PAGE_A[r * LINE + j], PAGE_B[r * LINE + j]);
+                    bad = 1;
+                    break;
+                }
+        n++;
+    }
     /* the group's word-at-a-time checker against plat_checker_m4 (video.iwram.c) */
     for (i = 0; i < 3000 && !bad; i++) {
         int x = (int)(next() % 280) - 20, y = (int)(next() % 190) - 15, w = (int)(next() % 250) - 4;

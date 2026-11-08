@@ -111,6 +111,133 @@ void vid_blit2(int x, int y, const DoomoImage *img, uint32_t sil)
     vid_blit2_arm(x, y, img, sil);
 }
 
+/* (S2-5) Any other scale (2..4, flipped or not) in the group: vid_blit_c's method and pixels (video.iwram.c), in
+ * ARM -O2. A source row is expanded ONCE into a pair-aligned line (scale columns a pixel, flipped, silhouette colour
+ * applied, 0 outside the clip), and that line is stored on each of the `scale` rows it covers. When the line is built
+ * its words (two VRAM halfwords each) are sorted once into runs of four opaque pixels, which the rows store as plain
+ * word copies with no read of the page, and the other non-empty words, which are merged halfword by halfword exactly
+ * as vid_blit_c does (an opaque pair stored, a half-transparent one read-modify-written); empty words are skipped.
+ * The cutscenes' scale-3 demons and eggs, the weapons wing's scale-3 weapon plans. */
+static inline __attribute__((always_inline)) void put_pair(volatile uint16_t *p, uint32_t v)
+{
+    if (!v) return;
+    if ((v & 0xFFu) && (v >> 8)) *p = (uint16_t)v;
+    else if (v & 0xFFu) *p = (uint16_t)((*p & 0xFF00u) | v);
+    else *p = (uint16_t)((*p & 0x00FFu) | (v & 0xFF00u));
+}
+
+#define FULL4(v) (!(((v) - 0x01010101u) & ~(v) & 0x80808080u))     /* no zero byte: four opaque pixels */
+
+BLIT2_ARM void vid_blitn_arm(int x, int y, const DoomoImage *img, int scale, int flags, uint32_t color)
+{
+    const int iw = img->w, w = iw * scale, h = img->h * scale;
+    const int flip = flags & IMG_FLIPX, sil = flags & IMG_SILHOUETTE;
+    /* v / scale, as vid_blit_c's 65536 / scale + 1 (no division: the group calls nothing outside itself) */
+    const uint32_t inv = scale == 2 ? 32769u : scale == 3 ? 21846u : 16385u;
+    int x0 = x, x1 = x + w, y0 = y, y1 = y + h, yy, xa, xb, n, last = -1, lead, mw, nops = 0;
+    uint32_t line32[(SCREEN_W + 8) / 4 + 1];
+    uint8_t op_s[(SCREEN_W + 8) / 4], op_n[(SCREEN_W + 8) / 4];   /* a run of op_n full words at op_s, or 0: one mixed */
+    uint8_t *line;
+    const uint16_t *l;
+    const uint32_t *lw;
+    if (x0 < 0) x0 = 0;
+    if (y0 < 0) y0 = 0;
+    if (x1 > SCREEN_W) x1 = SCREEN_W;
+    if (y1 > SCREEN_H) y1 = SCREEN_H;
+    if (x0 >= x1 || y0 >= y1) return;
+    xa = x0 & ~1;
+    xb = (x1 + 1) & ~1;
+    n = (xb - xa) >> 1;
+    lead = (xa >> 1) & 1;                       /* a first halfword on its own, so the words land on word addresses */
+    line = (uint8_t *)line32 + (lead ? 2 : 0);  /* ... in the line too: halfword `lead` of the line is word aligned */
+    l = (const uint16_t *)(void *)line;
+    lw = (const uint32_t *)(const void *)(l + lead);
+    mw = (n - lead) >> 1;                       /* whole words after the lead halfword; then maybe one tail halfword */
+    line[0] = 0;                                /* the clipped half of an edge pair stays transparent */
+    line[xb - xa - 1] = 0;
+    for (yy = y0; yy < y1; yy++) {
+        volatile uint16_t *p = (volatile uint16_t *)gba_back + yy * LINE + (xa >> 1);
+        volatile uint32_t *pw = (volatile uint32_t *)(void *)(p + lead);
+        int sy = (int)(((uint32_t)(yy - y) * inv) >> 16), i;
+        if (sy != last) {
+            const uint8_t *src = img->pix + sy * iw;
+            int d = x0 - x, j = (int)(((uint32_t)d * inv) >> 16);
+            int ph = d - j * scale, cnt = x1 - x0, step = 1, run;
+            uint8_t *o = line + (x0 - xa);
+            uint32_t v;
+            if (flip) { j = iw - 1 - j; step = -1; }
+            last = sy;
+            /* the first source pixel (maybe cut by the clip), the whole ones, the last (maybe cut) */
+            run = scale - ph;
+            if (run > cnt) run = cnt;
+            v = src[j];
+            if (sil && v) v = color;
+            j += step;
+            cnt -= run;
+            do *o++ = (uint8_t)v; while (--run);
+            if (scale == 3) {
+                for (; cnt >= 3; cnt -= 3, j += step, o += 3) {
+                    v = src[j];
+                    if (sil && v) v = color;
+                    o[0] = (uint8_t)v; o[1] = (uint8_t)v; o[2] = (uint8_t)v;
+                }
+            } else if (scale == 2) {
+                for (; cnt >= 2; cnt -= 2, j += step, o += 2) {
+                    v = src[j];
+                    if (sil && v) v = color;
+                    o[0] = (uint8_t)v; o[1] = (uint8_t)v;
+                }
+            } else {
+                for (; cnt >= 4; cnt -= 4, j += step, o += 4) {
+                    v = src[j];
+                    if (sil && v) v = color;
+                    o[0] = (uint8_t)v; o[1] = (uint8_t)v; o[2] = (uint8_t)v; o[3] = (uint8_t)v;
+                }
+            }
+            if (cnt > 0) {
+                v = src[j];
+                if (sil && v) v = color;
+                do *o++ = (uint8_t)v; while (--cnt);
+            }
+            /* the line's words as runs of full words and single mixed ones */
+            nops = 0;
+            for (i = 0; i < mw;) {
+                uint32_t u = lw[i];
+                if (!u) { i++; continue; }
+                op_s[nops] = (uint8_t)i;
+                if (FULL4(u)) {
+                    int s0 = i;
+                    while (++i < mw && FULL4(lw[i])) {}
+                    op_n[nops++] = (uint8_t)(i - s0);
+                } else {
+                    op_n[nops++] = 0;
+                    i++;
+                }
+            }
+        }
+        if (lead) put_pair(p, l[0]);
+        for (i = 0; i < nops; i++) {
+            int s0 = op_s[i], c = op_n[i];
+            if (c) {
+                const uint32_t *a = lw + s0;
+                volatile uint32_t *b = pw + s0;
+                for (; c >= 4; c -= 4, a += 4, b += 4) { b[0] = a[0]; b[1] = a[1]; b[2] = a[2]; b[3] = a[3]; }
+                for (; c > 0; c--) *b++ = *a++;
+            } else {
+                uint32_t u = lw[s0];
+                put_pair((volatile uint16_t *)(pw + s0), u & 0xFFFFu);
+                put_pair((volatile uint16_t *)(pw + s0) + 1, u >> 16);
+            }
+        }
+        if (lead + 2 * mw < n) put_pair(p + n - 1, l[n - 1]);
+    }
+}
+
+void vid_blitn(int x, int y, const DoomoImage *img, int scale, int flags, uint32_t color)
+{
+    vid_blitn_arm(x, y, img, scale, flags, color);
+}
+
 /* (SP6) plat_checker in the UI group: the same clipping and parity as plat_checker_m4 (video.iwram.c), but a row's
  * pixels (every other one, all in the same byte of their halfwords) are merged a word at a time, two halfwords per
  * read-modify-write: the concert's light beams, the LED wall's sheen and the seats are hundreds of such rows. */
@@ -178,6 +305,9 @@ int plat_beam(int ax, int ay, int tx, int ty, int hw0, int hw1, uint8_t color)
 int plat_ui_loops(void)
 {
     if (gba_nodraw == 1) return 0;                      /* a skipped tick: nothing is drawn */
+    /* (S2-5) scenes may ask mid-frame (before a scaled image): never under a tile frame, whose canvas calls
+     * (cv_blit, cv_text...) are code of the 2D group and run until the frame ends */
+    if (gba_nodraw == GBA_NODRAW_CANVAS) return 0;
     iwram_ovl_use(OVL_UI);
     return 1;
 }

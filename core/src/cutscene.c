@@ -23,6 +23,7 @@
 #include "doomo/camfx.h"
 #include "doomo/tween.h"
 #include "doomo/beat.h"
+#include "doomo/plat_ext.h"     /* S2-5: plat_ui_loops */
 
 /* ---- captions (one per shot; NULL = none) ---------------------------------------- */
 static const char *const C_none[] = { NULL };
@@ -500,6 +501,7 @@ static void draw_home(void)
     egg = sprite_image(SPR_EGG, panel >= 1 ? (int)((pt / 4) & 1) : 0);
     if (egg) {
         int wob = panel >= 1 ? ui_wave((int)pt, 8, 2) : 0;
+        plat_ui_loops();                        /* S2-5: the platform's scaled-image loop */
         plat_image(cx - egg->w * 3 / 2 + wob, ey + 24 - egg->h * 3, egg, 3, 0, 0);
     }
     if (panel >= 1) {
@@ -621,6 +623,7 @@ static void draw_vapula(void)
     if (v && panel < 2) {
         int sx = panel == 0 ? ((int)(ct * 3) % 5) - 2 : 0;
         gg_ellipse(sw / 2, gy - 1, v->w * scale / 3, 2 + scale, PAL_RAMP(RAMP_STONE, 0));
+        plat_ui_loops();                        /* S2-5: the platform's scaled-image loop (GBA: 28 -> ~6 ms) */
         plat_image(sw / 2 - v->w * scale / 2 + sx, gy - v->h * scale - 2, v, scale, 0, 0);
     }
     if (panel == 1) {

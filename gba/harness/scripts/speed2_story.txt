@@ -181,7 +181,7 @@ push CUTSCENE 7
 wait 60
 fps start
 wait 90
-fps story: cutscene vapula vignette
+expect-fps 14 story: cutscene vapula vignette
 shot story_cut7
 press A
 wait 2

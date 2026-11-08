@@ -13,6 +13,7 @@
  * so the action module's small sprite caches never thrash.
  */
 #include "lib_int.h"
+#include "doomo/plat_ext.h"     /* S2-5: plat_ui_loops */
 
 #define W (lib_wpn)                       /* not in the scratch: lib_int.h */
 #define N_LISTS (CLIST_WCHARM - CLIST_WFRAME + 1)
@@ -273,6 +274,7 @@ static void blueprint(int x, int y, int w, int h, int scale, int paw, int fire)
     img = paw ? weld_view_image(&W.w, fire ? 1 : 0) : weld_icon_image(&W.w);
     if (!img) return;
     if (paw) scale = 1;
+    else plat_ui_loops();                       /* S2-5: the platform's scaled-image loop (GBA: the scale-3 plan) */
     {
         int bob = paw ? 0 : ui_wave(lib_b.t, 60, 1);
         int ix = x + (w - img->w * scale) / 2, iy = y + (h - img->h * scale) / 2 + bob;

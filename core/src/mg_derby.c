@@ -33,6 +33,7 @@ typedef struct Derby {
     Racer r[RACERS];
     uint8_t spr[RACERS][PET_SPR * PET_SPR / 4];
     uint8_t line, perfects, finished, place, trips, cheer;
+    uint8_t imgs_ok;                /* (S2-5, GBA) the racers' 8bpp pictures are in the scratch */
     uint16_t race_t, end_t;
     int32_t cam16;
 } Derby;
@@ -80,6 +81,66 @@ static const char *your_name(void)
     return buf[0] ? buf : "You";
 }
 
+#if defined(DOOMO_PLATFORM_GBA)
+/* (S2-5) The GBA draws a racer as an 8bpp picture in its jersey colours (index 0 transparent) instead of
+ * mg_blit2's one plat_rect per run of a colour (26% of the race's frame): one plat_image for a whole row band whose
+ * rows follow each other in the source (all 32 at full height), the platform's ARM blit. The same pixels: the
+ * squash picks the same source row per screen row (dy * h / dh), and colour 0 is PAL_BLACK as in plat_rect. The six
+ * pictures (6 KB) sit in the scene scratch right after the arena and the effects pool, claimed by dy_start. */
+#define DY_IMG (PET_SPR * PET_SPR)
+#define DY_IMG_OFF (MG_ARENA_BYTES + MG_FX_BYTES)
+DOOMO_STATIC_ASSERT(DY_IMG_OFF + RACERS * DY_IMG <= DOOMO_SCENE_SCRATCH, derby_pictures_fit_the_scratch);
+static uint8_t *dy_img(int i) { return (uint8_t *)mg_state() + DY_IMG_OFF + i * DY_IMG; }
+
+static void racer_pal(const Racer *r, uint8_t pal[3]);
+
+static void dy_pictures(void)
+{
+    int i, k;
+    if (!scene_scratch(MG_SCRATCH_TAG, DY_IMG_OFF + RACERS * DY_IMG)) return;
+    for (i = 0; i < RACERS; i++) {
+        uint8_t pal[4], *o = dy_img(i);
+        const uint8_t *s = S->spr[i];
+        racer_pal(&S->r[i], pal + 1);
+        pal[0] = 0;
+        for (k = 1; k < 4; k++) if (!pal[k]) pal[k] = PAL_BLACK;
+        for (k = 0; k < DY_IMG / 4; k++) {
+            uint32_t b = s[k];
+            o[k * 4] = pal[(b >> 6) & 3];
+            o[k * 4 + 1] = pal[(b >> 4) & 3];
+            o[k * 4 + 2] = pal[(b >> 2) & 3];
+            o[k * 4 + 3] = pal[b & 3];
+        }
+    }
+    S->imgs_ok = 1;
+}
+
+/* mg_blit2's rows (the squash sy256) from racer i's picture */
+static void dy_blit(int x, int y, int i, int sy256)
+{
+    const int h = PET_SPR;
+    const uint8_t *pix = dy_img(i);
+    int dh = h * sy256 / 256, dy = 0, sy = 0, acc = 0;   /* sy = dy * h / dh, acc = dy * h - sy * dh */
+    if (dh < 1) dh = 1;
+    y += h - dh;
+    while (dy < dh) {
+        int n = 0, s0 = sy;
+        DoomoImage im;
+        do {                                    /* the rows while each is the next source row */
+            n++;
+            acc += h;
+            while (acc >= dh) { acc -= dh; sy++; }
+        } while (dy + n < dh && sy == s0 + n);
+        im.w = PET_SPR;
+        im.h = (uint16_t)n;
+        im.pix = pix + s0 * PET_SPR;
+        im.uid = 0;
+        plat_image(x, y + dy, &im, 1, 0, 0);
+        dy += n;
+    }
+}
+#endif
+
 /* Render one form into a packed 2-bit sprite (a 1 KB stack canvas). */
 static void pack_form(int form, uint8_t *dst)
 {
@@ -114,6 +175,9 @@ static void dy_start(void)
         r->stam = 100;
         pack_form(r->form, S->spr[i]);
     }
+#if defined(DOOMO_PLATFORM_GBA)
+    dy_pictures();
+#endif
     S->line = (uint8_t)(pet_exists() && doomo_town.pet.stage >= PET_STAGE_BABY ? pet_line() : PET_LINE_CUTE);
     mg.quiet_hud = 0;
 }
@@ -283,18 +347,27 @@ static void grandstand(int y0, int h, int cam, int t)
     mg_bunting(0, W, y0 - 2, 3, t);
 }
 
+static void racer_pal(const Racer *r, uint8_t pal[3])
+{
+    pal[0] = ui_darker(ui_darker(PAL_PAINT(r->paint, 0)));
+    pal[1] = PAL_PAINT(r->paint, 1);
+    pal[2] = PAL_PAINT(r->paint, 2);
+}
+
 static void racer_draw(int i, int x, int t)
 {
     const Racer *r = &S->r[i];
     int y = lane_y(i), sy = 256, hop = 0;
     uint8_t pal[3];
-    pal[0] = ui_darker(ui_darker(PAL_PAINT(r->paint, 0)));
-    pal[1] = PAL_PAINT(r->paint, 1);
-    pal[2] = PAL_PAINT(r->paint, 2);
+    racer_pal(r, pal);
     if (r->air) hop = (18 - r->air) * r->air / 4;
     else if (r->stun) sy = 180 + (r->stun & 3) * 10;
     else { int ph = ((int)(r->x16 / 16) / 6 + i) & 3; hop = ph == 1 || ph == 2 ? 2 : 0; sy = ph == 0 ? 236 : 262; }
     mg_shadow(x, y, 9 - hop / 4);
+#if defined(DOOMO_PLATFORM_GBA)
+    if (S->imgs_ok) dy_blit(x - PET_SPR / 2, y - PET_SPR - hop + 2, i, sy);
+    else
+#endif
     mg_blit2(x - PET_SPR / 2, y - PET_SPR - hop + 2, S->spr[i], PET_SPR, PET_SPR, pal, sy);
     if (r->stun && (t & 4)) ui_sparkle(x + 8, y - PET_SPR + 4, t & 15, PAL_UI_GOLD);
     if (r->tired && (t & 8)) mg_text(x + 10, y - PET_SPR - 4, STR_ICON_DROP, PAL_PAINT(PAINT_SKY, 2));

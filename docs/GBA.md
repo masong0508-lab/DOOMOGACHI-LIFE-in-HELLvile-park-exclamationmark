@@ -428,6 +428,7 @@ against the LAST row, not against a figure from an older base.
 | 36 | S2-6: the Unlocks gallery's grid as a retained panel, the counted owned unlocks (docs: "Speed wave 2: S2-6" below) | `9c9fb45` | 2,276 B | **2,276 B** | 0 B | 6,308 B | measured on `9c9fb45` + S2-6: no new state in RAM (the panel borrows `PANEL_OW_OBJECTIVE`'s table entry, the last frame's key lives after the gallery's id list in the scene scratch, a tile's colours are memoised on the stack); IWRAM unchanged. PS1: the grid panel is not built (`UI_PANELS` 0) and the owned-count fast path is not either (`unlocks.c` is resident there): resident RAM 12 B smaller (`unlock_at` walks the lengths only), 66 KB below the stack top with the boot FMV |
 | 37 | S2-8: the Field Guide's and the Almanac page's text as retained panels (docs: "Speed wave 2: S2-8" below) | `fc32672` | 2,276 B | **2,276 B** | 0 B | 6,308 B | measured on `fc32672` + S2-8: no new state in RAM (the panel borrows `PANEL_OW_OBJECTIVE`'s table entry; the Field Guide's preview scroll max is one byte in the wing's scene scratch, in the `help` struct's padding: `LibWingData` the same size); IWRAM unchanged; ROM 6,846,988 B (code only). PS1: nothing built (`UI_PANELS` 0), 66 KB below the stack top with the boot FMV |
 | 38 | S2-7: the credits parade (one pose, sliced bodies, the body memo; docs: "Speed wave 2: S2-7" below) | `8816f24` | 2,276 B | **1,796 B** | -480 B | 6,308 B | the body look-hash memo (`portrait.c` `blh`) grows from 40 to 48 slots of 60 B on the GBA (its new `seen` byte sits in the old padding); no IWRAM. PS1: no data (memo stays 40), resident code +836 B (`portrait.c`: the body job path, until now GBA-only, and the memo's skip), 65 KB below the stack top with the boot FMV (was 66 KB) |
+| 39 | S2-5: scaled images in the UI group, the Derby's racer pictures, the welding runs (docs: "Speed wave 2: S2-5" below) | `c0dc4ba` | 1,796 B | **1,796 B** | 0 B | 6,308 B | no resident EWRAM or IWRAM: `vid_blitn_arm` is in the overlay's UI group (2,720 -> 3,916 B, the slot stays the 3D group's 10,352 B); the Derby's six racer pictures (6 KB) and the weld seam's y table (640 B) live in their scenes' scratch claims; ROM 6,847,476 -> 6,850,520 B. PS1: the Derby path and `plat_ui_loops` are GBA-only, the weld runs are in the workshop overlay group; resident RAM unchanged, 65 KB below the stack top with the boot FMV |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -1378,6 +1379,61 @@ loading or saving (`gba_pacing_reset()`) the debt is forgotten.
 counter, vblank count, scanline and keys.
 
 ---------------------------------------------------------------------------
+
+### Speed wave 2: S2-5, scaled images, the Derby's racers, the welding bench (2026-11-08)
+
+The speed audit 2's S2-5 (cause C4: scaled art redrawn the slow way every frame): the Vapula vignette's scale-3 demon
+(`vid_blit_c` 38% of a 73 ms frame), the weapons wing's scale-3 weapon plan (17%), the welding minigame's scale-2
+icon, the home vignette's scale-3 egg, and the Derby's racers (`mg_blit2` 28% of a 61 ms frame: one `plat_rect` per run
+of a colour). S2-4 (static backdrops) had not landed, so this was measured and built on `c0dc4ba` alone.
+
+**Not ROM copies.** The audit proposed pre-scaled copies in ROM drawn with the scale-1 blit. The weapon plans and the
+welding icon are composed at run time (`weld_icon_image`), and the scale-1 `vid_blit` itself costs ~10 cycles a pixel
+reading ROM bytes (the home vignette's full-screen wallpaper: 22 ms), so a ROM copy would not have been faster than a
+good scaled loop. Instead:
+
+* **`vid_blitn`** (`src/blit2.c`, ARM in the IWRAM overlay's **UI group**): any scale 2..4, flipped or not,
+  silhouette or not, exactly `vid_blit_c`'s pixels. A source row is expanded once into a pair-aligned line (a
+  per-scale store loop, no per-pixel run clamp), its words are sorted once into runs of four opaque pixels and single
+  mixed words, and each of the `scale` rows it covers is then plain word copies (no read of the page) plus the mixed
+  words merged halfword by halfword as before. `plat_image` (`video.c`) takes it whenever the UI group is in and the
+  scale is not SP6's scale-2-no-flip case. The scenes ask for the group right before the image (`plat_ui_loops()`,
+  `plat_ext.h`): `cutscene.c` (the Vapula demon, the home egg), `lib_weapons.c` (the plan), `weld_game.c` (the icon).
+  `plat_ui_loops()` now refuses under a tile frame (the canvas' `cv_*` calls are 2D-group code). The Vapula demon:
+  28 ms -> ~10 ms. Engine test: `blit2test` adds 700 random cases (scales 2-4, flips, silhouettes, widths to 80,
+  every clip) against the verbatim old blit.
+* **The Derby's racers** (`mg_derby.c`, GBA only): `dy_start` turns each racer's packed 2-bit sprite into an 8bpp
+  picture in its jersey colours (6 KB in the scene scratch after the arena and the effects pool, claimed by the
+  scene), and `racer_draw` draws it with `plat_image` at scale 1, one call per band of consecutive source rows (one
+  for the whole sprite at full height, ~4 when squashed), the squash's source rows walked without divisions. Same
+  rows as `mg_blit2` (`dy * h / dh`), colour 0 as `PAL_BLACK` like `plat_rect`. PS1 / native keep `mg_blit2`.
+* **The welding bench** (`weld_game.c`, every platform): the seam's y per column is made once per weld (640 B more in
+  the minigame's scratch) and the seam and the bead are drawn as runs of columns at the same y (and colour): every
+  rect stays in its column, so a run is the same pixels as the columns one by one; 3 x 190 one-pixel rects -> ~3 x 40.
+
+**Same pixels.** `vhash-seq` of every tick (draw_all from each push) against `c0dc4ba`: the Derby (500 ticks Sweet,
+200 Hellfire), the home vignette, the weapons wing, the weld intro and welding identical; the Vapula vignette
+identical when played on its own, and in a longer run identical but for two things this package does not draw: the
+player figure's expression phases (the portrait cache works in idle time, SP2, so cheaper frames move a phase a few
+ticks) and row 53's odd pixels, which `sky_bands` never writes (they keep an older frame's pixels: a pre-existing hole).
+
+| window (`speed2_*.txt`, libmgba) | before (drawn fps, work avg / max) | after |
+|---|---:|---:|
+| fair: derby race sweet / mid / hellfire | 15.0 / 15.2 / 15.0 (60.6 / 55.9 / 59.7 ms) | **22.1 / 22.1 / 22.6** (38.0 / 37.5 / 37.7 ms) |
+| story: cutscene vapula vignette | 12.0 (76.2 / 81.3 ms) | **16.1** (56.9 / 63.1 ms) |
+| story: cutscene after a press | 17.9 (51.2 ms) | **20.0** (45.0 ms) |
+| library: weapons frames | 24.9 (35.6 / 37.1 ms) | **30.0** (31.6 / 33.1 ms) |
+| library: weapons plan | 30.0 (25.5 ms) | 30.0 (**21.5** ms) |
+| action: weld intro card | 22.2 (37.8 / 39.2 ms) | **30.0** (28.7 / 30.0 ms) |
+| action: welding | 21.5 (38.4 / 44.7 ms) | **29.9** (28.8 / 35.1 ms, every frame 2 vblanks) |
+
+Floors (`expect-fps`): weapons frames, weld intro and welding 28, the Derby races 20, the Vapula vignette 14. The
+harness names the UI group's functions in profiles now (`.ovl_ui`, they were "outside known symbols").
+Still short, and why: **the Derby** (38 ms) is its backdrop (sky, grandstand, bunting, lanes: `vid_rect_narrow`,
+~14% of the frame in divisions in `grandstand` / `mg_bunting` / `ui_wave`): S2-4's held backdrop. **The Vapula
+vignette** (57 ms) is its sky bands and vapour puffs (`vid_rect_narrow` 25%) plus the remaining ~10 ms demon blit:
+S2-4. **The home vignette** (41 -> 43 ms work, 20 fps either way) is its full-screen wallpaper (`vid_blit` 54%, scale 1)
+and the figure's idle-time slices: S2-4.
 
 ## 4b. Retained panels (G7, `src/panel.c`)
 

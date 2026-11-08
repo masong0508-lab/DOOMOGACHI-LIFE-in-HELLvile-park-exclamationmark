@@ -10,6 +10,7 @@
  * arg 1 = practice (nothing is welded).
  */
 #include "weld_int.h"
+#include "doomo/plat_ext.h"     /* S2-5: plat_ui_loops */
 
 #define TRAIL_MAX 320
 #define SPARKS 24
@@ -34,6 +35,7 @@ typedef struct WgScratch {
     int8_t  dy[2][TRAIL_MAX];
     uint8_t heat[2][TRAIL_MAX];
     uint8_t t[2][TRAIL_MAX];
+    int8_t  seam[2][TRAIL_MAX];         /* (S2-5) seam_y(x, pass) - seam_cy, made once by wg_enter */
     Spark   sparks[SPARKS];
 } WgScratch;
 static WgScratch *wgs;
@@ -98,6 +100,11 @@ static void wg_enter(int arg)
     ph2 = (int)((h >> 20) & DOOMO_ANG_MASK);
     zone_lo = 420 + hard * 20;
     zone_hi = 720 - hard * 30;
+    {
+        int p, x;
+        for (p = 0; p < 2; p++)
+            for (x = seam_x0; x < seam_x1; x++) wgs->seam[p][x - seam_x0] = (int8_t)(seam_y(x, p) - seam_cy);
+    }
     torch_x = seam_x0;
     torch_y16 = seam_y(seam_x0, 0) * 16;
     torch_vy16 = 0;
@@ -231,30 +238,47 @@ static void plates(int sw, int sh)
         plat_rect(rx, y1 - 7, 2, 2, PAL_RAMP(RAMP_STEEL, 6));
         plat_rect(rx + 1, y1 - 6, 1, 1, PAL_RAMP(RAMP_STEEL, 2));
     }
-    /* the seam: a dark groove */
-    for (x = seam_x0; x < seam_x1; x++) {
-        int y = seam_y(x, wg_pass > 1 ? 1 : wg_pass);
-        plat_rect(x, y - 1, 1, 1, PAL_RAMP(RAMP_STEEL, 2));
-        plat_rect(x, y, 1, 1, PAL_RAMP(RAMP_STONE, 0));
-        plat_rect(x, y + 1, 1, 1, PAL_RAMP(RAMP_STEEL, 3));
+    /* the seam: a dark groove, three pixels down each column. (S2-5) The columns' y come from the scratch
+     * (made once), and a run of columns at the same y is one rect a row: every pixel stays in its column, so
+     * the run draws exactly what the columns one by one did */
+    {
+        const int8_t *sy = wgs->seam[wg_pass > 1 ? 1 : wg_pass];
+        for (x = seam_x0; x < seam_x1;) {
+            int y = seam_cy + sy[x - seam_x0], n = 1;
+            while (x + n < seam_x1 && sy[x + n - seam_x0] == sy[x - seam_x0]) n++;
+            plat_rect(x, y - 1, n, 1, PAL_RAMP(RAMP_STEEL, 2));
+            plat_rect(x, y, n, 1, PAL_RAMP(RAMP_STONE, 0));
+            plat_rect(x, y + 1, n, 1, PAL_RAMP(RAMP_STEEL, 3));
+            x += n;
+        }
     }
 }
 
+/* (S2-5) Every rect of a bead column stays in its column, so a run of columns with the same y and colour is one
+ * 3-row rect, and the column's rivet / glow on top of it follow (the same pixels as column by column). The passes
+ * stay in order: the second pass is drawn over the first. */
 static void bead(void)
 {
     int p, i, pass = wg_pass > 1 ? 1 : wg_pass;
     for (p = 0; p <= pass; p++) {
-        int head = p == wg_pass ? torch_x - seam_x0 : TRAIL_MAX;
-        for (i = 0; i < TRAIL_MAX && seam_x0 + i < seam_x1; i++) {
-            int age, y;
+        int head = p == wg_pass ? torch_x - seam_x0 : TRAIL_MAX, end = seam_x1 - seam_x0;
+        if (end > TRAIL_MAX) end = TRAIL_MAX;
+        for (i = 0; i < end;) {
+            int age, y, n, k;
             uint8_t c;
-            if (!trail_t[p][i]) continue;
+            if (!trail_t[p][i]) { i++; continue; }
             age = head - i;
             y = seam_cy + trail_dy[p][i];
             c = bead_color(age, trail_heat[p][i]);
-            plat_rect(seam_x0 + i, y - 1, 1, 3, c);
-            if ((i % 3) == 0 && age >= 30) plat_rect(seam_x0 + i, y - 1, 1, 1, PAL_RAMP(RAMP_STEEL, 6));
-            if (age < 8) plat_rect(seam_x0 + i, y - 2, 1, 5, ui_lighter(c));
+            for (n = 1; i + n < end && trail_t[p][i + n] && trail_dy[p][i + n] == trail_dy[p][i] &&
+                        bead_color(head - i - n, trail_heat[p][i + n]) == c; n++) {}
+            plat_rect(seam_x0 + i, y - 1, n, 3, c);
+            for (k = i; k < i + n; k++) {
+                int a = head - k;
+                if ((k % 3) == 0 && a >= 30) plat_rect(seam_x0 + k, y - 1, 1, 1, PAL_RAMP(RAMP_STEEL, 6));
+                if (a < 8) plat_rect(seam_x0 + k, y - 2, 1, 5, ui_lighter(c));
+            }
+            i += n;
         }
     }
 }
@@ -316,6 +340,7 @@ static void wg_draw(void)
     if (wg_state == WG_PASS || wg_state == WG_BETWEEN) torch();
     heat_gauge(sw, sh);
     /* what we are welding */
+    plat_ui_loops();                            /* S2-5: the platform's scaled-image loop */
     plat_image(6, 4, icon, 2, IMG_SHADOW, 0);
     weld_name(&weld_pending, buf, sizeof(buf));
     ui_text_outline(58, 6, buf, PAL_UI_CREAM, PAL_RAMP(RAMP_STONE, 0));

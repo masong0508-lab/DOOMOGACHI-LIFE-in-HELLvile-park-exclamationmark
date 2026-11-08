@@ -1403,6 +1403,14 @@ scene scratch). The library already held 30 and still does, numbers as in the au
 turn / scroll 30.17 / 30.17 / 30.77 / 30.77, Almanac profile and face 30.00 (one 50 ms frame each, the lockstep
 resume), the Almanac list move 29.51 (one 67 ms frame, not text). 66 KB below the stack top with the boot FMV.
 
+**S2-5 (scaled images, the Derby, the welding bench).** The PS1 already held 30 in all of these (the GPU scales
+sprites for free); only the welding bench's drawing changed here (the seam's y per column made once per weld, seam
+and bead drawn as runs of same-y columns: the same pixels, ~200 fewer `plat_rect` calls a frame). Measured after
+(PCSX-Redux, the speed2 windows): weld intro 30.17, welding 30.12, Derby title / race sweet / mid / hellfire 30.17 /
+30.00 / 30.00 / 30.00, weapons frames / plan 30.17 / 30.00, home / fog / eruption / Vapula vignettes 30.17 and after a
+press 30.25. `plat_ui_loops` is the weak no-op here and the Derby's 8bpp racer pictures are GBA-only; resident RAM
+unchanged, 65 KB below the stack top with the boot FMV.
+
 ## 13. Notes for the core
 
 * The 2D layer is fastest with few, large rectangles: one `plat_rect` per

@@ -282,7 +282,11 @@ void plat_room_project(const struct DoomoRoomView *v, fix16 x, fix16 y, int z,
  * faster 2D loops ready for this frame (GBA: the IWRAM overlay's UI group,
  * whose scale-2 image loop then draws plat_image(.., 2, ..) without a flip;
  * docs/GBA.md "SP6"). The pixels are exactly the same either way. Returns 1
- * when the loops are in. Weak default: 0, nothing changes (native, PS1). */
+ * when the loops are in. Weak default: 0, nothing changes (native, PS1).
+ * (S2-5) A scene may also call it right before a scaled image, mid-frame
+ * (the cutscenes' demons and eggs, the weapons wing's plans, the welding
+ * icon): on the GBA the group's loop then draws plat_image at any scale 2..4,
+ * flipped or not; under a tile frame it changes nothing and returns 0. */
 int plat_ui_loops(void);
 /* (SP6) The concert's light beam (concert_gfx.c beam()): for y = ay, ay + 3,
  * ... below ty, with f = (y - ay) * 256 / (ty - ay), centre cx = ax + (tx -

@@ -161,12 +161,12 @@ push MG_DERBY 49
 wait 60
 fps start
 wait 130
-fps fair: derby race sweet
+expect-fps 20 fair: derby race sweet
 shot fair_derby_race_sweet
 wait 300
 fps start
 wait 130
-fps fair: derby race mid
+expect-fps 20 fair: derby race mid
 shot fair_derby_race_mid
 seed 1
 scene TITLE
@@ -175,7 +175,7 @@ push MG_DERBY 51
 wait 60
 fps start
 wait 130
-fps fair: derby race hellfire
+expect-fps 20 fair: derby race hellfire
 shot fair_derby_race_hellfire
 
 # ---- Memory ---------------------------------------------------------------------

@@ -71,7 +71,7 @@ scene LIB_WEAPONS 256
 wait 30
 fps start
 wait 90
-fps library: weapons frames
+expect-fps 28 library: weapons frames
 shot lib_weapons
 press DOWN
 press DOWN

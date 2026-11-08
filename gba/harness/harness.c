@@ -492,6 +492,7 @@ static int ovl_group_of(const char *sec)
     if (!strcmp(sec, ".ovl_3d")) return 1;          /* OVL_3D   */
     if (!strcmp(sec, ".ovl_2d")) return 2;          /* OVL_2D   */
     if (!strcmp(sec, ".ovl_room")) return 3;        /* OVL_ROOM */
+    if (!strcmp(sec, ".ovl_ui")) return 4;          /* OVL_UI (S2-5: blit2.c, dots.c were "outside known symbols") */
     return 0;
 }
 

@@ -175,7 +175,7 @@ push WELD_GAME 1
 wait 20
 fps start
 wait 90
-fps action: weld intro card
+expect-fps 28 action: weld intro card
 shot act_weld_intro
 press A
 wait 30
@@ -183,6 +183,6 @@ down A
 wait 40
 fps start
 wait 130
-fps action: welding
+expect-fps 28 action: welding
 shot act_welding
 release
