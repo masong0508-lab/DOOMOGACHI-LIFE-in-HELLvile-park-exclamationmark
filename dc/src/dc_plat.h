@@ -3,8 +3,9 @@
  *
  * DC2 is the skeleton: boot, the 30 Hz frame loop, the harness mailbox and
  * the disc image. DC3 is the 2D layer (dc2d.h: gfx2d.c, texcache.c,
- * font.c, pal.c, pvr2d.c). Input and VMU saves (DC4), audio (DC5) and 3D
- * (DC6) replace the placeholders in plat_stub.c.
+ * font.c, pal.c, pvr2d.c). DC4 is input (pad.c, padmap.c, dcinput.h) and
+ * the VMU saves (vmusave.c, vms.c, save_icon.c; vmusave.h). Audio (DC5)
+ * and 3D (DC6) replace the placeholders in plat_stub.c.
  */
 #ifndef DC_PLAT_H
 #define DC_PLAT_H
@@ -23,7 +24,12 @@ extern volatile uint32_t dc_vblanks;     /* incremented by the vblank handler   
 extern uint32_t dc_frames;               /* doomo_frame() calls (logic ticks)   */
 extern int dc_nodraw;                    /* 1: this tick's drawing is skipped   */
 void plat_init_hw(void);
-uint32_t dc_read_pad(void);              /* BTN_* mask (main.c)                 */
+void dc_pad_init(void);                  /* pad.c: after doomo_init()           */
+uint32_t dc_read_pad(void);              /* pad.c: BTN_* mask, analog, keyboard */
+int dc_keyboard_present(void);           /* pad.c: a keyboard at the last read  */
+int dc_rumble_present(void);             /* rumble.c: a Puru Puru pack on pad 1 */
+void dc_vmu_init(void);                  /* vmusave.c: at boot, before doomo_init */
+void dc_vmu_poll(void);                  /* vmusave.c: after each tick (config write-behind) */
 void dc_pacing_reset(void);              /* forget frame debt (after loads)     */
 uint32_t dc_us(void);                    /* microseconds since boot (wraps)     */
 

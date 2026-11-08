@@ -1,0 +1,3 @@
+# must fail: slot 1 saves fine
+wait 2
+save-must-fail 1

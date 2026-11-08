@@ -1,0 +1,36 @@
+# saves1.txt - DC4 on Flycast: the core's saves on VMU A1, first run on an
+# empty VMU (dcrun --fresh). saves2.txt runs next on the same VMU image, the
+# "power cycle". The commands are the GBA's coresave1/2 (mailbox: town-fill
+# 4, town-crc 5): a worst-case free-play island (1000 citizens, ~58 KB) and
+# a lived-in story island, saved, overwritten in RAM and loaded back.
+wait 40
+expect-log doomo: init
+expect-log DC: vmu A1: 200 blocks free, story -, free play -, settings -
+seed 4242
+# the codec's worst case, slot 1 (free play)
+town-fill 4242
+town-crc
+# the card the save shows while the tick is blocked, 2 s in
+shot-during 120 saving_card
+save 1
+expect-log DC: vmu A1 write DOOMO1.SYS
+expect-save 1
+verify 1
+# too big for the 40 KB story slot: the core refuses it, nothing written
+save-must-fail 0
+# a typical story island in slot 0
+town-fill 0x80000001
+town-crc
+save 0
+expect-log DC: vmu A1 write DOOMO0.SYS
+town-fill 7
+load 0
+expect-town-crc
+# and the big one back from slot 1
+town-fill 4242
+town-crc
+town-fill 7
+shot-during 60 loading_card
+load 1
+expect-town-crc
+wait 10

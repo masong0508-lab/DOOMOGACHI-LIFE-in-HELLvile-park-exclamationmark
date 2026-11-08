@@ -72,6 +72,7 @@ static uint8_t bg_cur, bg_prev, bg_held;
 static uint8_t lerp_on, lerp_bank;
 static uint32_t frame_no;
 static DcFrame last_frame;
+static int     ncap = DC2D_MAX_PRIMS;    /* capacity of cur (the side frame's is smaller) */
 
 /* bounding boxes of 64-prim chunks (exact shades test a chunk before its
  * prims): cbox for the frame's list, filled lazily up to cbox_n; hbox for
@@ -99,7 +100,7 @@ static int ngroups, group_wr;
 static DcPrim *emit(int mode)
 {
     DcPrim *p;
-    if (ncur >= DC2D_MAX_PRIMS) { dc2d_stats.dropped++; return NULL; }
+    if (ncur >= ncap) { dc2d_stats.dropped++; return NULL; }
     p = &cur[ncur++];
     p->mode = (uint8_t)mode;
     p->flags = 0;
@@ -295,6 +296,51 @@ void dc2d_end(void)
 }
 
 const DcFrame *dc2d_last(void) { return &last_frame; }
+
+/* ---- a side frame (DC4) ------------------------------------------------------------------
+ * A picture shown while the game's own tick is blocked (the VMU card of
+ * vmusave.c): the tick's list is put aside, the 2D calls fill a small list
+ * of their own, the PVR shows it at once, and the tick's list comes back
+ * untouched. Its textures are the font pages (static) and none other. */
+#define SIDE_PRIMS 512
+static DcPrim side_buf[SIDE_PRIMS];
+static struct {
+    DcPrim *cur;
+    int ncur, ncap, seal, cbox_n, ngroups, group_wr, drawing, cur_cleared, active;
+    uint8_t bg_cur, lerp_on;
+} side;
+
+void dc2d_side_begin(void)
+{
+    if (side.active) return;
+    side.cur = cur; side.ncur = ncur; side.ncap = ncap; side.seal = seal; side.cbox_n = cbox_n;
+    side.ngroups = ngroups; side.group_wr = group_wr; side.drawing = drawing;
+    side.cur_cleared = cur_cleared; side.bg_cur = bg_cur; side.lerp_on = lerp_on;
+    side.active = 1;
+    cur = side_buf; ncap = SIDE_PRIMS; ncur = 0; seal = 0; cbox_n = 0;
+    ngroups = group_wr = 0; cur_cleared = 0; lerp_on = 0; bg_cur = PAL_BLACK;
+    drawing = 1;
+}
+
+void dc2d_side_end(void)
+{
+    DcFrame f;
+    int i;
+    if (!side.active) return;
+    memset(&f, 0, sizeof(f));
+    f.prims = side_buf;
+    f.n = ncur;
+    f.bg = bg_cur;
+    f.lerp_bank = 2;
+    f.frame = frame_no;
+    for (i = 0; i < ncur; i++)
+        if (side_buf[i].tex != DC2D_NOTEX) dc2d_tex_mark(side_buf[i].tex, frame_no);
+    dc2d_be_submit(&f);
+    cur = side.cur; ncur = side.ncur; ncap = side.ncap; seal = side.seal; cbox_n = side.cbox_n;
+    ngroups = side.ngroups; group_wr = side.group_wr; drawing = side.drawing;
+    cur_cleared = side.cur_cleared; bg_cur = side.bg_cur; lerp_on = side.lerp_on;
+    side.active = 0;
+}
 
 int DC2D_FN(hold_frame)(int on)
 {

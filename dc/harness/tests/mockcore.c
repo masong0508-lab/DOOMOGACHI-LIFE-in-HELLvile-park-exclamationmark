@@ -38,6 +38,7 @@ static unsigned devices[4];
 static int seed_pinned;
 static uint32_t seed_val;
 static int saved[8];
+static uint32_t town_state;              /* DC4: town-fill / town-crc */
 
 static PFNGLCLEARCOLORPROC p_glClearColor;
 static PFNGLCLEARPROC p_glClear;
@@ -173,6 +174,8 @@ static void run_cmd(void)
     case DC_HC_SEED: seed_pinned = 1; seed_val = arg; mlog("seed %u", arg); break;
     case DC_HC_FLAG: r = arg == 7; break;
     case DC_HC_TEXT_FEED: r = arg >= ' ' || arg == '\n'; if (r) mlog("feed %u", arg); break;
+    case DC_HC_TOWN_FILL: town_state = arg * 2654435761u + 1u; r = 1; break;
+    case DC_HC_TOWN_CRC: r = town_state ^ 0x5A5A5A5Au; mlog("town crc %x", r); break;
     default: r = 0xFFFFFFFFu; break;
     }
     mb->result = r;
@@ -204,6 +207,13 @@ RETRO_API void retro_run(void)
         if (mb->cmd) run_cmd();
     }
     tick = mb->ticks;
+    {
+        static uint32_t flags_seen = 0xFFFFFFFFu;
+        if (mb->magic == DC_MAILBOX_MAGIC && mb->test_flags != flags_seen) {
+            flags_seen = mb->test_flags;
+            mlog("test flags %u", flags_seen);
+        }
+    }
 
     for (unsigned p = 0; p < 4; p++) {
         unsigned b = 0;

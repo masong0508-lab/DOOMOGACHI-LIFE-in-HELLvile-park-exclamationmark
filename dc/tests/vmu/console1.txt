@@ -1,0 +1,13 @@
+# console1.txt - DC4, run with dcrun --console (test flags 0, as a real
+# console): the first boot of an empty VMU asks for the language (U5's
+# picker), then writes the machine config record to the VMU.
+wait 160
+expect-scene LANG_PICK
+shot first_boot_picker
+wait 10
+press A
+wait 12
+press A
+wait 20
+expect-scene TITLE
+expect-log DC: vmu A1 write DOOMOCFG.SYS 2 blocks -> ok

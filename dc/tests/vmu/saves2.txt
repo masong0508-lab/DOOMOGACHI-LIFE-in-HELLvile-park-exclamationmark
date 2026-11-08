@@ -1,0 +1,19 @@
+# saves2.txt - DC4: the second run on saves1.txt's VMU image. Both saves
+# are there after the "power cycle" and load back the same islands; slot 1
+# is written again, now in place (the VMU is too full for two copies of the
+# ~124-block island beside the story save).
+wait 40
+expect-log story saved, free play saved
+expect-save 0
+expect-save 1
+verify 1
+load 1
+town-crc
+town-fill 4242
+expect-town-crc
+save 1
+expect-log -> ok (replaced in place)
+load 1
+expect-town-crc
+verify 0
+wait 10

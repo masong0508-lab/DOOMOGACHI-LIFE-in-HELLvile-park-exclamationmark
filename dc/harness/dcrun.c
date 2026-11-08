@@ -30,6 +30,11 @@
  *   log TEXT | expect-log TEXT | expect-scene NAME
  *   mark-ticks | expect-ticks LO HI   ticks since mark-ticks in [LO, HI]
  *   save N | load N | expect-save N | verify N   (mailbox commands)
+ *   save-must-fail N            the save must be refused (result 0; DC4)
+ *   shot-during FRAMES NAME     the next mailbox command takes shot NAME
+ *                               FRAMES video frames in, while it runs (DC4)
+ *   town-fill SEED | town-crc | expect-town-crc   the GBA's save-test
+ *                               commands (mailbox 4 and 5; DC4)
  *   scene NAME [ARG] | push NAME [ARG] | seed N | expect-flag F [V]
  *   audio-reset | audio [LABEL] | expect-audio MIN [LABEL]
  * Dreamcast extensions:
@@ -562,6 +567,10 @@ static void glog_add(const char *s, size_t n)
 
 static volatile DcMailbox *mb;        /* NULL: no mailbox */
 static int mb_up;
+/* DC4: plat_test_flags() for the game: PLAT_TEST_NO_PICKER (plat_ext.h,
+ * bit 0) unless --console, so the first boot of an empty VMU skips the
+ * language picker as the native runner does */
+static uint32_t test_flags = 1u;
 
 static void RETRO_CALLCONV core_log(enum retro_log_level lvl, const char *fmt, ...)
 {
@@ -705,6 +714,7 @@ static void mb_poll(void)
         if (mb->magic != DC_MAILBOX_MAGIC) return;
         mb_up = 1;
         mb_log_rd = 0;
+        mb->test_flags = test_flags;    /* DC4: a scripted run (plat_test_flags) */
         if (!quiet) printf("dcrun: mailbox up at 0x%08x (video frame %lu)\n", mb_addr, video_frames);
     }
     wr = mb->log_wr;
@@ -842,6 +852,7 @@ static int mb_wait_up(void)
 
 /* sync mode: the input the game read at the last release of the hold */
 static Port sync_ports[4];
+static uint8_t sync_keys[RETROK_LAST];   /* DC4: the keyboard too */
 
 /* sync mode: release the hold and run until the game holds again at
  * absolute tick `target`. The pad reaches the game through KOS's maple
@@ -852,9 +863,10 @@ static int run_until_tick(uint32_t target)
 {
     unsigned long f = 0;
     uint32_t last = mb->ticks;
-    if (memcmp(sync_ports, ports, sizeof ports)) {
+    if (memcmp(sync_ports, ports, sizeof ports) || memcmp(sync_keys, keys, sizeof keys)) {
         for (int i = 0; i < 3; i++) run_frame();
         memcpy(sync_ports, ports, sizeof ports);
+        memcpy(sync_keys, keys, sizeof keys);
     }
     __sync_synchronize();
     mb->hold_at = target;
@@ -881,6 +893,7 @@ static int sync_on(uint32_t at)
     mb->draw_all = 1;                   /* a held game must not skip a draw to catch up */
     sync_mode = 1;
     memcpy(sync_ports, ports, sizeof ports);
+    memcpy(sync_keys, keys, sizeof keys);
     if (at == mb->ticks) {              /* tick 0: hold before the first tick */
         mb->hold_at = at;
         sync_tick = at;
@@ -913,6 +926,14 @@ static int run_ticks(unsigned long n)
     return 1;
 }
 
+/* DC4: `shot-during FRAMES NAME`: the next mailbox command takes a shot
+ * FRAMES video frames after it was posted, while the game is still busy
+ * with it (the VMU card of a save or a load) */
+static unsigned long during_frames;
+static char during_name[128];
+
+static void shot(const char *name);
+
 /* Post a mailbox command and run until the game clears it. */
 static int mb_cmd(uint32_t cmd, uint32_t arg, const char *name, uint32_t *result)
 {
@@ -928,7 +949,16 @@ static int mb_cmd(uint32_t cmd, uint32_t arg, const char *name, uint32_t *result
     mb->cmd = cmd;
     while (mb->cmd) {
         run_frame();
-        if (++f > 1800) { fail("mailbox command %u never finished", cmd); return 0; }
+        ++f;
+        if (during_frames && f == during_frames) {
+            shot(during_name);
+            during_frames = 0;
+        }
+        if (f > 3600) { fail("mailbox command %u never finished", cmd); return 0; }
+    }
+    if (during_frames) {
+        fail("shot-during %s: the command ended after %lu frames", during_name, f);
+        during_frames = 0;
     }
     if (result) *result = mb->result;
     return 1;
@@ -1092,7 +1122,8 @@ static int scene_is(const char *name)
 static int run_script(FILE *f)
 {
     char line[1024], raw[1024], *v[32];
-    int lineno = 0;
+    int lineno = 0, town_crc_set = 0;
+    uint32_t town_crc = 0;
     while (fgets(line, sizeof line, f)) {
         int n;
         lineno++;
@@ -1158,6 +1189,20 @@ static int run_script(FILE *f)
             if (!mb_cmd(id, (uint32_t)strtoul(v[1], NULL, 0), NULL, &r)) return 0;
             if (!r)   /* GBA convention: nonzero = success / exists */
                 fail("line %d: %s %s gave %u", lineno, c, v[1], r);
+        } else if (!strcmp(c, "shot-during") && n >= 3) {
+            during_frames = strtoul(v[1], NULL, 0);
+            snprintf(during_name, sizeof during_name, "%s", v[2]);
+        } else if (!strcmp(c, "save-must-fail") && n >= 2) {
+            if (!mb_cmd(DC_HC_SAVE, (uint32_t)strtoul(v[1], NULL, 0), NULL, &r)) return 0;
+            if (r) fail("line %d: save %s should have been refused", lineno, v[1]);
+        } else if (!strcmp(c, "town-fill") && n >= 2) {
+            if (!mb_cmd(DC_HC_TOWN_FILL, (uint32_t)strtoul(v[1], NULL, 0), NULL, NULL)) return 0;
+        } else if (!strcmp(c, "town-crc") || !strcmp(c, "expect-town-crc")) {
+            if (!mb_cmd(DC_HC_TOWN_CRC, 0, NULL, &r)) return 0;
+            if (c[0] == 't') { town_crc = r; town_crc_set = 1; }
+            else if (!town_crc_set) fail("line %d: expect-town-crc before any town-crc", lineno);
+            else if (r != town_crc)
+                fail("line %d: town crc 0x%08x, expected 0x%08x", lineno, r, town_crc);
         } else if ((!strcmp(c, "scene") || !strcmp(c, "push")) && n >= 2) {
             if (!mb_cmd(c[0] == 's' ? DC_HC_SCENE : DC_HC_PUSH,
                         n >= 3 ? (uint32_t)strtoul(v[2], NULL, 0) : 0, v[1], &r)) return 0;
@@ -1264,7 +1309,7 @@ static void usage(void)
         "usage: dcrun CORE.so CONTENT [--script FILE] [--shots DIR] [--run-dir DIR]\n"
         "             [--fresh] [--frames N] [--timeout SEC] [--mailbox ADDR | --nm FILE]\n"
         "             [--wav FILE] [--rtc EPOCH|now] [--opt KEY=VALUE]... [--half] [--sync]\n"
-        "             [--native-seed N] [--quiet]\n"
+        "             [--native-seed N] [--console] [--quiet]\n"
         "             [--device PORT pad|keyboard|mouse|none]... [--verbose]\n");
     exit(2);
 }
@@ -1304,6 +1349,7 @@ int main(int argc, char **argv)
             native_seed = (uint32_t)strtoul(NEXT(), NULL, 0);
             native_seed_on = sync_start = 1;
         }
+        else if (!strcmp(a, "--console")) test_flags = 0;
         else if (!strcmp(a, "--quiet")) quiet = 1;
         else if (!strcmp(a, "--verbose")) quiet = -1;
         else if (!strcmp(a, "--rtc")) {

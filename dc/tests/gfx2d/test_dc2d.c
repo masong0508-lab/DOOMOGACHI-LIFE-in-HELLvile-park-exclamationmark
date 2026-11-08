@@ -144,6 +144,33 @@ static void test_merge(void)
     CHECK(frame_diff(NULL) == 0, "full-screen rect: frame differs");
 }
 
+/* ---- a side frame (DC4: the VMU card while a save blocks the tick) -------------------------- */
+static void test_side(void)
+{
+    const DcFrame *f;
+    uint32_t sub;
+    int n0;
+    frame_begin();
+    plat_rect(10, 10, 50, 20, 6);
+    plat_text(12, 40, "tick", PAL_WHITE);
+    sub = swpvr_submits;
+    /* drawn straight into the 2D layer: the native reference never sees it */
+    dc2d_side_begin();
+    dc2d_clear(PAL_UI_PINK);
+    dc2d_rect(0, 58, DC2D_LW, 2, PAL_UI_PINK_D);
+    dc2d_text(100, 86, "Saving your game...", PAL_BLACK);
+    dc2d_side_end();
+    CHECK(swpvr_submits == sub + 1, "side frame: %u submits, want 1", (unsigned)(swpvr_submits - sub));
+    /* the tick goes on where it was */
+    plat_rect(20, 20, 10, 10, 7);
+    frame_end();
+    f = dc2d_last();
+    n0 = f->n;
+    CHECK(n0 >= 3, "side frame: the tick kept %d prims", n0);
+    CHECK(f->bg == PAL_BLACK, "side frame: the tick's clear colour changed");
+    CHECK(frame_diff(NULL) == 0, "side frame: the tick's picture differs from native");
+}
+
 /* ---- the exact fuzz ------------------------------------------------------------------------- */
 static uint32_t rs = 12345;
 static int rnd(int n) { rs = rs * 1103515245u + 12345u; return (int)((rs >> 8) % (uint32_t)n); }
@@ -441,6 +468,7 @@ int main(void)
     test_twiddle();
     test_uv16();
     test_merge();
+    test_side();
     test_fuzz();
     test_shade();
     test_shade_exact();

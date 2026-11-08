@@ -8,7 +8,14 @@
 #                         the Flycast harness scripts when dc/harness exists
 #   make -C dc check-elf  checks on the linked ELF only (no emulator)
 #   make -C dc host-test  the 2D layer on the host against the native runner
-#                         (dc/tests/gfx2d; `make dc-host-test` needs no KOS)
+#                         (dc/tests/gfx2d) and DC4's VMU file system, icons
+#                         and controls (dc/tests/vmu); `make dc-host-test`
+#                         needs no KOS
+#   make -C dc vmu-test   DC4 on Flycast: saves over a power cycle, a full VMU,
+#                         no VMU, the first-boot config record, and the stick /
+#                         trigger / keyboard against the D-pad (dc/tests/vmu/
+#                         run_flycast.sh; results in build/shots/vmu); part of
+#                         `test` when Flycast is there
 #   make -C dc ui-compare the six DC3 UI scripts on Flycast against the native
 #                         runner (dc/harness/ui_compare.sh; shots and diffs in
 #                         build/shots/ui); part of `test` when Flycast is there
@@ -88,7 +95,7 @@ DC_OBJS   := $(call dc_obj,$(DC_SRCS))
 CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 ALL_OBJS  := $(DC_OBJS) $(CORE_OBJS)
 
-.PHONY: all elf disc all-disc test check-elf check-packdisc host-test harness-test ui-compare sizes clean
+.PHONY: all elf disc all-disc test check-elf check-packdisc host-test harness-test ui-compare vmu-test sizes clean
 .DEFAULT_GOAL := all
 
 all: elf
@@ -117,7 +124,8 @@ PACKSTAMP := $(BUILD)/pack.stamp
 .PHONY: FORCE
 FORCE:
 $(PACKSTAMP): FORCE
-	@mkdir -p $(BUILD); echo "$(strip $(PACK)) $$(cksum < "$(strip $(PACK))" 2>/dev/null)" | cmp -s - $@ || echo "$(strip $(PACK)) $$(cksum < "$(strip $(PACK))" 2>/dev/null)" > $@
+	@mkdir -p $(BUILD); p="$(strip $(PACK))"; c=""; [ -z "$$p" ] || c=$$(cksum < "$$p" 2>/dev/null); \
+	echo "$$p $$c" | cmp -s - $@ || echo "$$p $$c" > $@
 $(OBJ)/dc/src/packdisc.o: $(PACKSTAMP)
 
 $(CDI): $(ELF) $(DC)/ip.txt $(DC)/tools/mkcdi.sh $(PACKSTAMP)
@@ -160,7 +168,8 @@ harness-test: $(ELF) $(CDI) $(ELF_RUN)
 	        --run-dir $(BUILD)/run --script $(DC)/tests/boot.txt --shots $(SHOTS)/$$n \
 	        --timeout 300 || exit 1; \
 	done; \
-	$(MAKE) --no-print-directory -f $(DC)/Makefile ui-compare
+	$(MAKE) --no-print-directory -f $(DC)/Makefile ui-compare || exit 1; \
+	$(MAKE) --no-print-directory -f $(DC)/Makefile vmu-test
 
 $(ELF_RUN): $(ELF)
 	$(STRIP) --strip-debug -o $@ $(ELF)
@@ -172,6 +181,12 @@ ui-compare: $(CDI) $(BUILD)/doomogachi.nm
 	@$(MAKE) --no-print-directory -C $(ROOT)/core runner
 	sh $(HARNESS)/ui_compare.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(RUNNER) $(SHOTS)/ui
 
+# DC4: the VMU saves and the controls on Flycast
+vmu-test: $(CDI) $(BUILD)/doomogachi.nm
+	@if [ -z "$(FLYCAST)" ]; then echo "vmu-test: no Flycast core (make -C dc/harness flycast)" >&2; exit 1; fi
+	@$(MAKE) --no-print-directory -C $(HARNESS) all
+	sh $(DC)/tests/vmu/run_flycast.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(SHOTS)/vmu
+
 $(BUILD)/doomogachi.nm: $(ELF)
 	$(NM) $(ELF) >$@
 harness-test: $(BUILD)/doomogachi.nm
@@ -181,9 +196,11 @@ check-packdisc:
 	@sh $(DC)/tests/packdisc_host.sh
 
 # DC3: the portable 2D layer against the native runner, on the host
-# (dc/tests/gfx2d: unit tests + the UI scripts through the software PVR)
+# (dc/tests/gfx2d: unit tests + the UI scripts through the software PVR);
+# DC4: the VMU file system, the icons and the controls (dc/tests/vmu)
 host-test:
 	@$(MAKE) --no-print-directory -C $(DC)/tests/gfx2d test
+	@$(MAKE) --no-print-directory -C $(DC)/tests/vmu test
 
 test: all-disc check-elf check-packdisc host-test harness-test
 

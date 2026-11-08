@@ -1,0 +1,7 @@
+# console2.txt - DC4, --console on console1.txt's VMU: the record is there,
+# so the second boot goes straight to the title.
+wait 40
+expect-log settings saved
+wait 140
+expect-scene TITLE
+shot second_boot_title

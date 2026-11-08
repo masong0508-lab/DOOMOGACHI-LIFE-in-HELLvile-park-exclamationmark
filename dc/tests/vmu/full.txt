@@ -1,0 +1,18 @@
+# full.txt - DC4: a VMU with only 50 blocks free (vmu_check.py --fill 150,
+# another game's file). The worst-case free-play island does not fit: the
+# save fails cleanly (0 to the core, the reason on screen and in the log)
+# and the other file is untouched; a story save that fits still works.
+wait 40
+expect-log DC: vmu A1: 50 blocks free
+town-fill 4242
+save-must-fail 1
+expect-log DOOMO1.SYS
+expect-log -> VMU full
+town-fill 0x80000001
+town-crc
+save 0
+expect-save 0
+town-fill 7
+load 0
+expect-town-crc
+wait 10

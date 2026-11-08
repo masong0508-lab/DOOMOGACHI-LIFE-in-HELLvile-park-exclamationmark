@@ -53,3 +53,11 @@ type "ok\n"
 expect-ticks 3 6
 expect-log feed 111
 expect-log feed 10
+# DC4: the save-test commands and the test flags
+expect-log test flags 1
+town-fill 4242
+town-crc
+town-fill 7
+town-fill 4242
+expect-town-crc
+save-must-fail 9

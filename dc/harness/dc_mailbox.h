@@ -52,9 +52,14 @@ typedef struct DcMailbox {
      * and evictions (total), textures cached now */
     uint32_t gfx_prims, gfx_prims_max, gfx_vbytes, gfx_vbytes_max;
     uint32_t gfx_dropped, gfx_uploads, gfx_evictions, gfx_tex_live;
+    /* DC4: plat_test_flags() (plat_ext.h PLAT_TEST_*). The harness sets
+     * PLAT_TEST_NO_PICKER as soon as it sees the magic (dcrun --console
+     * leaves 0, a real console's value), so the first boot of an empty VMU
+     * skips the language picker in scripted runs, as the native runner does */
+    uint32_t test_flags;
 } DcMailbox;
 
-_Static_assert(sizeof(DcMailbox) == 132 + DC_MB_LOG_SIZE, "DcMailbox layout");
+_Static_assert(sizeof(DcMailbox) == 136 + DC_MB_LOG_SIZE, "DcMailbox layout");
 
 /* Command ids: the same numbers as the GBA's (gba_plat.h GBA_HC_* and
  * gba/src/hcmd.h), so hcmd.c can be shared in spirit. */

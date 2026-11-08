@@ -1,0 +1,42 @@
+# input_pad.txt - DC4: the UI gallery driven with the D-pad, A and the R
+# button, and the native runner's `type` into the on-screen keyboard.
+# input_alt.txt drives it tick for tick with the analog stick, the analog R
+# trigger and the Dreamcast keyboard on port 2; every shot must be the same
+# picture (dc/tests/vmu/run_flycast.sh compares them).
+wait 20
+scene UI_GALLERY
+wait 25
+press R
+wait 25
+shot g2
+press DOWN
+down RIGHT
+wait 20
+release
+press A
+wait 10
+shot g2_edit
+press R
+wait 20
+press R
+wait 20
+press R
+wait 20
+press R
+wait 20
+press R
+wait 20
+shot g7
+press DOWN
+press A
+wait 14
+expect-scene TEXT_ENTRY
+type "\b\b\b\b\b\b\bCandy"
+wait 12
+wait 10
+shot text
+type "\n"
+wait 1
+wait 10
+expect-scene UI_GALLERY
+shot after

@@ -1,0 +1,3 @@
+# --console: the game sees test flags 0 (a real console)
+wait 2
+expect-log test flags 0

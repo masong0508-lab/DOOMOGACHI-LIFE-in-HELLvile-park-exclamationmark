@@ -31,6 +31,7 @@
 #include "dc_plat.h"
 #include "doomo/doomo.h"
 #include "doomo/story_vm.h"
+#include "doomo/plat_ext.h"
 
 uint8_t  dc_entropy_pinned;
 uint32_t dc_entropy_pin;
@@ -76,11 +77,16 @@ static void town_fill(uint32_t seed)
     doomo_town.money = rng_next(&r);
     doomo_town.day = (uint32_t)rng_range(&r, 5000);
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        DoomoResident *res = &doomo_town.res[i];
+        DoomoCitizen c;
         size_t k;
-        for (k = 0; k < sizeof(*res); k++) ((uint8_t *)res)[k] = (uint8_t)rng_next(&r);
-        res->status = RES_ALIVE;
-        resident_sanitize(res);
+        /* (DC4, as gba/src/hcmd.c) fully random v1 bytes, then res_pack
+         * (clamps + sanitizes): saves use the v1 wire image, so only what v1
+         * carries may be random. Randomising the 76 B DoomoResident itself
+         * also fills gene bits no save brings back, and town_crc() of the
+         * loaded town would never match. */
+        for (k = 0; k < sizeof(c); k++) ((uint8_t *)&c)[k] = (uint8_t)rng_next(&r);
+        c.status = RES_ALIVE;
+        res_pack(&c, &doomo_town.res[i]);
     }
     while (doomo_town.edge_count < DOOMO_MAX_EDGES) {
         DoomoEdge *e = rel_get_or_add(rng_range(&r, 1001), rng_range(&r, 1001));
@@ -118,6 +124,14 @@ static uint32_t town_crc(void)
     c = crc_more(c, t->unlocks, sizeof(t->unlocks));
     c = crc_more(c, t->progress, sizeof(t->progress));
     return c;
+}
+
+/* Test flags (plat_ext.h): what the harness wrote in the mailbox; 0 on a
+ * real console, which never writes it (DC4: the first-boot language picker
+ * is skipped in scripted runs) */
+uint32_t plat_test_flags(void)
+{
+    return dc_mailbox.test_flags;
 }
 
 /* G1: "sync on" scripts hold the loop at an exact tick boundary (before

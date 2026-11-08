@@ -1,0 +1,63 @@
+# input_alt.txt - DC4: input_pad.txt with the analog stick (past 48 of 128
+# it also moves the menus), the analog R trigger (past half) and the
+# keyboard on port 2 (Enter = A; in the on-screen keyboard the keys type,
+# Backspace deletes, Enter is OK). Same ticks, same pictures.
+wait 20
+scene UI_GALLERY
+wait 25
+trigger R 255
+wait 1
+trigger R 0
+wait 1
+wait 25
+shot g2
+stick 0 127
+wait 1
+stick 0 0
+wait 1
+stick 127 0
+wait 20
+stick 0 0
+key "\n"
+wait 10
+shot g2_edit
+trigger R 200
+wait 1
+trigger R 0
+wait 1
+wait 20
+trigger R 200
+wait 1
+trigger R 0
+wait 1
+wait 20
+trigger R 200
+wait 1
+trigger R 0
+wait 1
+wait 20
+trigger R 200
+wait 1
+trigger R 0
+wait 1
+wait 20
+trigger R 200
+wait 1
+trigger R 0
+wait 1
+wait 20
+shot g7
+stick 0 127
+wait 1
+stick 0 0
+wait 1
+key "\n"
+wait 14
+expect-scene TEXT_ENTRY
+key "\b\b\b\b\b\b\bCandy"
+wait 10
+shot text
+key "\n"
+wait 10
+expect-scene UI_GALLERY
+shot after

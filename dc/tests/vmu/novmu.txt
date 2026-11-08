@@ -1,0 +1,10 @@
+# novmu.txt - DC4: no VMU at all (dcrun --device 1 keyboard: a keyboard has
+# no memory card slot; ports 2-4 empty). Saves fail cleanly, nothing hangs,
+# and the game still runs to the title.
+wait 40
+expect-log DC: vmu: none found
+town-fill 0x80000001
+save-must-fail 0
+expect-log DC: vmu write DOOMO0.SYS: no VMU
+wait 140
+expect-scene TITLE

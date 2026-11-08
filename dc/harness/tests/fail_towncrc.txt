@@ -1,0 +1,6 @@
+# must fail: the town changed between town-crc and expect-town-crc
+wait 2
+town-fill 1
+town-crc
+town-fill 2
+expect-town-crc

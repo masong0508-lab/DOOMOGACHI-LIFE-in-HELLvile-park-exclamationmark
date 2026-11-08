@@ -95,6 +95,11 @@ void dc2d_init(void);            /* once, after the backend is up              *
 void dc2d_begin(int drawn);      /* plat_begin_frame; drawn = 0 on a skipped tick */
 void dc2d_end(void);             /* plat_end_frame of a drawn tick: submit     */
 const DcFrame *dc2d_last(void);  /* the frame last submitted (host tests)      */
+/* DC4: a picture of its own while the tick is blocked (the VMU card): the
+ * 2D calls between begin and end draw it (at most 512 prims, the font as
+ * the only texture), end shows it; the tick's own list is left as it was. */
+void dc2d_side_begin(void);
+void dc2d_side_end(void);
 
 /* The 2D calls. On the console they ARE the platform.h functions; the
  * host test build (-DDC2D_HOST) gives them dc2d_ names so a tee can call

@@ -4,8 +4,8 @@
  * pulse as strong and as long as the shake. The pack in controller 1's
  * first expansion slot is used; none attached = nothing happens (the call
  * is still logged so the Flycast harness can `expect-log` it).
- * plat_features() reports PLATF_RUMBLE only while a pack is plugged in, so
- * rows and hints that depend on a motor follow the hardware.
+ * plat_features() (pad.c) reports PLATF_RUMBLE only while a pack is
+ * plugged in, so rows and hints that depend on a motor follow the hardware.
  *
  * The KOS effect word has an intensity of 1..7 per motor and a duration
  * byte; both are derived from the core's 0..255 strength and tick count.
@@ -29,9 +29,10 @@ static maple_device_t *pack(void)
     return maple_enum_type(0, MAPLE_FUNC_PURUPURU);
 }
 
-uint32_t plat_features(void)
+/* plat_features() (pad.c) reports PLATF_RUMBLE while this is 1 */
+int dc_rumble_present(void)
 {
-    return pack() ? PLATF_RUMBLE : 0u;
+    return pack() != NULL;
 }
 
 void plat_rumble(int strength, int ticks)

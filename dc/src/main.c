@@ -1,5 +1,5 @@
 /* main.c - Dreamcast entry point, video and PVR setup, the 30 Hz frame
- * loop and its pacing, and the controller (owner: dreamcast).
+ * loop and its pacing (owner: dreamcast). The controls are pad.c (DC4).
  *
  * Frame protocol (ARCHITECTURE.md, platform.h):
  *     plat_init_hw(); doomo_init();
@@ -22,8 +22,6 @@
 #include <dc/video.h>
 #include <dc/pvr.h>
 #include <dc/vblank.h>
-#include <dc/maple.h>
-#include <dc/maple/controller.h>
 #include <arch/timer.h>
 #include "dc_plat.h"
 #include "dc2d.h"
@@ -61,32 +59,6 @@ static void video_init(void)
     dc2d_be_init();                     /* pvr2d.c: the PVR for the 2D layer */
     dc_logf("DC: video 640x480 %s", cable == CT_VGA ? "VGA" :
             cable == CT_RGB ? "RGB" : cable == CT_COMPOSITE ? "composite" : "?");
-}
-
-/* ---- input (DC4 adds the analog stick, the keyboard and more pads) -------- */
-uint32_t dc_read_pad(void)
-{
-    maple_device_t *dev = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
-    cont_state_t *st;
-    uint32_t k, b = 0;
-    if (!dev) return 0;
-    st = (cont_state_t *)maple_dev_status(dev);
-    if (!st) return 0;
-    k = st->buttons;
-    if (k & CONT_DPAD_UP)    b |= BTN_UP;
-    if (k & CONT_DPAD_DOWN)  b |= BTN_DOWN;
-    if (k & CONT_DPAD_LEFT)  b |= BTN_LEFT;
-    if (k & CONT_DPAD_RIGHT) b |= BTN_RIGHT;
-    if (k & CONT_A)          b |= BTN_A;
-    if (k & CONT_B)          b |= BTN_B;
-    if (k & CONT_X)          b |= BTN_X;
-    if (k & CONT_Y)          b |= BTN_Y;
-    if (st->ltrig > 127)     b |= BTN_L;
-    if (st->rtrig > 127)     b |= BTN_R;
-    /* the pad has no SELECT: START+Y is SELECT (DECISIONS.md) */
-    if ((k & CONT_START) && (k & CONT_Y)) b = (b & ~(uint32_t)BTN_Y) | BTN_SELECT;
-    else if (k & CONT_START) b |= BTN_START;
-    return b;
 }
 
 /* ---- frame pacing ------------------------------------------------------------------- */
@@ -171,7 +143,9 @@ int main(int argc, char **argv)
     boot_us = timer_us_gettime64();
     plat_init_hw();
     dc_boot_egg();                      /* X8: hold A+B+X+Y+START at power-on */
+    dc_vmu_init();                      /* DC4: learn the VMU once (vmusave.c) */
     doomo_init();
+    dc_pad_init();                      /* DC4: analog feel on (pad.c) */
     dc_pacing_reset();
     dc_logf("DC: core up in %u us, loop at 30 Hz", (unsigned)dc_us());
     for (;;) {
@@ -182,6 +156,7 @@ int main(int argc, char **argv)
         plat_begin_frame();
         doomo_frame(b);
         plat_end_frame();
+        dc_vmu_poll();                  /* DC4: a changed config record, written behind */
     }
     return 0;
 }

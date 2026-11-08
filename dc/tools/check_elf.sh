@@ -25,8 +25,9 @@ mb=$(echo "$syms" | awk '$4 == "_dc_mailbox" { print $1, $2 }')
 addr=$(echo "$mb" | cut -d' ' -f1); msize=$(echo "$mb" | cut -d' ' -f2)
 [ $((0x$addr % 32)) -eq 0 ] || fail "dc_mailbox at 0x$addr is not 32-byte aligned"
 # DcMailbox (dc/harness/dc_mailbox.h, the harness contract): 16 words +
-# name[20] + scene[24] + log_wr + log[4096] + 8 words of 2D counters (DC3) = 4228 B
-[ $((0x$msize)) -eq 4228 ] || fail "dc_mailbox is $((0x$msize)) B, dc/harness/dc_mailbox.h says 4228 (update this check and the harness)"
+# name[20] + scene[24] + log_wr + log[4096] + 8 words of 2D counters (DC3)
+# + test_flags (DC4) = 4232 B
+[ $((0x$msize)) -eq 4232 ] || fail "dc_mailbox is $((0x$msize)) B, dc/harness/dc_mailbox.h says 4232 (update this check and the harness)"
 # the unprefixed alias (misc.c) for tools that look the C name up
 alias=$(echo "$syms" | awk '$NF == "dc_mailbox" { print $1 }')
 [ "$alias" = "$addr" ] || fail "no dc_mailbox alias at 0x$addr (got '${alias}')"
