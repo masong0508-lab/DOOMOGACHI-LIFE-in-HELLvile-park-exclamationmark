@@ -1272,10 +1272,30 @@ governor free, so the next ~28 governed frames drew every far sprite again and c
 red map the budget always settles at `GOV_MIN` (logged: by the 20th governed frame after an entry, and it stays
 there), so a gap there resumes from the budget it left with and a first entry starts at `GOV_MIN`; the other maps
 (V14) still start free. Invaded, the 45 ticks after closing the pause: 28.0 -> 30.0 drawn fps, frames over 33.4
-ms 9 -> 0. The first seconds after an entry are unchanged (the budget is already at its floor during the sim's
-entry burst; the rest of that window is the sim (SP2's X4) and the map's name banner, which costs ~4 ms a frame for
-its 100 ticks because it is drawn over the objective's retained panel: invaded ticks 60-100 run at 29.2 fps with
-the banner off against 24.8 with it; left for a later pass, a panel of its own did not help).
+ms 9 -> 0. The first seconds after an entry are unchanged: the budget is already at its floor during the sim's
+entry burst.
+
+What is left after a story-map entry (re-measured on `480e690`, libmgba, seed 1, `scene STORY 219`, `--worklog`;
+the first window includes the harness's town setup):
+
+| ticks after the entry | 0-30 | 30-60 | 60-100 | 100-130 | 130-200 | 200-300 |
+|---|---:|---:|---:|---:|---:|---:|
+| drawn fps | 11.1 | 22.6 | 24.8 | 30.0 | 30.0 | 30.0 |
+| frames over 33.4 / 50.2 ms | 21 / 18 | 17 / 1 | 21 / 0 | 3 / 0 | 5 / 0 | 5 / 0 |
+
+* **The sim's catch-up** (ticks ~40-75): 32 residents a tick brought fully up to date, a routine chosen for each
+  (`update_resident_ex`, `decide_activity`); SP2's X4 makes those updates cheaper. The same pass comes back at
+  **every in-game hour** (~1,150 ticks, 38 s, at the default day length): on invaded, which has no slack left (29 ms
+  frames), each hour of a two-minute run gave 16 frames over 34 ms and 3 over 50 ms, and nothing in between; the
+  visits (`STORY 10`, `12`: 22-28 ms frames) absorb it. What is left wants the routine choice cheaper again or
+  spread (`sim.c`, X4's file), not a draw-side change.
+* **The map / region name banner** (`ow_banner`, 100 ticks after every map entry and every region change) costs
+  2.1 ms a frame (35,000 cycles, timer marks: the drop shadow 12,000, the pill 7,000, the text's two passes 13,500,
+  the sparkles 1,500), mostly the 2D layer's per-call cost, not its place: drawn 40 rows lower, clear of every
+  panel, it costs the same; with it off, ticks 60-100 run at 29.2 fps instead of 24.8. A retained middle (the
+  pill's straight rows and the text as a G7 panel, the ends, shadow and sparkles drawn each frame; pixel-exact on
+  the native panel tests) saved only 0.5 ms (25.8 fps) and was not kept. The banner wants a cheaper call path for
+  narrow rects and shading, or a plate of OBJs (a G-area pass).
 
 ### "3D: Faster / Better" (Options, Performance page)
 
