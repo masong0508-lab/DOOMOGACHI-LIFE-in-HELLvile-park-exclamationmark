@@ -92,6 +92,8 @@ int  part_set_size(int set, int live_only);                   /* parts in the se
  * at most `max` written to out[] (row indices); returns how many matched in all. letters "" or
  * NULL matches every row. live_only skips hidden / planned / test rows. */
 int  part_search(int slot, const char *letters, int live_only, uint16_t *out, int max);
+/* 1 if part m's name or its set's name contains `letters` (case-insensitive; "" matches all). */
+int  part_matches(const PartMeta *m, const char *letters);
 
 /* ---- the age gate (part_age.c; resident) ---------------------------------------------------- */
 /* PAGE_* of (list, value): PAGE_ALL unless the catalog says teen or adult. */

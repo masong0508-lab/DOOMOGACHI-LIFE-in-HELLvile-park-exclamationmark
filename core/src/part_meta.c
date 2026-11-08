@@ -71,6 +71,12 @@ static int has_text(const char *hay, const char *needle)
     return 0;
 }
 
+int part_matches(const PartMeta *m, const char *letters)
+{
+    if (!m) return 0;
+    return has_text(part_meta_name(m), letters) || has_text(doomo_part_sets[m->set].name, letters);
+}
+
 int part_search(int slot, const char *letters, int live_only, uint16_t *out, int max)
 {
     int i, n = 0;
@@ -79,7 +85,7 @@ int part_search(int slot, const char *letters, int live_only, uint16_t *out, int
         const PartMeta *m = &doomo_part_meta[row];
         if (slot >= 0 && m->slot != slot) continue;
         if (live_only && PMF_STATE(m->flags) != PSTATE_LIVE) continue;
-        if (!has_text(part_meta_name(m), letters) && !has_text(doomo_part_sets[m->set].name, letters)) continue;
+        if (!part_matches(m, letters)) continue;
         if (out && n < max) out[n] = (uint16_t)row;
         n++;
     }

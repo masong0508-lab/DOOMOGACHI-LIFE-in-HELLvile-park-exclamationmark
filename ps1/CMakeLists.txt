@@ -58,6 +58,11 @@ list(FILTER CORE_SRCS EXCLUDE REGEX "/core/gen/text_[a-z0-9_]+\\.c$")
 # stay out of the PS1 EXE: its RAM is tight. It links each language's
 # resident table (lang_res_<id>.c) instead (src/lang_ps1.c, doomo/lang.h).
 list(FILTER CORE_SRCS EXCLUDE REGEX "/core/gen/lang_tab_[a-z0-9_]+\\.c$")
+# --- CR7: the creator's part icons. The PS1 links the 4-bit packed copy (part_icons_rle.c, ~57 KB,
+# in the creator overlay group with part_icons.c: ovl_plan.py) and unpacks an icon into the
+# creator's buffer before plat_image uploads it to the VRAM image cache; the raw 140 KB copy
+# (part_icons_data.c, GBA and native) never links here. ---
+list(FILTER CORE_SRCS EXCLUDE REGEX "/core/gen/part_icons_data\\.c$")
 file(GLOB_RECURSE DOOMO_DSC CONFIGURE_DEPENDS ${CORE_DIR}/data/story/*.dsc ${CORE_DIR}/data/story/*.txt)
 add_custom_command(
 	OUTPUT  ${CMAKE_CURRENT_BINARY_DIR}/TEXT.BIN
@@ -241,6 +246,7 @@ foreach(_t doomo_objs ${DOOMO_EXE_NAME})
 	# once painters call it, more than the headroom above the stack reserve: off on the PS1 until CR10
 	# (SPEC P3 reclaims, SPU-RAM part store) lands. Scripted parts are drawn as their slot's default.
 	target_compile_definitions(${_t} PRIVATE DOOMO_PARTS_VM=0)
+	target_compile_definitions(${_t} PRIVATE DOOMO_ICONS_RLE=1)   # CR7: part_icons.h
 	if(DOOMO_ENGINE_TEST)
 		target_compile_definitions(${_t} PRIVATE DOOMO_ENGINE_TEST=1)
 	endif()

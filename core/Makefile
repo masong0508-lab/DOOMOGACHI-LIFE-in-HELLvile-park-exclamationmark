@@ -65,7 +65,7 @@ PLAT_OBJS   := $(call obj,$(NATIVE_PLAT))
 MAIN_OBJ    := $(call obj,$(NATIVE_MAIN))
 TEST_OBJS   := $(call obj,$(TEST_SRCS))
 
-.PHONY: all lib runner test unit scripts journeys gen check-gen xcheck sizes clean story-check talk talk-check parts-check
+.PHONY: all lib runner test unit scripts journeys gen check-gen xcheck sizes clean story-check talk talk-check parts-check part-icons-sheet
 .DEFAULT_GOAL := runner
 
 all: runner $(BUILD)/tests
@@ -207,6 +207,10 @@ endif
 	@$(MAKE) --no-print-directory -f $(CORE)/Makefile BUILD=$(BUILD) $(BUILD)/furngen
 	@echo "gen: furngen"; mkdir -p "$(GEN_ROOT)/core/gen"; $(BUILD)/furngen --out-root "$(GEN_ROOT)"
 	@# --- end H4 ---
+	@# --- CR7: the creator's part icons (links the core: the real renderer and catalog) ---
+	@$(MAKE) --no-print-directory -f $(CORE)/Makefile BUILD=$(BUILD) $(BUILD)/part_icons
+	@echo "gen: part_icons"; mkdir -p "$(GEN_ROOT)/core/gen"; $(BUILD)/part_icons --out-root "$(GEN_ROOT)" >/dev/null
+	@# --- end CR7 ---
 	@# --- S2: textpack, the story text packs (SPEC sec.5; reads core/data/story/) ---
 	@echo "gen: textpack"; mkdir -p "$(GEN_ROOT)/core/gen"; $(PYTHON) $(CORE)/tools/textpack.py --out-root "$(GEN_ROOT)"
 	@# --- end S2 ---
@@ -218,6 +222,18 @@ endif
 	for g in $(PY_GENS_REST); do \
 	    echo "gen: $$g"; $(PYTHON) $$g --out-root "$(GEN_ROOT)"; \
 	done
+
+# --- CR7: the part icon tool (core/tools/part_icons.c): `make -C core part-icons-sheet` writes the
+# icon contact sheet to $(BUILD)/sheets/part_icons.png ---
+$(BUILD)/obj/tools/part_icons.o: $(CORE)/tools/part_icons.c
+	@mkdir -p $(dir $@)
+	$(CC) $(HOST_CFLAGS) -c $< -o $@
+$(BUILD)/part_icons: $(CORE_OBJS) $(PLAT_OBJS) $(BUILD)/obj/tools/part_icons.o
+	$(CC) $(LDFLAGS_SAN) -o $@ $^
+part-icons-sheet: $(BUILD)/part_icons
+	@mkdir -p $(BUILD)/sheets
+	$(BUILD)/part_icons --sheet $(BUILD)/sheets
+# --- end CR7 ---
 
 check-gen:
 	@rm -rf $(BUILD)/gencheck && mkdir -p $(BUILD)/gencheck
