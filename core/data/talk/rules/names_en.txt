@@ -1,0 +1,13 @@
+# core/data/talk/rules/names_en.txt - first names the parser must KNOW
+# (owner: TK, T3 / T4; docs/TALK.md 6b "Precision"). Each is one letter from
+# a safety word, so unknown it would be "corrected" into one: "Pedro is
+# cool" would end the conversation as if a child had been named in a sexual
+# line, "I love Lola" too, "Nazir" would be refused as hate. Compiled into
+# TB_PARSE with the TW_NAME flag and no concept: talk_lex.c makes the word a
+# PERSON when a resident of the town has that name (the game's person
+# lookup), and a plain known word otherwise. Not the roster's names (the
+# roster lookup finds those first) and no name that is itself slang.
+# One word per name (a surname or a pet name is fine).
+ana bob bonner brenner chinna fargo japp kraft kraus krauss lili loki lola lori mila milo nagi nami nani nari nazim nazir nigel pam pedro rafe scott tanya taran thom thor tito titus wang
+# names that were in common_en.txt
+rae rex tim tom

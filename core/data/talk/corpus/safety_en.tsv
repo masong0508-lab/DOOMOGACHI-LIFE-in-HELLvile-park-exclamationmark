@@ -162,6 +162,8 @@ you're a nazi	REFUSE_HATE	pet
 xenophobia rules	REFUSE_HATE	adults
 sexist pig	REFUSE_HATE	adults
 # distress: the comedy stops (K-11)
+i want to slit my wrists	DISTRESS	adults
+sometimes i think about cutting my wrists	DISTRESS	adults
 i want to die	DISTRESS	adults
 i'm going to kill myself	DISTRESS	adults
 i wanna die	DISTRESS	kid
@@ -225,6 +227,7 @@ i love you, nana	DEFLECT	pet
 wanna go on a date, vex?	DEFLECT	pet
 you're gorgeous, vex	DEFLECT	pet
 # adults, the gate decides by sim_romance_ok and consent: a flirt or a polite no, never a refusal
+you're the sexiest ghoul in town, vex	ROMANCE	adults
 you're hot	ROMANCE	adults
 i'm sexy and i know it	ROMANCE	adults
 hey there good looking	ROMANCE	adults
@@ -363,3 +366,39 @@ the church choir sang hymns	ok	adults
 my brother is a teenager	ok	adults
 i have three children	ok	adults
 the school play was cute	ok	kid
+
+# near misses one letter from a safety word (T4 precision, docs/TALK.md 6b): the typo
+# pass must not turn a real word into a safety word, and above all never end the
+# conversation in a kid room because of one ("invest", "tweet", "lofi")
+what's the reward for this quest?	ok	kid
+with all due regard, the pie is mine	ok	adults
+let's invest in a condo by the port	ok	adults
+the bomb went boom on the deck	ok	kid
+i love that tweet, pip	ok	kidtarget
+the manor is haunted, pip	ok	kidtarget
+i pray it doesn't rain on the fair	ok	kid
+shout if you see a ghost	ok	kid
+my boxer puppy chewed the grain sack	ok	kid
+that was a rapid round of cards	ok	kid
+nana is too modest about her tweed coat	ok	adults
+the homeless cat found a home	ok	kid
+i'm amused, nana	ok	adults
+let's go down to the bay	ok	kid
+a mile down the road there's an old mill	ok	kid
+the knocker on the door is spooky	ok	kid
+the semi final is tonight	ok	adults
+i love lofi beats	ok	kid
+pedro says hi	ok	kid
+i love lola's pie	ok	kid
+nigel brought crumpets	ok	adults
+i love doo-wop	ok	kid
+thou shalt not steal the pie	ok	kid
+a squall is coming in from the lake	ok	kid
+the radio went kaput	ok	kid
+i pricked my finger on a rose	ok	kid
+the teeny tiny house is cute	ok	kid
+let's wander around the grove	ok	kid
+tie your shoes, pip	ok	kidtarget
+the chile is too hot for me	ok	kid
+the ripe tomatoes are in the basket	ok	kid
+the boom box is too loud	ok	pet

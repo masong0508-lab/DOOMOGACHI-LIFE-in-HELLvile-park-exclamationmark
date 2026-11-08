@@ -267,9 +267,12 @@ talk_parse("Nana, what's in the pie?", &c, &u, &info);   /* ASK_ABOUT, topic pie
 2. **Correct**: an unknown word that is no name is fixed at edit distance 1
    (the first letter kept): a word that completes a phrase with its
    neighbours first ("white powe"), then a safety word, then the first word
-   found. Every word of every phrase, and about 1,500 everyday words
-   (`rules/common_en.txt`), count as known, so "seen" is never "corrected"
-   into a safety word.
+   found. Every word of every phrase, about 1,700 everyday words
+   (`rules/common_en.txt`) and the first names of `rules/names_en.txt` count
+   as known, so "seen" is never "corrected" into a safety word, nor
+   "invest", "tweet" or "Pedro" (6b, "Precision"). A name of `names_en.txt`
+   is a person when a resident of the town has it (the game's person
+   lookup), else a plain word.
 3. **Tag**: persons (a participant's full or first name, "Nana's"; a title
    such as "Mayor" or "Dr." only as a vocative or with "the": "thanks,
    doctor", "the mayor is right"); multi-word keys longest first; lemmas
@@ -323,8 +326,9 @@ the tokens, flags, acts, topic, target and the masked bubble of one line.
 `DOOMO_TALK_MISS=1` lists every corpus miss.
 
 **Adding a rule or a word**: add class members or a rule to `rules/en.tsv`
-(or an everyday word to `common_en.txt`), add corpus lines that show it, run
-`make -C core talk unit` and keep the three bars.
+(or an everyday word to `common_en.txt`, a first name to `names_en.txt`),
+add corpus lines that show it, run `make -C core talk unit` and keep the
+three bars.
 
 ---------------------------------------------------------------------------
 
@@ -352,14 +356,53 @@ concepts are flirting words: a FLIRT the gate may allow between adults as
 
 | Set | Lines | Result | Bar |
 |---|---:|---|---|
-| `safety_en.tsv` must-refuse (explicit, K-7, hate, distress, romance with a minor both ways) | 205 | **205 refused, every one in its class** | 100% |
-| `safety_en.tsv` near misses ("my kid brother loves pie", "hell yeah, pizza!", "*hugs Pip*", "i'll kill you at chess") and adult romance | 127 | **125 not refused** (98.4%; the two refused: "dick tracy", "the nude colour lipstick") | 97% |
+| `safety_en.tsv` must-refuse (explicit, K-7, hate, distress, romance with a minor both ways) | 207 | **207 refused, every one in its class** | 100% |
+| `safety_en.tsv` near misses ("my kid brother loves pie", "hell yeah, pizza!", "*hugs Pip*", "i'll kill you at chess", "let's invest in a condo by the port") and adult romance | 160 | **158 not refused** (98.8%; the two refused: "dick tracy", "the nude colour lipstick") | 97% |
 | `adversarial_en.tsv` (hand-written obfuscation: "s3x with a k1d", "ѕех", "n a k e d", "su1cide", "h3il h1tler") | 69 | 62/62 refused, 7/7 near misses passed | 100% |
-| machine mutation of every must-refuse line (leet, spacing, marks, stretched letters, look-alikes, case, one typo after the first letter; 24 a line) | 3,940 | **99.4% refused; child-related 1,082/1,082** | 99%; 100% |
+| machine mutation of every must-refuse line (leet, spacing, marks, stretched letters, look-alikes, case, one typo after the first letter; 24 a line) | 3,993 | **99.3% refused; child-related 1,080/1,080** | 99%; 100% |
 
 A typo that lands on another real word is not the same word any more and is
-not counted (548 skipped mutants). The remaining misses are stop words of a
+not counted (543 skipped mutants). The remaining misses are stop words of a
 phrase broken up ("i want t o disappear"). `DOOMO_TALK_MISS=1` lists them.
+
+**Precision** (the owner's first priority is a game that makes sense: an
+innocent line must never be refused, and above all never end the
+conversation). The typo pass and the one-edit hate match only see words
+the parser does not know, and with a few thousand known words most English
+is unknown: "invest" became "incest", "port" "porn", "deck", "mile",
+"rapid", "grove" and "modest" sexual words, "tweet" and "manor" child-only
+words ("I love that tweet" ended the talk as K-7), "reward" and "regard" a
+slur, "homeless" and "amused" distress, "Pedro", "Lola" and "lofi" K-7,
+"Nazir" and "Nigel" hate. Checked by running the 50,000 most frequent
+English words (a subtitle frequency list, used as a probe only and not
+committed) through the parser with the roster's person lookup:
+
+| | Before | After |
+|---|---:|---:|
+| words given a refusal class (sexual, hate, distress) | 428 | 274 |
+| real words a typo correction turned into a safety word | 298 | 119 |
+| single words that end the conversation by themselves (sexual + child) | 20 | 11 |
+
+What is left is the safety words themselves (274 includes "sex", "naked",
+the slurs, the distress words) and, in the 119, mostly rare names, foreign
+words and slang that is itself crude ("tit", "booby", "kink"). The fix is
+data, not a weaker matcher: `common_en.txt` lists the real words one letter
+from a safety word (reviewed by hand: no roster name, no slang that is
+sexual or hateful itself), and `names_en.txt` the first names (`TW_NAME`:
+known, but a person when a resident has the name, so gossip about a custom
+"Pedro" still works). 32 near-miss lines in `safety_en.tsv` keep them
+honest, and `talk_parse_near_miss_words_and_names` checks the words and the
+name lookup. One raw word cut by a mark still joins into a safety word even
+when both halves are words ("hot_tie").
+
+**The hate match** keeps the first letter and allows one edit: a letter
+added to a listed word of 4 letters or more (a typo that breaks a double
+letter squeezes to this), a letter left out, changed or two swapped in a
+listed word of 5 letters or more. With the reviewer's local list
+(`DOOMO_HATE_PLAIN`) every word, its plural and a typo are caught (44 of
+44; the earlier 5 / 6-letter thresholds caught 33). The words this wider
+match would wrongly catch among the 50,000 ("clink", "kaput", "squall",
+"Nigel", "Tanya") are in the two lists.
 
 **Distress** (K-11, the owner default) comes before hate in the gate (a
 person in trouble gets the kind answer even when the line is ugly; the
@@ -389,16 +432,16 @@ All figures are for `TALK_en.BIN` after the TK1 content (`talkc --stats`):
 | FORMS (Huffman) | 52,921 B | 68,653 B | yes |
 | CATS + CATNAMES | 1,944 B | 2,192 B | yes |
 | EDGES (21,254 reviewed edges) | 50,530 B | 50,530 B | no (Dreamcast, native) |
-| PARSE (T3: 11,468 words, 138 tag sets, 228 rules, 284 safety words) | 275,469 B | 275,469 B | no (Dreamcast, native) |
+| PARSE (T3: 11,661 words, 138 tag sets, 228 rules, 286 safety words) | 279,029 B | 279,029 B | no (Dreamcast, native) |
 | SAFETY (T4: 246 lint words, 128 + 160 hate hashes) | 6,428 B | 6,428 B | **yes** (the S3 lint) |
-| **Total file** | **503,324 B** | | **PS1: 176,805 B** of the 312 KB budget |
+| **Total file** | **506,844 B** | | **PS1: 176,805 B** of the 312 KB budget |
 
 (After TK2 the other banks are for 4,009 concepts: CONCEPT 32,080 B, ASSOC
 64,160 B, ATTR 18,896 B, FORMS 53,297 B.) The design estimated PARSE at
 about 110 KB; it is bigger because its words are stored raw for a binary
 search through `plat_talk_read` (DC only: 11 MB free). Code, `-Os`:
-`talk_lex.c` 9,743 B (ARM Thumb) / 12,064 B (SH4), `talk_parse.c` 2,868 /
-3,378 B, `talk_safe.c` 3,538 / 4,356 B, 4 B of `.bss` (the lint counter);
+`talk_lex.c` 9,879 B (ARM Thumb) / 12,192 B (SH4), `talk_parse.c` 2,860 /
+3,378 B, `talk_safe.c` 3,546 / 4,344 B, 4 B of `.bss` (the lint counter);
 stack about 6 KB in `talk_parse` (40 tokens and a copy). The PS1 links only
 the S2 / S3 half once T5a calls it.
 
@@ -428,7 +471,7 @@ Other measurements:
 |---|---|
 | `core/tests/test_contracts_talk.c` | The act ids and groups; `TalkUtter`'s layout; `PLATF_TALK` and the weak hooks; the room projection (origin, tile steps, height, a quarter turn equal to the turned room, pan, zoom 2 ignored by the reference, the platform hook equal to the reference); the `'TALK'` chunk and the joint worst case; the four headlines with the longest names |
 | `core/tests/test_talk_db.c` | The fixture opens and verifies; forms and articles (plurals, irregulars, mass nouns, names, "the" names, truncation); categories and roots; the safety classes the gate will read (sexual and capped never, everyday swears adult, romance adult, minor words); attributes; associations (range, order, talkable, **no edge into adult from non-adult**, EDGES begins with ASSOC); refusals (CRC, magic, version, dictionary, truncation, an out-of-range bank, a duplicate bank); CRC-32; the full `TALK_en.BIN` through the native platform |
-| `core/tests/test_talk_parse.c` | The canonical key; folding, leet, look-alikes, stretched letters, typos, lemmas, multi-word keys, persons, numbers, spaced letters; acts, topics, targets; determinism (no state, no database = UNKNOWN); the 1,517-line corpus against the three bars; `DOOMO_TALK_LINE` |
+| `core/tests/test_talk_parse.c` | The canonical key; folding, leet, look-alikes, stretched letters, typos, lemmas, multi-word keys, persons, numbers, spaced letters; real words and first names one letter from a safety word (known, no safety class; a name of `names_en.txt` is a person when a resident has it; "hot_tie" still joins); acts, topics, targets; determinism (no state, no database = UNKNOWN); the 1,517-line corpus against the three bars; `DOOMO_TALK_LINE` |
 | `core/tests/test_talk_safety.c` | One source of "minor" (1,000 premade ids, the kid cast file, pool stages, unknown ids, the pet); the safety and adversarial corpora; the mutation fuzz; the hate hash (C equals Python, no lexicon word on it, `DOOMO_HATE_PLAIN`); the gate properties P1-P4 and P7 over 200,000 random calls and every (adult, minor) pair both ways; P5 Mature; P6 closed vocabulary over 50,000 random lines; the S3 lint (units and the whole vocabulary); the masked bubble |
 | `make -C core talk-check` | `talkc --check` (now also TK1-TK9 and the corpora) and `--selftest` (30 seeded refusals: 11 lexicon files, 4 bad edges, 13 templates, 2 rule files; and `core/tests/talk_good.tlk` must lint clean) (part of `make -C core test`) |
 | `make -C core check-gen` | `gen_game.tsv`, `concepts.lock` and `talk_fixture.c` regenerate byte for byte |
@@ -454,6 +497,7 @@ Other measurements:
 | A romance act that is only the line's second act | Dropped where the gate would refuse it; the first act stands | "Love you guys!" is a compliment, not a refusal |
 | `minor()` in design 7.3 | Also the hero (the player's stage) and the pet (`TALK_PET_ID`) | Talk's own ids |
 | (the T1 network) | **37 everyday concepts added** by TK2 (day, week, hat, sofa, music, food, colour, parade, monster ...; `concepts.lock` 4,009) | The parser corpus needed them; they have no association edges yet |
+| A typo fix towards a safety word for every unknown word ("refusing is the safe error") | The same, but real words and first names one letter from a safety word are listed as known (`common_en.txt`, `names_en.txt` with `TW_NAME`) | Measured on the 50,000 most frequent English words: "invest", "tweet", "reward", "Pedro" were refused or ended the talk as K-7 (6b, "Precision"). A wrong K-7 ending tells an innocent player they did something terrible: the owner's comprehensibility rule. Recall on misspelled safety words stays at the bars |
 
 
 **Known risks (open):**
@@ -464,7 +508,11 @@ Other measurements:
 * **Over-refusal.** The classifier refuses "dick tracy" and "the nude
   colour lipstick", and treats "kill me" style jokes as fine but "hits me"
   as distress. The trade is deliberate: a refusal costs a joke, a miss could
-  cost a child. Review the near-miss list with the owner.
+  cost a child. Review the near-miss list with the owner. Rare words and
+  names outside the 50,000 checked can still be "corrected" into a safety
+  word (119 of the 50,000 still are: rare names, foreign words, crude
+  slang); grow `common_en.txt` / `names_en.txt` from play testing, and rerun
+  the frequency probe (6b) after any safety-list change.
 * **The hate list** is the reviewer's starting list (44 words and their
   variants, hashed); it needs the owner's review and growth over time.
 * **Concept-id headroom.** 4,009 of the 4,095 12-bit ids are used (TK2

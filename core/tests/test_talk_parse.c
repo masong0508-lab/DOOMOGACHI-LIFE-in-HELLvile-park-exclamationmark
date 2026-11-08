@@ -202,6 +202,56 @@ TEST(talk_parse_acts_topics_targets)
     talk_db_close();
 }
 
+/* a resident named like a word of names_en.txt (a custom one, say) */
+static int pedro_person(const char *canon_name) { return strcmp(canon_name, "pedro") == 0 ? 7 : -1; }
+
+/* T4 precision: a real word or a first name one letter from a safety word
+ * is that word, not the safety word (docs/TALK.md 6b "Precision") */
+TEST(talk_parse_near_miss_words_and_names)
+{
+    static const char *const words[] = { "invest", "port", "deck", "tweet", "manor", "reward", "homeless", "lofi" };
+    TalkTok t[TALK_TOK_MAX];
+    TalkParseCtx c = room3();
+    unsigned i;
+    int n;
+    CHECK(open_db());
+    for (i = 0; i < sizeof words / sizeof words[0]; i++) {
+        uint16_t wf = 0xFFFF;
+        CHECK_MSG(talk_lex_known(words[i], &wf), "%s is not a known word", words[i]);
+        CHECK_MSG(!(wf & (TW_SEXUAL | TW_SUGGEST | TW_HATE | TW_DISTRESS | TW_MINOR)), "%s has safety flags %04x",
+                  words[i], wf);
+        n = talk_lex(words[i], &c, t, TALK_TOK_MAX);
+        CHECK_EQ(n, 1);
+        CHECK_MSG(!(t[0].flags & (TTF_FUZZY | TTF_UNK)), "%s was corrected", words[i]);
+        CHECK_EQ(talk_safe_scan(t, n) & (TS_SEXUAL | TS_HATE | TS_DISTRESS | TS_MINOR), 0);
+    }
+    /* a name nobody in town has: a plain known word, no safety class */
+    n = talk_lex("pedro says hi", &c, t, TALK_TOK_MAX);
+    CHECK(n >= 1);
+    CHECK_EQ(t[0].kind, TTK_WORD);
+    CHECK(t[0].wflags & TW_NAME);
+    CHECK_EQ(talk_safe_scan(t, n) & (TS_SEXUAL | TS_HATE | TS_MINOR), 0);
+    /* the same name when a resident has it: a person (gossip) */
+    c.person = pedro_person;
+    n = talk_lex("pedro says hi", &c, t, TALK_TOK_MAX);
+    CHECK(n >= 1);
+    CHECK_EQ(t[0].kind, TTK_PERSON);
+    CHECK_EQ(t[0].person, 7);
+    CHECK(t[0].flags & TTF_ABSENT);
+    /* a name in the room is the participant, as before */
+    c = room3();
+    n = talk_lex("vex, hi", &c, t, TALK_TOK_MAX);
+    CHECK_EQ(t[0].kind, TTK_PERSON);
+    CHECK_EQ(t[0].person, 1);
+    /* one raw word cut by a mark still joins into a safety word ("hot_tie") */
+    n = talk_lex("you're a hot_tie", &c, t, TALK_TOK_MAX);
+    CHECK(talk_safe_scan(t, n) & TS_SEXUAL);
+    /* two words with a mark between them stay two ("well-known") */
+    n = talk_lex("a tie-dye shirt", &c, t, TALK_TOK_MAX);
+    CHECK_EQ(talk_safe_scan(t, n) & (TS_SEXUAL | TS_HATE), 0);
+    talk_db_close();
+}
+
 /* the same line always parses the same; the parser keeps no state */
 TEST(talk_parse_deterministic)
 {

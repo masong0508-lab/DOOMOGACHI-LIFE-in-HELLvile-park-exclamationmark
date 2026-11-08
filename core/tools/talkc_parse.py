@@ -59,7 +59,7 @@ import re
 
 TW = {"func": 0x0001, "suggest": 0x0002, "sexual": 0x0004, "hate": 0x0008, "distress": 0x0010,
       "minor": 0x0020, "realworld": 0x0040, "strong": 0x0080, "crude": 0x0100, "capped": 0x0200,
-      "topic": 0x0400, "group": 0x0800, "minorx": 0x1000 | 0x0020}
+      "topic": 0x0400, "group": 0x0800, "minorx": 0x1000 | 0x0020, "name": 0x2000}
 TW_SAFETY = TW["sexual"] | TW["hate"] | TW["distress"] | TW["minor"] | TW["suggest"]
 PREDS = ["ANY", "CONCEPT", "PERSON", "ABSENT", "ADJPOS", "ADJNEG", "QMARK", "EXCL", "NUM", "UNK",
          "SEXUAL", "SUGGEST", "HATE", "DISTRESS", "MINOR", "REALWORLD", "STRONG", "CRUDE", "FOOD",
@@ -273,6 +273,21 @@ def load_rules(path, acts, die, rel):
                 k = canon(w)
                 if k and k not in R.common:
                     R.common.append(k)
+    # first names that are no word (rules/names_<lang>.txt): known, so the
+    # typo pass never turns "Pedro" into a safety word; talk_lex.c makes one
+    # a PERSON when a resident of the town has that name
+    R.names = []
+    npath = os.path.join(os.path.dirname(path), "names_" + os.path.basename(path)[:-4] + ".txt")
+    if os.path.exists(npath):
+        for n, line in enumerate(open(npath, encoding="utf-8").read().split("\n"), 1):
+            if line.startswith("#"):
+                continue
+            for w in line.split():
+                k = canon(w)
+                if not k or " " in k:
+                    die("%s:%d" % (rel(npath), n), "a name is one word: %r" % w)
+                if k not in R.names:
+                    R.names.append(k)
     return R
 
 
@@ -363,6 +378,10 @@ def word_table(b, R, phrases, suggestive, problems):
         e[1] |= TW[cls]
     for k in getattr(R, "common", ()):
         tab.setdefault(k, [0, 0, set()])
+    for k in getattr(R, "names", ()):
+        e = tab.setdefault(k, [0, 0, set()])
+        if not e[0] and not (e[1] & ~TW["name"]) and not e[2]:
+            e[1] |= TW["name"]                 # a word of its own ("bob", "will") stays a word
     # every word of a phrase is a word the parser knows, so the typo pass
     # never "corrects" the "kill" of "kill myself" or the "heil" of a hate phrase
     for k in list(tab):

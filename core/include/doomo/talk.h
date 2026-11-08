@@ -311,6 +311,8 @@ uint32_t talk_crc32(uint32_t crc, const uint8_t *p, uint32_t len);
 #define TW_TOPIC     0x0400u      /* a +topic class word                       */
 #define TW_GROUP     0x0800u      /* a group of real people (hate with HATEV)  */
 #define TW_MINORX    0x1000u      /* only ever a child (underage, preteen ...): with a liking word, K-7 */
+#define TW_NAME      0x2000u      /* a first name (rules/names_<lang>.txt): known, so never "corrected"
+                                     into a safety word; a PERSON when a resident has it */
 
 /* token kinds and flags */
 enum { TTK_WORD = 0, TTK_QMARK, TTK_EXCL, TTK_NUM, TTK_PERSON };

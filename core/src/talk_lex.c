@@ -727,7 +727,9 @@ int talk_lex(const char *text, const TalkParseCtx *ctx, TalkTok *tok, int max)
         memcpy(b + la, u[i + 1].s, (size_t)lb + 1);
         ka = prs_find(&h, u[i].s, NULL) >= 0;
         kb = prs_find(&h, u[i + 1].s, NULL) >= 0;
-        if (ka && kb && la > 2 && lb > 2) continue;
+        /* two known words stay two ("well-known"), unless one raw word joins
+         * into a safety word ("hot_tie", "pen.is") */
+        if (ka && kb && la > 2 && lb > 2 && u[i].raw != u[i + 1].raw) continue;
         if (!((prs_find(&h, b, &w) >= 0 &&
                ((w.wflags & (TW_SEXUAL | TW_SUGGEST | TW_HATE | TW_DISTRESS | TW_MINOR | TW_STRONG | TW_GROUP)) ||
                 (u[i].raw == u[i + 1].raw && (!ka || !kb || la == 1 || lb == 1)))) ||
@@ -857,6 +859,19 @@ int talk_lex(const char *text, const TalkParseCtx *ctx, TalkTok *tok, int max)
         }
         if (used) {
             memcpy(t->text, b, strlen(b) < TALK_TOK_LEN ? strlen(b) : TALK_TOK_LEN - 1);
+            if (used == 1 && (w.wflags & TW_NAME) && ctx && ctx->person) {
+                /* a first name of names_<lang>.txt: a resident who has it is a person */
+                int id = ctx->person(b);
+                if (id >= 0) {
+                    t->kind = TTK_PERSON;
+                    t->person = (int16_t)id;
+                    t->flags |= TTF_ABSENT;
+                    t->wflags |= TW_FUNC;
+                    t->src1 = raw[u[i].joined].end;
+                    nt++; i++;
+                    continue;
+                }
+            }
             set_word(&h, t, &w);
             t->src1 = raw[u[i + used - 1].joined].end;
             nt++; i += used;

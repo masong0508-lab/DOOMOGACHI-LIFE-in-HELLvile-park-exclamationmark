@@ -48,4 +48,19 @@ sad safe salad salt sand sandwich scared scarf school score sea secret shark she
 table tail tea teacher team teeth television test thief throat thumb ticket tiger tired toast toe toilet tooth towel town toy train trash tree trick trip trouble truck tummy turtle
 ugly umbrella uncle upset vampire village wall wallet war wardrobe warm water weather wedding weekend weird whale wife wind window wine winter witch wolf woman wood worm
 booth bath bathe beard bench bound bounce brew brick bucket buddy bunch candle cast chalk cheek choir cloth clown coast copper cord crow crowed dawn dusk faith fork gravy grill hood hook horn lace lipstick loop lump mitten noodle pillar pipe plug prize puddle quilt rack rag ribbon rug sack sauce scoop sheet shelf shell shovel sink skate slide sock spade spark sponge spout stamp stem stick stool straw string stump suit swan tap tape thread tin trunk tub twig vase wand weed wheel whistle wig wire wrap yarn zip tracy hits kicks punches slaps beats
-tho though although thru rae rex tom tim
+tho though although thru
+# real words ONE LETTER from a safety word (T4 precision). Unknown, the typo
+# pass would "correct" them into the safety word and S1 would refuse an
+# innocent line, or end the conversation when a child is in the room ("let's
+# invest" is not "incest", "the port" is not "porn", "I love that tweet" is
+# not "tween"). Found by running the 50,000 most frequent English words
+# through the parser (docs/TALK.md 6b, "Precision"); reviewed by hand: no
+# name of the roster, no slang that is itself sexual or hateful.
+# sexual neighbours
+blob boom boon boor boop bomb bower boxer condo condor crouch crutch dirk deck dock ejection fondly fondue foundling frisk flint flit genial grain groan grove gripe griping ingest invest knickers knocker mile mil mill modest honker lofi node nudge nuke nuked org mani-pedi pasty patty peds pero peso pore port pricked pricking pushy rap rapid rasp raze reap ripe seamen secs sect semi sew slat slit specks throng thou tie ties tilt tong toot tot tots trot tuts tats tics vibrato wack wane waning wander
+# hate neighbours (and a word that only looks like one)
+chinook clink kaput neuro proffer rear regard reward slum slurp slurred slurring spur squall squawk tannoy tawny terran tyranny doo-wop
+# distress neighbours
+amuse amused homeless homelessness hopelessly overdone
+# child-word neighbours (a child word next to a sexual one ends the talk: K-7)
+bay chile grater grander grayer infact manor parm prat pray prim prom sans scoot scot scots scour shout sob sod sous sow sown stout teeny teensy tweed tweet
