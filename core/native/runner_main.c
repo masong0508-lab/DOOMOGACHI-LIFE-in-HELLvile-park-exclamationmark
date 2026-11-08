@@ -31,6 +31,10 @@
  *   scene NAME [ARG]    scene_set() to NAME (e.g. UI_GALLERY)
  *   push NAME [ARG]     scene_push()
  *   save SLOT / load SLOT / expect-save SLOT
+ *   stick LX LY RX RY   (ST1) an analog pad with its sticks there (-128..127,
+ *                       +y down) until the next stick line; `stick off` pulls
+ *                       it out. The left stick presses the D-pad past 48, as
+ *                       the PS1 / Dreamcast pad drivers do.
  *   log TEXT            print TEXT
  *   no-stubs            fail now if any stub has run
  *   seed N              (S2, SPEC C18) doomo_town.seed = N, and N is what
@@ -298,7 +302,7 @@ static void step(int n)
 {
     while (n-- > 0) {
         plat_begin_frame();
-        doomo_frame(held | (gba_input ? DOOMO_INPUT_SYNTH_XY : 0));
+        doomo_frame(held | input_stick_mask() | (gba_input ? DOOMO_INPUT_SYNTH_XY : 0));
         plat_end_frame();
         if (jr.on) jr_frame();   /* M0 */
         if (hudw_on) hudw_frame();   /* CL1 */
@@ -318,7 +322,8 @@ static uint32_t button(const char *s)
         { "UP", BTN_UP }, { "DOWN", BTN_DOWN }, { "LEFT", BTN_LEFT },
         { "RIGHT", BTN_RIGHT }, { "A", BTN_A }, { "B", BTN_B }, { "L", BTN_L },
         { "R", BTN_R }, { "START", BTN_START }, { "SELECT", BTN_SELECT },
-        { "X", BTN_X }, { "Y", BTN_Y }, { "L2", BTN_L2 }, { "R2", BTN_R2 }
+        { "X", BTN_X }, { "Y", BTN_Y }, { "L2", BTN_L2 }, { "R2", BTN_R2 },
+        { "L3", BTN_L3 }, { "R3", BTN_R3 }
     };
     size_t i;
     for (i = 0; i < sizeof(names) / sizeof(names[0]); i++)
@@ -482,6 +487,13 @@ static void run_line(char *line)
     /* --- P0: lang CODE. Codes, not numbers, so scripts survive the language
      * registry; L1: any code of core/lang/languages.tsv (lang_find), ready
      * or not. --- */
+    } else if (strcmp(cmd, "stick") == 0) {                        /* ST1 */
+        if (argc > 1 && strcmp(argv[1], "off") == 0) input_set_analog(0, 0, 0, 0, 0, 0);
+        else if (argc < 5) fail("stick needs LX LY RX RY (or off), got", argc > 1 ? argv[1] : "");
+        else {
+            int lx = atoi(argv[1]), ly = atoi(argv[2]);
+            input_set_analog(1, lx, ly, atoi(argv[3]), atoi(argv[4]), input_stick_dpad(lx, ly));
+        }
     } else if (strcmp(cmd, "opt") == 0) {                          /* SP8 */
         int id = argc > 1 ? atoi(argv[1]) : -1, v = argc > 2 ? atoi(argv[2]) : 0;
         if (argc < 3 || id < 0) fail("opt needs an option id and a value, got", argc > 1 ? argv[1] : "");

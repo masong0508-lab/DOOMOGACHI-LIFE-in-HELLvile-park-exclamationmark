@@ -1905,8 +1905,24 @@ static void update_main(void)
         cr.view8 = 0;
         cr.walking = 0;
         cr.spin = 0;
+        cr.stick_peek = 0;
         go_phase(CRP_TURN);
         audio_sfx(SFX_SELECT);
+        return;
+    }
+    {
+        /* (ST1) the right stick spins the citizen: the turntable opens as a peek and
+         * closes again once the stick has been let go for a second */
+        int rx, ry;
+        if (input_rstick(&rx, &ry) && (rx > 96 || rx < -96)) {
+            cr.view8 = 0;
+            cr.walking = 0;
+            cr.spin = 0;
+            cr.stick_peek = 1;
+            cr.stick_idle = 0;
+            cr.stick_acc = 0;
+            go_phase(CRP_TURN);
+        }
     }
 }
 
@@ -2045,8 +2061,35 @@ static void update_copy(void)
     }
 }
 
+/* (ST1) smooth stick spin in steps: adds v (-256..256) to *acc and returns how many whole
+ * steps of per_step it crossed (signed); let go (v = 0) forgets the partial step */
+static int stick_steps(int16_t *acc, int v, int per_step)
+{
+    int a = *acc + v, n = 0;
+    if (!v) { *acc = 0; return 0; }
+    while (a >= per_step) { a -= per_step; n++; }
+    while (a <= -per_step) { a += per_step; n--; }
+    *acc = (int16_t)a;
+    return n;
+}
+
 static void update_turn(void)
 {
+    {
+        /* (ST1) the right stick turns the citizen smoothly (8 views): a full push is one
+         * view every 3 ticks, a small one creeps */
+        int rx, ry, n;
+        input_rstick(&rx, &ry);
+        n = stick_steps(&cr.stick_acc, stick_curve(rx), 768);
+        if (n) { cr.view8 = (uint8_t)((cr.view8 + n) & 7); cr.spin = 0; }
+        if (rx) cr.stick_idle = 0;
+        else if (cr.stick_peek && ++cr.stick_idle >= 30) {
+            cr.stick_peek = 0;
+            go_phase(CRP_MAIN);
+            return;
+        }
+        if (btn_pressed(~(uint32_t)0)) cr.stick_peek = 0;     /* a button: the turntable stays */
+    }
     if (btn_repeat(BTN_LEFT)) { cr.view8 = (uint8_t)((cr.view8 + 7) & 7); cr.spin = 0; audio_sfx(SFX_CURSOR); }
     if (btn_repeat(BTN_RIGHT)) { cr.view8 = (uint8_t)((cr.view8 + 1) & 7); cr.spin = 0; audio_sfx(SFX_CURSOR); }
     if (btn_pressed(BTN_UP)) { cr.walking ^= 1; audio_sfx(SFX_BLIP); }

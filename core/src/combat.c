@@ -373,7 +373,7 @@ void combat_start_at(int map_id, int goal, int cx, int cy, int angle)
     if (opt_get(OPT_CONTROL_SCHEME) == CONTROLS_DUAL_STICK) {
         int a, b, c2, d2;
         if (!input_analog(&a, &b, &c2, &d2))
-            combat_toast("Dual stick needs an analog pad - press ANALOG");
+            combat_toast("Analog sticks: use a DualShock");
     }
 }
 
@@ -531,30 +531,7 @@ void combat_on_kill(int idx, int by_player, int headshot)
 }
 
 /* ---- controls -------------------------------------------------------------------------- */
-/* Radial dead zone + rescale: raw pad axes (-128..127) -> -256..256. */
-#define STICK_DEAD 22
-static void stick_vec(int x, int y, int *ox, int *oy)
-{
-    int m = (int)fx_dist(INT2FIX(x), INT2FIX(y)) >> 16;
-    *ox = *oy = 0;
-    if (m <= STICK_DEAD) return;
-    {
-        int out = (m - STICK_DEAD) * 256 / (125 - STICK_DEAD);      /* 0..256 */
-        if (out > 256) out = 256;
-        *ox = x * out / m;
-        *oy = y * out / m;
-        *ox = DOOMO_CLAMP(*ox, -256, 256);
-        *oy = DOOMO_CLAMP(*oy, -256, 256);
-    }
-}
-
-/* Response curve: fine control near the centre, full speed at the rim. */
-static int stick_curve(int v)
-{
-    int a = v < 0 ? -v : v;
-    int c = (a * a / 256 * 2 + a) / 3;
-    return v < 0 ? -c : c;
-}
+/* (ST1) the dead zone and response curve live in input.c (stick_dz / stick_curve). */
 
 /* Turn rate easing for the D-pad (feel): ramps up and glides to a stop
  * instead of snapping between three fixed speeds. */
@@ -569,9 +546,22 @@ static int ease_turn(int target)
     return v;
 }
 
+/* (ST1) the Dreamcast's analog triggers as a strafe: R right, L left, the
+ * pressure is the speed (-256..256 after a small dead zone and the curve) */
+int combat_trigger_strafe(int lt, int rt)
+{
+    int v = rt - lt, a = v < 0 ? -v : v;
+    if (a <= 24) return 0;
+    a = (a - 24) * 256 / (255 - 24);
+    a = stick_curve(DOOMO_MIN(a, 256));
+    return v < 0 ? -a : a;
+}
+
 static void read_controls(CombatCtl *c)
 {
-    int scheme = opt_get(OPT_CONTROL_SCHEME);
+    int scheme = controls_scheme();
+    unsigned caps = DOOMO_STICKS ? input_caps() : 0;
+    int trig = DOOMO_TRIGGERS && (caps & INPUT_CAP_TRIGGERS);
     int classic = scheme == CONTROLS_CLASSIC;
     int speed = opt_get(OPT_LOOK_SPEED);                /* 0..9 */
     int inv = opt_get(OPT_INVERT_LOOK) ? -1 : 1;
@@ -586,8 +576,9 @@ static void read_controls(CombatCtl *c)
     have = input_analog(&lax, &lay, &rax, &ray);
     dual = scheme == CONTROLS_DUAL_STICK && have;       /* no sticks: behaves like Modern */
     if (have) {
-        stick_vec(lax, lay, &slx, &sly);
-        stick_vec(rax, ray, &srx, &sry);
+        stick_dz(lax, lay, &slx, &sly);
+        if (caps & INPUT_CAP_RSTICK) stick_dz(rax, ray, &srx, &sry);
+        else if (dual) { srx = slx; slx = 0; }      /* one stick (Dreamcast): X turns, Y walks */
     }
     /* D-pad only: the pad driver also mirrors the left stick into the
      * D-pad bits (menus need that) - strip those here, the analog value
@@ -619,6 +610,13 @@ static void read_controls(CombatCtl *c)
             combat_px.turn_vel = 0;
         }
         if (sry) c->look = (int16_t)(-stick_curve(sry) * look * 2 / 256 * inv);
+        if (trig) {
+            /* the Dreamcast's analog triggers strafe: pressure = speed */
+            int lt, rt, v;
+            input_triggers(&lt, &rt);
+            v = combat_trigger_strafe(lt, rt);
+            if (v) { c->fstrafe = (int16_t)v; c->strafe = (int8_t)(v < 0 ? -1 : 1); }
+        }
     } else if (lmod) {
         /* classic: hold L = strafe with left/right, look with up/down */
         c->strafe = (int8_t)(right - left);
@@ -684,9 +682,12 @@ static void read_controls(CombatCtl *c)
         if (btn_down(BTN_R2)) c->look = (int16_t)(look * 2 * inv);
     }
     /* aim / lock-on: classic R, modern L+R together; dual stick L2 (or L1+R1) */
-    if (dual) {
-        c->lock = (uint8_t)btn_down(BTN_L2);
-        c->lock_pressed = (uint8_t)btn_pressed(BTN_L2);
+    if (dual && trig) {             /* both triggers in = lock on (they cancel the strafe) */
+        c->lock = (uint8_t)(btn_down(BTN_L) && btn_down(BTN_R));
+        c->lock_pressed = (uint8_t)(c->lock && (btn_pressed(BTN_L) || btn_pressed(BTN_R)));
+    } else if (dual) {              /* L2, or R3 (right stick click) */
+        c->lock = (uint8_t)btn_down(BTN_L2 | BTN_R3);
+        c->lock_pressed = (uint8_t)btn_pressed(BTN_L2 | BTN_R3);
     } else if (classic) {
         c->lock = (uint8_t)btn_down(BTN_R);
         c->lock_pressed = (uint8_t)btn_pressed(BTN_R);
@@ -696,7 +697,7 @@ static void read_controls(CombatCtl *c)
     }
     if (dual) {
         /* trigger fingers: R2 / R1 / Cross all shoot */
-        uint32_t f = BTN_A | BTN_R | BTN_R2;
+        uint32_t f = trig ? BTN_A : BTN_A | BTN_R | BTN_R2;
         c->fire = (uint8_t)btn_down(f);
         c->fire_pressed = (uint8_t)btn_pressed(f);
         c->fire_released = (uint8_t)(btn_released(f) && !btn_down(f));
@@ -711,7 +712,7 @@ static void read_controls(CombatCtl *c)
     }
     c->sprint = (uint8_t)(btn_down(BTN_B) && !down);
     if (btn_pressed(BTN_X)) { c->roll = 1; c->roll_dir = 0; select_used = 1; }
-    if (dual && btn_pressed(BTN_L)) { c->roll = 1; c->roll_dir = 0; select_used = 1; }
+    if (dual && !trig && btn_pressed(BTN_L)) { c->roll = 1; c->roll_dir = 0; select_used = 1; }
     if (btn_pressed(BTN_Y)) { c->next_weapon = 1; select_used = 1; }
     if (btn_pressed(BTN_SELECT)) select_used = 0;
     if (btn_released(BTN_SELECT) && !select_used) c->camera = 1;
@@ -1403,7 +1404,7 @@ static void player_tick(const CombatCtl *c)
     /* pitch: manual look, else drift back to level (modern / auto-aim) */
     if (c->look) {
         doomo_player.pitch = (int16_t)DOOMO_CLAMP(doomo_player.pitch + c->look, -200, 200);
-    } else if (opt_get(OPT_CONTROL_SCHEME) == CONTROLS_MODERN || doomo_player.lock_target >= 0) {
+    } else if (controls_scheme() == CONTROLS_MODERN || doomo_player.lock_target >= 0) {
         int want = 0;
         if (doomo_player.lock_target >= 0) {
             const DoomoActor *t = &doomo_actors[doomo_player.lock_target];

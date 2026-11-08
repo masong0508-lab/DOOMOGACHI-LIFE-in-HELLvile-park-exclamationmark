@@ -475,6 +475,12 @@ static void test_pad(void)
     r.analog2 = 1; r.joy2x = 30; r.joy2y = -40; r.joyx = r.joyy = 0;
     dc_pad_map(&r, &o);
     CHECK(o.rx == 30 && o.ry == -40 && o.stick_mask == 0);
+    CHECK(o.caps == INPUT_CAP_RSTICK);
+    /* ST1: a standard pad (one stick + analog triggers) */
+    r.analog2 = 0; r.triggers = 1; r.ltrig = 40; r.rtrig = 300;
+    dc_pad_map(&r, &o);
+    CHECK(o.caps == INPUT_CAP_TRIGGERS && o.ltrig == 40 && o.rtrig == 255 && o.rx == 0);
+    r.triggers = 0; r.ltrig = r.rtrig = 0; r.analog2 = 1;
     r.analog = 0;                                          /* a digital pad: no stick at all */
     dc_pad_map(&r, &o);
     CHECK(!o.analog && o.lx == 0 && o.rx == 0);

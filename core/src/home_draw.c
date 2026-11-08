@@ -341,6 +341,9 @@ static const uint8_t filter_pal[5] = { PAL_LERP_NONE, PAL_CRAYON, PAL_LERP_NONE,
 static int room_w(void) { return HR_W(&H->ed.room); }
 static int room_d(void) { return HR_D(&H->ed.room); }
 
+/* (ST1) the view the house is drawn from (0..3; tests) */
+int home_view_k(void) { return H ? H->view_k : 0; }
+
 void home_obj_view(const HomeObj *o, DoomoRoomObj *out)
 {
     const DoomoFurn *f = home_furn(HO_FURN(o));
@@ -1142,10 +1145,23 @@ static void update_group(void)
     }
 }
 
+/* (ST1) the right stick turns the view: a flick is one 90-degree step (the view brake, as
+ * L / R), held it repeats; the renderer draws the four views only */
+static void stick_view(void)
+{
+    int d = input_rflick();
+    if (d && H->brake_age == 0xFF) {
+        H->brake_age = 0;
+        H->brake_dir = (int8_t)d;
+        audio_sfx(SFX_WHOOSH);
+    }
+}
+
 static void update_build(void)
 {
     int dx, dy;
     const HomeObj *under;
+    stick_view();
     if (H->nsel) { update_group(); return; }
     /* hold SELECT: the rubber band (the owner's: not on a visit, whose code
      * part leaves home_build.c out on the PS1) */
@@ -1334,6 +1350,7 @@ static void live_use(void)
 static void update_live(void)
 {
     int dx = 0, dy = 0;
+    stick_view();
     if (btn_down(BTN_UP)) dy = -1;
     else if (btn_down(BTN_DOWN)) dy = 1;
     else if (btn_down(BTN_LEFT)) dx = -1;
@@ -1371,8 +1388,9 @@ static void photo_begin(void)
 
 static void update_photo(void)
 {
-    if (btn_pressed(BTN_L) || btn_pressed(BTN_R)) {
-        H->view_k = (uint8_t)((H->view_k + (btn_pressed(BTN_R) ? 1 : 3)) & 3);
+    int fl = input_rflick();                     /* (ST1) the right stick turns the view too */
+    if (btn_pressed(BTN_L) || btn_pressed(BTN_R) || fl) {
+        H->view_k = (uint8_t)((H->view_k + (btn_pressed(BTN_R) || fl > 0 ? 1 : 3)) & 3);
         H->photo.view = H->view_k;
         audio_sfx(SFX_WHOOSH);
     }

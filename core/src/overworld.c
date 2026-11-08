@@ -466,27 +466,60 @@ static void on_new_cell(int cx, int cy)
     if (!story_talking()) side_trigger_spot(ow.map, cx, cy, 0);
 }
 
+/* (ST1) the left stick's walking speed in 1/256 of WALK_SPEED for a dead-zoned push of mag
+ * (1..256): a small push creeps (1/4), walking at most of the travel, running at the rim; B
+ * held runs at every push */
+int ow_stick_speed_q8(int mag, int run)
+{
+    int runq = RUN_SPEED * 256 / WALK_SPEED;
+    if (mag <= 0) return 0;
+    if (run) return DOOMO_MAX(128, runq * mag / 256);
+    if (mag >= 232) return runq;
+    return 64 + mag * 192 / 232;
+}
+
 static void player_update(void)
 {
-    int dx = 0, dy = 0, speed, moved = 0, fh;
-    int32_t nx, ny;
-    if (btn_down(BTN_LEFT)) dx = -1;
-    if (btn_down(BTN_RIGHT)) dx = 1;
-    if (btn_down(BTN_UP)) dy = -1;
-    if (btn_down(BTN_DOWN)) dy = 1;
+    int dx = 0, dy = 0, speed, moved = 0, fh, sx = 0, sy = 0, mag;
+    int32_t nx, ny, vx, vy;
+    uint32_t dp;
+    /* (ST1) the left stick walks with analog speed, any direction; the D-pad as before (the
+     * D-pad bits the pad driver mirrors from the stick are the stick's) */
+    mag = DOOMO_STICKS ? input_lstick(&sx, &sy) : 0;
+    dp = mag ? ~input_stick_mask() : ~0u;
+    if (btn_down(BTN_LEFT & dp)) dx = -1;
+    if (btn_down(BTN_RIGHT & dp)) dx = 1;
+    if (btn_down(BTN_UP & dp)) dy = -1;
+    if (btn_down(BTN_DOWN & dp)) dy = 1;
     ow.running = btn_down(BTN_B) ? 1 : 0;
     speed = ow.running ? RUN_SPEED : WALK_SPEED;
     if (dx && dy) speed = speed * 181 / 256;
-    if (!ow.visit) speed = speed * story_verbs_walk_q8() / 256;   /* S2: carrying a delivery */
-    if (dx) ow.dir = dx < 0 ? 1 : 2;
-    else if (dy) ow.dir = dy < 0 ? 3 : 0;
+    vx = dx * speed;
+    vy = dy * speed;
+    if (!dx && !dy && mag) {
+        int q = ow_stick_speed_q8(mag, ow.running);      /* creep .. walk .. run */
+        int u = q * WALK_SPEED / mag;                    /* per stick unit, 1/256 */
+        vx = sx * u / 256;
+        vy = sy * u / 256;
+        ow.running = (uint8_t)(q > 256);
+        ow.dir = (uint8_t)(sx * sx >= sy * sy ? (sx < 0 ? 1 : 2) : (sy < 0 ? 3 : 0));
+        dx = vx || vy;                                   /* walking (a door push) */
+    } else if (dx) {
+        ow.dir = dx < 0 ? 1 : 2;
+    } else if (dy) {
+        ow.dir = dy < 0 ? 3 : 0;
+    }
+    if (!ow.visit) {                                     /* S2: carrying a delivery */
+        vx = vx * story_verbs_walk_q8() / 256;
+        vy = vy * story_verbs_walk_q8() / 256;
+    }
     fh = ow_floor_h(ow.px / OW_CELL, ow.py / OW_CELL);
-    if (dx) {
-        nx = ow.px + dx * speed;
+    if (vx) {
+        nx = ow.px + vx;
         if (can_stand(nx, ow.py, fh)) { ow.px = nx; moved = 1; }
     }
-    if (dy) {
-        ny = ow.py + dy * speed;
+    if (vy) {
+        ny = ow.py + vy;
         if (can_stand(ow.px, ny, fh)) { ow.py = ny; moved = 1; }
     }
     ow.moving = (uint8_t)moved;

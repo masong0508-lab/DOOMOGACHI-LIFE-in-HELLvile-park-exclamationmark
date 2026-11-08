@@ -27,6 +27,8 @@ void dc_pad_map(const DcPadRaw *r, DcPadOut *o)
 
     o->analog = r->analog != 0;
     o->lx = o->ly = o->rx = o->ry = 0;
+    o->caps = 0;
+    o->ltrig = o->rtrig = 0;
     if (o->analog) {
         o->lx = clamp_axis(r->joyx);
         o->ly = clamp_axis(r->joyy);
@@ -37,6 +39,12 @@ void dc_pad_map(const DcPadRaw *r, DcPadOut *o)
         if (r->analog2) {
             o->rx = clamp_axis(r->joy2x);
             o->ry = clamp_axis(r->joy2y);
+            o->caps |= INPUT_CAP_RSTICK;
+        }
+        if (r->triggers) {
+            o->caps |= INPUT_CAP_TRIGGERS;
+            o->ltrig = r->ltrig < 0 ? 0 : r->ltrig > 255 ? 255 : r->ltrig;
+            o->rtrig = r->rtrig < 0 ? 0 : r->rtrig > 255 ? 255 : r->rtrig;
         }
     }
     o->stick_mask = s;

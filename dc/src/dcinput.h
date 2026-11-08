@@ -17,6 +17,10 @@
  *                          down) and the D-pad bits past 48 of 128 (the
  *                          PS1's threshold), so menus move with it too
  *   second analog stick    input_set_analog()'s rx / ry when there is one
+ *   (ST1) analog L / R     input_set_caps(INPUT_CAP_TRIGGERS, l, r): with the
+ *                          default "Auto" controls the shooter plays the
+ *                          one-stick scheme (stick X turns, Y walks, the
+ *                          triggers strafe by pressure, both = lock on)
  * Keyboard (any port): see dc_kbd_buttons(); while the on-screen keyboard
  * (SCENE_TEXT_ENTRY) is open the typed characters go straight into it.
  */
@@ -40,6 +44,7 @@ typedef struct DcPadRaw {
     int      joyx, joyy;         /* -128..127, 0 = centre                        */
     int      joy2x, joy2y;
     int      analog, analog2;    /* the device has the stick / a second stick    */
+    int      triggers;           /* (ST1) the device has analog L / R triggers   */
 } DcPadRaw;
 
 typedef struct DcPadOut {
@@ -47,6 +52,8 @@ typedef struct DcPadOut {
     uint32_t stick_mask;         /* the BTN_ D-pad bits that came from the stick */
     int      analog;             /* input_set_analog(present, ...)               */
     int      lx, ly, rx, ry;
+    unsigned caps;               /* (ST1) input_set_caps(): INPUT_CAP_*          */
+    int      ltrig, rtrig;       /* (ST1) the triggers, 0..255                   */
 } DcPadOut;
 
 #define DC_STICK_DIGITAL 48      /* stick deflection that also presses the D-pad */

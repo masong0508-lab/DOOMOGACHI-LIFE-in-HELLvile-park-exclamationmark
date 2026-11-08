@@ -273,6 +273,8 @@ void     pad_init(void);
 uint32_t pad_read(void);                 /* BTN_* bitmask */
 int      pad_analog(int *lx, int *ly, int *rx, int *ry);
 uint32_t pad_stick_mask(void);           /* BTN_ bits mirrored from the left stick */
+/* (ST1) the harness's `stick` line writes here (run.py finds it in the map): on, lx, ly, rx, ry */
+extern volatile int32_t g_pad_force[5];
 void     audio_hw_init(void);
 void     audio_hw_sfx_preload(void);   /* after overlay_init(): SFX.BIN -> SPU RAM */
 void     audio_hw_frame(void);

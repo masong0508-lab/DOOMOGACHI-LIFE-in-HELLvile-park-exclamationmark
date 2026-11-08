@@ -102,10 +102,12 @@ static const TipText tip_text[TIP_COUNT] = {
 static const char *tip_plain(int id)
 {
     if (id == TIP_SHOOTER) {
-        int s = opt_get(OPT_CONTROL_SCHEME), lx, ly, rx, ry;
+        int s = controls_scheme();
         if (s == CONTROLS_CLASSIC)
             return "D-pad: walk and turn. Hold %L: step aside and look. A: shoot. B: jump, hold to run. START: pause.";
-        if (s == CONTROLS_DUAL_STICK && input_analog(&lx, &ly, &rx, &ry))
+        if (DOOMO_TRIGGERS && s == CONTROLS_DUAL_STICK && !(input_caps() & INPUT_CAP_RSTICK))
+            return "Stick: walk and turn. L/R triggers: step aside. A: shoot. B: jump, hold to run. START: pause.";
+        if (s == CONTROLS_DUAL_STICK)
             return "Left stick: walk. Right stick: look. A: shoot. B: jump, hold to run. START: pause.";
     }
     return tip_text[id].plain;
@@ -285,7 +287,7 @@ void tips_draw(void)
      * drawn while a card is up (game.c). */
     if (s_t >= TIP_SETTLED) {
         if (UI_PANELS) {
-            uint32_t key = ui_key_int(ui_panel_key(), s_cur | opt_get(OPT_CONTROL_SCHEME) << 8 | (s_t > TIP_LOCK) << 12 | input_pad() << 13);
+            uint32_t key = ui_key_int(ui_panel_key(), s_cur | controls_scheme() << 8 | (s_t > TIP_LOCK) << 12 | input_pad() << 13);
             key = ui_key_int(key, x | y << 9 | w << 18);
             key = ui_key_int(key, ui_window_glint(x, y, w, h));
             if (!plat_panel_begin(PANEL_TOAST, x, y, w + 2, h + 3, key)) {   /* + the drop shadow */

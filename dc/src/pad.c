@@ -53,8 +53,10 @@ static uint32_t read_controller(void)
     raw.joy2y = st->joy2y;
     raw.analog = (dev->info.function_data[0] & (CONT_CAPABILITY_ANALOG_X | CONT_CAPABILITY_ANALOG_Y)) != 0;
     raw.analog2 = (dev->info.function_data[0] & (CONT_CAPABILITY_ANALOG2_X | CONT_CAPABILITY_ANALOG2_Y)) != 0;
+    raw.triggers = (dev->info.function_data[0] & (CONT_CAPABILITY_LTRIG | CONT_CAPABILITY_RTRIG)) != 0;
     dc_pad_map(&raw, &out);
     input_set_analog(out.analog, out.lx, out.ly, out.rx, out.ry, out.stick_mask);
+    input_set_caps(out.caps, out.ltrig, out.rtrig);             /* ST1 */
     return out.btn;
 }
 

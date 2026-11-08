@@ -8,6 +8,7 @@
 --                  heartbeat (hang detection), frame rate, legacy sync
 --   HARNESS_HCMD   address (hex) of the g_hcmd mailbox (src/hcmd.c), 0 = none
 --   HARNESS_BEAT   address (hex) of g_io_beat (memory card I/O heartbeat)
+--   HARNESS_STICK  address (hex) of g_pad_force (ST1: `stick` forces the sticks)
 --   HARNESS_HANG   vsyncs without a new frame before declaring a hang
 --
 -- LOCKSTEP (builds with the g_hcmd mailbox, i.e. all current builds): the
@@ -41,6 +42,7 @@ local cmdfile = os.getenv('HARNESS_CMDS')
 local frame_addr = tonumber(os.getenv('HARNESS_FRAME') or '0', 16) or 0
 local hcmd_addr = tonumber(os.getenv('HARNESS_HCMD') or '0', 16) or 0
 local beat_addr = tonumber(os.getenv('HARNESS_BEAT') or '0', 16) or 0
+local stick_addr = tonumber(os.getenv('HARNESS_STICK') or '0', 16) or 0   -- ST1: g_pad_force
 local hang_limit = tonumber(os.getenv('HARNESS_HANG') or '900')
 
 local cmds = {}
@@ -60,6 +62,13 @@ end
 
 local B = PCSX.CONSTS.PAD.BUTTON
 local function pad() return PCSX.SIO0.slots[1].pads[1] end
+-- ST1 (run.py --analog-pad): port 1 is a DualShock that powers up digital, as the real one
+if os.getenv('HARNESS_PAD') == 'analog' then
+  PCSX.settings.pads[1].DeviceType = 'Analog'
+  PCSX.settings.pads[1].Connected = true
+  pad().setAnalogMode(false)
+  pad().map()
+end
 
 local function ram(addr) -- byte pointer into main RAM (KSEG0/1 address)
   return ffi.cast('uint8_t*', PCSX.getMemPtr()) + bit.band(addr, 0x1fffff)
@@ -174,6 +183,13 @@ local function step()
       if not lock then
         wait_frame = tonumber(c.arg) or 1
         return true
+      end
+    elseif c.op == 'stick' then  -- ST1: on lx ly rx ry -> g_pad_force (src/pad.c)
+      if stick_addr == 0 then
+        log('FAIL: stick: no g_pad_force in this build')
+      else
+        local p, i = ffi.cast('int32_t*', ram(stick_addr)), 0
+        for v in c.arg:gmatch('%-?%d+') do p[i] = tonumber(v); i = i + 1 end
       end
     elseif c.op == 'down' then
       pad().setOverride(B[c.arg])

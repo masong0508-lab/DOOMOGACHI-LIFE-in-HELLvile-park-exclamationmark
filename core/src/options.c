@@ -2,6 +2,7 @@
  * Option values live in doomo_town.opt[] (saved with the island). The
  * options screen (freeplay) is generated from doomo_option_info[]. */
 #include "doomo/town.h"
+#include "doomo/input.h"
 #include "doomo/ui.h"
 #include "doomo/font.h"
 #include "doomo/lang.h"
@@ -23,7 +24,8 @@ static const char *const v_day_len[] = { "Real time", "2 hours", "1 hour",
                                          "30 minutes", "15 minutes" };
 static const char *const v_autosave[] = { "Off", "Every day", "Every hour" };
 static const char *const v_camera[] = { "First person", "Third person" };
-static const char *const v_scheme[] = { "Classic", "Modern", "Dual stick" };
+/* CONTROLS_* order (town.h): stored 1 (the old default, Modern) reads as Auto */
+static const char *const v_scheme[] = { "Classic", "Auto", "Dual stick", "Modern" };
 static const char *const v_level4[] = { "Off", "Low", "Medium", "High" };
 static const char *const v_lock[] = { "Hold", "Toggle" };
 static const char *const v_cross[] = { "Dot", "Cross", "Circle", "Heart",
@@ -78,7 +80,7 @@ const DoomoOptionInfo doomo_option_info[OPT_COUNT] = {
     /* OPT_DAY_LENGTH */      OPT("Day length", v_day_len, 2, OPTPAGE_SIM),
     /* OPT_AUTOSAVE */        OPT("Autosave", v_autosave, 1, OPTPAGE_GAME),
     /* OPT_CAMERA_DEFAULT */  OPT("Camera", v_camera, 0, OPTPAGE_SHOOTER),
-    /* OPT_CONTROL_SCHEME */  OPT("Controls", v_scheme, CONTROLS_MODERN, OPTPAGE_CONTROLS),
+    /* OPT_CONTROL_SCHEME */  OPT("Controls", v_scheme, CONTROLS_AUTO, OPTPAGE_CONTROLS),
     /* OPT_INVERT_LOOK */     OPT("Invert look", v_off_on, 0, OPTPAGE_CONTROLS),
     /* OPT_LOOK_SPEED */      OPTN("Look speed", 10, 5, OPTPAGE_CONTROLS),
     /* OPT_AIM_ASSIST */      OPT("Aim assist", v_level4, 2, OPTPAGE_CONTROLS),
@@ -159,4 +161,12 @@ void opt_defaults(void)
     memset(doomo_town.opt, 0, sizeof(doomo_town.opt));
     for (i = 0; i < OPT_COUNT; i++) doomo_town.opt[i] = doomo_option_info[i].def;
     opt2_defaults();                                     /* (U0) */
+}
+
+/* (ST1) Auto: Dual stick while an analog pad is plugged in, Modern otherwise */
+int controls_scheme(void)
+{
+    int s = opt_get(OPT_CONTROL_SCHEME);
+    if (s == CONTROLS_CLASSIC || s == CONTROLS_MODERN) return s;
+    return DOOMO_STICKS && input_caps() ? CONTROLS_DUAL_STICK : CONTROLS_MODERN;
 }

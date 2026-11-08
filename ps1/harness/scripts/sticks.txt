@@ -1,0 +1,84 @@
+# sticks.txt (ST1): every stick consumer on the game disc with an analog
+# pad's sticks forced (`stick LX LY RX RY`, g_pad_force in src/pad.c), the
+# fps of each touched scene with the sticks moving; docs/PS1.md "Sticks".
+#
+#   python3 ps1/harness/run.py --exe ps1/build/doomogachi.exe \
+#       --cue ps1/build/doomogachi.cue --script ps1/harness/scripts/sticks.txt \
+#       --out ps1/build/shots/sticks --timeout 900
+#
+# The shooter on Auto (the default: Dual stick with an analog pad): the right
+# stick turns, the left stick walks.
+seed 1
+scene TITLE
+wait 2
+push COMBAT 3
+wait 120
+shot combat_before
+stick 0 0 100 0
+fps combat_turn
+wait 45
+stick 0 -127 0 0
+wait 45
+stick 0 0 0 0
+fpsend combat_turn
+expect-fps 27 combat_turn
+shot combat_after
+stick off
+
+# the house: a right-stick flick turns the view one step (as R1)
+seed 1234
+scene HOME -1
+wait 90
+shot home_view0
+stick 0 0 127 0
+fps home_turn
+wait 1
+stick 0 0 0 0
+wait 30
+shot home_view1
+stick 0 0 127 0
+wait 20
+stick 0 0 0 0
+wait 40
+fpsend home_turn
+expect-fps 28 home_turn
+shot home_view_held
+stick off
+
+# the creator: the right stick spins the citizen (the turntable as a peek)
+scene CREATOR -1
+expect-scene CREATOR
+wait 30
+shot creator_front
+stick 0 0 127 0
+fps creator_spin
+wait 8
+shot creator_spin
+wait 40
+stick 0 0 0 0
+wait 40
+fpsend creator_spin
+expect-fps 27 creator_spin
+shot creator_back_to_editor
+stick off
+
+# the overworld: the left stick walks with analog speed (creep, walk, run)
+scene STORY 108
+wait 120
+press A
+wait 20
+press A
+wait 20
+shot ow_before
+stick 30 0 0 0
+fps ow_walk
+wait 30
+stick 90 0 0 0
+wait 30
+stick 127 0 0 0
+wait 30
+stick 0 0 0 0
+fpsend ow_walk
+expect-fps 28 ow_walk
+shot ow_after
+stick off

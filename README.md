@@ -191,6 +191,7 @@ The core uses one set of buttons and each console maps them:
 | START: menu / pause | START | START |
 | SELECT: first ↔ third person | SELECT | SELECT |
 | Move | D-pad | D-pad or left analog stick |
+| Look / camera | L / R | right analog stick (no ANALOG press needed; docs/PS1.md "Sticks") |
 
 Shooter controls from the design: D-pad moves, L/R strafe or lock on, A
 fires, B sprints and jumps, SELECT toggles the camera, START pauses.

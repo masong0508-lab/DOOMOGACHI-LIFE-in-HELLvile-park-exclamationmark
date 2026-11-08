@@ -61,12 +61,23 @@ static const CcPair cc_dual[] = {
     { CC_Y, "Next gun" }, { CC_SEL, "Camera" }
 };
 
+#if DOOMO_TRIGGERS
+/* (ST1) one stick + analog triggers (Dreamcast) */
+static const CcPair cc_stick1[] = {
+    { STR_ICON_A, "Shoot" }, { STR_ICON_B, "Jump/run" }, { "Stick", "Walk/turn" },
+    { CC_L "/" CC_R, "Strafe" }, { CC_L "+" CC_R, "Lock on" }, { CC_X, "Roll" },
+    { CC_Y, "Next gun" }, { CC_SEL, "Camera" }
+};
+#endif
+
 static const CcPair *scheme_pairs(int *n)
 {
-    int s = opt_get(OPT_CONTROL_SCHEME), lx, ly, rx, ry;
+    int s = controls_scheme();          /* (ST1) Auto resolved against the pad in hand */
     if (s == CONTROLS_CLASSIC) { *n = (int)DOOMO_COUNTOF(cc_classic); return cc_classic; }
-    /* dual stick without sticks behaves like Modern (combat.c read_controls) */
-    if (s == CONTROLS_DUAL_STICK && input_analog(&lx, &ly, &rx, &ry)) { *n = (int)DOOMO_COUNTOF(cc_dual); return cc_dual; }
+#if DOOMO_TRIGGERS
+    if (s == CONTROLS_DUAL_STICK && !(input_caps() & INPUT_CAP_RSTICK)) { *n = (int)DOOMO_COUNTOF(cc_stick1); return cc_stick1; }
+#endif
+    if (s == CONTROLS_DUAL_STICK) { *n = (int)DOOMO_COUNTOF(cc_dual); return cc_dual; }
     *n = (int)DOOMO_COUNTOF(cc_modern);
     return cc_modern;
 }

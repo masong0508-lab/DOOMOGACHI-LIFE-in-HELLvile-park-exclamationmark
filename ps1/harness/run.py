@@ -48,6 +48,9 @@ when a scene renders below 30 fps:
     expect-rel WHO OTHER [0|1]   fail unless the two know each other (1) / never met (0)
     expect-money MIN   fail unless the purse holds at least MIN H$
     lang CODE / expect-lang CODE   set / check the language
+    stick LX LY RX RY / stick off   (ST1) an analog pad's sticks (-128..127, +y
+                    down) from the next frame on: written into g_pad_force
+                    (src/pad.c reads them instead of the emulated pad's); `off` = the pad's own
     opt ID VALUE       (SP8) opt_set(ID, VALUE), e.g. 63 1 = Combat detail: Smooth
     expect-presses NAME [<=] N     fail unless the last journey NAME took at most N presses
                     (all of these run in the game through the g_hcmd mailbox,
@@ -95,7 +98,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 BUTTONS = {
     "A": "CROSS", "B": "CIRCLE", "X": "SQUARE", "Y": "TRIANGLE",
     "L": "L1", "R": "R1", "L1": "L1", "R1": "R1", "L2": "L2", "R2": "R2",
-    "START": "START", "SELECT": "SELECT",
+    "START": "START", "SELECT": "SELECT", "L3": "L3", "R3": "R3",
     "UP": "UP", "DOWN": "DOWN", "LEFT": "LEFT", "RIGHT": "RIGHT",
     "CROSS": "CROSS", "CIRCLE": "CIRCLE", "SQUARE": "SQUARE", "TRIANGLE": "TRIANGLE",
 }
@@ -317,6 +320,12 @@ def compile_script(lines, lockstep=True):
                     "expect-money", "lang", "expect-lang", "opt"):
             # the whole rest of the line goes to the game (63 chars), split there
             cmds.append(hcmd(op, 0, " ".join(parts[1:])[:63]))
+        elif op == "stick":
+            # ST1: written straight into g_pad_force (src/pad.c) at this stop
+            if arg == "off":
+                cmds.append("stick 0 0 0 0 0")
+            else:
+                cmds.append("stick 1 " + " ".join(str(int(v)) for v in parts[1:5]))
         elif op == "no-stubs":
             cmds.append("mark no-stubs line %d" % ln)
         elif op == "expect-log":
@@ -384,6 +393,8 @@ def main():
     ap.add_argument("--hang", type=int, default=900)
     ap.add_argument("--expect", action="append", default=[])
     ap.add_argument("--assert-no-stubs", action="store_true")
+    ap.add_argument("--analog-pad", action="store_true",
+                    help="(ST1) port 1 is a DualShock powering up digital (the game must switch it)")
     ap.add_argument("--emu", default="/opt/ps1emu/pcsx-redux")
     ap.add_argument("--bios", default="/opt/ps1emu/openbios.bin")
     a = ap.parse_args()
@@ -400,6 +411,7 @@ def main():
     frame_addr = find_symbol(map_path, "g_loop_frames") or find_symbol(map_path, "g_frame")
     hcmd_addr = find_symbol(map_path, "g_hcmd")
     beat_addr = find_symbol(map_path, "g_io_beat")
+    stick_addr = find_symbol(map_path, "g_pad_force")
     cmds, warnings, script_expect = compile_script(open(a.script).read().splitlines(),
                                                    lockstep=hcmd_addr != 0)
     for w in warnings:
@@ -415,6 +427,8 @@ def main():
     env = dict(os.environ)
     env.update(HARNESS_CMDS=cmd_path, HARNESS_OUT=out, HARNESS_FRAME="%x" % frame_addr,
                HARNESS_HCMD="%x" % hcmd_addr, HARNESS_BEAT="%x" % beat_addr,
+               HARNESS_STICK="%x" % stick_addr,
+               HARNESS_PAD="analog" if a.analog_pad else "",
                HARNESS_HANG=str(a.hang))
     argv = ["xvfb-run", "-a", a.emu, "-cli", "-stdout", "-run", "-bios", a.bios,
             "-memcard1", card1, "-memcard2", card2]

@@ -272,4 +272,7 @@ void owfx_you_marker(int cx, int cy, int scale, uint32_t t);
 int  owfx_daylight(void);
 void owfx_world_to_screen(int32_t x, int32_t y, int *sx, int *sy);
 
+/* (ST1) the left stick's walking speed, 1/256 of the walk (overworld.c) */
+int ow_stick_speed_q8(int mag, int run);
+
 #endif

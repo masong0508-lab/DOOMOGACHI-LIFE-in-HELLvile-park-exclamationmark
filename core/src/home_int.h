@@ -676,4 +676,7 @@ int  home_expand_next(int *price);
 int  home_expand_buy(void);                          /* the room unlocked, -1 */
 extern uint8_t home_mart_expanded;                   /* the room the house shows off next, 0xFF */
 
+/* (ST1) the house's current view rotation 0..3 (home_draw.c) */
+int home_view_k(void);
+
 #endif

@@ -95,7 +95,7 @@ enum {
     OPT_TEXT_SPEED, OPT_SIM_SPEED, OPT_DAY_LENGTH,
     OPT_AUTOSAVE,
     OPT_CAMERA_DEFAULT,  /* first / third person                            */
-    OPT_CONTROL_SCHEME,  /* classic / modern                                */
+    OPT_CONTROL_SCHEME,  /* CONTROLS_*: classic / auto / dual stick / modern */
     OPT_INVERT_LOOK, OPT_LOOK_SPEED, OPT_AIM_ASSIST, OPT_LOCK_ON,
     OPT_CROSSHAIR, OPT_CROSSHAIR_COLOR, OPT_FOV, OPT_HEAD_BOB,
     OPT_SCREEN_SHAKE, OPT_DAMAGE_NUMBERS, OPT_HIT_MARKERS, OPT_HUD_LAYOUT,
@@ -164,7 +164,13 @@ extern const char *const doomo_option_page_names[OPTPAGE_COUNT];
 /* Value constants for a few options other modules branch on. */
 enum { GORE_CUTE, GORE_BRUTAL, GORE_PER_WEAPON, GORE_MIXED };   /* MIXED: unlocked by finishing the story */
 enum { DIFF_PLUSHIE, DIFF_NORMAL, DIFF_NIGHTMARE, DIFF_ULTRA_HELLVILE };
-enum { CONTROLS_CLASSIC, CONTROLS_MODERN, CONTROLS_DUAL_STICK };
+/* (ST1) the stored values of OPT_CONTROL_SCHEME. 1 was Modern, the old default: it now reads
+ * as Auto (Dual stick while an analog pad is plugged in, Modern otherwise), so old saves
+ * migrate with no version bump; an explicit Modern pick is stored as 3. */
+enum { CONTROLS_CLASSIC, CONTROLS_AUTO, CONTROLS_DUAL_STICK, CONTROLS_MODERN };
+/* The scheme in effect now: CLASSIC, MODERN or DUAL_STICK (Auto resolved against the pad in
+ * the player's hands, live; Dual stick without an analog pad plays as Modern). */
+int controls_scheme(void);
 #define DOOMO_OPT_BYTES 64
 typedef struct DoomoOptionInfo {
     const char *name;

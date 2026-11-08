@@ -138,9 +138,39 @@ The core's buttons (`core/include/doomo/input.h`) on a PlayStation pad:
 | Y        | Triangle    | | R2     | R2          |
 | START    | START       | | SELECT | SELECT      |
 | D-pad    | D-pad, or the left stick of a Dual Analog / DualShock |
+| L3 / R3  | L3 / R3 (the stick clicks; analog mode only) | | | |
 
 Digital pads, Dual Analog and DualShock in either mode are read through the
 BIOS pad driver (port 1). Engine-test controls: section 11.
+
+**Sticks (ST1).** No ANALOG button press is needed: when a pad shows up
+(boot, or plugged in / swapped later) and reads as digital, `src/pad.c`
+sends it the DualShock config sequence over SIO0 itself, between two BIOS
+polls with interrupts off (43h enter config, 44h 01 03 analog + lock, 43h
+exit; three tries at most, then a plain digital pad is left alone). The
+pad comes up red-LED analog with the ANALOG button locked. The sticks then
+drive, with no setup:
+
+| where | left stick | right stick |
+|---|---|---|
+| shooter / levels (Options > Controls **Auto**, the default) | walk + strafe (analog speed) | turn + look (eased, invert and look speed honoured); R3 = lock on (as L2) |
+| overworld / island maps | walk any direction, creep at a small push, walk, run at the rim | - |
+| house (build, live, photo) | the D-pad as before | a flick turns the view one 90-degree step (as L1 / R1), held it repeats |
+| creator | the D-pad as before | spins the citizen (8 views; a full push one view every 3 ticks): the turntable opens as a peek and closes a second after the stick is let go |
+
+Options > Controls is Classic / **Auto** / Dual stick / Modern. Auto plays
+Dual stick while an analog pad is plugged in and Modern otherwise, live
+(pull the pad mid-level and the buttons take over); an explicit Classic or
+Modern pick wins. Saves from before ST1 stored the old default Modern as 1,
+which now reads as Auto (that is the migration; an explicit Modern is stored
+as 3). The prompts and the shooter's control card follow the scheme in
+effect ("L stick Walk", "R stick Look"); Dual stick picked on a digital pad
+says "Analog sticks: use a DualShock". The harness feeds the sticks with
+`stick LX LY RX RY` / `stick off` (`harness/run.py` writes `g_pad_force`, `src/pad.c`; the
+native runner has the same line); `run.py --analog-pad` makes port 1 a
+DualShock that powers up digital, and `scripts/sticks_auto.txt` checks that
+the game switches it (`pad: analog` on the TTY) with the card still saving.
+PS1 resident cost: +1.6 KB (65,952 B below the stack top with the FMV).
 
 ## 3. Hardware usage and memory maps
 

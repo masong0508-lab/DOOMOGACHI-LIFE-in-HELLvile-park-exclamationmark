@@ -216,6 +216,8 @@ typedef struct CrState {
     /* preview */
     uint8_t  spooky;                /* possessed preview                     */
     uint8_t  view8, walking, spin;  /* turntable                              */
+    uint8_t  stick_peek, stick_idle; /* (ST1) turntable opened by the right stick */
+    int16_t  stick_acc;             /* (ST1) right stick spin accumulator      */
     uint8_t  roll;                  /* ticks left of a turntable tumble      */
     uint8_t  hop;                   /* ticks left of the change hop          */
     uint8_t  happy;                 /* ticks left of the "ooh!" expression   */

@@ -108,6 +108,9 @@ enum { CGOAL_EXIT,        /* reach a CELL_EXIT cell (Hell Breach levels)  */
 void combat_start_ex(int map_id, int goal);
 /* Start at a given cell / facing (0..4095) instead of the map's start. */
 void combat_start_at(int map_id, int goal, int cx, int cy, int angle);
+/* (ST1) the Dreamcast's analog triggers (0..255) as a strafe -256..256
+ * (R right, L left; pressure = speed). */
+int  combat_trigger_strafe(int lt, int rt);
 /* Spawn a thing at a cell centre (story encounters, arena waves). With
  * appear = 1 demons pop out of a vape puff. Returns actor index or -1. */
 int  combat_spawn(int thing_type, int cx, int cy, int appear);

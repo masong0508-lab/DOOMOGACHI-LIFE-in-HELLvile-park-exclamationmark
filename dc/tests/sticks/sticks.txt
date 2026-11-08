@@ -1,0 +1,38 @@
+# sticks.txt - ST1 on Flycast (dcrun): the standard pad's one-stick scheme in
+# the shooter (Options > Controls on Auto, the default): the stick's X turns,
+# the analog R trigger strafes (pressure = speed), then the overworld walks
+# off the stick. Run:
+#   dc/harness/build/dcrun FLYCAST.so dc/build/doomogachi.cdi --nm dc/build/doomogachi.nm \
+#       --fresh --script dc/tests/sticks/sticks.txt --shots OUT
+wait 1
+seed 1234
+scene TITLE
+wait 2
+push COMBAT 3
+wait 60
+expect-scene COMBAT
+shot combat_before
+gaps-reset
+stick 127 0
+wait 20
+stick 0 0
+wait 10
+shot combat_turned
+trigger R 255
+wait 30
+trigger R 0
+wait 10
+shot combat_strafed
+expect-gap 34
+scene STORY 108
+wait 120
+press A
+wait 20
+press A
+wait 20
+shot ow_before
+stick 127 0
+wait 40
+stick 0 0
+wait 5
+shot ow_after

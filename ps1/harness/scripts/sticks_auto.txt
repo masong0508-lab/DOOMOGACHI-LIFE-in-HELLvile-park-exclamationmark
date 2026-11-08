@@ -1,0 +1,22 @@
+# sticks_auto.txt (ST1): run with --analog-pad (port 1 is a DualShock that
+# powers up digital, as the real one). The game must switch it to analog by
+# itself at boot (src/pad.c logs "pad: analog"), the memory card must still
+# work, and the D-pad / buttons must still drive the game in analog mode.
+#
+#   python3 ps1/harness/run.py --analog-pad --exe ps1/build/doomogachi.exe \
+#       --cue ps1/build/doomogachi.cue --script ps1/harness/scripts/sticks_auto.txt \
+#       --out ps1/build/shots/sticks_auto --timeout 600
+seed 1
+scene TITLE
+wait 60
+expect-log pad: analog
+shot title_analog
+push COMBAT 3
+wait 90
+fps combat_dpad
+hold UP 30
+hold RIGHT 20
+wait 10
+fpsend combat_dpad
+expect-fps 27 combat_dpad
+shot combat_dpad

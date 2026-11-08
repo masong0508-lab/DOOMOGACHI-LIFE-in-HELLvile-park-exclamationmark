@@ -708,6 +708,20 @@ on-screen-keyboard rule).
 | second D-pad left / right (twin stick) | L2 / R2 (a standard pad has none, as on the GBA) |
 | analog stick | `input_set_analog()` every tick (-128..127, +y down), and past 48 of 128 it also presses the D-pad (the PS1's threshold), so menus follow it |
 | second analog stick | `input_set_analog()`'s rx / ry when there is one |
+| (ST1) analog L / R | `input_set_caps(INPUT_CAP_TRIGGERS, l, r)` every tick (0..255); a second stick adds `INPUT_CAP_RSTICK` |
+
+**Stick + triggers (ST1).** With Options > Controls on **Auto** (the
+default) the shooter plays a one-stick scheme on the standard pad: the
+stick's X turns (eased), its Y walks, the analog triggers strafe with the
+pressure as the speed (`combat_trigger_strafe`: a small dead zone, then the
+stick curve), both triggers in lock on, the D-pad walks / strafes as well, A
+fires, X rolls. A twin stick (a second analog stick) plays the PS1's dual
+stick. The house's view still turns on the triggers (L / R past half), the
+overworld walks with analog speed off the stick, and the creator's
+turntable opens on SELECT as before (no right stick). The control card and
+the shooter tip show the one-stick lines ("Stick Walk/turn", "L/R
+Strafe"). Not done: an Options row "Stick: turn / strafe" (the 64 option
+bytes are full; it needs an OPT2 id and its save chunk).
 
 The core's "smooth feel" (`input_set_feel(1)`: eased turning, fire
 buffering, aim friction) is on, as on the PS1. One visible consequence: the

@@ -161,10 +161,10 @@ static const DoomoOptionInfo *info_of(int opt)
 
 /* C3: the rows that name buttons say the buttons of the pad in your hands (input.h input_pad) */
 static const char *const help_controls[PAD_COUNT] = {
-    "Classic: hold L to strafe and look. Modern: D-pad strafes, R / L turn. Dual stick: two sticks.",
+    "Auto: two sticks when the pad has them. Classic: hold L to strafe/look. Modern: R / L turn.",
     "Classic: hold L to strafe and look. Modern: D-pad strafes, R / L turn.",
-    "Classic: hold L1 to strafe/look. Modern: D-pad strafes, R1/R2 turn. Dual stick: two sticks.",
-    "Classic: hold L to strafe and look. Modern: D-pad strafes, R / L turn."
+    "Auto: DualShock sticks, no ANALOG press. Classic: hold L1 to strafe/look. Modern: R1/R2 turn.",
+    "Auto: the stick turns, triggers strafe. Classic: hold L to strafe/look. Modern: R / L turn."
 };
 static const char *const help_turn[PAD_COUNT] = {
     "Modern controls: Normal = R turns right, R2 / L left. Swapped turns the other way.",

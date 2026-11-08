@@ -283,7 +283,7 @@ set_source_files_properties(${PS1_SRCS} PROPERTIES
 # mailbox, the boot / frame glue, the player model build, the SPU voice setup, the portrait slice
 # scheduler's bookkeeping) are compiled for size: ~3.2 KB of resident RAM, the same pixels and timing
 # within the measurement noise.
-set(DOOMO_PS1_COLD memcard hcmd overlay txtload coreref main pslice model spu fmv
+set(DOOMO_PS1_COLD memcard hcmd overlay txtload coreref main pslice model spu fmv pad
 	CACHE STRING "ps1/src files (no extension) compiled -Os instead of -O2")
 foreach(_cold ${DOOMO_PS1_COLD})
 	set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/src/${_cold}.c PROPERTIES

@@ -5,7 +5,7 @@
  *       are synthesised by the core only when the platform sets
  *       DOOMO_INPUT_SYNTH_XY (GBA does). L2/R2 are not available.
  * PS1:  Cross=A, Circle=B, Square=X, Triangle=Y, L1=L, R1=R, L2, R2,
- *       START, SELECT.
+ *       START, SELECT, L3 / R3 (the DualShock's stick clicks).
  */
 #ifndef DOOMO_INPUT_H
 #define DOOMO_INPUT_H
@@ -16,7 +16,8 @@ enum {
     BTN_UP = 1 << 0, BTN_DOWN = 1 << 1, BTN_LEFT = 1 << 2, BTN_RIGHT = 1 << 3,
     BTN_A = 1 << 4, BTN_B = 1 << 5, BTN_L = 1 << 6, BTN_R = 1 << 7,
     BTN_START = 1 << 8, BTN_SELECT = 1 << 9,
-    BTN_X = 1 << 10, BTN_Y = 1 << 11, BTN_L2 = 1 << 12, BTN_R2 = 1 << 13
+    BTN_X = 1 << 10, BTN_Y = 1 << 11, BTN_L2 = 1 << 12, BTN_R2 = 1 << 13,
+    BTN_L3 = 1 << 14, BTN_R3 = 1 << 15   /* (ST1) stick clicks: PS1 DualShock only */
 };
 #define DOOMO_INPUT_SYNTH_XY (1u << 31)   /* flag OR-ed into the mask */
 
@@ -39,6 +40,44 @@ void input_eat(void);
 void input_set_analog(int present, int lx, int ly, int rx, int ry, uint32_t stick_mask);
 int  input_analog(int *lx, int *ly, int *rx, int *ry);   /* 1 = analog pad present */
 uint32_t input_stick_mask(void);
+/* ---- (ST1) real stick support ----------------------------------------------
+ * Caps of the analog pad in the player's hands (only meaningful while
+ * input_analog() says one is present). input_set_analog() resets them to
+ * INPUT_CAP_RSTICK (the DualShock); the Dreamcast calls input_set_caps()
+ * after it each tick with its analog triggers (0..255). */
+enum { INPUT_CAP_RSTICK = 1, INPUT_CAP_TRIGGERS = 2, INPUT_CAP_PRESENT = 4 };
+/* Compile-time: DOOMO_STICKS 0 on the GBA (no analog pad: the stick code
+ * folds away), DOOMO_TRIGGERS 1 only where a pad has analog triggers (the
+ * Dreamcast; the native runner and tests). */
+#if defined(DOOMO_PLATFORM_GBA)
+#define DOOMO_STICKS 0
+#else
+#define DOOMO_STICKS 1
+#endif
+#if defined(DOOMO_PLATFORM_GBA) || defined(DOOMO_PLATFORM_PS1)
+#define DOOMO_TRIGGERS 0
+#else
+#define DOOMO_TRIGGERS 1
+#endif
+void     input_set_caps(unsigned caps, int ltrig, int rtrig);
+unsigned input_caps(void);                     /* 0 when no analog pad, else | PRESENT */
+int      input_triggers(int *l, int *r);       /* 1 = analog triggers (0..255) */
+/* Radial dead zone (STICK_DEAD of 128) -> -256..256 per axis; returns the
+ * magnitude 0..256 (0 inside the dead zone). stick_curve(): the response
+ * curve (gentle near the centre, linear at the rim), -256..256. */
+#define STICK_DEAD 22
+int  stick_dz(int x, int y, int *ox, int *oy);
+int  stick_curve(int v);
+/* The sticks dead-zoned (both 0 and returns 0 with no analog pad or inside
+ * the dead zone); the right stick is 0 on a pad without one. */
+int  input_lstick(int *x, int *y);
+int  input_rstick(int *x, int *y);
+/* Right stick X as a button: -1 / +1 the tick it is pushed past half way,
+ * then auto-repeat like btn_repeat() while held; 0 otherwise. For cameras
+ * that turn in steps (the house's 90-degree view). */
+int  input_rflick(void);
+/* The D-pad bits a stick at (lx, ly) presses for menus (48 of 128). */
+uint32_t input_stick_dpad(int lx, int ly);
 /* "Smooth feel": eased turning, fire buffering, aim friction. Off by default;
  * the PS1 port turns it on. */
 void input_set_feel(int on);
