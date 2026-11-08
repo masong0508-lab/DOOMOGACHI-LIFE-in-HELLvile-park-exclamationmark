@@ -1,0 +1,14 @@
+# core/data/parts/catalog/wings.txt - the wings parts (CR1; format: tools/partcat_build.py).
+# Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
+slot wings list=wings name="Wings" method=P target=14
+
+0   "None"                 set=basics tags=plain
+1   "Bat"                  set=spooky tags=spooky
+2   "Angel"                set=cloud9 tags=holy
+3   "Butterfly"            set=seasons tags=nature,cute
+4   "Bone"                 set=graveyard tags=spooky
+5   "Fly"                  set=monster tags=monster,silly
+6   "Dragon"               set=spooky tags=spooky
+7   "Tiny Bat"             set=spooky tags=spooky
+8   "Mech"                 set=hellbreach tags=tech,armor
+9   "Flame"                set=spooky tags=fire,spooky

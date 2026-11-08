@@ -1,0 +1,8 @@
+# core/data/parts/catalog/liner.txt - Eyeliner (CR1; format: tools/partcat_build.py).
+# A deep field (provisional shim id DF_LINER until P0/CR5 lands): painted, not selectable or saved yet.
+slot liner deep=DF_LINER name="Eyeliner" method=P target=13
+
+0   "None"       set=basics tags=plain
+1   "Thin Liner"    set=basics tags=glam state=hidden
+2   "Winged Liner"  set=punk tags=goth,glam state=hidden
+3   "Waterline"     set=punk tags=goth,punk state=hidden

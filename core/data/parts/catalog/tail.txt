@@ -1,0 +1,20 @@
+# core/data/parts/catalog/tail.txt - the tail parts (CR1; format: tools/partcat_build.py).
+# Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
+slot tail list=tail name="Tail" method=P target=16
+
+0   "None"                 set=basics tags=plain
+1   "Devil"                set=spooky tags=spooky
+2   "Cat"                  set=critter tags=critter
+3   "Fox"                  set=critter tags=critter
+4   "Lizard"               set=monster tags=monster,nature
+5   "Bunny"                set=critter tags=critter
+6   "Spiked"               set=punk tags=punk
+7   "Tentacle"             set=monster tags=monster
+8   "Skeletal"             set=graveyard tags=spooky
+9   "Flame"                set=spooky tags=fire,spooky
+10  "Bear Nub"             set=critter tags=critter
+11  "Waggy Pup"            set=critter tags=critter
+12  "Mouse"                set=critter tags=critter
+13  "Sheep Puff"           set=critter tags=critter
+14  "Ringed Raccoon"       set=critter tags=critter
+15  "Feather Fan"          set=teaparty tags=showcanon

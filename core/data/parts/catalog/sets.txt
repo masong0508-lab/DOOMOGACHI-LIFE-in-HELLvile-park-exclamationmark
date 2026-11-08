@@ -1,0 +1,30 @@
+# core/data/parts/catalog/sets.txt - the themed part sets (CR1). Every part belongs to exactly one set.
+# set KEY "Name" theme=TAG [reward=yes] ["blurb"]
+# Ids are the line order and append-only (set unlocks will be saved by id, CR11). reward=yes marks a set
+# whose NEW parts open through an unlock (owner default: about a third of the themed sets); parts that
+# are live today keep today's per-option locks (doomo_unlocks_creator).
+set citizens   "Citizens of the Park"     theme=plain      "Every kind of folk who lives here."
+set basics     "Everyday Basics"          theme=plain      "Plain, honest, goes with anything."
+set critter    "Critter Kit"              theme=critter    "Ears, tails and fur for the fluffy folk."
+set spooky     "Spooky Classics"          theme=spooky     "Horns, fangs and devil tails, made adorable."
+set monster    "Monster Mash"             theme=monster    "Extra eyes, slime and tentacles."
+set punk       "Hellvile Pits Punk"       theme=punk       "Studs, spikes and safety pins from the bad side."
+set candy      "HaHaland Candy Co."       theme=candy      "Sugar, hearts and sprinkles from the good side."
+set partypals  "Bonejangles' Party Pals"  theme=retro      reward=yes "An 80s mascot restaurant, cute and a little uncanny."
+set indieart   "Indie Art Jokes"          theme=silly      reward=yes "WIP stickers, missing textures and art block."
+set graveyard  "Graveyard Shift"          theme=spooky     "Shovels, lanterns and skulls for the night crew."
+set cathedral  "Bone Cathedral Choir"     theme=holy       reward=yes "Ruffs, candles and songbooks."
+set cloud9     "Cloud Nine"               theme=holy       "Halos, laurels and harps."
+set plushie    "Plushie Factory"          theme=stitched   reward=yes "Button eyes, seams and stuffing."
+set sewers     "Sugar Rush Sewers"        theme=sea        "Rain slickers, boots and rat plushies."
+set teaparty   "Mayor Giggs' Tea Party"   theme=fancy      "Top hats, cravats and teacups. Needs salt."
+set hellbreach "Hell Breach Gear"         theme=armor      reward=yes "Visors, knee pads and toy dart belts."
+set concert    "Concert & Studio"         theme=music      "Headphones, mics and glowsticks."
+set fishcook   "Fish & Cook"              theme=food       "Lures, chef toques and oven mitts."
+set funfair    "Fun Fair"                 theme=party      "Prize ribbons, foam fingers and cotton candy."
+set cozy       "Cozy Home"                theme=cozy       "Nightcaps, slippers and a warm mug."
+set littleones "Little Ones"              theme=baby       "Bibs, bonnets and crayons for the smallest."
+set elders     "Elders"                   theme=elder      "Cardigans, reading glasses and canes."
+set seasons    "Seasons"                  theme=nature     "Pumpkins, earmuffs, flower crowns and beach hats."
+set exorcist   "Exorcist Kit"             theme=holy       reward=yes "Garlic, holy water and a cute stole."
+set royal      "Royal Court"              theme=royal      reward=yes "Crowns, sceptres and ermine."

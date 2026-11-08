@@ -1,0 +1,24 @@
+# core/data/parts/catalog/accessory.txt - the accessory parts (CR1; format: tools/partcat_build.py).
+# Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
+slot accessory list=accessory name="Accessory" method=P
+
+0   "None"                 set=basics tags=plain
+1   "Glasses"              set=basics tags=plain
+2   "Sunglasses"           set=basics tags=plain
+3   "Monocle"              set=teaparty tags=fancy,showcanon
+4   "Eyepatch"             set=punk tags=punk
+5   "Mask"                 set=exorcist tags=spooky hides=nose,mouth
+6   "Bowtie"               set=teaparty tags=formal,showcanon
+7   "Cross Necklace"       set=exorcist tags=holy
+8   "Skull Necklace"       set=graveyard tags=spooky
+9   "Scarf"                set=cozy tags=cozy
+10  "Bandages"             set=graveyard tags=spooky
+11  "Earrings"             set=basics tags=glam
+12  "Nose Ring"            set=punk tags=punk
+13  "Pacifier"             set=littleones tags=baby
+14  "Gas Mask"             set=hellbreach tags=armor hides=nose,mouth
+15  "Cape"                 set=royal tags=royal
+16  "Backpack"             set=basics tags=plain
+17  "Rosary"               set=exorcist tags=holy
+18  "Chains"               set=punk tags=punk,goth
+19  "Teddy"                set=littleones tags=baby,cute

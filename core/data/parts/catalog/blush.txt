@@ -1,0 +1,10 @@
+# core/data/parts/catalog/blush.txt - blush styles, gene field blush_style (CR1; format: tools/partcat_build.py).
+# Painted (wave 2, P1.M2) but not selectable yet: state=hidden until CR3 flips the list live.
+slot blush list=blush_style name="Blush" method=P target=15
+
+0   "Round"      set=basics tags=plain
+1   "Slashes"    set=candy tags=cute state=hidden
+2   "Wide Round" set=candy tags=cute state=hidden
+3   "Dots"       set=candy tags=cute state=hidden
+4   "Low Bar"    set=basics tags=plain state=hidden
+31  "M1 Demo Blush" set=basics tags=plain method=S state=test

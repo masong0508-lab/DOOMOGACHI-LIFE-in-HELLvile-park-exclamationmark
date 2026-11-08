@@ -1,0 +1,36 @@
+# core/data/parts/catalog/hair.txt - the hair parts (CR1; format: tools/partcat_build.py).
+# Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
+slot hair list=hair_style name="Hair" method=P target=32
+
+0   "Bald"                 set=basics tags=plain
+1   "Buzz"                 set=basics tags=plain
+2   "Short"                set=basics tags=plain
+3   "Spiky"                set=basics tags=plain
+4   "Mohawk"               set=punk tags=punk
+5   "Bob"                  set=basics tags=plain
+6   "Long"                 set=basics tags=plain
+7   "Ponytail"             set=basics tags=plain
+8   "Twintails"            set=candy tags=cute
+9   "Bun"                  set=basics tags=plain
+10  "Afro"                 set=concert tags=retro,music
+11  "Curly"                set=basics tags=plain
+12  "Mullet"               set=basics tags=plain
+13  "Emo Fringe"           set=punk tags=punk,goth
+14  "Pompadour"            set=concert tags=retro,music
+15  "Braids"               set=basics tags=plain
+16  "Side Shave"           set=punk tags=punk
+17  "Wild"                 set=teaparty tags=showcanon,silly
+18  "Locs"                 set=basics tags=plain
+19  "Pigtails"             set=littleones tags=cute,baby
+20  "Hime"                 set=royal tags=fancy
+21  "Wavy"                 set=basics tags=plain
+22  "Bowl"                 set=littleones tags=silly
+23  "Liberty Spikes"       set=punk tags=punk
+24  "Slicked"              set=basics tags=plain
+25  "Messy"                set=basics tags=plain
+26  "Odango"               set=candy tags=cute
+27  "Drills"               set=royal tags=glam,fancy
+28  "Flame"                set=spooky tags=fire,spooky
+29  "Tentacles"            set=monster tags=monster
+30  "Slime Drip"           set=sewers tags=monster,silly
+31  "Crown Braid"          set=royal tags=fancy

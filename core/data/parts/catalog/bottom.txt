@@ -1,0 +1,16 @@
+# core/data/parts/catalog/bottom.txt - the bottom parts (CR1; format: tools/partcat_build.py).
+# Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
+slot bottom list=bottom name="Bottom" method=P target=20
+
+0   "None"                 set=basics tags=plain
+1   "Pants"                set=basics tags=plain
+2   "Shorts"               set=basics tags=plain
+3   "Skirt"                set=basics tags=plain
+4   "Long Skirt"           set=basics tags=plain
+5   "Ripped Jeans"         set=punk tags=punk
+6   "Cargo"                set=hellbreach tags=sporty
+7   "Leggings"             set=basics tags=plain
+8   "Kilt"                 set=basics tags=plain
+9   "Tutu"                 set=funfair tags=party,cute
+10  "Sweats"               set=cozy tags=cozy,sporty
+11  "Robe"                 set=cathedral tags=holy

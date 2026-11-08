@@ -1,0 +1,8 @@
+# core/data/parts/catalog/hood.txt - Hood (CR1; format: tools/partcat_build.py).
+# A deep field (provisional shim id DF_HOOD_HEAD until P0/CR5 lands): painted, not selectable or saved yet.
+slot hood deep=DF_HOOD_HEAD name="Hood" method=P
+
+0   "None"       set=basics tags=plain
+1   "Pushed Back"   set=cozy tags=cozy state=hidden
+2   "Hood Up"       set=cozy tags=cozy,goth state=hidden
+3   "Drawstrings"   set=cozy tags=cozy,sporty state=hidden

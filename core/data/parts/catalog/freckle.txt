@@ -1,0 +1,8 @@
+# core/data/parts/catalog/freckle.txt - Freckles (CR1; format: tools/partcat_build.py).
+# A deep field (provisional shim id DF_FRECKLE until P0/CR5 lands): painted, not selectable or saved yet.
+slot freckle deep=DF_FRECKLE name="Freckles" method=P target=10
+
+0   "None"       set=basics tags=plain
+1   "Sparse Cheeks" set=basics tags=cute state=hidden
+2   "Nose Band"     set=seasons tags=nature,cute state=hidden
+3   "Heavy"         set=seasons tags=nature state=hidden

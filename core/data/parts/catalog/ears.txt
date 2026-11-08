@@ -1,0 +1,20 @@
+# core/data/parts/catalog/ears.txt - the ears parts (CR1; format: tools/partcat_build.py).
+# Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
+slot ears list=ears name="Ears" method=P target=16
+
+0   "Normal"               set=basics tags=plain
+1   "None"                 set=basics tags=plain
+2   "Pointy"               set=spooky tags=spooky
+3   "Elf"                  set=cloud9 tags=magic
+4   "Cat"                  set=critter tags=critter
+5   "Dog"                  set=critter tags=critter
+6   "Bat"                  set=spooky tags=spooky,critter
+7   "Fin"                  set=sewers tags=sea,monster
+8   "Bunny"                set=critter tags=critter
+9   "Fox"                  set=critter tags=critter
+10  "Bear"                 set=critter tags=critter
+11  "Mouse"                set=critter tags=critter
+12  "Sheep"                set=critter tags=critter
+13  "Floppy Pup"           set=critter tags=critter
+14  "Owl Tufts"            set=critter tags=critter
+15  "Raccoon"              set=critter tags=critter

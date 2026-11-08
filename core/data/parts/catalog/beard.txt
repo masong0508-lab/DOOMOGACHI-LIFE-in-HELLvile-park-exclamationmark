@@ -1,0 +1,12 @@
+# core/data/parts/catalog/beard.txt - the facial hair parts (CR1; format: tools/partcat_build.py).
+# Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
+slot beard list=facial_hair name="Facial hair" method=P target=8
+
+0   "None"                 set=basics tags=plain
+1   "Stubble"              set=basics tags=plain
+2   "Mustache"             set=basics tags=plain
+3   "Goatee"               set=basics tags=plain
+4   "Full Beard"           set=basics tags=plain
+5   "Handlebar"            set=teaparty tags=fancy,retro
+6   "Mutton Chops"         set=elders tags=elder,retro
+7   "Wizard"               set=elders tags=elder,magic

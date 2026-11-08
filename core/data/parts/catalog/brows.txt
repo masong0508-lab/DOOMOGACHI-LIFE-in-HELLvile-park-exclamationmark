@@ -1,0 +1,16 @@
+# core/data/parts/catalog/brows.txt - the brows parts (CR1; format: tools/partcat_build.py).
+# Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
+slot brows list=brow_style name="Brows" method=P target=20
+
+0   "None"                 set=basics tags=plain
+1   "Thin"                 set=basics tags=plain
+2   "Thick"                set=basics tags=plain
+3   "Angry"                set=punk tags=punk
+4   "Worried"              set=basics tags=plain
+5   "Unibrow"              set=funfair tags=silly
+6   "Arched"               set=basics tags=plain
+7   "Bushy"                set=elders tags=elder
+8   "Dots"                 set=candy tags=cute
+9   "Scarred"              set=punk tags=punk
+10  "Flat"                 set=basics tags=plain
+11  "Raised"               set=basics tags=plain

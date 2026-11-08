@@ -1,0 +1,16 @@
+# core/data/parts/catalog/nose.txt - the nose parts (CR1; format: tools/partcat_build.py).
+# Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
+slot nose list=nose_style name="Nose" method=P target=12
+
+0   "None"                 set=basics tags=plain
+1   "Dot"                  set=basics tags=plain
+2   "Button"               set=basics tags=plain
+3   "Pointy"               set=basics tags=plain
+4   "Round"                set=basics tags=plain
+5   "Piggy"                set=critter tags=critter,silly
+6   "Skull"                set=graveyard tags=spooky
+7   "Hook"                 set=graveyard tags=spooky
+8   "Wide"                 set=basics tags=plain
+9   "Long"                 set=basics tags=plain
+10  "Kitty"                set=critter tags=critter
+11  "Clown"                set=funfair tags=silly,party

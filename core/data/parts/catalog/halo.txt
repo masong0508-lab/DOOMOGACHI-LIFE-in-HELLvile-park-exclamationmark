@@ -1,0 +1,16 @@
+# core/data/parts/catalog/halo.txt - the halo parts (CR1; format: tools/partcat_build.py).
+# Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
+slot halo list=halo name="Halo" method=P target=10
+
+0   "None"                 set=basics tags=plain
+1   "Halo"                 set=cloud9 tags=holy
+2   "Broken Halo"          set=punk tags=punk,holy
+3   "Flame Ring"           set=spooky tags=fire,holy
+4   "Stars"                set=cloud9 tags=holy
+5   "Thorns"               set=cathedral tags=holy,goth
+6   "Double Ring"          set=cloud9 tags=holy state=hidden
+7   "Heart Halo"           set=candy tags=cute,holy state=hidden
+8   "Square Halo"          set=cloud9 tags=holy state=hidden
+9   "Neon Glitch"          set=indieart tags=tech,silly state=hidden
+10  "Flower Ring"          set=seasons tags=nature,holy state=hidden
+11  "Saturn Ring"          set=cloud9 tags=holy state=hidden

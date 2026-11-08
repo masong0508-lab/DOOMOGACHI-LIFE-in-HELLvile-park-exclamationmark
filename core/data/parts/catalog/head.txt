@@ -1,0 +1,17 @@
+# core/data/parts/catalog/head.txt - the head shape parts (CR1; format: tools/partcat_build.py).
+# Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
+slot head list=head_shape name="Head shape" method=P target=12
+
+0   "Round"                set=basics tags=plain
+1   "Oval"                 set=basics tags=plain
+2   "Square"               set=basics tags=plain
+3   "Heart"                set=candy tags=cute
+4   "Triangle"             set=basics tags=plain
+5   "Pear"                 set=basics tags=plain
+6   "Bean"                 set=basics tags=plain
+7   "Skull"                set=graveyard tags=spooky
+8   "Star"                 set=candy tags=cute,silly
+9   "Blob"                 set=monster tags=monster,silly
+10  "Diamond"              set=royal tags=glam
+11  "Mochi"                set=candy tags=cute,food
+31  "M1 Demo Tuft"   set=basics tags=plain method=S state=test

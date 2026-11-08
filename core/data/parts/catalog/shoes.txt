@@ -1,0 +1,16 @@
+# core/data/parts/catalog/shoes.txt - the shoes parts (CR1; format: tools/partcat_build.py).
+# Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
+slot shoes list=shoes name="Shoes" method=P target=20
+
+0   "Barefoot"             set=basics tags=plain
+1   "Sneakers"             set=basics tags=plain
+2   "Boots"                set=basics tags=plain
+3   "Sandals"              set=basics tags=plain
+4   "Heels"                set=basics tags=glam,fancy
+5   "Clogs"                set=fishcook tags=work
+6   "Combat Boots"         set=punk tags=punk,armor
+7   "Slippers"             set=cozy tags=cozy
+8   "Hooves"               set=spooky tags=critter,spooky
+9   "Rollerskates"         set=funfair tags=sporty,retro
+10  "Platforms"            set=punk tags=punk,glam
+11  "Claws"                set=monster tags=monster

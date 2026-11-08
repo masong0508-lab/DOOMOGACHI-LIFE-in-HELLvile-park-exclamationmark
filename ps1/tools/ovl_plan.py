@@ -41,7 +41,7 @@ import sys
 
 # object basename (without .c.obj) -> group; first match wins
 GROUPS = [
-    ("creator",  r"creator(_draw|_data)?$"),
+    ("creator",  r"creator(_draw|_data)?$|part_meta(_data)?$"),   # CR1: the part catalog (names, sets)
     ("studio",   r"studio(_\w+)?$"),
     ("concert",  r"concert_\w+$"),
     ("dream",    r"dream(_gfx)?$"),

@@ -1,0 +1,29 @@
+# core/data/parts/catalog/eyes.txt - the eyes parts (CR1; format: tools/partcat_build.py).
+# Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
+slot eyes list=eye_style name="Eyes" method=P target=24
+
+0   "Dot"                  set=basics tags=plain
+1   "Round"                set=basics tags=plain
+2   "Anime"                set=candy tags=cute
+3   "Sleepy"               set=basics tags=plain
+4   "Angry"                set=basics tags=plain
+5   "Happy Arc"            set=basics tags=plain
+6   "Cat"                  set=critter tags=critter
+7   "Goat"                 set=spooky tags=spooky,monster
+8   "Spiral"               set=funfair tags=silly
+9   "Star"                 set=candy tags=cute
+10  "Heart"                set=candy tags=cute
+11  "X"                    set=graveyard tags=spooky,silly
+12  "Button"               set=plushie tags=stitched,cute
+13  "Void"                 set=spooky tags=spooky,monster
+14  "Lashes"               set=basics tags=plain,glam
+15  "Droopy"               set=basics tags=plain
+16  "Wide"                 set=basics tags=plain
+17  "Squint"               set=basics tags=plain
+18  "Sparkle"              set=candy tags=cute,glam
+19  "Demon Slit"           set=spooky tags=spooky,monster
+20  "Cross"                set=basics tags=plain
+21  "Hollow"               set=graveyard tags=spooky
+22  "Glow"                 set=spooky tags=spooky,magic
+23  "Compound"             set=monster tags=monster
+63  "M1 Demo Eyes"   set=basics tags=plain method=S state=test

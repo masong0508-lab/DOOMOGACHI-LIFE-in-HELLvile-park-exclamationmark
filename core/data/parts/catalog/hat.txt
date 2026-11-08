@@ -1,0 +1,28 @@
+# core/data/parts/catalog/hat.txt - the hat parts (CR1; format: tools/partcat_build.py).
+# Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
+slot hat list=hat name="Hat" shapes=caps,soft,tall,wide,crowns,ears,helmets,hoods method=P target=40
+
+0   "None"                 set=basics tags=plain
+1   "Cap"                  set=basics tags=plain shape=caps
+2   "Beanie"               set=basics tags=plain shape=soft
+3   "Top Hat"              set=teaparty tags=formal,showcanon shape=tall
+4   "Witch Hat"            set=spooky tags=magic shape=tall
+5   "Crown"                set=royal tags=royal shape=crowns
+6   "Propeller"            set=funfair tags=silly shape=caps
+7   "Cowboy"               set=seasons tags=plain shape=wide
+8   "Beret"                set=indieart tags=fancy shape=soft
+9   "Marine Helmet"        set=hellbreach tags=armor shape=helmets hides=hair
+10  "Horned Helmet"        set=hellbreach tags=armor,spooky shape=helmets hides=hair
+11  "Bunny Ears"           set=candy tags=cute shape=ears
+12  "Cat Ears"             set=critter tags=critter,cute shape=ears
+13  "Headphones"           set=concert tags=music,tech shape=ears
+14  "Bandana"              set=punk tags=punk shape=soft
+15  "Chef Hat"             set=fishcook tags=food,work shape=tall
+16  "Party Hat"            set=partypals tags=party shape=tall
+17  "Nun Veil"             set=cathedral tags=holy shape=hoods hides=hair
+18  "Fez"                  set=teaparty tags=fancy,silly shape=tall
+19  "Flower Crown"         set=seasons tags=nature,cute shape=crowns
+20  "Tiara"                set=royal tags=royal,glam shape=crowns
+21  "Skull Cap"            set=graveyard tags=spooky shape=helmets hides=hair
+22  "Traffic Cone"         set=indieart tags=silly shape=tall
+23  "Bucket"               set=fishcook tags=plain shape=wide

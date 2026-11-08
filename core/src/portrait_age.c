@@ -17,10 +17,13 @@
  *   ELDER    silver hair (white highlight), a little shorter, a bigger nose
  *
  * Pure: no state, no allocation, the same on every platform. Hair, outfit,
- * horns and wings are the player's choices and are left alone.
+ * horns and wings are the player's choices and are left alone, except that a
+ * part whose catalog age class is above the stage (TEEN+ on a child, ADULT on
+ * any minor; CR12, part_age.c) is drawn as its slot's default.
  */
 #include "portrait_int.h"
 #include "doomo/resident.h"
+#include "doomo/part_meta.h"
 
 #define AGE_MIN(a, b) ((a) < (b) ? (a) : (b))
 #define AGE_MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -76,6 +79,9 @@ void look_for_stage(const DoomoLook *in, int stage, DoomoLook *out)
     default:                      /* ADULT and anything unknown: as saved */
         break;
     }
+    /* CR12: a minor is never drawn in a part above their stage (catalog age class), whoever
+     * made the look: the part is drawn as the slot's default. A no-op for adults and elders. */
+    part_age_filter_look(out, stage);
 }
 
 const DoomoImage *figure_image_stage(const DoomoLook *l, int stage, int status, int expr)

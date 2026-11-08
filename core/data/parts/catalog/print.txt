@@ -1,0 +1,12 @@
+# core/data/parts/catalog/print.txt - the print parts (CR1; format: tools/partcat_build.py).
+# Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
+slot print list=pattern name="Print" method=T target=24
+
+0   "Solid"                set=basics tags=plain
+1   "Stripes"              set=basics tags=plain
+2   "Polka Dots"           set=basics tags=plain
+3   "Plaid"                set=cozy tags=cozy
+4   "Flames"               set=spooky tags=fire
+5   "Skulls"               set=graveyard tags=spooky
+6   "Hearts"               set=candy tags=cute
+7   "Camo"                 set=hellbreach tags=sporty

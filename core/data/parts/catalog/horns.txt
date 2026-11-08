@@ -1,0 +1,20 @@
+# core/data/parts/catalog/horns.txt - the horns parts (CR1; format: tools/partcat_build.py).
+# Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
+slot horns list=horns name="Horns" method=P target=10
+
+0   "None"                 set=spooky tags=spooky
+1   "Nubs"                 set=spooky tags=spooky
+2   "Ram"                  set=spooky tags=spooky
+3   "Bull"                 set=spooky tags=spooky
+4   "Devil"                set=spooky tags=spooky
+5   "Unicorn"              set=candy tags=cute,magic
+6   "Antlers"              set=seasons tags=nature
+7   "Goat"                 set=spooky tags=spooky
+8   "Oni"                  set=spooky tags=spooky
+9   "Spiral"               set=spooky tags=spooky
+10  "Broken"               set=punk tags=punk
+11  "Crown Spikes"         set=royal tags=royal
+12  "Antennae"             set=monster tags=tech,silly
+13  "Tall Devil"           set=spooky tags=spooky
+14  "Many"                 set=spooky tags=spooky
+15  "Halo Horns"           set=cloud9 tags=holy

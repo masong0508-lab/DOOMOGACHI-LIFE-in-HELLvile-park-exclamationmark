@@ -1,0 +1,28 @@
+# core/data/parts/catalog/top.txt - the top parts (CR1; format: tools/partcat_build.py).
+# Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
+slot top list=top name="Top" method=P target=40
+
+0   "None"                 set=basics tags=plain
+1   "T-Shirt"              set=basics tags=plain
+2   "Hoodie"               set=basics tags=plain,cozy
+3   "Tank Top"             set=basics tags=plain
+4   "Sweater"              set=cozy tags=cozy
+5   "Suit"                 set=teaparty tags=formal,showcanon
+6   "Dress"                set=basics tags=plain,fancy
+7   "Robe"                 set=cathedral tags=holy,magic
+8   "Armor"                set=hellbreach tags=armor
+9   "Leather Jacket"       set=punk tags=punk
+10  "Overalls"             set=fishcook tags=work
+11  "Kimono"               set=basics tags=fancy
+12  "Lab Coat"             set=indieart tags=work,tech
+13  "Crop Top"             set=basics tags=plain
+14  "Sweater Vest"         set=elders tags=elder,formal
+15  "Cloak"                set=spooky tags=goth,magic
+16  "Band Tee"             set=concert tags=music,punk
+17  "Priest"               set=cathedral tags=holy
+18  "Nurse"                set=basics tags=work
+19  "Maid"                 set=cozy tags=work
+20  "Spacesuit"            set=hellbreach tags=tech hides=neck
+21  "Plate Armor"          set=royal tags=armor
+22  "Hazmat"               set=hellbreach tags=work,tech hides=neck
+23  "Pajamas"              set=cozy tags=cozy

@@ -1,0 +1,24 @@
+# core/data/parts/catalog/mouth.txt - the mouth parts (CR1; format: tools/partcat_build.py).
+# Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
+slot mouth list=mouth_style name="Mouth" method=P target=12
+
+0   "Smile"                set=basics tags=plain
+1   "Grin"                 set=basics tags=plain
+2   "Flat"                 set=basics tags=plain
+3   "Frown"                set=basics tags=plain
+4   "Open"                 set=basics tags=plain
+5   "Kitty"                set=critter tags=critter,cute
+6   "Teeth"                set=monster tags=monster
+7   "Shark"                set=monster tags=monster
+8   "Tongue"               set=basics tags=plain
+9   "Smirk"                set=basics tags=plain
+10  "Pout"                 set=basics tags=plain
+11  "O"                    set=basics tags=plain
+12  "Wavy"                 set=basics tags=plain
+13  "Stitched"             set=plushie tags=stitched
+14  "Beak"                 set=critter tags=critter
+15  "Fangy"                set=spooky tags=spooky
+16  "Drool"                set=monster tags=silly
+17  "Lipstick"             set=basics tags=plain,glam
+18  "Big Grin"             set=basics tags=plain
+19  "Void"                 set=spooky tags=spooky,monster

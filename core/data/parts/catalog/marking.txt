@@ -1,0 +1,27 @@
+# core/data/parts/catalog/marking.txt - the markings parts (CR1; format: tools/partcat_build.py).
+# Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
+slot marking list=marking name="Markings" method=P
+
+0   "None"                 set=basics tags=plain
+1   "Stripes"              set=spooky tags=spooky
+2   "Spots"                set=spooky tags=spooky
+3   "Tribal"               set=spooky tags=spooky
+4   "Skull Paint"          set=graveyard tags=spooky
+5   "Cheek Hearts"         set=candy tags=cute
+6   "Stitches"             set=plushie tags=stitched
+7   "Cracks"               set=graveyard tags=spooky
+8   "Star Freckles"        set=candy tags=cute
+9   "Clown"                set=funfair tags=silly,party
+10  "Eyeliner"             set=punk tags=goth,glam
+11  "Third Eye"            set=spooky tags=magic
+12  "Pentagram"            set=spooky tags=spooky,goth
+13  "Tears"                set=punk tags=goth
+14  "Patches"              set=plushie tags=stitched
+15  "Scales"               set=spooky tags=spooky
+16  "Fur Muzzle"           set=critter tags=critter
+17  "Fur Belly"            set=critter tags=critter
+18  "Fur Socks"            set=critter tags=critter
+19  "Fur Mask"             set=critter tags=critter
+20  "Tabby"                set=critter tags=critter
+21  "Calico"               set=critter tags=critter
+22  "Tipped Ears"          set=critter tags=critter

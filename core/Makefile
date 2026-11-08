@@ -4,7 +4,7 @@
 #   make -C core              build the headless runner (default)
 #   make -C core runner       $(BUILD)/runner  (see core/native/README.md)
 #   make -C core lib          compile every core object (src + gen)
-#   make -C core test         unit tests + runner scripts at 240x160 and 320x240
+#   make -C core test         unit tests + runner scripts at 240x160 and 320x240 + parts-check
 #                             + the journey budgets (journeys)
 #   make -C core journeys     the journey and tap meter: core/tests/journeys/
 #                             against budgets.tsv at both sizes (M0)
@@ -49,9 +49,9 @@ ifeq ($(SAN),1)
 CFLAGS_COMMON += -fsanitize=address,undefined -fno-omit-frame-pointer
 LDFLAGS_SAN := -fsanitize=address,undefined
 endif
-CORE_CFLAGS   := $(CFLAGS_COMMON) -DDOOMO_HITCHECK -DDOOMO_PARTS_LZ_TEST -I$(CORE_INC)
+CORE_CFLAGS   := $(CFLAGS_COMMON) -DDOOMO_HITCHECK -DDOOMO_PARTS_LZ_TEST -DDOOMO_PART_AGE_TEST -I$(CORE_INC)
 # Native platform + tests may use the host libc.
-HOST_CFLAGS   := $(CFLAGS_COMMON) -DDOOMO_PARTS_LZ_TEST -D_POSIX_C_SOURCE=200809L -I$(CORE_INC) -I$(CORE)/native \
+HOST_CFLAGS   := $(CFLAGS_COMMON) -DDOOMO_PARTS_LZ_TEST -DDOOMO_PART_AGE_TEST -D_POSIX_C_SOURCE=200809L -I$(CORE_INC) -I$(CORE)/native \
                  -DNAT_TALK_DIR='"$(BUILD)/talk"'
 
 NATIVE_SRCS := $(sort $(wildcard $(CORE)/native/*.c))
@@ -65,7 +65,7 @@ PLAT_OBJS   := $(call obj,$(NATIVE_PLAT))
 MAIN_OBJ    := $(call obj,$(NATIVE_MAIN))
 TEST_OBJS   := $(call obj,$(TEST_SRCS))
 
-.PHONY: all lib runner test unit scripts journeys gen check-gen xcheck sizes clean story-check talk talk-check
+.PHONY: all lib runner test unit scripts journeys gen check-gen xcheck sizes clean story-check talk talk-check parts-check
 .DEFAULT_GOAL := runner
 
 all: runner $(BUILD)/tests
@@ -99,7 +99,7 @@ $(BUILD)/tests: $(CORE_OBJS) $(PLAT_OBJS) $(TEST_OBJS)
 	$(CC) $(LDFLAGS_SAN) -o $@ $^
 
 # ---- tests ------------------------------------------------------------------
-test: story-check talk-check unit scripts journeys
+test: story-check talk-check parts-check unit scripts journeys
 
 unit: $(BUILD)/tests talk
 	$(BUILD)/tests --golden $(CORE)/tests/golden --tmp $(BUILD)/testtmp
@@ -126,6 +126,12 @@ scripts: $(BUILD)/runner
 journeys: $(BUILD)/runner
 	sh $(CORE)/tests/run_journeys.sh $(BUILD)/runner $(CORE)/tests/journeys $(BUILD)/journeys
 # --- end M0 ---
+
+# --- CR1/CR2: the part tools' seeded rejects (parts_build.py, partcat_build.py) ---
+parts-check:
+	@$(PYTHON) $(ROOT)/tools/parts_build.py --selftest
+	@$(PYTHON) $(ROOT)/tools/partcat_build.py --selftest
+# --- end CR1/CR2 ---
 
 # --- P0: the script-rewrite guardrails (docs/STORY_ENGINE.md "Script tools") ---
 # The Spanish story TSVs against the packs, the save and flow locks, and the

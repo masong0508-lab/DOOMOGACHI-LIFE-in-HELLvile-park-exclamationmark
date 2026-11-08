@@ -1,0 +1,8 @@
+# core/data/parts/catalog/bags.txt - Eye bags (CR1; format: tools/partcat_build.py).
+# A deep field (provisional shim id DF_BAGS until P0/CR5 lands): painted, not selectable or saved yet.
+slot bags deep=DF_BAGS name="Eye bags" method=P
+
+0   "None"       set=basics tags=plain
+1   "One Line"      set=elders tags=elder state=hidden
+2   "Two Lines"     set=elders tags=elder state=hidden
+3   "Smudged"       set=graveyard tags=spooky,goth state=hidden

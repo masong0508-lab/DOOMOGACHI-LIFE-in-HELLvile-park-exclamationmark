@@ -1,0 +1,8 @@
+# core/data/parts/catalog/lid.txt - Eyelids (CR1; format: tools/partcat_build.py).
+# A deep field (provisional shim id DF_LID until P0/CR5 lands): painted, not selectable or saved yet.
+slot lid deep=DF_LID name="Eyelids" method=P target=13
+
+0   "None"       set=basics tags=plain
+1   "Heavy Droop"   set=elders tags=elder state=hidden
+2   "Half-Lidded"   set=cozy tags=cozy state=hidden
+3   "Double Crease" set=basics tags=plain state=hidden

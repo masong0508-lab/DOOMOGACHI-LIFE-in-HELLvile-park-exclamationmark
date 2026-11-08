@@ -1,0 +1,18 @@
+# core/data/parts/catalog/hides.txt - what a part can hide (CR1), for the creator's "Hidden by" chips.
+# bit = line order, at most 16, append-only.
+hide hat
+hide hair
+hide ears
+hide horns
+hide brows
+hide eyes
+hide nose
+hide mouth
+hide neck
+hide torso
+hide arms
+hide legs
+hide feet
+hide tail
+hide wings
+hide back

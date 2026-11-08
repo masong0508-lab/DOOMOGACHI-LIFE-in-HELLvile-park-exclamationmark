@@ -1,0 +1,8 @@
+# core/data/parts/catalog/mole.txt - Moles (CR1; format: tools/partcat_build.py).
+# A deep field (provisional shim id DF_MOLE until P0/CR5 lands): painted, not selectable or saved yet.
+slot mole deep=DF_MOLE name="Moles" method=P target=10
+
+0   "None"       set=basics tags=plain
+1   "By the Mouth"  set=teaparty tags=glam state=hidden
+2   "Under the Eye" set=basics tags=plain state=hidden
+3   "Cheek"         set=basics tags=plain state=hidden

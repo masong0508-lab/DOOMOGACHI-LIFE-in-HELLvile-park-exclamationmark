@@ -1,0 +1,30 @@
+# core/data/parts/catalog/species.txt - the species parts (CR1; format: tools/partcat_build.py).
+# Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
+slot species list=species name="Species" method=P
+
+0   "Human"                set=citizens tags=plain
+1   "Imp"                  set=spooky tags=spooky,monster
+2   "Cherub"               set=cloud9 tags=holy,cute
+3   "Ghoul"                set=graveyard tags=spooky,monster
+4   "Skeleton"             set=graveyard tags=spooky,monster
+5   "Slime"                set=monster tags=monster,silly
+6   "Hellhound"            set=spooky tags=spooky,critter
+7   "Cacoblob"             set=monster tags=monster,silly
+8   "Batling"              set=spooky tags=spooky,critter
+9   "Robot"                set=monster tags=tech
+10  "Plushie"              set=plushie tags=stitched,cute
+11  "Ghost"                set=graveyard tags=spooky
+12  "Mummy"                set=graveyard tags=spooky,monster
+13  "Mothkin"              set=critter tags=critter,nature
+14  "Frogling"             set=critter tags=critter,nature
+15  "Bunnykin"             set=critter tags=critter,cute
+16  "Catfolk"              set=critter tags=critter,cute
+17  "Foxkin"               set=critter tags=critter,cute
+18  "Bearkin"              set=critter tags=critter,cute
+19  "Pupkin"               set=critter tags=critter,cute
+20  "Mousekin"             set=critter tags=critter,cute
+21  "Sheepkin"             set=critter tags=critter,cute
+22  "Raccoonkin"           set=critter tags=critter,cute
+23  "Owlkin"               set=critter tags=critter,nature
+24  "Turkey"               set=teaparty tags=showcanon,silly
+25  "Animatronic"          set=partypals tags=showcanon,tech,retro
