@@ -307,7 +307,7 @@ six rooms, about one in six with a misspelling, a shortcut or leet):
 |---|---:|---:|
 | act (top 1) | 90% | **97.7%** |
 | topic | 85% | **93.4%** |
-| addressee | 95% | **98.5%** |
+| addressee | 95% | **98.6%** |
 
 The corpus was also the tuning set. **On 82 fresh lines written afterwards
 and never tuned on** (kept outside the repository, measured with
