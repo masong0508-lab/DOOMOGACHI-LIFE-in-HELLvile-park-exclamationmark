@@ -4,9 +4,16 @@
  * line) with a real dot-matrix LCD: 64x44 chunky dots drawn 2x (GBA) or
  * 3x with dot gaps (PS1), a faint LCD shadow under every lit dot, a row of
  * icons on top (food, lights, play, medicine) and bottom (clean, health,
- * discipline, attention). LEFT/RIGHT pick an icon, A uses it, B backs out,
- * SELECT opens the Boredex, START leaves. The world keeps ticking while
- * you watch (sim_tick), so the pet lives on game time.
+ * discipline, attention). LEFT/RIGHT pick an icon, A uses it, B backs out
+ * (and leaves from the icon row, like START), SELECT opens the Boredex. The
+ * world keeps ticking while you watch (sim_tick), so the pet lives on game
+ * time.
+ *
+ * C14 (clarity): a prompt bar at both sizes (ui.h ui_prompts) names what
+ * every button does on each screen, and the A verb is the selected icon's
+ * name ("A Feed", "A Lights"...). On an egg only Health works: the other
+ * icons are drawn faded, the cursor starts on Health, and A on a faded one
+ * says why (a toast). The health pages say what each one shows.
  */
 #include "doomo/doomo.h"
 #include "doomo/tips.h"
@@ -64,11 +71,23 @@ static int spr_key = -9999;             /* what spr (below) holds         */
 
 /* ---------------------------------------------------------------------- */
 /* geometry & the LCD blitter                                               */
-static int big(void) { return plat_screen_h() >= 200; }
-static int dsc(void) { return big() ? 3 : 2; }
-static int lcd_x(void) { return plat_screen_w() / 2 - LW * dsc() / 2; }
-static int egg_cy(void) { return big() ? 118 : 84; }
-static int lcd_y(void) { return egg_cy() - LH * dsc() / 2 - (big() ? 4 : 2); }
+/* (C14 speed) the screen's geometry is worked out once a tick (geo_refresh, from enter, update and draw), not on every
+ * LCD dot: plat_screen_h() alone was 3% of this scene on the GBA. Same numbers. */
+static struct { int big, dsc, lx, ly, cy, sh; } G;
+static void geo_refresh(void)
+{
+    G.sh = plat_screen_h();
+    G.big = G.sh >= 200;
+    G.dsc = G.big ? 3 : 2;
+    G.lx = plat_screen_w() / 2 - LW * G.dsc / 2;
+    G.cy = G.big ? 118 : 76;                        /* (C14: 240x160 up 8 px for the prompt bar) */
+    G.ly = G.cy - LH * G.dsc / 2 - (G.big ? 4 : 2);
+}
+static int big(void) { return G.big; }
+static int dsc(void) { return G.dsc; }
+static int lcd_x(void) { return G.lx; }
+static int egg_cy(void) { return G.cy; }
+static int lcd_y(void) { return G.ly; }
 
 static void lcd_rect(int x, int y, int w, int h, int v)
 {
@@ -174,13 +193,22 @@ static void on_named(int ok)
     S.last_stage = PET_STAGE_EGG;
     S.last_form = 0;
     set_mode(M_MAIN);
+    S.sel = IC_HEALTH;                  /* C14: an egg can only be looked at */
     audio_sfx(SFX_EGG_CRACK);
+}
+
+/* C14: the scene ends: back to the island (or the title) */
+static void leave(void)
+{
+    audio_sfx(SFX_CANCEL);
+    if (scene_depth() > 1) scene_pop(); else scene_set(&SCENE_TITLE, 0);
 }
 
 static void pet_enter(int arg)
 {
     (void)arg;
     memset(&S, 0, sizeof(S));
+    geo_refresh();
     spr_key = -9999;
     colours();
     S.x = LW / 2 - PET_SPR / 2;
@@ -189,6 +217,7 @@ static void pet_enter(int arg)
     S.last_form = pet()->form;
     audio_music(SONG_PET);
     set_mode(pet_exists() ? (pet()->stage == PET_STAGE_DEAD ? M_DEAD : M_MAIN) : M_NOPET);
+    if (pet_exists() && pet()->stage == PET_STAGE_EGG) S.sel = IC_HEALTH;      /* C14 */
     if (arg == PET_ARG_BOSS) {      /* --- S3: an egg or a little ghost holds on too --- */
         set_mode(M_BOSS);
         S.calm = 20;
@@ -210,7 +239,11 @@ static int asleep(void) { return pet_is_asleep(); }
 static void use_icon(int ic)
 {
     const DoomoPet *p = pet();
-    if (p->stage == PET_STAGE_EGG && ic != IC_HEALTH) { audio_sfx(SFX_ERROR); return; }
+    if (p->stage == PET_STAGE_EGG && ic != IC_HEALTH) {
+        audio_sfx(SFX_ERROR);
+        ui_toast("Still an egg: only Health works.");   /* C14 */
+        return;
+    }
     switch (ic) {
     case IC_FOOD:
         if (asleep()) { audio_sfx(SFX_ERROR); return; }
@@ -238,14 +271,20 @@ static void pet_update(void)
 {
     const DoomoPet *p;
     int i;
+    geo_refresh();
     sim_tick();                                   /* the world goes on */
     p = pet();
     S.mt++;
     for (i = 0; i < 3; i++) if (S.btn_flash[i] > 0) S.btn_flash[i]--;
 
     if (btn_pressed(BTN_START) && S.mode != M_PLAY && S.mode != M_BOSS) {
-        audio_sfx(SFX_CANCEL);
-        if (scene_depth() > 1) scene_pop(); else scene_set(&SCENE_TITLE, 0);
+        leave();
+        return;
+    }
+    /* C14: B backs out of the device from its top screens, as the bar says */
+    if (btn_pressed(BTN_B) && (S.mode == M_MAIN || S.mode == M_NOPET || S.mode == M_DEAD)) {
+        press_fx(2);
+        leave();
         return;
     }
     /* evolution / hatching / passing, whatever screen we were on */
@@ -280,7 +319,6 @@ static void pet_update(void)
         if (btn_repeat(BTN_RIGHT)) { S.sel = (S.sel + 1) % (ICONS - 1); press_fx(0); }
         if (btn_repeat(BTN_LEFT)) { S.sel = (S.sel + ICONS - 2) % (ICONS - 1); press_fx(0); }
         if (btn_pressed(BTN_A)) { press_fx(1); use_icon(S.sel); }
-        if (btn_pressed(BTN_B)) { press_fx(2); }
         /* wander */
         if (!asleep() && p->stage != PET_STAGE_EGG && ++S.step_t >= 18) {
             S.step_t = 0;
@@ -458,7 +496,7 @@ static void egg_fill(int cx, int cy, int rx, int ry, int rxt, int ryt, uint8_t c
         int top = y < cy, dy = top ? cy - y : y - cy, r = top ? ryt : ry, w = top ? rxt : rx, hw;
         const uint8_t *tab = top ? tt : tb;
         uint32_t k;
-        if (y < 0 || y >= plat_screen_h() || dy > r) continue;
+        if (y < 0 || y >= G.sh || dy > r) continue;
         if (tab) hw = tab[dy];
         else {
             k = (uint32_t)(r * r - dy * dy) * 256u / (uint32_t)(r * r);
@@ -540,6 +578,8 @@ static void draw_icons(void)
         int row = i / 4, col = i % 4, x = 3 + col * 16, y = row ? LH - 7 : 1;
         int v = 2, j, k;
         if (i == IC_ATTN) v = pet_calling() ? 1 : 2;
+        /* C14: an egg can use none but Health: the others are faded */
+        if (i != IC_HEALTH && pet_exists() && pet()->stage == PET_STAGE_EGG) v = 4;
         if (i == S.sel && S.mode == M_MAIN) v = 1;
         for (j = 0; j < 6; j++)
             for (k = 0; k < 10; k++)
@@ -877,11 +917,57 @@ static void draw_boss(uint32_t t)
 }
 /* --- end S3 --- */
 
+/* C14: the prompt bar, both sizes (ui.h ui_prompts) */
+static const char *const icon_verb[ICONS] = {
+    "Feed", "Lights", "Play", "Medicine", "Clean", "Health", "Scold", "Attention"
+};
+static const char *const health_what[6] = {
+    "Age (days), weight (g)", "Hunger: feed it", "Joy: play with it", "Discipline: scold tantrums",
+    "Holy or evil: its future", "Its form and mistakes"
+};
+
+static void pet_prompts(void)
+{
+    UiPrompt p[5];
+    int n = 0;
+#define PR(b, pr, v) do { p[n].btn = (uint16_t)(b); p[n].prio = (uint8_t)(pr); p[n].verb = (v); n++; } while (0)
+    switch (S.mode) {
+    case M_NOPET: PR(BTN_A, 0, "Name your egg"); PR(BTN_B, 1, "Back"); break;
+    case M_MAIN:
+        PR(BTN_LEFT | BTN_RIGHT, 1, "Pick");
+        PR(BTN_A, 0, icon_verb[S.sel]);
+        PR(BTN_B, 2, "Back");
+        PR(BTN_SELECT, 3, "Boredex");
+        break;
+    case M_FOOD: PR(BTN_UP | BTN_DOWN, 1, "Meal / snack"); PR(BTN_A, 0, "Feed"); PR(BTN_B, 2, "Back"); break;
+    case M_LIGHTS: PR(BTN_UP | BTN_DOWN, 1, "On / off"); PR(BTN_A, 0, "Set"); PR(BTN_B, 2, "Back"); break;
+    case M_PLAY:
+        if (S.play_guess == -2) PR(BTN_A, 0, "OK");
+        else { PR(BTN_LEFT | BTN_RIGHT, 0, "Guess its way"); PR(BTN_B, 1, "Back"); }
+        break;
+    case M_EAT: case M_MED: case M_DISC: PR(BTN_B, 0, "Skip"); break;
+    case M_CLEAN: PR(0, 0, "Scrub scrub..."); break;
+    case M_HEALTH:
+        PR(BTN_LEFT | BTN_RIGHT, 1, "Page");
+        PR(BTN_B, 2, "Back");
+        PR(0, 0, health_what[S.page % 6]);
+        break;
+    case M_EVOLVE: PR(BTN_A, 0, "OK"); break;
+    case M_DEAD: if (S.mt > 40) PR(BTN_A, 0, "New egg"); PR(BTN_B, 1, "Back"); break;
+    case M_DEX: PR(BTN_LEFT | BTN_RIGHT, 1, "Form"); PR(BTN_UP | BTN_DOWN, 2, "Line"); PR(BTN_B, 0, "Back"); break;
+    case M_BOSS: PR(BTN_LEFT | BTN_RIGHT, 0, "Shield"); PR(BTN_A, 1, "Feed / hold / play"); break;
+    default: break;
+    }
+#undef PR
+    ui_prompts(p, n, WIN_CUTE);
+}
+
 static void pet_draw(void)
 {
     uint32_t t = doomo_frame_count();
     const DoomoPet *p = pet();
     char b[48];
+    geo_refresh();
     ui_backdrop(WIN_CUTE, t);
     draw_device(t);
     switch (S.mode) {
@@ -914,10 +1000,7 @@ static void pet_draw(void)
         else doomo_snprintf(b, sizeof(b), "%s the %s", p->name, doomo_pet_form_names[p->form]);
         if (big()) ui_title(plat_screen_w() / 2, 2, b, WIN_CUTE);
     }
-    if (big() && S.mode == M_BOSS) ui_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " Shield  " STR_ICON_A " Feed / hold / play", WIN_CUTE);
-    else if (big()) ui_hint(S.mode == M_DEX ? STR_ICON_B " Back" :
-                       STR_ICON_ARROW_L STR_ICON_ARROW_R " Pick  " STR_ICON_A " Use  SELECT Boredex  START Exit",
-                       WIN_CUTE);
+    pet_prompts();
 }
 
 const DoomoScene SCENE_PET = { "PET", pet_enter, NULL, pet_update, pet_draw, 0 };
