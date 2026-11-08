@@ -18,7 +18,7 @@
  *
  * Resident code and text (PS1: called from many scene overlays, drawn from
  * doomo_frame): the text lives here, never in a scene's overlay. RAM: the
- * state below (12 B). The words go through lang_tr (ui_text_wrap, ui_text),
+ * state below (15 B). The words go through lang_tr (ui_text_wrap, ui_text),
  * so a language without a row simply shows the English.
  */
 #include "doomo/doomo.h"
@@ -63,7 +63,7 @@ static const TipText tip_text[TIP_COUNT] = {
     /* TIP_HOUSE */
     { SPK_RIVET, ICON_WRENCH,
       "Your house! I welded the plumbing myself. Do not lick the plumbing.",
-      "START: menu (Catalog, Build or Live mode, Score). Build: A picks up and puts down. Live: walk, A uses things." },
+      "START: menu (Catalog, Build or Live mode, Photo, Score). Build: A picks up and puts down. Live: walk, A uses things." },
     /* TIP_DEFEND */
     { SPK_RIVET, ICON_BOMB,
       "Demons at the door! Classic Tuesday. Hold the door and nobody gets eaten. Probably.",
@@ -83,7 +83,7 @@ static const TipText tip_text[TIP_COUNT] = {
     /* TIP_STUDIO */
     { SPK_MAYOR, ICON_NOTE,
       "The Music Studio! I wrote the town anthem here. It is one note. It is a very good note.",
-      "L/R: switch tabs (Song, Notes, Order, Lyrics, Choir, Stage). A: edit the row. START: play. B: back." },
+      "L/R: switch tabs (Song, Notes, Order, Lyrics, Choir, Stage, File). A: edit the row. START: play. B: back." },
     /* TIP_WORKSHOP */
     { SPK_RIVET, ICON_WRENCH,
       "My workshop! Pick parts, weld them, get a gun. Keep all your fingers. Most people do.",
@@ -111,7 +111,7 @@ static const char *tip_plain(int id)
     return tip_text[id].plain;
 }
 
-/* ---- state (12 B) ------------------------------------------------------------- */
+/* ---- state (15 B) ------------------------------------------------------------- */
 static uint32_t s_seen;                /* bit per TIP_*                              */
 static const DoomoScene *s_owner;      /* the scene the card belongs to              */
 static int8_t   s_cur = -1;            /* the card, -1 none                          */

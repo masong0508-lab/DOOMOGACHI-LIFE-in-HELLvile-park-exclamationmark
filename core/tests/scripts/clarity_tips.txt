@@ -49,6 +49,19 @@ wait 10
 press A
 wait 4
 expect-tip none
+# a citizen's care tab: A visits the window under the cursor
+press A
+wait 40
+expect-scene RESIDENT
+expect-tip care
+shot tip_care
+wait 10
+press A
+wait 4
+expect-tip none
+press B
+wait 10
+expect-scene APARTMENTS
 press B
 wait 10
 press B

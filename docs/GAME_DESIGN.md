@@ -321,9 +321,9 @@ a first-time card is on screen.
 
 **Seen flags** (one bit per tip, 32 at most) are the machine's, not the
 island's: they survive New Game. Where the platform keeps the machine
-config record (PS1 memory card file) they are bytes 12..15 of it and the
-Tips switch is byte 11 (`doomo/options_store.h`); where it does not
-(native, GBA) they ride in the save's 'OPT2' chunk (version 2: the seen
+config record (PS1 memory card file, Dreamcast VMU file) they are bytes
+12..15 of it and the Tips switch is byte 11 (`doomo/options_store.h`); where
+it does not (native, GBA) they ride in the save's 'OPT2' chunk (version 2: the seen
 word, then the option values) and merge on load (a load never forgets a
 seen tip). A PS1 card write takes about a second, so a seen tip is not
 written when its card closes: the record follows at the next save
@@ -332,10 +332,10 @@ written when its card closes: the record follows at the next save
 shows once more).
 
 **Budgets.** Scripted runs never see a card: the native runner, the GBA
-harness, the PS1 harness (in lockstep) and the Dreamcast harness (once it
-has posted a command or holds the loop) report `PLAT_TEST_NO_TIPS`
+harness, the PS1 harness (in lockstep) and the Dreamcast harness (dcrun's
+`test_flags` mailbox word) report `PLAT_TEST_NO_TIPS`
 (`doomo/plat_ext.h`), so every journey in 4.1 keeps its presses. A script
-that wants the cards says `tips on` (runner and GBA harness);
+that wants the cards says `tips on` (runner, GBA harness, dcrun);
 `expect-tip NAME` / `expect-tip none` and `tips reset` check and reset them
 (core/tests/scripts/clarity_tips.txt plays every card at both sizes).
 
@@ -344,7 +344,8 @@ glossary behind the tips: an eighth book on the Grand Library's shelf (not
 a wing: no completion and no unlock ids), a "Field Guide" shortcut in the
 free play Library menu, and the **Help** row of the island START menu
 (above Back to title) and of the story pause panel (above Title Screen).
-17 pages: Buttons (with the GBA's SELECT+A / SELECT+B line), H$ and rent,
+17 pages: Buttons (with a GBA line, SELECT+A / SELECT+B, and a PS1 line naming
+Cross, Circle, Square and Triangle), H$ and rent,
 Needs, Moods, Dark, Bonds, Two sides, Exorcism, Weld stats, The house,
 House score, Hold the Door, Boreagotchi, Family, Play as, Studio words,
 Tips. The list works like every Library book (A opens a page, LEFT / RIGHT

@@ -720,7 +720,7 @@ void owfx_draw_pause_ex(int settled)
 {
     int sw = plat_screen_w(), sh = plat_screen_h(), style = hud_style();
     int big = sh >= 200, w = big ? 236 : 196, h = big ? 196 : 148;   /* C11: room for the help line */
-    int x = (sw - w) / 2, y = (sh - h) / 2 + 4, i, bh = big ? 16 : 13, by;
+    int x = (sw - w) / 2, y = (sh - h) / 2 + 4, i, bh = big ? 16 : 12, by;   /* CL4: 9 rows, 12 px apart at 240x160 */
     const DoomoResident *p = town_res(playas_slot());
     const UiStyle *st = ui_style(style);
     char buf[48];

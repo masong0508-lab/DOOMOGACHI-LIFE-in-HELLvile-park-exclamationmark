@@ -835,11 +835,12 @@ static void menu_update(void)
     /* (perf) the pop-in is over and a full frame was shown: keep it as the backdrop (docs/ISLAND_SPEED.md I6) */
     if (!I.hold && I.hold_full && plat_hold_frame(2)) I.hold = 2;
     if ((I.menu_t & 31) == 0) { int s = I.esel; build_menu(I.mloc); I.esel = DOOMO_MIN(s, I.nent - 1); }
+    /* CL4: the Town Hall card; the tick it shows, nothing of this tick's press reaches the menu */
+    if (I.mloc && I.mloc->kind == LOC_TOWN_HALL && I.menu_t > 8 && tip_once(TIP_TOWN_HALL)) return;
     if (btn_repeat(BTN_UP)) { I.esel = (I.esel + I.nent - 1) % I.nent; audio_sfx(SFX_CURSOR); }
     if (btn_repeat(BTN_DOWN)) { I.esel = (I.esel + 1) % I.nent; audio_sfx(SFX_CURSOR); }
     if (I.esel < I.etop) I.etop = I.esel;
     if (I.esel >= I.etop + vis) I.etop = I.esel - vis + 1;
-    if (I.mloc && I.mloc->kind == LOC_TOWN_HALL && I.menu_t > 8) tip_once(TIP_TOWN_HALL);   /* CL4 */
     if (btn_pressed(BTN_A)) { run_entry(&isl()->ent[I.esel]); return; }
     if (btn_pressed(BTN_START) && I.mloc == &menu_loc && fp_is_freeplay()) { quick_save(); return; }
     if (btn_pressed(BTN_B)) { I.menu_open = 0; audio_sfx(SFX_CANCEL); }
@@ -898,7 +899,7 @@ static void island_update(void)
     if (!I.menu_open && !I.hold && I.hub_full && plat_hold_frame(2)) { I.hold = 3; I.hub_full = 0; }
     if (btn_down(0xFFFFFFFFu)) I.dirty = 1;
     if (I.menu_open) { menu_update(); return; }
-    if (fp_is_freeplay()) tip_once(TIP_ISLAND);                  /* CL4: the button map, once */
+    if (fp_is_freeplay() && tip_once(TIP_ISLAND)) return;        /* CL4: the button map, once (the press waits) */
     I.idle++;
     if (I.idle == RENT_AUTO_IDLE && fp_rent_day() != doomo_town.day + 1) collect_rent_now();   /* LS-QA */
     if (btn_repeat(BTN_LEFT)) I.sel = move_dir(I.sel, -1, 0);

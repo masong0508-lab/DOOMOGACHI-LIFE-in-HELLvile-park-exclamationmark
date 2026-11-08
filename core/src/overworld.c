@@ -728,6 +728,7 @@ int ow_pause_row(int i, const char **help)
     case PM_MAP: h = "Where you are and where to go next."; break;
     case PM_OPTIONS: h = "Sound, text, controls and language."; break;
     case PM_SAVE: h = ow.visit ? "Strolls aren't saved." : "Save your story (START does it too)."; break;
+    case PM_HELP: h = "The Field Guide: every rule, button and word, explained."; break;   /* CL4 */
     case PM_TITLE: h = "Quit to the title screen."; break;
     default: break;
     }

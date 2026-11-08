@@ -13,6 +13,7 @@
 #include "../src/story_int.h"
 
 int ow_pause_row(int i, const char **help);   /* overworld.c (CL2) */
+int ow_pause_count(void);                      /* overworld.c (CL4: + the Help row) */
 enum { ROW_PET = 2, ROW_ARMORY = 3 };         /* PM_PET, PM_ARMORY in overworld.c */
 
 /* START skips a cutscene, A moves its shots on; stop at the first frame the
@@ -81,7 +82,7 @@ TEST(cl2_pause_rows_say_why_they_are_greyed)
     story_set_flag(SF_WEAPON_CHOSEN, 1);
     CHECK_EQ(ow_pause_row(ROW_PET, &help), 1);
     CHECK_EQ(ow_pause_row(ROW_ARMORY, &help), 1);
-    for (int i = 0; i < 8; i++) {                  /* every row has a help line */
+    for (int i = 0; i < ow_pause_count(); i++) {   /* every row has a help line (CL4: Help too) */
         help = NULL;
         ow_pause_row(i, &help);
         CHECK_MSG(help && help[0], "row %d has no help line", i);

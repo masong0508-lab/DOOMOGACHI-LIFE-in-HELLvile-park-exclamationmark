@@ -107,7 +107,7 @@ static const char *para_text(int page, int k)
         return "A need near zero shows as a red bar and an icon in the citizen's window. Low needs mean bad moods, and "
                "starving or neglected citizens can get sick, leave or worse.";
     case HP_MOODS * PARAS + 0:
-        return "A citizen's mood is the face they pull: OK, Happy, Ecstatic, Sad, Angry, Lovesick, Hungry, Sleepy, Sick, "
+        return "A citizen's mood is the face they pull: Okay, Happy, Ecstatic, Sad, Angry, Lovesick, Hungry, Sleepy, Sick, "
                "Filthy, Lonely, Scared, Corrupted or Possessed.";
     case HP_MOODS * PARAS + 1:
         return "Moods come from needs: a hungry citizen is Hungry, a lonely one Lonely. Fix the need and the mood follows. "
@@ -180,8 +180,8 @@ static const char *para_text(int page, int k)
         return "Your household is you plus the members you add: partners, children, roommates and pets. Adding someone, "
                "you pick what they are to you. Care for everyone does a round of care in one go.";
     case HP_FAMILY * PARAS + 1:
-        return "The household has room for 3 at first, more after you finish the story, and the most after New Game+ "
-               "(20; 10 on the GBA). Pets count too. Options > Life Sim > Loss decides if members can be lost.";
+        return "In free play the household has its full room (20; 10 on the GBA) from day one. In the story: 3 at first, "
+               "more after the ending, all of it after New Game+. Pets count. Options > Life Sim > Loss: can members be lost.";
     case HP_PLAYAS * PARAS + 0:
         return "After you finish the story you can switch who you play: the hero, a villager, a family member or one of "
                "the main cast. In the story R opens the switcher and L goes back to who you were.";
@@ -208,6 +208,9 @@ static const char *para_text(int page, int k)
 static const char *buttons_extra(void)
 {
     if (plat_name()[0] == 'G') return "No X or Y on the Game Boy Advance: SELECT+A works as X and SELECT+B as Y.";
+    if (plat_name()[0] == 'P')
+        return "On the PlayStation A is Cross, B is Circle, X is Square, Y is Triangle, L and R are L1 and R1. In the "
+               "shooter Square rolls and Triangle swaps weapons.";
     return "X and Y are extras: in the shooter X rolls and Y swaps weapons.";
 }
 
