@@ -24,6 +24,7 @@
  */
 #include "gba_plat.h"
 #include "canvas_int.h"
+#include "r3d_int.h"            /* SP3: the raycaster's colormap rows share the VRAM gaps */
 #include "doomo/plat_ext.h"
 
 /* 1 once P2/P3 put the held backdrop back on every frame; until then
@@ -111,4 +112,42 @@ int plat_hold_frame(int on)
     if (gba_nodraw == 1 || last_page < 0) return 0;   /* skipped tick, tiles, nothing shown */
     held_page = last_page;
     return HOLD_RESTORE_READY;
+}
+
+/* SP3 / I11 (plat_ext.h plat_strip): a clean copy of a band of rows of the frame being drawn, in the two 2,560-byte
+ * VRAM gaps the Mode 4 pages leave (0x06009600, 0x06013600: never displayed): the first 10 rows in gap A, the rest in
+ * gap B, 240 bytes a row, so up to PLAT_STRIP_MAX_H (20) rows. The gaps are shared (r3d_int.h): the raycaster's
+ * colormap rows (rebuilt when r3d_cmrow[0] is 0, set here as the overworld's tile slots do), the overworld's
+ * per-frame tile slots and the house's roof tables (rebuilt after any frame the house did not draw). None of them
+ * draws in a frame of the island hub, the only user, and a scene change ends the hold the copy is for (the core
+ * then saves it again before it restores). Costs 2 DMAs (~0.15 ms for 18 rows) per call; no RAM. */
+#define STRIP_GAP_A ((uint8_t *)0x06009600)
+#define STRIP_GAP_B ((uint8_t *)0x06013600)
+#define STRIP_ROWS_A 10
+DOOMO_STATIC_ASSERT(STRIP_ROWS_A * SCREEN_W <= 2560 && (PLAT_STRIP_MAX_H - STRIP_ROWS_A) * SCREEN_W <= 2560,
+                    strip_fits_the_gaps);
+static int8_t strip_y = -1, strip_h;
+
+int plat_strip(int op, int y, int h)
+{
+    uint8_t *row;
+    int a;
+    if (gba_nodraw == 1 || y < 0 || h <= 0 || h > PLAT_STRIP_MAX_H || y + h > SCREEN_H) return 0;
+    if (gba_nodraw == GBA_NODRAW_FIRST) vid_route(0, y, SCREEN_W, y + h);   /* G5: the first 2D call decides */
+    if (gba_nodraw != 0 && gba_nodraw != GBA_NODRAW_MEASURE && gba_nodraw != GBA_NODRAW_PANEL) return 0;  /* tiles */
+    if (op == PLAT_STRIP_RESTORE && (y != strip_y || h != strip_h)) return 0;
+    if (op != PLAT_STRIP_SAVE && op != PLAT_STRIP_RESTORE) return 0;
+    row = (uint8_t *)gba_back + y * SCREEN_W;
+    a = h < STRIP_ROWS_A ? h : STRIP_ROWS_A;
+    if (op == PLAT_STRIP_SAVE) {
+        r3d_cmrow[0] = 0;                              /* the raycaster's rows are gone */
+        dma3_copy32(STRIP_GAP_A, row, (uint32_t)(a * SCREEN_W / 4));
+        if (h > a) dma3_copy32(STRIP_GAP_B, row + a * SCREEN_W, (uint32_t)((h - a) * SCREEN_W / 4));
+        strip_y = (int8_t)y;
+        strip_h = (int8_t)h;
+    } else {
+        dma3_copy32(row, STRIP_GAP_A, (uint32_t)(a * SCREEN_W / 4));
+        if (h > a) dma3_copy32(row + a * SCREEN_W, STRIP_GAP_B, (uint32_t)((h - a) * SCREEN_W / 4));
+    }
+    return 1;
 }

@@ -1023,6 +1023,10 @@ int ui_toast_steady(void)
 
 void ui_toast_hold(void) { ui_held |= 1; }   /* this frame's toast is already on the kept page */
 
+/* (SP3, I11) the toast panel's rect is (x, y - 1, w + 2, 18) at this frame's lane y (ui_toast_draw): its box, its
+ * shadow (rows y + 2 .. y + 16) and its sparkle (y + 2 -/+ 3) all lie in rows y - 1 .. y + 16 */
+void ui_toast_band(int *y, int *h) { *y = DOOMO_MAX(toast_y - 1, 0); *h = 18; }
+
 void ui_toast_draw(void)
 {
     const UiStyle *st;

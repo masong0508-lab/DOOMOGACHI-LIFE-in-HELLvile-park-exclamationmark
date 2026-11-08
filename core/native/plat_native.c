@@ -63,6 +63,27 @@ void plat_begin_frame(void) { if (held) memcpy(nat_fb, held_fb, (size_t)held_n);
 /* CL4: the native platform is the test runner and the unit tests: no first-time tip cards unless a
  * script asks ("tips on", tips_test_force), so the journeys keep their press budgets. */
 uint32_t plat_test_flags(void) { return PLAT_TEST_NO_TIPS; }
+
+/* SP3 (plat_ext.h plat_strip): a clean copy of a band of rows, like the GBA's (in its Mode 4 page gaps) */
+static uint8_t strip_fb[NAT_MAX_W * PLAT_STRIP_MAX_H];
+static int strip_y = -1, strip_h, strip_w;
+int plat_strip(int op, int y, int h)
+{
+    if (y < 0 || h <= 0 || h > PLAT_STRIP_MAX_H || y + h > nat_h) return 0;
+    if (op == PLAT_STRIP_SAVE) {
+        memcpy(strip_fb, &nat_fb[y * nat_w], (size_t)(h * nat_w));
+        strip_y = y; strip_h = h; strip_w = nat_w;
+        return 1;
+    }
+    if (op != PLAT_STRIP_RESTORE || y != strip_y || h != strip_h || nat_w != strip_w) return 0;
+    memcpy(&nat_fb[y * nat_w], strip_fb, (size_t)(h * nat_w));
+    return 1;
+}
+int nat_strip_band(int *y, int *h)
+{
+    *y = strip_y; *h = strip_h;
+    return strip_y >= 0;
+}
 void plat_end_frame(void)
 {
     ticks++;

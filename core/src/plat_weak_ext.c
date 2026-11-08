@@ -44,6 +44,15 @@ WEAK int plat_dots(int x, int y, int s, const uint8_t *dots, int dw, int dh,
 
 WEAK int plat_hshapes(const DoomoHShape *s, int n) { (void)s; (void)n; return 0; }
 
+WEAK int plat_strip(int op, int y, int h) { (void)op; (void)y; (void)h; return 0; }
+
+WEAK void *plat_scene_scratch(uint32_t bytes, uint32_t *gen)
+{
+    (void)bytes;
+    if (gen) *gen = 0;
+    return 0;
+}
+
 WEAK uint8_t *plat_mslot_buf(uint32_t *cap)
 {
     if (cap) *cap = 0;

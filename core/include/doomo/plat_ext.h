@@ -22,6 +22,8 @@
  *   plat_rumble              X2 (DC Puru Puru); camfx_shake calls it
  *   plat_test_flags          U0/U5 (native runner, harnesses)
  *   plat_hold_frame          U4 (held-frame pause backdrop)
+ *   plat_strip               SP3 G-I11 (GBA: the island hub's toast band)
+ *   plat_scene_scratch       SP3 P-I1 (PS1: the overlay slot's unused tail)
  *   plat_pack_blob/read      E0 declares the pack format (pack.h, which
  *                            includes this header); E8 (GBA ROM blob),
  *                            E9 (PS1 disc file), E2 (native loader)
@@ -142,6 +144,29 @@ typedef struct DoomoHShape {
     uint8_t c, pad[3];
 } DoomoHShape;
 int  plat_hshapes(const DoomoHShape *s, int n);
+
+/* ---- a clean copy of a band of rows (SP3 / G-I11, docs/ISLAND_SPEED.md I11) -----------------------------------
+ * A scene that holds its frame (plat_hold_frame) and has something small move over it (the island hub's toast
+ * sliding in and out) keeps a clean copy of the rows that thing can touch, so a held tick puts the band back and
+ * draws only the moving thing instead of the whole frame.
+ *   PLAT_STRIP_SAVE     copy rows [y, y + h) of the frame being drawn, as drawn so far, into the platform's band
+ *                       store (the GBA: the two Mode 4 page gaps, so h * 240 <= 4,800 B: PLAT_STRIP_MAX_H rows)
+ *   PLAT_STRIP_RESTORE  copy the store back into the same rows of the frame being drawn
+ * Returns 1 when done, 0 when the platform cannot (the default; a skipped tick; h too big; RESTORE without a SAVE
+ * of the same rows). The store is valid only until another scene draws (the core uses it only while its own
+ * hold lasts, which any scene change ends). */
+enum { PLAT_STRIP_SAVE = 1, PLAT_STRIP_RESTORE = 2 };
+#define PLAT_STRIP_MAX_H 20
+int  plat_strip(int op, int y, int h);
+
+/* ---- scene scratch (SP3 / P-I1, docs/ISLAND_SPEED.md I12) ---------------------------------------------------------
+ * RAM that belongs to the running scene's code only: on the PS1, the part of the scene overlay slot after the
+ * group that is loaded (the island group leaves ~70 KB of it unused). plat_scene_scratch(bytes, &gen) returns
+ * `bytes` bytes of it (4-aligned) or NULL when there is no such room (the default: other platforms keep their
+ * tables in BSS). What is written there survives only while *gen keeps the value this call returned: any overlay
+ * load (another scene's code, even for one call) changes it, so the caller must call again every frame before it
+ * uses the memory and start over when gen changed. Only callable from the scene's own code. */
+void *plat_scene_scratch(uint32_t bytes, uint32_t *gen);
 
 /* ---- content packs (E0 pack.h, E2, E7-E10) -----------------------------------
  * blob: a pack that is directly addressable (the GBA mature ROM variant's

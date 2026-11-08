@@ -314,6 +314,10 @@ int  ui_toast_steady(void);
 /* A scene that kept the last frame, toast included (docs/ISLAND_SPEED.md I8), asks for the toast not to be drawn
  * over it again this frame: its timer still runs (ui.c ui_toast_draw). Only while ui_toast_steady() is nonzero. */
 void ui_toast_hold(void);
+/* (SP3, docs/ISLAND_SPEED.md I11) the rows any toast can touch at this frame's lane (call it after ui_toast_lane),
+ * wherever it is in its slide (its box, drop shadow and sparkle): [*y, *y + *h). A scene that holds its frame keeps
+ * a clean copy of them (plat_ext.h plat_strip). */
+void ui_toast_band(int *y, int *h);
 
 /* Retained panels (G7, platform.h plat_panel_begin): a panel's key starts
  * from ui_panel_key() (the current language and its glyph page, so a

@@ -139,6 +139,8 @@ static struct {
     int16_t hub_tip;             /* (CL4) tip_steady() of that frame (0: no tip card on it), the same way */
     uint8_t dirty;               /* (perf) a button went down since the last full hub frame */
     uint8_t bs;                  /* (perf, I10) slices of a refresh built so far (0: not building) */
+    uint8_t strip;               /* (perf, I11) the platform has the toast band of the last full hub frame, clean */
+    uint8_t strip_dirty;         /* (perf, I11) drawn held ticks that must still put the band back (a toast was on it) */
     uint32_t full_t;             /* the tick of the last full hub frame */
     uint8_t live;                /* island_update ran since the last island_draw (nothing else is on top) */
     uint8_t glines;              /* (CL5, perf) the open menu's greeting lines, measured once (0: not yet) */
@@ -628,11 +630,38 @@ static int hub_tip_same(void)
     return I.hub_tip ? tip_steady() == I.hub_tip : !tip_active();
 }
 
-/* (perf, I8) the toast state a held hub frame needs: a toast that was steady when the frame was drawn is on both
- * pages and still is the same steady toast; without one, none may have appeared */
-static int hub_toast_same(void)
+/* (perf, I8 + I11) what a held hub tick does about the toast:
+ *   1  nothing: the toast that was steady when the kept frame was drawn is on both pages and still the same steady
+ *      toast (only its timer runs, I8), or no toast is drawn at all;
+ *   2  (I11) the toast moves over the kept frame (slides in or out, scrolls, a new line) or has just gone: the
+ *      toast's band is put back from the clean copy the platform kept of the last full frame (plat_strip) and the
+ *      toast draws itself on it, so a slide costs a band copy and a toast instead of a full ~70 ms frame;
+ *   0  the frame must be drawn in full (a platform without the band copy: as before I11). */
+static int hub_toast_mode(void)
 {
-    return I.hub_toast ? ui_toast_steady() == I.hub_toast : !toast_shown();
+    if (I.hub_toast && ui_toast_steady() == I.hub_toast) return 1;
+    if (!I.hub_toast && !toast_shown() && !I.strip_dirty) return 1;
+    return I.strip ? 2 : 0;
+}
+
+/* (I11) the toast holds still on the screen: a refresh may be built over several ticks (the shown page is presented
+ * again meanwhile, so a moving toast would stop); while it moves, the refresh waits */
+static int hub_toast_still(void)
+{
+    return toast_shown() ? ui_toast_steady() != 0 : !I.strip_dirty;
+}
+
+/* (I11) a held tick in mode 2: the band back to the kept frame's, clean; 0 when the platform lost it */
+static int hub_band_back(void)
+{
+    int by, bh;
+    if (plat_draw_skipped()) return 1;           /* nothing is drawn on a catch-up tick */
+    ui_toast_band(&by, &bh);
+    if (!plat_strip(PLAT_STRIP_RESTORE, by, bh)) return 0;
+    I.hub_toast = 0;                             /* the toast is not part of the kept picture any more */
+    if (toast_shown()) I.strip_dirty = 2;        /* it draws now: this page, then the other one, need the band back */
+    else if (I.strip_dirty) I.strip_dirty--;
+    return 1;
 }
 
 /* (perf) let go of the held menu backdrop: whatever an entry does (money, citizens, a new scene) shows
@@ -644,6 +673,8 @@ static void hold_drop(void)
     I.hold_full = 0;
     I.hub_full = 0;
     I.bs = 0;
+    I.strip = 0;
+    I.strip_dirty = 0;
 }
 
 static void run_entry(const Entry *e)
@@ -1247,10 +1278,16 @@ static void hub_frame_done(void)
         !ui_toast_pending() && !ui_dialog_active() && !fp_fx_any() && !tip_active() && !fp_money_flash())
         I.hold_full = 1;
     if (!I.menu_open && !plat_draw_skipped()) {
+        int by, bh;
         I.full_t = doomo_frame_count();
         I.hub_toast = (int16_t)(tip_active() ? 0 : ui_toast_steady());   /* (CL4) under a card no toast is drawn */
         I.hub_tip = (int16_t)tip_steady();
-        I.hub_full = (uint8_t)(!hub_hold_off && !I.dirty && (!toast_shown() || I.hub_toast) &&
+        /* (I11) the toast's band (at the hub's lane, set by island_draw) as drawn so far: clean, as the toast and a
+         * tip card are drawn after the scene (game.c) */
+        ui_toast_band(&by, &bh);
+        I.strip = (uint8_t)plat_strip(PLAT_STRIP_SAVE, by, bh);
+        I.strip_dirty = 0;
+        I.hub_full = (uint8_t)(!hub_hold_off && !I.dirty && (!toast_shown() || I.hub_toast || I.strip) &&
                                (!tip_active() || I.hub_tip) && !ui_dialog_active() && !fp_fx_any() &&
                                !fp_money_flash());
         I.dirty = 0;
@@ -1258,6 +1295,19 @@ static void hub_frame_done(void)
 }
 
 static int hub_built;                    /* hub refreshes built over several ticks so far (test hook) */
+
+/* (I10) slice 0..HUB_SLICES - 2 of a refresh built over several ticks: the map in phases, into the hidden page */
+static void hub_slice(FpLocDraw *ld, int slice)
+{
+    if (slice == 0) {
+        fp_island_clear_outside(PAL_RAMP(RAMP_SKY, 5));
+        fp_island_draw_map_part(ld, NLOCS, I.sel, 0, HUB_CUT0);
+    } else if (slice == 1) {
+        fp_island_draw_map_part(ld, NLOCS, I.sel, HUB_CUT0, HUB_CUT1);
+    } else {
+        fp_island_draw_map_part(ld, NLOCS, I.sel, HUB_CUT1, FP_MAP_PHASES);
+    }
+}
 int fp_island_hub_built(void) { return hub_built; }
 
 static void island_draw(void)
@@ -1276,23 +1326,25 @@ static void island_draw(void)
      * without a press, a toast, a dialogue, a particle or the clock, so only the news strip (which refills its own
      * bar) is repainted. The hub's animation therefore steps every HUB_HOLD ticks. */
     if (I.hold == 3) {
-        if (!I.menu_open && I.live && !I.dirty && hub_toast_same() && hub_tip_same() && !ui_dialog_active() &&
-            !fp_fx_any() && plat_hold_frame(4)) {
+        int tm = hub_toast_mode();
+        if (!I.menu_open && I.live && !I.dirty && tm && hub_tip_same() && !ui_dialog_active() && !fp_fx_any() &&
+            plat_hold_frame(4)) {
             int age = (int)(doomo_frame_count() - I.full_t);
+            int still = tm == 1 || hub_toast_still();
             int held = 0;
-            if (!I.bs && age < HUB_HOLD - HUB_SLICES + 1) held = 1;            /* not time to build yet */
-            else if (!I.bs && plat_draw_skipped()) { I.live = 0; return; }     /* a catch-up tick: wait for a drawn one */
-            else if (I.bs && plat_draw_skipped()) { I.live = 0; return; }      /* (the slice waits) */
+            if (!I.bs && (age < HUB_HOLD - HUB_SLICES + 1 || !still)) held = 1; /* not time to build yet (I11: or the toast moves) */
+            else if (plat_draw_skipped()) { I.live = 0; return; }              /* a catch-up tick: the build waits for a drawn one */
             else if (I.bs || plat_build_frame(PLAT_BUILD_START)) slice = I.bs;  /* I10 */
             else if (age < HUB_HOLD) held = 1;                                 /* this platform cannot build */
-            if (held) {
+            if (held && (tm == 1 || hub_band_back())) {
                 I.live = 0;
                 hub_held++;
-                if (I.hub_toast) ui_toast_hold();      /* it is on the kept page: only its timer runs */
+                if (tm == 1 && I.hub_toast) ui_toast_hold();   /* it is on the kept page: only its timer runs */
                 if (I.hub_tip) tip_hold();             /* (CL4) and so is the tip card */
                 fp_ticker(sh - 13, style);
                 return;
             }
+            if (held) slice = -1;                      /* the band is gone: draw in full */
         }
         if (slice < 0) hold_drop();
     }
@@ -1309,21 +1361,22 @@ static void island_draw(void)
     hub_locs(ld);
     if (slice >= 0) {
         int last = slice == HUB_SLICES - 1;
-        if (I.hub_toast && !last) ui_toast_hold();    /* the steady toast is on the shown page; the new one gets it last */
+        if (!last && !hub_toast_still()) {
+            /* (I11) the toast started to move (its slide-out, a new line): the shown page cannot follow it, so the
+             * rest of the refresh is drawn now and this tick flips, the toast on the new picture */
+            for (; slice < HUB_SLICES - 1; slice++) hub_slice(ld, slice);
+            last = 1;
+        }
+        /* the toast holds still on the shown page (I8, I11: a build only starts under a still toast); the new
+         * picture gets it on the last slice */
+        if (toast_shown() && !last) ui_toast_hold();
         if (I.hub_tip && !last) tip_hold();           /* (CL4) the same for a steady tip card */
         if (!last) {
             /* the shown page's news strip keeps moving: drawn first, before the beam gets down to it */
             plat_build_frame(PLAT_BUILD_SHOWN);
             fp_ticker(sh - 13, style);
             plat_build_frame(PLAT_BUILD_HIDDEN);
-            if (slice == 0) {
-                fp_island_clear_outside(PAL_RAMP(RAMP_SKY, 5));
-                fp_island_draw_map_part(ld, NLOCS, I.sel, 0, HUB_CUT0);
-            } else if (slice == 1) {
-                fp_island_draw_map_part(ld, NLOCS, I.sel, HUB_CUT0, HUB_CUT1);
-            } else {
-                fp_island_draw_map_part(ld, NLOCS, I.sel, HUB_CUT1, FP_MAP_PHASES);
-            }
+            hub_slice(ld, slice);
             I.bs = (uint8_t)(slice + 1);
             return;
         }
