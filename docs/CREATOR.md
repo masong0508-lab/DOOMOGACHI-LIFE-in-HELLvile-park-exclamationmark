@@ -277,7 +277,10 @@ shoes, hat, accessory) opens `creator_grid.c` over the list window:
 * the footer names the part and its set, or for a locked one its name and how to unlock it (the
   whole hint: a marquee when it is longer than the line, on both screens);
 * parts above the draft's age class are not listed at all (CR12);
-* every choice's lock bit is worked out once when the grid opens (`cr.g_lock`).
+* every choice's lock bit is worked out once when the grid opens (`cr.g_lock`);
+* a chip is one byte (kind in the top 3 bits, shape or set index in the low 5) and the slot's sets
+  are gathered in a 32-bit mask, so the catalog may have at most 32 themed sets: `creator_grid.c`
+  stops the build past that (`PART_SET_COUNT <= 32`). CR4's ~120 sets need a wider chip first.
 
 ## Part icons (CR7)
 
@@ -320,8 +323,19 @@ average work of a drawn tick; a 30 Hz tick is 33.4 ms):
 idle 30.0, the species grid at rest 29.9, rows 26.8, a value held 19.8 and the species grid scrolled
 16.5. The owner's target is a steady 30 everywhere: idle and the grid at rest reach it; the gap is a
 held direction, where each step redraws the list window (~10 ms on the GBA) and each new look is a
-whole figure or bust (~0.9M cycles) drawn in slices. What landed, all on the GBA only unless said
-(`CR_CALM`, a listed speed step; native, the PS1 and the Dreamcast draw as before):
+whole figure or bust (~0.9M cycles) drawn in slices. Where each change applies:
+
+* **every platform** (the same on native, the GBA, the PS1 and the Dreamcast): the list cursor, the
+  selected row's arrows, the slider heart and the toggle hold still (no bob); the tab strip is drawn
+  last; the bust comes from the portrait cache (`portrait_image_look`); the backdrop is not drawn
+  under the pane;
+* **the GBA and the PS1** (`CR_SLICE`): a new look or camera is drawn in slices while the last one
+  stays up and lands with its hop, and the camera waits for the cursor to rest;
+* **the GBA only** (`CR_CALM`, a listed speed step): the still stage (no blink or breathing, still
+  wallpaper, motes and backdrop), the retained preview pane and button bar, `ui_glint_hold`,
+  `plat_panel_solid` and `portrait_pump`. Native and the Dreamcast animate the preview as before.
+
+What landed:
 
 * **a new look in slices** (`creator_draw.c` `pane_view`): the pane shows `cr.disp` (look, the look
   without a browsed locked part, camera) while the portrait cache draws the wanted one, `cr.pend`,
@@ -376,6 +390,11 @@ inherits a stale nickname.
 | tab strip | 9 x 21 px cells + L/R caps | 9 x 29 px cells |
 | preview pane | 86 x 122, figure 1x, bust 2x (cropped), turntable 2x | 120 x 195, figure 2x, bust 2x, turntable 3x |
 | list | 145 x 122, 8 rows of 11 px | 189 x 195, 13 rows of 12 px |
+
+The START menu (`cr_menu_rect`) lists up to 9 entries (Undo, Redo and Reset with the Rows entry). On
+240x160 that is too tall with the usual 4 px between the groups, so then the gaps are 2 px and the
+bottom margin 10 px: the "Creator menu" pill stays on the screen and the window stays above the
+button bar (`creator_menu_fits_with_every_entry_listed`).
 
 Hellvile citizens get the cute-goth look (`WIN_DARK` windows, a dusky
 violet room with embers, the Hellvile Pits finale).

@@ -1375,18 +1375,38 @@ static void draw_color(void)
 
 /* ====================================================================== */
 /* START menu                                                               */
+/* The menu window. Every entry listed (Undo, Redo and Reset with the Rows entry: 9) is too tall
+ * for 240x160 with the usual spacing, so then the gaps between the groups and the bottom margin
+ * shrink: the title pill stays on the screen and the button bar stays visible. */
+void cr_menu_rect(CrMenuRect *m)
+{
+    uint8_t l[CM_COUNT];
+    int n = cr_menu_list(l), gaps = 0, i, bot = 14;
+    m->ih = crl.big ? 15 : 12;
+    m->gap = 4;
+    m->w = crl.big ? 190 : 172;
+    for (i = 1; i < n; i++) if (cr_menu_group(l[i]) != cr_menu_group(l[i - 1])) gaps++;
+    m->h = n * m->ih + gaps * m->gap + 12 + bot;
+    if (m->h > crl.sh - (crl.big ? 24 : 22)) {
+        m->gap = 2;
+        bot = 10;
+        m->h = n * m->ih + gaps * m->gap + 12 + bot;
+    }
+    m->x = (crl.sw - m->w) / 2;
+    m->y = (crl.sh - m->h) / 2 - 2;
+}
+
 static void draw_menu(void)
 {
     const UiStyle *st;
-    int sw = crl.sw, sh = crl.sh, ih = crl.big ? 15 : 12;
+    int sw = crl.sw, sh = crl.sh, ih;
     uint8_t l[CM_COUNT];
-    int n = cr_menu_list(l), gaps = 0, yy = 0, prev = -1;
-    int w = crl.big ? 190 : 172, h, x, y, i, t = (int)cr.phase_t;
+    int n = cr_menu_list(l), yy = 0, prev = -1;
+    int w, h, x, y, i, t = (int)cr.phase_t;
     char buf[48];
-    for (i = 1; i < n; i++) if (cr_menu_group(l[i]) != cr_menu_group(l[i - 1])) gaps++;
-    h = n * ih + gaps * 4 + 26;
-    x = (sw - w) / 2;
-    y = (sh - h) / 2 - 2;
+    CrMenuRect m;
+    cr_menu_rect(&m);
+    x = m.x; y = m.y; w = m.w; h = m.h; ih = m.ih;
     plat_shade_rect(0, 0, sw, sh, 9);
     if (!ui_window_pop(x, y, w, h, WIN_CREAM, t)) return;
     st = ui_style(WIN_CREAM);
@@ -1399,8 +1419,8 @@ static void draw_menu(void)
         sel = i == cr.menu_sel;
         lbl = cr_menu_label(i, buf);
         if (prev >= 0 && cr_menu_group(i) != prev) {          /* a thin rule between the groups */
-            plat_rect(x + 16, yy + 1, w - 32, 1, st->fill_lo);
-            yy += 4;
+            plat_rect(x + 16, yy + m.gap / 2 - 1, w - 32, 1, st->fill_lo);
+            yy += m.gap;
         }
         prev = cr_menu_group(i);
         if (sel) {

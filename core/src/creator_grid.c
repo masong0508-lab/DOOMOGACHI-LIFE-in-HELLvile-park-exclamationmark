@@ -17,6 +17,11 @@
  * per cell per frame). State lives in CrState (the scene scratch). docs/CREATOR.md "The grid". */
 #include "creator_int.h"
 
+/* A filter chip is one byte: the kind in the top 3 bits, a shape or set index in the low 5, and
+ * cr_grid_open() gathers the sets of a slot in a 32-bit mask. More than 32 sets (CREATOR_PLAN 3.3
+ * aims at about 120) needs a wider chip and mask first. */
+DOOMO_STATIC_ASSERT(PART_SET_COUNT <= 32, grid_set_chips_fit_five_bits);
+
 static int locked_at(int v) { return v >= 0 && v < CR_GRID_MAX && (cr.g_lock[v >> 3] >> (v & 7)) & 1; }
 
 void cr_grid_layout(int *cols, int *rows, int *cell, int *gx, int *gy)
@@ -128,7 +133,7 @@ void cr_grid_open(const CrRow *row)
         if (cr_value_locked(row, v)) { cr.g_lock[v >> 3] |= (uint8_t)(1 << (v & 7)); any_locked = 1; }
         if (!m || cr_value_hidden(row, v)) continue;
         if (m->shape < 32) shapes |= 1u << m->shape;
-        sets |= 1u << m->set;
+        if (m->set < 32) sets |= 1u << m->set;
     }
     /* the chips: All, Unlocked, the slot's shapes, then its themed sets (in catalog order) */
     cr.g_nfilt = 0;
@@ -192,7 +197,6 @@ void cr_grid_update(void)
         int d = btn_pressed(BTN_L) ? cr.g_nfilt - 1 : 1;
         cr.g_filter = (uint8_t)((cr.g_filter + d) % cr.g_nfilt);
         cr_grid_rebuild();
-        if (cr.g_n == 0) cr_grid_rebuild();
         audio_sfx(SFX_CURSOR);
         sel = cr.g_sel;
         old = -1;                                   /* try on what the cursor lands on */

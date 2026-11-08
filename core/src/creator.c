@@ -567,8 +567,10 @@ static uint32_t unlock_sig(void)
     return h;
 }
 
-/* CR9: called at the start of every update and draw: a new unlock (granted by the creator during
- * its update, or anywhere before this tick) clears the memo */
+/* CR9: called once a tick, after the update and before the draw: a new unlock (granted by the
+ * creator during its update, or anywhere before this tick) clears the memo, so the draw and the
+ * next update see it. A lock asked later in the same update as its grant still reads the old
+ * answer (nothing in the creator does that today). */
 void cr_lock_memo_check(void)
 {
     uint32_t sig = unlock_sig();

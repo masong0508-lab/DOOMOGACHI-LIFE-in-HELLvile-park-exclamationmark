@@ -667,6 +667,48 @@ TEST(creator_menu_lists_only_what_applies)
     CHECK(strstr(cr_menu_label(CM_RANDOM, buf), "this tab") == NULL);
 }
 
+TEST(creator_menu_fits_with_every_entry_listed)
+{
+    /* Undo, Redo and Reset all listed with the Rows entry is 9 entries: the window keeps its title
+     * pill on the screen and stays above the button bar at both sizes */
+    static const int sizes[2][2] = { { 240, 160 }, { 320, 240 } };
+    int s, h0;
+    for (s = 0; s < 2; s++) {
+        NatOptions o;
+        CrMenuRect m;
+        memset(&o, 0, sizeof(o));
+        o.w = sizes[s][0]; o.h = sizes[s][1]; o.seed = 1; o.quiet = 1; o.save_dir = test_tmp_dir;
+        nat_init(&o);
+        open_creator(-1);
+        h0 = RES_LOOK(&cr.draft, GF_HEIGHT);
+        go_row(CR_TAB_BODY, row_index(CR_TAB_BODY, GF_HEIGHT, RK_SLIDER));
+        press(BTN_RIGHT);
+        frames(40, 0);                  /* separate steps */
+        press(BTN_RIGHT);
+        frames(40, 0);
+        press(BTN_X);                   /* one undo: changes remain, one redo */
+        CHECK_EQ(RES_LOOK(&cr.draft, GF_HEIGHT), h0 + 1);
+        press(BTN_START);
+        CHECK_EQ(cr.phase, CRP_MENU);
+        CHECK(cr_menu_index(CM_UNDO) > 0);
+        CHECK(cr_menu_index(CM_REDO) > 0);
+        CHECK(cr_menu_index(CM_RESET) > 0);
+        CHECK_EQ(cr_menu_index(CM_QUIT), CM_COUNT - 1);
+        cr_menu_rect(&m);
+        CHECK_MSG(m.y - 6 >= 2, "%dx%d: title pill at y %d", o.w, o.h, m.y - 6);
+        CHECK_MSG(m.y + m.h <= o.h - 12, "%dx%d: menu bottom %d", o.w, o.h, m.y + m.h);
+        frames(15, 0);
+        press(BTN_B);
+        CHECK(scene_top() == &SCENE_CREATOR);
+    }
+    {
+        NatOptions o;
+        memset(&o, 0, sizeof(o));
+        o.w = 240; o.h = 160; o.seed = 1; o.quiet = 1; o.save_dir = test_tmp_dir;
+        nat_init(&o);
+    }
+}
+
 TEST(creator_copy_a_premade_look)
 {
     const DoomoResident *src;

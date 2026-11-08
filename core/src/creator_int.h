@@ -391,6 +391,9 @@ typedef struct CrLayout {
     int fig_scale, ftr_scale, por_scale;/* figure / turntable / bust scale */
 } CrLayout;
 extern CrLayout crl;
+/* The START menu window for the entries listed right now (the title pill sits 6 px above y). */
+typedef struct CrMenuRect { int x, y, w, h, ih, gap; } CrMenuRect;
+void cr_menu_rect(CrMenuRect *m);
 /* drawing helpers shared with creator_grid.c (CR6) */
 void cr_pill(int x, int y, int w, int h, uint8_t fill, uint8_t outline, uint8_t hi);
 void cr_padlock(int x, int y, uint8_t c, uint8_t hole);
