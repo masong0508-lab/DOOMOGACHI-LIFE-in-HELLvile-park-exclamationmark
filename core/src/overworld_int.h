@@ -226,6 +226,7 @@ void ow_spawn_update(void);
 void ow_spawn_quiet(int frames);           /* after a big beat: 5-15 s     */
 void ow_spawn_draw(void);                  /* screen-space parts, after the world */
 void ow_spawn_under_dialog(void);          /* runs while a dialogue is on top */
+int  ow_spawn_idle(void);                  /* SP5: nothing of the gags moves on screen */
 void ow_wrong_rows_override(const OwWrongRow *rows, int n);   /* tests */
 int  ow_spawn_debug(int set_next);          /* tests: the live gag; set_next >= 0 sets the cadence */
 void ow_beat_step(void);

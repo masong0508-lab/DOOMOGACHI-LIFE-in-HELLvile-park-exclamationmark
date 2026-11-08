@@ -188,12 +188,21 @@ void scene_update(void)
     }
 }
 
+/* SP5: while scene_draw() draws a scene, the stack's real depth (0 outside a draw) */
+static int draw_real;
+
+const DoomoScene *scene_drawn_above(void)
+{
+    return (draw_real && depth < draw_real) ? stack[depth].s : NULL;
+}
+
 /* While a lower scene of the stack is drawn, the stack is temporarily
  * cut above it, so scene_top()/scene_ticks() describe the scene drawing. */
 void scene_draw(void)
 {
     int first, i, real = depth;
     if (depth <= 0) return;
+    draw_real = real;
     first = depth - 1;
     while (first > 0 && stack[first].s->overlay) first--;
     for (i = first; i < real; i++) {
@@ -206,4 +215,5 @@ void scene_draw(void)
         }
         depth = real;
     }
+    draw_real = 0;
 }

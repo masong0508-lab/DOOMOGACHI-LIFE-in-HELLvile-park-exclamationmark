@@ -106,6 +106,35 @@ int nat_strip_band(int *y, int *h)
     *y = strip_y; *h = strip_h;
     return strip_y >= 0;
 }
+
+/* SP5 (plat_ext.h): the band under a held dialogue box, rows [y, h) without the core rect, kept whole (the
+ * native platform has the RAM; it saves from y_want). nat_band_off: tests draw every frame in full. */
+static uint8_t band_fb[NAT_MAX_W * NAT_MAX_H];
+static int band_ok, band_y, band_w, band_h;
+int nat_band_off;
+uint32_t nat_band_saves, nat_band_restores;
+int plat_hold_band(int op, const PlatBand *b)
+{
+    if (op == PLAT_BAND_SAVE) {
+        band_ok = 0;
+        if (!b || nat_band_off) return -1;
+        band_y = DOOMO_CLAMP(b->y_want, 0, nat_h - 1);
+        band_w = nat_w;
+        band_h = nat_h;
+        memcpy(band_fb, nat_fb + band_y * nat_w, (size_t)((nat_h - band_y) * nat_w));
+        band_ok = 1;
+        nat_band_saves++;
+        return band_y;
+    }
+    if (op == PLAT_BAND_RESTORE) {
+        if (!band_ok || nat_band_off || band_w != nat_w || band_h != nat_h || !held) return 0;
+        memcpy(nat_fb + band_y * nat_w, band_fb, (size_t)((nat_h - band_y) * nat_w));
+        nat_band_restores++;
+        return 1;
+    }
+    band_ok = 0;
+    return 0;
+}
 void plat_end_frame(void)
 {
     ticks++;

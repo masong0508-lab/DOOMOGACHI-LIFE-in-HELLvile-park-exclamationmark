@@ -11,6 +11,8 @@
 /* the 8bpp framebuffer (row-major, nat_w * nat_h) */
 extern uint8_t nat_fb[NAT_MAX_W * NAT_MAX_H];
 extern int nat_w, nat_h;
+extern int nat_band_off;                /* SP5: plat_hold_band says "cannot" (tests: the full redraw) */
+extern uint32_t nat_band_saves, nat_band_restores;
 
 typedef struct NatOptions {
     int w, h;

@@ -479,6 +479,16 @@ int camfx_pal_state(int *level16)
     return l ? cf.pal_id : PAL_LERP_NONE;
 }
 
+/* SP5: 1 when camfx_apply() would send nothing this frame (no offset, zoom, palette lerp, iris or blend) */
+int camfx_idle(void)
+{
+    int dx, dy;
+    if (cf.px.a1 == 0) return 1;                 /* never used */
+    camfx_offset(&dx, &dy);
+    return !dx && !dy && camfx_zoom() == 256 && camfx_pal_state(NULL) == PAL_LERP_NONE &&
+           camfx_iris_radius() < 0 && camfx_blend(NULL) == 0;
+}
+
 /* ---- push to the platform ------------------------------------------------------ */
 void camfx_apply(void)
 {

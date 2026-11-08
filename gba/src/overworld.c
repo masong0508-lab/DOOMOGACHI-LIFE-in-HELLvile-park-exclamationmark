@@ -558,6 +558,7 @@ void plat_overworld(const DoomoOverworldView *v)
         cv_need_m4();
         if (gba_nodraw == 1) return;
     }
+    hold_band_release();                        /* SP5: a held dialogue band borrowed the lit-tile cache */
     gba_big_claim(GBA_BIG_BY_OW);
     m = v->map;
     owf.ox = v->vw > 0 ? v->vx : 0;

@@ -62,6 +62,7 @@ int  camfx_blend(uint8_t *color);          /* flash / pulse / fade level+colour 
 int  camfx_iris_radius(void);              /* -1 = no iris                    */
 int  camfx_zoom(void);                     /* Q8.8, 256 = none                */
 int  camfx_pal_state(int *level16);        /* PAL_* id or PAL_LERP_NONE       */
+int  camfx_idle(void);                     /* SP5: camfx_apply() sends nothing */
 /* Row y of an iris (radius r, heart: two lobes over a point at cy + r):
  * the visible spans as [x0, x1) pairs in out[], 0..2 of them. */
 int  camfx_iris_row(int y, int cx, int cy, int r, int heart, int out[4]);

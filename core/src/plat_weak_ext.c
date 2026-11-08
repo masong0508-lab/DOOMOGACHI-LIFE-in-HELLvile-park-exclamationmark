@@ -53,6 +53,12 @@ WEAK void *plat_scene_scratch(uint32_t bytes, uint32_t *gen)
     return 0;
 }
 
+WEAK int plat_hold_band(int op, const PlatBand *band)
+{
+    (void)band;
+    return op == PLAT_BAND_SAVE ? -1 : 0;
+}
+
 WEAK uint8_t *plat_mslot_buf(uint32_t *cap)
 {
     if (cap) *cap = 0;

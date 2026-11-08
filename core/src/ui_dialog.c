@@ -94,6 +94,8 @@ static uint8_t d_pill_seen;            /* the pill has popped in this run    */
 static uint32_t d_pill_draws;          /* tests                              */
 static uint16_t d_serial;              /* bumps with every line shown        */
 static uint16_t d_gen;                 /* (G7) bumps whenever a queued line or dq[0] changes */
+static int d_t;                        /* (SP5) the scene's ticks at the last update (its draw's clock) */
+static uint8_t d_fx;                   /* (SP5) ticks this box still drives the camfx clock for its own sting / cut */
 
 void ui_dialog_style(int style) { d_style = style; }
 int ui_dialog_active(void) { return d_open; }
@@ -329,6 +331,8 @@ static void dlg_enter(int arg)
     (void)arg;
     d_open = 1;
     d_pill_seen = 0;
+    d_t = 0;
+    d_fx = 0;
     reset_page(0);
 }
 
@@ -373,6 +377,7 @@ static void apply_codes(DlgEntry *e, int pos)
         case C_STING:
             camfx_shake(SHK_POW);
             camfx_flash(PAL_WHITE, 5, 1);
+            d_fx = 3;                                   /* SHK_POW's 3 frames (the flash is 1) */
             d_bang = 0;
             break;
         case C_BIG: {
@@ -395,6 +400,7 @@ static void apply_codes(DlgEntry *e, int pos)
             d_insert = c->arg;
             d_insert_t = 4;
             camfx_flash(PAL_WHITE, 10, 1);
+            if (!d_fx) d_fx = 1;
             audio_music_mute(4);
             break;
         default: break;
@@ -468,6 +474,10 @@ static void dlg_update(void)
     DlgBox b;
     int len, speed, before, steps, punch, a;
     if (dq_n == 0) { scene_pop(); return; }
+    d_t = (int)scene_ticks();
+    /* SP5: the host's update (which ticks camfx) does not run under the box, so a sting's shake and flash froze
+     * on their first frame until the box closed; the box runs the clock for its own effects' few frames */
+    if (d_fx) { d_fx--; camfx_tick(); }
     e = &dq[0];
     dlg_box(e, &b);
     len = page_len(e, &b);
@@ -811,6 +821,34 @@ static void dlg_draw(void)
         if (heart) ui_heart(b.x + b.w - 12, b.y + b.h - 10 + hbob, 3, st->accent);
     }
     plat_panel_end();
+}
+
+/* ---- SP5 (G-D1): the band the box draws in, for a host that holds its picture ----------------------------------
+ * Everything dlg_draw() can put on screen for the top line lies in rows [*y_need, screen height): the portrait,
+ * the "!" bang and the name pill (48 rows above the box, as the G7 panel), a choice window and its pop's
+ * overshoot, and the box's '!' hop (2 rows up, 1 down). The rect [cx0, cx1) x [cy0, cy1) is opaque box body on
+ * every frame, whatever the hop (the rounded corners' rows are left out). 0 while the box slides in (it moves
+ * every tick) or when nothing is shown. */
+int ui_dialog_band(int *y_need, int *cx0, int *cy0, int *cx1, int *cy1)
+{
+    const DlgEntry *e;
+    DlgBox b;
+    int top;
+    if (!d_open || dq_n == 0 || d_t < 8) return 0;
+    e = &dq[0];
+    dlg_box(e, &b);
+    top = b.y - 48 - 2;
+    if (e->kind == DK_CHOICE) {
+        int ch = e->nopts * UI_LIST_ROW_H + 10, cy = b.y - ch - 4;
+        if (cy < 2) cy = 2;
+        if (cy - ch / 8 - 2 - 2 < top) top = cy - ch / 8 - 2 - 2;
+    }
+    *y_need = top < 0 ? 0 : top;
+    *cx0 = b.x;
+    *cx1 = b.x + b.w;
+    *cy0 = b.y + 1 + 5;
+    *cy1 = b.y - 2 + b.h - 5;
+    return *cy1 > *cy0;
 }
 
 /* ---- S1 hooks for hosts and tests ------------------------------------------- */

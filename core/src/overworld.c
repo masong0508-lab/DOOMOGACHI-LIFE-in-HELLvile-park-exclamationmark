@@ -283,8 +283,11 @@ static void start_story(void)
     ow.dir = 3;
 }
 
+static void dh_off(void);
+
 static void story_enter(int arg)
 {
+    dh_off();                                      /* SP5 */
     memset(&ow, 0, sizeof(ow));
     camfx_reset();                                 /* --- S1 M5 --- */
     story_text_prefetch();                         /* S2: the text packs (PS1: TEXT.BIN) */
@@ -361,6 +364,7 @@ int ow_take_hero_offer(void)
 
 static void story_leave(void)
 {
+    dh_off();                                      /* SP5 */
     ow_sync_to_save();
 }
 
@@ -1072,11 +1076,72 @@ void ow_view_fill(DoomoOverworldView *v)
     v->tint_level = (uint8_t)DOOMO_CLAMP(lvl, 0, 8);
 }
 
+/* ---- SP5 (G-D1): the held dialogue backdrop (docs/GBA.md "D") ----------------------------------------------------
+ * Under a dialogue box the story's update does not run (SCENE_DIALOG is on top): the world stands still, and only
+ * its clock-driven idle animations (props, the pet's bob, sparkles, the invaded tint pulse) and the HUD's would
+ * move. So once the box has slid in and nothing else on screen moves, the world is drawn one last time, the
+ * platform keeps a clean copy of the band the box draws in (plat_hold_band), and the next frames keep that picture
+ * (plat_hold_frame(2): both pages carry it), put the band back and draw only the dialogue on it. The idle
+ * animations pause while a box is up: a pixel change (SPEED DEFAULTS 2026-11-08). Anything that moves (a flash,
+ * fade, shake or banner, a toast, a camera effect, the pet's "beep.", a gag, the pause, a scene over the dialogue,
+ * a choice window taller than the band, the box sliding in) is drawn in full as before; the hold starts again when
+ * it settles. A platform without the hooks (the defaults) always draws in full. */
+static uint8_t dh;                     /* 0 off, 1 the band was kept on the frame just drawn, 2 held */
+static int16_t dh_top;                 /* the band's top row as kept */
+static PlatBand dh_band;
+static uint32_t dh_frame;              /* doomo_frame_count() of the story's last draw call */
+
+static int dh_still(PlatBand *b)
+{
+    int y, x0, y0, x1, y1;
+    if (ow.pause || ow.fade || ow.flash || ow.shake || ow.banner_t) return 0;
+    if (!ui_dialog_active() || scene_drawn_above() != &SCENE_DIALOG || ui_toast_pending()) return 0;
+    if (!camfx_idle() || (!ow.visit && !ow_spawn_idle())) return 0;
+    if (!ui_dialog_band(&y, &x0, &y0, &x1, &y1)) return 0;
+    b->y_need = (int16_t)y;
+    b->y_want = (int16_t)DOOMO_MAX(0, y - 12);     /* room for a 3-option choice window */
+    b->cx0 = (int16_t)x0;
+    b->cy0 = (int16_t)y0;
+    b->cx1 = (int16_t)x1;
+    b->cy1 = (int16_t)y1;
+    return 1;
+}
+
+static void dh_off(void)
+{
+    if (dh == 2) plat_hold_frame(0);
+    if (dh) plat_hold_band(PLAT_BAND_DROP, NULL);
+    dh = 0;
+}
+
+/* 1: this frame is held (the band is back, the dialogue draws on it); 0: draw in full */
+static int dh_held(void)
+{
+    PlatBand b;
+    int ok;
+    if (!dh) return 0;
+    ok = dh_still(&b) && b.y_need >= dh_top && b.cx0 == dh_band.cx0 && b.cy0 == dh_band.cy0 &&
+         b.cx1 == dh_band.cx1 && b.cy1 == dh_band.cy1;
+    if (ok) ok = dh == 1 ? plat_hold_frame(2) : plat_hold_frame(4);
+    if (ok && plat_hold_band(PLAT_BAND_RESTORE, &dh_band)) {
+        dh = 2;
+        return 1;
+    }
+    dh_off();
+    return 0;
+}
+
 static void story_draw(void)
 {
     DoomoOverworldView v;
     int sw = plat_screen_w(), sh = plat_screen_h();
-    if (!ow.started) { plat_clear(PAL_UI_PINK); return; }
+    {
+        uint32_t f = doomo_frame_count();
+        if (dh && dh_frame + 1 != f) dh_off();     /* the story was not drawn on the last tick: a scene covered it */
+        if (dh && !ui_dialog_active() && !ow.pause) dh_off();   /* the box closed (also on a skipped tick) */
+        dh_frame = f;
+    }
+    if (!ow.started) { dh_off(); plat_clear(PAL_UI_PINK); return; }
     /* a scene popped this tick may have taken the scratch (before the
      * draw-skip test, so every platform rebuilds on the same tick) */
     ow_scratch_ensure();
@@ -1100,6 +1165,7 @@ static void story_draw(void)
         pause_gaveup = 1;
     }
     if (ow.pause && pause_held) { owfx_draw_pause(); return; }   /* U4: the world is the held frame */
+    if (dh_held()) return;                         /* SP5: the world is the held frame, the band is back */
     build_billboards();
     ow_view_fill(&v);
     plat_overworld(&v);
@@ -1113,6 +1179,13 @@ static void story_draw(void)
     }
     if (ow.flash) plat_checker(0, 0, sw, sh, ow.flash_col);
     if (ow.fade) plat_shade_rect(0, 0, sw, sh, DOOMO_CLAMP(15 - ow.fade, 0, 15));
+    if (!dh) {                                     /* SP5: a still world under a settled box: keep its band */
+        PlatBand b;
+        if (dh_still(&b)) {
+            int top = plat_hold_band(PLAT_BAND_SAVE, &b);
+            if (top >= 0) { dh = 1; dh_top = (int16_t)top; dh_band = b; }
+        }
+    }
 }
 
 const DoomoScene SCENE_STORY = {

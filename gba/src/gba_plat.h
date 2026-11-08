@@ -129,6 +129,7 @@ extern uint8_t gba_arena[];
  * addressing is the same as with a block of their own */
 extern uint8_t gba_r3d[];               /* == GBA_BIG(GBA_BIG_R3D) */
 extern uint8_t gba_ow[];                /* == GBA_BIG(GBA_BIG_OW)  */
+extern uint32_t gba_big_epoch;          /* (SP5) bumps whenever gba_big_claim changes the owner or the claim */
 extern uint8_t gba_room[];              /* == GBA_BIG(GBA_BIG_ROOM) */
 enum { GBA_BIG_FREE, GBA_BIG_BY_OW, GBA_BIG_BY_R3D, GBA_BIG_BY_SAVE, GBA_BIG_BY_ROOM };
 void gba_big_claim(int who);

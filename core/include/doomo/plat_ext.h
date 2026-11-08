@@ -24,6 +24,7 @@
  *   plat_hold_frame          U4 (held-frame pause backdrop)
  *   plat_strip               SP3 G-I11 (GBA: the island hub's toast band)
  *   plat_scene_scratch       SP3 P-I1 (PS1: the overlay slot's unused tail)
+ *   plat_hold_band           SP5 (held dialogue backdrop: GBA, native)
  *   plat_pack_blob/read      E0 declares the pack format (pack.h, which
  *                            includes this header); E8 (GBA ROM blob),
  *                            E9 (PS1 disc file), E2 (native loader)
@@ -167,6 +168,26 @@ int  plat_strip(int op, int y, int h);
  * load (another scene's code, even for one call) changes it, so the caller must call again every frame before it
  * uses the memory and start over when gen changed. Only callable from the scene's own code. */
 void *plat_scene_scratch(uint32_t bytes, uint32_t *gen);
+
+/* ---- a held picture under an overlay band (SP5, G-D1; docs/GBA.md "D: the held dialogue backdrop") ---------
+ * For an overlay that redraws a band at the bottom of the screen over a picture that does not change (the
+ * dialogue box over the story overworld): the platform keeps a clean copy of the picture under the band, so a
+ * held frame puts it back and the overlay draws on top as on a full frame (its drop shadows are not shaded twice).
+ * The band is rows [y, screen height) without the core rect [cx0, cx1) x [cy0, cy1), which the overlay promises
+ * to cover with opaque pixels on every frame (a platform may save more of it: a narrower core is always safe).
+ *   PLAT_BAND_SAVE     on a frame being drawn (not a skipped tick), after the picture and before the overlay:
+ *                      keep the band. y_need is the top row the overlay needs; the platform may save from as high
+ *                      as y_want (<= y_need) when it has the room. Returns the top row it saved, or -1 (it
+ *                      cannot: no room, a frame kind it cannot read back, the default)
+ *   PLAT_BAND_RESTORE  on a held frame (plat_hold_frame(2) made both pages carry the shown picture): put the
+ *                      band back into the picture being drawn. 1 = done; 0 = the copy was lost (the caller then
+ *                      drops the hold and draws in full)
+ *   PLAT_BAND_DROP     forget the copy (its memory goes back to its owner; on the GBA the overworld's lit-tile
+ *                      cache, which rebuilds). Always 0
+ * The core holds only while nothing in the picture would change (docs/GBA.md); everything else is the core's. */
+enum { PLAT_BAND_DROP = 0, PLAT_BAND_SAVE = 1, PLAT_BAND_RESTORE = 2 };
+typedef struct { int16_t y_need, y_want, cx0, cy0, cx1, cy1; } PlatBand;
+int  plat_hold_band(int op, const PlatBand *band);
 
 /* ---- content packs (E0 pack.h, E2, E7-E10) -----------------------------------
  * blob: a pack that is directly addressable (the GBA mature ROM variant's

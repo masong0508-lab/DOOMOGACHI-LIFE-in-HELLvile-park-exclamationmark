@@ -300,6 +300,9 @@ int  ui_dialog_insert(int *age);
  * with every line (the spawner's pet "beep." on a sincere line). 0 if none. */
 typedef struct UiDialogTop { int flags, shown; uint16_t serial; } UiDialogTop;
 int  ui_dialog_top(UiDialogTop *out);
+/* SP5: the band the dialogue draws in (ui_dialog.c): rows [y_need, screen h) with the opaque box body
+ * [cx0, cx1) x [cy0, cy1) inside; 0 while the box slides in or nothing is shown. */
+int  ui_dialog_band(int *y_need, int *cx0, int *cy0, int *cx1, int *cy1);
 /* Dialogue box style (default WIN_CUTE; HELL after the invasion). */
 void ui_dialog_style(int style);
 /* Pending toasts (for tests). */

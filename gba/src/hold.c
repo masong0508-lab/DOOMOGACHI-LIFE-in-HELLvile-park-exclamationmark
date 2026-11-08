@@ -26,6 +26,9 @@
 #include "canvas_int.h"
 #include "r3d_int.h"            /* SP3: the raycaster's colormap rows share the VRAM gaps */
 #include "doomo/plat_ext.h"
+#include "hcmd.h"
+
+void ow_invalidate(void);
 
 /* 1 once P2/P3 put the held backdrop back on every frame; until then
  * plat_hold_frame says "cannot" (0) and the core's own redraw runs */
@@ -150,4 +153,113 @@ int plat_strip(int op, int y, int h)
         if (h > a) dma3_copy32(row + a * SCREEN_W, STRIP_GAP_B, (uint32_t)((h - a) * SCREEN_W / 4));
     }
     return 1;
+}
+
+/* ---- SP5 (G-D1): the band under the dialogue box (plat_ext.h plat_hold_band; docs/GBA.md "D") ---------------
+ * The story overworld's held dialogue backdrop: both Mode 4 pages carry the last full frame (plat_hold_frame(2)
+ * above), and this keeps a clean copy of the picture under the box's band, taken before the box was drawn, so a
+ * held frame puts the band back and the dialogue draws on it as on a full frame.
+ *
+ * Where: the arena (bigbuf.c) between the scene scratch's claim and the per-frame billboards. While the story
+ * overworld draws, that is its lit-tile cache (GBA_BIG_OW) and free bytes below it; a held frame draws no world,
+ * so the cache is borrowed and invalidated when the band goes (it rebuilds on the next world frame, a few ms).
+ * Any change of the arena's owner or scratch claim (a save's stream, another region's user: gba_big_epoch) loses
+ * the copy, and RESTORE then says 0. No new RAM but these 14 bytes of state.
+ * What: rows [y, 160) of the page being drawn, without the core rect the dialogue covers with its opaque body on
+ * every frame (narrowed to whole words), as full-row runs (one DMA each) and the two strips beside the core.
+ * Only a Mode 4 frame is read or written (never a tile frame, a skipped tick, a frame built over several ticks or
+ * one the harness reads text from). */
+static uint8_t  band_ok;
+static uint8_t  band_y;                    /* first row kept */
+static uint8_t  band_cy0, band_cy1;        /* the core's rows, clipped to [band_y, 160) */
+static uint8_t  band_cx0, band_cx1;        /* the core's columns, whole words */
+static uint32_t band_epoch;
+static uint8_t *band_mem;
+
+static int band_frame_ok(void)
+{
+    if (gba_nodraw == 1 || gba_nodraw == GBA_NODRAW_CANVAS || building || on_shown || gba_text_armed) return 0;
+    return 1;
+}
+
+/* bytes the band takes from row y */
+static uint32_t band_bytes(int y, int cx0, int cy0, int cx1, int cy1)
+{
+    int c0 = DOOMO_MAX(cy0, y), c1 = DOOMO_MAX(cy1, c0);
+    return (uint32_t)(SCREEN_H - y) * SCREEN_W - (uint32_t)(c1 - c0) * (uint32_t)(cx1 - cx0);
+}
+
+/* copy the band between the page being drawn and band_mem (dir 0: page -> mem, 1: mem -> page) */
+static void band_copy(int dir)
+{
+    uint8_t *page = (uint8_t *)gba_back, *mem = band_mem;
+    int y = band_y, n;
+    n = (band_cy0 - y) * SCREEN_W;                    /* full rows above the core */
+    if (n > 0) {
+        if (dir) dma3_copy32(page + y * SCREEN_W, mem, (uint32_t)n / 4u);
+        else dma3_copy32(mem, page + y * SCREEN_W, (uint32_t)n / 4u);
+        mem += n;
+    }
+    for (y = band_cy0; y < band_cy1; y++) {           /* the strips beside it */
+        uint32_t *row = (uint32_t *)(void *)(page + y * SCREEN_W), *m = (uint32_t *)(void *)mem;
+        int k;
+        for (k = 0; k < band_cx0 / 4; k++) { if (dir) row[k] = m[k]; else m[k] = row[k]; }
+        m += band_cx0 / 4;
+        for (k = band_cx1 / 4; k < SCREEN_W / 4; k++, m++) { if (dir) row[k] = *m; else *m = row[k]; }
+        mem = (uint8_t *)m;
+    }
+    y = DOOMO_MAX(band_cy1, band_y);
+    n = (SCREEN_H - y) * SCREEN_W;                    /* full rows below it */
+    if (n > 0) {
+        if (dir) dma3_copy32(page + y * SCREEN_W, mem, (uint32_t)n / 4u);
+        else dma3_copy32(mem, page + y * SCREEN_W, (uint32_t)n / 4u);
+    }
+}
+
+/* plat_overworld (a world frame) and DROP: the borrowed cache bytes are garbage (once the arena changed hands
+ * since, its next claim by the overworld invalidates the cache anyway, and the bytes are the new owner's) */
+void hold_band_release(void)
+{
+    if (!band_ok) return;
+    band_ok = 0;
+    if (band_epoch == gba_big_epoch) ow_invalidate();
+}
+
+int plat_hold_band(int op, const PlatBand *b)
+{
+    if (op == PLAT_BAND_SAVE) {
+        uint32_t used = (scene_scratch_used() + 7u) & ~7u, cap;
+        int y, cx0, cx1, cy0, cy1;
+        hold_band_release();
+        if (!b || !band_frame_ok() || used >= (uint32_t)GBA_ARENA_BB) return -1;
+        cap = (uint32_t)GBA_ARENA_BB - used;
+        cx0 = (DOOMO_CLAMP(b->cx0, 0, SCREEN_W) + 3) & ~3;
+        cx1 = DOOMO_CLAMP(b->cx1, 0, SCREEN_W) & ~3;
+        cy0 = DOOMO_CLAMP(b->cy0, 0, SCREEN_H);
+        cy1 = DOOMO_CLAMP(b->cy1, 0, SCREEN_H);
+        if (cx1 <= cx0 || cy1 <= cy0) { cx0 = cx1 = 0; cy0 = cy1 = SCREEN_H; }
+        y = DOOMO_CLAMP(b->y_want, 0, SCREEN_H - 1);
+        while (y < b->y_need && band_bytes(y, cx0, cy0, cx1, cy1) > cap) y++;
+        if (y > b->y_need || band_bytes(y, cx0, cy0, cx1, cy1) > cap) return -1;
+        if (gba_nodraw == GBA_NODRAW_FIRST) gba_nodraw = 0;      /* (nothing was drawn: a Mode 4 frame) */
+        gba_big_claim(GBA_BIG_BY_OW);
+        band_mem = gba_arena + used;
+        band_y = (uint8_t)y;
+        band_cy0 = (uint8_t)DOOMO_MAX(cy0, y);
+        band_cy1 = (uint8_t)DOOMO_MAX(cy1, band_cy0);
+        band_cx0 = (uint8_t)cx0;
+        band_cx1 = (uint8_t)cx1;
+        band_copy(0);
+        band_ok = 1;
+        band_epoch = gba_big_epoch;
+        return y;
+    }
+    if (op == PLAT_BAND_RESTORE) {
+        if (!band_ok || band_epoch != gba_big_epoch || held_page < 0 || !band_frame_ok()) return 0;
+        if (gba_nodraw == GBA_NODRAW_FIRST) gba_nodraw = 0;      /* a held frame is a Mode 4 frame */
+        band_copy(1);
+        return 1;
+    }
+    hold_band_release();
+    return 0;
 }

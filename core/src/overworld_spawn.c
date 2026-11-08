@@ -361,6 +361,14 @@ void ow_spawn_under_dialog(void)
     if (c) *c = 5;
 }
 
+/* SP5: 1 when ow_spawn_draw() draws nothing that moves (no "beep." bubble, no live gag): a held dialogue
+ * backdrop may keep the picture */
+int ow_spawn_idle(void)
+{
+    if (!ow_scratch_mine()) return 1;
+    return !(beep_t && pet_here()) && !SP.live;
+}
+
 /* screen-space parts of the gags (after the world, before the HUD) */
 void ow_spawn_draw(void)
 {

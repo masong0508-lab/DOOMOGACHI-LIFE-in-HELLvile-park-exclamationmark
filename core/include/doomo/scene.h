@@ -24,6 +24,9 @@ void scene_update(void);                        /* called by doomo_frame  */
 void scene_draw(void);
 /* Ticks since the top scene was entered. */
 uint32_t scene_ticks(void);
+/* SP5: inside scene_draw(), the scene right above the one drawing (an overlay that draws after it), NULL when it
+ * is the top or outside a draw */
+const DoomoScene *scene_drawn_above(void);
 
 /* (ps1 overlays, additive) A platform may keep a scene's code out of RAM
  * until it runs: the PS1 game disc loads it from the disc into one shared

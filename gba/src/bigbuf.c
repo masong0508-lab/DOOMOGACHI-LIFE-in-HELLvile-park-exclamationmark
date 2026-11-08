@@ -60,6 +60,7 @@ DOOMO_STATIC_ASSERT(GBA_BIG_CLIPS + GBA_BIG_BOT <= GBA_BIG_ROOF && (GBA_ARENA_BB
 
 static int big_owner = GBA_BIG_FREE;
 static uint32_t big_gen;
+uint32_t gba_big_epoch;                /* (SP5) bumps on every change of owner or scratch claim */
 
 void ow_invalidate(void);
 void r3d_invalidate(void);
@@ -71,6 +72,7 @@ void gba_big_claim(int who)
      * so a claim alone never costs it its roof table */
     uint32_t gen = scene_scratch_gen();
     if (big_owner == who && (big_gen == gen || who == GBA_BIG_BY_R3D)) return;
+    gba_big_epoch++;
     big_gen = gen;
     if (who == GBA_BIG_BY_OW) ow_invalidate();         /* tags were overwritten */
     else if (who == GBA_BIG_BY_R3D) r3d_invalidate();  /* roof table too       */
