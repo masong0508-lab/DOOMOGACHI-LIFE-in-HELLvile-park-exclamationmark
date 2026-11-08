@@ -1,6 +1,6 @@
 # core/data/parts/catalog/aura.txt - the aura parts (CR1; format: tools/partcat_build.py).
 # Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
-slot aura list=aura name="Aura" method=P target=16
+slot aura list=aura name="Aura" method=P target=16 new=C
 
 0   "None"                 set=basics tags=plain
 1   "Sparkles"             set=candy tags=cute,magic

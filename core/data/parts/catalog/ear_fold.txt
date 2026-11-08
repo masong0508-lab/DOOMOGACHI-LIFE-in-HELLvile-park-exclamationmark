@@ -1,6 +1,6 @@
 # core/data/parts/catalog/ear_fold.txt - ear folds, gene field ear_fold (CR1; format: tools/partcat_build.py).
 # Painted (wave 2, P1.M2) but not selectable yet: state=hidden until CR3 flips the list live.
-slot ear_fold list=ear_fold name="Ear fold" method=C target=7
+slot ear_fold list=ear_fold name="Ear fold" method=C target=7 new=C
 
 0   "Upright"    set=basics tags=plain
 1   "Tip Fold"   set=critter tags=critter state=hidden

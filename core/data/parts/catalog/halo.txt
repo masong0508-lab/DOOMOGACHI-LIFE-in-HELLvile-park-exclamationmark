@@ -1,6 +1,6 @@
 # core/data/parts/catalog/halo.txt - the halo parts (CR1; format: tools/partcat_build.py).
 # Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
-slot halo list=halo name="Halo" method=P target=10
+slot halo list=halo name="Halo" method=P target=10 new=T
 
 0   "None"                 set=basics tags=plain
 1   "Halo"                 set=cloud9 tags=holy

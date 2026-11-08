@@ -1,6 +1,6 @@
 # core/data/parts/catalog/beard.txt - the facial hair parts (CR1; format: tools/partcat_build.py).
 # Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
-slot beard list=facial_hair name="Facial hair" method=P target=8
+slot beard list=facial_hair name="Facial hair" method=P target=8 new=S
 
 0   "None"                 set=basics tags=plain
 1   "Stubble"              set=basics tags=plain

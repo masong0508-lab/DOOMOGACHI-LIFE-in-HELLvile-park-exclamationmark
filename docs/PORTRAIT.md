@@ -420,3 +420,80 @@ hood/hat/glasses interactions in particular).
 **Not yet.** The real deep-field set (P0, replaces the shim), M3 (`DF_MAKEUP`, `DF_FACEPAINT`,
 `DF_AURA2`, the remaining face/head/makeup fields, A28 expressions, aura and halo detail),
 `live_p1.txt`, the mGBA bench of the SPEC's accept numbers, and a PS1-toolchain build of the LZ blocks.
+
+## Many parts (CR2): slot hooks, script sets, family macro ops, the PS1 part arena
+
+The creator plan (1,611 new parts) draws most of them as **part scripts**, not C. CR2 makes a script a
+first-class value of its slot.
+
+**Script sets.** Every `core/data/parts/<dir>/` (all but `catalog/`) is a set: `tools/parts_build.py`
+writes `core/gen/parts_<dir>.c` and the registry `core/gen/parts_index.c` (every set; per list the set
+that holds it, since a list's scripts live in one dir; per gene list the smallest scripted value,
+`doomo_part_minv[]`). List ids are u16 (`part_meta.h`: a `GF_*` id, `PL_DEEP0 + DF_x`); `PartRef` is
+`{value, top, ofs}` inside per-list `PartList` ranges, `top` being how far the entry reaches above the
+head (measured by the build, used by `ph_top_extent` so a tall hat gets room on the bust).
+
+**Slot hooks.** Each painter asks `PS_SLOT(c, list, value, group)` first; a worn value that has a
+script is drawn by the script's blocks of that layer group and the painter draws nothing for it. A look
+without a scripted value pays one byte compare per hook, so Classic looks are byte-identical
+(`portrait_classic_golden`). `sanitize` keeps a value past the painters' range when a script draws it.
+
+| list | hook (painter) | groups |
+|---|---|---|
+| head_shape | `head_shape()` (draws on the head part: `solid same`) | 2 |
+| eye_style | `eyes()`, `ph_face_over()` (third eye / over-hair bits) | 3, 4 |
+| brow_style | `brows()` | 4 |
+| nose_style, mouth_style, facial_hair | `nose()`, `mouth()`, `facial_hair()` | 3 |
+| hair_style | `ph_hair_back()`, `ph_hair_front()` | 0, 4 |
+| ears | `ph_ears(c, 0 / 1)` | 0, 4 |
+| horns, hat | `ph_horns()`, `ph_hat()` | 5 |
+| accessory | `back_acc()` (any view), `neck_acc()`, `ph_face_acc()` | 0, 4, 5 |
+| halo | `ph_halo()` (finish) | 6 |
+| aura | `pf_aura_back()`, `pf_aura_front()` | 0, 6 |
+| tail, wings | `pb_draw_tail()`, `pb_draw_wings()`: once per image, every block | any |
+| top, bottom, shoes | OVERLAY: drawn over the plain garment the painters give an unknown value (after `bottoms()` / `torso()` in group 1, after `collar()` in group 4) | 1 (top also 4) |
+
+`parts_build.py` (`HOOKS`) rejects a block in a group its list's hook never runs, and a chibi block on
+a deep field that is not chibi-visible (`DFF_CHIBI`), so decorative parts cost nothing in crowds.
+Lists without a hook (pattern, marking, body, species, the deep fields until CR5) only take VM demo
+values (`state=test` in the catalog).
+
+**Macro ops (the family grammar).** `crown KIND x y w h` (dome, cone, cylinder, flat, slouch, peaked,
+beret), `brim KIND x y w h` (none, bill, small, wide, floppy, cocked), `band`, `strap`, `bow`, `ring`,
+`chain` (links on a sagging line), `frill` (scallops), `pouch`. Each is one 4-7 byte op drawn with the
+current material, shade and solid / decal mode through the same projection as the primitives, so the
+sliders, the yaw and the views move it. `def NAME P1 .. / enddef` and `use NAME A1 ..` are build-time
+templates (`$P`, `$P+N`). The first family batch, `core/data/parts/hat/family_a.txt` and
+`outfit/family_a.txt`: 12 hats (Gumdrop Hat, Stovepipe, Sun Bonnet, Pillbox, Starry Wizard, Captain's
+Cap, Bow Beret, Garden Sun Hat, Bell Crown, Tricorn, Lantern Helmet, Lure Bucket), the Pageant Sash
+top, the Explorer Satchel and the Pearl Necklace: 15 parts in 628 B (about 42 B a part), drawn and
+tested but *hidden* until the lists flip live (CR3) and the art review signs them off.
+
+**The PS1 part arena.** With `DOOMO_PARTS_LZ` the 4-slot 8 KB block LRU became a 2-slot block LRU
+(4 KB) plus a 4 KB per-render arena: `pctx_init()` empties it, and each worn entry is copied into it
+once, so a render decodes a block once however many groups and hooks run the entry (host test: 7
+groups x 3 entries = 3 block loads, was 21 with the LRU alone). Same 8 KB. The compressed bytes come
+through `part_lz_src()`; a build with `DOOMO_PARTS_SPU` (CR10) supplies one that DMAs the block from
+SPU RAM into a staging buffer.
+
+**Shape gate.** `portrait_shape_mode(1)` forces every material onto one grey ramp (direct renders only;
+a no-op on the GBA, where it costs no RAM). `test_part_render.c` requires every scripted part to differ
+from every other value of its slot by >= 24 px of the bust in shape mode (no palette swaps) and by
+>= 6 chibi px when it draws on chibis at all, and to render distinct on three citizens.
+
+**Cost weights.** `part_costs_match_the_renderer` measures every drawable part (pixel visits over the
+slot's value 0, bust + figure + chibi, units of 64) into `core/data/parts/catalog/costs.txt`; the
+catalog carries them (`PartMeta.cost`) for the creator's Busy meter (CR9). The kitchen-sink test keeps
+every family hat with a full outfit under the 12k pixel-visit bound.
+
+**Review sheets.** `portrait_sheet --out DIR --slot KEY [--set SET] [--shape]`: every catalogued part
+of a slot (live, hidden and planned) as bust 1x, the creator's 2x head crop, figure, chibi 3x and the
+fighter's back view, labelled with name, state and set; `--shape` is the shape-only sheet.
+
+**Age.** `look_for_stage()` ends with `part_age_filter_look()` (CR12): a part whose catalog age class is
+above the stage is drawn as its slot's default. See docs/CREATOR.md "The age gate for parts".
+
+Tests: `test_part_render.c` (9), `test_part_meta.c` (8), and in `test_portrait_script.c` the LZ blocks
+and the arena against the raw scripts for every set, the 2-slot LRU and the once-per-render arena;
+`MAXOPT` in `test_portrait.c` is 160. Not done here: art batches (CR4), flipping lists live (CR3),
+deep-field hooks and saving (CR5), icons (CR7), the grid picker (CR6), the SPU-RAM loader (CR10).

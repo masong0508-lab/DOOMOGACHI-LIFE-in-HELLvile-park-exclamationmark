@@ -1,6 +1,6 @@
 # core/data/parts/catalog/bottom.txt - the bottom parts (CR1; format: tools/partcat_build.py).
 # Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
-slot bottom list=bottom name="Bottom" method=P target=20
+slot bottom list=bottom name="Bottom" method=P target=20 new=F
 
 0   "None"                 set=basics tags=plain
 1   "Pants"                set=basics tags=plain

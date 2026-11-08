@@ -1,6 +1,6 @@
 # core/data/parts/catalog/body.txt - the body type parts (CR1; format: tools/partcat_build.py).
 # Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
-slot body list=body name="Body type" method=P target=6
+slot body list=body name="Body type" method=P target=6 new=P
 
 0   "Average"              set=basics tags=plain
 1   "Round"                set=basics tags=plain

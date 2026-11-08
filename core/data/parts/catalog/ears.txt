@@ -1,6 +1,6 @@
 # core/data/parts/catalog/ears.txt - the ears parts (CR1; format: tools/partcat_build.py).
 # Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
-slot ears list=ears name="Ears" method=P target=16
+slot ears list=ears name="Ears" method=P target=16 new=S
 
 0   "Normal"               set=basics tags=plain
 1   "None"                 set=basics tags=plain

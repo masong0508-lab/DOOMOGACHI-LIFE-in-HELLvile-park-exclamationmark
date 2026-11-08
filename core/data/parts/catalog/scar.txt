@@ -1,6 +1,6 @@
 # core/data/parts/catalog/scar.txt - Scars (CR1; format: tools/partcat_build.py).
 # A deep field (provisional shim id DF_SCAR2 until P0/CR5 lands): painted, not selectable or saved yet.
-slot scar deep=DF_SCAR2 name="Scars" method=P target=10
+slot scar deep=DF_SCAR2 name="Scars" method=P target=10 new=T
 
 0   "None"       set=basics tags=plain
 1   "Cheek Slash"   set=punk tags=punk state=hidden

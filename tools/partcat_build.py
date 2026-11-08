@@ -25,7 +25,9 @@ FILES (one `#` comment per line allowed):
                                                          part_costs_match_the_renderer)
     planned.txt  plan KEY kind=gene|deep target=N method=M name="..."   (tools/part_budget.py)
     <slot>.txt   one slot:
-        slot KEY list=FIELD|deep=DF_X name="Name" method=P|S|F|T|C [target=N] [shapes=a,b,..]
+        slot KEY list=FIELD|deep=DF_X name="Name" method=P|S|F|T|C [target=N] [new=M] [shapes=a,b,..]
+             (method: the default of the slot's rows; target / new: how many new parts the creator
+             plan budgets and their method, for tools/part_budget.py)
         VALUE "Name" set=SET tags=T1,T2 [age=all|teen|adult] [method=M] [shape=S]
                      [hides=H1,H2] [state=live|hidden|planned|test]
 
@@ -216,9 +218,14 @@ def read_catalog():
                 if a.get("method", "P") not in METHODS:
                     raise CatError("%s: unknown method" % w)
                 shapes = a["shapes"].split(",") if "shapes" in a else []
+                if a.get("new", "P") not in METHODS:
+                    raise CatError("%s: unknown method for new parts" % w)
+                for k in a:
+                    if k not in ("list", "deep", "name", "method", "target", "shapes", "new"):
+                        raise CatError("%s: unknown slot key %r" % (w, k))
                 slot = {"key": key, "file": f, "list": lid, "width": width, "name": a.get("name", key),
                         "method": a.get("method", "P"), "target": int(a.get("target", "0")),
-                        "shapes": shapes, "parts": []}
+                        "new": a.get("new", a.get("method", "P")), "shapes": shapes, "parts": []}
                 continue
             if slot is None:
                 raise CatError("%s: a part before the slot line" % w)

@@ -1,6 +1,6 @@
 # core/data/parts/catalog/nose.txt - the nose parts (CR1; format: tools/partcat_build.py).
 # Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
-slot nose list=nose_style name="Nose" method=P target=12
+slot nose list=nose_style name="Nose" method=P target=12 new=S
 
 0   "None"                 set=basics tags=plain
 1   "Dot"                  set=basics tags=plain

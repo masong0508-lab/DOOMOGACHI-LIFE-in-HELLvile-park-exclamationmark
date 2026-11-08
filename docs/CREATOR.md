@@ -10,7 +10,8 @@ creator module.
 | `core/src/creator_draw.c` | all drawing: tab strip, preview stage, option list, pickers, START menu, copy picker, turntable, the "moving in!" finale |
 | `core/src/creator_data.c` | const tables: tabs and rows, 78 species presets (Turkey and Animatronic are the show canon's), 20 outfit sets, 12 voice types, personality texts, tab icons, the creator's unlockables |
 | `core/src/creator_int.h` | private glue between the three |
-| `core/tests/test_creator.c` | headless tests (19) |
+| `core/tests/test_creator.c` | headless tests (25) |
+| `core/data/parts/catalog/`, `core/src/part_meta.c`, `core/src/part_age.c` | the part catalog (CR1) and the age gate for parts (CR12), below |
 | `core/tests/scripts/creator.txt`, `creator_hellvile.txt` | runner walkthroughs (47 screenshots per resolution) |
 
 ## Opening it
@@ -168,6 +169,72 @@ The creator's own unlockables (ids 256..319, `doomo_unlocks_creator`):
 Cancelling leaves the town byte-for-byte unchanged
 (`creator_cancel_leaves_the_town_unchanged`).
 
+## The age gate for parts (CR12)
+
+Every part has an age class in the catalog (below): **all**, **teen** (TEEN+) or **adult**. Built-in
+content is non-explicit; "adult" is for things like a wine glass prop (owner default), never anything
+sexual, no tobacco, vape or drug props, no gore. While the draft's Age row is a minor stage:
+
+* a part above it is **not offered**: LEFT / RIGHT skip it, the picker neither lists nor counts it
+  (`cr_value_hidden()`, `cr_visible_count()`). There is no "18+" badge: for adults such parts look
+  like any other part;
+* changing the Age row to a younger stage swaps every such part for its slot's default and says so in
+  a toast ("Traffic Cone is for grown-ups - swapped for None"); randomise and copy-a-look sweep the
+  same way quietly; `write_town()` filters the record once more before it is stored;
+* the renderer enforces it too: `look_for_stage()` (portrait_age.c) drops the part, so a premade, a
+  copied look, an inherited baby look or a hand-edited save never shows one on a minor;
+  `resident_generate*()` and `sim_make_baby()` filter what they roll or inherit.
+
+TEEN+ needs a teen, an adult or an elder; ADULT needs an adult or an elder. A slot's value 0 is always
+**all** (the build refuses anything else), because the gate swaps to it. Today no part is tagged teen or
+adult, so nothing changes for any citizen; the gate is in before the first such part goes live (the
+art batches tag them in the catalog). Tests: `test_creator.c` (`creator_hides_parts_above_the_drafts_age`,
+`creator_age_change_swaps_grown_up_parts_and_says_so`) and `test_part_meta.c` (4,000 random looks at
+every minor stage never render an adult part), through the host-only override `part_age_test_set()`.
+
+## The part catalog (CR1)
+
+`core/data/parts/catalog/` names every part the creator can show, one text file per slot, compiled by
+`tools/partcat_build.py` (a `make gen` generator, checked by `make check-gen`) into
+`core/gen/part_meta_data.c` / `part_meta_ids.h` (names, sets, tags, age, method, state, cost weight,
+shape chip, a sorted name index) and `core/gen/part_age_data.c` (only the parts that are not *all*:
+resident on every platform). API: `core/include/doomo/part_meta.h` (`part_meta_find`, `part_name_of`,
+`part_search` by letters in the name or the set name, `part_set_info`, `part_age_ok`, the filters).
+On the PS1 `part_meta.c` and its data link into the creator overlay (`ps1/tools/ovl_plan.py`).
+
+```
+slot hat list=hat name="Hat" shapes=caps,soft,tall,wide,crowns,ears,helmets,hoods method=P target=40 new=F
+0   "None"           set=basics tags=plain
+3   "Top Hat"        set=teaparty tags=formal,showcanon shape=tall
+24  "Gumdrop Hat"    set=candy tags=candy,cute shape=soft method=F state=hidden
+```
+
+* **A part** is one value of one list. The list is a gene field (`list=hat`: its `GF_*` id), the species
+  (`PL_SPECIES`) or a deep field (`deep=DF_LASH`: `PL_DEEP0 + DF_x`, provisional shim ids until P0).
+* **Keys:** `set=` (one of `sets.txt`: every part is in exactly one of 25 themed sets, e.g. Hellvile Pits
+  Punk, HaHaland Candy Co., Bonejangles' Party Pals, Indie Art Jokes, Mayor Giggs' Tea Party; a third of
+  the themed sets are `reward=yes`), `tags=` (`tags.txt`, 31 theme tags), `age=all|teen|adult`,
+  `method=P|S|F|T|C` (painter code, script, family, tool data, code variant), `shape=` (the slot's shape
+  chips), `hides=` (`hides.txt`: what it covers, for "Hidden by" chips), `state=live|hidden|planned|test`.
+* **States:** *live* is selectable today; *hidden* is drawn but not selectable until its list is flipped
+  live (the 6 B76 halos, the 45 wave-2 choices, the CR2 family batch); *planned* is named, not drawn;
+  *test* is a VM demo value.
+* **Ids are append-only.** `core/tests/golden/part_ids.txt` freezes every live part (364 today);
+  `partcat_build.py --freeze` appends new ones after a sign-off. The build and `test_part_meta.c` refuse
+  a removed, renamed or un-lived shipped id.
+* **Targets:** `target=` / `new=` in a slot line and `planned.txt` hold the creator plan's 1,611 new
+  parts (524 in the gene, 1,087 deep) per slot, for `tools/part_budget.py`.
+* **Costs:** `costs.txt` is MEASURED by the unit test `part_costs_match_the_renderer` (units of 64 pixel
+  visits over the slot's value 0, bust + figure + chibi); refresh with `build/tests --update-golden
+  part_costs_match_the_renderer` then `python3 tools/partcat_build.py`. The creator's coming Busy meter
+  (CR9) sums them.
+* Rejected at build time: unknown set / tag / hide / shape / field, a value past the field's width, a
+  repeated name in a slot, a part without a set or tag, `method=S` without a script, a script without a
+  catalog line or on a list no painter draws scripts for, and a value 0 that is not `age=all`.
+
+Today: 35 slots, 433 parts (364 live, 66 hidden, 3 VM demos), 25 sets. `python3 tools/part_budget.py`
+prints the per-slot table.
+
 ## Nicknames
 
 `DoomoResident` has no room for a nickname, so the creator keeps a small
@@ -190,6 +257,22 @@ Hellvile citizens get the cute-goth look (`WIN_DARK` windows, a dusky
 violet room with embers, the Hellvile Pits finale).
 
 ## Costs
+
+**Baselines for the creator expansion (CR0, measured 2026-11-08):**
+
+| | before (`4851147`) | after CR0-CR2 + CR12 |
+|---|---|---|
+| GBA ROM | 4,299,852 B | 4,312,888 B (+13,036: catalog names and meta, the VM macro ops and hooks, 15 family parts) |
+| GBA EWRAM free | 3,556 B | 3,556 B (0: everything new is `const`; the tools-only shape mode has no variable on the GBA) |
+| GBA IWRAM stack | 6,356 B | 6,356 B |
+| `sizeof(CrState)` (GBA) | 5,992 B of the 12,288 B scene scratch | unchanged (the picker's age filter keeps no state) |
+| slot 1 (free play) bound | joint worst 68,612 B of 90,112 B (2,048 B margin): 19,452 B left, so the planned `LOOK` 8,072 B + `CRPF` 256 B fit | unchanged |
+| creator speed (GBA, `test-speed` creator row) | 13.4 fps / 54.5 ms (G1 log) | see docs/PORTRAIT.md "CR2" |
+
+`tools/part_budget.py` turns the catalog into per-slot costs: kind (gene: 0 B per citizen; deep: 2 B per
+citizen wearing one), width and headroom, live / hidden / target counts, script bytes in the tree, and
+the projected GBA ROM and PS1 bytes for the plan's target (about +480 KB GBA ROM and +146 KB PS1
+scripts and meta for all 1,611, none of it resident on the PS1).
 
 RAM: about 6.3 KB of `.bss` (the draft, the original, the undo timeline,
 one 48x56 render buffer shared by the bust and the turntable, the nickname

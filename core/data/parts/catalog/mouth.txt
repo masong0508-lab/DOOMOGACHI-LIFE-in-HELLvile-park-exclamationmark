@@ -1,6 +1,6 @@
 # core/data/parts/catalog/mouth.txt - the mouth parts (CR1; format: tools/partcat_build.py).
 # Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
-slot mouth list=mouth_style name="Mouth" method=P target=12
+slot mouth list=mouth_style name="Mouth" method=P target=12 new=S
 
 0   "Smile"                set=basics tags=plain
 1   "Grin"                 set=basics tags=plain

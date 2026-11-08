@@ -1,6 +1,6 @@
 # core/data/parts/catalog/tail.txt - the tail parts (CR1; format: tools/partcat_build.py).
 # Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
-slot tail list=tail name="Tail" method=P target=16
+slot tail list=tail name="Tail" method=P target=16 new=P
 
 0   "None"                 set=basics tags=plain
 1   "Devil"                set=spooky tags=spooky

@@ -1,6 +1,6 @@
 # core/data/parts/catalog/hat.txt - the hat parts (CR1; format: tools/partcat_build.py).
 # Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
-slot hat list=hat name="Hat" shapes=caps,soft,tall,wide,crowns,ears,helmets,hoods method=P target=40
+slot hat list=hat name="Hat" shapes=caps,soft,tall,wide,crowns,ears,helmets,hoods method=P target=40 new=F
 
 0   "None"                 set=basics tags=plain
 1   "Cap"                  set=basics tags=plain shape=caps

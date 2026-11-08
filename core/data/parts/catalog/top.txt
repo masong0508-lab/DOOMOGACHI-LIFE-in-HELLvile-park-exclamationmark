@@ -1,6 +1,6 @@
 # core/data/parts/catalog/top.txt - the top parts (CR1; format: tools/partcat_build.py).
 # Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
-slot top list=top name="Top" method=P target=40
+slot top list=top name="Top" method=P target=40 new=F
 
 0   "None"                 set=basics tags=plain
 1   "T-Shirt"              set=basics tags=plain

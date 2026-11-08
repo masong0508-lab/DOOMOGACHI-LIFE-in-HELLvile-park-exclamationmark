@@ -1,6 +1,6 @@
 # core/data/parts/catalog/hair.txt - the hair parts (CR1; format: tools/partcat_build.py).
 # Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
-slot hair list=hair_style name="Hair" method=P target=32
+slot hair list=hair_style name="Hair" method=P target=32 new=S
 
 0   "Bald"                 set=basics tags=plain
 1   "Buzz"                 set=basics tags=plain

@@ -1,6 +1,6 @@
 # core/data/parts/catalog/print.txt - the print parts (CR1; format: tools/partcat_build.py).
 # Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
-slot print list=pattern name="Print" method=T target=24
+slot print list=pattern name="Print" method=T target=24 new=T
 
 0   "Solid"                set=basics tags=plain
 1   "Stripes"              set=basics tags=plain

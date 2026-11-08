@@ -1,6 +1,6 @@
 # core/data/parts/catalog/pupil.txt - pupils, gene field pupil (CR1; format: tools/partcat_build.py).
 # Painted (wave 2, P1.M2) but not selectable yet: state=hidden until CR3 flips the list live.
-slot pupil list=pupil name="Pupils" method=P target=31
+slot pupil list=pupil name="Pupils" method=P target=31 new=T
 
 0   "Normal"     set=basics tags=plain
 1   "Slit"       set=spooky tags=spooky,critter state=hidden

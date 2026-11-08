@@ -1,6 +1,6 @@
 # core/data/parts/catalog/horns.txt - the horns parts (CR1; format: tools/partcat_build.py).
 # Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
-slot horns list=horns name="Horns" method=P target=10
+slot horns list=horns name="Horns" method=P target=10 new=S
 
 0   "None"                 set=spooky tags=spooky
 1   "Nubs"                 set=spooky tags=spooky

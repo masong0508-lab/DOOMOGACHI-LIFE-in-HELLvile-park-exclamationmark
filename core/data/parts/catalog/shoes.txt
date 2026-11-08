@@ -1,6 +1,6 @@
 # core/data/parts/catalog/shoes.txt - the shoes parts (CR1; format: tools/partcat_build.py).
 # Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
-slot shoes list=shoes name="Shoes" method=P target=20
+slot shoes list=shoes name="Shoes" method=P target=20 new=F
 
 0   "Barefoot"             set=basics tags=plain
 1   "Sneakers"             set=basics tags=plain

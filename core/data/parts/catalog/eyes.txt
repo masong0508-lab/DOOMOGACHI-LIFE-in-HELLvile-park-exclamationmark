@@ -1,6 +1,6 @@
 # core/data/parts/catalog/eyes.txt - the eyes parts (CR1; format: tools/partcat_build.py).
 # Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
-slot eyes list=eye_style name="Eyes" method=P target=24
+slot eyes list=eye_style name="Eyes" method=P target=24 new=S
 
 0   "Dot"                  set=basics tags=plain
 1   "Round"                set=basics tags=plain
