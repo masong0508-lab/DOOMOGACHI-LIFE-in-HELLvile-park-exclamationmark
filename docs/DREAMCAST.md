@@ -1100,6 +1100,19 @@ and skipped slots after harness holds (dcrun's `sync` stops the game while
 the stream keeps playing). Both are gaps of a few milliseconds at moments
 the core makes no sound of its own.
 
+(DC8) Whether a hold starves the stream depends on emulated timing, so
+unrelated code can move a gap into the middle of a run: DC8's build put a
+1,001-sample gap into combat's WAV (the same sound: the content hash
+0x664c5844 on both builds), which shifted the rest of the envelope against
+the single lag and dropped r from 0.920 to 0.859. `run_flycast.sh` therefore
+asks compare.py to cut such gaps first (`--drop-gaps 256`: runs of exact
+digital silence of 256 samples to 0.1 s after the first sound; the cues'
+own pauses are longer, and are left alone). With it, on DC8's build: title r
+0.989, invasion 0.988, combat 0.904 (1,001 samples cut); on the merge base
+the cut finds nothing and the numbers do not change (0.998, 0.989, 0.920).
+Combat stays the marginal one (its logic diverges from native while the 3D
+is DC6's stub).
+
 ### Owed on hardware (DC5)
 
 - The mixer's cost and the refill timing on a real SH4 and AICA (Flycast

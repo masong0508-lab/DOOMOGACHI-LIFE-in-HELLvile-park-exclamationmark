@@ -20,6 +20,15 @@ mixed to mono. Three numbers:
             semitone
   level     RMS of DC over RMS of REF
 
+--drop-gaps N (Flycast runs, DC8) first cuts out of DC every run of exact
+digital silence of N samples up to 0.1 s that comes after its first sound
+(longer silences are the cue's own, as in REF): the stream's gaps, where the AICA ran dry while the harness held the game
+at a sync stop (dc_audio_stall: "no records while held"). Whether a hold
+starves the ring depends on emulated timing, so any code change can move a
+gap in or out; the game's sound itself is unchanged (the content hash is
+the same) but one gap mid-run shifts the rest of the envelope against the
+single lag (the combat cue: r 0.92 without, 0.86 with a 1,001-sample gap).
+
 The result line starts with "ok" or "FAIL"; the exit status is 1 on a FAIL.
 --plot PNG draws both envelopes (matplotlib, when it is there).
 """
@@ -71,6 +80,24 @@ def best_lag(er, ed, max_lag):
     return best, best_r
 
 
+def drop_gaps(x, min_len, max_len):
+    """x without its runs of exact zeros of min_len..max_len samples that
+    come after its first nonzero sample; also how many samples went"""
+    nz = np.flatnonzero(x)
+    if len(nz) == 0:
+        return x, 0
+    z = np.concatenate([[0], (x[nz[0]:] == 0).astype(np.int8), [0]])
+    d = np.diff(z)
+    starts, ends = np.flatnonzero(d == 1), np.flatnonzero(d == -1)
+    keep = np.ones(len(x), dtype=bool)
+    dropped = 0
+    for s0, e0 in zip(starts, ends):
+        if min_len <= e0 - s0 <= max_len:
+            keep[nz[0] + s0: nz[0] + e0] = False
+            dropped += int(e0 - s0)
+    return x[keep], dropped
+
+
 def peak_note(seg, rate):
     w = seg * np.hanning(len(seg))
     nfft = 1 << (len(seg) * 4 - 1).bit_length()
@@ -96,12 +123,17 @@ def main():
     ap.add_argument("--min-pitch", type=float, default=0.0)
     ap.add_argument("--clip-pct", type=float, default=0.0,
                     help="clip both 50 ms envelopes at this percentile first (one-off effects)")
+    ap.add_argument("--drop-gaps", type=int, default=0,
+                    help="cut runs of exact silence of N samples to 0.1 s after DC's first sound")
     ap.add_argument("--label", default="")
     ap.add_argument("--plot", default="")
     a = ap.parse_args()
 
     rr, xr = load(a.ref)
     rd, xd = load(a.dc)
+    dropped = 0
+    if a.drop_gaps > 0:
+        xd, dropped = drop_gaps(xd, a.drop_gaps, int(0.1 * rd))
     # coarse alignment on 10 ms envelopes
     er = envelope(xr, rr, 0.01)
     ed = envelope(xd, rd, 0.01)
@@ -157,7 +189,8 @@ def main():
     ok = corr >= a.min_corr and pitch >= a.min_pitch
     print(f"{'ok' if ok else 'FAIL'} {a.label}: lag {lag * 10:+d} ms, envelope r={corr:.3f} "
           f"({n} x 50 ms{', clipped at p%g' % a.clip_pct if a.clip_pct else ''}, bar {a.min_corr}), pitch {100 * pitch:.1f}% of {total} windows agree, "
-          f"level {level:.2f}, {s1 - s0:.1f} s compared")
+          f"level {level:.2f}, {s1 - s0:.1f} s compared"
+          f"{', %d gap samples cut' % dropped if a.drop_gaps > 0 else ''}")
     if a.plot:
         try:
             import matplotlib

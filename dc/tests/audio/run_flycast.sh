@@ -11,7 +11,9 @@
 #              filtered out) and compare.py on the pair: envelope r >= 0.9
 #              after lining the two up (Flycast's WAV starts at power on);
 #              combat also needs the effects it fires (expect-sfx) and is
-#              compared on envelopes clipped at the 97th percentile
+#              compared on envelopes clipped at the 97th percentile;
+#              the stream's silent gaps while the harness held the game are
+#              cut from the Dreamcast WAV first (compare.py --drop-gaps)
 #   repeat     title.txt a second time: the content hash after 600 tick
 #              slots (dc_mailbox.snd_hash600) must be the same (the sound
 #              is a function of the game's ticks)
@@ -45,8 +47,10 @@ for name in title invasion combat; do
     nr=$?
     rm -rf "$d/run" "$d/ref_shots" "$d/ref_saves"
     clip=; [ $name = combat ] && clip="--clip-pct 97"   # see combat.txt
+    # --drop-gaps: the AICA's silent gaps while the harness held the game
+    # (sync stops) are not the game's sound (compare.py, DC8)
     c=$(python3 -I "$here/compare.py" "$d/ref.wav" "$d/dc.wav" --label "$name" --max-lag 5 \
-        $clip --plot "$d/envelope.png" 2>&1)
+        --drop-gaps 256 $clip --plot "$d/envelope.png" 2>&1)
     cr=$?
     stats=$(grep '^dcrun: sound' "$d/dcrun.log" | sed 's/^dcrun: //')
     p2p=$(grep -o 'peak-to-peak [0-9]* (min' "$d/dcrun.log" | head -1)
