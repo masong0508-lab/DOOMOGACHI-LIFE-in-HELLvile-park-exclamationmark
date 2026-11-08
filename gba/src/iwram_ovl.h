@@ -7,6 +7,9 @@
  *   OVL_2D  the tile-mode 2D loops (section .iwram_2d, IWRAM_2D_CODE)
  *   OVL_ROOM (H8) the dream house's lamp-pool loops (section .iwram_room,
  *           IWRAM_ROOM_CODE; room.c, loaded by plat_room())
+ *   OVL_UI  (SP4) loops of the bitmap scenes that use none of the above
+ *           (section .iwram_ui, IWRAM_UI_CODE): the pet LCD's dot expand
+ *           (dots.c, loaded by plat_dots())
  * crt0 loads no group. Before running any code of a group, call
  * iwram_ovl_use(group): a compare when the group is already in, else one
  * DMA from ROM (the 3D group's 10.4 KB: ~0.6 ms, once per mode change).
@@ -28,9 +31,9 @@
 
 #include <stdint.h>
 
-enum { OVL_NONE = 0, OVL_3D = 1, OVL_2D = 2, OVL_ROOM = 3 };
+enum { OVL_NONE = 0, OVL_3D = 1, OVL_2D = 2, OVL_ROOM = 3, OVL_UI = 4 };
 
-/* Load group g (OVL_3D / OVL_2D / OVL_ROOM) into the slot unless it is there. */
+/* Load group g (OVL_3D / OVL_2D / OVL_ROOM / OVL_UI) into the slot unless it is there. */
 void iwram_ovl_use(int g);
 /* The group in the slot now (OVL_NONE after boot). */
 int iwram_ovl_current(void);
@@ -46,6 +49,9 @@ uint8_t *iwram_ovl_2d_tail(uint32_t *bytes);
 /* (H8) a single ARM function of the room group; callers must have called
  * iwram_ovl_use(OVL_ROOM). They call nothing outside the group. */
 #define IWRAM_ROOM_CODE __attribute__((section(".iwram_room"), target("arm"), long_call, noinline))
+/* (SP4) a single ARM function of the UI group; callers must have called
+ * iwram_ovl_use(OVL_UI). They call nothing outside the group. */
+#define IWRAM_UI_CODE __attribute__((section(".iwram_ui"), target("arm"), long_call, noinline))
 
 #if defined(ENGINE_TEST)
 /* engine test (enginetest.c): a 2D-group function, so the test ROM swaps

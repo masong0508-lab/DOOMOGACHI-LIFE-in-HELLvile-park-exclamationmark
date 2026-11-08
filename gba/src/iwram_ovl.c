@@ -1,6 +1,6 @@
 /* iwram_ovl.c - the IWRAM code overlay: one slot, one group of hot ARM
  * code at a time (owner: gba; G4). Rules and groups: iwram_ovl.h; layout:
- * gba.ld (OVERLAY .ovl_3d / .ovl_2d / .ovl_room); numbers: docs/GBA.md
+ * gba.ld (OVERLAY .ovl_3d / .ovl_2d / .ovl_room / .ovl_ui); numbers: docs/GBA.md
  * section 3.
  *
  * THUMB, ROM: this code must never sit in the slot it overwrites.
@@ -10,8 +10,8 @@
 
 /* gba.ld */
 extern uint8_t __iwram_ovl_start[], __iwram_ovl_end[], __sp_usr[];
-extern const uint8_t __iwram_ovl_3d_lma[], __iwram_ovl_2d_lma[], __iwram_ovl_room_lma[];
-extern const uint8_t __iwram_ovl_3d_size[], __iwram_ovl_2d_size[], __iwram_ovl_room_size[];
+extern const uint8_t __iwram_ovl_3d_lma[], __iwram_ovl_2d_lma[], __iwram_ovl_room_lma[], __iwram_ovl_ui_lma[];
+extern const uint8_t __iwram_ovl_3d_size[], __iwram_ovl_2d_size[], __iwram_ovl_room_size[], __iwram_ovl_ui_size[];
 
 static uint8_t ovl_cur;                  /* OVL_*: the group in the slot */
 static uint32_t ovl_loads;               /* groups loaded since boot     */
@@ -55,6 +55,7 @@ void iwram_ovl_use(int g)
     if (g == OVL_3D) { src = __iwram_ovl_3d_lma; size = (uint32_t)(uintptr_t)__iwram_ovl_3d_size; }
     else if (g == OVL_2D) { src = __iwram_ovl_2d_lma; size = (uint32_t)(uintptr_t)__iwram_ovl_2d_size; }
     else if (g == OVL_ROOM) { src = __iwram_ovl_room_lma; size = (uint32_t)(uintptr_t)__iwram_ovl_room_size; }
+    else if (g == OVL_UI) { src = __iwram_ovl_ui_lma; size = (uint32_t)(uintptr_t)__iwram_ovl_ui_size; }
     else return;
     words = size >> 2;                   /* gba.ld aligns each group to 4 */
 #if defined(ENGINE_TEST)

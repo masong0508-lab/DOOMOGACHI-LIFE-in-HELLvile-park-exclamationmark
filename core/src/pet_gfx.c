@@ -545,14 +545,18 @@ static int16_t img_key[IMG_CACHE] = { -999, -999, -999, -999 };
 static uint8_t img_next;
 
 /* (integration, memory budget) The image cache and SCENE_PET's 32x32
- * canvas (5 KB) live in the shared scene scratch (scene.h, tag PETS), not
+ * canvases (8 KB) live in the shared scene scratch (scene.h, tag PETS), not
  * in .bss: both are caches that only the pet screen uses (pet_image() is
- * not drawn anywhere else), remade when another scene took the scratch. */
+ * not drawn anywhere else), remade when another scene took the scratch.
+ * SP4: so does the LCD's dot buffer (2,816 B, refilled every frame). */
 #define PET_SCRATCH_TAG SAVE_EXT_TAG('P', 'E', 'T', 'S')
 typedef struct PetScratch {
     uint8_t img[IMG_CACHE][N * N];
-    uint8_t canvas[N * N];              /* pet_scene.c's render_cached()  */
+    uint8_t canvas[PET_CANVASES][N * N];   /* pet_scene.c's render_cached() (SP4: a few, see there) */
+    uint8_t dots[PET_LCD_W * PET_LCD_H];   /* SP4: pet_scene.c's LCD, a value a dot */
+    uint8_t sprite[PET_SPRITE_OVL];     /* SP4: the canvas + its shadow as LCD dots */
 } PetScratch;
+DOOMO_STATIC_ASSERT(sizeof(PetScratch) <= DOOMO_SCENE_SCRATCH, pet_scratch_fits);
 static PetScratch *pet_scr;
 static uint8_t canvas_lost;
 
@@ -567,13 +571,25 @@ static PetScratch *pet_scratch(void)
     return pet_scr;
 }
 
-/* SCENE_PET's canvas; *fresh = 1 when what it held is gone. */
-uint8_t *pet_scene_canvas(int *fresh)
+/* SCENE_PET's canvas `slot` (0 .. PET_CANVASES - 1); *fresh = 1 when what they held is gone. */
+uint8_t *pet_scene_canvas(int slot, int *fresh)
 {
     PetScratch *ps = pet_scratch();
     *fresh = canvas_lost;
     canvas_lost = 0;
-    return ps->canvas;
+    return ps->canvas[(unsigned)slot % PET_CANVASES];
+}
+
+/* SP4: SCENE_PET's LCD dot buffer (PET_LCD_W x PET_LCD_H), drawn afresh every frame, and the sprite overlay
+ * (PET_SPRITE_OVL bytes; pet_scene.c remakes it whenever it re-renders the canvas). */
+uint8_t *pet_scene_dots(void)
+{
+    return pet_scratch()->dots;
+}
+
+uint8_t *pet_scene_sprite(void)
+{
+    return pet_scratch()->sprite;
 }
 
 const DoomoImage *pet_form_image(int form, int frame)

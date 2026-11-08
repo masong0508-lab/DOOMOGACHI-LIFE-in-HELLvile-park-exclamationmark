@@ -17,9 +17,10 @@
  */
 #include "doomo/doomo.h"
 #include "doomo/tips.h"
+#include "doomo/plat_ext.h"             /* SP4: plat_dots */
 
-#define LW 64                       /* LCD size in dots                  */
-#define LH 44
+#define LW PET_LCD_W                 /* LCD size in dots (64 x 44)        */
+#define LH PET_LCD_H
 #define ICONS 8
 
 enum { IC_FOOD, IC_LIGHTS, IC_PLAY, IC_MED, IC_CLEAN, IC_HEALTH, IC_DISC, IC_ATTN };
@@ -67,7 +68,8 @@ int pet_story_marks(void);              /* S3: pet_gfx.c */
 #define PET_ARG_BOSS 1                  /* S3: story_ch34.h */
 #define BOSS_TICKS 900                  /* 30 s, then it is over either way */
 
-static int spr_key = -9999;             /* what spr (below) holds         */
+static int spr_keys[PET_CANVASES] = { -9999, -9999, -9999, -9999 };   /* what the canvases hold */
+static uint32_t spr_used[PET_CANVASES], spr_clock;                   /* when each was last drawn */
 
 /* ---------------------------------------------------------------------- */
 /* geometry & the LCD blitter                                               */
@@ -89,52 +91,98 @@ static int lcd_x(void) { return G.lx; }
 static int egg_cy(void) { return G.cy; }
 static int lcd_y(void) { return G.ly; }
 
+/* SP4 (G-P1): the LCD is drawn into a dot buffer (one value a dot, D_*; pet_gfx.c's scratch), and the whole of it
+ * goes to the screen once a frame (lcd_flush): one plat_dots call (the GBA expands it in one ARM pass), else runs of
+ * plat_rect. Every lcd_* draw covers whole dots, so the last value written to a dot decides all its pixels: the
+ * same picture as the one plat_rect per run (and per seam and grid line) of before, which made lcd_rect and
+ * lcd_sprite 36% of the GBA's frame. */
+enum { D_BG, D_INK, D_MID, D_LIT, D_SHADOW, D_DARK };   /* D_BG: the lit background with its dot grid (PS1) */
+static uint8_t *dots;                   /* this frame's LCD, LW x LH (pet_scene_dots) */
+uint8_t *pet_scene_dots(void);
+
+/* the dot value of an lcd_* colour v: 1 ink, 2 mid tone, 4 shadow, anything else the lit background */
+static uint8_t dot_of(int v) { return (uint8_t)(v == 1 ? D_INK : v == 2 ? D_MID : v == 4 ? D_SHADOW : D_LIT); }
+
 static void lcd_rect(int x, int y, int w, int h, int v)
 {
-    int s = dsc(), gap = s >= 3, i, j;
-    uint8_t c = v == 1 ? S.ink : v == 2 ? S.mid : v == 4 ? S.shadow : S.bg;
+    uint8_t c = dot_of(v), *p;
     if (x < 0) { w += x; x = 0; }
     if (y < 0) { h += y; y = 0; }
     if (x + w > LW) w = LW - x;
     if (y + h > LH) h = LH - y;
     if (w <= 0 || h <= 0) return;
-    plat_rect(lcd_x() + x * s, lcd_y() + y * s, w * s, h * s, c);
-    if (!gap || v != 1) return;
-    /* hint of the dot matrix inside lit areas: a darker seam per dot */
-    for (j = 0; j < h; j++)
-        plat_rect(lcd_x() + x * s, lcd_y() + (y + j) * s + s - 1, w * s, 1, S.seam);
-    for (i = 0; i < w; i++)
-        plat_rect(lcd_x() + (x + i) * s + s - 1, lcd_y() + y * s, 1, h * s, S.seam);
+    for (p = dots + y * LW + x; h > 0; h--, p += LW) memset(p, c, (size_t)w);
 }
 
-static void lcd_dot(int x, int y, int v) { lcd_rect(x, y, 1, 1, v); }
-
-/* a 2-bit canvas image (pet_render) with its LCD shadow; flip mirrors */
-static void lcd_sprite(int x, int y, const uint8_t *pix, int flip, int ghost_only)
+static void lcd_dot(int x, int y, int v)
 {
-    int i, j;
-    /* the shadow: one lcd_rect per run of lit pixels in a row (a plat_rect costs the same whatever its size on the
-     * GBA, and this was one per pixel); same colour, same pixels, same clipping */
-    for (j = 0; j < PET_SPR; j++) {
-        int run = -1;
-        for (i = 0; i <= PET_SPR; i++) {
-            int v = i < PET_SPR ? pix[j * PET_SPR + (flip ? PET_SPR - 1 - i : i)] : 0;
-            int lit = v == 1 || v == 2;
-            if (lit && run < 0) run = i;
-            else if (!lit && run >= 0) { lcd_rect(x + run + 1, y + j + 1, i - run, 1, 4); run = -1; }
-        }
-    }
-    if (ghost_only) return;
-    for (j = 0; j < PET_SPR; j++) {
-        int run = -1, rv = 0;
-        for (i = 0; i <= PET_SPR; i++) {
-            int v = i < PET_SPR ? pix[j * PET_SPR + (flip ? PET_SPR - 1 - i : i)] : 0;
-            if (v != rv || i == PET_SPR) {
-                if (rv && run >= 0) lcd_rect(x + run, y + j, i - run, 1, rv);
-                run = i;
-                rv = v;
+    if ((unsigned)x < (unsigned)LW && (unsigned)y < (unsigned)LH) dots[y * LW + x] = dot_of(v);
+}
+
+/* a 2-bit canvas image (pet_render) with its LCD shadow; flip mirrors. The shadow first: every lit pixel (1, 2)
+ * one dot down and right in the shadow tone; then the image over it (0 is clear, 3 the lit background).
+ * SP4: both are composed once into an overlay of dot values (SOV_CLEAR where neither is), remade only when the
+ * canvas is re-rendered or the flip changes, and copied into the dots row by row between each row's first and
+ * last solid dot: the same dots as composing it every frame (which was 10% of the GBA's frame). */
+#define SOW (PET_SPR + 1)                  /* the overlay: SOW x SOW dots, then each row's [first, last + 1) */
+#define SOV_CLEAR 0xFF
+uint8_t *pet_scene_sprite(void);
+static int sov_key = -9999, sov_flip, sov_ghost;   /* what the overlay holds: the canvas of key sov_key */
+static uint8_t *spr;                        /* the pet's canvas now (render_cached) */
+static int spr_cur = -9999;                 /* the key of the canvas in spr */
+
+/* the overlay of canvas pix: a dot is the image's (if not clear) or else the shadow of the lit pixel up and left of
+ * it, else clear. Rows are worked only between the image's first and last solid pixel (and the row above's, one to
+ * the right): the rest is clear. */
+static void sprite_overlay(uint8_t *o, const uint8_t *pix, int flip, int ghost_only)
+{
+    uint8_t *x0 = o + SOW * SOW, *x1 = x0 + SOW;
+    int i, j, pa = SOW, pb = 0;                  /* the row above's solid bounds (lit or not) */
+    for (j = 0; j < SOW; j++) {
+        const uint8_t *row = j < PET_SPR ? pix + j * PET_SPR : NULL, *up = j ? pix + (j - 1) * PET_SPR : NULL;
+        uint8_t *d = o + j * SOW;
+        int a = SOW, b = 0, lo, hi;
+        if (row) {
+            for (i = 0; i < PET_SPR && !row[i]; i++) {}
+            if (i < PET_SPR) {
+                a = i;
+                for (b = PET_SPR; !row[b - 1]; b--) {}
+                if (flip) { int t = PET_SPR - b; b = PET_SPR - a; a = t; }
             }
         }
+        lo = DOOMO_MIN(a, pa + 1);
+        hi = DOOMO_MAX(b, pb + 1);
+        if (!up) { lo = a; hi = b; }
+        memset(d, SOV_CLEAR, SOW);
+        for (i = lo; i < hi; i++) {
+            int v = row && i < PET_SPR ? row[flip ? PET_SPR - 1 - i : i] : 0, u;
+            if (v && !ghost_only) { d[i] = dot_of(v); continue; }
+            u = up && i > 0 ? up[flip ? PET_SPR - i : i - 1] : 0;
+            if (u == 1 || u == 2) d[i] = D_SHADOW;
+        }
+        pa = a; pb = b;
+        while (lo < hi && d[lo] == SOV_CLEAR) lo++;
+        while (hi > lo && d[hi - 1] == SOV_CLEAR) hi--;
+        x0[j] = (uint8_t)lo;
+        x1[j] = (uint8_t)hi;
+    }
+}
+
+static void lcd_sprite(int x, int y, const uint8_t *pix, int flip, int ghost_only)
+{
+    uint8_t *o = pet_scene_sprite(), *x0 = o + SOW * SOW, *x1 = x0 + SOW;
+    int i, j;
+    if (sov_key != spr_cur || pix != spr || sov_flip != flip || sov_ghost != ghost_only) {
+        sprite_overlay(o, pix, flip, ghost_only);
+        sov_key = pix == spr ? spr_cur : -9999; sov_flip = flip; sov_ghost = ghost_only;
+    }
+    for (j = 0; j < SOW; j++) {
+        const uint8_t *row = o + j * SOW;
+        uint8_t *d;
+        int a = DOOMO_MAX((int)x0[j], -x), b = DOOMO_MIN((int)x1[j], LW - x);
+        if ((unsigned)(y + j) >= (unsigned)LH || a >= b) continue;
+        d = dots + (y + j) * LW + x;
+        for (i = a; i < b; i++) if (row[i] != SOV_CLEAR) d[i] = row[i];
     }
 }
 
@@ -206,10 +254,11 @@ static void leave(void)
 
 static void pet_enter(int arg)
 {
+    int i;
     (void)arg;
     memset(&S, 0, sizeof(S));
     geo_refresh();
-    spr_key = -9999;
+    for (i = 0; i < PET_CANVASES; i++) spr_keys[i] = -9999;
     colours();
     S.x = LW / 2 - PET_SPR / 2;
     S.dir = 1;
@@ -506,12 +555,95 @@ static void egg_fill(int cx, int cy, int rx, int ry, int rxt, int ryt, uint8_t c
     }
 }
 
+/* SP4: the shell's three eggs (rim, body, inner glow) were a third of the GBA's frame, nearly all of it this file's
+ * THUMB row loop and one call a row (480 rows). With every half-width table at hand they go to plat_hshapes in one
+ * call (the GBA: one ARM loop, the same row fills in the same order); else egg_fill as before. */
+static void egg_shell(const int *g, const uint8_t *c)       /* g: cx, cy, rx, ry, rxt, ryt per egg */
+{
+    DoomoHShape hs[3];
+    int k;
+    for (k = 0; k < 3; k++) {
+        const int *e = g + k * 6;
+        hs[k].cx = (int16_t)e[0]; hs[k].cy = (int16_t)e[1];
+        hs[k].top = (int16_t)e[5]; hs[k].bot = (int16_t)e[3];
+        hs[k].ht = egg_half_widths(e[4], e[5]);
+        hs[k].hb = egg_half_widths(e[2], e[3]);
+        hs[k].c = c[k];
+        if (!hs[k].ht || !hs[k].hb) break;
+    }
+    if (k == 3 && plat_hshapes(hs, 3)) return;
+    for (k = 0; k < 3; k++) {
+        const int *e = g + k * 6;
+        egg_fill(e[0], e[1], e[2], e[3], e[4], e[5], c[k]);
+    }
+}
+
+/* the device's egg (its rim: the outermost fill) */
+static void egg_dims(int *cx, int *cy, int *rx, int *ry, int *rxt, int *ryt)
+{
+    int b = big();
+    *cx = plat_screen_w() / 2; *cy = egg_cy();
+    *rx = b ? 134 : 102; *ry = b ? 118 : 84; *rxt = b ? 122 : 94; *ryt = b ? 128 : 92;
+}
+
+/* SP4: the biggest rect inside the device's rim egg (filled opaquely over everything drawn before it), which the
+ * backdrop leaves out (ui_backdrop_hole): the same picture for about half of the backdrop's pixels. Worked out
+ * from the egg's own row widths once a screen size. */
+static void device_hole(int *hx0, int *hy0, int *hx1, int *hy1)
+{
+    static int key = -1, h0, h1, v0, v1;
+    int sw = plat_screen_w(), sh = plat_screen_h();
+    if (key != sw * 1024 + sh) {
+        int cx, cy, rx, ry, rxt, ryt, ya, yb, best = 0;
+        const uint8_t *tt, *tb;
+        egg_dims(&cx, &cy, &rx, &ry, &rxt, &ryt);
+        rx += 2; ry += 2; rxt += 2; ryt += 2;          /* the rim's egg (draw_device) */
+        tt = egg_half_widths(rxt, ryt);
+        tb = egg_half_widths(rx, ry);
+        h0 = h1 = v0 = v1 = 0;
+        if (tt && tb) {
+            int top = DOOMO_MAX(cy - ryt, 0), bot = DOOMO_MIN(cy + ry, sh - 1);
+            for (ya = top; ya <= bot; ya++) {
+                int hmin = 255;
+                for (yb = ya; yb <= bot; yb++) {
+                    int hw = yb < cy ? tt[cy - yb] : tb[yb - cy], area;
+                    if (hw < hmin) hmin = hw;
+                    area = (yb - ya + 1) * (2 * hmin + 1);
+                    if (area > best) {
+                        best = area;
+                        h0 = DOOMO_MAX(cx - hmin, 0); h1 = DOOMO_MIN(cx + hmin + 1, sw);
+                        v0 = ya; v1 = yb + 1;
+                    }
+                }
+            }
+        }
+        key = sw * 1024 + sh;
+    }
+    *hx0 = h0; *hy0 = v0; *hx1 = h1; *hy1 = v1;
+}
+
+static int dex_covers(int pad);
+
+/* SP4: a bezel ring: ui_round_rect(x, y, w, h, r, c) less the LCD's rect, which the LCD covers every frame (it is
+ * drawn after the device): the rows above and below it whole, beside it the two straight sides (rows of a rounded
+ * corner beside the LCD are drawn whole). The same picture without ~11,000 hidden pixels a bezel on the GBA. */
+static void bezel(int x, int y, int w, int h, int r, uint8_t c)
+{
+    int lx = lcd_x(), ly = lcd_y(), lx1 = lx + LW * dsc(), ly1 = ly + LH * dsc();
+    int a = DOOMO_MAX(ly, y + r), b = DOOMO_MIN(ly1, y + h - r);
+    if (r > w / 2 || r > h / 2 || lx < x || lx1 > x + w || a >= b) { ui_round_rect(x, y, w, h, r, c); return; }
+    ui_round_rect_rows(x, y, w, h, r, c, 0, a - y);                 /* above (and corner rows beside) */
+    ui_round_rect_rows(x, y, w, h, r, c, b - y, h);                 /* below */
+    plat_rect(x, a, lx - x, b - a, c);                              /* the straight sides */
+    plat_rect(lx1, a, x + w - lx1, b - a, c);
+}
+
 static void draw_device(uint32_t t)
 {
-    int W = plat_screen_w(), b = big();
-    int cx = W / 2, cy = egg_cy(), rx = b ? 134 : 102, ry = b ? 118 : 84, rxt = b ? 122 : 94, ryt = b ? 128 : 92;
+    int b = big(), cx, cy, rx, ry, rxt, ryt;
     int lx = lcd_x(), ly = lcd_y(), lw = LW * dsc(), lh = LH * dsc(), i;
     uint8_t hi, md, lo, rim;
+    egg_dims(&cx, &cy, &rx, &ry, &rxt, &ryt);
     shell_colours(&hi, &md, &lo, &rim);
     /* soft shadow under the device */
     for (i = 0; i < 4; i++) plat_shade_rect(cx - rx + 14 + i * 6, cy + ry - 4 + i, rx * 2 - 28 - i * 12, 1, 11);
@@ -522,9 +654,13 @@ static void draw_device(uint32_t t)
         ui_fill_circle(cx, cy - ryt - 2, 3, 0);
     }
     /* the egg-shaped shell: coloured rim, body, inner glow, highlight */
-    egg_fill(cx, cy, rx + 2, ry + 2, rxt + 2, ryt + 2, rim);
-    egg_fill(cx, cy, rx, ry, rxt, ryt, lo);
-    egg_fill(cx - 2, cy - 2, rx - 6, ry - 7, rxt - 6, ryt - 5, md);
+    {
+        const int g[18] = { cx, cy, rx + 2, ry + 2, rxt + 2, ryt + 2,
+                            cx, cy, rx, ry, rxt, ryt,
+                            cx - 2, cy - 2, rx - 6, ry - 7, rxt - 6, ryt - 5 };
+        const uint8_t c[3] = { rim, lo, md };
+        egg_shell(g, c);
+    }
     ui_fill_ellipse(cx - rxt / 2, cy - ryt * 2 / 3, rxt / 4, ryt / 8 + 1, hi);
     plat_rect(cx - rxt / 2 - rxt / 8, cy - ryt * 2 / 3 - 1, rxt / 6, 2, PAL_WHITE);
     ui_sparkle(cx - rxt / 2 + rxt / 6, cy - ryt * 2 / 3 - 3, (int)((t / 3) & 15), PAL_WHITE);
@@ -543,10 +679,12 @@ static void draw_device(uint32_t t)
         ui_text_outline(cx - bw / 2, ly - (b ? 20 : 17), brand, PAL_WHITE, rim);
     }
     /* bezel */
-    ui_round_rect(lx - 7, ly - 7, lw + 14, lh + 14, 8, rim);
-    ui_round_rect(lx - 6, ly - 6, lw + 12, lh + 12, 7, PAL_RAMP(RAMP_STONE, 2));
-    ui_round_rect(lx - 3, ly - 3, lw + 6, lh + 6, 4, PAL_RAMP(RAMP_STONE, 1));
-    plat_rect(lx - 2, ly - 5, lw + 4, 1, PAL_RAMP(RAMP_STONE, 4));
+    if (!dex_covers(7)) {                           /* SP4: (else hidden under the Boredex) */
+        bezel(lx - 7, ly - 7, lw + 14, lh + 14, 8, rim);
+        bezel(lx - 6, ly - 6, lw + 12, lh + 12, 7, PAL_RAMP(RAMP_STONE, 2));
+        bezel(lx - 3, ly - 3, lw + 6, lh + 6, 4, PAL_RAMP(RAMP_STONE, 1));
+        plat_rect(lx - 2, ly - 5, lw + 4, 1, PAL_RAMP(RAMP_STONE, 4));
+    }
     /* three buttons */
     for (i = 0; i < 3; i++) {
         int bx = cx + (i - 1) * (b ? 36 : 28), by = ly + lh + (b ? 22 : 17) + (i == 1 ? 3 : 0), r = b ? 9 : 7;
@@ -562,13 +700,59 @@ static void draw_device(uint32_t t)
 
 static void lcd_background(int dark)
 {
-    int s = dsc(), x, y;
-    uint8_t c = dark ? S.dark : S.bg;
-    plat_rect(lcd_x(), lcd_y(), LW * s, LH * s, c);
-    if (s >= 3 && !dark) {
-        for (x = 1; x <= LW; x++) plat_rect(lcd_x() + x * s - 1, lcd_y(), 1, LH * s, S.grid);
-        for (y = 1; y <= LH; y++) plat_rect(lcd_x(), lcd_y() + y * s - 1, LW * s, 1, S.grid);
+    memset(dots, dark ? D_DARK : D_BG, (size_t)(LW * LH));
+}
+
+/* SP4: the dots as rects, where plat_dots cannot (native, PS1): the same pixels as one s x s rect a dot in fill[v],
+ * then (s >= 3) each dot's last row and column in edge[v]. Runs of one colour are one rect, and equal rows of dots
+ * are one rect tall (a blank LCD is a few dozen rects, as the old background and grid were). */
+void pet_dots_rects(int x, int y, int s, const uint8_t *d, int dw, int dh, const uint8_t *fill, const uint8_t *edge)
+{
+    int i, j, k, e;
+    for (j = 0; j < dh; j = k) {
+        const uint8_t *row = d + j * dw;
+        for (k = j + 1; k < dh && !memcmp(d + k * dw, row, (size_t)dw); k++) {}
+        for (i = 0; i < dw; i = e) {
+            uint8_t c = fill[row[i] & 7];
+            for (e = i + 1; e < dw && fill[row[e] & 7] == c; e++) {}
+            plat_rect(x + i * s, y + j * s, (e - i) * s, (k - j) * s, c);
+        }
     }
+    if (s < 3) return;
+    for (j = 0; j < dh; j++) {                          /* the last row of each dot */
+        const uint8_t *row = d + j * dw;
+        for (i = 0; i < dw; i = e) {
+            int v = row[i] & 7;
+            e = i + 1;
+            if (edge[v] == fill[v]) continue;
+            while (e < dw && edge[row[e] & 7] == edge[v] && edge[row[e] & 7] != fill[row[e] & 7]) e++;
+            plat_rect(x + i * s, y + j * s + s - 1, (e - i) * s, 1, edge[v]);
+        }
+    }
+    for (i = 0; i < dw; i++) {                          /* the last column of each dot */
+        for (j = 0; j < dh; j = e) {
+            int v = d[j * dw + i] & 7;
+            e = j + 1;
+            if (edge[v] == fill[v]) continue;
+            while (e < dh && edge[d[e * dw + i] & 7] == edge[v] && edge[d[e * dw + i] & 7] != fill[d[e * dw + i] & 7]) e++;
+            plat_rect(x + i * s + s - 1, y + j * s, 1, (e - j) * s, edge[v]);
+        }
+    }
+}
+
+/* SP4: this frame's LCD to the screen, all of it (every screen starts with lcd_background) */
+static void lcd_flush(void)
+{
+    uint8_t fill[8], edge[8];
+    int i, s = dsc();
+    for (i = 0; i < 8; i++) fill[i] = edge[i] = S.bg;
+    fill[D_INK] = S.ink;    edge[D_INK] = S.seam;      /* a darker seam per lit dot (PS1) */
+    fill[D_MID] = edge[D_MID] = S.mid;
+    fill[D_SHADOW] = edge[D_SHADOW] = S.shadow;
+    fill[D_DARK] = edge[D_DARK] = S.dark;
+    edge[D_BG] = S.grid;                                /* the dot grid (PS1) */
+    if (!plat_dots(lcd_x(), lcd_y(), s, dots, LW, LH, fill, edge))
+        pet_dots_rects(lcd_x(), lcd_y(), s, dots, LW, LH, fill, edge);
 }
 
 static void draw_icons(void)
@@ -594,10 +778,9 @@ static void draw_icons(void)
 
 /* ---------------------------------------------------------------------- */
 /* drawing: LCD screens                                                     */
-/* the 32x32 canvas lives in the scene scratch (pet_gfx.c); valid after
- * render_cached() */
-static uint8_t *spr;
-uint8_t *pet_scene_canvas(int *fresh);
+/* the 32x32 canvases live in the scene scratch (pet_gfx.c); spr is valid
+ * after render_cached() */
+uint8_t *pet_scene_canvas(int slot, int *fresh);
 
 static int pet_frame(uint32_t t)
 {
@@ -619,15 +802,28 @@ static int pet_form_now(void)
 }
 
 /* render a form into spr only when it changes (frames change every few
- * ticks; rendering every frame would waste the GBA's time) */
+ * ticks; rendering every frame would waste the GBA's time). SP4: the last
+ * PET_CANVASES images are kept, and the one drawn longest ago is rendered
+ * over: an idle pet cycles through a few frames and the evolve flips between
+ * two forms every few ticks, and a render was a 5 ms hitch on the GBA each
+ * time. */
 static void render_cached(int form, int frame)
 {
-    int key = ((form + 2) * 16 + frame) | (pet_story_marks() << 9), fresh;   /* S3: + the marks */
-    spr = pet_scene_canvas(&fresh);
-    if (fresh) spr_key = -9999;
-    if (key == spr_key) return;
-    pet_render(form, frame, spr);
-    spr_key = key;
+    int key = ((form + 2) * 16 + frame) | (pet_story_marks() << 9), fresh, slot, i;   /* S3: + the marks */
+    pet_scene_canvas(0, &fresh);
+    if (fresh) {
+        for (i = 0; i < PET_CANVASES; i++) spr_keys[i] = -9999;
+        sov_key = -9999;
+    }
+    for (slot = 0; slot < PET_CANVASES && spr_keys[slot] != key; slot++) {}
+    if (slot == PET_CANVASES) {
+        for (slot = 0, i = 1; i < PET_CANVASES; i++) if (spr_used[i] < spr_used[slot]) slot = i;
+        pet_render(form, frame, pet_scene_canvas(slot, &fresh));
+        spr_keys[slot] = key;
+    }
+    spr_used[slot] = ++spr_clock;
+    spr = pet_scene_canvas(slot, &fresh);
+    spr_cur = key;
 }
 
 static void draw_pet_at(int x, int frame, int flip)
@@ -857,13 +1053,31 @@ static void draw_nopet(uint32_t t)
 
 /* The Boredex: one evolution line per page (baby -> adult), so the four
  * images fit the art cache. UP/DOWN change the line, LEFT/RIGHT the form. */
+static void dex_rect(int *gx, int *gy, int *ww, int *wh)
+{
+    int b = big(), cell = b ? 64 : 50;
+    *ww = cell * 4 + 20; *wh = b ? 150 : 112;
+    *gx = plat_screen_w() / 2 - *ww / 2; *gy = plat_screen_h() / 2 - *wh / 2;
+}
+
+/* SP4: the Boredex window is up at full size and its opaque body (all of its rect but the r = 4 corners,
+ * ui_window) covers the LCD grown by pad px on every side: what is drawn there under it is never seen. pad 0: the
+ * LCD itself; pad 7: the LCD and its bezels (at 240x160 since C14 the bezels' top row peeks out above the window) */
+static int dex_covers(int pad)
+{
+    int gx, gy, ww, wh, lx = lcd_x() - pad, ly = lcd_y() - pad, w = LW * dsc() + 2 * pad, h = LH * dsc() + 2 * pad;
+    if (S.mode != M_DEX || S.mt < 0 || ui_pop_scale(S.mt) != 256) return 0;
+    dex_rect(&gx, &gy, &ww, &wh);
+    return lx >= gx + 4 && lx + w <= gx + ww - 4 && ly >= gy && ly + h <= gy + wh;
+}
+
 static void draw_dex(uint32_t t)
 {
-    int W = plat_screen_w(), H = plat_screen_h(), b = big(), i, seen = 0;
-    int line = S.dex_sel / 4, cell = b ? 64 : 50, ww = cell * 4 + 20, wh = b ? 150 : 112;
-    int gx = W / 2 - ww / 2, gy = H / 2 - wh / 2;
+    int b = big(), i, seen = 0, gx, gy, ww, wh;
+    int line = S.dex_sel / 4, cell = b ? 64 : 50;
     char buf[48];
     for (i = 0; i < PET_FORM_COUNT; i++) seen += pet_form_seen(i);
+    dex_rect(&gx, &gy, &ww, &wh);
     if (!ui_window_pop(gx, gy, ww, wh, WIN_LCD, S.mt)) return;
     doomo_snprintf(buf, sizeof(buf), "Boredex %d/16", seen);
     ui_text(gx + 8, gy + 5, buf, ui_style(WIN_LCD)->title);
@@ -968,8 +1182,16 @@ static void pet_draw(void)
     const DoomoPet *p = pet();
     char b[48];
     geo_refresh();
-    ui_backdrop(WIN_CUTE, t);
+    {
+        int hx0, hy0, hx1, hy1;                     /* SP4: none of the backdrop under the device */
+        device_hole(&hx0, &hy0, &hx1, &hy1);
+        ui_backdrop_hole(WIN_CUTE, t, hx0, hy0, hx1, hy1);
+    }
     draw_device(t);
+    /* SP4: the LCD into its dot buffer, then to the screen in one go; a frame that is not shown skips it all, and
+     * so does one whose LCD the Boredex hides */
+    if (!plat_draw_skipped() && !dex_covers(0)) {
+    dots = pet_scene_dots();
     switch (S.mode) {
     case M_NOPET: draw_nopet(t); break;
     case M_FOOD: draw_food(); break;
@@ -990,9 +1212,11 @@ static void pet_draw(void)
     case M_EVOLVE: draw_evolve(t); break;
     case M_DEAD: draw_dead(t); break;
     case M_BOSS: draw_boss(t); break;                     /* S3 */
-    default: draw_main(t); break;
+    default: draw_main(t); break;                         /* (M_DEX: the main screen under the Boredex) */
     }
-    if (S.mode == M_DEX) { draw_main(t); draw_dex(t); }
+    lcd_flush();
+    }
+    if (S.mode == M_DEX) draw_dex(t);
     /* caption under the device */
     if (pet_exists() && S.mode != M_DEX) {
         if (p->stage == PET_STAGE_EGG) doomo_snprintf(b, sizeof(b), "%s (egg)", p->name);

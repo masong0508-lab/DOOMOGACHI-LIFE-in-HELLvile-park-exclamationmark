@@ -4,7 +4,7 @@
  *   runner [--script FILE] [--shots DIR] [--w 240 --h 160] [--frames N]
  *          [--saves DIR] [--seed N] [--zoom N] [--gba-input] [--save-stream N]
  *          [--assert-no-stubs] [--check-prompts] [--pad NAME] [--quiet]
- *          [--verbose] [--wav FILE] [--budgets FILE]
+ *          [--verbose] [--wav FILE] [--budgets FILE] [--frame-hash FILE]
  * --check-prompts (C3) fails the run when a prompt bar or ui_hint line was
  * too wide for the screen or named a button the pad lacks.
  * --pad host|gba|ps1|dc (C3) names the buttons as that console's pad does
@@ -14,6 +14,9 @@
  * journey-end fails when a journey takes more presses or ticks than its row.
  * --wav FILE records the game's audio (22,050 Hz stereo, musrender: the
  * music SPEC's listening renders, core/native/plat_music_native.c).
+ * --frame-hash FILE (SP4) writes one line per frame, "FRAME FNV1A", the hash
+ * of the whole framebuffer after the frame: two builds that must draw the
+ * same pixels (a speed change) are compared frame by frame with cmp.
  *
  * Script lines (one command per line, '#' starts a comment):
  *   wait N              run N frames
@@ -140,6 +143,8 @@ static int zoom = 1;
 static int failures;
 static const char *script_name = "(no script)";
 static int line_no;
+static FILE *frame_hash;                  /* SP4: --frame-hash FILE */
+static uint32_t frame_no;
 
 /* ui_raster.c (ui_internal.h): the UI shape cache's counters */
 void ur_cache_stats(int *used, int *entries, uint32_t *hits, uint32_t *misses,
@@ -295,6 +300,13 @@ static void step(int n)
         plat_end_frame();
         if (jr.on) jr_frame();   /* M0 */
         if (hudw_on) hudw_frame();   /* CL1 */
+        if (frame_hash) {        /* SP4: the frame's pixels, for exact-speed-change checks */
+            uint32_t h = 2166136261u;
+            int k, n = nat_w * nat_h;
+            for (k = 0; k < n; k++) h = (h ^ nat_fb[k]) * 16777619u;
+            fprintf(frame_hash, "%u %08x\n", (unsigned)frame_no, (unsigned)h);
+        }
+        frame_no++;
     }
 }
 
@@ -735,7 +747,7 @@ static void usage(void)
             "usage: runner [--script FILE] [--shots DIR] [--w N --h N] [--frames N]\n"
             "              [--saves DIR] [--seed N] [--zoom N] [--gba-input] [--save-stream N]\n"
             "              [--assert-no-stubs] [--check-prompts] [--pad host|gba|ps1|dc] [--quiet]\n"
-            "              [--verbose] [--wav FILE] [--budgets FILE]\n");
+            "              [--verbose] [--wav FILE] [--budgets FILE] [--frame-hash FILE]\n");
 }
 
 int main(int argc, char **argv)
@@ -780,6 +792,10 @@ int main(int argc, char **argv)
             i++;
         }
         /* --- end M0 --- */
+        else if (strcmp(a, "--frame-hash") == 0 && val) {   /* SP4 */
+            if (!(frame_hash = fopen(val, "w"))) { fprintf(stderr, "runner: cannot write %s\n", val); return 1; }
+            i++;
+        }
         else if (strcmp(a, "--help") == 0 || strcmp(a, "-h") == 0) { usage(); return 0; }
         else { fprintf(stderr, "runner: unknown option %s\n", a); usage(); return 1; }
     }

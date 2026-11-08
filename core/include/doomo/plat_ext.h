@@ -25,6 +25,7 @@
  *   plat_pack_blob/read      E0 declares the pack format (pack.h, which
  *                            includes this header); E8 (GBA ROM blob),
  *                            E9 (PS1 disc file), E2 (native loader)
+ *   plat_dots, plat_hshapes  SP4 (GBA: the pet's LCD and egg in ARM passes)
  */
 #ifndef DOOMO_PLAT_EXT_H
 #define DOOMO_PLAT_EXT_H
@@ -115,6 +116,32 @@ int  plat_hold_frame(int on);
  *   PLAT_BUILD_HIDDEN  back to the hidden page (the build's target) */
 enum { PLAT_BUILD_START = 1, PLAT_BUILD_SHOWN = 2, PLAT_BUILD_HIDDEN = 3 };
 int  plat_build_frame(int op);
+
+/* ---- a dot-matrix screen in one call (SP4, G-P1: the pet's LCD) -------------
+ * Draw a dw x dh grid of dots at (x, y), each dot an s x s square: `dots`
+ * holds one value (0..7) a dot, row by row; value v fills its square with
+ * fill[v], and when s >= 3 the square's last column and last row are
+ * edge[v] (an LCD's dot gaps). Those are exactly the pixels of one
+ * plat_rect(x + i*s, y + j*s, s, s, fill[v]) a dot followed, when s >= 3,
+ * by its last row and column in edge[v]. Returns 1 when drawn (or when the
+ * frame is not drawn at all), 0 when the platform cannot (the default):
+ * the caller then draws the same pixels with plat_rect. */
+int  plat_dots(int x, int y, int s, const uint8_t *dots, int dw, int dh,
+               const uint8_t fill[8], const uint8_t edge[8]);
+
+/* ---- round shapes in one call (SP4: the pet's egg shell) -------------------
+ * n shapes painted in order, each row by row: shape s covers, on every
+ * row y from s.cy - s.top to s.cy + s.bot, the pixels cx - hw .. cx + hw
+ * (inclusive) with hw = ht[cy - y] above cy and hb[y - cy] from cy down:
+ * exactly one plat_rect(cx - hw, y, 2 * hw + 1, 1, c) a row on the screen.
+ * Returns 1 when drawn, 0 when the platform cannot (the default; the GBA
+ * off a plain Mode 4 frame): the caller then draws the rows itself. */
+typedef struct DoomoHShape {
+    int16_t cx, cy, top, bot;           /* centre; rows above and below it */
+    const uint8_t *ht, *hb;             /* half widths: ht[0..top], hb[0..bot] */
+    uint8_t c, pad[3];
+} DoomoHShape;
+int  plat_hshapes(const DoomoHShape *s, int n);
 
 /* ---- content packs (E0 pack.h, E2, E7-E10) -----------------------------------
  * blob: a pack that is directly addressable (the GBA mature ROM variant's

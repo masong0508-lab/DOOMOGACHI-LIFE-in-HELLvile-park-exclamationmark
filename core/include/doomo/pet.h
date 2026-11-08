@@ -87,6 +87,11 @@ extern const char *const doomo_pet_stage_names[PET_STAGE_DEAD + 1];
  * 2 mid tone, 3 lit (LCD background, opaque). form -1 = the egg,
  * form -2 = the departed pet's little ghost. */
 #define PET_SPR 32
+/* SP4: SCENE_PET's dot-matrix LCD, in dots (pet_scene.c; its dot buffer is in pet_gfx.c's scratch) */
+#define PET_LCD_W 64
+#define PET_LCD_H 44
+#define PET_CANVASES 4   /* SP4: rendered pet images SCENE_PET keeps (its animation frames) */
+#define PET_SPRITE_OVL ((PET_SPR + 1) * (PET_SPR + 1) + 2 * (PET_SPR + 1))   /* its sprite + shadow, row bounds */
 void pet_render(int form, int frame, uint8_t *out);
 /* The same as a DoomoImage in LCD colours (small rotating cache). */
 const DoomoImage *pet_form_image(int form, int frame);

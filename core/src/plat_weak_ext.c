@@ -35,6 +35,15 @@ WEAK int plat_hold_frame(int on) { (void)on; return 0; }
 
 WEAK int plat_build_frame(int op) { (void)op; return 0; }
 
+WEAK int plat_dots(int x, int y, int s, const uint8_t *dots, int dw, int dh,
+                   const uint8_t fill[8], const uint8_t edge[8])
+{
+    (void)x; (void)y; (void)s; (void)dots; (void)dw; (void)dh; (void)fill; (void)edge;
+    return 0;
+}
+
+WEAK int plat_hshapes(const DoomoHShape *s, int n) { (void)s; (void)n; return 0; }
+
 WEAK uint8_t *plat_mslot_buf(uint32_t *cap)
 {
     if (cap) *cap = 0;

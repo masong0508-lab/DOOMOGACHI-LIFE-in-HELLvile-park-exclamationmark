@@ -164,6 +164,8 @@ int  ui_raster_bounds(int *x0, int *y0, int *x1, int *y1);
 void ui_fill_circle(int cx, int cy, int r, uint8_t c);
 void ui_fill_ellipse(int cx, int cy, int rx, int ry, uint8_t c);
 void ui_round_rect(int x, int y, int w, int h, int r, uint8_t c);
+/* (SP4) only rows [row0, row1) of it (also in ui_internal.h) */
+void ui_round_rect_rows(int x, int y, int w, int h, int r, uint8_t c, int row0, int row1);
 void ui_frame(int x, int y, int w, int h, uint8_t c);   /* 1 px outline */
 /* Shaded, outlined heart centred at cx,cy; size = half-width in px (>=2). */
 void ui_heart(int cx, int cy, int size, uint8_t fill);
