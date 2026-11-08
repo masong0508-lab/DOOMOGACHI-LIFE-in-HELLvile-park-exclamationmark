@@ -1,0 +1,36 @@
+# CL2 (C17): the real first boot of a new console, in order. The runner's
+# first-boot command gives it a machine config record (none yet), so BOOT
+# goes to the language picker, then the Mature question; skipping the
+# security code ("Without a code it stays Off.") lands on the title. The
+# record is written then, so a second boot goes straight to the title.
+first-boot
+wait 5
+press A
+wait 40
+expect-scene LANG_PICK
+shot lang_pick
+press DOWN
+wait 10
+shot lang_pick_es
+press UP
+wait 10
+press A
+wait 20
+shot mature_q
+press DOWN
+press A
+wait 20
+expect-scene SECURITY_CODE
+shot seccode
+press B
+wait 10
+shot skip_code
+press A
+wait 40
+shot after_questions
+scene BOOT
+wait 5
+press A
+wait 40
+expect-scene TITLE
+shot second_boot_title

@@ -62,6 +62,14 @@
  *   expect-money MIN    (M0) fail unless the purse holds at least MIN H$
  *   expect-rel WHO OTHER [0|1]  (M0) fail unless the two know each other
  *                       (1, default: any relationship) or do not (0)
+ *   first-boot          (CL2) play the real first boot: from now on the
+ *                       runner keeps a machine config record like a console
+ *                       (in memory, PLATF_CONFIG), the record is wiped, the
+ *                       settings are reloaded and BOOT starts, so the
+ *                       language picker, the Mature question and the
+ *                       security code come up as on a new console
+ *   expect-hero NAME    (CL2) fail unless the protagonist (the save's hero,
+ *                       town_res(DOOMO_PLAYER_ID)) is called NAME
  * Buttons: UP DOWN LEFT RIGHT A B L R START SELECT X Y L2 R2.
  * Exit status: 0 ok, 1 script failure, 2 stubs ran with --assert-no-stubs.
  */
@@ -79,10 +87,38 @@
 #include "doomo/lang.h"               /* P0: lang CODE */
 #include "doomo/items.h"              /* M0: item, problem (journey setups) */
 #include "doomo/sim.h"
+#include "doomo/plat_ext.h"           /* CL2: first-boot (the config record) */
+#include "doomo/options_store.h"
 void story_verbs_cell(int cx, int cy);    /* S4: "cell", "skip-talk" (core/src/story_int.h) */
 int  story_talking(void);
 void home_move_in(void);                  /* H4: "home-room" (core/src/home_int.h) */
 void home_unlock_room(int room);
+
+/* --- CL2 (C17): a console's machine config record, for "first-boot" ---
+ * Off until a script asks: every other script keeps running with no
+ * record (plat_features() 0, as before), so nothing else changes. */
+static int cfg_on;
+static uint8_t cfg_rec[PLAT_CONFIG_MAX];
+static uint32_t cfg_len;
+
+uint32_t plat_features(void) { return cfg_on ? PLATF_CONFIG : 0u; }
+
+int plat_config_read(uint8_t *dst, uint32_t cap)
+{
+    uint32_t n = cfg_len < cap ? cfg_len : cap;
+    if (!cfg_on || !dst) return 0;
+    memcpy(dst, cfg_rec, n);
+    return (int)n;
+}
+
+int plat_config_write(const uint8_t *src, uint32_t len)
+{
+    if (!cfg_on || !src || len > PLAT_CONFIG_MAX) return 0;
+    memcpy(cfg_rec, src, len);
+    cfg_len = len;
+    return 1;
+}
+/* --- end CL2 --- */
 
 static uint32_t held;
 static int gba_input;
@@ -158,6 +194,7 @@ static int jr_setup_cmd(const char *cmd)
     static const char *const setup[] = {
         "scene", "push", "save", "load", "seed", "lang", "story-fp", "side",
         "talk", "cell", "home-room", "clock", "money", "item", "problem",
+        "first-boot",
     };
     size_t k;
     for (k = 0; k < sizeof(setup) / sizeof(setup[0]); k++)
@@ -412,6 +449,21 @@ static void run_line(char *line)
             fail(msg, doomo_lang_info[now].code);
         }
     /* --- end P0 --- */
+    } else if (strcmp(cmd, "first-boot") == 0) {          /* CL2 (C17) */
+        cfg_on = 1;
+        cfg_len = 0;
+        memset(cfg_rec, 0, sizeof(cfg_rec));
+        opt_config_load();                                 /* no record: first boot */
+        if (!opt_config_first_boot()) fail("first-boot: the settings did not see a first boot", "");
+        scene_set(scene_by_name("BOOT"), 0);
+    } else if (strcmp(cmd, "expect-hero") == 0) {         /* CL2 (C2) */
+        const DoomoResident *p = town_res(DOOMO_PLAYER_ID);
+        const char *want = argc > 1 ? argv[1] : "";
+        if (!p || p->status == RES_EMPTY || strcmp(p->name, want) != 0) {
+            char msg[96];
+            snprintf(msg, sizeof(msg), "expected the hero to be %s but it is", want);
+            fail(msg, p && p->status != RES_EMPTY ? p->name : "(nobody)");
+        }
     } else if (strcmp(cmd, "expect-text") == 0) {
         UiDialogDebug d;
         const char *want = argc > 1 ? argv[1] : "";

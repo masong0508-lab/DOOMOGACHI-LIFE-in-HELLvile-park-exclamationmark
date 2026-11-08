@@ -56,6 +56,8 @@ One command per line; `#` starts a comment.
 | `expect-problem WHO [0\|1]` | (M0) fail unless WHO has (1) / has no (0) open problem |
 | `expect-rel WHO OTHER [0\|1]` | (M0) fail unless the two know each other (1) / have never met (0) |
 | `expect-money MIN` | (M0) fail unless the purse holds at least MIN H$ |
+| `first-boot` | (CL2) play a new console's first boot: from here the runner keeps a machine config record in memory (`PLATF_CONFIG`, as GBA / PS1 do), the record is wiped, the settings reload and `BOOT` starts, so the language picker, the Mature question and the security code come up in order (`core/tests/scripts/first_boot.txt`). Without it the runner has no record, as before |
+| `expect-hero NAME` | (CL2) fail unless the protagonist (`town_res(DOOMO_PLAYER_ID)`) is called NAME |
 
 Buttons: `UP DOWN LEFT RIGHT A B L R START SELECT X Y L2 R2`.
 
