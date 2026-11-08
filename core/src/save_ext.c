@@ -18,6 +18,8 @@ __attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_endings = 0;
 __attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_opt2 = 0;
 __attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_profiles = 0;
 /* --- end K0 --- */
+/* --- T0: 'TALK' (docs/TALK.md 6.8); owner T6 --- */
+__attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_talk = 0;
 
 /* The defaults above are weak CONSTANTS: without the volatile read GCC
  * folds their value (0) into this file and never sees a module's strong
@@ -38,6 +40,7 @@ static const DoomoSaveExt *slot(int i) {
     case 9: return EXT_SLOT(doomo_save_ext_endings);   /* K0 */
     case 10: return EXT_SLOT(doomo_save_ext_opt2);     /* K0 */
     case 11: return EXT_SLOT(doomo_save_ext_profiles); /* K0 */
+    case 12: return EXT_SLOT(doomo_save_ext_talk);     /* T0 */
     default: return 0;
     }
 }

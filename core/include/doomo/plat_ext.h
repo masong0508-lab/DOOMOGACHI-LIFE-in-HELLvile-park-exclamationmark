@@ -48,7 +48,10 @@
 #define PLATF_3D_QUALITY  (1u << 6)   /* G7's "3D: Faster / Better" row (OPT_3D_FAST) means something */
 #define PLATF_DC_DISPLAY  (1u << 7)   /* DC video / picture / HD text option rows   */
 #define PLATF_CONFIG      (1u << 8)   /* plat_config_read/write persist (machine settings) */
-#define PLATF_ALL_KNOWN   0x1FFu
+/* (T0, docs/TALK.md) Talk, the live house conversation: PS1 and Dreamcast
+ * (and native for tests). The GBA never sets it and links no Talk code. */
+#define PLATF_TALK        (1u << 9)
+#define PLATF_ALL_KNOWN   0x3FFu
 uint32_t plat_features(void);
 
 /* ---- machine config record -----------------------------------------------
@@ -131,5 +134,30 @@ uint8_t *plat_mslot_buf(uint32_t *cap);
  * on the PS1). The default is NULL and cap 0: a streamed pack then has no scripts and every slot
  * plays the fade-to-black. */
 uint8_t *plat_mslot_script_buf(uint32_t *cap);
+
+/* ---- Talk (T0, docs/TALK.md; weak defaults in core/src/weak_talk.c and,
+ * for plat_room_project, core/src/room_ref.c) ------------------------------
+ * load: make TALK_<code>.BIN ("en", "es", ...) readable through
+ *       plat_talk_read and return its size in bytes; 0 when there is none
+ *       (the default); PLAT_TALK_LOADING while a platform still stages it
+ *       over several updates (PS1: CD -> SPU RAM, TP1): call it again on a
+ *       later update. Loading another language replaces the first.
+ * read: copy `len` bytes at byte offset `off` of the loaded file into dst;
+ *       returns the number of bytes copied (0 on error, nothing loaded).
+ *       Reads are small (a row, a string): the PS1 serves them by SpuRead.
+ * Native: core/build/talk/TALK_<code>.BIN (make -C core talk), or the
+ * directory in $DOOMO_TALK_DIR. */
+#define PLAT_TALK_LOADING 0xFFFFFFFFu
+uint32_t plat_talk_load(const char *code);
+uint32_t plat_talk_read(uint32_t off, void *dst, uint32_t len);
+/* Where a point of the room is on the screen this frame: tile space x, y
+ * (16.16, the DoomoRoomActor convention), height z in px, to screen
+ * pixels. Talk anchors its speech bubbles with it (the core cannot know
+ * the projection; the PS1 uses the GTE frame's matrices, the GBA its iso
+ * blit). The weak default is room_ref.c's iso projection of view v (what
+ * native draws). */
+struct DoomoRoomView;
+void plat_room_project(const struct DoomoRoomView *v, fix16 x, fix16 y, int z,
+                       int16_t *sx, int16_t *sy);
 
 #endif

@@ -1133,6 +1133,23 @@ static void draw_cursor(const RR *r, int cx, int cy)
     plat_line(bx + 1, by + 17, bx + 16, by + 9, PAL_UI_PINK_D);
 }
 
+/* The view's turn, turned size and back corner (the projection's origin);
+ * `tall` is whether the room has walls or a backdrop above its floor. */
+static void rr_origin(RR *r, const DoomoRoomView *v, int tall)
+{
+    int total, vw, vh;
+    r->k = ((v->yaw + 512) >> 10) & 3;
+    r->W = (r->k & 1) ? v->d : v->w;
+    r->D = (r->k & 1) ? v->w : v->d;
+    vw = v->vw ? v->vw : plat_screen_w();
+    vh = v->vh ? v->vh : plat_screen_h();
+    r->wall_h = vh >= 200 ? 64 : 48;
+    total = (tall ? r->wall_h : 8) + (r->W + r->D) * 8;
+    r->ox = v->vx + vw / 2 - (r->W - r->D) * 8 + v->pan_x;
+    if (total + 4 <= vh) r->oy = v->vy + (vh - total) / 2 + (total - (r->W + r->D) * 8) + v->pan_y;
+    else r->oy = v->vy + vh - (r->W + r->D) * 8 - 4 + v->pan_y;
+}
+
 void room_ref_draw(const DoomoRoomView *v)
 {
     RR r;
@@ -1145,20 +1162,14 @@ void room_ref_draw(const DoomoRoomView *v)
     if (!v || plat_draw_skipped()) return;
     r.v = v;
     r.L = &L;
-    r.k = ((v->yaw + 512) >> 10) & 3;
-    r.W = (r.k & 1) ? v->d : v->w;
-    r.D = (r.k & 1) ? v->w : v->d;
+    rr_origin(&r, v, 1);                  /* k, W, D and wall_h; ox / oy below */
     vw = v->vw ? v->vw : plat_screen_w();
     vh = v->vh ? v->vh : plat_screen_h();
-    r.wall_h = vh >= 200 ? 64 : 48;
     r.level = 6 + (v->daylight > 15 ? 15 : v->daylight) * 9 / 15;
     r.tint = (v->tint && v->tint < TINT_COUNT && v->tint_level >= 4) ? v->tint : 0;
     room_backdrop_setup(&bd, v, r.k, r.W, r.D, r.wall_h, r.level, r.tint);
     room_light_setup(&L, v, r.k, r.W, r.D, r.level);
-    total = (v->room_kind == ROOMK_WALLS || bd.style ? r.wall_h : 8) + (r.W + r.D) * 8;
-    r.ox = v->vx + vw / 2 - (r.W - r.D) * 8 + v->pan_x;
-    if (total + 4 <= vh) r.oy = v->vy + (vh - total) / 2 + (total - (r.W + r.D) * 8) + v->pan_y;
-    else r.oy = v->vy + vh - (r.W + r.D) * 8 - 4 + v->pan_y;
+    rr_origin(&r, v, v->room_kind == ROOMK_WALLS || bd.style);
     if (v->room_kind == ROOMK_WALLS) {
         plat_rect(v->vx, v->vy, vw, vh, r.tint ? lit(&r, PAL_RAMP(RAMP_VAPE, 1)) : PAL_RAMP(RAMP_VAPE, 1));
     } else {
@@ -1275,3 +1286,28 @@ void room_ref_draw(const DoomoRoomView *v)
 }
 
 __attribute__((weak)) void plat_room(const DoomoRoomView *v) { room_ref_draw(v); }
+
+/* (T0, docs/TALK.md 4.3) Where room point (x, y, z) lands on the screen in
+ * room_ref_draw()'s projection: the anchor draw_actor() puts an actor's
+ * feet on. Talk's bubbles use it through plat_room_project. */
+void room_ref_project(const DoomoRoomView *v, fix16 x, fix16 y, int z, int16_t *sx, int16_t *sy)
+{
+    RR r;
+    RoomBackdrop bd;
+    int k, t, w, d, u, vv;
+    if (!v) { if (sx) *sx = 0; if (sy) *sy = 0; return; }
+    rr_origin(&r, v, 1);
+    room_backdrop_setup(&bd, v, r.k, r.W, r.D, r.wall_h, 15, 0);
+    rr_origin(&r, v, v->room_kind == ROOMK_WALLS || bd.style);
+    for (k = 0, w = v->w, d = v->d; k < r.k; k++) { t = x; x = INT2FIX(d) - y; y = t; t = w; w = d; d = t; }
+    u = scr_x(&r, FIX2INT(x * 16), FIX2INT(y * 16));
+    vv = scr_y(&r, FIX2INT(x * 16), FIX2INT(y * 16), z);
+    if (sx) *sx = (int16_t)u;
+    if (sy) *sy = (int16_t)vv;
+}
+
+__attribute__((weak)) void plat_room_project(const DoomoRoomView *v, fix16 x, fix16 y, int z,
+                                             int16_t *sx, int16_t *sy)
+{
+    room_ref_project(v, x, y, z, sx, sy);
+}

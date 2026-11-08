@@ -58,7 +58,7 @@ extern const DoomoSaveExt *const doomo_save_ext_story2;
  * strong descriptor. Their worst cases are declared in save_budget.h
  * (SAVE_EXT_MAX_*), and a strong descriptor's max_size stays within them.
  * Later systems (a content pack's state, ...) add sections inside LIFE,
- * ENDS or PROF, never a 13th slot. --- */
+ * ENDS or PROF; the one exception is T0's 'TALK' below (its own reason). --- */
 #define SAVE_EXT_TAG_LIFE SAVE_EXT_TAG('L', 'I', 'F', 'E')
 #define SAVE_EXT_TAG_PLAY SAVE_EXT_TAG('P', 'L', 'A', 'Y')
 #define SAVE_EXT_TAG_ENDS SAVE_EXT_TAG('E', 'N', 'D', 'S')
@@ -77,7 +77,17 @@ extern const DoomoSaveExt *const doomo_save_ext_opt2;
  * core/src/profiles.c */
 extern const DoomoSaveExt *const doomo_save_ext_profiles;
 /* --- end K0 --- */
-#define SAVE_EXT_SLOTS 12
+/* --- T0 (docs/TALK.md 6.8): 'TALK', the talk memory (the last topics,
+ * compliments, promises and "refused today" per resident; T6 writes it,
+ * core/src/talk_save.c). The one chunk after K0's twelve: the LIFE chunk's
+ * spare bytes are used up (LIFE_SZ_SPARE: F7 / F8), and the talk memory is
+ * a PS1 / Dreamcast / native feature the GBA never registers, so it is not
+ * a section of a shared chunk. Weak NULL until T6; worst case
+ * SAVE_EXT_MAX_TALK (save_budget.h). --- */
+#define SAVE_EXT_TAG_TALK SAVE_EXT_TAG('T', 'A', 'L', 'K')
+extern const DoomoSaveExt *const doomo_save_ext_talk;
+/* --- end T0 --- */
+#define SAVE_EXT_SLOTS 13
 int save_ext_count(void);
 const DoomoSaveExt *save_ext_at(int i);
 void save_ext_reset_all(void);   /* called by town_new() */

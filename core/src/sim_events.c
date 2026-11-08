@@ -390,6 +390,11 @@ static const NewsTmpl news_tmpl[NT_COUNT] = {
     [NT_GIGGLING]        = { "%s and %s caught giggling at a cloud together.", "ab" },
     [NT_GOOD_MORNING]    = { "Good morning! It's %s, day %s in Hellvile Park.", "Wn" },
     [NT_WHEEL_SPOOKED]   = { "%s got spooked by the Wheel of Fate!", "a" },
+    /* T0: Talk (docs/TALK.md 5.5); "yours" is the player's house */
+    [NT_TALK_ROW]        = { "%s and %s had words at your place.", "ab" },
+    [NT_TALK_MADE_UP]    = { "%s and %s made up at your place. Aww.", "ab" },
+    [NT_TALK_GREAT_NIGHT] = { "Big night at yours! %s and %s still giggle.", "ab" },
+    [NT_TALK_WALKOUT]    = { "%s walked out of a chat at yours. Bold.", "a" },
 };
 
 /* The feed lives outside sim_s: sim_init (a population change, a load)

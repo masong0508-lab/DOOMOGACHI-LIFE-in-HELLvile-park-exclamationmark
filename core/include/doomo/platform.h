@@ -345,7 +345,8 @@ typedef struct DoomoRoomView {
     const DoomoRoomActor *actors; int nact;
     uint16_t gen;                     /* bump on any layout/paint change (GBA cache key) */
     int16_t  yaw;                     /* 0..4095; GBA snaps to 4 views, PS1 orbits       */
-    uint8_t  zoom;                    /* 0 overview, 1 close                             */
+    uint8_t  zoom;                    /* 0 overview, 1 close, 2 talk framing (focus_*;
+                                         a renderer that does not know 2 treats it as 1) */
     int16_t  punch_q8;                /* 256 = none                                      */
     int8_t   pan_x, pan_y;            /* tiles*16                                        */
     uint8_t  daylight, tint, tint_level, weather;
@@ -356,6 +357,10 @@ typedef struct DoomoRoomView {
     int16_t  vx, vy, vw, vh;          /* viewport                                        */
     void    *plat_cache; uint32_t plat_cache_cap;  /* scene scratch tail the platform may
                                          use (PS1 vertex cache, C9/C17); GBA gets 0     */
+    /* (T0, docs/TALK.md 4.2) zoom 2, "talk framing": fit the circle of radius
+     * focus_r around (focus_x, focus_y), all tile space 16.16, with a head
+     * margin. Read only when zoom == 2; 0 everywhere else. */
+    fix16    focus_x, focus_y, focus_r;
 } DoomoRoomView;
 void plat_room(const DoomoRoomView *v);
 /* An opaque HUD bar the room renderer may skip under (C7.3). Default no-op. */

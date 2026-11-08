@@ -54,7 +54,8 @@ TEST(k0_plat_ext_weak_defaults)
     /* the bits are distinct and inside the known mask */
     static const uint32_t bits[] = { PLATF_VMU_LCD, PLATF_RUMBLE, PLATF_POINTER, PLATF_KEYBOARD,
                                      PLATF_MULTIPAD, PLATF_EXCLUSIVE, PLATF_3D_QUALITY,
-                                     PLATF_DC_DISPLAY, PLATF_CONFIG };
+                                     PLATF_DC_DISPLAY, PLATF_CONFIG,
+                                     PLATF_TALK /* T0 */ };
     uint32_t all = 0;
     int i;
     for (i = 0; i < DOOMO_COUNTOF(bits); i++) {

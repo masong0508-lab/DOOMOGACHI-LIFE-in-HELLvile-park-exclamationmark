@@ -430,6 +430,9 @@ int  home_defend_export(HomeDefendMap *m);   /* the Arena's map of the player's 
 /* ---- H4: room_ref.c (the reference renderer) and home_draw.c ---------------- */
 /* The whole room, full redraw (the weak plat_room() calls it). */
 void room_ref_draw(const DoomoRoomView *v);
+/* (T0) room point -> screen in room_ref_draw()'s projection (an actor's feet
+ * anchor); plat_room_project's weak default (plat_ext.h). */
+void room_ref_project(const DoomoRoomView *v, fix16 x, fix16 y, int z, int16_t *sx, int16_t *sy);
 /* Decode facing `facing` (0 / 1) of animation frame `frame` of `furn` into
  * buf (cap bytes), recoloured to paints pa / pb (-1 = the markers' own
  * shades) and lit at level lvl (15 = fullbright). (*ox, *oy) is where the
