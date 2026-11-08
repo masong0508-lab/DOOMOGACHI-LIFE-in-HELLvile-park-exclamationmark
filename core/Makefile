@@ -28,6 +28,8 @@
 #     core/tools/artgen*.c + core/art/*.c + $(ARTGEN_CORE) and run as
 #         $(BUILD)/artgen --out-root DIR
 #     (it must write DIR/core/gen/art_data.c).
+#   * Last, ulgen (core/tools/ulgen.c, linked with the native core objects)
+#     writes DIR/core/gen/unlock_index.c from the unlock registry.
 #   Generators must be deterministic (byte-identical output every run).
 
 CORE  := $(abspath $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST)))))
@@ -195,6 +197,15 @@ $(BUILD)/furngen: $(FURNGEN_SRCS) $(wildcard $(CORE_INC)/doomo/*.h)
 	    -DFURNGEN_REPO='"$(ROOT)"' -I$(CORE_INC) -I$(CORE)/native -o $@ $(FURNGEN_SRCS)
 # --- end H4 ---
 
+# --- SP1 (X3): ulgen, unlock_find's key index (core/gen/unlock_index.c). It links the native core (the unlock
+# tables are every team's, weak defaults and all), so it is built from the same objects as the tests. ---
+$(BUILD)/obj/tools/%.o: $(CORE)/tools/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(HOST_CFLAGS) -c $< -o $@
+$(BUILD)/ulgen: $(CORE_OBJS) $(PLAT_OBJS) $(BUILD)/obj/tools/ulgen.o
+	$(CC) $(LDFLAGS_SAN) -o $@ $^
+# --- end SP1 ---
+
 gen:
 	@set -e; \
 	for g in $(PY_GENS_FIRST); do \
@@ -225,6 +236,10 @@ endif
 	for g in $(PY_GENS_REST); do \
 	    echo "gen: $$g"; $(PYTHON) $$g --out-root "$(GEN_ROOT)"; \
 	done
+	@# --- SP1 (X3): ulgen last (it links the core as committed, other generators' outputs included) ---
+	@$(MAKE) --no-print-directory -f $(CORE)/Makefile BUILD=$(BUILD) $(BUILD)/ulgen
+	@echo "gen: ulgen"; mkdir -p "$(GEN_ROOT)/core/gen"; $(BUILD)/ulgen --out-root "$(GEN_ROOT)"
+	@# --- end SP1 ---
 
 # --- CR7: the part icon tool (core/tools/part_icons.c): `make -C core part-icons-sheet` writes the
 # icon contact sheet to $(BUILD)/sheets/part_icons.png ---

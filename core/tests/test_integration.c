@@ -307,3 +307,50 @@ TEST(integ_finished_scenes_are_not_stubs)
         CHECK_MSG(!scene_is_stub(s), "SCENE_%s is still the weak stub", s->name);
     }
 }
+
+/* (perf, X3) unlock_find through the generated key index (core/gen/unlock_index.c) returns exactly what the
+ * registry scan returns: every entry's key and its neighbours, alternate routes with and without one route owned,
+ * keys out of range. The native build links the index, so it must be current ("make -C core gen"). */
+TEST(x3_unlock_index_matches_the_scan)
+{
+    uint8_t saved[sizeof(doomo_town.unlocks)];
+    int n = unlock_count(), i, d, pass, cat;
+    uint32_t r = 7u;
+    CHECK_MSG(unlock_index_active(), "core/gen/unlock_index.c is stale: run make -C core gen");
+    memcpy(saved, doomo_town.unlocks, sizeof(saved));
+    for (pass = 0; pass < 4; pass++) {
+        /* ownership: none, all, and two random halves (alternate routes prefer an owned entry) */
+        for (i = 0; i < (int)sizeof(saved); i++) {
+            r ^= r << 13; r ^= r >> 17; r ^= r << 5;
+            doomo_town.unlocks[i] = (uint8_t)(pass == 0 ? 0 : pass == 1 ? 0xFF : r);
+        }
+        for (i = 0; i < n; i++) {
+            const DoomoUnlock *u = unlock_at(i);
+            for (d = -1; d <= 1; d++)
+                for (cat = (int)u->cat - 1; cat <= (int)u->cat + 1; cat++) {
+                    const DoomoUnlock *a, *b;
+                    unlock_index_use(1);
+                    a = unlock_find(cat, u->list, u->index + d);
+                    unlock_index_use(0);
+                    b = unlock_find(cat, u->list, u->index + d);
+                    CHECK_MSG(a == b, "cat %d list %d index %d: index %p scan %p", cat, u->list, u->index + d,
+                              (const void *)a, (const void *)b);
+                }
+        }
+    }
+    {
+        static const int odd[][3] = { { -1, 0, 0 }, { 256, 0, 0 }, { UL_CAT_PART, -1, 0 }, { UL_CAT_PART, 256, 0 },
+                                      { UL_CAT_PAINT, 0, -1 }, { UL_CAT_PAINT, 0, 65536 }, { UL_CAT_PAINT, 0, 70000 } };
+        for (i = 0; i < (int)(sizeof(odd) / sizeof(odd[0])); i++) {
+            const DoomoUnlock *a, *b;
+            unlock_index_use(1);
+            a = unlock_find(odd[i][0], odd[i][1], odd[i][2]);
+            unlock_index_use(0);
+            b = unlock_find(odd[i][0], odd[i][1], odd[i][2]);
+            CHECK(a == b);
+        }
+    }
+    unlock_index_use(1);
+    CHECK(unlock_index_active());
+    memcpy(doomo_town.unlocks, saved, sizeof(saved));
+}

@@ -633,3 +633,79 @@ TEST(freeplay_scene_scratch_loss_is_rebuilt)
     id = fp_resident_id();
     CHECK(id >= 0 && doomo_town.res[id].status != RES_EMPTY);
 }
+
+/* (perf, X2) the news icon in one pass gives exactly the old chain of fp_strcasestr() scans: every template with
+ * many names / venues / foods, names holding keywords (also across the name's end: "Kate " has "ate "), case
+ * mixes, keywords cut off at the end of the line, and random keyword soup. */
+static int x2_old_icon(const char *s, uint8_t *icon, uint8_t *color)
+{
+#define H(w) fp_strcasestr(s, w)
+    *icon = ICON_STAR; *color = PAL_UI_GOLD;
+    if (H("possess") || H("demon") || H("MONSTER")) { *icon = ICON_PENTAGRAM; *color = PAL_UI_RED; return 0; }
+    if (H("ghost") || H("rest") || H("vanished") || H("grave")) { *icon = ICON_GHOST; *color = PP(PAINT_CYAN, 0); return 1; }
+    if (H("married") || H("wedding") || H("dating") || H("love") || H("crush") || H("engaged")) { *icon = ICON_HEART; *color = PP(PAINT_ROSE, 1); return 2; }
+    if (H("baby")) { *icon = ICON_EGG; *color = PP(PAINT_LEMON, 1); return 3; }
+    if (H("broke up") || H("fight") || H("argu") || H("rival") || H("nemes")) { *icon = ICON_BOLT; *color = PP(PAINT_TANGERINE, 0); return 4; }
+    if (H("friend")) { *icon = ICON_SMILE; *color = PP(PAINT_MINT, 0); return 5; }
+    if (H("exorcis")) { *icon = ICON_CROSS; *color = PP(PAINT_LAVENDER, 0); return 6; }
+    if (H("concert") || H("sing") || H("song")) { *icon = ICON_NOTE; *color = PP(PAINT_GRAPE, 1); return 7; }
+    if (H("picnic") || H("cake") || H("ate ")) { *icon = ICON_FOOD; *color = PP(PAINT_CARAMEL, 0); return 8; }
+#undef H
+    return 9;
+}
+
+static int x2_same(const char *s)
+{
+    uint8_t i1, c1, i2, c2;
+    int g1 = x2_old_icon(s, &i1, &c1), g2 = fp_news_icon(s, &i2, &c2);
+    return g1 == g2 && i1 == i2 && c1 == c2;
+}
+
+TEST(x2_news_icon_matches_the_strcasestr_chain)
+{
+    static const char *const names[] = { "Kate", "Forrest", "Lovelace", "GHOSTY", "Singe", "Babyface", "Demi",
+                                         "Arguello", "Nemesia", "Pat", "Ex", "Orcis", "Cakes", "Rivalda", "Q" };
+    static const char *const soup[] = { "possess", "demon", "MONSTER", "ghost", "rest", "vanished", "grave",
+                                        "married", "wedding", "dating", "love", "crush", "engaged", "baby",
+                                        "broke up", "fight", "argu", "rival", "nemes", "friend", "exorcis",
+                                        "concert", "sing", "song", "picnic", "cake", "ate ", "ate", "broke",
+                                        "ArGu", "SoNg", " ", "x", "\xC3\xA9", "pos", "dem", "ra", "Fri" };
+    char buf[NEWS_LEN], line[160];
+    DoomoNewsRec r;
+    uint32_t seed = 99u;
+    int t, a, n, k, groups[10] = { 0 };
+    uint8_t ic, co;
+    town_new(TOWN_FREEPLAY, 5, TOWN_POP_PREMADE);
+    sim_init();
+    for (n = 0; n < (int)(sizeof(names) / sizeof(names[0])); n++) {
+        /* rename residents 1..15 so the templates' names carry keywords */
+        DoomoResident *res = town_res(1 + n);
+        if (res) fp_strcpy(res->name, names[n], (int)sizeof(res->name));
+    }
+    for (t = NT_FREE + 1; t < NT_COUNT; t++)
+        for (a = 0; a < 48; a++)
+            for (n = 0; n < 16; n++) {
+                r.tmpl = (uint8_t)t; r.arg8 = (uint8_t)a; r.day = 0;
+                r.v = (n == 15) ? (uint32_t)(a * 37) : NEWS_IDS(n, (n + 3) % 16, n == 7 ? NEWS_NONE : (unsigned)((n + 5) % 16));
+                sim_news_format(&r, buf, sizeof buf);
+                CHECK_MSG(x2_same(buf), "template %d arg %d ids %d: '%s'", t, a, n, buf);
+                groups[fp_news_icon(buf, &ic, &co)]++;
+            }
+    for (k = 0; k < 20000; k++) {
+        int len = 0, parts = 1 + (int)((seed >> 3) % 5u);
+        line[0] = 0;
+        while (parts-- > 0) {
+            const char *w;
+            seed = seed * 1103515245u + 12345u;
+            w = soup[(seed >> 16) % (sizeof(soup) / sizeof(soup[0]))];
+            if (len + (int)strlen(w) + 2 >= (int)sizeof(line)) break;
+            if ((seed >> 8) & 1) line[len++] = (char)('a' + (seed >> 9) % 26u);
+            strcpy(line + len, w);
+            len += (int)strlen(w);
+            if ((seed >> 12) & 1) { int cut = (int)((seed >> 13) % 3u); len = len > cut ? len - cut : 0; line[len] = 0; }
+        }
+        CHECK_MSG(x2_same(line), "soup '%s'", line);
+    }
+    CHECK(x2_same(""));
+    for (k = 0; k < 10; k++) CHECK_MSG(groups[k] > 0, "no template line landed in group %d", k);
+}

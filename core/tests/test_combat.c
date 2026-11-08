@@ -600,3 +600,98 @@ TEST(u3a_pause_music_row_changes_the_volume_in_place)
     CHECK(scene_top() == &SCENE_COMBAT);
     opt_set(OPT_MUSIC_VOL, 7);
 }
+
+/* (perf, X5) combat_bb_sort (the billboard pass without a root per actor) gives exactly the order, count and near
+ * test of the old fx_dist() insertion sort: random layouts at every scale, exact ties, near-ties one fix16 step
+ * apart, actors on the cull ring and behind the eye. */
+static int ref_bb_sort(fix16 ex, fix16 ey, fix16 fx, fix16 fy, int16_t *order, int32_t *dist)
+{
+    int i, k, cnt = 0;
+    for (i = 0; i < ACTOR_MAX; i++) {
+        const DoomoActor *a = &doomo_actors[i];
+        fix16 rx, ry, depth, dd;
+        if (!(a->flags & AF_USED)) continue;
+        rx = a->x - ex; ry = a->y - ey;
+        depth = FIXMUL(rx, fx) + FIXMUL(ry, fy);
+        if (depth < -INT2FIX(48)) continue;
+        dd = fx_dist(rx, ry);
+        if (dd > INT2FIX(30 * CELLU)) continue;
+        for (k = cnt; k > 0 && dist[k - 1] > dd; k--) { dist[k] = dist[k - 1]; order[k] = order[k - 1]; }
+        dist[k] = dd;
+        order[k] = (int16_t)i;
+        cnt++;
+    }
+    return cnt;
+}
+
+TEST(x5_billboard_sort_matches_the_fx_dist_sort)
+{
+    static int16_t o1[ACTOR_MAX], o2[ACTOR_MAX];
+    static int32_t d1[ACTOR_MAX];
+    static uint32_t k2[ACTOR_MAX];
+    static DoomoActor saved[ACTOR_MAX];
+    uint32_t r = 12345u;
+    int round, i, k;
+    memcpy(saved, doomo_actors, sizeof(saved));
+    for (round = 0; round < 4000; round++) {
+        fix16 ex, ey, fx, fy, base;
+        int n1, n2, ang, layout = round % 5;
+#define RND() (r ^= r << 13, r ^= r >> 17, r ^= r << 5, r)
+        memset(doomo_actors, 0, sizeof(doomo_actors));
+        ex = (fix16)(RND() % (64u * 65536u * 40u)) - INT2FIX(64 * 20);
+        ey = (fix16)(RND() % (64u * 65536u * 40u)) - INT2FIX(64 * 20);
+        ang = (int)(RND() & DOOMO_ANG_MASK);
+        fx = fx_cos(ang); fy = fx_sin(ang);
+        base = (fix16)(RND() % (uint32_t)INT2FIX(30 * CELLU + 8));
+        for (i = 0; i < ACTOR_MAX; i++) {
+            DoomoActor *a = &doomo_actors[i];
+            uint32_t pick = RND();
+            if ((pick & 7) == 0) continue;               /* some slots unused */
+            a->flags = AF_USED;
+            switch (layout) {
+            case 0:                                      /* anywhere within ~35 cells */
+                a->x = ex + (fix16)(RND() % (uint32_t)INT2FIX(70 * CELLU)) - INT2FIX(35 * CELLU);
+                a->y = ey + (fix16)(RND() % (uint32_t)INT2FIX(70 * CELLU)) - INT2FIX(35 * CELLU);
+                break;
+            case 1: {                                    /* on one ring: equal and near-equal distances */
+                int an = (int)(RND() & DOOMO_ANG_MASK);
+                fix16 rad = base + (fix16)(RND() % 5u) - 2;
+                a->x = ex + FIXMUL(fx_cos(an), rad);
+                a->y = ey + FIXMUL(fx_sin(an), rad);
+                break;
+            }
+            case 2: {                                    /* mirrored pairs: exact ties */
+                fix16 dx = (fix16)(RND() % (uint32_t)INT2FIX(20 * CELLU)), dy = (fix16)(RND() % 4096u);
+                if (pick & 8) dx = -dx;
+                if (pick & 16) { fix16 t = dx; dx = dy; dy = t; }
+                a->x = ex + dx;
+                a->y = ey + ((pick & 32) ? -dy : dy);
+                break;
+            }
+            case 3: {                                    /* close in: 0..3 cells, many tiny steps */
+                a->x = ex + (fix16)(RND() % (uint32_t)INT2FIX(6 * CELLU)) - INT2FIX(3 * CELLU);
+                a->y = ey + (fix16)(RND() % 64u) - 32;
+                break;
+            }
+            default: {                                   /* the 30-cell cull ring, +- a few steps */
+                int an = (int)(RND() & DOOMO_ANG_MASK);
+                fix16 rad = INT2FIX(30 * CELLU) + (fix16)(RND() % 4u) - 2;
+                if (pick & 64) rad = INT2FIX(3 * CELLU) + (fix16)(RND() % 4u) - 2;   /* or the flash ring */
+                a->x = ex + FIXMUL(fx_cos(an), rad) + (fix16)(RND() % 3u) - 1;
+                a->y = ey + FIXMUL(fx_sin(an), rad) + (fix16)(RND() % 3u) - 1;
+                break;
+            }
+            }
+        }
+#undef RND
+        n1 = ref_bb_sort(ex, ey, fx, fy, o1, d1);
+        n2 = combat_bb_sort(ex, ey, fx, fy, o2, k2);
+        CHECK_EQ(n2, n1);
+        for (k = 0; k < n1; k++) {
+            CHECK_EQ(o2[k], o1[k]);
+            CHECK_EQ(k2[k] < (uint32_t)((((uint64_t)INT2FIX(3 * CELLU)) * (uint64_t)INT2FIX(3 * CELLU)) >> BB_KEY_SHIFT),
+                     d1[k] < INT2FIX(3 * CELLU));
+        }
+    }
+    memcpy(doomo_actors, saved, sizeof(saved));
+}

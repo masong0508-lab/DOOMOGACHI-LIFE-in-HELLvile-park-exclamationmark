@@ -1766,9 +1766,90 @@ static int player_view_dir(fix16 camx, fix16 camy, int *flip)
     return views[sector];
 }
 
+/* (perf, X5) The billboard pass's cull and nearest-first order, without a square root per actor.
+ *
+ * The order is the one the old code made: an insertion sort by d = fx_dist() = floor(sqrt(s)), s = rx^2 + ry^2,
+ * which moves an actor in front of an earlier one only when its d is strictly smaller (so actors with the same d
+ * stay in index order). Here the cull is the exact test "d > 30 cells" <=> s >= (R+1)^2, and each kept actor
+ * stores key = s >> BB_KEY_SHIFT (s < 2^54 after the cull, so the key fits 32 bits). An insertion compares keys:
+ *   - key_old < key_new: s_old < s_new, so d_old <= d_new: stop (as before);
+ *   - key_old >= key_new + BB_KEY_SURE: s_old - s_new > 2^28 > 2 sqrt(s_old) (sqrt(s_old) < 2^27), so
+ *     sqrt(s_old) - sqrt(s_new) > 1 and d_old > d_new: move;
+ *   - otherwise (distances within ~1/2^16 to 1/2^10 of a unit of each other, which is rare) the exact test:
+ *     s_old from the actor, and d_old > d_new <=> s_old >= (d_new + 1)^2 with d_new = fx_dist() (one root,
+ *     only for such near-ties).
+ * tests/test_combat.c checks order, count and keys against the old fx_dist() sort on random and tied layouts. */
+#define BB_CULL_R    ((uint64_t)INT2FIX(30 * CELLU))
+#define BB_CULL_S    ((BB_CULL_R + 1u) * (BB_CULL_R + 1u))
+#define BB_KEY_SURE  65u                  /* (65 - 1) << BB_KEY_SHIFT == 2^28 */
+/* d < 3 cells (the muzzle flash lights the actor) <=> s < (3 cells)^2 <=> key < that >> BB_KEY_SHIFT (exact: the
+ * low bits of (3 cells)^2 are zero) */
+#define BB_KEY_NEAR  ((uint32_t)(((uint64_t)INT2FIX(3 * CELLU) * (uint64_t)INT2FIX(3 * CELLU)) >> BB_KEY_SHIFT))
+DOOMO_STATIC_ASSERT(BB_CULL_S <= ((uint64_t)1 << 54), bb_key_fits_32_bits);
+DOOMO_STATIC_ASSERT(((uint64_t)(BB_KEY_SURE - 1u) << BB_KEY_SHIFT) == ((uint64_t)1 << 28), bb_key_sure_is_2_28);
+DOOMO_STATIC_ASSERT((((uint64_t)INT2FIX(3 * CELLU) * (uint64_t)INT2FIX(3 * CELLU)) &
+                     (((uint64_t)1 << BB_KEY_SHIFT) - 1u)) == 0, bb_key_near_is_exact);
+
+/* v^2, exactly. The GBA's THUMB code has no 32x32->64 multiply (it would call __aeabi_lmul twice per actor), so
+ * there it is built from 32-bit multiplies of the 16-bit halves; elsewhere the CPU's own multiply is smaller. */
+static uint64_t bb_sq1(fix16 v)
+{
+#if defined(DOOMO_PLATFORM_GBA)
+    uint32_t a = v < 0 ? 0u - (uint32_t)v : (uint32_t)v, hi = a >> 16, lo = a & 0xFFFFu;
+    return ((uint64_t)(hi * hi) << 32) + ((uint64_t)(hi * lo) << 17) + (uint64_t)(lo * lo);
+#else
+    return (uint64_t)((int64_t)v * v);
+#endif
+}
+
+static uint64_t bb_sq(fix16 rx, fix16 ry)
+{
+    return bb_sq1(rx) + bb_sq1(ry);
+}
+
+int combat_bb_sort(fix16 ex, fix16 ey, fix16 fx, fix16 fy, int16_t *order, uint32_t *key)
+{
+    int i, k, cnt = 0;
+    for (i = 0; i < ACTOR_MAX; i++) {
+        const DoomoActor *a = &doomo_actors[i];
+        fix16 rx, ry, depth;
+        uint64_t s, near1 = 0;            /* (d_new + 1)^2, once it is needed */
+        uint32_t kn;
+        if (!(a->flags & AF_USED)) continue;
+        rx = a->x - ex; ry = a->y - ey;
+        depth = FIXMUL(rx, fx) + FIXMUL(ry, fy);
+        if (depth < -INT2FIX(48)) continue;
+        if (rx > (fix16)BB_CULL_R || rx < -(fix16)BB_CULL_R || ry > (fix16)BB_CULL_R || ry < -(fix16)BB_CULL_R)
+            continue;                     /* |rx| or |ry| > R: s >= (R+1)^2 */
+        s = bb_sq(rx, ry);
+        if (s >= BB_CULL_S) continue;
+        kn = (uint32_t)(s >> BB_KEY_SHIFT);
+        for (k = cnt; k > 0; k--) {
+            uint32_t ko = key[k - 1];
+            if (ko < kn) break;
+            if (ko - kn < BB_KEY_SURE) {
+                const DoomoActor *o = &doomo_actors[order[k - 1]];
+                uint64_t so = bb_sq(o->x - ex, o->y - ey);
+                if (so <= s) break;
+                if (!near1) {
+                    uint64_t d1 = (uint64_t)fx_dist(rx, ry) + 1u;
+                    near1 = d1 * d1;
+                }
+                if (so < near1) break;    /* the same d: keep index order */
+            }
+            key[k] = ko;
+            order[k] = order[k - 1];
+        }
+        key[k] = kn;
+        order[k] = (int16_t)i;
+        cnt++;
+    }
+    return cnt;
+}
+
 void combat_build_view(DoomoView3D *v)
 {
-    int i, n = 0, shake = combat_px.shake;
+    int n = 0, shake = combat_px.shake;
     fix16 ex, ey, ez;
     int sw = plat_screen_w(), sh = plat_screen_h();
     memset(v, 0, sizeof(*v));
@@ -1810,23 +1891,8 @@ void combat_build_view(DoomoView3D *v)
     /* billboards: nearest first, capped */
     {
         static int16_t order[ACTOR_MAX];
-        static int32_t dist[ACTOR_MAX];
-        int cnt = 0, k;
-        fix16 fx = fx_cos(v->angle), fy = fx_sin(v->angle);
-        for (i = 0; i < ACTOR_MAX; i++) {
-            const DoomoActor *a = &doomo_actors[i];
-            fix16 rx, ry, depth, dd;
-            if (!(a->flags & AF_USED)) continue;
-            rx = a->x - ex; ry = a->y - ey;
-            depth = FIXMUL(rx, fx) + FIXMUL(ry, fy);
-            if (depth < -INT2FIX(48)) continue;
-            dd = fx_dist(rx, ry);
-            if (dd > INT2FIX(30 * CELLU)) continue;
-            for (k = cnt; k > 0 && dist[k - 1] > dd; k--) { dist[k] = dist[k - 1]; order[k] = order[k - 1]; }
-            dist[k] = dd;
-            order[k] = (int16_t)i;
-            cnt++;
-        }
+        static uint32_t key[ACTOR_MAX];
+        int cnt = combat_bb_sort(ex, ey, fx_cos(v->angle), fx_sin(v->angle), order, key), k;
         for (k = 0; k < cnt && n < BB_MAX - 2; k++) {
             const DoomoActor *a = &doomo_actors[order[k]];
             int flags, scale, zoff;
@@ -1839,7 +1905,7 @@ void combat_build_view(DoomoView3D *v)
             bbs[n].scale = (uint16_t)scale;
             bbs[n].flags = (uint8_t)flags;
             bbs[n].light = 0;
-            if (combat_px.flash && dist[k] < INT2FIX(3 * CELLU)) bbs[n].light = 4;
+            if (combat_px.flash && key[k] < BB_KEY_NEAR) bbs[n].light = 4;
             if (combat_px.zoom_t > 128 && combat_weapon()->sight == WSIGHT_THERMAL && IS_DEMON(a->type))
                 bbs[n].flags |= BB_FULLBRIGHT;
             n++;

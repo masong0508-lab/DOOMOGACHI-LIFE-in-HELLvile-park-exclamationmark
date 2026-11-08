@@ -143,6 +143,10 @@ uint32_t progress_get(int counter);
 /* ---- foundation additions ------------------------------------------------ */
 /* Unlock entry for (cat, list, index), or NULL. */
 const DoomoUnlock *unlock_find(int cat, int list, int index);
+/* (X3) 1 when unlock_find uses the generated key index (core/gen/unlock_index.c is current; never on the PS1) */
+int unlock_index_active(void);
+/* tests: 0 makes unlock_find scan, 1 re-checks and uses the index; returns whether it was in use */
+int unlock_index_use(int on);
 const DoomoUnlock *unlock_by_id(int id);
 /* 1 if (cat, list, index) has no unlock entry or it is owned. */
 int  unlock_ok(int cat, int list, int index);

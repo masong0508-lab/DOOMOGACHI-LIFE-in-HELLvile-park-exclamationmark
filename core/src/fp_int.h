@@ -64,6 +64,8 @@ int  fp_sw(void);
 int  fp_sh(void);
 int  fp_lower(int c);
 int  fp_strcasestr(const char *hay, const char *needle);
+/* (X2) a headline's icon + colour (fp_news.c); returns its group 0..8, 9 = the default star */
+int  fp_news_icon(const char *s, uint8_t *icon, uint8_t *color);
 void fp_strcpy(char *dst, const char *src, int cap);
 /* Resident record or NULL (any id incl. empty slots). */
 DoomoResident *fp_res(int id);

@@ -842,6 +842,10 @@ WEAK void audio_voice_char(const uint8_t *voice, char c) { (void)voice; (void)c;
 /* ======================================================================
  * per-team unlock tables (each team defines its own, strong)
  * ==================================================================== */
+/* (X3) the unlock key index: empty unless core/gen/unlock_index.c is linked (unlock_find then scans) */
+WEAK const uint16_t doomo_ul_index_n = 0;
+WEAK const uint32_t doomo_ul_index_key[1] = { 0 };
+WEAK const uint16_t doomo_ul_index_at[1] = { 0 };
 #define EMPTY_UNLOCKS(name) WEAK const DoomoUnlock name[1] = { { 0, 0, 0, 0, NULL, NULL, 0, 0 } }
 EMPTY_UNLOCKS(doomo_unlocks_creator);
 EMPTY_UNLOCKS(doomo_unlocks_life);

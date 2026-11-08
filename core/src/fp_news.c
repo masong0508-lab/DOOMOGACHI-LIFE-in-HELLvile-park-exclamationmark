@@ -10,21 +10,59 @@ static struct { int tab, sel, top, t; } W;
 
 static const char *const tabs[2] = { "Headlines", "Help wanted" };
 
-static int has(const char *s, const char *w) { return fp_strcasestr(s, w); }
+/* (perf, X2) The icon of a headline: the first group below (in order) with a keyword anywhere in the text, case
+ * insensitive (fp_strcasestr's rule), else the star. Exactly the old chain of up to 33 fp_strcasestr() scans per row
+ * per frame (29.7% of the GBA news screen), in ONE pass: the keywords are sorted by their first letter, and at each
+ * letter of the text only the keywords starting with it are compared (news_kw_first). The text has to be read whole
+ * (names, venues and foods are part of it: "Kate " has "ate "), so the pass runs per drawn row;
+ * tests/test_freeplay.c checks it against the old chain.
+ * Groups: 0 pentagram (possess demon monster), 1 ghost (ghost rest vanished grave), 2 heart (married wedding
+ * dating love crush engaged), 3 egg (baby), 4 bolt (broke up, fight argu rival nemes), 5 smile (friend), 6 cross
+ * (exorcis), 7 note (concert sing song), 8 food (picnic cake "ate "). */
+static const char *const news_kw[] = {
+    "argu", "ate ", "baby", "broke up", "crush", "concert", "cake", "demon", "dating", "engaged", "exorcis",
+    "fight", "friend", "ghost", "grave", "love", "monster", "married", "nemes", "possess", "picnic", "rest",
+    "rival", "sing", "song", "vanished", "wedding"
+};
+static const uint8_t news_kw_group[] = {
+    4, 8, 3, 4, 2, 7, 8, 0, 2, 2, 6, 4, 5, 1, 1, 2, 0, 2, 4, 0, 8, 1, 4, 7, 7, 1, 2
+};
+/* the keywords starting with letter L are news_kw[news_kw_first[L - 'a'] .. news_kw_first[L - 'a' + 1] - 1] */
+static const uint8_t news_kw_first[27] = {
+    0, 2, 4, 7, 9, 11, 13, 15, 15, 15, 15, 15, 16, 18, 19, 19, 21, 21, 23, 25, 25, 25, 26, 27, 27, 27, 27
+};
+DOOMO_STATIC_ASSERT(sizeof(news_kw_group) == sizeof(news_kw) / sizeof(news_kw[0]), news_kw_groups_match);
 
-static void story_icon(const char *s, uint8_t *icon, uint8_t *color)
+static int news_lower(int c) { return (c >= 'A' && c <= 'Z') ? c + 32 : c; }
+
+int fp_news_icon(const char *s, uint8_t *icon, uint8_t *color)
 {
+    static const uint8_t icons[9] = { ICON_PENTAGRAM, ICON_GHOST, ICON_HEART, ICON_EGG, ICON_BOLT, ICON_SMILE,
+                                      ICON_CROSS, ICON_NOTE, ICON_FOOD };
+    int best = 9, i, k;
+    for (i = 0; s[i] && best > 0; i++) {
+        int c = news_lower((unsigned char)s[i]), end;
+        if (c < 'a' || c > 'z') continue;           /* every keyword starts with a letter */
+        end = news_kw_first[c - 'a' + 1];
+        for (k = news_kw_first[c - 'a']; k < end; k++) {
+            const char *w = news_kw[k];
+            int j;
+            if (news_kw_group[k] >= best) continue;
+            for (j = 1; w[j] && s[i + j]; j++)
+                if (news_lower((unsigned char)s[i + j]) != w[j]) break;
+            if (!w[j]) best = news_kw_group[k];
+        }
+    }
     *icon = ICON_STAR;
     *color = PAL_UI_GOLD;
-    if (has(s, "possess") || has(s, "demon") || has(s, "MONSTER")) { *icon = ICON_PENTAGRAM; *color = PAL_UI_RED; }
-    else if (has(s, "ghost") || has(s, "rest") || has(s, "vanished") || has(s, "grave")) { *icon = ICON_GHOST; *color = PP(PAINT_CYAN, 0); }
-    else if (has(s, "married") || has(s, "wedding") || has(s, "dating") || has(s, "love") || has(s, "crush") || has(s, "engaged")) { *icon = ICON_HEART; *color = PP(PAINT_ROSE, 1); }
-    else if (has(s, "baby")) { *icon = ICON_EGG; *color = PP(PAINT_LEMON, 1); }
-    else if (has(s, "broke up") || has(s, "fight") || has(s, "argu") || has(s, "rival") || has(s, "nemes")) { *icon = ICON_BOLT; *color = PP(PAINT_TANGERINE, 0); }
-    else if (has(s, "friend")) { *icon = ICON_SMILE; *color = PP(PAINT_MINT, 0); }
-    else if (has(s, "exorcis")) { *icon = ICON_CROSS; *color = PP(PAINT_LAVENDER, 0); }
-    else if (has(s, "concert") || has(s, "sing") || has(s, "song")) { *icon = ICON_NOTE; *color = PP(PAINT_GRAPE, 1); }
-    else if (has(s, "picnic") || has(s, "cake") || has(s, "ate ")) { *icon = ICON_FOOD; *color = PP(PAINT_CARAMEL, 0); }
+    if (best < 9) {
+        static const uint8_t colors[9] = { PAL_UI_RED, PP(PAINT_CYAN, 0), PP(PAINT_ROSE, 1), PP(PAINT_LEMON, 1),
+                                           PP(PAINT_TANGERINE, 0), PP(PAINT_MINT, 0), PP(PAINT_LAVENDER, 0),
+                                           PP(PAINT_GRAPE, 1), PP(PAINT_CARAMEL, 0) };
+        *icon = icons[best];
+        *color = colors[best];
+    }
+    return best;
 }
 
 static int count(void) { return W.tab == 0 ? sim_news_count() : sim_problem_count(); }
@@ -91,7 +129,7 @@ static void news_draw(void)
         if (W.tab == 0) {
             s = sim_news(idx);
             if (!s) continue;
-            story_icon(s, &icon, &color);
+            fp_news_icon(s, &icon, &color);
         } else {
             sim_problem_text(idx, buf, sizeof(buf));
             s = buf;

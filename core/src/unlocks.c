@@ -6,7 +6,10 @@
  * Every team adds a NULL-terminated table (weak empty defaults live in
  * stubs.c); the registry concatenates them. Lookups use a small RAM index
  * (id -> entry, plus a per-list bitmap of which creator options have an
- * entry at all) built on first use: ~2.3 KB.
+ * entry at all) built on first use: ~2.3 KB. (X3) unlock_find's key lookup
+ * is a binary search in a const index generated at build time
+ * (core/gen/unlock_index.c, core/tools/ulgen.c; not on the PS1, whose EXE is
+ * RAM), checked against the registry on first use.
  */
 #include "doomo/unlocks.h"
 #include "doomo/font.h"
@@ -234,6 +237,60 @@ static uint8_t  ul_nalias;
 #define UL_FC 8
 static struct { int16_t cat, list, index, ok; const DoomoUnlock *u; } ul_fc[UL_FC];
 
+/* (perf, X3) the generated key index (core/gen/unlock_index.c): the registry sorted by
+ * UL_KEY(cat, list, index), each key's entries in registry order. ul_ix_ok is set once ul_init has checked that it
+ * is exactly that for the tables linked in (else unlock_find scans as before: a stale index is slow, not wrong). */
+#define UL_KEY(c, l, i) ((uint32_t)(c) << 24 | (uint32_t)(l) << 16 | (uint32_t)(i))
+#if !defined(DOOMO_PLATFORM_PS1)
+#define UL_HAVE_INDEX 1
+extern const uint16_t doomo_ul_index_n;
+extern const uint32_t doomo_ul_index_key[];
+extern const uint16_t doomo_ul_index_at[];
+static uint8_t ul_ix_ok;
+
+static void ul_ix_check(void)
+{
+    /* each slot names a distinct entry: its key matches, keys ascend, and within a key the entries ascend
+     * (so no entry is named twice), and the count is the registry's: the index is the stable sort, exactly */
+    int j, n = *(const volatile uint16_t *)&doomo_ul_index_n;   /* a weak default in stubs.c (ARCHITECTURE.md) */
+    ul_ix_ok = 0;
+    if (n != ul_total) return;
+    for (j = 0; j < n; j++) {
+        int g = doomo_ul_index_at[j];
+        const DoomoUnlock *u = g < n ? unlock_at(g) : NULL;
+        if (!u || doomo_ul_index_key[j] != UL_KEY(u->cat, u->list, u->index)) return;
+        if (j && (doomo_ul_index_key[j - 1] > doomo_ul_index_key[j] ||
+                  (doomo_ul_index_key[j - 1] == doomo_ul_index_key[j] && doomo_ul_index_at[j - 1] >= g)))
+            return;
+    }
+    ul_ix_ok = 1;
+}
+#endif
+
+int unlock_index_active(void)
+{
+#if defined(UL_HAVE_INDEX)
+    unlock_count();
+    return ul_ix_ok;
+#else
+    return 0;
+#endif
+}
+
+int unlock_index_use(int on)
+{
+#if defined(UL_HAVE_INDEX)
+    int was = unlock_index_active();
+    memset(ul_fc, 0, sizeof(ul_fc));      /* the C3 memo: the next answers come from the chosen path */
+    if (!on) ul_ix_ok = 0;
+    else ul_ix_check();
+    return was;
+#else
+    (void)on;
+    return 0;
+#endif
+}
+
 static void ul_init(void)
 {
     int t, i, g = 0;
@@ -269,6 +326,9 @@ static void ul_init(void)
         ul_len[t] = (uint16_t)i;
     }
     ul_total = (uint16_t)g;
+#if defined(UL_HAVE_INDEX)
+    ul_ix_check();
+#endif
 }
 
 int unlock_count(void)
@@ -328,6 +388,25 @@ const DoomoUnlock *unlock_find(int cat, int list, int index)
         unsigned slot = (unsigned)(cat * 7 + list * 3 + index) % UL_FC;
         if (memo && ul_fc[slot].ok && ul_fc[slot].cat == cat && ul_fc[slot].list == list && ul_fc[slot].index == index)
             return ul_fc[slot].u;
+#if defined(UL_HAVE_INDEX)
+        if (ul_ix_ok) {
+            /* (X3) the scan below, as a binary search: the first entry with the key, then its later ones in order */
+            int lo = 0, hi = ul_total;
+            uint32_t key;
+            if (cat < 0 || cat > 255 || list < 0 || list > 255 || index < 0 || index > 0xFFFF) return NULL;
+            key = UL_KEY(cat, list, index);
+            while (lo < hi) {
+                int mid = (lo + hi) >> 1;
+                if (doomo_ul_index_key[mid] < key) lo = mid + 1; else hi = mid;
+            }
+            for (; lo < ul_total && doomo_ul_index_key[lo] == key; lo++) {
+                const DoomoUnlock *u = unlock_at(doomo_ul_index_at[lo]);
+                if (!alias || unlock_has(u->id)) { first = u; goto found; }
+                if (!first) first = u;
+            }
+            goto found;
+        }
+#endif
         for (t = 0; t < UL_TABLES && UL_TABLE(t); t++) {
             const DoomoUnlock *u = UL_TABLE(t);
             for (i = 0; i < ul_len[t]; i++)

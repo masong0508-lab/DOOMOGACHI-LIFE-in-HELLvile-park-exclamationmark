@@ -236,4 +236,10 @@ void ccard_draw(int x, int y, int w, int style, const char *goal, const char *ru
 /* tests: the next story fight (SCENE_COMBAT | COMBAT_ARG_CARD) shows its card again, as after power-on */
 void combat_scene_card_reset(void);
 
+/* (perf, X5) the billboard cull + nearest-first order of combat_build_view: the AF_USED actors in front of the eye
+ * (ex, ey) looking along (fx, fy) and within 30 cells, nearest first exactly as an insertion sort by fx_dist()
+ * (ties keep index order), with key[k] = (rx^2 + ry^2) >> BB_KEY_SHIFT. Returns the count. combat.c */
+#define BB_KEY_SHIFT 22
+int  combat_bb_sort(fix16 ex, fix16 ey, fix16 fx, fix16 fy, int16_t *order, uint32_t *key);
+
 #endif
