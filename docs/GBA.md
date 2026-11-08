@@ -418,6 +418,7 @@ against the LAST row, not against a figure from an older base.
 | 26 | CRB: creator picture grid, part icons, creator speed (CR6/CR7/CR9) | `696ffa6` | 3,444 B | **3,444 B** | 0 | 6,356 B | No EWRAM / IWRAM: the grid's state, the lock memo, the icon unpack buffer, the 3,840 B locked-part compose buffer, the shown / pending preview views and the compose cache live in `CrState` in the 12,288 B scene scratch (5,992 -> 11,296 B on the GBA and the PS1); the glint switch shares the toast's byte in `ui.c` (`ui_held`), `CR_CALM` is a constant on the GBA, the solid-panel flag is a spare bit of `Pn.flags`; the 351 raw icons (140,400 B) and the grid / slicing code are ROM; the creator's retained panels reuse the overworld HUD's and island HUD's panel slots (`PANEL_COUNT` stays 8). ROM 4,335,572 -> 4,505,568 B (+169,996: icons 140 KB, grid / help / panels / slicing ~29 KB; measured on `696ffa6` and on CRB rebased onto it). Creator (profile-creator): idle 12.7 -> 30.0 fps, rows 12.9 -> 26.2, grid 7.6 -> 21.1, a value held 8.6 -> 20.5; `make -C gba test`, `test-speed` and `test-creator` pass, and all 16 speed-tour scenes' vhash-seq equal those of `696ffa6` |
 | 27 | CL3: one prompt bar (C3), the pet screen's bar (C14), workshop / studio / house legends (C15) | `4114eb7` | 3,532 B | **3,188 B** | -344 B | 6,356 B | measured on `4114eb7` (the clarity CL2 tree) built the same way, before and after CL3 (on `b080562`: 3,540 -> 3,196 B). `pmemo` 168 B (`ui.c`: the last bar's key, cut flag and text, so the GBA builds nothing while a screen shows the same bar; `ui_hint`'s 160 B line is on the stack), the `unlock_find` memo `ul_fc` 96 B, `PANEL_PROMPT` in the panel table (`pn` 160 -> 180 B; the shown mask 8 -> 16 bits), and the rest small caches (the hub's NEWS badge text and its pad / language, the news ticker's line width, the pet's per-tick geometry, the bar's frame). The house's dots caption is a raw unlock bit (`HUL_RAW_DOTS`, in the save's unlock bits) and a `const` timing, so 0 B. IWRAM resident and the overlay slot unchanged (main stack 6,356 B). ROM 4,317,416 -> 4,325,324 B (+7,908: the bar builder and its tests' strings, the pad name table, the converted screens) |
 | 28 | CL1 1.6f: the purse flashes on a money change | `9c6b8c3` | 3,092 B | **3,084 B** | -8 B | 6,356 B | "after" measured on `9c6b8c3` + this change (ROM 4,511,992 B); the change itself measured on `38a362d`: 3,444 -> 3,436 B, ROM +272 B, so `9c6b8c3` alone is 3,092 B (row 27's 3,188 B was measured on `4114eb7`). `fp_common.c` keeps the last money seen, two 16-bit ticks and the flash state (9 B, 8 B packed); the hub keeps no frame while the purse blinks (32 ticks after a change). `make -C gba test` passes (on `38a362d` + this) |
+| 29 | SP6: concert loops in the IWRAM UI group (scale-2 images, word checkers, beams) | `7729ada` | 3,540 B | **3,540 B** | 0 | 6,356 B | no EWRAM, no resident IWRAM: `vid_blit2_arm`, its rows, `vid_checker_ui` and `vid_beam_ui` are 1,868 B of the overlay slot's UI group (SP4's group; the slot stays the 3D group's 10,384 B); ROM .text +3,056 B, .rodata +36 B; speed tour frame-exact (16 scenes) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -962,6 +963,89 @@ fine (the G1 baseline was 27.7 ms average and 62.4 ms worst for the title). CI r
 after `make -C gba test` in a step that never fails the job (`continue-on-error`) and prints both in the
 run's Summary tab; the logs and the tour's shots are the `gba-speed-report` artifact. That is how GBA numbers
 reach a session that has no emulator: ask for the Summary text of the latest run.
+
+### The concert (SP6, `make -C gba profile-concert`)
+
+`harness/scripts/concert_profile.txt` plays the four concert screens a player sees on the game ROM, each settled
+on fixed ticks (`sync on`), measured over 120-130 ticks, shot and hashed (`vhash-seq 30`): Nana's solo (the speed
+tour's concert), Rivet's band (the PS1 perf scene `perf_concert.txt`), a 12-voice choir on risers and the setup
+screen. `make -C gba profile-concert` plays it twice, as it is and then with `profile N` after each window (a
+profile shifts the later windows' ticks, so the hashes come from the first run only). Reports, never gates.
+
+**Measured** (libmgba; drawn fps / logic ticks/s / work avg / max ms; `7729ada` = the tree SP6 started from; the
+last column is SP6 up to `45d2e81` merged with SP2's portrait slices on a scratch tree, for an idea of the two
+together):
+
+| window | `7729ada` | SP6 | SP6 (`45d2e81`) + SP2 |
+|---|---|---|---|
+| solo (Nana, Lullabies: star wall) | 13.7 / 25.4 / 53.7 / 72.9 | 14.9 / 29.9 / 44.6 / 61.9 | 20.5 / 29.9 / 39.0 / 45.2 |
+| band (Rivet, Doom Metal: flame wall) | 9.5 / 15.2 / 84.6 / 101.9 | 11.9 / 20.7 / 60.9 / 70.2 | 12.4 / 22.6 / 57.9 / 67.3 |
+| choir (12 voices, Doom Metal) | 12.2 / 22.4 / 61.5 / 65.7 | 15.0 / 30.0 / 46.7 / 50.3 | 14.6 / 29.1 / 49.2 / 52.8 |
+| setup screen | 11.8 / 20.8 / 68.8 / 84.7 | 12.7 / 23.3 / 65.9 / 81.4 | 13.4 / 25.6 / 63.4 / 72.2 |
+| speed tour concert (`make test-speed`) | 13.8 / 25.3 / 53.9 / 74.4 | **15.0 / 30.0 / 43.6 / 51.9** | |
+
+The solo with each of the 16 genres (so every LED wall show; 96-tick windows), work avg `7729ada` -> SP6 (ms):
+stars 53.6 -> 44.0, spots 57.6 -> 46.5, glass 56.5 -> 47.0 (Hymns, also glass: 54.9 -> 48.1), **fields 65.2 -> 50.3**, disco 57.9 -> 49.0,
+**waves 61.3 -> 45.2**, synthwave grid 56.9 -> 45.7, bats 55.6 -> 46.4, skulls 56.9 -> 49.4, **flames 70.9 ->
+56.2**, gears 59.3 -> 48.7, hearts 56.6 -> 45.6, notes 48.3 -> 37.3, skyline 58.2 -> 48.6, pixels 53.5 -> 44.1.
+
+**Where the solo's time went at `7729ada`** (per drawn tick, from temporary `gba_cycles()` marks; not in the
+tree): the lead's figure 14 ms (9 of them its portrait job: one layer group of a new talk / breath / blink phase
+a tick, every tick, because the 48-block cache cannot hold the figure's phases next to the crowd's 15 chibis),
+the crowd 16.6 (the front row's six scale-2 chibis 9.8), static scenery 16 (backdrop 2.9, wall + frame 3.8,
+sheen 1.2, speakers 2.3, floor and seats 3.6, truss 2.1), beams 5.0, karaoke and HUD 2-5. The band adds four
+scale-2 chibis (10.3 ms) and its flame wall (17.7 ms), the choir the same flame wall.
+
+**What changed (all exact: the same pixels):**
+* *Scale-2 images in the IWRAM UI group* (`src/blit2.c`): `vid_blit_c`, the general scaled path, built a line and
+  merged it pair by pair (2.6 ms for one 32x48 chibi). While the concert has the overlay's UI group in
+  (`plat_ui_loops()`, `plat_ext.h`, called at the start of its draw), `plat_image` at scale 2 without a flip
+  takes `vid_blit2`: on an even x a source pixel is one halfword stored on both of its rows, on an odd x a
+  halfword holds two neighbouring source pixels and is merged only when one is transparent; the row walk is ARM
+  too. The front row 9.8 -> ~3 ms, the band's four 10.3 -> ~2.2 ms. The UI group is SP4's (`gba.ld`,
+  `iwram_ovl.[ch]` hunk for hunk the same, so the two packages merge cleanly there); SP6's part of it is 1,868 B.
+* *Checkers a word at a time* (`vid_checker_ui`, same group): `plat_checker` merges two halfwords per
+  read-modify-write while the group is in (the wall's sheen, the seats, smoke, the sky seams).
+* *A light beam in one call* (`plat_beam`, `plat_ext.h`; GBA `vid_beam_ui`): every 3-row band of a beam in one ARM
+  call instead of a `plat_checker` call (and its THUMB glue) per band; the core's `beam()` steps its
+  `f = (y - ay) * 256 / dy` instead of dividing per band and draws the bands itself when the hook says 0.
+* *The LED wall's busy shows* (`core/src/concert_gfx.c`): THUMB has no divide instruction and even `x / 10` is a
+  call (~150 cycles); `ui_wave()` makes two. A wave stepper (`ws_*`, `concert_wave_step_equals_ui_wave`) gives
+  ui_wave's value along a loop without dividing; waves and fields draw each layer only where no later layer
+  covers it and merge neighbouring columns with the same piece; the flames step their half width, colour step
+  and sway and merge row pairs whose bars repeat.
+* *No division per fan, lamp, beam or confetti piece* (`DivStep`, `mod3` / `mod6`): the crowd's positions, row
+  offsets and waves, the lamps' x / flash phase / colour, the two beam sweeps, and `concert_confetti`'s sway,
+  fall and colour (8 divisions a piece before; the stage, the dreams and the results share it). Past 2^29 ticks
+  of one show the stage divides as before.
+
+**Exactness.** `core/tests/test_concert_gfx.c`: 576 stage frames (every genre and show, every stage theme, solo /
+band / choir and the four choir layouts, lights, curtain, flashes, pyro, confetti, both resolutions) against
+`core/tests/golden/concert_frames.txt`, recorded on `7729ada` before any of this; the wave stepper against
+ui_wave, `mod3` / `mod6` against `%`, the quotient stepper against `/`, and `concert_confetti` against a verbatim
+copy of its old body. The engine-test ROM's `et_blit2_test` (`ET blit2test ok (5600 cases)`) checks `vid_blit2`
+(2,000 random images: odd and even x, clipped on every side, silhouettes), `vid_checker_ui` (3,000 rects) and
+`plat_beam` (600 beams) against the old loops, and fails on a deliberate break of each. On the ROM: the four
+`concert_profile.txt` hash windows and all 16 speed tour scenes (`make -C gba test-speed SPEED_BASE=`, `7729ada`'s
+log) are frame-identical; the native runner's concert, dream and studio scripts give byte-identical shots at both
+resolutions. In the profiles the UI group's loops show up under other groups' names at the same slot addresses
+(`cv_fill`, `cv_text`, `boundary.constprop.0`, `wall_lit`: the overlay ambiguity of section 3).
+
+**Tried and dropped:** a one-pass shadowed blit for the lead's figure (C in the UI group: slower than the two ARM
+passes); composing the busy LED shows in RAM (9,180 B of the concert's scene scratch) and copying them with one
+DMA a row (EWRAM byte stores from THUMB cost more than the IWRAM rect loops).
+
+**What is left to 30 fps (33.3 ms a drawn tick):**
+* the lead's figure: its portrait job (6-11 ms a tick) is SP2's to move into idle time (X1; see the last column
+  above), and its two-pass shadowed blit is ~5 ms;
+* the flame wall (Doom Metal: the band and that choir) is still ~13.5 ms: ~200 row pairs of THUMB math (ROM code at
+  about 2.5 cycles an instruction) and ~360 bars;
+* static scenery (~10 ms: sky, speakers, floor, seats, truss lattice) is redrawn every tick under the moving
+  beams and crowd; a retained copy needs RAM (or the Mode 4 pages' gaps) and the beams cross it every frame;
+* the setup screen's full-screen dim (`vid_shade_words` ~23% of its 66 ms).
+Steps that would reach 30 but change pixels, for the owner to decide (SPEED DEFAULTS lists none of them): the
+LED wall and the beams at 15 Hz (every other tick), the crowd's back rows as hardware sprites with the glow sticks
+and hearts moved in front of them, a simpler flame wall (fewer, wider bars).
 
 ### Frame pacing
 

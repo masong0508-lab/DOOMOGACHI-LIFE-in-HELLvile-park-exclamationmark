@@ -1175,6 +1175,32 @@ upload failed silently every frame. `view3d.c` now fetches the sky
 a map has shown sky cells; the upload then happens once per sky frame as
 designed (verified with a harness screenshot of the arena).
 
+### The concert (SP6, P-K1)
+
+Three concert shows on the game disc in PCSX-Redux, 240 frames each after they settle (the GBA's
+`concert_profile.txt` windows: Nana's solo, Rivet's band = `perf_concert.txt`'s keys, a 12-voice
+choir); fps and vsyncs-per-frame histogram, `7729ada` -> SP6:
+
+| show | `7729ada` | SP6 |
+|------|-----------|-----|
+| solo | 30.00 (2:238 3:1) | 30.00 |
+| band | 28.97 (2:222 3:16 4:1), cpu 36.4 ms | **29.57 (2:232 3:6 4:1), cpu 35.0 ms** |
+| choir | 30.00 (2:238 3:1) | 30.00 |
+| `perf_concert.txt` (CI's row) | | 29.51 |
+
+What helped here is the core half of SP6 (docs/GBA.md "The concert (SP6)"): the LED wall's waves
+and fields draw only the visible pieces and merge neighbouring columns, the flames merge row pairs
+(fewer `plat_rect` calls, so fewer prims), and the stage's per-fan, lamp, beam and confetti
+divisions are stepped. Same pixels: the three shows' harness shots are byte-identical before and
+after. The two new hooks (`plat_ui_loops`, `plat_beam`, `plat_ext.h`) are the GBA's; here they are
+the weak no-ops and the beams stay checker tiles.
+
+Not done: P-K1's replay of the LED wall's dots as one image. Every busy show is a function of the
+tick (waves, fields, flames move every frame), so a cached image of the wall would be rebuilt each
+frame; the static shows are already cheap. The band's last 0.4 fps is mostly the lead's figure
+(its portrait job re-renders a talk / breath / blink phase, about 30% of the frame in the
+profile: SP2's slices, X1) and the checkers.
+
 ### Life tour (M0, `harness/scripts/perf_life.txt`)
 
 The free-play screens the life sim lives on, on the game disc (made by

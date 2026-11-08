@@ -1,4 +1,4 @@
-# concert_profile.txt - where the Concert Hall's time goes (SP6, G-K1; docs/GBA.md "The concert at 30"):
+# concert_profile.txt - where the Concert Hall's time goes (SP6, G-K1; docs/GBA.md "The concert (SP6)"):
 # `make -C gba profile-concert`. The four shows a player sees: Nana's solo (the speed tour's concert),
 # Rivet's band (the PS1 perf scene perf_concert.txt), a 12-voice choir on risers and the setup screen.
 # Each window settles (sync on: on the same ticks in any ROM), is measured (fps), shot and hashed
