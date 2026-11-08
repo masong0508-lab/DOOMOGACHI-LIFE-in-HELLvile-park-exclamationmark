@@ -430,6 +430,8 @@ against the LAST row, not against a figure from an older base.
 | 38 | S2-7: the credits parade (one pose, sliced bodies, the body memo; docs: "Speed wave 2: S2-7" below) | `8816f24` | 2,276 B | **1,796 B** | -480 B | 6,308 B | the body look-hash memo (`portrait.c` `blh`) grows from 40 to 48 slots of 60 B on the GBA (its new `seen` byte sits in the old padding); no IWRAM. PS1: no data (memo stays 40), resident code +836 B (`portrait.c`: the body job path, until now GBA-only, and the memo's skip), 65 KB below the stack top with the boot FMV (was 66 KB) |
 | 39 | S2-5: scaled images in the UI group, the Derby's racer pictures, the welding runs (docs: "Speed wave 2: S2-5" below) | `c0dc4ba` | 1,796 B | **1,796 B** | 0 B | 6,308 B | no resident EWRAM or IWRAM: `vid_blitn_arm` is in the overlay's UI group (2,720 -> 3,916 B, the slot stays the 3D group's 10,352 B); the Derby's six racer pictures (6 KB) and the weld seam's y table (640 B) live in their scenes' scratch claims; ROM 6,847,476 -> 6,850,520 B. PS1: the Derby path and `plat_ui_loops` are GBA-only, the weld runs are in the workshop overlay group; resident RAM unchanged, 65 KB below the stack top with the boot FMV |
 
+| 40 | S2-4: the Fun Fair's kept playfield (docs: "Speed wave 2: S2-4" below) | `183f2e8` | 1,796 B | **1,788 B** | -8 B | 6,308 B | measured on `183f2e8` + S2-4: the kept-playfield mode and the key being baked in `mg.c` (5 B, padded to 8); IWRAM unchanged (no new ARM code: the restores use SP7's `stage_rows` in the room group); ROM 6.85 -> 8.00 MB (Whack's 30 baked pictures, 38,400 B each, in `backdrops.bin`). PS1: compiled out (`mg.h` macros, `ui_round_rect_inset` not built), 65 KB below the stack top with the boot FMV (`_end` unchanged by S2-4) |
+
 Known claimants still to land (their own packages measure and add rows):
 
 | package | EWRAM | gate it must meet (against the last row) |
@@ -1434,6 +1436,47 @@ Still short, and why: **the Derby** (38 ms) is its backdrop (sky, grandstand, bu
 vignette** (57 ms) is its sky bands and vapour puffs (`vid_rect_narrow` 25%) plus the remaining ~10 ms demon blit:
 S2-4. **The home vignette** (41 -> 43 ms work, 20 fps either way) is its full-screen wallpaper (`vid_blit` 54%, scale 1)
 and the figure's idle-time slices: S2-4.
+
+### Speed wave 2: S2-4, the Fun Fair's kept playfield (2026-11-08)
+
+The speed audit 2's cause C3 in the fair: Whack-an-Imp drew its whole booth on every frame (the striped tent, the
+sign board with its bulbs and outlined text, the grass bands, nine dirt-ring holes with `fx_isqrt` rows: 57-61 ms, 15
+fps) although only the critters, the mallet, the two peeking imps and a few flowers move.
+
+**How (exact).** A fair game may split its playfield into *still* parts (what never changes for a key) and *live*
+parts (`mg.h` "the kept playfield", `MgGame.kept_key` / `kept_keys`). The still parts are a backdrop family
+(`DOOMO_BACKDROP_MG`, SP7's `backdrop.h`): the GBA build bakes every key with the game's own drawing code
+(`runner --bake-backdrops`, `mg_backdrop_draw` in `MGK_BAKE` mode) into `backdrops.bin` in the ROM. A playing frame
+asks `plat_stage_begin` for its key, copies the whole picture from the ROM (`plat_stage_restore`, ~3.5 ms of DMA) and
+draws only the live parts over it, in their usual order (`MGK_LIVE`). Where the usual order draws a still part over a
+live one, that part is put back from the ROM in the very spans it was drawn with: each hole's front ring and the ground
+in front of it over the critter rising from it (`hole_front_kept`, down to the lowest row a critter reaches), the sign
+board and its marquee bulbs over the imps peeking from behind it (`sign_kept`, `ui_round_rect_inset`). A flower that
+lies on a hole makes that hole paint its ring and front again (as a full frame does). No layer bookkeeping, no dirty
+rects: the frame is the kept picture plus the live parts, so it is the full frame by construction. Not kept: a shake
+(`mg.ox` / `oy`), the results card, the PS1 (compiled out), the Dreamcast and native (no kept backdrop: they draw as
+before). The first try, SP7's retained stage with every moving thing a layer, redrew ~21 of 27 layers a frame (the
+holes' boxes overlap down each column and the dirty boxes merge), so it saved nothing; the kept playfield replaced it.
+
+Whack's keys: the tent's five sways x the sign's three bulb phases, per tier: 30 pictures, 1.15 MB of ROM.
+
+**Same pixels.** `test_stage` (`stage_kept_minigames_are_pixel_identical`) plays Whack with its bot (Sweet and
+Hellfire at 240x160, Spicy at 320x240; READY / GO, the round, a pause, the END banner, the results) with the kept
+picture on and off: every frame identical (1,314 / 1,252 / 825 frames drawn over the kept picture), and every key the
+game asks for over 3,000 ticks is baked (`stage_kept_minigame_keys_are_baked`).
+
+| window (`speed2_fair.txt`, libmgba) | before (drawn fps, work avg / max) | after |
+|---|---:|---:|
+| whack play Sweet | 15.1 (57.5 / 63.4 ms) | **20.9** (40.3 / 61.7 ms) |
+| whack play Hellfire | 15.0 (61.5 / 69.7 ms) | **20.0** (44.9 / 69.8 ms) |
+
+Floors: `expect-fps 19` / `18` on the two windows. **Still short of 30**: what is left is the live part itself (two
+imps with flapping wings, up to four critters, the mallet, the outlined HUD text) plus the 3.5 ms copy and ~2.5 ms of
+span restores. Next steps there: the imps and critters as OBJ sprites (G-K1), and copying back only what the live parts
+covered two frames ago instead of the whole picture. The other fair games (Gallery 11 fps, Derby 22 after S2-5, Dodge 21-27,
+Memory Hellfire 21.5) can take the same `kept_key` split; Derby scrolls (its backdrop is the rest of its frame after S2-5). The
+kitchen, dreams, cutscenes, library lobby / jukebox and the studio STAGE are not done by this landing (S2-4 remains open
+for them).
 
 ## 4b. Retained panels (G7, `src/panel.c`)
 
