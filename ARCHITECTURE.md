@@ -102,6 +102,7 @@ docs/                    design, building, modding the roster
 | player profiles + multiplayer (MP0, MP1) | profiles (MP0) | profiles*.c; the 'PROF' chunk (doomo_save_ext_profiles, max 2,336 B: 3 guest profiles, life_contract.h PROF_SZ_*) |
 | endings / content packs (E0, E1, E2, ...) | ending, pack (E0); E0's appended hunks of story_vm (OP_JMAT, OP_SHOW, PEND_ENDING, PEND_MSLOT) and txt (TXF_RAW, user packs 112..127, txt_user_set) | ending*.c, mslot.c, pack.c, weak_endings.c; the 'ENDS' chunk (doomo_save_ext_endings, max 32 B); SCENE_ENDING_CARD (E1), SCENE_MSLOT (E2); unlock ids 711..725 (E1: 14 endings + the secret 15th) |
 | options store (U0, U1g, U1p) | (town.h OPT_* >= 64, U0) | options_store.c, weak_ui.c; the 'OPT2' chunk (doomo_save_ext_opt2, max 40 B) and the 48 B machine config record (plat_config_read/write: 32 B settings + 16 B adults' security code); SCENE_LANG_PICK, SCENE_SECURITY_CODE (U5; E11 asks for the code) |
+| Talk (T0-T10, TP*, TD*; docs/TALK.md) | talk (T0) | talk_*.c, weak_talk.c (weak plat_talk_load / read, home_talk_enter), room_ref_project + the weak plat_room_project (room_ref.c); core/data/talk/ (the word network), core/tools/talkc.py + talk_assoc.py, core/gen/talk_fixture.c; PLATF_TALK (bit 9, PS1 / DC / native only); the 'TALK' chunk (slot 13, max 320 B, T6); NT_TALK_* news. Safety: Talk asks sim_life_stage / roster traits / ending_kid_cast and sim_romance_ok, never a list of its own |
 
 `platform.h` is shared: foundation, gba and ps1 must all agree on it.
 
