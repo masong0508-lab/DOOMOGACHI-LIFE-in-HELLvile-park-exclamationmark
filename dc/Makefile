@@ -27,6 +27,12 @@
 #   make -C dc ui-compare the six DC3 UI scripts on Flycast against the native
 #                         runner (dc/harness/ui_compare.sh; shots and diffs in
 #                         build/shots/ui); part of `test` when Flycast is there
+#   make -C dc ow-test    DC7 on Flycast: the overworld in 3D in story_ch1/ch2,
+#                         story_invasion, fp_island, side_sample_a and the
+#                         Hellvile walks (dc/tests/overworld), each shot with a
+#                         3D view against the host software PVR's (compare3d.py),
+#                         no polygon dropped, the frame times; results in
+#                         build/shots/ow; part of `test` when Flycast is there
 #   make -C dc sizes      section sizes against the 16 MB RAM budget
 #   make -C dc PACK=/path/pack.dmpk disc
 #                         the mature disc: the pack (built with `mpack.py build`, port dc) goes on
@@ -103,7 +109,7 @@ DC_OBJS   := $(call dc_obj,$(DC_SRCS))
 CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 ALL_OBJS  := $(DC_OBJS) $(CORE_OBJS)
 
-.PHONY: all elf disc all-disc test check-elf check-packdisc host-test harness-test ui-compare vmu-test audio-test sizes clean
+.PHONY: all elf disc all-disc test check-elf check-packdisc host-test harness-test ui-compare vmu-test audio-test ow-test sizes clean
 .DEFAULT_GOAL := all
 
 all: elf
@@ -178,7 +184,8 @@ harness-test: $(ELF) $(CDI) $(ELF_RUN)
 	done; \
 	$(MAKE) --no-print-directory -f $(DC)/Makefile ui-compare || exit 1; \
 	$(MAKE) --no-print-directory -f $(DC)/Makefile vmu-test || exit 1; \
-	$(MAKE) --no-print-directory -f $(DC)/Makefile audio-test
+	$(MAKE) --no-print-directory -f $(DC)/Makefile audio-test || exit 1; \
+	$(MAKE) --no-print-directory -f $(DC)/Makefile ow-test
 
 $(ELF_RUN): $(ELF)
 	$(STRIP) --strip-debug -o $@ $(ELF)
@@ -202,6 +209,15 @@ audio-test: $(CDI) $(BUILD)/doomogachi.nm
 	@$(MAKE) --no-print-directory -C $(HARNESS) all
 	@$(MAKE) --no-print-directory -C $(ROOT)/core runner
 	sh $(DC)/tests/audio/run_flycast.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(RUNNER) $(SHOTS)/audio
+
+# DC7: the overworld on Flycast against the host software PVR (dc/tests/gfx2d)
+HOSTRUN := $(BUILD)/host/dc2d_runner
+ow-test: $(CDI) $(BUILD)/doomogachi.nm
+	@if [ -z "$(FLYCAST)" ]; then echo "ow-test: no Flycast core (make -C dc/harness flycast)" >&2; exit 1; fi
+	@$(MAKE) --no-print-directory -C $(HARNESS) all
+	@$(MAKE) --no-print-directory -C $(ROOT)/core runner
+	@$(MAKE) --no-print-directory -C $(DC)/tests/gfx2d $(HOSTRUN)
+	sh $(DC)/tests/overworld/run_flycast.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(RUNNER) $(HOSTRUN) $(SHOTS)/ow
 
 $(BUILD)/doomogachi.nm: $(ELF)
 	$(NM) $(ELF) >$@

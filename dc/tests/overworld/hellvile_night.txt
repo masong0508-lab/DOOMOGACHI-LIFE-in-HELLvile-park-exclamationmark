@@ -1,0 +1,12 @@
+# hellvile_night.txt - DC7: Hellvile at 21:30 (the blue night, the lamps'
+# glow on the terrain and the residents), the start of hellvile.txt's walk.
+scene STORY 11
+wait 30
+clock 21 30
+wait 30
+expect-scene STORY
+shot night_start
+hold RIGHT 45
+shot night_east
+hold DOWN 30
+shot night_south

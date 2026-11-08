@@ -1,0 +1,23 @@
+# hellvile.txt - DC7: the busiest overworld hub on the Dreamcast. A free
+# stroll in Hellvile (scene STORY 11: the residents, props and lamps of the
+# bad side of the park), walking a loop of about 12 s, by day and at night;
+# a shot at each corner of the loop. The 30 Hz check (mark-ticks /
+# expect-ticks) runs over the whole walk in Dreamcast frames, and dcrun
+# prints the game's work per tick and the 3D view's build time (mailbox
+# g3d_*) at the end. Native runner lines only, so the same script plays on
+# `runner` for the reference shots.
+scene STORY 11
+wait 60
+expect-scene STORY
+shot day_start
+hold RIGHT 45
+shot day_east
+hold DOWN 30
+shot day_south
+hold LEFT 60
+shot day_west
+hold UP 30
+shot day_back
+hold RIGHT 15
+wait 10
+shot day_end
