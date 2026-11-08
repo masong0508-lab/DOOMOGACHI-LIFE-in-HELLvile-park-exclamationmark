@@ -1433,14 +1433,20 @@ static inline int gene_same(const uint8_t *a, const uint8_t *b)
  * hashing it was ~3% of the GBA frame. The hash is a pure function of the gene bytes and `species` (look_for_stage
  * and look_hash read nothing else), so a hit needs both unchanged: any edit to the look re-computes it. The deep
  * run (look_run_hash) is not memoised; it is a walk of a pool that is empty or tiny. 40 entries (fully
- * associative since MS-P4), 60 B each; a miss only costs the old path. */
+ * associative since MS-P4), 60 B each; a miss only costs the old path. S2-7: 48 on the GBA (+480 B EWRAM), where the
+ * credits parade's ~46 bodies a tick otherwise left a few unmemoised every tick (parade 24.5 -> 26.2 fps). */
+#if defined(DOOMO_PLATFORM_GBA)
+#define BLH_N 48
+#else
 #define BLH_N 40
+#endif
 typedef struct BodyLH {
     uint8_t  gene[48];
     uint32_t h;
     int32_t  id;
     uint8_t  species, ok;
     uint8_t  ei;                    /* B: the cache entry this body was last found in; a hint, checked on every use */
+    uint8_t  seen;                  /* S2-7: the low byte of the tick it was last used (in the struct's padding) */
 } BodyLH;
 static BodyLH blh[BLH_N];
 
@@ -1448,10 +1454,17 @@ static BodyLH blh[BLH_N];
  * map asks for one every few seconds (a citizen turning to a facing it has not shown yet). With bodyspr_lazy(1)
  * (the overworld sets it for that map only) such a miss is drawn as a sliced job, one layer group a tick through
  * the portrait job slot, and meanwhile the citizen shows a facing it already has (or is not drawn, if it has
- * none). Pixels are the same once drawn, nothing but the picture is delayed; logic never sees it. GBA only. */
-#if defined(DOOMO_PLATFORM_GBA)
+ * none). Pixels are the same once drawn, nothing but the picture is delayed; logic never sees it. GBA only.
+ * S2-7: mode 3 is mode 1 on every platform (the credits parade: a marcher the cache lacks is drawn over ticks and
+ * is not shown until it is ready; where a tick has room for the whole job, as on the Dreamcast, it is ready at once). */
 static uint8_t body_lazy;
-void bodyspr_lazy(int on) { body_lazy = (uint8_t)on; }   /* 1: a citizen may be skipped, 2: never skip */
+void bodyspr_lazy(int on)                     /* 1: a citizen may be skipped, 2: never skip, 3: S2-7 */
+{
+#if !defined(DOOMO_PLATFORM_GBA)
+    if (on != 3) on = 0;                      /* V11's modes stay the GBA's */
+#endif
+    body_lazy = (uint8_t)on;
+}
 static int body_job_start(int rid, uint32_t key, uint32_t lh, const DoomoLook *L, int status, int dir, int frame)
 {
     CacheEnt *e = cache_alloc(CK_BODY, rid, key, lh, BODYSPR_W, BODYSPR_H, 1);
@@ -1477,9 +1490,6 @@ static int body_job_start(int rid, uint32_t key, uint32_t lh, const DoomoLook *L
     look_resolve_mask(NULL, rid, LV_CHIBI, &job.D);
     return 1;
 }
-#else
-void bodyspr_lazy(int on) { (void)on; }
-#endif
 
 const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
 {
@@ -1489,19 +1499,21 @@ const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
     CacheEnt *e;
     PCtx c;
     DoomoLook L;
-    BodyLH *m;
+    BodyLH *m, spare;
     cache_init();
-#if defined(DOOMO_PLATFORM_GBA)
-    if (job.on && job.kind == CK_BODY) job_pump();            /* V11: one slice a tick */
-#endif
+    if (job.on && job.kind == CK_BODY) job_pump();            /* V11: one slice a tick (S2-7: everywhere) */
     r = res_of(resident_id, &status);
     dir &= 3;
     frame &= 3;
     /* MS-P4: fully associative (a 25-voice choir collided in the old 32 direct-mapped slots and redid the
-     * look + hash for most singers every frame); a miss replaces slots round-robin */
+     * look + hash for most singers every frame); a miss replaces slots round-robin, S2-7: skipping slots used this
+     * tick. More bodies a tick than slots (the credits parade asks for ~46) made round-robin evict every slot just
+     * before its next use, so every body missed; now the slots keep the first BLH_N of the tick and the rest go
+     * through a spare record on the stack (unmemoised, as before). */
     {
         static uint8_t blh_next, blh_hint[64];
-        int bi, hi = resident_id & 63;
+        uint8_t tk = (uint8_t)now();
+        int bi, hi = resident_id & 63, k;
         m = NULL;
         /* MS-P2: the slot this id used last is tried first (a choir asks for the same 25 every frame) */
         bi = blh_hint[hi];
@@ -1510,7 +1522,20 @@ const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
             for (bi = 0; bi < BLH_N; bi++)
                 if (blh[bi].ok && blh[bi].id == resident_id) { m = &blh[bi]; break; }
         }
-        if (!m) { bi = blh_next; m = &blh[bi]; blh_next = (uint8_t)((blh_next + 1) % BLH_N); m->ok = 0; }
+        if (!m) {
+            for (k = 0, bi = blh_next; k < BLH_N && blh[bi].ok && blh[bi].seen == tk; k++)
+                bi = bi + 1 < BLH_N ? bi + 1 : 0;
+            if (k < BLH_N) {
+                m = &blh[bi];
+                blh_next = (uint8_t)(bi + 1 < BLH_N ? bi + 1 : 0);
+            } else {
+                m = &spare;
+                bi = BLH_N;
+            }
+            m->ok = 0;
+            m->ei = 0;
+        }
+        m->seen = tk;
         blh_hint[hi] = (uint8_t)bi;
     }
     if (m->ok && m->id == resident_id && m->species == r->species &&
@@ -1544,21 +1569,39 @@ const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
         m->ei = (uint8_t)(e - ent);
         return &e->img;
     }
+    if (body_lazy == 3 && job.on && !job_for(CK_BODY, resident_id, lh, key, 0xFFFFFFFFu)) {
+        /* S2-7: the job slot is drawing another body: this one waits (no look, no stand-in search: a parade
+         * asks for dozens a tick); a job nobody asks for any more gives the slot up first */
+        job_reap();
+        if (job.on) {
+            if (job.kind == CK_BODY) job_pump();
+            return NULL;
+        }
+    }
     if (!have_look) look_for_stage(RES_LOOK_VIEW(r), RES_STAGE(r), &L);
-#if defined(DOOMO_PLATFORM_GBA)
     if (body_lazy) {
         const uint32_t smask = 0xFFFFF000u;                   /* same look and status, any facing / frame */
         CacheEnt *st = cache_get(CK_BODY, resident_id, key, lh, smask, 0);
         if (job.on && job.kind == CK_BODY && job_for(CK_BODY, resident_id, lh, key, 0xFFFFFFFFu)) {
             job.want = now();
         } else if (!job.on) {
-            body_job_start(resident_id, key, lh, &L, status, dir, frame);   /* its first slice runs next tick */
+            if (body_job_start(resident_id, key, lh, &L, status, dir, frame) && body_lazy == 3) {
+                /* S2-7: due like a stand-in's job (PC_STANDIN ticks): its share of slices runs every tick
+                 * whatever the platform's guess of the room (a parade cannot wait for idle time) */
+                job.urgent = 1;
+                job.fq_tick = now() - 1;
+            }
+            if (body_lazy == 3) {
+                /* S2-7: this tick's share of slices now; a platform with room for all of them shows it at once */
+                job_pump();
+                e = cache_find(CK_BODY, resident_id, key, lh, 0xFFFFFFFFu);
+                if (e) { m->ei = (uint8_t)(e - ent); return &e->img; }
+            }
             if (st) st = cache_get(CK_BODY, resident_id, key, lh, smask, 0);   /* the claim may have evicted it */
         }
-        if (st || body_lazy == 1) return st ? &st->img : NULL;   /* NULL: not drawn for a few ticks */
+        if (st || body_lazy != 2) return st ? &st->img : NULL;   /* NULL: not drawn for a few ticks */
         /* body_lazy == 2 (the player) with nothing cached to show: draw it now, as before */
     }
-#endif
     if (si_ticks && job.on && job.kind != CK_BODY && job.step > SL_SETUP &&
         (job.urgent || now() - job.last <= 1)) {
         /* SP2: a portrait / figure job is half way through the shared canvas: a facing this body has stands in

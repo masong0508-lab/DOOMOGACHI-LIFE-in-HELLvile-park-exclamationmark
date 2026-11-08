@@ -120,6 +120,14 @@ static int32_t camera_x(void)
     return cx;
 }
 
+/* S2-7 (docs/GBA.md "Speed wave 2: S2-7"): every marcher shows ONE pose (the side view, frame 0) and marches by
+ * its hop. With the four walk frames the ~34 marchers on screen needed ~140 bodies, three times the portrait
+ * cache's 48, so the cache re-drew 8-10 bodies a tick (GBA 5-7 fps, PS1 1.5-2 fps, the Dreamcast's texture cache
+ * thrashing). One pose each fits: ~32 marchers + the 12 fans + you. A body the cache lacks is drawn over ticks
+ * (bodyspr_lazy(3)) and is not shown until it is ready (the job is due within PC_STANDIN ticks: one body at a
+ * time, a few slices a tick); build() draws the next rank ahead, so marchers are ready when they come on. */
+#define CR_POSE 0
+
 static void marcher(int id, int32_t x, int32_t y, uint32_t t)
 {
     const DoomoResident *r = town_res(id);
@@ -128,14 +136,31 @@ static void marcher(int id, int32_t x, int32_t y, uint32_t t)
     if (r->status == RES_DEAD || r->status == RES_GHOST) fl |= BB_TRANSLUCENT;
     hop = (int)((t + (uint32_t)id * 7u) % 16u);
     hop = hop < 8 ? hop : 16 - hop;
-    add(x, y, hop, bodyspr_image(id, 2, (int)(((t / 4) + (uint32_t)id) & 3)), fl);
+    add(x, y, hop, bodyspr_image(id, 2, CR_POSE), fl);
+}
+
+/* S2-7: the world x range whose marchers can be on screen. The GBA's overworld is flat, 4 units a pixel, centred on
+ * the camera; the PS1's and the Dreamcast's is a 3D view (tan(hfov / 2) = 0.45 at ~1,060-1,080 units from the road:
+ * ~485 units either side) whose centre runs up to ~72 units ahead of the camera while it moves. 32 units more each
+ * side for half a billboard (8 more on the right: a rank's second marcher walks 8 units behind it). */
+static void view_range(int32_t camx, int32_t *x0, int32_t *x1)
+{
+#if defined(DOOMO_PLATFORM_PS1) || defined(DOOMO_PLATFORM_DC)
+    *x0 = camx - 485 - 32;
+    *x1 = camx + 72 + 485 + 40;
+#else
+    *x0 = camx - plat_screen_w() * 2 - 32;
+    *x1 = camx + plat_screen_w() * 2 + 40;
+#endif
 }
 
 static void build(void)
 {
-    int32_t camx = camera_x(), vx0 = camx - plat_screen_w() * 2 - 64, vx1 = camx + plat_screen_w() * 2 + 64;
+    int32_t camx = camera_x(), vx0, vx1;
     int r, first, last, i;
     nbb = 0;
+    view_range(camx, &vx0, &vx1);
+    bodyspr_lazy(3);                          /* S2-7: no body is drawn at once */
     /* you + your pet lead the parade */
     {
         int32_t x = rank_x(-1);
@@ -188,6 +213,20 @@ static void build(void)
         }
         /* --- end S3 --- */
     }
+    /* S2-7: render ahead: the rank that comes on next (the left of the range: marchers walk in from the left; they
+     * start at START_X, which is on screen while the camera waits there). Asked only while the job slot is free, so
+     * the bodies on screen go first; not drawn. */
+    for (r = DOOMO_MAX(first, 0); r < RANKS && r <= last + 2; r++) {
+        int32_t x = rank_x(r);
+        if (x >= vx0) continue;                         /* in the range (asked above) or past it */
+        {
+            const DoomoResident *a = town_res(r), *b = town_res(DOOMO_DISTRICT_SIZE + r);
+            if (a && a->status != RES_EMPTY && !bodyspr_image(r, 2, CR_POSE)) break;
+            if (b && b->status != RES_EMPTY && !bodyspr_image(DOOMO_DISTRICT_SIZE + r, 2, CR_POSE)) break;
+        }
+        break;                                          /* one rank ahead */
+    }
+    bodyspr_lazy(0);
 }
 
 static void draw_ticker(int sw, int sh)

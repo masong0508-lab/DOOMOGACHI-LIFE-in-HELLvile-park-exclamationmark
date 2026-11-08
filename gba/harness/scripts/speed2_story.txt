@@ -196,10 +196,10 @@ push CREDITS
 wait 120
 fps start
 wait 130
-fps story: credits
+expect-fps 28 story: credits
 shot story_credits
 wait 170
 fps start
 wait 130
-fps story: credits parade
+expect-fps 24 story: credits parade
 shot story_credits_parade
