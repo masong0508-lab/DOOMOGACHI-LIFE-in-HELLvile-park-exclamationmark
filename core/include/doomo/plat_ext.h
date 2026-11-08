@@ -221,5 +221,13 @@ void plat_room_project(const struct DoomoRoomView *v, fix16 x, fix16 y, int z,
  * docs/GBA.md "SP6"). The pixels are exactly the same either way. Returns 1
  * when the loops are in. Weak default: 0, nothing changes (native, PS1). */
 int plat_ui_loops(void);
+/* (SP6) The concert's light beam (concert_gfx.c beam()): for y = ay, ay + 3,
+ * ... below ty, with f = (y - ay) * 256 / (ty - ay), centre cx = ax + (tx -
+ * ax) * f / 256 and half width hw = hw0 + (hw1 - hw0) * f / 256, the 3-row
+ * plat_checker band from x0 = cx - hw to cx + hw, x0 one pixel later when
+ * (x0 + y) is odd. Returns 1 when the platform drew every band (exactly those
+ * pixels), 0 to have the core draw them. Weak default: 0. GBA: one ARM call
+ * of the UI group while plat_ui_loops() has it in. */
+int plat_beam(int ax, int ay, int tx, int ty, int hw0, int hw1, uint8_t color);
 
 #endif

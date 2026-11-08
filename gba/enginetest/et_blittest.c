@@ -8,6 +8,7 @@
 #include "doomo/platform.h"
 #include "enginetest.h"
 #include "iwram_ovl.h"
+#include "doomo/plat_ext.h"
 
 void plat_checker_m4(int x, int y, int w, int h, uint8_t color) __attribute__((long_call));
 
@@ -186,7 +187,8 @@ void et_blit_test(void)
 /* (SP6) vid_blit2 (src/blit2.c, the IWRAM UI group's scale-2 loop that plat_image takes while the group is in)
  * against the same verbatim reference at scale 2 without a flip: odd and even x (the odd case merges two source
  * pixels per halfword), clipping on all four sides, silhouette on and off, over a random background; then the
- * group's word-at-a-time checker (vid_checker_ui) against plat_checker_m4. Logs
+ * group's word-at-a-time checker (vid_checker_ui) against plat_checker_m4, and its whole-beam loop (plat_beam)
+ * against the concert's old per-band beam. Logs
  * "ET blit2test ok (N cases)" or "ET blit2test FAIL ...". */
 void et_blit2_test(void)
 {
@@ -238,6 +240,32 @@ void et_blit2_test(void)
                 if (PAGE_A[r * LINE + j] != PAGE_B[r * LINE + j]) {
                     gba_logf("ET blit2test FAIL checker case %d x %d y %d w %d h %d row %d hw %d: %x vs %x",
                              i, x, y, w, h, r, j, PAGE_A[r * LINE + j], PAGE_B[r * LINE + j]);
+                    bad = 1;
+                    break;
+                }
+        n++;
+    }
+    /* the group's whole-beam loop (plat_beam) against the core's beam() + cspan() of 7729ada over plat_checker_m4 */
+    for (i = 0; i < 600 && !bad; i++) {
+        int ax = (int)(next() % 280) - 20, ay = (int)(next() % 40) - 8, tx = (int)(next() % 400) - 80;
+        int ty = ay + (int)(next() % 170) - 10, hw0 = (int)(next() % 4), hw1 = hw0 + (int)(next() % 20);
+        uint32_t color = next() % 256;
+        int j, r, y, dy = ty - ay;
+        gba_back = PAGE_A;
+        if (!plat_beam(ax, ay, tx, ty, hw0, hw1, (uint8_t)color)) { gba_logf("ET blit2test FAIL beam not drawn"); bad = 1; break; }
+        gba_back = PAGE_B;
+        if (dy > 0)
+            for (y = ay; y < ty; y += 3) {
+                int f = (y - ay) * 256 / dy;
+                int cx = ax + (tx - ax) * f / 256, hw = hw0 + (hw1 - hw0) * f / 256, x0 = cx - hw, x1 = cx + hw + 1;
+                if ((x0 + y) & 1) x0++;
+                if (x1 > x0) plat_checker_m4(x0, y, x1 - x0, 3, (uint8_t)color);
+            }
+        for (r = ay < 0 ? 0 : ay; r < ty + 3 && r < 160 && !bad; r++)
+            for (j = 0; j < LINE; j++)
+                if (PAGE_A[r * LINE + j] != PAGE_B[r * LINE + j]) {
+                    gba_logf("ET blit2test FAIL beam case %d a %d,%d t %d,%d hw %d..%d row %d hw %d: %x vs %x", i, ax, ay,
+                             tx, ty, hw0, hw1, r, j, PAGE_A[r * LINE + j], PAGE_B[r * LINE + j]);
                     bad = 1;
                     break;
                 }

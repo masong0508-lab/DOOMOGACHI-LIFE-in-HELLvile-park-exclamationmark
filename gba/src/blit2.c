@@ -114,7 +114,7 @@ void vid_blit2(int x, int y, const DoomoImage *img, uint32_t sil)
 /* (SP6) plat_checker in the UI group: the same clipping and parity as plat_checker_m4 (video.iwram.c), but a row's
  * pixels (every other one, all in the same byte of their halfwords) are merged a word at a time, two halfwords per
  * read-modify-write: the concert's light beams, the LED wall's sheen and the seats are hundreds of such rows. */
-BLIT2_ARM void vid_checker_ui(int x, int y, int w, int h, uint32_t color)
+static inline __attribute__((always_inline)) void checker_body(int x, int y, int w, int h, uint32_t color)
 {
     int x1 = x + w, y1 = y + h, yy, par;
     if (w <= 0 || h <= 0) return;
@@ -141,6 +141,38 @@ BLIT2_ARM void vid_checker_ui(int x, int y, int w, int h, uint32_t color)
         }
         if (n) *p = (uint16_t)((*p & keep) | put);
     }
+}
+
+BLIT2_ARM void vid_checker_ui(int x, int y, int w, int h, uint32_t color)
+{
+    checker_body(x, y, w, h, color);
+}
+
+/* (SP6) plat_beam (plat_ext.h): the concert's light beam, every 3-row band in one ARM call instead of one
+ * plat_checker call (and its THUMB set-up) per band: f steps by q (+1 when the remainder r carries over dy), the
+ * centre and half width are the core's ax + dx * f / 256 and hw0 + dhw * f / 256, a band starts one pixel later
+ * when (x0 + y) is odd, exactly concert_gfx.c's beam() + cspan(). */
+BLIT2_ARM void vid_beam_ui(int ax, int ay, int ty, int dx, int hw0, int dhw, int dy, int q, int r, uint32_t color)
+{
+    int y, f = 0, rem = 0;
+    for (y = ay; y < ty; y += 3) {
+        int cx = ax + dx * f / 256, hw = hw0 + dhw * f / 256, x0 = cx - hw, x1 = cx + hw + 1;
+        if ((x0 + y) & 1) x0++;
+        if (x1 > x0) checker_body(x0, y, x1 - x0, 3, color);
+        f += q;
+        rem += r;
+        if (rem >= dy) { rem -= dy; f++; }
+    }
+}
+
+int plat_beam(int ax, int ay, int tx, int ty, int hw0, int hw1, uint8_t color)
+{
+    int dy = ty - ay, q;
+    if (gba_nodraw || iwram_ovl_current() != OVL_UI) return 0;   /* the core draws the bands (plat_checker) */
+    if (dy <= 0) return 1;
+    q = 768 / dy;
+    vid_beam_ui(ax, ay, ty, tx - ax, hw0, hw1 - hw0, dy, q, 768 - q * dy, color);
+    return 1;
 }
 
 int plat_ui_loops(void)

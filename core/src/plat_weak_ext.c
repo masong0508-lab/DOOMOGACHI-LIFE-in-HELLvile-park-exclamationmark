@@ -78,3 +78,9 @@ WEAK uint32_t plat_pack_read(uint32_t off, void *dst, uint32_t len)
 }
 
 WEAK int plat_ui_loops(void) { return 0; }
+
+WEAK int plat_beam(int ax, int ay, int tx, int ty, int hw0, int hw1, uint8_t color)
+{
+    (void)ax; (void)ay; (void)tx; (void)ty; (void)hw0; (void)hw1; (void)color;
+    return 0;
+}

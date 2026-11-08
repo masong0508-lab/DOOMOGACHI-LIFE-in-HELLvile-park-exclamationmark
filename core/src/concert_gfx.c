@@ -15,6 +15,7 @@
  * citizen, fixed frame, so at most ~45 cached images are in use).
  */
 #include "concert_int.h"
+#include "doomo/plat_ext.h"
 
 const char *const concert_stage_names[STAGE_COUNT] = {
     "Sugar Bowl", "Disco Inferno", "Graveyard Bash", "Hellfire Pit", "Dreamland"
@@ -778,6 +779,7 @@ static void beam(int ax, int ay, int tx, int ty, int hw0, int hw1, uint8_t c)
 {
     int y, step = 3, dy = ty - ay, f = 0, rem = 0, q, r;
     if (dy <= 0) return;
+    if (plat_beam(ax, ay, tx, ty, hw0, hw1, c)) return;   /* the platform drew these same bands */
     q = step * 256 / dy;
     r = step * 256 - q * dy;
     for (y = ay; y < ty; y += step) {
