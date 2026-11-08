@@ -181,6 +181,7 @@ LOCAL_CALLBACKS = {
 MODAL_CALLBACKS = {
     "concert_scene": ("confirm_stop",),
     "creator": ("cb_discard", "cb_name", "cb_nick", "cb_reset"),
+    "creator_grid": ("cb_find",),                 # CR6: the grid's search (ui_text_entry)
     "exorcism_scene": ("cb_exit", "cb_name", "cb_prayer", "cb_to_tools", "cb_water",
                        "cb_lost_choice", "cb_lost_confirm", "cb_typed"),
     # F-phase family wizard + member screens: every callback goes to ui_choice / ui_confirm /

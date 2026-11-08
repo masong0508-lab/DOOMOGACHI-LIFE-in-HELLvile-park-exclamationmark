@@ -32,7 +32,7 @@
 #define IW PART_ICON_W
 #define MAXV 256
 
-enum { CAM_BUST, CAM_FIG };
+enum { ICAM_BUST, ICAM_FIG };
 
 typedef struct Icon { int row; uint8_t pix[PART_ICON_PIX]; } Icon;
 static Icon *icons;
@@ -57,9 +57,9 @@ static int cam_of(int list)
     switch (list) {
     case GF_BODY: case GF_TAIL: case GF_WINGS: case GF_TOP: case GF_BOTTOM: case GF_SHOES:
     case GF_PATTERN: case GF_AURA: case GF_MARKING:
-        return CAM_FIG;
+        return ICAM_FIG;
     default:
-        return CAM_BUST;
+        return ICAM_BUST;
     }
 }
 
@@ -94,7 +94,7 @@ static void species_look(DoomoLook *l, int sp)
 
 static void render(int cam, const DoomoLook *l, uint8_t *out)
 {
-    if (cam == CAM_FIG) figure_render(l, RES_ALIVE, EXPR_NEUTRAL, 0, out);
+    if (cam == ICAM_FIG) figure_render(l, RES_ALIVE, EXPR_NEUTRAL, 0, out);
     else portrait_render(l, RES_ALIVE, EXPR_NEUTRAL, 0, out);
 }
 
@@ -229,11 +229,11 @@ static void do_slot(const PartSlotInfo *sl)
     int list = sl->list, cam, iw, ih, grey, i, n = 0, rows[MAXV], sdx[MAXV], sdy[MAXV];
     int bx0 = 1 << 20, by0 = 1 << 20, bx1 = -1, by1 = -1, x, y, side, cx, cy, x0, y0;
     const char *n0;
-    if (list == PL_SPECIES) cam = CAM_BUST;
+    if (list == PL_SPECIES) cam = ICAM_BUST;
     else if (is_look_list(list)) cam = cam_of(list);
     else return;
-    iw = cam == CAM_FIG ? FIGURE_W : PORTRAIT_W;
-    ih = cam == CAM_FIG ? FIGURE_H : PORTRAIT_H;
+    iw = cam == ICAM_FIG ? FIGURE_W : PORTRAIT_W;
+    ih = cam == ICAM_FIG ? FIGURE_H : PORTRAIT_H;
     n0 = sl->count ? part_meta_name(&doomo_part_meta[sl->first]) : "";
     grey = list != PL_SPECIES && (!strcmp(n0, "None") || !strcmp(n0, "Bald") || !strcmp(n0, "Barefoot") ||
                                   !strcmp(n0, "Solid"));
@@ -289,7 +289,7 @@ static void do_slot(const PartSlotInfo *sl)
         add_icon(rows[i], out);
     }
     printf("part_icons: %-10s %3d icons, %s, window %d,%d %dx%d%s\n", sl->key, n,
-           cam == CAM_FIG ? "figure" : "bust", x0, y0, side, side, grey ? ", grey mannequin" : "");
+           cam == ICAM_FIG ? "figure" : "bust", x0, y0, side, side, grey ? ", grey mannequin" : "");
 }
 
 static int cmp_icon(const void *a, const void *b)
@@ -370,10 +370,7 @@ static void write_gen(const char *root)
                " * renderer and core/data/parts/catalog/. DO NOT EDIT. The raw 20x20 part icons (CR7,\n"
                " * part_icons.h): GBA and native blit these from ROM. %d icons, %d bytes. */\n"
                "#include \"doomo/part_icons.h\"\n\n", nicons, nicons * PART_ICON_PIX);
-    fprintf(f, "const uint16_t doomo_part_icon_count = %d;\n\n", nicons);
-    fprintf(f, "const uint16_t doomo_part_icon_rows[%d] = {", nicons);
-    for (i = 0; i < nicons; i++) fprintf(f, "%s%d,", i % 16 ? " " : "\n    ", icons[i].row);
-    fprintf(f, "\n};\n\nconst uint8_t doomo_part_icon_pix[%d][PART_ICON_PIX] = {\n", nicons);
+    fprintf(f, "const uint8_t doomo_part_icon_pix[%d][PART_ICON_PIX] = {\n", nicons);
     for (i = 0; i < nicons; i++) {
         fprintf(f, "    {   /* %d %s */", icons[i].row, part_meta_name(&doomo_part_meta[icons[i].row]));
         for (k = 0; k < PART_ICON_PIX; k++) fprintf(f, "%s%d,", k % 20 ? "" : "\n        ", icons[i].pix[k]);
@@ -387,6 +384,11 @@ static void write_gen(const char *root)
                " * The part icons of part_icons_data.c, packed at 4 bits a pixel (part_icon_unpack): the PS1 links\n"
                " * these instead, in the creator overlay group. %d icons, %u bytes. */\n"
                "#include \"doomo/part_icons.h\"\n\n", nicons, (unsigned)total);
+    fprintf(f, "/* the icons' doomo_part_meta rows (every build links these) */\n");
+    fprintf(f, "const uint16_t doomo_part_icon_count = %d;\n\n", nicons);
+    fprintf(f, "const uint16_t doomo_part_icon_rows[%d] = {", nicons);
+    for (i = 0; i < nicons; i++) fprintf(f, "%s%d,", i % 16 ? " " : "\n    ", icons[i].row);
+    fprintf(f, "\n};\n\n");
     fprintf(f, "const uint32_t doomo_part_icon_rle_ofs[%d] = {", nicons + 1);
     for (i = 0; i <= nicons; i++) fprintf(f, "%s%u,", i % 12 ? " " : "\n    ", (unsigned)ofs[i]);
     fprintf(f, "\n};\n\nconst uint8_t doomo_part_icon_rle[%u] = {", (unsigned)(total ? total : 1));

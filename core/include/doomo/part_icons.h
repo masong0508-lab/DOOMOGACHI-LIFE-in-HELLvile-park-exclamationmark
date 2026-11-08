@@ -19,7 +19,7 @@
 #define PART_ICON_PIX (PART_ICON_W * PART_ICON_W)
 
 /* generated (core/gen/part_icons_*.c) */
-extern const uint16_t doomo_part_icon_count;
+extern const uint16_t doomo_part_icon_count;                      /* part_icons_rle.c (every build)  */
 extern const uint16_t doomo_part_icon_rows[];                     /* doomo_part_meta rows, ascending */
 extern const uint8_t  doomo_part_icon_pix[][PART_ICON_PIX];       /* part_icons_data.c (raw)        */
 extern const uint32_t doomo_part_icon_rle_ofs[];                  /* part_icons_rle.c: count + 1    */
