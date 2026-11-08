@@ -324,3 +324,10 @@ only got 25.3 fps: the ring alone cost ~5 ms. `speed_tour.txt` invaded floor rai
 - libmgba tour: invaded 29.5 fps, work avg 29.6 ms, max 40, logic 30.0; invaded `vhash-seq` still f87e5596. About 20% of invaded frames are
   still 33-40 ms (a +4 ms bump every ~10 ticks, the tint wave, the last sliced steps): next, find that 10-tick cost and the HUD / `build_billboards`
   (`story_draw` 4%).
+
+## V15 (SP5, 2026-11-08): the governor resumes after a gap, draw-side only, NOT pixel-exact
+
+A gap in the governed frames (a scene over the map, the pause, a held dialogue box, an entry) used to restart the
+governor free; the red map now resumes from the budget it left with, and a first entry starts at `GOV_MIN`, where
+the budget always settles on this map. 45 ticks after closing the pause: 28.0 -> 30.0 drawn fps, 9 -> 0 frames
+over 33.4 ms. Details and the entry window's remaining costs: docs/GBA.md "V15".

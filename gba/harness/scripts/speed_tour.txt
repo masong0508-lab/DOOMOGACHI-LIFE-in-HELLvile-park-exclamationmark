@@ -113,13 +113,15 @@ expect-fps 25 invaded
 shot invaded
 vhash-seq 30 invaded
 
-# a story map with the HUD and the dialogue box
+# a story map with the HUD and the dialogue box; SP5 (G-D1) holds the world under a settled box (30.0 fps,
+# 7.2 ms median): floor 25.5, 85% as for the others. Its vhash-seq differs from a pre-SP5 ROM by design (the idle
+# animations pause under the box, docs/GBA.md "D")
 seed 1
 scene STORY 110
 wait 200
 fps start
 wait 130
-expect-fps 20.5 story map + dialogue
+expect-fps 25.5 story map + dialogue
 shot story110
 vhash-seq 30 story map + dialogue
 

@@ -419,6 +419,7 @@ against the LAST row, not against a figure from an older base.
 | 27 | CL3: one prompt bar (C3), the pet screen's bar (C14), workshop / studio / house legends (C15) | `4114eb7` | 3,532 B | **3,188 B** | -344 B | 6,356 B | measured on `4114eb7` (the clarity CL2 tree) built the same way, before and after CL3 (on `b080562`: 3,540 -> 3,196 B). `pmemo` 168 B (`ui.c`: the last bar's key, cut flag and text, so the GBA builds nothing while a screen shows the same bar; `ui_hint`'s 160 B line is on the stack), the `unlock_find` memo `ul_fc` 96 B, `PANEL_PROMPT` in the panel table (`pn` 160 -> 180 B; the shown mask 8 -> 16 bits), and the rest small caches (the hub's NEWS badge text and its pad / language, the news ticker's line width, the pet's per-tick geometry, the bar's frame). The house's dots caption is a raw unlock bit (`HUL_RAW_DOTS`, in the save's unlock bits) and a `const` timing, so 0 B. IWRAM resident and the overlay slot unchanged (main stack 6,356 B). ROM 4,317,416 -> 4,325,324 B (+7,908: the bar builder and its tests' strings, the pad name table, the converted screens) |
 | 28 | CL1 1.6f: the purse flashes on a money change | `9c6b8c3` | 3,092 B | **3,084 B** | -8 B | 6,356 B | "after" measured on `9c6b8c3` + this change (ROM 4,511,992 B); the change itself measured on `38a362d`: 3,444 -> 3,436 B, ROM +272 B, so `9c6b8c3` alone is 3,092 B (row 27's 3,188 B was measured on `4114eb7`). `fp_common.c` keeps the last money seen, two 16-bit ticks and the flash state (9 B, 8 B packed); the hub keeps no frame while the purse blinks (32 ticks after a change). `make -C gba test` passes (on `38a362d` + this) |
 | 29 | SP6: concert loops in the IWRAM UI group (scale-2 images, word checkers, beams) | `7729ada` | 3,540 B | **3,540 B** | 0 | 6,356 B | no EWRAM, no resident IWRAM: `vid_blit2_arm`, its rows, `vid_checker_ui` and `vid_beam_ui` are 1,868 B of the overlay slot's UI group (SP4's group; the slot stays the 3D group's 10,384 B); ROM .text +3,056 B, .rodata +36 B; speed tour frame-exact (16 scenes) |
+| 30 | SP5: held dialogue backdrop, loading fades, governor resume | `87271d8` | 3,540 B | **3,468 B** | -72 B | 6,296 B | measured on `87271d8` (CRA, row 23, changed no EWRAM); the band's state 14 B (`hold.c`), `gba_big_epoch` 4 B, the dialogue hold's state in `overworld.c` 19 B, `ui_dialog.c` 5 B, `scene.c` 4 B, the loading fade 9 B (`loadfade.c`, `gba_vbl_hook`), the red map's governor budget 12 B; the band itself borrows the arena (the overworld's lit-tile cache) and needs no RAM of its own. IWRAM resident +60 B (the VBlank IRQ's hook call): main stack 6,356 -> 6,296 B (>= 6,144). ROM +~3 KB |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -1207,6 +1208,74 @@ Memory: EWRAM -544 B (the panel table 8 x 20 B, the 80-rect pool 320 B,
 the page-length cache of `ui_dialog.c` and the box / state words), IWRAM
 resident code +300 B (`pn_span`, `r3d_up2`, the `plat_rect` panel test):
 main stack 6,308 B (>= 6,144).
+
+#### D: the held dialogue backdrop (SP5, G-D1; `core/src/overworld.c` `dh_*`, `gba/src/hold.c`)
+
+Under a dialogue box the story overworld's update does not run (`SCENE_DIALOG` is on top), so the world stands
+still; only its clock-driven idle animations (prop frames, the pet's bob, sparkles, the invaded tint pulse) and
+the HUD would move. Once the box has slid in and nothing else moves, `story_draw` draws the world one last time
+and asks the platform to keep the band the box draws in (`plat_hold_band(PLAT_BAND_SAVE)`, plat_ext.h): rows
+`[y, 160)` from 50 rows above the box (12 more when they fit: a 3-option choice window) without the box's opaque
+body, which the box repaints on every frame (`ui_dialog_band()`). The next frame calls `plat_hold_frame(2)` (both
+Mode 4 pages carry the shown picture, as the pause's P2) and every held frame puts the band back
+(`PLAT_BAND_RESTORE`, ~16 KB of DMA, ~2.5 ms) and draws only the dialogue on it: its drop shadows land on clean
+pixels, its retained panels (G7) are kept as before.
+
+* **Pixel change** (SPEED DEFAULTS 2026-11-08): the idle animations pause while a box is up. Everything else is
+  the full frame's: the native test `core/tests/test_dialog_hold.c` replays two runs (band on / off) at 240x160 and
+  320x240 and requires every frame that is not held to be identical, every held frame to differ only where the
+  full run itself changed since the kept frame, and the box body to be identical.
+* **Falls back to the full redraw** (and holds again once it settles) for a flash, fade, shake or banner, a toast,
+  any camera effect, the pet's "beep." or a gag, the pause, a scene over the dialogue, the box sliding in, a choice
+  window taller than the band, a tile frame, a skipped tick, a frame built over ticks, or `expect-text`.
+* **Memory:** the band lives in the arena between the scene scratch's claim and the per-frame billboards: the
+  story overworld's lit-tile cache (`GBA_BIG_OW`) and the free bytes below it (about 18 KB beside the story's
+  6.5 KB claim). A held frame draws no world, so the cache is borrowed; the next `plat_overworld` invalidates it
+  (`hold_band_release`, it rebuilds in one frame). `gba_big_epoch` (bigbuf.c) bumps on any other claim (a save's
+  stream, another region's owner): the copy is then lost and the core redraws in full. EWRAM: 14 B of state.
+* **Dialogue stings:** the box now runs the camfx clock for its own `{!}` / `{cut}` effects (3 ticks). Before,
+  the host's update (which ticks camfx) did not run under the box, so a sting's shake offset and white flash
+  froze on their first frame until the box closed (and kept the hold off).
+
+Measured (libmgba, seed 1):
+
+| scene | base drawn fps | SP5 | base median / p90 / max ms | SP5 |
+|---|---:|---:|---|---|
+| story ch1, Mayor Giggs's portrait lines (PS1 perf scene as a GBA script) | 17.7 | **28.7** | 44.8 / 61.5 / 114.6 | **20.9** / 35.6 / 114.7 |
+| speed tour "story map + dialogue" (beat 110 narration) | 29.8 | **30.0** | 29.9 / 34.4 / 36.6 | **7.2** / 10.9 / 13.1 |
+
+The speed tour's other 15 scenes are frame-exact against the base ROM (`speedtable.py --compare`); "story map +
+dialogue" differs on all 30 frames by the paused idle animations (the balloon and two sparkles). The Mayor's
+remaining frames over 33 ms are portrait re-renders (SP2's slicing). Its floor in `speed_tour.txt` is 25.5 (85%).
+
+#### LD: loading fades (SP5, G-LD; `gba/src/loadfade.c`)
+
+`scene.c` calls `plat_loading()` (plat_ext.h) on every `scene_set` / `scene_push` / `scene_pop`, and the story
+overworld before a map load. From then until the next flip the VBlank IRQ calls `gba_vbl_hook` (a THUMB function
+in ROM, set only while armed: the IRQ itself gained one load and test): once 9 vblanks (150 ms, past the slowest
+normal frame, combat's 100-160 ms) pass without a flip, it darkens the screen with the hardware fade (BLDCNT
+brightness decrease on every layer, BLDY +2 a vblank, black after ~130 ms more). The flip that ends the wait shows
+the new picture at the darkness reached and lifts it by 4 a flip; a frame's own darker blend wins. Registers only:
+no page pixel, logic or timing changes, and nothing happens while the harness hashes frames (`draw_all`).
+
+Real transitions measured on libmgba (the first frame's work): story -> combat 521 ms (fades: before/after sheet
+in the SP5 evidence), story -> house 150 + 128 ms, title 158-176 ms, concert 140 ms, pet 90 ms (no fade under
+150 ms). Not shortened here: the combat entry (weapon views built on the first frame) and the save / load
+freezes, which are much longer on the GBA (`save 0` 11.7 s, `load 0` 6.7 s in the emulator for a story save; the
+title's Continue runs the load in one tick) and want their own package (a busy indicator and a profile of the
+codec on the GBA). The harness's `scene STORY <debug beat>` setups (1.9 s) build a whole town: they are test-only.
+
+#### V15: the invaded governor resumes (SP5, G-V15; `gba/src/overworld.c` `gov_pick`)
+
+A gap in the governed frames (a scene over the map, the pause, a held dialogue box, a map entry) restarted the V10
+governor free, so the next ~28 governed frames drew every far sprite again and came down by 1/8 a frame. On the
+red map the budget always settles at `GOV_MIN` (logged: by the 20th governed frame after an entry, and it stays
+there), so a gap there resumes from the budget it left with and a first entry starts at `GOV_MIN`; the other maps
+(V14) still start free. Invaded, the 45 ticks after closing the pause: 28.0 -> 30.0 drawn fps, frames over 33.4
+ms 9 -> 0. The first seconds after an entry are unchanged (the budget is already at its floor during the sim's
+entry burst; the rest of that window is the sim (SP2's X4) and the map's name banner, which costs ~4 ms a frame for
+its 100 ticks because it is drawn over the objective's retained panel: invaded ticks 60-100 run at 29.2 fps with
+the banner off against 24.8 with it; left for a later pass, a panel of its own did not help).
 
 ### "3D: Faster / Better" (Options, Performance page)
 

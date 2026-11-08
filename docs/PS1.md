@@ -680,6 +680,22 @@ model, spu; 2,816 B). `_end` 0x801ee9b0: **71,248 B below the stack top,
 reserve, so the disc links). Still open: about 2.5 KB of resident RAM to
 find (candidates: `vram.c` -Os 432 B, the roster bio / pack text to disc).
 
+### Loading fades (SP5, G-LD; `gfx.c` `gfx_load_fade`, `overlay.c`)
+
+A scene whose code group is not in the overlay slot waits for the drive with the last frame on screen. While
+`overlay.c` waits for sectors it calls `gfx_load_fade()`: counted from the frame's first load (a scene that starts
+another loads up to three groups in a row), after 4, 7 and 10 vblanks the newest finished frame is darkened by a
+50% black TILE pass (semi-transparency mode 0), drawn straight into the picture on screen like the busy banner,
+three passes at most (to 1/8). Every game frame is cleared and redrawn in full, so nothing is put back; the next
+frame shows normally. The tty logs `ovl: load fade N/3 after V vblanks`. Measured in PCSX-Redux (game disc, the
+harness's `scene` / `push`): story group 121 KB in 341 ms, combat 115 KB 328 ms, house 167 KB 482 ms, free play
+91 KB 267 ms, concert 70 KB 241 ms (each three passes), pet 23 KB 121 ms (one pass). The core's
+`plat_loading()` hook (plat_ext.h) is not used on the PS1: its freezes are these disc reads.
+
+The PS1 has no `plat_hold_band` (the GBA's held dialogue backdrop): its VRAM has no spare area for the band and
+its dialogue cost is the portrait renders (`pc_capsule` and friends, ~32%), which SP2's slices address (24.0 ->
+29.7 fps measured on SP2's branch). Dialogue on this tree: 24.0 fps (2:55 3:23 4:10 5:1 vsyncs per frame).
+
 ## 5. The 3D engine (`plat_view3d`)
 
 `view3d.c` turns the live `doomo_map` into real polygons every frame; the
