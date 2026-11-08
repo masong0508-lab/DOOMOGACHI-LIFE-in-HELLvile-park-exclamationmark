@@ -17,6 +17,9 @@ project plan). This document grows with it. Right now it covers:
    keyboard; saves and the machine config record on the VMU with an
    atomic replace, the pet's icon and eyecatch, and the card shown while a
    save blocks the game.
+6. Sound (DC5): the music (the engine's legacy bridge), the voice babble
+   and the sound effects, rendered per logic tick by a software mixer and
+   streamed to the AICA, checked against the native runner's `--wav`.
 
 The SH4 compile check that runs today, with no KallistiOS at all, is the
 `sh-elf-gcc` leg of `core/tools/xcheck.sh` (docs/BUILDING.md, "Tests").
@@ -312,7 +315,7 @@ The skeleton drew only `plat_clear()`'s colour; DC3 draws all of the 2D
 | 2D, post effects, held frame | **done** (`dc/src/gfx2d.c`, section 4) | DC3 |
 | retained panels, `plat_figure_obj`, the stage sprites | the core's weak defaults (draw every frame; cheap on the PVR) | - |
 | saves | **done** (`dc/src/vmusave.c`, section 5: the VMU, a static 136 KB scratch) | DC4 |
-| `plat_tone`, `plat_sample` | silent; the core's weak music bridge drives `plat_tone` | DC5 |
+| `plat_tone`, `plat_sample`, `plat_sample_ex`, `plat_music_stall` | **done** (`dc/src/audio.c`, `mixer.c`, `sfx.c`, section 6); the music engine stays on the core's weak legacy bridge tier | DC5 |
 | `plat_view3d`, `plat_overworld`, `plat_room` | no-ops / weak defaults | DC6, DC7, DC8 |
 
 `make -C dc check-elf` lists the core's weak platform defaults still in the
@@ -327,7 +330,7 @@ compilers. The harness finds the `dc_mailbox` symbol in the ELF
 `dc/src/misc.c` also exports the plain name as an alias) and reads and
 writes it through libretro's `RETRO_MEMORY_SYSTEM_RAM` region at
 `address & 0xFFFFFF`. `check-elf` checks the size and the alias and prints
-the offset. It is 32-byte aligned and 4232 bytes:
+the offset. It is 32-byte aligned and 4300 bytes:
 
 | field | what |
 |---|---|
@@ -336,6 +339,7 @@ the offset. It is 32-byte aligned and 4232 bytes:
 | `log_wr`, `log[4096]` | the log ring: every `plat_log()` line plus `\n`, at `log_wr % 4096`; `log_wr` counts every byte ever written |
 | `gfx_prims` ... `gfx_tex_live` | DC3's 2D counters after each drawn frame (section 4, Counters) |
 | `test_flags` | DC4: `plat_test_flags()`; dcrun writes `PLAT_TEST_NO_PICKER` when it sees the magic (`--console`: 0) |
+| `snd_pushed` ... `snd_starved` | DC5's sound counters after each tick (section 6, Counters) |
 
 The cable type and the boot time are log lines (`DC: video 640x480 VGA`,
 `DC: core up in N us`), not mailbox fields.
@@ -376,8 +380,10 @@ DC4 replaced the RAM disk with two VMU file buffers (92 KB each) and the
 card's metadata (8.7 KB): code 1,723,248 B, `.bss` 2,897,492 B, image
 7,442,688 B (7.10 MB), 8.84 MB free above `_end` (2026-11-08). With DC3 (2026-11-08): code 1,712,240 B, `.bss`
 2,804,724 B (the 2D layer's three prim lists and texture scratch), image
-7,335,972 B (7.00 MB), 8.93 MB free above `_end`. The ELF file is 16 MB because of debug info; the
-scrambled `1ST_READ.BIN` is 4.4 MB.
+7,335,972 B (7.00 MB), 8.93 MB free above `_end`. With DC5 (2026-11-08): code 1,749,488 B,
+`.bss` 3,022,932 B (the PCM ring 94,080 B, the stream's copy buffer 12,288 B), image
+7,599,060 B (7.25 MB), 8.69 MB free above `_end`, of which the effects bank takes 95,656 B of heap.
+The ELF file is 17 MB because of debug info; the scrambled `1ST_READ.BIN` is 4.4 MB.
 
 ### Disc image (`dc/tools/mkcdi.sh`)
 
@@ -825,6 +831,219 @@ of `vms.c`; the host test also runs it on the card image it writes.
   (vmu_check.py checks the bytes and draws the icons; no BIOS is run).
 - The shooter turning with the stick: the core's analog path is fed and
   the menus follow the stick on Flycast, but the 3D view is DC6.
+
+## 6. Sound (DC5)
+
+```sh
+make -C dc audio-test        # on Flycast: title, invaded town, combat, the hash twice
+make -C dc/tests/audio test  # on the host: the mixer's units + 4 scripts against musrender
+```
+
+### What plays, and how
+
+The core speaks to the platform through `plat_tone()` (four chiptune
+channels: the music engine's legacy bridge, the voice babble and the
+comedy one-shots of `audio_fx.c`) and `plat_sample()` /
+`plat_sample_ex()` (one-shot effects whose 8-bit PCM comes from
+`audio_sfx_pcm()`). On the Dreamcast (`dc/src/audio.c`, `mixer.c`,
+`sfx.c`, `audio_int.h`):
+
+```
+main thread                                   stream thread (prio 9)
+  doomo_frame: plat_tone / plat_sample*         every reschedule: snd_stream_poll
+    -> the mixer's current state                  when half the AICA buffer played:
+  plat_end_frame -> dc_audio_frame                  stream_cb -> dcsnd_render
+    -> dcsnd_push: apply the state, render            copies 1,536 frames out of
+       1,470 frames (1/30 s at 44,100 Hz)             the ring (gaps: silence)
+       into the next slot of a PCM ring  ----->    KOS splits L/R, DMAs to the AICA
+```
+
+* **The mixer** (`mixer.c`, portable C99, integer only): four tone
+  channels as musrender voices them (12.5 / 25 / 50 % pulses, triangle,
+  saw, the 15-bit LFSR noise clocked at the channel frequency), at full
+  resolution instead of the GBA's 4-bit wave steps, each at a fixed place
+  in the stereo field (lead and bass centre, harmony / babble a little
+  left, kit a little right; L + R is the mono reference); eight sample
+  voices (16-bit copies of the effects made at boot by `sfx.c`, linear
+  interpolation, volume, pan, pitch in semitones, priority stealing: a
+  free voice, else the lowest priority at or below the new one, the
+  oldest first); then the native reference's DC block (about 14 Hz), a
+  one-pole low-pass (about 12 kHz) against the naive pulses' aliasing, the
+  musrender scale (`mix * 24`, so levels and `expect-audio` numbers match
+  the native ones), and a soft knee above 24,576 that bends the rare loud
+  peak (the invaded town's metal with effects on top) towards the rail
+  instead of clipping it (`clips` counts the samples that would have
+  passed the rail).
+* **Ticks, not time.** A slot is exactly one logic tick, rendered when the
+  tick ends, so the sound is a pure function of the game's ticks: the
+  same ticks give the same samples whatever the stream's chunk sizes, and
+  a gap (the game late, a load, a harness hold) is silence that leaves the
+  synth untouched. Tones and triggers take effect at the start of their
+  tick's frames, as in musrender. The FNV-1a hash of the rendered stream
+  is in the mailbox (`snd_hash`, and `snd_hash600` frozen after 600 slots
+  = 20 s), so two runs can be compared without a WAV.
+* **The ring.** 16 slots (94 KB). Playback starts once 2 slots are ready
+  (`DCSND_PREFILL`) and starts again that way after it runs dry (an
+  underrun, counted unless a pause was announced: the VMU writes, harness
+  commands and holds call `dc_audio_stall()`; the core's
+  `plat_music_stall` does the same, though the core does not call it
+  yet). More than 4 slots ready at a slot start (the game catching up
+  after a long tick) skips the oldest, as the tone chips of the GBA and
+  the PS1 simply jump.
+* **The stream.** One KOS `snd_stream` (44,100 Hz, 16-bit stereo, 6144 B
+  per channel = 3,072 frames = 70 ms in sound RAM), refilled by KOS in
+  halves of 1,536 frames from a thread that polls on every reschedule.
+
+**Why the synth is not in the stream callback.** The first version rendered
+in `stream_cb` (on the stream thread, priority 9, above the game's 10).
+On Flycast the callback took 1.4 ms on average but 11-13.7 ms in about
+3 % of the calls (21 of 875 in the title run), and the refills drifted
+up to 39.9 ms apart against a 46 ms buffer. Timing the inside of the render
+showed at most 1.2 ms; the rest was KallistiOS's scheduler: on its 10 ms
+timer tick `thd_schedule()` picks the best thread *in the run queue*,
+where the running thread is not, so a timer tick that lands while the
+stream thread works hands the CPU to the game thread for a whole slice,
+whatever the priorities (KOS `kernel/thread/thread.c`; disabling
+interrupts around the render only moves the switch to `irq_restore`).
+Rendering on the main thread at the end of the tick (the same CPU time,
+now counted in the tick's work) leaves the stream thread a copy of a few
+microseconds, which a tick almost never lands in.
+
+**Why 6144 B.** The stream thread wakes on KallistiOS's reschedules, at
+most 16.7 ms apart in practice (the game thread's vblank waits and the 10
+ms timer), so a refill can come that much after its half became free. With
+4096 B (46 ms) the longest measured refill interval was 34-40 ms: 6.5 ms
+from the AICA playing stale data. With 6144 B (70 ms) it is 44-46 ms
+against 70 ms. The price is latency (below).
+
+**Latency.** A tick's sound waits in the ring until the slots before it
+have played (at a slot start 1 to 3 slots were ready in every measured run:
+title 215 / 327 / 55 times, invaded town 13 / 242 / 192, combat 9 / 187 /
+101), then sits in the AICA buffer for 35-70 ms: about 70-135 ms from the
+end of the tick to the speaker, about 100 ms typical, music and effects
+alike, so they stay in step with each other as on the other ports. The
+visual of a tick shows at the next vblank, so the sound follows the
+picture by about 3 ticks. Two ways down were measured and not taken:
+4096 B (-17 ms, but the 6.5 ms margin above), and the effects on AICA
+channels of their own (`snd_sfx_load_raw_buf` + 8 reserved channels,
+started at the end of their tick: under a tick of latency, 47,793 B of
+sound RAM): the effects then lead the music by the stream's 100 ms, which
+is heard (a rimshot before its sting), and the Flycast comparison with
+the native runner fell to envelope r 0.72 on the invaded town. A real cut
+needs a shorter refill period: KallistiOS at 1,000 Hz (`thd_set_hz`), or
+our own AICA channel loop written from the main thread at a fixed point
+of the tick.
+
+**The music engine's tier.** The music engine runs as the legacy bridge
+(tier `AT_BRIDGE`, the core's weak `plat_audio_caps`), as on the GBA, the
+PS1 and native today (docs/AUDIO.md): its driver runs 8 mt a tick inside
+`music_update()` and its four voices reach the mixer as `plat_tone()`. The
+plan's IRQ tier (`CAP_DRV_IRQ`, `mus_drv_tick()` at 240 Hz, the voices as
+`DoomoVoice` records through `plat_voice`, buses and effects) is not done,
+on purpose: no port runs that tier yet (MU2 GBA and MU3 PS1 are open), the
+core's driver still leaves the ring updates for the IRQ ports to mask
+(`mus_drv.c`), S1's comic effects (mute, duck, tape stop) are applied only
+in the bridge's flush, and there is no `DoomoVoice`-level reference render
+(musrender works on `plat_tone`), so the Dreamcast would be the one port
+whose music differs, with nothing to check it against. The mixer is ready
+for it: it renders on the main thread, the thread that runs
+`music_update()`, so calling `mus_drv_tick()` every 1,470 / 8 frames inside
+`dcsnd_push()` gives the 240 Hz driver at sample-exact positions with no
+locking at all. What it still needs: a `plat_audio_caps` with
+`CAP_DRV_IRQ`, a voice renderer for `DoomoVoice` (pitch16, vol_l / vol_r,
+env, the instrument's timbre, kit hits, the `DVF_*` flags), the S1 effects
+in IRQ mode (core, MU1 / S1), the babble on voice 20, a reference render
+to compare with, and `plat_audio_bus` / `plat_audio_fx` (reverb, echo).
+The tape calls keep the weak defaults (0: unsupported; the bridge caps
+have no `CAP_TAPE`). `plat_sample_ex` (pan, priority, pitch) is
+implemented and tested on the host; the core does not call it yet, so
+`--gc-sections` drops it.
+
+### Cost
+
+On Flycast's clock (not cycle-exact: a guide until a console is timed),
+the mixer takes 1.33 ms per tick on the title (max 1.65), 1.41 ms in
+combat (max 1.74) and 1.45 ms on the invaded town (max 2.39): 4-5 % of the
+33.3 ms tick, counted in the tick's work. Every tick of the three runs
+stayed inside the 30 fps budget (title work mean 3.4 ms, worst 12.3 ms;
+the 3D view is still DC6's stub). Memory: the ring 94,080 B and the copy
+buffer 12,288 B (`.bss`), the effects bank 95,656 B (heap, 35 effects in
+16-bit), code 4.7 KB.
+
+### Counters (`dc_mailbox.snd_*`, `dcrun`)
+
+After every tick: slots rendered / begun playing, underruns, overruns (a
+tick pushed into a full ring), slots skipped, the fullest ring, frames of
+content / of silence, samples over the rail, the effects started, the
+content hash (and after 600 slots), the mixer's time per tick (sum, count,
+worst), the longest interval between two AICA refills and the refills
+later than the whole AICA buffer (`snd_starved`: the AICA played stale
+data, heard as a glitch). dcrun prints them at the end of a run (`dcrun:
+sound ...`) and adds `audio-stats [LABEL]`, `expect-underruns MAX`
+(underruns plus late refills since `audio-reset`) and `expect-sfx MIN`
+(dc/harness/README.md).
+
+### The host test (`dc/tests/audio`)
+
+`make -C dc/tests/audio test` (part of `make dc-host-test` and CI; host
+gcc and `python3-numpy`, no KallistiOS):
+
+* `test_audio` (1,520 checks): one tick sequence played out in whole
+  ticks, in random chunks and in random chunks with empty-ring gaps (with
+  and without a stall) gives the same content and the same hash; each wave
+  at 110 / 440 / 1,760 Hz has the right zero-crossing rate; a full centred
+  pulse peaks at 6,293 (musrender 5,760); every effect lasts len x 44,100 /
+  rate frames, +12 semitones halves it, -12 doubles it, pan -64 / 64 is one
+  side only; the 9th voice steals the oldest of the lowest priority and
+  never a higher one; prefill, underrun (not during a stall), overrun (a
+  full ring renders nothing and keeps the triggers), the lag skip; silence
+  is exact zeros; the loudest possible mix (4 tones + 8 explosions at full)
+  has 9,371 samples over the rail and none at it (the knee).
+* `run_compare.sh`: `dcsnd_runner` is the native runner whose `plat_tone`,
+  `plat_sample` and `plat_end_frame` also drive the Dreamcast mixer
+  (`sndtee.c`), so one script gives musrender's WAV (22,050 Hz, the
+  reference) and the mixer's (44,100 Hz). `compare.py` lines them up and
+  measures the RMS envelopes in 50 ms windows (Pearson r, the plan's bar
+  0.9), the strongest note in 200 ms windows, and the level:
+
+| script | envelope r | same note | level | notes |
+|---|---|---|---|---|
+| fp_title | 0.998 | 95.1 % of 82 windows | 0.98 | 590 slots, lag 0, no underrun |
+| story_ch1 | 0.999 | 98.9 % of 182 | 0.98 | hash600 0x38042a6d |
+| action_combat | 0.999 | 98.5 % of 65 | 0.99 | 13 effects |
+| story_invasion | 0.980 | 90.0 % of 20 | 0.96 | 90 samples over the rail, softened |
+
+### On Flycast (`make -C dc audio-test`)
+
+`dc/tests/audio/run_flycast.sh` plays `title.txt`, `invasion.txt` and
+`combat.txt` in dcrun on the CDI with `--wav`, the same lines on the native
+runner (`runner --wav`) and compare.py on the pair (Flycast's WAV starts at
+power-on, so the lag is searched), then `title.txt` again for the hash.
+Results in `dc/build/shots/audio/` (WAVs, logs, `envelope.png`,
+`summary.txt`). Measured 2026-11-08 (Flycast `e7085e20`):
+
+| check | result |
+|---|---|
+| title (15 s of the title cue) | peak-to-peak 24,050; envelope r 0.996, the same note in 85.9 % of 85 windows, level 0.96; 0 underruns, 0 late refills, longest refill interval 45.4 ms (of 70) |
+| invasion (chapter 3's invaded town, 15 s) | peak-to-peak 60,874; r 0.946, 93.2 % of 74, level 0.95; 0 underruns, 0 late refills; 90 samples over the rail, softened |
+| combat (the Vape Cellar, three pistol shots, 12 s) | peak-to-peak 37,609; 6 effects (at least 3); r 0.921 (envelopes clipped at their 97th percentile: the enemies' noises come at other times than natively while the 3D is a stub), 94.0 % of 67, level 0.97; 0 underruns, 0 late refills |
+| repeat | the title's hash after 600 slots, 0x520f170a, twice |
+
+`make -C dc test` with DC5 in: boot on the ELF and the CDI, DC3's
+ui-compare 94 of 94 shots, DC4's five VMU checks, then the four above.
+Outside the measured windows the counters do show underruns: one or two
+in runs that boot and change scenes (the slot before a long first tick),
+and skipped slots after harness holds (dcrun's `sync` stops the game while
+the stream keeps playing). Both are gaps of a few milliseconds at moments
+the core makes no sound of its own.
+
+### Owed on hardware (DC5)
+
+- The mixer's cost and the refill timing on a real SH4 and AICA (Flycast
+  is not cycle-exact; `dcrun: sound ...` has the numbers to compare).
+- The latency, by ear and with a camera and a microphone (the estimate
+  above is from the ring and the buffer, not measured end to end).
+- The AICA's output with the knee near the rail, through VGA and composite.
 
 ## Rumble (X2)
 

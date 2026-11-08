@@ -80,6 +80,8 @@ ships 0.9, so on 22.04 skip the harness. The ROM still builds.
 sudo apt update
 # core + GBA
 sudo apt install build-essential python3 gcc-arm-none-eabi libnewlib-arm-none-eabi
+# the Dreamcast sound host test (make dc-host-test; CI installs it)
+sudo apt install python3-numpy
 # GBA headless test harness (optional)
 sudo apt install libmgba-dev
 # PS1 toolchain (then build PSn00bSDK, next section)
@@ -156,10 +158,12 @@ numbers and how to move the pins: docs/DREAMCAST.md section 1.
 With it installed, `make dc` builds `dc/build/doomogachi.elf` and the
 self-booting `dc/build/doomogachi.cdi`, and `make dc-test` adds the ELF
 checks and, with the Flycast core, the harness scripts (boot, DC3's UI
-comparison, DC4's VMU saves and controls: `make -C dc vmu-test`).
-`make dc-host-test` needs no KallistiOS: the 2D layer and the VMU file
-system, icons and controls on the host (`dc/tests/gfx2d`, `dc/tests/vmu`;
-`python3` for `dc/harness/vmu_check.py`).
+comparison, DC4's VMU saves and controls: `make -C dc vmu-test`, DC5's
+sound against the native runner's `--wav`: `make -C dc audio-test`).
+`make dc-host-test` needs no KallistiOS: the 2D layer, the VMU file
+system, icons and controls, and the sound mixer on the host
+(`dc/tests/gfx2d`, `dc/tests/vmu`, `dc/tests/audio`; `python3` for
+`dc/harness/vmu_check.py`, `python3-numpy` for `dc/tests/audio/compare.py`).
 `dc/Makefile` sources `<prefix>/kos/environ.sh` itself, so no shell setup
 is needed; `DC_PREFIX=<dir>` picks another install. `make all` and
 `make test` leave the Dreamcast out for now. Details: docs/DREAMCAST.md

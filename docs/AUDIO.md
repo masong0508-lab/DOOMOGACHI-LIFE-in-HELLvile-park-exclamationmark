@@ -11,8 +11,9 @@ GEN bags, chapters and key lifts, the transition matrix, stingers, the
 comic bridge, DECK vinyl, quotes, the twin, beds, session memory, and
 mmlc's authored cues). The game still sounds exactly as it did before the
 engine: all 28 classic songs are compiled into the music bank and played
-through the legacy bridge on native, GBA and PS1 (T1 proves it tick for
-tick), and `audio_music()` still cuts NOW. The adaptive runtime is proven
+through the legacy bridge on native, GBA, PS1 and the Dreamcast (T1 proves
+it tick for tick; the Dreamcast's mixer is checked against musrender, DC5,
+docs/DREAMCAST.md section 6), and `audio_music()` still cuts NOW. The adaptive runtime is proven
 on the test bank (`core/tests/music`); it reaches the game when MU4's cues
 and MU5a's call sites land.
 

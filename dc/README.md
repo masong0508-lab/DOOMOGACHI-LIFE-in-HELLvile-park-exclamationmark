@@ -8,8 +8,9 @@ The whole core is linked, boots, runs its 30 Hz loop and changes scenes,
 with the harness mailbox and logging in place (DC2). All of the 2D is drawn
 on the PVR (DC3: the 320x240 screen at 2x, matching the native runner
 pixel for pixel on the host test). The controller, analog stick and
-keyboard work, and saves go to the VMU (DC4). There is no sound or 3D yet:
-audio (DC5) and 3D (DC6-DC8) replace the placeholders in
+keyboard work, and saves go to the VMU (DC4). The music, the voice babble
+and the sound effects play through a software mixer and one AICA stream
+(DC5). There is no 3D yet: DC6-DC8 replace the placeholders in
 `src/plat_stub.c`.
 
 ## Build
@@ -22,7 +23,8 @@ make -C dc disc                        # build/doomogachi.cdi (+ 1ST_READ.BIN, I
 make -C dc test                        # ELF + CDI + check-elf + the 2D host test (+ Flycast: boot + ui-compare)
 make -C dc ui-compare                  # DC3: the six UI scripts on Flycast against the native runner
 make -C dc vmu-test                    # DC4: VMU saves, full / no VMU, first boot, stick + keyboard on Flycast
-make dc-host-test                      # the 2D layer + the VMU file system and controls on the host (no KOS needed)
+make -C dc audio-test                  # DC5: title, invaded town, combat with sound on Flycast against runner --wav
+make dc-host-test                      # the 2D layer, the VMU file system and controls, the sound mixer on the host (no KOS needed)
 make -C dc clean
 ```
 
@@ -65,7 +67,9 @@ Not yet tried on hardware.
 | `src/hcmd.c` | harness commands (save, load, scene, seed, text probe, ...), the GBA's ids and meaning |
 | `src/dc2d.h`, `src/gfx2d.c`, `src/texcache.c`, `src/font.c`, `src/pal.c` | the 2D layer (DC3), portable C: prim lists, textures, glyph pages, palettes |
 | `src/pvr2d.c` | the 2D layer's PVR backend: init, textures, palettes, submit |
-| `src/plat_stub.c` | placeholders for the platform calls DC5-DC8 implement |
+| `src/audio.c` | the sound (DC5): `plat_tone`, `plat_sample*`, the KOS stream and its thread, the mailbox counters |
+| `src/mixer.c`, `src/sfx.c`, `src/audio_int.h` | the software mixer and the effects bank (DC5), portable C: a slot of PCM per logic tick, copied out by the stream |
+| `src/plat_stub.c` | placeholders for the platform calls DC6-DC8 implement |
 | `src/dc_plat.h` | the internal interfaces, `DcMailbox` |
 | `ip.txt` | `makeip` input: original title and maker strings |
 | `tools/mkcdi.sh` | ELF -> 1ST_READ.BIN -> ISO with IP.BIN -> CDI |
@@ -74,3 +78,4 @@ Not yet tried on hardware.
 | `tests/boot.txt` | harness script: boot, BOOT -> TITLE, 30 ticks per second |
 | `tests/gfx2d/` | the 2D layer's host test: unit tests, the dual-render runner (`tee.c`), the software PVR (`swpvr.c`), `run_compare.sh` |
 | `tests/vmu/` | DC4: `test_vmu.c` (host: VMS, the file system on a simulated VMU pulled out at every write, icons, controls), the Flycast scripts and `run_flycast.sh` |
+| `tests/audio/` | DC5: `test_audio.c` (host: the mixer's units), `sndtee.c` + `run_compare.sh` (the mixer against musrender on runner scripts), `compare.py`, the Flycast scripts and `run_flycast.sh` |
