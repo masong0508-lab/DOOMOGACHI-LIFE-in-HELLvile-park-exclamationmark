@@ -30,12 +30,13 @@ TEMPLATE TEXT (what a writer types inside "..."):
                     CAPS), s (possessive 's)
     name slots      you (the player), me (the speaker), them (the resident
                     addressed), other (another participant), partner, petname (the
-                    Boreagotchi's name)
+                    Boreagotchi's name), lost (K-10: the one the speaker lost
+                    lately; the grief and comfort banks only)
       MOD           cap, up, s
     text slots      catch (the speaker's catchphrase, once a conversation)
   A filler adds its own guard: {x} needs `topic`, {x.adj} `x.adj`, {them}
   `to_res`, {other} `other`, {job} `fact.job`, {partner} `fact.partner`,
-  {mem} `fact.memory`, {catch} `catch`.
+  {mem} `fact.memory`, {catch} `catch`, {lost} `fact.loss`.
   Write "a {x}" as "{x:indef}": the compiler refuses a hand-made article
   before a concept slot.
 
@@ -56,6 +57,15 @@ COMPILED (the TB_GRAMMAR bank, little endian):
          catch[64] (CC_* of each catchphrase)
   cast   ncast x u16 roster id (the TGP_SPEAKER values)
   jobs   njobs x u16 concept of the roster job, by roster id (0 none)
+K-10 (grief is not a punchline, SCRIPT_STYLE R6): the rules `grief` and
+`grief.*` are the sincere core the generator takes for a grief or loss topic
+(a TCF_GRIEF concept) whatever the player's act; `comfort` / `comfort.*` the
+sincere reaction another resident may add. Every such rule names its reply
+act (`act:`; comfort: agree or backchannel; the generator keeps only those
+the adjacency table allows after what was said), is tagged nojoke (the
+reviewed promise: no punchline), and its lines have no register word, no
+sub-rule, no catchphrase and no LOVE face or [JMAT]. The full bank must
+answer every act that is not a safety act with a line that needs no guard.
 The TB_STRINGS bank (TBK_TXT, the story's Huffman code) holds the compiled
 template texts: the line codes as written; a sub-rule is {#N} (a symbol);
 a filler is {S[f][:mods]} with S an upper-case slot letter, f a field
@@ -73,14 +83,14 @@ CLASSES = ["open", "ask", "tell", "warm", "cool", "third", "flow", "romance", "g
 LINE_CODES = {".", "..", "...", "d", "!", "big", "/", "w", "r", "punch"}
 CONCEPT_SLOTS = {"x": "X", "food": "F", "hobby": "H", "music": "U", "fear": "E", "hate": "Z", "like": "L",
                  "mem": "K", "job": "J"}
-NAME_SLOTS = {"you": "Y", "me": "M", "them": "T", "other": "O", "partner": "P", "petname": "Q"}
+NAME_SLOTS = {"you": "Y", "me": "M", "them": "T", "other": "O", "partner": "P", "petname": "Q", "lost": "G"}
 TEXT_SLOTS = {"catch": "C"}
 FIELDS = {"adj": "a", "good": "g", "bad": "b", "assoc": "s", "it": "i", "is": "v", "has": "h", "does": "d",
           "was": "w"}
 MODS = {"pl": "p", "indef": "n", "def": "t", "lemma": "l", "cap": "c", "up": "u", "s": "s"}
 NAME_MODS = {"cap", "up", "s"}
 IMPLICIT = {"x": "topic", "them": "to_res", "other": "other", "job": "fact.job", "partner": "fact.partner",
-            "mem": "fact.memory", "catch": "catch"}
+            "mem": "fact.memory", "catch": "catch", "lost": "fact.loss"}
 FIELD_NEED = {"adj": "x.adj", "good": "x.good", "bad": "x.bad", "assoc": "x.assoc"}
 ABBREV = ("Mr", "Mrs", "Ms", "Dr", "St", "Mme", "Jr", "Sr", "Mt", "Prof", "Rev")   # talk_gen.c abbrev_at
 
@@ -103,7 +113,10 @@ CB_FACTS = {"fact.job", "fact.partner", "fact.pet", "fact.news", "fact.problem",
             "hellborn", "night", "fact.memory", "fact.complimented", "fact.insulted", "fact.promised",
             "likes_topic", "fears_topic", "fact.family"}
 # fixed entries (talk.h TGE_* order) -> rule name
-FIXED = ["open", "cb", "tag", "handoff", "safe", "end.k7", "pet", "idle"]
+FIXED = ["open", "cb", "tag", "handoff", "safe", "end.k7", "pet", "idle", "grief", "comfort"]
+# K-10: the sincere banks (talk.h TGE_GRIEF, TGE_COMFORT); a comfort line is a reaction
+GRIEF_BANKS = ("grief", "comfort")
+COMFORT_ACTS = ("AGREE", "BACKCHANNEL")
 # a safety act's core entry is named for what it does
 SAFETY_ENTRY = {"REFUSE_SEXUAL": "refuse.sexual", "REFUSE_MINOR": "refuse.minor", "REFUSE_HATE": "refuse.hate",
                 "DISTRESS": "distress", "DEFLECT_ROMANCE": "deflect.romance"}
@@ -474,7 +487,8 @@ def build_grammar(b, files, die, rel, strict=True):
     for nm in FIXED:
         entries_fixed.append(symbol_of(nm, "fixed") if match(nm) else 0xFFFF)
     if strict:
-        need = [entry_name(a) for a in acts] + list(FIXED[:7]) + ["react." + a.lower() for a in REACTS]
+        need = [entry_name(a) for a in acts] + list(FIXED[:7]) + list(GRIEF_BANKS) + \
+            ["react." + a.lower() for a in REACTS]
         miss = [n for n in need if not match(n)]
         if miss:
             die("grammar", "no rules for: %s" % ", ".join(miss))
@@ -495,6 +509,7 @@ def build_grammar(b, files, die, rel, strict=True):
                             rom.add(m)
                             work.append(m)
     strings, str_index = [], {}
+    grief_rules = []                 # K-10: (rule name, reply act, [the guard terms of each line])
     rule_rows, alt_rows, term_rows = [], [], []
     alt_where, alt_refs, alt_min = [], [], []
     for k, r in enumerate(rules):
@@ -543,6 +558,17 @@ def build_grammar(b, files, die, rel, strict=True):
             rf |= RF["sincere"]
         if "lower" in r["tags"]:
             rf |= RF["lower"]
+        grief = ts_._starts(rname, GRIEF_BANKS)
+        if grief:
+            # K-10: the sincere banks (talk_gen.c takes them for a grief or loss topic)
+            rf |= RF["sincere"]
+            if not r["act"]:
+                die(where, "K-10: %s names its reply act (act: ...)" % rname)
+            if ts_._starts(rname, ("comfort",)) and by_id[act] not in COMFORT_ACTS:
+                die(where, "K-10: a comfort line is a reaction: act: %s" % " or ".join(a.lower() for a in COMFORT_ACTS))
+            if "nojoke" not in r["tags"]:
+                die(where, "K-10: %s needs tags: nojoke (reviewed: grief is not a punchline)" % rname)
+        grief_lines = []
         if any(t.startswith("speaker=") for t in r["guard"]):
             rf |= RF["cast"]
         tic = rname.startswith("tag.") and any(t.startswith("type=") for t in r["guard"])
@@ -597,6 +623,16 @@ def build_grammar(b, files, die, rel, strict=True):
                     die(lwhere, "%s: a refusal, pet or kid bank has no register word" % rname)
                 if af & AF["catch"] and refusal:
                     die(lwhere, "%s: no catchphrase in a refusal" % rname)
+            if "fact.loss" in implicit and not grief:
+                die(lwhere, "K-10: {lost} only in the grief and comfort banks")
+            if grief:
+                if hits:
+                    die(lwhere, "K-10: a grief or comfort line has no register word")
+                if refs:
+                    die(lwhere, "K-10: a grief or comfort line has no sub-rule (all of it is sincere)")
+                if af & (AF["catch"] | AF["jmat"]) or face == env.faces.get("LOVE"):
+                    die(lwhere, "K-10: no catchphrase, [JMAT] or LOVE face in a grief or comfort line")
+                grief_lines.append((r["guard"] | opt["guard"] | opt["needs"] | implicit) - {"topic"})
             # the line's own terms (rule terms are separate)
             lt = comp.terms(opt["guard"] | opt["needs"] | implicit, lwhere)
             if ctext not in str_index:
@@ -610,6 +646,35 @@ def build_grammar(b, files, die, rel, strict=True):
             alt_refs.append(refs)
             alt_min.append(minlen)
         rule_rows.append((alt_first, len(alt_rows) - alt_first, act, rule_term_first, len(rterms), rf))
+        if grief:
+            grief_rules.append((rname, by_id[act], grief_lines))
+    if strict:
+        # K-10: a grief topic is answered sincerely whatever was said, so every act that is not
+        # a safety act has a grief line that may answer it and needs no guard but the act's own
+        # (pact= / act=, which hold or not for that act alone); and each comfort act has one
+        def free_for(terms, a, cls):
+            for t in terms:
+                neg = t.startswith("!")
+                k, _, v = t.lstrip("!").partition("=")
+                if k == "pact":
+                    hold = v == cls
+                elif k == "act":
+                    hold = v == a.lower()
+                else:
+                    return False
+                if hold == neg:
+                    return False
+            return True
+        for a, (cls, reps) in sorted(acts.items()):
+            if cls == "safety":
+                continue
+            if not any(ra in reps and any(free_for(t, a, cls) for t in lines)
+                       for nm, ra, lines in grief_rules if ts_._starts(nm, ("grief",))):
+                die("grammar", "K-10: no grief line without a guard answers %s (acts.tsv: %s)" % (a, ",".join(reps)))
+        for a in COMFORT_ACTS:
+            if not any(ra == a and any(not t for t in lines)
+                       for nm, ra, lines in grief_rules if ts_._starts(nm, ("comfort",))):
+                die("grammar", "K-10: no comfort line without a guard performs %s" % a)
     if len(alt_rows) > 0xFFFE or len(rules) > 0xFFFE or len(term_rows) > 0xFFFF:
         die("grammar", "too many rules, alternatives or terms for u16 ids")
     # the fit check: the shortest a line can be with the shortest fillers

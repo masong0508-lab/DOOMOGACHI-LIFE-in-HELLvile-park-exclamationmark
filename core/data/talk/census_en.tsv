@@ -3,7 +3,8 @@
 # contexts from it with the seed below. The residents and topics were made by
 # `core/build/talk_census --pick` (32 residents: the 16 persona types across both districts,
 # 4 of the story cast, 20 adults, 4 elders, 4 teens, 4 children; 400 topics taken in turn from
-# every talkable category). Children and teens make their rooms kid rooms by themselves.
+# every talkable category), plus the 6 grief and loss topics at the end (K-10). Children and
+# teens make their rooms kid rooms by themselves.
 # Each context also draws a mood band (7), a relationship band to the player (6), the player's
 # act (the 55 below: no romance or safety act, which the property tests cover), a topic, the
 # addressee (a resident, or everyone), a talk-memory state (4), the time of day (3) and the
@@ -504,3 +505,13 @@ topic duke_of_daisies
 topic jumbo_dice
 topic eulogist
 topic lancet_window
+
+# K-10 (grief is not a punchline, SCRIPT_STYLE R6): the grief and loss topics (the lexicon's
+# grief flag), always in the grid, so the census (check QF_K10_GRIEF) and the Q7 review sheet
+# see the sincere `grief` and `comfort` banks
+topic grief
+topic mourning
+topic condolences
+topic loss
+topic memorial
+topic funeral

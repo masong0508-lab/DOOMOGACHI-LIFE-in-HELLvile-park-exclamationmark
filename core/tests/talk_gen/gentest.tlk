@@ -102,3 +102,13 @@
   "Ha!"
 @rule core.unknown act: ask_repeat
   "Eh?"
+# ---- K-10: grief is not a punchline (a grief topic takes these, whatever the act) ----
+@rule grief.answer act: answer tags: nojoke
+  "Sincere answer."
+  "I miss {lost}." w=255
+@rule grief.dismiss act: dismiss tags: nojoke
+  "Not about this."
+@rule grief.thank act: thank tags: nojoke
+  "Thank you, truly."
+@rule comfort act: backchannel tags: nojoke
+  "We are here."

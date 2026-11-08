@@ -202,6 +202,8 @@ enum { TAGE_ANY = 0, TAGE_ADULT, TAGE_NEVER };
 #define TCF_MINOR_WORD 0x0800u   /* names a child (the safety lexicon, T4)     */
 #define TCF_MULTIWORD  0x1000u   /* the lemma has a space                       */
 #define TCF_GERUND     0x2000u   /* an activity said as "-ing" ("baking")       */
+#define TCF_GRIEF      0x4000u   /* grief or loss (K-10): talked about only in the
+                                    sincere bank, never in a joke ("funeral")   */
 
 /* category flags (TB_CATS) */
 #define TCAT_TALKABLE  0x01u     /* can be a topic                          */
@@ -487,6 +489,17 @@ int  talk_safe_lint_probe(const char *text, const TalkAudience *aud, int strict)
  * TGP_ADULTS_ONLY and !TGP_KID_PRESENT (talkc lint TK3); a concept that may
  * not be said in the room (adults-only with a child here, a never-generated
  * one) is never put in a line (talk_gen_concept_ok).
+ * K-10 (grief is not a punchline, SCRIPT_STYLE R6): a topic that is a
+ * TCF_GRIEF concept (grief, loss, funeral, ...) takes the sincere `grief`
+ * bank in place of core.<act>, whatever the act (not the safety acts, whose
+ * banks are sincere already): the core part alone, no opener, callback, tag
+ * or hand-off, a reply act the adjacency table allows. Another resident may
+ * add one line from the sincere `comfort` bank; the pet stays quiet. A
+ * TCF_GRIEF concept is never filled into any other line (an association, the
+ * talk memory). TGP_FACT_LOSS / TCB_LOSS: the speaker, a household member,
+ * lost someone in the last TALK_GRIEF_DAYS town days (family_memorial*: the
+ * newest memorial of a death, not a move away; the value is the lost one's
+ * id); {lost} says that one's name.
  *
  * A reply line has five optional parts (design 3.6):
  *   [opener] [core] [callback] [tag] [hand-off]
@@ -501,6 +514,7 @@ int  talk_safe_lint_probe(const char *text, const TalkAudience *aud, int strict)
 #define TALK_ROOM_NOVELTY  16      /* the room's ring: no line twice in a talk   */
 #define TALK_EXCHANGE_MAX  4       /* lines one exchange can produce            */
 #define TALK_SENTENCES_MAX 3       /* sentences a line (Q1, design 3.7)         */
+#define TALK_GRIEF_DAYS    28      /* town days a loss is fresh (TCB_LOSS, K-10) */
 #define TALK_TRACE_ALTS    12
 #define TALK_TRACE_FILLS   12
 
@@ -524,6 +538,7 @@ enum { TAC_OPEN = 0, TAC_ASK, TAC_TELL, TAC_WARM, TAC_COOL, TAC_THIRD, TAC_FLOW,
  * accessors when the line is made, so a callback is true by construction) */
 enum { TCB_NONE = 0, TCB_JOB, TCB_PARTNER, TCB_PET, TCB_NEWS, TCB_PROBLEM, TCB_BDAY, TCB_GHOST,
        TCB_POSSESSED, TCB_HELLBORN, TCB_NIGHT, TCB_MEMORY, TCB_LIKE, TCB_FEAR, TCB_CHAPTER, TCB_FAMILY,
+       TCB_LOSS,     /* K-10: the speaker lost a household member lately (family_memorial*) */
        TCB_COUNT };
 /* talk memory flags (T6 keeps them in the 'TALK' chunk; TalkConv.mem_flags) */
 #define TMF_COMPLIMENTED 0x01u
@@ -531,6 +546,8 @@ enum { TCB_NONE = 0, TCB_JOB, TCB_PARTNER, TCB_PET, TCB_NEWS, TCB_PROBLEM, TCB_B
 #define TMF_PROMISED     0x04u
 /* grammar entry points besides core.<act> and react.<act> */
 enum { TGE_OPEN = 0, TGE_CB, TGE_TAG, TGE_HANDOFF, TGE_SAFE, TGE_END_K7, TGE_PET, TGE_IDLE,
+       TGE_GRIEF,    /* K-10: the sincere core of a line about grief or loss */
+       TGE_COMFORT,  /* K-10: another resident's sincere reaction to it      */
        TGE_COUNT };
 
 /* Guard predicates (talkc_gen.py reads this enum: a guard term "kid_present"
@@ -550,9 +567,11 @@ enum {
     /* facts (callbacks) */
     TGP_FACT_JOB, TGP_FACT_PARTNER, TGP_FACT_PET, TGP_FACT_NEWS, TGP_FACT_PROBLEM, TGP_FACT_BDAY,
     TGP_FACT_MEMORY, TGP_FACT_COMPLIMENTED, TGP_FACT_INSULTED, TGP_FACT_PROMISED, TGP_FACT_FAMILY,
+    TGP_FACT_LOSS,                   /* K-10: TCB_LOSS holds for the speaker */
     /* the topic's forms and data */
     TGP_X_COUNTABLE, TGP_X_PROPER, TGP_X_MASS, TGP_X_PLURAL, TGP_X_GERUND, TGP_X_PERSON,
     TGP_X_ADJ, TGP_X_GOOD, TGP_X_BAD, TGP_X_ASSOC,
+    TGP_X_GRIEF,                     /* K-10: the topic is a TCF_GRIEF concept */
     /* valued */
     TGP_FIRST_VALUED,
     TGP_STANCE = TGP_FIRST_VALUED,   /* TST_*                              */

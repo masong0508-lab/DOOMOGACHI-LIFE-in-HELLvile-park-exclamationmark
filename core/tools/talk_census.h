@@ -33,6 +33,9 @@ enum {
     QF_Q6_LINT,         /* the S3 lint replaced or refuses a line           */
     QF_Q6_KIDROOM,      /* a register word, LOVE face or romance rule in a kid room */
     QF_Q6_MATURE,       /* a Mature variant without the option or the adults */
+    QF_K10_GRIEF,       /* a grief or loss topic answered with anything but a sincere core line
+                           (an opener, tag, callback, hand-off, a joke act), or a grief word in
+                           a line that is not sincere (K-10, SCRIPT_STYLE R6) */
     QF_COUNT
 };
 extern const char *const talk_census_qf_names[QF_COUNT];

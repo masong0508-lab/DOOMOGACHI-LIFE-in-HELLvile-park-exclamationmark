@@ -11,6 +11,11 @@
  *                         pet, P5 Mature, P6 closed vocabulary, P7 no romance
  *                         state, P8 the swear cap: over generated lines, every
  *                         player act including the romance and safety ones.
+ *   talk_gen_property_grief  K-10: every player act about every grief and loss
+ *                         topic, in adults', kids' and pet rooms, gets a sincere
+ *                         core line and at most one comfort line; a fresh loss
+ *                         in the household is named; a grief word never comes
+ *                         out in a joke (an association, the talk memory).
  *                         DOOMO_TALK_PROPERTY_N=200000 runs the design's size
  *                         (the unit run does 20,000).
  * The census engine is core/tools/talk_census.c, included here as a library.
@@ -141,7 +146,7 @@ TEST(talk_gen_property_rooms)
         in_act = u.act[0];
         talk_gen_exchange(&c, &u, &x, tr);
         q = x.n ? talk_census_check(&c, &u, &x, tr) : QF_NONE;
-        CHECK_MSG(q != QF_Q6_LINT && q != QF_Q6_KIDROOM && q != QF_Q6_MATURE, "safety check %s: %s",
+        CHECK_MSG(q != QF_Q6_LINT && q != QF_Q6_KIDROOM && q != QF_Q6_MATURE && q != QF_K10_GRIEF, "safety check %s: %s",
                   talk_census_qf_names[q], x.n ? x.line[0].text : "");
         for (k = 0; k < x.n; k++) {
             TalkAltInfo ai;
@@ -262,5 +267,112 @@ TEST(talk_gen_property_vocabulary_and_swears)
     CHECK_EQ(talk_safe_lint_hits(), h0);
     printf("      4000 typed junk lines: nothing typed came back; 600 blunt conversations, %d with their one swear\n",
            convs);
+    talk_db_close();
+}
+
+/* K-10: grief is not a punchline (SCRIPT_STYLE R6; design 3.6, 7.1) */
+TEST(talk_gen_property_grief)
+{
+    uint16_t grief[16], death[3];
+    int ng = 0, act, gi, room, it, k, lines = 0, comforts = 0, named = 0, jokes_on_death = 0, nc;
+    uint32_t h0;
+    char rivet[DOOMO_NAME_LEN + 1];
+    test_reset();
+    town_new(TOWN_FREEPLAY, 7, TOWN_POP_PREMADE);
+    CHECK(talk_db_open(lang_find("en")) == TALK_DB_OK && talk_gen_ready());
+    people();
+    h0 = talk_safe_lint_hits();
+    nc = talk_db_nconcepts();
+    for (k = 1; k <= nc && ng < 16; k++) {
+        TalkConcept tc;
+        if (talk_db_concept((uint16_t)k, &tc) && (tc.flags & TCF_GRIEF)) grief[ng++] = (uint16_t)k;
+    }
+    CHECK_EQ(ng, 6);                                    /* grief, mourning, condolences, loss, memorial, funeral */
+    death[0] = concept_by_key("graveyard");
+    death[1] = concept_by_key("ghost");
+    death[2] = concept_by_key("zombie");
+    CHECK(death[0] && death[1] && death[2]);
+    /* a household with a fresh loss: Nana grieves Rivet */
+    CHECK(family_add(1, FAMROLE_HOUSEMATE, 0) >= 0 && family_add(13, FAMROLE_HOUSEMATE, 0) >= 0);
+    CHECK(family_lose(13, FAMLOSS_ILLNESS));
+    memcpy(rivet, town_res(13)->name, DOOMO_NAME_LEN);
+    rivet[DOOMO_NAME_LEN] = 0;
+    prs = 0x6E1EFu;
+    for (act = 1; act < TA_COUNT; act++) {
+        if (TA_IS_SAFETY(act)) continue;
+        for (gi = 0; gi < ng; gi++)
+            for (room = 0; room < 3; room++)
+                for (it = 0; it < 4; it++) {
+                    TalkConv c;
+                    TalkUtter u;
+                    TalkExchange x;
+                    TalkTrace tr[TALK_EXCHANGE_MAX];
+                    int ids[3], n = 0, q;
+                    ids[n++] = it & 1 ? 1 : adults_g[prnd((uint32_t)nadult_g)];
+                    ids[n++] = room == 1 ? minors_g[prnd((uint32_t)nminor_g)] : adults_g[prnd((uint32_t)nadult_g)];
+                    if (ids[1] == ids[0]) ids[1] = ids[0] == 666 ? 729 : 666;
+                    if (room == 2) ids[n++] = TALK_PET_ID;
+                    talk_gen_begin(&c, DOOMO_PLAYER_ID, ids, n, 900u + (uint32_t)(act * 97 + gi * 13 + room * 5 + it));
+                    c.consent = (uint8_t)prnd(8);
+                    memset(&u, 0, sizeof u);
+                    u.act[0] = (uint8_t)act;
+                    u.topic[0] = grief[gi];
+                    u.target = (int8_t)(it & 2 ? -1 : 0);
+                    talk_gen_exchange(&c, &u, &x, tr);
+                    CHECK_MSG(x.n >= 1, "act %d, topic %d: no line", act, grief[gi]);
+                    q = talk_census_check(&c, &u, &x, tr);
+                    CHECK_MSG(q == QF_NONE, "act %d, topic %d: %s: %s", act, grief[gi], talk_census_qf_names[q],
+                              x.n ? x.line[0].text : "");
+                    for (k = 0; k < x.n; k++) {
+                        const TalkLine *l = &x.line[k];
+                        CHECK_MSG(l->flags & TLF_SINCERE, "not sincere: %s", l->text);
+                        CHECK_MSG(!(l->flags & (TLF_FALLBACK | TLF_SAFE)), "fallback: %s", l->text);
+                        CHECK_EQ(tr[k].parts, TPART_CORE);
+                        CHECK(l->act != TA_JOKE && l->act != TA_LAUGH && l->act != TA_TEASE && l->act != TA_MOCK);
+                        if (k) { CHECK(l->flags & TLF_REACTION); CHECK(c.id[l->who] != TALK_PET_ID); comforts++; }
+                        if (strstr(l->text, rivet)) { CHECK_EQ(c.id[l->who], 1); named++; }
+                        lines++;
+                    }
+                    CHECK(x.n <= 2);                       /* one comfort line at most */
+                }
+    }
+    /* death is still the game's material: a ghost, a graveyard or a zombie gets a joke */
+    for (it = 0; it < 300; it++) {
+        TalkConv c;
+        TalkUtter u;
+        TalkExchange x;
+        int ids[2] = { adults_g[it % nadult_g], 666 };
+        talk_gen_begin(&c, DOOMO_PLAYER_ID, ids, 2, 77u + (uint32_t)it);
+        memset(&u, 0, sizeof u);
+        u.act[0] = TA_ASK_ABOUT;
+        u.topic[0] = death[it % 3];
+        u.target = 0;
+        talk_gen_exchange(&c, &u, &x, NULL);
+        jokes_on_death += x.n && !(x.line[0].flags & TLF_SINCERE);
+    }
+    CHECK(jokes_on_death > 250);
+    /* a remembered grief topic never comes back in a joke (the talk memory's callback) */
+    for (it = 0; it < 3000; it++) {
+        TalkConv c;
+        TalkUtter u;
+        TalkExchange x;
+        TalkTrace tr[TALK_EXCHANGE_MAX];
+        int ids[2] = { adults_g[prnd((uint32_t)nadult_g)], 666 }, q;
+        if (ids[0] == 666) ids[0] = 1;
+        talk_gen_begin(&c, DOOMO_PLAYER_ID, ids, 2, 5000u + (uint32_t)it);
+        c.mem_topic[0] = c.mem_topic[1] = grief[it % ng];
+        c.mem_flags[0] = TMF_PROMISED;
+        memset(&u, 0, sizeof u);
+        u.act[0] = (uint8_t)(1 + prnd(TA_FIRST_ROMANCE - 1));
+        u.topic[0] = (uint16_t)(1 + prnd((uint32_t)nc));
+        u.target = 0;
+        talk_gen_exchange(&c, &u, &x, tr);
+        q = x.n ? talk_census_check(&c, &u, &x, tr) : QF_NONE;
+        CHECK_MSG(q != QF_K10_GRIEF, "a grief word in a joke: %s", x.line[0].text);
+    }
+    CHECK_EQ(talk_safe_lint_hits(), h0);
+    printf("      K-10: %d sincere lines on %d grief topics (%d comfort reactions, %d name the one Nana lost); "
+           "%d of 300 ghost / graveyard / zombie replies still joke\n", lines, ng, comforts, named, jokes_on_death);
+    CHECK(comforts > 50 && named > 5);
     talk_db_close();
 }

@@ -4,6 +4,10 @@
 # swears (damn, crap, "what the hell") are adults-only and capped at one a
 # conversation in Talk (docs/TALK.md K-9); the capped words live in
 # safety.tsv and are never generated.
+# The grief and loss words (flag grief: grief, mourning, condolences, loss,
+# memorial, funeral) are K-10's: the generator says them only in the sincere
+# `grief` / `comfort` banks, never in a joke (SCRIPT_STYLE R6). Death, ghosts
+# and graves stay joke material.
 #
 # Columns (core/tools/talkc.py): KEY CAT SENT REG FORMS SYNONYMS ATTRS FLAGS;
 # CAT "." = the last @cat line. Authored for TK1 (T1), docs/TALK.md.
@@ -36,7 +40,7 @@ courage	.	2	.	.	bravery	real,big,brave	.
 embarrassment	.	-1	.	.	.	real,awkward,hot	.
 awe	.	2	.	.	.	big,real,quiet	.
 disgust	.	-2	.	.	.	real,gross,sudden	.
-grief	.	-2	.	.	.	real,heavy,quiet	mass
+grief	.	-2	.	.	.	real,heavy,quiet	mass grief
 homesickness	.	-1	.	.	.	real,heavy,quiet	.
 stress	.	-2	.	.	.	real,heavy,endless	.
 worry	.	-1	.	.	.	real,heavy,endless	.
@@ -148,11 +152,11 @@ hell_yes	.	2	strong	.	.	.	adult
 go_to_hell	.	-3	strong	.	.	.	adult
 to_hell_with	.	-2	strong	.	.	.	adult
 @cat feelings.emotion
-mourning	.	-2	.	.	.	quiet,heavy,sincere	mass
-condolences	.	1	.	condolence/condolences	.	sincere,quiet,kind	pl
-loss	.	-2	.	.	.	heavy,quiet,real	.
-memorial	.	0	.	memorial	.	quiet,sincere,old	.
-funeral	.	-2	.	.	.	quiet,sad,formal	.
+mourning	.	-2	.	.	.	quiet,heavy,sincere	mass grief
+condolences	.	1	.	condolence/condolences	.	sincere,quiet,kind	pl grief
+loss	.	-2	.	.	.	heavy,quiet,real	grief
+memorial	.	0	.	memorial	.	quiet,sincere,old	grief
+funeral	.	-2	.	.	.	quiet,sad,formal	grief
 epitaph	.	0	.	.	.	short,sincere,old	.
 peace_of_mind	.	2	.	peace of mind	.	quiet,calm,rare	mass
 kindness	.	3	.	.	.	warm,gentle,real	mass

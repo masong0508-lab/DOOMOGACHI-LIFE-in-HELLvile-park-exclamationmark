@@ -21,7 +21,11 @@
  *     lint's probe before it goes in a line;
  *   - the grammar's guards: romance lines need adults_only & !kid_present
  *     (talkc lints TK1-TK9 refuse a bank without them), an everyday swear
- *     needs a blunt adult and is said once a conversation at most (K-9).
+ *     needs a blunt adult and is said once a conversation at most (K-9);
+ *   - K-10, grief is not a punchline (SCRIPT_STYLE R6): a grief or loss
+ *     topic (TCF_GRIEF) takes the sincere `grief` bank whatever the act, the
+ *     core part alone; a reaction to it is a sincere `comfort` line or none;
+ *     a TCF_GRIEF concept is never filled into any other line.
  *
  * Deterministic: a local DoomoRng per line, seeded from the conversation
  * seed and the line count, so the text is the same on every platform.
@@ -256,6 +260,24 @@ static int news_about(const DoomoNewsRec *n, int id)
     }
 }
 
+/* K-10: the memorial (index, newest first) of the household member the
+ * speaker lost in the last TALK_GRIEF_DAYS town days; -1 none. Only a member
+ * of the household grieves here (the memorials are the household's), and only
+ * a death: one who moved away (FAMLOSS_GONE) is not mourned as one. */
+static int loss_of(int id)
+{
+    int n, cnt;
+    uint32_t today = doomo_town.day > 0xFFFFu ? 0xFFFFu : doomo_town.day;   /* the memorial's day saturates */
+    if (id < 0 || id == TALK_PET_ID || family_role(id) == FAMROLE_NONE) return -1;
+    cnt = family_memorial_count();
+    for (n = 0; n < cnt; n++) {
+        const FamilyMemorial *m = family_memorial(n);
+        if (!m || (uint32_t)m->day + TALK_GRIEF_DAYS < today) return -1;     /* newest first: the rest are older */
+        if ((int)m->id != id && m->cause != FAMLOSS_GONE) return n;
+    }
+    return -1;
+}
+
 int talk_gen_fact(int id, int cb, uint16_t *val)
 {
     DoomoResident buf;
@@ -320,6 +342,10 @@ int talk_gen_fact(int id, int cb, uint16_t *val)
         if (i < STORY_CH1 || i > STORY_CH4) return 0;
         v = (uint16_t)i;
         break;
+    case TCB_LOSS:
+        if ((i = loss_of(id)) < 0) return 0;
+        v = family_memorial(i)->id;
+        break;
     default:
         return 0;
     }
@@ -336,6 +362,8 @@ typedef struct Gen {
     const DoomoResident *r;
     DoomoResident rbuf;
     uint8_t minor, stage, type, mood, rel, stance, cast, prob, mem_ok;
+    uint8_t grief;                /* K-10: a sincere grief or comfort line: a TCF_GRIEF concept may be said */
+    uint8_t adj;                  /* the core's rules must answer g->act (acts.tsv): the grief and comfort banks */
     uint8_t pers[PERS_COUNT];
     uint16_t topic, like_pick, job;
     uint16_t like[5];
@@ -448,8 +476,8 @@ static int assoc_pick(Gen *g, uint16_t cid, uint16_t *out)
         TalkConcept a;
         uint8_t fl = 0;
         if (ids[i] == cid || !talk_db_concept(ids[i], &a) || !talk_db_cat(a.cat, NULL, &fl) ||
-            !(fl & TCAT_TALKABLE) || !talk_gen_concept_ok(ids[i], &g->c->aud))
-            continue;
+            !(fl & TCAT_TALKABLE) || !talk_gen_concept_ok(ids[i], &g->c->aud) || ((a.flags & TCF_GRIEF) && !g->grief))
+            continue;                                         /* K-10: no grief word in a joke */
         k++;
         if (!out) return 1;
         if (rng_range(&g->rng, k) == 0) pick = i;
@@ -554,6 +582,7 @@ static int pred_raw(Gen *g, int p, int v)
     case TGP_FACT_INSULTED: return (c->mem_flags[g->who] & TMF_INSULTED) != 0;
     case TGP_FACT_PROMISED: return (c->mem_flags[g->who] & TMF_PROMISED) != 0;
     case TGP_FACT_FAMILY: return talk_gen_fact(g->sid, TCB_FAMILY, NULL);
+    case TGP_FACT_LOSS: return loss_of(g->sid) >= 0;
     case TGP_X_COUNTABLE: return g->topic && (g->tc.flags & TCF_COUNTABLE);
     case TGP_X_PROPER: return g->topic && (g->tc.flags & TCF_PROPER);
     case TGP_X_MASS: return g->topic && (g->tc.flags & TCF_MASS);
@@ -565,6 +594,7 @@ static int pred_raw(Gen *g, int p, int v)
     case TGP_X_GOOD: return g->topic && attr_pick(g, g->topic, 1, NULL);
     case TGP_X_BAD: return g->topic && attr_pick(g, g->topic, -1, NULL);
     case TGP_X_ASSOC: return g->topic && assoc_pick(g, g->topic, NULL);
+    case TGP_X_GRIEF: return g->topic && (g->tc.flags & TCF_GRIEF);
     case TGP_STANCE: return g->stance == v;
     case TGP_SPEAKER: return g->cast == v;
     case TGP_TYPE: return g->type == v;
@@ -647,6 +677,7 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid)
         GRule r;
         int a;
         if (!g_u16(g->h.refs + 2u * (uint32_t)(le16(s) + i), &rk) || !rd_rule(&g->h, rk, &r)) return -1;
+        if (g->adj && g->depth == 0 && !talk_gen_adjacent(g->act, r.act)) continue;      /* K-10 banks */
         if (!terms_ok(g, r.term_first, r.nterm)) continue;
         for (a = r.alt_first; a < r.alt_first + r.nalt; a++) {
             GAlt al;
@@ -706,6 +737,7 @@ static void fill_concept(Gen *g, uint16_t cid, char field, const char *mods)
     int which = TF_DEFAULT, start = g->len, rec = 1;
     uint16_t said = cid;
     if (!cid || !talk_db_concept(cid, &c) || !talk_gen_concept_ok(cid, &g->c->aud)) { g->fail = 1; return; }
+    if ((c.flags & TCF_GRIEF) && !g->grief) { g->fail = 1; return; }              /* K-10 */
     s[0] = 0;
     switch (field) {
     case 'a': case 'g': case 'b': {
@@ -757,11 +789,9 @@ static void fill_concept(Gen *g, uint16_t cid, char field, const char *mods)
     push_said(g, said);
 }
 
-static void fill_name(Gen *g, int id, const char *mods, const char *fallback)
+static void fill_text_name(Gen *g, const char *n, const char *mods, const char *fallback)
 {
     char s[24];
-    DoomoResident buf;
-    const char *n = id >= 0 ? name_of(id, &buf) : "";
     int start = g->len;
     if (!n || !n[0] || talk_safe_lint_probe(n, &g->c->aud, 1) != TL_OK) n = fallback;   /* a typed name that may not be said */
     if (!n) { g->fail = 1; return; }
@@ -769,6 +799,24 @@ static void fill_name(Gen *g, int id, const char *mods, const char *fallback)
     apply_mods(s, mods);
     emit(g, s, -1);
     push_fill(g, start, g->len - start, TFK_NAME, 0);
+}
+
+static void fill_name(Gen *g, int id, const char *mods, const char *fallback)
+{
+    DoomoResident buf;
+    fill_text_name(g, id >= 0 ? name_of(id, &buf) : "", mods, fallback);
+}
+
+/* K-10: {lost}, the one the speaker lost lately (a name the town or the pool
+ * still knows; none: the line is set aside) */
+static void fill_lost(Gen *g, const char *mods)
+{
+    char n[DOOMO_NAME_LEN + 1];
+    int k = loss_of(g->sid);
+    n[0] = 0;
+    if (k < 0 || !family_memorial_name(k, n)) { g->fail = 1; return; }
+    n[DOOMO_NAME_LEN] = 0;
+    fill_text_name(g, n, mods, NULL);
 }
 
 static void expand_sym(Gen *g, int sym);
@@ -816,6 +864,7 @@ static void expand_str(Gen *g, int str)
             case 'O': fill_name(g, g->other >= 0 ? g->c->id[g->other] : -1, mods, NULL); break;
             case 'P': fill_name(g, g->partner, mods, NULL); break;
             case 'Q': fill_name(g, TALK_PET_ID, mods, "Boreagotchi"); break;
+            case 'G': fill_lost(g, mods); break;
             case 'C': {
                 char s[40];
                 int start = g->len;
@@ -1041,6 +1090,7 @@ static int is_fact_pred(int p)
     case TGP_FEARS_TOPIC: return TCB_FEAR;
     case TGP_CHAPTER: return TCB_CHAPTER;
     case TGP_FACT_FAMILY: return TCB_FAMILY;
+    case TGP_FACT_LOSS: return TCB_LOSS;
     default: return TCB_NONE;
     }
 }
@@ -1134,6 +1184,10 @@ static int setup(Gen *g, TalkConv *c, int who, int to, int act, uint16_t topic)
     if (talk_gen_fact(g->sid, TCB_PARTNER, &v)) g->partner = v;
     if (talk_gen_fact(g->sid, TCB_PROBLEM, &v)) g->prob = (uint8_t)v;
     g->mem_ok = (uint8_t)(c->mem_topic[who] && talk_gen_concept_ok(c->mem_topic[who], &c->aud));
+    if (g->mem_ok) {                                         /* K-10: a remembered grief topic is no callback */
+        TalkConcept mc;
+        if (!talk_db_concept(c->mem_topic[who], &mc) || (mc.flags & TCF_GRIEF)) g->mem_ok = 0;
+    }
     /* the topic: only a concept that may be said here */
     if (topic && talk_gen_concept_ok(topic, &c->aud) && talk_db_concept(topic, &g->tc)) g->topic = topic;
     g->stance = (uint8_t)(g->topic ? talk_gen_stance(g->sid, g->topic) : TST_NEUTRAL);
@@ -1145,9 +1199,13 @@ static int setup(Gen *g, TalkConv *c, int who, int to, int act, uint16_t topic)
 static void safe_line(Gen *g, TalkLine *out, TalkTrace *tr)
 {
     Part p;
-    int sym = entry_sym(g, ENT_FIXED, TGE_SAFE);
+    int sym = entry_sym(g, ENT_FIXED, TGE_SAFE), ok;
+    uint8_t adj = g->adj;
     out->text[0] = 0;
-    if (make_part(g, sym, 0, &p)) {
+    g->adj = 0;                                  /* the safe bank answers anything */
+    ok = make_part(g, sym, 0, &p);
+    g->adj = adj;
+    if (ok) {
         copy_cap(out->text, p.text, TALK_LINE_MAX);
         if (tr) {
             memset(tr, 0, sizeof *tr);
@@ -1257,6 +1315,27 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
     return 1;
 }
 
+/* K-10: a grief or loss topic */
+static int grief_topic(const Gen *g) { return g->topic && (g->tc.flags & TCF_GRIEF); }
+
+/* K-10: the sincere line from entry `which` (TGE_GRIEF, TGE_COMFORT): the core
+ * part alone, a reply act that may answer g->act, no punchline */
+static int grief_line(Gen *g, int which, TalkLine *out, TalkTrace *tr)
+{
+    int sym = entry_sym(g, ENT_FIXED, which), r = 0;
+    g->grief = 1;
+    g->adj = 1;
+    if (sym >= 0) r = gen_line(g, sym, 0, out, tr);
+    g->adj = 0;
+    if (sym < 0 || !r) {                     /* no bank (a test grammar) or nothing fitted: a safe line */
+        if (sym < 0) safe_line(g, out, tr);
+        out->flags |= TLF_FALLBACK;
+        r = 0;
+    }
+    out->flags |= TLF_SINCERE;
+    return r;
+}
+
 int talk_gen_line(TalkConv *c, int who, int to, int act, uint16_t topic, TalkLine *out, TalkTrace *tr)
 {
     Gen g;
@@ -1268,6 +1347,12 @@ int talk_gen_line(TalkConv *c, int who, int to, int act, uint16_t topic, TalkLin
         sym = entry_sym(&g, ENT_FIXED, TGE_PET);
         r = gen_line(&g, sym, 0, out, tr);
         out->act = TA_BACKCHANNEL;
+        return r;
+    }
+    if (grief_topic(&g) && !TA_IS_SAFETY(act)) {              /* K-10: grief is not a punchline */
+        r = grief_line(&g, TGE_GRIEF, out, tr);
+        out->who = (int8_t)who;
+        out->to = (int8_t)to;
         return r;
     }
     sym = act > 0 && act < TA_COUNT ? entry_sym(&g, ENT_CORE, act) : -1;
@@ -1286,6 +1371,16 @@ static int react_line(TalkConv *c, int who, const TalkLine *prev, uint16_t topic
     int k, act = 0, sym = -1, st, pst = prev->stance, w, best = -1;
     uint32_t tot = 0;
     if (!setup(&g, c, who, prev->who, prev->act, topic)) return 0;
+    if (grief_topic(&g) || (prev->flags & TLF_SINCERE)) {
+        /* K-10: after a sincere line, a sincere comfort line or nothing (the pet stays quiet) */
+        if (c->id[who] == TALK_PET_ID || !grief_topic(&g) ||
+            !(talk_gen_adjacent(prev->act, TA_AGREE) || talk_gen_adjacent(prev->act, TA_BACKCHANNEL)))
+            return 0;
+        k = grief_line(&g, TGE_COMFORT, out, tr);
+        out->flags |= TLF_REACTION;
+        if (!k) { memset(out, 0, sizeof *out); return 0; }  /* no comfort fitted: no reaction at all */
+        return k;
+    }
     if (c->id[who] == TALK_PET_ID) {
         if (!talk_gen_adjacent(prev->act, TA_BACKCHANNEL)) return 0;
         k = gen_line(&g, entry_sym(&g, ENT_FIXED, TGE_PET), 0, out, tr);
@@ -1367,7 +1462,7 @@ static int exchange(TalkConv *c, TalkUtter *u, TalkExchange *x, TalkTrace *tr)
 {
     TalkAudience aud;
     DoomoRng rng;
-    int ids[TALK_PARTS_MAX], k, g, target, target_id, resp, nre = 0;
+    int ids[TALK_PARTS_MAX], k, g, target, target_id, resp, nre = 0, maxre;
     if (!x) return 0;
     memset(x, 0, sizeof *x);
     x->first = -1;
@@ -1414,8 +1509,10 @@ static int exchange(TalkConv *c, TalkUtter *u, TalkExchange *x, TalkTrace *tr)
     if (g == TG_PASS && TA_IS_ROMANCE(u->act[0]) && !((c->consent >> resp) & 1))
         c->refused |= (uint8_t)(1u << resp);                                         /* a no ends it (K-5) */
     if (g != TG_PASS || TA_IS_ROMANCE(u->act[0]) || c->id[resp] == TALK_PET_ID) return x->n;
-    /* reactions between the residents: each other one may chime in, two at most */
-    for (k = 0; k < c->n && x->n < TALK_EXCHANGE_MAX && nre < 2; k++) {
+    /* reactions between the residents: each other one may chime in, two at most
+     * (one after a sincere grief line, K-10: a comfort line, no pile-on) */
+    maxre = (x->line[0].flags & TLF_SINCERE) ? 1 : 2;
+    for (k = 0; k < c->n && x->n < TALK_EXCHANGE_MAX && nre < maxre; k++) {
         const TalkLine *prev = &x->line[x->n - 1];
         DoomoResident buf;
         const DoomoResident *r;

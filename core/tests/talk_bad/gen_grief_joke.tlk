@@ -1,0 +1,3 @@
+# expect: K-10: grief.answer needs tags: nojoke
+@rule grief.answer act: answer
+  "Oh no, a funeral. Pass the snacks."

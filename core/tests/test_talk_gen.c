@@ -485,3 +485,107 @@ TEST(talk_gen_deterministic)
     for (i = 0; i < 64; i++) CHECK_STR(line(&b, i % 3, -1, TA_COMPLIMENT, pie), ta[i]);
     talk_db_close();
 }
+
+/* ---- K-10: grief is not a punchline (SCRIPT_STYLE R6; design 3.6, 7.1) ---------
+ * A grief or loss topic takes the sincere `grief` bank whatever the act (the
+ * core alone, an act that may answer), a reaction is a `comfort` line or none,
+ * the pet stays quiet, and a household member's fresh loss is a fact. */
+TEST(talk_gen_grief)
+{
+    static const uint8_t acts[3] = { TA_ASK_REPEAT, TA_JOKE, TA_ENCOURAGE };
+    static const char *const sincere[3] = { "Sincere answer.", "Not about this.", "Thank you, truly." };
+    TalkConv c;
+    TalkLine l;
+    TalkTrace tr[TALK_EXCHANGE_MAX];
+    TalkUtter u;
+    TalkExchange x;
+    TalkConcept tc;
+    uint16_t funeral, grief, pie, v = 0;
+    int i, k, nmiss = 0, reactions = 0, firsts = 0;
+    char miss[48];
+    uint32_t h0 = talk_safe_lint_hits(), day0;
+    premade_town();
+    CHECK(open_gentest());
+    funeral = concept("funeral");
+    grief = concept("grief");
+    pie = concept("pie");
+    CHECK(funeral && grief && pie);
+    CHECK(talk_db_concept(funeral, &tc) && (tc.flags & TCF_GRIEF));
+    CHECK(talk_db_concept(grief, &tc) && (tc.flags & TCF_GRIEF));
+    CHECK(talk_db_concept(pie, &tc) && !(tc.flags & TCF_GRIEF));
+    /* whatever the act: the sincere line, the core part alone, an act that may answer */
+    conv(&c, ID_NANA, ID_VEX, ID_GRUMB);
+    c.plain = 0;                                             /* openers, tags, hand-offs would be allowed */
+    for (i = 0; i < 90; i++) {
+        talk_gen_line(&c, i % 3, -1, acts[i % 3], i & 1 ? funeral : grief, &l, &tr[0]);
+        CHECK_STR(l.text, sincere[i % 3]);
+        CHECK(l.flags & TLF_SINCERE);
+        CHECK(!(l.flags & (TLF_FALLBACK | TLF_HANDOFF)));
+        CHECK_EQ(tr[0].parts, TPART_CORE);
+        CHECK(talk_gen_adjacent(acts[i % 3], l.act));
+    }
+    /* an act no grief line here may answer: a quiet safe line, never the joke bank */
+    talk_gen_line(&c, 0, -1, TA_GREET, funeral, &l, &tr[0]);
+    CHECK_STR(l.text, "Anyway.");
+    CHECK((l.flags & TLF_SINCERE) && (l.flags & TLF_FALLBACK));
+    /* the safety acts keep their own (sincere) banks; another topic keeps its jokes */
+    CHECK_STR(line(&c, 0, -1, TA_DISTRESS, funeral), "Please talk to someone you trust.");
+    talk_gen_line(&c, 0, -1, TA_JOKE, pie, &l, NULL);
+    CHECK_MSG(strstr(l.text, "Likes: ") && !(l.flags & TLF_SINCERE), "%s", l.text);
+    /* a remembered grief topic is no callback, and the memory survives */
+    c.mem_topic[0] = funeral;
+    talk_gen_line(&c, 0, -1, TA_JOKE, pie, &l, &tr[0]);
+    for (k = 0; k < tr[0].nsaid; k++) CHECK(tr[0].said[k] != funeral);
+    /* the loss fact: a household member who lost someone lately (not a move away) */
+    CHECK(!talk_gen_fact(ID_NANA, TCB_LOSS, &v));
+    CHECK(family_add(ID_NANA, FAMROLE_HOUSEMATE, 0) >= 0);
+    CHECK(family_add(ID_RIVET, FAMROLE_HOUSEMATE, 0) >= 0);
+    CHECK(!talk_gen_fact(ID_NANA, TCB_LOSS, &v));
+    CHECK(family_lose(ID_RIVET, FAMLOSS_ILLNESS));
+    CHECK(talk_gen_fact(ID_NANA, TCB_LOSS, &v));
+    CHECK_EQ(v, ID_RIVET);
+    CHECK(!talk_gen_fact(ID_VEX, TCB_LOSS, &v));              /* not of the household */
+    CHECK(family_add(5, FAMROLE_HOUSEMATE, 0) >= 0);           /* Bonejangles moves in, then away */
+    CHECK(family_lose(5, FAMLOSS_GONE));
+    CHECK(talk_gen_fact(ID_NANA, TCB_LOSS, &v));
+    CHECK_EQ(v, ID_RIVET);                                    /* a move away is no loss to mourn */
+    snprintf(miss, sizeof miss, "I miss %s.", town_res(ID_RIVET)->name);
+    conv(&c, ID_NANA, ID_VEX, -1);
+    for (i = 0; i < 20; i++) {
+        const char *t = line(&c, 0, -1, TA_ASK_REPEAT, funeral);
+        CHECK_MSG(strcmp(t, miss) == 0 || strcmp(t, "Sincere answer.") == 0, "%s", t);
+        nmiss += strcmp(t, miss) == 0;
+        CHECK_STR(line(&c, 1, -1, TA_ASK_REPEAT, funeral), "Sincere answer.");   /* Vex lost no one */
+    }
+    CHECK(nmiss >= 5);
+    day0 = doomo_town.day;
+    doomo_town.day += TALK_GRIEF_DAYS + 1;                    /* a month on: no longer fresh */
+    CHECK(!talk_gen_fact(ID_NANA, TCB_LOSS, &v));
+    for (i = 0; i < 10; i++) CHECK_STR(line(&c, 0, -1, TA_ASK_REPEAT, funeral), "Sincere answer.");
+    doomo_town.day = day0;
+    /* the exchange: one comfort line at most after it, and the pet stays quiet */
+    {
+        int ids[3] = { ID_NANA, ID_VEX, TALK_PET_ID };
+        talk_gen_begin(&c, DOOMO_PLAYER_ID, ids, 3, 4242u);
+    }
+    for (i = 0; i < 200; i++) {
+        utter(&u, TA_ASK_REPEAT, i & 1 ? funeral : grief, i % 3 == 2 ? -1 : i % 2, 0);
+        talk_gen_exchange(&c, &u, &x, tr);
+        CHECK(x.n >= 1 && x.n <= 2);
+        CHECK(x.line[0].flags & TLF_SINCERE);
+        if (c.id[x.line[0].who] != TALK_PET_ID) firsts++;
+        for (k = 1; k < x.n; k++) {
+            CHECK_STR(x.line[k].text, "We are here.");
+            CHECK(x.line[k].flags & TLF_REACTION);
+            CHECK(x.line[k].flags & TLF_SINCERE);
+            CHECK(c.id[x.line[k].who] != TALK_PET_ID);
+            CHECK(talk_gen_adjacent(x.line[k - 1].act, x.line[k].act));
+            CHECK_EQ(tr[k].parts, TPART_CORE);
+            reactions++;
+        }
+    }
+    printf("      200 grief exchanges: %d sincere first lines, %d comfort reactions\n", firsts, reactions);
+    CHECK(firsts > 100 && reactions > 10);
+    CHECK_EQ(talk_safe_lint_hits(), h0);
+    talk_db_close();
+}

@@ -1,0 +1,5 @@
+# expect: K-10: a grief or comfort line has no sub-rule
+@rule grief.answer act: answer tags: nojoke
+  "I am sorry. {bit}"
+@rule bit
+  "Ha."

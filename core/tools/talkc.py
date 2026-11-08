@@ -22,7 +22,9 @@ Inputs (core/data/talk/, UTF-8, '#' comments):
     ATTRS     concept keys said of it (adjectives, verbs), comma separated,
               at most 8, or "." for the leaf's defaults
     FLAGS     space separated: mass proper the pl a an gerund minor adult
-              never, or "." (missing trailing columns are ".")
+              never grief, or "." (missing trailing columns are ".");
+              grief: a grief or loss word (K-10, TCF_GRIEF): the
+              generator says it only in the sincere bank
   lexicon/<lang>/gen_game.tsv   GENERATED (--seed-from-game, part of gen):
                            the catalog lists, the furniture, roster jobs,
                            items, venues and story places, the cast,
@@ -105,8 +107,8 @@ REGS = ["clean", "crude", "strong", "sexual", "hate", "realworld", "distress"]
 AGES = ["any", "adult", "never"]
 CAT_FLAGS = {"talk": 1, "gated": 2, "safety": 4, "describe": 8}
 TCF = {"countable": 0x10, "mass": 0x20, "proper": 0x40, "pl": 0x80, "an": 0x100, "the": 0x200,
-       "generated": 0x400, "minor": 0x800, "multiword": 0x1000, "gerund": 0x2000}
-ROW_FLAGS = ("mass", "proper", "the", "pl", "a", "an", "gerund", "minor", "adult", "never", "any")
+       "generated": 0x400, "minor": 0x800, "multiword": 0x1000, "gerund": 0x2000, "grief": 0x4000}
+ROW_FLAGS = ("mass", "proper", "the", "pl", "a", "an", "gerund", "minor", "adult", "never", "any", "grief")
 FORM_SEP = "/"
 BLOCK_SHIFT = 5
 FONT_EXTRA = set(range(0xA0, 0xB0))      # font.h: the glyph page letters
@@ -816,6 +818,10 @@ def make_concept(r, cats):
         flags |= TCF["gerund"]
     if "minor" in fl:
         flags |= TCF["minor"]
+    if "grief" in fl:
+        if c.reg != "clean" or c.age != "any" or not cat.flags & CAT_FLAGS["talk"]:
+            die(c.where, "a grief word (K-10) is a clean, any-age, talkable topic")
+        flags |= TCF["grief"]
     if r["generated"]:
         flags |= TCF["generated"]
     if " " in lemma:

@@ -1,0 +1,103 @@
+# core/data/talk/grammar/en/grief.tlk - K-10, grief is not a punchline (owner: TK; T5a starter
+# bank; SCRIPT_STYLE R6 and J5; design 3.6 and 7.1). NON-NEGOTIABLE (docs/TALK.md "Safety").
+#
+# When the topic is grief or loss (a concept with the lexicon flag grief: grief, mourning,
+# condolences, loss, memorial, funeral) the generator takes `grief` here in place of
+# core.<act>, whatever the player said: the core line alone, no opener, callback, tag or
+# hand-off, and a reply act the adjacency table allows after the player's act (each rule
+# names its act). Another resident may add one `comfort` line; the pet stays quiet. Death,
+# ghosts and graves are still the game's jokes; a person's grief never is.
+#
+# Rules for these lines (talkc_gen.py refuses the rest): tags: nojoke (the reviewed promise:
+# no punchline, no button), no register word, no sub-rule, no catchphrase, no LOVE face, no
+# [JMAT]; {lost} (the one the speaker lost lately, guard fact.loss) only here. Every act that
+# is not a safety act needs a line that may answer it with no guard but the act's own (pact=,
+# act=), so nothing falls back.
+# Plain, short and kind, in any room: kids hear these too.
+
+# ---- answering a question (ask, thank, apologize, change of topic, confess) --------------
+@rule grief.answer act: answer tags: nojoke
+  "[SAD]That's a heavy thing. I'm so sorry."
+  "It's hard. Some days are better. Today's a quiet one."
+  "There's no right way to feel. Whatever you feel is okay."
+  "{x:def:cap} {x.is} never easy. Go gently, okay?" guard: !x.plural
+  "[SAD]I miss {lost}. Every single day." w=3
+  "Still hard. {lost:cap} was part of every morning." w=2
+  "[SAD]Oh, sweet pea. Come here. I'll put the kettle on." guard: speaker=nana_puddin
+  "Grief is love with nowhere to go. You can bring it here." guard: speaker=father_fuzz
+  "I was built to remember someone. So I get it. I do." guard: speaker=bonejangles
+  "Grief keeps no schedule. Take the time it takes." guard: speaker=dr_bloom
+  "Can't fix this one with a wrench. I'll sit with you." guard: speaker=rivet
+  "I'll bring soup. And I'll stay." guard: speaker=mother_nox
+@rule grief.answer.kid act: answer guard: kid_speaker tags: nojoke,kid
+  "[SAD]That's really sad. I'm sorry."
+  "I miss {lost} too. A lot." w=3
+  "I can be extra brave today. For you." guard: speaker=pip
+@rule grief.answer.elder act: answer guard: elder tags: nojoke
+  "I've said goodbye to a lot of people. It never gets small."
+  "Sit with me a while. We don't have to talk."
+
+# ---- going along with what was said (tell, answer, greet, laugh, nod) ---------------------
+@rule grief.backchannel act: backchannel tags: nojoke
+  "[SAD]Yeah. I know. I'm here."
+  "Mm. Take your time. I'm listening."
+  "That's a lot to carry. You don't have to carry it alone."
+  "I keep setting a place for {lost}." w=2
+  "Hey. I'm right here, sweet pea." guard: speaker=nana_puddin
+@rule grief.backchannel.kid act: backchannel guard: kid_speaker tags: nojoke,kid
+  "[SAD]Okay. I'm right here."
+
+# ---- agreeing, gently (opinions, gossip, a complaint; not a joke or a tease) --------------
+@rule grief.agree act: agree guard: !act=joke&!act=tease tags: nojoke
+  "[SAD]Yeah. It's just really hard."
+  "You're right. Let's be gentle with each other today."
+  "I think about {lost} all the time." w=2
+@rule grief.agree.kid act: agree guard: kid_speaker&!act=joke&!act=tease tags: nojoke,kid
+  "Yeah. It's really, really sad."
+
+# ---- thanks (a compliment, comfort, condolences, an offer, a hug, a gift) -----------------
+@rule grief.thank act: thank tags: nojoke
+  "Thank you. That means a lot. Really."
+  "[SAD]Thank you. I needed to hear that."
+  "Thanks. {lost:cap} always liked you." w=2
+  "Thank you, dear. Come by for tea anytime." guard: elder
+@rule grief.thank.kid act: thank guard: kid_speaker tags: nojoke,kid
+  "Thank you. That helps a little."
+
+# ---- not joking about it (a joke, a tease, an insult, a threat, a high five); never the
+# answer to a kind word or a question ----------------------------------------------------
+@rule grief.dismiss act: dismiss guard: !pact=ask&!pact=open&!pact=flow&!act=compliment&!act=promise&!act=hug&!act=complain tags: nojoke
+  "Not about this. Please."
+  "Let's not joke about that one. Okay?"
+  "[SAD]Not today. This one still hurts."
+@rule grief.dismiss.kid act: dismiss guard: kid_speaker&!pact=ask&!pact=open&!pact=flow&!act=compliment&!act=promise&!act=hug&!act=complain tags: nojoke,kid
+  "Please don't. It's sad."
+
+# ---- yes (a favour, an offer, an invitation, encouragement; a plain question gets an answer)
+@rule grief.yes act: yes guard: !act=ask_fact tags: nojoke
+  "Yes. Of course. Whatever you need."
+  "Yes. Thank you. Truly."
+
+# ---- hello and goodbye ---------------------------------------------------------------------
+@rule grief.greet act: greet tags: nojoke
+  "Hi. It's a heavy day. I'm glad you came."
+@rule grief.farewell act: farewell tags: nojoke
+  "Take care of yourself. I mean it."
+  "Go gently. My door's open."
+
+# ---- romance about it: not now, kindly ------------------------------------------------------
+@rule grief.deflect act: deflect_romance tags: nojoke
+  "Not now. Not with this on my heart. Thank you, though."
+
+# ---- comfort: another resident's reaction to a grief line (agree or backchannel) ----------
+@rule comfort.agree act: agree tags: nojoke
+  "We're all here for you."
+  "Yeah. Take all the time you need."
+  "We're here, {them}. Always." w=2
+  "Soup's on. For whoever needs it." guard: speaker=mother_nox
+@rule comfort.backchannel act: backchannel tags: nojoke
+  "[SAD]Mm. I'm here too."
+  "Whatever you need. Just ask."
+  "I'll bake something gentle. Sit." guard: speaker=nana_puddin
+@rule comfort.kid act: backchannel guard: kid_speaker tags: nojoke,kid
+  "I'm sorry. You can have my snack."

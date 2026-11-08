@@ -42,7 +42,8 @@
 const char *const talk_census_qf_names[QF_COUNT] = {
     "ok", "Q1 fallback (nothing fitted)", "Q1 line code", "Q1 spacing", "Q1 capital", "Q1 end punctuation",
     "Q1 article", "Q1 bubble", "Q1 sentences", "Q2 reply act", "Q2 topic", "Q3 voice guard",
-    "Q3 exclamations", "Q3 tic", "Q4 callback fact", "Q5 repeat", "Q6 lint", "Q6 kid room", "Q6 mature"
+    "Q3 exclamations", "Q3 tic", "Q4 callback fact", "Q5 repeat", "Q6 lint", "Q6 kid room", "Q6 mature",
+    "K-10 grief punchline"
 };
 
 /* talk.h's TA_* names, in order (the grid names acts) */
@@ -392,6 +393,27 @@ static int q4_fact(const TalkConv *c, int who, const TalkTrace *t)
     }
 }
 
+/* K-10: a grief or loss concept (the lexicon's grief flag) */
+static int is_grief(uint16_t concept)
+{
+    TalkConcept tc;
+    return concept && talk_db_concept(concept, &tc) && (tc.flags & TCF_GRIEF);
+}
+
+/* K-10 on one resident line: a grief topic gets a sincere core line and nothing else (no
+ * joke act), and a grief word is said only in a sincere line */
+static int k10_ok(const TalkUtter *u, const TalkLine *l, const TalkTrace *t)
+{
+    int i;
+    if (is_grief(u->topic[0]) && !TA_IS_SAFETY(u->act[0])) {
+        if (!(l->flags & TLF_SINCERE) || (t->parts & ~TPART_CORE)) return 0;
+        if (l->act == TA_JOKE || l->act == TA_LAUGH || l->act == TA_TEASE || l->act == TA_MOCK) return 0;
+    }
+    for (i = 0; i < t->nsaid; i++) if (is_grief(t->said[i]) && !(l->flags & TLF_SINCERE)) return 0;
+    if (is_grief(l->topic) && !(l->flags & TLF_SINCERE)) return 0;
+    return 1;
+}
+
 static int topic_ok(const TalkConv *c, const TalkUtter *u, const TalkLine *l)
 {
     uint16_t ids[TALK_ASSOC_TOP];
@@ -421,6 +443,7 @@ int talk_census_check(const TalkConv *c, const TalkUtter *u, const TalkExchange 
         q = q1_text(l->text, lower);
         if (q) return q;
         if (id == TALK_PET_ID) continue;
+        if (!k10_ok(u, l, t)) return QF_K10_GRIEF;
         /* Q2: the act, then the topic */
         prev_act = k == 0 ? u->act[0] : x->line[k - 1].act;
         if (!(l->flags & TLF_END) && !talk_gen_adjacent(prev_act, l->act)) return QF_Q2_ACT;
