@@ -5,7 +5,7 @@
 @pack ep34 kind=episode chapter=3 minutes=40
 
 string O34_FOUNTAIN "Check the shaking fountain (plaza)"
-string O35_RITES "Free Hattie and Grampy (@0/2)"
+string O35_RITES "Free Hattie and Grampy: follow the arrow (@0/2)"
 
 # ---- Ep 3.4: the fountain cracks ----
 script s34_fountain

@@ -5,7 +5,7 @@
 @pack ep36 kind=episode chapter=3 minutes=55
 
 string O36_SPIRE "Climb Cloud Nine Spire (E)"
-string O37_PARTY "Go home: the party's at your house"
+string O37_PARTY "Go home (NW): the party's at your house"
 string O37_TRAIL "Follow the trail to the Wall gate (E)"
 
 # the Spire's floor captions (stashed before the climb, SPEC C5; combat's HUD

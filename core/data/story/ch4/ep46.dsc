@@ -8,8 +8,8 @@
 # is never undercut (SF sec.7 rule 7).
 @pack ep46 kind=episode chapter=4 minutes=35
 
-string OF4_FETCH "Fetch the Mayor from the Town Hall (HaHaland)"
-string O46_SUMMIT "Take the Mayor to Mother Nox's table"
+string OF4_FETCH "Fetch the Mayor from Town Hall (HaHaland, N)"
+string O46_SUMMIT "Take the Mayor to Mother Nox (Hellvile, W)"
 
 # ---- the Say It pool (P46_00 .. P46_47: one unsaid thing each) ----
 string P46_00 "I'm scared of the dark."

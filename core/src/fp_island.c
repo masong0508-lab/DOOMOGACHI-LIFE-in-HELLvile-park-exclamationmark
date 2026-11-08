@@ -78,7 +78,7 @@ static const Loc locs[] = {
       "Ferris", "Step right up! Every ride is a winner!" },
     { "Library", "Collections, records, music.", LOC_LIBRARY, 98, 162, ACTLOC_LIBRARY, NOLOC,
       "Shushana", "Shhh... welcome. Books are friends." },
-    { "Hellvile Park", "Where both sides could meet.", LOC_PARK, 128, 154, NOLOC, ACT_PARK,
+    { "The Park", "Where both sides could meet.", LOC_PARK, 128, 154, NOLOC, ACT_PARK,
       "Rusty", "Nice day for the park, eh?" },
     { "Lake of Fire", "Toasty fishing on the bad side.", LOC_LAKE, 212, 180, ACTLOC_LAKE, NOLOC,
       "Capt. Hooky", "Arr! The lava's bitin' today!" },
@@ -317,7 +317,7 @@ static void build_menu(const Loc *L)
         add_here(L->act);
         break;
     case LOC_ARENA:
-        e = add(E_ARENA, ICON_GUN, "Fight demon waves", "Survive wave after wave. Brutal or cute.");
+        e = add(E_ARENA, ICON_GUN, "Enter the Demon Arena", "Survive wave after wave. Brutal or cute.");
         if (e) e->enabled = (uint8_t)!arena_locked();
         add_activities(ACTLOC_ARENA, 1);
         break;
@@ -326,8 +326,8 @@ static void build_menu(const Loc *L)
         add_here(L->act);
         break;
     case LOC_PARK:
-        add(E_STROLL, ICON_ARROW_R, unlock_mode_ok(MODE_UNITED_PARK) ? "Stroll the park" : "Stroll HaHaland",
-            "Walk around the island yourself.");
+        add(E_STROLL, ICON_ARROW_R, unlock_mode_ok(MODE_UNITED_PARK) ? "Stroll the park" : "Walk around HaHaland",
+            "Walk around the town yourself.");
         add(E_PICNIC, ICON_FOOD, "Picnic (H$120)", "Everyone at the park gets snacks and smiles.");
         add_here(L->act);
         break;
@@ -562,7 +562,7 @@ static void picnic(void)
         n++;
     }
     progress_add(PROG_MEALS_SERVED, n);
-    doomo_snprintf(buf, sizeof(buf), "Picnic in Hellvile Park! %d citizens munched sandwiches.", n);
+    doomo_snprintf(buf, sizeof(buf), "Picnic in the park! %d citizens munched sandwiches.", n);
     sim_news_push(buf);
     audio_sfx(SFX_HAPPY);
     fp_fx_burst(fp_mx(128), fp_my(140), FX_CONFETTI, 24);

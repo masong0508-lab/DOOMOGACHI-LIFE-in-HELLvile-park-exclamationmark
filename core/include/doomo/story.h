@@ -203,6 +203,8 @@ enum { PLACE_NONE, PLACE_HOME, PLACE_TOWN_HALL, PLACE_CAFE, PLACE_SHOP,
        PLACE_STAGE, PLACE_STALLS,
        PLACE_COUNT };
 const char *story_place_name(int place);
+/* clarity C7: the current goal in words ("Nana, Brimstone Bites", "Town Plaza", "Hellvile"); "" = none */
+const char *story_goal_place(char *buf, int cap);
 /* Open a place's menu (as if its door was used). */
 void story_enter_place(int place);
 

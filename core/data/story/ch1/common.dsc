@@ -8,19 +8,19 @@
 @pack ch1 kind=common chapter=1
 
 # ---- the HUD (story_ch12.c; @0 = a count) ----
-string OBJ_C1_MAYOR "Say hi to Mayor Giggs at the fountain"
-string OBJ_C1_KEY "Get your key from Nana at Brimstone Bites"
+string OBJ_C1_MAYOR "Say hi to Mayor Giggs at the fountain (plaza)"
+string OBJ_C1_KEY "Get your key from Nana at Brimstone Bites (NW)"
 string OBJ_C1_HOME "Go home: the pink door, Hillvile Lane (NW)"
-string OBJ_C1_HATCH "Stay with the egg. It's hatching!"
+string OBJ_C1_HATCH "Stay with the egg. It's hatching! (home)"
 string OBJ_C1_PIP "Find the crying kid at the playground (SW)"
-string OBJ_C1_BUNNY "Search the beach for Mr. Flops"
-string OBJ_C1_BUNNY_RETURN "Bring Mr. Flops back to Pip"
-string OBJ_C1_FRIENDS "Meet Steamy, Hattie and Grampy (@0/3)"
-string OBJ_C1_FRIENDS_DONE "Get a cupcake at Nana's bakery"
-string OBJ_C1_CUPCAKE_LULLA "Take the cupcake to Miss Lulla (park)"
-string OBJ_C1_PARTY "Be home by six. No reason. (Party.)"
+string OBJ_C1_BUNNY "Search the beach for Mr. Flops (S)"
+string OBJ_C1_BUNNY_RETURN "Bring Mr. Flops back to Pip (SW)"
+string OBJ_C1_FRIENDS "Meet Steamy, Hattie and Grampy (park, S, @0/3)"
+string OBJ_C1_FRIENDS_DONE "Get a cupcake at Brimstone Bites (NW)"
+string OBJ_C1_CUPCAKE_LULLA "Take the cupcake to Miss Lulla (park, S)"
+string OBJ_C1_PARTY "Be home (NW) by six. No reason. (Party.)"
 string OBJ_C1_WALL "Check the thumping at the Wall (E)"
-string OBJ_C1_HOME_NIGHT "Go home. It's late. It's always late."
+string OBJ_C1_HOME_NIGHT "Go home (NW). It's late. It's always late."
 
 # ---- the cast's idle lines in Chapter 1 (story_talk.c) ----
 string IDLE_MAYOR_1A "Tea party at four! Bring a hat. Bring a spare hat. Hats get nervous."

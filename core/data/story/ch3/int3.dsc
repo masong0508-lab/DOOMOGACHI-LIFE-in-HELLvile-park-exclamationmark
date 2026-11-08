@@ -5,8 +5,8 @@
 # music sneaking back one instrument at a time, then the Mayor: "Now."
 @pack int3 kind=episode chapter=3 minutes=8
 
-string OI3_HOME "Go home."
-string OI3_KNOCK "Someone is knocking (@0/7)"
+string OI3_HOME "Go home (NW)."
+string OI3_KNOCK "Someone is knocking (home, @0/7)"
 
 script si3_home
   [SILENCE]

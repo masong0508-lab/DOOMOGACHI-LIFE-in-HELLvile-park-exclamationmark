@@ -6,7 +6,7 @@
 # waves spawn at the four corner portals and the THING_SPAWNER marks.
 # Legend and overlays: see README.md. Compiled by tools/mapc.py.
 map arena
-title "The Demon Arena"
+title "Demon Arena"
 kind arena
 sky HELL
 music INVASION

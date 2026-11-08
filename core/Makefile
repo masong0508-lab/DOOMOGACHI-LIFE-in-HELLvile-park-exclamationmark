@@ -145,6 +145,9 @@ STORY_ES_FLAGS_strict  :=
 story-check:
 	@$(PYTHON) $(CORE)/tools/textpack.py --check-es $(STORY_ES_FLAGS_$(STORY_ES))
 	@$(PYTHON) $(CORE)/tools/story_opslock.py --check
+	@# --- CL6 (clarity C7 + C16): every objective names where, fits the pill; one name per place ---
+	@$(PYTHON) $(CORE)/tools/story_wayfind.py
+	@$(PYTHON) $(CORE)/tools/story_wayfind.py --selftest
 	@$(PYTHON) $(CORE)/tools/textpack.py --sizes
 	@# --- E5: the PG-21 register lint (nothing adult near a kid) and its seeded bad tree ---
 	@$(PYTHON) $(CORE)/tools/story_register.py

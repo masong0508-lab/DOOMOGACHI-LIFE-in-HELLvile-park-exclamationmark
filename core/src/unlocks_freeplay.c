@@ -27,7 +27,7 @@ const DoomoUnlock doomo_unlocks_freeplay[] = {
     ACH(UL_FP_LANDLORD, 0, "Landlord", "Collect rent at Town Hall"),
     ACH(UL_FP_NAMER, 1, "Island Namer", "Give your island a name"),
     ACH(UL_FP_FIRST_CITIZEN, 2, "Hello, Neighbour!", "Create a citizen on a free play island"),
-    ACH(UL_FP_PICNIC, 3, "Picnic Planner", "Throw a picnic in Hellvile Park"),
+    ACH(UL_FP_PICNIC, 3, "Picnic Planner", "Throw a picnic in the park"),
     ACH(UL_FP_SHOPAHOLIC, 4, "Shopaholic", "Spend 500 H$ in one go"),
     ACH(UL_FP_BLACK_MARKET, 5, "Shady Dealings", "Buy something at the black market"),
     ACH(UL_FP_GARDENER, 6, "Graveyard Gardener", "Leave flowers on a grave"),
@@ -52,7 +52,7 @@ const DoomoUnlock doomo_unlocks_freeplay[] = {
 
     /* ---- creator parts that come with an achievement ---- */
     PART(UP_BERET, CLIST_HAT, HAT_BERET, "Artsy Beret", "Give your island a name", 0, 0),
-    PART(UP_BANDANA, CLIST_HAT, HAT_BANDANA, "Picnic Bandana", "Throw a picnic in Hellvile Park", 0, 0),
+    PART(UP_BANDANA, CLIST_HAT, HAT_BANDANA, "Picnic Bandana", "Throw a picnic in the park", 0, 0),
     PART(UP_SCARF, CLIST_ACC, ACC_SCARF, "Cozy Scarf", "Collect rent at Town Hall", 0, 0),
     PART(UP_BACKPACK, CLIST_ACC, ACC_BACKPACK, "Smuggler Backpack", "Buy something at the black market", 0, 0),
     PART(UP_ELF_EARS, CLIST_EARS, EARS_ELF, "Elf Ears", "Check on the island after midnight", 0, 0),

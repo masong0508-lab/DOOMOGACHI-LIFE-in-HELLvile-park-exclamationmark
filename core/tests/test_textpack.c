@@ -14,7 +14,7 @@ TEST(textpack_decodes_known_lines)
 {
     char buf[200];
     CHECK(txt_get(TXT_OBJ_C1_MAYOR, buf, (int)sizeof(buf)) > 0);
-    CHECK_STR(buf, "Say hi to Mayor Giggs at the fountain");
+    CHECK(strcmp(buf, "Say hi to Mayor Giggs at the fountain (plaza)") == 0);     /* C7: + where */
     CHECK(txt_get(TXT_VMT_HELLO, buf, (int)sizeof(buf)) > 0);
     CHECK_STR(buf, "Hello, @P! You have @1 hats.");
     CHECK(txt_get(TXT_VEX_PA1, buf, (int)sizeof(buf)) > 0);           /* ch2/ep27.dsc */
@@ -118,7 +118,7 @@ TEST(textpack_stash_keeps_lines_for_a_pushed_scene)
 {
     txt_stash(0, TXT_OBJ_C1_KEY);
     txt_stash(3, TXT_NONE);
-    CHECK_STR(txt_stash_get(0), "Get your key from Nana at Brimstone Bites");
+    CHECK(strcmp(txt_stash_get(0), "Get your key from Nana at Brimstone Bites (NW)") == 0);
     CHECK_STR(txt_stash_get(3), "");
     CHECK_STR(txt_stash_get(9), "");
 }

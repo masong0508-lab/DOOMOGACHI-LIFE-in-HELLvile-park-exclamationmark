@@ -36,7 +36,7 @@ const HomeRoomDef home_room_defs[HOME_ROOM_COUNT] = {
     { "Garden",         8, 6, ROOMK_GARDEN, HW_A, 3, 0, { 0, 0 },       { 0, 0 }, 0xFF, 4, 4, PAINT_SKY, PAINT_LIME, 0,         FURN_PINK_DOOR,      FURN_WOOD_WINDOW,   0 },
     { "Roof Annex",     6, 6, ROOMK_WALLS,  HW_A, 4, 1, { HW_B, 0 },    { 2, 0 }, 0xFF, 5, 5, PAINT_BONE, PAINT_CHOCOLATE, 0,   FURN_PINK_DOOR,      FURN_WOOD_WINDOW,   0 },
     { "Towers 7B",      6, 6, ROOMK_WALLS,  HW_A, 4, 1, { HW_A, 0 },    { 2, 0 }, 0xFF, 2, 3, PAINT_SKY, PAINT_CARAMEL, 0,      FURN_APARTMENT_DOOR, FURN_WOOD_WINDOW,   3 },
-    { "Hell Pits Flat", 6, 6, ROOMK_WALLS,  HW_A, 4, 1, { HW_B, 0 },    { 2, 0 }, 0xFF, 6, 5, PAINT_GRAPE, PAINT_CHARCOAL, 0,   FURN_GOTH_DOOR,      FURN_GOTH_WINDOW,   4 },
+    { "Hellvile Pits Flat", 6, 6, ROOMK_WALLS,  HW_A, 4, 1, { HW_B, 0 },    { 2, 0 }, 0xFF, 6, 5, PAINT_GRAPE, PAINT_CHARCOAL, 0,   FURN_GOTH_DOOR,      FURN_GOTH_WINDOW,   4 },
     { "Park Plot",     10, 8, ROOMK_OPEN,   HW_A, 5, 0, { 0, 0 },       { 0, 0 }, 0xFF, 4, 4, PAINT_SKY, PAINT_FOREST, 0,       FURN_PINK_DOOR,      FURN_WOOD_WINDOW,   0 },
 };
 

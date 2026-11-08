@@ -4,8 +4,8 @@
 # the festival polaroid), morning 17's "Days Since", and post-game greetings.
 @pack epi kind=episode chapter=5 minutes=30
 
-string OE1_FREE "Free play! Explore and help out"
-string OE2_SUITCASE "Unpack your suitcase at home"
+string OE1_FREE "Free play! Explore and help out (anywhere)"
+string OE2_SUITCASE "Unpack your suitcase at home (NW)"
 
 # the polaroid's caption: your Say It line (STRY.branch sayit_line 0..3)
 string E2_SAY0 "I was lonely."

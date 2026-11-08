@@ -11,12 +11,12 @@
 @armed grampy row=3 from=C3_ERUPTION to=C3_NESTS unless=41       # SOOTKIN
 
 # ---- the HUD (story_ch34.c) ----
-string O31_WAKE "Get up and get outside!"
+string O31_WAKE "Get up and get outside! (here)"
 string O31_RUN "Run to the church! (S)"
 string O31_CHURCH "Get inside the church (S)"
-string O31_RIVET "Talk to Rivet at the church door"
-string O32_BOARD "Go home and board up the windows"
-string O32_NIGHT "Hold your front door till dawn!"
+string O31_RIVET "Talk to Rivet at the church door (here)"
+string O32_BOARD "Go home (N) and board up the windows"
+string O32_NIGHT "Hold your front door till dawn! (here)"
 
 # ---- Ep 3.1: you wake on your floor ----
 script s31_wake

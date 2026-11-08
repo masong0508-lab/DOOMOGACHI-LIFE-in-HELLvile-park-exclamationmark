@@ -1,0 +1,76 @@
+# Clarity C7 + C16 (CL6): wayfinding. Every objective names a direction or a
+# landmark, the goal arrow sits at the screen edge under the HUD band and
+# pulses when the objective changes, the mini-map (SELECT) and the quest
+# log's Map tab draw "you" plainly and name the goal's place, and the HUD
+# uses one name per thing (H$, Brimstone Bites, The Park).
+# Chapter 1, Ep 1.2: the key from Nana at Brimstone Bites (NW of the plaza)
+scene STORY 102
+wait 40
+expect-scene STORY
+shot key_start
+wait 20
+shot key_pulse
+hold DOWN 40
+wait 70
+shot key_arrow_settled
+press SELECT
+wait 6
+shot key_minimap
+press SELECT
+hold RIGHT 30
+wait 6
+shot key_walk_east
+press START
+wait 20
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press A
+wait 25
+shot key_map_tab
+press B
+wait 20
+press B
+wait 10
+expect-scene STORY
+# further away: the arrow sits at the screen edge, under the HUD band
+hold DOWN 90
+hold RIGHT 40
+wait 4
+shot far_arrow
+# Chapter 1, Ep 1.4: the cupcake objective names Brimstone Bites (was "Nana's bakery")
+scene STORY 109
+wait 30
+skip-talk
+wait 90
+shot cupcake
+# Chapter 3, Ep 3.3: several goals, "follow the arrow"
+scene STORY 144
+wait 30
+skip-talk
+wait 120
+shot nests
+press SELECT
+wait 6
+shot nests_minimap
+press SELECT
+# Chapter 4, Ep 4.3: Hellvile, the favours
+scene STORY 151
+wait 30
+skip-talk
+wait 120
+shot favours
+press START
+wait 20
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press A
+wait 25
+shot favours_map_tab
+press B
+wait 20
+press B
+wait 10

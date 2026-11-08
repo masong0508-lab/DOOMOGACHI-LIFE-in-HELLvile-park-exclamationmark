@@ -402,7 +402,7 @@ static const Region regions[] = {
     { MAPID_HAHALAND, 21, 11, 47, 27, "Town Plaza" },
     { MAPID_HAHALAND, 2, 18, 20, 37, "St. Cuddles Square" },
     { MAPID_HAHALAND, 2, 38, 19, 51, "The Fun Fair" },
-    { MAPID_HAHALAND, 20, 28, 47, 51, "Hellvile Park - Hillvile Side" },
+    { MAPID_HAHALAND, 20, 28, 47, 51, "The Park" },
     { MAPID_HAHALAND, 48, 2, 55, 51, "The East Bank" },
     { MAPID_HAHALAND, 0, 52, 63, 63, "HaHa Beach" },
     { MAPID_HELLVILE, 2, 2, 12, 19, "Chapel Hill" },
@@ -430,6 +430,37 @@ const char *story_region_name(int map, int cx, int cy)
         if (r->map == m && cx >= r->x0 && cx <= r->x1 && cy >= r->y0 && cy <= r->y1) return r->name;
     }
     return "";
+}
+
+/* (clarity C7) Where the current goal is, in words, for the quest log's Map tab: who (when the goal
+ * is a person), then the building whose door is within 3 cells of the spot, else the region the spot
+ * lies in, else the map's name. On another map than the one loaded, the map's plain name only.
+ * "" when there is no goal. */
+const char *story_goal_place(char *buf, int cap)
+{
+    int map, x, y, id, cur, dx, dy, best = 99, place = 0;
+    const char *where = "";
+    const DoomoResident *r;
+    if (cap <= 0) return "";
+    buf[0] = 0;
+    id = story_target(&map, &x, &y);
+    if (map < 0) return buf;
+    cur = map_current_id();
+    if (cur == MAPID_HAHALAND_INVADED) cur = MAPID_HAHALAND;
+    if ((map == MAPID_HAHALAND_INVADED ? MAPID_HAHALAND : map) == cur) {
+        for (dy = -3; dy <= 3; dy++)
+            for (dx = -3; dx <= 3; dx++) {
+                const DoomoCell *c = map_cell_safe(&doomo_map, x + dx, y + dy);
+                int d = (dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy), p = c ? place_of_tag(c->tag) : 0;
+                if (p && c->wall && d < best) { best = d; place = p; }
+            }
+        where = place ? story_place_name(place) : story_region_name(map, x, y);
+    }
+    if (!where || !where[0]) where = map_title(map);
+    r = id >= 0 ? town_res(id) : NULL;
+    if (r && r->name[0]) doomo_snprintf(buf, cap, "%s, %s", r->name, where);
+    else doomo_snprintf(buf, cap, "%s", where);
+    return buf;
 }
 
 /* choice callbacks by id (story.c story_poll_callbacks; see story_int.h) */

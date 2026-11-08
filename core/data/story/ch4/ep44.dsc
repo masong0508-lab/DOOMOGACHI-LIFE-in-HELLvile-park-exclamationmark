@@ -5,8 +5,8 @@
 # mode (DREAM_SCRIPTED_D2); its letters are stashed (SPEC C5).
 @pack ep44 kind=episode chapter=4 minutes=32
 
-string O44_PITS "Follow Wisp to Hell Pits 13 (N)"
-string O44_SLEEP "Sleep in your new flat (Hell Pits)"
+string O44_PITS "Follow Wisp to Hellvile Pits 13 (N)"
+string O44_SLEEP "Sleep in your new flat (Hellvile Pits, N)"
 
 string D2_L0 "Dear Nox, I'm sorry. I'm / sorry. I'm"
 string D2_L1 "I miss the bone-flour / bread. - N."

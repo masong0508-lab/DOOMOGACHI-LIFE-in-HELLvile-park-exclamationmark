@@ -59,8 +59,34 @@ the whole story (see `story_full_playthrough_reaches_the_credits`).
   are `CELL_TRIGGER` cells tagged 128+ (`STORY_TAG_EVENT_*`, secrets
   135..142). NPC wander zones are `THING_NPC` (arg = zone), demon nests
   are `THING_SPAWNER` (arg 0..3) on the invaded map.
-* Objective pill + compass arrow, clock and money, region banners,
+* Objective pill + goal arrow, clock and money (H$), region banners,
   bubble markers ("!" main, "?" side, check = ready to hand in).
+* **Wayfinding (clarity C7, CL6).** Every story objective says where:
+  a compass word from the plaza fountain ("(NW)", "(park, S, @0/3)"), a
+  landmark the player stands at ("(here)", "(home)", "(plaza)"), or
+  "follow the arrow" when it has several targets. `core/tools/
+  story_wayfind.py` (in `story-check`) refuses an objective without one,
+  or one that needs a third line in the pill at 240x160; the test
+  `clarity_c7_every_objective_names_where_and_fits_the_pill` decodes all
+  59 and wraps them with the real font. The goal arrow is a filled arrow
+  at the screen edge, never in the HUD band (its top stays at y >= 30,
+  `OWFX_ARROW_TOP`), drawn in spans; it pulses (bobs and flashes white)
+  for 60 ticks after the objective changes and on arrival. The mini-map
+  (SELECT, named in the first controls hint) and the quest log's Map tab
+  draw "you" as an always-on ringed dot (`owfx_you_marker`); the Map tab
+  names the goal ("Goal: Nana Puddin, Brimstone Bites": who, then the
+  building whose door is within 3 cells, else the region, else the map;
+  `story_goal_place`) and says "SEL while walking: mini-map".
+* **One name per thing (clarity C16, CL6).** The HUD and menus use the
+  map's plain place names; the Hillvile / Hellvile pun stays in dialogue.
+  The park region of HaHaland is "The Park" (it was "Hellvile Park -
+  Hillvile Side" a second after the "HaHaland" banner), the bakery is
+  always Brimstone Bites, the Hellvile flats are Hellvile Pits ("Hellvile
+  Pits Flat" in the house), the arena is the Demon Arena (map title,
+  island row "Enter the Demon Arena"), the free-play park is "The Park"
+  (the island itself is Hellvile Park) with "Walk around HaHaland", and
+  money is H$ on the story HUD too. `story_wayfind.py` greps the C string
+  literals for the retired aliases.
 * Day / night from the town clock; Hellvile is clamped to dusk, the
   invaded town to red sky, the Wall area gets a purple haze in ch1-2.
 * Small talk is generated from each resident's catchphrase, likes, job,

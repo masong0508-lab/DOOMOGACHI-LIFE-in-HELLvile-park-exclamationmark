@@ -186,7 +186,7 @@ const char *map_title(int map_id)
 {
     static const char *const names[MAPID_COUNT] = {
         "HaHaland", "HaHaland (Invaded)", "Hellvile", "The Vape Cellar",
-        "Cloud Nine Spire", "The Demon Arena", "Hellvile Park United",
+        "Cloud Nine Spire", "Demon Arena", "Hellvile Park United",
         /* (levels expansion, additive) */
         "Sugar Rush Sewers", "Plushie Factory", "Graveyard Shift", "Bone Cathedral",
         "Hellvile Underbelly"

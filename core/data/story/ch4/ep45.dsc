@@ -5,8 +5,8 @@
 # Mayor saying it right. GURGLE lines are plain text (SF sec.3).
 @pack ep45 kind=episode chapter=4 minutes=35
 
-string O45_GATE "Follow the beeps to the sealed gate (E)"
-string O45_BOTTOM "Go down to the bottom: find @E"
+string O45_GATE "Follow the beeps to the Sealed Gate (E)"
+string O45_BOTTOM "Find @E at the bottom (Sealed Gate, E)"
 
 script s45_grumble
   sfx SFX_SCRATCH

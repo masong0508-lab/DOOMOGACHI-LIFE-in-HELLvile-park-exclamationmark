@@ -16,19 +16,19 @@
 @armed sprinklepop row=1 from=C2_SCREAM to=C2_EXORCISE                                   # WHEEZLE
 
 # ---- the HUD ----
-string OBJ_C2_VAPOR "Check out the new shop by the Wall"
-string OBJ_C2_BLOOM "See Dr. Bloom at the hospital"
-string OBJ_C2_CLUES "Find 3 odd things for Dr. Bloom (@0/3)"
-string OBJ_C2_REPORT "Take your clues to Dr. Bloom (hospital)"
-string OBJ_C2_NIGHT "Go home to bed. (It's fine.)"
-string OBJ_C2_NIGHT2 "Go home to bed. (Still fine.)"
-string OBJ_C2_NIGHT3 "Go home to bed. (Fine-ish.)"
+string OBJ_C2_VAPOR "Check out the new shop by the Wall (SE)"
+string OBJ_C2_BLOOM "See Dr. Bloom at the hospital (W)"
+string OBJ_C2_CLUES "Find 3 odd things: follow the arrow (@0/3)"
+string OBJ_C2_REPORT "Take your clues to Dr. Bloom (hospital, W)"
+string OBJ_C2_NIGHT "Go home (NW) to bed. (It's fine.)"
+string OBJ_C2_NIGHT2 "Go home (NW) to bed. (Still fine.)"
+string OBJ_C2_NIGHT3 "Go home (NW) to bed. (Fine-ish.)"
 string OBJ_C2_SCREAM "Get a free duck from Steamy (plaza)"
 string OBJ_C2_FUZZ "Fetch Father Fuzz from the church (W)"
 string OBJ_C2_EXORCISE "Meet Father Fuzz by Steamy (plaza)"
 string OBJ_C2_RIVET "See Rivet at her workshop (NE)"
-string OBJ_C2_REST "Go home and sleep. Then: the cellar"
-string OBJ_C2_CELLAR "Go down the hatch at Cloud Nine Vapor"
+string OBJ_C2_REST "Go home (NW) and sleep. Then: the cellar"
+string OBJ_C2_CELLAR "Go down the hatch at Cloud Nine Vapor (SE)"
 
 # ---- the cast's idle lines in Chapter 2 ----
 string IDLE_MAYOR_2A "Tea, anyone? Everything's fine. I've had nine cups to make sure. Gobble."

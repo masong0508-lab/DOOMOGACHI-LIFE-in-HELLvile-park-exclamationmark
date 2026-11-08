@@ -264,6 +264,10 @@ void owfx_draw_pause_ex(int settled);   /* 1: backdrop already dimmed in the hel
 const DoomoImage *owfx_marker(int flags, int t);
 const DoomoImage *owfx_emote(int emo);
 void owfx_minimap(int x, int y, int scale, int map_id);
+/* clarity C7: the "you" marker the mini-map and the quest log's Map tab share (centre, map scale, frame),
+ * and the top of the goal arrow's area (the HUD band above it holds the objective pill and the clock) */
+void owfx_you_marker(int cx, int cy, int scale, uint32_t t);
+#define OWFX_ARROW_TOP 30
 int  owfx_daylight(void);
 void owfx_world_to_screen(int32_t x, int32_t y, int *sx, int *sy);
 

@@ -5,7 +5,7 @@
 # before the Wall. Then Haze meets Hattie, the foghorn, the jar.
 @pack ep42 kind=episode chapter=4 minutes=25
 
-string O42_SWAP "Swap shifts at the pumps (@0/5)"
+string O42_SWAP "Swap shifts at the pumps (W, @0/5)"
 
 script s42_yard
   sfx SFX_THUD

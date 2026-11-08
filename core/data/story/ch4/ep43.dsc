@@ -5,9 +5,9 @@
 @pack ep43 kind=episode chapter=4 minutes=40
 
 string O43_NOX "Meet Mother Nox at her chapel (NW)"
-string O43_FAVOURS "Help Sootkin, Lady Smog and Anvil (@0/3)"
-string O43_FLOWERS "Pick Hillvile flowers for Sootkin"
-string O43_BACK "Tell Mother Nox (chapel)"
+string O43_FAVOURS "Do 3 favours: follow the arrow (@0/3)"
+string O43_FLOWERS "Pick flowers for Sootkin (HaHaland, N)"
+string O43_BACK "Tell Mother Nox (chapel, NW)"
 
 script s43_nox
   sfx SFX_DOOR

@@ -242,12 +242,23 @@ static void draw_map(int x, int y, int w, int h, int style)
     int s = (h >= 140 && w >= 140) ? 2 : 1, mw = doomo_map.w * s, mh = doomo_map.h * s;
     int mx = x + (w - mw) / 2, my = y + 2;
     const char *t = map_title(story_map());
-    if (mh > h - 14) { s = 1; mw = doomo_map.w; mh = doomo_map.h; mx = x + (w - mw) / 2; }
+    char goal[48], buf[64];
+    if (mh > h - 32) { s = 1; mw = doomo_map.w; mh = doomo_map.h; mx = x + (w - mw) / 2; }
     owfx_minimap(mx, my, s, story_map());
     ui_text_center(x + w / 2, my + mh + 4, t && t[0] ? t : "", st->title);
+    /* (clarity C7) the goal by name, and where SELECT shows this map while walking */
+    if (story_goal_place(goal, (int)sizeof(goal))[0]) {
+        doomo_snprintf(buf, sizeof(buf), STR_ICON_STAR " Goal: %s", goal);
+        if (ui_text_width(buf) > w) doomo_snprintf(buf, sizeof(buf), "Goal: %s", goal);
+        ui_text_center(x + w / 2, my + mh + 4 + FONT_LINE, buf, st->text);
+    }
+    ui_text_center(x + w / 2, my + mh + 4 + 2 * FONT_LINE, "SEL while walking: mini-map", st->text_dim);
     if (mx > x + 50) {
-        ui_text(x, y + 4, STR_ICON_STAR " goal", st->text);
-        ui_text(x, y + 14, "\x9c you", st->text_dim);
+        /* the legend draws the markers the map uses */
+        ui_star(x + 3, y + 7, 3, PAL_UI_GOLD);
+        ui_text(x + 9, y + 4, "goal", st->text);
+        owfx_you_marker(x + 3, y + 17, 1, doomo_frame_count());
+        ui_text(x + 9, y + 14, "you", st->text);
     }
 }
 

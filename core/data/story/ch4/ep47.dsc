@@ -5,7 +5,7 @@
 # festival's button), the Unity Stage, the credits parade.
 @pack ep47 kind=episode chapter=4 minutes=25
 
-string O47_STALLS "Lend a hand at the festival stalls (@0/4)"
+string O47_STALLS "Help the stall-keepers: follow the arrow (@0/4)"
 string O47_STAGE "Everyone is gathering at the Unity Stage (N)"
 
 script s47_open

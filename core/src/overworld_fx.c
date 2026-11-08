@@ -146,9 +146,14 @@ static int32_t last_camx, last_camy;
 typedef struct { int16_t x, y; int16_t t; uint8_t col; } Firework;
 static Firework fw[4];
 
+static uint32_t arrow_obj_key;     /* the goal arrow's pulse (draw_compass, clarity C7) */
+static uint8_t arrow_pulse;
+
 void owfx_init(void)
 {
     if (!fx_ready) { make_images(); fx_ready = 1; }
+    arrow_obj_key = 0;                 /* the arrow pulses on every arrival, then on every new objective */
+    arrow_pulse = 0;
     memset(parts, 0, sizeof(parts));
     memset(fw, 0, sizeof(fw));
     rng_seed(&frng, 0xF00Du);
@@ -467,7 +472,7 @@ static void draw_clock(int style)
     uint32_t key;
     if (plat_draw_skipped()) return;
     town_time_str(tbuf, sizeof(tbuf));
-    doomo_snprintf(mbuf, sizeof(mbuf), "%u", (unsigned)doomo_town.money);
+    doomo_snprintf(mbuf, sizeof(mbuf), "H$%u", (unsigned)doomo_town.money);   /* C16: one currency name, H$ */
     w = DOOMO_MAX(ui_text_width(tbuf), ui_text_width(mbuf) + 8) + 16;
     x = sw - w - 3;
     /* G7: a retained panel, unless a toast covers it (then it is spoiled on
@@ -551,13 +556,65 @@ static void draw_banner(int style, int band)
     ui_title(sw / 2, y, ow.banner, style);
 }
 
+/* ---- the goal arrow (clarity C7) -------------------------------------------------------------
+ * A filled triangle at the edge of the screen, pointing at the current goal while it is off screen,
+ * kept below the HUD band (the objective pill and the clock end at y 26; the arrow's top stays at
+ * y >= OWFX_ARROW_TOP) so it never reads as part of the pill. The first 60 ticks after the objective
+ * changes it pulses (it bobs along its own direction and its outline flashes white) so a new goal is
+ * noticed. Spans only: one plat_rect per row, about 2 x 15 rows a frame. */
+/* Fill the triangle (x0,y0) (x1,y1) (x2,y2) with one span per row (vertices in pixels). */
+static void tri_fill(int x0, int y0, int x1, int y1, int x2, int y2, uint8_t col)
+{
+    int y, t;
+#define SWAPI(a, b) do { t = a; a = b; b = t; } while (0)
+    if (y1 < y0) { SWAPI(y0, y1); SWAPI(x0, x1); }
+    if (y2 < y0) { SWAPI(y0, y2); SWAPI(x0, x2); }
+    if (y2 < y1) { SWAPI(y1, y2); SWAPI(x1, x2); }
+#undef SWAPI
+    if (y2 == y0) { plat_rect(DOOMO_MIN(x0, DOOMO_MIN(x1, x2)), y0, DOOMO_MAX(x0, DOOMO_MAX(x1, x2)) - DOOMO_MIN(x0, DOOMO_MIN(x1, x2)) + 1, 1, col); return; }
+    for (y = y0; y <= y2; y++) {
+        /* the long edge 0-2, and the short edge 0-1 above y1 or 1-2 below it */
+        int xa = x0 + (x2 - x0) * (y - y0) / (y2 - y0), xb;
+        if (y < y1) xb = x0 + (x1 - x0) * (y - y0) / (y1 - y0);
+        else if (y2 != y1) xb = x1 + (x2 - x1) * (y - y1) / (y2 - y1);
+        else xb = x1;
+        if (xa > xb) { t = xa; xa = xb; xb = t; }
+        plat_rect(xa, y, xb - xa + 1, 1, col);
+    }
+}
+
+/* One arrow shape (a head and a stem, so it reads as pointing even at 240x160) centred on (cx, cy),
+ * pointing along (c, s) (16.16 cos / sin); grow > 0 draws it that many pixels fatter (the outline). */
+static void arrow_shape(int cx, int cy, fix16 c, fix16 s, int grow, uint8_t col)
+{
+#define AX(f, g) (cx + FIX2INT(c * (f)) - FIX2INT(s * (g)))
+#define AY(f, g) (cy + FIX2INT(s * (f)) + FIX2INT(c * (g)))
+    int hw = 6 + grow, sw = 2 + grow, tip = 9 + grow, back = 7 + grow;
+    /* the head: tip ahead, base across at +1 */
+    tri_fill(AX(tip, 0), AY(tip, 0), AX(1 - grow, hw), AY(1 - grow, hw), AX(1 - grow, -hw), AY(1 - grow, -hw), col);
+    /* the stem: a quad from the head back to the tail, two triangles */
+    tri_fill(AX(2, sw), AY(2, sw), AX(2, -sw), AY(2, -sw), AX(-back, sw), AY(-back, sw), col);
+    tri_fill(AX(2, -sw), AY(2, -sw), AX(-back, -sw), AY(-back, -sw), AX(-back, sw), AY(-back, sw), col);
+#undef AX
+#undef AY
+}
+
+static void goal_arrow(int cx, int cy, fix16 c, fix16 s, uint8_t out, uint8_t fill)
+{
+    arrow_shape(cx, cy, c, s, 2, out);
+    arrow_shape(cx, cy, c, s, 0, fill);
+}
+
 static void draw_compass(int band)
 {
     int map, tx, ty, sx, sy, sw = plat_screen_w(), sh = plat_screen_h();
     int32_t wx, wy, dx, dy;
     int id;
-    uint32_t t = doomo_frame_count();
+    uint32_t t = doomo_frame_count(), ok;
     if (ow.visit || story_talking()) return;
+    ok = ui_key_str(0, story_objective());
+    if (ok != arrow_obj_key) { arrow_obj_key = ok; arrow_pulse = 60; }
+    else if (arrow_pulse) arrow_pulse--;
     id = story_target(&map, &tx, &ty);
     if (map < 0) return;
     if (map != ow.map && !(map == MAPID_HAHALAND && ow.map == MAPID_HAHALAND_INVADED) &&
@@ -575,7 +632,7 @@ static void draw_compass(int band)
     dx = sx - sw / 2;
     dy = sy - sh / 2;
     {
-        int a = fx_atan2(dy, dx), r, ex, ey, k;
+        int a = fx_atan2(dy, dx), r, ex, ey, bob, top;
         int hw = sw / 2 - 12, hh = sh / 2 - 22;
         fix16 c = fx_cos(a), s = fx_sin(a);
         /* walk out along the ray until we hit the inset border */
@@ -586,17 +643,17 @@ static void draw_compass(int band)
         }
         ex += sw / 2;
         ey += sh / 2 + 4;
-        /* CL1: the bubble (radius 7, its pointer 3 more) stays under the HUD band, off the objective's text */
-        if (ey < band + 10) ey = band + 10;
-        r = 6 + ui_wave((int)t, 30, 1);
-        ui_fill_circle(ex, ey, 7, PAL_RAMP(RAMP_WOOD, 2));
-        ui_fill_circle(ex, ey, 6, PAL_RAMP(RAMP_CANDY, 6));
-        ui_star(ex, ey, 4, PAL_UI_GOLD);
-        for (k = 0; k < 3; k++) {
-            int px = ex + FIX2INT(c * (r + 3 + k)), py = ey + FIX2INT(s * (r + 3 + k));
-            int pw = 3 - k;
-            plat_rect(px - pw / 2, py - pw / 2, pw > 0 ? pw : 1, pw > 0 ? pw : 1, PAL_RAMP(RAMP_WOOD, 2));
-        }
+        /* (C7, CL1) never in the HUD band: the arrow's top stays under the pill and the clock (the band grows
+         * with a two-line objective) */
+        top = DOOMO_MAX(OWFX_ARROW_TOP, band + 4) + 8;
+        if (ey < top) ey = top;
+        bob = arrow_pulse ? ui_wave((int)t, 12, 3) : ui_wave((int)t, 30, 1);
+        ex -= FIX2INT(c * (2 - bob));
+        ey -= FIX2INT(s * (2 - bob));
+        if (ey < top) ey = top;
+        goal_arrow(ex, ey, c, s,
+                   arrow_pulse && (t & 4) ? PAL_WHITE : PAL_RAMP(RAMP_WOOD, 2),
+                   ow.map == MAPID_HAHALAND_INVADED || ow.map == MAPID_HELLVILE ? PAL_RAMP(RAMP_LAVA, 6) : PAL_UI_GOLD);
     }
 }
 
@@ -699,10 +756,17 @@ void owfx_minimap(int x, int y, int s, int map_id)
         ui_star(x + tx * s + s / 2, y + ty * s + s / 2, 3 + s, PAL_UI_GOLD);
     pcx = ow.px / OW_CELL;
     pcy = ow.py / OW_CELL;
-    if (t & 8) {
-        plat_rect(x + pcx * s - 1, y + pcy * s - 1, s + 2, s + 2, PAL_BLACK);
-        plat_rect(x + pcx * s, y + pcy * s, s, s, PAL_UI_MINT);
-    }
+    owfx_you_marker(x + pcx * s + s / 2, y + pcy * s + s / 2, s, t);
+}
+
+/* (clarity C7) "you" on the maps: always drawn (it used to blink off half the time), a black-ringed dot
+ * whose ring flashes white and pink so it is the first thing found on a busy map. */
+void owfx_you_marker(int cx, int cy, int s, uint32_t t)
+{
+    int r = s + 1;
+    plat_rect(cx - r - 1, cy - r - 1, 2 * r + 3, 2 * r + 3, PAL_BLACK);
+    plat_rect(cx - r, cy - r, 2 * r + 1, 2 * r + 1, (t & 8) ? PAL_WHITE : PAL_UI_PINK);
+    plat_rect(cx - r + 1, cy - r + 1, 2 * r - 1, 2 * r - 1, PAL_UI_MINT);
 }
 
 /* ---- pause panel ------------------------------------------------------------------------ */
@@ -742,7 +806,7 @@ void owfx_draw_pause_ex(int settled)
     by = y + h - (big ? 40 : 30);
     doomo_snprintf(buf, sizeof(buf), "Ch.%d", story_chapter() == STORY_CH_DONE ? 4 : story_chapter());
     if (!ow.visit) ui_text(x + 8, by, buf, st->text_dim);
-    doomo_snprintf(buf, sizeof(buf), STR_ICON_COIN "%u", (unsigned)doomo_town.money);
+    doomo_snprintf(buf, sizeof(buf), STR_ICON_COIN "H$%u", (unsigned)doomo_town.money);
     ui_text(x + 8, by + 9, buf, st->text);
     doomo_snprintf(buf, sizeof(buf), "Day %u", (unsigned)doomo_town.day + 1);
     ui_text(x + 8, by + 18, buf, st->text_dim);
