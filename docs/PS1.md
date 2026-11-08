@@ -1390,6 +1390,12 @@ next to nothing); after S2-6 the gallery, a cursor move, the new row-moves windo
 not built here (`UI_PANELS` 0, `unlocks.c` is resident): `unlock_at` walks the table lengths only, 12 B less resident
 code, 66 KB below the stack top with the boot FMV.
 
+**S2-8 (text pages as kept panels).** Nothing is built here (`UI_PANELS` 0: the Field Guide's and the Almanac page's
+text panels compile out, `page_text` keeps its old path; the Field Guide's preview scroll byte sits in the wing's
+scene scratch). The library already held 30 and still does, numbers as in the audit: Field Guide contents / page /
+turn / scroll 30.17 / 30.17 / 30.77 / 30.77, Almanac profile and face 30.00 (one 50 ms frame each, the lockstep
+resume), the Almanac list move 29.51 (one 67 ms frame, not text). 66 KB below the stack top with the boot FMV.
+
 ## 13. Notes for the core
 
 * The 2D layer is fastest with few, large rectangles: one `plat_rect` per

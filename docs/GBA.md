@@ -426,6 +426,7 @@ against the LAST row, not against a figure from an older base.
 | 34 | S2-2: the 3D view held under a card (`viewhold.c`, docs: "Speed wave 2: S2-2" below) | `af4eef9` | 2,292 B | **2,268 B** | -24 B | 6,308 B | measured on `af4eef9` + S2-2: the held view's state in `viewhold.c` (key, rect, rows per area, options, shade level: 20 B) and the level select's held flag (1 B, padded); the copy itself lives in VRAM that a frame without a 3D view does not use (OBJ VRAM + the two Mode 4 page gaps), no EWRAM buffer; IWRAM resident and the main stack unchanged, the pack / unpack loops in the overlay's UI group (2,720 B, which the 3D group's 10,352 B slot holds). PS1: the hold is not built there (`combat_int.h`, `levels_select.c`), resident RAM 96 B smaller than `af4eef9` with the boot FMV (66 KB below the stack top): the column-window text cache (+192 B) paid for by `text_emit` at `-Os` (it runs on cache misses only) |
 | 35 | S2-3: the Prize Wheel (tables in ROM, the held frame; docs: "Speed wave 2: S2-3" below) | `8c950fa` | 2,276 B | **2,276 B** | 0 B | 6,308 B | the held tick's state (the last full frame's tick, line, face, the POWER bar's flags: 14 B) is in the minigame arena (`MG_ARENA_BYTES`, claimed by the scene); the tables (`core/gen/mg_wheel_tab.c`: the atan octant 5.5 KB, the rims 3.6 KB, the pie rows 0.1 KB) are ROM; no IWRAM. PS1: the tables join the minigame overlay group (`ovl_plan.py`; 87 -> 96 KB, the slot is the house's), resident RAM byte-identical (66 KB below the stack top with the boot FMV) |
 | 36 | S2-6: the Unlocks gallery's grid as a retained panel, the counted owned unlocks (docs: "Speed wave 2: S2-6" below) | `9c9fb45` | 2,276 B | **2,276 B** | 0 B | 6,308 B | measured on `9c9fb45` + S2-6: no new state in RAM (the panel borrows `PANEL_OW_OBJECTIVE`'s table entry, the last frame's key lives after the gallery's id list in the scene scratch, a tile's colours are memoised on the stack); IWRAM unchanged. PS1: the grid panel is not built (`UI_PANELS` 0) and the owned-count fast path is not either (`unlocks.c` is resident there): resident RAM 12 B smaller (`unlock_at` walks the lengths only), 66 KB below the stack top with the boot FMV |
+| 37 | S2-8: the Field Guide's and the Almanac page's text as retained panels (docs: "Speed wave 2: S2-8" below) | `fc32672` | 2,276 B | **2,276 B** | 0 B | 6,308 B | measured on `fc32672` + S2-8: no new state in RAM (the panel borrows `PANEL_OW_OBJECTIVE`'s table entry; the Field Guide's preview scroll max is one byte in the wing's scene scratch, in the `help` struct's padding: `LibWingData` the same size); IWRAM unchanged; ROM 6,846,988 B (code only). PS1: nothing built (`UI_PANELS` 0), 66 KB below the stack top with the boot FMV |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -1167,6 +1168,50 @@ are byte-identical.
 Floors: `expect-fps 28` on the three 30 fps windows, 27 on the row moves. Still short: a row change, a scroll or a tab
 change draws the grid whole once (~50 ms: one dropped frame), and the steady frame in the lower rows is ~31-32 ms (the
 cursor's row and the 2 rows above it are drawn every frame), close to the budget.
+
+### Speed wave 2: S2-8, the Field Guide and the Almanac page as text panels (2026-11-08)
+
+The speed audit 2's S2-8: text pages re-wrapped and re-drawn on every frame (`wrap_core` + `vid_text` 15-25% of the
+frame). S2-1's modal hold had already taken the Field Guide page to 30 (43 -> 16.6 ms); left were the contents
+screen at 30.7 ms (2 vblanks with no margin), the Almanac's open page at 27.6 ms with one 50 ms frame (and its SEL face
+at 29.3 ms, one 50 ms frame).
+
+**The text is a solid retained panel** (`lib_keep_begin` / `lib_keep_end` in `core/src/lib_int.h`:
+`PANEL_OW_OBJECTIVE`'s entry, `plat_panel_solid`). The panel's rect lies on a `ui_window`'s still body below its
+gloss rows; the window is drawn whole every frame as before, and the panel draws the same window rows again first
+(`ui_window_rows`) as its body, so the text lies on body (the panel rules). Not begun while the page pops in or turns
+(`lib_keep_ok`).
+
+* **Field Guide** (`lib_help.c` `page_text`): the contents' preview text and the open page's text. Key: the page,
+  the language, the scroll and the rects. The scroll arrows bob, so the panel ends left of their column and they are
+  drawn every frame from the scroll as last drawn (the preview's scroll max is kept in the wing's scratch).
+* **Almanac page** (`lib_almanac.c` `detail`): Profile, Likes and the locked "???" page under the tabs (the tabs bob
+  above it, the figure and its sparkle stay left of it). Key: the citizen's whole record (every line there reads only
+  it and the id), the page, the scroll; the bio's up arrow bobs inside the panel by the last stat line, so its phase
+  is in the key while it shows; the down arrow is the panel's hole, redrawn every frame over the window rows. Bonds
+  (the town's ties) and the big screen's Profile / Likes (the persona bars shine, `ui_bar`) draw as before.
+
+**Same pixels.** `test_panel` plays the Almanac page (open, scroll, face, Likes, Bonds, three citizens on) and the
+Field Guide (contents moves, a page, scrolls, page turns, close) with the panel cache on and off at 240x160 and
+320x240: every frame identical (564 of 584 and 783 of 804 panels kept at 240x160). `vhash-seq` of the same moves on
+the GBA against `fc32672`: the Field Guide identical frame for frame; the Almanac identical outside the figure (750
+frames, 0 pixels differ right of x 64): the figure's animation phases are drawn in the idle time after frames (SP2),
+so with cheaper frames a new phase lands a few ticks earlier.
+
+| window (`speed2_library.txt`, libmgba) | before (drawn fps, work avg / max) | after |
+|---|---:|---:|
+| Field Guide contents | 30.0 (30.7 / 32.1 ms) | 30.0 (**25.4** / 26.7 ms) |
+| Field Guide page | 30.0 (16.6 / 17.9 ms) | 30.0 (**8.7** / 10.0 ms) |
+| Field Guide page turn | 30.8 (16.5 / 20.5 ms) | 30.8 (**10.8** / 20.5 ms) |
+| Field Guide scroll | 30.0 (15.6 ms) | 30.0 (**8.6** ms) |
+| Almanac profile | 30.0, one 50 ms frame (28.6 / 33.9 ms) | **30.0, none** (25.1 / 36.4 ms) |
+| Almanac face | 30.0 (29.0 / 32.3 ms) | 30.0 (27.3 / 32.5 ms) |
+
+The Almanac's remaining work is the figure (`finish_marked`, `sh_span`, `scan_transitions`: its breath / blink / fx
+phases re-rendered in slices, 14 ms frames with the figure cached, up to ~32 ms with a slice); the face window's
+talking figure re-renders every 4 ticks. Floors: `expect-fps 28` added on the contents window (the others had one).
+Still short in the library (not text): the lobby and jukebox (~20 fps, S2-4), the weapons wing's frames (24.9,
+S2-5), the Almanac list move (25.4: the list and the preview's portrait drawn whole on a move).
 
 ### Where the title's time goes (`make -C gba profile-title`)
 
