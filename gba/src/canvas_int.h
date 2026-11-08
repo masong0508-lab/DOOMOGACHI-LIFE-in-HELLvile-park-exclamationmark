@@ -173,6 +173,9 @@ void pn_flipped(int page);                /* video_flip: page shown, -1 tiles */
 
 /* ---- hold.c (THUMB, U4): the held frame (docs/PAUSE_SPEED.md P1) ---------- */
 void hold_flipped(int page);              /* video_flip: page shown, -1 tiles */
+/* ---- stage.c (SP7): the kept backdrop's pages ----------------------------- */
+void stage_flipped(int page);             /* video_flip: page shown, -1 tiles / not flipped */
+void stage_note(int x0, int y0, int x1, int y1);   /* drawn after plat_stage_end */
 int  hold_page(void);                     /* page held as the backdrop, -1 none */
 void hold_band_release(void);            /* SP5: a world frame: the band's borrowed cache bytes go back (hold.c) */
 int  hold_building(void);                /* I10: a frame is being built over several ticks: video_flip does not flip */

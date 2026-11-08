@@ -197,6 +197,23 @@ $(OBJ)/core/%.o: $(DOOMO_CORE)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CORE_CFLAGS) -mthumb -c $< -o $@
 
+# ---- SP7: the baked backdrops (docs/EXORCISM_SPEED.md, src/stage.c) ----------------------
+# The native runner (built from the core in build/native, host gcc) draws every key of every
+# backdrop family with the core's own code at 240x160 into build/gen/backdrops.bin, which
+# src/backdrop_blob.s links into the ROM. The file is rewritten only when its bytes change.
+NATIVE_BUILD := $(BUILD)/native
+BACKDROPS    := $(BUILD)/gen/backdrops.bin
+.PHONY: backdrops-runner
+backdrops-runner:
+	@$(MAKE) --no-print-directory -C $(DOOMO_CORE) runner BUILD=$(NATIVE_BUILD) CC=$(HOSTCC)
+$(BACKDROPS): backdrops-runner
+	@mkdir -p $(dir $@)
+	@$(NATIVE_BUILD)/runner --quiet --w 240 --h 160 --bake-backdrops $@.tmp
+	@if cmp -s $@.tmp $@; then rm -f $@.tmp; else mv $@.tmp $@; echo "backdrops: $@"; fi
+$(OBJ)/gba/src/backdrop_blob.o: $(GBA)/src/backdrop_blob.s $(BACKDROPS)
+	@mkdir -p $(dir $@)
+	$(CC) $(ASFLAGS) '-DGBA_BACKDROPS_BIN="$(BACKDROPS)"' -c $< -o $@
+
 $(GEN_TABLES): $(GBA)/tools/mktables.py
 	@mkdir -p $(dir $@)
 	$(PYTHON) $< $@

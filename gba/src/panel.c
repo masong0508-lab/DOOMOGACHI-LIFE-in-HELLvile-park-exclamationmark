@@ -199,10 +199,13 @@ int plat_panel_begin(int id, int x, int y, int w, int h, uint32_t key)
     if (gba_nodraw == 1) { put = -2; return 0; }    /* a skipped tick: nothing to draw */
     if (id < 0 || id >= PANEL_COUNT || w <= 0 || h <= 0 || w > 255 || h > 255) { nest++; return 1; }
     if (gba_nodraw == GBA_NODRAW_FIRST) vid_route(clipx(x), clipy(y), clipx(x + w), clipy(y + h));
-    if (gba_nodraw != 0 && gba_nodraw != GBA_NODRAW_MEASURE && gba_nodraw != GBA_NODRAW_PANEL) {
+    if (gba_nodraw != 0 && gba_nodraw != GBA_NODRAW_MEASURE && gba_nodraw != GBA_NODRAW_PANEL &&
+        gba_nodraw != GBA_NODRAW_TRACK) {
         nest++;                                    /* a tile frame: the canvas, as before */
         return 1;
     }
+    if (gba_nodraw == GBA_NODRAW_TRACK)            /* SP7: kept or drawn, it lands in its rect */
+        stage_note(clipx(x), clipy(y), clipx(x + w), clipy(y + h));
     p = &pn[id];
     back = gba_back == (uint16_t *)VRAM_PAGE1;
     if ((p->flags & (PN_LIVE | PN_KEEP | PN_SPOILED)) == (PN_LIVE | PN_KEEP) && p->key == key &&

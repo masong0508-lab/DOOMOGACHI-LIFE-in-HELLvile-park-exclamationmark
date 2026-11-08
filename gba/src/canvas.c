@@ -340,6 +340,10 @@ int vid_route(int x0, int y0, int x1, int y1)
         if (pn_active()) pn_route(x0, y0, x1, y1);   /* G7 */
         return 1;
     case GBA_NODRAW_PANEL: pn_route(x0, y0, x1, y1); return 1;   /* G7: panels up */
+    case GBA_NODRAW_TRACK:                      /* SP7: an overlay over a stage frame */
+        stage_note(x0, y0, x1, y1);
+        if (pn_active()) pn_route(x0, y0, x1, y1);
+        return 1;
     case GBA_NODRAW_CANVAS:
         if (cv_op(x0, y0, x1, y1)) return 2;
         return gba_nodraw ? 0 : 1;              /* dropped / converted   */

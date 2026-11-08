@@ -6,6 +6,7 @@
  *   OVL_3D  the raycaster: r3d.iwram.c + r3d_loops.s (section .iwram_3d)
  *   OVL_2D  the tile-mode 2D loops (section .iwram_2d, IWRAM_2D_CODE)
  *   OVL_ROOM (H8) the dream house's lamp-pool loops (section .iwram_room,
+ *           and SP7 stage.c stage_rows, the kept backdrop restore;
  *           IWRAM_ROOM_CODE; room.c, loaded by plat_room())
  *   OVL_UI  (SP4) loops of the bitmap scenes that use none of the above
  *           (section .iwram_ui, IWRAM_UI_CODE): the pet LCD's dot expand

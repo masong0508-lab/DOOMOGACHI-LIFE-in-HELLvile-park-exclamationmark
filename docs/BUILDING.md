@@ -26,7 +26,7 @@ Contents:
 | You want to... | You need |
 |---|---|
 | run the core tests (`make core`) | a host C compiler (`gcc`), GNU make, `python3` |
-| build the **GBA ROM** (`make gba`) | `arm-none-eabi-gcc` + **newlib**, `python3` |
+| build the **GBA ROM** (`make gba`) | `arm-none-eabi-gcc` + **newlib**, `python3`, and a host `gcc` (the build bakes the exorcism's church backdrops with the native runner, docs/EXORCISM_SPEED.md) |
 | run the GBA harness (`make test`) | the above plus `libmgba-dev` 0.10 |
 | build the **PS1 disc** (`make ps1`) | `mipsel-linux-gnu-gcc` (or `mipsel-none-elf-gcc`), **PSn00bSDK** built from source, CMake ≥ 3.21, Ninja, `python3` |
 | run the PS1 harness (`make test`) | the above plus PCSX-Redux, OpenBIOS and `xvfb-run` |

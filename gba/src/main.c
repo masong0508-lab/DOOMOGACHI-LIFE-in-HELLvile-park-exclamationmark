@@ -273,6 +273,7 @@ void video_flip(void)
     if (!tiles && hold_building()) {
         /* I10: a frame is being built in the hidden page over several ticks: the shown page is presented again
          * (its news strip moves), no flip; the pacing above kept this at 30 Hz */
+        stage_flipped(-1);                      /* SP7: neither page holds a stage frame */
     } else if (!tiles) {
         int page = gba_back == (uint16_t *)VRAM_PAGE1;
         REG_BG2CNT = 0;
@@ -280,10 +281,12 @@ void video_flip(void)
         cv_shown_m4(page);
         pn_flipped(page);                       /* G7: kept panels are in it */
         hold_flipped(page);                     /* U4 */
+        stage_flipped(page);                    /* SP7 */
         gba_back = page ? (uint16_t *)VRAM_PAGE0 : (uint16_t *)VRAM_PAGE1;
     } else {
         pn_flipped(-1);
         hold_flipped(-1);
+        stage_flipped(-1);
         gba_back = (uint16_t *)VRAM_PAGE1;      /* the next Mode 4 frame: page 1 */
     }
     postfx_vblank(tiles);       /* S1: BG2 affine, BLDY, palette, OAM DMA */

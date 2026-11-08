@@ -232,3 +232,27 @@ wait 130
 expect-fps 8.5 pet
 shot pet
 vhash-seq 30 pet
+
+# ---- the exorcism (SP7, docs/EXORCISM_SPEED.md): the practice ritual's tools menu, over the
+# kept church backdrop and the retained stage. Last in the tour, so adding it moved no other
+# scene's ticks. Floor at about 85% of what SP7 measured (base 7.9 fps).
+seed 1
+scene EXORCISM -1
+wait 40
+press A
+wait 6
+press A
+wait 6
+press A
+wait 6
+press A
+wait 6
+press A
+wait 6
+press A
+wait 60
+fps start
+wait 130
+expect-fps 15 exorcism tools
+shot exorcism_tools
+vhash-seq 30 exorcism tools
