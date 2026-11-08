@@ -3,7 +3,9 @@
  *
  *   gba/build/harness ROM.gba [--script FILE] [--shots DIR] [--save FILE]
  *                     [--frames N] [--scale S] [--fail-on-stub] [--quiet]
- *                     [--nm NMFILE]   (arm-none-eabi-nm -n output, for profile)
+ *                     [--nm NMFILE]   (arm-none-eabi-nm -n output, for profile; a
+ *                                      NAME.ovl next to NAME.nm names the IWRAM
+ *                                      overlay slot by group, see load_nm)
  *                     [--no-fps-gates] (expect-fps reports, never fails)
  *
  * Runs the ROM in mGBA (no BIOS needed: HLE), feeds scripted input, prints
@@ -427,9 +429,53 @@ static void run_ticks(uint32_t n)
  * lies in, then prints the hottest functions (needs --nm FILE with the
  * output of `arm-none-eabi-nm -n ROM.elf`). Halted time shows up in the
  * function that waits for vblank. */
-typedef struct Sym { uint32_t addr; char name[64]; uint64_t hits; } Sym;
+typedef struct Sym { uint32_t addr; char name[64]; uint64_t hits; uint8_t grp; } Sym;
 static Sym *syms;
 static int nsyms;
+
+/* (SP1, T1) The IWRAM code overlay (gba/src/iwram_ovl.c): the 3D, 2D and room groups all link at the same slot
+ * addresses, so a PC there has up to three nm names. NAME.ovl next to NAME.nm (gba/Makefile NM_SYMS: "addr
+ * .ovl_<group> name" per symbol of an overlay section) tags each such symbol with its group; the profile then
+ * reads which group is loaded (the ROM's `ovl_cur`, OVL_* of iwram_ovl.h) and charges the PC to that group's
+ * symbol. Without the .ovl file (or `ovl_cur`) names fall back to the nearest symbol of any group, as before. */
+static uint32_t ovl_cur_addr;      /* the ROM's iwram_ovl.c ovl_cur, 0 = unknown */
+static uint32_t ovl_lo, ovl_hi;    /* the slot: lowest .. highest tagged symbol */
+
+static int ovl_group_of(const char *sec)
+{
+    if (!strcmp(sec, ".ovl_3d")) return 1;          /* OVL_3D   */
+    if (!strcmp(sec, ".ovl_2d")) return 2;          /* OVL_2D   */
+    if (!strcmp(sec, ".ovl_room")) return 3;        /* OVL_ROOM */
+    return 0;
+}
+
+static void load_ovl(const char *nm_path)
+{
+    char path[1024], line[256];
+    size_t n = strlen(nm_path);
+    FILE *f;
+    int tagged = 0, k;
+    if (n < 3 || strcmp(nm_path + n - 3, ".nm") || n + 2 > sizeof(path)) return;
+    memcpy(path, nm_path, n - 3);
+    strcpy(path + n - 3, ".ovl");
+    if (!(f = fopen(path, "r"))) return;
+    while (fgets(line, sizeof(line), f)) {
+        unsigned long a;
+        char sec[64], name[128];
+        int g;
+        if (sscanf(line, "%lx %63s %127s", &a, sec, name) != 3 || !(g = ovl_group_of(sec))) continue;
+        name[sizeof(syms[0].name) - 1] = 0;
+        for (k = 0; k < nsyms; k++)
+            if (syms[k].addr == (uint32_t)a && !strcmp(syms[k].name, name)) {
+                syms[k].grp = (uint8_t)g;
+                if (!tagged++ || a < ovl_lo) ovl_lo = (uint32_t)a;
+                if (a > ovl_hi) ovl_hi = (uint32_t)a;
+            }
+    }
+    fclose(f);
+    if (!tagged || !ovl_cur_addr) ovl_lo = ovl_hi = 0;
+    else printf("harness: profile names %d overlay symbols by the loaded group (%s)\n", tagged, path);
+}
 
 static void load_nm(const char *path)
 {
@@ -440,15 +486,37 @@ static void load_nm(const char *path)
         unsigned long a;
         char t, name[128];
         if (sscanf(line, "%lx %c %127s", &a, &t, name) != 3) continue;
+        if ((t == 'b' || t == 'B' || t == 'd' || t == 'D') && !strcmp(name, "ovl_cur")) ovl_cur_addr = (uint32_t)a;
         if (t != 'T' && t != 't' && t != 'W' && t != 'w') continue;
         syms = realloc(syms, sizeof(Sym) * (size_t)(nsyms + 1));
         syms[nsyms].addr = (uint32_t)a;
         name[sizeof(syms[nsyms].name) - 1] = 0;
         memcpy(syms[nsyms].name, name, sizeof(syms[nsyms].name));
         syms[nsyms].hits = 0;
+        syms[nsyms].grp = 0;
         nsyms++;
     }
     fclose(f);
+    load_ovl(path);
+}
+
+/* the symbol a PC is charged to: the nearest one at or below it, but in the overlay slot only among the loaded
+ * group's symbols (-1: none) */
+static int sym_at(uint32_t pc)
+{
+    int lo = 0, hi = nsyms - 1, best = -1;
+    while (lo <= hi) {
+        int mid = (lo + hi) / 2;
+        if (syms[mid].addr <= pc) { best = mid; lo = mid + 1; }
+        else hi = mid - 1;
+    }
+    if (best >= 0 && syms[best].grp && ovl_hi) {
+        int cur = core->busRead8(core, ovl_cur_addr);
+        while (best >= 0 && syms[best].addr >= ovl_lo && syms[best].grp != cur) best--;
+        if (best >= 0 && syms[best].addr < ovl_lo) best = -1;   /* nothing of that group below the PC */
+    }
+    if (best >= 0 && pc - syms[best].addr >= 0x10000) best = -1;
+    return best;
 }
 
 static int sym_cmp_hits(const void *a, const void *b)
@@ -505,18 +573,13 @@ static void profile(uint32_t steps, const char *focus)
          * before the step advances the pipeline */
         uint32_t pc = (uint32_t)cpu->gprs[15] - (cpu->executionMode == MODE_THUMB ? 2 : 4);
         int32_t t0 = mTimingCurrentTime(timing), dt;
-        int lo = 0, hi = nsyms - 1, best = -1;
+        int best = sym_at(pc);
         core->step(core);
         dt = mTimingCurrentTime(timing) - t0;
         if (dt < 0 || dt > 300000) dt = 1;       /* frame counter wrapped */
         if (pc_hist && pc >= focus_lo && pc < focus_hi)
             pc_hist[(pc - focus_lo) / 2] += (uint32_t)dt;
-        while (lo <= hi) {
-            int mid = (lo + hi) / 2;
-            if (syms[mid].addr <= pc) { best = mid; lo = mid + 1; }
-            else hi = mid - 1;
-        }
-        if (best >= 0 && pc - syms[best].addr < 0x10000) {
+        if (best >= 0) {
             syms[best].hits += (uint64_t)dt;
             if (fr_hits) fr_hits[best] += (uint32_t)dt;
         } else unknown += (uint64_t)dt;

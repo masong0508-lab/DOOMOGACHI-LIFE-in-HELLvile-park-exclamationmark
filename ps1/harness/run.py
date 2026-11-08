@@ -24,7 +24,10 @@ when a scene renders below 30 fps:
   PS1 extensions:
     dshot name         the video output as displayed (display mode/position)
     vram name          full 1024x512 VRAM dump -> OUT/name_vram.png
-    fps name / fpsend name   measure the presented frame rate
+    fps name / fpsend name   measure the presented frame rate; fpsend also
+                    logs "gaps NAME vsyncs-per-frame histogram 2:N 3:N ..."
+                    (frames by vsyncs taken: 2 = 30 fps, 3 = 50 ms, 4+ = a
+                    hitch) and the worst frame (SP1 T1)
     prof / profend name      sample the CPU's PC (+ ra) once per vsync while
                     the game runs -> OUT/prof_NAME.txt (harness/prof.py
                     turns it into a per-function table with the map)

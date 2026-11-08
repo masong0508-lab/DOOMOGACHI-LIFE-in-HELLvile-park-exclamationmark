@@ -147,7 +147,7 @@ push COMBAT 3
 wait 200
 fps start
 wait 130
-expect-fps 8 combat first person
+expect-fps 9 combat first person
 shot combat_fp
 vhash-seq 30 combat first person
 seed 1
@@ -159,7 +159,7 @@ press SELECT
 wait 200
 fps start
 wait 130
-expect-fps 8 combat third person
+expect-fps 9 combat third person
 shot combat_tp
 vhash-seq 30 combat third person
 

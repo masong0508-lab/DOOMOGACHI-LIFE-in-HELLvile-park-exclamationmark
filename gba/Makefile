@@ -262,12 +262,21 @@ test-story: harness
 	done
 # --- end S2 ---
 
+# --- SP1 (T1): the symbol files of the harness profile. doomogachi.nm (nm -n) names the PCs; doomogachi.ovl lists
+# the IWRAM overlay groups' symbols (address, .ovl_* section, name), which all share one slot: the harness reads
+# them next to the .nm file and names a PC in the slot by the group that is loaded (iwram_ovl.c's ovl_cur), so a
+# combat profile says r3d_flat_loop, not the 2D group's lay_of at the same address ---
+NM_SYMS = $(PREFIX)nm -n $(BUILD)/doomogachi.elf > $(BUILD)/doomogachi.nm && \
+	$(PREFIX)objdump -t $(BUILD)/doomogachi.elf | \
+	awk '{ for (i = 2; i <= NF; i++) if ($$i ~ /^\.ovl_/) { print $$1, $$i, $$NF; break } }' > $(BUILD)/doomogachi.ovl
+# --- end SP1 ---
+
 # --- H2 (SPEC sec.7 H2, C2): the dream house renderer, gba/src/room.c:
 # parity with the room_ref golden on every path, then SCENE_HOME fps ---
 test-home: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
 	@mkdir -p $(SHOTS)/home
-	$(PREFIX)nm -n $(BUILD)/doomogachi.elf > $(BUILD)/doomogachi.nm
+	$(NM_SYMS)
 	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/home.txt \
 	    --shots $(SHOTS)/home --golden $(ROOT)/core/tests/golden/room_ref.txt \
 	    --nm $(BUILD)/doomogachi.nm --quiet
@@ -330,7 +339,7 @@ TITLE_PROFILE_LOG ?= $(BUILD)/title_profile.log
 profile-title: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
 	@mkdir -p $(SHOTS)/title
-	$(PREFIX)nm -n $(BUILD)/doomogachi.elf > $(BUILD)/doomogachi.nm
+	$(NM_SYMS)
 	@rc=0; \
 	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/title_profile.txt \
 	    --shots $(SHOTS)/title --nm $(BUILD)/doomogachi.nm --no-fps-gates --quiet > $(TITLE_PROFILE_LOG) 2>&1 || rc=1; \
@@ -399,7 +408,7 @@ INVADED_PROFILE_LOG ?= $(BUILD)/invaded_profile.log
 profile-invaded: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
 	@mkdir -p $(SHOTS)/invaded
-	$(PREFIX)nm -n $(BUILD)/doomogachi.elf > $(BUILD)/doomogachi.nm
+	$(NM_SYMS)
 	@rc=0; \
 	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/invaded_profile.txt \
 	    --shots $(SHOTS)/invaded --nm $(BUILD)/doomogachi.nm --no-fps-gates --worklog --quiet > $(INVADED_PROFILE_LOG) 2>&1 || rc=1; \
@@ -411,7 +420,7 @@ PAUSE_PROFILE_LOG ?= $(BUILD)/pause_profile.log
 profile-pause: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
 	@mkdir -p $(SHOTS)/pause
-	$(PREFIX)nm -n $(BUILD)/doomogachi.elf > $(BUILD)/doomogachi.nm
+	$(NM_SYMS)
 	@rc=0; \
 	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/pause_profile.txt \
 	    --shots $(SHOTS)/pause --nm $(BUILD)/doomogachi.nm --no-fps-gates --quiet > $(PAUSE_PROFILE_LOG) 2>&1 || rc=1; \
@@ -426,7 +435,7 @@ PROFILE_ALL_N ?= 8000000
 profile-all: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
 	@mkdir -p $(SHOTS)/profile_all
-	$(PREFIX)nm -n $(BUILD)/doomogachi.elf > $(BUILD)/doomogachi.nm
+	$(NM_SYMS)
 	sed -e '/^vhash-seq/d' -e '/^expect-fps/a profile $(PROFILE_ALL_N)' $(SPEED_SCRIPT) > $(BUILD)/profile_all.txt
 	@rc=0; \
 	$(HARNESS) $(BUILD)/doomogachi.gba --script $(BUILD)/profile_all.txt \
@@ -443,7 +452,7 @@ STUDIO_PROFILE_LOG ?= $(BUILD)/studio_profile.log
 profile-studio: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
 	@mkdir -p $(SHOTS)/studio
-	$(PREFIX)nm -n $(BUILD)/doomogachi.elf > $(BUILD)/doomogachi.nm
+	$(NM_SYMS)
 	@rc=0; \
 	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/studio_profile.txt \
 	    --shots $(SHOTS)/studio --nm $(BUILD)/doomogachi.nm --no-fps-gates --worklog --quiet > $(STUDIO_PROFILE_LOG) 2>&1 || rc=1; \
@@ -461,7 +470,7 @@ SUNG_PROFILE_N ?= 95000000
 SUNG_GATE ?=
 profile-sung: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
-	$(PREFIX)nm -n $(BUILD)/doomogachi.elf > $(BUILD)/doomogachi.nm
+	$(NM_SYMS)
 	@rc=0; \
 	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/studio_sung.txt \
 	    --nm $(BUILD)/doomogachi.nm --no-fps-gates --worklog --quiet > $(SUNG_LOG) 2>&1 || rc=1; \

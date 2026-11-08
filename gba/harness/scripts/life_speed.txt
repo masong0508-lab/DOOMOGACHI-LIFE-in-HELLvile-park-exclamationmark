@@ -39,7 +39,7 @@ latency L 120 hub -> news (L)
 wait 200
 fps start
 wait 130
-expect-fps 17 life: news
+expect-fps 25 life: news
 shot news
 expect-scene NEWS
 press B

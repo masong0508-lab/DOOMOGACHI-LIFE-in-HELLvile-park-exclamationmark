@@ -803,6 +803,54 @@ the harness at the first such window ("29 frames from ticks ..."); and
 logs edited to shift a scene's frames by one tick, or to keep 10 of its 30
 frames, fail the parity check.
 
+### Speed package SP1: combat billboards, unlock lookups, news icons, profile names (2026-11-08)
+
+Four exact steps from the 2026-11-08 speed audit (X5, X3, X2, T1), measured on the game ROM against its merge base
+`b080562` (re-measured after the rebase; identical to the first base `4851147`) with the same harness and scripts (speed tour `make -C gba test-speed`, life tour `make -C gba test-life`,
+the creator scene of `ps1/harness/scripts/perf_creator.txt` played on the ROM, `harness/scripts/entry_parity.txt`):
+
+* **X5, combat:** `combat_build_view`'s billboard pass called `fx_dist` (a 64-bit root in THUMB) for every actor
+  every frame. `combat_bb_sort()` (`core/src/combat.c`) culls with the exact squared test, sorts by a 32-bit key of
+  the squared distance and takes a root only when two actors' distances agree to within ~2^-12 of a unit (the old
+  sort kept equal `fx_dist` values in index order; the root decides those ties exactly). The squares are 16-bit-half
+  multiplies on the GBA (no `__aeabi_lmul`). Test `x5_billboard_sort_matches_the_fx_dist_sort` (4,000 layouts, ties,
+  near-ties, the cull and flash rings).
+* **X3, unlocks:** `unlock_find()` scanned ~640 entries of 16 tables for each locked option a menu drew, every frame.
+  It now binary-searches `core/gen/unlock_index.c` (const, ROM; written by `core/tools/ulgen.c` in `make -C core gen`,
+  checked against the registry at first use: a stale index makes `unlock_find` scan as before). Not on the PS1 (its
+  EXE is RAM). Test `x3_unlock_index_matches_the_scan`.
+* **X2, news:** the Herald classified each visible headline with up to 33 `fp_strcasestr` scans per row per frame;
+  `fp_news_icon()` (`core/src/fp_news.c`) does the same test in one pass (keywords indexed by first letter). Test
+  `x2_news_icon_matches_the_strcasestr_chain`.
+* **T1, profile names:** the IWRAM overlay groups share one slot, so the harness used to name a 3D-group PC after
+  whichever 2D-group function sat at that address (`put_row`, `lay_of`, `canvas_row` in combat). `gba/Makefile`
+  (`NM_SYMS`) now writes `build/doomogachi.ovl` next to `doomogachi.nm`, and `profile` names a slot PC by the group
+  that is loaded (`ovl_cur`): the combat profile reads `r3d_flat_loop` 19.0%, `r3d_column_asm` 6.9%.
+
+| scene | logic ticks/s | drawn fps | work avg / max ms | base fps | base avg / max ms |
+|-------|--------------:|----------:|------------------:|---------:|------------------:|
+| combat first person | 19.2 | **11.1** | 76.4 / 107.7 | 9.8 (16.0 ticks/s) | 83.7 / 161.1 |
+| combat third person | 18.5 | **10.8** | 73.6 / 118.7 | 9.8 (16.2 ticks/s) | 81.3 / 100.7 |
+| options | 30.0 | 30.0 | 24.9 / 25.9 | 30.0 | 26.3 / 27.1 |
+| creator (new citizen) | 28.2 | **14.4** | 50.6 / 69.3 | 12.9 (23.8 ticks/s) | 57.6 / 108.1 |
+| life: news | 30.0 | **30.0** | 30.9 / 34.3 | 20.0 | 39.7 / 43.1 |
+| every other scene of both tours | | unchanged (+-0.2 ms) | | | |
+
+Profiles (`profile`, game ROM): combat `fx_dist` 13.8% -> 0 (`combat_bb_sort` 3.1%); creator `unlock_find` 13.0% ->
+under 1%; news `fp_strcasestr` 29.7% -> `fp_news_icon` 3.7%. RAM: EWRAM and IWRAM unchanged (`.bss` 257,764 B,
+`.iwram` 11,176 B); ROM +4.5 KB (the index 3.9 KB).
+
+Parity: 15 of the speed tour's 16 hashed windows are identical to the base's. The island hub's window differs
+because it starts 200 ticks after the hub's entry and the hub keeps per-*drawn*-frame state (the I10 slices and
+hold, see the G2 note above): the base skipped other catch-up ticks there. Hashed from each scene's first tick
+(`vhash-seq` with every tick drawn: `harness/scripts/entry_parity.txt`, compared with `speedtable.py --compare`), combat first and third person (210 ticks),
+options (90), the creator through eight list and tab moves (190), the New Island screen, the hub (120) and the
+news with its cursor and page (130) are all identical to the base's; so are all 1,810 screenshots of the native
+runner scripts at both resolutions.
+
+What is left is outside SP1: combat is the r3d floor and column loops (~30% of the frame; G-C1 / G-C2), the creator
+is rects and chibi renders (X1), and the news screen now holds 30 with ~2 ms to spare.
+
 ### Life tour (M0, `make -C gba test-life`)
 
 The free-play screens the life sim lives on, in the game ROM
@@ -1731,6 +1779,10 @@ gba/build/harness ROM.gba [--script FILE] [--shots DIR] [--save FILE]
   from a save state; fails if nothing changes within MAX frames). The LABEL of `fps` /
   `expect-fps`, `vhash` and `vhash-seq`, and the TEXT of `log`, are the
   whole rest of the line (before G1 only the first word was printed).
+* Profile names (SP1, T1): `--nm build/doomogachi.nm` also reads `build/doomogachi.ovl` when it is there (written
+  with the `.nm` by every profile target: each IWRAM overlay symbol's address, `.ovl_*` section and name). A PC in
+  the overlay slot is then charged to the loaded group's function (the ROM's `ovl_cur`), not to whichever group's
+  symbol nm sorted last at that address; the profile prints "names N overlay symbols by the loaded group".
 * Frame hashes (G1): `vhash [LABEL]` prints the FNV-1a of the frame mGBA
   put out (240x160 as BGR555, after BG / OBJ composition, blending and
   the affine scale), so it means the same in any display mode;

@@ -514,6 +514,10 @@ Measured against `16b6929` built the same way, the disc ends at
 `0x801e7ea0` instead of `0x801e7e80`, **98,656 B below the stack top**
 (within the plan's 64 B); the slot keeps its 166 KB (now from
 `0x801c7ea0`) and `OVL.BIN` its 24 groups (950 KB packed).
+SP1 (speed package, 2026-11-08; section 12 "Speed package SP1"): resident +640 B (`combat_bb_sort`, resident
+with `combat_build_view`, and the unlock index check; the 3.9 KB unlock key index itself is left out of the PS1).
+Measured against `b080562` built the same way, the disc ends at `0x801ec830` instead of `0x801ec5b0` (`elf2exe`:
+77 KB left below the stack top, was 78 KB).
 
 CL4 (first-time tip cards, the Field Guide, the Tips option): `tips.c` is
 resident by design (a card shows over any scene and is drawn from
@@ -1193,6 +1197,35 @@ journeys are native (docs/GAME_DESIGN.md 4.1).
 
 Like on the GBA, the island map and its location menu are the only life
 screens under 30 fps; everything pushed over the island holds 30.
+
+### Speed package SP1 (2026-11-08)
+
+The exact steps of the 2026-11-08 speed audit that reach the PS1 (game disc, PCSX-Redux, against its merge base
+`b080562` built the same way; the audit's tour scripts):
+
+| scene | fps | frames by vsyncs (2 = 33 ms, 3 = 50 ms, 4 = 67 ms, 5 = 83 ms) | base fps | base frames by vsyncs |
+|---|---|---|---|---|
+| combat third person (Vape Cellar) | **29.09** | 2:225 3:12 4:2 | 28.07 | 2:209 3:27 4:2 5:1 |
+| combat first person | 29.88 | 2:236 3:3 | 29.81 | 2:235 3:4 |
+| life tour (hub, news, menu, roster, resident, apartments) | unchanged | unchanged | | |
+
+* **Combat billboards (X5):** `combat_bb_sort()` culls and orders the billboards by squared distance with the old
+  `fx_dist` order kept exactly (`fx_dist` was 5.5% of the third-person profile; it is gone from it). The
+  screenshots after each window are identical to the base's.
+* **News icons (X2)** are one pass instead of up to 33 string scans per row; the PS1 news already held 30 fps.
+* **The unlock key index (X3) is not on the PS1:** its 3.9 KB would be EXE, i.e. RAM, and the PS1 creator and
+  options already hold 30; `unlock_find` scans as before here.
+* **RAM:** the EXE ends at `0x801ec830` (base `0x801ec5b0`): +640 B resident (`combat_bb_sort`, which stays resident
+  with `combat_build_view`, and the index check in `unlocks.c`); `elf2exe` reports 77 KB left below the stack top
+  (base 78 KB) against the 64 KB the build refuses to go under.
+* **Harness (T1):** `fpsend NAME` also logs `gaps NAME vsyncs-per-frame histogram 2:N 3:N ... max M (ms) at frame F`
+  (the table above), so a window's hitches show next to its average. `harness/prof.py MAP PROF --group NAME` names
+  scene-slot addresses by the overlay group that was loaded (the group's `.ovl_NN` sections from `ovl.ld`, each
+  symbol's section from the ELF): the audit's exorcism profile read `cook_serve` 10.6% (the fishcook group's
+  symbol at that address); with `--group exorcism` it reads `curtain` 18.2%.
+* **Exactness note:** the perf scripts have no `seed`, so `town_new()` takes `plat_entropy()` (the CPU timer), and
+  any build whose boot takes a different number of cycles makes another town: the life tour's roster then shows
+  other activities. With `seed 1` first, every screenshot of the life tour is identical to the base's.
 
 ## 13. Notes for the core
 

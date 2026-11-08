@@ -1,0 +1,75 @@
+# entry_parity.txt - frame parity hashed from each scene's FIRST tick (SP1): every tick is drawn and hashed
+# from the scene command on, so two ROMs of different speed compare tick for tick even in scenes that keep state per
+# drawn frame (docs/GBA.md "G2" note; the speed tour hashes after a 200-tick settle, where they can differ).
+# Run it on a package and on its merge base, then: python3 gba/tools/speedtable.py --compare BASE.log NEW.log
+#   gba/build/harness gba/build/doomogachi.gba --script gba/harness/scripts/entry_parity.txt --shots DIR --quiet > NEW.log
+wait 40
+expect-log doomo: init
+sync on 61
+# combat first person then third person (X5)
+seed 1
+scene TITLE
+wait 2
+push COMBAT 3
+vhash-seq 30 combat fp 0
+vhash-seq 30 combat fp 1
+vhash-seq 30 combat fp 2
+vhash-seq 30 combat fp 3
+press SELECT
+vhash-seq 30 combat tp 0
+vhash-seq 30 combat tp 1
+vhash-seq 30 combat tp 2
+# options (X3)
+seed 1
+scene TITLE
+wait 2
+push OPTIONS 0
+vhash-seq 30 options 0
+press DOWN
+vhash-seq 30 options 1
+press RIGHT
+vhash-seq 30 options 2
+# creator (X3): a new citizen, the lists with locked options
+seed 1
+scene CREATOR -1
+vhash-seq 30 creator 0
+press RIGHT
+vhash-seq 20 creator 1
+press DOWN
+vhash-seq 20 creator 2
+press RIGHT
+vhash-seq 20 creator 3
+press R
+vhash-seq 20 creator 4
+press DOWN
+vhash-seq 20 creator 5
+press RIGHT
+vhash-seq 20 creator 6
+press R
+vhash-seq 20 creator 7
+press RIGHT
+vhash-seq 20 creator 8
+# free play: the island hub and the news (X2), hashed from the New Island screen on
+seed 1
+scene NEW_ISLAND
+vhash-seq 10 newisland 0
+press A
+vhash-seq 20 newisland 1
+press A
+vhash-seq 2 newisland 2
+press A
+vhash-seq 10 newisland 3
+expect-scene ISLAND
+vhash-seq 30 hub 0
+vhash-seq 30 hub 1
+vhash-seq 30 hub 2
+vhash-seq 30 hub 3
+press L
+vhash-seq 30 news 0
+vhash-seq 30 news 1
+press DOWN
+vhash-seq 20 news 2
+press DOWN
+vhash-seq 20 news 3
+press R
+vhash-seq 30 news 4

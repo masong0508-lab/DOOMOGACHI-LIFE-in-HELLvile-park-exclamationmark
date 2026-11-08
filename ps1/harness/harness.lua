@@ -108,6 +108,9 @@ local idx = 1
 local vsyncs = 0
 local last_frame, last_change = -1, 0
 local fps_start = {}
+-- SP1 (T1): the vsyncs each frame took while the latest `fps` window is open (2 = 30 fps, 3 = a 50 ms frame,
+-- 4+ = a visible hitch); `fpsend` logs them as a histogram with the worst frame
+local gapt = nil
 local prof = nil          -- PC sampler: { [pc] = hits } while profiling
 local prof_n = 0
 local done = false
@@ -185,6 +188,7 @@ local function step()
       log('vram ' .. c.arg)
     elseif c.op == 'fps' then
       fps_start[c.arg] = { v = vsyncs, f = read_frame(), s = stopped }
+      gapt = { lf = read_frame(), lv = vsyncs, h = {}, mx = 0, at = 0 }
     elseif c.op == 'fpsend' then
       -- vsyncs while the harness held the game (screenshots, commands)
       -- do not count
@@ -193,6 +197,13 @@ local function step()
         local dv, df = vsyncs - s.v - (stopped - s.s), read_frame() - s.f
         log(string.format('fps %s %.2f (%d frames / %d vsyncs)', c.arg,
                           dv > 0 and df * 60.0 / dv or 0, df, dv))
+        if gapt then
+          local parts = {}
+          for g = 1, 200 do if gapt.h[g] then parts[#parts + 1] = string.format('%d:%d', g, gapt.h[g]) end end
+          log(string.format('gaps %s vsyncs-per-frame histogram %s max %d (%.1f ms) at frame %d', c.arg,
+                            table.concat(parts, ' '), gapt.mx, gapt.mx * 1000.0 / 60.0, gapt.at))
+          gapt = nil
+        end
       end
     elseif c.op == 'prof' then
       prof, prof_n = {}, 0
@@ -268,6 +279,17 @@ local function on_vsync()
     stopped = stopped + 1
   end
   if hang_check(f) then return end
+  if gapt then
+    if lock and hu32(H_PAUSED)[0] ~= 0 then
+      gapt.lv = gapt.lv + 1          -- stopped vsyncs do not count
+    elseif f ~= gapt.lf then
+      local g = (vsyncs - gapt.lv) / math.max(1, f - gapt.lf)
+      g = math.floor(g + 0.5)
+      for _ = 1, f - gapt.lf do gapt.h[g] = (gapt.h[g] or 0) + 1 end
+      if g > gapt.mx then gapt.mx = g; gapt.at = f end
+      gapt.lf = f; gapt.lv = vsyncs
+    end
+  end
   if prof and not (lock and hu32(H_PAUSED)[0] ~= 0) then
     local r = PCSX.getRegisters()
     local key = string.format('%08x %08x', tonumber(r.pc), tonumber(r.GPR.n.ra))
