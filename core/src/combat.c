@@ -1893,6 +1893,14 @@ void combat_build_view(DoomoView3D *v)
         }
     }
     v->x = ex; v->y = ey; v->z = ez;
+    /* (SP8) a catch-up tick draws nothing (plat_draw_skipped(): the GBA's skipped ticks), so its
+     * billboards are not built: the cull, the sort and actor_image() only feed the drawing, while
+     * everything above (the camera, the shake's RNG draws) and the tints below still run every tick */
+    if (plat_draw_skipped()) {
+        v->sprites = bbs;
+        v->sprite_count = 0;
+        goto tints;
+    }
     /* billboards: nearest first, capped */
     {
         static int16_t order[ACTOR_MAX];
@@ -1964,6 +1972,7 @@ void combat_build_view(DoomoView3D *v)
     v->sprites = bbs;
     v->sprite_count = n;
     /* tints: hurt, pickup, low health pulse, vape haze, disco */
+tints:
     {
         int reduce = opt_get(OPT_REDUCE_FLASH);
         int lvl = 0, tint = TINT_NONE;

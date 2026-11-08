@@ -4,7 +4,9 @@
  * to the same run with it off. Covers the overworld HUD (objective, clock,
  * prompt), the dialogue box (narration, a portrait line with the name
  * pill, a choice), toasts and the island HUD and news ticker, at 240x160
- * and 320x240, and a language switch in the middle of a run. Every
+ * and 320x240, and a language switch in the middle of a run; (SP8) the
+ * shooter's HUD badges (face, health, ammo) through a fight in first and
+ * third person: shooting, a reload, a weapon swap, damage, armour. Every
  * adopted panel must also follow the panel rules (no rule breaks) and be
  * kept on most frames. */
 #include "test.h"
@@ -12,6 +14,7 @@
 #include "../src/fp_island.h"
 #include "doomo/tips.h"
 #include "../src/creator_int.h"
+#include "../src/combat_int.h"     /* SP8: combat_hurt_player */
 
 #define MAXF 420
 
@@ -157,6 +160,28 @@ static uint32_t p_creator_calm(int f)
     return p_creator(f);
 }
 
+/* (SP8) the shooter: walk and shoot in the Vape Cellar, swap weapons, take hits (the low-health
+ * heartbeat and the hurt bounce of the face), pick up armour, then third person */
+static void s_combat(void)
+{
+    story_town();
+    scene_set(&SCENE_TITLE, 0);
+    scene_push(&SCENE_COMBAT, MAPID_VAPE_CELLAR);
+}
+static uint32_t p_combat(int f)
+{
+    if (f == 120) combat_hurt_player(40, 0, 0, -1);
+    if (f == 180) combat_hurt_player(35, 1024, 0, -1);           /* low: the heartbeat */
+    if (f == 200) doomo_player.armor = 25;
+    if (f == 260 && doomo_player.hp > 0) doomo_player.hp = 90;
+    if (f == 300) return BTN_SELECT;                              /* third person */
+    if (f >= 40 && f < 100) return BTN_UP | ((f / 6) % 2 ? BTN_A : 0);
+    if (f >= 140 && f < 170) return BTN_A;
+    if (f == 230) return BTN_Y;                                   /* next weapon */
+    if (f >= 320 && f < 380) return BTN_LEFT | ((f / 5) % 2 ? BTN_A : 0);
+    return 0;
+}
+
 /* the language switch: Spanish from frame 120 on */
 static uint32_t p_visit_lang(int f)
 {
@@ -286,6 +311,11 @@ TEST(panel_creator_calm_pane_and_bar_are_pixel_identical)
     cr_calm = 0;
     portrait_cache_reset();
     CHECK(ok);
+}
+
+TEST(panel_combat_hud_is_pixel_identical)
+{
+    CHECK(both("combat", s_combat, p_combat, 400, 300));
 }
 
 TEST(panel_language_switch_redraws)

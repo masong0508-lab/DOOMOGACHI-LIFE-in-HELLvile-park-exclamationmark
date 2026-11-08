@@ -27,7 +27,8 @@
  * then 8 frames between tries. Tile frames (section 6b), skipped ticks and
  * the harness's expect-text never keep: they draw (or skip) as before.
  *
- * RAM: the panel table (9 x 20 B) and the 80-rect pool (320 B) in EWRAM;
+ * RAM: the panel table (PANEL_COUNT x 20 B; 12 since SP8: the combat HUD) and the 80-rect
+ * pool (320 B) in EWRAM;
  * pn_span 116 B of resident IWRAM code.
  */
 #include "gba_plat.h"

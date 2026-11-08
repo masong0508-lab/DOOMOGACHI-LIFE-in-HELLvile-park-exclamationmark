@@ -147,9 +147,23 @@ static int face_expr(void)
     return EXPR_NEUTRAL;
 }
 
+/* (SP8) A new expression (hurt, a combo, low health) is drawn in slices over a few frames while the
+ * face shown last stays up (portrait_hold, the title's mechanism), instead of a 45-150 ms render in
+ * one frame (DECISIONS 2026-11-08: a stand-in for 2-4 ticks). The hold lasts 8 drawn frames after a
+ * change; meanwhile the face keeps one still pose. */
 static const DoomoImage *face_crop(int top, int rows)
 {
-    const DoomoImage *p = portrait_image(doomo_player.resident_id, face_expr());
+    static int8_t shown = -1;
+    static uint8_t hold;
+    const DoomoImage *p;
+    int ex = face_expr();
+    if (ex != shown) {
+        if (shown >= 0) hold = 8;
+        shown = (int8_t)ex;
+    }
+    if (hold) { hold--; portrait_hold(1); }
+    p = portrait_image(doomo_player.resident_id, ex);
+    portrait_hold(0);
     if (!p || !p->pix || p->h < top + rows) return p;
     face_img.w = p->w;
     face_img.h = (uint16_t)rows;
@@ -158,10 +172,24 @@ static const DoomoImage *face_crop(int top, int rows)
     return &face_img;
 }
 
+/* (SP8) The badges are retained panels (platform.h, G7): a platform that still has one from the last
+ * frame puts it back instead of drawing it (the GBA: ~10 ms of a combat frame). Each key holds
+ * everything its pixels depend on; core/tests/test_panel.c plays combat with the panel cache on and
+ * off and checks every frame is identical. */
 static void face_badge(int x, int y, const HudPal *p)
 {
-    const DoomoImage *f = face_crop(6, 36);
+    /* 34 rows (SP8; was 36): the portrait ends on the badge's inner window instead of running 2 rows
+     * past it over the rounded outline's bottom corners, so it lies on the panel's body */
+    const DoomoImage *f = face_crop(6, 34);
     int bounce = doomo_player.hurt_flash > 10 ? ui_wave(hud_t, 4, 2) : 0;
+    int hell = combat_s.hell >= 128;
+    /* not while the face bounces from a hit: shifted 2 px it pokes past the outline's corners */
+    int keep = UI_PANELS && doomo_player.hurt_flash <= 10;
+    if (keep) {
+        uint32_t key = ui_key_int(ui_panel_key(), hell | (hell ? 0 : ui_sparkle_size(hud_t / 3)) << 1);
+        key = ui_key_int(key, f ? (int32_t)f->uid : 0);         /* the face, its expression and blink */
+        if (!plat_panel_begin(PANEL_COMBAT_FACE, x, y, 52, 40, key)) { plat_panel_end(); return; }
+    }
     ui_round_rect(x, y, 52, 40, 8, p->outline);
     ui_round_rect(x + 1, y + 1, 50, 38, 7, combat_s.hell >= 128 ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_UI_CREAM);
     ui_round_rect(x + 3, y + 3, 46, 34, 6, combat_s.hell >= 128 ? PAL_RAMP(RAMP_STONE, 1) : PAL_RAMP(RAMP_SKY, 6));
@@ -170,6 +198,7 @@ static void face_badge(int x, int y, const HudPal *p)
     plat_rect(x + 6, y + 2, 10, 1, PAL_WHITE);
     if (combat_s.hell < 128) ui_sparkle(x + 47, y + 5, hud_t / 3, PAL_UI_GOLD);
     else icon_skull(x + 46, y + 6, PAL_RAMP(RAMP_BONE, 6), PAL_RAMP(RAMP_BLOOD, 0));
+    if (keep) plat_panel_end();
 }
 
 /* ---- crosshair --------------------------------------------------------------- */
@@ -461,10 +490,24 @@ static void ammo_panel(int x, int y, const HudPal *p)
     const DoomoImage *icon = weld_icon_image(w);
     char buf[24];
     int slot = doomo_player.weapon_slot;
-    panel(x, y, ammo_panel_w(), 30, p);
+    int pw = ammo_panel_w();
+    /* (SP8, see face_badge) a panel: since C10 the pill is as wide as its label, so the text lies
+     * on the panel's body; the key holds everything the label, the width and the big number show */
+    if (UI_PANELS) {
+        uint32_t key = ui_key_int(ui_panel_key(), (combat_s.hell >= 128) | combat_ws.ammo_type << 1);
+        key = ui_key_int(key, icon ? (int32_t)icon->uid : 0);
+        key = ui_key_int(key, combat_ws.mag_size);
+        key = ui_key_int(key, combat_ws.mag_size ? combat_px.mag[slot] : -1);
+        key = ui_key_int(key, combat_px.reload_t ? 1 + ((hud_t & 8) != 0) : 0);
+        key = ui_key_int(key, combat_ws.ammo_type == 0xFF ? -1 : combat_ammo(combat_ws.ammo_type));
+        key = ui_key_int(key, pw);
+        if (!plat_panel_begin(PANEL_COMBAT_AMMO, x, y, pw, 30, key)) { plat_panel_end(); return; }
+    }
+    panel(x, y, pw, 30, p);
     if (icon) plat_image(x + 4, y + 7, icon, 1, 0, 0);
     if (combat_ws.ammo_type == 0xFF) {
         ui_text_outline(x + 32, y + 11, "MELEE", p->text, p->text_out);
+        if (UI_PANELS) plat_panel_end();
         return;
     }
     if (combat_ws.mag_size) {
@@ -481,6 +524,7 @@ static void ammo_panel(int x, int y, const HudPal *p)
         ui_text_big(x + 30, y + 3, buf, 2, p->text, p->text_out);
     }
     plat_text(x + 30, y + 20, ammo_label(buf, (int)sizeof(buf)), p->dim);
+    if (UI_PANELS) plat_panel_end();
 }
 
 static void health_panel(int x, int y, const HudPal *p)
@@ -489,6 +533,12 @@ static void health_panel(int x, int y, const HudPal *p)
     int beat = low ? (combat_px.heartbeat % (hp <= 15 ? 18 : 26)) : 99;
     int hs = 5 + (beat < 3 ? 2 : beat < 6 ? 1 : 0);
     face_badge(x, y - 14, p);
+    if (UI_PANELS) {                                      /* SP8 (see face_badge) */
+        uint32_t key = ui_key_int(ui_panel_key(), (combat_s.hell >= 128) | (low ? hs << 1 | (hud_t & 4) << 4 : 0));
+        key = ui_key_int(key, DOOMO_MAX(hp, 0));
+        key = ui_key_int(key, doomo_player.armor);
+        if (!plat_panel_begin(PANEL_COMBAT_HEALTH, x + 50, y - 2, 56, 30, key)) { plat_panel_end(); return; }
+    }
     panel(x + 50, y - 2, 52, 30, p);
     /* C10: health is a heart in every mode (the hell HUD drew a skull, which read as "demons") */
     ui_heart(x + 59, y + 6, hs, low ? PAL_UI_RED : combat_s.hell >= 128 ? PAL_RAMP(RAMP_LAVA, 6) : PAL_PAINT(PAINT_CHERRY, 1));
@@ -499,6 +549,7 @@ static void health_panel(int x, int y, const HudPal *p)
         doomo_snprintf(buf, sizeof(buf), "%d", doomo_player.armor);
         ui_text_outline(x + 67, y + 16, buf, doomo_player.armor ? p->text : p->dim, p->text_out);
     }
+    if (UI_PANELS) plat_panel_end();
 }
 
 static void boss_bar(void)
@@ -691,6 +742,14 @@ void combat_draw_hud(void)
     hud_t++;
     if (obj_t > 0) obj_t--;
     hud_pal(&p);
+    if (plat_draw_skipped()) {
+        /* (SP8) a catch-up tick (the GBA's skipped ticks) draws nothing: only what counts ticks
+         * runs (the story caption's countdown, the FPS counter); every frame that is drawn is
+         * exactly what it was */
+        story_caption(&p);
+        if (opt_get(OPT_SHOW_FPS)) fps_counter(sw);
+        return;
+    }
     if (doomo_player.camera == CAM_FIRST_PERSON) weapon_view();
     scope_overlay();
     damage_numbers();

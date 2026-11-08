@@ -127,6 +127,7 @@ enum {
     PANEL_OW_OBJECTIVE, PANEL_OW_CLOCK, PANEL_OW_PROMPT, PANEL_DIALOG, PANEL_DIALOG_TEXT,
     PANEL_TOAST, PANEL_FP_HUD, PANEL_FP_TICKER,
     PANEL_PROMPT,                       /* C3: the prompt bar (ui.h ui_hint / ui_prompts) */
+    PANEL_COMBAT_FACE, PANEL_COMBAT_HEALTH, PANEL_COMBAT_AMMO,   /* (SP8) the shooter's HUD badges */
     PANEL_COUNT                         /* add new ids before this */
 };
 int  plat_panel_begin(int id, int x, int y, int w, int h, uint32_t key);
