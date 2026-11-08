@@ -585,7 +585,11 @@ static void draw_p0(void)
         const char *l2 = k.cap;
         int n = 0, dy = tw_tab(&TW_DROP_TITLE_DY, t), big = s + 2;
         p0_paper(PAL_UI_CREAM, sh, RP(RAMP_PASTEL_PINK, 6), 13);
-        while (*l2 && n < 15) l1[n++] = *l2++;            /* "DOOMOGACHI LIFE" | "in HELLvile Park!" */
+        {                                                   /* "BOREagotchi LIFE!" | "in HELLvile PARK..." */
+            const char *in = strstr(l2, " in ");
+            int cut = in ? (int)(in - l2) : 17;
+            while (*l2 && n < cut && n < (int)sizeof(l1) - 1) l1[n++] = *l2++;
+        }
         l1[n] = 0;
         while (*l2 == ' ') l2++;
         while (big > 2 && ui_text_big_width(l1, big) > sw - 12) big--;

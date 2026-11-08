@@ -3,7 +3,7 @@
  *
  * The citizens march in pairs along the Parade Road, one Hillvile citizen
  * and one Hellvile citizen side by side (ids n and 500 + n), led by you
- * and your Doomogachi. The story cast cheers from the roadside, confetti
+ * and your Boreagotchi. The story cast cheers from the roadside, confetti
  * falls, fireworks pop, the names of every pair scroll by in a ticker at
  * the bottom and the team credits fade in and out at the top. Citizens
  * who passed away march too, translucent, in loving memory. Hold A to fast
@@ -30,9 +30,9 @@ static int16_t ticker_rank;
 
 typedef struct { const char *head; const char *lines; } CreditCard;
 static const CreditCard cards[] = {
-    { "DOOMOGACHI LIFE", "in HELLvile Park!" },
+    { "BOREagotchi LIFE!", "in HELLvile PARK..." },
     { "A Dippinn Productions game", "Made with love, plush stuffing\nand an alarming amount of vapor" },
-    { "Starring", "@P\nand @E the Doomogachi" },
+    { "Starring", "@P\nand @E the Boreagotchi" },
     { "Mayor Gigglesworth", "Mayor Giggs\nwho laughed at every speech" },
     { "Nana Pudding", "Head Baker, keeper of keys\nand muffins" },
     { "Father Fuzz", "Stuffed with love\nand a little buckwheat" },
@@ -41,7 +41,7 @@ static const CreditCard cards[] = {
     { "Mother Nox", "High Priestess of Hellvile\nand potluck legend" },
     { "Vex", "Former vape tycoon\nnow selling plain water" },
     { "Lord Vapula", "Duke of the Ninth Cloud\n(now pocket-sized)" },
-    { "Game Design & Story", "The Doomogachi Team" },
+    { "Game Design & Story", "The Boreagotchi Team" },
     { "Music & Sound", "30 Hz chiptunes:\ncute, then METAL, then cute" },
     { "Shooter & Welding", "Every gun you could weld\nand a bubble wand" },
     { "Citizens", "500 from Hillvile\n500 from Hellvile\nall of them marching" },

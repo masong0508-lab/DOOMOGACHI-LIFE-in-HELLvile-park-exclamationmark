@@ -2,7 +2,7 @@
  *
  * Pickups are small, glossy and glinting (frame 1 adds a twinkle), so they
  * pop against any floor. Props cover the cute town (trees, lamps,
- * fountain, benches, mailboxes, the Doomogachi egg and pet) and the hell
+ * fountain, benches, mailboxes, the Boreagotchi egg and pet) and the hell
  * levels (barrels, skull piles, torches, corpses, the vape portal).
  */
 #include "art.h"

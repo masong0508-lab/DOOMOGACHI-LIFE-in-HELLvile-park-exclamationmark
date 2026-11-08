@@ -1,4 +1,4 @@
-# ps1/ - DOOMOGACHI LIFE in HELLvile Park! for the PlayStation
+# ps1/ - BOREagotchi LIFE! in HELLvile PARK... for the PlayStation
 
 A real PlayStation disc running the shared C99 core: PSn00bSDK, GTE 3D
 engine, SPU ADPCM audio, memory card saves. Full documentation (build,

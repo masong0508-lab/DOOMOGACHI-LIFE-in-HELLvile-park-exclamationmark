@@ -44,7 +44,7 @@ the whole story (see `story_full_playthrough_reaches_the_credits`).
 * `plat_overworld` 3D view with collision (walls, water, lava, steps of
   at most 3 height units), props, NPC bodies, the pet following you.
 * A talks / opens doors (or push into a door for 6 ticks), START pauses
-  (Resume, Quest Log, Doomogachi, Armory, Map, Options, Save, Title
+  (Resume, Quest Log, Boreagotchi, Armory, Map, Options, Save, Title
   Screen), SELECT toggles the minimap, B runs.
 * Doors are wall cells tagged `STORY_TAG_DOOR + PLACE_*`; walk-on events
   are `CELL_TRIGGER` cells tagged 128+ (`STORY_TAG_EVENT_*`, secrets

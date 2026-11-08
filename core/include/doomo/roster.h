@@ -48,7 +48,7 @@ enum {
     NPC_FATHER_FUZZ,  /* plushie priest, does the exorcisms                */
     NPC_RIVET,        /* imp welder who ran away from Hellvile; workshop   */
     NPC_DR_BLOOM,     /* ghoul doctor, hospital                            */
-    NPC_NANA_PUDDING, /* baker, gives the Doomogachi egg                   */
+    NPC_NANA_PUDDING, /* baker, gives the Boreagotchi egg                   */
     NPC_PIP,          /* kid who lost their bunny plush (first quest)       */
     NPC_VEX,          /* owner of Cloud Nine Vapor - a Hellvile infiltrator */
     NPC_LORD_VAPULA,  /* Duke of the Ninth Cloud, demo final boss          */

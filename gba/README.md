@@ -1,4 +1,4 @@
-# gba/ - DOOMOGACHI LIFE for the Game Boy Advance
+# gba/ - BOREagotchi LIFE! for the Game Boy Advance
 
 A real GBA ROM running the shared C99 core. Full documentation (build,
 mGBA, controls, memory map, renderers, saves, audio, harness, measured

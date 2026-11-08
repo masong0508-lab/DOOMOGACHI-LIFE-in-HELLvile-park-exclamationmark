@@ -1,4 +1,4 @@
-@ crt0.s - Game Boy Advance boot code for DOOMOGACHI LIFE (owner: gba).
+@ crt0.s - Game Boy Advance boot code for BOREagotchi LIFE! (owner: gba).
 @
 @ No devkitPro: this is the whole runtime start-up.
 @   * the cartridge header (branch, Nintendo logo, title, codes; the
@@ -37,8 +37,8 @@ _start:
     .byte 0xD6,0x25,0xE4,0x8B,0x38,0x0A,0xAC,0x72,0x21,0xD4,0xF8,0x07
 
     @ ---- 0xA0: title (12), game code (4), maker code (2) ---------------
-    .ascii "DOOMOGACHI"
-    .byte 0, 0
+    .ascii "BOREAGOTCHI"
+    .byte 0
     .ascii "BDME"
     .ascii "DM"
     .byte 0x96                  @ fixed value

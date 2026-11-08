@@ -33,7 +33,7 @@ static const char *const C_arrival[] = {
 };
 static const char *const C_home[] = {
     "Home sweet home! Your very own cottage on Hillvile Lane.",
-    "The Doomogachi egg is wiggling... it's warm... it's HATCHING!"
+    "The Boreagotchi egg is wiggling... it's warm... it's HATCHING!"
 };
 static const char *const C_fog[] = {
     "Purple fog pours over the Wall like spilled grape soda.",

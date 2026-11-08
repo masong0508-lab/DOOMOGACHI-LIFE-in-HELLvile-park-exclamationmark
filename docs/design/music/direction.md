@@ -1,4 +1,4 @@
-# DOOMOGACHI LIFE in HELLvile Park! - Music Direction and Cue Sheet
+# BOREagotchi LIFE! in HELLvile PARK... - Music Direction and Cue Sheet
 
 > **File:** `scratchpad/music/direction.md`. This is a design spec, not code.
 > It was written read-only against the repo on 2026-10-11.

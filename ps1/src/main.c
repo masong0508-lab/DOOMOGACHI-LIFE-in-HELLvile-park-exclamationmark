@@ -82,8 +82,8 @@ static void boot_splash(void)
         plat_rect(0, 148, SCR_W, 2, PAL_UI_CREAM);
         if (egg && egg->w <= 64 && egg->h <= 64)
             plat_image(SCR_W / 2 - egg->w, 140 - egg->h * 2, egg, 2, IMG_SHADOW, 0);
-        plat_text(SCR_W / 2 - 16 * 6 / 2, 32, "DOOMOGACHI LIFE", PAL_UI_PINK_D);
-        plat_text(SCR_W / 2 - 17 * 6 / 2, 44, "in HELLvile Park!", PAL_UI_PURPLE);
+        plat_text(SCR_W / 2 - 17 * 6 / 2, 32, "BOREagotchi LIFE!", PAL_UI_PINK_D);
+        plat_text(SCR_W / 2 - 19 * 6 / 2, 44, "in HELLvile PARK...", PAL_UI_PURPLE);
         plat_text(SCR_W / 2 - 25 * 6 / 2, 196, "Checking MEMORY CARD " STR_ICON_HEART "...", PAL_UI_CREAM);
         plat_end_frame();
     }
@@ -125,7 +125,7 @@ int main(void)
         for (;;) {      /* should never happen: the core is linked */
             plat_begin_frame();
             plat_clear(PAL_UI_RED_D);
-            plat_text(40, 110, "DOOMOGACHI: core not linked", PAL_WHITE);
+            plat_text(40, 110, "BOREagotchi: core not linked", PAL_WHITE);
             plat_end_frame();
         }
     }

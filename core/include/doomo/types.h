@@ -1,5 +1,5 @@
 /*
- * DOOMOGACHI LIFE in HELLvile Park!
+ * BOREagotchi LIFE! in HELLvile PARK...
  * types.h - basic types, fixed point, global limits.
  *
  * The core is portable C99 shared by the GBA ROM, the PS1 disc and the

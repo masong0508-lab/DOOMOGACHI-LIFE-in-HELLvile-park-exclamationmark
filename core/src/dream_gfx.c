@@ -1049,7 +1049,7 @@ void dream_draw_vignette(int v, const DreamCast *c, int t, int creep, int nightm
         }
         if (creep >= 6 && creep < 12 && ((t / 6) & 1)) ui_text(mx + 20, my - 40, "*wave*", PAL_WHITE);
         break; }
-    case 13: {  /* giant Doomogachi */
+    case 13: {  /* giant Boreagotchi */
         int s4 = big ? 5 : 4, frame = (t / 10) & 3;
         int bounce = ui_wave(t, 30, 3) > 0 ? -ui_wave(t, 30, 3) : 0;
         sprite_at(SPR_PET, frame, cx, ground + 4 + bounce, s4, creep >= 12 ? IMG_SILHOUETTE : 0, PAL_RAMP(RAMP_VAPE, 0));

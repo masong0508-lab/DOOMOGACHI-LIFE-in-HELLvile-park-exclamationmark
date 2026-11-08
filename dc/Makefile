@@ -1,4 +1,4 @@
-# dc/Makefile - DOOMOGACHI LIFE for the Dreamcast (owner: dreamcast).
+# dc/Makefile - BOREagotchi LIFE! for the Dreamcast (owner: dreamcast).
 #
 #   make -C dc            build/doomogachi.elf (+ .map, size report)
 #   make -C dc disc       build/doomogachi.cdi (self-booting disc image), plus

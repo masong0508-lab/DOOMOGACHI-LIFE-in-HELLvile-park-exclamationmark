@@ -1,4 +1,4 @@
-/* harness.c - headless libmgba test harness for the DOOMOGACHI GBA ROM
+/* harness.c - headless libmgba test harness for the BOREagotchi GBA ROM
  * (owner: gba).
  *
  *   gba/build/harness ROM.gba [--script FILE] [--shots DIR] [--save FILE]

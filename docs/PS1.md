@@ -1,4 +1,4 @@
-# DOOMOGACHI LIFE on the PlayStation
+# BOREagotchi LIFE! on the PlayStation
 
 `ps1/` turns the shared C99 core into a real PlayStation disc: a PS-X EXE
 built with PSn00bSDK, wrapped in a bootable, license-free `.bin/.cue`
@@ -769,9 +769,9 @@ blocks (8 KB each) depending on the save size.
 
 ```
 frame 0      "SC", icon flag 0x13 (3 frames), block count,
-             title in Shift-JIS ("DOOMOGACHI LIFE Story" / "Free Play"),
+             title in Shift-JIS ("BOREagotchi LIFE! Story" / "Free Play"),
              16-colour icon CLUT
-frames 1-3   16x16 4bpp icon: a pink Doomogachi egg whose critter blinks
+frames 1-3   16x16 4bpp icon: a pink Boreagotchi egg whose critter blinks
              and grows horns (3-frame animation in the BIOS / emulator
              card manager)
 frame 4      info frame: magic "DMPS", payload size, CRC32
@@ -807,7 +807,7 @@ frames 5..   the core's save stream, zero padded
 
 ### Machine config file (U1p)
 
-`bu00:BASLUS-DOOMOC` (title "DOOMOGACHI LIFE Settings") holds the core's
+`bu00:BASLUS-DOOMOC` (title "BOREagotchi LIFE! Settings") holds the core's
 machine config record (`plat_config_read` / `plat_config_write`, at most
 `PLAT_CONFIG_MAX` = 48 B: U0's 32 B settings + the 16 B adults' code). It
 lives outside both save slots so language, volumes and the code survive

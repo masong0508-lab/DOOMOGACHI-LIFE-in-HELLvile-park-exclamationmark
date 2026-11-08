@@ -151,7 +151,7 @@ int script_cast(int map, StoryNpcSpot *out, int max)
 /* ======================================================================
  * debug: jump + step
  * ==================================================================== */
-static void ensure_pet(void) { if (!pet_exists()) pet_new("Doomo"); }
+static void ensure_pet(void) { if (!pet_exists()) pet_new("Bori"); }
 
 static void ensure_weapon(void)
 {

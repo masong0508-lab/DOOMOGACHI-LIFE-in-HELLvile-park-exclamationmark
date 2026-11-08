@@ -3,7 +3,7 @@
  * The full arc (all playable in this build):
  * Chapter 1 "Welcome to HaHaland": extremely cutesy open-world life in
  *   HaHaland and on the Hillvile (good) side of Hellvile Park. Meet the
- *   citizens, hatch your Doomogachi, little fetch quests, all pastel. The
+ *   citizens, hatch your Boreagotchi, little fetch quests, all pastel. The
  *   Hellvile (bad) side is walled off; its citizens are only rumours.
  * Chapter 2 "Something in the Vapor": Cloud Nine Vapor opens by the wall.
  *   People get weird. First exorcism (the possessor is a named Hellvile

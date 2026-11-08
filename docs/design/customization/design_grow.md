@@ -1,4 +1,4 @@
-# DOOMOGACHI customisation, design B: fat look, thin RAM
+# BOREagotchi customisation, design B: fat look, thin RAM
 
 > The user asked: *"make sure you add a shitton of options, and face/body customization"*. Earlier asks:
 > *"immense customization"*, *"extremely complex customization options"*, *"an immense amount of options for everything and anything"*.

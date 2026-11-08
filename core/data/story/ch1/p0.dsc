@@ -50,7 +50,7 @@ S6:
   +21 sfx SFX_EGG_CRACK
   +34 label TITLE
 TITLE:
-  +0 shot 7 ; sfx SFX_FANFARE ; caption "DOOMOGACHI LIFE / in HELLvile Park!"
+  +0 shot 7 ; sfx SFX_FANFARE ; caption "BOREagotchi LIFE! / in HELLvile PARK..."
   +13 waita END 12 120
 END:
   +0 pal PAL_CRAYON 0 8

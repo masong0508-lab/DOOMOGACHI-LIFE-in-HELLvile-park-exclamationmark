@@ -5,5 +5,5 @@ Product No    : T-DOOMO
 Version       : V0.100
 Release Date  : 20261101
 Boot Filename : 1ST_READ.BIN
-SW Maker Name : DOOMOGACHI TEAM
-Game Title    : DOOMOGACHI LIFE IN HELLVILE PARK
+SW Maker Name : BOREAGOTCHI TEAM
+Game Title    : BOREAGOTCHI LIFE! IN HELLVILE PARK...

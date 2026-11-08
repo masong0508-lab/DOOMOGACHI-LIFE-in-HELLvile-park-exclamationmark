@@ -1,4 +1,4 @@
-# DOOMOGACHI audio engine: technical map of the current system (GBA + PS1 + native)
+# BOREagotchi audio engine: technical map of the current system (GBA + PS1 + native)
 
 Read-only snapshot of the repo at HEAD `43af439` (2026-10-11, ~16:40). All `file:line` refs are relative to the repo root. **Measured** numbers come from tools I ran in this folder only: GBA objects compiled into `music/build/`, the GBA `memreport.py` run on a copy of the 16:32 game-ROM map, the mGBA harness `profile` command run on copies of the 16:32-16:33 ROMs (`music/build/gba/`), and a host tool that runs the real sequencer (`music/build/songstat.c`). **Estimated** numbers are cycle counts from the generated ARM code or from ARM7TDMI / R3000A timing rules, and they are labelled. I did not edit, build in or run git in the repo.
 

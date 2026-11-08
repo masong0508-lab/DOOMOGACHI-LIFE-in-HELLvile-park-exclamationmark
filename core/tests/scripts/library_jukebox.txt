@@ -1,6 +1,6 @@
 # assert-no-stubs
 # SCENE_LIB_JUKEBOX (library): play songs on the record player (level
-# meters, dancing Doomogachi), then the sound test with waveforms.
+# meters, dancing Boreagotchi), then the sound test with waveforms.
 scene LIB_JUKEBOX 256
 expect-scene LIB_JUKEBOX
 wait 20

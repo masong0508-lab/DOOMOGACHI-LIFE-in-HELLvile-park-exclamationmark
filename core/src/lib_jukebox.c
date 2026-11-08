@@ -2,7 +2,7 @@
  *
  * Unlocked by MODE_JUKEBOX (unlocks_library.c). The SONGS shelf plays any
  * SONG_* on a spinning record with a four-channel level meter fed by the
- * real sequencer (audio_channel_state) and a Doomogachi dancing to the
+ * real sequencer (audio_channel_state) and a Boreagotchi dancing to the
  * beat; the SOUND FX shelf plays every SFX_* and draws its waveform from
  * the PCM. In Story Mode a song has to be heard first (its jukebox unlock
  * from unlocks_story.c); in free play every song is on the shelf. The
@@ -16,7 +16,7 @@ static const char *const tab_names[N_TABS] = { "Songs", "Sound FX" };
 
 static const char *const song_notes[] = {
     "",
-    "The theme! Hum it and a Doomogachi hatches somewhere.",
+    "The theme! Hum it and a Boreagotchi hatches somewhere.",
     "Sunshine, sprinkles and a bassline that skips.",
     "Fireflies, porch lights and sleepy bunnies.",
     "Make a friend! Or forty. The tune won't judge.",
@@ -255,7 +255,7 @@ static void song_panel(int x, int y, int w, int h)
     int cx = x + r + 8, cy = y + r + 6, ok = song_ok(e);
     char buf[48];
     record(cx, cy, r, ok ? e : 0, J.playing == e);
-    /* the dancing Doomogachi */
+    /* the dancing Boreagotchi */
     {
         int beat = J.playing ? (int)(audio_music_ticks() / 8) : (int)(lib_b.t / 30);
         const DoomoImage *img = sprite_image(SPR_PET, beat & 3);

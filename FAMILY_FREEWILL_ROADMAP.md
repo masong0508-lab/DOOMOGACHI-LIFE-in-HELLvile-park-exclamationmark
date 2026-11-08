@@ -94,7 +94,7 @@ skipping `playas_avatar()`.
 
 ## Decisions (owner, 1 Nov 2026)
 - **Hub shortcut**: SELECT on the island hub now opens Family (reserved journey
-  `life_care_all`). The Doomogachi moves to the START menu (journey `life_pet`
+  `life_care_all`). The Boreagotchi moves to the START menu (journey `life_pet`
   is now START, Down, Down, A). Inside Family, SELECT/L/R still flip the tab.
 - **Autonomy**: a "Family free will" level, default **Normal**: Off, Min,
   Normal, High, Subconscious (the most, and silent). Set from Family >

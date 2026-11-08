@@ -1,6 +1,6 @@
 # Next-session prompt (paste into a new chat together with the repo zip; nothing else is needed)
 
-Project: DOOMOGACHI LIFE in HELLvile park! (repo root: core/, gba/, ps1/, dc/, docs/, tools/). Owner works from Termux on an Android phone.
+Project: BOREagotchi LIFE! in HELLvile PARK... (repo root: core/, gba/, ps1/, dc/, docs/, tools/). Owner works from Termux on an Android phone.
 
 ## PRIORITY ZERO (before anything else, and again before the last message of every session)
 A session that changes the repo is not finished until the owner has BOTH: (1) the patch zip, presented, and (2) the exact

@@ -150,7 +150,7 @@ jobs:
           sha256sum -- * > SHA256SUMS.txt
           cat SHA256SUMS.txt
           cat > "$RUNNER_TEMP/notes.md" <<EOF
-          **DOOMOGACHI LIFE in HELLvile Park!** ${TAG}, a Dippinn Productions game.
+          **BOREagotchi LIFE! in HELLvile PARK...** ${TAG}, a Dippinn Productions game.
 
           | file | what |
           |---|---|
@@ -176,7 +176,7 @@ jobs:
             echo "Release $TAG exists: replacing its assets"
           else
             gh release create "$TAG" --verify-tag "${flags[@]}" \
-              --title "DOOMOGACHI LIFE in HELLvile Park! $TAG" \
+              --title "BOREagotchi LIFE! in HELLvile PARK... $TAG" \
               --notes-file "$RUNNER_TEMP/notes.md"
           fi
           gh release upload "$TAG" dist/* --clobber

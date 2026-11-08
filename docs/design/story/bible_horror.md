@@ -1,6 +1,6 @@
 # STORY BIBLE (horror-comedy-first): "Don't Talk About the Other Side"
 
-DOOMOGACHI LIFE in HELLvile Park! is the same story on both the GBA and the PS1. The cast and the 4-chapter backbone are the canon ones from `story_map.md`. The timing vocabulary comes from `comic_timing.md`.
+BOREagotchi LIFE! in HELLvile PARK... is the same story on both the GBA and the PS1. The cast and the 4-chapter backbone are the canon ones from `story_map.md`. The timing vocabulary comes from `comic_timing.md`.
 
 > **Tone target:** Shaun of the Dead, Gravity Falls, Undertale and DOOM, sewn into a plush toy.
 > The pastel world slowly goes **wrong**: first in the background, then in your house, then in the sky. Every scare is undercut or doubled by a joke. Every running gag comes back at the end as something you feel.

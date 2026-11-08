@@ -1,4 +1,4 @@
-# DOOMOGACHI customisation v2: the final spec
+# BOREagotchi customisation v2: the final spec
 
 **Status:** final, for implementation. It supersedes `design_packed.md`, `design_grow.md` and `design_hybrid.md`.
 

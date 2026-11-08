@@ -1,4 +1,4 @@
-/* gba.ld - linker script for the DOOMOGACHI LIFE GBA ROM (owner: gba).
+/* gba.ld - linker script for the BOREagotchi LIFE! GBA ROM (owner: gba).
  *
  *   ROM    0x08000000  32 MB  header (.crt0), code (THUMB), const data
  *   EWRAM  0x02000000 256 KB  mailbox (80 bytes, test harness), .data +

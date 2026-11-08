@@ -1,5 +1,5 @@
 /* unlocks_life.c - the life module's unlockables (ids 320..415, owner:
- * life): the 16 Doomogachi forms (granted by pet.c when your pet first
+ * life): the 16 Boreagotchi forms (granted by pet.c when your pet first
  * evolves into one), creator parts, paints and shop items earned through
  * friendships, weddings, babies, exorcisms and days lived, and a few
  * life achievements. Automatic rules use the PROG_* counters; need == 0
@@ -18,8 +18,8 @@
 #define MISC(id, idx, name, how, prog, need) { id, UL_CAT_MISC, 0, idx, name, how, prog, need }
 
 const DoomoUnlock doomo_unlocks_life[] = {
-    /* ---- Doomogachi forms (index = form, see pet.h) ---- */
-    PET(320, 0, "Mochiblob", "Hatch a Doomogachi egg"),
+    /* ---- Boreagotchi forms (index = form, see pet.h) ---- */
+    PET(320, 0, "Mochiblob", "Hatch a Boreagotchi egg"),
     PET(321, 1, "Puffling", "Raise a well-loved child"),
     PET(322, 2, "Sprinkle", "Raise a well-loved teen"),
     PET(323, 3, "Cupcakeling", "Raise a well-loved adult"),
@@ -74,7 +74,7 @@ const DoomoUnlock doomo_unlocks_life[] = {
 
     /* ---- paints ---- */
     PAINT(362, PAINT_MAGENTA, "Magenta Paint", "Celebrate 3 weddings", PROG_MARRIAGES, 3),
-    PAINT(363, PAINT_SLIME, "Slime Paint", "Evolve your Doomogachi 3 times", PROG_PET_EVOLUTIONS, 3),
+    PAINT(363, PAINT_SLIME, "Slime Paint", "Evolve your Boreagotchi 3 times", PROG_PET_EVOLUTIONS, 3),
 
     /* ---- shop stock ---- */
     ITEM(364, ITEM_PLUSH_CROSS, "Plush Cross", "Win your first exorcism", PROG_EXORCISMS_WON, 1),
@@ -85,12 +85,12 @@ const DoomoUnlock doomo_unlocks_life[] = {
     ITEM(369, ITEM_CHILL_PILL, "Chill Pill", "Fail an exorcism", PROG_EXORCISMS_FAILED, 1),
 
     /* ---- modes ---- */
-    MODE(370, MODE_TAMA_ONLY, "Tamagotchi Only", "Raise a Doomogachi to adulthood", PROG_PET_EVOLUTIONS, 4),
+    MODE(370, MODE_TAMA_ONLY, "Tamagotchi Only", "Raise a Boreagotchi to adulthood", PROG_PET_EVOLUTIONS, 4),
 
     /* ---- achievements ---- */
     MISC(371, 2, "Cupid", "Celebrate 10 weddings", PROG_MARRIAGES, 10),
     MISC(372, 3, "Exorcist", "Win 10 exorcisms", PROG_EXORCISMS_WON, 10),
-    MISC(373, 4, "Tamagotchi Master", "Evolve your Doomogachi 12 times", PROG_PET_EVOLUTIONS, 12),
+    MISC(373, 4, "Tamagotchi Master", "Evolve your Boreagotchi 12 times", PROG_PET_EVOLUTIONS, 12),
     MISC(374, 5, "Old Timer", "Live in town for 100 days", PROG_DAYS_LIVED, 100),
     MISC(375, 6, "Social Butterfly", "Make 100 friendships", PROG_FRIENDSHIPS, 100),
     MISC(376, 7, "Baby Boom", "Welcome 10 babies to town", PROG_BABIES, 10),

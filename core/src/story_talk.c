@@ -80,7 +80,7 @@ static const char *const topic_life[] = {
     "{C} ...Sorry, I say that a lot.",
     "If you ever need a {J}, you know where to find me!",
     "My dream? A big plate of {F} and a whole day of {H}.",
-    "Have you met {E}? Your Doomogachi is SO cute!",
+    "Have you met {E}? Your Boreagotchi is SO cute!",
     "Being a {J} is hard work, but somebody has to do it. {C}"
 };
 

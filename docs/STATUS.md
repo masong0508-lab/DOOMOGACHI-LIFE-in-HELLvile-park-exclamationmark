@@ -38,7 +38,7 @@ The same lists, with the order to take the open items and what needs the owner, 
 |---|---|
 | Title + Free Play | title, New Island (empty / 1000-citizen Classic), island hub, apartments, roster, care, shop, news, options, save/load |
 | Creator | species, body, presets, age and Hellvile looks |
-| Life sim | needs, social, rent, Doomogachi pet + Doomodex, exorcism, dreams, family dashboard + add-member wizard, births, ageing, pets (they grow old, and after the story you can uplift a close pet into a talking, playable housemate), loss + memorial, New life, 16 household events, New Game+ |
+| Life sim | needs, social, rent, Boreagotchi pet + Boredex, exorcism, dreams, family dashboard + add-member wizard, births, ageing, pets (they grow old, and after the story you can uplift a close pet into a talking, playable housemate), loss + memorial, New life, 16 household events, New Game+ |
 | Shooter | Hell Breach levels (first / third person), arena modes, welding workshop |
 | Story | chapters 1-4 + epilogue, cutscenes, quest log, about 109 live side quests, ending engine with routes and secret endings |
 | House | Live / Build / Photo, HomeMart, Black Market, Hold the Door |

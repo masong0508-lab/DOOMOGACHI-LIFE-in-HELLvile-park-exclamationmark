@@ -1,4 +1,4 @@
-# DOOMOGACHI customization + options: technical map of the current system
+# BOREagotchi customization + options: technical map of the current system
 
 Snapshot: working tree at HEAD `e705a4d` plus the CI fix pass's uncommitted edits
 (`core/src/portrait_gfx.c`, `core/src/portrait_int.h`, `gba/gba.ld`, `gba/src/gba_hw.h`,

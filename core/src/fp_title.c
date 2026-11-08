@@ -1,7 +1,7 @@
 /* fp_title.c - SCENE_TITLE (owner: freeplay).
  *
- * "DOOMOGACHI LIFE in HELLvile Park!": a candy logo that drops in letter by
- * letter and keeps bouncing, two plush citizens waving beside the menu
+ * "BOREagotchi LIFE! in HELLvile PARK...": a candy logo that drops in letter
+ * by letter and keeps bouncing, two plush citizens waving beside the menu
  * (they take turns: a parade of premade favourites), sparkles and hearts
  * in a themed sky. Every few seconds the "HELL" glitches and drips red -
  * foreshadowing. Six title themes (OPT_TITLE_THEME, some unlockable) can
@@ -465,12 +465,22 @@ static void draw_ground(void)
 
 /* ====================================================================== */
 /* the logo                                                                 */
-static const uint8_t logo_cols[10] = {
+/* "BORE" in capitals, "agotchi" in lower case: one candy colour a letter */
+#define LOGO_N 11
+static const char logo_word[LOGO_N + 1] = "BOREagotchi";
+static const uint8_t logo_cols[LOGO_N] = {
     PAINT_ROSE, PAINT_TANGERINE, PAINT_LEMON, PAINT_MINT, PAINT_SKY,
-    PAINT_LAVENDER, PAINT_BUBBLEGUM, PAINT_ROSE, PAINT_LEMON, PAINT_MINT
+    PAINT_LAVENDER, PAINT_BUBBLEGUM, PAINT_ROSE, PAINT_TANGERINE, PAINT_LEMON, PAINT_MINT
 };
+/* the "LIFE!" pill: width, height, text and heart offsets (small | big) */
+#define PILL_W(big)  ((big) ? 104 : 80)
+#define PILL_H(big)  ((big) ? 22 : 18)
+#define PILL_TX(big) ((big) ? 20 : 10)
+#define PILL_HX(big) ((big) ? 94 : 72)
+/* letter i's x offset in the word at scale sc */
+static int logo_dx(int i, int sc) { return i * FONT_ADVANCE * sc; }
 
-/* The ten big letters as images, painted once into the scene scratch block
+/* The eleven big letters as images, painted once into the scene scratch block
  * (about 6 KB at scale 3, 10 KB at scale 4) and from then on blitted with
  * the bounce offset: replaying their ~50 rects each cost ~11 ms a tick on
  * the GBA. Same pixels: drawn by ui_text_big into an offscreen target. */
@@ -480,21 +490,21 @@ static struct {
     int sw, big, ok, used;
     uint8_t xok, xfail;
     struct { DoomoImage img; int16_t bx, by; } x[3];
-    struct { DoomoImage img; int16_t bx, by; } l[10];
+    struct { DoomoImage img; int16_t bx, by; } l[LOGO_N];
 } LG;
 
-static int logo_cache(int x0, int adv, int sc)
+static int logo_cache(int x0, int sc)
 {
-    static const char word[] = "DOOMOGACHI";
+    const char *word = logo_word;
     int sw = fp_sw(), big = fp_big(), i, used = 0, pass;
-    int16_t bb[10][4];
+    int16_t bb[LOGO_N][4];
     if (LG.pix && scene_scratch_mine(LOGO_TAG) && LG.sw == sw && LG.big == big) return LG.ok;
     if (plat_draw_skipped()) return 0;     /* nothing would be painted */
     LG.pix = NULL; LG.ok = 0; LG.sw = sw; LG.big = big; LG.xok = LG.xfail = 0;
     for (pass = 0; pass < 2; pass++) {
-        for (i = 0, used = 0; i < 10; i++) {
+        for (i = 0, used = 0; i < LOGO_N; i++) {
             char g[2] = { word[i], 0 };
-            int bx0, by0, bx1, by1, w, h, x = x0 + i * adv, y = 64;
+            int bx0, by0, bx1, by1, w, h, x = x0 + logo_dx(i, sc), y = 64;
             if (!pass) {
                 ui_raster_target(NULL, 0, 0, 0, 0);
                 ui_text_big(x, y, g, sc, PAL_PAINT(logo_cols[i], 2), PAL_PAINT(logo_cols[i], 0));
@@ -528,7 +538,7 @@ static int logo_cache(int x0, int adv, int sc)
     return 1;
 }
 
-/* Extra static logo pieces (the LIFE pill, "in", "vile Park!"), painted
+/* Extra static logo pieces (the LIFE! pill, "in", "vile PARK..."), painted
  * once after the letters in the same scratch claim. `fn` draws the piece
  * at (x, y). Returns 1 if piece `k` is cached (draw it with logo_extra). */
 static int logo_snap(int k, void (*fn)(int, int), int x, int y)
@@ -567,10 +577,10 @@ static void logo_extra(int k, int x, int y)
 static void pc_pill(int lx, int ly)
 {
     int big = fp_big();
-    fp_pill(lx, ly, big ? 88 : 66, big ? 22 : 18, PAL_PAINT(PAINT_ROSE, 1),
+    fp_pill(lx, ly, PILL_W(big), PILL_H(big), PAL_PAINT(PAINT_ROSE, 1),
             PAL_PAINT(PAINT_ROSE, 0), PAL_PAINT(PAINT_ROSE, 2));
-    ui_text_big(lx + (big ? 18 : 12), ly + (big ? 3 : 2), "LIFE", 2, PAL_WHITE, PAL_PAINT(PAINT_ROSE, 0));
-    ui_heart(lx + (big ? 80 : 60), ly + 4, 3, PAL_UI_GOLD);
+    ui_text_big(lx + PILL_TX(big), ly + (big ? 3 : 2), "LIFE!", 2, PAL_WHITE, PAL_PAINT(PAINT_ROSE, 0));
+    ui_heart(lx + PILL_HX(big), ly + 4, 3, PAL_UI_GOLD);
 }
 
 static void pc_text(int x, int y, const char *s)
@@ -579,16 +589,16 @@ static void pc_text(int x, int y, const char *s)
     else ui_text_big(x, y, s, 2, PAL_WHITE, PAL_PAINT(PAINT_GRAPE, 0));
 }
 static void pc_in(int x, int y) { pc_text(x, y, "in"); }
-static void pc_vile(int x, int y) { pc_text(x, y, "vile Park!"); }
+static void pc_vile(int x, int y) { pc_text(x, y, "vile PARK..."); }
 
 static void draw_logo(void)
 {
-    static const char word[] = "DOOMOGACHI";
-    int sw = fp_sw(), big = fp_big(), sc = big ? 4 : 3, adv = FONT_ADVANCE * sc;
-    int lw = 10 * adv, x0 = (sw - lw) / 2, y0 = big ? 16 : 10, i, t = T.t;
+    const char *word = logo_word;
+    int sw = fp_sw(), big = fp_big(), sc = big ? 4 : 3;
+    int lw = logo_dx(LOGO_N, sc), x0 = (sw - lw) / 2, y0 = big ? 16 : 10, i, t = T.t;
     char g[2] = { 0, 0 };
-    int cached = logo_cache(x0, adv, sc);
-    for (i = 0; i < 10; i++) {
+    int cached = logo_cache(x0, sc);
+    for (i = 0; i < LOGO_N; i++) {
         int drop = t - i * 3, dy;
         if (drop < 0) continue;
         if (drop < 12) dy = -(12 - drop) * (12 - drop) / 3;
@@ -600,31 +610,31 @@ static void draw_logo(void)
         if (y0 + dy < 2) dy = 2 - y0;
         if (cached) {
             if (!plat_draw_skipped())
-                plat_image(x0 + i * adv + LG.l[i].bx, y0 + dy + LG.l[i].by, &LG.l[i].img, 1, 0, 0);
+                plat_image(x0 + logo_dx(i, sc) + LG.l[i].bx, y0 + dy + LG.l[i].by, &LG.l[i].img, 1, 0, 0);
             continue;
         }
-        ui_text_big(x0 + i * adv, y0 + dy, g, sc, PAL_PAINT(logo_cols[i], 2),
+        ui_text_big(x0 + logo_dx(i, sc), y0 + dy, g, sc, PAL_PAINT(logo_cols[i], 2),
                     PAL_PAINT(logo_cols[i], 0));
     }
-    /* "LIFE" in a pill under the right end */
+    /* "LIFE!" in a pill under the right end */
     if (t > 34) {
-        int lx = x0 + lw - (big ? 92 : 70), ly = y0 + 8 * sc + (big ? 2 : 1);
-        int pop = ui_pop_scale(t - 34), pw = (big ? 88 : 66) * pop / 256;
+        int lx = x0 + lw - (PILL_W(big) + 4), ly = y0 + 8 * sc + (big ? 2 : 1);
+        int pop = ui_pop_scale(t - 34), pw = PILL_W(big) * pop / 256;
         if (pop == 256 && t - 34 >= 12 && logo_snap(0, pc_pill, lx, ly)) logo_extra(0, lx, ly);
         else {
-        fp_pill(lx + ((big ? 88 : 66) - pw) / 2, ly, pw, big ? 22 : 18, PAL_PAINT(PAINT_ROSE, 1),
+        fp_pill(lx + (PILL_W(big) - pw) / 2, ly, pw, PILL_H(big), PAL_PAINT(PAINT_ROSE, 1),
                 PAL_PAINT(PAINT_ROSE, 0), PAL_PAINT(PAINT_ROSE, 2));
         if (pop >= 220) {
-            ui_text_big(lx + (big ? 18 : 12), ly + (big ? 3 : 2), "LIFE", 2, PAL_WHITE, PAL_PAINT(PAINT_ROSE, 0));
-            ui_heart(lx + (big ? 80 : 60), ly + 4, 3, PAL_UI_GOLD);
+            ui_text_big(lx + PILL_TX(big), ly + (big ? 3 : 2), "LIFE!", 2, PAL_WHITE, PAL_PAINT(PAINT_ROSE, 0));
+            ui_heart(lx + PILL_HX(big), ly + 4, 3, PAL_UI_GOLD);
         }
         }
     }
-    /* "in HELLvile Park!" - the HELL glitches */
+    /* "in HELLvile PARK..." - the HELL glitches */
     if (t > 44) {
         int s2 = big ? 2 : 1, ly = y0 + 8 * sc + (big ? 28 : 22);
         int w_in = ui_text_big_width("in ", s2), w_hell = ui_text_big_width("HELL", s2);
-        int w_rest = ui_text_big_width("vile Park!", s2);
+        int w_rest = ui_text_big_width("vile PARK...", s2);
         int tw = w_in + w_hell + w_rest - 4, lx = (sw - tw) / 2 - (big ? 0 : 20);
         int gl = T.glitch_t > 0, k;
         uint8_t hc = gl ? ((T.t / 2) & 1 ? PAL_UI_RED : PAL_RAMP(RAMP_BLOOD, 2)) : PAL_PAINT(PAINT_CHERRY, 1);
@@ -633,10 +643,10 @@ static void draw_logo(void)
             logo_extra(2, lx + w_in + w_hell - 2, ly);
         } else if (s2 == 1) {
             ui_text_outline(lx, ly, "in", PAL_WHITE, PAL_PAINT(PAINT_GRAPE, 0));
-            ui_text_outline(lx + w_in + w_hell - 2, ly, "vile Park!", PAL_WHITE, PAL_PAINT(PAINT_GRAPE, 0));
+            ui_text_outline(lx + w_in + w_hell - 2, ly, "vile PARK...", PAL_WHITE, PAL_PAINT(PAINT_GRAPE, 0));
         } else {
             ui_text_big(lx, ly, "in", s2, PAL_WHITE, PAL_PAINT(PAINT_GRAPE, 0));
-            ui_text_big(lx + w_in + w_hell - 2, ly, "vile Park!", s2, PAL_WHITE, PAL_PAINT(PAINT_GRAPE, 0));
+            ui_text_big(lx + w_in + w_hell - 2, ly, "vile PARK...", s2, PAL_WHITE, PAL_PAINT(PAINT_GRAPE, 0));
         }
         for (k = 0; k < 4; k++) {
             int jx = gl ? rng_between(&doomo_rng, -2, 2) : 0, jy = gl ? rng_between(&doomo_rng, -1, 1) : 0;

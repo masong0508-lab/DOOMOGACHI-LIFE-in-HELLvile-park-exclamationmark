@@ -1,4 +1,4 @@
-/* pet.h - the Doomogachi: a tamagotchi you raise (owner: life).
+/* pet.h - the Boreagotchi: a tamagotchi you raise (owner: life).
  * Egg -> baby -> child -> teen -> adult. Care quality and holiness decide
  * the evolution line: ANGEL (very holy), CUTE (good care), FERAL (neglect),
  * DEMON (corrupted). The pet's screen is an LCD-green tamagotchi panel. */

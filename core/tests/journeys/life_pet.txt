@@ -1,4 +1,4 @@
-# life_pet (M0): the island hub -> START menu -> the Doomogachi, once the egg
+# life_pet (M0): the island hub -> START menu -> the Boreagotchi, once the egg
 # has been named. Budget: budgets.tsv life_pet.
 scene NEW_ISLAND
 wait 10

@@ -76,7 +76,7 @@ const AudioSong audio_songs[SONG_COUNT] = {
     { "Silence", 0, { NULL, NULL, NULL, NULL } },
 
     /*SONG:TITLE*/
-    { "Doomogachi Life!", ASONG_LOOP, {
+    { "Boreagotchi Life!", ASONG_LOOP, {
       /*ch0*/ "t140 @0 o5 l8 v13"
               "e g >c< g a4 g e | f a >c< a g4. r | a >c d c< a4 g f | e d e g g4 r4 |"
               "e g >c< g a4 >c< a | >d c< b a g4 e g | a g f e d4 e f | e2 c4 r4 |",
@@ -155,7 +155,7 @@ const AudioSong audio_songs[SONG_COUNT] = {
     /*END*/
 
     /*SONG:PET*/
-    { "Doomogachi Beeps", ASONG_LOOP, {
+    { "Boreagotchi Beeps", ASONG_LOOP, {
       /*ch0*/ "t150 @14 o5 l8 v12"
               "c e g >c< g e c r | d f a f d4 r4 | e g >c e d c< b g | c4 g4 c4 r4 |"
               "e g a g e c d4 | f a b a f d e4 | g4 e4 >c4< g4 | c4 e8 d8 c4 r4 |",

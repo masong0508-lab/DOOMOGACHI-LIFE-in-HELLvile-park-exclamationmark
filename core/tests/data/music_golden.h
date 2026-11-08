@@ -4,13 +4,13 @@
  * and the bridge's channel-state hash over 600 ticks. */
 #define MUSIC_GOLDEN_N 28
 static const uint32_t music_golden[MUSIC_GOLDEN_N][3] = {
-    { 0x8F160C30u, 0x4FE502D7u, 0x43136ED1u },   /* Doomogachi Life! */
+    { 0x8F160C30u, 0x4FE502D7u, 0x43136ED1u },   /* Boreagotchi Life! */
     { 0xADA9D997u, 0xDA6A0F01u, 0x45FEDE2Eu },   /* HaHaland Day */
     { 0x11DF19C0u, 0x41F4D59Eu, 0x2F2909CCu },   /* HaHaland Night */
     { 0x1DFCF7BDu, 0xECBC2CEAu, 0x3D7B3121u },   /* Make a Friend! */
     { 0xC820077Bu, 0x25A74990u, 0x042D4EB3u },   /* Shop Hop */
     { 0x3E80DA0Cu, 0x253853FFu, 0x21063DC8u },   /* St. Cuddles Hymn */
-    { 0xD5F9ACC7u, 0x4FF6C653u, 0xBF6129CAu },   /* Doomogachi Beeps */
+    { 0xD5F9ACC7u, 0x4FF6C653u, 0xBF6129CAu },   /* Boreagotchi Beeps */
     { 0xE323E939u, 0xB7E3B673u, 0x61D4010Eu },   /* Hellvile After Dark */
     { 0x170B70D5u, 0xFC8C33C3u, 0xB8CB60D0u },   /* The Ritual */
     { 0xB5D00CE7u, 0xD24D7E65u, 0xE7006AA9u },   /* Rivet's Workshop */

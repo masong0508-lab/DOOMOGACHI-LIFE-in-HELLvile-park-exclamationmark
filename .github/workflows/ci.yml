@@ -1,4 +1,4 @@
-# CI for DOOMOGACHI LIFE in HELLvile Park! (owner: ci)
+# CI for BOREagotchi LIFE! in HELLvile PARK... (owner: ci)
 #
 #   core     native unit tests + headless playthrough (also under ASan/UBSan),
 #            -Werror cross-compile of every core source for gcc / arm / mipsel /

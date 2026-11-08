@@ -480,8 +480,8 @@ void gfx_loading_screen(const char *title, const char *detail, int done, int tot
     if (fill > 0)
         busy_box(&tl[5], bx, by, fill, bh, 255, 90, 160);
     DrawSync(0);
-    busy_puts(70, "DOOMOGACHI LIFE", PAL_UI_PURPLE);
-    busy_puts(82, "in HELLvile Park!", PAL_UI_PINK_D);
+    busy_puts(70, "BOREagotchi LIFE!", PAL_UI_PURPLE);
+    busy_puts(82, "in HELLvile PARK...", PAL_UI_PINK_D);
     busy_puts(104, title, PAL_UI_PURPLE);
     busy_puts(152, detail, PAL_UI_PURPLE);
     busy_puts(194, "Do not remove the MEMORY CARD", PAL_UI_RED_D);

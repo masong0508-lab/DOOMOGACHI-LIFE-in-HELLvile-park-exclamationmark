@@ -632,7 +632,7 @@ void story_push_scene(const DoomoScene *s, int arg, int pend, int ctx, int extra
                     /* a script's house beat, dream or show; "Go inside" still opens the house */
                     (ctx == CTX_VM && (pend == PEND_HOME || pend == PEND_DREAM ||
                                        pend == PEND_COOKING || pend == PEND_CONCERT)))) {
-        if (pend == PEND_PET && !pet_exists()) pet_new("Doomo");
+        if (pend == PEND_PET && !pet_exists()) pet_new("Bori");
         dispatch_result();
         return;
     }

@@ -1,4 +1,4 @@
-# Comic Timing Bible: DOOMOGACHI LIFE in HELLvile Park!
+# Comic Timing Bible: BOREagotchi LIFE! in HELLvile PARK...
 
 This document reverse-engineers the comic timing of our 78-second teaser
 (`trailer/`) into rules, exact frame counts, and fixed-point math. Story,

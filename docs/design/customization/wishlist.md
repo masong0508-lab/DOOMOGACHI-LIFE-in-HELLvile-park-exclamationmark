@@ -1,4 +1,4 @@
-# DOOMOGACHI LIFE in HELLvile Park: customisation and options wishlist
+# BOREagotchi LIFE! in HELLvile PARK...: customisation and options wishlist
 
 > The user asked: *"make sure you add a shitton of options, and face/body customization"*.
 > Earlier: *"immense customization"*, *"extremely complex customization options"*, *"an immense amount of options for everything and anything"*.

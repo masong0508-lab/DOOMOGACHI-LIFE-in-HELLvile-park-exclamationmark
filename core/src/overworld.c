@@ -685,7 +685,7 @@ static void pet_update(void)
 /* ---- pause panel ------------------------------------------------------------------- */
 enum { PM_RESUME, PM_LOG, PM_PET, PM_ARMORY, PM_MAP, PM_OPTIONS, PM_SAVE, PM_TITLE, PM_COUNT };
 const char *const ow_pause_names[PM_COUNT] = {
-    "Resume", "Quest Log", "Doomogachi", "Armory", "Map", "Options", "Save", "Title Screen"
+    "Resume", "Quest Log", "Boreagotchi", "Armory", "Map", "Options", "Save", "Title Screen"
 };
 int ow_pause_count(void) { return PM_COUNT; }
 
@@ -722,7 +722,7 @@ static void pause_activate(int sel)
     case PM_RESUME: PAUSE_OFF(); break;
     case PM_LOG: PAUSE_OFF(); story_push_scene(&SCENE_QUESTLOG, 0, PEND_OTHER, CTX_FREE, 0); break;
     case PM_PET:
-        if (!pet_exists()) { ui_toast("No Doomogachi yet!"); audio_sfx(SFX_ERROR); break; }
+        if (!pet_exists()) { ui_toast("No Boreagotchi yet!"); audio_sfx(SFX_ERROR); break; }
         PAUSE_OFF();
         story_push_scene(&SCENE_PET, 0, PEND_OTHER, CTX_FREE, 0);
         break;

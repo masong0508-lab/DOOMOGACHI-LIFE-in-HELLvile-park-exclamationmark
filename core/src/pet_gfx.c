@@ -1,4 +1,4 @@
-/* pet_gfx.c - chunky LCD pixel art for the Doomogachi (owner: life).
+/* pet_gfx.c - chunky LCD pixel art for the Boreagotchi (owner: life).
  *
  * Every form is generated in code into a 32x32 canvas of LCD "dots":
  * 0 empty, 1 ink, 2 mid tone (shading, blush), 3 lit (opaque background

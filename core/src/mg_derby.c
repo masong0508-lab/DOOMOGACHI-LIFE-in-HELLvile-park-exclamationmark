@@ -1,6 +1,6 @@
-/* mg_derby.c - DOOMOGACHI DERBY (owner: minigames).
+/* mg_derby.c - BOREAGOTCHI DERBY (owner: minigames).
  *
- * Your Doomogachi races five rival pets down the candy-turf track in
+ * Your Boreagotchi races five rival pets down the candy-turf track in
  * front of a cheering grandstand. Mash A to sprint (it burns stamina),
  * press B to jump the candy-cane hurdles - jump right on the beat for a
  * PERFECT boost, miss and you trip. Boost pads give a free burst. Your
@@ -419,7 +419,7 @@ static uint32_t dy_bot(void)
 }
 
 const MgGame mg_game_derby = {
-    "DOOMOGACHI DERBY", "Hellvile Park Downs",
+    "BOREAGOTCHI DERBY", "Hellvile Park Downs",
     "Mash A to sprint, tap B to hop hurdles on the beat. Care makes pets fast!",
     STR_ICON_A " sprint  " STR_ICON_B " jump",
     MG_DERBY, PROG_HS_DERBY, SONG_FESTIVAL, 0, 742,       /* Eyeballer, bookie */

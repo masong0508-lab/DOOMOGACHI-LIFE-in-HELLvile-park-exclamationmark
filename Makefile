@@ -1,4 +1,4 @@
-# Makefile - top-level entry points for DOOMOGACHI LIFE in HELLvile Park!
+# Makefile - top-level entry points for BOREagotchi LIFE! in HELLvile PARK...
 # (owner: ci). Every target delegates to the module builds (core/, gba/,
 # ps1/, trailer/); see docs/BUILDING.md for toolchain setup.
 #
@@ -250,7 +250,7 @@ endif
 # ---- doctor -----------------------------------------------------------------------------
 found = $(if $(1),found   $(1),MISSING)
 doctor:
-	@echo "DOOMOGACHI LIFE build doctor"
+	@echo "BOREagotchi LIFE! build doctor"
 	@echo "  host gcc            $(call found,$(HOST_CC))"
 	@echo "  python3             $(call found,$(PYTHON3))"
 	@echo "  arm-none-eabi-gcc   $(call found,$(ARM_GCC))"

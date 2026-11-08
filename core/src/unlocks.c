@@ -25,7 +25,7 @@ const char *const doomo_progress_names[PROG_COUNT] = {
     "Pet evolutions", "Gifts given", "Meals served", "Secrets found",
     "Headshots", "Cross-border friends", "Money earned", "Arena waves",
     "Best: Cupcake Catch", "Best: Whack-an-Imp", "Best: Vape Cloud Dodge",
-    "Best: Bubble Blaster", "Best: Doomogachi Derby", "Best: Memory Match",
+    "Best: Bubble Blaster", "Best: Boreagotchi Derby", "Best: Memory Match",
     "Wheel of Fate: last spin day",
     "Concerts", "Hit Parade (packed)", "Hit Parade 2 (packed)",
     "Fish caught",
@@ -134,7 +134,7 @@ const DoomoUnlock doomo_unlocks_foundation[] = {
     P(69, CLIST_HAT, HAT_HORNED_HELMET, "Horned Helmet", "Survive 5 arena waves", PROG_ARENA_WAVES, 5),
     P(70, CLIST_HAT, HAT_MARINE_HELMET, "Marine Helmet", "Defeat 150 demons", PROG_DEMONS_KILLED, 150),
     P(71, CLIST_HAT, HAT_CROWN, "Crown", "Earn 25,000 H$", PROG_MONEY_EARNED, 25000),
-    P(72, CLIST_HAT, HAT_PROPELLER, "Propeller Cap", "Evolve your Doomogachi twice", PROG_PET_EVOLUTIONS, 2),
+    P(72, CLIST_HAT, HAT_PROPELLER, "Propeller Cap", "Evolve your Boreagotchi twice", PROG_PET_EVOLUTIONS, 2),
     P(73, CLIST_HAT, HAT_BUCKET, "Bucket Hat", "Give 10 gifts", PROG_GIFTS_GIVEN, 10),
     P(74, CLIST_ACC, ACC_GAS_MASK, "Gas Mask", "Defeat 35 demons", PROG_DEMONS_KILLED, 35),
     P(75, CLIST_ACC, ACC_CHAINS, "Chains", "Defeat 45 demons brutally", PROG_DEMONS_KILLED_BRUTAL, 45),
@@ -169,7 +169,7 @@ const DoomoUnlock doomo_unlocks_foundation[] = {
     /* window skins */
     SKIN(160, OPT_WINDOW_SKIN, WSKIN_HELLFIRE, "Hellfire Windows", "Defeat 50 demons", PROG_DEMONS_KILLED, 50),
     SKIN(161, OPT_WINDOW_SKIN, WSKIN_MIDNIGHT, "Midnight Windows", "Live in town for 5 days", PROG_DAYS_LIVED, 5),
-    SKIN(162, OPT_WINDOW_SKIN, WSKIN_TAMAGOTCHI, "Tamagotchi Windows", "Evolve your Doomogachi 4 times", PROG_PET_EVOLUTIONS, 4),
+    SKIN(162, OPT_WINDOW_SKIN, WSKIN_TAMAGOTCHI, "Tamagotchi Windows", "Evolve your Boreagotchi 4 times", PROG_PET_EVOLUTIONS, 4),
     SKIN(163, OPT_WINDOW_SKIN, WSKIN_GOTH, "Goth Windows", "Befriend 5 folks across the wall", PROG_CROSS_BORDER_FRIENDS, 5),
     /* title themes */
     SKIN(170, OPT_TITLE_THEME, 2, "Candy Storm Title", "Make 15 friendships", PROG_FRIENDSHIPS, 15),
@@ -183,7 +183,7 @@ const DoomoUnlock doomo_unlocks_foundation[] = {
     /* camera filters */
     SKIN(190, OPT_CAMERA_FILTER, 1, "Storybook Filter", "Make 5 friendships", PROG_FRIENDSHIPS, 5),
     SKIN(191, OPT_CAMERA_FILTER, 2, "VHS Filter", "Weld 8 weapons", PROG_WEAPONS_WELDED, 8),
-    SKIN(192, OPT_CAMERA_FILTER, 3, "Game Pal Filter", "Evolve your Doomogachi", PROG_PET_EVOLUTIONS, 1),
+    SKIN(192, OPT_CAMERA_FILTER, 3, "Game Pal Filter", "Evolve your Boreagotchi", PROG_PET_EVOLUTIONS, 1),
     SKIN(193, OPT_CAMERA_FILTER, 4, "Sepia Filter", "Live in town for 3 days", PROG_DAYS_LIVED, 3),
     SKIN(194, OPT_CAMERA_FILTER, 5, "Nightvision Filter", "Defeat 130 demons", PROG_DEMONS_KILLED, 130),
     /* crosshairs */

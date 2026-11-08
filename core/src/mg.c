@@ -612,7 +612,7 @@ static const DoomoActivity mg_activities[] = {
       ICON_SKULL, 1, ACT_ALWAYS, &SCENE_MG_WHACK, 0 },
     { "Memory Match", "Pair up citizens. Hellvile cards bite", ACTLOC_FUN_FAIR, FAIR,
       ICON_HEART, 1, ACT_ALWAYS, &SCENE_MG_MEMORY, 0 },
-    { "Doomogachi Derby", "Race your pet against five rivals", ACTLOC_FUN_FAIR, FAIR,
+    { "Boreagotchi Derby", "Race your pet against five rivals", ACTLOC_FUN_FAIR, FAIR,
       ICON_EGG, 1, ACT_ALWAYS, &SCENE_MG_DERBY, 0 },
     { "Bubble Blaster Gallery", "Pop cardboard demons, spare citizens", ACTLOC_FUN_FAIR, FAIR,
       ICON_GUN, 2, ACT_ALWAYS, &SCENE_MG_GALLERY, 0 },

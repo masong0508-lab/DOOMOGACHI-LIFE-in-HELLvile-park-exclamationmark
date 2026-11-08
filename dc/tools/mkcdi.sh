@@ -46,7 +46,7 @@ fi
 "$makeip" -f "$iptxt" "$work/IP.BIN" >/dev/null
 # -C 0,11702: the data session starts after cdi4dc's audio track (MSINFO)
 # shellcheck disable=SC2086
-"$iso" $isoargs -quiet -C 0,11702 -V DOOMOGACHI -G "$work/IP.BIN" -r -J -l \
+"$iso" $isoargs -quiet -C 0,11702 -V BOREAGOTCHI -G "$work/IP.BIN" -r -J -l \
     -o "$work/doomogachi.iso" "$work/cd" 2>"$work/mkisofs.log" || { cat "$work/mkisofs.log" >&2; die "mkisofs failed"; }
 "$cdi4dc" "$work/doomogachi.iso" "$cdi" >"$work/cdi4dc.log" 2>&1 || { cat "$work/cdi4dc.log" >&2; die "cdi4dc failed"; }
 grep -q "All done OK" "$work/cdi4dc.log" || { cat "$work/cdi4dc.log" >&2; die "cdi4dc did not finish"; }

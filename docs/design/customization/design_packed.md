@@ -1,4 +1,4 @@
-# DOOMOGACHI customisation v2: the packed-gene design (angle A)
+# BOREagotchi customisation v2: the packed-gene design (angle A)
 
 > Ask: *"make sure you add a shitton of options, and face/body customization"* (earlier: "immense
 > customization", "extremely complex customization options", "an immense amount of options for

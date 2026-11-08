@@ -1,6 +1,6 @@
 # Dream House: technical map and rendering proposal
 
-Covers DOOMOGACHI LIFE in HELLvile Park! on GBA and PS1: build, decorate and visit homes.
+Covers BOREagotchi LIFE! in HELLvile PARK... on GBA and PS1: build, decorate and visit homes.
 
 > Read-only survey of the repo at `43af439` ("Docs: GBA/PS1 memory tables after the overlay + EWRAM pass"), plus the uncommitted work of other agents in progress on 2026-10-11. Every `file:line` reference is to that tree. Numbers marked **measured** come from running the existing test binary (`core/build/tests save`, output in a scratch tmp dir) or from `arm-none-eabi-size` on `gba/build/doomogachi.elf`. All other numbers come from the docs cited next to them, or they are estimates and say so.
 >

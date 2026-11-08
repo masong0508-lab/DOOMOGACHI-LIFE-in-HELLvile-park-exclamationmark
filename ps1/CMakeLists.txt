@@ -1,4 +1,4 @@
-# DOOMOGACHI LIFE in HELLvile Park! - PlayStation build (owner: ps1)
+# BOREagotchi LIFE! in HELLvile PARK... - PlayStation build (owner: ps1)
 #
 #   cmake --preset ps1            (configure, see CMakePresets.json)
 #   cmake --build --preset ps1    -> build/doomogachi.exe, .bin/.cue disc
@@ -18,7 +18,7 @@ project(
 	doomogachi
 	LANGUAGES    C ASM
 	VERSION      1.0.0
-	DESCRIPTION  "DOOMOGACHI LIFE in HELLvile Park! (PS1)"
+	DESCRIPTION  "BOREagotchi LIFE! in HELLvile PARK... (PS1)"
 )
 
 option(DOOMO_ENGINE_TEST "Boot into the 3D engine test / benchmark" OFF)

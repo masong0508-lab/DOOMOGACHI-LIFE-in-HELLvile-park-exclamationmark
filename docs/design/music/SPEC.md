@@ -1,6 +1,6 @@
 # SPEC: Dynamic Music, Chip Sound and Record Scratches (GBA + PS1)
 
-DOOMOGACHI LIFE in HELLvile Park! This is the final music spec, v1, dated 2026-10-18, for parallel agents working in one shared tree. It was written read-only against branch `claude/nice-allen-gr6czm` and the build outputs of 19:02-19:04. Nothing in the repo was edited, built or git-touched.
+BOREagotchi LIFE! in HELLvile PARK... This is the final music spec, v1, dated 2026-10-18, for parallel agents working in one shared tree. It was written read-only against branch `claude/nice-allen-gr6czm` and the build outputs of 19:02-19:04. Nothing in the repo was edited, built or git-touched.
 
 **The asks (verbatim):** "Make good flowing dynamic music as well That's as non repetitive/monotonous as possible, while still looping" / "Make the audio chiptuney yet still limit pushing on gba" / "Complete with simulated record scratches" / "But still work on the p s one too".
 

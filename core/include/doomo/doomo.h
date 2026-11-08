@@ -1,4 +1,4 @@
-/* doomo.h - umbrella header for the DOOMOGACHI LIFE core. */
+/* doomo.h - umbrella header for the BOREagotchi LIFE! core. */
 #ifndef DOOMO_H
 #define DOOMO_H
 #include "types.h"

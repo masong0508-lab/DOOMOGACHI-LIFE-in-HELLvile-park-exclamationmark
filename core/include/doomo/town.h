@@ -1,6 +1,6 @@
 /* town.h - the whole saved world: 1000 resident slots (500 Hillvile +
  * 500 Hellvile), the relationship
- * graph, the clock, money, inventory, welded weapons, the Doomogachi pet,
+ * graph, the clock, money, inventory, welded weapons, the Boreagotchi pet,
  * story progress and options. One DoomoTown == one save slot.
  *
  * Data API (town.c, owner: foundation). Simulation that *changes* the town
@@ -49,7 +49,7 @@ typedef struct DoomoWeapon {
 } DoomoWeapon;         /* 16 bytes */
 enum { WF_VALID = 1, WF_FAVORITE = 2, WF_STARTER = 4, WF_LEGENDARY = 8 };
 
-/* ---- the Doomogachi (tamagotchi pet, pet.h has the logic) ---------------- */
+/* ---- the Boreagotchi (tamagotchi pet, pet.h has the logic) ---------------- */
 typedef struct DoomoPet {
     char    name[8];
     uint8_t stage;       /* PET_STAGE_* (egg, baby, child, teen, adult)   */

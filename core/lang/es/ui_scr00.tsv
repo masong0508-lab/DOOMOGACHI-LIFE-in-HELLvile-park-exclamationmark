@@ -17,7 +17,7 @@ Nana Puddin		# fp_title.c
 \x80 Welcome back!	\x80 ¡Bienvenido de nuevo!	# fp_title.c
 More themes: %s	Más temas: %s	# fp_title.c
 keep playing!	¡sigue jugando!	# fp_title.c
-DOOMOGACHI		# fp_title.c
+BOREagotchi		# fp_title.c
 LIFE		# fp_title.c
 vile Park!		# fp_title.c
 in 		# fp_title.c
@@ -151,7 +151,7 @@ Free play!	¡Juego libre!	# story_questlog.c
 \x80 Hillvile %d  \x80 Hellvile %d		# story_questlog.c
 \x88\x87 Tabs  \x8C Back	\x88\x87 Fichas  \x8C Atrás	# story_questlog.c
 QUESTLOG		# story_questlog.c
-Doomo		# pet_scene.c
+Bori		# pet_scene.c
 NO	NO	# pet_scene.c
 ON	SÍ	# pet_scene.c
 OFF	NO	# pet_scene.c
@@ -163,13 +163,13 @@ ERR %d		# pet_scene.c
 A:NEW EGG	A:HUEVO	# pet_scene.c
 BYE BYE..	ADIÓS..	# pet_scene.c
 PRESS	PULSA	# pet_scene.c
-Doomodex %d/16	Doomodex %d/16	# pet_scene.c
+Boredex %d/16	Boredex %d/16	# pet_scene.c
 \x89 %s line \x8A	\x89 Línea %s \x8A	# pet_scene.c
 %s (egg)	%s (huevo)	# pet_scene.c
 %s is watching over you	%s te cuida	# pet_scene.c
 %s the %s	%s el %s	# pet_scene.c
 \x88\x87 Shield  \x8B Feed / hold / play	\x88\x87 Escudo  \x8B Dar / sostener / jugar	# pet_scene.c
-\x88\x87 Pick  \x8B Use  SELECT Doomodex  START Exit	\x88\x87 Elegir  \x8B Usar  SELECT Doomodex  START Salir	# pet_scene.c
+\x88\x87 Pick  \x8B Use  SELECT Boredex  START Exit	\x88\x87 Elegir  \x8B Usar  SELECT Boredex  START Salir	# pet_scene.c
 PET	MASCOTA	# pet_scene.c
 Mochiblob		# pet.c
 Puffling		# pet.c
@@ -199,7 +199,7 @@ Adult	Adulto	# pet.c
 +15% damage (holy blessing)	+15% daño (bendición santa)	# pet.c
 +20% damage (feral fury)	+20% daño (furia salvaje)	# pet.c
 +25% damage (demonic rage)	+25% daño (rabia demoníaca)	# pet.c
-No Doomogachi yet	Aún sin Doomogachi	# pet.c
+No Boreagotchi yet	Aún sin Boreagotchi	# pet.c
 Watching over you	Te cuida	# pet.c
 Grows up to help you fight	Crece para ayudarte a pelear	# pet.c
 \x8B Talk   START Menu   B Run	\x8B Hablar   START Menú   B Correr	# overworld.c
@@ -213,7 +213,7 @@ The fountain giggles. You toss in a coin and make a wish. It giggles harder.	La 
 Quest Log	Misiones	# overworld.c
 Armory	Arsenal	# overworld.c
 Title Screen	Pantalla título	# overworld.c
-No Doomogachi yet!	¡Aún sin Doomogachi!	# overworld.c
+No Boreagotchi yet!	¡Aún sin Boreagotchi!	# overworld.c
 Rivet hasn't welded you anything yet!	¡Rivet aún no te soldó nada!	# overworld.c
 Strolls aren't saved	Los paseos no se guardan	# overworld.c
 Couldn't save	No se pudo guardar	# overworld.c
@@ -261,7 +261,7 @@ Don't tell anyone, but I'm scared of {X}. Shh!	No se lo digas a nadie, pero le t
 {C} ...Sorry, I say that a lot.	{C} ...Perdón, lo digo mucho.	# story_talk.c
 If you ever need a {J}, you know where to find me!	Si necesitas un {J}, ¡ya sabes dónde encontrarme!	# story_talk.c
 My dream? A big plate of {F} and a whole day of {H}.	¿Mi sueño? Un platazo de {F} y un día entero de {H}.	# story_talk.c
-Have you met {E}? Your Doomogachi is SO cute!	¿Conoces a {E}? ¡Tu Doomogachi es TAN tierno!	# story_talk.c
+Have you met {E}? Your Boreagotchi is SO cute!	¿Conoces a {E}? ¡Tu Boreagotchi es TAN tierno!	# story_talk.c
 Being a {J} is hard work, but somebody has to do it. {C}	Ser {J} es duro, pero alguien debe hacerlo. {C}	# story_talk.c
 Have you tried the new vapor shop? I had one puff. Then eleven.	¿Probaste la nueva tienda de vapor? Di una calada. Luego once.	# story_talk.c
 Is it just me or is everyone humming the same note? Hmmmmmmmmm...	¿Soy yo o todos tarareamos la misma nota? Hmmmmmmmmm...	# story_talk.c
@@ -382,7 +382,7 @@ A sleepy pink bus rolls over the candy-coloured hills...	Un autobús rosa y soñ
 Welcome to HaHaland: the happiest place on Earth!	¡Bienvenido a HaHaland: el lugar más feliz del mundo!	# cutscene.c
 Population: 500 lovely citizens. And now, @P!	Población: 500 adorables ciudadanos. ¡Y ahora, @P!	# cutscene.c
 Home sweet home! Your very own cottage on Hillvile Lane.	¡Hogar, dulce hogar! Tu propia casita en Hillvile Lane.	# cutscene.c
-The Doomogachi egg is wiggling... it's warm... it's HATCHING!	El huevo Doomogachi se mueve... está tibio... ¡ESTÁ ECLOSIONANDO!	# cutscene.c
+The Boreagotchi egg is wiggling... it's warm... it's HATCHING!	El huevo Boreagotchi se mueve... está tibio... ¡ESTÁ ECLOSIONANDO!	# cutscene.c
 Purple fog pours over the Wall like spilled grape soda.	Niebla morada cae sobre el Muro como refresco de uva derramado.	# cutscene.c
 Two little lights blink at you from inside it.	Dos lucecitas te parpadean desde dentro.	# cutscene.c
 "Hee hee hee... Hillvile... come and PLAY with us..."	"Ji ji ji... Hillvile... ven a JUGAR con nosotros..."	# cutscene.c

@@ -1,4 +1,4 @@
-# DOOMOGACHI LIFE in HELLvile Park! — STORY BIBLE, HEART-FIRST CUT
+# BOREagotchi LIFE! in HELLvile PARK... — STORY BIBLE, HEART-FIRST CUT
 
 *Working title of the expanded story: "Somebody Left the Light On".*
 

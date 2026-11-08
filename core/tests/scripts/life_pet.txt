@@ -1,5 +1,5 @@
-# SCENE_PET (life): the Doomogachi LCD screen. A new island has no pet, so
-# we name an egg, watch it, open menus, the health pages and the Doomodex.
+# SCENE_PET (life): the Boreagotchi LCD screen. A new island has no pet, so
+# we name an egg, watch it, open menus, the health pages and the Boredex.
 scene PET
 wait 20
 shot no_pet

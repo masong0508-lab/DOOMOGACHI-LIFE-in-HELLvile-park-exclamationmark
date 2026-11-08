@@ -52,7 +52,7 @@ static struct {
 const char *const dream_vignette_names[DREAM_VIGNETTES] = {
     "Snack Rain", "The Giant Plush", "Falling Up", "Fear Parade", "Picnic", "Starry Hobby",
     "Cloud Concert", "Wobbly Teeth", "Hell University", "The Big Spoon", "Fluffy Wings",
-    "Tea Under the Sea", "The Mirror", "Giant Doomogachi", "Endless Doors", "Demon Conga"
+    "Tea Under the Sea", "The Mirror", "Giant Boreagotchi", "Endless Doors", "Demon Conga"
 };
 
 /* ====================================================================== */
@@ -148,7 +148,7 @@ static const DreamLine dream_lines[DREAM_VIGNETTES] = {
     { "%n flies over HaHaland on fluffy wings!", "The wings are bat wings now. Uh oh." },
     { "An underwater tea party! Glub glub.", "The fish have teeth. And opinions." },
     { "%n waves at the mirror.", "The reflection waves first." },
-    { "The Doomogachi is as big as a house!", "It's hungry. It's looking at %n." },
+    { "The Boreagotchi is as big as a house!", "It's hungry. It's looking at %n." },
     { "Endless doors... each smells of %h.", "Something knocks. From the inside." },
     { "The Wall opens! Demons do the conga!", "%n is in the conga line. Forever." }
 };

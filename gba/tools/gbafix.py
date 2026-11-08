@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """gbafix.py - finalise a GBA ROM header (owner: gba). Stdlib only.
 
-    python3 gba/tools/gbafix.py ROM.gba [--title DOOMOGACHI] [--code BDME]
+    python3 gba/tools/gbafix.py ROM.gba [--title BOREAGOTCHI] [--code BDME]
                                 [--maker DM] [--version 0] [--pad]
                                 [--pad-to BYTES]
 
@@ -54,7 +54,7 @@ def fix(data, title, code, maker, version):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("rom")
-    ap.add_argument("--title", default="DOOMOGACHI")
+    ap.add_argument("--title", default="BOREAGOTCHI")
     ap.add_argument("--code", default="BDME")
     ap.add_argument("--maker", default="DM")
     ap.add_argument("--version", type=int, default=0)

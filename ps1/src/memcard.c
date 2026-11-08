@@ -6,7 +6,7 @@
  *   frame 0      title frame: "SC", icon flag 0x13 (3 frames), block count,
  *                title in Shift-JIS, 16-colour icon CLUT
  *   frames 1-3   the 16x16 4bpp icon, 3 animation frames (a pink
- *                Doomogachi egg whose critter blinks and grows horns)
+ *                Boreagotchi egg whose critter blinks and grows horns)
  *   frame 4      our info frame: magic "DMPS", payload size, CRC32
  *   frames 5..   payload (save.c's stream), zero padded to 128 bytes
  *
@@ -210,7 +210,7 @@ static uint16_t rgb15(int r, int g, int b)
 static void build_header(uint8_t *h, int slot, uint32_t size, uint32_t crc, int blocks)
 {
     static const char *const titles[3] = {
-        "DOOMOGACHI LIFE Story", "DOOMOGACHI LIFE Free Play", "DOOMOGACHI LIFE Settings" };
+        "BOREagotchi LIFE! Story", "BOREagotchi LIFE! Free Play", "BOREagotchi LIFE! Settings" };
     const char *t = titles[slot >= 0 && slot < 3 ? slot : 0];
     uint16_t *clut;
     int f, x, y, n = 0;
@@ -244,7 +244,8 @@ static void build_header(uint8_t *h, int slot, uint32_t size, uint32_t crc, int 
         uint8_t *info = h + FRAME * 4;
         uint32_t v[4] = { INFO_MAGIC, size, crc, (uint32_t)slot };
         memcpy(info, v, sizeof(v));
-        memcpy(info + 16, "DOOMOGACHI LIFE in HELLvile Park! PS1 save", 43);
+        static const char tag[] = "BOREagotchi LIFE! in HELLvile PARK... PS1 save";
+        memcpy(info + 16, tag, sizeof(tag));
     }
 }
 

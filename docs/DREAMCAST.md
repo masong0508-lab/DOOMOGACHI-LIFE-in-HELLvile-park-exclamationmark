@@ -1,4 +1,4 @@
-# DOOMOGACHI LIFE on the Dreamcast
+# BOREagotchi LIFE! on the Dreamcast
 
 The Dreamcast port is being built in stages (see the DC packages in the
 project plan). This document grows with it. Right now it covers:
@@ -364,8 +364,8 @@ dc/ip.txt --makeip--> IP.BIN
 doomogachi.iso --cdi4dc--> doomogachi.cdi   (audio/data, self-booting)
 ```
 
-`dc/ip.txt` holds our own title ("DOOMOGACHI LIFE IN HELLVILE PARK"), maker
-("DOOMOGACHI TEAM"), product number T-DOOMO and version. makeip adds the
+`dc/ip.txt` holds our own title ("BOREAGOTCHI LIFE! IN HELLVILE PARK..."),
+maker ("BOREAGOTCHI TEAM"), product number T-DOOMO and version. makeip adds the
 hardware and maker identifiers the boot ROM requires in every bootstrap
 (`SEGA SEGAKATANA`, `SEGA ENTERPRISES`). The IP.BIN bootstrap that makeip
 writes also contains the standard license text ("PRODUCED BY OR UNDER

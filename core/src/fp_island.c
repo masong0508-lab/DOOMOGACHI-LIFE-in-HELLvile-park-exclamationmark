@@ -79,7 +79,7 @@ static const Loc locs[] = {
       "Maestro Mew", "Mrrrr-aestro! The stage awaits!" },
     { "Graveyard", "Rest, flowers and a ghost or two.", LOC_GRAVEYARD, 166, 208, NOLOC, ACT_HAUNTING,
       "Mr. Solemn", "Welcome. Everyone ends up here... visiting." },
-    { "Doomogachi", "Your tamagotchi pet.", LOC_PET, 14, 236, NOLOC, NOLOC, NULL, NULL },
+    { "Boreagotchi", "Your tamagotchi pet.", LOC_PET, 14, 236, NOLOC, NOLOC, NULL, NULL },
     { "Citizens", "Everyone on the island.", LOC_ROSTER, 242, 236, NOLOC, NOLOC, NULL, NULL },
 };
 #define NLOCS DOOMO_COUNTOF(locs)
@@ -329,7 +329,7 @@ static void build_menu(const Loc *L)
     case LOC_MENU:
         add(E_ROSTER, ICON_SMILE, "Citizens", "Browse every citizen on the island.");
         add(E_NEWS, ICON_CLOUD, "News", "The island's news feed.");
-        add(E_PET, ICON_EGG, "Doomogachi", "Your tamagotchi pet.");
+        add(E_PET, ICON_EGG, "Boreagotchi", "Your tamagotchi pet.");
         add(E_SAVELOAD, ICON_HEART, "Save / Load", "Keep your island safe.");
         add(E_OPTIONS, ICON_WRENCH, "Options", "Settings for everything.");
         add(E_FAMILY, ICON_HOUSE, "Family", "Your household: care, add members, remember.");
@@ -410,9 +410,9 @@ static void open_pet(void)
 {
     if (pet_exists()) { scene_push(&SCENE_PET, 0); return; }
     fp_strcpy(I.petname, "Mochi", sizeof(I.petname));
-    ui_say(-1, "A mysterious egg is wobbling on your doorstep... It's a Doomogachi! Give it a name!");
+    ui_say(-1, "A mysterious egg is wobbling on your doorstep... It's a Boreagotchi! Give it a name!");
     ui_say_done(NULL);
-    ui_text_entry("Name your Doomogachi", I.petname, sizeof(I.petname), cb_pet_name);
+    ui_text_entry("Name your Boreagotchi", I.petname, sizeof(I.petname), cb_pet_name);
 }
 
 static void town_records(void)

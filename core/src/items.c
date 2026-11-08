@@ -92,7 +92,7 @@ const DoomoItemInfo doomo_items[ITEM_COUNT] = {
     /* ---- story / key items ---- */
     { "House Key", "Heart-shaped key to your cottage.", 0, ICAT_KEY,
       0, 0, 0, 0, 0, 0, 0, 0, ICON_HOUSE },
-    { "Doomogachi Egg", "It wiggles when you sing to it.", 0, ICAT_KEY,
+    { "Boreagotchi Egg", "It wiggles when you sing to it.", 0, ICAT_KEY,
       0, 0, 0, 0, 0, 0, 0, 0, ICON_EGG },
     { "Lost Bunny", "Pip's plush. A bit muddy.", 0, ICAT_KEY,
       0, 0, 0, 0, 0, 0, 0, 0, ICON_HEART },

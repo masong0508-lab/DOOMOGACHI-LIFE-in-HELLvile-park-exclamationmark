@@ -1,4 +1,4 @@
--- harness.lua - headless PCSX-Redux test driver for the DOOMOGACHI PS1 build.
+-- harness.lua - headless PCSX-Redux test driver for the BOREagotchi PS1 build.
 --
 -- Loaded with `pcsx-redux -cli ... -dofile harness.lua` by run.py, which
 -- passes everything through environment variables:

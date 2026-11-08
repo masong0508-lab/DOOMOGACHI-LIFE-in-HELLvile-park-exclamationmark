@@ -1,11 +1,11 @@
-/* pet_scene.c - SCENE_PET: the Doomogachi's LCD-green screen (owner: life).
+/* pet_scene.c - SCENE_PET: the Boreagotchi's LCD-green screen (owner: life).
  *
  * A plush egg-shaped keychain device (its shell colour follows the pet's
  * line) with a real dot-matrix LCD: 64x44 chunky dots drawn 2x (GBA) or
  * 3x with dot gaps (PS1), a faint LCD shadow under every lit dot, a row of
  * icons on top (food, lights, play, medicine) and bottom (clean, health,
  * discipline, attention). LEFT/RIGHT pick an icon, A uses it, B backs out,
- * SELECT opens the Doomodex, START leaves. The world keeps ticking while
+ * SELECT opens the Boredex, START leaves. The world keeps ticking while
  * you watch (sim_tick), so the pet lives on game time.
  */
 #include "doomo/doomo.h"
@@ -168,7 +168,7 @@ static void set_mode(int m)
 
 static void on_named(int ok)
 {
-    if (!ok || !S.name_buf[0]) memcpy(S.name_buf, "Doomo", 6);
+    if (!ok || !S.name_buf[0]) memcpy(S.name_buf, "Bori", 5);
     pet_new(S.name_buf);
     S.last_stage = PET_STAGE_EGG;
     S.last_form = 0;
@@ -270,7 +270,7 @@ static void pet_update(void)
         if (btn_pressed(BTN_A)) {
             press_fx(1);
             S.name_buf[0] = 0;
-            ui_text_entry("Name your Doomogachi!", S.name_buf, (int)sizeof(S.name_buf), on_named);
+            ui_text_entry("Name your Boreagotchi!", S.name_buf, (int)sizeof(S.name_buf), on_named);
         }
         break;
     case M_MAIN:
@@ -498,7 +498,7 @@ static void draw_device(uint32_t t)
     }
     /* brand above the screen */
     {
-        const char *brand = "DOOMOGACHI";
+        const char *brand = "BOREagotchi";
         int bw = ui_text_width(brand);
         ui_text_outline(cx - bw / 2, ly - (b ? 20 : 17), brand, PAL_WHITE, rim);
     }
@@ -813,7 +813,7 @@ static void draw_nopet(uint32_t t)
     if ((t / 15) & 1) lcd_text(40, 22, "A", 1);
 }
 
-/* The Doomodex: one evolution line per page (baby -> adult), so the four
+/* The Boredex: one evolution line per page (baby -> adult), so the four
  * images fit the art cache. UP/DOWN change the line, LEFT/RIGHT the form. */
 static void draw_dex(uint32_t t)
 {
@@ -823,7 +823,7 @@ static void draw_dex(uint32_t t)
     char buf[48];
     for (i = 0; i < PET_FORM_COUNT; i++) seen += pet_form_seen(i);
     if (!ui_window_pop(gx, gy, ww, wh, WIN_LCD, S.mt)) return;
-    doomo_snprintf(buf, sizeof(buf), "Doomodex %d/16", seen);
+    doomo_snprintf(buf, sizeof(buf), "Boredex %d/16", seen);
     ui_text(gx + 8, gy + 5, buf, ui_style(WIN_LCD)->title);
     doomo_snprintf(buf, sizeof(buf), STR_ICON_ARROW_U " %s line " STR_ICON_ARROW_D, doomo_pet_line_names[line]);
     ui_text(gx + ww - 8 - ui_text_width(buf), gy + 5, buf, ui_style(WIN_LCD)->text);
@@ -914,7 +914,7 @@ static void pet_draw(void)
     }
     if (big() && S.mode == M_BOSS) ui_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " Shield  " STR_ICON_A " Feed / hold / play", WIN_CUTE);
     else if (big()) ui_hint(S.mode == M_DEX ? STR_ICON_B " Back" :
-                       STR_ICON_ARROW_L STR_ICON_ARROW_R " Pick  " STR_ICON_A " Use  SELECT Doomodex  START Exit",
+                       STR_ICON_ARROW_L STR_ICON_ARROW_R " Pick  " STR_ICON_A " Use  SELECT Boredex  START Exit",
                        WIN_CUTE);
 }
 

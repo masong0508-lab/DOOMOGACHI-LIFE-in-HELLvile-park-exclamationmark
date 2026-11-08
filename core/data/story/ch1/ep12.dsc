@@ -48,7 +48,7 @@ script e12_nana
   setf SF_EGG_GIVEN
   befriend nana 3
   sfx SFX_PICKUP
-  say nar "GOT: House Key! GOT: / Doomogachi Egg (warm, / possibly judging you)."
+  say nar "GOT: House Key! GOT: / Boreagotchi Egg (warm, / possibly judging you)."
   say nana "Your house is the pink door / on Hillvile Lane. Up the / stairs, north-west. Shoo!"
   [R13]
   beat C1_HOME

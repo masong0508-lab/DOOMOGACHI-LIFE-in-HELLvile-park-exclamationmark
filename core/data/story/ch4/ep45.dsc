@@ -1,4 +1,4 @@
-# ch4/ep45.dsc - Chapter 4: Ep 4.5 "Find the Doomogachi" (owner: S3;
+# ch4/ep45.dsc - Chapter 4: Ep 4.5 "Find the Boreagotchi" (owner: S3;
 # story_final.md sec.3, sec.13): Gatekeeper Grumbleguts at the sealed gate
 # (Hell Breach 7, the Underbelly), the Pump room and the 900-page contract,
 # the pet-care boss (SCENE_PET under fire), the pet turning its back, and the

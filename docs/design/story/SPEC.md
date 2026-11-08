@@ -1,6 +1,6 @@
 # SPEC: Story, Dream House and Comic Timing (one implementation spec, GBA + PS1)
 
-DOOMOGACHI LIFE in HELLvile Park! Version 2, 2026-10-18 (adversarial review applied). Status: an implementation spec. **§12 "Critique fixes" is binding and wins over every earlier section of this SPEC when they disagree.** Nothing in the repo was touched. The repo was read only, for spot checks.
+BOREagotchi LIFE! in HELLvile PARK... Version 2, 2026-10-18 (adversarial review applied). Status: an implementation spec. **§12 "Critique fixes" is binding and wins over every earlier section of this SPEC when they disagree.** Nothing in the repo was touched. The repo was read only, for spot checks.
 
 **What the user asked for.** "Try ingraining in both games a very deep, heartfelt, scary but funny story with even more side missions and the ability to visit and decorate/build your dream house/room apartment (a good 2.5 on ps1, superbly cheap but effective isometric on gba)... From the video you produce to make sure you borrow that amount of spastic, elastic timing and comedic timing... while making it feel long too of course."
 

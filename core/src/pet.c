@@ -1,4 +1,4 @@
-/* pet.c - the Doomogachi: tamagotchi rules (owner: life). The LCD art is
+/* pet.c - the Boreagotchi: tamagotchi rules (owner: life). The LCD art is
  * pet_gfx.c, the screen is pet_scene.c.
  *
  * Egg -> baby -> child -> teen -> adult. Hunger and joy are 4 hearts each
@@ -82,7 +82,7 @@ void pet_new(const char *name)
     DoomoPet *p = P();
     int i;
     memset(p, 0, sizeof(*p));
-    if (!name || !name[0]) name = "Doomo";
+    if (!name || !name[0]) name = "Bori";
     for (i = 0; i < 7 && name[i]; i++) p->name[i] = name[i];
     p->stage = PET_STAGE_EGG;
     p->form = 0;
@@ -371,7 +371,7 @@ const char *pet_buff_text(void)
         "+20% damage (feral fury)", "+25% damage (demonic rage)"
     };
     const DoomoPet *p = P();
-    if (!pet_exists()) return "No Doomogachi yet";
+    if (!pet_exists()) return "No Boreagotchi yet";
     if (p->stage == PET_STAGE_DEAD) return "Watching over you";
     if (p->stage != PET_STAGE_ADULT) return "Grows up to help you fight";
     return t[pet_line()];

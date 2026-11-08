@@ -972,12 +972,12 @@ static void stub_title_draw(void)
     int lw = 132, lh = stub_title_list.visible * UI_LIST_ROW_H + 8;
     int scale = w >= 300 ? 3 : 2;
     int ty = 8 + ui_wave(t, 60, 2);
-    const char *l1 = "DOOMOGACHI";
+    const char *l1 = "BOREagotchi";
     ui_backdrop(WIN_CUTE, (uint32_t)t);
     ui_text_big((w - ui_text_big_width(l1, scale)) / 2, ty, l1, scale,
                 PAL_PAINT(PAINT_BUBBLEGUM, 1), PAL_RAMP(RAMP_PASTEL_PINK, 1));
-    ui_text_outline(w / 2 - font_text_width("LIFE in HELLvile Park!") / 2, ty + 8 * scale + 5,
-                    "LIFE in HELLvile Park!", PAL_RAMP(RAMP_PASTEL_PINK, 1), PAL_WHITE);
+    ui_text_outline(w / 2 - font_text_width("LIFE! in HELLvile PARK...") / 2, ty + 8 * scale + 5,
+                    "LIFE! in HELLvile PARK...", PAL_RAMP(RAMP_PASTEL_PINK, 1), PAL_WHITE);
     ui_heart(w / 2 - ui_text_big_width(l1, scale) / 2 - 10, ty + 4 * scale, 4 + (t / 8) % 2,
              PAL_PAINT(PAINT_ROSE, 1));
     ui_window(w / 2 - lw / 2, h - lh - 18, lw, lh, WIN_CUTE);

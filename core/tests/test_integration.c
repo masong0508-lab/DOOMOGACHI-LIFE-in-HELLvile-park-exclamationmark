@@ -229,7 +229,7 @@ TEST(integ_activities_registered)
 {
     /* the finished modules' activities (fishcook / levels add more) */
     static const char *const want[] = {
-        "Cupcake Catch", "Whack-an-Imp", "Memory Match", "Doomogachi Derby",
+        "Cupcake Catch", "Whack-an-Imp", "Memory Match", "Boreagotchi Derby",
         "Bubble Blaster Gallery", "Vape Cloud Dodge", "Wheel of Fate",       /* minigames */
         "Concert", "Hit Parade", "Peek at a Dream",                           /* concert   */
         "Grand Library", "Bestiary", "Citizen Almanac", "Weapon Catalog",

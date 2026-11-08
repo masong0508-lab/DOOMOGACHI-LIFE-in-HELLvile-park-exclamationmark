@@ -1,4 +1,4 @@
-# dc/ - DOOMOGACHI LIFE in HELLvile Park! for the Dreamcast
+# dc/ - BOREagotchi LIFE! in HELLvile PARK... for the Dreamcast
 
 A self-booting Dreamcast disc running the shared C99 core on KallistiOS.
 The port is being built in stages (the DC packages of the project plan);

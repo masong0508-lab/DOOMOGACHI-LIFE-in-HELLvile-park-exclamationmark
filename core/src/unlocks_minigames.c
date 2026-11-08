@@ -24,14 +24,14 @@ const DoomoUnlock doomo_unlocks_minigames[] = {
     TROPHY(833, "Bonk Badge", "Whack-an-Imp: bronze. They had it coming", PROG_HS_WHACK, MG_WHACK_B),
     TROPHY(834, "Puff Pin", "Vape Cloud Dodge: bronze. Lungs intact", PROG_HS_DODGE, MG_DODGE_B),
     TROPHY(835, "Popper Patch", "Bubble Blaster: bronze. Pop first, ask never", PROG_HS_GALLERY, MG_GALLERY_B),
-    TROPHY(836, "Derby Rosette", "Doomogachi Derby: bronze. Also-ran, with ribbon", PROG_HS_DERBY, MG_DERBY_B),
+    TROPHY(836, "Derby Rosette", "Boreagotchi Derby: bronze. Also-ran, with ribbon", PROG_HS_DERBY, MG_DERBY_B),
     TROPHY(837, "Moth Brooch", "Memory Match: bronze. You recall most of it", PROG_HS_MEMORY, MG_MEMORY_B),
     /* ---- silver: skins, cursors, a title theme ---- */
     SKIN(838, OPT_WINDOW_SKIN, WSKIN_BUBBLEGUM, "Bubblegum Windows", "Cupcake Catch: silver. Shiny, mostly edible", PROG_HS_CATCH, MG_CATCH_S),
     SKIN(839, OPT_CURSOR, 2, "Star Cursor", "Whack-an-Imp: silver. Imps are filing a report", PROG_HS_WHACK, MG_WHACK_S),
     SKIN(840, OPT_CURSOR, 3, "Sparkle Cursor", "Vape Cloud Dodge: silver. Fresh as a daisy", PROG_HS_DODGE, MG_DODGE_S),
     SKIN(841, OPT_WINDOW_SKIN, WSKIN_SKY, "Sky Windows", "Bubble Blaster: silver. Sharp eye, soft heart", PROG_HS_GALLERY, MG_GALLERY_S),
-    SKIN(842, OPT_WINDOW_SKIN, WSKIN_LEMON, "Lemon Windows", "Doomogachi Derby: silver. Photo not finished", PROG_HS_DERBY, MG_DERBY_S),
+    SKIN(842, OPT_WINDOW_SKIN, WSKIN_LEMON, "Lemon Windows", "Boreagotchi Derby: silver. Photo not finished", PROG_HS_DERBY, MG_DERBY_S),
     SKIN(843, OPT_TITLE_THEME, 1, "Starry Night Title", "Memory Match: silver. Remembering is a choice", PROG_HS_MEMORY, MG_MEMORY_S),
     /* ---- gold: creator parts (ones no other table locks and no creator
      * preset uses) ---- */
@@ -39,7 +39,7 @@ const DoomoUnlock doomo_unlocks_minigames[] = {
     PART(845, CLIST_HORNS, HORNS_ANTLERS, "Trophy Antlers", "Whack-an-Imp: gold. Trophy-grade bonking", PROG_HS_WHACK, MG_WHACK_G),
     PART(846, CLIST_ACC, ACC_MASK, "Vapeproof Mask", "Vape Cloud Dodge: gold. You dodged a lot", PROG_HS_DODGE, MG_DODGE_G),
     PART(847, CLIST_ACC, ACC_EYEPATCH, "Sharpshooter Eyepatch", "Bubble Blaster: gold. Eye of the Tiger", PROG_HS_GALLERY, MG_GALLERY_G),
-    PART(848, CLIST_HAIR, HAIR_BRAIDS, "Racing Braids", "Doomogachi Derby: gold. Winner by a hoof", PROG_HS_DERBY, MG_DERBY_G),
+    PART(848, CLIST_HAIR, HAIR_BRAIDS, "Racing Braids", "Boreagotchi Derby: gold. Winner by a hoof", PROG_HS_DERBY, MG_DERBY_G),
     PART(849, CLIST_BOTTOM, BOTTOM_LONG_SKIRT, "Fortune Teller Skirt", "Memory Match: gold. Creepily good", PROG_HS_MEMORY, MG_MEMORY_G),
     /* ---- feats (granted from code) ---- */
     PART(850, CLIST_HAT, HAT_CAT_EARS, "Fairgoer Cat Ears", "Play all six Fun Fair games. Yes, even that one", 0, 0),
@@ -48,7 +48,7 @@ const DoomoUnlock doomo_unlocks_minigames[] = {
     TROPHY(853, "Untouchable", "Finish Vape Cloud Dodge, zero scratches", 0, 0),
     TROPHY(854, "Fuzz Fan", "Whack-an-Imp bronze, Father Fuzz unbonked. Bless you", 0, 0),
     TROPHY(855, "Perfect Recall", "Clear Memory Match without a miss. Weird, honestly", 0, 0),
-    TROPHY(856, "Photo Finish", "Win the Doomogachi Derby by a nose. Check the tape", 0, 0),
+    TROPHY(856, "Photo Finish", "Win the Boreagotchi Derby by a nose. Check the tape", 0, 0),
     TROPHY(857, "Sugar Rush x3", "Three Sugar Rushes in one Cupcake Catch. Dentists hate it", 0, 0),
     TROPHY(858, "Cardboard Pacifist", "Bubble Blaster bronze, no citizens hit. Low bar", 0, 0),
     TROPHY(859, "Cursed!", "Get cursed by the Wheel of Fate. Read the fine print", 0, 0),

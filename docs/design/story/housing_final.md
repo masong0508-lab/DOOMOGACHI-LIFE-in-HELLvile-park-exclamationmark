@@ -1,6 +1,6 @@
 # The Dream House: final design (GBA + PS1)
 
-DOOMOGACHI LIFE in HELLvile Park! - build, decorate, visit and defend homes.
+BOREagotchi LIFE! in HELLvile PARK... - build, decorate, visit and defend homes.
 
 > Status: design, not code. Nothing in the repo was touched. This document merges `story/housing_tech.md` (measured sizes, rendering proposals), `story/comic_timing.md` (the trailer's timing vocabulary) and `story/bible_heart.md` section 3 (the house as the story's anchor) into one buildable spec. Every number marked **measured** comes from those docs (they were measured against the tree at `43af439` plus the uncommitted work of 2026-10-11). Everything about the new house screens is an **estimate**, because none of it exists yet, and it says so where it matters.
 >

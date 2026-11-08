@@ -1,4 +1,4 @@
-# DOOMOGACHI LIFE on the Game Boy Advance
+# BOREagotchi LIFE! on the Game Boy Advance
 
 The `gba/` module is a real GBA ROM running the shared C99 core
 (`core/`). It implements every function of `core/include/doomo/platform.h`
@@ -57,7 +57,7 @@ How it is put together:
 * `tools/mktables.py` generates `build/gen/gba_tables.c` (1/x table for
   the raycaster, sine table, ...).
 * The ELF is converted with `objcopy -O binary`, then `tools/gbafix.py`
-  fills the header (Nintendo logo, title `DOOMOGACHI`, game code `BDME`,
+  fills the header (Nintendo logo, title `BOREAGOTCHI`, game code `BDME`,
   maker `DM`, complement check). The game ROM is a full **256 Mbit (32 MB)
   cartridge**, the most the GBA can address (0x08000000-0x09FFFFFF):
   `gbafix.py --pad-to 33554432` pads it to exactly 32 MB and

@@ -1,4 +1,4 @@
-# DOOMOGACHI LIFE in HELLvile Park! — Game Design
+# BOREagotchi LIFE! in HELLvile PARK... — Game Design
 
 > GBA tamagotchi × Tomodachi Life × DOOM.
 > It starts sugary-sweet and pastel, then the demons of hell invade
@@ -59,7 +59,7 @@ Free play loop (real-time clock, day and night, adjustable sim speed):
   resident's old headlines show the new name; up to two free-text lines
   (a concert, a fun-fair record, a story line) are kept as text. A move-in
   no longer wipes the feed; loading greets you with "Welcome back!".
-* **Doomogachi**: a tamagotchi pet on an LCD-green screen (see 2.3).
+* **Boreagotchi**: a tamagotchi pet on an LCD-green screen (see 2.3).
 * **Possession**: at night, corruption creeps up (vape exposure, Hellvile
   visits, nightmares, nemeses). At 100 a resident becomes **POSSESSED** by
   a named Hellvile demon: red hollow eyes, creepy portrait, haunting
@@ -70,7 +70,7 @@ You create **yourself** (a dedicated player record) and move to HaHaland.
 
 **Ch.1 "Welcome to HaHaland"** (extremely cutesy open world, top-down)
 * Mayor Gigglesworth (a Mad-Hatter turkey, show canon) welcomes you; quest for your house key.
-* Nana Pudding (baker) gives you a **Doomogachi egg**. Hatch tutorial:
+* Nana Pudding (baker) gives you a **Boreagotchi egg**. Hatch tutorial:
   feed, clean, play, sleep.
 * Pip lost their bunny plush. Explore the park, the beach, the playground.
 * Make 3 friends; bring a cupcake to someone who loves cupcakes; tiny
@@ -131,7 +131,7 @@ at any time (SELECT). Both modes are fully supported:
 * **Gore setting**: CUTE (confetti, hearts, plush stuffing, squeaks) /
   BRUTAL (blood, gibs) / per-weapon style.
 
-### 2.3 Doomogachi (tamagotchi)
+### 2.3 Boreagotchi (tamagotchi)
 Egg → Baby → Child → Teen → Adult, with 16 forms across 4 lines: CUTE (good
 care), ANGEL (holy), FERAL (neglect), DEMON (corrupted). Care actions:
 meal / snack, play (minigame), clean poop, medicine, discipline, lights.
@@ -251,7 +251,7 @@ before it begins.
 | collect today's rent | 0 | 0 | 0 (LS-QA: automatic, done) |
 | save the island | 2 (= J7) | 1 | 3 (U3c: done) |
 | open the news | 1 | 1 | |
-| open the Doomogachi | 1 | 1 | |
+| open the Boreagotchi | 1 | 1 | |
 | add a household member | reserved | | 6 (F2) |
 | care for the whole household | reserved | | 1 (F2) |
 

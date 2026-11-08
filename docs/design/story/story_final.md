@@ -1,4 +1,4 @@
-# DOOMOGACHI LIFE in HELLvile Park! — FINAL STORY, SIDE MISSIONS AND COMIC TIMING DESIGN
+# BOREagotchi LIFE! in HELLvile PARK... — FINAL STORY, SIDE MISSIONS AND COMIC TIMING DESIGN
 
 *Working title of the expanded Story Mode: **"Don't Talk About the Other Side"** (the horror bible's skeleton) with the heart bible's organs grafted in per the two judges' plans. One story for the GBA ROM and the PS1 disc.*
 

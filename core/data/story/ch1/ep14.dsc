@@ -127,7 +127,7 @@ wave:
 end
 
 script e14_lulla
-  say lulla HAPPY "Hello! Shh, the little ones / are... oh. They've seen / your Doomogachi."
+  say lulla HAPPY "Hello! Shh, the little ones / are... oh. They've seen / your Boreagotchi."
   npc lulla RIPPLE 6
   sfx SFX_BEEP
   say nar "Eleven small voices: / BEEP!"

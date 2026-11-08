@@ -1,4 +1,4 @@
-# DOOMOGACHI LIFE in HELLvile Park! — Architecture
+# BOREagotchi LIFE! in HELLvile PARK... — Architecture
 
 One shared **portable C99 game core** runs the whole game. Two console
 front-ends render it, and a native runner tests it:

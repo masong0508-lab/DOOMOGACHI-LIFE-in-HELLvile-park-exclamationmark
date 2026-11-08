@@ -58,7 +58,7 @@ Take photos in your house (START > Photo) to fill this wing.	Toma fotos en tu ca
 LIB_GALLERY		# lib_gallery.c
 Songs	Canciones	# lib_jukebox.c
 Sound FX	Efectos	# lib_jukebox.c
-The theme! Hum it and a Doomogachi hatches somewhere.	¡El tema! Tararea y nacerá un Doomogachi por ahí.	# lib_jukebox.c
+The theme! Hum it and a Boreagotchi hatches somewhere.	¡El tema! Tararea y nacerá un Boreagotchi por ahí.	# lib_jukebox.c
 Sunshine, sprinkles and a bassline that skips.	Sol, confeti y un bajo que da saltitos.	# lib_jukebox.c
 Fireflies, porch lights and sleepy bunnies.	Luciérnagas, faroles y conejitos soñolientos.	# lib_jukebox.c
 Make a friend! Or forty. The tune won't judge.	¡Haz un amigo! O cuarenta. La melodía no juzga.	# lib_jukebox.c
@@ -209,7 +209,7 @@ Graveyard	Cementerio	# fp_island.c
 Rest, flowers and a ghost or two.	Descanso, flores y un fantasma o dos.	# fp_island.c
 Mr. Solemn		# fp_island.c
 Welcome. Everyone ends up here... visiting.	Bienvenido. Todos acaban aquí... de visita.	# fp_island.c
-Doomogachi		# fp_island.c
+Boreagotchi		# fp_island.c
 Your tamagotchi pet.	Tu mascota tamagotchi.	# fp_island.c
 Citizens	Ciudadanos	# fp_island.c
 Everyone on the island.	Todos en la isla.	# fp_island.c
@@ -291,8 +291,8 @@ Leave	Salir	# fp_island.c
 \x82 Welcome to %s!	\x82 ¡Bienvenido a %s!	# fp_island.c
 Mochi		# fp_island.c
 Dr. Bloom: "That's H$40, dear. Come back with coins."	Dra. Bloom: "Son H$40, querido. Vuelve con monedas."	# fp_island.c
-A mysterious egg is wobbling on your doorstep... It's a Doomogachi! Give it a name!	Un huevo misterioso se bambolea en tu puerta... ¡Es un Doomogachi! ¡Ponle nombre!	# fp_island.c
-Name your Doomogachi	Nombra a tu Doomogachi	# fp_island.c
+A mysterious egg is wobbling on your doorstep... It's a Boreagotchi! Give it a name!	Un huevo misterioso se bambolea en tu puerta... ¡Es un Boreagotchi! ¡Ponle nombre!	# fp_island.c
+Name your Boreagotchi	Nombra a tu Boreagotchi	# fp_island.c
 Population: %d in Hillvile, %d in Hellvile. %d ghosts float about.	Población: %d en Hillvile, %d en Hellvile. %d fantasmas flotan por ahí.	# fp_island.c
 Couples: %d. Cross-border friendships: %d. Graves: %d.	Parejas: %d. Amistades entre lados: %d. Tumbas: %d.	# fp_island.c
 Possessed right now: %d. Lost souls: %d. Exorcisms won: %u.	Poseídos ahora: %d. Almas perdidas: %d. Exorcismos ganados: %u.	# fp_island.c

@@ -51,7 +51,7 @@ const DoomoUnlock doomo_unlocks_library[] = {
     TROPHY(LIB_UL_GOURMET, "Gourmet", "Have every kind of food in your bag at once. Needs salt"),
     TROPHY(LIB_UL_POLISHER, "Trophy Polisher", "Own 100 unlockables. Hoarding, but make it a trophy"),
     TROPHY(LIB_UL_NIGHT_OWL, "Night Owl", "Visit the library after dark. Hoo goes there?"),
-    TROPHY(LIB_UL_DJ, "DJ Doomo", "Play 10 different songs in one Jukebox visit. Nobody asked"),
+    TROPHY(LIB_UL_DJ, "DJ Bori", "Play 10 different songs in one Jukebox visit. Nobody asked"),
     TROPHY(LIB_UL_CRITIC, "Art Critic", "Visit every room of the Art Gallery in one go. Say hm a lot"),
     { 0, 0, 0, 0, NULL, NULL, 0, 0 }
 };

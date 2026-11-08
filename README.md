@@ -1,6 +1,6 @@
 <div align="center">
 
-# DOOMOGACHI LIFE in HELLvile Park!
+# BOREagotchi LIFE! in HELLvile PARK...
 
 **Tamagotchi × Tomodachi Life × DOOM, as a real Game Boy Advance ROM and a real PlayStation disc.**
 
@@ -10,7 +10,7 @@
 ![Game Boy Advance](https://img.shields.io/badge/Game%20Boy%20Advance-ROM-ff69b4)
 ![PlayStation](https://img.shields.io/badge/PlayStation-disc-8a2be2)
 
-<img src="docs/media/title.png" width="480" alt="DOOMOGACHI LIFE in HELLvile Park! title card: a puffy pastel logo over a rainbow, with HELL dripping red">
+<img src="docs/media/title.png" width="480" alt="BOREagotchi LIFE! in HELLvile PARK... title screen on the Game Boy Advance: a candy logo, the LIFE! pill and HELL in red, two plush citizens and PRESS START">
 
 *A Dippinn Productions game*
 
@@ -39,7 +39,7 @@ ghosts, skeletons and slimes), and they are always animated: breathing,
 blinking, ear twitches and tail wags.
 
 You live there. You make friends, set people up, feed and comfort them,
-and you raise your own **Doomogachi**, a tamagotchi on an LCD-green screen
+and you raise your own **Boreagotchi**, a tamagotchi on an LCD-green screen
 that grows into one of 16 forms depending on your care: cute, angel, feral
 or demon.
 
@@ -73,7 +73,7 @@ and a huge citizen creator. The full design is in
 [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md).
 
 <div align="center">
-<img src="docs/media/trailer_scenes.png" alt="Eight frames from the teaser trailer: HaHaland and the Wall, the Doomogachi, the apartment block, the demon invasion, welding, cute-mode shooting, an exorcism, and both sides partying together" width="960">
+<img src="docs/media/trailer_scenes.png" alt="Eight frames from the teaser trailer: HaHaland and the Wall, the Boreagotchi, the apartment block, the demon invasion, welding, cute-mode shooting, an exorcism, and both sides partying together" width="960">
 
 <sub>Frames from the 78-second teaser trailer. The trailer is pixel animation drawn with the game's real palette; it is <b>not</b> captured gameplay.</sub>
 </div>
@@ -91,7 +91,7 @@ runs on both consoles.
 | The 1000 premade citizens (500 Hillvile, 500 Hellvile, about 1500 relationships) | **done** |
 | **GBA**: Mode 4, height raycaster (3D floors/ceilings, stairs, lifts, doors, look up/down, first and third person), 3D overworld, PSG + DirectSound audio, 128 KB flash saves | **done** |
 | **PS1**: GTE polygon 3D engine, 3D overworld, low-poly citizens, SPU ADPCM audio, memory card saves, scene code streamed as CD overlays | **done** |
-| Life sim: needs, social life, romance, possession, exorcism, Doomogachi pet, graveyard, Monster Mode | **done** |
+| Life sim: needs, social life, romance, possession, exorcism, Boreagotchi pet, graveyard, Monster Mode | **done** |
 | Shooter: 7 Hell Breach levels, 11 demon types, bosses, welding (39 frames, cute and brutal), arena modes | **done** |
 | Story mode: 4 chapters, overworld maps, cutscenes, 40+ side quests, credits parade | **done** |
 | Citizen creator and Free Play (title, island hub, apartments, roster, care, shop, news, options, unlocks) | **done** |
@@ -281,7 +281,7 @@ The game design is in [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md).
 
 <img src="docs/media/dippinn_productions.png" width="330" alt="Dippinn Productions logo">
 
-**DOOMOGACHI LIFE in HELLvile Park!** is **a Dippinn Productions game**. The
+**BOREagotchi LIFE! in HELLvile PARK...** is **a Dippinn Productions game**. The
 Dippinn Productions logo opens the 1080p cut of the teaser trailer.
 
 It is built with [PSn00bSDK](https://github.com/Lameguy64/PSn00bSDK) and

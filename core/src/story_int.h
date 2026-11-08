@@ -16,7 +16,7 @@
 enum {
     SF_STARTED = 0,      /* story_new_game ran                               */
     SF_KEY_GIVEN,        /* Nana gave the house key                          */
-    SF_EGG_GIVEN,        /* ... and the Doomogachi egg                       */
+    SF_EGG_GIVEN,        /* ... and the Boreagotchi egg                      */
     SF_HOME_SEEN,        /* the cottage cutscene played                      */
     SF_BUNNY_FOUND,      /* Mr. Flops picked up at the beach                 */
     SF_CUPCAKE_GIVEN,    /* Nana handed over the cupcake                     */

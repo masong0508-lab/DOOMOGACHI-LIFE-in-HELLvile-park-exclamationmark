@@ -1,4 +1,4 @@
-/* test_pet.c - the Doomogachi (owner: life): hatching, care, attention
+/* test_pet.c - the Boreagotchi (owner: life): hatching, care, attention
  * calls and care mistakes, sickness, every evolution line reachable by a
  * matching care style, combat buffs, and the LCD art for all 16 forms. */
 #include "test.h"

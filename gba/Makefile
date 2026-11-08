@@ -1,4 +1,4 @@
-# gba/Makefile - DOOMOGACHI LIFE Game Boy Advance ROM (owner: gba).
+# gba/Makefile - BOREagotchi LIFE! Game Boy Advance ROM (owner: gba).
 #
 #   make -C gba               build/doomogachi.gba        (the game)
 #   make -C gba engine-test   build/doomogachi_et.gba     (ENGINE_TEST=1:
@@ -159,7 +159,7 @@ engine-test-nocore:
 
 $(ROM): $(ELF) $(GBA)/tools/gbafix.py
 	$(OBJCOPY) -O binary $< $@
-	$(PYTHON) $(GBA)/tools/gbafix.py $@ --title DOOMOGACHI --code BDME --maker DM $(ROM_PAD) || { rm -f $@; exit 1; }
+	$(PYTHON) $(GBA)/tools/gbafix.py $@ --title BOREAGOTCHI --code BDME --maker DM $(ROM_PAD) || { rm -f $@; exit 1; }
 	@$(PYTHON) $(GBA)/tools/memreport.py $(MAP) $(ELF)
 
 $(ELF): $(ALL_OBJS) $(GBA)/gba.ld

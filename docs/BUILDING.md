@@ -1,4 +1,4 @@
-# Building and playing DOOMOGACHI LIFE in HELLvile Park!
+# Building and playing BOREagotchi LIFE! in HELLvile PARK...
 
 This guide covers toolchain setup on Ubuntu/Debian, macOS and Windows
 (WSL2), the build commands, the test harnesses, emulators and real
@@ -42,7 +42,7 @@ software and builds from source.
 
 ```
 $ make doctor
-DOOMOGACHI LIFE build doctor
+BOREagotchi LIFE! build doctor
   host gcc            found   /usr/bin/gcc
   arm-none-eabi-gcc   found   /usr/bin/arm-none-eabi-gcc
   newlib (arm)        found   /usr/lib/gcc/arm-none-eabi/13.2.1/../../../arm-none-eabi/lib/libc.a

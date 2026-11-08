@@ -42,7 +42,7 @@ extern const char *const doomo_exorcism_item_help[EXI_COUNT];
 /* Odds 0..100 with a set of tools (mask of EXI_* bits). exorcism_odds()
  * is the same with no tools. Host sanity and species holiness, failed
  * attempts, the possessor's character, difficulty and an angelic adult
- * Doomogachi all count. */
+ * Boreagotchi all count. */
 int exorcism_odds_with(int resident_id, unsigned item_mask);
 /* Final success chance from the odds and the three phase results
  * (rhythm 0..100, holy water 0..100, true name guessed 0/1). */
