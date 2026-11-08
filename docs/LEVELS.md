@@ -42,11 +42,13 @@ tagged 240..243; the levels runtime pushes the player and pickups along.
   the mode's rule, the controls of the scheme picked in Options (Modern,
   Classic, Dual stick) with the pad's own button names (GBA "SEL+B", PS1
   "L1" / "Triangle", Dreamcast "START+Y") and the HUD legend (heart =
-  health, shield = armour, "Demons beaten/all" or "Score"). The first card
+  health, shield = armour, skull = demons down, the top-right "beaten /
+  all", or the arena's star = score). The first card
   of a visit waits for A (the Arena's B walks back out); a restart, a
   retry, "Again!", a demo and the autopilot start by themselves as before.
-  The HUD labels its counters ("Demons 0/17", "Score 0"), health is a
-  heart in every mode, the ammo panel's "Bullets" line sits inside it,
+  The HUD's counters keep their icons (the legend names them: spelling
+  "Demons 0/17" out cost the GBA combat frame 1-2 ms of outlined text),
+  health is a heart in every mode, the ammo panel's "Bullets" line sits inside it,
   the pause row says "Music volume 7", the arena results say "You earned"
   (no arrows: it is not a choice). Tests: `clarity_c10_*` in
   `core/tests/test_clarity_cl6.c`; script `clarity_shooter.txt`.

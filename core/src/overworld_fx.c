@@ -562,24 +562,35 @@ static void draw_banner(int style, int band)
  * y >= OWFX_ARROW_TOP) so it never reads as part of the pill. The first 60 ticks after the objective
  * changes it pulses (it bobs along its own direction and its outline flashes white) so a new goal is
  * noticed. Spans only: one plat_rect per row, about 2 x 15 rows a frame. */
-/* Fill the triangle (x0,y0) (x1,y1) (x2,y2) with one span per row (vertices in pixels). */
+/* Fill the triangle (x0,y0) (x1,y1) (x2,y2) with one span per row (vertices in pixels). The edges are
+ * stepped in 16.16 (three divides a triangle, none a row: the GBA divides in software). */
 static void tri_fill(int x0, int y0, int x1, int y1, int x2, int y2, uint8_t col)
 {
     int y, t;
+    int32_t xl, xs, dl, ds;
 #define SWAPI(a, b) do { t = a; a = b; b = t; } while (0)
     if (y1 < y0) { SWAPI(y0, y1); SWAPI(x0, x1); }
     if (y2 < y0) { SWAPI(y0, y2); SWAPI(x0, x2); }
     if (y2 < y1) { SWAPI(y1, y2); SWAPI(x1, x2); }
 #undef SWAPI
-    if (y2 == y0) { plat_rect(DOOMO_MIN(x0, DOOMO_MIN(x1, x2)), y0, DOOMO_MAX(x0, DOOMO_MAX(x1, x2)) - DOOMO_MIN(x0, DOOMO_MIN(x1, x2)) + 1, 1, col); return; }
+    if (y2 == y0) return;
+    /* the long edge 0-2, and the short edges 0-1 (above y1) and 1-2 (from y1 on) */
+    dl = (int32_t)(((int32_t)(x2 - x0) << 16) / (y2 - y0));
+    ds = y1 > y0 ? (int32_t)(((int32_t)(x1 - x0) << 16) / (y1 - y0)) : 0;
+    xl = (int32_t)x0 << 16;
+    xs = (int32_t)x0 << 16;
     for (y = y0; y <= y2; y++) {
-        /* the long edge 0-2, and the short edge 0-1 above y1 or 1-2 below it */
-        int xa = x0 + (x2 - x0) * (y - y0) / (y2 - y0), xb;
-        if (y < y1) xb = x0 + (x1 - x0) * (y - y0) / (y1 - y0);
-        else if (y2 != y1) xb = x1 + (x2 - x1) * (y - y1) / (y2 - y1);
-        else xb = x1;
-        if (xa > xb) { t = xa; xa = xb; xb = t; }
-        plat_rect(xa, y, xb - xa + 1, 1, col);
+        int a, b;
+        if (y == y1) {
+            xs = (int32_t)x1 << 16;
+            ds = y2 > y1 ? (int32_t)(((int32_t)(x2 - x1) << 16) / (y2 - y1)) : 0;
+        }
+        a = (int)(xl >> 16);
+        b = (int)(xs >> 16);
+        if (a > b) { t = a; a = b; b = t; }
+        plat_rect(a, y, b - a + 1, 1, col);
+        xl += dl;
+        xs += ds;
     }
 }
 

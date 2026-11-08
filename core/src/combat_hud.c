@@ -572,9 +572,10 @@ static void top_right(const HudPal *p)
 {
     char buf[24];
     int sw = plat_screen_w(), y = 4, w;
-    /* C10: the counters say what they count */
-    doomo_snprintf(buf, sizeof(buf), "Demons %d/%d", combat_st.kills, combat_st.kills_total);
-    if (combat_s.goal == CGOAL_ENDLESS) doomo_snprintf(buf, sizeof(buf), "Score %d", (int)combat_st.score);
+    /* C10: the control card's legend names these (skull = demons beaten / all, star = score); spelled out
+     * here they cost the GBA's combat frame ~1-2 ms of outlined text */
+    doomo_snprintf(buf, sizeof(buf), STR_ICON_SKULL "%d/%d", combat_st.kills, combat_st.kills_total);
+    if (combat_s.goal == CGOAL_ENDLESS) doomo_snprintf(buf, sizeof(buf), STR_ICON_STAR "%d", (int)combat_st.score);
     w = ui_text_width(buf);
     ui_text_outline(sw - w - 4, y, buf, p->text, p->text_out);
     y += 10;
@@ -665,7 +666,8 @@ static void fps_counter(int sw)
     ui_text_outline(sw / 2 - ui_text_width(buf) / 2, 2, buf, PAL_UI_MINT, PAL_BLACK);
 }
 
-/* C10: the HUD's icons named, for the control card: the heart, the shield, the demon counter */
+/* C10: the HUD's icons named, for the control card: the heart, the shield, the skull of the demon counter
+ * (top right, beaten / all) or the arena's star (score) */
 void combat_hud_legend(int x, int y, int w, uint8_t col)
 {
     int cx = x;
@@ -676,8 +678,8 @@ void combat_hud_legend(int x, int y, int w, uint8_t col)
     icon_shield(cx + 4, y + 3, PAL_UI_MINT, PAL_BLACK);
     ui_text(cx + 11, y, "Armour", col);
     cx += 11 + ui_text_width("Armour") + 9;
-    if (combat_s.goal != CGOAL_ENDLESS) ui_text(cx, y, "Demons beaten/all", col);
-    else ui_text(cx, y, "Score: combos!", col);
+    if (combat_s.goal != CGOAL_ENDLESS) ui_text(cx, y, STR_ICON_SKULL " Demons down", col);
+    else ui_text(cx, y, STR_ICON_STAR " Score", col);
 }
 
 /* ---- main entry ----------------------------------------------------------------------- */
