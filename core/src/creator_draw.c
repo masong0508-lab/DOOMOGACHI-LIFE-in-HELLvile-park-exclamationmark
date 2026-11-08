@@ -1129,7 +1129,7 @@ static uint32_t list_key(int top, int glint, int inner_r)
     k = ui_key_int(k, cr.browse | cr.district << 16 | cr.district_fixed << 17 | cr.mode << 18);
     k = ui_key_int(k, cr.preset_i | cr.outfit_i << 8 | cr.voice_i << 16);
     k = ui_key_int(k, cr.home_id);
-    k = ui_key_int(k, DOOMO_MIN((int)cr.tab_t, 6) | glint << 4);
+    k = ui_key_int(k, DOOMO_MIN((int)cr.tab_t, 6) | (int)((unsigned)glint << 4));   /* (glint -1: none) */
     k = ui_key_int(k, cr.pick_err);                   /* the selected row shakes */
     if (footer_moves(cr_cur_row()) || value_moves(cr_cur_row(), inner_r)) k = ui_key_int(k, (int)(cr.t / 7));
     return k;

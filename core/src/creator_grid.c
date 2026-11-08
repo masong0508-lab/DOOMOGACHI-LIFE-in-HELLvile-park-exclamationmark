@@ -263,7 +263,7 @@ void cr_grid_draw(void)
     if (panel) {
         uint32_t k = ui_key_int(ui_panel_key(), cr.g_slot | cr.g_n << 8 | cr.g_filter << 16 | crl.big << 24);
         k = ui_key_int(k, cr.g_sel | cr.g_top << 8 | cr.pick_err << 16);
-        k = ui_key_int(k, cr.pick_orig | ui_window_glint(x, y, w, h) << 8);
+        k = ui_key_int(k, cr.pick_orig | (int)((unsigned)ui_window_glint(x, y, w, h) << 8));
         k = ui_key_str(k, cr.g_find);
         k = ui_key_int(k, (int)(cr.lmemo_sig & 0x7FFFFFFF));          /* the lock bits were made from it */
         if (grid_footer_moves(row)) k = ui_key_int(k, (int)(cr.t / 7));
