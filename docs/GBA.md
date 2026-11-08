@@ -925,6 +925,30 @@ answers within 50-135 ms. (Measured on G7's tree; a cursor's latency
 moves by a frame or three with where its press lands in the 30 Hz tick.) G8 (the island on the tile backend) and LS-IN
 (the press latch) are the packages that move these numbers.
 
+### Speed tour 2 (SA2, `make -C gba test-speed2`)
+
+The scenes the speed tour and the life tour do not visit, one script per group in
+`gba/harness/scripts/speed2_GROUP.txt`: `fair` (the seven Fun Fair minigames: title card, the bot on Sweet and
+Hellfire), `fishcook` (fishing, the kitchen), `library` (every wing, the Field Guide), `action` (the Hell Breach
+level select, intro cards, pause menus, the arena and arena-mode cards and results, the workshop and welding),
+`dream`, `house` (Build, the catalog, a turn, Photo, Live, the Score panel, Hold the Door, a visit, HomeMart),
+`studio` (the choir picker, STAGE, FILE, the song book, templates), `creator` (all nine tabs and each tab change,
+the grids, swatches, the START menu), `life` (the new-island load, family dashboard and add-member wizard, play-as,
+every Options page, Save / Load and a save, care popups, the shops, news tabs, graveyard, Unlocks, the picker) and
+`story` (first-boot questions, title -> New story, the quest log's six tabs, the cutscenes, the credits). Each window
+is `fps start` / `wait N` / `fps GROUP: NAME` after `seed 1` and a scene command, with `sync on`, so the numbers
+repeat exactly. `make -C gba test-speed2 [SPEED2="fair house"]` runs them with `--worklog` and prints one table per
+group (`tools/speed2.py table`); `make -C gba profile-speed2` adds a PC profile after every window
+(`gba/tools/profile_report.py`). Reports, never gates; the results and the fix packages are in the speed audit 2
+(SPEED_AUDIT2.md of the speed wave 2).
+
+Every `fps` line is now followed by `harness: gaps LABEL: vblanks-per-frame histogram 2:N 3:N ... max M (ms) at
+tick T`: the presented frames by the vblanks each one stayed on screen (2 = 30 fps, 3 = a 50 ms frame, 4+ = 67 ms
+and more), counted from the mailbox's `drawn` word. Read it rather than the work per tick: a tick of 34-38 ms of work
+can still flip on its second vblank when it ends inside the vblank lines (`video_flip`), so "work over 33.4 ms" over-
+counts dropped frames, and a run of them is what the histogram shows as 3s. The same scripts play on the PS1
+(`ps1/harness/speed2.sh`, docs/PS1.md) and the Dreamcast (`dc/harness/speed2.sh`).
+
 ### Where the title's time goes (`make -C gba profile-title`)
 
 `harness/scripts/title_profile.txt` plays the game ROM to the title, lets it settle, and for two windows

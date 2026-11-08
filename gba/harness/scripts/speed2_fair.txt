@@ -1,0 +1,228 @@
+# speed2_fair.txt - speed tour 2 (SA2, docs/GBA.md "Speed tour 2"): the Fun Fair's seven
+# minigames. `make -C gba test-speed2 SPEED2=fair` (fps, work per drawn tick with --worklog,
+# the presented frames by vblanks; the table by tools/speed2.py); `make -C gba profile-speed2
+# SPEED2=fair` adds a PC profile after every window. tools/speed2.py turns this file into the
+# PS1 and Dreamcast scripts (ps1/harness/speed2.sh, dc/harness/speed2.sh).
+#
+# Window rules (every speed2_*.txt): `seed 1` + a scene command, a short settle, then
+# `fps start` .. `wait N` .. `fps GROUP: NAME` (N = 20..130 logic ticks). The table takes the
+# frames over 33 / 50 ms from the harness's `gaps` line, and the scene command's own time
+# ("command 7/8 ... in N ms": the scene's enter, which runs outside the tick's work) plus the
+# first drawn tick as the load freeze.
+# Report only: no expect-fps floors yet (the speed wave 2 packages add them).
+#
+# Each game: its title card (arg 1: Sweet preselected), the autoplay bot on Sweet (arg 49 =
+# Sweet | AUTOSTART | AUTOPLAY) and on Hellfire (arg 51: the hellish night version), and
+# where the bot gets there inside the window, the results card (core/src/mg.h).
+wait 40
+expect-log doomo: init
+sync on 61
+
+# ---- Candy Catch ----------------------------------------------------------------
+seed 1
+scene TITLE
+wait 2
+push MG_CATCH 1
+wait 40
+fps start
+wait 90
+fps fair: catch title
+shot fair_catch_title
+press B
+wait 2
+seed 1
+push MG_CATCH 49
+wait 60
+fps start
+wait 130
+fps fair: catch play sweet
+shot fair_catch_play_sweet
+wait 1500
+fps start
+wait 90
+fps fair: catch results
+shot fair_catch_results
+seed 1
+scene TITLE
+wait 2
+push MG_CATCH 51
+wait 60
+fps start
+wait 130
+fps fair: catch play hellfire
+shot fair_catch_play_hellfire
+
+# ---- Whack-a-Mole ---------------------------------------------------------------
+seed 1
+scene TITLE
+wait 2
+push MG_WHACK 1
+wait 40
+fps start
+wait 90
+fps fair: whack title
+shot fair_whack_title
+press B
+wait 2
+seed 1
+push MG_WHACK 49
+wait 60
+fps start
+wait 130
+fps fair: whack play sweet
+shot fair_whack_play_sweet
+seed 1
+scene TITLE
+wait 2
+push MG_WHACK 51
+wait 60
+fps start
+wait 130
+fps fair: whack play hellfire
+shot fair_whack_play_hellfire
+
+# ---- Dodge ----------------------------------------------------------------------
+seed 1
+scene TITLE
+wait 2
+push MG_DODGE 1
+wait 40
+fps start
+wait 90
+fps fair: dodge title
+shot fair_dodge_title
+press B
+wait 2
+seed 1
+push MG_DODGE 49
+wait 60
+fps start
+wait 130
+fps fair: dodge play sweet
+shot fair_dodge_play_sweet
+wait 400
+fps start
+wait 130
+fps fair: dodge play late
+shot fair_dodge_play_late
+seed 1
+scene TITLE
+wait 2
+push MG_DODGE 51
+wait 60
+fps start
+wait 130
+fps fair: dodge play hellfire
+shot fair_dodge_play_hellfire
+
+# ---- Shooting Gallery -----------------------------------------------------------
+seed 1
+scene TITLE
+wait 2
+push MG_GALLERY 1
+wait 40
+fps start
+wait 90
+fps fair: gallery title
+shot fair_gallery_title
+press B
+wait 2
+seed 1
+push MG_GALLERY 49
+wait 60
+fps start
+wait 130
+fps fair: gallery play sweet
+shot fair_gallery_play_sweet
+seed 1
+scene TITLE
+wait 2
+push MG_GALLERY 51
+wait 60
+fps start
+wait 130
+fps fair: gallery play hellfire
+shot fair_gallery_play_hellfire
+
+# ---- Derby ----------------------------------------------------------------------
+seed 1
+scene TITLE
+wait 2
+push MG_DERBY 1
+wait 40
+fps start
+wait 90
+fps fair: derby title
+shot fair_derby_title
+press B
+wait 2
+seed 1
+push MG_DERBY 49
+wait 60
+fps start
+wait 130
+fps fair: derby race sweet
+shot fair_derby_race_sweet
+wait 300
+fps start
+wait 130
+fps fair: derby race mid
+shot fair_derby_race_mid
+seed 1
+scene TITLE
+wait 2
+push MG_DERBY 51
+wait 60
+fps start
+wait 130
+fps fair: derby race hellfire
+shot fair_derby_race_hellfire
+
+# ---- Memory ---------------------------------------------------------------------
+seed 1
+scene TITLE
+wait 2
+push MG_MEMORY 1
+wait 40
+fps start
+wait 90
+fps fair: memory title
+shot fair_memory_title
+press B
+wait 2
+seed 1
+push MG_MEMORY 49
+wait 60
+fps start
+wait 130
+fps fair: memory play sweet
+shot fair_memory_play_sweet
+seed 1
+scene TITLE
+wait 2
+push MG_MEMORY 51
+wait 60
+fps start
+wait 130
+fps fair: memory play hellfire
+shot fair_memory_play_hellfire
+
+# ---- Prize Wheel (arg 16: spin even if already spun today; 32: the bot spins) ----
+seed 1
+scene TITLE
+wait 2
+push MG_WHEEL 16
+wait 30
+fps start
+wait 90
+fps fair: wheel intro
+shot fair_wheel_intro
+press A
+wait 10
+down A
+wait 20
+release A
+fps start
+wait 130
+fps fair: wheel spin
+shot fair_wheel_spin

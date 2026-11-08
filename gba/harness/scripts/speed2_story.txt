@@ -1,0 +1,205 @@
+# speed2_story.txt - speed tour 2 (SA2): the story's screens that the speed tour does not measure:
+# the first boot's questions (the language picker, the security code), the title -> New story
+# load and the prologue cutscene, the quest log's six tabs (the Map tab included), the chapter
+# cards and vignettes (SCENE_CUTSCENE), the credits parade, and the comic-timing minigame card.
+# Window rules: speed2_fair.txt. The first window of a press-driven load starts before the press,
+# so its worst frame is the load freeze.
+wait 40
+expect-log doomo: init
+sync on 61
+
+# ---- first boot: the language picker and the security code (pushed directly) -----------
+seed 1
+scene LANG_PICK
+wait 30
+fps start
+wait 90
+fps story: first boot language picker
+shot story_lang_pick
+press DOWN
+wait 2
+fps start
+wait 30
+fps story: language picker move
+press UP
+wait 4
+seed 1
+scene SECURITY_CODE 0
+wait 30
+fps start
+wait 90
+fps story: first boot security code
+shot story_seccode
+press UP
+wait 2
+fps start
+wait 30
+fps story: security code digit
+
+# ---- the title -> New story (a press-driven load) and the prologue ---------------------
+seed 1
+scene TITLE
+wait 150
+press START
+wait 24
+press A
+wait 16
+fps start
+press A
+wait 40
+fps story: title -> new story (the load)
+shot story_new_story
+fps start
+wait 90
+fps story: prologue cutscene
+shot story_prologue
+
+# ---- the quest log over a story map -------------------------------------------------------
+seed 1
+scene STORY 110
+wait 100
+push QUESTLOG 0
+wait 24
+fps start
+wait 90
+fps story: quest log story tab
+shot story_ql_story
+press B
+wait 6
+push QUESTLOG 1
+wait 24
+fps start
+wait 90
+fps story: quest log side tab
+shot story_ql_side
+press DOWN
+wait 2
+fps start
+wait 30
+fps story: quest log side cursor move
+press B
+wait 6
+push QUESTLOG 2
+wait 24
+fps start
+wait 90
+fps story: quest log items tab
+shot story_ql_items
+press B
+wait 6
+push QUESTLOG 3
+wait 24
+fps start
+wait 90
+fps story: quest log map tab
+shot story_ql_map
+press DOWN
+wait 2
+fps start
+wait 30
+fps story: quest log map cursor move
+press B
+wait 6
+push QUESTLOG 4
+wait 24
+fps start
+wait 90
+fps story: quest log friends tab
+shot story_ql_friends
+press B
+wait 6
+push QUESTLOG 5
+wait 24
+fps start
+wait 90
+fps story: quest log trophies tab
+shot story_ql_trophies
+press B
+wait 6
+press A
+wait 2
+
+# ---- the chapter cards and vignettes, the credits ------------------------------------------
+seed 1
+scene STORY 101
+wait 5
+push CUTSCENE 1
+wait 40
+fps start
+wait 90
+fps story: cutscene chapter card 2
+shot story_cut1
+seed 1
+scene STORY 101
+wait 5
+push CUTSCENE 2
+wait 30
+fps start
+wait 90
+fps story: cutscene chapter card 3
+shot story_cut2
+seed 1
+scene STORY 101
+wait 5
+push CUTSCENE 3
+wait 50
+fps start
+wait 90
+fps story: cutscene chapter card 4
+shot story_cut3
+seed 1
+scene STORY 101
+wait 5
+push CUTSCENE 10
+wait 40
+fps start
+wait 90
+fps story: cutscene home vignette
+shot story_cut10
+seed 1
+scene STORY 101
+wait 5
+push CUTSCENE 5
+wait 40
+fps start
+wait 90
+fps story: cutscene fog vignette
+shot story_cut5
+seed 1
+scene STORY 101
+wait 5
+push CUTSCENE 6
+wait 30
+fps start
+wait 90
+fps story: cutscene eruption vignette
+shot story_cut6
+seed 1
+scene STORY 101
+wait 5
+push CUTSCENE 7
+wait 60
+fps start
+wait 90
+fps story: cutscene vapula vignette
+shot story_cut7
+press A
+wait 2
+fps start
+wait 60
+fps story: cutscene after a press
+shot story_cut_press
+seed 1
+scene STORY 126
+wait 10
+push CREDITS
+wait 120
+fps start
+wait 130
+fps story: credits
+shot story_credits
+wait 170
+fps start
+wait 130
+fps story: credits parade
+shot story_credits_parade

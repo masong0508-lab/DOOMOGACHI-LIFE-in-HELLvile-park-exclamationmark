@@ -1,0 +1,335 @@
+# speed2_life.txt - speed tour 2 (SA2): the free-play screens that the life tour (life_speed.txt:
+# hub, news, island menu, roster, resident, apartments) does not measure: the family dashboard
+# and the add-member wizard (F2), the play-as switcher (PA5), every Options page, Save / Load and
+# a save, a citizen's care popups, the shops (food, Black Market, cafe), the news feed's other
+# tabs, the graveyard, the Unlocks gallery and the citizen picker. A Hellvile Park Classic
+# island (life_speed.txt's keys). The new-island presses are timed too: the title -> island
+# load is the first window's "load" (worst frame of the settle). Window rules: speed2_fair.txt.
+wait 40
+expect-log doomo: init
+sync on 61
+seed 1
+scene NEW_ISLAND
+wait 10
+fps start
+press A
+wait 20
+press A
+wait 2
+press A
+wait 10
+expect-scene ISLAND
+wait 30
+fps life: new island -> hub (the load)
+shot life_hub
+
+# ---- the family dashboard and the add-member wizard ----------------------------------
+press START
+wait 10
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press A
+wait 20
+expect-scene FAMILY
+fps start
+wait 90
+fps life: family dashboard
+shot life_family
+press DOWN
+press A
+wait 10
+fps start
+wait 60
+fps life: add member: kind
+shot life_add_kind
+press A
+wait 60
+fps start
+wait 60
+fps life: add member: pick a resident
+shot life_add_pick
+press DOWN
+wait 2
+fps start
+wait 30
+fps life: add member: pick move
+press UP
+wait 4
+press A
+wait 10
+fps start
+wait 60
+fps life: add member: role
+shot life_add_role
+press A
+wait 40
+fps start
+wait 90
+fps life: family with a member
+shot life_family_member
+press B
+wait 10
+press B
+wait 10
+
+# ---- the play-as switcher --------------------------------------------------------------
+push PLAYAS 0
+wait 30
+fps start
+wait 90
+fps life: play-as switcher
+shot life_playas
+press DOWN
+wait 2
+fps start
+wait 30
+fps life: play-as move
+press B
+wait 10
+
+# ---- Options, every page ----------------------------------------------------------------
+push OPTIONS 0
+wait 30
+fps start
+wait 60
+fps life: options controls
+shot life_opt0_controls
+press R
+wait 2
+fps start
+wait 20
+fps life: options page turn to shooter
+wait 10
+fps start
+wait 60
+fps life: options shooter
+shot life_opt1_shooter
+press R
+wait 2
+fps start
+wait 20
+fps life: options page turn to life
+wait 10
+fps start
+wait 60
+fps life: options life
+shot life_opt2_life
+press R
+wait 2
+fps start
+wait 20
+fps life: options page turn to audio
+wait 10
+fps start
+wait 60
+fps life: options audio
+shot life_opt3_audio
+press R
+wait 2
+fps start
+wait 20
+fps life: options page turn to display
+wait 10
+fps start
+wait 60
+fps life: options display
+shot life_opt4_display
+press R
+wait 2
+fps start
+wait 20
+fps life: options page turn to performance
+wait 10
+fps start
+wait 60
+fps life: options performance
+shot life_opt5_performance
+press R
+wait 2
+fps start
+wait 20
+fps life: options page turn to accessibility
+wait 10
+fps start
+wait 60
+fps life: options accessibility
+shot life_opt6_accessibility
+press R
+wait 2
+fps start
+wait 20
+fps life: options page turn to cheats
+wait 10
+fps start
+wait 60
+fps life: options cheats
+shot life_opt7_cheats
+press R
+wait 2
+fps start
+wait 20
+fps life: options page turn to game
+wait 10
+fps start
+wait 60
+fps life: options game
+shot life_opt8_game
+press DOWN
+wait 2
+fps start
+wait 30
+fps life: options cursor move
+press B
+wait 10
+
+# ---- Save / Load, and a save --------------------------------------------------------------
+push SAVELOAD 0
+wait 30
+fps start
+wait 90
+fps life: save/load
+shot life_saveload
+press DOWN
+wait 2
+fps start
+wait 30
+fps life: save/load cursor move
+press UP
+wait 2
+fps start
+press A
+wait 40
+fps life: saving (the save freeze)
+shot life_saved
+press B
+wait 10
+
+# ---- a citizen's care: the feed popup and the reaction --------------------------------------
+push RESIDENT 30
+wait 30
+press A
+wait 20
+fps start
+wait 60
+fps life: care popup (feed)
+shot life_care_popup
+press A
+wait 10
+fps start
+wait 60
+fps life: care reaction
+shot life_care_reaction
+press A
+wait 10
+press B
+wait 10
+
+# ---- the shops ------------------------------------------------------------------------------
+push SHOP 0
+wait 40
+fps start
+wait 90
+fps life: shop (food)
+shot life_shop_food
+press DOWN
+wait 2
+fps start
+wait 30
+fps life: shop cursor move
+press DOWN
+press A
+wait 16
+fps start
+wait 60
+fps life: shop quantity popup
+shot life_shop_qty
+press B
+wait 6
+press R
+wait 16
+fps start
+wait 60
+fps life: shop gifts tab
+shot life_shop_gifts
+press B
+wait 10
+push SHOP 1
+wait 40
+fps start
+wait 90
+fps life: black market
+shot life_black_market
+press B
+wait 10
+push SHOP 2
+wait 40
+fps start
+wait 90
+fps life: cafe counter
+shot life_cafe
+press B
+wait 10
+
+# ---- the news feed's other tabs ----------------------------------------------------------
+push NEWS 0
+wait 30
+press R
+wait 20
+fps start
+wait 90
+fps life: news help wanted
+shot life_news_help
+press R
+wait 20
+fps start
+wait 90
+fps life: news third tab
+shot life_news_tab3
+press B
+wait 10
+
+# ---- the graveyard, the Unlocks gallery, the citizen picker ---------------------------------
+push GRAVEYARD 0
+wait 30
+fps start
+wait 90
+fps life: graveyard
+shot life_graveyard
+press B
+wait 10
+push UNLOCKS 0
+wait 30
+fps start
+wait 90
+fps life: unlocks
+shot life_unlocks
+press RIGHT
+wait 2
+fps start
+wait 30
+fps life: unlocks cursor move
+press R
+press R
+wait 20
+fps start
+wait 60
+fps life: unlocks paints tab
+shot life_unlocks_paints
+press B
+wait 10
+push PICKER 0
+wait 30
+fps start
+wait 90
+fps life: citizen picker
+shot life_picker
+press DOWN
+wait 2
+fps start
+wait 30
+fps life: citizen picker move
+press B
+wait 10

@@ -1,0 +1,59 @@
+# speed2_dream.txt - speed tour 2 (SA2): the dreams (SCENE_DREAM, concert_int.h args; the
+# window rules are in speed2_fair.txt). Nana Puddin's dream (-2: the night bedroom, the thought
+# bubble, the first vignette cute then its twist, the second vignette) and Vex's forced
+# nightmare (-3666: the red turn and the wake-up choice).
+wait 40
+expect-log doomo: init
+sync on 61
+
+seed 1
+scene DREAM -2
+wait 20
+fps start
+wait 90
+fps dream: bedroom
+shot dream_bedroom
+press A
+wait 2
+fps start
+wait 60
+fps dream: thought bubble
+shot dream_bubble
+wait 10
+fps start
+wait 110
+fps dream: vignette 1 cute
+shot dream_v1_cute
+fps start
+wait 100
+fps dream: vignette 1 twist
+shot dream_v1_twist
+fps start
+wait 130
+fps dream: vignette 2
+shot dream_v2
+
+seed 1
+scene DREAM -3666
+wait 20
+press A
+wait 120
+fps start
+wait 130
+fps dream: nightmare vignette 1
+shot dream_nm_v1
+wait 190
+fps start
+wait 130
+fps dream: nightmare vignette 2
+shot dream_nm_v2
+wait 100
+fps start
+wait 100
+fps dream: nightmare vignette 3 (cute, then red)
+shot dream_nm_v3
+wait 60
+fps start
+wait 60
+fps dream: wake-up choice
+shot dream_nm_choice

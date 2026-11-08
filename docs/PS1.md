@@ -1231,6 +1231,16 @@ The exact steps of the 2026-11-08 speed audit that reach the PS1 (game disc, PCS
   any build whose boot takes a different number of cycles makes another town: the life tour's roster then shows
   other activities. With `seed 1` first, every screenshot of the life tour is identical to the base's.
 
+### Speed tour 2 (SA2, `ps1/harness/speed2.sh`)
+
+`sh ps1/harness/speed2.sh OUTDIR [groups...]` (from the repo root, after a game build) plays the GBA's speed tour 2
+scripts (`gba/harness/scripts/speed2_*.txt`, docs/GBA.md "Speed tour 2") on the game disc: `tools/speed2.py ps1`
+turns each window into `fps` / `fpsend` (GBA-only lines such as `sync`, `profile` and `tips` are dropped), run.py
+plays it, and `tools/speed2.py table OUT/GROUP/tty.log` prints fps, the frames by vsyncs, frames over 33 / 50 ms, the
+worst frame and the overlay loads before the window (the `ovl: GROUP (N KB) in M ms` lines: the PS1's scene-change
+freeze). A single `3` at a window's first frame is the lockstep resume and is not counted. `JOBS=2` runs two groups
+at once; `PROF=1` writes PC profiles instead (`prof.py --group`).
+
 ## 13. Notes for the core
 
 * The 2D layer is fastest with few, large rectangles: one `plat_rect` per

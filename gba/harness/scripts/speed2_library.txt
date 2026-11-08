@@ -1,0 +1,186 @@
+# speed2_library.txt - speed tour 2 (SA2): the Grand Library, every wing (LIB_ARG_DEMO 256 moves
+# the premade citizens in; doomo/library.h) and the Field Guide (CL4, lib_help.c). Each wing idle
+# on its first page, then the page a press opens (a demon in its jar, a citizen's profile, a
+# weapon's plan, an item card, a trophy page, a song playing, a tiled picture). The window rules
+# are in speed2_fair.txt.
+wait 40
+expect-log doomo: init
+sync on 61
+
+# ---- the lobby --------------------------------------------------------------------
+seed 1
+scene LIBRARY 256
+wait 40
+fps start
+wait 130
+fps library: lobby
+shot lib_lobby
+press RIGHT
+wait 2
+fps start
+wait 30
+fps library: lobby shelf move
+shot lib_lobby_move
+
+# ---- Bestiary ---------------------------------------------------------------------
+seed 1
+scene LIB_BESTIARY 256
+wait 30
+fps start
+wait 90
+fps library: bestiary list
+shot lib_bestiary_list
+press DOWN
+press DOWN
+press A
+wait 30
+fps start
+wait 90
+fps library: bestiary jar
+shot lib_bestiary_jar
+
+# ---- Almanac ----------------------------------------------------------------------
+seed 1
+scene LIB_ALMANAC 256
+wait 30
+fps start
+wait 90
+fps library: almanac list
+shot lib_almanac_list
+press DOWN
+wait 2
+fps start
+wait 30
+fps library: almanac list move
+press A
+wait 30
+fps start
+wait 90
+fps library: almanac profile
+shot lib_almanac_profile
+press SELECT
+wait 30
+fps start
+wait 90
+fps library: almanac face
+shot lib_almanac_face
+
+# ---- Weapons ----------------------------------------------------------------------
+seed 1
+scene LIB_WEAPONS 256
+wait 30
+fps start
+wait 90
+fps library: weapons frames
+shot lib_weapons
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press A
+wait 30
+fps start
+wait 90
+fps library: weapons plan
+shot lib_weapons_plan
+
+# ---- Items ------------------------------------------------------------------------
+seed 1
+scene LIB_ITEMS 256
+wait 30
+fps start
+wait 90
+fps library: items
+shot lib_items
+press A
+wait 30
+fps start
+wait 90
+fps library: items card
+shot lib_items_card
+
+# ---- Trophies ---------------------------------------------------------------------
+seed 1
+scene LIB_TROPHIES 256
+wait 30
+fps start
+wait 90
+fps library: trophies
+shot lib_trophies
+press DOWN
+press DOWN
+press A
+wait 30
+fps start
+wait 90
+fps library: trophy page
+shot lib_trophy_page
+
+# ---- Jukebox ----------------------------------------------------------------------
+seed 1
+scene LIB_JUKEBOX 256
+wait 30
+fps start
+wait 90
+fps library: jukebox
+shot lib_jukebox
+press A
+wait 45
+fps start
+wait 130
+fps library: jukebox playing
+shot lib_jukebox_playing
+
+# ---- Gallery ----------------------------------------------------------------------
+seed 1
+scene LIB_GALLERY 256
+wait 30
+fps start
+wait 90
+fps library: gallery textures
+shot lib_gallery
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press A
+wait 24
+fps start
+wait 90
+fps library: gallery tiled
+shot lib_gallery_tiled
+press B
+press R
+wait 40
+fps start
+wait 90
+fps library: gallery sky
+shot lib_gallery_sky
+
+# ---- the Field Guide (CL4) --------------------------------------------------------
+seed 1
+scene LIB_HELP 0
+wait 30
+fps start
+wait 90
+fps library: field guide contents
+shot lib_help_contents
+press A
+wait 20
+fps start
+wait 90
+fps library: field guide page
+shot lib_help_page
+press RIGHT
+wait 2
+fps start
+wait 20
+fps library: field guide page turn
+press DOWN
+press DOWN
+wait 2
+fps start
+wait 20
+fps library: field guide scroll
+shot lib_help_scroll

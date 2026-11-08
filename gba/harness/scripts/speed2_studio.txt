@@ -1,0 +1,100 @@
+# speed2_studio.txt - speed tour 2 (SA2): the Music Studio's parts that profile-studio and the
+# sung PERFORM window do not measure (SONG, NOTES, ORDER, LYRICS, CHOIR and the show are there):
+# the choir's quick fill, a choir member's card and the citizen picker, the STAGE tab before the
+# curtain, the FILE tab (the song book, the templates list). STUDIO -107: the premade citizens and
+# the "Park United!" template (core/tests/scripts/studio.txt). Window rules: speed2_fair.txt.
+wait 40
+expect-log doomo: init
+sync on 61
+seed 1
+scene TITLE
+wait 20
+push STUDIO -107
+wait 100
+expect-scene STUDIO
+# SONG -> NOTES -> ORDER -> LYRICS -> CHOIR (profile-studio's keys)
+press R
+wait 20
+down SELECT
+press R
+release
+wait 20
+down SELECT
+press R
+release
+wait 20
+down SELECT
+press R
+release
+wait 30
+
+# ---- CHOIR: quick fill, a member, the citizen picker ----------------------------------
+press SELECT
+wait 16
+fps start
+wait 60
+fps studio: choir quick fill
+shot studio_choir_fill
+press B
+wait 4
+press A
+wait 14
+fps start
+wait 90
+fps studio: choir member card
+shot studio_choir_member
+press DOWN
+press A
+wait 14
+fps start
+wait 90
+fps studio: citizen picker
+shot studio_picker
+press DOWN
+wait 2
+fps start
+wait 30
+fps studio: citizen picker move
+press B
+wait 10
+expect-scene STUDIO
+
+# ---- STAGE (before the curtain) and FILE ------------------------------------------------
+press R
+wait 20
+fps start
+wait 130
+fps studio: stage tab
+shot studio_stage
+press R
+wait 20
+fps start
+wait 90
+fps studio: file tab
+shot studio_file
+press A
+wait 14
+fps start
+wait 90
+fps studio: song book
+shot studio_song_book
+press A
+wait 10
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press A
+wait 14
+fps start
+wait 90
+fps studio: templates
+shot studio_templates
+press DOWN
+wait 2
+fps start
+wait 30
+fps studio: templates move

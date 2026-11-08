@@ -1,0 +1,192 @@
+# speed2_creator.txt - speed tour 2 (SA2): the creator's nine tabs one by one (each idle after the
+# switch, and the R press that switches to it: the tab change's own frames), the picture grid on
+# the first row and on the Outfit tab's hat row (creator_grid.c, the bust camera), the colour
+# swatches, and the START menu. creator_scroll.txt (`make -C gba test-creator`) gates idle, the
+# grid, rows held and a value held; this adds what it does not visit. A new Hillvile citizen
+# (CREATOR -1). Window rules: speed2_fair.txt.
+wait 40
+expect-log doomo: init
+sync on 61
+seed 1
+scene TITLE
+wait 2
+push CREATOR -1
+wait 200
+fps start
+wait 90
+fps creator: species and body tab
+shot creator_tab1
+press R
+wait 1
+fps start
+wait 20
+fps creator: tab change to head and face
+wait 30
+fps start
+wait 90
+fps creator: head and face tab
+shot creator_tab2
+press R
+wait 1
+fps start
+wait 20
+fps creator: tab change to hair
+wait 30
+fps start
+wait 90
+fps creator: hair tab
+shot creator_tab3
+press R
+wait 1
+fps start
+wait 20
+fps creator: tab change to supernatural
+wait 30
+fps start
+wait 90
+fps creator: supernatural tab
+shot creator_tab4
+press R
+wait 1
+fps start
+wait 20
+fps creator: tab change to outfit
+wait 30
+fps start
+wait 90
+fps creator: outfit tab
+shot creator_tab5
+press R
+wait 1
+fps start
+wait 20
+fps creator: tab change to voice
+wait 30
+fps start
+wait 90
+fps creator: voice tab
+shot creator_tab6
+press R
+wait 1
+fps start
+wait 20
+fps creator: tab change to personality
+wait 30
+fps start
+wait 90
+fps creator: personality tab
+shot creator_tab7
+press R
+wait 1
+fps start
+wait 20
+fps creator: tab change to profile
+wait 30
+fps start
+wait 90
+fps creator: profile tab
+shot creator_tab8
+press R
+wait 1
+fps start
+wait 20
+fps creator: tab change to home
+wait 30
+fps start
+wait 90
+fps creator: home tab
+shot creator_tab9
+# ---- back to the first tab: the picture grid on its first row -----------------------
+press L
+press L
+press L
+press L
+press L
+press L
+press L
+press L
+wait 30
+press A
+wait 40
+fps start
+wait 90
+fps creator: grid (first row)
+shot creator_grid
+press RIGHT
+wait 2
+fps start
+wait 30
+fps creator: grid cursor move
+shot creator_grid_move
+press B
+wait 20
+# ---- Outfit: the hat row's grid (creator_grid.txt's keys) -----------------------------
+press R
+wait 4
+press R
+wait 4
+press R
+wait 4
+press R
+wait 12
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+wait 8
+press A
+wait 20
+fps start
+wait 90
+fps creator: hat grid (bust camera)
+shot creator_hat_grid
+press RIGHT
+wait 2
+fps start
+wait 30
+fps creator: hat grid try-on move
+shot creator_hat_try
+press R
+wait 2
+fps start
+wait 30
+fps creator: hat grid filter chip
+shot creator_hat_filter
+press B
+wait 20
+# ---- a colour row's swatches (Top colour: one row down from the preset) --------------
+press UP
+press UP
+press UP
+press UP
+press UP
+press UP
+press UP
+wait 8
+press A
+wait 20
+fps start
+wait 90
+fps creator: colour swatches
+shot creator_swatches
+press RIGHT
+wait 2
+fps start
+wait 30
+fps creator: swatch move
+press B
+wait 20
+# ---- the START menu ------------------------------------------------------------------
+press START
+wait 20
+fps start
+wait 90
+fps creator: start menu
+shot creator_start_menu
+press B
+wait 10

@@ -1,0 +1,127 @@
+# speed2_fishcook.txt - speed tour 2 (SA2): Lake of Fire fishing and the Brimstone Bites kitchen
+# (core/src/fishcook_int.h args; the window rules are in speed2_fair.txt). Fishing: the pier by
+# day, the bot's cast and wait, a forced bite reeled in (FISH_ARG_FORCE), the catch card, the
+# tackle box's Fishdex (FISH_ARG_DEMO fills it), the night pier. Cooking: the recipe book, the
+# chop / stir / fry steps (the bot cooks recipe 2), bake, simmer, the counter (serve customers).
+wait 40
+expect-log doomo: init
+sync on 61
+
+# ---- fishing ----------------------------------------------------------------------
+seed 1
+scene TITLE
+wait 2
+push FISHING 0
+wait 40
+fps start
+wait 130
+fps fish: pier day
+shot fish_pier_day
+seed 1
+scene FISHING 32
+wait 30
+fps start
+wait 130
+fps fish: bot cast and wait
+shot fish_bot_wait
+seed 1
+scene FISHING 1568
+wait 140
+fps start
+wait 30
+fps fish: reel
+shot fish_reel
+wait 120
+fps start
+wait 90
+fps fish: catch card
+shot fish_catch_card
+seed 1
+scene FISHING 128
+wait 10
+press START
+wait 16
+press A
+wait 20
+fps start
+wait 90
+fps fish: fishdex
+shot fish_fishdex
+press B
+wait 4
+press DOWN
+press A
+wait 20
+fps start
+wait 90
+fps fish: cooler
+shot fish_cooler
+seed 1
+scene FISHING 7776
+wait 100
+fps start
+wait 100
+fps fish: night reel
+shot fish_night_reel
+
+# ---- cooking ----------------------------------------------------------------------
+seed 1
+scene TITLE
+wait 2
+push COOKING 64
+wait 30
+fps start
+wait 90
+fps cook: recipe book
+shot cook_book
+seed 1
+scene COOKING 864
+wait 92
+fps start
+wait 130
+fps cook: chop
+shot cook_chop
+wait 50
+fps start
+wait 130
+fps cook: stir
+shot cook_stir
+wait 90
+fps start
+wait 130
+fps cook: fry
+shot cook_fry
+wait 100
+fps start
+wait 90
+fps cook: result card
+shot cook_result
+seed 1
+scene COOKING 352
+wait 340
+fps start
+wait 130
+fps cook: bake
+shot cook_bake
+seed 1
+scene COOKING 608
+wait 350
+fps start
+wait 130
+fps cook: simmer
+shot cook_simmer
+seed 1
+scene COOKING 129
+wait 30
+fps start
+wait 90
+fps cook: counter
+shot cook_counter
+press A
+wait 16
+press A
+wait 10
+fps start
+wait 60
+fps cook: serving
+shot cook_serving

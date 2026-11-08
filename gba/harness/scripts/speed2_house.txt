@@ -1,0 +1,192 @@
+# speed2_house.txt - speed tour 2 (SA2): the dream house in real play (SCENE_HOME, doomo/home.h
+# args), beside test-home's layout gates: the own cottage after the starter kit (Build mode with
+# the cursor, the Catalog modal, a held piece, the view turned with R, Live mode, the Score
+# panel, Photo mode), test-home's busy Live layout (room-test 1: 4 chibis), Hold the Door (the
+# Ep 3.2 tutorial wave and the Ep 3.7 siege from wave 3), a visit (Nana Puddin, HOME 3), and
+# HomeMart and the Black Market. The window rules are in speed2_fair.txt.
+wait 40
+expect-log doomo: init
+sync on 61
+
+# ---- the own cottage: Build mode, the catalog, a held piece, a turn -----------------
+seed 1
+scene HOME -1
+wait 30
+fps start
+wait 130
+fps house: build mode
+shot house_build
+press RIGHT
+wait 2
+fps start
+wait 30
+fps house: build cursor move
+press START
+wait 14
+press A
+wait 14
+fps start
+wait 90
+fps house: catalog modal
+shot house_catalog
+press DOWN
+wait 2
+fps start
+wait 30
+fps house: catalog cursor move
+press A
+wait 6
+fps start
+wait 60
+fps house: held piece
+shot house_held
+press B
+wait 6
+press R
+wait 2
+fps start
+wait 30
+fps house: rotate view
+shot house_rotate
+wait 20
+press L
+wait 30
+
+# ---- Photo mode (from Build mode's START menu), Live mode, the Score panel ---------------
+press START
+wait 14
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+wait 2
+press A
+wait 20
+fps start
+wait 90
+fps house: photo mode
+shot house_photo
+press A
+wait 2
+fps start
+wait 30
+fps house: photo snap
+shot house_photo_snap
+press START
+wait 20
+press START
+wait 14
+press DOWN
+wait 4
+press A
+wait 30
+fps start
+wait 130
+fps house: live mode
+shot house_live
+press START
+wait 14
+press DOWN
+wait 4
+press DOWN
+wait 4
+press A
+wait 30
+fps start
+wait 90
+fps house: score panel
+shot house_score
+press A
+wait 20
+
+# ---- test-home's busy Live layout (4 chibis, 3 animated pieces) ----------------------
+room-test 1
+press START
+wait 14
+press DOWN
+wait 4
+press A
+wait 30
+fps start
+wait 130
+fps house: live, 4 chibis (room-test 1)
+shot house_live_busy
+room-test 0
+wait 10
+
+# ---- Hold the Door: the tutorial wave and the siege's wave 3 --------------------------
+seed 1
+scene TITLE
+wait 10
+push HOME 16643
+wait 20
+press UP
+wait 2
+press UP
+wait 2
+press UP
+wait 2
+press RIGHT
+wait 40
+fps start
+wait 130
+fps house: defend tutorial
+shot house_defend_tut
+seed 1
+scene TITLE
+wait 10
+push HOME 25091
+wait 30
+fps start
+wait 130
+fps house: defend siege wave 3
+shot house_defend_siege
+wait 60
+fps start
+wait 90
+fps house: defend siege freeze + double clock
+shot house_defend_freeze
+
+# ---- a visit: Nana Puddin's home ------------------------------------------------------
+seed 1
+scene TITLE
+wait 10
+push HOME 3
+wait 60
+fps start
+wait 130
+fps house: visit (Nana)
+shot house_visit
+press B
+wait 10
+
+# ---- HomeMart and the Black Market ----------------------------------------------------
+push HOME_MART 0
+wait 30
+fps start
+wait 90
+fps house: homemart
+shot house_mart
+press DOWN
+wait 2
+fps start
+wait 30
+fps house: homemart cursor move
+press R
+wait 6
+fps start
+wait 60
+fps house: homemart season tab
+shot house_mart_season
+press B
+wait 10
+push HOME_MART 1
+wait 30
+fps start
+wait 90
+fps house: black market
+shot house_black_market
+press B
+wait 10

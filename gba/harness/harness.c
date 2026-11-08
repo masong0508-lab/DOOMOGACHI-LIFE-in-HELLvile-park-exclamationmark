@@ -35,7 +35,9 @@
  *   fps [LABEL]         print logic ticks/s and drawn frames/s since the
  *                       previous "fps", and the average / worst CPU work
  *                       of a drawn tick in ms (extension); LABEL (and
- *                       log's TEXT) is the whole rest of the line
+ *                       log's TEXT) is the whole rest of the line; then
+ *                       (SA2) "harness: gaps LABEL: ..." the presented
+ *                       frames by vblanks taken (2 = 30 fps, 3 = 50 ms)
  *   expect-fps MIN [LABEL]  fps that fails below MIN drawn frames/s
  *   vhash [LABEL]       print the FNV-1a of the emulator's output frame
  *                       (240x160 as BGR555; display-mode independent).
@@ -236,6 +238,7 @@ static void tflags_sync(void)
 }
 static void run_frame(void);
 static void wl_check(void);
+static void gap_check(void);
 static int worklog;             /* --worklog: one line per drawn frame (tick, CPU work ms) */
 
 /* ---- "sync on" (G1): tick-exact scripts. The game ROM's loop waits at its
@@ -349,6 +352,7 @@ static void run_frame(void)
     core->runFrame(core);
     tflags_sync();
     wl_check();
+    gap_check();
     drain_audio();
 }
 
@@ -369,6 +373,33 @@ static void wl_check(void)
     }
 }
 
+/* SA2: the vblanks each presented frame took (the mailbox's drawn count moves once video_flip() has
+ * shown a frame) since the latest "fps": 2 = 30 fps, 3 = a 50 ms frame, 4+ = a visible hitch. The work
+ * per tick does not tell this alone: a tick of 34-38 ms can still flip on its second vblank when it ends
+ * inside the vblank lines. Printed after each fps line as "harness: gaps LABEL: ..." */
+#define GAP_MAX 16
+static uint32_t gap_h[GAP_MAX + 1], gap_v0, gap_d0, gap_worst, gap_worst_tick;
+static int gap_on;
+static void gap_check(void)
+{
+    uint32_t d = drawn(), v;
+    if (d == gap_d0) return;
+    v = vframes();
+    if (gap_on && d == gap_d0 + 1) {
+        uint32_t g = v - gap_v0;
+        gap_h[g > GAP_MAX ? GAP_MAX : g]++;
+        if (g > gap_worst) { gap_worst = g; gap_worst_tick = ticks(); }
+    }
+    gap_d0 = d;
+    gap_v0 = v;
+    gap_on = 1;
+}
+static void gap_reset(void)
+{
+    memset(gap_h, 0, sizeof(gap_h));
+    gap_worst = gap_worst_tick = 0;
+}
+
 static void run_slice(void)
 {
     uint32_t fc = vframes();
@@ -376,6 +407,7 @@ static void run_slice(void)
     core->runLoop(core);
     tflags_sync();
     wl_check();
+    gap_check();
     if (vframes() != fc) drain_audio();
 }
 
@@ -1000,6 +1032,16 @@ static int run_script(const char *path)
                     failed = 1;
                 }
             }
+            if (v > v0) {
+                /* SA2: the presented frames of the window by vblanks taken (see gap_check) */
+                int g;
+                printf("harness: gaps %s%svblanks-per-frame histogram", label, label[0] ? ": " : "");
+                for (g = 1; g <= GAP_MAX; g++)
+                    if (gap_h[g]) printf(" %d%s:%u", g, g == GAP_MAX ? "+" : "", (unsigned)gap_h[g]);
+                printf(" max %u (%.1f ms) at tick %u\n", (unsigned)gap_worst, gap_worst * 1000.0 / 59.7275,
+                       (unsigned)gap_worst_tick);
+            }
+            gap_reset();
             t0 = t; v0 = v; d0 = d;
             core->busWrite32(core, MAILBOX_ADDR + 40, 0);
             ws0 = ws; wn0 = wn;

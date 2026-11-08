@@ -332,6 +332,14 @@ The skeleton drew only `plat_clear()`'s colour; DC3 draws all of the 2D
 `make -C dc check-elf` lists the core's weak platform defaults still in the
 link, so each package can see what it has left.
 
+### Speed tour 2 (SA2, `dc/harness/speed2.sh`)
+
+`sh dc/harness/speed2.sh OUTDIR [groups...]` (after `make -C dc`, the stripped ELF and `doomogachi.nm`) plays the
+GBA's speed tour 2 scripts (docs/GBA.md "Speed tour 2") in Flycast: `tools/speed2.py dc` makes each window
+`log speed2: begin N NAME`, `mark-ticks`, `frames 2N`, `expect-ticks`, `log speed2: end NAME`, and
+`tools/speed2.py table` prints the logic ticks/s and the ticks over 33.3 / 50 ms of work (dcrun's `work:` lines)
+per window, with the run's `game drew` and `work over` lines. Flycast is not cycle-accurate: a guide, not a promise.
+
 ### The harness mailbox (`dc_mailbox`, `dc/harness/dc_mailbox.h`)
 
 The layout is one header shared by the game and the Flycast harness (DC1):

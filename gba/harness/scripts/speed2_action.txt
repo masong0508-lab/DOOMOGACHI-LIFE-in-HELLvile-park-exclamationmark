@@ -1,0 +1,187 @@
+# speed2_action.txt - speed tour 2 (SA2): the action scenes' menus and cards (not the shooting
+# itself: combat is SP8's, measured in speed_tour.txt): the Hell Breach level select, a level's
+# intro card and pause menu, the Demon Arena and the arena modes (Boss Rush, Horde, Monster Mode
+# Mayhem: intro card, one fight window for reference, the give-up results card), the welding
+# workshop and the welding minigame (pushed in practice mode, arg 1). Args: core/src/levels_int.h.
+# Window rules: speed2_fair.txt.
+wait 40
+expect-log doomo: init
+sync on 61
+
+# ---- Hell Breach: level select, intro card, pause ------------------------------------
+seed 1
+scene TITLE
+wait 2
+push LEVEL_SELECT 0
+wait 40
+fps start
+wait 130
+fps action: level select
+shot act_level_select
+press RIGHT
+wait 2
+fps start
+wait 20
+fps action: level select move
+shot act_level_select_move
+press LEFT
+wait 20
+press A
+wait 40
+fps start
+wait 90
+fps action: breach intro card
+shot act_breach_intro
+press A
+wait 46
+fps start
+wait 90
+fps action: breach play (combat, reference)
+shot act_breach_play
+press START
+wait 12
+fps start
+wait 90
+fps action: breach pause menu
+shot act_breach_pause
+press UP
+press A
+wait 40
+fps start
+wait 90
+fps action: level select after a level
+shot act_level_select_back
+
+# ---- the Demon Arena (free play waves) -------------------------------------------------
+seed 1
+scene TITLE
+wait 2
+push ARENA
+wait 30
+fps start
+wait 90
+fps action: arena intro card
+shot act_arena_intro
+press A
+wait 90
+fps start
+wait 90
+fps action: arena fight (combat, reference)
+shot act_arena_fight
+press START
+wait 6
+fps start
+wait 60
+fps action: arena pause menu
+shot act_arena_pause
+press DOWN
+press DOWN
+press A
+wait 70
+fps start
+wait 90
+fps action: arena results
+shot act_arena_results
+
+# ---- arena modes: Boss Rush, Horde, Monster Mode Mayhem ------------------------------
+seed 1
+scene TITLE
+wait 2
+push ARENA_MODE 0
+wait 30
+fps start
+wait 90
+fps action: boss rush intro card
+shot act_rush_intro
+press A
+wait 100
+fps start
+wait 90
+fps action: boss rush round 1 (combat, reference)
+shot act_rush_round1
+press START
+wait 10
+press UP
+press A
+wait 80
+fps start
+wait 90
+fps action: boss rush results
+shot act_rush_results
+seed 1
+scene TITLE
+wait 2
+push ARENA_MODE 1
+wait 30
+fps start
+wait 90
+fps action: horde intro card
+shot act_horde_intro
+press A
+wait 60
+press START
+wait 2
+press UP
+press A
+wait 80
+fps start
+wait 90
+fps action: horde results
+shot act_horde_results
+seed 1
+scene TITLE
+wait 2
+push ARENA_MODE 2
+wait 30
+fps start
+wait 90
+fps action: mayhem intro card
+shot act_mayhem_intro
+press A
+wait 200
+fps start
+wait 90
+fps action: mayhem chaos (combat, reference)
+shot act_mayhem_chaos
+
+# ---- the welding workshop and the welding minigame -----------------------------------
+seed 1
+scene TITLE
+wait 2
+push WORKSHOP
+wait 30
+fps start
+wait 130
+fps action: workshop
+shot act_workshop
+press RIGHT
+wait 2
+fps start
+wait 30
+fps action: workshop part change
+shot act_workshop_part
+press LEFT
+wait 10
+press L
+wait 10
+fps start
+wait 90
+fps action: workshop armory
+shot act_workshop_armory
+press R
+wait 10
+push WELD_GAME 1
+wait 20
+fps start
+wait 90
+fps action: weld intro card
+shot act_weld_intro
+press A
+wait 30
+down A
+wait 40
+fps start
+wait 130
+fps action: welding
+shot act_welding
+release

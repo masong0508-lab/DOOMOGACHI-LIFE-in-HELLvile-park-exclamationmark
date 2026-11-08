@@ -9,6 +9,10 @@
 #                             target scene (SPEED_BASE=LOG: + frame parity)
 #   make -C gba test-life     the life tour (M0): the free-play screens' fps,
 #                             work ms and press-to-picture latency
+#   make -C gba test-speed2   speed tour 2 (SA2): every scene the speed and
+#                             life tours do not visit, one table per group
+#                             (SPEED2="fair library ..."; profile-speed2 adds
+#                             a PC profile after every window)
 #   make -C gba MATURE_PACK=pack.dmpk
 #                             build/doomogachi_mature.gba (E8: the mature ROM
 #                             variant: the game + a DMPK pack for port gba
@@ -135,7 +139,7 @@ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 # over the core's weak stubs, and the core's strong definitions win over both.
 ALL_OBJS  := $(GBA_OBJS) $(CORE_OBJS)
 
-.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-speed test-life profile-title profile-pause profile-invaded profile-all profile-sung profile-creator test-creator clean sizes
+.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-speed test-life profile-title profile-pause profile-invaded profile-all profile-sung profile-creator test-creator test-speed2 profile-speed2 clean sizes
 .DEFAULT_GOAL := all
 
 # Cartridge size (user decision 2026-11-01): the game ROM is a full 256 Mbit
@@ -490,3 +494,32 @@ profile-sung: harness
 	cat $(BUILD)/sung_spikes.log; \
 	exit $$rc
 # --- end profile-sung ---
+
+# --- SA2: speed tour 2 (docs/GBA.md "Speed tour 2"): gba/harness/scripts/speed2_GROUP.txt for every group in
+# SPEED2 (default: all of them), each with --worklog; tools/speed2.py prints one table per group (logic ticks/s,
+# drawn fps, work avg / max, the presented frames by vblanks taken, frames over 33 / 50 ms, the load). Reports,
+# never gates. profile-speed2 plays the same scripts with `profile SPEED2_PROFILE_N` after every window (the
+# hottest functions, overlay-aware names). Logs: build/speed2_GROUP.log, build/speed2_GROUP_prof.log ---
+SPEED2_ALL := $(patsubst $(GBA)/harness/scripts/speed2_%.txt,%,$(sort $(wildcard $(GBA)/harness/scripts/speed2_*.txt)))
+SPEED2 ?= $(SPEED2_ALL)
+SPEED2_PROFILE_N ?= 8000000
+test-speed2: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@mkdir -p $(SHOTS)/speed2
+	@rc=0; for g in $(SPEED2); do \
+	    $(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/speed2_$$g.txt \
+	        --shots $(SHOTS)/speed2 --no-fps-gates --worklog --quiet > $(BUILD)/speed2_$$g.log 2>&1 || rc=1; \
+	    echo "### $$g (build/speed2_$$g.log)"; $(PYTHON) $(ROOT)/tools/speed2.py table $(BUILD)/speed2_$$g.log || rc=1; \
+	done; exit $$rc
+profile-speed2: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@mkdir -p $(SHOTS)/speed2
+	$(NM_SYMS)
+	@rc=0; for g in $(SPEED2); do \
+	    sed -e '/^fps start$$/b' -e '/^fps /a profile $(SPEED2_PROFILE_N)' \
+	        $(GBA)/harness/scripts/speed2_$$g.txt > $(BUILD)/speed2_$${g}_prof.txt; \
+	    $(HARNESS) $(BUILD)/doomogachi.gba --script $(BUILD)/speed2_$${g}_prof.txt --nm $(BUILD)/doomogachi.nm \
+	        --shots $(SHOTS)/speed2 --no-fps-gates --quiet > $(BUILD)/speed2_$${g}_prof.log 2>&1 || rc=1; \
+	    echo "### $$g (build/speed2_$${g}_prof.log)"; $(PYTHON) $(GBA)/tools/profile_report.py $(BUILD)/speed2_$${g}_prof.log || rc=1; \
+	done; exit $$rc
+# --- end SA2 ---
