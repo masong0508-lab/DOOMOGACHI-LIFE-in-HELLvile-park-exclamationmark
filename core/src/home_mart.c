@@ -274,6 +274,16 @@ int home_expand_buy(void)
 
 /* ---- the scene ------------------------------------------------------------------------ */
 static const char *const tab_names[HMT_COUNT] = { "Today", "Season", "Last Season", "Wants", "Sell" };
+/* (CL5, C13 1.13f) the same tabs in fewer letters, for a screen too narrow for the full row ("Sell" was cut at
+ * 240x160) */
+static const char *const tab_short[HMT_COUNT] = { "Today", "Season", "Last", "Wants", "Sell" };
+
+static int tabs_w(const char *const *names, int n)
+{
+    int i, w = 0;
+    for (i = 0; i < n; i++) w += ui_text_width(names[i]) + 12;
+    return w - 2;
+}
 static const char *const grade_names[4] = { "C", "B", "A", "S" };
 
 typedef struct MartScn {
@@ -513,14 +523,12 @@ static void draw_list(int x, int y, int w, int rows, const UiStyle *st)
             doomo_snprintf(pb, sizeof(pb), "x%d", r->owned);
         }
         {
-            int pw = ui_text_width(pb), room = w - 6 - pw - (r->deal ? 30 : 0) - dx;
+            /* (CL5, C13 1.13f) the day's deal is a red price with a star; its "-30%" badge (which sat on the price
+             * and cut the name to "Bagel Mou.") is in the preview pane, so the name has the whole row */
+            int pw = ui_text_width(pb) + (r->deal ? 8 : 0), room = w - 6 - pw - dx;
             ui_text(x + 2 + dx, ry + 1, fit_text(row_name(i, buf, sizeof(buf)), fit, sizeof(fit), room), col);
-            ui_text(x + w - pw - 2, ry + 1, pb, r->deal ? PAL_UI_RED : PAL_UI_GOLD);
-            if (r->deal) {
-                int wig = ui_wave((int)M->t, 16, 1);
-                ui_round_rect(x + w - pw - 31, ry + wig, 26, 9, 2, PAL_UI_RED);
-                plat_text(x + w - pw - 29, ry + 1 + wig, "-30%", PAL_WHITE);
-            }
+            if (r->deal) plat_text(x + w - pw - 2 + ui_wave((int)M->t, 16, 1), ry + 1, STR_ICON_STAR, PAL_UI_RED);
+            ui_text(x + w - ui_text_width(pb) - 2, ry + 1, pb, r->deal ? PAL_UI_RED : PAL_UI_GOLD);
         }
     }
     ui_scroll_arrows(x + w - 4, y - 6, y + rows * rh, M->top > 0, M->top + rows < M->n);
@@ -585,6 +593,10 @@ static void draw_preview(int x, int y, int w, int h, const UiStyle *st)
             fy = y + h - 2 - FONT_LINE;
             doomo_snprintf(buf, sizeof(buf), "Owned: %d", home_owned(r->furn));
             ui_text(x + 4, fy, buf, st->text_dim);
+            if (r->deal) {                          /* (CL5) the deal's badge, moved off the list row */
+                fy -= FONT_LINE;
+                ui_text(x + 4, fy, lang_tr("Deal: -30% today!"), PAL_UI_RED);
+            }
         }
         desc = doomo_furn_text(f->desc, dbuf, sizeof(dbuf));
         dy = fy - 3 - ui_text_wrap(x + 4, 0, w - 8, desc, 0, 0) * FONT_LINE;
@@ -628,7 +640,7 @@ static void mart_draw(void)
         return;
     }
     if (M->ntabs > 1) {
-        ui_tabs(4, y, tab_names, M->ntabs, M->tab, style);
+        ui_tabs(4, y, tabs_w(tab_names, M->ntabs) <= sw - 8 ? tab_names : tab_short, M->ntabs, M->tab, style);
         y += 16;
     }
     lw = sw >= 300 ? 170 : 128;

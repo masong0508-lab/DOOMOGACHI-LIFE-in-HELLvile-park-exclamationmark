@@ -30,7 +30,7 @@ static const char tips_reset_help[] = "Every first-time tip shows again, once, t
 static const char tips_reset_hint[] = STR_ICON_A " Reset  L/R Page  " STR_ICON_B " Done";
 
 static const char *const opt_help[OPT_COUNT] = {
-    /* GORE */ "Cute: confetti, hearts, plush stuffing. Brutal: full Doom. Cute + Gore (after the ending): both at once.",
+    /* GORE */ "Cute: confetti, hearts, plush. Brutal: full Doom. Cute + Gore (after the ending): both at once.",
     /* MONSTER */ "Lets you kill off ANY citizen. Everyone will remember.",
     /* DIFFICULTY */ "How mean the demons are. Plushie is extra gentle.",
     /* MUSIC_VOL */ "Volume of the chiptune soundtrack.",
@@ -42,7 +42,7 @@ static const char *const opt_help[OPT_COUNT] = {
     /* DAY_LENGTH */ "How long one island day lasts in real time.",
     /* AUTOSAVE */ "Save the free play island automatically.",
     /* CAMERA */ "Default camera in the shooter (SELECT toggles).",
-    /* CONTROLS */ "Classic: L + D-pad looks. Modern: L/R strafe. Dual stick: left stick moves, right stick looks (DualShock).",
+    /* CONTROLS */ "Classic: L + D-pad looks. Modern: L/R strafe. Dual stick: left moves, right looks.",
     /* INVERT */ "Invert looking up and down.",
     /* LOOK_SPEED */ "How fast you turn and look around.",
     /* AIM_ASSIST */ "Gentle help keeping demons in your sights.",
@@ -93,7 +93,7 @@ static const char *const opt_help[OPT_COUNT] = {
     /* DRAW_DIST */ "How far the 3D view reaches. Near is faster in big open maps.",
     /* SHOW_FPS */ "Show how many frames per second the shooter draws.",
     /* LANGUAGE */ "The language of menus and story text. Cambia el idioma del juego.",
-    /* 3D_FAST */ "Faster: the 3D view at half resolution, scaled up, for a smoother shooter. Better: full resolution, up to 20 fps."
+    /* 3D_FAST */ "Faster: half-resolution 3D, scaled up, smoother. Better: full resolution, up to 20 fps."
 };
 
 /* U2: presets. Applying one first puts every ordinary option back to its default, then lays the
@@ -384,9 +384,14 @@ static void cb_tips_reset(int yes)
     ui_toast("Every tip will show again.");
 }
 
+/* (CL5, C13 1.14a) rows on screen: 7 at 240x160 (was 8), so the help under them has up to three whole lines
+ * instead of a one-line marquee whose start ("Classic: L + D-pad looks. Modern: L/") was all a reader caught */
+static int opt_vis(void) { return fp_big() ? 13 : 7; }
+#define OPT_HELP_LINES 3
+
 static void opt_update(void)
 {
-    int vis = fp_big() ? 13 : 8;
+    int vis = opt_vis();
     O.t++;
     if (fp_is_freeplay()) fp_live(); else fp_fx_tick();
     if (O.phase == PH_CODE) {                           /* back from SCENE_SECURITY_CODE */
@@ -428,7 +433,7 @@ static void opt_update(void)
 
 static void opt_draw(void)
 {
-    int sw = fp_sw(), big = fp_big(), vis = big ? 13 : 8, i;
+    int sw = fp_sw(), big = fp_big(), vis = opt_vis(), i;
     int style = O.page == OPTPAGE_CHEATS ? WIN_HELL : WIN_CUTE;
     const UiStyle *st = ui_style(style);
     int x = 10, w = sw - 20, y0 = 36;
@@ -483,7 +488,7 @@ static void opt_draw(void)
     {
         const char *help = "Put every setting on this page back.";
         uint8_t c = st->text_dim;
-        int hy = y0 + vis * 11 + 6;
+        int hy = y0 + vis * 11 + (big ? 6 : 3);     /* (CL5) 240x160: three lines end above the bottom bar */
         if (O.sel < O.nrows && O.rows[O.sel] == ROW_PRESET) {
             help = preset_help[O.preset];
         } else if (O.sel < O.nrows && O.rows[O.sel] == ROW_TIPS_RESET) {
@@ -506,9 +511,13 @@ static void opt_draw(void)
                 }
             }
         }
-        fp_pill(x - 4, hy, w + 8, big ? 22 : 12, st->fill_hi, st->outline, PAL_WHITE);
-        if (big) ui_text_wrap(x + 2, hy + 2, w - 4, help, c, 1);
-        else fp_marquee(x + 2, hy + 2, w - 4, help, c, O.t);
+        {
+            /* wrapped on up to OPT_HELP_LINES lines, the pill as tall as the text (the 320x240 pill was 22 px for
+             * any text, and the Controls help ran out under it) */
+            int lines = DOOMO_CLAMP(ui_text_wrap(0, 0, w - 4, help, 0, 0), 1, OPT_HELP_LINES);
+            fp_pill(x - 4, hy, w + 8, 4 + lines * 9, st->fill_hi, st->outline, PAL_WHITE);
+            fp_wrap_lines(x + 2, hy + 2, w - 4, help, c, lines);
+        }
     }
     ui_hint((O.sel < O.nrows && O.rows[O.sel] == ROW_PRESET) ? STR_ICON_ARROW_L STR_ICON_ARROW_R " Pick  " STR_ICON_A " Apply  L/R Page  " STR_ICON_B " Done"
             : (O.sel < O.nrows && O.rows[O.sel] == ROW_TIPS_RESET) ? tips_reset_hint
@@ -581,3 +590,21 @@ void options_open(int page)
  * (ovl_plan.py; lib_help.c does the same). */
 static const char options_scene_name[] = "OPTIONS";
 const DoomoScene SCENE_OPTIONS = { options_scene_name, opt_enter, NULL, opt_update, opt_draw, 0 };
+
+/* (CL5, clarity C13) the text fit of the Options help lines: how many option help texts (every option, every
+ * preset) need more lines than the help pill has at the current size; the first is copied to why */
+int fp_options_help_overflow(char *why, int cap)
+{
+    int i, bad = 0, w = fp_sw() - 20 - 4;
+    if (why && cap) why[0] = 0;
+    for (i = 0; i < OPT_COUNT + PRESET_N; i++) {
+        const char *h = i < OPT_COUNT ? help_of(i) : preset_help[i - OPT_COUNT];
+        int n = h ? ui_text_wrap(0, 0, w, h, 0, 0) : 0;
+        if (n > OPT_HELP_LINES) {
+            int l = why ? (int)strlen(why) : 0;
+            bad++;
+            if (why && l < cap - 8) doomo_snprintf(why + l, cap - l, "%s%d lines: %s", l ? " | " : "", n, h);
+        }
+    }
+    return bad;
+}

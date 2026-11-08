@@ -463,9 +463,6 @@ void fp_bubble(int x, int y, int icon, uint8_t color, int phase)
     fp_icon(bx + 3, by + 2, icon, color);
 }
 
-const char *const fp_stat_names[STAT_COUNT] = {
-    "Food", "Joy", "Clean", "Energy", "Health", "Mind", "Dark", "Social"
-};
 
 uint8_t fp_stat_icon(int stat)
 {
@@ -1045,4 +1042,17 @@ void activity_launch(const DoomoActivity *a)
     }
     audio_sfx(SFX_SELECT);
     scene_push(a->scene, a->arg);
+}
+
+/* (CL5, clarity C13) wrapped text cut to its first max_lines lines (in the language shown): for boxes with a fixed
+ * height, where the old code scrolled a one-line marquee or let the second line run out of the box */
+int fp_wrap_lines(int x, int y, int w, const char *s, uint8_t color, int max_lines)
+{
+    const char *t;
+    int n;
+    if (!s) return 0;
+    t = lang_tr(s);
+    n = ui_text_wrap(0, 0, w, t, 0, 0);
+    ui_text_wrap_n(x, y, w, t, color, ui_wrap_skip(t, w, max_lines));
+    return DOOMO_MIN(n, max_lines);
 }

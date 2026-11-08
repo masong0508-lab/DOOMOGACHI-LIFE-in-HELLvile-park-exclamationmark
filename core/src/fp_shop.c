@@ -221,7 +221,7 @@ static void shop_update(void)
 static void stat_line(int x, int y, int w, int it, uint8_t c)
 {
     const DoomoItemInfo *d = &doomo_items[it];
-    static const char *const nm[7] = { "Food", "Joy", "Clean", "Nrg", "HP", "Mind", "Dark" };
+    const char *const *nm = doomo_stat_names;   /* (CL5, C6) the care screen's words: Energy, Health, not Nrg, HP */
     int v[7], i, cx = x;
     char buf[16];
     v[0] = d->hunger; v[1] = d->happy; v[2] = d->hygiene; v[3] = d->energy;

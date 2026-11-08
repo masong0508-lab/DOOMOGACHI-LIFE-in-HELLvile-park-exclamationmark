@@ -26,6 +26,10 @@ const char *const doomo_mood_names[MOOD_COUNT] = {
     "Okay", "Happy", "Ecstatic", "Sad", "Angry", "Lovesick", "Hungry",
     "Sleepy", "Sick", "Filthy", "Lonely", "Scared", "Corrupted", "Possessed"
 };
+const char *const doomo_stat_names[8] = {
+    "Food", "Joy", "Clean", "Energy", "Health", "Mind", "Dark", "Social"
+};
+DOOMO_STATIC_ASSERT(STAT_COUNT == 8, stat_names_cover_every_need);
 const char *const doomo_activity_names[ACT_COUNT] = {
     "At home", "Sleeping", "At the park", "At the cafe", "Shopping",
     "At church", "At the workshop", "At the beach", "At a concert",

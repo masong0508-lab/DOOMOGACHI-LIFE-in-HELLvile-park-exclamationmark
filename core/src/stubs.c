@@ -494,6 +494,9 @@ WEAK const uint16_t doomo_story_npc[NPC_COUNT] = { 0, 1, 2, 3, 4, 5, 500, 999 };
 /* ======================================================================
  * life: sim / exorcism / pet
  * ==================================================================== */
+WEAK const char *const doomo_stat_names[8] = {
+    "Food", "Joy", "Clean", "Energy", "Health", "Mind", "Dark", "Social"
+};
 WEAK const char *const doomo_mood_names[MOOD_COUNT] = {
     "Okay", "Happy", "Ecstatic", "Sad", "Angry", "Lovesick", "Hungry",
     "Sleepy", "Sick", "Filthy", "Lonely", "Scared", "Corrupted", "Possessed"

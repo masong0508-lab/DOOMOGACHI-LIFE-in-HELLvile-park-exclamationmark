@@ -20,6 +20,9 @@ enum { DEATH_NONE, DEATH_LAID_TO_REST, DEATH_MONSTER, DEATH_DEMON_ATTACK,
        DEATH_NEGLECT, DEATH_OLD_AGE, DEATH_COUNT };
 
 extern const char *const doomo_mood_names[MOOD_COUNT];
+/* (CL5, clarity C6) the one name of each need (STAT_*): the care screen, the shop, the item dex and the family
+ * screen all spell them this way (Energy, never Nrg; Mind, never Sanity; Dark, never Corrupt) */
+extern const char *const doomo_stat_names[8];
 extern const char *const doomo_activity_names[ACT_COUNT];
 extern const char *const doomo_death_names[DEATH_COUNT];
 

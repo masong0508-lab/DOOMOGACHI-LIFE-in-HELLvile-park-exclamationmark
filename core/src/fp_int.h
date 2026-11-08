@@ -109,7 +109,9 @@ void fp_meter(int x, int y, int w, int icon, const char *label, int value, uint8
               uint8_t text);
 uint8_t fp_stat_color(int stat, int value);
 uint8_t fp_stat_icon(int stat);
-extern const char *const fp_stat_names[STAT_COUNT];
+#define fp_stat_names doomo_stat_names    /* (CL5) one table: sim.c */
+/* (CL5) wrapped text, at most max_lines lines (translated first); returns the lines drawn */
+int fp_wrap_lines(int x, int y, int w, const char *s, uint8_t color, int max_lines);
 /* Chibi (bodyspr) with a per-tick render budget: draws a soft placeholder
  * until there is budget to render it. flags: IMG_FLIPX etc. Returns 1 if
  * the real chibi was drawn. */

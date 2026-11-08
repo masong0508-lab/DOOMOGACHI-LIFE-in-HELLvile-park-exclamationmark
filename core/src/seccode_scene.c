@@ -137,11 +137,26 @@ static void sc_draw(void)
     if (C.msg == MSG_MISMATCH) ui_text_center(sw / 2, y + 62, "They did not match.", st->text);
     else if (C.msg == MSG_WRONG) ui_text_center(sw / 2, y + 62, "Not that one. Try again.", st->text);
     else if (C.msg == MSG_LOCKED) ui_text_center(sw / 2, y + 62, "Locked. Ask again later.", st->text);
-    else ui_text_center(sw / 2, y + 62, "UP / DOWN: digit", st->text_dim);
+    else ui_text_center(sw / 2, y + 62, C.pos > 0 ? "UP/DOWN: digit  LEFT: fix one" : "UP / DOWN: digit", st->text_dim);
     if (C.msg == MSG_NONE) {
-        ui_text_center(sw / 2, y + 76, C.mode == SECCODE_SET && C.step == 0 ? "B: skip the code" : "B: back", st->text_dim);
-        if ((C.t >> 4) & 1) ui_text_center(sw / 2, y + 90, STR_ICON_A " Next", st->text_dim);
+        /* (CL5, C13 1.1c) B steps back a digit once past the first, and the last digit says how to finish */
+        ui_text_center(sw / 2, y + 76, C.pos > 0 ? "B: back a digit" :
+                       C.mode == SECCODE_SET && C.step == 0 ? "B: skip the code" : "B: back", st->text_dim);
+        if ((C.t >> 4) & 1)
+            ui_text_center(sw / 2, y + 90, C.pos == SECCODE_LEN - 1 ? STR_ICON_A " Done" : STR_ICON_A " Next", st->text_dim);
     }
 }
 
 const DoomoScene SCENE_SECURITY_CODE = { "SECURITY_CODE", sc_enter, NULL, sc_update, sc_draw, 0 };
+
+/* (CL5) text-fit hook: the code screen's prompt lines wider than its window at this screen size (test_textfit.c) */
+int seccode_text_overflow(char *why, int cap)
+{
+    static const char *const lines[] = { "UP/DOWN: digit  LEFT: fix one", "B: back a digit", "B: skip the code",
+                                         "Set a grown-ups' code", "Enter the code to go on.", "Enter them once more.",
+                                         "Not that one. Try again.", "Locked. Ask again later." };
+    int i, bad = 0, w = plat_screen_w() - 24 - 8;
+    for (i = 0; i < (int)DOOMO_COUNTOF(lines); i++)
+        if (ui_text_width(lines[i]) > w && !bad++ && why) doomo_snprintf(why, cap, "%s", lines[i]);
+    return bad;
+}

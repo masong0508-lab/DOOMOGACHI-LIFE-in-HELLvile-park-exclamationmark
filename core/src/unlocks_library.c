@@ -36,7 +36,7 @@ const DoomoUnlock doomo_unlocks_library[] = {
     { LIB_UL_JUKEBOX, UL_CAT_MODE, 0, MODE_JUKEBOX, "Library Jukebox",
       "Live in town for a day, or spot your first demon", PROG_DAYS_LIVED, 1 },
     { LIB_UL_GALLERY, UL_CAT_MODE, 0, MODE_GALLERY, "Library Art Gallery",
-      "Live in town for 3 days, or fill a quarter of the Library", PROG_DAYS_LIVED, 3 },
+      "Live here 3 days, or fill a quarter of the Library", PROG_DAYS_LIVED, 3 },
     /* ---- library trophies ---- */
     TROPHY(LIB_UL_CARD, "Library Card", "Visit Quillby's Grand Library. Get a card, be a card"),
     SKIN(LIB_UL_BOOKWORM, OPT_WINDOW_SKIN, WSKIN_PEACH, "Bookworm: Peach Windows",

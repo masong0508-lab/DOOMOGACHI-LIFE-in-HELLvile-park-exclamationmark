@@ -103,12 +103,26 @@ static void lp_update(void)
     }
 }
 
+/* (CL5, C13 1.1b) each line names the option it describes, and the window is tall enough that it no longer
+ * runs into the "A OK" prompt at 240x160 */
+static const char *const mature_hints[3] = { "Off: cutaways, nothing spicy.", "Censored: spicy bits get bars.",
+                                             "On: implied scenes, then a fade." };
+
+/* (CL5) text-fit hook: the Mature lines wider than the window's inside at this screen size (test_textfit.c) */
+int lang_pick_text_overflow(char *why, int cap)
+{
+    int i, bad = 0, w = plat_screen_w() - 32 - 8;
+    for (i = 0; i < 3; i++)
+        if (ui_text_width(mature_hints[i]) > w && !bad++ && why) doomo_snprintf(why, cap, "%s", mature_hints[i]);
+    return bad;
+}
+
 static void mature_draw(void)
 {
     static const char *const names[3] = { "Off", "Censored", "On" };
-    static const char *const hints[3] = { "Cutaways. Nothing spicy.", "Spicy bits get censor bars.", "Implied scenes, then a fade." };
+    const char *const *hints = mature_hints;
     const UiStyle *st = ui_style(WIN_CUTE);
-    int sw = plat_screen_w(), sh = plat_screen_h(), i, h = 98, y;
+    int sw = plat_screen_w(), sh = plat_screen_h(), i, h = 112, y;
     ui_backdrop(WIN_CUTE, (uint32_t)doomo_frame_count());
     ui_window(16, sh / 2 - h / 2, sw - 32, h, WIN_CUTE);
     y = sh / 2 - h / 2 + 8;

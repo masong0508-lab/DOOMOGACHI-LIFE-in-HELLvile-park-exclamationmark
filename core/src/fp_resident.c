@@ -628,9 +628,17 @@ static void leave(void)
 
 static int list_vis(void) { return fp_big() ? 13 : 9; }
 
+/* (CL5, clarity C6) the Care tab's action list keeps the bottom of the window for the help strip that says which
+ * need the action fills: 11 rows at 320x240, 8 at 240x160, one fewer while the problem pill is up. The update and
+ * the drawing share it, so the cursor never scrolls off (it used list_vis while the drawing took one off). */
+static int care_vis(void)
+{
+    return (fp_big() ? 11 : 8) - (sim_problem_for(R.id) >= 0);
+}
+
 static void care_update(void)
 {
-    int vis = list_vis();
+    int vis = care_vis();
     if (!R.nacts) return;
     if (btn_repeat(BTN_UP)) { R.sel = (int16_t)((R.sel + R.nacts - 1) % R.nacts); audio_sfx(SFX_CURSOR); }
     if (btn_repeat(BTN_DOWN)) { R.sel = (int16_t)((R.sel + 1) % R.nacts); audio_sfx(SFX_CURSOR); }
@@ -760,6 +768,59 @@ static void draw_hearts(int x, int y, int level, uint8_t c)
     }
 }
 
+/* (CL5, clarity C6 1.9c) 240x160: the portrait column is 54 px (9 letters), so the name, cut to "udge H" by the
+ * old plate, is drawn in full in the top band (res_draw: name_band) and the lines under the portrait use short
+ * words that fit whole: the mood, where they are ("Concert", not "At a co"), the building and the room. */
+static const char *activity_short(int act)
+{
+    static const char *const n[ACT_COUNT] = {
+        "Home", "Asleep", "Park", "Cafe", "Shopping", "Church", "Workshop", "Beach", "Concert",
+        "Vape shop", "Hospital", "Wandering", "Haunting"
+    };
+    return (act >= 0 && act < ACT_COUNT) ? n[act] : "Out";
+}
+
+static void draw_left_small(const RLayout *L, const DoomoResident *r, int style, int y)
+{
+    const UiStyle *st = ui_style(style);
+    int x = L->px, w = L->cx - 2 - L->px;     /* the column and the gap up to the window */
+    char buf[24];
+    if (r->status == RES_EMPTY) {
+        ui_text_center(x + L->pw / 2, y + 2, "Vacant", st->text_dim);
+        return;
+    }
+    draw_hearts(x + (L->pw - 50) / 2, y, r->level, PP(PAINT_ROSE, 1));
+    y += 11;
+    if (fp_living_status(r->status)) {
+        fp_icon(x, y, fp_mood_icon(r->mood), fp_mood_color(r->mood));
+        ui_text_clip(x + 9, y, lang_tr(doomo_mood_names[r->mood % MOOD_COUNT]), st->text, x + 9, x + w);
+        y += FONT_LINE;
+        fp_icon(x, y, fp_activity_icon(r->activity), st->accent);
+        ui_text_clip(x + 9, y, lang_tr(activity_short(r->activity)), st->text_dim, x + 9, x + w);
+    } else {
+        fp_icon(x, y, fp_status_icon(r->status), fp_status_color(r->status));
+        ui_text_clip(x + 9, y, lang_tr(fp_status_name(r->status)), st->text, x + 9, x + w);
+    }
+    y += FONT_LINE;
+    fp_icon(x, y, ICON_HOUSE, RES_DISTRICT(R.id) ? PP(PAINT_VAPE_PURPLE, 1) : PP(PAINT_BUBBLEGUM, 0));
+    ui_text_clip(x + 9, y, lang_tr(RES_DISTRICT(R.id) ? "Pits" : "Towers"), st->text_dim, x + 9, x + w);
+    y += FONT_LINE;
+    doomo_snprintf(buf, sizeof(buf), "Room %d-%d", fp_floor(R.id), fp_room(R.id));
+    ui_text_clip(x, y, buf, st->text_dim, x, x + w);
+}
+
+/* 240x160: the name over the portrait, in the band left of the tabs (the tabs sit at the right edge) */
+static void name_band(const RLayout *L, const DoomoResident *r, int style, int tabs_x)
+{
+    const UiStyle *st = ui_style(style);
+    const char *nm = r->status == RES_EMPTY ? "Vacant" : r->name;
+    int x = 2, w = tabs_x - 3 - x, tw = ui_text_width(nm), pw = DOOMO_MIN(tw + 8, w);   /* 11 letters fit: 66 + 8 */
+    (void)L;
+    fp_pill(x, 3, pw, 12, st->title_bg, st->outline, ui_lighter(st->title_bg));
+    if (tw > pw - 8) fp_marquee(x + 4, 5, pw - 8, nm, st->title, fp_t());   /* only a translated "Vacant" */
+    else ui_text_shadow(x + 4, 5, nm, st->title, st->outline);
+}
+
 static void draw_left(const RLayout *L, const DoomoResident *r, int style)
 {
     const UiStyle *st = ui_style(style);
@@ -774,6 +835,7 @@ static void draw_left(const RLayout *L, const DoomoResident *r, int style)
     }
     if (r->flags & RF_FAVORITE) ui_star(L->px + w - 6, L->py + 6, 4, PAL_UI_GOLD);
     y = L->py + L->ph + 3;
+    if (!fp_big()) { draw_left_small(L, r, style, y); return; }
     /* name plate */
     {
         int nw = DOOMO_MIN(ui_text_width(r->name) + 12, w + 4);
@@ -819,13 +881,103 @@ static void draw_problem(int x, int y, int w)
     fp_marquee(x + 14, y + 2, w - 18, buf, PAL_UI_RED_D, t);
 }
 
+/* (CL5, clarity C6) which need an action fills (STAT_*), -1 for none: the meter it lights up and the help strip */
+static int act_stat(int a)
+{
+    switch (a) {
+    case FPA_FEED: return STAT_HUNGER;
+    case FPA_GIVE: case FPA_GIFT: case FPA_PLAY: return STAT_HAPPY;
+    case FPA_CLEAN: return STAT_HYGIENE;
+    case FPA_HEAL: return STAT_HEALTH;
+    case FPA_TALK: case FPA_INTRODUCE: return STAT_SOCIAL;
+    case FPA_COMFORT: return STAT_SANITY;
+    case FPA_EXORCISE: return STAT_CORRUPTION;
+    case FPA_HELP: {
+        const DoomoProblem *p = sim_problem(sim_problem_for(R.id));
+        if (!p) return -1;
+        switch (p->kind) {
+        case PROB_HUNGRY: return STAT_HUNGER;
+        case PROB_DIRTY: return STAT_HYGIENE;
+        case PROB_BORED: return STAT_HAPPY;
+        case PROB_SICK: return STAT_HEALTH;
+        case PROB_LONELY: case PROB_WANTS_FRIEND: return STAT_SOCIAL;
+        case PROB_NIGHTMARE: return STAT_SANITY;
+        case PROB_CORRUPTION: case PROB_POSSESSED: return STAT_CORRUPTION;
+        default: return -1;
+        }
+    }
+    default: return -1;
+    }
+}
+
+/* the help strip: what the selected action does, in the need words of the meters ("Feed fills Food: 62%") */
+static const char *care_help(int a, char *buf, int cap)
+{
+    const DoomoResident *r = me();
+    int s = act_stat(a), v = (r && s >= 0) ? r->stat[s] : 0, k, low = 0;
+    const char *sn = s >= 0 ? doomo_stat_names[s] : "";
+    if (!r) { buf[0] = 0; return buf; }
+    for (k = 1; k < STAT_COUNT; k++)
+        if (k != STAT_CORRUPTION && r->stat[k] < r->stat[low]) low = k;
+    switch (a) {
+    case FPA_FEED: doomo_snprintf(buf, cap, "Feed fills Food: %d%% now.", v); break;
+    case FPA_GIVE: doomo_snprintf(buf, cap, "Give a gift (Joy %d%%) or a remedy (Health %d%%).", v,
+                                  r->stat[STAT_HEALTH]); break;
+    case FPA_CLEAN: doomo_snprintf(buf, cap, "Clean fills Clean: %d%% now.", v); break;
+    case FPA_PLAY: doomo_snprintf(buf, cap, "Play fills Joy (%d%%) and Social, uses Energy (%d%%).", v,
+                                  r->stat[STAT_ENERGY]); break;
+    case FPA_TALK: doomo_snprintf(buf, cap, "Talk fills Social (%d%%) and the hearts (bond).", v); break;
+    case FPA_COMFORT: doomo_snprintf(buf, cap, "Comfort fills Mind (%d%%), a bit of Joy too.", v); break;
+    case FPA_INTRODUCE: doomo_snprintf(buf, cap, "Introduce: new friends fill Social (%d%%).", v); break;
+    case FPA_EXORCISE: doomo_snprintf(buf, cap, "Exorcise drives out the Dark (%d%%).", v); break;
+    case FPA_HELP: {
+        const DoomoProblem *p = sim_problem(sim_problem_for(R.id));
+        if (p && p->kind == PROB_WANTS_ITEM && p->item > ITEM_NONE && p->item < ITEM_COUNT) {
+            if (doomo_town.items[p->item]) doomo_snprintf(buf, cap, "Help! gives them your %s.", doomo_items[p->item].name);
+            else doomo_snprintf(buf, cap, "Help! buys %s (H$%u) and gives it.", doomo_items[p->item].name,
+                                (unsigned)doomo_items[p->item].price);
+        } else if (p && p->kind == PROB_POSSESSED) doomo_snprintf(buf, cap, "Help! starts an exorcism.");
+        else if (s >= 0) doomo_snprintf(buf, cap, "Help! fixes their problem. %s: %d%%.", sn, v);
+        else doomo_snprintf(buf, cap, "Help! talks them through their problem.");
+        break; }
+    case FPA_ADVICE: doomo_snprintf(buf, cap, "Advice: help them decide something."); break;
+    case FPA_MANAGE: doomo_snprintf(buf, cap, "Manage: edit look, favourite, their home."); break;
+    default:
+        if (fp_living_status(r->status)) doomo_snprintf(buf, cap, "Lowest need: %s %d%%.", doomo_stat_names[low], r->stat[low]);
+        else buf[0] = 0;
+        break;
+    }
+    return buf;
+}
+
+/* the need meters' geometry (x, width, first row, row pitch) and the help strip's box, shared with the text-fit hook */
+typedef struct { int lw, x, y, mx, mw, my, rh, hx, hy, hw, hlines; } CareGeom;
+
+static void care_geom(const RLayout *L, CareGeom *g)
+{
+    int big = fp_big();
+    g->lw = big ? 104 : 88;            /* (CL5) 240x160: 88 (was 80) so "Raise ghost", "Unfavourite" fit */
+    g->x = L->cx + 6;
+    g->y = L->cy + 8;
+    g->mx = L->cx + g->lw + 10;
+    g->mw = L->cw - g->lw - 16;
+    g->my = L->cy + (big ? 7 : 6);
+    g->rh = big ? 15 : 12;
+    g->hx = L->cx + 7;
+    g->hw = L->cw - 14;
+    g->hy = big ? g->y + 11 * 11 + 4 : g->my + STAT_COUNT * g->rh + 1;
+    g->hlines = (!big && sim_problem_for(R.id) >= 0) ? 1 : 2;   /* the problem pill takes the second line at 240 */
+}
+
 static void draw_care(const RLayout *L, const DoomoResident *r, int style)
 {
     const UiStyle *st = ui_style(style);
-    int vis = list_vis(), i, lw = fp_big() ? 104 : 80, x = L->cx + 6, y = L->cy + 8;
-    int mx = L->cx + lw + 10, mw = L->cw - lw - 16, t = fp_t();
+    CareGeom g;
+    /* (CL5) the list's labels end at the selection pill's right end, lw - 20 from the list's left */
+    int vis = care_vis(), i, lw, x, y, mx, mw, t = fp_t();
     int has_prob = sim_problem_for(R.id) >= 0;
-    if (has_prob) vis--;
+    care_geom(L, &g);
+    lw = g.lw; x = g.x; y = g.y; mx = g.mx; mw = g.mw;
     for (i = 0; i < vis && R.top + i < R.nacts; i++) {
         int a = R.acts[R.top + i], ry = y + i * 11, sel = R.top + i == R.sel;
         uint8_t tc = st->text, ic = st->accent;
@@ -855,16 +1007,30 @@ static void draw_care(const RLayout *L, const DoomoResident *r, int style)
             for (k = 0; k < f; k++) ui_heart(mx + 4 + k * 10, gy + 44, 3, PP(PAINT_BUBBLEGUM, 1));
         }
     } else if (r->status != RES_EMPTY) {
-        int s, rows = STAT_COUNT, rh = fp_big() ? 15 : 12;
+        int s, rows = STAT_COUNT, rh = g.rh, hi = R.sel < R.nacts ? act_stat(R.acts[R.sel]) : -1;
+        char help[96];
         for (s = 0; s < rows; s++) {
             int v = r->stat[s];
-            int ry = L->cy + 7 + s * rh;
-            if (fp_big()) fp_meter(mx, ry, mw, fp_stat_icon(s), fp_stat_names[s], v,
+            int ry = g.my + s * rh;
+            if (s == hi) {
+                /* (CL5) the need the selected action fills is framed */
+                ui_frame(mx - 2, ry - 2, mw + 3, rh, st->accent);
+            }
+            if (fp_big()) fp_meter(mx, ry, mw, fp_stat_icon(s), doomo_stat_names[s], v,
                                    fp_stat_color(s, v), st->text);
             else {
+                /* (CL5, C6 1.9a) 240x160: the need's name and its value over a thin bar (were an icon and a bar) */
+                char num[8];
+                doomo_snprintf(num, sizeof(num), "%d", v);
                 fp_icon(mx, ry, fp_stat_icon(s), fp_stat_color(s, v));
-                ui_bar(mx + 9, ry + 1, mw - 9, 7, v, 100, fp_stat_color(s, v));
+                ui_text(mx + 9, ry, doomo_stat_names[s], s == hi ? st->text : st->text_dim);
+                ui_text(mx + mw - ui_text_width(num), ry, num, st->text);
+                ui_bar(mx + 9, ry + 8, mw - 9, 2, v, 100, fp_stat_color(s, v));
             }
+        }
+        if (R.sel < R.nacts) {
+            const char *h = care_help(R.acts[R.sel], help, sizeof(help));
+            fp_wrap_lines(g.hx, g.hy, g.hw, h, st->accent, g.hlines);
         }
     }
     if (has_prob) draw_problem(L->cx + 4, L->cy + L->ch - 15, L->cw - 8);
@@ -990,11 +1156,16 @@ static void draw_friends(const RLayout *L, int style)
     if (R.nrel > vis)
         ui_scroll_arrows(x + w - 2, y - 6, y + vis * 11 - 2, R.rel_top > 0, R.rel_top + vis < R.nrel);
     {
-        int o = R.rel[R.rel_sel], k = rel_kind(R.id, o);
-        char buf[48];
-        doomo_snprintf(buf, sizeof(buf), "%s%s", k >= 0 ? doomo_rel_kind_names[k] : "?",
+        /* (CL5, C6 1.9d) the selected friend's bond in words and numbers: what the bar beside each name means */
+        int o = R.rel[R.rel_sel], k = rel_kind(R.id, o), v = rel_value(R.id, o);
+        char buf[64];
+        doomo_snprintf(buf, sizeof(buf), "%s, bond %s%d of 100%s", k >= 0 ? doomo_rel_kind_names[k] : "?",
+                       v > 0 ? "+" : "", v,
                        o < DOOMO_MAX_RESIDENTS && RES_DISTRICT(o) != RES_DISTRICT(R.id) ? " (across the Wall!)" : "");
-        ui_text(x + 2, L->cy + L->ch - 13, buf, st->accent);
+        if (ui_text_width(buf) > w - 4)          /* the Wall note only when it fits */
+            doomo_snprintf(buf, sizeof(buf), "%s, bond %s%d of 100", k >= 0 ? doomo_rel_kind_names[k] : "?",
+                           v > 0 ? "+" : "", v);
+        ui_text_clip(x + 2, L->cy + L->ch - 13, lang_tr(buf), st->accent, x + 2, x + w);
     }
 }
 
@@ -1031,7 +1202,8 @@ static void draw_items(int style)
     const UiStyle *st;
     const DoomoResident *r = me();
     int sw = fp_sw(), sh = fp_sh(), vis = fp_big() ? 9 : 6, i;
-    int w = DOOMO_MIN(sw - 40, 200), h = vis * 12 + 34, x = (sw - w) / 2, y = (sh - h) / 2 - 4;
+    /* (CL5, C13 1.9e) two lines for the item's description, inside the popup (it ran out over the meters) */
+    int w = DOOMO_MIN(sw - 40, 200), h = vis * 12 + 43, x = (sw - w) / 2, y = (sh - h) / 2 - 4;
     const char *title = R.item_mode == FPA_FEED ? "Feed what?" : "Give what?";
     plat_shade_rect(0, 0, sw, sh, 10);
     if (!ui_window_pop(x, y, w, h, style, R.tab_t)) return;
@@ -1060,7 +1232,10 @@ static void draw_items(int style)
     }
     if (R.nitems > vis)
         ui_scroll_arrows(x + w - 8, y + 12, y + 17 + vis * 12 - 2, R.item_top > 0, R.item_top + vis < R.nitems);
-    ui_text_wrap(x + 8, y + h - 14, w - 16, doomo_items[R.items[R.item_sel]].desc, st->text_dim, 1);
+    {
+        const char *d = doomo_items[R.items[R.item_sel]].desc;
+        fp_wrap_lines(x + 8, y + h - 23, w - 16, d, st->text_dim, 2);
+    }
 }
 
 static void draw_farewell(void)
@@ -1100,6 +1275,13 @@ static void draw_farewell(void)
     fp_fx_draw();
 }
 
+static int tabs_width(void)
+{
+    int i, w = 0;
+    for (i = 0; i < TAB_COUNT; i++) w += ui_text_width(tab_names[i]) + 12;
+    return w - 2;
+}
+
 static void res_draw(void)
 {
     const DoomoResident *r = me();
@@ -1113,8 +1295,13 @@ static void res_draw(void)
     rlayout(&L);
     ui_backdrop(style == WIN_CREAM ? WIN_CUTE : style, (uint32_t)t);
     if (r->status == RES_POSSESSED && (t / 6) % 7 == 0) plat_shade_rect(0, 0, sw, fp_sh(), 12);
-    /* tabs */
-    ui_tabs(L.cx + 2, 5, tab_names, TAB_COUNT, R.tab, style);
+    /* tabs (CL5: at 240x160 against the right edge, the name in the band left of them) */
+    if (fp_big()) ui_tabs(L.cx + 2, 5, tab_names, TAB_COUNT, R.tab, style);
+    else {
+        int tx = sw - 1 - tabs_width();
+        ui_tabs(tx, 5, tab_names, TAB_COUNT, R.tab, style);
+        name_band(&L, r, style, tx);
+    }
     draw_left(&L, r, style);
     ui_window(L.cx, L.cy + 2, L.cw, L.ch, style);
     switch (R.tab) {
@@ -1158,3 +1345,41 @@ int fp_resident_has_action(int a)
 }
 int fp_resident_id(void) { return R.id; }
 int fp_resident_in_farewell(void) { return R.phase == PH_FAREWELL; }
+
+/* (CL5, clarity C13) text fit of the open citizen's Care tab at the current screen size: every action's label in the
+ * list, every need's name with a value of 100 in its meter row, every action's help strip in its lines, and (at
+ * 240x160) the longest possible name in the band over the portrait. Returns the count; the first is in why. */
+int fp_resident_text_overflow(char *why, int cap)
+{
+    RLayout L;
+    CareGeom g;
+    char help[96];
+    int a, s, bad = 0;
+    if (why && cap) why[0] = 0;
+    if (!me()) return 0;
+    rlayout(&L);
+    care_geom(&L, &g);
+#define BAD(...) do { int l_ = why ? (int)strlen(why) : 0; bad++; \
+        if (why && l_ < cap - 8) { \
+            if (l_) { doomo_snprintf(why + l_, cap - l_, " | "); l_ += 3; } \
+            doomo_snprintf(why + l_, cap - l_, __VA_ARGS__); } } while (0)
+    for (a = 0; a < FPA_COUNT; a++) {
+        const char *h;
+        if (ui_text_width(act_label[a]) > g.lw - 20) BAD("action \"%s\" wider than %d", act_label[a], g.lw - 20);
+        h = care_help(a, help, sizeof(help));
+        if (ui_text_wrap(0, 0, g.hw, h, 0, 0) > 2) BAD("help of \"%s\" needs %d lines: %s", act_label[a],
+                                                       ui_text_wrap(0, 0, g.hw, h, 0, 0), h);
+    }
+    for (s = 0; s < STAT_COUNT; s++) {
+        int need = 9 + ui_text_width(doomo_stat_names[s]) + 4 + ui_text_width("100");
+        if (!fp_big() && need > g.mw) BAD("need \"%s\" + 100 is %d px, the meter %d", doomo_stat_names[s], need, g.mw);
+    }
+    if (ui_text_width("Unfavourite") > g.lw - 20) BAD("\"Unfavourite\" wider than %d", g.lw - 20);
+    if (!fp_big()) {
+        int room = (fp_sw() - 1 - tabs_width()) - 3 - 2 - 8;
+        if ((DOOMO_NAME_LEN - 1) * FONT_ADVANCE > room) BAD("an 11-letter name needs %d px, the band has %d",
+                                                            (DOOMO_NAME_LEN - 1) * FONT_ADVANCE, room);
+    }
+#undef BAD
+    return bad;
+}

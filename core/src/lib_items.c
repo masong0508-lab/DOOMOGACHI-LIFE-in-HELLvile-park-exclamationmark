@@ -255,7 +255,7 @@ static void pedestal(int cx, int cy, int it, int big)
 
 static int effect_chips(int x, int y, int w, int bottom, int it)
 {
-    static const char *const nm[7] = { "Food", "Joy", "Clean", "Energy", "Health", "Sanity", "Corrupt" };
+    const char *const *nm = doomo_stat_names;   /* (CL5, C6) the care screen's words: Mind, Dark, not Sanity, Corrupt */
     const DoomoItemInfo *in = &doomo_items[it];
     int8_t v[7];
     int k, cx = x, cy = y, any = 0;

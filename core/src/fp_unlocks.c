@@ -221,7 +221,9 @@ static void un_draw(void)
         ui_scroll_arrows(gx + c * s, gy - 6, gy + r * s - 4, U.top > 0, (U.top + r) * c < U.n);
     /* the card */
     {
-        int cy = gy + r * s + 6, ch = sh - cy - 16;
+        /* (CL5, C13 1.17e) 240x160: the card sits right under the grid and its two lines are 9 px apart, so the
+         * "How:" line is inside the card, not under the bottom bar */
+        int cy = gy + r * s + (big ? 6 : 3), ch = sh - cy - (big ? 16 : 15), l1 = big ? 5 : 3, l2 = big ? 15 : 12;
         ui_window(6, cy, sw - 12, ch, WIN_CREAM);
         if (U.n) {
             const DoomoUnlock *u = unlock_at(fp_ids[U.sel]);
@@ -230,12 +232,12 @@ static void un_draw(void)
                 int own = unlock_has(u->id);
                 doomo_snprintf(buf, sizeof(buf), "%s  (%s)", own ? u->name : "???",
                                u->cat < 10 ? doomo_unlock_cat_names[u->cat] : "?");
-                fp_marquee(12, cy + 5, sw - 24, buf, own ? cs->accent : cs->text_dim, U.t);
+                fp_marquee(12, cy + l1, sw - 24, buf, own ? cs->accent : cs->text_dim, U.t);
                 if (own) {
-                    ui_text(12, cy + 15, STR_ICON_CHECK " Unlocked!", PP(PAINT_FOREST, 1));
+                    ui_text(12, cy + l2, STR_ICON_CHECK " Unlocked!", PP(PAINT_FOREST, 1));
                 } else {
                     doomo_snprintf(buf, sizeof(buf), "How: %s", u->how ? u->how : "a secret...");
-                    fp_marquee(12, cy + 15, sw - 24, buf, cs->text, U.t);
+                    fp_marquee(12, cy + l2, sw - 24, buf, cs->text, U.t);
                     if (u->need && u->prog < PROG_COUNT && ch > 30) {
                         uint32_t have = progress_get(u->prog);
                         doomo_snprintf(buf, sizeof(buf), "%u / %u", (unsigned)DOOMO_MIN(have, u->need), (unsigned)u->need);
@@ -246,10 +248,10 @@ static void un_draw(void)
                 }
             }
         } else {
-            ui_text(12, cy + 6, "Nothing here yet!", st->text_dim);
+            ui_text(12, cy + l1, "Nothing here yet!", st->text_dim);
         }
     }
-    doomo_snprintf(buf, sizeof(buf), "%d/%d here  L/R Category  " STR_ICON_B " Back", U.owned, U.n);
+    doomo_snprintf(buf, sizeof(buf), lang_tr("%d of %d found  L/R Category  " STR_ICON_B " Back"), U.owned, U.n);   /* (CL5) was "0/643 here" */
     ui_hint(buf, WIN_CUTE);
     fp_fx_draw();
 }
