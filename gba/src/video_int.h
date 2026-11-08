@@ -38,5 +38,7 @@ void vid_blit(int x, int y, const DoomoImage *img, int scale, int flags, uint32_
 /* (SP6) scale 2, no flip, through the IWRAM UI group's loop (blit2.c): only while iwram_ovl_current() ==
  * OVL_UI. sil != 0: every opaque pixel in that colour (IMG_SILHOUETTE). Unclipped (clips itself). */
 void vid_blit2(int x, int y, const DoomoImage *img, uint32_t sil);
+/* (SP6) plat_checker_m4's pixels a word at a time, in the UI group (blit2.c): only while it is in */
+void vid_checker_ui(int x, int y, int w, int h, uint32_t color) __attribute__((long_call));
 
 #endif

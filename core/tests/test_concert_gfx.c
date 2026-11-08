@@ -127,3 +127,23 @@ TEST(concert_stage_frames_match_the_golden)
     portrait_cache_clock(0, 0);
     CHECK(n == 2 * MUSIC_COUNT * 6 * 3 || bad);
 }
+
+/* the LED wall's wave stepper (concert_gfx.c ws_*) gives ui_wave's value at every step: periods from 1 to 400,
+ * steps smaller and larger than the period, amplitudes the shows use and beyond, long runs from many starts */
+int concert_wave_step_check(int arg, int period, int step, int n, int amp);
+TEST(concert_wave_step_equals_ui_wave)
+{
+    static const int periods[] = { 1, 7, 40, 45, 60, 64, 90, 120, 260, 400 };
+    static const int steps[] = { 0, 1, 3, 6, 12, 23, 40, 41, 397, 400, 1000 };
+    unsigned pi, si;
+    int amp, start;
+    for (pi = 0; pi < sizeof(periods) / sizeof(periods[0]); pi++)
+        for (si = 0; si < sizeof(steps) / sizeof(steps[0]); si++)
+            for (amp = 1; amp <= 12; amp += (amp < 4 ? 1 : 4))
+                for (start = 0; start < 5000; start += 977) {
+                    int bad = concert_wave_step_check(start, periods[pi], steps[si], 600, amp);
+                    CHECK_MSG(bad < 0, "period %d step %d amp %d from %d: step %d differs", periods[pi], steps[si],
+                              amp, start, bad);
+                }
+    CHECK(concert_wave_step_check(1234567, 120, 12, 2000, 3) < 0);
+}

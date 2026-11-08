@@ -345,7 +345,8 @@ void plat_line_m4(int x0, int y0, int x1, int y1, uint8_t color) IWRAM_CALL;
 
 void plat_checker(int x, int y, int w, int h, uint8_t color)
 {
-    if (!gba_nodraw) plat_checker_m4(x, y, w, h, color);
+    if (!gba_nodraw && iwram_ovl_current() == OVL_UI) vid_checker_ui(x, y, w, h, color);   /* SP6: blit2.c */
+    else if (!gba_nodraw) plat_checker_m4(x, y, w, h, color);
     else if (gba_nodraw != 1) plat_checker_slow(x, y, w, h, color);
 }
 

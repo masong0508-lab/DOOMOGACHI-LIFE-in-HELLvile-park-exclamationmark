@@ -9,6 +9,8 @@
 #include "enginetest.h"
 #include "iwram_ovl.h"
 
+void plat_checker_m4(int x, int y, int w, int h, uint8_t color) __attribute__((long_call));
+
 #define LINE 120
 typedef volatile uint16_t vu16_t;
 #define PAGE_A ((uint16_t *)0x06000000)
@@ -183,7 +185,8 @@ void et_blit_test(void)
 
 /* (SP6) vid_blit2 (src/blit2.c, the IWRAM UI group's scale-2 loop that plat_image takes while the group is in)
  * against the same verbatim reference at scale 2 without a flip: odd and even x (the odd case merges two source
- * pixels per halfword), clipping on all four sides, silhouette on and off, over a random background. Logs
+ * pixels per halfword), clipping on all four sides, silhouette on and off, over a random background; then the
+ * group's word-at-a-time checker (vid_checker_ui) against plat_checker_m4. Logs
  * "ET blit2test ok (N cases)" or "ET blit2test FAIL ...". */
 void et_blit2_test(void)
 {
@@ -217,6 +220,24 @@ void et_blit2_test(void)
                 if (PAGE_A[r * LINE + j] != PAGE_B[r * LINE + j]) {
                     gba_logf("ET blit2test FAIL case %d x %d y %d w %d h %d sil %d row %d hw %d: %x vs %x",
                              i, x, y, w, h, sil, r, j, PAGE_A[r * LINE + j], PAGE_B[r * LINE + j]);
+                    bad = 1;
+                    break;
+                }
+        n++;
+    }
+    /* the group's word-at-a-time checker against plat_checker_m4 (video.iwram.c) */
+    for (i = 0; i < 3000 && !bad; i++) {
+        int x = (int)(next() % 280) - 20, y = (int)(next() % 190) - 15, w = (int)(next() % 250) - 4;
+        int h = (int)(next() % (i & 3 ? 4 : 40)) - 1, j, r, y0, y1;
+        uint32_t color = next() % 256;               /* 0 too: both draw PAL_BLACK */
+        gba_back = PAGE_A; vid_checker_ui(x, y, w, h, color);
+        gba_back = PAGE_B; plat_checker_m4(x, y, w, h, (uint8_t)color);
+        y0 = y < 0 ? 0 : y; y1 = y + h > 160 ? 160 : y + h;
+        for (r = y0; r < y1 && !bad; r++)
+            for (j = 0; j < LINE; j++)
+                if (PAGE_A[r * LINE + j] != PAGE_B[r * LINE + j]) {
+                    gba_logf("ET blit2test FAIL checker case %d x %d y %d w %d h %d row %d hw %d: %x vs %x",
+                             i, x, y, w, h, r, j, PAGE_A[r * LINE + j], PAGE_B[r * LINE + j]);
                     bad = 1;
                     break;
                 }

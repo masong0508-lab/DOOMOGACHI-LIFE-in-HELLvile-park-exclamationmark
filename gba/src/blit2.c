@@ -86,6 +86,38 @@ void vid_blit2(int x, int y, const DoomoImage *img, uint32_t sil)
     }
 }
 
+/* (SP6) plat_checker in the UI group: the same clipping and parity as plat_checker_m4 (video.iwram.c), but a row's
+ * pixels (every other one, all in the same byte of their halfwords) are merged a word at a time, two halfwords per
+ * read-modify-write: the concert's light beams, the LED wall's sheen and the seats are hundreds of such rows. */
+BLIT2_ARM void vid_checker_ui(int x, int y, int w, int h, uint32_t color)
+{
+    int x1 = x + w, y1 = y + h, yy, par;
+    if (w <= 0 || h <= 0) return;
+    if (!color) color = 1u;                          /* PAL_BLACK, as plat_checker_m4 */
+    par = (x + y) & 1;                               /* drawn: ((px + py) & 1) == par */
+    if (x < 0) x = 0;
+    if (y < 0) y = 0;
+    if (x1 > SCREEN_W) x1 = SCREEN_W;
+    if (y1 > SCREEN_H) y1 = SCREEN_H;
+    if (x >= x1 || y >= y1) return;
+    for (yy = y; yy < y1; yy++) {
+        int px = x + (((x + yy) & 1) != par), n;
+        volatile uint16_t *p;
+        uint32_t keep, put;
+        if (px >= x1) continue;
+        n = (x1 - px + 1) >> 1;                      /* halfwords holding a drawn pixel */
+        p = (volatile uint16_t *)gba_back + yy * LINE + (px >> 1);
+        if (px & 1) { keep = 0x00FF00FFu; put = color << 8 | color << 24; }
+        else        { keep = 0xFF00FF00u; put = color | color << 16; }
+        if (((uintptr_t)p & 2) && n) { *p = (uint16_t)((*p & keep) | put); p++; n--; }
+        for (; n >= 2; n -= 2, p += 2) {
+            volatile uint32_t *q = (volatile uint32_t *)p;
+            *q = (*q & keep) | put;
+        }
+        if (n) *p = (uint16_t)((*p & keep) | put);
+    }
+}
+
 int plat_ui_loops(void)
 {
     if (gba_nodraw == 1) return 0;                      /* a skipped tick: nothing is drawn */

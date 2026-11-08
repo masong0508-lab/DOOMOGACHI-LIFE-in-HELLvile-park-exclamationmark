@@ -40,6 +40,68 @@ static void rect_clip(int x, int y, int w, int h, uint8_t c, int cx0, int cy0, i
     if (w > 0 && h > 0) plat_rect(x, y, w, h, c);
 }
 
+/* ---- SP6: no divisions in the per-frame loops ------------------------------
+ * The GBA core is THUMB code, which has no divide instruction, and even a
+ * division by a constant is a call into the divider (~150 cycles); ui_wave()
+ * makes two. The LED wall's waving shows called it once per column or row
+ * (180-360 times a frame), so they step instead. */
+
+/* ui_wave(arg, period, amp) along a loop whose argument grows by `step` (arg
+ * >= 0): a = arg mod period and q, r = a * DOOMO_ANG_FULL divided by period
+ * are kept; each step adds the step's own quotient and remainder (carrying
+ * once when r reaches the period) and takes DOOMO_ANG_FULL off q when a wraps.
+ * q is always ui_wave's angle (arg % period) * DOOMO_ANG_FULL / period, and
+ * ws_val() is ui_wave's arithmetic on fx_sin(q): the same value
+ * (concert_wave_step_equals_ui_wave). */
+typedef struct WaveStep { int a, q, r, period, step, sq, sr; } WaveStep;
+
+static void ws_init(WaveStep *w, int arg, int period, int step)
+{
+    int n;
+    w->period = period;
+    w->a = arg % period;
+    n = w->a * DOOMO_ANG_FULL;
+    w->q = n / period;
+    w->r = n - w->q * period;
+    w->step = step % period;
+    n = w->step * DOOMO_ANG_FULL;
+    w->sq = n / period;
+    w->sr = n - w->sq * period;
+}
+
+static int ws_val(const WaveStep *w, int amp)
+{
+    int32_t s = fx_sin(w->q), a = (s >> 8) * amp, b = (s & 255) * amp;
+    return (int)((a + (b >> 8)) >> 8);
+}
+
+static void ws_next(WaveStep *w)
+{
+    w->a += w->step;
+    w->q += w->sq;
+    w->r += w->sr;
+    if (w->r >= w->period) { w->r -= w->period; w->q++; }
+    if (w->a >= w->period) { w->a -= w->period; w->q -= DOOMO_ANG_FULL; }
+}
+
+#ifdef DOOMO_HITCHECK
+/* the stepper against ui_wave, for the host test */
+int concert_wave_step_check(int arg, int period, int step, int n, int amp)
+{
+    WaveStep w;
+    int i;
+    ws_init(&w, arg, period, step);
+    for (i = 0; i < n; i++, arg += step, ws_next(&w))
+        if (ws_val(&w, amp) != ui_wave(arg, period, amp)) return i;
+    return -1;
+}
+#endif
+
+/* Rects of one column / row band that may grow: a run is flushed (drawn
+ * through wall_rect) when the next rect does not continue it. Used where the
+ * pieces it merges are drawn in an order in which no two of them overlap. */
+typedef struct Run { int x, y, w, h; uint8_t c, on; } Run;
+
 void concert_note_glyph(int x, int y, uint8_t c)
 {
     /* an eighth note: head, stem, flag */
@@ -140,6 +202,22 @@ typedef struct Wall { int x, y, w, h; } Wall;
 static void wall_rect(const Wall *W, int x, int y, int w, int h, uint8_t c)
 {
     rect_clip(x, y, w, h, c, W->x, W->y, W->x + W->w, W->y + W->h);
+}
+
+static void run_flush(const Wall *W, Run *r)
+{
+    if (r->on) wall_rect(W, r->x, r->y, r->w, r->h, r->c);
+    r->on = 0;
+}
+
+/* a column piece (x, y0 .. y1) of width w: joins the run when it is the run's
+ * right-hand neighbour with the same rows and colour */
+static void run_col(const Wall *W, Run *r, int x, int w, int y0, int y1, uint8_t c)
+{
+    if (y1 <= y0) return;
+    if (r->on && r->c == c && r->y == y0 && r->h == y1 - y0 && r->x + r->w == x) { r->w += w; return; }
+    run_flush(W, r);
+    r->x = x; r->w = w; r->y = y0; r->h = y1 - y0; r->c = c; r->on = 1;
 }
 
 static void wall_circle(const Wall *W, int cx, int cy, int r, uint8_t c)
@@ -260,13 +338,30 @@ static void draw_show(const StageView *v, const Wall *W)
             }
         break; }
     case SHOW_WAVES: {
+        /* four layers, each a column of 4 px from its wave down to the bottom,
+         * the later layers over the earlier ones. Drawn column by column, each
+         * layer only where no later layer covers it (from its top down to the
+         * highest later top), and neighbouring columns with the same piece
+         * merged: the same pixels in far fewer and shorter rects, and the
+         * waves stepped (no ui_wave call) */
+        WaveStep ws[4];
+        Run run[4];
+        int base[4], bot = W->y + W->h;
+        const uint8_t cl[4] = { c2, c1, c0, c0d };
+        memset(run, 0, sizeof(run));
         for (k = 0; k < 4; k++) {
-            uint8_t c = k == 0 ? c2 : k == 1 ? c1 : k == 2 ? c0 : c0d;
-            for (i = 0; i < W->w; i += 4) {
-                int top = W->y + W->h * (k + 1) / 5 + ui_wave(t * 2 + i * 3 + k * 50, 120, 3);
-                wall_rect(W, W->x + i, top, 4, W->y + W->h - top, c);
+            base[k] = W->y + W->h * (k + 1) / 5;
+            ws_init(&ws[k], t * 2 + k * 50, 120, 12);
+        }
+        for (i = 0; i < W->w; i += 4) {
+            int top[4], m = bot;
+            for (k = 0; k < 4; k++) { top[k] = base[k] + ws_val(&ws[k], 3); ws_next(&ws[k]); }
+            for (k = 3; k >= 0; k--) {
+                run_col(W, &run[k], W->x + i, 4, top[k], m, cl[k]);
+                if (top[k] < m) m = top[k];
             }
         }
+        for (k = 0; k < 4; k++) run_flush(W, &run[k]);
         break; }
     case SHOW_GLASS: {
         int pw = W->w / 8, ph = W->h / 2;
@@ -306,22 +401,58 @@ static void draw_show(const StageView *v, const Wall *W)
         }
         break; }
     case SHOW_FLAMES: {
-        /* tongues of fire: each row narrower towards the tip, flickering */
-        int fw = W->w / 9;
+        /* tongues of fire: each row narrower towards the tip, flickering.
+         * Per row pair the half width hw = K * (fh - yy) / fh, the colour step
+         * f = yy * 8 / fh, the sway amplitude 1 + yy / 10 and the sway itself
+         * are stepped (quotient + remainder) instead of divided, and row pairs
+         * whose outer and inner bars are both the same as the pair below are
+         * one taller bar (each flushed pair: outer bar first, inner bar over
+         * it, as row by row; a flame is finished before the next one) */
+        static const uint8_t f47[8] = { 0, 0, 1, 1, 2, 2, 3, 4 };   /* f * 4 / 7 */
+        int fw = W->w / 9, kw = fw / 2 + 1, t3 = t / 3, h3 = W->h / 3, h23 = W->h * 2 / 3;
         for (i = 0; i < 9; i++) {
             int fx = W->x + fw * i + fw / 2;
-            int fh = W->h * 2 / 3 + (int)(hash2((uint32_t)(t / 3), (uint32_t)i) % (uint32_t)(W->h / 3)) + pulse;
-            int yy;
+            int fh = h23 + (int)(hash2((uint32_t)t3, (uint32_t)i) % (uint32_t)h3) + pulse;
+            int yy, hq, hr, dq, dr, f = 0, fr = 0, fq, frr, amp = 1, d10 = 0;
+            Run ro, ri;
+            WaveStep sw;
+            if (fh <= 0) continue;
+            hq = kw; hr = 0;                         /* K * fh / fh */
+            dq = 2 * kw / fh; dr = 2 * kw - dq * fh; /* per step the numerator loses 2K */
+            fq = 16 / fh; frr = 16 - fq * fh;        /* ... and f's gains 16 */
+            ws_init(&sw, t * 2 + i * 23, 40, 6);
+            memset(&ro, 0, sizeof(ro));
+            memset(&ri, 0, sizeof(ri));
             for (yy = 0; yy < fh; yy += 2) {
-                int hw = (fw / 2 + 1) * (fh - yy) / fh;
-                int sway = ui_wave(t * 2 + i * 23 + yy * 3, 40, 1 + yy / 10);
-                int f = yy * 8 / fh;
-                if (hw <= 0) continue;
-                wall_rect(W, fx - hw + sway, W->y + W->h - yy - 2, 2 * hw, 2,
-                          PAL_RAMP(RAMP_LAVA, DOOMO_CLAMP(5 - f * 4 / 7, 1, 7)));
-                if (hw > 2) wall_rect(W, fx - hw / 2 + sway, W->y + W->h - yy - 2, hw, 2,
-                                      PAL_RAMP(RAMP_LAVA, DOOMO_CLAMP(7 - f * 4 / 7, 2, 7)));
+                int hw = hq, sway = ws_val(&sw, amp), y = W->y + W->h - yy - 2;
+                if (hw > 0) {
+                    uint8_t co = PAL_RAMP(RAMP_LAVA, DOOMO_CLAMP(5 - f47[f], 1, 7));
+                    uint8_t cn = PAL_RAMP(RAMP_LAVA, DOOMO_CLAMP(7 - f47[f], 2, 7));
+                    int ox = fx - hw + sway, nx = fx - hw / 2 + sway, inner = hw > 2;
+                    if (ro.on && ro.y == y + 2 && ro.x == ox && ro.w == 2 * hw && ro.c == co &&
+                        (inner ? ri.on && ri.x == nx && ri.w == hw && ri.c == cn : !ri.on)) {
+                        ro.y = y; ro.h += 2;
+                        if (inner) { ri.y = y; ri.h += 2; }
+                    } else {
+                        run_flush(W, &ro);
+                        run_flush(W, &ri);
+                        ro.x = ox; ro.y = y; ro.w = 2 * hw; ro.h = 2; ro.c = co; ro.on = 1;
+                        if (inner) { ri.x = nx; ri.y = y; ri.w = hw; ri.h = 2; ri.c = cn; ri.on = 1; }
+                    }
+                } else {
+                    run_flush(W, &ro);
+                    run_flush(W, &ri);
+                }
+                hq -= dq; hr -= dr;
+                if (hr < 0) { hr += fh; hq--; }
+                f += fq; fr += frr;
+                if (fr >= fh) { fr -= fh; f++; }
+                d10 += 2;
+                if (d10 >= 10) { d10 -= 10; amp++; }
+                ws_next(&sw);
             }
+            run_flush(W, &ro);
+            run_flush(W, &ri);
         }
         break; }
     case SHOW_SKULLS: {
@@ -346,16 +477,31 @@ static void draw_show(const StageView *v, const Wall *W)
         if (pulse > 3) wall_rect(W, W->x, W->y, W->w, 2, c1);
         break; }
     case SHOW_FIELDS: {
+        /* three rolling hills of 3 px columns, the later ones over the earlier
+         * ones: drawn like the waves (only what stays visible, neighbouring
+         * columns merged, the hills stepped) */
+        WaveStep ws[3];
+        Run run[3];
+        int base[3], bot = W->y + W->h, t10 = t / 10;
+        const uint8_t cl[3] = { PAL_RAMP(RAMP_GRASS, 5), PAL_RAMP(RAMP_GRASS, 4), PAL_RAMP(RAMP_GRASS, 3) };
+        memset(run, 0, sizeof(run));
         wall_circle(W, W->x + W->w / 5, W->y + W->h / 3, W->h / 6, PAL_PAINT(PAINT_LEMON, 2));
-        for (k = 0; k < 3; k++)
-            for (i = 0; i < W->w; i += 3) {
-                int top = W->y + W->h * (k + 2) / 6 + ui_wave(i * 4 + k * 300, 400, 4);
-                wall_rect(W, W->x + i, top, 3, W->y + W->h - top,
-                          k == 0 ? PAL_RAMP(RAMP_GRASS, 5) : k == 1 ? PAL_RAMP(RAMP_GRASS, 4) : PAL_RAMP(RAMP_GRASS, 3));
+        for (k = 0; k < 3; k++) {
+            base[k] = W->y + W->h * (k + 2) / 6;
+            ws_init(&ws[k], k * 300, 400, 12);
+        }
+        for (i = 0; i < W->w; i += 3) {
+            int top[3], m = bot;
+            for (k = 0; k < 3; k++) { top[k] = base[k] + ws_val(&ws[k], 4); ws_next(&ws[k]); }
+            for (k = 2; k >= 0; k--) {
+                run_col(W, &run[k], W->x + i, 3, top[k], m, cl[k]);
+                if (top[k] < m) m = top[k];
             }
+        }
+        for (k = 0; k < 3; k++) run_flush(W, &run[k]);
         for (i = 0; i < 9; i++) {
             int fx = W->x + 6 + i * (W->w - 12) / 8, fy = W->y + W->h - 5 - (i & 1) * 4;
-            wall_rect(W, fx, fy - 1 + (((t / 10) + i) & 1), 3, 3, i & 1 ? c0 : c1);
+            wall_rect(W, fx, fy - 1 + ((t10 + i) & 1), 3, 3, i & 1 ? c0 : c1);
         }
         break; }
     default: break;
