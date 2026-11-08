@@ -150,7 +150,8 @@ static char fold_latin1(unsigned u)
 {
     /* the same letters as talkc_parse.py FOLD; ae and ss fold to one letter here
      * (the lexicon is ASCII: only typed input meets them) */
-    static const char t[64] = "aaaaaaaceeeeiiii/nooooo/ouuuuy/s" "aaaaaaaceeeeiiii/nooooo/ouuuuy/y";
+    /* 64 letters + the NUL: sh-elf-gcc 15 rejects a full-length init under -Werror */
+    static const char t[65] = "aaaaaaaceeeeiiii/nooooo/ouuuuy/s" "aaaaaaaceeeeiiii/nooooo/ouuuuy/y";
     if (u >= 0xC0 && u <= 0xFF) {
         char c = t[u - 0xC0];
         return c == '/' ? ' ' : c;
