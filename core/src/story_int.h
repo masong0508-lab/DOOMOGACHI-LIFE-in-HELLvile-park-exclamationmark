@@ -222,6 +222,9 @@ const char *story_side2_hint(int sid);
 /* The resident a running verb needs on the map (escort / photo / deliver)
  * and the cell the script gave it; -1 none (story_verbs.c). */
 int  story_verb_who(int *cx, int *cy);
+/* (clarity C7) a running verb's goal for the goal arrow and the Map tab, story_target()'s shape; -2 when no
+ * verb runs. Escort: the cell you walk them to; deliver / photo: the person on this map; find: none. */
+int  story_verb_target(int *map_id, int *cx, int *cy);
 /* --- end S4 --- */
 /* --- S5: side missions batch B (docs/design/story/SPEC.md sec.7 S5) ---
  * More `native CB_SIDE_*` questions and actions (story_side.c side_callback;

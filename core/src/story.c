@@ -874,7 +874,8 @@ void story_objective_refresh(void)
 
 int story_target(int *map_id, int *cx, int *cy)
 {
-    return script_target(map_id, cx, cy);
+    int v = story_verb_target(map_id, cx, cy);         /* clarity C7: a running verb's goal comes first */
+    return v != -2 ? v : script_target(map_id, cx, cy);
 }
 
 void story_goto(int map_id, int cx, int cy)

@@ -4,13 +4,15 @@
  * core/tools/story_wayfind.py (story-check) lints the .dsc sources: every
  * objective names a direction or a landmark and no banned alias appears.
  * These tests check the same objectives as the game decodes and wraps them,
- * and the runtime pieces: the goal's place on the Map tab, the shooter's
- * control card that waits for A (Brutal Only included) and its fit at
- * 240x160, the labelled HUD, and the plain names. */
+ * and the runtime pieces: the goal's place on the Map tab, the goal arrow
+ * following a running side-mission verb, the shooter's control card that
+ * waits for A (Brutal Only included)
+ * and its fit at 240x160, the labelled HUD, and the plain names. */
 #include <string.h>
 #include "test.h"
 #include "../src/levels_int.h"
 #include "../src/story_int.h"
+#include "../src/overworld_int.h"
 
 static void frame(uint32_t b) { plat_begin_frame(); doomo_frame(b); plat_end_frame(); }
 static void frames(int n, uint32_t b) { while (n-- > 0) frame(b); }
@@ -95,6 +97,69 @@ TEST(clarity_c7_map_tab_names_the_goal_building)
     while (scene_depth() > 0) scene_pop();
 }
 
+/* a running verb owns the HUD line, so the arrow follows it: escort -> the cell, deliver -> the person on this map,
+ * find -> no arrow (warmer / colder is its compass); every verb line says where and fits two pill lines; the plot's
+ * goal comes back after. Each verb is cancelled before its checks (a failed check must not leave one running). */
+typedef struct { int id, m, x, y, k, nx; char line[96]; } VerbProbe;
+
+static void verb_probe(VerbProbe *v, int kind, int who, int arg)
+{
+    story_verb_begin(kind, who, arg, 0);
+    v->k = who >= 0 ? ownpc_find(who) : -1;
+    v->nx = v->k >= 0 ? (int)(ow_npcs[v->k].x / OW_CELL) : -1;
+    v->id = story_target(&v->m, &v->x, &v->y);
+    story_objective_refresh();
+    snprintf(v->line, sizeof(v->line), "%s", story_objective());
+    story_verb_cancel();
+    story_objective_refresh();
+}
+
+static int fits_pill(const char *s) { return ui_text_wrap(0, 0, 240 - 92, s, 0, 0) <= 2; }
+
+TEST(clarity_c7_verbs_point_the_arrow_and_say_where)
+{
+    int m, x, y, pm, px, py, pid, cur;
+    VerbProbe v;
+    test_reset();
+    story_verb_cancel();
+    story_debug_autowin(0);
+    scene_set(&SCENE_STORY, STORY_ARG_DEBUG_BEAT + BEAT_C1_KEY);
+    frames(30, 0);
+    cur = map_current_id();
+    pid = story_target(&pm, &px, &py);
+    CHECK(pm >= 0);
+    verb_probe(&v, VERB_ESCORT, ID_PIP, 20 | 30 << 8);
+    CHECK_EQ(v.id, -1);
+    CHECK_EQ(v.m, cur);
+    CHECK_EQ(v.x, 20);
+    CHECK_EQ(v.y, 30);
+    CHECK_MSG(names_where(v.line) && fits_pill(v.line), "escort line \"%s\"", v.line);
+    verb_probe(&v, VERB_FIND, -1, 5 | 5 << 8);
+    CHECK_EQ(v.m, -1);                                          /* no arrow to the hidden cell */
+    CHECK_MSG(strstr(v.line, "hot / cold") != NULL && fits_pill(v.line), "find line \"%s\"", v.line);
+    verb_probe(&v, VERB_DELIVER, ID_NANA, VERB_ARG_FRAGILE);
+    if (v.k >= 0) {                                             /* Nana stands on this map: the arrow is her */
+        CHECK_EQ(v.id, ID_NANA);
+        CHECK_EQ(v.m, cur);
+        CHECK_EQ(v.x, v.nx);
+        CHECK_MSG(names_where(v.line), "deliver line \"%s\" names no direction", v.line);
+    } else {                                                    /* elsewhere: no arrow, the map she lives on */
+        CHECK_EQ(v.m, -1);
+        CHECK_MSG(strstr(v.line, "HaHaland") != NULL, "deliver line \"%s\" names no map", v.line);
+    }
+    CHECK(strstr(v.line, "don't run") != NULL);
+    CHECK_MSG(fits_pill(v.line), "\"%s\" takes 3+ lines", v.line);
+    verb_probe(&v, VERB_PHOTO, ID_NANA, 0);
+    CHECK_MSG(v.k >= 0 ? names_where(v.line) : strstr(v.line, "HaHaland") != NULL, "photo line \"%s\"", v.line);
+    CHECK_MSG(fits_pill(v.line), "\"%s\" takes 3+ lines", v.line);
+    CHECK_EQ(story_verb_active(), -1);
+    CHECK_EQ(story_target(&m, &x, &y), pid);                    /* the plot's goal again */
+    CHECK_EQ(m, pm);
+    CHECK_EQ(x, px);
+    CHECK_EQ(y, py);
+    while (scene_depth() > 0) scene_pop();
+}
+
 TEST(clarity_c16_one_name_per_place)
 {
     char b[32];
@@ -103,6 +168,10 @@ TEST(clarity_c16_one_name_per_place)
     CHECK_STR(story_region_name(MAPID_HAHALAND_INVADED, 30, 40), "The Park");
     CHECK_STR(map_title(MAPID_ARENA), "Demon Arena");
     CHECK_STR(story_place_name(PLACE_CAFE), "Brimstone Bites");
+    /* the story's arena door is the same Demon Arena as Free Play's (it was "Hellvile Arena") */
+    CHECK_STR(story_place_name(PLACE_ARENA), "Demon Arena");
+    CHECK_STR(story_region_name(MAPID_HELLVILE, 55, 30), "Demon Arena");
+    CHECK_STR(story_region_name(MAPID_HELLVILE, 20, 5), "Hellvile Pits");
     /* the pause row is the music volume, not a song number */
     opt_set(OPT_MUSIC_VOL, 7);
     CHECK_STR(pause_music_label(b, (int)sizeof(b)), "Music volume 7");

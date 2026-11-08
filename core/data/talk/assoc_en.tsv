@@ -41,7 +41,7 @@ ant	espresso:3 hamster:3 gorilla:3 opinion:3 mole:3 loyalty:3 smell:3 butterfly:
 antenna	whisker:5 eyebrow:4 tooth:2 snout:2 foot:2 hoof:2 snore:2 arm:2
 anthem	song:6 chorus:6 earworm:5 lyrics:5 melody:5 boy_band:5 jingle:5 beat:5
 anvil	anvil_s_forge:15 hellsteel:15 anvil_s_hinge:8 rivet:6 spoon:4 marvin:2 dr_bloom:2 pip:2
-anvil_s_forge	anvil:12 forge_iron_bed:4 anvil_s_hinge:4 hellvile_pits:2 wall_gate:2 hellvile_arena:2 festival_stall:2 bone_pier:2
+anvil_s_forge	anvil:12 forge_iron_bed:4 anvil_s_hinge:4 hellvile_pits:2 wall_gate:2 demon_arena:2 festival_stall:2 bone_pier:2
 anvil_s_hinge	anvil:12 anvil_s_forge:4
 anxious	hungry:2 spooked:2 exhausted:2 excited:2 furious:2 fed_up:2 glad:2 ashamed:2
 apartment	apartment_door:8 corner_shop:5 bunker:5 cottage:4 shed:4 tent:4 phone_box:3 town:2
@@ -61,7 +61,7 @@ arcade_owner	arcade:12 candle_shop_owner:4 funhouse_owner:4 cloud_nine_owner:4 a
 archery	fencing:4 gymnastics:4 bow_and_arrow:3 meditation:3 cow:3 twenty_questions:3 ventriloquism:2 crossword:2
 archivist	archivist_of_dread:8
 archivist_of_dread	dread:12 archivist:12
-arena_belt	hellvile_arena:4
+arena_belt	demon_arena:4
 argument	debate:5 soap_opera:4 prank_call:4 school_play:3 tantrum:3 meltdown:3 movie:3 giggle_fit:2
 arm	leg:6 eye:5 foot:5 brain:5 face:5 back:4 wave:4 opinion:3
 armadillo	rhino:5 badger:4 hare:4 zebra:4 deer:4 kangaroo:4 skunk:4 cockroach:3
@@ -727,6 +727,7 @@ deep_water	water:12 holy_water:6 water_balloon:4 water_pistol:4 water_cooler:4 d
 deer	zebra:6 hare:6 armadillo:4 skunk:4 stoat:4 manta_ray:3 swan:3 clam:3
 delivery_bot	doom_bot:4 malware_bot:4 garden_bot:4 firewall_bot:4 tea_bot:4 cleaning_bot:4 paper_delivery:4
 demon	doorman:9 demon_lord:9 fly_demon:8 survey_demon:8 ref_demon:8 very_hungry_demon:8 protein_demon:8 demon_horn:8
+demon_arena	hellvile:12 hellvile_pits:6 hellvile_park:4 arena_belt:4 hellvile_welcome_mat:4 bone_pier:2 haha_mart:2 anvil_s_forge:2
 demon_horn	demon:12 horn:12 demon_lord:4 protein_demon:4 fly_demon:4 ref_demon:4 bargain_demon:4 very_hungry_demon:4
 demon_lord	demon:14 doorman:6 bargain_demon:4 demon_horn:4 survey_demon:4 very_hungry_demon:4 protein_demon:4 vape_lord:4
 den_boss	boss:12 jelly_boss:4 boss_rush_skull:4
@@ -1031,7 +1032,7 @@ fruit_salad	salad:12 dried_fruit:6 fruit_punch:4 rumour:4 gossip:4 bell_pepper:3
 frying_pan	oven:7 pizza:4 fish_and_chips:4 cooking:4 hot_dog:3 sausage:3 burger:3 kebab:3
 fudge	caramel:6 brownie:5 cheese_board:5 chocolate_bar:4 chocolate:4 cookie_dough:3 cheesecake:3 cream:3
 full_moon	moon:14 new_moon:6 moon_base:4 moon_lamp:4 moon_watching:4 sun:4 comet:4 pumpkin:4
-fun_fair	fair_day:4 hellvile_pits:2 unity_stage:2 imp_market:2 town_hall:2 anvil_s_forge:2 hellvile_arena:2 festival_stall:2
+fun_fair	fair_day:4 hellvile_pits:2 unity_stage:2 imp_market:2 town_hall:2 anvil_s_forge:2 demon_arena:2 festival_stall:2
 funeral	back:3 farewell:3 tantrum:2 sadness:2 kindness:2 anger:2 surprise:2 memorial:2
 funhouse_owner	arcade_owner:4 cloud_nine_owner:4 candle_shop_owner:4
 fur	fur_groomer:8 paw:5 feather:5 fluffy_slippers:3 teddy_bear:3 yawn:2 wing:2 antenna:2
@@ -1258,11 +1259,10 @@ hellpup	little_kid:5 horned_beast:3 hellfire:3 hellspawn:3 sticker:2 playdate:2 
 hellspawn	demon:6 horned_beast:5 imps:5 hellvile:4 hellfire:3 sulfur:3 complaint:3 hellpup:3
 hellsteel	hellsteel_shelving:8 trophy:2 glitter:2 keyring:2 perfume:2 ring:2 suitcase:2 plush_toy:2
 hellsteel_shelving	hellsteel:12
-hellvile	hellvile_park:9 hellvile_arena:8 hellvile_pits:8 hellvile_welcome_mat:8 ninth_cloud:5 hillvile:5 folk:4 hellspawn:4
-hellvile_arena	hellvile:12 hellvile_pits:6 hellvile_park:4 arena_belt:4 hellvile_welcome_mat:4 bone_pier:2 haha_mart:2 anvil_s_forge:2
-hellvile_park	hellvile:14 park:12 urban_legend:6 hellvile_pits:4 skate_park:4 amusement_park:4 hellvile_arena:4 car_park:4
-hellvile_pits	hellvile:12 hellvile_arena:6 hellvile_park:4 hellvile_welcome_mat:4 festival_stall:2 anvil_s_forge:2 town_hall:2 sealed_gate:2
-hellvile_welcome_mat	hellvile:12 welcome_mat:9 hellvile_pits:4 hellvile_park:4 nap_mat:4 hellvile_arena:4
+hellvile	hellvile_park:9 demon_arena:8 hellvile_pits:8 hellvile_welcome_mat:8 ninth_cloud:5 hillvile:5 folk:4 hellspawn:4
+hellvile_park	hellvile:14 park:12 urban_legend:6 hellvile_pits:4 skate_park:4 amusement_park:4 demon_arena:4 car_park:4
+hellvile_pits	hellvile:12 demon_arena:6 hellvile_park:4 hellvile_welcome_mat:4 festival_stall:2 anvil_s_forge:2 town_hall:2 sealed_gate:2
+hellvile_welcome_mat	hellvile:12 welcome_mat:9 hellvile_pits:4 hellvile_park:4 nap_mat:4 demon_arena:4
 herb	vanilla:5 bread:4 spice:4 egg:4 spring:3 fruit_salad:3 bell_pepper:3 sushi:2
 herbal_tea	tea:14 iced_tea:6 tea_kettle:4 tea_bot:4 tea_sommelier:4 bubble_tea:4 tea_master:4 tea_leaf_reader:4
 hero	retired_hero:8 sunny:4 marvin:4 heart:3 signature_move:2 catchphrase:2 celebrity:2 ancestor:2
@@ -1515,7 +1515,7 @@ letter	love_letter:8 love_letter_writer:8 bell:3 poster:2 birthday_card:2 flyer:
 letterbox	hallway:6 doorway:5 curtains:4 chimney:4 mousetrap:4 street:3 radiator:2 candle:2
 lettuce	zucchini:7 cucumber:5 celery:5 squash:4 corn:4 leek:4 bell_pepper:4 peas:4
 level_tool	spirit_board_seller:4 power_drill:2 crowbar:2 sandpaper:2 welding_torch:2 garden_hose:2 shovel:2 lawnmower:2
-library	bone_pier:2 rivet_s_workshop:2 haha_mart:2 hellvile_arena:2 festival_stall:2 wall_gate:2 sealed_gate:2 fun_fair:2
+library	bone_pier:2 rivet_s_workshop:2 haha_mart:2 demon_arena:2 festival_stall:2 wall_gate:2 sealed_gate:2 fun_fair:2
 lid	button:5 marble:4 headset:3 screwdriver:3 magnifying_glass:2 snowman:2 satellite_dish:2 snow_globe:2
 lie	cake:4
 life	life_story:14 name:5 pet_peeve:4 opinion:4 habit:4 talent:4 star_sign:4 ritual:3

@@ -124,6 +124,33 @@ int story_verb_who(int *cx, int *cy)
     return V.who;
 }
 /* --- end S4 --- */
+
+/* (clarity C7) While a verb runs, the HUD line is the verb's ("Bring it to Nana"), so the goal arrow and the
+ * quest log's "Goal:" follow the verb too (they pointed at the plot's goal, away from the person to bring it
+ * to). The find verb has no arrow: warmer / colder is its compass, an arrow would give the cell away. */
+int story_verb_target(int *map_id, int *cx, int *cy)
+{
+    int k, m = -1, x = 0, y = 0, id = -1;
+    if (!V.live) return -2;
+    if (V.kind == VERB_ESCORT) {
+        m = map_current_id();
+        x = V.cx;
+        y = V.cy;
+    } else if (V.kind == VERB_DELIVER || V.kind == VERB_PHOTO) {
+        k = follower();
+        if (k >= 0) {                                  /* on this map: where they stand now */
+            m = map_current_id();
+            x = (int)(ow_npcs[k].x / OW_CELL);
+            y = (int)(ow_npcs[k].y / OW_CELL);
+            id = V.who;
+        }
+    }
+    if (map_id) *map_id = m;
+    if (cx) *cx = x;
+    if (cy) *cy = y;
+    return id;
+}
+
 void story_verb_cancel(void) { V.live = 0; }
 
 void story_verbs_tick(void)
@@ -223,20 +250,26 @@ const char *story_verbs_objective(void)
 {
     static char buf[64];
     const DoomoResident *r;
+    const char *where;
     if (!V.live) return NULL;
     r = town_res(V.who);
+    /* (clarity C7) every line says where: "arrow" while the goal arrow points at the place or the person
+     * (story_verb_target), else the map they live on; the find verb's compass is warmer / colder. Two pill
+     * lines at 240x160 with an 11-letter name (test_clarity_cl6.c) */
+    where = follower() >= 0 ? "arrow" : map_title(V.who >= 0 && RES_DISTRICT(V.who) ? MAPID_HELLVILE : MAPID_HAHALAND);
     switch (V.kind) {
     case VERB_ESCORT:
-        doomo_snprintf(buf, sizeof(buf), "Walk %s there (stay close!)", r ? r->name : "them");
+        doomo_snprintf(buf, sizeof(buf), "Walk %s there (arrow, stay close!)", r ? r->name : "them");
         break;
     case VERB_FIND:
-        doomo_snprintf(buf, sizeof(buf), "Find it! %s", V.heat == 3 ? "(hot!)" : V.heat == 2 ? "(warmer)" : "");
+        doomo_snprintf(buf, sizeof(buf), "Find it! %s", V.heat == 3 ? "(hot!)" : V.heat == 2 ? "(warmer)" :
+                       V.heat == 1 ? "(getting warmer)" : "(look around: hot / cold)");
         break;
     case VERB_PHOTO:
-        doomo_snprintf(buf, sizeof(buf), "Photo of %s: face them, step back, A", r ? r->name : "them");
+        doomo_snprintf(buf, sizeof(buf), "Photo of %s (%s): step back, A", r ? r->name : "them", where);
         break;
     default:
-        doomo_snprintf(buf, sizeof(buf), "Bring it to %s%s", r ? r->name : "them", V.fragile ? " (don't run!)" : "");
+        doomo_snprintf(buf, sizeof(buf), "Bring it to %s (%s%s)", r ? r->name : "them", where, V.fragile ? ", don't run!" : "");
         break;
     }
     return buf;

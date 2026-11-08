@@ -21,6 +21,14 @@ banned aliases below may not appear in an objective, nor in a string
 literal of core/src/*.c (comments are skipped). Dialogue (`say` lines) is
 not checked.
 
+Report only (not a finding): the side-quest hints (`hint=` of an @mission,
+`string Q<n>_HINT` of the 49 old quests) that name no direction, landmark
+or place (a parenthetical, a story place or region name or a landmark word
+anywhere in the line counts). They
+are shown in the quest log and, after the story, in the HUD pill; the
+side-mission rewrite gives them a "where" (the goal arrow already points
+at a running verb's person or place).
+
   python3 core/tools/story_wayfind.py            # lint, exit 1 on a finding
   python3 core/tools/story_wayfind.py --selftest # the seeded bad inputs fail
 """
@@ -36,6 +44,7 @@ COMPASS = {"N", "NE", "E", "SE", "S", "SW", "W", "NW"}
 LANDMARKS = {"here", "home", "plaza", "anywhere", "arrow"}   # "arrow": the goal arrow (several targets, one line)
 ARROW = "follow the arrow"
 OBJ_RE = re.compile(r'^string (OBJ_[A-Z0-9_]+|O[A-Z0-9]{2}_[A-Z0-9_]+) "(.*)"')
+HINT_RE = re.compile(r'^string (Q[0-9]+_HINT) "(.*)"|^@mission (S[0-9]+) .*?\bhint="([^"]*)"')
 
 # alias -> the canonical name (C16). Checked in objectives and in C string literals.
 BANNED = {
@@ -45,6 +54,9 @@ BANNED = {
     "Hellvile Park - Hillvile Side": "The Park",
     "Stroll HaHaland": "Walk around HaHaland",
     "Fight demon waves": "Demon Arena",
+    "Hellvile Arena": "Demon Arena",          # the story's door and region: the same arena as Free Play's
+    "The Unity Stage": "Unity Stage",
+    "The Lake of Fire": "Lake of Fire",
     "Doomogachi": "Boreagotchi",
 }
 
@@ -112,6 +124,37 @@ def lint_story():
     return out, count
 
 
+def place_names():
+    """The story's place and region names (core/src/story_places.c), for the hint report."""
+    src = (SRC / "story_places.c").read_text(encoding="utf-8")
+    names = set()
+    m = re.search(r"place_names\[PLACE_COUNT\] = \{(.*?)\};", src, re.S)
+    if m:
+        names |= {n for n in re.findall(r'"([^"\n]*)"', m.group(1)) if n}
+    names |= set(re.findall(r'\{ MAPID_\w+, \d+, \d+, \d+, \d+, "([^"]+)" \}', src))
+    return names
+
+
+def hint_report():
+    """(count of side hints, those that say where) - report only."""
+    places = {n.lower() for n in place_names()}
+    total, where = 0, 0
+    for f in sorted(STORY.rglob("*.dsc")):
+        for line in f.read_text(encoding="utf-8").split("\n"):
+            m = HINT_RE.match(line)
+            if not m:
+                continue
+            text = m.group(2) if m.group(1) else m.group(4)
+            total += 1
+            low = text.lower()
+            # a compass word or landmark, any parenthetical ("(the shop)", "(west lawn)"), a story place or
+            # region by name, or a common landmark word anywhere in the line
+            if (has_direction(text) or re.search(r"\([^()]+\)", text) or any(p in low for p in places) or
+                    re.search(r"\b(plaza|park|beach|pier|graveyard|fountain|wall|gate|market|lake|shop)\b", low)):
+                where += 1
+    return total, where
+
+
 def strip_comments(src):
     src = re.sub(r"/\*.*?\*/", lambda m: "\n" * m.group(0).count("\n"), src, flags=re.S)
     return re.sub(r"//[^\n]*", "", src)
@@ -167,6 +210,9 @@ def main(argv):
         print("story_wayfind: %d finding(s)" % len(out))
         return 1
     print("story_wayfind: %d objectives name a direction and fit the pill; no banned aliases" % count)
+    total, where = hint_report()
+    print("story_wayfind: report: %d of %d side-quest hints say where (the rest: the side-mission rewrite)" %
+          (where, total))
     return 0
 
 

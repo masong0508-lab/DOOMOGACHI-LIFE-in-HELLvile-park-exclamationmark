@@ -214,7 +214,7 @@ graveyard	places.story	.	.	.	.	.	.	# gen: story_places.c
 hellvile_pits	places.story	.	.	Hellvile Pits	.	.	proper	# gen: story_places.c
 anvil_s_forge	places.story	.	.	Anvil's forge	.	.	proper	# gen: story_places.c
 sealed_gate	places.story	.	.	Sealed Gate	.	.	proper the	# gen: story_places.c
-hellvile_arena	places.story	.	.	Hellvile Arena	.	.	proper	# gen: story_places.c
+demon_arena	places.story	.	.	Demon Arena	.	.	proper	# gen: story_places.c
 mother_nox_s_chapel	places.story	.	.	Mother Nox's chapel	.	.	proper	# gen: story_places.c
 vape_factory	places.story	.	.	.	.	.	adult	# gen: story_places.c
 bone_pier	places.story	.	.	Bone Pier	.	.	proper	# gen: story_places.c

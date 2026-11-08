@@ -80,6 +80,16 @@ the whole story (see `story_full_playthrough_reaches_the_credits`).
   names the goal ("Goal: Nana Puddin, Brimstone Bites": who, then the
   building whose door is within 3 cells, else the region, else the map;
   `story_goal_place`) and says "SEL while walking: mini-map".
+  While a side-mission verb runs its line owns the pill, so the arrow,
+  the mini-map's star and the Map tab's "Goal:" follow it
+  (`story_verb_target`, ahead of the plot's target in `story_target`):
+  escort points at the cell you walk them to, deliver and photo at the
+  person on this map ("Bring it to Nana (arrow, don't run!)"; while they
+  are on another map the line names the map they live on), and find
+  has no arrow on purpose ("Find it! (look around: hot / cold)": warmer /
+  colder is its compass). Side-quest hints are not linted yet: the
+  lint prints a report line (67 of 157 say where today); the
+  side-mission rewrite gives the rest a "where".
 * **One name per thing (clarity C16, CL6).** The HUD and menus use the
   map's plain place names; the Hillvile / Hellvile pun stays in dialogue.
   The park region of HaHaland is "The Park" (it was "Hellvile Park -
@@ -88,8 +98,13 @@ the whole story (see `story_full_playthrough_reaches_the_credits`).
   Pits Flat" in the house), the arena is the Demon Arena (map title,
   island row "Enter the Demon Arena"), the free-play park is "The Park"
   (the island itself is Hellvile Park) with "Walk around HaHaland", and
-  money is H$ on the story HUD too. `story_wayfind.py` greps the C string
-  literals for the retired aliases.
+  money is H$ on the story HUD too. The story's arena door and its
+  Hellvile region are the Demon Arena as well (they said "Hellvile Arena";
+  the door opens the same arena activities), the Hellvile flats' region
+  banner is "Hellvile Pits" (was "The Pits"), and "Lake of Fire" / "Unity
+  Stage" lose their stray "The" so the banner, the door and the island
+  menu agree. `story_wayfind.py` greps the C string literals for the
+  retired aliases.
 * Day / night from the town clock; Hellvile is clamped to dusk, the
   invaded town to red sky, the Wall area gets a purple haze in ch1-2.
 * Small talk is generated from each resident's catchphrase, likes, job,

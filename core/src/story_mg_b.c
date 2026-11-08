@@ -987,7 +987,7 @@ static void draw(void)
 
 static const StoryMgEntry rows[] = {
     { SMG_B_BUBBLES, "Bubble Test", enter, update, draw },
-    { SMG_B_BUBBLES_STAGE, "The Unity Stage", enter, update, draw },
+    { SMG_B_BUBBLES_STAGE, "Unity Stage", enter, update, draw },
     { SMG_B_FIREFLY, "Firefly Night", enter, update, draw },
     { SMG_B_NAPOFF, "The Nap-Off", enter, update, draw },
     { SMG_B_POEM, "Clinker's Board", enter, update, draw },
