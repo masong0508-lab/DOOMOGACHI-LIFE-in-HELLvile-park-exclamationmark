@@ -1,0 +1,119 @@
+# exorcism_profile.txt - the exorcism's speed on the GBA, phase by phase (docs/EXORCISM_SPEED.md):
+# `make -C gba profile-exorcism`. Father Fuzz's practice ritual on the plush dummy (arg -1), walked
+# like core/tests/scripts/life_exorcism.txt: the intro under its dialogue, the tools menu, the
+# prayer rhythm, the holy water, the true name, the verdict and the result.
+#
+# The reticle is held at the left edge (no hits), so the water phase ends when the flasks are
+# thrown (6, or 9 with the holy water that the intro's last A ticks on), and its dialogue is closed
+# with B (in the true-name phase only A picks): the phases do not depend on how many ticks
+# `profile` takes.
+# Every phase is measured with `fps` (drawn frames/s, logic ticks/s, average / worst CPU work of a
+# drawn tick in ms) and sampled with `profile N` (the hottest functions). `sync on 61` and `seed 1`
+# make the ticks and the game state the same in any ROM, so two ROMs' numbers and `vhash-seq`
+# frames compare tick for tick. Numbers belong to this script.
+wait 40
+expect-log doomo: init
+sync on 61
+seed 1
+scene TITLE
+wait 2
+scene EXORCISM -1
+wait 40
+fps start
+wait 90
+fps exorcism intro (dialogue)
+profile 6000000
+shot exo_intro
+vhash-seq 20 exorcism intro
+press A
+wait 6
+press A
+wait 6
+press A
+wait 6
+press A
+wait 6
+press A
+wait 6
+press A
+wait 20
+fps start
+wait 90
+fps exorcism tools
+profile 6000000
+shot exo_tools
+vhash-seq 20 exorcism tools
+press START
+wait 10
+press A
+wait 6
+press A
+wait 50
+fps start
+wait 120
+fps exorcism prayer
+profile 6000000
+shot exo_prayer
+vhash-seq 20 exorcism prayer
+wait 220
+press A
+wait 6
+press A
+wait 6
+press A
+wait 6
+press A
+wait 20
+fps start
+hold LEFT 40
+press A
+wait 14
+press A
+wait 14
+press A
+wait 14
+press A
+wait 14
+fps exorcism holy water
+profile 6000000
+shot exo_water
+vhash-seq 20 exorcism holy water
+press A
+wait 14
+press A
+wait 14
+press A
+wait 14
+press A
+wait 14
+press A
+wait 80
+press B
+wait 8
+press B
+wait 8
+press B
+wait 8
+press B
+wait 20
+fps start
+wait 60
+fps exorcism true name
+profile 6000000
+shot exo_name
+vhash-seq 10 exorcism true name
+press A
+wait 52
+fps start
+wait 60
+fps exorcism verdict
+shot exo_verdict
+wait 20
+fps start
+wait 90
+fps exorcism result
+profile 6000000
+shot exo_result
+vhash-seq 20 exorcism result
+press A
+wait 20

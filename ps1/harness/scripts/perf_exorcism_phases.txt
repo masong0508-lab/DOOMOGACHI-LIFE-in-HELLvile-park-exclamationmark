@@ -1,0 +1,98 @@
+# perf_exorcism_phases.txt - the exorcism's frame rate on the PS1, phase by phase (docs/EXORCISM_SPEED.md):
+#   python3 ps1/harness/run.py --exe ps1/build/doomogachi.exe --cue ps1/build/doomogachi.cue \
+#       --script ps1/harness/scripts/perf_exorcism_phases.txt --out OUT
+# Father Fuzz's practice ritual on the plush dummy (arg -1), walked like the GBA's
+# gba/harness/scripts/exorcism_profile.txt (same waits and presses, game frames): the intro under
+# its dialogue, the tools menu, the prayer rhythm, the holy water, the true name, the verdict and
+# the result. The PS1 runs one logic tick per presented frame, so each fps is also the game speed.
+seed 1
+scene TITLE
+wait 2
+scene EXORCISM -1
+wait 40
+fps exo_intro
+wait 90
+fpsend exo_intro
+shot exo_intro
+press A
+wait 6
+press A
+wait 6
+press A
+wait 6
+press A
+wait 6
+press A
+wait 6
+press A
+wait 20
+fps exo_tools
+wait 90
+fpsend exo_tools
+shot exo_tools
+press START
+wait 10
+press A
+wait 6
+press A
+wait 50
+fps exo_prayer
+wait 120
+fpsend exo_prayer
+shot exo_prayer
+wait 240
+press A
+wait 6
+press A
+wait 6
+press A
+wait 6
+press A
+wait 20
+fps exo_water
+hold LEFT 40
+press A
+wait 14
+press A
+wait 14
+press A
+wait 14
+press A
+wait 14
+fpsend exo_water
+shot exo_water
+press A
+wait 14
+press A
+wait 14
+press A
+wait 14
+press A
+wait 14
+press A
+wait 80
+press B
+wait 8
+press B
+wait 8
+press B
+wait 8
+press B
+wait 20
+fps exo_name
+wait 60
+fpsend exo_name
+shot exo_name
+press A
+wait 52
+fps exo_verdict
+wait 60
+fpsend exo_verdict
+shot exo_verdict
+wait 20
+fps exo_result
+wait 90
+fpsend exo_result
+shot exo_result
+press A
+wait 20

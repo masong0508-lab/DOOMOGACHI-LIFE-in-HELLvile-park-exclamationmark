@@ -54,11 +54,24 @@ uint8_t exo_col(int which, int dread)
 
 /* ---------------------------------------------------------------------- */
 /* the church                                                               */
-/* the drape's width at row y: tied back in the middle, flaring below */
-static int drape_w(int w, int h, int y)
+/* The drape's width at every row y in 0..h (out[y]): tied back in the
+ * middle, flaring below. Row y's band k = y * 16 / h is stepped instead of
+ * divided (E1, docs/EXORCISM_SPEED.md: the divide was ~2,400 calls of the
+ * GBA's software divider a frame), and the six tied widths are worked out
+ * once: the same values as w - (5 - |k - 8|) * w / 12 for 4 < k < 11. */
+#define DRAPE_MAX_H 480
+static void drape_widths(int w, int h, uint8_t *out)
 {
-    int k = y * 16 / (h > 0 ? h : 1);
-    return w - (k > 4 && k < 11 ? (5 - (k - 8 < 0 ? 8 - k : k - 8)) * w / 12 : 0);
+    int y, k = 0, acc = 0, hh = h > 0 ? h : 1, red[16];
+    for (k = 0; k < 16; k++)
+        red[k] = k > 4 && k < 11 ? (5 - (k - 8 < 0 ? 8 - k : k - 8)) * w / 12 : 0;
+    k = 0;
+    for (y = 0; y <= h; y++) {
+        out[y] = (uint8_t)(w - (k < 16 ? red[k] : 0));
+        /* k = (y + 1) * 16 / hh for the next row */
+        acc += 16;
+        while (acc >= hh) { acc -= hh; k++; }
+    }
 }
 
 static void curtain(int x0, int w, int h, int left, int dread, uint32_t t)
@@ -70,11 +83,15 @@ static void curtain(int x0, int w, int h, int left, int dread, uint32_t t)
     uint8_t c2 = dread < 8 ? PAL_PAINT(PAINT_ROSE, 2) : PAL_PAINT(PAINT_CHERRY, 0);
     int fx, y0;
     int sway = ui_wave((int)t, 90, 1);
+    uint8_t dw[DRAPE_MAX_H + 1];
+    if (h > DRAPE_MAX_H) h = DRAPE_MAX_H;          /* (never: h is 0.62 H + 30 on screens <= 480 high) */
+    if (w > 255) w = 255;
+    drape_widths(w, h, dw);
     for (fx = 0; fx < w; fx += 4) {
         /* rows where this fold is covered: everything except the tied band */
         int y, start = -1;
         for (y = 0; y <= h; y++) {
-            int vis = y < h && drape_w(w, h, y) > fx;
+            int vis = y < h && dw[y] > fx;
             if (vis && start < 0) start = y;
             if ((!vis || y == h) && start >= 0) {
                 int len = y - start, half = start < h / 2 ? DOOMO_MIN(len, h / 2 - start) : 0;
@@ -87,7 +104,7 @@ static void curtain(int x0, int w, int h, int left, int dread, uint32_t t)
     }
     /* a soft highlight down the inner edge */
     for (y0 = 0; y0 < h; y0 += 2) {
-        int ww = drape_w(w, h, y0);
+        int ww = dw[y0];
         plat_rect(left ? x0 + ww - 1 + (y0 > h / 2 ? sway : 0) : x0 + w - ww + (y0 > h / 2 ? sway : 0),
                   y0, 1, 2, c2);
     }
@@ -206,12 +223,19 @@ void exo_church(int dread, uint32_t t, int floor_y)
         for (k = -10; k <= 10; k++)
             plat_line(W / 2 + k * 6, floor_y, W / 2 + k * (W / 6), H + (H - floor_y), fb);
         (void)vy;
-        /* carpet */
-        for (y = floor_y; y < H; y++) {
-            int half = 10 + (y - floor_y) * (big ? 30 : 20) / DOOMO_MAX(1, H - floor_y);
-            plat_rect(W / 2 - half, y, half * 2, 1, exo_col(EC_CARPET, dread));
-            plat_rect(W / 2 - half + 2, y, 1, 1, exo_col(EC_CARPET_HI, dread));
-            plat_rect(W / 2 + half - 3, y, 1, 1, exo_col(EC_CARPET_HI, dread));
+        /* carpet: half = 10 + (y - floor_y) * spread / depth, stepped per
+         * row instead of divided (E1) */
+        {
+            int spread = big ? 30 : 20, depth = DOOMO_MAX(1, H - floor_y), q = 0, r = 0;
+            uint8_t cc = exo_col(EC_CARPET, dread), ch = exo_col(EC_CARPET_HI, dread);
+            for (y = floor_y; y < H; y++) {
+                int half = 10 + q;
+                plat_rect(W / 2 - half, y, half * 2, 1, cc);
+                plat_rect(W / 2 - half + 2, y, 1, 1, ch);
+                plat_rect(W / 2 + half - 3, y, 1, 1, ch);
+                r += spread;
+                while (r >= depth) { r -= depth; q++; }
+            }
         }
         plat_rect(0, floor_y, W, 1, exo_col(EC_WOOD_LO, dread));
     }

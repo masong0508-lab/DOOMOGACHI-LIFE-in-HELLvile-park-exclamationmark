@@ -13,6 +13,8 @@
 #                             life tours do not visit, one table per group
 #                             (SPEED2="fair library ..."; profile-speed2 adds
 #                             a PC profile after every window)
+#   make -C gba profile-exorcism  the exorcism phase by phase (SP7): fps,
+#                             work ms, hottest functions, frame hashes
 #   make -C gba MATURE_PACK=pack.dmpk
 #                             build/doomogachi_mature.gba (E8: the mature ROM
 #                             variant: the game + a DMPK pack for port gba
@@ -139,7 +141,7 @@ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 # over the core's weak stubs, and the core's strong definitions win over both.
 ALL_OBJS  := $(GBA_OBJS) $(CORE_OBJS)
 
-.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-speed test-life profile-title profile-pause profile-invaded profile-all profile-sung profile-creator test-creator test-speed2 profile-speed2 profile-concert clean sizes
+.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-speed test-life profile-title profile-pause profile-invaded profile-all profile-sung profile-creator test-creator test-speed2 profile-speed2 profile-concert profile-exorcism clean sizes
 .DEFAULT_GOAL := all
 
 # Cartridge size (user decision 2026-11-01): the game ROM is a full 256 Mbit
@@ -382,6 +384,22 @@ test-creator: harness
 	echo "test-creator: log $(CREATOR_SCROLL_LOG)"; \
 	exit $$rc
 # --- end CR9 ---
+# --- SP7: the exorcism's speed, phase by phase (harness/scripts/exorcism_profile.txt, docs/EXORCISM_SPEED.md):
+# the intro under its dialogue, the tools menu, the prayer rhythm, the holy water, the true name, the
+# verdict and the result: fps + work per tick, the hottest functions and each phase's frame hashes.
+# Reports, never gates. Output: build/exorcism_profile.log ---
+EXORCISM_PROFILE_LOG ?= $(BUILD)/exorcism_profile.log
+profile-exorcism: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@mkdir -p $(SHOTS)/exorcism
+	$(PREFIX)nm -n $(BUILD)/doomogachi.elf > $(BUILD)/doomogachi.nm
+	@rc=0; \
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/exorcism_profile.txt \
+	    --shots $(SHOTS)/exorcism --nm $(BUILD)/doomogachi.nm --no-fps-gates --quiet > $(EXORCISM_PROFILE_LOG) 2>&1 || rc=1; \
+	grep -E "^harness: (fps|profile|vhash-seq)|^harness: +[0-9.]+% " $(EXORCISM_PROFILE_LOG) | head -120; \
+	echo "profile-exorcism: log $(EXORCISM_PROFILE_LOG)"; \
+	exit $$rc
+# --- end SP7 ---
 
 # --- M0: the life tour (docs/GBA.md "Life tour"): the island hub, news,
 # island menu, roster, resident and apartments: fps and work ms (expect-fps
