@@ -1255,6 +1255,8 @@ void ui_hint(const char *s, int style)
     }
 #if UI_PROMPT_CHECK
     prompt_note(t, cut);
+#else
+    (void)cut;                                  /* the consoles keep no stats */
 #endif
     hint_pill(t, pieces < 0 ? tr_pieces(t, s) : pieces, style);
 }
