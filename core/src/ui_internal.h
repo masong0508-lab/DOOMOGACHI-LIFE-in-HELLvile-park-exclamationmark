@@ -9,6 +9,21 @@
  * colours. */
 extern int ui_cur_style;
 
+/* ---- C3: the prompt bar (ui.c draws the pill, ui_prompt.c builds the text) ----
+ * ui_width_raw: the width of text already translated (ui_text_width without
+ * the lookup). ui_hint_pill_at: the bar's pill with t (translated; pieces:
+ * look its runs up when drawn) centred at row y, a retained panel once a
+ * frame. The native build counts every bar (runner --check-prompts,
+ * ui_prompt_stats): ui_prompt_note; the consoles keep no stats. */
+int  ui_width_raw(const char *s);
+void ui_hint_pill_at(const char *t, int pieces, int style, int y);
+#if !defined(DOOMO_PLATFORM_GBA) && !defined(DOOMO_PLATFORM_PS1) && !defined(DOOMO_PLATFORM_DC)
+#define UI_PROMPT_CHECK 1
+void ui_prompt_note(const char *t, int cut);
+#else
+#define UI_PROMPT_CHECK 0
+#endif
+
 /* Small cursor glyph per OPT_CURSOR at x,y (top-left of a ~7x7 box). */
 void ui_cursor_glyph(int x, int y, int kind, uint8_t fill);
 /* A rounded "key cap" / pill used by buttons and the keyboard. */

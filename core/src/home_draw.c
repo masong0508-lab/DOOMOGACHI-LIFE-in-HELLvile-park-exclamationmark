@@ -2213,52 +2213,61 @@ static void build_actors(DoomoRoomView *v)
 }
 
 /* ---- HUD, panels ---------------------------------------------------------------------------- */
-/* C3: the bottom bar's buttons, the shared prompt bar (ui.h ui_prompts) on the house's own strip */
-#define HP(b, pr, v) do { p[n].btn = (uint16_t)(b); p[n].prio = (uint8_t)(pr); p[n].verb = (v); n++; } while (0)
+/* C3: the bottom bar's buttons, the shared prompt bar (ui.h ui_prompts) on the house's own strip.
+ * One const table per state (smaller than code that fills the items: the PS1's home overlay group
+ * sets the overlay slot's size); [0] / [1] / [2] marked "set below" get their verb when drawn. */
 #define DPAD (BTN_UP | BTN_DOWN | BTN_LEFT | BTN_RIGHT)
 /* C15: what each score stat counts (home_score.c), for the Score panel's bar */
 static const char *const stat_help[HS_COUNT] = {
     "Comfort: seats, bed, lamps", "Spook: creepy stuff, dark", "Style: one matching theme",
     "Light: lamps, day windows", "Barricade: heavy by doors"
 };
+static const UiPrompt hp_score[] = { { BTN_UP | BTN_DOWN, 1, "" }, { BTN_B, 2, "Back" }, { 0, 0, 0 } };   /* [2] set below */
+static const UiPrompt hp_catalog[] = { { BTN_A, 0, "Take" }, { BTN_L | BTN_R, 1, "Tab" }, { BTN_B, 0, "Back" } };
+static const UiPrompt hp_walls[] = { { BTN_UP | BTN_DOWN, 1, "Row" }, { BTN_LEFT | BTN_RIGHT, 0, "Change" },
+                                     { BTN_A, 0, "Paint" }, { BTN_B, 2, "Back" } };
+static const UiPrompt hp_menu[] = { { BTN_A, 0, "Choose" }, { BTN_B, 0, "Back" } };
+static const UiPrompt hp_defend[] = { { BTN_A, 0, "Repair / wind / comfort / plate" } };
+static const UiPrompt hp_live[] = { { DPAD, 2, "Walk" }, { BTN_A, 0, "Use" }, { BTN_START, 1, "Menu" },
+                                    { BTN_B, 0, "Leave" } };                                       /* [1] on a visit */
+static const UiPrompt hp_group[] = { { DPAD, 2, "Move" }, { BTN_L | BTN_R, 1, "Turn" }, { BTN_START, 3, "More" },
+                                     { BTN_A, 0, "Done" } };
+static const UiPrompt hp_paint[] = { { 0, 2, "Recolour" }, { BTN_L, 0, "Colour 1" }, { BTN_R, 0, "Colour 2" } };
+static const UiPrompt hp_held[] = { { 0, 3, 0 }, { BTN_A, 0, "Put" }, { BTN_L | BTN_R, 1, "Turn" },
+                                    { BTN_B, 2, "Back" } };                                        /* [0] set below */
+static const UiPrompt hp_ghost[] = { { 0, 0, "Grey = buy at HomeMart" }, { BTN_START, 1, "Menu" } };
+static const UiPrompt hp_build[] = { { BTN_A, 0, "Pick up (hold: paint)" }, { BTN_L | BTN_R, 2, "View" },
+                                     { BTN_SELECT, 3, "Undo" }, { BTN_START, 1, "Menu" } };
+#define HP_USE(tab) (t = (tab), n = (int)DOOMO_COUNTOF(tab))
 
 static void hud_prompts(char *nm, int nmcap)
 {
-    UiPrompt p[UI_PROMPTS_MAX];
-    int n = 0;
-    if (H->menu == HMN_SCORE) {
-        HP(BTN_UP | BTN_DOWN, 1, "");
-        HP(BTN_B, 2, "Back");
-        HP(0, 0, H->sel == HS_STYLE && (score_ctx() & HSC_CH4) ? "Style: sweet + spooky pairs"
-                                                                 : stat_help[H->sel % HS_COUNT]);
-    } else if (H->menu == HMN_CATALOG) { HP(BTN_A, 0, "Take"); HP(BTN_L | BTN_R, 1, "Tab"); HP(BTN_B, 0, "Back"); }
-    else if (H->menu == HMN_WALLS) { HP(BTN_UP | BTN_DOWN, 1, "Row"); HP(BTN_LEFT | BTN_RIGHT, 0, "Change"); HP(BTN_A, 0, "Paint"); HP(BTN_B, 2, "Back"); }
-    else if (H->menu != HMN_NONE) { HP(BTN_A, 0, "Choose"); HP(BTN_B, 0, "Back"); }
-    else if (H->mode == HM_DEFEND) HP(BTN_A, 0, "Repair / wind / comfort / plate");
-    else if (H->mode == HM_LIVE) {
-        HP(DPAD, 2, "Walk");
-        HP(BTN_A, 0, H->kind == HK_VISIT ? "Talk / look" : "Use");
-        HP(BTN_START, 1, "Menu");
-        HP(BTN_B, 0, "Leave");
-    } else if (H->nsel) { HP(DPAD, 2, "Move"); HP(BTN_L | BTN_R, 1, "Turn"); HP(BTN_START, 3, "More"); HP(BTN_A, 0, "Done"); }
-    else if (H->paint_mode) { HP(0, 2, "Recolour"); HP(BTN_L, 0, "Colour 1"); HP(BTN_R, 0, "Colour 2"); }
-    else if (H->held >= 0) {
+    UiPrompt p[4];
+    const UiPrompt *t;
+    int n;
+    if (H->menu == HMN_SCORE) HP_USE(hp_score);
+    else if (H->menu == HMN_CATALOG) HP_USE(hp_catalog);
+    else if (H->menu == HMN_WALLS) HP_USE(hp_walls);
+    else if (H->menu != HMN_NONE) HP_USE(hp_menu);
+    else if (H->mode == HM_DEFEND) HP_USE(hp_defend);
+    else if (H->mode == HM_LIVE) HP_USE(hp_live);
+    else if (H->nsel) HP_USE(hp_group);
+    else if (H->paint_mode) HP_USE(hp_paint);
+    else if (H->held >= 0) HP_USE(hp_held);
+    else if (H->plan.nghost && H->mont_n == 0) HP_USE(hp_ghost);
+    else HP_USE(hp_build);
+    memcpy(p, t, (size_t)n * sizeof(*p));
+    if (t == hp_score)
+        p[2].verb = H->sel == HS_STYLE && (score_ctx() & HSC_CH4) ? "Style: sweet + spooky pairs" : stat_help[H->sel % HS_COUNT];
+    else if (t == hp_live && H->kind == HK_VISIT) p[1].verb = "Talk / look";
+    else if (t == hp_held) {
         const DoomoFurn *f = home_furn(H->held);
-        HP(0, 3, f ? doomo_furn_text(f->name, nm, nmcap) : "?");
-        HP(BTN_A, 0, "Put");
-        HP(BTN_L | BTN_R, 1, "Turn");
-        HP(BTN_B, 2, "Back");
-    } else if (H->plan.nghost && H->mont_n == 0) { HP(0, 0, "Grey = buy at HomeMart"); HP(BTN_START, 1, "Menu"); }
-    else {
-        HP(BTN_A, 0, "Pick up (hold: paint)");
-        HP(BTN_L | BTN_R, 2, "View");
-        HP(BTN_SELECT, 3, "Undo");
-        HP(BTN_START, 1, "Menu");
+        p[0].verb = f ? doomo_furn_text(f->name, nm, nmcap) : "?";
     }
     /* inside the house's opaque bottom band (plat_room_ui_opaque): the room renderer never draws under it */
     ui_prompts_at(p, n, WIN_CUTE, plat_screen_h() - 12, ui_prompts_maxw());
 }
-#undef HP
+#undef HP_USE
 #undef DPAD
 
 static void draw_hud(void)
