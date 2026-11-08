@@ -865,13 +865,18 @@ main thread                                   stream thread (prio 9)
   in the stereo field (lead and bass centre, harmony / babble a little
   left, kit a little right; L + R is the mono reference); eight sample
   voices (16-bit copies of the effects made at boot by `sfx.c`, linear
-  interpolation, volume, pan, pitch in semitones, priority stealing: a
+  interpolation with a 15-bit weight, so `(b - a) * w` fits an int32 for
+  any two 16-bit samples (a 16-bit weight overflowed: a one-sample click
+  in 28 of the 35 effects, found in review, now `test_audio`'s smooth
+  check), volume, pan, pitch in semitones, priority stealing: a
   free voice, else the lowest priority at or below the new one, the
   oldest first); then the native reference's DC block (about 14 Hz), a
   one-pole low-pass (about 12 kHz) against the naive pulses' aliasing, the
   musrender scale (`mix * 24`, so levels and `expect-audio` numbers match
   the native ones), and a soft knee above 24,576 that bends the rare loud
-  peak (the invaded town's metal with effects on top) towards the rail
+  peak (the invaded town's metal with effects on top reaches past the
+  knee; nothing in the measured runs reaches the rail since the
+  interpolation fix) towards the rail
   instead of clipping it (`clips` counts the samples that would have
   passed the rail).
 * **Ticks, not time.** A slot is exactly one logic tick, rendered when the
@@ -986,19 +991,25 @@ sound ...`) and adds `audio-stats [LABEL]`, `expect-underruns MAX`
 ### The host test (`dc/tests/audio`)
 
 `make -C dc/tests/audio test` (part of `make dc-host-test` and CI; host
-gcc and `python3-numpy`, no KallistiOS):
+gcc and `python3-numpy`, no KallistiOS). `SAN=1 BUILD=...` runs it under
+ASan/UBSan, and any UBSan report stops the run and fails it
+(`-fno-sanitize-recover=undefined` for this directory's objects,
+`UBSAN_OPTIONS=halt_on_error=1` for the core's):
 
-* `test_audio` (1,520 checks): one tick sequence played out in whole
+* `test_audio` (2,046 checks): one tick sequence played out in whole
   ticks, in random chunks and in random chunks with empty-ring gaps (with
   and without a stall) gives the same content and the same hash; each wave
   at 110 / 440 / 1,760 Hz has the right zero-crossing rate; a full centred
   pulse peaks at 6,293 (musrender 5,760); every effect lasts len x 44,100 /
   rate frames, +12 semitones halves it, -12 doubles it, pan -64 / 64 is one
-  side only; the 9th voice steals the oldest of the lowest priority and
+  side only; every effect at -24 / -12 / 0 / +12 / +24 semitones matches,
+  frame by frame, the same voice and filters computed in double (worst
+  27, tolerance 128; the overflowing interpolation was 19,000-23,000 off);
+  the 9th voice steals the oldest of the lowest priority and
   never a higher one; prefill, underrun (not during a stall), overrun (a
   full ring renders nothing and keeps the triggers), the lag skip; silence
   is exact zeros; the loudest possible mix (4 tones + 8 explosions at full)
-  has 9,371 samples over the rail and none at it (the knee).
+  has 9,342 samples over the rail and none at it (the knee).
 * `run_compare.sh`: `dcsnd_runner` is the native runner whose `plat_tone`,
   `plat_sample` and `plat_end_frame` also drive the Dreamcast mixer
   (`sndtee.c`), so one script gives musrender's WAV (22,050 Hz, the
@@ -1008,10 +1019,10 @@ gcc and `python3-numpy`, no KallistiOS):
 
 | script | envelope r | same note | level | notes |
 |---|---|---|---|---|
-| fp_title | 0.998 | 95.1 % of 82 windows | 0.98 | 590 slots, lag 0, no underrun |
-| story_ch1 | 0.999 | 98.9 % of 182 | 0.98 | hash600 0x38042a6d |
-| action_combat | 0.999 | 98.5 % of 65 | 0.99 | 13 effects |
-| story_invasion | 0.980 | 90.0 % of 20 | 0.96 | 90 samples over the rail, softened |
+| fp_title | 0.997 | 95.1 % of 82 windows | 0.98 | 590 slots, lag 0, no underrun |
+| story_ch1 | 0.999 | 98.4 % of 182 | 0.98 | hash600 0x2b82d6ba |
+| action_combat | 0.997 | 98.5 % of 65 | 0.98 | 13 effects |
+| story_invasion | 0.973 | 90.0 % of 20 | 0.95 | no sample over the rail (the 90 before the interpolation fix were its clicks) |
 
 ### On Flycast (`make -C dc audio-test`)
 
@@ -1025,9 +1036,9 @@ Results in `dc/build/shots/audio/` (WAVs, logs, `envelope.png`,
 | check | result |
 |---|---|
 | title (15 s of the title cue) | peak-to-peak 24,050; envelope r 0.996, the same note in 85.9 % of 85 windows, level 0.96; 0 underruns, 0 late refills, longest refill interval 45.4 ms (of 70) |
-| invasion (chapter 3's invaded town, 15 s) | peak-to-peak 60,874; r 0.946, 93.2 % of 74, level 0.95; 0 underruns, 0 late refills; 90 samples over the rail, softened |
-| combat (the Vape Cellar, three pistol shots, 12 s) | peak-to-peak 37,609; 6 effects (at least 3); r 0.921 (envelopes clipped at their 97th percentile: the enemies' noises come at other times than natively while the 3D is a stub), 94.0 % of 67, level 0.97; 0 underruns, 0 late refills |
-| repeat | the title's hash after 600 slots, 0x520f170a, twice |
+| invasion (chapter 3's invaded town, 15 s) | peak-to-peak 53,438; r 0.945, 93.2 % of 74, level 0.95; 0 underruns, 0 late refills; no sample over the rail (60,874 and 90 over the rail before the interpolation fix: those were its clicks) |
+| combat (the Vape Cellar, three pistol shots, 12 s) | peak-to-peak 34,264; 6 effects (at least 3); r 0.922 (envelopes clipped at their 97th percentile: the enemies' noises come at other times than natively while the 3D is a stub), 94.0 % of 67, level 0.97; 0 underruns, 0 late refills |
+| repeat | the title's hash after 600 slots, 0xdfa596b6, twice (0x520f170a before the interpolation fix changed the effects' samples) |
 
 `make -C dc test` with DC5 in: boot on the ELF and the CDI, DC3's
 ui-compare 94 of 94 shots, DC4's five VMU checks, then the four above.
@@ -1044,6 +1055,21 @@ the core makes no sound of its own.
 - The latency, by ear and with a camera and a microphone (the estimate
   above is from the ring and the buffer, not measured end to end).
 - The AICA's output with the knee near the rail, through VGA and composite.
+- Clock drift. Ticks are paced by the SH4's timer (33,333 us, 30.0003 Hz)
+  and the AICA takes 1,470 frames a tick at its own 44,100 Hz crystal; on a
+  console the two differ by tens of ppm, so over minutes the ring slowly
+  fills (until the lag skip drops a slot: 33 ms of sound, the latency up
+  to 67 ms higher before it) or drains (an underrun and a 67 ms re-prime).
+  Flycast runs both from one clock and cannot show it. If a console shows
+  either every few minutes, a small servo (drop or repeat a few frames per
+  slot, keeping the ring at 2) is the fix.
+- `snd_starved` is a lower bound: it counts refill intervals longer than
+  the whole AICA buffer, but KOS refills a half only after it is free, so
+  a refill more than 35 ms after its half was freed already plays stale
+  data, which two late refills in a row can do with intervals under 70 ms.
+  The Flycast runs are far from that (worst interval 45 ms, polls at most
+  about 17 ms apart); on a console, reading the AICA's play position
+  against the write position at each refill would count it exactly.
 
 ## Rumble (X2)
 

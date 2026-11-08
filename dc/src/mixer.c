@@ -282,9 +282,10 @@ static void voice_block(Voice *v, int n)
 /* the soft knee: transparent below KNEE; above it the excess e is bent
  * to KNEE + e * ROOM / (e + ROOM), which approaches the rail but never
  * reaches it, so a loud moment (the invaded town's metal with effects on
- * top) is rounded off instead of hard-clipped. `clips` still counts the
- * samples that would have passed the rail. Only samples over the knee pay
- * for the division (none in normal play: the music peaks near 20,000). */
+ * top passes the knee; many effects at once can pass the rail) is rounded
+ * off instead of hard-clipped. `clips` still counts the samples that would
+ * have passed the rail. Only samples over the knee pay for the division
+ * (rare: the music peaks near 20,000). */
 #define KNEE 24576
 #define ROOM (32767 - KNEE)
 #if defined(__GNUC__)
