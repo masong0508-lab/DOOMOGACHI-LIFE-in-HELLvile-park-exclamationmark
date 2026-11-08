@@ -321,8 +321,19 @@ int  ps_top(int list, int value);          /* how far its script reaches above t
  * (its blocks of layer group `group`, or every block with -1), so the painter draws nothing for it.
  * One byte compare when no value of the list is scripted. */
 int  ps_slot(PCtx *c, int list, int value, int group);
+/* DOOMO_PARTS_VM 0 builds the renderer without the script VM: every hook is a constant 0, nothing
+ * scripted is drawn (sanitize then clamps a scripted value to its slot's default). The PS1 builds
+ * that way until CR10 frees the RAM the VM and its LZ buffers need there (about 22 KB resident with
+ * the 8 KB block LRU + arena: more than the PS1's headroom above the 64 KB stack reserve). */
+#ifndef DOOMO_PARTS_VM
+#define DOOMO_PARTS_VM 1
+#endif
+#if DOOMO_PARTS_VM
 #define PS_SLOT(c, list, value, group) \
     ((value) >= doomo_part_minv[(list)] && ps_slot((c), (list), (value), (group)))
+#else
+#define PS_SLOT(c, list, value, group) ((void)(c), (void)(value), 0)
+#endif
 extern const uint8_t doomo_part_minv[128];
 /* CR2 shape-only renders (contact sheets, the distinctness gate): every material of the next renders
  * is forced onto one grey ramp, so two parts that differ only in colour render the same. */

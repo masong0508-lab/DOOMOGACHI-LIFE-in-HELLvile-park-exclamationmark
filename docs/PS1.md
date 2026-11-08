@@ -509,6 +509,14 @@ not lost) and starts the list over. 112 KB holds `DOOMO_SAVE_SCRATCH_MIN`
 the streaming save path. The core's static default buffer is dropped by
 `--gc-sections`.
 
+**Creator parts (CRA, 2026-11-08).** The part catalog's names and meta are linked only where the
+creator calls them (none of it today: 0 B resident); the age table and the age gate are resident
+(~700 B). The part-script VM is built with `DOOMO_PARTS_VM=0` on the PS1: with the painters' slot
+hooks calling it, the VM (5.5 KB of code), the 2-slot block LRU and the 4 KB per-render arena came to
+about 22 KB resident and the disc ended 7,184 B into the stack reserve. With the VM off the game disc
+ends at `0x801ecce0`, 13,088 B above the 64 KB reserve (was 14,976 B at `4851147`: +1,888 B). The VM
+comes on with CR10 (SPEC P3 reclaims, part data in SPU RAM through `part_lz_src()`).
+
 ### SPU RAM (512 KB)
 
 ```

@@ -1,0 +1,58 @@
+# creator_profile.txt - the creator's speed on the GBA (CR0 baseline of the creator plan; CR9
+# turns it into gates): `make -C gba profile-creator`. Reports only, no expect-fps gates.
+#
+#   idle         a new Hillvile citizen on the Species & Body tab (the figure bounces, blinks)
+#   value step   the first Outfit row (top) held RIGHT: a new look, a new figure, every few ticks
+#   row scroll   DOWN held through the Outfit rows (marquee names, the lock checks per row)
+#   picker       the hat picker open, DOWN held (each choice previewed on the figure)
+#
+# Measured with `fps` (drawn frames/s, average / worst CPU work of a drawn tick in ms) and sampled
+# with `profile N` (the hottest functions). Numbers belong to this script.
+wait 40
+expect-log doomo: init
+sync on 61
+seed 1
+scene TITLE
+wait 2
+push CREATOR -1
+wait 200
+fps settle (ignore)
+wait 130
+fps creator idle
+profile 6000000
+shot creator_idle
+press R
+wait 4
+press R
+wait 4
+press R
+wait 4
+press R
+wait 30
+press DOWN
+wait 10
+fps settle (ignore)
+down RIGHT
+wait 130
+fps creator value step
+profile 6000000
+release
+shot creator_step
+wait 30
+fps settle (ignore)
+down DOWN
+wait 130
+fps creator row scroll
+release
+wait 30
+press A
+wait 30
+fps settle (ignore)
+down DOWN
+wait 130
+fps creator picker
+profile 6000000
+release
+shot creator_picker
+press B
+wait 10

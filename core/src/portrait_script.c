@@ -119,6 +119,7 @@ void pc_stamp(PCtx *c, const uint8_t *m1bpp, int w, int h, int x, int y, int q4,
 }
 
 /* ---- the VM ------------------------------------------------------------------------------ */
+#if DOOMO_PARTS_VM
 static const PartRef *find_ref(const PartSet *set, int list, int value)
 {
     int i, lo, hi;
@@ -532,6 +533,18 @@ int ps_slot(PCtx *c, int list, int value, int group)
     ps_run_group(c, list, value, -1, group);
     return 1;
 }
+
+#else  /* !DOOMO_PARTS_VM: the PS1 until CR10 frees the RAM (portrait_int.h): no script draws */
+int ps_has(int list, int value) { (void)list; (void)value; return 0; }
+int ps_top(int list, int value) { (void)list; (void)value; return 0; }
+int ps_run_group(PCtx *c, int list, int value, int anchor, int group)
+{
+    (void)c; (void)list; (void)value; (void)anchor; (void)group;
+    return 0;
+}
+int ps_run(PCtx *c, int list, int value, int anchor) { (void)c; (void)list; (void)value; (void)anchor; return 0; }
+int ps_slot(PCtx *c, int list, int value, int group) { (void)c; (void)list; (void)value; (void)group; return 0; }
+#endif
 
 /* ---- look_key (SPEC 4.5) ------------------------------------------------------------------
  * The cache key of a resident's look: the gene plus the run bytes that change it (the deep set,

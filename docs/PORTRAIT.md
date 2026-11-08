@@ -476,6 +476,14 @@ groups x 3 entries = 3 block loads, was 21 with the LRU alone). Same 8 KB. The c
 through `part_lz_src()`; a build with `DOOMO_PARTS_SPU` (CR10) supplies one that DMAs the block from
 SPU RAM into a staging buffer.
 
+**The PS1 builds without the VM for now** (`DOOMO_PARTS_VM=0` in `ps1/CMakeLists.txt`): once painters
+call it, the VM, its LZ buffers and the arena are about 22 KB resident (measured: the disc ended
+7,184 B into the 64 KB stack reserve), more than the 14,976 B the tree had above the reserve. With the
+flag every hook is a constant 0 and sanitize draws a scripted value as its slot's default; the PS1
+costs +1,888 B resident for CR1/CR2/CR12 (the age gate, the hooks' call sites, the 128 B `minv`
+table). CR10 (SPEC P3 reclaims, the SPU-RAM part store) turns it on; until then CR3 must not flip a
+list live on the PS1 past its painted values.
+
 **Shape gate.** `portrait_shape_mode(1)` forces every material onto one grey ramp (direct renders only;
 a no-op on the GBA, where it costs no RAM). `test_part_render.c` requires every scripted part to differ
 from every other value of its slot by >= 24 px of the bust in shape mode (no palette swaps) and by

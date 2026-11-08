@@ -237,6 +237,10 @@ foreach(_t doomo_objs ${DOOMO_EXE_NAME})
 	target_compile_definitions(${_t} PRIVATE DOOMO_PLATFORM_PS1=1)
 	# P1.M1: the part scripts link as 2 KB LZ blocks behind an 8 KB LRU (core/src/part_lru.c), not raw
 	target_compile_definitions(${_t} PRIVATE DOOMO_PARTS_LZ=1)
+	# CR2: the part-script VM (slot hooks, macro ops, LZ blocks + per-render arena) is ~22 KB resident
+	# once painters call it, more than the headroom above the stack reserve: off on the PS1 until CR10
+	# (SPEC P3 reclaims, SPU-RAM part store) lands. Scripted parts are drawn as their slot's default.
+	target_compile_definitions(${_t} PRIVATE DOOMO_PARTS_VM=0)
 	if(DOOMO_ENGINE_TEST)
 		target_compile_definitions(${_t} PRIVATE DOOMO_ENGINE_TEST=1)
 	endif()
