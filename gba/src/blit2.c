@@ -25,65 +25,90 @@
 
 #define LINE (SCREEN_W / 2)
 
-/* one source row at scale 2 onto dest rows r0 (and r1 = r0 + LINE when two) between halfwords q0 .. q1 - 1;
- * even: x is even and source pixel j lands in halfword xh + j; odd: halfword q holds source pixels
- * j = q - xh - 1 (low byte) and j + 1 (high byte), xh = (x - 1) / 2 rounded down, pixels -1 and w empty. */
+/* One source row at scale 2 onto the halfwords q0 .. q1 - 1 of dest row r0 and, when two, of r1 = r0 + LINE.
+ * even: x is even and source pixel j lands in halfword xh + j (both of its bytes); odd: halfword q holds source
+ * pixels j = q - xh - 1 (low byte) and j + 1 (high byte), with xh = (x - 1) / 2 rounded down and the pixels -1 and
+ * w empty. A halfword whose two bytes are opaque is stored without reading the page; one transparent byte makes it
+ * a read-modify-write; two make it a skip. The common case (no silhouette, both rows) has its own loops. */
+static inline __attribute__((always_inline)) void put2(volatile uint16_t *a, volatile uint16_t *b, int two,
+                                                       uint32_t lo, uint32_t hi)
+{
+    if (lo && hi) {
+        uint32_t v = lo | hi << 8;
+        *a = (uint16_t)v;
+        if (two) *b = (uint16_t)v;
+    } else if (lo) {
+        *a = (uint16_t)((*a & 0xFF00u) | lo);
+        if (two) *b = (uint16_t)((*b & 0xFF00u) | lo);
+    } else if (hi) {
+        *a = (uint16_t)((*a & 0x00FFu) | hi << 8);
+        if (two) *b = (uint16_t)((*b & 0x00FFu) | hi << 8);
+    }
+}
+
 BLIT2_ARM void vid_blit2_row(volatile uint16_t *r0, int two, const uint8_t *s, int w, int xh, int q0, int q1,
                              int odd, uint32_t sil)
 {
-    volatile uint16_t *r1 = r0 + LINE;
-    int q;
+    volatile uint16_t *a = r0 + q0, *b = r0 + LINE + q0;
+    int n = q1 - q0;
     if (!odd) {
-        for (q = q0; q < q1; q++) {
-            uint32_t v = s[q - xh];
+        const uint8_t *src = s + (q0 - xh);
+        if (!sil && two) {
+            for (; n > 0; n--, a++, b++) {
+                uint32_t v = *src++;
+                if (v) { v |= v << 8; *a = (uint16_t)v; *b = (uint16_t)v; }
+            }
+            return;
+        }
+        for (; n > 0; n--, a++, b++) {
+            uint32_t v = *src++;
             if (!v) continue;
             if (sil) v = sil;
             v |= v << 8;
-            r0[q] = (uint16_t)v;
-            if (two) r1[q] = (uint16_t)v;
+            *a = (uint16_t)v;
+            if (two) *b = (uint16_t)v;
         }
         return;
     }
-    for (q = q0; q < q1; q++) {
-        int j = q - xh - 1;
-        uint32_t lo = j >= 0 ? s[j] : 0u, hi = j + 1 < w ? s[j + 1] : 0u;
-        if (!(lo | hi)) continue;
-        if (sil) { if (lo) lo = sil; if (hi) hi = sil; }
-        if (lo && hi) {
-            uint32_t v = lo | hi << 8;
-            r0[q] = (uint16_t)v;
-            if (two) r1[q] = (uint16_t)v;
-        } else if (lo) {
-            r0[q] = (uint16_t)((r0[q] & 0xFF00u) | lo);
-            if (two) r1[q] = (uint16_t)((r1[q] & 0xFF00u) | lo);
-        } else {
-            r0[q] = (uint16_t)((r0[q] & 0x00FFu) | hi << 8);
-            if (two) r1[q] = (uint16_t)((r1[q] & 0x00FFu) | hi << 8);
+    {
+        int j = q0 - xh - 1;                         /* source pixel in the low byte of the first halfword */
+        uint32_t lo = j >= 0 && j < w ? s[j] : 0u;
+        for (; n > 0; n--, a++, b++, j++) {
+            uint32_t hi = j + 1 < w ? s[j + 1] : 0u, l = lo, h = hi;
+            lo = hi;
+            if (!(l | h)) continue;
+            if (sil) { if (l) l = sil; if (h) h = sil; }
+            if (l && h && two) { uint32_t v = l | h << 8; *a = (uint16_t)v; *b = (uint16_t)v; continue; }
+            put2(a, b, two, l, h);
         }
     }
 }
 
 /* Draw img at scale 2, no flip, at (x, y) into the back page; sil != 0: every opaque pixel is that colour.
- * THUMB, ROM: the clipping and the row walk; the rows are the group's ARM loop. */
-void vid_blit2(int x, int y, const DoomoImage *img, uint32_t sil)
+ * All in the group (ARM): the clipping, the row walk and the rows. */
+BLIT2_ARM void vid_blit2_arm(int x, int y, const DoomoImage *img, uint32_t sil)
 {
     const int w = img->w, h = img->h;
     int x0 = x, x1 = x + 2 * w, sy, odd = x & 1, xh, q0, q1;
     if (x0 < 0) x0 = 0;
     if (x1 > SCREEN_W) x1 = SCREEN_W;
     if (x0 >= x1 || y >= SCREEN_H || y + 2 * h <= 0) return;
-    /* halfwords: even x -> source j at (x >> 1) + j; odd x -> xh = (x - 1) >> 1 (arithmetic) */
-    xh = odd ? (x - 1) >> 1 : x >> 1;
+    xh = odd ? (x - 1) >> 1 : x >> 1;               /* arithmetic shift: rounded down */
     q0 = x0 >> 1;
     q1 = (x1 + 1) >> 1;
     for (sy = 0; sy < h; sy++) {
         int ry = y + 2 * sy, two = 1;
         if (ry + 1 < 0) continue;
         if (ry >= SCREEN_H) break;
-        if (ry < 0) { ry = 0; two = 0; }                 /* only the second row is on screen */
-        else if (ry + 1 >= SCREEN_H) two = 0;           /* only the first */
+        if (ry < 0) { ry = 0; two = 0; }            /* only the second row is on screen */
+        else if (ry + 1 >= SCREEN_H) two = 0;      /* only the first */
         vid_blit2_row((volatile uint16_t *)gba_back + ry * LINE, two, img->pix + sy * w, w, xh, q0, q1, odd, sil);
     }
+}
+
+void vid_blit2(int x, int y, const DoomoImage *img, uint32_t sil)
+{
+    vid_blit2_arm(x, y, img, sil);
 }
 
 /* (SP6) plat_checker in the UI group: the same clipping and parity as plat_checker_m4 (video.iwram.c), but a row's
