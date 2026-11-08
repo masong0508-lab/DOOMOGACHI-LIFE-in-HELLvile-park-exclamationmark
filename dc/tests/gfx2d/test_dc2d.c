@@ -282,6 +282,28 @@ static void test_shade(void)
         bad = frame_diff(&me);
         CHECK(me <= 48, "image shadow (DARK fallback): %d pixels differ, max error %d", bad, me);
     }
+    {   /* DC8: an ADD glow (the house's selection) under an exact shade dims with
+         * the picture: its colour times the level's factor, its alpha kept */
+        uint8_t px[16 * 16];
+        DoomoImage im = { 16, 16, px, 0x01000778u };
+        const DcFrame *f;
+        uint32_t g = 0x80FFF4D0u, fac = dc2d_shade_argb(6), want = 0, got = 0;
+        int slot, i, k, nadd = 0;
+        memset(px, 4, sizeof(px));
+        for (k = 0; k < 32; k += 8)
+            want |= ((((g >> k) & 255u) * (k == 24 ? 255u : (fac >> k) & 255u) + 127u) / 255u) << k;
+        frame_begin();
+        plat_rect(0, 0, 320, 240, 3);
+        slot = dc2d_tex_image(&im);
+        dc2d_tex_rect(DC2D_ADD, slot, 100, 100, 132, 132, 16, 16, 0, g, 0);
+        plat_shade_rect(0, 0, 320, 240, 6);
+        frame_end();
+        f = dc2d_last();
+        for (i = 0; i < f->n; i++)
+            if (f->prims[i].mode == DC2D_ADD) { nadd++; got = f->prims[i].argb; }
+        CHECK(slot >= 0 && nadd >= 1 && got == want && want != g,
+              "a glow under a shade is not dimmed (%d ADD prims, argb %08X, want %08X)", nadd, got, want);
+    }
 }
 
 /* exact shades over everything the UI draws: partial, nested, over images

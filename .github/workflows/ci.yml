@@ -96,7 +96,7 @@ jobs:
       - name: Generated files are up to date (check-gen)
         run: make -C core check-gen
 
-      - name: Dreamcast 2D layer, VMU saves and sound mixer on the host (DC3-DC5, dc/tests)
+      - name: Dreamcast 2D layer, house, VMU saves and sound mixer on the host (DC3-DC5, DC8, dc/tests)
         run: make dc-host-test JOBS="$(nproc)"
 
       - name: Upload native runner screenshots

@@ -459,6 +459,13 @@ tutorials ran, the Black Market found) are set without a toast.
   end), the chimney, dormer, skylight, spikes, parapet and tank as boxes and
   faces; `fit()` leaves 44 units of headroom for it. H4 adds the resting player:
   the chibi joins the static layer while it stands still.
+* **Dreamcast** (`dc/src/room.c`, DC8; docs/DREAMCAST.md, section 8):
+  room_ref's picture on the PVR. Its shell pixel code (`floor_tile`,
+  `wall_column`, the backdrop, the lip, `iso_box`), the sprite recolour and
+  the order (`behind()` and the pick) are a hand port of `room_ref.c`, so
+  **a change to room_ref's pixels or order must be made in `dc/src/room.c`
+  too**: `make dc-host-test` (CI) runs `dcroom_test`, which draws every
+  frame of `core/tests/room_shells.h` both ways and wants them identical.
 * **The PS1 overlay group.** Everything of the house is one group,
   `home`, linked over the 3D views' and the arena bot's tables below the
   slot (`ovl_plan.py` BORROW, 45,572 B). Its mode-only code is in PARTS

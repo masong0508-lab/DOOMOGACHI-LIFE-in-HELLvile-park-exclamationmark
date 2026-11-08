@@ -467,8 +467,8 @@ static int reemit(const DcPrim *p, float X0, float Y0, float X1, float Y1, int l
         int t = dc2d_tex_remap(p->tex, level, doomo_colormap[level]);
         if (t >= 0) {
             q->tex = (uint16_t)t;
-        } else if (p->mode == DC2D_GLASS) {
-            break;                      /* again as it is, over the remapped picture */
+        } else if (p->mode == DC2D_GLASS) {   /* no texture: its colour times the factor */
+            q->argb = argb_mul(p->argb, dc2d_shade_argb(level) | 0xFF000000u);
         } else {                        /* no texture: the image times the fitted factor */
             DcPrim *m = emit(DC2D_MUL);
             if (!m) return 0;
@@ -479,6 +479,9 @@ static int reemit(const DcPrim *p, float X0, float Y0, float X1, float Y1, int l
         }
         break;
     }
+    case DC2D_ADD:                      /* DC8: a glow dims with the picture under it */
+        q->argb = argb_mul(p->argb, dc2d_shade_argb(level) | 0xFF000000u);
+        break;
     default:                            /* blends: again, over the remapped picture */
         break;
     }

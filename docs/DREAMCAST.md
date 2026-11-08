@@ -1420,13 +1420,17 @@ Where the Dreamcast does more than the reference (the plan's DC8 list):
 |---|---|---|
 | a held / placed ghost (`RO_GHOST`, `RO_SEMI`), a translucent resident (`BB_TRANSLUCENT`) | a 50% checker dither | the piece at 50% (a GLASS prim: texture times ARGB, blended) |
 | the blueprint ghost (`RO_GHOST` + `RO_SEMI`, "buy at HomeMart") | a grey dithered silhouette | the grey silhouette at 50% |
-| an invalid ghost (`RO_INVALID`) | dithered, a shade darker | darker, tinted red, 69% |
+| an invalid ghost (`RO_INVALID` on a ghost) | dithered, a shade darker | the silhouette in red at 75% (the blueprint's grey ramp times red), so "not here" reads at a glance |
+| a solid invalid piece (`RO_INVALID` alone; no script sets it) | unchanged, a shade darker only while tinted or blinking | the same (no blink: the glow) |
 | a selected piece (`RO_SELECTED`) | a shade lighter every other 8 ticks | an additive glow over its shape (an ADD prim through the white bank) that swells and fades every 32 ticks |
 | `zoom` 1 / 2 | ignored | 1: a 1.6x close-up on the player (the PS1's); 2: Talk's framing, the circle `focus_r` around `focus_x/y` fills the viewport (scale 1..3); both glide a third of the way a frame, and back to exactly room_ref's picture at zoom 0 |
 | a squashed piece or resident | the weak default's rect runs | one quad, as `plat_image_xform` (section 4) |
 
 The two new 2D modes (`dc2d.h`: `DC2D_GLASS`, `DC2D_ADD`) are generic; an
-exact shade over a GLASS prim remaps its texture like an image's.
+exact shade over a GLASS prim remaps its texture like an image's (its
+colour times the level's factor when the remap finds no room), and an ADD
+glow under a shade is dimmed by the same factor, so a selected piece does
+not shine through a darkening menu or a fade.
 
 ### How it is fast
 
@@ -1481,7 +1485,7 @@ decoded) and `room_prims_max`; `dcrun` prints them (`dcrun: house views ...`).
 
 The host runner's tee (section 4) now draws the house with room.c on the
 Dreamcast side and room_ref on the native side (`DC8_ROOM=ref`: room_ref on
-both, the route before DC8). `dcroom_test` (117 checks, part of
+both, the route before DC8). `dcroom_test` (120 checks, part of
 `make dc-host-test`):
 
 | test | checks |
@@ -1490,7 +1494,7 @@ both, the route before DC8). `dcroom_test` (117 checks, part of
 | catalog | every one of the 349 pieces alone in a room, 4 views by day and one at night (back facings, door and window skins, glow, panes): 1,745 frames identical |
 | dynamic | residents (plain, flipped, lifted, tinted), the cursor, the rubber band, half-tile smalls, a jitter, a pan, in 4 views: identical; squashes differ only inside their own quads |
 | boxes | no `plat_cache`: the shaded boxes, identical |
-| effects | a ghost is one 50% GLASS prim whose pixels are a blend; the invalid ghost is red; the blueprint ghost grey; a translucent resident GLASS; the selection an ADD glow over the piece's own texture that pulses and brightens |
+| effects | a ghost is one 50% GLASS prim whose pixels are a blend; the invalid ghost is one red (red over twice green, green and blue level); a solid invalid piece is room_ref's picture, untinted and tinted; the blueprint ghost grey; a translucent resident GLASS; the selection an ADD glow over the piece's own texture that pulses and brightens |
 | sort | `dc_room_sort` equals room_ref's search on 3,000 random layouts (2,089 of them through the cycle fallback) |
 | cache | a view at rest decodes nothing and keeps its shell; the same frame twice gives the same prims, byte for byte; a pan keeps the shell; a new light, a lamp switched off and a turn render a new one (and stay identical to room_ref) |
 | zoom | zoom 1 settles at 1.6x with the player's feet under the viewport's centre, `plat_room_project` where the sprite stands; zoom 2 puts Talk's focus at the centre; back at zoom 0 the picture is room_ref's again |

@@ -23,7 +23,8 @@
  *  - RO_GHOST / RO_SEMI pieces and BB_TRANSLUCENT residents are really
  *    translucent (a GLASS prim at 50%; room_ref dithers a checker), the
  *    blueprint ghost (RO_GHOST | RO_SEMI) its grey silhouette at 50%, an
- *    invalid ghost (RO_INVALID) dimmed and tinted red;
+ *    invalid ghost (RO_INVALID) the same silhouette in red at 75% (room_ref
+ *    darkens it a shade; the red reads as "not here" at a glance);
  *  - RO_SELECTED pulses: an additive glow over the piece's shape that
  *    swells and fades every 32 ticks (room_ref blinks a shade lighter);
  *  - DoomoRoomView.zoom: 1 is a 1.6x close-up on the player (the PS1's),
@@ -604,7 +605,7 @@ static int piece_tex(const DoomoRoomView *v, int furn, int facing, int frame, in
 
 /* ---- pieces, actors, the cursor ------------------------------------------------- */
 #define GHOST_ARGB   0x80FFFFFFu         /* a ghost: the piece at 50%                  */
-#define INVALID_ARGB 0xB0FF6A6Au         /* an invalid ghost: dimmed, red, 69%         */
+#define INVALID_ARGB 0xC0FF4040u         /* an invalid ghost: its grey shape in red, 75% */
 
 /* a shaded box (room_ref's iso_box): the fallback when there is no sprite */
 static void iso_box(const RR *r, int x0, int y0, int x1, int y1, int z, int h, uint8_t base)
@@ -640,8 +641,14 @@ static void draw_piece(const RR *r, const DoomoRoomObj *o, const DcRoomItem *it)
         sy += (hx + hy) >> 1;
     }
     if (o->jitter) sx += (int)((r->v->time >> 1) & 1) * o->jitter - o->jitter / 2;
-    if ((o->flags & (RO_GHOST | RO_SEMI)) == (RO_GHOST | RO_SEMI)) fx |= PFX_GREY;
-    else if (o->flags & RO_INVALID) fx |= PFX_INVALID;
+    /* a ghost that cannot go there: the grey silhouette, made red by INVALID_ARGB.
+     * A solid invalid piece: room_ref's sprite_fx darkens it only when it
+     * recolours at all (a tint; its blink is the glow here) */
+    if ((o->flags & (RO_GHOST | RO_SEMI)) == (RO_GHOST | RO_SEMI) ||
+        ((o->flags & RO_INVALID) && (o->flags & (RO_GHOST | RO_SEMI))))
+        fx |= PFX_GREY;
+    else if ((o->flags & RO_INVALID) && r->tint)
+        fx |= PFX_INVALID;
     fx |= r->tint << 2;
     slot = piece_tex(r->v, o->furn, rot, RO_ANIM(o), pa, pb, lvl | fl, fx, &w, &h, &ox, &oy);
     if (slot == -2) return;

@@ -359,12 +359,30 @@ static void test_effects(void)
     CHECK(share >= 90, "effects: only %d%% of the ghost's pixels are a blend", share);
     objs[0].flags = RO_GHOST | RO_INVALID;
     dc_only(&v, rgb);
-    CHECK(count_mode(DC2D_GLASS, 0xB0FF6A6Au, 0) == 1, "effects: an invalid ghost is not the red GLASS prim");
+    CHECK(count_mode(DC2D_GLASS, 0xC0FF4040u, 0) == 1, "effects: an invalid ghost is not the red GLASS prim");
     {
-        long rs = 0, gs = 0;
+        /* a red silhouette: over the piece, red well above green, green and blue level */
+        long rs = 0, gs = 0, bs = 0;
         for (i = 0; i < DC2D_W * DC2D_H; i++)
-            if (memcmp(&rgb_a[i * 3], &rgb_b[i * 3], 3)) { rs += rgb[i * 3]; gs += rgb[i * 3 + 1]; }
-        CHECK(rs > gs + gs / 4, "effects: the invalid ghost is not red (r %ld, g %ld)", rs, gs);
+            if (memcmp(&rgb_a[i * 3], &rgb_b[i * 3], 3)) {
+                rs += rgb[i * 3] - rgb_a[i * 3] / 4; gs += rgb[i * 3 + 1] - rgb_a[i * 3 + 1] / 4;
+                bs += rgb[i * 3 + 2] - rgb_a[i * 3 + 2] / 4;
+            }
+        CHECK(rs > 2 * gs, "effects: the invalid ghost is not red (r %ld, g %ld)", rs, gs);
+        CHECK(labs(gs - bs) * 8 <= gs + 8, "effects: the invalid ghost is not one red (g %ld, b %ld)", gs, bs);
+    }
+    /* a solid invalid piece: room_ref's picture, untinted (unchanged) and tinted (a shade darker) */
+    {
+        int n, x, y;
+        objs[0].flags = RO_INVALID;
+        both(&v);
+        n = diffs(&x, &y);
+        CHECK(n == 0, "effects: a solid invalid piece differs from room_ref on %d pixels (first %d,%d)", n, x, y);
+        v.tint = TINT_GOLD; v.tint_level = 12;
+        both(&v);
+        n = diffs(&x, &y);
+        CHECK(n == 0, "effects: a tinted solid invalid piece differs from room_ref on %d pixels (first %d,%d)", n, x, y);
+        v.tint = 0; v.tint_level = 0;
     }
     objs[0].flags = RO_GHOST | RO_SEMI;
     dc_only(&v, rgb);

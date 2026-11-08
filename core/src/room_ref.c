@@ -4,6 +4,9 @@
  * draws the same room in 3D. Until those land, this weak plat_room() is
  * the renderer on every platform; it only uses plat_rect / plat_line /
  * plat_image, so it is slow but correct. Full redraw every frame.
+ * The Dreamcast (dc/src/room.c, DC8) is a hand port of the shell's pixel
+ * code, the sprite recolour and the order below: change it with this file
+ * (make dc-host-test's dcroom_test wants the two identical).
  *
  * The rules (all integer):
  *  - view rotation k = ((yaw + 512) >> 10) & 3 turns the room by k * 90
