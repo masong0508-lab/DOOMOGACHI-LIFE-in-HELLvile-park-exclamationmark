@@ -12,7 +12,7 @@ hahaland_invaded,hellvile,park_united}.txt` (compiled by
 
 | Call | What happens |
 | --- | --- |
-| `story_begin()` | New story: fresh `TOWN_STORY` town (premade 1000 citizens), then `SCENE_STORY` with `STORY_ARG_NEW`, which pushes `SCENE_CREATOR` (-3) for the hero and starts Chapter 1. |
+| `story_begin()` | New story: fresh `TOWN_STORY` town (premade 1000 citizens), then `SCENE_STORY` with `STORY_ARG_NEW`, which starts Chapter 1 (the prologue, the chapter card, the arrival). **CL2 (C2):** a hero nobody has chosen yet (`town_new` calls them "You") gets the creator's hero cards (`SCENE_CREATOR` -3: SUNNY, MARVIN or make your own, "Who are you?") right after the arrival's last caption, "And now, You!", as its punchline. The beat is already `C1_MAYOR` when the cards open, so B on them keeps "You" and nothing else in the flow moves; `.dsc` scripts and `flow.lock` are untouched. Only this title path offers the cards (`ow.hero_offer`); `scene STORY 0` and the debug beats keep their old flow, so the runner scripts that start that way are unchanged. A town with no protagonist at all still opens the creator before the prologue. |
 | `scene_set(&SCENE_STORY, STORY_ARG_CONTINUE)` | After `load_game(slot)`: resumes on the saved map, cell and beat. |
 | `STORY_ARG_VISIT_HAHALAND / _HELLVILE / _PARK` | Free-play stroll with no plot (Hellvile Visits / United Park modes). |
 | `STORY_ARG_DEBUG_BEAT + beat` (`+ STORY_ARG_DEBUG_NIGHT` for 21:30) | Debug: new story town set up exactly as at that beat. Used by runner scripts, e.g. `scene STORY 219`. |
@@ -46,6 +46,15 @@ the whole story (see `story_full_playthrough_reaches_the_credits`).
 * A talks / opens doors (or push into a door for 6 ticks), START pauses
   (Resume, Quest Log, Boreagotchi, Armory, Map, Options, Save, Title
   Screen), SELECT toggles the minimap, B runs.
+* **Pause panel (CL2, C11):** a help line under the rows says what the
+  highlighted row does. A row that cannot be used yet is drawn greyed
+  (`ui_button_off`) and its help line gives the reason instead: the pet
+  ("hatches soon, in Chapter 1") until it hatches, the Armory ("Rivet
+  welds you a weapon in Chapter 2") until `SF_WEAPON_CHOSEN`; A on it
+  only buzzes (no toast). One table, `ow_pause_row()` in `overworld.c`,
+  answers both the drawing and the input. The 320x240 footer reads
+  "♥1 friend" / "♥N friends" and "★done/total side quests". The 240x160
+  panel is 148 px high (was 138) to fit the help line.
 * Doors are wall cells tagged `STORY_TAG_DOOR + PLACE_*`; walk-on events
   are `CELL_TRIGGER` cells tagged 128+ (`STORY_TAG_EVENT_*`, secrets
   135..142). NPC wander zones are `THING_NPC` (arg = zone), demon nests
@@ -125,6 +134,7 @@ channel.
 ## Runner scripts
 
 `story_ch1` (arrival, Mayor, objective, pause, quest log tabs, minimap),
+`story_newgame_hero` (CL2: title -> New story -> the hero cards after "And now, You!" -> MARVIN, the pause panel's greyed rows and help line),
 `story_chapters` (one shot per chapter / map, day and night),
 `story_cutscenes` (every cutscene and the credits parade),
 `story_invasion` (a nest encounter into first and third person combat).

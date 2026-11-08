@@ -90,6 +90,7 @@ typedef struct OwState {
     uint16_t pause_t;
     uint8_t minimap;
     uint8_t started;
+    uint8_t hero_offer;      /* CL2 (C2): open the hero cards after the arrival */
     int16_t near_npc;        /* index into ow_npcs or -1                     */
     int16_t near_prop;       /* index into ow_props or -1                    */
     int16_t near_door;       /* place id or 0                                */

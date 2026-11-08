@@ -46,11 +46,12 @@ const char *story_objective(void);   /* current quest text for the HUD */
  *
  * STARTING STORY MODE. The title screen calls story_begin(): it makes a
  * fresh story town (TOWN_STORY, all 1000 premade citizens), then shows
- * SCENE_STORY with STORY_ARG_NEW, which first pushes SCENE_CREATOR with
- * arg -3 so the player creates themselves (town_res(DOOMO_PLAYER_ID)).
- * When the creator closes, SCENE_STORY calls story_new_game() and the
- * arrival cutscene starts. (If the creator itself calls story_new_game()
- * and sets SCENE_STORY, that works too.) Continuing a loaded story save is
+ * SCENE_STORY with STORY_ARG_NEW, which calls story_new_game(): the
+ * prologue, the chapter card and the arrival cutscene. A hero nobody has
+ * chosen yet ("You") is offered the creator's hero cards (SCENE_CREATOR,
+ * arg -3) right after the arrival's "And now, You!" (CL2, C2). A town with
+ * no protagonist at all first pushes SCENE_CREATOR -3, and story_new_game()
+ * runs when it closes. Continuing a loaded story save is
  * scene_set(&SCENE_STORY, STORY_ARG_CONTINUE).
  *
  * SCENE_STORY args. */

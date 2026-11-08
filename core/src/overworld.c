@@ -329,6 +329,11 @@ static void story_enter(int arg)
             return;
         }
         start_story();
+        /* C2: town_new() calls the hero "You" until they are chosen (a preset
+         * hero kind already became SUNNY / MARVIN in story_new_game); the cards
+         * come right after the arrival's "And now, You!" (ch12_resume) */
+        p = town_res(DOOMO_PLAYER_ID);
+        ow.hero_offer = (uint8_t)(p && (!p->name[0] || strcmp(p->name, "You") == 0));
         return;
     }
     if (doomo_town.story.chapter == STORY_CH_NONE) {
@@ -344,6 +349,13 @@ static void story_enter(int arg)
     family_tier_sync(story_chapter() == STORY_CH_DONE);   /* a story finished before the tiers */
     story_rearm_possessors();                      /* S2: a load re-arms the authored possessors */
     continue_on_saved_map();
+}
+
+int ow_take_hero_offer(void)
+{
+    int on = ow.hero_offer;
+    ow.hero_offer = 0;
+    return on;
 }
 
 static void story_leave(void)
@@ -689,6 +701,37 @@ const char *const ow_pause_names[PM_COUNT] = {
 };
 int ow_pause_count(void) { return PM_COUNT; }
 
+/* CL2 (C11): every row says what it does on the panel's help line. A row
+ * that cannot be used yet (the pet before it hatches, the Armory before
+ * Rivet's first weapon) is drawn greyed and its help line gives the reason;
+ * A on it only buzzes. Returns 1 when row i is available. */
+int ow_pause_row(int i, const char **help)
+{
+    const char *h = "";
+    int ok = 1;
+    switch (i) {
+    case PM_RESUME: h = "Back to the game. START saves first."; break;
+    case PM_LOG: h = "Quests, items, friends and trophies."; break;
+    case PM_PET:
+        ok = pet_exists();
+        h = ok ? "Feed and play with your pet." :
+            story_chapter() <= 1 ? "Not yet: your pet hatches soon, in Chapter 1." : "You have no pet right now.";
+        break;
+    case PM_ARMORY:
+        ok = story_flag(SF_WEAPON_CHOSEN) != 0;
+        h = ok ? "Your weapons. Rivet welds new ones." :
+            story_chapter() <= 2 ? "Not yet: Rivet welds you a weapon in Chapter 2." : "Rivet hasn't welded you anything yet.";
+        break;
+    case PM_MAP: h = "Where you are and where to go next."; break;
+    case PM_OPTIONS: h = "Sound, text, controls and language."; break;
+    case PM_SAVE: h = ow.visit ? "Strolls aren't saved." : "Save your story (START does it too)."; break;
+    case PM_TITLE: h = "Quit to the title screen."; break;
+    default: break;
+    }
+    if (help) *help = h;
+    return ok;
+}
+
 static void title_yes(int yes)
 {
     if (yes) { ow_sync_to_save(); scene_set(&SCENE_TITLE, 0); }
@@ -722,12 +765,12 @@ static void pause_activate(int sel)
     case PM_RESUME: PAUSE_OFF(); break;
     case PM_LOG: PAUSE_OFF(); story_push_scene(&SCENE_QUESTLOG, 0, PEND_OTHER, CTX_FREE, 0); break;
     case PM_PET:
-        if (!pet_exists()) { ui_toast("No Boreagotchi yet!"); audio_sfx(SFX_ERROR); break; }
+        if (!ow_pause_row(PM_PET, NULL)) { audio_sfx(SFX_ERROR); break; }   /* C11: the help line says why */
         PAUSE_OFF();
         story_push_scene(&SCENE_PET, 0, PEND_OTHER, CTX_FREE, 0);
         break;
     case PM_ARMORY:
-        if (!story_flag(SF_WEAPON_CHOSEN)) { ui_toast("Rivet hasn't welded you anything yet!"); audio_sfx(SFX_ERROR); break; }
+        if (!ow_pause_row(PM_ARMORY, NULL)) { audio_sfx(SFX_ERROR); break; }
         PAUSE_OFF();
         story_push_scene(&SCENE_WORKSHOP, 0, PEND_OTHER, CTX_FREE, 0);
         break;
@@ -752,7 +795,10 @@ static void pause_update(void)
     if (btn_pressed(BTN_B) || btn_pressed(BTN_START)) { PAUSE_OFF(); audio_sfx(SFX_CANCEL); return; }
     if (btn_repeat(BTN_UP)) { ow.pause_sel = (uint8_t)((ow.pause_sel + PM_COUNT - 1) % PM_COUNT); audio_sfx(SFX_CURSOR); }
     if (btn_repeat(BTN_DOWN)) { ow.pause_sel = (uint8_t)((ow.pause_sel + 1) % PM_COUNT); audio_sfx(SFX_CURSOR); }
-    if (btn_pressed(BTN_A)) { audio_sfx(SFX_SELECT); pause_activate(ow.pause_sel); }
+    if (btn_pressed(BTN_A)) {
+        if (ow_pause_row(ow.pause_sel, NULL)) audio_sfx(SFX_SELECT);
+        pause_activate(ow.pause_sel);
+    }
 }
 
 /* ---- update / draw ------------------------------------------------------------------ */
@@ -825,7 +871,7 @@ static void story_update(void)
     ow.t++;
     camfx_tick();                                  /* --- S1 M5 --- */
     ow_scratch_ensure();
-    if (story_pending.kind == PEND_CREATOR) {
+    if (story_pending.kind == PEND_CREATOR && !ow.started) {   /* the creator before a new story */
         const DoomoResident *p = town_res(DOOMO_PLAYER_ID);
         memset(&story_pending, 0, sizeof(story_pending));
         if (!p || p->status == RES_EMPTY || !p->name[0]) { scene_set(&SCENE_TITLE, 0); return; }

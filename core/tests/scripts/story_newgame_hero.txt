@@ -1,0 +1,60 @@
+# CL2 (C2 + C11): a story begun from the title asks who you are. Boot,
+# title, Story Mode, New story, skip the prologue with START, the chapter
+# card, the arrival ("...And now, You!"), then the hero cards ("Who are
+# you?") as the punchline. MARVIN is picked, the story goes on at the
+# Mayor beat and the pause panel shows his name, the greyed rows that are
+# not available yet (the pet, the Armory) and the help line.
+wait 5
+press A
+wait 30
+press A
+wait 20
+expect-scene TITLE
+shot title_menu
+press A
+wait 16
+shot title_story
+press A
+wait 30
+expect-scene CUTSCENE
+press START
+wait 50
+shot card
+press A
+wait 60
+press A
+wait 30
+press A
+wait 40
+shot arrival_you
+press A
+wait 30
+expect-scene CREATOR
+shot hero_cards
+press DOWN
+wait 10
+shot hero_marvin
+press A
+wait 20
+skip-to-scene STORY
+wait 30
+expect-scene STORY
+expect-hero Marvin
+shot story_marvin
+press START
+wait 20
+shot pause_resume
+press DOWN
+press DOWN
+wait 6
+shot pause_pet_greyed
+press A
+wait 6
+expect-scene STORY
+shot pause_pet_buzz
+press DOWN
+wait 6
+shot pause_armory_greyed
+press B
+wait 10
+expect-scene STORY

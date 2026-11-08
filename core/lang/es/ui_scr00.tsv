@@ -231,7 +231,8 @@ Free stroll - enjoy the town!	Paseo libre: ¡disfruta el pueblo!	# overworld_fx.
 Paused	Pausa	# overworld_fx.c
 Ch.%d	Cap.%d	# overworld_fx.c
 Day %u	Día %u	# overworld_fx.c
-\x80%d friends  \x82%d/%d quests	\x80%d amigos  \x82%d/%d misiones	# overworld_fx.c
+\x80%d friend  \x82%d/%d side quests	\x80%d amigo  \x82%d/%d misiones secundarias	# overworld_fx.c
+\x80%d friends  \x82%d/%d side quests	\x80%d amigos  \x82%d/%d misiones secundarias	# overworld_fx.c
 A proud citizen of Hellvile Park.	Orgulloso ciudadano de Hellvile Park.	# story_talk.c
 Oh, hello there, {P}!	¡Oh, hola, {P}!	# story_talk.c
 Good day to you, {P}!	¡Buen día, {P}!	# story_talk.c

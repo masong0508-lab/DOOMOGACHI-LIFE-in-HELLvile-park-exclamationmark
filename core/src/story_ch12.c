@@ -361,6 +361,11 @@ int ch12_resume(const StoryPending *p, int result)
         return 1;
     case CUT_ARRIVAL:
         if (cur() == BEAT_C1_ARRIVE) story_set_beat(BEAT_C1_MAYOR);
+        /* CL2 (C2): "And now, You!" ... "Who are you?": a story begun from the
+         * title picks its hero here (SUNNY, MARVIN or make your own). The beat
+         * is already C1_MAYOR, so B on the cards just keeps "You". */
+        if (ow_take_hero_offer())
+            story_push_scene(&SCENE_CREATOR, -3, PEND_CREATOR, CTX_BEAT, BEAT_C1_MAYOR);
         return 1;
     case CUT_CHAPTER2:
         return 1;                                          /* ch12_auto starts the mornings */

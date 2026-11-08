@@ -667,6 +667,7 @@ void owfx_minimap(int x, int y, int s, int map_id)
 /* ---- pause panel ------------------------------------------------------------------------ */
 extern const char *const ow_pause_names[];
 int ow_pause_count(void);
+int ow_pause_row(int i, const char **help);   /* CL2 (C11): 1 = available; the row's help line */
 
 void owfx_draw_pause_ex(int settled);
 void owfx_draw_pause(void) { owfx_draw_pause_ex(0); }
@@ -677,7 +678,7 @@ void owfx_draw_pause(void) { owfx_draw_pause_ex(0); }
 void owfx_draw_pause_ex(int settled)
 {
     int sw = plat_screen_w(), sh = plat_screen_h(), style = hud_style();
-    int big = sh >= 200, w = big ? 236 : 196, h = big ? 196 : 138;
+    int big = sh >= 200, w = big ? 236 : 196, h = big ? 196 : 148;   /* C11: room for the help line */
     int x = (sw - w) / 2, y = (sh - h) / 2 + 4, i, bh = big ? 16 : 13, by;
     const DoomoResident *p = town_res(playas_slot());
     const UiStyle *st = ui_style(style);
@@ -706,12 +707,22 @@ void owfx_draw_pause_ex(int settled)
     ui_text(x + 8, by + 18, buf, st->text_dim);
     for (i = 0; i < ow_pause_count(); i++) {
         int bx = x + 72, bw = w - 80;
-        ui_button(bx, y + 8 + i * bh, bw, ow_pause_names[i], i == ow.pause_sel, style);
+        if (ow_pause_row(i, NULL)) ui_button(bx, y + 8 + i * bh, bw, ow_pause_names[i], i == ow.pause_sel, style);
+        else ui_button_off(bx, y + 8 + i * bh, bw, ow_pause_names[i], i == ow.pause_sel, style);
     }
-    if (!ow.visit) {
-        doomo_snprintf(buf, sizeof(buf), STR_ICON_HEART "%d friends  " STR_ICON_STAR "%d/%d quests",
-                       story_friend_count(-1), story_side_done_count(), story_side_count());
-        if (big) ui_text_center(sw / 2, y + h - 11, buf, st->text_dim);
+    {
+        /* C11: what the highlighted row does (or why it is greyed), under the rows */
+        const char *help = "";
+        int ok = ow_pause_row(ow.pause_sel, &help);
+        if (help[0])
+            ui_text_wrap(x + 74, y + 10 + ow_pause_count() * bh, w - 82, help, ok ? st->text : st->accent, 1);
+    }
+    if (!ow.visit && big) {
+        int fr = story_friend_count(-1);
+        doomo_snprintf(buf, sizeof(buf), fr == 1 ? STR_ICON_HEART "%d friend  " STR_ICON_STAR "%d/%d side quests"
+                                                  : STR_ICON_HEART "%d friends  " STR_ICON_STAR "%d/%d side quests",
+                       fr, story_side_done_count(), story_side_count());
+        ui_text_center(sw / 2, y + h - 11, buf, st->text_dim);
     }
     ui_shade_clip_off();
 }

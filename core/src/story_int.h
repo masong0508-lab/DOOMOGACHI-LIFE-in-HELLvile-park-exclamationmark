@@ -341,6 +341,10 @@ void ow_shake(int ticks);
 void ow_flash(int color, int ticks);
 void ow_banner(const char *text);
 void ow_sync_to_save(void);
+/* CL2 (C2): 1 once, right after the arrival cutscene of a story begun from
+ * the title (STORY_ARG_NEW) whose hero nobody has chosen yet: the glue then
+ * opens the hero cards ("Who are you?") as the punchline of "And now, You!". */
+int  ow_take_hero_offer(void);
 int  ow_music_for_map(int map_id);
 /* The demon nests visible on the invaded map. */
 int  ow_nest_cell(int nest, int *cx, int *cy);
