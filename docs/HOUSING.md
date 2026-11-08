@@ -220,8 +220,9 @@ The bars (C3 / C15): the bottom band holds the shared prompt bar (`ui_prompts_at
 band the room renderer leaves alone), one capitalised verb per button; the top band names the
 mode after the room ("Living Room  Build", the clock where it still fits); the first time a
 save builds at home, a caption names the four dots ("Top dots: Comfort, Spook, Style, Light") once
-the room is in (20 ticks), nothing else is said and no toast covers the dots (the move-in unlock's
-toast goes first); a raw unlock bit, `HUL_RAW_DOTS` (`home_int.h`, like the tutorial's), keeps it to
+the room is in (20 ticks), nothing else is said and no toast covers the dots (a queued toast goes
+first; CL1's unlock news gathers for 20 s, so on a first visit it comes after the caption); a raw
+unlock bit, `HUL_RAW_DOTS` (`home_int.h`, like the tutorial's), keeps it to
 once per save (test: `prompts_house_names_its_dots_once_per_save`); in the
 Score panel UP / DOWN pick a stat and the bar says what it counts; the Ep 1.2 checklist has a
 "Place these:" header and ticks.

@@ -212,20 +212,34 @@ TEST(prompts_fit_and_name_gba_buttons_on_the_converted_screens)
 /* ---- C15: the house names its four score dots once per save ------------------------ */
 static int dots_told(void) { return (doomo_town.unlocks[HUL_RAW_DOTS >> 3] >> (HUL_RAW_DOTS & 7)) & 1; }
 
+/* frames until the caption's bit is set (-1: not within n); toast: one posted as the house opens */
+static int dots_frames(const char *toast, int n)
+{
+    int f;
+    test_reset();
+    s_home();
+    if (toast) ui_toast(toast);
+    for (f = 0; f < n; f++) {
+        frame(0);
+        if (dots_told()) return f;
+    }
+    return -1;
+}
+
 TEST(prompts_house_names_its_dots_once_per_save)
 {
-    int f, at = -1;
+    int at, f;
     set_res(240, 160);
     test_reset();
     CHECK(!dots_told());
-    s_home();
-    for (f = 0; f < 400 && at < 0; f++) {
-        frame(0);
-        if (dots_told()) at = f;
-    }
-    /* after the room is in and the move-in toast has gone (the dots are not covered), and only once */
-    CHECK(at >= 20);
+    /* once the room is in (HT_DOTS_AT, 20 ticks) */
+    at = dots_frames(NULL, 400);
+    CHECK(at >= 15 && at <= 25);
+    /* a toast at the top would cover the dots: the caption waits for it */
+    at = dots_frames("Bought: a lamp", 400);
+    CHECK(at > 25);
     CHECK(ui_toast_pending() == 0);
+    /* once per save: the bit stays, the next visit says nothing new */
     s_home();
     for (f = 0; f < 60; f++) frame(0);
     CHECK(dots_told());
