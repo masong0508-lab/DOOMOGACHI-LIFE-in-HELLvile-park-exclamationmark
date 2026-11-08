@@ -40,7 +40,8 @@ static Ent      ent[TEX_SLOTS];
 static uint16_t hash[HASH_SIZE];             /* slot + 1, 0 = empty           */
 static int      nstatic, ndyn_live;
 static uint32_t cur_frame = 1;
-static uint16_t scratch[SCRATCH_TEXELS / 2];
+/* 32-byte aligned: pvr_txr_load copies it with the store queues */
+static uint16_t scratch[SCRATCH_TEXELS / 2] __attribute__((aligned(32)));
 static int      warned_big;
 
 /* ---- twiddling ----------------------------------------------------------------- */

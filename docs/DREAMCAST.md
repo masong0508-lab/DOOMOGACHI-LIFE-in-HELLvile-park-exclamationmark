@@ -316,13 +316,14 @@ compilers. The harness finds the `dc_mailbox` symbol in the ELF
 `dc/src/misc.c` also exports the plain name as an alias) and reads and
 writes it through libretro's `RETRO_MEMORY_SYSTEM_RAM` region at
 `address & 0xFFFFFF`. `check-elf` checks the size and the alias and prints
-the offset. It is 32-byte aligned and 4196 bytes:
+the offset. It is 32-byte aligned and 4228 bytes:
 
 | field | what |
 |---|---|
 | `magic` ... `draw_all` | the GBA's `GbaMailbox`, field for field: magic `"DCMB"` (0x424D4344), logic ticks, drawn frames, fps x 10, cmd/arg/result, the command's time (microseconds), work time sum/count/worst, `name[20]`, the "sync on" `hold_at`, `draw_all` |
 | `scene[24]` | the scene on top of the stack (from the core's `scene: set/push/pop` log lines) |
 | `log_wr`, `log[4096]` | the log ring: every `plat_log()` line plus `\n`, at `log_wr % 4096`; `log_wr` counts every byte ever written |
+| `gfx_prims` ... `gfx_tex_live` | DC3's 2D counters after each drawn frame (section 4, Counters) |
 
 The cable type and the boot time are log lines (`DC: video 640x480 VGA`,
 `DC: core up in N us`), not mailbox fields.
@@ -358,9 +359,9 @@ budget (`dc/tools/elfsize.sh`) and fails if less than 4 MB
 | free above `_end` (heap, stacks) | 11,770,428 | 11.23 |
 
 `.bss` includes the RAM-disk saves (128 KB) and the save scratch (136 KB)
-that DC4 replaces. With DC3 (2026-11-08): code 1,709,680 B, `.bss`
-2,804,340 B (the 2D layer's three prim lists and texture scratch), image
-7,332,980 B (6.99 MB), 8.94 MB free above `_end`. The ELF file is 16 MB because of debug info; the
+that DC4 replaces. With DC3 (2026-11-08): code 1,712,240 B, `.bss`
+2,804,724 B (the 2D layer's three prim lists and texture scratch), image
+7,335,972 B (7.00 MB), 8.93 MB free above `_end`. The ELF file is 16 MB because of debug info; the
 scrambled `1ST_READ.BIN` is 4.4 MB.
 
 ### Disc image (`dc/tools/mkcdi.sh`)
@@ -496,7 +497,7 @@ page reads the one table of `font.h` (the native runner does the same);
 frame, the last frame, the held frame) and a 1 MB vertex buffer (twice:
 the PVR keeps two), of which 960 KB is used for prims; a frame over
 either drops its last prims and counts them. The `.bss` grew by 2.1 MB
-(the three lists and a 512 KB texture scratch); 8.94 MB of RAM stays free.
+(the three lists and a 512 KB texture scratch); 8.93 MB of RAM stays free.
 
 ### Counters
 
@@ -541,7 +542,7 @@ Measured 2026-11-08 (host, this tree):
 | `dc2d_test` | 52 checks, 0 failed (also under ASan/UBSan) |
 | the six DC3 UI scripts, hardware effects | 94 shots, **100.000% exact** on every shot; at most 2,704 prims and 223 KB of vertices a frame, nothing dropped |
 | all 80 runner scripts, `DC3_FX=sw` | 905 shots, 854 exact to the pixel, mean 99.984%; worst 98.59% (home_defend: `room_ref` reuses one uid for translucent actors whose dither changes every frame, so a uid-keyed cache shows the last pattern; the room is DC8's own renderer on the console) |
-| all 80 runner scripts, hardware effects | 905 shots, 807 exact; the rest differ where the post effects do their hardware job (shakes, palette lerps, blends) |
+| all 80 runner scripts, hardware effects | 905 shots, 810 exact; the rest differ where the post effects do their hardware job (shakes, palette lerps, blends) |
 | heaviest frame | home_rooms (`room_ref` through the 2D calls): 10,287 prims, 938 KB of vertices, inside the budget; DC8 draws rooms itself |
 
 `dc/harness/compare.py` does the same comparison on real Flycast shots:
