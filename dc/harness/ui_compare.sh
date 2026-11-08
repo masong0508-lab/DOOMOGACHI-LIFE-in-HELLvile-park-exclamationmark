@@ -36,7 +36,8 @@ for s in $SCRIPTS; do
     "$DCRUN" "$FLY" "$IMG" --nm "$NM" --fresh --native-seed 0x5EED1234 --run-dir "$OUT/$s/run" \
         --script "$src" --shots "$OUT/$s/dc" --timeout 900 >"$OUT/$s.log" 2>&1
     rc=$?
-    "$RUNNER" --w 320 --h 240 --script "$src" --shots "$OUT/$s/nat" --saves "$OUT/$s/saves" \
+    # --pad dc: the native runner names the buttons as the Dreamcast build does (C3, input.h btn_name)
+    "$RUNNER" --w 320 --h 240 --pad dc --script "$src" --shots "$OUT/$s/nat" --saves "$OUT/$s/saves" \
         >"$OUT/$s.native.log" 2>&1
     nrc=$?
     python3 -I "$here/compare.py" "$OUT/$s/dc" "$OUT/$s/nat" --diff "$OUT/$s/diff" \

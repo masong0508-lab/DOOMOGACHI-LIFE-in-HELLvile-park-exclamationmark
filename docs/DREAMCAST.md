@@ -593,8 +593,10 @@ Measured 2026-11-08 (host, this tree):
 
 `make -C dc ui-compare` (also the last step of `make -C dc test` when the
 Flycast core is there) runs `dc/harness/ui_compare.sh`: the six UI
-scripts in `dcrun` on the CDI and in `core/build/runner --w 320 --h 240`,
-then `dc/harness/compare.py` on each pair of shots (each Dreamcast pixel
+scripts in `dcrun` on the CDI and in `core/build/runner --w 320 --h 240
+--pad dc` (C3: the native runner names the buttons as the Dreamcast build
+does, START+Y for SELECT; with the host pad the creator's prompt bars
+differed in 3% of their pixels), then `dc/harness/compare.py` on each pair of shots (each Dreamcast pixel
 block against the native pixel in RGB565; gate 99% exact and 99.9% close).
 Shots, diff pictures (grey = exact, yellow = close, red = not) and the
 logs go to `dc/build/shots/ui/`, with `summary.txt`.

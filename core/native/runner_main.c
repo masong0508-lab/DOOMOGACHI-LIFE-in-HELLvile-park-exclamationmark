@@ -3,8 +3,13 @@
  *
  *   runner [--script FILE] [--shots DIR] [--w 240 --h 160] [--frames N]
  *          [--saves DIR] [--seed N] [--zoom N] [--gba-input] [--save-stream N]
- *          [--assert-no-stubs] [--quiet] [--verbose] [--wav FILE]
- *          [--budgets FILE]
+ *          [--assert-no-stubs] [--check-prompts] [--pad NAME] [--quiet]
+ *          [--verbose] [--wav FILE] [--budgets FILE]
+ * --check-prompts (C3) fails the run when a prompt bar or ui_hint line was
+ * too wide for the screen or named a button the pad lacks.
+ * --pad host|gba|ps1|dc (C3) names the buttons as that console's pad does
+ * (input.h input_set_pad): dc/harness/ui_compare.sh runs `--pad dc` so the
+ * native shots say START+Y for SELECT as the Dreamcast build does.
  * --budgets FILE (M0) the journey budgets (core/tests/journeys/budgets.tsv):
  * journey-end fails when a journey takes more presses or ticks than its row.
  * --wav FILE records the game's audio (22,050 Hz stereo, musrender: the
@@ -729,15 +734,15 @@ static void usage(void)
     fprintf(stderr,
             "usage: runner [--script FILE] [--shots DIR] [--w N --h N] [--frames N]\n"
             "              [--saves DIR] [--seed N] [--zoom N] [--gba-input] [--save-stream N]\n"
-            "              [--assert-no-stubs] [--check-prompts] [--quiet] [--verbose] [--wav FILE]\n"
-            "              [--budgets FILE]\n");
+            "              [--assert-no-stubs] [--check-prompts] [--pad host|gba|ps1|dc] [--quiet]\n"
+            "              [--verbose] [--wav FILE] [--budgets FILE]\n");
 }
 
 int main(int argc, char **argv)
 {
     NatOptions o;
     const char *script = NULL;
-    int frames = -1, assert_no_stubs = 0, check_prompts = 0, i;
+    int frames = -1, assert_no_stubs = 0, check_prompts = 0, pad = -1, i;
     memset(&o, 0, sizeof(o));
     o.w = 240; o.h = 160; o.seed = 0x5EED1234u; o.save_dir = ".";
     for (i = 1; i < argc; i++) {
@@ -755,6 +760,12 @@ int main(int argc, char **argv)
         else if (strcmp(a, "--gba-input") == 0) gba_input = 1;
         else if (strcmp(a, "--assert-no-stubs") == 0) assert_no_stubs = 1;
         else if (strcmp(a, "--check-prompts") == 0) check_prompts = 1;      /* C3 */
+        else if (strcmp(a, "--pad") == 0 && val) {                          /* C3: whose button names */
+            static const char *const pads[PAD_COUNT] = { "host", "gba", "ps1", "dc" };
+            for (pad = 0; pad < PAD_COUNT && strcmp(val, pads[pad]) != 0; pad++) {}
+            if (pad == PAD_COUNT) { fprintf(stderr, "runner: unknown pad %s (host, gba, ps1, dc)\n", val); return 1; }
+            i++;
+        }
         else if (strcmp(a, "--quiet") == 0) o.quiet = 1;
         else if (strcmp(a, "--verbose") == 0) o.verbose = 1;
         /* --- music: musrender (MU1, SPEC sec.16.2, row 39) --- */
@@ -780,6 +791,7 @@ int main(int argc, char **argv)
     mkdirs(o.save_dir);
     nat_init(&o);
     doomo_init();
+    if (pad >= 0) input_set_pad(pad);
     if (script) {
         FILE *f = fopen(script, "r");
         char line[1024];

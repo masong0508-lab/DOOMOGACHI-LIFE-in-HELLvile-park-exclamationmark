@@ -16,7 +16,7 @@ mouse, rumble, the VMU screen and audio.
 | `libretro.h` | the libretro API header (MIT), copied from the pinned Flycast tree |
 | `tests/` | `mockcore.c` (a stand-in core) and `selftest.sh`: tests `dcrun` with no emulator |
 | `compare.py` | DC3: Dreamcast shots (640x480, or `--half`) against the native runner's 320x240 shots of the same script, in RGB565, with diff pictures and a gate |
-| `ui_compare.sh` | DC3: the six UI scripts in `dcrun` and in the native runner, then `compare.py` (`make -C dc ui-compare`) |
+| `ui_compare.sh` | DC3: the six UI scripts in `dcrun` and in the native runner (`--pad dc`: the Dreamcast's button names, C3), then `compare.py` (`make -C dc ui-compare`) |
 | `vmu_check.py` | DC4: checks a VMU flash image (Flycast's `system/dc/vmu_save_A1.bin`): FAT, directory, VMS headers and CRCs; `--fill N` adds another game's file, `--icon` draws a file's icon frames and eyecatch |
 | `known_diffs.tsv` | DC3: the expected differences of those scripts, each with its reason (a platform label, a Dreamcast-only option row, the 3D view that is DC6's) |
 
