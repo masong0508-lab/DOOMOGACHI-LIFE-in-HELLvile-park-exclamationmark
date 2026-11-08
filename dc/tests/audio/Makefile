@@ -53,10 +53,13 @@ REN_NAT := -Dplat_tone=ref_tone -Dplat_sample=ref_sample -Dplat_end_frame=ref_en
 .PHONY: all test unit compare corelib clean
 all: $(BUILD)/test_audio $(BUILD)/dcsnd_runner
 
+# test_audio links the native platform as it is (plat_native.o), the
+# runner its renamed copy: both are built here, never assumed
+NATIVE_PLAT := $(CORE_BUILD)/obj/native/plat_native.o
 corelib:
-	@$(MAKE) --no-print-directory -C $(CORE) lib $(NATIVE_OBJS) BUILD=$(CORE_BUILD) SAN=$(SAN)
+	@$(MAKE) --no-print-directory -C $(CORE) lib $(NATIVE_OBJS) $(NATIVE_PLAT) BUILD=$(CORE_BUILD) SAN=$(SAN)
 
-$(CORE_OBJS) $(NATIVE_OBJS): corelib
+$(CORE_OBJS) $(NATIVE_OBJS) $(NATIVE_PLAT): corelib
 
 $(BUILD)/%.o: $(ROOT)/dc/src/%.c
 	@mkdir -p $(dir $@)
@@ -84,7 +87,7 @@ $(BUILD)/dcsnd_runner: corelib $(SND_OBJS) $(TEE_OBJS)
 # the unit test links the native platform as it is (plat_native.c's own
 # plat_tone etc. are never called; the mixer is driven directly)
 $(BUILD)/test_audio: corelib $(SND_OBJS) $(BUILD)/test_audio.o
-	$(CC) $(LDFLAGS) -o $@ $(CORE_OBJS) $(NATIVE_OBJS) $(CORE_BUILD)/obj/native/plat_native.o \
+	$(CC) $(LDFLAGS) -o $@ $(CORE_OBJS) $(NATIVE_OBJS) $(NATIVE_PLAT) \
 	    $(SND_OBJS) $(BUILD)/test_audio.o -lm
 
 unit: $(BUILD)/test_audio
