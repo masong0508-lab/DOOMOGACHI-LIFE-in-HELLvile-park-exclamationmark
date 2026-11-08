@@ -79,6 +79,15 @@ typedef struct GHdr {
 #define MAP_CATCH 240                         /* byte offset of the catchphrase classes */
 
 static uint16_t le16(const uint8_t *p) { return (uint16_t)(p[0] | (p[1] << 8)); }
+/* copies at most cap - 1 bytes and always ends the string (no strncpy: the
+   sanitizer build's -Wstringop-truncation rejects the bounded copies) */
+static void copy_cap(char *d, const char *s, int cap)
+{
+    int i = 0;
+    if (cap <= 0) return;
+    while (i < cap - 1 && s[i]) { d[i] = s[i]; i++; }
+    d[i] = 0;
+}
 static uint32_t le32(const uint8_t *p)
 {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
@@ -756,8 +765,7 @@ static void fill_name(Gen *g, int id, const char *mods, const char *fallback)
     int start = g->len;
     if (!n || !n[0] || talk_safe_lint_probe(n, &g->c->aud, 1) != TL_OK) n = fallback;   /* a typed name that may not be said */
     if (!n) { g->fail = 1; return; }
-    strncpy(s, n, sizeof s - 4);
-    s[sizeof s - 4] = 0;
+    copy_cap(s, n, (int)sizeof s - 3);
     apply_mods(s, mods);
     emit(g, s, -1);
     push_fill(g, start, g->len - start, TFK_NAME, 0);
@@ -812,8 +820,7 @@ static void expand_str(Gen *g, int str)
                 char s[40];
                 int start = g->len;
                 if (!g->r || !pred(g, TGP_CATCH, 0)) { g->fail = 1; break; }
-                strncpy(s, doomo_catchphrases[RES_CATCHPHRASE(g->r) % CATCHPHRASE_COUNT], sizeof s - 1);
-                s[sizeof s - 1] = 0;
+                copy_cap(s, doomo_catchphrases[RES_CATCHPHRASE(g->r) % CATCHPHRASE_COUNT], (int)sizeof s);
                 apply_mods(s, mods);
                 emit(g, s, -1);
                 push_fill(g, start, g->len - start, TFK_TEXT, 0);
@@ -1141,8 +1148,7 @@ static void safe_line(Gen *g, TalkLine *out, TalkTrace *tr)
     int sym = entry_sym(g, ENT_FIXED, TGE_SAFE);
     out->text[0] = 0;
     if (make_part(g, sym, 0, &p)) {
-        strncpy(out->text, p.text, TALK_LINE_MAX - 1);
-        out->text[TALK_LINE_MAX - 1] = 0;
+        copy_cap(out->text, p.text, TALK_LINE_MAX);
         if (tr) {
             memset(tr, 0, sizeof *tr);
             tr->alt[0] = (uint16_t)p.alt;
@@ -1208,8 +1214,7 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
     join(line, (int)sizeof line, parts, use, 5, tr, lower);
     excl_budget(line, g->pers[PERS_EXPRESSION]);
     if (!lower) cap_first(line);
-    strncpy(out->text, line, TALK_LINE_MAX - 1);
-    out->text[TALK_LINE_MAX - 1] = 0;
+    copy_cap(out->text, line, TALK_LINE_MAX);
     /* what the line does and is about */
     if (talk_gen_alt_info(parts[1].alt, &ai)) {
         out->act = ai.act;
