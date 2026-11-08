@@ -279,8 +279,9 @@ static void toast_band_run(const char *msg, int w, int h)
         int i, j, x0, x1, bad_box = 0, bad_bg = 0;
         if (!held_a[f]) { g = f; continue; }             /* drawn in full: the band copy is of this frame */
         if (g < 0 || f <= T0) continue;
-        if (!pend_a[f]) {
-            /* no toast: the band is the kept frame's, clean */
+        if (!tw_a[f]) {
+            /* no toast drawn on this tick (one that was pending may draw its last slide-out tick and go): the band
+             * is the kept frame's, clean */
             CHECK_MSG(memcmp(band_a[f], band_c[g], (size_t)(bh * nat_w)) == 0,
                       "%dx%d '%.12s': held tick %d without a toast: the band is not the clean one of tick %d", w, h,
                       msg, f, g);

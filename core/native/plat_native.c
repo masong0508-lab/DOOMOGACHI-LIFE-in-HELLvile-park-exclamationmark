@@ -97,6 +97,8 @@ int plat_strip(int op, int y, int h)
     }
     if (op != PLAT_STRIP_RESTORE || y != strip_y || h != strip_h || nat_w != strip_w) return 0;
     memcpy(&nat_fb[y * nat_w], strip_fb, (size_t)(h * nat_w));
+    /* the held picture's band is clean from now on, as the GBA's two pages are once each was put back */
+    if (held && held_n == nat_w * nat_h) memcpy(&held_fb[y * nat_w], strip_fb, (size_t)(h * nat_w));
     return 1;
 }
 int nat_strip_band(int *y, int *h)

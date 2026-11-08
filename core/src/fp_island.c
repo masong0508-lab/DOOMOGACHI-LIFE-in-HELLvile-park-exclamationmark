@@ -658,9 +658,11 @@ static int hub_band_back(void)
     if (plat_draw_skipped()) return 1;           /* nothing is drawn on a catch-up tick */
     ui_toast_band(&by, &bh);
     if (!plat_strip(PLAT_STRIP_RESTORE, by, bh)) return 0;
-    I.hub_toast = 0;                             /* the toast is not part of the kept picture any more */
-    if (toast_shown()) I.strip_dirty = 2;        /* it draws now: this page, then the other one, need the band back */
+    /* a toast draws now, or the kept picture had one on both pages (a steady one that just went): this page, then
+     * the other one, need the band back */
+    if (toast_shown() || I.hub_toast) I.strip_dirty = 2;
     else if (I.strip_dirty) I.strip_dirty--;
+    I.hub_toast = 0;                             /* the toast is not part of the kept picture any more */
     return 1;
 }
 
@@ -1286,7 +1288,9 @@ static void hub_frame_done(void)
          * tip card are drawn after the scene (game.c) */
         ui_toast_band(&by, &bh);
         I.strip = (uint8_t)plat_strip(PLAT_STRIP_SAVE, by, bh);
-        I.strip_dirty = 0;
+        /* a toast that moves is drawn on this frame after the scene (its last slide-out tick included): it is on the
+         * kept picture, both pages once held, until the band is put back on each */
+        I.strip_dirty = (uint8_t)(I.strip && toast_shown() && !I.hub_toast ? 2 : 0);
         I.hub_full = (uint8_t)(!hub_hold_off && !I.dirty && (!toast_shown() || I.hub_toast || I.strip) &&
                                (!tip_active() || I.hub_tip) && !ui_dialog_active() && !fp_fx_any() &&
                                !fp_money_flash());
