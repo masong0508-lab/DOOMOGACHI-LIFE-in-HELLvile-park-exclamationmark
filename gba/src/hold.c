@@ -126,7 +126,7 @@ int plat_hold_frame(int on)
 #define STRIP_ROWS_A 10
 DOOMO_STATIC_ASSERT(STRIP_ROWS_A * SCREEN_W <= 2560 && (PLAT_STRIP_MAX_H - STRIP_ROWS_A) * SCREEN_W <= 2560,
                     strip_fits_the_gaps);
-static int8_t strip_y = -1, strip_h;
+static int16_t strip_y = -1, strip_h;          /* (int16: a band can start below row 127) */
 
 int plat_strip(int op, int y, int h)
 {
@@ -143,8 +143,8 @@ int plat_strip(int op, int y, int h)
         r3d_cmrow[0] = 0;                              /* the raycaster's rows are gone */
         dma3_copy32(STRIP_GAP_A, row, (uint32_t)(a * SCREEN_W / 4));
         if (h > a) dma3_copy32(STRIP_GAP_B, row + a * SCREEN_W, (uint32_t)((h - a) * SCREEN_W / 4));
-        strip_y = (int8_t)y;
-        strip_h = (int8_t)h;
+        strip_y = (int16_t)y;
+        strip_h = (int16_t)h;
     } else {
         dma3_copy32(row, STRIP_GAP_A, (uint32_t)(a * SCREEN_W / 4));
         if (h > a) dma3_copy32(row + a * SCREEN_W, STRIP_GAP_B, (uint32_t)((h - a) * SCREEN_W / 4));
