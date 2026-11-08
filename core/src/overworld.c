@@ -1025,7 +1025,7 @@ static void build_billboards(void)
         cy = ow.py / OW_CELL;
         z = ow_floor_h(cx, cy) * DOOMO_HEIGHT_STEP;
         if (!ow.moving && ((t / 20) & 1)) z += 2;        /* breathing */
-        bodyspr_lazy(ow.map == MAPID_HAHALAND_INVADED ? 2 : 0);     /* V11: slice a new facing's render; never skip the player */
+        bodyspr_lazy(2);        /* V11, SP2 (every map): slice a new facing's render; never skip the player */
         add_bb(ow.px, ow.py, z, bodyspr_image(playas_avatar(), ow.dir, f), BB_SHADOW, 1);
         bodyspr_lazy(0);
     }

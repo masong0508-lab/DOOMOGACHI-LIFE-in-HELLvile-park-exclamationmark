@@ -532,6 +532,19 @@ static void dlg_update(void)
 }
 
 /* ---- drawing ------------------------------------------------------------ */
+/* SP2 (X1 render-ahead): the faces the next ticks will ask for, soonest first, drawn in the idle time after
+ * frames: this speaker's talking face, then the next line's face and its talking face (one request is queued at
+ * a time; a cached one is skipped) */
+static void dlg_prefetch(const DlgEntry *e, int talking)
+{
+    if (dlg_res(e->speaker)->status == RES_POSSESSED) return;          /* its face is EXPR_POSSESSED */
+    if (talking && e->expr != EXPR_TALK && !portrait_prefetch(e->speaker, EXPR_TALK)) return;
+    if (dq_n > 1 && has_portrait(dq[1].speaker)) {
+        if (!portrait_prefetch(dq[1].speaker, dq[1].expr)) return;
+        (void)portrait_prefetch(dq[1].speaker, EXPR_TALK);
+    }
+}
+
 /* The portrait: ui_portrait's frame and image, the image squashed (Q8,
  * anchored at its feet) through plat_image_xform while it squashes. */
 static void dlg_portrait(int x, int y, int id, int expr, int sx, int sy, const DoomoImage *pimg)
@@ -539,7 +552,9 @@ static void dlg_portrait(int x, int y, int id, int expr, int sx, int sy, const D
     const DoomoImage *img;
     ui_portrait_img(x, y, pimg, 1);           /* (asked for once a frame: dlg_draw) */
     if (sx == 256 && sy == 256) return;
+    portrait_hold(3);
     img = portrait_image(id, expr);
+    portrait_hold(0);
     if (!img) return;
     plat_rect(x + 3, y + 3, img->w, img->h, ui_style(WIN_MINT)->fill_hi);
     plat_image_xform(x + 3 + img->w / 2, y + 3 + img->h, img, sx, sy, 0, 0);
@@ -685,8 +700,13 @@ static void dlg_draw(void)
          * uid changes with its pixels (types.h). It is asked for once a
          * drawn frame, here, and drawn from this pointer, exactly as often
          * as ui_portrait() asked before (the portrait cache renders and
-         * pumps its sliced jobs on the call) */
+         * pumps its sliced jobs on the call). SP2: a face not drawn yet is
+         * drawn over a few ticks (hold 3: an empty frame meanwhile, or the
+         * speaker's last face), and the coming faces are drawn ahead */
+        portrait_hold(3);
         pimg = portrait_image(e->speaker, expr);
+        portrait_hold(0);
+        dlg_prefetch(e, talking);
     }
     key = 0;
     if (use) {

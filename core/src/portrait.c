@@ -135,65 +135,92 @@ static void weapon_layer(PCtx *c, int front)
         pg_draw_weapon(c, g_wframe, g_wview, g_wanim, g_whx, g_why, front);
 }
 
-static void finish(PCtx *c)
-{
-    pc_finish_lines();
-    ph_halo(c);
-    pf_status(c);
-    pf_expression_fx(c);
-    pf_aura_front(c);
-    if (g_wframe >= 0 && g_wanim == 4) pg_draw_flash(g_wanim);
-    if (c->ghost) {
-        pf_recolor_ghost();
-    } else if (c->dead) {
-        int i, n = pcv.w * pcv.h;
-        for (i = 0; i < n; i++) if (pcv.px[i]) pcv.px[i] = doomo_tintmap[TINT_NIGHT][pcv.px[i]];
-    }
-}
-
 /* The layers in painter's order, in DL_STEPS groups of roughly equal cost
  * (about 0.1-0.2M cycles each on the GBA) so the cache can spread a
  * re-render over several ticks. The groups: 0 back, 1 body, 2a head base, 2b face, 3 neck and
  * front hair, 4 hat / horns / accessories / front, 5 finish (P1 split the old group 2 in two,
- * SPEC 4.4; the draw order is unchanged, so every image is too). */
+ * SPEC 4.4; the draw order is unchanged, so every image is too).
+ * SP2 (X1): every group is a run of pieces (DL_PIECES in all) and a sliced cache job runs one piece per slice, so
+ * no slice is more than ~0.1M cycles on the GBA (a whole group was up to 0.45M): the back in three, the body in
+ * three (pb_draw_body_part), the head base and the face in two each, the neck and front hair in three, the hat and
+ * front in three, and the finishing pass in nine (pc_finish_lines' scan, its marked rows in six bands top to
+ * bottom, the rest of finish in two). The pieces of a group are the calls the group made, in the same order, so a
+ * whole render (draw_layers) is the same calls as before. */
 #define DL_STEPS 7
+#define DL_PIECES 25
+#define DL_FIN    16           /* the first finishing piece */
+#define DL_BANDS  6            /* bands of pc_finish_rows */
+static const uint8_t group_first[DL_STEPS + 1] = { 0, 3, 6, 8, 10, 13, DL_FIN, DL_PIECES };
+/* the slices of a sliced cache job: the set-up, then the pieces in order */
+enum { SL_SETUP = 0, SL_N = 1 + DL_PIECES };
 
-static void draw_step(PCtx *c, int step)
+/* the finishing pass: piece k = DL_FIN + f; f 0 the transition scan, 1..DL_BANDS the marked rows, then the halo
+ * and status marks, then the expression effects, the front aura and the ghost / dead recolour */
+static void finish_piece(PCtx *c, int f)
 {
-    switch (step) {
+    if (f == 0) {
+        pc_finish_scan();
+    } else if (f <= DL_BANDS) {
+        int h = pcv.h;
+        pc_finish_rows(h * (f - 1) / DL_BANDS, h * f / DL_BANDS);
+    } else if (f == DL_BANDS + 1) {
+        ph_halo(c);
+        pf_status(c);
+    } else {
+        pf_expression_fx(c);
+        pf_aura_front(c);
+        if (g_wframe >= 0 && g_wanim == 4) pg_draw_flash(g_wanim);
+        if (c->ghost) {
+            pf_recolor_ghost();
+        } else if (c->dead) {
+            int i, n = pcv.w * pcv.h;
+            for (i = 0; i < n; i++) if (pcv.px[i]) pcv.px[i] = doomo_tintmap[TINT_NIGHT][pcv.px[i]];
+        }
+    }
+}
+
+static void draw_piece(PCtx *c, int k)
+{
+    switch (k) {
+    /* group 0: the back */
     case 0:
         pb_set_neck(c->h.cy + PCT(c->h.ry, 86));
         pf_aura_back(c);
         weapon_layer(c, 0);
-        pb_draw_behind(c);
+        break;
+    case 1: pb_draw_behind(c); break;
+    case 2:
         ph_hair_back(c);
         ph_ears(c, 0);
         break;
-    case 1:
-        pb_draw_body(c);
-        break;
-    case 2:                     /* 2a: the head silhouette (+ fur tufts) */
-        ph_head_base(c);
-        break;
-    case 3:                     /* 2b: species marks, eyes, brows, nose, mouth */
-        ph_face(c);
-        break;
-    case 4:
-        pb_draw_neck(c);
-        ph_hair_front(c);
+    /* group 1: the body */
+    case 3: case 4: case 5: pb_draw_body_part(c, k - 3); break;
+    /* group 2a: the head silhouette (+ fur tufts) */
+    case 6: case 7: ph_head_base_part(c, k - 6); break;
+    /* group 2b: species marks, eyes, brows, nose, mouth */
+    case 8: case 9: ph_face_part(c, k - 8); break;
+    /* group 3 */
+    case 10: pb_draw_neck(c); break;
+    case 11: ph_hair_front(c); break;
+    case 12:
         ph_face_over(c);
         ph_ears(c, 1);
         break;
-    case 5:
+    /* group 4 */
+    case 13:
         ph_hat(c);
         ph_species_over(c);
+        break;
+    case 14:
         ph_horns(c);
         ph_face_acc(c);
+        break;
+    case 15:
         pb_draw_front(c);
         weapon_layer(c, 1);
         break;
     default:
-        finish(c);
+        finish_piece(c, k - DL_FIN);
         break;
     }
 }
@@ -203,59 +230,78 @@ static void draw_step(PCtx *c, int step)
  * head, face and hair; everything else (body, outfit, other hats, hair,
  * ears, horns, face accessories, weapons, effects) is the engine's. The
  * engine draws a look without its turkey-replaced parts (look copies). */
-static void turkey_step(PCtx *c, int step)
+static void turkey_piece(PCtx *c, int k)
 {
     const DoomoLook *own = c->l;
     DoomoLook t = *own;
     int tufts = ptk_tufts(own), engine_hair = own->hair_style != HAIR_BALD && !tufts;
     if (t.tail == TAIL_FEATHER_FAN) t.tail = TAIL_NONE;     /* the turkey fan instead */
-    switch (step) {
+    switch (k) {
     case 0:
         ptk_place(c);
         pf_aura_back(c);
         weapon_layer(c, 0);
         if (c->byaw < 3) ptk_tail_fan(c);
+        break;
+    case 1:
         ptk_coat_tails(c);
         c->l = &t;
         pb_draw_behind(c);
         c->l = own;
+        break;
+    case 2:
         if (engine_hair) ph_hair_back(c);
         if (own->ears != EARS_NONE) ph_ears(c, 0);
         break;
-    case 1:
-        pb_draw_body(c);
+    case 3: case 4: case 5: pb_draw_body_part(c, k - 3); break;
+    case 6: case 7: case 8: case 9:   /* the turkey head in four (2b: its face is drawn after the neck, group 3) */
+        ptk_head_part(c, k - 6);
         break;
-    case 2:
-        ptk_head(c);
-        break;
-    case 3:                     /* 2b: the turkey face is drawn after the neck (group 4) */
-        break;
-    case 4:
+    case 10:
         if (t.top == TOP_SUIT) t.top = TOP_NONE;            /* lapels instead of the collar */
         if (t.accessory == ACC_BOWTIE) t.accessory = ACC_NONE;  /* the floppy bow */
         c->l = &t;
         pb_draw_neck(c);
         c->l = own;
-        ptk_face(c);
+        break;
+    case 11: ptk_face(c); break;
+    case 12:
         if (engine_hair) ph_hair_front(c);
         if (own->ears != EARS_NONE) ph_ears(c, 1);
         break;
-    case 5:
+    case 13:
         if (ptk_hatter(own)) ptk_hat(c);
         else ph_hat(c);
         ptk_brows(c);
+        break;
+    case 14:
         ph_horns(c);
         ph_face_acc(c);
         if (c->byaw >= 3) ptk_tail_fan(c);
+        break;
+    case 15:
         c->l = &t;
         pb_draw_front(c);
         c->l = own;
         weapon_layer(c, 1);
         break;
     default:
-        finish(c);
+        finish_piece(c, k - DL_FIN);
         break;
     }
+}
+
+static void draw_any_piece(PCtx *c, int k)
+{
+    if (c->l->species == SPECIES_TURKEY) turkey_piece(c, k);
+    else draw_piece(c, k);
+}
+
+/* the whole finishing pass (the fighter's roll) */
+static void finish(PCtx *c)
+{
+    int f;
+    for (f = 0; f < DL_PIECES - DL_FIN; f++) finish_piece(c, f);
 }
 
 /* The head alone (P3's head impostor): the head layers of groups 0, 2a, 2b, 3 and 4 in the same
@@ -276,17 +322,11 @@ void ph_head_only(PCtx *c, int lod)
     ph_face_acc(c);
 }
 
-/* one layer group of any look (the sliced cache job and draw_layers) */
-static void draw_group(PCtx *c, int step)
-{
-    if (c->l->species == SPECIES_TURKEY) turkey_step(c, step);
-    else draw_step(c, step);
-}
-
+/* every layer group of any look, piece by piece (a whole render) */
 static void draw_layers(PCtx *c)
 {
-    int s;
-    for (s = 0; s < DL_STEPS; s++) draw_group(c, s);
+    int k;
+    for (k = 0; k < group_first[DL_STEPS]; k++) draw_any_piece(c, k);
 }
 
 static void float_shadow(PCtx *c, int cx, int y, int w)
@@ -526,27 +566,38 @@ static void render_fighter_ctx(PCtx *c, int view, int anim, int wframe, uint8_t 
                                            has no RAM to spare either) */
 #define PC_FREE    0xFF
 /* Re-renders that only change the animation phase (blink, breathing, aura
- * frames, mouth flaps) run as a sliced job: PC_STEPS of the DL_STEPS layer
- * groups per tick. A GBA bust costs ~0.75M cycles (~1.4 logic ticks) in
- * one go, one group 0.1-0.2M, so an animating portrait never stalls a
- * frame. Meanwhile the phase shown last stays on screen, and the job looks
- * PC_AHEAD ticks into the future so the next phase is usually ready when
- * it is due. Brand-new content (a look / expression / status that is not
- * cached in any phase) is drawn at once. Aura / effect frames change every
+ * frames, mouth flaps) run as a sliced job: SL_N slices (the set-up and the
+ * DL_PIECES pieces of the layer groups: SP2) of which PC_SLICES run per tick
+ * inside the frame (the platform is asked for each: plat_portrait_slice_ok),
+ * plus as many as the platform fits into the idle time after a frame
+ * (portrait_idle_next / portrait_idle_run). A GBA bust costs
+ * ~0.75M cycles (~1.4 logic ticks) in one go, one slice ~0.1M, so an
+ * animating portrait never stalls a frame. Meanwhile the phase shown last stays
+ * on screen, and the job looks PC_AHEAD ticks into the future so the next phase
+ * is usually ready when it is due. On the GBA and the PS1 (PC_STANDIN) brand-new
+ * content (a new expression or status of a look that is cached in some other
+ * one) is drawn by a job too, the image shown last standing in for at most
+ * PC_STANDIN ticks (SP2, X1/P-D1); content with nothing to stand in is drawn at
+ * once, as everywhere on native. Aura / effect frames change every
  * 2^PC_FXSHIFT ticks. */
 #if defined(DOOMO_PLATFORM_GBA)
-#define PC_STEPS   1
+#define PC_SLICES  5
 #define PC_FXSHIFT 4
+#define PC_STANDIN 4
 #elif defined(__mips__)
-#define PC_STEPS   3
+#define PC_SLICES  11
 #define PC_FXSHIFT 3
+#define PC_STANDIN 4
 #else
-#define PC_STEPS   DL_STEPS
+#define PC_SLICES  SL_N
 #define PC_FXSHIFT 3
+#define PC_STANDIN 0
 #endif
 #define PC_AHEAD   9           /* ticks of look-ahead for sliced jobs       */
 #define PC_STALE   4           /* a job nobody asked about for this long    */
                                /* may be dropped for another one            */
+#define PC_STALE_SI 12         /* ... a stand-in's job (SP2: a face that flaps between two expressions comes back) */
+#define PC_PREFETCH 45         /* ticks a portrait_prefetch request lives   */
 
 enum { CK_NONE, CK_PORTRAIT, CK_BODY, CK_FIGURE, CK_FIGHTER, CK_FOREIGN };
 
@@ -579,7 +630,9 @@ static uint32_t steps_tick;
 static int      steps_used;
 
 static uint32_t now(void) { return fake_on ? fake_tick : doomo_frame_count(); }
-static int steps_max(void) { return steps_cfg > 0 ? steps_cfg : PC_STEPS; }
+/* slices a tick may run inside the frame; a test's portrait_cache_clock(tick, steps) counts layer groups (the old
+ * unit) and gets the same share of a job */
+static int steps_max(void) { return steps_cfg > 0 ? (steps_cfg * SL_N + DL_STEPS - 1) / DL_STEPS : PC_SLICES; }
 
 static int steps_left(void)
 {
@@ -592,7 +645,14 @@ static int steps_left(void)
 typedef struct Job {
     uint8_t  on, step, kind;
     uint8_t  bdir, bframe;      /* CK_BODY job (V11): the facing and frame being drawn */
-    uint32_t t0;                /* CK_BODY job: the tick it started */
+    uint8_t  urgent;            /* SP2: new content behind a stand-in: done within PC_STANDIN ticks */
+    uint8_t  vac;               /* SP2: an empty slot's "?" silhouette (vacant()) when done */
+    uint8_t  pf;                /* SP2: a prefetch (queued again if it is aborted) */
+    uint8_t  si;                /* SP2: draws new content behind a stand-in (or nothing: hold 3) */
+    uint32_t t0;                /* the tick it started */
+    uint32_t last;              /* SP2: the tick of its last slice (the platform's patience) */
+    uint32_t fq_tick;           /* SP2: the tick fq was worked out for */
+    uint8_t  fq;                /* SP2: slices an urgent job still has to run this tick */
     uint8_t  restarts;          /* times other renders forced a restart      */
     int8_t   e;                 /* cache entry being filled (busy, hidden)   */
     int      status, expr;
@@ -604,6 +664,26 @@ typedef struct Job {
     PCtx     c;
 } Job;
 static Job job;
+static int job_stale(void) { return job.si ? PC_STALE_SI : PC_STALE; }
+
+/* SP2: the content of the last few finished jobs (kind, resident, look and the key without its phase, hashed).
+ * New content that was drawn a moment ago and has fallen out of the pool again (a talking face that flaps between
+ * two expressions, each in several animation phases, needs more images than the pool keeps) is a re-render, not a
+ * first appearance: its job stands in without the PC_STANDIN deadline (idle time and the platform's room only). */
+#define PC_RECENT 8
+static uint32_t recent[PC_RECENT];
+static uint8_t recent_at;
+static uint32_t content_hash(int kind, int rid, uint32_t look, uint32_t base)
+{
+    uint32_t h = (uint32_t)kind * 0x9E3779B1u ^ (uint32_t)(rid + 3) * 0x85EBCA77u ^ look ^ (base & 0xFFFFFF00u) * 31u;
+    return h ? h : 1;
+}
+static int recent_has(uint32_t h)
+{
+    int i;
+    for (i = 0; i < PC_RECENT; i++) if (recent[i] == h) return 1;
+    return 0;
+}
 
 static void cache_drop(int e)
 {
@@ -614,11 +694,13 @@ static void cache_drop(int e)
     ent[e].busy = 0;
 }
 
+static uint8_t pf_requeue;     /* SP2: an aborted prefetch is queued again (pf, below) */
 static void job_abort(void)
 {
     if (!job.on) return;
     cache_drop(job.e);
     job.on = 0;
+    if (job.pf) pf_requeue = 1;
 }
 
 static void cache_init(void)
@@ -631,6 +713,8 @@ static void cache_init(void)
         ent[i].busy = 0;
     }
     job.on = 0;
+    pf_requeue = 0;
+    memset(recent, 0, sizeof recent);
     cache_ready = 1;
 }
 
@@ -808,7 +892,7 @@ static uint32_t phase_of(int kind, int rid, int expr, int status, const DoomoLoo
     if (status == RES_EMPTY) return 0;
     /* portrait_hold() (title figures): one still pose per expression, so
      * nothing re-renders between expression changes */
-    if (hold_on) return 0;          /* the "?" stays still */
+    if (hold_on == 1 || hold_on == 2) return 0;     /* the "?" stays still */
     p->blink = ((t + off) % 110u) >= 106u;
     p->breath = (int)(((t + off) >> 5) & 1u);
     p->twitch = ((t + off * 3u) % 270u) >= 262u;
@@ -858,104 +942,122 @@ static int job_for(int kind, int rid, uint32_t look, uint32_t key, uint32_t mask
 }
 
 static int job_hold;   /* job_hold: the job is a portrait_hold one */
+/* SP2: ticks a stand-in may show before its job is forced to finish (0: no stand-ins, new content is drawn at
+ * once); portrait_cache_standin() sets it in tests. A portrait_hold() job is due after PC_STANDIN_HOLD. */
+#define PC_STANDIN_HOLD 4
+static uint8_t si_ticks = PC_STANDIN;
 
-static void job_start(int kind, int rid, uint32_t key, uint32_t look, const DoomoLook *l,
-                      int status, int expr, const Phase *p)
+/* claim a hidden entry and set the job up (step SL_SETUP next); soft: a look-ahead / prefetch claim */
+static int job_begin(int kind, int rid, uint32_t key, uint32_t look, const DoomoLook *l, int status, int expr,
+                     const Phase *p, int soft)
 {
-    CacheEnt *e;
-    if (job.on) {
-        if (now() - job.want <= PC_STALE) return;   /* still wanted: wait */
-        job_abort();
-    }
-    job_hold = 0;
-    e = cache_alloc(kind, rid, key, look, kind == CK_FIGURE ? FIGURE_W : PORTRAIT_W,
-                    kind == CK_FIGURE ? FIGURE_H : PORTRAIT_H, 1);
-    if (!e) return;
+    CacheEnt *e = cache_alloc(kind, rid, key, look, kind == CK_FIGURE ? FIGURE_W : PORTRAIT_W,
+                              kind == CK_FIGURE ? FIGURE_H : PORTRAIT_H, soft);
+    if (!e) return 0;
     e->busy = 1;
+    job_hold = 0;
     job.on = 1;
-    job.step = 0;
+    job.step = SL_SETUP;
     job.restarts = 0;
+    job.urgent = 0;
+    job.vac = 0;
+    job.pf = 0;
+    job.si = 0;
+    job.fq_tick = now() - 1;
     job.kind = (uint8_t)kind;
     job.e = (int8_t)(e - ent);
-    job.want = now();
+    job.want = job.t0 = job.last = now();
     job.status = status;
     job.expr = expr;
     job.p = *p;
     job.L = *l;
     sanitize(&job.L);
     look_resolve_mask(NULL, rid, LV_ALL, &job.D);
+    return 1;
+}
+
+static void job_start(int kind, int rid, uint32_t key, uint32_t look, const DoomoLook *l,
+                      int status, int expr, const Phase *p)
+{
+    if (job.on) {
+        if ((int32_t)(now() - job.want) <= job_stale()) return;   /* still wanted: wait */
+        job_abort();
+    }
+    job_begin(kind, rid, key, look, l, status, expr, p, 1);
 }
 
 /* drop a job nobody asks about any more (frees its blocks for chibis) */
 static void job_reap(void)
 {
-    if (job.on && now() - job.want > PC_STALE) job_abort();
+    if (job.on && (int32_t)(now() - job.want) > job_stale()) job_abort();
 }
 
-/* run the job's steps this tick still allows; restart it from the top if
- * anything else drew on the shared canvas since its last step. A job that
- * keeps getting interrupted finishes in one go on its third try (one
- * whole render in a tick, as without slicing), so it always completes. */
-#if defined(DOOMO_PLATFORM_GBA)
-extern uint32_t gba_work_last;      /* cycles the last drawn frame took (gba/src/main.c) */
-/* V11: a chibi body job. Step 0 is the set-up alone, steps 1..DL_STEPS one layer group each, so no tick
- * carries more than about 3 ms; and a step only runs on a frame with room (the last one took under
- * BODY_SLACK), or once the job has waited BODY_PATIENCE ticks. A job another render clobbers restarts. */
-#define BODY_SLACK    ((uint32_t)28 * 16780u)
-#define BODY_PATIENCE 0u
-static void job_pump_body(void)
+/* SP2: the platform's say on slices inside a frame (weak default: as many as PC_SLICES allows). `cls` is
+ * slice_class() of the slice, `waited` the ticks since the job's last slice, or -1 for a slice that runs anyway
+ * (a job behind a stand-in that is due, a job's third try, an idle-time slice): the answer is ignored then, the
+ * call only marks the start of the slice for plat_portrait_slice_done, which may time it. The GBA answers from
+ * the last frame's work and the slice's measured cost (gba/src/pslice.c). */
+__attribute__((weak)) int plat_portrait_slice_ok(int cls, int waited)
 {
-    while (job.on && job.kind == CK_BODY && (steps_left() > 0 || job.restarts >= 2)) {
-        CacheEnt *e = &ent[job.e];
-        if (job.restarts < 2 && gba_work_last > BODY_SLACK && now() - job.t0 < BODY_PATIENCE) return;
-        if (job.step && pcv.gen != job.gen) {
-            job.step = 0;
-            if (job.restarts < 255) job.restarts++;
-        }
-        if (job.step == 0) {
-            pctx_init(&job.c, &job.L, job.status, job.expr, job.bframe * 8);
-            job.c.d = &job.D;
-            body_setup(&job.c, job.bdir, job.bframe, (uint8_t *)e->img.pix);
-            job.step = 1;
-        } else {
-            draw_group(&job.c, job.step - 1);
-            if (job.step >= DL_STEPS) {
-                if ((job.bdir & 3) == 2) pc_flipx();
-                e->busy = 0;
-                e->stamp = cache_stamp ? cache_stamp - 1 : 0;
-                e->tick = now();
-                job.on = 0;
-            } else {
-                job.step++;
-            }
-        }
-        job.gen = pcv.gen;
-        steps_used++;
-    }
+    (void)cls; (void)waited;
+    return 1;
 }
-#endif
+__attribute__((weak)) void plat_portrait_slice_done(int cls) { (void)cls; }
 
-/* one layer group of the (portrait / figure) job */
-static void job_step(void)
+static int slice_class(void)
+{
+    int k = job.kind == CK_FIGURE ? 1 : job.kind == CK_BODY ? 2 : 0;
+    int st = (job.step && pcv.gen != job.gen) ? SL_SETUP : job.step;   /* a clobbered canvas restarts */
+    return k * SL_N + st;
+}
+
+/* run the job's next slice; restart it from the top if anything else drew on the shared canvas since its last
+ * slice */
+static void job_slice(void)
 {
     CacheEnt *e = &ent[job.e];
+    PCtx *c = &job.c;
+    int st;
     if (job.step && pcv.gen != job.gen) {
-        job.step = 0;
+        job.step = SL_SETUP;
         if (job.restarts < 255) job.restarts++;
+        if (job.restarts == 2 && !job.urgent) {
+            /* clobbered twice: it now has PC_STANDIN_HOLD ticks to finish (forced slices) */
+            job.urgent = 1;
+            job.t0 = now();
+            job.fq_tick = now() - 1;
+        }
     }
-    if (job.step == 0) {
-        pctx_init(&job.c, &job.L, job.status, job.expr, 0);
-        job.c.d = &job.D;
-        apply_phase(&job.c, &job.p);
-        if (job.kind == CK_FIGURE) setup_figure(&job.c, (uint8_t *)e->img.pix);
-        else setup_portrait(&job.c, (uint8_t *)e->img.pix);
+    st = job.step;
+    if (st == SL_SETUP) {
+        if (job.kind == CK_BODY) {
+            pctx_init(c, &job.L, job.status, job.expr, job.bframe * 8);
+            c->d = &job.D;
+            body_setup(c, job.bdir, job.bframe, (uint8_t *)e->img.pix);
+        } else {
+            pctx_init(c, &job.L, job.status, job.expr, 0);
+            c->d = &job.D;
+            apply_phase(c, &job.p);
+            if (job.kind == CK_FIGURE) setup_figure(c, (uint8_t *)e->img.pix);
+            else setup_portrait(c, (uint8_t *)e->img.pix);
+        }
+    } else {
+        draw_any_piece(c, st - 1);
+        if (st == SL_N - 1) {
+            if (job.kind == CK_BODY && (job.bdir & 3) == 2) pc_flipx();
+            if (job.vac) vacant((uint8_t *)e->img.pix, e->img.w, e->img.h);
+        }
     }
-    draw_group(&job.c, job.step);
     job.gen = pcv.gen;
+    job.last = now();
     steps_used++;
-    if (++job.step >= DL_STEPS) {
+    if (++job.step >= SL_N) {
         /* ready; a hair older than what is on screen, so it is not
          * picked as the stand-in before its phase is due */
+        if (job.kind != CK_BODY) {
+            recent[recent_at] = content_hash(job.kind, e->rid, e->look, e->key);
+            recent_at = (uint8_t)((recent_at + 1) % PC_RECENT);
+        }
         e->busy = 0;
         e->stamp = cache_stamp ? cache_stamp - 1 : 0;
         e->tick = now();
@@ -963,26 +1065,79 @@ static void job_step(void)
     }
 }
 
+/* Run the slices this tick still allows. A job that keeps getting interrupted gets a deadline on its third try (it
+ * is urgent from then on) and finishes in one go on its sixth (one whole render in a tick, as without slicing), so
+ * it always completes. A job behind a stand-in (urgent) runs
+ * at least its share of what is left so that it is done PC_STANDIN ticks after it started, whatever the platform
+ * says; the rest of the budget asks the platform. */
 static void job_pump(void)
 {
-#if defined(DOOMO_PLATFORM_GBA)
-    if (job.on && job.kind == CK_BODY) { job_pump_body(); return; }
-#endif
-    while (job.on && (steps_left() > 0 || job.restarts >= 2)) job_step();
+    if (job.on && job.urgent && job.fq_tick != now()) {
+        /* its share of this tick, once a tick however often it is asked for (idle-time slices shrink it) */
+        int left = SL_N - job.step, ticks = (int)(job.t0 + (si_ticks ? si_ticks : PC_STANDIN_HOLD) - now());
+        job.fq_tick = now();
+        job.fq = (uint8_t)(ticks <= 0 ? left : (left + ticks - 1) / ticks);
+    }
+    while (job.on) {
+        int cls = slice_class(), force = job.restarts >= 5 || (job.urgent && job.fq > 0);
+        if (force && job.fq) job.fq--;
+        else if (!force && steps_left() <= 0) break;
+        if (!plat_portrait_slice_ok(cls, force ? -1 : (int)(now() - job.last)) && !force) break;
+        job_slice();
+        plat_portrait_slice_done(cls);
+    }
 }
 
 #if defined(DOOMO_PLATFORM_GBA)
 extern uint32_t gba_work_now(void);   /* cycles of the frame's work so far (gba/src/main.c) */
 #endif
-/* CR9 (portrait.h): more steps of a portrait_hold() job this tick, while the frame has room */
+/* CR9 (portrait.h): more slices of a portrait_hold() job this tick, while the frame has room */
 void portrait_pump(int ms)
 {
 #if defined(DOOMO_PLATFORM_GBA)
     uint32_t limit = (uint32_t)ms * 16780u;
-    while (job.on && job_hold && job.kind != CK_BODY && gba_work_now() < limit) job_step();
+    while (job.on && job_hold && job.kind != CK_BODY && gba_work_now() < limit) {
+        int cls = slice_class();
+        (void)plat_portrait_slice_ok(cls, -1);
+        job_slice();
+        plat_portrait_slice_done(cls);
+    }
 #else
     (void)ms;
 #endif
+}
+
+/* ---- SP2: idle time and prefetch ---------------------------------------------------------------------- */
+/* One render-ahead request (portrait_prefetch / figure_prefetch): drawn in the idle time after frames (or in
+ * slices the platform lets into a frame) once the job slot is free, so it is cached before it is asked for. */
+static struct {
+    uint8_t  on, kind, still;   /* still: asked under portrait_hold() (one still pose, phase 0) */
+    int8_t   expr, status;
+    int16_t  rid;
+    uint32_t until;
+    DoomoLook L;               /* a figure's look (prefetch of a resident reads theirs at start) */
+} pf;
+
+static const DoomoResident *res_of(int rid, int *status);
+static int pf_start(void);
+
+DOOMO_STATIC_ASSERT(3 * SL_N == PORTRAIT_SLICE_CLASSES, slice_classes_match_portrait_h);
+
+int portrait_idle_next(void)
+{
+    if (!cache_ready) return -1;
+    if (!job.on && !pf_start()) return -1;
+    return slice_class();
+}
+
+void portrait_idle_run(void)
+{
+    int cls;
+    if (!cache_ready || !job.on) return;
+    cls = slice_class();
+    (void)plat_portrait_slice_ok(cls, -1);
+    job_slice();
+    plat_portrait_slice_done(cls);
 }
 
 /* portrait_image / figure_image: the phase due now; while a sliced job
@@ -1018,6 +1173,35 @@ uint32_t portrait_hitcheck_count(void) { return 0; }
 uint32_t portrait_hitcheck_fails(void) { return 0; }
 #endif
 
+/* SP2: new content (look, expression or status) of something with no exact image: draw it as an urgent job and
+ * show a stand-in meanwhile (an image of the same look: the same status first; any of its expressions). Returns
+ * the image to show, or NULL when there is nothing to stand in (the caller draws at once). */
+static CacheEnt *standin(int kind, int rid, uint32_t key, uint32_t base, uint32_t lh, const DoomoLook *l, int st,
+                         int expr, const Phase *p, int vac)
+{
+    CacheEnt *o = cache_get(kind, rid, base, lh, 0x0000F000u, 0);
+    if (!o) o = cache_get(kind, rid, base, lh, 0, 0);
+    if (!o) return NULL;
+    if (!job_for(kind, rid, lh, base, 0xFFFFFF00u)) {
+        if (job.on && (job.urgent || job_hold || job.si) && (int32_t)(now() - job.want) <= job_stale()) {
+            /* another stand-in's job is under way: this one waits its turn (two at once would double the cost) */
+        } else {
+            job_abort();
+            o->stamp = ++cache_stamp;           /* keep the stand-in out of the claim's reach */
+            o->tick = now();
+            if (job_begin(kind, rid, key, lh, l, st, expr, p, 0)) {
+                job.urgent = !recent_has(content_hash(kind, rid, lh, base));
+                job.si = 1;
+                job.vac = (uint8_t)vac;
+            }
+        }
+    }
+    if (job_for(kind, rid, lh, base, 0xFFFFFF00u)) job.want = now();
+    o = cache_find(kind, rid, base, lh, 0x0000F000u);
+    if (!o) o = cache_find(kind, rid, base, lh, 0);
+    return o;
+}
+
 static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, int status, int expr)
 {
     uint32_t lh = look_hash(l) ^ look_run_hash(rid, 0), t = now(), base, key;
@@ -1030,6 +1214,8 @@ static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, int sta
     base = ((uint32_t)expr << 8) | ((uint32_t)(status & 15) << 12);
     key = base | phase_of(kind, rid, expr, status, l, t, &p);
     if (job_for(kind, rid, lh, base, 0xFFFFFF00u)) job.want = t;
+    if (pf.on && kind == CK_PORTRAIT && pf.kind == kind && pf.rid == rid && pf.expr == expr)
+        pf.on = 0;                                          /* asked for: no longer ahead */
     e = cache_find(kind, rid, key, lh, 0xFFFFFFFFu);
     exact = e != NULL;
     if (!e && cache_get(kind, rid, key, lh, 0xFFFFFF00u, 0)) {
@@ -1039,7 +1225,7 @@ static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, int sta
         e = cache_find(kind, rid, key, lh, 0xFFFFFFFFu);
         if (!e) e = cache_find(kind, rid, key, lh, 0xFFFFFF00u);
     }
-    if (!e && hold_on) {
+    if (!e && (hold_on == 1 || hold_on == 2)) {
         /* portrait_hold(): draw the new expression / look as a sliced job
          * (it starts once the job slot is free) and meanwhile show the
          * image of this look used last, or nothing (hold 2) */
@@ -1048,7 +1234,7 @@ static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, int sta
         if (!job_for(kind, rid, lh, base, 0xFFFFFF00u)) {
             if (job.on && !job_hold) job_abort();    /* a look-ahead can wait */
             job_start(kind, rid, key, lh, l, st, expr, &p);
-            if (job_for(kind, rid, lh, key, 0xFFFFFFFFu)) job_hold = 1;
+            if (job_for(kind, rid, lh, key, 0xFFFFFFFFu)) { job_hold = 1; job.urgent = 1; }
         }
         if (job_for(kind, rid, lh, base, 0xFFFFFF00u)) job.want = t;
         job_pump();
@@ -1057,6 +1243,31 @@ static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, int sta
         o = cache_find(kind, rid, base, lh, 0x0000F000u);
         if (o) return &o->img;
         if (hold_on == 2) return NULL;
+    }
+    if (!e && (hold_on == 3 || (!hold_on && si_ticks))) {
+        /* SP2: a new expression / status of a look on screen: a few ticks of the old picture instead of a
+         * whole render in this frame; portrait_hold(3) with nothing to stand in: a few ticks of nothing */
+        CacheEnt *o = standin(kind, rid, key, base, lh, l, st, expr, &p, status == RES_EMPTY);
+        if (!o && hold_on == 3) {
+            if (!job_for(kind, rid, lh, base, 0xFFFFFF00u) &&
+                !(job.on && (job.urgent || job_hold || job.si) && (int32_t)(now() - job.want) <= job_stale())) {
+                job_abort();
+                if (job_begin(kind, rid, key, lh, l, st, expr, &p, 0)) {
+                    job.urgent = 1;
+                    job.si = 1;
+                    job.vac = (uint8_t)(status == RES_EMPTY);
+                }
+            }
+            if (job_for(kind, rid, lh, base, 0xFFFFFF00u)) job.want = t;
+            job_pump();
+            e = cache_find(kind, rid, base, lh, 0xFFFFFF00u);
+            return e ? &e->img : NULL;
+        }
+        if (o) {
+            job_pump();
+            e = cache_find(kind, rid, base, lh, 0xFFFFFF00u);
+            return e ? &e->img : &o->img;
+        }
     }
     if (!e) {
         /* new content: draw it now */
@@ -1082,13 +1293,92 @@ static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, int sta
 #endif
     (void)exact;
     /* look ahead: start on the next phase before it is due */
-    if (!job.on && steps_max() < DL_STEPS) {
+    if (!job.on && steps_max() < SL_N) {
         uint32_t k2 = base | phase_of(kind, rid, expr, status, l, t + PC_AHEAD, &q);
         if (k2 != key && !cache_get(kind, rid, k2, lh, 0xFFFFFFFFu, 0))
             job_start(kind, rid, k2, lh, l, st, expr, &q);
     }
     job_pump();
     return &e->img;
+}
+
+/* start the queued prefetch, if it is still wanted and not cached in any phase */
+static int pf_start(void)
+{
+    const DoomoLook *l;
+    DoomoLook al;
+    uint32_t lh, base, key;
+    int status, st;
+    Phase p;
+    if (pf_requeue) { pf_requeue = 0; pf.on = 1; }
+    if (!pf.on || job.on) return 0;
+    if ((int32_t)(now() - pf.until) > 0) { pf.on = 0; return 0; }
+    if (pf.kind == CK_FIGURE) {
+        l = &pf.L;
+        status = pf.status;
+    } else {
+        const DoomoResident *r = res_of(pf.rid, &status);
+        look_for_stage(RES_LOOK_VIEW(r), RES_STAGE(r), &al);
+        l = &al;
+    }
+    lh = look_hash(l) ^ look_run_hash(pf.rid, 0);
+    base = ((uint32_t)pf.expr << 8) | ((uint32_t)(status & 15) << 12);
+    key = base | phase_of(pf.kind, pf.rid, pf.expr, status, l, now() + PC_AHEAD, &p);
+    if (pf.still) { memset(&p, 0, sizeof p); key = base; }
+    pf.on = 0;
+    if (cache_get(pf.kind, pf.rid, key, lh, 0xFFFFFF00u, 0)) return 0;        /* already there */
+    st = status == RES_EMPTY ? RES_ALIVE : status;
+    if (!job_begin(pf.kind, pf.rid, key, lh, l, st, pf.expr, &p, 1)) return 0;
+    job.vac = (uint8_t)(status == RES_EMPTY);
+    job.pf = 1;
+    job.want = pf.until;
+    return 1;
+}
+
+/* is (kind, rid, look, status, expr) cached in some phase, or the job drawing it? */
+static int have_any(int kind, int rid, const DoomoLook *l, int status, int expr)
+{
+    uint32_t lh = look_hash(l) ^ look_run_hash(rid, 0);
+    uint32_t base = ((uint32_t)expr << 8) | ((uint32_t)(status & 15) << 12);
+    return cache_get(kind, rid, base, lh, 0xFFFFFF00u, 0) != NULL || job_for(kind, rid, lh, base, 0xFFFFFF00u);
+}
+
+int portrait_prefetch(int resident_id, int expr)
+{
+    int status;
+    DoomoLook al;
+    const DoomoResident *r;
+    if (expr < 0 || expr >= EXPR_COUNT) return 1;
+    cache_init();
+    r = res_of(resident_id, &status);
+    look_for_stage(RES_LOOK_VIEW(r), RES_STAGE(r), &al);
+    if (have_any(CK_PORTRAIT, resident_id, &al, status, expr)) return 1;
+    pf.on = 1;
+    pf_requeue = 0;
+    pf.kind = CK_PORTRAIT;
+    pf.still = (uint8_t)(hold_on != 0);
+    pf.rid = (int16_t)resident_id;
+    pf.expr = (int8_t)expr;
+    pf.until = now() + PC_PREFETCH;
+    return 0;
+}
+
+int figure_prefetch(const DoomoLook *l, int status, int expr)
+{
+    if (!l || expr < 0 || expr >= EXPR_COUNT) return 1;
+    if (status < 0 || status > 15) status = RES_ALIVE;
+    cache_init();
+    if (have_any(CK_FIGURE, -1, l, status, expr)) return 1;
+    pf.on = 1;
+    pf_requeue = 0;
+    pf.kind = CK_FIGURE;
+    pf.still = (uint8_t)(hold_on != 0);
+    pf.rid = -1;
+    pf.expr = (int8_t)expr;
+    pf.status = (int8_t)status;
+    pf.L = *l;
+    pf.until = now() + PC_PREFETCH;
+    return 0;
 }
 
 const DoomoImage *portrait_image(int resident_id, int expr)
@@ -1175,11 +1465,15 @@ static int body_job_start(int rid, uint32_t key, uint32_t lh, const DoomoLook *L
     e->busy = 1;
     job_hold = 0;
     job.on = 1;
-    job.step = 0;
+    job.step = SL_SETUP;
     job.restarts = 0;
+    job.urgent = 0;
+    job.vac = 0;
+    job.pf = 0;
+    job.si = 0;
     job.kind = CK_BODY;
     job.e = (int8_t)(e - ent);
-    job.want = job.t0 = now();
+    job.want = job.t0 = job.last = now();
     job.status = status == RES_EMPTY ? RES_ALIVE : status;
     job.expr = EXPR_NEUTRAL;
     job.bdir = (uint8_t)dir;
@@ -1271,6 +1565,13 @@ const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
         /* body_lazy == 2 (the player) with nothing cached to show: draw it now, as before */
     }
 #endif
+    if (si_ticks && job.on && job.kind != CK_BODY && job.step > SL_SETUP &&
+        (job.urgent || now() - job.last <= 1)) {
+        /* SP2: a portrait / figure job is half way through the shared canvas: a facing this body has stands in
+         * (a few ticks at most: the job is due or moving) instead of a render that would restart the job */
+        CacheEnt *st = cache_get(CK_BODY, resident_id, key, lh, 0xFFFFF000u, 1);
+        if (st) return &st->img;
+    }
     job_reap();
     e = cache_alloc(CK_BODY, resident_id, key, lh, BODYSPR_W, BODYSPR_H, 0);
     sanitize(&L);
@@ -1365,7 +1666,14 @@ void portrait_cache_reset(void)
     fake_on = 0;
     steps_cfg = 0;
     steps_used = 0;
+    si_ticks = PC_STANDIN;
+    pf.on = 0;
     cache_init();
+}
+
+void portrait_cache_standin(int ticks)
+{
+    si_ticks = (uint8_t)(ticks < 0 ? 0 : ticks > 30 ? 30 : ticks);
 }
 
 void portrait_cache_clock(uint32_t tick, int steps)

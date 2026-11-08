@@ -402,7 +402,9 @@ void ownpc_add_billboards(int32_t vx0, int32_t vy0, int32_t vx1, int32_t vy1)
 {
     int i;
     uint32_t t = doomo_frame_count();
-    bodyspr_lazy(ow.map == MAPID_HAHALAND_INVADED);       /* V11: the invaded map slices its body renders */
+    /* V11: the invaded map slices its body renders (a citizen with no facing cached may wait a few ticks);
+     * SP2: every other map too, a facing the citizen has standing in (one with none is drawn at once) */
+    bodyspr_lazy(ow.map == MAPID_HAHALAND_INVADED ? 1 : 2);
     for (i = 0; i < ow_npc_count; i++) {
         const OwNpc *n = &ow_npcs[i];
         int cx, cy, z, f;

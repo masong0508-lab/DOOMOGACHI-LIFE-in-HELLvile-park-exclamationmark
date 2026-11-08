@@ -1741,23 +1741,31 @@ void pb_draw_behind(PCtx *c)
     if (c->byaw < 3) hood_back(c);
 }
 
-void pb_draw_body(PCtx *c)
+/* SP2: pb_draw_body in three parts (the cache's sliced jobs), drawn in this order: 0 the far limbs, legs and
+ * bottoms, 1 the torso, 2 the arms, shoulders and paws */
+void pb_draw_body_part(PCtx *c, int part)
 {
     const DoomoLook *l = c->l;
     int far = B.yaw == 2;
-    if (far) {
-        /* far arm + far leg behind the body */
-        far_leg_profile(c);
-        arm(c, 1, 1);
+    if (part == 0) {
+        if (far) {
+            /* far arm + far leg behind the body */
+            far_leg_profile(c);
+            arm(c, 1, 1);
+        }
+        legs(c);
+        bottoms(c);
+        /* CR2: scripted shoes, bottoms and tops are drawn OVER the generic garment the painters give an
+         * unknown value (bare feet, bare legs, a plain long-sleeved top in its colour) */
+        (void)PS_SLOT(c, GF_SHOES, l->shoes, 1);
+        (void)PS_SLOT(c, GF_BOTTOM, l->bottom, 1);
+        return;
     }
-    legs(c);
-    bottoms(c);
-    /* CR2: scripted shoes, bottoms and tops are drawn OVER the generic garment the painters give an
-     * unknown value (bare feet, bare legs, a plain long-sleeved top in its colour) */
-    (void)PS_SLOT(c, GF_SHOES, l->shoes, 1);
-    (void)PS_SLOT(c, GF_BOTTOM, l->bottom, 1);
-    torso(c);
-    (void)PS_SLOT(c, GF_TOP, l->top, 1);
+    if (part == 1) {
+        torso(c);
+        (void)PS_SLOT(c, GF_TOP, l->top, 1);
+        return;
+    }
     if (!far && B.view != VK_PORTRAIT) {
         arm(c, 0, 0);
         arm(c, 1, 0);
@@ -1796,6 +1804,13 @@ void pb_draw_body(PCtx *c)
         }
     }
     if (far) arm(c, 0, 0);
+}
+
+void pb_draw_body(PCtx *c)
+{
+    pb_draw_body_part(c, 0);
+    pb_draw_body_part(c, 1);
+    pb_draw_body_part(c, 2);
 }
 
 /* in front of the chin: chest fluff, collar ruff, neckwear, a hugged teddy */

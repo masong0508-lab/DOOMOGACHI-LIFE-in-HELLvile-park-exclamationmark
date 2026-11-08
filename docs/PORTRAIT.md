@@ -167,24 +167,77 @@ oldest).
 - An empty slot (`RES_EMPTY`, a bad id) gives a still lavender "?"
   silhouette.
 
-**Sliced re-renders.** New content is drawn at once: a look, expression or
-status that is not cached in any phase. A new *animation phase* of
-something already cached is drawn by a background job instead. The job
-draws `PC_STEPS` of the 6 layer groups per tick (GBA 1, MIPS/PS1 3, native
-all 6), straight into a hidden cache entry, and the phase shown last stays
-on screen meanwhile. The job also looks `PC_AHEAD` = 8 ticks ahead and
+**Sliced re-renders.** A new *animation phase* of something already cached
+is drawn by a background job. The job draws its render in `SL_N` = 26
+slices (the set-up and the 25 *pieces* of the layer groups, SP2), straight
+into a hidden cache entry, and the phase shown last stays on screen
+meanwhile. A piece is one of the calls a group made, in the same order
+(the back in three, the body in three, the head base and the face in two
+each, the turkey's head in four, the neck and front hair in three, the hat
+and front in three, the finishing pass in nine: `pc_finish_lines`' scan,
+its marked rows in six bands top to bottom, the rest of `finish` in two),
+so a whole render is the same calls as before and every image is too
+(`portrait_classic` golden). The job looks `PC_AHEAD` = 9 ticks ahead and
 pre-draws the next phase, such as the coming blink or aura frame, so the
-change is usually on time. In tests, 95-99% of ticks show exactly the phase
-a synchronous renderer would. Look-ahead claims never evict an image that
-was on screen in the last two ticks.
+change is usually on time. Look-ahead claims never evict an image that was
+on screen in the last two ticks.
 
 The job shares the canvas with every other render. If another render used
 the canvas between two slices, which it detects through `pcv.gen`, the job
-restarts. On its third restart it completes in one go, so it always
-finishes. A job nobody has asked about for `PC_STALE` ticks is dropped.
+restarts; on its third try it gets a deadline (it becomes urgent, below)
+and on its sixth it completes in one go, so it always finishes. A job
+nobody has asked about for `PC_STALE` (4) ticks, or `PC_STALE_SI` (12) for
+a stand-in's job, is dropped.
+
+## Idle time and stand-ins (SP2)
+
+Where the slices run (X1, P-D1 of the speed audit):
+
+- **Inside a frame**: up to `PC_SLICES` a tick (GBA 5, PS1 11, native all
+  26), each one only if the platform agrees: `plat_portrait_slice_ok(cls,
+  waited)` (weak default: yes). The GBA (`gba/src/pslice.c`) learns each
+  slice class's cost and lets a slice in when the last frame's own work plus
+  the slices already run plus this one stay inside the vblank the frame
+  needs anyway (a 22 ms frame up to 33.4 ms, a 40 ms one up to 50.2 ms less
+  3.6 ms), or when the job has waited 4 ticks (15 for a slice over ~5 ms;
+  one forced slice a tick at most).
+- **In the idle time after a frame**: `portrait_idle_next()` names the class
+  of the next slice (starting a queued prefetch if the slot is free) and
+  `portrait_idle_run()` runs it. The GBA calls them in `video_flip` while
+  the next slice's learned cost fits before the vblank the frame waits for.
+- **Stand-ins** (on by default on the GBA and the PS1, `PC_STANDIN` = 4,
+  `portrait_cache_standin()` in tests; off on native): new content (a new
+  expression or status) of a look that has some image cached is drawn by a
+  job while that image stands in. The job is *urgent*: it runs at least its
+  share of the slices left each tick, so it is done within 4 ticks whatever
+  the platform says. Content that was drawn a moment ago and fell out of
+  the pool again (`recent`, the last 8 finished jobs: a talking face that
+  flaps between two expressions in several phases needs more images than
+  the pool keeps) is not urgent. Content with nothing to stand in is drawn
+  at once, except under `portrait_hold(3)` (the dialogue), where
+  `portrait_image` returns NULL for those ticks (an empty frame).
+- **Render-ahead**: `portrait_prefetch(id, expr)` / `figure_prefetch(look,
+  status, expr)` queue one coming picture (the newest wins; 1.5 s); it is
+  drawn in idle time or in-frame room only. They return 1 when it is cached
+  already, so a caller with several coming pictures asks in order and stops
+  at the first 0. The dialogue asks for the speaker's talking face and the
+  next line's faces, the title for each figure's next expression and the
+  next pair.
+- **Chibis**: while a portrait / figure job is half way through the canvas,
+  `bodyspr_image` shows a facing the body has instead of a render that would
+  restart the job; on every overworld map a new facing is a body job behind
+  a facing the citizen has (V11's lazy bodies, mode 2; the invaded map keeps
+  mode 1).
+
+Pixels: every picture shown is a whole render (`test_portrait_sp2.c`);
+what changes is *when*: a phase or a new expression can show up a few ticks
+late. The owner's speed defaults allow it (DECISIONS.md "SPEED DEFAULTS":
+portrait slicing with a stand-in for 2-4 ticks). Native frames are
+unchanged: stand-ins are off and every job runs whole in the tick it starts.
 
 `portrait_cache_clock(tick, steps)` runs the cache on a fake clock with a
-chosen step budget, and `portrait_cache_reset()` goes back to the real
+chosen step budget (in layer groups, as before SP2: `steps` groups are
+`steps` x 26 / 7 slices), and `portrait_cache_reset()` goes back to the real
 clock. Tests use both.
 
 **Holding a picture (`portrait_hold`).** While `portrait_hold(1)` is on, a

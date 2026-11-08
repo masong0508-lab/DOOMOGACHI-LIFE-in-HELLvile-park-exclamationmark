@@ -676,14 +676,56 @@ static void draw_logo(void)
 }
 
 /* ====================================================================== */
+/* the expression figure k of the pair shows at tick t (they swap half a cycle apart: a new expression is a
+ * full ~45-77 ms render on the GBA, two on one tick made a 120+ ms hitch) */
+static int figure_expr(int t, int k)
+{
+    int ec = ((t + k * 45) / 90 + k) % 3;
+    return ec == 0 ? EXPR_HAPPY : ec == 1 ? EXPR_LOVE : EXPR_NEUTRAL;
+}
+
+/* SP2 (X1): render the pair's coming pictures ahead, in the idle time after frames: each figure's next
+ * expression and, near the turn, the next pair, soonest first (one request is queued at a time; a cached one
+ * is skipped). Without it each change is drawn behind a stand-in in the four ticks after it. */
+static void prefetch_figures(const int *pid)
+{
+    static int npk = -1, nid[2];
+    int t = T.t, k, n = 0, i, j, dts = 239 - t % 240;
+    struct { int dt, id, expr; } ev[4], tmp;
+    if (npk != T.parade_k) {
+        npk = T.parade_k;
+        nid[0] = roster_find(parade[(T.parade_k + 2) % (NPARADE & ~1) % NPARADE]);
+        nid[1] = roster_find(parade[((T.parade_k + 2) % (NPARADE & ~1) + 1) % NPARADE]);
+    }
+    for (k = 0; k < 2; k++) {
+        ev[n].dt = 90 - (t + k * 45) % 90;
+        ev[n].id = pid[k];
+        ev[n].expr = figure_expr(t + ev[n].dt, k);
+        n++;
+        ev[n].dt = dts + 1;
+        ev[n].id = nid[k];
+        ev[n].expr = figure_expr(t + dts + 1, k);
+        n++;
+    }
+    for (i = 1; i < n; i++)
+        for (j = i; j > 0 && ev[j].dt < ev[j - 1].dt; j--) { tmp = ev[j]; ev[j] = ev[j - 1]; ev[j - 1] = tmp; }
+    portrait_hold(1);                       /* the title's figures hold one still pose */
+    for (i = 0; i < n; i++) {
+        const DoomoResident *p = ev[i].id >= 0 ? roster_premade(ev[i].id) : NULL;
+        if (ev[i].dt > 75) break;
+        if (p && !figure_prefetch(RES_LOOK_VIEW(p), RES_ALIVE, ev[i].expr)) break;
+    }
+    portrait_hold(0);
+}
+
 static void draw_figures(void)
 {
     int sw = fp_sw(), sh = fp_sh(), k, t = T.t, big = fp_big();
+    /* roster_find() is a name search over the whole roster: look the
+     * pair up once per parade turn, not twice per frame */
+    static int pid[2], pk = -1, shown[2] = { -1, -1 }, wait[2];
     if (!T.started && t < 50) return;
     for (k = 0; k < 2; k++) {
-        /* roster_find() is a name search over the whole roster: look the
-         * pair up once per parade turn, not twice per frame */
-        static int pid[2], pk = -1, shown[2] = { -1, -1 }, wait[2];
         const DoomoResident *p;
         int id;
         if (pk != T.parade_k) {
@@ -695,10 +737,7 @@ static void draw_figures(void)
         int x = k ? sw - FIGURE_W - (big ? 18 : 2) : (big ? 18 : 2);
         int y = sh - FIGURE_H - (big ? 14 : 4) + (ui_wave(t + k * 30, 50, 2) > 0);
         int hop = ((t + k * 40) % 120) < 10 ? -((t + k * 40) % 120) * (10 - (t + k * 40) % 120) / 6 : 0;
-        /* the two swap expression half a cycle apart: a new expression is a
-         * full ~45 ms render, two on one tick made a 120+ ms hitch */
-        int ec = ((t + k * 45) / 90 + k) % 3;
-        int expr = ec == 0 ? EXPR_HAPPY : ec == 1 ? EXPR_LOVE : EXPR_NEUTRAL;
+        int expr = figure_expr(t, k);
         /* a new pair is a brand-new render each (~45 ms on the GBA): it is
          * drawn in slices over a few ticks while the old figure stays */
         if (shown[k] != id && shown[k] >= 0 && id >= 0 && wait[k] < 20 && roster_premade(id)) {
@@ -723,6 +762,7 @@ static void draw_figures(void)
         }
         portrait_hold(0);
     }
+    prefetch_figures(pid);
 }
 
 /* CL2 (C8): one line under the menu says what the highlighted row is, so a

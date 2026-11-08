@@ -75,7 +75,12 @@ const DoomoImage *figure_image(const DoomoLook *l, int status, int expr);
  * portrait_hold(2): likewise for a look not shown last tick, but
  * figure_image returns NULL until it is ready (the caller shows something
  * else meanwhile). While on, figures hold one still pose (no blink,
- * breathing or aura frames). */
+ * breathing or aura frames).
+ * portrait_hold(3) (SP2): animates as usual; new content of a look with an
+ * image cached stands in behind that image (as by default on the GBA and the
+ * PS1), and content with nothing cached is drawn by a job finished within 4
+ * ticks while portrait_image / figure_image return NULL (the dialogue's
+ * first face: an empty frame instead of a 45-80 ms render in one tick). */
 void portrait_hold(int on);
 /* CR9: the bust of any look, cached like figure_image (the creator's draft; portrait_hold applies). */
 const DoomoImage *portrait_image_look(const DoomoLook *l, int status, int expr);
@@ -83,6 +88,25 @@ const DoomoImage *portrait_image_look(const DoomoLook *l, int status, int expr);
  * under `ms` milliseconds (GBA: a new look is ready in a few ticks instead of one group a tick).
  * Elsewhere it does nothing (a job there finishes within a tick or two anyway). */
 void portrait_pump(int ms);
+/* SP2 (X1, docs/PORTRAIT.md "Idle time and stand-ins"): render-ahead and idle-time slices.
+ * portrait_prefetch / figure_prefetch: this content will be asked for soon (the next dialogue line, the title's
+ * next expression): draw it in the idle time after frames (or in slices the platform lets into a frame) once the
+ * job slot is free; one request is kept (the newest), for about 1.5 s. Nothing is drawn on the call. They return
+ * 1 when the content is cached already (in any animation phase) and nothing was queued, so a caller with several
+ * coming images asks for them in order and stops at the first 0.
+ * portrait_idle_next(): the class (0 .. PORTRAIT_SLICE_CLASSES-1) of the slice the cache would run next, or
+ * -1 when there is none; portrait_idle_run() runs it. The platform calls them between frames while the slice's
+ * measured cost fits before the next vblank (gba/src/pslice.c, ps1/src/gfx.c). */
+int  portrait_prefetch(int resident_id, int expr);      /* 1: cached already (or being drawn): nothing queued */
+int  figure_prefetch(const DoomoLook *l, int status, int expr);
+#define PORTRAIT_SLICE_CLASSES 78      /* slice classes: 3 kinds (portrait, figure, chibi) x 26 slices */
+int  portrait_idle_next(void);
+void portrait_idle_run(void);
+/* Platform hooks (weak defaults in portrait.c: always yes / nothing): may one more slice of class `cls` run inside
+ * this frame (`waited` = ticks since the job's last slice; -1: it runs anyway, the call only marks its start),
+ * and a slice of class `cls` has just run (the platform may time it). */
+int  plat_portrait_slice_ok(int cls, int waited);
+void plat_portrait_slice_done(int cls);
 /* Third-person shooter body: the resident's full look (outfit, hair,
  * horns, wings, tail) holding a weapon, seen from `view` (0 back,
  * 1 back-left, 2 left, 3 front-left, 4 front, mirrored for right side via
@@ -121,6 +145,9 @@ void portrait_cache_reset(void);
  * doomo_frame_count) with `steps` layer groups of phase re-rendering per
  * tick (0 = the platform default; the GBA uses 1). */
 void portrait_cache_clock(uint32_t tick, int steps);
+/* Tests (SP2): stand-ins for new content, `ticks` at most (0: off, new content is drawn at once; the default is
+ * 4 on the GBA and the PS1, 0 elsewhere). portrait_cache_reset() restores the default. */
+void portrait_cache_standin(int ticks);
 
 /* (integration, memory budget) Small images of other modules kept in the
  * portrait cache's block pool (LRU with the portraits) instead of a RAM

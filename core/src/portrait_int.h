@@ -147,6 +147,8 @@ void pc_darken_part(int id);                         /* whole part 1 step */
 void pc_contours(void);
 void pc_outline(void);
 void pc_finish_lines(void);   /* contours + outline in one transition scan */
+void pc_finish_scan(void);              /* SP2: pc_finish_lines in slices: the scan, then */
+void pc_finish_rows(int y0, int y1);    /* the marked rows y0..y1-1, bands top to bottom   */
 void pc_flipx(void);
 
 /* ---- math helpers ------------------------------------------------------ */
@@ -236,7 +238,9 @@ void hFrame(int x, int y, int rx, int ry);
 void hHeadFrame(int grow);
 int  ph_is_critter(int species);
 void ph_head_base(PCtx *c);      /* head silhouette (+ fur tufts)            */
+void ph_head_base_part(PCtx *c, int part);   /* SP2: parts 0, 1 in order = ph_head_base */
 void ph_face(PCtx *c);           /* species marks, eyes, brows, nose, mouth  */
+void ph_face_part(PCtx *c, int part);        /* SP2: parts 0, 1 in order = ph_face */
 int  ph_eye_geom(PCtx *c, int s, int *X, int *Y, int *erx, int *ery);
 void ph_species_over(PCtx *c);   /* species bits drawn over hair / hats      */
 void ph_face_over(PCtx *c);      /* third eye + forehead marks over the hair */
@@ -258,6 +262,7 @@ void ptk_place(PCtx *c);         /* group 0: neck, head and hat placement    */
 void ptk_tail_fan(PCtx *c);      /* TAIL_FEATHER_FAN as the turkey's fan     */
 void ptk_coat_tails(PCtx *c);    /* TOP_SUIT's long tails (figure)           */
 void ptk_head(PCtx *c);          /* group 2: neck, wattle, tufts, head       */
+void ptk_head_part(PCtx *c, int part);       /* SP2: parts 0..3 in order = ptk_head */
 void ptk_face(PCtx *c);          /* group 3: lapels, bow tie, eyes, beak     */
 void ptk_hat(PCtx *c);           /* HAT_TOP_HAT as the tall crooked hat      */
 void ptk_brows(PCtx *c);         /* group 4: brows over the brim             */
@@ -267,6 +272,7 @@ int  ptk_hatter(const DoomoLook *l);  /* the hat is the tall crooked one     */
 void pb_layout(PCtx *c, int view_kind, int byaw, int step, int anim);
 void pb_draw_behind(PCtx *c);    /* wings, tail, cape, long hair behind body */
 void pb_draw_body(PCtx *c);      /* legs, torso, outfit, arms                */
+void pb_draw_body_part(PCtx *c, int part);   /* SP2: parts 0, 1, 2 in order = pb_draw_body */
 void pb_draw_front(PCtx *c);     /* held paws, teddy, front accessories      */
 void pb_draw_tail(PCtx *c, int front);
 void pb_draw_wings(PCtx *c, int front);

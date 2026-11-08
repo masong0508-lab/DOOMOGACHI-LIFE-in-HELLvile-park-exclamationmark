@@ -916,10 +916,10 @@ static inline __attribute__((always_inline)) void outline_px(int i, int x, int y
  * (may get an inner contour) or empty (may get an outline). Only the few
  * marked boundary pixels get here, so this stays THUMB in ROM on the GBA
  * (as P_FAST it took 1.3 KB of IWRAM from the 6 KB main stack). */
-static void finish_marked(void)
+static void finish_marked(int y0, int y1)
 {
     int w = pcv.w, h = pcv.h, bpr = w >> 3, y, k;
-    for (y = 0; y < h; y++) {
+    for (y = y0; y < y1; y++) {
         const uint8_t *mrow = pmark + y * bpr;
         for (k = 0; k < bpr; k++) {
             int m = mrow[k], b;
@@ -934,14 +934,30 @@ static void finish_marked(void)
     }
 }
 
-void pc_finish_lines(void)
+/* SP2 (X1): pc_finish_lines in slices for the cache's sliced jobs: the scan, then the marked rows in bands,
+ * in the same order as one call (the bands run top to bottom), so the pixels are the same. pmark lives from the
+ * scan to the last band; anything else that draws starts a new canvas (pc_begin bumps pcv.gen) and the job
+ * restarts from its set-up. */
+void pc_finish_scan(void)
 {
     int w = pcv.w, h = pcv.h;
     luma_init();
     pcv.ops += (uint32_t)(w * h / 4);
     memset(pmark, 0, (size_t)((w * h + 7) >> 3));
     scan_transitions();
-    finish_marked();
+}
+
+void pc_finish_rows(int y0, int y1)
+{
+    if (y0 < 0) y0 = 0;
+    if (y1 > pcv.h) y1 = pcv.h;
+    finish_marked(y0, y1);
+}
+
+void pc_finish_lines(void)
+{
+    pc_finish_scan();
+    finish_marked(0, pcv.h);
 }
 
 void pc_contours(void)

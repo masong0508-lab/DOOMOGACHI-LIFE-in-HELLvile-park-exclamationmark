@@ -74,6 +74,8 @@ static inline uint32_t gba_cycles(void) {
     do { hi = REG_TM3D; lo = REG_TM2D; hi2 = REG_TM3D; } while (hi != hi2);
     return ((uint32_t)hi << 16) | lo;
 }
+void gba_pslice_frame_end(uint32_t work);   /* pslice.c (SP2) */
+void gba_pslice_idle(uint32_t target_vblank);
 void gba_log(const char *msg);
 void gba_logf(const char *fmt, ...);   /* tiny printf: %d %u %x %s %c   */
 

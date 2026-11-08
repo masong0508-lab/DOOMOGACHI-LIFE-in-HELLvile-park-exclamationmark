@@ -525,17 +525,23 @@ static void tufts(PCtx *c)
 }
 
 /* the neck, the wattle, the tufts and the head (layer group 2) */
+/* SP2: ptk_head in four parts (the cache's sliced jobs), in this order: the neck, then the head and tufts
+ * (back view) or the wattle, tufts and head */
+void ptk_head_part(PCtx *c, int part)
+{
+    int back = T.yaw >= 3;
+    switch (part) {
+    case 0: neck(c); break;
+    case 1: if (back) head(c); else wattle(c, 0); break;
+    case 2: tufts(c); break;
+    default: if (!back) head(c); break;
+    }
+}
+
 void ptk_head(PCtx *c)
 {
-    neck(c);
-    if (T.yaw >= 3) {
-        head(c);
-        tufts(c);
-    } else {
-        wattle(c, 0);
-        tufts(c);
-        head(c);
-    }
+    int k;
+    for (k = 0; k < 4; k++) ptk_head_part(c, k);
 }
 
 /* ---- the tall crooked top hat with its band (no card) --------------------- */

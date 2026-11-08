@@ -2025,7 +2025,9 @@ static void facial_hair(PCtx *c, int big)
 }
 
 /* ---- the head ------------------------------------------------------------------------- */
-void ph_head_base(PCtx *c)
+/* SP2: ph_head_base in two parts (the cache's sliced jobs): 0 the layout and the head shape, 1 the fur
+ * silhouette extras on the same part */
+void ph_head_base_part(PCtx *c, int part)
 {
     const DoomoLook *l = c->l;
     PHead *h = &c->h;
@@ -2033,6 +2035,7 @@ void ph_head_base(PCtx *c)
     int sp = l->species, flags = 0;
     int shade = SH_BALL;
     phs.c = c; phs.h = h; phs.s = 1; phs.z = 0;
+    if (part) goto extras;
     face_layout(c);
     F.lid = face_ink(c);
     if (c->critter || sp == SPECIES_MOTHKIN) flags |= PF_FUZZ;
@@ -2041,6 +2044,8 @@ void ph_head_base(PCtx *c)
     pc_part(&c->skin, shade, flags);
     c->head_id = pcv.part;
     head_shape(c);
+    return;
+extras:
     /* fur silhouette extras on the same part */
     if (h->yaw < 4) {
         hHeadFrame(0);
@@ -2057,6 +2062,12 @@ void ph_head_base(PCtx *c)
             crown_tuft();
     }
     if (h->yaw < 3) cheek_ruffs(c);
+}
+
+void ph_head_base(PCtx *c)
+{
+    ph_head_base_part(c, 0);
+    ph_head_base_part(c, 1);
 }
 
 /* wave-2 face C-tier deep fields (0 = as today; bust LOD only, they are 1-2 px details):
@@ -2121,17 +2132,22 @@ static void face_deep(PCtx *c, int big)
     if (scar == 3) { v = fpt(-60, F.ny - 80, &X, &Y); if (v > 30) pc_line(X >> 4, Y >> 4, (X >> 4) + 7, (Y >> 4) + 4, sc); }
 }
 
-void ph_face(PCtx *c)
+/* SP2: ph_face in two parts (the cache's sliced jobs): 0 muzzle, markings, species marks and blush, 1 eyes,
+ * nose, mouth and the rest */
+void ph_face_part(PCtx *c, int part)
 {
     PHead *h = &c->h;
     int big = h->lod == LOD_BIG;
     const DoomoLook *l = c->l;
     phs.c = c; phs.h = h; phs.s = 1; phs.z = 0;
     if (h->yaw >= 3) return;
-    muzzle(c);
-    markings(c, big);
-    species_head(c, big);
-    blush(c, big);
+    if (part == 0) {
+        muzzle(c);
+        markings(c, big);
+        species_head(c, big);
+        blush(c, big);
+        return;
+    }
     eyes(c);
     face_deep(c, big);
     nose(c);
@@ -2145,4 +2161,10 @@ void ph_face(PCtx *c)
         }
     }
     facial_hair(c, big);
+}
+
+void ph_face(PCtx *c)
+{
+    ph_face_part(c, 0);
+    ph_face_part(c, 1);
 }

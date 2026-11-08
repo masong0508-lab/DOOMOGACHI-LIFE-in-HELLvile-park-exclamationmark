@@ -222,6 +222,7 @@ void plat_end_frame(void)
     if (gba_nodraw != 1) {
         uint32_t w = gba_cycles() - work_c0;
         gba_work_last = w;
+        gba_pslice_frame_end(w);                /* SP2: the next tick's room for portrait slices */
         gba_mailbox.work_sum += w;
         gba_mailbox.work_n++;
         if (w > gba_mailbox.work_max) gba_mailbox.work_max = w;
@@ -246,6 +247,7 @@ void video_flip(void)
         need = 2u;
 #endif
         gba_view3d_frame = 0;
+        gba_pslice_idle(last_flip_vbl + need);  /* SP2: portrait slices in the wait (pslice.c) */
         while (gba_vblanks - last_flip_vbl < need) {
             vblank_intr_wait();
             waited = 1;
