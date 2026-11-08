@@ -199,8 +199,8 @@ def suggest(b, hand):
                     acc[o] = acc.get(o, 0.0) + idf[x] ** 2
         for o, v in acc.items():
             cos = v / (norm[k] * norm[o])
-            if cos >= 0.25:
-                same = b.by_key[o].cat.root == b.by_key[k].cat.root
+            same = b.by_key[o].cat.root == b.by_key[k].cat.root
+            if cos >= (0.25 if same else 0.5):          # across roots only when close
                 add(k, o, 0.35 * cos * (1.3 if same else 1.0), "attr")
     for c in cs:
         leaf = by_leaf[c.cat.key]

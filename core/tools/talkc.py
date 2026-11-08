@@ -803,8 +803,7 @@ def make_concept(r, cats):
         flags |= TCF["generated"]
     if " " in lemma:
         flags |= TCF["multiword"]
-    if not proper and not mass and cat.flags & (CAT_FLAGS["talk"] | CAT_FLAGS["safety"]) and \
-            not (cat.flags & CAT_FLAGS["describe"]):
+    if not proper and not mass and cat.flags & CAT_FLAGS["talk"] and not (cat.flags & CAT_FLAGS["describe"]):
         if plural is None:
             plural = plural_en(lemma)
         flags |= TCF["countable"]

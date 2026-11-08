@@ -146,6 +146,8 @@ TEST(talk_db_concepts_categories_and_classes)
     CHECK_EQ(talk_db_cat_root(c.cat), TCR_LORE);
     /* the classes the T4 gate reads: what a kid's room may never hear */
     CHECK(talk_db_concept(fid("sex"), &c) && c.reg == TR_SEXUAL && c.age == TAGE_NEVER);
+    CHECK(!(c.flags & TCF_COUNTABLE));             /* safety words get no made-up plurals */
+    CHECK_STR(form("sex", TF_PLURAL), "sex");
     CHECK_EQ(talk_db_cat_root(c.cat), TCR_SAFETY);
     CHECK(talk_db_concept(fid("fuck"), &c) && c.reg == TR_STRONG && c.age == TAGE_NEVER);
     CHECK(talk_db_concept(fid("damn"), &c) && c.reg == TR_STRONG && c.age == TAGE_ADULT);

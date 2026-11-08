@@ -141,8 +141,10 @@ these sources:
 Its suggestions go to `core/build/talk/` and are never committed. The
 `--accept` mode is the reviewer's tool. It keeps the top 8 and every hand
 edge. The shipped file was accepted by the TK1 agent pass after
-spot-checking. **An owner review is still pending.** The file header says
-so.
+spot-checking. Two edges were removed by hand (wedding to onion, ghost to
+"raise"). **An owner review is still pending.** The file header says so.
+After the first acceptance, edit `assoc_en.tsv` directly: a new `--accept`
+would bring back the removed edges.
 
 ---------------------------------------------------------------------------
 
@@ -227,19 +229,19 @@ All figures are for `TALK_en.BIN` after the TK1 content (`talkc --stats`):
 | CONCEPT (3,971 x 8 B) | 31,776 B | 31,776 B | yes |
 | ASSOC (top 8, 16 B a concept) | 63,552 B | 63,552 B | yes |
 | ATTR (9,334 attribute links) | 18,668 B | 18,668 B | yes |
-| FORMS (Huffman) | 53,430 B | 69,467 B | yes |
+| FORMS (Huffman) | 52,907 B | 68,636 B | yes |
 | CATS + CATNAMES | 1,944 B | 2,192 B | yes |
-| EDGES (21,424 reviewed edges) | 50,794 B | 50,794 B | no (Dreamcast, native) |
-| **Total file** | **220,458 B** | | **PS1: 169,370 B** of the 312 KB budget |
+| EDGES (21,256 reviewed edges) | 50,458 B | 50,458 B | no (Dreamcast, native) |
+| **Total file** | **219,610 B** | | **PS1: 168,847 B** of the 312 KB budget |
 
 Other measurements:
 
 * **Contents**:
   * 3,971 concepts: 1,317 generated and 2,654 authored, 95 of the authored
     ones safety-only;
-  * 7,364 surface forms (lemmas, plurals, 684 synonyms);
+  * 7,278 surface forms (lemmas, plurals, 684 synonyms);
   * 9,334 attributes;
-  * 21,424 edges over 2,976 concepts.
+  * 21,256 edges over 2,974 concepts.
 * **The fixture** (`core/gen/talk_fixture.c`): the 49 concepts
   `fixture.txt` names plus the 89 attributes they use (138 concepts),
   7,300 B. Only the tests link it.
@@ -272,7 +274,7 @@ Other measurements:
 | `plat_room_project(x, y, z, &sx, &sy)` | It takes the view as its first argument | The weak default (room_ref's projection) needs the view. A GTE platform can ignore it |
 | `'TALK'` save tag | It is a **13th** registry slot (`SAVE_EXT_SLOTS` 13); K0 had said "never a 13th" | The design's D9 (recommended yes, and listed for T0): LIFE's spare bytes are used up, and the GBA never registers this chunk. `BudgetSnap` stays 36 B |
 | 58 acts plus 4 safety classes | 59 plus 5 | `TA_HIGH_FIVE` is the D10 default ("a hug toward a non-household child becomes a high five"). `TA_DEFLECT_ROMANCE` is the gate's rewrite in design 7.2 |
-| 4,000 concepts, about 16,000 surface forms, about 32,000 edges, about 200 safety concepts | 3,971; 7,364; 21,424; 95 | The surface-form figure counts inflections, which T3's parser derives. More edges and the hashed hate list come with T3 and T4 |
+| 4,000 concepts, about 16,000 surface forms, about 32,000 edges, about 200 safety concepts | 3,971; 7,278; 21,256; 95 | The surface-form figure counts inflections, which T3's parser derives. More edges and the hashed hate list come with T3 and T4 |
 | The paint names as colours | Paint names that are first of all things (Cherry, Honey, Forest, Bone and others) are left to the lexicon as nouns | One lemma, one concept |
 
 ---------------------------------------------------------------------------
