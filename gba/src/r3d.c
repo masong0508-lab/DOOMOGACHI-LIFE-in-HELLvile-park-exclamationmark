@@ -64,12 +64,14 @@ static uint32_t gov_r3d[2];        /* r3d cycles of the last full / half view   
 
 #define VBL_CYC 280896u            /* cycles a vblank (16.78 MHz / 59.73 Hz)        */
 
+#if !defined(ENGINE_TEST)                 /* the engine test draws full resolution */
 static int view_half(void)
 {
     int m = opt_get(OPT_3D_FAST);
     if (m == OPT3D_SMOOTH) return 1;
     return gov_half;
 }
+#endif
 
 /* main.c video_flip: a frame with a 3D view (frame 1 full, 2 half) is about
  * to be shown `took` vblanks after the previous one; work = its CPU cycles */

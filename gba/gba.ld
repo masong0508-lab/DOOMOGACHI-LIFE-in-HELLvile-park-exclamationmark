@@ -113,7 +113,10 @@ SECTIONS
     OVERLAY : NOCROSSREFS AT (__iwram_lma + SIZEOF(.iwram)) {
         .ovl_3d {
             *r3d.iwram.o(.text .text.* .rodata .rodata.*)
-            *(.iwram_3d .iwram_3d.*)
+            /* KEEP (SP8): the engine-test ROM never calls r3d_up2 but
+             * keeps it, so its 3D group (the largest, the slot) is the
+             * game ROM's and the 2D group's ow_obj.c tail below fits */
+            KEEP(*(.iwram_3d .iwram_3d.*))
             . = ALIGN(4);
         }
         .ovl_2d {
