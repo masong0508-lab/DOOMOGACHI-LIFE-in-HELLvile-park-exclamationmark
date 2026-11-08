@@ -45,7 +45,7 @@ GROUPS = [
     ("studio",   r"studio(_\w+)?$"),
     ("concert",  r"concert_\w+$"),
     ("dream",    r"dream(_gfx)?$"),
-    ("exorcism", r"exorcism(_gfx|_scene)?$"),
+    ("exorcism", r"exorcism(_gfx|_scene)?$|backdrop$"),   # SP7: the retained stage only the exorcism uses
     ("pet",      r"pet(_gfx|_scene)?$"),
     ("fishcook", r"fish_\w+$|cook_\w+$"),
     ("minigame", r"mg(_\w+)?$"),
@@ -196,6 +196,11 @@ MODAL_CALLBACKS = {
     "creator_grid": ("cb_find",),                 # CR6: the grid's search (ui_text_entry)
     "exorcism_scene": ("cb_exit", "cb_name", "cb_prayer", "cb_to_tools", "cb_water",
                        "cb_lost_choice", "cb_lost_confirm", "cb_typed"),
+    # SP7: the church backdrop's painter and key list (backdrop.h): handed to stage_begin /
+    # plat_stage_begin (on the PS1 the weak default, which never calls it) and kept in the
+    # const exo_church_family, which only backdrop.c (same group) reads; the GBA and the
+    # native runner call them, never the PS1
+    "exorcism_gfx": ("exo_church_backdrop", "exo_church_keys"),
     # F-phase family wizard + member screens: every callback goes to ui_choice / ui_confirm /
     # ui_text_entry only (wz_neighbour goes to fp_pick and stays resident, so it is not listed)
     "fp_apartments": ("house_pick",),

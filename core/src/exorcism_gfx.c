@@ -5,6 +5,8 @@
  */
 #include "exorcism_int.h"
 
+extern void (*ur_tap)(int, int, int, int, uint8_t);   /* ui_raster.c: every rect of a shape */
+
 /* ---------------------------------------------------------------------- */
 /* colours                                                                  */
 /* three keys per colour: dread 0 (sugar pastel), 8 (vape purple), 15
@@ -54,69 +56,73 @@ uint8_t exo_col(int which, int dread)
 
 /* ---------------------------------------------------------------------- */
 /* the church                                                               */
-/* The drape's width at every row y in 0..h (out[y]): tied back in the
- * middle, flaring below. Row y's band k = y * 16 / h is stepped instead of
- * divided (E1, docs/EXORCISM_SPEED.md: the divide was ~2,400 calls of the
- * GBA's software divider a frame), and the six tied widths are worked out
- * once: the same values as w - (5 - |k - 8|) * w / 12 for 4 < k < 11. */
-#define DRAPE_MAX_H 480
-static void drape_widths(int w, int h, uint8_t *out)
+/* The drape's width at row y: w less red[k] in band k = y * 16 / h (tied back in the middle,
+ * flaring below): w - (5 - |k - 8|) * w / 12 for 4 < k < 11, else w. Band k is rows
+ * [ceil(k h / 16), ceil((k + 1) h / 16)), so a curtain is walked band by band: no divide per
+ * row (E1: ~2,400 software divides a frame on the GBA) and no per-row work for the folds. */
+static void drape_bands(int w, int h, int red[17], int rs[18])
 {
-    int y, k = 0, acc = 0, hh = h > 0 ? h : 1, red[16];
-    for (k = 0; k < 16; k++)
+    int k;
+    for (k = 0; k < 17; k++)
         red[k] = k > 4 && k < 11 ? (5 - (k - 8 < 0 ? 8 - k : k - 8)) * w / 12 : 0;
-    k = 0;
-    for (y = 0; y <= h; y++) {
-        out[y] = (uint8_t)(w - (k < 16 ? red[k] : 0));
-        /* k = (y + 1) * 16 / hh for the next row */
-        acc += 16;
-        while (acc >= hh) { acc -= hh; k++; }
-    }
+    for (k = 0; k <= 17; k++) rs[k] = k <= 16 ? (k * h + 15) / 16 : h + 1;
+    if (rs[16] > h) rs[16] = h;                    /* band 16 starts at row h */
 }
 
-static void curtain(int x0, int w, int h, int left, int dread, uint32_t t)
+/* The curtain in two parts (SP7): CUR_UPPER is what never moves (the folds above h / 2 and the
+ * highlights wholly above h / 2 - 1), CUR_LOWER the swaying rest (the folds from h / 2 down, the
+ * highlights from h / 2 - 1, then the rope). Drawn upper then lower they are the old curtain,
+ * pixel for pixel: the lower part's folds and highlights sit in rows the upper part never
+ * touches or are drawn over it as before (highlights after folds, the rope last). */
+enum { CUR_UPPER = 1, CUR_LOWER = 2 };
+static void curtain(int x0, int w, int h, int left, int dread, int sway, int part)
 {
     /* velvet drapes: vertical folds, drawn as a few tall strips per fold
      * (cheap on the GBA) with a slow sway on the lower half */
     uint8_t c0 = dread < 8 ? PAL_PAINT(PAINT_ROSE, 0) : PAL_PAINT(PAINT_BLOOD, 0);
     uint8_t c1 = dread < 8 ? PAL_PAINT(PAINT_ROSE, 1) : PAL_PAINT(PAINT_BLOOD, 1);
     uint8_t c2 = dread < 8 ? PAL_PAINT(PAINT_ROSE, 2) : PAL_PAINT(PAINT_CHERRY, 0);
-    int fx, y0;
-    int sway = ui_wave((int)t, 90, 1);
-    uint8_t dw[DRAPE_MAX_H + 1];
-    if (h > DRAPE_MAX_H) h = DRAPE_MAX_H;          /* (never: h is 0.62 H + 30 on screens <= 480 high) */
-    if (w > 255) w = 255;
-    drape_widths(w, h, dw);
+    int fx, k, red[17], rs[18];
+    if (h <= 0) return;
+    drape_bands(w, h, red, rs);
     for (fx = 0; fx < w; fx += 4) {
-        /* rows where this fold is covered: everything except the tied band */
-        int y, start = -1;
-        for (y = 0; y <= h; y++) {
-            int vis = y < h && dw[y] > fx;
-            if (vis && start < 0) start = y;
-            if ((!vis || y == h) && start >= 0) {
-                int len = y - start, half = start < h / 2 ? DOOMO_MIN(len, h / 2 - start) : 0;
-                int xs = left ? x0 + fx : x0 + w - fx - 4, f = ((fx >> 2) & 1);
-                if (half > 0) plat_rect(xs, start, 4, half, f ? c1 : c0);
-                if (len - half > 0) plat_rect(xs + sway, start + half, 4, len - half, f ? c1 : c0);
+        /* runs of rows where this fold is covered (everything except the tied band): a run
+         * starts and ends only at band edges, since a band's rows share one width */
+        int start = -1, y;
+        for (k = 0; k <= 16; k++) {
+            int y0 = rs[k], vis = k < 16 && w - red[k] > fx;
+            if (rs[k + 1] <= y0 && k < 16) continue;          /* an empty band */
+            if (vis && start < 0) start = y0;
+            if ((!vis || k == 15) && start >= 0) {
+                int len, half, xs = left ? x0 + fx : x0 + w - fx - 4, f = ((fx >> 2) & 1);
+                y = vis ? h : y0;                             /* the run ends at h or here */
+                len = y - start;
+                half = start < h / 2 ? DOOMO_MIN(len, h / 2 - start) : 0;
+                if (half > 0 && (part & CUR_UPPER)) plat_rect(xs, start, 4, half, f ? c1 : c0);
+                if (len - half > 0 && (part & CUR_LOWER))
+                    plat_rect(xs + sway, start + half, 4, len - half, f ? c1 : c0);
                 start = -1;
             }
         }
     }
-    /* a soft highlight down the inner edge */
-    for (y0 = 0; y0 < h; y0 += 2) {
-        int ww = dw[y0];
-        plat_rect(left ? x0 + ww - 1 + (y0 > h / 2 ? sway : 0) : x0 + w - ww + (y0 > h / 2 ? sway : 0),
-                  y0, 1, 2, c2);
+    /* a soft highlight down the inner edge, every second row */
+    for (k = 0; k < 16; k++) {
+        int y0 = (rs[k] + 1) & ~1, ww = w - red[k];
+        for (; y0 < rs[k + 1] && y0 < h; y0 += 2) {
+            if (!(part & (y0 + 2 > h / 2 ? CUR_LOWER : CUR_UPPER))) continue;
+            plat_rect(left ? x0 + ww - 1 + (y0 > h / 2 ? sway : 0) : x0 + w - ww + (y0 > h / 2 ? sway : 0),
+                      y0, 1, 2, c2);
+        }
     }
     /* golden tie-back rope */
-    {
+    if (part & CUR_LOWER) {
         int ty = h * 8 / 16, tx = x0 + w / 2;
         ui_fill_ellipse(tx, ty, 3, 2, PAL_UI_GOLD);
         plat_rect(tx - 1, ty - 1, 2, 1, PAL_RAMP(RAMP_CANDY, 7));
     }
 }
 
-static void rose_window(int cx, int cy, int r, int dread, uint32_t t)
+static void rose_window(int cx, int cy, int r, int dread)
 {
     static const uint8_t glass[5] = { EC_GLASS_PINK, EC_GLASS_SKY, EC_GLASS_LEMON,
                                       EC_GLASS_MINT, EC_GLASS_LAV };
@@ -136,9 +142,16 @@ static void rose_window(int cx, int cy, int r, int dread, uint32_t t)
         plat_rect(px - pr / 2, py - pr / 2, 2, 1, ui_lighter(c));          /* glint */
         plat_rect(px - pr / 2, py - pr / 2 + 1, 1, 1, ui_lighter(c));
     }
-    /* centre: a heart... that becomes an eye when things go wrong */
+    /* centre: a heart... that becomes an eye when things go wrong (rose_heart) */
     ui_fill_circle(cx, cy, r * 34 / 100 + 1, lead);
     ui_fill_circle(cx, cy, r * 30 / 100, exo_col(EC_GLASS_LEMON, dread));
+}
+
+/* The heart (or eye) in the rose window's lemon centre: it beats with t, so it is drawn over
+ * the backdrop (nothing the church draws later reaches the centre: the beams start below it,
+ * the valance and the vignette end above it). */
+static void rose_heart(int cx, int cy, int r, int dread, uint32_t t)
+{
     if (dread < 11) {
         int pulse = ui_wave((int)t, 60, 1);
         ui_heart(cx, cy, DOOMO_MAX(2, r * 16 / 100 + pulse), PAL_PAINT(PAINT_BUBBLEGUM, 1));
@@ -150,24 +163,19 @@ static void rose_window(int cx, int cy, int r, int dread, uint32_t t)
     }
 }
 
-static void light_beams(int cx, int top, int bottom, int dread, uint32_t t)
+/* the beams fail (are not drawn, nor their motes) on some ticks of a nightmare */
+static int beams_off(int dread, uint32_t t) { return dread >= 13 && (t / 3) % 4 == 0; }
+
+static void light_beams(int cx, int top, int bottom, int dread)
 {
     uint8_t beam = exo_col(EC_BEAM, dread);
     int b, k;
-    if (dread >= 13 && (t / 3) % 4 == 0) return;          /* failing light */
     for (b = -1; b <= 1; b++) {
         int x0 = cx + b * 8, x1 = cx + b * (bottom - top) * 3 / 4;
         for (k = -3; k <= 3; k += 2) {
             if (dread >= 8 && (k & 2)) continue;           /* thinner, dimmer */
             plat_line(x0 + k, top, x1 + k * 3, bottom, beam);
         }
-    }
-    /* dust motes twinkling in the light */
-    for (k = 0; k < 7; k++) {
-        int u = (int)((t / 2 + (uint32_t)k * 37) % (uint32_t)(bottom - top));
-        int sx = cx + ui_wave((int)t + k * 40, 160, (bottom - top) / 3) + (k - 3) * 6;
-        ui_sparkle(sx, top + u, (int)((t / 3 + (uint32_t)k * 5) & 15),
-                   dread < 10 ? PAL_WHITE : PAL_UI_RED);
     }
 }
 
@@ -183,12 +191,75 @@ static void pew(int x, int y, int w, int h, int dread)
     ui_heart(x + w / 2, y + h / 2 - 2, 2, dread < 10 ? PAL_PAINT(PAINT_ROSE, 1) : PAL_UI_RED_D);
 }
 
-void exo_church(int dread, uint32_t t, int floor_y)
+/* The church's geometry for this screen (floor_y is the scene's, H * 62 / 100). */
+typedef struct {
+    int W, H, big, fy, cw, ch, wr, wy, btop, bbot, ax, ay, aw, ah;
+} ChurchGeo;
+static void church_geo(ChurchGeo *g)
 {
-    int W = plat_screen_w(), H = plat_screen_h(), big = H >= 200;
-    int x, y, cw = big ? 26 : 18, wr = big ? 30 : 21, wy = wr + (big ? 8 : 5);
+    g->W = plat_screen_w();
+    g->H = plat_screen_h();
+    g->big = g->H >= 200;
+    g->fy = g->H * 62 / 100;
+    g->cw = g->big ? 26 : 18;
+    g->ch = g->fy + (g->big ? 30 : 20);            /* curtain height */
+    g->wr = g->big ? 30 : 21;
+    g->wy = g->wr + (g->big ? 8 : 5);
+    g->btop = g->wy + g->wr / 2;                     /* light beams */
+    g->bbot = g->fy + (g->H - g->fy) / 2;
+    g->aw = g->big ? 92 : 64;                        /* altar */
+    g->ah = g->big ? 22 : 14;
+    g->ax = g->W / 2 - g->aw / 2;
+    g->ay = g->fy - g->ah + 4;
+}
+
+static void altar(const ChurchGeo *g, int dread)
+{
+    int x, ax = g->ax, ay = g->ay, aw = g->aw, ah = g->ah;
+    ui_round_rect(ax - 1, ay - 1, aw + 2, ah + 2, 2, exo_col(EC_WOOD_LO, dread));
+    plat_rect(ax, ay, aw, ah, PAL_PAINT(PAINT_WHITE, dread < 10 ? 1 : 0));
+    plat_rect(ax, ay, aw, 2, PAL_PAINT(PAINT_WHITE, 2));
+    plat_rect(ax, ay + ah - 3, aw, 1, PAL_UI_GOLD);
+    for (x = ax + 3; x < ax + aw - 3; x += 6) plat_rect(x, ay + ah - 2, 3, 2, PAL_UI_GOLD);
+    ui_heart(g->W / 2, ay + ah / 2, 2, dread < 10 ? PAL_PAINT(PAINT_ROSE, 1) : PAL_UI_RED);
+}
+
+/* ---- the backdrop key (SP7) ----------------------------------------------------------
+ * Everything of the church that does not move every few ticks: the dread level (0..15), the
+ * drips' step (dread >= 9: their length cycles every 8 ticks over 5 steps) and the failing
+ * beams (dread >= 13: off one tick in four of every 12). The heart in the rose window, the
+ * dust motes and the swaying lower curtains are drawn over it (exo_church_live). */
+#define EXO_KEY_DRIP_SHIFT 4
+#define EXO_KEY_BEAMS_OFF  0x80u
+uint32_t exo_church_key(int dread, uint32_t t)
+{
+    uint32_t d = (uint32_t)DOOMO_CLAMP(dread, 0, 15), k = d;
+    if (d >= 9) k |= ((t / 8) % 5) << EXO_KEY_DRIP_SHIFT;
+    if (beams_off((int)d, t)) k |= EXO_KEY_BEAMS_OFF;
+    return k;
+}
+
+int exo_church_keys(uint32_t *out, int cap)
+{
+    int n = 0, d, p, b;
+    for (d = 0; d < 16; d++)
+        for (p = 0; p < (d >= 9 ? 5 : 1); p++)
+            for (b = 0; b < (d >= 13 ? 2 : 1); b++) {
+                if (n < cap) out[n] = (uint32_t)d | (uint32_t)p << EXO_KEY_DRIP_SHIFT | (b ? EXO_KEY_BEAMS_OFF : 0u);
+                n++;
+            }
+    return n;
+}
+
+void exo_church_backdrop(uint32_t key)
+{
+    ChurchGeo g;
+    int dread = (int)(key & 15), drip = (int)((key >> EXO_KEY_DRIP_SHIFT) & 7);
+    int x, y, W, H, floor_y, big;
     uint8_t whi = exo_col(EC_WALL_HI, dread), wlo = exo_col(EC_WALL_LO, dread);
     uint8_t stripe = exo_col(EC_STRIPE, dread);
+    church_geo(&g);
+    W = g.W; H = g.H; floor_y = g.fy; big = g.big;
 
     /* wallpaper: soft vertical stripes with a tiny heart / drip motif */
     plat_rect(0, 0, W, floor_y, wlo);
@@ -199,7 +270,7 @@ void exo_church(int dread, uint32_t t, int floor_y)
     for (y = 10; y < floor_y - 16; y += 22)
         for (x = 11 + ((y / 22) & 1) * 7; x < W; x += 28) {
             if (dread < 9) ui_heart_flat(x, y, 2, stripe);
-            else { plat_rect(x, y, 2, 3 + (int)((x * 7 + t / 8) % 5), PAL_UI_RED_D); }
+            else { plat_rect(x, y, 2, 3 + (x * 7 + drip) % 5, PAL_UI_RED_D); }
         }
     /* wainscot panel + gold trim */
     plat_rect(0, floor_y - 12, W, 12, exo_col(EC_WOOD, dread));
@@ -212,7 +283,7 @@ void exo_church(int dread, uint32_t t, int floor_y)
 
     /* floor: tiles in perspective, a carpet up the aisle */
     {
-        int vy = floor_y - (H - floor_y), k;
+        int k;
         uint8_t fa = exo_col(EC_FLOOR_A, dread), fb = exo_col(EC_FLOOR_B, dread);
         plat_rect(0, floor_y, W, H - floor_y, fa);
         for (k = 0, y = floor_y + 3; y < H; k++) {
@@ -222,7 +293,6 @@ void exo_church(int dread, uint32_t t, int floor_y)
         }
         for (k = -10; k <= 10; k++)
             plat_line(W / 2 + k * 6, floor_y, W / 2 + k * (W / 6), H + (H - floor_y), fb);
-        (void)vy;
         /* carpet: half = 10 + (y - floor_y) * spread / depth, stepped per
          * row instead of divided (E1) */
         {
@@ -240,19 +310,11 @@ void exo_church(int dread, uint32_t t, int floor_y)
         plat_rect(0, floor_y, W, 1, exo_col(EC_WOOD_LO, dread));
     }
 
-    rose_window(W / 2, wy, wr, dread, t);
-    light_beams(W / 2, wy + wr / 2, floor_y + (H - floor_y) / 2, dread, t);
+    rose_window(W / 2, g.wy, g.wr, dread);
+    if (!(key & EXO_KEY_BEAMS_OFF)) light_beams(W / 2, g.btop, g.bbot, dread);
 
     /* altar under the portrait */
-    {
-        int aw = big ? 92 : 64, ah = big ? 22 : 14, ax = W / 2 - aw / 2, ay = floor_y - ah + 4;
-        ui_round_rect(ax - 1, ay - 1, aw + 2, ah + 2, 2, exo_col(EC_WOOD_LO, dread));
-        plat_rect(ax, ay, aw, ah, PAL_PAINT(PAINT_WHITE, dread < 10 ? 1 : 0));
-        plat_rect(ax, ay, aw, 2, PAL_PAINT(PAINT_WHITE, 2));
-        plat_rect(ax, ay + ah - 3, aw, 1, PAL_UI_GOLD);
-        for (x = ax + 3; x < ax + aw - 3; x += 6) plat_rect(x, ay + ah - 2, 3, 2, PAL_UI_GOLD);
-        ui_heart(W / 2, ay + ah / 2, 2, dread < 10 ? PAL_PAINT(PAINT_ROSE, 1) : PAL_UI_RED);
-    }
+    altar(&g, dread);
 
     /* foreground pews and the velvet curtains framing it all */
     {
@@ -260,8 +322,8 @@ void exo_church(int dread, uint32_t t, int floor_y)
         pew(-pw / 4, H - ph + 4, pw, ph, dread);
         pew(W - pw + pw / 4, H - ph + 4, pw, ph, dread);
     }
-    curtain(0, cw, floor_y + (big ? 30 : 20), 1, dread, t);
-    curtain(W - cw, cw, floor_y + (big ? 30 : 20), 0, dread, t);
+    curtain(0, g.cw, g.ch, 1, dread, 0, CUR_UPPER);
+    curtain(W - g.cw, g.cw, g.ch, 0, dread, 0, CUR_UPPER);
     /* scalloped valance */
     for (x = 0; x < W; x += 12) {
         ui_fill_circle(x + 6, 2, 7, dread < 8 ? PAL_PAINT(PAINT_ROSE, 0) : PAL_PAINT(PAINT_BLOOD, 0));
@@ -279,22 +341,177 @@ void exo_church(int dread, uint32_t t, int floor_y)
     }
 }
 
+/* ---- the live parts, drawn over the backdrop -------------------------------------------
+ * Each lies where nothing the church draws after it in the old order reaches (the rose's
+ * centre: above the beams, below the valance and the vignette; the lower curtains: below the
+ * valance, above the bottom vignette, beside the altar and the pews; the motes: in the beams,
+ * where only the altar is drawn later), so drawing them last gives the old picture. The one
+ * overlap, a mote on the altar, is resolved by not drawing the mote's pixels the altar covers. */
+
+/* the altar's outline as rects (its outer round rect: everything the altar draws lies in it) */
+static void (*ex_tap_prev)(int, int, int, int, uint8_t);
+#define ALTAR_RECTS 12
+static struct { int16_t w, h, n; int16_t r[ALTAR_RECTS][4]; } alt;
+static void altar_tap(int x, int y, int w, int h, uint8_t c)
+{
+    (void)c;
+    if (alt.n < ALTAR_RECTS) {
+        alt.r[alt.n][0] = (int16_t)x; alt.r[alt.n][1] = (int16_t)y;
+        alt.r[alt.n][2] = (int16_t)(x + w); alt.r[alt.n][3] = (int16_t)(y + h);
+    }
+    alt.n++;
+}
+static void altar_shape(const ChurchGeo *g)
+{
+    if (alt.w == g->W && alt.h == g->H) return;
+    alt.n = 0;
+    ex_tap_prev = ur_tap;
+    ur_tap = altar_tap;
+    ui_round_rect(g->ax - 1, g->ay - 1, g->aw + 2, g->ah + 2, 2, PAL_WHITE);
+    ur_tap = ex_tap_prev;
+    if (alt.n > ALTAR_RECTS) alt.n = -1;            /* (never: a round rect is a few bands) */
+    alt.w = (int16_t)g->W;
+    alt.h = (int16_t)g->H;
+}
+static int under_altar(int x, int y)
+{
+    int i;
+    if (alt.n < 0) return 0;
+    for (i = 0; i < alt.n; i++)
+        if (x >= alt.r[i][0] && x < alt.r[i][2] && y >= alt.r[i][1] && y < alt.r[i][3]) return 1;
+    return 0;
+}
+/* a mote's rect, less the pixels the altar covers */
+static void mote_rect(const ChurchGeo *g, int x, int y, int w, int h, uint8_t c)
+{
+    int i, j;
+    if (x + w <= g->ax - 1 || x >= g->ax + g->aw + 1 || y + h <= g->ay - 1 || y >= g->ay + g->ah + 1) {
+        plat_rect(x, y, w, h, c);
+        return;
+    }
+    for (j = 0; j < h; j++)
+        for (i = 0; i < w; i++)
+            if (!under_altar(x + i, y + j)) plat_rect(x + i, y + j, 1, 1, c);
+}
+
+/* the dust mote k at tick t: its centre and sparkle size (0 = none); its box is
+ * (x - s, y - s, 2 s + 1, 2 s + 1) */
+static int mote_at(const ChurchGeo *g, int k, uint32_t t, int *x, int *y)
+{
+    int span = g->bbot - g->btop;
+    int u = (int)((t / 2 + (uint32_t)k * 37) % (uint32_t)span);
+    *x = g->W / 2 + ui_wave((int)t + k * 40, 160, span / 3) + (k - 3) * 6;
+    *y = g->btop + u;
+    return ui_sparkle_size((int)((t / 3 + (uint32_t)k * 5) & 15));
+}
+
+/* ui_sparkle(cx, cy, phase, c) through mote_rect */
+static void mote(const ChurchGeo *g, int cx, int cy, int s, uint8_t c)
+{
+    if (s == 0 || plat_draw_skipped()) return;
+    mote_rect(g, cx - s, cy, 2 * s + 1, 1, c);
+    mote_rect(g, cx, cy - s, 1, 2 * s + 1, c);
+    if (s >= 2) {
+        mote_rect(g, cx - 1, cy - 1, 3, 3, c);
+        mote_rect(g, cx, cy, 1, 1, PAL_WHITE);
+    }
+    if (s >= 3) {
+        mote_rect(g, cx - 2, cy - 2, 1, 1, c);
+        mote_rect(g, cx + 2, cy + 2, 1, 1, c);
+        mote_rect(g, cx - 2, cy + 2, 1, 1, c);
+        mote_rect(g, cx + 2, cy - 2, 1, 1, c);
+    }
+}
+
+int exo_church_part(int part, int dread, uint32_t t, int16_t box[4], uint32_t *key)
+{
+    ChurchGeo g;
+    int x = 0, y = 0, s;
+    church_geo(&g);
+    box[2] = box[3] = 0;
+    *key = 0;
+    switch (part) {
+    case EXO_PART_HEART: {
+        int r = g.wr * 30 / 100 + 3;          /* the lemon centre holds the heart / the eye */
+        box[0] = (int16_t)(g.W / 2 - r); box[1] = (int16_t)(g.wy - r);
+        box[2] = box[3] = (int16_t)(2 * r + 1);
+        *key = dread < 11 ? 0x100u + (uint32_t)(ui_wave((int)t, 60, 1) + 1)
+                          : 0x200u + (uint32_t)(ui_wave((int)t, 70, 2) + 2);
+        *key ^= (uint32_t)dread << 12;
+        return 1;
+    }
+    case EXO_PART_CURTAIN_L: case EXO_PART_CURTAIN_R:
+        /* the lower folds sway a pixel either way; the rope starts 2 rows above h / 2; the last
+         * highlight (2 rows tall) may end a row below h */
+        box[0] = (int16_t)(part == EXO_PART_CURTAIN_L ? 0 : g.W - g.cw - 4);
+        box[1] = (int16_t)(g.ch / 2 - 3);
+        box[2] = (int16_t)(g.cw + 4);
+        box[3] = (int16_t)(g.ch + 2 - (g.ch / 2 - 3));
+        *key = (uint32_t)(ui_wave((int)t, 90, 1) + 1) | (uint32_t)(dread < 8) << 4 | 0x40u;
+        return 1;
+    default:
+        if (part < EXO_PART_MOTE0 || part >= EXO_PART_MOTE0 + EXO_MOTES) return 0;
+        if (beams_off(dread, t)) return 1;
+        s = mote_at(&g, part - EXO_PART_MOTE0, t, &x, &y);
+        if (!s) return 1;
+        box[0] = (int16_t)(x - s); box[1] = (int16_t)(y - s);
+        box[2] = box[3] = (int16_t)(2 * s + 1);
+        *key = (uint32_t)(x & 0x3FF) | (uint32_t)(y & 0x3FF) << 10 | (uint32_t)s << 20 |
+               (uint32_t)(dread < 10) << 24 | 0x80000000u;
+        return 1;
+    }
+}
+
+void exo_church_part_draw(int part, int dread, uint32_t t)
+{
+    ChurchGeo g;
+    int x, y, s, sway;
+    church_geo(&g);
+    switch (part) {
+    case EXO_PART_HEART: rose_heart(g.W / 2, g.wy, g.wr, dread, t); break;
+    case EXO_PART_CURTAIN_L: case EXO_PART_CURTAIN_R:
+        sway = ui_wave((int)t, 90, 1);
+        if (part == EXO_PART_CURTAIN_L) curtain(0, g.cw, g.ch, 1, dread, sway, CUR_LOWER);
+        else curtain(g.W - g.cw, g.cw, g.ch, 0, dread, sway, CUR_LOWER);
+        break;
+    default:
+        if (part < EXO_PART_MOTE0 || part >= EXO_PART_MOTE0 + EXO_MOTES || beams_off(dread, t)) break;
+        s = mote_at(&g, part - EXO_PART_MOTE0, t, &x, &y);
+        altar_shape(&g);
+        mote(&g, x, y, s, dread < 10 ? PAL_WHITE : PAL_UI_RED);
+        break;
+    }
+}
+
+void exo_church(int dread, uint32_t t, int floor_y)
+{
+    int p;
+    (void)floor_y;                                  /* (always H * 62 / 100: church_geo) */
+    exo_church_backdrop(exo_church_key(dread, t));
+    for (p = 0; p < EXO_PARTS; p++) exo_church_part_draw(p, dread, t);
+}
+
+const DoomoBackdrop exo_church_family = { DOOMO_BACKDROP_EXO_CHURCH, exo_church_backdrop, exo_church_keys };
+
 /* ---------------------------------------------------------------------- */
 /* Father Fuzz                                                              */
-void exo_fuzz(int cx, int foot_y, uint32_t t, int expr)
+const DoomoImage *exo_fuzz_image(int expr)
 {
     const DoomoResident *f = town_res(ROSTER_ID_FATHER_FUZZ);
     DoomoLook look;
-    const DoomoImage *img;
-    int k;
     if (f && f->status != RES_EMPTY && f->status != RES_DEAD &&
         strncmp(f->name, roster_name(ROSTER_ID_FATHER_FUZZ), DOOMO_NAME_LEN) == 0)
         res_get_look(f, &look);
     else if (roster_premade(ROSTER_ID_FATHER_FUZZ))
         res_get_look(roster_premade(ROSTER_ID_FATHER_FUZZ), &look);
     else
-        return;
-    img = figure_image(&look, RES_ALIVE, expr);
+        return NULL;
+    return figure_image(&look, RES_ALIVE, expr);
+}
+
+void exo_fuzz_draw(int cx, int foot_y, uint32_t t, const DoomoImage *img)
+{
+    int k;
     if (!img) return;
     /* soft contact shadow */
     for (k = -1; k <= 1; k++) {
@@ -304,8 +521,71 @@ void exo_fuzz(int cx, int foot_y, uint32_t t, int expr)
     plat_image(cx - img->w / 2, foot_y - img->h + ui_wave((int)t, 48, 1), img, 1, 0, 0);
 }
 
+void exo_fuzz(int cx, int foot_y, uint32_t t, int expr)
+{
+    exo_fuzz_draw(cx, foot_y, t, exo_fuzz_image(expr));
+}
+
 /* ---------------------------------------------------------------------- */
 /* the host's portrait                                                      */
+/* SP7: the frame's layers paint over one another (aura, drop shadow, three round rects, the
+ * inner panel), and each later one covers the middle of the one before. On a fill-bound screen
+ * (the GBA, and native so the tests run it) every layer leaves out the hole the next one is sure
+ * to cover: the same pixels with a fifth of the writes (core/tests/test_stage.c compares). A
+ * GPU platform (PS1, Dreamcast) pays per primitive, not per pixel, and draws them whole. */
+#if defined(__mips__) || defined(__sh__)
+#define HOST_HOLES 0
+#else
+#define HOST_HOLES 1
+#endif
+#if HOST_HOLES
+static int16_t hole[4];                      /* [x0, x1) x [y0, y1) */
+static void hole_tap(int x, int y, int w, int h, uint8_t c)
+{
+    int x1 = x + w, y1 = y + h, a, b;
+    if (x >= hole[2] || x1 <= hole[0] || y >= hole[3] || y1 <= hole[1]) { plat_rect(x, y, w, h, c); return; }
+    if (y < hole[1]) plat_rect(x, y, w, hole[1] - y, c);                     /* above */
+    if (y1 > hole[3]) plat_rect(x, hole[3], w, y1 - hole[3], c);             /* below */
+    a = DOOMO_MAX(y, hole[1]);
+    b = DOOMO_MIN(y1, hole[3]);
+    if (x < hole[0]) plat_rect(x, a, hole[0] - x, b - a, c);                 /* left  */
+    if (x1 > hole[2]) plat_rect(hole[2], a, x1 - hole[2], b - a, c);         /* right */
+}
+static void with_hole(int x0, int y0, int x1, int y1)
+{
+    hole[0] = (int16_t)x0; hole[1] = (int16_t)y0; hole[2] = (int16_t)x1; hole[3] = (int16_t)y1;
+    ur_tap = x0 < x1 && y0 < y1 ? hole_tap : 0;
+}
+#define HOLE(x0, y0, x1, y1) with_hole(x0, y0, x1, y1)
+#define NO_HOLE() (ur_tap = 0)
+#else
+#define HOLE(x0, y0, x1, y1) ((void)0)
+#define NO_HOLE() ((void)0)
+#endif
+
+/* exorcism_int.h: the same holes for the scene's own shapes (the prayer lane) */
+void exo_hole(int x0, int y0, int x1, int y1) { HOLE(x0, y0, x1, y1); (void)x0; (void)y0; (void)x1; (void)y1; }
+void exo_hole_off(void) { NO_HOLE(); }
+
+void exo_shade_hole(int x, int y, int w, int h, int level, int hx0, int hy0, int hx1, int hy1)
+{
+#if HOST_HOLES
+    int x1 = x + w, y1 = y + h;
+    hx0 = DOOMO_MAX(hx0, x); hy0 = DOOMO_MAX(hy0, y);
+    hx1 = DOOMO_MIN(hx1, x1); hy1 = DOOMO_MIN(hy1, y1);
+    if (hx0 < hx1 && hy0 < hy1) {
+        plat_shade_rect(x, y, w, hy0 - y, level);                    /* above */
+        plat_shade_rect(x, hy1, w, y1 - hy1, level);                 /* below */
+        plat_shade_rect(x, hy0, hx0 - x, hy1 - hy0, level);          /* left  */
+        plat_shade_rect(hx1, hy0, x1 - hx1, hy1 - hy0, level);       /* right */
+        return;
+    }
+#else
+    (void)hx0; (void)hy0; (void)hx1; (void)hy1;
+#endif
+    plat_shade_rect(x, y, w, h, level);
+}
+
 void exo_host_frame(int cx, int cy, const DoomoImage *img, int scale, int shake,
                     int dread, uint32_t t, int *out_w, int *out_h)
 {
@@ -318,19 +598,34 @@ void exo_host_frame(int cx, int cy, const DoomoImage *img, int scale, int shake,
     }
     x = cx - w / 2 + dx;
     y = cy - h / 2 + dy;
-    /* a breathing purple aura when the demon stirs */
+    /* a breathing purple aura when the demon stirs (under the frame: its middle is the
+     * frame's, whose outer round rect fills every row of [y + 4, y + h - 4) edge to edge) */
     if (dread > 3) {
         int pulse = ui_wave((int)t, 24, 2);
+        HOLE(x, y + 4, x + w, y + h - 4);
         ui_fill_ellipse(cx + dx, cy + dy, w / 2 + 5 + pulse, h / 2 + 4 + pulse,
                         dread > 10 ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_RAMP(RAMP_VAPE, 2));
         ui_fill_ellipse(cx + dx, cy + dy, w / 2 + 2 + pulse / 2, h / 2 + 2 + pulse / 2,
                         dread > 10 ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_RAMP(RAMP_VAPE, 3));
+        NO_HOLE();
     }
+#if HOST_HOLES
+    /* the drop shadow (x + 3, y + 3, w, h): only the band the frame does not paint over (the
+     * right 7 columns and the bottom 7 rows of it hold every pixel its round corners leave) */
+    plat_shade_rect(x + w - 4, y + 3, 7, h, 10);
+    plat_shade_rect(x + 3, y + h - 4, w - 7, 7, 10);
+#else
     plat_shade_rect(x + 3, y + 3, w, h, 10);
+#endif
+    HOLE(x + 1, y + 4, x + w - 1, y + h - 4);           /* the next round rect's full rows */
     ui_round_rect(x, y, w, h, 4, PAL_RAMP(RAMP_CANDY, 1));
+    HOLE(x + 3, y + 5, x + w - 3, y + h - 5);
     ui_round_rect(x + 1, y + 1, w - 2, h - 2, 3, PAL_RAMP(RAMP_CANDY, 4));
+    NO_HOLE();
     plat_rect(x + 4, y + 2, w - 8, 1, PAL_RAMP(RAMP_CANDY, 6));
+    HOLE(x + 4, y + 4, x + w - 4, y + h - 4);           /* the inner panel */
     ui_round_rect(x + 3, y + 3, w - 6, h - 6, 2, PAL_RAMP(RAMP_CANDY, 2));
+    NO_HOLE();
     plat_rect(x + 4, y + 4, w - 8, h - 8,
               dread < 6 ? PAL_RAMP(RAMP_PASTEL_PINK, 6) : dread < 11 ? PAL_RAMP(RAMP_VAPE, 1)
                                                                      : PAL_RAMP(RAMP_BLOOD, 0));

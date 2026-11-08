@@ -70,6 +70,19 @@ void nat_panel_bad(const char *why);
 int  ur_shape_image(const DoomoImage *img);
 void nat_panel_body_image(int x, int y, const DoomoImage *img, int scale, int flags);
 
+/* (SP7) the kept backdrop, stage_native.c: off by default (plat_stage_begin says "cannot");
+ * tests turn it on. nat_stage_buffers: 1 or 2 emulated frame buffers (2: the GBA's pages).
+ * nat_stage_note: every 2D call's box (from nat_panel_op). The frame hooks run in
+ * plat_begin_frame / plat_end_frame. nat_bake_backdrops writes every family's every key at
+ * the current screen size (runner --bake-backdrops; the GBA build links the file into the ROM)
+ * and returns the count (0 on failure). */
+extern int nat_stage_on, nat_stage_buffers;
+void nat_stage_note(int x0, int y0, int x1, int y1);
+void nat_stage_frame_begin(void);
+void nat_stage_frame_end(void);
+void nat_stage_reset(void);
+int  nat_bake_backdrops(const char *path);
+
 /* PNG writer: 8bpp indexed image -> indexed PNG with the master palette,
  * optionally zoomed by an integer factor. Returns 1 on success. */
 int nat_png_write(const char *path, const uint8_t *pix, int w, int h, int zoom);

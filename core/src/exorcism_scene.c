@@ -237,10 +237,37 @@ static void build_notes(void)
     }
 }
 
+/* SP7: the retained stage's records live in the scene scratch (a cache: re-bound, and so
+ * forgotten, whenever another scene took the scratch; scene.h) */
+#define EXO_SCRATCH_TAG SAVE_EXT_TAG('E', 'X', 'O', 'S')
+/* (SP7) the true-name window's clue lines and names, worked out once per host and clue count
+ * instead of on every frame the window is drawn (the roster lookups were ~6 ms a GBA frame);
+ * kept after the stage's records in the same scratch block */
+typedef struct {
+    int32_t ref;
+    int8_t  clues, ok, pad[2];
+    char    clue[4][80];
+    char    name[4][DOOMO_NAME_LEN + 14];
+} NameCache;
+static NameCache *exo_nc;
+static void *exo_scratch_claim(void)
+{
+    uint32_t off = (stage_mem_bytes() + 3u) & ~3u;
+    uint8_t *p = (uint8_t *)scene_scratch(EXO_SCRATCH_TAG, off + (uint32_t)sizeof(NameCache));
+    exo_nc = p ? (NameCache *)(void *)(p + off) : NULL;
+    if (exo_nc) exo_nc->ok = 0;
+    return p;
+}
+static void stage_mem(void)
+{
+    if (!scene_scratch_mine(EXO_SCRATCH_TAG)) stage_bind(exo_scratch_claim());
+}
+
 static void exo_enter(int arg)
 {
     const DoomoResident *r;
     memset(&X, 0, sizeof(X));
+    stage_bind(exo_scratch_claim());
     X.host = arg;
     r = town_res(arg);
     make_dummy();
@@ -717,23 +744,145 @@ static void exo_update(void)
 
 /* ---------------------------------------------------------------------- */
 /* drawing                                                                  */
-static void draw_host_at(int cx, int cy, int scale, int expr, uint32_t t, int *w, int *h)
+/* ---- SP7: the frame as layers over the kept church (backdrop.h, docs/EXORCISM_SPEED.md) ----
+ * exo_draw runs twice: pass 1 declares every layer's box and key (and fetches the portrait
+ * images, once, in the old order), pass 2 draws the layers the stage asks for (all of them when
+ * the platform keeps no backdrop: the old picture, call for call). A layer's box holds every
+ * pixel it draws, shading and shadows included; its key changes whenever its pixels do. */
+enum { LY_HOST = EXO_PARTS, LY_CANDLES, LY_FUZZ, LY_DEMON, LY_U0 };
+static int lpass;                               /* 1: declare, 2: draw */
+static int ly_fetch;                            /* this pass fetches the portrait images */
+static const DoomoImage *ly_host_img, *ly_fuzz_img;
+
+static uint32_t hk(uint32_t h, uint32_t v)
 {
-    const DoomoImage *img = host_image(expr);
-    exo_host_frame(cx, cy, img, scale, X.shake + (X.dread >= 8 && (t & 31) < 3 ? 1 : 0),
-                   X.dread, t, w, h);
+    h = (h ^ v) * 16777619u;
+    return h ^ (h >> 15);
 }
 
-static void draw_lane(uint32_t t)
+static uint32_t hk_str(uint32_t h, const char *s)
+{
+    while (s && *s) h = hk(h, (uint8_t)*s++);
+    return h;
+}
+
+static uint32_t hk_img(uint32_t h, const DoomoImage *img)
+{
+    return img ? hk(hk(h, (uint32_t)(uintptr_t)img->pix), img->uid ^ (uint32_t)img->w << 16 ^ img->h)
+               : hk(h, 0x5EEDu);
+}
+
+/* pass 1: declare layer id and return 0; pass 2: 1 when it is to be drawn */
+static int L(int id, int x, int y, int w, int h, uint32_t key)
+{
+    if (lpass == 1) {
+        stage_layer(id, x, y, w, h, hk(key, (uint32_t)X.state * 131u + (uint32_t)id));
+        return 0;
+    }
+    return stage_draw(id);
+}
+
+/* the host's frame at (cx, cy) (exo_host_frame), its outer w / h in *w, *h */
+static void host_layer(int cx, int cy, int scale, int expr, uint32_t t, int *w, int *h)
+{
+    const DoomoImage *img;
+    int sh = X.shake + (X.dread >= 8 && (t & 31) < 3 ? 1 : 0), fw, fh, dx = 0, dy = 0, pulse = 0;
+    uint32_t k;
+    if (ly_fetch) ly_host_img = host_image(expr);
+    img = ly_host_img;
+    fw = (img ? img->w : PORTRAIT_W) * scale + 10;
+    fh = (img ? img->h : PORTRAIT_H) * scale + 10;
+    if (sh > 0) {                                   /* exo_host_frame's shake */
+        uint32_t hsh = doomo_hash32(t * 2654435761u);
+        dx = (int)(hsh % (uint32_t)(sh * 2 + 1)) - sh;
+        dy = (int)((hsh >> 8) % (uint32_t)(sh + 1)) - sh / 2;
+    }
+    if (X.dread > 3) pulse = ui_wave((int)t, 24, 2) + 3;   /* the aura (0: none) */
+    k = hk_img(hk(hk(0x405Bu, (uint32_t)(cx & 1023) | (uint32_t)(cy & 1023) << 10 | (uint32_t)scale << 20),
+                  (uint32_t)(dx + 64) | (uint32_t)(dy + 64) << 8 | (uint32_t)pulse << 16 |
+                  (uint32_t)((X.dread > 10) | (X.dread < 6) << 1 | (X.dread < 11) << 2) << 20), img);
+    /* aura radii up to w / 2 + 7, h / 2 + 6; the shadow 3 px down-right */
+    if (L(LY_HOST, cx + dx - fw / 2 - 8, cy + dy - fh / 2 - 7, fw + 17, fh + 15, k))
+        exo_host_frame(cx, cy, img, scale, sh, X.dread, t, w, h);
+    *w = fw;
+    *h = fh;
+}
+
+static void candles_layer(int cx, int y, int lit, int total, uint32_t t, int big)
+{
+    int sp = big ? 14 : 10, x0 = cx - (total - 1) * sp / 2, ch = big ? 12 : 9;
+    /* flames step every 3 ticks; the smoke of a snuffed one moves every tick */
+    uint32_t k = hk(hk(0xCA9Du, (uint32_t)(cx & 1023) | (uint32_t)(y & 1023) << 10 | (uint32_t)lit << 20 |
+                                (uint32_t)total << 24 | (uint32_t)big << 28),
+                    lit < total ? t : t / 3);
+    if (L(LY_CANDLES, x0 - 5, y - 15, (total - 1) * sp + 11, ch + 18, k)) exo_candles(cx, y, lit, total, t, big);
+}
+
+static void fuzz_layer(int cx, int foot, uint32_t t, int expr)
+{
+    const DoomoImage *img;
+    int hw;
+    if (ly_fetch) ly_fuzz_img = exo_fuzz_image(expr);
+    img = ly_fuzz_img;
+    if (!img) { L(LY_FUZZ, 0, 0, 0, 0, 0); return; }
+    hw = DOOMO_MAX(14, img->w / 2 + 1) + 1;
+    if (L(LY_FUZZ, cx - hw, foot - img->h - 2, 2 * hw + 1, img->h + 5,
+          hk_img(hk(0xF022u, (uint32_t)(cx & 1023) | (uint32_t)(foot & 1023) << 10 |
+                             (uint32_t)(ui_wave((int)t, 48, 1) + 2) << 20), img)))
+        exo_fuzz_draw(cx, foot, t, img);
+}
+
+static void demon_layer(int x, int y, uint32_t t, int flash, int scale)
+{
+    const DoomoImage *img = sprite_image(SPR_VAPE_WRAITH, flash > 0 ? DFRAME_PAIN : (int)((t / 8) & 1));
+    int sil = flash > 0 && (flash & 2), w, h;
+    if (!img) { L(LY_DEMON, 0, 0, 0, 0, 0); return; }
+    w = img->w * scale;
+    h = img->h * scale;
+    if (L(LY_DEMON, x - w / 2 - 1, y - h / 2 - 2, w + scale + 3, h + scale + 4,
+          hk_img(hk(0xDE30u, (uint32_t)(x & 1023) | (uint32_t)(y & 1023) << 10 | (uint32_t)scale << 20 |
+                             (uint32_t)sil << 24 | (uint32_t)(sil ? 0 : ui_wave((int)t, 20, 1) + 2) << 26), img)))
+        exo_demon(x, y, t, flash, scale);
+}
+
+/* exo_bubble's box: the bubble, its outline and the tail from (tx, ty) */
+static void bubble_layer(int id, int x, int y, int w, const char *text, int tx, int ty, int creepy)
+{
+    int lines = ui_text_wrap(0, 0, w - 8, text, 0, 0), bh = lines * FONT_LINE + 6;
+    int bx = DOOMO_CLAMP(x, 2, W() - w - 2);
+    int x0 = DOOMO_MIN(bx - 1, tx - 1), y0 = DOOMO_MIN(y - 1, ty - 1);
+    int x1 = DOOMO_MAX(bx + w + 1, tx + 2), y1 = DOOMO_MAX(y + bh + 1, ty + 2);
+    if (L(id, x0, y0, x1 - x0, y1 - y0,
+          hk_str(hk(0xB0B1u, (uint32_t)(x & 1023) | (uint32_t)(y & 1023) << 10 | (uint32_t)(w & 255) << 20 |
+                             (uint32_t)creepy << 30), text) ^ ((uint32_t)(tx & 1023) | (uint32_t)(ty & 1023) << 10)))
+        exo_bubble(x, y, w, text, tx, ty, creepy);
+}
+
+/* the lane in three parts (SP7 layers that do not overlap): LANE_RIBBON the ribbon, its beat
+ * ticks, the heart and the prompts; LANE_POP the feedback pop and the combo above it;
+ * LANE_COUNT the count-in */
+enum { LANE_RIBBON = 1, LANE_POP = 2, LANE_COUNT = 4 };
+static void lane_geom(int *ly, int *lane_h, int *hx)
+{
+    *lane_h = BIG() ? 26 : 20;
+    *ly = H() - *lane_h - (BIG() ? 10 : 6);
+    *hx = BIG() ? 52 : 36;
+}
+
+static void draw_lane(uint32_t t, int part)
 {
     int w = W(), lane_h = BIG() ? 26 : 20, ly = H() - lane_h - (BIG() ? 10 : 6);
     int hx = BIG() ? 52 : 36, i, spawn_x = w - 10;
     int beat = X.pt >= 0 ? X.pt % EXORCISM_TICKS_PER_BEAT : 0;
     int pulse = beat < 3 ? 3 - beat : 0;
     uint8_t ribbon = X.dread < 8 ? PAL_RAMP(RAMP_PASTEL_PINK, 5) : PAL_RAMP(RAMP_VAPE, 3);
-    /* ribbon */
-    plat_shade_rect(4, ly - 3, w - 8, lane_h + 6, 9);
+    if (part & LANE_RIBBON) {
+    /* ribbon (SP7 holes: a pill of radius h / 2 covers every row between x + r and x + w - r,
+     * so the shadow and the outer pill leave out what the next pill paints) */
+    exo_shade_hole(4, ly - 3, w - 8, lane_h + 6, 9, 6 + lane_h / 2, ly, w - 6 - lane_h / 2, ly + lane_h);
+    exo_hole(7 + lane_h / 2, ly + 1, w - 7 - lane_h / 2, ly + lane_h - 1);
     ui_round_rect(6, ly, w - 12, lane_h, lane_h / 2, ui_darker(ribbon));
+    exo_hole_off();
     ui_round_rect(7, ly + 1, w - 14, lane_h - 2, lane_h / 2 - 1, ribbon);
     plat_rect(12, ly + 2, w - 24, 1, ui_lighter(ribbon));
     /* beat ticks along the ribbon */
@@ -767,8 +916,9 @@ static void draw_lane(uint32_t t)
         plat_rect(x - r / 2, y - r + 2, r / 2 + 1, 1, ui_lighter(c));
         ui_text_outline(x - 2, y - 3, note_glyph[n->btn], PAL_WHITE, ui_darker(c));
     }
+    }
     /* feedback pop */
-    if (X.fb && X.fb_t < 24) {
+    if ((part & LANE_POP) && X.fb && X.fb_t < 24) {
         static const char *const fbt[4] = { "", "PERFECT!", "GOOD", "MISS..." };
         int sc = ui_pop_scale(X.fb_t);
         int fy = ly - 14 - X.fb_t / 3;
@@ -776,12 +926,12 @@ static void draw_lane(uint32_t t)
         if (sc > 200 || X.fb_t > 6)
             ui_text_outline(hx - ui_text_width(fbt[X.fb]) / 2 + 8, fy, fbt[X.fb], fc, PAL_BLACK);
     }
-    if (X.combo >= 3) {
+    if ((part & LANE_POP) && X.combo >= 3) {
         char b[24];
         doomo_snprintf(b, sizeof(b), "%d combo!", X.combo);
         ui_text_outline(w - ui_text_width(b) - 12, ly - 11, b, PAL_UI_GOLD, PAL_RAMP(RAMP_PASTEL_PINK, 1));
     }
-    if (X.pt < 4 * EXORCISM_TICKS_PER_BEAT && X.pt >= 0) {
+    if ((part & LANE_COUNT) && X.pt < 4 * EXORCISM_TICKS_PER_BEAT && X.pt >= 0) {
         static const char *const cnt[4] = { "4", "3", "2", "1" };
         int k = X.pt / EXORCISM_TICKS_PER_BEAT;
         ui_text_big(w / 2 - 6, ly - 34, cnt[k], 2, PAL_WHITE, PAL_RAMP(RAMP_PASTEL_PINK, 1));
@@ -896,6 +1046,17 @@ static void draw_name_ui(uint32_t t)
     gx = hx + (big ? 44 : 34);
     bw = (W() - gx - (big ? 12 : 6) - 4) / 2;
     by = hy - (big ? 26 : 20);
+    if (exo_nc && (!exo_nc->ok || exo_nc->ref != host_ref() || exo_nc->clues != X.clues)) {
+        for (i = 0; i < 4; i++) {
+            const char *n = exorcism_name_text(host_ref(), i, exo_nc->name[i], (int)sizeof(exo_nc->name[i]));
+            if (n != exo_nc->name[i]) doomo_snprintf(exo_nc->name[i], sizeof(exo_nc->name[i]), "%s", n ? n : "");
+            if (i < X.clues) exorcism_clue(host_ref(), i, exo_nc->clue[i], (int)sizeof(exo_nc->clue[i]));
+            else exo_nc->clue[i][0] = 0;
+        }
+        exo_nc->ref = host_ref();
+        exo_nc->clues = (int8_t)X.clues;
+        exo_nc->ok = 1;
+    }
     ui_window(px, py, pw, ph, WIN_DARK);
     ui_text(px + 6, py + 4, skin() == EXS_NAME_TOMATO ? STR_ICON_PENTA " Hand him a memory" :   /* S3 */
                             STR_ICON_PENTA " Clues about the demon", PAL_UI_GOLD);
@@ -904,7 +1065,8 @@ static void draw_name_ui(uint32_t t)
         if (i < X.clues) {
             char line[64];
             int k, maxc = (pw - 12) / FONT_ADVANCE;
-            exorcism_clue(host_ref(), i, buf, sizeof(buf));
+            if (exo_nc && exo_nc->ok) doomo_snprintf(buf, sizeof(buf), "%s", exo_nc->clue[i]);
+            else exorcism_clue(host_ref(), i, buf, sizeof(buf));
             for (k = 0; k < maxc && k < 63 && buf[k]; k++) line[k] = buf[k];
             line[k] = 0;
             if (buf[k] && k > 3) { line[k - 1] = '.'; line[k - 2] = '.'; }
@@ -916,7 +1078,8 @@ static void draw_name_ui(uint32_t t)
     for (i = 0; i < 4; i++) {
         int bx = gx + (i & 1) * (bw + 4), yy = by + (i >> 1) * (bh + 5);
         char nb[DOOMO_NAME_LEN + 14];
-        const char *n = exorcism_name_text(host_ref(), i, nb, sizeof(nb));   /* S3 */
+        const char *n = exo_nc && exo_nc->ok ? exo_nc->name[i]
+                                             : exorcism_name_text(host_ref(), i, nb, sizeof(nb));   /* S3 */
         int sel = X.sel == i, shown = X.picked >= 0, lift = sel && !shown ? 1 + (int)((t / 8) & 1) : 0;
         uint8_t fill = sel ? PAL_UI_PURPLE : PAL_RAMP(RAMP_VAPE, 2);
         if (shown && i == X.correct) fill = PAL_UI_MINT_D;
@@ -1017,102 +1180,164 @@ static void draw_grave(uint32_t t)
     if (X.st_t > 40) ui_hint(STR_ICON_A " Leave flowers and go", WIN_DARK);
 }
 
-static void exo_draw(void)
+/* the foreground of every state, pass 1 (declare) or pass 2 (draw) */
+static void exo_layers(uint32_t t)
 {
-    uint32_t t = doomo_frame_count();
-    int fy = floor_y(), big = BIG(), hw, hh, w = W(), h = H();
+    int fy = floor_y(), big = BIG(), hw = 0, hh = 0, w = W(), h = H();
     int fuzz_x = big ? 62 : 44, fuzz_foot = fy + (big ? 52 : 40);
     char b[96];
-
-    if (X.state == ST_FAREWELL) { draw_grave(t); return; }
-    exo_church(X.dread, t, fy);
 
     switch (X.state) {
     case ST_INTRO: case ST_TOOLS: case ST_NODEMON: case ST_WAIT: {
         int hx = (X.state == ST_TOOLS) ? (big ? 92 : 64) : w / 2;
         int hy = fy - (big ? 44 : 30);
         if (X.state == ST_WAIT && (X.water_done || X.rhythm)) hx = w / 2;
-        draw_host_at(hx, hy, 1, EXPR_POSSESSED, t, &hw, &hh);
-        exo_candles(hx, hy + hh / 2 + 4, X.practice ? 3 : exorcism_tries_left(X.host), 3, t, big);
-        if (X.state != ST_TOOLS) exo_fuzz(fuzz_x, fuzz_foot, t, EXPR_HAPPY);
+        host_layer(hx, hy, 1, EXPR_POSSESSED, t, &hw, &hh);
+        candles_layer(hx, hy + hh / 2 + 4, X.practice ? 3 : exorcism_tries_left(X.host), 3, t, big);
+        if (X.state != ST_TOOLS) fuzz_layer(fuzz_x, fuzz_foot, t, EXPR_HAPPY);
         if (X.state != ST_NODEMON)
-            exo_demon(X.state == ST_TOOLS ? hx - hw / 2 - 2 : hx + hw / 2 + 4, hy - hh / 2 + 4, t, 0, 1);
-        if (X.state == ST_TOOLS) draw_tools(t);
+            demon_layer(X.state == ST_TOOLS ? hx - hw / 2 - 2 : hx + hw / 2 + 4, hy - hh / 2 + 4, t, 0, 1);
+        if (X.state == ST_TOOLS) {
+            int tw = big ? 180 : 150, rowh = big ? 15 : 12, th = (EXI_COUNT + 1) * rowh + (big ? 50 : 44);
+            int tx = w - tw - (big ? 14 : 4), ty = big ? 18 : 4, i;
+            uint32_t k = hk(hk(hk(0x7001u, (uint32_t)X.sel | X.items << 8 | (uint32_t)X.odds << 16),
+                               (uint32_t)DOOMO_MIN(X.st_t, 40) | (uint32_t)(ui_window_glint(tx, ty, tw, th) + 1) << 8),
+                            (uint32_t)(ui_wave((int)t, 20, 2) + 2) | (uint32_t)X.practice << 4);
+            for (i = 0; i < EXI_COUNT && !X.practice; i++) k = hk(k, (uint32_t)inv_count(doomo_exorcism_items[i]));
+            /* the window's drop shadow reaches 2 right, 3 down (ui_window_shadow); while it pops in
+             * (ui_pop_scale, up to 300/256) it overshoots its rect */
+            if (X.st_t < 16) {
+                int nw = tw * 300 / 256, nh = th * 300 / 256;
+                if (L(LY_U0, tx + (tw - nw) / 2 - 4, ty + (th - nh) / 2 - 4, nw + 10, nh + 10, k)) draw_tools(t);
+            } else if (L(LY_U0, tx - 4, ty - 4, tw + 10, th + 10, k)) {
+                draw_tools(t);
+            }
+        }
         break;
     }
     case ST_PRAYER: {
-        int hy = fy - (big ? 46 : 34);
-        draw_host_at(w / 2, hy, 1, EXPR_POSSESSED, t, &hw, &hh);
-        exo_candles(w / 2, hy + hh / 2 + 3, X.practice ? 3 : exorcism_tries_left(X.host), 3, t, big);
-        exo_fuzz(fuzz_x, fuzz_foot, t, EXPR_TALK);
-        exo_demon(w / 2 + hw / 2 + 10, hy - hh / 2 + ui_wave((int)t, 40, 4), t, X.shake > 3 ? X.shake : 0, 1);
-        draw_faith_meter(w - (big ? 28 : 22), big ? 26 : 16, big ? 70 : 46,
-                         X.pt > 0 ? (X.score / DOOMO_MAX(1, X.perfects + X.goods + X.misses)) : 0);
-        draw_lane(t);
+        int hy = fy - (big ? 46 : 34), ly, lane_h, lhx, fx = w - (big ? 28 : 22), fyy = big ? 26 : 16, fh = big ? 70 : 46;
+        int faith = X.pt > 0 ? (X.score / DOOMO_MAX(1, X.perfects + X.goods + X.misses)) : 0;
+        host_layer(w / 2, hy, 1, EXPR_POSSESSED, t, &hw, &hh);
+        candles_layer(w / 2, hy + hh / 2 + 3, X.practice ? 3 : exorcism_tries_left(X.host), 3, t, big);
+        fuzz_layer(fuzz_x, fuzz_foot, t, EXPR_TALK);
+        demon_layer(w / 2 + hw / 2 + 10, hy - hh / 2 + ui_wave((int)t, 40, 4), t, X.shake > 3 ? X.shake : 0, 1);
+        if (L(LY_U0, fx - 2, fyy - 10, 12, fh + 12, hk(0xFA17u, (uint32_t)faith | (uint32_t)(X.dread < 8) << 16)))
+            draw_faith_meter(fx, fyy, fh, faith);
+        lane_geom(&ly, &lane_h, &lhx);
+        /* the ribbon and its prompts (a missed prompt sinks 10 px; sparkles, outlines) */
+        if (L(LY_U0 + 1, 0, ly - 4, w, lane_h + 32, hk(0x1A9Eu, (uint32_t)X.pt ^ (uint32_t)(X.dread < 8) << 20)))
+            draw_lane(t, LANE_RIBBON);
+        if (L(LY_U0 + 2, 0, ly - 24, w, 21,
+              hk(0x90Bu, (X.fb && X.fb_t < 24 ? (uint32_t)X.fb | (uint32_t)X.fb_t << 4 : 0u) |
+                         (uint32_t)(X.combo >= 3 ? X.combo : 0) << 12)))
+            draw_lane(t, LANE_POP);
+        if (L(LY_U0 + 3, w / 2 - 10, ly - 36, 34, 22,
+              hk(0xC0u, X.pt < 4 * EXORCISM_TICKS_PER_BEAT && X.pt >= 0 ? (uint32_t)(X.pt / EXORCISM_TICKS_PER_BEAT) + 1 : 0u)))
+            draw_lane(t, LANE_COUNT);
         if (X.taunt_t > 0)
-            exo_bubble(w / 2 + hw / 2 - (big ? 10 : 30), big ? 6 : 2, big ? 120 : 96, X.taunt,
-                       w / 2 + hw / 2 + 10, hy - hh / 2 - 6, 1);
+            bubble_layer(LY_U0 + 4, w / 2 + hw / 2 - (big ? 10 : 30), big ? 6 : 2, big ? 120 : 96, X.taunt,
+                         w / 2 + hw / 2 + 10, hy - hh / 2 - 6, 1);
+        else
+            L(LY_U0 + 4, 0, 0, 0, 0, 0);
         break;
     }
     case ST_WATER: {
-        int hx, hy, i;
+        int hx, hy, i, xx = big ? 34 : 24, yy = big ? 10 : 6, left = DOOMO_MAX(0, WATER_TICKS - X.st_t);
         water_geom(&hx, &hy, &hw, &hh);
-        draw_host_at(hx, hy, big ? 2 : 1, EXPR_POSSESSED, t, &hw, &hh);
-        exo_demon(X.dx >> 8, X.dy >> 8, t, X.demon_flash, 1);
+        host_layer(hx, hy, big ? 2 : 1, EXPR_POSSESSED, t, &hw, &hh);
+        demon_layer(X.dx >> 8, X.dy >> 8, t, X.demon_flash, 1);
         for (i = 0; i < 2; i++) {
             const Throw *th = &X.throws[i];
             int u, x, y, arc;
-            if (!th->active) continue;
+            if (!th->active) { L(LY_U0 + i, 0, 0, 0, 0, 0); continue; }
             u = th->t * 256 / 12;
             x = w / 2 + (th->x - w / 2) * u / 256;
             y = h + 4 + (th->y - h - 4) * u / 256;
             arc = (big ? 50 : 34) * u * (256 - u) / 65536 * 4;
+            if (!L(LY_U0 + i, x - 4, y - arc - 6, 9, 10, hk(0x7400u, (uint32_t)(x & 1023) | (uint32_t)((y - arc) & 1023) << 10)))
+                continue;
             ui_fill_circle(x, y - arc, 3, PAL_PAINT(PAINT_SKY, 1));
             plat_rect(x - 1, y - arc - 5, 3, 3, PAL_PAINT(PAINT_WHITE, 1));
             plat_rect(x - 1, y - arc - 1, 1, 1, PAL_WHITE);
         }
         if (X.splash_t > 0) {
             const DoomoImage *sp = sprite_image(SPR_HOLY_SPLASH, X.splash_t / 4);
-            if (sp) plat_image(X.splash_x - sp->w / 2, X.splash_y - sp->h / 2, sp, 1, 0, 0);
-            if (X.splash_hit && X.splash_t < 12)
-                ui_text_outline(X.splash_x - 12, X.splash_y - 18 - X.splash_t, "HIT!", PAL_UI_GOLD, PAL_BLACK);
+            int sx0 = X.splash_x - 14, sy0 = X.splash_y - 37, sx1 = X.splash_x + 15, sy1 = X.splash_y + 1;
+            if (sp) {
+                sx0 = DOOMO_MIN(sx0, X.splash_x - sp->w / 2 - 1); sy0 = DOOMO_MIN(sy0, X.splash_y - sp->h / 2 - 1);
+                sx1 = DOOMO_MAX(sx1, X.splash_x - sp->w / 2 + sp->w + 1); sy1 = DOOMO_MAX(sy1, X.splash_y - sp->h / 2 + sp->h + 1);
+            }
+            if (L(LY_U0 + 2, sx0, sy0, sx1 - sx0, sy1 - sy0,
+                  hk(hk(0x5A1u, (uint32_t)(X.splash_x & 1023) | (uint32_t)(X.splash_y & 1023) << 10),
+                     (uint32_t)X.splash_t | (uint32_t)X.splash_hit << 8 | (uint32_t)(uintptr_t)sp << 9))) {
+                if (sp) plat_image(X.splash_x - sp->w / 2, X.splash_y - sp->h / 2, sp, 1, 0, 0);
+                if (X.splash_hit && X.splash_t < 12)
+                    ui_text_outline(X.splash_x - 12, X.splash_y - 18 - X.splash_t, "HIT!", PAL_UI_GOLD, PAL_BLACK);
+            }
+        } else {
+            L(LY_U0 + 2, 0, 0, 0, 0, 0);
         }
-        if (!X.water_done) draw_reticle(X.cx, X.cy, t);
-        draw_water_hud(t);
+        if (!X.water_done) {
+            int r = (big ? 9 : 7) + 2;
+            if (L(LY_U0 + 3, X.cx - r - 4, X.cy - r - 4, 2 * r + 9, 2 * r + 9,
+                  hk(0x4E7u, (uint32_t)(X.cx & 1023) | (uint32_t)(X.cy & 1023) << 10 |
+                             (uint32_t)(ui_wave((int)t, 20, 1) + 2) << 20)))
+                draw_reticle(X.cx, X.cy, t);
+        } else {
+            L(LY_U0 + 3, 0, 0, 0, 0, 0);
+        }
+        if (L(LY_U0 + 4, xx - 7, yy - 5, w - 2 * xx + 14, 20,
+              hk(0xADu, (uint32_t)X.flasks | (uint32_t)X.need << 5 | (uint32_t)X.hits << 10 |
+                        (uint32_t)(left / 30) << 15 | (uint32_t)(left < 150) << 25)))
+            draw_water_hud(t);
         if (X.taunt_t > 0)
-            exo_bubble((X.dx >> 8) - 50, DOOMO_MAX(18, (X.dy >> 8) - 40), 100, X.taunt,
-                       X.dx >> 8, (X.dy >> 8) - 8, 1);
+            bubble_layer(LY_U0 + 5, (X.dx >> 8) - 50, DOOMO_MAX(18, (X.dy >> 8) - 40), 100, X.taunt,
+                         X.dx >> 8, (X.dy >> 8) - 8, 1);
+        else
+            L(LY_U0 + 5, 0, 0, 0, 0, 0);
         break;
     }
     case ST_NAME: {
         int px, py, pw, ph, hx, hy;
         name_geom(&px, &py, &pw, &ph, &hx, &hy);
-        draw_host_at(hx, hy, 1, EXPR_POSSESSED, t, &hw, &hh);
-        exo_demon(hx + hw / 2 - 2, hy - hh / 2 + 4 + ui_wave((int)t, 30, 3), t,
-                  X.picked >= 0 && X.name_ok ? X.st_t - X.picked : 0, 1);
-        draw_name_ui(t);
+        host_layer(hx, hy, 1, EXPR_POSSESSED, t, &hw, &hh);
+        demon_layer(hx + hw / 2 - 2, hy - hh / 2 + 4 + ui_wave((int)t, 30, 3), t,
+                    X.picked >= 0 && X.name_ok ? X.st_t - X.picked : 0, 1);
+        /* the clue window and the four names under it (their shadows reach 3 px below the
+         * second row: draw_name_ui), as one layer */
+        if (L(LY_U0, DOOMO_MIN(px - 3, hx), py - 3, w - DOOMO_MIN(px - 3, hx),
+              hy - (big ? 26 : 20) + 2 * (big ? 22 : 18) + 14 - (py - 3),
+              hk(hk(hk(0x4A3Eu, (uint32_t)X.sel | (uint32_t)(X.picked >= 0) << 4 | (uint32_t)(X.near + 1) << 5 |
+                                (uint32_t)(X.correct + 1) << 10 | (uint32_t)X.clues << 15 | (uint32_t)skin() << 20),
+                    (uint32_t)(ui_window_glint(px, py, pw, ph) + 1) | (uint32_t)((t / 8) & 1) << 12),
+                 (uint32_t)(ui_wave((int)t, 20, 2) + 2) ^ (uint32_t)host_ref() << 8)))
+            draw_name_ui(t);
         if (X.taunt_t > 0)
-            exo_bubble(hx + hw / 2 + 6, h - (big ? 34 : 26), big ? 150 : 130, X.taunt,
-                       hx + hw / 2, hy - hh / 2 + 10, 1);
+            bubble_layer(LY_U0 + 1, hx + hw / 2 + 6, h - (big ? 34 : 26), big ? 150 : 130, X.taunt,
+                         hx + hw / 2, hy - hh / 2 + 10, 1);
         else if (X.picked < 0)
-            exo_bubble(hx + hw / 2 + 6, h - (big ? 34 : 26), big ? 150 : 130,
-                       "You'll NEVER guess my true name!", hx + hw / 2, hy - hh / 2 + 10, 1);
+            bubble_layer(LY_U0 + 1, hx + hw / 2 + 6, h - (big ? 34 : 26), big ? 150 : 130,
+                         "You'll NEVER guess my true name!", hx + hw / 2, hy - hh / 2 + 10, 1);
+        else
+            L(LY_U0 + 1, 0, 0, 0, 0, 0);
         break;
     }
     case ST_VERDICT: {
         int hy = fy - (big ? 48 : 34);
-        draw_host_at(w / 2, hy, 1, EXPR_POSSESSED, t, &hw, &hh);
-        draw_verdict(t);
+        host_layer(w / 2, hy, 1, EXPR_POSSESSED, t, &hw, &hh);
+        if (L(LY_U0, 0, 0, w, h, t)) draw_verdict(t);          /* the whole screen dims */
         break;
     }
     case ST_RESULT: {
         int hy = fy - (big ? 40 : 30);
         int expr = X.success ? EXPR_HAPPY : EXPR_POSSESSED;
         int tries = X.practice ? 3 : exorcism_tries_left(X.host);
-        draw_host_at(w / 2, hy, 1, expr, t, &hw, &hh);
-        exo_candles(w / 2, hy + hh / 2 + 4, tries, 3, t, big);
+        host_layer(w / 2, hy, 1, expr, t, &hw, &hh);
+        candles_layer(w / 2, hy + hh / 2 + 4, tries, 3, t, big);
+        if (X.success) fuzz_layer(fuzz_x, fuzz_foot, t, EXPR_HAPPY);
+        if (!L(LY_U0, 0, 0, w, h, t)) break;                   /* confetti, texts, the dim: everything */
         if (X.success) {
-            exo_fuzz(fuzz_x, fuzz_foot, t, EXPR_HAPPY);
             if (X.st_t < 24) {
                 const DoomoImage *p = sprite_image(SPR_PUFF, X.st_t / 6);
                 if (p) plat_image(w / 2 + hw / 2 - p->w / 2, hy - hh / 2 - p->h / 2, p, 2, 0, 0);
@@ -1151,8 +1376,9 @@ static void exo_draw(void)
     }
     case ST_LOST: {
         int hy = fy - (big ? 48 : 34), lv;
-        draw_host_at(w / 2, hy, 1, EXPR_SAD, t, &hw, &hh);
-        exo_candles(w / 2, hy + hh / 2 + 4, 0, 3, t, big);
+        host_layer(w / 2, hy, 1, EXPR_SAD, t, &hw, &hh);
+        candles_layer(w / 2, hy + hh / 2 + 4, 0, 3, t, big);
+        if (!L(LY_U0, 0, 0, w, h, t)) break;                   /* the dim and the texts: everything */
         lv = X.st_t < 30 ? 14 - X.st_t / 4 : 7;
         plat_shade_rect(0, 0, w, h, DOOMO_MAX(lv, 7));
         if (X.st_t > 25) {
@@ -1169,6 +1395,46 @@ static void exo_draw(void)
     }
     default: break;
     }
+}
+
+static void exo_draw(void)
+{
+    uint32_t t = doomo_frame_count();
+    uint32_t bk;
+    int p, retained;
+
+    if (X.state == ST_FAREWELL) { draw_grave(t); return; }
+    /* SP7: the church is a kept backdrop where the platform has it (the GBA's ROM); every
+     * moving thing is a layer the stage redraws only when it changed (backdrop.h) */
+    bk = exo_church_key(X.dread, t);
+    stage_mem();
+    retained = stage_begin(DOOMO_BACKDROP_EXO_CHURCH, bk, exo_church_backdrop);
+    if (!retained) {
+        /* no kept backdrop (PS1, native, a skipped tick): one pass, as before the stage */
+        lpass = 2;
+        ly_fetch = 1;
+        if (plat_draw_skipped()) { lpass = 1; exo_layers(t); return; }   /* (the portraits still tick) */
+        exo_church_backdrop(bk);
+        for (p = 0; p < EXO_PARTS; p++) exo_church_part_draw(p, X.dread, t);
+        exo_layers(t);
+        return;
+    }
+    lpass = 1;                                     /* boxes and keys; the portraits are fetched */
+    ly_fetch = 1;
+    for (p = 0; p < EXO_PARTS; p++) {
+        int16_t box[4];
+        uint32_t key;
+        exo_church_part(p, X.dread, t, box, &key);
+        stage_layer(p, box[0], box[1], box[2], box[3], hk(key, (uint32_t)p));
+    }
+    exo_layers(t);
+    stage_resolve();
+    lpass = 2;
+    ly_fetch = 0;
+    for (p = 0; p < EXO_PARTS; p++)
+        if (stage_draw(p)) exo_church_part_draw(p, X.dread, t);
+    exo_layers(t);
+    stage_end();
 }
 
 const DoomoScene SCENE_EXORCISM = { "EXORCISM", exo_enter, exo_leave, exo_update, exo_draw, 0 };

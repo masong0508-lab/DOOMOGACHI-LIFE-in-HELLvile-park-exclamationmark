@@ -58,7 +58,6 @@ int plat_hold_frame(int on)
     held = 1;
     return 1;
 }
-void plat_begin_frame(void) { if (held) memcpy(nat_fb, held_fb, (size_t)held_n); }
 
 /* CL4: the native platform is the test runner and the unit tests: no first-time tip cards unless a
  * script asks ("tips on", tips_test_force), so the journeys keep their press budgets. */
@@ -135,8 +134,15 @@ int plat_hold_band(int op, const PlatBand *b)
     band_ok = 0;
     return 0;
 }
+
+void plat_begin_frame(void)
+{
+    if (held) memcpy(nat_fb, held_fb, (size_t)held_n);
+    else nat_stage_frame_begin();         /* (SP7) off unless a test turns it on */
+}
 void plat_end_frame(void)
 {
+    nat_stage_frame_end();
     ticks++;
     nat_wav_frame();                      /* --- music: musrender (MU1, CF-46) --- */
 }

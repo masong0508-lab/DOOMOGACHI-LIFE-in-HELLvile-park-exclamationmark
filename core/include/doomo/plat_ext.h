@@ -26,6 +26,8 @@
  *   plat_scene_scratch       SP3 P-I1 (PS1: the overlay slot's unused tail)
  *   plat_hold_band           SP5 (held dialogue backdrop: GBA, native)
  *   plat_loading             SP5 (loading fades: GBA, PS1)
+ *   plat_stage_*             SP7 (a kept backdrop: the GBA's ROM-baked
+ *                            exorcism church; native for tests)
  *   plat_pack_blob/read      E0 declares the pack format (pack.h, which
  *                            includes this header); E8 (GBA ROM blob),
  *                            E9 (PS1 disc file), E2 (native loader)
@@ -197,6 +199,36 @@ int  plat_hold_band(int op, const PlatBand *band);
  * and bring the next picture in from there. Draw-side only: no logic, timing or saved state sees it.
  * Default: nothing. */
 void plat_loading(void);
+
+/* ---- a kept backdrop and a retained stage (SP7, docs/EXORCISM_SPEED.md) ----------------
+ * A scene whose picture is a full-screen BACKDROP that depends only on a small key (the
+ * exorcism's church: its dread level and its slow animation steps), with LAYERS drawn over
+ * it, can let the platform keep the backdrop (backdrop.h lists the families and their keys):
+ *   plat_stage_begin(id, key, draw, info)  the first call of the scene's draw. This frame's
+ *       backdrop is what draw(key) paints over the whole screen; id is its family
+ *       (DOOMO_BACKDROP_*). Returns 1 when the platform holds that backdrop (the GBA bakes
+ *       every key into the ROM at build time with this same `draw`; native keeps a copy it
+ *       drew with it when nat_stage_on is set) and can put any box of it back with
+ *       plat_stage_restore(); `info` then says what the buffer this frame is drawn into
+ *       holds: `held`, the serial of the frame whose picture it holds (0: unknown, or drawn
+ *       over by something that was not a stage frame since), `serial`, this frame's serial,
+ *       and the box [dx0, dx1) x [dy0, dy1) that 2D calls after that frame's
+ *       plat_stage_end() covered (dialogue, toasts, hints, fades; empty when dx0 >= dx1).
+ *       Returns 0 (the default) when it cannot: the core draws the backdrop and every layer
+ *       itself, as before.
+ *   plat_stage_restore(x, y, w, h)  put that box of the backdrop back into the picture.
+ *   plat_stage_end()  the stage's own drawing is done for this frame: from here until the
+ *       frame is presented the platform records the box of every 2D call (the next frame
+ *       drawn into this buffer gets it as info.dirt).
+ * Serials count the frames a platform presents; a skipped tick has none. Weak defaults
+ * (core/src/backdrop.c): begin returns 0, restore and end do nothing. */
+typedef struct PlatStageInfo {
+    uint32_t held, serial;
+    int16_t  dx0, dy0, dx1, dy1;
+} PlatStageInfo;
+int  plat_stage_begin(int id, uint32_t key, void (*draw)(uint32_t key), PlatStageInfo *info);
+void plat_stage_restore(int x, int y, int w, int h);
+void plat_stage_end(void);
 
 /* ---- content packs (E0 pack.h, E2, E7-E10) -----------------------------------
  * blob: a pack that is directly addressable (the GBA mature ROM variant's

@@ -86,6 +86,7 @@ static void rule(const char *why)
 int nat_panel_op(int kind, int x0, int y0, int x1, int y1)
 {
     int i;
+    nat_stage_note(x0, y0, x1, y1);              /* (SP7) the stage's overlay box */
     if (!nat_panel_cache) return 0;
     if (depth++ > 0) return 1;
     if (x0 < 0) x0 = 0;
