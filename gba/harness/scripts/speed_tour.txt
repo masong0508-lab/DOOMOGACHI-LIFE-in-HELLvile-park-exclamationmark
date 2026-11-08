@@ -34,6 +34,8 @@
 # (portrait slices, stand-ins, idle-time slices) raised the title to 25,
 # the pause to 25, the map walk to 25, the concert to 12.5 and the town
 # hall menu to 25 (85% of 29.9, 29.9, 30.0, 15.0 and 30.0).
+# SP3 (ISLAND_SPEED.md I11, the toast band) took the island hub from 24.3
+# to 29.9 fps and its floor from 6.3 to 25 (life_speed.txt's hub too).
 wait 40
 expect-log doomo: init
 sync on 61
@@ -200,7 +202,7 @@ expect-scene ISLAND
 wait 200
 fps start
 wait 130
-expect-fps 6.3 island hub
+expect-fps 25 island hub
 shot island
 vhash-seq 30 island hub
 

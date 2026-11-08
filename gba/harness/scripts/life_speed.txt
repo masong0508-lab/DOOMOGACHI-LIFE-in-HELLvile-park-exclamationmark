@@ -29,7 +29,7 @@ expect-scene ISLAND
 wait 200
 fps start
 wait 130
-expect-fps 6.3 life: island hub
+expect-fps 25 life: island hub
 shot hub
 latency DOWN 120 hub cursor (DOWN)
 latency UP 120 hub cursor back (UP)

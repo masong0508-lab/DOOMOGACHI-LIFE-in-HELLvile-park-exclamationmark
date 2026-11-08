@@ -194,3 +194,79 @@ ends the build and draws in one go as before.
 Steady hub (300 ticks): 30.0 logic ticks/s, 30.0 drawn fps, work avg 14.4 ms, max 31.9 ms (was 29.9 / 24.3 / 16.1 / 77.9).
 First 130-tick tour window: 28.6 / 24.4 / 22.2 / 75.5 ms: the toast slide-in/out (~10 full frames each) is NOT fixed yet: next step is a clean
 toast-strip copy (VRAM page gaps, 2 x 2,560 B, unused by the hub) so slides redraw only the strip. EWRAM unchanged (3,556 B free).
+
+## I11 (SP3, G-I11): a moving toast redraws only its band (GBA; exact but for the hub's animation timing)
+
+The I10 hub held its picture and built each refresh over 4 ticks, but a toast that MOVES (slide-in, slide-out, the scroll
+of a line wider than its pill, the next queued line) still ended the hold: ~10 full ~65 ms frames per toast.
+- Every full hub frame (one go or the last slice of a build) now asks the platform to keep a clean copy of the toast's
+  band, rows 3..20 (`ui_toast_band`), as drawn before the toast goes on top: `plat_strip(PLAT_STRIP_SAVE)` (plat_ext.h).
+  The GBA keeps it in the two Mode 4 page gaps (10 + 8 rows of 240 B, 2 DMAs, ~0.15 ms; the raycaster's colormap rows
+  are marked stale, as the overworld's tile slots do; nothing else in the gaps is used by an island frame); the native
+  runner keeps it in memory (so the logic is tested); PS1 / DC: weak 0, as before.
+- A held hub tick under a moving toast (`hub_toast_mode` 2) puts the band back into the page being drawn
+  (`PLAT_STRIP_RESTORE`) and lets `ui_toast_draw` draw the toast where it is now; after the toast has gone, two more
+  drawn ticks put the band back (one per page). A steady toast on the kept picture still only runs its timer (I8).
+- While the toast moves, a refresh build waits (the shown page is presented again during a build, so a moving toast
+  would stop); a build already started finishes in that tick. So the hub's 8-tick animation step can be late by up to
+  a slide (9 ticks), or a long line's scroll: the one pixel change against I10. Particles (unlock confetti) still end
+  the hold, as before.
+- Test `island_hub_toast_slides_redraw_only_the_band` (test_island_replay.c): on every held tick under a toast the
+  toast's box equals the all-full run's, the band beside it equals the kept frame drawn WITHOUT any toast (no ghost of
+  an earlier position), and such ticks happen while the toast moves (checked to fail when the restore is left out).
+
+libmgba, speed tour (`make -C gba test-speed`, same ROM settings, `--worklog`), island hub window:
+
+| | logic ticks/s | drawn fps | work avg ms | median | max ms | ticks > 33.4 / > 50.2 |
+|---|---:|---:|---:|---:|---:|---|
+| before (4851147 + rename) | 28.5 | 24.3 | 22.5 | 18.4 | 73.1 | 16 / 16 of 111 |
+| I11 | 30.0 | 30.0 | 14.3 | 9.0 | 30.1 | 0 / 0 of 130 |
+
+Town hall menu unchanged (25.8 fps on the tour, 26.0 on the island-only script; see I13). With I12 in the ROM too (`make -C gba test-speed`): island hub
+29.9 / 29.9 fps, avg 14.6 ms, max 30.1; `vhash-seq` d92b12dd -> 668b7903 (the hub's animation timing), every other scene's
+`vhash-seq` unchanged; life tour hub 24.3 -> 30.0 fps (max 30.0 ms). Both hub floors (`speed_tour.txt`, `life_speed.txt`) 6.3 -> 25. EWRAM: 3,524 B free (was 3,560: the state bytes); no new buffers.
+
+## I12 (SP3, P-I1): the recorded lists on the PS1, in the overlay slot's unused tail (exact)
+
+I1-I3's rect lists (land, patches, roads, glints, walkers, weather, deco variants) were cap 0 on the PS1: the 2 MB had
+no BSS for them. They now live in the scene scratch the platform lends (`plat_scene_scratch`, plat_ext.h): on the PS1
+the part of the overlay slot after the group that is loaded (`ps1/src/overlay.c`); the island group is ~53 KB of a
+~127 KB slot. The lists there are sized for 320x240 (land 1,024, patches 384, roads 256, glints 48, walkers 64,
+weather 64, deco pool 512 rects = 18.9 KB; FP_ISLAND_SCRATCH 20,480 B), `lr_bind()` points them at it before every
+map draw and starts every list over when the generation (the overlay load count) changes, since any load can
+overwrite the tail. `ps1/tools/ovl_plan.py` SCRATCH makes the linker script keep that room after the island group (the
+slot grows if the group ever does; today the slot is set by bigger groups, the PS1 RAM end moved by 288 B). GBA and
+native keep BSS; the native runner can lend a scratch (`nat_scene_scratch`) and wipe it like a load.
+Test `island_lists_in_a_scene_scratch_equal_live_lists`: every frame equals the live run's at 240x160 (day, night)
+and 320x240, across three wipes, with replays and no list overflowing (checked to fail with the old 640-rect land list
+at 320x240 or without the generation check).
+
+PCSX-Redux (`ps1/harness/run.py` with the speed audit's histogram copy, same scripts as the audit; the island
+screenshots are byte-identical before / after: same frames):
+
+| | island hub | town hall menu | life tour hub | life island menu |
+|---|---:|---:|---:|---:|
+| before | 23.84 (2:116 3:121 4:2) | 22.19 (2:104 3:100 4:35) | 24.00 | 22.31 |
+| I12 | **30.00** (2:238 3:1) | **29.94** (2:237 3:2) | **30.00** | 29.35 (2:84 3:5) |
+
+The hub's profile now spends 48% in `_default_vsync_halt` (idle). P-I2 (a GPU-drawn backdrop) is not needed.
+
+## I13 (SP3, G-T1): the town hall menu on the GBA, measured; the retained window is not the lever
+
+G-T1 proposed the menu window's body as a retained panel. It was built (rows with the selected row as the panel's
+hole, the description pill as a second panel; pixel-identical on native with the panel cache on) and measured:
+~0.2 ms (26.0 fps either way). Where the held menu's time goes (libmgba, island-only script, 130-tick window):
+
+| variant (experiment builds, not in the tree) | drawn fps | median ms | max ms |
+|---|---:|---:|---:|
+| the menu as it is | 26.0 | 29.7 | 53.6 |
+| window frame only | 30.0 | 5.7 | 15.0 |
+| window + the host's figure only | 29.8 | 19.8 | 43.7 |
+| everything but the host's figure (with the panels) | 30.0 | 15.8 | 26.3 |
+
+The host's figure is ~14 ms of every tick and every tick over 33.4 ms: its portrait re-renders all the time (a sliced
+job in a 7-tick cycle: 18, 22, 26, 30, 32, 46 ms ticks) because its wag / breath / blink phases change faster than one
+render finishes and the cache keeps one image per figure (`portrait.c` `animated`). Without the figure the menu holds
+30 fps with or without retained panels, so the panels were left out (the patch is in the SP3 evidence). The fix is
+X1 (keep the old and new phase images, or render ahead), or an owner decision to show menu hosts in a still pose
+(`portrait_hold`, as the title does). PS1: the town hall is 29.94 fps after I12.

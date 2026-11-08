@@ -132,7 +132,7 @@ PS1 build has the same viewer (`ps1/src/cutview.c`, hold SELECT at boot).
 | IRQ stack | `0x03007FA0` down | 672 B | the master IRQ handler (`crt0.s`) |
 | main stack | `0x03007D00` down | >= 6 KB reserved (linker `ASSERT`) | system mode |
 | VRAM page 0/1 | `0x06000000` / `0x0600A000` | 2 x 37.5 KB | Mode 4 double buffer |
-| VRAM gaps | `0x06009600` / `0x06013600` | 2 x 2.5 KB | the 3D view's 16 colormap rows + tint map (behind the two Mode 4 pages; byte reads as fast as IWRAM) |
+| VRAM gaps | `0x06009600` / `0x06013600` | 2 x 2.5 KB | the 3D view's 16 colormap rows + tint map (behind the two Mode 4 pages; byte reads as fast as IWRAM); per frame, the overworld's tile slots and the house's roof tables; on the island hub the clean copy of the toast's 18-row band (SP3, `hold.c` `plat_strip`, docs/ISLAND_SPEED.md I11) |
 | VRAM OBJ area | `0x06014000` | 16 KB | 3D texture cache: 4 textures; squash and title-figure OBJs (`obj.c`); in a tile frame, the overworld billboards as OBJs (G6, `ow_obj.c`, section 6c) |
 | VRAM in a tile frame (G5) | `0x06000000` | 37.5 KB | canvas map (SB 0), world map (SB 1), 36 cell composites at `0x1000`, the 392-tile canvas pool at `0x3400`; the dense build canvas is page 1's bytes (`0x0600A000`, 600 tiles, the last 216 in OBJ VRAM below `0x06013600`). The 3D gaps are never touched (section 6b) |
 | palette | `0x05000000` | 512 B | BG + OBJ palettes = `doomo_palette` |

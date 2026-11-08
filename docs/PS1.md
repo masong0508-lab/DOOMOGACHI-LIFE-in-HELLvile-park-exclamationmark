@@ -184,7 +184,7 @@ is still opaque, and index 0 maps to 0x0000 (transparent) in the CLUTs.
 | `0x80000000-0x8000FFFF` | BIOS / kernel |
 | `0x80010000-...` | the EXE: resident code, read-only data (art, roster, packed textures / sprites / map cells), data |
 | after it | BSS: the two display lists (2 x 56 KB prims + 2 OTs of 1536 entries per view), core state (`doomo_town` 107 KB, `doomo_map` 32 KB), caches |
-| after the BSS (game disc) | the **scene overlay slot** (116 KB): the code + const data of the scene that runs, read from `OVL.BIN` |
+| after the BSS (game disc) | the **scene overlay slot** (116 KB): the code + const data of the scene that runs, read from `OVL.BIN`; what a group leaves after it is that scene's scratch (`plat_scene_scratch`, SP3: the island's recorded rect lists, 20 KB, `ovl_plan.py` SCRATCH) |
 | `...-0x801FFFF0` | stack (grows down) |
 
 Everything - code, const data and BSS - is loaded into these 2 MB, and
