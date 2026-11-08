@@ -29,7 +29,13 @@ You find it in the **Concert Hall** and the **Town Hall** (activities table
 
 ## Controls
 
-GBA buttons only; PS1 extras in brackets.
+GBA buttons only; PS1 extras in brackets. Each tab's prompt bar (C3,
+`tab_prompts` in `studio_edit.c`, the shared `ui_prompts`) names the pad's
+own buttons ("SEL+B Undo" on a GBA, "Triangle Undo" on a PS1) and gives way
+item by item at 240x160. On the SONG tab its left / right verb says what the
+row is ("Swing feel", "Loudness", "Instrument"...), the beating heart top
+right reads "110 bpm" where it fits, and the NOTES header says where the
+pattern plays as "in Order 2,3,5" (its slots in the ORDER tab).
 
 | Anywhere | |
 |---|---|

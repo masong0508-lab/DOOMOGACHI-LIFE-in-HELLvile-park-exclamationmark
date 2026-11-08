@@ -20,11 +20,17 @@ CI use, and how every team looks at its screens. It implements every
 make -C core runner                 # -> core/build/runner (BUILD=dir to move it)
 core/build/runner --script FILE --shots DIR [--w 240 --h 160]
        [--frames N] [--saves DIR] [--seed N] [--zoom N] [--gba-input]
-       [--assert-no-stubs] [--quiet] [--verbose] [--budgets FILE]
+       [--assert-no-stubs] [--check-prompts] [--quiet] [--verbose] [--budgets FILE]
 ```
 
 * `--gba-input` sets `DOOMO_INPUT_SYNTH_XY` like the GBA does (SELECT+A = X,
-  SELECT+B = Y).
+  SELECT+B = Y). The UI then names the GBA's buttons too (`input.h`
+  `input_pad`, `btn_name`: "SEL+A", no X / Y / R1 on screen).
+* `--check-prompts` (C3) fails the run if a prompt bar (`ui_hint`,
+  `ui_prompts`) had to be cut to fit the screen or named a button the pad
+  lacks, and prints `prompts: N bars, ...`. A runner script can ask for
+  options in a `# runner-flags: --gba-input --check-prompts` line among its
+  first five (`core/tests/run_scripts.sh`; `prompts_gba.txt` does).
 * `--assert-no-stubs` exits with status 2 if any weak placeholder from
   `core/src/stubs.c` ran (`plat_log("STUB: ...")`). The final integration
   playthrough uses it.

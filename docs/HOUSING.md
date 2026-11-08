@@ -216,6 +216,13 @@ One scene, five modes over one working room (`HomeEdit` and its undo ring):
 | Defend | Hold the Door: D-pad the cursor, A on the door / turret / a guest / a window slot |
 | View | a photo re-rendered from its recipe (the Library's photo wing): L / R the next photo, A / B back |
 
+The bars (C3 / C15): the bottom band holds the shared prompt bar (`ui_prompts_at`, inside the
+band the room renderer leaves alone), one capitalised verb per button; the top band names the
+mode after the room ("Living Room  Build", the clock where it still fits); the first time a
+session builds, a caption names the four dots ("Top dots: Comfort, Spook, Style, Light"); in the
+Score panel UP / DOWN pick a stat and the bar says what it counts; the Ep 1.2 checklist has a
+"Place these:" header and ticks.
+
 The START menu: Catalog, Live / Build mode, Score, then (Build) Walls,
 Themes, Blueprints, then Photo, Rooms (own home), Leave. A visit's menu is
 Give a gift, Photo, Leave (no gift in the sealed room or a vacant flat).

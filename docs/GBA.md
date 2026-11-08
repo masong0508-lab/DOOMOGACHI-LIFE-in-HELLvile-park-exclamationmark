@@ -912,6 +912,30 @@ language switch at 240x160 and 320x240 with the cache on and off: every
 frame is identical, no panel breaks a rule, and most frames keep their
 panels.
 
+**The prompt bar (C3, `PANEL_PROMPT`).** `ui_hint` and the shared prompt bar
+`ui_prompts` / `ui_prompts_at` (`ui.h`) draw their pill as a panel, once a
+frame (a second bar on the same frame is drawn plainly). Its key is the bar's
+text as drawn (pad names and translation included), the style and the pieces
+flag. Nine panels now: `shown` is a 16-bit mask (`PANEL_COUNT <= 16`) and
+`pn_route` / `box_shown` walk only the shown panels' bits. The bar's text is
+built once and kept (`pmemo` in `ui.c`, keyed on the items' buttons, verbs,
+the pad, the language and the width), so a screen that shows the same bar
+frame after frame builds nothing. The pet screen pays for its new bar at
+240x160 with its geometry worked out once a tick instead of per LCD dot
+(`plat_screen_h` was 3% of the scene), the island hub with a memo of
+`unlock_find` for the categories without alternate routes (the sim asks the
+united-park mode every tick) and a news ticker that no longer measures its
+line every tick; the house draws its bar inside its opaque bottom band
+(`plat_room_ui_opaque`), so the room renderer never draws under it.
+Measured on libmgba (`make test-speed`, CL3 vs `b080562`): pet 12.2 -> 13.4
+drawn fps (56.8 -> 52.3 ms), island hub 24.3 -> 24.3 (22.5 -> 22.6 ms),
+house plain 30.0 -> 30.0 (10.6 -> 10.9 ms), every other scene within 0.3 ms
+or faster. New `vhash-seq` (the bar is on these frames): house plain,
+island hub, pet. The hahaland visit's frames also differ: its V14 governor
+drops far sprites by measured frame time, and a 0.1 ms layout shift moves
+which ticks it governs (with `GBA_GOV_MS_N=999` both ROMs hash the hahaland
+visit identically, `a5dced3f`). EWRAM free 3,540 -> 3,196 B.
+
 **Exactness.** `make test-speed SPEED_BASE=` against the merge base's log
 (`54f2983`, the same tour script, and again on `17d385b` after H5): all 16
 scenes' 480 hashed frames are identical; and the story sweep (`scene STORY 100..165` and `200..265`, seed
