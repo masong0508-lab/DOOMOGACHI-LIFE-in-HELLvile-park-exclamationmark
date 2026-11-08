@@ -13,8 +13,12 @@ and the sound effects play through a software mixer and one AICA stream
 (DC5). The overworld is real 3D on the PVR (DC7: terrain, blocks,
 billboards with depth, the native runner's light and tints), drawn inside
 the 2D layer's painter's order through the 3D batches of `src/dc3d.h`.
-DC6 (the first-person view) and DC8 (the house) replace the last
-placeholders in `src/plat_stub.c`.
+The dream house is the PVR's too (DC8: `plat_room` draws exactly what the
+native reference `room_ref.c` draws, with the room's static shell as one
+cached texture, each piece one sprite in room_ref's order, real
+translucent ghosts, a pulsing selection glow and the zoom; about 3 ms a
+tick instead of DC3's 28-50 ms through the 2D calls). DC6 (the
+first-person view) replaces the last placeholder in `src/plat_stub.c`.
 
 ## Build
 
@@ -28,7 +32,8 @@ make -C dc ui-compare                  # DC3: the six UI scripts on Flycast agai
 make -C dc vmu-test                    # DC4: VMU saves, full / no VMU, first boot, stick + keyboard on Flycast
 make -C dc audio-test                  # DC5: title, invaded town, combat with sound on Flycast against runner --wav
 make -C dc ow-test                     # DC7: the overworld scripts on Flycast against the host's software PVR
-make dc-host-test                      # the 2D layer, the 3D batches and overworld, the VMU file system and controls, the sound mixer on the host (no KOS needed)
+make -C dc room-test                   # DC8: room_ref's golden frames and the house scripts on Flycast
+make dc-host-test                      # the 2D layer, the 3D batches and overworld, the house, the VMU file system and controls, the sound mixer on the host (no KOS needed)
 make -C dc clean
 ```
 
@@ -46,6 +51,7 @@ are linked directly (never through an archive) with `--gc-sections`.
 | `build/doomogachi-nodebug.elf` | the ELF without debug sections, for Flycast (it cannot open an ELF over 16 MiB) |
 | `build/shots/ui/` | `ui-compare`: Dreamcast and native shots, diff pictures, `summary.txt` |
 | `build/shots/ow/` | `ow-test`: per script the Flycast, native and host shots, logs, `compare.txt`; `summary.txt` |
+| `build/shots/house/` | `room-test`: `parity/` (the golden frames from Flycast and room_ref, diffs), per house script the Flycast, host and native shots, logs, `compare.txt`; `summary.txt` |
 
 ## Run
 
@@ -77,7 +83,8 @@ Not yet tried on hardware.
 | `src/dc3d.h`, `src/dc3d.c` | the 3D batches (DC7), portable C: projected polygons in the 2D list's painter's order, segments, markers, near clipping, the held batch |
 | `src/overworld.c` | `plat_overworld` (DC7), portable C: terrain, blocks, sea, billboards, shadows, light, tints |
 | `src/pvr3d.c` | the 3D batches' PVR backend: headers, strips, the shadows' blob texture |
-| `src/plat_stub.c` | placeholders for the platform calls DC6 and DC8 implement |
+| `src/room.c`, `src/room_int.h` | `plat_room` and `plat_room_project` (DC8), portable C: the house as room_ref draws it, the shell as one cached texture, pieces and residents as sprites in room_ref's order (O(n^2)), ghosts, the selection glow, the zoom |
+| `src/plat_stub.c` | the placeholder for the platform call DC6 implements (`plat_view3d`) |
 | `src/dc_plat.h` | the internal interfaces, `DcMailbox` |
 | `ip.txt` | `makeip` input: original title and maker strings |
 | `tools/mkcdi.sh` | ELF -> 1ST_READ.BIN -> ISO with IP.BIN -> CDI |
@@ -87,4 +94,5 @@ Not yet tried on hardware.
 | `tests/gfx2d/` | the 2D layer's host test: unit tests, the dual-render runner (`tee.c`), the software PVR (`swpvr.c`), `run_compare.sh` |
 | `tests/vmu/` | DC4: `test_vmu.c` (host: VMS, the file system on a simulated VMU pulled out at every write, icons, controls), the Flycast scripts and `run_flycast.sh` |
 | `tests/overworld/` | DC7: `run_flycast.sh` (the overworld scripts on Flycast, the native runner and the host's software PVR), `compare3d.py`, `sheet.py`, the Hellvile walks |
+| `tests/house/` | DC8: `run_flycast.sh` (room_ref's golden frames drawn by the game on Flycast; the house scripts on Flycast, the host's software PVR and the native runner), `compare_house.py`; the host test is `tests/gfx2d/test_dc_room.c` |
 | `tests/audio/` | DC5: `test_audio.c` (host: the mixer's units), `sndtee.c` + `run_compare.sh` (the mixer against musrender on runner scripts), `compare.py`, the Flycast scripts and `run_flycast.sh` |

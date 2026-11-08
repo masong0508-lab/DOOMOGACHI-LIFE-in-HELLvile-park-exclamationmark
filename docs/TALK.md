@@ -47,7 +47,7 @@ Contents:
 | **T7** | the census (`core/tools/talk_census.c`: the three tiers, Chao1, the quality checks Q1-Q6, the conversation tier), the grid `census_en.tsv`, `make -C core talk-census`, the smoke census in `make test`, the Q7 review sheet `talk_sample.py` | **done** (TK3): the tools and the measurement. The full run's numbers are in 6d: Skeleton, Meaning, conversations and quality meet the design's targets; **Surface does not** (it needs T5b's bank); Q7 (a person rating 300 exchanges) has not been done |
 | T8 | the house mode `HM_TALK` on native, with its UI | to do |
 | T9, T10 | pointer input; other languages (after the script rewrite) | to do |
-| TP0-TP4, TD0-TD3 | the PS1 and Dreamcast ports | to do (TD0 blocked on DC3, DC4, DC8 and the Flycast approval) |
+| TP0-TP4, TD0-TD3 | the PS1 and Dreamcast ports | to do (TD0's prerequisites are in: DC3, DC4, DC8 with zoom 2 and `plat_room_project`, and the Flycast core, approved and built) |
 
 Nothing in the game can reach Talk yet. `home_talk_enter()` is a weak
 default that answers "not available", and no platform sets `PLATF_TALK`.
@@ -966,8 +966,11 @@ owner may override any of them.
   the player (familiarity). It is never romantic or suggestive, and every
   other child-safety rule (K-4 romance gate, K-7 and the rest) stays exactly
   as designed. `TA_HIGH_FIVE` is just another gesture.
-* **Dreamcast Talk waits** for DC3, DC4 and DC8, and for the owner's
-  approval of the Flycast core build.
+* **Dreamcast Talk waited** for DC3, DC4 and DC8, and for the owner's
+  approval of the Flycast core build. All four are in (2026-11-08): DC8's
+  `plat_room` implements zoom 2 (the talk framing, a glide to the circle
+  around `focus_x` / `focus_y`) and `plat_room_project` follows it
+  (docs/DREAMCAST.md section 8).
 
 The UI will follow the owner's top priority, comprehensibility. T8 must
 make the mode obvious. It needs:

@@ -21,8 +21,13 @@ project plan). This document grows with it. Right now it covers:
    and the sound effects, rendered per logic tick by a software mixer and
    streamed to the AICA, checked against the native runner's `--wav`.
 7. The overworld in 3D (DC7): `plat_overworld` as PVR polygons inside the
-   2D layer's painter's order (the 3D batches of `dc3d.h`, which DC6 and
-   DC8 can use too), checked on Flycast against a software PVR on the host.
+   2D layer's painter's order (the 3D batches of `dc3d.h`, which DC6 can
+   use too), checked on Flycast against a software PVR on the host.
+8. The dream house (DC8): `plat_room` on the PVR, drawing exactly what the
+   native reference `room_ref.c` draws (checked frame by frame on the host
+   and on Flycast), with the room's shell as one cached texture, real
+   translucent ghosts, a pulsing selection and the zoom; the house at about
+   3 ms a tick instead of 28-50 ms.
 
 The SH4 compile check that runs today, with no KallistiOS at all, is the
 `sh-elf-gcc` leg of `core/tools/xcheck.sh` (docs/BUILDING.md, "Tests").
@@ -327,7 +332,8 @@ The skeleton drew only `plat_clear()`'s colour; DC3 draws all of the 2D
 | saves | **done** (`dc/src/vmusave.c`, section 5: the VMU, a static 136 KB scratch) | DC4 |
 | `plat_tone`, `plat_sample`, `plat_sample_ex`, `plat_music_stall` | **done** (`dc/src/audio.c`, `mixer.c`, `sfx.c`, section 6); the music engine stays on the core's weak legacy bridge tier | DC5 |
 | `plat_overworld` | **done** (`dc/src/overworld.c` over `dc3d.c` / `pvr3d.c`, section 7) | DC7 |
-| `plat_view3d`, `plat_room` | no-ops / weak defaults | DC6, DC8 |
+| `plat_room`, `plat_room_project` | **done** (`dc/src/room.c`, section 8) | DC8 |
+| `plat_view3d` | a no-op | DC6 |
 
 `make -C dc check-elf` lists the core's weak platform defaults still in the
 link, so each package can see what it has left.
@@ -349,7 +355,7 @@ compilers. The harness finds the `dc_mailbox` symbol in the ELF
 `dc/src/misc.c` also exports the plain name as an alias) and reads and
 writes it through libretro's `RETRO_MEMORY_SYSTEM_RAM` region at
 `address & 0xFFFFFF`. `check-elf` checks the size and the alias and prints
-the offset. It is 32-byte aligned and 4332 bytes:
+the offset. It is 32-byte aligned and 4364 bytes:
 
 | field | what |
 |---|---|
@@ -360,6 +366,7 @@ the offset. It is 32-byte aligned and 4332 bytes:
 | `test_flags` | DC4: `plat_test_flags()`; dcrun writes `PLAT_TEST_NO_PICKER` and (CL4) `PLAT_TEST_NO_TIPS` when it sees the magic (`--console`: 0; a script's `tips on` clears the tips bit) |
 | `snd_pushed` ... `snd_starved` | DC5's sound counters after each tick (section 6, Counters) |
 | `g3d_us` ... `g3d_dropped` | DC7's 3D view counters after each drawn frame (section 7, Counters) |
+| `room_us` ... `room_prims_max` | DC8's house counters after each drawn frame (section 8, Counters) |
 
 The cable type and the boot time are log lines (`DC: video 640x480 VGA`,
 `DC: core up in N us`), not mailbox fields.
@@ -373,7 +380,10 @@ Dreamcast adds 16 text feed (`type`) and 17 the native runner's start
 (`--native-seed`), DC3, and DC7 the native runner's story commands: 18
 `side`, 19 `talk`, 20 `cell`, 21 the story state (`skip-talk`), 22 "does the
 dialogue say" (`expect-text`, `skip-to`; the first 19 characters, the
-mailbox's `name`), 23 "is the top scene" (`skip-to-scene`), 24 `clock`. Results follow the GBA: nonzero means success (dc_mailbox.h). The harness writes `arg`
+mailbox's `name`), 23 "is the top scene" (`skip-to-scene`), 24 `clock`; DC8
+the house: 14 `room-parity` (a golden frame of `core/tests/room_shells.h`
+drawn by `plat_room` on a screen of its own, the GBA's id), 25 `home-room`
+and 26 `money` (the native runner's house commands). Results follow the GBA: nonzero means success (dc_mailbox.h). The harness writes `arg`
 (and `name`), then `cmd`; the game runs it between two logic ticks.
 `dc/tests/boot.txt` is the first harness script: boot, `scene: set BOOT`,
 `scene: set TITLE`, then 300 video frames (5 s) that must advance the tick count by
@@ -409,6 +419,11 @@ card's metadata (8.7 KB): code 1,723,248 B, `.bss` 2,897,492 B, image
 With DC7 (2026-11-08, on the tree with Talk T3/T4 and the clarity work): code 1,772,336 B,
 `.bss` 4,277,940 B (the three 3D batches 1.13 MB, the overworld's corner tables 17 KB),
 image 8,878,784 B (8.47 MB), 7.46 MB free above `_end`.
+With DC8 (2026-11-08): code 1,785,488 B, `.bss` 4,555,124 B (+277 KB: the
+house's shell canvas 179 KB, its sprite decode buffer 64 KB, the piece
+table 12 KB, the harness's `room-parity` scratch 12 KB, the order's edge
+matrix 5 KB, the tint maps 2 KB), image
+9,180,972 B (8.76 MB), 7.18 MB free above `_end`.
 The ELF file is 17 MB because of debug info; the scrambled `1ST_READ.BIN` is 4.4 MB.
 
 ### Disc image (`dc/tools/mkcdi.sh`)
@@ -593,9 +608,9 @@ Measured 2026-11-08 (host, this tree):
 |---|---|
 | `dc2d_test` | 52 checks, 0 failed (also under ASan/UBSan) |
 | the six DC3 UI scripts, hardware effects | 94 shots, **100.000% exact** on every shot; at most 2,704 prims and 223 KB of vertices a frame, nothing dropped |
-| all 80 runner scripts, `DC3_FX=sw` | 905 shots, 854 exact to the pixel, mean 99.984%; worst 98.59% (home_defend: `room_ref` reuses one uid for translucent actors whose dither changes every frame, so a uid-keyed cache shows the last pattern; the room is DC8's own renderer on the console) |
+| all 80 runner scripts, `DC3_FX=sw` | 905 shots, 854 exact to the pixel, mean 99.984%; worst 98.59% (home_defend: `room_ref` reuses one uid for translucent actors whose dither changes every frame, so a uid-keyed cache shows the last pattern; the room is DC8's own renderer on the console, section 8, whose translucent residents are GLASS prims) |
 | all 80 runner scripts, hardware effects | 905 shots, 810 exact; the rest differ where the post effects do their hardware job (shakes, palette lerps, blends) |
-| heaviest frame | home_rooms (`room_ref` through the 2D calls): 10,287 prims, 938 KB of vertices, inside the budget; DC8 draws rooms itself |
+| heaviest frame | home_rooms (`room_ref` through the 2D calls): 10,287 prims, 938 KB of vertices, inside the budget; DC8 draws rooms itself (section 8: 50-190 prims a view) |
 
 ### On Flycast
 
@@ -1347,6 +1362,190 @@ runner's sprites and colours; the native reference shows more of the map
 - Fill rate: the terrain is drawn through the translucent list (about 1.5
   times the screen with roofs and faces); the PVR's translucent path is
   slower than its opaque one, unmeasured on a console.
+
+## 8. The dream house (DC8)
+
+```sh
+make dc-host-test        # includes dcroom_test: the house against room_ref on the host
+make -C dc room-test     # room_ref's golden frames and the house scripts on Flycast
+make -C dc test          # ... and everything else (room-test is its last step)
+```
+
+`plat_room` (and `plat_room_project`, which Talk's speech bubbles anchor on)
+is `dc/src/room.c` (portable C, `room_int.h`). Before DC8 the Dreamcast used
+the core's weak default, `room_ref.c` through the 2D calls: correct, but its
+floor and walls went to the PVR row by row (up to 8,332 prims, 744 KB of
+vertices a frame in the house scripts; 10,287 in DC3's busiest host frame,
+near the list's 12,288) and the house cost 28-50 ms of SH4 time a tick on
+Flycast: 1,560 of home_defend's 1,593 ticks and every tick of home_flats were
+over the 30 fps budget, and the sound underran (214 times in home_defend).
+
+### What it draws
+
+What `core/src/room_ref.c` draws, pixel for pixel at the 2D layer's 2x: the
+projection (the view `k` from the yaw, 16 units a tile, the back corner
+centred in the viewport, the pan), the shell (the viewport colour or the open
+kinds' sky and stars, the roof with its chimney, dormer, skylight, tank or
+spikes, the Garden's and the Park Plot's backdrop, the two back walls in all
+8 wallpapers with the cornice ramp and the corner post, all 8 floors with
+their grout, the plot's lip on both front edges), the light (H8: the daylight
+level, up to 4 lamp pools on the floor tiles, the wall columns and the
+pieces, glow pixels at full light, a switched-off lamp's glow dark, the
+windows' panes and the roof glass by daylight), the furniture art through
+`room_ref_sprite()` (every facing with H9's backs, the paints, the door and
+window skins, the animation frames, the half-tile smalls, the possessed
+jitter), the tints, the residents (flipped, squashed, tinted), the
+rubber band and the cursor, and the order (the back-wall pieces, then rugs,
+pieces and residents in room_ref's topological order of their footprints,
+then the open kinds' front-edge pieces, then the cursor). Where a piece's
+sprite does not fit the scene's `plat_cache` (or there is none) it is
+room_ref's shaded box, as on native.
+
+Where the Dreamcast does more than the reference (the plan's DC8 list):
+
+| | room_ref (native) | the Dreamcast |
+|---|---|---|
+| a held / placed ghost (`RO_GHOST`, `RO_SEMI`), a translucent resident (`BB_TRANSLUCENT`) | a 50% checker dither | the piece at 50% (a GLASS prim: texture times ARGB, blended) |
+| the blueprint ghost (`RO_GHOST` + `RO_SEMI`, "buy at HomeMart") | a grey dithered silhouette | the grey silhouette at 50% |
+| an invalid ghost (`RO_INVALID`) | dithered, a shade darker | darker, tinted red, 69% |
+| a selected piece (`RO_SELECTED`) | a shade lighter every other 8 ticks | an additive glow over its shape (an ADD prim through the white bank) that swells and fades every 32 ticks |
+| `zoom` 1 / 2 | ignored | 1: a 1.6x close-up on the player (the PS1's); 2: Talk's framing, the circle `focus_r` around `focus_x/y` fills the viewport (scale 1..3); both glide a third of the way a frame, and back to exactly room_ref's picture at zoom 0 |
+| a squashed piece or resident | the weak default's rect runs | one quad, as `plat_image_xform` (section 4) |
+
+The two new 2D modes (`dc2d.h`: `DC2D_GLASS`, `DC2D_ADD`) are generic; an
+exact shade over a GLASS prim remaps its texture like an image's.
+
+### How it is fast
+
+- **The shell is one texture.** Everything static (the roof, the backdrop,
+  the walls, the floor, the lip) is drawn once into a PAL8 canvas with
+  room_ref's own pixel code (ported to write bytes; a first, cheap pass
+  measures its box, so the canvas is as big as the shell, at most 448 x 400
+  with 64 px of margin round the screen for pans and zooms) and uploaded as
+  one texture under a fresh uid. Every frame draws it as one sprite. It is
+  drawn again only when its key changes: the turned size, origin and wall
+  height, the patterns, paints, ceiling ramp, kind, roof, light level and
+  tint, and the derived `RoomLight`, `RoomBackdrop` and `RoomRoof` (a lamp
+  switched, the door moved, the hearth under the chimney). A pan (the view
+  brake's shake) only moves it. The background colour and the stars stay 2D
+  rects (they do not pan).
+- **A piece is one sprite.** Its texture is keyed by everything its pixels
+  depend on (piece, frame and facing entry, paints, light level with the
+  dark-lamp / dusk / night bits, the grey / invalid recolour, the tint) in a
+  table of 1,024 keys with uids of their own (room_ref's xor of those fields
+  can collide, and a uid-keyed cache must not). A key whose texture is still
+  in video RAM costs no decode at all (`dc2d_tex_find`); otherwise
+  `room_ref_sprite()` decodes it once.
+- **The order is room_ref's**, found in O(n^2) instead of O(n^3): the same
+  items, the same `behind()` and the same pick (the free item with the
+  smallest key, the cycle fallback on the plain depth key), as Kahn's
+  algorithm with that priority (`dc_room_sort`). The presorted translucent
+  list (section 4) draws the prims in that order. A depth buffer cannot
+  replace it: an iso sprite has no per-pixel depth, and the art's overlaps
+  follow the footprints.
+- Residents are their images' textures (the 2D layer's cache), tinted
+  through a remapped copy (`dc2d_tex_remap` with `doomo_tintmap`, index 0
+  kept clear); lines are the 2D layer's exact walks.
+
+A view at rest costs the key, the sort and 50-190 prims (about 0.2-0.7 ms
+of SH4 time on Flycast); the first frame in a room renders the shell (12-17
+ms) and decodes its sprites: the worst tick of the house scripts is 26.9 ms
+(home_visit, the script that decodes the most sprites: 115 over the run),
+and none passes 33.3 ms (before DC8: 28-50 ms on average, table below). RAM: 277 KB of `.bss` (the canvas 179 KB, the
+decode buffer 64 KB, the piece table 12 KB, the `room-parity` scratch 12 KB,
+the order's matrix 5 KB); video RAM: the shell's texture (64-256 KB) and one
+small texture per piece variant.
+
+### Counters
+
+After each drawn frame the mailbox holds `room_us` (the last view's time,
+microseconds), `room_us_max`, `room_us_sum` / `room_n`, `room_shells` (shell
+textures rendered) and `room_shell_us_max`, `room_decodes` (piece sprites
+decoded) and `room_prims_max`; `dcrun` prints them (`dcrun: house views ...`).
+`dc_room_stats` (`room_int.h`) has the same and the sorted items.
+
+### The host test (`dc/tests/gfx2d/test_dc_room.c`)
+
+The host runner's tee (section 4) now draws the house with room.c on the
+Dreamcast side and room_ref on the native side (`DC8_ROOM=ref`: room_ref on
+both, the route before DC8). `dcroom_test` (117 checks, part of
+`make dc-host-test`):
+
+| test | checks |
+|---|---|
+| parity | all 58 golden frames of `core/tests/room_shells.h` (the classic layout in 4 views and at night, every wallpaper, floor, ceiling ramp, tint, room kind, roof, fence, lamp pool) identical to room_ref |
+| catalog | every one of the 349 pieces alone in a room, 4 views by day and one at night (back facings, door and window skins, glow, panes): 1,745 frames identical |
+| dynamic | residents (plain, flipped, lifted, tinted), the cursor, the rubber band, half-tile smalls, a jitter, a pan, in 4 views: identical; squashes differ only inside their own quads |
+| boxes | no `plat_cache`: the shaded boxes, identical |
+| effects | a ghost is one 50% GLASS prim whose pixels are a blend; the invalid ghost is red; the blueprint ghost grey; a translucent resident GLASS; the selection an ADD glow over the piece's own texture that pulses and brightens |
+| sort | `dc_room_sort` equals room_ref's search on 3,000 random layouts (2,089 of them through the cycle fallback) |
+| cache | a view at rest decodes nothing and keeps its shell; the same frame twice gives the same prims, byte for byte; a pan keeps the shell; a new light, a lamp switched off and a turn render a new one (and stay identical to room_ref) |
+| zoom | zoom 1 settles at 1.6x with the player's feet under the viewport's centre, `plat_room_project` where the sprite stands; zoom 2 puts Talk's focus at the centre; back at zoom 0 the picture is room_ref's again |
+| budget | the busiest room (8x8, 40 pieces, 12 residents, roof, night) in 4 views: identical, 108 prims, 8.5 KB of vertices, nothing dropped |
+| maps | no colormap or tintmap entry is index 0 (the canvas's transparent texel) |
+
+With room.c in the tee, DC3's six UI scripts still match the native runner
+on every shot (`run_compare.sh`).
+
+### On Flycast (`make -C dc room-test`)
+
+`dc/tests/house/run_flycast.sh`:
+
+1. **The golden frames on the console.** `room-parity LINE NAME` (mailbox
+   command 14) makes the game draw golden line LINE with its own
+   `plat_room` on a screen of its own; `dcrun` shoots it. All 58 are compared
+   with room_ref's pictures from the host test (`DC8_PNG`) by
+   `dc/harness/compare.py` at a gate of 100%.
+2. **The house scripts** (`core/tests/scripts/home_*.txt`, which needed the
+   native runner's `home-room`, `money` and `up` in `dcrun`, mailbox 25 and
+   26), tick-exact from the native runner's start: each Flycast shot against
+   the host runner's software-PVR picture of the same tick (gated:
+   `compare_house.py`, exact >= 99%, within 24/255 >= 99.9%) and against the
+   native runner (reported); no prim dropped; no tick over 33.3 ms.
+
+Measured 2026-11-08 (Flycast `e7085e20`, the CDI; times in emulated SH4
+time, a guide until a console measures them; "worst" is the game's own
+`work_max`):
+
+| script | shots vs host (worst exact) / identical to native | house views / mean | work per tick mean / worst | shells (slowest) | sprites decoded | prims max a view | ticks over 33.3 ms |
+|---|---|---|---|---|---|---|---|
+| home_rooms | 21 pass (100%) / 21 of 21 | 420 / 0.7 ms | 4.3 / 22.0 ms | 20 (17.2 ms) | 29 | 69 | 0 of 420 |
+| home_editor | 32 pass (99.61%) / 20 of 32 | 1,025 / 0.3 ms | 4.5 / 21.1 ms | 9 (15.2 ms) | 38 | 190 | 0 of 1,025 |
+| home_flats | 8 pass (100%) / 8 of 8 | 228 / 0.5 ms | 5.2 / 21.4 ms | 5 (15.0 ms) | 21 | 65 | 0 of 228 |
+| home_gallery | 7 pass (100%) / 5 of 7 | 310 / 0.4 ms | 3.9 / 20.3 ms | 6 (12.6 ms) | 20 | 61 | 0 of 410 |
+| home_haunt | 7 pass (100%) / 6 of 7 | 503 / 0.3 ms | 2.9 / 20.4 ms | 5 (12.6 ms) | 33 | 64 | 0 of 544 |
+| home_mart | 16 pass (100%) / 14 of 16 | 148 / 0.4 ms | 5.4 / 20.3 ms | 3 (12.2 ms) | 18 | 59 | 0 of 456 |
+| home_tutorial | 9 pass (100%) / 8 of 9 | 303 / 0.2 ms | 3.5 / 20.4 ms | 1 (12.4 ms) | 10 | 64 | 0 of 344 |
+| home_visit | 17 pass (99.99%) / 15 of 17 | 527 / 0.4 ms | 3.8 / 26.9 ms | 7 (15.9 ms) | 115 | 74 | 0 of 803 |
+| home_defend | 9 pass (99.85%) / 4 of 9 | 1,560 / 0.2 ms | 3.2 / 20.9 ms | 1 (12.4 ms) | 4 | 69 | 0 of 1,594 |
+
+The golden frames: 58 of 58 identical to room_ref on Flycast (every pixel).
+The house scripts: 126 of 126 shots pass against the host's software PVR (at
+worst 99.6% exact, the rest within 24/255: the PVR rounds a GLASS blend a
+level apart). Against the native runner 101 of 126 shots are identical to
+the pixel; the others differ where the Dreamcast does its own effects:
+translucent ghosts and guests, the selection glow, the photo mode's palette
+filters (`plat_pal_lerp`), the shakes and the hell insert's punch
+(`plat_post_offset` / `plat_post_scale`, section 4). Before DC8 (the same
+scripts on the merge base's CDI):
+
+| script | work per tick mean / worst | ticks over 33.3 ms | prims max / vertex bytes |
+|---|---|---|---|
+| home_defend | 38.6 / 45.7 ms | 1,560 of 1,593 | 5,907 / 511 KB |
+| home_gallery | 28.0 / 42.9 ms | 192 of 410 | 5,835 / 505 KB |
+| home_tutorial | 35.1 / 46.4 ms | 303 of 344 | 5,872 / 508 KB |
+| home_flats | 49.6 / 56.2 ms | 227 of 227 | 8,332 / 744 KB |
+
+### Owed on hardware (DC8)
+
+- The house's frame time on a real SH4 and PVR, above all the first frame
+  in a room (the shell render, 12-17 ms on Flycast, and the sprite decodes):
+  `dcrun: house views ...` has the numbers to compare.
+- The GLASS and ADD blends on a console's PVR (MODULATEALPHA through a
+  palette texture, SRCALPHA / ONE), and point sampling of a sprite drawn at
+  1.6x and 3x (the zoom).
+- The texture upload of the shell (up to 256 KB through the store queues)
+  inside one tick.
 
 ## Rumble (X2)
 

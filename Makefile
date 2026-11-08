@@ -18,7 +18,8 @@
 #                   scripts (when dc/harness is in the tree)
 #   make dc-host-test  the Dreamcast 2D layer on the host (host gcc only: unit
 #                   tests + the UI scripts against the native runner, dc/tests/gfx2d;
-#                   DC7's 3D batches and overworld through the software PVR, test_dc3d),
+#                   DC7's 3D batches and overworld through the software PVR, test_dc3d;
+#                   DC8's house against room_ref, test_dc_room),
 #                   the VMU saves / controls (dc/tests/vmu) and the sound mixer
 #                   against musrender (dc/tests/audio)
 #   make trailer    trailer/build/trailer.mp4 (needs ffmpeg)
@@ -221,7 +222,8 @@ dc: need-dc
 dc-test: need-dc
 	$(MAKE) -C dc $(J) test DC_PREFIX=$(DC_PREFIX)
 
-# DC3: the portable 2D layer against the native runner (no KallistiOS needed);
+# DC3: the portable 2D layer against the native runner (no KallistiOS needed;
+# DC7's overworld and DC8's house are in the same test directory);
 # DC4: the VMU file system (a card pulled out at every write), icons, controls;
 # DC5: the sound mixer (units; its WAVs against musrender)
 dc-host-test: need-host
