@@ -97,6 +97,9 @@ static int group_of(const DoomoScene *s, int *part)
     return 0;
 }
 
+/* SP5 G-LD: while the drive reads, the fade (gfx.c) darkens the frame on screen once the wait is clearly long */
+static void ld_wait(void) { gfx_load_fade(); }
+
 static int read_sectors(int lba, int n, void *dst)
 {
     CdlLOC loc;
@@ -107,6 +110,8 @@ static int read_sectors(int lba, int n, void *dst)
             continue;
         if (!CdRead(n, (uint32_t *)dst, CdlModeSpeed))
             continue;
+        while (CdReadSync(1, 0) > 0)
+            ld_wait();                      /* SP5 G-LD: the fade while the drive reads */
         if (CdReadSync(0, 0) >= 0)
             return 1;
     }
@@ -169,7 +174,8 @@ static int read_unpack(int lba, int n, uint32_t bytes, uint8_t *dst, uint32_t *t
             avail = left ? tmp + (uint32_t)(n - left) * 2048 - 130 : tmp + (uint32_t)n * 2048;
             if (src >= avail) {
                 uint32_t t = timer_us();
-                while (CdReadSync(1, 0) == left) {}
+                while (CdReadSync(1, 0) == left)
+                    ld_wait();              /* SP5 G-LD */
                 *t_wait += timer_us() - t;
                 continue;
             }
@@ -186,6 +192,7 @@ static int read_unpack(int lba, int n, uint32_t bytes, uint8_t *dst, uint32_t *t
 static void load(int g)
 {
     uint32_t t0 = timer_us(), t1 = 0, n;
+    gfx_load_fade_begin();
     if (g < 1 || g > (int)ps1_ovl_ngroups || s_lba < 0) {
         dbg("ovl: cannot load group %d (no OVL.BIN)\n", g);
         s_cur = 0;

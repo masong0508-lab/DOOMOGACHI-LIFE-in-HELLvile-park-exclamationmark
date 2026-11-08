@@ -101,6 +101,8 @@ void cutview_enter(void);               /* debug cutscene viewer (cutview.c) */
 extern uint16_t g_last_draw_y;          /* VRAM y of the newest frame */
 void gfx_busy_banner(const char *msg);  /* "Saving..." while the BIOS blocks */
 void gfx_busy_end(void);                /* ... and remove it again */
+void gfx_load_fade_begin(void);         /* SP5 G-LD: a scene group load starts (overlay.c) */
+void gfx_load_fade(void);               /* ... and waits for the drive: darken the frame on screen when late */
 /* full-screen "Saving... / Loading..." screen with a progress bar (done of
  * total blocks); call again after every block, total 0 = empty bar */
 void gfx_loading_screen(const char *title, const char *detail, int done, int total);

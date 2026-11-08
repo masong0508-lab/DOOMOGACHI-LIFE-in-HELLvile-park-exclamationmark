@@ -155,6 +155,7 @@ void postfx_vblank(int tiles)
             cl = pf.blend_l;
         }
     }
+    ld_flip(&bldcnt, &bldy);                    /* SP5 G-LD: a loading fade lifts (loadfade.c) */
     REG_BLDCNT = (uint16_t)bldcnt;
     REG_BLDY = (uint16_t)bldy;
     if (pf.set & PF_PAL) { pid = pf.pal_id; pl = pf.pal_l; }

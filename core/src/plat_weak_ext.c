@@ -53,6 +53,8 @@ WEAK void *plat_scene_scratch(uint32_t bytes, uint32_t *gen)
     return 0;
 }
 
+WEAK void plat_loading(void) {}
+
 WEAK int plat_hold_band(int op, const PlatBand *band)
 {
     (void)band;

@@ -85,6 +85,7 @@ void gba_irq_dispatch(uint32_t flags)
         gba_vblanks++;
         gba_key_latch |= (~(uint32_t)REG_KEYINPUT) & KEY_MASK;
         audio_vblank_mix();
+        if (gba_vbl_hook) gba_vbl_hook();      /* SP5 G-LD: a loading fade (loadfade.c, THUMB) */
     }
 }
 

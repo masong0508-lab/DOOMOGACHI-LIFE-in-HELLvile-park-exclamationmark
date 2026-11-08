@@ -26,6 +26,7 @@
  * the vblank right after the page flip (registers, OAM DMA, palette). */
 void postfx_pre_flip(void);
 void postfx_vblank(int tiles);       /* tiles: Mode 0 (G5): blend BG0 too */
+void ld_flip(int *bldcnt, int *bldy);  /* SP5 G-LD (loadfade.c): a loading fade's level on a flip */
 
 /* The frame's post transform, for the OBJ composition: screen p of bitmap
  * point q is c + s * (q - c) + d. Returns 0 when there is none. */

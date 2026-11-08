@@ -406,6 +406,63 @@ void gfx_busy_end(void)
     s_banner_rect.w = 0;
 }
 
+/* ---- SP5 G-LD: a short fade over a loading freeze (docs/PS1.md "Loading fades") -----------------------------
+ * A scene whose code group is not in the overlay slot waits for the drive (overlay.c, 50-330 ms a group, up to
+ * three groups when a scene starts another) with the last frame on screen. While it waits, overlay.c calls
+ * gfx_load_fade() with the vblanks waited so far: from LD_LATE on, the newest finished frame is darkened by one
+ * 50% black pass every LD_EVERY vblanks, three at most (to 1/8), drawn straight into the picture on screen like
+ * the busy banner above. Nothing has to be put back: every game frame is cleared (isbg) and redrawn in full, and
+ * the next one shows normally. gfx_load_fade_begin() at the start of each load. */
+#define LD_LATE  4
+#define LD_EVERY 3
+static uint8_t s_ld_passes, s_ld_armed;  /* passes drawn over the frame on screen; a load has started this frame */
+static uint32_t s_ld_v0;                 /* VSync(-1) when this frame's first load started */
+uint32_t g_ld_passes;                   /* passes drawn since boot (the harness / evidence) */
+
+/* the first load of a frame starts the clock (a scene that starts another loads up to three groups in a row:
+ * their waits add up, and the picture on screen is darkened at most three times in all) */
+void gfx_load_fade_begin(void)
+{
+    if (s_ld_armed) return;
+    s_ld_armed = 1;
+    s_ld_passes = 0;
+    s_ld_v0 = (uint32_t)VSync(-1);
+}
+
+void gfx_load_fade(void)
+{
+    static TILE t;
+    static DR_TPAGE tp;
+    DRAWENV env;
+    uint32_t waited_vbl = (uint32_t)VSync(-1) - s_ld_v0;
+    int fb = g_cur ^ 1, due;
+    if (!s_ld_armed || waited_vbl < LD_LATE || s_first) return;
+    due = (int)((waited_vbl - LD_LATE) / LD_EVERY) + 1;
+    if (due > 3) due = 3;
+    if (s_ld_passes >= due) return;
+    DrawSync(0);                        /* the newest frame is complete */
+    g_tpage_cur = 0xffff;               /* immediate draws below: state unknown */
+    env = s_fb[fb].draw;
+    env.isbg = 0;
+    env.dtd = 0;
+    PutDrawEnv(&env);
+    setDrawTPage(&tp, 1, 0, getTPage(0, 0, 0, 0));      /* semi-transparency 0: B/2 + F/2 */
+    DrawPrim(&tp);
+    while (s_ld_passes < due) {
+        setTile(&t);
+        setSemiTrans(&t, 1);
+        setXY0(&t, 0, 0);
+        setWH(&t, SCR_W, SCR_H);
+        setRGB0(&t, 0, 0, 0);
+        DrawPrim(&t);
+        DrawSync(0);
+        s_ld_passes++;
+        g_ld_passes++;
+    }
+    PutDispEnv(&s_fb[fb].disp);
+    dbg("ovl: load fade %d/3 after %u vblanks\n", s_ld_passes, (unsigned)waited_vbl);
+}
+
 /* ---- full-screen loading screen --------------------------------------------
  * Used for saving and loading the memory card. The BIOS card driver blocks
  * the game loop for about a second per 8 KB block, so the screen cannot
@@ -567,6 +624,7 @@ void gfx_end(void)
     }
     /* show what the GPU just finished, draw the new list into the other */
     PutDispEnv(&s_fb[g_cur ^ 1].disp);
+    s_ld_armed = 0;                     /* SP5 G-LD: a new picture is up */
     DrawOTagEnv(f->up_head, &f->draw);
     g_last_draw_y = (uint16_t)f->draw.clip.y;
     if (s_first) {

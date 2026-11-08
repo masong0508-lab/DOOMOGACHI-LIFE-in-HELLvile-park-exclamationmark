@@ -201,6 +201,7 @@ static void place_player(int32_t x, int32_t y)
 
 static void load_map_only(int map_id)
 {
+    plat_loading();                                /* SP5 G-LD: a map load can take a while */
     if (map_id < 0 || map_id >= MAPID_COUNT) map_id = MAPID_HAHALAND;
     ow.map = (uint8_t)map_id;
     map_load(map_id);

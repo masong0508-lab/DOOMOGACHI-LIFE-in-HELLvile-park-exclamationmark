@@ -13,6 +13,7 @@
 
 /* ---- main / timing (main.c) ------------------------------------------- */
 extern volatile uint32_t gba_vblanks;      /* incremented by the VBlank IRQ */
+extern void (*volatile gba_vbl_hook)(void);   /* SP5: called by the VBlank IRQ while set (loadfade.c) */
 extern volatile uint32_t gba_key_latch;    /* LS-IN: every key seen held at any VBlank since read_pad last ran */
 extern uint32_t gba_frames;                /* doomo_frame() calls          */
 extern uint32_t gba_work_last;   /* V10: cycles the last drawn frame took */

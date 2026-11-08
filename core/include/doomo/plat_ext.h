@@ -25,6 +25,7 @@
  *   plat_strip               SP3 G-I11 (GBA: the island hub's toast band)
  *   plat_scene_scratch       SP3 P-I1 (PS1: the overlay slot's unused tail)
  *   plat_hold_band           SP5 (held dialogue backdrop: GBA, native)
+ *   plat_loading             SP5 (loading fades: GBA, PS1)
  *   plat_pack_blob/read      E0 declares the pack format (pack.h, which
  *                            includes this header); E8 (GBA ROM blob),
  *                            E9 (PS1 disc file), E2 (native loader)
@@ -188,6 +189,14 @@ void *plat_scene_scratch(uint32_t bytes, uint32_t *gen);
 enum { PLAT_BAND_DROP = 0, PLAT_BAND_SAVE = 1, PLAT_BAND_RESTORE = 2 };
 typedef struct { int16_t y_need, y_want, cx0, cy0, cx1, cy1; } PlatBand;
 int  plat_hold_band(int op, const PlatBand *band);
+
+/* ---- a short fade over a loading freeze (SP5, G-LD; docs/GBA.md "LD", docs/PS1.md "Loading fades") ---------
+ * Called when the scene stack changes (scene.c) and when the story overworld loads a map: the next frame may be
+ * late (a scene's enter, an overlay read from the disc, a map unpacked). A platform may darken the picture that
+ * stays on screen meanwhile once it is clearly late, so a load reads as a quick fade instead of a stuck frame,
+ * and bring the next picture in from there. Draw-side only: no logic, timing or saved state sees it.
+ * Default: nothing. */
+void plat_loading(void);
 
 /* ---- content packs (E0 pack.h, E2, E7-E10) -----------------------------------
  * blob: a pack that is directly addressable (the GBA mature ROM variant's
