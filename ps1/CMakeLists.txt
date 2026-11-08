@@ -279,6 +279,16 @@ endforeach()
 # the disc build).
 set_source_files_properties(${PS1_SRCS} PROPERTIES
 	COMPILE_OPTIONS "-std=gnu99;-Werror;-fno-strict-aliasing")
+# SP2 land: platform files off the per-frame path (card I/O, overlay and text loading, the harness
+# mailbox, the boot / frame glue, the player model build, the SPU voice setup, the portrait slice
+# scheduler's bookkeeping) are compiled for size: ~3.2 KB of resident RAM, the same pixels and timing
+# within the measurement noise.
+set(DOOMO_PS1_COLD memcard hcmd overlay txtload coreref main pslice model spu
+	CACHE STRING "ps1/src files (no extension) compiled -Os instead of -O2")
+foreach(_cold ${DOOMO_PS1_COLD})
+	set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/src/${_cold}.c PROPERTIES
+		COMPILE_OPTIONS "-std=gnu99;-Werror;-fno-strict-aliasing;-Os")
+endforeach()
 # The whole EXE (code, art, roster, BSS) must fit in 2 MB of RAM, so the
 # core is compiled for size (-Os: ~120 KB smaller than -O2) except the
 # files that run every frame, which keep -O2 (DOOMO_CORE_HOT; measured

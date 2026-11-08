@@ -662,12 +662,18 @@ room for it (docs/PORTRAIT.md "Idle time and stand-ins"). With stand-ins
 Redux dialogue scene from 24.1 to 29.7 fps, the exorcism from 23.8 to 30.0,
 the concert band from 28.8 to 29.9 and the town hall menu from 21.1 to 25.0
 (the rest there is the island's drawing, P-I1/P-I2). Cost: ~4 KB of the
-image and 156 B of RAM. Landed on `38a362d` (CRB's tree, 79,568 B below the
-stack top): the first rebuild ended 320 B under the 72 KB plan gate, so the
-stand-in and prefetch code shares one path (`standin(..., none)`,
-`pf_queue`) and the PS1 keeps the plain divisions in the life sim (its R3000
-divides in hardware; X4's multiplies are for the GBA): `_end` 0x801edfd0,
-**73,776 B below the stack top, 48 B above the gate**.
+image and 156 B of RAM. Landed on `e4d7064`, whose own disc ends at
+`0x801edf80` (73,856 B below the stack top, 128 B above the 72 KB plan gate),
+SP2 first cost 5,424 B of resident code and data. Three changes take back
+2,944 B with the same pixels: the stand-in and prefetch code shares one path
+(`standin(..., none)`, `pf_queue`); the PS1 keeps the plain divisions in the
+life sim (its R3000 divides in hardware; X4's multiplies are for the GBA);
+and the platform files off the per-frame path are compiled -Os
+(`DOOMO_PS1_COLD`: memcard, hcmd, overlay, txtload, coreref, main, pslice,
+model, spu; 2,816 B). `_end` 0x801ee9b0: **71,248 B below the stack top,
+2,480 B under the 72 KB plan gate** (5,712 B above the 64 KB `elf2exe`
+reserve, so the disc links). Still open: about 2.5 KB of resident RAM to
+find (candidates: `vram.c` -Os 432 B, the roster bio / pack text to disc).
 
 ## 5. The 3D engine (`plat_view3d`)
 
