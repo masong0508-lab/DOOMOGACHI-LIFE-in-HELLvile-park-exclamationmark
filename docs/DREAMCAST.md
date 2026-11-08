@@ -13,6 +13,10 @@ project plan). This document grows with it. Right now it covers:
 4. The 2D layer (DC3): every 2D call and post effect on the PVR, the core's
    320x240 screen drawn at 2x, with a host test that compares it pixel for
    pixel with the native runner.
+5. Controls and VMU saves (DC4): the controller, analog stick, triggers and
+   keyboard; saves and the machine config record on the VMU with an
+   atomic replace, the pet's icon and eyecatch, and the card shown while a
+   save blocks the game.
 
 The SH4 compile check that runs today, with no KallistiOS at all, is the
 `sh-elf-gcc` leg of `core/tools/xcheck.sh` (docs/BUILDING.md, "Tests").
@@ -296,9 +300,9 @@ falls more than a tick behind, the next tick skips its drawing
 (loading) forgets the debt. Each drawn tick's work time (begin to end, in
 microseconds) goes to the mailbox's `work_sum/work_n/work_max`.
 
-The controller (DC4 adds the analog stick, the keyboard and pads 2-4):
-D-pad, A, B, X, Y as themselves, L/R triggers past half as L/R, START,
-and START+Y as SELECT (DECISIONS.md; the pad has no SELECT).
+The controls (controller, analog stick, triggers, keyboard) are section 5
+(DC4): D-pad, A, B, X, Y as themselves, L/R triggers past half as L/R,
+START, and START+Y as SELECT (DECISIONS.md; the pad has no SELECT).
 
 The skeleton drew only `plat_clear()`'s colour; DC3 draws all of the 2D
 (section 4). The placeholders left are in `dc/src/plat_stub.c`:
@@ -307,7 +311,7 @@ The skeleton drew only `plat_clear()`'s colour; DC3 draws all of the 2D
 |---|---|---|
 | 2D, post effects, held frame | **done** (`dc/src/gfx2d.c`, section 4) | DC3 |
 | retained panels, `plat_figure_obj`, the stage sprites | the core's weak defaults (draw every frame; cheap on the PVR) | - |
-| saves | a RAM disk (one buffer per slot, lost at power-off) and a static 136 KB scratch | DC4 (VMU) |
+| saves | **done** (`dc/src/vmusave.c`, section 5: the VMU, a static 136 KB scratch) | DC4 |
 | `plat_tone`, `plat_sample` | silent; the core's weak music bridge drives `plat_tone` | DC5 |
 | `plat_view3d`, `plat_overworld`, `plat_room` | no-ops / weak defaults | DC6, DC7, DC8 |
 
@@ -323,7 +327,7 @@ compilers. The harness finds the `dc_mailbox` symbol in the ELF
 `dc/src/misc.c` also exports the plain name as an alias) and reads and
 writes it through libretro's `RETRO_MEMORY_SYSTEM_RAM` region at
 `address & 0xFFFFFF`. `check-elf` checks the size and the alias and prints
-the offset. It is 32-byte aligned and 4228 bytes:
+the offset. It is 32-byte aligned and 4232 bytes:
 
 | field | what |
 |---|---|
@@ -331,6 +335,7 @@ the offset. It is 32-byte aligned and 4228 bytes:
 | `scene[24]` | the scene on top of the stack (from the core's `scene: set/push/pop` log lines) |
 | `log_wr`, `log[4096]` | the log ring: every `plat_log()` line plus `\n`, at `log_wr % 4096`; `log_wr` counts every byte ever written |
 | `gfx_prims` ... `gfx_tex_live` | DC3's 2D counters after each drawn frame (section 4, Counters) |
+| `test_flags` | DC4: `plat_test_flags()`; dcrun writes `PLAT_TEST_NO_PICKER` when it sees the magic (`--console`: 0) |
 
 The cable type and the boot time are log lines (`DC: video 640x480 VGA`,
 `DC: core up in N us`), not mailbox fields.
@@ -366,8 +371,10 @@ budget (`dc/tools/elfsize.sh`) and fails if less than 4 MB
 | **image** | **4,940,664** | **4.71** |
 | free above `_end` (heap, stacks) | 11,770,428 | 11.23 |
 
-`.bss` includes the RAM-disk saves (128 KB) and the save scratch (136 KB)
-that DC4 replaces. With DC3 (2026-11-08): code 1,712,240 B, `.bss`
+`.bss` included the RAM-disk saves (128 KB) and the save scratch (136 KB);
+DC4 replaced the RAM disk with two VMU file buffers (92 KB each) and the
+card's metadata (8.7 KB): code 1,723,248 B, `.bss` 2,897,492 B, image
+7,442,688 B (7.10 MB), 8.84 MB free above `_end` (2026-11-08). With DC3 (2026-11-08): code 1,712,240 B, `.bss`
 2,804,724 B (the 2D layer's three prim lists and texture scratch), image
 7,335,972 B (7.00 MB), 8.93 MB free above `_end`. The ELF file is 16 MB because of debug info; the
 scrambled `1ST_READ.BIN` is 4.4 MB.
@@ -588,7 +595,9 @@ Measured 2026-11-08 (Flycast `e7085e20`, the CDI):
 | pause_options | 11 | 8 exact, the Controls page with its Rumble row masked, 2 pause shots 46.4% (below) | 974 / 69,824 | 4.7 / 19.8 ms |
 
 94 of 94 shots pass; 86 match the native runner on every pixel, and no
-prim was dropped. The expected differences are listed with their reasons
+prim was dropped (with DC4, 2026-11-08: still 94 of 94, 84 to the pixel;
+the two Performance pages gained the Draw distance row, section 5). The
+expected differences are listed with their reasons
 in `dc/harness/known_diffs.tsv` (compare.py `--known`):
 
 - `plat_name()`: the title's corner label reads DC (native: NATIVE).
@@ -606,8 +615,9 @@ is a guide until a real console measures it). Every tick of every screen
 in the six scripts stays under 33.3 ms except three loading ticks in
 fp_screens: making the new island (tick 11, 96 ms), saving to the VMU
 (tick 251, 187 ms) and loading from it into the island (tick 323, 254 ms).
-They are one tick each, a pause on a menu action rather than a slow screen;
-the saves are DC4's (VMU saves). The worst steady tick is 23.1 ms (creator,
+They are one tick each, a pause on a menu action rather than a slow screen.
+With DC4's VMU (section 5) the save is a 3.2 s tick and the load a 0.9 s
+tick, both with the card on screen. The worst steady tick is 23.1 ms (creator,
 the moving-in confirm). The vertex high-water is 223 KB of the 983 KB
 budget.
 
@@ -623,6 +633,198 @@ budget.
   reads textures back with 32-bit uncached reads and tests up to
   thousands of prims for overlap per shade; its speed on the SH4 is
   unmeasured).
+
+## 5. Controls and VMU saves (DC4)
+
+### Controls (`dc/src/pad.c`, `padmap.c`, `dcinput.h`)
+
+Every tick, before `doomo_frame()`, the first controller Maple finds (any
+port) and every keyboard are read. The mapping is portable C
+(`padmap.c`), checked on the host by `dc/tests/vmu` (test_vmu: every
+button, the trigger and stick thresholds, START+Y, the keyboard map and the
+on-screen-keyboard rule).
+
+| Dreamcast | the core |
+|---|---|
+| D-pad, A, B, X, Y | as themselves |
+| L / R trigger | L / R when pressed past half (> 127 of 255) |
+| START | START |
+| START+Y | SELECT, and then neither START nor Y (DECISIONS.md: the pad has no SELECT) |
+| C / Z (6-button pads, arcade sticks: no triggers) | L / R |
+| D | SELECT |
+| second D-pad left / right (twin stick) | L2 / R2 (a standard pad has none, as on the GBA) |
+| analog stick | `input_set_analog()` every tick (-128..127, +y down), and past 48 of 128 it also presses the D-pad (the PS1's threshold), so menus follow it |
+| second analog stick | `input_set_analog()`'s rx / ry when there is one |
+
+The core's "smooth feel" (`input_set_feel(1)`: eased turning, fire
+buffering, aim friction) is on, as on the PS1. One visible consequence: the
+Options' Performance page shows the Draw distance row, which the core ties
+to `input_feel()` (the PS1's 3D); DC6 is to honour `OPT_DRAW_DIST`. The
+DC3 UI comparison lists it in `dc/harness/known_diffs.tsv`.
+
+Keyboard (any port; Dreamcast keyboards send USB HID key codes):
+
+| keys | the core |
+|---|---|
+| arrows | D-pad |
+| Z, Space, Enter | A |
+| X, Escape, Backspace | B |
+| C / V | X / Y |
+| Q / W | L / R |
+| 1 / 2 | L2 / R2 |
+| P, F1 | START |
+| Tab | SELECT |
+
+While the on-screen keyboard is open (`SCENE_TEXT_ENTRY`), the characters
+typed go straight into it (`ui_text_entry_feed`, the native runner's `type`
+path, from KallistiOS' per-keyboard key queue: printable ASCII, Enter = OK,
+Backspace = delete) and only the keys that type nothing (arrows, Escape,
+Tab, F1) act as buttons. Accented letters arrive as ISO-8859-1 and are
+dropped by the core's text entry today (X5 adds them). `plat_features()`
+(now in pad.c) reports `PLATF_CONFIG` always, `PLATF_RUMBLE` while a
+Puru Puru pack is in controller 1 and `PLATF_KEYBOARD` while a keyboard is
+plugged in. Multi-pad play (`PLATF_MULTIPAD`) is X9's.
+
+On Flycast (`dc/tests/vmu/run_flycast.sh`, "input"): `input_pad.txt` drives
+the UI gallery with the D-pad, A, R and the native runner's `type`;
+`input_alt.txt` does the same ticks with the analog stick, the analog R
+trigger and the keyboard on port 2 (Enter as A, then "\b" x7 + "Candy" + Enter
+typed into the on-screen keyboard). All 5 shot pairs are identical to the
+byte.
+
+### Saves on the VMU (`dc/src/vmusave.c`, `vms.c`, `save_icon.c`; `vmusave.h`, `vms.h`)
+
+The core's save calls and the machine config record go to the first VMU
+Maple finds (A1, A2, B1, ...), one file each:
+
+| file | what | blocks |
+|---|---|---|
+| `DOOMO0.SYS` | slot 0, story | header 8 + the save (a lived-in story island: 33; at most 88) |
+| `DOOMO1.SYS` | slot 1, free play | 8 + the save (a new island 27; the 1000-citizen worst case 124; at most 184) |
+| `DOOMOCFG.SYS` | the machine config record (language, volumes, Mature, the adults' code) | 2 |
+| `*.NEW` | a save being written (gone when the save ends) | |
+
+Each is a standard VMS file (the layout and CRC-16 of KallistiOS'
+`vmu_pkg_build`, built into a static buffer): the descriptions the BIOS
+file manager shows ("BOREagotchi" / "BOREagotchi LIFE! - story", "- free
+play", "- settings"), application id `BOREAGOTCHI`, an animated 32x32
+16-colour icon and a 72x56 16-colour eyecatch of the Boreagotchi as the
+save holds it (`save_icon.c`: the core's `pet_render`, the egg when there
+is no pet yet, the ghost for a departed one; idle, idle, happy at 12/30 s a
+frame; on the tamagotchi's green LCD with a pink rim), then the core's
+save. A VMU save of 72 KB (184 blocks) and a 40 KB story save (88 blocks)
+together would not fit one VMU's 200 blocks; real saves are far smaller
+(above), and a save that does not fit fails cleanly.
+
+The file system code is portable (`vms.c`), so the host test runs it on a
+simulated 128 KB VMU (`make -C dc/tests/vmu test`, also in `make
+dc-host-test` and CI). It reads and writes blocks through KallistiOS'
+`vmu_block_read` / `vmu_block_write` under KallistiOS' VMU lock, and
+allocates data files from the top block down, as the BIOS does. Every
+update writes the data blocks first, then the FAT, then the directory, so a
+card pulled out half way can leak free blocks (allocated, in no file) but
+never touches another file.
+
+**A save never leaves a slot half-valid.** `vmu_replace()` writes the new
+file as `DOOMOn.NEW`, reads it back and compares it, then removes the old
+file (one directory write, then the FAT) and gives the new one its name
+(one more directory write). A VMU pulled out at any moment keeps either the
+old save or the new one; a load that finds only `DOOMOn.NEW` (the swap was
+cut short) loads it, and the next save finishes the swap. The host test
+pulls the card out before every single block write of a save (62 points
+for a 57-block save): the old save loads whole at 60 of them and the new
+one at the last 3, the card stays consistent (at worst 57 leaked blocks
+when the pull hits between the FAT and the directory), and the next save
+works and leaves no `.NEW` behind. Only when the VMU is too full for two
+copies is the old file replaced in place (removed, then written, then read
+back); the log says "replaced in place".
+
+**Errors** return 0 to the core (which shows "Couldn't write save slot N")
+and are logged (`DC: vmu write DOOMO1.SYS: no VMU`, `... 124 blocks -> VMU
+full`); the card shows the reason for a second, once per kind of error: no
+VMU, VMU full, too many files, not formatted, a write error. A VMU that is
+not formatted is never formatted by the game.
+
+**The card.** A save, a load or an erase blocks the tick, so a picture is
+shown in its place: "Saving your game..." (or "Loading your game...",
+"Saving settings...", "Erasing..."), "Do not remove the VMU or switch off
+the power" and a bar that moves with every block. It is a side frame of
+the 2D layer (`dc2d_side_begin/end`: the tick's own list is put aside and
+comes back untouched; host-tested in `dc/tests/gfx2d`).
+Flycast shot: `dc/build/shots/vmu/saves/shots/saving_card.png`.
+
+**What is known is kept.** A VMU block read costs about a 60th of a second
+(Flycast: 15 block reads to learn a card, 262 ms), so `dc_vmu_init()` at
+boot reads the root, FAT and directory and the first 64 payload bytes of
+the three files once (their headers: what the title screen and the save
+menu peek at), and keeps them. The title then never touches the VMU (DC2's
+boot.txt: worst tick 10.9 ms; before the cache the title's two peeks took
+one 1.12 s tick). Maple's attach and detach callbacks (a VMU pulled out,
+put in or swapped), a different first VMU and any error forget it all.
+(KallistiOS keeps one attach and one detach callback per Maple driver, and
+the VMU's driver also serves the LCD and the clock: X1 must chain to
+vmusave.c's callback, not replace it.)
+
+**The config record is written behind.** The core writes it on every change
+of a machine-wide option (each step of a volume slider, each language in
+the first-boot picker). `plat_config_write` keeps the record (reads see it
+at once) and `dc_vmu_poll()`, after every tick, writes it when the scene
+changes (leaving Options, finishing the picker) or 5 s after the last
+change. A record changed less than 5 s before the power goes off is lost.
+
+**Test flags.** The language picker shows on the first boot of an empty VMU
+(no config record). The harness mailbox has a `test_flags` word
+(`plat_test_flags()`); dcrun sets `PLAT_TEST_NO_PICKER` as soon as it sees
+the mailbox magic, as the native runner does, and `dcrun --console` leaves
+0 (a real console).
+
+Measured on Flycast (2026-11-08, the CDI, emulated time; Flycast times the
+VMU's Maple traffic like the hardware, about 90 ms a block written):
+
+| what | blocks | time |
+|---|---|---|
+| learn the card at boot (root, FAT, 13 directory blocks, 3 headers) | 15-21 read | 262-322 ms |
+| save a new free-play island (fp_screens) | 27 written + 27 read back | 3.05 s |
+| save a lived-in story island | 33 + 33 | 3.7 s |
+| save the 1000-citizen worst case (58 KB) | 124 + 124 | 13.0 s |
+| the same, replaced in place (VMU too full for two copies) | 124 + 124 | 13.1 s |
+| load the worst case / a new island | 124 / 27 read | 2.5 s / 0.65 s |
+| config record | 2 + 2 | 0.46 s |
+
+So a save is a pause with the card on screen (fp_screens: the VMU save is a
+3.2 s tick and the load a 0.9 s tick; every other tick of the six DC3
+scripts stays under 33.3 ms). KallistiOS sends each block as Maple frames
+that go out once a vblank, which bounds the speed; the read-back costs
+about 20% of a save and is what makes the swap safe.
+
+On Flycast (`make -C dc vmu-test`, part of `make -C dc test`;
+`dc/tests/vmu/run_flycast.sh`, results in `dc/build/shots/vmu/`):
+
+| check | what |
+|---|---|
+| saves | `saves1.txt` on an empty VMU, `saves2.txt` on the same image (the power cycle): the worst-case island (124 blocks) and a story island saved, overwritten in RAM and loaded back with the same `town-crc`; slot 0 refuses the 58 KB island; run 2 finds both, verifies, rewrites slot 1 in place. `vmu_check.py` passes on the image after each run (FAT, directory, VMS headers and CRCs, 3 icon frames, no `.NEW` left) and draws the icons |
+| full | a VMU with another game's 150-block file (`vmu_check.py --fill 150`): the worst case fails cleanly ("VMU full"), a story save that fits works, the other file's CRC still checks |
+| novmu | a keyboard on port 1 and no VMU anywhere: saves fail cleanly, the game runs on to the title |
+| console | `--console`: the first boot shows the language picker, the record is written (`DOOMOCFG.SYS`, 2 blocks), the second boot goes straight to the title |
+| input | above (stick, trigger, keyboard against the D-pad: identical shots) |
+
+`dc/harness/vmu_check.py IMAGE [--expect NAME] [--json] [--fill N]
+[--format] [--icon NAME OUT.png]` reads a Flycast VMU image
+(`RUN/system/dc/vmu_save_A1.bin`) with its own Python parser, independent
+of `vms.c`; the host test also runs it on the card image it writes.
+
+### Owed on hardware (DC4)
+
+- A real VMU: the write time per block, the read-back, and a card pulled
+  out during a save (the host test simulates it at every block write;
+  Flycast cannot pull a VMU mid-write).
+- A real keyboard and a twin stick / arcade stick (Flycast's keyboard is
+  used in the tests; the C/Z/D buttons and the second D-pad are host-tested
+  only).
+- The BIOS file manager showing the icon, the eyecatch and the descriptions
+  (vmu_check.py checks the bytes and draws the icons; no BIOS is run).
+- The shooter turning with the stick: the core's analog path is fed and
+  the menus follow the stick on Flycast, but the 3D view is DC6.
 
 ## Rumble (X2)
 

@@ -17,6 +17,7 @@ mouse, rumble, the VMU screen and audio.
 | `tests/` | `mockcore.c` (a stand-in core) and `selftest.sh`: tests `dcrun` with no emulator |
 | `compare.py` | DC3: Dreamcast shots (640x480, or `--half`) against the native runner's 320x240 shots of the same script, in RGB565, with diff pictures and a gate |
 | `ui_compare.sh` | DC3: the six UI scripts in `dcrun` and in the native runner, then `compare.py` (`make -C dc ui-compare`) |
+| `vmu_check.py` | DC4: checks a VMU flash image (Flycast's `system/dc/vmu_save_A1.bin`): FAT, directory, VMS headers and CRCs; `--fill N` adds another game's file, `--icon` draws a file's icon frames and eyecatch |
 | `known_diffs.tsv` | DC3: the expected differences of those scripts, each with its reason (a platform label, a Dreamcast-only option row, the 3D view that is DC6's) |
 
 ## Build and test
@@ -66,6 +67,7 @@ dc/harness/build/dcrun dc/harness/build/flycast_libretro.so dc/build/doomogachi.
 | `--device N TYPE` | `pad`, `keyboard`, `mouse` or `none` on port N (default: 4 pads) |
 | `--sync` | `sync on 0` before the script: the game holds before its first tick, where the native runner starts, and every wait is tick-exact (see `sync`) |
 | `--native-seed N` | `--sync`, and at that first hold the game gets the start `runner --seed N` gets (0x5EED1234 is the runner's default): `plat_entropy()` pinned to N, `doomo_rng` and the start town redone as `doomo_init()` makes them (mailbox command 17). The console boots on real entropy before the harness can reach it, so this is how a Dreamcast run starts in the native runner's state |
+| `--console` | DC4: leave the mailbox's `test_flags` at 0, as a real console (by default dcrun sets `PLAT_TEST_NO_PICKER`, so the first boot of an empty VMU skips the language picker, as the native runner does) |
 | `--quiet` / `--verbose` | less output / also every core log line |
 
 Exit status: 0 ok, 1 failed expectation, hang or timeout, 2 usage or load
@@ -108,6 +110,9 @@ frames, and the log is what the core logs.
 | `expect-scene NAME` | the mailbox's last scene, or a `scene: set NAME` log line |
 | `mark-ticks` / `expect-ticks LO HI` | fail unless the game's tick count advanced by LO..HI since `mark-ticks` (the 30 Hz check: `frames 300` must give about 150) |
 | `save N` / `load N` / `expect-save N` / `verify N` | mailbox commands, run in the game; a result of 0 fails (the GBA convention: nonzero = success) |
+| `save-must-fail N` | DC4: the save must be refused (result 0) |
+| `town-fill SEED` / `town-crc` / `expect-town-crc` | DC4: the GBA's save-test commands (mailbox 4 and 5): a worst-case island (SEED, or SEED with bit 31 for a lived-in story island), remember the CRC of everything a save stores, fail unless it is the same |
+| `shot-during FRAMES NAME` | DC4: the next mailbox command takes shot NAME FRAMES video frames in, while the game is still busy with it (the VMU card of a save) |
 | `scene NAME [ARG]` / `push NAME [ARG]` / `seed N` / `expect-flag F [V]` | mailbox commands |
 | `audio-reset` / `audio [LABEL]` / `expect-audio MIN [LABEL]` | peak-to-peak of the 16-bit output since `audio-reset` |
 | `port N` | later button, stick and trigger commands act on port N (1-4) |

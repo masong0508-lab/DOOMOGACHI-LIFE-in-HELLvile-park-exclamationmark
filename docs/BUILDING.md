@@ -155,7 +155,11 @@ numbers and how to move the pins: docs/DREAMCAST.md section 1.
 
 With it installed, `make dc` builds `dc/build/doomogachi.elf` and the
 self-booting `dc/build/doomogachi.cdi`, and `make dc-test` adds the ELF
-checks (and the Flycast harness scripts once `dc/harness` exists).
+checks and, with the Flycast core, the harness scripts (boot, DC3's UI
+comparison, DC4's VMU saves and controls: `make -C dc vmu-test`).
+`make dc-host-test` needs no KallistiOS: the 2D layer and the VMU file
+system, icons and controls on the host (`dc/tests/gfx2d`, `dc/tests/vmu`;
+`python3` for `dc/harness/vmu_check.py`).
 `dc/Makefile` sources `<prefix>/kos/environ.sh` itself, so no shell setup
 is needed; `DC_PREFIX=<dir>` picks another install. `make all` and
 `make test` leave the Dreamcast out for now. Details: docs/DREAMCAST.md
