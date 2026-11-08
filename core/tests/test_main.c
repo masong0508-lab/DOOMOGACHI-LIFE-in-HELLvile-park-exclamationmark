@@ -4,7 +4,7 @@
 #include "test.h"
 #include "doomo/tips.h"
 
-#define MAX_TESTS 1024    /* S0 (SPEC R21): ~110 story/house tests + customisation */
+#define MAX_TESTS 2048    /* S0 (SPEC R21): ~110 story/house tests + customisation; SP8: 1024 was full */
 
 typedef struct { const char *name, *file; TestFn fn; } TestEntry;
 static TestEntry tests[MAX_TESTS];
