@@ -279,6 +279,10 @@ pipeline lanes (art sets, SFX library, score cues). See `ROADMAP.md` for their e
 
 ## 10. Doing it yourself, one step at a time
 
+For sessions on a smaller model (e.g. Claude Sonnet), use `docs/design/held/STEP_CARDS.md`:
+every task there is sized for one session and names its files and checks; `CLAUDE.md` at
+the repo root gives any session the rules and commands.
+
 Each package above is split into small steps that each end green. A good loop for one step:
 
 1. Pick the next unchecked item in the order of section 0 and read its plan section.
