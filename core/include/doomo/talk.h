@@ -348,8 +348,11 @@ typedef struct TalkParseCtx {
     uint8_t     kid_room;                     /* a non-adult is here: crude and flirting words are masked too */
     const char *name[TALK_PARTS_MAX];         /* their names as shown          */
     uint16_t    stack[TALK_STACK_MAX];        /* recent topics, newest first   */
-    /* another resident by name (absent people for GOSSIP): an id, or -1.
-     * NULL: none. The game passes the roster / town lookup. */
+    /* another resident by name (absent people for GOSSIP; S1 asks
+     * talk_safe_minor() about them): an id, or -1. canon_name is a folded
+     * full name or first name. When several residents share a first name,
+     * return a child if one of them is one (fail safe). NULL: none. The
+     * game passes the town lookup. */
     int       (*person)(const char *canon_name);
 } TalkParseCtx;
 
@@ -361,14 +364,24 @@ typedef struct TalkParseInfo {
     uint16_t rule[2];             /* which rule made act[0] / act[1] (index), 0xFFFF none */
     uint8_t  fuzzy;               /* tokens matched at edit distance 1          */
     uint8_t  unknown;             /* unknown tokens                             */
+    uint8_t  cut;                 /* the line went on past the tagger's limits: the
+                                     byte tok[] stops at (the bubble ends there; S1
+                                     still read the rest), 0 = all of it was read */
     TalkTok  tok[TALK_TOK_MAX];
 } TalkParseInfo;
 
 /* S0: the canonical key of a word run (talkc_parse.py canon() is the same). */
 int  talk_lex_canon(const char *in, char *out, int cap);
 /* Tag a line: the tokens, persons, concepts, word flags. Needs TB_PARSE
- * (talk_db open). Returns the token count. */
+ * (talk_db open). Returns the token count. A person named by a word the
+ * lexicon knows (the cast) gets the game's lookup id in TalkTok.person,
+ * so S1 can ask talk_safe_minor() about a child named in the line. */
 int  talk_lex(const char *text, const TalkParseCtx *ctx, TalkTok *tok, int max);
+/* talk_lex, and *cut = the byte where the tagger stopped when the line has
+ * more words than max tokens (or its raw-word / unit caps) hold: a raw
+ * word's first byte, everything from it on is not in tok[]. 0 when the
+ * whole line (up to 2 x TALK_INPUT_MAX bytes) was read. */
+int  talk_lex_cut(const char *text, const TalkParseCtx *ctx, TalkTok *tok, int max, int *cut);
 /* The topic by spreading activation (design 3.2): topic[0..1] (TC_NONE). */
 void talk_lex_topics(const TalkTok *tok, int n, const TalkParseCtx *ctx, uint16_t topic[2]);
 /* 1 if the lexicon knows the word as it is or by a lemma (*wflags: its TW_*). */
@@ -399,7 +412,10 @@ int  talk_safe_is_pet(int id);
 void talk_safe_ctx(int avatar, const int *ids, int n, int target, TalkAudience *out);
 
 /* S1: classify typed input (needs TB_PARSE): TS_* bits; the tokens get
- * TTF_MASK where the bubble must hide them. talk_parse() calls it. */
+ * TTF_MASK where the bubble must hide them. talk_parse() calls it on every
+ * word of the line (a line longer than the token cap is read in parts).
+ * A person named in the line who is not in the room (TalkTok.person, an
+ * id) and talk_safe_minor() is a child: TS_MINOR. */
 uint8_t talk_safe_scan(TalkTok *tok, int n);
 /* 1 if a token is an explicit sexual word (not a flirting one): REFUSE_SEXUAL. */
 int  talk_safe_explicit(const TalkTok *tok, int n);
@@ -414,7 +430,9 @@ uint64_t talk_safe_hash(const char *word);
 enum {
     TG_PASS = 0,         /* the utterance stands                                 */
     TG_REFUSE,           /* REFUSE_SEXUAL (adults' room): no echo                */
-    TG_REFUSE_MINOR,     /* a romance act with a non-adult avatar or target      */
+    TG_REFUSE_MINOR,     /* a romance act with a non-adult avatar or target, or
+                          * about a child (TS_MINOR: "I'm 12", a minor word, a
+                          * child named in the line)                            */
     TG_DEFLECT,          /* DEFLECT_ROMANCE: an adult said no / not in front of the kids */
     TG_HATE,             /* REFUSE_HATE: a short clean disapproval, a bond penalty */
     TG_DISTRESS,         /* the comedy stops (K-11)                              */

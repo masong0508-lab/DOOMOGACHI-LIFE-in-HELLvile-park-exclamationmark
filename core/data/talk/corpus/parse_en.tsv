@@ -1050,6 +1050,8 @@ will you marry me?	ASK_OUT	-	-
 mwah	KISS	-	-
 can i kiss you?	KISS	-	-
 blows a kiss	KISS	-	-
+i want to kiss you	KISS	-	-
+you're cute, kiss me	KISS,COMPLIMENT	-	-
 you're cute, tobi	COMPLIMENT	-	Tobi
 hey there good looking	FLIRT	-	-
 you're gorgeous	FLIRT	-	-

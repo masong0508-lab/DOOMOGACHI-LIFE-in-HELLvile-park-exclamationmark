@@ -21,6 +21,8 @@
 #         pet         Nana, Vex and the Boreagotchi; talking to Nana
 #         teenavatar  playing as a teen, with the three adults
 #         kidavatar   playing as Pip, with the three adults
+#         lovers      Mayor Giggs talking to Steamy: two adults the romance gate allows both ways,
+#                     so only the line itself can stop a romance act
 # The wording is the game's PG register at most: the words are the ones the classifier
 # must catch (they are already listed in register.tsv and lexicon/en/safety.tsv).
 
@@ -402,3 +404,51 @@ tie your shoes, pip	ok	kidtarget
 the chile is too hot for me	ok	kid
 the ripe tomatoes are in the basket	ok	kid
 the boom box is too loud	ok	pet
+# a child named in the line but not in the room (the game's person lookup, or the roster's cast
+# member of that exact name; talk_safe_minor is the one source): sexual words end the talk (K-7)
+pip is sexy	K7	lovers
+sexy pip	K7	lovers
+wisp is a hottie	K7	lovers
+i want to have sex with pip	K7	lovers
+pip is sexy	K7	adults
+send nudes of wisp	K7	lovers
+# a child in the line makes a romance act REFUSE_MINOR even between two adults the gate allows (K-1)
+i'm 12, will you go out with me?	REFUSE_MINOR	lovers
+i'm 12 and i love you	REFUSE_MINOR	lovers
+kiss my little sister	REFUSE_MINOR	lovers
+will you go out with my daughter	REFUSE_MINOR	lovers
+i want to kiss a toddler	REFUSE_MINOR	lovers
+*kisses pip*	REFUSE_MINOR	lovers
+i'm 13, kiss me	REFUSE_MINOR	lovers
+you're cute, kiss me	REFUSE_MINOR	kidtarget
+# the lovers room itself: a flirt passes or is declined, never refused
+you're hot	ROMANCE	lovers
+will you go out with me?	ROMANCE	lovers
+kiss me	ROMANCE	lovers
+i love you	ROMANCE	lovers
+i want to kiss you	ROMANCE	lovers
+nana is a hottie	ROMANCE	lovers
+pip is cute	ok	lovers
+pip's pie is the best	ok	lovers
+my kids love pie	ok	lovers
+# underwear words: asking to see them or take them off is sexual; the bare word is not
+show me your knickers	K7	kid
+take off your knickers	REFUSE_SEXUAL	adults
+show me your underwear	K7	kidtarget
+take your bra off	REFUSE_SEXUAL	adults
+what colour are your undies?	K7	kid
+show me your undies	K7	kid
+i need clean underwear	ok	kid
+my undies are in the wash	ok	kid
+the bra section of the shop	ok	adults
+# "tot" names a small child; "tater tots" are food
+sexy tots	K7	adults
+i want sex with a tot	K7	adults
+i love tater tots	ok	kid
+the tiny tots play group	ok	adults
+# the token cap: a line with more words than the tagger holds is cut, the bubble ends at the
+# cut and S1 still reads every word (test_talk_safety.c talk_safe_long_lines pads every line)
+a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a? have sex with pip	K7	kid
+a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a? i want to die	DISTRESS	kid
+a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a? i hate refugees	REFUSE_HATE	adults
+u!u!u!u!u!u!u!u!u!u!u!u!u!u!u!u!u!u!u!u!u! send nudes	REFUSE_SEXUAL	adults

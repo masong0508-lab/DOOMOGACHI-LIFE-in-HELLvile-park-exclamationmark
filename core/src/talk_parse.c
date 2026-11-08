@@ -6,7 +6,9 @@
  *
  * talk_parse(): tag the line (talk_lex.c), classify its safety (S1,
  * talk_safe_scan: it runs FIRST and an explicit, hate or distress finding
- * wins over every rule), then run the rules of TB_PARSE in priority order
+ * wins over every rule; a line longer than the token cap is cut: the
+ * bubble ends at the cut and S1 reads the rest in overlapping parts, so
+ * no word is ever unread), then run the rules of TB_PARSE in priority order
  * (core/data/talk/rules/<lang>.tsv, compiled by talkc_parse.py). The first
  * rule that matches gives act[0], the next matching rule with another act
  * act[1]. A capture names the topic (or the person) an act is about; the
@@ -241,6 +243,36 @@ static int tone_of(int act)
     return TONE_PLAIN;
 }
 
+/* S1 over the words past the cut (the rules read only tok[]): the rest of
+ * the line, at most 2 x TALK_INPUT_MAX bytes from its start, in parts that
+ * go back SCAN_BACK tokens so a phrase, an age ("I'm 12") or a "HATEV ...
+ * group" window that the cut split is read whole. tmp is scratch. */
+#define SCAN_BACK 6
+static void scan_rest(const char *text, int cut, const TalkParseCtx *ctx, const TalkTok *head, int nhead,
+                      TalkTok *tmp, uint8_t *safety, int *explicit_)
+{
+    char win[TALK_INPUT_MAX * 2 + 1];
+    int lim = (int)strlen(text), start, c2, tn, back;
+    if (lim > TALK_INPUT_MAX * 2) lim = TALK_INPUT_MAX * 2;
+    back = nhead > SCAN_BACK ? head[nhead - SCAN_BACK].src0 : 0;
+    start = back > 0 && back < cut ? back : cut;
+    if (start < (cut + 1) / 2) start = (cut + 1) / 2;
+    while (start > 0 && start < lim) {
+        int l = lim - start;
+        memcpy(win, text + start, (size_t)l);
+        win[l] = 0;
+        tn = talk_lex_cut(win, ctx, tmp, TALK_TOK_MAX, &c2);
+        *safety |= talk_safe_scan(tmp, tn);
+        if (talk_safe_explicit(tmp, tn)) *explicit_ = 1;
+        if (c2 <= 0) break;
+        /* go back SCAN_BACK tokens, but move on by half the part at least */
+        back = tn > SCAN_BACK ? tmp[tn - SCAN_BACK].src0 : 0;
+        if (back <= 0 || back >= c2) back = c2;
+        if (back < (c2 + 1) / 2) back = (c2 + 1) / 2;
+        start += back;
+    }
+}
+
 /* what a capture says about the act: topic / person */
 static void use_capture(const TalkTok *tok, int ti, uint16_t *topic, TalkParseInfo *info)
 {
@@ -264,7 +296,7 @@ int talk_parse(const char *text, const TalkParseCtx *ctx, TalkUtter *out, TalkPa
     TalkParseInfo local, *info = info_in ? info_in : &local;
     uint8_t hb[64];
     uint32_t nrules, rules_off, rules_len, at = 0;
-    int n, k, i, found = 0, fallback = 0;
+    int n, k, i, found = 0, fallback = 0, cut = 0, explicit_;
     uint16_t cap_topic = TC_NONE, act_topic[2];
     TalkTok sv[TALK_TOK_MAX];
     int svn = 0, svoff = 0;
@@ -284,7 +316,7 @@ int talk_parse(const char *text, const TalkParseCtx *ctx, TalkUtter *out, TalkPa
     }
     if (!text || !talk_db_read(TB_PARSE, 0, hb, 64) || le32(hb) != PRS_MAGIC) return 0;
     nrules = le32(hb + 20); rules_off = le32(hb + 24); rules_len = le32(hb + 28);
-    n = talk_lex(text, ctx, info->tok, TALK_TOK_MAX);
+    n = talk_lex_cut(text, ctx, info->tok, TALK_TOK_MAX, &cut);
     info->ntok = (uint8_t)n;
     for (i = 0; i < n; i++) {
         if (info->tok[i].flags & TTF_FUZZY) info->fuzzy++;
@@ -292,6 +324,18 @@ int talk_parse(const char *text, const TalkParseCtx *ctx, TalkUtter *out, TalkPa
     }
     /* S1 first: the safety classes always win */
     out->safety = talk_safe_scan(info->tok, n);
+    explicit_ = talk_safe_explicit(info->tok, n);
+    if (cut > 0) {
+        /* more words than the token cap: the bubble never shows what the
+         * tagger did not read, and S1 reads the rest of the line (the sv
+         * tokens are scratch until the view without names below) */
+        int e = cut < TALK_SHOWN_MAX - 1 ? cut : TALK_SHOWN_MAX - 1;
+        while (e > 0 && (out->shown[e - 1] == ' ' || out->shown[e - 1] == '\t')) e--;
+        memset(out->shown + e, 0, sizeof out->shown - (size_t)e);
+        info->cut = (uint8_t)cut;
+        out->safety |= TS_MASKED;
+        scan_rest(text, cut, ctx, info->tok, n, sv, &out->safety, &explicit_);
+    }
     if (ctx && ctx->kid_room) {
         for (i = 0; i < n; i++)
             if (info->tok[i].wflags & (TW_CRUDE | TW_SUGGEST | TW_STRONG | TW_SEXUAL | TW_HATE))
@@ -306,10 +350,10 @@ int talk_parse(const char *text, const TalkParseCtx *ctx, TalkUtter *out, TalkPa
             if (out->shown[p] != ' ' && out->shown[p] != '\t') out->shown[p] = '#';
         out->safety |= TS_MASKED;
     }
-    if (out->safety & (TS_HATE | TS_DISTRESS) || talk_safe_explicit(info->tok, n)) {
+    if (out->safety & (TS_HATE | TS_DISTRESS) || explicit_) {
         /* explicit first (K-7 reads it), then distress before hate: someone in
          * trouble gets the kind answer even if the line is ugly */
-        out->act[0] = (uint8_t)(talk_safe_explicit(info->tok, n) ? TA_REFUSE_SEXUAL :
+        out->act[0] = (uint8_t)(explicit_ ? TA_REFUSE_SEXUAL :
                                 (out->safety & TS_DISTRESS) ? TA_DISTRESS : TA_REFUSE_HATE);
         out->act[1] = TA_NONE;
         out->tone = TONE_PLAIN;
@@ -396,7 +440,7 @@ int talk_parse(const char *text, const TalkParseCtx *ctx, TalkUtter *out, TalkPa
     }
     out->tone = (uint8_t)tone_of(out->act[0]);
     k = 15 - 3 * info->fuzzy - info->unknown;
-    if (fallback) k = 6;
+    if (fallback || (cut > 0 && k > 6)) k = 6;            /* a cut line: the rules saw only its start */
     if (out->act[0] == TA_UNKNOWN) k = 0;
     out->conf = (uint8_t)(k < 0 ? 0 : k > 15 ? 15 : k);
     return 1;

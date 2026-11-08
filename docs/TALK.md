@@ -37,7 +37,7 @@ Contents:
 | **T0** | the contract: `talk.h`, `PLATF_TALK`, talk framing fields, `plat_room_project`, the `'TALK'` save chunk's tag and budget, `NT_TALK_*` news | **done** (TK1) |
 | **T1** | the word network (3,972 English concepts) and its compiler `talkc.py`, the association tool `talk_assoc.py`, the test fixture | **done** (TK1) |
 | **T2** | the database reader `talk_db.c` and the native file hook | **done** (TK1) |
-| **T3** | the free-text parser (Dreamcast and native): `talk_lex.c`, `talk_parse.c`, `rules/en.tsv`, a labelled corpus of 1,517 lines | **done** (TK2) |
+| **T3** | the free-text parser (Dreamcast and native): `talk_lex.c`, `talk_parse.c`, `rules/en.tsv`, a labelled corpus of 1,519 lines | **done** (TK2) |
 | **T4** | the safety gate: the input classifier S1, the audience gate S2 (`talk_safe_ctx`, one source of "minor"), the output lint S3, the template lints TK1-TK9, the safety and adversarial corpora, the hashed hate list, the property tests | **done** (TK2): green. The generator-level halves of P1-P8 go live with T5a / T6 |
 | T5a / T5b | the generator engine / the English line banks | to do |
 | T6 | the drama manager, outcomes, the talk memory chunk | to do |
@@ -87,12 +87,13 @@ What T4 adds (section 6b has the details), each with its test:
 | Guarantee | Where it is enforced |
 |---|---|
 | **One source of "minor"**: `talk_safe_minor(id)` is `LIFE_IS_MINOR(sim_life_stage(id))` or the roster's KID / TEEN traits or `ending_kid_cast(id)`; a family pool member's own stage; the hero's stage; **an unknown id is a minor** (fail safe). It agrees with LS0 and E1 for all 1,000 premade ids, the kid cast file and every pool stage; a canon kid given a makeover stays a kid | `talk_safe.c`; `test_talk_safety.c` (`talk_safe_minor_single_source`, `_pool_stages`) |
-| **Sexual words with any child near them end the conversation** (K-7): in the room, as the target, as the avatar, or named in the line (a minor word, "12 year old", "I'm 13", "she's 14"); a word that only ever means a child ("underage", "preteen") next to a liking word counts as sexual. The input is never shown, not even masked | S1 `talk_safe_scan`, S2 `talk_safe_gate` (`TG_END_K7`) |
+| **Sexual words with any child near them end the conversation** (K-7): in the room, as the target, as the avatar, or named in the line (a minor word, "tot", "12 year old", "I'm 13", "she's 14", or a child who is not in the room named by name: "pip is sexy" with Pip elsewhere; the game's person lookup and the roster's cast member of that exact name give the id, `talk_safe_minor` decides, and a name two people share counts as the child's); a word that only ever means a child ("underage", "preteen") next to a liking word counts as sexual. The input is never shown, not even masked | S1 `talk_safe_scan`, S2 `talk_safe_gate` (`TG_END_K7`); `talk_safe_named_child` |
 | **Explicit input is refused and never echoed** (`REFUSE_SEXUAL`); **hate** (the hashed slur list, real-world hate words, "I hate / <group> are vermin") is refused unseen (`REFUSE_HATE`); **distress** stops the comedy (`DISTRESS`, K-11) | S1 + S2 |
-| **Romance only between two adults, both ways**: FLIRT, CONFESS, ASK_OUT, KISS and the flirty tone pass only when the avatar and the target are adults, `playas_romance_ok` and `sim_romance_ok` pass **in both directions**, nobody in the room is a minor and the pet is not there. Else `REFUSE_MINOR` (a non-adult avatar or target) or `DEFLECT_ROMANCE` (an adult who says no, or "not in front of the kids"). Teen-teen romance is never offered in Talk. 200,000 random gate calls and every (adult, minor) pair in both directions are checked | `talk_safe_romance_ok`, `talk_safe_gate`; `talk_safe_property_gate` |
+| **Romance only between two adults, both ways**: FLIRT, CONFESS, ASK_OUT, KISS and the flirty tone pass only when the avatar and the target are adults, `playas_romance_ok` and `sim_romance_ok` pass **in both directions**, nobody in the room is a minor, the pet is not there and **no child is in the line** (`TS_MINOR`: "I'm 12, go out with me?", "kiss my little sister", "*kisses Pip*" are `REFUSE_MINOR` even between two adults the gate allows, K-1 both ways). Else `REFUSE_MINOR` (a non-adult avatar or target, or a child in the line) or `DEFLECT_ROMANCE` (an adult who says no, or "not in front of the kids"). Teen-teen romance is never offered in Talk. 200,000 random gate calls and every (adult, minor) pair in both directions are checked | `talk_safe_romance_ok`, `talk_safe_gate`; `talk_safe_property_gate` |
 | **Mature**: a `jmat` variant needs `opt_mature() >= MATURE_ON` and `mature_adult_ok()` for every id (never the hero, a custom or sim-born resident, a kid) | `talk_safe_jmat_ok`; `talk_safe_mature_gate` |
 | **The output lint S3** runs on every generated line on every platform (the PS1 loads `TB_SAFETY`): `register.tsv`'s words with the story lint's own matching rules, every never-generated word (explicit and **flirting** sexual words, hate, real world, distress, the capped swears), the hate hashes, the bubble size, and the one-everyday-swear-a-conversation cap (K-9); any register word in a room with a child (K-2). Every one of the 3,836 kid-safe concepts lints clean in a kid room; every adult register word and all 86 never-generated words are caught | `talk_safe_lint`; `talk_safe_output_lint_*` |
 | **The template lints TK1-TK9** refuse a bank before it is built (`talkc --check`): a register word without `!kid_present`, a capped swear, a romance-reachable rule without `adults_only&!kid_present`, a `jmat` without `mature_adult_ok`, any sexual-class word, a safety or ungated romance slot, a register word or the LOVE face in a kid's bank, a refusal bank without its reviewed `nojoke` tag, a corpus that does not parse, a language with free text but no safety lexicons. 15 seeded bad templates and rule files must each fail with their rule | `talkc_safe.py`, `talkc.py`; `core/tests/talk_bad/*.tlk`, `*.rules`, `core/tests/talk_good.tlk` |
+| **Every word is read**: a line with more words than the parser's 40-token cap is cut; the bubble ends at the cut (nothing unread is ever shown) and S1 reads the rest of the line in overlapping parts, so a K-7, hate, distress or swear word after token 40 is still caught. Every must-refuse corpus line padded with 41 junk tokens (1,242 lines) is refused in its class | `talk_parse` (`TalkParseInfo.cut`); `talk_safe_long_lines` |
 | **The parser hands on only acts and concepts that may be generated**: 50,000 random lines of junk, swears and safety words never give a topic that is never-generated or of a sexual / hate / real-world class. Typed words stay in the (masked) bubble only; the residents can never be made to say them | `talk_safe_property_closed_vocabulary` |
 | **The gate changes nothing**: after the 200,000 calls `sim_romance_sweep(-1) == 0` and no edge was made | `talk_safe_property_gate` |
 | No slur is written anywhere in the repository: `safety/hate.hash` holds salted FNV-1a 64 hashes (and their one-letter deletions), made from the reviewer's local list by `talkc.py --hate-hash` | `talkc_safe.py`; `talk_safe_hate_hash` (and `DOOMO_HATE_PLAIN=file` checks every word of the local list) |
@@ -262,8 +263,10 @@ talk_parse("Nana, what's in the pie?", &c, &u, &info);   /* ASK_ABOUT, topic pie
 1. **Normalise (S0)**: case; accents; Cyrillic, Greek and fullwidth
    look-alikes; leet (`3>e 0>o @>a $>s 1>i/l` ...) when the leet spelling is
    a word; letters stretched for effect ("sooo", "meee"; "kkk" stays);
-   starred letters ("f*ck"); punctuation inside a word ("s.e.x", "t_ake",
-   "asia-ns"); spaced-out letters ("s e x", "m e").
+   starred letters ("f*ck"); punctuation or one invisible format character
+   inside a word ("s.e.x", "t_ake", "asia-ns", "se<ZWSP>x"); spaced-out
+   letters ("s e x", "m e"); a safety word split by a space into two halves
+   that are no words ("fu ck", "se x"; never "pen is").
 2. **Correct**: an unknown word that is no name is fixed at edit distance 1
    (the first letter kept): a word that completes a phrase with its
    neighbours first ("white powe"), then a safety word, then the first word
@@ -277,10 +280,19 @@ talk_parse("Nana, what's in the pie?", &c, &u, &info);   /* ASK_ABOUT, topic pie
    such as "Mayor" or "Dr." only as a vocative or with "the": "thanks,
    doctor", "the mayor is right"); multi-word keys longest first; lemmas
    (-s -es -ies -ed -ied -ing); numbers ("12yo"); the concept, its root and
-   sentiment; the rule classes; the safety word flags.
+   sentiment; the rule classes; the safety word flags. A cast name the
+   lexicon knows ("Pip") stays a word but carries the person's id
+   (`TalkTok.person`: the game's lookup, else the roster's cast member of
+   that exact name; of two who share it, the child), so S1 can ask
+   `talk_safe_minor` about a person named who is not in the room.
 4. **Classify (S1)**: `talk_safe_scan`. Explicit, hate and distress findings
-   **always win** over every rule.
-5. **Rules**: `core/data/talk/rules/en.tsv`, 228 rules over 93 word
+   **always win** over every rule. **Every word is read**: a line with more
+   words than `TALK_TOK_MAX` (40) tokens, or the raw-word and unit caps
+   behind it, is cut at a raw word's first byte (`TalkParseInfo.cut`); S1
+   reads the rest of the line (up to 160 bytes) in parts that go back six
+   tokens, so a phrase or an age split by the cut is read whole. The rules
+   see only the first 40 tokens (the confidence drops to 6).
+5. **Rules**: `core/data/talk/rules/en.tsv`, 230 rules over 95 word
    classes, highest priority first. A rule is tried on the whole line and
    on the line without the names it is said to ("hey Kevin, ...", "...,
    Nana?"). The first match gives `act[0]`, the next match with another act
@@ -292,7 +304,8 @@ talk_parse("Nana, what's in the pie?", &c, &u, &info);   /* ASK_ABOUT, topic pie
 7. **Target**: "everyone" words, else a participant named (not the one the
    act is about: "Vex is right" is said to the ring), else the facing ring.
 8. **The bubble**: explicit, hate and swear words are masked (####); in a
-   kid's room crude and flirting words too.
+   kid's room crude and flirting words too. A cut line's bubble ends at the
+   cut: what the tagger did not read is never shown.
 
 **The rules file** (`talkc_parse.py` documents the syntax): `@class NAME
 member, member` for word classes (members are function words, never the
@@ -303,7 +316,7 @@ FOOD, ...), `"literals"`, `.*`, `^`, `$`, alternations, `?`, `*`, `!` and
 GREETW, HATEADJ, ATTRACT) are read by the C code by position, and
 `talkc` checks the order. A rule may never emit a safety act.
 
-**Accuracy** (`test_talk_parse.c`, on `corpus/parse_en.tsv`: 1,517 lines in
+**Accuracy** (`test_talk_parse.c`, on `corpus/parse_en.tsv`: 1,519 lines in
 six rooms, about one in six with a misspelling, a shortcut or leet):
 
 | Measure | Bar (design 3.2) | Measured |
@@ -340,8 +353,8 @@ Design section 7; the guarantees and their tests are in section 2.
 | Stage | Function | What |
 |---|---|---|
 | who is here | `talk_safe_minor`, `talk_safe_is_pet`, `talk_safe_ctx` | the audience: any minor, avatar minor, target minor ("everyone" includes the kids), the pet, the Mature option for every adult |
-| S1 | `talk_safe_scan` (inside `talk_parse`) | `TS_*` bits from the word flags of `TB_PARSE`, the hate hashes (exact and one edit), "HATEV ... group", "group ... HATEADJ", ages under 18, a child-only word next to a liking word |
-| S2 | `talk_safe_gate(u, aud, avatar, target, refused_today)` | `TG_END_K7`, `TG_REFUSE`, `TG_HATE`, `TG_DISTRESS`, `TG_REFUSE_MINOR`, `TG_DEFLECT` or `TG_PASS`; rewrites the acts, clears the bubble for K-7, explicit and hate input; a romance act that is only the line's second act is dropped instead ("love you guys" stays a compliment) |
+| S1 | `talk_safe_scan` (inside `talk_parse`, on every word of the line) | `TS_*` bits from the word flags of `TB_PARSE`, the hate hashes (exact and one edit), "HATEV ... group", "group ... HATEADJ", ages under 18, a child-only word next to a liking word, a person named who is not in the room and is a child (`TS_MINOR`) |
+| S2 | `talk_safe_gate(u, aud, avatar, target, refused_today)` | `TG_END_K7`, `TG_REFUSE`, `TG_HATE`, `TG_DISTRESS`, `TG_REFUSE_MINOR`, `TG_DEFLECT` or `TG_PASS`; rewrites the acts, clears the bubble for K-7, explicit and hate input; a romance act (or the flirty tone) with `TS_MINOR` is `REFUSE_MINOR` whoever is in the room; a romance act that is only the line's second act is dropped instead ("love you guys" stays a compliment) |
 | K-4 | `talk_safe_romance_ok` | what the composer may list: FLIRT, CONFESS, ASK_OUT, KISS and the flirty tone |
 | K-6 | `talk_safe_jmat_ok` | a `jmat` variant |
 | S3 | `talk_safe_lint(line, aud, &swears)` | every generated line; `TL_*`; `talk_safe_lint_hits()` |
@@ -356,14 +369,16 @@ concepts are flirting words: a FLIRT the gate may allow between adults as
 
 | Set | Lines | Result | Bar |
 |---|---:|---|---|
-| `safety_en.tsv` must-refuse (explicit, K-7, hate, distress, romance with a minor both ways) | 207 | **207 refused, every one in its class** | 100% |
-| `safety_en.tsv` near misses ("my kid brother loves pie", "hell yeah, pizza!", "*hugs Pip*", "i'll kill you at chess", "let's invest in a condo by the port") and adult romance | 160 | **158 not refused** (98.8%; the two refused: "dick tracy", "the nude colour lipstick") | 97% |
+| `safety_en.tsv` must-refuse (explicit, K-7, hate, distress, romance with a minor both ways, a child named but not in the room, a child in a romance line, underwear requests, lines past the token cap) | 233 | **233 refused, every one in its class** | 100% |
+| `safety_en.tsv` near misses ("my kid brother loves pie", "hell yeah, pizza!", "*hugs Pip*", "i'll kill you at chess", "let's invest in a condo by the port", "i need clean underwear", "i love tater tots", "pip is cute") and adult romance (also in the `lovers` room: Mayor Giggs to Steamy, two adults the gate allows, so only the line can stop a romance act) | 174 | **172 not refused** (98.9%; the two refused: "dick tracy", "the nude colour lipstick") | 97% |
 | `adversarial_en.tsv` (hand-written obfuscation: "s3x with a k1d", "ѕех", "n a k e d", "su1cide", "h3il h1tler") | 69 | 62/62 refused, 7/7 near misses passed | 100% |
-| machine mutation of every must-refuse line (leet, spacing, marks, stretched letters, look-alikes, case, one typo after the first letter; 24 a line) | 3,993 | **99.3% refused; child-related 1,080/1,080** | 99%; 100% |
+| machine mutation of every must-refuse line (leet, spacing, marks, stretched letters, look-alikes, case, one typo after the first letter; 24 a line) | 4,290 | **99.4% refused; child-related 1,338/1,338** | 99%; 100% |
+| every must-refuse line again after 41 junk tokens (six pads: "a?", "a ", "q-", "1 ", "u,", "?a"): the token cap | 1,242 | **1,242 refused, every one in its class; nothing shown past the cut** | 100% |
 
 A typo that lands on another real word is not the same word any more and is
-not counted (543 skipped mutants). The remaining misses are stop words of a
-phrase broken up ("i want t o disappear"). `DOOMO_TALK_MISS=1` lists them.
+not counted (586 skipped mutants). The remaining misses are stop words of a
+phrase broken up ("i want t o disappear") and a word two edits from its key
+("niples"). `DOOMO_TALK_MISS=1` lists them.
 
 **Precision** (the owner's first priority is a game that makes sense: an
 innocent line must never be refused, and above all never end the
@@ -394,6 +409,14 @@ known, but a person when a resident has the name, so gossip about a custom
 honest, and `talk_parse_near_miss_words_and_names` checks the words and the
 name lookup. One raw word cut by a mark still joins into a safety word even
 when both halves are words ("hot_tie").
+
+The list was re-reviewed when TK2 landed (a reviewer found two words the
+pass had made innocent): `common_en.txt` holds no word for a child and no
+underwear word. "Knickers" is a form of `panties` (explicit, like it);
+"tot" / "tots" are minor words (`phrases_en.tsv`), with "tater tot(s)" a
+form of potato so the food stays food; asking to see underwear or to take
+it off ("show me your underwear", "your bra off", "what colour are your
+undies") is explicit, the bare word ("I need clean underwear") is not.
 
 **The hate match** keeps the first letter and allows one edit: a letter
 added to a listed word of 4 letters or more (a typo that breaks a double
@@ -432,17 +455,21 @@ All figures are for `TALK_en.BIN` after the TK1 content (`talkc --stats`):
 | FORMS (Huffman) | 52,921 B | 68,653 B | yes |
 | CATS + CATNAMES | 1,944 B | 2,192 B | yes |
 | EDGES (21,254 reviewed edges) | 50,530 B | 50,530 B | no (Dreamcast, native) |
-| PARSE (T3: 11,661 words, 138 tag sets, 228 rules, 286 safety words) | 279,029 B | 279,029 B | no (Dreamcast, native) |
-| SAFETY (T4: 246 lint words, 128 + 160 hate hashes) | 6,428 B | 6,428 B | **yes** (the S3 lint) |
-| **Total file** | **506,844 B** | | **PS1: 176,805 B** of the 312 KB budget |
+| PARSE (T3: 11,691 words, 140 tag sets, 230 rules, 289 safety words) | 280,033 B | 280,033 B | no (Dreamcast, native) |
+| SAFETY (T4: 247 lint words, 128 + 160 hate hashes) | 6,445 B | 6,445 B | **yes** (the S3 lint) |
+| **Total file** | **507,885 B** | | **PS1: 176,822 B** of the 312 KB budget |
 
 (After TK2 the other banks are for 4,009 concepts: CONCEPT 32,080 B, ASSOC
 64,160 B, ATTR 18,896 B, FORMS 53,297 B.) The design estimated PARSE at
 about 110 KB; it is bigger because its words are stored raw for a binary
-search through `plat_talk_read` (DC only: 11 MB free). Code, `-Os`:
-`talk_lex.c` 9,879 B (ARM Thumb) / 12,192 B (SH4), `talk_parse.c` 2,860 /
-3,378 B, `talk_safe.c` 3,546 / 4,344 B, 4 B of `.bss` (the lint counter);
-stack about 6 KB in `talk_parse` (40 tokens and a copy). The PS1 links only
+search through `plat_talk_read` (DC only: 11 MB free). Code, `-Os`
+`.text` (`arm-none-eabi-gcc -mthumb -mcpu=arm7tdmi` / `sh-elf-gcc -ml
+-m4-single`): `talk_lex.c` 10,543 B / 13,034 B, `talk_parse.c` 3,176 /
+3,712 B, `talk_safe.c` 3,614 / 4,398 B (the cut, the rest-of-line scan and
+the named-child check added 1,048 / 1,312 B), 4 B of `.bss` (the lint
+counter); stack about 6.5 KB in `talk_parse` (40 tokens, a copy reused for
+the rest-of-line scan, a 161 B window). A line past the token cap costs
+one more tagger pass per 20-odd bytes (at most 160). The PS1 links only
 the S2 / S3 half once T5a calls it.
 
 Other measurements:
@@ -471,8 +498,8 @@ Other measurements:
 |---|---|
 | `core/tests/test_contracts_talk.c` | The act ids and groups; `TalkUtter`'s layout; `PLATF_TALK` and the weak hooks; the room projection (origin, tile steps, height, a quarter turn equal to the turned room, pan, zoom 2 ignored by the reference, the platform hook equal to the reference); the `'TALK'` chunk and the joint worst case; the four headlines with the longest names |
 | `core/tests/test_talk_db.c` | The fixture opens and verifies; forms and articles (plurals, irregulars, mass nouns, names, "the" names, truncation); categories and roots; the safety classes the gate will read (sexual and capped never, everyday swears adult, romance adult, minor words); attributes; associations (range, order, talkable, **no edge into adult from non-adult**, EDGES begins with ASSOC); refusals (CRC, magic, version, dictionary, truncation, an out-of-range bank, a duplicate bank); CRC-32; the full `TALK_en.BIN` through the native platform |
-| `core/tests/test_talk_parse.c` | The canonical key; folding, leet, look-alikes, stretched letters, typos, lemmas, multi-word keys, persons, numbers, spaced letters; real words and first names one letter from a safety word (known, no safety class; a name of `names_en.txt` is a person when a resident has it; "hot_tie" still joins); acts, topics, targets; determinism (no state, no database = UNKNOWN); the 1,517-line corpus against the three bars; `DOOMO_TALK_LINE` |
-| `core/tests/test_talk_safety.c` | One source of "minor" (1,000 premade ids, the kid cast file, pool stages, unknown ids, the pet); the safety and adversarial corpora; the mutation fuzz; the hate hash (C equals Python, no lexicon word on it, `DOOMO_HATE_PLAIN`); the gate properties P1-P4 and P7 over 200,000 random calls and every (adult, minor) pair both ways; P5 Mature; P6 closed vocabulary over 50,000 random lines; the S3 lint (units and the whole vocabulary); the masked bubble |
+| `core/tests/test_talk_parse.c` | The canonical key; folding, leet, look-alikes, stretched letters, typos, lemmas, multi-word keys, persons, numbers, spaced letters; real words and first names one letter from a safety word (known, no safety class; a name of `names_en.txt` is a person when a resident has it; "hot_tie" still joins); acts, topics, targets; determinism (no state, no database = UNKNOWN); the 1,519-line corpus against the three bars; `DOOMO_TALK_LINE` |
+| `core/tests/test_talk_safety.c` | One source of "minor" (1,000 premade ids, the kid cast file, pool stages, unknown ids, the pet); the safety and adversarial corpora (run with a town person lookup, as the game will); the `lovers` room really allows romance; a child named but not in the room (the lookup, the roster's cast, a shared name, a `names_en.txt` name); every must-refuse line past the token cap (and the bubble never shows past the cut); invisible characters and space-split words; the mutation fuzz; the hate hash (C equals Python, no lexicon word on it, `DOOMO_HATE_PLAIN`); the gate properties P1-P4 and P7 over 200,000 random calls and every (adult, minor) pair both ways; P5 Mature; P6 closed vocabulary over 50,000 random lines; the S3 lint (units and the whole vocabulary); the masked bubble |
 | `make -C core talk-check` | `talkc --check` (now also TK1-TK9 and the corpora) and `--selftest` (30 seeded refusals: 11 lexicon files, 4 bad edges, 13 templates, 2 rule files; and `core/tests/talk_good.tlk` must lint clean) (part of `make -C core test`) |
 | `make -C core check-gen` | `gen_game.tsv`, `concepts.lock` and `talk_fixture.c` regenerate byte for byte |
 
@@ -492,7 +519,9 @@ Other measurements:
 | Parser rules: patterns with gaps and captures | Also `*`, `!`, `$` inside an alternation, literals hashed per rule (not class bits), and every rule tried again on the line without the names it is said to | Vocatives ("hey Kevin, ...") otherwise break every anchored rule |
 | Safety rules in `rules/en.tsv` at priority 870-900 | **In C** (`talk_safe_scan`), before any rule; a rules file may not emit a safety act (`talkc` refuses it) | A bad rules file can then never weaken the gate |
 | TK1 / TK3: a suggestive word in a template needs `!pet` | **Any sexual-class word, flirting ones included, is a TK4 error and an S3 hit in every room** | T1 already made the whole sexual class never-generated; innuendo is written without those words (R2) |
-| K-7: "sexual + any minor" | Flirting words count as sexual there too; a child-only word ("underage") next to a liking word counts as sexual; ages under 18 from "12 year old", "I'm 12", "she's 14" | Fail safe: ending a conversation wrongly is a small cost |
+| K-7: "sexual + any minor" | Flirting words count as sexual there too; a child-only word ("underage") next to a liking word counts as sexual; ages under 18 from "12 year old", "I'm 12", "she's 14"; a child named who is not in the room | Fail safe: ending a conversation wrongly is a small cost |
+| K-1 / K-4: romance needs two adults (the room) | Also no child in the line: a romance act with `TS_MINOR` is `REFUSE_MINOR` even between two adults the gate allows | "I'm 12, will you go out with me?" and "kiss my little sister" passed between two adults before TK2 landed |
+| A line is read up to the token cap | Past `TALK_TOK_MAX` the line is cut; the bubble ends at the cut and S1 reads the rest in overlapping parts | A K-7 or distress line after 40 junk tokens passed, its tail shown unmasked, before TK2 landed |
 | The pet | Not a minor (it may swear around the pet, K-3), but never a romance target and never with a sexual or mature line | K-3 |
 | A romance act that is only the line's second act | Dropped where the gate would refuse it; the first act stands | "Love you guys!" is a compliment, not a refusal |
 | `minor()` in design 7.3 | Also the hero (the player's stage) and the pet (`TALK_PET_ID`) | Talk's own ids |
@@ -501,6 +530,17 @@ Other measurements:
 
 
 **Known risks (open):**
+
+* **The person lookup** (`TalkParseCtx.person`, T5a): it gets a canonical
+  full or first name. It must answer for every resident of the town, and
+  when several share a first name it should return a child if one of them
+  is one (fail safe; the tests' lookup does). Talk also checks the roster's
+  cast member of a cast word's exact name, but a custom kid named like an
+  adult is only found through the lookup.
+* **"Baby" in a romance line.** The minor words include "baby", "bub",
+  "student" and "teen", so between two adults "kiss me, baby" is
+  `REFUSE_MINOR` (and "sexy baby" a K-7 ending, as before). Fail safe by
+  design (K-1); review the endearments with the owner.
 
 * **Unseen typing.** 85% acts on fresh lines (section 6a). Every word the
   lexicon does not know is a chance for a wrong typo fix; the everyday list

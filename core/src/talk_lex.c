@@ -7,8 +7,10 @@
  *   S0 normalise   fold case, accents, Cyrillic / Greek / fullwidth look-
  *                  alikes, leet (3>e 0>o @>a $>s 1>i or l ...), letters
  *                  repeated 3+ times to 2, dots and starred-out letters
- *                  inside a word ("s.e.x", "f*ck"), punctuation glued into
- *                  a word ("se,x"), spaced-out single letters ("s e x")
+ *                  inside a word ("s.e.x", "f*ck"), punctuation or an
+ *                  invisible character glued into a word ("se,x",
+ *                  "se<ZWSP>x"), spaced-out single letters ("s e x"), a
+ *                  safety word split by a space into two non-words ("fu ck")
  *   tokenise       canonical words (talk_lex_canon = talkc_parse.py canon)
  *   lemmatise      -'s -s -es -ies -ed -ied -ing (+e, doubled consonant)
  *   multi-word     longest first, up to the bank's max_words ("hell gate")
@@ -19,12 +21,18 @@
  *   tags           concept, category root, sentiment, the rule classes and
  *                  the safety word flags of TB_PARSE (talkc_parse.py)
  *   topics         spreading activation over the association network
+ *   the cut        a line with more words than the token / raw-word / unit
+ *                  caps hold stops at a raw word's first byte (*cut):
+ *                  talk_parse() never shows what was not read and has S1
+ *                  read the rest (a raw word is at most RAW_WORD_MAX bytes,
+ *                  so a cut always falls after a raw word of the call)
  *
  * Everything is read from TB_PARSE through talk_db_read() a few bytes at a
  * time; no state survives a call. Stack: about 5 KB in talk_lex().
  */
 #include "doomo/doomo.h"
 #include "doomo/talk.h"
+#include "doomo/roster.h"
 
 #define PRS_MAGIC 0x31535250u           /* "PRS1" */
 #define WORD_REC  12u
@@ -226,6 +234,8 @@ int talk_lex_canon(const char *in, char *out, int cap)
 /* ---- the raw words of the input ----------------------------------------- */
 #define RAW_MAX  48
 #define UNIT_MAX 64
+#define RAW_WORD_MAX 40        /* bytes of one raw word: at most 20 units, so 40 tokens or 64 units
+                                * never come from one raw word and a cut is always after one */
 typedef struct Raw { uint8_t start, end, kind; } Raw;       /* byte offsets in the input */
 typedef struct Unit {
     char    s[TALK_TOK_LEN];
@@ -235,6 +245,18 @@ typedef struct Unit {
     uint8_t fuzzy;         /* corrected at edit distance 1 */
 } Unit;
 
+/* invisible format characters (soft hyphen, zero-width space / joiners,
+ * direction marks, word joiner, BOM, variation selectors, Hangul fillers):
+ * they split raw words like any separator, but one of them between two
+ * parts is no gap for the glue pass ("s<SHY>ex" is "sex") */
+static int invisible(unsigned u)
+{
+    return u == 0xAD || u == 0x34F || u == 0x61C || u == 0x115F || u == 0x1160 || u == 0x17B4 || u == 0x17B5 ||
+           (u >= 0x180B && u <= 0x180E) || (u >= 0x200B && u <= 0x200F) || (u >= 0x202A && u <= 0x202E) ||
+           (u >= 0x2060 && u <= 0x206F) || u == 0x3164 || (u >= 0xFE00 && u <= 0xFE0F) || u == 0xFEFF ||
+           u == 0xFFA0;
+}
+
 static int raw_char(unsigned u)
 {
     if (u >= 0x80) return fold_cp(u) != 0 && fold_cp(u) != ' ';
@@ -242,13 +264,19 @@ static int raw_char(unsigned u)
            u == '-' || u == '.' || u == '_' || u == '*' || u == '#' || u == '+';
 }
 
-static int split_raw(const char *s, Raw *r, int max)
+/* the raw words; *cut = the byte of the first one past max (0: all read) */
+static int split_raw(const char *s, Raw *r, int max, int *cut)
 {
     int i = 0, n = 0, len = (int)strlen(s);
+    *cut = 0;
     if (len > TALK_INPUT_MAX * 2) len = TALK_INPUT_MAX * 2;
-    while (i < len && n < max) {
+    while (i < len) {
         int k;
         unsigned u = next_cp(s + i, &k);
+        if (n == max && (u == '?' || u == '!' || raw_char(u))) {
+            *cut = i;                                  /* more words than the table holds */
+            break;
+        }
         if (u == '?' || u == '!') {
             int st = i;
             while (i < len && (s[i] == '?' || s[i] == '!')) i++;
@@ -262,7 +290,7 @@ static int split_raw(const char *s, Raw *r, int max)
         r[n].start = (uint8_t)i;
         while (i < len) {
             u = next_cp(s + i, &k);
-            if (!raw_char(u)) break;
+            if (!raw_char(u) || (i > r[n].start && i + k - r[n].start > RAW_WORD_MAX)) break;
             i += k;
         }
         r[n].end = (uint8_t)i;
@@ -314,6 +342,18 @@ static void raw_fold(const char *s, int a, int b, int leet, char *out, int cap)
     }
     tmp[o] = 0;
     talk_lex_canon(tmp, out, cap);
+}
+
+/* the bytes [a, b) between two raw words are one mark (no space) or one
+ * invisible character: the words may be one word cut in two */
+static int one_mark(const char *s, int a, int b)
+{
+    int k;
+    unsigned u;
+    if (b - a == 1) return s[a] != ' ' && s[a] != '\t';
+    if (b <= a) return 0;
+    u = next_cp(s + a, &k);
+    return a + k == b && invisible(u);
 }
 
 /* ---- lemmas and edit distance --------------------------------------------- */
@@ -599,21 +639,58 @@ static int all_digits(const char *s)
     return 1;
 }
 
+/* A person named by a word the lexicon knows (the cast: "Pip", "Wisp") is
+ * a word token, not a PERSON; TalkTok.person gets an id so S1 can ask
+ * talk_safe_minor() about it: the game's lookup (the concept's name, folded,
+ * then its first word) and the roster's own cast member of that exact name
+ * ("Wisp" is the kid, roster 563, not "Wisp Willow"). When the two differ
+ * and one of them is a child, the child (fail safe). */
+static void named_person(const TalkParseCtx *ctx, TalkTok *t)
+{
+    TalkConcept c;
+    char name[48], key[48], *sp;
+    int id = -1, r;
+    if (t->kind != TTK_WORD || !t->concept || t->person >= 0) return;
+    if (!talk_db_concept(t->concept, &c) || !(c.flags & TCF_PROPER)) return;
+    if (talk_db_form(t->concept, TF_LEMMA, name, (int)sizeof name) <= 0) return;
+    talk_lex_canon(name, key, (int)sizeof key);
+    if (!key[0]) return;
+    if (ctx && ctx->person) {
+        id = ctx->person(key);
+        if (id < 0 && (sp = strchr(key, ' ')) != NULL) {
+            *sp = 0;
+            id = ctx->person(key);
+        }
+    }
+    r = roster_find(name);
+    if (r >= 0 && (id < 0 || (r != id && talk_safe_minor(r) && !talk_safe_minor(id)))) id = r;
+    if (id >= 0) t->person = (int16_t)id;
+}
+
 /* ---- the tagger ------------------------------------------------------------ */
 int talk_lex(const char *text, const TalkParseCtx *ctx, TalkTok *tok, int max)
+{
+    return talk_lex_cut(text, ctx, tok, max, NULL);
+}
+
+int talk_lex_cut(const char *text, const TalkParseCtx *ctx, TalkTok *tok, int max, int *cut_out)
 {
     PrsHdr h;
     Raw raw[RAW_MAX];
     Unit u[UNIT_MAX];
     Names nm;
-    int nraw, nu = 0, i, nt = 0;
+    int nraw, nu = 0, i, nt = 0, cut = 0;
+    if (cut_out) *cut_out = 0;
     if (!text || !tok || max <= 0 || !prs_hdr(&h)) return 0;
     names_of(ctx, &nm);
-    nraw = split_raw(text, raw, RAW_MAX);
-    /* raw words -> units (canonical words); QMARK / EXCL stay units of their own */
-    for (i = 0; i < nraw && nu < UNIT_MAX; i++) {
+    nraw = split_raw(text, raw, RAW_MAX, &cut);
+    /* raw words -> units (canonical words); QMARK / EXCL stay units of their own.
+     * A raw word whose units do not all fit is left out whole: the cut is
+     * its first byte (there is always a raw word before it: RAW_WORD_MAX) */
+    for (i = 0; i < nraw; i++) {
         char plain[TALK_INPUT_MAX * 2], leet[TALK_INPUT_MAX * 2], *p, *q;
-        int has_leet = 0, j;
+        int has_leet = 0, j, nu0 = nu, full = 0;
+        if (nu >= UNIT_MAX) { cut = raw[i].start; break; }
         if (raw[i].kind != TTK_WORD) {
             memset(&u[nu], 0, sizeof u[nu]);
             u[nu].s[0] = raw[i].kind == TTK_QMARK ? '?' : '!';
@@ -674,15 +751,17 @@ int talk_lex(const char *text, const TalkParseCtx *ctx, TalkTok *tok, int max)
             if (leet_known) { memcpy(plain, leet, sizeof plain); has_leet = 2; }
         }
         /* a word spelled with dots / dashes between letters ("s-e-x") as one */
-        for (p = plain; p && *p && nu < UNIT_MAX; p = q) {
+        for (p = plain; p && *p; p = q) {
             q = strchr(p, ' ');
             if (q) *q++ = 0;
+            if (nu >= UNIT_MAX) { full = 1; break; }
             memset(&u[nu], 0, sizeof u[nu]);
             memcpy(u[nu].s, p, strlen(p) < TALK_TOK_LEN ? strlen(p) : TALK_TOK_LEN - 1);
             u[nu].raw = (uint8_t)i; u[nu].joined = (uint8_t)i;
             u[nu].leet = (uint8_t)(has_leet == 2);
             nu++;
         }
+        if (full) { nu = nu0; cut = raw[i].start; break; }
     }
     /* spaced-out single letters ("s e x", "a h o o k e r", "m e"): inside a
      * run of single letters the longest stretch the lexicon knows is joined
@@ -711,22 +790,34 @@ int talk_lex(const char *text, const TalkParseCtx *ctx, TalkTok *tok, int max)
     }
     /* a word cut by punctuation ("se,x", "t_ake", "asia-ns"): two units of one
      * raw word join when the joined word is known and a part is not (or is a
-     * single letter); two raw words with one mark and no space between join
-     * only into a safety word */
+     * single letter); two raw words with one mark or one invisible character
+     * and no space between join only into a safety word; two raw words with
+     * one space between join only into a safety word, and only when neither
+     * is a word ("fu ck", "se x"; never "pen is") */
     for (i = 0; i + 1 < nu; i++) {
         char b[TALK_TOK_LEN * 2];
         PrsWord w;
-        int la = (int)strlen(u[i].s), lb = (int)strlen(u[i + 1].s), glued, ka, kb;
+        int la = (int)strlen(u[i].s), lb = (int)strlen(u[i + 1].s), glued, spaced = 0, ka, kb;
         if (!u[i].s[0] || !u[i + 1].s[0] || u[i].s[0] == '?' || u[i].s[0] == '!' ||
             u[i + 1].s[0] == '?' || u[i + 1].s[0] == '!' || la + lb >= TALK_TOK_LEN) continue;
         glued = u[i].raw == u[i + 1].raw ||
-                (u[i + 1].raw == u[i].raw + 1 && raw[u[i + 1].raw].start == raw[u[i].raw].end + 1 &&
-                 text[raw[u[i].raw].end] != ' ' && text[raw[u[i].raw].end] != '\t');
-        if (!glued) continue;
+                (u[i + 1].raw == u[i].raw + 1 && one_mark(text, raw[u[i].raw].end, raw[u[i + 1].raw].start));
+        if (!glued && u[i + 1].raw == u[i].raw + 1 && la + lb >= 3 &&
+            raw[u[i + 1].raw].start == raw[u[i].raw].end + 1 && text[raw[u[i].raw].end] == ' ')
+            spaced = 1;
+        if (!glued && !spaced) continue;
         memcpy(b, u[i].s, (size_t)la);
         memcpy(b + la, u[i + 1].s, (size_t)lb + 1);
         ka = prs_find(&h, u[i].s, NULL) >= 0;
         kb = prs_find(&h, u[i + 1].s, NULL) >= 0;
+        if (spaced && (ka || kb || find_lemma(&h, u[i].s, &w) >= 0 || find_lemma(&h, u[i + 1].s, &w) >= 0 ||
+                       all_digits(u[i].s) || all_digits(u[i + 1].s) ||
+                       (prs_find(&h, b, &w) < 0 && !talk_safe_hate_word(b, 0))))
+            continue;
+        if (spaced && prs_find(&h, b, &w) >= 0 &&
+            !(w.wflags & (TW_SEXUAL | TW_SUGGEST | TW_HATE | TW_DISTRESS | TW_MINOR | TW_STRONG | TW_GROUP)) &&
+            !talk_safe_hate_word(b, 0))
+            continue;
         /* two known words stay two ("well-known"), unless one raw word joins
          * into a safety word ("hot_tie", "pen.is") */
         if (ka && kb && la > 2 && lb > 2 && u[i].raw != u[i + 1].raw) continue;
@@ -936,12 +1027,15 @@ int talk_lex(const char *text, const TalkParseCtx *ctx, TalkTok *tok, int max)
         t->flags |= TTF_UNK;
         nt++; i++;
     }
+    if (i < nu) cut = raw[u[i].raw].start;     /* more tokens than max: the rest is not in tok[] */
     for (i = 0; i < nt; i++) {                 /* the rules' literals match this hash */
         const char *p = tok[i].text;
         uint32_t x = 0x811C9DC5u;
         while (*p) { x ^= (uint8_t)*p++; x *= 0x01000193u; }
         tok[i].hash = x;
+        named_person(ctx, &tok[i]);
     }
+    if (cut_out) *cut_out = cut;
     return nt;
 }
 

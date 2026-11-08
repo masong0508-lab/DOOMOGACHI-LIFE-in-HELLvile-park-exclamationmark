@@ -116,6 +116,8 @@
 @class SOMEONE	someone, somebody, anyone, anybody, who else, a person
 @class CANV	can, could, able to, know how to
 @class ME_OBJ	me, for me, to me, with me
+@class WANTTO	want to
+@class KISSME	kiss me, kiss you
 
 # =========================================================================================
 # The rules: PRIO, PATTERN, ACT. Higher first; a rule that matches gives act[0], the
@@ -138,8 +140,10 @@
 838	CONFESSW	CONFESS
 836	ASKOUTW	ASK_OUT
 834	^ I? KISSW	KISS
+833	(WANTV|WANTTO) .* KISSW	KISS
 832	(FAVORW|AUX|"can"|"may") .* KISSW	KISS
 830	KISSW (YOU|[PERSON]|ME_OBJ)	KISS
+829	KISSME	KISS
 826	(YOURE|YOU) .* FLIRTW	FLIRT
 825	^ I? ("wink"|"winks"|"winking"|"winked")	FLIRT
 824	^ INTS? FLIRTW (YOU|[PERSON]|[EXCL]|[QMARK]|$)	FLIRT

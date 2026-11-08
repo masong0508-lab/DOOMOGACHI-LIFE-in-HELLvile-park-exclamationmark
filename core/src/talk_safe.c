@@ -11,15 +11,19 @@
  *                (explicit / flirting sexual words, hate, distress, minor
  *                words, swears), the hashed hate list (exact and edit
  *                distance 1), "HATEV ... a group of real people", "12 year
- *                old" / "I'm 12" (a minor).
+ *                old" / "I'm 12" (a minor), a person named in the line who
+ *                is not in the room and talk_safe_minor() (a minor).
  *   S2 gate      rewrites the utterance (design 7.2): sexual + any child
- *                (in the room, the target, the avatar or a minor word) ends
- *                the conversation (K-7); explicit sexual input is refused
- *                and never echoed; romance needs two adults who pass
- *                sim_romance_ok and playas_romance_ok BOTH ways, no child
- *                and no pet in the room (K-4), and the target's consent
- *                (K-5); hate is refused (K-8); distress stops the comedy
- *                (K-11). A friendly hug stays a hug (DECISIONS "TALK HUG").
+ *                (in the room, the target, the avatar, a minor word or a
+ *                child named) ends the conversation (K-7); explicit sexual
+ *                input is refused and never echoed; romance needs two
+ *                adults who pass sim_romance_ok and playas_romance_ok BOTH
+ *                ways, no child and no pet in the room (K-4), the target's
+ *                consent (K-5), and no child in the line (a romance act
+ *                with TS_MINOR is REFUSE_MINOR: "I'm 12, go out with me?",
+ *                "kiss my little sister"); hate is refused (K-8); distress
+ *                stops the comedy (K-11). A friendly hug stays a hug
+ *                (DECISIONS "TALK HUG").
  *   S3 lint      every generated line, every platform (TB_SAFETY): the
  *                register words of core/data/story/register.tsv with the
  *                story lint's own matching rules, the never-generated
@@ -217,6 +221,11 @@ uint8_t talk_safe_scan(TalkTok *tok, int n)
             t->wflags |= TW_HATE;
         if (t->wflags & (TW_SEXUAL | TW_SUGGEST)) ts |= TS_SEXUAL;
         if (t->wflags & TW_MINOR) ts |= TS_MINOR;
+        /* a person named who is not in the room ("pip is sexy" with Pip
+         * elsewhere): the game's lookup gave the id, talk_safe_minor() says
+         * if it is a child (one source; an unknown id is a child) */
+        if (t->person >= 0 && (t->kind == TTK_WORD || (t->kind == TTK_PERSON && (t->flags & TTF_ABSENT))) &&
+            talk_safe_minor(t->person)) ts |= TS_MINOR;
         if (t->wflags & TW_HATE) ts |= TS_HATE;
         if (t->wflags & TW_DISTRESS) ts |= TS_DISTRESS;
         if (t->wflags & TW_REALWORLD) ts |= TS_REALWORLD;
@@ -317,12 +326,15 @@ int talk_safe_gate(TalkUtter *u, const TalkAudience *aud, int avatar, int target
      * line ("love you guys": a compliment) is dropped where the gate would
      * refuse it, and the first act stands. */
     if (TA_IS_ROMANCE(u->act[1]) && !TA_IS_ROMANCE(u->act[0]) && u->tone != TONE_FLIRTY && !(u->safety & TS_SEXUAL)) {
-        if (refused_today || !talk_safe_romance_ok(aud, avatar, target_id)) u->act[1] = TA_NONE;
+        if (refused_today || (u->safety & TS_MINOR) || !talk_safe_romance_ok(aud, avatar, target_id))
+            u->act[1] = TA_NONE;
     }
     romance = TA_IS_ROMANCE(u->act[0]) || TA_IS_ROMANCE(u->act[1]) || u->tone == TONE_FLIRTY ||
               (u->safety & TS_SEXUAL);
     if (romance) {
-        if (aud->avatar_minor || aud->target_minor || talk_safe_minor(avatar) ||
+        /* K-1 both ways: a child in the line ("I'm 12", "my daughter", a
+         * child named) makes romance REFUSE_MINOR even between two adults */
+        if ((u->safety & TS_MINOR) || aud->avatar_minor || aud->target_minor || talk_safe_minor(avatar) ||
             (target_id >= 0 && talk_safe_minor(target_id)) || (target_id < 0 && aud->any_minor)) {
             refuse(u, TA_REFUSE_MINOR, TA_NONE, 0);
             return TG_REFUSE_MINOR;

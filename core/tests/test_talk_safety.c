@@ -7,8 +7,10 @@
  *        ids are minors (fail safe)
  *   7.6  the labelled safety corpus (100% on every must-refuse class, 97%
  *        or better on the near misses), the hand-written adversarial corpus,
- *        and machine mutation of every must-refuse line (99% or better;
- *        100% on every child-related line)
+ *        machine mutation of every must-refuse line (99% or better; 100% on
+ *        every child-related line), every must-refuse line again after 41
+ *        junk tokens (the token cap: 100%, in its class, nothing shown past
+ *        the cut), and a child named in the line but not in the room
  *   7.5  property tests at the gate: P1 (kid rooms), P2 (both directions),
  *        P3 (K-7: the conversation ends, the input is never shown), P4
  *        (pet), P5 (Mature), P6 (the parser only ever hands on concepts that
@@ -136,8 +138,38 @@ static Room room_of(const char *kind)
         r.avatar = ID_TEEN;
     } else if (strcmp(kind, "kidavatar") == 0) {
         r.avatar = ID_PIP;
+    } else if (strcmp(kind, "lovers") == 0) {
+        /* Mayor Giggs talking to Steamy: two adults the romance gate allows
+         * both ways (talk_safe_lovers_room checks it), so only the line
+         * itself can stop a romance act */
+        r.avatar = roster_find("Mayor Giggs");
+        r.n = 1;
+        r.ids[0] = roster_find("Steamy"); r.names[0] = "Steamy";
+        r.ring = 0;
     }
     return r;
+}
+
+/* The game's person lookup (T5a passes the town's): a resident by full
+ * name, else by first name; when several share a first name, a child if
+ * one of them is (fail safe: "wisp" is the kid Wisp and Wisp Willow). */
+static int town_person(const char *canon_name)
+{
+    static char names[ROSTER_COUNT][48];
+    static int ready;
+    int i, first = -1;
+    if (!ready) {
+        for (i = 0; i < ROSTER_COUNT; i++) talk_lex_canon(roster_name(i), names[i], (int)sizeof names[i]);
+        ready = 1;
+    }
+    for (i = 0; i < ROSTER_COUNT; i++) if (strcmp(names[i], canon_name) == 0) return i;
+    for (i = 0; i < ROSTER_COUNT; i++) {
+        size_t l = strcspn(names[i], " ");
+        if (strlen(canon_name) != l || strncmp(names[i], canon_name, l) != 0) continue;
+        if (talk_safe_minor(i)) return i;
+        if (first < 0) first = i;
+    }
+    return first;
 }
 
 /* parse + audience + gate, as Talk will run them */
@@ -151,6 +183,7 @@ static int gate_line(const char *text, const char *kind, TalkUtter *u, TalkParse
     c.nparts = (uint8_t)r.n;
     c.ring = (int8_t)r.ring;
     c.hops = 1;
+    c.person = town_person;
     for (i = 0; i < r.n; i++) c.name[i] = r.names[i];
     talk_safe_ctx(r.avatar, r.ids, r.n, r.ring, &aud);
     c.kid_room = aud.any_minor;
@@ -253,6 +286,162 @@ TEST(talk_safe_corpus)
     CHECK(n >= 50);
     CHECK_MSG(rok == rn, "adversarial recall %d/%d", rok, rn);
     CHECK_MSG(nok * 100 >= nn * 97, "adversarial near-miss precision %d/%d", nok, nn);
+    talk_db_close();
+}
+
+/* the "lovers" room means something: the gate would let romance through */
+TEST(talk_safe_lovers_room)
+{
+    Room r;
+    TalkAudience aud;
+    premade_town();
+    r = room_of("lovers");
+    CHECK(r.avatar >= 0 && r.ids[0] >= 0);
+    talk_safe_ctx(r.avatar, r.ids, r.n, 0, &aud);
+    CHECK(!aud.any_minor && !aud.pet);
+    CHECK(talk_safe_romance_ok(&aud, r.avatar, r.ids[0]));
+}
+
+/* A child named in the line, not in the room: TS_MINOR from the game's
+ * lookup or the roster's cast (one source: talk_safe_minor), so sexual
+ * words about them end the conversation (K-7) and romance about them is
+ * REFUSE_MINOR; the same words about an adult are a flirt */
+static int pedro_kid(const char *canon_name) { return strcmp(canon_name, "pedro") == 0 ? ID_PIP : -1; }
+static int pedro_adult(const char *canon_name) { return strcmp(canon_name, "pedro") == 0 ? ID_NANA : -1; }
+
+TEST(talk_safe_named_child)
+{
+    TalkUtter u;
+    TalkParseInfo info;
+    TalkParseCtx c;
+    int i, pip = -1;
+    premade_town();
+    CHECK(open_db());
+    CHECK_EQ(gate_line("pip is sexy", "lovers", &u, NULL), TG_END_K7);
+    CHECK(u.shown[0] == 0);
+    CHECK_EQ(gate_line("wisp is a hottie", "lovers", &u, NULL), TG_END_K7);   /* Wisp the kid, not Wisp Willow */
+    CHECK_EQ(gate_line("i want to have sex with pip", "adults", &u, NULL), TG_END_K7);
+    CHECK_EQ(gate_line("*kisses pip*", "lovers", &u, NULL), TG_REFUSE_MINOR);
+    CHECK_EQ(gate_line("pip is cute", "lovers", &u, NULL), TG_PASS);
+    CHECK_EQ(gate_line("nana is a hottie", "lovers", &u, NULL), TG_PASS);    /* an adult named: a flirt */
+    /* the token carries the id: the roster's cast even without a lookup */
+    memset(&c, 0, sizeof c);
+    c.nparts = 1; c.name[0] = "Steamy"; c.hops = 1;
+    talk_parse("pip is sexy", &c, &u, &info);
+    for (i = 0; i < info.ntok; i++) if (strcmp(info.tok[i].text, "pip") == 0) pip = info.tok[i].person;
+    CHECK_EQ(pip, ID_PIP);
+    CHECK((u.safety & (TS_SEXUAL | TS_MINOR)) == (TS_SEXUAL | TS_MINOR));
+    /* a first name of names_en.txt: a custom resident who has it */
+    c.person = pedro_kid;
+    talk_parse("pedro is sexy", &c, &u, &info);
+    CHECK(u.safety & TS_MINOR);
+    c.person = pedro_adult;
+    talk_parse("pedro is sexy", &c, &u, &info);
+    CHECK(!(u.safety & TS_MINOR));
+    c.person = NULL;
+    talk_parse("pedro is sexy", &c, &u, &info);
+    CHECK(!(u.safety & TS_MINOR));
+    talk_db_close();
+}
+
+/* The token cap (TALK_TOK_MAX): a line with more words than the tagger
+ * holds is cut. The bubble never shows a byte past the cut, and S1 reads
+ * every word: each must-refuse line of the corpus after 40-odd junk tokens
+ * is still refused, in its class. Every pad is 2 bytes a token, so the
+ * whole line stays inside the 2 x TALK_INPUT_MAX bytes the parser reads. */
+TEST(talk_safe_long_lines)
+{
+    static const char *const pads[] = { "a?", "a ", "q-", "1 ", "u,", "?a" };
+    int n, i, k, total = 0, refused = 0, exact = 0, miss = getenv("DOOMO_TALK_MISS") != 0;
+    TalkUtter u;
+    TalkParseInfo info;
+    TalkParseCtx c;
+    char text[256];
+    premade_town();
+    CHECK(open_db());
+    n = load_corpus("data/talk/corpus/safety_en.tsv");
+    CHECK(n > 0);
+    for (i = 0; i < n; i++) {
+        Line ln = lines[i];
+        if (!(strcmp(ln.expect, "K7") == 0 || strcmp(ln.expect, "REFUSE_SEXUAL") == 0 ||
+              strcmp(ln.expect, "REFUSE_HATE") == 0 || strcmp(ln.expect, "DISTRESS") == 0)) continue;
+        for (k = 0; k < (int)(sizeof pads / sizeof pads[0]); k++) {
+            int o = 0, r, g;
+            for (r = 0; r < 41; r++) o += snprintf(text + o, sizeof text - (size_t)o, "%s", pads[k]);
+            snprintf(text + o, sizeof text - (size_t)o, " %s", ln.text);
+            if ((int)strlen(text) > 2 * TALK_INPUT_MAX) continue;
+            g = gate_line(text, ln.room, &u, &info);
+            total++;
+            CHECK_MSG(info.cut > 0, "%s: not cut", text);
+            CHECK_MSG((int)strlen(u.shown) <= info.cut, "%s: the bubble shows past the cut", text);
+            if (g == TG_END_K7 || g == TG_REFUSE || g == TG_HATE) CHECK_MSG(u.shown[0] == 0, "%s: shown", text);
+            if (g != TG_PASS) refused++;
+            if (meets(ln.expect, g, &u)) exact++;
+            else if (miss) printf("      LONG MISS [%s] want %s got %s: %s\n", ln.room, ln.expect, tg_names[g], text);
+        }
+    }
+    printf("      long lines (a must-refuse line after 41 junk pads): %d, refused %d, exact class %d\n", total,
+           refused, exact);
+    CHECK(total >= 500);
+    CHECK_EQ(refused, total);
+    CHECK_EQ(exact, total);
+    /* the reviewer's three: K-7, distress and a swear after 40 tokens */
+    CHECK_EQ(gate_line("a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a? have sex with pip", "kid", &u, &info), TG_END_K7);
+    CHECK_EQ(info.ntok, TALK_TOK_MAX);
+    CHECK_EQ(gate_line("a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a? i want to die", "kid", &u, &info), TG_DISTRESS);
+    CHECK(strstr(u.shown, "die") == NULL);
+    memset(&c, 0, sizeof c);
+    c.nparts = 1; c.name[0] = "Vex"; c.hops = 1; c.kid_room = 1;
+    talk_parse("a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a? fuck you", &c, &u, &info);
+    CHECK_EQ(info.cut, 41);
+    CHECK_EQ((int)strlen(u.shown), 40);
+    CHECK(strstr(u.shown, "fuck") == NULL);
+    CHECK(u.safety & TS_STRONG);
+    /* a line of exactly TALK_TOK_MAX tokens is read whole: no cut */
+    talk_parse("a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?", &c, &u, &info);
+    CHECK_EQ(info.ntok, TALK_TOK_MAX);
+    CHECK_EQ(info.cut, 0);
+    CHECK(strlen(u.shown) == 40);
+    /* one run of 90 bytes ("q-q-...-sex"): raw words of 40 bytes at most, so the cut is
+     * inside the line, never at its start */
+    talk_parse("q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-q-sex", &c, &u,
+               &info);
+    CHECK(info.cut > 0);
+    CHECK(u.safety & TS_SEXUAL);
+    CHECK(strstr(u.shown, "sex") == NULL);
+    talk_db_close();
+}
+
+/* obfuscation: one invisible format character inside a word is no gap
+ * ("se<ZWSP>x"), and still a gap between two words ("sex<ZWSP>with");
+ * a safety word split by a space into two non-words joins ("fu ck"), two
+ * words never do ("pen is") */
+TEST(talk_safe_split_words)
+{
+    TalkUtter u;
+    TalkParseCtx c;
+    premade_town();
+    CHECK(open_db());
+    memset(&c, 0, sizeof c);
+    c.nparts = 1; c.name[0] = "Vex"; c.hops = 1;
+    talk_parse("se\xe2\x80\x8bx", &c, &u, NULL);
+    CHECK(u.safety & TS_SEXUAL);
+    talk_parse("s\xc2\xad" "ex", &c, &u, NULL);
+    CHECK(u.safety & TS_SEXUAL);
+    talk_parse("na\xef\xbb\xbf" "ked", &c, &u, NULL);
+    CHECK(u.safety & TS_SEXUAL);
+    talk_parse("sex\xe2\x80\x8bwith pip", &c, &u, NULL);
+    CHECK(u.safety & TS_SEXUAL);
+    CHECK_EQ(gate_line("sex\xe2\x80\x8bwith pip", "kid", &u, NULL), TG_END_K7);
+    talk_parse("se x", &c, &u, NULL);
+    CHECK(u.safety & TS_SEXUAL);
+    CHECK_EQ(gate_line("na ked", "kid", &u, NULL), TG_END_K7);
+    talk_parse("fu ck you", &c, &u, NULL);
+    CHECK(u.safety & TS_STRONG);
+    CHECK(strstr(u.shown, "fu") == NULL && strstr(u.shown, "ck") == NULL);
+    talk_parse("the pen is mightier than the sword", &c, &u, NULL);
+    CHECK(!(u.safety & (TS_SEXUAL | TS_STRONG)));
+    CHECK_EQ(gate_line("the pen is blue", "kid", &u, NULL), TG_PASS);
     talk_db_close();
 }
 

@@ -519,8 +519,8 @@ def check_corpus(path, acts, by_key, die, rel, kind):
                                "REFUSE_MINOR"):
                 die(where, "expect %r: ok K7 DEFLECT ROMANCE REFUSE_SEXUAL REFUSE_HATE DISTRESS REFUSE_MINOR"
                     % cols[1])
-            if cols[2] not in ("adults", "kid", "kidtarget", "pet", "teenavatar", "kidavatar"):
-                die(where, "room %r: adults kid kidtarget pet teenavatar kidavatar" % cols[2])
+            if cols[2] not in ("adults", "kid", "kidtarget", "pet", "teenavatar", "kidavatar", "lovers"):
+                die(where, "room %r: adults kid kidtarget pet teenavatar kidavatar lovers" % cols[2])
         if len(cols[0]) > 80:
             die(where, "the line is over 80 characters (the Dreamcast field)")
         n += 1

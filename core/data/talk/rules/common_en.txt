@@ -55,9 +55,11 @@ tho though although thru
 # invest" is not "incest", "the port" is not "porn", "I love that tweet" is
 # not "tween"). Found by running the 50,000 most frequent English words
 # through the parser (docs/TALK.md 6b, "Precision"); reviewed by hand: no
-# name of the roster, no slang that is itself sexual or hateful.
+# name of the roster, no slang that is itself sexual or hateful, no word for
+# a child ("tot" is safety/phrases_en.tsv minor) and no underwear word
+# ("knickers" is a form of panties in lexicon/en/safety.tsv).
 # sexual neighbours
-blob boom boon boor boop bomb bower boxer condo condor crouch crutch dirk deck dock ejection fondly fondue foundling frisk flint flit genial grain groan grove gripe griping ingest invest knickers knocker mile mil mill modest honker lofi node nudge nuke nuked org mani-pedi pasty patty peds pero peso pore port pricked pricking pushy rap rapid rasp raze reap ripe seamen secs sect semi sew slat slit specks throng thou tie ties tilt tong toot tot tots trot tuts tats tics vibrato wack wane waning wander
+blob boom boon boor boop bomb bower boxer condo condor crouch crutch dirk deck dock ejection fondly fondue foundling frisk flint flit genial grain groan grove gripe griping ingest invest knocker mile mil mill modest honker lofi node nudge nuke nuked org mani-pedi pasty patty peds pero peso pore port pricked pricking pushy rap rapid rasp raze reap ripe seamen secs sect semi sew slat slit specks throng thou tie ties tilt tong toot trot tuts tats tics vibrato wack wane waning wander
 # hate neighbours (and a word that only looks like one)
 chinook clink kaput neuro proffer rear regard reward slum slurp slurred slurring spur squall squawk tannoy tawny terran tyranny doo-wop
 # distress neighbours
