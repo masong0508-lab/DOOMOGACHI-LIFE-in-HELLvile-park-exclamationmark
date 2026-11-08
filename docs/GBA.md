@@ -425,6 +425,7 @@ against the LAST row, not against a figure from an older base.
 | 33 | S2-1: the modal hold (`ui_modal_hold`, docs: "Speed wave 2: S2-1" below) | `6c1d937` | 2,332 B | **2,292 B** | -40 B | 6,308 B | measured on `6c1d937` + S2-1 (ROM 6,826,460 B): the hold's state in `ui.c` (key, state, window rect, the toast band's rows: ~24 B), the library's detail signature (8 B), the studio's held flag and the fair title's tier (1 B each); no IWRAM, no buffer (the two Mode 4 pages are the copy; a toast's band goes to `plat_strip`'s page gaps). PS1: compiled out (`ui.h`), resident and overlay slot byte-identical (66 KB below the stack top with the boot FMV, the same as without S2-1) |
 | 34 | S2-2: the 3D view held under a card (`viewhold.c`, docs: "Speed wave 2: S2-2" below) | `af4eef9` | 2,292 B | **2,268 B** | -24 B | 6,308 B | measured on `af4eef9` + S2-2: the held view's state in `viewhold.c` (key, rect, rows per area, options, shade level: 20 B) and the level select's held flag (1 B, padded); the copy itself lives in VRAM that a frame without a 3D view does not use (OBJ VRAM + the two Mode 4 page gaps), no EWRAM buffer; IWRAM resident and the main stack unchanged, the pack / unpack loops in the overlay's UI group (2,720 B, which the 3D group's 10,352 B slot holds). PS1: the hold is not built there (`combat_int.h`, `levels_select.c`), resident RAM 96 B smaller than `af4eef9` with the boot FMV (66 KB below the stack top): the column-window text cache (+192 B) paid for by `text_emit` at `-Os` (it runs on cache misses only) |
 | 35 | S2-3: the Prize Wheel (tables in ROM, the held frame; docs: "Speed wave 2: S2-3" below) | `8c950fa` | 2,276 B | **2,276 B** | 0 B | 6,308 B | the held tick's state (the last full frame's tick, line, face, the POWER bar's flags: 14 B) is in the minigame arena (`MG_ARENA_BYTES`, claimed by the scene); the tables (`core/gen/mg_wheel_tab.c`: the atan octant 5.5 KB, the rims 3.6 KB, the pie rows 0.1 KB) are ROM; no IWRAM. PS1: the tables join the minigame overlay group (`ovl_plan.py`; 87 -> 96 KB, the slot is the house's), resident RAM byte-identical (66 KB below the stack top with the boot FMV) |
+| 36 | S2-6: the Unlocks gallery's grid as a retained panel, the counted owned unlocks (docs: "Speed wave 2: S2-6" below) | `9c9fb45` | 2,276 B | **2,276 B** | 0 B | 6,308 B | measured on `9c9fb45` + S2-6: no new state in RAM (the panel borrows `PANEL_OW_OBJECTIVE`'s table entry, the last frame's key lives after the gallery's id list in the scene scratch, a tile's colours are memoised on the stack); IWRAM unchanged. PS1: the grid panel is not built (`UI_PANELS` 0) and the owned-count fast path is not either (`unlocks.c` is resident there): resident RAM 12 B smaller (`unlock_at` walks the lengths only), 66 KB below the stack top with the boot FMV |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -1129,6 +1130,43 @@ ROM +~11 KB (the tables). Dreamcast (Flycast, no hold there): intro, spin, resul
 14.7 ms. Floors:
 `expect-fps 28` on both wheel windows of `speed2_fair.txt`. Still short of 30: the result card (S2-4's kept backdrop
 with restored rects under the confetti would cover it) and the done state's first second.
+### Speed wave 2: S2-6, the Unlocks gallery (2026-11-08)
+
+The speed audit 2's cause C6: the Unlocks gallery (`fp_unlocks.c`) took 66 ms a tick (11 fps; the Paints tab 40 ms,
+15 fps): `unlock_owned_count` walked all ~600 registry entries through `unlock_at`, which walked the 16 registry
+slots through their volatile ROM pointers (`unlock_at` 27-37% of the frame), and the 44 tiles of the grid (two round
+rects, a checker, a glyph and a padlock each, ~0.6 ms a tile) were drawn on every frame.
+
+**Exact steps.** `unlock_at` walks the table lengths in RAM only; `unlock_owned_count` counts the owned bits whose id
+names an entry (`ul_by_id`; only when `ul_init` saw no duplicate id, else the old walk; not on the PS1). A tile's
+colours are looked up once a frame per category and state instead of ~11 `ui_darker` / `ui_lighter` calls a tile;
+the backdrop leaves out what the grid and card windows cover (`ui_backdrop_holes`, as the studio and the creator).
+**The grid is a retained panel** (`PANEL_OW_OBJECTIVE`'s entry, `plat_panel_solid`): the window is drawn whole on
+every frame as before, the tiles of every row but the cursor's are put back from the shown page, and the cursor's row
+is the panel's hole, drawn on every frame (the cursor tile bobs, blinks and sparkles; moving it along its row keeps
+the panel). The hole reaches 4 rows above that row (the bob, the blink frame, the sparkle), so the last 2 rows of the
+tiles above are drawn again in it, row-clipped (`tile_rows`, `ui_round_rect_rows` and single-row checkers in phase);
+on the top row the hole covers the window's gloss rows, so its glint slides on. The key: the page (tab, scroll, the
+cursor's row, layout) and the owned count. A frame whose key is new draws the whole grid before the panel (a solid
+panel keeps its rect as it is at `plat_panel_end`, and the GBA draws before a panel on its fast path: drawn inside a
+panel, every 2D call is checked and the capture frame took 90 ms). The cursor's sparkle on the last column is cut at
+the panel's edge (`sparkle_cut`: the same pixels, so the arrows beside the grid never touch the panel).
+
+**Same pixels.** `test_panel` plays the gallery (owned and locked tiles, paints, the cursor along and down the rows
+and past the last one, a grant on the screen, tab changes) with the panel cache on and off at both resolutions: every
+frame identical, 823 of 840 panels kept; and 133 runner shots a resolution of the same moves before and after S2-6
+are byte-identical.
+
+| window (`speed2_life.txt`, libmgba) | before | after (drawn fps, work avg / max) |
+|---|---:|---:|
+| Unlocks gallery | 11.2 fps (66 ms) | **30.0** (30.9 / 37.2 ms in the whole tour; 28.7 / 30.7 alone) |
+| cursor move (along a row) | 11.3 fps | **30.0** (30.1 / 34.7 ms) |
+| row moves (new) | ~11 fps | 28.9 (32.2 ms; one 50 ms frame per row change) |
+| Paints tab | 15.0 fps (40 ms) | **30.0** (25.3 / 27.0 ms) |
+
+Floors: `expect-fps 28` on the three 30 fps windows, 27 on the row moves. Still short: a row change, a scroll or a tab
+change draws the grid whole once (~50 ms: one dropped frame), and the steady frame in the lower rows is ~31-32 ms (the
+cursor's row and the 2 rows above it are drawn every frame), close to the budget.
 
 ### Where the title's time goes (`make -C gba profile-title`)
 

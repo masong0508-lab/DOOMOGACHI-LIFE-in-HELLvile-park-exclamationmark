@@ -1384,6 +1384,12 @@ window holds 30.00 (intro, spin, the result card, done: 2:58-2:128 with the one 
 native 320x240 shots are byte-identical). Resident RAM byte-identical, 66 KB below the stack top with the boot FMV
 (`unlocks.c` keeps its old walk here). The GBA's held frame is not built here (`ui_modal_hold` is compiled out).
 
+**S2-6 (the Unlocks gallery).** The PS1 already held 30 there (30.00 / 30.00 / 30.25: the GPU fills the tiles for
+next to nothing); after S2-6 the gallery, a cursor move, the new row-moves window and the Paints tab play at 30.00 /
+30.00 / 30.00 / 30.25 (one 50 ms frame each, the lockstep resume). The grid panel and the owned-count fast path are
+not built here (`UI_PANELS` 0, `unlocks.c` is resident): `unlock_at` walks the table lengths only, 12 B less resident
+code, 66 KB below the stack top with the boot FMV.
+
 ## 13. Notes for the core
 
 * The 2D layer is fastest with few, large rectangles: one `plat_rect` per
