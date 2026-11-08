@@ -150,6 +150,47 @@ void ui_dim_under_window_pop(int x, int y, int w, int h, int ticks, int level);
 void ui_shade_clip(int x, int y, int w, int h);
 void ui_shade_clip_off(void);
 
+/* ---- S2-1 modal hold (docs/GBA.md "Speed wave 2: S2-1") ---------------------
+ * A dimmed modal (a card, a popup, a menu) over a scene whose picture does
+ * not change while the modal is up. In the scene's draw:
+ *
+ *     if (ui_modal_hold(KEY, ok, x, y, w, h)) { draw the modal only; ui_modal_hold_end(); return; }
+ *     ... the scene, the dim, the modal (the full frame, as before) ...
+ *     ui_modal_full(KEY, ok);
+ *
+ * ok = the modal is up, fully popped, and nothing under or around it moves
+ * (the caller's own test; a toast, a dialogue box or a tip card is checked
+ * here). After one full frame with ok was shown, the platform keeps it in
+ * both pages (plat_hold_frame(2)) and ui_modal_hold returns 1: the backdrop,
+ * the dim and the window's drop shadow are on the kept page, every UI shade
+ * is cut to the window rect (x, y, w, h) and the drop shadow of a window with
+ * exactly that rect is not drawn again, so the window repaints over itself
+ * with the same pixels. Anything the modal draws outside its window must be
+ * opaque and steady (or not drawn on the held path). ok == 0, another KEY, a
+ * platform that cannot hold (PS1: the weak default) or a lost hold (a tile
+ * frame, a scene push / pop, a tip card) go back to the full frame. The
+ * caller asks on every drawn tick its scene draws (ok == 0 while the modal
+ * is closed): a full frame marked by ui_modal_full is held on the next
+ * drawn tick. Never with an overlay scene drawn above (scene_drawn_above). */
+#if defined(DOOMO_PLATFORM_PS1)
+/* the PS1 has no held frame (the weak default): no resident code for it */
+#define ui_modal_hold(key, ok, x, y, w, h) ((void)(key), (void)(ok), (void)(x), (void)(y), (void)(w), (void)(h), 0)
+#define ui_modal_hold_end()                ((void)0)
+#define ui_modal_full(key, ok)             ((void)(key), (void)(ok))
+#define ui_modal_drop()                    ((void)0)
+#define ui_modal_reset()                   ((void)0)
+#define ui_modal_hold_enable(on)           ((void)(on))
+#else
+int  ui_modal_hold(const void *key, int ok, int x, int y, int w, int h);
+void ui_modal_hold_end(void);
+void ui_modal_full(const void *key, int ok);
+void ui_modal_drop(void);           /* release a hold now (the modal closed) */
+void ui_modal_reset(void);          /* scene.c: the stack changed */
+/* on by default on the GBA only (the one platform these scenes miss 30 on; a held frame stops the dimmed
+ * backdrop's drift, so the others keep drawing it); tests switch it on natively. Returns the holds so far. */
+int  ui_modal_hold_enable(int on);
+#endif
+
 /* ---- primitives (pure plat_rect spans, clipped) ------------------------- */
 /* (integration) Offscreen target: while set, the rects of the primitives
  * below (and of every shape built from them) are written into pix (w x h

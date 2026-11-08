@@ -242,6 +242,34 @@ static void stat_line(int x, int y, int w, int it, uint8_t c)
     }
 }
 
+static void qty_rect(int *x, int *y, int *w, int *h)
+{
+    *w = fp_big() ? 190 : 160;
+    *h = 60;
+    *x = (fp_sw() - *w) / 2;
+    *y = (fp_sh() - *h) / 2;
+}
+
+/* the quantity popup; held = 1: the dimmed shop under it is the held frame (S2-1) */
+static void qty_draw(int style, int held)
+{
+    int it = S.stock[S.sel], price = price_of(S.kind, it, it == S.deal_item);
+    int sw = fp_sw(), sh = fp_sh(), w, h, x, y;
+    const UiStyle *ps;
+    char buf[48];
+    qty_rect(&x, &y, &w, &h);
+    if (!held) plat_shade_rect(0, 0, sw, sh, 10);
+    if (ui_window_pop(x, y, w, h, style, S.qty_t)) {
+        ps = ui_style(style);
+        doomo_snprintf(buf, sizeof(buf), "How many %s?", doomo_items[it].name);
+        ui_text_center(sw / 2, y + 6, buf, ps->text);
+        doomo_snprintf(buf, sizeof(buf), STR_ICON_ARROW_L " %d " STR_ICON_ARROW_R, S.qty);
+        ui_text_big(sw / 2 - ui_text_big_width(buf, 2) / 2, y + 18, buf, 2, ps->accent, ps->outline);
+        doomo_snprintf(buf, sizeof(buf), "Total: H$ %d", price * S.qty);
+        ui_text_center(sw / 2, y + h - 13, buf, (uint32_t)(price * S.qty) > doomo_town.money ? PAL_UI_RED : ps->text_dim);
+    }
+}
+
 static void shop_draw(void)
 {
     int sw = fp_sw(), sh = fp_sh(), big = fp_big(), i, t = S.t;
@@ -251,6 +279,16 @@ static void shop_draw(void)
     int lx = 6, ly = 34, lw = big ? 180 : 132, vis = big ? 10 : 7, rx, rw;
     const char *title = bm ? "Black Market" : S.kind == FP_SHOP_ARG_CAFE ? "Brimstone Bites" : "HaHaland Shop";
     char buf[48];
+    int hx, hy, hw, hh, hold_ok;
+    /* S2-1 (docs/GBA.md "Speed wave 2"): the quantity popup, fully popped, holds the dimmed shop under it (the
+     * shopkeeper's bob and the name marquees stand still); only the popup repaints */
+    qty_rect(&hx, &hy, &hw, &hh);
+    hold_ok = S.qty_open && S.qty_t >= 12 && !S.bought_t && !fp_fx_any() && !fp_money_flash();
+    if (ui_modal_hold(&S, hold_ok, hx, hy, hw, hh)) {
+        qty_draw(style, 1);
+        ui_modal_hold_end();
+        return;
+    }
     ui_backdrop(bm ? WIN_HELL : style == WIN_MINT ? WIN_MINT : WIN_CUTE, (uint32_t)fp_t());
     ui_title(sw / 2 - (big ? 40 : 24), 3, title, style);
     fp_money_pill(sw - 4, 4, 1);
@@ -320,23 +358,9 @@ static void shop_draw(void)
     if (!big && S.nstock && !S.locked[S.sel])
         ui_text_wrap(lx + 2, ly + vis * 12 + 6, lw, doomo_items[S.stock[S.sel]].desc, PAL_WHITE, 0);
     ui_hint(S.ntabs > 1 ? STR_ICON_A " Buy  L/R Shelf  " STR_ICON_B " Leave" : STR_ICON_A " Buy  " STR_ICON_B " Leave", style);
-    /* quantity popup */
-    if (S.qty_open) {
-        int it = S.stock[S.sel], price = price_of(S.kind, it, it == S.deal_item);
-        int w = big ? 190 : 160, h = 60, x = (sw - w) / 2, y = (sh - h) / 2;
-        const UiStyle *ps;
-        plat_shade_rect(0, 0, sw, sh, 10);
-        if (ui_window_pop(x, y, w, h, style, S.qty_t)) {
-            ps = ui_style(style);
-            doomo_snprintf(buf, sizeof(buf), "How many %s?", doomo_items[it].name);
-            ui_text_center(sw / 2, y + 6, buf, ps->text);
-            doomo_snprintf(buf, sizeof(buf), STR_ICON_ARROW_L " %d " STR_ICON_ARROW_R, S.qty);
-            ui_text_big(sw / 2 - ui_text_big_width(buf, 2) / 2, y + 18, buf, 2, ps->accent, ps->outline);
-            doomo_snprintf(buf, sizeof(buf), "Total: H$ %d", price * S.qty);
-            ui_text_center(sw / 2, y + h - 13, buf, (uint32_t)(price * S.qty) > doomo_town.money ? PAL_UI_RED : ps->text_dim);
-        }
-    }
+    if (S.qty_open) qty_draw(style, 0);
     fp_fx_draw();
+    ui_modal_full(&S, hold_ok);
 }
 
 const DoomoScene SCENE_SHOP = { "SHOP", shop_enter, shop_leave, shop_update, shop_draw, 0 };

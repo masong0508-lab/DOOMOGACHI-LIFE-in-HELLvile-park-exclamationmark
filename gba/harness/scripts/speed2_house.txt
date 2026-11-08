@@ -27,13 +27,13 @@ press A
 wait 14
 fps start
 wait 90
-fps house: catalog modal
+expect-fps 28 house: catalog modal
 shot house_catalog
 press DOWN
 wait 2
 fps start
 wait 30
-fps house: catalog cursor move
+expect-fps 28 house: catalog cursor move
 press A
 wait 6
 fps start
@@ -96,7 +96,7 @@ press A
 wait 30
 fps start
 wait 90
-fps house: score panel
+expect-fps 28 house: score panel
 shot house_score
 press A
 wait 20

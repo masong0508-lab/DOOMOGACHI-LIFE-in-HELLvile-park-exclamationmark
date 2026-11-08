@@ -436,6 +436,13 @@ static void gal_draw(void)
     int sw = lib_sw(), sh = lib_sh(), y, lw;
     photo_return();                                     /* H4 */
     if (lib_w_lost(0)) return;
+    if (lib_detail_hold(0)) {                      /* S2-1: only the page repaints */
+        detail(sw, sh);
+        lib_hint(room() == ROOM_SPR ? STR_ICON_ARROW_L STR_ICON_ARROW_R " Next  SEL Pause  " STR_ICON_ARROW_U STR_ICON_ARROW_D " Step"
+                                    : STR_ICON_ARROW_L STR_ICON_ARROW_R " Next  " STR_ICON_B " Close", WIN_CREAM);
+        ui_modal_hold_end();
+        return;
+    }
     lib_chrome(LIB_WING_GALLERY, gal_pct);
     if (plat_draw_skipped()) return;
     y = 18;
@@ -474,6 +481,7 @@ static void gal_draw(void)
         detail(sw, sh);
         lib_hint(room() == ROOM_SPR ? STR_ICON_ARROW_L STR_ICON_ARROW_R " Next  SEL Pause  " STR_ICON_ARROW_U STR_ICON_ARROW_D " Step"
                                     : STR_ICON_ARROW_L STR_ICON_ARROW_R " Next  " STR_ICON_B " Close", WIN_CREAM);
+        lib_detail_full();
     } else {
         lib_hint(STR_ICON_A " Look  L/R Room  SEL Pause  " STR_ICON_B " Back", WIN_CREAM);
     }

@@ -33,7 +33,7 @@ press SELECT
 wait 16
 fps start
 wait 60
-fps studio: choir quick fill
+expect-fps 28 studio: choir quick fill
 shot studio_choir_fill
 press B
 wait 4
@@ -41,20 +41,20 @@ press A
 wait 14
 fps start
 wait 90
-fps studio: choir member card
+expect-fps 28 studio: choir member card
 shot studio_choir_member
 press DOWN
 press A
 wait 14
 fps start
 wait 90
-fps studio: citizen picker
+expect-fps 27 studio: citizen picker
 shot studio_picker
 press DOWN
 wait 2
 fps start
 wait 30
-fps studio: citizen picker move
+expect-fps 26 studio: citizen picker move
 press B
 wait 10
 expect-scene STUDIO
@@ -76,7 +76,7 @@ press A
 wait 14
 fps start
 wait 90
-fps studio: song book
+expect-fps 28 studio: song book
 shot studio_song_book
 press A
 wait 10

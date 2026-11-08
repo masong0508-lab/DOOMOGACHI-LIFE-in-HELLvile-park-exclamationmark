@@ -36,7 +36,7 @@ press A
 wait 30
 fps start
 wait 90
-fps library: bestiary jar
+expect-fps 28 library: bestiary jar
 shot lib_bestiary_jar
 
 # ---- Almanac ----------------------------------------------------------------------
@@ -56,13 +56,13 @@ press A
 wait 30
 fps start
 wait 90
-fps library: almanac profile
+expect-fps 20 library: almanac profile
 shot lib_almanac_profile
 press SELECT
 wait 30
 fps start
 wait 90
-fps library: almanac face
+expect-fps 28 library: almanac face
 shot lib_almanac_face
 
 # ---- Weapons ----------------------------------------------------------------------
@@ -81,7 +81,7 @@ press A
 wait 30
 fps start
 wait 90
-fps library: weapons plan
+expect-fps 28 library: weapons plan
 shot lib_weapons_plan
 
 # ---- Items ------------------------------------------------------------------------
@@ -96,7 +96,7 @@ press A
 wait 30
 fps start
 wait 90
-fps library: items card
+expect-fps 28 library: items card
 shot lib_items_card
 
 # ---- Trophies ---------------------------------------------------------------------
@@ -113,7 +113,7 @@ press A
 wait 30
 fps start
 wait 90
-fps library: trophy page
+expect-fps 28 library: trophy page
 shot lib_trophy_page
 
 # ---- Jukebox ----------------------------------------------------------------------
@@ -148,7 +148,7 @@ press A
 wait 24
 fps start
 wait 90
-fps library: gallery tiled
+expect-fps 28 library: gallery tiled
 shot lib_gallery_tiled
 press B
 press R
@@ -170,17 +170,17 @@ press A
 wait 20
 fps start
 wait 90
-fps library: field guide page
+expect-fps 28 library: field guide page
 shot lib_help_page
 press RIGHT
 wait 2
 fps start
 wait 20
-fps library: field guide page turn
+expect-fps 28 library: field guide page turn
 press DOWN
 press DOWN
 wait 2
 fps start
 wait 20
-fps library: field guide scroll
+expect-fps 28 library: field guide scroll
 shot lib_help_scroll

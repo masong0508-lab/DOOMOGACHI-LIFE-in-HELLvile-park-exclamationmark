@@ -1092,6 +1092,11 @@ static void job_pump(void)
 #if defined(DOOMO_PLATFORM_GBA)
 extern uint32_t gba_work_now(void);   /* cycles of the frame's work so far (gba/src/main.c) */
 #endif
+#if !defined(DOOMO_PLATFORM_PS1)
+/* S2-1 (portrait.h): a job is under way (a picture may still change when it lands) */
+int portrait_job_on(void) { return job.on; }
+#endif
+
 /* CR9 (portrait.h): more slices of a portrait_hold() job this tick, while the frame has room */
 void portrait_pump(int ms)
 {

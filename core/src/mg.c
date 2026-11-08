@@ -582,12 +582,26 @@ static void draw_flash(void)
 void mg_scene_draw(void)
 {
     if (plat_draw_skipped()) return;
-    if (!scene_scratch_mine(MG_SCRATCH_TAG)) { plat_clear(PAL_UI_PINK); return; }
+    if (!scene_scratch_mine(MG_SCRATCH_TAG)) { ui_modal_hold(&mg, 0, 0, 0, 0, 0); plat_clear(PAL_UI_PINK); return; }
     if (mg.phase == MGP_TITLE) {
+#if !defined(DOOMO_PLATFORM_PS1)
+        /* S2-1 (pixel-changing; ui.h: on the GBA only, the PS1 and the Dreamcast draw the card at 30): the title card is
+         * drawn in full (59 ms: the tent's stripes, the marquee, the host) and then held, frozen, until the
+         * tier changes (a new tier, Hellfire's palette included, is one full frame, then held again). The
+         * idle motion (bulbs, bunting, the host's bob, the selected pill's bob) stands still while held. */
+        static int8_t title_tier = -1;     /* the tier on the last full title frame */
+        if (ui_modal_hold(&mg, title_tier == mg.tier, 0, 0, 0, 0)) { ui_modal_hold_end(); return; }
         draw_title();
         mg_fx_draw();
+        title_tier = (int8_t)mg.tier;
+        ui_modal_full(&mg, 1);
+#else
+        draw_title();
+        mg_fx_draw();
+#endif
         return;
     }
+    ui_modal_hold(&mg, 0, 0, 0, 0, 0);     /* the card is gone: release its hold */
     mg.g->draw();
     mg_fx_draw();
     if (mg.phase != MGP_RESULTS) mg_hud();

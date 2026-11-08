@@ -92,6 +92,10 @@ const DoomoImage *portrait_image_look(const DoomoLook *l, int status, int expr);
  * under `ms` milliseconds (GBA: a new look is ready in a few ticks instead of one group a tick).
  * Elsewhere it does nothing (a job there finishes within a tick or two anyway). */
 void portrait_pump(int ms);
+#if !defined(DOOMO_PLATFORM_PS1)
+/* S2-1: 1 while a portrait / figure job is under way (a held modal waits for it: a stand-in may still change) */
+int  portrait_job_on(void);
+#endif
 /* SP2 (X1, docs/PORTRAIT.md "Idle time and stand-ins"): render-ahead and idle-time slices.
  * portrait_prefetch / figure_prefetch: this content will be asked for soon (the next dialogue line, the title's
  * next expression): draw it in the idle time after frames (or in slices the platform lets into a frame) once the

@@ -627,6 +627,12 @@ static void alm_draw(void)
     int sw = lib_sw(), sh = lib_sh(), y, lw;
     char tabn[40];
     if (lib_w_lost(0)) return;
+    if (lib_detail_hold(0)) {                      /* S2-1: only the page repaints */
+        detail(sw, sh);
+        lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " Next  L/R Page  SEL Face  " STR_ICON_B " Close", WIN_MINT);
+        ui_modal_hold_end();
+        return;
+    }
     lib_chrome(LIB_WING_ALMANAC, alm_pct);
     if (plat_draw_skipped()) return;
     y = 18;
@@ -648,6 +654,7 @@ static void alm_draw(void)
         lib_dim_for_detail();
         detail(sw, sh);
         lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " Next  L/R Page  SEL Face  " STR_ICON_B " Close", WIN_MINT);
+        lib_detail_full();
     } else if (A.picking) {
         picker_draw(sw, sh);
         lib_hint(STR_ICON_A " Search  " STR_ICON_B " Cancel", WIN_MINT);

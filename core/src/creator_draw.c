@@ -1399,7 +1399,7 @@ void cr_menu_rect(CrMenuRect *m)
     m->y = (crl.sh - m->h) / 2 - 2;
 }
 
-static void draw_menu(void)
+static void draw_menu(int held)
 {
     const UiStyle *st;
     int sw = crl.sw, sh = crl.sh, ih;
@@ -1410,7 +1410,7 @@ static void draw_menu(void)
     CrMenuRect m;
     cr_menu_rect(&m);
     x = m.x; y = m.y; w = m.w; h = m.h; ih = m.ih;
-    plat_shade_rect(0, 0, sw, sh, 9);
+    if (!held) plat_shade_rect(0, 0, sw, sh, 9);
     if (!ui_window_pop(x, y, w, h, WIN_CREAM, t)) return;
     st = ui_style(WIN_CREAM);
     ui_title(x + w / 2, y - 6, "Creator menu", WIN_CREAM);
@@ -1762,8 +1762,25 @@ static void draw_hero(void)
 
 void cr_draw(void)
 {
-    if (!scene_scratch_mine(CR_SCRATCH_TAG)) { plat_clear(PAL_UI_PINK); return; }
+    if (!scene_scratch_mine(CR_SCRATCH_TAG)) { ui_modal_hold(cr_sp, 0, 0, 0, 0, 0); plat_clear(PAL_UI_PINK); return; }
     cr_layout();
+#if !defined(DOOMO_PLATFORM_PS1)
+    {
+        /* S2-1 (docs/GBA.md "Speed wave 2"): the START menu, fully popped and with no portrait job under way,
+         * holds the dimmed creator under it (ui_modal_hold); only the menu repaints */
+        CrMenuRect m;
+        int hold_ok = cr.phase == CRP_MENU && cr.phase_t >= 12 && !portrait_job_on();
+        memset(&m, 0, sizeof(m));
+        if (cr.phase == CRP_MENU) cr_menu_rect(&m);
+        if (ui_modal_hold(&cr, hold_ok, m.x, m.y, m.w, m.h)) {
+            if (UI_PANELS) ui_glint_hold(CR_CALM);
+            draw_menu(1);
+            if (UI_PANELS) ui_glint_hold(0);
+            ui_modal_hold_end();
+            return;
+        }
+    }
+#endif
     if (cr.phase == CRP_MOVEIN) { draw_movein(); return; }
     if (UI_PANELS) ui_glint_hold(CR_CALM);      /* CR9 (GBA): still windows, so the panels are kept */
     /* CR9: the list window (and every picker over it) and the preview pane are opaque inside their
@@ -1793,8 +1810,11 @@ void cr_draw(void)
      * it touches it, so nothing is drawn after the panels but what lies elsewhere (the menu spoils
      * them, which is fine) */
     if (cr.phase != CRP_HERO) draw_tabs();
-    if (cr.phase == CRP_MENU) draw_menu();
+    if (cr.phase == CRP_MENU) draw_menu(0);
     if (UI_PANELS) ui_glint_hold(0);
+#if !defined(DOOMO_PLATFORM_PS1)
+    ui_modal_full(&cr, cr.phase == CRP_MENU && cr.phase_t >= 12 && !portrait_job_on());
+#endif
     /* CR9 (GBA): a new look being drawn in slices gets what is left of this tick (one layer group a
      * tick while a direction is held: the list keeps up, the figure catches up when it rests) */
     if (CR_CALM && !btn_down(BTN_UP | BTN_DOWN | BTN_LEFT | BTN_RIGHT)) portrait_pump(16);

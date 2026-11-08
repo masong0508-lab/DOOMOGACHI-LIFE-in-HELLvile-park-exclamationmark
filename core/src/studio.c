@@ -307,16 +307,32 @@ static void popup_update(void)
     }
 }
 
+static void popup_rect(int *x, int *y, int *w, int *h)
+{
+    int i;
+    *w = 0;
+    for (i = 0; i < studio.pop_n; i++) *w = DOOMO_MAX(*w, ui_text_width(studio.pop_items[i]));
+    *w = DOOMO_MAX(*w + 30, ui_text_width(studio.pop_title) + 20);
+    *h = studio.pop_n * 12 + 24;
+    *x = (plat_screen_w() - *w) / 2;
+    *y = (plat_screen_h() - *h) / 2;
+}
+
+/* S2-1: 1 while a held frame is drawn (studio_draw): the screen under the popup / picker is dimmed on the kept
+ * page already */
+#if !defined(DOOMO_PLATFORM_PS1)
+static uint8_t st_held;
+#define ST_HELD st_held
+#else
+#define ST_HELD 0                  /* the PS1 never holds (ui.h): no byte of resident .bss for it */
+#endif
+
 static void popup_draw(void)
 {
-    int sw = plat_screen_w(), sh = plat_screen_h(), i, w = 0, h, x, y;
+    int sw = plat_screen_w(), sh = plat_screen_h(), i, w, h, x, y;
     const UiStyle *st = ui_style(WIN_CREAM);
-    for (i = 0; i < studio.pop_n; i++) w = DOOMO_MAX(w, ui_text_width(studio.pop_items[i]));
-    w = DOOMO_MAX(w + 30, ui_text_width(studio.pop_title) + 20);
-    h = studio.pop_n * 12 + 24;
-    x = (sw - w) / 2;
-    y = (sh - h) / 2;
-    plat_shade_rect(0, 0, sw, sh, 9);
+    popup_rect(&x, &y, &w, &h);
+    if (!ST_HELD) plat_shade_rect(0, 0, sw, sh, 9);
     if (!ui_window_pop(x, y, w, h, WIN_CREAM, studio.pop_t)) return;
     ui_title(sw / 2, y - 5, studio.pop_title, WIN_CUTE);
     for (i = 0; i < studio.pop_n; i++) {
@@ -390,15 +406,26 @@ static const char *district_of(int id)
     return RES_DISTRICT(id) ? "Hellvile" : "Hillvile";
 }
 
+static void picker_rect(int *x, int *y, int *w, int *h)
+{
+    int rows = st_wide() ? 7 : 4;
+    *w = st_wide() ? 250 : 220;
+    *h = rows * 24 + 22;
+    *x = (plat_screen_w() - *w) / 2;
+    *y = (plat_screen_h() - *h) / 2 + 2;
+}
+
 void st_picker_draw(void)
 {
     static const uint8_t sec_paint[SECTION_COUNT] = { PAINT_ROSE, PAINT_PEACH, PAINT_MINT, PAINT_SKY };
     static const char sec_letter[SECTION_COUNT] = { 'S', 'A', 'T', 'B' };
     int sw = plat_screen_w(), sh = plat_screen_h(), wide = st_wide();
-    int rows = wide ? 7 : 4, rh = 24, w = wide ? 250 : 220, h = rows * rh + 22, x = (sw - w) / 2, y = (sh - h) / 2 + 2;
-    int ids[7], i, mid = rows / 2, id, lw = w - 62;
+    int rows = wide ? 7 : 4, rh = 24, w, h, x, y;
+    int ids[7], i, mid = rows / 2, id, lw;
     const UiStyle *st = ui_style(WIN_CREAM);
-    plat_shade_rect(0, 0, sw, sh, 9);
+    picker_rect(&x, &y, &w, &h);
+    lw = w - 62;
+    if (!ST_HELD) plat_shade_rect(0, 0, sw, sh, 9);
     if (!ui_window_pop(x, y, w, h, WIN_CREAM, pk.t)) return;
     ui_title(sw / 2, y - 5, pk.title ? pk.title : "Who sings?", WIN_CUTE);
     ids[mid] = studio.pick_id;
@@ -963,9 +990,32 @@ static void studio_update(void)
         studio_try_leave();
 }
 
+/* S2-1 (docs/GBA.md "Speed wave 2"): a popup or the citizen picker fully popped over the tab, no message strip
+ * coming or going: the dimmed tab is held (ui_modal_hold) and only the window repaints. The tab's own motion (the
+ * choir's bounce, a playhead) stands still under it. Returns the window rect, 0 when nothing holds. */
+static int modal_rect(int *x, int *y, int *w, int *h)
+{
+    *x = *y = *w = *h = 0;
+    if ((studio.tab == STAB_STAGE && stage_fullscreen()) || studio.msg_t || (studio.pop_n && studio.picking)) return 0;
+    if (studio.pop_n && studio.pop_t >= 12) { popup_rect(x, y, w, h); return 1; }
+    if (studio.picking && pk.t >= 12) { picker_rect(x, y, w, h); return 1; }
+    return 0;
+}
+
 static void studio_draw(void)
 {
     StRect r;
+    int hx, hy, hw, hh, hold_ok = modal_rect(&hx, &hy, &hw, &hh);
+#if !defined(DOOMO_PLATFORM_PS1)
+    if (ui_modal_hold(&studio, hold_ok, hx, hy, hw, hh)) {
+        st_held = 1;
+        if (studio.pop_n) popup_draw();
+        else st_picker_draw();
+        st_held = 0;
+        ui_modal_hold_end();
+        return;
+    }
+#endif
     if (studio.tab == STAB_STAGE && stage_fullscreen()) {
         stage_draw_full();
         draw_msg();
@@ -991,4 +1041,5 @@ static void studio_draw(void)
     draw_msg();
     if (studio.pop_n) popup_draw();
     if (studio.picking) st_picker_draw();
+    ui_modal_full(&studio, hold_ok);
 }

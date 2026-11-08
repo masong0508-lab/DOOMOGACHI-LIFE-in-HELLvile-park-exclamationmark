@@ -4,6 +4,8 @@
  */
 #include <stdarg.h>
 #include "ui_internal.h"
+#include "doomo/plat_ext.h"
+#include "doomo/tips.h"
 
 static int frame_t(void) { return (int)doomo_frame_count(); }
 
@@ -128,11 +130,99 @@ void ui_window_rows(int x, int y, int w, int h, int style, int cx0, int cx1, int
     }
 }
 
+/* ---- S2-1 modal hold (ui.h) ---------------------------------------------- */
+#if !defined(DOOMO_PLATFORM_PS1)
+static const void *mh_key;           /* the modal the state belongs to */
+static uint8_t mh_st;                /* 0 none, 1 a full frame with ok was drawn (and is the one shown), 2 held */
+static uint8_t mh_in;                /* inside a held draw: the window rect below gets no drop shadow */
+static int16_t mh_x, mh_y, mh_w, mh_h;
+#if defined(DOOMO_PLATFORM_GBA)
+static uint8_t mh_on = 1;
+#else
+static uint8_t mh_on;
+#endif
+static int mh_holds;                 /* frames drawn held (tests) */
+
+int ui_modal_hold_enable(int on)
+{
+    if (on >= 0) mh_on = (uint8_t)(on != 0);
+    return mh_holds;
+}
+
+static int mh_toast;                 /* ui_toast_steady() of the kept frame's toast, 0: no toast on it */
+
+/* nothing else on screen moves: no dialogue box, no tip card, no overlay scene drawn above, and no toast but
+ * one that holds still clear of the window (it stays on the kept page; only its timer runs, ui_toast_hold) */
+static int mh_steady(void)
+{
+    if (ui_dialog_active() || tip_active() || scene_drawn_above()) return 0;
+    return !ui_toast_pending() || (ui_toast_steady() && !ui_toast_over(mh_x, mh_y, mh_w, mh_h));
+}
+
+static int mh_toast_now(void)
+{
+    return ui_toast_pending() ? ui_toast_steady() : 0;
+}
+
+void ui_modal_drop(void)
+{
+    if (mh_st == 2) plat_hold_frame(0);
+    mh_st = 0;
+}
+
+/* scene.c: the stack changed (it released the platform's hold itself) */
+void ui_modal_reset(void)
+{
+    mh_st = 0;
+}
+
+int ui_modal_hold(const void *key, int ok, int x, int y, int w, int h)
+{
+    mh_x = (int16_t)x; mh_y = (int16_t)y; mh_w = (int16_t)w; mh_h = (int16_t)h;
+    if (!ok || !mh_on || key != mh_key || !mh_steady() || (mh_st && mh_toast_now() != mh_toast)) {
+        ui_modal_drop();
+        mh_key = key;
+        return 0;
+    }
+    if (mh_st == 2 && !plat_hold_frame(4)) mh_st = 0;           /* lost (a tile frame, a tip card) */
+    /* the full frame drawn on the last drawn tick is the one on screen (callers ask on every drawn tick; a
+     * catch-up tick draws nothing): keep it in both pages */
+    if (mh_st == 1 && !plat_draw_skipped()) mh_st = plat_hold_frame(2) ? 2 : 0;
+    if (mh_st != 2) return 0;
+    mh_holds++;
+    mh_in = 1;
+    if (mh_toast) ui_toast_hold();      /* it is on the kept page */
+    ui_shade_clip(x, y, w, h);
+    return 1;
+}
+
+void ui_modal_hold_end(void)
+{
+    mh_in = 0;
+    ui_shade_clip_off();
+}
+
+void ui_modal_full(const void *key, int ok)
+{
+    if (key != mh_key || plat_draw_skipped()) return;
+    if (ok && mh_on && mh_steady() && mh_st == 0) {
+        mh_st = 1;
+        mh_toast = mh_toast_now();
+    } else if (!ok) {
+        ui_modal_drop();
+    }
+}
+#define MH_NO_SHADOW(x, y, w, h) (mh_in && (x) == mh_x && (y) == mh_y && (w) == mh_w && (h) == mh_h)
+#else
+#define MH_NO_SHADOW(x, y, w, h) 0
+#endif
+
 /* ui_window(x, y, w, h)'s drop shadow alone (a kept panel's shading, G7) */
 void ui_window_shadow(int x, int y, int w, int h)
 {
     int r = (w >= 24 && h >= 20) ? 4 : 2;
     if (w < 6 || h < 6) return;
+    if (MH_NO_SHADOW(x, y, w, h)) return;   /* S2-1: it is on the held page already */
     ui_drop_shadow_under(x + 2, y + 3, w, h, r, x, y, w, h, r);
 }
 

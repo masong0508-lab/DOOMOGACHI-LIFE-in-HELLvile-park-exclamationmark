@@ -2784,14 +2784,52 @@ static void draw_stamp(void)
     ui_text_big(sw / 2 - tw / 2, sh / 2 - 20, label, scale, PAL_UI_RED, PAL_WHITE);
 }
 
+#if !defined(DOOMO_PLATFORM_PS1)
+/* S2-1 (docs/GBA.md "Speed wave 2"): the Score panel and the list modals (catalog, themes, blueprints, rooms)
+ * hold the room under them: their window rect, 0 for a menu that does not hold (the small START menu, the
+ * walls panel, which repaints the room live) */
+static int menu_hold_rect(int *x, int *y, int *w, int *h)
+{
+    int sw = plat_screen_w(), sh = plat_screen_h();
+    *x = *y = *w = *h = 0;
+    if (H->menu == HMN_SCORE) { score_box(sw, sh, x, y, w, h); return 1; }
+    if (H->menu == HMN_CATALOG || H->menu == HMN_THEMES || H->menu == HMN_BLUEPRINTS || H->menu == HMN_ROOMS) {
+        *x = 6; *y = 16; *w = sw - 12; *h = sh - 34;
+        return 1;
+    }
+    return 0;
+}
+
+/* nothing moves in the room around the window but its idle loops (animated pieces, a pet), which stand still
+ * while it is held (pixel-changing in the margins round the window only) */
+static int house_still(void)
+{
+    int i;
+    if (H->mode == HM_PHOTO || H->mode == HM_VIEW || H->mode == HM_DEFEND || H->t < ht[HT_IRIS] ||
+        ui_pop_scale((int)H->t) != 256) return 0;
+    if (H->msg_age != 0xFFFF || H->sleep_age != 0xFF || H->react_age != 0xFF || H->shot_age != 0xFF ||
+        H->exp_age != 0xFF || H->brake_age != 0xFF || H->ins_age != 0xFF || H->cut != CUT_NONE || H->hn != HN_NONE ||
+        (H->sc_age != 0xFF && H->menu != HMN_SCORE))
+        return 0;
+    if (camfx_shaking() || camfx_fade_level() || camfx_flash_level() || camfx_zoom() != 256 || camfx_iris_radius() >= 0)
+        return 0;
+    for (i = 0; i < HOME_OBJ_MAX; i++)
+        if (H->oa_k[i] != OA_NONE && H->oa_k[i] != OA_HIDDEN) return 0;
+    return 1;
+}
+#endif
+
 static void home_draw(void)
 {
     DoomoRoomView v;
     uint8_t *base, *cache;
     uint32_t used, cap;
     int sw, sh;
+#if !defined(DOOMO_PLATFORM_PS1)
+    int hx, hy, hw, hh, hold_ok;
+#endif
     reclaim();                                  /* the frame a pushed scene pops: it had the scratch */
-    if (!H || !scene_scratch_mine(HD_TAG)) { plat_clear(PAL_BLACK); return; }
+    if (!H || !scene_scratch_mine(HD_TAG)) { ui_modal_hold(&SCENE_HOME, 0, 0, 0, 0, 0); plat_clear(PAL_BLACK); return; }
     plat_code_part(H->part);
     sw = plat_screen_w();
     sh = plat_screen_h();
@@ -2799,6 +2837,17 @@ static void home_draw(void)
     used = ((uint32_t)sizeof(HomeScn) + 255u) & ~255u;
     cache = base + used;
     cap = DOOMO_SCENE_SCRATCH > used ? DOOMO_SCENE_SCRATCH - used : 0;
+#if !defined(DOOMO_PLATFORM_PS1)
+    /* S2-1: a held panel repaints itself and the HUD bands (opaque) only; the room is the held frame (the PS1
+     * never holds: ui.h; none of this is in its home group) */
+    hold_ok = menu_hold_rect(&hx, &hy, &hw, &hh) && house_still() && !ui_toast_pending();   /* the HUD band repaints */
+    if (ui_modal_hold(&SCENE_HOME, hold_ok, hx, hy, hw, hh)) {
+        draw_hud();
+        draw_menu(cache, cap);
+        ui_modal_hold_end();
+        return;
+    }
+#endif
     build_view(&v, cache, cap);
     build_actors(&v);
     /* (C7.3, GBA speed) the Score window is opaque and drawn whole every tick: name its body to the room renderer
@@ -2852,6 +2901,9 @@ static void home_draw(void)
         int r = 6 + (int)(((int64_t)250 * s / FIX_ONE) * s / FIX_ONE);
         plat_post_iris(sw / 2, sh / 2, r, 1, PAL_UI_PINK);
     }
+#if !defined(DOOMO_PLATFORM_PS1)
+    ui_modal_full(&SCENE_HOME, hold_ok);
+#endif
 }
 
 const DoomoScene SCENE_HOME = { "HOME", home_enter, home_leave, home_update, home_draw, 0 };

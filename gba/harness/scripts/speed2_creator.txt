@@ -186,7 +186,7 @@ press START
 wait 20
 fps start
 wait 90
-fps creator: start menu
+expect-fps 28 creator: start menu
 shot creator_start_menu
 press B
 wait 10

@@ -571,12 +571,14 @@ profile-sung: harness
 SPEED2_ALL := $(patsubst $(GBA)/harness/scripts/speed2_%.txt,%,$(sort $(wildcard $(GBA)/harness/scripts/speed2_*.txt)))
 SPEED2 ?= $(SPEED2_ALL)
 SPEED2_PROFILE_N ?= 8000000
+# S2-1: the windows a landed package raised carry `expect-fps MIN LABEL` floors; SPEED2_GATES=1 fails a run under them
+SPEED2_GATES ?= 0
 test-speed2: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
 	@mkdir -p $(SHOTS)/speed2
 	@rc=0; for g in $(SPEED2); do \
 	    $(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/speed2_$$g.txt \
-	        --shots $(SHOTS)/speed2 --no-fps-gates --worklog --quiet > $(BUILD)/speed2_$$g.log 2>&1 || rc=1; \
+	        --shots $(SHOTS)/speed2 $(if $(filter 1,$(SPEED2_GATES)),,--no-fps-gates) --worklog --quiet > $(BUILD)/speed2_$$g.log 2>&1 || rc=1; \
 	    echo "### $$g (build/speed2_$$g.log)"; $(PYTHON) $(ROOT)/tools/speed2.py table $(BUILD)/speed2_$$g.log || rc=1; \
 	done; exit $$rc
 profile-speed2: harness
@@ -584,7 +586,7 @@ profile-speed2: harness
 	@mkdir -p $(SHOTS)/speed2
 	$(NM_SYMS)
 	@rc=0; for g in $(SPEED2); do \
-	    sed -e '/^fps start$$/b' -e '/^fps /a profile $(SPEED2_PROFILE_N)' \
+	    sed -e '/^fps start$$/b' -e '/^fps /a profile $(SPEED2_PROFILE_N)' -e '/^expect-fps /a profile $(SPEED2_PROFILE_N)' \
 	        $(GBA)/harness/scripts/speed2_$$g.txt > $(BUILD)/speed2_$${g}_prof.txt; \
 	    $(HARNESS) $(BUILD)/doomogachi.gba --script $(BUILD)/speed2_$${g}_prof.txt --nm $(BUILD)/doomogachi.nm \
 	        --shots $(SHOTS)/speed2 --no-fps-gates --quiet > $(BUILD)/speed2_$${g}_prof.log 2>&1 || rc=1; \

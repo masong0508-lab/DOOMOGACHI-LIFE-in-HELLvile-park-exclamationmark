@@ -450,6 +450,12 @@ static void items_draw(void)
     int sw = lib_sw(), sh = lib_sh(), y, lw;
     char tabn[40];
     if (lib_w_lost(0)) return;
+    if (lib_detail_hold(0)) {                      /* S2-1: only the page repaints */
+        detail(sw, sh);
+        lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " Next  " STR_ICON_ARROW_U STR_ICON_ARROW_D " Note  " STR_ICON_B " Close", WIN_CUTE);
+        ui_modal_hold_end();
+        return;
+    }
     lib_chrome(LIB_WING_ITEMS, items_pct);
     if (plat_draw_skipped()) return;
     y = 18;
@@ -467,6 +473,7 @@ static void items_draw(void)
         lib_dim_for_detail();
         detail(sw, sh);
         lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " Next  " STR_ICON_ARROW_U STR_ICON_ARROW_D " Note  " STR_ICON_B " Close", WIN_CUTE);
+        lib_detail_full();
     } else {
         lib_hint(STR_ICON_A " Open  L/R Shelf  SEL Filter  " STR_ICON_B " Back", WIN_CUTE);
     }

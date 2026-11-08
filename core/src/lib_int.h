@@ -186,6 +186,13 @@ void lib_dim_for_detail(void);
 int  lib_detail_window(int x, int y, int w, int h, int style);
 /* Call after drawing the detail page contents (page-turn wipe). */
 void lib_detail_end(int x, int y, int w, int h, int style);
+/* S2-1 (docs/GBA.md "Speed wave 2"): the detail page holds the dimmed wing under it (ui.h ui_modal_hold).
+ * At the top of a wing's draw: if (lib_detail_hold(sig)) { detail(); its hint; ui_modal_hold_end(); return; };
+ * lib_detail_full() after the full frame's detail page. sig: whatever the wing draws outside the page that can
+ * change while it is open (the weapons wing's Cute / Brutal label), 0 if nothing. The held frame stops the
+ * backdrop's drift in the dimmed strips round the page. */
+int  lib_detail_hold(int sig);
+void lib_detail_full(void);
 /* Text block clipped to `lines` lines starting at lib_b.scroll (sets
  * lib_b.scroll_max); draws scroll arrows at the right edge. */
 void lib_text_block(int x, int y, int w, int lines, const char *s, uint8_t color, int style);

@@ -53,12 +53,16 @@ def windows(lines):
         if s == "fps start":
             body = []
             j = i + 1
-            while j < len(lines) and not lines[j].strip().startswith("fps"):
+            while j < len(lines) and not lines[j].strip().startswith(("fps", "expect-fps")):
                 body.append(lines[j].rstrip("\n"))
                 j += 1
             if j >= len(lines):
                 raise SystemExit("speed2: 'fps start' at line %d has no closing 'fps LABEL'" % (i + 1))
-            label = lines[j].strip()[3:].strip()
+            close = lines[j].strip()
+            if close.startswith("expect-fps"):       # S2-1: a window with a floor (expect-fps MIN LABEL)
+                label = (close.split(None, 2) + [""])[2].strip()
+            else:
+                label = close[3:].strip()
             yield "window", (label, body)
             i = j + 1
             continue

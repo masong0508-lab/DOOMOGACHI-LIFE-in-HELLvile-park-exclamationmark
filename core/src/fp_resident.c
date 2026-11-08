@@ -1216,15 +1216,24 @@ static void draw_fun(const RLayout *L, int style)
     }
 }
 
-static void draw_items(int style)
+static void items_rect(int *x, int *y, int *w, int *h)
+{
+    int sw = fp_sw(), sh = fp_sh(), vis = fp_big() ? 9 : 6;
+    /* (CL5, C13 1.9e) two lines for the item's description, inside the popup (it ran out over the meters) */
+    *w = DOOMO_MIN(sw - 40, 200);
+    *h = vis * 12 + 43;
+    *x = (sw - *w) / 2;
+    *y = (sh - *h) / 2 - 4;
+}
+
+static void draw_items(int style, int held)
 {
     const UiStyle *st;
     const DoomoResident *r = me();
-    int sw = fp_sw(), sh = fp_sh(), vis = fp_big() ? 9 : 6, i;
-    /* (CL5, C13 1.9e) two lines for the item's description, inside the popup (it ran out over the meters) */
-    int w = DOOMO_MIN(sw - 40, 200), h = vis * 12 + 43, x = (sw - w) / 2, y = (sh - h) / 2 - 4;
+    int sw = fp_sw(), sh = fp_sh(), vis = fp_big() ? 9 : 6, i, w, h, x, y;
     const char *title = R.item_mode == FPA_FEED ? "Feed what?" : "Give what?";
-    plat_shade_rect(0, 0, sw, sh, 10);
+    items_rect(&x, &y, &w, &h);
+    if (!held) plat_shade_rect(0, 0, sw, sh, 10);
     if (!ui_window_pop(x, y, w, h, style, R.tab_t)) return;
     st = ui_style(style);
     ui_text(x + 10, y + 5, title, st->accent);
@@ -1307,9 +1316,20 @@ static void res_draw(void)
     RLayout L;
     const UiStyle *st;
     int style, t = fp_t(), sw = fp_sw();
-    if (!r) return;
-    if (R.phase == PH_FAREWELL) { draw_farewell(); return; }
+    int hx, hy, hw, hh, hold_ok;
+    if (!r) { ui_modal_hold(&R, 0, 0, 0, 0, 0); return; }
     style = window_style(r);
+    /* S2-1 (docs/GBA.md "Speed wave 2"): the Feed / Give popup, fully popped, holds the dimmed page under it
+     * (the portrait's idle motion and the backdrop's drift stand still); only the popup repaints */
+    items_rect(&hx, &hy, &hw, &hh);
+    hold_ok = R.phase != PH_FAREWELL && R.popup == POP_ITEMS && R.tab_t >= 12 && r->status != RES_POSSESSED &&
+              !fp_fx_any() && !fp_money_flash();
+    if (ui_modal_hold(&R, hold_ok, hx, hy, hw, hh)) {
+        draw_items(style, 1);
+        ui_modal_hold_end();
+        return;
+    }
+    if (R.phase == PH_FAREWELL) { draw_farewell(); return; }
     st = ui_style(style);
     rlayout(&L);
     /* SP4 (G-L1): the backdrop leaves out what the content window (drawn below, opaque but for its r = 4 corners)
@@ -1332,7 +1352,7 @@ static void res_draw(void)
     case TAB_FRIENDS: draw_friends(&L, style); break;
     default: draw_fun(&L, style); break;
     }
-    if (R.popup == POP_ITEMS) draw_items(style);
+    if (R.popup == POP_ITEMS) draw_items(style, 0);
     else {
         static const char *const hints[TAB_COUNT] = {
             STR_ICON_A " Do it  L/R Tabs  " STR_ICON_B " Back",
@@ -1344,6 +1364,7 @@ static void res_draw(void)
     }
     (void)st;
     fp_fx_draw();
+    ui_modal_full(&R, hold_ok);
 }
 
 const DoomoScene SCENE_RESIDENT = { "RESIDENT", res_enter, res_leave, res_update, res_draw, 0 };

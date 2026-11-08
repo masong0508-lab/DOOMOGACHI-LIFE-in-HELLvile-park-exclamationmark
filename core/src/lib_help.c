@@ -332,6 +332,13 @@ static void help_draw(void)
 {
     int sw = lib_sw(), sh = lib_sh(), y = 18, lw;
     if (lib_w_lost(0)) return;
+    if (lib_detail_hold(0)) {                      /* S2-1: only the page repaints */
+        detail(sw, sh);
+        lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " page  " STR_ICON_ARROW_U STR_ICON_ARROW_D " scroll  "
+                 STR_ICON_B " close", WIN_CREAM);
+        ui_modal_hold_end();
+        return;
+    }
     ui_backdrop(WIN_MINT, doomo_frame_count());
     if (plat_draw_skipped()) return;
     ui_title(sw / 2, 2, STR_ICON_CHECK " FIELD GUIDE", WIN_MINT);
@@ -343,6 +350,7 @@ static void help_draw(void)
         detail(sw, sh);
         lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " page  " STR_ICON_ARROW_U STR_ICON_ARROW_D " scroll  "
                  STR_ICON_B " close", WIN_CREAM);
+        lib_detail_full();
     } else {
         lib_hint(STR_ICON_A " read  " STR_ICON_ARROW_U STR_ICON_ARROW_D " pick  " STR_ICON_B " back", WIN_MINT);
     }

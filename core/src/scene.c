@@ -108,6 +108,7 @@ void scene_set(const DoomoScene *s, int arg)
 {
     plat_hold_frame(0);                       /* U4: any scene_set releases a held frame */
     plat_loading();                           /* SP5 G-LD: the next frame may be late */
+    ui_modal_reset();                         /* S2-1 */
     while (depth > 0) {
         const DoomoScene *top = stack[--depth].s;
         call_leave(top);
@@ -127,6 +128,7 @@ void scene_push(const DoomoScene *s, int arg)
     if (!s) return;
     plat_hold_frame(0);                       /* a held frame (pause, island menu) ends when the stack changes */
     plat_loading();                           /* SP5 G-LD */
+    ui_modal_reset();                         /* S2-1 */
     if (depth >= SCENE_STACK_MAX) {
         plat_log("scene: stack full, replacing top");
         call_leave(stack[depth - 1].s);
@@ -147,6 +149,7 @@ void scene_pop(void)
     if (depth <= 0) return;
     plat_hold_frame(0);                       /* ... and so does a pop: the scene below resumes on dirty pages */
     plat_loading();                           /* SP5 G-LD */
+    ui_modal_reset();                         /* S2-1 */
     s = stack[depth - 1].s;
     depth--;
     if (!s->overlay) ui_toast_scene_change(0);   /* CL1: back to the screen below: the popped one's hints go */

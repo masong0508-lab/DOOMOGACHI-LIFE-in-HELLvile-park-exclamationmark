@@ -27,6 +27,7 @@ int lib_w_lost(int in_update)
         plat_log("library: scene scratch lost, closing the wing");
         lib_wing_leave();
     } else {
+        ui_modal_hold(&lib_b, 0, 0, 0, 0, 0);     /* S2-1: a full clear ends a held detail page */
         plat_clear(PAL_UI_CREAM);
     }
     return 1;
@@ -544,6 +545,35 @@ void lib_dim_for_detail(void)
     plat_shade_rect(0, sh - 15, sw, 15, 9);
     plat_shade_rect(0, 18, 4, sh - 33, 9);
     plat_shade_rect(sw - 4, 18, 4, sh - 33, 9);
+}
+
+#if !defined(DOOMO_PLATFORM_PS1)
+static int detail_sig, detail_sig_full;      /* lib_detail_hold's sig now / on the last full frame */
+#define DETAIL_SIG_SET(v) (detail_sig = (v))
+#define DETAIL_SIG_SAME() (detail_sig == detail_sig_full)
+#define DETAIL_SIG_KEEP() (detail_sig_full = detail_sig)
+#else
+#define DETAIL_SIG_SET(v) ((void)(v))
+#define DETAIL_SIG_SAME() 1
+#define DETAIL_SIG_KEEP() ((void)0)
+#endif
+
+/* the page is up at full size (popped, or turning: ui_window at the same rect) */
+static int detail_up(void)
+{
+    return lib_b.detail && (lib_b.flip || lib_b.dt >= 12);
+}
+
+int lib_detail_hold(int sig)
+{
+    DETAIL_SIG_SET(sig);
+    return ui_modal_hold(&lib_b, detail_up() && DETAIL_SIG_SAME(), 4, 18, lib_sw() - 8, lib_sh() - 33);
+}
+
+void lib_detail_full(void)
+{
+    DETAIL_SIG_KEEP();
+    ui_modal_full(&lib_b, detail_up());
 }
 
 int lib_detail_window(int x, int y, int w, int h, int style)

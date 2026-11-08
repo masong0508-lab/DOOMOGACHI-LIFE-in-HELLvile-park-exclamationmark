@@ -216,6 +216,13 @@ fps start
 wait 60
 fps life: care popup (feed)
 shot life_care_popup
+# S2-1: the popup holds once the unlock toast over its top edge has slid out (a toast that overlaps a held
+# window is not kept: the popup is drawn in full while it shows)
+wait 80
+fps start
+wait 60
+expect-fps 28 life: care popup, toast gone
+shot life_care_popup_held
 press A
 wait 10
 fps start
@@ -244,7 +251,7 @@ press A
 wait 16
 fps start
 wait 60
-fps life: shop quantity popup
+expect-fps 28 life: shop quantity popup
 shot life_shop_qty
 press B
 wait 6

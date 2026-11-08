@@ -417,6 +417,12 @@ static void wpn_draw(void)
 {
     int sw = lib_sw(), sh = lib_sh(), y, lw;
     char tabn[40];
+    if (lib_detail_hold(lib_b.toggle)) {                      /* S2-1: only the page repaints */
+        detail(sw, sh);
+        lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " Next L/R View SEL Style " STR_ICON_B " Close", WIN_CREAM);
+        ui_modal_hold_end();
+        return;
+    }
     lib_chrome(LIB_WING_WEAPONS, wpn_pct);
     if (plat_draw_skipped()) return;
     y = 18;
@@ -436,6 +442,7 @@ static void wpn_draw(void)
         lib_dim_for_detail();
         detail(sw, sh);
         lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " Next L/R View SEL Style " STR_ICON_B " Close", WIN_CREAM);
+        lib_detail_full();
     } else {
         /* C3: the shared bar fits it to the screen (START Style gives way at 240x160) */
         static const UiPrompt bar[] = {
