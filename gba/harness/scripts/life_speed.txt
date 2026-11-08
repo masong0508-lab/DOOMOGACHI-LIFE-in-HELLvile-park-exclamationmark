@@ -51,7 +51,7 @@ latency A 120 hub -> town hall menu (A)
 wait 200
 fps start
 wait 130
-expect-fps 5.5 life: island menu
+expect-fps 25 life: island menu
 shot island_menu
 latency DOWN 120 island menu cursor (DOWN)
 press B
@@ -62,7 +62,7 @@ latency R 120 hub -> citizens (R)
 wait 200
 fps start
 wait 130
-expect-fps 21.5 life: roster
+expect-fps 25 life: roster
 shot roster
 expect-scene ROSTER
 latency DOWN 120 roster cursor (DOWN)
@@ -70,7 +70,7 @@ latency A 120 roster -> resident (A)
 wait 200
 fps start
 wait 130
-expect-fps 19 life: resident
+expect-fps 24 life: resident
 shot resident
 expect-scene RESIDENT
 latency DOWN 120 resident cursor (DOWN)

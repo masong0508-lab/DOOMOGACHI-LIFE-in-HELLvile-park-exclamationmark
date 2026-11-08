@@ -30,7 +30,10 @@
 # 29, invaded 15; invaded must also keep its 30 logic ticks/s, which
 # expect-fps cannot check: see the table) and the pause and story map to
 # about 85% of what it measured. The pause panel's hold (PAUSE_SPEED.md,
-# P2+P3) took it from 12.3 to 28.3 fps and its floor from 11 to 24.
+# P2+P3) took it from 12.3 to 28.3 fps and its floor from 11 to 24. SP2
+# (portrait slices, stand-ins, idle-time slices) raised the title to 25,
+# the pause to 25, the map walk to 25, the concert to 12.5 and the town
+# hall menu to 25 (85% of 29.9, 29.9, 30.0, 15.0 and 30.0).
 wait 40
 expect-log doomo: init
 sync on 61
@@ -41,7 +44,7 @@ scene TITLE
 wait 200
 fps start
 wait 130
-expect-fps 23 title
+expect-fps 25 title
 shot title
 vhash-seq 30 title
 
@@ -59,7 +62,7 @@ press START
 wait 30
 fps start
 wait 130
-expect-fps 24 overworld pause
+expect-fps 25 overworld pause
 shot pause
 vhash-seq 30 overworld pause
 press B
@@ -92,7 +95,7 @@ wait 200
 down RIGHT DOWN
 fps start
 wait 60
-expect-fps 19 map walk
+expect-fps 25 map walk
 shot walk
 vhash-seq 30 map walk
 release
@@ -132,7 +135,7 @@ press A
 wait 200
 fps start
 wait 130
-expect-fps 10 concert
+expect-fps 12.5 concert
 shot concert
 vhash-seq 30 concert
 
@@ -206,7 +209,7 @@ press A
 wait 200
 fps start
 wait 130
-expect-fps 5.5 island town hall menu
+expect-fps 25 island town hall menu
 shot island_menu
 vhash-seq 30 island town hall menu
 press B
