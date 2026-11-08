@@ -10,6 +10,7 @@
 #include "test.h"
 #include "../src/story_int.h"
 #include "../src/fp_island.h"
+#include "doomo/tips.h"
 
 #define MAXF 420
 
@@ -110,6 +111,16 @@ static void s_island(void)
 static uint32_t p_island(int f)
 {
     if (f == 100) ui_toast("Island toast");
+    return 0;
+}
+
+/* (CL4) the island's first-time tip card: a retained panel once it has boinged in (it borrows the
+ * toast's id), drawn over the hub's kept frames; A closes it at frame 150, then a toast */
+static void s_island_tip(void) { s_island(); tips_test_force(1); }
+static uint32_t p_island_tip(int f)
+{
+    if (f == 150) return BTN_A;
+    if (f == 175) ui_toast("After the card");
     return 0;
 }
 
@@ -222,6 +233,12 @@ TEST(panel_dialogue_portrait_and_choice_are_pixel_identical)
 TEST(panel_island_hud_and_ticker_are_pixel_identical)
 {
     CHECK(both("island", s_island, p_island, 240, 150));
+}
+
+TEST(panel_tip_card_is_pixel_identical)
+{
+    CHECK(both("tip", s_island_tip, p_island_tip, 240, 120));
+    tips_session_reset();
 }
 
 TEST(panel_language_switch_redraws)

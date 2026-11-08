@@ -4,9 +4,11 @@
  * its update). The card is the minigame title card's speech bubble turned
  * into a strip: a speaker chip and name, one line in the speaker's voice and
  * one plain instruction line on a highlighted band, "A OK" in the corner.
- * It boings in (ui_window_pop), holds still (tip_steady: a scene that keeps
- * its frames, the island hub, keeps the card on its kept page) and leaves on
- * the first press after TIP_LOCK ticks; every press while it is up is eaten.
+ * It boings in (ui_window_pop), then holds still as a retained panel (G7) and
+ * leaves on the first press after TIP_LOCK ticks; every press while it is up
+ * is eaten. A scene that keeps its frames (the island hub) keeps the steady
+ * card on its kept page (tip_steady / tip_hold). The card stays clear of the
+ * bottom 14 rows (hint pills, the island's news strip).
  *
  * Owner scene: the card belongs to the scene that was on top when it showed.
  * While another scene is pushed over it (a confirm, the options) it is not
@@ -26,6 +28,9 @@
 
 #define TIP_LOCK        14      /* presses ignored (still eaten) while it boings in      */
 #define TIP_SEEN_TICKS  60      /* on screen this long: seen even if its scene goes away */
+#define TIP_SETTLED     13      /* the pop-in is over: the card holds still (tip_steady, the panel)   */
+#define TIP_BOTTOM      17      /* card + its drop shadow clear of the bottom 14 rows (hint pill, the island's news strip, which
+                                   repaints itself on the hub's kept frames)                          */
 
 enum { SPK_MAYOR, SPK_RIVET, SPK_FUZZ, SPK_COUNT };
 static const char *const spk_name[SPK_COUNT] = { "Mayor Giggs", "Rivet", "Father Fuzz" };
@@ -220,7 +225,7 @@ void tips_input(void)
 
 int tip_steady(void)
 {
-    if (!tip_active() || s_t < 13) return 0;
+    if (!tip_active() || s_t < TIP_SETTLED) return 0;
     return 1 + s_gen;
 }
 
@@ -231,7 +236,7 @@ void tips_draw(void)
 {
     const TipText *tt;
     const UiStyle *st;
-    int sw, sh, big, w, x, y, h, tw, vl, pl, kept = s_held;
+    int sw, sh, big, w, x, y, h, tw, vl, pl, panel = 0, kept = s_held;
     const char *plain;
     s_held = 0;
     if (!tip_active() || kept || plat_draw_skipped()) return;
@@ -247,8 +252,26 @@ void tips_draw(void)
     vl = ui_text_wrap(0, 0, tw, tt->voice, 0, 0);
     pl = ui_text_wrap(0, 0, tw - 6, plain, 0, 0);
     h = 17 + vl * FONT_LINE + 4 + pl * FONT_LINE + 6;
-    y = sh - h - (big ? 8 : 3);
-    if (!ui_window_pop(x, y, w, h, WIN_CREAM, s_t)) return;
+    y = sh - h - TIP_BOTTOM;
+    /* once it has boinged in the card holds still: a retained panel (G7, platform.h), so a platform that
+     * keeps panels copies it instead of drawing the text again. It borrows the toast's id: no toast is
+     * drawn while a card is up (game.c). */
+    if (s_t >= TIP_SETTLED) {
+        if (UI_PANELS) {
+            uint32_t key = ui_key_int(ui_panel_key(), s_cur | opt_get(OPT_CONTROL_SCHEME) << 8 | (s_t > TIP_LOCK) << 12);
+            key = ui_key_int(key, x | y << 9 | w << 18);
+            key = ui_key_int(key, ui_window_glint(x, y, w, h));
+            if (!plat_panel_begin(PANEL_TOAST, x, y, w + 2, h + 3, key)) {   /* + the drop shadow */
+                ui_window_shadow(x, y, w, h);          /* kept: only its shading */
+                plat_panel_end();
+                return;
+            }
+            panel = 1;
+        }
+        ui_window(x, y, w, h, WIN_CREAM);
+    } else if (!ui_window_pop(x, y, w, h, WIN_CREAM, s_t)) {
+        return;
+    }
     /* the speaker: a chip with their emblem, the name, and the legend */
     {
         char g[2];
@@ -265,8 +288,8 @@ void tips_draw(void)
         {
             const char *ok = STR_ICON_A " OK";
             int ox = x + w - 8 - ui_text_width(ok);
-            if (s_t > TIP_LOCK) ui_text(ox, y + 5, ok, ((s_t >> 4) & 1) ? st->text : st->text_dim);
-            ui_sparkle(x + w - 5, y + 3, (s_t / 2) & 15, PAL_UI_GOLD);
+            if (s_t > TIP_LOCK) ui_text(ox, y + 5, ok, st->text);
+            if (s_t < TIP_SETTLED) ui_sparkle(x + w - 5, y + 3, (s_t / 2) & 15, PAL_UI_GOLD);
         }
     }
     ui_text_wrap(x + 7, y + 17, tw, tt->voice, st->text, 1);
@@ -277,4 +300,5 @@ void tips_draw(void)
         plat_rect(x + 5, by + 1, 2, bh - 2, st->accent);
         ui_text_wrap(x + 10, by + 2, tw - 6, plain, st->text, 1);
     }
+    if (panel) plat_panel_end();
 }

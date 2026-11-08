@@ -9,6 +9,7 @@
 #include "doomo/library.h"
 #include "doomo/save_budget.h"
 #include "doomo/ending.h"
+#include "../src/fp_island.h"
 
 static void frame(uint32_t b) { plat_begin_frame(); doomo_frame(b); plat_end_frame(); }
 static void idle(int n) { while (n-- > 0) frame(0); }
@@ -172,4 +173,59 @@ TEST(cl4_field_guide_pages_open_flip_and_close)
     press(BTN_B);
     idle(2);
     CHECK(scene_top() == &SCENE_LIBRARY);
+}
+
+/* the island hub keeps its frames (docs/ISLAND_SPEED.md I7/I8) with a steady card on them: the card is on
+ * the kept page (tip_steady / tip_hold), clear of the news strip that repaints itself on kept frames */
+TEST(cl4_island_hub_keeps_its_frames_under_a_card)
+{
+    int held0, held_alone, held_card;
+    test_reset();
+    fp_new_island(TOWN_POP_PREMADE, 4242);
+    scene_set(&SCENE_ISLAND, FP_ISLAND_ARG_RETURN);
+    idle(60);                                               /* the hub settles (tips off) */
+    held0 = fp_island_hub_held();
+    idle(90);
+    held_alone = fp_island_hub_held() - held0;
+    tips_test_force(1);
+    idle(30);                                               /* the card boings in and settles */
+    CHECK_EQ(tip_current(), TIP_ISLAND);
+    held0 = fp_island_hub_held();
+    idle(90);
+    held_card = fp_island_hub_held() - held0;
+    printf("      island hub kept frames in 90 ticks: %d alone, %d with the card up\n", held_alone, held_card);
+    CHECK(held_card * 10 >= held_alone * 8);                /* at least 80% as many kept frames */
+    press(BTN_A);
+    CHECK(!tip_active());
+}
+
+/* the card stays clear of the bottom band at both sizes (the island's news strip, hint pills) */
+TEST(cl4_card_clears_the_bottom_band)
+{
+    static const int res[2][2] = { { 240, 160 }, { 320, 240 } };
+    int r, y, x, w;
+    for (r = 0; r < 2; r++) {
+        NatOptions o;
+        memset(&o, 0, sizeof(o));
+        o.w = res[r][0]; o.h = res[r][1]; o.seed = 1; o.quiet = 1; o.save_dir = test_tmp_dir;
+        nat_init(&o);
+        test_reset();
+        tips_test_force(1);
+        scene_set(&SCENE_QUIET, 0);
+        idle(2);
+        CHECK_EQ(tip_once(TIP_ISLAND), 1);                  /* the tallest card */
+        idle(20);
+        /* the quiet scene clears to cream every frame: the band under the card must still be that */
+        w = res[r][0];
+        for (y = res[r][1] - 14; y < res[r][1]; y++)
+            for (x = 0; x < w; x++)
+                CHECK_MSG(nat_fb[y * w + x] == PAL_UI_CREAM, "card pixel at %d,%d (%dx%d)", x, y, w, res[r][1]);
+    }
+    {
+        NatOptions o;
+        memset(&o, 0, sizeof(o));
+        o.w = 240; o.h = 160; o.seed = 1; o.quiet = 1; o.save_dir = test_tmp_dir;
+        nat_init(&o);
+    }
+    test_reset();
 }

@@ -572,8 +572,15 @@ int fp_island_hub_held(void) { return hub_held; }
 static int hub_hold_off;                 /* test hook: never hold the hub (every frame drawn in full) */
 void fp_island_hub_hold_off(int off) { hub_hold_off = off; }
 
+/* (CL4) a toast is not drawn (and its timer waits) while a tip card is up (game.c): only a toast that is drawn
+ * matters to a kept frame */
+static int toast_shown(void)
+{
+    return ui_toast_pending() && !tip_active();
+}
+
 /* (CL4) the same for a tip card: one that was steady on the kept frame is still the same card; without one, none
- * may have appeared */
+ * may have appeared. The card sits above the news strip (tips.c), which repaints itself on kept frames. */
 static int hub_tip_same(void)
 {
     return I.hub_tip ? tip_steady() == I.hub_tip : !tip_active();
@@ -583,7 +590,7 @@ static int hub_tip_same(void)
  * pages and still is the same steady toast; without one, none may have appeared */
 static int hub_toast_same(void)
 {
-    return I.hub_toast ? ui_toast_steady() == I.hub_toast : !ui_toast_pending();
+    return I.hub_toast ? ui_toast_steady() == I.hub_toast : !toast_shown();
 }
 
 /* (perf) let go of the held menu backdrop: whatever an entry does (money, citizens, a new scene) shows
@@ -1128,9 +1135,9 @@ static void hub_frame_done(void)
         I.hold_full = 1;
     if (!I.menu_open && !plat_draw_skipped()) {
         I.full_t = doomo_frame_count();
-        I.hub_toast = (int16_t)ui_toast_steady();
+        I.hub_toast = (int16_t)(tip_active() ? 0 : ui_toast_steady());   /* (CL4) under a card no toast is drawn */
         I.hub_tip = (int16_t)tip_steady();
-        I.hub_full = (uint8_t)(!hub_hold_off && !I.dirty && (!ui_toast_pending() || I.hub_toast) &&
+        I.hub_full = (uint8_t)(!hub_hold_off && !I.dirty && (!toast_shown() || I.hub_toast) &&
                                (!tip_active() || I.hub_tip) && !ui_dialog_active() && !fp_fx_any());
         I.dirty = 0;
     }
