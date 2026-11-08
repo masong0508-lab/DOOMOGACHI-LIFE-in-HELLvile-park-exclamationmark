@@ -378,7 +378,7 @@ TEST(lang_options_u2_spanish)
 {
     static const char *const keys[] = {
         "Quick", "Preset", "Default", "Classic DOOM", "Cozy life", "Max accessibility", "Preset applied.",
-        "Music: off", "Faster", "Better",
+        "Music: off", "Combat detail", "Balanced", "Smooth", "Max detail",
         "Every ordinary setting back to how the game ships. A confirm asks first.",
         "Gentle: Plushie, cute gore, strong aim help, less shake and bobbing, calm island.",
         "Controller rumble, apart from Screen shake.",

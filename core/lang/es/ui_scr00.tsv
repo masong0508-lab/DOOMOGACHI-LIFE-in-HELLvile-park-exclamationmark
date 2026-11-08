@@ -608,7 +608,7 @@ GOLD PACE	RITMO ORO	# levels_play.c
 \x80 CUTE ONLY	\x80 SOLO TIERNO	# levels_play.c
 \x81 BRUTAL ONLY	\x81 SOLO BRUTAL	# levels_play.c
 DEMO		# levels_play.c
-Faster: the 3D view at half resolution, scaled up, for a smoother shooter. Better: full resolution, up to 20 fps.	Más rápido: la vista 3D a media resolución, ampliada, para un shooter más fluido. Mejor: resolución completa, hasta 20 fps.	# fp_options.c
+The shooter: Smooth = fastest, fewer effects. Balanced = sharp while it keeps up. Max = every effect.	El shooter: Fluido = lo más rápido, menos efectos. Equilibrado = nítido mientras rinde. Máximo = todos los efectos.	# fp_options.c
 Every ordinary setting back to how the game ships. A confirm asks first.	Todos los ajustes normales vuelven a como vienen de fábrica. Antes se pide confirmar.	# fp_options.c
 Gentle: Plushie, cute gore, strong aim help, less shake and bobbing, calm island.	Suave: Peluche, gore tierno, mucha ayuda para apuntar, menos sacudidas y vaivén, isla tranquila.	# fp_options.c
 Brutal gore, Nightmare, Classic controls, no aim help, classic HUD and crosshair.	Gore brutal, Pesadilla, controles clásicos, sin ayuda para apuntar, HUD y mira clásicos.	# fp_options.c
