@@ -1,0 +1,858 @@
+=== UNCOMMITTED ===
+diff --git a/core/include/doomo/weld.h b/core/include/doomo/weld.h
+index 6a65193..b4abb3c 100644
+--- a/core/include/doomo/weld.h
++++ b/core/include/doomo/weld.h
+@@ -177,6 +177,17 @@ int  weld_cost(const DoomoWeapon *w, uint8_t *items, uint8_t *counts, int max);
+ /* First-person view sprite for the weapon (frame 0 idle, 1 fire, 2 fire2,
+  * 3 reload). Built from all parts + paint + style. */
+ const DoomoImage *weld_view_image(const DoomoWeapon *w, int frame);
++/* (S2-9) The same picture composed over several calls: each call writes
++ * about `budget` more pixels of it (WELD_SLICE_BUDGET) into a cache slot
++ * other than the picture this returned last, which it returns meanwhile
++ * (*ready = 0) until the new one is complete. With nothing on show yet (a
++ * scene's first call, the scratch was taken) it composes at once. The
++ * finished picture is the one weld_view_image() makes. */
++#define WELD_SLICE_BUDGET 1400
++const DoomoImage *weld_view_image_sliced(const DoomoWeapon *w, int frame, int budget, int *ready);
++/* (S2-9) Compose (w, frame) ahead in the same slices, never over the picture
++ * on show; 1 once it is cached. */
++int weld_view_prefetch(const DoomoWeapon *w, int frame, int budget);
+ /* Small icon for menus (24x16). */
+ const DoomoImage *weld_icon_image(const DoomoWeapon *w);
+ 
+diff --git a/core/src/weld_gfx.c b/core/src/weld_gfx.c
+index 07aa95e..9969cc6 100644
+--- a/core/src/weld_gfx.c
++++ b/core/src/weld_gfx.c
+@@ -29,6 +29,24 @@
+ #include "doomo/scene.h"
+ #include "doomo/portrait.h"
+ #include "doomo/save_ext.h"
++#include "weld_gfx_int.h"
++/* (S2-9) WELD_COMPACT: the PS1's build. weld_gfx is resident there (combat, the workshop and the library share it)
++ * and the disc's RAM is full: its rows stay the compact ones from before S2-9 (the PS1 divides in hardware), with
++ * only the slicing gates added; the sliced API itself is weld_slice.c, in the workshop's overlay group. Elsewhere
++ * the faster rows (the same pixels). WELD_FORCE_COMPACT=1 builds the compact rows anywhere (to compare them). */
++#if defined(DOOMO_PLATFORM_PS1) || (defined(WELD_FORCE_COMPACT) && WELD_FORCE_COMPACT)
++#define WELD_COMPACT 1
++#else
++#define WELD_COMPACT 0
++#endif
++#if defined(DOOMO_PLATFORM_GBA)
++/* (S2-9) the composition's row loops are ARM code of the IWRAM overlay's UI group (gba/src/iwram_ovl.h):
++ * compose_pass() loads the group around a composition and puts back the one that was in */
++#include "iwram_ovl.h"
++#define WELD_ARM IWRAM_UI_CODE
++#else
++#define WELD_ARM
++#endif
+ 
+ #define VW WELD_VIEW_W
+ #define VH WELD_VIEW_H
+@@ -97,14 +115,99 @@ typedef struct G {
+ 
+ static int isqrt_i(int v) { return v > 0 ? (int)fx_isqrt((uint32_t)v) : 0; }
+ 
++#if !WELD_COMPACT
++/* (S2-9) fx_isqrt's bit loop, inline (the ARM row loops call nothing outside IWRAM) */
++static WELD_ARM uint32_t isqrt_bits(uint32_t v)
++{
++    uint32_t res = 0, bit = 1u << 30;
++    while (bit > v) bit >>= 2;
++    while (bit) {
++        if (v >= res + bit) {
++            v -= res + bit;
++            res = (res >> 1) + bit;
++        } else {
++            res >>= 1;
++        }
++        bit >>= 2;
++    }
++    return res;
++}
++
++/* (S2-9, exact) isqrt_i(v) stepped from the root found last (*last): next to each other along a row the roots
++ * differ by little, so a few steps replace the bit loop (which a far guess still uses) */
++static inline int isqrt_near(int v, int *last)
++{
++    int r = *last;
++    if (v <= 0) return 0;
++    if (r * r > v) {
++        if (r < 4 || (r - 4) * (r - 4) > v) r = (int)isqrt_bits((uint32_t)v);
++        else while (r * r > v) r--;
++    } else if ((r + 4) * (r + 4) <= v) {
++        r = (int)isqrt_bits((uint32_t)v);
++    } else {
++        while ((r + 1) * (r + 1) <= v) r++;
++    }
++    *last = r;
++    return r;
++}
++#endif
++
++/* ---- (S2-9) slicing: a composition in passes --------------------------------
++ * Every write of a composition belongs to one "unit": a row of a filled
++ * primitive (seg, ell, tri, a row of the outline pass, the clear) or one
++ * lone put (decals, lines, rivets). A unit costs about its pixel count.
++ * The units come in the same order on every pass (their geometry never
++ * depends on the pixels: splat's read-then-write is one unit), so a pass
++ * that writes only the units whose running cost lies in [sl_lo, sl_hi)
++ * continues exactly where the last one stopped, and the passes together
++ * write what one full composition writes: the same pixels. The geometry
++ * between the units (at(), set_axis, the part logic) is recomputed per
++ * pass; it is small next to the rows. A whole composition is one pass with
++ * [0, SL_ALL). */
++#define SL_ALL 0x7FFFFFFF
++static int32_t sl_lo, sl_hi = SL_ALL, sl_n;
++static int sl_row;                    /* inside a unit row: its puts need no gate of their own */
++
++static inline int sl_gate(int cost)
++{
++    int32_t n = sl_n;
++    sl_n = n + cost;
++    return n >= sl_lo && n < sl_hi;
++}
++
++/* (S2-9) `rows` units of `cost` each, none of which this pass writes: counted, and the caller skips them (and
++ * their set-up) whole */
++static int sl_skip(int rows, int cost)
++{
++    int32_t total = (int32_t)rows * cost;
++    if (rows <= 0 || cost <= 0) return 0;
++    if (sl_n + total <= sl_lo || sl_n >= sl_hi) {
++        sl_n += total;
++        return 1;
++    }
++    return 0;
++}
++
++#if WELD_COMPACT
++__attribute__((noinline))
++#endif
+ static void put(G *g, int x, int y, uint8_t c)
+ {
++    if (!sl_row && !sl_gate(1)) return;
+     if (c == PAL_BLACK) c = PAL_RAMP(RAMP_STONE, 0);       /* 1 is the outline marker */
+     if ((unsigned)x < (unsigned)g->w && (unsigned)y < (unsigned)g->h && c) g->px[y * g->w + x] = c;
+ }
+ 
++/* (S2-9) put() inside a unit row of the ARM loops: (x, y) is on the canvas */
++static inline void put_row(uint8_t *px, int w, int x, int y, uint8_t c)
++{
++    if (c == PAL_BLACK) c = PAL_RAMP(RAMP_STONE, 0);       /* 1 is the outline marker */
++    if (c) px[y * w + x] = c;
++}
++
+ static void clear_px(G *g, int x, int y)
+ {
++    if (!sl_row && !sl_gate(1)) return;
+     if ((unsigned)x < (unsigned)g->w && (unsigned)y < (unsigned)g->h) g->px[y * g->w + x] = 0;
+ }
+ 
+@@ -146,6 +249,16 @@ static void at(const G *g, int t, int s, int *x, int *y)
+ enum { SH_CYL, SH_BOX, SH_GLOW, SH_FLAT };
+ enum { CAP_NONE = 0, CAP_NEAR = 1, CAP_FAR = 2 };
+ 
++static inline uint8_t tone_glow(const Mat *m, int u)
++{
++    int a = u < 0 ? -u : u;
++    if (a < 70) return m->c[4];
++    if (a < 150) return m->c[3];
++    if (a < 220) return m->c[2];
++    return m->c[1];
++}
++
++#if WELD_COMPACT
+ static uint8_t tone_cyl(const Mat *m, int u)          /* u -256..256, lit from the left */
+ {
+     if (u < -200) return m->c[2];
+@@ -166,21 +279,89 @@ static uint8_t tone_box(const Mat *m, int u, int near_end, int far_end)
+     if (u < -205) return m->c[2];
+     if (u < -150) return m->c[4];
+     if (u < -60) return m->c[3];
+-    if (u > 110) return m->c[2];
+     return m->c[2];
+ }
++#else
++/* (S2-9, exact) the seg tones without the division u = n / d (n = side offset x256, d = the half width > 0,
++ * truncated as C does): ULT(T) is u < T by multiplications only (n >= 0: u = floor(n / d), so u < T exactly
++ * when n < T d; n < 0: u = -floor(-n / d), so u < T exactly when -n >= (1 - T) d) */
++#define ULT(T) (n >= 0 ? n < (T) * d : -n >= (1 - (T)) * d)
+ 
+-static uint8_t tone_glow(const Mat *m, int u)
++static inline uint8_t tone_cyl_nd(const Mat *m, int n, int d)
+ {
+-    int a = u < 0 ? -u : u;
+-    if (a < 70) return m->c[4];
+-    if (a < 150) return m->c[3];
+-    if (a < 220) return m->c[2];
++    if (ULT(-200)) return m->c[2];
++    if (ULT(-130)) return m->c[4];
++    if (ULT(-40)) return m->c[3];
++    if (ULT(90)) return m->c[2];
++    if (ULT(190)) return m->c[1];
++    return m->c[0];
++}
++
++static inline uint8_t tone_box_nd(const Mat *m, int n, int d, int near_end, int far_end)
++{
++    if (!ULT(151)) return !ULT(226) ? m->c[0] : m->c[1];       /* u > 150: u > 225 */
++    if (far_end) return m->c[3];
++    if (near_end) return m->c[1];
++    if (ULT(-205)) return m->c[2];
++    if (ULT(-150)) return m->c[4];
++    if (ULT(-60)) return m->c[3];
++    return m->c[2];
++}
++
++static inline uint8_t tone_glow_nd(const Mat *m, int n, int d)
++{
++    /* |u| < A: -A < u < A, i.e. u < A and not u < -A + 1 */
++    if (ULT(70) && !ULT(-69)) return m->c[4];
++    if (ULT(150) && !ULT(-149)) return m->c[3];
++    if (ULT(220) && !ULT(-219)) return m->c[2];
+     return m->c[1];
+ }
++#undef ULT
++
++/* (S2-9, exact) n / d for 0 <= n by a reciprocal: the estimate is never low and at most a few high */
++typedef struct Rcp { uint32_t d, rec, lim; } Rcp;
++static void rcp_init(Rcp *r, int d)
++{
++    r->d = (uint32_t)(d > 0 ? d : 1);
++    r->rec = (1u << 20) / r->d + 1u;
++    r->lim = 0xFFFFFFFFu / r->rec;
++}
++static inline int rcp_div(const Rcp *r, int n)
++{
++    uint32_t q, un = (uint32_t)n;
++    if (n < 0 || un > r->lim) return n / (int)r->d;
++    q = (un * r->rec) >> 20;
++    while (q * r->d > un) q--;
++    return (int)q;
++}
++
++/* (S2-9) floor(a / b), b > 0 */
++static inline int fdiv(int a, int b)
++{
++    int q = a / b;
++    return (a % b != 0 && a < 0) ? q - 1 : q;
++}
++
++/* (S2-9) narrow [*k0, *k1] to the steps k that can have n0 + d * k strictly inside (lo, hi) (a superset: the
++ * callers test every pixel exactly anyway) */
++static inline void span_in(int n0, int d, int lo, int hi, int *k0, int *k1)
++{
++    int a, b;
++    if (d == 0) {
++        if (n0 <= lo || n0 >= hi) *k1 = *k0 - 1;
++        return;
++    }
++    if (d < 0) { n0 = -n0; d = -d; a = -hi; hi = -lo; lo = a; }
++    a = fdiv(lo - n0, d);
++    b = fdiv(hi - n0, d) + 1;
++    if (a > *k0) *k0 = a;
++    if (b < *k1) *k1 = b;
++}
++#endif /* !WELD_COMPACT: the faster rows' helpers */
+ 
++#if WELD_COMPACT
+ /* A segment along the axis from t0 to t1, centred s px to the side, half
+- * widths w0 -> w1 (px x16 so small parts stay smooth). */
++ * widths w0 -> w1 (px x16 so small parts stay smooth). (S2-9: a unit per row) */
+ static void seg(G *g, int t0, int t1, int s16, int w0, int w1, const Mat *m, int shade, int caps)
+ {
+     int x0, y0, x1, y1, x2, y2, x3, y3, minx, maxx, miny, maxy, x, y;
+@@ -197,7 +378,10 @@ static void seg(G *g, int t0, int t1, int s16, int w0, int w1, const Mat *m, int
+     maxy = DOOMO_MAX(DOOMO_MAX(y0, y1), DOOMO_MAX(y2, y3)) + 1;
+     minx = DOOMO_MAX(minx, 0); miny = DOOMO_MAX(miny, 0);
+     maxx = DOOMO_MIN(maxx, g->w - 1); maxy = DOOMO_MIN(maxy, g->h - 1);
++    if (sl_skip(maxy - miny + 1, maxx - minx + 1)) return;
+     for (y = miny; y <= maxy; y++) {
++        if (!sl_gate(maxx - minx + 1)) continue;
++        sl_row = 1;
+         for (x = minx; x <= maxx; x++) {
+             int rx = x * 16 + 8 - g->ax, ry = y * 16 + 8 - g->ay;
+             int al = (rx * g->ux + ry * g->uy) / 256;          /* along, x16 */
+@@ -223,16 +407,20 @@ static void seg(G *g, int t0, int t1, int s16, int w0, int w1, const Mat *m, int
+             default: put(g, x, y, m->c[2]); break;
+             }
+         }
++        sl_row = 0;
+     }
+ }
+ 
+-/* Shaded ellipse in screen space (centre x16, radii x16), lit top-left. */
++/* Shaded ellipse in screen space (centre x16, radii x16), lit top-left. (S2-9: a unit per row) */
+ static void ell(G *g, int cx16, int cy16, int rx16, int ry16, const Mat *m, int glow)
+ {
+     int x, y;
+     int x0 = (cx16 - rx16) >> 4, x1 = (cx16 + rx16) >> 4, y0 = (cy16 - ry16) >> 4, y1 = (cy16 + ry16) >> 4;
+     if (rx16 < 8 || ry16 < 8) return;
+-    for (y = y0; y <= y1; y++)
++    if (sl_skip(y1 - y0 + 1, x1 - x0 + 1)) return;
++    for (y = y0; y <= y1; y++) {
++        if (!sl_gate(x1 - x0 + 1)) continue;
++        sl_row = 1;
+         for (x = x0; x <= x1; x++) {
+             int dx = (x * 16 + 8 - cx16) * 256 / rx16, dy = (y * 16 + 8 - cy16) * 256 / ry16;
+             int d2 = dx * dx + dy * dy, l;
+@@ -245,8 +433,153 @@ static void ell(G *g, int cx16, int cy16, int rx16, int ry16, const Mat *m, int
+             else if (l > -150) put(g, x, y, m->c[2]);
+             else put(g, x, y, m->c[1]);
+         }
++        sl_row = 0;
++    }
++}
++#else
++/* A segment along the axis from t0 to t1, centred s px to the side, half
++ * widths w0 -> w1 (px x16 so small parts stay smooth).
++ * (S2-9) everything seg()'s row loop reads */
++typedef struct SegRun {
++    uint8_t *px;
++    int w, minx, maxx, miny, maxy;
++    int ax, ay, ux, uy, vx, vy, len, persp, wsc;
++    int lt0, lt1, dl, w0, dw, adw, s16, sdlo, sdhi, shade, caps;
++    Rcp rlen, rdl;
++    const Mat *m;
++} SegRun;
++
++static WELD_ARM void seg_rows(const SegRun *r)
++{
++    int x, y, rnear = 0, rfar = 0;
++    const Mat *m = r->m;
++    for (y = r->miny; y <= r->maxy; y++) {
++        /* along / side numerators (x16 x256), stepped per pixel instead of multiplied */
++        int ry = y * 16 + 8 - r->ay, rx0 = r->minx * 16 + 8 - r->ax;
++        int na = rx0 * r->ux + ry * r->uy, ns = rx0 * r->vx + ry * r->vy;
++        int da = 16 * r->ux, ds = 16 * r->vx, k0 = 0, k1 = r->maxx - r->minx;
++        if (!sl_gate(r->maxx - r->minx + 1)) continue;
++        /* (S2-9, exact) only the run of the row where both numerators can pass the tests below: al = na / 256
++         * truncates, so al in [lt0, lt1] needs na in (256 (lt0 - 1), 256 (lt1 + 1)); the same for sd */
++        span_in(na, da, 256 * (r->lt0 - 1), 256 * (r->lt1 + 1), &k0, &k1);
++        span_in(ns, ds, 256 * (r->sdlo - 1), 256 * (r->sdhi + 1), &k0, &k1);
++        if (k0 > k1) continue;
++        na += da * k0;
++        ns += ds * k0;
++        for (x = r->minx + k0; x <= r->minx + k1; x++, na += da, ns += ds) {
++            int al = na / 256;                                /* along, x16 */
++            int sd = ns / 256;                                /* side, x16 */
++            int t, ps, hw, sc, e0, e1, iw;
++            if (al < r->lt0 || al > r->lt1 || sd < r->sdlo || sd > r->sdhi) continue;
++            t = r->len ? rcp_div(&r->rlen, al * 256) : 0;     /* = al * 256 / len (al >= 0: else a division) */
++            ps = (256 - r->persp * t / 256) * r->wsc / 256;  /* pscale() */
++            iw = r->adw ? rcp_div(&r->rdl, r->adw * (al - r->lt0)) : 0;  /* = |dw| (al - lt0) / dl, al >= lt0 */
++            hw = (r->w0 + (r->dw < 0 ? -iw : iw)) * ps / 256;
++            sc = r->s16 * ps / 256;
++            if (hw < 6) hw = 6;
++            /* rounded caps */
++            e0 = al - r->lt0;
++            e1 = r->lt1 - al;
++            if ((r->caps & CAP_NEAR) && e0 < hw) hw = isqrt_near(hw * hw - (hw - e0) * (hw - e0), &rnear);
++            if ((r->caps & CAP_FAR) && e1 < hw) hw = isqrt_near(hw * hw - (hw - e1) * (hw - e1), &rfar);
++            if (sd < sc - hw || sd > sc + hw || hw <= 0) continue;
++            switch (r->shade) {                           /* u = (sd - sc) * 256 / hw, compared only */
++            case SH_CYL: put_row(r->px, r->w, x, y, tone_cyl_nd(m, (sd - sc) * 256, hw)); break;
++            case SH_BOX: put_row(r->px, r->w, x, y, tone_box_nd(m, (sd - sc) * 256, hw, e0 < 16, e1 < 16)); break;
++            case SH_GLOW: put_row(r->px, r->w, x, y, tone_glow_nd(m, (sd - sc) * 256, hw)); break;
++            default: put_row(r->px, r->w, x, y, m->c[2]); break;
++            }
++        }
++    }
++}
++
++static void seg(G *g, int t0, int t1, int s16, int w0, int w1, const Mat *m, int shade, int caps)
++{
++    int x0, y0, x1, y1, x2, y2, x3, y3, minx, maxx, miny, maxy;
++    int lt0 = g->len * t0 / 256, lt1 = g->len * t1 / 256;
++    int wmax = DOOMO_MAX(w0, w1);
++    int ps0, ps1, sc0, sc1, hwmax;
++    SegRun r;
++    if (t1 <= t0) return;
++    at(g, t0, s16 / 16 - wmax / 16 - 1, &x0, &y0);
++    at(g, t0, s16 / 16 + wmax / 16 + 1, &x1, &y1);
++    at(g, t1, s16 / 16 - wmax / 16 - 1, &x2, &y2);
++    at(g, t1, s16 / 16 + wmax / 16 + 1, &x3, &y3);
++    minx = DOOMO_MIN(DOOMO_MIN(x0, x1), DOOMO_MIN(x2, x3)) - 1;
++    maxx = DOOMO_MAX(DOOMO_MAX(x0, x1), DOOMO_MAX(x2, x3)) + 1;
++    miny = DOOMO_MIN(DOOMO_MIN(y0, y1), DOOMO_MIN(y2, y3)) - 1;
++    maxy = DOOMO_MAX(DOOMO_MAX(y0, y1), DOOMO_MAX(y2, y3)) + 1;
++    minx = DOOMO_MAX(minx, 0); miny = DOOMO_MAX(miny, 0);
++    maxx = DOOMO_MIN(maxx, g->w - 1); maxy = DOOMO_MIN(maxy, g->h - 1);
++    if (sl_skip(maxy - miny + 1, maxx - minx + 1)) return;
++    /* (S2-9, exact) the side band a pixel can be in at all: t, the perspective scale ps, the centre sc and the
++     * half width hw are monotone along the axis (truncating divisions keep that), so their ranges come from
++     * the two ends; hw only shrinks under the caps and is at least 6 before them. Pixels outside the band
++     * fail the side test anyway: they skip its divisions. */
++    ps0 = pscale(g, g->len ? lt0 * 256 / g->len : 0);
++    ps1 = pscale(g, g->len ? lt1 * 256 / g->len : 0);
++    sc0 = s16 * ps0 / 256;
++    sc1 = s16 * ps1 / 256;
++    hwmax = DOOMO_MAX(w0 < 0 ? -w0 : w0, w1 < 0 ? -w1 : w1) *
++            DOOMO_MAX(ps0 < 0 ? -ps0 : ps0, ps1 < 0 ? -ps1 : ps1) / 256 + 1;
++    if (hwmax < 6) hwmax = 6;
++    r.px = g->px; r.w = g->w;
++    r.minx = minx; r.maxx = maxx; r.miny = miny; r.maxy = maxy;
++    r.ax = g->ax; r.ay = g->ay; r.ux = g->ux; r.uy = g->uy; r.vx = g->vx; r.vy = g->vy;
++    r.len = g->len; r.persp = g->persp; r.wsc = g->wsc;
++    r.lt0 = lt0; r.lt1 = lt1;
++    r.dl = DOOMO_MAX(lt1 - lt0, 1);
++    r.w0 = w0; r.dw = w1 - w0; r.adw = r.dw < 0 ? -r.dw : r.dw;
++    r.s16 = s16;
++    r.sdlo = DOOMO_MIN(sc0, sc1) - hwmax;
++    r.sdhi = DOOMO_MAX(sc0, sc1) + hwmax;
++    r.shade = shade; r.caps = caps; r.m = m;
++    rcp_init(&r.rlen, g->len);
++    rcp_init(&r.rdl, r.dl);
++    seg_rows(&r);
+ }
+ 
++/* Shaded ellipse in screen space (centre x16, radii x16), lit top-left. */
++static WELD_ARM void ell_rows(uint8_t *px, int w, int x0, int y0, int x1, int y1, int cx16, int cy16, int rx16,
++                              int ry16, const Mat *m, int glow)
++{
++    int x, y, rlast = 0;
++    int16_t dxs[WELD_VIEW_W];
++    for (x = x0; x <= x1; x++) dxs[x - x0] = (int16_t)((x * 16 + 8 - cx16) * 256 / rx16);   /* |dx| <= 768 */
++    for (y = y0; y <= y1; y++) {
++        int dy;
++        if (!sl_gate(x1 - x0 + 1)) continue;
++        dy = (y * 16 + 8 - cy16) * 256 / ry16;
++        if (dy * dy > 65536) continue;
++        for (x = x0; x <= x1; x++) {
++            int dx = dxs[x - x0];
++            int d2 = dx * dx + dy * dy, l;
++            if (d2 > 65536) continue;
++            if (glow) { put_row(px, w, x, y, tone_glow(m, isqrt_near(d2, &rlast))); continue; }
++            l = -dx - dy;                                  /* light from the upper left */
++            if (d2 > 52000 && l < 0) put_row(px, w, x, y, m->c[0]);
++            else if (l > 200 && d2 < 30000 && d2 > 4000) put_row(px, w, x, y, m->c[4]);
++            else if (l > 60) put_row(px, w, x, y, m->c[3]);
++            else if (l > -150) put_row(px, w, x, y, m->c[2]);
++            else put_row(px, w, x, y, m->c[1]);
++        }
++    }
++}
++
++static void ell(G *g, int cx16, int cy16, int rx16, int ry16, const Mat *m, int glow)
++{
++    int x0 = (cx16 - rx16) >> 4, x1 = (cx16 + rx16) >> 4, y0 = (cy16 - ry16) >> 4, y1 = (cy16 + ry16) >> 4;
++    if (rx16 < 8 || ry16 < 8) return;
++    /* (S2-9, exact) only the pixels on the canvas (put() drops the rest), each column's dx divided once */
++    x0 = DOOMO_MAX(x0, 0); x1 = DOOMO_MIN(x1, g->w - 1);
++    y0 = DOOMO_MAX(y0, 0); y1 = DOOMO_MIN(y1, g->h - 1);
++    if (x1 < x0 || x1 - x0 >= WELD_VIEW_W) return;
++    if (sl_skip(y1 - y0 + 1, x1 - x0 + 1)) return;
++    ell_rows(g->px, g->w, x0, y0, x1, y1, cx16, cy16, rx16, ry16, m, glow);
++}
++
++#endif /* WELD_COMPACT */
++
+ static void ell_at(G *g, int t, int s, int r, const Mat *m, int glow)
+ {
+     int x, y, rr = r * pscale(g, t) / 16;
+@@ -259,13 +592,22 @@ static void tri(G *g, int ax, int ay, int bx, int by, int cx, int cy, uint8_t c)
+     int minx = DOOMO_MIN(ax, DOOMO_MIN(bx, cx)), maxx = DOOMO_MAX(ax, DOOMO_MAX(bx, cx));
+     int miny = DOOMO_MIN(ay, DOOMO_MIN(by, cy)), maxy = DOOMO_MAX(ay, DOOMO_MAX(by, cy));
+     int x, y;
+-    for (y = miny; y <= maxy; y++)
++#if !WELD_COMPACT
++    /* (S2-9, exact) the canvas part only: put() drops the rest */
++    minx = DOOMO_MAX(minx, 0); maxx = DOOMO_MIN(maxx, g->w - 1);
++    miny = DOOMO_MAX(miny, 0); maxy = DOOMO_MIN(maxy, g->h - 1);
++#endif
++    for (y = miny; y <= maxy; y++) {
++        if (!sl_gate(maxx - minx + 1)) continue;
++        sl_row = 1;
+         for (x = minx; x <= maxx; x++) {
+             int e0 = (bx - ax) * (y - ay) - (by - ay) * (x - ax);
+             int e1 = (cx - bx) * (y - by) - (cy - by) * (x - bx);
+             int e2 = (ax - cx) * (y - cy) - (ay - cy) * (x - cx);
+             if ((e0 >= 0 && e1 >= 0 && e2 >= 0) || (e0 <= 0 && e1 <= 0 && e2 <= 0)) put(g, x, y, c);
+         }
++        sl_row = 0;
++    }
+ }
+ 
+ static void line(G *g, int x0, int y0, int x1, int y1, uint8_t c)
+@@ -328,7 +670,10 @@ static void splat(G *g, int t, int s, uint32_t seed)
+     for (k = 0; k < 7; k++) {
+         uint32_t h = doomo_hash32(seed + (uint32_t)k * 77u);
+         int ox = (int)(h % 5) - 2, oy = (int)((h >> 4) % 5) - 2;
++        if (!sl_gate(1)) continue;            /* (S2-9) the read and its write: one unit */
++        sl_row = 1;
+         if (get(g, x + ox, y + oy)) put(g, x + ox, y + oy, k < 2 ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_RAMP(RAMP_BLOOD, 4));
++        sl_row = 0;
+     }
+ }
+ 
+@@ -349,12 +694,17 @@ static void spikes(G *g, int t0, int t1, int side_px, int n, int len)
+ }
+ 
+ /* ---- the outline pass: coloured selective outlines --------------------- */
++#if WELD_COMPACT
++/* ---- the outline pass: coloured selective outlines (S2-9: a unit per row of each scan) --------------- */
++#define OUTLINE_ROW(w) ((w) / 4)          /* a scan row's units: its pixels cost about a quarter of a fill's */
+ static void outline(G *g)
+ {
+     int x, y, w = g->w, h = g->h;
++    if (sl_skip(2 * h, OUTLINE_ROW(w))) return;
+     /* mark outline pixels with 1 then colour them (index 1 is PAL_BLACK and
+      * never used inside the composition) */
+-    for (y = 0; y < h; y++)
++    for (y = 0; y < h; y++) {
++        if (!sl_gate(OUTLINE_ROW(w))) continue;
+         for (x = 0; x < w; x++) {
+             uint8_t c;
+             if (g->px[y * w + x]) continue;
+@@ -364,7 +714,9 @@ static void outline(G *g)
+             if (!c || c == 1) c = get(g, x, y - 1);
+             if (c && c != 1) g->px[y * w + x] = 1;
+         }
+-    for (y = 0; y < h; y++)
++    }
++    for (y = 0; y < h; y++) {
++        if (!sl_gate(OUTLINE_ROW(w))) continue;
+         for (x = 0; x < w; x++) {
+             uint8_t c, d;
+             if (g->px[y * w + x] != 1) continue;
+@@ -377,8 +729,90 @@ static void outline(G *g)
+             if (d == c || d == 0 || d == PAL_BLACK) d = PAL_RAMP(RAMP_STONE, 0);
+             g->px[y * w + x] = d;
+         }
++    }
++}
++#else
++/* (S2-9) the rows [*y0, *y1] and columns [*x0, *x1] holding every non-empty pixel, grown by one and clipped (all
++ * empty: *y0 > *y1) */
++static WELD_ARM void used_box(const uint8_t *p, int w, int h, int *x0, int *y0, int *x1, int *y1)
++{
++    int x, y;
++    *x0 = w; *x1 = -1; *y0 = h; *y1 = -1;
++    for (y = 0; y < h; y++) {
++        const uint8_t *r = p + y * w;
++        int a = 0, b = w - 1;
++        while (a < w && !r[a]) a++;
++        if (a == w) continue;
++        while (!r[b]) b--;
++        if (y < *y0) *y0 = y;
++        *y1 = y;
++        if (a < *x0) *x0 = a;
++        if (b > *x1) *x1 = b;
++    }
++    x = *x0 - 1; *x0 = x < 0 ? 0 : x;
++    x = *x1 + 1; *x1 = x >= w ? w - 1 : x;
++    y = *y0 - 1; *y0 = y < 0 ? 0 : y;
++    y = *y1 + 1; *y1 = y >= h ? h - 1 : y;
+ }
+ 
++/* (S2-9, exact) outline()'s two scans with direct reads: pass 1 marks an empty pixel when any of its four
++ * neighbours is solid (neither 0 nor the marker), whatever the order; pass 2 colours a marked pixel with
++ * dk[] of its first solid neighbour right, down, left, up (left and up may be outline already), or clears it.
++ * Both only look inside the box of the non-empty pixels grown by one (taken when a pass first gets here: marks
++ * of an earlier pass lie inside it too), where every pixel they can change is; the units stay whole rows. */
++#define OUTLINE_ROW(w) ((w) / 4)          /* a scan row's units: its pixels cost about a quarter of a fill's */
++static WELD_ARM void outline_rows(uint8_t *p, int w, int h, const uint8_t *dk)
++{
++    int x, y, bx0 = 0, by0 = 0, bx1 = -1, by1 = -1, boxed = 0;
++#define SOLID(v) ((uint8_t)((v) - 2) < 254)
++    for (y = 0; y < h; y++) {
++        uint8_t *r = p + y * w;
++        if (!sl_gate(OUTLINE_ROW(w))) continue;
++        if (!boxed) { used_box(p, w, h, &bx0, &by0, &bx1, &by1); boxed = 1; }
++        if (y < by0 || y > by1) continue;
++        for (x = bx0; x <= bx1; x++) {
++            if (r[x]) continue;
++            if ((x + 1 < w && SOLID(r[x + 1])) || (y + 1 < h && SOLID(r[x + w])) ||
++                (x > 0 && SOLID(r[x - 1])) || (y > 0 && SOLID(r[x - w])))
++                r[x] = 1;
++        }
++    }
++    for (y = 0; y < h; y++) {
++        uint8_t *r = p + y * w;
++        if (!sl_gate(OUTLINE_ROW(w))) continue;
++        if (!boxed) { used_box(p, w, h, &bx0, &by0, &bx1, &by1); boxed = 1; }
++        if (y < by0 || y > by1) continue;
++        for (x = bx0; x <= bx1; x++) {
++            if (r[x] != 1) continue;
++            if (x + 1 < w && SOLID(r[x + 1])) r[x] = dk[r[x + 1]];
++            else if (y + 1 < h && SOLID(r[x + w])) r[x] = dk[r[x + w]];
++            else if (x > 0 && SOLID(r[x - 1])) r[x] = dk[r[x - 1]];
++            else if (y > 0 && SOLID(r[x - w])) r[x] = dk[r[x - w]];
++            else r[x] = 0;
++        }
++    }
++#undef SOLID
++}
++
++static void outline(G *g)
++{
++    /* mark outline pixels with 1 then colour them (index 1 is PAL_BLACK and
++     * never used inside the composition) a dark shade of the neighbour */
++    uint8_t dk[256];
++    int c;
++    if (sl_n + 2 * g->h * OUTLINE_ROW(g->w) <= sl_lo || sl_n >= sl_hi) {   /* (S2-9) none of its units here */
++        sl_n += 2 * g->h * OUTLINE_ROW(g->w);
++        return;
++    }
++    for (c = 0; c < 256; c++) {
++        uint8_t d = palette_darker(palette_darker((uint8_t)c));
++        if (d == c || d == 0 || d == PAL_BLACK) d = PAL_RAMP(RAMP_STONE, 0);
++        dk[c] = d;
++    }
++    outline_rows(g->px, g->w, g->h, dk);
++}
++#endif /* WELD_COMPACT */
++
+ /* ---- recipes ---------------------------------------------------------------- */
+ typedef struct Recipe {
+     uint8_t kind;          /* RK_* */
+@@ -1233,7 +1667,7 @@ static void compose(uint8_t *px, int w, int h, const DoomoWeapon *wp, int frame,
+     const Recipe *r = &recipes[wp->frame < WFRAME_COUNT ? wp->frame : WFRAME_FISTS];
+     int fire = frame == 1 || frame == 2;
+     memset(&g, 0, sizeof(g));
+-    memset(px, 0, (size_t)(w * h));
++    if (sl_gate(w * h / 16)) memset(px, 0, (size_t)(w * h));
+     g.px = px; g.w = w; g.h = h;
+     setup_mats(&g, wp);
+     if (icon) {
+@@ -1314,6 +1748,30 @@ static void compose(uint8_t *px, int w, int h, const DoomoWeapon *wp, int frame,
+     outline(&g);
+ }
+ 
++/* (S2-9) units [lo, hi) of a composition (a whole one: 0, SL_ALL); returns the composition's total cost */
++static int32_t compose_pass(uint8_t *px, int w, int h, const DoomoWeapon *wp, int frame, int icon, int32_t lo, int32_t hi)
++{
++    int32_t total;
++    sl_lo = lo;
++    sl_hi = hi;
++    sl_n = 0;
++    sl_row = 0;
++#if defined(DOOMO_PLATFORM_GBA)
++    {
++        int had = iwram_ovl_current();
++        if (had != OVL_UI) iwram_ovl_use(OVL_UI);
++        compose(px, w, h, wp, frame, icon);
++        if (had != OVL_UI && had != OVL_NONE) iwram_ovl_use(had);
++    }
++#else
++    compose(px, w, h, wp, frame, icon);
++#endif
++    total = sl_n;
++    sl_lo = 0;
++    sl_hi = SL_ALL;
++    return total;
++}
++
+ /* ---- caches ----------------------------------------------------------------------- */
+ static uint32_t weapon_key(const DoomoWeapon *w, int frame)
+ {
+@@ -1326,25 +1784,38 @@ static uint32_t weapon_key(const DoomoWeapon *w, int frame)
+     return k | 1u;
+ }
+ 
+-const DoomoImage *weld_view_image(const DoomoWeapon *w, int frame)
++static const DoomoWeapon view_fists = { WFRAME_FISTS, 0, 0, 0, 0, 0, 0, 0, 0, WSTYLE_CUTE,
++                                        PAINT_ROSE, PAINT_WHITE, 50, WF_VALID, 0, 0 };
++
++/* (S2-9) the sliced composition (weld_view_image_sliced): one job at a time, into a slot other than the picture
++ * on show; the slot's key stays 0 until the last pass, so nothing else finds it half drawn */
++static uint32_t job_key;
++static int job_slot;
++static int32_t job_done;
++static int shown_slot = -1;
++static uint32_t shown_key;
++
++static void view_claim(void)
+ {
+-    static const DoomoWeapon fists = { WFRAME_FISTS, 0, 0, 0, 0, 0, 0, 0, 0, WSTYLE_CUTE,
+-                                       PAINT_ROSE, PAINT_WHITE, 50, WF_VALID, 0, 0 };
+-    uint32_t key;
+-    int i, slot = 0;
+-    if (!w) w = &fists;
+-    frame = DOOMO_CLAMP(frame, 0, 3);
+-    key = weapon_key(w, frame);
+-    use_clock++;
+     if (!view_pix || !scene_scratch_mine(WELD_SCRATCH_TAG)) {
+         /* (re)claim the scene scratch: whatever the slots held is gone */
+         view_pix = (ViewPix *)scene_scratch(WELD_SCRATCH_TAG, (uint32_t)sizeof(ViewPix) * VIEW_SLOTS);
+         memset(view_key, 0, sizeof(view_key));
++        job_key = 0;
++        shown_slot = -1;
+     }
++}
++
++static int view_find(uint32_t key)
++{
++    int i;
+     for (i = 0; i < VIEW_SLOTS; i++)
+-        if (view_key[i] == key) { view_used[i] = use_clock; return &view_img[i]; }
+-    for (i = 1; i < VIEW_SLOTS; i++) if (view_used[i] < view_used[slot]) slot = i;
+-    compose(view_pix[slot], VW, VH, w, frame, 0);
++        if (view_key[i] == key) { view_used[i] = use_clock; return i; }
++    return -1;
++}
++
++static const DoomoImage *view_done(int slot, uint32_t key)
++{
+     view_key[slot] = key;
+     view_used[slot] = use_clock;
+     view_img[slot].w = VW;
+@@ -1354,20 +1825,99 @@ const DoomoImage *weld_view_image(const DoomoWeapon *w, int frame)
+     return &view_img[slot];
+ }
+ 
++const DoomoImage *weld_view_image(const DoomoWeapon *w, int frame)
++{
++    uint32_t key;
++    int i, slot = 0;
++    if (!w) w = &view_fists;
++    frame = DOOMO_CLAMP(frame, 0, 3);
++    key = weapon_key(w, frame);
++    use_clock++;
++    view_claim();
++    if ((i = view_find(key)) >= 0) return &view_img[i];
++    for (i = 1; i < VIEW_SLOTS; i++) if (view_used[i] < view_used[slot]) slot = i;
++    if (job_key && job_slot == slot) job_key = 0;          /* (S2-9) a job's slot taken: start it over */
++    compose_pass(view_pix[slot], VW, VH, w, frame, 0, 0, SL_ALL);
++    return view_done(slot, key);
++}
++
++/* (S2-9) `budget` more units of the job for (w, frame) in a slot other than `avoid`; 1 when the picture is done */
++static int view_job(const DoomoWeapon *w, int frame, uint32_t key, int budget, int avoid)
++{
++    int32_t total;
++    if (!job_key || job_key != key || job_slot == avoid) {
++        int i, slot = -1;
++        for (i = 0; i < VIEW_SLOTS; i++)
++            if (i != avoid && (slot < 0 || view_used[i] < view_used[slot])) slot = i;
++        if (slot < 0) return 0;
++        job_key = key;
++        job_slot = slot;
++        job_done = 0;
++        view_key[slot] = 0;
++    }
++    total = compose_pass(view_pix[job_slot], VW, VH, w, frame, 0, job_done, job_done + budget);
++    job_done += budget;
++    if (job_done < total) return 0;
++    job_key = 0;
++    view_done(job_slot, key);
++    return 1;
++}
++
++const DoomoImage *weld_view_image_sliced(const DoomoWeapon *w, int frame, int budget, int *ready)
++{
++    uint32_t key;
++    int i;
++    if (!w) w = &view_fists;
++    frame = DOOMO_CLAMP(frame, 0, 3);
++    key = weapon_key(w, frame);
++    use_clock++;
++    view_claim();
++    if (ready) *ready = 1;
++    if ((i = view_find(key)) < 0) {
++        if (shown_slot < 0 || view_key[shown_slot] != shown_key) {
++            /* nothing to show meanwhile (a scene's first picture, the scratch was taken): at once */
++            const DoomoImage *img = weld_view_image(w, frame);
++            shown_slot = (int)(img - view_img);
++            shown_key = key;
++            return img;
++        }
++        view_used[shown_slot] = use_clock;
++        if (!view_job(w, frame, key, budget, shown_slot)) {
++            if (ready) *ready = 0;
++            return &view_img[shown_slot];
++        }
++        i = job_slot;
++    }
++    shown_slot = i;
++    shown_key = key;
++    return &view_img[i];
++}
++
++int weld_view_prefetch(const DoomoWeapon *w, int frame, int budget)
++{
++    uint32_t key;
++    if (!w) w = &view_fists;
++    frame = DOOMO_CLAMP(frame, 0, 3);
++    key = weapon_key(w, frame);
++    use_clock++;
++    view_claim();
++    if (view_find(key) >= 0) return 1;
++    if (shown_slot >= 0 && view_key[shown_slot] == shown_key) view_used[shown_slot] = use_clock;
++    return view_job(w, frame, key, budget, shown_slot >= 0 && view_key[shown_slot] == shown_key ? shown_slot : -1);
++}
++
+ const DoomoImage *weld_icon_image(const DoomoWeapon *w)
+ {
+-    static const DoomoWeapon fists = { WFRAME_FISTS, 0, 0, 0, 0, 0, 0, 0, 0, WSTYLE_CUTE,
+-                                       PAINT_ROSE, PAINT_WHITE, 50, WF_VALID, 0, 0 };
+     static const uint8_t none_pix[4] = { 0, 0, 0, 0 };
+     static const DoomoImage none = { 2, 2, none_pix, 0x00C0FFFEu };
+     const DoomoImage *img;
+     uint32_t key;
+     int fresh;
+-    if (!w) w = &fists;
++    if (!w) w = &view_fists;
+     key = doomo_hash32(weapon_key(w, 7) ^ 0x1C0A0000u ^ icon_gen);
+     img = portrait_pool_image(key, IW, IH, &fresh);
+     if (!img) return &none;                    /* cannot happen (1 block) */
+-    if (fresh) compose((uint8_t *)img->pix, IW, IH, w, 0, 1);
++    if (fresh) compose_pass((uint8_t *)img->pix, IW, IH, w, 0, 1, 0, SL_ALL);
+     return img;
+ }
+ 
+@@ -1396,5 +1946,6 @@ void weld_view_points(const DoomoWeapon *w, int *mx, int *my, int *gx, int *gy)
+ void weld_gfx_invalidate(void)
+ {
+     memset(view_key, 0, sizeof(view_key));
++    job_key = 0;
+     icon_gen++;
+ }
+diff --git a/core/src/workshop.c b/core/src/workshop.c
+index 3f6e7d5..52bc068 100644
+--- a/core/src/workshop.c
++++ b/core/src/workshop.c
+@@ -359,17 +359,26 @@ static void workshop_update(void)
+ }
+ 
+ /* ---- draw --------------------------------------------------------------------- */
++/* (S2-9) The picture is composed over several ticks (weld_view_image_sliced: the one shown before stays up
++ * meanwhile), and the test-fire frame ahead of time (weld_view_prefetch), never over the picture on show: the two
++ * cache slots hold the idle and the fire frame. The second fire frame (2: recoil coming back, smoke) would need a
++ * third picture: the fire frame is held through it instead, where frame 2's gun sits (frame 2 is the fire frame
++ * moved 1 px left and 3 up), without its smoke puff (pixel-changing, 4 ticks of 96). */
+ static void preview(int x, int y, const DoomoWeapon *w, int silhouette)
+ {
+-    int frame = 0, t = ws_preview_t % 96, bob = ui_wave(ws_t, 60, 1);
++    int frame = 0, t = ws_preview_t % 96, bob = ui_wave(ws_t, 60, 1), ready = 0;
+     int mx, my, gx, gy;
+-    if (t >= 70 && t < 74) frame = 1;
+-    else if (t >= 74 && t < 78) frame = 2;
++    const DoomoImage *img = weld_view_image_sliced(w, 0, WELD_SLICE_BUDGET, &ready);
++    if (ready && !silhouette && weld_view_prefetch(w, 1, WELD_SLICE_BUDGET)) {
++        if (t >= 70 && t < 74) frame = 1;
++        else if (t >= 74 && t < 78) frame = 2;
++    }
+     weld_view_points(w, &mx, &my, &gx, &gy);
+     /* soft shadow + spotlight disc */
+     ui_fill_ellipse(x + 48, y + 60, 34, 5, PAL_RAMP(RAMP_WOOD, 2));
+-    if (silhouette) plat_image(x, y + bob, weld_view_image(w, 0), 1, IMG_SILHOUETTE, PAL_RAMP(RAMP_STONE, 1));
+-    else plat_image(x, y + bob + (frame == 1 ? 3 : 0), weld_view_image(w, frame), 1, 0, 0);
++    if (silhouette) plat_image(x, y + bob, img, 1, IMG_SILHOUETTE, PAL_RAMP(RAMP_STONE, 1));
++    else if (frame) plat_image(x - (frame == 2), y + bob + (frame == 1 ? 3 : -3), weld_view_image_sliced(w, 1, 0, NULL), 1, 0, 0);
++    else plat_image(x, y + bob, img, 1, 0, 0);
+     if (!silhouette && frame == 1) {
+         ui_star(x + mx, y + my + bob, 7, w->style == WSTYLE_CUTE ? PAL_PAINT(PAINT_BUBBLEGUM, 1) : PAL_RAMP(RAMP_LAVA, 5));
+         ui_star(x + mx, y + my + bob, 3, PAL_WHITE);
+@@ -519,7 +528,8 @@ static void draw_armory_tab(int sw, int sh)
+         int ph = big ? 152 : 126;
+         weld_stats(w, &st);
+         ui_window(px, ly - 4, pw, ph, WIN_CUTE);
+-        plat_image(px + (pw - WELD_VIEW_W) / 2, ly - 3 + ui_wave(ws_t, 60, 1), weld_view_image(w, 0), 1, 0, 0);
++        plat_image(px + (pw - WELD_VIEW_W) / 2, ly - 3 + ui_wave(ws_t, 60, 1),
++                   weld_view_image_sliced(w, 0, WELD_SLICE_BUDGET, NULL), 1, 0, 0);   /* S2-9: over a few ticks */
+         doomo_snprintf(buf, sizeof(buf), "%s %s", doomo_wclass_names[st.wclass],
+                        st.ammo_type == 0xFF ? "" : doomo_ammo_names[st.ammo_type]);
+         ui_text_center(px + pw / 2, ly + 62, buf, PAL_UI_PINK_D);
