@@ -1,0 +1,195 @@
+# SP4 measurement tour (pet, life menus, studio LYRICS); sync on: tick-exact, vhash-seq for parity
+wait 40
+expect-log doomo: init
+sync on 61
+seed 1
+scene NEW_ISLAND
+wait 10
+press A
+wait 20
+press A
+wait 2
+press A
+wait 10
+expect-scene ISLAND
+wait 60
+
+# ---- pet: egg, main screen ----
+seed 1
+push PET
+wait 30
+press A
+wait 20
+press START
+wait 100
+fps start
+wait 130
+fps pet main
+shot pet_main
+vhash-seq 30 pet main
+# cursor moving
+press RIGHT
+wait 4
+press RIGHT
+wait 4
+press RIGHT
+wait 4
+press RIGHT
+wait 4
+press RIGHT
+wait 10
+fps start
+wait 60
+fps pet cursor
+# health pages
+press A
+wait 20
+fps start
+wait 90
+fps pet health
+shot pet_health
+vhash-seq 30 pet health
+press A
+wait 6
+press A
+wait 6
+press A
+wait 6
+press A
+wait 20
+vhash-seq 20 pet health holy
+press B
+wait 10
+# boredex
+press SELECT
+wait 40
+fps start
+wait 90
+fps pet dex
+shot pet_dex
+vhash-seq 20 pet dex
+press B
+wait 20
+press START
+wait 60
+expect-scene ISLAND
+
+# ---- pet boss ----
+seed 1
+push PET 1
+wait 60
+fps start
+wait 130
+fps pet boss
+shot pet_boss
+press LEFT
+wait 3
+press LEFT
+wait 3
+vhash-seq 40 pet boss
+wait 600
+press START
+wait 60
+
+# ---- roster, resident ----
+scene ISLAND
+wait 30
+press R
+wait 150
+fps start
+wait 130
+fps life roster
+shot roster
+vhash-seq 30 roster
+press DOWN
+wait 3
+fps start
+press DOWN
+wait 8
+press DOWN
+wait 8
+press DOWN
+wait 8
+press DOWN
+wait 8
+press UP
+wait 8
+fps roster cursor
+vhash-seq 20 roster moved
+press A
+wait 150
+fps start
+wait 130
+fps life resident
+shot resident
+vhash-seq 30 resident
+press DOWN
+wait 8
+press DOWN
+wait 8
+vhash-seq 20 resident moved
+press B
+wait 60
+press B
+wait 60
+
+# ---- apartments ----
+scene ISLAND
+wait 30
+press LEFT
+wait 10
+press A
+wait 30
+press A
+wait 150
+fps start
+wait 130
+fps life apartments
+shot apartments
+vhash-seq 30 apartments
+press RIGHT
+wait 8
+press RIGHT
+wait 8
+press DOWN
+wait 8
+vhash-seq 20 apartments moved
+press B
+wait 60
+
+# ---- studio LYRICS ----
+seed 1
+scene TITLE
+wait 20
+push STUDIO -107
+wait 100
+expect-scene STUDIO
+down SELECT
+press R
+release
+wait 20
+down SELECT
+press R
+release
+wait 20
+down SELECT
+press R
+release
+wait 20
+press DOWN
+wait 10
+fps start
+wait 130
+fps lyrics
+shot lyrics
+vhash-seq 30 lyrics
+press DOWN
+wait 6
+press DOWN
+wait 6
+press DOWN
+wait 6
+vhash-seq 20 lyrics moved
+fps start
+wait 90
+fps lyrics after

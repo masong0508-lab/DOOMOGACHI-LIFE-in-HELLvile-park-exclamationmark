@@ -243,6 +243,10 @@ they share ONE slot:
               .ovl_room 3,648 B  (H8) section .iwram_room: the dream
                                  house's lamp-pool rows and LUT copies,
                                  loaded by plat_room() (H9: 3,248 B)
+              .ovl_ui     388 B  (SP4) section .iwram_ui: the bitmap
+                                 scenes' loops (the pet LCD's dot expand
+                                 and egg rows, src/dots.c), loaded by
+                                 plat_dots() / plat_hshapes()
 0x030051e4  .iwram_bss         3,868 B  (r3d's .bss stays resident)
 0x03006100  main stack         7,168 B  (>= 6,144 B with the largest group in)
 ```
@@ -850,6 +854,48 @@ runner scripts at both resolutions.
 
 What is left is outside SP1: combat is the r3d floor and column loops (~30% of the frame; G-C1 / G-C2), the creator
 is rects and chibi renders (X1), and the news screen now holds 30 with ~2 ms to spare.
+
+### Speed package SP4: pet LCD, life menus, LYRICS (2026-11-08)
+
+Speed audit G-P1 + G-L1 + G-S1, all exact (the same pixels): native per-frame framebuffer hashes (`runner
+--frame-hash FILE`, new) of every runner script and journey at 240x160 and 320x240 match the tree before (226 runs,
+200,435 frames after the rebase onto the clarity work), and the SP4 tour's 13 `vhash-seq` windows matched on the ROM
+before the rebase.
+
+* **G-P1, pet (`core/src/pet_scene.c`):** the 64 x 44 LCD is drawn into a dot buffer (one value a dot, 2,816 B in
+  `pet_gfx.c`'s scene scratch) and goes out once a frame through `plat_dots` (`plat_ext.h`): the GBA expands it in
+  one ARM loop (`src/dots.c`, s = 2: a pair of dots is one word, stored on both pixel rows); native and PS1 draw runs
+  of rects with the dot-gap rule (`pet_dots_rects`, test `pet_lcd_rects_match_per_dot`). The sprite and its shadow
+  are composed once into a dot overlay; the shell's three eggs (480 rows) go to `plat_hshapes` (one ARM loop into
+  the same `vid_rect` fills in the same order); the backdrop leaves out the biggest rect inside the rim egg; the
+  bezels skip the rect the LCD covers; the last four rendered pet images are kept (a render was a 5 ms hitch); under
+  the full-size Boredex the LCD (and the bezels where they fit under it) are not drawn.
+* **G-L1, life menus:** apartments draw the sky only beside the tower; roster and resident leave the backdrop out
+  under their big window (`ui_backdrop_hole`, inset 4 px from its r = 4 corners).
+* **G-S1, LYRICS (`core/src/studio_words.c`):** each line's three colour strings are built a syllable at a time
+  (checked against the old function on 400,000 random lines).
+
+The ARM loops are the IWRAM overlay's new UI group (`.ovl_ui`, 388 B, section `.iwram_ui`, `IWRAM_UI_CODE`):
+the pet uses none of the other groups. EWRAM unchanged (the buffers are scene scratch).
+
+| scene (SP4 tour, `harness/scripts/sp4_tour.txt`) | drawn fps | work avg / max ms | before SP4 (fps, avg ms) |
+|-------|----------:|------------------:|---------:|
+| pet main | **30.0** | 28.3 / 32.0 | 12.8, 54.6 |
+| pet cursor moving | 29.5 | 28.7 / 48.6 | 12.7, 56.2 |
+| pet health | 29.7 | 30.1 / 41.9 | 12.0, 56.8 |
+| pet Boredex | **30.0** | 22.2 / 24.5 | 9.1, 82.9 |
+| pet-care boss | 28.6 | 28.7 / 48.3 | 13.3, 53.0 |
+| life roster | 29.8 | 30.8 / 44.4 | 24.2, 36.2 |
+| roster cursor moving | 19.8 | 41.4 / 92.2 | 17.4, 45.4 |
+| life resident | 29.3 | 31.1 / 39.8 | 24.1, 36.5 |
+| life apartments | **30.0** | 30.6 / 33.7 | 24.3, 35.2 |
+| studio LYRICS | **30.0** | 32.4 / 33.8 | 25.2, 34.6 |
+
+"After" is the rebased tree (with the clarity and SP1 / SP2 work under it); "before" is the SP4 base `7729ada`, so
+the roster and resident gains are partly SP2's. Speed tour (`make -C gba test-speed`): pet 28.5 drawn fps (its
+window includes the scene's entry). Left: the roster's cursor moves (19.8: the list rows and chibis redraw; G-L1's
+retained window body is not done), the resident just under 30 (29.3), the pet's cursor and boss frames with a
+48 ms worst frame (a new pet image render).
 
 ### Life tour (M0, `make -C gba test-life`)
 
