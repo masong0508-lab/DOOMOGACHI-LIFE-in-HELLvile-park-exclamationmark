@@ -463,16 +463,29 @@ static uint32_t gov_seen;                 /* gba_frames + 1 when the last govern
 static uint16_t gov_area[128];
 static uint8_t  gov_bkt[128];             /* bucket of each sprite, 0xFF: not governed              */
 
-static void gov_pick(const DoomoOverworldView *v, int n, uint32_t drop[4])
+/* V15 (SP5, G-V15): the red map's budget survives a gap. A gap (a scene over the map, the pause, a held dialogue
+ * box, a map entry) used to restart the governor free: the next frames drew every sprite and took ~28 governed
+ * frames (-1/8 each) to come back down, about a second of 35-40 ms frames after every dialogue, pause or entry.
+ * On the red map the budget always settles at GOV_MIN (measured: by the 20th governed frame after an entry, and
+ * it stays there), so a gap there resumes from the budget it left with, and the first entry starts at GOV_MIN.
+ * The other maps (V14: governed only under sustained overload) still start free. Pixel change: fewer far
+ * sprites in the first second after an entry or a gap (SPEED DEFAULTS 2026-11-08). 8 bytes. */
+static uint32_t gov_red_budget = GOV_MIN, gov_red_kept;
+static int gov_red;                                                 /* static, not stack: the IWRAM main stack has little margin */
+
+static void gov_pick_inner(const DoomoOverworldView *v, int n, uint32_t drop[4])
 {
     uint32_t barea[GOV_NB], total = 0, cum = 0, w = gba_work_last, budget, nearest_d = 0xFFFFFFFFu;
     int i, k, nearest = -1, cx = owf.ox + owf.ow / 2, cy = owf.oy + owf.oh / 2;
-    static int red;                                                 /* static, not stack: the IWRAM main stack has little margin */
     static uint32_t hi, lo;
+    const int red = gov_red;
     drop[0] = drop[1] = drop[2] = drop[3] = 0;
-    if (!(gov_seen && gba_frames + 1 - gov_seen <= 2)) { gov_budget = GOV_FREE; gov_kept = 0; gov_over = 0; }   /* a gap: start free */
+    if (!(gov_seen && gba_frames + 1 - gov_seen <= 2)) {            /* a gap */
+        gov_over = 0;
+        if (red) { gov_budget = gov_red_budget; gov_kept = gov_red_kept; }   /* V15: resume */
+        else { gov_budget = GOV_FREE; gov_kept = 0; }               /* start free */
+    }
     gov_seen = gba_frames + 1;
-    red = owf.tint_level && v->tint == TINT_RED;
     hi = red ? GOV_HI : GOV_HI_N;
     lo = hi - 2u * 16780u;
     if (w > hi) { if (gov_over < 255) gov_over++; } else gov_over = 0;
@@ -521,6 +534,13 @@ static void gov_pick(const DoomoOverworldView *v, int n, uint32_t drop[4])
         if (gov_bkt[i] != 0xFF && i != nearest && barea[gov_bkt[i]] == 0xFFFFFFFFu) drop[i >> 5] |= 1u << (i & 31);
     gov_budget = budget;
     gov_kept = cum;
+}
+
+static void gov_pick(const DoomoOverworldView *v, int n, uint32_t drop[4])
+{
+    gov_red = owf.tint_level && v->tint == TINT_RED;
+    gov_pick_inner(v, n, drop);
+    if (gov_red) { gov_red_budget = gov_budget; gov_red_kept = gov_kept; }
 }
 
 int16_t ow_order[128];          /* billboards by feet y (ow_tiles.c too) */
