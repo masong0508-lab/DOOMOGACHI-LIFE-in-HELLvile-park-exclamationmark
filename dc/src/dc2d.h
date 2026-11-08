@@ -25,6 +25,8 @@
  *          palette colour: silhouettes, glyphs, the 50% checker
  *   DARK   PAL8 texture through bank 1 times black at alpha: the soft
  *          drop shadow of IMG_SHADOW (frame *= 1 - alpha under it)
+ *   VIEW3D a marker, not a rect: a 3D view's projected polygons (a segment
+ *          of a dc3d.h batch) are sent here, in the same list (DC7)
  */
 #ifndef DC_DC2D_H
 #define DC_DC2D_H
@@ -49,7 +51,17 @@
 #define DC2D_VBUF_SIZE   (1024 * 1024)
 #define DC2D_VBUF_BUDGET (DC2D_VBUF_SIZE - 64 * 1024)
 
-enum { DC2D_SOLID, DC2D_MUL, DC2D_ALPHA, DC2D_IMAGE, DC2D_TINT, DC2D_DARK, DC2D_MODES };
+/* The z of every 2D prim (DC7). The 2D compares depth ALWAYS and never
+ * writes it, so z only matters to the 3D views in the same list (dc3d.h):
+ * it is just above the background plane (KOS zclip, 0.0001) and below
+ * every 3D polygon (z >= DC3D_ZK / far depth), because Flycast writes the
+ * 2D sprites' depth despite their depth write being off; then a backdrop
+ * drawn before a view still never hides it. */
+#define DC2D_Z 0.001f
+
+enum { DC2D_SOLID, DC2D_MUL, DC2D_ALPHA, DC2D_IMAGE, DC2D_TINT, DC2D_DARK,
+       DC2D_VIEW3D,          /* DC7: a 3D view's polygons go here (dc3d.h) */
+       DC2D_MODES };
 
 #define DC2D_NOTEX   0xFFFFu
 #define DC2D_PF_LERP 1u          /* palette colours from the lerp bank (plat_pal_lerp) */
@@ -100,6 +112,9 @@ const DcFrame *dc2d_last(void);  /* the frame last submitted (host tests)      *
  * the only texture), end shows it; the tick's own list is left as it was. */
 void dc2d_side_begin(void);
 void dc2d_side_end(void);
+/* DC7: the marker of a 3D view (dc3d_seg_end): segment `seg` of batch
+ * `slot` over the frame rect x0..y1 (pixels of the 640x480 frame) */
+void dc2d_view3d(int slot, int seg, float x0, float y0, float x1, float y1);
 
 /* The 2D calls. On the console they ARE the platform.h functions; the
  * host test build (-DDC2D_HOST) gives them dc2d_ names so a tee can call

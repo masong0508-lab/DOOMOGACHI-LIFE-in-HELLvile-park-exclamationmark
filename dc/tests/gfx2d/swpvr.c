@@ -12,6 +12,11 @@
  *     sprite UVs go through the 16-bit truncation; the blend of each mode
  *     as pvr2d.c sets it; the frame is kept in 8-bit RGB and stored as
  *     RGB565 without dithering, like the console's frame buffer.
+ * DC7: a DC2D_VIEW3D marker is a segment of a 3D batch (dc3d.h): its
+ * triangle strips are rasterised in submission order with a depth buffer
+ * (cleared to the background plane, compare GEQUAL, written by the opaque
+ * mode), perspective-correct texture coordinates and colours, texel x
+ * colour + offset colour, and each mode's blend, as pvr3d.c sets them.
  * What it does not model: the PVR's exact rasterisation rules on non-
  * integer edges, its multiply rounding and the TA's bin limits. Those are
  * what the Flycast harness checks (docs/DREAMCAST.md, section 4).
@@ -21,6 +26,7 @@
 #include <string.h>
 #include <math.h>
 #include "dc2d.h"
+#include "dc3d.h"
 #include "swpvr.h"
 #include "doomo/palette.h"
 
@@ -104,6 +110,127 @@ static uint32_t texel(const DcTex *t, int bank, float u, float v)
            ((uint32_t)x5to8((c >> 5) & 31) << 8) | (uint32_t)x5to8(c & 31);
 }
 
+/* ---- DC7: the 3D batches -------------------------------------------------------------- */
+static float zbuf[DC2D_W * DC2D_H];
+static int blob;                        /* the polygon samples the shadows' blob */
+uint32_t swpvr_tris3d;
+
+void dc3d_be_draw(const DcFrame *f, const DcPrim *marker) { (void)f; (void)marker; }
+uint32_t dc3d_be_us(void) { return 0; }
+
+static int chan(uint32_t c, int k) { return (int)((c >> (24 - 8 * k)) & 255u); }   /* k: 0 a, 1 r, 2 g, 3 b */
+
+static void tri3d(const DcVert *const *v, const float *X, const float *Y, int mode, const DcTex *t,
+                  int bank, uint32_t mul, uint8_t *rgb)
+{
+    float area = (X[1] - X[0]) * (Y[2] - Y[0]) - (X[2] - X[0]) * (Y[1] - Y[0]);
+    float minx = X[0], maxx = X[0], miny = Y[0], maxy = Y[0];
+    int x0, x1, y0, y1, x, y, k;
+    if (area == 0.0f) return;
+    for (k = 1; k < 3; k++) {
+        if (X[k] < minx) minx = X[k];
+        if (X[k] > maxx) maxx = X[k];
+        if (Y[k] < miny) miny = Y[k];
+        if (Y[k] > maxy) maxy = Y[k];
+    }
+    x0 = (int)floorf(minx); x1 = (int)ceilf(maxx);
+    y0 = (int)floorf(miny); y1 = (int)ceilf(maxy);
+    if (x0 < 0) x0 = 0;
+    if (y0 < 0) y0 = 0;
+    if (x1 > DC2D_W) x1 = DC2D_W;
+    if (y1 > DC2D_H) y1 = DC2D_H;
+    swpvr_tris3d++;
+    for (y = y0; y < y1; y++)
+        for (x = x0; x < x1; x++) {
+            float px = (float)x + 0.5f, py = (float)y + 0.5f, l[3], z, iz, u = 0, vv = 0, c[4], o[4];
+            uint8_t *d;
+            int r, g, b, a;
+            l[0] = ((X[1] - px) * (Y[2] - py) - (X[2] - px) * (Y[1] - py)) / area;
+            l[1] = ((X[2] - px) * (Y[0] - py) - (X[0] - px) * (Y[2] - py)) / area;
+            l[2] = 1.0f - l[0] - l[1];
+            if (l[0] < 0.0f || l[1] < 0.0f || l[2] < 0.0f) continue;
+            z = l[0] * v[0]->z + l[1] * v[1]->z + l[2] * v[2]->z;
+            if (z < zbuf[y * DC2D_W + x]) continue;                 /* GEQUAL */
+            iz = 1.0f / z;
+            for (k = 0; k < 4; k++) c[k] = o[k] = 0.0f;
+            for (k = 0; k < 3; k++) {
+                float wz = l[k] * v[k]->z * iz;                        /* perspective weight */
+                int j;
+                u += wz * v[k]->u;
+                vv += wz * v[k]->v;
+                for (j = 0; j < 4; j++) {
+                    c[j] += wz * (float)chan(v[k]->argb, j);
+                    o[j] += wz * (float)chan(v[k]->oargb, j);
+                }
+            }
+            if (mul != 0xFFFFFFFFu)
+                for (k = 0; k < 4; k++) {
+                    c[k] = c[k] * (float)chan(mul, k) / 255.0f;
+                    o[k] = o[k] * (float)chan(mul, k) / 255.0f;
+                }
+            if (blob) {                 /* black, the blob's alpha (nearest) */
+                int bx = (int)(u * DC3D_BLOB_SIZE), by = (int)(vv * DC3D_BLOB_SIZE);
+                bx = bx < 0 ? 0 : bx >= DC3D_BLOB_SIZE ? DC3D_BLOB_SIZE - 1 : bx;
+                by = by < 0 ? 0 : by >= DC3D_BLOB_SIZE ? DC3D_BLOB_SIZE - 1 : by;
+                a = mul8((dc3d_blob()[by * DC3D_BLOB_SIZE + bx] >> 12) * 17, (int)(c[0] + 0.5f));
+                r = g = b = 0;
+            } else if (t) {
+                uint32_t tc = texel(t, bank, u, vv);
+                int ta = (int)(tc >> 24);
+                if (mode == DC3D_OPAQUE) ta = 255;
+                a = mode == DC3D_OPAQUE ? 255 : mul8(ta, (int)(c[0] + 0.5f));
+                r = mul8((int)((tc >> 16) & 255), (int)(c[1] + 0.5f)) + (int)(o[1] + 0.5f);
+                g = mul8((int)((tc >> 8) & 255), (int)(c[2] + 0.5f)) + (int)(o[2] + 0.5f);
+                b = mul8((int)(tc & 255), (int)(c[3] + 0.5f)) + (int)(o[3] + 0.5f);
+            } else {
+                a = (int)(c[0] + 0.5f);
+                r = (int)(c[1] + 0.5f); g = (int)(c[2] + 0.5f); b = (int)(c[3] + 0.5f);
+            }
+            r = r > 255 ? 255 : r; g = g > 255 ? 255 : g; b = b > 255 ? 255 : b;
+            d = &rgb[(y * DC2D_W + x) * 3];
+            if (mode == DC3D_OPAQUE) {
+                d[0] = (uint8_t)r; d[1] = (uint8_t)g; d[2] = (uint8_t)b;
+                zbuf[y * DC2D_W + x] = z;
+            } else if (a > 0) {
+                d[0] = (uint8_t)((r * a + d[0] * (255 - a) + 127) / 255);
+                d[1] = (uint8_t)((g * a + d[1] * (255 - a) + 127) / 255);
+                d[2] = (uint8_t)((b * a + d[2] * (255 - a) + 127) / 255);
+            }
+        }
+}
+
+static void draw_view3d(const DcFrame *f, const DcPrim *m, uint8_t *rgb)
+{
+    const DcBatch *bt = dc3d_batch(dc3d_marker_slot(m));
+    const DcSeg *s;
+    float sx, sy, ox, oy;
+    int bank = (m->flags & DC2D_PF_LERP) ? f->lerp_bank : 0;
+    uint32_t i;
+    if (dc3d_marker_seg(m) >= bt->nseg) return;
+    s = &bt->seg[dc3d_marker_seg(m)];
+    sx = (m->x1 - m->x0) / (s->vx1 - s->vx0);
+    sy = (m->y1 - m->y0) / (s->vy1 - s->vy0);
+    ox = m->x0 - s->vx0 * sx;
+    oy = m->y0 - s->vy0 * sy;
+    for (i = s->poly0; i < s->poly0 + s->npoly; i++) {
+        const DcPoly *p = &bt->p[i];
+        const DcTex *t = p->tex != DC2D_NOTEX && p->tex != DC3D_TEX_BLOB ? dc2d_tex(p->tex) : NULL;
+        int k;
+        blob = p->tex == DC3D_TEX_BLOB;
+        for (k = 0; k + 2 < p->nv; k++) {
+            const DcVert *v[3];
+            float X[3], Y[3];
+            int j;
+            for (j = 0; j < 3; j++) {
+                v[j] = &bt->v[p->first + (uint32_t)k + (uint32_t)j];
+                X[j] = v[j]->x * sx + ox;
+                Y[j] = v[j]->y * sy + oy;
+            }
+            tri3d(v, X, Y, p->mode, t, bank, m->argb, rgb);
+        }
+    }
+}
+
 static void draw_prim(const DcFrame *f, const DcPrim *p, uint8_t *rgb)
 {
     int x0, y0, x1, y1, x, y, sprite = dc2d_is_sprite(p), bank = dc2d_bank(f, p);
@@ -111,6 +238,7 @@ static void draw_prim(const DcFrame *f, const DcPrim *p, uint8_t *rgb)
     int ca = (int)(col >> 24), cr = (int)((col >> 16) & 255), cg = (int)((col >> 8) & 255), cb = (int)(col & 255);
     const DcTex *t = p->tex != DC2D_NOTEX ? dc2d_tex(p->tex) : NULL;
     float u0 = p->u0, v0 = p->v0, u1 = p->u1, v1 = p->v1;
+    if (p->mode == DC2D_VIEW3D) { draw_view3d(f, p, rgb); return; }
     if (sprite) { u0 = dc2d_uv16(u0); v0 = dc2d_uv16(v0); u1 = dc2d_uv16(u1); v1 = dc2d_uv16(v1); }
     /* pixels whose centre is inside [x0, x1) x [y0, y1) */
     x0 = (int)ceilf(p->x0 - 0.5f); x1 = (int)ceilf(p->x1 - 0.5f);
@@ -159,6 +287,7 @@ void swpvr_render(const DcFrame *f, uint8_t *rgb)
     int i;
     palette_rgb(f->bg, &r, &g, &b);
     for (i = 0; i < DC2D_W * DC2D_H; i++) { rgb[i * 3] = r; rgb[i * 3 + 1] = g; rgb[i * 3 + 2] = b; }
+    for (i = 0; i < DC2D_W * DC2D_H; i++) zbuf[i] = 0.0001f;   /* the background plane (KOS zclip) */
     for (i = 0; i < f->nheld; i++) draw_prim(f, &f->held[i], rgb);
     for (i = 0; i < f->n; i++) draw_prim(f, &f->prims[i], rgb);
     /* the RGB565 frame buffer, no dithering (pvr2d.c turns it off) */
@@ -170,3 +299,4 @@ void swpvr_render(const DcFrame *f, uint8_t *rgb)
 }
 
 uint32_t swpvr_tex_used(void) { return tex_used; }
+const float *swpvr_zbuf(void) { return zbuf; }

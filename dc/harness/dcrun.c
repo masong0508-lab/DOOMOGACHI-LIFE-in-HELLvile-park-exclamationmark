@@ -1284,6 +1284,55 @@ static int run_script(FILE *f)
             else ports[cur_port].rt = val;
         } else if (!strcmp(c, "key") && n >= 2) {
             if (!type_text(v[1])) return 0;
+        /* --- DC7: the native runner's story commands (side_sample_a.txt);
+         * text comparisons use the first 19 characters (mailbox name) --- */
+        } else if (!strcmp(c, "side") && n >= 2) {
+            uint32_t mm = (uint32_t)strtoul(v[1], NULL, 0), st = n > 2 ? (uint32_t)strtoul(v[2], NULL, 0) : 3;
+            if (!mb_cmd(DC_HC_SIDE, mm | st << 16, NULL, &r)) return 0;
+            if (!r) fail("line %d: side needs a mission 100..217, got %s", lineno, v[1]);
+        } else if (!strcmp(c, "talk") && n >= 2) {
+            if (!mb_cmd(DC_HC_TALK, (uint32_t)strtol(v[1], NULL, 0), NULL, &r)) return 0;
+        } else if (!strcmp(c, "cell") && n >= 3) {
+            uint32_t cx = (uint32_t)strtoul(v[1], NULL, 0), cy = (uint32_t)strtoul(v[2], NULL, 0);
+            if (!mb_cmd(DC_HC_CELL, (cx & 0xFFFFu) | cy << 16, NULL, &r)) return 0;
+        } else if (!strcmp(c, "expect-text") && n >= 2) {
+            if (!mb_cmd(DC_HC_SAYS, 0, v[1], &r)) return 0;
+            if (r != 2) fail("line %d: expect-text: the dialogue does not say \"%.19s\"", lineno, v[1]);
+        } else if (!strcmp(c, "skip-talk") || !strcmp(c, "skip-to") || !strcmp(c, "skip-to-scene")) {
+            /* press A (1 tick, then 10 released, as the native runner) until
+             * the conversation is over / the dialogue says TEXT / NAME is on top */
+            int talk = c[5] == 't' && c[6] == 'a', scene = !talk && c[7] == '-';
+            const char *want = talk ? "" : (n >= 2 ? v[1] : "");
+            unsigned long max = strtoul(talk ? (n >= 2 ? v[1] : "120") : (n >= 3 ? v[2] : "80"), NULL, 0), k;
+            uint16_t am;
+            char *aname[1] = { (char *)"A" };
+            if (scene && !strncmp(want, "SCENE_", 6)) want += 6;
+            if (!parse_buttons(aname, 1, &am, &lt, &rt)) return 0;
+            for (k = 0; ; k++) {
+                int done;
+                if (talk) {
+                    if (!mb_cmd(DC_HC_STORY_STATE, 0, NULL, &r)) return 0;
+                    done = r == 3;          /* not talking, the overworld on top */
+                } else {
+                    if (!mb_cmd(scene ? DC_HC_TOP_IS : DC_HC_SAYS, 0, want, &r)) return 0;
+                    done = r == 2;
+                }
+                if (done) break;
+                if (k == max) {
+                    fail("line %d: %s %s: %s", lineno, c, want,
+                         talk ? "the conversation never ended" : scene ? "never reached the scene" : "the dialogue never said it");
+                    break;
+                }
+                buttons_down(am, 0, 0);
+                if (!run_ticks(1)) return 0;
+                buttons_up(am, 0, 0);
+                if (!run_ticks(10)) return 0;
+            }
+        } else if (!strcmp(c, "clock") && n >= 2) {
+            long hh = strtol(v[1], NULL, 10), mi = n > 2 ? strtol(v[2], NULL, 10) : 0;
+            if (!mb_cmd(DC_HC_CLOCK, (uint32_t)(((hh * 60 + mi) % 1440 + 1440) % 1440), NULL, &r)) return 0;
+        } else if (!strcmp(c, "no-stubs")) {
+            if (glog && strstr(glog, "STUB:")) fail("line %d: no-stubs: a core stub ran (STUB: in the log)", lineno);
         } else if (!strcmp(c, "type") && n >= 2) {
             /* the native runner's type: each char to the open text entry,
              * then one tick */
@@ -1514,6 +1563,11 @@ int main(int argc, char **argv)
                mb->snd_overruns, mb->snd_dropped, mb->snd_gap_frames, mb->snd_frames,
                mb->snd_clips, mb->snd_started, mb->snd_hash600, mb->snd_us_n ? mb->snd_us_sum / mb->snd_us_n : 0u,
                mb->snd_us_max, mb->snd_us_n, mb->snd_cb_gap_max, mb->snd_starved);
+    if (mb && mb_up && mb->g3d_n)       /* DC7: the 3D views */
+        printf("dcrun: 3D views %u built, build mean %u us max %u us; polygons last %u max %u, "
+               "TA bytes max %u, polygons left out %u\n",
+               mb->g3d_n, mb->g3d_us_sum / mb->g3d_n, mb->g3d_us_max, mb->g3d_polys,
+               mb->g3d_polys_max, mb->g3d_bytes_max, mb->g3d_dropped);
     if (mb && mb_up && wk_ticks)        /* DC3: per tick against the 30 fps budget */
         printf("dcrun: work over %u us on %lu of %lu ticks; worst %u us at tick %u (%s)\n",
                TICK_BUDGET_US, wk_over, wk_ticks, wk_worst, wk_worst_tick, wk_worst_scene);

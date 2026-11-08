@@ -73,9 +73,16 @@ typedef struct DcMailbox {
     uint32_t snd_clips, snd_hash, snd_hash600;
     uint32_t snd_us_sum, snd_us_n, snd_us_max;
     uint32_t snd_started, snd_cb_gap_max, snd_starved;
+    /* DC7: the 3D views (dc/src/dc3d.h, dc3d_stats) after each drawn frame:
+     * the time the views took to build in microseconds (last, worst, sum
+     * and count of the views built), polygons of the last view and the
+     * most in one view, the most TA bytes one view cost, and the polygons
+     * left out over the batch or its budget (total) */
+    uint32_t g3d_us, g3d_us_max, g3d_us_sum, g3d_n;
+    uint32_t g3d_polys, g3d_polys_max, g3d_bytes_max, g3d_dropped;
 } DcMailbox;
 
-_Static_assert(sizeof(DcMailbox) == 204 + DC_MB_LOG_SIZE, "DcMailbox layout");
+_Static_assert(sizeof(DcMailbox) == 236 + DC_MB_LOG_SIZE, "DcMailbox layout");
 
 /* Command ids: the same numbers as the GBA's (gba_plat.h GBA_HC_* and
  * gba/src/hcmd.h), so hcmd.c can be shared in spirit. */
@@ -87,8 +94,17 @@ enum {
     /* 14 and 15 are the GBA's house commands (HC_ROOM_PARITY / _TEST) */
     DC_HC_TEXT_FEED = 16,                /* ui_text_entry_feed(arg): the native
                                           * runner's `type`, one char per call */
-    DC_HC_NATIVE_SEED = 17               /* the native runner's `--seed arg` start
+    DC_HC_NATIVE_SEED = 17,              /* the native runner's `--seed arg` start
                                           * (dcrun --native-seed, at tick 0) */
+    /* DC7: the native runner's story commands (side_sample_a.txt) */
+    DC_HC_SIDE = 18,                     /* side M S: arg = M | S << 16 */
+    DC_HC_TALK = 19,                     /* talk ID: story_interact_npc(arg) */
+    DC_HC_CELL = 20,                     /* cell X Y: arg = X | Y << 16 */
+    DC_HC_STORY_STATE = 21,              /* result 1 + 1 (talking) + 2 (STORY on top) */
+    DC_HC_SAYS = 22,                     /* result 2 when the dialogue's top line
+                                          * contains name (its first 19 chars), else 1 */
+    DC_HC_TOP_IS = 23,                   /* result 2 when the top scene is name, else 1 */
+    DC_HC_CLOCK = 24                     /* clock HH MM: the town clock = arg minutes */
 };
 
 #endif

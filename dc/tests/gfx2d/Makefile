@@ -4,7 +4,8 @@
 #   make -C dc/tests/gfx2d            build/host/dc2d_test and dc2d_runner
 #   make -C dc/tests/gfx2d test       the unit tests + the runner comparison
 #                                     of the UI scripts (run_compare.sh)
-#   make -C dc/tests/gfx2d unit       the unit tests only
+#   make -C dc/tests/gfx2d unit       the unit tests only (2D: test_dc2d.c;
+#                                     DC7's 3D batches and overworld: test_dc3d.c)
 #   make -C dc/tests/gfx2d SAN=1 BUILD=../../build/host-san test   under ASan/UBSan
 #
 # dc2d_runner is the native runner (core/native) whose 2D calls also drive
@@ -43,7 +44,7 @@ NATIVE_OWN  := $(CORE)/native/plat_native.c $(CORE)/native/runner_main.c \
 NATIVE_KEEP := $(filter-out $(NATIVE_OWN),$(NATIVE_ALL))
 NATIVE_OBJS := $(patsubst $(CORE)/%.c,$(CORE_BUILD)/obj/%.o,$(NATIVE_KEEP))
 
-DC2D_SRCS := $(addprefix $(ROOT)/dc/src/,gfx2d.c texcache.c font.c pal.c)
+DC2D_SRCS := $(addprefix $(ROOT)/dc/src/,gfx2d.c texcache.c font.c pal.c dc3d.c overworld.c)
 DC2D_OBJS := $(patsubst $(ROOT)/dc/src/%.c,$(BUILD)/dc2d/%.o,$(DC2D_SRCS))
 TEE_OBJS  := $(BUILD)/tee.o $(BUILD)/swpvr.o $(BUILD)/png.o $(BUILD)/plat_native_ref.o $(BUILD)/weak_fx_ref.o \
              $(BUILD)/raycast_ref.o $(BUILD)/overworld_ref.o $(BUILD)/weak_fx_sw.o
@@ -61,7 +62,7 @@ REN_FX  := -Dplat_image_xform=ref_image_xform -Dplat_post_offset=ref_post_offset
            -Dplat_checker=ref_checker
 
 .PHONY: all test unit compare corelib clean
-all: $(BUILD)/dc2d_test $(BUILD)/dc2d_runner
+all: $(BUILD)/dc2d_test $(BUILD)/dc3d_test $(BUILD)/dc2d_runner
 
 corelib:
 	@$(MAKE) --no-print-directory -C $(CORE) lib $(NATIVE_OBJS) BUILD=$(CORE_BUILD) SAN=$(SAN)
@@ -81,6 +82,10 @@ $(BUILD)/swpvr.o: $(HERE)/swpvr.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/test_dc2d.o: $(HERE)/test_dc2d.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/test_dc3d.o: $(HERE)/test_dc3d.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -123,8 +128,13 @@ $(BUILD)/dc2d_runner: corelib $(DC2D_OBJS) $(TEE_OBJS) $(BUILD)/runner_main_tee.
 $(BUILD)/dc2d_test: corelib $(DC2D_OBJS) $(TEE_OBJS) $(BUILD)/test_dc2d.o
 	$(CC) $(LDFLAGS) -o $@ $(CORE_OBJS) $(NATIVE_OBJS) $(DC2D_OBJS) $(TEE_OBJS) $(BUILD)/test_dc2d.o -lm
 
-unit: $(BUILD)/dc2d_test
+# DC7: the 3D batches and the overworld (test_dc3d.c)
+$(BUILD)/dc3d_test: corelib $(DC2D_OBJS) $(TEE_OBJS) $(BUILD)/test_dc3d.o
+	$(CC) $(LDFLAGS) -o $@ $(CORE_OBJS) $(NATIVE_OBJS) $(DC2D_OBJS) $(TEE_OBJS) $(BUILD)/test_dc3d.o -lm
+
+unit: $(BUILD)/dc2d_test $(BUILD)/dc3d_test
 	$(BUILD)/dc2d_test
+	$(BUILD)/dc3d_test
 
 compare: $(BUILD)/dc2d_runner
 	sh $(HERE)/run_compare.sh $(BUILD)/dc2d_runner $(CORE)/tests/scripts $(BUILD)/shots

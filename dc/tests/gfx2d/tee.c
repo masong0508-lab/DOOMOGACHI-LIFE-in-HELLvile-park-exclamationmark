@@ -28,6 +28,7 @@
 #include <string.h>
 #include "native.h"
 #include "dc2d.h"
+#include "dc3d.h"
 #include "swpvr.h"
 #include "png.h"
 #include "doomo/plat_ext.h"
@@ -185,10 +186,23 @@ void plat_view3d(const DoomoView3D *v)
     if (v) view_standin(v->vx, v->vy, v->vw, v->vh);
 }
 
+/* DC7_OW=dc: the Dreamcast overworld itself (dc/src/overworld.c, the
+ * software PVR rasterises its polygons) instead of the stand-in. The
+ * native frame is still the top-down reference, so those shots are not
+ * expected to match it: NAME_dc.png is the picture to look at. */
+static int dc7_ow(void)
+{
+    static int v = -1;
+    if (v < 0) { const char *e = getenv("DC7_OW"); v = e && strcmp(e, "dc") == 0; }
+    return v;
+}
+
 void plat_overworld(const DoomoOverworldView *v)
 {
     ref_overworld(v);
-    if (v) view_standin(v->vx, v->vy, v->vw, v->vh);
+    if (!v) return;
+    if (dc7_ow()) dc2d_overworld(v);
+    else view_standin(v->vx, v->vy, v->vw, v->vh);
 }
 
 int plat_hold_frame(int on)
@@ -246,7 +260,7 @@ static void summary(void)
 static void compare(const char *path)
 {
     const char *png = getenv("DC3_PNG");
-    int x, y, exact = 0, close = 0, n = DC2D_LW * DC2D_LH;
+    int x, y, exact = 0, close = 0, n = DC2D_LW * DC2D_LH, v3d;
     char out[700], line[900];
     double pe, pc;
     size_t len = strlen(path);
@@ -282,9 +296,16 @@ static void compare(const char *path)
         snprintf(out, sizeof(out), "%.*s_diff.png", (int)len, path);
         png_write_rgb(out, diff_rgb, DC2D_LW, DC2D_LH);
     }
-    snprintf(line, sizeof(line), "shot %s exact %.3f%% close %.3f%% prims %u vbytes %u sprites %u quads %u headers %u tex %d\n",
+    {
+        const DcFrame *lf = dc2d_last();     /* DC7: 3D views in the frame (markers) */
+        int k;
+        v3d = 0;
+        for (k = 0; k < lf->nheld + lf->n; k++)
+            if ((k < lf->nheld ? lf->held[k] : lf->prims[k - lf->nheld]).mode == DC2D_VIEW3D) v3d++;
+    }
+    snprintf(line, sizeof(line), "shot %s exact %.3f%% close %.3f%% prims %u vbytes %u sprites %u quads %u headers %u tex %d v3d %d\n",
              path, pe, pc, dc2d_stats.prims, dc2d_stats.vbytes, dc2d_stats.sprites,
-             dc2d_stats.quads, dc2d_stats.headers, dc2d_tex_live());
+             dc2d_stats.quads, dc2d_stats.headers, dc2d_tex_live(), v3d);
     report(line);
 }
 

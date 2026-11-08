@@ -53,9 +53,16 @@
  *   plat_hold_frame  U4: the last submitted list is kept and submitted under
  *                    every new frame until released, so the core repaints
  *                    only its own rects (a held frame keeps no palette lerp).
+ *   3D views (DC7)   a marker prim (DC2D_VIEW3D, dc3d.h) where the core
+ *                    called the view: the backend sends the view's polygons
+ *                    there. Full-screen exact shades copy it with a colour
+ *                    multiplier, palette lerps flag it, post effects move it,
+ *                    plat_hold_frame keeps its polygons (the held batch); a
+ *                    partial shade over it is the MUL fallback.
  */
 #include <string.h>
 #include "dc2d.h"
+#include "dc3d.h"
 #include "doomo/doomo.h"
 #include "doomo/camfx.h"
 #include "doomo/font.h"
@@ -95,6 +102,10 @@ static int cbox_n;
 typedef struct Group { float x0, y0, x1, y1; int start; } Group;
 static Group groups[NGROUPS];
 static int ngroups, group_wr;
+/* DC7: the 3D markers in the frame's list and in the held backdrop: how
+ * many, and a box around them (conservative: post effects widen it) */
+static int n3d_cur, n3d_held;
+static Box m3d_cur, m3d_held;
 
 /* ---- the list ---------------------------------------------------------------------- */
 static DcPrim *emit(int mode)
@@ -149,6 +160,7 @@ static void cbox_update(void)
 /* everything drawn so far is hidden: start the list again */
 static void covered(void)
 {
+    n3d_cur = 0;
     ncur = 0;
     seal = 0;
     cbox_n = 0;
@@ -212,7 +224,9 @@ void dc2d_init(void)
     dc2d_tex_init();
     dc2d_pal_init();
     dc2d_font_init();
+    dc3d_init();
     ncur = nprev = nheld = 0;
+    n3d_cur = n3d_held = 0;
     held = drawing = 0;
 }
 
@@ -223,6 +237,8 @@ void dc2d_begin(int drawn)
     frame_no++;
     dc2d_tex_frame(frame_no);
     dc2d_font_frame();
+    dc3d_frame(frame_no);
+    n3d_cur = 0;
     ncur = 0;
     seal = 0;
     cbox_n = 0;
@@ -233,8 +249,11 @@ void dc2d_begin(int drawn)
     bg_cur = held ? bg_held : bg_prev;
     drawing = 1;
     if (held)                           /* the backdrop's textures stay resident */
-        for (i = 0; i < nheld; i++)
+        for (i = 0; i < nheld; i++) {
             if (held_buf[i].tex != DC2D_NOTEX) dc2d_tex_mark(held_buf[i].tex, frame_no);
+            else if (held_buf[i].mode == DC2D_VIEW3D)
+                dc3d_seg_mark(dc3d_marker_slot(&held_buf[i]), dc3d_marker_seg(&held_buf[i]), frame_no);
+        }
 }
 
 static uint32_t prim_bytes(const DcFrame *f, const DcPrim *last, const DcPrim *p)
@@ -268,7 +287,9 @@ void dc2d_end(void)
     for (k = 0; k < 2; k++) {
         const DcPrim *list = k ? f->prims : f->held;
         for (i = 0; i < n[k]; i++) {
-            uint32_t b = prim_bytes(f, lastp, &list[i]);
+            uint32_t b = list[i].mode == DC2D_VIEW3D
+                       ? dc3d_seg_bytes(dc3d_marker_slot(&list[i]), dc3d_marker_seg(&list[i]))
+                       : prim_bytes(f, lastp, &list[i]);
             if (bytes + b > DC2D_VBUF_BUDGET) {
                 dc2d_stats.dropped += (uint32_t)(n[k] - i) + (k ? 0u : (uint32_t)n[1]);
                 if (k) f->n = i;
@@ -277,6 +298,13 @@ void dc2d_end(void)
                 break;
             }
             bytes += b;
+            if (list[i].mode == DC2D_VIEW3D) {
+                /* the backend sends the view's own headers: the next 2D
+                 * prim needs its header again */
+                dc3d_seg_mark(dc3d_marker_slot(&list[i]), dc3d_marker_seg(&list[i]), frame_no);
+                lastp = NULL;
+                continue;
+            }
             if (dc2d_is_sprite(&list[i])) dc2d_stats.sprites++; else dc2d_stats.quads++;
             if (list[i].tex != DC2D_NOTEX) dc2d_tex_mark(list[i].tex, frame_no);
             lastp = &list[i];
@@ -348,16 +376,36 @@ int DC2D_FN(hold_frame)(int on)
     if (on == 4) return held;
     if (!on) { held = 0; return 0; }
     /* the picture just shown: its own backdrop (if it had one) + its prims */
-    if (!(held && prev_on_held)) nheld = 0;
-    held = 0;
-    for (k = 0; k < nprev && nheld < DC2D_MAX_PRIMS; k++) {
-        held_buf[nheld] = prev[k];
-        held_buf[nheld].flags &= (uint8_t)~DC2D_PF_LERP;
-        nheld++;
+    {
+        int reset3d;
+        if (!(held && prev_on_held)) nheld = 0;
+        /* a new backdrop starts the held batch again, unless the picture
+         * itself shows held polygons (a full-screen shade copied them) */
+        reset3d = nheld == 0;
+        for (k = 0; k < nprev && reset3d; k++)
+            if (prev[k].mode == DC2D_VIEW3D && dc3d_marker_slot(&prev[k]) == DC3D_HELD) reset3d = 0;
+        held = 0;
+        for (k = 0; k < nprev && nheld < DC2D_MAX_PRIMS; k++) {
+            DcPrim q = prev[k];
+            if (q.mode == DC2D_VIEW3D && dc3d_marker_slot(&q) != DC3D_HELD) {
+                /* its polygons move to the held batch */
+                int s = dc3d_hold_seg(dc3d_marker_slot(&q), dc3d_marker_seg(&q), reset3d);
+                reset3d = 0;
+                if (s < 0) continue;
+                q.pad[0] = DC3D_HELD;
+                q.color = (uint8_t)s;
+            }
+            held_buf[nheld] = q;
+            held_buf[nheld].flags &= (uint8_t)~DC2D_PF_LERP;
+            nheld++;
+        }
     }
+    n3d_held = 0;
+    box_empty(&m3d_held);
     for (k = 0; k < nheld; k++) {
         if ((k & ((1 << CHUNK_SHIFT) - 1)) == 0) box_empty(&hbox[k >> CHUNK_SHIFT]);
         box_add(&hbox[k >> CHUNK_SHIFT], &held_buf[k]);
+        if (held_buf[k].mode == DC2D_VIEW3D) { n3d_held++; box_add(&m3d_held, &held_buf[k]); }
     }
     bg_held = bg_prev;
     held = 1;
@@ -380,11 +428,28 @@ void DC2D_FN(rect)(int x, int y, int w, int h, uint8_t color)
 
 /* the part of prim p inside [X0, X1) x [Y0, Y1), its colour sent through
  * colormap level `level` (exact shade); 0 if the list is full */
+/* per-channel product of two ARGB colours (255 = 1) */
+static uint32_t argb_mul(uint32_t a, uint32_t b)
+{
+    uint32_t r = 0;
+    int k;
+    for (k = 0; k < 32; k += 8)
+        r |= ((((a >> k) & 255u) * ((b >> k) & 255u) + 127u) / 255u) << k;
+    return r;
+}
+
 static int reemit(const DcPrim *p, float X0, float Y0, float X1, float Y1, int level)
 {
     DcPrim *q;
     if (p->x1 <= X0 || p->x0 >= X1 || p->y1 <= Y0 || p->y0 >= Y1) return 1;
     dc2d_stats.shade_prims++;
+    if (p->mode == DC2D_VIEW3D) {       /* only full-screen shades get here: the */
+        q = emit(DC2D_VIEW3D);          /* view again, its colours times the factor */
+        if (!q) return 0;
+        *q = *p;
+        q->argb = argb_mul(p->argb, dc2d_shade_argb(level) | 0xFF000000u);
+        return 1;
+    }
     q = emit(p->mode);
     if (!q) return 0;
     *q = *p;
@@ -450,6 +515,44 @@ static int reemit_list(const DcPrim *list, int n, const Box *box, int is_held, f
     return 1;
 }
 
+static int box_hits(const Box *b, float X0, float Y0, float X1, float Y1)
+{
+    return !(b->x1 <= X0 || b->x0 >= X1 || b->y1 <= Y0 || b->y0 >= Y1);
+}
+
+static void m3d_rescan(void)
+{
+    int i;
+    n3d_cur = 0;
+    box_empty(&m3d_cur);
+    for (i = 0; i < ncur; i++)
+        if (cur[i].mode == DC2D_VIEW3D) { n3d_cur++; box_add(&m3d_cur, &cur[i]); }
+}
+
+/* a post effect moved or scaled the prims: the 3D box covers everything */
+static void m3d_widen(void)
+{
+    if (n3d_cur) { m3d_cur.x0 = m3d_cur.y0 = -1e9f; m3d_cur.x1 = m3d_cur.y1 = 1e9f; }
+}
+
+void dc2d_view3d(int slot, int seg, float x0, float y0, float x1, float y1)
+{
+    DcPrim *p;
+    if (!drawing) return;
+    p = emit(DC2D_VIEW3D);
+    if (!p) return;
+    p->x0 = x0; p->y0 = y0; p->x1 = x1; p->y1 = y1;
+    p->u0 = x0; p->v0 = y0; p->u1 = x1; p->v1 = y1;
+    p->argb = 0xFFFFFFFFu;
+    p->color = (uint8_t)seg;
+    p->pad[0] = (uint8_t)slot;
+    p->pad[1] = p->pad[2] = 0;
+    seal = ncur;
+    if (!n3d_cur) box_empty(&m3d_cur);
+    n3d_cur++;
+    box_add(&m3d_cur, p);
+}
+
 void DC2D_FN(shade_rect)(int x, int y, int w, int h, int level)
 {
     DcPrim *p;
@@ -463,6 +566,11 @@ void DC2D_FN(shade_rect)(int x, int y, int w, int h, int level)
     full = x == 0 && y == 0 && w == DC2D_LW && h == DC2D_LH;
     use_held = held && !cur_cleared;
     n0 = ncur;
+    /* DC7: the exact path would paint the remapped background over a 3D
+     * view under a part of the screen: multiply the frame instead */
+    if (!full && ((n3d_cur && box_hits(&m3d_cur, X0, Y0, X1, Y1)) ||
+                  (use_held && n3d_held && box_hits(&m3d_held, X0, Y0, X1, Y1))))
+        goto fallback;
     cbox_update();
     /* the background under the rect, remapped, then every prim again */
     if (!full) {
@@ -483,6 +591,7 @@ void DC2D_FN(shade_rect)(int x, int y, int w, int h, int level)
             ngroups = group_wr = 0;
             cur_cleared = 1;
             bg_cur = doomo_colormap[level][bg_cur];
+            m3d_rescan();               /* the copy holds the held backdrop's views too */
         } else {
             Group *g = &groups[group_wr];
             g->x0 = X0; g->y0 = Y0; g->x1 = X1; g->y1 = Y1;
@@ -494,6 +603,7 @@ void DC2D_FN(shade_rect)(int x, int y, int w, int h, int level)
         return;
     }
     /* too many prims: the fitted multiply instead */
+fallback:
     ncur = n0;
     if (cbox_n > ncur) cbox_n = ncur;
     dc2d_stats.shade_fallbacks++;
@@ -719,6 +829,7 @@ void DC2D_FN(post_offset)(int dx, int dy)
         cur[i].x0 += fx; cur[i].x1 += fx;
         cur[i].y0 += fy; cur[i].y1 += fy;
     }
+    m3d_widen();
     seal = ncur;
     cbox_n = 0;
     ngroups = group_wr = 0;
@@ -736,6 +847,7 @@ void DC2D_FN(post_scale)(int sx_q8, int sy_q8, int cx, int cy)
         cur[i].y0 = c_y + (cur[i].y0 - c_y) * sy;
         cur[i].y1 = c_y + (cur[i].y1 - c_y) * sy;
     }
+    m3d_widen();
     seal = ncur;
     cbox_n = 0;
     ngroups = group_wr = 0;
@@ -785,7 +897,8 @@ void DC2D_FN(pal_lerp)(int pal_id, int level16)
     dc2d_pal_lerp_build(lerp_bank, pal_id, level16);
     lerp_on = 1;
     for (i = 0; i < ncur; i++)
-        if (cur[i].mode == DC2D_SOLID || cur[i].mode == DC2D_TINT || cur[i].mode == DC2D_IMAGE)
+        if (cur[i].mode == DC2D_SOLID || cur[i].mode == DC2D_TINT || cur[i].mode == DC2D_IMAGE ||
+            cur[i].mode == DC2D_VIEW3D)
             cur[i].flags |= DC2D_PF_LERP;
     seal = ncur;
 }

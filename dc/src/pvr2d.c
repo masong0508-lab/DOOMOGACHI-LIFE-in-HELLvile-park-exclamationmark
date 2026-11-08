@@ -18,13 +18,18 @@
  *            A header is sent only when mode, texture, bank or (sprite)
  *            colour change.
  * Every polygon has depth compare ALWAYS and no depth write, so the order
- * alone decides what is on top.
+ * alone decides what is on top. Their z is DC2D_Z, just above the
+ * background plane: should a 2D prim's depth land in the depth buffer
+ * anyway (Flycast writes it), it stays below every 3D polygon (DC7). A DC2D_VIEW3D marker (DC7) is where a 3D
+ * view's polygons go: pvr3d.c sends them in the same list, with real depth
+ * among themselves (dc3d.h).
  */
 #include <kos.h>
 #include <dc/pvr.h>
 #include <dc/video.h>
 #include "dc_plat.h"
 #include "dc2d.h"
+#include "dc3d.h"
 #include "doomo/palette.h"
 
 /* ---- init ------------------------------------------------------------------------------ */
@@ -166,18 +171,18 @@ static void send_prim(const DcFrame *f, const DcPrim *p, const DcPrim *last)
     if (sprite && p->tex == DC2D_NOTEX) {
         pvr_sprite_col_t *s = &vbuf.c;
         s->flags = PVR_CMD_VERTEX_EOL;
-        s->ax = p->x0; s->ay = p->y1; s->az = 1.0f;
-        s->bx = p->x0; s->by = p->y0; s->bz = 1.0f;
-        s->cx = p->x1; s->cy = p->y0; s->cz = 1.0f;
+        s->ax = p->x0; s->ay = p->y1; s->az = DC2D_Z;
+        s->bx = p->x0; s->by = p->y0; s->bz = DC2D_Z;
+        s->cx = p->x1; s->cy = p->y0; s->cz = DC2D_Z;
         s->dx = p->x1; s->dy = p->y1;
         s->d1 = s->d2 = s->d3 = s->d4 = 0;
         pvr_prim(s, sizeof(*s));
     } else if (sprite) {
         pvr_sprite_txr_t *s = &vbuf.t;
         s->flags = PVR_CMD_VERTEX_EOL;
-        s->ax = p->x0; s->ay = p->y1; s->az = 1.0f;
-        s->bx = p->x0; s->by = p->y0; s->bz = 1.0f;
-        s->cx = p->x1; s->cy = p->y0; s->cz = 1.0f;
+        s->ax = p->x0; s->ay = p->y1; s->az = DC2D_Z;
+        s->bx = p->x0; s->by = p->y0; s->bz = DC2D_Z;
+        s->cx = p->x1; s->cy = p->y0; s->cz = DC2D_Z;
         s->dx = p->x1; s->dy = p->y1;
         s->dummy = 0;
         s->auv = PVR_PACK_16BIT_UV(p->u0, p->v1);
@@ -191,7 +196,7 @@ static void send_prim(const DcFrame *f, const DcPrim *p, const DcPrim *last)
             v[i].flags = i == 3 ? PVR_CMD_VERTEX_EOL : PVR_CMD_VERTEX;
             v[i].x = (i & 1) ? p->x1 : p->x0;
             v[i].y = (i & 2) ? p->y1 : p->y0;
-            v[i].z = 1.0f;
+            v[i].z = DC2D_Z;
             v[i].u = (i & 1) ? p->u1 : p->u0;
             v[i].v = (i & 2) ? p->v1 : p->v0;
             v[i].argb = argb;
@@ -212,8 +217,17 @@ void dc2d_be_submit(const DcFrame *f)
     pvr_scene_begin();
     pvr_list_begin(PVR_LIST_TR_POLY);
     base_key = 0xFFFFFFFFu;
-    for (i = 0; i < f->nheld; i++) { send_prim(f, &f->held[i], last); last = &f->held[i]; }
-    for (i = 0; i < f->n; i++) { send_prim(f, &f->prims[i], last); last = &f->prims[i]; }
+    for (i = 0; i < f->nheld + f->n; i++) {
+        const DcPrim *p = i < f->nheld ? &f->held[i] : &f->prims[i - f->nheld];
+        if (p->mode == DC2D_VIEW3D) {   /* DC7: a 3D view's polygons, here (pvr3d.c) */
+            dc3d_be_draw(f, p);
+            base_key = 0xFFFFFFFFu;     /* the next prim sends its header again */
+            last = NULL;
+            continue;
+        }
+        send_prim(f, p, last);
+        last = p;
+    }
     pvr_list_finish();
     pvr_scene_finish();
 }

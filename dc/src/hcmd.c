@@ -26,12 +26,25 @@
  *                          doomo_rng and the start town match the native
  *                          runner's. The console boots on real entropy
  *                          before the harness can reach it.
+ *   DC_HC_SIDE, TALK, CELL (DC7) the native runner's `side M S`, `talk
+ *                          ID`, `cell X Y` (side missions, S4)
+ *   DC_HC_STORY_STATE      talking? the overworld on top? (`skip-talk`)
+ *   DC_HC_SAYS / TOP_IS    does the dialogue's top line contain name / is
+ *                          the top scene called name (`expect-text`,
+ *                          `skip-to`, `skip-to-scene`)
+ *   DC_HC_CLOCK m          the town clock (`clock HH MM`)
  * and the tick hold of the harness's "sync on" (dc_harness_hold).
  */
+#include <string.h>
 #include "dc_plat.h"
 #include "doomo/doomo.h"
 #include "doomo/story_vm.h"
 #include "doomo/plat_ext.h"
+#include "../../core/src/ui_internal.h"     /* UiDialogDebug (expect-text) */
+
+/* core/src/story_int.h (the native runner declares them the same way) */
+void story_verbs_cell(int cx, int cy);
+int  story_talking(void);
 
 uint8_t  dc_entropy_pinned;
 uint32_t dc_entropy_pin;
@@ -225,6 +238,41 @@ void dc_harness_cmd(void)
         town_new(TOWN_FREEPLAY, rng_next(&doomo_rng), TOWN_POP_EMPTY);
         r = 1;
         dc_logf("hcmd: native seed %x", (unsigned)arg);
+        break;
+    /* --- DC7: the side-mission commands (side_sample_a.txt) --- */
+    case DC_HC_SIDE:
+        if ((arg & 0xFFFFu) >= 100 && (arg & 0xFFFFu) < 100u + STORY_SIDE2_ROWS) {
+            story_side2_set_state((int)(arg & 0xFFFFu) - 100, (int)(arg >> 16));
+            r = 1;
+        }
+        break;
+    case DC_HC_TALK:
+        story_interact_npc((int)arg);
+        r = 1;
+        break;
+    case DC_HC_CELL:
+        story_verbs_cell((int)(arg & 0xFFFFu), (int)(arg >> 16));
+        r = 1;
+        break;
+    case DC_HC_STORY_STATE:
+        r = 1u + (story_talking() ? 1u : 0u) + (scene_top() == &SCENE_STORY ? 2u : 0u);
+        break;
+    case DC_HC_SAYS: {
+        char nm[sizeof(dc_mailbox.name)];
+        UiDialogDebug d;
+        memset(&d, 0, sizeof(d));
+        ui_dialog_debug(&d);
+        mailbox_name(nm);
+        r = d.text && strstr(d.text, nm) ? 2u : 1u;
+        break; }
+    case DC_HC_TOP_IS: {
+        char nm[sizeof(dc_mailbox.name)];
+        mailbox_name(nm);
+        r = scene_top() && strcmp(scene_top()->name, nm) == 0 ? 2u : 1u;
+        break; }
+    case DC_HC_CLOCK:                   /* the native runner's `clock HH MM` */
+        doomo_town.minute = (uint16_t)(arg % 1440u);
+        r = 1;
         break;
     default:
         break;

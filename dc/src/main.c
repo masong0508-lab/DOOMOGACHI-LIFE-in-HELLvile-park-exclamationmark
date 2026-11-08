@@ -26,6 +26,7 @@
 #include <arch/timer.h>
 #include "dc_plat.h"
 #include "dc2d.h"
+#include "dc3d.h"
 #include "doomo/game.h"
 #include "doomo/input.h"
 #include "doomo/palette.h"
@@ -115,6 +116,14 @@ void plat_end_frame(void)
         dc_mailbox.gfx_uploads = dc2d_stats.uploads;
         dc_mailbox.gfx_evictions = dc2d_stats.evictions;
         dc_mailbox.gfx_tex_live = (uint32_t)dc2d_tex_live();
+        dc_mailbox.g3d_us = dc3d_stats.us_last;          /* DC7: the 3D views */
+        dc_mailbox.g3d_us_max = dc3d_stats.us_max;
+        dc_mailbox.g3d_us_sum = dc3d_stats.us_sum;
+        dc_mailbox.g3d_n = dc3d_stats.us_n;
+        dc_mailbox.g3d_polys = dc3d_stats.polys;
+        dc_mailbox.g3d_polys_max = dc3d_stats.polys_max;
+        dc_mailbox.g3d_bytes_max = dc3d_stats.bytes_max;
+        dc_mailbox.g3d_dropped = dc3d_stats.dropped;
     }
     /* wait for the next tick's slot; the vblank wait keeps the CPU idle */
     next = logic_base_us + (uint64_t)dc_frames * DC_TICK_US;
