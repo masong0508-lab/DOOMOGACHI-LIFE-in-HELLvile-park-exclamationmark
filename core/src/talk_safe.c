@@ -291,15 +291,17 @@ int talk_safe_gate(TalkUtter *u, const TalkAudience *aud, int avatar, int target
         refuse(u, TA_REFUSE_SEXUAL, TA_NONE, 1);
         return TG_REFUSE;
     }
+    /* K-11: distress, the comedy stops (before hate: someone in trouble
+     * gets the kind answer even when the line is ugly; the bubble is hidden
+     * if it was hateful too) */
+    if ((u->safety & TS_DISTRESS) || u->act[0] == TA_DISTRESS || u->act[1] == TA_DISTRESS) {
+        refuse(u, TA_DISTRESS, TA_NONE, (u->safety & TS_HATE) != 0);
+        return TG_DISTRESS;
+    }
     /* K-8: hate, unseen */
     if ((u->safety & TS_HATE) || u->act[0] == TA_REFUSE_HATE || u->act[1] == TA_REFUSE_HATE) {
         refuse(u, TA_REFUSE_HATE, TA_NONE, 1);
         return TG_HATE;
-    }
-    /* K-11: distress, the comedy stops */
-    if ((u->safety & TS_DISTRESS) || u->act[0] == TA_DISTRESS || u->act[1] == TA_DISTRESS) {
-        refuse(u, TA_DISTRESS, TA_NONE, 0);
-        return TG_DISTRESS;
     }
     if (u->act[0] == TA_REFUSE_MINOR || u->act[0] == TA_DEFLECT_ROMANCE) {
         /* a safety act from elsewhere: keep it, never let it through as romance */

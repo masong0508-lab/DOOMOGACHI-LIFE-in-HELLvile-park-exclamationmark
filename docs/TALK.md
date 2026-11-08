@@ -361,7 +361,9 @@ A typo that lands on another real word is not the same word any more and is
 not counted (548 skipped mutants). The remaining misses are stop words of a
 phrase broken up ("i want t o disappear"). `DOOMO_TALK_MISS=1` lists them.
 
-**Distress** (K-11, the owner default): the gate says `DISTRESS`; T5b
+**Distress** (K-11, the owner default) comes before hate in the gate (a
+person in trouble gets the kind answer even when the line is ugly; the
+bubble is then hidden). The gate says `DISTRESS`; T5b
 writes the gentle out-of-character line that encourages talking to someone
 the player trusts, then Talk continues calmly. The words: self-harm,
 "want to die", "nobody would miss me", "my dad hits me", "I'm not safe" and

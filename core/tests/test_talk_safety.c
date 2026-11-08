@@ -661,6 +661,18 @@ TEST(talk_safe_output_lint_units)
     CHECK_EQ(talk_safe_lint("This line is far, far too long to fit in a bubble of three short lines, so the lint"
                             " says no to it.", &adults, &sw), TL_LENGTH);
     CHECK(talk_safe_lint_hits() > h0);
+    {
+        /* distress wins over hate: the kind answer, the ugly words unseen */
+        TalkUtter u;
+        TalkAudience a;
+        memset(&u, 0, sizeof u);
+        memset(&a, 0, sizeof a);
+        strcpy(u.shown, "x");
+        u.safety = TS_DISTRESS | TS_HATE;
+        CHECK_EQ(talk_safe_gate(&u, &a, DOOMO_PLAYER_ID, ID_NANA, 0), TG_DISTRESS);
+        CHECK_EQ(u.act[0], TA_DISTRESS);
+        CHECK(u.shown[0] == 0);
+    }
     CHECK_EQ(talk_safe_bubble_lines("Pie? Sweet pea, it's mostly butter and secrets.", 26), 2);
     CHECK_EQ(talk_safe_bubble_lines("", 26), 1);
     talk_db_close();

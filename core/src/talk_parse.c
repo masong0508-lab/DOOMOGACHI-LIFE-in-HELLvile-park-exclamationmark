@@ -307,8 +307,10 @@ int talk_parse(const char *text, const TalkParseCtx *ctx, TalkUtter *out, TalkPa
         out->safety |= TS_MASKED;
     }
     if (out->safety & (TS_HATE | TS_DISTRESS) || talk_safe_explicit(info->tok, n)) {
+        /* explicit first (K-7 reads it), then distress before hate: someone in
+         * trouble gets the kind answer even if the line is ugly */
         out->act[0] = (uint8_t)(talk_safe_explicit(info->tok, n) ? TA_REFUSE_SEXUAL :
-                                (out->safety & TS_HATE) ? TA_REFUSE_HATE : TA_DISTRESS);
+                                (out->safety & TS_DISTRESS) ? TA_DISTRESS : TA_REFUSE_HATE);
         out->act[1] = TA_NONE;
         out->tone = TONE_PLAIN;
         out->conf = 15;
