@@ -445,6 +445,37 @@ TEST(story_places_and_activities_menu)
     story_debug_autowin(0);
 }
 
+/* (CL5 land) no place menu offers an "Activities" row that can only ever say "Coming soon!": Town Hall lost its
+ * Music Studio and Expand the House rows to the Concert Hall and the homes (clarity C9), so its menu is Talk to
+ * the mayor and Leave in every chapter, and the places that do have Story Mode activities keep the row */
+TEST(story_town_hall_has_no_dead_activities_row)
+{
+    const DoomoActivity *acts[16];
+    int ch, ch0;
+    new_story(79);
+    story_debug_jump(1, BEAT_C1_FRIENDS);
+    settle();
+    CHECK(!story_place_has_activities(PLACE_TOWN_HALL));
+    CHECK(story_place_has_activities(PLACE_CONCERT_HALL));             /* Music Studio */
+    CHECK(story_place_has_activities(PLACE_HOME));                     /* Expand the House */
+    ch0 = doomo_town.story.chapter;
+    for (ch = 0; ch <= 4; ch++) {
+        doomo_town.story.chapter = (uint8_t)ch;
+        CHECK_EQ(activities_at(ACTLOC_TOWN_HALL, acts, 16), 0);
+    }
+    doomo_town.story.chapter = (uint8_t)ch0;
+    /* the menu: Talk to the mayor, Leave. DOWN + A leaves (it opened "Coming soon!" on the Activities row) */
+    CHECK(town_res(ID_MAYOR) && town_res(ID_MAYOR)->status == RES_ALIVE);
+    story_place_menu(PLACE_TOWN_HALL);
+    CHECK(story_talking());
+    press(BTN_A);                     /* finish typing the question */
+    press(BTN_DOWN);
+    press(BTN_A);                     /* Leave */
+    frames(4, 0);
+    CHECK(!story_talking());
+    story_debug_autowin(0);
+}
+
 /* S2: "Go inside" at PLACE_HOME opens the player's own home (SCENE_HOME) */
 TEST(story_go_inside_opens_the_home)
 {
@@ -592,3 +623,4 @@ TEST(story_nest_encounter_fights_real_demons)
     CHECK(!story_flag(SF_NEST0));
     CHECK_EQ(story_beat(), BEAT_C3_NESTS);
 }
+

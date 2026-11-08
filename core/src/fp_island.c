@@ -363,8 +363,8 @@ static void build_menu(const Loc *L)
         break;
     case LOC_MENU:
         /* (CL5, C9) the rows keep their places (scripts and journeys count them); the map's shortcut keys are
-         * shown beside the rows they open, Name the island moved here from Town Hall (before the title row, which no
-         * script reaches by counting), and the menu has one
+         * shown beside the rows they open, Name the island moved here from Town Hall (above CL4's Help, which keeps
+         * its place three rows up from the bottom: clarity_tips.txt reaches it with UP x3), and the menu has one
          * way out to the title ("Quit to title"); the last row only closes the menu */
         e = add(E_ROSTER, ICON_SMILE, "Citizens", "Browse every citizen on the island. (R on the map)");
         if (e) e->key = "R";
@@ -377,8 +377,8 @@ static void build_menu(const Loc *L)
         if (e) e->key = "SEL";
         add(E_UNLOCKS, ICON_STAR, "Unlocks", "Everything you've earned.");
         add(E_RECORDS, ICON_CHECK, "Town records", "Island statistics.");
-        add(E_HELP, ICON_CHECK, "Help", "The Field Guide: every rule and word, explained.");   /* CL4 */
         add(E_NAME_ISLAND, ICON_STAR, "Name the island", "Give your island a name of its own.");
+        add(E_HELP, ICON_CHECK, "Help", "The Field Guide: every rule and word, explained.");   /* CL4 */
         add(E_TITLE, ICON_ARROW_L, "Quit to title", "Back to the title screen. Save first: START here saves.");
         add(E_CLOSE, ICON_X, "Close", "Back to the map (B does it too).");
         return;

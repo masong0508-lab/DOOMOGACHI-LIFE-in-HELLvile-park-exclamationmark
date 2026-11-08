@@ -23,6 +23,8 @@ int fp_island_menu_enabled(int i);
 const char *fp_island_menu_help(int i);
 const char *fp_island_menu_key(int i);
 int fp_resident_text_overflow(char *why, int cap);
+int fp_resident_help_strip(char *buf, int cap, int *need);
+int fp_resident_select(int a);
 int fp_options_help_overflow(char *why, int cap);
 int lang_pick_text_overflow(char *why, int cap);
 int seccode_text_overflow(char *why, int cap);
@@ -116,6 +118,9 @@ TEST(textfit_town_hall_is_short_and_the_start_menu_has_the_rest)
     CHECK(menu_has("Save / Load") == 4 && menu_has("Options") == 5 && menu_has("Family") == 6);   /* rows unmoved */
     CHECK(menu_has("Name the island"));
     CHECK(menu_has("Quit to title"));
+    /* CL4's Help keeps its place right above the way to the title (clarity_tips.txt: START, UP x3) */
+    CHECK(menu_has("Help") && menu_has("Help") + 1 == menu_has("Quit to title"));
+    CHECK(menu_has("Quit to title") + 1 == fp_island_menu_count());   /* Close is the last row */
     CHECK(!menu_has("Back to title") && !menu_has("Leave"));
     CHECK_STR(fp_island_menu_key(menu_has("Citizens") - 1), "R");
     CHECK_STR(fp_island_menu_key(menu_has("News") - 1), "L");
@@ -203,6 +208,56 @@ TEST(textfit_care_screen_fits_at_240_and_320)
 {
     care_fits(240, 160);
     care_fits(320, 240);
+    set_res(240, 160);
+}
+
+/* (CL5 land) with a problem pill up, the help strip still has its two lines at 240x160 (it had one, so "Help! buys
+ * Board Game (H$70) and gives it." showed as "Help! buys Board Game"), every action's line fits them, and Help!
+ * says what the press will do with the purse there is: give yours, buy it, or what it costs when the purse is
+ * short (the press then buys nothing and the problem stays open) */
+static void care_with_problem(int w, int h)
+{
+    static const int acts[] = { FPA_HELP, FPA_FEED, FPA_GIVE, FPA_CLEAN, FPA_PLAY, FPA_TALK, FPA_COMFORT,
+                                FPA_INTRODUCE, FPA_EXORCISE, FPA_ADVICE, FPA_MANAGE };
+    char why[900], help[96], price[16];
+    int id, i, lines, need, tried = 0;
+    set_res(w, h);
+    island(TOWN_POP_PREMADE);
+    id = first_alive();
+    CHECK(id >= 0);
+    doomo_town.money = 0;
+    doomo_town.items[ITEM_BOARD_GAME] = 0;
+    CHECK(sim_problem_raise(id, PROB_WANTS_ITEM, -1, ITEM_BOARD_GAME) >= 0);
+    scene_push(&SCENE_RESIDENT, id);
+    frames(0, 4);
+    CHECK(scene_top() == &SCENE_RESIDENT);
+    CHECK(sim_problem_for(id) >= 0);
+    CHECK_MSG(fp_resident_text_overflow(why, sizeof(why)) == 0, "%dx%d with a problem: %s", w, h, why);
+    for (i = 0; i < (int)DOOMO_COUNTOF(acts); i++) {
+        if (!fp_resident_select(acts[i])) continue;
+        frames(0, 1);
+        lines = fp_resident_help_strip(help, sizeof(help), &need);
+        CHECK_MSG(lines == 2, "%dx%d: the help strip has %d lines with a problem up", w, h, lines);
+        CHECK_MSG(need <= lines, "%dx%d: \"%s\" needs %d lines, the strip has %d", w, h, help, need, lines);
+        tried++;
+    }
+    CHECK_MSG(tried >= 5, "only %d care actions offered", tried);
+    snprintf(price, sizeof(price), "H$%u", (unsigned)doomo_items[ITEM_BOARD_GAME].price);
+    CHECK(fp_resident_select(FPA_HELP));
+    fp_resident_help_strip(help, sizeof(help), &need);
+    CHECK_MSG(strstr(help, "Board Game") && strstr(help, price) && strstr(help, "you have H$0"), "short purse: %s", help);
+    doomo_town.money = doomo_items[ITEM_BOARD_GAME].price;
+    fp_resident_help_strip(help, sizeof(help), &need);
+    CHECK_MSG(strstr(help, "buys and gives Board Game") && strstr(help, price), "purse has it: %s", help);
+    doomo_town.items[ITEM_BOARD_GAME] = 1;
+    fp_resident_help_strip(help, sizeof(help), &need);
+    CHECK_MSG(strstr(help, "your Board Game") != NULL, "owned: %s", help);
+}
+
+TEST(textfit_care_screen_with_a_problem_fits)
+{
+    care_with_problem(240, 160);
+    care_with_problem(320, 240);
     set_res(240, 160);
 }
 

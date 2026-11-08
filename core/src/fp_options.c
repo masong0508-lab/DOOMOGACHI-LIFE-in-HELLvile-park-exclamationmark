@@ -186,7 +186,8 @@ static const char *help_of(int opt)
     if (opt == OPT_RUMBLE) return "Controller rumble, apart from Screen shake.";
     if (opt == OPT_TIPS) return "A short card the first time you reach a new place: what it is and which buttons do what.";
     if (opt == OPT_MATURE)
-        return "Adult scenes. Off: cutaways. Censored: censor bars. On: implied, then a fade. Going up asks for the grown-ups' code (if set) and your age.";
+        /* (CL5 land) three lines at 240x160 (it took five, and the help pill shows three) */
+        return "Off: cutaways. Censored: bars. On: implied, then a fade. Going up asks your age (and the code, if set).";
     return opt < OPT_COUNT && opt_help[opt] ? opt_help[opt] : "";
 }
 
@@ -591,14 +592,16 @@ void options_open(int page)
 static const char options_scene_name[] = "OPTIONS";
 const DoomoScene SCENE_OPTIONS = { options_scene_name, opt_enter, NULL, opt_update, opt_draw, 0 };
 
-/* (CL5, clarity C13) the text fit of the Options help lines: how many option help texts (every option, every
- * preset) need more lines than the help pill has at the current size; the first is copied to why */
+/* (CL5, clarity C13) the text fit of the Options help lines: how many option help texts (every option, the
+ * machine-wide ones from OPT2_FIRST too, every preset, the tips reset row) need more lines than the help pill has
+ * at the current size; the first is copied to why */
 int fp_options_help_overflow(char *why, int cap)
 {
-    int i, bad = 0, w = fp_sw() - 20 - 4;
+    int i, bad = 0, w = fp_sw() - 20 - 4, n2 = OPT2_END - OPT2_FIRST;
     if (why && cap) why[0] = 0;
-    for (i = 0; i < OPT_COUNT + PRESET_N; i++) {
-        const char *h = i < OPT_COUNT ? help_of(i) : preset_help[i - OPT_COUNT];
+    for (i = 0; i < OPT_COUNT + n2 + PRESET_N + 1; i++) {
+        const char *h = i < OPT_COUNT ? help_of(i) : i < OPT_COUNT + n2 ? help_of(OPT2_FIRST + i - OPT_COUNT)
+                      : i < OPT_COUNT + n2 + PRESET_N ? preset_help[i - OPT_COUNT - n2] : tips_reset_help;
         int n = h ? ui_text_wrap(0, 0, w, h, 0, 0) : 0;
         if (n > OPT_HELP_LINES) {
             int l = why ? (int)strlen(why) : 0;

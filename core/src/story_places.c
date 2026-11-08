@@ -46,6 +46,21 @@ static int actloc_of(int p)
     }
 }
 
+/* (CL5 land) The place menu's "Activities" row: only where the registry files a Story Mode activity at all
+ * (whatever its chapter, unlock or hour: those still answer "Coming soon!"). Town Hall has none since its Music
+ * Studio and Expand the House rows moved to the Concert Hall and the homes (clarity C9), and a row that can only
+ * ever say "Coming soon!" is a dead end. */
+int story_place_has_activities(int p)
+{
+    int loc = actloc_of(p), i, n = activity_count();
+    if (loc < 0) return 0;
+    for (i = 0; i < n; i++) {
+        const DoomoActivity *a = activity_at(i);
+        if (a && a->location == loc && (a->flags & ACTF_STORY) && a->scene) return 1;
+    }
+    return 0;
+}
+
 /* Who runs it (talk option). */
 static int keeper_of(int p)
 {
@@ -272,7 +287,7 @@ static void add_opt(const char *t, int op)
 
 static void open_menu(int p)
 {
-    int k = keeper_of(p), loc = actloc_of(p);
+    int k = keeper_of(p);
     const DoomoResident *r = town_res(k);
     menu_place = p;
     menu_n = 0;
@@ -289,7 +304,7 @@ static void open_menu(int p)
     if (p == PLACE_HOSPITAL) add_opt("Get patched up", OPT_HEAL);
     if (p == PLACE_SHOP) add_opt("Browse every shelf", OPT_SHOPSCREEN);
     if (p == PLACE_GRAVEYARD) add_opt("Visit the graves", OPT_GRAVE);
-    if (loc >= 0) add_opt("Activities", OPT_ACT);
+    if (story_place_has_activities(p)) add_opt("Activities", OPT_ACT);
     add_opt("Leave", OPT_LEAVE);
     doomo_snprintf(menu_q, sizeof(menu_q), "%s", place_names[p]);
     if (menu_n == 1) {

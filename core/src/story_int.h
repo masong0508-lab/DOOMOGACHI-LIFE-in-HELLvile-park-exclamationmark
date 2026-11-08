@@ -360,6 +360,8 @@ void story_befriend(int id, int amount);
 
 /* Open a place's menu: talk, shop, activities, rest... (story_places.c). */
 void story_place_menu(int place);
+/* (CL5 land) the menu has an "Activities" row: some Story Mode activity is filed at the place's location */
+int  story_place_has_activities(int place);
 void story_mark_friends_dirty(void);
 int  story_unlock_quiet(int id);
 /* Pick flowers at a flower bed prop (once per bed per day). */

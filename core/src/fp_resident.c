@@ -910,12 +910,28 @@ static int act_stat(int a)
     }
 }
 
+/* Help!'s help line for a problem of this kind, as do_help() handles it: an item that is yours (have), bought on the
+ * spot when the purse (money) has the shop price, or not yet (the problem stays open); an exorcism; the need the
+ * problem lowers (s, its value v); or a talk. The text-fit hook measures every kind and item through here. */
+static void help_text(int kind, int item, int have, uint32_t money, int s, int v, char *buf, int cap)
+{
+    if (kind == PROB_WANTS_ITEM && item > ITEM_NONE && item < ITEM_COUNT) {
+        const char *n = doomo_items[item].name;
+        unsigned price = (unsigned)doomo_items[item].price;
+        if (have) doomo_snprintf(buf, cap, "Help! gives them your %s.", n);
+        else if (price > 0 && money >= price) doomo_snprintf(buf, cap, "Help! buys and gives %s (H$%u).", n, price);
+        else if (price > 0) doomo_snprintf(buf, cap, "Help! %s costs H$%u, you have H$%u.", n, price, (unsigned)money);
+        else doomo_snprintf(buf, cap, "Help! needs %s first.", n);
+    } else if (kind == PROB_POSSESSED) doomo_snprintf(buf, cap, "Help! starts an exorcism.");
+    else if (s >= 0) doomo_snprintf(buf, cap, "Help! fixes their problem. %s: %d%%.", doomo_stat_names[s], v);
+    else doomo_snprintf(buf, cap, "Help! talks them through their problem.");
+}
+
 /* the help strip: what the selected action does, in the need words of the meters ("Feed fills Food: 62%") */
 static const char *care_help(int a, char *buf, int cap)
 {
     const DoomoResident *r = me();
     int s = act_stat(a), v = (r && s >= 0) ? r->stat[s] : 0, k, low = 0;
-    const char *sn = s >= 0 ? doomo_stat_names[s] : "";
     if (!r) { buf[0] = 0; return buf; }
     for (k = 1; k < STAT_COUNT; k++)
         if (k != STAT_CORRUPTION && r->stat[k] < r->stat[low]) low = k;
@@ -924,7 +940,7 @@ static const char *care_help(int a, char *buf, int cap)
     case FPA_GIVE: doomo_snprintf(buf, cap, "Give a gift (Joy %d%%) or a remedy (Health %d%%).", v,
                                   r->stat[STAT_HEALTH]); break;
     case FPA_CLEAN: doomo_snprintf(buf, cap, "Clean fills Clean: %d%% now.", v); break;
-    case FPA_PLAY: doomo_snprintf(buf, cap, "Play fills Joy (%d%%) and Social, uses Energy (%d%%).", v,
+    case FPA_PLAY: doomo_snprintf(buf, cap, "Play fills Joy (%d%%) and Social. Uses Energy: %d%%.", v,
                                   r->stat[STAT_ENERGY]); break;
     case FPA_TALK: doomo_snprintf(buf, cap, "Talk fills Social (%d%%) and the hearts (bond).", v); break;
     case FPA_COMFORT: doomo_snprintf(buf, cap, "Comfort fills Mind (%d%%), a bit of Joy too.", v); break;
@@ -932,13 +948,10 @@ static const char *care_help(int a, char *buf, int cap)
     case FPA_EXORCISE: doomo_snprintf(buf, cap, "Exorcise drives out the Dark (%d%%).", v); break;
     case FPA_HELP: {
         const DoomoProblem *p = sim_problem(sim_problem_for(R.id));
-        if (p && p->kind == PROB_WANTS_ITEM && p->item > ITEM_NONE && p->item < ITEM_COUNT) {
-            if (doomo_town.items[p->item]) doomo_snprintf(buf, cap, "Help! gives them your %s.", doomo_items[p->item].name);
-            else doomo_snprintf(buf, cap, "Help! buys %s (H$%u) and gives it.", doomo_items[p->item].name,
-                                (unsigned)doomo_items[p->item].price);
-        } else if (p && p->kind == PROB_POSSESSED) doomo_snprintf(buf, cap, "Help! starts an exorcism.");
-        else if (s >= 0) doomo_snprintf(buf, cap, "Help! fixes their problem. %s: %d%%.", sn, v);
-        else doomo_snprintf(buf, cap, "Help! talks them through their problem.");
+        int item = p ? p->item : ITEM_NONE;
+        int have = item > ITEM_NONE && item < ITEM_COUNT &&
+                   (doomo_town.items[item] || opt_get(OPT_CHEAT_INFINITE_CANDY));
+        help_text(p ? p->kind : PROB_NONE, item, have, doomo_town.money, s, v, buf, cap);
         break; }
     case FPA_ADVICE: doomo_snprintf(buf, cap, "Advice: help them decide something."); break;
     case FPA_MANAGE: doomo_snprintf(buf, cap, "Manage: edit look, favourite, their home."); break;
@@ -950,10 +963,13 @@ static const char *care_help(int a, char *buf, int cap)
     return buf;
 }
 
-/* the need meters' geometry (x, width, first row, row pitch) and the help strip's box, shared with the text-fit hook */
-typedef struct { int lw, x, y, mx, mw, my, rh, hx, hy, hw, hlines; } CareGeom;
+/* the need meters' geometry (x, width, first row, row pitch), the help strip's box and the problem pill's top
+ * (py), shared with the text-fit hook. prob: a problem pill is up. */
+typedef struct { int lw, x, y, mx, mw, my, rh, hx, hy, hw, hlines, py; } CareGeom;
 
-static void care_geom(const RLayout *L, CareGeom *g)
+#define CARE_HELP_LINES 2
+
+static void care_geom(const RLayout *L, CareGeom *g, int prob)
 {
     int big = fp_big();
     g->lw = big ? 104 : 88;            /* (CL5) 240x160: 88 (was 80) so "Raise ghost", "Unfavourite" fit */
@@ -962,11 +978,14 @@ static void care_geom(const RLayout *L, CareGeom *g)
     g->mx = L->cx + g->lw + 10;
     g->mw = L->cw - g->lw - 16;
     g->my = L->cy + (big ? 7 : 6);
-    g->rh = big ? 15 : 12;
+    /* (CL5 land) 240x160 with the problem pill up: the meters step 11 px (12 without), so the help strip keeps
+     * both its lines above the pill (it had one, and "Help! buys Board Game (H$70) and gives it." lost its price) */
+    g->rh = big ? 15 : prob ? 11 : 12;
     g->hx = L->cx + 7;
     g->hw = L->cw - 14;
     g->hy = big ? g->y + 11 * 11 + 4 : g->my + STAT_COUNT * g->rh + 1;
-    g->hlines = (!big && sim_problem_for(R.id) >= 0) ? 1 : 2;   /* the problem pill takes the second line at 240 */
+    g->hlines = CARE_HELP_LINES;
+    g->py = L->cy + L->ch - (big || !prob ? 15 : 14);
 }
 
 static void draw_care(const RLayout *L, const DoomoResident *r, int style)
@@ -976,7 +995,7 @@ static void draw_care(const RLayout *L, const DoomoResident *r, int style)
     /* (CL5) the list's labels end at the selection pill's right end, lw - 20 from the list's left */
     int vis = care_vis(), i, lw, x, y, mx, mw, t = fp_t();
     int has_prob = sim_problem_for(R.id) >= 0;
-    care_geom(L, &g);
+    care_geom(L, &g, has_prob);
     lw = g.lw; x = g.x; y = g.y; mx = g.mx; mw = g.mw;
     for (i = 0; i < vis && R.top + i < R.nacts; i++) {
         int a = R.acts[R.top + i], ry = y + i * 11, sel = R.top + i == R.sel;
@@ -1014,7 +1033,7 @@ static void draw_care(const RLayout *L, const DoomoResident *r, int style)
             int ry = g.my + s * rh;
             if (s == hi) {
                 /* (CL5) the need the selected action fills is framed */
-                ui_frame(mx - 2, ry - 2, mw + 3, rh, st->accent);
+                ui_frame(mx - 2, ry - (fp_big() ? 2 : rh - 10), mw + 3, rh, st->accent);   /* 240: bottom row under the bar */
             }
             if (fp_big()) fp_meter(mx, ry, mw, fp_stat_icon(s), doomo_stat_names[s], v,
                                    fp_stat_color(s, v), st->text);
@@ -1033,7 +1052,7 @@ static void draw_care(const RLayout *L, const DoomoResident *r, int style)
             fp_wrap_lines(g.hx, g.hy, g.hw, h, st->accent, g.hlines);
         }
     }
-    if (has_prob) draw_problem(L->cx + 4, L->cy + L->ch - 15, L->cw - 8);
+    if (has_prob) draw_problem(L->cx + 4, g.py, L->cw - 8);
 }
 
 static int about_line(int i, char *buf, int cap, uint8_t *icon)
@@ -1347,29 +1366,66 @@ int fp_resident_id(void) { return R.id; }
 int fp_resident_in_farewell(void) { return R.phase == PH_FAREWELL; }
 
 /* (CL5, clarity C13) text fit of the open citizen's Care tab at the current screen size: every action's label in the
- * list, every need's name with a value of 100 in its meter row, every action's help strip in its lines, and (at
- * 240x160) the longest possible name in the band over the portrait. Returns the count; the first is in why. */
+ * list, every need's name with a value of 100 in its meter row, every action's help strip in its lines (with and
+ * without the problem pill, every need at 100; Help!'s line for every problem kind and every wanted item, yours,
+ * bought or not affordable) above the pill, and (at 240x160) the longest possible name in the band over the
+ * portrait. Returns the count; the first is in why. */
+static int help_too_long(const CareGeom *g, const char *h)
+{
+    return ui_text_wrap(0, 0, g->hw, h, 0, 0) > g->hlines;
+}
+
 int fp_resident_text_overflow(char *why, int cap)
 {
     RLayout L;
     CareGeom g;
     char help[96];
-    int a, s, bad = 0;
+    uint8_t keep[STAT_COUNT];
+    DoomoResident *r = R.id >= 0 && R.id < DOOMO_MAX_RESIDENTS ? &doomo_town.res[R.id] : NULL;
+    int a, s, bad = 0, prob, i, k;
     if (why && cap) why[0] = 0;
-    if (!me()) return 0;
+    if (!me() || !r) return 0;
     rlayout(&L);
-    care_geom(&L, &g);
 #define BAD(...) do { int l_ = why ? (int)strlen(why) : 0; bad++; \
         if (why && l_ < cap - 8) { \
             if (l_) { doomo_snprintf(why + l_, cap - l_, " | "); l_ += 3; } \
             doomo_snprintf(why + l_, cap - l_, __VA_ARGS__); } } while (0)
-    for (a = 0; a < FPA_COUNT; a++) {
-        const char *h;
-        if (ui_text_width(act_label[a]) > g.lw - 20) BAD("action \"%s\" wider than %d", act_label[a], g.lw - 20);
-        h = care_help(a, help, sizeof(help));
-        if (ui_text_wrap(0, 0, g.hw, h, 0, 0) > 2) BAD("help of \"%s\" needs %d lines: %s", act_label[a],
-                                                       ui_text_wrap(0, 0, g.hw, h, 0, 0), h);
+    memcpy(keep, r->stat, sizeof(keep));
+    memset(r->stat, 100, sizeof(r->stat));                  /* the widest values: every need at 100 */
+    for (prob = 0; prob < 2; prob++) {
+        care_geom(&L, &g, prob);
+        /* the last line's 8-row cell ends above the pill (or the window's bottom without one) */
+        if (g.hy + (g.hlines - 1) * FONT_LINE + 8 > g.py + (prob ? 0 : 15))
+            BAD("%s: the help strip's %d lines end at %d, the %s starts at %d", prob ? "problem" : "no problem",
+                g.hlines, g.hy + (g.hlines - 1) * FONT_LINE + 8, prob ? "problem pill" : "window's edge",
+                g.py + (prob ? 0 : 15));
+        for (a = 0; a < FPA_COUNT; a++) {
+            const char *h;
+            if (a == FPA_HELP) continue;                     /* below, for every problem */
+            h = care_help(a, help, sizeof(help));
+            if (help_too_long(&g, h)) BAD("%shelp of \"%s\" needs %d lines of %d: %s", prob ? "(problem) " : "",
+                                          act_label[a], ui_text_wrap(0, 0, g.hw, h, 0, 0), g.hlines, h);
+        }
+        if (!prob) continue;                                 /* Help! is only offered while a problem is up */
+        for (k = 0; k < 3 + STAT_COUNT; k++) {
+            help_text(k == 0 ? PROB_POSSESSED : PROB_FIGHT, ITEM_NONE, 0, 0, k < 3 ? -1 : k - 3, 100,
+                      help, sizeof(help));
+            if (help_too_long(&g, help)) BAD("Help! needs %d lines of %d: %s", ui_text_wrap(0, 0, g.hw, help, 0, 0),
+                                             g.hlines, help);
+        }
+        for (i = ITEM_NONE + 1; i < ITEM_COUNT; i++) {
+            uint32_t price = doomo_items[i].price;
+            for (k = 0; k < 3; k++) {
+                help_text(PROB_WANTS_ITEM, i, k == 0, k == 2 && price ? price - 1 : price, -1, 0, help, sizeof(help));
+                if (help_too_long(&g, help)) BAD("Help! needs %d lines of %d: %s",
+                                                 ui_text_wrap(0, 0, g.hw, help, 0, 0), g.hlines, help);
+            }
+        }
     }
+    memcpy(r->stat, keep, sizeof(keep));
+    care_geom(&L, &g, 0);
+    for (a = 0; a < FPA_COUNT; a++)
+        if (ui_text_width(act_label[a]) > g.lw - 20) BAD("action \"%s\" wider than %d", act_label[a], g.lw - 20);
     for (s = 0; s < STAT_COUNT; s++) {
         int need = 9 + ui_text_width(doomo_stat_names[s]) + 4 + ui_text_width("100");
         if (!fp_big() && need > g.mw) BAD("need \"%s\" + 100 is %d px, the meter %d", doomo_stat_names[s], need, g.mw);
@@ -1382,4 +1438,20 @@ int fp_resident_text_overflow(char *why, int cap)
     }
 #undef BAD
     return bad;
+}
+
+/* (CL5 land) the selected action's help strip as drawn now: its text in buf, the lines it needs in *need; returns the
+ * lines the strip has (the test checks the two with a problem pill up) */
+int fp_resident_help_strip(char *buf, int cap, int *need)
+{
+    RLayout L;
+    CareGeom g;
+    if (buf && cap) buf[0] = 0;
+    if (need) *need = 0;
+    if (!me() || !buf || R.sel >= R.nacts) return 0;
+    rlayout(&L);
+    care_geom(&L, &g, sim_problem_for(R.id) >= 0);
+    care_help(R.acts[R.sel], buf, cap);
+    if (need) *need = ui_text_wrap(0, 0, g.hw, buf, 0, 0);
+    return g.hlines;
 }

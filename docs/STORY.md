@@ -73,8 +73,12 @@ plot first, then side quests, then the place menu: Talk, Buy (mini shop),
 Weld & armory, Rest & save, Get patched up, Browse every shelf
 (`SCENE_SHOP`), Visit the graves (`SCENE_GRAVEYARD`), **Activities** and
 Leave. Activities come from `activities_at(location, ...)` filtered by
-`ACTF_STORY` and `min_chapter`; with nothing registered the menu says
-"Coming soon!". Launched activities return to the overworld.
+`ACTF_STORY` and `min_chapter`; the row is only offered where some Story
+Mode activity is filed for the place (`story_place_has_activities`), and
+while all of them are locked (chapter, unlock, hour) it says "Coming
+soon!". Town Hall has none since clarity C9 moved Music Studio to the
+Concert Hall and Expand the House to the homes, so its menu is Talk and
+Leave. Launched activities return to the overworld.
 
 ## Side quests
 
