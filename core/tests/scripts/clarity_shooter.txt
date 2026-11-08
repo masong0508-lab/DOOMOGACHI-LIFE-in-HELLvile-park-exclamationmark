@@ -64,3 +64,14 @@ wait 40
 shot horde_play
 scene TITLE
 wait 2
+# The story's fights (SCENE_COMBAT pushed by the story, map | COMBAT_ARG_CARD
+# = 3 | 256): the first after power-on opens on the card, A starts it
+push COMBAT 259
+expect-scene COMBAT
+wait 40
+shot story_fight_card
+press A
+wait 30
+shot story_fight_play
+scene TITLE
+wait 2

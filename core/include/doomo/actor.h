@@ -117,6 +117,9 @@ void combat_event(int tag);
 /* The session result after combat_finished() != 0, also kept after the
  * scene closes: 1 exit/cleared, -1 died, -2 quit. */
 int  combat_last_result(void);
+/* (clarity C10) SCENE_COMBAT's arg is the map id, or'ed with COMBAT_ARG_CARD when the story pushes a fight:
+ * its first fight after power-on opens on the control card (combat_card.c) and waits for A. */
+#define COMBAT_ARG_CARD 0x100
 
 typedef struct DoomoCombatStats {
     uint16_t kills, kills_total;

@@ -1,5 +1,7 @@
-/* combat_scene.c - SCENE_COMBAT (arg = map id): a Hell Breach level or an
- * invasion encounter (owner: action). Intro title card, the shooter, a
+/* combat_scene.c - SCENE_COMBAT (arg = map id, | COMBAT_ARG_CARD from the
+ * story): a Hell Breach level or an invasion encounter (owner: action). The
+ * control card on the story's first fight after power-on (clarity C10),
+ * the intro title, the shooter, a
  * pause menu (resume, weapon select with icons, camera, shoulder,
  * controls, aim assist, crosshair, HUD layout, quit), the level-complete
  * tally (kills, secrets, items, time, rewards) and the death screen with
@@ -9,18 +11,24 @@
 #include "combat_int.h"
 #include "doomo/tips.h"
 
-enum { CS_PLAY, CS_PAUSE, CS_WEAPONS, CS_DONE, CS_DEAD };
+enum { CS_PLAY, CS_PAUSE, CS_WEAPONS, CS_DONE, CS_DEAD, CS_CARD };
 
 static int cs_state, cs_map, cs_t, cs_sel, cs_wsel, cs_top;
 static uint32_t cs_rewarded;
+/* (clarity C10) the story's first fight after power-on waits on the control card; the fights after it start
+ * at once, as before (the nests come four in a row). Not saved: a new session explains it again. */
+static uint8_t cs_card_shown;
+void combat_scene_card_reset(void) { cs_card_shown = 0; }
 
 static int style_now(void) { return combat_s.hell >= 128 ? WIN_HELL : WIN_CUTE; }
 
 static void combat_enter(int arg)
 {
+    int card = arg >= 0 && (arg & COMBAT_ARG_CARD);
+    if (arg >= 0) arg &= ~COMBAT_ARG_CARD;
     cs_map = (arg >= 0 && arg < MAPID_COUNT) ? arg : MAPID_VAPE_CELLAR;
     combat_start(cs_map);
-    cs_state = CS_PLAY;
+    cs_state = card && !cs_card_shown && !combat_autopilot_on() ? CS_CARD : CS_PLAY;
     cs_t = 0;
     cs_sel = 0;
     cs_rewarded = 0;
@@ -220,6 +228,14 @@ static void combat_update(void)
 {
     cs_t++;
     switch (cs_state) {
+    case CS_CARD:                                  /* C10: the fight waits (frozen) until A */
+        if (cs_t > 12 && btn_pressed(BTN_A | BTN_START)) {
+            cs_card_shown = 1;
+            cs_state = CS_PLAY;
+            cs_t = 0;
+            audio_sfx(SFX_SELECT);
+        }
+        break;
     case CS_PLAY:
         if (!combat_autopilot_on() && cs_t > 4) tip_once(TIP_SHOOTER);   /* CL4: the controls, once */
         if (tip_active()) break;                                      /* the fight waits for it */
@@ -260,10 +276,19 @@ static void intro_card(void)
     const char *sub = cs_map == MAPID_VAPE_CELLAR ? "HELL BREACH 1" :
                       cs_map == MAPID_CLOUD_NINE_SPIRE ? "HELL BREACH 2" :
                       cs_map == MAPID_ARENA ? "FREE PLAY" : "INVASION!";
-    int t = (int)combat_stats()->ticks;
-    int y = sh / 3, s = ui_pop_scale(t), sc = s > 270 ? 3 : 2;
-    if (t > 60 || cs_state != CS_PLAY) return;
-    if (t > 50 && (t & 1)) return;
+    int t = (int)combat_stats()->ticks, card = cs_state == CS_CARD;
+    int y = card ? (sh >= 200 ? sh / 4 : 30) : sh / 3, s = ui_pop_scale(t), sc = s > 270 ? 3 : 2;
+    if (card) {
+        /* C10: the control card (goal, the current scheme's controls, the HUD legend), title above it */
+        int w = sh >= 200 ? 300 : 230, h = ccard_height(w, ccard_goal(combat_s.goal), NULL);
+        plat_shade_rect(0, 0, sw, sh, 4);
+        sc = 2;
+        ccard_draw(sw / 2 - w / 2, sh - 17 - h, w, style_now(), ccard_goal(combat_s.goal), NULL);
+        if (cs_t > 12) ui_hint(STR_ICON_A " Start", style_now());
+    } else {
+        if (t > 60 || cs_state != CS_PLAY) return;
+        if (t > 50 && (t & 1)) return;
+    }
     ui_text_outline(sw / 2 - ui_text_width(sub) / 2, y - 12, sub,
                     combat_s.hell >= 128 ? PAL_RAMP(RAMP_LAVA, 6) : PAL_UI_GOLD, PAL_RAMP(RAMP_BLOOD, 0));
     ui_text_big(sw / 2 - ui_text_big_width(title, sc) / 2, y, title, sc,
@@ -276,7 +301,7 @@ static void combat_draw(void)
     DoomoView3D v;
     combat_build_view(&v);
     plat_view3d(&v);
-    combat_draw_hud();
+    if (cs_state != CS_CARD) combat_draw_hud();   /* C10: the control card owns the screen */
     intro_card();
     switch (cs_state) {
     case CS_PAUSE: pause_draw(); break;

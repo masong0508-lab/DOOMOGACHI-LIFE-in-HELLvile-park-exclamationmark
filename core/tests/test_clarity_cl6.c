@@ -6,7 +6,7 @@
  * These tests check the same objectives as the game decodes and wraps them,
  * and the runtime pieces: the goal's place on the Map tab, the goal arrow
  * following a running side-mission verb, the shooter's control card that
- * waits for A (Brutal Only included)
+ * waits for A (Brutal Only included, the story's first fight after power-on)
  * and its fit at 240x160, the labelled HUD, and the plain names. */
 #include <string.h>
 #include "test.h"
@@ -260,4 +260,31 @@ TEST(clarity_c10_arena_title_card_waits_and_b_leaves)
     frames(30, 0);
     CHECK(combat_stats()->ticks > 0);
     while (scene_depth() > 0) scene_pop();
+}
+
+/* the story's first fight after power-on opens on the control card and waits for A; the fights after it start at
+ * once (the nests come in a row); a bare push (the harness, debug) never shows it */
+TEST(clarity_c10_story_fight_card_once_per_power_on)
+{
+    test_reset();
+    combat_scene_card_reset();
+    scene_set(&SCENE_TITLE, 0);
+    scene_push(&SCENE_COMBAT, MAPID_VAPE_CELLAR);
+    frames(20, 0);
+    CHECK(combat_stats()->ticks > 0);                                /* bare push: no card */
+    scene_pop();
+    scene_push(&SCENE_COMBAT, MAPID_VAPE_CELLAR | COMBAT_ARG_CARD);
+    CHECK(scene_top() == &SCENE_COMBAT);
+    frames(200, 0);
+    CHECK(scene_top() == &SCENE_COMBAT);
+    CHECK_EQ((int)combat_stats()->ticks, 0);                         /* frozen behind the card */
+    frame(BTN_A); frame(0);
+    frames(10, 0);
+    CHECK(combat_stats()->ticks > 0);                                /* A starts the fight */
+    scene_pop();
+    scene_push(&SCENE_COMBAT, MAPID_VAPE_CELLAR | COMBAT_ARG_CARD);
+    frames(10, 0);
+    CHECK(combat_stats()->ticks > 0);                                /* once per power-on */
+    while (scene_depth() > 0) scene_pop();
+    combat_scene_card_reset();
 }

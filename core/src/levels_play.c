@@ -231,11 +231,7 @@ static void br_update(void)
 static int style_now(void) { return combat_s.hell >= 128 ? WIN_HELL : WIN_CUTE; }
 
 /* C10: the card's goal and rule lines for this run */
-static const char *intro_goal(void)
-{
-    return combat_s.goal == CGOAL_KILL_ALL ? STR_ICON_STAR " Goal: beat every demon" :
-           combat_s.goal == CGOAL_EXIT ? STR_ICON_STAR " Goal: find the exit" : STR_ICON_STAR " Goal: survive";
-}
+static const char *intro_goal(void) { return ccard_goal(combat_s.goal); }
 
 static const char *intro_rule(void)
 {

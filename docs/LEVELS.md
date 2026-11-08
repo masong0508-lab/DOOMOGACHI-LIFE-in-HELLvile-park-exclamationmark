@@ -50,8 +50,14 @@ tagged 240..243; the levels runtime pushes the player and pickups along.
   "Demons 0/17" out cost the GBA combat frame 1-2 ms of outlined text),
   health is a heart in every mode, the ammo panel's "Bullets" line sits inside it,
   the pause row says "Music volume 7", the arena results say "You earned"
-  (no arrows: it is not a choice). Tests: `clarity_c10_*` in
-  `core/tests/test_clarity_cl6.c`; script `clarity_shooter.txt`.
+  (no arrows: it is not a choice). The story's fights (`SCENE_COMBAT`
+  pushed by `story_push_combat` with `COMBAT_ARG_CARD`, the nests and the
+  scripted fights) open on the same card on the first fight after
+  power-on, frozen until A; the fights after it start at once as before
+  (the nests come four in a row), and a bare `push COMBAT N` (the
+  harnesses, debug, the GBA speed tour) never shows it. Tests:
+  `clarity_c10_*` in `core/tests/test_clarity_cl6.c`; script
+  `clarity_shooter.txt`.
 
 ## Modes
 

@@ -1,8 +1,8 @@
 /* combat_card.c - the shooter's control card (clarity C10; owner: action).
  *
- * Every Hell Breach level, the Demon Arena and the arena modes open on a
- * card that says how to play, on every difficulty and in every mode (Brutal
- * Only included): the controls of the scheme picked in Options, with the
+ * Every Hell Breach level, the Demon Arena, the arena modes and the story's
+ * first fight after power-on open on a card that says how to play, on every
+ * difficulty and in every mode (Brutal Only included): the controls of the scheme picked in Options, with the
  * names of the pad in the player's hands, the HUD counters' legend and the
  * mode's rule. A starts (the card is the only thing between the player and
  * the fight, so it is skipped with the first press); nothing is saved.
@@ -100,6 +100,12 @@ const char *ccard_mode_rule(int mode)
     case CCARD_RULE_TIME: return STR_ICON_BOLT " Beat the gold time on the clock.";
     default: return NULL;
     }
+}
+
+const char *ccard_goal(int cgoal)
+{
+    return cgoal == CGOAL_KILL_ALL ? STR_ICON_STAR " Goal: beat every demon" :
+           cgoal == CGOAL_EXIT ? STR_ICON_STAR " Goal: find the exit" : STR_ICON_STAR " Goal: survive";
 }
 
 int ccard_height(int w, const char *goal, const char *rule)

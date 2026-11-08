@@ -6,11 +6,14 @@ wait 3
 shot nest_overworld
 wait 30
 shot nest_close
-# walk up into the nest
+# walk up into the nest: the first fight after power-on opens on the
+# control card (clarity C10), A starts it
 hold UP 8
 wait 30
 shot encounter
 expect-scene COMBAT
+press A
+wait 20
 hold UP 20
 press A
 wait 6

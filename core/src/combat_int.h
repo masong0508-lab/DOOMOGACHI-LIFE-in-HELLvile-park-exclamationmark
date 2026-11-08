@@ -230,7 +230,10 @@ void combat_hud_legend(int x, int y, int w, uint8_t col);
 enum { CCARD_RULE_NONE, CCARD_RULE_CUTE, CCARD_RULE_BRUTAL, CCARD_RULE_TIME };
 int  ccard_lines(char lines[][CCARD_LINE_CAP], int max, int width);
 const char *ccard_mode_rule(int rule);
+const char *ccard_goal(int cgoal);                /* the card's goal line for a CGOAL_* */
 int  ccard_height(int w, const char *goal, const char *rule);
 void ccard_draw(int x, int y, int w, int style, const char *goal, const char *rule);
+/* tests: the next story fight (SCENE_COMBAT | COMBAT_ARG_CARD) shows its card again, as after power-on */
+void combat_scene_card_reset(void);
 
 #endif

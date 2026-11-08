@@ -695,7 +695,7 @@ void story_push_combat(int map_id, int ctx, int extra, int cx, int cy, int nest)
         dispatch_result();
         return;
     }
-    scene_push(&SCENE_COMBAT, map_id);
+    scene_push(&SCENE_COMBAT, map_id | COMBAT_ARG_CARD);   /* C10: the first fight after power-on explains itself */
     if (cx >= 0 && cy >= 0) {
         int i, k = 0;
         static const int8_t off[8][2] = { { 0, -3 }, { 2, -3 }, { -2, -3 }, { 3, -1 },
