@@ -68,7 +68,7 @@ enum { HT_IRIS, HT_LIFT, HT_DROP_FALL, HT_DROP_LAND, HT_NOPE, HT_FLIP, HT_FLIP_S
        HT_REACT_COOL, HT_HOP, HT_HOP_GAP, HT_SLEEP_FADE, HT_SLEEP_MOON, HT_SLEEP_BLACK,
        HT_FREEZE_SIL, HT_FREEZE_POST, HT_LIGHTS_HOLD, HT_LIGHTS_FADE, HT_DUCK, HT_TAPE,
        HT_ARRIVE_GAP, HT_RATE_GAP, HT_BREATH, HT_BLINK_EVERY, HT_BLINK_LEN, HT_TV,
-       HT_FAN, HT_BUBBLES, HT_GOAL_HOLD, HT_DAWN_CARD, HT_FLEE, HT_SIT_PLOP, HT_SIGH, HT_COUNT };
+       HT_FAN, HT_BUBBLES, HT_GOAL_HOLD, HT_DAWN_CARD, HT_FLEE, HT_SIT_PLOP, HT_SIGH, HT_DOTS_AT, HT_COUNT };
 static const uint8_t ht[HT_COUNT] = {
     6,      /* HT_IRIS          heart iris in, r = 6 + 250 smooth(a/6)^2           */
     3,      /* HT_LIFT          the lift after a 2-frame anticipation              */
@@ -136,6 +136,7 @@ static const uint8_t ht[HT_COUNT] = {
     16,     /* HT_FLEE          a frightened guest's 4-hop flee                    */
     2,      /* HT_SIT_PLOP      sitting: the plop squash                           */
     24,     /* HT_SIGH          (H6) the bunny beanbag's sigh after you stand up   */
+    20,     /* HT_DOTS_AT       (C15) the top dots' caption, once the room is in   */
 };
 static const int8_t nope_dx[4] = { 2, -2, 2, -2 };
 static const int16_t flip_sx[6] = { 256, 128, 0, -128, -266, -256 };   /* Q8 */
@@ -1860,6 +1861,14 @@ static void home_update(void)
         return;                                      /* CL4 */
     if (H->mode == HM_PHOTO) { update_photo(); return; }
     if (btn_pressed(BTN_START)) { open_menu(HMN_MAIN); return; }
+    /* C15: the first time a save builds at home, a caption names the four score dots (top right) once
+     * nothing else is said and no toast covers them; a raw bit like the tutorial's (home_int.h: no row,
+     * no toast) */
+    if (H->mode == HM_BUILD && H->kind != HK_VISIT && H->msg_age == 0xFFFF && H->t >= ht[HT_DOTS_AT] &&
+        !ui_toast_pending() && !(doomo_town.unlocks[HUL_RAW_DOTS >> 3] & (1 << (HUL_RAW_DOTS & 7)))) {
+        doomo_town.unlocks[HUL_RAW_DOTS >> 3] |= (uint8_t)(1 << (HUL_RAW_DOTS & 7));
+        say("Top dots: Comfort, Spook, Style, Light");
+    }
     if (H->mode == HM_BUILD) update_build();
     else update_live();
 }

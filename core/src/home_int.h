@@ -117,7 +117,9 @@ enum { HUL_FIRST_HOUSE = UL_IDS_HOME_FIRST, HUL_COSY, HUL_LIT, HUL_HELD, HUL_HOM
        HUL_TROPHY_END,                             /* = 584                     */
        HUL_RAW_TUTORIAL = HUL_TROPHY_END,          /* 584..589 room tutorials   */
        HUL_RAW_DEFEND_TUTORIAL = HUL_TROPHY_END + 6,
-       HUL_RAW_BLACK_MARKET, HUL_RAW_LAST = UL_IDS_HOME_LAST };
+       HUL_RAW_BLACK_MARKET,
+       HUL_RAW_DOTS,                               /* C15: the top dots' caption was shown */
+       HUL_RAW_LAST = UL_IDS_HOME_LAST };
 
 /* The live state: NULL where it is not linked (the GBA before G0). */
 HomeState *home_state(void);
