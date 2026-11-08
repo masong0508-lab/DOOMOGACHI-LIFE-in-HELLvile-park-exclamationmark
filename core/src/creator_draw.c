@@ -83,7 +83,7 @@ static const char *fit(const char *s, int maxw, char *buf)
     int n, i;
     if (ui_text_width(s) <= maxw) return s;
     n = (int)strlen(s);
-    if (n > 46) n = 46;
+    if (n > 45) n = 45;                 /* + ".." + NUL: at most buf[47] */
     for (i = n; i > 0; i--) {
         memcpy(buf, s, (size_t)i);
         buf[i] = '.';
