@@ -141,6 +141,7 @@ static struct {
     uint8_t bs;                  /* (perf, I10) slices of a refresh built so far (0: not building) */
     uint32_t full_t;             /* the tick of the last full hub frame */
     uint8_t live;                /* island_update ran since the last island_draw (nothing else is on top) */
+    uint8_t glines;              /* (CL5, perf) the open menu's greeting lines, measured once (0: not yet) */
     uint8_t prob[FP_LOC_MAX];
     uint16_t here[ACT_COUNT], here_acc[ACT_COUNT];
     int scan;
@@ -194,13 +195,12 @@ static Entry *add(int code, int icon, const char *label, const char *desc)
     return e;
 }
 
-/* (CL5, C9) why a "make a citizen" row is locked: that side has no free home */
+/* (CL5, C9) why a "make a citizen" row is locked: that side has no free home (a constant string: no RAM) */
+DOOMO_STATIC_ASSERT(DOOMO_DISTRICT_SIZE == 500, full_reason_counts_500_homes);
 static const char *full_reason(int d)
 {
-    static char buf[2][48];
-    doomo_snprintf(buf[d & 1], sizeof(buf[0]), "Full: %d of %d homes. Someone must move out.",
-                   DOOMO_DISTRICT_SIZE, DOOMO_DISTRICT_SIZE);
-    return buf[d & 1];
+    (void)d;
+    return "Full: 500 of 500 homes. Someone must move out.";
 }
 
 /* (CL5) a row that cannot be used now: greyed, and its help line says why */
@@ -371,7 +371,7 @@ static void build_menu(const Loc *L)
         e = add(E_NEWS, ICON_CLOUD, "News", "The island's news feed. (L on the map)");
         if (e) e->key = "L";
         add(E_PET, ICON_EGG, "Boreagotchi", "Your tamagotchi pet.");
-        add(E_SAVELOAD, ICON_HEART, "Save / Load", "Keep your island safe. (START here saves to slot 2)");
+        add(E_SAVELOAD, ICON_HEART, "Save / Load", "Keep your island safe. (START in this menu saves.)");
         add(E_OPTIONS, ICON_WRENCH, "Options", "Settings for everything.");
         e = add(E_FAMILY, ICON_HOUSE, "Family", "Your household. SELECT on the map opens it too.");
         if (e) e->key = "SEL";
@@ -793,6 +793,7 @@ static void open_menu(const Loc *L)
     hold_drop();
     I.mloc = L;
     I.menu_open = 1;
+    I.glines = 0;
     I.menu_t = 0;
     I.esel = 0;
     I.etop = 0;
@@ -1075,8 +1076,13 @@ static void menu_geom(const Loc *L, MenuGeom *m)
         char g[96];
         m->lx = m->x + FIGURE_W + 12;
         m->lw = m->w - FIGURE_W - 18;
-        /* the greeting wraps (it used to scroll by, its first words often missed): two lines at most */
-        m->glines = DOOMO_CLAMP(ui_text_wrap(0, 0, m->gw, greet_text(L, g, sizeof(g)), 0, 0), 1, 2);
+        /* the greeting wraps (it used to scroll by, its first words often missed): two lines at most; measured
+         * once a menu (wrap_core was 3.7% of the GBA town hall menu when it ran every tick) */
+        if (L == I.mloc && I.menu_open && I.glines) m->glines = I.glines;
+        else {
+            m->glines = DOOMO_CLAMP(ui_text_wrap(0, 0, m->gw, greet_text(L, g, sizeof(g)), 0, 0), 1, 2);
+            if (L == I.mloc && I.menu_open) I.glines = (uint8_t)m->glines;
+        }
         m->ly = m->y + (m->glines > 1 ? 32 : 25);
     }
     m->dw = m->lw - 8;
@@ -1172,7 +1178,8 @@ static void draw_menu(int held)
         const char *d = entry_help(e);
         /* (CL5) 20 px tall: two lines sit inside the rim (at 18 the second line's descenders touched it) */
         fp_pill(lx, y + h - 24, lw, 20, st->fill_lo, st->outline, st->fill);
-        ui_text_wrap(lx + 4, y + h - 22 + (ui_text_wrap(0, 0, m.dw, d, 0, 0) > 1 ? 0 : 4), m.dw, d, c, 1);
+        /* one line: centred in the pill; the line count is found without a second pass over the text */
+        ui_text_wrap(lx + 4, y + h - 22 + (ui_text_width(d) > m.dw ? 0 : 4), m.dw, d, c, 1);
     }
     if (held) ui_shade_clip_off();
 }

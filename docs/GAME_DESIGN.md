@@ -48,12 +48,19 @@ Free play loop (real-time clock, day and night, adjustable sim speed):
 * **Island map** hub: Apartments (Hillvile Towers / Hellvile Pits), Cafe
   "Brimstone Bites", Shop, Church of St. Cuddles (exorcisms), Graveyard,
   Workshop (welding), Concert Hall, Beach, Hospital, Arena (unlockable),
-  the Wall and the Gate, Town Hall (creator, options, save).
+  the Wall and the Gate, Town Hall (make citizens, rent, family, your
+  avatar, town records: at most 7 rows). Save / Load, Options and Name the
+  island are in the START menu, which also shows the map's shortcuts
+  (R Citizens, L News, SELECT Family). A locked row says why in its help
+  line (clarity C9).
 * **Apartments**: browse 500 homes per district by floor. Each window shows
   the citizen inside doing their activity, with a thought bubble when they
   have a **problem**.
-* **Resident screen**: needs meters (hunger, happiness, hygiene, energy,
-  health, sanity, corruption, social), mood, current activity,
+* **Resident screen**: needs meters, named the same everywhere (care
+  screen, shop, item dex, family): Food, Joy, Clean, Energy, Health, Mind,
+  Dark, Social (`doomo_stat_names`, clarity C6; at 240x160 each meter shows
+  its name and value, the selected action frames the need it fills and a
+  help strip says so), mood, current activity,
   relationships list, likes and fears, bio. Actions: feed (favourite /
   hated food reactions), gift, clean, play, talk (voice babble +
   catchphrase), heal, comfort, introduce someone, advise on

@@ -342,7 +342,7 @@ players rely on it); "Their home" is one press from there.
 | 0 | HomeMart: Today (12 seeded pieces a day, one at -30%, locked rows as "???"), Season, Last Season (3x), Wants (what the last four visitors wished for), Sell (40%) |
 | 1 | the Hellvile Black Market: the hell / goth stock; open at night, by day once Chapter 4 is done or in free play |
 | 2 | the Workshop's furniture bench (SELECT in `SCENE_WORKSHOP`): 24 recipes of scrap, gears, hellsteel, stuffing, glitter and horns; the weld bar grades S / A / B / C (S: a second copy, A: one material back) |
-| 3 | Town Hall's "Expand": the next cottage room for H$ (400, 600, 500, 900, 1200; the story opens its own); the house then plays the expansion rumble |
+| 3 | "Expand the House" (with the homes: Hillvile Towers / Hellvile Pits and the story's home; it was a Town Hall row until CL5): the next cottage room for H$ (400, 600, 500, 900, 1200; the story opens its own); the house then plays the expansion rumble |
 | 4 | "Visit a neighbour": the visitor log, the best friends, a random door |
 
 Stock and the deal come from `story_rng(HOME_CTX_MART)` (daily, C18). Rows

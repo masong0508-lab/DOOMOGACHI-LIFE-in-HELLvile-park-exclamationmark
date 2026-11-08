@@ -1,0 +1,89 @@
+# clarity_hub_care.txt (CL5: clarity C6 / C9 / C13) - the restructured island menus and the readable
+# care screen, shot at 240x160 and 320x240 (run_scripts.sh plays every script at both sizes).
+# A Hellvile Park Classic island: both sides full, so Town Hall's Create rows are locked with a reason.
+scene NEW_ISLAND
+wait 10
+press A
+wait 20
+press A
+wait 2
+press A
+wait 10
+expect-scene ISLAND
+wait 40
+# the hub: the corner buttons are labelled at 240x160 too
+shot hub
+# Town Hall: 7 rows, the first locked with its reason in red
+press A
+wait 40
+shot town_hall
+press DOWN
+press DOWN
+press DOWN
+wait 6
+shot town_hall_family
+press B
+wait 6
+# the START menu: the shortcut keys beside Citizens, News, Family; Name the island, Quit to title, Close
+press START
+wait 30
+shot start_menu
+press UP
+press UP
+wait 6
+shot start_menu_title
+press B
+wait 6
+# the church on a fresh island: nobody possessed, the row says so before it is pressed
+press DOWN
+press RIGHT
+wait 20
+press A
+wait 40
+shot church
+press B
+wait 6
+expect-scene ISLAND
+# a citizen's care screen: needs named with values, the selected action's need framed, the help strip
+push RESIDENT 30
+wait 20
+expect-scene RESIDENT
+shot care_feed
+press DOWN
+wait 4
+shot care_give
+press DOWN
+press DOWN
+wait 4
+shot care_play
+press DOWN
+press DOWN
+wait 4
+shot care_comfort
+press R
+press R
+wait 6
+shot friends
+press L
+press L
+wait 6
+press UP
+press UP
+press UP
+press UP
+press UP
+wait 4
+press A
+wait 20
+shot feed_popup
+press B
+wait 6
+press B
+wait 10
+# the shop speaks the same need words (Energy, Health; no Nrg, HP)
+push SHOP 0
+wait 30
+expect-scene SHOP
+shot shop
+press B
+wait 10

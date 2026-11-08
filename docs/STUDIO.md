@@ -24,8 +24,9 @@ Planned work (fps, functionality, fun): [MUSIC_STUDIO_ROADMAP.md](MUSIC_STUDIO_R
 | `core/src/unlocks_studio.c` | unlock ids 240..255 and the activities |
 | `core/tests/test_studio.c`, `core/tests/scripts/studio.txt` | tests and the runner tour |
 
-You find it in the **Concert Hall** and the **Town Hall** (activities table
-`doomo_activities_studio`, free play and story from chapter 1).
+You find it in the **Concert Hall** (activities table `doomo_activities_studio`,
+free play and story from chapter 1). (CL5, clarity C9: it is no longer a second
+row in the Town Hall, which keeps its civic rows only.)
 
 ## Controls
 
