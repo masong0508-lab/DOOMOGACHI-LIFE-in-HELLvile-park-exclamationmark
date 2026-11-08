@@ -575,15 +575,17 @@ static void tri_fill(int x0, int y0, int x1, int y1, int x2, int y2, uint8_t col
 #undef SWAPI
     if (y2 == y0) return;
     /* the long edge 0-2, and the short edges 0-1 (above y1) and 1-2 (from y1 on) */
-    dl = (int32_t)(((int32_t)(x2 - x0) << 16) / (y2 - y0));
-    ds = y1 > y0 ? (int32_t)(((int32_t)(x1 - x0) << 16) / (y1 - y0)) : 0;
-    xl = (int32_t)x0 << 16;
-    xs = (int32_t)x0 << 16;
+    /* 16.16 by * 65536, not << 16: an edge can run left (a negative step) and an arrow near the left
+     * edge can start at a negative x, and shifting a negative value left is undefined (UBSan) */
+    dl = (int32_t)(((int32_t)(x2 - x0) * 65536) / (y2 - y0));
+    ds = y1 > y0 ? (int32_t)(((int32_t)(x1 - x0) * 65536) / (y1 - y0)) : 0;
+    xl = (int32_t)x0 * 65536;
+    xs = (int32_t)x0 * 65536;
     for (y = y0; y <= y2; y++) {
         int a, b;
         if (y == y1) {
-            xs = (int32_t)x1 << 16;
-            ds = y2 > y1 ? (int32_t)(((int32_t)(x2 - x1) << 16) / (y2 - y1)) : 0;
+            xs = (int32_t)x1 * 65536;
+            ds = y2 > y1 ? (int32_t)(((int32_t)(x2 - x1) * 65536) / (y2 - y1)) : 0;
         }
         a = (int)(xl >> 16);
         b = (int)(xs >> 16);
