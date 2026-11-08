@@ -118,3 +118,11 @@ morning_dew	.	1	.	.	dew	wet,fresh,sparkly	mass
 mud	.	-1	.	mud	.	sticky,wet,brown	mass
 sleet	.	-2	.	.	.	wet,cold,grey	mass
 cold_snap	.	-1	.	.	.	sudden,icy,grey	.
+# T3 (TK2): everyday time words the parser corpus needed (docs/TALK.md "The parser")
+@cat time.word
+day	.	0	.	.	.	long,busy,normal	.
+week	.	0	.	.	.	long,busy,normal	.
+month	.	0	.	.	.	long,busy,normal	.
+year	.	0	.	.	.	long,busy,normal	.
+@cat time.holiday
+christmas	.	3	.	Christmas	xmas	festive,busy,fun	proper

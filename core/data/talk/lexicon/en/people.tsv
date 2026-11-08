@@ -248,3 +248,13 @@ childhood	.	1	.	.	.	far,sweet,blurry	mass
 old_days	.	1	.	the old days	good old days	sweet,blurry,old	mass
 inside_joke	.	2	.	.	.	secret,silly,old	.
 grudge	.	-2	.	grudge	.	old,petty,long	.
+# T3 (TK2): everyday words the parser corpus needed
+@cat people.clothes
+hat	.	1	.	.	.	stylish,silly,old	.
+jacket	.	1	.	.	.	comfy,stylish,warm	.
+shirt	.	1	.	.	tee	comfy,stylish,worn	.
+shoe	.	1	.	shoe/shoes	.	comfy,stylish,worn	pl
+@cat people.personal
+voice	.	0	.	.	.	loud,soft,weird	.
+speech	people.personal	0	.	.	.	long,loud,boring	.
+scar	people.body	0	.	.	.	old,weird,tiny	.

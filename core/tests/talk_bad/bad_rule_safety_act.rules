@@ -1,0 +1,11 @@
+# expect: is a safety act
+@class EVERYONE	everyone
+@class HATEV	hate
+@class YEARS	years
+@class YOU	you
+@class I	i
+@class IM	im
+@class GREETW	hi
+@class HATEADJ	trash
+@class ATTRACT	like
+500	GREETW	REFUSE_SEXUAL

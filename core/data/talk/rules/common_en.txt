@@ -1,0 +1,51 @@
+# core/data/talk/rules/common_en.txt - everyday English words the parser must
+# KNOW even though they are no concept and no class member (owner: TK, T3;
+# docs/TALK.md "The parser"). Compiled into TB_PARSE with no concept and no
+# flags. A known word is never "corrected" by the edit-distance pass, so
+# "seen" stays "seen" (not a safety word one letter away) and "last" stays
+# "last" (not "list"). Base forms only where the lemma rules (-s -es -ies
+# -ed -ied -ing) make the rest; irregular forms are listed.
+a about above across act actually add after again against age ago agree ahead air all allow almost alone along already also although always am among an and another answer any anybody anyhow anymore anyone anything anyway anywhere apart appear area arm around arrive as ask asleep at ate attack attempt avoid awake away
+back bad badly bag bake ball base be bear beat beaten became because become been before began begin begun behind being believe belong below beneath beside besides best better between beyond big bigger biggest bit bite bitten blew blow blown body born borrow both bother bottom bought bounce box break bring broke broken brought build built burn burnt busy but buy by
+call came can cannot cant care careful carry case catch caught cause certain chance change charge check choose chose chosen clean clear climb close closer come comes coming common could couldnt count couple course cover crazy cross cry cut
+dare day days dead deal dear decide deep did didnt die different dig do does doesnt doing done dont door double down drag drank draw drawn dream dreamt dress drew drink drive driven drop drove dry during dying
+each early earn easy eat eaten edge either else end enough enter even ever every everybody everyone everything everywhere exactly except expect explain extra
+face fact fail fair fall fallen far fast feed feel fell felt few fight figure fill final finally find fine finish first fit five fix flew flies fly flown follow for forget forgive forgot forgotten form forward found four free fresh friend from front full fun funny further
+gave get gets getting give given glad go goes going gone good got gotten grab great grew grow grown guess
+had half hand handle happen hard hardly has hate have having he head hear heard held hello help her here hers herself hid hidden hide high him himself his hit hold hole home hope how however hundred hung hurry hurt
+idea if ill important in inside instead into is isnt it its itself
+join joined just keep kept kind knew know known
+lady large last late later laugh lay lead learn least leave led left lend less let lie life light like likely line list listen little live lives long look lose lost lot lots loud low lucky
+made main make making many matter may maybe me mean meant meet met middle might mind mine minute miss moment more morning most mostly move much must my myself
+name near nearly need never new next nice night nine no nobody none nor not note nothing notice now number
+of off offer often oh ok okay old on once one only onto open or order other others otherwise ought our out outside over own
+paid part pass past pay people perhaps pick piece place plan play please point possible pretty probably promise proper pull push put
+question quick quickly quiet quite
+ran rang rather reach read ready real really reason remember rest return ride ridden right ring risen rise road rode room round rule run rung
+said same sang sat save saw say says second see seem seen sell send sense sent serious set seven several shall she shook short should shouldnt show shown shut side sign simple since sing sit six slept slow small so sold some somebody someday somehow someone something sometimes somewhere soon sort sound speak special spend spent spoke spoken stand start stay step still stole stolen stood stop story strange street strong stuck such suddenly suppose sure surprise swam swear swim swore sworn swung
+take taken talk taught teach tell ten than thank that the their them themselves then there these they thing things think third this those though thought three threw through throw thrown till time tiny to today together told tomorrow tonight too took top tore torn total touch toward towards tried true try turn twice two
+under understand understood unless until up upon us use used usual usually
+very visit voice wait wake walk want was wasnt watch way we wear week well went were what whatever when where whether which while who whole whom whose why wide will win wish with within without woke woken won wonder wont word wore work world worn worry would wouldnt write written wrong wrote
+yeah year yes yet you young your yours yourself
+# more everyday words people type in a chat
+able absolutely accident ache actor address adult adventure afraid afternoon alarm alive allowed alright amazing angle animal annoy anyways apparently appointment argue argument arrange arrest asleep aunt awesome awful awkward
+baby babysit bath battle beautiful bed bedroom beg belly bench bet bike bill bin bird birthday blame blank bless blind block blood blue board boat bone book bored boring boss bottle bowl brain brave bread breakfast breath bright brother brush bubble bug bump bunch burger burst bus butter button
+cake camera camp candle candy card careful carpet cart castle cat ceiling chair champion cheap cheat cheese chest chicken child chin chips chocolate church city class clever clock clothes cloud clown coat coffee cold collect colour color comfy complain cook cookie cool corner cost cosy cozy cough country cousin cow crash cream crowd crown cup curse cushion cute
+dad damage dance danger dark date daughter decent delicious demon desk dessert dinner dirt dirty dish doctor dog doll dollar dragon drawer drama dumb dust duty
+ear earth easter egg elbow empty enemy energy engine enjoy evening event evil exam excited excuse exercise expensive eye
+fake family fan fancy farm fat father fault favourite favorite fear feet fence fever field film fire fish flag flat floor flower fog food fool foot fork fridge frog fruit furniture future
+game garage garden gate ghost gift girl glass glove glue goat gold grandma grandpa grass gravy green grumpy guest guitar gun guy guys
+hair hall hammer happy hat haunted head heart heaven heavy hell hill hobby holiday honest honey horse hospital hot hotel hour house hug hungry husband
+ice island item jacket jam job joke juice jump
+key kick kid kids king kiss kitchen kitten knee knife knock
+lake lamp land laptop laundry lazy leaf leg lemon letter library lip liquid lock lonely loser luck lunch
+mad magic mail man map mark market marry mask meal meat medicine mess message milk mirror mom money monkey monster month moon mother mouse mouth movie mud mug mum music
+nail neck neighbour neighbor nervous nest news noise nose note nurse
+ocean office oven
+page pain paint pair pancake panic paper parent park party path peace pen pencil pet phone photo piano pie pig pill pillow pink pizza plant plate player pocket poem police pond pool poor post pot potato prank present pretty prince princess prize problem pumpkin puppy purple purse puzzle
+queen race rain rat red rent rich ring river rock roof rope rose rubbish rude
+sad safe salad salt sand sandwich scared scarf school score sea secret shark sheep shelf shirt shoe shop shower sick silly sink sister skirt sky sleep slug smart smell smile snack snake snow soap sock sofa soft son song sorry soup space spider spoon sport spring star station stomach stone storm stove stupid sugar summer sun supper sweet swing
+table tail tea teacher team teeth television test thief throat thumb ticket tiger tired toast toe toilet tooth towel town toy train trash tree trick trip trouble truck tummy turtle
+ugly umbrella uncle upset vampire village wall wallet war wardrobe warm water weather wedding weekend weird whale wife wind window wine winter witch wolf woman wood worm
+booth bath bathe beard bench bound bounce brew brick bucket buddy bunch candle cast chalk cheek choir cloth clown coast copper cord crow crowed dawn dusk faith fork gravy grill hood hook horn lace lipstick loop lump mitten noodle pillar pipe plug prize puddle quilt rack rag ribbon rug sack sauce scoop sheet shelf shell shovel sink skate slide sock spade spark sponge spout stamp stem stick stool straw string stump suit swan tap tape thread tin trunk tub twig vase wand weed wheel whistle wig wire wrap yarn zip tracy hits kicks punches slaps beats
+tho though although thru rae rex tom tim

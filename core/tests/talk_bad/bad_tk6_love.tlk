@@ -1,0 +1,3 @@
+# expect: TK6: kid-voice bank voice.kid.pip uses the LOVE
+@rule voice.kid.pip
+  "[LOVE]Hee hee."

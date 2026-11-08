@@ -147,3 +147,16 @@ cobweb	.	-1	.	.	.	dusty,spooky,sticky	.
 dust_bunny	.	0	.	.	.	fluffy,dusty,secret	.
 crumbs	.	0	.	crumb/crumbs	.	tiny,messy,crunchy	pl
 sticky_note	.	1	.	.	post-it	yellow,sticky,handy	.
+# T3 (TK2): everyday words the parser corpus needed
+@cat house.furniture
+sofa	.	1	.	.	couch,settee	comfy,saggy,big	.
+bed	.	1	.	.	.	comfy,warm,messy	.
+chair	.	0	.	.	.	comfy,sturdy,wobbly	.
+table	.	0	.	.	.	sturdy,big,wobbly	.
+@cat house.room
+room	.	0	.	.	.	cozy,messy,small	.
+@cat house.object
+door	.	0	.	.	.	creaky,heavy,old	.
+window	.	0	.	.	.	dusty,big,old	.
+floor	.	0	.	.	.	dusty,sticky,cold	.
+gate	house.object	0	.	.	.	creaky,old,heavy	.

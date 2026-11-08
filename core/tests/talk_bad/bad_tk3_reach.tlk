@@ -1,0 +1,5 @@
+# expect: TK3:
+@rule core.flirt.yes guard: adults_only&!kid_present
+  "{wink}"
+@rule wink
+  "A wink. Just a wink."

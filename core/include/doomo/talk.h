@@ -262,6 +262,9 @@ int  talk_db_nconcepts(void);
 int  talk_db_lang(void);
 /* A bank's directory entry: 1 found. */
 int  talk_db_bank(int id, uint32_t *offset, uint32_t *packed, uint32_t *raw);
+/* len bytes at offset `at` of bank `id` (TB_*) into dst: 1 ok (T3 / T4
+ * read TB_PARSE and TB_SAFETY with it). */
+int  talk_db_read(int id, uint32_t at, void *dst, uint32_t len);
 /* Concept `id` (1..nconcepts): 1 ok, 0 out of range / not open. */
 int  talk_db_concept(int id, TalkConcept *out);
 /* Its top associations, strongest first: ids[] and weights 1..15; returns
@@ -281,6 +284,162 @@ int  talk_db_cat_name(int cat, char *out, int cap);
 int  talk_db_cat_root(int cat);
 /* IEEE CRC-32 over len bytes, continuing from crc (start with 0). */
 uint32_t talk_crc32(uint32_t crc, const uint8_t *p, uint32_t len);
+
+/* =========================================================================
+ * T3: the free-text parser (Dreamcast and native; the PS1 never links it:
+ * its pad composer builds TalkUtter directly). core/src/talk_lex.c tags
+ * the words, core/src/talk_parse.c runs the rules of TB_PARSE (talkc.py
+ * compiles core/data/talk/rules/<lang>.tsv; the bank format is in
+ * core/tools/talkc_parse.py). docs/TALK.md "The parser".
+ * ========================================================================= */
+#define TALK_INPUT_MAX   80       /* the Dreamcast typing line                 */
+#define TALK_TOK_MAX     40       /* tokens of one line                        */
+#define TALK_TOK_LEN     24       /* a token's canonical text                  */
+#define TALK_STACK_MAX   8        /* the recent topic stack                    */
+
+/* word flags (TB_PARSE word table, TalkTok.wflags) */
+#define TW_FUNC      0x0001u      /* a function word here: never the topic    */
+#define TW_SUGGEST   0x0002u      /* a flirting word (register sexual, not explicit) */
+#define TW_SEXUAL    0x0004u      /* an explicit sexual word: always refused  */
+#define TW_HATE      0x0008u
+#define TW_DISTRESS  0x0010u
+#define TW_MINOR     0x0020u      /* names a child (K-7)                      */
+#define TW_REALWORLD 0x0040u
+#define TW_STRONG    0x0080u      /* a swear                                   */
+#define TW_CRUDE     0x0100u
+#define TW_CAPPED    0x0200u      /* the f-word, the s-word, bastard ...       */
+#define TW_TOPIC     0x0400u      /* a +topic class word                       */
+#define TW_GROUP     0x0800u      /* a group of real people (hate with HATEV)  */
+#define TW_MINORX    0x1000u      /* only ever a child (underage, preteen ...): with a liking word, K-7 */
+
+/* token kinds and flags */
+enum { TTK_WORD = 0, TTK_QMARK, TTK_EXCL, TTK_NUM, TTK_PERSON };
+#define TTF_UNK      0x01u        /* not in the lexicon                        */
+#define TTF_FUZZY    0x02u        /* matched at edit distance 1                */
+#define TTF_ABSENT   0x04u        /* a person who is not in the room           */
+#define TTF_MASK     0x08u        /* masked in the player's bubble             */
+#define TTF_LEET     0x10u        /* found only after the leet / spacing fold  */
+#define TTF_POSS     0x20u        /* a person said with 's ("Nana's"): not a vocative */
+
+typedef struct TalkTok {
+    char     text[TALK_TOK_LEN];  /* canonical, folded                        */
+    uint32_t tags[4];             /* rule classes (128 bits)                   */
+    uint32_t hash;                /* FNV-1a 32 of text (the rules' literals)   */
+    uint16_t concept;             /* 0 none                                    */
+    uint16_t wflags;              /* TW_*                                      */
+    int16_t  person;              /* participant slot (TTK_PERSON), or the absent id */
+    uint8_t  kind;                /* TTK_*                                     */
+    uint8_t  flags;               /* TTF_*                                     */
+    uint8_t  src0, src1;          /* the input bytes it covers [src0, src1)    */
+    uint8_t  root;                /* TCR_* of the concept's category, 0 none   */
+    int8_t   sent;                /* the concept's sentiment                   */
+    uint8_t  cat;                 /* the concept's category                    */
+    uint8_t  value;               /* TTK_NUM: the number (saturates at 255)    */
+} TalkTok;
+
+/* What the parser knows about the room. */
+typedef struct TalkParseCtx {
+    uint8_t     nparts;                       /* residents in the room, 0..4   */
+    int8_t      ring;                         /* the facing ring's holder slot */
+    uint8_t     hops;                         /* topic activation: 1 (PS1 / default) or 2 (DC) */
+    uint8_t     nstack;
+    uint8_t     kid_room;                     /* a non-adult is here: crude and flirting words are masked too */
+    const char *name[TALK_PARTS_MAX];         /* their names as shown          */
+    uint16_t    stack[TALK_STACK_MAX];        /* recent topics, newest first   */
+    /* another resident by name (absent people for GOSSIP): an id, or -1.
+     * NULL: none. The game passes the roster / town lookup. */
+    int       (*person)(const char *canon_name);
+} TalkParseCtx;
+
+/* The parser's extra findings (tests, the drama manager). */
+typedef struct TalkParseInfo {
+    int16_t  subject;             /* an absent person's id (GOSSIP), -1        */
+    int8_t   other;               /* a participant the act is about (TAKE_SIDE(Y)), -1 */
+    uint8_t  ntok;
+    uint16_t rule[2];             /* which rule made act[0] / act[1] (index), 0xFFFF none */
+    uint8_t  fuzzy;               /* tokens matched at edit distance 1          */
+    uint8_t  unknown;             /* unknown tokens                             */
+    TalkTok  tok[TALK_TOK_MAX];
+} TalkParseInfo;
+
+/* S0: the canonical key of a word run (talkc_parse.py canon() is the same). */
+int  talk_lex_canon(const char *in, char *out, int cap);
+/* Tag a line: the tokens, persons, concepts, word flags. Needs TB_PARSE
+ * (talk_db open). Returns the token count. */
+int  talk_lex(const char *text, const TalkParseCtx *ctx, TalkTok *tok, int max);
+/* The topic by spreading activation (design 3.2): topic[0..1] (TC_NONE). */
+void talk_lex_topics(const TalkTok *tok, int n, const TalkParseCtx *ctx, uint16_t topic[2]);
+/* 1 if the lexicon knows the word as it is or by a lemma (*wflags: its TW_*). */
+int  talk_lex_known(const char *word, uint16_t *wflags);
+/* Look a canonical key up: its word index, or -1. */
+int  talk_lex_find(const char *key, uint16_t *concept, uint16_t *wflags, uint32_t tags[4]);
+/* Parse one typed line into out (acts, topic, target, tone, safety, conf,
+ * the masked bubble text). The S1 safety classifier runs first and wins.
+ * info may be NULL. Returns 1, or 0 when TB_PARSE is missing (no parser:
+ * out is UNKNOWN). Deterministic: no RNG, no state. */
+int  talk_parse(const char *text, const TalkParseCtx *ctx, TalkUtter *out, TalkParseInfo *info);
+
+/* =========================================================================
+ * T4: the safety gate (core/src/talk_safe.c; every build). Design section 7,
+ * docs/TALK.md "Safety". Talk keeps NO list of minors of its own.
+ * ========================================================================= */
+/* minor(id) (design 7.3): a resident: LIFE_IS_MINOR(sim_life_stage(id)), or
+ * roster traits KID / TEEN, or ending_kid_cast(id); the avatar (the hero,
+ * DOOMO_PLAYER_ID): its stage; a family pool member: its FamilyMember stage;
+ * anything else (an unknown id) counts as a minor: fail safe. */
+int  talk_safe_minor(int id);
+/* A family pet, or the Boreagotchi (TALK_PET_ID). */
+#define TALK_PET_ID  0x7FFF
+int  talk_safe_is_pet(int id);
+/* The room's audience: avatar, the participants (ids; TALK_PET_ID for the
+ * pet), and the addressee (a participant slot, -1 everyone). mature_ok is
+ * opt_mature() >= MATURE_ON and mature_adult_ok() for every adult. */
+void talk_safe_ctx(int avatar, const int *ids, int n, int target, TalkAudience *out);
+
+/* S1: classify typed input (needs TB_PARSE): TS_* bits; the tokens get
+ * TTF_MASK where the bubble must hide them. talk_parse() calls it. */
+uint8_t talk_safe_scan(TalkTok *tok, int n);
+/* 1 if a token is an explicit sexual word (not a flirting one): REFUSE_SEXUAL. */
+int  talk_safe_explicit(const TalkTok *tok, int n);
+/* The hate list (TB_SAFETY): 1 if a word (any case, leet, repeats) is on it,
+ * exactly or at edit distance 1 after the first letter (5+ letters). */
+int  talk_safe_hate_word(const char *word, int fuzzy);
+/* The salted hash of a squeezed word (tests: the C and Python hashes agree);
+ * 0 without TB_SAFETY. */
+uint64_t talk_safe_hash(const char *word);
+
+/* S2: what the gate did */
+enum {
+    TG_PASS = 0,         /* the utterance stands                                 */
+    TG_REFUSE,           /* REFUSE_SEXUAL (adults' room): no echo                */
+    TG_REFUSE_MINOR,     /* a romance act with a non-adult avatar or target      */
+    TG_DEFLECT,          /* DEFLECT_ROMANCE: an adult said no / not in front of the kids */
+    TG_HATE,             /* REFUSE_HATE: a short clean disapproval, a bond penalty */
+    TG_DISTRESS,         /* the comedy stops (K-11)                              */
+    TG_END_K7            /* sexual + a child: the conversation ends, locked for the day */
+};
+/* The audience gate (S2): rewrite u in place (acts, tone, shown) and say
+ * why. avatar / target_id are ids (target_id -1: everyone). refused_today:
+ * the target already said no today (K-5). */
+int  talk_safe_gate(TalkUtter *u, const TalkAudience *aud, int avatar, int target_id, int refused_today);
+/* May the avatar do romance acts at target_id here (K-4)? The composer
+ * lists FLIRT / CONFESS / ASK_OUT / KISS and the FLIRTY tone only then. */
+int  talk_safe_romance_ok(const TalkAudience *aud, int avatar, int target_id);
+/* May a template with a jmat variant use it (K-6)? Needs opt_mature() >=
+ * MATURE_ON and mature_adult_ok() for every adult id given. */
+int  talk_safe_jmat_ok(const int *ids, int n);
+
+/* S3: the output lint, on every generated line, on every platform (needs
+ * TB_SAFETY). Returns TL_OK or the first problem; *swears counts the
+ * everyday adult swears of the conversation (K-9: at most 1). */
+enum { TL_OK = 0, TL_FORBIDDEN, TL_REGISTER_KID, TL_SEXUAL_PET, TL_SWEAR_CAP, TL_HATE, TL_LENGTH,
+       TL_NO_DB };
+int  talk_safe_lint(const char *line, const TalkAudience *aud, int *swears);
+/* Word-wrap a line at TALK_BUBBLE_COLS: the number of bubble lines. */
+int  talk_safe_bubble_lines(const char *line, int cols);
+/* The lint's hit counter (a test fails on any count > 0; release builds
+ * log "talk: lint"). */
+uint32_t talk_safe_lint_hits(void);
 
 /* ---- the house hook (T8; weak in core/src/weak_talk.c) ---------------------
  * Start Talk with resident `who` in the room: 1 started, 0 not available

@@ -1,0 +1,23 @@
+# core/tests/talk_good.tlk - templates that must lint clean (talkc --selftest; TK1-TK7).
+# The syntax the lints read is documented in core/tools/talkc_safe.py.
+@rule core.ask_about.pro guard: stance=pro
+  "{x}? Oh, {x.it} is {x.adj}. {opinion.pro}" w=3
+  "Don't get me started on {x:pl}. Actually, do." w=2
+@rule opinion.pro
+  "Ten out of ten.{.} Needs salt." guard: speaker=grumbleguts
+  "Best thing in Hellvile."
+@rule core.ask_about.booze guard: adults_only&!kid_present
+  "Booze before noon? Bold." w=1
+@rule core.flirt.yes guard: adults_only&!kid_present&!pet
+  "Oh! Well. Hello to you too." w=2
+  "Is it warm in here, or is it the oven?"
+@rule beat.romance_adult guard: adults_only&!kid_present&!pet
+  "{core.flirt}"
+@rule refuse.minor tags: nojoke
+  "Nope. Not that. Let's talk pie instead."
+@rule voice.kid.pip guard: kid_present
+  "Are you guys fighting? Stop it."
+@rule core.mature_aside guard: adults_only&!kid_present&jmat&mature_adult_ok
+  "[JMAT]And then the lights went out."
+@rule core.swear guard: adults_only&!kid_present
+  "Damn. That's good pie."

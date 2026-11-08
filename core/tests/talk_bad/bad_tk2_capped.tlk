@@ -1,0 +1,3 @@
+# expect: TK2:
+@rule core.vent guard: adults_only&!kid_present
+  "Well, shit."

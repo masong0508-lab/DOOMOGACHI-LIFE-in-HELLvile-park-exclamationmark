@@ -1,0 +1,3 @@
+# expect: TK7: refusal bank
+@rule refuse.minor
+  "Ha! As if, kiddo."

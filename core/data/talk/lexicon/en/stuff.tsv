@@ -218,3 +218,8 @@ garden_hose	.	1	.	.	hose	long,wet,tangled	.
 watering_can	.	1	.	.	.	drippy,handy,green	.
 rake	.	0	.	.	.	pointy,leafy,handy	.
 lawnmower	.	0	.	.	.	loud,noisy,handy	.
+# T3 (TK2): everyday words the parser corpus needed
+@cat stuff.misc
+colour	.	1	.	.	color,colours,colors	bright,pretty,bold	.
+photo	.	1	.	.	picture,pic,photograph	old,blurry,pretty	.
+rose	stuff.item	2	.	.	roses	pretty,fragrant,red	.

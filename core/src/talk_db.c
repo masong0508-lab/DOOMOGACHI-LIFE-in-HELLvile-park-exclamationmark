@@ -183,6 +183,11 @@ int talk_db_bank(int id, uint32_t *offset, uint32_t *packed, uint32_t *raw)
     return 1;
 }
 
+int talk_db_read(int id, uint32_t at, void *dst, uint32_t len)
+{
+    return rd_bank(id, at, dst, len);
+}
+
 int talk_db_concept(int id, TalkConcept *out)
 {
     uint8_t r[8];

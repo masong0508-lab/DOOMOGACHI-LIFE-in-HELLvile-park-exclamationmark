@@ -1,0 +1,3 @@
+# expect: TK4: a sexual-class word
+@rule core.flirt.yes guard: adults_only&!kid_present&!pet
+  "Hubba hubba."

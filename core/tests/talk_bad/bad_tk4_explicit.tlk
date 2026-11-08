@@ -1,0 +1,3 @@
+# expect: TK4: explicit word
+@rule core.vent guard: adults_only&!kid_present&!pet
+  "Get naked."

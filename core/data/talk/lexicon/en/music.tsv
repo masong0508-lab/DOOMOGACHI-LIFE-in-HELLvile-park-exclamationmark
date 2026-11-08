@@ -76,3 +76,6 @@ open_mic	.	1	.	open mic	.	nervous,loud,brave	.
 battle_of_the_bands	.	1	.	battle of the bands	.	loud,competitive,sweaty	.
 dance_party	.	2	.	.	dance,disco night,rave	loud,sweaty,fun	.
 sing_along	.	2	.	sing-along	singalong	loud,silly,cheerful	.
+# T3 (TK2): everyday words the parser corpus needed
+@cat music.word
+music	.	2	.	.	tunes	loud,catchy,live	mass

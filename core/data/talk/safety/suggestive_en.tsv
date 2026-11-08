@@ -1,0 +1,11 @@
+# core/data/talk/safety/suggestive_en.tsv - the FLIRTING words among the
+# sexual-class concepts of lexicon/en/safety.tsv and romance.tsv (owner: TK,
+# T4; docs/TALK.md "Safety"). Read by core/tools/talkc_parse.py.
+#
+# Every other sexual-class concept is EXPLICIT: typed, it is refused and
+# never echoed (REFUSE_SEXUAL). A flirting word is a FLIRT the gate allows
+# only between two adults with no child and no pet in the room (K-4); with a
+# child anywhere near it, it ends the conversation like any sexual word
+# (K-7). In generated text a flirting word needs guard: adults_only,
+# !kid_present and !pet (lints TK1 / TK3); an explicit one is never written.
+flirt sexy hottie hubba_hubba bow_chicka_wow_wow frisky

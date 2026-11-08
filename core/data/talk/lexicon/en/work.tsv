@@ -62,3 +62,7 @@ leaving_do	.	1	.	leaving do	.	awkward,sweet,cheap	.
 hairnet	.	-1	.	hairnet	.	itchy,silly,tight	.
 apron	.	1	.	.	.	stained,floury,handy	.
 hard_hat	.	0	.	.	.	yellow,sturdy,handy	.
+# T3 (TK2): everyday words the parser corpus needed
+@cat work.job
+pirate	.	1	.	.	.	busy,steady,tiring	.
+guard	.	0	.	.	.	busy,steady,tiring	.

@@ -1,0 +1,1543 @@
+# core/data/talk/corpus/parse_en.tsv - the English parser corpus (owner: TK, T3;
+# docs/TALK.md "The parser"; design 3.2). Measured by core/tests/test_talk_parse.c
+# (bars: act 90%, topic 85%, addressee 95%); talkc --check (TK8) checks the format.
+#
+#   @room NAME, NAME, ...            the residents in the room (slot order; the ring is slot 0)
+#   TEXT<TAB>ACT[,ACT2]<TAB>TOPIC<TAB>TARGET
+#
+# ACT     the TA_* name (talk.h) of what the line mainly does; ACT2 the second act if any
+# TOPIC   the concept key the line is about, or - (no talkable concept)
+# TARGET  who it is said to: a NAME of the room, all (everyone), or - (the ring: nobody named)
+#
+# Written to the game's register (docs/design/story/SCRIPT_STYLE.md), typed the way
+# people type: about one line in six has a misspelling, a shortcut or leet.
+# Safety lines are not here: corpus/safety_en.tsv and adversarial_en.tsv (T4).
+
+@room Nana Puddin, Vex, Rivet
+hi	GREET	-	-
+hello!	GREET	-	-
+hey nana	GREET	-	Nana Puddin
+heya Vex!	GREET	-	Vex
+hiya rivet	GREET	-	Rivet
+hello everyone	GREET	-	all
+hey guys!	GREET	-	all
+yo	GREET	-	-
+sup vex	GREET	-	Vex
+good morning, Nana	GREET	-	Nana Puddin
+morning all	GREET	-	all
+evening Rivet	GREET	-	Rivet
+howdy	GREET	-	-
+hi there	GREET	-	-
+helo nana	GREET	-	Nana Puddin
+heyy	GREET	-	-
+hiii everyone!!	GREET	-	all
+hey hey hey	GREET	-	-
+oi rivet	GREET	-	Rivet
+greetings, Vex	GREET	-	Vex
+hello again	GREET	-	-
+hey Nana Puddin	GREET	-	Nana Puddin
+good evening everybody	GREET	-	all
+wassup	GREET	-	-
+hi vex!	GREET	-	Vex
+bye	FAREWELL	-	-
+bye nana!	FAREWELL	-	Nana Puddin
+see ya Vex	FAREWELL	-	Vex
+goodbye everyone	FAREWELL	-	all
+gotta go	FAREWELL	-	-
+gotta run, bye guys	FAREWELL	-	all
+good night Nana	FAREWELL	-	Nana Puddin
+night night	FAREWELL	-	-
+see you later rivet	FAREWELL	-	Rivet
+cya	FAREWELL	-	-
+i'm off, take care	FAREWELL	-	-
+later	FAREWELL	-	-
+bye bye vex	FAREWELL	-	Vex
+ok bye	FAREWELL	-	-
+ttyl	FAREWELL	-	-
+i should go	FAREWELL	-	-
+take care, Rivet	FAREWELL	-	Rivet
+goodnight everyone	FAREWELL	-	all
+byee	FAREWELL	-	-
+thanks	THANK	-	-
+thank you nana	THANK	-	Nana Puddin
+thx vex	THANK	-	Vex
+thanks for the pie	THANK	pie	-
+thank you so much, Rivet	THANK	-	Rivet
+cheers	THANK	-	-
+ty	THANK	-	-
+thanks for the tea, Nana	THANK	tea	Nana Puddin
+thank u	THANK	-	-
+thanks everyone	THANK	-	all
+sorry	APOLOGIZE	-	-
+sorry vex	APOLOGIZE	-	Vex
+my bad	APOLOGIZE	-	-
+i'm so sorry, Nana	APOLOGIZE	-	Nana Puddin
+soz	APOLOGIZE	-	-
+sorry about the mess	APOLOGIZE	mess	-
+oops sorry	APOLOGIZE	-	-
+i apologise, rivet	APOLOGIZE	-	Rivet
+sorry i ate your pie	APOLOGIZE	pie	-
+my apologies	APOLOGIZE	-	-
+sorry for being late	APOLOGIZE	being_late	-
+how are you?	ASK_FEELING	-	-
+how are you, nana?	ASK_FEELING	-	Nana Puddin
+how r u vex	ASK_FEELING	-	Vex
+how's it going?	ASK_FEELING	-	-
+you ok rivet?	ASK_FEELING	-	Rivet
+are you okay?	ASK_FEELING	-	-
+how have you been?	ASK_FEELING	-	-
+how are you feeling today, Nana?	ASK_FEELING	-	Nana Puddin
+how ya doin	ASK_FEELING	-	-
+how's everyone doing?	ASK_FEELING	-	all
+what's wrong, vex?	ASK_FEELING	-	Vex
+are you sad?	ASK_FEELING	sad	-
+are you mad at me?	ASK_FEELING	-	-
+how was your day?	ASK_FEELING	day	-
+how's your week been, Rivet?	ASK_FEELING	week	Rivet
+you alright?	ASK_FEELING	-	-
+how are u doing	ASK_FEELING	-	-
+how you holding up?	ASK_FEELING	-	-
+how are things?	ASK_FEELING	-	-
+are you happy here?	ASK_FEELING	happy	-
+are you tired, nana?	ASK_FEELING	tired	Nana Puddin
+how do you feel?	ASK_FEELING	-	-
+hows life	ASK_FEELING	life	-
+how are you all?	ASK_FEELING	-	all
+what's the matter with you?	ASK_FEELING	-	-
+what do you think of jazz?	ASK_OPINION	jazz	-
+what do you think about the purple fog, Nana?	ASK_OPINION	purple_fog	Nana Puddin
+vex, how do you feel about pie?	ASK_OPINION	pie	Vex
+do you like cheese?	ASK_OPINION	cheese	-
+do you like jazz, rivet?	ASK_OPINION	jazz	Rivet
+whats your opinion on ghosts	ASK_OPINION	ghost	-
+what do u think of the mayor	ASK_OPINION	the_mayor	-
+do you even like knitting?	ASK_OPINION	knitting	-
+do you hate broccoli?	ASK_OPINION	broccoli	-
+thoughts on pizza?	ASK_OPINION	pizza	-
+is jazz overrated?	ASK_OPINION	jazz	-
+cake?	ASK_OPINION	cake	-
+do you like my hat?	ASK_OPINION	hat	-
+what do you think of my sofa?	ASK_OPINION	sofa	-
+rivet what do you reckon about the hell gate	ASK_OPINION	hell_gate	Rivet
+how do you feel about spiders?	ASK_OPINION	spider	-
+do u like cats	ASK_OPINION	cat	-
+do you like the rain, nana?	ASK_OPINION	rain	Nana Puddin
+what's your take on bingo?	ASK_OPINION	bingo	-
+do you love music?	ASK_OPINION	music	-
+whaddya think of tacos	ASK_OPINION	taco	-
+do you guys like karaoke?	ASK_OPINION	karaoke	all
+what's in the pie?	ASK_ABOUT	pie	-
+nana, what's in the pie?	ASK_ABOUT	pie	Nana Puddin
+where's the hell gate?	ASK_ABOUT	hell_gate	-
+tell me about the Feast	ASK_ABOUT	feast	-
+what is the purple fog?	ASK_ABOUT	purple_fog	-
+vex, what's hellvile like?	ASK_ABOUT	hellvile	Vex
+how do you make jam?	ASK_ABOUT	jam	-
+when is the Feast?	ASK_ABOUT	feast	-
+why is the sky purple?	ASK_ABOUT	the_sky	-
+tell me about your garden	ASK_ABOUT	garden	-
+what's your favourite food?	ASK_ABOUT	food	-
+whats ur favorite song	ASK_ABOUT	song	-
+what kind of music do you like?	ASK_ABOUT	music	-
+rivet, how does a wrench work?	ASK_ABOUT	wrench	Rivet
+where do you buy your hats?	ASK_ABOUT	hat	-
+what's for dinner?	ASK_ABOUT	dinner	-
+tell me about the church	ASK_ABOUT	church	-
+what happened at the bakery?	ASK_ABOUT	bakery	-
+how old is the graveyard?	ASK_ABOUT	graveyard	-
+what's the deal with the goats?	ASK_ABOUT	goat	-
+what are you cooking, nana?	ASK_ABOUT	cooking	Nana Puddin
+what are you up to?	ASK_ABOUT	-	-
+what are you doing, vex?	ASK_ABOUT	-	Vex
+wat r u doing	ASK_ABOUT	-	-
+what's your favourite colour?	ASK_ABOUT	colour	-
+whats in the oven	ASK_ABOUT	oven	-
+how do you fix a toaster?	ASK_ABOUT	toaster	-
+where does the bus go?	ASK_ABOUT	bus	-
+what's the weather like in Hellvile?	ASK_ABOUT	weather	-
+tell me about bonejangles	ASK_ABOUT	bonejangles	-
+who is Father Fuzz?	ASK_ABOUT	father_fuzz	-
+know anything about ghosts?	ASK_ABOUT	ghost	-
+what time is the party?	ASK_ABOUT	party	-
+where did you get that lamp?	ASK_ABOUT	lamp	-
+what does a demon eat?	ASK_ABOUT	demon	-
+are you a ghost?	ASK_FACT	ghost	-
+do you have a pet?	ASK_FACT	pet	-
+can you cook?	ASK_FACT	-	-
+can you dance, vex?	ASK_FACT	-	Vex
+are you married, nana?	ASK_FACT	-	Nana Puddin
+do you have a job?	ASK_FACT	job	-
+have you ever been to the beach?	ASK_FACT	beach	-
+do you live here?	ASK_FACT	-	-
+are you from Hellvile?	ASK_FACT	hellvile	-
+did you make this?	ASK_FACT	-	-
+is it true you hate tea?	ASK_FACT	tea	-
+can you sing?	ASK_FACT	-	-
+r u a demon	ASK_FACT	demon	-
+do you own a car, rivet?	ASK_FACT	car	Rivet
+have you seen the purple fog?	ASK_FACT	purple_fog	-
+are you scared of the dark?	ASK_OPINION	dark	-
+do you go to church?	ASK_FACT	church	-
+can you swim?	ASK_FACT	-	-
+were you at the Feast?	ASK_FACT	feast	-
+do you play the piano?	ASK_FACT	piano	-
+@room Nana Puddin, Vex, Rivet
+who's your best friend?	ASK_WHO	best_friend	-
+who do you like, vex?	ASK_WHO	-	Vex
+who's the funniest person in town?	ASK_WHO	town	-
+who lives next door?	ASK_WHO	-	-
+who do you trust?	ASK_WHO	trust	-
+who's in charge here?	ASK_WHO	-	-
+whos ur crush	ASK_WHO	crush	-
+who's the best cook in Hillvile?	ASK_WHO	hillvile	-
+who do you miss, nana?	ASK_WHO	-	Nana Puddin
+who's coming to the party?	ASK_WHO	party	-
+who won the bake off?	ASK_WHO	bake_off	-
+who is the scariest demon?	ASK_WHO	demon	-
+who do you hang out with?	ASK_WHO	-	-
+who's your hero, rivet?	ASK_WHO	hero	Rivet
+who's dating who?	ASK_WHO	-	-
+who ate the last cookie?	ACCUSE	biscuit	-
+any advice?	ASK_ADVICE	-	-
+nana, what should i do?	ASK_ADVICE	-	Nana Puddin
+should i get a cat?	ASK_ADVICE	cat	-
+what would you do if a ghost moved in?	ASK_ADVICE	ghost	-
+any tips for baking bread?	ASK_ADVICE	baking	-
+how do i make friends?	ASK_ADVICE	friend	-
+rivet, i need advice about my car	ASK_ADVICE	car	Rivet
+what do you suggest for dinner?	ASK_ADVICE	dinner	-
+should i paint my house pink?	ASK_ADVICE	house	-
+help me decide, cake or pie?	ASK_ADVICE	cake	-
+how should i ask for a raise?	ASK_ADVICE	raise	-
+what's your advice on gardening?	ASK_ADVICE	gardening	-
+can you pass the salt?	ASK_FAVOR	salt	-
+could you help me move the sofa?	ASK_FAVOR	sofa	-
+please feed my cat, vex	ASK_FAVOR	cat	Vex
+would you mind turning the music down?	ASK_FAVOR	music	-
+can you help me?	ASK_FAVOR	-	-
+could you fix my bike, rivet?	ASK_FAVOR	bike	Rivet
+pls lend me a wrench	ASK_FAVOR	wrench	-
+do me a favour and water the plants	ASK_FAVOR	plant	-
+can you keep a secret?	ASK_FAVOR	secret	-
+would you hold this for me?	ASK_FAVOR	-	-
+could u grab me a soda	ASK_FAVOR	soda	-
+can you show me how to knit?	ASK_FAVOR	-	-
+what?	ASK_REPEAT	-	-
+huh?	ASK_REPEAT	-	-
+come again?	ASK_REPEAT	-	-
+sorry, what?	ASK_REPEAT	-	-
+say that again?	ASK_REPEAT	-	-
+pardon?	ASK_REPEAT	-	-
+what did you say?	ASK_REPEAT	-	-
+wait what	ASK_REPEAT	-	-
+i didn't catch that	ASK_REPEAT	-	-
+what was that, vex?	ASK_REPEAT	-	Vex
+tell me more	CONTINUE	-	-
+go on	CONTINUE	-	-
+and then?	CONTINUE	-	-
+what happened next?	CONTINUE	-	-
+keep going	CONTINUE	-	-
+then what?	CONTINUE	-	-
+go on, nana	CONTINUE	-	Nana Puddin
+spill!	CONTINUE	-	-
+and then what?	CONTINUE	-	-
+more please	CONTINUE	-	-
+anyway	CHANGE_TOPIC	-	-
+anyway, how about that weather	CHANGE_TOPIC	weather	-
+moving on	CHANGE_TOPIC	-	-
+by the way, i got a new lamp	CHANGE_TOPIC	lamp	-
+btw the bakery is closed	CHANGE_TOPIC	bakery	-
+speaking of pie, nana	CHANGE_TOPIC	pie	Nana Puddin
+let's talk about something else	CHANGE_TOPIC	-	-
+change the subject please	CHANGE_TOPIC	-	-
+anyways, jazz	CHANGE_TOPIC	jazz	-
+new topic: ghosts	CHANGE_TOPIC	ghost	-
+on another note, the Feast is soon	CHANGE_TOPIC	feast	-
+random question, do you like bees?	CHANGE_TOPIC	bee	-
+you're so funny	COMPLIMENT	-	-
+nana you're the best	COMPLIMENT	-	Nana Puddin
+vex, you look great	COMPLIMENT	-	Vex
+i love your hat	COMPLIMENT	hat	-
+nice hat!	COMPLIMENT	hat	-
+your pie is amazing	COMPLIMENT	pie	-
+you're so smart, rivet	COMPLIMENT	-	Rivet
+ur so cool	COMPLIMENT	-	-
+you are a legend	COMPLIMENT	-	-
+love your style, Vex	COMPLIMENT	style	Vex
+your garden looks lovely	COMPLIMENT	garden	-
+you're amazing	COMPLIMENT	-	-
+youre so kind	COMPLIMENT	-	-
+you rock	COMPLIMENT	-	-
+you look nice today	COMPLIMENT	-	-
+nice scarf, nana	COMPLIMENT	scarf	Nana Puddin
+your house is so cosy	COMPLIMENT	house	-
+you're a genius!	COMPLIMENT	-	-
+you make me laugh	COMPLIMENT	-	-
+i like your jacket	COMPLIMENT	jacket	-
+you're the coolest demon in hellvile	COMPLIMENT	demon	-
+u r so talented	COMPLIMENT	-	-
+your cooking is the best, nana	COMPLIMENT	cooking	Nana Puddin
+rivet you're a star	COMPLIMENT	-	Rivet
+love you guys	COMPLIMENT	-	all
+you all are wonderful	COMPLIMENT	-	all
+your laugh is adorable	COMPLIMENT	-	-
+best nana ever	COMPLIMENT	-	-
+you seem really clever	COMPLIMENT	-	-
+your scarf is fab	COMPLIMENT	scarf	-
+you're an idiot	INSULT	-	-
+vex you're so annoying	INSULT	-	Vex
+you smell	INSULT	-	-
+ur dumb	INSULT	-	-
+you're the worst	INSULT	-	-
+rivet you're a moron	INSULT	-	Rivet
+you look ugly today	INSULT	-	-
+you stink, vex	INSULT	-	Vex
+you're such a loser	INSULT	-	-
+idiot!	INSULT	-	-
+you are so boring	INSULT	-	-
+you're useless	INSULT	-	-
+nana, you're rude	INSULT	-	Nana Puddin
+you're a total creep	INSULT	-	-
+u r stoopid	INSULT	-	-
+nobody likes you	INSULT	-	-
+your pie is gross	CRITICIZE	pie	-
+your music is terrible	CRITICIZE	music	-
+you shouldn't have done that	CRITICIZE	-	-
+that was a bad idea, vex	CRITICIZE	idea	Vex
+your sofa looks awful	CRITICIZE	sofa	-
+you never listen	CRITICIZE	-	-
+you always do this, rivet	CRITICIZE	-	Rivet
+your jokes are lame	CRITICIZE	-	-
+your garden is a mess	CRITICIZE	garden	-
+that's a terrible plan	CRITICIZE	plan	-
+you're such a dork	TEASE	-	-
+vex you nerd	TEASE	-	Vex
+silly goose	TEASE	goose	-
+oh please	TEASE	-	-
+yeah right	TEASE	-	-
+you wish	TEASE	-	-
+scaredy cat!	TEASE	-	-
+nice try, rivet	TEASE	-	Rivet
+are you scared?	ASK_FEELING	scared	-
+you're so dramatic, nana	TEASE	-	Nana Puddin
+show off	TEASE	-	-
+dream on	TEASE	-	-
+what a goofball	TEASE	-	-
+boo hoo	MOCK	-	-
+cry me a river	MOCK	-	-
+whatever you say	MOCK	-	-
+oh how clever	MOCK	-	-
+big whoop	MOCK	-	-
+ooh look at me i'm vex	MOCK	-	Vex
+la di da	MOCK	-	-
+real mature, rivet	MOCK	-	Rivet
+how original	MOCK	-	-
+slow clap	MOCK	-	-
+@room Nana Puddin, Vex, Rivet
+vex is so cool	PRAISE_OTHER	-	Nana Puddin
+nana is the sweetest	PRAISE_OTHER	-	Vex
+rivet is a genius	PRAISE_OTHER	-	Nana Puddin
+i really admire nana	PRAISE_OTHER	-	Vex
+Bonejangles is so talented	PRAISE_OTHER	bonejangles	-
+Dr. Bloom is really kind	PRAISE_OTHER	dr_bloom	-
+did you hear about Mayor Giggs?	GOSSIP	mayor_giggs	-
+i heard Grumbleguts lost his hat	GOSSIP	grumbleguts	-
+apparently Pip broke a window	GOSSIP	pip	-
+guess what Bonejangles did	GOSSIP	bonejangles	-
+did you hear about Hugsley?	GOSSIP	-	-
+Umbrellina is dating Fiddlestick	GOSSIP	-	-
+i saw Zoomzoom at the bakery	GOSSIP	bakery	-
+word is the mayor cheats at bingo	GOSSIP	the_mayor	-
+between you and me, Wisp is hiding something	GOSSIP	wisp	-
+rumour has it the church is haunted	GOSSIP	church	-
+Father Fuzz keeps eating the communion bread	GOSSIP	father_fuzz	-
+did u hear about Glowbug	GOSSIP	-	-
+Keysie never pays for coffee	GOSSIP	coffee	-
+Hattie Haha secretly hates clowns	GOSSIP	hattie_haha	-
+you'll never guess who moved in	GOSSIP	-	-
+spill the tea, vex	GOSSIP	-	Vex
+Bluebell was crying at the park	GOSSIP	park	-
+Grindella always takes the last cookie	GOSSIP	biscuit	-
+it's okay	COMFORT	-	-
+don't worry, nana	COMFORT	-	Nana Puddin
+there there	COMFORT	-	-
+it'll be fine, vex	COMFORT	-	Vex
+cheer up	COMFORT	-	-
+i'm here for you, rivet	COMFORT	-	Rivet
+it's not your fault	COMFORT	-	-
+hang in there	COMFORT	-	-
+aww, poor you	COMFORT	-	-
+dont worry about the pie	COMFORT	pie	-
+everything will be fine	COMFORT	-	-
+that sucks	SYMPATHIZE	-	-
+oh no, that's awful	SYMPATHIZE	-	-
+sorry to hear that, nana	SYMPATHIZE	-	Nana Puddin
+that must be hard	SYMPATHIZE	-	-
+i understand	SYMPATHIZE	-	-
+yikes	SYMPATHIZE	-	-
+that's rough, vex	SYMPATHIZE	-	Vex
+oof	SYMPATHIZE	-	-
+poor thing	SYMPATHIZE	-	-
+you got this	ENCOURAGE	-	-
+you can do it, rivet!	ENCOURAGE	-	Rivet
+good luck at the bake off, nana	ENCOURAGE	bake_off	Nana Puddin
+don't give up	ENCOURAGE	-	-
+go for it	ENCOURAGE	-	-
+i believe in you	ENCOURAGE	-	-
+break a leg	ENCOURAGE	-	-
+you'll do great	ENCOURAGE	-	-
+keep it up, vex	ENCOURAGE	-	Vex
+so proud of you	ENCOURAGE	-	-
+you can win this	ENCOURAGE	-	-
+want some tea?	OFFER	tea	-
+would you like some cake, nana?	OFFER	cake	Nana Puddin
+can i get you a drink?	OFFER	drink	-
+need a hand?	OFFER	-	-
+i can help with the garden	OFFER	garden	-
+want me to fix that, rivet?	OFFER	-	Rivet
+let me help you	OFFER	-	-
+i'll make you a sandwich	OFFER	sandwich	-
+want a cookie, vex?	OFFER	biscuit	Vex
+i'll bake you a pie	OFFER	pie	-
+here's a present for you	GIVE	gift	-
+this is for you, nana	GIVE	-	Nana Puddin
+here, have a cookie	GIVE	biscuit	-
+i brought you flowers	GIVE	flower	-
+take this wrench, rivet	GIVE	wrench	Rivet
+i made you a scarf	GIVE	scarf	-
+here you go	GIVE	-	-
+let's go to the park	INVITE	park	-
+wanna go fishing?	INVITE	fishing	-
+let's bake a cake together	INVITE	cake	-
+come to my party, vex	INVITE	party	Vex
+do you want to come to the beach?	INVITE	beach	-
+we should play cards	INVITE	card_game	-
+let's dance!	INVITE	-	-
+wanna hang out?	INVITE	-	-
+join me for tea, nana	INVITE	tea	Nana Puddin
+let's go to the bakery	INVITE	bakery	-
+come over tonight, rivet	INVITE	-	Rivet
+let's watch a movie	INVITE	movie	-
+how about we go bowling	INVITE	bowling	-
+i promise	PROMISE	-	-
+i promise i'll be back	PROMISE	-	-
+i swear i won't tell	PROMISE	-	-
+cross my heart	PROMISE	-	-
+i'll be there, nana	PROMISE	-	Nana Puddin
+pinky promise	PROMISE	-	-
+trust me	PROMISE	-	-
+i'll never forget this	PROMISE	-	-
+haha	LAUGH	-	-
+lol	LAUGH	-	-
+lmao vex	LAUGH	-	Vex
+hahaha that's funny	LAUGH	-	-
+hehe	LAUGH	-	-
+rofl	LAUGH	-	-
+pfft	LAUGH	-	-
+i'm dying	LAUGH	-	-
+knock knock	JOKE	-	-
+wanna hear a joke?	JOKE	-	-
+just kidding	JOKE	-	-
+jk	JOKE	-	-
+why did the chicken cross the road?	JOKE	chicken	-
+what do you call a ghost with no friends?	JOKE	ghost	-
+i'm joking, nana	JOKE	-	Nana Puddin
+here's one: a demon walks into a bakery	JOKE	demon	-
+whatever	DISMISS	-	-
+who cares	DISMISS	-	-
+shut up, vex	DISMISS	-	Vex
+go away	DISMISS	-	-
+meh	DISMISS	-	-
+leave me alone	DISMISS	-	-
+so what	DISMISS	-	-
+i don't care	DISMISS	-	-
+not interested	DISMISS	-	-
+zip it, rivet	DISMISS	-	Rivet
+nobody asked	DISMISS	-	-
+ugh	COMPLAIN	-	-
+this sucks	COMPLAIN	-	-
+it's so unfair	COMPLAIN	-	-
+i'm bored	COMPLAIN	-	-
+ugh, the rain again	COMPLAIN	rain	-
+i hate it when the toaster breaks	COMPLAIN	toaster	-
+my back hurts so much, ugh	COMPLAIN	back	-
+why is everything broken	COMPLAIN	-	-
+so annoying	COMPLAIN	-	-
+it's your fault	BLAME	-	-
+vex, this is all your fault	BLAME	-	Vex
+you ruined the pie	BLAME	pie	-
+you broke my lamp, rivet	ACCUSE	lamp	Rivet
+thanks to you we're lost	BLAME	-	-
+because of you the cake burned	BLAME	cake	-
+you made me miss the bus	BLAME	bus	-
+or else	THREATEN	-	-
+watch it, vex	THREATEN	-	Vex
+fight me	THREATEN	-	-
+i'll get you for this	THREATEN	-	-
+you'll regret that	THREATEN	-	-
+i'm warning you, rivet	THREATEN	-	Rivet
+square up	THREATEN	-	-
+i'll punch you	THREATEN	-	-
+you'd better watch your back	THREATEN	-	-
+@room Nana Puddin, Vex, Rivet
+leave her alone, vex	DEFEND	-	Vex
+back off, rivet	DEFEND	-	Rivet
+be nice to nana	DEFEND	-	Vex
+stop picking on rivet	DEFEND	-	-
+that's mean, vex	DEFEND	-	Vex
+cut it out	DEFEND	-	-
+give him a break	DEFEND	-	-
+hey now, be kind	DEFEND	-	-
+vex didn't mean it	DEFEND	-	Nana Puddin
+not cool, rivet	DEFEND	-	Rivet
+i'm with vex on this	TAKE_SIDE	-	Nana Puddin
+nana is right	TAKE_SIDE	-	Vex
+i side with rivet	TAKE_SIDE	-	Nana Puddin
+rivet has a point	TAKE_SIDE	-	Nana Puddin
+team nana!	TAKE_SIDE	-	Vex
+vex is right, nana	TAKE_SIDE	-	Nana Puddin
+i agree with rivet	TAKE_SIDE	-	Nana Puddin
+calm down, everyone	MEDIATE	-	all
+you two, stop fighting	MEDIATE	-	all
+can't we all just get along?	MEDIATE	-	-
+shake hands, vex and rivet	MEDIATE	-	Vex
+chill out	MEDIATE	-	-
+let's agree to disagree	MEDIATE	-	-
+break it up, you two	MEDIATE	-	all
+you're both right	MEDIATE	-	-
+play nice	MEDIATE	-	-
+nana, meet vex	INTRODUCE	-	Nana Puddin
+vex, this is rivet	INTRODUCE	-	Vex
+have you met nana?	INTRODUCE	-	Vex
+let me introduce rivet	INTRODUCE	-	Nana Puddin
+say hi to vex, rivet	INTRODUCE	-	Rivet
+you stole my pie!	ACCUSE	pie	-
+vex, you ate the last cookie	ACCUSE	biscuit	Vex
+it was you, rivet	ACCUSE	-	Rivet
+admit it	ACCUSE	-	-
+i saw you take it	ACCUSE	-	-
+you lied to me	ACCUSE	-	-
+who took my scarf?	ACCUSE	scarf	-
+you broke the toaster	ACCUSE	toaster	-
+i love jazz	OPINE_POS	jazz	-
+i like cheese	OPINE_POS	cheese	-
+i adore pie	OPINE_POS	pie	-
+i really love the rain	OPINE_POS	rain	-
+my favourite food is pizza	OPINE_POS	pizza	-
+jazz is the best	OPINE_POS	jazz	-
+pie is life	OPINE_POS	pie	-
+i'm a big fan of knitting	OPINE_POS	knitting	-
+i enjoy gardening	OPINE_POS	gardening	-
+ghosts are so cool	OPINE_POS	ghost	-
+i'm into doom metal	OPINE_POS	doom_metal	-
+the bakery is amazing	OPINE_POS	bakery	-
+i luv cats	OPINE_POS	cat	-
+cheese is delicious	OPINE_POS	cheese	-
+yum, pancakes	OPINE_POS	pancake	-
+i hate broccoli	OPINE_NEG	broccoli	-
+i can't stand jazz	OPINE_NEG	jazz	-
+i don't like spiders	OPINE_NEG	spider	-
+i dislike the rain	OPINE_NEG	rain	-
+clowns are creepy	OPINE_NEG	clown	-
+mondays are the worst	OPINE_NEG	monday	-
+ew, mushrooms	OPINE_NEG	mushroom	-
+i'm scared of ghosts	OPINE_NEG	ghost	-
+i'm sick of soup	OPINE_NEG	soup	-
+the purple fog is gross	OPINE_NEG	purple_fog	-
+i h8 tuesdays	OPINE_NEG	tuesday	-
+bingo is boring	OPINE_NEG	bingo	-
+i really don't like the dark	OPINE_NEG	dark	-
+spiders are terrible	OPINE_NEG	spider	-
+yuck, olives	OPINE_NEG	olive	-
+yes	YES	-	-
+yeah	YES	-	-
+yep	YES	-	-
+sure	YES	-	-
+ok	YES	-	-
+of course, nana	YES	-	Nana Puddin
+absolutely	YES	-	-
+yup	YES	-	-
+no	NO	-	-
+nope	NO	-	-
+nah	NO	-	-
+no way	NO	-	-
+no thanks	NO	-	-
+not really	NO	-	-
+nah vex	NO	-	Vex
+i agree	AGREE	-	-
+true	AGREE	-	-
+exactly!	AGREE	-	-
+you're right	AGREE	-	-
+same	AGREE	-	-
+good point, rivet	AGREE	-	Rivet
+fair enough	AGREE	-	-
+so true	AGREE	-	-
+me too	AGREE	-	-
+i disagree	DISAGREE	-	-
+that's not true	DISAGREE	-	-
+you're wrong, vex	DISAGREE	-	Vex
+nonsense	DISAGREE	-	-
+i don't think so	DISAGREE	-	-
+wrong	DISAGREE	-	-
+i don't agree, nana	DISAGREE	-	Nana Puddin
+not at all	DISAGREE	-	-
+hmm	BACKCHANNEL	-	-
+oh	BACKCHANNEL	-	-
+i see	BACKCHANNEL	-	-
+uh huh	BACKCHANNEL	-	-
+interesting	BACKCHANNEL	-	-
+wow	BACKCHANNEL	-	-
+cool	BACKCHANNEL	-	-
+really?	BACKCHANNEL	-	-
+gotcha	BACKCHANNEL	-	-
+ooh	BACKCHANNEL	-	-
+mhm	BACKCHANNEL	-	-
+oh wow	BACKCHANNEL	-	-
+i'm a baker	TELL	baker	-
+my cat is called Sprout	TELL	cat	-
+i went to the beach today	TELL	beach	-
+i'm tired	TELL	tired	-
+i'm so happy	TELL	happy	-
+i work at the bakery	TELL	bakery	-
+i have a new bike	TELL	bike	-
+i just moved here	TELL	-	-
+my mum makes great soup	TELL	soup	-
+i'm hungry	TELL	hungry	-
+i saw a ghost last night	TELL	ghost	-
+my garden is full of slugs	TELL	slug	-
+i'm learning the piano	TELL	piano	-
+i was at the church this morning	TELL	church	-
+i'm from Hillvile	TELL	hillvile	-
+i lost my keys	TELL	key	-
+i've been knitting all day	TELL	knitting	-
+my car broke down	TELL	car	-
+i'm feeling great	TELL	-	-
+i had pancakes for breakfast	TELL	pancake	-
+pie	ANSWER	pie	-
+jazz!	ANSWER	jazz	-
+probably cake	ANSWER	cake	-
+the beach	ANSWER	beach	-
+maybe tea	ANSWER	tea	-
+spiders	ANSWER	spider	-
+@room Grumbleguts, Hattie Haha, Pip
+hey grumbleguts	GREET	-	Grumbleguts
+hi hattie!	GREET	-	Hattie Haha
+hello pip	GREET	-	Pip
+yo grumbles	GREET	-	-
+evening, Hattie Haha	GREET	-	Hattie Haha
+hey you three	GREET	-	all
+morning pip!	GREET	-	Pip
+hullo	GREET	-	-
+heya	GREET	-	-
+hi hi	GREET	-	-
+ahoy grumbleguts	GREET	-	Grumbleguts
+good afternoon	GREET	-	-
+hey hattie, hey pip	GREET	-	Hattie Haha
+sup everyone	GREET	-	all
+gotta go, bye pip	FAREWELL	-	Pip
+bye grumbleguts	FAREWELL	-	Grumbleguts
+see you tomorrow, hattie	FAREWELL	-	Hattie Haha
+later guys	FAREWELL	-	all
+goodnight	FAREWELL	-	-
+i'm leaving	FAREWELL	-	-
+gtg	FAREWELL	-	-
+farewell, grumbleguts	FAREWELL	-	Grumbleguts
+night pip	FAREWELL	-	Pip
+thanks hattie	THANK	-	Hattie Haha
+thank you for the soup, grumbleguts	THANK	soup	Grumbleguts
+thx pip	THANK	-	Pip
+thanks a lot	THANK	-	-
+thank you so much	THANK	-	-
+many thanks	THANK	-	-
+tysm	THANK	-	-
+sorry grumbleguts	APOLOGIZE	-	Grumbleguts
+sorry pip, i didnt mean to	APOLOGIZE	-	Pip
+my bad, hattie	APOLOGIZE	-	Hattie Haha
+sorry about your hat	APOLOGIZE	hat	-
+i'm sorry i was late	APOLOGIZE	-	-
+whoops, sorry	APOLOGIZE	-	-
+sry	APOLOGIZE	-	-
+how are you, grumbleguts?	ASK_FEELING	-	Grumbleguts
+how ya doing hattie	ASK_FEELING	-	Hattie Haha
+you okay pip?	ASK_FEELING	-	Pip
+how's everybody?	ASK_FEELING	-	all
+are you angry?	ASK_FEELING	angry	-
+are you happy, pip?	ASK_FEELING	happy	Pip
+how was your morning?	ASK_FEELING	morning	-
+how are you feeling?	ASK_FEELING	-	-
+hows it goin	ASK_FEELING	-	-
+are you lonely, grumbleguts?	ASK_FEELING	lonely	Grumbleguts
+are you ok	ASK_FEELING	-	-
+how r u guys	ASK_FEELING	-	all
+whats up with you, hattie?	ASK_FEELING	-	Hattie Haha
+what's wrong?	ASK_FEELING	-	-
+how have you been, pip?	ASK_FEELING	-	Pip
+grumbleguts, what do you think of the gate?	ASK_OPINION	gate	Grumbleguts
+what do you think of clowns, hattie?	ASK_OPINION	clown	Hattie Haha
+do you like candy, pip?	ASK_OPINION	candy	Pip
+do you like bananas?	ASK_OPINION	banana	-
+how do you feel about the hell gate?	ASK_OPINION	hell_gate	-
+what's your opinion of the church?	ASK_OPINION	church	-
+do you like jokes?	ASK_OPINION	-	-
+do you like chess?	ASK_OPINION	chess	-
+what do you reckon about soup?	ASK_OPINION	soup	-
+do you love puppies?	ASK_OPINION	dog	-
+do u like dinosaurs	ASK_OPINION	dinosaur	-
+what do you think of my hat?	ASK_OPINION	hat	-
+is soup overrated?	ASK_OPINION	soup	-
+cookies?	ASK_OPINION	biscuit	-
+how do you feel about the mayor?	ASK_OPINION	the_mayor	-
+whats ur take on ghosts	ASK_OPINION	ghost	-
+pip, do you like school?	ASK_OPINION	school	Pip
+do you guys like pizza?	ASK_OPINION	pizza	all
+grumbleguts, what's in the stew?	ASK_ABOUT	stew	Grumbleguts
+hattie, tell me about the circus	ASK_ABOUT	circus	Hattie Haha
+pip, where's your teddy bear?	ASK_ABOUT	teddy_bear	Pip
+what's the hell gate?	ASK_ABOUT	hell_gate	-
+where do demons come from?	ASK_ABOUT	demon	-
+how do you make soup?	ASK_ABOUT	soup	-
+what's your favourite song, hattie?	ASK_ABOUT	song	Hattie Haha
+what's your fave colour?	ASK_ABOUT	colour	-
+how did you get that scar?	ASK_ABOUT	scar	-
+when does the bakery open?	ASK_ABOUT	bakery	-
+why is the gate glowing?	ASK_ABOUT	gate	-
+what's in the box?	ASK_ABOUT	cardboard_box	-
+whats for lunch	ASK_ABOUT	lunch	-
+where's the cellar?	ASK_ABOUT	cellar	-
+what are you reading, pip?	ASK_ABOUT	-	Pip
+what are you doing here?	ASK_ABOUT	-	-
+what's that smell?	ASK_ABOUT	smell	-
+tell me about Hellvile	ASK_ABOUT	hellvile	-
+tell me about yourself	ASK_ABOUT	-	-
+how do you juggle?	ASK_ABOUT	juggling	-
+what's the Feast like?	ASK_ABOUT	feast	-
+which way to the park?	ASK_ABOUT	park	-
+what's your favourite game, pip?	ASK_ABOUT	game	Pip
+who is Mascotty?	ASK_ABOUT	mascotty	-
+what happened to your car?	ASK_ABOUT	car	-
+what did you have for breakfast?	ASK_ABOUT	breakfast	-
+are you a clown?	ASK_FACT	clown	-
+do you have a dog, pip?	ASK_FACT	dog	Pip
+can you juggle, hattie?	ASK_FACT	juggling	Hattie Haha
+have you been to the hell gate?	ASK_FACT	hell_gate	-
+do you live in Hellvile?	ASK_FACT	hellvile	-
+are you a demon, grumbleguts?	ASK_FACT	demon	Grumbleguts
+do you go to school?	ASK_FACT	school	-
+can you cook, grumbleguts?	ASK_FACT	-	Grumbleguts
+did you see the parade?	ASK_FACT	parade	-
+are you older than pip?	ASK_FACT	-	-
+do you have a big family?	ASK_FACT	family	-
+is it true you were a guard?	ASK_FACT	guard	-
+can u whistle	ASK_FACT	-	-
+are you hungry?	ASK_FEELING	hungry	-
+were you scared?	ASK_FEELING	scared	-
+who's your favourite clown?	ASK_WHO	clown	-
+who do you like best, pip?	ASK_WHO	-	Pip
+who's the meanest demon?	ASK_WHO	demon	-
+who do you live with?	ASK_WHO	-	-
+who's the boss of Hellvile?	ASK_WHO	hellvile	-
+who invited you?	ASK_WHO	-	-
+who's your best mate?	ASK_WHO	-	-
+who do you hate most?	ASK_WHO	-	-
+who's coming to dinner?	ASK_WHO	dinner	-
+@room Grumbleguts, Hattie Haha, Pip
+should i dye my hair green?	ASK_ADVICE	hair	-
+grumbleguts, any advice on cooking?	ASK_ADVICE	cooking	Grumbleguts
+what should i get pip for her birthday?	ASK_ADVICE	birthday	-
+how do i stop being scared of the dark?	ASK_ADVICE	-	-
+any tips for juggling, hattie?	ASK_ADVICE	juggling	Hattie Haha
+what would you do about a noisy neighbour?	ASK_ADVICE	neighbour	-
+need advice	ASK_ADVICE	-	-
+can you help me with my homework?	ASK_FAVOR	homework	-
+please pass the bread	ASK_FAVOR	bread	-
+could you stir the soup, grumbleguts?	ASK_FAVOR	soup	Grumbleguts
+can you watch my cat this weekend?	ASK_FAVOR	cat	-
+would you mind closing the window?	ASK_FAVOR	window	-
+pls help	ASK_FAVOR	-	-
+could you teach me a magic trick?	ASK_FAVOR	magic_tricks	-
+hattie can you fetch my coat	ASK_FAVOR	coat	Hattie Haha
+eh?	ASK_REPEAT	-	-
+say again?	ASK_REPEAT	-	-
+what did you just say, grumbleguts?	ASK_REPEAT	-	Grumbleguts
+huh, what?	ASK_REPEAT	-	-
+excuse me?	ASK_REPEAT	-	-
+come again, pip?	ASK_REPEAT	-	Pip
+tell me more, hattie	CONTINUE	-	Hattie Haha
+and?	CONTINUE	-	-
+what happened then?	CONTINUE	-	-
+carry on	CONTINUE	-	-
+ooh go on	CONTINUE	-	-
+then what happened?	CONTINUE	-	-
+anyway, soup	CHANGE_TOPIC	soup	-
+anyhoo, did anyone see the parade?	CHANGE_TOPIC	parade	-
+speaking of clowns	CHANGE_TOPIC	clown	-
+btw i love your house	CHANGE_TOPIC	house	-
+can we talk about something else?	CHANGE_TOPIC	-	-
+moving on, the weather	CHANGE_TOPIC	weather	-
+by the way, pip, where's your mum?	CHANGE_TOPIC	mum	Pip
+grumbleguts, your soup is delicious	COMPLIMENT	soup	Grumbleguts
+hattie you're hilarious	COMPLIMENT	-	Hattie Haha
+pip you're so cute	COMPLIMENT	-	Pip
+you're the best cook ever	COMPLIMENT	-	-
+nice shoes, hattie	COMPLIMENT	shoe	Hattie Haha
+i like your shirt	COMPLIMENT	shirt	-
+your jokes are hilarious	COMPLIMENT	-	-
+your house is beautiful	COMPLIMENT	house	-
+you're really brave, pip	COMPLIMENT	-	Pip
+you look fabulous	COMPLIMENT	-	-
+ur awesome grumbleguts	COMPLIMENT	-	Grumbleguts
+you seem nice	COMPLIMENT	-	-
+you're wonderful	COMPLIMENT	-	-
+your stew smells amazing	COMPLIMENT	stew	-
+you guys are the best	COMPLIMENT	-	all
+you're so talented, hattie	COMPLIMENT	-	Hattie Haha
+you are so wise	COMPLIMENT	-	-
+lovely hat!	COMPLIMENT	hat	-
+grumbleguts, you're grumpy	TEASE	-	Grumbleguts
+you're so silly, hattie	TEASE	-	Hattie Haha
+pip you goober	TEASE	-	Pip
+you big softie	TEASE	-	-
+nyah nyah	TEASE	-	-
+bet you can't catch me	TEASE	-	-
+you're such a nerd	TEASE	-	-
+ha ha, slowpoke	TEASE	-	-
+you're a chicken	TEASE	-	-
+you're so slow, grumbleguts	INSULT	-	Grumbleguts
+you're a jerk	INSULT	-	-
+hattie you're not funny	INSULT	-	Hattie Haha
+you're a menace	INSULT	-	-
+you smell like old cheese	INSULT	cheese	-
+you're pathetic	INSULT	-	-
+ur so lame	INSULT	-	-
+you're a nitwit	INSULT	-	-
+grumbleguts you're a grump and a bore	INSULT	-	Grumbleguts
+your stew is disgusting	CRITICIZE	stew	-
+your jokes are terrible, hattie	CRITICIZE	-	Hattie Haha
+you shouldn't eat so much candy, pip	CRITICIZE	candy	Pip
+your hat looks silly	TEASE	hat	-
+you always forget my name	CRITICIZE	-	-
+that was a stupid move	CRITICIZE	-	-
+your singing is awful	CRITICIZE	singing	-
+whatever you say, grumbleguts	MOCK	-	Grumbleguts
+boo hoo, poor hattie	MOCK	-	Hattie Haha
+oh wow so scary	MOCK	-	-
+cry about it	MOCK	-	-
+aren't you special	MOCK	-	-
+grumbleguts is a great cook	PRAISE_OTHER	-	Hattie Haha
+pip is so smart	PRAISE_OTHER	-	Grumbleguts
+hattie is hilarious	PRAISE_OTHER	-	Grumbleguts
+i really like pip	PRAISE_OTHER	-	Grumbleguts
+Nana Puddin is the sweetest	PRAISE_OTHER	nana_puddin	-
+Rivet is so clever	PRAISE_OTHER	rivet	-
+did you hear about Vex?	GOSSIP	vex	-
+apparently Bonejangles can't dance	GOSSIP	bonejangles	-
+i heard Mayor Giggs is bald under that hat	GOSSIP	mayor_giggs	-
+Valentina and Barkley are dating	GOSSIP	-	-
+guess what, Crumbelina burned the bakery	GOSSIP	bakery	-
+did you hear about the fire at the bakery?	GOSSIP	bakery	-
+Zoey said Pip cheated at cards	GOSSIP	-	-
+Sweetpea has a secret boyfriend	GOSSIP	-	-
+psst, Mintworth stole a pie	GOSSIP	pie	-
+rumor is the hell gate is opening	GOSSIP	hell_gate	-
+i heard there's a ghost in the cellar	GOSSIP	ghost	-
+Dr. Bloom secretly hates flowers	GOSSIP	dr_bloom	-
+it's ok, pip	COMFORT	-	Pip
+don't cry, hattie	COMFORT	-	Hattie Haha
+it's alright, grumbleguts	COMFORT	-	Grumbleguts
+you're safe now	COMFORT	-	-
+it'll be okay	COMFORT	-	-
+don't worry about it	COMFORT	-	-
+chin up	COMFORT	-	-
+there there, pip	COMFORT	-	Pip
+i'm here for you	COMFORT	-	-
+oh no, poor pip	SYMPATHIZE	-	Pip
+that's terrible	SYMPATHIZE	-	-
+i hear you, grumbleguts	SYMPATHIZE	-	Grumbleguts
+that stinks	SYMPATHIZE	-	-
+sorry to hear about your hat	SYMPATHIZE	hat	-
+ouch	SYMPATHIZE	-	-
+that's so sad	SYMPATHIZE	-	-
+you can do it, pip!	ENCOURAGE	-	Pip
+go get em, hattie	ENCOURAGE	-	Hattie Haha
+believe in yourself	ENCOURAGE	-	-
+never give up	ENCOURAGE	-	-
+you'll nail it	ENCOURAGE	-	-
+good luck, grumbleguts	ENCOURAGE	-	Grumbleguts
+@room Grumbleguts, Hattie Haha, Pip
+want some soup?	OFFER	soup	-
+would you like a cookie, pip?	OFFER	biscuit	Pip
+can i get you anything?	OFFER	-	-
+want help with that?	OFFER	-	-
+i can carry that for you	OFFER	-	-
+need help, grumbleguts?	OFFER	-	Grumbleguts
+i'll cook dinner tonight	OFFER	dinner	-
+want a lollipop?	OFFER	lollipop	-
+here, take my umbrella	GIVE	umbrella	-
+this is for you, pip	GIVE	-	Pip
+i got you a present, hattie	GIVE	gift	Hattie Haha
+here you are	GIVE	-	-
+i brought you some cake	GIVE	cake	-
+here's your hat back	GIVE	hat	-
+let's play tag	INVITE	tag	-
+wanna come to the circus?	INVITE	circus	-
+let's go for a walk	INVITE	nature_walk	-
+come with me to the shop	INVITE	shop	-
+we should have a picnic	INVITE	picnic	-
+let's play chess, grumbleguts	INVITE	chess	Grumbleguts
+do you want to go to the park, pip?	INVITE	park	Pip
+wanna hang out later?	INVITE	-	-
+let's bake cookies	INVITE	biscuit	-
+join us for dinner	INVITE	dinner	-
+let's go swimming	INVITE	swimming	-
+i promise, pip	PROMISE	-	Pip
+i swear on my hat	PROMISE	hat	-
+i won't forget	PROMISE	-	-
+count on me	PROMISE	-	-
+i'll be there, i promise	PROMISE	-	-
+you have my word	PROMISE	-	-
+lolol	LAUGH	-	-
+hahahaha	LAUGH	-	-
+lmfao	LAUGH	-	-
+heh	LAUGH	-	-
+hehehe pip	LAUGH	-	Pip
+that's hilarious	LAUGH	-	-
+xD	LAUGH	-	-
+knock knock, hattie	JOKE	-	Hattie Haha
+want to hear a joke?	JOKE	-	-
+i'm kidding	JOKE	-	-
+what do you call a sleeping dinosaur?	JOKE	dinosaur	-
+why don't skeletons fight?	JOKE	skeleton	-
+just joking, grumbleguts	JOKE	-	Grumbleguts
+meh, whatever	DISMISS	-	-
+shush, pip	DISMISS	-	Pip
+be quiet	DISMISS	-	-
+get lost	DISMISS	-	-
+don't care	DISMISS	-	-
+who cares about soup	DISMISS	soup	-
+buzz off, grumbleguts	DISMISS	-	Grumbleguts
+yawn	DISMISS	-	-
+ugh, i'm so tired of rain	COMPLAIN	rain	-
+this is the worst day	COMPLAIN	-	-
+not fair!	COMPLAIN	-	-
+argh	COMPLAIN	-	-
+i'm done with this	COMPLAIN	-	-
+this soup sucks	COMPLAIN	soup	-
+why does nothing ever work	COMPLAIN	-	-
+ugh, homework	COMPLAIN	homework	-
+it's all your fault, grumbleguts	BLAME	-	Grumbleguts
+you made me drop my ice cream	BLAME	ice_cream	-
+thanks to you, the soup is cold	BLAME	soup	-
+you ruined the party, hattie	BLAME	party	Hattie Haha
+i blame pip	BLAME	-	Pip
+you started it	BLAME	-	-
+i'll get you, grumbleguts	THREATEN	-	Grumbleguts
+watch out or else	THREATEN	-	-
+you'll pay for this	THREATEN	-	-
+put em up!	THREATEN	-	-
+i'm warning you	THREATEN	-	-
+catch these hands	THREATEN	-	-
+leave pip alone!	DEFEND	-	-
+back off, grumbleguts	DEFEND	-	Grumbleguts
+stop being mean to hattie	DEFEND	-	-
+that's not fair to pip	DEFEND	-	-
+be kind, grumbleguts	DEFEND	-	Grumbleguts
+lay off her	DEFEND	-	-
+i'm with pip	TAKE_SIDE	-	Grumbleguts
+grumbleguts is right	TAKE_SIDE	-	Hattie Haha
+i side with hattie	TAKE_SIDE	-	Grumbleguts
+hattie has a point	TAKE_SIDE	-	Grumbleguts
+team grumbleguts	TAKE_SIDE	-	Hattie Haha
+pip is right, hattie	TAKE_SIDE	-	Hattie Haha
+stop fighting, you two	MEDIATE	-	all
+everyone calm down	MEDIATE	-	all
+can't we all get along?	MEDIATE	-	-
+make up, you two	MEDIATE	-	all
+settle down, everybody	MEDIATE	-	all
+hug it out	MEDIATE	-	-
+let's not fight	MEDIATE	-	-
+pip, meet grumbleguts	INTRODUCE	-	Pip
+hattie, this is pip	INTRODUCE	-	Hattie Haha
+have you met hattie, pip?	INTRODUCE	-	Pip
+grumbleguts, say hello to pip	INTRODUCE	-	Grumbleguts
+you ate my candy!	ACCUSE	candy	-
+admit it, grumbleguts	ACCUSE	-	Grumbleguts
+you took my teddy bear	ACCUSE	teddy_bear	-
+it was you, hattie	ACCUSE	-	Hattie Haha
+you hid my shoes	ACCUSE	shoe	-
+who stole my hat?	ACCUSE	hat	-
+caught you red handed	ACCUSE	-	-
+i love soup	OPINE_POS	soup	-
+i adore circuses	OPINE_POS	circus	-
+i really like dinosaurs	OPINE_POS	dinosaur	-
+candy is the best	OPINE_POS	candy	-
+my favourite thing is swimming	OPINE_POS	swimming	-
+i enjoy a good stew	OPINE_POS	stew	-
+clowns are awesome	OPINE_POS	clown	-
+i'm crazy about chess	OPINE_POS	chess	-
+mmm, cake	OPINE_POS	cake	-
+i love lullabies	OPINE_POS	lullaby	-
+i hate clowns	OPINE_NEG	clown	-
+i don't like soup	OPINE_NEG	soup	-
+homework is the worst	OPINE_NEG	homework	-
+i despise mondays	OPINE_NEG	monday	-
+broccoli is gross	OPINE_NEG	broccoli	-
+i'm not a fan of spiders	OPINE_NEG	spider	-
+eww, slugs	OPINE_NEG	slug	-
+i'm scared of the cellar	OPINE_NEG	cellar	-
+rain is so boring	OPINE_NEG	rain	-
+i can't stand homework	OPINE_NEG	homework	-
+yes please	YES	-	-
+yeah sure	YES	-	-
+okay pip	YES	-	Pip
+definitely	YES	-	-
+yesss	YES	-	-
+alright	YES	-	-
+nope, grumbleguts	NO	-	Grumbleguts
+no way, hattie	NO	-	Hattie Haha
+nah	NO	-	-
+no thank you	NO	-	-
+nooo	NO	-	-
+exactly	AGREE	-	-
+agreed	AGREE	-	-
+you're right, pip	AGREE	-	Pip
+same here	AGREE	-	-
+true, grumbleguts	AGREE	-	Grumbleguts
+facts	AGREE	-	-
+that's not right	DISAGREE	-	-
+you're wrong	DISAGREE	-	-
+as if	DISAGREE	-	-
+i disagree, hattie	DISAGREE	-	Hattie Haha
+nuh uh	DISAGREE	-	-
+oh really?	BACKCHANNEL	-	-
+huh	BACKCHANNEL	-	-
+neat	BACKCHANNEL	-	-
+whoa	BACKCHANNEL	-	-
+i see, pip	BACKCHANNEL	-	Pip
+right	BACKCHANNEL	-	-
+@room Bea, Moss, Tobi
+*hugs bea*	HUG	-	Bea
+hugs moss	HUG	-	Moss
+*hug*	HUG	-	-
+can i have a hug?	HUG	-	-
+group hug!	HUG	-	-
+i need a hug	HUG	-	-
+gives tobi a hug	HUG	-	Tobi
+*waves*	WAVE	-	-
+waves at moss	WAVE	-	Moss
+*nods*	NOD	-	-
+nods slowly	NOD	-	-
+*shakes head*	SHAKE_HEAD	-	-
+smh	SHAKE_HEAD	-	-
+high five!	HIGH_FIVE	-	-
+high five, tobi	HIGH_FIVE	-	Tobi
+up top!	HIGH_FIVE	-	-
+fist bump	HIGH_FIVE	-	-
+*walks away*	WALK_AWAY	-	-
+storms off	WALK_AWAY	-	-
+i'm out	WALK_AWAY	-	-
+i love you, bea	CONFESS	-	Bea
+i have a crush on you	CONFESS	-	-
+i like you, moss	CONFESS	-	Moss
+i think i'm in love with you	CONFESS	-	-
+i have feelings for you, tobi	CONFESS	-	Tobi
+ily	CONFESS	-	-
+will you go out with me?	ASK_OUT	-	-
+bea, go on a date with me?	ASK_OUT	-	Bea
+wanna go on a date?	ASK_OUT	-	-
+be my valentine, moss	ASK_OUT	-	Moss
+will you marry me?	ASK_OUT	-	-
+*kisses bea*	KISS	-	Bea
+mwah	KISS	-	-
+can i kiss you?	KISS	-	-
+blows a kiss	KISS	-	-
+you're cute, tobi	COMPLIMENT	-	Tobi
+hey there good looking	FLIRT	-	-
+you're gorgeous	FLIRT	-	-
+nice smile, moss	FLIRT	-	Moss
+*winks*	FLIRT	-	-
+you have beautiful eyes	FLIRT	-	-
+come here often?	FLIRT	-	-
+lookin good, bea	FLIRT	-	Bea
+i'm a florist	TELL	florist	-
+i grew up in Hellvile	TELL	hellvile	-
+my dog ate my homework	TELL	dog	-
+i'm really sleepy	TELL	sleepy	-
+i just got back from the beach	TELL	beach	-
+i'm making soup tonight	TELL	soup	-
+my sister plays the drums	TELL	drums	-
+i used to be a pirate	TELL	pirate	-
+i painted my house blue	TELL	house	-
+i'm learning to juggle	TELL	juggling	-
+my favourite day is friday	OPINE_POS	friday	-
+i'm nervous about the Feast	TELL	feast	-
+i found a frog in my boot	TELL	frog	-
+i have three cats	TELL	cat	-
+i got a new job	TELL	job	-
+we went fishing yesterday	TELL	fishing	-
+i'm so excited	TELL	excited	-
+i dreamt about ghosts	TELL	ghost	-
+i'm a terrible cook	TELL	-	-
+i can't sleep	TELL	-	-
+the bakery	ANSWER	bakery	-
+probably jazz	ANSWER	jazz	-
+cats	ANSWER	cat	-
+tuesday	ANSWER	tuesday	-
+pizza!	ANSWER	pizza	-
+the hell gate	ANSWER	hell_gate	-
+some tea	ANSWER	tea	-
+helo bea	GREET	-	Bea
+hii moss!!	GREET	-	Moss
+heyyy tobi	GREET	-	Tobi
+gud morning	GREET	-	-
+thnx	THANK	-	-
+thanx moss	THANK	-	Moss
+sowwy	APOLOGIZE	-	-
+how r u	ASK_FEELING	-	-
+hows u	ASK_FEELING	-	-
+r u ok tobi	ASK_FEELING	-	Tobi
+wat do u think of jazz	ASK_OPINION	jazz	-
+wut do you think about piza	ASK_OPINION	pizza	-
+do u liek cheese	ASK_OPINION	cheese	-
+waht is the purple fog	ASK_ABOUT	purple_fog	-
+wheres the bakrey	ASK_ABOUT	bakery	-
+tel me about the feast	ASK_ABOUT	feast	-
+ur so funy	COMPLIMENT	-	-
+ur amazin	COMPLIMENT	-	-
+luv ur hat	COMPLIMENT	hat	-
+ur an idoit	INSULT	-	-
+u stink	INSULT	-	-
+i luv pizza	OPINE_POS	pizza	-
+i hate broccolli	OPINE_NEG	broccoli	-
+i h8 rain	OPINE_NEG	rain	-
+i <3 cats	OPINE_POS	cat	-
+yh	YES	-	-
+ya	YES	-	-
+nop	NO	-	-
+naw	NO	-	-
+lets go 2 the park	INVITE	park	-
+wanna play chess	INVITE	chess	-
+c ya	FAREWELL	-	-
+bai bea	FAREWELL	-	Bea
+gnite	FAREWELL	-	-
+omg haha	LAUGH	-	-
+lmaooo	LAUGH	-	-
+kk	YES	-	-
+idk	ANSWER	-	-
+wat	ASK_REPEAT	-	-
+y tho	ASK_ABOUT	-	-
+pls help me moss	ASK_FAVOR	-	Moss
+sry tobi	APOLOGIZE	-	Tobi
+congrats bea	COMPLIMENT	-	Bea
+u r the best	COMPLIMENT	-	-
+whos coming 2 the party	ASK_WHO	party	-
+dont worry	COMFORT	-	-
+i promis	PROMISE	-	-
+gd luck	ENCOURAGE	-	-
+@room Mayor Giggs, Dr. Bloom
+hello mayor	GREET	-	Mayor Giggs
+hi doctor bloom	GREET	-	Dr. Bloom
+good morning mayor giggs	GREET	-	Mayor Giggs
+hey dr bloom!	GREET	-	Dr. Bloom
+hello you two	GREET	-	all
+howdy mayor	GREET	-	Mayor Giggs
+bye mayor	FAREWELL	-	Mayor Giggs
+see you, dr. bloom	FAREWELL	-	Dr. Bloom
+i'd better go	FAREWELL	-	-
+until next time	FAREWELL	-	-
+thanks, doctor	THANK	-	-
+thank you mayor giggs	THANK	-	Mayor Giggs
+thanks for the medicine, dr bloom	THANK	medicine	Dr. Bloom
+sorry mayor	APOLOGIZE	-	Mayor Giggs
+i apologize for the noise	APOLOGIZE	noise	-
+forgive me, dr. bloom	APOLOGIZE	-	Dr. Bloom
+how are you, mayor?	ASK_FEELING	-	Mayor Giggs
+how's the doctor doing?	ASK_FEELING	-	Dr. Bloom
+how are you both?	ASK_FEELING	-	all
+are you busy, dr bloom?	ASK_FEELING	-	Dr. Bloom
+are you stressed?	ASK_FEELING	stressed	-
+mayor, what do you think of the purple fog?	ASK_OPINION	purple_fog	Mayor Giggs
+dr bloom, do you like flowers?	ASK_OPINION	flower	Dr. Bloom
+what's your view on taxes?	ASK_OPINION	taxes	-
+do you like the town hall?	ASK_OPINION	town_hall	-
+how do you feel about the election?	ASK_OPINION	-	-
+what do you think of my garden, doctor?	ASK_OPINION	garden	-
+do you like parades, mayor?	ASK_OPINION	parade	Mayor Giggs
+is the hospital any good?	ASK_OPINION	hospital	-
+mayor, when's the next parade?	ASK_ABOUT	parade	Mayor Giggs
+dr bloom, what's this rash?	ASK_ABOUT	-	Dr. Bloom
+where's the town hall?	ASK_ABOUT	town_hall	-
+what's the cure for a cold?	ASK_ABOUT	cold	-
+tell me about the hospital	ASK_ABOUT	hospital	-
+how do you grow roses?	ASK_ABOUT	rose	-
+what happened at the town meeting?	ASK_ABOUT	meeting	-
+why is the fountain green?	ASK_ABOUT	fountain	-
+what does the mayor do all day?	ASK_ABOUT	-	-
+what medicine is best for a cough?	ASK_ABOUT	medicine	-
+tell me about the hell gate, mayor	ASK_ABOUT	hell_gate	Mayor Giggs
+what's the plan for the Feast?	ASK_ABOUT	feast	-
+are you a real doctor?	ASK_FACT	doctor	-
+do you have kids, mayor?	ASK_FACT	kid	Mayor Giggs
+have you met Bonejangles?	ASK_FACT	bonejangles	-
+can you fix my knee, doctor?	ASK_FAVOR	knee	-
+do you like being mayor?	ASK_OPINION	-	-
+are you running again?	ASK_FACT	-	-
+did you see the fireworks?	ASK_FACT	fireworks	-
+who's the best doctor in town?	ASK_WHO	doctor	-
+who runs the hospital?	ASK_WHO	hospital	-
+who's your favourite patient?	ASK_WHO	patient	-
+who voted for you?	ASK_WHO	-	-
+mayor, what should i do about my noisy neighbour?	ASK_ADVICE	neighbour	Mayor Giggs
+dr bloom, should i see a doctor about my cough?	ASK_ADVICE	doctor	Dr. Bloom
+any advice for a new resident?	ASK_ADVICE	-	-
+how do i get a job at the town hall?	ASK_ADVICE	job	-
+could you sign this, mayor?	ASK_FAVOR	-	Mayor Giggs
+please check my temperature	ASK_FAVOR	-	-
+would you fix the potholes?	ASK_FAVOR	-	-
+can you give me a check up, dr bloom?	ASK_FAVOR	-	Dr. Bloom
+pardon, mayor?	ASK_REPEAT	-	Mayor Giggs
+what was that?	ASK_REPEAT	-	-
+sorry, i didn't hear you	ASK_REPEAT	-	-
+go on, doctor	CONTINUE	-	-
+and then what happened?	CONTINUE	-	-
+anyway, about the fountain	CHANGE_TOPIC	fountain	-
+by the way, i need a check up	CHANGE_TOPIC	-	-
+mayor, you're doing a great job	COMPLIMENT	job	Mayor Giggs
+dr bloom you're a lifesaver	COMPLIMENT	-	Dr. Bloom
+great speech, mayor	COMPLIMENT	speech	Mayor Giggs
+you're so kind, doctor	COMPLIMENT	-	-
+your hospital is spotless	COMPLIMENT	hospital	-
+you're the best mayor ever	COMPLIMENT	-	-
+nice suit	COMPLIMENT	suit	-
+well done, dr bloom	COMPLIMENT	-	Dr. Bloom
+good job, mayor	COMPLIMENT	job	Mayor Giggs
+mayor you're a fraud	INSULT	-	Mayor Giggs
+you're a quack, dr bloom	INSULT	-	Dr. Bloom
+you're useless, mayor	INSULT	-	Mayor Giggs
+you are a terrible mayor	INSULT	-	-
+your speeches are boring	CRITICIZE	speech	-
+your hospital food is awful	CRITICIZE	-	-
+you never fix the roads	CRITICIZE	street	-
+you shouldn't raise taxes	CRITICIZE	taxes	-
+the mayor is so funny	PRAISE_OTHER	-	Dr. Bloom
+dr bloom is brilliant	PRAISE_OTHER	-	Mayor Giggs
+Father Fuzz is really nice	PRAISE_OTHER	father_fuzz	-
+i heard the mayor cheats at golf	GOSSIP	golf	-
+did you hear about Hattie Haha?	GOSSIP	hattie_haha	-
+Grumbleguts burned down the bakery again	GOSSIP	grumbleguts	-
+apparently Rivet is moving away	GOSSIP	rivet	-
+rumour is Dr. Bloom is a vampire	GOSSIP	dr_bloom	-
+don't worry, mayor	COMFORT	-	Mayor Giggs
+it's going to be okay, doctor	COMFORT	-	-
+that must be hard, mayor	SYMPATHIZE	-	Mayor Giggs
+sorry to hear about the election	SYMPATHIZE	-	-
+you'll win the election, mayor	ENCOURAGE	-	Mayor Giggs
+good luck with the surgery	ENCOURAGE	-	-
+want some coffee, mayor?	OFFER	coffee	Mayor Giggs
+i can help at the hospital	OFFER	hospital	-
+can i get you some water, doctor?	OFFER	water	-
+here's a flower for you, dr bloom	GIVE	flower	Dr. Bloom
+take this pie, mayor	GIVE	pie	Mayor Giggs
+let's go to the parade	INVITE	parade	-
+come to my party, mayor	INVITE	party	Mayor Giggs
+we should get lunch sometime	INVITE	lunch	-
+i promise to vote for you	PROMISE	-	-
+i swear i took my medicine	PROMISE	medicine	-
+haha good one mayor	LAUGH	-	Mayor Giggs
+lol doctor	LAUGH	-	-
+knock knock, mayor	JOKE	-	Mayor Giggs
+why did the doctor cross the road?	JOKE	doctor	-
+whatever, mayor	DISMISS	-	Mayor Giggs
+i don't care about the parade	DISMISS	parade	-
+ugh, taxes	COMPLAIN	taxes	-
+the roads are so bumpy, ugh	COMPLAIN	street	-
+it's your fault the bridge fell down	BLAME	bridge	-
+you lost the trophy, mayor	BLAME	trophy	Mayor Giggs
+watch your back, mayor	THREATEN	-	Mayor Giggs
+leave the doctor alone	DEFEND	-	-
+be nice to the mayor	DEFEND	-	Dr. Bloom
+i'm with dr bloom	TAKE_SIDE	-	Mayor Giggs
+the mayor is right	TAKE_SIDE	-	Dr. Bloom
+calm down, both of you	MEDIATE	-	all
+you two should make up	MEDIATE	-	all
+mayor, meet dr bloom	INTRODUCE	-	Mayor Giggs
+you stole my parking space, mayor	ACCUSE	-	Mayor Giggs
+i love parades	OPINE_POS	parade	-
+flowers are lovely	OPINE_POS	flower	-
+i hate hospitals	OPINE_NEG	hospital	-
+taxes are the worst	OPINE_NEG	taxes	-
+yes mayor	YES	-	Mayor Giggs
+sure thing, doctor	YES	-	-
+no, mayor	NO	-	Mayor Giggs
+fair point	AGREE	-	-
+i agree with you, doctor	AGREE	-	-
+nah, you're wrong	DISAGREE	-	-
+hm	BACKCHANNEL	-	-
+i'm a nurse	TELL	nurse	-
+i broke my arm last week	TELL	arm	-
+my tooth hurts	TELL	tooth	-
+i voted for you	TELL	-	-
+@room Sunny, Kevin, Wisp
+hi sunny, how are you?	ASK_FEELING,GREET	-	Sunny
+hey kevin, what's up?	ASK_FEELING,GREET	-	Kevin
+hello wisp, do you like ghosts?	ASK_OPINION,GREET	ghost	Wisp
+thanks kevin, you're the best	THANK,COMPLIMENT	-	Kevin
+sorry sunny, i forgot your birthday	APOLOGIZE	birthday	Sunny
+bye wisp, see you tomorrow	FAREWELL	-	Wisp
+morning sunny! want some toast?	OFFER,GREET	toast	Sunny
+haha kevin you're so weird	TEASE,LAUGH	-	Kevin
+ugh, kevin ate my sandwich	COMPLAIN	sandwich	-
+wisp, are you a real ghost?	ASK_FACT	ghost	Wisp
+sunny what's your favourite flower?	ASK_ABOUT	flower	Sunny
+kevin, can you pass the jam?	ASK_FAVOR	jam	Kevin
+wisp do you want to play hide and seek?	INVITE	hide_and_seek	Wisp
+sunny, i love your dress	COMPLIMENT	dress	Sunny
+kevin is so annoying	INSULT	-	Sunny
+what do you think, sunny?	ASK_OPINION	-	Sunny
+what about you, kevin?	ASK_ABOUT	-	Kevin
+and you, wisp?	ASK_ABOUT	-	Wisp
+do you agree, sunny?	ASK_OPINION	-	Sunny
+right, kevin?	ASK_OPINION	-	Kevin
+isn't that right, wisp?	ASK_OPINION	-	Wisp
+what's the best pizza topping?	ASK_ABOUT	pizza	-
+how long have you lived here?	ASK_ABOUT	-	-
+where do ghosts sleep?	ASK_ABOUT	ghost	-
+why are you so tall, kevin?	ASK_ABOUT	-	Kevin
+how many cats do you have?	ASK_ABOUT	cat	-
+when's your birthday, sunny?	ASK_ABOUT	birthday	Sunny
+what's your job, kevin?	ASK_ABOUT	job	Kevin
+whats the time	ASK_ABOUT	-	-
+what are you guys talking about?	ASK_ABOUT	-	all
+tell me a story	ASK_FAVOR	story	-
+tell me a joke, kevin	ASK_FAVOR	-	Kevin
+sing me a song, wisp	ASK_FAVOR	song	Wisp
+can you show me the garden?	ASK_FAVOR	garden	-
+i wish i could fly	TELL	-	-
+i think ghosts are real	OPINE_POS	ghost	-
+i think the mayor is a crook	OPINE_NEG	the_mayor	-
+i bet it rains tomorrow	TELL	-	-
+i'm not sure	ANSWER	-	-
+i don't know	ANSWER	-	-
+dunno	ANSWER	-	-
+no idea	ANSWER	-	-
+maybe	ANSWER	-	-
+it depends	ANSWER	-	-
+probably	ANSWER	-	-
+i guess so	YES	-	-
+sounds good	YES	-	-
+deal	YES	-	-
+why not	YES	-	-
+not today	NO	-	-
+never!	NO	-	-
+i'd rather not	NO	-	-
+hard pass	NO	-	-
+oh my	BACKCHANNEL	-	-
+no kidding	BACKCHANNEL	-	-
+huh, interesting	BACKCHANNEL	-	-
+wow, really?	BACKCHANNEL	-	-
+oh okay	BACKCHANNEL	-	-
+got it	BACKCHANNEL	-	-
+makes sense	AGREE	-	-
+good idea	AGREE	-	-
+totally	AGREE	-	-
+that's right	AGREE	-	-
+you said it, sunny	AGREE	-	Sunny
+i don't think that's true	DISAGREE	-	-
+no it isn't	DISAGREE	-	-
+that's wrong, kevin	DISAGREE	-	Kevin
+nope, not at all	DISAGREE	-	-
+kevin, you're hilarious	COMPLIMENT	-	Kevin
+wisp you're so sweet	COMPLIMENT	-	Wisp
+sunny you look lovely today	COMPLIMENT	-	Sunny
+your voice is beautiful	COMPLIMENT	voice	-
+you have great taste	COMPLIMENT	-	-
+you're a good friend, kevin	COMPLIMENT	friend	Kevin
+i'm so proud of you, wisp	ENCOURAGE	-	Wisp
+well done!	COMPLIMENT	-	-
+good job, wisp!	COMPLIMENT	job	Wisp
+congratulations, sunny	COMPLIMENT	-	Sunny
+kevin, you're a slob	INSULT	-	Kevin
+you're annoying	INSULT	-	-
+ur weird	INSULT	-	-
+go away kevin	DISMISS	-	Kevin
+leave me alone, wisp	DISMISS	-	Wisp
+ugh fine	COMPLAIN	-	-
+i'm so bored	COMPLAIN	-	-
+it's too hot	COMPLAIN	-	-
+this is so unfair, sunny	COMPLAIN	-	Sunny
+it's kevin's fault	BLAME	-	Kevin
+you broke my kite, kevin	ACCUSE	kite	Kevin
+why did you do that?	CRITICIZE	-	-
+that wasn't very nice	CRITICIZE	-	-
+you're always late, kevin	CRITICIZE	-	Kevin
+stop it, kevin	DEFEND	-	Kevin
+leave wisp alone	DEFEND	-	-
+i'm on sunny's side	TAKE_SIDE	-	Kevin
+kevin has a point	TAKE_SIDE	-	Sunny
+both of you, stop	MEDIATE	-	all
+let's all calm down	MEDIATE	-	-
+sunny, this is kevin	INTRODUCE	-	Sunny
+wisp, meet sunny	INTRODUCE	-	Wisp
+you ate my cookies, kevin!	ACCUSE	biscuit	Kevin
+who broke the vase?	ACCUSE	-	-
+let's make pancakes	INVITE	pancake	-
+come play with us, wisp	INVITE	-	Wisp
+let's go to the fair	INVITE	fair	-
+wanna watch tv?	INVITE	tv	-
+want to come to the beach with us?	INVITE	beach	-
+we should go camping	INVITE	camping	-
+want a balloon, wisp?	OFFER	balloon	Wisp
+i'll help you clean up	OFFER	-	-
+need a lift, sunny?	OFFER	-	Sunny
+here's your book back	GIVE	book	-
+i made you a card	GIVE	birthday_card	-
+i brought cake for everyone	GIVE	cake	all
+i promise i'll come	PROMISE	-	-
+i won't tell anyone	PROMISE	-	-
+pinky swear, wisp	PROMISE	-	Wisp
+lol kevin	LAUGH	-	Kevin
+ha! good one	LAUGH	-	-
+haha you're funny	COMPLIMENT,LAUGH	-	-
+knock knock	JOKE	-	-
+here's a joke for you	JOKE	-	-
+did you hear about Grumbleguts?	GOSSIP	grumbleguts	-
+apparently Pip has a pet bat	GOSSIP	pip	-
+i heard the bakery is closing	GOSSIP	bakery	-
+guess what happened at school	GOSSIP	school	-
+Glowbug says the park is haunted	GOSSIP	park	-
+you poor thing	SYMPATHIZE	-	-
+aww that's sad, wisp	SYMPATHIZE	-	Wisp
+that's tough, kevin	SYMPATHIZE	-	Kevin
+it's fine, sunny	COMFORT	-	Sunny
+don't be sad	COMFORT	-	-
+you've got this, kevin	ENCOURAGE	-	Kevin
+keep at it	ENCOURAGE	-	-
+i love pancakes	OPINE_POS	pancake	-
+kites are fun	OPINE_POS	kite	-
+the fair is amazing	OPINE_POS	fair	-
+i hate camping	OPINE_NEG	camping	-
+balloons are scary	OPINE_NEG	balloon	-
+i don't like the dark	OPINE_NEG	dark	-
+@room Charlotte
+hi charlotte	GREET	-	Charlotte
+hey	GREET	-	-
+hello hello	GREET	-	-
+evening	GREET	-	-
+bye charlotte	FAREWELL	-	Charlotte
+see ya later	FAREWELL	-	-
+i gotta head home	FAREWELL	-	-
+thanks charlotte	THANK	-	Charlotte
+cheers for the tea	THANK	tea	-
+appreciate it	THANK	-	-
+sorry charlotte	APOLOGIZE	-	Charlotte
+oops, my mistake	APOLOGIZE	-	-
+how are you doing?	ASK_FEELING	-	-
+how's your day going?	ASK_FEELING	day	-
+feeling better?	ASK_FEELING	-	-
+are you okay charlotte?	ASK_FEELING	-	Charlotte
+what's on your mind?	ASK_FEELING	-	-
+what do you think of spiders?	ASK_OPINION	spider	-
+do you like the cellar?	ASK_OPINION	cellar	-
+how do you feel about ghosts?	ASK_OPINION	ghost	-
+whats your opinion on the church	ASK_OPINION	church	-
+do you like tea or coffee?	ASK_OPINION	tea	-
+is the graveyard spooky?	ASK_OPINION	graveyard	-
+what's your favourite book?	ASK_ABOUT	book	-
+where did you grow up?	ASK_ABOUT	-	-
+what's in your basket?	ASK_ABOUT	-	-
+tell me about your family	ASK_ABOUT	family	-
+what do you do for fun?	ASK_ABOUT	fun	-
+how did you meet your husband?	ASK_ABOUT	husband	-
+what's that song you're humming?	ASK_ABOUT	song	-
+why do you like webs?	ASK_ABOUT	-	-
+what's your secret recipe?	ASK_ABOUT	recipe	-
+do you have any pets?	ASK_FACT	pet	-
+can you knit?	ASK_FACT	-	-
+are you afraid of birds?	ASK_OPINION	bird	-
+have you ever left town?	ASK_FACT	town	-
+do you sleep at night?	ASK_FACT	-	-
+who taught you to cook?	ASK_WHO	-	-
+who's your neighbour?	ASK_WHO	neighbour	-
+who do you talk to most?	ASK_WHO	-	-
+what should i wear to the party?	ASK_ADVICE	party	-
+how do i make my garden grow?	ASK_ADVICE	garden	-
+any suggestions for dinner?	ASK_ADVICE	dinner	-
+can you lend me some sugar?	ASK_FAVOR	sugar	-
+could you water my plants?	ASK_FAVOR	plant	-
+please don't eat my flies	ASK_FAVOR	fly	-
+huh? what?	ASK_REPEAT	-	-
+repeat that please	ASK_REPEAT	-	-
+keep talking	CONTINUE	-	-
+what else?	CONTINUE	-	-
+anyway, back to the party	CHANGE_TOPIC	party	-
+let's talk about books	CHANGE_TOPIC	book	-
+your web is beautiful	COMPLIMENT	-	-
+you're very elegant	COMPLIMENT	-	-
+i like your hat, charlotte	COMPLIMENT	hat	Charlotte
+you're a great host	COMPLIMENT	host	-
+your tea is perfect	COMPLIMENT	tea	-
+you're creepy	INSULT	-	-
+you look scary	INSULT	-	-
+ur gross	INSULT	-	-
+your house is filthy	CRITICIZE	house	-
+your tea is cold	CRITICIZE	tea	-
+you never call me	CRITICIZE	-	-
+you're such a goof	TEASE	-	-
+oh please, charlotte	TEASE	-	Charlotte
+did you hear about Wisp?	GOSSIP	wisp	-
+Vex keeps stealing apples	GOSSIP	vex	-
+i heard the mayor is ill	GOSSIP	the_mayor	-
+it's okay, charlotte	COMFORT	-	Charlotte
+everything's fine	COMFORT	-	-
+that's awful	SYMPATHIZE	-	-
+i'm sorry that happened	SYMPATHIZE	-	-
+go for it, charlotte	ENCOURAGE	-	Charlotte
+you'll be great	ENCOURAGE	-	-
+want some biscuits?	OFFER	biscuit	-
+shall i put the kettle on?	OFFER	kettle	-
+here, have my umbrella	GIVE	umbrella	-
+a gift for you	GIVE	gift	-
+let's have tea	INVITE	tea	-
+fancy a walk?	INVITE	nature_walk	-
+come to the library with me	INVITE	library	-
+i promise i'll visit	PROMISE	-	-
+i'll never tell	PROMISE	-	-
+hehe charlotte	LAUGH	-	Charlotte
+haha nice	LAUGH	-	-
+i'm only joking	JOKE	-	-
+whatever	DISMISS	-	-
+hush	DISMISS	-	-
+ugh, the rain	COMPLAIN	rain	-
+my feet hurt	COMPLAIN	foot	-
+you lost my book	BLAME	book	-
+this is your fault, charlotte	BLAME	-	Charlotte
+don't make me angry	THREATEN	-	-
+you'd better not	THREATEN	-	-
+you took my spoon	ACCUSE	spoon	-
+i love books	OPINE_POS	book	-
+tea is wonderful	OPINE_POS	tea	-
+i adore spiders	OPINE_POS	spider	-
+i hate flies	OPINE_NEG	fly	-
+coffee is awful	OPINE_NEG	coffee	-
+i don't like the cold	OPINE_NEG	cold	-
+yes	YES	-	-
+sure, charlotte	YES	-	Charlotte
+ok fine	YES	-	-
+no	NO	-	-
+no, charlotte	NO	-	Charlotte
+i agree	AGREE	-	-
+same, charlotte	AGREE	-	Charlotte
+i disagree	DISAGREE	-	-
+mm	BACKCHANNEL	-	-
+oh nice	BACKCHANNEL	-	-
+cool cool	BACKCHANNEL	-	-
+i'm a librarian	TELL	-	-
+i made soup	TELL	soup	-
+i'm moving next week	TELL	week	-
+my cat is sick	TELL	cat	-
+i went to the graveyard	TELL	graveyard	-
+the library	ANSWER	library	-
+books	ANSWER	book	-
+*hugs charlotte*	HUG	-	Charlotte
+*waves goodbye*	WAVE	-	-
+*nods* yes	NOD	-	-
+high five charlotte	HIGH_FIVE	-	Charlotte

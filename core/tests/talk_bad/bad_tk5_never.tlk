@@ -1,0 +1,3 @@
+# expect: TK5: 'politics' is a never-generated
+@rule core.ask_about
+  "Let us talk politics."

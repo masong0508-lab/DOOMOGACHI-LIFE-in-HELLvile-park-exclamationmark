@@ -1,0 +1,3 @@
+# expect: TK3:
+@rule core.flirt.yes guard: !kid_present
+  "Oh! Hello to you too."

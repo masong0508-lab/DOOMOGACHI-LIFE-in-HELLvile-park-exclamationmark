@@ -200,3 +200,8 @@ space_opera	.	1	.	.	.	huge,dramatic,shiny	.
 superhero_movie	.	1	.	.	.	loud,flashy,long	.
 puppet_show	.	2	.	.	.	silly,colourful,creepy	.
 magic_show	.	2	.	.	.	sparkly,sneaky,impressive	.
+# T3 (TK2): everyday words the parser corpus needed
+@cat hobbies.game
+game	.	1	.	.	.	fun,competitive,silly	.
+@cat hobbies.sport
+sport	.	1	.	.	.	sweaty,fast,competitive	.

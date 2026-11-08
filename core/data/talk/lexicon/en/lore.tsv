@@ -51,3 +51,6 @@ blessing	.	2	.	.	.	holy,warm,kind	.
 holy_relic	.	1	.	.	relic	old,holy,dusty	.
 confession	.	0	.	.	.	secret,awkward,long	.
 church_fete	.	1	.	church fete	.	busy,cheap,sweet	.
+# T3 (TK2): everyday words the parser corpus needed
+@cat lore.event
+parade	.	2	.	.	.	loud,festive,long	.

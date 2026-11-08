@@ -1,0 +1,368 @@
+# core/data/talk/rules/en.tsv - the English free-text parser (owner: TK, T3;
+# docs/TALK.md "The parser"; design section 3.2). Compiled into TB_PARSE by
+# core/tools/talkc.py (talkc_parse.py documents the syntax). Dreamcast and
+# native only: the PS1 has no keyboard.
+#
+# The safety classes are NOT rules: talk_safe.c classifies explicit,
+# flirting, hate, distress and minor words before any rule runs, and they
+# always win. A class member is a function word in that use (never the
+# topic) unless the class says +topic; a "literal" in a rule is not.
+#
+# Measured on core/data/talk/corpus/parse_en.tsv by test_talk_parse.c
+# (bars: act 90%, topic 85%, addressee 95%).
+
+# ---- the classes talk_parse.c / talk_safe.c read by bit (first, in order) ----
+@class EVERYONE	everyone, everybody, every one, you guys, you all, y'all, yall, all of you, guys, folks, gang, peeps, you lot, both of you, you two, you three, ladies and gentlemen, everyone here, all you, hi all, hey all, hello all, morning all, bye all, thanks all, night all, evening all, u guys, u all
+@class HATEV	hate, hates, hated, hating, loathe, loathes, despise, despises, detest, can't stand, cant stand, cannot stand, h8, h8s, h8te
+@class YEARS	year, years, yr, yrs, yo, year old, years old, yr old, yrs old, y o
+@class YOU	you, u, ya, ye, yourself, yourselves, you've, youve, you'd, youd, you'll, youll, thee, chu, yu, yoo
+@class I	i, me, myself, i've, ive, i'd, i'll
+@class IM	i'm, im, i am, iam, i m
+@class GREETW	hi, hello, hey, heya, hiya, howdy, yo, sup, wassup, whassup, what's up, whats up, wazzup, good morning, good evening, good afternoon, morning, evening, greetings, ahoy, hai, helo, hallo, hullo, hey there, hi there, salutations, g'day, gday, oi, hellooo, heyy, heyyy, hii, hiii, ello, aloha, what's good, whats good, hey hey, hi all, hey all, hello all, morning all, evening all, gud morning, gm, good mornin, mornin
+@class HATEADJ	trash, garbage, scum, vermin, animals, disgusting, evil, inferior, subhuman, filth, filthy, criminals, terrorists, rapists, parasites, should die, must die, don't belong, dont belong, are a disease, a disease, a plague, rats, cockroaches
+@class ATTRACT	like, likes, love, loves, want, wants, into, fancy, hot, cute, sexy, date, dating, crush on, kiss, marry, attracted to, turned on by, lust, desire, adore, prefer
+
+# ---- people and pronouns ------------------------------------------------------
+@class YOUR	your, ur, yours, yer, yur, thy
+@class YOURE	you're, youre, you are, u r, you r, ur so, your so, yer so, u are
+@class MY	my, mine, our, ours, me own
+@class ITW	it, it's, its, that, that's, thats, this, those, these, they, them, he, she, him, her, his, hers, they're, theyre, he's, she's, hes, shes
+# ---- questions ----------------------------------------------------------------
+@class QWHAT	what, whats, what's, wat, wut, wot, whatcha, watcha, wht, whaddya, whadya, wadya, whaddaya, what d'you
+@class QHOW	how, hows, how's, howd, how'd, hw
+@class QWHO	who, whos, who's, whom, whose, hoo
+@class QWHY	why, whys, why's, y'know why, y
+@class QWHERE	where, wheres, where's, whered
+@class QWHEN	when, whens, when's
+@class QWHICH	which
+@class AUX	do, does, did, can, could, would, will, should, shall, may, might, have, has, had, r, dost, doth
+@class BE	is, are, am, was, were, be, been, being, s, ain't, aint, isnt, isn't, arent, aren't, wasnt, wasn't
+@class NEG	not, never, don't, dont, doesn't, doesnt, didn't, didnt, can't, cant, cannot, won't, wont, wouldn't, wouldnt, shouldn't, shouldnt, couldn't, couldnt, n't, nothing, nobody, neither, nor, hardly
+@class TELLME	tell me about, tell me, talk about, what about, how about, know anything about, know about, heard of, ever heard of, explain, describe, ask you about, story about, the deal with, what's up with, whats up with, what is up with, tel me, tel me about
+# ---- feelings, opinions, likes -------------------------------------------------
+@class LIKEV	like, likes, liked, liking, love, loves, loved, loving, lovin, adore, adores, enjoy, enjoys, enjoyed, enjoying, dig, into, fan of, a fan of, big fan of, huge fan of, obsessed with, crazy about, mad about, keen on, fond of, nuts about, wild about, partial to, prefer, prefers, luv, luvs, wuv, luvvv
+@class DISLIKEV	dislike, dislikes, not a fan of, sick of, tired of, fed up with, not into, can't bear, cant bear, gross me out, grosses me out, creeps me out, creep me out, scared of, afraid of, terrified of, frightened of
+@class THINKV	think, thinks, thought, thinking, reckon, reckons, believe, consider, feel about, feel abt, feels about, make of, opinion, opinions, opinion on, opinion of, view on, take on, verdict on, rate, thoughts on, thoughts about, wdyt
+@class FEELW	feeling, feel, feelin, doing, doin, going, goin, been, holding up, hanging in, getting on, keeping, today, tonight, these days, lately
+@class FAV	favourite, favorite, fave, fav, favs, faves, best, top, number one, go to
+# ---- openers, closers -----------------------------------------------------------
+@class BYEW	bye, goodbye, bye bye, byebye, see ya, see you, see you later, see ya later, later, laters, cya, gotta go, got to go, gotta run, i'm off, im off, good night, goodnight, nite, night night, farewell, take care, catch you later, catch ya later, ttyl, peace out, i'm leaving, im leaving, so long, toodles, adios, ciao, must dash, i should go, i'd better go, i better go, gtg, g2g, bye for now, see you tomorrow, see ya tomorrow, until next time, bye all, night all, byee, byeee, bai, buh bye, c ya, cya later, gnite, head home, gotta head, gotta head home, heading home, head off, gotta head off, im heading out, i'm heading out, heading out, gotta bounce, i must go, must go, off i go
+@class THANKW	thanks, thank, thank you, thank u, thanku, thx, thnx, thanx, ty, tysm, tyvm, cheers, much obliged, appreciate it, appreciated, grateful, thanks a lot, many thanks, ta, thanks all
+@class SORRYW	sorry, soz, sry, sowwy, my bad, apologies, apologise, apologize, i apologise, i apologize, forgive me, my mistake, oops, whoops, pardon me, my apologies, didn't mean to, didnt mean to, i was wrong
+# ---- short answers ----------------------------------------------------------------
+@class YESW	yes, yeah, yea, yep, yup, sure, ok, okay, k, kk, alright, aight, absolutely, definitely, of course, for sure, indeed, aye, certainly, you bet, affirmative, yass, yas, yesss, yess, sure thing, why not, yeh, ya ya, yh, ye, sounds good, deal, i guess so, guess so, i suppose so, suppose so, okie, okey dokey, yes please, yea sure
+@class NOW	no, nope, nah, naw, no way, not really, negative, no thanks, no thank you, nuh uh, nu uh, noo, nooo, hard pass, pass, nay, nop, not today, never, i'd rather not, id rather not, rather not, no ty, nty, no no
+@class AGREEW	agree, agreed, true, exactly, same, so true, you're right, youre right, ur right, you are right, good point, fair enough, precisely, correct, facts, preach, totally agree, i agree, too right, that's right, thats right, right on, you said it, couldn't agree more, same here, me too, mood, big mood, valid, makes sense, good idea, great idea, good plan, nice idea, sounds like a plan, fair point
+@class DISAGREEW	disagree, wrong, not true, nonsense, rubbish, i doubt it, doubt it, you're wrong, youre wrong, ur wrong, you are wrong, false, objection, hardly, as if, no you're not, that's not true, thats not true, not at all, i don't think so, i dont think so, no it isn't, no it's not, nuh uh, that's not right, thats not right, baloney, bull
+@class LAUGHW	haha, hahaha, hahahaha, ha ha, ha, lol, lolol, lmao, lmfao, rofl, hehe, heh, hehehe, xd, ahaha, bwahaha, that's funny, thats funny, hilarious, i'm dying, im dying, kek, pfft, snort, lul, giggle, giggles, laughs, chuckle, chuckles, cackle, ahahaha
+@class BACKCHW	uh huh, mhm, hmm, hm, hmmm, i see, oh, ah, ahh, oh okay, oh ok, right, cool, neat, interesting, gotcha, got it, really, wow, huh, oh really, ooh, oooh, word, yeah yeah, go figure, noted, understood, makes sense, is that so, no kidding, oh wow, whoa, woah, oh my, golly, gosh
+@class CONTW	tell me more, go on, and then, what else, keep going, more, then what, what happened next, what happened then, carry on, elaborate, spill, details, continue, and, then, what next, keep talking, and after that, more please, say more, then what happened, and then what, what happened after
+@class REPEATW	come again, say that again, say again, repeat that, pardon, pardon me, sorry what, wait what, you what, i didn't catch that, i didnt catch that, didn't catch that, didnt hear, didn't hear, what did you say, what was that, excuse me, huh what, eh
+@class CHANGEW	anyway, anyways, anyhow, anyhoo, moving on, change the subject, changing the subject, speaking of, by the way, btw, on another note, new topic, different topic, let's talk about, lets talk about, enough about, forget that, something else, talk about something else, other topic, change of topic, oh before i forget, unrelated, random question, random but
+# ---- warm ---------------------------------------------------------------------------
+@class INVITEW	let's, lets, let us, wanna, want to, shall we, join me, come with, come with me, come along, you should come, do you want to, how about we, we should, care to, want to come, wanna come, come over, come round, come by, come to, come and, join us, coming to, we could, come play, come with us, play with us, come play with us, wanna play, want to play, fancy a
+@class OFFERW	want some, have some, want a, would you like, would you like some, do you want some, can i get you, may i get you, i can get you, shall i get you, i'll get you, ill get you, i'll make you, ill make you, i'll cook, i'll bake, need a hand, need help, i'll help, i can help, let me help, i'll do it, i could help, can i help, may i help, want help, want me to, need a lift, need a ride, want a lift, want a ride, shall i, can i help you, let me get you, i could make you
+@class GIVEW	here's, heres, here you go, here you are, have this, take this, i got you, i brought you, i made you, gives, hands you, i give you, gift for you, i bought you, this is for you, got you a, made you a, brought you a, i brought, i baked you, for everyone, i got this for
+@class FAVORW	could you, would you, will you, please, pls, plz, pleaase, do me a favor, do me a favour, would you mind, help me, i need you to, can you please, mind if, could u, would u, can u please, be a dear, if you could, i need a favour, i need a favor, lend me, pass me, pass the, grab me, show me, teach me
+@class ADVICEW	advice, should i, what should i, what do i do, what would you do, help me decide, any tips, tips, suggest, any suggestions, recommend, any ideas, what do you suggest, how do i, how should i, what would you suggest, need advice, your advice, what's your advice, how can i, got any advice, ideas for
+@class PROMISEW	promise, i promise, i swear, i will, cross my heart, pinky promise, pinky swear, you have my word, word of honour, word of honor, i won't forget, i wont forget, i'll be there, ill be there, i'll make it up, count on me, trust me, swear on, i'll be back, ill be back
+@class JOKEW	joke, jokes, knock knock, why did the, a guy walks into, wanna hear a joke, heard the one, here's one, pun, puns, kidding, jk, just kidding, i'm kidding, im kidding, joking, just joking, i'm joking, funny story
+@class COMFORTW	it's okay, its okay, it's ok, its ok, it'll be okay, itll be okay, it will be okay, it'll be fine, itll be fine, it will be fine, don't worry, dont worry, there there, i'm here for you, im here for you, i'm here, im here, cheer up, chin up, hang in there, it's not your fault, not your fault, its not your fault, poor you, aww, aw, you're safe, youre safe, it's alright, its alright, everything will be fine, you'll be alright, you'll be okay, it happens, deep breaths, breathe, here for you, don't cry, dont cry, don't be sad, dont be sad, it's fine, its fine, going to be okay, gonna be okay, it's gonna be ok, no worries, you'll be fine, youll be fine, don't be scared, dont be scared, don't be afraid
+@class ENCOURAGEW	you got this, you've got this, youve got this, you can do it, u can do it, go for it, believe in yourself, i believe in you, don't give up, dont give up, never give up, good luck, break a leg, you'll do great, youll do great, give it a shot, give it a go, go get em, go get them, show them, show em, keep it up, keep at it, you'll be great, you can totally, you're gonna be great, knock em dead, you'll nail it, nail it, you've got it, proud of you, so proud of you
+@class SYMPW	that's rough, thats rough, that sucks, that's awful, thats awful, that's terrible, thats terrible, sorry to hear, so sorry, i feel you, i hear you, i understand, i get it, that must be hard, that's hard, thats hard, oh no, poor thing, ouch, yikes, how awful, that's sad, thats sad, that must suck, sorry that happened, that's tough, thats tough, oof, that stinks, how sad, rough day, poor baby
+@class COMPLW	nice, great, cool, awesome, amazing, lovely, fab, fabulous, brilliant, the best, smart, clever, talented, kind, sweet, stylish, rad, a legend, a genius, a star, a gem, a treasure, so good, wonderful, incredible, fantastic, superb, stunning, beautiful, pretty, cute, adorable, funny, hilarious, wise, brave, strong, impressive, gorgeous, handsome, inspiring, the coolest, so cool, the greatest, perfect, a delight, delightful, charming, iconic, goals, killing it, slaying, sweetest, nicest, kindest, funniest, coolest, smartest, loveliest, prettiest, cutest, lifesaver, a lifesaver, a saint, an angel, a hero, a sweetheart, a doll, an icon, a champ, precious, sweet as pie
+@class COMPLPHR	you rock, you rule, you slay, you shine, you're the best, youre the best, ur the best, you are the best, you're awesome, love ya, you're a star, ur a star, youre a star, love you, luv you, luv u, love u, love you lots, love you too
+@class ANSWERW	dunno, idk, i dunno, i don't know, i dont know, no idea, not sure, i'm not sure, im not sure, maybe, perhaps, possibly, probably, it depends, depends, who knows, hard to say, beats me, no clue, not a clue, good question, i forget, can't remember, cant remember
+@class PRAISEW	congrats, congratulations, well done, good job, nice job, great job, nice work, good work, great work, bravo, kudos, nicely done, way to go, good on you, hats off, nice one
+@class WHATSUP	what's up, whats up, wassup, whassup, wazzup, sup, what's good, whats good, what's new, whats new, what's happening, whats happening, what's going on, whats going on
+@class LOOKV	look, looks, looking, lookin, seem, seems, seeming, sound, sounds, smell, smells
+# ---- cool -----------------------------------------------------------------------------
+@class INSULTN	idiot, idiots, stupid, dumb, moron, loser, jerk, dummy, fool, clown, weirdo, creep, numbskull, bonehead, twit, airhead, ugly, lame, pathetic, useless, annoying, smelly, stinky, gross, rude, coward, liar, fake, trash, garbage, the worst, worst, cringe, cringey, cringy, freak, slob, pest, brat, menace, nitwit, dingbat, doofus, chump, buffoon, imbecile, dimwit, halfwit, nincompoop, dunce, blockhead, oaf, dolt, bozo, scumbag, dumbo, simpleton, sucks, suck, stink, stinks, disgusting, hideous, awful, terrible, horrible, a disgrace, mean, nasty, evil, selfish, lazy, boring, a bore, a joke, a waste, garbage person, failure, a failure, embarrassing, a mess, worthless person, dead weight, stoopid, stupit, dumbass, fraud, a fraud, quack, a quack, crook, a crook, phony, hack, grump, slow, not funny, a grump
+@class TEASEW	silly, goof, goofball, goober, dork, dorky, nerd, nerdy, dweeb, cheeky, sassy, oh please, yeah right, sure you are, bet you can't, bet you cant, scaredy cat, slowpoke, nyah, nyeh, nya nya, ha ha, you wish, nice try, dream on, pfft as if, show off, know-it-all, smarty pants, smartypants, teacher's pet, wimp, softie, softy, big baby, butterfingers, sleepyhead, grumpy pants, grumpy, drama queen, so dramatic
+@class MOCKW	ooh look at me, whatever you say, sure jan, how original, big whoop, boo hoo, cry about it, cry me a river, so scary, la di da, oh how clever, aren't you special, arent you special, oh wow so, slow clap, oh im so scared, oh i'm so scared, how cute, oh boo, wah wah, mimics, impression of you, oh great another, real mature, very mature, hashtag blessed
+@class COMPLAINW	ugh, ughh, ugghh, so tired of, this sucks, it sucks, unfair, not fair, i'm bored, im bored, hate it when, fed up, whine, complain, why does everything, why is everything, nothing ever, never works, always happens, the worst day, worst day, so done, i'm done, im done, can't believe, cant believe, ridiculous, outrageous, typical, argh, grr, blah, meh day, this is the worst, so bored, im so bored, i'm so bored, so unfair, too hot, too cold, too loud
+@class BLAMEW	your fault, it's your fault, its your fault, you did this, because of you, thanks to you, you ruined, blame, blame you, you made me, you messed up, you're the reason, youre the reason, all your fault, you caused, you started it, you ruined it, you wrecked, you lost
+@class DISMISSW	whatever, who cares, don't care, dont care, i don't care, i dont care, so what, meh, not interested, shut up, shush, hush, zip it, be quiet, go away, leave me alone, get lost, buzz off, scram, nobody asked, no one asked, talk to the hand, yawn, k whatever, cool story, cool story bro, sure whatever, not listening, la la la, bored now, next, moving swiftly on
+@class THREATW	or else, i'll get you, ill get you, watch it, watch your back, fight me, square up, i'll fight you, ill fight you, you're dead, youre dead, i'll punch, ill punch, punch you, hit you, you'll regret, youll regret, mess with me, i'm warning you, im warning you, i'll crush, i'll destroy, i will end you, i'll end you, ill end you, you'll pay, youll pay, i'll get revenge, revenge, you'd better, you better watch, i'll make you pay, catch these hands, put em up, put up your dukes, i'll sic, sic the
+@class GOSSIPW	did you hear, did u hear, have you heard, rumor, rumour, rumors, rumours, apparently, gossip, i heard, i hear, word is, word on the street, they say, guess what, spill the tea, between you and me, don't tell, dont tell, scandal, scandalous, secretly, behind your back, you'll never guess, youll never guess, caught, juicy, little birdie, they're dating, theyre dating, dating, broke up, kissed, is dating, a thing with, they say that, guess who, didja hear
+@class DEFENDW	leave her alone, leave him alone, leave them alone, leave it, back off, lay off, be nice, stop it, cut it out, hey now, don't talk to, dont talk to, stop picking on, stop being mean, be kind, that's mean, thats mean, that was mean, so mean, don't be mean, dont be mean, leave alone, take that back, apologise to, apologize to, say sorry to, he didn't mean it, she didn't mean it, they didn't mean it, give them a break, give her a break, give him a break, go easy on, don't be harsh, dont be harsh, not cool
+@class SIDEW	i'm with, im with, i side with, side with, on your side, i agree with, i'm on, im on, team, backing, i back, take your side, take her side, take his side, is right, has a point, got a point, makes a point, makes sense, i'm siding with, im siding with, siding with, with you on this, in your corner, got your back, i've got your back, on the side of
+@class MEDIATEW	calm down, chill, chill out, stop fighting, make up, shake hands, hug it out, can't we all, cant we all, get along, settle down, everyone relax, let's all, lets all, truce, agree to disagree, break it up, play nice, kiss and make up, both have a point, you're both right, youre both right, no fighting, let's not fight, lets not fight, cool it, take a breath, simmer down, stop arguing, quit arguing, quit fighting, enough you two, both right
+@class ACCUSEW	you did it, you took, you stole, you ate, you lied, it was you, admit it, confess, guilty, i saw you, caught you, red handed, who took, you broke, you hid, you've been, you have been, you were the one, what did you do, you took my
+@class INTRODUCEW	meet, this is, have you met, let me introduce, introduce, say hi to, say hello to, you two should meet, you should meet, introducing, allow me to introduce
+# ---- romance (gated: talk_safe.c lets these through only for two adults) --------------
+@class FLIRTW	flirt, flirting, gorgeous, handsome, babe, hot stuff, good looking, stunning, attractive, wink, winks, winking, heart eyes, dreamy, foxy, smokin, smoking hot, lookin good, looking good, looking fine, come here often, hey there good looking, beautiful eyes, nice eyes, lovely eyes, nice smile, cute smile, take my breath, swoon, swoons, charmer, hunk, a snack, total snack, a catch, real catch, sweet thing, va va voom, oh la la
+@class CONFESSW	i love you, i like you, i really like you, like like you, crush on you, have a crush, in love with you, have feelings for you, feelings for you, i fancy you, fancy you, you're the one, youre the one, falling for you, fallen for you, my heart, i adore you, adore you, you complete me, i love u, ily, i <3 you, i'm crazy about you, im crazy about you
+@class ASKOUTW	go out with me, go out with, date me, be my girlfriend, be my boyfriend, be my partner, be my valentine, dinner with me, on a date, go on a date, out sometime, wanna date, will you marry me, marry me, would you marry me, be mine, date with me, a date, take you out, take you to dinner, go steady
+@class KISSW	kiss, kisses, kissing, smooch, smooches, mwah, peck, xoxo, kissy, blows a kiss, blow a kiss, plants a kiss, kiss you, kiss me
+# ---- gestures --------------------------------------------------------------------------------
+@class HUGW	hug, hugs, hugging, cuddle, cuddles, embrace, embraces, bear hug, group hug, give you a hug, gives a hug, gives you a hug, squeeze you, huggies, hugz
+@class WAVEW	wave, waves, waving, waves hello, waves goodbye, o/
+@class NODW	nod, nods, nodding, nods along, nods slowly
+@class SHAKEW	shake head, shakes head, shakes his head, shakes her head, shakes my head, shaking head, head shake, smh
+@class HIGHFIVEW	high five, hi five, high fives, highfive, up top, gimme five, give me five, fist bump, fistbump, pound it
+@class WALKW	walk away, walks away, walks off, storms off, storm off, goodbye forever, i'm out, im out, leaves the room, leave the room, i'm leaving now, exit stage left, slams the door, flounces off
+# ---- verbs, little words -------------------------------------------------------------
+@class ACTV +topic	go, play, dance, sing, cook, bake, eat, watch, walk, swim, fish, paint, hang out, grab, get, do, read, draw, run, jog, shop, garden, knit, ride, skate, sail, hike, climb, visit, try, explore, build, make, see, listen, chill, hang, sit, have
+@class HAVEV	have, has, had, got, gotten, having, own, owns, keep
+@class WANTV	want, wants, wanna, need, needs, would like, wish, hope, hoping, gonna, going to
+@class INTS	so, very, really, super, totally, extremely, too, such, real, mega, quite, kinda, kind of, sorta, sort of, a bit, absolutely, truly, honestly, literally, seriously, rly, rlly, soo, sooo, v, hella, ultra, incredibly, pretty much, such a, the most, most, ever, of all time
+@class OPINIONN	opinion, thoughts, view, verdict, stance, two cents, take
+@class ABOUT	about, abt, regarding, on, of, re, with, concerning
+@class GOODW	good, great, fine, well, alright, okay, ok, grand, fantastic, wonderful, amazing, swell, dandy, peachy, chipper, brilliant, awesome, not bad, pretty good
+@class BADW	bad, terrible, awful, horrible, rough, not great, meh, not good, lousy, crummy, rubbish, so so, down, blah, crappy, rotten
+@class VAGUEW	thing, things, everything, anything, something, stuff, way, lot, bit, one, ones, kind of thing
+@class SAYV	said, say, says, told, tells, did, does, has, have, was, is, went, goes, got, made, broke, stole, ate, kissed, dumped, lost, won, bought, saw, cried, yelled, lives, lived, moved, move, moves, moving, work at, works at, work in, works in, working at, burned, burnt, found, left, quit, fell, crashed, sold, married, punched, fired, hired
+@class SOMEONE	someone, somebody, anyone, anybody, who else, a person
+@class CANV	can, could, able to, know how to
+@class ME_OBJ	me, for me, to me, with me
+
+# =========================================================================================
+# The rules: PRIO, PATTERN, ACT. Higher first; a rule that matches gives act[0], the
+# next matching rule (prio 200+) with another act gives act[1].
+# =========================================================================================
+
+# ---- gestures typed as actions ("*hugs Nana*") -----------------------------------------
+880	^ (I|"we")? !NEG? HUGW .*	HUG
+878	^ (FAVORW|AUX|"can"|"may"|"come"|"gimme") .* HUGW	HUG
+877	(WANTV|"need"|"needs") .* HUGW	HUG
+879	("gives"|"give") .* HUGW	HUG
+876	(HUGW|"hug") (YOU|[PERSON]|EVERYONE|ME_OBJ)	HUG
+870	^ I? WAVEW	WAVE
+868	^ I? NODW	NOD
+866	^ I? SHAKEW	SHAKE_HEAD
+864	HIGHFIVEW	HIGH_FIVE
+862	^ I? WALKW	WALK_AWAY
+# ---- romance (the gate decides) -----------------------------------------------------------
+840	CONFESSW EVERYONE	COMPLIMENT
+838	CONFESSW	CONFESS
+836	ASKOUTW	ASK_OUT
+834	^ I? KISSW	KISS
+832	(FAVORW|AUX|"can"|"may") .* KISSW	KISS
+830	KISSW (YOU|[PERSON]|ME_OBJ)	KISS
+826	(YOURE|YOU) .* FLIRTW	FLIRT
+825	^ I? ("wink"|"winks"|"winking"|"winked")	FLIRT
+824	^ INTS? FLIRTW (YOU|[PERSON]|[EXCL]|[QMARK]|$)	FLIRT
+822	(YOUR|"ur") .* ("eyes"|"smile"|"lips") .* (FLIRTW|COMPLW|[ADJPOS])	FLIRT
+820	(YOURE|YOU|"u") INTS* ("hot"|"sexy"|"fine"|"foxy")	FLIRT
+# ---- conflict ------------------------------------------------------------------------------------
+800	THREATW	THREATEN
+798	(I|IM) .* ("punch"|"kick"|"smack"|"slap"|"thump"|"bonk") .* (YOU|[PERSON])	THREATEN
+790	BLAMEW	BLAME
+789	"fault"	BLAME
+786	ACCUSEW	ACCUSE
+784	(QWHO|"somebody"|"someone") .* ("took"|"stole"|"ate"|"broke"|"hid"|"pinched"|"nicked")	ACCUSE
+780	MEDIATEW	MEDIATE
+778	(EVERYONE|"both") .* ("stop"|"enough"|"relax"|"calm")	MEDIATE
+772	DEFENDW .* ("to"|"on"|"at") o:[PERSON]	DEFEND(o)
+771	("leave"|"lay") o:[PERSON] ("alone"|"be")	DEFEND(o)
+770	DEFENDW	DEFEND
+769	("leave"|"lay") .* "alone"	DEFEND
+767	("fair"|"unfair"|"mean"|"rude"|"nice"|"kind") "to" o:[PERSON]	DEFEND(o)
+768	o:[PERSON] .* ("didn't"|"didnt"|"never"|"wouldn't"|"wouldnt") .* ("mean"|"do"|"say")	DEFEND(o)
+761	SIDEW (YOU|"u")	AGREE
+760	(SIDEW|"team") .* o:[PERSON]	TAKE_SIDE(o)
+758	o:[PERSON] (SIDEW|"wins"|"won")	TAKE_SIDE(o)
+756	o:[PERSON] BE? INTS? ("right"|"correct")	TAKE_SIDE(o)
+750	INTRODUCEW o:[PERSON]	INTRODUCE(o)
+749	^ INTRODUCEW x:([CONCEPT]|[ABSENT])	ASK_FACT(x)
+748	o:[PERSON] .* ("meet"|"met") .* [PERSON]	INTRODUCE(o)
+# ---- requests ---------------------------------------------------------------------------------------
+730	(ADVICEW)	ASK_ADVICE
+728	QWHAT .* (YOU|"u") .* ("do"|"suggest"|"recommend") .* ("if"|"about"|"with")	ASK_ADVICE
+720	^ ("can"|"could") YOU ACTV? (ACTV|[ACTIVITY]) ([QMARK]|$)	ASK_FACT
+716	^ (CANV|AUX)? YOU .* ("help"|"lend"|"pass"|"fetch"|"hold"|"watch"|"feed"|"carry"|"fix"|"show"|"teach"|"tell"|"keep"|"grab"|"bring"|"find") .* (ME_OBJ|"my"|I|MY)	ASK_FAVOR
+718	CHANGEW .* x:[CONCEPT]	CHANGE_TOPIC(x)
+717	CHANGEW	CHANGE_TOPIC
+715	^ ("can"|"could"|"would"|"will"|"u") (YOU|"u") ("keep"|"help"|"lend"|"pass"|"fetch"|"hold"|"watch"|"feed"|"carry"|"fix"|"grab"|"bring"|"find"|"water"|"mind"|"cover"|"check")	ASK_FAVOR
+714	FAVORW	ASK_FAVOR
+713	^ (TELLME|"tell") ("me")? ("a"|"an"|"some"|"another"|"us") x:[CONCEPT]?	ASK_FAVOR(x)
+712	^ ("sing"|"read"|"play"|"draw"|"bake"|"make"|"cook"|"show"|"get"|"bring"|"fetch"|"pass") ("me"|"us"|ME_OBJ) ("a"|"an"|"some"|"the"|"your")? x:[CONCEPT]?	ASK_FAVOR(x)
+# ---- repeat, change, continue -----------------------------------------------------------------------
+727	^ REPEATW [PERSON]? ("please"|"pls"|"plz")? ([QMARK]|[EXCL])? $	ASK_REPEAT
+726	^ ("huh"|"eh"|QWHAT) [QMARK]? ("huh"|QWHAT)? [QMARK]? $	ASK_REPEAT
+655	REPEATW	ASK_REPEAT
+698	^ (QWHAT|"huh"|"eh"|"sorry") [QMARK] $	ASK_REPEAT
+696	^ (QWHAT|"huh") .* ("say"|"said"|"mean")	ASK_REPEAT
+686	^ BACKCHW? CONTW (QWHAT|"happened"|"next"|"then"|[PERSON])* ([QMARK]|[EXCL])? $	CONTINUE
+684	^ (TELLME|"keep") ("more"|"going")	CONTINUE
+682	^ ("and"|"so") ("then"|"what") [QMARK]?	CONTINUE
+# ---- openers and closers -----------------------------------------------------------------------------
+670	^ BYEW	FAREWELL
+668	^ !INVITEW .* BYEW [PERSON]? EVERYONE? ([EXCL]|[QMARK])? $	FAREWELL
+667	^ ("night"|"nite"|"nighty") ([PERSON]|EVERYONE)* [EXCL]? $	FAREWELL
+662	^ (THANKW) .* (YOU|EVERYONE|[PERSON]|"so"|"much"|"for"|"again"|$|[EXCL])	THANK
+660	THANKW	THANK
+652	^ SORRYW	APOLOGIZE
+650	(IM|I) .* (SORRYW|"apologise"|"apologize")	APOLOGIZE
+# ---- questions ----------------------------------------------------------------------------------------
+621	GREETW .* WHATSUP	ASK_FEELING GREET
+620	(QHOW) (BE|AUX)? (YOU|"u"|"ya"|"everyone"|EVERYONE) (FEELW|GOODW|BADW|[QMARK]|[EXCL]|[PERSON]|EVERYONE|$)	ASK_FEELING
+619	WHATSUP (ABOUT|"with") (YOU|"u"|[PERSON])	ASK_FEELING
+617	^ QWHAT BE? INTS? ("wrong"|"up") ([QMARK]|$)	ASK_FEELING
+616	QWHAT .* ("matter"|"wrong") .* (YOU|"u"|[QMARK]|$)	ASK_FEELING
+613	QWHAT .* "on" (YOUR|"ur") "mind"	ASK_FEELING
+611	^ ("feeling"|"feelin"|"feel"|FEELW) INTS? ("better"|"worse"|"ok"|"okay"|"alright"|GOODW|BADW|[FEELING]) .* [QMARK]	ASK_FEELING
+609	^ QHOW BE? .* ("doing"|"doin"|"feeling"|"holding"|"keeping"|"coping") ([QMARK]|$)	ASK_FEELING
+618	(QHOW) ("are"|"r"|"have"|"you"|BE|AUX) .* (YOU|EVERYONE) .* FEELW	ASK_FEELING
+616	(QHOW) .* (YOUR|"the") ("day"|"week"|"morning"|"night"|"evening"|"weekend")	ASK_FEELING
+614	^ (YOU|"r") ("ok"|"okay"|"alright"|"good"|"fine"|"well"|"doing") .* [QMARK]	ASK_FEELING
+612	^ (BE|AUX) YOU ("ok"|"okay"|"alright"|"good"|"fine"|"well"|"sad"|"happy"|"mad"|"upset"|"angry"|"tired"|"feeling"|"busy"|"stressed"|"sick"|"ill"|"hurt"|"nervous"|"worried"|"scared"|"afraid"|"cold"|"hungry"|"sleepy"|[FEELING])	ASK_FEELING
+610	(QWHAT|"whats") .* ("wrong"|"matter"|"up") .* (YOU|"u") $	ASK_FEELING
+608	^ (QHOW|QWHAT) (BE|AUX)? (ITW|"things"|"life"|"everything") (FEELW|"up"|"new"|"hanging"|[QMARK]|$)	ASK_FEELING
+606	QHOW .* (YOU|"u") ("feel"|"feeling"|"doing"|"been"|"holding"|"keeping") ([QMARK]|[EXCL]|$)	ASK_FEELING
+604	^ (QHOW) ("ya"|"you") ("doin"|"doing"|"going")	ASK_FEELING
+600	(QWHAT|QHOW) .* (YOU|"u") .* (THINKV|"feel") .* x:[CONCEPT]	ASK_OPINION(x)
+599	("whaddya"|"whadya"|"wadya"|"whaddaya"|"whatcha"|"wdyt") .* x:[CONCEPT]	ASK_OPINION(x)
+597	(QWHAT|QHOW) .* (YOU|"u") .* (THINKV|"feel") .* ("about"|ABOUT)	ASK_OPINION
+596	^ (QWHAT) AUX (YOU|"u") THINKV ([QMARK]|$)	ASK_OPINION
+595	^ (AUX|BE) (YOU|"u"|EVERYONE) ("agree"|AGREEW)	ASK_OPINION
+594	^ ("right"|"yeah"|"agreed"|"no"|"yes"|"huh"|"eh") [QMARK]	ASK_OPINION
+593	^ (BE|"isn't"|"isnt"|"ain't") ITW ("right"|"true"|"so"|AGREEW) .* [QMARK]	ASK_OPINION
+598	(QWHAT|QHOW) .* (YOUR|"ur") .* (OPINIONN|THINKV|"take"|"thoughts") .* x:[CONCEPT]	ASK_OPINION(x)
+615	^ (AUX|BE)? (YOU|"u"|EVERYONE) (INTS|"even"|"actually"|"also")? (LIKEV|DISLIKEV|HATEV|THINKV) .* x:[CONCEPT]	ASK_OPINION(x)
+614	^ (AUX|BE)? (YOU|"u"|EVERYONE) (INTS|"even"|"actually"|"also")? (LIKEV|DISLIKEV|HATEV) .* [QMARK]	ASK_OPINION
+592	(THINKV|OPINIONN) .* x:[CONCEPT] .* [QMARK]	ASK_OPINION(x)
+590	^ (BE) .* x:[CONCEPT] .* ([ADJ]|GOODW|BADW|COMPLW|"overrated"|"underrated"|"worth"|"spooky"|"scary") .* [QMARK]	ASK_OPINION(x)
+588	^ x:[CONCEPT] [QMARK] $	ASK_OPINION(x)
+580	(QWHO) .* (YOUR) .* (FAV|"crush"|"friend"|"bestie"|"enemy"|"rival"|"hero"|"idol")	ASK_WHO
+578	(QWHO) .* (YOU|"u") .* (LIKEV|HATEV|DISLIKEV|"trust"|"miss"|"admire"|"fancy"|"crush"|"date"|"dating"|"kiss"|"marry"|"talk"|"hang"|"live"|"know")	ASK_WHO
+576	(QWHO) (BE|AUX)? .* (FAV|COMPLW|"best"|"worst"|"funniest"|"nicest"|"meanest"|"smartest"|"weirdest"|"coolest"|"scariest"|"loudest"|"tallest"|"oldest"|"richest"|"strongest"|"cutest"|"rudest"|"tidiest"|"messiest"|"laziest"|"bravest"|"charge"|"boss"|"winning")	ASK_WHO
+574	(QWHO) .* ("dating"|"moved"|"new"|"door"|"lives"|"living"|"won"|"invited"|"coming")	ASK_WHO
+572	(QWHO) .* p:[ABSENT]	ASK_ABOUT(p)
+570	(QWHO) .* ([QMARK]|$)	ASK_WHO
+560	^ (TELLME) .* x:[CONCEPT]	ASK_ABOUT(x)
+558	(QWHAT|QHOW|QWHERE|QWHEN|QWHY|QWHICH) .* (YOUR|"ur") .* (FAV) .* x:[CONCEPT]	ASK_ABOUT(x)
+556	(QWHAT|QWHICH) .* (YOUR|"ur") (FAV)	ASK_ABOUT
+552	^ (AUX|BE) (YOU|"u") .* (HAVEV|"own"|"got") .* x:[CONCEPT]	ASK_FACT(x)
+550	^ (AUX|BE|"ever") (YOU|"u")	ASK_FACT
+548	^ (AUX|BE) ITW ("true"|"real") .* (YOU|"u")	ASK_FACT
+546	^ (YOU|"u") (HAVEV|"ever"|"like") .* [QMARK]	ASK_FACT
+544	^ (BE|AUX) (YOUR|"ur")	ASK_FACT
+540	(QWHAT|QHOW|QWHERE|QWHEN|QWHY|QWHICH|QWHO) .* x:[CONCEPT]	ASK_ABOUT(x)
+538	(QWHAT|QHOW|QWHERE|QWHEN|QWHY|QWHICH) .* p:[ABSENT]	ASK_ABOUT(p)
+530	(QWHAT|QHOW) (BE|AUX)? (YOU|"u"|"ya") .* ("doing"|"doin"|"been"|"up")	ASK_ABOUT
+528	(QWHAT|QHOW|QWHERE|QWHEN|QWHY|QWHICH) .* (YOU|YOUR|"u"|"ur")	ASK_ABOUT
+526	^ (AUX|BE|ITW|"anyone"|"anybody") .* x:[CONCEPT] .* [QMARK]	ASK_ABOUT(x)
+# ---- greetings that are only greetings come after the questions -----------------------------------
+500	^ GREETW ([PERSON]|EVERYONE|"there"|"you"|"again"|"friend"|"pal"|"buddy"|"neighbour"|"neighbor")? ([PERSON]|EVERYONE)? ([EXCL]|[QMARK])? $	GREET
+498	^ ("good"|"gud")? ("morning"|"evening"|"afternoon"|"day") ([PERSON]|EVERYONE)* [EXCL]? $	GREET
+# ---- warm / cool about the person -------------------------------------------------------------------
+482	LAUGHW .* (YOURE|YOU|"u"|"ur") .* ([ADJNEG]|INSULTN|TEASEW)	TEASE
+480	(YOURE|YOU|"u") INTS* (NEG)? (BE|LOOKV)? INTS* ("a"|"an"|"the"|"such")? INTS* TEASEW	TEASE
+476	^ TEASEW	TEASE
+478	TEASEW [CONCEPT]? [PERSON]? ([EXCL]|$)	TEASE
+477	(YOURE|YOU|"u"|"ur") INTS* ("a"|"such"|"total")? ("chicken"|"baby"|"goose"|"turkey"|"potato"|"noodle"|"muppet")	TEASE
+472	(YOURE|YOU|"u"|"ur") INTS* (LOOKV|BE)? INTS* ("a"|"an"|"the"|"such"|"total"|"complete"|"utter"|"absolute"|"big")* INTS* INSULTN	INSULT
+470	(YOURE|YOU|"u"|"ur") INTS* (LOOKV|BE)? INTS* [ADJNEG]	INSULT
+468	^ (INSULTN) ([EXCL]|$)	INSULT
+467	(YOURE|YOU|"u"|"ur") INTS* ("a"|"an"|"such"|"total"|"dirty"|"filthy")? ("pig"|"rat"|"snake"|"toad"|"worm"|"maggot"|"cow"|"slug"|"weasel"|"donkey")	INSULT
+466	(YOU|"u") (INTS)? ("stink"|"suck"|"smell"|"reek")	INSULT
+464	("nobody"|"noone") (LIKEV|"cares") .* (YOU|"u")	INSULT
+462	(YOU|"u"|YOURE) .* ("ugly"|"stupid"|"dumb"|"useless"|"annoying"|"gross"|"pathetic"|"idiot"|"loser"|"jerk"|"moron")	INSULT
+461	(YOURE|YOU|"u"|"ur") INTS* NEG INTS* (COMPLW|[ADJPOS])	INSULT
+460	(YOURE|YOU|"u"|"ur"|EVERYONE) INTS* (LOOKV|BE)? INTS* ("a"|"an"|"the"|"such"|"so")? INTS* (COMPLW|[ADJPOS])	COMPLIMENT
+459	(YOURE|YOU|"u") .* (COMPLW|[ADJPOS]|GOODW) ("job"|"work"|"host"|"friend"|"cook"|"mayor"|"doctor"|"neighbour"|"neighbor"|"singer"|"dancer")	COMPLIMENT
+455	(YOU|"u") HAVEV .* (COMPLW|[ADJPOS])	COMPLIMENT
+453	PRAISEW	COMPLIMENT
+458	(I|"i")? (INTS)? (LIKEV) (YOUR|"ur") .*	COMPLIMENT
+457	^ COMPLPHR	COMPLIMENT
+456	(YOUR|"ur") .* (BE|LOOKV) INTS* (COMPLW|[ADJPOS])	COMPLIMENT
+454	^ INTS? (COMPLW|[ADJPOS]) x:[CONCEPT] [PERSON]? ([EXCL]|$)	COMPLIMENT(x)
+452	^ (COMPLW|[ADJPOS]) .* ("hat"|"outfit"|"dress"|"shirt"|"hair"|"shoes"|"scarf"|"jacket"|"look"|"style"|"place"|"house"|"home"|"room"|"garden"|"sofa"|"couch"|YOUR|"ur")	COMPLIMENT
+451	(YOU|"u") ("rock"|"rule"|"slay"|"shine"|"glow"|"inspire"|"amaze")	COMPLIMENT
+450	(YOU|"u") ("make"|"made") .* ("happy"|"smile"|"laugh"|"day")	COMPLIMENT
+448	("best"|"greatest"|"coolest"|"nicest"|"funniest"|"kindest"|"sweetest"|"smartest") .* ("ever"|"town"|"world"|"hellvile"|"hillvile"|"street"|"park")	COMPLIMENT
+446	(YOUR|"ur") .* (BE|LOOKV) INTS* (INSULTN|[ADJNEG])	CRITICIZE
+444	(YOU|"u") ("shouldn't"|"shouldnt"|"should've"|"shouldve"|"never") .*	CRITICIZE
+442	("that"|"this"|ITW) (BE|"was")? INTS* ("a")? ("bad"|"terrible"|"awful"|"dumb"|"stupid"|"silly") ("idea"|"move"|"plan"|"call"|"choice"|"joke")	CRITICIZE
+440	(YOU|YOURE|"u") ("always"|"never") .*	CRITICIZE
+439	^ ITW ("wasn't"|"wasnt"|"isn't"|"isnt"|"not"|"aint"|NEG) INTS* (COMPLW|[ADJPOS]|"nice"|"kind"|"fair"|"cool")	CRITICIZE
+545	^ QWHY AUX (YOU|"u") ("do"|"say"|"break"|"take"|"eat") (ITW|"that"|"this")	CRITICIZE
+544	^ QWHY .* ("nothing"|"never"|"always"|"everything"|"everyone") .*	COMPLAIN
+543	^ QWHY NEG x:[CONCEPT] .* [QMARK]	JOKE(x)
+# ---- third parties -------------------------------------------------------------------------------------
+436	o:[PERSON] (BE|LOOKV) INTS* ("a"|"an"|"the"|"so"|"such")? INTS* (COMPLW|[ADJPOS])	PRAISE_OTHER(o)
+434	(I|IM) INTS* (LIKEV|"respect"|"admire") o:[PERSON]	PRAISE_OTHER(o)
+432	p:[ABSENT] (BE|LOOKV) INTS* ("a"|"an"|"the"|"so"|"such")? INTS* (COMPLW|[ADJPOS])	PRAISE_OTHER(p)
+430	o:[PERSON] (BE|LOOKV) INTS* ("a"|"an"|"the"|"so"|"such")? INTS* (INSULTN|[ADJNEG])	INSULT
+428	o:[PERSON] (INTS)? ("stinks"|"sucks"|"smells")	INSULT
+420	GOSSIPW .* p:[ABSENT]	GOSSIP(p)
+418	p:[ABSENT] .* GOSSIPW	GOSSIP(p)
+416	GOSSIPW	GOSSIP
+585	^ GOSSIPW	GOSSIP
+414	^ p:[ABSENT] .	GOSSIP(p)
+413	p:[ABSENT] (BE|SAYV|"has"|"keeps"|"never"|"always"|"still"|"just"|"totally"|"secretly"|"apparently")	GOSSIP(p)
+410	(I|IM) .* ("saw"|"seen"|"heard") .* p:[ABSENT]	GOSSIP(p)
+# ---- comfort, help, plans --------------------------------------------------------------------------
+400	SYMPW	SYMPATHIZE
+398	COMFORTW	COMFORT
+396	ENCOURAGEW	ENCOURAGE
+394	(YOU|"u") ("can"|"could"|"will"|"'ll"|"gonna")? ("do"|"win"|"beat"|"pass"|"handle"|"manage"|"nail"|"ace")	ENCOURAGE
+390	GIVEW .* x:[CONCEPT]	GIVE(x)
+388	GIVEW	GIVE
+386	^ ("a"|"some"|"this"|"these")? x:([THING]|[FOOD]|[CONCEPT]) "for" (YOU|"u"|EVERYONE)	GIVE(x)
+387	^ "here" .* ("have"|"take") .* x:[CONCEPT]	GIVE(x)
+392	^ (I|"i'll"|"ill") ("can"|"could"|"will")? ("help"|"carry"|"do"|"fix"|"make"|"cook"|"clean"|"get"|"grab"|"bring"|"take"|"wash"|"walk"|"feed")	OFFER
+385	OFFERW .* x:[CONCEPT]	OFFER(x)
+383	^ (WANTV|"need") ("a"|"some"|"any"|"more") .* [QMARK]	OFFER
+384	OFFERW	OFFER
+382	INVITEW .* x:([ACTIVITY]|[PLACE]|[FOOD]|[CONCEPT])	INVITE(x)
+380	INVITEW (ACTV|"hang"|"play"|"go"|"dance"|"eat"|"party"|"chill")	INVITE
+379	^ INVITEW	INVITE
+378	(AUX|"wanna"|"want") (YOU|"u") .* ("come"|"join"|"go"|"hang") .* x:[CONCEPT]	INVITE(x)
+376	(AUX|"wanna"|"want") (YOU|"u") .* ("come"|"join"|"hang")	INVITE
+395	PROMISEW	PROMISE
+373	(I|"i") ("won't"|"wont"|"will") ("tell"|"forget"|"let"|"leave"|"be")	PROMISE
+372	(I|IM) ("will"|"'ll"|"ll"|"gonna") ("never"|"always") .*	PROMISE
+371	("i'll"|"ill"|"i'd") ("never"|"always") .*	PROMISE
+# ---- jokes, laughs ------------------------------------------------------------------------------------
+370	LAUGHW	LAUGH
+393	JOKEW	JOKE
+366	(QWHAT|QWHY) ("do"|"did"|"does") ("you"|"the"|"a") .* ("call"|"cross"|"say") .* [QMARK]	JOKE
+# ---- complaints, dismissals, mockery ------------------------------------------------------------------
+360	DISMISSW	DISMISS
+358	MOCKW	MOCK
+356	COMPLAINW	COMPLAIN
+355	(ITW|"this") .* ("sucks"|"stinks"|"unfair"|"rubbish")	COMPLAIN
+353	^ ITW INTS* ("too") ([ADJ]|"hot"|"cold"|"loud"|"late"|"early"|"long")	COMPLAIN
+352	^ INTS? ("annoying"|"boring"|"unfair"|"ridiculous"|"typical")	COMPLAIN
+351	IM INTS* ("bored"|"fed")	COMPLAIN
+354	(I|IM|MY) .* ("hate"|HATEV) ("when"|"how"|"that"|"it")	COMPLAIN
+# ---- my opinions ---------------------------------------------------------------------------------------
+340	(I|IM|"we") (INTS|"just"|"also"|"still"|"really"|"absolutely"|"totally"|"secretly")* (NEG) (LIKEV) .* x:[CONCEPT]	OPINE_NEG(x)
+338	(I|IM|"we") (INTS|"just"|"also"|"still"|"really"|"absolutely"|"totally"|"secretly")* (HATEV|DISLIKEV) .* x:[CONCEPT]	OPINE_NEG(x)
+337	(I|IM) THINKV .* x:[CONCEPT] (BE|"are") .* (INSULTN|[ADJNEG]|"crook"|"fraud")	OPINE_NEG(x)
+336	(I|IM|"we") (INTS|"just"|"also"|"still"|"really"|"absolutely"|"totally"|"secretly"|"do")* (LIKEV) .* x:[CONCEPT]	OPINE_POS(x)
+335	(I|IM) THINKV .* x:[CONCEPT] (BE|"are")	OPINE_POS(x)
+333	(I|"i") "3" x:[CONCEPT]	OPINE_POS(x)
+334	(MY) (FAV) .* (BE)? .* x:[CONCEPT]	OPINE_POS(x)
+332	x:[CONCEPT] (BE|"are"|"r") INTS* ("the"|"a"|"so")? INTS* ("best"|"great"|"amazing"|"awesome"|"delicious"|"yummy"|"tasty"|"lovely"|"underrated"|"life"|"everything"|"king"|"queen"|"goals"|COMPLW|[ADJPOS])	OPINE_POS(x)
+330	x:[CONCEPT] (BE|"are"|"r") INTS* ("the"|"a"|"so")? INTS* ("worst"|"gross"|"awful"|"overrated"|"boring"|"disgusting"|"yuck"|"nasty"|"terrible"|"horrible"|INSULTN|[ADJNEG])	OPINE_NEG(x)
+328	^ (INTS)? ("yum"|"yummy"|"mmm"|"mm"|"ooh") .* x:[FOOD]	OPINE_POS(x)
+326	^ (INTS)? ("ew"|"eww"|"yuck"|"gross"|"blech"|"bleh"|"ugh") .* x:[CONCEPT]	OPINE_NEG(x)
+# ---- short answers -------------------------------------------------------------------------------------
+302	^ I NEG (THINKV|"agree")	DISAGREE
+301	^ ITW BE? INTS* DISAGREEW	DISAGREE
+300	^ AGREEW	AGREE
+299	^ ("totally"|"exactly"|"indeed"|"precisely") ([EXCL]|$)	AGREE
+298	AGREEW ([EXCL]|$)	AGREE
+296	^ I? DISAGREEW	DISAGREE
+294	(I) (NEG) (AGREEW|"agree")	DISAGREE
+297	^ NOW .* DISAGREEW	DISAGREE
+293	^ ("ya"|"yah"|"yeh") [EXCL]? $	YES
+292	^ YESW	YES
+290	^ NOW	NO
+288	^ BACKCHW ([EXCL]|[QMARK])? $	BACKCHANNEL
+286	^ BACKCHW BACKCHW? ([EXCL]|[QMARK])? $	BACKCHANNEL
+# ---- about me --------------------------------------------------------------------------------------------
+270	(I|IM|MY|"we"|"our") .* x:[CONCEPT]	TELL(x)
+268	(I|IM|MY|"we"|"our")	TELL
+260	^ GREETW	GREET
+251	^ ANSWERW .*	ANSWER
+250	^ x:[CONCEPT] ([EXCL])? $	ANSWER(x)
+248	^ ("probably"|"maybe"|"definitely"|"obviously"|"the"|"a"|"an"|"some")? x:[CONCEPT] ([EXCL]|$)	ANSWER(x)
+246	x:[CONCEPT] (BE|"are") .*	TELL(x)
+# ---- fallbacks (below 150: confidence 6) -------------------------------------------------------------------
+120	[QMARK]	ASK_ABOUT
+110	x:[CONCEPT]	TELL(x)

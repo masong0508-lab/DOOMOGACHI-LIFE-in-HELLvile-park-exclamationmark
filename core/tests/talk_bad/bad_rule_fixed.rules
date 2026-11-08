@@ -1,0 +1,4 @@
+# expect: the first classes must be
+@class YOU	you
+@class EVERYONE	everyone
+500	YOU	TELL

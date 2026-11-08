@@ -108,7 +108,7 @@ unit: $(BUILD)/tests talk
 # talk        $(BUILD)/talk/TALK_en.BIN (the native runner and test_talk_db
 #             read it; never committed; the disc builds make their own)
 # talk-check  every talkc.py lint and its seeded bad inputs (in test)
-TALK_DEPS := $(CORE)/tools/talkc.py $(CORE)/gen/txt_dict.c $(CORE)/data/story/register.tsv \
+TALK_DEPS := $(CORE)/tools/talkc.py $(CORE)/tools/talkc_parse.py $(CORE)/tools/talkc_safe.py $(CORE)/include/doomo/talk.h $(CORE)/gen/txt_dict.c $(CORE)/data/story/register.tsv \
              $(shell find $(CORE)/data/talk -type f 2>/dev/null)
 talk: $(BUILD)/talk/TALK_en.BIN
 $(BUILD)/talk/TALK_en.BIN: $(TALK_DEPS)

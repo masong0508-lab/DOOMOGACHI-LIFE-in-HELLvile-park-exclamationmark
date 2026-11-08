@@ -157,3 +157,11 @@ glow_worm	.	2	.	glow-worm	.	glowing,tiny,magical	.
 scorpion	.	-2	.	.	.	snappy,scary,sneaky	.
 tarantula	.	-2	.	.	.	hairy,creepy,big	.
 bumblebee	.	2	.	.	.	fluffy,buzzy,busy	.
+# T3 (TK2): everyday words the parser corpus needed
+@cat creatures.myth
+monster	.	-1	.	.	.	scary,big,hairy	.
+angel	.	2	.	.	.	holy,pretty,fluffy	.
+@cat creatures.bird
+bird	.	1	.	.	birdie	noisy,feathery,fast	.
+@cat creatures.wild
+dinosaur	.	1	.	.	dino	big,old,scary	.

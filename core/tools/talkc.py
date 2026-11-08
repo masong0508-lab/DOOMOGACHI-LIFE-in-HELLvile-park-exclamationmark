@@ -51,6 +51,13 @@ Outputs:
   --selftest  the seeded bad inputs in core/tests/talk_bad/ must each
               fail with the rule their first line names
   --stats     counts and bank sizes
+  --hate-hash PLAIN   rewrite core/data/talk/safety/hate.hash from a local
+              plaintext list (one word a line; never committed)
+T3 / T4 (talkc_parse.py, talkc_safe.py): the TB_PARSE bank from
+rules/<lang>.tsv + rules/common_<lang>.txt + the lexicon + safety/phrases;
+the TB_SAFETY bank from register.tsv + the never-generated concepts +
+safety/hate.hash; --check adds the template lints TK1-TK9 and the corpus
+format checks (TK8); --selftest adds the seeded bad *.tlk and *.rules.
 
 Checks (any failure exits 1): the tree's shape and the roots' order;
 every row's columns; no key twice; no generated row duplicating an
@@ -81,7 +88,8 @@ HDR = 20
 DIRENT = 20
 ALIGN = 64
 MAX_CONCEPTS = 4095
-TB = {"CONCEPT": 1, "ASSOC": 2, "ATTR": 3, "FORMS": 4, "CATS": 5, "CATNAMES": 6, "EDGES": 7}
+TB = {"CONCEPT": 1, "ASSOC": 2, "ATTR": 3, "FORMS": 4, "CATS": 5, "CATNAMES": 6, "EDGES": 7,
+      "PARSE": 12, "SAFETY": 13}
 TBK_RAW, TBK_TXT = 0, 1
 TBF_DC_ONLY = 1
 ROOTS = ["people", "places", "food", "music", "hobbies", "fears", "creatures", "house", "lore",
@@ -1317,6 +1325,20 @@ class Build:
         self.problems = dups + edge_problems + check_concepts(self.concepts, self.by_key, self.codec,
                                                                self.register) \
             + check_minor_words(self.concepts, self.by_key)
+        self.load_t3_t4()
+
+    def load_t3_t4(self):
+        """T3 / T4: the parser rules, the safety phrases and lists, the hate hashes"""
+        import talkc_parse as tp_
+        import talkc_safe as ts_
+        lang = self.lang
+        self.acts = tp_.act_ids(os.path.join(CORE, "include", "doomo", "talk.h"))
+        self.rules = tp_.load_rules(os.path.join(DATA, "rules", "%s.tsv" % lang), self.acts, die, rel)
+        sd = os.path.join(DATA, "safety")
+        self.phrases = tp_.load_phrases(os.path.join(sd, "phrases_%s.tsv" % lang), die, rel)
+        self.suggestive = tp_.load_suggestive(os.path.join(sd, "suggestive_%s.tsv" % lang), self.by_key, die, rel)
+        self.hate = ts_.load_hate(os.path.join(sd, "hate.hash"), die, rel)
+        self.parse_info = self.safety_info = None
 
     @staticmethod
     def gen_to_row(r):
@@ -1334,7 +1356,52 @@ class Build:
             raise Fail("%d problem(s)" % len(self.problems))
 
     def banks(self):
-        return build_banks(self.concepts, self.n_ids, self.cats_list, self.edges, self.codec, self.id_of)
+        import talkc_parse as tp_
+        import talkc_safe as ts_
+        banks = build_banks(self.concepts, self.n_ids, self.cats_list, self.edges, self.codec, self.id_of)
+        if self.rules is not None:
+            probs = []
+            tab = tp_.word_table(self, self.rules, self.phrases, self.suggestive, probs)
+            data, self.parse_info = tp_.build_parse_bank(tab, self.rules)
+            banks.append(("PARSE", TBK_RAW, TBF_DC_ONLY, data, len(data)))
+        salt, exact, dele = self.hate
+        data, self.safety_info = ts_.build_safety_bank(self, self.suggestive, salt, exact, dele)
+        banks.append(("SAFETY", TBK_RAW, 0, data, len(data)))
+        return banks
+
+    def t4_problems(self):
+        """TK1-TK9 (design 7.4): the template lints over every bank, the
+        corpora parse, and every language with parser rules has its safety
+        lexicons"""
+        import talkc_parse as tp_
+        import talkc_safe as ts_
+        probs = []
+        for sub in ("grammar", "voice"):
+            d = os.path.join(DATA, sub, self.lang)
+            if os.path.isdir(d):
+                for f in sorted(os.listdir(d)):
+                    if f.endswith(".tlk"):
+                        T = ts_.read_tlk(os.path.join(d, f), die, rel)
+                        probs += ts_.lint_tlk(T, self, self.suggestive, die)
+        cd = os.path.join(DATA, "corpus")
+        need = {"parse": 1500, "safety": 300, "adversarial": 1} if self.lang == "en" else {}
+        for kind, least in sorted(need.items()):
+            path = os.path.join(cd, "%s_%s.tsv" % (kind, self.lang))
+            n = tp_.check_corpus(path, self.acts, self.by_key, die, rel, kind)
+            if n < least:
+                probs.append("TK8: %s has %d lines, at least %d" % (rel(path), n, least))
+        rd = os.path.join(DATA, "rules")
+        for f in sorted(os.listdir(rd)) if os.path.isdir(rd) else []:
+            if not f.endswith(".tsv"):
+                continue
+            lg = f[:-4]
+            for need_f in (os.path.join(DATA, "lexicon", lg, "safety.tsv"),
+                           os.path.join(DATA, "safety", "phrases_%s.tsv" % lg),
+                           os.path.join(DATA, "safety", "suggestive_%s.tsv" % lg),
+                           os.path.join(cd, "safety_%s.tsv" % lg)):
+                if not os.path.exists(need_f):
+                    probs.append("TK9: %s has parser rules (free text) but no %s" % (lg, rel(need_f)))
+        return probs
 
     def binary(self, align=ALIGN):
         b = pack_bin(self.banks(), lang_byte(self.lang), self.n_ids, self.codec, align)
@@ -1364,6 +1431,12 @@ def stats(b, blob):
     for name, kind, fl, data, raw in banks:
         tot += len(data)
         print("talkc:   %-9s %7d B stored, %7d B raw%s" % (name, len(data), raw, " (DC/native only)" if fl & 1 else ""))
+    if b.parse_info:
+        print("talkc: PARSE: %(words)d words, %(classes)d word classes, %(rules)d rules, "
+              "%(tagsets)d tag sets, %(safe)d safety words" % b.parse_info)
+    if b.safety_info:
+        print("talkc: SAFETY: %(reg)d register words (%(forbid)d never in Talk output, %(suggest)d flirting), "
+              "%(exact)d hate hashes + %(del)d deletion hashes" % b.safety_info)
     ps1 = sum(len(d) for n, k, f, d, r in banks if not f & 1)
     print("talkc: TALK_%s.BIN %d B (banks %d B; the PS1 loads %d B)" % (b.lang, len(blob), tot, ps1))
 
@@ -1410,6 +1483,39 @@ def selftest():
             # the problems list is printed, the exception names only the count
             raise Fail("%s: expected a failure with %r, got %r" % (rel(path), want, (got or "success")[:300]))
         n += 1
+    # T4: the seeded bad templates (TK1-TK7) and parser rules
+    import talkc_parse as tp_
+    import talkc_safe as ts_
+    b = Build("en")
+    for f in sorted(os.listdir(d)):
+        path = os.path.join(d, f)
+        if not (f.endswith(".tlk") or f.endswith(".rules")):
+            continue
+        first = open(path, encoding="utf-8").readline()
+        m = re.match(r"^# expect: (.*\S)", first)
+        if not m:
+            raise Fail("%s: the first line is # expect: TEXT" % rel(path))
+        try:
+            if f.endswith(".tlk"):
+                got = "\n".join(ts_.lint_tlk(ts_.read_tlk(path, die, rel), b, b.suggestive, die))
+            else:
+                tp_.load_rules(path, b.acts, die, rel)
+                got = ""
+        except Fail as e:
+            got = str(e)
+        if m.group(1) not in got:
+            raise Fail("%s: expected a failure with %r, got %r" % (rel(path), m.group(1), (got or "success")[:300]))
+        n += 1
+    # the good template must lint clean
+    good = os.path.join(CORE, "tests", "talk_good.tlk")
+    got = ts_.lint_tlk(ts_.read_tlk(good, die, rel), b, b.suggestive, die)
+    if got:
+        raise Fail("%s: the good templates must lint clean: %s" % (rel(good), got[:3]))
+    # the hate matcher's squeeze and hashes
+    if ts_.squeeze("Sh00OOk") != "shok" or ts_.squeeze("b-a-d") != "bad":
+        raise Fail("squeeze")
+    if tp_.canon("Dr. Bloom's  LO-FI’s caf\u00e9!") != "dr bloom's lo fi's cafe":
+        raise Fail("canon: %r" % tp_.canon("Dr. Bloom's  LO-FI’s caf\u00e9!"))
     # the edge rules (talk_assoc.py proposes, this refuses)
     b = Build("en")
     for edges, want in (({"pie": [("booze", 5)]}, "adults-only"), ({"pie": [("sweet", 3)]}, "not a talkable"),
@@ -1453,6 +1559,8 @@ def main(argv):
             out = args[i + 1]; i += 2; continue
         if a == "--align":
             align = int(args[i + 1]); i += 2; continue
+        if a == "--hate-hash":
+            mode = "hate-hash"; out = args[i + 1]; i += 2; continue
         if a in ("--bin", "--check", "--selftest", "--stats", "--seed-from-game"):
             mode = a[2:]; i += 1; continue
         print(__doc__)
@@ -1465,6 +1573,14 @@ def main(argv):
                                                 "gen_game.tsv"))
         elif mode == "selftest":
             selftest()
+        elif mode == "hate-hash":
+            import talkc_safe as ts_
+            dst = os.path.join(DATA, "safety", "hate.hash")
+            salt = 0x9E3779B97F4A7C15
+            if os.path.exists(dst):
+                salt = ts_.load_hate(dst, die, rel)[0]
+            nw, ne, nd = ts_.write_hate(out, dst, salt, rel)
+            print("talkc: %s: %d words, %d hashes, %d deletion hashes" % (rel(dst), nw, ne, nd))
         else:
             b = Build(lang)
             b.fail_on_problems()
@@ -1488,6 +1604,11 @@ def main(argv):
                 os.remove(tmp)
                 if not same:
                     raise Fail("%s is stale: run make -C core gen" % rel(gen_now))
+                t4 = b.t4_problems()
+                if t4:
+                    for p in t4:
+                        print("talkc: " + p, file=sys.stderr)
+                    raise Fail("%d T4 problem(s)" % len(t4))
                 print("talkc: check OK (%d concepts, %d B, dict_hash 0x%08X)" % (len(b.concepts), len(blob),
                                                                                 b.codec.hash))
     except Fail as e:

@@ -1,0 +1,34 @@
+# core/data/talk/safety/phrases_en.tsv - extra English safety phrases for the
+# input classifier S1 (owner: TK, T4; docs/TALK.md "Safety", design 7.2 / 7.6).
+# Read by core/tools/talkc_parse.py into TB_PARSE (the Dreamcast and native
+# parser; the PS1 has no typed input).
+#
+#   CLASS<TAB>phrase, phrase, ...
+#
+# CLASS  sexual     explicit: refused, never echoed; with any child near it
+#                   the conversation ends (K-7)
+#        suggest    a flirting phrase (adults only, like suggestive_en.tsv)
+#        distress   self-harm and danger: the comedy stops (K-11)
+#        minor      names a child (K-7 reads it with a sexual word)
+#        minorx     only ever means a child (underage, preteen, young girls ...):
+#                   with a liking word (rules/en.tsv ATTRACT) it counts as sexual (K-7)
+#        hate       real-world hate (K-8). NO SLURS here: they are hashed in
+#                   hate.hash and never written in the repository
+#        realworld  real people, faiths, brands: never generated, no topic
+#        group      a group of real people: hate right after a HATEV word
+#                   ("I hate ...", rules/en.tsv)
+# The concepts of lexicon/en/safety.tsv are already known; these are the
+# words and phrases that are not concepts. A phrase is matched as whole
+# canonical words (core/tools/talkc_parse.py canon()), longest first.
+#
+# Deliberately NOT here (too common in innocent talk; a child says them
+# too): touch me, sleep with me, in bed with, lick, suck, bang, hot, kill me
+# now (a joke), groom / grooming (weddings, dogs), cracker.
+
+sexual	seks, secks, seggs, sexi, sxy, nekkid, noods, noodz, nudez, dick, dicks, prick, pussy, penis, penises, vagina, vaginas, cum, jizz, blowjob, blow job, handjob, hand job, dildo, vibrator, masturbate, masturbating, masturbation, jerk off, jerking off, wank, wanking, wanker, slut, sluts, slutty, whore, whores, thot, milf, rape, raped, rapist, raping, incest, pedo, paedo, pedophile, paedophile, pedophilia, molest, molested, molester, fondle, fondling, grope, groping, threesome, orgy, bdsm, fetish, bondage, sexting, sext, nsfw, hentai, xxx, onlyfans, strip for me, take off your clothes, take your clothes off, get naked, show me your body, send nudes, send pics, make out with, hook up with me, turn me on, turns me on, turned on, undress, undressing, spank me, have sex, sex with, horny for, nudes of, naked pics, boobies, butthole, erection, ejaculate, semen, sperm, testicles, balls deep, deepthroat, anal, oral sex, blowie, booty call, netflix and chill, shota, loli, jailbait, sugar daddy, camgirl, escort service, prostitute, prostitution
+minorx	underage, under age, preteen, preteens, pre-teen, minors, jailbait, loli, shota, tween, tweens
+minor	pedo, paedo, pedophile, paedophile, pedophilia, shota, loli, jailbait, little sister, little brother, kid sister, kid brother, baby sister, baby brother, grade school, grade schooler, middle school, middle schooler, elementary school, primary school, preschool, preschooler, kindergarten, teenager, teenagers, teenage, young girl, young boy, young girls, young boys, lil girl, lil boy, little kid, little kids, little one, small child, minors, underaged, children, kiddo, kiddos, kiddie, kiddies, boy scout, girl scout, schoolkids, grader, fifth grader, sixth grader, seventh grader, eighth grader, tween, tweens, adolescent, adolescents, juvenile, youngster, youngsters, toddlers, babies, newborn, my son, my daughter, your son, your daughter
+distress	want 2 die, wanna die, want 2 disappear, hits me, hurts me, beats me up, slaps me, kicks me, punches me, everybody hates me, nobody likes me, no one likes me, selfharm, give up on life, want to die, wanna die, i want to die, don't want to live, dont want to live, better off dead, better off without me, no reason to live, nothing to live for, hurt myself, harm myself, harming myself, hurting myself, kms, unalive, unalive myself, take my own life, i hate myself, hate myself, nobody would miss me, wish i was dead, wish i were dead, want to disappear, wanna disappear, starve myself, starving myself, end it, ending it, can't take it anymore, cant take it anymore, nobody loves me, no one loves me, everyone hates me, i'm a burden, im a burden, being bullied, they hurt me, he hurts me, she hurts me, someone hurts me, he hits me, she hits me, they hit me, scared to go home, i'm not safe, im not safe, kill me
+hate	back to your country, white power, heil hitler, sieg heil, kkk, ku klux klan, gas the, ethnic cleansing, master race, race war, white supremacy, white supremacist, 1488, nazi salute, hate crimes
+group	jew, muslim, christian, hindu, sikh, buddhist, atheist, immigrant, refugee, mexican, asian, arab, african, catholic, mormon, hispanic, latino, black person, white person, gay person, trans person, lesbian, gay, gays and lesbians, gay people, gays, lesbians, trans people, transgender people, jews, jewish people, muslims, christians, hindus, sikhs, buddhists, atheists, black people, blacks, white people, whites, asians, asian people, mexicans, latinos, immigrants, refugees, foreigners, disabled people, the disabled, arabs, africans, indians, gypsies, romani, catholics, protestants, mormons, hispanics, chinese people
+realworld	trump, biden, obama, putin, hitler, stalin, jesus christ, allah, muhammad, the bible, bible, quran, koran, torah, mosque, synagogue, the pope, democrats, republicans, liberals, conservatives, communism, communist, capitalism, abortion, gun control, israel, palestine, ukraine, covid, vaccine, vaccines, fortnite, minecraft, roblox, mario, sonic, pokemon, zelda, disney, pixar, netflix, ps5, xbox one, nintendo switch, call of duty, grand theft auto, taylor swift, elon musk

@@ -20,6 +20,8 @@ Contents:
 [4 The word network (T1)](#4-the-word-network-t1) ·
 [5 The compiler](#5-the-compiler-talkcpy) ·
 [6 The database and its reader (T2)](#6-the-database-and-its-reader-t2) ·
+[6a The parser (T3)](#6a-the-parser-t3) ·
+[6b The safety gate (T4)](#6b-the-safety-gate-t4) ·
 [7 Sizes](#7-sizes-measured) ·
 [8 Tests](#8-tests) ·
 [9 Differences from the design](#9-differences-from-the-design) ·
@@ -35,8 +37,8 @@ Contents:
 | **T0** | the contract: `talk.h`, `PLATF_TALK`, talk framing fields, `plat_room_project`, the `'TALK'` save chunk's tag and budget, `NT_TALK_*` news | **done** (TK1) |
 | **T1** | the word network (3,972 English concepts) and its compiler `talkc.py`, the association tool `talk_assoc.py`, the test fixture | **done** (TK1) |
 | **T2** | the database reader `talk_db.c` and the native file hook | **done** (TK1) |
-| T3 | the free-text parser (Dreamcast and native) | to do |
-| T4 | the safety gate (input classifier, audience gate, output lint, property tests) | to do: **must be green before any generated line can be reached in play** |
+| **T3** | the free-text parser (Dreamcast and native): `talk_lex.c`, `talk_parse.c`, `rules/en.tsv`, a labelled corpus of 1,517 lines | **done** (TK2) |
+| **T4** | the safety gate: the input classifier S1, the audience gate S2 (`talk_safe_ctx`, one source of "minor"), the output lint S3, the template lints TK1-TK9, the safety and adversarial corpora, the hashed hate list, the property tests | **done** (TK2): green. The generator-level halves of P1-P8 go live with T5a / T6 |
 | T5a / T5b | the generator engine / the English line banks | to do |
 | T6 | the drama manager, outcomes, the talk memory chunk | to do |
 | T7 | the census (the 1,000,000 conversations, measured) | to do |
@@ -46,7 +48,9 @@ Contents:
 
 Nothing in the game can reach Talk yet. `home_talk_enter()` is a weak
 default that answers "not available", and no platform sets `PLATF_TALK`.
-T0-T2 add data, tools and a reader. **No line is generated anywhere.**
+T0-T4 add data, tools, a reader, the parser and the safety gate. **No line
+is generated anywhere.** The gate the generator (T5a) must call on every
+line exists and is tested before the generator does.
 
 ---------------------------------------------------------------------------
 
@@ -78,9 +82,25 @@ What T0-T2 already guarantee, with a test for each:
 | There are no slurs anywhere in the repository. The hate concepts are generic words. T4 stores slurs only as salted hashes (design section 7.6) | `safety.tsv` |
 | The built-in text register stays PG-21 and non-explicit. The NT_TALK_* headlines are kid-safe | `story-check` (`story_register.py`); `test_contracts_talk.c` |
 
-T4 builds the rest: the classifier, `talk_safe_ctx()`, the S2 rewrite, the
-S3 output lint and the P1-P8 property tests. **Until T4 is green, no
-package may connect the generator to anything the player can reach.**
+What T4 adds (section 6b has the details), each with its test:
+
+| Guarantee | Where it is enforced |
+|---|---|
+| **One source of "minor"**: `talk_safe_minor(id)` is `LIFE_IS_MINOR(sim_life_stage(id))` or the roster's KID / TEEN traits or `ending_kid_cast(id)`; a family pool member's own stage; the hero's stage; **an unknown id is a minor** (fail safe). It agrees with LS0 and E1 for all 1,000 premade ids, the kid cast file and every pool stage; a canon kid given a makeover stays a kid | `talk_safe.c`; `test_talk_safety.c` (`talk_safe_minor_single_source`, `_pool_stages`) |
+| **Sexual words with any child near them end the conversation** (K-7): in the room, as the target, as the avatar, or named in the line (a minor word, "12 year old", "I'm 13", "she's 14"); a word that only ever means a child ("underage", "preteen") next to a liking word counts as sexual. The input is never shown, not even masked | S1 `talk_safe_scan`, S2 `talk_safe_gate` (`TG_END_K7`) |
+| **Explicit input is refused and never echoed** (`REFUSE_SEXUAL`); **hate** (the hashed slur list, real-world hate words, "I hate / <group> are vermin") is refused unseen (`REFUSE_HATE`); **distress** stops the comedy (`DISTRESS`, K-11) | S1 + S2 |
+| **Romance only between two adults, both ways**: FLIRT, CONFESS, ASK_OUT, KISS and the flirty tone pass only when the avatar and the target are adults, `playas_romance_ok` and `sim_romance_ok` pass **in both directions**, nobody in the room is a minor and the pet is not there. Else `REFUSE_MINOR` (a non-adult avatar or target) or `DEFLECT_ROMANCE` (an adult who says no, or "not in front of the kids"). Teen-teen romance is never offered in Talk. 200,000 random gate calls and every (adult, minor) pair in both directions are checked | `talk_safe_romance_ok`, `talk_safe_gate`; `talk_safe_property_gate` |
+| **Mature**: a `jmat` variant needs `opt_mature() >= MATURE_ON` and `mature_adult_ok()` for every id (never the hero, a custom or sim-born resident, a kid) | `talk_safe_jmat_ok`; `talk_safe_mature_gate` |
+| **The output lint S3** runs on every generated line on every platform (the PS1 loads `TB_SAFETY`): `register.tsv`'s words with the story lint's own matching rules, every never-generated word (explicit and **flirting** sexual words, hate, real world, distress, the capped swears), the hate hashes, the bubble size, and the one-everyday-swear-a-conversation cap (K-9); any register word in a room with a child (K-2). Every one of the 3,836 kid-safe concepts lints clean in a kid room; every adult register word and all 86 never-generated words are caught | `talk_safe_lint`; `talk_safe_output_lint_*` |
+| **The template lints TK1-TK9** refuse a bank before it is built (`talkc --check`): a register word without `!kid_present`, a capped swear, a romance-reachable rule without `adults_only&!kid_present`, a `jmat` without `mature_adult_ok`, any sexual-class word, a safety or ungated romance slot, a register word or the LOVE face in a kid's bank, a refusal bank without its reviewed `nojoke` tag, a corpus that does not parse, a language with free text but no safety lexicons. 17 seeded bad templates and rule files must each fail with their rule | `talkc_safe.py`, `talkc.py`; `core/tests/talk_bad/*.tlk`, `*.rules`, `core/tests/talk_good.tlk` |
+| **The parser hands on only acts and concepts that may be generated**: 50,000 random lines of junk, swears and safety words never give a topic that is never-generated or of a sexual / hate / real-world class. Typed words stay in the (masked) bubble only; the residents can never be made to say them | `talk_safe_property_closed_vocabulary` |
+| **The gate changes nothing**: after the 200,000 calls `sim_romance_sweep(-1) == 0` and no edge was made | `talk_safe_property_gate` |
+| No slur is written anywhere in the repository: `safety/hate.hash` holds salted FNV-1a 64 hashes (and their one-letter deletions), made from the reviewer's local list by `talkc.py --hate-hash` | `talkc_safe.py`; `talk_safe_hate_hash` (and `DOOMO_HATE_PLAIN=file` checks every word of the local list) |
+
+**The rule for T5a and later stays:** every generated line goes through
+`talk_safe_gate` (for what the player said) and `talk_safe_lint` (for what
+a resident says) before anyone sees it; a lint hit replaces the line with a
+safe bank line and counts (`talk_safe_lint_hits()`, a test fails on any).
 
 ---------------------------------------------------------------------------
 
@@ -176,9 +196,14 @@ What it checks, failing the build on any problem:
 * a byte-identical rebuild;
 * the codec round trip of every string.
 
-`--selftest` builds with each of the 11 seeded bad files in
-`core/tests/talk_bad/` (each must fail with the rule its first line names).
-It also checks four bad edges, the codec and the morphology.
+`--selftest` builds with each of the seeded bad files in
+`core/tests/talk_bad/` (13 lexicon files `*.tsv`, 15 templates `*.tlk`,
+2 rule files `*.rules`; each must fail with the rule its first line names)
+and lints `core/tests/talk_good.tlk` clean. It also checks four bad edges,
+the codec, the morphology, `canon()` and the hate hash's squeeze.
+`--check` also builds the T3 / T4 banks and runs TK1-TK9 (section 6b).
+`--hate-hash PLAIN` rewrites `safety/hate.hash` from a local plaintext list
+(never committed).
 
 ---------------------------------------------------------------------------
 
@@ -220,6 +245,136 @@ into the heap.
 
 ---------------------------------------------------------------------------
 
+## 6a. The parser (T3)
+
+Dreamcast and native only: the PS1 has no keyboard, never references these
+files, and its pad composer builds `TalkUtter` directly. The parser is
+deterministic and keeps no state.
+
+```c
+TalkParseCtx c = { .nparts = 3, .ring = 0, .hops = 1, .name = { "Nana Puddin", "Vex", "Rivet" },
+                   .person = town_lookup, .kid_room = aud.any_minor };
+talk_parse("Nana, what's in the pie?", &c, &u, &info);   /* ASK_ABOUT, topic pie, target 0 */
+```
+
+**The pipeline** (`core/src/talk_lex.c`, then `core/src/talk_parse.c`):
+
+1. **Normalise (S0)**: case; accents; Cyrillic, Greek and fullwidth
+   look-alikes; leet (`3>e 0>o @>a $>s 1>i/l` ...) when the leet spelling is
+   a word; letters stretched for effect ("sooo", "meee"; "kkk" stays);
+   starred letters ("f*ck"); punctuation inside a word ("s.e.x", "t_ake",
+   "asia-ns"); spaced-out letters ("s e x", "m e").
+2. **Correct**: an unknown word that is no name is fixed at edit distance 1
+   (the first letter kept): a word that completes a phrase with its
+   neighbours first ("white powe"), then a safety word, then the first word
+   found. Every word of every phrase, and about 1,500 everyday words
+   (`rules/common_en.txt`), count as known, so "seen" is never "corrected"
+   into a safety word.
+3. **Tag**: persons (a participant's full or first name, "Nana's"; a title
+   such as "Mayor" or "Dr." only as a vocative or with "the": "thanks,
+   doctor", "the mayor is right"); multi-word keys longest first; lemmas
+   (-s -es -ies -ed -ied -ing); numbers ("12yo"); the concept, its root and
+   sentiment; the rule classes; the safety word flags.
+4. **Classify (S1)**: `talk_safe_scan`. Explicit, hate and distress findings
+   **always win** over every rule.
+5. **Rules**: `core/data/talk/rules/en.tsv`, 227 rules over 93 word
+   classes, highest priority first. A rule is tried on the whole line and
+   on the line without the names it is said to ("hey Kevin, ...", "...,
+   Nana?"). The first match gives `act[0]`, the next match with another act
+   `act[1]`. A capture names the topic or the person an act is about.
+6. **Topic**: the capture, else spreading activation (every concept said
+   1.0, its top 8 associations w/15 x 0.5, the recent topic stack +0.3
+   halving per turn; everyday words such as "today" or "friend" count less;
+   an unsaid concept never beats a said one).
+7. **Target**: "everyone" words, else a participant named (not the one the
+   act is about: "Vex is right" is said to the ring), else the facing ring.
+8. **The bubble**: explicit, hate and swear words are masked (####); in a
+   kid's room crude and flirting words too.
+
+**The rules file** (`talkc_parse.py` documents the syntax): `@class NAME
+member, member` for word classes (members are function words, never the
+topic, unless the class says `+topic`) and `PRIO<TAB>PATTERN<TAB>ACT(c)`.
+Patterns use classes, `[PRED]` predicates (CONCEPT, PERSON, ABSENT, ADJPOS,
+FOOD, ...), `"literals"`, `.*`, `^`, `$`, alternations, `?`, `*`, `!` and
+`c:` captures. The first nine classes (EVERYONE, HATEV, YEARS, YOU, I, IM,
+GREETW, HATEADJ, ATTRACT) are read by the C code by position, and
+`talkc` checks the order. A rule may never emit a safety act.
+
+**Accuracy** (`test_talk_parse.c`, on `corpus/parse_en.tsv`: 1,517 lines in
+six rooms, about one in six with a misspelling, a shortcut or leet):
+
+| Measure | Bar (design 3.2) | Measured |
+|---|---:|---:|
+| act (top 1) | 90% | **97.7%** |
+| topic | 85% | **93.4%** |
+| addressee | 95% | **98.5%** |
+
+The corpus was also the tuning set. **On 82 fresh lines written afterwards
+and never tuned on** (kept outside the repository, measured with
+`DOOMO_TALK_CORPUS=file`) the parser scored **act 85.3%, topic 85.3%,
+addressee 98.7%**. The misses are everyday words the lexicon does not know
+yet ("slice", "roof", "mass", "sermon") and rarer phrasings. T5b and T8 grow
+the word lists from play; the honest expectation for unseen typing is the
+held-out figure, not the corpus one. UNKNOWN is a first-class act that the
+residents answer in character, so a miss is a joke, not an error.
+
+**Tools**: `DOOMO_TALK_LINE="text" ./tests talk_parse_debug_line` prints
+the tokens, flags, acts, topic, target and the masked bubble of one line.
+`DOOMO_TALK_MISS=1` lists every corpus miss.
+
+**Adding a rule or a word**: add class members or a rule to `rules/en.tsv`
+(or an everyday word to `common_en.txt`), add corpus lines that show it, run
+`make -C core talk unit` and keep the three bars.
+
+---------------------------------------------------------------------------
+
+## 6b. The safety gate (T4)
+
+`core/src/talk_safe.c`, every build (the S3 lint runs on the PS1 too).
+Design section 7; the guarantees and their tests are in section 2.
+
+| Stage | Function | What |
+|---|---|---|
+| who is here | `talk_safe_minor`, `talk_safe_is_pet`, `talk_safe_ctx` | the audience: any minor, avatar minor, target minor ("everyone" includes the kids), the pet, the Mature option for every adult |
+| S1 | `talk_safe_scan` (inside `talk_parse`) | `TS_*` bits from the word flags of `TB_PARSE`, the hate hashes (exact and one edit), "HATEV ... group", "group ... HATEADJ", ages under 18, a child-only word next to a liking word |
+| S2 | `talk_safe_gate(u, aud, avatar, target, refused_today)` | `TG_END_K7`, `TG_REFUSE`, `TG_HATE`, `TG_DISTRESS`, `TG_REFUSE_MINOR`, `TG_DEFLECT` or `TG_PASS`; rewrites the acts, clears the bubble for K-7, explicit and hate input; a romance act that is only the line's second act is dropped instead ("love you guys" stays a compliment) |
+| K-4 | `talk_safe_romance_ok` | what the composer may list: FLIRT, CONFESS, ASK_OUT, KISS and the flirty tone |
+| K-6 | `talk_safe_jmat_ok` | a `jmat` variant |
+| S3 | `talk_safe_lint(line, aud, &swears)` | every generated line; `TL_*`; `talk_safe_lint_hits()` |
+
+**The data** (`core/data/talk/safety/`): `phrases_en.tsv` (explicit,
+flirting, distress, minor, child-only, hate, real-world and group phrases
+that are not concepts; no slurs), `suggestive_en.tsv` (which sexual-class
+concepts are flirting words: a FLIRT the gate may allow between adults as
+*input*, never generated), `hate.hash` (salted hashes).
+
+**The corpora** (`core/data/talk/corpus/`), measured by `test_talk_safety.c`:
+
+| Set | Lines | Result | Bar |
+|---|---:|---|---|
+| `safety_en.tsv` must-refuse (explicit, K-7, hate, distress, romance with a minor both ways) | 205 | **205 refused, every one in its class** | 100% |
+| `safety_en.tsv` near misses ("my kid brother loves pie", "hell yeah, pizza!", "*hugs Pip*", "i'll kill you at chess") and adult romance | 127 | **125 not refused** (98.4%; the two refused: "dick tracy", "the nude colour lipstick") | 97% |
+| `adversarial_en.tsv` (hand-written obfuscation: "s3x with a k1d", "ѕех", "n a k e d", "su1cide", "h3il h1tler") | 69 | 62/62 refused, 7/7 near misses passed | 100% |
+| machine mutation of every must-refuse line (leet, spacing, marks, stretched letters, look-alikes, case, one typo after the first letter; 24 a line) | 3,940 | **99.4% refused; child-related 1,082/1,082** | 99%; 100% |
+
+A typo that lands on another real word is not the same word any more and is
+not counted (548 skipped mutants). The remaining misses are stop words of a
+phrase broken up ("i want t o disappear"). `DOOMO_TALK_MISS=1` lists them.
+
+**Distress** (K-11, the owner default): the gate says `DISTRESS`; T5b
+writes the gentle out-of-character line that encourages talking to someone
+the player trusts, then Talk continues calmly. The words: self-harm,
+"want to die", "nobody would miss me", "my dad hits me", "I'm not safe" and
+their variants.
+
+**The template lints** (TK1-TK9) read `grammar/<lang>/*.tlk` and
+`voice/<lang>/*.tlk` (none exist until T5b) in the syntax
+`core/tools/talkc_safe.py` documents (`@rule NAME guard: ... tags: ...
+slot: x=LEAF` and quoted lines with their own guards). T5a may add syntax,
+never loosen a lint.
+
+---------------------------------------------------------------------------
+
 ## 7. Sizes (measured)
 
 All figures are for `TALK_en.BIN` after the TK1 content (`talkc --stats`):
@@ -231,8 +386,19 @@ All figures are for `TALK_en.BIN` after the TK1 content (`talkc --stats`):
 | ATTR (9,337 attribute links) | 18,674 B | 18,674 B | yes |
 | FORMS (Huffman) | 52,921 B | 68,653 B | yes |
 | CATS + CATNAMES | 1,944 B | 2,192 B | yes |
-| EDGES (21,254 reviewed edges) | 50,456 B | 50,456 B | no (Dreamcast, native) |
-| **Total file** | **219,672 B** | | **PS1: 168,891 B** of the 312 KB budget |
+| EDGES (21,254 reviewed edges) | 50,530 B | 50,530 B | no (Dreamcast, native) |
+| PARSE (T3: 11,472 words, 138 tag sets, 227 rules, 284 safety words) | 275,432 B | 275,432 B | no (Dreamcast, native) |
+| SAFETY (T4: 246 lint words, 128 + 160 hate hashes) | 6,428 B | 6,428 B | **yes** (the S3 lint) |
+| **Total file** | **503,260 B** | | **PS1: 176,805 B** of the 312 KB budget |
+
+(After TK2 the other banks are for 4,009 concepts: CONCEPT 32,080 B, ASSOC
+64,160 B, ATTR 18,896 B, FORMS 53,297 B.) The design estimated PARSE at
+about 110 KB; it is bigger because its words are stored raw for a binary
+search through `plat_talk_read` (DC only: 11 MB free). Code, `-Os`:
+`talk_lex.c` 9,743 B (ARM Thumb) / 12,064 B (SH4), `talk_parse.c` 2,868 /
+3,378 B, `talk_safe.c` 3,538 / 4,356 B, 4 B of `.bss` (the lint counter);
+stack about 6 KB in `talk_parse` (40 tokens and a copy). The PS1 links only
+the S2 / S3 half once T5a calls it.
 
 Other measurements:
 
@@ -260,7 +426,9 @@ Other measurements:
 |---|---|
 | `core/tests/test_contracts_talk.c` | The act ids and groups; `TalkUtter`'s layout; `PLATF_TALK` and the weak hooks; the room projection (origin, tile steps, height, a quarter turn equal to the turned room, pan, zoom 2 ignored by the reference, the platform hook equal to the reference); the `'TALK'` chunk and the joint worst case; the four headlines with the longest names |
 | `core/tests/test_talk_db.c` | The fixture opens and verifies; forms and articles (plurals, irregulars, mass nouns, names, "the" names, truncation); categories and roots; the safety classes the gate will read (sexual and capped never, everyday swears adult, romance adult, minor words); attributes; associations (range, order, talkable, **no edge into adult from non-adult**, EDGES begins with ASSOC); refusals (CRC, magic, version, dictionary, truncation, an out-of-range bank, a duplicate bank); CRC-32; the full `TALK_en.BIN` through the native platform |
-| `make -C core talk-check` | `talkc --check` and `--selftest` (part of `make -C core test`) |
+| `core/tests/test_talk_parse.c` | The canonical key; folding, leet, look-alikes, stretched letters, typos, lemmas, multi-word keys, persons, numbers, spaced letters; acts, topics, targets; determinism (no state, no database = UNKNOWN); the 1,517-line corpus against the three bars; `DOOMO_TALK_LINE` |
+| `core/tests/test_talk_safety.c` | One source of "minor" (1,000 premade ids, the kid cast file, pool stages, unknown ids, the pet); the safety and adversarial corpora; the mutation fuzz; the hate hash (C equals Python, no lexicon word on it, `DOOMO_HATE_PLAIN`); the gate properties P1-P4 and P7 over 200,000 random calls and every (adult, minor) pair both ways; P5 Mature; P6 closed vocabulary over 50,000 random lines; the S3 lint (units and the whole vocabulary); the masked bubble |
+| `make -C core talk-check` | `talkc --check` (now also TK1-TK9 and the corpora) and `--selftest` (30 seeded bad inputs: 13 lexicon, 15 templates, 2 rule files; and `core/tests/talk_good.tlk` must lint clean) (part of `make -C core test`) |
 | `make -C core check-gen` | `gen_game.tsv`, `concepts.lock` and `talk_fixture.c` regenerate byte for byte |
 
 ---------------------------------------------------------------------------
@@ -276,11 +444,29 @@ Other measurements:
 | 58 acts plus 4 safety classes | 59 plus 5 | `TA_HIGH_FIVE` is an ordinary gesture the player can offer. It is **not** a conversion of a hug: the owner overrode the D10 high-five default ("TALK HUG", below). `TA_DEFLECT_ROMANCE` is the gate's rewrite in design 7.2 |
 | 4,000 concepts, about 16,000 surface forms, about 32,000 edges, about 200 safety concepts | 3,972; 7,279; 21,254; 95 | The surface-form figure counts inflections, which T3's parser derives. More edges and the hashed hate list come with T3 and T4 |
 | The paint names as colours | Paint names that are first of all things (Cherry, Honey, Forest, Bone and others) are left to the lexicon as nouns | One lemma, one concept |
+| Parser rules: patterns with gaps and captures | Also `*`, `!`, `$` inside an alternation, literals hashed per rule (not class bits), and every rule tried again on the line without the names it is said to | Vocatives ("hey Kevin, ...") otherwise break every anchored rule |
+| Safety rules in `rules/en.tsv` at priority 870-900 | **In C** (`talk_safe_scan`), before any rule; a rules file may not emit a safety act (`talkc` refuses it) | A bad rules file can then never weaken the gate |
+| TK1 / TK3: a suggestive word in a template needs `!pet` | **Any sexual-class word, flirting ones included, is a TK4 error and an S3 hit in every room** | T1 already made the whole sexual class never-generated; innuendo is written without those words (R2) |
+| K-7: "sexual + any minor" | Flirting words count as sexual there too; a child-only word ("underage") next to a liking word counts as sexual; ages under 18 from "12 year old", "I'm 12", "she's 14" | Fail safe: ending a conversation wrongly is a small cost |
+| The pet | Not a minor (it may swear around the pet, K-3), but never a romance target and never with a sexual or mature line | K-3 |
+| A romance act that is only the line's second act | Dropped where the gate would refuse it; the first act stands | "Love you guys!" is a compliment, not a refusal |
+| `minor()` in design 7.3 | Also the hero (the player's stage) and the pet (`TALK_PET_ID`) | Talk's own ids |
+| (the T1 network) | **37 everyday concepts added** by TK2 (day, week, hat, sofa, music, food, colour, parade, monster ...; `concepts.lock` 4,009) | The parser corpus needed them; they have no association edges yet |
 
 
-**Known risks (from the TK1 review; open):**
+**Known risks (open):**
 
-* **Concept-id headroom.** 3,972 of the 4,095 12-bit ids are used and the
+* **Unseen typing.** 85% acts on fresh lines (section 6a). Every word the
+  lexicon does not know is a chance for a wrong typo fix; the everyday list
+  and the corpora must grow with play testing (T8, the Q7 review).
+* **Over-refusal.** The classifier refuses "dick tracy" and "the nude
+  colour lipstick", and treats "kill me" style jokes as fine but "hits me"
+  as distress. The trade is deliberate: a refusal costs a joke, a miss could
+  cost a child. Review the near-miss list with the owner.
+* **The hate list** is the reviewer's starting list (44 words and their
+  variants, hashed); it needs the owner's review and growth over time.
+* **Concept-id headroom.** 4,009 of the 4,095 12-bit ids are used (TK2
+  added 37) and the
   lock is append-only, so renames and removals burn ids. `gen_game.tsv`
   seeds from other packages' data (furniture, items, roster jobs, clothes,
   paints, places): a content package adding more than about 120 names, or a
@@ -339,8 +525,9 @@ make the mode obvious. It needs:
 
 ## 11. What comes next
 
-The critical path is T3, then T4 (**safety: the gate and its property tests
-before anything else connects**), then T5a, T6, T8, and then the PS1
+T3 and T4 are done. Next on the critical path: T5a (the generator; it must
+call `talk_safe_lint` on every line and `talk_safe_gate` on every player
+turn, and turn on the generator halves of P1-P8), T6, T8, and then the PS1
 packages TP1-TP3. T5b, the English line banks, runs in parallel from T5a.
 The banks are written in the PG-21 register (`docs/design/story/SCRIPT_STYLE.md`).
 Each resident speaks in their own voice. The comedy is abrupt and parodies

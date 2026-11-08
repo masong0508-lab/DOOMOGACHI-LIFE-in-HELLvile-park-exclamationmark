@@ -1,0 +1,3 @@
+# expect: TK1: register word
+@rule core.ask_about.booze
+  "Booze before noon? Bold."

@@ -254,3 +254,10 @@ chicken_nugget	.	2	.	.	nugget	crispy,golden,greasy	.
 mac_and_cheese	.	3	.	mac and cheese	macaroni cheese	cheesy,creamy,hot	mass
 sloppy_joe	.	1	.	.	.	messy,saucy,hot	.
 instant_noodles	.	0	.	instant noodles	.	salty,quick,cheap	mass
+# T3 (TK2): everyday words the parser corpus needed
+@cat food.meal
+food	.	2	.	.	grub,nosh	tasty,hot,filling	mass
+@cat food.drink
+drink	.	1	.	.	beverage	cold,fizzy,refreshing	.
+@cat food.ingredient
+ice	.	0	.	.	ice cubes	cold,wet,shiny	mass

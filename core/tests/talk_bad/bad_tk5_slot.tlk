@@ -1,0 +1,3 @@
+# expect: TK5: slot
+@rule core.ask_about slot: x=safety.sexual
+  "{x}? Hm."
