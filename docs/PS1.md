@@ -315,8 +315,11 @@ are only worked out where there are panels (`UI_PANELS`; the PS1 linked `ui_pane
 hold); the action rows' help lines are named arrays in the creator's overlay (a switch table's
 literals went to the resident `.rodata.str1.4`, 156 B); and `ui_draw.c` keeps its one-hole backdrop
 code on the PS1, where `ui_backdrop_holes()` uses the first hole only (the GPU fills the rest for
-next to nothing). Now `_end` 0x801edff0: **73,744 B below the stack top**, 8,208 B above the 64 KB
-reserve and 16 B above the 72 KB plan gate; the creator group needs 100,040 B of slot.
+next to nothing): `_end` 0x801edff0, 73,744 B below the stack top, 16 B above the gate. CL4 then
+freed resident RAM; on `696ffa6` (its own disc ends at `0x801ec8e0`, 79,648 B below the stack top)
+CRB ends the disc at `0x801ec930`: **79,568 B below the stack top** (80 B of resident cost),
+14,032 B above the 64 KB reserve and 5,840 B above the 72 KB plan gate; the creator group needs
+100,040 B of slot.
 
 | overlay group (bytes) | `959acc8` | G0 | | overlay group (bytes) | `959acc8` | G0 |
 |---|---:|---:|---|---|---:|---:|

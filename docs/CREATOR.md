@@ -372,9 +372,9 @@ every step is a whole new body. Memory: the packed icons (58 KB) and the part ca
 (`part_meta_data`, 14 KB) are generated files, which `ovl_plan.py` used to keep resident; they join
 the creator overlay group, and the creator group now loads low over the borrowed `.bss` like the
 house (`BORROW_GROUPS`; nothing of the creator draws a 3D view, syncs the world or touches the
-card), so its 150 KB need about 100 KB of slot. Landed on `5bb55e7` the disc ends 73,744 B below the
-stack top: 8,208 B above the 64 KB reserve and 16 B above the 72 KB plan gate (CRB's resident cost
-there: 80 B; docs/PS1.md has how it was brought down from 832 B).
+card), so its 150 KB need about 100 KB of slot. On `696ffa6` the disc ends 79,568 B below the stack
+top: 14,032 B above the 64 KB reserve and 5,840 B above the 72 KB plan gate (CRB's resident cost:
+80 B; docs/PS1.md has how it was brought down from 832 B).
 
 ## Nicknames
 
