@@ -13,8 +13,8 @@ Companion files in `docs/design/held/`:
 | `SPEED_AUDIT2.md` | Speed audit 2: every non-combat scene measured on GBA/PS1/DC, the S2-x packages and the gap-closers. |
 | `STICKS_PLAN.md` | ST1, real analog stick support (PS1 DualShock + Dreamcast). |
 | `CREATOR_PLAN.md` | The creator plan: CR0-CR14, 1,566 new parts in art batches A1-A10+. |
-| `patches/fut-tk3.mbox` | **Unlanded** Talk TK3 (T5a generator + T7 census + K-10 grief banks), 7 commits. |
-| `patches/fut-dc8.mbox` | **Unlanded** Dreamcast DC8 (the house on the PVR), 9 commits. |
+| `patches/fut-tk3.mbox` | **Landed 2026-11-08 (kept for reference)** Talk TK3 (T5a generator + T7 census + K-10 grief banks), 7 commits. |
+| `patches/fut-dc8.mbox` | **Landed 2026-11-08 (kept for reference)** Dreamcast DC8 (the house on the PVR), 9 commits. |
 | `patches/fut-crc.mbox` | **Unlanded** creator CR3 (gene lists to live counts), 1 commit. |
 
 Other plans already in the tree: `docs/design/talk/TALK_DESIGN.md` (Talk, T0-T10, TP0-TP4,
@@ -65,8 +65,8 @@ Rules that apply to every package below:
 | Speed 1 | **done** | SP1-SP8, Options volume freeze fix (`7370263`), PS1 RAM fix (`d875604`) | SP8 G-C2 (GBA BG2 2x + HUD as OBJ) not built |
 | Speed 2 | **running at the stop** | S2-1, S2-2, S2-3, S2-6, S2-7, S2-8, S2-12, S2-13 (tooling) | S2-4, S2-5, S2-9, S2-10, S2-11, gap-closers G2-EX/CO/CR/PET, PS1 RAM package (see section 2) |
 | Sticks (ST1) | **running at the stop** | - | all of `STICKS_PLAN.md` (section 3) |
-| Talk | held | TK1 (T0-T2), TK2 (T3+T4) | TK3 landing (patch saved), TK4, TK5, TKP, TD (section 4) |
-| Dreamcast | held | DC3, DC4, DC5, DC7 | DC8 landing (patch saved), DC6, DC9, DC5b (section 5) |
+| Talk | held | TK1 (T0-T2), TK2 (T3+T4), TK3 (T5a + T7 + K-10) | TK4, TK5, TKP, TD (section 4) |
+| Dreamcast | held | DC3, DC4, DC5, DC7, DC8 | DC6, DC9, DC5b (section 5) |
 | Creator | held | CRA (CR0/1/2/12), CRB (CR6/7/9) | CRC (CR3 patch saved + CR4 first art), slice 2 (section 6) |
 | New levels | held, planned | plan + owner answers | LV0-LV38 (section 7) |
 
@@ -135,7 +135,7 @@ personalities; scratch it on PS1 if it doesn't work. Full design:
 `talk_lex.c` + `talk_parse.c`, 228 rules, corpus >= 1,500 lines, accuracy bars met) + T4
 (`talk_safe.c` gate, safety corpora, precision fixes).
 
-**Saved, not landed - TK3** (`held/patches/fut-tk3.mbox`, base `cd80654`): T5a generator
+**Landed 2026-11-08 - TK3** (`held/patches/fut-tk3.mbox`, base `cd80654`): T5a generator
 (`talk_gen.c`, `talkc_gen.py` grammar compiler, 668 starter EN alternatives covering every
 act in the cast's voices), T7 census (`talk_census.c`, three tiers, Chao1, Q1-Q6, Q7 review
 sheet, `talk_sample.py`), K-10 grief and comfort banks (grief is never a punchline), docs.
@@ -169,7 +169,7 @@ Toolchain: KOS in `/opt/toolchains/dc`; harness `dc/harness` (`dcrun`). As built
 **Landed:** DC2 skeleton, DC3 PVR 2D, DC4 input (pad, keyboard, VMU, analog feel), DC5 AICA
 audio, DC7 overworld in 3D on the PVR (`dc3d.h` batches, twiddled textures).
 
-**Saved, not landed - DC8** (`held/patches/fut-dc8.mbox`, base `18be42b`): `dc/src/room.c`
+**Landed 2026-11-08 - DC8** (`held/patches/fut-dc8.mbox`, base `18be42b`): `dc/src/room.c`
 (`plat_room` on the PVR: the dream house), GLASS/ADD 2D modes, host parity test against
 `room_ref` (`test_dc_room.c`), `make -C dc room-test` on Flycast, review fixes (invalid ghost
 red, glows under shades), DREAMCAST.md section 8, RAM re-measured. It was mid-landing (rebased
@@ -265,9 +265,34 @@ pipeline lanes (art sets, SFX library, score cues). See `ROADMAP.md` for their e
 1. `git fetch origin claude/nice-allen-gr6czm`; read `git log` and `ROADMAP.md` for anything
    that landed after this file.
 2. If speed wave 2 or ST1 did not finish: finish them first (sections 2 and 3).
-3. Land the three saved patches in order of the work order: TK3 (Talk), then DC8
-   (Dreamcast), then CR3 (creator), each with `git am -3` on a fresh `fut-*` branch, gates,
-   fast-forward push.
+3. TK3 and DC8 are already in the source (applied 2026-11-08: core tests 1,056/1,056,
+   check-gen, DC build and DC 2D compare green). CR3 is still a patch: it conflicts in
+   `core/src/portrait.c`, `portrait_body.c`, `portrait_head.c` with the speed work; apply it
+   with `git am -3 docs/design/held/patches/fut-crc.mbox`, resolve those three files (keep
+   the speed wave's retained/sliced drawing, add CR3's new gene fields), then `git am
+   --continue` and run the gates.
 4. Then Talk TK4 -> TK5 -> TKP (-> TD after DC8), Dreamcast DC6 -> DC9, creator CRC -> slice
    2, new levels LV0 -> LV38, one wave at a time.
 5. Keep at least 4 GB of disk free (delete build folders of idle worktrees).
+
+---------------------------------------------------------------------------
+
+## 10. Doing it yourself, one step at a time
+
+Each package above is split into small steps that each end green. A good loop for one step:
+
+1. Pick the next unchecked item in the order of section 0 and read its plan section.
+2. Make a branch: `git switch -c fut-<id> origin/claude/nice-allen-gr6czm`.
+3. Do the smallest piece that can be tested on its own (one file, one function, one batch
+   of content). Add or extend its unit test in `core/tests/`.
+4. Run the fast gates: `make -C core -j8 test` and `make -C core check-gen`. Then the
+   platform the step touches: `make -C gba` + `make -C gba test`; the PS1 CMake build with
+   the FMV (check `docs/PS1.md`, "RAM fix 2026-11-08", for the 72 KB margin); `make -C dc`
+   and `make -C dc/tests/gfx2d test`.
+5. Commit with a message naming the package (e.g. "Talk T6: beats and the tension arc"),
+   update `ROADMAP.md`, merge into `claude/nice-allen-gr6czm`.
+
+Good first steps that need no emulator: TK4's content (writing `.tlk` alternatives in
+`core/data/talk/grammar/en/` against `docs/TALK.md` and SCRIPT_STYLE, then `make -C core
+talk-census`); creator art batches (part scripts + catalog lines, checked by
+`test-creator`); the levels' map files (`mapc.py` + `test_levels`).
