@@ -159,8 +159,10 @@ void ui_shade_clip_off(void);
  *     ui_modal_full(KEY, ok);
  *
  * ok = the modal is up, fully popped, and nothing under or around it moves
- * (the caller's own test; a toast, a dialogue box or a tip card is checked
- * here). After one full frame with ok was shown, the platform keeps it in
+ * (the caller's own test; a dialogue box, a tip card or an overlay scene is
+ * checked here; toasts come and go over a held frame where the platform keeps
+ * a clean copy of their band, plat_strip). After one full frame with ok was
+ * shown, the platform keeps it in
  * both pages (plat_hold_frame(2)) and ui_modal_hold returns 1: the backdrop,
  * the dim and the window's drop shadow are on the kept page, every UI shade
  * is cut to the window rect (x, y, w, h) and the drop shadow of a window with
@@ -180,12 +182,17 @@ void ui_shade_clip_off(void);
 #define ui_modal_drop()                    ((void)0)
 #define ui_modal_reset()                   ((void)0)
 #define ui_modal_hold_enable(on)           ((void)(on))
+#define ui_modal_no_band()                 ((void)0)
 #else
 int  ui_modal_hold(const void *key, int ok, int x, int y, int w, int h);
 void ui_modal_hold_end(void);
 void ui_modal_full(const void *key, int ok);
 void ui_modal_drop(void);           /* release a hold now (the modal closed) */
 void ui_modal_reset(void);          /* scene.c: the stack changed */
+/* before ui_modal_full: keep no copy of the toast band for this hold (no toast may show over it then). For a scene
+ * whose platform code keeps its own tables where the copy goes (the GBA house's roof tables share the Mode 4 page
+ * gaps with plat_strip and are only rebuilt after a frame the house did not draw). */
+void ui_modal_no_band(void);
 /* on by default on the GBA only (the one platform these scenes miss 30 on; a held frame stops the dimmed
  * backdrop's drift, so the others keep drawing it); tests switch it on natively. Returns the holds so far. */
 int  ui_modal_hold_enable(int on);

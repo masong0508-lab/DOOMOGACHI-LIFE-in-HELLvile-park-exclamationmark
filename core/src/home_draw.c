@@ -2840,7 +2840,7 @@ static void home_draw(void)
 #if !defined(DOOMO_PLATFORM_PS1)
     /* S2-1: a held panel repaints itself and the HUD bands (opaque) only; the room is the held frame (the PS1
      * never holds: ui.h; none of this is in its home group) */
-    hold_ok = menu_hold_rect(&hx, &hy, &hw, &hh) && house_still() && !ui_toast_pending();   /* the HUD band repaints */
+    hold_ok = menu_hold_rect(&hx, &hy, &hw, &hh) && house_still() && !ui_toast_pending();   /* no band: see below */
     if (ui_modal_hold(&SCENE_HOME, hold_ok, hx, hy, hw, hh)) {
         draw_hud();
         draw_menu(cache, cap);
@@ -2902,6 +2902,7 @@ static void home_draw(void)
         plat_post_iris(sw / 2, sh / 2, r, 1, PAL_UI_PINK);
     }
 #if !defined(DOOMO_PLATFORM_PS1)
+    ui_modal_no_band();                         /* the GBA room's roof tables share the band copy's VRAM */
     ui_modal_full(&SCENE_HOME, hold_ok);
 #endif
 }

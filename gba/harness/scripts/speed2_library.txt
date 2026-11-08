@@ -56,7 +56,7 @@ press A
 wait 30
 fps start
 wait 90
-expect-fps 20 library: almanac profile
+expect-fps 28 library: almanac profile
 shot lib_almanac_profile
 press SELECT
 wait 30

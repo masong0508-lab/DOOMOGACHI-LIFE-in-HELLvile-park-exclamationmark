@@ -176,3 +176,34 @@ TEST(modal_hold_house_catalog)
     r.x = 6; r.y = 16; r.w = plat_screen_w() - 12; r.h = plat_screen_h() - 34;
     compare("house", house_setup, house_pad, r, 40);
 }
+
+/* ---- a toast comes and goes over a held popup: the hold goes on (the band is put back each held tick) and the
+ * toast leaves no trace (the picture after it is the one before it) -------------------------------------------- */
+TEST(modal_hold_toast_over_a_held_popup)
+{
+    static Run a;
+    Rect r;
+    int f, held_toast = 0, before = -1, after = -1;
+    r.w = fp_big() ? 190 : 160; r.h = 60; r.x = (fp_sw() - r.w) / 2; r.y = (fp_sh() - r.h) / 2;
+    doomo_init();
+    test_reset();
+    ui_modal_hold_enable(1);
+    shop_setup();
+    for (f = 0; f < NF; f++) {
+        int h0 = ui_modal_hold_enable(-1);
+        if (f == 30) ui_toast("A toast over the popup");
+        plat_begin_frame();
+        doomo_frame(f == 4 ? BTN_A : 0);
+        plat_end_frame();
+        a.held[f] = (uint8_t)(ui_modal_hold_enable(-1) > h0);
+        a.out[f] = rect_hash(r, 0);
+        if (a.held[f] && ui_toast_pending()) held_toast++;
+        if (f == 29) before = (int)a.held[f];
+    }
+    after = (int)a.held[NF - 1];
+    ui_modal_hold_enable(0);
+    CHECK_MSG(before && after, "toast: not held before (%d) or after (%d) the toast", before, after);
+    CHECK_MSG(held_toast > 60, "toast: only %d ticks held while the toast showed", held_toast);
+    CHECK_MSG(!ui_toast_pending(), "toast: still up at the end");
+    CHECK_MSG(a.out[NF - 1] == a.out[29], "toast: the picture after the toast is not the one before it");
+}

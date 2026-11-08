@@ -149,19 +149,17 @@ int ui_modal_hold_enable(int on)
     return mh_holds;
 }
 
-static int mh_toast;                 /* ui_toast_steady() of the kept frame's toast, 0: no toast on it */
+static uint8_t mh_strip;             /* the kept frame's toast band has a clean copy (plat_strip) */
+static uint8_t mh_noband;            /* ui_modal_no_band(): this frame's mark keeps no band copy */
+static int16_t mh_sy, mh_sh;         /* that band's rows */
 
-/* nothing else on screen moves: no dialogue box, no tip card, no overlay scene drawn above, and no toast but
- * one that holds still clear of the window (it stays on the kept page; only its timer runs, ui_toast_hold) */
+/* nothing else on screen moves: no dialogue box, no tip card, no overlay scene drawn above; toasts may come and go
+ * when the platform kept a clean copy of their band (plat_strip, SP3): a held tick puts the band back and the toast
+ * draws over it as on a full frame */
 static int mh_steady(void)
 {
     if (ui_dialog_active() || tip_active() || scene_drawn_above()) return 0;
-    return !ui_toast_pending() || (ui_toast_steady() && !ui_toast_over(mh_x, mh_y, mh_w, mh_h));
-}
-
-static int mh_toast_now(void)
-{
-    return ui_toast_pending() ? ui_toast_steady() : 0;
+    return !ui_toast_pending() || mh_strip;
 }
 
 void ui_modal_drop(void)
@@ -178,8 +176,7 @@ void ui_modal_reset(void)
 
 int ui_modal_hold(const void *key, int ok, int x, int y, int w, int h)
 {
-    mh_x = (int16_t)x; mh_y = (int16_t)y; mh_w = (int16_t)w; mh_h = (int16_t)h;
-    if (!ok || !mh_on || key != mh_key || !mh_steady() || (mh_st && mh_toast_now() != mh_toast)) {
+    if (!ok || !mh_on || key != mh_key || !mh_steady()) {
         ui_modal_drop();
         mh_key = key;
         return 0;
@@ -189,9 +186,17 @@ int ui_modal_hold(const void *key, int ok, int x, int y, int w, int h)
      * catch-up tick draws nothing): keep it in both pages */
     if (mh_st == 1 && !plat_draw_skipped()) mh_st = plat_hold_frame(2) ? 2 : 0;
     if (mh_st != 2) return 0;
+    if (mh_strip && !plat_draw_skipped()) {
+        int by, bh;
+        ui_toast_band(&by, &bh);
+        if (by != mh_sy || bh != mh_sh || !plat_strip(PLAT_STRIP_RESTORE, by, bh)) {
+            ui_modal_drop();                                    /* another lane, or the copy is gone */
+            return 0;
+        }
+    }
     mh_holds++;
     mh_in = 1;
-    if (mh_toast) ui_toast_hold();      /* it is on the kept page */
+    mh_x = (int16_t)x; mh_y = (int16_t)y; mh_w = (int16_t)w; mh_h = (int16_t)h;
     ui_shade_clip(x, y, w, h);
     return 1;
 }
@@ -202,15 +207,28 @@ void ui_modal_hold_end(void)
     ui_shade_clip_off();
 }
 
+void ui_modal_no_band(void)
+{
+    mh_noband = 1;
+}
+
 void ui_modal_full(const void *key, int ok)
 {
+    int noband = mh_noband;
+    mh_noband = 0;
     if (key != mh_key || plat_draw_skipped()) return;
-    if (ok && mh_on && mh_steady() && mh_st == 0) {
-        mh_st = 1;
-        mh_toast = mh_toast_now();
-    } else if (!ok) {
-        ui_modal_drop();
+    if (!ok) { ui_modal_drop(); return; }
+    if (!mh_on || mh_st != 0) return;
+    mh_strip = 0;
+    if (!noband) {
+        /* the toast band as drawn so far (the toast itself is drawn after the scene): its clean copy */
+        int by, bh;
+        ui_toast_band(&by, &bh);
+        mh_strip = (uint8_t)plat_strip(PLAT_STRIP_SAVE, by, bh);
+        mh_sy = (int16_t)by;
+        mh_sh = (int16_t)bh;
     }
+    if (mh_steady()) mh_st = 1;
 }
 #define MH_NO_SHADOW(x, y, w, h) (mh_in && (x) == mh_x && (y) == mh_y && (w) == mh_w && (h) == mh_h)
 #else

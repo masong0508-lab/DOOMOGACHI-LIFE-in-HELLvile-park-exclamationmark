@@ -422,6 +422,7 @@ against the LAST row, not against a figure from an older base.
 | 30 | SP5: held dialogue backdrop, loading fades, governor resume | `87271d8` | 3,540 B | **3,468 B** | -72 B | 6,296 B | measured on `87271d8` (CRA, row 23, changed no EWRAM); the band's state 14 B (`hold.c`), `gba_big_epoch` 4 B, the dialogue hold's state in `overworld.c` 19 B, `ui_dialog.c` 5 B, `scene.c` 4 B, the loading fade 9 B (`loadfade.c`, `gba_vbl_hook`), the red map's governor budget 12 B; the band itself borrows the arena (the overworld's lit-tile cache) and needs no RAM of its own. IWRAM resident +60 B (the VBlank IRQ's hook call): main stack 6,356 -> 6,296 B (>= 6,144). ROM +~3 KB |
 | 31 | SP7: the exorcism's kept backdrop and retained stage (`docs/EXORCISM_SPEED.md`) | `7729ada` | 3,540 B | **3,348 B** | -192 B | 6,356 B | `stage.c` (34 B: the pages' serials and overlay boxes), the altar's outline rects (100 B), `backdrop.c` / the scene's pass state (~58 B); the stage's records and the true-name cache (~1.5 KB) live in the exorcism's scene scratch. IWRAM resident unchanged (11,176 B); the overlay's room group 3,248 -> 3,588 B (`stage_rows`, the partial-row restore; the slot is sized by the 3D group). ROM 4,280,388 -> 6,593,468 B (+2,266,084: the 59 baked church backdrops, `build/gen/backdrops.bin`; the rest code). Exorcism frames identical to `7729ada` (`vhash-seq` of every phase) |
 | 32 | SP8: Combat detail (governor, held pace, catch-up ticks), HUD badges as panels, faster `r3d_up2`, ARM 64-bit helpers | `950c9bd` | 2,404 B | **2,332 B** | -72 B | 6,308 B | rebased onto the shared branch after rows 26-31: "after" measured on `950c9bd` + SP8 (2,332 B free, main stack 6,308 B, ROM 6,823,116 B), "before" is after + SP8's own -72 B / +12 B stack (the figures below were measured on `696ffa6` before the rebase). `.bss`: the resolution governor 12 B, the panel table +3 entries (+60 B: `PANEL_COMBAT_FACE/HEALTH/AMMO`; `panel.c`'s shown mask 16 bits). IWRAM: `__aeabi_lmul` and the 64-by-32 `__aeabi_ldivmod` path +124 B resident; `r3d_up2` (rewritten, +~80 B) moved from the resident section into the 3D overlay group, and `r3d_tint_pass` from the 3D group to `r3d.c` (ROM), so the slot is 10,384 -> 10,352 B and the main stack 6,356 -> **6,368 B**. The 3D group must stay at least 10,304 B (the 2D group's `ow_obj.c` tail, `BB_TAIL_BYTES` 1,712 B; the linker asserts it). resident 11,176 -> 11,196 B. Measured on `696ffa6` (row 25's tree) and that tree + SP8, built the same way. ROM 4,335,572 -> 4,336,900 B (+1,328) |
+| 33 | S2-1: the modal hold (`ui_modal_hold`, docs: "Speed wave 2: S2-1" below) | `6c1d937` | 2,332 B | **2,292 B** | -40 B | 6,308 B | measured on `6c1d937` + S2-1 (ROM 6,826,460 B): the hold's state in `ui.c` (key, state, window rect, the toast band's rows: ~24 B), the library's detail signature (8 B), the studio's held flag and the fair title's tier (1 B each); no IWRAM, no buffer (the two Mode 4 pages are the copy; a toast's band goes to `plat_strip`'s page gaps). PS1: compiled out (`ui.h`), resident and overlay slot byte-identical (66 KB below the stack top with the boot FMV, the same as without S2-1) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -943,8 +944,10 @@ every Options page, Save / Load and a save, care popups, the shops, news tabs, g
 is `fps start` / `wait N` / `fps GROUP: NAME` after `seed 1` and a scene command, with `sync on`, so the numbers
 repeat exactly. `make -C gba test-speed2 [SPEED2="fair house"]` runs them with `--worklog` and prints one table per
 group (`tools/speed2.py table`); `make -C gba profile-speed2` adds a PC profile after every window
-(`gba/tools/profile_report.py`). Reports, never gates; the results and the fix packages are in the speed audit 2
-(SPEED_AUDIT2.md of the speed wave 2).
+(`gba/tools/profile_report.py`). Reports by default; the results and the fix packages are in the speed audit 2
+(SPEED_AUDIT2.md of the speed wave 2). A window a landed package raised closes with `expect-fps MIN LABEL` instead of
+`fps LABEL` (S2-1 onwards); `make -C gba test-speed2 SPEED2_GATES=1` fails a run under any of those floors
+(`tools/speed2.py` reads both closings, so the PS1 and Dreamcast conversions are unchanged).
 
 Every `fps` line is now followed by `harness: gaps LABEL: vblanks-per-frame histogram 2:N 3:N ... max M (ms) at
 tick T`: the presented frames by the vblanks each one stayed on screen (2 = 30 fps, 3 = a 50 ms frame, 4+ = 67 ms
@@ -952,6 +955,69 @@ and more), counted from the mailbox's `drawn` word. Read it rather than the work
 can still flip on its second vblank when it ends inside the vblank lines (`video_flip`), so "work over 33.4 ms" over-
 counts dropped frames, and a run of them is what the histogram shows as 3s. The same scripts play on the PS1
 (`ps1/harness/speed2.sh`, docs/PS1.md) and the Dreamcast (`dc/harness/speed2.sh`).
+
+### Speed wave 2: S2-1, the modal hold (2026-11-08)
+
+The speed audit 2's cause C1: a modal (a card, a popup, a menu) over a scene whose picture does not change while it
+is up, but the scene beneath was re-composed and re-dimmed 30 times a second (house catalog 57.7 ms a tick, creator
+START menu 70, library cards 43-66, studio popups 45-62, shop quantity 60, care popup 58, fair title cards 56-61).
+
+**How.** One core helper, `ui_modal_hold(KEY, ok, x, y, w, h)` / `ui_modal_hold_end()` / `ui_modal_full(KEY, ok)`
+(`core/include/doomo/ui.h`, `core/src/ui.c`). A scene's draw asks first; `ok` is its own "the modal is up, fully
+popped, nothing under it moves". After one full frame with `ok` was presented, the next drawn tick calls
+`plat_hold_frame(2)` (the pause panel's P2/P3 path, `gba/src/hold.c`: the shown Mode 4 page is DMA-copied into the
+other one, so both carry the settled, dimmed frame) and from then on the scene draws only its modal: every UI shade
+is cut to the window rect (`ui_shade_clip`) and `ui_window_shadow` skips the shadow of a window with exactly that
+rect, so the window repaints over itself with the same pixels and nothing is dimmed or shaded twice. A dialogue box,
+a tip card, an overlay scene drawn above (`scene_drawn_above`, SP5), a scene change (`scene.c` resets the state), a
+tile frame, or `ok` going 0 (a cursor move that changes something outside the window, the modal closing) go back to
+the full frame; the next settled frame is held again. Toasts may come and go over a held modal: the marked frame's
+toast band is copied with `plat_strip` (SP3) before the toast draws, and each held tick puts it back before the
+modal and the toast draw again (not in the house: its roof tables share those VRAM gaps, `ui_modal_no_band`; its
+hold waits for the toast to go). Callers ask on every drawn tick (`ok` 0 when the modal is closed); a draw that
+bails out (`plat_clear` on a lost scratch) releases first.
+
+**Where.** The house Score panel and the list modals (catalog, themes, blueprints, rooms; the room renderer is not
+called, so the room sees a frame gap and recomposes when the menu closes; the HUD bands repaint, they are opaque),
+every library detail page (bestiary, almanac, weapons, items, trophies, gallery, Field Guide; page turns hold too,
+`lib_detail_hold`, the weapons wing's Cute / Brutal label is its signature), the studio's popups and citizen picker,
+the shop's quantity popup, the care tab's Feed / Give popup, the creator's START menu (only while no portrait job is
+under way), and the Fun Fair title cards (held whole until the tier changes; a new tier is one full frame).
+
+**Pixel-changing, by the owner's speed defaults (held frames), GBA only.** While a modal is held the dimmed scene
+under it stands still: the backdrop's drifting dots and hearts, the house's animated pieces in the margins, the
+studio choir's bounce, the shopkeeper's bob. The fair title card's idle motion (bulbs, bunting, the host's bob, the
+selected tier's bob, Hellfire's embers) stops between tier changes. The window's inside is the same picture as a full
+frame on every tick: `core/tests/test_modal_hold.c` plays the shop popup, a library page turn, the house catalog and
+a fair title card with holds on and off and compares the window's inside tick for tick, checks that a held tick is
+the previous one everywhere outside the window, and that a toast over a held popup leaves no trace. The hold is on by
+default on the GBA only (`ui_modal_hold_enable`): the PS1 compiles it out (`ui.h` macros; resident RAM and the
+overlay slot byte-identical, 66 KB below the stack top with the boot FMV, the same as without S2-1), the Dreamcast and the native runner keep
+drawing every frame (they hold 30 there; their pictures and goldens are unchanged).
+
+**Measured** (libmgba, `make -C gba test-speed2`, on `6c1d937` + S2-1; drawn fps, work avg ms):
+
+| window | before | after |
+|---|---|---|
+| house: catalog modal / cursor move | 15.0 / 57.7 | **30.0** / 17.9 |
+| house: Score panel | 20.0 / 45.0 | **30.0** / 13.1 |
+| library: bestiary jar, weapons plan, items card, trophy page, gallery tiled | 15.0-20.0 / 47-66 | **30.0** / 13-26 |
+| library: almanac profile / face | 15.7 / 57.0 | **30.0** / 29 (one 34 ms tick) |
+| library: Field Guide page, page turn, scroll | 20.0 / 42-43 | **29.8-30.8** / 16 |
+| studio: choir quick fill, member card, song book | 15.0-20.0 / 44-58 | **30.0** / 4-9 |
+| studio: citizen picker / picker move | 14.4 / 61.5, 12.6 / 63.7 | 29.7 / 17.6, 28.5 / 22.3 |
+| life: shop quantity popup | 13.3 / 59.7 | **30.0** / 5.5 |
+| life: care popup (with the unlock toast over it) / after the toast | 14.5 / 58.3 | **30.0** / 12.0, **30.0** / 9.3 |
+| creator: START menu | 12.2 / 69.9 | **30.0** / 10.0 |
+| fair: the six title cards | 15.0 / 56-61 | **30.0** / 1.0 |
+
+Logic is 30 ticks/s in all of them. Floors: those windows close with `expect-fps 28` (the picker and its move 27 /
+26). PS1 (Redux, `ps1/harness/speed2.sh`): every one of these windows 30.0-30.8 before and after (the
+hold is not built there). Still short of 30: the studio picker's moves (a new chibi each step: S2-7); the
+add-member wizard (a `ui_choice` box over the family screen: the dialogue overlay is not held, 25 fps); the
+Fishdex and the kitchen's book / result card (full animated scenes, not modals: S2-4); the house's own menus that
+repaint the room live (walls); combat cards (S2-2). The care reaction and the Unlocks gallery are not modals (S2-6,
+S2-7).
 
 ### Where the title's time goes (`make -C gba profile-title`)
 
