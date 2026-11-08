@@ -1247,6 +1247,8 @@ Measured (libmgba, seed 1):
 The speed tour's other 15 scenes are frame-exact against the base ROM (`speedtable.py --compare`); "story map +
 dialogue" differs on all 30 frames by the paused idle animations (the balloon and two sparkles). The Mayor's
 remaining frames over 33 ms are portrait re-renders (SP2's slicing). Its floor in `speed_tour.txt` is 25.5 (85%).
+On a scratch merge of SP2 (`fut-sp2` 920d280) with this package, the Mayor's lines run at 29.5 drawn fps, median
+27.1 ms, worst 46.3 ms (9 frames over 33.4, none over 50).
 
 #### LD: loading fades (SP5, G-LD; `gba/src/loadfade.c`)
 

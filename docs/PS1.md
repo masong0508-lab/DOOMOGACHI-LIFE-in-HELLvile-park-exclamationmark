@@ -694,7 +694,8 @@ harness's `scene` / `push`): story group 121 KB in 341 ms, combat 115 KB 328 ms,
 
 The PS1 has no `plat_hold_band` (the GBA's held dialogue backdrop): its VRAM has no spare area for the band and
 its dialogue cost is the portrait renders (`pc_capsule` and friends, ~32%), which SP2's slices address (24.0 ->
-29.7 fps measured on SP2's branch). Dialogue on this tree: 24.0 fps (2:55 3:23 4:10 5:1 vsyncs per frame).
+29.7 fps measured on SP2's branch). Dialogue on this tree: 24.0 fps (2:55 3:23 4:10 5:1 vsyncs per frame); on a
+scratch merge of SP2 (`fut-sp2` 920d280) with this package: 29.67 fps (2:86 3:3), 68 KB below the stack top.
 
 ## 5. The 3D engine (`plat_view3d`)
 
