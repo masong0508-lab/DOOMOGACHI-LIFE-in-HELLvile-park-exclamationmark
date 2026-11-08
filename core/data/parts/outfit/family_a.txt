@@ -1,0 +1,37 @@
+# core/data/parts/outfit/family_a.txt - first outfit and neck pieces from the macro ops (CR2).
+# A scripted top is drawn OVER the plain top the painter gives an unknown value (group 1 after the
+# torso, group 4 after the collar); a scripted accessory replaces the painter (groups 0 / 4 / 5).
+# Values after the painted ones; not selectable until their lists flip live (state=hidden).
+
+list top 24                      # Pageant Sash: a plain top with a sash and a rosette
+block group=1 anchor=torso lod=all view=all
+  mat accessory_color
+  shade ball
+  solid
+  strap -170 -200 170 160 34
+  ifview portrait,figure,fighter
+  mat accessory_color light
+  solid nocast
+  ring 120 110 30 10
+  endif
+end
+
+list accessory 20                # Explorer Satchel: a strap across the chest and a pouch
+block group=4 anchor=torso lod=all view=all
+  mat accessory_color
+  shade ball
+  solid
+  strap 150 -230 -150 120 22
+  ifview portrait,figure,fighter
+  solid
+  pouch -150 140 70 60
+  endif
+end
+
+list accessory 21                # Pearl Necklace: a sagging chain of pearls
+block group=4 anchor=torso lod=mid,big view=portrait,figure,fighter
+  mat accessory_color light
+  shade gloss
+  solid nocast
+  chain -150 -210 150 -210 10 70
+end

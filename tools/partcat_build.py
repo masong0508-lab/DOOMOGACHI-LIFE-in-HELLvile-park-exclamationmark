@@ -291,10 +291,17 @@ def read_catalog():
     # scripts <-> catalog
     scripts = script_entries(gf)
     byl = {s["list"]: s for s in slots}
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from parts_build import HOOKS                        # the lists the painters draw scripts for
+    hooked = set(gf[k] for k in HOOKS)
     for (lid, v), d in sorted(scripts.items()):
         s = byl.get(lid)
-        if not s or not any(p["value"] == v for p in s["parts"]):
+        p = [x for x in (s["parts"] if s else []) if x["value"] == v]
+        if not p:
             raise CatError("part script %s: list %d value %d has no catalog line" % (d, lid, v))
+        if lid not in hooked and STATES[p[0]["state"]] != "test":
+            raise CatError("part script %s: %s %d is on a list no painter draws scripts for (state=test only)"
+                           % (d, s["key"], v))
     for s in slots:
         for p in s["parts"]:
             if METHODS[p["method"]] == "S" and (s["list"], p["value"]) not in scripts:

@@ -199,6 +199,7 @@ void ph_hair_back(PCtx *c)
 {
     int st = c->l->hair_style;
     phs.c = c; phs.h = &c->h; phs.s = 1; phs.z = -100;
+    if (PS_SLOT(c, GF_HAIR_STYLE, st, 0)) { phs.z = 0; return; }   /* CR2: scripted hair (back) */
     if (st == HAIR_BALD) return;
     if (BACK_VIEW) return;              /* drawn by ph_hair_front instead */
     hair_mat(c, 0);
@@ -516,6 +517,7 @@ void ph_hair_front(PCtx *c)
     int st = c->l->hair_style, first;
     PHead hh;
     phs.c = c; phs.h = &c->h; phs.s = 1; phs.z = 120;
+    if (PS_SLOT(c, GF_HAIR_STYLE, st, 4)) { phs.z = 0; return; }   /* CR2: scripted hair (front) */
     if (st == HAIR_BALD) {
         /* a little shine on bald heads (not on fur) */
         if (!c->critter && c->h.lod == LOD_BIG && c->l->species == SPECIES_HUMAN) {
@@ -728,6 +730,7 @@ void ph_ears(PCtx *c, int front)
 {
     int st = c->l->ears;
     phs.c = c; phs.h = &c->h; phs.z = 0;
+    if (PS_SLOT(c, GF_EARS, st, front ? 4 : 0)) return;      /* CR2: scripted ears */
     if (st == EARS_NONE) return;
     /* hats with their own ears replace real top ears */
     for (phs.s = -1; phs.s <= 1; phs.s += 2) one_ear(c, st, front);
@@ -875,6 +878,7 @@ void ph_horns(PCtx *c)
 {
     int st = c->l->horns;
     phs.c = c; phs.h = &c->h; phs.z = 0;
+    if (PS_SLOT(c, GF_HORNS, st, 5)) return;                 /* CR2: scripted horns */
     if (st == HORNS_NONE) return;
     HS = 180 + c->l->horn_size * 10;
     for (phs.s = -1; phs.s <= 1; phs.s += 2) one_horn(c, st);
@@ -943,6 +947,7 @@ void ph_hat(PCtx *c)
     PMat m = c->hat, d, w, g;
     int fv = FRONT_VIEW;
     phs.c = c; phs.h = &c->h; phs.s = 1; phs.z = 0;
+    if (PS_SLOT(c, GF_HAT, st, 5)) { pc_mask_none(); return; }   /* CR2: a scripted hat */
     if (st == HAT_NONE) { hood_head(c); pc_mask_none(); return; }
     pm_from3(&d, m.c[0], m.c[1], m.c[2]);
     pm_paint(&w, PAINT_WHITE);
@@ -1335,6 +1340,7 @@ void ph_face_acc(PCtx *c)
     int st = l->accessory, X, Y, X2, Y2, r, k;
     PMat m = c->acc, dk, w;
     phs.c = c; phs.h = &c->h; phs.s = 1; phs.z = 0;
+    if (PS_SLOT(c, GF_ACCESSORY, st, 5)) return;             /* CR2: a scripted accessory */
     if (BACK_VIEW && st != ACC_EYEPATCH && st != ACC_BANDAGES && st != ACC_EARRINGS) return;
     r = eye_r(c);
     pm_flat(&dk, PAL_PAINT(PAINT_JET, 1));
@@ -1508,6 +1514,11 @@ int ph_top_extent(const DoomoLook *l)
     if (l->hair_style == HAIR_LIBERTY_SPIKES) top = DOOMO_MAX(top, 520);
     if (l->hair_style == HAIR_AFRO || l->hair_style == HAIR_SPIKY || l->hair_style == HAIR_WILD)
         top = DOOMO_MAX(top, 420);
+    /* CR2: scripted parts reach as far as the build measured (PartRef.top) */
+    if (l->hat >= doomo_part_minv[GF_HAT]) top = DOOMO_MAX(top, ps_top(GF_HAT, l->hat));
+    if (l->hair_style >= doomo_part_minv[GF_HAIR_STYLE]) top = DOOMO_MAX(top, ps_top(GF_HAIR_STYLE, l->hair_style));
+    if (l->horns >= doomo_part_minv[GF_HORNS]) top = DOOMO_MAX(top, ps_top(GF_HORNS, l->horns));
+    if (l->ears >= doomo_part_minv[GF_EARS]) top = DOOMO_MAX(top, ps_top(GF_EARS, l->ears));
     return top;
 }
 
@@ -1531,6 +1542,7 @@ void ph_halo(PCtx *c)
     int y = -(top > 420 ? 420 : top) - 70;
     PMat g;
     phs.c = c; phs.h = &c->h; phs.s = 1; phs.z = 0;
+    if (PS_SLOT(c, GF_HALO, st, 6)) return;                  /* CR2: a scripted halo */
     if (st == HALO_NONE) return;
     y += (c->breath ? 10 : 0);
     pm_paint(&g, PAINT_LEMON);

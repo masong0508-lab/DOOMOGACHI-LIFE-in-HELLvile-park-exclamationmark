@@ -71,8 +71,15 @@ uint8_t pm_line_of(uint8_t c)
     return c ? c : PAL_BLACK;
 }
 
+/* CR2: shape-only renders (portrait_int.h portrait_shape_mode): every material on one grey ramp.
+ * For direct renders only (tests, contact sheets): the image cache does not key on it. */
+int p_shape;
+void portrait_shape_mode(int on) { p_shape = on != 0; }
+int portrait_shape_mode_on(void) { return p_shape; }
+
 void pm_from3(PMat *m, uint8_t dark, uint8_t base, uint8_t light)
 {
+    if (p_shape) { pm_ramp(m, RAMP_STONE, 4); return; }
     m->c[0] = palette_darker(dark);
     if (!m->c[0]) m->c[0] = dark;
     m->c[1] = dark;
@@ -107,6 +114,7 @@ void pm_skin(PMat *m, const DoomoLook *l)
 
 void pm_flat(PMat *m, uint8_t c)
 {
+    if (p_shape) c = PAL_RAMP(RAMP_STONE, 2);
     m->c[0] = m->c[1] = m->c[2] = m->c[3] = m->c[4] = c;
     m->line = pm_line_of(c);
 }

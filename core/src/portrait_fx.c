@@ -78,6 +78,7 @@ void pf_aura_back(PCtx *c)
             }
         }
     }
+    if (PS_SLOT(c, GF_AURA, au, 0)) return;                  /* CR2: a scripted aura (behind) */
     switch (au) {
     case AURA_FLAMES:
         for (k = 0; k < 9; k++) {
@@ -150,6 +151,7 @@ void pf_aura_front(PCtx *c)
     int au = c->l->aura, k, x, y;
     int t = c->anim;
     bounds(c);
+    if (PS_SLOT(c, GF_AURA, au, 6)) return;                  /* CR2: a scripted aura (in front) */
     switch (au) {
     case AURA_SPARKLES:
         for (k = 0; k < 6; k++) {

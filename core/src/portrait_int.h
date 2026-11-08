@@ -25,6 +25,7 @@
 #include "doomo/palette.h"
 #include "doomo/catalog.h"
 #include "doomo/look_fields.h"
+#include "doomo/gene.h"          /* GF_* list ids of the slot hooks (CR2) */
 
 #define PQ        16                    /* sub-pixel units per pixel */
 
@@ -315,6 +316,19 @@ void pc_stamp(PCtx *c, const uint8_t *m1bpp, int w, int h, int x, int y, int q4,
 int  ps_run(PCtx *c, int list, int value, int anchor);
 int  ps_run_group(PCtx *c, int list, int value, int anchor, int group);
 int  ps_has(int list, int value);          /* 1 if (list, value) has a script */
+int  ps_top(int list, int value);          /* how far its script reaches above the head (Q8), 0 if none */
+/* CR2 slot hook: a painter calls it first; 1 = `value` of `list` is a scripted part, already drawn
+ * (its blocks of layer group `group`, or every block with -1), so the painter draws nothing for it.
+ * One byte compare when no value of the list is scripted. */
+int  ps_slot(PCtx *c, int list, int value, int group);
+#define PS_SLOT(c, list, value, group) \
+    ((value) >= doomo_part_minv[(list)] && ps_slot((c), (list), (value), (group)))
+extern const uint8_t doomo_part_minv[128];
+/* CR2 shape-only renders (contact sheets, the distinctness gate): every material of the next renders
+ * is forced onto one grey ramp, so two parts that differ only in colour render the same. */
+void portrait_shape_mode(int on);
+int  portrait_shape_mode_on(void);
+extern int p_shape;
 
 /* ---- P1 hooks for the other customisation packages (SPEC 4.4, CF-38) ----------------------- */
 void pf_material_init(PCtx *c);                /* P2: end of pctx_init(); no-op until P2 lands  */

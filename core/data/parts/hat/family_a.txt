@@ -1,0 +1,158 @@
+# core/data/parts/hat/family_a.txt - the hat family, first batch (CR2): 12 hats built from the macro
+# ops (crown, brim, band, bow, ring, chain, frill) and three templates. Hats are drawn by ph_hat's
+# hook in group 5; `scale 128` doubles every coordinate so a crown can reach 2.4 head radii up.
+# They sit after the 24 painted hats (values 24..35) and are not selectable until the hat list is
+# flipped live (state=hidden in core/data/parts/catalog/hat.txt).
+
+# a hat in the hat colour: the crown, a brim, and a band one tone darker (the template arguments
+# are the crown and brim kinds and their sizes)
+def hat_cb CK CY CW CH BK BW BH
+  mat hat_color
+  shade ball
+  solid
+  brim $BK 0 $CY $BW $BH
+  solid
+  crown $CK 0 $CY $CW $CH
+enddef
+
+def hat_band Y W H
+  mat hat_color dark
+  band 0 $Y $W $H
+enddef
+
+# a bow on the hat's side in the accessory colour
+def side_bow X Y S
+  mat accessory_color
+  shade ball
+  solid
+  bow $X $Y $S
+enddef
+
+list hat 24                      # Gumdrop Hat: a sugar dome with a frosting frill
+block group=5 anchor=head lod=all view=all
+  scale 128
+  mat hat_color
+  shade gloss
+  solid
+  crown dome 0 -88 132 104
+  mat hat_color light
+  solid
+  frill -112 112 -92 6 18
+  ifview portrait,figure
+  mat accessory_color
+  decal
+  dot -40 -150 2
+  dot 30 -170 2
+  dot 70 -130 2
+  dot -80 -120 2
+  endif
+end
+
+list hat 25                      # Stovepipe: a very tall cylinder on a wide brim
+block group=5 anchor=head lod=all view=all
+  scale 128
+  use hat_cb cylinder -96 58 86 wide 104 18
+  use hat_band -112 58 10
+end
+
+list hat 26                      # Sun Bonnet: a slouchy crown, floppy brim and a chin bow
+block group=5 anchor=head lod=all view=all
+  scale 128
+  use hat_cb slouch -84 128 84 floppy 118 18
+  use side_bow 0 106 26
+end
+
+list hat 27                      # Pillbox: a small flat drum worn high, with a bow
+block group=5 anchor=head lod=all view=all
+  scale 128
+  mat hat_color
+  shade ball
+  solid
+  crown flat 30 -112 70 56
+  use hat_band -112 70 6
+  use side_bow -36 -128 18
+end
+
+list hat 28                      # Starry Wizard: a tall cone, a small brim and a ring of light
+block group=5 anchor=head lod=all view=all
+  scale 128
+  use hat_cb cone -94 104 112 small 128 22
+  mat hat_color light
+  solid nocast
+  ring 0 -238 14 4
+end
+
+list hat 29                      # Captain's Cap: a flat top, a bill and a gold band
+block group=5 anchor=head lod=all view=all
+  scale 128
+  use hat_cb flat -88 120 64 bill 96 16
+  mat hat_color light
+  band 0 -100 120 8
+  mat accessory_color
+  solid nocast
+  ring 0 -112 10 3
+end
+
+list hat 30                      # Bow Beret: a tilted disc with a big bow on top
+block group=5 anchor=head lod=all view=all
+  scale 128
+  mat hat_color
+  shade soft
+  solid
+  crown beret 0 -88 130 92
+  use side_bow 40 -150 34
+end
+
+list hat 31                      # Garden Sun Hat: a dome on a huge floppy brim with a ribbon
+block group=5 anchor=head lod=all view=all
+  scale 128
+  use hat_cb dome -86 104 80 floppy 126 20
+  use hat_band -94 104 10
+  use side_bow 96 -96 22
+end
+
+list hat 32                      # Bell Crown: a peaked crown fringed with bell scallops
+block group=5 anchor=head lod=all view=all
+  scale 128
+  mat hat_color
+  shade gloss
+  solid
+  crown peaked 0 -90 110 96
+  mat hat_color light
+  solid
+  frill -96 96 -92 5 22
+  mat accessory_color
+  solid nocast
+  ring 40 -250 10 4
+end
+
+list hat 33                      # Tricorn: a dome with the brim turned up on both sides
+block group=5 anchor=head lod=all view=all
+  scale 128
+  use hat_cb dome -92 92 66 cocked 132 30
+  mat hat_color light
+  decal
+  line -110 -150 110 -150 1
+end
+
+list hat 34                      # Lantern Helmet: a hard dome, a small brim and a glowing lamp
+block group=5 anchor=head lod=all view=all
+  scale 128
+  use hat_cb dome -84 120 104 small 132 14
+  mat accessory_color
+  shade gloss
+  solid
+  ring 0 -142 22 8
+  mat accessory_color light
+  solid nocast
+  ellipse 0 -142 14 14
+end
+
+list hat 35                      # Lure Bucket: a floppy bucket hat hung with a lure chain
+block group=5 anchor=head lod=all view=all
+  scale 128
+  use hat_cb dome -80 118 74 floppy 124 22
+  mat accessory_color
+  solid nocast
+  chain -110 -90 110 -90 9 12
+end

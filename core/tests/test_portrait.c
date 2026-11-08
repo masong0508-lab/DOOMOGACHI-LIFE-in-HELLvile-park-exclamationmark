@@ -66,7 +66,7 @@ static const OptList lists[] = {
     OL("aura", aura, AURA_COUNT), OL("pattern", pattern, PATTERN_COUNT),
 };
 
-#define MAXOPT 40
+#define MAXOPT 160      /* CR2: lists grow to their gene width (64) and past it on page 2 */
 
 static int check_list_distinct(const OptList *o, const DoomoLook *base)
 {

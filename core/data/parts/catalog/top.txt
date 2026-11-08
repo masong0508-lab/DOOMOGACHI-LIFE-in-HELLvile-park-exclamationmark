@@ -26,3 +26,5 @@ slot top list=top name="Top" method=P target=40
 21  "Plate Armor"          set=royal tags=armor
 22  "Hazmat"               set=hellbreach tags=work,tech hides=neck
 23  "Pajamas"              set=cozy tags=cozy
+# CR2 outfit family, first batch (core/data/parts/outfit/family_a.txt): drawn, not selectable yet
+24  "Pageant Sash"         set=royal tags=royal,glam method=F state=hidden

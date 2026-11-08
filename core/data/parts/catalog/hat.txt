@@ -26,3 +26,16 @@ slot hat list=hat name="Hat" shapes=caps,soft,tall,wide,crowns,ears,helmets,hood
 21  "Skull Cap"            set=graveyard tags=spooky shape=helmets hides=hair
 22  "Traffic Cone"         set=indieart tags=silly shape=tall
 23  "Bucket"               set=fishcook tags=plain shape=wide
+# CR2 hat family, first batch (core/data/parts/hat/family_a.txt): drawn, not selectable yet
+24  "Gumdrop Hat"          set=candy tags=candy,cute shape=soft method=F state=hidden
+25  "Stovepipe"            set=teaparty tags=formal,fancy shape=tall method=F state=hidden
+26  "Sun Bonnet"           set=littleones tags=baby,cute shape=wide method=F state=hidden
+27  "Pillbox"              set=teaparty tags=glam,retro shape=crowns method=F state=hidden
+28  "Starry Wizard"        set=cloud9 tags=magic shape=tall method=F state=hidden
+29  "Captain's Cap"        set=sewers tags=sea,work shape=caps method=F state=hidden
+30  "Bow Beret"            set=indieart tags=fancy,cute shape=soft method=F state=hidden
+31  "Garden Sun Hat"       set=seasons tags=nature,cute shape=wide method=F state=hidden
+32  "Bell Crown"           set=cathedral tags=holy,music shape=crowns method=F state=hidden
+33  "Tricorn"              set=royal tags=royal,retro shape=wide method=F state=hidden
+34  "Lantern Helmet"       set=graveyard tags=spooky,work shape=helmets method=F state=hidden
+35  "Lure Bucket"          set=fishcook tags=food,silly shape=wide method=F state=hidden

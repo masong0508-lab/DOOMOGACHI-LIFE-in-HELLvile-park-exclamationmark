@@ -195,6 +195,7 @@ static void head_shape(PCtx *c)
 {
     int shape = c->l->head_shape;
     hHeadFrame(0);
+    if (PS_SLOT(c, GF_HEAD_SHAPE, shape, 2)) return;          /* CR2: a scripted head shape */
     switch (shape) {
     case HEAD_ROUND:
     default:
@@ -1122,6 +1123,7 @@ static void eyes(PCtx *c)
     int shear = (l->eye_tilt - 8) * 14;
     int X, Y, v, n = DOOMO_CLAMP(l->eye_count, 1, 3);
     int erx = F.erx, ery = F.ery;
+    if (PS_SLOT(c, GF_EYE_STYLE, l->eye_style, 3)) return;    /* CR2: scripted eyes */
     if (c->expr == EXPR_SICK || c->expr == EXPR_SAD) shear += (c->expr == EXPR_SAD ? 30 : 0);
     if (n == 1) {
         v = fpt(0, F.ey, &X, &Y);
@@ -1147,7 +1149,9 @@ void ph_face_over(PCtx *c)
     face_layout(c);
     F.lid = face_ink(c);
     brows(c);
-    if (l->eye_count == 3) {
+    if (PS_SLOT(c, GF_EYE_STYLE, l->eye_style, 4)) {
+        /* CR2: scripted eyes draw their own third eye / over-hair bits (group 4 blocks) */
+    } else if (l->eye_count == 3) {
         int st = l->eye_style % EYE_COUNT;
         v = fpt(0, F.by - 40, &X, &Y);
         if (v > 0) one_eye(c, st, X, Y, fshort(F.erx * 3 / 4, v), F.ery * 3 / 4, 0, 1);
@@ -1196,6 +1200,7 @@ static void brows(PCtx *c)
     int st = l->brow_style, big = phs.h->lod == LOD_BIG;
     uint8_t col = c->hair.c[0], col2 = c->hair.c[1];
     int X, Y, v, w, r;
+    if (PS_SLOT(c, GF_BROW_STYLE, st, 4)) return;            /* CR2: scripted brows */
     if (phs.h->lod == LOD_TINY) return;
     if (l->hair_style == HAIR_BALD && c->critter) { col = c->skin.c[0]; col2 = c->skin.c[1]; }
     if (palette_luma(col) > 150) { col = palette_darker(col); col2 = palette_darker(col2); }
@@ -1281,6 +1286,7 @@ static void nose(PCtx *c)
     PMat m;
     uint8_t ink = face_ink(c);
     int ny = F.ny;
+    if (PS_SLOT(c, GF_NOSE_STYLE, st, 3)) return;            /* CR2: a scripted nose */
     if (F.muzzle != MZ_NONE) ny = F.my - 70;
     v = fpt(0, ny, &X, &Y);
     if (v <= 0) return;
@@ -1433,6 +1439,7 @@ static void mouth(PCtx *c)
     int X, Y, v, w, W, cx, cy, k;
     uint8_t ink = face_ink(c);
     PMat m;
+    if (PS_SLOT(c, GF_MOUTH_STYLE, st, 3)) return;           /* CR2: a scripted mouth */
     v = fpt(0, F.my, &X, &Y);
     if (v <= 0) return;
     w = DOOMO_MAX(fshort(F.mw, v) >> 4, 1);
@@ -1946,6 +1953,7 @@ static void facial_hair(PCtx *c, int big)
 {
     const DoomoLook *l = c->l;
     int fh = l->facial_hair, X, Y, v;
+    if (PS_SLOT(c, GF_FACIAL_HAIR, fh, 3)) return;           /* CR2: scripted facial hair */
     if (fh == FHAIR_NONE || phs.h->yaw >= 3) return;
     v = fpt(0, F.my, &X, &Y);
     if (v <= 0) return;

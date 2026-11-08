@@ -1304,8 +1304,9 @@ void pb_draw_tail(PCtx *c, int front)
     int st = l->tail, w = c->wag ? 40 : -20, k;
     PMat m = c->skin, tip;
     int back_view = c->byaw >= 3;
-    if (st == TAIL_NONE) return;
     if (front != back_view) return;
+    if (PS_SLOT(c, GF_TAIL, st, -1)) return;                 /* CR2: a scripted tail (once per image) */
+    if (st == TAIL_NONE) return;
     TX = B.tailx; TY = B.taily; TU = B.unit; TS = B.tails;
     if (c->byaw == 2) TS = 1;
     if (back_view) { TX = B.cx + (B.view == VK_CHIBI ? 0 : 8); TY = B.by - (B.view == VK_CHIBI ? 8 : PX(2)); }
@@ -1586,8 +1587,9 @@ void pb_draw_wings(PCtx *c, int front)
 {
     int st = c->l->wings, back_view = c->byaw >= 3;
     int flap = c->wag;
-    if (st == WINGS_NONE) return;
     if (front != back_view) return;
+    if (PS_SLOT(c, GF_WINGS, st, -1)) return;                /* CR2: scripted wings (once per image) */
+    if (st == WINGS_NONE) return;
     WU = B.unit;
     WY = B.wingy;
     if (B.view == VK_PORTRAIT) WU = PX(19);
@@ -1608,6 +1610,7 @@ static void neck_acc(PCtx *c)
     int cx = B.cx, ty, H;
     int tiny = B.lod == LOD_TINY;
     PMat m = c->acc, gold, dk;
+    if (PS_SLOT(c, GF_ACCESSORY, st, 4)) return;             /* CR2: the scripted accessory's neck blocks */
     vis_area(&ty, &H);
     ty -= tiny ? 0 : 8;
     pm_paint(&gold, PAINT_LEMON);
@@ -1706,6 +1709,7 @@ static void back_acc(PCtx *c)
     const DoomoLook *l = c->l;
     int st = l->accessory;
     PMat m = c->acc;
+    if (PS_SLOT(c, GF_ACCESSORY, st, 0)) return;             /* CR2: its back blocks (group 0, any view) */
     if (st == ACC_CAPE) {
         int bot = B.view == VK_PORTRAIT ? PX(60) : B.by + PCT((B.ground - B.by), 70);
         pc_part(&m, SH_BALL, 0);
@@ -1748,7 +1752,12 @@ void pb_draw_body(PCtx *c)
     }
     legs(c);
     bottoms(c);
+    /* CR2: scripted shoes, bottoms and tops are drawn OVER the generic garment the painters give an
+     * unknown value (bare feet, bare legs, a plain long-sleeved top in its colour) */
+    (void)PS_SLOT(c, GF_SHOES, l->shoes, 1);
+    (void)PS_SLOT(c, GF_BOTTOM, l->bottom, 1);
     torso(c);
+    (void)PS_SLOT(c, GF_TOP, l->top, 1);
     if (!far && B.view != VK_PORTRAIT) {
         arm(c, 0, 0);
         arm(c, 1, 0);
@@ -1793,6 +1802,7 @@ void pb_draw_body(PCtx *c)
 void pb_draw_neck(PCtx *c)
 {
     collar(c);
+    (void)PS_SLOT(c, GF_TOP, c->l->top, 4);                  /* CR2: a scripted top's collar blocks */
     chest_fluff(c);
     mothkin_ruff(c);
     neck_acc(c);

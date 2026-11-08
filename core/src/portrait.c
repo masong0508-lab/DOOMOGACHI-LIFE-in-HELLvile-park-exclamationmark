@@ -14,20 +14,24 @@
 #include "doomo/game.h"
 #include "doomo/family.h"
 #include "doomo/playas.h"
+#include "doomo/parts.h"
 
 /* ====================================================================== */
 /* context                                                                 */
 static void sanitize(DoomoLook *l)
 {
 #define FIXE(f, n) if (l->f >= (n)) l->f = 0
+/* CR2: a value past the painters' range is kept when a part script draws it (ps_has) */
+#define FIXP(f, n, gf) if (l->f >= (n) && !ps_has((gf), l->f)) l->f = 0
 #define FIXS(f, m) if (l->f > (m)) l->f = (m)
-    FIXE(species, SPECIES_COUNT); FIXE(body, BODY_COUNT); FIXE(head_shape, HEAD_COUNT);
-    FIXE(eye_style, EYE_COUNT); FIXE(brow_style, BROW_COUNT); FIXE(nose_style, NOSE_COUNT);
-    FIXE(mouth_style, MOUTH_COUNT); FIXE(hair_style, HAIR_COUNT); FIXE(facial_hair, FHAIR_COUNT);
-    FIXE(ears, EARS_COUNT); FIXE(horns, HORNS_COUNT); FIXE(tail, TAIL_COUNT);
-    FIXE(wings, WINGS_COUNT); FIXE(halo, HALO_ALL_COUNT); FIXE(marking, MARK_COUNT);
-    FIXE(top, TOP_COUNT); FIXE(bottom, BOTTOM_COUNT); FIXE(shoes, SHOES_COUNT);
-    FIXE(hat, HAT_COUNT); FIXE(accessory, ACC_COUNT); FIXE(aura, AURA_COUNT);
+    FIXE(species, SPECIES_COUNT); FIXE(body, BODY_COUNT); FIXP(head_shape, HEAD_COUNT, GF_HEAD_SHAPE);
+    FIXP(eye_style, EYE_COUNT, GF_EYE_STYLE); FIXP(brow_style, BROW_COUNT, GF_BROW_STYLE);
+    FIXP(nose_style, NOSE_COUNT, GF_NOSE_STYLE); FIXP(mouth_style, MOUTH_COUNT, GF_MOUTH_STYLE);
+    FIXP(hair_style, HAIR_COUNT, GF_HAIR_STYLE); FIXP(facial_hair, FHAIR_COUNT, GF_FACIAL_HAIR);
+    FIXP(ears, EARS_COUNT, GF_EARS); FIXP(horns, HORNS_COUNT, GF_HORNS); FIXP(tail, TAIL_COUNT, GF_TAIL);
+    FIXP(wings, WINGS_COUNT, GF_WINGS); FIXP(halo, HALO_ALL_COUNT, GF_HALO); FIXE(marking, MARK_COUNT);
+    FIXP(top, TOP_COUNT, GF_TOP); FIXP(bottom, BOTTOM_COUNT, GF_BOTTOM); FIXP(shoes, SHOES_COUNT, GF_SHOES);
+    FIXP(hat, HAT_COUNT, GF_HAT); FIXP(accessory, ACC_COUNT, GF_ACCESSORY); FIXP(aura, AURA_COUNT, GF_AURA);
     FIXE(pattern, PATTERN_COUNT);
     FIXS(height, 15); FIXS(build, 15); FIXS(head_size, 15); FIXS(eye_size, 15);
     FIXS(eye_spacing, 15); FIXS(eye_height, 15); FIXS(eye_tilt, 15);
@@ -43,7 +47,19 @@ static void sanitize(DoomoLook *l)
     l->shoes_color %= PAL_PAINT_COUNT; l->hat_color %= PAL_PAINT_COUNT;
     l->accessory_color %= PAL_PAINT_COUNT; l->pattern_color %= PAL_PAINT_COUNT;
 #undef FIXE
+#undef FIXP
 #undef FIXS
+}
+
+/* CR2 shape-only renders: every material on one grey ramp (portrait_shape_mode) */
+static void shape_materials(PCtx *c)
+{
+    PMat *ms[14];
+    int i;
+    ms[0] = &c->skin; ms[1] = &c->skin2; ms[2] = &c->hair; ms[3] = &c->hairhi; ms[4] = &c->eye;
+    ms[5] = &c->horn; ms[6] = &c->mark; ms[7] = &c->top; ms[8] = &c->bot; ms[9] = &c->shoe;
+    ms[10] = &c->hat; ms[11] = &c->acc; ms[12] = &c->patm; ms[13] = &c->skin;
+    for (i = 0; i < 14; i++) pm_ramp(ms[i], RAMP_STONE, 4);
 }
 
 static void creepy_skin(PMat *m, uint8_t base, int level)
@@ -101,7 +117,11 @@ void pctx_init(PCtx *c, const DoomoLook *l, int status, int expr, int anim)
             ms[i]->line = pm_line_of(ms[i]->c[1]);
         }
     }
+    if (p_shape) shape_materials(c);
     pf_material_init(c);
+#if defined(DOOMO_PARTS_LZ) || defined(DOOMO_PARTS_LZ_TEST)
+    part_arena_begin();                     /* CR2: each worn script decoded once per render */
+#endif
 }
 
 /* ====================================================================== */

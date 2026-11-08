@@ -22,3 +22,6 @@ slot accessory list=accessory name="Accessory" method=P
 17  "Rosary"               set=exorcist tags=holy
 18  "Chains"               set=punk tags=punk,goth
 19  "Teddy"                set=littleones tags=baby,cute
+# CR2 outfit family, first batch (core/data/parts/outfit/family_a.txt): drawn, not selectable yet
+20  "Explorer Satchel"     set=seasons tags=nature,work method=F state=hidden
+21  "Pearl Necklace"       set=teaparty tags=glam,fancy method=F state=hidden

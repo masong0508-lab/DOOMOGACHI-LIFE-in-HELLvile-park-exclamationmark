@@ -414,27 +414,36 @@ static int lz_make(const uint8_t *raw, int n, uint8_t *out)
 #if !defined(DOOMO_PARTS_LZ)       /* the raw arrays are not linked in the LZ build */
 TEST(lz_blocks_of_the_real_sets_equal_the_raw_scripts)
 {
-    const PartLz *zs[2];
-    const PartSet *ss[2];
     int s;
-    zs[0] = &doomo_parts_face_lz; ss[0] = &doomo_parts_face;
-    zs[1] = &doomo_parts_head_lz; ss[1] = &doomo_parts_head;
-    for (s = 0; s < 2; s++) {
-        const PartLz *z = zs[s];
-        unsigned b;
+    CHECK(doomo_part_script_count >= 1);
+    for (s = 0; s < doomo_part_script_count; s++) {
+        const PartSet *set = doomo_part_scripts[s];
+        const PartLz *z = set->lz;                 /* host tests link both forms */
+        unsigned b, r;
+        CHECK(set->ops != NULL);
+        CHECK(z != NULL);
         part_lru_reset();
         CHECK(z->nblk >= 1);
         for (b = 0; b < z->nblk; b++) {
             unsigned n = (unsigned)(z->rofs[b + 1] - z->rofs[b]);
             CHECK(n <= PART_BLK);
-            CHECK(memcmp(part_lz_ops(z, z->rofs[b]), ss[s]->ops + z->rofs[b], n) == 0);
+            CHECK(memcmp(part_lz_ops(z, z->rofs[b]), set->ops + z->rofs[b], n) == 0);
+        }
+        /* every entry through the per-render arena equals the raw entry */
+        part_arena_begin();
+        for (r = 0; r < set->n; r++) {
+            const uint8_t *p = set->ops + set->ref[r].ofs, *q = p;
+            unsigned len;
+            while (q[0] != PH_END) q += 4 + q[3];
+            len = (unsigned)(q - p) + 4;
+            CHECK(memcmp(part_arena_ops(z, set->ref[r].ofs), p, len) == 0);
         }
     }
 }
 
 #endif
 
-TEST(lz_lru_keeps_four_blocks_and_evicts_the_oldest)
+TEST(lz_lru_keeps_two_blocks_and_evicts_the_oldest)
 {
     static uint8_t raw[6][700], z[6][1000], big[6 * 700 + 4];
     static uint16_t zofs[7], rofs[7];
@@ -456,17 +465,52 @@ TEST(lz_lru_keeps_four_blocks_and_evicts_the_oldest)
     rofs[6] = 4200; zofs[6] = (uint16_t)zl;
     pl.z = zbuf; pl.zofs = zofs; pl.rofs = rofs; pl.nblk = 6;
     part_lru_reset();
-    for (b = 0; b < 4; b++) CHECK(memcmp(part_lz_ops(&pl, (unsigned)(b * 700 + 5)), raw[b] + 5, 695) == 0);
-    CHECK_EQ(part_lru_loads(), 4u);
+    for (b = 0; b < 2; b++) CHECK(memcmp(part_lz_ops(&pl, (unsigned)(b * 700 + 5)), raw[b] + 5, 695) == 0);
+    CHECK_EQ(part_lru_loads(), 2u);
     CHECK(memcmp(part_lz_ops(&pl, 3), raw[0] + 3, 697) == 0);        /* a hit */
-    CHECK_EQ(part_lru_loads(), 4u);
-    CHECK(memcmp(part_lz_ops(&pl, 4 * 700), raw[4], 700) == 0);      /* evicts block 1 (oldest) */
-    CHECK_EQ(part_lru_loads(), 5u);
+    CHECK_EQ(part_lru_loads(), 2u);
+    CHECK(memcmp(part_lz_ops(&pl, 2 * 700), raw[2], 700) == 0);      /* evicts block 1 (oldest) */
+    CHECK_EQ(part_lru_loads(), 3u);
     CHECK(memcmp(part_lz_ops(&pl, 0), raw[0], 700) == 0);            /* block 0 survived */
-    CHECK_EQ(part_lru_loads(), 5u);
+    CHECK_EQ(part_lru_loads(), 3u);
     CHECK(memcmp(part_lz_ops(&pl, 700), raw[1], 700) == 0);          /* block 1 was evicted: reload */
-    CHECK_EQ(part_lru_loads(), 6u);
+    CHECK_EQ(part_lru_loads(), 4u);
     CHECK(memcmp(part_lz_ops(&pl, 5 * 700 + 699), raw[5] + 699, 1) == 0);
+    part_lru_reset();
+}
+
+TEST(part_arena_decodes_each_worn_entry_once_per_render)
+{
+    /* a render runs a worn entry in up to 7 layer groups and several hooks: through the arena the
+     * block is decoded once, however often the entry is asked for, until the next render begins */
+    static uint8_t raw[3][600], zbuf[3][700];
+    static uint16_t zofs[4], rofs[4];
+    static uint8_t zall[2100];
+    PartLz pl;
+    int b, k, zl = 0;
+    for (b = 0; b < 3; b++) {
+        int i, o;
+        for (i = 0; i < 600; i++) raw[b][i] = (uint8_t)(1 + (b * 13 + i) % 200);
+        raw[b][596] = PH_END; raw[b][597] = raw[b][598] = raw[b][599] = 0;   /* one entry per block */
+        raw[b][0] = 1; raw[b][1] = 0; raw[b][2] = PLV_ALL; raw[b][3] = 255;  /* a header ... */
+        raw[b][259] = 2; raw[b][260] = 0; raw[b][261] = PLV_ALL; raw[b][262] = 255;
+        raw[b][518] = 3; raw[b][519] = 0; raw[b][520] = PLV_ALL; raw[b][521] = 74;   /* ... to 596 */
+        rofs[b] = (uint16_t)(b * 600);
+        zofs[b] = (uint16_t)zl;
+        o = lz_make(raw[b], 600, zbuf[b]);
+        memcpy(zall + zl, zbuf[b], (size_t)o);
+        zl += o;
+    }
+    rofs[3] = 1800; zofs[3] = (uint16_t)zl;
+    pl.z = zall; pl.zofs = zofs; pl.rofs = rofs; pl.nblk = 3;
+    part_lru_reset();
+    for (k = 0; k < 7; k++)                                       /* 7 groups x 3 worn entries */
+        for (b = 0; b < 3; b++) CHECK(memcmp(part_arena_ops(&pl, (unsigned)(b * 600)), raw[b], 600) == 0);
+    CHECK_EQ(part_lru_loads(), 3u);                               /* the 2-slot LRU alone: 21 */
+    CHECK_EQ(part_arena_fills(), 3u);
+    part_arena_begin();                                           /* the next render */
+    CHECK(memcmp(part_arena_ops(&pl, 600), raw[1], 600) == 0);
+    CHECK_EQ(part_arena_fills(), 4u);
     part_lru_reset();
 }
 #endif

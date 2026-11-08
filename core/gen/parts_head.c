@@ -4,7 +4,10 @@
 #include "doomo/parts.h"
 
 static const PartRef refs[] = {
-    { 4, 31, 0 },
+    { 31, 24, 0 },
+};
+static const PartList lists[] = {
+    { 4, 0, 1 },
 };
 #ifndef DOOMO_PARTS_LZ
 static const uint8_t ops[] = {
@@ -30,7 +33,9 @@ static const uint16_t rofs[] = { 0, 24 };
 const PartLz doomo_parts_head_lz = { z, zofs, rofs, 1 };
 #endif
 #ifdef DOOMO_PARTS_LZ
-const PartSet doomo_parts_head = { refs, 1, 0, stamps, 0, bits, &doomo_parts_head_lz };
+const PartSet doomo_parts_head = { refs, 1, 0, stamps, 0, bits, &doomo_parts_head_lz, lists, 1 };
+#elif defined(DOOMO_PARTS_LZ_TEST)   /* host tests: the raw form, and the LZ form to check */
+const PartSet doomo_parts_head = { refs, 1, ops, stamps, 0, bits, &doomo_parts_head_lz, lists, 1 };
 #else
-const PartSet doomo_parts_head = { refs, 1, ops, stamps, 0, bits, 0 };
+const PartSet doomo_parts_head = { refs, 1, ops, stamps, 0, bits, 0, lists, 1 };
 #endif
