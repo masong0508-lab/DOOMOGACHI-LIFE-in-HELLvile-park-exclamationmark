@@ -11,6 +11,9 @@
  *   levels       a full-volume centred pulse peaks like musrender (+-5,760)
  *   samples      an effect lasts len * 44100 / rate frames; +12 semitones
  *                halves it, -12 doubles it; pan -64 / 64 silences one side
+ *   smooth       every effect at -24 / -12 / 0 / +12 / +24 semitones, frame
+ *                by frame against the voice and filter chain in double (an
+ *                overflowing interpolation is a one-sample click)
  *   voices       8 voices; a 9th trigger steals the oldest of the lowest
  *                priority, never a higher one
  *   queue        prefill (nothing before 2 slots), underrun (counted,
@@ -19,6 +22,7 @@
  *                DCSND_MAXLAG; an effect started in one keeps sounding)
  *   silence      no records -> zeros; a silent record -> zeros, no clips
  */
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -280,6 +284,112 @@ static void test_samples(void)
     }
 }
 
+/* ---- smooth: every effect at five pitches against a double reference -------------------
+ * One centred voice at full volume, rendered tick by tick, against the same
+ * chain in double: the voice's position stepped exactly as the mixer does
+ * (Q16, the octave shifts of its step), the value interpolated in double
+ * between the two PCM samples, x vol * 32 / 128, then the DC block, the
+ * low-pass and x 3 / 32. The integer chain's rounding stays within a few
+ * dozen; a wrong interpolation (the 8-bit PCM x 256 puts neighbours up to
+ * 65,280 apart, so an int32 product (b - a) * frac overflows) is a one-sample
+ * click of about 19,000. The worst difference must also stay under the
+ * tolerance for every frame, not on average. */
+#define SMOOTH_TOL 128.0
+static int16_t *smooth_buf;
+static size_t   smooth_cap;
+
+/* one tick of the stream's left channel onto smooth_buf at n; -> n + a tick */
+static int smooth_take(int n)
+{
+    static int16_t fr[DCSND_PER_TICK * 2];
+    int i;
+    if ((size_t)(n + DCSND_PER_TICK) > smooth_cap) {
+        smooth_cap = (size_t)(n + DCSND_PER_TICK) * 2;
+        smooth_buf = (int16_t *)realloc(smooth_buf, smooth_cap * sizeof(int16_t));
+        if (!smooth_buf) { printf("smooth: out of memory\n"); exit(2); }
+    }
+    dcsnd_render(fr, DCSND_PER_TICK);
+    for (i = 0; i < DCSND_PER_TICK; i++) smooth_buf[n + i] = fr[i * 2];
+    return n + DCSND_PER_TICK;
+}
+
+/* the effect from its first frame (the prefill of 2 slots is met by the
+ * second push, so the stream starts at slot 0) until it ends and its slots
+ * have played; -> frames */
+static int smooth_render(int sfx, int semis)
+{
+    int n = 0, guard = 0;
+    dcsnd_reset();
+    dcsnd_trigger(sfx, 15, 0, 0, (int8_t)semis);
+    dcsnd_push();
+    do {
+        dcsnd_push();
+        n = smooth_take(n);
+    } while (dcsnd_voices_on() && ++guard < 30 * 30);
+    while (dcsnd_stats.consumed < dcsnd_stats.pushed) n = smooth_take(n);
+    CHECK(!dcsnd_voices_on() && dcsnd_stats.gap_frames == 0,
+          "sfx %d at %+d semitones: did not play out in one piece", sfx, semis);
+    return n;
+}
+
+static double smooth_ref_err(const DcSfx *s, int semis, int n, int *at)
+{
+    const int oct = semis / 12;           /* octaves only: the step is exact */
+    uint32_t step = oct >= 0 ? s->step_q16 << oct : s->step_q16 >> -oct;
+    uint32_t ipos = 0, frac = 0;
+    int on = 1, i;
+    const double g = 15.0 * 128 / 4 / 128;   /* the voice's gl, then mix >> 7 */
+    double x1 = 0, y = 0, lp = 0, worst = 0;
+    if (!step) step = 1;
+    *at = -1;
+    for (i = 0; i < n; i++) {
+        double v = 0, x, o, e;
+        if (on) {
+            double a = s->pcm[ipos], b = s->pcm[ipos + 1];
+            v = a + (b - a) * (double)frac / 65536.0;
+            frac += step & 0xFFFFu;
+            ipos += (step >> 16) + (frac >> 16);
+            frac &= 0xFFFFu;
+            if (ipos >= s->len) on = 0;
+        }
+        x = v * g;
+        y = x - x1 + y * 511.0 / 512.0;
+        x1 = x;
+        lp += (y - lp) * 210.0 / 256.0;
+        o = lp * 3.0 / 32.0;
+        e = fabs(o - smooth_buf[i]);
+        if (e > worst) { worst = e; *at = i; }
+    }
+    return worst;
+}
+
+static void test_smooth(void)
+{
+    static const int semis[] = { -24, -12, 0, 12, 24 };
+    double worst = 0;
+    int sfx, k, tested = 0, wsfx = 0, wsemi = 0;
+    for (sfx = SFX_NONE + 1; sfx < SFX_COUNT; sfx++) {
+        const DcSfx *s = dc_sfx_get(sfx);
+        if (!s) continue;
+        for (k = 0; k < (int)(sizeof(semis) / sizeof(semis[0])); k++) {
+            int at, n = smooth_render(sfx, semis[k]);
+            double e = smooth_ref_err(s, semis[k], n, &at);
+            CHECK(e <= SMOOTH_TOL, "sfx %d at %+d semitones: %.0f off the reference at frame %d "
+                  "(mixer %d)", sfx, semis[k], e, at, at >= 0 ? smooth_buf[at] : 0);
+            CHECK(dcsnd_stats.clips == 0, "sfx %d at %+d semitones: %u clips", sfx, semis[k],
+                  dcsnd_stats.clips);
+            if (e > worst) { worst = e; wsfx = sfx; wsemi = semis[k]; }
+        }
+        tested++;
+    }
+    CHECK(tested > 20, "smooth: only %d effects", tested);
+    printf("smooth: %d effects x 5 pitches against the double reference, worst %.1f "
+           "(sfx %d at %+d semitones; tolerance %.0f)\n", tested, worst, wsfx, wsemi, SMOOTH_TOL);
+    free(smooth_buf);
+    smooth_buf = NULL;
+    smooth_cap = 0;
+}
+
 static void test_voices(void)
 {
     int i;
@@ -406,6 +516,7 @@ int main(void)
     test_determinism();
     test_pitch();
     test_samples();
+    test_smooth();
     test_voices();
     test_queue();
     test_loud();

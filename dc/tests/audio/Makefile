@@ -10,7 +10,8 @@
 #                                    (compare.py: envelope and pitch)
 #   make -C dc/tests/audio unit      the unit tests only
 #   make -C dc/tests/audio SAN=1 BUILD=../../build/host-audio-san test
-#                                    the same under ASan/UBSan
+#                                    the same under ASan/UBSan (any UBSan
+#                                    report fails the run)
 #
 # dcsnd_runner is the native runner (core/native) whose plat_tone,
 # plat_sample and plat_end_frame also drive dc/src's mixer (sndtee.c); the
@@ -31,9 +32,15 @@ BUILD ?= $(ROOT)/dc/build/host-audio
 override BUILD := $(abspath $(BUILD))
 CC := gcc
 OPT ?= -O2
+# SAN=1: a UBSan report stops the run (this directory's objects are built
+# with -fno-sanitize-recover; UBSAN_OPTIONS makes the core's objects, built
+# by core/Makefile without it, stop as well), so it fails the test instead
+# of scrolling past in the log
+RUN_ENV :=
 ifeq ($(SAN),1)
-OPT += -fsanitize=address,undefined -fno-omit-frame-pointer
+OPT += -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer
 LDFLAGS += -fsanitize=address,undefined
+RUN_ENV := UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1
 endif
 CFLAGS := -std=c99 -Wall -Wextra -Werror $(OPT) -g -MMD -MP -D_POSIX_C_SOURCE=200809L \
           -I$(CORE_INC) -I$(CORE)/native -I$(ROOT)/dc/src -I$(HERE)
@@ -91,10 +98,10 @@ $(BUILD)/test_audio: corelib $(SND_OBJS) $(BUILD)/test_audio.o
 	    $(SND_OBJS) $(BUILD)/test_audio.o -lm
 
 unit: $(BUILD)/test_audio
-	$(BUILD)/test_audio
+	$(RUN_ENV) $(BUILD)/test_audio
 
 compare: $(BUILD)/dcsnd_runner
-	sh $(HERE)/run_compare.sh $(BUILD)/dcsnd_runner $(CORE)/tests/scripts $(BUILD)/wav
+	$(RUN_ENV) sh $(HERE)/run_compare.sh $(BUILD)/dcsnd_runner $(CORE)/tests/scripts $(BUILD)/wav
 
 test: unit compare
 

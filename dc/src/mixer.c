@@ -251,7 +251,12 @@ static void tone_block(Tone *t, const int16_t pan[2], int n)
 }
 
 /* one sample voice into the block (linear interpolation; the guard sample
- * at len makes pcm[ipos + 1] safe) */
+ * at len makes pcm[ipos + 1] safe). The weight is the position's top 15
+ * fraction bits: neighbours of the 8-bit PCM x 256 can be 65,280 apart
+ * (any two int16 at most 65,535), and 65,535 * 32,767 still fits an int32,
+ * where the full 16 bits (x 65,535) did not: the product wrapped on the SH4
+ * (one 32-bit mul.l) to a sample 65,536 too low, a click in most effects
+ * (test_audio's smooth check). One 32-bit multiply, no 64-bit one. */
 static void voice_block(Voice *v, int n)
 {
     const int16_t *pcm = v->pcm;
@@ -261,7 +266,7 @@ static void voice_block(Voice *v, int n)
     int i;
     for (i = 0; i < n; i++) {
         int32_t a = pcm[ipos], b = pcm[ipos + 1];
-        int32_t s = a + (((b - a) * (int32_t)frac) >> 16);
+        int32_t s = a + (((b - a) * (int32_t)(frac >> 1)) >> 15);
         acc_l[i] += s * gl;
         acc_r[i] += s * gr;
         frac += part;
