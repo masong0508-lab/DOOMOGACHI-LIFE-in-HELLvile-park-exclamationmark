@@ -216,6 +216,10 @@ Where the slices run (X1, P-D1 of the speed audit):
   the pool keeps) is not urgent. Content with nothing to stand in is drawn
   at once, except under `portrait_hold(3)` (the dialogue), where
   `portrait_image` returns NULL for those ticks (an empty frame).
+- **Hold jobs**: a `portrait_hold(1 / 2)` job is urgent too (the title's
+  figures: due within 4 ticks), except while `portrait_hold_patient(1)` is
+  on: CR9's creator, whose held direction keeps its frame rate and whose
+  figure catches up when the input rests (`portrait_pump`, idle time).
 - **Render-ahead**: `portrait_prefetch(id, expr)` / `figure_prefetch(look,
   status, expr)` queue one coming picture (the newest wins; 1.5 s); it is
   drawn in idle time or in-frame room only. They return 1 when it is cached

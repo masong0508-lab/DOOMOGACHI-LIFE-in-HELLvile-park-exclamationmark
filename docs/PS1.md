@@ -662,7 +662,12 @@ room for it (docs/PORTRAIT.md "Idle time and stand-ins"). With stand-ins
 Redux dialogue scene from 24.1 to 29.7 fps, the exorcism from 23.8 to 30.0,
 the concert band from 28.8 to 29.9 and the town hall menu from 21.1 to 25.0
 (the rest there is the island's drawing, P-I1/P-I2). Cost: ~4 KB of the
-image and 156 B of RAM (72 KB left below the stack top, was 78 KB).
+image and 156 B of RAM. Landed on `38a362d` (CRB's tree, 79,568 B below the
+stack top): the first rebuild ended 320 B under the 72 KB plan gate, so the
+stand-in and prefetch code shares one path (`standin(..., none)`,
+`pf_queue`) and the PS1 keeps the plain divisions in the life sim (its R3000
+divides in hardware; X4's multiplies are for the GBA): `_end` 0x801edfd0,
+**73,776 B below the stack top, 48 B above the gate**.
 
 ## 5. The 3D engine (`plat_view3d`)
 

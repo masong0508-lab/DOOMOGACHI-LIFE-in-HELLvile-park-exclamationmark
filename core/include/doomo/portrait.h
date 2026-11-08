@@ -82,6 +82,10 @@ const DoomoImage *figure_image(const DoomoLook *l, int status, int expr);
  * ticks while portrait_image / figure_image return NULL (the dialogue's
  * first face: an empty frame instead of a 45-80 ms render in one tick). */
 void portrait_hold(int on);
+/* SP2 x CR9: while on, a portrait_hold(1 / 2) job is not due after 4 ticks (forced slices): it runs in the
+ * platform's room, the idle time after frames and portrait_pump() (the creator: the figure catches up when the
+ * input rests, a held direction keeps its frame rate). Off by default and after portrait_cache_reset(). */
+void portrait_hold_patient(int on);
 /* CR9: the bust of any look, cached like figure_image (the creator's draft; portrait_hold applies). */
 const DoomoImage *portrait_image_look(const DoomoLook *l, int status, int expr);
 /* CR9: run more layer groups of a portrait_hold() job this tick while the frame's work so far is

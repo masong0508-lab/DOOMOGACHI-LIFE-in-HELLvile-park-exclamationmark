@@ -2172,7 +2172,10 @@ static void cr_enter(int arg)
     cr.shown = (*RES_LOOK_VIEW(&cr.draft));
     cr.img.uid = 0;
     cr.disp.ok = cr.pend.ok = 0;
-    if (CR_CALM) portrait_hold(1);   /* CR9 (GBA): the figure holds one pose; a new face is drawn in slices */
+    if (CR_CALM) {
+        portrait_hold(1);            /* CR9 (GBA): the figure holds one pose; a new face is drawn in slices */
+        portrait_hold_patient(1);    /* ... at the pace the frame allows (SP2's 4-tick deadline is not for here) */
+    }
     audio_music(SONG_CREATOR);
     cr_sparkle_burst(8, -1);
 }
@@ -2181,6 +2184,7 @@ static void cr_leave(void)
 {
     if (scene_scratch_mine(CR_SCRATCH_TAG)) cr.talk = NULL;
     portrait_hold(0);                /* CR9: (a no-op when the creator held nothing) */
+    portrait_hold_patient(0);
 }
 
 static void cr_update(void)

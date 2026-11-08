@@ -79,9 +79,14 @@ int sim_chance(int percent)
  *   (x * 34953) >> 19 for x < 74898 and x / 45 = (x * 23302) >> 20 for x < 74898; x / 100 = (x * 5243) >> 19 for
  *   0 <= x < 43699 (truncated toward zero for negatives, as C does). */
 #define SIM_DIVQ_MAX (1u << 18)
+#if defined(__mips__)
+#define SIM_X4_DIV 0        /* the PS1's R3000 divides in hardware: the plain division, the same quotient in less resident code */
+#else
+#define SIM_X4_DIV 1
+#endif
 static inline uint32_t sim_udiv(uint32_t q, uint32_t div)
 {
-    if (q >= SIM_DIVQ_MAX) return q / div;
+    if (!SIM_X4_DIV || q >= SIM_DIVQ_MAX) return q / div;
     switch (div) {
     case 60:  return ((q >> 2) * 34953u) >> 19;
     case 120: return ((q >> 3) * 34953u) >> 19;
@@ -92,6 +97,7 @@ static inline uint32_t sim_udiv(uint32_t q, uint32_t div)
 }
 static inline int sim_div100(int x)
 {
+    if (!SIM_X4_DIV) return x / 100;
     if (x >= 0) return x < 43699 ? (int)(((uint32_t)x * 5243u) >> 19) : x / 100;
     return x > -43699 ? -(int)(((uint32_t)-x * 5243u) >> 19) : x / 100;
 }

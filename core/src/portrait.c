@@ -882,6 +882,7 @@ uint32_t look_anim_mask_rid(const DoomoLook *l, int rid, int status, int expr)
 /* animation phase at tick t (staggered per resident); the low byte of the
  * cache key */
 static int hold_on;   /* portrait_hold() */
+static uint8_t hold_patient;   /* portrait_hold_patient() (CR9's creator): hold jobs without the SP2 deadline */
 
 static uint32_t phase_of(int kind, int rid, int expr, int status, const DoomoLook *l,
                          uint32_t t, Phase *p)
@@ -1143,6 +1144,7 @@ void portrait_idle_run(void)
 /* portrait_image / figure_image: the phase due now; while a sliced job
  * draws it, the phase shown last */
 void portrait_hold(int on) { hold_on = on; }
+void portrait_hold_patient(int on) { hold_patient = (uint8_t)(on != 0); }
 
 #ifdef DOOMO_HITCHECK
 static uint32_t hit_n, hit_bad;
@@ -1175,28 +1177,32 @@ uint32_t portrait_hitcheck_fails(void) { return 0; }
 
 /* SP2: new content (look, expression or status) of something with no exact image: draw it as an urgent job and
  * show a stand-in meanwhile (an image of the same look: the same status first; any of its expressions). Returns
- * the image to show, or NULL when there is nothing to stand in (the caller draws at once). */
+ * the image to show, or NULL when there is nothing to stand in: then the caller draws at once, or with `none`
+ * (portrait_hold(3)) the job is started anyway (urgent) and the caller shows nothing meanwhile. */
 static CacheEnt *standin(int kind, int rid, uint32_t key, uint32_t base, uint32_t lh, const DoomoLook *l, int st,
-                         int expr, const Phase *p, int vac)
+                         int expr, const Phase *p, int vac, int none)
 {
     CacheEnt *o = cache_get(kind, rid, base, lh, 0x0000F000u, 0);
     if (!o) o = cache_get(kind, rid, base, lh, 0, 0);
-    if (!o) return NULL;
+    if (!o && !none) return NULL;
     if (!job_for(kind, rid, lh, base, 0xFFFFFF00u)) {
         if (job.on && (job.urgent || job_hold || job.si) && (int32_t)(now() - job.want) <= job_stale()) {
             /* another stand-in's job is under way: this one waits its turn (two at once would double the cost) */
         } else {
             job_abort();
-            o->stamp = ++cache_stamp;           /* keep the stand-in out of the claim's reach */
-            o->tick = now();
+            if (o) {
+                o->stamp = ++cache_stamp;       /* keep the stand-in out of the claim's reach */
+                o->tick = now();
+            }
             if (job_begin(kind, rid, key, lh, l, st, expr, p, 0)) {
-                job.urgent = !recent_has(content_hash(kind, rid, lh, base));
+                job.urgent = !o || !recent_has(content_hash(kind, rid, lh, base));
                 job.si = 1;
                 job.vac = (uint8_t)vac;
             }
         }
     }
     if (job_for(kind, rid, lh, base, 0xFFFFFF00u)) job.want = now();
+    if (!o) return NULL;
     o = cache_find(kind, rid, base, lh, 0x0000F000u);
     if (!o) o = cache_find(kind, rid, base, lh, 0);
     return o;
@@ -1234,7 +1240,7 @@ static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, int sta
         if (!job_for(kind, rid, lh, base, 0xFFFFFF00u)) {
             if (job.on && !job_hold) job_abort();    /* a look-ahead can wait */
             job_start(kind, rid, key, lh, l, st, expr, &p);
-            if (job_for(kind, rid, lh, key, 0xFFFFFFFFu)) { job_hold = 1; job.urgent = 1; }
+            if (job_for(kind, rid, lh, key, 0xFFFFFFFFu)) { job_hold = 1; job.urgent = !hold_patient; }
         }
         if (job_for(kind, rid, lh, base, 0xFFFFFF00u)) job.want = t;
         job_pump();
@@ -1247,26 +1253,11 @@ static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, int sta
     if (!e && (hold_on == 3 || (!hold_on && si_ticks))) {
         /* SP2: a new expression / status of a look on screen: a few ticks of the old picture instead of a
          * whole render in this frame; portrait_hold(3) with nothing to stand in: a few ticks of nothing */
-        CacheEnt *o = standin(kind, rid, key, base, lh, l, st, expr, &p, status == RES_EMPTY);
-        if (!o && hold_on == 3) {
-            if (!job_for(kind, rid, lh, base, 0xFFFFFF00u) &&
-                !(job.on && (job.urgent || job_hold || job.si) && (int32_t)(now() - job.want) <= job_stale())) {
-                job_abort();
-                if (job_begin(kind, rid, key, lh, l, st, expr, &p, 0)) {
-                    job.urgent = 1;
-                    job.si = 1;
-                    job.vac = (uint8_t)(status == RES_EMPTY);
-                }
-            }
-            if (job_for(kind, rid, lh, base, 0xFFFFFF00u)) job.want = t;
+        CacheEnt *o = standin(kind, rid, key, base, lh, l, st, expr, &p, status == RES_EMPTY, hold_on == 3);
+        if (o || hold_on == 3) {
             job_pump();
             e = cache_find(kind, rid, base, lh, 0xFFFFFF00u);
-            return e ? &e->img : NULL;
-        }
-        if (o) {
-            job_pump();
-            e = cache_find(kind, rid, base, lh, 0xFFFFFF00u);
-            return e ? &e->img : &o->img;
+            return e ? &e->img : o ? &o->img : NULL;
         }
     }
     if (!e) {
@@ -1343,6 +1334,22 @@ static int have_any(int kind, int rid, const DoomoLook *l, int status, int expr)
     return cache_get(kind, rid, base, lh, 0xFFFFFF00u, 0) != NULL || job_for(kind, rid, lh, base, 0xFFFFFF00u);
 }
 
+/* queue one render-ahead request (a figure keeps its look; a resident's is read when the job starts) */
+static int pf_queue(int kind, int rid, const DoomoLook *l, int status, int expr)
+{
+    if (have_any(kind, rid, l, status, expr)) return 1;
+    pf.on = 1;
+    pf_requeue = 0;
+    pf.kind = (uint8_t)kind;
+    pf.still = (uint8_t)(hold_on != 0);
+    pf.rid = (int16_t)rid;
+    pf.expr = (int8_t)expr;
+    pf.status = (int8_t)status;
+    if (kind == CK_FIGURE) pf.L = *l;
+    pf.until = now() + PC_PREFETCH;
+    return 0;
+}
+
 int portrait_prefetch(int resident_id, int expr)
 {
     int status;
@@ -1352,15 +1359,7 @@ int portrait_prefetch(int resident_id, int expr)
     cache_init();
     r = res_of(resident_id, &status);
     look_for_stage(RES_LOOK_VIEW(r), RES_STAGE(r), &al);
-    if (have_any(CK_PORTRAIT, resident_id, &al, status, expr)) return 1;
-    pf.on = 1;
-    pf_requeue = 0;
-    pf.kind = CK_PORTRAIT;
-    pf.still = (uint8_t)(hold_on != 0);
-    pf.rid = (int16_t)resident_id;
-    pf.expr = (int8_t)expr;
-    pf.until = now() + PC_PREFETCH;
-    return 0;
+    return pf_queue(CK_PORTRAIT, resident_id, &al, status, expr);
 }
 
 int figure_prefetch(const DoomoLook *l, int status, int expr)
@@ -1368,17 +1367,7 @@ int figure_prefetch(const DoomoLook *l, int status, int expr)
     if (!l || expr < 0 || expr >= EXPR_COUNT) return 1;
     if (status < 0 || status > 15) status = RES_ALIVE;
     cache_init();
-    if (have_any(CK_FIGURE, -1, l, status, expr)) return 1;
-    pf.on = 1;
-    pf_requeue = 0;
-    pf.kind = CK_FIGURE;
-    pf.still = (uint8_t)(hold_on != 0);
-    pf.rid = -1;
-    pf.expr = (int8_t)expr;
-    pf.status = (int8_t)status;
-    pf.L = *l;
-    pf.until = now() + PC_PREFETCH;
-    return 0;
+    return pf_queue(CK_FIGURE, -1, l, status, expr);
 }
 
 const DoomoImage *portrait_image(int resident_id, int expr)
@@ -1667,6 +1656,7 @@ void portrait_cache_reset(void)
     steps_cfg = 0;
     steps_used = 0;
     si_ticks = PC_STANDIN;
+    hold_patient = 0;
     pf.on = 0;
     cache_init();
 }
