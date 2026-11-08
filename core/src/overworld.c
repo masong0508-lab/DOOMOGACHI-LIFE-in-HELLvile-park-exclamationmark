@@ -19,6 +19,7 @@
 #include "doomo/playas.h"
 #include "doomo/plat_ext.h"
 #include "doomo/ending.h"
+#include "doomo/library.h"            /* CL4: SCENE_LIB_HELP */
 
 OwState ow;
 int ow_bb_count;                        /* ow_bb = the shared doomo_frame_bb */
@@ -697,10 +698,10 @@ static void pet_update(void)
 }
 
 /* ---- pause panel ------------------------------------------------------------------- */
-enum { PM_RESUME, PM_LOG, PM_PET, PM_ARMORY, PM_MAP, PM_OPTIONS, PM_SAVE, PM_TITLE, PM_COUNT };
+enum { PM_RESUME, PM_LOG, PM_PET, PM_ARMORY, PM_MAP, PM_OPTIONS, PM_SAVE, PM_HELP, PM_TITLE, PM_COUNT };
 const char *const ow_pause_names[PM_COUNT] = {
-    "Resume", "Quest Log", "Boreagotchi", "Armory", "Map", "Options", "Save", "Title Screen"
-};
+    "Resume", "Quest Log", "Boreagotchi", "Armory", "Map", "Options", "Save", "Help", "Title Screen"
+};                                       /* CL4: Help opens the Field Guide (library.h) */
 int ow_pause_count(void) { return PM_COUNT; }
 
 /* CL2 (C11): every row says what it does on the panel's help line. A row
@@ -781,6 +782,7 @@ static void pause_activate(int sel)
     case PM_SAVE:
         if (pause_save()) PAUSE_OFF();
         break;
+    case PM_HELP: PAUSE_OFF(); story_push_scene(&SCENE_LIB_HELP, 0, PEND_OTHER, CTX_FREE, 0); break;
     case PM_TITLE:
         ui_confirm(ow.visit ? "Leave and go back?" : "Return to the title? Unsaved progress is lost.", title_yes);
         break;

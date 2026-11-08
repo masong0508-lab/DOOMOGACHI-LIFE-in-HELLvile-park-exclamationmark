@@ -709,6 +709,7 @@ static void res_update(void)
         do_action(FPA_TALK);
         return;
     }
+    if (R.tab == TAB_CARE && r && r->status == RES_ALIVE && R.tab_t > 6 && tip_once(TIP_CARE)) return;   /* CL4 */
     switch (R.tab) {
     case TAB_CARE: care_update(); break;
     case TAB_ABOUT:

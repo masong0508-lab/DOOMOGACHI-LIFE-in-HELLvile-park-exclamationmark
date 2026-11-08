@@ -62,6 +62,8 @@ One command per line; `#` starts a comment.
 | `toasts [reset]` | (CL1) print the toasts shown so far per kind (`unlock hint feedback system`) and the unlock news still gathering; `reset` starts counting again |
 | `expect-toasts KIND MAX` | (CL1) fail if more than MAX toasts of KIND (`unlock hint feedback system all`) were shown |
 | `hud-watch on\|off` | (CL1) from `on`, check every frame on which the story overworld drew its HUD band and a toast that the toast lies under the band, off the objective pill and the clock; `off` prints the tally and fails if any frame was covered |
+| `tips on` / `tips off` / `tips reset` | (CL4) the runner keeps the first-time tip cards off (`plat_test_flags()` reports `PLAT_TEST_NO_TIPS`, so journeys keep their presses); `tips on` lets them show in this run, `tips reset` forgets the seen ones |
+| `expect-tip NAME` | (CL4) fail unless the tip card on screen is NAME (`island`, `town_hall`, `apartments`, `care`, `house`, `defend`, `shooter`, `exorcism`, `pet`, `studio`, `workshop`, `family`, `library`; `tips.c` `tip_name`) or `none` |
 
 Buttons: `UP DOWN LEFT RIGHT A B L R START SELECT X Y L2 R2`.
 

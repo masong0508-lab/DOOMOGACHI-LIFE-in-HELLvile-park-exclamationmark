@@ -22,6 +22,7 @@
  */
 #include "exorcism_int.h"
 #include "sim_int.h"
+#include "doomo/tips.h"
 
 enum { ST_INTRO, ST_TOOLS, ST_PRAYER, ST_WATER, ST_NAME, ST_VERDICT, ST_RESULT,
        ST_LOST, ST_FAREWELL, ST_NODEMON, ST_WAIT };
@@ -407,6 +408,7 @@ static void start_ritual(void)
 static void update_tools(void)
 {
     int rows = EXI_COUNT + 1;
+    if (X.st_t > 6 && tip_once(TIP_EXORCISM)) return;               /* CL4: the three phases, once */
     if (btn_repeat(BTN_UP)) { X.sel = (X.sel + rows - 1) % rows; audio_sfx(SFX_CURSOR); }
     if (btn_repeat(BTN_DOWN)) { X.sel = (X.sel + 1) % rows; audio_sfx(SFX_CURSOR); }
     if (btn_pressed(BTN_START)) { start_ritual(); return; }

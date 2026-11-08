@@ -474,6 +474,7 @@ static void fam_update(void)
     int n;
     fp_live();
     W.t++;
+    if (W.t > 6 && tip_once(TIP_FAMILY)) return;                      /* CL4 */
     if (btn_pressed(BTN_L | BTN_R | BTN_SELECT)) { W.tab ^= 1; W.sel = W.top = 0; audio_sfx(SFX_BLIP); return; }
     n = W.tab == 0 ? rows() : family_memorial_count();
     if (n) {

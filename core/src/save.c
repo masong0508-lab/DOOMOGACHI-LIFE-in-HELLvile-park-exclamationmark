@@ -57,6 +57,7 @@
  */
 #include "doomo/doomo.h"
 #include "doomo/playas.h"
+#include "doomo/options_store.h"
 
 /* Every enum must fit the bit width the format gives it. Growing past a
  * width needs a new DOOMO_SAVE_VERSION. */
@@ -1323,7 +1324,17 @@ static int save_stream(int slot, uint8_t *chunk, uint32_t chunk_cap, uint32_t to
     return plat_save_stream_end(ok) && ok;
 }
 
+static int save_game_body(int slot);
+
+/* CL4: a save also writes the machine config record when tips were seen since (options_store.c) */
 int save_game(int slot)
+{
+    int ok = save_game_body(slot);
+    if (ok) opt_config_flush();
+    return ok;
+}
+
+static int save_game_body(int slot)
 {
     uint32_t cap = 0, max = save_slot_max(slot), n, total, body_crc;
     uint8_t *buf;

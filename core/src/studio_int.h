@@ -21,6 +21,7 @@
 #define DOOMO_STUDIO_INT_H
 
 #include "doomo/doomo.h"
+#include "doomo/tips.h"
 
 /* SCENE_STUDIO debug arg: premade citizens move in (empty island) and
  * template t is loaded (runner scripts, tests) */

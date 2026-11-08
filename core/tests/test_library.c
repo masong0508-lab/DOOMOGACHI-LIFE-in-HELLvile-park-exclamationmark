@@ -54,12 +54,12 @@ TEST(lib_activities_registered)
         }
     }
     CHECK(lobby);
-    CHECK_EQ(n, 1 + LIB_WING_COUNT);
-    /* free play: the lobby and the five books that are always open */
-    CHECK_EQ(activities_at(ACTLOC_LIBRARY, out, 16), 6);
+    CHECK_EQ(n, 2 + LIB_WING_COUNT);                  /* + CL4's Field Guide */
+    /* free play: the lobby, the five books that are always open and the Field Guide */
+    CHECK_EQ(activities_at(ACTLOC_LIBRARY, out, 16), 7);
     unlock_grant(LIB_UL_JUKEBOX);
     unlock_grant(LIB_UL_GALLERY);
-    CHECK_EQ(activities_at(ACTLOC_LIBRARY, out, 16), 8);
+    CHECK_EQ(activities_at(ACTLOC_LIBRARY, out, 16), 9);
     /* story: just the lobby, from chapter 1 */
     doomo_town.mode = TOWN_STORY;
     doomo_town.story.chapter = 0;

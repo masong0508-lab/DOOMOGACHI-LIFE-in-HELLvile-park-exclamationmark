@@ -18,9 +18,11 @@
 #include "doomo/options_store.h"
 #include "doomo/ending.h"
 #include "doomo/plat_ext.h"
+#include "doomo/tips.h"
 
 #define ROWS_MAX 24
 #define ROW_PRESET 100          /* U2: the Quick page's preset row (not an option id) */
+#define ROW_TIPS_RESET 101      /* CL4: "Show all tips again" (Game page, under Tips) */
 
 static const char *const opt_help[OPT_COUNT] = {
     /* GORE */ "Cute: confetti, hearts, plush stuffing. Brutal: full Doom. Cute + Gore (after the ending): both at once.",
@@ -156,6 +158,7 @@ static const char *help_of(int opt)
 {
     if (opt == OPT_LOSS) return "Family members can be lost over a life. Off: nobody is ever lost.";
     if (opt == OPT_RUMBLE) return "Controller rumble, apart from Screen shake.";
+    if (opt == OPT_TIPS) return "A short card the first time you reach a new place: what it is and which buttons do what.";
     if (opt == OPT_MATURE)
         return "Adult scenes. Off: cutaways. Censored: censor bars. On: implied, then a fade. Going up asks for the grown-ups' code (if set) and your age.";
     return opt < OPT_COUNT && opt_help[opt] ? opt_help[opt] : "";
@@ -193,6 +196,7 @@ static void build_rows(void)
         if (doomo_option2_info[i - OPT2_FIRST].page == O.page &&
             (i != OPT_RUMBLE || (plat_features() & PLATF_RUMBLE)))
             O.rows[O.nrows++] = i;
+    if (O.page == OPTPAGE_GAME && O.nrows < ROWS_MAX) O.rows[O.nrows++] = ROW_TIPS_RESET;  /* CL4 */
     if (O.page == OPTPAGE_GAME && O.nrows < ROWS_MAX) O.rows[O.nrows++] = OPT_MATURE;   /* E11: last row */
     O.sel = DOOMO_MIN(O.sel, O.nrows);       /* last row = "Defaults" */
 }
@@ -300,7 +304,8 @@ static void cb_defaults(int yes)
     if (!yes) return;
     for (i = 0; i < O.nrows; i++) {
         int opt = O.rows[i];
-        if (opt == OPT_MONSTER_MODE || opt == OPT_LANGUAGE || opt == ROW_PRESET) continue;   /* never silently */
+        if (opt == OPT_MONSTER_MODE || opt == OPT_LANGUAGE || opt == ROW_PRESET || opt == ROW_TIPS_RESET)
+            continue;                                                                       /* never silently */
         opt_set(opt, info_of(opt)->def);
     }
     audio_sfx(SFX_SPARKLE);
@@ -316,6 +321,7 @@ static int preset_may(int opt)
     switch (opt) {
     case OPT_MONSTER_MODE: case OPT_LANGUAGE: case OPT_MUSIC_VOL: case OPT_SFX_VOL: case OPT_VOICE_VOL:
     case OPT_MATURE: case OPT_WINDOW_SKIN: case OPT_TITLE_THEME: case OPT_CURSOR: case OPT_CAMERA_FILTER:
+    case OPT_TIPS:
         return 0;
     }
     return 1;
@@ -341,6 +347,15 @@ static void cb_preset(int yes)
     preset_apply(O.preset);
     audio_sfx(SFX_SPARKLE);
     ui_toast("Preset applied.");
+}
+
+/* CL4 */
+static void cb_tips_reset(int yes)
+{
+    if (!yes) return;
+    tips_reset();
+    audio_sfx(SFX_SPARKLE);
+    ui_toast("Every tip will show again.");
 }
 
 static void opt_update(void)
@@ -370,6 +385,8 @@ static void opt_update(void)
         if (btn_repeat(BTN_RIGHT)) { O.preset = (O.preset + 1) % PRESET_N; audio_sfx(SFX_CURSOR); }
         if (btn_pressed(BTN_A))
             ui_confirm("Apply this preset? Language, volumes, Mature and Monster Mode stay as they are.", cb_preset);
+    } else if (O.sel < O.nrows && O.rows[O.sel] == ROW_TIPS_RESET) {     /* CL4: A asks, then resets */
+        if (btn_pressed(BTN_A)) ui_confirm("Show every first-time tip again?", cb_tips_reset);
     } else if (O.sel < O.nrows) {
         if (btn_repeat(BTN_LEFT)) change(O.rows[O.sel], -1);
         if (btn_repeat(BTN_RIGHT) || btn_pressed(BTN_A)) change(O.rows[O.sel], 1);
@@ -413,6 +430,10 @@ static void opt_draw(void)
             ui_value_row(x + 12, y, w - 18, "Preset", preset_name[O.preset], row == O.sel);
             continue;
         }
+        if (O.rows[row] == ROW_TIPS_RESET) {
+            ui_value_row(x + 12, y, w - 18, "Show all tips again", "", row == O.sel);
+            continue;
+        }
         {
             int opt = O.rows[row], v = opt_get(opt);
             const DoomoOptionInfo *oi = info_of(opt);
@@ -439,6 +460,8 @@ static void opt_draw(void)
         int hy = y0 + vis * 11 + 6;
         if (O.sel < O.nrows && O.rows[O.sel] == ROW_PRESET) {
             help = preset_help[O.preset];
+        } else if (O.sel < O.nrows && O.rows[O.sel] == ROW_TIPS_RESET) {
+            help = "Every first-time tip shows again, once, the next time you reach its place.";
         } else if (O.sel < O.nrows) {
             int opt = O.rows[O.sel], v = opt_get(opt), k;
             const DoomoOptionInfo *oi = info_of(opt);
@@ -462,6 +485,7 @@ static void opt_draw(void)
         else fp_marquee(x + 2, hy + 2, w - 4, help, c, O.t);
     }
     ui_hint((O.sel < O.nrows && O.rows[O.sel] == ROW_PRESET) ? STR_ICON_ARROW_L STR_ICON_ARROW_R " Pick  " STR_ICON_A " Apply  L/R Page  " STR_ICON_B " Done"
+            : (O.sel < O.nrows && O.rows[O.sel] == ROW_TIPS_RESET) ? STR_ICON_A " Reset  L/R Page  " STR_ICON_B " Done"
                                                          : STR_ICON_ARROW_L STR_ICON_ARROW_R " Change  L/R Page  " STR_ICON_B " Done", style);
     fp_fx_draw();
 }

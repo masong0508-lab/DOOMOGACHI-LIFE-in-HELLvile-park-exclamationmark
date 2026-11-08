@@ -21,13 +21,16 @@ void opt_machine_changed(int opt, int value);
 /* The machine config record (plat_ext.h PLAT_CONFIG_MAX = 48 B): bytes 0..31 are ours, 32..47 belong
  * to the adults' security code (U5 / E11) and are kept as they are when we write.
  *   0 'D' 1 'O' 2 version (1) 3 0 | 4 language 5 music 6 sfx 7 voice 8 3D 9 mature 10 rumble |
- *   11..29 0 | 30..31 CRC-16/CCITT of bytes 0..29, little endian */
+ *   11 tips + 1 (CL4; 0 = never written: the default) | 12..15 the tips' seen flags (tips.h, u32 LE) |
+ *   16..29 0 | 30..31 CRC-16/CCITT of bytes 0..29, little endian */
 #define OPT_CONFIG_VERSION 1
 #define OPT_CONFIG_SETTINGS_SZ 32u
 /* Boot: apply the record if there is a valid one (doomo_init calls it after opt_defaults). 1 = applied. */
 int  opt_config_load(void);
 /* Write the record now (opt_machine_changed does it on every change). 1 = stored. */
 int  opt_config_save(void);
+/* CL4: write it only if tips were seen since (save_game calls it after a save). 1 = stored. */
+int  opt_config_flush(void);
 /* U5: 1 when the platform keeps a config record (PLATF_CONFIG) and opt_config_load found none, so this
  * is the machine's first boot and SCENE_LANG_PICK runs once. Always 0 where nothing is kept (native,
  * DC for now). _done() clears it (the picker calls it after it wrote the record). */

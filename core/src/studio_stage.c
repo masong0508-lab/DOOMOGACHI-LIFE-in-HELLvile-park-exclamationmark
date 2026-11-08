@@ -694,7 +694,7 @@ static void draw_show(void)
         memset(objn, 0, sizeof(objn));
         /* option C: sprites only in the sung show proper (not the curtain's "Showtime!", not the bows, nothing over it) */
         if (n > 0 && studio.show == 1 && t >= CURTAIN_T + 20 && !studio.pop_n && !studio.msg_t && !studio.picking &&
-            !ui_toast_pending() && plat_stage_obj_begin()) {
+            !ui_toast_pending() && !tip_active() && plat_stage_obj_begin()) {   /* CL4: nothing over a tip card */
             StageCtx c;
             for (k = 0; k < n; k++) if (slots[k] == lead) { lx = px[k]; ly = py[k]; }
             c.sw = sw; c.sh = sh; c.floor = floor; c.top = top; c.open = open; c.wide = wide; c.t = t; c.beat = beat;

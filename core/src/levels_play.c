@@ -11,6 +11,7 @@
  * "Watch demo"; any button stops it; nothing is recorded).
  */
 #include "levels_int.h"
+#include "doomo/tips.h"
 
 enum { BR_INTRO, BR_PLAY, BR_PAUSE, BR_DONE, BR_DEAD };
 enum { BP_RESUME, BP_MUSIC, BP_WEAPON, BP_CAMERA, BP_OPTIONS, BP_RESTART, BP_QUIT, BP_COUNT };
@@ -179,6 +180,8 @@ static void br_update(void)
     br.t++;
     switch (br.state) {
     case BR_INTRO:
+        if (!br.demo && br.t > 4) tip_once(TIP_SHOOTER);           /* CL4: the controls, once */
+        if (tip_active()) { br.t = DOOMO_MIN(br.t, 40); break; }   /* the level waits for it */
         if (br.t > 80 || (br.t > 12 && !br.demo && btn_pressed(BTN_A | BTN_START))) {
             br.state = BR_PLAY;
             br.t = 0;

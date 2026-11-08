@@ -11,6 +11,7 @@
  * table, or scrap it for half the materials.
  */
 #include "weld_int.h"
+#include "doomo/tips.h"
 
 DoomoWeapon weld_pending;
 int weld_game_result = -1;
@@ -258,6 +259,7 @@ static void workshop_update(void)
     ws_preview_t++;
     if (ws_msg_t) ws_msg_t--;
     collect_weld();
+    if (ws_t > 8 && tip_once(TIP_WORKSHOP)) return;                  /* CL4: the stats, once */
     if (btn_pressed(BTN_L) || btn_pressed(BTN_R)) {
         ws_tab ^= 1;
         audio_sfx(SFX_CURSOR);

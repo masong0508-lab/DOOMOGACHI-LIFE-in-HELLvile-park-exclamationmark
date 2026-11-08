@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "native.h"
-#include "doomo/plat_ext.h"    /* T2: plat_talk_load / read */
+#include "doomo/plat_ext.h"    /* T2: plat_talk_load / read; CL4: plat_test_flags */
 #include "plat_music_native.h"     /* --- music: musrender --- */
 
 uint8_t nat_fb[NAT_MAX_W * NAT_MAX_H];
@@ -59,6 +59,10 @@ int plat_hold_frame(int on)
     return 1;
 }
 void plat_begin_frame(void) { if (held) memcpy(nat_fb, held_fb, (size_t)held_n); }
+
+/* CL4: the native platform is the test runner and the unit tests: no first-time tip cards unless a
+ * script asks ("tips on", tips_test_force), so the journeys keep their press budgets. */
+uint32_t plat_test_flags(void) { return PLAT_TEST_NO_TIPS; }
 void plat_end_frame(void)
 {
     ticks++;

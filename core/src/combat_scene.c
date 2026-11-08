@@ -7,6 +7,7 @@
  * it went (1 cleared, -1 died, -2 quit).
  */
 #include "combat_int.h"
+#include "doomo/tips.h"
 
 enum { CS_PLAY, CS_PAUSE, CS_WEAPONS, CS_DONE, CS_DEAD };
 
@@ -220,6 +221,8 @@ static void combat_update(void)
     cs_t++;
     switch (cs_state) {
     case CS_PLAY:
+        if (!combat_autopilot_on() && cs_t > 4) tip_once(TIP_SHOOTER);   /* CL4: the controls, once */
+        if (tip_active()) break;                                      /* the fight waits for it */
         if (combat_ctl.pause || (btn_pressed(BTN_START) && !combat_autopilot_on())) {
             cs_state = CS_PAUSE;
             cs_t = 0;

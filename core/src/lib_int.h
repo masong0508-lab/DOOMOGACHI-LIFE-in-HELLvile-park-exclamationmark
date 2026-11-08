@@ -16,6 +16,7 @@
 
 #include "doomo/doomo.h"
 #include "doomo/library.h"
+#include "doomo/tips.h"
 
 /* ---- the browser state of the open wing --------------------------------- */
 typedef struct LibBrowse {
@@ -89,6 +90,11 @@ typedef union LibWingData {
         uint16_t seen, defeated;              /* bit per demon (on entry)   */
         uint8_t  pct;
     } best;
+    struct {                                  /* (CL4) Field Guide          */
+        char     text[1400];                  /* the open page, translated  */
+        int16_t  page_for;                    /* page + 1 it holds (0 none) */
+        int8_t   lang_for;                    /* ... in this language       */
+    } help;
 } LibWingData;
 #define LIB_SCRATCH_TAG SAVE_EXT_TAG('L', 'I', 'B', 'W')
 extern LibWingData *lib_wp;

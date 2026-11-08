@@ -48,6 +48,7 @@
 #include "doomo/camfx.h"
 #include "doomo/audio.h"
 #include "doomo/portrait.h"
+#include "doomo/tips.h"
 #include "doomo/story_vm.h"
 #include "doomo/font.h"
 #include "doomo/life.h"
@@ -1845,9 +1846,15 @@ static void home_update(void)
     }
     if (H->cut != CUT_NONE || H->hn == HN_LIGHTS || H->hn == HN_INSERT || H->hn == HN_3AM) return;
     if (H->mode == HM_VIEW) { update_view(); return; }
-    if (H->mode == HM_DEFEND) { update_defend(); return; }
+    if (H->mode == HM_DEFEND) {
+        if (H->t > 8) tip_once(TIP_DEFEND);          /* CL4: the verbs, once; the night waits while it is up */
+        if (!tip_active()) update_defend();
+        return;
+    }
     story_tick();
     if (H->menu != HMN_NONE) { update_menu(); return; }
+    if (H->kind == HK_OWN && (H->mode == HM_BUILD || H->mode == HM_LIVE) && H->t > 10 && tip_once(TIP_HOUSE))
+        return;                                      /* CL4 */
     if (H->mode == HM_PHOTO) { update_photo(); return; }
     if (btn_pressed(BTN_START)) { open_menu(HMN_MAIN); return; }
     if (H->mode == HM_BUILD) update_build();

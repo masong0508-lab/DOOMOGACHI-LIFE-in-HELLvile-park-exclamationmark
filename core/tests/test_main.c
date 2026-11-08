@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include "test.h"
+#include "doomo/tips.h"
 
 #define MAX_TESTS 1024    /* S0 (SPEC R21): ~110 story/house tests + customisation */
 
@@ -40,6 +41,7 @@ int test_registry_count(void) { return ntests; }
 void test_reset(void)
 {
     while (scene_depth() > 0) scene_pop();
+    tips_session_reset();               /* CL4: no card, nothing seen, harness default (off) */
     input_reset();
     ui_toast_clear();
     memset(&doomo_town, 0, sizeof(doomo_town));

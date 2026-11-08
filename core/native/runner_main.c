@@ -91,6 +91,7 @@
 #include "doomo/music.h"              /* music: music-hash */
 #include "../src/ui_internal.h"       /* S2: ui_dialog_debug (expect-text) */
 #include "doomo/lang.h"               /* P0: lang CODE */
+#include "doomo/tips.h"               /* CL4: tips on, expect-tip */
 #include "doomo/items.h"              /* M0: item, problem (journey setups) */
 #include "doomo/sim.h"
 #include "doomo/plat_ext.h"           /* CL2: first-boot (the config record) */
@@ -201,7 +202,7 @@ static int jr_setup_cmd(const char *cmd)
     static const char *const setup[] = {
         "scene", "push", "save", "load", "seed", "lang", "story-fp", "side",
         "talk", "cell", "home-room", "clock", "money", "item", "problem",
-        "first-boot",
+        "first-boot", "tips",
     };
     size_t k;
     for (k = 0; k < sizeof(setup) / sizeof(setup[0]); k++)
@@ -521,6 +522,25 @@ static void run_line(char *line)
             hudw_on = 0;
         } else { hudw_on = 1; hudw_frames = hudw_bad = 0; }
     /* --- end CL1 --- */
+    /* --- CL4: first-time tips. "tips on" lets the cards show in this run (the runner keeps them off,
+     * plat_test_flags); "tips reset" forgets the seen ones; "expect-tip NAME" (tips.c tip_name, or
+     * "none") checks the card on screen. --- */
+    } else if (strcmp(cmd, "tips") == 0) {
+        const char *a1 = argc > 1 ? argv[1] : "";
+        if (strcmp(a1, "on") == 0) tips_test_force(1);
+        else if (strcmp(a1, "off") == 0) tips_test_force(0);
+        else if (strcmp(a1, "reset") == 0) tips_reset();
+        else fail("tips needs on, off or reset, got", a1);
+    } else if (strcmp(cmd, "expect-tip") == 0) {
+        const char *want = argc > 1 ? argv[1] : "none";
+        int cur = tip_active() ? tip_current() : -1;
+        const char *now = cur >= 0 ? tip_name(cur) : "none";
+        if (strcmp(now, want) != 0) {
+            char msg[64];
+            snprintf(msg, sizeof(msg), "expected the tip card %s but it is", want);
+            fail(msg, now);
+        }
+    /* --- end CL4 --- */
     } else if (strcmp(cmd, "expect-text") == 0) {
         UiDialogDebug d;
         const char *want = argc > 1 ? argv[1] : "";

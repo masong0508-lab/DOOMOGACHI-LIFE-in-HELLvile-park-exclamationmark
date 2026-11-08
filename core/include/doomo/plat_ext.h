@@ -90,6 +90,7 @@ void plat_rumble(int strength, int ticks);
  * interactive steps that would block a scripted run. Default 0 (a real
  * console). Bits are append-only. */
 #define PLAT_TEST_NO_PICKER (1u << 0)   /* skip U5's first-boot language picker */
+#define PLAT_TEST_NO_TIPS   (1u << 1)   /* (CL4) no first-time tip cards (tips.h) unless a script says "tips on" */
 uint32_t plat_test_flags(void);
 
 /* ---- held frame (U4) -------------------------------------------------------

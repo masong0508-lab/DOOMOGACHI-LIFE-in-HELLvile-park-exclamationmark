@@ -25,6 +25,7 @@
 
 #include "doomo/doomo.h"
 #include "doomo/save_ext.h"
+#include "doomo/tips.h"
 
 /* ---- scene args --------------------------------------------------------- */
 enum { FP_ISLAND_ARG_RETURN = 0, FP_ISLAND_ARG_WELCOME = 1 };

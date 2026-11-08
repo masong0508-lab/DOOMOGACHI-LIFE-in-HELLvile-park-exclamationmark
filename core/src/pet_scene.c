@@ -9,6 +9,7 @@
  * you watch (sim_tick), so the pet lives on game time.
  */
 #include "doomo/doomo.h"
+#include "doomo/tips.h"
 
 #define LW 64                       /* LCD size in dots                  */
 #define LH 44
@@ -274,6 +275,7 @@ static void pet_update(void)
         }
         break;
     case M_MAIN:
+        if (S.mt > 8 && pet_exists() && tip_once(TIP_PET)) break;     /* CL4 */
         if (btn_pressed(BTN_SELECT)) { press_fx(2); set_mode(M_DEX); break; }
         if (btn_repeat(BTN_RIGHT)) { S.sel = (S.sel + 1) % (ICONS - 1); press_fx(0); }
         if (btn_repeat(BTN_LEFT)) { S.sel = (S.sel + ICONS - 2) % (ICONS - 1); press_fx(0); }

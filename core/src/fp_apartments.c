@@ -193,6 +193,7 @@ static void ap_update(void)
         }
         return;
     }
+    if (A.t > 6 && tip_once(TIP_APARTMENTS)) return;                  /* CL4 */
     if (btn_repeat(BTN_LEFT)) { A.room = A.room > 1 ? A.room - 1 : ROOMS; audio_sfx(SFX_CURSOR); }
     if (btn_repeat(BTN_RIGHT)) { A.room = A.room < ROOMS ? A.room + 1 : 1; audio_sfx(SFX_CURSOR); }
     if (btn_repeat(BTN_UP) && A.floor < FLOORS) { A.floor++; audio_sfx(SFX_CURSOR); }

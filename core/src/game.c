@@ -6,6 +6,7 @@
  */
 #include "doomo/doomo.h"
 #include "doomo/options_store.h"
+#include "doomo/tips.h"
 
 static uint32_t frames;
 static uint8_t  inited;
@@ -51,8 +52,10 @@ void doomo_frame(uint32_t buttons)
 {
     frames++;
     input_update(buttons);
+    tips_input();                       /* CL4: a tip card takes the presses while it is up */
     audio_tick();
     scene_update();
     scene_draw();
-    ui_toast_draw();
+    tips_draw();
+    if (!tip_active()) ui_toast_draw(); /* toasts wait behind a tip card */
 }

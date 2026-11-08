@@ -6,6 +6,8 @@
  *                 "Off" default; this file overrides it). Machine-wide: it is NOT taken from a save.
  *   - OPT_LOSS    family loss on / off (family_loss_set). A property of the world: saved with it.
  *   - OPT_RUMBLE  controller rumble on / off, apart from Screen shake. Machine-wide.
+ *   - OPT_TIPS    (CL4) first-time tip cards on / off (tips.h). Machine-wide; the record (or, without
+ *                 one, the chunk) also carries the tips' seen flags, so they survive New Game.
  * Machine-wide options (these two plus language, the volumes and OPT_3D_FAST) go to the config
  * record (plat_config_read/write) when the platform keeps one (PLATF_CONFIG). Without one (native,
  * today) they are carried by the 'OPT2' chunk instead, so a save still remembers them.
@@ -19,6 +21,7 @@
 #include "doomo/family.h"
 #include "doomo/lang.h"
 #include "doomo/rng.h"
+#include "doomo/tips.h"
 
 static const char *const v_off_on_[] = { "Off", "On" };
 static const char *const v_mature_[] = { "Off", "Censored", "On", "On + pack" };
@@ -26,16 +29,17 @@ static const char *const v_mature_[] = { "Off", "Censored", "On", "On + pack" };
 const DoomoOptionInfo doomo_option2_info[OPT2_COUNT] = {
     /* OPT_MATURE */ { "Mature",  MATURE_LEVELS, MATURE_OFF, v_mature_, OPTPAGE_GAME },
     /* OPT_LOSS   */ { "Loss",    2, 1, v_off_on_, OPTPAGE_SIM },
-    /* OPT_RUMBLE */ { "Rumble",  2, 1, v_off_on_, OPTPAGE_CONTROLS }
+    /* OPT_RUMBLE */ { "Rumble",  2, 1, v_off_on_, OPTPAGE_CONTROLS },
+    /* OPT_TIPS   */ { "Tips",    2, 1, v_off_on_, OPTPAGE_GAME }
 };
 
-static uint8_t s_opt2[OPT2_COUNT] = { MATURE_OFF, 1, 1 };
+static uint8_t s_opt2[OPT2_COUNT] = { MATURE_OFF, 1, 1, 1 };
 static uint8_t s_quiet;          /* applying a record: no writes back, no platform calls */
 
 static int is_machine(int opt)
 {
     return opt == OPT_LANGUAGE || opt == OPT_MUSIC_VOL || opt == OPT_SFX_VOL || opt == OPT_VOICE_VOL ||
-           opt == OPT_3D_FAST || opt == OPT_MATURE || opt == OPT_RUMBLE;
+           opt == OPT_3D_FAST || opt == OPT_MATURE || opt == OPT_RUMBLE || opt == OPT_TIPS;
 }
 
 static void apply2(int opt)
@@ -230,6 +234,9 @@ int opt_config_load(void)
     s_sec_wrong = 0;
     s_quiet = 1;
     for (k = 0; k < 7; k++) put_machine(k_rec[k], rec[4 + k]);
+    if (rec[11]) put_machine(OPT_TIPS, rec[11] - 1);          /* CL4: 0 = never written (default On) */
+    tip_seen_merge((uint32_t)rec[12] | (uint32_t)rec[13] << 8 | (uint32_t)rec[14] << 16 | (uint32_t)rec[15] << 24);
+    tips_clean();
     s_quiet = 0;
     if (opt_get(OPT_LANGUAGE) != lang_before) lang_changed();
     return 1;
@@ -247,11 +254,24 @@ int opt_config_save(void)
     rec[0] = 'D'; rec[1] = 'O'; rec[2] = OPT_CONFIG_VERSION; rec[3] = 0;
     for (k = 0; k < 7; k++) rec[4 + k] = (uint8_t)opt_get(k_rec[k]);
     memset(rec + 11, 0, 19);
+    {
+        uint32_t seen = tip_seen_bits();                       /* CL4: Tips + the tips' seen flags */
+        rec[11] = (uint8_t)(opt_get(OPT_TIPS) + 1);
+        for (k = 0; k < 4; k++) rec[12 + k] = (uint8_t)(seen >> (8 * k));
+    }
     c = crc16(rec, 30);
     rec[30] = (uint8_t)c; rec[31] = (uint8_t)(c >> 8);
     if (s_sec_dirty) memcpy(rec + OPT_CONFIG_SETTINGS_SZ, s_sec, sizeof s_sec);
-    if (plat_config_write(rec, PLAT_CONFIG_MAX)) { s_sec_dirty = 0; return 1; }
+    if (plat_config_write(rec, PLAT_CONFIG_MAX)) { s_sec_dirty = 0; tips_clean(); return 1; }
     return 0;
+}
+
+/* CL4: seen tips are not written the moment a card closes (a PS1 card write takes a second): the record
+ * follows at the next save (save_game) or option change. */
+int opt_config_flush(void)
+{
+    if (!tips_dirty() || !have_config()) return 0;
+    return opt_config_save();
 }
 
 void opt_machine_changed(int opt, int value)
@@ -261,21 +281,31 @@ void opt_machine_changed(int opt, int value)
     if (is_machine(opt)) opt_config_save();
 }
 
-/* ---- the 'OPT2' chunk: OPT2_COUNT value bytes ---- */
-static uint32_t opt2_size(void) { return OPT2_COUNT; }
+/* ---- the 'OPT2' chunk ----
+ * version 1: OPT2_COUNT value bytes. version 2 (CL4): the tips' seen flags (u32, little endian) first,
+ * then the value bytes, so options added later still append at the end. */
+#define OPT2_SEEN 4u
+static uint32_t opt2_size(void) { return OPT2_SEEN + OPT2_COUNT; }
 
 static uint32_t opt2_write(uint8_t *dst, uint32_t cap)
 {
     int i;
-    if (cap < OPT2_COUNT) return 0;
-    for (i = 0; i < OPT2_COUNT; i++) dst[i] = (uint8_t)opt2_get(OPT2_FIRST + i);
-    return OPT2_COUNT;
+    uint32_t seen = tip_seen_bits();
+    if (cap < OPT2_SEEN + OPT2_COUNT) return 0;
+    for (i = 0; i < (int)OPT2_SEEN; i++) dst[i] = (uint8_t)(seen >> (8 * i));
+    for (i = 0; i < OPT2_COUNT; i++) dst[OPT2_SEEN + i] = (uint8_t)opt2_get(OPT2_FIRST + i);
+    return OPT2_SEEN + OPT2_COUNT;
 }
 
 static int opt2_read(const uint8_t *src, uint32_t len, uint16_t version)
 {
     uint32_t i;
-    (void)version;
+    if (version >= 2) {
+        if (len < OPT2_SEEN) return 1;
+        tip_seen_merge((uint32_t)src[0] | (uint32_t)src[1] << 8 | (uint32_t)src[2] << 16 | (uint32_t)src[3] << 24);
+        src += OPT2_SEEN;
+        len -= OPT2_SEEN;
+    }
     for (i = 0; i < len && i < OPT2_COUNT; i++) {
         int opt = OPT2_FIRST + (int)i;
         if (is_machine(opt) && have_config()) continue;       /* the machine's record wins */
@@ -296,6 +326,6 @@ static void opt2_reset(void)
 }
 
 static const DoomoSaveExt opt2_ext = {
-    SAVE_EXT_TAG_OPT2, 1, opt2_size, opt2_write, opt2_read, opt2_reset, SAVE_EXT_MAX_OPT2
+    SAVE_EXT_TAG_OPT2, 2, opt2_size, opt2_write, opt2_read, opt2_reset, SAVE_EXT_MAX_OPT2
 };
 const DoomoSaveExt *const doomo_save_ext_opt2 = &opt2_ext;

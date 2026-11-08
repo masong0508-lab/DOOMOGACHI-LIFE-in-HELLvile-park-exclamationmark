@@ -11,6 +11,8 @@
  *   TROPHY WALL     the whole unlocks registry with progress and hints
  *   JUKEBOX         every song and sound effect (unlock: MODE_JUKEBOX)
  *   ART GALLERY     textures, skies, sprites and the palette (MODE_GALLERY)
+ * (CL4) and an eighth book, the FIELD GUIDE (help and glossary, lib_help.c;
+ * not a wing: no completion, no unlock ids; see the end of this header).
  *
  * The free play island and the story overworld list the library through
  * the activities registry (ACTLOC_LIBRARY): the lobby in both modes, plus
@@ -86,5 +88,15 @@ int  library_wing_visited(int wing);
  * (tab) of a wing, or the selected book in the lobby. */
 #define LIB_ARG_DEMO 0x100
 #define LIB_ARG_TAB(a) ((a) & 0xFF)
+
+/* ---- (CL4 / clarity C12) the Field Guide: help and glossary ------------------ *
+ * The eighth book on the lobby's shelf (not a wing: no completion, no unlock
+ * ids), the Library's "Field Guide" activity, and the "Help" row of the
+ * island START menu and the story pause panel. Arg 0 opens its contents;
+ * HELP_ARG_PAGE(n) opens page n (0-based) at once; LIB_ARG_DEMO may be ORed in. */
+extern const struct DoomoScene SCENE_LIB_HELP;
+#define HELP_ARG_PAGE(n)    ((n) + 1)
+#define HELP_ARG_PAGE_OF(a) LIB_ARG_TAB(a)
+int lib_help_pages(void);               /* pages in the book */
 
 #endif

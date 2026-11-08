@@ -9,6 +9,7 @@
 #include "doomo/family.h"
 #include "doomo/save_ext.h"
 #include "doomo/save_budget.h"
+#include "doomo/tips.h"
 
 static int g_cfg_on;                      /* the fake platform keeps a config record */
 static int g_motor;                       /* U2: ... and a rumble motor */
@@ -92,14 +93,14 @@ TEST(u0_opt2_chunk_round_trip)
     opt_set(OPT_RUMBLE, 0);
     CHECK_EQ(e->write(buf, sizeof(buf)), e->size());
     opt_defaults();
-    CHECK(e->read(buf, e->size(), 1));
+    CHECK(e->read(buf, e->size(), e->version));        /* CL4: version 2, the tips' seen word first */
     CHECK_EQ(opt_get(OPT_MATURE), MATURE_CENSORED);
     CHECK_EQ(opt_get(OPT_LOSS), 0);
     CHECK_EQ(opt_get(OPT_RUMBLE), 0);
     CHECK_EQ(family_loss_enabled(), 0);
     /* a corrupt byte falls back to the default */
-    buf[0] = 200;
-    CHECK(e->read(buf, e->size(), 1));
+    buf[4] = 200;
+    CHECK(e->read(buf, e->size(), e->version));
     CHECK_EQ(opt_get(OPT_MATURE), MATURE_OFF);
     /* a short chunk (an older version) leaves the rest alone */
     opt_set(OPT_RUMBLE, 1);
@@ -107,6 +108,41 @@ TEST(u0_opt2_chunk_round_trip)
     CHECK_EQ(opt_get(OPT_RUMBLE), 1);
     e->reset();                                       /* an old save: loss to default */
     CHECK_EQ(opt_get(OPT_LOSS), 1);
+}
+
+TEST(cl4_seen_flags_ride_in_the_opt2_chunk)
+{
+    const DoomoSaveExt *e = doomo_save_ext_opt2;
+    uint8_t buf[SAVE_EXT_MAX_OPT2];
+    uint32_t n;
+    fresh(0);                                         /* no record: the chunk carries the flags */
+    tips_session_reset();
+    CHECK_EQ(e->version, 2);
+    CHECK(e->size() <= e->max_size);
+    tip_seen_merge((1u << TIP_ISLAND) | (1u << TIP_STUDIO));
+    opt_set(OPT_TIPS, 0);
+    n = e->write(buf, sizeof(buf));
+    CHECK_EQ(n, e->size());
+    CHECK_EQ(buf[0], 1u << TIP_ISLAND);                     /* the seen word first, little endian */
+    CHECK_EQ(buf[1], 1u << (TIP_STUDIO - 8));
+    tips_session_reset();
+    opt_set(OPT_TIPS, 1);
+    CHECK(e->read(buf, n, 2));
+    CHECK(tip_seen(TIP_ISLAND) && tip_seen(TIP_STUDIO) && !tip_seen(TIP_CARE));
+    CHECK_EQ(opt_get(OPT_TIPS), 0);                         /* no record here: the chunk carries it */
+    /* merging never forgets: a save without the flags keeps the ones already seen */
+    memset(buf, 0, 4);
+    CHECK(e->read(buf, n, 2));
+    CHECK(tip_seen(TIP_ISLAND));
+    /* a version-1 chunk (values only) still reads */
+    {
+        uint8_t v1[3] = { MATURE_OFF, 0, 1 };
+        CHECK(e->read(v1, 3, 1));
+        CHECK_EQ(opt_get(OPT_LOSS), 0);
+        CHECK_EQ(opt_get(OPT_TIPS), 0);                     /* not in it: unchanged */
+        CHECK(tip_seen(TIP_ISLAND));
+    }
+    opt_defaults();
 }
 
 TEST(u0_machine_record_written_and_read)
@@ -633,4 +669,77 @@ TEST(u5_code_scene_asks_and_reports)
     CHECK(scene_top() == &SCENE_TITLE);
     CHECK_EQ(seccode_scene_result(), 0);
     CHECK_EQ(seccode_tries_left(), 1);             /* backing out used no try */
+}
+
+TEST(cl4_seen_flags_and_tips_in_the_machine_record)
+{
+    fresh(1);
+    tips_session_reset();
+    opt_set(OPT_TIPS, 0);                              /* a machine-wide option: written at once */
+    CHECK_EQ(g_cfg[11], 1);                            /* tips + 1 */
+    tip_seen_merge((1u << TIP_ISLAND) | (1u << TIP_LIBRARY));
+    CHECK(!tips_dirty());                              /* merged flags are not "new" */
+    CHECK(opt_config_save());
+    CHECK_EQ(g_cfg[12], 1u << TIP_ISLAND);
+    CHECK_EQ(g_cfg[13], 1u << (TIP_LIBRARY - 8));
+    CHECK_EQ(g_cfg[14] | g_cfg[15] | g_cfg[16] | g_cfg[29], 0);
+    /* a new boot: the record brings both back */
+    tips_session_reset();
+    opt_defaults();
+    CHECK_EQ(opt_get(OPT_TIPS), 1);
+    CHECK(opt_config_load());
+    CHECK_EQ(opt_get(OPT_TIPS), 0);
+    CHECK(tip_seen(TIP_ISLAND) && tip_seen(TIP_LIBRARY) && !tip_seen(TIP_CARE));
+    /* an older record (byte 11 still 0) keeps the default: On */
+    g_cfg[11] = 0;
+    {
+        uint16_t c = 0xFFFFu;
+        int i, b;
+        for (i = 0; i < 30; i++) {
+            c ^= (uint16_t)((uint16_t)g_cfg[i] << 8);
+            for (b = 0; b < 8; b++) c = (uint16_t)((c & 0x8000u) ? ((c << 1) ^ 0x1021) : (c << 1));
+        }
+        g_cfg[30] = (uint8_t)c; g_cfg[31] = (uint8_t)(c >> 8);
+    }
+    opt_defaults();
+    CHECK(opt_config_load());
+    CHECK_EQ(opt_get(OPT_TIPS), 1);
+    /* Show all tips again writes the record at once */
+    g_cfg_writes = 0;
+    tips_reset();
+    CHECK_EQ(g_cfg_writes, 1);
+    CHECK_EQ(g_cfg[12] | g_cfg[13], 0);
+    CHECK(!tips_dirty());
+    /* a seen tip is written by the next save (opt_config_flush), not when its card closes */
+    tips_test_force(1);
+    opt_set(OPT_TIPS, 1);
+    scene_set(&SCENE_OPTIONS, 0);
+    idle(2);
+    CHECK_EQ(tip_once(TIP_CARE), 1);
+    idle(20);
+    g_cfg_writes = 0;
+    press(BTN_A);
+    CHECK(tip_seen(TIP_CARE));
+    CHECK_EQ(g_cfg_writes, 0);
+    CHECK(tips_dirty());
+    g_cfg_writes = 0;
+    CHECK_EQ(opt_config_flush(), 1);
+    CHECK_EQ(g_cfg_writes, 1);
+    CHECK(!tips_dirty());
+    CHECK_EQ(opt_config_flush(), 0);                   /* nothing new: no card write */
+    CHECK_EQ(g_cfg_writes, 1);
+    /* the record wins over a save's chunk for the switch, but the flags still merge */
+    {
+        uint8_t buf[SAVE_EXT_MAX_OPT2];
+        const DoomoSaveExt *e = doomo_save_ext_opt2;
+        opt_set(OPT_TIPS, 1);
+        tip_seen_merge(1u << TIP_PET);
+        e->write(buf, sizeof(buf));
+        tips_session_reset();
+        opt_set(OPT_TIPS, 0);
+        CHECK(e->read(buf, e->size(), e->version));
+        CHECK_EQ(opt_get(OPT_TIPS), 0);
+        CHECK(tip_seen(TIP_PET));
+    }
+    tips_session_reset();
 }

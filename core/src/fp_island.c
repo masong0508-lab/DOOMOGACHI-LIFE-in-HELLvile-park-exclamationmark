@@ -15,6 +15,7 @@
 #include "fp_island.h"
 #include "doomo/game.h"
 #include "doomo/plat_ext.h"
+#include "doomo/library.h"
 
 /* ====================================================================== */
 /* locations                                                                */
@@ -95,7 +96,7 @@ enum { E_APTS, E_MOVE_IN, E_SHOP, E_CAFE_SHOP, E_BLACK_MARKET, E_EXORCISE, E_PRA
        E_FUZZ_TALK, E_TREAT, E_WORKSHOP, E_ARENA, E_GRAVES, E_STROLL, E_PICNIC,
        E_VISIT_HELL, E_PEEK_WALL, E_CREATE_HILL, E_CREATE_HELL, E_RENT, E_AVATAR,
        E_NAME_ISLAND, E_SAVELOAD, E_OPTIONS, E_UNLOCKS, E_RECORDS, E_TITLE,
-       E_NEWS, E_ROSTER, E_FAMILY, E_PET, E_HERE, E_ACTIVITY, E_SOON, E_GENRE, E_CLOSE };
+       E_NEWS, E_ROSTER, E_FAMILY, E_PET, E_HERE, E_ACTIVITY, E_SOON, E_GENRE, E_CLOSE, E_HELP };
 
 #define MENU_MAX 24
 typedef struct {
@@ -126,6 +127,7 @@ static struct {
     uint8_t hold_full;           /* a full popped frame was drawn: the next update may hold it */
     uint8_t hub_full;            /* (perf) a clean full hub frame was drawn: the next update may hold it */
     int16_t hub_toast;           /* (perf, I8) ui_toast_steady() of that frame (0: no toast on it); the hold lasts while it is unchanged */
+    int16_t hub_tip;             /* (CL4) tip_steady() of that frame (0: no tip card on it), the same way */
     uint8_t dirty;               /* (perf) a button went down since the last full hub frame */
     uint8_t bs;                  /* (perf, I10) slices of a refresh built so far (0: not building) */
     uint32_t full_t;             /* the tick of the last full hub frame */
@@ -335,6 +337,7 @@ static void build_menu(const Loc *L)
         add(E_FAMILY, ICON_HOUSE, "Family", "Your household: care, add members, remember.");
         add(E_UNLOCKS, ICON_STAR, "Unlocks", "Everything you've earned.");
         add(E_RECORDS, ICON_CHECK, "Town records", "Island statistics.");
+        add(E_HELP, ICON_CHECK, "Help", "The Field Guide: every rule and word, explained.");   /* CL4 */
         add(E_TITLE, ICON_ARROW_L, "Back to title", "Leave the island (save first!).");
         break;
     default: break;
@@ -569,6 +572,13 @@ int fp_island_hub_held(void) { return hub_held; }
 static int hub_hold_off;                 /* test hook: never hold the hub (every frame drawn in full) */
 void fp_island_hub_hold_off(int off) { hub_hold_off = off; }
 
+/* (CL4) the same for a tip card: one that was steady on the kept frame is still the same card; without one, none
+ * may have appeared */
+static int hub_tip_same(void)
+{
+    return I.hub_tip ? tip_steady() == I.hub_tip : !tip_active();
+}
+
 /* (perf, I8) the toast state a held hub frame needs: a toast that was steady when the frame was drawn is on both
  * pages and still is the same steady toast; without one, none may have appeared */
 static int hub_toast_same(void)
@@ -641,6 +651,7 @@ static void run_entry(const Entry *e)
     case E_OPTIONS: scene_push(&SCENE_OPTIONS, 0); break;
     case E_UNLOCKS: scene_push(&SCENE_UNLOCKS, 0); break;
     case E_RECORDS: town_records(); break;
+    case E_HELP: scene_push(&SCENE_LIB_HELP, 0); break;                 /* CL4: the Field Guide */
     case E_TITLE: ui_confirm("Back to the title screen? Unsaved changes will be lost!", cb_title); break;
     case E_NEWS: scene_push(&SCENE_NEWS, 0); break;
     case E_ROSTER: scene_push(&SCENE_ROSTER, FP_ROSTER_ARG_BROWSE); break;
@@ -772,8 +783,10 @@ static void island_enter(int arg)
                            nm, town_count(-1));
             ui_say(-1, fp_tmp);
             /* one dialogue press fewer: the controls hint is a toast, not a second box. CL1: a hint toast, so it
-             * goes when the hub does (it used to scroll on over the shop, the apartments and the title) */
-            ui_toast_kind(STR_ICON_A " Visit a place  START Menu", UI_TOAST_HINT);
+             * goes when the hub does (it used to scroll on over the shop, the apartments and the title).
+             * CL4: or the island's first-time tip card, which has the whole button map */
+            if (!tips_enabled() || tip_seen(TIP_ISLAND))
+                ui_toast_kind(STR_ICON_A " Visit a place  START Menu", UI_TOAST_HINT);
         }
         fp_fx_burst(fp_sw() / 2, fp_sh() / 3, FX_CONFETTI, 30);
     }
@@ -819,6 +832,7 @@ static void menu_update(void)
     if (btn_repeat(BTN_DOWN)) { I.esel = (I.esel + 1) % I.nent; audio_sfx(SFX_CURSOR); }
     if (I.esel < I.etop) I.etop = I.esel;
     if (I.esel >= I.etop + vis) I.etop = I.esel - vis + 1;
+    if (I.mloc && I.mloc->kind == LOC_TOWN_HALL && I.menu_t > 8) tip_once(TIP_TOWN_HALL);   /* CL4 */
     if (btn_pressed(BTN_A)) { run_entry(&isl()->ent[I.esel]); return; }
     if (btn_pressed(BTN_START) && I.mloc == &menu_loc && fp_is_freeplay()) { quick_save(); return; }
     if (btn_pressed(BTN_B)) { I.menu_open = 0; audio_sfx(SFX_CANCEL); }
@@ -877,6 +891,7 @@ static void island_update(void)
     if (!I.menu_open && !I.hold && I.hub_full && plat_hold_frame(2)) { I.hold = 3; I.hub_full = 0; }
     if (btn_down(0xFFFFFFFFu)) I.dirty = 1;
     if (I.menu_open) { menu_update(); return; }
+    if (fp_is_freeplay()) tip_once(TIP_ISLAND);                  /* CL4: the button map, once */
     I.idle++;
     if (I.idle == RENT_AUTO_IDLE && fp_rent_day() != doomo_town.day + 1) collect_rent_now();   /* LS-QA */
     if (btn_repeat(BTN_LEFT)) I.sel = move_dir(I.sel, -1, 0);
@@ -1109,13 +1124,14 @@ static void hub_frame_done(void)
 {
     /* a full frame with the menu fully popped, drawn on this tick and clean of overlays: the next update holds it */
     if (I.menu_open && I.menu_t >= 12 && ui_pop_scale(I.menu_t) == 256 && !plat_draw_skipped() &&
-        !ui_toast_pending() && !ui_dialog_active() && !fp_fx_any())
+        !ui_toast_pending() && !ui_dialog_active() && !fp_fx_any() && !tip_active())
         I.hold_full = 1;
     if (!I.menu_open && !plat_draw_skipped()) {
         I.full_t = doomo_frame_count();
         I.hub_toast = (int16_t)ui_toast_steady();
+        I.hub_tip = (int16_t)tip_steady();
         I.hub_full = (uint8_t)(!hub_hold_off && !I.dirty && (!ui_toast_pending() || I.hub_toast) &&
-                               !ui_dialog_active() && !fp_fx_any());
+                               (!tip_active() || I.hub_tip) && !ui_dialog_active() && !fp_fx_any());
         I.dirty = 0;
     }
 }
@@ -1139,8 +1155,8 @@ static void island_draw(void)
      * without a press, a toast, a dialogue, a particle or the clock, so only the news strip (which refills its own
      * bar) is repainted. The hub's animation therefore steps every HUB_HOLD ticks. */
     if (I.hold == 3) {
-        if (!I.menu_open && I.live && !I.dirty && hub_toast_same() && !ui_dialog_active() && !fp_fx_any() &&
-            plat_hold_frame(4)) {
+        if (!I.menu_open && I.live && !I.dirty && hub_toast_same() && hub_tip_same() && !ui_dialog_active() &&
+            !fp_fx_any() && plat_hold_frame(4)) {
             int age = (int)(doomo_frame_count() - I.full_t);
             int held = 0;
             if (!I.bs && age < HUB_HOLD - HUB_SLICES + 1) held = 1;            /* not time to build yet */
@@ -1152,6 +1168,7 @@ static void island_draw(void)
                 I.live = 0;
                 hub_held++;
                 if (I.hub_toast) ui_toast_hold();      /* it is on the kept page: only its timer runs */
+                if (I.hub_tip) tip_hold();             /* (CL4) and so is the tip card */
                 fp_ticker(sh - 13, style);
                 return;
             }
@@ -1159,7 +1176,7 @@ static void island_draw(void)
         if (slice < 0) hold_drop();
     }
     if (I.hold && slice < 0) {
-        if (I.menu_open && I.live && !ui_toast_pending() && !ui_dialog_active() && !fp_fx_any() &&
+        if (I.menu_open && I.live && !ui_toast_pending() && !ui_dialog_active() && !fp_fx_any() && !tip_active() &&
             plat_hold_frame(4)) {
             I.live = 0;
             draw_menu(1);
@@ -1172,6 +1189,7 @@ static void island_draw(void)
     if (slice >= 0) {
         int last = slice == HUB_SLICES - 1;
         if (I.hub_toast && !last) ui_toast_hold();    /* the steady toast is on the shown page; the new one gets it last */
+        if (I.hub_tip && !last) tip_hold();           /* (CL4) the same for a steady tip card */
         if (!last) {
             /* the shown page's news strip keeps moving: drawn first, before the beam gets down to it */
             plat_build_frame(PLAT_BUILD_SHOWN);

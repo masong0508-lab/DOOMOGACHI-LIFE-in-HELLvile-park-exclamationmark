@@ -136,6 +136,7 @@ enum {
     OPT_MATURE = OPT2_FIRST,  /* Off / Censored / On / On + pack (ending.h MATURE_*); machine-wide */
     OPT_LOSS,                 /* family loss (F6): 0 off, 1 on; family_loss_set() follows          */
     OPT_RUMBLE,               /* controller rumble, apart from Screen shake: 0 off, 1 on; machine-wide */
+    OPT_TIPS,                 /* (CL4) first-time tip cards (tips.h): 0 off, 1 on; machine-wide */
     OPT2_END
 };
 #define OPT2_COUNT (OPT2_END - OPT2_FIRST)

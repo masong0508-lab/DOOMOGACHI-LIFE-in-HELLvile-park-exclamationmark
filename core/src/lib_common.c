@@ -63,6 +63,17 @@ const LibWingInfo lib_wings[LIB_WING_COUNT] = {
       ICON_SPARK, PAINT_ROSE, WIN_CREAM, WIN_CUTE, &SCENE_LIB_GALLERY },
 };
 
+/* (CL4 / clarity C12) the Field Guide: the eighth book on the lobby's shelf, after the wings. Not a wing:
+ * no completion and no visited bit (lib_help.c). */
+#define LIB_BOOKS (LIB_WING_COUNT + 1)
+#define BOOK_HELP LIB_WING_COUNT
+static const LibWingInfo help_book = {
+    STR_ICON_CHECK " FIELD GUIDE", "Field Guide",
+    "Every rule and every word in the game, explained. Read it before you lick anything. Especially the Bestiary.",
+    ICON_CHECK, PAINT_FOREST, WIN_MINT, WIN_MINT, &SCENE_LIB_HELP
+};
+static const LibWingInfo *book(int w) { return w == BOOK_HELP ? &help_book : &lib_wings[w]; }
+
 /* ====================================================================== */
 /* small helpers                                                            */
 int lib_sw(void) { return plat_screen_w(); }
@@ -652,7 +663,7 @@ static void lobby_enter(int arg)
 {
     lob.demo = (arg & LIB_ARG_DEMO) != 0;
     if (lob.demo) lib_demo_island();
-    if (arg >= 0 && LIB_ARG_TAB(arg) < LIB_WING_COUNT) lob.sel = (uint8_t)LIB_ARG_TAB(arg);
+    if (arg >= 0 && LIB_ARG_TAB(arg) < LIB_BOOKS) lob.sel = (uint8_t)LIB_ARG_TAB(arg);
     lob.t = 0;
     lob.away = 0;
     lob.sel_t = 0;
@@ -674,13 +685,14 @@ static void lobby_leave(void)
 
 static int book_open(int w)
 {
-    return library_wing_open(w) || lob.demo;
+    return w == BOOK_HELP || library_wing_open(w) || lob.demo;
 }
 
 static void lobby_update(void)
 {
     int old = lob.sel;
     lob.t++;
+    if (lob.t > 8 && !lob.demo && tip_once(TIP_LIBRARY)) return;    /* CL4: the books + the Field Guide */
     if (lob.sel_t < 60000) lob.sel_t++;
     if (lob.nope_t < 60000) lob.nope_t++;
     /* back from a book: its numbers may have changed */
@@ -688,8 +700,8 @@ static void lobby_update(void)
         lob.away = 0;
         lobby_refresh();
     }
-    if (btn_repeat(BTN_LEFT)) lob.sel = (uint8_t)((lob.sel + LIB_WING_COUNT - 1) % LIB_WING_COUNT);
-    if (btn_repeat(BTN_RIGHT)) lob.sel = (uint8_t)((lob.sel + 1) % LIB_WING_COUNT);
+    if (btn_repeat(BTN_LEFT)) lob.sel = (uint8_t)((lob.sel + LIB_BOOKS - 1) % LIB_BOOKS);
+    if (btn_repeat(BTN_RIGHT)) lob.sel = (uint8_t)((lob.sel + 1) % LIB_BOOKS);
     if (lob.sel != old) {
         lob.sel_t = 0;
         lob.nope_t = 999;
@@ -698,7 +710,7 @@ static void lobby_update(void)
     if (btn_pressed(BTN_A)) {
         if (book_open(lob.sel)) {
             lob.away = 1;
-            scene_push(lib_wings[lob.sel].scene, lob.demo ? LIB_ARG_DEMO : 0);
+            scene_push(book(lob.sel)->scene, lob.demo ? LIB_ARG_DEMO : 0);
             return;
         }
         lob.nope_t = 0;
@@ -791,10 +803,10 @@ static void draw_mini_shelf(int x, int y, int w, uint32_t seed)
 
 static void draw_book(int x, int y, int bw, int bh, int w, int selected, int open)
 {
-    const LibWingInfo *wi = &lib_wings[w];
+    const LibWingInfo *wi = book(w);
     uint8_t c0, c1, c2;
     char g[2];
-    int pct = lob.pct[w];
+    int pct = w < LIB_WING_COUNT ? lob.pct[w] : 0;
     if (open) {
         c0 = PAL_PAINT(wi->paint, 0); c1 = PAL_PAINT(wi->paint, 1); c2 = PAL_PAINT(wi->paint, 2);
     } else {
@@ -844,7 +856,7 @@ static void draw_book(int x, int y, int bw, int bh, int w, int selected, int ope
 
 static void draw_books(int sw, int shelf_y, int bw, int bh)
 {
-    int gap = lib_big() ? 10 : 7, n = LIB_WING_COUNT, i;
+    int gap = lib_big() ? 6 : 4, n = LIB_BOOKS, i;          /* (CL4) eight books: closer together */
     int total = n * bw + (n - 1) * gap, x0 = (sw - total) / 2;
     /* the display shelf */
     plat_rect(x0 - 10, shelf_y, total + 20, 5, PAL_RAMP(RAMP_WOOD, 4));
@@ -895,7 +907,7 @@ static const char *lobby_quip(int status)
         const DoomoUnlock *u = unlock_by_id(lob.sel == LIB_WING_JUKEBOX ? LIB_UL_JUKEBOX : LIB_UL_GALLERY);
         return u ? u->how : "That one's locked!";
     }
-    if (lob.sel_t < 150) return lib_wings[lob.sel].blurb;
+    if (lob.sel_t < 150) return book(lob.sel)->blurb;
     if (town_is_night())
         return quips_night[(lob.quip + lob.t / 150) % DOOMO_COUNTOF(quips_night)];
     return quips_day[(lob.quip + lob.t / 150) % DOOMO_COUNTOF(quips_day)];
@@ -959,9 +971,12 @@ static void lobby_draw(void)
         /* the tail of the speech bubble towards Quillby */
         plat_rect(x - 3, y + 10, 4, 3, st->outline);
         plat_rect(x - 1, y + 11, 3, 1, st->fill_hi);
-        ui_text_shadow(x + 6, y + 4, lib_wings[w_sel].name, st->accent, st->fill_lo);
-        if (!open) lib_padlock(x + 10 + ui_text_width(lib_wings[w_sel].name), y + 4, st->accent);
-        {
+        ui_text_shadow(x + 6, y + 4, book(w_sel)->name, st->accent, st->fill_lo);
+        if (!open) lib_padlock(x + 10 + ui_text_width(book(w_sel)->name), y + 4, st->accent);
+        if (w_sel == BOOK_HELP) {
+            doomo_snprintf(line, sizeof(line), "%d pages", lib_help_pages());
+            ui_text(x + w - 8 - ui_text_width(line), y + 4, line, st->text_dim);
+        } else {
             static const char *const what[LIB_WING_COUNT] = {
                 "seen", "known", "parts", "in bag", "won", "songs", "exhibits"
             };
@@ -974,8 +989,9 @@ static void lobby_draw(void)
             ui_text(x + w - 8 - ui_text_width(line), y + 4, line, st->text_dim);
         }
         ui_text_wrap(x + 6, y + 15, w - 12, lobby_quip(status), ink, 1);
-        ui_bar(x + 6, y + h - 10, w - 12, 6, lob.pct[w_sel], 100,
-               lob.pct[w_sel] >= 100 ? PAL_UI_GOLD : PAL_PAINT(lib_wings[w_sel].paint, 1));
+        if (w_sel < LIB_WING_COUNT)
+            ui_bar(x + 6, y + h - 10, w - 12, 6, lob.pct[w_sel], 100,
+                   lob.pct[w_sel] >= 100 ? PAL_UI_GOLD : PAL_PAINT(lib_wings[w_sel].paint, 1));
     }
     /* dust motes in the window light */
     {
@@ -1013,6 +1029,8 @@ static const DoomoActivity lib_activities[] = {
       ICON_NOTE, 0, LIB_UL_JUKEBOX, &SCENE_LIB_JUKEBOX, 0 },
     { "Art Gallery", "Textures, skies, sprites, paint", ACTLOC_LIBRARY, FP,
       ICON_SPARK, 0, LIB_UL_GALLERY, &SCENE_LIB_GALLERY, 0 },
+    { "Field Guide", "Every rule and word, explained", ACTLOC_LIBRARY, FP,     /* CL4 */
+      ICON_CHECK, 0, ACT_ALWAYS, &SCENE_LIB_HELP, 0 },
     { NULL, NULL, 0, 0, 0, 0, 0, NULL, 0 }
 };
 const DoomoActivity *const doomo_activities_collections = lib_activities;

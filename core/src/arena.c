@@ -8,6 +8,7 @@
  * SCENE_COMBAT machinery.
  */
 #include "combat_int.h"
+#include "doomo/tips.h"
 
 enum { AR_INTRO, AR_FIGHT, AR_BREAK, AR_OVER, AR_PAUSE };
 
@@ -141,6 +142,8 @@ static void ar_update(void)
     ar_t++;
     switch (ar_state) {
     case AR_INTRO:
+        if (ar_t > 4) tip_once(TIP_SHOOTER);                         /* CL4: the controls, once */
+        if (tip_active()) { ar_t = DOOMO_MIN(ar_t, 30); return; }    /* the first wave waits for it */
         combat_tick();
         if (ar_t > 60) start_wave();
         return;

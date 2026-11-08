@@ -936,6 +936,7 @@ static void studio_update(void)
     if (studio.picking) { st_picker_update(); return; }
     if (studio.pop_n) { popup_update(); return; }
     if (studio.tab == STAB_STAGE && stage_fullscreen()) { tab_stage_update(); return; }
+    if (studio.t > 8 && tip_once(TIP_STUDIO)) return;               /* CL4: the tabs, once */
     global_input();
     if (btn_released(BTN_SELECT) && studio.sel_held) {
         studio.sel_held = 0;
