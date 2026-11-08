@@ -41,7 +41,7 @@ Contents:
 | **T2** | the database reader `talk_db.c` and the native file hook | **done** (TK1) |
 | **T3** | the free-text parser (Dreamcast and native): `talk_lex.c`, `talk_parse.c`, `rules/en.tsv`, a labelled corpus of 1,519 lines | **done** (TK2) |
 | **T4** | the safety gate: the input classifier S1, the audience gate S2 (`talk_safe_ctx`, one source of "minor"), the output lint S3, the template lints TK1-TK9, the safety and adversarial corpora, the hashed hate list, the property tests | **done** (TK2): green. The generator-level halves of P1-P8 go live with T5a / T6 |
-| **T5a** | the generator: `talk_gen.c` (the grammar VM, guards, fillers, sim-fact callbacks, novelty, re-picks, the bubble fit, the per-conversation RNG, the trace), the `.tlk` grammar compiler `talkc_gen.py`, the adjacency table `acts.tsv`, a plain exchange (the gate first, who answers, reactions between residents) | **done** (TK3); a **starter** English bank (668 alternatives in 11 files) so every act, refusal and part plays |
+| **T5a** | the generator: `talk_gen.c` (the grammar VM, guards, fillers, sim-fact callbacks, novelty, re-picks, the bubble fit, the per-conversation RNG, the trace), the `.tlk` grammar compiler `talkc_gen.py`, the adjacency table `acts.tsv`, a plain exchange (the gate first, who answers, reactions between residents) | **done** (TK3); a **starter** English bank (718 alternatives in 12 files, the K-10 grief and comfort banks included) so every act, refusal and part plays |
 | T5b | the English line banks (about 6,000 alternatives, design 3.6) and the owner's review | to do: the starter bank is about a ninth of it |
 | T6 | the drama manager, outcomes, the talk memory chunk | to do |
 | **T7** | the census (`core/tools/talk_census.c`: the three tiers, Chao1, the quality checks Q1-Q6, the conversation tier), the grid `census_en.tsv`, `make -C core talk-census`, the smoke census in `make test`, the Q7 review sheet `talk_sample.py` | **done** (TK3): the tools and the measurement. The full run's numbers are in 6d: Skeleton, Meaning, conversations and quality meet the design's targets; **Surface does not** (it needs T5b's bank); Q7 (a person rating 300 exchanges) has not been done |
@@ -121,6 +121,7 @@ What T5a adds (section 6c), each with its test:
 | **One everyday swear a conversation, from a blunt adult** (K-9, P8): an everyday swear needs `blunt&adults_only&!kid_present` (talkc refuses it otherwise), the generator skips swear lines once the conversation has had one, and a catchphrase with a swear counts too; 600 conversations of blunt adults trading insults: at most one each, the capped words never | `talkc_gen.py`; `pick`; `talk_gen_swear_cap`, P8 |
 | **Callbacks are true** (Q4): a `cb.*` line must stand on a fact predicate (talkc refuses one that does not), and the fact is read from the sim's accessors when the line is made; the census re-reads them for every callback line | `talkc_gen.py`; `talk_gen_fact`; `talk_gen_parts_and_callbacks`, the census |
 | **The safety banks** (`grammar/en/safety.tlk`): no topic slot (no echo), no register word, no catchphrase, no LOVE face, the reviewed `nojoke` tag; `distress` and `end` banks are refusal banks for TK7 too; the `safe` fallback has no guard, no filler and no register word, so it plays in any room | `talkc_gen.py`, `talkc_safe.py`; 15 seeded bad grammars |
+| **Grief is not a punchline** (K-10, SCRIPT_STYLE R6). A grief or loss topic (the lexicon's `grief` flag, `TCF_GRIEF`: grief, mourning, condolences, loss, memorial, funeral) takes the sincere `grief` bank (`grammar/en/grief.tlk`) **whatever the player's act** (the safety acts keep their own banks, which are sincere already): the core line alone, no opener, callback, tag or hand-off, and a reply act the adjacency table allows after the player's act (a joke or a tease about it gets a quiet "not about this", never a laugh). One other resident may add a sincere `comfort` line; the pet stays quiet. A grief word is never filled into any other line (an association of another topic, the talk-memory callback). A household member who lost someone in the last 28 town days (`fact.loss`, read from `family_memorial*`; a move away is not mourned as a death) may name them (`{lost}`). talkc refuses a grief or comfort rule without its `act:` or the reviewed `nojoke` tag, a register word, sub-rule, catchphrase, LOVE face or `[JMAT]` in one, `{lost}` anywhere else, and a full bank that leaves any non-safety act without a grief line that needs no guard but the act's own. Death, ghosts and graves stay the game's jokes | `talk_gen.c` (`grief_line`, `fill_concept`, `assoc_pick`, `loss_of`), `talkc_gen.py`; `talk_gen_grief` (the engine), `talk_gen_property_grief` (every act x the 6 topics x adults', kids' and pet rooms, 4 seeds each: every line sincere and core-only, at most one comfort line, the household loss named, ghost / graveyard / zombie still joked about, a remembered grief topic never in a joke), K-10 in `talk_gen_property_rooms` and the census check `QF_K10_GRIEF`; 5 seeded bad grammars and a bad lexicon flag |
 
 ---------------------------------------------------------------------------
 
@@ -489,6 +490,11 @@ talk_gen_exchange(&c, &u, &x, NULL);    /* the gate, then 1-4 lines: x.line[k].w
   reaction between residents; `pet` for the Boreagotchi, which only says
   "beep."). Its rule's `act:` is the reply act, which `acts.tsv` must allow
   (talkc refuses one it does not: Q2 by construction).
+* **Grief and loss** (K-10, section 2): a topic with the lexicon's `grief`
+  flag takes the rules `grief` / `grief.*` instead of `core.<act>`,
+  whatever the act (not the safety acts): only the rules whose `act:` may
+  answer the player's act, the core part alone (`TLF_SINCERE`). A reaction
+  to it is a `comfort` line (agree or backchannel) or nothing.
 * **The opener** (30%, more for a loud speaker), **the callback** (35%),
   **the tag** (40%: the catchphrase once a conversation, a persona tic or a
   button) and **the hand-off** (25%, to another participant) are optional.
@@ -534,13 +540,23 @@ talk_gen_exchange(&c, &u, &x, NULL);    /* the gate, then 1-4 lines: x.line[k].w
   EXPRESSION + 2% x QUIRK, at most 75%; two reactions at most, four lines
   at most) with an act the adjacency table allows after it (agree,
   disagree, laugh, tease, joke, a backchannel) chosen by stance clash and
-  persona. Refusals, distress, deflections and K-7 get no reactions; a
+  persona. Refusals, distress, deflections and K-7 get no reactions; after
+  a grief line (K-10) one sincere `comfort` line at most, never the pet; a
   romance act gets its target's answer only (`TalkConv.consent`, which T6
   and the sim decide; a no marks the target refused today).
 * **What it costs**: no static RAM; `TalkConv` 128 B (the conversation,
-  T6 keeps it), `TalkLine` 104 B, `TalkExchange` 420 B; about 1.5 KB of stack a line (five part
-  buffers, one decoded template per nesting level, at most 4). Everything
-  is read through `talk_db_read` (SPU RAM on the PS1).
+  T6 keeps it), `TalkLine` 104 B, `TalkExchange` 420 B. Stack, measured
+  with `-fstack-usage` on MIPS (`-Os -march=r3000`): `gen_line` 1,480 B
+  (the five part buffers), `talk_gen_line` 456 B (the per-line context),
+  `exchange` 632 B, 264 B per template nesting level (at most 5) and the
+  S3 lint's 440 + 304 B: about 5 KB in the worst case. Everything is read
+  through `talk_db_read` (SPU RAM on the PS1; section 7 has the count).
+* **One exchange runs synchronously** (`talk_gen_exchange`). The design's
+  risk note (spread the work over frames, test with the scratch poisoned
+  between frames) is T6's and TP2's: `talk_gen_line` makes one line and
+  `TalkConv` (128 B) holds everything between lines, so the drama manager
+  can step one line a frame with it as the cursor; nothing here keeps a
+  pointer into scratch between calls.
 
 **The grammar** (`core/data/talk/grammar/<lang>/` and `voice/<lang>/`,
 compiled by `core/tools/talkc_gen.py`, which documents the syntax and the
@@ -560,12 +576,14 @@ bank format):
   `.is`, `.has`, `.does`, `.was`; `:pl`, `:indef`, `:def`, `:lemma`,
   `:cap`, `:up`, `:s`), the speaker's `{food}`, `{hobby}`, `{music}`,
   `{fear}`, `{hate}`, `{like}`, `{job}`, `{mem}`; the names `{you}`, `{me}`,
-  `{them}`, `{other}`, `{partner}`, `{petname}`; `{catch}` the catchphrase;
+  `{them}`, `{other}`, `{partner}`, `{petname}`, `{lost}` (K-10: the one the
+  speaker lost lately; grief and comfort banks only); `{catch}` the catchphrase;
   `{rule.name}` a sub-rule; the story's line codes `{.}`, `{..}`, `{r}`...;
   a face `[HAPPY]`, `[LOVE]`... Fillers add their own guards (`{x}` needs a
   topic, `{them}` a resident addressed, `{job}` a job).
 * **Guards**: the predicates of `talk.h` `TGP_*` (the room, the speaker,
-  the line, the facts, the topic's forms) and their values (`stance=`,
+  the line, the facts (`fact.loss`: K-10), the topic's forms and
+  `x.grief`) and their values (`stance=`,
   `speaker=`, `type=`, `mood=`, `rel=`, `root=`, `chapter=`, `time=`,
   `beat=`, `tone=`, `pact=`, `act=`, `prob=`).
 * **What talkc refuses** (besides TK1-TK9): an unknown predicate, value,
@@ -577,19 +595,25 @@ bank format):
   output lint's hate list refuses; a topic slot or a register word in a
   refusal or the pet's bank; a `safe` line with a guard or a filler;
   sub-rules that call themselves or nest deeper than 4; a character the
-  font or the story codec cannot do. 15 seeded bad grammars
-  (`core/tests/talk_bad/gen_*.tlk`) must each fail with their message.
+  font or the story codec cannot do; K-10: a `grief` or `comfort` rule with
+  no `act:` (comfort: agree or backchannel) or no `nojoke` tag, a register
+  word, sub-rule, catchphrase, LOVE face or `[JMAT]` in one, `{lost}`
+  outside them, and a full bank where some act that is not a safety act has
+  no grief line it may get with no guard but its own (`pact=` / `act=`).
+  20 seeded bad grammars (`core/tests/talk_bad/gen_*.tlk`) must each fail
+  with their message.
 * **The banks**: `TB_GRAMMAR` (rules, alternatives, guard terms, symbols,
   the entry table, the acts table, the likes / catchphrase / cast / job
   maps) and `TB_STRINGS` (the template texts, the story's Huffman code).
   `TB_VOICE` stays unused: the voice rules are ordinary rules.
 
-**The starter bank** (TK3; T5b grows it to the design's ~6,000): 668
-alternatives in 355 rules over 11 files: every act has replies (64 entry
+**The starter bank** (TK3; T5b grows it to the design's ~6,000): 718
+alternatives in 373 rules over 12 files: every act has replies (64 entry
 points, the romance and safety ones included), openers by act class, mood
 and voice, callbacks for every fact kind, tags and 16 persona tics, hand-
 offs, six reaction kinds, kid lines, the refusal / distress / K-7 / safe /
-pet banks, and 17 of the cast in their SCRIPT_STYLE section 7 voices
+pet banks, the sincere grief and comfort banks (K-10: 50 lines with kid,
+elder, loss and cast variants), and 17 of the cast in their SCRIPT_STYLE section 7 voices
 (Mayor Giggs' tea-party patter, Nana's "sweet pea", Bonejangles' servo and
 Bandstand Tapes, Pip's patrol, Father Fuzz's hugs, Dr. Bloom's dry button,
 Hattie's set, Vex's "- V", Grumbleguts' "Needs salt." and "Open late,
@@ -597,7 +621,8 @@ darlin'.", Wisp's lower case, Mother Nox's soup, Clinker's numbers,
 Vapula's weather). PG-21 for adults only where the guards allow it,
 kid-safe everywhere else; no `jmat` (Mature) line: Talk never pushes a
 mature slot itself. **The distress lines (K-11) await the owner's approval
-of their wording (design D6).**
+of their wording (design D6); the grief lines (K-10) are the agent's too
+and go to the owner with the Q7 sheet.**
 
 **Writing a line**: add it to the right rule in `grammar/en/*.tlk` (or a new
 rule with a guard and an `act:`), run `make -C core talk-check talk`, then
@@ -618,7 +643,8 @@ a quality check, with the reason.
 **The grid** (fixed, so the numbers are reproducible): 32 residents (the
 16 persona types across both districts, 4 of the story cast, 20 adults, 4
 elders, 4 teens, 4 children; `talk_census --pick` made the list), 400
-topics taken in turn from every talkable category, the 55 player acts that
+topics taken in turn from every talkable category plus the 6 grief and loss
+topics (K-10, always in), the 55 player acts that
 are neither romance nor safety (the property tests cover those), and per
 context a mood band (7), a relationship band to the player (6), the
 addressee (a resident 70%, everyone 30%), a talk-memory state (4), the time
@@ -652,7 +678,10 @@ like; Q3 every voice guard of every alternative used re-checked against the
 resident's own data, the exclamation budget, a tic from their own type; Q4
 every callback re-read from the sim; Q5 above; Q6 the S3 lint (and the
 strict probe, no LOVE face, no romance rule in a kid room, no Mature
-variant without the option and the adults). Q7 is the human read.
+variant without the option and the adults); K-10 (`QF_K10_GRIEF`): a grief
+topic answered with anything but a sincere core line (an opener, tag,
+callback or hand-off, a joke, laugh, tease or mock act), or a grief word in
+a line that is not sincere. Q7 is the human read.
 
 ```
 make -C core talk-census                    # the full run (exit 1 if a target is missed)
@@ -661,25 +690,28 @@ python3 core/tools/talk_sample.py draw --n 300 --out review.tsv    # Q7: rate, t
 python3 core/tools/talk_sample.py score review.tsv                 # mean >= 3.5, <= 2% rated 1
 ```
 
-**The full run** (TK3, the starter bank; 2,000,000 contexts and 2,000,000
-conversations, seed 20261108; 280 s for the contexts and 878 s for the
-conversations, about 19 CPU minutes, 31 minutes on the shared 4-CPU
-build machine; log in the TK3 evidence):
+**The full run** (the TK3 landing: the starter bank with K-10's grief and
+comfort banks and the 6 grief topics in the grid; 2,000,000 contexts and
+2,000,000 conversations, seed 20261108; 303 s for the contexts and 947 s
+for the conversations, 24 minutes on the shared 4-CPU build machine (31 in
+an earlier, busier run); log in the TK3 evidence):
 
 | Measure | Full run | Target (design 3.7) | |
 |---|---|---|:-:|
-| Contexts | 2,000,000 (856,770 with a child in the room), 3,400,734 lines | | |
-| Quality failures (Q1-Q4, Q6) | **0** | 1% or less | met |
+| Contexts | 2,000,000 (856,770 with a child in the room), 3,392,714 lines | | |
+| Quality failures (Q1-Q4, Q6, K-10) | **0** | 1% or less | met |
 | S3 lint hits | **0** | 0 | met |
-| Surface | 443,391 distinct (22.2% unique), Chao1 1,540,037 | 1,000,000 distinct | **missed** |
-| Skeleton | 363,576 distinct (18.2% unique), Chao1 1,003,645 | 100,000 | met |
-| Meaning | 42,417 distinct (2.1% unique), Chao1 68,488 | 5,000 | met |
-| Conversations | 1,999,912 of 2,000,000 distinct (differ in 2 or more of 6 exchanges) | 1,000,000 | met |
-| Q5 (a line twice in one conversation) | 8,172 conversations (0.41%) | inside the 1% failure bar | met |
+| Surface | 438,891 distinct (21.9% unique), Chao1 1,522,818 | 1,000,000 distinct | **missed** |
+| Skeleton | 360,151 distinct (18.0% unique), Chao1 997,117 | 100,000 | met |
+| Meaning | 42,036 distinct (2.1% unique), Chao1 67,009 | 5,000 | met |
+| Conversations | 1,999,886 of 2,000,000 distinct (differ in 2 or more of 6 exchanges) | 1,000,000 | met |
+| Q5 (a line twice in one conversation) | 9,683 conversations (0.48%) | inside the 1% failure bar | met |
 
 `make -C core talk-census` therefore exits 1 ("a target was missed"):
 Surface. Chao1 estimates about 1.5 million Surface variants reachable
-from the starter bank, but 2,000,000 draws see only 443,391 of them: the
+from the starter bank, but 2,000,000 draws see only 438,891 of them (the
+run before K-10 saw 443,391: the 50 sincere grief lines have few fillers,
+so a grief topic repeats more; that is the point of them): the
 same lines come up too often (most residents share the generic
 alternatives; a short reaction or a safe line is the same text in every
 room). That is what T5b's ~6,000 alternatives are for; the generator does
@@ -699,7 +731,8 @@ the grid (what the player did, about what, who is in the room, the lines,
 an empty rating), with each line's template (file:line) in a last column
 for the writer; `score` reports the mean, the share of 1s, PASS or FAIL and
 the templates of every line rated 1 or 2. **Not done yet**: a sheet for
-the owner is in the TK3 evidence; the review is T5b's release gate.
+the owner is in the TK3 evidence (`q7_review_sheet_k10_seed7.tsv`, drawn
+after K-10, with 5 grief exchanges); the review is T5b's release gate.
 
 ---------------------------------------------------------------------------
 
@@ -732,7 +765,7 @@ the rest-of-line scan, a 161 B window). A line past the token cap costs
 one more tagger pass per 20-odd bytes (at most 160). The PS1 links only
 the S2 / S3 half once T5a calls it.
 
-**After TK3 (T5a, T7)**: GRAMMAR 13,852 B and STRINGS 16,566 B stored
+**After TK3 (T5a, T7), before K-10**: GRAMMAR 13,852 B and STRINGS 16,566 B stored
 (25,603 B raw) for the starter bank's 355 rules, 668 alternatives, 466
 guard terms, 77 symbols and 660 template strings, with the 1,000-entry
 roster job map (2,000 B) and the likes, catchphrase and cast maps. Both are
@@ -750,9 +783,29 @@ and the gate together**: the generator alone is over it on MIPS, so TP2
 must split it (the design's third part) or trim it (the trace and the
 exchange stand-in are host-and-T6 conveniences); measured here so TP2 starts
 from the number. `talk_safe.c` grew by the probe (one flag through the lint
-core). Per line: about 1.5 KB of stack, and a few hundred 2-8 B reads of
-TB_GRAMMAR (the PS1's SpuRead, design 6.4: at most 16 KB a turn); the
-census measures about 80 us a line on the host (6d).
+core). The census measures about 80 us a line on the host (6d).
+
+**With K-10 (the TK3 landing)**: GRAMMAR 14,536 B and STRINGS 17,650 B
+stored (27,439 B raw) for 373 rules, 718 alternatives, 512 guard terms, 79
+symbols and 710 template strings; `TALK_en.BIN` 540,274 B and the PS1
+subset 209,070 B of the 312 KB budget. `talk_gen.c` `.text`, `-Os`:
+12,540 B (Thumb), 22,120 B (MIPS r3000) and 15,736 B (SH4), still no
+`.data` or `.bss`; the stack is in 6c (about 5 KB in the worst case).
+
+**Reads per line (measured, and over the design's budget on the PS1).**
+Counting `talk_db_read` by bank over 5,000 census contexts (8,428 lines;
+inside `talk_gen_exchange` only, the gate and the generator, not the census
+checks): per line about 246 reads and
+2.4 KB of TB_GRAMMAR, 15 reads and 0.5 KB of TB_STRINGS, a few of the
+concept banks, and **1,071 reads and 28.5 KB of TB_SAFETY**: about 1,350
+reads and 31.7 KB a line, 53 KB an exchange, and 7,764 reads in the worst
+exchange. The SAFETY share is the S3 lint and the per-filler
+`talk_safe_lint_probe`, each of which reads the whole register list from
+the database. On the PS1 every read is a SpuRead, so this is about three
+times the design's 16 KB a turn (6.4). **TP1 / TP2 must fix it before the
+PS1 talks**: keep the register rows (6.4 KB) in the 24 KB per-turn scratch
+for the turn, or probe less (one lint of the joined line instead of one
+probe a filler).
 
 Other measurements:
 
@@ -782,10 +835,10 @@ Other measurements:
 | `core/tests/test_talk_db.c` | The fixture opens and verifies; forms and articles (plurals, irregulars, mass nouns, names, "the" names, truncation); categories and roots; the safety classes the gate will read (sexual and capped never, everyday swears adult, romance adult, minor words); attributes; associations (range, order, talkable, **no edge into adult from non-adult**, EDGES begins with ASSOC); refusals (CRC, magic, version, dictionary, truncation, an out-of-range bank, a duplicate bank); CRC-32; the full `TALK_en.BIN` through the native platform |
 | `core/tests/test_talk_parse.c` | The canonical key; folding, leet, look-alikes, stretched letters, typos, lemmas, multi-word keys, persons, numbers, spaced letters; real words and first names one letter from a safety word (known, no safety class; a name of `names_en.txt` is a person when a resident has it; "hot_tie" still joins); acts, topics, targets; determinism (no state, no database = UNKNOWN); the 1,519-line corpus against the three bars; `DOOMO_TALK_LINE` |
 | `core/tests/test_talk_safety.c` | One source of "minor" (1,000 premade ids, the kid cast file, pool stages, unknown ids, the pet); the safety and adversarial corpora (run with a town person lookup, as the game will); the `lovers` room really allows romance; a child named but not in the room (the lookup, the roster's cast, a shared name, a `names_en.txt` name); every must-refuse line past the token cap (and the bubble never shows past the cut); invisible characters and space-split words; the mutation fuzz; the hate hash (C equals Python, no lexicon word on it, `DOOMO_HATE_PLAIN`); the gate properties P1-P4 and P7 over 200,000 random calls and every (adult, minor) pair both ways; P5 Mature; P6 closed vocabulary over 50,000 random lines; the S3 lint (units and the whole vocabulary); the masked bubble |
-| `core/tests/test_talk_gen.c` | T5a on the test grammar `core/tests/talk_gen/gentest.tlk` (`TALK_gentest.BIN`): every modifier and field, names, likes, the job callback for an adult and none for a child, the weights, Q5 novelty, sub-rules, the fit and the safe fallback, K-9 (one swear a conversation, none with a kid), K-6 (a Mature variant only with the option and premade adults), the cast's own lines, faces, the optional parts with every callback true (Q4), the exchange (the gate first: K-7 ends it unseen, refusals, distress, romance at a child both ways; a romance yes, a no remembered for the day), reactions that answer the line before (Q2), a typed name the room may not hear, determinism |
-| `core/tests/test_talk_census.c` | T7 and T5a over the English banks: the smoke census (6d) and the generator-level property tests P1-P8 (section 2; `DOOMO_TALK_PROPERTY_N` for the design's 200,000) |
-| `make -C core talk-check` | `talkc --check` (now also TK1-TK9, the corpora and the grammar compiler) and `--selftest` (45 seeded refusals: 11 lexicon files, 4 bad edges, 13 templates, 2 rule files, 15 grammars; and `core/tests/talk_good.tlk` must lint clean) (part of `make -C core test`) |
-| `make -C core talk-census` | the full census (6d; not in `make test`: about 25 minutes) |
+| `core/tests/test_talk_gen.c` | T5a on the test grammar `core/tests/talk_gen/gentest.tlk` (`TALK_gentest.BIN`): every modifier and field, names, likes, the job callback for an adult and none for a child, the weights, Q5 novelty, sub-rules, the fit and the safe fallback, K-9 (one swear a conversation, none with a kid), K-6 (a Mature variant only with the option and premade adults), the cast's own lines, faces, the optional parts with every callback true (Q4), the exchange (the gate first: K-7 ends it unseen, refusals, distress, romance at a child both ways; a romance yes, a no remembered for the day), reactions that answer the line before (Q2), a typed name the room may not hear, determinism; K-10 (`talk_gen_grief`): a grief topic takes the sincere bank whatever the act, the core part alone and an act that may answer, a quiet safe line when no grief line may answer, the safety acts keep their banks, the loss fact (a household member, not a move away, 28 days), `{lost}`, one comfort reaction at most and never the pet |
+| `core/tests/test_talk_census.c` | T7 and T5a over the English banks: the smoke census (6d) and the generator-level property tests P1-P8 (section 2; `DOOMO_TALK_PROPERTY_N` for the design's 200,000) and K-10 (`talk_gen_property_grief`: every act about every grief topic in adults', kids' and pet rooms) |
+| `make -C core talk-check` | `talkc --check` (now also TK1-TK9, the corpora and the grammar compiler) and `--selftest` (51 seeded refusals: 12 lexicon files, 4 bad edges, 13 templates, 2 rule files, 20 grammars; and `core/tests/talk_good.tlk` must lint clean) (part of `make -C core test`) |
+| `make -C core talk-census` | the full census (6d; not in `make test`: about 25-30 minutes) |
 | `python3 core/tools/talk_sample.py selftest` | the Q7 sheet's scoring |
 | `make -C core check-gen` | `gen_game.tsv`, `concepts.lock` and `talk_fixture.c` regenerate byte for byte |
 
@@ -820,6 +873,8 @@ Other measurements:
 | The drama manager picks who answers and who reacts (T6) | `talk_gen_exchange` does it plainly until T6: the one addressed or the most interested answers; reactions by design 5.4's formula, **capped at 75%**; no beats, tension, engagement, interruptions or idle chatter yet | The generator and the census need exchanges now; T6 replaces the policy, not the API |
 | The smoke census: 100,000 contexts, 90% Surface-unique, 30% Skeleton-unique, 0 safety failures | **20,000 contexts and 1,000 conversations** (about 4 s), 0 safety failures, quality failures 1% or less, Skeleton 30%; Surface 50% | The unit run's time; the 90% Surface bar is for T5b's full bank (the starter makes about 57%) |
 | A census context: 8 mood bands, 1-3 residents, 400 topics | 7 mood bands (`TMB_*`: ok, happy, sad, angry, scared, tired, weird); the rest as designed | The moods the sim has |
+| K-10: "a memorial topic (`family_memorial*`) takes the sincere core bank first and no punchline" | A **grief or loss topic** (6 flagged concepts) takes the sincere `grief` bank whatever the act, the core line alone, **and no joke follows at all** (no button after it, though R6 / J5 allow one in authored scenes); the memorial becomes the speaker's fact (`fact.loss`, `{lost}`) | A person is not a topic concept in Talk, so the memorial reaches a line through the speaker; a generator cannot judge when a button after grief lands, so it never adds one |
+| P6: 50,000 typed lines | **4,000** in `make test` (`talk_gen_property_vocabulary_and_swears`); T4's own P6 runs 50,000 random lines through the parser | The unit run's time |
 | Chao1 `S + f1^2 / 2 f2` | The same; `S + f1 (f1 - 1) / 2` when no value was seen twice | The usual bias-corrected form, defined when f2 = 0 |
 | A typo fix towards a safety word for every unknown word ("refusing is the safe error") | The same, but real words and first names one letter from a safety word are listed as known (`common_en.txt`, `names_en.txt` with `TW_NAME`) | Measured on the 50,000 most frequent English words: "invest", "tweet", "reward", "Pedro" were refused or ended the talk as K-7 (6b, "Precision"). A wrong K-7 ending tells an innocent player they did something terrible: the owner's comprehensibility rule. Recall on misspelled safety words stays at the bars |
 
@@ -836,6 +891,11 @@ Other measurements:
   engagement, no walk-outs and no outcomes: a room of three chats a lot
   (most exchanges get a reaction). T6 should tune that for clarity.
 * **Distress wording** (K-11) is the agent's; the owner approves it (D6).
+  The grief and comfort lines (K-10) are the agent's too; the owner reads
+  them with the Q7 sheet.
+* **PS1 reads per line** (section 7): about 31.7 KB a line, three times
+  the design's 16 KB a turn, mostly the S3 lint re-reading the SAFETY bank:
+  TP1 / TP2 cache the register rows or probe less.
 
 * **The person lookup** (`TalkParseCtx.person`, T5a): it gets a canonical
   full or first name. It must answer for every resident of the town, and
