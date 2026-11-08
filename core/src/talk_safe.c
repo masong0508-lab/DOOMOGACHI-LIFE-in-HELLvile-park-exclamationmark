@@ -180,13 +180,18 @@ int talk_safe_hate_word(const char *word, int fuzzy)
     n = squeeze(word, s, (int)sizeof s);
     if (n < 3) return 0;
     if (in_set(h.exact_off, h.nexact, fnv64(&h, s, n))) return 1;
+    /* edit distance 1 after the first letter (only unknown words reach here):
+     * a letter added to a listed word of 4+ letters (a typo that breaks a
+     * double letter squeezes to this); a letter left out, changed or two
+     * swapped in a listed word of 5+ letters (the deletion hashes hold every
+     * one-letter deletion of those, after the first) */
     if (!fuzzy || n < 4) return 0;
-    if (n >= 5 && in_set(h.del_off, h.ndel, fnv64(&h, s, n))) return 1;      /* a letter left out */
+    if (in_set(h.del_off, h.ndel, fnv64(&h, s, n))) return 1;                 /* a letter left out (4+ letters) */
     for (i = 1; i < n; i++) {
         memcpy(d, s, (size_t)i);
         memcpy(d + i, s + i + 1, (size_t)(n - i));
-        if (n - 1 >= 5 && in_set(h.exact_off, h.nexact, fnv64(&h, d, n - 1))) return 1;  /* one added */
-        if (n >= 6 && in_set(h.del_off, h.ndel, fnv64(&h, d, n - 1))) return 1;          /* one changed */
+        if (n - 1 >= 4 && in_set(h.exact_off, h.nexact, fnv64(&h, d, n - 1))) return 1;  /* one added */
+        if (n >= 5 && in_set(h.del_off, h.ndel, fnv64(&h, d, n - 1))) return 1;          /* one changed, or two swapped */
     }
     return 0;
 }
