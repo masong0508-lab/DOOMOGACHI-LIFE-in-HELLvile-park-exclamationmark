@@ -127,6 +127,16 @@ talk-check:
 	@$(PYTHON) $(CORE)/tools/talkc.py --selftest
 # --- end T1/T2 ---
 
+# --- T7: the census (docs/TALK.md "The census"; design 3.7). The full run:
+# 2,000,000 contexts and 2,000,000 bot conversations against the design's
+# targets (exit 1 on a miss). The unit tests run a smoke census
+# (core/tests/test_talk_census.c). ---
+.PHONY: talk-census
+$(BUILD)/talk_census: $(CORE)/tools/talk_census.c $(CORE)/tools/talk_census.h $(CORE_OBJS) $(PLAT_OBJS)
+	$(CC) $(HOST_CFLAGS) -I$(CORE)/tools -o $@ $(CORE)/tools/talk_census.c $(CORE_OBJS) $(PLAT_OBJS) $(LDFLAGS_SAN)
+talk-census: $(BUILD)/talk_census talk
+	$(BUILD)/talk_census --full --grid $(CORE)/data/talk/census_en.tsv
+# --- end T7 ---
 
 scripts: $(BUILD)/runner
 	sh $(CORE)/tests/run_scripts.sh $(BUILD)/runner $(CORE)/tests/scripts $(BUILD)/shots
