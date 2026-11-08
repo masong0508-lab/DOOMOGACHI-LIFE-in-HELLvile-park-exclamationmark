@@ -23,7 +23,7 @@
  * Script (same syntax as core/tools runner and gba/harness; '#' comments).
  * Times are LOGIC TICKS (30 Hz doomo_frame calls) read from the mailbox:
  *   wait N | frames N           N ticks | N raw 60 Hz video frames
- *   press BTN.. | hold BTN.. N | down BTN.. | release [BTN..]
+ *   press BTN.. | hold BTN.. N | down BTN.. | up BTN.. | release [BTN..]
  *                               press: down 2 ticks, up 1 (sync: down 1,
  *                               up 1, exactly the native runner's)
  *   shot NAME                   SHOTS/NAME.png (640x480, or 320x240 --half)
@@ -77,6 +77,11 @@
  *   expect-rumble [PORT]        fail unless rumble was switched on (on
  *                               PORT) since the start / last expect-rumble
  *   vmu-shot NAME               SHOTS/NAME.png: VMU A1's 48x32 LCD
+ *   home-room N | money N       DC8: the native runner's house commands
+ *                               (mailbox 25, 26: core/tests/scripts/home_*)
+ *   room-parity LINE NAME       DC8: golden line LINE of room_shells.h drawn
+ *                               by the game's plat_room on a screen of its
+ *                               own, shot as NAME (mailbox 14)
  * Buttons: A B X Y START UP DOWN LEFT RIGHT L R (L/R = full triggers),
  * SELECT (= START+Y, the port's convention: DECISIONS.md).
  *
@@ -1213,6 +1218,9 @@ static int run_script(FILE *f)
         } else if (!strcmp(c, "down") && n >= 2) {
             if (!parse_buttons(v + 1, n - 1, &m, &lt, &rt)) return 0;
             buttons_down(m, lt, rt);
+        } else if (!strcmp(c, "up") && n >= 2) {          /* DC8: the native runner's `up B` */
+            if (!parse_buttons(v + 1, n - 1, &m, &lt, &rt)) return 0;
+            buttons_up(m, lt, rt);
         } else if (!strcmp(c, "release")) {
             if (n == 1) {
                 ports[cur_port].buttons = 0;
@@ -1369,6 +1377,19 @@ static int run_script(FILE *f)
         } else if (!strcmp(c, "clock") && n >= 2) {
             long hh = strtol(v[1], NULL, 10), mi = n > 2 ? strtol(v[2], NULL, 10) : 0;
             if (!mb_cmd(DC_HC_CLOCK, (uint32_t)(((hh * 60 + mi) % 1440 + 1440) % 1440), NULL, &r)) return 0;
+        } else if (!strcmp(c, "home-room") && n >= 2) {   /* DC8: the native runner's house commands */
+            if (!mb_cmd(DC_HC_HOME_ROOM, (uint32_t)strtoul(v[1], NULL, 0), NULL, &r)) return 0;
+        } else if (!strcmp(c, "money") && n >= 2) {
+            if (!mb_cmd(DC_HC_MONEY, (uint32_t)strtoul(v[1], NULL, 0), NULL, &r)) return 0;
+        } else if (!strcmp(c, "room-parity") && n >= 3) {
+            /* DC8: golden line N of core/tests/room_shells.h drawn by the
+             * game's plat_room as a picture of its own (8 vblanks), shot
+             * as NAME while it shows */
+            unsigned long line = strtoul(v[1], NULL, 0);
+            during_frames = 5;
+            snprintf(during_name, sizeof during_name, "%s", v[2]);
+            if (!mb_cmd(DC_HC_ROOM_PARITY, (uint32_t)line, NULL, &r)) return 0;
+            if (r != 1 + line) fail("line %d: room-parity %lu: the game has no such golden line", lineno, line);
         } else if (!strcmp(c, "no-stubs")) {
             if (glog && strstr(glog, "STUB:")) fail("line %d: no-stubs: a core stub ran (STUB: in the log)", lineno);
         } else if (!strcmp(c, "type") && n >= 2) {
@@ -1606,6 +1627,11 @@ int main(int argc, char **argv)
                "TA bytes max %u, polygons left out %u\n",
                mb->g3d_n, mb->g3d_us_sum / mb->g3d_n, mb->g3d_us_max, mb->g3d_polys,
                mb->g3d_polys_max, mb->g3d_bytes_max, mb->g3d_dropped);
+    if (mb && mb_up && mb->room_n)      /* DC8: the house */
+        printf("dcrun: house views %u drawn, mean %u us max %u us; shells %u (slowest %u us), "
+               "sprites decoded %u, prims max %u\n",
+               mb->room_n, mb->room_us_sum / mb->room_n, mb->room_us_max, mb->room_shells,
+               mb->room_shell_us_max, mb->room_decodes, mb->room_prims_max);
     if (mb && mb_up && wk_ticks)        /* DC3: per tick against the 30 fps budget */
         printf("dcrun: work over %u us on %lu of %lu ticks; worst %u us at tick %u (%s)\n",
                TICK_BUDGET_US, wk_over, wk_ticks, wk_worst, wk_worst_tick, wk_worst_scene);

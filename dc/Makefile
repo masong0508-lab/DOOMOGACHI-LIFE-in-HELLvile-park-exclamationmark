@@ -33,6 +33,14 @@
 #                         3D view against the host software PVR's (compare3d.py),
 #                         no polygon dropped, no tick over 33.3 ms; results in
 #                         build/shots/ow; part of `test` when Flycast is there
+#   make -C dc room-test  DC8 on Flycast: the house. The 58 room_ref golden
+#                         frames drawn by the game's plat_room (identical to
+#                         room_ref, pixel for pixel) and the house scripts
+#                         (core/tests/scripts/home_*.txt) against the host
+#                         software PVR's pictures of the same ticks
+#                         (compare_house.py), no prim dropped, no tick over
+#                         33.3 ms (dc/tests/house/run_flycast.sh); results in
+#                         build/shots/house; part of `test` when Flycast is there
 #   make -C dc sizes      section sizes against the 16 MB RAM budget
 #   make -C dc PACK=/path/pack.dmpk disc
 #                         the mature disc: the pack (built with `mpack.py build`, port dc) goes on
@@ -109,7 +117,7 @@ DC_OBJS   := $(call dc_obj,$(DC_SRCS))
 CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 ALL_OBJS  := $(DC_OBJS) $(CORE_OBJS)
 
-.PHONY: all elf disc all-disc test check-elf check-packdisc host-test harness-test ui-compare vmu-test audio-test ow-test sizes clean
+.PHONY: all elf disc all-disc test check-elf check-packdisc host-test harness-test ui-compare vmu-test audio-test ow-test room-test sizes clean
 .DEFAULT_GOAL := all
 
 all: elf
@@ -185,7 +193,8 @@ harness-test: $(ELF) $(CDI) $(ELF_RUN)
 	$(MAKE) --no-print-directory -f $(DC)/Makefile ui-compare || exit 1; \
 	$(MAKE) --no-print-directory -f $(DC)/Makefile vmu-test || exit 1; \
 	$(MAKE) --no-print-directory -f $(DC)/Makefile audio-test || exit 1; \
-	$(MAKE) --no-print-directory -f $(DC)/Makefile ow-test
+	$(MAKE) --no-print-directory -f $(DC)/Makefile ow-test || exit 1; \
+	$(MAKE) --no-print-directory -f $(DC)/Makefile room-test
 
 $(ELF_RUN): $(ELF)
 	$(STRIP) --strip-debug -o $@ $(ELF)
@@ -218,6 +227,15 @@ ow-test: $(CDI) $(BUILD)/doomogachi.nm
 	@$(MAKE) --no-print-directory -C $(ROOT)/core runner
 	@$(MAKE) --no-print-directory -C $(DC)/tests/gfx2d $(HOSTRUN)
 	sh $(DC)/tests/overworld/run_flycast.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(RUNNER) $(HOSTRUN) $(SHOTS)/ow
+
+# DC8: the house on Flycast: room_ref's golden frames and the house scripts
+ROOMTEST := $(BUILD)/host/dcroom_test
+room-test: $(CDI) $(BUILD)/doomogachi.nm
+	@if [ -z "$(FLYCAST)" ]; then echo "room-test: no Flycast core (make -C dc/harness flycast)" >&2; exit 1; fi
+	@$(MAKE) --no-print-directory -C $(HARNESS) all
+	@$(MAKE) --no-print-directory -C $(ROOT)/core runner
+	@$(MAKE) --no-print-directory -C $(DC)/tests/gfx2d $(HOSTRUN) $(ROOMTEST)
+	sh $(DC)/tests/house/run_flycast.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(RUNNER) $(HOSTRUN) $(ROOMTEST) $(SHOTS)/house
 
 $(BUILD)/doomogachi.nm: $(ELF)
 	$(NM) $(ELF) >$@
