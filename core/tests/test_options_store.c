@@ -149,15 +149,21 @@ TEST(u0_machine_record_written_and_read)
 {
     fresh(1);
     opt_set(OPT_MATURE, MATURE_ON);
-    CHECK(g_cfg_writes >= 1);
+    CHECK_EQ(g_cfg_writes, 0);                       /* a change is not written at once ... */
+    CHECK(opt_config_flush());                       /* ... but once, when flushed */
+    CHECK_EQ(g_cfg_writes, 1);
+    CHECK(!opt_config_flush());                      /* nothing changed since: nothing written */
+    CHECK_EQ(g_cfg_writes, 1);
     CHECK_EQ(g_cfg_len, (int)PLAT_CONFIG_MAX);
     CHECK(g_cfg[0] == 'D' && g_cfg[1] == 'O' && g_cfg[2] == OPT_CONFIG_VERSION);
     CHECK_EQ(g_cfg[4 + 5], MATURE_ON);
     opt_set(OPT_LANGUAGE, LANG_ES);
-    CHECK_EQ(g_cfg[4], LANG_ES);
     opt_set(OPT_MUSIC_VOL, 3);
-    CHECK_EQ(g_cfg[5], 3);
     opt_set(OPT_RUMBLE, 0);
+    CHECK(opt_config_flush());
+    CHECK_EQ(g_cfg_writes, 2);
+    CHECK_EQ(g_cfg[4], LANG_ES);
+    CHECK_EQ(g_cfg[5], 3);
     CHECK_EQ(g_cfg[10], 0);
     /* a new boot: defaults, then the record */
     opt_defaults();
@@ -187,7 +193,10 @@ TEST(u0_record_validation_and_security_bytes)
     for (i = 32; i < 48; i++) g_cfg[i] = (uint8_t)(0xA0 + i);   /* the adults' code */
     g_cfg[0] = 'D'; g_cfg[1] = 'O'; g_cfg[2] = OPT_CONFIG_VERSION;
     g_cfg_len = 48;
-    opt_set(OPT_MATURE, MATURE_ON);                              /* writes: keeps 32..47 */
+    CHECK(!opt_config_load());                                   /* boot: no settings, the bytes kept */
+    CHECK(!seccode_is_set());                                    /* not a valid code block */
+    opt_set(OPT_MATURE, MATURE_ON);
+    CHECK(opt_config_flush());                                   /* writes: keeps 32..47 */
     for (i = 32; i < 48; i++) CHECK_EQ(g_cfg[i], 0xA0 + i);
     /* a record with a flipped byte is ignored */
     opt_defaults();
@@ -205,6 +214,7 @@ TEST(u0_record_validation_and_security_bytes)
     g_cfg_on = 0;
     g_cfg_writes = 0;
     opt_set(OPT_MATURE, MATURE_ON);
+    CHECK(!opt_config_flush());
     CHECK_EQ(g_cfg_writes, 0);
     CHECK(!opt_config_load());
 }
@@ -603,7 +613,8 @@ TEST(u5_code_is_stored_salted_in_the_record_and_survives_a_restart)
     memcpy(hash1, g_cfg + 40, 4);
     seccode_set("4821");                           /* the same code again: a new salt, a new hash */
     CHECK(memcmp(hash1, g_cfg + 40, 4) != 0);
-    opt_set(OPT_MATURE, MATURE_ON);                /* a settings write keeps the code */
+    opt_set(OPT_MATURE, MATURE_ON);
+    CHECK(opt_config_flush());                     /* a settings write keeps the code */
     CHECK_EQ(g_cfg[33] & 1, 1);
     memcpy(saved, g_cfg, sizeof saved);
     seccode_clear();                               /* forget it in RAM and in the record ... */
@@ -675,7 +686,8 @@ TEST(cl4_seen_flags_and_tips_in_the_machine_record)
 {
     fresh(1);
     tips_session_reset();
-    opt_set(OPT_TIPS, 0);                              /* a machine-wide option: written at once */
+    opt_set(OPT_TIPS, 0);                              /* a machine-wide option: written when flushed */
+    CHECK(opt_config_flush());
     CHECK_EQ(g_cfg[11], 1);                            /* tips + 1 */
     tip_seen_merge((1u << TIP_ISLAND) | (1u << TIP_LIBRARY));
     CHECK(!tips_dirty());                              /* merged flags are not "new" */
@@ -704,9 +716,11 @@ TEST(cl4_seen_flags_and_tips_in_the_machine_record)
     opt_defaults();
     CHECK(opt_config_load());
     CHECK_EQ(opt_get(OPT_TIPS), 1);
-    /* Show all tips again writes the record at once */
+    /* Show all tips again: written once the Options are left (opt_config_flush), not at once */
     g_cfg_writes = 0;
     tips_reset();
+    CHECK_EQ(g_cfg_writes, 0);
+    CHECK(opt_config_flush());
     CHECK_EQ(g_cfg_writes, 1);
     CHECK_EQ(g_cfg[12] | g_cfg[13], 0);
     CHECK(!tips_dirty());
@@ -742,4 +756,101 @@ TEST(cl4_seen_flags_and_tips_in_the_machine_record)
         CHECK(tip_seen(TIP_PET));
     }
     tips_session_reset();
+}
+
+/* ---- Refresh: the Options froze the game on every volume step ----
+ * Each step wrote (and first read) the machine record: on the PS1 a memory card read and write, over
+ * four seconds per press. Values now take effect at once and the record is written once, when the
+ * Options are left, and only if something changed. */
+static void options_visit_to_row(int row)
+{
+    int i;
+    scene_set(&SCENE_TITLE, 0);
+    idle(5);
+    scene_push(&SCENE_OPTIONS, OPTPAGE_QUICK);
+    idle(5);
+    CHECK(scene_top() == &SCENE_OPTIONS);
+    for (i = 0; i < row; i++) press(BTN_DOWN);
+}
+
+TEST(refresh_options_write_the_record_once_per_visit_with_changes)
+{
+    int i, v0;
+    fresh(1);
+    CHECK(!opt_config_load());
+    opt_config_save();                             /* a record exists (not a first boot) */
+    options_visit_to_row(1);                       /* Quick page: Language, Music, ... */
+    g_cfg_writes = 0;
+    v0 = opt_get(OPT_MUSIC_VOL);
+    for (i = 0; i < 5; i++) press(BTN_LEFT);
+    CHECK_EQ(opt_get(OPT_MUSIC_VOL), v0 - 5);      /* takes effect at once */
+    for (i = 0; i < 5; i++) press(BTN_RIGHT);
+    press(BTN_RIGHT);
+    CHECK_EQ(opt_get(OPT_MUSIC_VOL), v0 + 1);
+    for (i = 0; i < 5; i++) press(BTN_DOWN);       /* the Preset row: A asks first (a modal over the Options) */
+    press(BTN_A);
+    idle(2);
+    CHECK(scene_top() == &SCENE_CONFIRM);
+    press(BTN_B);                                  /* no: closing the modal writes nothing */
+    idle(2);
+    CHECK(scene_top() == &SCENE_OPTIONS);
+    CHECK_EQ(g_cfg_writes, 0);                     /* ... and nothing is written while in the Options */
+    press(BTN_B);
+    idle(2);
+    CHECK(scene_top() == &SCENE_TITLE);
+    CHECK_EQ(g_cfg_writes, 1);                     /* leaving: one write */
+    CHECK_EQ(g_cfg[5], v0 + 1);
+    idle(10);
+    scene_set(&SCENE_TITLE, 0);
+    CHECK_EQ(g_cfg_writes, 1);                     /* never again for the same change */
+    /* the new boot reads it */
+    opt_defaults();
+    CHECK(opt_config_load());
+    CHECK_EQ(opt_get(OPT_MUSIC_VOL), v0 + 1);
+}
+
+TEST(refresh_options_visit_without_changes_writes_nothing)
+{
+    fresh(1);
+    CHECK(!opt_config_load());
+    opt_config_save();
+    options_visit_to_row(1);
+    g_cfg_writes = 0;
+    press(BTN_DOWN);
+    press(BTN_UP);
+    press(BTN_R);                                  /* another page and back */
+    press(BTN_L);
+    press(BTN_B);
+    idle(2);
+    CHECK(scene_top() == &SCENE_TITLE);
+    CHECK_EQ(g_cfg_writes, 0);
+    /* a world option (Loss) is not in the record either */
+    scene_push(&SCENE_OPTIONS, OPTPAGE_SIM);
+    idle(2);
+    opt_set(OPT_LOSS, 0);
+    press(BTN_B);
+    idle(2);
+    CHECK_EQ(g_cfg_writes, 0);
+}
+
+TEST(refresh_a_change_outside_the_options_is_written_when_its_scene_is_left)
+{
+    fresh(1);
+    CHECK(!opt_config_load());
+    opt_config_save();
+    scene_set(&SCENE_TITLE, 0);
+    idle(2);
+    g_cfg_writes = 0;
+    CHECK(pause_music_nudge(-1));                  /* a pause menu's music row */
+    CHECK(pause_music_nudge(-1));
+    idle(30);
+    CHECK_EQ(g_cfg_writes, 0);
+    scene_set(&SCENE_TITLE, 0);                    /* back to the title (or any scene change) */
+    CHECK_EQ(g_cfg_writes, 1);
+    CHECK_EQ(g_cfg[5], opt_get(OPT_MUSIC_VOL));
+    /* opt_config_flush (save_game calls it) writes a pending change too */
+    opt_set(OPT_SFX_VOL, 2);
+    CHECK(opt_config_flush());
+    CHECK_EQ(g_cfg_writes, 2);
+    CHECK_EQ(g_cfg[6], 2);
 }

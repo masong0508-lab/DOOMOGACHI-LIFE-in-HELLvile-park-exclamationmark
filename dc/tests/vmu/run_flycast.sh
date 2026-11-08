@@ -14,6 +14,9 @@
 #              language picker, the config record on the VMU, the second boot
 #   input      input_pad.txt and input_alt.txt (stick, analog trigger,
 #              keyboard): every shot pair must be the same picture
+#   optvol     options_volume.txt (Refresh): the music volume changed 10
+#              times in the Options, no frame over 50 ms, the config record
+#              written to the VMU once, when the Options are left
 # OUTDIR/<check>/ gets the logs, shots and VMU images; OUTDIR/summary.txt one
 # line per check. Exit status 1 when one fails.
 set -u
@@ -37,7 +40,7 @@ dcrun() {  # dir script [args]
 }
 vmu() { echo "$OUT/$1/run/system/dc/vmu_save_A1.bin"; }
 
-for d in saves full novmu console input; do rm -rf "$OUT/$d"; mkdir -p "$OUT/$d"; done
+for d in saves full novmu console input optvol; do rm -rf "$OUT/$d"; mkdir -p "$OUT/$d"; done
 
 # ---- saves: two runs on one VMU ----
 dcrun saves saves1.txt --fresh; r1=$?
@@ -86,6 +89,12 @@ for f in "$OUT/input/pad"/*.png; do
 done
 st="ok"; [ $r1 -eq 0 ] && [ $r2 -eq 0 ] && [ $diff -eq 0 ] && [ $same -gt 0 ] || st="FAIL"
 res input "$st" "(pad $r1, alt $r2) $same shot pairs identical, $diff differ$list"
+
+# ---- Refresh: the Options' volume steps never wait for the VMU ----
+dcrun optvol options_volume.txt --fresh; r=$?
+n=$(grep -c 'write DOOMOCFG.SYS' "$OUT/optvol/options_volume.txt.log")
+st="ok"; [ $r -eq 0 ] && [ "$n" -eq 1 ] || st="FAIL"
+res optvol "$st" "(run $r, $n config writes) $(grep -o '^gaps optvol.*' "$OUT/optvol/options_volume.txt.log" | head -1)"
 
 cat "$sum" >/dev/null
 [ $bad -eq 0 ]

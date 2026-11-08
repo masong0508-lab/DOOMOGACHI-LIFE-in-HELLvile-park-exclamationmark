@@ -1014,6 +1014,22 @@ erasing or replacing a save. `plat_features()` now reports `PLATF_CONFIG`.
   it like any other file, so a nearly full card still fails cleanly.
 * Read and write take about a second (one block), behind the usual corner
   banner / audio hush. A write retries once after re-reading the directory.
+* (Refresh) The core writes the record once, when the scene where settings
+  changed is left (`opt_config_flush` from `scene_set` / `scene_pop`), not on
+  every value change, and never reads it first (the RAM copy is the record).
+  Before, every step of the Options' volume slider read the file ("Checking
+  MEMORY CARD...") and rewrote its whole block: the game froze for over four
+  seconds per press. A config write now sends only the header and payload
+  frames (768 B of the block, `write_file(.., 0)`) behind a "Saving
+  settings..." corner banner. `harness/scripts/options_volume.txt` (run.py's
+  `expect-gap MS NAME` / `expect-count N TEXT`), PCSX-Redux:
+
+  | | 10 volume steps: worst frame | fps | card writes | leaving the Options |
+  |---|---|---|---|---|
+  | before | 4,450 ms | 2.4 | 10 (+10 reads) | nothing written |
+  | after | 33.3 ms | 34.9 (30 + catch-up) | 1, on leaving | one 483 ms frame (file created), 317 ms (rewritten in place) |
+
+  Resident RAM unchanged (`_end` 0x801ef100 before and after, boot FMV on).
 * The engine-test card self test (SELECT+START) also writes 48 B, reads it
   back, rewrites 32 B in place, and erases it (`memcard selftest: config ...`).
 

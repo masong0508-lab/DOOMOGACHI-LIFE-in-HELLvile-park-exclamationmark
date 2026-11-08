@@ -174,8 +174,7 @@ static void mark_seen(int id)
 void tips_reset(void)
 {
     s_seen = 0;
-    s_dirty = 1;
-    opt_config_save();                 /* where the platform keeps a record */
+    s_dirty = 1;                       /* the record follows when the Options are left (opt_config_flush) */
 }
 
 void tips_test_force(int on) { s_force = (uint8_t)(on != 0); }

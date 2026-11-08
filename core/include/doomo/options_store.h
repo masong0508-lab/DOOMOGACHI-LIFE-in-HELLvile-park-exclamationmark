@@ -14,8 +14,9 @@ void opt2_set(int opt, int value);       /* clamps; runs the option's side effec
 void opt2_defaults(void);                /* all ids >= OPT2_FIRST to their defaults (side effects too) */
 
 /* opt_set calls this after any option changes: a machine-wide one (language, the three volumes,
- * OPT_3D_FAST, OPT_MATURE, OPT_RUMBLE) is written to the machine config record, and the platform is
- * told about the ones it applies itself (plat_option_changed). */
+ * OPT_3D_FAST, OPT_MATURE, OPT_RUMBLE, OPT_TIPS) marks the machine config record changed (it is
+ * written later, once: opt_config_flush), and the platform is told about the ones it applies itself
+ * (plat_option_changed). */
 void opt_machine_changed(int opt, int value);
 
 /* The machine config record (plat_ext.h PLAT_CONFIG_MAX = 48 B): bytes 0..31 are ours, 32..47 belong
@@ -27,9 +28,12 @@ void opt_machine_changed(int opt, int value);
 #define OPT_CONFIG_SETTINGS_SZ 32u
 /* Boot: apply the record if there is a valid one (doomo_init calls it after opt_defaults). 1 = applied. */
 int  opt_config_load(void);
-/* Write the record now (opt_machine_changed does it on every change). 1 = stored. */
+/* Write the record now, from RAM (no read first). 1 = stored. */
 int  opt_config_save(void);
-/* CL4: write it only if tips were seen since (save_game calls it after a save). 1 = stored. */
+/* Write it only if something in it changed since it was last written: a machine-wide option, the
+ * code, the tips' seen flags. scene_set / scene_pop call it before the stack changes (so leaving the
+ * Options writes the record once, however many values changed, and a visit that changed nothing
+ * writes nothing), and save_game after a save. 1 = stored. */
 int  opt_config_flush(void);
 /* U5: 1 when the platform keeps a config record (PLATF_CONFIG) and opt_config_load found none, so this
  * is the machine's first boot and SCENE_LANG_PICK runs once. Always 0 where nothing is kept (native,

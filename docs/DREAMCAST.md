@@ -802,12 +802,17 @@ put in or swapped), a different first VMU and any error forget it all.
 the VMU's driver also serves the LCD and the clock: X1 must chain to
 vmusave.c's callback, not replace it.)
 
-**The config record is written behind.** The core writes it on every change
-of a machine-wide option (each step of a volume slider, each language in
-the first-boot picker). `plat_config_write` keeps the record (reads see it
-at once) and `dc_vmu_poll()`, after every tick, writes it when the scene
-changes (leaving Options, finishing the picker) or 5 s after the last
-change. A record changed less than 5 s before the power goes off is lost.
+**The config record is written behind.** Since the Refresh the core hands
+it over once, when the scene where machine-wide options changed is left
+(`opt_config_flush` from `scene_set` / `scene_pop`: leaving the Options,
+finishing the picker, the title), and only if something changed; it used
+to call `plat_config_write` on every step of a volume slider.
+`plat_config_write` keeps the record (reads see it at once) and
+`dc_vmu_poll()`, after every tick, writes it when the scene changes or 5 s
+after the call. `dc/tests/vmu/options_volume.txt` (vmu-test's `optvol`
+check, `dcrun`'s `gaps-reset` / `expect-gap`): ten volume steps, worst
+frame 33.4 ms (2 video frames) before and after; leaving the Options, the
+one VMU write (0.46 s, the "Saving settings..." card) is a 484 ms frame.
 
 **Test flags.** The language picker shows on the first boot of an empty VMU
 (no config record). The harness mailbox has a `test_flags` word

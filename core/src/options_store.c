@@ -35,6 +35,7 @@ const DoomoOptionInfo doomo_option2_info[OPT2_COUNT] = {
 
 static uint8_t s_opt2[OPT2_COUNT] = { MATURE_OFF, 1, 1, 1 };
 static uint8_t s_quiet;          /* applying a record: no writes back, no platform calls */
+static uint8_t s_cfg_dirty;      /* a machine-wide option changed since the record was last written */
 
 static int is_machine(int opt)
 {
@@ -113,7 +114,10 @@ static void put_machine(int opt, int v)
  *   0 version (1) | 1 flags (bit 0: a code is set) | 2 wrong tries in a row | 3 0 |
  *   4..7 salt | 8..11 hash of salt + digits | 12..13 0 | 14..15 CRC-16/CCITT of bytes 0..13
  * The RAM copy is always kept (so a platform without a record, native, still has a code for the
- * session); a platform with a record gets it written on every change (s_sec_dirty). Tries: three
+ * session); a platform with a record gets it written on every change (s_sec_dirty). The RAM copy is
+ * also what a settings write puts in bytes 32..47: opt_config_load keeps the card's bytes as they
+ * are (a damaged block is no code: its version byte is cleared), so a write never has to read the
+ * card first. Tries: three
  * wrong in a row lock the session; after a reboot a locked record grants one try per boot until a
  * right code clears the count, so a forgotten code never bricks the machine and brute force is
  * one guess per restart. */
@@ -210,7 +214,7 @@ int seccode_check(const char *code)
     return 0;
 }
 
-static int s_first_boot;       /* U5: the platform keeps a record and none was there at boot */
+static uint8_t s_first_boot;   /* U5: the platform keeps a record and none was there at boot */
 
 int opt_config_first_boot(void) { return s_first_boot; }
 void opt_config_first_boot_done(void) { s_first_boot = 0; }
@@ -221,17 +225,18 @@ int opt_config_load(void)
     int n, k, lang_before = opt_get(OPT_LANGUAGE);
     s_first_boot = 0;
     if (!have_config()) return 0;
-    memset(rec, 0, sizeof(rec));
-    n = plat_config_read(rec, sizeof(rec));
+    n = plat_config_read(rec, sizeof(rec));             /* only the n bytes read are looked at */
+    /* bytes 32..47 as they are (the next write keeps them); a damaged block is no code */
+    if (n >= (int)PLAT_CONFIG_MAX) memcpy(s_sec, rec + OPT_CONFIG_SETTINGS_SZ, sizeof s_sec);
+    else memset(s_sec, 0, sizeof s_sec);
+    if (s_sec[0] == SEC_VERSION && !sec_block_ok(s_sec)) s_sec[0] = 0;
+    s_sec_dirty = 0;
+    s_sec_wrong = 0;
     if (n < (int)OPT_CONFIG_SETTINGS_SZ || rec[0] != 'D' || rec[1] != 'O' || rec[2] != OPT_CONFIG_VERSION ||
         crc16(rec, 30) != (uint16_t)(rec[30] | (rec[31] << 8))) {
         s_first_boot = 1;                                   /* no valid record: first boot (U5) */
         return 0;
     }
-    if (n >= (int)PLAT_CONFIG_MAX && sec_block_ok(rec + OPT_CONFIG_SETTINGS_SZ)) memcpy(s_sec, rec + OPT_CONFIG_SETTINGS_SZ, sizeof s_sec);
-    else memset(s_sec, 0, sizeof s_sec);
-    s_sec_dirty = 0;
-    s_sec_wrong = 0;
     s_quiet = 1;
     for (k = 0; k < 7; k++) put_machine(k_rec[k], rec[4 + k]);
     if (rec[11]) put_machine(OPT_TIPS, rec[11] - 1);          /* CL4: 0 = never written (default On) */
@@ -242,18 +247,16 @@ int opt_config_load(void)
     return 1;
 }
 
+/* The whole record from RAM: no read first (on the PS1 a card read alone took over a second). */
 int opt_config_save(void)
 {
     uint8_t rec[PLAT_CONFIG_MAX];
     uint16_t c;
-    int n, k;
+    int k;
     if (!have_config()) return 0;
     memset(rec, 0, sizeof(rec));
-    n = plat_config_read(rec, sizeof(rec));                 /* keep bytes 32..47 (the security code) */
-    if (n < (int)OPT_CONFIG_SETTINGS_SZ || rec[0] != 'D' || rec[1] != 'O') memset(rec, 0, sizeof(rec));
     rec[0] = 'D'; rec[1] = 'O'; rec[2] = OPT_CONFIG_VERSION; rec[3] = 0;
-    for (k = 0; k < 7; k++) rec[4 + k] = (uint8_t)opt_get(k_rec[k]);
-    memset(rec + 11, 0, 19);
+    for (k = 0; k < 7; k++) rec[4 + k] = (uint8_t)opt_get(k_rec[k]);   /* 16..29 stay 0 */
     {
         uint32_t seen = tip_seen_bits();                       /* CL4: Tips + the tips' seen flags */
         rec[11] = (uint8_t)(opt_get(OPT_TIPS) + 1);
@@ -261,24 +264,26 @@ int opt_config_save(void)
     }
     c = crc16(rec, 30);
     rec[30] = (uint8_t)c; rec[31] = (uint8_t)(c >> 8);
-    if (s_sec_dirty) memcpy(rec + OPT_CONFIG_SETTINGS_SZ, s_sec, sizeof s_sec);
-    if (plat_config_write(rec, PLAT_CONFIG_MAX)) { s_sec_dirty = 0; tips_clean(); return 1; }
+    memcpy(rec + OPT_CONFIG_SETTINGS_SZ, s_sec, sizeof s_sec);   /* the code (or the bytes loaded) */
+    if (plat_config_write(rec, PLAT_CONFIG_MAX)) { s_sec_dirty = 0; s_cfg_dirty = 0; tips_clean(); return 1; }
     return 0;
 }
 
-/* CL4: seen tips are not written the moment a card closes (a PS1 card write takes a second): the record
- * follows at the next save (save_game) or option change. */
+/* Changed settings and seen tips are not written the moment they change (a PS1 card write takes a
+ * second, and each step of a volume slider wrote one: the game froze on every press). The record
+ * follows once, when the scene where they changed is left (scene_set / scene_pop call this: leaving
+ * the Options, the title, a level) or at the next save (save_game). */
 int opt_config_flush(void)
 {
-    if (!tips_dirty() || !have_config()) return 0;
-    return opt_config_save();
+    if (!s_cfg_dirty && !s_sec_dirty && !tips_dirty()) return 0;
+    return opt_config_save();                           /* 0 where no record is kept */
 }
 
 void opt_machine_changed(int opt, int value)
 {
     if (s_quiet) return;
     if (opt == OPT_3D_FAST) plat_option_changed(opt, value);
-    if (is_machine(opt)) opt_config_save();
+    if (is_machine(opt)) s_cfg_dirty = 1;               /* written by opt_config_flush, not now */
 }
 
 /* ---- the 'OPT2' chunk ----

@@ -405,9 +405,10 @@ void *plat_save_scratch(uint32_t *cap)
 }
 
 /* ---- plat_ext.h: the machine config record ---------------------------------------------
- * The core writes the record on every change of a machine-wide option (each
- * press on a volume slider, each step through the language list). A VMU
- * write takes a few tenths of a second, so the record is written behind:
+ * The core writes the record once, when the scene where machine-wide options
+ * changed is left (opt_config_flush from scene_set / scene_pop: leaving the
+ * Options, the title), never per step of a slider. A VMU write still takes
+ * a few tenths of a second, so the record is written behind:
  * plat_config_write keeps it (reads see it at once) and dc_vmu_poll(),
  * after every tick, writes it when the scene has changed (leaving the
  * options, the language picker) or 5 seconds after the last change. */

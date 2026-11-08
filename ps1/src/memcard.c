@@ -307,16 +307,26 @@ static void stage_block(int k, const uint8_t *data, uint32_t size)
         memcpy(s_blk + (d0 + HDR_BYTES - o0), data + d0, d1 - d0);
 }
 
+/* blocks 0: the config record (header + one payload frame, 48 B at most):
+ * only those frames are written (6 of the block's 64), from the
+ * file's start, so the transfer never crosses a block (see s_blk); the rest
+ * of the block keeps what it held, nothing reads past the payload. A config
+ * write took about 0.4 s instead of over 2 s (PCSX-Redux). */
+typedef char config_fits_one_frame[PLAT_CONFIG_MAX <= FRAME ? 1 : -1];
 static int write_file(const char *path, const uint8_t *data, uint32_t size, int blocks)
 {
-    int fd = open(path, O_WRONLY_), k, ok = 1;
+    int fd = open(path, O_WRONLY_), k, ok = 1, n = BLOCK;
     if (fd < 0)
         return 0;
+    if (!blocks) {
+        blocks = 1;
+        n = HDR_BYTES + FRAME;
+    }
     blk_take();
     ls_progress(0, blocks);
     for (k = 0; ok && k < blocks; k++) {
         stage_block(k, data, size);
-        if (write(fd, s_blk, BLOCK) != BLOCK)
+        if (write(fd, s_blk, n) != n)
             ok = 0;
         g_io_beat++;
         ls_progress(k + 1, blocks);
@@ -586,7 +596,7 @@ static int config_write_card(const uint8_t *src, uint32_t len)
         }
     }
     build_header(s_hdr, CONFIG_SLOT, len, crc32(src, len), 1);
-    return write_file(name, src, len, 1);
+    return write_file(name, src, len, 0);
 }
 
 uint32_t plat_features(void)
@@ -594,9 +604,12 @@ uint32_t plat_features(void)
     return PLATF_CONFIG;
 }
 
+/* The core writes the record once, when the scene where settings changed is
+ * left (opt_config_flush), never per step of a slider. */
 int plat_config_write(const uint8_t *src, uint32_t len)
 {
     int r;
+    gfx_busy_banner("Saving settings...");
     bios_io_begin();
     r = config_write_card(src, len);
     if (!r) {                               /* card swapped after boot: re-scan once */
@@ -604,6 +617,7 @@ int plat_config_write(const uint8_t *src, uint32_t len)
         r = config_write_card(src, len);
     }
     bios_io_end();
+    gfx_busy_end();
     dbg("memcard: config write %u B -> %d\n", (unsigned)len, r);
     return r;
 }

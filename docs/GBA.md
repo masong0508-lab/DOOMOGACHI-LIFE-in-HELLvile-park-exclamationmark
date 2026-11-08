@@ -2183,6 +2183,20 @@ both builds).
   worst case (1000 random custom citizens, 58.6 KB, slot 1 across the
   bank boundary) and a story island, across two harness runs.
 
+### Options volume (Refresh, `make -C gba test-optvol`)
+
+The GBA keeps no machine config record (no `PLATF_CONFIG`: language,
+volumes and the other machine-wide options ride in the save's `OPT2`
+chunk), so the owner's freeze (the PS1 read and rewrote its memory card
+file on every volume step) never reached the flash here. The core now
+writes the record once, when the scene where it changed is left
+(`opt_config_flush`); on the GBA that is a no-op. `harness/scripts/
+options_volume.txt` changes the music volume 10 times on the Options'
+Quick page and gates the worst presented frame (`expect-gap 51`: 3
+vblanks are 50.2 ms): 2 vblanks (33.5 ms) for all 130 frames, before and
+after; no flash write. Leaving the Options, the title's own re-entry
+takes one 218 ms frame (unchanged).
+
 ---------------------------------------------------------------------------
 
 ## 9. Test harness (`gba/harness`)

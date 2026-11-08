@@ -40,6 +40,8 @@ when a scene renders below 30 fps:
     story-fp [HEX]     print story_fingerprint(); with HEX, fail unless equal
     room-test N        SCENE_HOME draws house test layout N (room.c)
     expect-fps MIN NAME  fail if the last `fpsend NAME` measured below MIN
+    expect-gap MS NAME   fail if the last `fpsend NAME` had a frame over MS ms
+    expect-count N TEXT  fail unless TEXT appears exactly N times in the TTY log
   Journeys (core/tests/journeys/*.txt play unchanged, UX press meter):
     item NAME [N] / expect-item NAME N      bag: add N (default 1) / fail unless N
     problem WHO KIND [ITEM] / expect-problem WHO [0|1]   raise / check a citizen's problem
@@ -100,6 +102,8 @@ BUTTONS = {
 VSYNC_PER_TICK = 2
 FPS_GATES = []      # (line, min fps, name) from expect-fps (H3)
 SAME_SHOTS = []     # (line, a, b, max differing pixels) from expect-same (H3)
+GAP_GATES = []      # (line, max ms, name) from expect-gap
+COUNT_GATES = []    # (line, count, text) from expect-count
 JOURNEY_BUDGETS = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                "..", "..", "core", "tests", "journeys", "budgets.tsv")
 
@@ -339,6 +343,12 @@ def compile_script(lines, lockstep=True):
         elif op == "expect-fps":
             # expect-fps MIN NAME: the fps measured by the last `fpsend NAME`
             FPS_GATES.append((ln, float(parts[1]), parts[2] if len(parts) > 2 else ""))
+        elif op == "expect-gap":
+            # expect-gap MS NAME: the worst frame of the last `fpsend NAME`
+            GAP_GATES.append((ln, float(parts[1]), parts[2] if len(parts) > 2 else ""))
+        elif op == "expect-count":
+            # expect-count N TEXT: TEXT is in the TTY log exactly N times
+            COUNT_GATES.append((ln, int(parts[1]), " ".join(parts[2:])))
         elif op == "expect-same":
             # expect-same A B [MAX]: shots A and B differ in at most MAX pixels
             SAME_SHOTS.append((ln, parts[1], parts[2], int(parts[3]) if len(parts) > 3 else 0))
@@ -472,6 +482,19 @@ def main():
             fails.append("line %d: expect-fps: no fps measured for %s" % (ln, name))
         elif got[-1] < lo:
             fails.append("line %d: fps %s %.2f below %.1f" % (ln, name, got[-1], lo))
+    # expect-gap MS NAME: no frame of the window over MS ms
+    gaps = re.findall(r"HARNESS: gaps (\S+) .* max \d+ \(([0-9.]+) ms\)", tty_text)
+    for ln, most, name in GAP_GATES:
+        got = [float(v) for n, v in gaps if n == name]
+        if not got:
+            fails.append("line %d: expect-gap: no frame gaps measured for %s" % (ln, name))
+        elif got[-1] > most:
+            fails.append("line %d: gaps %s: a frame took %.1f ms (over %.1f)" % (ln, name, got[-1], most))
+    # expect-count N TEXT
+    for ln, want, text in COUNT_GATES:
+        got = tty_text.count(text)
+        if got != want:
+            fails.append("line %d: expect-count: '%s' %d times, not %d" % (ln, text, got, want))
     # expect-same A B [MAX]: two shots of the same frame drawn two ways
     for ln, sa, sb, most in SAME_SHOTS:
         pa, pb = os.path.join(out, sa + ".png"), os.path.join(out, sb + ".png")

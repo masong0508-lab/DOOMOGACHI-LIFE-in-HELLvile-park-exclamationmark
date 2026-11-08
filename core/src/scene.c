@@ -11,6 +11,7 @@
 #include "doomo/input.h"
 #include "doomo/platform.h"
 #include "doomo/plat_ext.h"
+#include "doomo/options_store.h"
 
 typedef struct {
     const DoomoScene *s;
@@ -106,6 +107,7 @@ static void log_scene(const char *what, const DoomoScene *s)
 
 void scene_set(const DoomoScene *s, int arg)
 {
+    opt_config_flush();                       /* settings changed on the scene being left: written once */
     plat_hold_frame(0);                       /* U4: any scene_set releases a held frame */
     plat_loading();                           /* SP5 G-LD: the next frame may be late */
     ui_modal_reset();                         /* S2-1 */
@@ -147,10 +149,12 @@ void scene_pop(void)
 {
     const DoomoScene *s;
     if (depth <= 0) return;
+    s = stack[depth - 1].s;
+    if (!s->overlay)                          /* leaving the Options (or any screen, not a modal over it): */
+        opt_config_flush();                   /* the settings changed there, written once */
     plat_hold_frame(0);                       /* ... and so does a pop: the scene below resumes on dirty pages */
     plat_loading();                           /* SP5 G-LD */
     ui_modal_reset();                         /* S2-1 */
-    s = stack[depth - 1].s;
     depth--;
     if (!s->overlay) ui_toast_scene_change(0);   /* CL1: back to the screen below: the popped one's hints go */
     log_scene("scene: pop ", s);

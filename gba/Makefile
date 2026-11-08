@@ -141,7 +141,7 @@ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 # over the core's weak stubs, and the core's strong definitions win over both.
 ALL_OBJS  := $(GBA_OBJS) $(CORE_OBJS)
 
-.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-speed test-life profile-title profile-pause profile-invaded profile-all profile-sung profile-creator test-creator test-speed2 profile-speed2 profile-concert profile-exorcism clean sizes
+.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-optvol test-speed test-life profile-title profile-pause profile-invaded profile-all profile-sung profile-creator test-creator test-speed2 profile-speed2 profile-concert profile-exorcism clean sizes
 .DEFAULT_GOAL := all
 
 # Cartridge size (user decision 2026-11-01): the game ROM is a full 256 Mbit
@@ -245,6 +245,7 @@ test:
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-lang
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-tips
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-3d
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-optvol
 
 test-et: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile engine-test
@@ -340,6 +341,12 @@ test-3d: harness
 	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/view3d.txt \
 	    --shots $(SHOTS)/view3d --quiet
 # --- end SP8 ---
+# --- Refresh: the Options' volume changed 10 times: no frame over 50 ms (the GBA keeps no config
+# record, so nothing is written; the PS1 froze for seconds on every step) ---
+test-optvol: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/options_volume.txt --quiet
+# --- end Refresh ---
 
 # --- G1: the speed tour (docs/GBA.md "Speed pass 4"): every target scene's
 # fps (expect-fps floors), screenshots and output-frame hashes, printed as a

@@ -31,6 +31,9 @@
  *   tips on | off               CL4: the first-time tip cards show in this
  *                               run / stay off (the default; test_flags)
  *   mark-ticks | expect-ticks LO HI   ticks since mark-ticks in [LO, HI]
+ *   gaps-reset | expect-gap MS [LABEL]   (Refresh) the presented frames since
+ *                    gaps-reset by video frames taken (2 = 30 fps); fail when
+ *                    one took over MS ms (a freeze: the game loop blocked)
  *   save N | load N | expect-save N | verify N   (mailbox commands)
  *   save-must-fail N            the save must be refused (result 0; DC4)
  *   shot-during FRAMES NAME     the next mailbox command takes shot NAME
@@ -838,6 +841,30 @@ static void work_poll(void)
     wk_n0 = n;
 }
 
+/* Refresh: the video frames between two presented frames (mailbox drawn), since gaps-reset.
+ * Unlike the work counters this sees a stall outside plat_begin_frame..plat_end_frame (a VMU write
+ * in dc_vmu_poll). */
+#define GAP_MAX 64
+static unsigned long gp_h[GAP_MAX + 1], gp_f0, gp_worst, gp_worst_tick;
+static uint32_t gp_d0;
+static int gp_on;
+
+static void gap_poll(void)
+{
+    uint32_t d;
+    if (!mb || !mb_up) return;
+    d = mb->drawn;
+    if (d == gp_d0) return;
+    if (gp_on) {
+        unsigned long g = frames_run - gp_f0;
+        gp_h[g > GAP_MAX ? GAP_MAX : g]++;
+        if (g > gp_worst) { gp_worst = g; gp_worst_tick = mb->ticks; }
+    }
+    gp_d0 = d;
+    gp_f0 = frames_run;
+    gp_on = 1;
+}
+
 static void run_frame(void)
 {
     core.run();
@@ -845,6 +872,7 @@ static void run_frame(void)
     for (int i = 0; i < 4; i++) ports[i].mdx = ports[i].mdy = 0;
     mb_poll();
     work_poll();
+    gap_poll();
     if ((frames_run & 63) == 0 && elapsed() > timeout_s) {
         fail("timeout: %.0f s of wall time (tick %lu)", timeout_s, tick_now());
         exit(1);
@@ -1152,6 +1180,16 @@ static int run_script(FILE *f)
             if (!run_ticks(strtoul(v[1], NULL, 0))) return 0;
         } else if (!strcmp(c, "frames") && n >= 2) {
             for (unsigned long i = strtoul(v[1], NULL, 0); i; i--) run_frame();
+        } else if (!strcmp(c, "gaps-reset")) {
+            memset(gp_h, 0, sizeof(gp_h));
+            gp_worst = gp_worst_tick = 0;
+        } else if (!strcmp(c, "expect-gap") && n >= 2) {
+            double most = strtod(v[1], NULL), ms = gp_worst * 1000.0 / 59.94;
+            printf("gaps%s%s: video-frames-per-frame histogram", n >= 3 ? " " : "", n >= 3 ? v[2] : "");
+            for (int g = 1; g <= GAP_MAX; g++)
+                if (gp_h[g]) printf(" %d%s:%lu", g, g == GAP_MAX ? "+" : "", gp_h[g]);
+            printf(" max %lu (%.1f ms) at tick %lu\n", gp_worst, ms, gp_worst_tick);
+            if (ms > most) fail("line %d: a frame took %.1f ms (expect-gap %s)", lineno, ms, v[1]);
         } else if (!strcmp(c, "mark-ticks")) {
             tick_mark = tick_now();
         } else if (!strcmp(c, "expect-ticks") && n >= 3) {

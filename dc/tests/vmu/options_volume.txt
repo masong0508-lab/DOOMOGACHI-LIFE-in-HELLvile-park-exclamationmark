@@ -1,0 +1,41 @@
+# options_volume.txt - Refresh (the owner's report: turning the volume down in the Options froze
+# the game while the memory card was written, on every step). The music volume down 5 and up 5:
+# no presented frame may take more than 3 video frames (50 ms) meanwhile, and the config record
+# goes to the VMU once, when B leaves the Options (run_flycast.sh's optvol check).
+wait 160
+scene TITLE
+wait 10
+push OPTIONS 0
+wait 30
+press DOWN
+wait 10
+gaps-reset
+press LEFT
+wait 6
+press LEFT
+wait 6
+press LEFT
+wait 6
+press LEFT
+wait 6
+press LEFT
+wait 6
+press RIGHT
+wait 6
+press RIGHT
+wait 6
+press RIGHT
+wait 6
+press RIGHT
+wait 6
+press RIGHT
+wait 6
+wait 30
+expect-gap 50.1 optvol
+gaps-reset
+press B
+wait 60
+# leaving: the one VMU write (reported, not gated: dc_vmu_poll writes right after the scene changed)
+expect-gap 2000 optexit
+expect-scene TITLE
+expect-log DC: vmu A1 write DOOMOCFG.SYS 2 blocks -> ok

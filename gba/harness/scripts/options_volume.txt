@@ -1,0 +1,42 @@
+# Refresh (the owner's report: turning the volume down froze the game while the settings were
+# written). The GBA keeps no machine config record (PLATF_CONFIG unset: the settings ride in the
+# save), so nothing may be written while the Options change the music volume 10 times, and no
+# presented frame may take 4 vblanks or more (expect-gap 51: 3 vblanks are 50.2 ms at 59.73 Hz).
+wait 40
+expect-log doomo: init
+seed 1
+scene TITLE
+wait 2
+push OPTIONS 0
+wait 30
+press DOWN
+wait 10
+fps start
+press LEFT
+wait 6
+press LEFT
+wait 6
+press LEFT
+wait 6
+press LEFT
+wait 6
+press LEFT
+wait 6
+press RIGHT
+wait 6
+press RIGHT
+wait 6
+press RIGHT
+wait 6
+press RIGHT
+wait 6
+press RIGHT
+wait 6
+wait 30
+fps optvol
+expect-gap 51
+press B
+wait 60
+# (leaving: the title's own re-entry takes one ~218 ms frame, as before the Refresh; nothing is written)
+fps optexit
+expect-scene TITLE

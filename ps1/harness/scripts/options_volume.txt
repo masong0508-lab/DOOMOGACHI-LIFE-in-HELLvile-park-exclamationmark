@@ -1,0 +1,61 @@
+# Options volume (the owner's report: turning the volume down froze the game while the
+# memory card was read and written, once per step). Music volume down 5 and up 5 on the Quick
+# page: no frame may take over 50 ms (3 vsyncs) while it changes; the settings file is written
+# once, when B leaves the Options (expect-count).
+scene TITLE
+wait 60
+push OPTIONS 0
+wait 30
+press DOWN
+wait 10
+log optvol: changing
+fps optvol
+press LEFT
+wait 6
+press LEFT
+wait 6
+press LEFT
+wait 6
+press LEFT
+wait 6
+press LEFT
+wait 6
+press RIGHT
+wait 6
+press RIGHT
+wait 6
+press RIGHT
+wait 6
+press RIGHT
+wait 6
+press RIGHT
+wait 6
+wait 30
+fpsend optvol
+expect-gap 50 optvol
+log optvol: leaving
+fps optexit
+press B
+wait 90
+fpsend optexit
+expect-scene TITLE
+# a second visit: the file exists now, so this is an in-place rewrite; a visit
+# that changes nothing writes nothing
+push OPTIONS 0
+wait 30
+press DOWN
+press LEFT
+wait 10
+fps optexit2
+press B
+wait 90
+fpsend optexit2
+push OPTIONS 0
+wait 30
+press DOWN
+press UP
+press B
+wait 30
+expect-scene TITLE
+log optvol: done
+expect-count 2 memcard: config write
