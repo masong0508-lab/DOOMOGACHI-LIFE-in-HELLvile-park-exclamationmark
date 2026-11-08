@@ -51,7 +51,8 @@ static const DoomoActivity home_acts[] = {
       ACTF_FREEPLAY | ACTF_STORY, ICON_COIN, 1, ACT_ALWAYS, &SCENE_HOME_MART, 0 },
     { "Black Market", "Hellish furniture. No refunds.", ACTLOC_HELLVILE,
       ACTF_FREEPLAY | ACTF_STORY, ICON_PENTAGRAM, 2, ACT_ALWAYS, &SCENE_HOME_MART, 1 },
-    { "Expand the House", "Knock a wall through (H$)", ACTLOC_TOWN_HALL,
+    /* (CL5, clarity C9) with the homes, not in Town Hall: Town Hall keeps its civic rows only */
+    { "Expand the House", "Knock a wall through (H$)", ACTLOC_APARTMENTS,
       ACTF_FREEPLAY | ACTF_STORY, ICON_HOUSE, 1, ACT_ALWAYS, &SCENE_HOME_MART, 3 },
     { "Hold the Door", "Defend your house, wave by wave", ACTLOC_ARENA,
       ACTF_FREEPLAY | ACTF_STORY, ICON_SKULL, 0, (uint16_t)(UL_STORY_MISC2_FIRST + 10), &SCENE_HOME,

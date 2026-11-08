@@ -71,6 +71,8 @@ int  fp_island_select_kind(int kind);       /* test hook: the hub's cursor on a 
 int  fp_island_hub_held(void);              /* hub frames held (not redrawn) so far */
 int  fp_island_hub_built(void);             /* (I10) hub refreshes built over several ticks so far */
 void fp_island_clear_outside(uint8_t c);   /* the sky colour outside the sea box only (the sea covers the rest) */
+/* (CL5, clarity C9) the most rows Town Hall's menu may have, Leave included (test_textfit.c) */
+#define FP_TOWN_HALL_ROWS 7
 int fp_island_pop(void);     /* town_count(-1), counted once per frame (perf) */
 
 #endif

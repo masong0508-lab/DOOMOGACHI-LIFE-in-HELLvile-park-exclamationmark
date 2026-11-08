@@ -11,6 +11,14 @@
  *   A       visit             START  menu (save, options, unlocks ...)
  *   R       citizens          L      news
  *   SELECT  Family            B      menu
+ *
+ * (CL5, clarity C9) Every place's menu stays short: Town Hall has at most
+ * FP_TOWN_HALL_ROWS rows (Save / Load, Options and Name the island live in the
+ * START menu; Music Studio in the Concert Hall, Expand the House with the
+ * homes). A locked row says why in its help line, the START menu shows the
+ * map's shortcut keys (R, L, SELECT) beside the rows they open, the place's
+ * host greeting wraps instead of scrolling, and on a small screen the corner
+ * buttons are labelled beside them.
  */
 #include "fp_island.h"
 #include "doomo/game.h"
@@ -104,7 +112,8 @@ typedef struct {
     int16_t arg;
     const DoomoActivity *act;
     char label[30];
-    const char *desc;
+    const char *desc;            /* the help line; for a locked row, why it is locked */
+    const char *key;             /* (CL5) the map's shortcut for the same thing ("R"), or NULL */
 } Entry;
 
 /* the hub's big state lives in the shared scene scratch (scene.h) */
@@ -185,6 +194,23 @@ static Entry *add(int code, int icon, const char *label, const char *desc)
     return e;
 }
 
+/* (CL5, C9) why a "make a citizen" row is locked: that side has no free home */
+static const char *full_reason(int d)
+{
+    static char buf[2][48];
+    doomo_snprintf(buf[d & 1], sizeof(buf[0]), "Full: %d of %d homes. Someone must move out.",
+                   DOOMO_DISTRICT_SIZE, DOOMO_DISTRICT_SIZE);
+    return buf[d & 1];
+}
+
+/* (CL5) a row that cannot be used now: greyed, and its help line says why */
+static void lock_row(Entry *e, int locked, const char *why)
+{
+    if (!e || !locked) return;
+    e->enabled = 0;
+    e->desc = why;
+}
+
 static void add_here(int act)
 {
     Entry *e;
@@ -192,13 +218,14 @@ static void add_here(int act)
     if (act == NOLOC) return;
     doomo_snprintf(buf, sizeof(buf), "Who's here? (%d)", I.here[act % ACT_COUNT]);
     e = add(E_HERE, ICON_SMILE, buf, "See who's hanging out here right now.");
-    if (e) { e->arg = (int16_t)act; e->enabled = I.here[act % ACT_COUNT] > 0; }
+    if (e) e->arg = (int16_t)act;
+    lock_row(e, I.here[act % ACT_COUNT] == 0, "Nobody is hanging out here right now.");
 }
 
 /* the activities registered at this location (activities.h): the ones
  * open right now first, then the locked / night-only ones, greyed with
  * their hint */
-static void add_activities(int actloc)
+static void add_activities(int actloc, int soon)
 {
     const DoomoActivity *open[16];
     int i, n = activity_count(), shown = 0, nopen;
@@ -220,8 +247,9 @@ static void add_activities(int actloc)
         e->enabled = 0;
         shown++;
     }
-    if (!shown) add(E_SOON, ICON_SPARK, "Coming soon!", "Something fun is being built here. Check back later!");
+    if (!shown && soon) add(E_SOON, ICON_SPARK, "Coming soon!", "Something fun is being built here. Check back later!");
 }
+
 
 static void build_menu(const Loc *L)
 {
@@ -234,25 +262,28 @@ static void build_menu(const Loc *L)
         add(E_APTS, ICON_HOUSE, "Browse homes", d ? "Peek into the windows of the Pits." :
             "Peek into the windows of the Towers.")->arg = (int16_t)d;
         e = add(E_MOVE_IN, ICON_EGG, "Move someone in", "Create a brand new citizen for a free home.");
-        if (e) { e->arg = (int16_t)d; e->enabled = (uint8_t)(d ? free_hell : free_hill); }
-        add_activities(ACTLOC_APARTMENTS);
+        if (e) e->arg = (int16_t)d;
+        lock_row(e, !(d ? free_hell : free_hill), full_reason(d));
+        add_activities(ACTLOC_APARTMENTS, 1);
         break; }
     case LOC_TOWN_HALL:
-        e = add(E_CREATE_HILL, ICON_HEART, "Create (Hillvile)", "Make a new good-side citizen in the creator.");
-        if (e) e->enabled = (uint8_t)free_hill;
-        e = add(E_CREATE_HELL, ICON_PENTAGRAM, "Create (Hellvile)", "Make a new bad-side citizen. Spooky-cute!");
-        if (e) e->enabled = (uint8_t)free_hell;
-        add(E_RENT, ICON_COIN, "Collect rent", "Once a day: everyone chips in a little.");
-        add(E_FAMILY, ICON_HOUSE, "Family", "Your household: care, add members, remember.");
+        /* (CL5, C9) at most FP_TOWN_HALL_ROWS rows with Leave: the civic things only. Save / Load, Options and
+         * Name the island are in the START menu, Music Studio in the Concert Hall, Expand the House with the
+         * homes (Towers / Pits). Rows keep their order, so Create is still the first row. */
+        e = add(E_CREATE_HILL, ICON_HEART, "Create (Hillvile)", "A new citizen for the sweet side (Hillvile).");
+        lock_row(e, !free_hill, full_reason(0));
+        e = add(E_CREATE_HELL, ICON_PENTAGRAM, "Create (Hellvile)", "A new citizen for the spooky side (Hellvile).");
+        lock_row(e, !free_hell, full_reason(1));
+        add(E_RENT, ICON_COIN, "Collect rent", fp_rent_day() == doomo_town.day + 1 ?
+            "Done for today. It comes in by itself each day." : "Once a day: everyone chips in a little.");
+        e = add(E_FAMILY, ICON_HOUSE, "Family", "Your household. SELECT on the map opens it too.");
+        if (e) e->key = "SEL";
         add(E_AVATAR, ICON_SMILE, "Your avatar", "Your own look (it fights in the Arena).");
-        add(E_NAME_ISLAND, ICON_STAR, "Name the island", "Give your island a name of its own.");
-        add(E_SAVELOAD, ICON_HEART, "Save / Load", "Keep your island safe in a save slot.");
-        add(E_OPTIONS, ICON_WRENCH, "Options", "Game, shooter, sim, audio, display...");
         add(E_RECORDS, ICON_CHECK, "Town records", "Population, couples, exorcisms...");
-        add_activities(ACTLOC_TOWN_HALL);
+        add_activities(ACTLOC_TOWN_HALL, 0);
         break;
     case LOC_SHOP:
-        add(E_SHOP, ICON_COIN, "Go shopping", "Today's stock: food, gifts, care, holy and welding.");
+        add(E_SHOP, ICON_COIN, "Go shopping", "Food, gifts, care, holy things and welding parts.");
         add_here(L->act);
         break;
     case LOC_BLACK_MARKET:
@@ -261,14 +292,14 @@ static void build_menu(const Loc *L)
     case LOC_CAFE:
         add(E_CAFE_SHOP, ICON_FOOD, "Order treats", "Fresh cakes and snacks for your citizens.");
         add_here(L->act);
-        add_activities(ACTLOC_CAFE);
+        add_activities(ACTLOC_CAFE, 1);
         break;
     case LOC_CHURCH: {
         int n = 0, i;
         for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) if (fp_pick_match(PICK_POSSESSED, i)) n++;
         e = add(E_EXORCISE, ICON_CROSS, n ? "Exorcise someone!" : "Exorcise someone",
                 "Father Fuzz's ritual: prayer, holy water, true name.");
-        if (e) e->enabled = (uint8_t)(n > 0);
+        lock_row(e, n == 0, "Nobody is possessed right now. Praise be!");
         add(E_PRACTICE, ICON_HEART, "Practice ritual", "Rehearse on a plush dummy. No stakes!");
         add(E_FUZZ_TALK, ICON_SMILE, "Talk to Father Fuzz", "Ask how the island's souls are doing.");
         add(E_SHOP, ICON_DROP, "Holy supplies", "Holy water, sage, salt and friends.")->arg = 3;
@@ -278,7 +309,7 @@ static void build_menu(const Loc *L)
         int n = 0, i;
         for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) if (fp_pick_match(PICK_SICK, i)) n++;
         e = add(E_TREAT, ICON_CROSS, "Treat someone (H$40)", "Dr. Bloom patches up a sick citizen.");
-        if (e) e->enabled = (uint8_t)(n > 0);
+        lock_row(e, n == 0, "Nobody is sick right now. Come back later!");
         add_here(L->act);
         break; }
     case LOC_WORKSHOP:
@@ -288,7 +319,7 @@ static void build_menu(const Loc *L)
     case LOC_ARENA:
         e = add(E_ARENA, ICON_GUN, "Fight demon waves", "Survive wave after wave. Brutal or cute.");
         if (e) e->enabled = (uint8_t)!arena_locked();
-        add_activities(ACTLOC_ARENA);
+        add_activities(ACTLOC_ARENA, 1);
         break;
     case LOC_GRAVEYARD:
         add(E_GRAVES, ICON_SKULL, "Visit the graves", "Flowers, memories, and the ghost rite.");
@@ -297,7 +328,7 @@ static void build_menu(const Loc *L)
     case LOC_PARK:
         add(E_STROLL, ICON_ARROW_R, unlock_mode_ok(MODE_UNITED_PARK) ? "Stroll the park" : "Stroll HaHaland",
             "Walk around the island yourself.");
-        add(E_PICNIC, ICON_FOOD, "Throw a picnic (H$120)", "Everyone at the park gets snacks and smiles.");
+        add(E_PICNIC, ICON_FOOD, "Picnic (H$120)", "Everyone at the park gets snacks and smiles.");
         add_here(L->act);
         break;
     case LOC_WALL:
@@ -307,42 +338,53 @@ static void build_menu(const Loc *L)
         break;
     case LOC_SQUARE:
         add_here(L->act);
-        add_activities(ACTLOC_HELLVILE);
+        add_activities(ACTLOC_HELLVILE, 1);
         break;
     case LOC_LAKE: case LOC_BEACH:
         add_here(L->act);
-        add_activities(ACTLOC_LAKE);
+        add_activities(ACTLOC_LAKE, 1);
         break;
     case LOC_FUN_FAIR:
-        add_activities(ACTLOC_FUN_FAIR);
+        add_activities(ACTLOC_FUN_FAIR, 1);
         break;
     case LOC_LIBRARY:
-        add_activities(ACTLOC_LIBRARY);
+        add_activities(ACTLOC_LIBRARY, 1);
         add(E_UNLOCKS, ICON_STAR, "Unlocks gallery", "Everything you've earned, and how to get the rest.");
-        add(E_NEWS, ICON_CLOUD, "News archive", "Everything that's happened lately.");
-        add(E_ROSTER, ICON_SMILE, "Citizen records", "Look up any citizen.");
+        e = add(E_NEWS, ICON_CLOUD, "News archive", "Everything that's happened lately.");
+        if (e) e->key = "L";
+        e = add(E_ROSTER, ICON_SMILE, "Citizen records", "Look up any citizen.");
+        if (e) e->key = "R";
         break;
     case LOC_CONCERT:
-        add_activities(ACTLOC_CONCERT_HALL);
+        add_activities(ACTLOC_CONCERT_HALL, 1);
         add_here(L->act);
         doomo_snprintf(fp_tmp, sizeof(fp_tmp), "Tonight: %s", doomo_music_names[sim_concert_genre() % MUSIC_COUNT]);
         add(E_GENRE, ICON_NOTE, fp_tmp, "Fans of tonight's genre flock to the hall.");
         break;
     case LOC_MENU:
-        add(E_ROSTER, ICON_SMILE, "Citizens", "Browse every citizen on the island.");
-        add(E_NEWS, ICON_CLOUD, "News", "The island's news feed.");
+        /* (CL5, C9) the rows keep their places (scripts and journeys count them); the map's shortcut keys are
+         * shown beside the rows they open, Name the island moved here from Town Hall (before the title row, which no
+         * script reaches by counting), and the menu has one
+         * way out to the title ("Quit to title"); the last row only closes the menu */
+        e = add(E_ROSTER, ICON_SMILE, "Citizens", "Browse every citizen on the island. (R on the map)");
+        if (e) e->key = "R";
+        e = add(E_NEWS, ICON_CLOUD, "News", "The island's news feed. (L on the map)");
+        if (e) e->key = "L";
         add(E_PET, ICON_EGG, "Boreagotchi", "Your tamagotchi pet.");
-        add(E_SAVELOAD, ICON_HEART, "Save / Load", "Keep your island safe.");
+        add(E_SAVELOAD, ICON_HEART, "Save / Load", "Keep your island safe. (START here saves to slot 2)");
         add(E_OPTIONS, ICON_WRENCH, "Options", "Settings for everything.");
-        add(E_FAMILY, ICON_HOUSE, "Family", "Your household: care, add members, remember.");
+        e = add(E_FAMILY, ICON_HOUSE, "Family", "Your household. SELECT on the map opens it too.");
+        if (e) e->key = "SEL";
         add(E_UNLOCKS, ICON_STAR, "Unlocks", "Everything you've earned.");
         add(E_RECORDS, ICON_CHECK, "Town records", "Island statistics.");
         add(E_HELP, ICON_CHECK, "Help", "The Field Guide: every rule and word, explained.");   /* CL4 */
-        add(E_TITLE, ICON_ARROW_L, "Back to title", "Leave the island (save first!).");
-        break;
+        add(E_NAME_ISLAND, ICON_STAR, "Name the island", "Give your island a name of its own.");
+        add(E_TITLE, ICON_ARROW_L, "Quit to title", "Back to the title screen. Save first: START here saves.");
+        add(E_CLOSE, ICON_X, "Close", "Back to the map (B does it too).");
+        return;
     default: break;
     }
-    add(E_CLOSE, ICON_X, "Leave", "");
+    add(E_CLOSE, ICON_X, "Leave", "Back to the map (B does it too).");
 }
 
 /* ====================================================================== */
@@ -616,11 +658,7 @@ static void run_entry(const Entry *e)
         } else if (e->code == E_VISIT_HELL) {
             const DoomoUnlock *u = unlock_find(UL_CAT_MODE, 0, MODE_HELLVILE_VISITS);
             ui_toast(u && u->how ? u->how : "The gate is locked tight.");
-        } else if (e->code == E_HERE) ui_toast("Nobody's here right now.");
-        else if (e->code == E_EXORCISE) ui_toast("Nobody is possessed. Praise be!");
-        else if (e->code == E_TREAT) ui_toast("Everyone is healthy!");
-        else if (e->code == E_MOVE_IN || e->code == E_CREATE_HILL || e->code == E_CREATE_HELL)
-            ui_toast("No vacancies on that side!");
+        } else if (e->desc && e->desc[0]) ui_toast(e->desc);    /* (CL5) the reason its help line gives */
         return;
     }
     if (e->code != E_CLOSE) audio_sfx(SFX_SELECT);
@@ -937,9 +975,14 @@ static void draw_round_button(int cx, int cy, int icon, const char *label, int s
     ui_fill_circle(cx, cy - b, 9, sel ? ui_lighter(st->accent) : st->fill_hi);
     ui_fill_circle(cx - 3, cy - 4 - b, 3, PAL_WHITE);
     ui_text_big(cx - 6, cy - 8 - b, g, 2, sel ? PAL_WHITE : st->accent, st->outline);
-    if (fp_big() || sel) {
+    if (fp_big()) {
         int w = ui_text_width(label);
         ui_text_outline(cx - w / 2, cy + 10, label, PAL_WHITE, st->outline);
+    } else {
+        /* (CL5, C9 1.6d) 240x160 has no room under the button (the news bar): the label sits beside it, always,
+         * on the side that faces the map (the left button's on its right, the right button's on its left) */
+        int w = ui_text_width(label);
+        ui_text_outline(cx < fp_sw() / 2 ? cx + 12 : cx - 12 - w, cy - 4 - b, label, PAL_WHITE, st->outline);
     }
     if (alert) {
         ui_fill_circle(cx + 8, cy - 8 - b, 4, PAL_UI_RED_D);
@@ -961,6 +1004,8 @@ static void draw_plate(int i)
         doomo_snprintf(buf, sizeof(buf), "%s: make citizens!", L->name);
     else if (L->kind == LOC_PET)
         doomo_snprintf(buf, sizeof(buf), "%s", pet_exists() ? doomo_town.pet.name : "Adopt a pet!");
+    else if (L->kind == LOC_ROSTER)
+        doomo_snprintf(buf, sizeof(buf), "%s (R)", L->name);     /* (CL5) R opens them from anywhere on the map */
     else
         doomo_snprintf(buf, sizeof(buf), "%s", L->name);
     w = ui_text_width(buf) + 14;
@@ -988,13 +1033,59 @@ static void draw_bubbles(const FpLocDraw *ld)
     }
 }
 
+/* the help line under the list: what the row does, or for a locked row why it is locked (in red) */
+static const char *entry_help(const Entry *e)
+{
+    if (!e->enabled && e->code == E_ACTIVITY) return fp_activity_reason(e->act);
+    if (!e->enabled && (e->code == E_ARENA || e->code == E_VISIT_HELL)) {
+        const DoomoUnlock *u = unlock_find(UL_CAT_MODE, 0, e->code == E_ARENA ? MODE_ARENA : MODE_HELLVILE_VISITS);
+        if (u && u->how) return u->how;
+    }
+    return e->desc ? e->desc : "";
+}
+
 static void menu_rect(int *x, int *y, int *w, int *h)
 {
     int sw = fp_sw(), big = fp_big();
     *w = DOOMO_MIN(sw - 12, 300);
-    *h = big ? 190 : 128;
+    *h = big ? 190 : 136;            /* (CL5) 240x160: 8 px taller (was 128 at y 18), room for a two-line greeting */
     *x = (sw - *w) / 2;
-    *y = big ? 26 : 18;
+    *y = big ? 26 : 16;
+}
+
+/* (CL5, C9 / C13) the menu window's inner layout, shared by the drawing and the text-fit check: the list's left
+ * edge and width, the first row's y, the host greeting's line count and the help pill's text width. */
+typedef struct { int x, y, w, h, lx, lw, ly, glines, gw, dw; } MenuGeom;
+
+static const char *greet_text(const Loc *L, char *g, int cap)
+{
+    doomo_snprintf(g, cap, "%s: %s", L->host, L->greet ? L->greet : "Hi!");
+    return g;
+}
+
+static void menu_geom(const Loc *L, MenuGeom *m)
+{
+    menu_rect(&m->x, &m->y, &m->w, &m->h);
+    m->lx = m->x + 8;
+    m->lw = m->w - 16;
+    m->glines = 0;
+    m->gw = m->w - 22;
+    m->ly = m->y + 12;
+    if (L->host) {
+        char g[96];
+        m->lx = m->x + FIGURE_W + 12;
+        m->lw = m->w - FIGURE_W - 18;
+        /* the greeting wraps (it used to scroll by, its first words often missed): two lines at most */
+        m->glines = DOOMO_CLAMP(ui_text_wrap(0, 0, m->gw, greet_text(L, g, sizeof(g)), 0, 0), 1, 2);
+        m->ly = m->y + (m->glines > 1 ? 32 : 25);
+    }
+    m->dw = m->lw - 8;
+}
+
+/* the widest label a row can show: the selection pill ends at lx + lw, a locked row keeps 12 px for its padlock */
+static int label_box(const MenuGeom *m, int enabled)
+{
+    return m->lw - (enabled ? 26 : 36);
 }
 
 /* held = 1: the platform's held frame already has the dimmed island and the window's shadow, so only the
@@ -1007,7 +1098,9 @@ static void draw_menu(int held)
     int style = (L->kind == LOC_PITS || L->kind == LOC_BLACK_MARKET || L->kind == LOC_SQUARE ||
                  L->kind == LOC_ARENA || L->kind == LOC_LAKE || L->kind == LOC_GRAVEYARD) ? WIN_DARK : WIN_CUTE;
     const UiStyle *st = ui_style(style);
-    menu_rect(&x, &y, &w, &h);
+    MenuGeom m;
+    menu_geom(L, &m);
+    x = m.x; y = m.y; w = m.w; h = m.h;
     if (held) {
         ui_shade_clip(x, y, w, h);
     } else if (I.menu_t >= 0 && ui_pop_scale(I.menu_t) == 256) {
@@ -1025,8 +1118,8 @@ static void draw_menu(int held)
     if (!ui_window_pop(x, y, w, h, style, I.menu_t)) { if (held) ui_shade_clip_off(); return; }
     /* title */
     ui_title(x + w / 2, y - 7, L->name, style);
-    lx = x + 8;
-    lw = w - 16;
+    lx = m.lx;
+    lw = m.lw;
     if (has_host) {
         int rid = roster_find(L->host), fx = x + 6, fy = y + h - FIGURE_H - 6;
         if (rid >= 0) {
@@ -1035,28 +1128,32 @@ static void draw_menu(int held)
             fp_figure(fx, fy + (ui_wave(t, 60, 1) > 0), look, RES_ALIVE,
                       I.menu_t < 40 ? EXPR_TALK : EXPR_HAPPY);
         }
-        lx = x + FIGURE_W + 12;
-        lw = w - FIGURE_W - 18;
-        /* the host's greeting */
+        /* the host's greeting, wrapped on up to two lines (CL5: it scrolled by as a marquee) */
         {
-            char g[80];
-            doomo_snprintf(g, sizeof(g), "%s: %s", L->host, L->greet ? L->greet : "Hi!");
-            fp_pill(x + 6, y + 8, w - 12, 12, st->fill_hi, st->outline, PAL_WHITE);
-            fp_marquee(x + 11, y + 10, w - 22, g, st->text_dim, I.menu_t);
+            char g[96];
+            int gy = m.glines > 1 ? y + 6 : y + 8;
+            fp_pill(x + 6, gy, w - 12, 3 + m.glines * 9, st->fill_hi, st->outline, PAL_WHITE);
+            ui_text_wrap(x + 11, gy + 2, m.gw, greet_text(L, g, sizeof(g)), st->text_dim, 1);
         }
     }
     {
-        int ly = y + (has_host ? 25 : 12);
+        int ly = m.ly;
         for (i = 0; i < vis && I.etop + i < I.nent; i++) {
             const Entry *e = &isl()->ent[I.etop + i];
-            int ry = ly + i * 11, sel = I.etop + i == I.esel;
+            int ry = ly + i * 11, sel = I.etop + i == I.esel, box = label_box(&m, e->enabled);
             uint8_t tc = e->enabled ? st->text : st->text_dim;
             if (sel) {
                 fp_pill(lx + 8, ry - 1, lw - 8, 11, st->accent_d, ui_darker(st->accent_d), ui_lighter(st->accent_d));
                 ui_cursor(lx - 1, ry + 1);
             }
             fp_icon(lx + 11, ry + 1, e->icon, e->enabled ? st->accent : st->text_dim);
-            fp_marquee(lx + 20, ry + 1, lw - 32, e->label, tc, sel ? t : 0);
+            if (e->key) {
+                /* (CL5) the map's shortcut for this row, right-aligned in the row */
+                int kw = ui_text_width(e->key);
+                ui_text(lx + lw - 6 - kw, ry + 1, e->key, sel ? st->text : st->text_dim);
+                box -= kw + 6;
+            }
+            fp_marquee(lx + 20, ry + 1, box, e->label, tc, sel ? t : 0);
             if (!e->enabled) {
                 int kx = lx + lw - 9;
                 plat_rect(kx + 1, ry + 1, 3, 1, st->text_dim);
@@ -1068,20 +1165,14 @@ static void draw_menu(int held)
         if (I.nent > vis)
             ui_scroll_arrows(lx + lw - 3, ly - 5, ly + vis * 11 - 2, I.etop > 0, I.etop + vis < I.nent);
     }
-    /* the selected entry's description (or why it's locked) */
+    /* the selected entry's description (or why it's locked, in red) */
     {
         const Entry *e = &isl()->ent[I.esel];
-        const char *d = e->desc;
-        uint8_t c = st->text_dim;
-        if (!e->enabled && e->code == E_ACTIVITY) { d = fp_activity_reason(e->act); c = PAL_UI_RED; }
-        else if (!e->enabled && (e->code == E_ARENA || e->code == E_VISIT_HELL)) {
-            const DoomoUnlock *u = unlock_find(UL_CAT_MODE, 0, e->code == E_ARENA ? MODE_ARENA :
-                                               MODE_HELLVILE_VISITS);
-            if (u && u->how) d = u->how;
-            c = PAL_UI_RED;
-        }
-        fp_pill(lx, y + h - 22, lw, 18, st->fill_lo, st->outline, st->fill);
-        ui_text_wrap(lx + 4, y + h - 21 + (ui_text_wrap(0, 0, lw - 8, d, 0, 0) > 1 ? 0 : 4), lw - 8, d, c, 1);
+        uint8_t c = e->enabled ? st->text_dim : PAL_UI_RED;
+        const char *d = entry_help(e);
+        /* (CL5) 20 px tall: two lines sit inside the rim (at 18 the second line's descenders touched it) */
+        fp_pill(lx, y + h - 24, lw, 20, st->fill_lo, st->outline, st->fill);
+        ui_text_wrap(lx + 4, y + h - 22 + (ui_text_wrap(0, 0, m.dw, d, 0, 0) > 1 ? 0 : 4), m.dw, d, c, 1);
     }
     if (held) ui_shade_clip_off();
 }
@@ -1266,3 +1357,36 @@ int fp_island_menu_select(const char *label)
     for (i = 0; i < I.nent; i++) if (strcmp(isl()->ent[i].label, label) == 0) { I.esel = i; return 1; }
     return 0;
 }
+
+/* (CL5, clarity C13) text fit of the open menu at the current screen size: every row's label inside its box (the
+ * padlock and the shortcut key keep their room), every help line (or lock reason) in the pill's two lines, the host
+ * greeting in two lines. Returns how many things do not fit; the first is described in why. */
+int fp_island_menu_overflow(char *why, int cap)
+{
+    MenuGeom m;
+    int i, bad = 0;
+    char g[96];
+    if (why && cap) why[0] = 0;
+    if (!I.menu_open || !I.mloc) return 0;
+    menu_geom(I.mloc, &m);
+#define BAD(...) do { int l_ = why ? (int)strlen(why) : 0; bad++; \
+        if (why && l_ < cap - 8) { \
+            if (l_) { doomo_snprintf(why + l_, cap - l_, " | "); l_ += 3; } \
+            doomo_snprintf(why + l_, cap - l_, __VA_ARGS__); } } while (0)
+    if (I.mloc->host && ui_text_wrap(0, 0, m.gw, greet_text(I.mloc, g, sizeof(g)), 0, 0) > 2)
+        BAD("%s: the greeting needs %d lines", I.mloc->name, ui_text_wrap(0, 0, m.gw, g, 0, 0));
+    for (i = 0; i < I.nent; i++) {
+        const Entry *e = &isl()->ent[i];
+        int box = label_box(&m, e->enabled) - (e->key ? ui_text_width(e->key) + 6 : 0);
+        if (ui_text_width(e->label) > box)
+            BAD("%s: \"%s\" is %d px, its box %d", I.mloc->name, e->label, ui_text_width(e->label), box);
+        if (ui_text_wrap(0, 0, m.dw, entry_help(e), 0, 0) > 2)
+            BAD("%s: help of \"%s\" needs %d lines: %s", I.mloc->name, e->label,
+                ui_text_wrap(0, 0, m.dw, entry_help(e), 0, 0), entry_help(e));
+    }
+#undef BAD
+    return bad;
+}
+int fp_island_menu_enabled(int i) { return (i >= 0 && i < I.nent) ? isl()->ent[i].enabled : 0; }
+const char *fp_island_menu_help(int i) { return (i >= 0 && i < I.nent) ? entry_help(&isl()->ent[i]) : ""; }
+const char *fp_island_menu_key(int i) { return (i >= 0 && i < I.nent && isl()->ent[i].key) ? isl()->ent[i].key : ""; }

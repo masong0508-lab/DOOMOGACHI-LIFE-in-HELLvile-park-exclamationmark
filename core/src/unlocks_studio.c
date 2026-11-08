@@ -29,8 +29,7 @@ const DoomoUnlock doomo_unlocks_studio[] = {
 static const DoomoActivity studio_acts[] = {
     { "Music Studio", "Write songs, lyrics & choir pieces", ACTLOC_CONCERT_HALL,
       ACTF_FREEPLAY | ACTF_STORY, ICON_NOTE, 1, ACT_ALWAYS, &SCENE_STUDIO, -1 },
-    { "Music Studio", "Compose for the town choir", ACTLOC_TOWN_HALL,
-      ACTF_FREEPLAY | ACTF_STORY, ICON_NOTE, 1, ACT_ALWAYS, &SCENE_STUDIO, -1 },
+    /* (CL5, clarity C9) the Concert Hall is its one home now: Town Hall keeps its civic rows only */
     { NULL, NULL, 0, 0, 0, 0, 0, NULL, 0 }
 };
 const DoomoActivity *const doomo_activities_studio = studio_acts;

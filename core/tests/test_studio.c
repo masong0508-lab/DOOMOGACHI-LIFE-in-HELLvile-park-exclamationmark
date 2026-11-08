@@ -760,9 +760,10 @@ TEST(studio_unlocks_and_activity_registered)
     n = activities_at(ACTLOC_CONCERT_HALL, acts, 16);
     for (i = 0; i < n; i++) if (acts[i]->scene == &SCENE_STUDIO) found = 1;
     CHECK(found);
+    /* (CL5, clarity C9) one home only: the Concert Hall; Town Hall keeps its civic rows */
     n = activities_at(ACTLOC_TOWN_HALL, acts, 16);
     for (i = 0, found = 0; i < n; i++) if (acts[i]->scene == &SCENE_STUDIO) found = 1;
-    CHECK(found);
+    CHECK(!found);
     doomo_town.mode = TOWN_STORY;
     doomo_town.story.chapter = 0;
     n = activities_at(ACTLOC_CONCERT_HALL, acts, 16);
