@@ -149,6 +149,8 @@ LOCAL_CALLBACKS = {
     "lib_almanac": ("row",), "lib_bestiary": ("row",), "lib_gallery": ("row",),
     "lib_items": ("row",), "lib_jukebox": ("row",), "lib_trophies": ("row",),
     "lib_weapons": ("row",),
+    # (CL4) the Field Guide's list rows: the same lib_list() callback.
+    "lib_help": ("row",),
     # fp_roster.c: cmp_res is the comparator of fp_sort_u16() (a shell sort).
     "fp_roster": ("cmp_res",),
     # H4: home_draw.c's menu rows: label_* go to its own draw_list_rows(),

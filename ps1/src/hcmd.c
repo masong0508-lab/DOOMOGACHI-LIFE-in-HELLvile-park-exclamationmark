@@ -90,11 +90,12 @@ HarnessMailbox g_hcmd = { HCMD_MAGIC, 0, 0, 0, 0, 0, 0, 0, 0, "", "", "" };
 
 /* Test flags (plat_ext.h): a scripted run is the one that has put the loop
  * in lockstep, so while the harness holds `lock` the interactive first-boot
- * steps (U5's language picker) are skipped, as in the native runner. A real
+ * steps (U5's language picker) are skipped, as in the native runner, and so
+ * are CL4's first-time tip cards (they would eat the scripts' presses). A real
  * console never writes the mailbox, so it always gets 0 here. */
 uint32_t plat_test_flags(void)
 {
-    return g_hcmd.lock ? PLAT_TEST_NO_PICKER : 0u;
+    return g_hcmd.lock ? (PLAT_TEST_NO_PICKER | PLAT_TEST_NO_TIPS) : 0u;
 }
 
 static void reply(int ok, const char *a, const char *b)

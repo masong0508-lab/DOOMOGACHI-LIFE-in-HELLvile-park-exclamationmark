@@ -38,6 +38,11 @@
 #include "hcmd.h"
 #include "room_int.h"
 #include "doomo/doomo.h"
+#include "doomo/plat_ext.h"
+
+/* (CL4) the harness's test flags (gba_plat.h GbaMailbox.test_flags): the
+ * first-time tip cards stay off in scripted runs unless a script asks */
+uint32_t plat_test_flags(void) { return gba_mailbox.test_flags; }
 #include "doomo/story_vm.h"
 
 /* 28 B of .bss (H2 budget <= 64 B) */

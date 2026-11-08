@@ -1,0 +1,51 @@
+# CL4 (clarity C4 + C12) on the GBA: the first-time tip cards and the Field Guide.
+# Every harness run keeps the cards off (mailbox test_flags = PLAT_TEST_NO_TIPS);
+# "tips on" lets them show here. The island hub keeps no frame while the card is
+# up (the card is drawn every frame, a retained panel once settled): the fps with
+# the card up and after it closes are logged, and the frames are checked by eye.
+wait 40
+expect-log doomo: init
+seed 7
+tips on
+scene NEW_ISLAND
+wait 20
+press A
+wait 30
+press A
+wait 4
+press A
+wait 40
+expect-scene ISLAND
+wait 40
+expect-text Gobble
+shot tip_island
+fps start
+wait 90
+fps island, tip card up
+press A
+wait 30
+shot island_after_tip
+fps start
+wait 90
+fps island, card closed
+press A
+wait 40
+expect-text My office
+shot tip_town_hall
+press A
+wait 10
+press B
+wait 10
+scene LIB_HELP 0
+wait 40
+expect-text Buttons
+shot field_guide
+press A
+wait 30
+fps start
+wait 60
+fps field guide page
+shot field_guide_page
+press RIGHT
+wait 20
+shot field_guide_page2

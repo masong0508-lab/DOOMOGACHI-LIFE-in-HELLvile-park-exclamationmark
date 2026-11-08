@@ -299,6 +299,7 @@ static void timers_init(void)
 
 void plat_init_hw(void)
 {
+    gba_mailbox.test_flags = 0;             /* (CL4) a real cartridge: no test flags */
     gba_mailbox.magic = GBA_MAILBOX_MAGIC;
     gba_mailbox.ticks = 0;
     gba_mailbox.drawn = 0;

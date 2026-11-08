@@ -25,6 +25,8 @@
  *   expect-scene NAME   checked against "scene: NAME" log lines if the core
  *                       prints them; otherwise only a warning
  *   type "..."          not supported on GBA (warning)
+ *   tips on|off         (CL4) let the first-time tip cards show in this run
+ *                       (off by default: the mailbox's test_flags)
  *   audio-reset         start a new audio measurement      (extension)
  *   audio [X LABEL]     print the audio peak-to-peak since audio-reset
  *   expect-audio MIN [LABEL]  fail unless peak-to-peak >= MIN (16-bit)
@@ -218,6 +220,18 @@ static uint32_t vframes(void)
 }
 
 static uint32_t keys;
+/* (CL4) the ROM's test flags (mailbox +72, GbaMailbox.test_flags): every run
+ * keeps the first-time tip cards off (PLAT_TEST_NO_TIPS) so scripts keep their
+ * presses, unless the script says "tips on" */
+#define MAILBOX_TEST_FLAGS (MAILBOX_ADDR + 72)
+#define TEST_NO_TIPS 2u                 /* doomo/plat_ext.h PLAT_TEST_NO_TIPS */
+static uint32_t test_flags = TEST_NO_TIPS;
+static void tflags_sync(void)
+{
+    if (core->busRead32(core, MAILBOX_ADDR) == MAILBOX_MAGIC &&
+        core->busRead32(core, MAILBOX_TEST_FLAGS) != test_flags)
+        core->busWrite32(core, MAILBOX_TEST_FLAGS, test_flags);
+}
 static void run_frame(void);
 static void wl_check(void);
 static int worklog;             /* --worklog: one line per drawn frame (tick, CPU work ms) */
@@ -331,6 +345,7 @@ static void run_frame(void)
 {
     core->setKeys(core, keys);
     core->runFrame(core);
+    tflags_sync();
     wl_check();
     drain_audio();
 }
@@ -357,6 +372,7 @@ static void run_slice(void)
     uint32_t fc = vframes();
     core->setKeys(core, keys);
     core->runLoop(core);
+    tflags_sync();
     wl_check();
     if (vframes() != fc) drain_audio();
 }
@@ -642,6 +658,7 @@ static int run_frame_watch(uint32_t *tick)
     core->setKeys(core, keys);
     while (gba->video.frameCounter == fc) {
         core->runLoop(core);
+        tflags_sync();
         if (!seen && drawn() != d0) {
             seen = 1;
             *tick = ticks();
@@ -942,6 +959,10 @@ static int run_script(const char *path)
                 profile((uint32_t)atoi(argv[1]), argc >= 3 ? argv[2] : NULL);
                 if (sync_mode) run_until_tick(ticks() + 1);
             }
+        } else if (!strcmp(argv[0], "tips") && argc >= 2) {
+            /* (CL4) tips on | off: let the first-time tip cards show in this run */
+            test_flags = !strcmp(argv[1], "on") ? 0u : TEST_NO_TIPS;
+            tflags_sync();
         } else if (!strcmp(argv[0], "sync") && argc >= 2) {
             /* sync on [TICK] | off: tick-exact waits (see run_until_tick).
              * The hold starts at absolute tick TICK (default: the next

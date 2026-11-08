@@ -58,6 +58,10 @@ typedef struct GbaMailbox {
     /* harness "vhash-seq" (G1): nonzero = draw every tick (no catch-up
      * ticks), so every tick's frame can be hashed */
     uint32_t draw_all;
+    /* (CL4) plat_test_flags() (plat_ext.h PLAT_TEST_*): 0 at boot (a real
+     * cartridge); the harness writes PLAT_TEST_NO_TIPS once the ROM is up,
+     * or 0 after a script's "tips on" */
+    uint32_t test_flags;
 } GbaMailbox;
 extern volatile GbaMailbox gba_mailbox;
 enum { GBA_HC_NONE, GBA_HC_SAVE, GBA_HC_LOAD, GBA_HC_EXISTS, GBA_HC_TOWN_FILL,

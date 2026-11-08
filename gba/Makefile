@@ -220,6 +220,7 @@ test:
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-home
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-ow
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-lang
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-tips
 
 test-et: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile engine-test
@@ -287,6 +288,15 @@ test-lang: harness
 	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/lang_es.txt \
 	    --shots $(SHOTS)/lang --quiet
 # --- end L2a ---
+
+# --- CL4: the first-time tip cards (on for this run: "tips on") over the island hub's kept frames,
+# the Town Hall card, and the Field Guide (docs/GAME_DESIGN.md 4.2) ---
+test-tips: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@mkdir -p $(SHOTS)/tips
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/tips.txt \
+	    --shots $(SHOTS)/tips --quiet
+# --- end CL4 ---
 
 # --- G1: the speed tour (docs/GBA.md "Speed pass 4"): every target scene's
 # fps (expect-fps floors), screenshots and output-frame hashes, printed as a
