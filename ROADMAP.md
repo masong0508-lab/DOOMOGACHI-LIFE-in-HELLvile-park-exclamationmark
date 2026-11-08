@@ -5,6 +5,8 @@ show canon, life-sim answers, 32 MB GBA cartridge) are summarised at the end.
 Package IDs match the planning files; each package is built in its own worktree,
 reviewed, then landed on `claude/nice-allen-gr6czm`.
 
+**Held off (2026-11-08, usage stop):** everything planned but not yet built (rest of speed wave 2, analog sticks, Talk, Dreamcast, creator 1,500 parts, 24 new levels), with the saved unlanded patches and a restart checklist: [`docs/design/HELD_OFF_ROADMAP.md`](docs/design/HELD_OFF_ROADMAP.md).
+
 ## Refresh 2026-11-06: done, playable, to do
 
 Checked on this tree with the native gcc build only (`make -C core test`: 861 unit tests, 160 scripted playthroughs, 19 press journeys at
