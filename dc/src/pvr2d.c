@@ -101,7 +101,8 @@ static uint32_t base_key = 0xFFFFFFFFu;
         (cx).depth.comparison = PVR_DEPTHCMP_ALWAYS;                                 \
         (cx).depth.write = false;                                                    \
         (cx).gen.culling = PVR_CULLING_NONE;                                         \
-        (cx).gen.alpha = (mode) == DC2D_ALPHA || (mode) == DC2D_TINT || (mode) == DC2D_DARK; \
+        (cx).gen.alpha = (mode) == DC2D_ALPHA || (mode) == DC2D_TINT || (mode) == DC2D_DARK || \
+                         (mode) == DC2D_GLASS || (mode) == DC2D_ADD;                \
         (cx).gen.fog_type = PVR_FOG_DISABLE;                                         \
         (cx).txr.uv_clamp = PVR_UVCLAMP_NONE;                                        \
         (cx).txr.uv_flip = PVR_UVFLIP_NONE;                                          \
@@ -110,6 +111,7 @@ static uint32_t base_key = 0xFFFFFFFFu;
         switch (mode) {                                                              \
         case DC2D_SOLID: (cx).blend.src = PVR_BLEND_ONE; (cx).blend.dst = PVR_BLEND_ZERO; break; \
         case DC2D_MUL:   (cx).blend.src = PVR_BLEND_DESTCOLOR; (cx).blend.dst = PVR_BLEND_ZERO; break; \
+        case DC2D_ADD:   (cx).blend.src = PVR_BLEND_SRCALPHA; (cx).blend.dst = PVR_BLEND_ONE; break; \
         default:         (cx).blend.src = PVR_BLEND_SRCALPHA; (cx).blend.dst = PVR_BLEND_INVSRCALPHA; break; \
         }                                                                            \
     } while (0)

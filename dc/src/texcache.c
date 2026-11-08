@@ -288,6 +288,15 @@ int dc2d_tex_remap(int src, int level, const uint8_t *map)
     return s;
 }
 
+int dc2d_tex_find(uint32_t uid, int w, int h)
+{
+    int s;
+    if (!uid) return -1;
+    s = hash_find(uid, 0u, w, h, 1);
+    if (s >= 0) ent[s].last = cur_frame;
+    return s;
+}
+
 int dc2d_tex_image(const DoomoImage *img)
 {
     int w = img->w, h = img->h, uid = img->uid != 0, s;

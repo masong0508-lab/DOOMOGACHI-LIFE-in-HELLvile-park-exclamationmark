@@ -260,6 +260,11 @@ static void draw_prim(const DcFrame *f, const DcPrim *p, uint8_t *rgb)
                 if (p->mode == DC2D_IMAGE) {
                     if (!ta) continue;
                     r = tr; g = tg; b = tb;
+                } else if (p->mode == DC2D_ADD) {   /* DC8: MODULATEALPHA, SRCALPHA / ONE */
+                    int a = mul8(ta, ca);
+                    if (!a) continue;
+                    r += mul8(mul8(tr, cr), a); g += mul8(mul8(tg, cg), a); b += mul8(mul8(tb, cb), a);
+                    r = r > 255 ? 255 : r; g = g > 255 ? 255 : g; b = b > 255 ? 255 : b;
                 } else {                /* MODULATEALPHA, SRCALPHA / INVSRCALPHA */
                     int a = mul8(ta, ca), sr = mul8(tr, cr), sg = mul8(tg, cg), sb = mul8(tb, cb);
                     if (!a) continue;

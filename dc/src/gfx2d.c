@@ -462,10 +462,13 @@ static int reemit(const DcPrim *p, float X0, float Y0, float X1, float Y1, int l
     case DC2D_TINT:
         q->color = doomo_colormap[level][p->color];
         break;
-    case DC2D_IMAGE: {
+    case DC2D_GLASS:                    /* DC8: a translucent image: its texels remapped, */
+    case DC2D_IMAGE: {                  /* blended as before                              */
         int t = dc2d_tex_remap(p->tex, level, doomo_colormap[level]);
         if (t >= 0) {
             q->tex = (uint16_t)t;
+        } else if (p->mode == DC2D_GLASS) {
+            break;                      /* again as it is, over the remapped picture */
         } else {                        /* no texture: the image times the fitted factor */
             DcPrim *m = emit(DC2D_MUL);
             if (!m) return 0;
@@ -819,6 +822,46 @@ void DC2D_FN(image_xform)(int ax, int ay, const DoomoImage *img, int sx_q8, int 
     }
 }
 
+/* ---- DC8: prims in frame pixels (the house, room.c) ------------------------------------- */
+static int foff(float x0, float y0, float x1, float y1)
+{
+    return x1 <= 0.0f || y1 <= 0.0f || x0 >= (float)DC2D_W || y0 >= (float)DC2D_H || x1 <= x0 || y1 <= y0;
+}
+
+DcPrim *dc2d_tex_rect(int mode, int slot, float x0, float y0, float x1, float y1,
+                      int iw, int ih, int flip, uint32_t argb, uint8_t color)
+{
+    const DcTex *t;
+    DcPrim *p;
+    float u1;
+    if (!drawing || slot < 0 || foff(x0, y0, x1, y1)) return NULL;
+    t = dc2d_tex(slot);
+    p = emit(mode);
+    if (!p) return NULL;
+    p->tex = (uint16_t)slot;
+    p->x0 = x0; p->y0 = y0; p->x1 = x1; p->y1 = y1;
+    u1 = (float)iw / (float)t->tw;
+    p->u0 = flip ? u1 : 0.0f;
+    p->u1 = flip ? 0.0f : u1;
+    p->v0 = 0.0f;
+    p->v1 = (float)ih / (float)t->th;
+    p->argb = argb;
+    p->color = color;
+    return p;
+}
+
+int dc2d_prim_count(void) { return ncur; }
+
+void dc2d_frect(float x0, float y0, float x1, float y1, uint8_t c)
+{
+    DcPrim *p;
+    if (!drawing || foff(x0, y0, x1, y1)) return;
+    p = emit(DC2D_SOLID);
+    if (!p) return;
+    p->color = c;
+    p->x0 = x0; p->y0 = y0; p->x1 = x1; p->y1 = y1;
+}
+
 /* ---- post effects ---------------------------------------------------------------------- */
 void DC2D_FN(post_offset)(int dx, int dy)
 {
@@ -898,7 +941,7 @@ void DC2D_FN(pal_lerp)(int pal_id, int level16)
     lerp_on = 1;
     for (i = 0; i < ncur; i++)
         if (cur[i].mode == DC2D_SOLID || cur[i].mode == DC2D_TINT || cur[i].mode == DC2D_IMAGE ||
-            cur[i].mode == DC2D_VIEW3D)
+            cur[i].mode == DC2D_VIEW3D || cur[i].mode == DC2D_GLASS)
             cur[i].flags |= DC2D_PF_LERP;
     seal = ncur;
 }

@@ -27,6 +27,12 @@
  *          drop shadow of IMG_SHADOW (frame *= 1 - alpha under it)
  *   VIEW3D a marker, not a rect: a 3D view's projected polygons (a segment
  *          of a dc3d.h batch) are sent here, in the same list (DC7)
+ *   GLASS  PAL8 texture through bank 0 (or the lerp bank) times the prim's
+ *          ARGB, blended at its alpha: a translucent image (DC8: the house's
+ *          ghosts, translucent residents, the invalid ghost's red)
+ *   ADD    PAL8 texture through bank 1 times the prim's ARGB, ADDED to the
+ *          frame at its alpha: a glow over an image's shape (DC8: the
+ *          selected pieces' pulse)
  */
 #ifndef DC_DC2D_H
 #define DC_DC2D_H
@@ -61,6 +67,7 @@
 
 enum { DC2D_SOLID, DC2D_MUL, DC2D_ALPHA, DC2D_IMAGE, DC2D_TINT, DC2D_DARK,
        DC2D_VIEW3D,          /* DC7: a 3D view's polygons go here (dc3d.h) */
+       DC2D_GLASS, DC2D_ADD, /* DC8: a translucent image, an additive glow */
        DC2D_MODES };
 
 #define DC2D_NOTEX   0xFFFFu
@@ -115,6 +122,18 @@ void dc2d_side_end(void);
 /* DC7: the marker of a 3D view (dc3d_seg_end): segment `seg` of batch
  * `slot` over the frame rect x0..y1 (pixels of the 640x480 frame) */
 void dc2d_view3d(int slot, int seg, float x0, float y0, float x1, float y1);
+/* DC8 (the house, room.c): prims placed in frame pixels (the room's zoom
+ * scales them; at zoom 1 they are the logical rect times 2, as the 2D
+ * calls place theirs). dc2d_tex_rect: texture `slot` showing texels
+ * [0, iw) x [0, ih) over (x0, y0)-(x1, y1), U swapped when flip; mode
+ * IMAGE, GLASS, ADD or TINT, `argb` the GLASS / ADD colour and alpha,
+ * `color` the TINT colour. dc2d_frect: a SOLID rect of palette colour c.
+ * Nothing is drawn wholly off the frame. NULL / nothing when the list is
+ * full or the tick is not drawn. */
+DcPrim *dc2d_tex_rect(int mode, int slot, float x0, float y0, float x1, float y1,
+                      int iw, int ih, int flip, uint32_t argb, uint8_t color);
+void dc2d_frect(float x0, float y0, float x1, float y1, uint8_t c);
+int  dc2d_prim_count(void);      /* prims in this tick's list so far (DC8's counters) */
 
 /* The 2D calls. On the console they ARE the platform.h functions; the
  * host test build (-DDC2D_HOST) gives them dc2d_ names so a tee can call
@@ -165,10 +184,10 @@ static inline int dc2d_is_sprite(const DcPrim *p)
            (dc2d_uv16_exact(p->u0) && dc2d_uv16_exact(p->u1) &&
             dc2d_uv16_exact(p->v0) && dc2d_uv16_exact(p->v1));
 }
-/* The palette bank a prim samples (TINT and DARK: the white bank 1). */
+/* The palette bank a prim samples (TINT, DARK and ADD: the white bank 1). */
 static inline int dc2d_bank(const DcFrame *f, const DcPrim *p)
 {
-    if (p->mode == DC2D_TINT || p->mode == DC2D_DARK) return 1;
+    if (p->mode == DC2D_TINT || p->mode == DC2D_DARK || p->mode == DC2D_ADD) return 1;
     return (p->flags & DC2D_PF_LERP) ? f->lerp_bank : 0;
 }
 /* The prim's colour as ARGB8888 (pal.c resolves palette colours, lerped
@@ -190,6 +209,10 @@ void dc2d_tex_init(void);
  * uploaded. Keyed by uid, else by pixel pointer plus a checksum of the
  * pixels (an image without a uid may change in place). */
 int  dc2d_tex_image(const DoomoImage *img);
+/* DC8: the slot of the cached texture of uid `uid` (w x h) without its
+ * pixels (marked as used this frame), or -1 when it is not resident; the
+ * house asks before it decodes a piece's sprite. */
+int  dc2d_tex_find(uint32_t uid, int w, int h);
 /* A copy of texture `slot` with its texel indices sent through map[256]
  * (plat_shade_rect over an image: doomo_colormap[level]); cached under
  * (slot's key, level). -1 if it cannot be made. */
