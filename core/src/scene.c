@@ -6,6 +6,7 @@
  * scenes below them first.
  */
 #include "doomo/scene.h"
+#include "doomo/ui.h"
 #include "doomo/scenes.h"
 #include "doomo/input.h"
 #include "doomo/platform.h"
@@ -110,6 +111,7 @@ void scene_set(const DoomoScene *s, int arg)
         call_leave(top);
     }
     if (!s) return;
+    ui_toast_scene_change(1);                 /* CL1: the old screen's toasts go (ui.h) */
     stack[0].s = s;
     stack[0].ticks = 0;
     depth = 1;
@@ -127,6 +129,7 @@ void scene_push(const DoomoScene *s, int arg)
         call_leave(stack[depth - 1].s);
         depth--;
     }
+    if (!s->overlay) ui_toast_scene_change(0);   /* CL1: a new screen: the old one's hints go */
     stack[depth].s = s;
     stack[depth].ticks = 0;
     depth++;
@@ -142,6 +145,7 @@ void scene_pop(void)
     plat_hold_frame(0);                       /* ... and so does a pop: the scene below resumes on dirty pages */
     s = stack[depth - 1].s;
     depth--;
+    if (!s->overlay) ui_toast_scene_change(0);   /* CL1: back to the screen below: the popped one's hints go */
     log_scene("scene: pop ", s);
     input_eat();
     call_leave(s);

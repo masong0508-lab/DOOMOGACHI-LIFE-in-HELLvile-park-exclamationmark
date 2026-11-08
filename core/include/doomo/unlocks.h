@@ -105,9 +105,13 @@ int  unlock_count(void);
 const DoomoUnlock *unlock_at(int i);
 
 int  unlock_has(int id);
-/* Grants and queues a "NEW UNLOCK!" toast. Returns 1 if newly granted. */
+/* Grants and tells the unlock news (CL1: ui.h ui_toast_unlock, "New paint: Lemon", a burst as one digest).
+ * Returns 1 if newly granted. */
 int  unlock_grant(int id);
-/* Grants without the "NEW UNLOCK!" toast or sound, for ids that have no table
+/* (CL1, additive) The kind of thing an unlock is, as its news names it ("Creator outfit", "trophy"); NULL if
+ * unknown. */
+const char *unlock_kind_word(const DoomoUnlock *u);
+/* Grants without the unlock news or sound, for ids that have no table
  * entry and announce themselves (the household tiers, family.h). Returns 1 if
  * newly granted. */
 int  unlock_grant_quiet(int id);

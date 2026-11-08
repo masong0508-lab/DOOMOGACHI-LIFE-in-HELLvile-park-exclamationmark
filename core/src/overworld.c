@@ -406,7 +406,9 @@ static int auto_events(void)
     }
     if (b == BEAT_C1_MAYOR && !story_flag(SF_MAP_HINT) && ow.t > 20) {
         story_set_flag(SF_MAP_HINT, 1);
-        ui_toast(STR_ICON_A " Talk   START Menu   B Run");
+        /* CL1 (clarity C1): the controls hint goes to the bottom prompt slot once the region banner has gone
+         * (overworld_fx.c draw_prompt), not into a toast over the objective */
+        ow.hint_t = OW_HINT_TICKS;
         return 0;
     }
     if (b >= BEAT_C1_PIP && b <= BEAT_C1_FRIENDS && pet_exists() && !story_flag(SF_PET_HINT)) {
@@ -418,7 +420,7 @@ static int auto_events(void)
     }
     if (b == BEAT_C3_NESTS && !story_flag(SF_INVASION_HINT) && ow.t > 30) {
         story_set_flag(SF_INVASION_HINT, 1);
-        ui_toast(STR_ICON_SKULL " Walk into a nest to fight!");
+        ui_toast_kind(STR_ICON_SKULL " Walk into a nest to fight!", UI_TOAST_HINT);
         return 0;
     }
     return 0;
@@ -744,8 +746,8 @@ static int pause_save(void)
 {
     ow_sync_to_save();
     if (ow.visit) { ui_toast("Strolls aren't saved"); return 0; }
-    if (save_game(0)) { ui_toast(STR_ICON_HEART " Game saved!"); audio_sfx(SFX_SELECT); return 1; }
-    ui_toast(save_last_error()[0] ? save_last_error() : "Couldn't save");
+    if (save_game(0)) { ui_toast_kind(STR_ICON_HEART " Game saved!", UI_TOAST_SYSTEM); audio_sfx(SFX_SELECT); return 1; }
+    ui_toast_kind(save_last_error()[0] ? save_last_error() : "Couldn't save", UI_TOAST_SYSTEM);
     audio_sfx(SFX_ERROR);
     return 0;
 }
@@ -932,6 +934,8 @@ static void story_update(void)
         ownpc_double_take_check();
         ow_spawn_update();
     }
+    /* CL1: the controls hint's time runs once the banner is gone (it is drawn from then on) */
+    if (ow.hint_t && !ow.banner_t && !story_talking()) ow.hint_t--;
     if (btn_pressed(BTN_A)) { press_a(); return; }
     /* chapter 3: walking into a demon nest */
     if (!ow.visit && playas_is_hero() && ow.map == MAPID_HAHALAND_INVADED && story_beat() == BEAT_C3_NESTS && !story_talking()) {

@@ -771,8 +771,9 @@ static void island_enter(int arg)
             doomo_snprintf(fp_tmp, sizeof(fp_tmp), "Welcome to %s! %d citizens live here. Visit them, feed them, love them!",
                            nm, town_count(-1));
             ui_say(-1, fp_tmp);
-            /* one dialogue press fewer: the controls hint is a toast, not a second box */
-            ui_toast("A visits a place, START opens the menu.");
+            /* one dialogue press fewer: the controls hint is a toast, not a second box. CL1: a hint toast, so it
+             * goes when the hub does (it used to scroll on over the shop, the apartments and the title) */
+            ui_toast_kind(STR_ICON_A " Visit a place  START Menu", UI_TOAST_HINT);
         }
         fp_fx_burst(fp_sw() / 2, fp_sh() / 3, FX_CONFETTI, 30);
     }
@@ -1127,6 +1128,10 @@ static void island_draw(void)
     FpLocDraw ld[FP_LOC_MAX];
     int sh = fp_sh(), style = WIN_CUTE, slice = -1;
     isl_ready();
+    /* CL1 (clarity C1): with the map showing, toasts slide in under the HUD row (the day, the clock and the purse:
+     * "Rent collected" must not hide the money it changes); over a place's menu they keep the top row. The lane
+     * is the same on every hub frame, so a kept frame's toast is where this frame's would be. */
+    if (!I.menu_open) ui_toast_lane(fp_big() && fp_island_name()[0] ? 29 : 17);
     /* (perf) a held menu backdrop: nothing but the window moves, so the island is not drawn at all. Anything
      * else on screen (a toast, a dialogue or modal on top, a particle, the menu closing) or a platform that
      * lost the hold gives it up and the frame is drawn in full, as before. */

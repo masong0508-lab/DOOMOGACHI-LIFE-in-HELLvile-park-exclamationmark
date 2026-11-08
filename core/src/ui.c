@@ -798,26 +798,146 @@ void ui_paint_picker_draw(int x, int y, uint8_t paint, int cols)
 #define TOAST_SHOW 75
 #define TOAST_OUT 8
 static char toast_msg[TOAST_Q][56];
+static uint8_t toast_kd[TOAST_Q];       /* CL1: UI_TOAST_* of each queued line */
+static uint32_t toast_at[TOAST_Q];      /* CL1: the tick it was posted (a scene change keeps that tick's toasts) */
 static int toast_n, toast_t;
 static uint8_t toast_gen;               /* changes when the line on screen is replaced (ui_toast_steady) */
 static uint8_t toast_held;              /* ui_toast_hold(): this frame's toast is already on the kept page */
+static int16_t toast_y = UI_TOAST_LANE_TOP;     /* CL1: this frame's lane (ui_toast_lane) */
+static int16_t toast_rect[4];           /* CL1: the last drawn toast (x, y, w, h; w 0: none) */
+static uint16_t toast_count[UI_TOAST_KINDS];    /* CL1: toasts shown per kind (tests, runner) */
 
-void ui_toast(const char *msg)
+/* CL1 (C5): unlock news. A burst of unlocks is told once, after it settles and when nothing else is queued:
+ * UL_NEWS_SETTLE quiet ticks after the last unlock, and UL_NEWS_GAP ticks after the last unlock news. The first
+ * news of a session (a new island grants a handful in its first minute) gathers for UL_NEWS_FIRST ticks from its
+ * first unlock, so the opening minute tells one digest instead of a stream of names. */
+#define UL_NEWS_SETTLE 45
+#define UL_NEWS_GAP (30 * 40)
+#define UL_NEWS_FIRST (30 * 20)
+static char news_first[48];
+static uint8_t news_n, news_told;
+static uint16_t news_quiet, news_gap, news_age;
+
+/* drop queued line i (the one on screen when i is 0) */
+static void toast_drop(int i)
 {
-    int i;
-    if (!msg) return;
-    if (toast_n == TOAST_Q) {
-        for (i = 1; i < TOAST_Q; i++) memcpy(toast_msg[i - 1], toast_msg[i], 56);
-        toast_n--;
-        toast_gen++;
-        if (toast_n == 0) toast_t = 0;
+    for (i++; i < toast_n; i++) {
+        memcpy(toast_msg[i - 1], toast_msg[i], 56);
+        toast_kd[i - 1] = toast_kd[i];
+        toast_at[i - 1] = toast_at[i];
     }
-    for (i = 0; i < 55 && msg[i]; i++) toast_msg[toast_n][i] = msg[i];
-    toast_msg[toast_n][i] = 0;
+    toast_n--;
+}
+
+void ui_toast_kind(const char *msg, int kind)
+{
+    int i, pos, lo;
+    if (!msg) return;
+    kind = DOOMO_CLAMP(kind, 0, UI_TOAST_KINDS - 1);
+    lo = toast_n > 0 && toast_t > 0 ? 1 : 0;     /* the line on screen keeps its place */
+    if (toast_n == TOAST_Q) {
+        /* full: the oldest waiting line of the lowest kind makes room, unless the new one is lower still */
+        int v = -1;
+        for (i = lo; i < toast_n; i++)
+            if (v < 0 || toast_kd[i] < toast_kd[v]) v = i;
+        if (v < 0 || toast_kd[v] > kind) return;
+        toast_drop(v);
+        if (v == 0) { toast_gen++; toast_t = 0; }
+    }
+    pos = toast_n;
+    while (pos > lo && toast_kd[pos - 1] < kind) pos--;
+    for (i = toast_n; i > pos; i--) {
+        memcpy(toast_msg[i], toast_msg[i - 1], 56);
+        toast_kd[i] = toast_kd[i - 1];
+        toast_at[i] = toast_at[i - 1];
+    }
+    for (i = 0; i < 55 && msg[i]; i++) toast_msg[pos][i] = msg[i];
+    toast_msg[pos][i] = 0;
+    toast_kd[pos] = (uint8_t)kind;
+    toast_at[pos] = doomo_frame_count();
+    if (pos == 0 && toast_n > 0) toast_gen++;
     toast_n++;
 }
 
+void ui_toast(const char *msg) { ui_toast_kind(msg, UI_TOAST_FEEDBACK); }
+
+void ui_toast_unlock(const char *name, const char *what)
+{
+    if (!name) name = "???";
+    if (!news_n) {
+        news_age = 0;
+        if (what && what[0]) doomo_snprintf(news_first, sizeof(news_first), "New %s: %s", what, name);
+        else doomo_snprintf(news_first, sizeof(news_first), "NEW UNLOCK! %s", name);
+    }
+    if (news_n < 99) news_n++;
+    news_quiet = 0;
+    {
+        char lg[64];
+        doomo_snprintf(lg, sizeof(lg), "unlock news: %s", name);
+        plat_log(lg);
+    }
+}
+
+int ui_toast_news_waiting(void) { return news_n; }
+
+/* the news is told when it has settled, nothing else waits and no dialogue box is up */
+static void toast_news_tick(void)
+{
+    if (news_gap) news_gap--;
+    if (!news_n) return;
+    if (news_quiet < UL_NEWS_SETTLE) news_quiet++;
+    if (news_age < UL_NEWS_FIRST) news_age++;
+    if (news_quiet < UL_NEWS_SETTLE || news_gap || toast_n || ui_dialog_active()) return;
+    if (!news_told && news_age < UL_NEWS_FIRST) return;
+    if (news_n == 1) ui_toast_kind(news_first, UI_TOAST_UNLOCK);
+    else {
+        char buf[48];
+        doomo_snprintf(buf, sizeof(buf), "%d new unlocks! See Unlocks", (int)news_n);
+        ui_toast_kind(buf, UI_TOAST_UNLOCK);
+    }
+    news_n = 0;
+    news_told = 1;
+    news_gap = UL_NEWS_GAP;
+    audio_sfx(SFX_SPARKLE);
+}
+
+void ui_toast_scene_change(int set)
+{
+    uint32_t now = doomo_frame_count();
+    int i = 0;
+    while (i < toast_n) {
+        int k = toast_kd[i];
+        int keep = toast_at[i] == now || k == UI_TOAST_SYSTEM || (!set && k != UI_TOAST_HINT);
+        if (keep) { i++; continue; }
+        toast_drop(i);
+        if (i == 0) { toast_t = 0; toast_gen++; toast_held = 0; }
+    }
+}
+
 int ui_toast_pending(void) { return toast_n; }
+
+const char *ui_toast_text(int i) { return i >= 0 && i < toast_n ? toast_msg[i] : NULL; }
+
+int ui_toast_shown(int kind)
+{
+    int k, n = 0;
+    if (kind >= 0 && kind < UI_TOAST_KINDS) return toast_count[kind];
+    for (k = 0; k < UI_TOAST_KINDS; k++) n += toast_count[k];
+    return n;
+}
+
+void ui_toast_shown_reset(void) { memset(toast_count, 0, sizeof(toast_count)); }
+
+void ui_toast_lane(int y) { toast_y = (int16_t)DOOMO_CLAMP(y, 0, plat_screen_h() - UI_TOAST_H); }
+
+int ui_toast_last_rect(int *x, int *y, int *w, int *h)
+{
+    if (x) *x = toast_rect[0];
+    if (y) *y = toast_rect[1];
+    if (w) *w = toast_rect[2];
+    if (h) *h = toast_rect[3];
+    return toast_rect[2] > 0;
+}
 
 /* How long the first toast holds still. A line that is wider than its pill
  * scrolls to its end (1 px a tick after a short beat), so it holds for the
@@ -838,7 +958,11 @@ static int toast_show(int w)
     return toast_n > 1 ? TOAST_SHOW_QUEUED : TOAST_SHOW;
 }
 
-void ui_toast_clear(void) { toast_n = 0; toast_t = 0; toast_gen++; toast_held = 0; }
+void ui_toast_clear(void)
+{
+    toast_n = 0; toast_t = 0; toast_gen++; toast_held = 0;
+    news_n = 0; news_quiet = 0; news_gap = 0; news_age = 0; news_told = 0;
+}
 
 /* The toast's left edge on its tick t (width w): slides in, holds, slides out. */
 static int toast_x(int t, int w, int show)
@@ -861,14 +985,14 @@ static int toast_x(int t, int w, int show)
  * only has to be generous: a false 1 costs a capture, never a pixel. */
 int ui_toast_over(int x, int y, int w, int h)
 {
-    int tw, tx, show;
+    int tw, tx, show, ty = toast_y;
     if (toast_n == 0) return 0;
     tw = DOOMO_MIN(ui_text_width(toast_msg[0]) + 22, plat_screen_w() - 8);
     show = toast_show(tw);
     if (toast_t >= TOAST_IN + show + TOAST_OUT) return 0;
     tx = toast_x(toast_t, tw, show);
-    /* the toast panel's rect (x, y - 1, w + 2, 18) with y = 4, plus 6 px */
-    return !(x + w <= tx - 6 || x >= tx + tw + 2 + 6 || y + h <= 4 - 1 - 6 || y >= 4 - 1 + 18 + 6);
+    /* the toast panel's rect (x, y - 1, w + 2, 18) at this frame's lane, plus 6 px */
+    return !(x + w <= tx - 6 || x >= tx + tw + 2 + 6 || y + h <= ty - 1 - 6 || y >= ty - 1 + 18 + 6);
 }
 
 /* The toast holds still from the end of its slide-in to the start of its slide-out, but a line wider than its pill
@@ -891,17 +1015,31 @@ void ui_toast_hold(void) { toast_held = 1; }
 void ui_toast_draw(void)
 {
     const UiStyle *st;
-    int t, w, x, y = 4;
+    int t, w, x, y = toast_y;
     int saved = ui_cur_style, show, over, off, kept = toast_held;
     toast_held = 0;
+    toast_y = UI_TOAST_LANE_TOP;            /* CL1: a lane lasts one frame */
+    toast_rect[2] = 0;
+    toast_news_tick();
     if (toast_n == 0) return;
+    /* a hint waits for the dialogue box to close (the box is what the player reads first) */
+    if (toast_t == 0 && toast_kd[0] == UI_TOAST_HINT && ui_dialog_active()) return;
     t = toast_t++;
+    if (t == 0) {
+        /* CL1: one count and one log line per toast, when it starts (tests, the runner's toast checks) */
+        char lg[72];
+        toast_count[toast_kd[0]]++;
+        doomo_snprintf(lg, sizeof(lg), "toast: %s", toast_msg[0]);
+        plat_log(lg);
+    }
     st = ui_style(WIN_CREAM);
     w = DOOMO_MIN(ui_text_width(toast_msg[0]) + 22, plat_screen_w() - 8);
     show = toast_show(w);
     over = toast_overflow(w);
     off = over > 0 ? DOOMO_CLAMP(t - TOAST_IN - TOAST_BEAT, 0, over) : 0;
     x = toast_x(t, w, show);
+    toast_rect[0] = (int16_t)x; toast_rect[1] = (int16_t)y;
+    toast_rect[2] = (int16_t)(w + 2); toast_rect[3] = UI_TOAST_H;
     /* G7: a retained panel (it holds still for TOAST_SHOW ticks; the
      * sparkle is off for 14 of every 32); a kept toast draws its shadow */
     if (plat_draw_skipped() || kept) {
@@ -925,9 +1063,7 @@ void ui_toast_draw(void)
     }
     ui_cur_style = saved;
     if (toast_t >= TOAST_IN + show + TOAST_OUT) {
-        int i;
-        for (i = 1; i < toast_n; i++) memcpy(toast_msg[i - 1], toast_msg[i], 56);
-        toast_n--;
+        toast_drop(0);
         toast_t = 0;
         toast_gen++;
     }

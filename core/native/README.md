@@ -58,6 +58,10 @@ One command per line; `#` starts a comment.
 | `expect-money MIN` | (M0) fail unless the purse holds at least MIN H$ |
 | `first-boot` | (CL2) play a new console's first boot: from here the runner keeps a machine config record in memory (`PLATF_CONFIG`, as GBA / PS1 do), the record is wiped, the settings reload and `BOOT` starts, so the language picker, the Mature question and the security code come up in order (`core/tests/scripts/first_boot.txt`). Without it the runner has no record, as before |
 | `expect-hero NAME` | (CL2) fail unless the protagonist (`town_res(DOOMO_PLAYER_ID)`) is called NAME |
+| `expect-toast "TEXT"` / `expect-no-toast "TEXT"` | (CL1) fail unless a queued toast (or the one on screen) says TEXT / if one still does |
+| `toasts [reset]` | (CL1) print the toasts shown so far per kind (`unlock hint feedback system`) and the unlock news still gathering; `reset` starts counting again |
+| `expect-toasts KIND MAX` | (CL1) fail if more than MAX toasts of KIND (`unlock hint feedback system all`) were shown |
+| `hud-watch on\|off` | (CL1) from `on`, check every frame on which the story overworld drew its HUD band and a toast that the toast lies under the band, off the objective pill and the clock; `off` prints the tally and fails if any frame was covered |
 
 Buttons: `UP DOWN LEFT RIGHT A B L R START SELECT X Y L2 R2`.
 

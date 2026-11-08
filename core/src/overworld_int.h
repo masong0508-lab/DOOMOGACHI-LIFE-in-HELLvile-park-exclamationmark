@@ -253,6 +253,12 @@ void owfx_init(void);
 void owfx_update(void);
 void owfx_draw_world(void);                /* particles, fireworks          */
 void owfx_draw_hud(void);
+/* CL1 (clarity C1): the bottom row of the HUD band (objective pill + clock) the last HUD frame drew, and the
+ * objective pill's rect (w 0: none). The toast lane and the region banner sit under it. */
+int  owfx_hud_band(int *obj_x, int *obj_y, int *obj_w, int *obj_h);
+/* CL1: the story's first controls hint, shown in the bottom prompt slot for OW_HINT_TICKS once the banner is gone */
+#define OW_CONTROLS_HINT STR_ICON_A " Talk  " STR_ICON_B " Run  START Menu  SEL Map"
+#define OW_HINT_TICKS 120
 void owfx_draw_pause(void);
 void owfx_draw_pause_ex(int settled);   /* 1: backdrop already dimmed in the held pages */
 const DoomoImage *owfx_marker(int flags, int t);

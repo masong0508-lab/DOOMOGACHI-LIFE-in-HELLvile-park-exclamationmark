@@ -186,7 +186,9 @@ pet forms, modes (Arena, Boss Rush, Hellvile visits, Tamagotchi-only),
 cheats (big-head, confetti everything, cute demons, brutal residents,
 low-grav, paper mode), gallery, jukebox, window skins, crosshairs, title
 themes. Most creator options start unlocked, so the creator is huge from
-minute one. The rest are earned through play, with a "NEW UNLOCK!" toast
+minute one. The rest are earned through play, with unlock news (a toast
+that names the kind of thing: "New Creator outfit: Cozy Scarf", "New trophy:
+Dice Roller"; a burst is told once as "5 new unlocks! See Unlocks", see 5.1)
 and an Unlocks gallery that shows how to get each one.
 About 45 data-driven options cover game, shooter, sim, audio, display and
 accessibility.
@@ -277,6 +279,41 @@ ghosts, skeletons and slimes), with fluffy fur tufts, big expressive ears,
 fluffy tails and paw hands. Everything breathes, blinks, wiggles and
 bounces. Shading is soft multi-tone with coloured outlines and rim light.
 See ARCHITECTURE.md "Art direction" for the rules.
+
+### 5.1 Toasts, hints and the HUD band (clarity CL1)
+Comprehension comes first: a toast never hides what the player needs to
+read. The rules (`core/include/doomo/ui.h`, `core/src/ui.c`):
+
+* **Lanes.** A screen with a HUD band says where its toasts go. In the story
+  overworld the band is the objective pill (top left) and the clock (top
+  right); toasts slide in just under it and the region banner sits under it
+  too (it rises from below, so it never crosses the goal). Under the pause
+  panel toasts keep the top row. On the Free Play hub map toasts slide in
+  under the day / clock / purse row (so "Rent collected" never covers the
+  money it changes); over a place's menu they keep the top row. Every other
+  screen keeps the top row.
+* **Kinds and order.** SYSTEM (saves, errors) > FEEDBACK (what you just did:
+  bought, moved in, rent) > HINT (how to use this screen) > UNLOCK (news). A
+  newer toast of a higher kind goes ahead of the waiting ones, never in front
+  of the one on screen. A hint waits until the dialogue box is closed.
+* **Scene changes.** A new screen (scene_set) drops every toast but SYSTEM
+  ones; pushing or popping a full screen drops the old screen's hints (so the
+  hub's "A Visit a place" never scrolls over the shop or the title). A toast
+  posted on the tick of the change belongs to the new screen.
+* **Unlock news.** Unlocks are not toasted one by one. News waits until
+  nothing else is queued and no dialogue is up, and a burst is told once:
+  one unlock says what it is ("New paint: Lemon"), more say "N new unlocks!
+  See Unlocks". The first news of a session gathers for 20 s from its first
+  unlock (a new island's opening minute is one digest), and after news has
+  been told the next gathers for 40 s.
+* **The story's first controls hint** ("A Talk  B Run  START Menu  SEL Map")
+  is shown in the bottom prompt slot for 4 s once the region banner has gone,
+  not as a toast.
+
+Checks: `core/tests/test_toasts.c`, the runner's `hud-watch` (fails if a
+toast is ever drawn over the story HUD band), `expect-toast`, `toasts` and
+`expect-toasts` commands, and the scripts `clarity_ow_hud.txt` and
+`clarity_toasts.txt`.
 
 ## 6. Tone
 Cute first. The horror and gore are funny *because* the first hour is a

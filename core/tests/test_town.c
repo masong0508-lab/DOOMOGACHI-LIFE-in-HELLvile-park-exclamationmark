@@ -291,12 +291,12 @@ TEST(unlocks_grant_and_progress)
     CHECK(unlock_option_ok(CLIST_HAIR, 63));
     progress_add(PROG_DEMONS_KILLED, 59);
     CHECK(!unlock_has(u->id));
-    CHECK(ui_toast_pending() >= 1);              /* 10, 15, 20 ... 55 kills */
+    CHECK(ui_toast_news_waiting() >= 1);         /* 10, 15, 20 ... 55 kills (CL1: unlock news, one digest) */
     ui_toast_clear();
     progress_add(PROG_DEMONS_KILLED, 1);
     CHECK(unlock_has(u->id));
     CHECK(unlock_option_ok(CLIST_HAIR, HAIR_FLAME));
-    CHECK(ui_toast_pending() >= 1);
+    CHECK(ui_toast_news_waiting() >= 1);
     CHECK_EQ(progress_get(PROG_DEMONS_KILLED), 60);
     CHECK(!unlock_grant(u->id));                               /* already owned */
     CHECK(!unlock_paint_ok(PAINT_HELLFIRE));

@@ -1,0 +1,57 @@
+# CL1 (clarity C1 + C5): toasts on a new Free Play island. The controls hint
+# is a hint toast that goes with the hub (it used to scroll on over every
+# screen and the title); unlock news waits behind it and a burst is told once;
+# on the hub map toasts slide in under the HUD row (day, clock, purse).
+wait 5
+press A
+wait 40
+press A
+wait 20
+press DOWN
+press A
+wait 30
+expect-scene NEW_ISLAND
+press RIGHT
+wait 10
+press A
+wait 40
+toasts reset
+shot f01_welcome
+press A
+wait 20
+press A
+wait 20
+expect-scene ISLAND
+expect-toast "Visit a place"
+shot f02_hint
+wait 30
+shot f03_hint_lane
+# Citizens (R) is a new screen: the hub's hint does not follow
+press R
+wait 20
+expect-scene ROSTER
+expect-no-toast "Visit a place"
+shot f04_roster
+press B
+wait 20
+expect-scene ISLAND
+expect-no-toast "Visit a place"
+wait 100
+shot f05_rent
+toasts
+# the opening minute's unlocks (a trophy for the Random island, four from the first rent) are still gathering:
+# the first news of a session is told 20 s after its first unlock
+expect-toasts unlock 0
+wait 360
+shot f06_digest
+expect-toast "new unlocks! See Unlocks"
+wait 100
+shot f07_digest_held
+toasts
+# one digest told the whole burst
+expect-toasts unlock 1
+expect-toasts hint 1
+# quitting to the title: the island's toasts stay behind
+press START
+wait 30
+shot f08_start

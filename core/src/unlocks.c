@@ -339,15 +339,36 @@ static int grant_bit(int id)
     return 1;
 }
 
+/* CL1 (clarity C5): what kind of thing an unlock is, for its news ("New outfit: Cozy Scarf"); NULL: unknown */
+const char *unlock_kind_word(const DoomoUnlock *u)
+{
+    static const char *const gal[GAL_COUNT] = { "song", "artwork", "demon file", "pet file", "cutscene" };
+    if (!u) return NULL;
+    switch (u->cat) {
+    case UL_CAT_PART:
+        if (u->list == CLIST_SPECIES) return "species";
+        if (u->list >= CLIST_TOP && u->list <= CLIST_ACC) return "Creator outfit";
+        return "Creator look";
+    case UL_CAT_WEAPON_PART: return "weapon part";
+    case UL_CAT_PAINT: return "paint";
+    case UL_CAT_ITEM: return "shop item";
+    case UL_CAT_MODE: return "game mode";
+    case UL_CAT_CHEAT: return "cheat";
+    case UL_CAT_GALLERY: return u->list < GAL_COUNT ? gal[u->list] : NULL;
+    case UL_CAT_SKIN: return "style";
+    case UL_CAT_PET: return "pet form";
+    case UL_CAT_MISC: return "trophy";
+    default: return NULL;
+    }
+}
+
 int unlock_grant(int id)
 {
     const DoomoUnlock *u;
-    char msg[64];
     if (!grant_bit(id)) return 0;
     u = unlock_by_id(id);
-    doomo_snprintf(msg, sizeof(msg), STR_ICON_STAR " NEW UNLOCK! %s", u ? u->name : "???");
-    ui_toast(msg);
-    audio_sfx(SFX_SPARKLE);
+    /* CL1: unlock news, told once a burst settles (ui.h ui_toast_unlock); it plays the sparkle when it is told */
+    ui_toast_unlock(u ? u->name : "???", unlock_kind_word(u));
     return 1;
 }
 

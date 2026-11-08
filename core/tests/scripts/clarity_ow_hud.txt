@@ -1,0 +1,68 @@
+# CL1 (clarity C1): the story HUD band. A new story's first overworld: the
+# region banner sits under the objective pill, the controls hint comes after
+# it in the bottom prompt slot, and no toast ever covers the objective or the
+# clock (hud-watch checks every frame). Then a hint toast and a save toast in
+# the overworld, a toast under the pause panel, and a scene change that drops
+# the hint.
+scene STORY 1
+wait 30
+expect-scene CUTSCENE
+press START
+wait 50
+press A
+wait 60
+press A
+wait 30
+press A
+wait 40
+press A
+wait 30
+expect-scene STORY
+hud-watch on
+shot ow_00
+wait 15
+shot ow_15
+wait 15
+shot ow_30
+wait 15
+shot ow_45
+wait 15
+shot ow_60
+wait 15
+shot ow_75
+wait 15
+shot ow_90
+wait 15
+shot ow_105
+wait 15
+shot ow_120
+wait 30
+shot ow_hint
+wait 100
+shot ow_after_hint
+# a refusal under the pause panel keeps the top row (the HUD is behind the panel)
+press START
+wait 20
+press DOWN
+wait 4
+press DOWN
+wait 4
+press A
+wait 15
+expect-toast "No Doomogachi yet"
+shot pause_toast
+press B
+wait 10
+shot pause_toast_closed
+wait 90
+# START, START saves: "Game saved!" slides in under the HUD band
+press START
+wait 20
+press START
+wait 15
+expect-toast "Game saved"
+shot saved_toast
+wait 40
+shot saved_toast_held
+hud-watch off
+toasts

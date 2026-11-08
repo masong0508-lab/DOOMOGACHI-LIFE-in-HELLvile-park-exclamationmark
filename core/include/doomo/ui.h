@@ -59,6 +59,42 @@ void ui_choice(int speaker, const char *question, const char *const *options,
 /* Small transient message in the corner. */
 void ui_toast(const char *msg);
 void ui_toast_draw(void);               /* called by doomo_frame */
+/* --- CL1 (clarity C1 + C5, additive): toast kinds, lanes, unlock news. ---
+ * Kinds, lowest first. The queue is ordered by kind (a newer toast of a higher kind goes ahead of the waiting
+ * ones of lower kinds, never in front of the one on screen), so "Saved!" jumps a waiting hint and a hint jumps
+ * unlock news. ui_toast() is UI_TOAST_FEEDBACK.
+ *   UNLOCK    unlock news (ui_toast_unlock builds it; never queued by hand)
+ *   HINT      how to use the screen it was posted on ("A visits a place"): dropped when that screen goes
+ *   FEEDBACK  what the player just did or what just happened (bought, moved in, rent)
+ *   SYSTEM    saves and errors: kept even across a scene_set
+ * A scene change (scene.c) drops the toasts that belong to the old screen: scene_set drops every toast but
+ * SYSTEM ones, and a scene_push / scene_pop of a full screen (not an overlay) drops HINT ones. A toast posted on
+ * the tick of the change belongs to the new screen and stays ("Welcome back!" then scene_set). */
+enum { UI_TOAST_UNLOCK, UI_TOAST_HINT, UI_TOAST_FEEDBACK, UI_TOAST_SYSTEM, UI_TOAST_KINDS };
+void ui_toast_kind(const char *msg, int kind);
+/* Unlock news (unlocks.c unlock_grant): name is the unlock, what the kind of thing it is ("Creator", "paint",
+ * NULL: unknown). News waits until nothing else is queued, no dialogue is up and no other unlock came for a
+ * moment, so a burst is told once: one unlock says "New paint: Lemon", more say "3 new unlocks! See Unlocks".
+ * The first news of a session gathers for 20 s from its first unlock (the opening minute of a new island tells one
+ * digest), and after unlock news has been shown the next gathers for 40 s (UL_NEWS_* in ui.c). */
+void ui_toast_unlock(const char *name, const char *what);
+/* The toast lane (C1): a screen with a HUD band says, on each frame before the HUD is drawn, which row the
+ * toast may use (its top edge, y); the lane goes back to the default (the top edge, y 4) after the toast is
+ * drawn. ui_toast_over() asks about the toast at this frame's lane. */
+#define UI_TOAST_LANE_TOP 4
+#define UI_TOAST_H 17                   /* the toast's rows from its lane: the pill and its drop shadow */
+void ui_toast_lane(int y);
+/* The scene stack changed (scene.c): set = a scene_set, else a push / pop of a full screen. */
+void ui_toast_scene_change(int set);
+/* (tests, runner) The rect of the toast the last frame drew (0 if none); toasts shown so far, per kind (a toast
+ * counts once, when it starts to slide in); the text of queued toast i (0 = on screen) or NULL; unlock news
+ * waiting to be told. */
+int  ui_toast_last_rect(int *x, int *y, int *w, int *h);
+int  ui_toast_shown(int kind);
+void ui_toast_shown_reset(void);
+const char *ui_toast_text(int i);
+int  ui_toast_news_waiting(void);
+/* --- end CL1 --- */
 /* Draw the resident's portrait (portrait.h) at x,y with optional frame. */
 void ui_portrait(int x, int y, int resident_id, int scale, int expression);
 

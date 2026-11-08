@@ -28,6 +28,12 @@
  *   seed N              (S2, SPEC C18) doomo_town.seed = N, and N is what
  *                       plat_entropy() returns from now (the next new town)
  *   expect-text "TEXT"  fail unless the dialogue box's line contains TEXT
+ *   expect-toast "TEXT" / expect-no-toast "TEXT"  (CL1) a queued toast says
+ *                       TEXT / none does
+ *   toasts [reset]      (CL1) print the toasts shown per kind
+ *   expect-toasts KIND MAX  (CL1) at most MAX toasts of KIND (unlock hint
+ *                       feedback system all) shown so far
+ *   hud-watch on|off    (CL1) fail if a toast ever covers the story HUD band
  *   expect-flag F [V]   fail unless story flag F (0..255) is V (default 1)
  *   story-fp [HEX]      print story_fingerprint(); with HEX, fail unless equal
  *   side M [STATE]      (S4) set side mission S<M>'s state (default 3, done)
@@ -92,6 +98,7 @@
 void story_verbs_cell(int cx, int cy);    /* S4: "cell", "skip-talk" (core/src/story_int.h) */
 int  story_talking(void);
 void home_move_in(void);                  /* H4: "home-room" (core/src/home_int.h) */
+int  owfx_hud_band(int *obj_x, int *obj_y, int *obj_w, int *obj_h);   /* CL1: hud-watch (core/src/overworld_int.h) */
 void home_unlock_room(int room);
 
 /* --- CL2 (C17): a console's machine config record, for "first-boot" ---
@@ -258,6 +265,22 @@ static int load_budgets(const char *path)
 }
 /* --- end M0 --- */
 
+/* --- CL1 (clarity C1): hud-watch. While on, every frame on which the story overworld drew its HUD band and a
+ * toast was drawn is checked: the toast must lie under the band, off the objective pill and the clock. --- */
+static int hudw_on, hudw_frames, hudw_bad;
+static void hudw_frame(void)
+{
+    int ox, oy, ow_, oh, tx, ty, tw, th, band = owfx_hud_band(&ox, &oy, &ow_, &oh);
+    if (!band || !ui_toast_last_rect(&tx, &ty, &tw, &th)) return;
+    hudw_frames++;
+    if (ty < band || (ow_ > 0 && !(tx + tw <= ox || tx >= ox + ow_ || ty + th <= oy || ty >= oy + oh))) {
+        if (!hudw_bad) fprintf(stderr, "hud-watch: frame %u: toast at (%d,%d %dx%d) over the HUD band (bottom %d)\n",
+                               (unsigned)doomo_frame_count(), tx, ty, tw, th, band);
+        hudw_bad++;
+    }
+}
+/* --- end CL1 --- */
+
 static void step(int n)
 {
     while (n-- > 0) {
@@ -265,6 +288,7 @@ static void step(int n)
         doomo_frame(held | (gba_input ? DOOMO_INPUT_SYNTH_XY : 0));
         plat_end_frame();
         if (jr.on) jr_frame();   /* M0 */
+        if (hudw_on) hudw_frame();   /* CL1 */
     }
 }
 
@@ -464,6 +488,39 @@ static void run_line(char *line)
             snprintf(msg, sizeof(msg), "expected the hero to be %s but it is", want);
             fail(msg, p && p->status != RES_EMPTY ? p->name : "(nobody)");
         }
+    /* --- CL1 (clarity C1 + C5): toast checks ---
+     *   expect-toast "TEXT" / expect-no-toast "TEXT"   a queued toast (or the one on screen) says TEXT, or none does
+     *   toasts [reset]       print the toasts shown so far per kind (reset: start counting again)
+     *   expect-toasts KIND MAX   fail if more than MAX toasts of KIND (unlock hint feedback system all) were shown
+     *   hud-watch on|off     check every frame that a toast never covers the story HUD band (off prints the tally) */
+    } else if (strcmp(cmd, "expect-toast") == 0 || strcmp(cmd, "expect-no-toast") == 0) {
+        const char *want = argc > 1 ? argv[1] : "";
+        int k, found = 0;
+        for (k = 0; ui_toast_text(k); k++) if (strstr(ui_toast_text(k), want)) found = 1;
+        if (found != (cmd[7] == 't')) fail(cmd[7] == 't' ? "no toast says" : "a toast still says", want);
+    } else if (strcmp(cmd, "toasts") == 0) {
+        printf("toasts: unlock=%d hint=%d feedback=%d system=%d news-waiting=%d\n", ui_toast_shown(UI_TOAST_UNLOCK),
+               ui_toast_shown(UI_TOAST_HINT), ui_toast_shown(UI_TOAST_FEEDBACK), ui_toast_shown(UI_TOAST_SYSTEM),
+               ui_toast_news_waiting());
+        if (argc > 1 && strcmp(argv[1], "reset") == 0) ui_toast_shown_reset();
+    } else if (strcmp(cmd, "expect-toasts") == 0) {
+        static const char *const kinds[] = { "unlock", "hint", "feedback", "system", "all" };
+        int k, max = argc > 2 ? atoi(argv[2]) : 0;
+        for (k = 0; k < 5 && !(argc > 1 && strcmp(argv[1], kinds[k]) == 0); k++) {}
+        if (k == 5) fail("expect-toasts needs unlock, hint, feedback, system or all, got", argc > 1 ? argv[1] : "");
+        else if (ui_toast_shown(k < 4 ? k : -1) > max) {
+            char msg[96];
+            snprintf(msg, sizeof(msg), "expected at most %d %s toasts but %d were shown; max", max, kinds[k],
+                     ui_toast_shown(k < 4 ? k : -1));
+            fail(msg, argv[2]);
+        }
+    } else if (strcmp(cmd, "hud-watch") == 0) {
+        if (argc > 1 && strcmp(argv[1], "off") == 0) {
+            printf("hud-watch: %d frames with a toast over the story HUD, %d covered it\n", hudw_frames, hudw_bad);
+            if (hudw_bad) fail("a toast covered the story HUD band on frames:", "(see hud-watch above)");
+            hudw_on = 0;
+        } else { hudw_on = 1; hudw_frames = hudw_bad = 0; }
+    /* --- end CL1 --- */
     } else if (strcmp(cmd, "expect-text") == 0) {
         UiDialogDebug d;
         const char *want = argc > 1 ? argv[1] : "";

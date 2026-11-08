@@ -400,25 +400,36 @@ static void objective_star(int x, int y, int w, int bob, const UiStyle *st)
     ui_star(x + 8, y + 6 + bob, 4, ow.visit ? PAL_UI_MINT : PAL_UI_GOLD);
 }
 
-static void draw_objective(int style)
+/* CL1 (clarity C1): the objective pill's text and size, worked out once a frame: the HUD band under it is where
+ * the toast's lane and the region banner go, so neither ever covers the goal. */
+typedef struct ObjPill { const char *o; char buf[96]; int maxw, w, lines, ph; } ObjPill;
+
+static int objective_pill(ObjPill *g)
 {
-    const char *o = ow.visit ? "Free stroll - enjoy the town!" : story_objective();
-    char buf[96];
-    int sw = plat_screen_w(), maxw = sw - 92, w, x = 3, y = 3, lines, bob, ph;
+    g->o = ow.visit ? "Free stroll - enjoy the town!" : story_objective();
+    g->maxw = plat_screen_w() - 92;
+    if (!g->o || !g->o[0]) return 0;
+    doomo_snprintf(g->buf, sizeof(g->buf), "%s", g->o);
+    if (ui_text_width(g->buf) <= g->maxw) {
+        g->lines = 1;
+        g->w = ui_text_width(g->buf) + 20;
+    } else {
+        g->lines = ui_text_wrap(0, 0, g->maxw, g->buf, 0, 0);
+        if (g->lines > 2) { fit(g->buf, g->o, sizeof(g->buf), g->maxw * 2 - 12); g->lines = 2; }
+        g->w = g->maxw + 20;
+    }
+    g->ph = g->lines * FONT_LINE + 5;
+    return 1;
+}
+
+static void draw_objective(int style, const ObjPill *g)
+{
+    const char *buf = g->buf;
+    int maxw = g->maxw, w = g->w, x = 3, y = 3, lines = g->lines, bob, ph = g->ph;
     const UiStyle *st = ui_style(style);
     uint32_t t = doomo_frame_count(), key;
-    if (!o || !o[0] || plat_draw_skipped()) return;
-    doomo_snprintf(buf, sizeof(buf), "%s", o);
-    if (ui_text_width(buf) <= maxw) {
-        lines = 1;
-        w = ui_text_width(buf) + 20;
-    } else {
-        lines = ui_text_wrap(0, 0, maxw, buf, 0, 0);
-        if (lines > 2) { fit(buf, o, sizeof(buf), maxw * 2 - 12); lines = 2; }
-        w = maxw + 20;
-    }
+    if (plat_draw_skipped()) return;
     bob = ui_wave((int)t, 40, 1);
-    ph = lines * FONT_LINE + 5;
     if (UI_PANELS && !ui_toast_over(x, y, w, ph)) {
         /* G7: a retained panel. The star's bob is its only motion, so the
          * star is not in the panel: its strip (the pill's flat fill, the
@@ -506,6 +517,9 @@ static void draw_prompt(int style)
         default: break;
         }
     }
+    /* CL1 (clarity C1): the first controls hint is shown here, in the prompt slot, once the region banner has
+     * gone (it used to be a toast over the objective) */
+    if (!what && ow.hint_t && !ow.banner_t) what = OW_CONTROLS_HINT;
     if (!what || plat_draw_skipped()) return;
     w = ui_text_width(what) + 14;
     x = (sw - w) / 2;
@@ -521,14 +535,19 @@ static void draw_prompt(int style)
     if (UI_PANELS) plat_panel_end();
 }
 
-static void draw_banner(int style)
+/* CL1 (clarity C1): the region banner sits under the HUD band (it used to cover the objective's second line); a
+ * toast sliding along the same rows pushes it one row further down. */
+static void draw_banner(int style, int band)
 {
-    int sw = plat_screen_w(), y, age;
+    int sw = plat_screen_w(), y, y0 = band + 2, age, w;
     if (!ow.banner || !ow.banner_t) return;
+    w = ui_text_width(ow.banner) + 18;
+    if (ui_toast_over(sw / 2 - w / 2, y0, w, 15)) y0 += UI_TOAST_H + 2;
+    /* it rises into place from below and sinks away again, so it never passes over the band */
     age = 100 - ow.banner_t;
-    y = 22;
-    if (age < 10) y = 22 - (10 - age) * 3;
-    if (ow.banner_t < 10) y = 22 - (10 - ow.banner_t) * 3;
+    y = y0;
+    if (age < 10) y = y0 + (10 - age) * 2;
+    if (ow.banner_t < 10) y = y0 + (10 - ow.banner_t) * 2;
     ui_title(sw / 2, y, ow.banner, style);
 }
 
@@ -579,12 +598,32 @@ static void draw_compass(void)
     }
 }
 
+/* CL1: the HUD band's bottom row, as this frame's HUD drew it (0: no HUD lane this frame; tests, hud-watch) */
+static int16_t hud_band, hud_obj[4];
+static uint32_t hud_lane_at;             /* the frame whose HUD set the toast lane (not under the pause panel) */
+int owfx_hud_band(int *obj_x, int *obj_y, int *obj_w, int *obj_h)
+{
+    if (obj_x) *obj_x = hud_obj[0];
+    if (obj_y) *obj_y = hud_obj[1];
+    if (obj_w) *obj_w = hud_obj[2];
+    if (obj_h) *obj_h = hud_obj[3];
+    return hud_lane_at == doomo_frame_count() ? hud_band : 0;
+}
+
 void owfx_draw_hud(void)
 {
-    int style = hud_style();
-    draw_objective(style);
+    int style = hud_style(), band = 3 + 23, has;     /* the clock pill: y 3, 23 rows */
+    ObjPill g;
+    has = objective_pill(&g);
+    if (has) band = DOOMO_MAX(band, 3 + g.ph);
+    hud_band = (int16_t)band;
+    hud_obj[0] = 3; hud_obj[1] = 3; hud_obj[2] = (int16_t)(has ? g.w : 0); hud_obj[3] = (int16_t)(has ? g.ph : 0);
+    /* CL1 (clarity C1): toasts slide in under the HUD band, never over the goal or the clock. Under the pause
+     * panel the HUD is behind it, and the toast keeps the screen's top row (over the panel's title). */
+    if (!ow.pause) { ui_toast_lane(band + 3); hud_lane_at = doomo_frame_count(); }
+    if (has) draw_objective(style, &g);
     draw_clock(style);
-    draw_banner(style);
+    draw_banner(style, band);
     draw_compass();
     draw_prompt(style);
     if (ow.minimap) {

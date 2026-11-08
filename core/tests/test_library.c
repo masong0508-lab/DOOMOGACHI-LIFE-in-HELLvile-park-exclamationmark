@@ -119,7 +119,7 @@ TEST(lib_mark_seen_grants_once)
     CHECK(!library_mark_seen(THING_HEALTH_SMALL));
     CHECK(!library_mark_seen(-5));
     CHECK(library_mark_seen(THING_IMPLING));
-    CHECK(ui_toast_pending() >= 1);
+    CHECK(ui_toast_news_waiting() >= 1);         /* CL1: unlock news (told once the burst settles) */
     CHECK(!library_mark_seen(THING_IMPLING));
     CHECK(library_seen(THING_IMPLING));
     CHECK(!library_seen(THING_BRUTE));
