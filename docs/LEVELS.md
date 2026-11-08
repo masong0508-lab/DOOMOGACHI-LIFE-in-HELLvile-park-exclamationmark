@@ -36,6 +36,20 @@ tagged 240..243; the levels runtime pushes the player and pickups along.
   results tally with the rank stamp, death screen with retry.
 * `SCENE_ARENA_MODE` (arg = `AM_*`): Boss Rush, Horde, Monster Mode Mayhem
   in the Demon Arena.
+* **Control cards (clarity C10, CL6).** Every Breach level (every mode,
+  Brutal Only included), the Demon Arena (`SCENE_ARENA`, free play) and
+  the arena modes open on a card (`core/src/combat_card.c`): the goal,
+  the mode's rule, the controls of the scheme picked in Options (Modern,
+  Classic, Dual stick) with the pad's own button names (GBA "SEL+B", PS1
+  "L1" / "Triangle", Dreamcast "START+Y") and the HUD legend (heart =
+  health, shield = armour, "Demons beaten/all" or "Score"). The first card
+  of a visit waits for A (the Arena's B walks back out); a restart, a
+  retry, "Again!", a demo and the autopilot start by themselves as before.
+  The HUD labels its counters ("Demons 0/17", "Score 0"), health is a
+  heart in every mode, the ammo panel's "Bullets" line sits inside it,
+  the pause row says "Music volume 7", the arena results say "You earned"
+  (no arrows: it is not a choice). Tests: `clarity_c10_*` in
+  `core/tests/test_clarity_cl6.c`; script `clarity_shooter.txt`.
 
 ## Modes
 

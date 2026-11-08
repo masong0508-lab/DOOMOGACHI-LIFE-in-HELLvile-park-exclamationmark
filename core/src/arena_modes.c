@@ -47,7 +47,7 @@ static const uint8_t shop_cost[SHOP_COUNT] = { 40, 60, 50, 150, 120, 0 };
 static const char *const mode_titles[AM_COUNT] = { "BOSS RUSH", "HORDE MODE", "MONSTER MAYHEM" };
 
 static struct {
-    uint8_t  mode, state, prev_state, round, sel, angel, fury_armed, rewarded;
+    uint8_t  mode, state, prev_state, round, sel, angel, fury_armed, rewarded, card_seen;
     uint8_t  nspawn, spawn_x[16], spawn_y[16], boss_spawned, boss_cycle;
     uint16_t t, wave, to_spawn, spawn_t, meter, berserk_t, fury_t, last_kills;
     uint32_t start_tick, end_tick;
@@ -455,6 +455,12 @@ static void am_update(void)
         return;
     }
     if (am.state == AMS_INTRO && am.t == 1) am.start_tick = combat_st.ticks;
+    /* C10: the first intro of a visit is the mode's card (goal, rule, controls): the arena waits for A.
+     * "Again!" and the autopilot start after the old 2 s. */
+    if (am.state == AMS_INTRO && !am.card_seen && !combat_autopilot_on()) {
+        if (am.t > 12 && btn_pressed(BTN_A)) { am.card_seen = 1; am.t = 60; audio_sfx(SFX_SELECT); }
+        else { if (am.t > 30) am.t = 30; return; }
+    }
     if (am.mode == AM_BOSS_RUSH && am.state == AMS_INTRO && am.t > 60) rush_next();
     fight_tick();
     if (am.state == AMS_OVER || am.state == AMS_WIN) return;
@@ -573,7 +579,7 @@ static void results_draw(void)
     doomo_snprintf(buf, sizeof(buf), "x%d", combat_st.best_combo);
     ui_value_row(x + 8, y + 17 + row * r++, w - 16, "Best combo", buf, 0);
     doomo_snprintf(buf, sizeof(buf), "+%d H$", am.payout);
-    ui_value_row(x + 8, y + 17 + row * r++ + 3, w - 16, STR_ICON_COIN " Rewards", buf, 1);
+    ui_value_row(x + 8, y + 17 + row * r++ + 3, w - 16, STR_ICON_COIN " You earned", buf, 0);   /* C10: no arrows */
     if (am.t > 60) {
         if (am.state == AMS_OVER) {
             ui_button(x + 14, y + h - 20, w / 2 - 18, "Again!", am.sel == 0, style);
@@ -595,18 +601,34 @@ static void am_draw(void)
     if (am.fury_t && v.tint_level < 2) { v.tint = TINT_GOLD; v.tint_level = 2; }
     plat_view3d(&v);
     if (plat_draw_skipped()) return;
-    if (am.state == AMS_INTRO || am.state == AMS_FIGHT || am.state == AMS_BREAK) {
+    if ((am.state == AMS_INTRO && (am.card_seen || combat_autopilot_on())) || am.state == AMS_FIGHT || am.state == AMS_BREAK) {
         lv_runtime_hud();
         hud();
     }
     switch (am.state) {
-    case AMS_INTRO:
-        lvd_banner(sh / 3, am.mode == AM_MAYHEM ? "180 SECONDS OF" : "THE ARENA PRESENTS", mode_titles[am.mode], am.t, 1);
+    case AMS_INTRO: {
+        int card = !am.card_seen && !combat_autopilot_on(), cy = card ? (lvd_big() ? sh / 4 : 30) : sh / 3;
+        lvd_banner(cy, am.mode == AM_MAYHEM ? "180 SECONDS OF" : "THE ARENA PRESENTS", mode_titles[am.mode], am.t, 1);
         if (am.mode == AM_HORDE && lv_horde_best()) {
             doomo_snprintf(buf, sizeof(buf), "Best: wave %d", lv_horde_best());
-            ui_text_outline(sw / 2 - ui_text_width(buf) / 2, sh / 3 + 24, buf, PAL_UI_GOLD, PAL_BLACK);
+            ui_text_outline(sw / 2 - ui_text_width(buf) / 2, cy + 24, buf, PAL_UI_GOLD, PAL_BLACK);
+        }
+        if (card) {
+            /* C10: the mode's card: goal, rule, controls, the HUD legend */
+            static const char *const goals[AM_COUNT] = {
+                STR_ICON_STAR " Beat 7 bosses back to back.", STR_ICON_STAR " Survive endless waves.",
+                STR_ICON_STAR " Survive 3 minutes of chaos."
+            };
+            static const char *const rules[AM_COUNT] = {
+                STR_ICON_HEART " A heal between rounds.", STR_ICON_COIN " Shop every 3rd wave with your loot.",
+                STR_ICON_SKULL " Ammo never ends. 25 kills: berserk!"
+            };
+            int w = lvd_big() ? 300 : 230, h = ccard_height(w, goals[am.mode], rules[am.mode]);
+            ccard_draw(sw / 2 - w / 2, sh - 17 - h, w, WIN_HELL, goals[am.mode], rules[am.mode]);
+            if (am.t > 12) ui_hint(STR_ICON_A " Start", WIN_HELL);
         }
         break;
+    }
     case AMS_FIGHT:
         if (am.mode == AM_HORDE && am.t < 70) {
             doomo_snprintf(buf, sizeof(buf), "WAVE %d", am.wave);

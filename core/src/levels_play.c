@@ -18,7 +18,7 @@ enum { BP_RESUME, BP_MUSIC, BP_WEAPON, BP_CAMERA, BP_OPTIONS, BP_RESTART, BP_QUI
 
 static struct {
     uint8_t  level, mode, demo, state, sel, news;
-    uint8_t  gore_forced, old_gore, deaths;
+    uint8_t  gore_forced, old_gore, deaths, card_seen;
     uint16_t t, warn_t;
     int16_t  bonus;
     LvScore  sc;
@@ -182,7 +182,11 @@ static void br_update(void)
     case BR_INTRO:
         if (!br.demo && br.t > 4) tip_once(TIP_SHOOTER);           /* CL4: the controls, once */
         if (tip_active()) { br.t = DOOMO_MIN(br.t, 40); break; }   /* the level waits for it */
-        if (br.t > 80 || (br.t > 12 && !br.demo && btn_pressed(BTN_A | BTN_START))) {
+        /* C10: the first card of a visit waits for the player (it shows the controls); a demo, a restart and
+         * a retry start by themselves after 80 ticks, as before */
+        if ((br.t > 80 && (br.demo || br.card_seen || combat_autopilot_on())) ||
+            (br.t > 12 && !br.demo && btn_pressed(BTN_A | BTN_START))) {
+            br.card_seen = 1;
             br.state = BR_PLAY;
             br.t = 0;
             audio_sfx(SFX_DEMON_ROAR);
@@ -226,30 +230,49 @@ static void br_update(void)
 /* ---- drawing ------------------------------------------------------------------ */
 static int style_now(void) { return combat_s.hell >= 128 ? WIN_HELL : WIN_CUTE; }
 
+/* C10: the card's goal and rule lines for this run */
+static const char *intro_goal(void)
+{
+    return combat_s.goal == CGOAL_KILL_ALL ? STR_ICON_STAR " Goal: beat every demon" :
+           combat_s.goal == CGOAL_EXIT ? STR_ICON_STAR " Goal: find the exit" : STR_ICON_STAR " Goal: survive";
+}
+
+static const char *intro_rule(void)
+{
+    return ccard_mode_rule(br.mode == LVM_CUTE_ONLY ? CCARD_RULE_CUTE : br.mode == LVM_BRUTAL_ONLY ? CCARD_RULE_BRUTAL :
+                           br.mode == LVM_TIME_TRIAL ? CCARD_RULE_TIME : CCARD_RULE_NONE);
+}
+
 static void intro_draw(void)
 {
     const LevelInfo *L = &lv_info[br.level];
     int sw = plat_screen_w(), sh = plat_screen_h(), t = br.t, hell = L->theme == WIN_HELL || L->theme == WIN_DARK;
+    int big = lvd_big(), cy = big ? sh / 4 : 30;          /* C10: the banner moves up for the control card */
     char buf[48], tb[12];
     plat_shade_rect(0, 0, sw, sh, t < 8 ? 8 - t / 2 : 4);
-    lvd_banner(sh / 3, L->tag, L->title, t, hell);
+    lvd_banner(cy, L->tag, L->title, t, hell);
     if (t > 14) {
-        int w = ui_text_width(L->flavor) + 16, x = sw / 2 - w / 2, y = sh / 3 + (lvd_big() ? 26 : 20);
+        int w = ui_text_width(L->flavor) + 16, x = sw / 2 - w / 2, y = cy + (big ? 26 : 20);
         ui_round_rect(x + 1, y + 2, w, 13, 6, PAL_BLACK);
         ui_round_rect(x, y, w, 13, 6, PAL_UI_CREAM);
         ui_text(x + 8, y + 3, L->flavor, PAL_UI_PINK_D);
     }
     if (t > 24) {
-        int y = sh / 3 + (lvd_big() ? 46 : 38);
+        int y = cy + (big ? 46 : 38);
         lvd_time(tb, sizeof(tb), br.mode == LVM_TIME_TRIAL ? L->dev : L->par);
         doomo_snprintf(buf, sizeof(buf), br.mode == LVM_TIME_TRIAL ? STR_ICON_BOLT " Gold time %s" : STR_ICON_STAR " Par time %s", tb);
-        ui_text_outline(sw / 2 - ui_text_width(buf) / 2, y, buf, PAL_UI_GOLD, PAL_BLACK);
         if (br.mode != LVM_NORMAL) {
-            doomo_snprintf(buf, sizeof(buf), "- %s -", lv_mode_names[br.mode]);
-            ui_text_outline(sw / 2 - ui_text_width(buf) / 2, y + 11, buf,
-                            br.mode == LVM_BRUTAL_ONLY ? PAL_UI_RED : PAL_WHITE, PAL_BLACK);
+            char mb[64];
+            doomo_snprintf(mb, sizeof(mb), "%s  - %s -", buf, lv_mode_names[br.mode]);
+            doomo_snprintf(buf, sizeof(buf), "%s", mb);
         }
-        if (lv_info[br.level].boss != LB_NONE && lvd_big()) {
+        ui_text_outline(sw / 2 - ui_text_width(buf) / 2, y, buf, br.mode == LVM_BRUTAL_ONLY ? PAL_UI_RED : PAL_UI_GOLD, PAL_BLACK);
+        if (!br.demo && !combat_autopilot_on()) {
+            /* C10: how to play, on every difficulty and in every mode (Brutal Only included) */
+            int w = big ? 300 : 230, h = ccard_height(w, intro_goal(), intro_rule());
+            ccard_draw(sw / 2 - w / 2, sh - 17 - h, w, hell ? WIN_HELL : WIN_CUTE, intro_goal(), intro_rule());
+        }
+        if (lv_info[br.level].boss != LB_NONE && big && (br.demo || combat_autopilot_on())) {
             /* the mini-boss waiting at the end, in the corner */
             int boss = lv_info[br.level].boss;
             const LevelBoss *b = &lv_boss[boss];

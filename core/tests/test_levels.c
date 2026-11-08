@@ -411,6 +411,9 @@ TEST(levels_select_and_breach_scenes)
     for (i = 0; i < 20; i++) frame(0);
     shot("breach_intro");
     for (i = 0; i < 80; i++) frame(0);
+    CHECK(scene_top() == &SCENE_BREACH);                 /* (C10) the control card waits for the player */
+    frame(BTN_A); frame(0);                              /* A starts the level */
+    for (i = 0; i < 4; i++) frame(0);
     frame(BTN_START); frame(0);
     shot("breach_pause");
     frame(BTN_UP); frame(0);                             /* -> quit level */

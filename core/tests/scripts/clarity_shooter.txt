@@ -1,0 +1,66 @@
+# Clarity C10 (CL6): the shooter explains itself. Every Hell Breach level,
+# the Demon Arena and the arena modes open on a card with the controls of
+# the current scheme (Modern here, then Classic), the HUD legend, the goal
+# and the mode's rule, on every mode (Brutal Only included). A starts. In
+# the fight the counters are labelled ("Demons 0/17", "Score 0"), health is
+# a heart in every mode and the "Bullets" line sits inside its panel.
+scene TITLE
+wait 2
+push BREACH 0
+expect-scene BREACH
+wait 40
+shot breach_card
+wait 120
+expect-scene BREACH
+shot breach_card_waits
+press A
+wait 30
+shot breach_hud
+press START
+wait 12
+shot breach_pause
+press START
+wait 6
+scene TITLE
+wait 2
+# Brutal Only: the card names the rule
+push BREACH 772
+expect-scene BREACH
+wait 40
+shot brutal_card
+press A
+wait 30
+shot brutal_hud
+scene TITLE
+wait 2
+# The Demon Arena: a title card before wave 1
+push ARENA
+expect-scene ARENA
+wait 40
+shot arena_card
+wait 90
+shot arena_card_waits
+press A
+wait 40
+shot arena_wave1
+press START
+wait 6
+press DOWN
+press DOWN
+press A
+wait 70
+shot arena_over
+press A
+wait 6
+scene TITLE
+wait 2
+# Horde mode's card
+push ARENA_MODE 1
+expect-scene ARENA_MODE
+wait 40
+shot horde_card
+press A
+wait 40
+shot horde_play
+scene TITLE
+wait 2

@@ -143,9 +143,16 @@ static void ar_update(void)
     switch (ar_state) {
     case AR_INTRO:
         if (ar_t > 4) tip_once(TIP_SHOOTER);                         /* CL4: the controls, once */
-        if (tip_active()) { ar_t = DOOMO_MIN(ar_t, 30); return; }    /* the first wave waits for it */
-        combat_tick();
-        if (ar_t > 60) start_wave();
+        if (tip_active()) { ar_t = DOOMO_MIN(ar_t, 30); return; }    /* the card waits for it */
+        /* C10: the arena's title card (rules, controls, rewards) waits for A; B walks back out.
+         * The autopilot (tests, demos) starts after the old 2 s. */
+        if (combat_autopilot_on() ? ar_t > 60 : (ar_t > 12 && btn_pressed(BTN_A | BTN_START))) {
+            audio_sfx(SFX_SELECT);
+            start_wave();
+        } else if (ar_t > 12 && btn_pressed(BTN_B) && !combat_autopilot_on()) {
+            audio_sfx(SFX_CANCEL);
+            if (scene_depth() > 1) scene_pop(); else scene_set(&SCENE_TITLE, 0);
+        }
         return;
     case AR_PAUSE:
         if (btn_pressed(BTN_UP) || btn_pressed(BTN_DOWN)) { ar_sel = (ar_sel + 1) % 3; audio_sfx(SFX_CURSOR); }
@@ -217,14 +224,31 @@ static void ar_draw(void)
     char buf[40];
     combat_build_view(&v);
     plat_view3d(&v);
-    combat_draw_hud();
-    /* wave counter under the score */
-    doomo_snprintf(buf, sizeof(buf), "WAVE %d", ar_wave);
-    ui_text_outline(sw - ui_text_width(buf) - 4, sh / 2 - 50, buf, PAL_RAMP(RAMP_BONE, 7), PAL_RAMP(RAMP_BLOOD, 0));
+    if (ar_state != AR_INTRO) {                  /* C10: the title card owns the screen */
+        combat_draw_hud();
+        /* wave counter under the score */
+        doomo_snprintf(buf, sizeof(buf), "WAVE %d", ar_wave);
+        ui_text_outline(sw - ui_text_width(buf) - 4, sh / 2 - 50, buf, PAL_RAMP(RAMP_BONE, 7), PAL_RAMP(RAMP_BLOOD, 0));
+    }
     switch (ar_state) {
-    case AR_INTRO:
-        banner("DEMON ARENA", ar_t);
+    case AR_INTRO: {
+        /* C10: a minigame-style title card: what to do, what you get, how to play */
+        int big = sh >= 200, w = big ? 300 : 230, x = sw / 2 - w / 2, h, y;
+        const char *goal = STR_ICON_STAR " Survive the waves. Boss every 5th.";
+        const char *rule = STR_ICON_COIN " Keep H$ + scrap for every wave.";
+        plat_shade_rect(0, 0, sw, sh, 5);
+        ui_text_big(sw / 2 - ui_text_big_width("DEMON ARENA", 2) / 2, big ? 30 : 12, "DEMON ARENA", 2,
+                    PAL_RAMP(RAMP_LAVA, 7), PAL_RAMP(RAMP_BLOOD, 0));
+        if (ar_best) {
+            doomo_snprintf(buf, sizeof(buf), "Best this visit: wave %d", ar_best);
+            ui_text_outline(sw / 2 - ui_text_width(buf) / 2, big ? 54 : 32, buf, PAL_UI_GOLD, PAL_BLACK);
+        }
+        h = ccard_height(w, goal, rule);
+        y = sh - 17 - h;
+        ccard_draw(x, y, w, WIN_HELL, goal, rule);
+        if (ar_t > 12) ui_hint(STR_ICON_A " Start  " STR_ICON_B " Leave", WIN_HELL);
         break;
+    }
     case AR_FIGHT:
         if (ar_t < 80) {
             doomo_snprintf(buf, sizeof(buf), "WAVE %d", ar_wave);
@@ -261,7 +285,7 @@ static void ar_draw(void)
         doomo_snprintf(buf, sizeof(buf), "%d", ar_best);
         ui_value_row(x + 6, y + 52, w - 12, "Best this visit", buf, 0);
         doomo_snprintf(buf, sizeof(buf), "+%d H$ +scrap", ar_money);
-        ui_value_row(x + 6, y + 66, w - 12, STR_ICON_COIN " Rewards", buf, 1);
+        ui_value_row(x + 6, y + 66, w - 12, STR_ICON_COIN " You earned", buf, 0);   /* C10: not a choice: no arrows */
         doomo_snprintf(buf, sizeof(buf), "%d arena waves total", (int)progress_get(PROG_ARENA_WAVES));
         ui_text_center(sw / 2, y + 82, buf, ui_style(WIN_HELL)->text_dim);
         if (ar_t > 60) ui_hint(STR_ICON_A " Continue", WIN_HELL);

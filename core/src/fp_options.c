@@ -540,7 +540,7 @@ const char *pause_music_label(char *buf, int n)
 {
     int v = opt_get(OPT_MUSIC_VOL);
     if (v <= 0) doomo_snprintf(buf, (size_t)n, "Music: off");
-    else doomo_snprintf(buf, (size_t)n, "Music: %d", v);
+    else doomo_snprintf(buf, (size_t)n, "Music volume %d", v);   /* C10: it is the volume, not a song number */
     return buf;
 }
 

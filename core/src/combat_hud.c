@@ -436,16 +436,35 @@ static void scope_overlay(void)
 }
 
 /* ---- panels ---------------------------------------------------------------------- */
+/* The ammo panel's label line: "Bullets 40" under a magazine count, "Bullets" under a pouch count. It ran
+ * into the panel's bottom edge and past its right edge ("Bullets" was clipped at both sizes, C10): the
+ * panel is 4 px taller, the label sits under the big count, and the panel grows to the label. */
+static const char *ammo_label(char *buf, int cap)
+{
+    if (combat_ws.ammo_type == 0xFF) return "";
+    if (combat_ws.mag_size) {
+        doomo_snprintf(buf, cap, "%s %d", lang_tr(doomo_ammo_names[combat_ws.ammo_type]), combat_ammo(combat_ws.ammo_type));
+        return buf;
+    }
+    return lang_tr(doomo_ammo_names[combat_ws.ammo_type]);
+}
+
+static int ammo_panel_w(void)
+{
+    char buf[24];
+    return DOOMO_MAX(70, 30 + ui_text_width(ammo_label(buf, (int)sizeof(buf))) + 5);
+}
+
 static void ammo_panel(int x, int y, const HudPal *p)
 {
     const DoomoWeapon *w = combat_weapon();
     const DoomoImage *icon = weld_icon_image(w);
-    char buf[16];
+    char buf[24];
     int slot = doomo_player.weapon_slot;
-    panel(x, y, 70, 26, p);
-    if (icon) plat_image(x + 4, y + 5, icon, 1, 0, 0);
+    panel(x, y, ammo_panel_w(), 30, p);
+    if (icon) plat_image(x + 4, y + 7, icon, 1, 0, 0);
     if (combat_ws.ammo_type == 0xFF) {
-        ui_text_outline(x + 32, y + 9, "MELEE", p->text, p->text_out);
+        ui_text_outline(x + 32, y + 11, "MELEE", p->text, p->text_out);
         return;
     }
     if (combat_ws.mag_size) {
@@ -461,10 +480,7 @@ static void ammo_panel(int x, int y, const HudPal *p)
         doomo_snprintf(buf, sizeof(buf), "%d", combat_ammo(combat_ws.ammo_type));
         ui_text_big(x + 30, y + 3, buf, 2, p->text, p->text_out);
     }
-    doomo_snprintf(buf, sizeof(buf), "%s %d", lang_tr(doomo_ammo_names[combat_ws.ammo_type]),
-                   combat_ammo(combat_ws.ammo_type));
-    if (combat_ws.mag_size) plat_text(x + 30, y + 17, buf, p->dim);
-    else plat_text(x + 30, y + 17, lang_tr(doomo_ammo_names[combat_ws.ammo_type]), p->dim);
+    plat_text(x + 30, y + 20, ammo_label(buf, (int)sizeof(buf)), p->dim);
 }
 
 static void health_panel(int x, int y, const HudPal *p)
@@ -474,8 +490,8 @@ static void health_panel(int x, int y, const HudPal *p)
     int hs = 5 + (beat < 3 ? 2 : beat < 6 ? 1 : 0);
     face_badge(x, y - 14, p);
     panel(x + 50, y - 2, 52, 30, p);
-    if (combat_s.hell >= 128) icon_skull(x + 59, y + 6, hp > 30 ? PAL_RAMP(RAMP_BONE, 6) : PAL_RAMP(RAMP_LAVA, 6), PAL_BLACK);
-    else ui_heart(x + 59, y + 6, hs, low ? PAL_UI_RED : PAL_PAINT(PAINT_CHERRY, 1));
+    /* C10: health is a heart in every mode (the hell HUD drew a skull, which read as "demons") */
+    ui_heart(x + 59, y + 6, hs, low ? PAL_UI_RED : combat_s.hell >= 128 ? PAL_RAMP(RAMP_LAVA, 6) : PAL_PAINT(PAINT_CHERRY, 1));
     num_big(x + 67, y, DOOMO_MAX(hp, 0), low ? (hud_t & 4 ? p->accent : p->text) : p->text, p->text_out);
     icon_shield(x + 59, y + 19, doomo_player.armor ? PAL_UI_MINT : p->dim, p->outline);
     {
@@ -556,8 +572,9 @@ static void top_right(const HudPal *p)
 {
     char buf[24];
     int sw = plat_screen_w(), y = 4, w;
-    doomo_snprintf(buf, sizeof(buf), STR_ICON_SKULL "%d/%d", combat_st.kills, combat_st.kills_total);
-    if (combat_s.goal == CGOAL_ENDLESS) doomo_snprintf(buf, sizeof(buf), STR_ICON_STAR "%d", (int)combat_st.score);
+    /* C10: the counters say what they count */
+    doomo_snprintf(buf, sizeof(buf), "Demons %d/%d", combat_st.kills, combat_st.kills_total);
+    if (combat_s.goal == CGOAL_ENDLESS) doomo_snprintf(buf, sizeof(buf), "Score %d", (int)combat_st.score);
     w = ui_text_width(buf);
     ui_text_outline(sw - w - 4, y, buf, p->text, p->text_out);
     y += 10;
@@ -648,6 +665,21 @@ static void fps_counter(int sw)
     ui_text_outline(sw / 2 - ui_text_width(buf) / 2, 2, buf, PAL_UI_MINT, PAL_BLACK);
 }
 
+/* C10: the HUD's icons named, for the control card: the heart, the shield, the demon counter */
+void combat_hud_legend(int x, int y, int w, uint8_t col)
+{
+    int cx = x;
+    (void)w;
+    ui_heart(cx + 3, y + 3, 3, PAL_PAINT(PAINT_CHERRY, 1));
+    ui_text(cx + 9, y, "Health", col);
+    cx += 9 + ui_text_width("Health") + 10;
+    icon_shield(cx + 4, y + 3, PAL_UI_MINT, PAL_BLACK);
+    ui_text(cx + 11, y, "Armour", col);
+    cx += 11 + ui_text_width("Armour") + 9;
+    if (combat_s.goal != CGOAL_ENDLESS) ui_text(cx, y, "Demons beaten/all", col);
+    else ui_text(cx, y, "Score: combos!", col);
+}
+
 /* ---- main entry ----------------------------------------------------------------------- */
 void combat_draw_hud(void)
 {
@@ -679,7 +711,7 @@ void combat_draw_hud(void)
         }
     } else if (layout == 0) {
         health_panel(3, sh - 30, &p);
-        ammo_panel(sw - 73, sh - 29, &p);
+        ammo_panel(sw - ammo_panel_w() - 3, sh - 33, &p);
         top_left(&p);
         top_right(&p);
     }

@@ -218,5 +218,19 @@ void combat_hud_project(fix16 x, fix16 y, fix16 z, int *sx, int *sy, int *visibl
 void combat_hud_reset(void);
 int  combat_hud_style(void);                    /* 0 cute .. 256 hell */
 void combat_hud_set_view(const DoomoView3D *v);
+/* clarity C10: the HUD's icons with their names on one line (the control card's last line) */
+void combat_hud_legend(int x, int y, int w, uint8_t col);
+
+/* ---- the control card (combat_card.c, clarity C10) ----
+ * ccard_lines() flows the current scheme's controls into at most `max` lines of `width` px
+ * (returns the count); ccard_draw() is the card's panel: an optional goal line, an optional
+ * rule line, the controls and the HUD legend; ccard_height() its height for the same text. */
+#define CCARD_LINE_CAP 64
+#define CCARD_MAX_LINES 4
+enum { CCARD_RULE_NONE, CCARD_RULE_CUTE, CCARD_RULE_BRUTAL, CCARD_RULE_TIME };
+int  ccard_lines(char lines[][CCARD_LINE_CAP], int max, int width);
+const char *ccard_mode_rule(int rule);
+int  ccard_height(int w, const char *goal, const char *rule);
+void ccard_draw(int x, int y, int w, int style, const char *goal, const char *rule);
 
 #endif

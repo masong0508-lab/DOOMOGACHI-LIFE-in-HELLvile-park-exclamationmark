@@ -350,7 +350,7 @@ int ui_sparkle_size(int phase);          /* ui_sparkle's size, 0 = none */
 void pause_menu_draw(const char *const *labels, int n, int sel, unsigned lr_mask, int t, int style);
 int  pause_menu_nav(int *sel, int n);
 /* U3a, the shell's quick Music row: every pause menu puts it right under Resume and lets LEFT / RIGHT
- * change OPT_MUSIC_VOL on the spot (no trip through Options). pause_music_label() writes "Music: 7"
+ * change OPT_MUSIC_VOL on the spot (no trip through Options). pause_music_label() writes "Music volume 7"
  * ("Music: off" at 0); pause_music_nudge() moves the volume one step (clamped, plays a cursor tick) and
  * returns 1 when it changed. Keep the row in the menu's lr_mask. */
 const char *pause_music_label(char *buf, int n);

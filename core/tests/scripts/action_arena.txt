@@ -5,6 +5,8 @@ wait 2
 push ARENA
 wait 30
 shot arena_intro
+# (C10) the arena's title card waits for A
+press A
 wait 90
 shot wave_one
 hold RIGHT 10

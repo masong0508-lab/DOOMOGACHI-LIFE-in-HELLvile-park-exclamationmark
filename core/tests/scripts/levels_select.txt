@@ -28,7 +28,9 @@ wait 2
 expect-scene BREACH
 wait 34
 shot breach_intro
-wait 60
+# (C10) the intro card shows the controls and waits for A
+press A
+wait 46
 shot breach_play
 press SELECT
 wait 12

@@ -8,6 +8,8 @@ push ARENA_MODE 0
 expect-scene ARENA_MODE
 wait 30
 shot rush_intro
+# (C10) the mode's card waits for A
+press A
 wait 100
 shot rush_round1
 press SELECT
@@ -27,6 +29,8 @@ expect-scene TITLE
 push ARENA_MODE 1
 wait 30
 shot horde_intro
+# (C10) the mode's card waits for A
+press A
 wait 60
 shot horde_wave1
 wait 90
@@ -43,5 +47,7 @@ wait 2
 push ARENA_MODE 2
 wait 30
 shot mayhem_intro
+# (C10) the mode's card waits for A
+press A
 wait 200
 shot mayhem_chaos
