@@ -13,6 +13,9 @@
  *              after is on top (the marker keeps the painter's order)
  *   depth      a billboard behind a block is hidden at its feet, one in
  *              front of it shows: per pixel, through the depth buffer
+ *   lift       a billboard lifted off the floor (a quest mark, a jump) at
+ *              the screen's side stays over its feet: the same columns as
+ *              on the ground, higher by the native runner's z / 4 pixels
  *   shade      a full-screen exact shade multiplies the view by the fitted
  *              factor; a partial one over it is the MUL fallback
  *   hold       plat_hold_frame keeps the view's polygons under new frames
@@ -258,6 +261,54 @@ static void test_depth(void)
     CHECK(is_pal(px(rgb, x, y), col), "depth: the billboard in front of the block is hidden at (%d, %d)", x, y);
 }
 
+/* the columns and the lowest row of colour idx in rgb[] (-1: none) */
+static void extent(uint8_t idx, int *x0, int *x1, int *y1)
+{
+    int x, y;
+    *x0 = DC2D_W; *x1 = -1; *y1 = -1;
+    for (y = 0; y < DC2D_H; y++)
+        for (x = 0; x < DC2D_W; x++)
+            if (is_pal(px(rgb, x, y), idx)) {
+                if (x < *x0) *x0 = x;
+                if (x > *x1) *x1 = x;
+                if (y > *y1) *y1 = y;
+            }
+}
+
+static void test_lift(void)
+{
+    DoomoOverworldView v;
+    DoomoBillboard bb;
+    uint8_t col = PAL_RAMP(RAMP_VAPE, 5);
+    int side, ax0, ax1, ay1, bx0, bx1, by1;
+    make_map(32, 32);
+    make_solid(col);
+    for (side = -1; side <= 1; side += 2) {
+        memset(&bb, 0, sizeof(bb));
+        bb.x = (fix16)((16.5f + 6.0f * (float)side) * 64 * 65536);   /* near the screen's side */
+        bb.y = (fix16)(16.5f * 64 * 65536);
+        bb.img = &solid_img;
+        bb.scale = 256;
+        bb.flags = BB_FULLBRIGHT;
+        view_at(&v, &tmap, 16.5f, 16.5f);
+        v.sprites = &bb; v.sprite_count = 1;
+        frame(&v);
+        swpvr_render(dc2d_last(), rgb);
+        extent(col, &ax0, &ax1, &ay1);
+        bb.z = (fix16)(108 * 65536);                                 /* the quest mark's height */
+        frame(&v);
+        swpvr_render(dc2d_last(), rgb);
+        extent(col, &bx0, &bx1, &by1);
+        CHECK(ax1 >= 0 && bx1 >= 0 && abs(bx0 - ax0) <= 1 && abs(bx1 - ax1) <= 1,
+              "lift: side %d: the lifted billboard spans x %d..%d, on the ground %d..%d",
+              side, bx0, bx1, ax0, ax1);
+        /* 108 / 4 = 27 logical pixels at the focus: 54 screen pixels, a
+         * little less at this depth */
+        CHECK(ay1 - by1 >= 44 && ay1 - by1 <= 60, "lift: side %d: lifted by %d pixels, want about 54",
+              side, ay1 - by1);
+    }
+}
+
 static void test_shade(void)
 {
     DoomoOverworldView v;
@@ -440,6 +491,7 @@ int main(void)
     test_cover();
     test_order();
     test_depth();
+    test_lift();
     test_shade();
     test_hold();
     test_post();

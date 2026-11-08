@@ -2,7 +2,7 @@
 """compare3d.py - DC7: Flycast shots against the host software PVR (owner:
 dreamcast).
 
-    python3 -I compare3d.py DCDIR HOSTDIR [--report HOSTDIR/report.txt]
+    python3 -I compare3d.py DCDIR HOSTDIR [--report HOSTDIR/report.txt] [--min-gated N]
 
 DCDIR holds dcrun's shots (NAME.png, 640x480); HOSTDIR the host runner's
 (NAME_dc.png, the Dreamcast layers' frame through dc/tests/gfx2d/swpvr.c,
@@ -13,7 +13,11 @@ its pixels within 24/255 on every channel (both sides draw the same
 polygons; the PVR's and the software rasteriser's edge rules, Gouraud and
 colour rounding differ by a few levels and a pixel along edges). Shots
 without a view are listed, not gated (the 2D is DC3's ui-compare; a combat
-view is DC6's). Prints one line per shot and a summary; exit 1 on a fail.
+view is DC6's). A Flycast shot with no host shot fails (MISSING), and so
+does a run with fewer than --min-gated shots with a 3D view (default 0;
+run_flycast.sh asks for 1 in the overworld scripts, so a script whose shots
+lost their view cannot pass with nothing compared). Prints one line per
+shot and a summary; exit 1 on a fail.
 """
 import argparse
 import os
@@ -45,6 +49,7 @@ def main():
     ap.add_argument('dcdir')
     ap.add_argument('hostdir')
     ap.add_argument('--report', default=None)
+    ap.add_argument('--min-gated', type=int, default=0)
     a = ap.parse_args()
     v = views(a.report or os.path.join(a.hostdir, 'report.txt'))
     names = sorted(f[:-4] for f in os.listdir(a.dcdir) if f.endswith('.png'))
@@ -54,6 +59,7 @@ def main():
         hp = os.path.join(a.hostdir, n + '_dc.png')
         if not os.path.exists(hp):
             print('MISSING %s (no host shot)' % n)
+            fails += 1
             continue
         d = np.asarray(Image.open(os.path.join(a.dcdir, n + '.png')).convert('RGB')).astype(int)
         h = np.asarray(Image.open(hp).convert('RGB')).astype(int)
@@ -78,9 +84,11 @@ def main():
             if tag == 'FAIL':
                 fails += 1
         print('%-6s %-28s close %7.3f%% exact %7.3f%% (3D views %d)' % (tag, n, close, exact, v.get(n, 0)))
-    print('compare3d: %d shots with a 3D view gated, %d failed; worst %.3f%% (%s)' %
-          (gated, fails, worst[0] if gated else 100.0, worst[1]))
-    return 1 if fails else 0
+    few = gated < a.min_gated
+    print('compare3d: %d shots with a 3D view gated, %d failed; worst %.3f%% (%s)%s' %
+          (gated, fails, worst[0] if gated else 100.0, worst[1],
+           '; FAIL: want at least %d shot(s) with a 3D view' % a.min_gated if few else ''))
+    return 1 if fails or few else 0
 
 
 if __name__ == '__main__':

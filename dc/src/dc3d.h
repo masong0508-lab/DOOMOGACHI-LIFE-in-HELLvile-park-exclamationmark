@@ -112,7 +112,8 @@ typedef struct DcBatch {
 typedef struct Dc3dStats {
     uint32_t polys, verts, bytes;          /* last segment built */
     uint32_t polys_max, bytes_max;
-    uint32_t dropped;                      /* polygons left out (batch or budget full), total */
+    uint32_t dropped;                      /* polygons left out (batch, budget or held
+                                              batch full), total */
     uint32_t clipped;                      /* polygons cut at the near plane, total */
     uint32_t culled;                       /* polygons wholly off the viewport, total */
     uint32_t segs;                         /* segments built, total */
@@ -140,7 +141,8 @@ void    dc3d_seg_end(void);
 uint32_t dc3d_seg_bytes(int slot, int seg);
 void     dc3d_seg_mark(int slot, int seg, uint32_t frame);      /* texture LRU */
 /* plat_hold_frame: copy segment `seg` of `slot` into the held batch
- * (reset first when `reset`); the new segment index, -1 if it does not fit */
+ * (reset first when `reset`); the new segment index, -1 if it does not fit
+ * (its polygons then count in dc3d_stats.dropped) */
 int      dc3d_hold_seg(int slot, int seg, int reset);
 
 /* ---- the camera (dc3d.c): a pinhole looking along `fwd` ------------------------------ */

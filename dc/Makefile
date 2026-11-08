@@ -31,7 +31,7 @@
 #                         story_invasion, fp_island, side_sample_a and the
 #                         Hellvile walks (dc/tests/overworld), each shot with a
 #                         3D view against the host software PVR's (compare3d.py),
-#                         no polygon dropped, the frame times; results in
+#                         no polygon dropped, no tick over 33.3 ms; results in
 #                         build/shots/ow; part of `test` when Flycast is there
 #   make -C dc sizes      section sizes against the 16 MB RAM budget
 #   make -C dc PACK=/path/pack.dmpk disc

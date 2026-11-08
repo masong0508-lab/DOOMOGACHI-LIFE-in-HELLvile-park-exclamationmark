@@ -388,10 +388,13 @@ static void flat(int cx, int cy, int z, int t, float k)
 static void wall(int gax, int gay, int gbx, int gby, int zb, int zt, int t, float k)
 {
     Dc3dIn q[4];
-    const CornerShade *ca = corner(gax, gay), *cb = corner(gbx, gby);
+    CornerShade sa;
+    const CornerShade *ca = corner(gax, gay), *cb;
     float xa = (float)(gax * CELL), ya = (float)(gay * CELL), xb = (float)(gbx * CELL), yb = (float)(gby * CELL);
     float vb = (float)(zt - zb) / 64.0f;
     if (t < 0 || zt <= zb) return;
+    if (ca == &cg_spare) { sa = cg_spare; ca = &sa; }   /* both off the cache: keep a's light */
+    cb = corner(gbx, gby);
     corner_vertex(&q[0], ca, k, xa, ya, (float)zt, 0.0f, 0.0f);
     corner_vertex(&q[1], cb, k, xb, yb, (float)zt, 1.0f, 0.0f);
     corner_vertex(&q[2], cb, k * 0.69f, xb, yb, (float)zb, 1.0f, vb);
@@ -492,8 +495,12 @@ static void shadow(float x, float y, float z, float rad)
  * behind never cuts the head, pixel by pixel. The quad is cut into
  * OW_BB_STRIPS rows so the texture's perspective step between rows (the
  * z varies over the rectangle) stays well under a texel. Heights above the
- * floor (jumps, emote bubbles) are scaled as the native runner lifts them
- * (z / 4 pixels), relative to the sprite. */
+ * floor (jumps, emote bubbles, the quest marks) lift the rectangle in
+ * screen space as the native runner lifts them (z / 4 pixels, relative to
+ * the sprite): x and the base row are projected at the ground point, so a
+ * lifted sprite stays over its feet at the screen's sides (projecting the
+ * lifted point itself, which is nearer the camera, pushed it outward by
+ * about 13 % of its distance from the centre). */
 #define OW_BB_STRIPS 4
 static void billboard(const DoomoBillboard *b)
 {
@@ -505,20 +512,23 @@ static void billboard(const DoomoBillboard *b)
     float scale = (float)(b->scale ? b->scale : 256) * OW_SPRITE / 256.0f;
     float w = (float)img->w * scale, h = (float)img->h * scale;
     float u0, u1, v1, alpha = (b->flags & BB_TRANSLUCENT) ? 0.5f : 1.0f, zf, zc, sx0, sx1, sy0, sy1;
-    float dy = y - cam.ey, top, ny;
+    float dy = y - cam.ey, top, ny, lift = 0.0f;
     uint32_t argb, oargb;
     int slot, k, bx = (int)(x / CELL) - (x < 0.0f ? 1 : 0), by = (int)(y / CELL) - (y < 0.0f ? 1 : 0);
     zf = (float)floor_of(cell_at(bx, by), bx, by);
-    if (z > zf) z = zf + (z - zf) * (OW_SPRITE / 4.0f) / OW_COSP;
+    if (z > zf) {                       /* lifted: in the screen's plane, at the ground's depth */
+        lift = (z - zf) * (OW_SPRITE / 4.0f);
+        z = zf;
+    }
     if ((b->flags & BB_SHADOW) && img->w)
         shadow(x, y, zf + 1.5f, (float)(((int)w * 3 >> 3) + 2));
-    /* the feet in camera space: the rectangle sits at their depth */
+    /* the ground point in camera space: the rectangle sits at its depth */
     zc = dy * cam.fy + (z - cam.ez) * cam.fz;
     if (zc < 4.0f * DC3D_ZNEAR || dy >= 0.0f) return;
     sx0 = cam.cx + cam.focal * (x - w * 0.5f - cam.ex) / zc;
     sx1 = cam.cx + cam.focal * (x + w * 0.5f - cam.ex) / zc;
-    sy1 = cam.cy + cam.focal * (dy * cam.dy + (z - cam.ez) * cam.dz) / zc;   /* the feet's row */
-    sy0 = sy1 - cam.focal * h / zc;                                           /* the head's  */
+    sy1 = cam.cy + cam.focal * (dy * cam.dy + (z - cam.ez) * cam.dz - lift) / zc;   /* the feet's row */
+    sy0 = sy1 - cam.focal * h / zc;                                                  /* the head's  */
     if (sx1 < cam.vx0 || sx0 > cam.vx1 || sy1 < cam.vy0 || sy0 > cam.vy1) { dc3d_stats.culled++; return; }
     slot = dc2d_tex_image(img);
     if (slot < 0) return;
@@ -535,8 +545,9 @@ static void billboard(const DoomoBillboard *b)
     v1 = (float)img->h / (float)tx->th;
     u0 = 0.0f;
     if (b->flags & BB_FLIPX) { u0 = u1; u1 = 0.0f; }
-    /* one colour for the whole sprite, shaded at its middle */
-    shade_point(y, z + h * 0.5f, lit, glow, alpha, &argb, &oargb);
+    /* one colour for the whole sprite, shaded at its middle (a lift in the
+     * screen's plane is lift / cos(pitch) units up in the world) */
+    shade_point(y, z + lift / OW_COSP + h * 0.5f, lit, glow, alpha, &argb, &oargb);
     v = dc3d_poly(DC3D_SPRITE, slot, 2 * (OW_BB_STRIPS + 1));
     if (!v) return;
     /* a strip down the rectangle: left, right per row, top row first; the

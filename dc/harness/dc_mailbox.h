@@ -77,7 +77,7 @@ typedef struct DcMailbox {
      * the time the views took to build in microseconds (last, worst, sum
      * and count of the views built), polygons of the last view and the
      * most in one view, the most TA bytes one view cost, and the polygons
-     * left out over the batch or its budget (total) */
+     * left out over the batch, its budget or the held batch (total) */
     uint32_t g3d_us, g3d_us_max, g3d_us_sum, g3d_n;
     uint32_t g3d_polys, g3d_polys_max, g3d_bytes_max, g3d_dropped;
 } DcMailbox;

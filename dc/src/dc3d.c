@@ -230,8 +230,10 @@ int dc3d_hold_seg(int slot, int seg, int reset)
     s = &b->seg[seg];
     for (i = s->poly0; i < s->poly0 + s->npoly; i++) nverts += b->p[i].nv;
     if (h->nseg >= DC3D_MAX_SEGS || h->np + (int)s->npoly > DC3D_MAX_POLYS ||
-        h->nv + (int)nverts > DC3D_MAX_VERTS)
+        h->nv + (int)nverts > DC3D_MAX_VERTS) {
+        dc3d_stats.dropped += s->npoly;          /* the held backdrop loses this view */
         return -1;
+    }
     d = &h->seg[h->nseg];
     *d = *s;
     d->poly0 = (uint32_t)h->np;

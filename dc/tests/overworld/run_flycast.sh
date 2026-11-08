@@ -18,9 +18,13 @@
 #             Flycast shot against it: at least 97% of the pixels within
 #             24/255 per channel (the PVR's and the software rasteriser's
 #             edge rules and colour rounding differ; a wrong camera, depth
-#             test, texture or colour fails it by far)
+#             test, texture or colour fails it by far); a Flycast shot
+#             without a host shot fails, and every script but fp_island
+#             (the 2D island hub) must have at least one shot with a view
 #   timing    the game's work per tick (dcrun: worst, ticks over 33.3 ms)
-#             and the 3D views' build time (mailbox g3d_*), from the run
+#             and the 3D views' build time (mailbox g3d_*), from the run;
+#             no tick may pass 33.3 ms (the 30 Hz budget), except fp_island's
+#             one known loading tick (making the island, 2D only)
 # OUTDIR/<script>/{dc,nat,host}/ the shots, OUTDIR/<script>/*.log the logs,
 # OUTDIR/summary.txt one block per script. Exit status 1 when one fails.
 set -u
@@ -57,15 +61,28 @@ for s in $SCRIPTS; do
         --shots "$d/host" --saves "$d/hsaves" > "$d/host.log" 2>&1
     hrc=$?
     rm -rf "$d/run" "$d/saves" "$d/hsaves"
-    python3 -I "$here/compare3d.py" "$d/dc" "$d/host" > "$d/compare.txt" 2>&1
+    # the shots with a 3D view each script must have, and the ticks over
+    # the 30 Hz budget it may have (fp_island: the 2D hub, and its known
+    # loading tick when the island is made)
+    case $s in
+        fp_island) mingated=0 overmax=1 ;;
+        *) mingated=1 overmax=0 ;;
+    esac
+    python3 -I "$here/compare3d.py" "$d/dc" "$d/host" --min-gated $mingated > "$d/compare.txt" 2>&1
     crc=$?
     drop3=$(grep -o 'polygons left out [0-9]*' "$d/dcrun.log" | grep -o '[0-9]*$')
     drop2=$(grep -o 'dropped [0-9]*, texture' "$d/dcrun.log" | grep -o '[0-9]*' | head -1)
+    over=$(sed -n 's/^dcrun: work over [0-9]* us on \([0-9]*\) of .*/\1/p' "$d/dcrun.log")
     st=ok
     [ $rc -eq 0 ] && [ $nrc -eq 0 ] && [ $hrc -eq 0 ] && [ $crc -eq 0 ] || st=FAIL
     [ "${drop3:-0}" = 0 ] && [ "${drop2:-0}" = 0 ] || st=FAIL
+    tnote=
+    if [ -z "$over" ] || [ "$over" -gt $overmax ]; then
+        st=FAIL
+        tnote=" (ticks over 33.3 ms: ${over:-no timing line}, allowed $overmax)"
+    fi
     {
-        echo "== $s: $st (dcrun $rc, native runner $nrc, host runner $hrc, compare $crc)$note"
+        echo "== $s: $st (dcrun $rc, native runner $nrc, host runner $hrc, compare $crc)$note$tnote"
         tail -1 "$d/compare.txt"
         grep '^dcrun: game drew\|^dcrun: 3D views\|^dcrun: work over' "$d/dcrun.log"
         grep '^FAIL\|fail' "$d/dcrun.log" | head -5

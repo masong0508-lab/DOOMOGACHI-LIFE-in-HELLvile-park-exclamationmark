@@ -1192,8 +1192,14 @@ past either a view leaves its last polygons out and counts them.
   resident's legs pixel by pixel and the wall just behind never cuts a
   head. The rectangle is 4 strips (one strip of 10 vertices), so the
   texture's perspective step between rows stays far below a texel. Heights
-  above the floor (jumps, emote bubbles) are lifted as the native runner
-  lifts them (z / 4 pixels). Drawn back to front (north first).
+  above the floor (jumps, emote bubbles, the quest marks the core sets 108
+  units up) lift the rectangle in screen space as the native runner lifts
+  them (z / 4 pixels): x and the base row are projected at the ground
+  point, so a lifted sprite stays over its feet at the screen's sides.
+  (Projecting the lifted point itself, which is nearer the camera, pushed a
+  quest mark about 30 of 640 pixels outward there, beside its resident;
+  the PS1's `r3_billboard` still does.) Drawn back to front (north
+  first).
 - **Shadows**: a soft blob under the feet (on the floor, not under a
   jump): one quad with a 32x32 ARGB4444 texture of its own (the palettes
   are ARGB1555: no soft alpha), black at 44 % in the middle.
@@ -1230,7 +1236,7 @@ prints them at the end of a run (`dcrun: 3D views ...`).
 `dc/tests/gfx2d/swpvr.c` rasterises the batches as `pvr3d.c` asks the PVR
 to: triangle strips in order, the depth buffer cleared to the background
 plane, GEQUAL, depth writes by the opaque mode, perspective-correct UVs and
-colours, texel x colour + offset, each mode's blend. `test_dc3d.c` (56
+colours, texel x colour + offset, each mode's blend. `test_dc3d.c` (60
 checks, also under ASan/UBSan; part of `make dc-host-test`):
 
 | test | checks |
@@ -1240,6 +1246,7 @@ checks, also under ASan/UBSan; part of `make dc-host-test`):
 | cover | every pixel has terrain (the depth buffer is written everywhere) at four spots on each of HaHaland, the invaded town, Hellvile and Park United, by day and night (this found the Wall missing at the screen's corner before the rows past the ground's edges were added) |
 | order | a rect drawn before the view is under it, one after is on top |
 | depth | a billboard behind a 96-unit block is hidden at its feet, one in front of it shows |
+| lift | a billboard 108 units up (a quest mark) six cells left and right of the focus covers the same columns as on the ground (within a pixel) and sits 44-60 pixels higher |
 | shade | a full-screen shade multiplies the view by the fitted factor (within 12/255); a partial one over it is the multiply |
 | hold | the held view is the same picture after two more frames; a full shade over it copies it |
 | post | `plat_post_offset` moves the view's pixels with the other prims |
@@ -1263,7 +1270,12 @@ reference, for the contact sheets) and in the host runner with
 against the host's picture of the same tick, in RGB565: at least 97 % of
 the pixels within 24/255 (both sides draw the same polygons; the PVR's and
 the rasteriser's edge rules and Gouraud rounding differ by a level or a
-pixel along edges). No polygon and no 2D prim may be dropped. `sheet.py`
+pixel along edges). A Flycast shot without a host shot fails, and every
+script but fp_island (the island hub is 2D) must have at least one shot
+with a view, so a script whose view went missing cannot pass with nothing
+compared. No polygon and no 2D prim may be dropped (a view that does not
+fit the held batch counts too), and no tick's work may pass 33.3 ms, the
+30 Hz budget (fp_island may have its one known loading tick). `sheet.py`
 draws contact sheets (the Dreamcast beside the native top-down reference).
 Results in `dc/build/shots/ow/` with `summary.txt`.
 

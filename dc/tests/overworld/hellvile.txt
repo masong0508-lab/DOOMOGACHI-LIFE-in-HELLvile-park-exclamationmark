@@ -1,11 +1,12 @@
 # hellvile.txt - DC7: the busiest overworld hub on the Dreamcast. A free
 # stroll in Hellvile (scene STORY 11: the residents, props and lamps of the
 # bad side of the park), walking a loop of about 12 s, by day and at night;
-# a shot at each corner of the loop. The 30 Hz check (mark-ticks /
-# expect-ticks) runs over the whole walk in Dreamcast frames, and dcrun
-# prints the game's work per tick and the 3D view's build time (mailbox
-# g3d_*) at the end. Native runner lines only, so the same script plays on
-# `runner` for the reference shots.
+# a shot at each corner of the loop. dcrun prints the game's work per tick
+# and the 3D view's build time (mailbox g3d_*) at the end, and
+# run_flycast.sh fails the walk if any tick's work passes 33.3 ms (the 30 Hz
+# budget). Native runner lines only (no mark-ticks / frames, which the
+# native runner lacks), so the same script plays on `runner` for the
+# reference shots and in the host runner.
 scene STORY 11
 wait 60
 expect-scene STORY
