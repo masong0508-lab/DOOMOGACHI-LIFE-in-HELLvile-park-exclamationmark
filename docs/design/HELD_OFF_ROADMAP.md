@@ -25,9 +25,10 @@ TD0-TD3), `docs/design/levels/LEVELS_EXPANSION_PLAN.md` (24 new levels, LV0-LV38
 
 ## 0. Order and rules (owner, 2026-11-08)
 
-**Work order v2 + sticks:** clarity (done) -> speed -> **sticks** -> Talk -> Dreamcast ->
-creator -> new levels. **One wave at a time**: agents work on the wave closest to completion;
-an in-flight landing finishes before the next wave starts.
+**Since 2026-11-12 the waves run side by side** (owner: "have more agents running faster"): five
+streams (SPEED, TALK, DC, CREATOR, LEVELS), each on its own cloud machine, all landing on one branch.
+The rules are in `held/PARALLEL_WAVES.md`, the progress in `held/status/`. Before that the order was:
+clarity (done) -> speed -> sticks -> Talk -> Dreamcast -> creator -> new levels, one wave at a time.
 
 Rules that apply to every package below:
 

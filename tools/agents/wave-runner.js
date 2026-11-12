@@ -1,7 +1,7 @@
 export const meta = {
   name: 'wave-runner',
   description: 'Build, independently review and land a list of packages (one git worktree each) on claude/nice-allen-gr6czm',
-  whenToUse: 'Each round of a BOREagotchi work wave: pass {wave, context, packages:[{id, title, brief, after}]} as args',
+  whenToUse: 'Each round of a BOREagotchi work stream: pass {wave, stream, context, attribution, evidence, machine, packages:[{id, title, brief, after}]} as args (tools/agents/README.md)',
   phases: [
     { title: 'Build', detail: 'one agent per package in its own worktree' },
     { title: 'Review', detail: 'an independent reviewer per branch' },
@@ -9,28 +9,33 @@ export const meta = {
   ],
 }
 
-const REPO = '/home/user/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark'
-const SCRATCH = '/tmp/claude-0/-home-user-DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark/ea792815-11f0-5f9f-bdfe-5997cdfc4994/scratchpad'
-const BRANCH = 'claude/nice-allen-gr6czm'
-
-const wave = (args && args.wave) || 'unnamed wave'
-const waveContext = (args && args.context) || ''
-const packages = (args && args.packages) || []
+// ---- arguments (tools/agents/README.md) -------------------------------------------------------------
+const A = args || {}
+const REPO = A.repo || '/home/user/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark'
+const BRANCH = A.branch || 'claude/nice-allen-gr6czm'
+const EVIDENCE = A.evidence || '/tmp/boreagotchi-evidence'
+const wave = A.wave || 'unnamed wave'
+const stream = A.stream || ''                 // SPEED, TALK, DC, CREATOR, LEVELS: names the status file
+const waveContext = A.context || ''
+const packages = A.packages || []
+// The two lines every commit message ends with: the lead passes the ones its own session was given.
+const ATTRIBUTION = A.attribution || 'Co-Authored-By: Claude <noreply@anthropic.com>'
+// What is installed on this machine right now (the lead knows; agents never install toolchains).
+const MACHINE = A.machine || `Toolchains and emulators are installed by the lead of this machine with \`sh tools/dev_setup.sh\` (stages apt, psn00bsdk, psxavenc, redux, kos, flycast). Check what is there with ls: /opt/psn00bsdk (PS1 SDK: export PSN00BSDK_LIBS=/opt/psn00bsdk/lib/libpsn00b and put /opt/psn00bsdk/bin on PATH), psxavenc on PATH (the PS1 disc then links the boot FMV: configure with -DDOOMO_INTRO_REQUIRED=ON), /opt/ps1emu/pcsx-redux + /opt/ps1emu/openbios.bin (PS1 harness), /opt/toolchains/dc/kos/environ.sh (Dreamcast build), /opt/toolchains/dc/flycast_libretro.so (Dreamcast harness). If one is missing it may still be installing: do everything that does not need it first, then wait with a bounded poll, for example: timeout 3600 sh -c 'until [ -x /opt/ps1emu/pcsx-redux ] && [ -f /opt/ps1emu/openbios.bin ]; do sleep 30; done'. Never install or build a toolchain or an emulator yourself. If a tool is still missing after an hour of waiting, say so plainly in your report: do not skip its checks silently and never invent numbers.`
 
 const slugOf = (id) => String(id).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 
 const ENV = (id) => `## Machine and ground rules
 - Repo: ${REPO} (the main checkout: do not edit files there and do not switch its branch). The integration branch is \`${BRANCH}\` on origin. CLAUDE.md (already in your context) has the hard rules and the commands.
-- This cloud machine was rebuilt on 2026-11-12. Installed: host gcc/clang, the GBA compiler + libmgba (the GBA harness), the MIPS compiler, PSn00bSDK in /opt/psn00bsdk (export PSN00BSDK_LIBS=/opt/psn00bsdk/lib/libpsn00b and put /opt/psn00bsdk/bin on PATH), psxavenc on PATH (so the PS1 disc links the boot FMV: configure with -DDOOMO_INTRO_REQUIRED=ON), SDL3.
-- STILL BEING INSTALLED by the main session and possibly not there yet: the PS1 emulator (/opt/ps1emu/pcsx-redux and /opt/ps1emu/openbios.bin), the Dreamcast toolchain (/opt/toolchains/dc/kos/environ.sh) and the Flycast core (/opt/toolchains/dc/flycast_libretro.so). Check with ls. If one is missing: do everything that does not need it first, then wait with a bounded poll, for example: timeout 3600 sh -c 'until [ -x /opt/ps1emu/pcsx-redux ] && [ -f /opt/ps1emu/openbios.bin ]; do sleep 30; done'. Never install or build a toolchain or an emulator yourself (tools/dev_setup.sh is the main session's job and is running). If a tool is still missing after an hour of waiting, say so plainly in your report: do not skip its checks silently and never invent numbers.
-- 4 CPU cores are shared with other agents and with those installs: use -j2, run one emulator at a time, use targeted test targets while iterating and the full gates at the end. Fps numbers come from emulated time (mGBA / PCSX-Redux / Flycast count their own frames), so a busy host slows a run but does not change its numbers.
-- Evidence (logs, tables, before/after screenshots) goes to ${SCRATCH}/evidence/${id}/ (create it). Not into the repo.
-- Git: never a bare \`git stash\`; never force-push; never push to any branch other than ${BRANCH}; only the LAND step pushes. Every commit message ends with these two lines:
-  Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
-  Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+- Tools on this machine: ${MACHINE}
+- The CPU cores are shared with other agents: use -j2, run one emulator at a time, use targeted test targets while iterating and the full gates at the end. Fps numbers come from emulated time (mGBA / PCSX-Redux / Flycast count their own frames), so a busy host slows a run but does not change its numbers.
+- Evidence (logs, tables, before/after screenshots) goes to ${EVIDENCE}/${id}/ (create it). Not into the repo.
+- Git: never a bare \`git stash\`; never force-push; never push to any branch other than ${BRANCH}; only the LAND step pushes. Every commit message ends with these lines:
+  ${ATTRIBUTION.split('\n').join('\n  ')}
 - Known and not yours: \`make -C core test SAN=1\` prints a few old UBSan reports in concert_gfx.c / fixmath.c and their tests; they do not fail the run. A new report in code you touched is yours.
 - Owner decisions: docs/design/held/OWNER_DECISIONS.md (the latest entry wins). The plan and status of everything: docs/design/HELD_OFF_ROADMAP.md.
-- Memory gates: the PS1 EXE built with the boot FMV must end at least 72 KB below the stack top (ps1/tools/elf2exe.py prints the margin at the end of the PS1 build; under 64 KB the build fails; on 2026-11-08 it was 65,952 B, so 416 B from failing). GBA: \`make -C gba sizes\` (EWRAM about 2 KB free, IWRAM nearly full): no new resident EWRAM / IWRAM without saying where it came from.
+- Several streams (speed, Talk, Dreamcast, creator, levels) work on separate machines and land on this one branch at the same time. docs/design/held/PARALLEL_WAVES.md says who owns which files, the shared memory budgets and how to resolve a rebase conflict. Read it before you touch a file outside your stream's area.
+- Memory gates: the PS1 EXE built with the boot FMV must end at least 72 KB below the stack top (ps1/tools/elf2exe.py prints the margin at the end of the PS1 build; under 64 KB the build fails). GBA: \`make -C gba sizes\` (EWRAM about 2 KB free, IWRAM nearly full): no new resident EWRAM / IWRAM without saying where it came from.
 ${waveContext ? '\n## This wave\n' + waveContext + '\n' : ''}`
 
 const GATES = `## Gates (all of them green before a push; while iterating run the ones a step can affect)
@@ -41,7 +46,7 @@ const GATES = `## Gates (all of them green before a push; while iterating run th
 5. make -C gba -j2 && make -C gba test ; make -C gba sizes ; for speed work also the speed2 groups you touched: make -C gba test-speed2 SPEED2="group ..." SPEED2_GATES=1
 6. PS1: cd ps1 && cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON && cmake --build --preset ps1 -j2 ; note the "below the stack top" margin ; then the harness (ps1/harness/run.py under xvfb, see docs/PS1.md): game_smoke plus the scripts of the scenes you touched (sh ps1/harness/speed2.sh OUTDIR group ...)
 7. make dc-host-test JOBS=2 (needs no KallistiOS). If dc/ or shared drawing / input / save code changed and KallistiOS + Flycast are installed: make -C dc -j2, make -C dc/harness, and the dcrun scripts that cover the change (sh dc/harness/speed2.sh OUTDIR group ...)
-Docs with the change: the package's section in docs/GBA.md and docs/PS1.md (docs/DREAMCAST.md if touched), the RAM ledger rows, a Done line in ROADMAP.md, and the status table in docs/design/HELD_OFF_ROADMAP.md.`
+Docs with the change: the package's section in the docs of what it touched (docs/GBA.md, docs/PS1.md, docs/DREAMCAST.md, docs/TALK.md, docs/CREATOR.md, docs/LEVELS.md), the RAM ledger rows, a Done line in ROADMAP.md.`
 
 const BUILD_SCHEMA = {
   type: 'object',
@@ -141,8 +146,8 @@ ${JSON.stringify(b, null, 1)}
 
 ## Review for
 1. Correctness: bugs, edge cases, undefined behaviour, state that survives a scene change or a reset, save / load compatibility, behaviour on the platforms the builder did not run.
-2. The claims: re-run the two or three measurements that matter most for this package (fps windows, the PS1 margin, GBA sizes) and at least the fast gates (core test, check-gen) plus the gate most likely to break. Check an "exact" claim by comparing frames yourself.
-3. The owner's rules: is anything called done below a steady 30 fps? Is every visible change listed with screenshots? Memory gates? The hard content rules of CLAUDE.md if any text or art changed.
+2. The claims: re-run the two or three measurements that matter most for this package (fps windows, the PS1 margin, GBA sizes, a census, a part count) and at least the fast gates (core test, check-gen) plus the gate most likely to break. Check an "exact" claim by comparing frames yourself.
+3. The owner's rules: is anything called done below a steady 30 fps? Is every visible change listed with screenshots? Memory gates? The hard content rules of CLAUDE.md for any text or art that changed (read new text and look at new art yourself).
 4. Tests: does each new piece of logic have a test that would fail without it?
 5. Docs: do the numbers in the docs match what you measured?
 Severity: "blocking" = must be fixed before landing (wrong behaviour, a broken gate, a false claim, a broken rule). "non-blocking" = worth fixing or noting.
@@ -168,11 +173,12 @@ ${depNotes ? '\n## Landed just before you\n' + depNotes + '\n' : ''}
 ## Steps
 1. Every blocking finding: reproduce it. Real: fix it and add a test that fails without the fix. Not real: keep the probe that shows it. Non-blocking: fix the ones that are cheap and clearly right; list the rest.
 2. If the builder reported "partial": finish what can be finished in reasonable time. Never call a number below the target done: land what helps and write the measured number and the gap into the docs.
-3. git fetch origin ${BRANCH} ; git rebase origin/${BRANCH}. Resolve conflicts with care: other packages land in the same docs and ledgers (keep both sides' rows, renumber if needed) and sometimes the same source files (understand both changes; never drop the other side's behaviour).
+3. git fetch origin ${BRANCH} ; git rebase origin/${BRANCH}. Other streams land on this branch all the time, so expect conflicts and resolve them by the rules of docs/design/held/PARALLEL_WAVES.md: in docs and ledgers keep both sides' rows (renumber yours); a generated file (core/gen/*, anything check-gen covers) is never merged by hand: take either side and run its generator again; an id or tag that now clashes: renumber yours, never the one already on origin; in source files understand both changes and keep both behaviours. Never revert another stream's commit.
 4. Rebuild from clean and run ALL the gates on the rebased tree. Re-measure the package's key numbers on the rebased tree: those are the numbers for the docs and the commit message.
 5. PS1 memory on the rebased tree: at least 72 KB below the stack top. If the tree you rebased onto is itself still under 72 KB (the PS1-RAM package has not landed), then your package must not make it smaller at all: compile new PS1 code -Os (DOOMO_PS1_COLD) or put it into an overlay group. Never push a tree whose PS1 disc fails to link.
-6. Push: git push origin HEAD:${BRANCH} (fast-forward only; if rejected: fetch, rebase, re-run the gates the incoming commits could affect, push again). Verify with git ls-remote origin ${BRANCH} that origin has your head.
-7. Clean up after the push is verified: delete build directories, git -C ${REPO} worktree remove the worktree, delete the local branch fut-${slug}.
+6. ${stream ? `Update docs/design/held/status/${stream}.md in the same push (its header says what goes in: what landed with sha and key numbers, the PS1 margin and GBA sizes now, what is next, blockers).` : 'If docs/design/held/status/ has a file for this stream, update it in the same push.'}
+7. Push: git push origin HEAD:${BRANCH} (fast-forward only; if rejected: fetch, rebase, re-run the gates the incoming commits could affect, push again). Verify with git ls-remote origin ${BRANCH} that origin has your head.
+8. Clean up after the push is verified: delete build directories, git -C ${REPO} worktree remove the worktree, delete the local branch fut-${slug}.
 If you cannot land (a gate you cannot get green, a conflict that would lose behaviour): do not push. Leave the branch and worktree in place and report exactly what blocks.
 
 ${GATES}`
@@ -203,4 +209,4 @@ function runPackage(p) {
 
 log(`${wave}: ${packages.length} package(s): ${packages.map(p => p.id).join(', ')}`)
 const results = await Promise.all(packages.map(runPackage))
-return { wave, results }
+return { wave, stream, results }

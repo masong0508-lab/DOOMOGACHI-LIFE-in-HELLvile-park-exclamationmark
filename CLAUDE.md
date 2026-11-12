@@ -8,6 +8,9 @@ Dreamcast (`dc/`, KallistiOS). The pet is "Boreagotchi". Code identifiers keep t
 Start with `docs/design/HELD_OFF_ROADMAP.md` (the order, status, rules) and
 `docs/design/held/STEP_CARDS.md` (small self-contained tasks, one per session).
 Owner decisions: `docs/design/held/OWNER_DECISIONS.md` (latest entry wins).
+Since 2026-11-12 several sessions build different streams at the same time on this one branch:
+read `docs/design/held/PARALLEL_WAVES.md` (streams, who owns which files, shared memory budgets,
+how to land and how to resolve rebase conflicts); progress is in `docs/design/held/status/`.
 
 ## Hard rules (never relax)
 - PG-21 adult comedy register. No sexual content or genital nudity. Anything suggestive
