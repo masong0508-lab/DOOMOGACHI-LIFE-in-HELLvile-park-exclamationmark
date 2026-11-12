@@ -13,11 +13,14 @@ Every stream lead and every agent reads this file. The hard rules of `CLAUDE.md`
 
 | Stream | Runs on | Scope | Plan |
 |---|---|---|---|
-| **SPEED** | the coordinator's machine (the original session) | the rest of speed wave 2: PS1-RAM, S2-9, S2-10, S2-11, the rest of S2-4 (fair, kitchen, dreams, cutscenes, library, studio STAGE), the exorcism / concert / pet gaps, the S3 packages of speed audit 3. Also watches CI on the tip and repairs it | `SPEED_AUDIT2.md`, `../SPEED_AUDIT3.md`, HELD_OFF_ROADMAP 2 |
-| **TALK** | its own session | TK4 (T6 drama manager, outcomes, the Talk save chunk; T5b the English content to about 6,000 alternatives; the census targets), TK5 (T8 house Talk mode, T9 pointer), TKP (PS1: TP0-TP4), later T10 | `../talk/TALK_DESIGN.md`, `docs/TALK.md`, HELD_OFF_ROADMAP 4 |
-| **DC** | its own session | DC6 (the first-person 3D view on the PVR, combat detail option), DC5b (music IRQ tier), the stick option row left by ST1, DC9 (the full game on the Dreamcast), Dreamcast speed misses, and TD1-TD3 (Talk on the Dreamcast) once TK5 has landed | `docs/DREAMCAST.md`, HELD_OFF_ROADMAP 5, `STICKS_PLAN.md` |
-| **CREATOR** | its own session | CR3 (the saved patch `patches/fut-crc.mbox`), CR4 art batches until at least 1,500 new parts are live, CR5a, CR5, CR8, CR10, CR11, CR13, CR14, the creator's held-input speed gap (GBA about 22 fps), the six creator sets tied to the new levels | `CREATOR_PLAN.md`, `docs/CREATOR.md`, HELD_OFF_ROADMAP 6 |
-| **LEVELS** | its own session | LV0-LV11 (foundations), LV12-LV21 (9 main-game levels), LV22-LV37 (New Game+), LV38 (integration) | `../levels/LEVELS_EXPANSION_PLAN.md`, HELD_OFF_ROADMAP 7 |
+| **SPEED** | the coordinator's machine: `session_01RLcGbHBa2kju7ynbaJLHT6` | the rest of speed wave 2: PS1-RAM, S2-9, S2-10, S2-11, the rest of S2-4 (fair, kitchen, dreams, cutscenes, library, studio STAGE), the exorcism / concert / pet gaps, the S3 packages of speed audit 3. Also watches CI on the tip and repairs it | `SPEED_AUDIT2.md`, `../SPEED_AUDIT3.md`, HELD_OFF_ROADMAP 2 |
+| **TALK** | `session_01Xd63cxr7ssfTR3pnDRhesw` | TK4 (T6 drama manager, outcomes, the Talk save chunk; T5b the English content to about 6,000 alternatives; the census targets), TK5 (T8 house Talk mode, T9 pointer), TKP (PS1: TP0-TP4), later T10 | `../talk/TALK_DESIGN.md`, `docs/TALK.md`, HELD_OFF_ROADMAP 4 |
+| **DC** | `session_01Xd63czSpihgJ8Rcfy2jCub` | DC6 (the first-person 3D view on the PVR, combat detail option), DC5b (music IRQ tier), the stick option row left by ST1, DC9 (the full game on the Dreamcast), Dreamcast speed misses, and TD1-TD3 (Talk on the Dreamcast) once TK5 has landed | `docs/DREAMCAST.md`, HELD_OFF_ROADMAP 5, `STICKS_PLAN.md` |
+| **CREATOR** | `session_01Xd63cwsuWNoECo4JeUnWy3` | CR3 (the saved patch `patches/fut-crc.mbox`), CR4 art batches until at least 1,500 new parts are live, CR5a, CR5, CR8, CR10, CR11, CR13, CR14, the creator's held-input speed gap (GBA about 22 fps), the six creator sets tied to the new levels | `CREATOR_PLAN.md`, `docs/CREATOR.md`, HELD_OFF_ROADMAP 6 |
+| **LEVELS** | `session_01Xd63cvXV9YcGJn2CBo4zvt` | LV0-LV11 (foundations), LV12-LV21 (9 main-game levels), LV22-LV37 (New Game+), LV38 (integration) | `../levels/LEVELS_EXPANSION_PLAN.md`, HELD_OFF_ROADMAP 7 |
+
+The sessions were started on 2026-11-12 23:47 UTC; each lead's standing brief is `leads/<STREAM>.md`.
+If a lead session is lost, the coordinator starts a new one with the same brief and edits this table.
 
 More machines may be added to a stream when its packages no longer depend on each other (for
 example the level-content packages after LV0-LV11). The coordinator decides and edits this table.
