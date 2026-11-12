@@ -135,6 +135,8 @@ void  gfx_ofs_follow(uint32_t *e5);
 int   gfx_upload(int x, int y, int w, int h, const uint16_t *data);
 /* Synchronous upload (boot time / when no frame is in flight). */
 int   gfx_upload_strided(int x, int y, int w, int h, const uint8_t *src, int stride);
+/* an image-cache tile with its transparent border, straight into the upload packets (gfx.c) */
+int   gfx_upload_tile(int x, int y, int sw, int th, const uint8_t *src, int stride, int tw, int step);
 void  gfx_upload_now(int x, int y, int w, int h, const void *data);
 /* Set the GPU texpage / semi-transparency mode for following 2D prims. */
 void  gfx_tpage(uint16_t tpage);

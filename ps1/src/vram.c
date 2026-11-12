@@ -132,12 +132,13 @@ typedef struct Entry {
 static Page   s_page[IMG_PAGES];
 static Entry  s_hash[HASH_SIZE];
 static int    s_hash_used;
-/* tile staging buffer; also the scratch copy for hash_rebuild() */
+/* the scratch copy for hash_rebuild() (and the boot uploads' staging, below).
+ * (RAM headroom 2026-11-12) A tile is no longer staged here with its border
+ * before it is uploaded (a 130 x 130 buffer, 16.9 KB): gfx_upload_tile()
+ * writes the bordered rows straight into the upload packets. */
 static union {
-    uint8_t stage[(IMG_TILE + 2) * (IMG_TILE + 2)];
     Entry   tmp[HASH_SIZE];
 } s_scr;
-#define s_stage s_scr.stage
 
 static uint32_t hash2(uint32_t a, uint32_t b)
 {
@@ -253,7 +254,7 @@ int vram_image(const DoomoImage *img, int tx, int ty, TexRef *out)
 {
     uint32_t k1, k2, h;
     int flip = (tx >> 8) & 1;
-    int tw, th, x0, y0, u, v, pg, row, col;
+    int tw, th, x0, y0, u, v, pg;
     Entry *e, *free_e = NULL;
     out->ok = 0;
     tx &= 0xff;
@@ -308,24 +309,14 @@ probe:
     e->u = (uint8_t)(u + 1);     /* 1 transparent column on the left  */
     e->v = (uint8_t)v;
     {
-        /* stage: (tw+2) x (th+1), transparent border right/bottom/left */
+        /* (tw+2) x (th+1) texels: transparent border right/bottom/left */
         int sw = (tw + 2 + 1) & ~1;
         const uint8_t *pix = packart_resolve(img->pix);   /* a texture image? */
-        memset(s_stage, 0, (size_t)sw * (th + 1));
-        for (row = 0; row < th; row++) {
-            const uint8_t *src = pix + (size_t)(y0 + row) * img->w;
-            uint8_t *d = s_stage + row * sw + 1;
-            if (!flip) {
-                memcpy(d, src + x0, (size_t)tw);
-            } else {
-                /* flipped image: tile tx counts from the right edge */
-                int sx = img->w - 1 - x0;
-                for (col = 0; col < tw; col++)
-                    d[col] = src[sx - col];
-            }
-        }
-        if (!gfx_upload_strided(s_page[pg].vx + (u >> 1), VR_IMG_Y + v,
-                                sw >> 1, th + 1, s_stage, sw)) {
+        /* the tile's first row; a flipped image's tile tx counts from the
+         * right edge and is read backwards */
+        const uint8_t *src = pix + (size_t)y0 * img->w + (flip ? img->w - 1 - x0 : x0);
+        if (!gfx_upload_tile(s_page[pg].vx + (u >> 1), VR_IMG_Y + v, sw, th, src, img->w,
+                             tw, flip ? -1 : 1)) {
             e->state = 2;          /* tombstone: retry next time */
             return 0;
         }
@@ -432,8 +423,10 @@ void vram_frame(void)
 
 /* ---- init -------------------------------------------------------------------- */
 /* Boot-time staging for the font / CLUT uploads: the image cache's
- * staging union (16.9 KB) is idle until the first frame, so these need
+ * rebuild scratch (8 KB) is idle until the first frame, so these need
  * no RAM of their own (they were 12 KB of static buffers used once). */
+typedef char init_scratch_fits[sizeof(s_scr) >= 16 * 256 * 2 ? 1 : -1];   /* the biggest: the font CLUTs */
+
 static uint16_t *init_scratch(size_t bytes)
 {
     memset(&s_scr, 0, sizeof(s_scr));

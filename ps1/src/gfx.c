@@ -258,7 +258,13 @@ void gfx_ot_end(void)
     s_view_ot = NULL;
 }
 
-static int upload_rows(int x, int y, int w, int h, const uint8_t *src, int stride)
+/* Rows of w halfwords from src (stride bytes apart) into GP0(A0h) packets.
+ * tw < 0: the rows as they are. tw >= 0: an image-cache tile with its
+ * border (gfx_upload_tile below): every row but the last is one transparent
+ * texel, tw texels read from src in steps of `step` (+1, or -1 for a
+ * mirrored image), then transparent texels up to w * 2; the last row is
+ * transparent. */
+static int upload_rows(int x, int y, int w, int h, const uint8_t *src, int stride, int tw, int step)
 {
     /* GP0(A0h) packets of at most 252 data words */
     int rows_per = (252 * 2) / w;
@@ -279,7 +285,24 @@ static int upload_rows(int x, int y, int w, int h, const uint8_t *src, int strid
         p[3] = ((uint32_t)rows << 16) | (uint32_t)w;
         d = (uint16_t *)&p[4];
         for (r = 0; r < rows; r++) {
-            memcpy(d, src, (size_t)w * 2);
+            if (tw < 0) {
+                memcpy(d, src, (size_t)w * 2);
+            } else {
+                uint8_t *b = (uint8_t *)d;
+                int k = 0;
+                if (h - r > 1) {            /* not the tile's last row */
+                    b[k++] = 0;
+                    if (step > 0) {
+                        memcpy(b + 1, src, (size_t)tw);
+                        k += tw;
+                    } else {
+                        for (; k <= tw; k++)
+                            b[k] = src[1 - k];
+                    }
+                }
+                while (k < w * 2)
+                    b[k++] = 0;
+            }
             d += w;
             src += stride;
         }
@@ -295,13 +318,26 @@ static int upload_rows(int x, int y, int w, int h, const uint8_t *src, int strid
 
 int gfx_upload(int x, int y, int w, int h, const uint16_t *data)
 {
-    return upload_rows(x, y, w, h, (const uint8_t *)data, w * 2);
+    return upload_rows(x, y, w, h, (const uint8_t *)data, w * 2, -1, 0);
 }
 
 /* strided variant used by vram.c (rows of `stride` bytes) */
 int gfx_upload_strided(int x, int y, int w, int h, const uint8_t *src, int stride)
 {
-    return upload_rows(x, y, w, h, src, stride);
+    return upload_rows(x, y, w, h, src, stride, -1, 0);
+}
+
+/* (RAM headroom 2026-11-12) An image-cache tile of tw x th texels, uploaded
+ * to (x, y) as sw x (th + 1) texels with the transparent border vram.c
+ * gives every tile: one column on the left, the columns from tw + 1 to sw
+ * on the right, one row below. src is the first texel of the tile's first
+ * row (stride bytes a row); step -1 reads every row backwards from there
+ * (a mirrored image). The rows are written straight into the upload
+ * packets: the same bytes, without the 16.9 KB buffer vram.c staged them
+ * in first. sw is even and at least tw + 2. */
+int gfx_upload_tile(int x, int y, int sw, int th, const uint8_t *src, int stride, int tw, int step)
+{
+    return upload_rows(x, y, sw >> 1, th + 1, src, stride, tw, step);
 }
 
 void gfx_upload_now(int x, int y, int w, int h, const void *data)
