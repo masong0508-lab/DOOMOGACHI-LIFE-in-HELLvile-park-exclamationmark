@@ -4,13 +4,18 @@
     python3 ps1/tools/test_tools.py            (CI: the PS1 job runs it)
 
 elf2exe.py (the stack reserve and the plan gate's WARNING) and
-ram_ledger.py (the linker map reader) are tested on files made here. Stdlib
-only; the tests that need the MIPS compiler are skipped without one.
+ram_ledger.py (the linker map reader) are tested on files made here;
+ovl_plan.py on a made-up game of four scenes compiled with the MIPS
+compiler (which callbacks may leave resident RAM). Stdlib only; the
+tests that need the MIPS compiler are skipped without one.
 """
 import contextlib
 import io
 import os
+import re
+import shutil
 import struct
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -18,7 +23,12 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import elf2exe          # noqa: E402
+import ovl_plan         # noqa: E402
 import ram_ledger       # noqa: E402
+
+CROSS = next((p for p in ("mipsel-linux-gnu-", "mipsel-none-elf-") if shutil.which(p + "gcc")), None)
+CFLAGS = ["-O1", "-G8", "-march=r3000", "-mabi=32", "-msoft-float", "-mno-abicalls", "-fno-pic",
+          "-ffreestanding", "-fno-builtin", "-nostdlib", "-ffunction-sections", "-fdata-sections"]
 
 
 def tiny_elf(end):
@@ -182,6 +192,157 @@ class Ledger(unittest.TestCase):
         self.assertIn("| ps1/src/gfx | 4352 | 256 | 0 | 0 | 0 | 4096 | 0 |", out)
         rc, out = self.run_ledger("--gate", str(left))
         self.assertNotIn("WARNING", out)
+
+
+# ---- ovl_plan.py on a made-up game -------------------------------------------
+# Four scenes: FAMILY and the citizen PICKER (free play), ISLAND (island), all
+# listed by the resident scene.c. main.c stands for the platform and the
+# resident modals (ui_choice keeps the callback and calls it later).
+SCENE_H = """
+typedef struct DoomoScene { const char *name; void (*enter)(int); void (*leave)(void);
+                            void (*update)(void); void (*draw)(void); unsigned char overlay; } DoomoScene;
+void fp_pick(void (*done)(int));
+void ui_choice(void (*done)(int));
+extern int sink;
+"""
+FAKE = {
+    "src/main.c": """#include "scene.h"
+extern const DoomoScene *const doomo_all_scenes[];
+int sink;
+static void (*modal_done)(int);
+void ui_choice(void (*done)(int)) { modal_done = done; }
+int main(void)
+{
+    int i;
+    for (i = 0; doomo_all_scenes[i]; i++) { doomo_all_scenes[i]->update(); if (modal_done) modal_done(i); }
+    return sink;
+}
+""",
+    # the lenders ovl_plan.py BORROW names
+    "src/world.c": "unsigned char g_world_wtop[64], g_world_corner[64];\n",
+    "src/view3d.c": "unsigned char s_vis[64], s_vlist[64];\n",
+    "src/memcard.c": "unsigned char s_blk[64];\n",
+    "core/src/combat_bot.c": "unsigned char first_dir[64], queue[64], target_bits[64];\n",
+    "core/src/scene.c": """#include "scene.h"
+extern const DoomoScene SCENE_FAMILY, SCENE_PICKER, SCENE_ISLAND;
+const DoomoScene *const doomo_all_scenes[] = { &SCENE_FAMILY, &SCENE_PICKER, &SCENE_ISLAND, 0 };
+""",
+    "core/src/fp_roster.c": """#include "scene.h"
+static void (*pick_done)(int);
+void fp_pick(void (*done)(int)) { pick_done = done; }
+static void picker_update(void) { if (pick_done) pick_done(7); }
+const DoomoScene SCENE_PICKER = { "PICKER", 0, 0, picker_update, 0, 0 };
+""",
+    "core/src/fp_family.c": """#include "scene.h"
+static void wz_neighbour(int id) { sink += id * 3; }    /* to fp_pick: PICK_CALLBACKS */
+static void mem_flowers(int c) { sink += c * 5; }       /* to ui_choice: MODAL_CALLBACKS */
+static void not_listed(int c) { sink += c * 7; }        /* to ui_choice, in no table */
+static void fam_update(void) { fp_pick(wz_neighbour); ui_choice(mem_flowers); ui_choice(not_listed); }
+const DoomoScene SCENE_FAMILY = { "FAMILY", 0, 0, fam_update, 0, 0 };
+""",
+    "core/src/fp_island.c": """#include "scene.h"
+static void cb_treat(int id) { sink += id * 11; }       /* to fp_pick from ANOTHER group */
+static void isl_update(void) { fp_pick(cb_treat); }
+const DoomoScene SCENE_ISLAND = { "ISLAND", 0, 0, isl_update, 0, 0 };
+""",
+}
+
+
+def compile_fake(root, sources, compiler=None):
+    """the made-up game's objects, named as the PS1 build names them"""
+    with open(os.path.join(root, "scene.h"), "w") as f:
+        f.write(SCENE_H)
+    objs = []
+    for rel, text in sorted(sources.items()):
+        src = os.path.join(root, rel)
+        os.makedirs(os.path.dirname(src), exist_ok=True)
+        with open(src, "w") as f:
+            f.write(text)
+        obj = src + ".obj"
+        cmd = [CROSS + "gcc"] + CFLAGS + ["-I", root, "-o", obj, "-c", src]
+        rc = compiler(cmd) if compiler else subprocess.run(cmd).returncode
+        if rc:
+            raise RuntimeError("cannot compile " + rel)
+        objs.append(obj)
+    return objs
+
+
+def plan(root, objs):
+    """run the planner; ({group or 'resident': {(object base, section)}}, its report)"""
+    ld = os.path.join(root, "ovl.ld")
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        rc = ovl_plan.main(["ovl_plan.py", "--readelf", CROSS + "readelf", "--out-ld", ld,
+                            "--out-c", os.path.join(root, "ovl_table.c"), "--report"] + objs)
+    if rc:
+        raise RuntimeError("ovl_plan failed:\n" + out.getvalue())
+    where = {}
+    cur = None
+    with open(ld) as f:
+        for line in f:
+            m = re.match(r"\s*\.ovl_\d+\s.*/\*\s*(\S+)\s*\*/", line)
+            if m:
+                cur = m.group(1)
+            elif re.match(r"\s*\.(text|rodata) : \{", line):
+                cur = "resident"
+            elif re.match(r"\s*\}", line):
+                cur = None
+            m = re.match(r"\s*\*(\S+)\(([^)]*)\)\s*$", line)
+            if m and cur and not m.group(1).startswith("("):
+                for sec in m.group(2).split():
+                    where.setdefault(cur, set()).add((ovl_plan.base(m.group(1)), sec))
+    return where, out.getvalue()
+
+
+@unittest.skipUnless(CROSS, "no MIPS compiler (mipsel-linux-gnu-gcc / mipsel-none-elf-gcc)")
+class Planner(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.saved = (dict(ovl_plan.PICK_CALLBACKS), dict(ovl_plan.MODAL_CALLBACKS))
+
+    def tearDown(self):
+        ovl_plan.PICK_CALLBACKS.clear()
+        ovl_plan.PICK_CALLBACKS.update(self.saved[0])
+        ovl_plan.MODAL_CALLBACKS.clear()
+        ovl_plan.MODAL_CALLBACKS.update(self.saved[1])
+        self.dir.cleanup()
+
+    def test_callbacks_that_may_leave_resident_ram(self):
+        where, _ = plan(self.dir.name, compile_fake(self.dir.name, FAKE))
+        fp = where["freeplay"]
+        # the scenes' own code is in their groups
+        self.assertIn(("fp_family", ".text.fam_update"), fp)
+        self.assertIn(("fp_roster", ".text.picker_update"), fp)
+        self.assertIn(("fp_island", ".text.isl_update"), where["island"])
+        # a modal's callback and a picker callback of the picker's own group go with the group
+        self.assertIn(("fp_family", ".text.mem_flowers"), fp)
+        self.assertIn(("fp_family", ".text.wz_neighbour"), fp)
+        # a callback in no table is resident, and so is the island's picker callback
+        self.assertIn(("fp_family", ".text.not_listed"), where["resident"])
+        self.assertIn(("fp_island", ".text.cb_treat"), where["resident"])
+
+    def test_a_picker_callback_of_another_group_stays_resident_even_if_listed(self):
+        ovl_plan.PICK_CALLBACKS["fp_island"] = ("cb_treat",)
+        where, report = plan(self.dir.name, compile_fake(self.dir.name, FAKE))
+        self.assertIn("fp_island:.text.cb_treat is not in the picker's group; it stays resident", report)
+        self.assertIn(("fp_island", ".text.cb_treat"), where["resident"])
+        self.assertNotIn(("fp_island", ".text.cb_treat"), where["island"])
+
+    def test_without_its_table_entry_a_picker_callback_is_resident(self):
+        del ovl_plan.PICK_CALLBACKS["fp_family"]
+        where, _ = plan(self.dir.name, compile_fake(self.dir.name, FAKE))
+        self.assertIn(("fp_family", ".text.wz_neighbour"), where["resident"])
+        self.assertNotIn(("fp_family", ".text.wz_neighbour"), where["freeplay"])
+
+    def test_a_listed_callback_taken_by_another_group_stays_resident(self):
+        fake = dict(FAKE)
+        fake["core/src/fp_island.c"] = fake["core/src/fp_island.c"].replace(
+            "static void isl_update(void) { fp_pick(cb_treat); }",
+            "void wz_neighbour(int);\nstatic void isl_update(void) { fp_pick(cb_treat); fp_pick(wz_neighbour); }")
+        fake["core/src/fp_family.c"] = fake["core/src/fp_family.c"].replace("static void wz_neighbour", "void wz_neighbour")
+        where, report = plan(self.dir.name, compile_fake(self.dir.name, fake))
+        self.assertIn("fp_family:.text.wz_neighbour is taken outside its group; it stays resident", report)
+        self.assertIn(("fp_family", ".text.wz_neighbour"), where["resident"])
 
 
 if __name__ == "__main__":

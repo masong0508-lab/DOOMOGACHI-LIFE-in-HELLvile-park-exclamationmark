@@ -175,6 +175,18 @@ LOCAL_CALLBACKS = {
     # which draws the visible rows with them and returns (home group).
     "home_draw": ("label_main", "label_catalog", "label_theme", "label_bp",
                   "label_room", "label_group"),
+    # RAM headroom 2026-11-12. fp_island_gfx.c: the draw_*_body functions go to
+    # its own lr_run(), which runs the body at once (or replays its recorded
+    # rects) and returns. lr_tap is put into ui_raster.c's ur_tap by C() / E()
+    # around ONE ui_fill_circle / ui_fill_ellipse call and taken out again
+    # before they return: the resident rasteriser calls it only inside that
+    # call, with the island group in the slot. 10.6 KB of the island's drawing
+    # were resident for these seven addresses.
+    "fp_island_gfx": ("draw_glints_body", "draw_land_body", "draw_patches_body", "draw_roads_body",
+                      "draw_walkers_body", "draw_weather_body", "lr_tap"),
+    # fp_title.c: pc_* go to its own logo_snap(), which paints the piece
+    # with them twice (measure, then into the logo's image) and returns.
+    "fp_title": ("pc_pill", "pc_in", "pc_vile"),
 }
 
 # --- G0 (task #79): callbacks of a scene's modals. A function whose address
@@ -208,11 +220,12 @@ MODAL_CALLBACKS = {
     # native runner call them, never the PS1
     "exorcism_gfx": ("exo_church_backdrop", "exo_church_keys"),
     # F-phase family wizard + member screens: every callback goes to ui_choice / ui_confirm /
-    # ui_text_entry only (wz_neighbour goes to fp_pick and stays resident, so it is not listed)
+    # ui_text_entry only (wz_neighbour goes to fp_pick: PICK_CALLBACKS below)
     "fp_apartments": ("house_pick",),
+    # (RAM headroom 2026-11-12) mem_flowers: the memorial's ui_choice
     "fp_family": ("care_all", "care_top_pick", "do_remove", "do_renamed", "do_uplift", "member_act",
                   "role_done", "role_more", "will_pick", "wz_kind", "wz_named", "wz_pron",
-                  "wz_stage"),
+                  "wz_stage", "mem_flowers"),
     "fp_graveyard": ("cb_grave",),
     "fp_island": ("cb_name_island", "cb_pet_name", "cb_title"),
     "fp_newisland": ("cb_ask_name", "cb_name", "cb_seed"),
@@ -221,14 +234,20 @@ MODAL_CALLBACKS = {
     # CL4: cb_tips_reset is "Show all tips again?" (ui_confirm only)
     "fp_options": ("cb_adult", "cb_defaults", "cb_monster_final", "cb_monster_typed", "cb_preset",
                    "cb_tips_reset"),
+    # (RAM headroom 2026-11-12) cb_manage is the citizen page's "What would you like to do?"
+    # (ui_choice only): with it resident, do_action and everything it opens were too (6 KB)
     "fp_resident": ("cb_advice", "cb_help_choice", "cb_monster_typed", "cb_rest_final",
-                    "cb_rest_first"),
+                    "cb_rest_first", "cb_manage"),
     "fp_roster": ("cb_search",),
     "fp_saveload": ("cb_erase1", "cb_erase2", "cb_load", "cb_overwrite"),
+    # (RAM headroom 2026-11-12) the finished-story menu (ui_choice) and its "A new world as a
+    # villager?" (ui_confirm; finished_pick also calls it directly)
+    "fp_title": ("finished_pick", "fresh_world_go"),
     "overworld": ("title_yes",),
     "pet_scene": ("on_named",),
-    # new-life confirms (ui_confirm only)
-    "playas_scene": ("nl_done", "nl_start"),
+    # new-life confirms (ui_confirm only); (RAM headroom 2026-11-12) the profile row's leave
+    # confirm and its two name entries (ui_text_entry)
+    "playas_scene": ("nl_done", "nl_start", "pf_leave", "pf_renamed", "pf_join"),
     "story_mg": ("te_cb",),
     "studio": ("leave_choice",),
     "studio_edit": ("notes_tools", "order_tools", "song_tools", "title_done"),
@@ -259,6 +278,22 @@ MODAL_CALLBACKS = {
 PLAT_GROUPS = {"model": "combat"}
 GUARDED = (("view3d", "model", "model_player_draw"),)
 # --- end HOUSE CHARACTERS FLAT ---
+
+# --- RAM headroom 2026-11-12: callbacks given to the citizen picker by its own group. fp_pick() /
+# fp_pick_act() (fp_roster.c) keep the function in the picker's state, and the picker's finish_pick()
+# calls it from the picker's own update, i.e. with the picker's group (free play) in the slot. So a
+# callback of a free-play screen is called with its code loaded and need not be resident; one of
+# another group (the island's cb_treat / cb_exorcise / cb_open) is not listed and stays resident.
+# The planner checks that every taker is code of the function's group AND that this group is the
+# picker's (PICKER below); anything else stays resident.
+#   object base -> function names
+PICKER = "fp_roster"
+PICK_CALLBACKS = {
+    "fp_family": ("wz_neighbour",),     # the family wizard's "Who moves in?"
+    "fp_resident": ("cb_introduce",),   # the citizen page's "Introduce to..."
+}
+
+# --- end RAM headroom ---
 
 # --- S4: registries read only by their own group (object base -> symbol).
 # doomo_story_mg_a / _b point at the S4 / S5 story minigames; their only
@@ -438,12 +473,17 @@ def main(argv):
                 takers[tgt].add(src)
     # LOCAL_CALLBACKS / MODAL_CALLBACKS (above): not escaped when every taker
     # is in their group
+    picker_group = {group_of(o.path) for o in objs if base(o.path) == PICKER}
     for f in sorted(escaped):
         o = objs[f[0]]
         names = LOCAL_CALLBACKS.get(base(o.path), ()) + MODAL_CALLBACKS.get(base(o.path), ())
-        if not names or f[1] not in tuple(".text." + n for n in names):
+        picks = PICK_CALLBACKS.get(base(o.path), ())
+        if f[1] not in tuple(".text." + n for n in names + picks):
             continue
         g = group_of(o.path)
+        if f[1] in tuple(".text." + n for n in picks) and picker_group != {g}:
+            print("ovl_plan: %s:%s is not in the picker's group; it stays resident" % (base(o.path), f[1]))
+            continue
         if g and all(group_of(objs[t[0]].path) == g and t[1].startswith(OVL_KINDS) for t in takers[f]):
             escaped.discard(f)
         else:
