@@ -30,6 +30,8 @@ Owner decisions: `docs/design/held/OWNER_DECISIONS.md` (latest entry wins).
 - GBA: `make -C gba -j8` then `make -C gba test` (creator: `make -C gba test-creator`).
 - Dreamcast: `make -C dc -j8` (needs `/opt/toolchains/dc`), 2D tests `make -C dc/tests/gfx2d test`.
 - PS1: see `docs/PS1.md` (CMake build, harness `ps1/harness/run.py`).
+Fresh machine (a new cloud container): `sh tools/dev_setup.sh` installs every toolchain and emulator
+(GBA, PS1 SDK + PCSX-Redux, Dreamcast KallistiOS + Flycast; about an hour, stages can be run one by one).
 If a toolchain is missing on your machine, run only the core tests and say so in the commit.
 
 ## Style
