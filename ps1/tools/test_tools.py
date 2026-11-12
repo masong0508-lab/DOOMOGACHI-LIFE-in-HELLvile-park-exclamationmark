@@ -8,8 +8,9 @@ ram_ledger.py (the linker map reader) are tested on files made here;
 strsec.py (the assembly rewrite that gives every table string a section
 of its own) on assembly text and on real compiles; ovl_plan.py on a
 made-up game of four scenes compiled with the MIPS compiler (which
-callbacks and which strings may leave resident RAM). Stdlib only; the
-tests that need the MIPS compiler are skipped without one.
+callbacks, strings and parts of shared files may leave resident RAM).
+Stdlib only; the tests that need the MIPS compiler are skipped without
+one.
 """
 import contextlib
 import io
@@ -503,6 +504,71 @@ class PlannerStrings(unittest.TestCase):
         where, _ = plan(self.dir.name, compile_fake(self.dir.name, self.fake, strsec_compiler))
         self.assertEqual(self.strings(where, "freeplay"), [])
         self.assertEqual(len(self.strings(where, "resident")), 7)
+
+
+# a shared file (ovl_plan.py SHARED): the UI kit of the made-up game, used by both screen families,
+# by the platform, and with a scene of its own
+SHARED_FAKE = dict(FAKE)
+SHARED_FAKE["core/src/ui.c"] = """#include "scene.h"
+static const short island_tab[8] = { 3, 1, 4, 1, 5, 9, 2, 6 };
+void ui_family_only(void) { sink += 2; }
+void ui_island_only(void) { sink += island_tab[sink & 7]; }
+void ui_both(void) { sink += 5; }
+void ui_resident(void) { sink += 7; }
+static void uix_update(void) { sink += 9; }
+const DoomoScene SCENE_UIX = { "UIX", 0, 0, uix_update, 0, 0 };
+"""
+SHARED_FAKE["src/main.c"] = FAKE["src/main.c"].replace(
+    "int main(void)\n{", "void ui_resident(void);\nint main(void)\n{\n    ui_resident();")
+SHARED_FAKE["core/src/scene.c"] = FAKE["core/src/scene.c"].replace(
+    "SCENE_ISLAND;", "SCENE_ISLAND, SCENE_UIX;").replace("&SCENE_ISLAND, 0", "&SCENE_ISLAND, &SCENE_UIX, 0")
+SHARED_FAKE["core/src/fp_family.c"] = FAKE["core/src/fp_family.c"].replace(
+    "static void fam_update(void) {",
+    "void ui_family_only(void); void ui_both(void);\nstatic void fam_update(void) { ui_family_only(); ui_both();")
+SHARED_FAKE["core/src/fp_island.c"] = FAKE["core/src/fp_island.c"].replace(
+    "static void isl_update(void) {",
+    "void ui_island_only(void); void ui_both(void);\nstatic void isl_update(void) { ui_island_only(); ui_both();")
+
+
+@unittest.skipUnless(CROSS, "no MIPS compiler (mipsel-linux-gnu-gcc / mipsel-none-elf-gcc)")
+class PlannerShared(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.saved = (ovl_plan.SHARED, ovl_plan.SHARED_NOT)
+        ovl_plan.SHARED, ovl_plan.SHARED_NOT = r"ui$", ()
+
+    def tearDown(self):
+        ovl_plan.SHARED, ovl_plan.SHARED_NOT = self.saved
+        self.dir.cleanup()
+
+    def plan(self):
+        return plan(self.dir.name, compile_fake(self.dir.name, SHARED_FAKE))
+
+    def test_a_shared_files_sections_join_the_one_group_that_reaches_them(self):
+        where, report = self.plan()
+        self.assertIn(("ui", ".text.ui_family_only"), where["freeplay"])
+        self.assertIn(("ui", ".text.ui_island_only"), where["island"])
+        self.assertIn(("ui", ".rodata.island_tab"), where["island"])        # its table goes with it
+        self.assertNotIn(("ui", ".text.ui_island_only"), where["freeplay"])  # one file, two groups
+        self.assertNotIn(("ui", ".text.ui_family_only"), where["island"])
+        # two groups, the platform, or a scene of the shared file itself: resident
+        for sec in (".text.ui_both", ".text.ui_resident", ".text.uix_update"):
+            self.assertIn(("ui", sec), where["resident"])
+            self.assertNotIn(("ui", sec), where["freeplay"] | where["island"])
+        self.assertIn("ovl_plan: shared code and data in island:", report)
+
+    def test_a_file_that_is_not_listed_stays_resident(self):
+        ovl_plan.SHARED = r"nothing$"
+        where, report = self.plan()
+        self.assertFalse([x for g in ("freeplay", "island") for x in where[g] if x[0] == "ui"])
+        self.assertNotIn("shared code and data", report)
+
+    def test_a_group_that_takes_none(self):
+        ovl_plan.SHARED_NOT = ("freeplay",)
+        where, _ = self.plan()
+        self.assertIn(("ui", ".text.ui_family_only"), where["resident"])
+        self.assertNotIn(("ui", ".text.ui_family_only"), where["freeplay"])
+        self.assertIn(("ui", ".text.ui_island_only"), where["island"])
 
 
 if __name__ == "__main__":

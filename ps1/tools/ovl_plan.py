@@ -30,6 +30,8 @@ hand:
   * a call listed in GUARDED (resident platform code calling a group's
     function only after ovl_code_in() said the group is in the slot) is
     not followed either: its target belongs to its own group.
+  * a shared core file named in SHARED is no root: each of its sections
+    is resident or joins the one group that reaches it, by the same rules;
   * the string literals of a file's tables arrive one per section
     (tools/strsec.py), so only the strings resident code or data can
     reach stay resident (STR_WHOLE below: the groups that set the slot's
@@ -306,6 +308,22 @@ PICK_CALLBACKS = {
 # room under the slot again.
 STR_WHOLE = ("story", "home")
 RX_STR = re.compile(r"\.rodata\.str1\.\d+\.LC\d+$")
+
+# --- RAM headroom 2026-11-12: shared modules. A core file outside the GROUPS (the UI kit, the item
+# catalog, the fishing / cooking effects, free play's helpers) was resident as a whole, the parts
+# only one screen family calls included. For the files named here (object base; core/src, core/gen
+# and the build's packed tables) every .text / .rodata section is a candidate like a group's own:
+# resident when resident code or data can reach it or its address escapes; else, when the scenes of
+# exactly ONE group reach it, it joins that group (it only runs, or is read, with that group in the
+# slot: the argument that holds for the group's own files); reached by two groups it stays resident.
+# The file's .data / .bss stay resident, and a scene defined in such a file is a resident scene.
+# SHARED_NOT: groups that take none: they set the slot's size or are within a few KB of it, where a
+# KB more is a KB of slot, not of room found (free play keeps its 10 KB for its own screens).
+# To add a file: OVL_WHY=1 lists the resident core objects; a file is worth listing when part of it
+# is reached by one group only.
+SHARED = r"fishcook$|catalog$|ui$|song_player$|art_data_ps1$|fp_common$|audio$|mus_core$"
+SHARED_NOT = ("story", "home", "combat", "freeplay")
+SHARED_TAG = "+"                # what grp() says for a candidate section of a shared file
 # --- end RAM headroom ---
 
 # --- S4: registries read only by their own group (object base -> symbol).
@@ -358,6 +376,12 @@ def group_of(path):
         if re.fullmatch(rx, b):
             return g
     return None
+
+
+def is_shared(path):
+    """a core file of no group whose sections may join the one group that reaches them (SHARED)"""
+    return (group_of(path) is None and ("/core/src/" in path or "/core/gen/" in path or "/packed/" in path)
+            and re.fullmatch(SHARED, base(path)) is not None)
 
 
 class Obj:
@@ -459,12 +483,17 @@ def main(argv):
                 if tgt != src:
                     edges[src].append((tgt, typ))
 
+    shared_objs = {oi for oi, o in enumerate(objs) if is_shared(o.path)}
+
     def grp(n):
+        # the group a section may live in: its file's group, SHARED_TAG (the one group that reaches
+        # it, SHARED above), or None (always resident)
         o = objs[n[0]]
-        g = group_of(o.path)
-        if g is None or not n[1].startswith(OVL_KINDS):
+        if not n[1].startswith(OVL_KINDS):
             return None
-        return g
+        if n[0] in shared_objs:
+            return SHARED_TAG
+        return group_of(o.path)
 
     # scene structs: sections named .rodata.SCENE_* (their function
     # pointers are the cut edges); they stay resident themselves
@@ -599,13 +628,15 @@ def main(argv):
             for t, _ in edges.get(s, ()):
                 if t in resident or not is_code(t):
                     continue
-                if g is None:
+                if g is None or g == SHARED_TAG:        # a resident scene (one in a shared file too)
                     clash.add(t)
                     continue
                 for r in closure({t}, False):
                     if r in resident:
                         continue
-                    if grp(r) != g or owner.get(r, g) != g:
+                    gr = grp(r)
+                    mine = gr == g or (gr == SHARED_TAG and g not in SHARED_NOT)
+                    if not mine or owner.get(r, g) != g:
                         clash.add(r)
                     else:
                         owner[r] = g
@@ -737,7 +768,10 @@ def main(argv):
     for g in names:
         for n in groups[g]:
             in_ovl[n] = g
-    grp_objs = [oi for oi, o in enumerate(objs) if group_of(o.path)]
+    # the objects the linker script names section by section: the groups' files, and the shared
+    # files that have a section in a group
+    grp_objs = [oi for oi, o in enumerate(objs)
+                if group_of(o.path) or (oi in shared_objs and any(n[0] == oi for n in in_ovl))]
 
     def pat(oi):
         # the object as the link command names it: a unique path suffix
@@ -747,12 +781,14 @@ def main(argv):
             k = p.rfind("/")
         return "*" + p[k:]
 
-    def secs_of(oi, kinds, want_ovl):
+    def secs_of(oi, kinds, want):
+        # the object's sections that stay resident (want None) or are in group `want` (a shared
+        # file's sections can be in several groups)
         out = []
         for name, size, al in objs[oi].secs.values():
             if not al or not name.startswith(kinds):
                 continue
-            if ((oi, name) in in_ovl) == want_ovl:
+            if in_ovl.get((oi, name)) == want:
                 out.append(name)
         return sorted(set(out))
 
@@ -791,7 +827,7 @@ def main(argv):
             L.append("\t\tEXCLUDE_FILE(%s) *(%s %s.* .gnu.linkonce.%s.*)" % (
                 excl, out, out, "t" if out == ".text" else "r"))
             for oi in grp_objs:
-                ss = secs_of(oi, kinds, False)
+                ss = secs_of(oi, kinds, None)
                 if ss:
                     L.append("\t\t%s(%s)" % (pat(oi), " ".join(ss)))
             if extra:
@@ -863,7 +899,7 @@ def main(argv):
                 continue
             L.append("\t\t.ovl_%02d {\t/* %s */" % (gid[g], g))
             for oi in sorted({n[0] for n in groups[g]}):
-                ss = secs_of(oi, (".text", ".rodata"), True)
+                ss = secs_of(oi, (".text", ".rodata"), g)
                 if ss:
                     L.append("\t\t\t%s(%s)" % (pat(oi), " ".join(ss)))
             L.append("\t\t\t. = ALIGN(4);")
@@ -886,7 +922,7 @@ def main(argv):
                 sec = ".ovl_%02d" % gid[g]
                 L.append("\t%s __ovl_borrow : AT (LOADADDR(%s) + SIZEOF(%s)) {\t/* %s */" % (sec, last, last, g))
                 for oi in sorted({n[0] for n in groups[g]}):
-                    ss = [s for s in secs_of(oi, (".text", ".rodata"), True) if (oi, s) not in part_of]
+                    ss = [s for s in secs_of(oi, (".text", ".rodata"), g) if (oi, s) not in part_of]
                     if ss:
                         L.append("\t\t%s(%s)" % (pat(oi), " ".join(ss)))
                 L.append("\t\t. = ALIGN(4);")
@@ -995,6 +1031,15 @@ def main(argv):
             tot += sz
             print("ovl_plan:   %-10s %4d KB  %d sections" % (g, sz // 1024, len(groups[g])))
         print("ovl_plan: overlays total %d KB" % (tot // 1024))
+        # RAM headroom 2026-11-12: what the shared files (SHARED) gave to the groups
+        for g in sorted(groups):
+            c = collections.Counter()
+            for n in groups[g]:
+                if n[0] in shared_objs:
+                    c[base(objs[n[0]].path)] += node_size(n)
+            if c:
+                print("ovl_plan: shared code and data in %s: %d B (%s)" % (
+                    g, sum(c.values()), ", ".join("%s %d" % kv for kv in c.most_common())))
         if borrow:
             print("ovl_plan: %s load%s %d B lower, over borrowed .bss (BORROW)" % (
                 ", ".join(g for g in sorted(groups) if g in BORROW_GROUPS),
@@ -1048,13 +1093,13 @@ def main(argv):
         if os.environ.get("OVL_WHY"):
             c = collections.Counter()
             for n in resident:
-                if n in live and grp(n) is not None:
+                if n in live and n[1].startswith(OVL_KINDS) and group_of(objs[n[0]].path):
                     c[base(objs[n[0]].path)] += node_size(n)
             for k, v in c.most_common(40):
                 print("ovl_plan:   resident from group objs: %6d %s" % (v, k))
             c = collections.Counter()
             for n in resident:
-                if n in live and n[1].startswith(OVL_KINDS) and grp(n) is None:
+                if n in live and n[1].startswith(OVL_KINDS) and not group_of(objs[n[0]].path):
                     c[base(objs[n[0]].path)] += node_size(n)
             for k, v in c.most_common(60):
                 print("ovl_plan:   resident core: %6d %s" % (v, k))
