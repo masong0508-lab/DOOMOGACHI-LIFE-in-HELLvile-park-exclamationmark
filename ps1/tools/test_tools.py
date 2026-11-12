@@ -5,8 +5,10 @@
 
 elf2exe.py (the stack reserve and the plan gate's WARNING) and
 ram_ledger.py (the linker map reader) are tested on files made here;
-ovl_plan.py on a made-up game of four scenes compiled with the MIPS
-compiler (which callbacks may leave resident RAM). Stdlib only; the
+strsec.py (the assembly rewrite that gives every table string a section
+of its own) on assembly text and on real compiles; ovl_plan.py on a
+made-up game of four scenes compiled with the MIPS compiler (which
+callbacks and which strings may leave resident RAM). Stdlib only; the
 tests that need the MIPS compiler are skipped without one.
 """
 import contextlib
@@ -25,6 +27,7 @@ sys.path.insert(0, HERE)
 import elf2exe          # noqa: E402
 import ovl_plan         # noqa: E402
 import ram_ledger       # noqa: E402
+import strsec           # noqa: E402
 
 CROSS = next((p for p in ("mipsel-linux-gnu-", "mipsel-none-elf-") if shutil.which(p + "gcc")), None)
 CFLAGS = ["-O1", "-G8", "-march=r3000", "-mabi=32", "-msoft-float", "-mno-abicalls", "-fno-pic",
@@ -194,6 +197,116 @@ class Ledger(unittest.TestCase):
         self.assertNotIn("WARNING", out)
 
 
+# ---- strsec.py -----------------------------------------------------------------
+ASM = """\t.section .mdebug.abi32
+\t.previous
+\t.text
+f:
+\tjr\t$31
+\t.section\t.rodata.f.str1.4,"aMS",@progbits,1
+\t.align\t2
+$LC0:
+\t.ascii\t"in a function\\000"
+\t.section\t.rodata.str1.4,"aMS",@progbits,1
+\t.align\t2
+$LC1:
+\t.ascii\t"Plan\\000"
+\t.align\t2
+$LC2:
+\t.ascii\t"a long one, "
+\t.ascii\t"in two lines\\000"
+\t.section\t.sdata.subs,"aw"
+\t.align\t2
+subs:
+\t.word\t$LC1
+\t.word\t$LC2
+\t.section\t.rodata.str1.4
+\t.align\t2
+$LC3:
+\t.ascii\t"Open\\000"
+\t.text
+"""
+
+
+class StrSec(unittest.TestCase):
+    def test_every_table_string_gets_its_own_section(self):
+        new, moved = strsec.split_strings(ASM)
+        self.assertEqual(moved, 3)
+        lines = new.split("\n")
+        for lab in ("LC1", "LC2", "LC3"):
+            i = lines.index("$%s:" % lab)
+            self.assertEqual(lines[i - 2], '\t.section\t.rodata.str1.4.%s,"aMS",@progbits,1' % lab)
+            self.assertEqual(lines[i - 1], "\t.align\t2")
+        # the generic section itself is gone, everything else is untouched and in order
+        self.assertFalse([l for l in lines if re.match(r"\s*\.section\s+\.rodata\.str1\.4\s*(,|$)", l)])
+        rest = [l for l in lines if ".rodata.str1.4." not in l]
+        orig = [l for l in ASM.split("\n") if not re.match(r"\s*\.section\s+\.rodata\.str1\.4\s*(,|$)", l)]
+        self.assertEqual(rest, orig)
+        self.assertIn('\t.section\t.rodata.f.str1.4,"aMS",@progbits,1', lines)   # a function's strings stay
+        self.assertEqual(lines[lines.index("$LC2:") + 2], '\t.ascii\t"in two lines\\000"')
+
+    def test_a_file_without_table_strings_is_unchanged(self):
+        text = '\t.text\nf:\n\tjr\t$31\n\t.section\t.rodata.f.str1.4,"aMS",@progbits,1\n$LC0:\n\t.ascii\t"x\\000"\n'
+        self.assertEqual(strsec.split_strings(text), (text, 0))
+
+    def test_layouts_it_does_not_know_are_left_alone(self):
+        late = ASM + "\t.previous\n"
+        self.assertEqual(strsec.split_strings(late), (late, 0))             # the section stack after strings
+        odd = '\t.section\t.rodata.str1.4,"aMS",@progbits,1\n\t.ascii\t"no label\\000"\n$LC0:\n\t.ascii\t"x\\000"\n'
+        self.assertEqual(strsec.split_strings(odd), (odd, 0))               # data before a label
+        bare = '\t.section\t.rodata.str1.4\n$LC0:\n\t.ascii\t"x\\000"\n'
+        self.assertEqual(strsec.split_strings(bare), (bare, 0))             # never declared with flags
+
+    def test_an_empty_visit_is_kept(self):
+        text = '\t.section\t.rodata.str1.4,"aMS",@progbits,1\n\t.align\t2\n\t.text\nf:\n'
+        self.assertEqual(strsec.split_strings(text), (text, 0))
+
+    def test_command_line(self):
+        cmd = ["gcc", "-DX=1", "-I", "inc.c", "-O2", "-g", "-G8", "-march=r3000", "-mno-abicalls", "-fno-pic",
+               "-Wa,--strip-local-absolute", "-MD", "-MT", "o/x.c.obj", "-MF", "o/x.c.obj.d", "-o", "o/x.c.obj",
+               "-c", "src/x.c"]
+        cc, args, ci, si, oi = strsec.parse(cmd)
+        self.assertEqual((cc, args[ci], args[si], args[oi]), ("gcc", "-c", "src/x.c", "o/x.c.obj"))
+        self.assertEqual(strsec.assembler_args(args),
+                         ["-G8", "-march=r3000", "-mno-abicalls", "-fno-pic", "-Wa,--strip-local-absolute"])
+        self.assertIsNone(strsec.parse(["gcc", "-o", "x.elf", "a.obj", "b.obj"]))        # a link
+        self.assertIsNone(strsec.parse(["gcc", "-S", "-o", "x.s", "-c", "x.c"]))
+        self.assertIsNone(strsec.parse(["gcc", "-o", "x.obj", "-c", "x.s"]))             # not C
+
+    @unittest.skipUnless(CROSS, "no MIPS compiler")
+    def test_real_compile(self):
+        with tempfile.TemporaryDirectory() as d:
+            src = os.path.join(d, "t.c")
+            with open(src, "w") as f:
+                f.write('static const char *const tabs[2] = { "Plan", "In paw" };\n'
+                        'const char *const rows[3] = { "alpha", "beta", "gamma" };\n'
+                        'const char *pick(int i) { return i > 5 ? "in the function" : tabs[i & 1]; }\n')
+            cmd = [CROSS + "gcc"] + CFLAGS + ["-g", "-o", os.path.join(d, "t.obj"), "-c", src]
+            old = os.environ.get("STRSEC_VERIFY")
+            os.environ["STRSEC_VERIFY"] = "1"      # the two steps without the rewrite = the one-step object
+            try:
+                self.assertEqual(strsec.main(["strsec.py"] + cmd), 0)
+            finally:
+                os.environ.pop("STRSEC_VERIFY")
+                if old is not None:
+                    os.environ["STRSEC_VERIFY"] = old
+            self.assertEqual(sorted(os.listdir(d)), ["t.c", "t.obj"])       # nothing left behind
+            secs = subprocess.run([CROSS + "readelf", "-S", "-W", os.path.join(d, "t.obj")], check=True,
+                                  capture_output=True, text=True).stdout
+            own = re.findall(r"\.rodata\.str1\.4\.LC\d+\s+PROGBITS\s+\S+\s+\S+\s+\S+\s+01\s+AMS", secs)
+            self.assertEqual(len(own), 5)                                   # 2 + 3 table strings
+            self.assertIn(".rodata.pick.str1.4", secs)                      # the function's own stay together
+            self.assertNotRegex(secs, r"\.rodata\.str1\.4\s")
+            # a file without table strings: the object is the one-step compile's, byte for byte
+            with open(src, "w") as f:
+                f.write('const char *pick(int i) { return i ? "yes" : "no"; }\n')
+            direct = os.path.join(d, "direct.obj")
+            subprocess.run([CROSS + "gcc"] + CFLAGS + ["-g", "-o", direct, "-c", src], check=True)
+            self.assertEqual(strsec.main(["strsec.py"] + cmd), 0)
+            with open(direct, "rb") as a, open(os.path.join(d, "t.obj"), "rb") as b:
+                self.assertEqual(a.read(), b.read())
+
+
 # ---- ovl_plan.py on a made-up game -------------------------------------------
 # Four scenes: FAMILY and the citizen PICKER (free play), ISLAND (island), all
 # listed by the resident scene.c. main.c stands for the platform and the
@@ -343,6 +456,53 @@ class Planner(unittest.TestCase):
         where, report = plan(self.dir.name, compile_fake(self.dir.name, fake))
         self.assertIn("fp_family:.text.wz_neighbour is taken outside its group; it stays resident", report)
         self.assertIn(("fp_family", ".text.wz_neighbour"), where["resident"])
+
+
+# the made-up FAMILY screen with two tables: `tabs` is 8 bytes, so -G8 puts it into .sdata, which is
+# always resident (its two strings must stay); `rows` is plain const data of the group
+FAMILY_TABLES = FAKE["core/src/fp_family.c"].replace(
+    "static void fam_update(void) {",
+    'static const char *const tabs[2] = { "Tab one", "Tab two" };\n'
+    'static const char *const rows[4] = { "row alpha", "row beta", "row gamma", "row delta" };\n'
+    "static void fam_update(void) { sink += tabs[sink & 1][0] + rows[sink & 3][0];")
+
+
+def strsec_compiler(cmd):
+    return strsec.main(["strsec.py"] + cmd)
+
+
+@unittest.skipUnless(CROSS, "no MIPS compiler (mipsel-linux-gnu-gcc / mipsel-none-elf-gcc)")
+class PlannerStrings(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.whole = ovl_plan.STR_WHOLE
+        self.fake = dict(FAKE)
+        self.fake["core/src/fp_family.c"] = FAMILY_TABLES
+
+    def tearDown(self):
+        ovl_plan.STR_WHOLE = self.whole
+        self.dir.cleanup()
+
+    def strings(self, where, key):
+        return sorted(sec for obj, sec in where.get(key, ()) if obj == "fp_family" and ".str1." in sec)
+
+    def test_one_string_section_per_file_is_resident_for_one_pointer(self):
+        # what the plain compile gives: the scene's name and the .sdata table pin every table string
+        where, _ = plan(self.dir.name, compile_fake(self.dir.name, self.fake))
+        self.assertEqual(self.strings(where, "resident"), [".rodata.str1.4"])
+        self.assertEqual(self.strings(where, "freeplay"), [])
+
+    def test_split_strings_follow_their_readers(self):
+        where, _ = plan(self.dir.name, compile_fake(self.dir.name, self.fake, strsec_compiler))
+        self.assertEqual(len(self.strings(where, "freeplay")), 4)       # rows: only the group reads them
+        self.assertEqual(len(self.strings(where, "resident")), 3)       # the name + the two .sdata labels
+        self.assertTrue(all(ovl_plan.RX_STR.search(s) for s in self.strings(where, "freeplay")))
+
+    def test_a_group_that_sets_the_slot_keeps_its_strings_together(self):
+        ovl_plan.STR_WHOLE = ("freeplay",)
+        where, _ = plan(self.dir.name, compile_fake(self.dir.name, self.fake, strsec_compiler))
+        self.assertEqual(self.strings(where, "freeplay"), [])
+        self.assertEqual(len(self.strings(where, "resident")), 7)
 
 
 if __name__ == "__main__":

@@ -30,6 +30,10 @@ hand:
   * a call listed in GUARDED (resident platform code calling a group's
     function only after ovl_code_in() said the group is in the slot) is
     not followed either: its target belongs to its own group.
+  * the string literals of a file's tables arrive one per section
+    (tools/strsec.py), so only the strings resident code or data can
+    reach stay resident (STR_WHOLE below: the groups that set the slot's
+    size keep an object's strings together, as before the split).
 
 Outputs: a linker script fragment (OVERLAY statement with one output
 section per group, inserted before .ctors) and a C table mapping scene
@@ -293,6 +297,15 @@ PICK_CALLBACKS = {
     "fp_resident": ("cb_introduce",),   # the citizen page's "Introduce to..."
 }
 
+# --- RAM headroom 2026-11-12: the string literals of file-scope tables. tools/strsec.py gives each
+# its own section (.rodata.str1.4.LC<n>), so the closure below keeps resident exactly the strings
+# resident code or data can reach, and the rest move with their group. A group that sets the slot's
+# size must not grow by its strings (the slot grows in 2 KB steps, and every step is resident RAM
+# lost): for the groups named here an object's table strings stay together, all resident as soon as
+# one of them is (what the linker did before the split). Take a group off the list when it has
+# room under the slot again.
+STR_WHOLE = ("story", "home")
+RX_STR = re.compile(r"\.rodata\.str1\.\d+\.LC\d+$")
 # --- end RAM headroom ---
 
 # --- S4: registries read only by their own group (object base -> symbol).
@@ -573,6 +586,11 @@ def main(argv):
     # groups (or a resident scene) reach becomes resident, and so does all
     # it reaches; repeat until stable.
     scene_live = sorted(n for n in scene_secs if n in live)
+    # RAM headroom 2026-11-12 (STR_WHOLE above): the table strings of each object of those groups
+    str_whole = collections.defaultdict(set)
+    for n in live:
+        if grp(n) in STR_WHOLE and RX_STR.search(n[1]):
+            str_whole[n[0]].add(n)
     while True:
         owner = {}
         clash = set()
@@ -591,6 +609,9 @@ def main(argv):
                         clash.add(r)
                     else:
                         owner[r] = g
+        for ss in str_whole.values():
+            if (ss & resident or ss & clash) and not ss <= resident:
+                clash |= ss - resident
         if not clash:
             break
         resident |= closure(clash, False)
@@ -651,8 +672,11 @@ def main(argv):
     # Scene structs and their name strings are resident by design.
     save_ok = closure({n for n in live if n[1] == ".sdata.doomo_save_ext_home"
                        and base(objs[n[0]].path) == "home"} | set(scene_secs), False)
+    # (RAM headroom 2026-11-12) an object's table strings stay together (STR_WHOLE): they may be
+    # resident when one of them is one of those names, as the object's one string section was
+    str_ok = {n[0] for n in save_ok if RX_STR.search(n[1])}
     pinned = sorted(n for n in resident if n in live and grp(n) == "home" and node_size(n)
-                    and n not in save_ok)
+                    and n not in save_ok and not (n[0] in str_ok and RX_STR.search(n[1])))
     if pinned:
         par = {r: None for r in roots}
         todo = list(roots)

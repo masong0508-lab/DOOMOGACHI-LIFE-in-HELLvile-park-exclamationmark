@@ -190,6 +190,19 @@ set_target_properties(doomo_objs PROPERTIES PSN00BSDK_TARGET_TYPE EXECUTABLE_GPR
 # (the SDK libraries' interface carries the compile flags for the target type)
 target_link_libraries(doomo_objs PRIVATE ${PSN00BSDK_EXECUTABLE_LINK_LIBRARIES})
 
+# RAM headroom 2026-11-12 (docs/PS1.md): every string literal a file-scope table points to gets
+# a section of its own (tools/strsec.py, a compiler launcher: compile to assembly, give each
+# `$LC<n>:` of .rodata.str1.4 its own section, assemble). ovl_plan.py then moves a group's table
+# strings with the group instead of keeping a file's whole string section resident for one
+# pointer (a scene's name, two tab labels in .sdata), and --gc-sections drops unread ones.
+option(DOOMO_STRING_SECTIONS "Table string literals in sections of their own (tools/strsec.py)" ON)
+if(DOOMO_STRING_SECTIONS)
+	set_target_properties(doomo_objs PROPERTIES C_COMPILER_LAUNCHER
+		"${Python3_EXECUTABLE};${CMAKE_CURRENT_SOURCE_DIR}/tools/strsec.py")
+	set_property(SOURCE ${PS1_SRCS} ${CORE_SRCS} APPEND PROPERTY
+		OBJECT_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tools/strsec.py)
+endif()
+
 # Scene overlays (game disc only; docs/PS1.md section 3): ovl_plan.py reads
 # the relocations of all objects, decides which scene code and const data
 # can live in a slot loaded from the disc, and writes the linker script and
