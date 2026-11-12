@@ -65,11 +65,14 @@ static int      s_bg_next = 1;
 static int      s_ready;
 
 /* ---- upload ------------------------------------------------------------- */
+static uint32_t s_up_sum = 2166136261u;    /* FNV-1a of every byte sent to SPU RAM (the boot log) */
+
 static void spu_upload(uint32_t addr, const void *data, size_t bytes)
 {
     /* DMA wants 64-byte chunks of word-aligned data */
     static uint32_t tmp[1024];
     const uint8_t *src = (const uint8_t *)data;
+    s_up_sum = sum_bytes(s_up_sum, src, bytes);
     while (bytes) {
         size_t n = bytes > sizeof(tmp) ? sizeof(tmp) : bytes;
         size_t padded = (n + 63) & ~(size_t)63;
@@ -330,12 +333,15 @@ void audio_hw_init(void)
 void audio_hw_sfx_preload(void)
 {
 #ifdef DOOMO_SFX_ON_DISC
-    int id;
+    int id, ok = 0;
     if (!s_ready)
         return;
     for (id = 1; id < SFX_COUNT; id++)
-        convert_sfx(id);
+        ok += convert_sfx(id);
     s_bg_next = SFX_COUNT;
+    /* what is in SPU RAM now: the same line from two builds = the same sound data */
+    dbg("spu: %d of %d effects, top %05x, sum %08x\n", ok, SFX_COUNT - 1, (unsigned)s_sfx_top,
+        (unsigned)s_up_sum);
 #endif
 }
 
