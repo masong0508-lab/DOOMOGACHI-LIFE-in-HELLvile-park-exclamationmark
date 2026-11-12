@@ -307,11 +307,26 @@ jobs:
         with:
           commit: ${{ env.PSXAVENC_COMMIT }}
 
+      - name: PS1 build tool tests (elf2exe gate, RAM ledger, string sections, overlay planner)
+        run: python3 ps1/tools/test_tools.py
+
       - name: Build the game disc (preset ps1)
         working-directory: ps1
         run: |
           cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON
           cmake --build --preset ps1
+
+      # The margin below the stack top and where the 2 MB go, in the job summary (docs/PS1.md "RAM
+      # headroom 2026-11-12"). elf2exe.py already printed a WARNING annotation under the 72 KB plan
+      # gate and failed the build under 64 KB; this table says what to shrink.
+      - name: PS1 RAM ledger (margin below the stack top, biggest resident objects and symbols)
+        if: always()
+        working-directory: ps1
+        run: |
+          if [ ! -f build/doomogachi.ldmap ]; then echo "(no doomogachi.ldmap: the link did not run)"; exit 0; fi
+          python3 tools/ram_ledger.py build/doomogachi.ldmap --ld build/ovl.ld \
+            --readelf mipsel-linux-gnu-readelf --elf build/doomogachi.elf \
+            --objs 30 --syms 30 --gate 73728 --md | tee -a "$GITHUB_STEP_SUMMARY" || true
 
       - name: Biggest PS1 statics (names the culprits when the disc overflows its RAM)
         if: always()

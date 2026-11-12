@@ -11,13 +11,23 @@ Segments whose load address differs from their run address are the scene
 overlays (ovl_plan.py / ovl_pack.py): they are left out of the EXE, but
 the RAM slot they run in counts towards the 2 MB.
 
-usage: elf2exe.py input.elf output.exe [--region NA|EU|JP]
+The image, its BSS and the overlay slot must end at least 64 KB below
+0x80200000 (the stack reserve): under that the conversion fails. Under the
+72 KB PLAN GATE (docs/PS1.md "RAM headroom 2026-11-12") it still passes but
+prints a WARNING (and a GitHub Actions annotation), so a CI log shows the
+disc running out of RAM long before the hard failure.
+
+usage: elf2exe.py input.elf output.exe [--region NA|EU|JP] [--gate BYTES]
 Stdlib only, deterministic output.
 """
+import os
 import struct
 import sys
 
 PT_LOAD = 1
+STACK_TOP = 0x1FFFF0            # system.cnf: STACK = 801FFFF0
+RESERVE_END = 0x200000 - 0x10000   # the image must end here or lower (64 KB of stack)
+PLAN_GATE = 72 * 1024           # bytes below the stack top the plan asks for
 
 
 def main(argv):
@@ -28,6 +38,9 @@ def main(argv):
     region = "NA"
     if "--region" in argv:
         region = argv[argv.index("--region") + 1].upper()
+    gate = PLAN_GATE
+    if "--gate" in argv:
+        gate = int(argv[argv.index("--gate") + 1], 0)
     data = open(src, "rb").read()
     if data[:4] != b"\x7fELF" or data[4] != 1 or data[5] != 1:
         print("elf2exe: not a 32-bit little-endian ELF: %s" % src)
@@ -87,12 +100,22 @@ def main(argv):
     print("elf2exe: layout: image 0x%x-0x%x (%d B), bss 0x%x-0x%x (%d B), overlay slot ends 0x%x, _end 0x%x" % (
         lo, hi, hi - lo, bss_lo or 0, bss_hi or 0, (bss_hi - bss_lo) if bss_lo is not None else 0,
         ovl_hi or 0, sym_end))
-    if end > 0x200000 - 0x10000:
+    left = STACK_TOP - end
+    print("elf2exe: %d B left below the stack top 0x%x (fails under %d B, plan gate %d B)" % (
+        left, 0x80000000 + STACK_TOP, STACK_TOP - RESERVE_END, gate))
+    if end > RESERVE_END:
         print("elf2exe: image + bss end at 0x%x, leaves no room for the stack "
               "in 2 MB RAM" % (end + 0x80000000))
         print("elf2exe: %d B over the limit 0x%x (the stack reserve is 64 KB); "
-              "shrink at least that much" % (end - (0x200000 - 0x10000), 0x80000000 + 0x200000 - 0x10000))
+              "shrink at least that much" % (end - RESERVE_END, 0x80000000 + RESERVE_END))
         return 1
+    if left < gate:
+        msg = ("only %d B left below the stack top: %d B under the %d KB plan gate "
+               "(the build fails %d B from here; docs/PS1.md \"RAM headroom\", tools/ram_ledger.py)" % (
+                   left, gate - left, gate // 1024, RESERVE_END - end))
+        print("elf2exe: WARNING: " + msg)
+        if os.environ.get("GITHUB_ACTIONS"):
+            print("::warning title=PS1 RAM under the plan gate::" + msg)
     hdr = bytearray(2048)
     hdr[0:8] = b"PS-X EXE"
     struct.pack_into("<IIIIIIIIII", hdr, 0x10,
@@ -112,7 +135,7 @@ def main(argv):
           "below the stack top), entry 0x%08x" % (
               dst, lo, size // 1024,
               ((bss_hi - bss_lo) if bss_lo is not None else 0) // 1024,
-              end + 0x80000000, (0x1FFFF0 - end) // 1024, e_entry))
+              end + 0x80000000, left // 1024, e_entry))
     return 0
 
 
