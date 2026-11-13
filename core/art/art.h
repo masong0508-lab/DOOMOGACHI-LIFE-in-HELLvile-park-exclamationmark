@@ -335,6 +335,8 @@ extern const ArtTexDef art_tex_cute[];
 extern const int       art_tex_cute_n;
 extern const ArtTexDef art_tex_hell[];
 extern const int       art_tex_hell_n;
+extern const ArtTexDef art_tex_lv[];      /* tex_lv.c (LV7) */
+extern const int       art_tex_lv_n;
 extern const ArtSkyDef art_skies[];
 extern const int       art_skies_n;
 extern const ArtSprDef art_spr_demons[];

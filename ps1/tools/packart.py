@@ -137,6 +137,11 @@ def cut_array(text, name):
         raise SystemExit("packart: %s not found" % name)
     end = text.index("\n};\n", m.end())
     body = text[m.end():end]
+    # the frames of the art added after the old set (artgen.c, LV7) sit behind this line: the
+    # PS1 does not carry them (no new resident byte before PS1-RAM, textures.h TEX_COUNT)
+    cut = body.find("#ifndef DOOMO_PLATFORM_PS1")
+    if cut >= 0:
+        body = body[:cut]
     frames = []
     for blk in re.finditer(r"/\*[^*]*\*/ \{([^}]*)\}", body):
         vals = [int(v) for v in re.findall(r"\d+", blk.group(1))]

@@ -190,3 +190,49 @@ TEST(art_image_uids_unique)
         }
     for (i = 0; i < n; i++) CHECK(uids[i] != 0);
 }
+
+/* LV7: the 7 shared level textures (ids 48..54) and the 3 level skies. */
+TEST(art_lv7_textures_and_skies)
+{
+    static const char *const tn[7] = {"steam_tile", "pipe_steel", "office_carpet", "cubicle_fabric",
+                                      "felt", "ledger_page", "vault_metal"};
+    static const char *const sn[3] = {"overcast", "ink", "dusk_lanterns"};
+    int t, u, s;
+    art_boot();
+    /* the new ids follow the old art without a gap and leave 56..63 to the level slots (the plan
+     * said 49..55: the old art ends at id 47, so they are 48..54 and id 55 stays free) */
+    CHECK_EQ(TEX_OLD_COUNT, 48);
+    CHECK_EQ(TEX_STEAM_TILE, 48);
+    CHECK_EQ(TEX_VAULT_METAL, 54);
+    CHECK_EQ(TEX_COUNT_ALL, 55);
+    CHECK(TEX_COUNT_ALL <= DOOMO_TEXBANK_FIRST);
+    CHECK_EQ(SKY_OLD_COUNT, 5);
+    CHECK_EQ(SKY_COUNT_ALL, 8);
+    for (t = 0; t < 7; t++) {
+        const uint8_t *p = texture_pixels(TEX_STEAM_TILE + t, 0);
+        int distinct = 0, k;
+        CHECK_MSG(strcmp(texture_name(TEX_STEAM_TILE + t), tn[t]) == 0, "tex %d name '%s'", TEX_STEAM_TILE + t,
+                  texture_name(TEX_STEAM_TILE + t));
+        CHECK_EQ(texture_frames(TEX_STEAM_TILE + t), 1);
+        /* not a copy of any other texture, and uses more than a few colours */
+        for (u = 1; u < TEX_COUNT; u++)
+            if (u != TEX_STEAM_TILE + t) CHECK_MSG(memcmp(p, texture_pixels(u, 0), 64 * 64) != 0, "tex %d copies %d", TEX_STEAM_TILE + t, u);
+        {
+            uint8_t seen[256];
+            memset(seen, 0, sizeof seen);
+            for (k = 0; k < 64 * 64; k++) seen[p[k]] = 1;
+            for (k = 0; k < 256; k++) distinct += seen[k];
+        }
+        CHECK_MSG(distinct >= 4, "tex %d has %d colours", TEX_STEAM_TILE + t, distinct);
+    }
+    for (s = 0; s < 3; s++) {
+        const uint8_t *p = sky_pixels(SKY_OVERCAST + s, 0);
+        int k, jump = 0;
+        CHECK(sky_horizon(SKY_OVERCAST + s) != 0);
+        for (u = 0; u < SKY_COUNT; u++)
+            if (u != SKY_OVERCAST + s) CHECK_MSG(memcmp(p, sky_pixels(u, 0), SKY_W * SKY_H) != 0, "sky %d copies %d", SKY_OVERCAST + s, u);
+        /* wraps in x: the seam columns are as alike as two neighbours inside the sky */
+        for (k = 0; k < SKY_H; k++) { int d = palette_luma(p[k * SKY_W]) - palette_luma(p[k * SKY_W + SKY_W - 1]); jump += (d > 60 || d < -60); }
+        CHECK_MSG(jump < SKY_H / 3, "sky %s seam: %d of %d rows jump", sn[s], jump, SKY_H);
+    }
+}

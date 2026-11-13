@@ -137,6 +137,8 @@ mapc-check: $(BUILD)/mapreach
 	@tail -n 1 $(BUILD)/mapc-check.log
 	@MAPREACH=$(BUILD)/mapreach $(PYTHON) $(ROOT)/tools/tests/test_levelcheck.py > $(BUILD)/mapc-check.log 2>&1 || { cat $(BUILD)/mapc-check.log; exit 1; }
 	@tail -n 1 $(BUILD)/mapc-check.log
+	@$(PYTHON) $(ROOT)/tools/tests/test_packart.py > $(BUILD)/mapc-check.log 2>&1 || { cat $(BUILD)/mapc-check.log; exit 1; }
+	@tail -n 1 $(BUILD)/mapc-check.log
 # --- end LV1 ---
 
 unit: $(BUILD)/tests talk

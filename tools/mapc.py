@@ -111,9 +111,9 @@ def enum_names(prefix, stop):
     return sorted(k for k in ENUMS if k.startswith(prefix + "_") and k != stop)
 
 
-TEX_COUNT = ENUMS["TEX_COUNT"]
+TEX_COUNT = ENUMS["TEX_COUNT_ALL"]   # (the PS1 build of the core sees fewer: textures.h)
 THING_COUNT = ENUMS["THING_COUNT"]
-SKY_COUNT = ENUMS["SKY_COUNT"]
+SKY_COUNT = ENUMS["SKY_COUNT_ALL"]
 SONG_COUNT = ENUMS["SONG_COUNT"]
 TEX_SKY = 255
 CELL_FLAGS = {

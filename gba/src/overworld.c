@@ -67,9 +67,9 @@ typedef struct OwLit {
     uint32_t builds;             /* (G2) tiles built (cache misses)  */
     uint32_t vused;              /* (G2) VRAM tile slots taken this frame */
     /* this frame's texture pixels per id (animated textures change frame);
-     * ids >= TEX_COUNT (textures.h: <= 64) fall back to TEX_GRASS below */
+     * ids >= TEX_COUNT (textures.h: <= 56) fall back to TEX_GRASS below. NULL = not looked up
+     * yet this frame (LV7: no separate flag array, so the 7 new textures cost no RAM) */
     const uint8_t *frame_tex[TEX_COUNT];
-    uint8_t frame_tex_ok[TEX_COUNT];
 } OwLit;
 static OwLit lc;
 
@@ -225,10 +225,7 @@ static const OwTile *lit_cached(int tex, int lvl, int front)
     if (tex <= 0 || tex >= TEX_COUNT) tex = TEX_GRASS;
     if (lvl < 0) lvl = 0;
     if (lvl > 15) lvl = 15;
-    if (!L->frame_tex_ok[tex]) {
-        L->frame_tex[tex] = texture_pixels(tex, owf.time);
-        L->frame_tex_ok[tex] = 1;
-    }
+    if (!L->frame_tex[tex]) L->frame_tex[tex] = texture_pixels(tex, owf.time);
     tp = L->frame_tex[tex];
     key = (uint32_t)lvl | ((uint32_t)front << 4) | (L->tint_state << 8);
     set = ((((uint32_t)tex * 7u + (uint32_t)lvl * 13u + (uint32_t)front * 5u) & (CACHE_SETS - 1)) | L->hi);
@@ -329,10 +326,7 @@ const uint8_t *ow_tex_frame(int *tex)
     int t = *tex;
     if (t <= 0 || t >= TEX_COUNT) t = TEX_GRASS;
     *tex = t;
-    if (!lc.frame_tex_ok[t]) {
-        lc.frame_tex[t] = texture_pixels(t, owf.time);
-        lc.frame_tex_ok[t] = 1;
-    }
+    if (!lc.frame_tex[t]) lc.frame_tex[t] = texture_pixels(t, owf.time);
     return lc.frame_tex[t];
 }
 
@@ -610,7 +604,7 @@ void plat_overworld(const DoomoOverworldView *v)
         if (st != (lc.tint_state & 0x0FFF)) lc.tint_state = st;
     }
     lc.tick++;
-    memset(lc.frame_tex_ok, 0, sizeof(lc.frame_tex_ok));
+    memset(lc.frame_tex, 0, sizeof(lc.frame_tex));
     {
         /* (G2) no VRAM tile copies yet this frame (only the sets in use:
          * beside a large scratch claim the lower half is the scene's) */

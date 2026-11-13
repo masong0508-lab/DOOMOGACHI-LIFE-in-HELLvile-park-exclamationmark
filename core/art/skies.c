@@ -401,11 +401,97 @@ static void s_vape_storm(ArtImg *im, int f, int n)
     }
 }
 
+/* ---- LV7 skies --------------------------------------------------------------------------- */
+/* overcast: a low grey lid in slow bands, a pale seam at the horizon and a row of far dark
+ * roofs; the outdoor window of the dark levels */
+static void s_overcast(ArtImg *im, int f, int n)
+{
+    int x, y;
+    (void)f; (void)n;
+    for (y = 0; y < SKY_H; y++)
+        for (x = 0; x < SKY_W; x++) {
+            int v = art_fbm2(x, y * 2, 32, 3, SKY_W, 256, 0x0CA57u);
+            int base = 255 - y * 130 / SKY_H;          /* lighter toward the horizon */
+            PX(x, y, art_ramp_v(RAMP_STEEL, 1, 5, (v * 2 + base) / 3, x, y, 1));
+        }
+    for (x = 0; x < SKY_W; x++) {
+        int bx = x % 24;
+        int h = 80 - ((bx < 12) ? 4 + (x / 24 % 4) * 2 - art_abs(bx - 6) / 2 : 0);
+        for (y = h; y < SKY_H; y++) PX(x, y, RP(RAMP_STEEL, 0));
+    }
+}
+
+/* ink: black-blue paper with faint ledger rules, ink drips running down from the top and a
+ * pale round stamp seal for a moon; the Ledger's sky */
+static void s_ink(ArtImg *im, int f, int n)
+{
+    int x, y, i;
+    (void)f; (void)n;
+    for (y = 0; y < SKY_H; y++)
+        for (x = 0; x < SKY_W; x++) {
+            int v = art_fbm2(x, y, 16, 3, SKY_W, 128, 0x1A2Bu);
+            PX(x, y, art_ramp_v(RAMP_STEEL, 0, 2, v * (y + 40) / 140, x, y, 1));
+        }
+    for (y = 9; y < SKY_H; y += 12)
+        for (x = 0; x < SKY_W; x++) if (x & 1) PX(x, y, RP(RAMP_STEEL, 2));
+    for (x = 0; x < SKY_W; x += 32) for (y = 0; y < SKY_H; y++) if (y & 1) PX(x, y, RP(RAMP_STEEL, 2));
+    for (i = 0; i < 12; i++) {
+        uint32_t h = art_hash((uint32_t)i, 1u, 0x1A2Cu);
+        int dx = (int)(h % (uint32_t)SKY_W), len = 14 + (int)((h >> 8) % 40u);
+        for (y = 0; y < len; y++) PX(dx, y, RP(RAMP_STEEL, 0));
+        PX(dx - 1, len, RP(RAMP_STEEL, 0)); PX(dx, len + 1, RP(RAMP_STEEL, 0)); PX(dx + 1, len, RP(RAMP_STEEL, 0));
+    }
+    /* the seal */
+    {
+        ArtMat m = art_mat_ramp(RAMP_BONE, 4, 7);
+        img_ball(im, 168, 30, 15, 15, &m, 1);
+        img_ring(im, 168, 30, 10, 11, RP(RAMP_BONE, 3));
+    }
+    for (i = 0; i < 30; i++) {
+        uint32_t h = art_hash((uint32_t)i, 2u, 0x1A2Du);
+        PX((int)(h % (uint32_t)SKY_W), (int)((h >> 8) % 60u), RP(RAMP_BONE, 2 + (int)(i & 1)));
+    }
+}
+
+/* dusk_lanterns: violet to amber dusk, rows of floating paper lanterns on their strings over a
+ * low roofline; the Mingle's sky */
+static void s_dusk_lanterns(ArtImg *im, int f, int n)
+{
+    uint8_t cols[4];
+    int ys[4] = {0, 30, 58, 78};
+    int x, y, i;
+    (void)f; (void)n;
+    cols[0] = RP(RAMP_VAPE, 1); cols[1] = RP(RAMP_VAPE, 3); cols[2] = RP(RAMP_PEACH, 4); cols[3] = RP(RAMP_CANDY, 4);
+    gradient(im, cols, ys, 4);
+    for (y = 0; y < 70; y++)
+        for (x = 0; x < SKY_W; x++)
+            if (art_fbm2(x, y, 24, 3, SKY_W, 256, 0xD05Cu) > 178) PX(x, y, RP(RAMP_VAPE, 2 + y / 24));
+    for (i = 0; i < 26; i++) {
+        uint32_t h = art_hash((uint32_t)i, 3u, 0xD05Du);
+        int lx = (i * 10 + (int)(h % 7u)) % SKY_W, ly = 14 + (int)((h >> 8) % 44u);
+        int r = 3 + (int)((h >> 16) % 3u);
+        ArtMat m = (i & 1) ? art_mat_ramp(RAMP_CANDY, 3, 7) : art_mat_ramp(RAMP_BLOOD, 3, 7);
+        for (y = 0; y < ly - r; y += 2) PX(lx, y, RP(RAMP_VAPE, 0));
+        img_ball(im, lx, ly, r, r + 1, &m, 0);
+        PX(lx, ly - r - 1, RP(RAMP_VAPE, 0));
+        PX(lx, ly + r + 2, RP(RAMP_CANDY, 6));
+    }
+    for (x = 0; x < SKY_W; x++) {
+        int bx = x % 20;
+        int h = 82 - ((bx < 14) ? 5 - art_abs(bx - 7) / 2 : 0) - (x / 20 % 3);
+        for (y = h; y < SKY_H; y++) PX(x, y, RP(RAMP_VAPE, 0));
+        if (bx > 2 && bx < 6 && ((x / 20) & 1)) PX(x, h + 5, RP(RAMP_CANDY, 6));
+    }
+}
+
 const ArtSkyDef art_skies[] = {
     {SKY_PASTEL_DAY, "pastel_day", 1, 1, DOOMO_ANIM_LOOP, s_pastel_day},
     {SKY_SUNSET, "sunset", 1, 1, DOOMO_ANIM_LOOP, s_sunset},
     {SKY_NIGHT_STARS, "night_stars", 1, 1, DOOMO_ANIM_LOOP, s_night},
     {SKY_HELL, "hell", 1, 1, DOOMO_ANIM_LOOP, s_hell},
     {SKY_VAPE_STORM, "vape_storm", 1, 1, DOOMO_ANIM_LOOP, s_vape_storm},
+    {SKY_OVERCAST, "overcast", 1, 1, DOOMO_ANIM_LOOP, s_overcast},
+    {SKY_INK, "ink", 1, 1, DOOMO_ANIM_LOOP, s_ink},
+    {SKY_DUSK_LANTERNS, "dusk_lanterns", 1, 1, DOOMO_ANIM_LOOP, s_dusk_lanterns},
 };
 const int art_skies_n = (int)(sizeof art_skies / sizeof art_skies[0]);

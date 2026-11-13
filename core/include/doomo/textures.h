@@ -31,9 +31,22 @@ enum {
     TEX_VAPE_CLOUD_WALL, TEX_HELL_ROCK, TEX_GORE_FLOOR, TEX_METAL_FLOOR,
     TEX_GRATE, TEX_PENTAGRAM_FLOOR, TEX_INFECTED_GRASS, TEX_SLIME,
     TEX_DOOR_CUTE, TEX_DOOR_HELL, TEX_EXIT_SIGN, TEX_SWITCH,
-    TEX_COUNT
+    TEX_OLD_COUNT,                        /* 48: what the first seven levels use */
+    /* LV7: the shared level textures (ids 48..54, 55 free; 56..63 are the level slots, map.h) */
+    TEX_STEAM_TILE = TEX_OLD_COUNT, TEX_PIPE_STEEL, TEX_OFFICE_CARPET, TEX_CUBICLE_FABRIC,
+    TEX_FELT, TEX_LEDGER_PAGE, TEX_VAULT_METAL,
+    TEX_COUNT_ALL
 };
-DOOMO_STATIC_ASSERT(TEX_COUNT <= 64, textures_fit);
+/* The PS1 keeps the old art only until its resident-memory share is released (PARALLEL_WAVES.md
+ * section 3, no new resident byte before PS1-RAM; levels_int.h does the same for LV_HAS_NEW):
+ * there TEX_COUNT / SKY_COUNT stay the old counts, so every table and every bound check of the
+ * core is the old size and an id of the new art reads as "no texture". */
+#if defined(DOOMO_PLATFORM_PS1)
+#define TEX_COUNT TEX_OLD_COUNT
+#else
+#define TEX_COUNT TEX_COUNT_ALL
+#endif
+DOOMO_STATIC_ASSERT(TEX_COUNT_ALL <= 56, textures_fit);
 
 /* Animated textures (water, lava, slime, portal) return a different frame
  * pointer depending on `time` (ticks).
@@ -49,7 +62,15 @@ int  texture_is_animated(int tex_id);
 uint8_t texture_avg(int tex_id);
 
 enum { SKY_PASTEL_DAY, SKY_SUNSET, SKY_NIGHT_STARS, SKY_HELL, SKY_VAPE_STORM,
-       SKY_COUNT };
+       SKY_OLD_COUNT,
+       /* LV7: OVERCAST for the dark levels, INK for the Ledger, DUSK_LANTERNS for the Mingle */
+       SKY_OVERCAST = SKY_OLD_COUNT, SKY_INK, SKY_DUSK_LANTERNS,
+       SKY_COUNT_ALL };
+#if defined(DOOMO_PLATFORM_PS1)
+#define SKY_COUNT SKY_OLD_COUNT
+#else
+#define SKY_COUNT SKY_COUNT_ALL
+#endif
 #define SKY_W 256
 #define SKY_H 96
 /* 256x96, wraps horizontally once per 360 degrees. */
@@ -81,8 +102,8 @@ typedef struct DoomoArtAnim {
     uint8_t  horizon;   /* skies: horizon colour; textures: darkest tone  */
     uint8_t  pad;
 } DoomoArtAnim;
-#define DOOMO_TEX_MAX_FRAMES 64
-#define DOOMO_SKY_MAX_FRAMES 6
+#define DOOMO_TEX_MAX_FRAMES 72
+#define DOOMO_SKY_MAX_FRAMES 8
 extern const DoomoArtAnim doomo_art_tex[TEX_COUNT];
 extern const uint8_t doomo_art_tex_pix[][DOOMO_TEX_SIZE_PX];
 extern const uint16_t doomo_art_tex_frame_total;

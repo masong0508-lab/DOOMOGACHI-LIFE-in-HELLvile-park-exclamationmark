@@ -1822,7 +1822,7 @@ its bot edges with it.
 * **Weld rewards** (charms Rubber Duck, Stamp, Objection!, Horned heart; underbarrel Tow hook; paint Anvil's
   mark) through the action range's spare ids 551..563 (6 of 13).
 * **Furniture** rewards arrive as gifts in the house's storage (no unlock id).
-* **Textures.** 15 ids are free under the 64 cap: 7 shared new textures on ids 49..55 (steam tile, pipe
+* **Textures.** 15 ids are free under the 64 cap: 7 shared new textures on ids 48..54 (the old art ends at id 47; id 55 stays free) (steam tile, pipe
   steel, office carpet, cubicle fabric, felt, ledger page, vault metal) and ids 56..63 reserved as **level
   slots** that each map's `texbank` fills from its own bank. **Skies:** +3 (OVERCAST for the dark levels,
   INK for the Ledger, DUSK_LANTERNS for the Mingle): `SKY_COUNT` 8.

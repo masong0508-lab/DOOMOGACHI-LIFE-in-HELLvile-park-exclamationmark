@@ -23,6 +23,9 @@ enum { ROOM_TEX, ROOM_SKY, ROOM_SPR, ROOM_PAL, ROOM_PHOTO, N_ROOMS };   /* H4: +
 static const char *const room_names[N_ROOMS] = { "Textures", "Skies", "Sprites", "Palette", "Photos" };
 static const char *const sky_names[SKY_COUNT] = {
     "Pastel Day", "Candy Sunset", "Starry Night", "Hellfire", "Vape Storm"
+#ifndef DOOMO_PLATFORM_PS1                    /* LV7: the PS1 keeps the old art (textures.h) */
+    , "Overcast", "Ink", "Dusk Lanterns"
+#endif
 };
 static const char *const sky_notes[SKY_COUNT] = {
     "HaHaland on a good day: cotton clouds and a sky the colour of milk.",
@@ -30,6 +33,11 @@ static const char *const sky_notes[SKY_COUNT] = {
     "Every star was counted by the owls. They lost count. Twice.",
     "What the sky looks like after the Gate opens. Bring a hat.",
     "Lord Vapula's weather. It smells of Unholy Grape up there.",
+#ifndef DOOMO_PLATFORM_PS1
+    "A lid of grey wool over the rooftops. Nobody has seen the sun in weeks.",
+    "Black ledger paper, still wet. Do not read the drips.",
+    "Paper lanterns drifting over the Mingle. Each one is somebody's guest.",
+#endif
 };
 static const char *const ui_colour_names[16] = {
     "Clear", "Black", "White", "Light grey", "Grey", "Dark grey", "UI pink",

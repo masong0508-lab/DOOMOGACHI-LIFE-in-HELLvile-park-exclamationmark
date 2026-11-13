@@ -112,11 +112,12 @@ static uint8_t darkest(const uint8_t *p, int n)
 
 static void gen_textures(void)
 {
-    const ArtTexDef *sets[2];
-    int ns[2], s, k, f;
+    const ArtTexDef *sets[3];
+    int ns[3], s, k, f;
     sets[0] = art_tex_cute; ns[0] = art_tex_cute_n;
     sets[1] = art_tex_hell; ns[1] = art_tex_hell_n;
-    for (s = 0; s < 2; s++)
+    sets[2] = art_tex_lv; ns[2] = art_tex_lv_n;     /* last: its frames come after the old art (PS1 cut) */
+    for (s = 0; s < 3; s++)
         for (k = 0; k < ns[s]; k++) {
             const ArtTexDef *d = &sets[s][k];
             AnimOut *o;
@@ -298,51 +299,72 @@ static void write_c(const char *path)
     put_bytes(f, art_lighter_tab, 256);
     fprintf(f, "};\n\n");
 
-    /* textures */
-    fprintf(f, "DOOMO_STATIC_ASSERT(%d <= DOOMO_TEX_MAX_FRAMES, art_tex_frames_fit);\n", tex_nframes);
-    fprintf(f, "const uint16_t doomo_art_tex_frame_total = %d;\n\n", tex_nframes);
-    fprintf(f, "const uint8_t doomo_art_tex_pix[%d][DOOMO_TEX_SIZE_PX] = {\n", tex_nframes);
-    for (k = 1; k < TEX_COUNT; k++) {
-        int fr;
-        for (fr = 0; fr < tex_out[k].frames; fr++) {
-            fprintf(f, "/* %d: %s frame %d */ {\n", tex_out[k].first + fr, tex_out[k].name, fr);
-            put_bytes(f, tex_pix[tex_out[k].first + fr], TEXPX);
-            fprintf(f, "},\n");
-            pixbytes += TEXPX;
+    /* textures. The PS1 builds the old art only (textures.h, TEX_COUNT): what LV7 added sits last
+     * in every table, behind #ifndef DOOMO_PLATFORM_PS1, and ps1/tools/packart.py stops at the
+     * same line. */
+    {
+        int old_tf = tex_out[TEX_OLD_COUNT].first, old_sf = sky_out[SKY_OLD_COUNT].first;
+        for (k = 1; k < TEX_OLD_COUNT; k++)
+            if (tex_out[k].first + tex_out[k].frames > old_tf) fail("old texture after a new one", tex_out[k].name);
+        for (k = 0; k < SKY_OLD_COUNT; k++)
+            if (sky_out[k].first + sky_out[k].frames > old_sf) fail("old sky after a new one", sky_out[k].name);
+        fprintf(f, "DOOMO_STATIC_ASSERT(%d <= DOOMO_TEX_MAX_FRAMES, art_tex_frames_fit);\n", tex_nframes);
+        fprintf(f, "#if defined(DOOMO_PLATFORM_PS1)\nconst uint16_t doomo_art_tex_frame_total = %d;\n#else\n"
+                   "const uint16_t doomo_art_tex_frame_total = %d;\n#endif\n\n", old_tf, tex_nframes);
+        fprintf(f, "const uint8_t doomo_art_tex_pix[][DOOMO_TEX_SIZE_PX] = {\n");
+        for (k = 1; k < TEX_COUNT; k++) {
+            int fr;
+            if (k == TEX_OLD_COUNT) fprintf(f, "#ifndef DOOMO_PLATFORM_PS1\n");
+            for (fr = 0; fr < tex_out[k].frames; fr++) {
+                fprintf(f, "/* %d: %s frame %d */ {\n", tex_out[k].first + fr, tex_out[k].name, fr);
+                put_bytes(f, tex_pix[tex_out[k].first + fr], TEXPX);
+                fprintf(f, "},\n");
+                pixbytes += TEXPX;
+            }
         }
-    }
-    fprintf(f, "};\n\nconst DoomoArtAnim doomo_art_tex[TEX_COUNT] = {\n    {0, 0, 1, 0, %d, %d, 0},\n",
-            PAL_BLACK, PAL_BLACK);
-    for (k = 1; k < TEX_COUNT; k++)
-        fprintf(f, "    {%d, %d, %d, %d, %d, %d, 0}, /* %s */\n", tex_out[k].first, tex_out[k].frames,
-                tex_out[k].speed, tex_out[k].mode, tex_out[k].avg, tex_out[k].dark, tex_out[k].name);
-    fprintf(f, "};\n\nconst char *const doomo_art_tex_names[TEX_COUNT] = {\n    \"none\",\n");
-    for (k = 1; k < TEX_COUNT; k++) fprintf(f, "    \"%s\",\n", tex_out[k].name);
-    fprintf(f, "};\n\n");
-    /* (integration, memory budget) every frame as a const DoomoImage with a
-     * fixed uid, so texture_image() needs no RAM copies (textures.h) */
-    fprintf(f, "const DoomoImage doomo_art_tex_img[%d] = {\n", tex_nframes);
-    for (k = 0; k < tex_nframes; k++)
-        fprintf(f, "    {64, 64, doomo_art_tex_pix[%d], DOOMO_ART_TEX_UID + %d},\n", k, k);
-    fprintf(f, "};\n\n");
+        fprintf(f, "#endif\n};\n\nconst DoomoArtAnim doomo_art_tex[TEX_COUNT] = {\n    {0, 0, 1, 0, %d, %d, 0},\n",
+                PAL_BLACK, PAL_BLACK);
+        for (k = 1; k < TEX_COUNT; k++) {
+            if (k == TEX_OLD_COUNT) fprintf(f, "#ifndef DOOMO_PLATFORM_PS1\n");
+            fprintf(f, "    {%d, %d, %d, %d, %d, %d, 0}, /* %s */\n", tex_out[k].first, tex_out[k].frames,
+                    tex_out[k].speed, tex_out[k].mode, tex_out[k].avg, tex_out[k].dark, tex_out[k].name);
+        }
+        fprintf(f, "#endif\n};\n\nconst char *const doomo_art_tex_names[TEX_COUNT] = {\n    \"none\",\n");
+        for (k = 1; k < TEX_COUNT; k++) {
+            if (k == TEX_OLD_COUNT) fprintf(f, "#ifndef DOOMO_PLATFORM_PS1\n");
+            fprintf(f, "    \"%s\",\n", tex_out[k].name);
+        }
+        fprintf(f, "#endif\n};\n\n");
+        /* (integration, memory budget) every frame as a const DoomoImage with a
+         * fixed uid, so texture_image() needs no RAM copies (textures.h) */
+        fprintf(f, "const DoomoImage doomo_art_tex_img[] = {\n");
+        for (k = 0; k < tex_nframes; k++) {
+            if (k == old_tf) fprintf(f, "#ifndef DOOMO_PLATFORM_PS1\n");
+            fprintf(f, "    {64, 64, doomo_art_tex_pix[%d], DOOMO_ART_TEX_UID + %d},\n", k, k);
+        }
+        fprintf(f, "#endif\n};\n\n");
 
-    /* skies */
-    fprintf(f, "DOOMO_STATIC_ASSERT(%d <= DOOMO_SKY_MAX_FRAMES, art_sky_frames_fit);\n", sky_nframes);
-    fprintf(f, "const uint8_t doomo_art_sky_pix[%d][SKY_W * SKY_H] = {\n", sky_nframes);
-    for (k = 0; k < SKY_COUNT; k++) {
-        int fr;
-        for (fr = 0; fr < sky_out[k].frames; fr++) {
-            fprintf(f, "/* %s frame %d */ {\n", sky_out[k].name, fr);
-            put_bytes(f, sky_pix[sky_out[k].first + fr], SKY_W * SKY_H);
-            fprintf(f, "},\n");
-            pixbytes += SKY_W * SKY_H;
+        /* skies */
+        fprintf(f, "DOOMO_STATIC_ASSERT(%d <= DOOMO_SKY_MAX_FRAMES, art_sky_frames_fit);\n", sky_nframes);
+        fprintf(f, "const uint8_t doomo_art_sky_pix[][SKY_W * SKY_H] = {\n");
+        for (k = 0; k < SKY_COUNT; k++) {
+            int fr;
+            if (k == SKY_OLD_COUNT) fprintf(f, "#ifndef DOOMO_PLATFORM_PS1\n");
+            for (fr = 0; fr < sky_out[k].frames; fr++) {
+                fprintf(f, "/* %s frame %d */ {\n", sky_out[k].name, fr);
+                put_bytes(f, sky_pix[sky_out[k].first + fr], SKY_W * SKY_H);
+                fprintf(f, "},\n");
+                pixbytes += SKY_W * SKY_H;
+            }
         }
+        fprintf(f, "#endif\n};\n\nconst DoomoArtAnim doomo_art_sky[SKY_COUNT] = {\n");
+        for (k = 0; k < SKY_COUNT; k++) {
+            if (k == SKY_OLD_COUNT) fprintf(f, "#ifndef DOOMO_PLATFORM_PS1\n");
+            fprintf(f, "    {%d, %d, %d, %d, %d, %d, 0}, /* %s */\n", sky_out[k].first, sky_out[k].frames,
+                    sky_out[k].speed, sky_out[k].mode, sky_out[k].avg, sky_out[k].dark, sky_out[k].name);
+        }
+        fprintf(f, "#endif\n};\n\n");
     }
-    fprintf(f, "};\n\nconst DoomoArtAnim doomo_art_sky[SKY_COUNT] = {\n");
-    for (k = 0; k < SKY_COUNT; k++)
-        fprintf(f, "    {%d, %d, %d, %d, %d, %d, 0}, /* %s */\n", sky_out[k].first, sky_out[k].frames,
-                sky_out[k].speed, sky_out[k].mode, sky_out[k].avg, sky_out[k].dark, sky_out[k].name);
-    fprintf(f, "};\n\n");
 
     /* sprites */
     fprintf(f, "static const uint8_t spr_pix[] = {\n");
