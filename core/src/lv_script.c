@@ -81,11 +81,12 @@ int lv_script_check(const uint8_t *s, int len, const DoomoMapExt *x)
 }
 
 /* ---- events and the queue ------------------------------------------------- */
-static void enqueue(LvVm *vm, int h)
+static int enqueue(LvVm *vm, int h)
 {
-    if (vm->q_n >= LV_VM_QUEUE) { vm->err |= LVVE_QUEUE; return; }
+    if (vm->q_n >= LV_VM_QUEUE) { vm->err |= LVVE_QUEUE; return 0; }
     vm->q[(vm->q_head + vm->q_n) % LV_VM_QUEUE] = (uint8_t)h;
     vm->q_n++;
+    return 1;
 }
 
 /* Does handler header `p` answer (ev, a)? A var event also needs the value. */
@@ -109,7 +110,9 @@ static void dispatch(LvVm *vm, int ev, int a)
         if (!matches(vm, p, ev, a)) continue;
         if (!(p[3] & LVSF_REPEAT)) {
             if (vm->fired[h >> 3] & (1u << (h & 7))) continue;
+            if (!enqueue(vm, h)) continue;      /* a dropped once-handler stays armed */
             vm->fired[h >> 3] = (uint8_t)(vm->fired[h >> 3] | (1u << (h & 7)));
+            continue;
         }
         enqueue(vm, h);
     }
@@ -199,6 +202,7 @@ static void step(LvVm *vm)
         vm->result = (uint8_t)a;
         vm->q_n = 0;
         vm->run_h = 255;
+        vm->cam_n = 0;                              /* a sweep in flight ends with the level */
         say(vm, op, a, 0);
         break;
     case LVO_POST:
@@ -234,7 +238,9 @@ static void timers(LvVm *vm)
             if (!due) continue;
             if (!(p[3] & LVSF_REPEAT)) {
                 if (vm->fired[h >> 3] & (1u << (h & 7))) continue;
+                if (!enqueue(vm, h)) continue;  /* a dropped once-handler stays armed */
                 vm->fired[h >> 3] = (uint8_t)(vm->fired[h >> 3] | (1u << (h & 7)));
+                continue;
             }
             enqueue(vm, h);
         }
@@ -295,7 +301,7 @@ int lv_vm_frozen(const LvVm *vm) { return vm && vm->cam_n != 0; }
 
 int lv_vm_idle(const LvVm *vm)
 {
-    return !vm->q_n && vm->run_h == 255 && !vm->cam_n;
+    return !vm || (!vm->q_n && vm->run_h == 255 && !vm->cam_n);
 }
 
 uint32_t lv_vm_hash(const LvVm *vm)
@@ -317,6 +323,9 @@ uint32_t lv_vm_hash(const LvVm *vm)
     h = (h ^ vm->cam_path) * 16777619u;
     h = (h ^ vm->cam_tag) * 16777619u;
     h = (h ^ vm->choice_open) * 16777619u;
+    h = (h ^ vm->choice_var) * 16777619u;
+    h = (h ^ vm->choice_tag0) * 16777619u;
+    h = (h ^ vm->choice_tag1) * 16777619u;
     h = (h ^ vm->ended) * 16777619u;
     h = (h ^ vm->result) * 16777619u;
     h = (h ^ vm->err) * 16777619u;

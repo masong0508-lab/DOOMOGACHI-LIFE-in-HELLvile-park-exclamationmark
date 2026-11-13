@@ -359,6 +359,49 @@ TEST(lvs_action_end)
     CHECK_EQ(g_vm.var[0], 0); CHECK_EQ(g_vm.var[1], 0);    /* nothing runs after the end */
     lv_vm_event(&g_vm, LVE_TAG, 1); ticks(2);
     CHECK_EQ(g_vm.var[1], 0);
+    CHECK(lv_vm_idle(&g_vm));                          /* the queued handler was dropped */
+}
+
+TEST(lvs_end_during_camera_sweep_unfreezes)
+{
+    SB s;
+    sb_begin(&s);
+    sb_h(&s, LVE_START, 0, 0, 0); sb_a(&s, LVO_CAM, 4, 3, 100, 0, 0);
+    sb_h(&s, LVE_TIMER, 3, 0, 0); sb_a(&s, LVO_END, 1, 1);
+    CHECK_EQ(start(&s), LVERR_OK);
+    ticks(6);
+    CHECK(g_vm.ended);
+    CHECK(!lv_vm_frozen(&g_vm));
+    CHECK(lv_vm_idle(&g_vm));
+    CHECK(lv_vm_idle(NULL));
+}
+
+TEST(lvs_set_same_value_does_not_refire_var)
+{
+    SB s;
+    sb_begin(&s);
+    sb_h(&s, LVE_START, 0, 0, 0); sb_a(&s, LVO_SET, 2, 0, 3); sb_a(&s, LVO_SET, 2, 0, 3);
+    sb_h(&s, LVE_VAR, 0, 3, LVSF_REPEAT); sb_a(&s, LVO_ADD, 2, 1, 1);
+    CHECK_EQ(start(&s), LVERR_OK);
+    ticks(2);
+    CHECK_EQ(g_vm.var[1], 1);
+}
+
+TEST(lvs_dropped_once_handler_stays_armed)
+{
+    SB s;
+    int i;
+    sb_begin(&s);
+    sb_h(&s, LVE_TAG, 1, 0, LVSF_REPEAT); sb_a(&s, LVO_NOP, 0);
+    sb_h(&s, LVE_TAG, 2, 0, 0); sb_a(&s, LVO_SET, 2, 0, 9);
+    CHECK_EQ(start(&s), LVERR_OK);
+    for (i = 0; i < LV_VM_QUEUE; i++) lv_vm_event(&g_vm, LVE_TAG, 1);
+    lv_vm_event(&g_vm, LVE_TAG, 2);                    /* queue full: dropped, err set */
+    CHECK(g_vm.err & LVVE_QUEUE);
+    ticks(2);
+    lv_vm_event(&g_vm, LVE_TAG, 2);                    /* the same event again now runs it */
+    ticks(1);
+    CHECK_EQ(g_vm.var[0], 9);
 }
 
 TEST(lvs_action_post)
