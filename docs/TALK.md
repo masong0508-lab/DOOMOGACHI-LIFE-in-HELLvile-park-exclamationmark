@@ -1081,6 +1081,29 @@ greeting never flirts), kid voices tagged `kid`. A hug stays a plain hug: a stra
 (and a child who does not know the player) answers with a polite no or a wave. Rule names end
 in `o_` / `r_`. `TALK_en.BIN` 672,124 B on the landed tree, about +28.7 KB for this package (PS1 non-resident data, no resident byte).
 No code change. A 40-line sample is in the evidence directory. 3,680 alternatives in 30 grammar files with T5b-ASK.
+**T5B-VOICE (the cast's own voices, content only)**: +596 alternatives in 17 new files,
+`grammar/en/voice_<name>.tlk`, one a cast member (the 17 `speaker=` ids of `talkc.py`
+`CAST`): Mayor Giggs, Nana Puddin, Bonejangles, Rivet, Pip, Hattie Haha, Father Fuzz,
+Mascotty, Dr. Bloom, Wisp, Charlotte, Anvil, Vex, Grumbleguts, Clinker, Mother Nox and
+Lord Vapula, 33-38 alternatives each over the 18 player acts a resident answers in plain
+conversation (greet, farewell, thank, apologize, ask_about, ask_opinion, ask_feeling,
+ask_advice, tell, joke, compliment, comfort, offer, invite, high five, hug, wave, give).
+A `speaker=` line weighs 8 times a persona line, so these are what the cast says most of
+the time. The register is SCRIPT_STYLE section 7: Giggs' lists of three and "Hee hee",
+Nana's "sweet pea" and kind fibs, Bonejangles' "Clack!", servo and warranty, Rivet's
+tools and "don't make it weird", Pip's Patrol, Fuzz's hug theology, Bloom's clinical
+button, Hattie's stand-up structure, Mascotty's thumps and "if you stand still", Wisp's
+lowercase "sorry", Charlotte's letters, Anvil's forge, Vex's "- V", Grumbleguts' "Needs
+salt.", Clinker's ratings, Nox's soup, Vapula's weather.
+Safety: Pip and Wisp are kid banks (`tags: kid`, Wisp also `lower`): no register word, no
+LOVE face, nothing aimed at them. Grumbleguts' purr greeting and compliment carry
+`adults_only&!kid_present` and he has a grumpy-uncle greeting and thank-you for a room
+with a child. No romance act, no cool act, so TK10 does not apply and no line turns on
+the listener. New test `core/tests/test_talk_voice.c`: every voice says a phrase only it
+says (17 marks, cross-checked against the other 16 of the cast), the kids' banks pass the
+S3 lint and wear no LOVE face in a kid room, and none of the five purr lines can come out
+with a child in the room. `TALK_en.BIN` 643,516 -> 671,420 B (PS1 non-resident data, no
+resident byte). No engine change.
 
 **With K-10 (the TK3 landing)**: GRAMMAR 14,536 B and STRINGS 17,650 B
 stored (27,439 B raw) for 373 rules, 718 alternatives, 512 guard terms, 79

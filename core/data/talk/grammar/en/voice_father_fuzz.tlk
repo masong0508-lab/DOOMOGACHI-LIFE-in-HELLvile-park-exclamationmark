@@ -35,7 +35,7 @@
   "Mm, I hear you, friend. Truly. Go on."
   "Is that so, tell me more. I have all the time. And snacks."
 @rule core.joke.father_fuzz_v1 guard: speaker=father_fuzz act: laugh
-  "Ha, oh, that's good, friend! Clean and holy! Hee hee!"
+  "Ha, oh, that's good, friend! Clean and holy, that one!"
   "Ha ha! That one will warm the youth group right up."
 @rule core.compliment.father_fuzz_v1 guard: speaker=father_fuzz act: thank
   "Oh, bless you. That means a great deal. Truly."

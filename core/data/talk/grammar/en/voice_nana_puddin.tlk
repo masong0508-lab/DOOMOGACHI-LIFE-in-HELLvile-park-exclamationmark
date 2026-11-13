@@ -36,7 +36,7 @@
   "Oh, is that so? Well I never. Actually I did, years ago."
 @rule core.joke.nana_puddin_v1 guard: speaker=nana_puddin act: laugh
   "Oh, you! That one's worth a slice of cake."
-  "Hee hee, heavens. I nearly dropped my knitting. And the cat."
+  "Oh my, heavens. I nearly dropped my knitting. And the cat."
 @rule core.compliment.nana_puddin_v1 guard: speaker=nana_puddin act: thank
   "Oh, go on. You'll make my gravy blush."
   "Aren't you sweet. Here, take the whole tin."

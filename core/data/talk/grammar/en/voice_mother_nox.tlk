@@ -39,7 +39,7 @@
   "*a very small smile, into the pot*"
 @rule core.compliment.mother_nox_v1 guard: speaker=mother_nox act: thank
   "Hm. Eat more. You'll feel better."
-  "Fine. Don't make it weird. Have a bowl."
+  "Fine. Don't make a fuss. Have a bowl."
 @rule core.comfort.mother_nox_v1 guard: speaker=mother_nox act: thank
   "Hm, thanks. Sit. There's room."
 @rule core.offer.mother_nox_v1 guard: speaker=mother_nox act: yes
