@@ -1,0 +1,19 @@
+diff --git a/docs/DREAMCAST.md b/docs/DREAMCAST.md
+index 11e29818..611e71cb 100644
+--- a/docs/DREAMCAST.md
++++ b/docs/DREAMCAST.md
+@@ -683,8 +683,12 @@ about 38,000 ticks) twice in dcrun on the CDI, from the native runner's
+ start (`--native-seed`). A script passes when both runs end with "0
+ failures" and the two runs are identical: the same tick and frame counts, the
+ same work summary, and the same bytes in every shot (md5 of each PNG).
+-Measured 2026-11-13: 28 of 28 pass, 28 of 28 identical. Four of them failed
+-at first on a command the native runner has and dcrun lacked: `lang` /
++Measured 2026-11-13: 28 of 28 pass, 28 of 28 identical.
++"Pass" means the script's own expectations hold and the two runs match each
++other. It does not mean parity with the native runner's shots, and it does not
++gate sound underruns (story_es logs one). An exit 132 (Flycast SIGILL on
++unload) counts as pass when the log ends with "0 failures", as in ow-test.
++Four of them failed at first on a command the native runner has and dcrun lacked: `lang` /
+ `expect-lang` (fp_playas_free, story_es), `expect-hero`
+ (story_newgame_hero), `story-fp` (story_engine), plus `ending-seen` and
+ `story-done`. They are mailbox commands now (`DC_HC_LANG`, `_HERO`,

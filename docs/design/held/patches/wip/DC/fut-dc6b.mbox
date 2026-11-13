@@ -1,0 +1,1068 @@
+From 3c9f0c952df1682742798b9a4a337b895d355c58 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 15:20:19 +0000
+Subject: [PATCH 1/5] DC6B: billboards on the reference's integer rectangle,
+ and a sprite + HUD parity test
+
+The billboard's rectangle is now the one raycast.c draw_sprite fills (integer width,
+height, centre and top on the logical picture, doubled), and its texture is
+read a quarter logical pixel back, where the reference reads it. Host parity of
+the sprites' own pixels (the pixels the reference drew them on): 77.9 % -> 90.5 %.
+New test_sprites in dcv3d_test (imp with shadow, full-bright tree, see-through
+candy at 80..200 units, a HUD pill over them): sprite rectangles, own pixels
+(gate 85 %), the HUD over a sprite equal (gate 97 %).
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx9wuhKv8Rqec7pX14
+---
+ dc/src/view3d.c              |  23 ++++-
+ dc/tests/gfx2d/test_dc_v3d.c | 173 +++++++++++++++++++++++++++++++++++
+ 2 files changed, 191 insertions(+), 5 deletions(-)
+
+diff --git a/dc/src/view3d.c b/dc/src/view3d.c
+index 36cc16a6..96ae2ba4 100644
+--- a/dc/src/view3d.c
++++ b/dc/src/view3d.c
+@@ -76,6 +76,9 @@
+ 
+ #define CELL       DOOMO_CELL_UNITS
+ #define MAXCELLS   (DOOMO_MAP_MAX_W * DOOMO_MAP_MAX_H)
++#ifndef V3D_RAY_PX
++#define V3D_RAY_PX 2                 /* logical pixels between two visibility rays */
++#endif
+ #define V3D_ZNEAR  4.0f              /* the player's radius is 14: a wall the eye
+                                         leans on is never cut where it shows   */
+ #define V3D_FAR_Z  0.002f            /* the backdrop's depth: behind every polygon
+@@ -495,7 +498,7 @@ static void cast(float rdx, float rdy, float sb, float st, float eps)
+ 
+ static void visibility(float plane, int vw)
+ {
+-    int n = vw / 2 + 5, i, cx = (int)floorf(s_ex / CELL), cy = (int)floorf(s_ey / CELL), dx, dy;
++    int n = vw / V3D_RAY_PX + 5, i, cx = (int)floorf(s_ex / CELL), cy = (int)floorf(s_ey / CELL), dx, dy;
+     float span = 1.0f + 4.0f / (float)(n - 1);          /* two rays beyond each edge */
+     float dc = 2.0f * span / (float)(n - 1);
+     float st = (cam.cy - cam.vy0) / cam.focal, sb = (cam.cy - cam.vy1) / cam.focal;
+@@ -610,14 +613,19 @@ static void billboard(const DoomoView3D *view, int idx, float depth)
+     DcVert *v;
+     float x = (float)b->x / 65536.0f, y = (float)b->y / 65536.0f, z = (float)b->z / 65536.0f;
+     float scale = (float)(b->scale ? b->scale : 256) / 256.0f, w = (float)img->w * scale, h = (float)img->h * scale;
+-    float lat = (x - s_ex) * -s_dy + (y - s_ey) * s_dx, k = cam.focal / depth;
+-    float sx0 = cam.cx + (lat - w * 0.5f) * k, sx1 = sx0 + w * k;
+-    float sy0 = cam.cy - (z + h - s_ez) * k, sy1 = sy0 + h * k;
++    float lat = (x - s_ex) * -s_dy + (y - s_ey) * s_dx, fl = cam.focal / (float)DC2D_SCALE;
++    /* the reference's integer rectangle (raycast.c draw_sprite) on the logical picture, doubled: the
++     * same pixels the reference fills, so the two pictures put a sprite in the same place */
++    int sw = (int)(w * fl / depth), sh = (int)(h * fl / depth);
++    int lx0 = (int)(cam.cx / (float)DC2D_SCALE) + (int)(lat * fl / depth) - sw / 2;
++    int ly0 = (int)(cam.cy / (float)DC2D_SCALE) - (int)((z + h - s_ez) * fl / depth);
++    float sx0 = (float)(lx0 * DC2D_SCALE), sx1 = (float)((lx0 + sw) * DC2D_SCALE);
++    float sy0 = (float)(ly0 * DC2D_SCALE), sy1 = (float)((ly0 + sh) * DC2D_SCALE);
+     float u0 = 0.0f, u1, v0 = 0.0f, v1, level;
+     uint32_t argb;
+     int slot, lv, cx = (int)floorf(x / CELL), cy = (int)floorf(y / CELL);
+     if (sx1 <= cam.vx0 || sx0 >= cam.vx1 || sy1 <= cam.vy0 || sy0 >= cam.vy1) { dc3d_stats.culled++; return; }
+-    if (sx1 - sx0 > 4.0f * DC2D_W || sy1 - sy0 > 4.0f * DC2D_H) return;
++    if (sw < 1 || sh < 1 || sw > 4 * DC2D_LW || sh > 4 * DC2D_LH) return;
+     if (b->flags & BB_SHADOW) shadow(x, y, z + 1.0f, w * 0.375f + 2.0f);
+     slot = dc2d_tex_image(img);
+     if (slot < 0) return;
+@@ -640,6 +648,11 @@ static void billboard(const DoomoView3D *view, int idx, float depth)
+     u1 = (float)img->w / (float)tx->tw;
+     v1 = (float)img->h / (float)tx->th;
+     if (b->flags & BB_FLIPX) { u0 = u1; u1 = 0.0f; }
++    /* the reference takes a texel at a pixel's left edge, a polygon at its centre: a quarter of a logical pixel back */
++    { float du = (u1 - u0) * 0.25f / (float)sw, dv = (v1 - v0) * 0.25f / (float)sh; u0 -= du; u1 -= du; v0 -= dv; v1 -= dv; }
++    /* (the texture wraps: past its edge it reads the zero padding, or the far side of a power-of-two image) */
++    if (tx->tw == img->w) { if (u0 < 0.0f) u0 = 0.0f; if (u1 < 0.0f) u1 = 0.0f; }
++    if (tx->th == img->h && v0 < 0.0f) v0 = 0.0f;
+     /* cut to the viewport, the texture with it */
+     if (sx0 < cam.vx0) { u0 += (u1 - u0) * (cam.vx0 - sx0) / (sx1 - sx0); sx0 = cam.vx0; }
+     if (sx1 > cam.vx1) { u1 -= (u1 - u0) * (sx1 - cam.vx1) / (sx1 - sx0); sx1 = cam.vx1; }
+diff --git a/dc/tests/gfx2d/test_dc_v3d.c b/dc/tests/gfx2d/test_dc_v3d.c
+index 52a26c54..80da0423 100644
+--- a/dc/tests/gfx2d/test_dc_v3d.c
++++ b/dc/tests/gfx2d/test_dc_v3d.c
+@@ -34,6 +34,8 @@
+ #include "doomo/doomo.h"
+ #include "doomo/map.h"
+ #include "doomo/palette.h"
++#include "doomo/sprites.h"
++#include "doomo/fixmath.h"
+ 
+ void ref_view3d(const DoomoView3D *v);
+ 
+@@ -41,6 +43,9 @@ void ref_view3d(const DoomoView3D *v);
+ #define PARITY_MIN  0.75   /* measured 79.2% on 2026-11-13; the gap is listed in docs/DREAMCAST.md section 9 */
+ #define FRAME_MIN   0.45   /* at most 3% of the level frames may be below it */
+ #define PITCH_MIN   0.60
++#define SPR_MIN     0.72   /* sprite rectangles (measured 79.1%), see test_sprites */
++#define SPR_FRAME_MIN 0.25
++#define SPR_PX_MIN  0.85   /* the sprites' own pixels (measured 90.5%; 77.9% with the exact rectangle off) */
+ 
+ static int fails, checks;
+ #define CHECK(c, ...) do { checks++; if (!(c)) { fails++; printf("FAIL %s:%d: ", __FILE__, __LINE__); \
+@@ -361,6 +366,168 @@ static void test_budget(void)
+     CHECK(dc2d_stats.dropped == d2, "budget: %u 2D prims dropped", dc2d_stats.dropped - d2);
+ }
+ 
++/* ---- sprites and the HUD over them (DC6 part 2) -------------------------------------------
++ * Three billboards (a shadowed imp, a full-bright tree, a see-through candy) stand 70..200 units
++ * in front of an eye whose line of sight is open; the same view goes to the reference raycaster
++ * and to the polygons. The parity is measured in the sprites' own rectangles (native pixels):
++ * the sprite's colours through the light level's colormap, its transparent texels, its flip, the
++ * far-to-near order and the wall that hides it. The HUD the core draws after the view is
++ * the same 2D calls on both sides: a pill over a sprite must come out equal. */
++static const struct { int spr, flags, light, lat, depth; } spr_set[3] = {
++    { SPR_IMPLING, BB_SHADOW, 0, -26, 190 }, { SPR_TREE, BB_FULLBRIGHT, 0, 22, 130 }, { SPR_CANDY, BB_TRANSLUCENT, 0, 0, 80 } };
++
++static int line_clear(int cx, int cy, float dx, float dy, float len)
++{
++    float t;
++    for (t = 0.0f; t <= len; t += 8.0f) {
++        int x = (int)floorf(((float)(cx * 64 + 32) + dx * t) / 64.0f), y = (int)floorf(((float)(cy * 64 + 32) + dy * t) / 64.0f);
++        const DoomoCell *c;
++        if (x < 1 || y < 1 || x >= doomo_map.w - 1 || y >= doomo_map.h - 1) return 0;
++        c = &doomo_map.cells[y * doomo_map.w + x];
++        if (c->wall || map_floor_z(&doomo_map, x, y) != map_floor_z(&doomo_map, cx, cy)) return 0;
++    }
++    return 1;
++}
++
++static DoomoBillboard sbb[3];
++
++/* the three sprites in front of the eye (cx,cy), heading hd; NULL when the line is not open */
++static int place_sprites(DoomoView3D *v, int cx, int cy, int hd)
++{
++    float dx = (float)fx_cos(v->angle) / 65536.0f, dy = (float)fx_sin(v->angle) / 65536.0f;
++    int i;
++    (void)hd;
++    if (!line_clear(cx, cy, dx, dy, 210.0f)) return 0;
++    for (i = 0; i < 3; i++) {
++        float x = (float)(cx * 64 + 32) + dx * (float)spr_set[i].depth - dy * (float)spr_set[i].lat;
++        float y = (float)(cy * 64 + 32) + dy * (float)spr_set[i].depth + dx * (float)spr_set[i].lat;
++        memset(&sbb[i], 0, sizeof(sbb[i]));
++        sbb[i].x = (fix16)(x * 65536.0f); sbb[i].y = (fix16)(y * 65536.0f);
++        sbb[i].z = (fix16)(map_floor_z(&doomo_map, cx, cy) * 65536);
++        sbb[i].img = sprite_image(spr_set[i].spr, 0);
++        sbb[i].scale = 256;
++        sbb[i].flags = (uint8_t)spr_set[i].flags;
++        sbb[i].light = (uint8_t)spr_set[i].light;
++    }
++    v->sprites = sbb;
++    v->sprite_count = 3;
++    v->player_sprite = -1;
++    return 1;
++}
++
++/* a sprite's rectangle on the 320x240 picture */
++static int sprite_rect(const DoomoView3D *v, const DoomoBillboard *b, int *x0, int *y0, int *x1, int *y1)
++{
++    const Dc3dCam *c = dc2d_view3d_cam();
++    float dx = (float)fx_cos(v->angle) / 65536.0f, dy = (float)fx_sin(v->angle) / 65536.0f;
++    float ex = (float)v->x / 65536.0f, ey = (float)v->y / 65536.0f, ez = (float)v->z / 65536.0f;
++    float x = (float)b->x / 65536.0f, y = (float)b->y / 65536.0f, z = (float)b->z / 65536.0f;
++    float d = (x - ex) * dx + (y - ey) * dy, lat = (x - ex) * -dy + (y - ey) * dx;
++    float w = (float)b->img->w * (float)b->scale / 256.0f, h = (float)b->img->h * (float)b->scale / 256.0f, k;
++    if (d < 4.0f) return 0;
++    k = c->focal / d;
++    *x0 = (int)((c->cx + (lat - w * 0.5f) * k) / 2.0f);
++    *x1 = (int)((c->cx + (lat + w * 0.5f) * k) / 2.0f);
++    *y1 = (int)((c->cy - (z - ez) * k) / 2.0f);
++    *y0 = (int)((c->cy - (z + h - ez) * k) / 2.0f);
++    if (*x0 < 0) *x0 = 0;
++    if (*y0 < 0) *y0 = 0;
++    if (*x1 > DC2D_LW) *x1 = DC2D_LW;
++    if (*y1 > DC2D_LH) *y1 = DC2D_LH;
++    return *x1 > *x0 && *y1 > *y0;
++}
++
++/* the pixels where the reference drew the sprite (its native pixel is one of the texel's light levels):
++ * how many, and how many of them the polygons match */
++static void sprite_pixels(const DoomoView3D *v, const DoomoBillboard *b, int *vis, int *hit)
++{
++    const Dc3dCam *c = dc2d_view3d_cam();
++    float dx = (float)fx_cos(v->angle) / 65536.0f, dy = (float)fx_sin(v->angle) / 65536.0f;
++    float x = (float)b->x / 65536.0f - (float)v->x / 65536.0f, y = (float)b->y / 65536.0f - (float)v->y / 65536.0f;
++    float d = x * dx + y * dy, lat = x * -dy + y * dx;
++    int sw = (int)((float)b->img->w * (float)b->scale / 256.0f * c->focal / d / 2.0f);
++    int sh = (int)((float)b->img->h * (float)b->scale / 256.0f * c->focal / d / 2.0f);
++    int cx = (int)((c->cx + lat * c->focal / d) / 2.0f), sx0 = cx - sw / 2;
++    int sy1 = (int)((c->cy - ((float)b->z / 65536.0f - (float)v->z / 65536.0f) * c->focal / d) / 2.0f), sy0 = sy1 - sh;
++    int px, py;
++    for (px = sx0; px < sx0 + sw; px++)
++        for (py = sy0; py < sy0 + sh; py++) {
++            int tx, ty, l, seen = 0;
++            uint8_t t;
++            if (px < 0 || py < 0 || px >= DC2D_LW || py >= DC2D_LH) continue;
++            tx = (px - sx0) * b->img->w / sw;
++            if (b->flags & BB_FLIPX) tx = b->img->w - 1 - tx;
++            ty = (py - sy0) * b->img->h / sh;
++            t = b->img->pix[ty * b->img->w + tx];
++            if (!t) continue;
++            for (l = 1; l < DOOMO_LIGHT_LEVELS; l++) if (doomo_colormap[l][t] == nat_fb[py * nat_w + px]) seen = 1;
++            if (!seen) continue;
++            (*vis)++;
++            *hit += match_px(rgb, px, py);
++        }
++}
++
++static void test_sprites(void)
++{
++    long pvis = 0, phit = 0;
++    int mi, k, frames = 0, rects = 0, lowr = 0;
++    double sum = 0, hsum = 0;
++    int hn = 0;
++    for (mi = 0; mi < NMAPS; mi++) {
++        int cells[2000][2], nc = 0, x, y, stride;
++        map_load(maps[mi]);
++        for (y = 1; y < doomo_map.h - 1; y++)
++            for (x = 1; x < doomo_map.w - 1; x++)
++                if (open_cell(&doomo_map, x, y) && nc < 2000) { cells[nc][0] = x; cells[nc][1] = y; nc++; }
++        stride = nc / 40 > 0 ? nc / 40 : 1;
++        for (k = 0; k < nc; k += stride) {
++            int hd;
++            for (hd = 0; hd < 4; hd++) {
++                DoomoView3D v;
++                int i;
++                view_of(&v, cells[k][0], cells[k][1], hd, 0);
++                if (!place_sprites(&v, cells[k][0], cells[k][1], hd)) continue;
++                plat_begin_frame();
++                plat_clear(PAL_BLACK);
++                ref_view3d(&v);
++                dc2d_view3d_draw(&v);
++                /* the HUD over the middle sprite: the same 2D calls on both sides */
++                plat_rect(130, 90, 60, 40, PAL_UI_GOLD);
++                plat_text(134, 100, "HUD 100", PAL_BLACK);
++                plat_end_frame();
++                swpvr_render(dc2d_last(), rgb);
++                frames++;
++                if (getenv("DC6_PNG") && frames % 40 == 1) {
++                    char nm[512];
++                    snprintf(nm, sizeof(nm), "%s/spr_%03d_nat.png", getenv("DC6_PNG"), frames);
++                    nat_png_write(nm, nat_fb, nat_w, nat_h, 1);
++                    snprintf(nm, sizeof(nm), "%s/spr_%03d_dc.png", getenv("DC6_PNG"), frames);
++                    png_write_rgb(nm, rgb, DC2D_W, DC2D_H);
++                }
++                for (i = 0; i < 3; i++) {
++                    int x0, y0, x1, y1;
++                    double p;
++                    if (!sprite_rect(&v, &sbb[i], &x0, &y0, &x1, &y1)) continue;
++                    if ((x1 - x0) * (y1 - y0) < 64) continue;
++                    p = parity(rgb, x0, y0, x1 - x0, y1 - y0);
++                    sum += p; rects++;
++                    if (p < SPR_FRAME_MIN) lowr++;
++                    { int a = 0, h = 0; sprite_pixels(&v, &sbb[i], &a, &h); pvis += a; phit += h; }
++                }
++                hsum += parity(rgb, 130, 90, 60, 40); hn++;
++            }
++        }
++    }
++    printf("sprites: the sprites' own pixels (%ld seen in the reference): %.1f%% match\n", pvis, pvis ? (double)phit / (double)pvis * 100.0 : 0.0);
++    printf("sprites: %d frames, %d sprite rectangles, mean %.1f%% within %d/255; %d below %.0f%%; HUD over them %.1f%%\n",
++           frames, rects, sum / (rects ? rects : 1) * 100.0, TOL, lowr, SPR_FRAME_MIN * 100.0, hsum / (hn ? hn : 1) * 100.0);
++    CHECK(rects > 100, "sprites: only %d rectangles measured", rects);
++    CHECK(sum / (rects ? rects : 1) >= SPR_MIN, "sprites: mean %.1f%% below %.0f%%", sum / (rects ? rects : 1) * 100.0, SPR_MIN * 100.0);
++    CHECK(pvis > 100000 && (double)phit / (double)pvis >= SPR_PX_MIN, "sprites: own pixels match %.1f%% (%ld seen), below %.0f%%",
++          pvis ? (double)phit / (double)pvis * 100.0 : 0.0, pvis, SPR_PX_MIN * 100.0);
++    CHECK(hsum / (hn ? hn : 1) >= 0.97, "sprites: the HUD over them matches only %.1f%%", hsum / (hn ? hn : 1) * 100.0);
++}
++
+ static void test_tintfit(void)
+ {
+     int t, k;
+@@ -397,7 +564,13 @@ int main(void)
+     }
+     dc2d_view3d_remap_budget(100000);
+     test_tintfit();
++    if (getenv("DC6_ONLY") && !strcmp(getenv("DC6_ONLY"), "sprites")) {
++        test_sprites();
++        printf("dc6 view3d tests: %d checks, %d failed\n", checks, fails);
++        return fails ? 1 : 0;
++    }
+     test_parity();
++    test_sprites();
+     test_tint();
+     test_remap_budget();
+     test_viewport();
+-- 
+2.43.0
+
+
+From 788f7cb3b7361bc4e1cf06b311b5cc47d8b89f76 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 15:26:03 +0000
+Subject: [PATCH 2/5] DC6B: the solid block past the map's edge is drawn
+ (border-cell picture gap, sky colour looking up)
+
+The reference's map_cell_safe is a solid block of texture 1 past the edge; a ray that
+went over a low border block under the open sky hits it and sees a wall 256 units above
+the block. view3d.c emitted nothing there, so such views (eye by the edge, maps with a
+low border) were the sky colour. emit_cell now draws that wall. Host parity
+(dcv3d_test): level views 79.2 -> 85.6 %, looking up 80.2 -> 90.1 %, level frames
+under 45 %: 16 -> 1 of 788. test_edge_wall fails without it (19 %); gates raised
+(level 80 %, pitched 85 %, at most 1 % of frames under 45 %).
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx9wuhKv8Rqec7pX14
+---
+ dc/src/view3d.c              | 12 +++++++++---
+ dc/tests/gfx2d/test_dc_v3d.c | 33 +++++++++++++++++++++++++++++----
+ 2 files changed, 38 insertions(+), 7 deletions(-)
+
+diff --git a/dc/src/view3d.c b/dc/src/view3d.c
+index 96ae2ba4..34b41cf8 100644
+--- a/dc/src/view3d.c
++++ b/dc/src/view3d.c
+@@ -388,13 +388,19 @@ static void emit_cell(int cx, int cy)
+         for (k = 0; k < 4; k++) {
+             int nx = cx + nb[k][0], ny = cy + nb[k][1], ntop;
+             const DoomoCell *n;
+-            if (!in_map(nx, ny)) continue;
++            if ((k == 0 && s_ey <= Y0) || (k == 1 && s_ex >= X1) || (k == 2 && s_ey >= Y1) || (k == 3 && s_ex <= X0))
++                continue;
++            if (!in_map(nx, ny)) {
++                /* past the map's edge the reference has a solid block of texture 1 (map_cell_safe) that
++                 * rises 256 units above the roof the ray went over: a wall at the edge, picture and all */
++                vface(cx + nb[k][2], cy + nb[k][3], cx + nb[k][4], cy + nb[k][5], top, top + 256, 1,
++                      light - (k == 0 || k == 2), 0);
++                continue;
++            }
+             n = &M->cells[ny * M->w + nx];
+             if (!n->wall) continue;
+             ntop = roof_top(n, nx, ny);
+             if (ntop <= top) continue;
+-            if ((k == 0 && s_ey <= Y0) || (k == 1 && s_ex >= X1) || (k == 2 && s_ey >= Y1) || (k == 3 && s_ex <= X0))
+-                continue;
+             vface(cx + nb[k][2], cy + nb[k][3], cx + nb[k][4], cy + nb[k][5], top, ntop, n->wall,
+                   light - (k == 0 || k == 2), 0);
+         }
+diff --git a/dc/tests/gfx2d/test_dc_v3d.c b/dc/tests/gfx2d/test_dc_v3d.c
+index 80da0423..7964e1c1 100644
+--- a/dc/tests/gfx2d/test_dc_v3d.c
++++ b/dc/tests/gfx2d/test_dc_v3d.c
+@@ -40,9 +40,9 @@
+ void ref_view3d(const DoomoView3D *v);
+ 
+ #define TOL         40
+-#define PARITY_MIN  0.75   /* measured 79.2% on 2026-11-13; the gap is listed in docs/DREAMCAST.md section 9 */
++#define PARITY_MIN  0.80   /* measured 85.6% (79.2% before the map-edge wall); see docs/DREAMCAST.md section 9 */
+ #define FRAME_MIN   0.45   /* at most 3% of the level frames may be below it */
+-#define PITCH_MIN   0.60
++#define PITCH_MIN   0.85   /* measured 90.1% (80.2% before the map-edge wall) */
+ #define SPR_MIN     0.72   /* sprite rectangles (measured 79.1%), see test_sprites */
+ #define SPR_FRAME_MIN 0.25
+ #define SPR_PX_MIN  0.85   /* the sprites' own pixels (measured 90.5%; 77.9% with the exact rectangle off) */
+@@ -165,7 +165,7 @@ static void test_parity(void)
+                             png_write_rgb(nm, rgb, DC2D_W, DC2D_H);
+                         }
+                     }
+-                    if (png && p < FRAME_MIN && !pitch && nbad < 40) {
++                    if (png && p < FRAME_MIN + (pitch ? 0.15 : 0.0) && nbad < 60) {
+                         char nm[512];
+                         snprintf(nm, sizeof(nm), "%s/v3d_bad%02d_m%d_%d_%d_h%dp%d_nat.png", png, nbad, maps[mi], cells[k][0], cells[k][1], hd, pitch);
+                         nat_png_write(nm, nat_fb, nat_w, nat_h, 1);
+@@ -182,13 +182,31 @@ static void test_parity(void)
+            frames, sum / frames * 100.0, worst * 100.0, TOL);
+     printf("parity: level views %d, mean %.1f%%; pitched (look up 120) views %d, mean %.1f%%; %d skipped (native frame empty)\n",
+            ln, lsum / ln * 100.0, pn, psum / pn * 100.0, skipped);
+-    CHECK(lowf * 100 <= ln * 3, "parity: %d of %d level frames below %.0f%%", lowf, ln, FRAME_MIN * 100.0);
++    CHECK(lowf * 100 <= ln, "parity: %d of %d level frames below %.0f%%", lowf, ln, FRAME_MIN * 100.0);
+     printf("parity: %d level frames below %.0f%% (eyes beside a border block lower than their floor: docs/DREAMCAST.md)\n", lowf, FRAME_MIN * 100.0);
+     CHECK(lsum / ln >= PARITY_MIN, "parity: level views mean %.1f%% below %.0f%%", lsum / ln * 100.0, PARITY_MIN * 100.0);
+     CHECK(psum / pn >= PITCH_MIN, "parity: pitched views mean %.1f%% below %.0f%%", psum / pn * 100.0, PITCH_MIN * 100.0);
+     CHECK(nodraw == 0, "parity: %d views saw no cell", nodraw);
+ }
+ 
++/* an eye by the map's edge under the open sky looks out over a border block that is lower than the eye:
++ * the reference sees the solid block past the map (map_cell_safe) rise 256 units above it, a wall of
++ * texture 1; the sky stays above it. Without that wall these views were the sky colour, 0 % */
++static void test_edge_wall(void)
++{
++    static const int heads[2] = { 2, 3 };
++    int h;
++    for (h = 0; h < 2; h++) {
++        DoomoView3D v;
++        double p;
++        map_load(MAPID_PLUSHIE_FACTORY);
++        view_of(&v, 1, 1, heads[h], 0);
++        both(&v, rgb);
++        p = parity(rgb, 0, 0, DC2D_LW, DC2D_LH);
++        CHECK(p > 0.55, "edge wall: factory at 1,1 heading %d matches %.1f%%", heads[h], p * 100.0);
++    }
++}
++
+ /* new textures per view are budgeted on the console; with none allowed a view still draws (the plain
+  * texture darkened by the fit) and is close to the full one */
+ static void test_remap_budget(void)
+@@ -565,11 +583,18 @@ int main(void)
+     dc2d_view3d_remap_budget(100000);
+     test_tintfit();
+     if (getenv("DC6_ONLY") && !strcmp(getenv("DC6_ONLY"), "sprites")) {
++        test_edge_wall();
+         test_sprites();
+         printf("dc6 view3d tests: %d checks, %d failed\n", checks, fails);
+         return fails ? 1 : 0;
+     }
++    if (getenv("DC6_ONLY") && !strcmp(getenv("DC6_ONLY"), "parity")) {
++        test_parity();
++        printf("dc6 view3d tests: %d checks, %d failed\n", checks, fails);
++        return fails ? 1 : 0;
++    }
+     test_parity();
++    test_edge_wall();
+     test_sprites();
+     test_tint();
+     test_remap_budget();
+-- 
+2.43.0
+
+
+From fcf7fe491b391c7e46ee3ccccd91be0f72ce2bb6 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 15:41:41 +0000
+Subject: [PATCH 3/5] DC6B: the tick's budget cuts the first-person view,
+ sprite uploads budgeted, rays every 4 pixels
+
+- view_budget(): the view casts as far as what is left of the 33.3 ms tick allows
+  (cost model K x distance with a 1.3 safety, never under 10 cells or over the draw
+  distance; the fog keeps its scale). Flycast, the seven breach scripts (1935 ticks
+  each, demo bot): ticks over 33.3 ms 105 -> 7 (graveyard 38 -> 3, cloud_nine 55 -> 1,
+  cathedral 6 -> 3, factory 3, sewers 2 and underbelly 1 -> 0).
+- V3D_SPR_BUDGET: 3 new sprite textures / copies per view, the rest wait a tick.
+- V3D_RAY_PX 2 -> 4: visibility was 6-8 of the 13 ms of a big view.
+- dcrun: the over-budget tick lines name the 3D view's time; a line for the cuts;
+  mailbox g3d_cut / g3d_dist_min.
+- host tests: test_tick_budget, test_sprite_budget (fail without their code).
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx9wuhKv8Rqec7pX14
+---
+ dc/harness/dc_mailbox.h      |  5 ++-
+ dc/harness/dcrun.c           |  6 ++-
+ dc/src/dc3d.h                |  4 ++
+ dc/src/main.c                |  5 +++
+ dc/src/view3d.c              | 57 +++++++++++++++++++++-----
+ dc/tests/gfx2d/swpvr.c       |  8 +++-
+ dc/tests/gfx2d/test_dc_v3d.c | 78 ++++++++++++++++++++++++++++++++++++
+ docs/DREAMCAST.md            | 49 +++++++++++++++++++++-
+ 8 files changed, 198 insertions(+), 14 deletions(-)
+
+diff --git a/dc/harness/dc_mailbox.h b/dc/harness/dc_mailbox.h
+index bf0a7890..5112d9bc 100644
+--- a/dc/harness/dc_mailbox.h
++++ b/dc/harness/dc_mailbox.h
+@@ -87,9 +87,12 @@ typedef struct DcMailbox {
+      * sprites decoded, and the most prims one view had */
+     uint32_t room_us, room_us_max, room_us_sum, room_n;
+     uint32_t room_shells, room_shell_us_max, room_decodes, room_prims_max;
++    /* DC6B: the first-person views the tick's budget cut short (view3d.c view_budget), and the shortest
++     * ray distance in cells any view used */
++    uint32_t g3d_cut, g3d_dist_min;
+ } DcMailbox;
+ 
+-_Static_assert(sizeof(DcMailbox) == 268 + DC_MB_LOG_SIZE, "DcMailbox layout");
++_Static_assert(sizeof(DcMailbox) == 276 + DC_MB_LOG_SIZE, "DcMailbox layout");
+ 
+ /* Command ids: the same numbers as the GBA's (gba_plat.h GBA_HC_* and
+  * gba/src/hcmd.h), so hcmd.c can be shared in spirit. */
+diff --git a/dc/harness/dcrun.c b/dc/harness/dcrun.c
+index 7fdd1e39..bff79b46 100644
+--- a/dc/harness/dcrun.c
++++ b/dc/harness/dcrun.c
+@@ -834,7 +834,8 @@ static void work_poll(void)
+     wk_ticks += n - wk_n0;
+     if (w > TICK_BUDGET_US) {
+         wk_over += n - wk_n0;
+-        if (!quiet) printf("work: tick %u took %u us (over the 30 fps budget)\n", mb->ticks, w);
++        if (!quiet) printf("work: tick %u took %u us (over the 30 fps budget; 3D view %u us)\n",
++                          mb->ticks, w, mb->g3d_us);
+     }
+     if (w > wk_worst) {
+         wk_worst = w;
+@@ -1627,6 +1628,9 @@ int main(int argc, char **argv)
+                "TA bytes max %u, polygons left out %u\n",
+                mb->g3d_n, mb->g3d_us_sum / mb->g3d_n, mb->g3d_us_max, mb->g3d_polys,
+                mb->g3d_polys_max, mb->g3d_bytes_max, mb->g3d_dropped);
++    if (mb && mb_up && mb->g3d_n && mb->g3d_dist_min)   /* DC6B: the tick's budget */
++        printf("dcrun: first-person views cut short by the tick's budget %u of %u, shortest ray distance %u cells\n",
++               mb->g3d_cut, mb->g3d_n, mb->g3d_dist_min);
+     if (mb && mb_up && mb->room_n)      /* DC8: the house */
+         printf("dcrun: house views %u drawn, mean %u us max %u us; shells %u (slowest %u us), "
+                "sprites decoded %u, prims max %u\n",
+diff --git a/dc/src/dc3d.h b/dc/src/dc3d.h
+index aaa91775..4d0cc2f6 100644
+--- a/dc/src/dc3d.h
++++ b/dc/src/dc3d.h
+@@ -118,6 +118,9 @@ typedef struct Dc3dStats {
+     uint32_t culled;                       /* polygons wholly off the viewport, total */
+     uint32_t segs;                         /* segments built, total */
+     uint32_t us_last, us_max, us_sum, us_n;/* build time of the views (console timer) */
++    uint32_t deferred;                     /* DC6B: sprites that waited a tick for their texture (the budget) */
++    uint32_t cut_n;                        /* DC6B: first-person views the tick's budget cut short */
++    uint16_t cast_dist, cast_min;          /* ... the last view's ray distance in cells, the shortest of all */
+ } Dc3dStats;
+ extern Dc3dStats dc3d_stats;
+ 
+@@ -201,6 +204,7 @@ const Dc3dCam *dc2d_overworld_cam(void);            /* the last view's camera (t
+  * textures through bank `bank`. */
+ void dc3d_be_draw(const DcFrame *f, const DcPrim *marker);
+ uint32_t dc3d_be_us(void);       /* a microsecond clock for the build times (host: 0) */
++uint32_t dc3d_be_tick_us(void);  /* ... and the time since this tick began (host: dc3d_test_tick_us) */
+ 
+ /* The marker prim: mode DC2D_VIEW3D, color = segment, pad[0] = batch
+  * slot, tex = DC2D_NOTEX (so the 2D layer's texture marks skip it), argb =
+diff --git a/dc/src/main.c b/dc/src/main.c
+index 6c49bda8..adfdd1f6 100644
+--- a/dc/src/main.c
++++ b/dc/src/main.c
+@@ -71,6 +71,9 @@ void dc_pacing_reset(void)
+     skipped_in_row = 0;
+ }
+ 
++/* DC6B: microseconds since this tick's plat_begin_frame (the view sizes itself by what is left of the tick) */
++uint32_t dc3d_be_tick_us(void) { return (uint32_t)(timer_us_gettime64() - work_us0); }
++
+ void plat_begin_frame(void)
+ {
+     uint64_t now = timer_us_gettime64();
+@@ -125,6 +128,8 @@ void plat_end_frame(void)
+         dc_mailbox.g3d_polys_max = dc3d_stats.polys_max;
+         dc_mailbox.g3d_bytes_max = dc3d_stats.bytes_max;
+         dc_mailbox.g3d_dropped = dc3d_stats.dropped;
++        dc_mailbox.g3d_cut = dc3d_stats.cut_n;
++        dc_mailbox.g3d_dist_min = dc3d_stats.cast_min;
+         dc_mailbox.room_us = dc_room_stats.us_last;      /* DC8: the house */
+         dc_mailbox.room_us_max = dc_room_stats.us_max;
+         dc_mailbox.room_us_sum = dc_room_stats.us_sum;
+diff --git a/dc/src/view3d.c b/dc/src/view3d.c
+index 34b41cf8..7ad69bba 100644
+--- a/dc/src/view3d.c
++++ b/dc/src/view3d.c
+@@ -77,7 +77,7 @@
+ #define CELL       DOOMO_CELL_UNITS
+ #define MAXCELLS   (DOOMO_MAP_MAX_W * DOOMO_MAP_MAX_H)
+ #ifndef V3D_RAY_PX
+-#define V3D_RAY_PX 2                 /* logical pixels between two visibility rays */
++#define V3D_RAY_PX 4                 /* logical pixels between two visibility rays */
+ #endif
+ #define V3D_ZNEAR  4.0f              /* the player's radius is 14: a wall the eye
+                                         leans on is never cut where it shows   */
+@@ -92,7 +92,9 @@
+ 
+ typedef struct Col { float r, g, b; } Col;
+ 
+-static int s_view_dist = DC_V3D_DIST_MAX;
++static int s_view_dist = DC_V3D_DIST_MAX;    /* the draw distance (the fog's scale) */
++static int s_cast_dist = DC_V3D_DIST_MAX;    /* how far this view's rays go: the tick's budget cuts it (view_budget) */
++static float s_cost_k;                       /* us per cell of the last views (a decaying peak) */
+ 
+ void dc_view3d_set_dist(int cells)
+ {
+@@ -206,7 +208,8 @@ typedef struct Face {
+  * fit, or the texture's flat colour, for a frame or two; the rest come in the
+  * next frames (the cache keeps them) */
+ #define V3D_TEX_BUDGET 4
+-static int s_tex_budget = V3D_TEX_BUDGET, s_new_tex;
++#define V3D_SPR_BUDGET 3        /* ... and the sprites' own: a first sighting of an enemy is a 1 ms upload, 9 in a tick was 38 ms */
++static int s_tex_budget = V3D_TEX_BUDGET, s_new_tex, s_new_spr;
+ #ifdef DC2D_HOST
+ void dc2d_view3d_remap_budget(int n) { s_tex_budget = n; }
+ #endif
+@@ -421,6 +424,25 @@ static void emit_cell(int cx, int cy)
+     if (s_ex > X0) edge(cx - 1, cy, cx, cy + 1, cx, cy, fz, cz, sky, light);
+ }
+ 
++/* ---- the tick's budget --------------------------------------------------------------------
++ * A tick has 33.3 ms; the core's own work before the view varies (a path search takes 16 ms on a
++ * tick of a bot's plan), and the HUD, the PVR hand-off and the sound after it take about 5. The
++ * view costs about K * dist (K from the last views, a decaying peak), so what is left of the
++ * tick sets how far the rays go; the fog stays at the draw distance, the cut is only where the
++ * light is out. The distance never goes under DC_V3D_DIST_MIN, and never over the draw distance. */
++#define V3D_TICK_US   33333
++#define V3D_AFTER_US  7000
++#define V3D_COST_EXP  1.0f
++#define V3D_COST_SAFE 1.3f     /* the estimate is a peak of the last views, a busier one costs more */
++static int view_budget(void)
++{
++    int left = V3D_TICK_US - V3D_AFTER_US - (int)dc3d_be_tick_us();
++    float d;
++    if (s_cost_k <= 0.0f) return s_view_dist;
++    d = left > 0 ? powf((float)left / (s_cost_k * V3D_COST_SAFE), 1.0f / V3D_COST_EXP) : 0.0f;
++    return d >= (float)s_view_dist ? s_view_dist : d < (float)DC_V3D_DIST_MIN ? DC_V3D_DIST_MIN : (int)d;
++}
++
+ /* ---- visibility ---------------------------------------------------------------------- */
+ static void mark(int cx, int cy)
+ {
+@@ -443,10 +465,10 @@ static void cast(float rdx, float rdy, float sb, float st, float eps)
+     float px = s_ex / CELL, py = s_ey / CELL;
+     int mx = (int)floorf(px), my = (int)floorf(py);
+     float ddx = rdx != 0.0f ? fabsf(1.0f / rdx) : V3D_BIG, ddy = rdy != 0.0f ? fabsf(1.0f / rdy) : V3D_BIG;
+-    int stx = rdx < 0.0f ? -1 : 1, sty = rdy < 0.0f ? -1 : 1, step, steps = 2 * s_view_dist + 4;
++    int stx = rdx < 0.0f ? -1 : 1, sty = rdy < 0.0f ? -1 : 1, step, steps = 2 * s_cast_dist + 4;
+     float sdx = rdx < 0.0f ? (px - (float)mx) * ddx : ((float)(mx + 1) - px) * ddx;
+     float sdy = rdy < 0.0f ? (py - (float)my) * ddy : ((float)(my + 1) - py) * ddy;
+-    float cur_f, cur_c, tmax = (float)s_view_dist;
++    float cur_f, cur_c, tmax = (float)s_cast_dist;
+     int cur_sky;
+     if (in_map(mx, my) && !M->cells[my * M->w + mx].wall) {
+         const DoomoCell *c = &M->cells[my * M->w + mx];
+@@ -632,9 +654,16 @@ static void billboard(const DoomoView3D *view, int idx, float depth)
+     int slot, lv, cx = (int)floorf(x / CELL), cy = (int)floorf(y / CELL);
+     if (sx1 <= cam.vx0 || sx0 >= cam.vx1 || sy1 <= cam.vy0 || sy0 >= cam.vy1) { dc3d_stats.culled++; return; }
+     if (sw < 1 || sh < 1 || sw > 4 * DC2D_LW || sh > 4 * DC2D_LH) return;
++    /* a sprite the cache does not have yet is made inside the budget, else it waits a tick (nobody sees
++     * an enemy come in a 30th of a second late; nine uploads in one tick were a 38 ms tick) */
++    slot = dc2d_tex_image_new(img, 0);
++    if (slot < 0) {
++        if (s_new_spr >= V3D_SPR_BUDGET) { dc3d_stats.deferred++; return; }
++        s_new_spr++;
++        slot = dc2d_tex_image_new(img, 1);
++        if (slot < 0) return;
++    }
+     if (b->flags & BB_SHADOW) shadow(x, y, z + 1.0f, w * 0.375f + 2.0f);
+-    slot = dc2d_tex_image(img);
+-    if (slot < 0) return;
+     /* the reference's colours: the sprite through the colormap of its
+      * whole light level (a remapped copy; the plain image when there is
+      * no room, darkened by the level's fitted factor) */
+@@ -646,7 +675,8 @@ static void billboard(const DoomoView3D *view, int idx, float depth)
+     lv = (int)(level + 0.5f);
+     argb = pack_rgb(255.0f * s_tmul.r, 255.0f * s_tmul.g, 255.0f * s_tmul.b);
+     if (lv < DOOMO_LIGHT_LEVELS - 1) {
+-        int r = dc2d_tex_remap(slot, lv, doomo_colormap[lv]);
++        int r = dc2d_tex_remap(slot, lv, NULL);              /* a copy the cache has */
++        if (r < 0 && s_new_spr < V3D_SPR_BUDGET) { s_new_spr++; r = dc2d_tex_remap(slot, lv, doomo_colormap[lv]); }
+         if (r >= 0) slot = r;
+         else argb = pack_rgb(255.0f * s_fit[lv].r * s_tmul.r, 255.0f * s_fit[lv].g * s_tmul.g, 255.0f * s_fit[lv].b * s_tmul.b);
+     }
+@@ -681,7 +711,7 @@ static void billboard(const DoomoView3D *view, int idx, float depth)
+ static void billboards(const DoomoView3D *view)
+ {
+     int i, n = 0, count = DOOMO_MIN(view->sprite_count, V3D_MAX_SPRITES);
+-    float maxd = (float)(s_view_dist * CELL);
++    float maxd = (float)(s_cast_dist * CELL);
+     for (i = 0; i < count; i++) {
+         const DoomoBillboard *b = &view->sprites[i];
+         float d, x, y;
+@@ -728,6 +758,7 @@ void plat_view3d(const DoomoView3D *v)
+     }
+     t0 = dc3d_be_us();
+     s_new_tex = 0;
++    s_new_spr = 0;
+     M = v->map;
+     s_time = v->time;
+     if (++s_stamp == 0) {
+@@ -784,6 +815,9 @@ void plat_view3d(const DoomoView3D *v)
+     if (!dc3d_seg_begin(vx, vy, vw, vh)) return;
+     poly0 = dc3d_batch(dc3d_cur_slot())->np;
+     s_any_sky = 0;
++    s_cast_dist = view_budget();
++    if (s_cast_dist < s_view_dist) dc3d_stats.cut_n++;
++    if (!dc3d_stats.cast_min || s_cast_dist < dc3d_stats.cast_min) dc3d_stats.cast_min = (uint16_t)s_cast_dist;
+     visibility(plane, vw);
+     /* the backdrop goes FIRST: on the console the list is drawn in order and
+      * the backdrop's far z does not keep it behind the walls (Flycast, the
+@@ -808,6 +842,11 @@ void plat_view3d(const DoomoView3D *v)
+     {
+         uint32_t us = dc3d_be_us() - t0;
+         dc3d_stats.us_last = us;
++        if (us > 0) {                                    /* the cost model: us = K * dist, K a decaying peak */
++            float k = (float)us / powf((float)s_cast_dist, V3D_COST_EXP);
++            s_cost_k = k > s_cost_k * 0.97f ? k : s_cost_k * 0.97f;
++        }
++        dc3d_stats.cast_dist = (uint16_t)s_cast_dist;
+         dc3d_stats.us_sum += us;
+         dc3d_stats.us_n++;
+         if (us > dc3d_stats.us_max) dc3d_stats.us_max = us;
+diff --git a/dc/tests/gfx2d/swpvr.c b/dc/tests/gfx2d/swpvr.c
+index 90550b59..53f66ea3 100644
+--- a/dc/tests/gfx2d/swpvr.c
++++ b/dc/tests/gfx2d/swpvr.c
+@@ -116,7 +116,13 @@ static int blob;                        /* the polygon samples the shadows' blob
+ uint32_t swpvr_tris3d;
+ 
+ void dc3d_be_draw(const DcFrame *f, const DcPrim *marker) { (void)f; (void)marker; }
+-uint32_t dc3d_be_us(void) { return 0; }
++/* the clocks: 0, unless a test sets them. dc3d_test_step is added at every dc3d_be_us() call (a view
++ * reads the clock at its start and its end, so a view "costs" the step), dc3d_test_tick_us is the time
++ * since the tick began */
++uint32_t dc3d_test_step, dc3d_test_tick_us;
++static uint32_t test_clock;
++uint32_t dc3d_be_us(void) { test_clock += dc3d_test_step; return test_clock; }
++uint32_t dc3d_be_tick_us(void) { return dc3d_test_tick_us; }
+ 
+ static int chan(uint32_t c, int k) { return (int)((c >> (24 - 8 * k)) & 255u); }   /* k: 0 a, 1 r, 2 g, 3 b */
+ 
+diff --git a/dc/tests/gfx2d/test_dc_v3d.c b/dc/tests/gfx2d/test_dc_v3d.c
+index 7964e1c1..e8ca6a1d 100644
+--- a/dc/tests/gfx2d/test_dc_v3d.c
++++ b/dc/tests/gfx2d/test_dc_v3d.c
+@@ -546,6 +546,82 @@ static void test_sprites(void)
+     CHECK(hsum / (hn ? hn : 1) >= 0.97, "sprites: the HUD over them matches only %.1f%%", hsum / (hn ? hn : 1) * 100.0);
+ }
+ 
++/* the tick's budget (view3d.c view_budget): what is left of the 33 ms sets how far the rays go. The host
++ * clock is set by the test: every view "costs" dc3d_test_step, the tick has run dc3d_test_tick_us */
++extern uint32_t dc3d_test_step, dc3d_test_tick_us;
++static void test_tick_budget(void)
++{
++    DoomoView3D v;
++    int full, mid, low, n_mid, n_full, cut0;
++    map_load(MAPID_ARENA);
++    view_of(&v, doomo_map.w / 2, doomo_map.h / 2, 0, 0);
++    dc3d_test_step = 10000;                       /* a view costs 10 ms at the full distance: K = 312 us per cell */
++    dc3d_test_tick_us = 0;
++    both(&v, rgb);
++    both(&v, rgb);
++    full = dc3d_stats.cast_dist;
++    n_full = dc2d_view3d_cells();
++    CHECK(full == dc_view3d_dist(), "budget: an idle tick casts %d cells, the draw distance is %d", full, dc_view3d_dist());
++    cut0 = (int)dc3d_stats.cut_n;
++    dc3d_test_tick_us = 20000;                    /* 20 ms gone: 33.3 - 7 - 20 = 6.3 ms left, 1.3 x 312 us a cell: 15 cells */
++    dc3d_test_step = 15 * 312;                    /* (a shorter view costs less: the model stays at K = 312) */
++    both(&v, rgb);
++    mid = dc3d_stats.cast_dist;
++    CHECK(mid >= 14 && mid <= 16, "budget: 20 ms spent, the view casts %d cells (want about 15)", mid);
++    CHECK((int)dc3d_stats.cut_n == cut0 + 1, "budget: the cut view is counted");
++    dc3d_test_tick_us = 33000;                    /* nothing left: the shortest view */
++    dc3d_test_step = DC_V3D_DIST_MIN * 312;
++    both(&v, rgb);
++    low = dc3d_stats.cast_dist;
++    n_mid = dc2d_view3d_cells();
++    CHECK(low == DC_V3D_DIST_MIN, "budget: no time left, the view casts %d cells (want %d)", low, DC_V3D_DIST_MIN);
++    CHECK(n_mid < n_full, "budget: the shortest view sees %d cells, the full one %d", n_mid, n_full);
++    dc3d_test_tick_us = 0;
++    dc3d_test_step = 10000;
++    both(&v, rgb);
++    CHECK(dc3d_stats.cast_dist == full, "budget: the next idle tick is back at %d (%d)", full, (int)dc3d_stats.cast_dist);
++    dc3d_test_step = 0;
++    dc3d_test_tick_us = 0;
++}
++
++/* a sprite the cache has not seen costs an upload: a view makes at most V3D_SPR_BUDGET new ones, the rest
++ * wait a tick (nine uploads in one tick were a 38 ms tick on Flycast) */
++static void test_sprite_budget(void)
++{
++    static uint8_t pix[6][16 * 16];
++    static DoomoImage img[6];
++    static DoomoBillboard bb[6];
++    DoomoView3D v;
++    int i, d1, d2, k, x, y, ex = 0, ey = 0, found = 0;
++    map_load(MAPID_VAPE_CELLAR);
++    for (y = 2; y < doomo_map.h - 2 && !found; y++)
++        for (x = 2; x < doomo_map.w - 2 && !found; x++) {
++            if (!open_cell(&doomo_map, x, y)) continue;
++            view_of(&v, x, y, 0, 0);
++            if (line_clear(x, y, (float)fx_cos(v.angle) / 65536.0f, (float)fx_sin(v.angle) / 65536.0f, 200.0f)) { found = 1; ex = x; ey = y; }
++        }
++    CHECK(found, "sprite budget: no open line in the map");
++    for (i = 0; i < 6; i++) {
++        float fx = (float)fx_cos(v.angle) / 65536.0f, fy = (float)fx_sin(v.angle) / 65536.0f, dist = 70.0f + 25.0f * (float)i;
++        float lat = (float)(i - 3) * 8.0f;
++        for (k = 0; k < 16 * 16; k++) pix[i][k] = (uint8_t)(1 + (k + i) % 40);
++        img[i].w = 16; img[i].h = 16; img[i].pix = pix[i]; img[i].uid = doomo_image_new_uid();
++        bb[i].x = (fix16)(((float)(v.x / 65536) + fx * dist - fy * lat) * 65536.0f);
++        bb[i].y = (fix16)(((float)(v.y / 65536) + fy * dist + fx * lat) * 65536.0f);
++        bb[i].z = (fix16)(map_floor_z(&doomo_map, ex, ey) * 65536);
++        bb[i].img = &img[i]; bb[i].scale = 256; bb[i].flags = BB_FULLBRIGHT;
++    }
++    v.sprites = bb; v.sprite_count = 6; v.player_sprite = -1;
++    both(&v, rgb);
++    d1 = (int)dc3d_stats.deferred;
++    CHECK(d1 >= 3, "sprite budget: six new sprites in one view, %d waited (want at least 3)", d1);
++    both(&v, rgb);
++    both(&v, rgb);
++    d2 = (int)dc3d_stats.deferred;
++    both(&v, rgb);
++    CHECK((int)dc3d_stats.deferred == d2, "sprite budget: still waiting after three views (%d -> %d)", d2, (int)dc3d_stats.deferred);
++}
++
+ static void test_tintfit(void)
+ {
+     int t, k;
+@@ -582,6 +658,8 @@ int main(void)
+     }
+     dc2d_view3d_remap_budget(100000);
+     test_tintfit();
++    test_tick_budget();
++    test_sprite_budget();
+     if (getenv("DC6_ONLY") && !strcmp(getenv("DC6_ONLY"), "sprites")) {
+         test_edge_wall();
+         test_sprites();
+diff --git a/docs/DREAMCAST.md b/docs/DREAMCAST.md
+index c9b48037..ad5022d7 100644
+--- a/docs/DREAMCAST.md
++++ b/docs/DREAMCAST.md
+@@ -1695,7 +1695,7 @@ scripts on the merge base's CDI):
+ - The texture upload of the shell (up to 256 KB through the store queues)
+   inside one tick.
+ 
+-## 9. The first-person view (DC6, part 1: the world)
++## 9. The first-person view (DC6, parts 1 and 2: the world, then the sprites)
+ 
+ ```sh
+ make dc-host-test        # includes dcv3d_test
+@@ -1722,7 +1722,7 @@ its light and distance fade, its sky mapping. What the code does:
+   the reference's dark stone. Tints use the native tintmap fit
+   (`dc3d_tint_fit`, shared with the overworld). A view smaller than the
+   screen is cut at its edges (`Dc3dCam.clip`). `DC6_V3D=dc` draws it in the
+-  host runner. Billboards are a plain depth-tested rectangle for now.
++  host runner. Billboards: see "DC6B" below.
+ - `dc3d_sort_from` found texture kinds by a linear scan; a view has a texture
+   per light level, so it uses a small hash (256 kinds), checked by `test_sort`
+   (100 and 300 textures: grouping, and the order left alone above 256).
+@@ -1773,6 +1773,51 @@ data (budget 576 KB). Polygons against columns will never be pixel equal.
+ - No ticks, memory or PS1/GBA effect: all changes are under `dc/`; the
+   tint fit moved from `overworld.c` to `dc3d.c` unchanged.
+ 
++**DC6B: billboards, the weapon, effects and the HUD (2026-11-13)**
++
++The core hands `plat_view3d` the enemies, pickups and props as `DoomoBillboard`s; the weapon in
++the player's hands, the muzzle flash, the hit marks and the HUD are 2D calls (`plat_image`,
++`plat_rect`, `plat_text`) that the core makes after the view, so they are drawn by the 2D layer on top
++of the view's segment and need nothing from `view3d.c` (the segment is the 2D list's earlier entry).
++What part 2 changed in `view3d.c`:
++
++- Billboards use the reference's integer rectangle (`raycast.c draw_sprite`: width and height
++  `(int)(size x focal / depth)`, the centre column and the top row truncated), doubled onto the 640x480
++  frame, and read their texture a quarter logical pixel back (the reference takes a texel at a pixel's
++  left edge, a polygon at its centre). Parity of the sprites' own pixels (the pixels the reference drew
++  them on; `test_sprites`): 77.9 % before, 90.5 % now. The colours are the reference's: the sprite
++  through the colormap of its whole light level (a remapped copy), `BB_FULLBRIGHT`, `BB_FLIPX`, the
++  palette's index 0 transparent, `BB_TRANSLUCENT` and the player's own body close to the camera at 50 %
++  alpha (the reference dithers every other pixel), `BB_SHADOW` as the blob.
++- The HUD over a sprite is equal to the pixel on both sides (97 % gate, measured 100 %): the 2D list is
++  drawn after the segment.
++- The map's edge: past it the reference has a solid block of texture 1 (`map_cell_safe`). A ray that went
++  over a low border block under the open sky hits it and sees a wall 256 units above the block, so an eye
++  by the edge of a sky map sees a wall, with the sky above it. `emit_cell` now draws that wall. This was
++  both open items of part 1 (the border-cell picture gap and the sky colour when looking up): host
++  parity, level views 79.2 -> 85.6 %, looking up 80.2 -> 90.1 %, level frames under 45 % 16 -> 1 of 788
++  (`test_edge_wall`: 19 % without it).
++- Texture budget for sprites: a sprite the cache does not have is uploaded inside a per-view budget
++  (`V3D_SPR_BUDGET`, 3 uploads or colormap copies); the rest wait a tick (`dc3d_stats.deferred`).
++  Nine uploads in one tick were a 38 ms tick (`test_sprite_budget`).
++- Visibility casts a ray per 4 logical pixels (`V3D_RAY_PX`, it was 2): the casting was 6-8 ms of the
++  13 ms a big view cost on Flycast; host parity moved by less than 1 point (numbers below).
++- The tick's budget (`view_budget`): the core's own work before the view varies (the demo bot's plan takes
++  16 ms on every 12th tick; the 30 fps budget is 33.3 ms, and the HUD, the PVR hand-off and the sound
++  after the view take about 5-7). The view costs about `K x distance` (K from the last views, a decaying
++  peak, with a 1.3 safety factor), so `dc3d_be_tick_us()` (the time since `plat_begin_frame`) sets how far
++  the rays go this tick: never over the draw distance, never under `DC_V3D_DIST_MIN` (10 cells). The fog
++  keeps the draw distance's scale, so only the cut moves, where the light is nearly out
++  (`test_tick_budget`). dcrun prints `first-person views cut short by the tick's budget N of M, shortest
++  ray distance D cells`. This is a first, small governor; DC6C owns `OPT_DRAW_DIST`, the combat detail
++  option and the real governor, and replaces it.
++
++Flycast (2026-11-13, `dcrun` on the nodebug ELF, the seven `dc/harness/scripts/breach_*.txt`, 1935 ticks
++each, the demo bot plays; ticks over 33.3 ms of emulated work), before -> after:
++see the table at the end of this block. Screenshots of the same scripts next to the native runner's:
++the evidence folder `DC6B/compare/` of the package (not in the repo).
++
++
+ ## Rumble (X2)
+ 
+ `plat_rumble(strength 0..255, ticks)` (plat_ext.h) is the core's rumble hook.
+-- 
+2.43.0
+
+
+From e48f1eba5bc12cdb16393ae1e5164aea445e9631 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 15:52:51 +0000
+Subject: [PATCH 4/5] DC6B: docs (DREAMCAST.md section 9, ROADMAP, DC status),
+ test header
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx9wuhKv8Rqec7pX14
+---
+ ROADMAP.md                    |  3 ++-
+ dc/tests/gfx2d/test_dc_v3d.c  |  6 +++++
+ docs/DREAMCAST.md             | 42 +++++++++++++++++++++++++++--------
+ docs/design/held/status/DC.md |  5 +++--
+ 4 files changed, 44 insertions(+), 12 deletions(-)
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index 2a9ad37a..0a5a0f80 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -64,6 +64,7 @@ before redoing any of them; a zip without `.git` cannot tell.
+ - **SP5 (2026-11-08, speed audit G-D1 + G-LD + G-V15; measured on libmgba and PCSX-Redux; docs/GBA.md "D", "LD", "V15", docs/PS1.md "Loading fades"):** under a settled dialogue box the story overworld keeps its last world frame (new plat_ext hook `plat_hold_band`: a clean copy of the box's band in the GBA arena, put back each frame) and redraws only the dialogue: GBA story ch1 Mayor dialogue 17.7 -> 28.7 drawn fps (median 44.8 -> 20.9 ms), the tour's narration 29.9 -> 7.2 ms median; the idle animations pause under the box (pixel change, SPEED DEFAULTS); every other tour scene frame-exact; native test `test_dialog_hold.c`. The dialogue now ticks camfx for its own `{!}` / `{cut}` stings (they froze on their first frame until the box closed). Loading fades (`plat_loading`): GBA fades out over any first frame later than 150 ms after a scene change (combat entry, 521 ms) and back in; PS1 darkens the frame on screen while an overlay group is read (121-482 ms a group). GBA invaded governor resumes after a gap (45 ticks after the pause: 28.0 -> 30.0 fps). Not done: PS1 dialogue stays 24.0 fps here (no PS1 band; SP2's slices measured 29.7); the freezes themselves were not shortened (GBA combat entry's 521 ms first frame, PS1 disc reads at drive speed), and the GBA save / load freezes (11.7 s / 6.7 s in the emulator) need their own package; after a story-map entry the GBA is at 22.6 / 24.8 fps for ticks 30-100 (the sim's catch-up, X4's, and the map / region name banner, 2.1 ms a frame for 100 ticks in its 2D calls: a retained middle saved only 0.5 ms and was not kept), and on invaded the sim's hourly pass gives 16 frames over 34 ms (3 over 50) every in-game hour (38 s) (docs/GBA.md "V15"). EWRAM -72 B, IWRAM stack 6,296 B.
+ - **Talk T0-T2 (TK1, host-tested; docs/TALK.md):** the Facade-style house conversation's contract (`talk.h`: acts, `TalkUtter`, the `TALK_<lang>.BIN` format; `PLATF_TALK` bit 9; zoom 2 talk framing + `plat_room_project`; the `'TALK'` save chunk, 320 B declared; `NT_TALK_*` news), the English word network (3,972 concepts: 1,317 generated from game data, 2,655 authored incl. 95 safety-only; 21,254 reviewed association edges; append-only `concepts.lock`), the compiler `core/tools/talkc.py` (register agreement with `register.tsv`, no edge from kid-safe into adult talk or from adult talk into a child word, every child word flagged TCF_MINOR_WORD, font + story-codec coverage, 15 seeded refusals) + `talk_assoc.py`, and the reader `core/src/talk_db.c` (TALK_en.BIN 219,672 B, PS1 subset 168,891 B of 312 KB). Nothing reachable in play yet: the T4 safety gate comes before any generated line. A friendly hug toward any child stays a wholesome hug the child may decline (owner "TALK HUG"; `TA_HIGH_FIVE` is just a gesture). Design: `docs/design/talk/TALK_DESIGN.md`.
+ - **Dreamcast dream house (DC8, verified on Flycast and on the host):** `plat_room` on the PVR (`dc/src/room.c`, portable C) draws exactly what the native reference `room_ref.c` draws (every wallpaper, floor, ceiling ramp, roof, tint, room kind, fence and backdrop, H8's lamp pools, glow and panes, H9's back facings, the door and window skins, residents, cursor, rubber band, pans), but fast: the room's static shell (roof, backdrop, walls, floor, lip) is rendered once with room_ref's own pixel code into a PAL8 canvas and drawn as ONE texture until its key (size, view, paints, light, lamps, door, chimney) changes; each piece is one sprite whose texture is keyed by everything its pixels depend on (no decode at all while it stays in video RAM); the order is room_ref's topological pick found in O(n^2) (Kahn) instead of O(n^3). The Dreamcast's own effects (the plan's list): ghosts and translucent residents really translucent (a new GLASS 2D mode), the blueprint ghost a grey silhouette, an invalid ghost red, the selected piece an additive glow that pulses (a new ADD mode), and `zoom` (1: the PS1's 1.6x close-up on the player, 2: Talk's framing; `plat_room_project` follows it). Host (`make dc-host-test`, `test_dc_room.c`, 120 checks): all 58 room_ref golden frames and every catalog piece (349 pieces, 4 views + night, 1,745 frames) identical to room_ref pixel for pixel, dynamic views (residents, tints, pans, cursor, band) identical, the order equal to room_ref's on 3,000 random layouts, caches, zoom, effects. Flycast (`make -C dc room-test`, part of `make -C dc test`): the 58 golden frames drawn by the game's own `plat_room` (`room-parity`, mailbox 14) identical to room_ref; the 9 house scripts (dcrun learned `home-room`, `money`, `up`) 126 of 126 shots match the host's software PVR, 101 identical to the native runner (the rest: the Dreamcast's ghosts, glow, photo filters and shakes); the house takes 0.2-0.7 ms a tick at rest (12-17 ms on the frame a room's shell is rendered), work per tick 2.9-5.4 ms on average and 26.9 ms at worst (home_visit), 0 ticks over 33.3 ms (before DC8, through the 2D calls: 28-50 ms a tick on average, 56 ms worst, 1,560 of home_defend's 1,593 ticks over budget, sound underruns 214 -> 2). Owed: the frame time and the GLASS / ADD blends on a real console (docs/DREAMCAST.md section 8).
++- **Dreamcast first-person view, part 2 of 3 (DC6B, verified on Flycast and on the host):** billboards on the reference's integer rectangle (sprite pixels 77.9 -> 90.5 % of the reference's), the HUD over them equal, the solid block past the map's edge drawn (DC6A's border-cell picture gap and sky colour looking up: level views 79.2 -> 85.6 %, looking up 80.2 -> 90.1 %, level frames under 45 % 16 -> 1 of 788), sprite texture uploads budgeted, rays every 4 pixels, and a first small governor (`view_budget`: the view casts as far as what is left of the 33.3 ms tick allows). Flycast, the seven breach scripts (about 1935 ticks each, demo bot): ticks over 33.3 ms 105 -> 7 (graveyard 38 -> 3, cloud nine 55 -> 1), the other combat scripts 0; three of the seven left are a scene's entry tick (DC6C). Docs/DREAMCAST.md section 9 ("DC6B"). Done 2026-11-13.
+ - **Dreamcast first-person view, part 1 of 3 (DC6A, host only so far):** `plat_view3d` as PVR polygons (`dc/src/view3d.c`: walls, floors, ceilings, sky, tints, viewport) with a host parity test against the reference raycaster (`make -C dc v3d-test`, in `make dc-host-test`: level views 79 % of pixels within 40/255, looking up 80 %); builds with KallistiOS and draws the walls on Flycast (Hell Breach, five levels walked: Hell Breach 1 and the story_invasion fight enter under 33.3 ms, four bigger levels enter at 35-38 ms, no tick after an entry is over); gaps in docs/DREAMCAST.md section 9. Billboards, weapon, HUD (DC6B) and draw distance / governor (DC6C) are next.
+ - **Dreamcast overworld in 3D (DC7, verified on Flycast and on the host):** `plat_overworld` on the PVR (`dc/src/overworld.c` over the new 3D batches `dc3d.c` / `pvr3d.c`, which DC6 and DC8 can use): the town as terrain (floors, terrace faces, blocks with roofs, the sea round the map, the tall Wall rising into view from rows beyond the ground's edges), the PS1's tilted camera on the core's focus, billboards parallel to the screen at the native runner's size with the depth of an upright plane through their feet (no leaning; a house in front hides a resident's legs pixel by pixel), soft blob shadows, the native runner's daylight and night lean and its view tints fitted per channel, warm lamp pools at night, a far fade. A view is a segment of polygons placed by a marker in the 2D layer's single presorted list, so the core's painter's order holds (HUD, dialogue, fades on top; exact full-screen shades, palette lerps, screen shake and held pause backdrops all carry the 3D). The 2D's z moved under every 3D polygon (`DC2D_Z`): Flycast writes the 2D sprites' depth although it is off, which first hid the whole view. Texture twiddling is table-driven (entering a map was a 45-56 ms tick; now no overworld tick passes 33.3 ms). Host (`make dc-host-test`): a software-PVR rasteriser and `test_dc3d` (60 checks, also under ASan/UBSan: camera, near clip, full coverage on the four overworld maps, painter's order, depth against a block, lifted billboards (quest marks, jumps) staying over their feet at the screen's sides, shades, hold, shake, lerp, tint, repeatability, 400 billboards within budget); `DC7_OW=dc` draws the Dreamcast overworld in the host runner. Flycast (`make -C dc ow-test`, part of `make -C dc test`): story_ch1, story_ch2, story_invasion, fp_island, side_sample_a and a Hellvile walk by day and at 21:30: 39 of 39 shots with a view match the host's software PVR (98.3-99.98 % within 24/255; the 2D-only shots exactly; a shot with no host counterpart, a script without a view, or a tick over 33.3 ms fails it); the view costs 3.6-4.6 ms a tick (about 290-370 polygons, under 57 KB of TA data); Hellvile, the busiest hub, runs 6.7 ms of work a tick on average, 18.9 ms worst, 0 ticks over 33.3 ms. dcrun learned the native runner's story commands (side, talk, cell, skip-talk, skip-to, skip-to-scene, expect-text, no-stubs) and clock, so side_sample_a plays on Flycast. Owed: the view's cost and the PVR's depth behaviour in translucent presort mode on a real console (docs/DREAMCAST.md section 7).
+ - **Dreamcast sound (DC5, verified on Flycast and on the host):** `plat_tone`, `plat_sample` and `plat_sample_ex` on the Dreamcast (`dc/src/audio.c`, portable `mixer.c` / `sfx.c`): at the end of every logic tick the main thread renders the tick (four tone channels as musrender voices them, eight effect voices with pan, pitch and priority stealing, a DC block, a gentle low-pass, a soft knee near the rail) into one 1,470-frame slot of a PCM ring at 44,100 Hz, and a KOS stream thread copies slots to the AICA (6144 B per channel). The sound is a function of the game's ticks (a content hash per 600 slots repeats exactly). The synth is on the main thread because KallistiOS's 10 ms tick hands the CPU to the game thread for a whole slice whenever it lands in the stream thread's work, whatever the priorities: rendering in the stream callback took 11-13.7 ms in 3% of the calls and pushed AICA refills to 40 ms apart against a 46 ms buffer; now the worst refill interval is 45 ms against 70 ms. The music engine stays on the legacy bridge tier like every other port (the IRQ tier waits for a `DoomoVoice` renderer and S1's effects in IRQ mode; docs/DREAMCAST.md section 6 says what it needs). Host (`make dc-host-test`, CI with python3-numpy): 2,046 mixer checks (every effect at five pitches against a double-precision reference, after review found an int32 overflow in the interpolation that clicked in 28 of the 35 effects; the SAN run now fails on any UBSan report), and the mixer's WAV against musrender on fp_title / story_ch1 / action_combat / story_invasion, envelope r 0.97-0.999. Flycast (`make -C dc audio-test`, part of `make -C dc test`): title, invaded town and combat with sound against `runner --wav` (r 0.996 / 0.945 / 0.922, the same note in 86-94% of windows, level 0.95-0.97), 0 underruns and 0 late AICA refills, the title's hash twice; the mixer costs 1.3-1.5 ms a tick (4-5% of the 30 fps budget); DC3's ui-compare (94/94) and DC4's VMU checks still pass. Latency about 100 ms from the end of a tick to the speaker (music and effects together; the AICA-channel effects path was measured and not taken). Owed: the mixer cost, refill timing and latency on a real console (docs/DREAMCAST.md section 6).
+@@ -107,7 +108,7 @@ before redoing any of them; a zip without `.git` cannot tell.
+ | Native runner (core) | everything in the Done table: Free Play (empty or 1000-citizen Classic island), creator, apartments, care, shop, news, family, pets, loss + memorial, New life, NG+, Hell Breach, the 4-chapter story + epilogue, house, minigames, library, concert, studio, 8 languages. 69 scenes, none a weak placeholder |
+ | GBA | CI builds the ROM and runs mGBA tests (green on run #470); **invaded map measured 2026-11-06: 14.9 drawn fps, 29.8 logic ticks/s, work avg 56.8 / max 76.5 ms, sprites ~40% of the frame (`docs/INVADED_SPEED.md`)**; EWRAM is nearly full (about 10-13 KB free) and fps is low: island hub ~7.5, town hall 6.5, combat 10-12, pet 10, concert 13, title 12-14. Press latch and hub B shortcut not yet checked on hardware (`docs/HARDWARE_CHECK.md`) |
+ | PS1 | CI builds the disc; house room shells were measured earlier (Hell-Cellar 30 fps); the harness re-run, config file, J6/J7 on the disc and the family UI on console screens are not confirmed |
+-| Dreamcast | skeleton + the whole 2D layer (DC3) + controls, keyboard and VMU saves (DC4) + sound (DC5) + the overworld in 3D (DC7) + the dream house (DC8), verified on Flycast; the first-person view's world (DC6A: walls, floors, ceilings, sky) on Flycast; its billboards, weapon and HUD (DC6B) are still plain |
++| Dreamcast | skeleton + the whole 2D layer (DC3) + controls, keyboard and VMU saves (DC4) + sound (DC5) + the overworld in 3D (DC7) + the dream house (DC8), verified on Flycast; the first-person view on Flycast (DC6A: walls, floors, ceilings, sky; DC6B: billboards, the map's edge, a first budget governor; the weapon and HUD are the core's 2D calls on top); draw distance and the real governor (DC6C) are next |
+ | Not selectable yet | deep customization (M2 painters, M3), mature pack art (loaders exist, PS1 has no stills) |
+ 
+ ### To do, in the order to take them
+diff --git a/dc/tests/gfx2d/test_dc_v3d.c b/dc/tests/gfx2d/test_dc_v3d.c
+index e8ca6a1d..e62cba9b 100644
+--- a/dc/tests/gfx2d/test_dc_v3d.c
++++ b/dc/tests/gfx2d/test_dc_v3d.c
+@@ -20,6 +20,12 @@
+  *   budget     the busiest views stay inside the batch and TA budget,
+  *              nothing dropped
+  *   tintfit    dc3d_tint_fit: identity for TINT_NONE, b >= 0 everywhere
++ *   edge wall  (DC6B) an eye by a low map edge sees the solid block past it, not the sky colour
++ *   sprites    (DC6B) three billboards in front of the eye: the sprites' own pixels, their rectangles,
++ *              a HUD pill over them
++ *   tick       (DC6B) the tick's budget cuts the ray distance, and gives it back on an idle tick
++ *   sprite budget  (DC6B) six unseen sprites in one view: at most 3 uploads, the rest wait
++ * DC6_ONLY=sprites runs the DC6B tests alone (30 s), DC6_ONLY=parity the parity alone.
+  * DC6_PNG=DIR writes the worst frames as DIR/v3d_N_nat.png / _dc.png.
+  */
+ #include <stdio.h>
+diff --git a/docs/DREAMCAST.md b/docs/DREAMCAST.md
+index ad5022d7..367b5125 100644
+--- a/docs/DREAMCAST.md
++++ b/docs/DREAMCAST.md
+@@ -1737,11 +1737,8 @@ native pixel. Level views 79.2 % of pixels (gate 75 %), looking up 80.2 %
+ data (budget 576 KB). Polygons against columns will never be pixel equal.
+ 
+ **Known gaps (part 1 is not finished):**
+-- 16 of 788 level frames match under 45 %: eyes next to a border block whose
+-  top is lower than the eye's floor (maps 8 and 9, eye at 1,1 or by the
+-  edge, looking at the border). The reference draws a picture there that the
+-  Dreamcast does not (the wall face has zero height in `vface`). Not
+-  understood yet; look at `DC6_PNG=DIR` output for the worst frames.
++- (Fixed in DC6B: 16 of 788 level frames matched under 45 %, eyes by a map edge that is low: the reference
++  draws the solid block past the edge. See "DC6B" below.)
+ - Flycast (2026-11-13, `dcrun` on the nodebug ELF, emulated time): the first
+   run drew only the dark stone backdrop with the billboards on it. The
+   backdrop was emitted last; on the console the list is drawn in emission
+@@ -1812,11 +1809,38 @@ What part 2 changed in `view3d.c`:
+   ray distance D cells`. This is a first, small governor; DC6C owns `OPT_DRAW_DIST`, the combat detail
+   option and the real governor, and replaces it.
+ 
+-Flycast (2026-11-13, `dcrun` on the nodebug ELF, the seven `dc/harness/scripts/breach_*.txt`, 1935 ticks
+-each, the demo bot plays; ticks over 33.3 ms of emulated work), before -> after:
+-see the table at the end of this block. Screenshots of the same scripts next to the native runner's:
+-the evidence folder `DC6B/compare/` of the package (not in the repo).
++Flycast (2026-11-13, `dcrun` on the nodebug ELF, the seven `dc/harness/scripts/breach_*.txt`, about 1935
++ticks each, the demo bot plays; emulated time). Ticks over 33.3 ms of work, before -> after (the base
++tree, then this package), with the mean work per tick and the 3D view's build mean:
+ 
++| script | ticks over 33.3 ms | worst tick | work mean | view build mean |
++|---|---|---|---|---|
++| factory | 3 -> 0 | 34.2 -> 32.7 ms | 13.5 -> 12.0 ms | 7.4 -> 5.8 ms |
++| sewers | 2 -> 0 | 33.7 -> 31.9 ms | 14.2 -> 12.5 ms | 8.2 -> 6.5 ms |
++| cathedral | 6 -> 3 | 47.7 -> 40.0 ms | 11.6 -> 10.5 ms | 8.0 -> 6.4 ms |
++| graveyard | 38 -> 3 | 46.5 -> 35.3 ms | 17.0 -> 14.3 ms | 11.3 -> 8.5 ms |
++| underbelly | 1 -> 0 | 33.8 -> 31.6 ms | 12.8 -> 11.2 ms | 7.0 -> 5.3 ms |
++| vape cellar | 0 -> 0 | 23.7 -> 23.0 ms | 8.3 -> 7.5 ms | 3.5 -> 2.7 ms |
++| cloud nine | 55 -> 1 | 52.9 -> 36.2 ms | 15.9 -> 13.6 ms | 9.4 -> 7.0 ms |
++
++The seven that are left are not the view: three are a scene's entry tick (the level loads and uploads its
++textures: 33.5-36.2 ms, DC6C owns them) and the other four are a bot plan (16 ms of the core's own work on
++every 12th tick; the demo bot only) that lands on a tick that also uploads textures for the HUD. The
++combat scripts of the sticks tests (`dc/tests/sticks`): 0 of 396 and 0 of 346 ticks over, worst 25.8 and
++27.9 ms; the five-level walk (`COMBAT 0, 1, 2, 4, 6`, 955 ticks): 1 -> 0 over, worst 36.4 -> 32.4 ms, view
++build mean 13.6 -> 10.5 ms. `make -C dc ui-compare` 94 of 94 as before (the pause menu's 3D backdrop 36 %
++exact, 66 % close, as in part 1). Screenshots of the same scripts, the native runner's next to the base
++and this package's Dreamcast ones: the package's evidence folder (`DC6B/compare/`, not in the repo; the
++native runner is not synced with dcrun, so the bot's moves, and so the scenes, differ between the columns).
++
++Host parity (`make -C dc v3d-test`, 2026-11-13): level views 85.6 % of pixels within 40/255 (gate 80 %),
++looking up 90.1 % (gate 85 %), the red tint 66 %; 1 of 788 level frames under 45 % (gate 1 %); the sprites'
++own pixels 90.5 % (gate 85 %), the sprite rectangles 79.5 % (gate 72 %, they include the world behind
++the sprite), the HUD over them 100 % (gate 97 %); the busiest view 769 polygons, 102 KB of TA data.
++
++Memory: no resident RAM anywhere (all under `dc/`; the PS1 and GBA are untouched). Still open: a Flycast-to-host picture compare of the view (the host numbers are the only pixel measure),
++a real console, the scene-entry tick (DC6C), the real draw-distance option and governor (DC6C), the
++HUD's texture uploads in the same tick as a bot plan.
+ 
+ ## Rumble (X2)
+ 
+diff --git a/docs/design/held/status/DC.md b/docs/design/held/status/DC.md
+index 26584217..a876fc11 100644
+--- a/docs/design/held/status/DC.md
++++ b/docs/design/held/status/DC.md
+@@ -4,12 +4,13 @@ Kept by the stream's lead (rules: ../PARALLEL_WAVES.md section 5). Update it wit
+ What goes in: last update, lead session, landed (package, commit, key numbers, PS1 margin and
+ delta, GBA sizes), in flight (package and stage), next up, blockers, needs from other streams.
+ 
+-- **Last update:** 2026-11-13 (DC5B, DC6A and STKOPT landed)
++- **Last update:** 2026-11-13 (DC5B, DC6A, STKOPT and DC6B landed)
+ - **Lead:** session_01Xd63czSpihgJ8Rcfy2jCub (its own cloud machine; every toolchain and emulator installed: GBA, PS1 SDK + PCSX-Redux, KallistiOS + Flycast)
+ - **Landed:** landed before the restart: DC2, DC3, DC4, DC5, DC7, DC8. **DC5B (this session, sha in the push below):** the music engine's IRQ tier (`dc/src/musvoice.c`, `mixer.c`, docs/DREAMCAST.md section 6). Flycast (`make -C dc audio-test`): title r 0.990, invasion 0.997, combat 0.822 (gated at 0.8 on this tier; the bridge image had 0.904), 0 ticks over 33.3 ms, 0 sound underruns / late refills, repeat hash equal; mixer 1.2-1.4 ms per tick mean (no more than the bridge). `make -C dc` and `MUSIC_IRQ=0` both link. Host: test_audio 2046, test_tier 73, 28 songs on both tiers, core 1067 passed (SAN=1 too, only the known UBSan reports), GBA build+test, .iwram 11,256 B / .iwram_bss 4,084 B unchanged, `audio_channel_state` is a weak alias (no byte on any port). PS1 not built (no SDK on that machine): the core change is zero bytes, the margin is as on the base. Found and fixed in the review of the draft: the babble hand-back put the harmony on tone channel 1 twice; the IRQ tier is not the bridge's sound by design (docs section 6). Open: the music no longer ducks under the babble and one-shots (listen on a console), the RAM ledger is about +370 B, the 2 ui-compare shots options_cheats / opt_5_perf fail on the base too (Draw distance row, not DC5B).
+ - **DC6A landed (sha in the push below):** `plat_view3d` on the PVR, part 1: walls, floors, ceilings, sky, tints, viewport (`dc/src/view3d.c`, docs/DREAMCAST.md section 9). Host parity (`make -C dc v3d-test`, in `make dc-host-test`, about 4 min): level views 79.2 % of pixels within 40/255 of the reference raycaster (gate 75 %), looking up 80.2 %, red tint 66 %; 16 of 788 level frames under 45 % (an open gap, section 9); busiest view 769 polygons, 102 KB TA. Flycast: Hell Breach 1 walls, floor, ceiling, sky draw; no tick over 33.3 ms in it; four bigger levels enter at 35-38 ms (the entry tick, a budget of 4 new textures per view got it from 37-50); `ui-compare` 94/94, `room-test` ok, `ow-test` ok except `side_sample_a`, which fails on the base too (3 of 17 shots). Found on Flycast: a backdrop emitted last painted over the walls (now first); a duplicate `plat_view3d` stub would have failed the link. Core 1079 passed (SAN=1 too), check-gen, xcheck (PS1 leg skipped: no SDK on this machine), GBA build and test, `.iwram` 11,256 B / `.iwram_bss` 4,084 B (no core, gba or ps1 file changed). PS1 not built (no SDK here): zero bytes, the margin is as on the base. Open: billboards are plain rectangles (DC6B); the entry tick of big levels and the 13 ms steady build of big views (DC6C); the border-cell picture gap and the sky colour when looking up on maps 4 and 5; no Flycast-to-host picture compare of the view.
+ - **STKOPT landed (sha in the push below):** Options > Controls > "Stick: Turn / Strafe" (`OPT_STICK_MODE`, the last id of OPT2, saved in the 'OPT2' chunk; docs/DREAMCAST.md section 5). The row shows on a one-stick Dreamcast pad only; Turn is the default and is today's behaviour, Strafe makes the stick's X strafe and the analog triggers turn. An old 'OPT2' chunk, or a save without one, loads as Turn. The review's three text / behaviour findings are fixed here: the shooter tip and the Controls help line follow the mode, and a preset no longer resets it (`stkopt_shooter_tip_follows_the_stick_mode`, `stkopt_preset_keeps_the_stick_mode`, both fail without their fix). Numbers on the landed tree: core 1136 passed, 0 failed (SAN=1 too, only the known concert_gfx / fixmath / test_math UBSan reports, none in a file this package touches); check-gen and langpack up to date; xcheck 410 files OK on gcc/arm/sh4 (PS1 leg skipped, no SDK here). GBA builds and tests pass; against the base `.data` 816, `.bss` 245,804, `.noinit` 0, `.iwram` 11,256 B, `.iwram_bss` 4,084 B all unchanged (EWRAM and IWRAM net zero), ROM only `.text` +144 B, `.rodata` +84 B. **PS1: not built or measured here (no PSn00bSDK on this machine);** the base's margin is LV0's 68,512 B below the stack top, which is under the 72 KB target already, so this package added as little as it could: the one-stick tip lines and the row's help line are inside `#if DOOMO_TRIGGERS` (zero bytes on the PS1 and the GBA), the combat strafe branch folds away there too, and what is left is the OPT2 table row plus "Stick" / "Turn" / "Strafe" (about 40 B, in core files that the PS1 build already compiles -Os). No resident RAM anywhere. Dreamcast: `make -C dc` and `make -C dc disc` build, `dc-host-test` ok, `ui-compare` 94 of 94 (the new row widened the Controls mask in `dc/harness/known_diffs.tsv` to 48 px), `vmu-test` ok; dcrun `dc/tests/sticks/stick_option.txt` 0 of 396 ticks over 33 ms (worst 29.0 ms, COMBAT) and `sticks.txt` 0 of 345 (worst 29.4 ms). Open: the mode is saved with the world, not in the machine config record, so another save or a New Game starts at Turn (a record byte would be needed); "Reset page" on the Controls page still sets it to Turn; `ow-test`'s `side_sample_a` fails here as it does on the base (3 of 17 shots).
++- **DC6B landed (sha in the push below; branch fut-dc6b):** the first-person view's sprites, the open items of DC6A and a first budget governor (`dc/src/view3d.c`, docs/DREAMCAST.md section 9 "DC6B"). The weapon, effects and HUD are the core's 2D calls over the view's segment (nothing to draw in `view3d.c`). Host (`make -C dc v3d-test`): level views 85.6 % within 40/255 (was 79.2), looking up 90.1 % (80.2), 1 of 788 level frames under 45 % (16); sprites' own pixels 90.5 % (77.9 with the old rectangle), HUD over a sprite 100 %. Flycast, the seven breach scripts: ticks over 33.3 ms 105 -> 7 (graveyard 38 -> 3, cloud nine 55 -> 1, cathedral 6 -> 3, factory / sewers / underbelly 0), sticks scripts 0 of 396 / 346, the five-level walk 1 -> 0; `ui-compare` 94 of 94. Not reached: 0 ticks over on every script (3 entry ticks of 33.5-36.2 ms, 4 bot-plan ticks that also upload HUD textures). PS1 not built (no SDK on that machine): no byte of core, ps1 or gba changed. Open for DC6C: the entry tick, `OPT_DRAW_DIST` and the combat detail option (`view_budget` is a stand-in governor: it replaces or feeds it), a Flycast-to-host picture compare.
+ - **In flight (round 1):** none from this session.
+-- **Next up:** DC6B (billboards, weapons, effects, HUD), DC6C (`OPT_DRAW_DIST`, combat detail option, governor, Max detail at 30); then DC9 by scene family; TD1-TD3 after TK5
++- **Next up:** DC6C (`OPT_DRAW_DIST`, combat detail option, governor, Max detail at 30); then DC9 by scene family; TD1-TD3 after TK5
+ - **Blockers:** none
+ - **Needs from other streams:** none. For LEVELS: DC6A has landed (walls, floors, ceilings and sky draw on the Dreamcast; billboards are plain until DC6B).
+-- 
+2.43.0
+
+
+From 7597ff8ce9a122013ca64130655fd41917cbf20e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 17:29:48 +0000
+Subject: [PATCH 5/5] DC6B: land notes: numbers on the rebased tree, review doc
+ nits
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx9wuhKv8Rqec7pX14
+---
+ docs/DREAMCAST.md             | 6 ++++--
+ docs/design/held/status/DC.md | 2 +-
+ 2 files changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/docs/DREAMCAST.md b/docs/DREAMCAST.md
+index 367b5125..88785c08 100644
+--- a/docs/DREAMCAST.md
++++ b/docs/DREAMCAST.md
+@@ -1733,7 +1733,7 @@ Measured on the host (software PVR, `dcv3d_test`, 2026-11-13): 8 first-person
+ maps (Hell Breach 1..7 and the arena), 24 eyes each, 4 headings, level and
+ looking up 120: 1182 frames, 2x2 block mean within 40/255 per channel of the
+ native pixel. Level views 79.2 % of pixels (gate 75 %), looking up 80.2 %
+-(gate 60 %); the red tint 66 %; the busiest view 769 polygons, 102 KB of TA
++(gate 60 %); the red tint 66 %; the busiest view about 780 polygons, about 103 KB of TA (moves a little between runs)
+ data (budget 576 KB). Polygons against columns will never be pixel equal.
+ 
+ **Known gaps (part 1 is not finished):**
+@@ -1797,6 +1797,8 @@ What part 2 changed in `view3d.c`:
+ - Texture budget for sprites: a sprite the cache does not have is uploaded inside a per-view budget
+   (`V3D_SPR_BUDGET`, 3 uploads or colormap copies); the rest wait a tick (`dc3d_stats.deferred`).
+   Nine uploads in one tick were a 38 ms tick (`test_sprite_budget`).
++  A colormap copy that does not fit the budget falls back to the fitted flat colour for that tick: the
++  sprite's brightness can change for one tick (host: remap budget full 84.4 %, no new copies 56.5 %).
+ - Visibility casts a ray per 4 logical pixels (`V3D_RAY_PX`, it was 2): the casting was 6-8 ms of the
+   13 ms a big view cost on Flycast; host parity moved by less than 1 point (numbers below).
+ - The tick's budget (`view_budget`): the core's own work before the view varies (the demo bot's plan takes
+@@ -1836,7 +1838,7 @@ native runner is not synced with dcrun, so the bot's moves, and so the scenes, d
+ Host parity (`make -C dc v3d-test`, 2026-11-13): level views 85.6 % of pixels within 40/255 (gate 80 %),
+ looking up 90.1 % (gate 85 %), the red tint 66 %; 1 of 788 level frames under 45 % (gate 1 %); the sprites'
+ own pixels 90.5 % (gate 85 %), the sprite rectangles 79.5 % (gate 72 %, they include the world behind
+-the sprite), the HUD over them 100 % (gate 97 %); the busiest view 769 polygons, 102 KB of TA data.
++the sprite), the HUD over them 100 % (gate 97 %); the busiest view about 780 polygons, about 103 KB of TA (moves a little between runs) data.
+ 
+ Memory: no resident RAM anywhere (all under `dc/`; the PS1 and GBA are untouched). Still open: a Flycast-to-host picture compare of the view (the host numbers are the only pixel measure),
+ a real console, the scene-entry tick (DC6C), the real draw-distance option and governor (DC6C), the
+diff --git a/docs/design/held/status/DC.md b/docs/design/held/status/DC.md
+index a876fc11..2238644b 100644
+--- a/docs/design/held/status/DC.md
++++ b/docs/design/held/status/DC.md
+@@ -9,7 +9,7 @@ delta, GBA sizes), in flight (package and stage), next up, blockers, needs from
+ - **Landed:** landed before the restart: DC2, DC3, DC4, DC5, DC7, DC8. **DC5B (this session, sha in the push below):** the music engine's IRQ tier (`dc/src/musvoice.c`, `mixer.c`, docs/DREAMCAST.md section 6). Flycast (`make -C dc audio-test`): title r 0.990, invasion 0.997, combat 0.822 (gated at 0.8 on this tier; the bridge image had 0.904), 0 ticks over 33.3 ms, 0 sound underruns / late refills, repeat hash equal; mixer 1.2-1.4 ms per tick mean (no more than the bridge). `make -C dc` and `MUSIC_IRQ=0` both link. Host: test_audio 2046, test_tier 73, 28 songs on both tiers, core 1067 passed (SAN=1 too, only the known UBSan reports), GBA build+test, .iwram 11,256 B / .iwram_bss 4,084 B unchanged, `audio_channel_state` is a weak alias (no byte on any port). PS1 not built (no SDK on that machine): the core change is zero bytes, the margin is as on the base. Found and fixed in the review of the draft: the babble hand-back put the harmony on tone channel 1 twice; the IRQ tier is not the bridge's sound by design (docs section 6). Open: the music no longer ducks under the babble and one-shots (listen on a console), the RAM ledger is about +370 B, the 2 ui-compare shots options_cheats / opt_5_perf fail on the base too (Draw distance row, not DC5B).
+ - **DC6A landed (sha in the push below):** `plat_view3d` on the PVR, part 1: walls, floors, ceilings, sky, tints, viewport (`dc/src/view3d.c`, docs/DREAMCAST.md section 9). Host parity (`make -C dc v3d-test`, in `make dc-host-test`, about 4 min): level views 79.2 % of pixels within 40/255 of the reference raycaster (gate 75 %), looking up 80.2 %, red tint 66 %; 16 of 788 level frames under 45 % (an open gap, section 9); busiest view 769 polygons, 102 KB TA. Flycast: Hell Breach 1 walls, floor, ceiling, sky draw; no tick over 33.3 ms in it; four bigger levels enter at 35-38 ms (the entry tick, a budget of 4 new textures per view got it from 37-50); `ui-compare` 94/94, `room-test` ok, `ow-test` ok except `side_sample_a`, which fails on the base too (3 of 17 shots). Found on Flycast: a backdrop emitted last painted over the walls (now first); a duplicate `plat_view3d` stub would have failed the link. Core 1079 passed (SAN=1 too), check-gen, xcheck (PS1 leg skipped: no SDK on this machine), GBA build and test, `.iwram` 11,256 B / `.iwram_bss` 4,084 B (no core, gba or ps1 file changed). PS1 not built (no SDK here): zero bytes, the margin is as on the base. Open: billboards are plain rectangles (DC6B); the entry tick of big levels and the 13 ms steady build of big views (DC6C); the border-cell picture gap and the sky colour when looking up on maps 4 and 5; no Flycast-to-host picture compare of the view.
+ - **STKOPT landed (sha in the push below):** Options > Controls > "Stick: Turn / Strafe" (`OPT_STICK_MODE`, the last id of OPT2, saved in the 'OPT2' chunk; docs/DREAMCAST.md section 5). The row shows on a one-stick Dreamcast pad only; Turn is the default and is today's behaviour, Strafe makes the stick's X strafe and the analog triggers turn. An old 'OPT2' chunk, or a save without one, loads as Turn. The review's three text / behaviour findings are fixed here: the shooter tip and the Controls help line follow the mode, and a preset no longer resets it (`stkopt_shooter_tip_follows_the_stick_mode`, `stkopt_preset_keeps_the_stick_mode`, both fail without their fix). Numbers on the landed tree: core 1136 passed, 0 failed (SAN=1 too, only the known concert_gfx / fixmath / test_math UBSan reports, none in a file this package touches); check-gen and langpack up to date; xcheck 410 files OK on gcc/arm/sh4 (PS1 leg skipped, no SDK here). GBA builds and tests pass; against the base `.data` 816, `.bss` 245,804, `.noinit` 0, `.iwram` 11,256 B, `.iwram_bss` 4,084 B all unchanged (EWRAM and IWRAM net zero), ROM only `.text` +144 B, `.rodata` +84 B. **PS1: not built or measured here (no PSn00bSDK on this machine);** the base's margin is LV0's 68,512 B below the stack top, which is under the 72 KB target already, so this package added as little as it could: the one-stick tip lines and the row's help line are inside `#if DOOMO_TRIGGERS` (zero bytes on the PS1 and the GBA), the combat strafe branch folds away there too, and what is left is the OPT2 table row plus "Stick" / "Turn" / "Strafe" (about 40 B, in core files that the PS1 build already compiles -Os). No resident RAM anywhere. Dreamcast: `make -C dc` and `make -C dc disc` build, `dc-host-test` ok, `ui-compare` 94 of 94 (the new row widened the Controls mask in `dc/harness/known_diffs.tsv` to 48 px), `vmu-test` ok; dcrun `dc/tests/sticks/stick_option.txt` 0 of 396 ticks over 33 ms (worst 29.0 ms, COMBAT) and `sticks.txt` 0 of 345 (worst 29.4 ms). Open: the mode is saved with the world, not in the machine config record, so another save or a New Game starts at Turn (a record byte would be needed); "Reset page" on the Controls page still sets it to Turn; `ow-test`'s `side_sample_a` fails here as it does on the base (3 of 17 shots).
+-- **DC6B landed (sha in the push below; branch fut-dc6b):** the first-person view's sprites, the open items of DC6A and a first budget governor (`dc/src/view3d.c`, docs/DREAMCAST.md section 9 "DC6B"). The weapon, effects and HUD are the core's 2D calls over the view's segment (nothing to draw in `view3d.c`). Host (`make -C dc v3d-test`): level views 85.6 % within 40/255 (was 79.2), looking up 90.1 % (80.2), 1 of 788 level frames under 45 % (16); sprites' own pixels 90.5 % (77.9 with the old rectangle), HUD over a sprite 100 %. Flycast, the seven breach scripts: ticks over 33.3 ms 105 -> 7 (graveyard 38 -> 3, cloud nine 55 -> 1, cathedral 6 -> 3, factory / sewers / underbelly 0), sticks scripts 0 of 396 / 346, the five-level walk 1 -> 0; `ui-compare` 94 of 94. Not reached: 0 ticks over on every script (3 entry ticks of 33.5-36.2 ms, 4 bot-plan ticks that also upload HUD textures). PS1 not built (no SDK on that machine): no byte of core, ps1 or gba changed. Open for DC6C: the entry tick, `OPT_DRAW_DIST` and the combat detail option (`view_budget` is a stand-in governor: it replaces or feeds it), a Flycast-to-host picture compare.
++- **DC6B landed (sha in the push below; branch fut-dc6b):** the first-person view's sprites, the open items of DC6A and a first budget governor (`dc/src/view3d.c`, docs/DREAMCAST.md section 9 "DC6B"). The weapon, effects and HUD are the core's 2D calls over the view's segment (nothing to draw in `view3d.c`). Host (`make -C dc v3d-test`): level views 85.6 % within 40/255 (was 79.2), looking up 90.1 % (80.2), 1 of 788 level frames under 45 % (16); sprites' own pixels 90.5 % (77.9 with the old rectangle), HUD over a sprite 100 %. Flycast, the seven breach scripts: ticks over 33.3 ms 105 -> 7 (graveyard 38 -> 3, cloud nine 55 -> 1, cathedral 6 -> 3, factory / sewers / underbelly 0), sticks scripts 0 of 396 / 346, the five-level walk 1 -> 0; `ui-compare` 94 of 94. Not reached: 0 ticks over on every script (3 entry ticks of 33.5-36.2 ms, 4 bot-plan ticks that also upload HUD textures). PS1 not built (no SDK on that machine): no byte of core, ps1 or gba changed. Re-measured on the tree rebased onto origin 501f6f16: core 1198 passed 0 failed (SAN=1 too), check-gen ok, xcheck 415 files ok (PS1 leg skipped), GBA test ok, `.iwram` 11,256 B / `.iwram_bss` 4,084 B / `.data` 816 / `.bss` 245,788 unchanged, `dc-host-test` ok (v3d 63 checks, level views 85.6 %, looking up 90.1 %, busiest view 780 polygons / 103 KB TA), Flycast graveyard 3 of 1935 ticks over (worst 35.3 ms, tick 444), cloud nine 1 (36.2 ms, entry tick). **PS1: not built (no SDK here), zero core / ps1 bytes, so the margin is as on origin.** Review nits fixed in the docs (busiest-view figure, one-tick brightness fallback of a deferred sprite colormap copy); `view_budget`'s cost factor is not reset on a scene change (DC6C to decide). Open for DC6C: the entry tick, `OPT_DRAW_DIST` and the combat detail option (`view_budget` is a stand-in governor: it replaces or feeds it), a Flycast-to-host picture compare.
+ - **In flight (round 1):** none from this session.
+ - **Next up:** DC6C (`OPT_DRAW_DIST`, combat detail option, governor, Max detail at 30); then DC9 by scene family; TD1-TD3 after TK5
+ - **Blockers:** none
+-- 
+2.43.0
+

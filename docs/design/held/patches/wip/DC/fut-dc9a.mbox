@@ -1,0 +1,455 @@
+From 4c4c581c3221c77b3995590c4966a2548a171b45 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 16:32:09 +0000
+Subject: [PATCH 1/4] DC9A: dcrun story commands lang, expect-lang,
+ expect-hero, ending-seen, story-done, story-fp (hcmd ids 27-30)
+
+Four story / free-play scripts (fp_playas_free, story_engine, story_es,
+story_newgame_hero) stopped at a command the native runner has and dcrun
+lacked. They now pass on Flycast.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx9wuhKv8Rqec7pX14
+---
+ dc/harness/dc_mailbox.h |  9 ++++++++-
+ dc/harness/dcrun.c      | 14 ++++++++++++++
+ dc/src/hcmd.c           | 34 ++++++++++++++++++++++++++++++++++
+ 3 files changed, 56 insertions(+), 1 deletion(-)
+
+diff --git a/dc/harness/dc_mailbox.h b/dc/harness/dc_mailbox.h
+index bf0a7890..fbe9961e 100644
+--- a/dc/harness/dc_mailbox.h
++++ b/dc/harness/dc_mailbox.h
+@@ -119,7 +119,14 @@ enum {
+     DC_HC_CLOCK = 24,                    /* clock HH MM: the town clock = arg minutes */
+     /* DC8: the native runner's house commands (core/tests/scripts/home_*.txt) */
+     DC_HC_HOME_ROOM = 25,                /* home-room N: move in, room N opened */
+-    DC_HC_MONEY = 26                     /* money N: the town's purse = arg */
++    DC_HC_MONEY = 26,                    /* money N: the town's purse = arg */
++    /* DC9A: the rest of the native runner's story / free-play commands */
++    DC_HC_LANG = 27,                     /* name = a language code: arg 0 sets it
++                                          * (opt_set OPT_LANGUAGE), arg 1 checks it;
++                                          * result 0 unknown code, 1 set / differs, 2 ok */
++    DC_HC_HERO = 28,                     /* result 2 when the hero's name is name, else 1 */
++    DC_HC_ENDING_SEEN = 29,              /* ending-seen: unlock UL_STORY_END(0) quietly */
++    DC_HC_STORY_DONE = 30                /* story-done: the town is a finished story */
+ };
+ 
+ #endif
+diff --git a/dc/harness/dcrun.c b/dc/harness/dcrun.c
+index 7fdd1e39..987ed807 100644
+--- a/dc/harness/dcrun.c
++++ b/dc/harness/dcrun.c
+@@ -1272,6 +1272,20 @@ static int run_script(FILE *f)
+             uint32_t want = n >= 3 ? (uint32_t)strtoul(v[2], NULL, 0) : 1;
+             if (!mb_cmd(DC_HC_FLAG, (uint32_t)strtoul(v[1], NULL, 0), NULL, &r)) return 0;
+             if (r != want) fail("line %d: flag %s = %u, wanted %u", lineno, v[1], r, want);
++        } else if ((!strcmp(c, "lang") || !strcmp(c, "expect-lang")) && n >= 2) {   /* DC9A */
++            if (!mb_cmd(DC_HC_LANG, c[0] == 'e', v[1], &r)) return 0;
++            if (!r) fail("line %d: %s needs a code of core/lang/languages.tsv, got %s", lineno, c, v[1]);
++            else if (c[0] == 'e' && r != 2) fail("line %d: expected the language to be %s", lineno, v[1]);
++        } else if (!strcmp(c, "expect-hero") && n >= 2) {
++            if (!mb_cmd(DC_HC_HERO, 0, v[1], &r)) return 0;
++            if (r != 2) fail("line %d: expected the hero to be %s", lineno, v[1]);
++        } else if (!strcmp(c, "ending-seen") || !strcmp(c, "story-done")) {
++            if (!mb_cmd(c[0] == 'e' ? DC_HC_ENDING_SEEN : DC_HC_STORY_DONE, 0, NULL, &r)) return 0;
++        } else if (!strcmp(c, "story-fp")) {
++            if (!mb_cmd(DC_HC_STORY_FP, 0, NULL, &r)) return 0;
++            printf("story-fp: 0x%08x\n", r);
++            if (n >= 2 && (uint32_t)strtoul(v[1], NULL, 16) != r)
++                fail("line %d: story fingerprint differs from %s", lineno, v[1]);
+         } else if (!strcmp(c, "audio-reset")) {
+             a_min = 32767; a_max = -32768; a_frames = 0;
+             snd_under0 = mb && mb_up ? mb->snd_underruns : 0;
+diff --git a/dc/src/hcmd.c b/dc/src/hcmd.c
+index ce239b72..6cc03ae6 100644
+--- a/dc/src/hcmd.c
++++ b/dc/src/hcmd.c
+@@ -40,6 +40,9 @@
+  *                          run script compares it with room_ref's frame
+  *   DC_HC_HOME_ROOM n      (DC8) the native runner's `home-room N`
+  *   DC_HC_MONEY n          (DC8) the native runner's `money N`
++ *   DC_HC_LANG, HERO, ENDING_SEEN, STORY_DONE (DC9A) the native runner's
++ *                          `lang` / `expect-lang`, `expect-hero`,
++ *                          `ending-seen`, `story-done`
+  * and the tick hold of the harness's "sync on" (dc_harness_hold).
+  */
+ #include <string.h>
+@@ -48,6 +51,8 @@
+ #include "doomo/doomo.h"
+ #include "doomo/story_vm.h"
+ #include "doomo/plat_ext.h"
++#include "doomo/options_store.h"            /* DC9A: opt_set (lang) */
++#include "doomo/unlocks.h"                  /* DC9A: ending-seen */
+ #include "../../core/src/ui_internal.h"     /* UiDialogDebug (expect-text) */
+ #include "../../core/src/home_int.h"        /* DC8: home_move_in, the parity rooms */
+ #include "../../core/gen/furn_ids.h"
+@@ -329,6 +334,35 @@ void dc_harness_cmd(void)
+         doomo_town.money = arg;
+         r = 1;
+         break;
++    /* --- DC9A: the native runner's story and free-play script commands --- */
++    case DC_HC_LANG: {
++        char nm[sizeof(dc_mailbox.name)];
++        int found;
++        mailbox_name(nm);
++        found = lang_find(nm);
++        if (found < 0) break;
++        if (arg == 0) {
++            opt_set(OPT_LANGUAGE, found);
++            r = 1;
++        } else {
++            r = lang_get() == found ? 2u : 1u;
++        }
++        break; }
++    case DC_HC_HERO: {
++        char nm[sizeof(dc_mailbox.name)];
++        const DoomoResident *p = town_res(DOOMO_PLAYER_ID);
++        mailbox_name(nm);
++        r = p && p->status != RES_EMPTY && strcmp(p->name, nm) == 0 ? 2u : 1u;
++        break; }
++    case DC_HC_ENDING_SEEN:
++        unlock_grant_quiet(UL_STORY_END(0));
++        r = 1;
++        break;
++    case DC_HC_STORY_DONE:
++        doomo_town.mode = TOWN_STORY;
++        doomo_town.story.chapter = STORY_CH_DONE;
++        r = 1;
++        break;
+     default:
+         break;
+     }
+-- 
+2.43.0
+
+
+From 61d8740340b2866c92579e10ff831b03553ef26e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 16:33:20 +0000
+Subject: [PATCH 2/4] DC9A: dcrun self-test covers the story commands
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx9wuhKv8Rqec7pX14
+---
+ dc/harness/tests/fail_hero.txt    |  3 +++
+ dc/harness/tests/fail_lang.txt    |  4 ++++
+ dc/harness/tests/fail_storyfp.txt |  3 +++
+ dc/harness/tests/mockcore.c       | 11 +++++++++++
+ dc/harness/tests/selftest.sh      |  4 ++++
+ dc/harness/tests/story_cmds.txt   | 13 +++++++++++++
+ 6 files changed, 38 insertions(+)
+ create mode 100644 dc/harness/tests/fail_hero.txt
+ create mode 100644 dc/harness/tests/fail_lang.txt
+ create mode 100644 dc/harness/tests/fail_storyfp.txt
+ create mode 100644 dc/harness/tests/story_cmds.txt
+
+diff --git a/dc/harness/tests/fail_hero.txt b/dc/harness/tests/fail_hero.txt
+new file mode 100644
+index 00000000..4d371a15
+--- /dev/null
++++ b/dc/harness/tests/fail_hero.txt
+@@ -0,0 +1,3 @@
++# must fail: the hero is not Dolores
++wait 20
++expect-hero Dolores
+diff --git a/dc/harness/tests/fail_lang.txt b/dc/harness/tests/fail_lang.txt
+new file mode 100644
+index 00000000..8b47448e
+--- /dev/null
++++ b/dc/harness/tests/fail_lang.txt
+@@ -0,0 +1,4 @@
++# must fail: the language is not es
++wait 20
++lang en
++expect-lang es
+diff --git a/dc/harness/tests/fail_storyfp.txt b/dc/harness/tests/fail_storyfp.txt
+new file mode 100644
+index 00000000..66a3010b
+--- /dev/null
++++ b/dc/harness/tests/fail_storyfp.txt
+@@ -0,0 +1,3 @@
++# must fail: wrong story fingerprint
++wait 20
++story-fp 0xBAD
+diff --git a/dc/harness/tests/mockcore.c b/dc/harness/tests/mockcore.c
+index 5a8729a9..bc25334c 100644
+--- a/dc/harness/tests/mockcore.c
++++ b/dc/harness/tests/mockcore.c
+@@ -176,6 +176,17 @@ static void run_cmd(void)
+     case DC_HC_TEXT_FEED: r = arg >= ' ' || arg == '\n'; if (r) mlog("feed %u", arg); break;
+     case DC_HC_TOWN_FILL: town_state = arg * 2654435761u + 1u; r = 1; break;
+     case DC_HC_TOWN_CRC: r = town_state ^ 0x5A5A5A5Au; mlog("town crc %x", r); break;
++    /* DC9A: the story commands: languages en / es, the hero "Marvin", the fingerprint 0xC0FFEE */
++    case DC_HC_LANG: {
++        static int lang;                 /* 0 en, 1 es */
++        int f = !strcmp(name, "en") ? 0 : !strcmp(name, "es") ? 1 : -1;
++        if (f < 0) break;
++        if (arg == 0) { lang = f; r = 1; } else r = lang == f ? 2 : 1;
++        break; }
++    case DC_HC_HERO: r = !strcmp(name, "Marvin") ? 2 : 1; break;
++    case DC_HC_ENDING_SEEN: mlog("ending seen"); r = 1; break;
++    case DC_HC_STORY_DONE: mlog("story done"); r = 1; break;
++    case DC_HC_STORY_FP: r = 0xC0FFEEu; break;
+     default: r = 0xFFFFFFFFu; break;
+     }
+     mb->result = r;
+diff --git a/dc/harness/tests/selftest.sh b/dc/harness/tests/selftest.sh
+index 7f2089eb..cb686cdd 100644
+--- a/dc/harness/tests/selftest.sh
++++ b/dc/harness/tests/selftest.sh
+@@ -28,6 +28,10 @@ run --script "$here/fail_ticks.txt" --quiet >/dev/null 2>&1; check $? 1 "expect-
+ run --script "$here/fail_load.txt" --quiet >/dev/null 2>&1; check $? 1 "failed load"
+ run --script "$here/fail_towncrc.txt" --quiet >/dev/null 2>&1; check $? 1 "expect-town-crc failure"
+ run --script "$here/fail_savefail.txt" --quiet >/dev/null 2>&1; check $? 1 "save-must-fail on a save that works"
++run --script "$here/story_cmds.txt" --quiet >"$out/story.log" 2>&1; check $? 0 "story_cmds.txt (lang, hero, ending-seen, story-done, story-fp)"
++run --script "$here/fail_lang.txt" --quiet >/dev/null 2>&1; check $? 1 "expect-lang failure"
++run --script "$here/fail_hero.txt" --quiet >/dev/null 2>&1; check $? 1 "expect-hero failure"
++run --script "$here/fail_storyfp.txt" --quiet >/dev/null 2>&1; check $? 1 "story-fp failure"
+ run --script "$here/console.txt" --console --quiet >/dev/null 2>&1; check $? 0 "--console: test flags 0"
+ run --frames 100000 --timeout 1 --quiet >/dev/null 2>&1; check $? 1 "timeout"
+ "$B/dcrun" "$B/mockcore.so" mock.elf --mailbox 8c020000 --run-dir "$out/run" --frames 30 --quiet >/dev/null 2>&1
+diff --git a/dc/harness/tests/story_cmds.txt b/dc/harness/tests/story_cmds.txt
+new file mode 100644
+index 00000000..76f0036c
+--- /dev/null
++++ b/dc/harness/tests/story_cmds.txt
+@@ -0,0 +1,13 @@
++# DC9A: the native runner's story commands reach the game's mailbox
++wait 20
++lang es
++expect-lang es
++lang en
++expect-lang en
++expect-hero Marvin
++ending-seen
++story-done
++expect-log ending seen
++expect-log story done
++story-fp 0xC0FFEE
++story-fp
+-- 
+2.43.0
+
+
+From 93f01bf9b83a4603777f235f1ea4a950f1aa4f91 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 16:39:18 +0000
+Subject: [PATCH 3/4] DC9A: make -C dc family-test, the story / free-play /
+ side-mission scripts twice on Flycast
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx9wuhKv8Rqec7pX14
+---
+ dc/Makefile                      | 12 +++++++-
+ dc/tests/families/run_flycast.sh | 52 ++++++++++++++++++++++++++++++++
+ 2 files changed, 63 insertions(+), 1 deletion(-)
+ create mode 100755 dc/tests/families/run_flycast.sh
+
+diff --git a/dc/Makefile b/dc/Makefile
+index 117b0f67..94e66fd6 100644
+--- a/dc/Makefile
++++ b/dc/Makefile
+@@ -33,6 +33,10 @@
+ #                         3D view against the host software PVR's (compare3d.py),
+ #                         no polygon dropped, no tick over 33.3 ms; results in
+ #                         build/shots/ow; part of `test` when Flycast is there
++#   make -C dc family-test  DC9A on Flycast: every story_*, fp_* and side_* script of
++#                         core/tests/scripts twice in dcrun (SCRIPTS="a b" for some),
++#                         each must pass and repeat byte for byte (dc/tests/families;
++#                         results in build/shots/families)
+ #   make -C dc v3d-test   DC6 part 1 on the host: the first-person view's polygons
+ #                         (software PVR) against the reference raycaster
+ #   make -C dc room-test  DC8 on Flycast: the house. The 58 room_ref golden
+@@ -122,7 +126,7 @@ DC_OBJS   := $(call dc_obj,$(DC_SRCS))
+ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
+ ALL_OBJS  := $(DC_OBJS) $(CORE_OBJS)
+ 
+-.PHONY: all elf disc all-disc test check-elf check-packdisc host-test harness-test ui-compare vmu-test audio-test ow-test room-test v3d-test sizes clean
++.PHONY: all elf disc all-disc test check-elf check-packdisc host-test harness-test ui-compare vmu-test audio-test ow-test room-test v3d-test family-test sizes clean
+ .DEFAULT_GOAL := all
+ 
+ all: elf
+@@ -236,6 +240,12 @@ ow-test: $(CDI) $(BUILD)/doomogachi.nm
+ 	@$(MAKE) --no-print-directory -C $(DC)/tests/gfx2d $(HOSTRUN)
+ 	sh $(DC)/tests/overworld/run_flycast.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(RUNNER) $(HOSTRUN) $(SHOTS)/ow
+ 
++# DC9A: the story, free-play and side-mission scripts on Flycast, each twice, identical
++family-test: $(CDI) $(BUILD)/doomogachi.nm
++	@if [ -z "$(FLYCAST)" ]; then echo "family-test: no Flycast core (make -C dc/harness flycast)" >&2; exit 1; fi
++	@$(MAKE) --no-print-directory -C $(HARNESS) all
++	sh $(DC)/tests/families/run_flycast.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(SHOTS)/families $(SCRIPTS)
++
+ # DC8: the house on Flycast: room_ref's golden frames and the house scripts
+ ROOMTEST := $(BUILD)/host/dcroom_test
+ room-test: $(CDI) $(BUILD)/doomogachi.nm
+diff --git a/dc/tests/families/run_flycast.sh b/dc/tests/families/run_flycast.sh
+new file mode 100755
+index 00000000..87e19aa5
+--- /dev/null
++++ b/dc/tests/families/run_flycast.sh
+@@ -0,0 +1,52 @@
++#!/bin/sh
++# run_flycast.sh - DC9A: the story, free-play and side-mission script families on Flycast (owner: dreamcast).
++#
++#   sh dc/tests/families/run_flycast.sh FLYCAST.so DCRUN IMAGE NMFILE OUTDIR [script ...]
++#
++# Every core/tests/scripts/{story,fp,side}_*.txt (or the named scripts) is played twice in dcrun on the CDI,
++# tick-exact from the native runner's start (--native-seed). A script passes when
++#   - both runs end with dcrun's "0 failures" (the pinned Flycast core can crash while it unloads, after the
++#     script has passed: SIGILL, exit 132; the script's own verdict then counts),
++#   - the two runs are identical: the same ticks, frames, per-tick work summary, 3D / 2D counters and the
++#     same bytes in every shot (md5 of each PNG).
++# The ticks over 33.3 ms are listed, not gated: the known ones are loading ticks (a new island or story, the
++# VMU save: docs/DREAMCAST.md "Frame time of the story, free play and side missions").
++# OUTDIR/<script>/{1,2}/ the logs and shots, OUTDIR/summary.txt one line per script. Exit status 1 when one fails.
++set -u
++[ $# -ge 5 ] || { echo "usage: run_flycast.sh FLYCAST DCRUN IMAGE NMFILE OUTDIR [script ...]" >&2; exit 2; }
++FLY=$1 DCRUN=$2 IMG=$3 NM=$4 OUT=$5; shift 5
++here=$(cd "$(dirname "$0")" && pwd)
++root=$(cd "$here/../../.." && pwd)
++if [ $# -gt 0 ]; then SCRIPTS=$*
++else SCRIPTS=$(cd "$root/core/tests/scripts" && ls story_*.txt fp_*.txt side_*.txt | sed 's/\.txt$//'); fi
++mkdir -p "$OUT"
++sum=$OUT/summary.txt
++: > "$sum"
++bad=0
++play() {                                   # play SCRIPT N: runs it into OUT/SCRIPT/N, prints the exit status
++    d=$OUT/$1/$2
++    rm -rf "$d"; mkdir -p "$d/dc"
++    "$DCRUN" "$FLY" "$IMG" --nm "$NM" --fresh --native-seed 0x5EED1234 --run-dir "$d/run" \
++        --script "$root/core/tests/scripts/$1.txt" --shots "$d/dc" --timeout 2400 > "$d/dcrun.log" 2>&1
++    rc=$?
++    rm -rf "$d/run"
++    if [ $rc -eq 132 ] && grep -q '^dcrun: .* 0 failures$' "$d/dcrun.log"; then rc=0; fi
++    grep -q '^dcrun: .* 0 failures$' "$d/dcrun.log" || rc=1
++    # what must repeat: everything but the wall-clock seconds
++    grep -E '^(dcrun: (game drew|work over|3D views|[0-9]+ video)|work: tick)' "$d/dcrun.log" | sed 's/, [0-9.]* s,/,/' > "$d/result.txt"
++    (cd "$d/dc" && md5sum *.png 2>/dev/null | sort) >> "$d/result.txt"
++    return $rc
++}
++for s in $SCRIPTS; do
++    play "$s" 1; r1=$?
++    play "$s" 2; r2=$?
++    st=pass
++    cmp -s "$OUT/$s/1/result.txt" "$OUT/$s/2/result.txt" || st=DIFFERENT
++    [ $r1 -eq 0 ] && [ $r2 -eq 0 ] || st=FAIL
++    over=$(sed -n 's/^dcrun: work over [0-9]* us on \([0-9]*\) of \([0-9]*\) ticks; worst \([0-9]*\) us.*/\1 of \2 ticks over 33.3 ms, worst \3 us/p' "$OUT/$s/1/dcrun.log")
++    shots=$(ls "$OUT/$s/1/dc" | grep -c '\.png$')
++    echo "$s: $st (runs $r1 $r2), $shots shots, ${over:-no timing line}" >> "$sum"
++    [ "$st" = pass ] || bad=1
++done
++cat "$sum"
++exit $bad
+-- 
+2.43.0
+
+
+From ceb18b3cdec431632db671715caf8a0079f1cd5c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 16:57:32 +0000
+Subject: [PATCH 4/4] DC9A: docs (scripts, frame-time table), ROADMAP and DC
+ status
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx9wuhKv8Rqec7pX14
+---
+ ROADMAP.md                    |  2 +-
+ docs/DREAMCAST.md             | 55 +++++++++++++++++++++++++++++++++++
+ docs/design/held/status/DC.md |  1 +
+ 3 files changed, 57 insertions(+), 1 deletion(-)
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index 67406492..19dab66e 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -116,7 +116,7 @@ before redoing any of them; a zip without `.git` cannot tell.
+ 3. **Life sim core, open parts:** (PA10 part 2, per-avatar pockets, is done: `docs/PLAYAS.md` section 9, `pa10_*` tests); part 3 New life from the title and in a fresh world; MP1 left: quests 2-4 on later days, Rook's and Wick's quests, local simultaneous multiplayer, helping in another world; the S-HOUSE story house unlock (**needs your definition**); polish (uplifted pet look, baby outfits and body, elder stoop, a household graveyard scene); hand-written disaster scripts (**need your tone check**).
+ 4. **GBA speed and RAM:** **invaded (in progress, target 20 fps with 30.0 logic ticks/s):** V0 and V1 (GBA side) are done; steady frames are 50-60 ms so about 8 ms must come off the average (sprites are ~23 ms of it); V2 (tint flip) is demoted (`lit_cached` 0.7%); V4a done (sprite tables kept across frames: invaded 57.8 -> 54.5 ms, 14.9 -> 15.6 fps, hellvile -1.6 ms, all 16 scenes pixel-identical, EWRAM free now 24,240 B); V4b landed (cheaper `ow_sprite` setup, mirrored-row fast path: invaded 54.5 -> 52.0 ms, 15.6 -> 16.2 fps on the CI tour; parity vs V4a still to confirm, invaded `vhash-seq` 5e74560c); V4b confirmed on libmgba (52.0 ms, 16.2 fps, `vhash-seq` 5e74560c); spike frames explained: each is one chibi body-frame render when a citizen turns to a new facing, not the tint flip, and removing them is worth ~0.2 ms (94 of 115 steady frames are over the 50 ms a 20 fps frame needs, median 53.1), so the road to 20 fps is the steady frame (`docs/INVADED_SPEED.md`): V5 toast / HUD closed (the only toast is a one-shot hint before the measured window); steady split after V4b: sprite rows 15 ms, ground ~10, logic ~6 (two ticks a frame), so exact steps alone cannot reach 20 fps here and the owner decides between V6 (logic every second tick, ~3 ms), non-exact detail cuts (far billboards, far ground), or moving the target (keep ~16 fps and make logic 30.0 / max ~62); **V6 landed 2026-11-07 (owner chose it): the A-prompt search (`find_interactables`) runs every second tick on the invaded map only, ~1.8 ms expected, unmeasured on the GBA, `ownpc_update` left alone because thinning it would slow the citizens; V6 measured on CI: nothing (52.0 -> 51.9 ms); V8 landed 2026-11-07 (body look hash memo in `bodyspr_image`, exact, ~1.5 ms expected, unmeasured on the GBA); V8 measured on CI: invaded 51.9 -> 50.0 ms, 17.3 fps, exact; V9 landed 2026-11-07 (side_spots memo, exact, ~1 ms expected, unmeasured on the GBA); V7 (hardware billboards) was reviewed and not started: G6's own tile-frame numbers lose to Mode 4 on every map, so it is expected to give ~20 fps at best, not 30**; each step keeps the invaded `vhash-seq` frames identical. Then, for the other scenes: first read the CI run's Summary tab ("GBA speed report": the speed tour table and the title profile, `make -C gba profile-title`) and fix what it ranks first, the title included; then G8 tile backend for the island hub and menus, G9 combat HUD and the 30 fps lock with a test, then whatever `tools/perf_profile.sh` and `tools/ram_ledger.sh` rank first; measure on the ROM, not the host. **V10 landed 2026-11-07 (owner asked for 30 fps, logic untouched): a draw-side frame-time governor draws fewer far sprites on the invaded map only (not pixel-exact; new invaded `vhash-seq` f87e5596); libmgba: 17.5 -> 29.2 fps, 49.5 -> 30.7 ms, 30.1 logic ticks/s, every other scene identical; unmeasured on hardware (`docs/INVADED_SPEED.md`)**; **V11 landed 2026-11-07: body renders sliced (max 51 -> 40 ms), ground scan memo (exact, -1 ms on overworld maps), invaded 29.5 fps, hahaland 30.0**. **V12 landed 2026-11-07 (HUD panels on the invaded map, exact): while a toast overlaps the objective pill or the clock they are drawn plainly instead of captured (the capture was spoiled every frame and retried on the 2 / 4 / 8 frame cycle: the 9-10 tick bump), and the objective star's bob is the pill's `plat_panel_hole` strip, out of the key (no recapture four times in 40 ticks); host panel cache on the invaded toast scenario: 962 -> 180 panels drawn, 788 -> 5 spoiled, 4,040 frame hashes identical to the tree before; unmeasured on the GBA, check the invaded `vhash-seq` stays f87e5596 (`docs/INVADED_SPEED_V12.md`)**. **V13 landed 2026-11-07 (exact): `build_billboards` no longer redoes the per-prop work each drawn frame: a prop's cell, sprite, billboard flags and frame count are set once in `ownpc_load_props` (the floor height and the animation frame are still read live, so a lift under a prop still moves it); frame hashes of all 135 debug-beat / visit runs (day and night) identical to the tree before; expected gain is small (a few tenths of a ms), unmeasured on the GBA (`docs/INVADED_SPEED_V13.md`)**. **Music Studio measured 2026-11-07 (MS-P0, GBA half; `make -C gba profile-studio`, CI step "Profile the Music Studio", `docs/STUDIO.md` "GBA speed")**: SONG 35-36 ms / 23-24 fps, NOTES 33-35 ms / 25-29 fps, ORDER 31 ms / 30 fps, **LYRICS 60 ms / 12.4 fps (logic 22.7 ticks/s), CHOIR 52 ms / 15 fps, PERFORM 56 ms / 12.5-13 fps (logic 22.6)**; PERFORM is chibi-bound (`vid_blit` + `res_get_look` + `cache_get` about 35%), LYRICS is per-frame song derivation (`song_syllables`, `part_mask`, `song_singer_id` about 28%); fix order MS-P4, MS-P3, MS-P2, MS-P1, MS-P5 (`docs/MUSIC_STUDIO_ROADMAP.md`); PS1 not measured. **MS-P3 step 1 landed 2026-11-07 (exact): LYRICS 60.4 -> 45.3 ms, 12.4 -> 20.2 fps, logic 30.1 ticks/s; CHOIR and PERFORM unchanged (next: MS-P4 chibis).** **Then (exact): LYRICS 38.6 ms / 20.3 fps / 30.0 ticks/s (glyph runs, shot byte-identical); CHOIR 50.8, PERFORM 52.1 ms (look-hash memo `blh` 32 direct-mapped -> 40 fully associative).** **nov07d (MS-P2 step 1, exact): the studio backdrop is not drawn under the content panel, chibi look-hash slot hint: SONG 33.1, NOTES 29.6, ORDER 27.1, LYRICS 36.5, CHOIR 46.9, PERFORM 51.0 ms; read `docs/MUSIC_STUDIO_ROADMAP.md` "Facts to know before MS-P4" before the chibi tile cache.** **Owner goal: every screen at 30 drawn fps someday** (about 30 ms of work a frame at 30 ticks/s). CI tour 2026-11-06, work avg ms (what must come off to reach 30): island town hall menu 107.9 (78), island hub 97.4 (67), combat 85.7 / 83.1 (56 / 53), pet 67.6 (38), concert 62.3 (32), invaded 52.0 (22), story map 36.8 (7), hahaland 33.6 (4); already near it, spikes only: title 28.4 (max 63), overworld pause 23.0 (max 80), map walk 27.4. At 30 now: hellvile, park, house, options. `make -C gba profile-all` (and the CI step "Profile every scene") ranks every scene's hottest functions in one run: read it first, then fix the biggest gap that has a clear top function; the title's top functions are `vid_blit` 15%, `vid_rect_narrow` 11%, the text dilate pair 12%. **First `profile-all` (CI 2026-11-06), the top functions behind each gap:** island hub / town hall menu (97 / 108 ms): `fp_island_draw_map` 10%, `put` 9-11%, `vid_rect_narrow` / `vid_shade_words` 9%, `vm_span` 5%, `gba_udivmod` 4% (the G8 tile backend); combat (85 ms): `fx_dist` 15% (a 64-bit square root per call: many call sites only compare it with a radius, and `fx_dist(d) < r` is exactly `dx*dx+dy*dy < r*r`, so those need no root; count the calls per site on the host first), `put_row` 10%, `ba_face` 6%, `canvas_row` 5%; pet (66 ms): `lcd_rect` 17%, `fx_isqrt` 14%, `vid_rect` 11%; concert (61 ms): `vid_blit` 24%, `plat_checker_m4` 8%, `res_get_look` 7.5%; invaded (53 ms) and hahaland (34 ms): `ow_spr_rows` 30% / 36% (already a tight ARM loop, one table lookup a pixel: only fewer sprite pixels or hardware OBJ sprites (V7, changes pixels, needs a decision) go further), `ow_tile16` 7-11%, `plat_overworld` 11-14%; title: `vid_blit` 15%, `vid_rect_narrow` 11%, the text dilate pair 12%. **Music Studio PERFORM (nov07h, part 1 of `docs/STUDIO_PERFORM_FIXES.md`):** F3 karaoke text runs, F5 note-head rects (GBA) and F6 voice-tuning memo are in, pixel-identical (sung phase 57.7 -> 56.1 ms median, worst tick 69.4 -> 64.7 ms, logic 25.5 -> 26.5 ticks/s on the harness); part 2 (nov07i: F2 heart rects, F4 spot, glow/scallop ellipses, hidden LEDs, place once) took the sung phase to 47.0 ms median, logic 29.9 ticks/s on the harness; F1 is not possible exactly (shade is not retained); next MS-P4. **nov07p (exact): the 50.8 ms sung-phase tick was the first draw of a new line (`studio_part_of_raw`, ~100 `part_mask` calls, not a chibi render); one pass now: worst tick 50.8 -> 41.6 ms, 0 ticks over 50.2 ms, median still 37.6 ms (20 fps), `vhash-seq` identical, `profile-sung` Error 127 fixed (`\\` in the recipe), `docs/STUDIO_30FPS_PLAN.md` section 10.** **nov07q / nov07r (Option C, the choir as hardware sprites, exact by design, unmeasured on the GBA): the core planner (`choir_obj_plan`) and the GBA OBJ side (`gba/src/obj.c`, not yet built: CI is the first build) are in; the native test `studio_stage_sprites_equal_the_bitmap` (sprites on vs off, 700 ticks, 4 layouts, 2 sizes) found and fixed two planner gaps (follow-spot beam width, a singer's own note) and a wrong-planner test proves it catches them; 12.6 of 25 singers are sprites on risers (semicircle: 0); `make -C core unit` 877 passed; to check on CI: ROM builds with no IWRAM overflow, `vhash-seq` over the sung window stays `bee877b2`, the `studio_sung.txt` median (expect about 34-35 ms), `docs/STUDIO_30FPS_PLAN.md` section 11.**
+ 5. **Customization:** P0 rest (the 96 -> 76 B repack and roster v2 if the p0 patch above is not in your tree, M0b age gate, saves v2), the other 12 M2 list appends, art review, M3, then P2-P6 (`docs/design/customization/P0_M0A_STATUS.md`).
+-6. **Dreamcast:** DC6, DC9 (DC3, DC4, DC5, DC7 and DC8 are done; the Flycast core is built and in the toolchain prefix; DC6 can draw through DC7's 3D batches, `dc/src/dc3d.h`). **Done: DC5b** (the music engine's IRQ tier on the Dreamcast: `dc/src/musvoice.c`, `dc/tests/audio/test_tier.c`, docs/DREAMCAST.md section 6, "The music engine's tier"; host-checked against a `DoomoVoice` reference render; on Flycast with `make -C dc audio-test` the stream matches the host IRQ render, title r 0.990, invasion 0.997, combat 0.822 (gated at 0.8, the bridge's 0.9 bar is not met there), 0 ticks over 33 ms, 0 underruns; the IRQ tier is not the bridge's sound by design, docs/DREAMCAST.md section 6). **Needs your call:** the sound's latency is about 100 ms (70-135) from the end of a tick to the speaker; going lower means KallistiOS at 1,000 Hz or our own AICA loop (section 6, "Latency"). **For DC6:** in `dc/tests/audio/combat.txt` the enemies' noises come at other times on the Dreamcast than natively for the same script (the combat logic diverges while the 3D view is a stub), so that comparison clips its envelopes at the 97th percentile.
++6. **Dreamcast:** DC6, DC9 (DC3, DC4, DC5, DC7 and DC8 are done; the Flycast core is built and in the toolchain prefix; DC6 can draw through DC7's 3D batches, `dc/src/dc3d.h`). **Done: DC5b** (the music engine's IRQ tier on the Dreamcast: `dc/src/musvoice.c`, `dc/tests/audio/test_tier.c`, docs/DREAMCAST.md section 6, "The music engine's tier"; host-checked against a `DoomoVoice` reference render; on Flycast with `make -C dc audio-test` the stream matches the host IRQ render, title r 0.990, invasion 0.997, combat 0.822 (gated at 0.8, the bridge's 0.9 bar is not met there), 0 ticks over 33 ms, 0 underruns; the IRQ tier is not the bridge's sound by design, docs/DREAMCAST.md section 6). **Done: DC9A** (the story, free-play and side-mission scripts on the Dreamcast: `make -C dc family-test` runs the 28 `story_*` / `fp_*` / `side_*` scripts twice on Flycast, 28 of 28 pass and repeat byte for byte; dcrun gained `lang`, `expect-lang`, `expect-hero`, `ending-seen`, `story-done`, `story-fp`; speed tour 2 on the Dreamcast: 215 of 218 windows hold 30, the credits hold, the three misses are the new-island load 125 ms, the story load 129 ms and the VMU save 4.5 s, owned by S2-10; table in docs/DREAMCAST.md "The full game's scripts and frame times"). **Needs your call:** the sound's latency is about 100 ms (70-135) from the end of a tick to the speaker; going lower means KallistiOS at 1,000 Hz or our own AICA loop (section 6, "Latency"). **For DC6:** in `dc/tests/audio/combat.txt` the enemies' noises come at other times on the Dreamcast than natively for the same script (the combat logic diverges while the 3D view is a stub), so that comparison clips its envelopes at the 97th percentile.
+ 7. **Script and languages:** W9-W12, W15 (approved, unwritten), W16; L8 re-translation of the rewritten text; pt-BR, fr, de, it, nl, pl untranslated; Chinese and Japanese need a font path (L10).
+ 8. **Housekeeping:** README "Status" still describes a developer launcher; the saved branches (G3, G9, G11, H7, L4, W6, W7, ...) are not in the repo; mature pack art; console music backends; Ninth Cloud map; Feast scene (S186).
+ 9. **New Hell Breach levels (planned 2026-11-08, `docs/design/levels/LEVELS_EXPANSION_PLAN.md`):** 24 new 3D levels, **9 main-game (Hell Breach 8-16) + 15 New Game+ ("Arrears", Notices 1-15, its own story arc and antagonist)**; PS1 and Dreamcast get all 24, **the GBA gets 7** (HB8, HB9, HB13, HB15 and NG+ Notices 1, 7, 14); 9 of them are dark levels with content notes. Packages LV0-LV11 (tech) first, then LV12-LV21 (main), then LV22-LV38 (NG+); builds after the current waves unless the owner reorders; owner questions in its section 10 (NG+ Chapter 5 and endings E03 / E05 / E07, W15, memorial names).
+diff --git a/docs/DREAMCAST.md b/docs/DREAMCAST.md
+index e8b484a5..11e29818 100644
+--- a/docs/DREAMCAST.md
++++ b/docs/DREAMCAST.md
+@@ -675,6 +675,61 @@ tick, both with the card on screen. The worst steady tick is 23.1 ms (creator,
+ the moving-in confirm). The vertex high-water is 223 KB of the 983 KB
+ budget.
+ 
++### The full game's scripts and frame times (DC9A)
++
++`make -C dc family-test` (`dc/tests/families/run_flycast.sh`) plays every
++`story_*`, `fp_*` and `side_*` script of `core/tests/scripts` (28 scripts,
++about 38,000 ticks) twice in dcrun on the CDI, from the native runner's
++start (`--native-seed`). A script passes when both runs end with "0
++failures" and the two runs are identical: the same tick and frame counts, the
++same work summary, and the same bytes in every shot (md5 of each PNG).
++Measured 2026-11-13: 28 of 28 pass, 28 of 28 identical. Four of them failed
++at first on a command the native runner has and dcrun lacked: `lang` /
++`expect-lang` (fp_playas_free, story_es), `expect-hero`
++(story_newgame_hero), `story-fp` (story_engine), plus `ending-seen` and
++`story-done`. They are mailbox commands now (`DC_HC_LANG`, `_HERO`,
++`_ENDING_SEEN`, `_STORY_DONE`; `story-fp` uses the old `DC_HC_STORY_FP`) and
++the mock-core self-test covers each (`make -C dc/harness test`).
++
++Ticks over 33.3 ms of work (Flycast's emulated time): none in 19 scripts,
++the worst steady tick 31.5 ms (story_invasion, the combat view). The other
++nine scripts have the loading ticks of the next table.
++
++| what | ticks | work |
++|---|---|---|
++| making a new island (New Island screen) | 1 in fp_apartments, fp_care, fp_dark, fp_island, fp_night, fp_playas_free, fp_shop, fp_screens | 125 ms |
++| title to a new story (story_newgame_hero) | 1 | 127 ms |
++| VMU save and load in fp_screens (the card with its progress bar is on screen) | the other 2 of its 3 | 3.2 s (the save) |
++
++Speed tour 2 on the Dreamcast (`sh dc/harness/speed2.sh OUT`, the ten
++groups of `gba/harness/scripts/speed2_*.txt`, 218 windows, every window the
++same script as on the GBA and PS1): 215 hold 30 logic ticks a second with no
++tick over 33.3 ms; 3 windows do not:
++
++| group | ticks | work mean / worst | ticks over 33.3 ms (worst) |
++|---|---:|---|---|
++| action | 3,254 | 13.0 / 28.4 ms | 0 |
++| creator | 2,335 | 8.2 / 15.6 ms | 0 |
++| dream | 1,483 | 8.3 / 16.3 ms | 0 |
++| fair (minigames) | 6,040 | 7.5 / 15.8 ms | 0 |
++| fishcook | 3,334 | 6.3 / 17.8 ms | 0 |
++| house | 2,461 | 3.4 / 20.6 ms | 0 |
++| library | 2,632 | 8.8 / 18.9 ms | 0 |
++| life | 3,920 | 8.8 ms mean | 2: new island 125 ms, saving 4.54 s |
++| story | 3,214 | 6.2 ms mean | 1: title to new story 129 ms |
++| studio | 1,165 | 7.2 / 30.8 ms | 0 |
++
++The credits and the credits parade, which speed audit 2 named, hold 30 on
++the Dreamcast now (no tick over 33.3 ms). The three misses are what is left: the two loads are the
++core making a town (`town_new` / the story's start, about 100 ms of SH4
++compute) and the save is the VMU's block writes (about 40 blocks, each a
++Maple round trip). All three belong to speed package S2-10 (saves and loads
++without a frozen screen), which is in flight on the SPEED stream and changes
++core code; nothing on the Dreamcast side can shorten them without it. The
++save already keeps the screen alive: its card redraws every vblank with a
++progress bar while the writes run. Raw logs of the runs: `dc/build/shots/families/`
++and the speed2 output directory.
++
+ ### Owed on hardware
+ 
+ - The frame time on a real console (Flycast's timing is not exact), on
+diff --git a/docs/design/held/status/DC.md b/docs/design/held/status/DC.md
+index 26584217..d06faec9 100644
+--- a/docs/design/held/status/DC.md
++++ b/docs/design/held/status/DC.md
+@@ -9,6 +9,7 @@ delta, GBA sizes), in flight (package and stage), next up, blockers, needs from
+ - **Landed:** landed before the restart: DC2, DC3, DC4, DC5, DC7, DC8. **DC5B (this session, sha in the push below):** the music engine's IRQ tier (`dc/src/musvoice.c`, `mixer.c`, docs/DREAMCAST.md section 6). Flycast (`make -C dc audio-test`): title r 0.990, invasion 0.997, combat 0.822 (gated at 0.8 on this tier; the bridge image had 0.904), 0 ticks over 33.3 ms, 0 sound underruns / late refills, repeat hash equal; mixer 1.2-1.4 ms per tick mean (no more than the bridge). `make -C dc` and `MUSIC_IRQ=0` both link. Host: test_audio 2046, test_tier 73, 28 songs on both tiers, core 1067 passed (SAN=1 too, only the known UBSan reports), GBA build+test, .iwram 11,256 B / .iwram_bss 4,084 B unchanged, `audio_channel_state` is a weak alias (no byte on any port). PS1 not built (no SDK on that machine): the core change is zero bytes, the margin is as on the base. Found and fixed in the review of the draft: the babble hand-back put the harmony on tone channel 1 twice; the IRQ tier is not the bridge's sound by design (docs section 6). Open: the music no longer ducks under the babble and one-shots (listen on a console), the RAM ledger is about +370 B, the 2 ui-compare shots options_cheats / opt_5_perf fail on the base too (Draw distance row, not DC5B).
+ - **DC6A landed (sha in the push below):** `plat_view3d` on the PVR, part 1: walls, floors, ceilings, sky, tints, viewport (`dc/src/view3d.c`, docs/DREAMCAST.md section 9). Host parity (`make -C dc v3d-test`, in `make dc-host-test`, about 4 min): level views 79.2 % of pixels within 40/255 of the reference raycaster (gate 75 %), looking up 80.2 %, red tint 66 %; 16 of 788 level frames under 45 % (an open gap, section 9); busiest view 769 polygons, 102 KB TA. Flycast: Hell Breach 1 walls, floor, ceiling, sky draw; no tick over 33.3 ms in it; four bigger levels enter at 35-38 ms (the entry tick, a budget of 4 new textures per view got it from 37-50); `ui-compare` 94/94, `room-test` ok, `ow-test` ok except `side_sample_a`, which fails on the base too (3 of 17 shots). Found on Flycast: a backdrop emitted last painted over the walls (now first); a duplicate `plat_view3d` stub would have failed the link. Core 1079 passed (SAN=1 too), check-gen, xcheck (PS1 leg skipped: no SDK on this machine), GBA build and test, `.iwram` 11,256 B / `.iwram_bss` 4,084 B (no core, gba or ps1 file changed). PS1 not built (no SDK here): zero bytes, the margin is as on the base. Open: billboards are plain rectangles (DC6B); the entry tick of big levels and the 13 ms steady build of big views (DC6C); the border-cell picture gap and the sky colour when looking up on maps 4 and 5; no Flycast-to-host picture compare of the view.
+ - **STKOPT landed (sha in the push below):** Options > Controls > "Stick: Turn / Strafe" (`OPT_STICK_MODE`, the last id of OPT2, saved in the 'OPT2' chunk; docs/DREAMCAST.md section 5). The row shows on a one-stick Dreamcast pad only; Turn is the default and is today's behaviour, Strafe makes the stick's X strafe and the analog triggers turn. An old 'OPT2' chunk, or a save without one, loads as Turn. The review's three text / behaviour findings are fixed here: the shooter tip and the Controls help line follow the mode, and a preset no longer resets it (`stkopt_shooter_tip_follows_the_stick_mode`, `stkopt_preset_keeps_the_stick_mode`, both fail without their fix). Numbers on the landed tree: core 1136 passed, 0 failed (SAN=1 too, only the known concert_gfx / fixmath / test_math UBSan reports, none in a file this package touches); check-gen and langpack up to date; xcheck 410 files OK on gcc/arm/sh4 (PS1 leg skipped, no SDK here). GBA builds and tests pass; against the base `.data` 816, `.bss` 245,804, `.noinit` 0, `.iwram` 11,256 B, `.iwram_bss` 4,084 B all unchanged (EWRAM and IWRAM net zero), ROM only `.text` +144 B, `.rodata` +84 B. **PS1: not built or measured here (no PSn00bSDK on this machine);** the base's margin is LV0's 68,512 B below the stack top, which is under the 72 KB target already, so this package added as little as it could: the one-stick tip lines and the row's help line are inside `#if DOOMO_TRIGGERS` (zero bytes on the PS1 and the GBA), the combat strafe branch folds away there too, and what is left is the OPT2 table row plus "Stick" / "Turn" / "Strafe" (about 40 B, in core files that the PS1 build already compiles -Os). No resident RAM anywhere. Dreamcast: `make -C dc` and `make -C dc disc` build, `dc-host-test` ok, `ui-compare` 94 of 94 (the new row widened the Controls mask in `dc/harness/known_diffs.tsv` to 48 px), `vmu-test` ok; dcrun `dc/tests/sticks/stick_option.txt` 0 of 396 ticks over 33 ms (worst 29.0 ms, COMBAT) and `sticks.txt` 0 of 345 (worst 29.4 ms). Open: the mode is saved with the world, not in the machine config record, so another save or a New Game starts at Turn (a record byte would be needed); "Reset page" on the Controls page still sets it to Turn; `ow-test`'s `side_sample_a` fails here as it does on the base (3 of 17 shots).
++- **DC9A (branch fut-dc9a, not landed):** `make -C dc family-test`: 28 of 28 story / free-play / side scripts pass twice, identical. New dcrun commands (hcmd ids 27-30). Speed tour 2 on Flycast: 215 of 218 windows hold 30; misses: new island 125 ms, title to new story 129 ms, VMU save 4.5 s (S2-10's). No core, GBA or PS1 file changed (PS1 margin and GBA sizes untouched; PS1 not built, no SDK here).
+ - **In flight (round 1):** none from this session.
+ - **Next up:** DC6B (billboards, weapons, effects, HUD), DC6C (`OPT_DRAW_DIST`, combat detail option, governor, Max detail at 30); then DC9 by scene family; TD1-TD3 after TK5
+ - **Blockers:** none
+-- 
+2.43.0
+
