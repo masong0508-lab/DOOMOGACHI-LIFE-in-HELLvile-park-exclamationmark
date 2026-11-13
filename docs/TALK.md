@@ -902,7 +902,7 @@ across conversations, so no number of talks farms more than they allow.
   `TEV_LEARNED` event from the drama manager (T5B-ASK / T8). `beats_recent` is not
   filled from memory (the table keeps no beats). Hate and the K-8 penalty are already in
   `rel_d_player`.
-* **Tests** (`test_talk_outcome.c`, 14): the bond / level / mood / pair caps, the
+* **Tests** (`test_talk_outcome.c`, 15): the bond / level / mood / pair caps, the
   next day, a leaver gets no social, mediation once a pair a day and one headline,
   strangers skipped, news rules and none for minors, a problem once a resident a
   day and an item problem left open, romance asked and never forced (hero avatar,
