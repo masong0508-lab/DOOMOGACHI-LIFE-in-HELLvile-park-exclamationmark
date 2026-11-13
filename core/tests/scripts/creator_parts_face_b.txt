@@ -1,0 +1,103 @@
+# CR4 A1b: the creator's Face tab grids with the new parts (12 noses, 12 mouths, 16 ears, 11 blush
+# styles). A new citizen: the Nose, Mouth, Ears and Blush style rows each open their picture grid; the
+# cursor walks onto the new parts (the grid wraps) and the citizen tries them on; B closes the grid
+# (several new parts sit in reward sets and are locked at first: a try-on is allowed, wearing is not).
+# Both screen sizes shoot every grid.
+scene CREATOR -1
+expect-scene CREATOR
+wait 30
+press R
+wait 14
+shot 01_face_tab
+# ---- nose: the row is 13 down from Shape (the Eyes and Brows rows) ------------------------------
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+wait 6
+shot 02_nose_row
+press A
+wait 16
+shot 02_nose_grid
+press RIGHT
+press RIGHT
+press RIGHT
+wait 10
+shot 02_nose_new_end
+press RIGHT
+press RIGHT
+press RIGHT
+press RIGHT
+wait 10
+shot 02_nose_new_mid
+press B
+wait 12
+# ---- mouth ---
+press DOWN
+press DOWN
+wait 6
+shot 03_mouth_row
+press A
+wait 16
+shot 03_mouth_grid
+press LEFT
+wait 10
+shot 03_mouth_new_end
+press LEFT
+press LEFT
+press LEFT
+press LEFT
+wait 10
+shot 03_mouth_new_mid
+press B
+wait 12
+# ---- ears ---
+press DOWN
+press DOWN
+press DOWN
+wait 6
+shot 04_ears_row
+press A
+wait 16
+shot 04_ears_grid
+press LEFT
+wait 10
+shot 04_ears_new_end
+press LEFT
+press LEFT
+press LEFT
+press LEFT
+press LEFT
+wait 10
+shot 04_ears_new_mid
+press B
+wait 12
+# ---- blush style ---
+press DOWN
+press DOWN
+press DOWN
+wait 6
+shot 05_blush_row
+press A
+wait 16
+shot 05_blush_grid
+press LEFT
+wait 10
+shot 05_blush_new_end
+press LEFT
+press LEFT
+press LEFT
+press LEFT
+wait 10
+shot 05_blush_new_mid
+press B
+wait 12

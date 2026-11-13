@@ -912,6 +912,50 @@ plugs in).
   none of the scripts yet (the part VM waits for CR10): its creator keeps offering the painted values (it offers no outer
   layer or legwear at all, and the 24 painted tops).
 
+## CR4 A1b: noses, mouths, ears, blush styles (2026-11-13)
+
+The second face batch (CREATOR_PLAN 3.1), drawn as part scripts in `core/data/parts/face/a1b_{nose,mouth,ears,blush}.txt`:
+
+| slot | values | new | live now | gate (shape, bust px) |
+|---|---|--:|--:|--:|
+| nose | 12..23 | 12 | 24 | 2 |
+| mouth | 20..31 | 12 | 32 | 4 |
+| ears | 16..31 | 16 | 32 | 24 |
+| blush style | 5..15 | 11 | 16 | 2 |
+
+**51 new parts live** (all age class ALL; no gene bit added: the gene lists were 5, 5, 5 and 4 bits wide).
+Left, with the reason:
+* ear folds: the 7 folds were already painted and live (CR3), nothing to add.
+* extra eyes 4-6 (3): `eye_count` is 1..3 through the look, the generators and `resident_sanitize`; a gene
+  change belongs with the save work, not an art batch (as in A1a).
+* muzzles and whiskers (24), teeth and tongues (12), freckles, moles, scars and plasters (40): deep fields,
+  they wait for CR5 (deep parts saved); the lead's CR5 is not on the branch yet.
+
+**What changed besides data.**
+* `mat blush` / `mat blush dark` (`PS_MAT_BLUSH` = 127, `portrait_script.c` `pm_of`): the cheek pink the painters use
+  (`RAMP_PASTEL_PINK` 5, and 4 for the dark tone), kept in the render's material memo (no RAM of its own).
+  `tools/parts_build.py` knows the name. Blush needs it: no colour gene is a blush colour.
+* Frames: a nose frame is the nose (256 = the size slider's radius), a mouth frame is the mouth (256 = half width;
+  drawn in a neutral face, an expression or talking draws the painter's smile), a blush frame is one cheek. Ears are
+  head-anchored (`scale 128`, group 0, behind the head).
+* The mouth, nose and blush slots carry a small `gate=` in the catalog (a mouth is 3-4 px wide on the bust, so
+  the 24 px gate of the big slots cannot hold; 4 px for mouths, 2 px for noses and blush). That is a weak gate,
+  recorded like the A1a pupils: several mouths look alike at 1x and read at the creator's 2x crop. The mouths
+  were redrawn bolder (radius 70+, full width) until every pair differed by at least 4 px.
+* Template names (`def`) are global to a directory: this batch prefixes them (`nink`, `mink`, `bpk`, `esk`).
+* `core/tests/test_cr4_a1b.c`: lists full (24 / 32 / 32 / 16 live), every new part live, scripted, all ages, under
+  the cost cap; every blush style paints blush pink (fails without `mat blush`); a scripted mouth gives way to
+  an expression; scripted ears show on the chibi and the fighter.
+* `core/tests/scripts/creator_parts_face_b.txt` (both screen sizes): opens the Nose, Mouth, Ears and Blush style
+  grids, walks onto the new parts and tries them on (several sit in reward sets and show locked).
+* PS1: scripted values draw as the slot's default until CR10 (no part VM), so the PS1 creator does not offer
+  them; no resident byte added (see docs/PS1.md "CR4 A1b").
+
+Review: the sheets (`slot_nose`, `slot_mouth`, `slot_ears`, `slot_blush`, each colour and `_shape`) were looked
+at by the builder; the sign-off is the `A1b` lines in `core/data/parts/review.txt`. Nothing is a tongue, lips,
+tobacco, vape or drug prop, nor suggestive on any age: the plaster nose and the gap tooth sit in "Little Ones",
+the zipper mouth is a plain line with ticks (Plushie Factory, locked behind the set).
+
 ## Extending
 
 * **A new catalog option** (e.g. a new hat): nothing to do - rows use the

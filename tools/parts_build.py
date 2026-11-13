@@ -119,6 +119,7 @@ def field_ids():
         ids[name] = PL_DEEP0 + i
     ids["ink"] = 125                                    # CR4: fixed materials (PS_MAT_INK / PS_MAT_WHITE)
     ids["white"] = 126
+    ids["blush"] = 127                                  # CR4 A1b: PS_MAT_BLUSH
     return ids
 
 

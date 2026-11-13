@@ -1,6 +1,6 @@
 # core/data/parts/catalog/blush.txt - blush styles, gene field blush_style (CR1; format: tools/partcat_build.py).
 # Painted (wave 2, P1.M2) but not selectable yet: until CR3 flips the list live.
-slot blush list=blush_style name="Blush" method=P target=15 new=T
+slot blush list=blush_style name="Blush" method=P target=15 new=T gate=2
 
 0   "Round"      set=basics tags=plain
 1   "Slashes"    set=candy tags=cute
@@ -8,3 +8,16 @@ slot blush list=blush_style name="Blush" method=P target=15 new=T
 3   "Dots"       set=candy tags=cute
 4   "Low Bar"    set=basics tags=plain
 31  "M1 Demo Blush" set=basics tags=plain method=S state=test
+
+# CR4 A1b (core/data/parts/face/a1b_blush.txt): 11 more blush styles (`mat blush`)
+5   "Soft Oval"  set=basics tags=plain method=S
+6   "Tall Oval"  set=basics tags=plain method=S
+7   "Twin Bars"  set=candy tags=cute method=S
+8   "Heart Cheek" set=candy tags=cute,candy method=S
+9   "Twinkle Cheek" set=candy tags=cute,glam method=S
+10  "Ring Cheek" set=cozy tags=cozy method=S
+11  "Trio Dots"  set=basics tags=plain method=S
+12  "Smear"      set=basics tags=plain method=S
+13  "Diamond Cheek" set=royal tags=glam method=S
+14  "Plus Cheek" set=indieart tags=tech method=S
+15  "Flush"      set=cozy tags=cozy method=S

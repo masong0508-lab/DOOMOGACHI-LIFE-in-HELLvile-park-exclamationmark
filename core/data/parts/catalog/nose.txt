@@ -1,6 +1,6 @@
 # core/data/parts/catalog/nose.txt - the nose parts (CR1; format: tools/partcat_build.py).
 # Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
-slot nose list=nose_style name="Nose" method=P target=12 new=S
+slot nose list=nose_style name="Nose" method=P target=12 new=S gate=2
 
 0   "None"                 set=basics tags=plain
 1   "Dot"                  set=basics tags=plain
@@ -14,3 +14,17 @@ slot nose list=nose_style name="Nose" method=P target=12 new=S
 9   "Long"                 set=basics tags=plain
 10  "Kitty"                set=critter tags=critter
 11  "Clown"                set=funfair tags=silly,party
+
+# CR4 A1b (core/data/parts/face/a1b_nose.txt): 12 more noses
+12  "Snub"                 set=basics tags=plain method=S
+13  "Beak"                 set=graveyard tags=spooky method=S
+14  "Triangle Nose"        set=basics tags=plain method=S
+15  "Heart Nose"           set=candy tags=cute,candy method=S
+16  "Two Dots"             set=basics tags=plain method=S
+17  "Bulb"                 set=funfair tags=silly,party method=S
+18  "Cone Nose"            set=funfair tags=silly,party method=S
+19  "Snout"                set=critter tags=critter method=S
+20  "Cat Y"                set=critter tags=critter,cute method=S
+21  "Plaster Nose"         set=littleones tags=cute method=S
+22  "Wet Nose"             set=critter tags=critter method=S
+23  "L Nose"               set=indieart tags=silly method=S

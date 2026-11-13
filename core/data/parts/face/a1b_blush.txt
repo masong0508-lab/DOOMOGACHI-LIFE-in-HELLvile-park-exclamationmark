@@ -1,0 +1,92 @@
+# core/data/parts/face/a1b_blush.txt - CR4 batch A1b: 11 blush styles (values 5..15 of blush_style).
+# Frame blocks, one per cheek: 256 = the blush radius, +x outward. They use the fixed blush pink
+# (`mat blush`, PS_MAT_BLUSH) and its darker tone, a decal on the cheek.
+
+def bpk
+  mat blush
+  shade flat
+  decal
+enddef
+def bpd
+  mat blush dark
+  shade flat
+  decal
+enddef
+
+list blush_style 5                  # Soft Oval
+block group=3 anchor=frame lod=all view=all
+  use bpk
+  ellipse 0 0 254 170
+end
+
+list blush_style 6                  # Tall Oval
+block group=3 anchor=frame lod=all view=all
+  use bpk
+  ellipse 0 0 150 254
+end
+
+list blush_style 7                  # Twin Bars
+block group=3 anchor=frame lod=mid,big view=all
+  use bpd
+  capsule -200 -90 200 -90 40 40
+  capsule -200 90 200 90 40 40
+end
+
+list blush_style 8                  # Heart Cheek
+block group=3 anchor=frame lod=all view=all
+  use bpk
+  ellipse -90 -50 120 120
+  ellipse 90 -50 120 120
+  tri -204 -10 204 -10 0 200
+end
+
+list blush_style 9                  # Twinkle Cheek
+block group=3 anchor=frame lod=all view=all
+  use bpd
+  tri -60 0 0 -254 60 0
+  tri -60 0 0 254 60 0
+  tri 0 -60 -254 0 0 60
+  tri 0 -60 254 0 0 60
+end
+
+list blush_style 10                 # Ring Cheek
+block group=3 anchor=frame lod=mid,big view=all
+  use bpd
+  ring 0 0 200 70
+end
+
+list blush_style 11                 # Trio Dots
+block group=3 anchor=frame lod=all view=all
+  use bpd
+  ellipse -170 0 70 70
+  ellipse 0 0 70 70
+  ellipse 170 0 70 70
+end
+
+list blush_style 12                 # Smear: a long flat swipe
+block group=3 anchor=frame lod=all view=all
+  use bpk
+  capsule -254 40 254 -40 70 70
+end
+
+list blush_style 13                 # Diamond Cheek
+block group=3 anchor=frame lod=all view=all
+  use bpk
+  tri -220 0 220 0 0 -254
+  tri -220 0 220 0 0 254
+end
+
+list blush_style 14                 # Plus Cheek
+block group=3 anchor=frame lod=all view=all
+  use bpd
+  capsule -230 0 230 0 90 90
+  capsule 0 -230 0 230 90 90
+end
+
+list blush_style 15                 # Flush: a big round glow with a darker core
+block group=3 anchor=frame lod=all view=all
+  use bpk
+  ellipse 0 0 254 254
+  use bpd
+  ellipse 0 0 120 120
+end

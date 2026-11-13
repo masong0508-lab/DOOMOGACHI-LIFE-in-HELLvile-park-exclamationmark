@@ -86,6 +86,18 @@ const PMat *pm_of(PCtx *c, int lf, int tone)
         pm_paint(&e->m, lf == PS_MAT_INK ? PAINT_JET : PAINT_WHITE);
         return &e->m;
     }
+    if (lf == PS_MAT_BLUSH) {                           /* CR4 A1b: the blush pink (portrait_head.c BLUSH / BLUSH_D) */
+        key = (uint16_t)((lf << 2) | (tone == PM_DARK ? 2 : 0));
+        for (i = 0; i < 16; i++) {
+            if (c->memo[i].used && c->memo[i].key == key) return &c->memo[i].m;
+            if (!c->memo[i].used && free_slot < 0) free_slot = i;
+        }
+        e = &c->memo[free_slot >= 0 ? free_slot : (key & 15)];
+        e->used = 1;
+        e->key = key;
+        pm_flat(&e->m, PAL_RAMP(RAMP_PASTEL_PINK, tone == PM_DARK ? 4 : 5));
+        return &e->m;
+    }
     b = PM_BASE(c, lf);
     if (tone != PM_LIGHT && tone != PM_DARK) return b;
     key = (uint16_t)((lf << 2) | tone);

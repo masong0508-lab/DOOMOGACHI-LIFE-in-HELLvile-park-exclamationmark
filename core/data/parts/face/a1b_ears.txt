@@ -1,0 +1,187 @@
+# core/data/parts/face/a1b_ears.txt - CR4 batch A1b: 16 ears (values 16..31 of ears).
+# Head anchor, `scale 128` (coordinates in half head radii: -128 is the top of the head), `mirror on` doubles each shape to the other side. Group 0 is
+# behind the head (a side ear, partly hidden by it), group 4 in front. Skin ramp, the inner ear in the
+# darker tone. The painter's twitch and fold flags do not move a scripted ear.
+
+def esk
+  mat skin
+  shade ball
+  solid
+enddef
+def ein
+  mat skin dark
+  shade flat
+  decal
+enddef
+
+list ears 16                        # Disc Ears: big round discs on top
+block group=0 anchor=head lod=all view=all
+  scale 128
+  use esk
+  mirror on
+  ellipse 85 -125 70 70
+  use ein
+  ellipse 85 -125 40 40
+end
+
+list ears 17                        # Hound Flaps: long ears hanging from the sides
+block group=0 anchor=head lod=all view=all
+  scale 128
+  use esk
+  mirror on
+  capsule 120 -30 150 160 30 20
+  use ein
+  capsule 125 -10 145 130 12 8
+end
+
+list ears 18                        # Studs: tiny round ears
+block group=0 anchor=head lod=all view=all
+  scale 128
+  use esk
+  mirror on
+  ellipse 126 10 20 22
+end
+
+list ears 19                        # Dishes: wide flat discs on the sides
+block group=0 anchor=head lod=all view=all
+  scale 128
+  use esk
+  mirror on
+  ellipse 155 0 50 85
+  use ein
+  ellipse 155 0 25 55
+end
+
+list ears 20                        # Leaf Ears: swept outward and up
+block group=0 anchor=head lod=all view=all
+  scale 128
+  use esk
+  mirror on
+  capsule 115 -15 210 -140 30 7
+  use ein
+  line 125 -25 200 -130 1
+end
+
+list ears 21                        # Fin Pair: sharp fins on top
+block group=0 anchor=head lod=all view=all
+  scale 128
+  use esk
+  mirror on
+  tri 60 -120 125 -75 100 -240
+  use ein
+  tri 80 -125 115 -95 102 -205
+end
+
+list ears 22                        # Bolt Ears: a lightning zigzag
+block group=0 anchor=head lod=all view=all
+  scale 128
+  use esk
+  mirror on
+  capsule 115 -40 165 -100 20 18
+  capsule 165 -100 140 -120 18 15
+  capsule 140 -120 200 -200 15 7
+end
+
+list ears 23                        # Heart Ears
+block group=0 anchor=head lod=all view=all
+  scale 128
+  use esk
+  mirror on
+  ellipse 85 -140 30 30
+  ellipse 135 -140 30 30
+  tri 58 -132 162 -132 110 -70
+  use ein
+  ellipse 110 -142 16 16
+end
+
+list ears 24                        # Cable Ears: wires with knobs
+block group=0 anchor=head lod=all view=all
+  scale 128
+  mirror on
+  mat skin dark
+  shade flat
+  solid
+  capsule 100 -115 125 -190 7 7
+  capsule 125 -190 150 -220 7 7
+  mat accessory_color
+  shade ball
+  solid
+  ellipse 150 -225 30 30
+end
+
+list ears 25                        # Fan Ears: wide pleated fans
+block group=0 anchor=head lod=all view=all
+  scale 128
+  use esk
+  mirror on
+  tri 110 -45 110 45 190 -105
+  tri 110 -45 110 45 190 0
+  tri 110 -45 110 45 190 105
+  use ein
+  line 115 0 180 -90 1
+  line 115 0 180 0 1
+  line 115 0 180 90 1
+end
+
+list ears 26                        # Jug Ears: big round side ears
+block group=0 anchor=head lod=all view=all
+  scale 128
+  use esk
+  mirror on
+  ellipse 145 10 55 55
+  use ein
+  ellipse 145 10 30 30
+end
+
+list ears 27                        # Goblin Droop: pointed ears that sag outward
+block group=0 anchor=head lod=all view=all
+  scale 128
+  use esk
+  mirror on
+  tri 110 -20 115 55 235 95
+  use ein
+  tri 125 -5 127 40 200 75
+end
+
+list ears 28                        # Tuft Cat: pointed ears with a tuft
+block group=0 anchor=head lod=all view=all
+  scale 128
+  use esk
+  mirror on
+  tri 35 -120 120 -55 110 -200
+  use ein
+  tri 50 -115 105 -70 102 -165
+  line 110 -200 125 -235 1
+  line 110 -200 100 -240 1
+end
+
+list ears 29                        # Ripples: nested rings
+block group=0 anchor=head lod=all view=all
+  scale 128
+  use esk
+  mirror on
+  ellipse 140 5 55 75
+  use ein
+  ellipse 140 5 35 55
+  ellipse 140 5 15 30
+end
+
+list ears 30                        # Clouds: three puffs
+block group=0 anchor=head lod=all view=all
+  scale 128
+  use esk
+  mirror on
+  ellipse 135 -5 35 35
+  ellipse 165 20 35 35
+  ellipse 125 40 35 35
+end
+
+list ears 31                        # Horns Up: two stubby upright ears
+block group=0 anchor=head lod=all view=all
+  scale 128
+  use esk
+  mirror on
+  capsule 75 -125 95 -210 30 20
+  use ein
+  line 80 -135 95 -195 1
+end

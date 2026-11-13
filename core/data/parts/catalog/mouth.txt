@@ -1,6 +1,6 @@
 # core/data/parts/catalog/mouth.txt - the mouth parts (CR1; format: tools/partcat_build.py).
 # Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
-slot mouth list=mouth_style name="Mouth" method=P target=12 new=S
+slot mouth list=mouth_style name="Mouth" method=P target=12 new=S gate=4
 
 0   "Smile"                set=basics tags=plain
 1   "Grin"                 set=basics tags=plain
@@ -22,3 +22,17 @@ slot mouth list=mouth_style name="Mouth" method=P target=12 new=S
 17  "Lipstick"             set=basics tags=plain,glam
 18  "Big Grin"             set=basics tags=plain
 19  "Void"                 set=spooky tags=spooky,monster
+
+# CR4 A1b (core/data/parts/face/a1b_mouth.txt): 12 more mouths
+20  "Cat Mouth"            set=critter tags=critter,cute method=S
+21  "Zigzag"               set=basics tags=plain method=S
+22  "Slash"             set=basics tags=plain method=S
+23  "Dot Mouth"            set=basics tags=plain method=S
+24  "Toothy Block"         set=monster tags=monster method=S
+25  "Crooked"              set=basics tags=plain method=S
+26  "Wail"                 set=basics tags=plain method=S
+27  "Gap Tooth"            set=littleones tags=cute method=S
+28  "Grille"               set=indieart tags=tech method=S
+29  "Fang Pair"            set=spooky tags=spooky method=S
+30  "Wobble"               set=cozy tags=cozy method=S
+31  "Zipper"               set=plushie tags=stitched method=S

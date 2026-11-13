@@ -1,0 +1,109 @@
+# core/data/parts/face/a1b_mouth.txt - CR4 batch A1b: 12 mouths (values 20..31 of mouth_style: 20 are live, the gene is 5 bits).
+# Frame blocks: 256 = the mouth half width, centred on the mouth, y down. Ink (fixed jet black) and
+# white teeth. Drawn in a neutral face only: an expression or talking draws the painter's smile.
+
+def mink
+  mat ink
+  shade flat
+  decal
+enddef
+def mteeth
+  mat white
+  shade flat
+  decal
+enddef
+
+list mouth_style 20                 # Cat Mouth: a bold w
+block group=3 anchor=frame lod=all view=all
+  use mink
+  capsule -230 -50 -115 70 70 70
+  capsule -115 70 0 -50 70 70
+  capsule 0 -50 115 70 70 70
+  capsule 115 70 230 -50 70 70
+end
+
+list mouth_style 21                 # Zigzag: a bold m, peaks up
+block group=3 anchor=frame lod=all view=all
+  use mink
+  capsule -230 70 -115 -80 70 70
+  capsule -115 -80 0 70 70 70
+  capsule 0 70 115 -80 70 70
+  capsule 115 -80 230 70 70 70
+end
+
+list mouth_style 22                 # Slash: a diagonal swipe
+block group=3 anchor=frame lod=all view=all
+  use mink
+  capsule -230 100 230 -100 110 110
+end
+
+list mouth_style 23                 # Dot: one round dot
+block group=3 anchor=frame lod=all view=all
+  use mink
+  ellipse 0 0 130 130
+end
+
+list mouth_style 24                 # Toothy Block: a wide open box with a tooth row
+block group=3 anchor=frame lod=all view=all
+  use mink
+  capsule -170 0 170 0 180 180
+  use mteeth
+  capsule -150 -110 150 -110 40 40
+end
+
+list mouth_style 25                 # Crooked: low on one side, high on the other
+block group=3 anchor=frame lod=all view=all
+  use mink
+  capsule -254 90 0 90 70 70
+  capsule 0 90 254 -100 70 70
+end
+
+list mouth_style 26                 # Wail: an open triangle
+block group=3 anchor=frame lod=all view=all
+  use mink
+  tri -230 -120 230 -120 0 160
+end
+
+list mouth_style 27                 # Gap Tooth: a tall open oval with one tooth
+block group=3 anchor=frame lod=all view=all
+  use mink
+  ellipse 0 0 120 254
+  use mteeth
+  ellipse 0 -150 50 60
+end
+
+list mouth_style 28                 # Grille: a robot slot with bars
+block group=3 anchor=frame lod=all view=all
+  use mink
+  capsule -254 0 254 0 90 90
+  use mteeth
+  line -120 -70 -120 70 1
+  line 0 -70 0 70 1
+  line 120 -70 120 70 1
+end
+
+list mouth_style 29                 # Fang Pair: a flat line with two fangs
+block group=3 anchor=frame lod=all view=all
+  use mink
+  capsule -254 -100 254 -100 60 60
+  tri -200 -100 -60 -100 -130 200
+  tri 60 -100 200 -100 130 200
+end
+
+list mouth_style 30                 # Wobble: three humps
+block group=3 anchor=frame lod=all view=all
+  use mink
+  ellipse -150 0 90 100
+  ellipse 0 0 90 100
+  ellipse 150 0 90 100
+end
+
+list mouth_style 31                 # Zipper: a line with ink ticks above and below
+block group=3 anchor=frame lod=all view=all
+  use mink
+  capsule -254 0 254 0 50 50
+  capsule -170 -160 -170 160 30 30
+  capsule -57 -160 -57 160 30 30
+  capsule 57 -160 57 160 30 30
+  capsule 170 -160 170 160 30 30
+end

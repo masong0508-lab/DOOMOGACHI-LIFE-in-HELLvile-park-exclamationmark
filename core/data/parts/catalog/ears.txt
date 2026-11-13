@@ -18,3 +18,21 @@ slot ears list=ears name="Ears" method=P target=16 new=S
 13  "Floppy Pup"           set=critter tags=critter
 14  "Owl Tufts"            set=critter tags=critter
 15  "Raccoon"              set=critter tags=critter
+
+# CR4 A1b (core/data/parts/face/a1b_ears.txt): 16 more ears
+16  "Disc Ears"            set=critter tags=critter,cute method=S
+17  "Hound Flaps"          set=critter tags=critter method=S
+18  "Studs"                set=basics tags=plain method=S
+19  "Dishes"               set=basics tags=plain method=S
+20  "Leaf Ears"            set=seasons tags=nature method=S
+21  "Fin Pair"             set=sewers tags=sea,monster method=S
+22  "Bolt Ears"            set=punk tags=punk method=S
+23  "Heart Ears"           set=candy tags=cute,candy method=S
+24  "Cable Ears"           set=indieart tags=tech method=S
+25  "Fan Ears"             set=royal tags=glam method=S
+26  "Jug Ears"             set=basics tags=silly method=S
+27  "Goblin Droop"         set=spooky tags=spooky,monster method=S
+28  "Tuft Cat"             set=critter tags=critter method=S
+29  "Ripples"              set=cloud9 tags=holy method=S
+30  "Clouds"               set=cloud9 tags=holy,cute method=S
+31  "Horns Up"             set=spooky tags=spooky method=S
