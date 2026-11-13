@@ -287,15 +287,41 @@ static const struct { const char *key; uint8_t wedding; } romance_keys[] = {
     { "proposed", 1 }, { "proposal", 1 }, { "WEDDING", 1 }, { " wed ", 1 }
 };
 
-static int word_at(const char *line, const char *name)
+/* The name of resident `self`, found at `p` in `line` (whole words), is only a part of the longer name of another
+ * living resident ("Wisp", the kid, inside a headline about "Wisp Willow", an adult): the headline names the
+ * longer one. Only a longer name that really stands there covers it. */
+static int covered_by_longer_name(const char *line, const char *p, int self)
 {
+    const char *name = doomo_town.res[self].name;
     size_t n = strlen(name);
-    const char *p = line;
+    int j;
+    for (j = 0; j < DOOMO_MAX_RESIDENTS; j++) {
+        const char *other = doomo_town.res[j].name, *at;
+        size_t m = strlen(other);
+        if (j == self || doomo_town.res[j].status == RES_EMPTY || m <= n) continue;
+        for (at = strstr(other, name); at; at = strstr(at + 1, name)) {
+            size_t off = (size_t)(at - other);
+            const char *q;
+            if ((size_t)(p - line) < off) continue;
+            q = p - off;
+            if (strncmp(q, other, m) != 0) continue;
+            if ((q > line && isalnum((unsigned char)q[-1])) || isalnum((unsigned char)q[m])) continue;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/* the name of resident `i` is a word of `line` (somewhere that is not just a longer resident's name) */
+static int names_resident(const char *line, int i)
+{
+    const char *name = doomo_town.res[i].name, *p = line;
+    size_t n = strlen(name);
     if (n == 0) return 0;
     while ((p = strstr(p, name)) != NULL) {
         int before = p == line ? 0 : isalnum((unsigned char)p[-1]);
         int after = isalnum((unsigned char)p[n]);
-        if (!before && !after) return 1;
+        if (!before && !after && !covered_by_longer_name(line, p, i)) return 1;
         p++;
     }
     return 0;
@@ -311,7 +337,7 @@ static int check_news_line(const char *line, PropSeen *seen, char *why, int cap)
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
         const DoomoResident *r = &doomo_town.res[i];
         int s;
-        if (r->status == RES_EMPTY || !word_at(line, r->name)) continue;
+        if (r->status == RES_EMPTY || !names_resident(line, i)) continue;
         s = st_cache[i];
         if (life_stage_youth(s) >= 2) minors++;          /* baby, toddler, child */
         else if (s == LIFE_TEEN) teens++;
@@ -608,6 +634,13 @@ TEST(life_stage_property_oracle_catches_violations)
     CHECK(check_news_line("Rumour has it someone has a crush on Z003...", &seen, why, sizeof(why)));
     CHECK(!check_news_line("Z002 proposed to Z003 - and they said YES! Wedding!", &seen, why, sizeof(why)));
     CHECK(check_news_line("Z003 won the pie-eating contest. Again.", &seen, why, sizeof(why)));
+    /* a name that is the front of a longer one (the Classic island's kid "Wisp" and the adult "Wisp Willow"): the
+     * headline names the longer one; the kid alone, or the kid next to the adult, is still read as the kid */
+    snprintf(town_res(kid)->name, DOOMO_NAME_LEN, "Wisp");
+    snprintf(town_res(adult2)->name, DOOMO_NAME_LEN, "Wisp Willow");
+    CHECK(check_news_line("Rumour has it someone has a crush on Wisp Willow...", &seen, why, sizeof(why)));
+    CHECK(!check_news_line("Rumour has it someone has a crush on Wisp...", &seen, why, sizeof(why)));
+    CHECK(!check_news_line("Wisp Willow confessed to Wisp... and it's a YES! New couple!", &seen, why, sizeof(why)));
 }
 
 /* ---------------------------------------------------------------------- */
