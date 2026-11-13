@@ -740,14 +740,19 @@ whatever the Controls scheme is, and its help line says it works on Auto only
 `stkopt_preset_keeps_the_stick_mode`, `stkopt_shooter_tip_follows_the_stick_mode`.
 On Flycast (`dc/tests/sticks/stick_option.txt`): the row shows on the Controls
 page (below Rumble), RIGHT picks Strafe, the stick's X then strafes and R
-turns; `sticks.txt` (the default) runs as before; 0 of 397 ticks over 33 ms
-(worst 19.7 ms in the shooter; `sticks.txt` 0 of 345, worst 29.6 ms in STORY).
-The new row widens the Controls page's `dc/harness/known_diffs.tsv` mask
-(`pause_options` / `opt_0_controls.png`, the Rumble row's mask grown to 48 px);
-`make -C dc ui-compare` is then 92 of 94 (the 2 that fail, options_cheats and
-opt_5_perf, fail on the base too: the Draw distance row). One new row on the Dreamcast's Controls page
-is the only visible change; the GBA, PS1 and native screens are unchanged.
-GBA EWRAM / IWRAM net zero (the value is a bit next to the two option flags).
+turns; `sticks.txt` (the default) runs as before. On the landed tree:
+0 of 396 ticks over 33 ms, worst 29.0 ms in COMBAT; `sticks.txt` 0 of 345,
+worst 29.4 ms. The new row widens the Controls page's mask in
+`dc/harness/known_diffs.tsv` (`pause_options` / `opt_0_controls.png`, the
+Rumble row's 24 px grown to 48); `make -C dc ui-compare` is 94 of 94 with it.
+One new row on the Dreamcast's Controls page is the only visible change; the
+GBA, PS1 and native screens are unchanged. GBA EWRAM / IWRAM net zero (the
+value is a bit next to the two option flags); ROM only, .text +144 B,
+.rodata +84 B. The one-stick tip lines and the row's help line are inside
+`#if DOOMO_TRIGGERS`, so the PS1 and the GBA carry no byte of them; what is
+left on the PS1 is the OPT2 table row and its three words (about 40 B of
+-Os rodata, every core file here is already -Os). The PS1 EXE was not built
+or measured in this package: that machine has no PSn00bSDK.
 
 The core's "smooth feel" (`input_set_feel(1)`: eased turning, fire
 buffering, aim friction) is on, as on the PS1. One visible consequence: the
