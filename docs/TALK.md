@@ -847,7 +847,7 @@ relationship, night, hellborn, ghost. Rude stays PG-21 comedy (SCRIPT_STYLE R4):
 is a hat, a walk or a joke, never a body, a family or a loss; threats are cartoon (a duck, a
 postcard, a nap); no slur, no register word, no romance. The sharp lines carry `!kid_present`
 and a child speaker gets a cute deflection ("I'm telling!", "Not nice!"). At most 3 sentences
-a line. `TALK_en.BIN` 546,971 -> 567,450 B on the starter bank (PS1 non-resident data, no
+a line. `TALK_en.BIN` 540,274 -> 567,450 B on the starter bank; 596,426 B with T5B-WARM too (PS1 non-resident data, no
 resident byte). No code change. A 40-line sample is in the evidence directory.
 
 **With K-10 (the TK3 landing)**: GRAMMAR 14,536 B and STRINGS 17,650 B
