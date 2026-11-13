@@ -373,6 +373,10 @@ is the same 125 ms dialog entry in both (tick 53). Again on the trees it landed 
 30.1, 1 of 5,783 ticks over 33.3 ms (the same dialog entry, tick 53), work mean 10,079 us; `.bss` 4,581,012 B on `3d9905df`. The halfword edge move is
 GBA-only. `make dc-host-test` passes.
 
+**S2-4b (the Fun Fair, 2026-11-13).** Nothing changes here: stamps, bands and undo lists are GBA-only (`plat_stage_stamp` and
+`plat_stage_restore_list` are the weak no-ops, `mg_stamp` returns 0 and the games draw as before). Flycast `speed2_fair` after the
+package: all 23 windows 30.0 logic ticks/s, 0 of 6,040 ticks over 33.3 ms of work (worst 15.7 ms, the Derby), as before.
+
 ### The harness mailbox (`dc_mailbox`, `dc/harness/dc_mailbox.h`)
 
 The layout is one header shared by the game and the Flycast harness (DC1):
