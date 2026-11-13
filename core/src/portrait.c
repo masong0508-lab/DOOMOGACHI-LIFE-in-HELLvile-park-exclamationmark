@@ -1764,6 +1764,28 @@ const DoomoImage *portrait_pool_image(uint32_t key, int w, int h, int *fresh)
     return &e->img;
 }
 
+#if !defined(DOOMO_PLATFORM_PS1)
+/* (S2-9, cross-stream: the workshop's weapon pictures on the GBA, weld_slice.c; not built on the PS1, whose
+ * workshop shows Rivet's portrait from this pool and composes fast enough without) */
+DOOMO_STATIC_ASSERT(PORTRAIT_POOL_BIG_MAX <= PC_BLOCKS * PC_BLOCK / 3, three_big_pictures_fit_the_pool);
+const DoomoImage *portrait_pool_big(uint32_t key, int w, int h, int *fresh)
+{
+    uint32_t sz = (uint32_t)w | ((uint32_t)h << 16);
+    CacheEnt *e;
+    if (fresh) *fresh = 0;
+    if (w <= 0 || h <= 0 || w * h > PORTRAIT_POOL_BIG_MAX) return NULL;
+    cache_init();
+    e = cache_find(CK_FOREIGN, -2, key, sz, 0xFFFFFFFFu);
+    if (e) return &e->img;
+    if (!fresh) return NULL;            /* only looking */
+    job_reap();
+    e = cache_alloc(CK_FOREIGN, -2, key, sz, w, h, 0);
+    if (!e) return NULL;
+    *fresh = 1;
+    return &e->img;
+}
+#endif
+
 void portrait_invalidate(int resident_id)
 {
     int i;

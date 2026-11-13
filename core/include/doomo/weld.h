@@ -177,6 +177,30 @@ int  weld_cost(const DoomoWeapon *w, uint8_t *items, uint8_t *counts, int max);
 /* First-person view sprite for the weapon (frame 0 idle, 1 fire, 2 fire2,
  * 3 reload). Built from all parts + paint + style. */
 const DoomoImage *weld_view_image(const DoomoWeapon *w, int frame);
+/* (S2-9, weld_slice.c) The same picture for a scene that must not wait for it (Rivet's workshop). Where the
+ * platform runs slices (GBA, PS1) it is composed a slice at a time in the frame's spare time, into a slot other
+ * than the one on show: this returns the picture of (w, frame) with *ready = 1 once it is complete, and until
+ * then, with *ready = 0, the picture it returned last (the old one stays up) or NULL when it has none.
+ * Elsewhere it is weld_view_image(): composed in the call, always ready.
+ * weld_view_prefetch(): (w, frame) will be asked for soon. It is composed ahead in the same slices, never over
+ * the picture on show nor over one asked for in this tick; returns 1 when it is cached (so several coming
+ * pictures are asked in order: stop at the first 0). Where no slices run it composes nothing.
+ * One picture is under way at a time: asking for another one drops it, but a prefetch never drops one that
+ * weld_view_image_sliced() is still waiting for. The cache is weld_view_image()'s 2 pictures, and on the GBA
+ * 2 more in the portrait cache's block pool while it has the room (portrait.h portrait_pool_big). */
+const DoomoImage *weld_view_image_sliced(const DoomoWeapon *w, int frame, int *ready);
+int weld_view_prefetch(const DoomoWeapon *w, int frame);
+/* For the platform's idle time (gba/src/pslice.c): >= 0 when the frame just drawn asked for the picture under
+ * way, else -1. weld_idle_run(0) runs one slice of it (the size of the slices inside a frame);
+ * weld_idle_run(until), on the GBA, everything that ends before the tick's work clock (gba_work_now()) reaches
+ * `until`: one pass for the whole of a frame's idle time. */
+int  weld_idle_next(void);
+void weld_idle_run(uint32_t until);
+/* Tests: mode 0 = composed in the call by weld_view_image() (the default off the GBA and the PS1), 1 = by
+ * weld_idle_run() and, after 4 ticks without a slice, in the call (the GBA), 2 = in the call while
+ * plat_portrait_slice_ok() says so (the PS1); units = the size of a slice (0: the default); far = how many far
+ * slots (0..2: the GBA has 2). Forgets the picture under way, the one on show and the far slots. */
+void weld_slice_test(int mode, int units, int far);
 /* Small icon for menus (24x16). */
 const DoomoImage *weld_icon_image(const DoomoWeapon *w);
 

@@ -14,13 +14,26 @@
  *
  * Costs are learned per slice class (PORTRAIT_SLICE_CLASSES: kind x slice): the newest sample, or the old
  * value less an eighth if that is more (a slow outlier fades in a few samples, a fast one never lowers the
- * guess at once). 172 B of EWRAM. */
+ * guess at once). 172 B of EWRAM.
+ *
+ * (S2-9) The weapon picture of Rivet's workshop is composed in idle time too (core/src/weld_slice.c): after the
+ * portrait cache's slices, when at least WELD_MIN_CYC are left before the vblank, weld_idle_run() gets the time up
+ * to WELD_MARGIN_CYC before it and stops by its own clock (gba_work_now(), main.c): one pass of whatever length
+ * fits, because a pass costs ~0.9 ms before its first unit. Its row loops are ARM code of the IWRAM overlay's UI
+ * group: gba_weld_rows_in() / gba_weld_rows_out() bring the group in around a pass and put back what was there
+ * (the workshop keeps the UI group in, plat_ui_loops(), so nothing is copied there). A slice inside a frame (only
+ * when the frames leave no idle time for 4 ticks) is forced by the core and only timed here (its class is none of
+ * the table's: nothing is learned). */
 #include "gba_plat.h"
+#include "iwram_ovl.h"
 #include "doomo/portrait.h"
 
 /* weak references: the engine test's NOCORE build links no portrait cache (then there is nothing to run) */
 extern int portrait_idle_next(void) __attribute__((weak));
 extern void portrait_idle_run(void) __attribute__((weak));
+extern int weld_idle_next(void) __attribute__((weak));      /* (S2-9) core/src/weld_slice.c */
+extern void weld_idle_run(uint32_t until) __attribute__((weak));
+extern uint32_t gba_work_now(void);                         /* main.c */
 
 #define FRAME_CYC   280896u                 /* one video frame */
 #define LINE_CYC    1232u
@@ -31,6 +44,9 @@ extern void portrait_idle_run(void) __attribute__((weak));
 #define PATIENCE_BIG 15                     /* ... before one dear slice (over CHEAP_CYC) is */
 #define CHEAP_CYC   90000u
 #define NCLS        PORTRAIT_SLICE_CLASSES
+#define WELD_MIN_CYC    50000u              /* (S2-9) a weapon pass is worth starting with 3 ms of idle time */
+#define WELD_MARGIN_CYC 25000u              /* ... and stops looking for work 1.5 ms before the vblank (it looks at
+                                             * the clock every ~1 ms of work, and a row is up to 0.5 ms) */
 
 static uint16_t cost64[NCLS];               /* learned cost, 64-cycle units (0: never timed) */
 static uint32_t c0;                         /* gba_cycles() when the slice started */
@@ -107,13 +123,32 @@ static uint32_t cycles_until(uint32_t target)
 void gba_pslice_idle(uint32_t target)
 {
     int n;
-    if (!portrait_idle_next || !portrait_idle_run) return;
     in_idle = 1;
-    for (n = 0; n < 24; n++) {
-        int cls = portrait_idle_next();
-        if (cls < 0) break;
-        if (est(cls) > cycles_until(target)) break;
-        portrait_idle_run();                /* calls plat_portrait_slice_ok / _done: timed and learned */
-    }
+    if (portrait_idle_next && portrait_idle_run)
+        for (n = 0; n < 24; n++) {
+            int cls = portrait_idle_next();
+            if (cls < 0) break;
+            if (est(cls) > cycles_until(target)) break;
+            portrait_idle_run();            /* calls plat_portrait_slice_ok / _done: timed and learned */
+        }
     in_idle = 0;
+    /* (S2-9) then the weapon picture under way, if the frame just drawn asked for one: one pass until the vblank */
+    if (weld_idle_next && weld_idle_run && weld_idle_next() >= 0) {
+        uint32_t left = cycles_until(target);
+        if (left >= WELD_MIN_CYC) weld_idle_run(gba_work_now() + left - WELD_MARGIN_CYC);
+    }
+}
+
+/* (S2-9) core/src/weld_slice.c, around a slice: the IWRAM overlay's UI group in (returns the group that was
+ * there), and that group back. Never called from an IRQ (iwram_ovl.h). */
+int gba_weld_rows_in(void)
+{
+    int had = iwram_ovl_current();
+    if (had != OVL_UI) iwram_ovl_use(OVL_UI);
+    return had;
+}
+
+void gba_weld_rows_out(int had)
+{
+    if (had != OVL_UI && had != OVL_NONE) iwram_ovl_use(had);
 }

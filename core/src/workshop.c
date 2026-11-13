@@ -13,9 +13,17 @@
  * C3 / C15 (clarity): one prompt bar (ui.h ui_prompts, the pad's own
  * button names: "SEL+A Random" on a GBA), and START asks Rivet what the
  * stat letters mean (DMG, RATE... and the Armory's Q / Lv).
+ *
+ * S2-9 (speed): the weapon picture never makes a tick wait. It comes from
+ * weld_view_image_sliced() (weld.h): on the GBA and the PS1 a new picture
+ * is composed over a few ticks while the one shown before stays up, and
+ * the pictures that come next (the test fire's two frames, the design one
+ * step further along the row under the cursor, the next weapon of the
+ * Armory list) are composed ahead (weld_view_prefetch).
  */
 #include "weld_int.h"
 #include "doomo/tips.h"
+#include "doomo/plat_ext.h"     /* S2-9: plat_ui_loops */
 
 DoomoWeapon weld_pending;
 int weld_game_result = -1;
@@ -34,6 +42,8 @@ static const uint8_t wp_clist[WP_COUNT] = {
 
 static int ws_tab, ws_sel, ws_top, ws_t, ws_arm_sel, ws_preview_t, ws_msg_t;
 static const char *ws_msg;
+static int8_t ws_dir = 1;       /* S2-9: the way the cursor last stepped (a part's value, the Armory list) */
+static uint8_t ws_shown;        /* S2-9: the animation frame of the preview picture on show */
 static const char *const rivet_lines[] = {
     "Sparks are just tiny fireworks!",
     "Cute or brutal, a weld's a weld.",
@@ -77,35 +87,38 @@ static const char *wp_name(int k, int v)
     return "";
 }
 
-static void wp_set(int k, int v)
+/* part k of design *wp becomes option v (wrapped) */
+static void wp_set_on(DoomoWeapon *wp, int k, int v)
 {
     int n = wp_count(k);
     if (n <= 0) return;
     v = (v % n + n) % n;
     if (k == WP_FRAME) {
         /* a new frame comes with its natural core; looks and charm stay */
-        DoomoWeapon keep = weld_pending;
-        weld_default(&weld_pending, v, keep.style);
-        weld_pending.paint = keep.paint;
-        weld_pending.accent = keep.accent;
-        weld_pending.charm = keep.charm;
-        weld_pending.barrel = keep.barrel;
-        weld_pending.mod = keep.mod;
-        weld_pending.mag = keep.mag;
-        weld_pending.under = keep.under;
-        if (keep.sight != WSIGHT_IRON) weld_pending.sight = keep.sight;
+        DoomoWeapon keep = *wp;
+        weld_default(wp, v, keep.style);
+        wp->paint = keep.paint;
+        wp->accent = keep.accent;
+        wp->charm = keep.charm;
+        wp->barrel = keep.barrel;
+        wp->mod = keep.mod;
+        wp->mag = keep.mag;
+        wp->under = keep.under;
+        if (keep.sight != WSIGHT_IRON) wp->sight = keep.sight;
     } else if (k < WP_STYLE) {
-        weld_part_set(&weld_pending, wp_clist[k], v);
+        weld_part_set(wp, wp_clist[k], v);
     } else if (k == WP_STYLE) {
-        weld_pending.style = (uint8_t)v;
+        wp->style = (uint8_t)v;
     } else if (k == WP_PAINT) {
-        weld_pending.paint = (uint8_t)v;
+        wp->paint = (uint8_t)v;
     } else if (k == WP_ACCENT) {
-        weld_pending.accent = (uint8_t)v;
+        wp->accent = (uint8_t)v;
     }
-    weld_pending.quality = 60;
-    weld_pending.xp = 0;
+    wp->quality = 60;
+    wp->xp = 0;
 }
+
+static void wp_set(int k, int v) { wp_set_on(&weld_pending, k, v); }
 
 static int design_locked(const char **how)
 {
@@ -298,7 +311,8 @@ static void workshop_update(void)
         if (btn_repeat(BTN_UP)) { ws_sel = (ws_sel + WP_COUNT - 1) % WP_COUNT; audio_sfx(SFX_CURSOR); }
         if (btn_repeat(BTN_DOWN)) { ws_sel = (ws_sel + 1) % WP_COUNT; audio_sfx(SFX_CURSOR); }
         if (ws_sel < WP_WELD && (btn_repeat(BTN_LEFT) || btn_repeat(BTN_RIGHT))) {
-            wp_set(ws_sel, wp_get(ws_sel) + (btn_down(BTN_LEFT) ? -1 : 1));
+            ws_dir = (int8_t)(btn_down(BTN_LEFT) ? -1 : 1);
+            wp_set(ws_sel, wp_get(ws_sel) + ws_dir);
             ws_preview_t = 0;
             audio_sfx(SFX_BLIP);
         }
@@ -330,8 +344,8 @@ static void workshop_update(void)
         int slots[DOOMO_MAX_WEAPONS], n = armory_list(slots), cur = 0, i;
         for (i = 0; i < n; i++) if (slots[i] == ws_arm_sel) cur = i;
         if (n == 0) return;
-        if (btn_repeat(BTN_UP)) { cur = (cur + n - 1) % n; audio_sfx(SFX_CURSOR); }
-        if (btn_repeat(BTN_DOWN)) { cur = (cur + 1) % n; audio_sfx(SFX_CURSOR); }
+        if (btn_repeat(BTN_UP)) { cur = (cur + n - 1) % n; ws_dir = -1; audio_sfx(SFX_CURSOR); }
+        if (btn_repeat(BTN_DOWN)) { cur = (cur + 1) % n; ws_dir = 1; audio_sfx(SFX_CURSOR); }
         ws_arm_sel = slots[cur];
         if (btn_pressed(BTN_A)) {
             doomo_town.story.equipped = (uint8_t)ws_arm_sel;
@@ -359,22 +373,42 @@ static void workshop_update(void)
 }
 
 /* ---- draw --------------------------------------------------------------------- */
+/* (S2-9) The preview breathes on the idle picture and test-fires through frames 1 and 2 every 96 ticks. The
+ * picture asked for is the frame the clock says; while it is not ready the one on show stays, drawn where its own
+ * frame sits (ws_shown), and the muzzle star waits for the real fire frame. Once the picture is ready the next
+ * frames of the fire are composed ahead, then the design one step further along the row under the cursor. */
 static void preview(int x, int y, const DoomoWeapon *w, int silhouette)
 {
-    int frame = 0, t = ws_preview_t % 96, bob = ui_wave(ws_t, 60, 1);
+    int frame = 0, t = ws_preview_t % 96, bob = ui_wave(ws_t, 60, 1), ready = 0;
     int mx, my, gx, gy;
+    const DoomoImage *img;
     if (t >= 70 && t < 74) frame = 1;
     else if (t >= 74 && t < 78) frame = 2;
+    if (silhouette) frame = 0;
+    img = weld_view_image_sliced(w, frame, &ready);
+    if (ready) ws_shown = (uint8_t)frame;
     weld_view_points(w, &mx, &my, &gx, &gy);
     /* soft shadow + spotlight disc */
     ui_fill_ellipse(x + 48, y + 60, 34, 5, PAL_RAMP(RAMP_WOOD, 2));
-    if (silhouette) plat_image(x, y + bob, weld_view_image(w, 0), 1, IMG_SILHOUETTE, PAL_RAMP(RAMP_STONE, 1));
-    else plat_image(x, y + bob + (frame == 1 ? 3 : 0), weld_view_image(w, frame), 1, 0, 0);
-    if (!silhouette && frame == 1) {
+    if (!img) { /* (the first picture is still under way) */ }
+    else if (silhouette) plat_image(x, y + bob, img, 1, IMG_SILHOUETTE, PAL_RAMP(RAMP_STONE, 1));
+    else plat_image(x, y + bob + (ws_shown == 1 ? 3 : 0), img, 1, 0, 0);
+    if (!silhouette && ready && frame == 1) {
         ui_star(x + mx, y + my + bob, 7, w->style == WSTYLE_CUTE ? PAL_PAINT(PAINT_BUBBLEGUM, 1) : PAL_RAMP(RAMP_LAVA, 5));
         ui_star(x + mx, y + my + bob, 3, PAL_WHITE);
     }
     if (!silhouette && (ws_t / 20) % 3 == 0) ui_sparkle(x + 12 + (ws_t * 7) % 70, y + 8 + (ws_t * 3) % 30, ws_t & 15, PAL_WHITE);
+    if (ready) {
+        /* ahead: the fire's next two pictures (none for a locked design: it never fires), then the neighbour */
+        int next = (frame + 1) % 3;
+        if (silhouette || (weld_view_prefetch(w, next) && weld_view_prefetch(w, (next + 1) % 3))) {
+            if (ws_sel < WP_WELD) {
+                DoomoWeapon nb = *w;
+                wp_set_on(&nb, ws_sel, wp_get(ws_sel) + ws_dir);
+                weld_view_prefetch(&nb, 0);
+            }
+        }
+    }
 }
 
 static void stat_bars(int x, int y, int w, const DoomoWeapon *wp, int compact)
@@ -515,11 +549,17 @@ static void draw_armory_tab(int sw, int sh)
     ui_scroll_arrows(lx + lw - 6, ly - 2, ly + rows * 20 - 4, top > 0, top + rows < n);
     if (n > 0) {
         const DoomoWeapon *w = &doomo_town.weapons[ws_arm_sel];
+        const DoomoImage *img;
         DoomoWeaponStats st;
-        int ph = big ? 152 : 126;
+        int ph = big ? 152 : 126, ready = 0;
         weld_stats(w, &st);
         ui_window(px, ly - 4, pw, ph, WIN_CUTE);
-        plat_image(px + (pw - WELD_VIEW_W) / 2, ly - 3 + ui_wave(ws_t, 60, 1), weld_view_image(w, 0), 1, 0, 0);
+        /* (S2-9) composed over a few ticks (the picture shown before stays up meanwhile), and the next weapon
+         * down or up the list ahead */
+        img = weld_view_image_sliced(w, 0, &ready);
+        ws_shown = 0;                   /* (an idle picture, whatever the Weld tab showed last) */
+        if (img) plat_image(px + (pw - WELD_VIEW_W) / 2, ly - 3 + ui_wave(ws_t, 60, 1), img, 1, 0, 0);
+        if (ready && n > 1) weld_view_prefetch(&doomo_town.weapons[slots[(cur + n + ws_dir) % n]], 0);
         doomo_snprintf(buf, sizeof(buf), "%s %s", doomo_wclass_names[st.wclass],
                        st.ammo_type == 0xFF ? "" : doomo_ammo_names[st.ammo_type]);
         ui_text_center(px + pw / 2, ly + 62, buf, PAL_UI_PINK_D);
@@ -536,6 +576,7 @@ static void workshop_draw(void)
     static const char *const tabs[2] = { "Weld", "Armory" };
     int sw = plat_screen_w(), sh = plat_screen_h();
     const char *title = "Rivet's Workshop";
+    plat_ui_loops();                    /* S2-9: the platform's 2D loops stay in for the whole visit (GBA) */
     ui_backdrop(WIN_CREAM, (uint32_t)ws_t);
     /* a few welding sparks drifting across the backdrop */
     {

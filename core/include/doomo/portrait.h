@@ -191,6 +191,11 @@ void portrait_cache_standin(int ticks);
  * the pool reuses it: draw it in the same frame. */
 #define PORTRAIT_POOL_IMAGE_MAX (PORTRAIT_W * PORTRAIT_H)
 const DoomoImage *portrait_pool_image(uint32_t key, int w, int h, int *fresh);
+/* (S2-9) The same for one bigger picture: at most PORTRAIT_POOL_BIG_MAX bytes (a 96x64 weapon view of the
+ * GBA's workshop, weld_slice.c: 16 of the pool's 48 blocks). With fresh == NULL it only looks: NULL when the
+ * pool does not hold `key` (nothing is allocated, nothing is thrown out). */
+#define PORTRAIT_POOL_BIG_MAX (96 * 64)
+const DoomoImage *portrait_pool_big(uint32_t key, int w, int h, int *fresh);
 
 
 /* ---- body and face forms by life stage (portrait_age.c, F4) ---------------

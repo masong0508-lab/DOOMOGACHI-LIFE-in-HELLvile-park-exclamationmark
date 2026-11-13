@@ -29,12 +29,19 @@
 #include "doomo/scene.h"
 #include "doomo/portrait.h"
 #include "doomo/save_ext.h"
+#include "weld_gfx_int.h"
 
+/* (S2-9) weld_slice.c compiles this file a second time (WELD_SLICED) for the
+ * workshop: the same recipes on primitives of its own, which can stop and
+ * go on (a picture composed over several ticks) and are faster. What that
+ * build leaves out or replaces is marked WELD_SLICED below. This build is
+ * the one every other scene uses, and the reference the tests compare the
+ * other one with (core/tests/test_weld_slice.c). */
 #define VW WELD_VIEW_W
 #define VH WELD_VIEW_H
 #define IW WELD_ICON_W
 #define IH WELD_ICON_H
-#define VIEW_SLOTS 2
+#define VIEW_SLOTS WELD_VIEW_SLOTS
 #define VIEW_WSC 390          /* width scale of the first-person sprite */
 
 /* (integration, memory budget) The two 96x64 view slots (12 KB) live in
@@ -44,17 +51,20 @@
  * own there. When another scene took the scratch the slots are simply
  * composed again. Scenes that keep their own state in the scratch must
  * not call weld_view_image(). The 24x16 icons stay here. */
-#define WELD_SCRATCH_TAG SAVE_EXT_TAG('W', 'E', 'L', 'D')
-typedef uint8_t ViewPix[VW * VH];
 DOOMO_STATIC_ASSERT(VIEW_SLOTS * VW * VH <= DOOMO_SCENE_SCRATCH, weld_view_fits_scratch);
-static ViewPix   *view_pix;
-static DoomoImage view_img[VIEW_SLOTS];
-static uint32_t  view_key[VIEW_SLOTS], view_used[VIEW_SLOTS];
+#ifndef WELD_SLICED
+/* (S2-9) the slots' state is weld_gfx_int.h's: one cache, whichever build
+ * composed a picture */
+WeldViewPix *weld_view_pix;
+DoomoImage   weld_view_img[VIEW_SLOTS];
+uint32_t     weld_view_key[VIEW_SLOTS], weld_view_used[VIEW_SLOTS];
+uint32_t     weld_view_clock;
 /* (integration, memory budget) the 24x16 icons are one block each of the
  * portrait cache's pool (portrait_pool_image), LRU with the portraits,
- * instead of six RAM slots; icon_gen re-keys them after an invalidate */
-static uint32_t  icon_gen;
-static uint32_t  use_clock;
+ * instead of six RAM slots; weld_gfx_gen re-keys them after an invalidate
+ * (S2-9: and tells weld_slice.c to forget what it holds) */
+uint32_t     weld_gfx_gen;
+#endif
 
 /* ---- materials ---------------------------------------------------------- */
 typedef struct Mat { uint8_t c[5]; } Mat;   /* 0 darkest .. 4 highlight */
@@ -93,10 +103,25 @@ typedef struct G {
     int cute;
     Mat paint, accent, metal, dark, glow, white, wood, bone, gold, black;
     uint32_t seed;
+#ifdef WELD_SLICED
+    struct Sl *sl;       /* the pass under way (weld_slice.c) */
+#endif
 } G;
 
 static int isqrt_i(int v) { return v > 0 ? (int)fx_isqrt((uint32_t)v) : 0; }
 
+#ifdef WELD_SLICED
+/* (S2-9) weld_slice.c's primitives: the same pixels, written in units that a
+ * pass may stop between */
+static void put(G *g, int x, int y, uint8_t c);
+static void put_over(G *g, int x, int y, uint8_t c);
+static void clear_px(G *g, int x, int y);
+static void canvas_clear(G *g, uint8_t *px, int n);
+static void seg(G *g, int t0, int t1, int s16, int w0, int w1, const Mat *m, int shade, int caps);
+static void ell(G *g, int cx16, int cy16, int rx16, int ry16, const Mat *m, int glow);
+static void tri(G *g, int ax, int ay, int bx, int by, int cx, int cy, uint8_t c);
+static void outline(G *g);
+#else
 static void put(G *g, int x, int y, uint8_t c)
 {
     if (c == PAL_BLACK) c = PAL_RAMP(RAMP_STONE, 0);       /* 1 is the outline marker */
@@ -107,6 +132,11 @@ static void clear_px(G *g, int x, int y)
 {
     if ((unsigned)x < (unsigned)g->w && (unsigned)y < (unsigned)g->h) g->px[y * g->w + x] = 0;
 }
+
+/* a pixel of the picture so far in another colour (nothing where it is empty); the canvas emptied */
+#define put_over(g, x, y, c) do { if (get(g, x, y)) put(g, x, y, c); } while (0)
+#define canvas_clear(g, px, n) memset(px, 0, (size_t)(n))
+#endif
 
 static uint8_t get(const G *g, int x, int y)
 {
@@ -146,6 +176,7 @@ static void at(const G *g, int t, int s, int *x, int *y)
 enum { SH_CYL, SH_BOX, SH_GLOW, SH_FLAT };
 enum { CAP_NONE = 0, CAP_NEAR = 1, CAP_FAR = 2 };
 
+#ifndef WELD_SLICED
 static uint8_t tone_cyl(const Mat *m, int u)          /* u -256..256, lit from the left */
 {
     if (u < -200) return m->c[2];
@@ -246,6 +277,7 @@ static void ell(G *g, int cx16, int cy16, int rx16, int ry16, const Mat *m, int 
             else put(g, x, y, m->c[1]);
         }
 }
+#endif /* !WELD_SLICED */
 
 static void ell_at(G *g, int t, int s, int r, const Mat *m, int glow)
 {
@@ -254,6 +286,7 @@ static void ell_at(G *g, int t, int s, int r, const Mat *m, int glow)
     ell(g, x * 16 + 8, y * 16 + 8, DOOMO_MAX(rr, 12), DOOMO_MAX(rr, 12), m, glow);
 }
 
+#ifndef WELD_SLICED
 static void tri(G *g, int ax, int ay, int bx, int by, int cx, int cy, uint8_t c)
 {
     int minx = DOOMO_MIN(ax, DOOMO_MIN(bx, cx)), maxx = DOOMO_MAX(ax, DOOMO_MAX(bx, cx));
@@ -267,6 +300,7 @@ static void tri(G *g, int ax, int ay, int bx, int by, int cx, int cy, uint8_t c)
             if ((e0 >= 0 && e1 >= 0 && e2 >= 0) || (e0 <= 0 && e1 <= 0 && e2 <= 0)) put(g, x, y, c);
         }
 }
+#endif
 
 static void line(G *g, int x0, int y0, int x1, int y1, uint8_t c)
 {
@@ -328,7 +362,7 @@ static void splat(G *g, int t, int s, uint32_t seed)
     for (k = 0; k < 7; k++) {
         uint32_t h = doomo_hash32(seed + (uint32_t)k * 77u);
         int ox = (int)(h % 5) - 2, oy = (int)((h >> 4) % 5) - 2;
-        if (get(g, x + ox, y + oy)) put(g, x + ox, y + oy, k < 2 ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_RAMP(RAMP_BLOOD, 4));
+        put_over(g, x + ox, y + oy, k < 2 ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_RAMP(RAMP_BLOOD, 4));
     }
 }
 
@@ -349,6 +383,7 @@ static void spikes(G *g, int t0, int t1, int side_px, int n, int len)
 }
 
 /* ---- the outline pass: coloured selective outlines --------------------- */
+#ifndef WELD_SLICED
 static void outline(G *g)
 {
     int x, y, w = g->w, h = g->h;
@@ -378,6 +413,7 @@ static void outline(G *g)
             g->px[y * w + x] = d;
         }
 }
+#endif
 
 /* ---- recipes ---------------------------------------------------------------- */
 typedef struct Recipe {
@@ -1227,13 +1263,20 @@ static void setup_mats(G *g, const DoomoWeapon *w)
     g->seed = doomo_hash32((uint32_t)w->frame * 131u + w->paint * 7u + w->accent);
 }
 
+#ifdef WELD_SLICED
+static void compose(uint8_t *px, int w, int h, const DoomoWeapon *wp, int frame, int icon, struct Sl *sl)
+#else
 static void compose(uint8_t *px, int w, int h, const DoomoWeapon *wp, int frame, int icon)
+#endif
 {
     G g;
     const Recipe *r = &recipes[wp->frame < WFRAME_COUNT ? wp->frame : WFRAME_FISTS];
     int fire = frame == 1 || frame == 2;
     memset(&g, 0, sizeof(g));
-    memset(px, 0, (size_t)(w * h));
+#ifdef WELD_SLICED
+    g.sl = sl;
+#endif
+    canvas_clear(&g, px, w * h);
     g.px = px; g.w = w; g.h = h;
     setup_mats(&g, wp);
     if (icon) {
@@ -1326,6 +1369,7 @@ static uint32_t weapon_key(const DoomoWeapon *w, int frame)
     return k | 1u;
 }
 
+#ifndef WELD_SLICED
 const DoomoImage *weld_view_image(const DoomoWeapon *w, int frame)
 {
     static const DoomoWeapon fists = { WFRAME_FISTS, 0, 0, 0, 0, 0, 0, 0, 0, WSTYLE_CUTE,
@@ -1335,23 +1379,23 @@ const DoomoImage *weld_view_image(const DoomoWeapon *w, int frame)
     if (!w) w = &fists;
     frame = DOOMO_CLAMP(frame, 0, 3);
     key = weapon_key(w, frame);
-    use_clock++;
-    if (!view_pix || !scene_scratch_mine(WELD_SCRATCH_TAG)) {
+    weld_view_clock++;
+    if (!weld_view_pix || !scene_scratch_mine(WELD_SCRATCH_TAG)) {
         /* (re)claim the scene scratch: whatever the slots held is gone */
-        view_pix = (ViewPix *)scene_scratch(WELD_SCRATCH_TAG, (uint32_t)sizeof(ViewPix) * VIEW_SLOTS);
-        memset(view_key, 0, sizeof(view_key));
+        weld_view_pix = (WeldViewPix *)scene_scratch(WELD_SCRATCH_TAG, (uint32_t)sizeof(WeldViewPix) * VIEW_SLOTS);
+        memset(weld_view_key, 0, sizeof(weld_view_key));
     }
     for (i = 0; i < VIEW_SLOTS; i++)
-        if (view_key[i] == key) { view_used[i] = use_clock; return &view_img[i]; }
-    for (i = 1; i < VIEW_SLOTS; i++) if (view_used[i] < view_used[slot]) slot = i;
-    compose(view_pix[slot], VW, VH, w, frame, 0);
-    view_key[slot] = key;
-    view_used[slot] = use_clock;
-    view_img[slot].w = VW;
-    view_img[slot].h = VH;
-    view_img[slot].pix = view_pix[slot];
-    view_img[slot].uid = doomo_image_new_uid();
-    return &view_img[slot];
+        if (weld_view_key[i] == key) { weld_view_used[i] = weld_view_clock; return &weld_view_img[i]; }
+    for (i = 1; i < VIEW_SLOTS; i++) if (weld_view_used[i] < weld_view_used[slot]) slot = i;
+    compose(weld_view_pix[slot], VW, VH, w, frame, 0);
+    weld_view_key[slot] = key;
+    weld_view_used[slot] = weld_view_clock;
+    weld_view_img[slot].w = VW;
+    weld_view_img[slot].h = VH;
+    weld_view_img[slot].pix = weld_view_pix[slot];
+    weld_view_img[slot].uid = doomo_image_new_uid();
+    return &weld_view_img[slot];
 }
 
 const DoomoImage *weld_icon_image(const DoomoWeapon *w)
@@ -1364,7 +1408,7 @@ const DoomoImage *weld_icon_image(const DoomoWeapon *w)
     uint32_t key;
     int fresh;
     if (!w) w = &fists;
-    key = doomo_hash32(weapon_key(w, 7) ^ 0x1C0A0000u ^ icon_gen);
+    key = doomo_hash32(weapon_key(w, 7) ^ 0x1C0A0000u ^ weld_gfx_gen);
     img = portrait_pool_image(key, IW, IH, &fresh);
     if (!img) return &none;                    /* cannot happen (1 block) */
     if (fresh) compose((uint8_t *)img->pix, IW, IH, w, 0, 1);
@@ -1395,6 +1439,7 @@ void weld_view_points(const DoomoWeapon *w, int *mx, int *my, int *gx, int *gy)
 
 void weld_gfx_invalidate(void)
 {
-    memset(view_key, 0, sizeof(view_key));
-    icon_gen++;
+    memset(weld_view_key, 0, sizeof(weld_view_key));
+    weld_gfx_gen++;
 }
+#endif /* !WELD_SLICED */
