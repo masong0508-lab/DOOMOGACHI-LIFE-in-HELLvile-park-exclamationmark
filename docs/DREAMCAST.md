@@ -1689,7 +1689,8 @@ its light and distance fade, its sky mapping. What the code does:
   screen is cut at its edges (`Dc3dCam.clip`). `DC6_V3D=dc` draws it in the
   host runner. Billboards are a plain depth-tested rectangle for now.
 - `dc3d_sort_from` found texture kinds by a linear scan; a view has a texture
-  per light level, so it uses a small hash (256 kinds).
+  per light level, so it uses a small hash (256 kinds), checked by `test_sort`
+  (100 and 300 textures: grouping, and the order left alone above 256).
 
 `dc3d_sort_from` is checked by `test_sort` (100 and 300 textures, 3 per texture: grouping, and the order left alone above 256 kinds).
 
@@ -1713,13 +1714,27 @@ data (budget 576 KB). Polygons against columns will never be pixel equal.
   the 2D sprites' depth in DC7). It is now emitted first
   (`test_backdrop_first`). After that, Hell Breach 1 shows the walls, floor,
   ceiling and sky next to the HUD (evidence: `breach_b.png` against the native
-  `nat/breach_b.png`). Five levels (`push COMBAT 0, 1, 2, 4, 6`, each walked 120 ticks) in one script
-  (`levels.txt`): 1056 ticks, 1000 views, the view costs 4 ms a tick in the
-  first room (mean 13 ms and 30 ms worst in the big levels); the only ticks
-  over 33.3 ms are the five scene-entry ticks (37-50 ms: the level loads and
-  uploads its textures in that tick), no tick after them. Not run: a
-  Flycast-to-host picture compare of the view (the host parity numbers are
-  the only pixel measure) and a real console.
+  `nat/breach_b.png`). Five levels (`push COMBAT 0, 1, 2, 4, 6`, each walked
+  120 ticks) in one script (`levels.txt`): 1056 ticks, 1000 views. The view
+  costs 4 ms a tick in the first room (mean 13 ms, 22 ms worst in the big
+  levels, 800 polygons). Scene-entry ticks: Hell Breach 1 now 29-31 ms;
+  story_invasion's combat entry 31 ms (it was 40.7 ms, over the 33.3 ms
+  gate, before the budget below); four of the five levels in `levels.txt`
+  still enter at 35-38 ms (the level loads and uploads its textures in that
+  tick), and no tick after an entry is over 33.3 ms. A view may make only 4
+  new textures (uploads and light-level copies; `V3D_TEX_BUDGET`): the rest
+  of a level's first frames use the plain texture darkened by the fit, or the
+  flat colour, and fill in over the next frames (`test_remap_budget`: 56 % of
+  pixels with no new texture, 84 % with them). Owed for DC6C: the entry tick
+  of the big levels and the steady 13 ms of the big views (the governor, draw
+  distance). `make -C dc ui-compare` 94 of 94 (the pause menu's 3D backdrop
+  gate went from 45 to 30 % exact: polygons against columns, 36 % exact, 66 %
+  close; the Performance page's mask grew by one row for the new Effects
+  detail row), `make -C dc room-test` passes, `ow-test` passes except
+  `side_sample_a`, which fails the same way (3 of 17 shots, worst 92.9 %) on
+  the origin tree without this change. Not run: a Flycast-to-host picture
+  compare of the view (the host parity numbers are the only pixel measure)
+  and a real console.
 - No ticks, memory or PS1/GBA effect: all changes are under `dc/`; the
   tint fit moved from `overworld.c` to `dc3d.c` unchanged.
 
