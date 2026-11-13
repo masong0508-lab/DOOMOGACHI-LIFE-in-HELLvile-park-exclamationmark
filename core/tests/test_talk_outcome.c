@@ -440,14 +440,15 @@ TEST(talk_outcome_no_farming_100_sessions)
         CHECK(r->stat[STAT_HAPPY] - base_hap[k] <= TALK_CAP_MOOD_DAY + 16);   /* sim_make_up gives each of a pair +8, once a pair a day */
         CHECK(r->stat[STAT_HAPPY] - base_hap[k] >= -TALK_CAP_MOOD_DAY);
     }
-    {   /* a pair: the +-8 cap, plus one make-up (the sim's own) at most */
+    {   /* a pair: the +-8 cap, plus one make-up (the sim's own 28 + compat * 3, at most 46) */
+        const int MAKEUP_MAX = 46;
         int dp[3];
         dp[0] = rel_value(ID_NANA, ID_RIVET) - base_pair[0];
         dp[1] = rel_value(ID_NANA, ID_GRUMB) - base_pair[1];
         dp[2] = rel_value(ID_RIVET, ID_GRUMB) - base_pair[2];
-        CHECK(dp[1] <= TALK_CAP_PAIR_DAY + 28 + 18 && dp[1] >= -TALK_CAP_PAIR_DAY);
-        CHECK(dp[2] <= TALK_CAP_PAIR_DAY + 28 + 18 && dp[2] >= -TALK_CAP_PAIR_DAY);
-        CHECK(dp[0] <= TALK_CAP_PAIR_DAY + 28 + 18 && dp[0] >= -TALK_CAP_PAIR_DAY);
+        CHECK(dp[1] <= TALK_CAP_PAIR_DAY + MAKEUP_MAX && dp[1] >= -TALK_CAP_PAIR_DAY);
+        CHECK(dp[2] <= TALK_CAP_PAIR_DAY + MAKEUP_MAX && dp[2] >= -TALK_CAP_PAIR_DAY);
+        CHECK(dp[0] <= TALK_CAP_PAIR_DAY + MAKEUP_MAX && dp[0] >= -TALK_CAP_PAIR_DAY);
         CHECK(made <= 3);                                            /* one make-up a pair a day: 3 pairs */
     }
     CHECK(probs <= 3);

@@ -125,7 +125,7 @@ static void post_news(TalkOutcome *out, int tmpl, int ida, int idb)
 {
     if (out->news || led.news >= TALK_CAP_NEWS_DAY) return;      /* one a conversation, a few a day: the ticker is not Talk's */
     if (!resident_id(ida) || (idb >= 0 && !resident_id(idb))) return;
-    if (tmpl == NT_TALK_ROW && (minor_id(ida) || minor_id(idb))) return;
+    if (tmpl == NT_TALK_ROW && (minor_id(ida) || (idb >= 0 && minor_id(idb)))) return;
     if (tmpl == NT_TALK_WALKOUT && minor_id(ida)) return;
     if (tmpl != NT_TALK_ROW && tmpl != NT_TALK_WALKOUT && idb >= 0 && minor_id(ida) && minor_id(idb)) return;
     sim_news_rec(tmpl, 0, NEWS_IDS(ida, idb >= 0 ? idb : (int)NEWS_NONE, (int)NEWS_NONE));
