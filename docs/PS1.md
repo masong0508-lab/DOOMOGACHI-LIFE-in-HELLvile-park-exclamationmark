@@ -633,17 +633,25 @@ per-polygon drawing area `g_r3_area` in `r3d.c` and `prims.c`).
 | home group (slot demand) | 130,856 B | 129,420 B (-1,436) |
 | slot | 131,072 B (home) | 131,072 B (story, 129,980 B) |
 
-70,480 B is still 3,248 B under the 72 KB plan gate: PS1-RAM closes that.
+70,480 B was 3,248 B under the 72 KB plan gate. On the tip it landed on
+(origin `0df7284`, after the Talk, LV1 and CR3 landings; the same
+overlay plan, the combat group 128,188 B) the margin went from 68,384 B to
+**72,928 B** (+4,544 B): 800 B under the 72 KB plan gate (73,728 B), 7,392 B
+above the 64 KB reserve. PS1-RAM closes the rest.
+
 Not moved: `prims.c` (3,612 B in the plan, the chibi's boxes and blobs,
 -O2). With it the combat group would need 131,800 B, 728 B over the slot,
 and the slot grows in 2 KB steps: +2,048 B here, a net gain of 1,564 B
-(the margin would be about 72,044 B, still under the 72 KB gate), and
-+4,096 B on PS1-RAM's tree (the combat group is 126,696 B there before
-this), a net gain of about zero. When the combat group has 3.7 KB to
-spare under the slot, add `prims` to `PLAT_GROUPS` (one word). After this package the
-combat group has 2,884 B left under the slot (about 200 B on PS1-RAM's
-tree): growth of `combat*.c` / `actor.c` / `levels*.c` beyond that moves
-the slot.
+(the margin on the tip would be about 74,490 B, past the 72 KB gate). On
+PS1-RAM's tree the combat group is 126,696 B before this and 134,440 B
+with `model.c` and `prims.c`: the slot would grow by 4,096 B, a net loss
+of 484 B. Growing the slot costs resident memory and needs the
+coordinator (`PARALLEL_WAVES.md` section 3), so it was left: whoever
+lands second, with the numbers of both trees, adds `prims` to
+`PLAT_GROUPS` (one word) when the combat group has 3.7 KB to spare under
+the slot. After this package the combat group has 2,884 B left under the
+slot (about 200 B on PS1-RAM's tree): growth of `combat*.c` / `actor.c` /
+`levels*.c` beyond that moves the slot.
 
 The biggest remaining consumers of RAM: resident core code (portraits,
 UI, sim, story engine, ...) ~650 KB, merged string literals of resident
@@ -1032,7 +1040,8 @@ and after, fps and the CPU time of one sampled frame (`perf:` line):
 The parity pairs still differ by 0 pixels (the second pair's resting
 player is translucent now). Every number above and the 70,480 B margin
 were measured again on the rebased tree (origin `32257f3`, after the Talk
-landings): the same. Besides the player's place, the `home_cellar` shot
+landings): the same; the house, combat and speed-tour runs again on
+the tip it landed on (`0df7284`): the same, shot for shot. Besides the player's place, the `home_cellar` shot
 differs on the room's outline by 1 to 2 px: it now has the outline of the
 other 8x8 layout (`home_defend`), which did not change. No file of `core/`, `gba/`, `dc/` or `tools/`
 changed: built clean in one directory, the native runner, `doomogachi.gba`
