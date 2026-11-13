@@ -343,6 +343,13 @@ numbers in the status file); the GBA is a 32 MB cartridge. The overworld's per-f
 gone (a NULL pointer means "not looked up yet this frame"), which pays for them: net RAM change is
 negative. Existing levels use no new id, so every shot is unchanged.
 
+**Measured (2026-11-13, base `43035975`, same commands before and after).** GBA (`make -C gba sizes`):
+`.rodata` 6,591,380 -> 6,694,316 B (**+102,936 B ROM**: 7 x 4,096 + 3 x 24,576 of pixels + 512 of tables and
+text; the cartridge is 32 MB), `.text` +64 B, `.bss` 245,788 -> 245,772 B (**-16 B EWRAM**), `.iwram`,
+`.iwram_bss` and every overlay unchanged. PS1 (`cmake --build --preset ps1` with the boot FMV): the EXE is
+**byte-identical** to the base's (`cmp`), ends at 0x801ef450, 66 KB below the stack top; `packart` still packs
+60 texture + 5 sky + 194 sprite frames. Core tests 1,136 passed, 0 failed.
+
 **Review sheet.** `core/build/artgen --sheet DIR --zoom 1|2` writes the contact sheets (`textures.png`,
 `tiles_a/b.png` with the 3 x 3 tiling and four light levels, `skies.png` with a 1.5 x wrap to show the
 seam). Cuts: nothing here is adult-only; no gore; no faces.
