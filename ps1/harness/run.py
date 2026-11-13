@@ -412,6 +412,7 @@ def main():
     hcmd_addr = find_symbol(map_path, "g_hcmd")
     beat_addr = find_symbol(map_path, "g_io_beat")
     stick_addr = find_symbol(map_path, "g_pad_force")
+    pics_addr = find_symbol(map_path, "g_busy_pics")      # S2-10: pictures outside the loop (gfx.c)
     cmds, warnings, script_expect = compile_script(open(a.script).read().splitlines(),
                                                    lockstep=hcmd_addr != 0)
     for w in warnings:
@@ -428,6 +429,7 @@ def main():
     env.update(HARNESS_CMDS=cmd_path, HARNESS_OUT=out, HARNESS_FRAME="%x" % frame_addr,
                HARNESS_HCMD="%x" % hcmd_addr, HARNESS_BEAT="%x" % beat_addr,
                HARNESS_STICK="%x" % stick_addr,
+               HARNESS_PICS="%x" % (pics_addr or 0),
                HARNESS_PAD="analog" if a.analog_pad else "",
                HARNESS_HANG=str(a.hang))
     argv = ["xvfb-run", "-a", a.emu, "-cli", "-stdout", "-run", "-bios", a.bios,

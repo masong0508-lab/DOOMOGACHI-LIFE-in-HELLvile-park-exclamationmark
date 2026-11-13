@@ -36,6 +36,7 @@
 #define O_CREAT_   0x0200
 #define FRAME      128
 #define BLOCK      8192
+#define FRAMES_PER_BLOCK (BLOCK / FRAME)
 #define HDR_FRAMES 5
 #define HDR_BYTES  (HDR_FRAMES * FRAME)
 #define INFO_MAGIC 0x53504d44u   /* "DMPS" */
@@ -79,41 +80,17 @@ static void bios_io_end(void) { audio_hw_hush(0); g_io_beat++; }
 static const char *s_ls_title;      /* NULL: no loading screen (small banner) */
 static const char *s_ls_verb;
 
-static char *put_str(char *d, const char *t)
-{
-    while (*t)
-        *d++ = *t++;
-    return d;
-}
-
-static char *put_int(char *d, int v)
-{
-    char t[12];
-    int n = 0;
-    if (v < 0) v = 0;
-    do { t[n++] = (char)('0' + v % 10); v /= 10; } while (v && n < 11);
-    while (n)
-        *d++ = t[--n];
-    return d;
-}
-
-/* done of total blocks finished (total 0: still preparing) */
+/* done of total 128-byte frames finished (total 0: still preparing). S2-10: a transfer steps the screen after
+ * every BIOS call (CALL_FRAMES sectors), at most every other vblank; a block's last frame always shows. The line
+ * under the title is the verb ("Writing..."): the bar says how far (the text "block N of M" went: 400 B of
+ * resident code on a disc that has none to spare) */
 static void ls_progress(int done, int total)
 {
-    char buf[48], *d = buf;
     if (!s_ls_title)
         return;
-    if (total <= 0) {
-        d = put_str(d, "Getting ready...");
-    } else {
-        d = put_str(d, s_ls_verb);
-        d = put_str(d, " block ");
-        d = put_int(d, done < total ? done + 1 : total);
-        d = put_str(d, " of ");
-        d = put_int(d, total);
-    }
-    *d = 0;
-    gfx_loading_screen(s_ls_title, buf, done, total);
+    if ((total <= 0 || (done < total && done % FRAMES_PER_BLOCK)) && (int32_t)((uint32_t)VSync(-1) - g_busy_v) < 2)
+        return;
+    gfx_loading_screen(s_ls_title, total <= 0 ? "Getting ready..." : s_ls_verb, done, total);
 }
 
 /* ---- Shift-JIS title ------------------------------------------------------- */
@@ -313,9 +290,14 @@ static void stage_block(int k, const uint8_t *data, uint32_t size)
  * of the block keeps what it held, nothing reads past the payload. A config
  * write took about 0.4 s instead of over 2 s (PCSX-Redux). */
 typedef char config_fits_one_frame[PLAT_CONFIG_MAX <= FRAME ? 1 : -1];
+/* S2-10: the frames a BIOS call moves while a screen is shown (two sectors: about 70 ms in PCSX-Redux, so a picture
+ * every call or two, and half the per-call cost of the BIOS against one sector a call); whole blocks when there
+ * is none (the config record, a menu's header peek). */
+#define CALL_FRAMES 2
+
 static int write_file(const char *path, const uint8_t *data, uint32_t size, int blocks)
 {
-    int fd = open(path, O_WRONLY_), k, ok = 1, n = BLOCK;
+    int fd = open(path, O_WRONLY_), k, ok = 1, n = BLOCK, chunk = s_ls_title ? CALL_FRAMES : FRAMES_PER_BLOCK;
     if (fd < 0)
         return 0;
     if (!blocks) {
@@ -323,13 +305,20 @@ static int write_file(const char *path, const uint8_t *data, uint32_t size, int 
         n = HDR_BYTES + FRAME;
     }
     blk_take();
-    ls_progress(0, blocks);
+    ls_progress(0, blocks * FRAMES_PER_BLOCK);
     for (k = 0; ok && k < blocks; k++) {
+        int f = 0, nf = n / FRAME;
         stage_block(k, data, size);
-        if (write(fd, s_blk, n) != n)
-            ok = 0;
-        g_io_beat++;
-        ls_progress(k + 1, blocks);
+        /* S2-10: a few frames at a time (each one is a card sector), the screen moves between the calls.
+         * A transfer never crosses a block (s_blk) */
+        while (ok && f < nf) {
+            int c = nf - f < chunk ? nf - f : chunk;
+            if (write(fd, s_blk + f * FRAME, c * FRAME) != c * FRAME)
+                ok = 0;
+            g_io_beat++;
+            f += c;
+            ls_progress(k * FRAMES_PER_BLOCK + f, blocks * FRAMES_PER_BLOCK);
+        }
     }
     close(fd);
     return ok;
@@ -435,16 +424,27 @@ static int read_file(const char *path, void *data, uint32_t cap, uint32_t *out_s
 {
     int fd = open(path, O_RDONLY_), k;
     uint32_t v[4], size = 0, want = 0, o = 0;
-    int ok = 0, total_blocks = 0;
+    int ok = 0, total_blocks = 0, chunk = s_ls_title ? CALL_FRAMES : FRAMES_PER_BLOCK;
     if (fd < 0)
         return 0;
     blk_take();
     ls_progress(0, 0);
     for (k = 0; ; k++) {
         uint32_t o0 = (uint32_t)k * BLOCK, from, n;
+        int f = 0, nf = FRAMES_PER_BLOCK;
         g_io_beat++;
-        if (read(fd, s_blk, BLOCK) != BLOCK)
-            goto done;
+        /* S2-10: a peek (the core's 48-byte save header for a menu, the config record) needs the header frames and
+         * `cap` bytes, not the whole block: 6-7 frames instead of 64 (2.3 s in PCSX-Redux, ~1 s on a console) */
+        if (!s_ls_title && k == 0 && HDR_BYTES + cap < BLOCK)
+            nf = (int)((HDR_BYTES + cap + FRAME - 1) / FRAME);
+        while (f < nf) {                    /* a few frames a call, a picture between */
+            int c = nf - f < chunk ? nf - f : chunk;
+            if (read(fd, s_blk + f * FRAME, c * FRAME) != c * FRAME)
+                goto done;
+            f += c;
+            if (f < nf)
+                ls_progress(k * FRAMES_PER_BLOCK + f, total_blocks * FRAMES_PER_BLOCK);
+        }
         if (k == 0 && s_ls_title) {
             /* the info frame says how many blocks this load will take */
             uint32_t sz;
@@ -454,7 +454,7 @@ static int read_file(const char *path, void *data, uint32_t cap, uint32_t *out_s
                 total_blocks = (int)((HDR_BYTES + w + BLOCK - 1) / BLOCK);
             }
         }
-        ls_progress(k + 1, total_blocks);
+        ls_progress((k + 1) * FRAMES_PER_BLOCK, total_blocks * FRAMES_PER_BLOCK);
         if (k == 0) {
             memcpy(s_hdr, s_blk, HDR_BYTES);
             memcpy(v, s_hdr + FRAME * 4, sizeof(v));
@@ -530,7 +530,7 @@ int plat_save_write(int slot, const void *data, uint32_t size)
     int r;
     bios_io_begin();
     s_ls_title = "Saving your game...";
-    s_ls_verb = "Writing";
+    s_ls_verb = "Writing...";
     ls_progress(0, 0);
     r = save_write(slot, data, size);
     if (!r) {
@@ -552,7 +552,7 @@ int plat_save_read(int slot, void *data, uint32_t cap, uint32_t *size)
     bios_io_begin();
     if (big) {
         s_ls_title = "Loading your game...";
-        s_ls_verb = "Reading";
+        s_ls_verb = "Reading...";
     }
     r = save_read(slot, data, cap, size);    /* no re-scan: a missing save is normal */
     s_ls_title = 0;

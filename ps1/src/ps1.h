@@ -104,8 +104,10 @@ void gfx_busy_end(void);                /* ... and remove it again */
 void gfx_load_fade_begin(void);         /* SP5 G-LD: a scene group load starts (overlay.c) */
 void gfx_load_fade(void);               /* ... and waits for the drive: darken the frame on screen when late */
 /* full-screen "Saving... / Loading..." screen with a progress bar (done of
- * total blocks); call again after every block, total 0 = empty bar */
+ * total steps); call again after every step, total 0 = empty bar; detail
+ * NULL: no detail line and no memory card warning */
 void gfx_loading_screen(const char *title, const char *detail, int done, int total);
+extern uint32_t g_busy_v;               /* S2-10: VSync(-1) at its last picture (memcard.c paces its steps) */
 extern uint32_t g_rgb[256];       /* palette -> 0x00BBGGRR for prims      */
 extern uint16_t g_pal15[256];     /* palette -> VRAM 15-bit (STP set)     */
 

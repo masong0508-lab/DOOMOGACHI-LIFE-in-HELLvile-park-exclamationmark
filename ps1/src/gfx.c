@@ -26,6 +26,11 @@
 #include "ps1.h"
 #include "postfx.h"
 #include "tilerow.h"
+#include "doomo/plat_ext.h"
+
+/* S2-10: the loading screens, the banner and the load fade run a few times per scene change, never per frame: they
+ * are compiled for size whatever the file's flags (the resident image has no room for them at -O2) */
+#define COLD __attribute__((optimize("Os")))
 
 typedef struct FrameBuf {
     DISPENV  disp;
@@ -378,7 +383,7 @@ static int16_t s_banner_keep_y;         /* its rows in the other framebuffer    
  * one line at a time, each drawn and finished (DrawSync) before the next */
 static SPRT s_glyph[BANNER_MAX];
 
-void gfx_busy_banner(const char *msg)
+COLD void gfx_busy_banner(const char *msg)
 {
     static TILE box[2];
     static DR_TPAGE tp;
@@ -432,7 +437,7 @@ void gfx_busy_banner(const char *msg)
     PutDispEnv(&s_fb[fb].disp);
 }
 
-void gfx_busy_end(void)
+COLD void gfx_busy_end(void)
 {
     RECT keep = s_banner_rect;
     if (!s_banner_rect.w)
@@ -454,11 +459,14 @@ void gfx_busy_end(void)
 #define LD_EVERY 3
 static uint8_t s_ld_passes, s_ld_armed;  /* passes drawn over the frame on screen; a load has started this frame */
 static uint32_t s_ld_v0;                 /* VSync(-1) when this frame's first load started */
-uint32_t g_ld_passes;                   /* passes drawn since boot (the harness / evidence) */
+/* S2-10: pictures shown outside the game loop since boot (fade passes, loading screens): the harness adds them to
+ * the loop's frames when it measures a window (run.py HARNESS_PICS), so a save behind a moving card counts its
+ * pictures instead of one frozen frame */
+uint32_t g_busy_pics;
 
 /* the first load of a frame starts the clock (a scene that starts another loads up to three groups in a row:
  * their waits add up, and the picture on screen is darkened at most three times in all) */
-void gfx_load_fade_begin(void)
+COLD void gfx_load_fade_begin(void)
 {
     if (s_ld_armed) return;
     s_ld_armed = 1;
@@ -466,23 +474,45 @@ void gfx_load_fade_begin(void)
     s_ld_v0 = (uint32_t)VSync(-1);
 }
 
-void gfx_load_fade(void)
+COLD void gfx_load_fade(void)
 {
     static TILE t;
     static DR_TPAGE tp;
     DRAWENV env;
     uint32_t waited_vbl = (uint32_t)VSync(-1) - s_ld_v0;
-    int fb = g_cur ^ 1, due;
+    int fb = g_cur ^ 1, due, dark = 0;
     if (!s_ld_armed || waited_vbl < LD_LATE || s_first) return;
     due = (int)((waited_vbl - LD_LATE) / LD_EVERY) + 1;
     if (due > 3) due = 3;
-    if (s_ld_passes >= due) return;
+    if (s_ld_passes >= due) {
+        /* S2-10: fully dark and the drive is still busy (a scene change loads up to three groups: 0.3-1 s): a ring
+         * of dots turns on it every other vblank, so the screen never sits still for more than ~50 ms */
+        if (s_ld_passes < 3 || (int32_t)((uint32_t)VSync(-1) - g_busy_v) < 2) return;
+        dark = 1;
+    }
     DrawSync(0);                        /* the newest frame is complete */
     g_tpage_cur = 0xffff;               /* immediate draws below: state unknown */
     env = s_fb[fb].draw;
     env.isbg = 0;
     env.dtd = 0;
     PutDrawEnv(&env);
+    if (dark) {
+        static const int8_t ring[8][2] = { {0, -14}, {10, -10}, {14, 0}, {10, 10}, {0, 14}, {-10, 10}, {-14, 0}, {-10, -10} };
+        int i;
+        for (i = 0; i < 8; i++) {
+            int c = 40 + 30 * (int)((g_busy_pics + (uint32_t)i) & 7);   /* a bright head and a fading tail */
+            setTile(&t);
+            setXY0(&t, SCR_W / 2 + ring[i][0] - 2, SCR_H / 2 + ring[i][1] - 2);
+            setWH(&t, 4, 4);
+            setRGB0(&t, c, c, c);
+            DrawPrim(&t);
+            DrawSync(0);
+        }
+        g_busy_pics++;
+        PutDispEnv(&s_fb[fb].disp);
+        g_busy_v = (uint32_t)VSync(-1);
+        return;
+    }
     setDrawTPage(&tp, 1, 0, getTPage(0, 0, 0, 0));      /* semi-transparency 0: B/2 + F/2 */
     DrawPrim(&tp);
     while (s_ld_passes < due) {
@@ -494,9 +524,10 @@ void gfx_load_fade(void)
         DrawPrim(&t);
         DrawSync(0);
         s_ld_passes++;
-        g_ld_passes++;
+        g_busy_pics++;
     }
     PutDispEnv(&s_fb[fb].disp);
+    g_busy_v = (uint32_t)VSync(-1);
     dbg("ovl: load fade %d/3 after %u vblanks\n", s_ld_passes, (unsigned)waited_vbl);
 }
 
@@ -508,8 +539,9 @@ void gfx_load_fade(void)
  * that is on screen (like the small banner above). Nothing has to be put
  * back afterwards: every game frame is cleared (isbg) and redrawn in full. */
 #define LS_TEXT_MAX 40
+uint32_t g_busy_v;                      /* S2-10: VSync(-1) at the last loading-screen picture */
 
-static void busy_box(TILE *t, int x, int y, int w, int h, int r, int g, int b)
+static COLD void busy_box(TILE *t, int x, int y, int w, int h, int r, int g, int b)
 {
     setTile(t);
     setXY0(t, x, y);
@@ -520,7 +552,7 @@ static void busy_box(TILE *t, int x, int y, int w, int h, int r, int g, int b)
 
 typedef char ls_text_fits[LS_TEXT_MAX <= BANNER_MAX ? 1 : -1];
 
-static void busy_puts(int y, const char *msg, uint8_t pal)
+static COLD void busy_puts(int y, const char *msg, uint8_t pal)
 {
     SPRT *glyph = s_glyph;
     static DR_TPAGE tp;
@@ -551,7 +583,7 @@ static void busy_puts(int y, const char *msg, uint8_t pal)
     DrawSync(0);
 }
 
-void gfx_loading_screen(const char *title, const char *detail, int done, int total)
+COLD void gfx_loading_screen(const char *title, const char *detail, int done, int total)
 {
     static TILE tl[8];
     DRAWENV env;
@@ -579,10 +611,37 @@ void gfx_loading_screen(const char *title, const char *detail, int done, int tot
     busy_puts(70, "BOREagotchi LIFE!", PAL_UI_PURPLE);
     busy_puts(82, "in HELLvile PARK...", PAL_UI_PINK_D);
     busy_puts(104, title, PAL_UI_PURPLE);
-    busy_puts(152, detail, PAL_UI_PURPLE);
-    busy_puts(194, "Do not remove the MEMORY CARD", PAL_UI_RED_D);
-    busy_puts(206, "or switch the power off!", PAL_UI_RED_D);
+    if (detail) {                       /* NULL (S2-10: a town being built): no card I/O, no warning */
+        busy_puts(152, detail, PAL_UI_PURPLE);
+        busy_puts(194, "Do not remove the MEMORY CARD", PAL_UI_RED_D);
+        busy_puts(206, "or switch the power off!", PAL_UI_RED_D);
+    }
     PutDispEnv(&s_fb[fb].disp);
+    g_busy_v = (uint32_t)VSync(-1);
+    g_busy_pics++;
+}
+
+/* ---- S2-10: the loading screen over a long tick (plat_ext.h plat_busy / plat_busy_step) --------------------
+ * save_game, load_game and town_new call plat_busy(kind) before work that runs in this one tick for seconds
+ * (a save's encode, 1,000 citizens built), then plat_busy_step(done, total) per citizen. Once the work has run
+ * BUSY_LATE vblanks (so a quick one shows nothing) and two vblanks after the last picture, the loading screen
+ * above is drawn again with the bar at done / total: 30 pictures a second over the work. The next game frame
+ * (gfx_end) ends it. The memory card's own steps (memcard.c) then take over the same screen. 4 B of BSS. */
+#define BUSY_LATE 3
+static uint8_t s_busy_kind;             /* plat_busy's kind until the next frame; 0: none */
+
+COLD void plat_busy(int kind)
+{
+    if (s_first) return;                /* nothing on screen yet (boot) */
+    s_busy_kind = (uint8_t)kind;
+    g_busy_v = (uint32_t)VSync(-1) + BUSY_LATE - 2;   /* the first picture BUSY_LATE vblanks from now */
+}
+
+COLD void plat_busy_step(int done, int total)
+{
+    static const char *const title[] = { "", "Saving your game...", "Loading your game...", "Getting everything ready..." };
+    if (!s_busy_kind || (int32_t)((uint32_t)VSync(-1) - g_busy_v) < 2) return;
+    gfx_loading_screen(title[s_busy_kind], s_busy_kind == PLAT_BUSY_BUILD ? NULL : "Getting ready...", done, total);
 }
 
 /* platform.h: the save/load scratch buffer is the display-list memory of
@@ -664,6 +723,7 @@ void gfx_end(void)
     /* show what the GPU just finished, draw the new list into the other */
     PutDispEnv(&s_fb[g_cur ^ 1].disp);
     s_ld_armed = 0;                     /* SP5 G-LD: a new picture is up */
+    s_busy_kind = 0;                    /* S2-10: ... and a busy tick is over */
     DrawOTagEnv(f->up_head, &f->draw);
     g_last_draw_y = (uint16_t)f->draw.clip.y;
     if (s_first) {

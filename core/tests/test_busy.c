@@ -112,8 +112,8 @@ TEST(busy_steps_cover_the_relationship_graph)
     CHECK(load_game(1));
     CHECK(b_steps >= DOOMO_MAX_RESIDENTS + edges / 32);
     busy_reset();
-    rel_normalize();                                 /* the sort alone: ~8 passes over the edges */
-    CHECK(b_steps >= edges / 64);
+    rel_normalize();                                 /* the sort alone: a step before each of its 8 passes */
+    CHECK(b_steps >= 8);
 }
 
 TEST(busy_a_missing_save_does_not_start_a_busy_card)

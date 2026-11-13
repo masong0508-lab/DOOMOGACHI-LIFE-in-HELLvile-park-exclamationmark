@@ -43,6 +43,9 @@ local frame_addr = tonumber(os.getenv('HARNESS_FRAME') or '0', 16) or 0
 local hcmd_addr = tonumber(os.getenv('HARNESS_HCMD') or '0', 16) or 0
 local beat_addr = tonumber(os.getenv('HARNESS_BEAT') or '0', 16) or 0
 local stick_addr = tonumber(os.getenv('HARNESS_STICK') or '0', 16) or 0   -- ST1: g_pad_force
+-- S2-10: g_busy_pics, pictures the game showed outside its loop (load fades, the loading screen over a save, a load
+-- or a town build): fps / fpsend and the gaps count them with the loop's frames
+local pics_addr = tonumber(os.getenv('HARNESS_PICS') or '0', 16) or 0
 local hang_limit = tonumber(os.getenv('HARNESS_HANG') or '900')
 
 local cmds = {}
@@ -77,6 +80,13 @@ end
 local function read_frame()
   if frame_addr == 0 then return 0 end
   return ffi.cast('uint32_t*', ram(frame_addr))[0]
+end
+
+-- frames + pictures shown outside the loop (S2-10): what fps / fpsend / gaps count
+local function read_shown()
+  local p = 0
+  if pics_addr ~= 0 then p = ffi.cast('uint32_t*', ram(pics_addr))[0] end
+  return read_frame() + p
 end
 
 -- g_hcmd layout (src/hcmd.c): 0 magic, 4 req, 8 ack, 12 status, 16 iarg,
@@ -204,14 +214,14 @@ local function step()
       save_slice(out .. '/' .. c.arg .. '.vram', PCSX.GPU.getVRAM())
       log('vram ' .. c.arg)
     elseif c.op == 'fps' then
-      fps_start[c.arg] = { v = vsyncs, f = read_frame(), s = stopped }
-      gapt = { lf = read_frame(), lv = vsyncs, h = {}, mx = 0, at = 0 }
+      fps_start[c.arg] = { v = vsyncs, f = read_shown(), s = stopped }
+      gapt = { lf = read_shown(), lv = vsyncs, h = {}, mx = 0, at = 0 }
     elseif c.op == 'fpsend' then
       -- vsyncs while the harness held the game (screenshots, commands)
       -- do not count
       local s = fps_start[c.arg]
       if s then
-        local dv, df = vsyncs - s.v - (stopped - s.s), read_frame() - s.f
+        local dv, df = vsyncs - s.v - (stopped - s.s), read_shown() - s.f
         log(string.format('fps %s %.2f (%d frames / %d vsyncs)', c.arg,
                           dv > 0 and df * 60.0 / dv or 0, df, dv))
         if gapt then
@@ -315,12 +325,15 @@ local function on_vsync()
   if gapt then
     if lock and hu32(H_PAUSED)[0] ~= 0 then
       gapt.lv = gapt.lv + 1          -- stopped vsyncs do not count
-    elseif f ~= gapt.lf then
-      local g = (vsyncs - gapt.lv) / math.max(1, f - gapt.lf)
-      g = math.floor(g + 0.5)
-      for _ = 1, f - gapt.lf do gapt.h[g] = (gapt.h[g] or 0) + 1 end
-      if g > gapt.mx then gapt.mx = g; gapt.at = f end
-      gapt.lf = f; gapt.lv = vsyncs
+    else
+      local fs = read_shown()        -- S2-10: pictures outside the loop count as frames
+      if fs ~= gapt.lf then
+        local g = (vsyncs - gapt.lv) / math.max(1, fs - gapt.lf)
+        g = math.floor(g + 0.5)
+        for _ = 1, fs - gapt.lf do gapt.h[g] = (gapt.h[g] or 0) + 1 end
+        if g > gapt.mx then gapt.mx = g; gapt.at = fs end
+        gapt.lf = fs; gapt.lv = vsyncs
+      end
     end
   end
   if prof and not (lock and hu32(H_PAUSED)[0] ~= 0) then
