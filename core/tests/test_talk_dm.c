@@ -525,3 +525,246 @@ TEST(talk_dm_problem_and_summary)
     CHECK_EQ(talk_safe_lint_hits(), h0);
     talk_db_close();
 }
+
+/* ---- the romance beat and its guards (design 7; K-4, K-5) ------------------------------------------------- */
+static int count_romance_edges(void)
+{
+    int a, b, n = 0;
+    for (a = 0; a < 120; a++)
+        for (b = a + 1; b < 120; b++) {
+            int k = rel_kind(a, b);
+            if (k == REL_DATING || k == REL_MARRIED) n++;
+            if (rel_has_crush(a, b) || rel_has_crush(b, a)) n += 1000;
+        }
+    return n;
+}
+
+TEST(talk_dm_romance_beat_adults_only)
+{
+    TalkState s;
+    TalkSummary sum;
+    uint32_t h0 = talk_safe_lint_hits();
+    int avatar = roster_find("Mayor Giggs"), steamy = roster_find("Steamy"), k, said = 0, edges;
+    premade_town();
+    CHECK(open_db());
+    CHECK(avatar >= 0 && steamy >= 0 && sim_romance_ok(steamy, avatar));
+    edges = count_romance_edges();
+    /* the target says yes: an adult room, a warm bond; the beat joins in and the target speaks its line */
+    rel_get_or_add(steamy, avatar);
+    rel_adjust(steamy, avatar, 30);
+    begin(&s, avatar, steamy, -1, -1, 11u);
+    CHECK(talk_dm_consent(&s, 0, TA_FLIRT));
+    turn(&s, TA_FLIRT, TC_NONE, 0, NULL);
+    CHECK_EQ(s.gate, TG_PASS);
+    CHECK(has_event(&s, TEV_ROMANCE_YES));
+    CHECK(s.conv.consent & 1);
+    CHECK_EQ(s.beat, TBEAT_ROMANCE_ADULT);
+    for (k = 0; k < s.nlines; k++) {
+        CHECK_EQ(s.line[k].who, 0);
+        if (s.hist[s.nlines - 1 - k].flags & THF_BEAT) said++;
+    }
+    CHECK_EQ(said, 1);
+    /* the target says no: nothing starts, the day is refused (K-5), the next try is deflected */
+    rel_adjust(steamy, avatar, -100);
+    begin(&s, avatar, steamy, -1, -1, 12u);
+    CHECK(!talk_dm_consent(&s, 0, TA_KISS));
+    turn(&s, TA_FLIRT, TC_NONE, 0, NULL);
+    CHECK(has_event(&s, TEV_ROMANCE_NO));
+    CHECK(!has_event(&s, TEV_ROMANCE_YES) && !(s.conv.consent & 1));
+    CHECK(s.beat != TBEAT_ROMANCE_ADULT && (s.conv.refused & 1) && (s.part[0].flags & TPF_REFUSED));
+    turn(&s, TA_FLIRT, TC_NONE, 0, NULL);
+    CHECK_EQ(s.gate, TG_DEFLECT);
+    CHECK(s.beat != TBEAT_ROMANCE_ADULT);
+    talk_dm_end(&s, &sum);
+    CHECK(sum.pflags[0] & TPF_REFUSED);
+    /* the pet in the room, or a child: never */
+    rel_adjust(steamy, avatar, 120);
+    {
+        int ids[2];
+        ids[0] = steamy; ids[1] = TALK_PET_ID;
+        talk_dm_begin(&s, avatar, ids, 2, 13u);
+        CHECK(!talk_dm_consent(&s, 0, TA_FLIRT));
+        turn(&s, TA_FLIRT, TC_NONE, 0, NULL);
+        CHECK(!has_event(&s, TEV_ROMANCE_YES) && s.beat != TBEAT_ROMANCE_ADULT && !s.conv.consent);
+        ids[1] = ID_PIP;
+        talk_dm_begin(&s, avatar, ids, 2, 14u);
+        CHECK(!talk_dm_consent(&s, 0, TA_FLIRT));
+        turn(&s, TA_FLIRT, TC_NONE, 0, NULL);
+        CHECK(s.gate == TG_REFUSE_MINOR || s.gate == TG_DEFLECT);
+        CHECK(!has_event(&s, TEV_ROMANCE_YES) && s.beat != TBEAT_ROMANCE_ADULT && !s.conv.consent);
+    }
+    /* Talk wrote nothing into the sim's romance state */
+    CHECK_EQ(count_romance_edges(), edges);
+    CHECK_EQ(sim_romance_sweep(-1), 0);
+    CHECK_EQ(talk_safe_lint_hits(), h0);
+    talk_db_close();
+}
+
+/* ---- P2 and P7 with the drama manager in charge: random sessions ----------------------------------------- */
+static void run_random(TalkState *s, int avatar, const int *ids, int n, uint32_t seed, int turns, int *romance_yes)
+{
+    DoomoRng r;
+    int t, k, minor_room = 0;
+    talk_dm_begin(s, avatar, ids, n, seed);
+    rng_seed(&r, seed * 2654435761u + 17u);
+    for (k = 0; k < n; k++) if (ids[k] != TALK_PET_ID && talk_safe_minor(ids[k])) minor_room = 1;
+    if (talk_safe_minor(avatar)) minor_room = 1;
+    for (t = 0; t < turns && !talk_dm_over(s); t++) {
+        TalkUtter u;
+        int act = 1 + rng_range(&r, TA_COUNT - 1), tgt = rng_range(&r, n + 1) - 1;
+        utter(&u, act, TC_NONE, tgt);
+        if (rng_range(&r, 6) == 0) u.tone = TONE_FLIRTY;
+        talk_dm_say(s, &u);
+        while (talk_dm_step(s, NULL)) {}
+        for (k = 0; k < s->nlines; k++) {
+            const TalkLine *l = &s->line[k];
+            int who = l->who, to = l->to;
+            CHECK_MSG(l->text[0], "empty line");
+            if (!TA_IS_ROMANCE(l->act)) continue;
+            /* P2: no resident ever says a romance act in a room with a minor, as a minor, or to one */
+            CHECK_MSG(!minor_room, "romance line in a minor's room: %s", l->text);
+            CHECK(!s->conv.aud.pet && !s->conv.aud.any_minor);
+            CHECK(s->part[who].stage_class == TSC_ADULT);
+            CHECK(to < 0 || (to < n && s->part[to].stage_class == TSC_ADULT));
+            CHECK((s->conv.consent >> who) & 1);
+            CHECK(s->in.act[0] >= TA_FIRST_ROMANCE || s->hist[s->nlines - 1 - k].flags & THF_BEAT);
+        }
+        if (minor_room || s->conv.aud.pet) {
+            CHECK(!s->conv.consent && s->beat != TBEAT_ROMANCE_ADULT);
+        }
+        CHECK(s->conv.aud.any_minor >= (minor_room && !talk_safe_minor(avatar) ? 1 : 0) || talk_safe_minor(avatar));
+    }
+    for (k = 0; k < s->nev; k++) {
+        if (s->ev[k].kind == TEV_ROMANCE_YES) { (*romance_yes)++; CHECK(!minor_room); }
+        if (minor_room) CHECK(s->ev[k].kind != TEV_ROMANCE_YES);
+    }
+}
+
+TEST(talk_dm_p2_p7_random_sessions)
+{
+    TalkState s;
+    uint32_t h0 = talk_safe_lint_hits();
+    int avatar_giggs = roster_find("Mayor Giggs"), steamy = roster_find("Steamy"), seed, yes = 0, edges;
+    static const int rooms[8][3] = {
+        { ID_NANA, ID_RIVET, ID_VEX }, { ID_NANA, ID_PIP, ID_RIVET }, { ID_TEEN, ID_NANA, -1 }, { ID_NANA, TALK_PET_ID, -1 },
+        { ID_PIP, ID_TEEN, -1 },       { ID_NANA, ID_RIVET, -1 },     { ID_GRUMB, ID_VEX, ID_RIVET }, { ID_NANA, -1, -1 } };
+    premade_town();
+    CHECK(open_db());
+    CHECK(avatar_giggs >= 0 && steamy >= 0);
+    rel_get_or_add(steamy, avatar_giggs);
+    rel_adjust(steamy, avatar_giggs, 60);
+    edges = count_romance_edges();
+    for (seed = 1; seed <= 400; seed++) {
+        int ids[3], n = 0, k, room = seed % 8, avatar;
+        for (k = 0; k < 3; k++) if (rooms[room][k] >= 0) ids[n++] = rooms[room][k];
+        avatar = seed % 5 == 0 ? ID_TEEN : seed % 7 == 0 ? ID_PIP : (seed % 2 ? DOOMO_PLAYER_ID : avatar_giggs);
+        if (avatar == ids[0] || (n > 1 && avatar == ids[1])) avatar = DOOMO_PLAYER_ID;
+        if (seed % 9 == 0) { ids[0] = steamy; if (n == 1) { ids[0] = steamy; avatar = avatar_giggs; } }
+        run_random(&s, avatar, ids, n, (uint32_t)seed, 14, &yes);
+    }
+    printf("      400 random sessions, %d romance yes events, all in adult rooms\n", yes);
+    /* P7: Talk left nothing behind that the sim's romance sweep would remove, and made no couple */
+    CHECK_EQ(count_romance_edges(), edges);
+    CHECK_EQ(sim_romance_sweep(-1), 0);
+    CHECK_EQ(talk_safe_lint_hits(), h0);
+    talk_db_close();
+}
+
+/* ---- P2, both directions: adult with minor, minor with adult -------------------------------------------- */
+TEST(talk_dm_p2_both_directions)
+{
+    TalkState s;
+    uint32_t h0 = talk_safe_lint_hits();
+    int act, avatar, k;
+    premade_town();
+    CHECK(open_db());
+    for (act = TA_FIRST_ROMANCE; act <= TA_LAST_ROMANCE; act++) {
+        /* an adult avatar toward a child */
+        begin(&s, DOOMO_PLAYER_ID, ID_PIP, ID_NANA, -1, 80u + (uint32_t)act);
+        turn(&s, act, TC_NONE, 0, NULL);
+        CHECK_EQ(s.gate, TG_REFUSE_MINOR);
+        CHECK(!has_event(&s, TEV_ROMANCE_YES) && !s.conv.consent);
+        for (k = 0; k < s.nlines; k++) CHECK(!TA_IS_ROMANCE(s.line[k].act));
+        /* a minor avatar toward an adult */
+        for (avatar = 0; avatar < 2; avatar++) {
+            begin(&s, avatar ? ID_PIP : ID_TEEN, ID_NANA, ID_RIVET, -1, 90u + (uint32_t)act);
+            turn(&s, act, TC_NONE, 0, NULL);
+            CHECK_EQ(s.gate, TG_REFUSE_MINOR);
+            CHECK(!has_event(&s, TEV_ROMANCE_YES) && !s.conv.consent && s.beat != TBEAT_ROMANCE_ADULT);
+            for (k = 0; k < s.nlines; k++) CHECK(!TA_IS_ROMANCE(s.line[k].act));
+        }
+    }
+    CHECK_EQ(talk_safe_lint_hits(), h0);
+    talk_db_close();
+}
+
+/* ---- P3: sexual-class input with a minor in the room ends the talk, and is never echoed ------------------- */
+TEST(talk_dm_p3_k7_ends_the_talk)
+{
+    TalkState s;
+    TalkUtter u;
+    uint32_t h0 = talk_safe_lint_hits();
+    int k, target;
+    premade_town();
+    CHECK(open_db());
+    for (target = -1; target <= 1; target++) {
+        begin(&s, DOOMO_PLAYER_ID, ID_NANA, ID_PIP, ID_RIVET, 600u + (uint32_t)target);
+        utter(&u, TA_ASK_ABOUT, TC_NONE, target);
+        u.safety = TS_SEXUAL;
+        strcpy(u.shown, "xyzzy-plugh");
+        talk_dm_say(&s, &u);
+        CHECK_EQ(s.gate, TG_END_K7);
+        while (talk_dm_step(&s, NULL)) {}
+        CHECK(s.nlines >= 1 && s.nlines <= 2);
+        CHECK(talk_dm_over(&s) && (s.flags & TDF_K7) && s.conv.ended);
+        CHECK(has_event(&s, TEV_K7));
+        for (k = 0; k < s.nlines; k++) {
+            CHECK(s.line[k].flags & TLF_END);
+            CHECK(s.line[k].flags & TLF_SINCERE);
+            CHECK(!strstr(s.line[k].text, "xyzzy"));
+            CHECK(s.line[k].who != 1 || s.nlines == 1);             /* an adult steps in first */
+        }
+        CHECK_EQ(s.line[0].who == 1, 0);
+        CHECK_EQ(turn(&s, TA_GREET, TC_NONE, -1, NULL), 0);          /* everyone is gone for the day */
+    }
+    /* a minor named in the line: the same */
+    begin(&s, DOOMO_PLAYER_ID, ID_NANA, ID_RIVET, -1, 610u);
+    utter(&u, TA_ASK_ABOUT, TC_NONE, 0);
+    u.safety = TS_SEXUAL | TS_MINOR;
+    strcpy(u.shown, "xyzzy-plugh");
+    talk_dm_say(&s, &u);
+    CHECK_EQ(s.gate, TG_END_K7);
+    CHECK(talk_dm_over(&s));
+    CHECK_EQ(talk_safe_lint_hits(), h0);
+    talk_db_close();
+}
+
+/* ---- the gate's other answers: refusals and distress get the answer alone, no beat, no reactions ------------ */
+TEST(talk_dm_gate_answers_stand_alone)
+{
+    TalkState s;
+    TalkUtter u;
+    uint32_t h0 = talk_safe_lint_hits();
+    premade_town();
+    CHECK(open_db());
+    begin(&s, DOOMO_PLAYER_ID, ID_NANA, ID_RIVET, ID_GRUMB, 71u);
+    utter(&u, TA_ASK_ABOUT, TC_NONE, -1);
+    u.safety = TS_DISTRESS;
+    strcpy(u.shown, "xyzzy");
+    talk_dm_say(&s, &u);
+    CHECK_EQ(s.gate, TG_DISTRESS);
+    CHECK_EQ(s.nplan, 1);
+    while (talk_dm_step(&s, NULL)) {}
+    CHECK_EQ(s.nlines, 1);
+    CHECK(s.line[0].flags & TLF_SINCERE);
+    CHECK(!talk_dm_over(&s));
+    utter(&u, TA_ASK_ABOUT, TC_NONE, 1);
+    u.safety = TS_HATE;
+    talk_dm_say(&s, &u);
+    CHECK_EQ(s.gate, TG_HATE);
+    CHECK_EQ(s.nplan, 1);
+    CHECK(has_event(&s, TEV_HATE));
+    CHECK(s.part[1].rel_d_player < 0);
+    CHECK_EQ(talk_safe_lint_hits(), h0);
+    talk_db_close();
+}

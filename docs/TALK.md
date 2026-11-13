@@ -43,7 +43,7 @@ Contents:
 | **T4** | the safety gate: the input classifier S1, the audience gate S2 (`talk_safe_ctx`, one source of "minor"), the output lint S3, the template lints TK1-TK9, the safety and adversarial corpora, the hashed hate list, the property tests | **done** (TK2): green. The generator-level halves of P1-P8 go live with T5a / T6 |
 | **T5a** | the generator: `talk_gen.c` (the grammar VM, guards, fillers, sim-fact callbacks, novelty, re-picks, the bubble fit, the per-conversation RNG, the trace), the `.tlk` grammar compiler `talkc_gen.py`, the adjacency table `acts.tsv`, a plain exchange (the gate first, who answers, reactions between residents) | **done** (TK3); a **starter** English bank (718 alternatives in 12 files, the K-10 grief and comfort banks included) so every act, refusal and part plays |
 | T5b | the English line banks (about 6,000 alternatives, design 3.6) and the owner's review | in progress: 2,057 alternatives (starter 718 + T5B-WARM 739: warm acts + T5B-COOL 600: cool and rude acts) |
-| T6 | the drama manager, outcomes, the talk memory chunk | **memory and chunk done** (T6-MEM, 6e); the drama manager (T6-DM) and outcomes (T6-OUT) to do |
+| T6 | the drama manager, outcomes, the talk memory chunk | **memory and chunk done** (T6-MEM, 6e); **drama manager done** (T6-DM, 6f: `talk_dm.c`, `beats.tlk`); outcomes into the sim (T6-OUT) to do |
 | **T7** | the census (`core/tools/talk_census.c`: the three tiers, Chao1, the quality checks Q1-Q6, the conversation tier), the grid `census_en.tsv`, `make -C core talk-census`, the smoke census in `make test`, the Q7 review sheet `talk_sample.py` | **done** (TK3): the tools and the measurement. The full run's numbers are in 6d: Skeleton, Meaning, conversations and quality meet the design's targets; **Surface does not** (it needs T5b's bank); Q7 (a person rating 300 exchanges) has not been done |
 | T8 | the house mode `HM_TALK` on native, with its UI | to do |
 | T9, T10 | pointer input; other languages (after the script rewrite) | to do |
@@ -773,6 +773,89 @@ promised, refused today) and the likes the player has learned.
   conversation.
 
 ---------------------------------------------------------------------------
+
+## 6f. The drama manager (T6-DM)
+
+`core/src/talk_dm.c`, the table `core/data/talk/beats.tlk` (compiled by
+`talkc_beats.py` into the `TB_BEATS` bank), the lines
+`grammar/en/beats_lines.tlk`, tests `core/tests/test_talk_dm.c` (17 tests).
+It is the **policy** over the generator. Lines are still made by
+`talk_gen_line`, `talk_gen_react` and the new `talk_gen_entry` (a fixed
+grammar entry: a beat's goal line, idle chatter, the prod, an excuse, a
+grumble, the three argument steps, making up, a child's question). The gate
+runs first on every player turn; the S3 lint runs on every line.
+
+* **Use.** `talk_dm_begin`, then per player turn `talk_dm_say` (the gate, the
+  engagement, the beat, the plan of the exchange) and `talk_dm_step` until it
+  returns 0 (one line a call, so the PS1 can spread an exchange over frames);
+  `talk_dm_tick(frames)` for idle chatter; `talk_dm_end` fills a
+  `TalkSummary` for T6-OUT. Everything between calls is in `TalkState`
+  (940 B, limit 1,536 B, the house's scene scratch); no static RAM; no pointer
+  into scratch survives a call. The random stream of a call is seeded from the
+  conversation seed, the turn and the exchange: the same text on every
+  platform.
+* **Beats** (`beats.tlk`, 13 beats as design 5.2): precondition, tension on
+  entry (`zero` for WIND_DOWN) and after, goals, turns, bonus, who it involves,
+  the act classes it handles (a handled act counts as a goal, but one goal line
+  is always said), what hurts and what resolves it, what the player leans on.
+  The next beat is the one whose resulting tension is nearest the target for the
+  turn (`talk_dm_target_tension`: 0 up to 6 at turn 9, down to 0 at 15, then 2),
+  plus the precondition bonus, the lean, minus 3 for a beat of the last two talks
+  with these people and 5 for one already played. Tension also moves with the
+  player's acts (an insult +1) and drifts down (a warm act, every third turn).
+* **Engagement** (5.3): 55 at the start; each turn `+6` addressed, the affinity
+  of the topic (`+3` a like, `-3` a hate or fear, `+1` / `-1` a root the persona
+  type favours or finds dull: `@affinity` in `beats.tlk`), the reward of the act
+  for the persona, `+2` when the beat involves them, `-2` decay, `-4` a repeated
+  act, `-3` after three turns ignored. Under 25 they turn away (`TPF_AWAY`);
+  under 15 for two turns an excuse and a walk-out (`TEV_WALKOUT`); over 85 they
+  lean in (`TPF_LEAN`). When everyone has left the talk is over.
+* **Turn-taking** (5.4): the addressee answers, else the best of engagement + 20
+  x affinity + bond + noise. Reactions use the design's 25% + 4% EXPRESSION + 2%
+  QUIRK (+15% on a stance clash, the second reaction half as likely, 75% at
+  most); at most 4 lines an exchange, the mandatory ones (the argument's step,
+  the beat's goal line, a walk-out) first, reactions in what room is left and
+  said right after the answer. An interruption: SPEECH 11 or more, a stance
+  clash or a rival speaking, engagement 50 or more, both adults, at most once in
+  3 exchanges; the line before is cut at a word with a dash (`TLF_CUT`), the
+  interrupter reacts, the interrupted one grumbles. Idle chatter: after 8 s
+  (240 frames) a resident talks to another, twice, then someone prods the
+  player, then nothing until the player speaks.
+* **Alliances and arguments** (5.4): TAKE_SIDE or DEFEND of Y raises the
+  session bond with Y by 3 and lowers it with Y's opponents (Heider: a friend of
+  Y rises a little); caps `TALK_REL_D_MAX` 12 and `TALK_PAIR_D_MAX` 8 a session.
+  RIVALRY (two adult rivals, REL_RIVAL / NEMESIS or bond under -30) runs jab,
+  row, ultimatum (the row needs tension 6 or more). MEDIATE rolls on both
+  ATTITUDEs and the bond: `TEV_MEDIATED` (T6-OUT calls `sim_make_up(a, b)`;
+  the test calls it on the event); TAKE_SIDE `TEV_SIDE_TAKEN`; ignored it
+  fizzles with a walk-out of one of the two. With anyone here who is not an
+  adult it stops at the jab, and a child asks "Are you guys fighting?" and the
+  room cools.
+* **Safety, in C whatever `beats.tlk` says.** ROMANCE_ADULT needs the player's
+  own romance act this turn, the target's yes (`talk_dm_consent`: an adult
+  room, `talk_safe_romance_ok`, `sim_romance_ok` from the target, the bond),
+  and no minor, pet, kid cast or minor avatar in the room; its line is said only
+  by that adult. One filter drops every other drama-manager line that is a
+  romance act. The room's audience only gets stricter during a talk. The gate's
+  refusals, deflections, hate and distress get the answer alone (no beat line, no
+  reaction); K-7 gives one or two adult lines and ends the talk. Romance state is
+  never written here: events go to `talk_dm_end` for T6-OUT.
+* **Tests** (`test_talk_dm.c`): the table and the state budget, the arc (30
+  sessions peak in turns 3-13 and end under the peak), a scripted session and
+  determinism, idle chatter and the prod, walk-out and the end of the talk, the
+  argument steps (rows and ultimatums reached; fizzles), mediation calling
+  `sim_make_up` (61 of 120 sessions made up, with failed rolls), a child holding
+  an argument at the jab, interruptions (86 cuts, never closer than 3 exchanges),
+  alliances and their caps, a problem talked through and a great night, the
+  romance beat (yes, no and the K-5 deflection, with the pet or a child never),
+  P2 in both directions, P3 (K-7), the gate's stand-alone answers, and P2 / P7
+  over 400 random sessions (no romance line in a minor's room, no couple, crush or
+  romance-sweep hit made).
+* **Not here** (other packages): applying outcomes to the sim and the caps per
+  day (T6-OUT), the talk memory chunk and `beats_recent` / `mem_*` (T6-MEM), the
+  beat lines at full size (T5b: about 5 a beat now), the PS1 build (TP2: the
+  object is 22 KB on x86 at -O2; the MIPS size and the stack use of `talk_dm_say`
+  (288 B on x86) are to be measured).
 
 ## 7. Sizes (measured)
 
