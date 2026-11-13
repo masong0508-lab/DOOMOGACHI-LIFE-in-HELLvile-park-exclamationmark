@@ -306,13 +306,13 @@ static inline int mg_kept(void) { return mg_kept_mode == MGK_LIVE; }   /* over t
  * SHAKE (GBA only, pixel-changing): a shaken frame is the kept frame drawn unshaken and moved as a
  * whole by the display (plat_post_offset: the HUD moves with it, the edge shows the border colour)
  * instead of a full frame with every part offset. */
+typedef struct MgBox { int16_t x, y, w, h; } MgBox;     /* (a box of the restores a game lists: x, y, w, h) */
 #if !defined(DOOMO_PLATFORM_PS1)
 int  mg_kept_band(uint32_t key);             /* copy the band of `key` in (and make it the source); 0: not kept */
 void mg_kept_src(uint32_t key);              /* make the picture of `key` the source of the restores */
 void mg_kept_put(int x, int y, int w, int h);/* put that box back from the source picture */
 void mg_undo(int x0, int y0, int x1, int y1);/* box [x0, x1) x [y0, y1) */
 void mg_undo_end(void);
-typedef struct MgBox { int16_t x, y, w, h; } MgBox;
 void mg_undo_rec(MgBox *list, int cap);      /* the undo sections that follow list their restores */
 int  mg_undo_rec_end(void);                  /* how many; -1: the list was too short */
 void mg_kept_puts(const MgBox *list, int n, int dx, int dy);   /* put those boxes, moved by (dx, dy), back */
@@ -325,16 +325,24 @@ void mg_common_stamp(uint32_t key, int cx, int cy);
 int  mg_common_stamp_keys(uint32_t *out, int cap);
 void mg_sparkle(int cx, int cy, int phase, uint8_t c);   /* ui_sparkle, stamped for the colours a game uses */
 #else
-#define mg_kept_band(key) 0
-#define mg_kept_src(key) ((void)0)
-#define mg_kept_put(x, y, w, h) ((void)0)
-#define mg_undo(x0, y0, x1, y1) ((void)0)
+#define mg_kept_band(key) ((void)(key), 0)
+#define mg_kept_src(key) ((void)(key))
+#define mg_kept_put(x, y, w, h) ((void)(x), (void)(y), (void)(w), (void)(h))
+#define mg_undo(x0, y0, x1, y1) ((void)(x0), (void)(y0), (void)(x1), (void)(y1))
 #define mg_undo_end() ((void)0)
-#define mg_kept_puts(list, n, dx, dy) ((void)0)
+#define mg_undo_rec(list, cap) ((void)(list), (void)(cap))
+#define mg_undo_rec_end() 0
+#define mg_kept_puts(list, n, dx, dy) ((void)(list), (void)(n), (void)(dx), (void)(dy))
 #define mg_rect plat_rect
-#define mg_stamp(key, x, y) 0
-#define mg_stamp_common(key, x, y) 0
+#define mg_stamp(key, x, y) ((void)(key), (void)(x), (void)(y), 0)
+#define mg_stamp_common(key, x, y) ((void)(key), (void)(x), (void)(y), 0)
 #define mg_sparkle ui_sparkle
+#endif
+/* a table entry that works on the pictures baked into the GBA ROM (the PS1 draws every frame whole: NULL) */
+#if !defined(DOOMO_PLATFORM_PS1)
+#define MG_BAKED(f) f
+#else
+#define MG_BAKED(f) NULL
 #endif
 /* x % 6 without a division (mg_derby.c: the crowd) */
 unsigned mg_mod6(uint32_t x);

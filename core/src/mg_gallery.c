@@ -256,7 +256,10 @@ enum { GS_CARD = 0 << 12, GS_WRAITH = 1 << 12, GS_WEAPON = 2 << 12, GS_WATER = 3
        GS_NAME = 5 << 12, GS_KIND = 7 << 12 };
 static int counter_y(void) { return mg_h() - (mg_big() ? 30 : 22); }
 
+#if !defined(DOOMO_PLATFORM_PS1)
 static uint32_t gl_kept_key(void) { return (uint32_t)(ui_wave(mg.play_t + mg.t, 150, 2) + 2); }
+#endif
+#if !defined(DOOMO_PLATFORM_PS1)
 static int gl_kept_keys(uint32_t *out, int cap, int hell)
 {
     int i;
@@ -265,12 +268,15 @@ static int gl_kept_keys(uint32_t *out, int cap, int hell)
     if (5 < cap) out[5] = GK_COUNTER;
     return 6;
 }
+#endif
+#if !defined(DOOMO_PLATFORM_PS1)
 static int gl_kept_part(uint32_t key, int16_t rows[2])
 {
     rows[0] = (int16_t)(key == GK_COUNTER ? counter_y() : 0);
     rows[1] = (int16_t)(key == GK_COUNTER ? mg_h() : rail_top() - 4);
     return 1;
 }
+#endif
 
 static void tent_draw(int sway)
 {
@@ -323,6 +329,7 @@ static void waves_draw(int y, int r, int off)
 }
 
 static void weapon_draw(int x, int y, int w, int t, int recoil);
+#if !defined(DOOMO_PLATFORM_PS1)
 static void gl_stamp(uint32_t key, int cx, int cy)
 {
     int v = (int)(key & 0xFFF);
@@ -336,7 +343,11 @@ static void gl_stamp(uint32_t key, int cx, int cy)
     default: break;
     }
 }
+#endif
+#if !defined(DOOMO_PLATFORM_PS1)
 static int gl_stamp_strip(uint32_t key) { return (key & GS_KIND) == GS_WATER; }
+#endif
+#if !defined(DOOMO_PLATFORM_PS1)
 static int gl_stamp_keys(uint32_t *out, int cap)
 {
     int n = 0, h, i, w, rc, ph;
@@ -353,6 +364,7 @@ static int gl_stamp_keys(uint32_t *out, int cap)
 #undef ADD
     return n;
 }
+#endif
 /* a stamp at (x, y) where stamps are kept (240x160 only); 0: the caller draws it */
 static int stamped(uint32_t key, int x, int y)
 {
@@ -571,7 +583,7 @@ const MgGame mg_game_gallery = {
     { MG_GALLERY_B, MG_GALLERY_S, MG_GALLERY_G }, 32, 45 * 30,
     { PAL_PAINT(PAINT_SKY, 1), PAL_WHITE, PAL_PAINT(PAINT_COBALT, 1) },
     gl_start, gl_update, gl_draw, gl_art, gl_bot,
-    gl_kept_key, gl_kept_keys, gl_kept_part, gl_stamp, gl_stamp_keys, gl_stamp_strip
+    MG_BAKED(gl_kept_key), MG_BAKED(gl_kept_keys), MG_BAKED(gl_kept_part), MG_BAKED(gl_stamp), MG_BAKED(gl_stamp_keys), MG_BAKED(gl_stamp_strip)
 };
 
 MG_DEFINE_SCENE(SCENE_MG_GALLERY, "MG_GALLERY", mg_game_gallery);

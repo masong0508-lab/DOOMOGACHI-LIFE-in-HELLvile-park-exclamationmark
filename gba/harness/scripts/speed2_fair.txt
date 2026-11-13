@@ -9,7 +9,7 @@
 # frames over 33 / 50 ms from the harness's `gaps` line, and the scene command's own time
 # ("command 7/8 ... in N ms": the scene's enter, which runs outside the tick's work) plus the
 # first drawn tick as the load freeze.
-# Report only: no expect-fps floors yet (the speed wave 2 packages add them).
+# Floors (expect-fps 28): every title card, every game's play windows (S2-4b: all of them hold 30 on the GBA).
 #
 # Each game: its title card (arg 1: Sweet preselected), the autoplay bot on Sweet (arg 49 =
 # Sweet | AUTOSTART | AUTOPLAY) and on Hellfire (arg 51: the hellish night version), and
@@ -35,7 +35,7 @@ push MG_CATCH 49
 wait 60
 fps start
 wait 130
-fps fair: catch play sweet
+expect-fps 28 fair: catch play sweet
 shot fair_catch_play_sweet
 wait 1500
 fps start
@@ -49,7 +49,7 @@ push MG_CATCH 51
 wait 60
 fps start
 wait 130
-fps fair: catch play hellfire
+expect-fps 28 fair: catch play hellfire
 shot fair_catch_play_hellfire
 
 # ---- Whack-a-Mole ---------------------------------------------------------------
@@ -69,7 +69,7 @@ push MG_WHACK 49
 wait 60
 fps start
 wait 130
-expect-fps 19 fair: whack play sweet
+expect-fps 28 fair: whack play sweet
 shot fair_whack_play_sweet
 seed 1
 scene TITLE
@@ -78,7 +78,7 @@ push MG_WHACK 51
 wait 60
 fps start
 wait 130
-expect-fps 18 fair: whack play hellfire
+expect-fps 28 fair: whack play hellfire
 shot fair_whack_play_hellfire
 
 # ---- Dodge ----------------------------------------------------------------------
@@ -98,12 +98,12 @@ push MG_DODGE 49
 wait 60
 fps start
 wait 130
-fps fair: dodge play sweet
+expect-fps 28 fair: dodge play sweet
 shot fair_dodge_play_sweet
 wait 400
 fps start
 wait 130
-fps fair: dodge play late
+expect-fps 28 fair: dodge play late
 shot fair_dodge_play_late
 seed 1
 scene TITLE
@@ -112,7 +112,7 @@ push MG_DODGE 51
 wait 60
 fps start
 wait 130
-fps fair: dodge play hellfire
+expect-fps 28 fair: dodge play hellfire
 shot fair_dodge_play_hellfire
 
 # ---- Shooting Gallery -----------------------------------------------------------
@@ -132,7 +132,7 @@ push MG_GALLERY 49
 wait 60
 fps start
 wait 130
-fps fair: gallery play sweet
+expect-fps 28 fair: gallery play sweet
 shot fair_gallery_play_sweet
 seed 1
 scene TITLE
@@ -141,7 +141,7 @@ push MG_GALLERY 51
 wait 60
 fps start
 wait 130
-fps fair: gallery play hellfire
+expect-fps 28 fair: gallery play hellfire
 shot fair_gallery_play_hellfire
 
 # ---- Derby ----------------------------------------------------------------------
@@ -161,12 +161,12 @@ push MG_DERBY 49
 wait 60
 fps start
 wait 130
-expect-fps 20 fair: derby race sweet
+expect-fps 28 fair: derby race sweet
 shot fair_derby_race_sweet
 wait 300
 fps start
 wait 130
-expect-fps 20 fair: derby race mid
+expect-fps 28 fair: derby race mid
 shot fair_derby_race_mid
 seed 1
 scene TITLE
@@ -175,7 +175,7 @@ push MG_DERBY 51
 wait 60
 fps start
 wait 130
-expect-fps 20 fair: derby race hellfire
+expect-fps 28 fair: derby race hellfire
 shot fair_derby_race_hellfire
 
 # ---- Memory ---------------------------------------------------------------------
@@ -195,7 +195,7 @@ push MG_MEMORY 49
 wait 60
 fps start
 wait 130
-fps fair: memory play sweet
+expect-fps 28 fair: memory play sweet
 shot fair_memory_play_sweet
 seed 1
 scene TITLE
@@ -204,7 +204,7 @@ push MG_MEMORY 51
 wait 60
 fps start
 wait 130
-fps fair: memory play hellfire
+expect-fps 28 fair: memory play hellfire
 shot fair_memory_play_hellfire
 
 # ---- Prize Wheel (arg 16: spin even if already spun today; 32: the bot spins) ----

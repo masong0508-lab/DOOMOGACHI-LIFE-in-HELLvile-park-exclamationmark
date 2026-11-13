@@ -316,6 +316,7 @@ static void bullet(int x, int y, int r, int col)
 
 static void cherub_body(int x, int y, int f, int focus);
 
+#if !defined(DOOMO_PLATFORM_PS1)
 static void dg_stamp(uint32_t key, int cx, int cy)
 {
     int v = (int)(key & 0xFFF);
@@ -328,7 +329,9 @@ static void dg_stamp(uint32_t key, int cx, int cy)
     default: break;
     }
 }
+#endif
 
+#if !defined(DOOMO_PLATFORM_PS1)
 static int dg_stamp_keys(uint32_t *out, int cap)
 {
     int n = 0, h, i, c;
@@ -345,6 +348,7 @@ static int dg_stamp_keys(uint32_t *out, int cap)
 #undef ADD
     return n;
 }
+#endif
 
 static void lounge_bg(int t)
 {
@@ -513,7 +517,7 @@ const MgGame mg_game_dodge = {
     { MG_DODGE_B, MG_DODGE_S, MG_DODGE_G }, 10, 60 * 30,
     { PAL_PAINT(PAINT_VAPE_PURPLE, 1), PAL_PAINT(PAINT_LAVENDER, 2), PAL_PAINT(PAINT_GRAPE, 1) },
     dg_start, dg_update, dg_draw, dg_art, dg_bot,
-    NULL, NULL, NULL, dg_stamp, dg_stamp_keys, NULL
+    NULL, NULL, NULL, MG_BAKED(dg_stamp), MG_BAKED(dg_stamp_keys), NULL
 };
 
 MG_DEFINE_SCENE(SCENE_MG_DODGE, "MG_DODGE", mg_game_dodge);

@@ -291,7 +291,10 @@ static void matched(int i, int x, int y, int w, int h, int t)
  * floats over a face-down card is covered by the card again (its round rect's own spans, inside the sparkle's
  * box); the rest of the frame is drawn as ever. */
 enum { MS_HEART = 0 << 12 };
+#if !defined(DOOMO_PLATFORM_PS1)
 static uint32_t mm_kept_key(void) { return mg.tier; }
+#endif
+#if !defined(DOOMO_PLATFORM_PS1)
 static int mm_kept_keys(uint32_t *out, int cap, int hell)
 {
     int i, n = 0;
@@ -299,18 +302,25 @@ static int mm_kept_keys(uint32_t *out, int cap, int hell)
         if ((i == MG_TIER_HELLFIRE) == (hell != 0)) { if (n < cap) out[n] = (uint32_t)i; n++; }
     return n;
 }
+#endif
+#if !defined(DOOMO_PLATFORM_PS1)
 static int mm_kept_part(uint32_t key, int16_t rows[2]) { (void)key; (void)rows; return 0; }
+#endif
 
+#if !defined(DOOMO_PLATFORM_PS1)
 static void mm_stamp(uint32_t key, int cx, int cy)
 {
     (void)key;
     ui_heart(cx, cy, 4, PAL_PAINT(PAINT_BUBBLEGUM, 1));
 }
+#endif
+#if !defined(DOOMO_PLATFORM_PS1)
 static int mm_stamp_keys(uint32_t *out, int cap)
 {
     if (cap > 0) out[0] = MS_HEART;
     return 1;
 }
+#endif
 
 /* a card face down at its place (not being shuffled) */
 static int home_down(int i)
@@ -482,7 +492,7 @@ const MgGame mg_game_memory = {
     { MG_MEMORY_B, MG_MEMORY_S, MG_MEMORY_G }, 12, 90 * 30,
     { PAL_PAINT(PAINT_LAVENDER, 1), PAL_PAINT(PAINT_NAVY, 2), PAL_PAINT(PAINT_GRAPE, 1) },
     mm_start, mm_update, mm_draw, mm_art, mm_bot,
-    mm_kept_key, mm_kept_keys, mm_kept_part, mm_stamp, mm_stamp_keys, NULL
+    MG_BAKED(mm_kept_key), MG_BAKED(mm_kept_keys), MG_BAKED(mm_kept_part), MG_BAKED(mm_stamp), MG_BAKED(mm_stamp_keys), NULL
 };
 
 MG_DEFINE_SCENE(SCENE_MG_MEMORY, "MG_MEMORY", mg_game_memory);

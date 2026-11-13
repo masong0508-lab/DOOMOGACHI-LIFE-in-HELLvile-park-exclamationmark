@@ -313,11 +313,14 @@ static void flower_box(int k, int *x0, int *y0, int *x1, int *y1)
  * mallet. */
 #define WK_BULBS 8       /* tent key: sway + 2 (0..4) | the sign's bulb phase (0..2) << 3 */
 #define WK_FIELD 0x40    /* the field's key */
+#if !defined(DOOMO_PLATFORM_PS1)
 static uint32_t wh_kept_key(void)
 {
     int t = mg.play_t + mg.t;
     return (uint32_t)(ui_wave(t, 150, 2) + 2) | (uint32_t)((t / 4) % 3) * WK_BULBS;
 }
+#endif
+#if !defined(DOOMO_PLATFORM_PS1)
 static int wh_kept_keys(uint32_t *out, int cap, int hell)
 {
     int i, b, n = 0;
@@ -330,6 +333,8 @@ static int wh_kept_keys(uint32_t *out, int cap, int hell)
     if (n < cap) out[n] = WK_FIELD;
     return n + 1;
 }
+#endif
+#if !defined(DOOMO_PLATFORM_PS1)
 static int wh_kept_part(uint32_t key, int16_t rows[2])
 {
     int ft = field_top();
@@ -337,6 +342,7 @@ static int wh_kept_part(uint32_t key, int16_t rows[2])
     rows[1] = (int16_t)(key == WK_FIELD ? mg_h() : ft);
     return 1;
 }
+#endif
 
 /* the painted sign board with its marquee bulbs (and its words, which no imp reaches: left out when
  * the board is put back over the imps behind it) */
@@ -559,7 +565,7 @@ const MgGame mg_game_whack = {
     { MG_WHACK_B, MG_WHACK_S, MG_WHACK_G }, 24, 45 * 30,
     { PAL_PAINT(PAINT_LEMON, 1), PAL_WHITE, PAL_PAINT(PAINT_TANGERINE, 1) },
     wh_start, wh_update, wh_draw, wh_art, wh_bot,
-    wh_kept_key, wh_kept_keys, wh_kept_part, NULL, NULL, NULL
+    MG_BAKED(wh_kept_key), MG_BAKED(wh_kept_keys), MG_BAKED(wh_kept_part), NULL, NULL, NULL
 };
 
 MG_DEFINE_SCENE(SCENE_MG_WHACK, "MG_WHACK", mg_game_whack);

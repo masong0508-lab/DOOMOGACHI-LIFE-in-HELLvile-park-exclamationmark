@@ -332,13 +332,18 @@ static void dy_update(void)
 enum { DY_SHADOW = 0 << 12, DY_BUNT = 1 << 12, DY_KIND = 7 << 12 };
 static const uint8_t head_paint[6] = { PAINT_PEACH, PAINT_BUBBLEGUM, PAINT_SKY, PAINT_LEMON, PAINT_MINT, PAINT_LAVENDER };
 
+#if !defined(DOOMO_PLATFORM_PS1)
 static void dy_stamp(uint32_t key, int cx, int cy)
 {
     int v = (int)(key & 0xFFF);
     if ((key & DY_KIND) == DY_SHADOW) mg_shadow(cx, cy, v);
     else mg_bunting(0, mg_w(), cy, 3, v);
 }
+#endif
+#if !defined(DOOMO_PLATFORM_PS1)
 static int dy_stamp_strip(uint32_t key) { return (key & DY_KIND) == DY_BUNT; }
+#endif
+#if !defined(DOOMO_PLATFORM_PS1)
 static int dy_stamp_keys(uint32_t *out, int cap)
 {
     int n = 0, h, i;
@@ -349,6 +354,7 @@ static int dy_stamp_keys(uint32_t *out, int cap)
 #undef ADD
     return n;
 }
+#endif
 /* a stamp at (x, y) where stamps are kept (240x160 only); 0: the caller draws it */
 static int stamped(uint32_t key, int x, int y)
 {
@@ -356,10 +362,10 @@ static int stamped(uint32_t key, int x, int y)
 }
 
 /* x % 6 without a division (the crowd asks for it 63 times a frame): the remainder mod 3 by folding the
- * bits (2^2 = 1 mod 3), the parity from bit 0, the two put together as the Chinese remainders say */
+ * bits (2^2 = 1 mod 3), the parity from bit 0; the two go together as the Chinese remainders say:
+ * the answer is r, or r + 3 when r has the wrong parity */
 unsigned mg_mod6(uint32_t x)
 {
-    static const uint8_t crt[6] = { 0, 3, 4, 1, 2, 5 };       /* [x % 3 * 2 + x % 2] */
     uint32_t r = (x >> 16) + (x & 0xFFFFu);
     r = (r >> 8) + (r & 0xFFu);
     r = (r >> 4) + (r & 0xFu);
@@ -367,7 +373,7 @@ unsigned mg_mod6(uint32_t x)
     r = (r >> 2) + (r & 3u);
     if (r >= 3) r -= 3;                                       /* (r <= 6 here) */
     if (r >= 3) r -= 3;
-    return crt[r * 2 + (x & 1u)];
+    return r + 3u * ((x - r) & 1u);
 }
 
 static void grandstand(int y0, int h, int cam, int t)
@@ -548,7 +554,7 @@ const MgGame mg_game_derby = {
     { MG_DERBY_B, MG_DERBY_S, MG_DERBY_G }, 20, 0,
     { PAL_PAINT(PAINT_LIME, 1), PAL_WHITE, PAL_PAINT(PAINT_FOREST, 1) },
     dy_start, dy_update, dy_draw, dy_art, dy_bot,
-    NULL, NULL, NULL, dy_stamp, dy_stamp_keys, dy_stamp_strip
+    NULL, NULL, NULL, MG_BAKED(dy_stamp), MG_BAKED(dy_stamp_keys), MG_BAKED(dy_stamp_strip)
 };
 
 MG_DEFINE_SCENE(SCENE_MG_DERBY, "MG_DERBY", mg_game_derby);
