@@ -1,0 +1,135 @@
+# core/data/talk/grammar/en/open_manners.tlk - replies to thanks, apologies and introductions
+# (owner: TK; T5b package T5B-OPEN). Clean in any room, no register word, no romance. Rule names
+# start with o_. Syntax: core/tools/talkc_gen.py.
+
+# ---- THANK: "you're welcome" in many ways ------------------------------------------------------
+@rule core.thank.o_plain act: answer
+  "Any time! I mean it. Well, most times."
+  "You're welcome! It was my pleasure. And a little bit my job."
+  "Don't mention it. Actually, do. To everyone."
+  "Of course! That's what friends are for, and neighbours, and pie."
+  "No need to thank me. But I won't stop you."
+@rule core.thank.o_joke act: joke
+  "Thanks accepted! Please deposit them in the jar by the door."
+  "I'll take that in cash, cake, or compliments. Or all three."
+  "You're welcome! That'll be one hundred hugs. Kidding, fifty."
+  "Thanks noted! I'm putting it on my wall of fame. It's a small wall."
+@rule core.thank.o_tease act: tease
+  "Wow, manners! Who raised you? Someone good."
+  "You said thanks! Quick, someone write it down."
+  "Look at you, being all polite. It suits you. Mostly."
+@rule core.thank.o_back act: backchannel
+  "Mm-hm. Yep, of course. Any time."
+  "Yeah, yeah. It was nothing. It was a little something."
+@rule core.thank.o_dismiss act: dismiss
+  "It was nothing. Really. Don't make a fuss."
+  "Pfft. Stop. You'll make me blush, and I hate that."
+@rule core.thank.o_polite guard: polite act: answer
+  "You're most welcome. It was no trouble at all."
+  "Think nothing of it, {you}. The pleasure was entirely mine."
+  "How kind of you to say. I'm delighted to have helped."
+@rule core.thank.o_blunt guard: blunt act: answer
+  "Yeah, yeah. You're welcome. Don't make it weird."
+  "Sure. Whatever. Glad it helped."
+@rule core.thank.o_flat guard: flat act: answer
+  "You're welcome. {.}This is me, glowing."
+  "Mm. No problem. I felt a small joy."
+@rule core.thank.o_loud guard: loud act: answer
+  "YOU'RE WELCOME! ANY TIME! I MEAN ANY TIME!"
+@rule core.thank.o_elder guard: elder act: answer
+  "Oh, you're welcome, dear. It's nice to be of use."
+  "Don't mention it, young one. I had nothing else on."
+@rule core.thank.o_quirky guard: quirky act: answer
+  "You're welcome! The spoon sends its regards."
+@rule core.thank.o_kid guard: kid_speaker tags: kid act: answer
+  "You're welcome! Do I get a sticker? A small one?"
+  "No problem! I'm very helpful, everybody says so. Sometimes."
+  "You're welcome! Patrol is always happy to help."
+@rule core.thank.o_friend guard: rel=friend act: answer
+  "Anytime, friend. You'd do the same for me. Probably."
+  "Oh, stop. We're friends. That's the deal."
+@rule core.thank.o_best guard: rel=best act: answer
+  "Don't thank me. You'd do it for me. You'd do it better."
+@rule core.thank.o_rival guard: rel=rival act: tease
+  "Thanks? From you? I'm flattered and suspicious."
+@rule core.thank.o_happy guard: mood=happy act: answer
+  "[HAPPY]You're welcome! It made my day, too!"
+@rule core.thank.o_sad guard: mood=sad act: answer
+  "[SAD]You're welcome. It's nice to be thanked. It helps."
+@rule core.thank.o_tired guard: mood=tired act: answer
+  "[SLEEPY]Mm. Welcome. I'll feel proud when I wake up."
+
+# ---- APOLOGIZE: accepting, brushing off, teasing ---------------------------------------------------
+@rule core.apologize.o_accept act: answer
+  "It's all right. Truly. Everyone slips sometimes."
+  "Apology accepted! Let's agree to be silly together."
+  "Thanks for saying so. I feel much better already."
+  "It's forgotten. Well, filed in a drawer under fine."
+  "Okay, I appreciate that. Don't do it again. Or do, politely."
+@rule core.apologize.o_comfort act: comfort
+  "Hey, come on. We all mess up. Have a biscuit."
+  "It's okay, {you}. Really. Let's put it down and walk away from it."
+  "Don't be so hard on yourself. You're a good egg. Mostly."
+@rule core.apologize.o_dismiss act: dismiss
+  "Forget it. It's already forgotten. Look, it's gone."
+  "Pfft, it's fine. I wasn't even counting. Much."
+@rule core.apologize.o_joke act: joke
+  "Sorry accepted! That'll be one cookie as a fine."
+  "Apology noted. Let's write it in the logbook, next to the goose."
+  "Oh, now you're sorry? Let me find my tiny violin."
+@rule core.apologize.o_complain act: complain
+  "Well. It's about time. I was starting to sulk."
+  "Hmph. Fine, I'll forgive you. I'll keep a note, though."
+@rule core.apologize.o_polite guard: polite act: answer
+  "Please, think nothing of it. It's quite forgotten."
+  "That's very gracious. Apology accepted, with my thanks."
+@rule core.apologize.o_blunt guard: blunt act: answer
+  "Fine. Done, moving on. Don't make it a speech."
+  "Yeah, okay. Sorry accepted. Just don't repeat it."
+@rule core.apologize.o_flat guard: flat act: answer
+  "It's fine. {.}I've forgiven you. Look at my face, see, fine."
+@rule core.apologize.o_elder guard: elder act: answer
+  "Oh, hush, dear. I've forgotten already. It's one of my talents."
+@rule core.apologize.o_kid guard: kid_speaker tags: kid act: answer
+  "Okay! I forgive you. Do you want to play now?"
+  "It's okay. I'm not mad. I was only a tiny bit mad."
+@rule core.apologize.o_rival guard: rel=rival act: complain
+  "You? Apologising? Quick, someone check the sky."
+@rule core.apologize.o_friend guard: rel=friend act: comfort
+  "We're friends. That's what we do. We mess up and we fix it."
+
+# ---- INTRODUCE: hello, what's your deal, and the player's own name ---------------------------------------
+@rule core.introduce.o_plain act: greet
+  "Nice to meet you, {you}! I'm {me}. Pleased to be pleased."
+  "Hello, {you}! Welcome to the neighbourhood. I hope you like fog."
+  "{you}! What a name. I'll write it on my hand so I won't forget."
+  "Hi, {you}! I'm {me}. We're going to be friends, I can tell."
+  "Oh, hello! I'm {me}. Don't worry, I only bite on Wednesdays."
+@rule core.introduce.o_ask act: ask_about
+  "Nice to meet you! So where are you from? And why?"
+  "Hello, {you}! What do you like to do, when no one's looking?"
+  "Hi! Tell me something about you. A fun fact, or a sad one."
+  "Lovely to meet you! What brings you here? Fate, or the bus?"
+@rule core.introduce.o_joke act: joke
+  "{you}! I'll remember that, probably. Don't test me."
+  "Oh, a new friend! My collection's almost complete. I need a goose."
+  "Nice to meet you, {you}! I'm {me}, a professional neighbour."
+@rule core.introduce.o_tease act: tease
+  "{you}? Hmm, I'll allow it. It's a fine name."
+  "Pleased to meet you! You seem shiny. I'll keep an eye on you."
+@rule core.introduce.o_polite guard: polite act: greet
+  "How do you do, {you}? I'm {me}. It's a pleasure."
+  "Delighted to make your acquaintance. Please, call me {me}."
+@rule core.introduce.o_blunt guard: blunt act: greet
+  "Hi. I'm {me}. Don't expect a hug."
+  "{you}, right? Okay. I'm {me}, fine."
+@rule core.introduce.o_quirky guard: quirky act: greet
+  "Hello, {you}! I'm {me}, and this is my hat, Gerald."
+@rule core.introduce.o_kid guard: kid_speaker tags: kid act: greet
+  "Hi! I'm {me}! I'm this many years old, a lot!"
+  "Hello, {you}! Do you want to be my friend? You can say no."
+  "I'm {me}! I have a rock collection! Want to see?"
+@rule core.introduce.o_elder guard: elder act: greet
+  "How nice to meet you, {you}. I'm {me}. I've been here forever."
+@rule core.introduce.o_happy guard: mood=happy act: greet
+  "[HAPPY]Hi, {you}! I'm {me}! I love meeting people!"

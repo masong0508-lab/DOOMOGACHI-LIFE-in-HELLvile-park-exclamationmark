@@ -1,0 +1,207 @@
+# core/data/talk/grammar/en/rest_flow.tlk - the give and take of a chat: replies to the player
+# agreeing, disagreeing, saying yes or no, answering, telling and giving an opinion (owner: TK; T5b
+# package T5B-OPEN). Clean in any room, no register word, no romance. Rule names start with r_.
+# Syntax: core/tools/talkc_gen.py.
+
+# ---- AGREE: the player says "yes, same" -------------------------------------------------------------
+@rule core.agree.r_back act: agree
+  "Right? Finally, someone with taste."
+  "Exactly. We think alike, you and I. It's a bit scary."
+  "See? We're on the same page. Page one, paragraph one."
+  "Yes! Two minds, one very good thought."
+@rule core.agree.r_joke act: joke
+  "We agree? Quick, take a picture. It's a historic moment."
+  "Wow, we agree. Is it Tuesday? It might be Tuesday."
+@rule core.agree.r_tell act: tell
+  "Funny you say that. Last week I thought the same, out loud, to a pigeon."
+  "That's what I always say. Nobody listens, but I say it."
+@rule core.agree.r_laugh act: laugh
+  "Ha! Look at us, being right together."
+@rule core.agree.r_topic guard: topic act: agree
+  "Yes, {x}! Exactly. You said it better than I would."
+  "Right? {x:cap} is exactly the thing. We're onto something."
+@rule core.agree.r_polite guard: polite act: agree
+  "How wonderful, we're of one mind. A rare treat."
+  "Quite so. You put that most elegantly."
+@rule core.agree.r_blunt guard: blunt act: backchannel
+  "Yep. Obviously. Took you long enough."
+@rule core.agree.r_kid guard: kid_speaker tags: kid act: agree
+  "Yeah! We think the same! Do you like frogs too?"
+  "Yay, we agree! That means we're best friends. Maybe."
+
+# ---- DISAGREE: the player says "no, I don't think so" --------------------------------------------------
+@rule core.disagree.r_back act: disagree
+  "Hm, no, I don't think that's right. But I'm listening."
+  "Oh, we disagree! How fun. Tell me why you're wrong."
+  "I see it differently. Pour a tea, we'll sort it out."
+  "I'll have to push back there. Gently. With a cushion."
+@rule core.disagree.r_agree act: agree
+  "Okay, fair. You've got a point. A small one, but sharp."
+  "Hm. You know, you might be right. Don't let it go to your head."
+@rule core.disagree.r_joke act: joke
+  "Disagreement! Quick, grab the popcorn. Or a spoon."
+  "We can't both be right. I'm right. It's very simple."
+@rule core.disagree.r_tease act: tease
+  "Aw, you think that? That's adorable. Wrong, but adorable."
+  "Big talk from someone who still can't fold a map."
+@rule core.disagree.r_opine act: opine_neg
+  "Honestly? I think you're missing something. I can't say what."
+  "I don't buy it. It smells like a trick. A nice one."
+@rule core.disagree.r_complain act: complain
+  "Ugh, you always do this. Take a side and ruin my whole mood."
+  "Oh, come on! I was having such a lovely agreement with myself."
+@rule core.disagree.r_dismiss act: dismiss
+  "Agree to disagree, then. I'll be right, you'll be there."
+  "Okay, okay. Let's not fight about it. Let's fight about lunch."
+@rule core.disagree.r_laugh act: laugh
+  "Ha! You're so sure. I like that, even when it's wrong."
+@rule core.disagree.r_topic guard: topic act: opine_neg
+  "{x:cap}? No, I don't think that's right. Not at all."
+  "Hm, I disagree about {x}. It deserves better."
+@rule core.disagree.r_polite guard: polite act: disagree
+  "Forgive me, but I see it rather differently."
+  "I do beg to differ, though not unkindly."
+@rule core.disagree.r_blunt guard: blunt act: disagree
+  "Nope. Wrong. Try again with more thinking."
+  "No. I'm not changing my mind. Save your breath."
+@rule core.disagree.r_kid guard: kid_speaker tags: kid act: disagree
+  "Nuh-uh! I'm right, and I'm also very small!"
+  "No way! I've seen it with my own eyes. And a magnifying glass."
+
+# ---- YES and NO from the player ---------------------------------------------------------------------------
+@rule core.yes.r_back act: backchannel
+  "Great, then. Perfect. That's settled."
+  "Wonderful. I knew you'd say yes. I could feel it."
+@rule core.yes.r_thank act: thank
+  "Thanks! I'm glad you said yes. It means a lot."
+  "You're a star. A small one, but warm."
+@rule core.yes.r_joke act: joke
+  "Yes? Just like that? I had a whole speech ready."
+  "A yes! Quick, mark the calendar."
+@rule core.yes.r_agree act: agree
+  "Yes! We're agreed. Let's never speak of it again."
+@rule core.yes.r_kid guard: kid_speaker tags: kid act: thank
+  "Yay! Thank you! You're the nicest!"
+@rule core.no.r_back act: backchannel
+  "Okay. No problem. I understand."
+  "Fair enough. I won't push. I'll just hover."
+@rule core.no.r_complain act: complain
+  "No? Just no? Not even a maybe or a possibly?"
+  "Oh, come on. You didn't even think about it."
+@rule core.no.r_joke act: joke
+  "A no. Ouch. I'll cry about it later, in private."
+  "Rejected! I'll live. I'll sulk first."
+@rule core.no.r_disagree act: disagree
+  "Hmm. I think you'll change your mind. Eventually."
+@rule core.no.r_kid guard: kid_speaker tags: kid act: complain
+  "Aww, no? Not even a little bit? Please?"
+  "Okay. But I'm going to ask again later."
+@rule core.no.r_polite guard: polite act: backchannel
+  "Of course. I quite understand. No offence taken."
+
+# ---- ANSWER: the player has answered a question ------------------------------------------------------------
+@rule core.answer.r_back act: backchannel
+  "Ah, I see. That makes sense."
+  "Interesting. I didn't know that. I mean it."
+  "Ahh, okay. That explains a lot."
+@rule core.answer.r_agree act: agree
+  "Yes, exactly what I thought. Good for you."
+  "Same here, honestly. It's the right answer."
+@rule core.answer.r_ask act: ask_about
+  "Really? And why is that, do you think?"
+  "Hm. What made you say that? I'm curious."
+  "Interesting! And how did that start?"
+@rule core.answer.r_joke act: joke
+  "Honest answer! Rare in this town. Take a bow."
+  "Ooh, an answer. I wasn't expecting one. Do you want a medal?"
+@rule core.answer.r_tell act: tell
+  "That reminds me of something that happened to me. Long story."
+  "Funny, that's how it went for me too. Only with more fog."
+@rule core.answer.r_tease act: tease
+  "That's your answer? Bold. Wrong, but bold."
+@rule core.answer.r_laugh act: laugh
+  "Ha! That's the best answer I've had all day."
+@rule core.answer.r_disagree act: disagree
+  "Hmm, I'd say the opposite. But go on, I'm listening."
+@rule core.answer.r_kid guard: kid_speaker tags: kid act: ask_about
+  "Ooh! Why? Why why why, can you tell me again?"
+
+# ---- TELL: the player is telling a story -------------------------------------------------------------------
+@rule core.tell.r_back act: backchannel
+  "Oh? Go on."
+  "Mm-hm. And then?"
+  "Wow. Keep going, I'm hooked."
+@rule core.tell.r_ask act: ask_about
+  "Wait, how did that happen? Start from the beginning."
+  "And what did you do? Don't leave out the bad bit."
+@rule core.tell.r_pos act: opine_pos
+  "That's wonderful! I love hearing that. Good for you."
+  "Aw, that's lovely. That deserves a little cheer."
+@rule core.tell.r_neg act: opine_neg
+  "Oh, that's rough. I'm sorry that happened."
+  "Hmm. That sounds like a headache, or a tragedy, or both."
+@rule core.tell.r_joke act: joke
+  "And you survived! A hero. A tiny, soggy hero."
+  "That's the best story I've heard since the toaster incident."
+@rule core.tell.r_agree act: agree
+  "Yes, I know exactly what you mean. It happens to everyone."
+@rule core.tell.r_tease act: tease
+  "That's a very long way to say you were late."
+@rule core.tell.r_cont act: continue
+  "Don't stop now! The good bit's coming, I can feel it."
+@rule core.tell.r_laugh act: laugh
+  "Ha! Stop, I can see it. I can actually see it."
+@rule core.tell.r_topic guard: topic act: ask_about
+  "Wait, what about {x}? Does it come in? It's coming in, right?"
+@rule core.tell.r_kid guard: kid_speaker tags: kid act: backchannel
+  "Ooh! And then? Is there a monster, please say monster."
+@rule core.tell.r_polite guard: polite act: backchannel
+  "How fascinating. Do tell me more, if you'd like."
+@rule core.tell.r_flat guard: flat act: backchannel
+  "Wow. {.}That's a story. I'm moved, internally."
+
+# ---- OPINE_POS / OPINE_NEG: the player says what they think of something ---------------------------------------
+@rule core.opine_pos.r_agree act: agree
+  "Yes! Exactly my thought. Great minds."
+  "I couldn't agree more. And I've tried."
+@rule core.opine_pos.r_disagree act: disagree
+  "Hmm, I'm not so sure. I've seen some things."
+  "Really? I thought it was a bit meh. Don't hate me."
+@rule core.opine_pos.r_opine act: opine_pos
+  "I like it too, honestly. It's grown on me."
+  "I'd say it's a little bit great. More than a bit."
+@rule core.opine_pos.r_joke act: joke
+  "It's wonderful, it's marvellous, and it's also slightly on fire."
+  "A good opinion. I'd frame it, but I don't own a frame."
+@rule core.opine_pos.r_topic guard: topic act: opine_pos
+  "{x:cap}? Yes, it's good. It's really, really good."
+  "You and I and {x}, forever. Or until lunch."
+@rule core.opine_pos.r_tease act: tease
+  "You like everything. Is that why you're so sunny?"
+@rule core.opine_pos.r_laugh act: laugh
+  "Ha! You're so cheerful. It's catching."
+@rule core.opine_pos.r_back act: backchannel
+  "Mm-hm. Sure. I can see that."
+@rule core.opine_neg.r_agree act: agree
+  "Ugh, yes. Don't get me started."
+  "Totally. I was about to say the same, only meaner."
+@rule core.opine_neg.r_disagree act: disagree
+  "Oh, come on. It's not that bad. It's a little bad."
+  "Hmm, I'm going to defend it. A bit. Somebody has to."
+@rule core.opine_neg.r_sympathize act: sympathize
+  "Aw, that does sound awful. I'm sorry you went through it."
+  "Ugh, I feel that. Take a deep breath. And a snack."
+@rule core.opine_neg.r_joke act: joke
+  "That's a harsh review. Two stars, and one is for effort."
+  "Tell us how you really feel. We have time."
+@rule core.opine_neg.r_opine act: opine_neg
+  "Honestly? I agree. It's pretty rubbish, lovely rubbish."
+@rule core.opine_neg.r_topic guard: topic act: opine_neg
+  "{x:cap}? Don't, I can't. Next topic, please."
+  "Ugh, {x}. My least favourite. Well, my second."
+@rule core.opine_neg.r_tease act: tease
+  "Someone woke up on the wrong side of the rug."
+@rule core.opine_neg.r_back act: backchannel
+  "Mm. I hear you. It's a lot."
+@rule core.opine_neg.r_laugh act: laugh
+  "Ha! Okay, that was harsh. And fair."

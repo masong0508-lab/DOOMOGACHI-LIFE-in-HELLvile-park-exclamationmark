@@ -1,0 +1,171 @@
+# core/data/talk/grammar/en/rest_parts.tlk - more optional parts of a line (openers, tags, hand-offs)
+# and more reactions between residents (owner: TK; T5b package T5B-OPEN). Clean in any room, no
+# register word, no romance, no topic or name that was not checked by the generator's filters.
+# Rule names end in r_ or o_. Syntax: core/tools/talkc_gen.py.
+#   [opener] [core] [callback] [tag] [hand-off]
+
+# ---- openers: by the class of what was said ----------------------------------------------------
+@rule open.o_ask guard: pact=ask
+  "Hmm, let me think."
+  "Ooh, hold on."
+  "Well, now."
+@rule open.o_tell guard: pact=tell
+  "Mm, I see."
+  "Go on, then."
+  "Is that so?"
+@rule open.o_warm guard: pact=warm
+  "Awww."
+  "Oh, stop it."
+@rule open.o_cool guard: pact=cool
+  "Hmm."
+  "Really, now?"
+@rule open.o_open guard: pact=open
+  "Oh, hi."
+  "Ah."
+@rule open.o_flow guard: pact=flow
+  "Hold on."
+  "Mm-hm."
+@rule open.o_gesture guard: pact=gesture
+  "Aw."
+  "Ha."
+
+# ---- openers: by time, mood and voice --------------------------------------------------------------
+@rule open.o_morning guard: time=morning
+  "Mm, morning."
+@rule open.o_evening guard: time=evening
+  "Ah, this evening."
+@rule open.o_night guard: time=night
+  "Shh, it's late."
+@rule open.o_scared guard: mood=scared
+  "Eep."
+@rule open.o_tired guard: mood=tired
+  "*yawn*"
+@rule open.o_weird guard: mood=weird
+  "Bees."
+@rule open.o_elder guard: elder
+  "Well, dear."
+@rule open.o_quirky guard: quirky
+  "Ooh, a thing."
+@rule open.o_serious guard: serious
+  "Allow me."
+@rule open.o_easy guard: easygoing
+  "Sure, sure."
+@rule open.o_kid guard: kid_speaker tags: kid
+  "Ooh!"
+@rule open.o_friend guard: rel=friend
+  "Hey, friend."
+@rule open.o_rival guard: rel=rival
+  "Oh, please."
+
+# ---- tags: a little button at the end of a line ---------------------------------------------------------
+@rule tag.o_plain
+  "Just my two cents."
+  "That's how I see it."
+  "Or so I hear."
+  "Make of that what you will."
+@rule tag.o_happy guard: mood=happy
+  "Isn't that great?"
+@rule tag.o_sad guard: mood=sad
+  "Anyway."
+@rule tag.o_angry guard: mood=angry
+  "So there."
+@rule tag.o_tired guard: mood=tired
+  "*yawn* Anyway."
+@rule tag.o_scared guard: mood=scared
+  "...Did you hear that?"
+@rule tag.o_night guard: night
+  "It's late. I ramble."
+@rule tag.o_polite guard: polite
+  "If I may say so."
+@rule tag.o_blunt guard: blunt
+  "Take it or leave it."
+@rule tag.o_kid guard: kid_speaker tags: kid
+  "Right? Right?"
+@rule tag.o_elder guard: elder
+  "Or so I remember."
+
+# ---- hand-offs: the talk goes to another participant -----------------------------------------------------------
+@rule handoff.o_ask
+  "What do you think, {other}?"
+  "{other:cap}, what's your take?"
+  "Over to you, {other}."
+@rule handoff.o_polite guard: polite
+  "Do you agree, {other}?"
+@rule handoff.o_blunt guard: blunt
+  "Well? Say it, {other}."
+@rule handoff.o_kid guard: kid_speaker tags: kid
+  "{other:cap}! Tell them! Tell them!"
+@rule handoff.o_quirky guard: quirky
+  "{other:cap}, do the thing. The thing with the voice."
+
+# ---- reactions between residents: {them} is the one who just spoke -----------------------------------------------
+@rule react.agree.r_more
+  "Ha, yes. {them:cap} said it before I could."
+  "Couldn't have put it better, {them}. I tried."
+  "That's what I was about to say. Honest."
+@rule react.agree.r_polite guard: polite
+  "I quite agree with {them}. Splendidly put."
+@rule react.agree.r_blunt guard: blunt
+  "Yeah. What {them} said. Moving on."
+@rule react.agree.r_pro guard: stance=pro
+  "{x:cap}! {them:cap} gets it. We're a team."
+@rule react.agree.r_elder guard: elder
+  "{them:cap} is right, you know. Listen to {them}."
+@rule react.agree.r_flat guard: flat
+  "Agreed, {them}. {.}I'm very excited about it."
+@rule react.disagree.r_more
+  "No, no, {them}. That's not it at all."
+  "Hold on, {them}. I think you've got it backwards."
+  "Mmm, I don't buy that, {them}. Sorry."
+@rule react.disagree.r_polite guard: polite
+  "I'm afraid I must differ, {them}. With respect."
+@rule react.disagree.r_con guard: stance=con
+  "Not {x}, {them}. Please. Anything but {x}."
+@rule react.disagree.r_elder guard: elder
+  "In my day we'd never say that, {them}. Hmph."
+@rule react.disagree.r_quirky guard: quirky
+  "Respectfully, {them}: bees. That's my answer."
+@rule react.laugh.r_more
+  "Ha! {them:cap}, you crack me up."
+  "Oh, that's good. That's very good, {them}."
+  "Heh! I'm stealing that one, {them}."
+@rule react.laugh.r_polite guard: polite
+  "Ha! How very amusing, {them}. Charming."
+@rule react.laugh.r_loud guard: loud
+  "HA! GOOD ONE, {them}! AGAIN!"
+@rule react.laugh.r_elder guard: elder
+  "Ha ha! Oh, {them}. You're a card."
+@rule react.laugh.r_kid guard: kid_speaker tags: kid
+  "Hee hee! Do it again, {them}! Do it again!"
+@rule react.tease.r_more
+  "Oh, {them}. Bless your little heart."
+  "{them:cap} thinks that's funny. It's not. A bit."
+  "Listen to {them}. Making things up, as usual."
+@rule react.tease.r_friend guard: rel=friend
+  "{them:cap}, I love you, but that's a lot."
+@rule react.tease.r_rival guard: rel=rival
+  "That's {them} for you. All noise, no shoes."
+@rule react.tease.r_blunt guard: blunt
+  "Nice try, {them}. Try again, with substance."
+@rule react.joke.r_more
+  "That reminds me of a duck. Don't ask."
+  "Sure, {them}. And I'm the mayor's hat."
+  "Fun fact: {them} just made that up. It's a good fact, though."
+@rule react.joke.r_quirky guard: quirky
+  "Speaking of {them}, has anyone seen my spoon?"
+@rule react.joke.r_deadpan guard: type=deadpan_drifter
+  "Wow. {.}That happened. Cool."
+@rule react.joke.r_kid guard: kid_speaker tags: kid
+  "Ha! That's funny! Why's it funny, I forgot."
+@rule react.backchannel.r_more
+  "Mm-hm, {them}."
+  "Yeah, okay."
+  "Sure, sure."
+@rule react.backchannel.r_polite guard: polite
+  "Quite so, {them}."
+@rule react.backchannel.r_flat guard: flat
+  "Mm. {.}Noted, {them}."
+@rule react.backchannel.r_elder guard: elder
+  "Hm. Yes, {them}. Quite."
+@rule react.backchannel.r_kid guard: kid_speaker tags: kid
+  "Uh huh! Uh huh!"

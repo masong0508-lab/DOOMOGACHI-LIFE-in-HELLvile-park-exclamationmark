@@ -1,0 +1,172 @@
+# core/data/talk/grammar/en/open_greet.tlk - greetings: by time of day, first meeting and old friends,
+# by mood, voice and persona type (owner: TK; T5b package T5B-OPEN). Clean in any room: no register
+# word, no romance (a greeting never flirts), kid voices are kid banks. Rule names start with o_.
+# Syntax: core/tools/talkc_gen.py.
+
+# ---- time of day ------------------------------------------------------------------------------
+@rule core.greet.o_morning guard: time=morning act: greet
+  "Good morning, {you}! The fog is only mildly judgemental today."
+  "Morning! I've had one coffee and a small argument with the toaster."
+  "Oh, you're up! Early birds get the worm. I'd rather have toast."
+  "Rise and shine, {you}! Or just rise. Shining is optional."
+@rule core.greet.o_morning_b guard: time=morning act: joke
+  "It's too early for words. Here's a wave. {.}And some words."
+@rule core.greet.o_morning_c guard: time=morning act: ask_feeling
+  "Morning! Did you sleep well, or did the walls hum again?"
+@rule core.greet.o_day guard: time=day act: greet
+  "Afternoon, {you}! Perfect timing. I was just getting bored."
+  "Hello there! Lovely day. Well, a day, I've seen worse."
+  "Hi, {you}! You've caught me mid-nap. I mean mid-thought."
+  "Good day! Come in, mind the cursed rug, it's in a mood."
+@rule core.greet.o_day_b guard: time=day act: tell
+  "Hi! I've been sorting socks all day. There's a lot of socks."
+@rule core.greet.o_day_c guard: time=day act: ask_feeling
+  "Hey, {you}! How's your day going? Good, bad, or soup?"
+@rule core.greet.o_evening guard: time=evening act: greet
+  "Good evening, {you}! Dinner's almost ready. Allegedly."
+  "Hello! The sun's going down, nothing to fear. Mostly."
+  "Evening! Come in, the lamps are lit and the bats are loud."
+  "Oh, hello, {you}. Just in time for the good chairs."
+@rule core.greet.o_evening_b guard: time=evening act: joke
+  "Hello! You smell like supper. Is that supper, please?"
+@rule core.greet.o_evening_c guard: time=evening act: ask_feeling
+  "Evening! How was your day? Tell me the good bits first."
+@rule core.greet.o_night guard: time=night act: greet
+  "Oh! A night visitor! Come in, I'm up anyway."
+  "Hello, {you}. It's late. The good kind of late."
+  "Shh, hi. Everything's asleep except us and the owls."
+  "Night owl, huh? Pull up a chair, there's tea and moonlight."
+@rule core.greet.o_night_b guard: time=night act: joke
+  "Hello! Is it the middle of the night? That's my favourite middle."
+@rule core.greet.o_night_c guard: time=night act: ask_feeling
+  "Hello! Can't sleep? Me neither, what's keeping you up?"
+
+# ---- first meeting and old friends ---------------------------------------------------------------
+@rule core.greet.o_first guard: first act: greet
+  "Hello! I don't think we've met. I'd remember, I'd write it down."
+  "Hi there! New face! Don't worry, everyone here is weird."
+  "Oh, hello! Welcome. The tour is short and mostly lies."
+  "Well hello, new person. I'm friendly. The rug isn't."
+@rule core.greet.o_first_b guard: first act: ask_feeling
+  "Hello! You look new. How are you finding the place so far?"
+@rule core.greet.o_first_c guard: first act: joke
+  "Hi! Don't tell anyone, but I'm nervous around new people. Hi."
+@rule core.greet.o_friend guard: rel=friend act: greet
+  "Hey, you! I was hoping you'd drop by. Good timing."
+  "There you are! I saved you a seat. And a rumour."
+  "Hi, friend! Come in, no need to knock. Well, knock politely."
+  "Oh, it's you! My day just got ten percent better."
+@rule core.greet.o_friend_b guard: rel=friend act: tell
+  "Oh, good, you're here! You'll never guess what happened. Sit."
+@rule core.greet.o_friend_c guard: rel=friend act: ask_feeling
+  "Hey, you! How've you been? The real answer, not the polite one."
+@rule core.greet.o_best guard: rel=best act: greet
+  "{you}! There you are! I was about to send a search party."
+  "Oh, thank goodness. Finally, a good person in my house."
+  "Hi, my favourite! You can have the comfy chair. I mean it."
+@rule core.greet.o_best_b guard: rel=best act: joke
+  "Is that you? I was about to tell the cat all my secrets."
+@rule core.greet.o_family guard: rel=family act: greet
+  "Hello, {you}! Home again. We kept your chair and your socks."
+  "Oh, hi! Did you eat? Wash up, then tell me everything."
+@rule core.greet.o_acq guard: rel=acquaintance act: greet
+  "Oh, hello again! Nice to see a familiar face. Or most of one."
+  "Hi, {you}! We should talk more. We've talked twice, it was nice."
+@rule core.greet.o_stranger guard: rel=stranger act: greet
+  "Hello. I know your face but not your name. Remind me?"
+@rule core.greet.o_rival guard: rel=rival act: complain
+  "Oh, joy. You. The day was going so smoothly."
+  "You again. I'd say it's a pleasure, but I'm not a liar. Often."
+@rule core.greet.o_rival_b guard: rel=rival act: tease
+  "Oh, hello! I'd say I missed you, but my day was lovely."
+
+# ---- moods ---------------------------------------------------------------------------------------
+@rule core.greet.o_happy guard: mood=happy act: greet
+  "[HAPPY]Hi, {you}! Great day! Everything's great, hi!"
+  "[HAPPY]Oh, you're here! I'm so happy I could burst. Gently."
+@rule core.greet.o_sad guard: mood=sad act: greet
+  "[SAD]Oh, hi, {you}. I'm glad you're here. I'm a bit down."
+  "[SAD]Hello. Sorry, I'm not much company today. Sit anyway?"
+@rule core.greet.o_angry guard: mood=angry act: greet
+  "[ANGRY]Hi. Not your fault. Something's got me annoyed."
+  "[ANGRY]Hello. I'm not mad at you, I'm mad at a spoon. Long story."
+@rule core.greet.o_scared guard: mood=scared act: greet
+  "[SHOCK]Oh! Phew, it's you. I thought you were the noise."
+  "[SHOCK]Hello! Sorry, I'm jumpy. Something creaked twice."
+@rule core.greet.o_tired guard: mood=tired act: greet
+  "[SLEEPY]Hi, {you}. Sorry, I'm a bit zzz. Say something loud."
+  "[SLEEPY]Oh... hello. I'm awake, in a small, quiet way."
+@rule core.greet.o_weird guard: mood=weird act: greet
+  "Hello! Does the air feel sparkly to you? Just me, then."
+  "Hi, {you}! I've had the strangest feeling all morning. It's you."
+
+# ---- voices: by manner ----------------------------------------------------------------------------
+@rule core.greet.o_polite guard: polite act: greet
+  "How do you do, {you}? Do come in. Mind the step."
+  "Good day! What a delightful surprise. May I take your coat?"
+@rule core.greet.o_blunt guard: blunt act: greet
+  "Oh. Hi. Come in or don't, the draught's coming in either way."
+  "Hey. What do you want? Kidding, hi."
+@rule core.greet.o_flat guard: flat act: greet
+  "Hello. {.}This is me being thrilled."
+  "Hi. I'm waving. Inside."
+@rule core.greet.o_loud guard: loud act: greet
+  "HELLO! COME IN! I'M HERE AND YOU'RE HERE, GREAT!"
+  "HEY HEY HEY! LOOK WHO IT IS! IT'S YOU!"
+@rule core.greet.o_elder guard: elder act: greet
+  "Well, hello, dear. Come in, mind my knees. They bite."
+  "Oh, there you are. Come, sit, I've got so many stories."
+@rule core.greet.o_quirky guard: quirky act: greet
+  "Hello! Do you hear that humming? It's just my hat."
+  "Oh! Hi! I was talking to the lamp, it's a great listener."
+@rule core.greet.o_easy guard: easygoing act: greet
+  "Hey, {you}. No rush. Pull up a chair, a cushion or the floor."
+@rule core.greet.o_serious guard: serious act: greet
+  "Good day, {you}. I trust you are well. Please state your business."
+
+# ---- the kid voices ---------------------------------------------------------------------------------
+@rule core.greet.o_kid guard: kid_speaker tags: kid act: greet
+  "Hi! I found a rock. It's my best friend now, want to see?"
+  "Hello! Guess what? I lost a tooth!"
+  "Hi, hi, hi! You're just in time. I'm making a fort."
+@rule core.greet.o_kid_b guard: kid_speaker tags: kid act: ask_feeling
+  "Hi! Are you good? I had two snacks, are you hungry?"
+@rule core.greet.o_kid_c guard: kid_speaker tags: kid act: joke
+  "Hi! Knock knock, oh, you're already in. Okay."
+@rule core.greet.o_teen guard: teen act: greet
+  "Hey. Hi. I'm super busy doing nothing."
+  "Hey. What's up? Don't say the ceiling, it's been done."
+
+# ---- the persona types ----------------------------------------------------------------------------
+@rule core.greet.o_t_bookworm guard: type=quiet_bookworm act: greet
+  "Oh! Hello. Sorry, I was on chapter nine, a long chapter."
+@rule core.greet.o_t_napper guard: type=cozy_napper act: greet
+  "Mm? Oh, hi. Is it time, is there a blanket?"
+@rule core.greet.o_t_gremlin guard: type=grumpy_gremlin act: greet
+  "What? Oh, it's you. Fine, don't touch my stuff."
+@rule core.greet.o_t_drifter guard: type=deadpan_drifter act: greet
+  "Hello. Wow. A person, thrilling."
+@rule core.greet.o_t_dreamer guard: type=gentle_dreamer act: greet
+  "Oh, hello... I was drifting on a cloud. It was soft."
+@rule core.greet.o_t_sunbeam guard: type=sweet_sunbeam act: greet
+  "[HAPPY]Hi, hi! Aww, it's you! You're my favourite visitor!"
+@rule core.greet.o_t_poet guard: type=dramatic_poet act: greet
+  "Behold! A visitor arrives, as dusk upon the weary hill!"
+@rule core.greet.o_t_charmer guard: type=cheeky_charmer act: greet
+  "Well, well, well. Look who's got the best timing. Me, obviously."
+@rule core.greet.o_t_helper guard: type=diligent_helper act: greet
+  "Hello! Can I take your coat, your bag or your worries?"
+@rule core.greet.o_t_adventurer guard: type=chill_adventurer act: greet
+  "Hey, {you}! Up for a stroll later? Or a mild expedition?"
+@rule core.greet.o_t_captain guard: type=stern_captain act: greet
+  "Attention! {you} reports. Good, be seated at ease."
+@rule core.greet.o_t_wild guard: type=wild_card act: greet
+  "Hi! Or hello. Or boop, I can't decide."
+@rule core.greet.o_t_goget guard: type=eager_go_getter act: greet
+  "Hi, {you}! Perfect, let's start. What are we starting, anything?"
+@rule core.greet.o_t_bubbly guard: type=bubbly_sparkler act: greet
+  "[HAPPY]Ooh, hi, {you}! Look at you, so sparkly! I'm sparkly too!"
+@rule core.greet.o_t_leader guard: type=fiery_leader act: greet
+  "Hello, {you}! Right on time. Come on, we've got work to do."
+@rule core.greet.o_t_chaos guard: type=chaos_goblin act: greet
+  "Hi! Don't look under the couch. It's a normal couch."

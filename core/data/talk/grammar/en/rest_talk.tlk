@@ -1,0 +1,162 @@
+# core/data/talk/grammar/en/rest_talk.tlk - the flow of the talk (new topic, go on, mm-hm, "what?")
+# and talk about people who are not here (gossip, defending, accusing, taking sides, mediating)
+# (owner: TK; T5b package T5B-OPEN). Clean in any room, no register word, no romance; gossip stays
+# gentle (nothing cruel about a child, ever). Rule names start with r_. Syntax: core/tools/talkc_gen.py.
+
+# ---- CHANGE_TOPIC ---------------------------------------------------------------------------------
+@rule core.change_topic.r_plain act: answer
+  "Okay, new subject! I love a fresh start. What's next?"
+  "Sure, let's switch. The old topic was getting tired."
+  "Changing the subject? Smooth. I'll allow it."
+  "Fine by me. That one was running out of steam."
+@rule core.change_topic.r_topic guard: topic act: tell
+  "Ooh, {x}! Now that's one I could talk about all night."
+  "{x:cap}? Fine, but I have so many opinions. Buckle up."
+  "Speaking of {x}, I have a story. It's short. It's not."
+@rule core.change_topic.r_topic2 guard: topic act: opine_pos
+  "{x:cap}! Yes, let's do that. It deserves more air time."
+  "Good idea. {x:cap} deserves more air time."
+@rule core.change_topic.r_topic3 guard: topic act: opine_neg
+  "{x:cap}? Hmm. I'm not thrilled, but you've got my ear."
+@rule core.change_topic.r_like act: change_topic
+  "While we're at it, have you thought about {like}? Just asking."
+  "Funny, I was about to bring up {like}. Great minds."
+  "Let's talk about {like}, then. My favourite, no offence."
+@rule core.change_topic.r_joke act: joke
+  "Subject changed! The old one will be in the corner, sulking."
+  "Wow, topic whiplash. My neck. My dignity."
+@rule core.change_topic.r_polite guard: polite act: answer
+  "Of course. By all means, let us turn to something else."
+@rule core.change_topic.r_kid guard: kid_speaker tags: kid act: answer
+  "Okay! Can we talk about snacks, or dragons, or snack dragons?"
+@rule core.change_topic.r_blunt guard: blunt act: answer
+  "Sure. That topic was boring anyway."
+
+# ---- CONTINUE and BACKCHANNEL --------------------------------------------------------------------
+@rule core.continue.r_tell act: tell
+  "Right, so where was I? Ah, yes. The part with the teapot."
+  "And that's when things got interesting. Slightly. Not very."
+  "Okay, so, the thing is. I forgot the thing. Hang on."
+  "So I said to myself, I said, this is a problem. And it was."
+@rule core.continue.r_answer act: answer
+  "Yes, sure, go on. I'm all ears. Two of them."
+  "Please do. I'm listening. I even sat down."
+@rule core.continue.r_joke act: joke
+  "Continue! Don't mind me. I'll just hold my breath for effect."
+@rule core.continue.r_dismiss act: dismiss
+  "I'd rather not go on. Some stories need a rest."
+@rule core.backchannel.r_tell act: tell
+  "Right, right. And it gets better. I promise."
+  "Mm. And you know what else? Everything else."
+  "Yeah, it's a thing, isn't it? I've been thinking about it."
+@rule core.backchannel.r_continue act: continue
+  "Mm-hm. Go on, I'm listening."
+  "Yes. Yes yes yes. Keep going."
+@rule core.backchannel.r_ask act: ask_about
+  "You've gone quiet. What's on your mind? You can say it."
+  "Penny for your thoughts? I'll give you a dime."
+@rule core.backchannel.r_change act: change_topic
+  "Well, we could talk about something else. Anything. Weather?"
+@rule core.backchannel.r_joke act: joke
+  "That was a very meaningful nod. I felt it in my soul."
+  "Mm-hm, mm-hm, mm. I'm fluent in that."
+@rule core.backchannel.r_back act: backchannel
+  "Yep."
+  "Mm-hm, sure."
+  "Okay, then."
+@rule core.backchannel.r_laugh act: laugh
+  "Heh. You're a quiet one. I like it."
+@rule core.backchannel.r_kid guard: kid_speaker tags: kid act: tell
+  "Yeah! And then, and then, I forgot. Wait."
+
+# ---- UNKNOWN: the parser did not get it ---------------------------------------------------------------
+@rule core.unknown.r_repeat act: ask_repeat
+  "Sorry, say that again? I was distracted by a moth."
+  "Hm? Slower, please. I'm not fast, I'm warm."
+  "Come again? The words went in and got lost."
+  "Could you put that another way? Or a third way?"
+@rule core.unknown.r_joke act: joke
+  "Interesting! I understood none of that. But I loved it."
+  "Wow. That's the most confusing thing I've heard today."
+  "Is that a riddle? I'm bad at riddles, give me a big clue."
+@rule core.unknown.r_change act: change_topic
+  "I don't follow. Shall we talk about something I do know?"
+  "Okay, that lost me. How about soup? Everyone knows soup."
+@rule core.unknown.r_back act: backchannel
+  "Mm, sure, mm-hm. Of course."
+  "Right, absolutely, yes. Whatever that was."
+@rule core.unknown.r_answer act: answer
+  "Not sure I understand, but it sounds lovely."
+  "I'm going to take that as a compliment."
+@rule core.unknown.r_polite guard: polite act: ask_repeat
+  "I beg your pardon? I'm afraid I didn't follow."
+@rule core.unknown.r_blunt guard: blunt act: ask_repeat
+  "What? Speak up, or speak sense, or both."
+@rule core.unknown.r_kid guard: kid_speaker tags: kid act: ask_repeat
+  "Huh? I didn't get that. Can you say it with sounds?"
+@rule core.unknown.r_elder guard: elder act: ask_repeat
+  "Eh? Speak up, dear. My ears are on holiday."
+
+# ---- GOSSIP and the people who are not here -----------------------------------------------------------------
+@rule core.gossip.r_more act: gossip
+  "No! Tell me more, and don't skimp on details."
+  "Ooh, juicy. I'd heard something close. Lean closer."
+  "Really? I always had a feeling. A mild feeling."
+  "Shh! Let me close the window. Okay, go."
+@rule core.gossip.r_ask act: ask_about
+  "Wait, who told you that? Was it the goose?"
+  "Hmm, is that true? You'd better be sure."
+@rule core.gossip.r_agree act: agree
+  "I know! They do that all the time. It's their thing."
+@rule core.gossip.r_disagree act: disagree
+  "Hmm, I don't think so. They've always been nice to me."
+  "Oh, I wouldn't say that. They're not as bad as all that."
+@rule core.gossip.r_defend act: defend
+  "Be fair, they've had a hard week. We all do."
+@rule core.gossip.r_joke act: joke
+  "My lips are sealed. {.}Okay, they're loose. Spill."
+  "I'm not a gossip, I'm a collector. Of facts. And rumours."
+@rule core.gossip.r_laugh act: laugh
+  "Ha! No way, that's wild. Tell me everything."
+@rule core.gossip.r_back act: backchannel
+  "Mm-hm. Go on. I'm listening, but I'm not telling anyone."
+@rule core.gossip.r_kid guard: kid_speaker tags: kid act: gossip
+  "Ooh, a secret! I won't tell. I'll only tell my rock."
+@rule core.defend.r_thank act: thank
+  "Thanks for sticking up for me. I owe you a pie."
+  "That means a lot. Everyone needs a defender."
+@rule core.defend.r_agree act: agree
+  "Exactly! It wasn't their fault, or mine. It was the fog."
+@rule core.defend.r_joke act: joke
+  "I'd like to thank my lawyer. That's you, {you}."
+@rule core.defend.r_disagree act: disagree
+  "That's kind, but I'd rather they said it to my face."
+@rule core.accuse.r_disagree act: disagree
+  "That wasn't me! It was a ghost. A very polite one."
+  "Excuse me? I have witnesses. Well, I have a goose."
+@rule core.accuse.r_agree act: agree
+  "Okay, okay, you've got me. I did it, a bit."
+@rule core.accuse.r_joke act: joke
+  "I plead the fifth. And the sixth. And all the pie."
+@rule core.accuse.r_defend act: defend
+  "Hold on, let's not pile on. There might be an explanation."
+@rule core.accuse.r_blame act: blame
+  "If anyone's guilty, it's the one who left the door open."
+@rule core.take_side.r_thank act: thank
+  "Thank you for backing me up. You're a true friend."
+  "Ha! Right again. I love it when we agree on me."
+@rule core.take_side.r_agree act: agree
+  "See? Even {you} sees it. Two of us is a majority."
+@rule core.take_side.r_disagree act: disagree
+  "Oh, I don't need a side. I need a nap."
+@rule core.take_side.r_joke act: joke
+  "Sides! I'll take the one with the snacks."
+@rule core.mediate.r_agree act: agree
+  "Okay, okay. You're right. Let's all breathe."
+  "Fine, a truce. A small, shaky, snack-based truce."
+@rule core.mediate.r_apologize act: apologize
+  "Sorry, everyone. I got heated. It's the weather."
+@rule core.mediate.r_disagree act: disagree
+  "Easy for you to say. You weren't there. I was there."
+@rule core.mediate.r_joke act: joke
+  "Peace in our time! Or at least until lunch."

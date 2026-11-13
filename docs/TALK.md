@@ -969,6 +969,22 @@ Mild listener lines in the acts complain, disagree, laugh and joke ("You're bein
 of the all-sharp rules (insult.c_mock, threaten, tease.c_x) is for the census, and the owner's
 human read (Q7) of the rude lines is still owed.
 
+**T5B-OPEN (openers, parts and the rest, content only)**: +648 alternatives in seven new files,
+`grammar/en/open_greet.tlk` (97: greetings by time of day, first meeting, old friends, family,
+acquaintances, strangers, rivals, mood, voice and the 16 persona types), `open_farewell.tlk` (62:
+goodbyes and door promises, same axes), `open_manners.tlk` (86: replies to thanks, apologies and
+introductions), `rest_flow.tlk` (121: agreeing, disagreeing, yes, no, answers, telling, opinions),
+`rest_talk.tlk` (94: new topic, go on, mm-hm, "what?", gossip, defending, accusing, taking
+sides, mediating), `rest_gesture.tlk` (97: wave, nod, shake of the head, hug, gift, walking away,
+high five) and `rest_parts.tlk` (91: openers by act class, time, mood and voice; tags; hand-offs;
+reactions between residents). Every reply act the adjacency table allows after these acts has
+more lines than before (greet 75 to 172, farewell 9 to 71, apologize 6 to 31, introduce 4 to
+28, hug 6 to 31, and so on). Rules: at most 3 sentences a line, no register word, no romance (a
+greeting never flirts), kid voices tagged `kid`. A hug stays a plain hug: a stranger or a rival
+(and a child who does not know the player) answers with a polite no or a wave. Rule names end
+in `o_` / `r_`. `TALK_en.BIN` 601,084 -> 629,756 B (PS1 non-resident data, no resident byte).
+No code change. A 40-line sample is in the evidence directory. 2,705 alternatives in 27 grammar files.
+
 **With K-10 (the TK3 landing)**: GRAMMAR 14,536 B and STRINGS 17,650 B
 stored (27,439 B raw) for 373 rules, 718 alternatives, 512 guard terms, 79
 symbols and 710 template strings; `TALK_en.BIN` 540,274 B and the PS1

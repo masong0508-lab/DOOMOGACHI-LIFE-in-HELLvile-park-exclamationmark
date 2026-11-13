@@ -1,0 +1,174 @@
+# core/data/talk/grammar/en/rest_gesture.tlk - replies to gestures: a wave, a nod, a shake of the
+# head, a hug, a gift, walking away, a high five (owner: TK; T5b package T5B-OPEN). Clean in any
+# room, no register word, no romance. A hug is a plain hug: a child may decline, and an adult may
+# too (a stranger, a rival). Rule names start with r_. Syntax: core/tools/talkc_gen.py.
+
+# ---- WAVE ---------------------------------------------------------------------------------------------
+@rule core.wave.r_back act: wave
+  "[HAPPY]Hi! *waves back* It's a good wave. We nailed it."
+  "*waves* Hello! I did a big one. Did you see?"
+  "Oh, a wave! *waves* Is it the same wave? It feels the same."
+@rule core.wave.r_greet act: greet
+  "Hello! A wave is the best hello. Silent, tidy, friendly."
+  "Hi there! I'm waving, can you tell? I'm trying my best."
+@rule core.wave.r_nod act: nod
+  "*gives a small nod and a smaller wave*"
+@rule core.wave.r_joke act: joke
+  "I'd wave back, but my arm's asleep. Hold on, I'll wake it."
+  "Was that a wave, or are you swatting a fly? Either way, hi."
+@rule core.wave.r_morning guard: time=morning act: greet
+  "Morning wave! Those are the best. Nobody's grumpy yet."
+@rule core.wave.r_night guard: time=night act: greet
+  "A midnight wave! Shh, hi. Everything's asleep."
+@rule core.wave.r_kid guard: kid_speaker tags: kid act: wave
+  "[HAPPY]Hi! *jumps and waves* Did you see me jump? I jumped!"
+  "*waves with the whole body* Hello! I'm a windmill!"
+@rule core.wave.r_flat guard: flat act: wave
+  "*lifts one finger* That was my wave. It took effort."
+@rule core.wave.r_loud guard: loud act: greet
+  "HI! I SEE YOUR WAVE! HERE'S MINE! *WAVES VERY LARGE*"
+
+# ---- NOD and SHAKE_HEAD --------------------------------------------------------------------------------------
+@rule core.nod.r_back act: nod
+  "*nods slowly* Yes. Deep. We understand each other."
+  "*nods* Mm. That's the spirit."
+@rule core.nod.r_back2 act: backchannel
+  "Mm-hm! Exactly. I knew you'd see it."
+  "Yeah? You nod, I nod. That's how it works."
+@rule core.nod.r_tell act: tell
+  "Right, good. Now, where was I? Something about toast."
+  "You're nodding at the right bit. Very good."
+@rule core.nod.r_joke act: joke
+  "A nod! The sign of an expert, or a sleeper. Hard to tell."
+@rule core.nod.r_cont act: continue
+  "Okay, since you nodded, I'll go on. Don't blame me."
+@rule core.nod.r_kid guard: kid_speaker tags: kid act: nod
+  "*nods super fast* Yes! Yes yes yes!"
+@rule core.shake_head.r_disagree act: disagree
+  "No? You don't think so? Why not, I'm very open."
+  "Aww, you're shaking your head. I wasn't done being right."
+@rule core.shake_head.r_repeat act: ask_repeat
+  "Wait, no to what? Back up. I lost the thread."
+  "Hm? Was that a no, or a bug? I can't tell."
+@rule core.shake_head.r_joke act: joke
+  "Shake it off, shake it all off! Is it a dance? It's a dance."
+  "That's the head-shake of a champion. Or a wet dog."
+@rule core.shake_head.r_complain act: complain
+  "Oh, great, a no. I didn't even finish asking."
+@rule core.shake_head.r_agree act: agree
+  "No, right, I agree. Not that, never that."
+@rule core.shake_head.r_kid guard: kid_speaker tags: kid act: disagree
+  "No?! Why no? I wanted a big yes!"
+
+# ---- HUG: a plain hug, free to decline ---------------------------------------------------------------------------
+@rule core.hug.r_yes guard: !kid_speaker&!rel=stranger&!rel=rival act: hug
+  "[HAPPY]Aww, a hug! Come here, you. Mind the elbow."
+  "A hug? Yes, please. I've been needing one."
+  "Oh, bless. Okay, hug accepted. A good one."
+@rule core.hug.r_thank guard: !kid_speaker&!rel=stranger&!rel=rival act: thank
+  "Thank you. I really needed that. It's been a day."
+  "That was lovely. You give excellent hugs."
+@rule core.hug.r_joke guard: !kid_speaker&!rel=stranger&!rel=rival act: joke
+  "A hug? Hold on, I'll brace. Okay, hit me gently."
+  "I hug, you hug, we all hug. That's the whole town motto."
+@rule core.hug.r_laugh guard: !kid_speaker&!rel=stranger&!rel=rival act: laugh
+  "Ha! Okay, okay, just one. Maybe two, or four."
+@rule core.hug.r_stranger guard: !kid_speaker&rel=stranger act: no
+  "Oh! Um, I don't know you yet. A handshake, maybe?"
+  "That's sweet, but I'm not a hugger with new people. Sorry."
+@rule core.hug.r_stranger2 guard: !kid_speaker&rel=stranger act: joke
+  "A hug, from a stranger! Bold. Let's start with hello."
+@rule core.hug.r_rival guard: !kid_speaker&rel=rival act: dismiss
+  "No, thank you. I'll hug you when the sun's a cucumber."
+  "Hug? From you? Let's not, I'm busy being cross."
+@rule core.hug.r_kid_yes guard: kid_speaker&!rel=stranger tags: kid act: hug
+  "[HAPPY]Hug! A big one! You're the squishiest!"
+  "Okay! Hug! But no tickling, or a little tickling."
+@rule core.hug.r_kid_thank guard: kid_speaker&!rel=stranger tags: kid act: thank
+  "Thanks! I needed a hug, and a snack. Do you have a snack?"
+@rule core.hug.r_kid_laugh guard: kid_speaker&!rel=stranger tags: kid act: laugh
+  "Hee hee! You hugged me! You're my favourite."
+@rule core.hug.r_kid_no guard: kid_speaker&rel=stranger tags: kid act: no
+  "No, thank you. I'm shy. Can we wave instead?"
+  "Um, no. I don't hug people I just met. Do you like cats?"
+@rule core.hug.r_kid_no2 guard: kid_speaker&rel=stranger tags: kid act: dismiss
+  "Nope, not now. You can wave, waving is great."
+@rule core.hug.r_flat guard: flat&!kid_speaker&!rel=stranger&!rel=rival act: hug
+  "Oh, a hug. {.}I'm hugging, this is my hugging face."
+@rule core.hug.r_elder guard: elder&!rel=stranger&!rel=rival act: hug
+  "Oh, dear, how kind. Come here. Mind my back."
+@rule core.hug.r_blunt guard: blunt&!rel=stranger&!rel=rival act: hug
+  "Fine. One hug. Don't make it a thing."
+@rule core.hug.r_sad guard: mood=sad&!kid_speaker&!rel=stranger&!rel=rival act: hug
+  "[SAD]Oh. Thank you. I needed that more than I knew."
+@rule core.hug.r_angry guard: mood=angry&!kid_speaker&!rel=stranger act: dismiss
+  "[ANGRY]Not now. I'm still hot. Give me a minute."
+
+# ---- GIVE: a gift ---------------------------------------------------------------------------------------------------
+@rule core.give.r_thank act: thank
+  "Oh, for me? Thank you, it's lovely. It's very something."
+  "A gift! I'm touched, and I'll treasure it. Or put it on a shelf."
+  "You shouldn't have! But I'm so glad you did."
+  "Aww, thank you. I'll find a special place for it. Near the cat."
+@rule core.give.r_joke act: joke
+  "Is it a trap? It's a nice trap. I'll take it anyway."
+  "A present! Quick, I need to hide it before the others see."
+@rule core.give.r_pos act: opine_pos
+  "I love it! It's exactly what I didn't know I wanted."
+  "I'll use it every day. Or every other day. It's too nice."
+@rule core.give.r_neg act: opine_neg
+  "Hmm, it's interesting. I'm not sure what to do with it."
+  "Oh, a thing. I'll put it somewhere far away."
+@rule core.give.r_topic_pos guard: stance=pro&topic act: opine_pos
+  "{x:cap}! You remembered. That's exactly my taste."
+@rule core.give.r_topic_neg guard: stance=con&topic act: opine_neg
+  "Oh, {x}. I'll be polite. It's the thought that counts, right?"
+@rule core.give.r_polite guard: polite act: thank
+  "How very kind. I shall treasure it, I assure you."
+@rule core.give.r_kid guard: kid_speaker tags: kid act: thank
+  "Wow! For me? Thank you, can I show everyone?"
+  "A present! Thank you! I'll give you a rock in return."
+@rule core.give.r_elder guard: elder act: thank
+  "Oh, you shouldn't have, dear. I'll keep it forever, or until tea."
+
+# ---- WALK_AWAY: the player leaves mid-chat -------------------------------------------------------------------------------
+@rule core.walk_away.r_bye act: farewell
+  "Oh, leaving? Okay, bye. I'll wave at your back."
+  "Off you go, then. Come back when you're ready. No rush."
+  "Bye! Thanks for stopping by. Even if it was brief."
+@rule core.walk_away.r_complain act: complain
+  "Hey, rude! I was mid-sentence, in the middle of a good one."
+  "Well, that's how it's going to be? Fine. Whatever."
+@rule core.walk_away.r_joke act: joke
+  "And with that, the visitor vanished! Into the fog. Dramatic."
+  "Bye! Don't mind me, I'll finish my story to the wall."
+@rule core.walk_away.r_dismiss act: dismiss
+  "Fine. Go. I didn't need that conversation anyway."
+@rule core.walk_away.r_kid guard: kid_speaker tags: kid act: complain
+  "Hey! Wait, I wasn't done, come back!"
+@rule core.walk_away.r_polite guard: polite act: farewell
+  "Oh, well. Do take care, then. Another time, perhaps."
+
+# ---- HIGH_FIVE ---------------------------------------------------------------------------------------------------------------
+@rule core.high_five.r_back act: high_five
+  "[HAPPY]Up high! {.}Yes! That was a good one!"
+  "High five! Slap! Ow, worth it."
+  "Boom! Nailed it. We should do this for a living."
+  "Yes! Give me five, give me ten, give me a snack!"
+@rule core.high_five.r_laugh act: laugh
+  "Ha! That was a loud one. Everyone heard."
+  "Heh. My hand's going to be red. I regret nothing."
+@rule core.high_five.r_joke act: joke
+  "High five accepted. Please keep your hands to the snacks."
+  "Up top! Or low, or sideways. I'm flexible."
+@rule core.high_five.r_dismiss act: dismiss
+  "Not now, my hand's busy. Maybe later."
+@rule core.high_five.r_kid guard: kid_speaker tags: kid act: high_five
+  "High five! Down low, too slow! Again, again!"
+  "Yes! Five! Gimme another, behind the back!"
+@rule core.high_five.r_loud guard: loud act: high_five
+  "HIGH FIVE! SLAP! OUCH, AGAIN!"
+@rule core.high_five.r_polite guard: polite act: high_five
+  "Ah, a high five! Splendid. I do enjoy a firm clap."
+@rule core.high_five.r_elder guard: elder act: laugh
+  "Ha! At my age? Fine, but gently, my wrist's a window."

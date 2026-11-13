@@ -1,0 +1,129 @@
+# core/data/talk/grammar/en/open_farewell.tlk - goodbyes: by time of day, by how well they know the
+# player, by mood, voice and persona type (owner: TK; T5b package T5B-OPEN). Clean in any room, no
+# register word, no romance. Rule names start with o_. Syntax: core/tools/talkc_gen.py.
+
+# ---- time of day ----------------------------------------------------------------------------------
+@rule core.farewell.o_morning guard: time=morning act: farewell
+  "Have a good morning! Eat something before the fog does."
+  "Off you go, then. The day's waiting, and it's impatient."
+@rule core.farewell.o_day guard: time=day act: farewell
+  "Bye for now! Mind the afternoon. It gets weird."
+  "See you! Say hi to the sun for me, if you meet."
+@rule core.farewell.o_evening guard: time=evening act: farewell
+  "Bye! Get home before the lamps wake up."
+  "See you, {you}! Have a lovely evening. Eat something warm."
+@rule core.farewell.o_night guard: time=night act: farewell
+  "Goodnight, {you}! Sleep tight. Don't let the wardrobe bite."
+  "Night night! Dream something nice, or something weird. I'm easy."
+@rule core.farewell.o_night_b guard: time=night act: joke
+  "Go to bed! I'm telling you as your friend, and also the fog."
+
+# ---- by how well they know each other -------------------------------------------------------------
+@rule core.farewell.o_friend guard: rel=friend act: farewell
+  "Bye, friend! Come back soon. I'll keep the good chair warm."
+  "See you! Text me when you're home, or yell. I'll hear."
+  "Already? Fine. But you owe me a longer visit."
+@rule core.farewell.o_friend_b guard: rel=friend act: promise
+  "Come back soon. I'll have a better story. I'll practise."
+@rule core.farewell.o_best guard: rel=best act: farewell
+  "Bye, you! Don't be a stranger. You're not one, so don't start."
+  "Aw, already? Okay. But I'm counting the minutes until next time."
+@rule core.farewell.o_best_b guard: rel=best act: promise
+  "Next time we do the big thing. You know the big thing."
+@rule core.farewell.o_family guard: rel=family act: farewell
+  "Bye, {you}! Come home hungry. The kitchen's on your side."
+@rule core.farewell.o_acq guard: rel=acquaintance act: farewell
+  "Nice chatting, {you}! We should do this again. Properly."
+@rule core.farewell.o_stranger guard: rel=stranger act: farewell
+  "Oh. Bye, then. Lovely meeting you, whoever you are."
+@rule core.farewell.o_rival guard: rel=rival act: complain
+  "Finally. Don't let the door hit you. It's a bitey door."
+@rule core.farewell.o_rival_b guard: rel=rival act: tease
+  "Leaving already? Did you run out of things to be wrong about?"
+
+# ---- moods ------------------------------------------------------------------------------------------
+@rule core.farewell.o_happy guard: mood=happy act: farewell
+  "[HAPPY]Bye! That was great! You made my day, so thanks!"
+@rule core.farewell.o_sad guard: mood=sad act: farewell
+  "[SAD]Oh, you're going. Okay. Thanks for sitting with me."
+@rule core.farewell.o_angry guard: mood=angry act: farewell
+  "[ANGRY]Bye. Sorry I was grumpy. I'll shake it off, I promise."
+@rule core.farewell.o_scared guard: mood=scared act: farewell
+  "[SHOCK]You're leaving? Okay. Walk fast, look behind you, not too much."
+@rule core.farewell.o_tired guard: mood=tired act: farewell
+  "[SLEEPY]Bye... I'm going to lie down now. Right here."
+@rule core.farewell.o_weird guard: mood=weird act: farewell
+  "Bye! If you see a spoon on your way, say nothing. Just nod."
+
+# ---- voices ------------------------------------------------------------------------------------------
+@rule core.farewell.o_polite guard: polite act: farewell
+  "Goodbye, {you}. It was a pleasure. Do give my regards to everyone."
+@rule core.farewell.o_blunt guard: blunt act: farewell
+  "Bye. Don't slam the door. It already hates you."
+@rule core.farewell.o_flat guard: flat act: farewell
+  "Bye. {.}That was a wave. You missed it."
+@rule core.farewell.o_loud guard: loud act: farewell
+  "BYE! COME BACK! DON'T FORGET ME, I'M LOUD!"
+@rule core.farewell.o_elder guard: elder act: farewell
+  "Goodbye, dear. Mind the steps, they're older than me. Barely."
+@rule core.farewell.o_quirky guard: quirky act: farewell
+  "Bye! If you find my other sock, keep it. It's yours now."
+@rule core.farewell.o_easy guard: easygoing act: farewell
+  "Cool, see you. No rush on coming back. I'll be here."
+@rule core.farewell.o_serious guard: serious act: farewell
+  "Goodbye. I have enjoyed our time. Let us do it again, scheduled."
+
+# ---- the kid voices -------------------------------------------------------------------------------------
+@rule core.farewell.o_kid guard: kid_speaker tags: kid act: farewell
+  "Bye! Don't forget to come back! I'll still be here!"
+  "See you! Tell your mom hi! And your dog!"
+@rule core.farewell.o_kid_b guard: kid_speaker tags: kid act: promise
+  "Next time, we'll play spies. You can be the boss. A little bit."
+@rule core.farewell.o_teen guard: teen act: farewell
+  "Yeah, bye. Or whatever, I mean, bye."
+
+# ---- the persona types ------------------------------------------------------------------------------------
+@rule core.farewell.o_t_bookworm guard: type=quiet_bookworm act: farewell
+  "Oh, goodbye. I'll go back to my book. It's the good bit."
+@rule core.farewell.o_t_napper guard: type=cozy_napper act: farewell
+  "Bye... I'm off to find a blanket. Wake me for dinner."
+@rule core.farewell.o_t_gremlin guard: type=grumpy_gremlin act: farewell
+  "Hmph. Bye. Mind the gate, it's mine."
+@rule core.farewell.o_t_drifter guard: type=deadpan_drifter act: farewell
+  "Bye. Wow, another chapter closes. Cool."
+@rule core.farewell.o_t_dreamer guard: type=gentle_dreamer act: farewell
+  "Goodbye... may the clouds be kind. I'll be right here, floating."
+@rule core.farewell.o_t_sunbeam guard: type=sweet_sunbeam act: farewell
+  "[HAPPY]Bye-bye! You're the best! Come back, okay, pinky swear?"
+@rule core.farewell.o_t_poet guard: type=dramatic_poet act: farewell
+  "Farewell! Like a sigh upon the evening, you depart. Weep, wallpaper."
+@rule core.farewell.o_t_charmer guard: type=cheeky_charmer act: farewell
+  "Leaving so soon? Of course. I'm a lot, see you, {you}."
+@rule core.farewell.o_t_helper guard: type=diligent_helper act: farewell
+  "Bye! Did you take your things, your hat, your umbrella, your mood?"
+@rule core.farewell.o_t_adventurer guard: type=chill_adventurer act: farewell
+  "See you, {you}. Take the scenic route. There's no other kind."
+@rule core.farewell.o_t_captain guard: type=stern_captain act: farewell
+  "Dismissed. Safe travels. Report back at your earliest leisure."
+@rule core.farewell.o_t_wild guard: type=wild_card act: farewell
+  "Bye! Or hi, or both. I'll flip a coin."
+@rule core.farewell.o_t_goget guard: type=eager_go_getter act: farewell
+  "Bye, {you}! Go get 'em, whatever 'em is!"
+@rule core.farewell.o_t_bubbly guard: type=bubbly_sparkler act: farewell
+  "[HAPPY]Bye, {you}! Sparkle on! Keep sparkling for me!"
+@rule core.farewell.o_t_leader guard: type=fiery_leader act: farewell
+  "Right, off you go. Do something great, I'll be watching."
+@rule core.farewell.o_t_chaos guard: type=chaos_goblin act: farewell
+  "Bye! If anything's on fire later, it wasn't me. Probably."
+
+# ---- promises at the door -------------------------------------------------------------------------------------
+@rule core.farewell.o_promise act: promise
+  "Come back soon, and I'll make you something. Questionable. Hot."
+  "I'll tidy up for next time. I mean, I'll shove it all in the closet."
+  "Next time I'll have more stories. Better ones. With a plot."
+  "Same time next week? I'll save you a good seat."
+@rule core.farewell.o_joke act: joke
+  "Bye! Don't forget your coat. Or the things in the coat."
+  "Go on, then! The door's over there. It's the same one you came in by."
+@rule core.farewell.o_tease act: tease
+  "Off already? You only just got here. Slowpoke."
