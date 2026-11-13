@@ -191,6 +191,14 @@ static void mg_run(const DoomoScene *sc, int arg, int n, uint32_t *out, int stag
     nat_stage_on = 0;
 }
 
+static int has_kept_picture(int id)
+{
+    int i;
+    for (i = 0; i < MG_GAME_COUNT; i++)
+        if (mg_games[i]->id == id) return mg_games[i]->kept_key != NULL;
+    return 0;
+}
+
 static int mg_compare(int id, int arg, int w, int h, int n)
 {
     static uint32_t off[MAXF], on[MAXF];
@@ -227,7 +235,7 @@ static int mg_compare(int id, int arg, int w, int h, int n)
         test_fail(__FILE__, __LINE__, "kept minigame: stamps were not used");
         return 0;
     }
-    if (retained_n < n / 2) {
+    if (has_kept_picture(id) && retained_n < n / 2) {          /* (a game of stamps only has none) */
         char m[200];
         snprintf(m, sizeof(m), "minigame %d %dx%d: too few frames over the kept picture (%d of %d)",
                  id, w, h, retained_n, n);
@@ -237,7 +245,7 @@ static int mg_compare(int id, int arg, int w, int h, int n)
     return 1;
 }
 
-static const uint8_t kept_games[] = { MG_WHACK };
+static const uint8_t kept_games[] = { MG_WHACK, MG_DODGE };
 
 TEST(stage_kept_minigames_are_pixel_identical)
 {

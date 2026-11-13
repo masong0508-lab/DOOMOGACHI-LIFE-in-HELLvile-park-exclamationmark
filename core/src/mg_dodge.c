@@ -256,6 +256,96 @@ static void dg_update(void)
 }
 
 /* ---- drawing ------------------------------------------------------------------ */
+/* ---- (S2-4b) stamps (mg.h "stamps"): the key's kind in bits 12..14, the Hellfire bit as the game's ----
+ * bullet: r (3..5) | colour << 3       star: the sparkle's phase (0..15), drawn at the star's centre
+ * couch:  t % 50                       puff: its number (0..3)         cherub: wing (0..1) | focus << 1 */
+enum { DS_BULLET = 0 << 12, DS_STAR = 1 << 12, DS_COUCH = 2 << 12, DS_PUFF = 3 << 12, DS_CHERUB = 4 << 12,
+       DS_KIND = 7 << 12 };
+
+static const uint8_t cute_cols[3][2] = {
+    { PAL_PAINT(PAINT_BUBBLEGUM, 1), PAL_PAINT(PAINT_MAGENTA, 0) },
+    { PAL_PAINT(PAINT_LAVENDER, 2), PAL_PAINT(PAINT_GRAPE, 1) },
+    { PAL_PAINT(PAINT_MINT, 1), PAL_PAINT(PAINT_TEAL, 0) }
+};
+static const uint8_t hell_cols[3][2] = {
+    { PAL_RAMP(RAMP_LAVA, 5), PAL_RAMP(RAMP_BLOOD, 2) },
+    { PAL_RAMP(RAMP_LAVA, 6), PAL_RAMP(RAMP_LAVA, 2) },
+    { PAL_RAMP(RAMP_VAPE, 6), PAL_RAMP(RAMP_VAPE, 1) }
+};
+
+/* a stamp at (x, y) when stamps are kept (the 240x160 games); 0: the caller draws it */
+static int stamped(uint32_t key, int x, int y)
+{
+    return !mg_big() && mg_stamp(key | (mg.hell ? MG_BK_HELL : 0u), x, y);
+}
+
+static void puff(int x, int y, int i)
+{
+    int s = 8 + i * 3;
+    uint8_t cc = mg.hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_RAMP(RAMP_VAPE, 5 + (i & 1));
+    ui_fill_ellipse(x, y, s * 2, s / 2 + 1, cc);
+    ui_fill_circle(x - s / 2, y - 2, s / 2, cc);
+    ui_fill_circle(x + s / 2, y - 3, s / 2 + 1, cc);
+}
+
+/* his cloud couch: two passes (the shadows, then the cushions), each circle bobbing with t */
+static void couch(int t, int cx, int cy)
+{
+    int k;
+    for (k = -5; k <= 5; k++) {
+        int x = cx + k * (mg_big() ? 16 : 12), r = (mg_big() ? 13 : 10) - (k < 0 ? -k : k) / 2;
+        int y = cy + ui_wave(t + k * 9, 50, 1);
+        ui_fill_circle(x, y + 2, r + 1, mg.hell ? PAL_RAMP(RAMP_BLOOD, 1) : PAL_RAMP(RAMP_VAPE, 4));
+    }
+    for (k = -5; k <= 5; k++) {
+        int x = cx + k * (mg_big() ? 16 : 12), r = (mg_big() ? 13 : 10) - (k < 0 ? -k : k) / 2;
+        int y = cy + ui_wave(t + k * 9, 50, 1);
+        ui_fill_circle(x, y, r, mg.hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_RAMP(RAMP_VAPE, 6));
+        plat_rect(x - r / 2, y - r + 2, r / 2, 1, mg.hell ? PAL_RAMP(RAMP_BLOOD, 4) : PAL_RAMP(RAMP_VAPE, 7));
+    }
+}
+
+static void bullet(int x, int y, int r, int col)
+{
+    const uint8_t *c = mg.hell ? hell_cols[col % 3] : cute_cols[col % 3];
+    ui_fill_circle(x, y, r + 1, c[1]);
+    ui_fill_circle(x, y, r, c[0]);
+    if (r >= 3) ui_fill_circle(x, y, r - 2, c[1]);
+    plat_rect(x - r + 1, y - r + 1, 1, 1, PAL_WHITE);
+}
+
+static void cherub_body(int x, int y, int f, int focus);
+
+static void dg_stamp(uint32_t key, int cx, int cy)
+{
+    int v = (int)(key & 0xFFF);
+    switch (key & DS_KIND & 0x7FFF) {
+    case DS_BULLET: bullet(cx, cy, v & 7, v >> 3); break;
+    case DS_STAR: ui_star(cx, cy, 5, PAL_UI_GOLD); ui_sparkle(cx + 5, cy - 5, v & 15, PAL_WHITE); break;
+    case DS_COUCH: couch(v % 50 + 50, cx, cy); break;
+    case DS_PUFF: puff(cx, cy, v & 3); break;
+    case DS_CHERUB: cherub_body(cx, cy, v & 1, v >> 1 & 1); break;
+    default: break;
+    }
+}
+
+static int dg_stamp_keys(uint32_t *out, int cap)
+{
+    int n = 0, h, i, c;
+#define ADD(k) do { if (n < cap) out[n] = (uint32_t)(k); n++; } while (0)
+    for (h = 0; h < 2; h++) {
+        uint32_t hb = h ? MG_BK_HELL : 0u;
+        for (c = 0; c < 3; c++)
+            for (i = 3; i <= 5; i++) ADD(DS_BULLET | hb | (uint32_t)(i | c << 3));
+        for (i = 0; i < 16; i++) ADD(DS_STAR | hb | (uint32_t)i);
+        for (i = 0; i < 50; i++) ADD(DS_COUCH | hb | (uint32_t)i);
+        for (i = 0; i < 4; i++) ADD(DS_PUFF | hb | (uint32_t)i);
+        for (i = 0; i < 4; i++) ADD(DS_CHERUB | hb | (uint32_t)i);
+    }
+#undef ADD
+    return n;
+}
+
 static void lounge_bg(int t)
 {
     int W = mg_w(), H = mg_h(), i, b = H / 5;
@@ -275,16 +365,13 @@ static void lounge_bg(int t)
     for (i = 0; i < 12; i++) {                          /* twinkles */
         uint32_t h = doomo_hash32((uint32_t)i * 40503u + 11u);
         int ph = (int)((t / 2 + (h >> 16)) & 31);
-        if (ph < 16) ui_sparkle((int)(h % (uint32_t)W), (int)((h >> 8) % (uint32_t)H), ph,
+        if (ph < 16) mg_sparkle((int)(h % (uint32_t)W), (int)((h >> 8) % (uint32_t)H), ph,
                                 mg.hell ? PAL_RAMP(RAMP_LAVA, 5) : PAL_WHITE);
     }
     for (i = 0; i < 4; i++) {                           /* drifting vape puffs */
-        int s = 8 + i * 3, span = W + 80, y = H / 3 + i * (H / 6);
+        int span = W + 80, y = H / 3 + i * (H / 6);
         int x = (int)((uint32_t)(t * (1 + (i & 1)) / 2 + i * 120) % (uint32_t)span) - 40;
-        uint8_t cc = mg.hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_RAMP(RAMP_VAPE, 5 + (i & 1));
-        ui_fill_ellipse(x, y, s * 2, s / 2 + 1, cc);
-        ui_fill_circle(x - s / 2, y - 2, s / 2, cc);
-        ui_fill_circle(x + s / 2, y - 3, s / 2 + 1, cc);
+        if (!stamped(DS_PUFF | i, x, y)) puff(x, y, i);
     }
 }
 
@@ -292,7 +379,7 @@ static void vapula(int t)
 {
     int W = mg_w(), frame = S->pose > 4 ? DFRAME_ATTACK : (t / 16) & 1, rows;
     const DoomoImage *img = sprite_image(SPR_LORD_VAPULA, frame);
-    int bob = ui_wave(t, 60, 2), cy = cloud_y(), k;
+    int bob = ui_wave(t, 60, 2), cy = cloud_y();
     if (S->inv > 50) img = sprite_image(SPR_LORD_VAPULA, DFRAME_WALK0);
     if (img) {
         DoomoImage c;
@@ -301,25 +388,15 @@ static void vapula(int t)
         c = mg_crop(img, 0, DOOMO_MIN(rows, img->h));
         plat_image(W / 2 - img->w / 2 + mg.ox / 2, y, &c, 1, 0, 0);
     }
-    /* his cloud couch */
-    for (k = -5; k <= 5; k++) {
-        int x = W / 2 + k * (mg_big() ? 16 : 12), r = (mg_big() ? 13 : 10) - (k < 0 ? -k : k) / 2;
-        int y = cy + ui_wave(t + k * 9, 50, 1);
-        ui_fill_circle(x, y + 2, r + 1, mg.hell ? PAL_RAMP(RAMP_BLOOD, 1) : PAL_RAMP(RAMP_VAPE, 4));
-    }
-    for (k = -5; k <= 5; k++) {
-        int x = W / 2 + k * (mg_big() ? 16 : 12), r = (mg_big() ? 13 : 10) - (k < 0 ? -k : k) / 2;
-        int y = cy + ui_wave(t + k * 9, 50, 1);
-        ui_fill_circle(x, y, r, mg.hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_RAMP(RAMP_VAPE, 6));
-        plat_rect(x - r / 2, y - r + 2, r / 2, 1, mg.hell ? PAL_RAMP(RAMP_BLOOD, 4) : PAL_RAMP(RAMP_VAPE, 7));
-    }
+    /* his cloud couch (a stamp from t = 45 on: before that the waves' negative arguments are drawn) */
+    if (t < 45 || !stamped(DS_COUCH | t % 50, W / 2, cy)) couch(t, W / 2, cy);
 }
 
-static void cherub(int x, int y, int t, int flap, int focus, int hide)
+/* the cherub (wings, face, curl and halo; the focus mark's hitbox when focused) */
+static void cherub_body(int x, int y, int f, int focus)
 {
-    int f = (flap / 3) & 1, k, r = mg_big() ? 6 : 5;
+    int k, r = mg_big() ? 6 : 5;
     uint8_t skin = PAL_PAINT(PAINT_PEACH, 2), skin_d = PAL_PAINT(PAINT_PEACH, 0);
-    if (hide) return;
     /* fluffy wings */
     for (k = -1; k <= 1; k += 2) {
         int wx = x + k * (r + 2), wy = y - 2 - (f ? 2 : 0);
@@ -341,27 +418,24 @@ static void cherub(int x, int y, int t, int flap, int focus, int hide)
     if (focus) {
         plat_rect(x - 1, y - 1, 3, 3, PAL_WHITE);
         plat_rect(x, y, 1, 1, PAL_UI_RED);
-        for (k = 0; k < 12; k++) {
+    }
+}
+
+static void cherub(int x, int y, int t, int flap, int focus, int hide)
+{
+    int f = (flap / 3) & 1, k;
+    if (hide) return;
+    if (!stamped(DS_CHERUB | f | (focus != 0) << 1, x, y)) cherub_body(x, y, f, focus);
+    if (focus)
+        for (k = 0; k < 12; k++) {                         /* the turning ring of dots */
             int a = k * 341 + t * 24;
             plat_rect(x + FIX2INT(fx_cos(a) * 13), y + FIX2INT(fx_sin(a) * 13), 1, 1, PAL_WHITE);
         }
-    }
-    (void)t;
 }
 
 static void dg_draw(void)
 {
     int i, t = mg.play_t + mg.t, ox = mg.ox, oy = mg.oy;
-    static const uint8_t cute_cols[3][2] = {
-        { PAL_PAINT(PAINT_BUBBLEGUM, 1), PAL_PAINT(PAINT_MAGENTA, 0) },
-        { PAL_PAINT(PAINT_LAVENDER, 2), PAL_PAINT(PAINT_GRAPE, 1) },
-        { PAL_PAINT(PAINT_MINT, 1), PAL_PAINT(PAINT_TEAL, 0) }
-    };
-    static const uint8_t hell_cols[3][2] = {
-        { PAL_RAMP(RAMP_LAVA, 5), PAL_RAMP(RAMP_BLOOD, 2) },
-        { PAL_RAMP(RAMP_LAVA, 6), PAL_RAMP(RAMP_LAVA, 2) },
-        { PAL_RAMP(RAMP_VAPE, 6), PAL_RAMP(RAMP_VAPE, 1) }
-    };
     lounge_bg(t);
     vapula(t);
     cherub(S->px16 / 16 + ox, S->py16 / 16 + oy, t, S->flap, S->focus, S->inv && (S->inv & 4));
@@ -372,17 +446,11 @@ static void dg_draw(void)
         x = b->x16 / 16 + ox;
         y = b->y16 / 16 + oy;
         if (b->flags & 4) {
-            ui_star(x, y, 5, PAL_UI_GOLD);
-            ui_sparkle(x + 5, y - 5, (t / 2 + i) & 15, PAL_WHITE);
+            int ph = (t / 2 + i) & 15;
+            if (!stamped(DS_STAR | ph, x, y)) { ui_star(x, y, 5, PAL_UI_GOLD); ui_sparkle(x + 5, y - 5, ph, PAL_WHITE); }
             continue;
         }
-        {
-            const uint8_t *c = mg.hell ? hell_cols[b->col % 3] : cute_cols[b->col % 3];
-            ui_fill_circle(x, y, b->r + 1, c[1]);
-            ui_fill_circle(x, y, b->r, c[0]);
-            if (b->r >= 3) ui_fill_circle(x, y, b->r - 2, c[1]);
-            plat_rect(x - b->r + 1, y - b->r + 1, 1, 1, PAL_WHITE);
-        }
+        if (b->r < 3 || b->r > 5 || !stamped(DS_BULLET | b->r | (b->col % 3) << 3, x, y)) bullet(x, y, b->r, b->col);
     }
     if (S->taunt_t) {                            /* a speech bubble right of his crown */
         const char *s = taunts[S->taunt];
@@ -445,7 +513,7 @@ const MgGame mg_game_dodge = {
     { MG_DODGE_B, MG_DODGE_S, MG_DODGE_G }, 10, 60 * 30,
     { PAL_PAINT(PAINT_VAPE_PURPLE, 1), PAL_PAINT(PAINT_LAVENDER, 2), PAL_PAINT(PAINT_GRAPE, 1) },
     dg_start, dg_update, dg_draw, dg_art, dg_bot,
-    NULL, NULL, NULL, NULL, NULL
+    NULL, NULL, NULL, dg_stamp, dg_stamp_keys
 };
 
 MG_DEFINE_SCENE(SCENE_MG_DODGE, "MG_DODGE", mg_game_dodge);

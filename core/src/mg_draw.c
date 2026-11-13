@@ -438,8 +438,10 @@ static void hud_part(int part, int v, int x, int y);
  * imp:  size 0..7 | mood << 3 (2 bits) | gold << 5 | (flap + 2) << 6 | eyes << 9 (look + 1, 3: blink)
  * fuzz: size 0..3 | ouch << 3 | blink << 4       (without his sparkle)
  * Sizes are the ones the 240x160 games draw; another size is drawn, not stamped. */
-enum { MCS_IMP = 0 << 12, MCS_FUZZ = 1 << 12, MCS_HUD = 2 << 12, MCS_KIND = 3 << 12 };
-/* hud:  HUDP_* | value (| MG_BK_HELL for the pill): hud_part's pieces */
+enum { MCS_IMP = 0 << 12, MCS_FUZZ = 1 << 12, MCS_HUD = 2 << 12, MCS_SPARK = 3 << 12, MCS_KIND = 3 << 12 };
+/* hud:  HUDP_* | value (| MG_BK_HELL for the pill): hud_part's pieces
+ * spark: size 1..3 | colour << 2 (spark_cols): ui_sparkle at a phase of that size */
+static const uint8_t spark_cols[4] = { PAL_WHITE, PAL_RAMP(RAMP_LAVA, 5), PAL_PAINT(PAINT_LEMON, 2), PAL_UI_GOLD };
 
 static const struct { uint8_t rx, ry, moods, golds; } imp_sizes[] = {   /* moods / golds: bit masks of what is baked */
     { 10, 10, 1 << IMP_GRIN | 1 << IMP_SNEAKY, 3 },      /* Whack's critters                 */
@@ -470,6 +472,8 @@ void mg_common_stamp(uint32_t key, int cx, int cy)
         fuzz_body(cx, cy, fuzz_sizes[i], (int)(key >> 3 & 1), (int)(key >> 4 & 1));
     } else if ((key & MCS_KIND) == MCS_HUD) {
         hud_part((int)(key & HUDP_PART), (int)(key & 255), cx, cy);
+    } else if ((key & MCS_KIND) == MCS_SPARK) {
+        ui_sparkle(cx, cy, (int)(key & 3), spark_cols[key >> 2 & 3]);
     }
 }
 
@@ -500,6 +504,11 @@ int mg_common_stamp_keys(uint32_t *out, int cap)
             if (n < cap) out[n] = (uint32_t)(MCS_HUD | HUDP_PILL | (ui_text_width("0000000" + 7 - i) + 44)) | (m ? MG_BK_HELL : 0u);
             n++;
         }
+    for (i = 1; i <= 3; i++)                        /* the sparkle's three sizes in each colour */
+        for (m = 0; m < 4; m++) {
+            if (n < cap) out[n] = (uint32_t)(MCS_SPARK | i | m << 2);
+            n++;
+        }
     if (n < cap) out[n] = (uint32_t)(MCS_HUD | HUDP_TIME | (mg_big() ? 70 : 50));
     return n + 1;
 }
@@ -521,6 +530,17 @@ void mg_imp(int cx, int cy, int rx, int ry, int t, int mood)
 #endif
     if (gold) ui_sparkle(cx + rx, cy - ry, (t / 2) & 15, PAL_WHITE);
 }
+
+/* ui_sparkle, as a stamp where stamps are kept and the colour is one of spark_cols' */
+#if !defined(DOOMO_PLATFORM_PS1)
+void mg_sparkle(int cx, int cy, int phase, uint8_t c)
+{
+    int s = ui_sparkle_size(phase), i;
+    if (s == 0 || mg_big()) { ui_sparkle(cx, cy, phase, c); return; }
+    for (i = 0; i < 4 && spark_cols[i] != c; i++) {}
+    if (i == 4 || !mg_stamp_common((uint32_t)(MCS_SPARK | s | i << 2), cx, cy)) ui_sparkle(cx, cy, phase, c);
+}
+#endif
 
 void mg_wraith(int cx, int cy, int r, int t, int hurt)
 {

@@ -321,6 +321,7 @@ int  mg_stamp(uint32_t key, int x, int y);   /* key: bits 0..14 the game's, MG_B
 int  mg_stamp_common(uint32_t key, int x, int y);
 void mg_common_stamp(uint32_t key, int cx, int cy);
 int  mg_common_stamp_keys(uint32_t *out, int cap);
+void mg_sparkle(int cx, int cy, int phase, uint8_t c);   /* ui_sparkle, stamped for the colours a game uses */
 #else
 #define mg_kept_band(key) 0
 #define mg_kept_src(key) ((void)0)
@@ -331,6 +332,7 @@ int  mg_common_stamp_keys(uint32_t *out, int cap);
 #define mg_rect plat_rect
 #define mg_stamp(key, x, y) 0
 #define mg_stamp_common(key, x, y) 0
+#define mg_sparkle ui_sparkle
 #endif
 /* HUD pieces */
 void mg_hud(void);

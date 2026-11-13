@@ -255,7 +255,7 @@ int nat_bake_backdrops(const char *path)
 {
     enum { MAXK = 8192 };
     static uint32_t ids[MAXK], keys[MAXK];
-    static struct { int16_t bx, by; uint16_t w, h; uint8_t *pix; } pic[MAXK];
+    static struct { int16_t bx, by; uint16_t w, h; uint8_t *pix; uint32_t off; int dup; } pic[MAXK];
     int nf = backdrop_family_count(), i, k, n = 0, j;
     size_t img = (size_t)nat_w * (size_t)nat_h;
     uint32_t off;
@@ -314,20 +314,32 @@ int nat_bake_backdrops(const char *path)
     fputc(nat_h & 255, f); fputc(nat_h >> 8, f);
     put32(f, (uint32_t)n);
     off = 12u + 16u * (uint32_t)n;
+    /* (S2-4b) a picture identical to an earlier one (the same size and pixels: a key for every tick of a
+     * period that repeats) is stored once: its entries point at the same bytes */
     for (i = 0; i < n; i++) {
         uint32_t sz = (uint32_t)pic[i].w * pic[i].h;
-        put32(f, ids[i]);
-        put32(f, off);
-        put32(f, (uint32_t)(uint16_t)pic[i].bx | (uint32_t)(uint16_t)pic[i].by << 16);
-        put32(f, (uint32_t)pic[i].w | (uint32_t)pic[i].h << 16);
+        pic[i].dup = -1;
+        for (j = 0; j < i; j++)
+            if (pic[j].dup < 0 && pic[j].w == pic[i].w && pic[j].h == pic[i].h &&
+                memcmp(pic[j].pix, pic[i].pix, sz) == 0) { pic[i].dup = j; break; }
+        if (pic[i].dup >= 0) { pic[i].off = pic[pic[i].dup].off; continue; }
+        pic[i].off = off;
         off += (sz + 3u) & ~3u;
     }
     for (i = 0; i < n; i++) {
-        uint32_t sz = (uint32_t)pic[i].w * pic[i].h;
-        fwrite(pic[i].pix, 1, sz, f);
-        for (k = 0; k < (int)((4 - sz % 4) % 4); k++) fputc(0, f);
-        free(pic[i].pix);
+        put32(f, ids[i]);
+        put32(f, pic[i].off);
+        put32(f, (uint32_t)(uint16_t)pic[i].bx | (uint32_t)(uint16_t)pic[i].by << 16);
+        put32(f, (uint32_t)pic[i].w | (uint32_t)pic[i].h << 16);
     }
+    for (i = 0; i < n; i++) {
+        uint32_t sz = (uint32_t)pic[i].w * pic[i].h;
+        if (pic[i].dup < 0) {
+            fwrite(pic[i].pix, 1, sz, f);
+            for (k = 0; k < (int)((4 - sz % 4) % 4); k++) fputc(0, f);
+        }
+    }
+    for (i = 0; i < n; i++) free(pic[i].pix);
     if (fclose(f) != 0) return 0;
     return n;
 }
