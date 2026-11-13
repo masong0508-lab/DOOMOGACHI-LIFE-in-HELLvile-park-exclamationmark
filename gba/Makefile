@@ -141,7 +141,7 @@ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 # over the core's weak stubs, and the core's strong definitions win over both.
 ALL_OBJS  := $(GBA_OBJS) $(CORE_OBJS)
 
-.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-optvol test-speed test-life profile-title profile-pause profile-invaded profile-all profile-sung profile-creator test-creator test-speed2 profile-speed2 profile-concert profile-exorcism clean sizes
+.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-optvol test-speed test-life profile-title profile-pause profile-invaded profile-all profile-sung profile-creator test-creator test-speed2 test-breach2 profile-speed2 profile-concert profile-exorcism clean sizes
 .DEFAULT_GOAL := all
 
 # Cartridge size (user decision 2026-11-01): the game ROM is a full 256 Mbit
@@ -600,3 +600,19 @@ profile-speed2: harness
 	    echo "### $$g (build/speed2_$${g}_prof.log)"; $(PYTHON) $(GBA)/tools/profile_report.py $(BUILD)/speed2_$${g}_prof.log || rc=1; \
 	done; exit $$rc
 # --- end SA2 ---
+
+# --- LV10: the generated Hell Breach level scripts (tools/breach_scripts.py): the autopilot plays each level
+# on the game ROM (sync on), three fps windows and a vhash-seq per level, then tools/breach_fps.py's table.
+# BREACH2="sewers factory ..." picks levels (default: every gba/harness/scripts/breach_*.txt);
+# BREACH2_GATES=1 makes the scripts' expect-fps floors fail the run (the autopilot fights: combat is the
+# one scene the 30 fps rule excepts, so the default only reports).
+BREACH2 ?= $(patsubst $(GBA)/harness/scripts/breach_%.txt,%,$(wildcard $(GBA)/harness/scripts/breach_*.txt))
+test-breach2: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@mkdir -p $(SHOTS)/breach2
+	@rc=0; for g in $(BREACH2); do \
+	    $(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/breach_$$g.txt \
+	        --shots $(SHOTS)/breach2 $(if $(filter 1,$(BREACH2_GATES)),,--no-fps-gates) --worklog --quiet > $(BUILD)/breach2_$$g.log 2>&1 || { rc=1; echo "FAIL breach_$$g (build/breach2_$$g.log)"; tail -n 5 $(BUILD)/breach2_$$g.log; }; \
+	done; \
+	$(PYTHON) $(ROOT)/tools/breach_fps.py $(foreach g,$(BREACH2),gba=$(BUILD)/breach2_$(g).log) || rc=1; exit $$rc
+# --- end LV10 ---

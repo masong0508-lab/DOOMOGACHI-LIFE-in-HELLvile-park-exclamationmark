@@ -173,3 +173,36 @@ with `map = LV_NO_MAP` ("not built"), so it is not shown in the select and canno
   budget, every unlock rule kind and the GBA chain, the select pages at both sizes) plus `test_save.c` (a
   save without `BRCH` leaves nothing). On the host `lv_list_req = LVG_GBA` makes the build list what the GBA
   lists, and `lv_info` is writable so a test can re-point a not-built level at an existing map.
+
+## Level test harness (LV10)
+
+One list makes every level's scripts: `LEVELS` in `tools/breach_scripts.py` (a `make -C core gen`
+generator, so `check-gen` catches a stale file; it refuses to run when the list and `LV_COUNT` differ).
+Per level it writes `core/tests/scripts/levels2_SLUG.txt` (the runner: intro card, control card,
+first and third person, then the autopilot in two rooms; `make -C core test` plays it at 240x160 and
+320x240), `gba/harness/scripts/breach_SLUG.txt` (`push BREACH level|LVF_DEMO`, `sync on`, three fps
+windows of 130 ticks in the start room, the middle and the late part, a `vhash-seq` for determinism,
+shots) and the PS1 and Dreamcast versions of it (`tools/speed2.py` turns the windows into `fps` /
+`fpsend` for `ps1/harness/run.py` and `log` / `mark-ticks` / `expect-ticks` for `dcrun`). Windows are
+labelled `breach SLUG: WHAT`.
+
+- GBA: `make -C gba test-breach2 [BREACH2="sewers ..."] [BREACH2_GATES=1]` (about 1 minute for all 7). The
+  `expect-fps` floors are 85% of the first measurement and only fail with `BREACH2_GATES=1`.
+- PS1: `python3 tools/breach_scripts.py` writes `ps1/harness/scripts/breach_SLUG.txt`; run one with
+  `python3 ps1/harness/run.py --exe ps1/build/doomogachi.exe --cue ps1/build/doomogachi.cue --script
+  ps1/harness/scripts/breach_sewers.txt --out DIR` (the table: `tools/breach_fps.py ps1=DIR/tty.log`).
+- Dreamcast: `dc/harness/scripts/breach_SLUG.txt` for `dcrun` (the table: `tools/breach_fps.py dc=LOG`).
+- `tools/breach_fps.py gba=LOG ps1=LOG dc=LOG` prints the platform x level x window table (fps, logic
+  ticks/s, frames by vblanks, worst frame, verdict).
+- `core/tests/test_levels2.c`: the autopilot finishes every level at Plushie in Hell Breach and Time
+  Trial mode (asserted). `LEVELS2_SWEEP=1 core/build/tests ... levels2_sweep` prints the whole plan matrix
+  (4 modes x Plushie / Normal / Ultra-Hellvile). Measured 2026-11-13: the autopilot finishes 44 of 84
+  cells; the challenge modes (no weapon choice) and the Normal / Ultra cells of some levels stall. That
+  gap is the autopilot's (LV6), not the levels'; move a cell into the asserted set when it closes.
+
+GBA fps of the autopilot, 2026-11-13, drawn fps per window (start room / middle / late): Vape Cellar
+8.7 / 8.4 / 16.7, Cloud Nine 4.0 / 4.0 / 5.2, Sewers 6.3 / 5.7 / 10.8, Factory 5.5 / 4.9 / 6.9,
+Graveyard 5.3 / 10.7 / 5.2, Cathedral 4.9 / 7.9 / 10.9, Underbelly 6.4 / 6.5 / 9.0. Far below 30:
+combat is the one scene the 30 fps rule excepts, and the speed stream owns it. Each level's `vhash-seq`
+was the same in two runs. No resident byte changed (tools, tests and scripts only).
+

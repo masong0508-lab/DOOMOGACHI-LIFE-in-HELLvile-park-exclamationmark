@@ -148,6 +148,14 @@ jobs:
             echo "::notice title=$t::took $((SECONDS - s)) s"
           done
 
+      # LV10: the generated Hell Breach level scripts (tools/breach_scripts.py): the autopilot plays the 7 levels,
+      # the fps table goes to the job summary (the floors only gate with BREACH2_GATES=1)
+      - name: Hell Breach level scripts (GBA)
+        run: |
+          set -o pipefail
+          make -C gba test-breach2 | tee breach2.md
+          cat breach2.md >> "$GITHUB_STEP_SUMMARY"
+
       - name: Collect ROMs
         run: |
           mkdir -p dist
