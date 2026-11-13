@@ -1,0 +1,49 @@
+# core/data/talk/grammar/en/topic_feelings.tlk - T5b-TOPIC: replies by topic kind (root=feelings) for ASK_ABOUT, ASK_OPINION, TELL and the opinion acts. Kid-safe. Syntax: core/tools/talkc_gen.py.
+@rule core.ask_about.feelings_pro guard: root=feelings&stance=pro act: opine_pos
+  "{x:cap}? Yes, the good kind. I could use more of it."
+  "{x:cap}! My meter just pinged. Happy ping."
+  "{x:cap}? I'd bottle it. I'd share the bottle."
+  "{x:cap}? It's the best feeling. Next to a hot biscuit."
+  "{x:cap}? I get that in the afternoon. It's lovely."
+  "{x:cap}? Spreads like jam. I like jam."
+@rule core.ask_about.feelings_con guard: root=feelings&stance=con act: opine_neg
+  "{x:cap}? Not my favourite one. It visits uninvited."
+  "{x:cap}? It's heavy. Better said out loud, to somebody."
+  "{x:cap}? Everyone gets it. It passes, it really does."
+  "{x:cap}? I feel it too, sometimes. A hug helps, or a nap."
+  "{x:cap}? Hard one. Do you want to talk about it?"
+  "{x:cap}? It's fine to feel that. It doesn't last."
+@rule core.ask_about.feelings_neu guard: root=feelings&stance=neutral act: answer
+  "{x:cap}? Comes and goes, like the fog."
+  "{x:cap}? I'm getting better at naming them. Slowly."
+  "{x:cap}? I feel it about once a week. Wednesdays."
+  "{x:cap}? Hard to describe. Easy to have."
+  "{x:cap}? Father Fuzz says to breathe. So I breathe."
+  "{x:cap}? A feeling, for sure. Not a bad one."
+@rule core.ask_opinion.feelings guard: root=feelings act: answer
+  "{x:cap}? Everybody has it, sooner or later."
+  "My take on {x}: it's okay to have it. All of it."
+  "{x:cap}? It tells you something. You just have to listen."
+  "{x:cap}? Big feeling. I'd sit with it, with tea."
+  "{x:cap}? Honest answer, it's easier with company."
+  "{x:cap}? I'm learning to be kind to it. It's hard."
+@rule core.tell.feelings_pro guard: root=feelings&stance=pro act: opine_pos
+  "{x:cap}! I'm glad. That makes me glad too."
+  "Good, hold on to that one."
+  "{x:cap}? Lovely. Tell me more, all of it."
+@rule core.tell.feelings_con guard: root=feelings&stance=con act: opine_neg
+  "{x:cap}? Thanks for telling me. I'm here, sit with me."
+  "That's a lot. You're not alone with it."
+  "{x:cap}? Do you want a hug, or a snack? Or both?"
+@rule core.opine_pos.feelings_agree guard: root=feelings&stance=pro act: agree
+  "Yes! {x:cap} is the best feeling. Let's keep it."
+  "Right? It lifts the whole room."
+@rule core.opine_pos.feelings_disagree guard: root=feelings&stance=con act: disagree
+  "Hm, I get {x} differently. It's heavy for me."
+  "I'm not sure. {x:cap} can be tricky."
+@rule core.opine_neg.feelings_agree guard: root=feelings&stance=con act: agree
+  "Yes. {x:cap} is hard. I get that."
+  "Right? It's not easy. We'll manage."
+@rule core.opine_neg.feelings_disagree guard: root=feelings&stance=pro act: disagree
+  "Hm, I find {x} a good one, actually."
+  "Give {x} a chance. It's got a soft side."

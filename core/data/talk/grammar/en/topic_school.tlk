@@ -1,0 +1,53 @@
+# core/data/talk/grammar/en/topic_school.tlk - T5b-TOPIC: replies by topic kind (root=school) for ASK_ABOUT, ASK_OPINION, TELL and the opinion acts. Kid-safe. Syntax: core/tools/talkc_gen.py.
+@rule core.ask_about.school_pro guard: root=school&stance=pro act: opine_pos
+  "{x:cap}? My best subject. I got a sticker, two, if you count the one on my hat."
+  "{x:cap}! Class was never so fun. Miss Lulla beamed."
+  "{x:cap}? I raise my hand. Sometimes the wrong hand."
+  "{x:cap}? Learning is great. Homework less so."
+  "{x:cap}? I could study it all day. I have."
+  "{x:cap}? Gold star, every time."
+@rule core.ask_about.school_con guard: root=school&stance=con act: opine_neg
+  "{x:cap}? I'd rather clean the blackboard. With my tongue."
+  "{x:cap}? Too much homework, not enough recess."
+  "{x:cap}? The bell rang. I was relieved."
+  "{x:cap}? I got a B-minus and a sigh."
+  "{x:cap}? Not my thing. I doodled instead."
+  "{x:cap}? Sit still, stay quiet, forget it. That's me."
+@rule core.ask_about.school_neu guard: root=school&stance=neutral act: answer
+  "{x:cap}? Ask Miss Lulla. She's got a chart."
+  "{x:cap}? I was told there'd be a quiz."
+  "{x:cap}? It's in the third drawer. Or the fourth."
+  "{x:cap}? I took notes. The notes are doodles."
+  "{x:cap}? Everyone learns it, sooner or later."
+  "{x:cap}? There's a textbook. The textbook's heavy."
+@rule core.ask_about.school_joke guard: root=school act: joke
+  "{x:cap}? I passed it. By a hair, by a very small hair."
+  "{x:cap}? My teacher said I was one in a million. She meant it as a warning."
+  "{x:cap}? The dog ate my homework. I don't have a dog."
+@rule core.ask_opinion.school guard: root=school act: answer
+  "{x:cap}? Good for the brain. And the brain needs it."
+  "My take on {x}: great, once the bell rings."
+  "{x:cap}? Useful, if you remember it."
+  "{x:cap}? A lot of fun, and a lot of homework."
+  "{x:cap}? I'd give it an A. Maybe an A-minus."
+  "{x:cap}? It's educational. That's the nicest thing I can say."
+@rule core.tell.school_pro guard: root=school&stance=pro act: opine_pos
+  "{x:cap}! A star pupil, I see."
+  "You like {x}? Teach me. I'll bring an apple."
+  "Good for you! I'd raise my hand for that."
+@rule core.tell.school_con guard: root=school&stance=con act: opine_neg
+  "{x:cap}? Tough one. A snack helps, so does a nap."
+  "It gets easier. Honest, it does."
+  "Ah, {x}. Don't worry, nobody gets it at first."
+@rule core.opine_pos.school_agree guard: root=school&stance=pro act: agree
+  "Yes! {x:cap} is great. Gold stars all round."
+  "Right? It's a good one to learn."
+@rule core.opine_pos.school_disagree guard: root=school&stance=con act: disagree
+  "{x:cap}? Hm. I'd skip it for recess."
+  "Not for me. The chair is hard."
+@rule core.opine_neg.school_agree guard: root=school&stance=con act: agree
+  "Ha, {x}. Yes. Too many pages."
+  "Right? Give me a nap instead."
+@rule core.opine_neg.school_disagree guard: root=school&stance=pro act: disagree
+  "Hey, {x} is great. Give it a chance."
+  "Not {x}! It was my favourite."

@@ -1,0 +1,53 @@
+# core/data/talk/grammar/en/topic_stuff.tlk - T5b-TOPIC: replies by topic kind (root=stuff) for ASK_ABOUT, ASK_OPINION, TELL and the opinion acts. Kid-safe. Syntax: core/tools/talkc_gen.py.
+@rule core.ask_about.stuff_pro guard: root=stuff&stance=pro act: opine_pos
+  "{x:cap}? I'd own ten. Then I'd lose nine."
+  "{x:cap}! Best thing I ever found. In a drawer."
+  "{x:cap}? Useful, shiny, a bit sticky. Love it."
+  "{x:cap}? I keep one on the shelf. For luck."
+  "{x:cap}? I'd trade my hat for it. Almost."
+  "{x:cap}? It's a classic. Everyone needs one."
+@rule core.ask_about.stuff_con guard: root=stuff&stance=con act: opine_neg
+  "{x:cap}? Broke on day one. Day one, I tell you."
+  "{x:cap}? I'd rather not own it. It owns me back."
+  "{x:cap}? Clutter. A lot of clutter."
+  "{x:cap}? Loud, clumsy, and always in my way."
+  "{x:cap}? I threw mine out. It came back."
+  "{x:cap}? Not worth the shelf space."
+@rule core.ask_about.stuff_neu guard: root=stuff&stance=neutral act: answer
+  "{x:cap}? I had one. It's in the garage, I think."
+  "{x:cap}? I've seen it on a shelf. It looked busy."
+  "{x:cap}? Ask the Mayor, he collects stuff."
+  "{x:cap}? Somebody lent me one. I returned half."
+  "{x:cap}? Nice, if you've got the room."
+  "{x:cap}? I think I own two. Or none."
+@rule core.ask_about.stuff_joke guard: root=stuff act: joke
+  "{x:cap}? I'd tell you about it, but I lost it."
+  "{x:cap}? Great value. I paid nothing, and got less."
+  "{x:cap}? It's a thing. It does thing-stuff."
+@rule core.ask_opinion.stuff guard: root=stuff act: answer
+  "{x:cap}? A solid thing, good in a drawer."
+  "My take on {x}: useful, a little dusty."
+  "{x:cap}? I'd keep it. I'd name it, too."
+  "{x:cap}? Worth the money, if you've got any."
+  "{x:cap}? It's got character. Mostly chips."
+  "{x:cap}? Handy. Not as handy as a spoon."
+@rule core.tell.stuff_pro guard: root=stuff&stance=pro act: opine_pos
+  "{x:cap}! Good find. Show me later."
+  "You've got {x}? Lucky you. Mine rusted."
+  "Nice! I'd borrow it, gently."
+@rule core.tell.stuff_con guard: root=stuff&stance=con act: opine_neg
+  "{x:cap}? Ah, a dud. We all own a few."
+  "Sorry about {x}. There's a drawer for that."
+  "Return it, if you still have the receipt."
+@rule core.opine_pos.stuff_agree guard: root=stuff&stance=pro act: agree
+  "Yes! {x:cap} is worth it. Buy two."
+  "Right? It's the best thing I own."
+@rule core.opine_pos.stuff_disagree guard: root=stuff&stance=con act: disagree
+  "{x:cap}? Hm. Mine broke the first day."
+  "Not for me. It's clutter."
+@rule core.opine_neg.stuff_agree guard: root=stuff&stance=con act: agree
+  "Ha, {x}. Yes. A waste of a shelf."
+  "Right? I returned mine."
+@rule core.opine_neg.stuff_disagree guard: root=stuff&stance=pro act: disagree
+  "Not {x}! It's the best. Be nice to it."
+  "Hey, I love {x}. Don't say that near it."

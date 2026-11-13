@@ -1,0 +1,53 @@
+# core/data/talk/grammar/en/topic_time.tlk - T5b-TOPIC: replies by topic kind (root=time) for ASK_ABOUT, ASK_OPINION, TELL and the opinion acts. Kid-safe. Syntax: core/tools/talkc_gen.py.
+@rule core.ask_about.time_pro guard: root=time&stance=pro act: opine_pos
+  "{x:cap}? My favourite. I mark it on the calendar, in glitter."
+  "{x:cap}! I wait all year. I wait quietly, with snacks."
+  "{x:cap}? Best part of the calendar. Pass the cocoa."
+  "{x:cap}? It smells like a good idea."
+  "{x:cap}? I'd stretch it out, if I could."
+  "{x:cap}? Everything's softer then. Even the fog."
+@rule core.ask_about.time_con guard: root=time&stance=con act: opine_neg
+  "{x:cap}? Too early, too grey, too much."
+  "{x:cap}? I'd skip it. I'd skip it with a note."
+  "{x:cap}? My knees complain, and then my knees win."
+  "{x:cap}? It always shows up when I'm not ready."
+  "{x:cap}? Cancel it. I'll sign the form."
+  "{x:cap}? Not my thing. I nap through it."
+@rule core.ask_about.time_neu guard: root=time&stance=neutral act: answer
+  "{x:cap}? It comes around. Then it goes around."
+  "{x:cap}? I lose track. My calendar's a duck drawing."
+  "{x:cap}? Somebody said it's soon. Somebody said that last year."
+  "{x:cap}? I think it's after lunch. Or before."
+  "{x:cap}? Ask the clock. It's stuck, but it knows."
+  "{x:cap}? Time flies. I wave."
+@rule core.ask_about.time_joke guard: root=time act: joke
+  "{x:cap}? I'm always on time. Just a different one."
+  "{x:cap}? I'd tell you a joke about time, but it's overdue."
+  "{x:cap}? Same time next year? I'll bring snacks."
+@rule core.ask_opinion.time guard: root=time act: answer
+  "{x:cap}? A fine bit of the calendar. Mostly."
+  "My take on {x}: cozy, if you're dressed for it."
+  "{x:cap}? Good, short, and there's cake."
+  "{x:cap}? It's on the schedule. Somewhere."
+  "{x:cap}? A time of the year, for sure."
+  "{x:cap}? Worth waiting for, and worth a snack."
+@rule core.tell.time_pro guard: root=time&stance=pro act: opine_pos
+  "{x:cap}! Yes. It's the best, let's plan something."
+  "You like {x}? We should do something about it."
+  "Good pick. I'll save you a seat."
+@rule core.tell.time_con guard: root=time&stance=con act: opine_neg
+  "{x:cap}? Hm. It'll pass, as they do."
+  "Yeah, {x} is rough. Hot tea helps."
+  "Not everyone likes {x}. I nap through it."
+@rule core.opine_pos.time_agree guard: root=time&stance=pro act: agree
+  "Yes! {x:cap} is the best. Mark it down."
+  "Right? It makes everything lovely."
+@rule core.opine_pos.time_disagree guard: root=time&stance=con act: disagree
+  "{x:cap}? Hm. I find it a bit much."
+  "Not for me. I'm an off-season sort."
+@rule core.opine_neg.time_agree guard: root=time&stance=con act: agree
+  "Ha, {x}. Yes. It's too long."
+  "Right? Not my favourite stretch of the calendar."
+@rule core.opine_neg.time_disagree guard: root=time&stance=pro act: disagree
+  "Not {x}! It's lovely, if you dress for it."
+  "Hey, give {x} a chance. It's got charm."

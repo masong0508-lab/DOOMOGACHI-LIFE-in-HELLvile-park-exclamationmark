@@ -1,0 +1,53 @@
+# core/data/talk/grammar/en/topic_lore.tlk - T5b-TOPIC: replies by topic kind (root=lore) for ASK_ABOUT, ASK_OPINION, TELL and the opinion acts. Kid-safe. Syntax: core/tools/talkc_gen.py.
+@rule core.ask_about.lore_pro guard: root=lore&stance=pro act: opine_pos
+  "{x:cap}? Best lore in town. I have a binder on it."
+  "{x:cap}! Ask me anything. I'll make up the rest."
+  "I know three facts about {x}. Two are real."
+  "{x:cap}? I'd read the whole tape on that. Twice."
+  "{x:cap}? Yes, the good stuff. Pass me the flashlight."
+  "{x:cap}? Everybody in HELLvile has a story on that. Mine's longer."
+@rule core.ask_about.lore_con guard: root=lore&stance=con act: opine_neg
+  "{x:cap}? Bad news, that one. I'd leave it in the tape."
+  "{x:cap}? Don't dig. Whatever's under it, stays."
+  "{x:cap}? I read about it once, and slept with the light on."
+  "{x:cap}? I'd rather not. The mayor told me not to."
+  "{x:cap}? It's complicated. And it smells."
+  "I don't trust {x}. The tape fizzes when it's mentioned."
+@rule core.ask_about.lore_neu guard: root=lore&stance=neutral act: answer
+  "{x:cap}? Folks say a lot about it. I take notes, wrong ones."
+  "{x:cap}? I think it's in chapter three. Or four."
+  "{x:cap}? There's a plaque. The plaque is unreadable."
+  "{x:cap}? Ask Father Fuzz. He's got a book on it."
+  "{x:cap}? Everyone has a theory. Mine has a hat on it."
+  "{x:cap}? I've heard it. In a whisper, near a candle."
+@rule core.ask_about.lore_joke guard: root=lore act: joke
+  "{x:cap}? Legend says it was big. Legend says a lot."
+  "{x:cap}? A town legend. Like the potato salad."
+  "{x:cap}? I'd tell you, but it's a secret. So secret I forgot."
+@rule core.ask_opinion.lore guard: root=lore act: answer
+  "{x:cap}? Spooky, but in a cosy way. Like a blanket with eyes."
+  "My take on {x}: probably true, definitely loud."
+  "{x:cap}? Good story. I'd tell it by a fire."
+  "{x:cap}? Mysterious. I like a mystery, from far away."
+  "{x:cap}? Every town needs one. Ours has plenty."
+  "{x:cap}? I give it four candles out of five."
+@rule core.tell.lore_pro guard: root=lore&stance=pro act: opine_pos
+  "{x:cap}! You know the good stuff. Sit by me."
+  "A fan of {x}, huh? We should start a club."
+  "You've got a fine ear for local legends."
+@rule core.tell.lore_con guard: root=lore&stance=con act: opine_neg
+  "{x:cap}? Eep. I'd put that one back on the shelf."
+  "Not every story wants to be told. That one's loud."
+  "Oh, {x}. Maybe don't read it at night."
+@rule core.opine_pos.lore_agree guard: root=lore&stance=pro act: agree
+  "Yes! {x:cap} is the town's best. I'd put it on a mug."
+  "Right? It's a good one, with the right candle."
+@rule core.opine_pos.lore_disagree guard: root=lore&stance=con act: disagree
+  "{x:cap}? Hm. I find it a little much, honestly."
+  "Not for me. It keeps me up."
+@rule core.opine_neg.lore_agree guard: root=lore&stance=con act: agree
+  "Ha, {x}. Yes. A lot of fuss for a tape."
+  "Right? Some stories should stay in the dark."
+@rule core.opine_neg.lore_disagree guard: root=lore&stance=pro act: disagree
+  "Not {x}! It's the best story we have."
+  "Hey, I like {x}. Give it a candle."

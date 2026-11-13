@@ -1,0 +1,53 @@
+# core/data/talk/grammar/en/topic_hellvile.tlk - T5b-TOPIC: replies by topic kind (root=hellvile) for ASK_ABOUT, ASK_OPINION, TELL and the opinion acts. Kid-safe. Syntax: core/tools/talkc_gen.py.
+@rule core.ask_about.hellvile_pro guard: root=hellvile&stance=pro act: opine_pos
+  "{x:cap}? Warm, welcoming, a little singed. I love it."
+  "{x:cap}! Good people, bad weather. That's HELLvile."
+  "{x:cap}? Home. It's hot, but it's home."
+  "I'd put {x} on a postcard. A singed postcard."
+  "{x:cap}? The best thing about this town, and I mean it."
+  "{x:cap}? Perfect. Pass the sunscreen."
+@rule core.ask_about.hellvile_con guard: root=hellvile&stance=con act: opine_neg
+  "{x:cap}? Too hot, too loud, too pitchfork."
+  "{x:cap}? I'd rather not. The air has opinions."
+  "{x:cap}? My eyebrows still haven't recovered."
+  "I avoid {x}. It avoids me back, politely."
+  "{x:cap}? It's a long story, and the story is on fire."
+  "{x:cap}? They told me to stay away. I'm listening, for once."
+@rule core.ask_about.hellvile_neu guard: root=hellvile&stance=neutral act: answer
+  "{x:cap}? Part of the town, like the fog. Or the fog's cousin."
+  "{x:cap}? Everyone has a take. Most are smoky."
+  "{x:cap}? Ask a demon. They have brochures."
+  "I'm new at that. Everyone says to bring water."
+  "{x:cap}? Stay on the path. The path is hot."
+  "{x:cap}? It's in the manual. The manual is on fire."
+@rule core.ask_about.hellvile_joke guard: root=hellvile act: joke
+  "{x:cap}? It's a hot topic. I'll be here all week."
+  "{x:cap}? Don't sweat it. Oh, wait, you will."
+  "{x:cap}? Perfectly normal. For here."
+@rule core.ask_opinion.hellvile guard: root=hellvile act: answer
+  "{x:cap}? Warm, a bit loud, great for a hot tea."
+  "My take on {x}: it's got character. Lots of it, smouldering."
+  "{x:cap}? Sure. Bring a fan, and some good shoes."
+  "{x:cap}? A little rough, but we love it anyway."
+  "{x:cap}? Honestly, it's growing on me. Slowly, like a blister."
+  "{x:cap}? Fine, if you like it toasty."
+@rule core.tell.hellvile_pro guard: root=hellvile&stance=pro act: opine_pos
+  "{x:cap}! A fellow fan. Welcome to the club, mind the lava."
+  "You like {x}? You'll fit right in down here."
+  "Good taste. The demons will be thrilled."
+@rule core.tell.hellvile_con guard: root=hellvile&stance=con act: opine_neg
+  "{x:cap}? Fair. It's not for everyone, bring a fan."
+  "Hm. Give it a week. Or a mild fever."
+  "Oof, {x}. Try wearing less. Or something else."
+@rule core.opine_pos.hellvile_agree guard: root=hellvile&stance=pro act: agree
+  "Yes! {x:cap} is the best of HELLvile. Don't tell the others."
+  "Right? It's a warm kind of weird."
+@rule core.opine_pos.hellvile_disagree guard: root=hellvile&stance=con act: disagree
+  "{x:cap}? Hm. It's a bit much for my taste."
+  "Not for me. I prefer less smoke."
+@rule core.opine_neg.hellvile_agree guard: root=hellvile&stance=con act: agree
+  "Ha, {x}. Yes. Too toasty, even by local standards."
+  "Right? I get a headache just from the smell."
+@rule core.opine_neg.hellvile_disagree guard: root=hellvile&stance=pro act: disagree
+  "Not {x}! It's the pride of the town."
+  "Hey, give {x} a chance. It's misunderstood, like me."

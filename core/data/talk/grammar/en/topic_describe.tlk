@@ -1,0 +1,53 @@
+# core/data/talk/grammar/en/topic_describe.tlk - T5b-TOPIC: replies by topic kind (root=describe) for ASK_ABOUT, ASK_OPINION, TELL and the opinion acts. Kid-safe. Syntax: core/tools/talkc_gen.py.
+@rule core.ask_about.describe_pro guard: root=describe&stance=pro act: opine_pos
+  "{x:cap}? Lovely word. I'd stitch it on a pillow."
+  "{x:cap}! That's me, on a good day."
+  "{x:cap}? I'd like to be that. A bit."
+  "{x:cap}? A good thing to be. I try."
+  "{x:cap}? Compliments aside, I agree."
+  "{x:cap}? Yes. That's the word I wanted."
+@rule core.ask_about.describe_con guard: root=describe&stance=con act: opine_neg
+  "{x:cap}? Not nice. I'd keep it away from the cake."
+  "{x:cap}? Don't call me that. I may sulk."
+  "{x:cap}? I'd rather be anything else."
+  "{x:cap}? It's a bad word. I mean it, no more."
+  "{x:cap}? Eh. Not for me."
+  "{x:cap}? That's my least favourite way to be."
+@rule core.ask_about.describe_neu guard: root=describe&stance=neutral act: answer
+  "{x:cap}? Depends who you ask. And when."
+  "{x:cap}? I've heard worse. I've heard better."
+  "{x:cap}? It's a word. It's a good word."
+  "{x:cap}? Sometimes. Mostly Thursdays."
+  "{x:cap}? It fits some things. Some."
+  "{x:cap}? I use it for soup."
+@rule core.ask_about.describe_joke guard: root=describe act: joke
+  "{x:cap}? I'm that, on a good day. On a bad one, more."
+  "{x:cap}? Say it again, slower. Fancier."
+  "{x:cap}? That's a lot of letters for one idea."
+@rule core.ask_opinion.describe guard: root=describe act: answer
+  "{x:cap}? A fine word. It earns its place."
+  "My take on {x}: it depends. On everything."
+  "{x:cap}? A good way to be, in small doses."
+  "{x:cap}? It says what it means, mostly."
+  "{x:cap}? I'd use it more often, with care."
+  "{x:cap}? Short and sweet, like a nap."
+@rule core.tell.describe_pro guard: root=describe&stance=pro act: opine_pos
+  "{x:cap}! I like that on you."
+  "You're {x}? I could tell. It suits you."
+  "Nice word choice. Very well done."
+@rule core.tell.describe_con guard: root=describe&stance=con act: opine_neg
+  "{x:cap}? Hm. It'll pass, things do."
+  "Not nice. I'm sorry. Try a nap."
+  "That's a rough one. Tea helps."
+@rule core.opine_pos.describe_agree guard: root=describe&stance=pro act: agree
+  "Yes! {x:cap} is the best way to be."
+  "Right? It's a good word."
+@rule core.opine_pos.describe_disagree guard: root=describe&stance=con act: disagree
+  "{x:cap}? Hm. I'd say no, politely."
+  "Not for me. I'd pick another."
+@rule core.opine_neg.describe_agree guard: root=describe&stance=con act: agree
+  "Ha, {x}. Yes. Not a good thing to be."
+  "Right? I'd avoid it."
+@rule core.opine_neg.describe_disagree guard: root=describe&stance=pro act: disagree
+  "Hey, {x} isn't bad. It's got charm."
+  "Not {x}! It's lovely, in the right light."
