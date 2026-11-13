@@ -18,3 +18,21 @@ slot tail list=tail name="Tail" method=P target=16 new=P
 13  "Sheep Puff"           set=critter tags=critter
 14  "Ringed Raccoon"       set=critter tags=critter
 15  "Feather Fan"          set=teaparty tags=showcanon
+
+# CR4 batch A3 (core/data/parts/spooky/tail_b.txt): live with review.txt A3
+16  "Squirrel Plume" set=critter tags=critter,cute method=S
+17  "Pig Curl" set=critter tags=critter,silly method=S
+18  "Scorpion" set=monster tags=monster,nature method=S
+19  "Spade Tail" set=spooky tags=spooky,fancy method=S
+20  "Zigzag Tail" set=punk tags=punk,tech method=S
+21  "Pompom Rope" set=partypals tags=party,cute method=S
+22  "Fish Fin" set=sewers tags=sea,silly method=S
+23  "Dino Plates" set=monster tags=monster,nature method=S
+24  "Ghost Wisp" set=graveyard tags=spooky,magic method=S
+25  "Bow Tail" set=candy tags=cute,fancy method=S
+26  "Looped Tail" set=punk tags=punk,silly method=S
+27  "Chain Tail" set=punk tags=punk,tech method=S
+28  "Skunk Plume" set=critter tags=critter,silly method=S
+29  "Candy Cane Tail" set=candy tags=candy,cute method=S
+30  "Beaver Paddle" set=critter tags=critter,nature method=S
+31  "Twin Tails" set=cathedral tags=magic,critter method=S

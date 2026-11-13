@@ -18,3 +18,15 @@ slot horns list=horns name="Horns" method=P target=10 new=S
 13  "Tall Devil"           set=spooky tags=spooky
 14  "Many"                 set=spooky tags=spooky
 15  "Halo Horns"           set=cloud9 tags=holy
+
+# CR4 batch A3 (core/data/parts/spooky/horns_b.txt): live with review.txt A3
+16  "Candy Cane Hooks" set=candy tags=cute,candy method=S
+17  "Stair Horns" set=indieart tags=silly,retro method=S
+18  "Trident Prongs" set=spooky tags=spooky method=S
+19  "Rhino Nub" set=critter tags=critter,silly method=S
+20  "Bone Fork" set=graveyard tags=spooky,goth method=S
+21  "Flame Tips" set=spooky tags=fire,spooky method=S
+22  "Leaf Sprouts" set=seasons tags=nature,cute method=S
+23  "Lollipop Swirls" set=candy tags=candy,silly method=S
+24  "Crescent Moons" set=cathedral tags=magic,goth method=S
+25  "Imp Tips" set=spooky tags=cute,spooky method=S

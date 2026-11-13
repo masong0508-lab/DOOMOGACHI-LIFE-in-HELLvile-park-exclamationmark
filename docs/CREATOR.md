@@ -592,6 +592,49 @@ held; on the GBA the bust's effect frames change every 16 ticks).
   values (`part_live_drawable`); the new parts are data in the creator overlay only (names, set, tags: no resident
   byte; the PS1 margin is unchanged, see `docs/PS1.md`).
 
+## CR4 batch A3: spooky (2026-11-13)
+
+* **60 new parts live** (the plan's 134 are these 60, the 6 painted halos live since CR3, and 68 deep ones left for CR5): 10 horns (gene `horns` 16..25: Candy Cane
+  Hooks, Stair Horns, Trident Prongs, Rhino Nub, Bone Fork, Flame Tips, Leaf Sprouts, Lollipop Swirls, Crescent
+  Moons, Imp Tips), 16 tails (`tail` 16..31: Squirrel Plume, Pig Curl, Scorpion, Spade Tail, Zigzag Tail, Pompom
+  Rope, Fish Fin, Dino Plates, Ghost Wisp, Bow Tail, Looped Tail, Chain Tail, Skunk Plume, Candy Cane Tail, Beaver
+  Paddle, Twin Tails), 14 wings (`wings` 10..23: Cherub Mini, Moth, Raven, Dragonfly, Paper Wings, Balloon Wings,
+  Leaf Wings, Jet Fins, Cloud Puffs, Heart Wings, Stained Glass, Crystal Shards, Ribbon Streamers, Parasol Wings),
+  4 halos (`halo` 12..15: Vinyl Record, Candle Crown, Cloud Wisp, Orbit Ring) and 16 auras (`aura` 8..23: Orbit
+  Dots, Rain Cloud, Music Notes, Snowflakes, Star Ring, Sleepy Zzz, Spirit Wisps, Petals, Fireflies, Circling
+  Bats, Falling Leaves, Question Marks, Sweat Drops, Floating Eyes, Confetti, Embers). The lists are now 26, 32,
+  24, 16 and 24 long. No save change: the gene had the bits; aura values 16..23 use the fifth bit that the creator's
+  NICK trailer carries (`look_gene.c`; the v1 stream stops at 15). The six painted B76 halos were live since CR3.
+* **Left for the next spooky package (68 of the batch's 134):** horn page 2 (6) and horn / antenna bits (32), tail
+  accessories (16), wing accessories (8), halo page 2 (6) are deep fields. They need new `DF_` ids with painter hooks
+  in C and a creator row that takes a deep field, so they are only selectable after CR5 (saved deep parts).
+* **Authoring:** hand-written part scripts in `core/data/parts/spooky/{horns,tail,wings,halo,aura}_b.txt` (one script
+  set, 5.9 KB raw), no new painter code: the CR2 hooks already run a script for a tail, wings, halo and aura. Horns, halos
+  and auras are head anchored (`scale 128`, half head radii). **Tails and wings are torso anchored and drawn at
+  `scale 255`**: the figure's torso is only 10 x 6 px, so a tail has to be authored about four times its torso units, and
+  each is a template drawn from the side of the hips for the front views (`ifyaw 0,1,2`) and from the middle of the hem
+  for the back views (3, 4); a second block with its own scale and offset draws the bust. Auras draw two frames
+  (`ifanim breath` against its absence) and never on a chibi (`view=portrait,figure,fighter`).
+* **`parts_build.py`:** a torso block that never draws on the bust (`view=` without `portrait`) is now estimated against
+  the figure's 10 x 6 px torso instead of the bust's 18 x 15 (`NOMINAL_TORSO_BODY`), so the 600 px guard measures a tail
+  at the size it is drawn. Nothing else changed.
+* **Age:** all 60 are age class ALL; none is gore, a body part or suggestive (a chain tail is rings, a candle crown is cartoon
+  candles, the floating eyes are cartoon). The first draft's pair of lightning-bolt horns was replaced by stair steps so
+  no pair of bolts can read as a real-world symbol.
+* **Gates:** shape gate (>= 24 px of the bust against every other value of the slot, >= 6 px on a chibi where the part
+  draws there), cost weights measured (`costs.txt`, the dearest new part costs 24 against 50 for the dearest classic
+  one), names unique, one set each, frozen ids, review line `A3`, part icons regenerated.
+* **Review sheets** (`portrait_sheet --slot KEY [--shape]` for each of the five slots, and the new
+  `--slot tail|wings --views [--from N] [--shape]`: the figure at 3x and the fighter's five views from behind to the
+  front, so a tail and a wing are seen from every side).
+* **Runner walk-through:** `core/tests/scripts/creator_parts_spooky.txt` (both resolutions): the Supernatural tab, each
+  of the five rows opened as a grid, a new part found by letters and worn (Stair Horns, Squirrel Plume, Moth, Vinyl
+  Record, Confetti), the preview showing it.
+* **Tests:** `test_cr4_a3.c` (the lists full and the 60 parts catalogued and inside the cost cap; tails and wings show on
+  the figure and from behind; every aura has two frames; every stage keeps them and a child may wear all; they survive a
+  save and sanitize; the old values still differ from the new). The PS1 reads none of the scripts yet (the part VM waits for
+  CR10): its creator keeps offering the painted values.
+
 ## Extending
 
 * **A new catalog option** (e.g. a new hat): nothing to do - rows use the

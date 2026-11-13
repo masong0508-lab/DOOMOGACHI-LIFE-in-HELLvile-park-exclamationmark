@@ -12,3 +12,19 @@ slot wings list=wings name="Wings" method=P target=14 new=P
 7   "Tiny Bat"             set=spooky tags=spooky
 8   "Mech"                 set=hellbreach tags=tech,armor
 9   "Flame"                set=spooky tags=fire,spooky
+
+# CR4 batch A3 (core/data/parts/spooky/wings_b.txt): live with review.txt A3
+10  "Cherub Mini" set=cloud9 tags=holy,cute method=S
+11  "Moth" set=seasons tags=nature,cute method=S
+12  "Raven" set=graveyard tags=spooky,goth method=S
+13  "Dragonfly" set=seasons tags=nature,magic method=S
+14  "Paper Wings" set=indieart tags=silly,retro method=S
+15  "Balloon Wings" set=funfair tags=party,silly method=S
+16  "Leaf Wings" set=seasons tags=nature,cute method=S
+17  "Jet Fins" set=hellbreach tags=tech,armor method=S
+18  "Cloud Puffs" set=cloud9 tags=holy,cute method=S
+19  "Heart Wings" set=candy tags=cute,candy method=S
+20  "Stained Glass" set=cathedral tags=holy,goth method=S
+21  "Crystal Shards" set=spooky tags=magic,spooky method=S
+22  "Ribbon Streamers" set=partypals tags=party,silly method=S
+23  "Parasol Wings" set=teaparty tags=fancy,silly method=S

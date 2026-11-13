@@ -14,3 +14,10 @@ slot halo list=halo name="Halo" method=P target=10 new=T
 9   "Neon Glitch"          set=indieart tags=tech,silly
 10  "Flower Ring"          set=seasons tags=nature,holy
 11  "Saturn Ring"          set=cloud9 tags=holy
+
+# CR4 batch A3 (core/data/parts/spooky/halo_b.txt): values 12..15 are new scripts, live with review.txt A3
+# (the painted B76 halos 6..11 are live since CR3; the plan's six deep halos wait for CR5)
+12  "Vinyl Record" set=concert tags=music,retro method=S
+13  "Candle Crown" set=cathedral tags=holy,goth method=S
+14  "Cloud Wisp" set=cloud9 tags=holy,cute method=S
+15  "Orbit Ring" set=indieart tags=tech,magic method=S

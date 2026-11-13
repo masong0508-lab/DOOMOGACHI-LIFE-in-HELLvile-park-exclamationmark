@@ -1,0 +1,74 @@
+# core/data/parts/spooky/halo_b.txt - spooky batch A3 (CR4): 4 halos on the gene list values 12..15
+# (the painted B76 halos 6..11 are in C, portrait_hair.c). A halo is group 6 (the finish), head anchor,
+# `scale 128`: half head radii, y -128 = the top of the head. They take the accessory colour.
+
+list halo 12                            # Vinyl Record
+block group=6 anchor=head lod=all view=all
+  scale 128
+  mat accessory_color dark
+  shade ball
+  solid
+  ellipse 0 -198 70 22
+  mat accessory_color light
+  decal
+  ellipse 0 -198 22 7
+  mat accessory_color dark
+  ellipse 0 -198 7 2
+  mat accessory_color light
+  line -48 -202 -28 -208 1
+  line 30 -192 48 -196 1
+end
+
+list halo 13                            # Candle Crown
+block group=6 anchor=head lod=all view=all
+  scale 128
+  mat accessory_color
+  shade ball
+  solid
+  ellipse 0 -182 56 14
+  mat accessory_color light
+  shade ball
+  solid
+  capsule -44 -186 -44 -218 6 6
+  capsule 0 -190 0 -230 6 6
+  capsule 44 -186 44 -218 6 6
+  mat accessory_color
+  shade flat
+  solid noline
+  tri -50 -218 -38 -218 -44 -242
+  tri -6 -230 6 -230 0 -254
+  tri 38 -218 50 -218 44 -242
+end
+
+list halo 14                            # Cloud Wisp
+block group=6 anchor=head lod=all view=all
+  scale 128
+  mat accessory_color light
+  shade ball
+  solid
+  ellipse -36 -194 28 14
+  ellipse 0 -206 32 18
+  ellipse 38 -194 28 14
+  ellipse 0 -190 50 10
+end
+
+list halo 15                            # Orbit Ring
+block group=6 anchor=head lod=all view=all
+  scale 128
+  mat accessory_color
+  shade ball
+  solid
+  capsule -64 -196 -36 -210 4 4
+  capsule -36 -210 36 -210 4 4
+  capsule 36 -210 64 -196 4 4
+  capsule 64 -196 36 -182 4 4
+  capsule 36 -182 -36 -182 4 4
+  capsule -36 -182 -64 -196 4 4
+  mat accessory_color light
+  shade gloss
+  solid
+  ifanim breath
+  ellipse 66 -216 12 12
+  endif
+  ellipse -66 -174 12 12
+end

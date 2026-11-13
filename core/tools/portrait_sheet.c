@@ -372,6 +372,60 @@ static void sheet_interplay(void)
     }
 }
 
+/* CR4 A3: --slot KEY --views [--from N]: the body parts' review sheet (tails, wings, auras, halos): per part the
+ * figure at 3x and the fighter's five views (0..4, front to back) at 2x on a plain citizen, so a tail or a
+ * wing is seen from the side and from behind too. --from keeps the values from N up. */
+static void sh_zoom(Sheet *s, int x, int y, const uint8_t *pix, int w, int h, int z)
+{
+    int i, j;
+    for (j = 0; j < h; j++)
+        for (i = 0; i < w; i++)
+            if (pix[j * w + i]) sh_rect(s, x + i * z, y + j * z, z, z, pix[j * w + i]);
+}
+
+static void sheet_slot_views(const char *key, int from, int shape)
+{
+    const PartSlotInfo *sl = NULL;
+    uint8_t fig[FIGURE_W * FIGURE_H], fgt[FIGHTER_W * FIGHTER_H];
+    int i, n = 0, k, v, cw = FIGURE_W * 3 + 4 + 5 * (FIGHTER_W * 2 + 2) + 4, chh = FIGURE_H * 3 + 22;
+    Sheet s;
+    char fname[80];
+    for (i = 0; i < PART_SLOT_COUNT; i++)
+        if (!strcmp(doomo_part_slots[i].key, key)) sl = &doomo_part_slots[i];
+    if (!sl) { fprintf(stderr, "portrait_sheet: no slot %s\n", key); return; }
+    for (i = sl->first; i < sl->first + sl->count; i++)
+        if (doomo_part_meta[i].value >= from) n++;
+    sh_new(&s, 4 + cw, 14 + n * chh, PAL_UI_CREAM);
+    sh_text(&s, 2, 2, sl->name, PAL_UI_PINK_D);
+    portrait_shape_mode(shape);
+    for (i = sl->first, k = 0; i < sl->first + sl->count; i++) {
+        const PartMeta *m = &doomo_part_meta[i];
+        DoomoLook l = base_look();
+        DoomoDeep d = doomo_deep_zero;
+        int y = 14 + k * chh, x = 2;
+        char nm[64];
+        if (m->value < from) continue;
+        l.accessory_color = PAINT_COBALT;
+        look_part_set(&l, &d, m->list, m->value);
+        figure_render_deep(&l, &d, RES_ALIVE, EXPR_NEUTRAL, 0, fig);
+        cell_bg(&s, x, y, FIGURE_W * 3, FIGURE_H * 3, k);
+        sh_zoom(&s, x, y, fig, FIGURE_W, FIGURE_H, 3);
+        x += FIGURE_W * 3 + 4;
+        for (v = 0; v < 5; v++) {
+            fighter_render_d(&l, &d, RES_ALIVE, v, 0, -1, fgt);
+            cell_bg(&s, x, y, FIGHTER_W * 2, FIGHTER_H * 2, k + v);
+            sh_zoom(&s, x, y, fgt, FIGHTER_W, FIGHTER_H, 2);
+            x += FIGHTER_W * 2 + 2;
+        }
+        snprintf(nm, sizeof(nm), "%d %s - %s", m->value, part_meta_name(m), doomo_part_sets[m->set].name);
+        sh_text(&s, 2, y + FIGURE_H * 3 + 4, nm, PMF_STATE(m->flags) ? PAL_UI_PINK_D : PAL_GRAY_D);
+        k++;
+    }
+    portrait_shape_mode(0);
+    snprintf(fname, sizeof(fname), "views_%s%s.png", key, shape ? "_shape" : "");
+    sh_save(&s, fname, 1);
+}
+
 typedef struct Slider { const char *name; int off, lo, hi; } Slider;
 #define SL(n, f, lo, hi) { n, (int)offsetof(DoomoLook, f), lo, hi }
 static const Slider sliders[] = {
@@ -631,6 +685,7 @@ int main(int argc, char **argv)
 {
     int i, stats = 0, figure = 0, shape = 0, interplay = 0;
     const char *bust = NULL, *slot = NULL, *set = NULL;
+    int views = 0, from = 0;
     NatOptions o;
     for (i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--out") && i + 1 < argc) outdir = argv[++i];
@@ -643,6 +698,8 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--set") && i + 1 < argc) set = argv[++i];
         else if (!strcmp(argv[i], "--shape")) shape = 1;
         else if (!strcmp(argv[i], "--interplay")) interplay = 1;
+        else if (!strcmp(argv[i], "--views")) views = 1;
+        else if (!strcmp(argv[i], "--from") && i + 1 < argc) from = atoi(argv[++i]);
         else { fprintf(stderr, "usage: portrait_sheet --out DIR [--zoom N] [--only NAME] [--stats] [--bust LIST [--fig]]\n"
                                "       portrait_sheet --out DIR --slot KEY [--set NAME] [--shape]\n"
                                "       portrait_sheet --out DIR --interplay\n"); return 2; }
@@ -653,6 +710,7 @@ int main(int argc, char **argv)
     nat_init(&o);
     palette_init();
     if (bust) { sheet_bust(bust, figure); return 0; }
+    if (slot && views) { sheet_slot_views(slot, from, shape); return 0; }
     if (slot) { sheet_slot(slot, set, shape); return 0; }
     if (interplay) { sheet_interplay(); return 0; }
     sheet_closeup();

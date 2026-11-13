@@ -10,3 +10,22 @@ slot aura list=aura name="Aura" method=P target=16 new=C
 5   "Smoke"                set=spooky tags=magic
 6   "Bubbles"              set=sewers tags=sea,cute
 7   "Glitch"               set=indieart tags=tech
+
+# CR4 batch A3 (core/data/parts/spooky/aura_b.txt): live with review.txt A3. Values 16..23 need the aura's
+# fifth gene bit, which the creator's NICK trailer carries (look_gene.c; the v1 save stream has 4 bits).
+8   "Orbit Dots" set=candy tags=cute,magic method=S
+9   "Rain Cloud" set=sewers tags=sea,silly method=S
+10  "Music Notes" set=concert tags=music,cute method=S
+11  "Snowflakes" set=seasons tags=nature,cute method=S
+12  "Star Ring" set=cloud9 tags=magic,holy method=S
+13  "Sleepy Zzz" set=cozy tags=cozy,silly method=S
+14  "Spirit Wisps" set=graveyard tags=spooky,magic method=S
+15  "Petals" set=seasons tags=nature,cute method=S
+16  "Fireflies" set=seasons tags=nature,magic method=S
+17  "Circling Bats" set=spooky tags=spooky,silly method=S
+18  "Falling Leaves" set=seasons tags=nature method=S
+19  "Question Marks" set=indieart tags=silly method=S
+20  "Sweat Drops" set=funfair tags=silly,cute method=S
+21  "Floating Eyes" set=monster tags=monster,silly method=S
+22  "Confetti" set=partypals tags=party method=S
+23  "Embers" set=spooky tags=fire,spooky method=S

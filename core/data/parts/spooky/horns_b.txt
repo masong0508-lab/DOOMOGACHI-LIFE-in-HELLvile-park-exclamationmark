@@ -1,0 +1,141 @@
+# core/data/parts/spooky/horns_b.txt - spooky batch A3 (CR4): 10 horns on the gene list values 16..25.
+# Hand-authored from the part-script ops. Horns draw in group 5 (over the hat and hair) with the
+# citizen's horn colour (a second tone, the stripes, leaves and tips, in the accessory colour).
+# `scale 128`: coordinates in half head radii (x right, y down, -128 = the top of the head),
+# `mirror on` doubles a shape to the other side.
+
+def hm
+  mat horn_color
+  shade ball
+  solid
+enddef
+def am
+  mat accessory_color
+  shade ball
+  solid
+enddef
+
+list horns 16                           # Candy Cane Hooks
+block group=5 anchor=head lod=all view=all
+  scale 128
+  use hm
+  mirror on
+  capsule 55 -100 62 -170 15 13
+  capsule 62 -170 52 -205 13 12
+  capsule 52 -205 28 -212 12 10
+  mat accessory_color
+  decal
+  line 50 -118 70 -126 1
+  line 50 -136 70 -144 1
+  line 51 -154 71 -162 1
+  line 50 -176 68 -184 1
+end
+
+list horns 17                           # Stair Horns (pixel-art steps)
+block group=5 anchor=head lod=all view=all
+  scale 128
+  use hm
+  mirror on
+  band 48 -112 14 12
+  band 60 -138 12 12
+  band 70 -164 10 12
+  band 78 -190 8 12
+end
+
+list horns 18                           # Trident Prongs
+block group=5 anchor=head lod=all view=all
+  scale 128
+  use hm
+  mirror on
+  capsule 55 -100 60 -160 15 12
+  capsule 60 -160 32 -232 11 3
+  capsule 60 -160 66 -244 11 3
+  capsule 60 -160 98 -224 11 3
+end
+
+list horns 19                           # Rhino Nub
+block group=5 anchor=head lod=all view=all
+  scale 128
+  use hm
+  capsule 0 -112 4 -160 42 30
+  tri -34 -126 34 -126 8 -222
+  mat accessory_color
+  decal
+  line -18 -140 20 -144 0
+  line -12 -160 14 -164 0
+end
+
+list horns 20                           # Bone Fork
+block group=5 anchor=head lod=all view=all
+  scale 128
+  use hm
+  mirror on
+  capsule 52 -100 70 -160 14 10
+  capsule 70 -160 48 -218 10 6
+  capsule 70 -160 108 -206 10 6
+  ellipse 46 -222 10 10
+  ellipse 112 -210 10 10
+  ellipse 56 -214 8 8
+  ellipse 104 -198 8 8
+end
+
+list horns 21                           # Flame Tips
+block group=5 anchor=head lod=all view=all
+  scale 128
+  use hm
+  mirror on
+  tri 34 -104 80 -104 58 -160
+  use am
+  tri 40 -156 78 -156 52 -196
+  tri 48 -170 68 -170 44 -232
+  tri 56 -170 76 -170 66 -240
+  tri 66 -160 88 -160 98 -214
+end
+
+list horns 22                           # Leaf Sprouts
+block group=5 anchor=head lod=all view=all
+  scale 128
+  use hm
+  mirror on
+  capsule 36 -110 46 -170 8 6
+  use am
+  ellipse 66 -184 30 14
+  ellipse 28 -190 28 13
+  ellipse 48 -214 12 22
+end
+
+list horns 23                           # Lollipop Swirls
+block group=5 anchor=head lod=all view=all
+  scale 128
+  use hm
+  mirror on
+  capsule 46 -104 60 -170 8 8
+  use am
+  ellipse 64 -200 36 36
+  mat horn_color
+  decal
+  line 50 -200 78 -200 1
+  line 64 -184 64 -216 1
+  line 54 -190 74 -210 1
+  line 74 -190 54 -210 1
+end
+
+list horns 24                           # Crescent Moons
+block group=5 anchor=head lod=all view=all
+  scale 128
+  use hm
+  mirror on
+  capsule 48 -102 88 -130 15 14
+  capsule 88 -130 104 -182 14 13
+  capsule 104 -182 84 -232 13 9
+  capsule 84 -232 52 -244 9 3
+end
+
+list horns 25                           # Imp Tips
+block group=5 anchor=head lod=all view=all
+  scale 128
+  use hm
+  mirror on
+  tri 14 -108 56 -108 32 -184
+  tri 62 -104 100 -104 82 -164
+end

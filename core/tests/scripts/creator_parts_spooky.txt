@@ -1,0 +1,95 @@
+# CR4 A3: the spooky batch in the creator's picture grid: the Supernatural tab's Horns, Tail, Wings, Halo
+# and Aura rows (16 + 16 + 14 + 4 + 16 new choices). A new Hellvile citizen: the Supernatural tab is the
+# fourth tab, each row opens its grid with A (the cursor starts on the worn choice), a new choice is found by
+# letters (START) and worn with A, and the citizen in the preview shows it (shot after each).
+scene CREATOR -1
+expect-scene CREATOR
+wait 30
+press R
+wait 4
+press R
+wait 4
+press R
+wait 12
+shot 01_supernatural_tab
+# Horns (the first row): the grid, Stair Horns by letters
+press A
+wait 14
+shot 02_horns_grid
+press START
+wait 6
+type stai
+press START
+wait 10
+shot 03_find_stair_horns
+press A
+wait 14
+shot 04_horns_worn
+# Tail is the fourth row: Horns, Horn colour, Horn size, Tail
+press DOWN
+wait 2
+press DOWN
+wait 2
+press DOWN
+wait 2
+wait 6
+press A
+wait 14
+shot 05_tail_grid
+press START
+wait 6
+type squi
+press START
+wait 10
+shot 06_find_squirrel_plume
+press A
+wait 14
+shot 07_tail_worn
+press DOWN
+wait 8
+press A
+wait 14
+shot 08_wings_grid
+press START
+wait 6
+type moth
+press START
+wait 10
+shot 09_find_moth
+press A
+wait 14
+shot 10_wings_worn
+press DOWN
+wait 8
+press A
+wait 14
+shot 11_halo_grid
+press START
+wait 6
+type viny
+press START
+wait 10
+shot 12_find_vinyl_record
+press A
+wait 14
+shot 13_halo_worn
+# Aura is three rows further: Marking, Marking colour, Aura
+press DOWN
+wait 2
+press DOWN
+wait 2
+press DOWN
+wait 2
+wait 6
+press A
+wait 14
+shot 14_aura_grid
+press START
+wait 6
+type conf
+press START
+wait 10
+shot 15_find_confetti
+press A
+wait 14
+shot 16_aura_worn

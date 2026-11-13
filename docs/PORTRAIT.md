@@ -578,6 +578,13 @@ every family hat with a full outfit under the 12k pixel-visit bound.
 of a slot (live, hidden and planned) as bust 1x, the creator's 2x head crop, figure, chibi 3x and the
 fighter's back view, labelled with name, state and set; `--shape` is the shape-only sheet.
 
+**Body parts as scripts (CR4 A3).** A tail or a pair of wings is a torso-anchored script drawn once per image by
+`pb_draw_tail()` / `pb_draw_wings()`. On the figure the torso is 10 x 6 px (bust 14 x 14, fighter 7 x 5, chibi 4 x 2), so
+author them at `scale 255` (about x4) with a `ifyaw 0,1,2` block from the side of the hips and a `ifyaw 3,4` block from the
+middle of the hem, and give the bust its own `view=portrait` block with a smaller scale; `parts_build.py` estimates a torso
+block that does not draw on the bust against the figure's torso (`NOMINAL_TORSO_BODY`). `portrait_sheet --slot tail --views
+[--from N] [--shape]` writes `views_tail.png`: the figure at 3x and the fighter's five views (0 behind .. 4 front).
+
 **Age.** `look_for_stage()` ends with `part_age_filter_look()` (CR12): a part whose catalog age class is
 above the stage is drawn as its slot's default. See docs/CREATOR.md "The age gate for parts".
 

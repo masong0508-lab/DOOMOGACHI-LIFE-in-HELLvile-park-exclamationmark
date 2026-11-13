@@ -1,0 +1,307 @@
+# core/data/parts/spooky/aura_b.txt - spooky batch A3 (CR4): 16 auras on the gene list values 8..23.
+# (The v1 save stream gives the aura 4 bits; values 16..23 ride in the creator trailer, look_gene.c.)
+# Hand-authored. An aura is drawn behind the citizen (group 0) and in front of it (group 6), head anchor,
+# `scale 128` (half head radii: x 128 = the head's side, y -128 = the top), `solid noline,nocast` so a
+# particle has no outline. The animation is two frames, `ifanim breath` against its absence.
+# Auras draw on the bust, the figure and the fighter, never on a chibi (crowds pay nothing).
+
+def dotm
+  mat accessory_color
+  shade flat
+  solid noline,nocast
+enddef
+
+list aura 8                             # Orbit Dots
+block group=0 anchor=head lod=big,mid view=portrait,figure,fighter
+  scale 128
+  use dotm
+  mirror on
+  ifanim breath
+    ellipse 150 24 18 18
+    ellipse 128 -64 16 16
+    ellipse 100 100 16 16
+  endif
+  ellipse 156 -20 16 16
+  ellipse 112 -100 18 18
+  ellipse 120 70 18 18
+  ellipse 150 -140 12 12
+end
+
+list aura 9                             # Rain Cloud
+block group=6 anchor=head lod=big,mid view=portrait,figure,fighter
+  scale 128
+  mat accessory_color light
+  shade ball
+  solid noline,nocast
+  ellipse -38 -158 34 20
+  ellipse 8 -170 40 26
+  ellipse 52 -156 32 18
+  mat accessory_color
+  decal
+  ifanim breath
+    line -40 -132 -46 -100 1
+    line 4 -138 -2 -100 1
+    line 48 -132 42 -100 1
+  endif
+  line -22 -128 -28 -96 1
+  line 26 -134 20 -98 1
+  line 68 -126 62 -96 1
+end
+
+list aura 10                            # Music Notes
+block group=6 anchor=head lod=big,mid view=portrait,figure,fighter
+  scale 128
+  mat accessory_color
+  shade flat
+  solid noline,nocast
+  ellipse -150 -30 14 10
+  ellipse 150 -96 14 10
+  ifanim breath
+    ellipse -130 -120 14 10
+    ellipse 154 -10 14 10
+  endif
+  decal
+  line -138 -30 -138 -90 1
+  line -138 -90 -116 -78 1
+  line 162 -96 162 -156 1
+  line 162 -156 182 -144 1
+  ifanim breath
+    line -118 -120 -118 -176 1
+    line 166 -10 166 -66 1
+  endif
+end
+
+list aura 11                            # Snowflakes
+block group=6 anchor=head lod=big,mid view=portrait,figure,fighter
+  scale 128
+  mat accessory_color light
+  shade flat
+  decal
+  mirror on
+  line 130 -90 168 -90 1
+  line 149 -110 149 -70 1
+  line 132 -108 166 -72 1
+  line 132 -72 166 -108 1
+  line 112 40 142 40 1
+  line 127 25 127 55 1
+  ifanim breath
+    line 150 -10 178 -10 1
+    line 164 -24 164 4 1
+    line 80 -150 110 -150 1
+    line 95 -165 95 -135 1
+  endif
+end
+
+list aura 12                            # Star Ring
+block group=0 anchor=head lod=big,mid view=portrait,figure,fighter
+  scale 128
+  mat accessory_color light
+  shade flat
+  solid noline,nocast
+  mirror on
+  tri 130 -74 146 -46 172 -74
+  tri 146 -102 172 -74 146 -46
+  tri 120 10 134 34 158 10
+  tri 134 -14 158 10 134 34
+  tri 76 -130 86 -112 106 -130
+  tri 86 -148 106 -130 86 -112
+  ifanim breath
+    tri 100 70 112 92 132 70
+    tri 112 50 132 70 112 92
+  endif
+end
+
+list aura 13                            # Sleepy Zzz
+block group=6 anchor=head lod=big,mid view=portrait,figure,fighter
+  scale 128
+  mat accessory_color
+  shade flat
+  solid noline,nocast
+  mirror on
+  capsule 96 -150 150 -150 7 7
+  capsule 150 -150 96 -100 7 7
+  capsule 96 -100 150 -100 7 7
+  mirror off
+  ifanim breath
+    capsule 128 -190 158 -190 4 4
+    capsule 158 -190 128 -166 4 4
+    capsule 128 -166 158 -166 4 4
+  endif
+end
+
+list aura 14                            # Spirit Wisps
+block group=0 anchor=head lod=big,mid view=portrait,figure,fighter
+  scale 128
+  mat accessory_color light
+  shade soft
+  solid noline,nocast
+  mirror on
+  capsule 150 90 164 24 12 18
+  capsule 164 24 140 -40 18 12
+  capsule 140 -40 154 -100 12 4
+  ifanim breath
+    capsule 112 110 122 54 6 10
+    capsule 122 54 104 4 10 4
+  endif
+end
+
+list aura 15                            # Petals
+block group=6 anchor=head lod=big,mid view=portrait,figure,fighter
+  scale 128
+  mat accessory_color
+  shade ball
+  solid noline,nocast
+  mirror on
+  ellipse 150 -70 18 11
+  ellipse 126 -20 16 10
+  ellipse 154 40 18 11
+  ifanim breath
+    ellipse 140 -40 18 11
+    ellipse 134 16 16 10
+    ellipse 110 82 18 11
+  endif
+end
+
+list aura 16                            # Fireflies
+block group=0 anchor=head lod=big,mid view=portrait,figure,fighter
+  scale 128
+  mat accessory_color light
+  shade gloss
+  solid noline,nocast
+  mirror on
+  ellipse 159 -57 19 19
+  ellipse 105 120 19 19
+  ifanim breath
+  ellipse 168 52 19 19
+  ellipse 81 -170 19 19
+  endif
+  mat accessory_color
+  shade flat
+  decal
+  dot 159 -57 3
+  dot 105 120 3
+end
+
+list aura 17                            # Circling Bats
+block group=6 anchor=head lod=big,mid view=portrait,figure,fighter
+  scale 128
+  mat accessory_color dark
+  shade flat
+  solid noline,nocast
+  ellipse 138 -90 16 16
+  tri 100 -118 138 -94 106 -66
+  tri 168 -118 138 -94 168 -66
+  ifanim breath
+    ellipse -138 -20 16 16
+    tri -168 -48 -138 -24 -168 4
+    tri -100 -48 -138 -24 -106 4
+  endif
+end
+
+list aura 18                            # Falling Leaves
+block group=6 anchor=head lod=big,mid view=portrait,figure,fighter
+  scale 128
+  mat accessory_color
+  shade ball
+  solid noline,nocast
+  ellipse 124 -70 34 17
+  ellipse 158 49 31 15
+  ifanim breath
+  ellipse 103 5 34 17
+  ellipse 141 120 31 15
+  endif
+  mat accessory_color dark
+  decal
+  line 93 -70 154 -70 1
+  line 130 49 168 49 1
+end
+
+list aura 19                            # Question Marks
+block group=6 anchor=head lod=big,mid view=portrait,figure,fighter
+  scale 128
+  mat accessory_color
+  shade flat
+  solid noline,nocast
+  capsule 84 -181 118 -190 8 8
+  capsule 118 -190 159 -190 8 8
+  capsule 159 -190 122 -143 8 8
+  capsule 122 -143 122 -116 8 8
+  ellipse 122 -82 12 12
+  ifanim breath
+  capsule 135 -28 159 -48 5 5
+  capsule 159 -48 168 -31 5 5
+  capsule 168 -31 156 -1 5 5
+  endif
+end
+
+list aura 20                            # Sweat Drops
+block group=6 anchor=head lod=big,mid view=portrait,figure,fighter
+  scale 128
+  mat accessory_color light
+  shade ball
+  solid noline,nocast
+  tri -131 -141 -90 -141 -110 -190
+  ellipse -110 -124 24 24
+  ifanim breath
+  tri -168 -42 -134 -42 -151 -86
+  ellipse -151 -28 20 20
+  endif
+end
+
+list aura 21                            # Floating Eyes
+block group=6 anchor=head lod=big,mid view=portrait,figure,fighter
+  scale 128
+  mat accessory_color light
+  shade ball
+  solid
+  ellipse -215 -144 37 31
+  ellipse 168 -56 34 27
+  ifanim breath
+  ellipse -242 12 34 27
+  endif
+  mat accessory_color dark
+  decal
+  dot -215 -144 3
+  dot -211 -142 3
+  dot 168 -56 3
+  dot 168 -54 3
+end
+
+list aura 22                            # Confetti
+block group=6 anchor=head lod=big,mid view=portrait,figure,fighter
+  scale 128
+  mat accessory_color
+  shade flat
+  solid noline,nocast
+  tri -97 -190 -70 -190 -84 -167
+  tri 80 -190 107 -190 90 -177
+  tri 168 -126 168 -112 168 -105
+  tri -182 -116 -158 -129 -162 -95
+  ifanim breath
+  ellipse -29 -190 12 12
+  ellipse 158 -173 12 12
+  ellipse -213 -58 12 12
+  endif
+  mat accessory_color light
+  ellipse 39 -184 12 12
+  ellipse -141 -156 12 12
+end
+
+list aura 23                            # Embers
+block group=0 anchor=head lod=big,mid view=portrait,figure,fighter
+  scale 128
+  mat accessory_color
+  shade flat
+  solid noline,nocast
+  mirror on
+  ellipse 135 90 15 15
+  ellipse 111 120 12 12
+  ifanim breath
+  ellipse 148 42 15 15
+  ellipse 121 114 12 12
+  endif
+  mat accessory_color light
+  decal
+  line 135 46 135 -9 1
+  line 98 90 98 39 1
+end

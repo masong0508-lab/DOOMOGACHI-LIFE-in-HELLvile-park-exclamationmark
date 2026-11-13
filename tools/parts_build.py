@@ -90,6 +90,10 @@ MAX_PART_PX = 600
 # 14 + head_size / 4 px, about 18 x 16 at the largest head; the torso about 18 x 15). CR2 corrected
 # these from 36 x 42 / 20 x 26, which overstated every part's area about four times.
 NOMINAL = {"head": (18, 16), "torso": (18, 15), "frame": (6, 6)}
+# CR4 A3: a torso block that never draws on the bust (view= without portrait) meets the figure's torso at
+# most (10 x 6 px half sizes, measured: pb_layout), not the bust's, so a tail or a wing is estimated at
+# the size it is drawn
+NOMINAL_TORSO_BODY = (10, 6)
 ANCHORS = ["head", "torso", "frame"]
 
 
@@ -174,7 +178,7 @@ class Area:
         self.px = 0.0
 
 
-def compile_block(lines, stamps, fields, where):
+def compile_block(lines, stamps, fields, where, views=15):
     """lines: [(lineno, tokens)] of one block's body. Returns (op bytes, top): top is how far the
     block reaches above the head centre, in head units (0 for torso geometry)."""
     out = bytearray()
@@ -183,11 +187,14 @@ def compile_block(lines, stamps, fields, where):
     area = Area()
     top = [0]
 
+    def nominal():
+        return NOMINAL_TORSO_BODY if anchor == "torso" and not views & 1 else NOMINAL[anchor]
+
     def sx():
-        return NOMINAL[anchor][0] / 256.0 * scale
+        return nominal()[0] / 256.0 * scale
 
     def sy():
-        return NOMINAL[anchor][1] / 256.0 * scale
+        return nominal()[1] / 256.0 * scale
 
     def reach(y_top):
         """a shape whose highest point is normalised y_top"""
@@ -428,7 +435,7 @@ def parse(path, fields, templates=None):
             body = list(block[1])
             if block[0][1] != 0:
                 body.insert(0, (ln, ["anchor", ANCHORS[block[0][1]]]))
-            ops, top = compile_block(body, stamps, fields, block[2])
+            ops, top = compile_block(body, stamps, fields, block[2], block[0][2] >> 3)
             g, a, lv = block[0]
             entries[cur].append(bytes([g, a, lv, len(ops)]) + ops)
             tops[cur] = max(tops[cur], top)

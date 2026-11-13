@@ -25,3 +25,11 @@ review accessory 20-21 batch=CR3.0 date=2026-11-08 by=claude sheets="slot_access
 # CR4 batch A2 (hair): 32 hair styles (gene hair_style 32..63) and 8 beards (gene facial_hair 8..15)
 review hair        32-63 batch=A2 date=2026-11-13 by=claude sheets="slot_hair, slot_hair_shape (bust 1x, head 2x, figure, chibi 3x, fighter back), interplay_hats_0..2 (every hat x beehive, bouffant, pom tufts, waterfall, space buns, tall horns); no sexual content, no real-world symbols, nothing suggestive on a minor"
 review beard       8-15  batch=A2 date=2026-11-13 by=claude sheets="slot_beard, slot_beard_shape (dark beards on a bald citizen); facial hair is dropped by look_for_stage for every minor, so none shows on one"
+
+# CR4 batch A3 (spooky): 10 horns (gene horns 16..25), 16 tails (tail 16..31), 14 wings (wings 10..23),
+# 4 halos (halo 12..15) and 16 auras (aura 8..23)
+review horns       16-25 batch=A3 date=2026-11-13 by=claude sheets="slot_horns, slot_horns_shape (bust 1x, head 2x, figure, chibi, fighter); no gore, no real-world symbols (the first draft's lightning-bolt pair was dropped for plain stair steps); nothing on a minor beyond cute horns"
+review tail        16-31 batch=A3 date=2026-11-13 by=claude sheets="views_tail, slot_tail, slot_tail_shape (figure 3x and the fighter's five views, front to back); props only (a chain tail is a chain of rings, a bow, a pompom), no gore, no sexual reading"
+review wings       10-23 batch=A3 date=2026-11-13 by=claude sheets="views_wings, slot_wings, slot_wings_shape (figure 3x and the fighter's five views); nothing sharp on a child, no real-world symbols"
+review halo        12-15 batch=A3 date=2026-11-13 by=claude sheets="slot_halo, slot_halo_shape: vinyl record, candle crown (cartoon candles), cloud wisp, orbit ring above the bust"
+review aura        8-23  batch=A3 date=2026-11-13 by=claude sheets="slot_aura, slot_aura_shape: orbit dots, rain cloud, music notes, snowflakes, star ring, zzz, spirit wisps, petals, fireflies, circling bats, falling leaves, question marks, sweat drops, floating eyes (cartoon, no gore), confetti, embers (both animation frames drawn by the script)"

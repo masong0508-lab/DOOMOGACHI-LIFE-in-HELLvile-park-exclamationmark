@@ -1,0 +1,484 @@
+# core/data/parts/spooky/tail_b.txt - spooky batch A3 (CR4): 16 tails on the gene list values 16..31.
+# Authored from a pixel-space sketch; edit this file by hand. A tail is one image-wide script (the
+# painter draws every block once: behind the body from the front, over it from the back). Torso anchor, `scale 255` (about x4): on the figure the torso is
+# 10 px half-wide and 6 px half-high, so a written x step is 0.16 px and a y step 0.09 px; each tail is a
+# template `tNN X Y` drawn from the side of the hips for the front views (yaw 0..2) and from the middle of
+# the hem for the back views (3..4), in the citizen's fur colour (skin) unless it says otherwise.
+
+def t16 X Y
+  mat skin
+  shade ball
+  solid
+  capsule $X $Y $X+32 $Y-43 16 23
+  capsule $X+32 $Y-43 $X+51 $Y-150 23 29
+  mat skin light
+  shade ball
+  solid
+  ellipse $X+45 $Y-214 35 75
+  ellipse $X+26 $Y-160 16 43
+enddef
+list tail 16                         # Squirrel Plume
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 0,1,2
+    use t16 51 42
+  endif
+end
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 3,4
+    use t16 0 32
+  endif
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 140
+  use t16 100 0
+end
+
+def t17 X Y
+  mat skin
+  shade ball
+  solid
+  capsule $X $Y $X+32 $Y-11 13 10
+  ellipse $X+55 $Y-54 32 66
+  mat skin dark
+  shade ball
+  decal
+  ellipse $X+55 $Y-54 13 32
+enddef
+list tail 17                         # Pig Curl
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 0,1,2
+    use t17 51 42
+  endif
+end
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 3,4
+    use t17 0 32
+  endif
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 140
+  use t17 100 0
+end
+
+def t18 X Y
+  mat skin
+  shade ball
+  solid
+  capsule $X $Y $X+39 $Y-32 17 15
+  capsule $X+39 $Y-32 $X+64 $Y-107 15 14
+  capsule $X+64 $Y-107 $X+51 $Y-193 14 12
+  capsule $X+51 $Y-193 $X+19 $Y-235 12 10
+  mat skin dark
+  shade ball
+  solid
+  tri $X-6 $Y-235 $X+32 $Y-214 $X+13 $Y-139
+  ellipse $X+19 $Y-235 14 32
+enddef
+list tail 18                         # Scorpion
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 0,1,2
+    use t18 51 42
+  endif
+end
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 3,4
+    use t18 0 32
+  endif
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 140
+  use t18 100 0
+end
+
+def t19 X Y
+  mat skin dark
+  shade ball
+  solid
+  capsule $X $Y $X+51 $Y-43 7 6
+  capsule $X+51 $Y-43 $X+64 $Y-150 6 6
+  mat accessory_color
+  shade ball
+  solid
+  ellipse $X+53 $Y-182 17 32
+  ellipse $X+76 $Y-182 17 32
+  tri $X+39 $Y-171 $X+90 $Y-171 $X+64 $Y-235
+  tri $X+58 $Y-150 $X+71 $Y-150 $X+64 $Y-128
+enddef
+list tail 19                         # Spade Tail
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 0,1,2
+    use t19 51 42
+  endif
+end
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 3,4
+    use t19 0 32
+  endif
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 140
+  use t19 100 0
+end
+
+def t20 X Y
+  mat skin light
+  shade ball
+  solid
+  tri $X $Y-11 $X+51 $Y+21 $X+19 $Y-75
+  tri $X+13 $Y-75 $X+84 $Y-86 $X+32 $Y-160
+  tri $X+32 $Y-150 $X+84 $Y-150 $X+71 $Y-246
+enddef
+list tail 20                         # Zigzag Tail
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 0,1,2
+    use t20 51 42
+  endif
+end
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 3,4
+    use t20 0 32
+  endif
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 140
+  use t20 100 0
+end
+
+def t21 X Y
+  mat skin dark
+  shade ball
+  solid
+  capsule $X $Y $X+45 $Y-21 6 6
+  capsule $X+45 $Y-21 $X+64 $Y-86 6 6
+  mat accessory_color
+  shade ball
+  solid
+  ellipse $X+64 $Y-128 29 54
+  mat accessory_color light
+  shade ball
+  decal
+  dot $X+55 $Y-139 2
+  dot $X+74 $Y-118 2
+enddef
+list tail 21                         # Pompom Rope
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 0,1,2
+    use t21 51 42
+  endif
+end
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 3,4
+    use t21 0 32
+  endif
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 140
+  use t21 100 0
+end
+
+def t22 X Y
+  mat skin
+  shade ball
+  solid
+  capsule $X $Y $X+32 $Y-11 17 14
+  mat skin light
+  shade ball
+  solid
+  tri $X+26 $Y-11 $X+109 $Y-150 $X+77 $Y-32
+  tri $X+26 $Y-11 $X+77 $Y-32 $X+116 $Y+75
+  mat skin
+  shade ball
+  decal
+  line $X+45 $Y-21 $X+90 $Y-86 1
+  line $X+45 $Y-11 $X+90 $Y+32 1
+enddef
+list tail 22                         # Fish Fin
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 0,1,2
+    use t22 51 42
+  endif
+end
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 3,4
+    use t22 0 32
+  endif
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 140
+  use t22 100 0
+end
+
+def t23 X Y
+  mat skin
+  shade ball
+  solid
+  capsule $X $Y $X+84 $Y-54 23 8
+  mat accessory_color
+  shade ball
+  solid
+  tri $X+6 $Y-32 $X+32 $Y-32 $X+19 $Y-96
+  tri $X+32 $Y-43 $X+58 $Y-54 $X+45 $Y-118
+  tri $X+58 $Y-54 $X+77 $Y-64 $X+71 $Y-118
+enddef
+list tail 23                         # Dino Plates
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 0,1,2
+    use t23 51 42
+  endif
+end
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 3,4
+    use t23 0 32
+  endif
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 140
+  use t23 100 0
+end
+
+def t24 X Y
+  mat skin light
+  shade ball
+  solid
+  ellipse $X+19 $Y-11 24 26
+  ellipse $X+45 $Y-54 21 26
+  ellipse $X+64 $Y-107 18 26
+  ellipse $X+58 $Y-171 15 24
+  ellipse $X+71 $Y-235 10 34
+enddef
+list tail 24                         # Ghost Wisp
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 0,1,2
+    use t24 51 42
+  endif
+end
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 3,4
+    use t24 0 32
+  endif
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 140
+  use t24 100 0
+end
+
+def t25 X Y
+  mat skin
+  shade ball
+  solid
+  ellipse $X+13 $Y-11 21 32
+  mat accessory_color
+  shade ball
+  solid
+  bow $X+39 $Y-54 39
+enddef
+list tail 25                         # Bow Tail
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 0,1,2
+    use t25 51 42
+  endif
+end
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 3,4
+    use t25 0 32
+  endif
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 140
+  use t25 100 0
+end
+
+def t26 X Y
+  mat skin dark
+  shade ball
+  solid
+  capsule $X $Y $X+45 $Y-21 7 6
+  capsule $X+45 $Y-21 $X+77 $Y-86 6 6
+  capsule $X+77 $Y-86 $X+51 $Y-171 6 6
+  capsule $X+51 $Y-171 $X+26 $Y-118 6 6
+  capsule $X+26 $Y-118 $X+39 $Y-86 6 6
+enddef
+list tail 26                         # Looped Tail
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 0,1,2
+    use t26 51 42
+  endif
+end
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 3,4
+    use t26 0 32
+  endif
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 140
+  use t26 100 0
+end
+
+def t27 X Y
+  mat accessory_color
+  shade ball
+  solid
+  ellipse $X+6 $Y 14 24
+  ellipse $X+26 $Y-21 14 24
+  ellipse $X+45 $Y-54 14 24
+  ellipse $X+58 $Y-96 14 24
+  ellipse $X+64 $Y-139 14 24
+  ellipse $X+64 $Y-182 17 28
+enddef
+list tail 27                         # Chain Tail
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 0,1,2
+    use t27 51 42
+  endif
+end
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 3,4
+    use t27 0 32
+  endif
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 140
+  use t27 100 0
+end
+
+def t28 X Y
+  mat skin dark
+  shade ball
+  solid
+  ellipse $X+39 $Y-128 31 118
+  mat skin light
+  shade ball
+  solid
+  capsule $X+26 $Y-43 $X+51 $Y-214 9 12
+enddef
+list tail 28                         # Skunk Plume
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 0,1,2
+    use t28 51 42
+  endif
+end
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 3,4
+    use t28 0 32
+  endif
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 140
+  use t28 100 0
+end
+
+def t29 X Y
+  mat skin
+  shade ball
+  solid
+  capsule $X+13 $Y $X+39 $Y-128 15 13
+  capsule $X+39 $Y-128 $X+19 $Y-182 13 12
+  capsule $X+19 $Y-182 $X-6 $Y-160 12 10
+  mat accessory_color
+  shade ball
+  decal
+  line $X+13 $Y-32 $X+39 $Y-43 1
+  line $X+19 $Y-75 $X+45 $Y-86 1
+  line $X+26 $Y-118 $X+51 $Y-128 1
+enddef
+list tail 29                         # Candy Cane Tail
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 0,1,2
+    use t29 51 42
+  endif
+end
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 3,4
+    use t29 0 32
+  endif
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 140
+  use t29 100 0
+end
+
+def t30 X Y
+  mat skin dark
+  shade ball
+  solid
+  capsule $X $Y $X+32 $Y-21 14 12
+  ellipse $X+71 $Y-54 39 39
+  mat skin light
+  shade ball
+  decal
+  line $X+45 $Y-54 $X+96 $Y-54 1
+  line $X+58 $Y-86 $X+58 $Y-21 1
+  line $X+77 $Y-86 $X+77 $Y-21 1
+enddef
+list tail 30                         # Beaver Paddle
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 0,1,2
+    use t30 51 42
+  endif
+end
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 3,4
+    use t30 0 32
+  endif
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 140
+  use t30 100 0
+end
+
+def t31 X Y
+  mat skin
+  shade ball
+  solid
+  capsule $X $Y $X+51 $Y-54 15 12
+  capsule $X+51 $Y-54 $X+77 $Y-160 12 6
+  capsule $X $Y $X+64 $Y-11 15 12
+  capsule $X+64 $Y-11 $X+103 $Y-96 12 6
+enddef
+list tail 31                         # Twin Tails
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 0,1,2
+    use t31 51 42
+  endif
+end
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  ifyaw 3,4
+    use t31 0 32
+  endif
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 140
+  use t31 100 0
+end

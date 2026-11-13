@@ -9,34 +9,41 @@ extern const PartSet doomo_parts_hair;
 extern const PartSet doomo_parts_hat;
 extern const PartSet doomo_parts_head;
 extern const PartSet doomo_parts_outfit;
+extern const PartSet doomo_parts_spooky;
 
-const PartSet *const doomo_part_scripts[6] = {
+const PartSet *const doomo_part_scripts[7] = {
     &doomo_parts_beard,
     &doomo_parts_face,
     &doomo_parts_hair,
     &doomo_parts_hat,
     &doomo_parts_head,
     &doomo_parts_outfit,
+    &doomo_parts_spooky,
 };
-const uint8_t doomo_part_script_count = 6;
+const uint8_t doomo_part_script_count = 7;
 
-const PartListSet doomo_part_script_lists[8] = {
+const PartListSet doomo_part_script_lists[13] = {
     { 4, 4, 31 },
     { 6, 1, 63 },
     { 20, 2, 32 },
     { 23, 0, 8 },
+    { 25, 6, 16 },
+    { 28, 6, 16 },
+    { 29, 6, 10 },
+    { 30, 6, 12 },
     { 34, 5, 24 },
     { 40, 3, 24 },
     { 42, 5, 20 },
+    { 44, 6, 8 },
     { 78, 1, 31 },
 };
-const uint8_t doomo_part_script_nlists = 8;
+const uint8_t doomo_part_script_nlists = 13;
 
 /* the smallest scripted value of each gene list (0xFF: none) */
 const uint8_t doomo_part_minv[128] = {
     255, 255, 255, 255, 31, 255, 63, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-    255, 255, 255, 255, 32, 255, 255, 8, 255, 255, 255, 255, 255, 255, 255, 255,
-    255, 255, 24, 255, 255, 255, 255, 255, 24, 255, 20, 255, 255, 255, 255, 255,
+    255, 255, 255, 255, 32, 255, 255, 8, 255, 16, 255, 255, 16, 10, 12, 255,
+    255, 255, 24, 255, 255, 255, 255, 255, 24, 255, 20, 255, 8, 255, 255, 255,
     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 31, 255,
     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,

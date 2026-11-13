@@ -1,0 +1,386 @@
+# core/data/parts/spooky/wings_b.txt - spooky batch A3 (CR4): 14 wings on the gene list values 10..23.
+# A wing pair is one image-wide script (the painter draws every block once: behind the body from the
+# front, over it from the back). Torso anchor, `mirror on`, `scale 255` (about x4): on the figure the torso
+# is 10 px half-wide and 6 px half-high, so a written x step is 0.16 px and a y step 0.09 px. Each pair is
+# a template `wNN Y` (Y: the vertical offset, 0 on the figure); a smaller scale draws it on the bust.
+
+def w10 X Y
+  mat accessory_color light
+  shade ball
+  solid
+  ellipse $X+77 $Y-54 35 45
+  solid same
+  ellipse $X+100 $Y-11 27 34
+  solid same
+  mat accessory_color
+  shade ball
+  decal
+  line $X+64 $Y-54 $X+103 $Y-54 1
+  line $X+84 $Y-11 $X+116 $Y-11 1
+enddef
+list wings 10                        # Cherub Mini
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  mirror on
+  use w10 0 0
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 150
+  mirror on
+  use w10 38 -40
+end
+
+def w11 X Y
+  mat skin dark
+  shade ball
+  solid
+  ellipse $X+71 $Y-75 51 64
+  solid same
+  ellipse $X+64 $Y+21 39 48
+  solid same
+  mat horn_color light
+  shade ball
+  decal
+  ellipse $X+77 $Y-75 15 24
+  ellipse $X+71 $Y+21 12 17
+enddef
+list wings 11                        # Moth
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  mirror on
+  use w11 0 0
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 150
+  mirror on
+  use w11 38 -40
+end
+
+def w12 X Y
+  mat skin dark
+  shade ball
+  solid
+  capsule $X+39 $Y-43 $X+122 $Y-139 15 7
+  solid same
+  capsule $X+39 $Y-32 $X+135 $Y-54 15 7
+  solid same
+  capsule $X+39 $Y-21 $X+129 $Y+32 15 7
+  solid same
+  capsule $X+39 $Y $X+103 $Y+96 14 7
+  solid same
+enddef
+list wings 12                        # Raven
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  mirror on
+  use w12 0 0
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 150
+  mirror on
+  use w12 38 -40
+end
+
+def w13 X Y
+  mat accessory_color light
+  shade ball
+  solid
+  ellipse $X+96 $Y-96 58 20
+  solid same
+  ellipse $X+90 $Y-43 51 18
+  solid same
+  ellipse $X+84 $Y+11 45 18
+  solid same
+  ellipse $X+77 $Y+54 32 16
+  solid same
+enddef
+list wings 13                        # Dragonfly
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  mirror on
+  use w13 0 0
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 150
+  mirror on
+  use w13 38 -40
+end
+
+def w14 X Y
+  mat accessory_color light
+  shade ball
+  solid
+  tri $X+32 $Y-43 $X+141 $Y-160 $X+77 $Y+11
+  solid same
+  mat accessory_color
+  shade ball
+  solid
+  tri $X+32 $Y-32 $X+109 $Y+96 $X+77 $Y+11
+  solid same
+  mat accessory_color dark
+  shade ball
+  decal
+  line $X+32 $Y-43 $X+77 $Y+11 1
+enddef
+list wings 14                        # Paper Wings
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  mirror on
+  use w14 0 0
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 150
+  mirror on
+  use w14 38 -40
+end
+
+def w15 X Y
+  mat accessory_color
+  shade ball
+  solid
+  ellipse $X+103 $Y-160 39 75
+  solid same
+  mat accessory_color dark
+  shade ball
+  decal
+  line $X+51 $Y-32 $X+90 $Y-96 1
+  mat accessory_color light
+  shade ball
+  decal
+  dot $X+90 $Y-182 3
+  dot $X+96 $Y-171 3
+enddef
+list wings 15                        # Balloon Wings
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  mirror on
+  use w15 0 0
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 150
+  mirror on
+  use w15 38 -40
+end
+
+def w16 X Y
+  mat accessory_color
+  shade ball
+  solid
+  capsule $X+39 $Y-32 $X+84 $Y-86 10 32
+  solid same
+  capsule $X+84 $Y-86 $X+135 $Y-139 32 6
+  solid same
+  mat accessory_color dark
+  shade ball
+  decal
+  line $X+45 $Y-32 $X+129 $Y-128 1
+enddef
+list wings 16                        # Leaf Wings
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  mirror on
+  use w16 0 0
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 150
+  mirror on
+  use w16 38 -40
+end
+
+def w17 X Y
+  mat accessory_color dark
+  shade ball
+  solid
+  tri $X+32 $Y-54 $X+129 $Y-160 $X+109 $Y-32
+  solid same
+  tri $X+32 $Y-11 $X+129 $Y+11 $X+103 $Y+107
+  solid same
+  mat accessory_color
+  shade ball
+  solid
+  tri $X+45 $Y-43 $X+103 $Y-107 $X+96 $Y-43
+  solid same
+enddef
+list wings 17                        # Jet Fins
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  mirror on
+  use w17 0 0
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 150
+  mirror on
+  use w17 38 -40
+end
+
+def w18 X Y
+  mat skin light
+  shade ball
+  solid
+  ellipse $X+84 $Y-64 35 45
+  solid same
+  ellipse $X+122 $Y-32 32 43
+  solid same
+  ellipse $X+96 $Y+21 36 41
+  solid same
+  ellipse $X+58 $Y-11 26 36
+  solid same
+enddef
+list wings 18                        # Cloud Puffs
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  mirror on
+  use w18 0 0
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 150
+  mirror on
+  use w18 38 -40
+end
+
+def w19 X Y
+  mat accessory_color
+  shade ball
+  solid
+  ellipse $X+109 $Y-86 30 47
+  solid same
+  ellipse $X+109 $Y 30 47
+  solid same
+  tri $X+32 $Y-43 $X+141 $Y-128 $X+141 $Y+43
+  solid same
+enddef
+list wings 19                        # Heart Wings
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  mirror on
+  use w19 0 0
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 150
+  mirror on
+  use w19 38 -40
+end
+
+def w20 X Y
+  mat accessory_color
+  shade ball
+  solid
+  tri $X+32 $Y-43 $X+96 $Y-160 $X+148 $Y-43
+  solid same
+  tri $X+32 $Y-43 $X+148 $Y-43 $X+96 $Y+86
+  solid same
+  mat accessory_color light
+  shade ball
+  decal
+  line $X+32 $Y-43 $X+148 $Y-43 1
+  line $X+96 $Y-160 $X+96 $Y+86 1
+  dot $X+64 $Y-86 3
+  dot $X+122 $Y-86 3
+  dot $X+64 $Y 3
+  dot $X+122 $Y 3
+enddef
+list wings 20                        # Stained Glass
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  mirror on
+  use w20 0 0
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 150
+  mirror on
+  use w20 38 -40
+end
+
+def w21 X Y
+  mat skin light
+  shade ball
+  solid
+  tri $X+39 $Y-43 $X+71 $Y-203 $X+77 $Y-21
+  solid same
+  tri $X+45 $Y-32 $X+141 $Y-150 $X+96 $Y
+  solid same
+  tri $X+45 $Y $X+154 $Y-11 $X+96 $Y+43
+  solid same
+  tri $X+39 $Y+21 $X+122 $Y+128 $X+71 $Y+54
+  solid same
+  tri $X+58 $Y-11 $X+103 $Y-86 $X+109 $Y+32
+  solid same
+enddef
+list wings 21                        # Crystal Shards
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  mirror on
+  use w21 0 0
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 150
+  mirror on
+  use w21 38 -40
+end
+
+def w22 X Y
+  mat accessory_color
+  shade ball
+  solid
+  capsule $X+32 $Y-43 $X+77 $Y-96 9 8
+  solid same
+  capsule $X+77 $Y-96 $X+116 $Y-64 8 8
+  solid same
+  capsule $X+116 $Y-64 $X+148 $Y-128 8 6
+  solid same
+  capsule $X+32 $Y-11 $X+84 $Y+21 9 8
+  solid same
+  capsule $X+84 $Y+21 $X+122 $Y 8 8
+  solid same
+  capsule $X+122 $Y $X+148 $Y+54 8 6
+  solid same
+  capsule $X+32 $Y+21 $X+64 $Y+86 9 8
+  solid same
+  capsule $X+64 $Y+86 $X+96 $Y+75 8 6
+  solid same
+enddef
+list wings 22                        # Ribbon Streamers
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  mirror on
+  use w22 0 0
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 150
+  mirror on
+  use w22 38 -40
+end
+
+def w23 X Y
+  mat accessory_color
+  shade ball
+  solid
+  tri $X+32 $Y-43 $X+141 $Y-128 $X+141 $Y+32
+  solid same
+  mat accessory_color dark
+  shade ball
+  decal
+  line $X+32 $Y-43 $X+141 $Y-54 1
+  line $X+32 $Y-43 $X+141 $Y-128 1
+  line $X+32 $Y-43 $X+141 $Y+32 1
+  mat accessory_color light
+  shade ball
+  solid
+  ellipse $X+141 $Y-128 10 21
+  solid same
+  ellipse $X+141 $Y-54 10 21
+  solid same
+  ellipse $X+141 $Y+32 10 21
+  solid same
+enddef
+list wings 23                        # Parasol Wings
+block group=1 anchor=torso lod=all view=figure,fighter,chibi
+  scale 255
+  mirror on
+  use w23 0 0
+end
+block group=1 anchor=torso lod=all view=portrait
+  scale 150
+  mirror on
+  use w23 38 -40
+end
