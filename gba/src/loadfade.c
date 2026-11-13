@@ -13,8 +13,8 @@
  *
  * S2-10: a save (10.7 s for a Classic island), a load (6 s) and a New story / new island build (2 s) run inside one
  * tick: the codec and the build rebuild every citizen's base record, 5-6 ms each. The core calls plat_busy(kind)
- * first and plat_busy_step(done, total) once per citizen (save.c, town.c, sim.c), every 32 relationships and
- * (save_flash.c) every flash sector, so the main thread gets control every few ms. plat_busy arms the same IRQ watch
+ * first and plat_busy_step(done, total) once per citizen (save.c, town.c, sim.c), every 32 relationships, once per
+ * pass of rel_normalize's sort and (save_flash.c) every flash sector, so the main thread gets control every few ms. plat_busy arms the same IRQ watch
  * with a shorter fuse (BUSY_LATE vblanks) and a target: a save dims the picture to half (BLDY 8), a load or a build
  * fades it to black. The first plat_busy_step after the fuse paints a small card ("Saving..." / "Loading...") into
  * the Mode 4 page on screen (vid_rect / vid_text, the resident IWRAM primitives that draw into gba_back, which points
