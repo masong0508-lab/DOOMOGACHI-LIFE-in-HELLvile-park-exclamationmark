@@ -1,7 +1,9 @@
 /* audio_int.h - the Dreamcast sound mixer (DC5; owner: dreamcast).
  *
  * The core speaks to the platform through plat_tone() (four chiptune
- * channels; the music engine's legacy bridge and the voice babble) and
+ * channels: the voice babble, the comedy one-shots, the Concert Hall; and
+ * the music when it runs as the legacy bridge), plat_voice() (DC5b: the
+ * music engine's voices on its IRQ tier, see below) and
  * plat_sample() / plat_sample_ex() (one-shot effects). On the Dreamcast
  * those calls only change the mixer's "current state" on the main thread;
  * at the end of every logic tick dcsnd_push() applies that state and
@@ -39,6 +41,9 @@
 #define DCSND_QUEUE     16               /* PCM slots (power of two; 94 KB)    */
 #define DCSND_PREFILL   2                /* slots ready before playing         */
 #define DCSND_MAXLAG    4                /* more ready at a slot start: skip   */
+#define DCSND_MVOICES   8                /* music voices (DoomoVoice records;
+                                          * the core's driver has 4 today)     */
+#define DCSND_MT        8                /* driver ticks (mt) per logic tick   */
 
 typedef struct DcSndTone { uint16_t freq; uint8_t vol, wave; } DcSndTone;   /* plat_tone */
 typedef struct DcSndTrig {
@@ -70,6 +75,51 @@ void dcsnd_trigger(int sfx, uint8_t vol, int8_t pan, uint8_t prio, int8_t semis)
 /* end of a tick: render it into the next slot; 0: the ring is full (the
  * state and the triggers wait for the next push, nothing is rendered) */
 int  dcsnd_push(void);
+
+/* ---- the music engine's IRQ tier (DC5b; musvoice.c makes these calls) ---------
+ * With a driver set, dcsnd_push() calls it DCSND_MT times per slot, each
+ * time right before it renders the frames of that mt (mt k of a slot starts
+ * at frame k * DCSND_PER_TICK / DCSND_MT, rounded down: 0, 183, 367, 551,
+ * 735, 918, 1102, 1286), so a record the driver sends from inside the call
+ * (dcsnd_mvoice) is heard from exactly that frame. The mixer renders on the
+ * main thread, the thread that runs music_update(), so nothing is locked.
+ * A push into a full ring still runs the driver (the music keeps the game's
+ * time, as the tone channels do) but renders nothing.
+ * NULL (the default): no driver, the music arrives as plat_tone (the legacy
+ * bridge). dcsnd_reset() leaves the hook as it is. */
+void dcsnd_set_driver(void (*tick)(void));
+/* one music voice, as the platform's renderer needs it */
+enum { DCMW_PULSE, DCMW_TRI, DCMW_SAW, DCMW_NOISE15, DCMW_NOISE7 };
+typedef struct DcSndMV {
+    uint16_t p16;                        /* pitch, 1/16 semitones above C0      */
+    uint16_t hz;                         /* noise: the LFSR's clock in Hz; 0 =
+                                          * clocked at the pitch                */
+    uint8_t  vol_l, vol_r;               /* 0..63 (63 = a tone at volume 15)    */
+    uint8_t  wave;                       /* DCMW_*                              */
+    uint8_t  duty;                       /* DCMW_PULSE: the duty in 1/32, 1..31 */
+    uint8_t  keyon, pad[3];              /* a note starts with this record      */
+} DcSndMV;
+/* voice v (0..DCSND_MVOICES-1) from the current render position on. Voices
+ * 0-3 sit where the tone channels do (lead and bass centre, harmony a
+ * little left, kit a little right); vol_l / vol_r pan on top of that.
+ * keyon restarts a noise voice's LFSR and phase (every hit sounds the
+ * same) and the phase of a pitched voice that was silent (a sounding one
+ * keeps its phase: no click on a legato note). */
+void dcsnd_mvoice(int v, const DcSndMV *m);
+/* the music bus: 255 = full, 0 = mute (S1's mute and duck); the sample
+ * voices and the tone channels are not on it */
+void dcsnd_music_gain(uint8_t gain);
+/* S1's tape stop: every music voice sounds down16 sixteenths of a semitone
+ * lower (0 = off), never below 20 Hz */
+void dcsnd_music_tape(int down16);
+/* the phase step (Q32 per output frame) of pitch p16 (tests) */
+uint32_t dcsnd_pitch_step(int p16);
+/* musvoice.c: plat_audio_caps / plat_voice / plat_audio_bus / plat_audio_fx
+ * of the IRQ tier, and the hook (a no-op when built with DC_MUSIC_IRQ=0) */
+void dc_music_init(void);
+void dc_music_tick(void);                /* the driver hook (S1's state, then mus_drv_tick) */
+void dc_music_sync_reset(void);          /* tests: a fresh game */
+
 /* 1 = a known pause (a load, a VMU write, a harness hold): an empty ring
  * then is not an underrun. It lasts until the next dcsnd_push(); 0 is a
  * no-op (the stream may reach the empty ring after the pause ended). */
@@ -90,6 +140,8 @@ typedef struct DcSndStats {
     uint32_t voice_frames;                /* frames rendered by sample voices   */
     uint32_t hash;                        /* FNV-1a of the rendered stream      */
     uint32_t hash600;                     /* the same after 600 slots (20 s)    */
+    uint32_t records;                     /* music voice records (dcsnd_mvoice) */
+    uint32_t drv_ticks;                   /* driver calls (8 per push)          */
 } DcSndStats;
 extern volatile DcSndStats dcsnd_stats;
 int dcsnd_queued(void);                   /* slots not finished (incl. playing) */

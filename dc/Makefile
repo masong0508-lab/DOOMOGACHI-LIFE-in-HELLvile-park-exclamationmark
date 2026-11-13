@@ -101,6 +101,9 @@ CDI   := $(BUILD)/doomogachi.cdi
 # KOS_LDFLAGS + KOS_LIBS to the link.
 # The core keeps to C99 (ARCHITECTURE.md); gnu99 is for the KOS headers.
 DEFS   := -DDOOMO_PLATFORM_DC=1
+# DC5b: MUSIC_IRQ=0 builds the music engine's legacy bridge instead of its IRQ tier
+MUSIC_IRQ ?= 1
+DEFS   += -DDC_MUSIC_IRQ=$(MUSIC_IRQ)
 # E10: an optional mature content pack on the disc (PACK=/path/pack.dmpk)
 PACK   ?=
 ifneq ($(strip $(PACK)),)

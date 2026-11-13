@@ -89,6 +89,7 @@ void dc_audio_init(void)
     int n;
     uint64_t t0 = timer_us_gettime64();
     dcsnd_reset();
+    dc_music_init();
     n = dc_sfx_init();
     if (snd_stream_init_ex(2, STREAM_BUF) < 0) {
         dc_log("DC: audio: snd_stream_init failed, no sound");

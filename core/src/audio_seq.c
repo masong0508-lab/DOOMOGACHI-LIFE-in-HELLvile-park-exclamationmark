@@ -583,7 +583,16 @@ void audio_channel_state(int c, DoomoToneState *out)
 {
     if (!out) return;
     if (c < 0 || c >= AUDIO_CH) { memset(out, 0, sizeof(*out)); return; }
-    *out = E.out[c];
+    if (mus_core_bridge() || c >= 4) { *out = E.out[c]; return; }
+    {   /* an IRQ tier sends the music itself: the view is the classic tone of voice c through S1's gains */
+        const DoomoToneState *t = &mus_bridge_tones[c];
+        uint16_t f = t->freq;
+        int v = t->vol;
+        audio_fx_music(c, &f, &v);
+        out->freq = v ? f : 0;
+        out->vol = (uint8_t)v;
+        out->wave = t->wave;
+    }
 }
 
 static uint8_t legacy_wave(const MusInst *in)

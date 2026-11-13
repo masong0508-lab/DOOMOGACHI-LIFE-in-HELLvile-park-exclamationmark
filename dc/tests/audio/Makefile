@@ -57,8 +57,8 @@ TEE_OBJS := $(BUILD)/sndtee.o $(BUILD)/plat_native_ref.o $(BUILD)/runner_main.o
 # the native sound calls become the reference (ref_*); sndtee.c defines plat_*
 REN_NAT := -Dplat_tone=ref_tone -Dplat_sample=ref_sample -Dplat_end_frame=ref_end_frame
 
-.PHONY: all test unit compare corelib clean
-all: $(BUILD)/test_audio $(BUILD)/dcsnd_runner
+.PHONY: all test unit compare tier corelib clean
+all: $(BUILD)/test_audio $(BUILD)/dcsnd_runner $(BUILD)/tier_irq $(BUILD)/tier_bridge
 
 # test_audio links the native platform as it is (plat_native.o), the
 # runner its renamed copy: both are built here, never assumed
@@ -97,13 +97,38 @@ $(BUILD)/test_audio: corelib $(SND_OBJS) $(BUILD)/test_audio.o
 	$(CC) $(LDFLAGS) -o $@ $(CORE_OBJS) $(NATIVE_OBJS) $(NATIVE_PLAT) \
 	    $(SND_OBJS) $(BUILD)/test_audio.o -lm
 
+# DC5b: test_tier twice (see its header): the IRQ tier with musvoice.c (its
+# three plat_ calls renamed so test_tier can tap them), and the legacy bridge
+TIER_REN := -Dplat_voice=dc_plat_voice -Dplat_audio_bus=dc_plat_audio_bus -Dplat_audio_fx=dc_plat_audio_fx -DDC_TAPE_OUT=dc_music_tape -DDC_BUS_OUT=dc_music_bus
+$(BUILD)/tier_mv.o: $(ROOT)/dc/src/musvoice.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(TIER_REN) -c $< -o $@
+$(BUILD)/tier_irq.o: $(HERE)/test_tier.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -DTIER_IRQ -c $< -o $@
+$(BUILD)/tier_bridge.o: $(HERE)/test_tier.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+$(BUILD)/voiceref.o: $(HERE)/voiceref.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+$(BUILD)/tier_irq: corelib $(BUILD)/plat_native_ref.o $(SND_OBJS) $(BUILD)/tier_mv.o $(BUILD)/tier_irq.o $(BUILD)/voiceref.o
+	$(CC) $(LDFLAGS) -o $@ $(CORE_OBJS) $(NATIVE_OBJS) $(BUILD)/plat_native_ref.o $(SND_OBJS) $(BUILD)/tier_mv.o \
+	    $(BUILD)/tier_irq.o $(BUILD)/voiceref.o -lm
+$(BUILD)/tier_bridge: corelib $(BUILD)/plat_native_ref.o $(SND_OBJS) $(BUILD)/tier_bridge.o
+	$(CC) $(LDFLAGS) -o $@ $(CORE_OBJS) $(NATIVE_OBJS) $(BUILD)/plat_native_ref.o $(SND_OBJS) $(BUILD)/tier_bridge.o -lm
+
+tier: $(BUILD)/tier_irq $(BUILD)/tier_bridge
+	$(RUN_ENV) $(BUILD)/tier_irq unit
+	$(RUN_ENV) sh $(HERE)/run_tier.sh $(BUILD)/tier_irq $(BUILD)/tier_bridge $(BUILD)/tier
+
 unit: $(BUILD)/test_audio
 	$(RUN_ENV) $(BUILD)/test_audio
 
 compare: $(BUILD)/dcsnd_runner
 	$(RUN_ENV) sh $(HERE)/run_compare.sh $(BUILD)/dcsnd_runner $(CORE)/tests/scripts $(BUILD)/wav
 
-test: unit compare
+test: unit tier compare
 
 clean:
 	rm -rf $(BUILD)

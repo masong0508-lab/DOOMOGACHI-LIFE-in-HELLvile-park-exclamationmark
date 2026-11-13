@@ -1006,30 +1006,57 @@ needs a shorter refill period: KallistiOS at 1,000 Hz (`thd_set_hz`), or
 our own AICA channel loop written from the main thread at a fixed point
 of the tick.
 
-**The music engine's tier.** The music engine runs as the legacy bridge
-(tier `AT_BRIDGE`, the core's weak `plat_audio_caps`), as on the GBA, the
-PS1 and native today (docs/AUDIO.md): its driver runs 8 mt a tick inside
-`music_update()` and its four voices reach the mixer as `plat_tone()`. The
-plan's IRQ tier (`CAP_DRV_IRQ`, `mus_drv_tick()` at 240 Hz, the voices as
-`DoomoVoice` records through `plat_voice`, buses and effects) is not done,
-on purpose: no port runs that tier yet (MU2 GBA and MU3 PS1 are open), the
-core's driver still leaves the ring updates for the IRQ ports to mask
-(`mus_drv.c`), S1's comic effects (mute, duck, tape stop) are applied only
-in the bridge's flush, and there is no `DoomoVoice`-level reference render
-(musrender works on `plat_tone`), so the Dreamcast would be the one port
-whose music differs, with nothing to check it against. The mixer is ready
-for it: it renders on the main thread, the thread that runs
-`music_update()`, so calling `mus_drv_tick()` every 1,470 / 8 frames inside
-`dcsnd_push()` gives the 240 Hz driver at sample-exact positions with no
-locking at all. What it still needs: a `plat_audio_caps` with
-`CAP_DRV_IRQ`, a voice renderer for `DoomoVoice` (pitch16, vol_l / vol_r,
-env, the instrument's timbre, kit hits, the `DVF_*` flags), the S1 effects
-in IRQ mode (core, MU1 / S1), the babble on voice 20, a reference render
-to compare with, and `plat_audio_bus` / `plat_audio_fx` (reverb, echo).
-The tape calls keep the weak defaults (0: unsupported; the bridge caps
-have no `CAP_TAPE`). `plat_sample_ex` (pan, priority, pitch) is
+**The music engine's tier (DC5b).** The music engine runs on its IRQ tier
+(`CAP_DRV_IRQ`, `AT_NATIVE`, `dc/src/musvoice.c`). The core's
+`music_update()` only writes events ahead; the mixer calls `mus_drv_tick()`
+8 times per slot from inside `dcsnd_push()`, mt k right before the frames
+of that mt (frame 0, 183, 367, 551, 735, 918, 1102, 1286 of the slot), on the
+main thread, the one that runs `music_update()`: no lock at all. A record
+the driver sends (`plat_voice`, on change only) reaches the mixer as one of
+8 music voices (`dcsnd_mvoice`) and is heard from exactly that frame. A push
+into a full ring still runs the driver (the music keeps the game's time) but
+renders nothing. `make -C dc MUSIC_IRQ=0` (`-DDC_MUSIC_IRQ=0`) builds the
+legacy bridge again.
+
+What the renderer does with a `DoomoVoice`: the pitch is `pitch16` to 1/16
+semitone (the bridge rounded to whole Hz: up to 30 cents off in the bass);
+`vol_l` / `vol_r` are 0..63 per side on top of the voice's place in the
+field (lead and bass centre, harmony a little left, kit a little right);
+the timbre follows the instrument (pulse with a duty of `tparam` / 32, saw,
+triangle, noise 15 / 7 bit; kit hits are the classic noise sweep, a key-on
+restarts the noise so every hit sounds the same; a key-on of a silent
+pitched voice starts at phase 0, a sounding voice keeps its phase). The
+soft envelope is already in the volume, so `env` and the hardware hints
+(`DVF_KEYOFF`, `LEGATO`, `REVERSE_ENV`, `SWEEP_HW`) do nothing. Voices 0-3
+also leave their classic tone in `mus_bridge_tones[]`: `audio_channel_state`
+(the jukebox meters) answers from it under an IRQ tier (`audio_seq.c`: no
+resident byte, the bridge path is unchanged).
+
+S1's effects: the core applies mute, duck and tape stop only in the bridge's
+flush, so `dc_music_tick()` asks `audio_fx_music()` once per logic tick (a
+probe with volume 256 gives the bus gain, a probe at 60,000 Hz the tape
+stop's pitch in sixteenths of a semitone) and sends the music bus
+(`dcsnd_music_gain`) and the tape stop (`dcsnd_music_tape`) on change.
+The tape stop's last step is 14 semitones, as in the core's table (232
+sixteenths, then 224, then the hold mute). `plat_audio_bus(0, g)` does the
+same for a core that sends the gain itself. `MFX_ECHO`, `REVERB`, `FREEZE`,
+`CRACKLE`, `PSG_DUCK` and `STEMS` are accepted and do nothing (the core
+never sends the first three). The voice babble and the comedy one-shots
+stay on the four tone channels. `latency_mt` is 0: music and effects share
+the one stream. The tape calls (`plat_tape_*`) keep the weak defaults; the
+core has no `CAP_TAPE` use here. `plat_sample_ex` (pan, priority, pitch) is
 implemented and tested on the host; the core does not call it yet, so
 `--gc-sections` drops it.
+
+Checked on the host (`make -C dc/tests/audio tier`, part of `test`):
+`test_tier` runs every song of the game (28) for up to 300 ticks on the
+IRQ tier and on the bridge (`DC5B_TICKS`); on the IRQ tier a reference
+renderer for `DoomoVoice` records (`voiceref.c`, a separate double-precision
+implementation) renders the same records at the same frames and the two
+streams must be within 1 LSB, with no driver under-run; both tiers must
+play the same number of key-ons. The unit tests (72 checks) cover the
+pitch, every record kind, 900 ticks of random records, mute, duck and tape
+stop, the babble and the comedy one-shots, the queue and the caps.
 
 ### Cost
 

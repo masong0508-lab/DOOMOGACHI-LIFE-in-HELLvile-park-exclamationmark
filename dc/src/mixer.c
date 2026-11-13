@@ -21,6 +21,14 @@
  *     stereo field (lead and bass centre, harmony / babble a little left,
  *     kit a little right), with constant-sum gains so L + R is the mono
  *     reference;
+ *   - (DC5b) up to 8 music voices, the DoomoVoice records of the music
+ *     engine's IRQ tier (dcsnd_mvoice, from musvoice.c's plat_voice): the
+ *     same oscillators with a pitch in 1/16 semitones (a 192-entry table
+ *     of phase steps, shifted per octave), any pulse duty in 1/32, the
+ *     7-bit noise, a volume of 0..63 per side, the music bus gain and the
+ *     tape stop's pitch. With a driver set (dcsnd_set_driver) dcsnd_push()
+ *     calls it 8 times a slot, before the frames of each mt, so the 240 Hz
+ *     driver's records land at sample-exact positions (audio_int.h);
  *   - 8 sample voices for plat_sample() / plat_sample_ex(): 16-bit PCM at
  *     the effect's own rate with linear interpolation, volume, pan, pitch in
  *     semitones and priority stealing (a free voice, else the lowest
@@ -68,8 +76,21 @@ typedef struct Voice {
     uint32_t age;
 } Voice;
 
+/* a music voice (DC5b): the last record, and what the oscillator runs on */
+typedef struct MVoice {
+    uint32_t ph, step, duty;
+    int32_t  gl, gr;                      /* 0 / 0: silent                       */
+    uint16_t lfsr;
+    uint8_t  wave, pad;
+    DcSndMV  m;
+} MVoice;
+
 static Tone     tone[DCSND_TONES];
 static Voice    voice[DCSND_VOICES];
+static MVoice   mv[DCSND_MVOICES];
+static uint8_t  m_gain = 255;             /* the music bus                       */
+static uint16_t m_tape;                   /* the tape stop, 1/16 semitones down  */
+static void   (*drv_tick)(void);          /* the 240 Hz music driver, or NULL    */
 static uint32_t age_ctr;
 static int32_t  dcx[2], dcy[2], lp[2];
 
@@ -84,10 +105,56 @@ static const int16_t tone_pan[DCSND_TONES][2] = { { 128, 128 }, { 152, 104 }, { 
 static const uint32_t semi_q16[12] = { 65536, 69433, 73562, 77936, 82570, 87480,
                                        92682, 98193, 104032, 110218, 116772, 123715 };
 
+/* the phase step (Q32 per output frame) of C8 .. B8 in 1/16 semitones:
+ * round(C0 * 2^(8 + i / 192) * 2^32 / 44100), C0 = 440 * 2^(-57/12) Hz.
+ * A lower octave is the same step shifted right (test_tier checks every
+ * pitch against the formula). */
+static const uint32_t step_c8[192] = {
+    407681904u, 409156353u, 410636135u, 412121268u, 413611773u, 415107669u, 416608975u, 418115710u,
+    419627895u, 421145549u, 422668692u, 424197343u, 425731523u, 427271252u, 428816550u, 430367436u,
+    431923931u, 433486056u, 435053830u, 436627274u, 438206409u, 439791256u, 441381834u, 442978164u,
+    444580268u, 446188167u, 447801880u, 449421430u, 451046837u, 452678123u, 454315309u, 455958415u,
+    457607465u, 459262478u, 460923477u, 462590483u, 464263518u, 465942604u, 467627763u, 469319017u,
+    471016387u, 472719896u, 474429566u, 476145419u, 477867478u, 479595765u, 481330303u, 483071114u,
+    484818220u, 486571646u, 488331413u, 490097545u, 491870064u, 493648994u, 495434357u, 497226178u,
+    499024479u, 500829283u, 502640616u, 504458499u, 506282957u, 508114013u, 509951692u, 511796017u,
+    513647012u, 515504702u, 517369110u, 519240261u, 521118180u, 523002890u, 524894417u, 526792785u,
+    528698018u, 530610142u, 532529182u, 534455162u, 536388108u, 538328045u, 540274997u, 542228992u,
+    544190053u, 546158206u, 548133478u, 550115894u, 552105479u, 554102260u, 556106263u, 558117514u,
+    560136038u, 562161863u, 564195015u, 566235520u, 568283405u, 570338696u, 572401421u, 574471605u,
+    576549277u, 578634463u, 580727191u, 582827487u, 584935380u, 587050895u, 589174062u, 591304908u,
+    593443461u, 595589747u, 597743796u, 599905636u, 602075294u, 604252800u, 606438180u, 608631465u,
+    610832681u, 613041859u, 615259027u, 617484213u, 619717447u, 621958758u, 624208175u, 626465728u,
+    628731445u, 631005357u, 633287492u, 635577882u, 637876554u, 640183541u, 642498871u, 644822575u,
+    647154683u, 649495225u, 651844232u, 654201735u, 656567764u, 658942351u, 661325525u, 663717318u,
+    666117762u, 668526888u, 670944726u, 673371309u, 675806668u, 678250835u, 680703842u, 683165720u,
+    685636503u, 688116221u, 690604907u, 693102595u, 695609315u, 698125102u, 700649987u, 703184004u,
+    705727186u, 708279565u, 710841176u, 713412051u, 715992224u, 718581729u, 721180599u, 723788868u,
+    726406571u, 729033741u, 731670412u, 734316620u, 736972398u, 739637780u, 742312803u, 744997501u,
+    747691908u, 750396060u, 753109992u, 755833739u, 758567337u, 761310822u, 764064229u, 766827594u,
+    769600953u, 772384343u, 775177799u, 777981358u, 780795057u, 783618932u, 786453020u, 789297357u,
+    792151982u, 795016931u, 797892242u, 800777952u, 803674098u, 806580719u, 809497852u, 812425535u,
+};
+#define P16_MAX   (192 * 9 - 1)           /* B8 + 15/16                          */
+#define P16_20HZ  56                      /* the first pitch at or above 20 Hz   */
+
+uint32_t dcsnd_pitch_step(int p16)
+{
+    int oct;
+    if (p16 < 1) p16 = 1;
+    if (p16 > P16_MAX) p16 = P16_MAX;
+    oct = p16 / 192;
+    return step_c8[p16 - oct * 192] >> (8 - oct);
+}
+
 void dcsnd_reset(void)
 {
     int c;
     memset(&cur, 0, sizeof(cur));
+    memset(mv, 0, sizeof(mv));
+    for (c = 0; c < DCSND_MVOICES; c++) mv[c].lfsr = 0x7FFF;
+    m_gain = 255;
+    m_tape = 0;
     q_wr = q_rd = 0;
     stalled = 0;
     memset(tone, 0, sizeof(tone));
@@ -193,16 +260,18 @@ static void start_voice(const DcSndTrig *t)
 #define BLOCK 128
 static int32_t acc_l[BLOCK], acc_r[BLOCK];
 
-/* one tone channel into the block: +-4096 * vol per sample, panned */
-static void tone_block(Tone *t, const int16_t pan[2], int n)
+/* one oscillator into the block: +-4096 per sample times the two gains.
+ * wave is DCMW_*; duty the pulse's high part of the phase (Q32). */
+static void osc_block(uint32_t *php, uint32_t step, uint16_t *lfsrp, int wave, uint32_t duty,
+                      int32_t gl, int32_t gr, int n)
 {
-    const int32_t gl = pan[0] * t->vol, gr = pan[1] * t->vol;
-    uint32_t ph = t->ph, step = t->step;
+    uint32_t ph = *php;
     int i;
-    if (!t->vol || !t->freq) return;
-    switch (t->wave) {
-    case WAVE_NOISE: {
-        uint32_t lfsr = t->lfsr;
+    switch (wave) {
+    case DCMW_NOISE15:
+    case DCMW_NOISE7: {
+        const uint32_t tap7 = wave == DCMW_NOISE7;
+        uint32_t lfsr = *lfsrp;
         for (i = 0; i < n; i++) {
             uint32_t p0 = ph;
             int32_t s;
@@ -210,15 +279,16 @@ static void tone_block(Tone *t, const int16_t pan[2], int n)
             if (ph < p0) {                /* the LFSR clocks at the frequency */
                 uint32_t bit = (lfsr ^ (lfsr >> 1)) & 1u;
                 lfsr = (lfsr >> 1) | (bit << 14);
+                if (tap7) lfsr = (lfsr & ~0x40u) | (bit << 6);   /* the short, metallic one */
             }
             s = (lfsr & 1) ? 4096 : -4096;
             acc_l[i] += s * gl;
             acc_r[i] += s * gr;
         }
-        t->lfsr = (uint16_t)lfsr;
+        *lfsrp = (uint16_t)lfsr;
         break;
     }
-    case WAVE_TRIANGLE:
+    case DCMW_TRI:
         for (i = 0; i < n; i++) {
             int32_t u = (int32_t)(ph >> 16), s;
             s = ((u < 32768 ? u : 65535 - u) - 16384) >> 2;
@@ -227,7 +297,7 @@ static void tone_block(Tone *t, const int16_t pan[2], int n)
             acc_r[i] += s * gr;
         }
         break;
-    case WAVE_SAW:
+    case DCMW_SAW:
         for (i = 0; i < n; i++) {
             int32_t s = ((int32_t)(ph >> 16) - 32768) >> 3;
             ph += step;
@@ -235,9 +305,7 @@ static void tone_block(Tone *t, const int16_t pan[2], int n)
             acc_r[i] += s * gr;
         }
         break;
-    default: {                            /* the pulses: 12.5 / 25 / 50 % */
-        const uint32_t duty = t->wave == WAVE_PULSE12 ? 0x20000000u :
-                              t->wave == WAVE_PULSE25 ? 0x40000000u : 0x80000000u;
+    default: {                            /* the pulse */
         const int32_t hl = 4096 * gl, hr = 4096 * gr;
         for (i = 0; i < n; i++) {
             if (ph < duty) { acc_l[i] += hl; acc_r[i] += hr; }
@@ -247,8 +315,96 @@ static void tone_block(Tone *t, const int16_t pan[2], int n)
         break;
     }
     }
-    t->ph = ph;
+    *php = ph;
 }
+
+/* one tone channel into the block: +-4096 * vol per sample, panned */
+static void tone_block(Tone *t, const int16_t pan[2], int n)
+{
+    int wave = DCMW_PULSE;
+    uint32_t duty = 0x80000000u;
+    if (!t->vol || !t->freq) return;
+    switch (t->wave) {
+    case WAVE_NOISE:    wave = DCMW_NOISE15; break;
+    case WAVE_TRIANGLE: wave = DCMW_TRI; break;
+    case WAVE_SAW:      wave = DCMW_SAW; break;
+    case WAVE_PULSE12:  duty = 0x20000000u; break;
+    case WAVE_PULSE25:  duty = 0x40000000u; break;
+    default: break;                       /* 50 % */
+    }
+    osc_block(&t->ph, t->step, &t->lfsr, wave, duty, pan[0] * t->vol, pan[1] * t->vol, n);
+}
+
+/* ---- the music voices (DC5b) ------------------------------------------------------------ */
+/* a tone at volume 15 and a music voice at 63 are equally loud: the gain is
+ * place * vol * 15 / 63, times the bus (255 = 1) */
+static int32_t mv_gain(int place, int vol)
+{
+    return (int32_t)(((uint32_t)place * (uint32_t)vol * m_gain * 15u + 8032u) / 16065u);
+}
+
+/* the voice's step and gains from its record, the bus and the tape stop */
+static void mv_apply(int v)
+{
+    MVoice *o = &mv[v];
+    const DcSndMV *m = &o->m;
+    const int16_t *pan = tone_pan[v < DCSND_TONES ? v : 0];
+    uint32_t step;
+    if (m->wave >= DCMW_NOISE15 && m->hz) {
+        step = (uint32_t)(((uint64_t)m->hz << 32) / DCSND_RATE);
+        if (m_tape) {                     /* x 2^(-tape / 192), not below 20 Hz */
+            int oct = m_tape / 192, r = m_tape - oct * 192;
+            if (r) step = (uint32_t)(((uint64_t)step * step_c8[192 - r]) / step_c8[0]) >> 1;
+            step >>= oct;
+            if (step < 1947816u) step = 1947816u;      /* 20 Hz */
+        }
+    } else if (m->p16) {
+        int p = m->p16;
+        if (m_tape) { p -= m_tape; if (p < P16_20HZ) p = P16_20HZ; }
+        step = dcsnd_pitch_step(p);
+    } else step = 0;
+    o->step = step;
+    o->gl = step ? mv_gain(pan[0], m->vol_l) : 0;
+    o->gr = step ? mv_gain(pan[1], m->vol_r) : 0;
+}
+
+void dcsnd_mvoice(int v, const DcSndMV *m)
+{
+    MVoice *o;
+    if (v < 0 || v >= DCSND_MVOICES || !m) return;
+    o = &mv[v];
+    if (m->keyon) {
+        if (m->wave >= DCMW_NOISE15) { o->lfsr = 0x7FFF; o->ph = 0; }
+        else if (!(o->gl | o->gr)) o->ph = 0;
+    }
+    o->m = *m;
+    if (o->m.vol_l > 63) o->m.vol_l = 63;
+    if (o->m.vol_r > 63) o->m.vol_r = 63;
+    o->wave = m->wave <= DCMW_NOISE7 ? m->wave : DCMW_PULSE;
+    o->duty = (uint32_t)(m->duty < 1 ? 16 : m->duty > 31 ? 31 : m->duty) << 27;
+    mv_apply(v);
+    dcsnd_stats.records++;
+}
+
+void dcsnd_music_gain(uint8_t gain)
+{
+    int v;
+    if (gain == m_gain) return;
+    m_gain = gain;
+    for (v = 0; v < DCSND_MVOICES; v++) mv_apply(v);
+}
+
+void dcsnd_music_tape(int down16)
+{
+    int v;
+    if (down16 < 0) down16 = 0;
+    if (down16 > 16 * 48) down16 = 16 * 48;
+    if ((uint16_t)down16 == m_tape) return;
+    m_tape = (uint16_t)down16;
+    for (v = 0; v < DCSND_MVOICES; v++) mv_apply(v);
+}
+
+void dcsnd_set_driver(void (*tick)(void)) { drv_tick = tick; }
 
 /* one sample voice into the block (linear interpolation; the guard sample
  * at len makes pcm[ipos + 1] safe). The weight is the position's top 15
@@ -331,6 +487,10 @@ static void synth(int16_t *out, int n)
         memset(acc_l, 0, (size_t)m * sizeof(int32_t));
         memset(acc_r, 0, (size_t)m * sizeof(int32_t));
         for (c = 0; c < DCSND_TONES; c++) tone_block(&tone[c], tone_pan[c], m);
+        for (c = 0; c < DCSND_MVOICES; c++) {
+            MVoice *o = &mv[c];
+            if (o->gl | o->gr) osc_block(&o->ph, o->step, &o->lfsr, o->wave, o->duty, o->gl, o->gr, m);
+        }
         for (c = 0; c < DCSND_VOICES; c++) if (voice[c].on) voice_block(&voice[c], m);
         for (i = 0; i < m; i++) {
             int16_t l = out_sample(0, acc_l[i]), r = out_sample(1, acc_r[i]);
@@ -351,12 +511,24 @@ int dcsnd_push(void)
     int c, i;
     if (used >= DCSND_QUEUE) {            /* the stream is not taking slots */
         dcsnd_stats.overruns++;
+        /* the music keeps the game's time (its records still reach the voices) */
+        if (drv_tick) for (i = 0; i < DCSND_MT; i++) { drv_tick(); dcsnd_stats.drv_ticks++; }
         return 0;                         /* the state and triggers wait for the next push */
     }
     for (c = 0; c < DCSND_TONES; c++) set_tone(c, &cur.tone[c]);
     for (i = 0; i < cur.ntrig; i++) start_voice(&cur.trig[i]);
     cur.ntrig = 0;
-    synth(ring[q_wr & (DCSND_QUEUE - 1)], DCSND_PER_TICK);
+    if (!drv_tick) synth(ring[q_wr & (DCSND_QUEUE - 1)], DCSND_PER_TICK);
+    else {
+        /* the IRQ tier: the driver's mt k, then the frames of mt k */
+        int16_t *slot = ring[q_wr & (DCSND_QUEUE - 1)];
+        for (i = 0; i < DCSND_MT; i++) {
+            int f0 = i * DCSND_PER_TICK / DCSND_MT, f1 = (i + 1) * DCSND_PER_TICK / DCSND_MT;
+            drv_tick();
+            dcsnd_stats.drv_ticks++;
+            synth(slot + f0 * 2, f1 - f0);
+        }
+    }
     n = dcsnd_stats.pushed + 1;
     if (n == 600) dcsnd_stats.hash600 = dcsnd_stats.hash;
     DCSND_BARRIER();
