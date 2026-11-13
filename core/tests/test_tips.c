@@ -130,6 +130,26 @@ TEST(cl4_every_tip_has_a_voice_a_plain_line_and_fits_the_gba_screen)
     CHECK(tip_plain_text(TIP_COUNT, buf, (int)sizeof buf) == NULL);
 }
 
+/* STKOPT: on the one-stick pad the shooter tip names what the stick really does */
+TEST(stkopt_shooter_tip_follows_the_stick_mode)
+{
+    char buf[TIP_PLAIN_MAX];
+    test_reset();
+    input_set_pad(PAD_DC);
+    input_set_analog(1, 0, 0, 0, 0, 0);
+    input_set_caps(INPUT_CAP_TRIGGERS, 0, 0);          /* one stick: no INPUT_CAP_RSTICK */
+    opt_set(OPT_CONTROL_SCHEME, CONTROLS_AUTO);
+    opt_set(OPT_STICK_MODE, STICK_TURN);
+    CHECK(strstr(tip_plain_text(TIP_SHOOTER, buf, (int)sizeof buf), "walk and turn"));
+    opt_set(OPT_STICK_MODE, STICK_STRAFE);
+    CHECK(strstr(tip_plain_text(TIP_SHOOTER, buf, (int)sizeof buf), "walk and step aside"));
+    CHECK(strstr(tip_plain_text(TIP_SHOOTER, buf, (int)sizeof buf), "triggers: turn"));
+    opt_set(OPT_STICK_MODE, STICK_TURN);
+    input_set_analog(0, 0, 0, 0, 0, 0);
+    input_set_pad(-1);
+    opt_set(OPT_CONTROL_SCHEME, CONTROLS_MODERN);
+}
+
 TEST(cl4_options_game_page_has_tips_and_show_again)
 {
     test_reset();

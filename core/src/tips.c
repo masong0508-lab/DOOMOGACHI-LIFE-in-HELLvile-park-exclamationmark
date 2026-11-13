@@ -106,7 +106,8 @@ static const char *tip_plain(int id)
         if (s == CONTROLS_CLASSIC)
             return "D-pad: walk and turn. Hold %L: step aside and look. A: shoot. B: jump, hold to run. START: pause.";
         if (DOOMO_TRIGGERS && s == CONTROLS_DUAL_STICK && !(input_caps() & INPUT_CAP_RSTICK))
-            return "Stick: walk and turn. L/R triggers: step aside. A: shoot. B: jump, hold to run. START: pause.";
+            return opt_get(OPT_STICK_MODE) ? "Stick: walk and step aside. L/R triggers: turn. A: shoot. B: jump, hold to run. START: pause." :
+                   "Stick: walk and turn. L/R triggers: step aside. A: shoot. B: jump, hold to run. START: pause.";
         if (s == CONTROLS_DUAL_STICK)
             return "Left stick: walk. Right stick: look. A: shoot. B: jump, hold to run. START: pause.";
     }

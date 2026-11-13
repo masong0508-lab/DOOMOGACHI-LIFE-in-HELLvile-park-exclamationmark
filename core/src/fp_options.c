@@ -164,7 +164,7 @@ static const char *const help_controls[PAD_COUNT] = {
     "Auto: two sticks when the pad has them. Classic: hold L to strafe/look. Modern: R / L turn.",
     "Classic: hold L to strafe and look. Modern: D-pad strafes, R / L turn.",
     "Auto: DualShock sticks, no ANALOG press. Classic: hold L1 to strafe/look. Modern: R1/R2 turn.",
-    "Auto: the stick turns, triggers strafe. Classic: hold L to strafe/look. Modern: R / L turn."
+    "Auto: stick and triggers (see Stick). Classic: hold L to strafe/look. Modern: R / L turn."
 };
 static const char *const help_turn[PAD_COUNT] = {
     "Modern controls: Normal = R turns right, R2 / L left. Swapped turns the other way.",
@@ -184,7 +184,7 @@ static const char *help_of(int opt)
     if (opt == OPT_CAMERA_DEFAULT) return help_camera[input_pad()];
     if (opt == OPT_LOSS) return "Family members can be lost over a life. Off: nobody is ever lost.";
     if (opt == OPT_RUMBLE) return "Controller rumble, apart from Screen shake.";
-    if (opt == OPT_STICK_MODE) return "One-stick pad. Turn: stick X turns, L / R strafe. Strafe: stick X strafes, L / R turn.";
+    if (opt == OPT_STICK_MODE) return "Controls: Auto only. Turn: stick X turns, L / R strafe. Strafe: stick X strafes, L / R turn.";
     if (opt == OPT_TIPS) return "A short card the first time you reach a new place: what it is and which buttons do what.";
     if (opt == OPT_MATURE)
         /* (CL5 land) three lines at 240x160 (it took five, and the help pill shows three) */
@@ -343,7 +343,7 @@ static void cb_defaults(int yes)
 }
 
 /* U2: the options a preset may change: not language, volumes, Mature, Monster Mode, cheats, skins and
- * themes, cursor, camera filter, nor anything on the Performance page. */
+ * themes, cursor, camera filter, the tips, the pad's stick mode, nor anything on the Performance page. */
 static int preset_may(int opt)
 {
     const DoomoOptionInfo *oi = info_of(opt);
@@ -351,7 +351,7 @@ static int preset_may(int opt)
     switch (opt) {
     case OPT_MONSTER_MODE: case OPT_LANGUAGE: case OPT_MUSIC_VOL: case OPT_SFX_VOL: case OPT_VOICE_VOL:
     case OPT_MATURE: case OPT_WINDOW_SKIN: case OPT_TITLE_THEME: case OPT_CURSOR: case OPT_CAMERA_FILTER:
-    case OPT_TIPS:
+    case OPT_TIPS: case OPT_STICK_MODE:      /* (STKOPT) a pad preference, not a game setting */
         return 0;
     }
     return 1;

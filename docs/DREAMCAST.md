@@ -730,11 +730,22 @@ strafe. Strafe: the stick's X strafes and the triggers turn (pressure =
 speed, eased like the stick). It is `OPT_STICK_MODE`, the last id of the
 second option table (OPT2); it rides in the 'OPT2' chunk (one more byte,
 inside `SAVE_EXT_MAX_OPT2`). A chunk from before it (or a save with no chunk)
-loads as Turn. Test: `sticks_option_strafe_mode`, `u0_opt2_chunk_round_trip`.
+loads as Turn. A preset and the Quick page's presets leave it alone (it is a
+pad preference, like Tips), but "Reset page" on the Controls page does set it
+back to Turn. The shooter tip and the Controls help line follow it: in Strafe
+the tip reads "Stick: walk and step aside. L/R triggers: turn." The row shows
+whatever the Controls scheme is, and its help line says it works on Auto only
+(Classic and Modern have their own stick rules). Tests:
+`sticks_option_strafe_mode`, `u0_opt2_chunk_round_trip`,
+`stkopt_preset_keeps_the_stick_mode`, `stkopt_shooter_tip_follows_the_stick_mode`.
 On Flycast (`dc/tests/sticks/stick_option.txt`): the row shows on the Controls
 page (below Rumble), RIGHT picks Strafe, the stick's X then strafes and R
 turns; `sticks.txt` (the default) runs as before; 0 of 397 ticks over 33 ms
-(worst 19.6 ms in the shooter). One new row on the Dreamcast's Controls page
+(worst 19.7 ms in the shooter; `sticks.txt` 0 of 345, worst 29.6 ms in STORY).
+The new row widens the Controls page's `dc/harness/known_diffs.tsv` mask
+(`pause_options` / `opt_0_controls.png`, the Rumble row's mask grown to 48 px);
+`make -C dc ui-compare` is then 92 of 94 (the 2 that fail, options_cheats and
+opt_5_perf, fail on the base too: the Draw distance row). One new row on the Dreamcast's Controls page
 is the only visible change; the GBA, PS1 and native screens are unchanged.
 GBA EWRAM / IWRAM net zero (the value is a bit next to the two option flags).
 

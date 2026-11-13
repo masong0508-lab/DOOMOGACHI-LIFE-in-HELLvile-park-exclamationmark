@@ -579,7 +579,7 @@ static void read_controls(CombatCtl *c)
         stick_dz(lax, lay, &slx, &sly);
         if (caps & INPUT_CAP_RSTICK) stick_dz(rax, ray, &srx, &sry);
         else if (dual) {                            /* one stick (Dreamcast): X turns, Y walks */
-            sstrafe = opt_get(OPT_STICK_MODE) == STICK_STRAFE;   /* (STKOPT) X strafes, the triggers turn */
+            sstrafe = DOOMO_TRIGGERS && opt_get(OPT_STICK_MODE) == STICK_STRAFE;   /* (STKOPT; folds away on GBA / PS1) X strafes, the triggers turn */
             if (!sstrafe) { srx = slx; slx = 0; }
         }
     }

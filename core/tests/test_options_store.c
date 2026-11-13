@@ -545,6 +545,19 @@ TEST(u2_preset_comfort_changes_play_settings_but_not_the_machine_ones)
     CHECK_EQ(opt_get(OPT_EFFECTS), 0);             /* the Performance page is never touched */
 }
 
+/* STKOPT: the stick mode is a pad preference, so a preset leaves it alone */
+TEST(stkopt_preset_keeps_the_stick_mode)
+{
+    fresh(0);
+    opt_set(OPT_STICK_MODE, STICK_STRAFE);
+    opt_set(OPT_FOV, 2);
+    open_quick();
+    apply_preset(1);                               /* Comfort */
+    CHECK_EQ(opt_get(OPT_STICK_MODE), STICK_STRAFE);
+    CHECK_EQ(opt_get(OPT_FOV), 1);                 /* the preset did run */
+    opt_set(OPT_STICK_MODE, STICK_TURN);
+}
+
 TEST(u2_preset_hardcore_then_cozy_flips_loss_and_default_resets)
 {
     fresh(0);
