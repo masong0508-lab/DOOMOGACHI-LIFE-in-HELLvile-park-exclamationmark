@@ -334,7 +334,7 @@ The skeleton drew only `plat_clear()`'s colour; DC3 draws all of the 2D
 | `plat_audio_caps`, `plat_voice`, `plat_audio_bus`, `plat_audio_fx` | **done**: the music engine's IRQ tier (`dc/src/musvoice.c`, section 6; `MUSIC_IRQ=0` keeps the weak bridge) | DC5b |
 | `plat_overworld` | **done** (`dc/src/overworld.c` over `dc3d.c` / `pvr3d.c`, section 7) | DC7 |
 | `plat_room`, `plat_room_project` | **done** (`dc/src/room.c`, section 8) | DC8 |
-| `plat_view3d` | a no-op | DC6 |
+| `plat_view3d` | **part 1 written** (`dc/src/view3d.c`: walls, floors, ceilings, sky; section 9); billboards, weapon, effects, HUD are part 2; draw distance and the governor are part 3. Not yet built with KallistiOS or run on Flycast | DC6 |
 
 `make -C dc check-elf` lists the core's weak platform defaults still in the
 link, so each package can see what it has left.
@@ -1659,6 +1659,57 @@ scripts on the merge base's CDI):
   1.6x and 3x (the zoom).
 - The texture upload of the shell (up to 256 KB through the store queues)
   inside one tick.
+
+## 9. The first-person view (DC6, part 1: the world)
+
+```sh
+make dc-host-test        # includes dcv3d_test
+make -C dc v3d-test      # the same test alone (the dc Makefile needs KOS installed)
+make -C dc/tests/gfx2d v3d-test   # ... or straight, host gcc only
+```
+
+`plat_view3d` draws the live map as PVR polygons through DC7's 3D batches
+(`dc/src/view3d.c`, `dc3d.h`): a segment in the 2D list, so the HUD the core
+draws afterwards is on top. The picture follows the reference raycaster
+(`core/native/raycast.c`): its projection and integer focal length, the
+pitch as a vertical shear (so `combat_hud_project` lands on the polygons),
+its light and distance fade, its sky mapping. What the code does:
+
+- Visibility: a fan of rays over the grid with the reference's open window
+  as slopes; every cell a ray sees is marked (corner cases mark the cells
+  around the corner), then each marked cell emits its floor, ceiling and the
+  faces on the edges the eye is inside of. Heights come from `map_floor_z`
+  and `map_ceil_z`, so doors and lifts move live.
+- Light: a face's texture is a copy remapped through the colormap at the
+  brightest corner's level; Gouraud does the fraction down to each corner.
+  The distance fade scales with `dc_view3d_set_dist()` (part 3 moves it).
+- Sky as a backdrop quad strip at the far depth; views that see no sky get
+  the reference's dark stone. Tints use the native tintmap fit
+  (`dc3d_tint_fit`, shared with the overworld). A view smaller than the
+  screen is cut at its edges (`Dc3dCam.clip`). `DC6_V3D=dc` draws it in the
+  host runner. Billboards are a plain depth-tested rectangle for now.
+- `dc3d_sort_from` found texture kinds by a linear scan; a view has a texture
+  per light level, so it uses a small hash (256 kinds).
+
+Measured on the host (software PVR, `dcv3d_test`, 2026-11-13): 8 first-person
+maps (Hell Breach 1..7 and the arena), 24 eyes each, 4 headings, level and
+looking up 120: 1182 frames, 2x2 block mean within 40/255 per channel of the
+native pixel. Level views 79.2 % of pixels (gate 75 %), looking up 80.2 %
+(gate 60 %); the red tint 66 %; the busiest view 769 polygons, 102 KB of TA
+data (budget 576 KB). Polygons against columns will never be pixel equal.
+
+**Known gaps (part 1 is not finished):**
+- 16 of 788 level frames match under 45 %: eyes next to a border block whose
+  top is lower than the eye's floor (maps 8 and 9, eye at 1,1 or by the
+  edge, looking at the border). The reference draws a picture there that the
+  Dreamcast does not (the wall face has zero height in `vface`). Not
+  understood yet; look at `DC6_PNG=DIR` output for the worst frames.
+- Nothing was built with KallistiOS or run on Flycast in this change (the
+  toolchain was still being installed). Owed: `make -C dc`, a Hell Breach
+  script on dcrun with no tick over 33 ms, and a screenshot next to the
+  native one. Until that, the per-tick cost is only the host's number.
+- No ticks, memory or PS1/GBA effect: all changes are under `dc/`; the
+  tint fit moved from `overworld.c` to `dc3d.c` unchanged.
 
 ## Rumble (X2)
 

@@ -16,6 +16,7 @@
 #include <string.h>
 #include "dc3d.h"
 #include "doomo/doomo.h"
+#include "doomo/palette.h"
 
 Dc3dStats dc3d_stats;
 
@@ -114,29 +115,44 @@ int dc3d_seg_polys(void)
 
 /* stable counting sort of polygons [poly0, np) by (mode, texture): opaque
  * polygons that write depth may go in any order, and grouped they need one
- * header per texture instead of one per change */
-#define SORT_KEYS 96
+ * header per texture instead of one per change. The kinds are found
+ * through a small hash (DC6: a view has a texture per light level). */
+#define SORT_KEYS 256
+#define SORT_HASH 1024                     /* power of two, 4 x SORT_KEYS */
 static DcPoly sort_tmp[DC3D_MAX_POLYS];
+static uint16_t sort_hash[SORT_HASH];      /* kind + 1, 0 = empty */
+static uint32_t sort_keys[SORT_KEYS];
+
+static int sort_kind(uint32_t key, int *nk)
+{
+    uint32_t h = (key * 2654435761u) >> 22;
+    for (;; h = (h + 1) & (SORT_HASH - 1)) {
+        int k = sort_hash[h];
+        if (!k) {
+            if (*nk == SORT_KEYS) return -1;
+            sort_keys[*nk] = key;
+            sort_hash[h] = (uint16_t)(++*nk);
+            return *nk - 1;
+        }
+        if (sort_keys[k - 1] == key) return k - 1;
+    }
+}
+
 void dc3d_sort_from(int poly0)
 {
     DcBatch *b = &batches[cur_slot];
-    uint32_t keys[SORT_KEYS];
     int count[SORT_KEYS + 1], nk = 0, i, k, n = b->np - poly0;
     if (seg_open < 0 || n < 2 || poly0 < (int)b->seg[seg_open].poly0) return;
     memset(count, 0, sizeof(count));
+    memset(sort_hash, 0, sizeof(sort_hash));
     for (i = poly0; i < b->np; i++) {
-        uint32_t key = ((uint32_t)b->p[i].mode << 16) | b->p[i].tex;
-        for (k = 0; k < nk && keys[k] != key; k++) {}
-        if (k == nk) {
-            if (nk == SORT_KEYS) return;    /* too many kinds: leave the order */
-            keys[nk++] = key;
-        }
+        k = sort_kind(((uint32_t)b->p[i].mode << 16) | b->p[i].tex, &nk);
+        if (k < 0) return;                  /* too many kinds: leave the order */
         count[k + 1]++;
     }
     for (k = 0; k < nk; k++) count[k + 1] += count[k];
     for (i = poly0; i < b->np; i++) {
-        uint32_t key = ((uint32_t)b->p[i].mode << 16) | b->p[i].tex;
-        for (k = 0; keys[k] != key; k++) {}
+        k = sort_kind(((uint32_t)b->p[i].mode << 16) | b->p[i].tex, &nk);
         sort_tmp[count[k]++] = b->p[i];
     }
     memcpy(&b->p[poly0], sort_tmp, (size_t)n * sizeof(DcPoly));
@@ -295,29 +311,49 @@ static void cv_lerp(CV *d, const CV *a, const CV *b, float t)
     }
 }
 
-/* the clipping path: Sutherland-Hodgman against zc >= DC3D_ZNEAR, every
- * attribute interpolated in camera space (rare: only polygons reaching
- * the eye) */
-static int add_clipped(const Dc3dCam *c, int mode, int tex, const Dc3dIn *in, const float *xc,
-                       const float *yc, const float *zc, int n)
+/* the clipping path: Sutherland-Hodgman in camera space against the near
+ * plane and, when `edges`, the four planes through the eye and the
+ * viewport's edges; every attribute interpolated in camera space, where it
+ * is linear (rare: only polygons reaching the eye or a small viewport's
+ * edge) */
+#define CLIP_MAXV 16
+static float clip_dist(const Dc3dCam *c, const CV *p, int plane, float zn)
 {
-    CV a[8], b[16];
-    float sx[16], sy[16];
-    int i, nb = 0, k, left = 1, right = 1, above = 1, below = 1;
+    switch (plane) {
+    case 0:  return p->zc - zn;
+    case 1:  return p->xc * c->focal - p->zc * (c->vx0 - c->cx);
+    case 2:  return p->zc * (c->vx1 - c->cx) - p->xc * c->focal;
+    case 3:  return p->yc * c->focal - p->zc * (c->vy0 - c->cy);
+    default: return p->zc * (c->vy1 - c->cy) - p->yc * c->focal;
+    }
+}
+
+static int add_clipped(const Dc3dCam *c, int mode, int tex, const Dc3dIn *in, const float *xc,
+                       const float *yc, const float *zc, int n, int edges)
+{
+    CV buf[2][CLIP_MAXV], *a = buf[0], *b = buf[1];
+    float sx[CLIP_MAXV], sy[CLIP_MAXV], zn = c->znear > 0.0f ? c->znear : DC3D_ZNEAR;
+    int i, nb = n, k, left = 1, right = 1, above = 1, below = 1, plane;
     DcVert *v;
     for (i = 0; i < n; i++) {
-        a[i].xc = xc[i]; a[i].yc = yc[i]; a[i].zc = zc[i];
-        a[i].u = in[i].u; a[i].v = in[i].v;
-        unpack(in[i].argb, a[i].a);
-        unpack(in[i].oargb, a[i].o);
+        b[i].xc = xc[i]; b[i].yc = yc[i]; b[i].zc = zc[i];
+        b[i].u = in[i].u; b[i].v = in[i].v;
+        unpack(in[i].argb, b[i].a);
+        unpack(in[i].oargb, b[i].o);
     }
-    for (i = 0; i < n; i++) {
-        const CV *p = &a[i], *q = &a[(i + 1) % n];
-        int pin = p->zc >= DC3D_ZNEAR, qin = q->zc >= DC3D_ZNEAR;
-        if (pin) b[nb++] = *p;
-        if (pin != qin) cv_lerp(&b[nb++], p, q, (DC3D_ZNEAR - p->zc) / (q->zc - p->zc));
+    for (plane = 0; plane < (edges ? 5 : 1); plane++) {
+        CV *t = a;
+        int na = nb;
+        a = b; b = t; nb = 0;
+        for (i = 0; i < na; i++) {
+            const CV *p = &a[i], *q = &a[(i + 1) % na];
+            float dp = clip_dist(c, p, plane, zn), dq = clip_dist(c, q, plane, zn);
+            int pin = dp >= 0.0f, qin = dq >= 0.0f;
+            if (pin && nb < CLIP_MAXV) b[nb++] = *p;
+            if (pin != qin && nb < CLIP_MAXV) cv_lerp(&b[nb++], p, q, dp / (dp - dq));
+        }
+        if (nb < 3) return 0;
     }
-    if (nb < 3) return 0;
     for (i = 0; i < nb; i++) {
         float iz = 1.0f / b[i].zc;
         sx[i] = c->cx + c->focal * b[i].xc * iz;
@@ -347,8 +383,8 @@ static int add_clipped(const Dc3dCam *c, int mode, int tex, const Dc3dIn *in, co
 
 int dc3d_add(const Dc3dCam *c, int mode, int tex, const Dc3dIn *in, int n)
 {
-    float xc[8], yc[8], zc[8], sx[8], sy[8], iz[8];
-    int i, k, behind = 0, left = 1, right = 1, above = 1, below = 1;
+    float xc[8], yc[8], zc[8], sx[8], sy[8], iz[8], zn = c->znear > 0.0f ? c->znear : DC3D_ZNEAR;
+    int i, k, behind = 0, left = 1, right = 1, above = 1, below = 1, out = 0;
     DcVert *v;
     if (n < 3 || n > 8) return 0;
     for (i = 0; i < n; i++) {
@@ -356,20 +392,21 @@ int dc3d_add(const Dc3dCam *c, int mode, int tex, const Dc3dIn *in, int n)
         xc[i] = dx * c->rx + dy * c->ry + dz * c->rz;
         yc[i] = dx * c->dx + dy * c->dy + dz * c->dz;
         zc[i] = dx * c->fx + dy * c->fy + dz * c->fz;
-        if (zc[i] < DC3D_ZNEAR) behind = 1;
+        if (zc[i] < zn) behind = 1;
     }
-    if (behind) return add_clipped(c, mode, tex, in, xc, yc, zc, n);
+    if (behind) return add_clipped(c, mode, tex, in, xc, yc, zc, n, c->clip);
     /* project; cull when wholly outside the viewport */
     for (i = 0; i < n; i++) {
         iz[i] = 1.0f / zc[i];
         sx[i] = c->cx + c->focal * xc[i] * iz[i];
         sy[i] = c->cy + c->focal * yc[i] * iz[i];
-        if (sx[i] >= c->vx0) left = 0;
-        if (sx[i] <= c->vx1) right = 0;
-        if (sy[i] >= c->vy0) above = 0;
-        if (sy[i] <= c->vy1) below = 0;
+        if (sx[i] >= c->vx0) left = 0; else out = 1;
+        if (sx[i] <= c->vx1) right = 0; else out = 1;
+        if (sy[i] >= c->vy0) above = 0; else out = 1;
+        if (sy[i] <= c->vy1) below = 0; else out = 1;
     }
     if (left || right || above || below) { dc3d_stats.culled++; return 0; }
+    if (out && c->clip) return add_clipped(c, mode, tex, in, xc, yc, zc, n, 1);
     v = dc3d_poly(mode, tex, n);
     if (!v) return 0;
     for (k = 0; k < n; k++) {           /* fan order -> strip order: 0, 1, n-1, 2, n-2, ... */
@@ -383,4 +420,40 @@ int dc3d_add(const Dc3dCam *c, int mode, int tex, const Dc3dIn *in, int n)
         v[k].oargb = in[j].oargb;
     }
     return 1;
+}
+
+/* ---- the view tints ------------------------------------------------------------------ */
+static float tint_a[TINT_COUNT][3], tint_b[TINT_COUNT][3];
+static int   tint_ready;
+
+static int x5to8(int v) { return (v << 3) | (v >> 2); }
+static int pchan(uint8_t i, int k)
+{
+    uint16_t c = doomo_palette[i];
+    return x5to8(k == 0 ? (c & 31) : k == 1 ? ((c >> 5) & 31) : ((c >> 10) & 31));
+}
+
+/* per tint and channel: out = a * in + b (in 0..255), least squares over
+ * the palette (rms 11..18 for the colour tints) */
+void dc3d_tint_fit(int tint, float a[3], float b[3])
+{
+    int t, k, i;
+    if (!tint_ready) {
+        for (t = 0; t < TINT_COUNT; t++)
+            for (k = 0; k < 3; k++) {
+                float sx = 0, sy = 0, sxx = 0, sxy = 0, n = 255.0f, den;
+                for (i = 1; i < 256; i++) {
+                    float x = (float)pchan((uint8_t)i, k), y = (float)pchan(doomo_tintmap[t][i], k);
+                    sx += x; sy += y; sxx += x * x; sxy += x * y;
+                }
+                den = n * sxx - sx * sx;
+                tint_a[t][k] = den > 0.0f ? (n * sxy - sx * sy) / den : 1.0f;
+                tint_b[t][k] = (sy - tint_a[t][k] * sx) / n;
+                if (t == TINT_NONE) { tint_a[t][k] = 1.0f; tint_b[t][k] = 0.0f; }
+                if (tint_b[t][k] < 0.0f) tint_b[t][k] = 0.0f;   /* the offset colour only adds */
+            }
+        tint_ready = 1;
+    }
+    if (tint < 0 || tint >= TINT_COUNT) tint = TINT_NONE;
+    for (k = 0; k < 3; k++) { a[k] = tint_a[tint][k]; b[k] = tint_b[tint][k]; }
 }

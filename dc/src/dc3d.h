@@ -153,6 +153,9 @@ typedef struct Dc3dCam {
     float fx, fy, fz;                       /* forward  (depth)     */
     float cx, cy, focal;                    /* screen centre and focal length, frame pixels */
     float vx0, vy0, vx1, vy1;               /* viewport, frame pixels */
+    float znear;                            /* DC6: the near plane's depth (0: DC3D_ZNEAR) */
+    int   clip;                             /* DC6: 1: cut polygons at the viewport's edges
+                                               (a view smaller than the screen); 0: only cull */
 } Dc3dCam;
 
 /* A world-space vertex before projection. */
@@ -163,14 +166,31 @@ typedef struct Dc3dIn {
 
 /* Project a convex polygon (n <= 8 vertices in order around it: a quad is
  * TL TR BR BL) and add it as `mode` / `tex`, as a triangle strip: clipped
- * at the near plane, culled when it is wholly off the viewport. 1 when
- * something was added. */
+ * at the near plane (and at the viewport's edges when the camera asks),
+ * culled when it is wholly off the viewport. 1 when something was added. */
 int dc3d_add(const Dc3dCam *c, int mode, int tex, const Dc3dIn *in, int n);
 /* camera space of a world point: depth (0 if behind), screen x/y */
 float dc3d_project(const Dc3dCam *c, float x, float y, float z, float *sx, float *sy);
 
+/* The view tints (TINT_*, palette.h) as the PVR can apply them: the native
+ * tintmap fitted per channel, out = a * in + b (in 0..255, least squares
+ * over the palette; b >= 0, the offset colour only adds). TINT_NONE is the
+ * identity. */
+void dc3d_tint_fit(int tint, float a[3], float b[3]);
+
 /* ---- the views ------------------------------------------------------------------------- */
+/* DC6: the first-person view's distance in cells (view3d.c). The adaptive
+ * governor and OPT_DRAW_DIST of DC6 part 3 move it; the distance fade is
+ * scaled to it, so the cut hides in the dark. */
+#define DC_V3D_DIST_MAX 32
+#define DC_V3D_DIST_MIN 10
+void dc_view3d_set_dist(int cells);
+int  dc_view3d_dist(void);
 #ifdef DC2D_HOST
+void dc2d_view3d_draw(const DoomoView3D *v);        /* view3d.c (console: plat_view3d) */
+const Dc3dCam *dc2d_view3d_cam(void);               /* the last view's camera (tests) */
+int  dc2d_view3d_cells(void);                       /* cells the last view found visible */
+void dc2d_view3d_backdrop(int on);                  /* tests: 0 leaves the sky / dark backdrop out */
 void dc2d_overworld(const DoomoOverworldView *v);   /* overworld.c (console: plat_overworld) */
 const Dc3dCam *dc2d_overworld_cam(void);            /* the last view's camera (tests) */
 #endif

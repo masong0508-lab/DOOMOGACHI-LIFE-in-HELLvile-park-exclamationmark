@@ -33,6 +33,8 @@
 #                         3D view against the host software PVR's (compare3d.py),
 #                         no polygon dropped, no tick over 33.3 ms; results in
 #                         build/shots/ow; part of `test` when Flycast is there
+#   make -C dc v3d-test   DC6 part 1 on the host: the first-person view's polygons
+#                         (software PVR) against the reference raycaster
 #   make -C dc room-test  DC8 on Flycast: the house. The 58 room_ref golden
 #                         frames drawn by the game's plat_room (identical to
 #                         room_ref, pixel for pixel) and the house scripts
@@ -120,7 +122,7 @@ DC_OBJS   := $(call dc_obj,$(DC_SRCS))
 CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 ALL_OBJS  := $(DC_OBJS) $(CORE_OBJS)
 
-.PHONY: all elf disc all-disc test check-elf check-packdisc host-test harness-test ui-compare vmu-test audio-test ow-test room-test sizes clean
+.PHONY: all elf disc all-disc test check-elf check-packdisc host-test harness-test ui-compare vmu-test audio-test ow-test room-test v3d-test sizes clean
 .DEFAULT_GOAL := all
 
 all: elf
@@ -255,6 +257,9 @@ check-packdisc:
 # (dc/tests/gfx2d: unit tests + the UI scripts through the software PVR);
 # DC4: the VMU file system, the icons and the controls (dc/tests/vmu);
 # DC5: the sound mixer's units and its WAVs against musrender (dc/tests/audio)
+v3d-test:
+	@$(MAKE) --no-print-directory -C $(DC)/tests/gfx2d v3d-test
+
 host-test:
 	@$(MAKE) --no-print-directory -C $(DC)/tests/gfx2d test
 	@$(MAKE) --no-print-directory -C $(DC)/tests/vmu test

@@ -166,34 +166,14 @@ static float    s_camx;
 static int      s_tslot[TEX_COUNT];
 static uint16_t s_tstamp[TEX_COUNT], s_stamp = 1;
 
-/* tintmap fits, per tint and channel: out = a * in + b (in 0..255), least
- * squares over the palette (rms 11..18 for the colour tints) */
+/* tintmap fits, per tint and channel: out = a * in + b (dc3d_tint_fit) */
 static float t_a[TINT_COUNT][3], t_b[TINT_COUNT][3];
 static int   t_ready;
 
-static int x5to8(int v) { return (v << 3) | (v >> 2); }
-static int pchan(uint8_t i, int k)
-{
-    uint16_t c = doomo_palette[i];
-    return x5to8(k == 0 ? (c & 31) : k == 1 ? ((c >> 5) & 31) : ((c >> 10) & 31));
-}
-
 static void tint_fit(void)
 {
-    int t, k, i;
-    for (t = 0; t < TINT_COUNT; t++)
-        for (k = 0; k < 3; k++) {
-            float sx = 0, sy = 0, sxx = 0, sxy = 0, n = 255.0f, den;
-            for (i = 1; i < 256; i++) {
-                float x = (float)pchan((uint8_t)i, k), y = (float)pchan(doomo_tintmap[t][i], k);
-                sx += x; sy += y; sxx += x * x; sxy += x * y;
-            }
-            den = n * sxx - sx * sx;
-            t_a[t][k] = den > 0.0f ? (n * sxy - sx * sy) / den : 1.0f;
-            t_b[t][k] = (sy - t_a[t][k] * sx) / n;
-            if (t == TINT_NONE) { t_a[t][k] = 1.0f; t_b[t][k] = 0.0f; }
-            if (t_b[t][k] < 0.0f) t_b[t][k] = 0.0f;   /* the offset colour only adds */
-        }
+    int t;
+    for (t = 0; t < TINT_COUNT; t++) dc3d_tint_fit(t, t_a[t], t_b[t]);
     t_ready = 1;
 }
 

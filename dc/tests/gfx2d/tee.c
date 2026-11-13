@@ -191,10 +191,23 @@ static void view_standin(int vx, int vy, int vw, int vh)
     dc2d_image(x0, y0, &view_img, 1, 0, 0);
 }
 
+/* DC6_V3D=dc: the Dreamcast first-person view itself (dc/src/view3d.c, the
+ * software PVR rasterises its polygons) instead of the stand-in. The
+ * native frame is still the reference raycaster's: NAME_dc.png is the
+ * Dreamcast's picture (close to it, not equal: polygons against columns). */
+static int dc6_v3d(void)
+{
+    static int v = -1;
+    if (v < 0) { const char *e = getenv("DC6_V3D"); v = e && strcmp(e, "dc") == 0; }
+    return v;
+}
+
 void plat_view3d(const DoomoView3D *v)
 {
     ref_view3d(v);
-    if (v) view_standin(v->vx, v->vy, v->vw, v->vh);
+    if (!v) return;
+    if (dc6_v3d()) dc2d_view3d_draw(v);
+    else view_standin(v->vx, v->vy, v->vw, v->vh);
 }
 
 /* DC7_OW=dc: the Dreamcast overworld itself (dc/src/overworld.c, the
