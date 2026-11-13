@@ -425,6 +425,32 @@ try-on 28.57 -> 29.03 (2:27 3:1 4:1 against 2:26 3:2 4:1: one frame less; the ta
 idle, rows and a value held unchanged (30.13, 30.13, 29.88). The disc ends at the same address as before
 (0x801efe60, 64 KB below the stack top with the boot FMV): no resident byte.
 
+**Re-measured on the landed tree (S3-3 on top of CR3, `0df7284`; the numbers to trust).** CR3's longer lists and
+new rows moved the baseline, so the table above (measured on `4c0f369`) is the first build's. On `0df7284` itself
+and with S3-3 (same commands; `make -C gba test-creator`, `test-speed2 SPEED2=creator`), drawn fps:
+
+| window | `0df7284` | with S3-3 |
+|---|---|---|
+| grid scrolled (species) | 17.1 | **27.7** |
+| rows (Outfit, DOWN held) | 27.3 | **29.9** |
+| a value held (Outfit, Top) | 17.9 | **27.9** |
+| idle (work per tick) | 30.0 (16.0 ms) | 30.0 (3.9 ms) |
+| hat grid (bust camera) | 29.0 | 29.0 (no gain; target 30 not reached) |
+| hat grid try-on move | 21.3 | **23.4** (target 22 met; 10 frames of 50 ms or more, was 14) |
+| hat grid filter chip | 26.3 | 26.4 (no gain here; the 30.5 of the first table was before CR3) |
+
+Tab changes: on `0df7284` every tab change had a frame of 50 to 84 ms and six had a frame of 67 ms or more (worst
+84 ms); with S3-3 none has a frame over 50 ms. Frames of 50 ms per change: home 0, voice 1, profile 1, hair,
+supernatural, outfit and personality 2, head and face 3. The audit's "at most one 50 ms frame" holds on three tabs of
+eight. GBA sizes: EWRAM 15,444 B free (as CR3), IWRAM resident 11,256 B, main stack 6,308 B, all
+unchanged. PS1 (PCSX-Redux, boot FMV disc): `_end` 0x801ef4e0, 68,368 B below the stack top, identical to CR3's
+landing (+0 B); `creator_speed.txt`: idle 30.13, grid scrolled 29.39, rows 30.13, value 29.88; `speed2 creator`:
+every window 30.0 or more, the hat grid try-on 30.00 (2:28 3:1) and the grid cursor move 30.00. The PS1 was not
+re-measured on a `0df7284` disc, so the PS1 gain is the first build's (try-on 28.57 -> 29.03 on `4c0f369`).
+The raised GBA floors that hold on this tree: hat grid 28, try-on 22, filter chip 25 (`speed2_creator.txt`).
+One fix at landing: `part_icon_image_kept` took the raw icon index into the packed set; CR3 made the two sets
+differ on the host, so the host test failed (it now uses the packed index; the PS1 has only that set).
+
 **Same pixels** (`vhash-seq` over the tab tour and the scroll script, `HARNESS_VHASH_SHOTS` frames, against
 `4c0f369`). 18 of the 20 settled shots (every tab, the grids at rest, the swatches, the START menu, the species grid
 scrolled) are byte-identical. The other two (the try-on 30 ticks after a move, a value held mid-step) differ in 17 and

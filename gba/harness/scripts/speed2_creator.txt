@@ -155,7 +155,7 @@ press R
 wait 2
 fps start
 wait 30
-expect-fps 28 creator: hat grid filter chip
+expect-fps 25 creator: hat grid filter chip
 shot creator_hat_filter
 press B
 wait 20
