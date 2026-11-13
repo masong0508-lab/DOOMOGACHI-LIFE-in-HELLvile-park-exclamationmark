@@ -1,0 +1,29 @@
+# core/data/parts/catalog/fur_pattern.txt - fur patterns, gene field fur_pattern (CR4 A4; format: tools/partcat_build.py).
+# Scripted head decals in the third fur colour (core/data/parts/fur/fur_a4.txt); value 0 draws nothing.
+slot fur_pattern list=fur_pattern name="Fur patterns" method=P target=24 new=T gate=24
+
+0   "None"            set=basics tags=plain
+1   "Tabby Stripes"   set=critter tags=critter method=S
+2   "Leopard Spots"   set=critter tags=critter,spooky method=S
+3   "Cow Patches"     set=critter tags=critter,silly method=S
+4   "Dalmatian Dots"  set=critter tags=critter,silly method=S
+5   "Tiger Bands"     set=critter tags=critter method=S
+6   "Bandit Mask"     set=critter tags=critter,silly method=S
+7   "Blaze"           set=critter tags=critter method=S
+8   "Half and Half"   set=indieart tags=silly method=S
+9   "Freckle Dust"    set=basics tags=cute method=S
+10  "Brindle"         set=critter tags=critter method=S
+11  "Temple Patches"  set=critter tags=critter method=S
+12  "Brow Star"       set=candy tags=cute,glam method=S
+13  "Heart Patch"     set=candy tags=cute method=S
+14  "Speckles"        set=basics tags=plain,nature method=S
+15  "Zebra Bars"      set=critter tags=critter method=S
+16  "Giraffe Tiles"   set=critter tags=critter,nature method=S
+17  "Eyebrow Dots"    set=critter tags=critter,silly method=S
+18  "Paw Print"       set=critter tags=critter,cute method=S
+19  "Harlequin"       set=funfair tags=party,silly method=S
+20  "Skunk Stripe"    set=critter tags=critter,silly method=S
+21  "Temple Swoops"    set=basics tags=glam method=S
+22  "Camo Blobs"      set=hellbreach tags=armor method=S
+23  "Patch Eye"       set=plushie tags=stitched,silly method=S
+24  "Checkerboard"    set=funfair tags=party,retro method=S

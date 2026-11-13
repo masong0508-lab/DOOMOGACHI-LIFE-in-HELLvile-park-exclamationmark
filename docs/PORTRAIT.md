@@ -578,6 +578,12 @@ every family hat with a full outfit under the 12k pixel-visit bound.
 of a slot (live, hidden and planned) as bust 1x, the creator's 2x head crop, figure, chibi 3x and the
 fighter's back view, labelled with name, state and set; `--shape` is the shape-only sheet.
 
+**Fur patterns and marks as scripts (CR4 A4).** A fur pattern (`fur_pattern` 1..24) is a head decal of group 3, masked to
+the head part, drawn before the eyes in `mat fur_color3` (Auto = the marking colour) with `mat skin light` / `dark` for a
+second tone. A mark past the painted ones (`marking` 23..31) is the same kind of block, drawn from the `default:` of
+`markings()` in the marking colour. Both are authored at head scale with strokes of at least 2 px (radius 16..30 of 256):
+the bust's head is 36 x 32 px, so a 1 px dot is lost. Do not put a dark patch on the lower face: it reads as a beard.
+
 **Body parts as scripts (CR4 A3).** A tail or a pair of wings is a torso-anchored script drawn once per image by
 `pb_draw_tail()` / `pb_draw_wings()`. On the figure the torso is 10 x 6 px (bust 14 x 14, fighter 7 x 5, chibi 4 x 2), so
 author them at `scale 255` (about x4) with a `ifyaw 0,1,2` block from the side of the hips and a `ifyaw 3,4` block from the

@@ -5,50 +5,54 @@
 
 extern const PartSet doomo_parts_beard;
 extern const PartSet doomo_parts_face;
+extern const PartSet doomo_parts_fur;
 extern const PartSet doomo_parts_hair;
 extern const PartSet doomo_parts_hat;
 extern const PartSet doomo_parts_head;
 extern const PartSet doomo_parts_outfit;
 extern const PartSet doomo_parts_spooky;
 
-const PartSet *const doomo_part_scripts[7] = {
+const PartSet *const doomo_part_scripts[8] = {
     &doomo_parts_beard,
     &doomo_parts_face,
+    &doomo_parts_fur,
     &doomo_parts_hair,
     &doomo_parts_hat,
     &doomo_parts_head,
     &doomo_parts_outfit,
     &doomo_parts_spooky,
 };
-const uint8_t doomo_part_script_count = 7;
+const uint8_t doomo_part_script_count = 8;
 
-const PartListSet doomo_part_script_lists[16] = {
-    { 4, 4, 12 },
+const PartListSet doomo_part_script_lists[18] = {
+    { 4, 5, 12 },
     { 6, 1, 24 },
     { 13, 1, 12 },
-    { 20, 2, 32 },
+    { 20, 3, 32 },
     { 23, 0, 8 },
-    { 25, 6, 16 },
-    { 28, 6, 16 },
-    { 29, 6, 10 },
-    { 30, 6, 12 },
-    { 34, 5, 24 },
-    { 40, 3, 24 },
-    { 42, 5, 20 },
-    { 44, 6, 8 },
+    { 25, 7, 16 },
+    { 28, 7, 16 },
+    { 29, 7, 10 },
+    { 30, 7, 12 },
+    { 31, 2, 23 },
+    { 34, 6, 24 },
+    { 40, 4, 24 },
+    { 42, 6, 20 },
+    { 44, 7, 8 },
     { 71, 1, 5 },
     { 72, 1, 3 },
+    { 73, 2, 1 },
     { 78, 1, 31 },
 };
-const uint8_t doomo_part_script_nlists = 16;
+const uint8_t doomo_part_script_nlists = 18;
 
 /* the smallest scripted value of each gene list (0xFF: none) */
 const uint8_t doomo_part_minv[128] = {
     255, 255, 255, 255, 12, 255, 24, 255, 255, 255, 255, 255, 255, 12, 255, 255,
-    255, 255, 255, 255, 32, 255, 255, 8, 255, 16, 255, 255, 16, 10, 12, 255,
+    255, 255, 255, 255, 32, 255, 255, 8, 255, 16, 255, 255, 16, 10, 12, 23,
     255, 255, 24, 255, 255, 255, 255, 255, 24, 255, 20, 255, 8, 255, 255, 255,
     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-    255, 255, 255, 255, 255, 255, 255, 5, 3, 255, 255, 255, 255, 255, 31, 255,
+    255, 255, 255, 255, 255, 255, 255, 5, 3, 1, 255, 255, 255, 255, 31, 255,
     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,

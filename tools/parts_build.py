@@ -80,6 +80,7 @@ HOOKS = {
     # CR3: the gene's new fields (their painters set frames: an eye, a cheek, the pair of eyes, a leg)
     "pupil": {3}, "sclera": {3}, "blush_style": {3}, "glasses": {5}, "legwear": {1},
     "outer": {0, 1, 4}, "fur_pattern": {3},
+    "marking": {3},                                     # CR4 A4: the marks past the painted ones (MARK_COUNT..31)
 }
 REGIONS = ["none", "head", "eye_l", "eye_r", "muzzle", "torso"]
 VIEWS = ["portrait", "figure", "fighter", "chibi"]

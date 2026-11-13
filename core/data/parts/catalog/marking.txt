@@ -1,6 +1,6 @@
 # core/data/parts/catalog/marking.txt - the markings parts (CR1; format: tools/partcat_build.py).
 # Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
-slot marking list=marking name="Markings" method=P
+slot marking list=marking name="Markings" method=P gate=4
 
 0   "None"                 set=basics tags=plain
 1   "Stripes"              set=spooky tags=spooky
@@ -25,3 +25,13 @@ slot marking list=marking name="Markings" method=P
 20  "Tabby"                set=critter tags=critter
 21  "Calico"               set=critter tags=critter
 22  "Tipped Ears"          set=critter tags=critter
+# CR4 A4 (core/data/parts/fur/marks_a4.txt): 9 more marks, filling the gene's five bits
+23  "Moon Mark"            set=cloud9 tags=holy,cute method=S
+24  "Temple Rings"         set=indieart tags=silly method=S
+25  "Diamond Brow"         set=royal tags=glam method=S
+26  "Whisker Marks"        set=critter tags=critter,cute method=S
+27  "Sprinkles"            set=candy tags=cute,party method=S
+28  "Plaster"              set=littleones tags=baby,silly method=S
+29  "Tally Marks"          set=graveyard tags=goth method=S
+30  "Flame Brow"           set=spooky tags=fire method=S
+31  "Rune Row"             set=spooky tags=magic method=S

@@ -635,6 +635,47 @@ held; on the GBA the bust's effect frames change every 16 ticks).
   save and sanitize; the old values still differ from the new). The PS1 reads none of the scripts yet (the part VM waits for
   CR10): its creator keeps offering the painted values.
 
+## CR4 batch A4: fur patterns and face marks (2026-11-13)
+
+* **33 new parts live** of the batch's 48 (plan A4: fur patterns 24 + body tattoos and marks 24): 24 fur patterns
+  (gene `fur_pattern` 1..24: Tabby Stripes, Leopard Spots, Cow Patches, Dalmatian Dots, Tiger Bands, Bandit Mask, Blaze,
+  Half and Half, Freckle Dust, Brindle, Temple Patches, Brow Star, Heart Patch, Speckles, Zebra Bars, Giraffe Tiles,
+  Eyebrow Dots, Paw Print, Harlequin, Skunk Stripe, Temple Swoops, Camo Blobs, Patch Eye, Checkerboard) and 9 face marks
+  (gene `marking` 23..31: Moon Mark, Temple Rings, Diamond Brow, Whisker Marks, Sprinkles, Plaster, Tally Marks, Flame
+  Brow, Rune Row). The fur pattern list is live now (25 values, so its Species & Body row and the Spot colour row are
+  shown); the marking list is full (32 = the five gene bits). No save change: both fields had the bits.
+* **Left for CR5 (15 of the batch's 48):** the plan's body tattoos are deep fields (`DF_TATTOO1` / `DF_TATTOO2`) that
+  do not exist yet and that the creator rows, the look pool and the save cannot take before CR5. The marking gene is
+  five bits wide, so the nine marks above fill it; the other 15 tattoos and marks wait for the deep field. The plan's 6 body
+  types belong to CR-BODY, not here.
+* **Authoring:** hand-written part scripts in `core/data/parts/fur/{fur_a4,marks_a4}.txt` (one script set, 1.5 KB raw, no
+  new painter code beyond one line: the painter of a mark past the painted ones, `markings()` in `portrait_head.c`, asks
+  `PS_SLOT(c, GF_MARKING, mk, 3)` in its `default:` case, and `sanitize()` in `portrait.c` keeps a scripted mark with
+  `FIXP` instead of clearing it; `parts_build.py` HOOKS knows `marking`). A fur pattern is a head decal of group 3 masked
+  to the head part (the existing `fur_pattern()` hook), drawn before the eyes in `mat fur_color3` (Auto = the marking
+  colour) and, for a second tone, `mat skin light` / `dark`. Patterns are big on purpose: the bust's head is only about
+  36 x 32 px, so a freckle needs a 2 px dot to show at all.
+* **Age:** all 33 are age class ALL; nothing is a body part, a nudity or suggestive. The first drafts of a dark chin
+  patch and of a dark row on the lower face were dropped: on a human they read as a beard or a moustache, and
+  beards are adults only.
+* **Gates:** fur patterns keep the default shape gate (>= 24 px of the bust against every other value of the slot);
+  the marking slot's gate is 4 px (`gate=4`: small marks, like pupils and brows; the nine new ones differ from each
+  other and from every painted mark by at least that and each draws on the bench citizen; a hairstyle may cover a
+  brow mark on one citizen). Names unique, one set each, frozen ids, review lines `A4`, part icons regenerated. The
+  gene-only slot `fur_pattern` has no cost weight (the cost test measures look-byte fields only, as for pupils).
+* **Review sheets:** `portrait_sheet --slot fur_pattern [--shape]` and `--slot marking [--shape]` (a bare citizen with
+  the spot colour set, so a pattern reads: the sheet now stages `fur_pattern` and `marking` on a bald, hatless,
+  earless bench cat).
+* **Runner walk-through:** `core/tests/scripts/creator_parts_fur.txt` (both resolutions): the Species & Body tab's
+  Fur pattern row opened as a grid, Zebra Bars found by letters and worn, the Spot colour row showing, then the
+  Supernatural tab's Marking row with Rune Row worn.
+* **Tests:** `test_cr4_a4.c` (both lists full and the 33 parts catalogued and inside the cost cap; every pattern shows
+  on the bust and no two alike; the spot colour moves every pattern; the new marks are drawn and differ from the
+  old ones; every stage keeps them; they survive a save and sanitize, 25 is not a choice; patterns stay on the head).
+  `creator_rows_with_nothing_to_pick_are_not_shown` expects 4 hidden rows now (the fur pattern row and its colour row
+  are shown). The PS1 reads none of the scripts yet (the part VM waits for CR10): its creator keeps offering the painted
+  values, so the fur pattern row stays hidden there and the marking row keeps its 23.
+
 ## CR4 A1a: head shapes, eyes, pupils, eye whites, brows (2026-11-13)
 
 The first art batch of the part plan (CREATOR_PLAN 3.1, "Head & face" rows), drawn as part scripts

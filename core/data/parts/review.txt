@@ -41,3 +41,7 @@ review eyes    24-47 batch=A1a date=2026-11-13 by=claude sheets="slot_eyes, slot
 review pupil   5-31  batch=A1a date=2026-11-13 by=claude sheets="slot_pupil, slot_pupil_shape: 27 ink shapes (heart, star, keyhole, note ...) on a big cobalt iris"
 review sclera  3-15  batch=A1a date=2026-11-13 by=claude sheets="slot_sclera, slot_sclera_shape: 13 white shapes round a pinpoint pupil; dark whites read as a hollow socket, not blood"
 review brows   12-31 batch=A1a date=2026-11-13 by=claude sheets="slot_brows, slot_brows_shape: 20 brow marks in the hair colour"
+
+# CR4 batch A4 (fur and skin): 24 fur patterns (gene fur_pattern 1..24) and 9 face marks (gene marking 23..31)
+review fur_pattern 0-24 batch=A4 date=2026-11-13 by=claude sheets="slot_fur_pattern, slot_fur_pattern_shape (bust 1x, head 2x, figure, chibi, fighter; a bare caramel cat with the chocolate spot colour); decals on the head only: stripes, spots, patches, bands, hearts, paw print, checks; nothing sexual, nothing reads as a beard or mask of a real-world group, no real-world symbols; a child may wear all of them"
+review marking 23-31 batch=A4 date=2026-11-13 by=claude sheets="slot_marking, slot_marking_shape: moon, temple rings, diamond, whisker strokes, sprinkles, plaster, tally strokes, cartoon flame, abstract strokes (rune row); no body marks, no real-world symbols, nothing suggestive, nothing on a minor beyond cute marks"

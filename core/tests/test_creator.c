@@ -1044,7 +1044,7 @@ TEST(creator_rows_with_nothing_to_pick_are_not_shown)
             }
         }
     }
-    CHECK_EQ(n_hidden, 6);                                  /* today: 3 lists and their 3 colour rows */
+    CHECK_EQ(n_hidden, 4);                                  /* today: outer layer and legwear and their 2 colour rows (the fur pattern is live since CR4 A4) */
     /* the cursor never lands on one */
     for (t = 0; t < CR_TAB_COUNT; t++) {
         for (i = 0; i < 60; i++) {

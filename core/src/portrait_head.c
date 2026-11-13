@@ -2025,6 +2025,7 @@ static void markings(PCtx *c, int big)
         /* drawn with the ears */
         break;
     default:
+        (void)PS_SLOT(c, GF_MARKING, mk, 3);                  /* CR4 A4: a scripted mark (values from MARK_COUNT) */
         break;
     }
     pc_mask_none();

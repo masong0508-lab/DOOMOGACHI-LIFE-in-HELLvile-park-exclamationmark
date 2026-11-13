@@ -1,0 +1,106 @@
+# core/data/parts/fur/marks_a4.txt - CR4 batch A4: 9 face marks (values 23..31 of marking). The gene's marking field is
+# five bits wide, so these nine fill it; the plan's other body tattoos and marks are deep fields (DF_TATTOO1 / 2) that wait
+# for CR5. Head blocks of group 3, decals masked to the head, in the marking colour; abstract and cartoon only (no real-world
+# symbol, nothing suggestive, nothing on the body).
+
+def mink
+  mat marking_color
+  shade flat
+  decal
+enddef
+
+def mpale
+  mat skin light
+  shade flat
+  decal
+enddef
+
+list marking 23                     # Moon Mark: a crescent on the brow
+block group=3 anchor=head lod=all view=all
+  use mink
+  ellipse 0 -150 96 96
+  use mpale
+  ellipse 50 -170 84 84
+end
+
+list marking 24                     # Temple Rings: a ring at each temple
+block group=3 anchor=head lod=all view=all
+  use mink
+  mirror on
+  ellipse 170 -110 62 62
+  use mpale
+  ellipse 170 -110 34 34
+end
+
+list marking 25                     # Diamond Brow: a diamond on the forehead
+block group=3 anchor=head lod=all view=all
+  use mink
+  tri 0 -254 84 -160 -84 -160
+  tri 0 -70 84 -160 -84 -160
+end
+
+list marking 26                     # Whisker Marks: three strokes at each cheek
+block group=3 anchor=head lod=all view=all
+  use mink
+  mirror on
+  capsule 130 40 250 0 18 18
+  capsule 120 100 254 100 18 18
+  capsule 130 160 250 200 18 18
+end
+
+list marking 27                     # Sprinkles: short dashes scattered over the brow and cheeks
+block group=3 anchor=head lod=all view=all
+  use mink
+  capsule -200 -150 -130 -120 18 18
+  capsule -60 -230 10 -200 18 18
+  capsule 80 -170 150 -200 18 18
+  capsule 170 -90 240 -120 18 18
+  capsule -230 50 -170 90 18 18
+  capsule 200 130 150 170 18 18
+  capsule -90 -100 -30 -70 18 18
+  capsule 0 190 60 160 18 18
+end
+
+list marking 28                     # Plaster: a criss-cross plaster on the temple
+block group=3 anchor=head lod=all view=all
+  use mink
+  capsule -230 -170 -110 -60 52 52
+  use mpale
+  capsule -230 -170 -110 -60 34 34
+  use mink
+  ellipse -170 -115 16 16
+end
+
+list marking 29                     # Tally Marks: four strokes and a slash over one brow
+block group=3 anchor=head lod=all view=all
+  use mink
+  capsule 40 -140 40 -50 16 16
+  capsule 90 -140 90 -50 16 16
+  capsule 140 -140 140 -50 16 16
+  capsule 190 -140 190 -50 16 16
+  capsule 20 -60 220 -130 16 16
+end
+
+list marking 30                     # Flame Brow: a cartoon flame on the brow
+block group=3 anchor=head lod=all view=all
+  use mink
+  ellipse 0 -110 62 66
+  tri -62 -130 0 -254 62 -130
+  tri -62 -130 -86 -230 -14 -170
+  tri 20 -170 90 -230 62 -130
+  use mpale
+  ellipse 0 -86 26 34
+end
+
+list marking 31                     # Rune Row: little strokes in a row across the brow line
+block group=3 anchor=head lod=all view=all
+  use mink
+  capsule -200 -60 -160 -130 16 16
+  capsule -110 -70 -110 -140 16 16
+  capsule -40 -60 0 -130 16 16
+  capsule 0 -60 -40 -130 16 16
+  capsule 50 -70 50 -140 16 16
+  capsule 50 -100 100 -100 16 16
+  capsule 160 -60 200 -130 16 16
+  capsule 200 -60 160 -130 16 16
+end

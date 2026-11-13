@@ -260,7 +260,7 @@ static void sheet_stage(DoomoLook *l, int list)
     if (list == GF_LEGWEAR) { l->bottom = BOTTOM_SHORTS; l->shoes = SHOES_SANDALS; l->pattern_color = PAINT_CHERRY; }
     if (list == GF_HEAD_SHAPE) { l->hair_style = HAIR_BALD; l->hat = 0; l->ears = 0; l->species = SPECIES_HUMAN; }   /* CR4: the silhouette bare */
     if (list == GF_OUTER) l->top_color = PAINT_WHITE;
-    if (list == GF_FUR_PATTERN) { l->top = TOP_NONE; l->skin = 8 + PAINT_CARAMEL; l->marking_color = PAINT_CHOCOLATE; }
+    if (list == GF_FUR_PATTERN || list == GF_MARKING) { l->top = TOP_NONE; l->skin = 8 + PAINT_CARAMEL; l->marking_color = PAINT_CHOCOLATE; l->hair_style = HAIR_BALD; l->hat = 0; l->ears = 0; l->horns = 0; l->marking = list == GF_MARKING ? l->marking : MARK_NONE; }   /* CR4 A4: the bare head, the pattern against the fur */
     if (list == GF_FACIAL_HAIR) { l->hair_color = PAINT_CHOCOLATE; l->hair_style = HAIR_BALD; }   /* A2: a beard against the fur */
 
     if (list == GF_EYE_STYLE || list == GF_PUPIL || list == GF_SCLERA || list == GF_BROW_STYLE) { l->eye_color = PAINT_COBALT; l->hair_style = HAIR_BALD; l->hat = 0; l->eye_size = 12; l->brow_height = 8; }
@@ -295,7 +295,7 @@ static void sheet_slot(const char *key, const char *set, int shape)
         l.hat_color = m->list == GF_HAT ? PAINT_LAVENDER : l.hat_color;
         l.accessory_color = PAINT_COBALT;
         sheet_stage(&l, m->list);
-        crop_y = (m->list == GF_EYE_STYLE || m->list == GF_PUPIL || m->list == GF_SCLERA || m->list == GF_BROW_STYLE) ? (m->list == GF_BROW_STYLE ? 14 : 22) : 2;   /* CR4: the face band */
+        crop_y = (m->list == GF_EYE_STYLE || m->list == GF_PUPIL || m->list == GF_SCLERA || m->list == GF_BROW_STYLE) ? (m->list == GF_BROW_STYLE ? 14 : 22) : (m->list == GF_FUR_PATTERN || m->list == GF_MARKING) ? 16 : 2;   /* CR4: the face band */
         if (m->list == GF_SCLERA) look_part_set(&l, &d, GF_PUPIL, 2);   /* CR4: a pinpoint pupil leaves the whites showing */
         look_part_set(&l, &d, m->list, m->value);             /* CR3: gene-only fields ride in d */
         portrait_render_deep(&l, &d, RES_ALIVE, EXPR_NEUTRAL, 0, por);

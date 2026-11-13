@@ -1,0 +1,70 @@
+# CR4 A4: the fur and skin batch in the creator's picture grid: the Species & Body tab's Fur pattern row
+# (24 new choices) and the Supernatural tab's Marking row (9 new choices). A new Hellvile citizen: each row
+# opens its grid with A (the cursor starts on the worn choice), a new choice is found by letters (START)
+# and worn with A, and the citizen in the preview shows it (shot after each).
+scene CREATOR -1
+expect-scene CREATOR
+wait 30
+shot 01_body_tab
+# Species & Body: Species, Preset, Body, Height, Build, Skin, Fur pattern
+press DOWN
+wait 2
+press DOWN
+wait 2
+press DOWN
+wait 2
+press DOWN
+wait 2
+press DOWN
+wait 2
+press DOWN
+wait 8
+shot 02_fur_pattern_row
+press A
+wait 14
+shot 03_fur_pattern_grid
+press START
+wait 6
+type zebr
+press START
+wait 10
+shot 04_find_zebra_bars
+press A
+wait 14
+shot 05_fur_pattern_worn
+# the next row is the spot colour: it is shown now that a pattern is worn
+press DOWN
+wait 8
+shot 06_spot_colour_row
+# Supernatural: Horns, Horn colour, Horn size, Tail, Wings, Halo, Marking
+press R
+wait 4
+press R
+wait 4
+press R
+wait 12
+shot 07_supernatural_tab
+press DOWN
+wait 2
+press DOWN
+wait 2
+press DOWN
+wait 2
+press DOWN
+wait 2
+press DOWN
+wait 2
+press DOWN
+wait 8
+press A
+wait 14
+shot 08_marking_grid
+press START
+wait 6
+type rune
+press START
+wait 10
+shot 09_find_rune_row
+press A
+wait 14
+shot 10_marking_worn

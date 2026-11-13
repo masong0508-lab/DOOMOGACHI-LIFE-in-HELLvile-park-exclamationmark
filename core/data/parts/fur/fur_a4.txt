@@ -1,0 +1,277 @@
+# core/data/parts/fur/fur_a4.txt - CR4 batch A4: 24 fur patterns (values 1..24 of fur_pattern).
+# Head blocks of group 3 (face), drawn as decals masked to the head part before the eyes, in the third fur
+# colour (`mat fur_color3`: "auto" is the marking colour). 256 = the head radius, +x towards the viewer's
+# right, y down. A few patterns cut a second tone out of the skin (`mat skin light`). No chibi gets a
+# pattern smaller than a dot: every block draws at all LODs, the chibi sees the big shapes.
+
+def fur
+  mat fur_color3
+  shade flat
+  decal
+enddef
+
+def pale
+  mat skin light
+  shade flat
+  decal
+enddef
+
+def dusk
+  mat skin dark
+  shade flat
+  decal
+enddef
+
+list fur_pattern 1                  # Tabby Stripes: three bars from each temple, one on the brow
+block group=3 anchor=head lod=all view=all
+  use fur
+  mirror on
+  capsule 120 -150 236 -90 20 20
+  capsule 150 -40 250 -30 20 20
+  capsule 130 70 238 90 20 20
+  capsule 0 -240 0 -160 20 24
+end
+
+list fur_pattern 2                  # Leopard Spots: rings of colour round a pale centre
+block group=3 anchor=head lod=all view=all
+  use fur
+  ellipse -170 -60 52 48
+  ellipse 150 -130 50 46
+  ellipse 190 60 54 50
+  ellipse -90 150 50 46
+  ellipse 40 -190 40 36
+  use pale
+  ellipse -170 -60 24 22
+  ellipse 150 -130 24 22
+  ellipse 190 60 26 24
+  ellipse -90 150 24 22
+  ellipse 40 -190 16 14
+end
+
+list fur_pattern 3                  # Cow Patches: two big blobs
+block group=3 anchor=head lod=all view=all
+  use fur
+  ellipse -140 -90 100 82
+  ellipse -40 -150 60 44
+  ellipse 150 90 90 100
+  ellipse 190 -10 50 60
+end
+
+list fur_pattern 4                  # Dalmatian Dots: a sprinkle of round spots
+block group=3 anchor=head lod=all view=all
+  use fur
+  ellipse -180 -110 30 30
+  ellipse -60 -190 26 26
+  ellipse 90 -170 30 30
+  ellipse 200 -70 26 26
+  ellipse -210 30 24 24
+  ellipse 20 -90 22 22
+  ellipse 190 100 30 30
+  ellipse -150 130 28 28
+  ellipse 40 190 26 26
+  ellipse -40 110 20 20
+end
+
+list fur_pattern 5                 # Tiger Bands: thick slanted bands down the sides
+block group=3 anchor=head lod=all view=all
+  use fur
+  mirror on
+  tri 140 -240 254 -150 160 -20
+  tri 90 -30 254 10 140 150
+  tri 70 130 220 130 120 240
+  tri -30 -254 30 -254 0 -120
+end
+
+list fur_pattern 6                  # Bandit Mask: one band across the eyes
+block group=3 anchor=head lod=all view=all
+  use fur
+  capsule -200 -10 200 -10 56 56
+  tri -250 -40 -160 -40 -250 30
+  tri 250 -40 160 -40 250 30
+end
+
+list fur_pattern 7                  # Blaze: a stripe from the brow down the middle
+block group=3 anchor=head lod=all view=all
+  use fur
+  tri -50 -250 50 -250 0 80
+  capsule 0 -60 0 150 34 24
+end
+
+list fur_pattern 8                  # Half and Half: one side of the face is the other colour
+block group=3 anchor=head lod=all view=all
+  use fur
+  tri -256 -200 0 -256 0 254
+  tri -256 -200 0 254 -256 254
+end
+
+list fur_pattern 9                 # Freckle Dust: round specks over the cheeks and nose bridge
+block group=3 anchor=head lod=all view=all
+  use fur
+  mirror on
+  ellipse 150 100 30 30
+  ellipse 90 140 28 28
+  ellipse 200 150 26 26
+  ellipse 110 50 26 26
+  ellipse 40 30 24 24
+  ellipse 60 110 26 26
+end
+
+list fur_pattern 10                 # Brindle: short streaks, all leaning one way
+block group=3 anchor=head lod=all view=all
+  use fur
+  capsule -200 -120 -130 -50 14 14
+  capsule -90 -190 -20 -120 14 14
+  capsule 30 -210 100 -140 14 14
+  capsule 130 -110 200 -40 14 14
+  capsule -210 40 -140 110 14 14
+  capsule 120 70 190 140 14 14
+  capsule -80 120 -10 190 14 14
+  capsule 50 140 110 200 14 14
+end
+
+list fur_pattern 11                 # Temple Patches: a round patch at each temple
+block group=3 anchor=head lod=all view=all
+  use fur
+  mirror on
+  ellipse 200 -100 70 90
+  ellipse 130 -190 50 36
+end
+
+list fur_pattern 12                 # Brow Star: a star between the brows
+block group=3 anchor=head lod=all view=all
+  use fur
+  tri -70 -80 70 -80 0 -220
+  tri -70 -150 70 -150 0 -10
+  tri -110 -115 110 -115 0 -150
+end
+
+list fur_pattern 13                 # Heart Patch: a heart on the left of the brow
+block group=3 anchor=head lod=all view=all
+  use fur
+  ellipse -170 -150 56 50
+  ellipse -80 -150 56 50
+  tri -230 -130 -20 -130 -125 -10
+end
+
+list fur_pattern 14                 # Speckles: a fine scatter all over
+block group=3 anchor=head lod=all view=all
+  use fur
+  ellipse -170 -150 22 22
+  ellipse -80 -210 20 20
+  ellipse 40 -170 22 22
+  ellipse 150 -190 20 20
+  ellipse 220 -90 22 22
+  ellipse -220 -10 20 20
+  ellipse -50 -80 20 20
+  ellipse 90 -50 22 22
+  ellipse 230 20 20 20
+  ellipse -140 80 22 22
+  ellipse 30 80 20 20
+  ellipse 170 120 22 22
+  ellipse -190 170 20 20
+  ellipse -40 200 22 22
+  ellipse 100 190 20 20
+end
+
+list fur_pattern 15                 # Zebra Bars: tall bars, wide at the brow, thin at the chin
+block group=3 anchor=head lod=all view=all
+  use fur
+  tri -200 -200 -150 -200 -170 120
+  tri -90 -240 -40 -240 -60 200
+  tri 40 -240 90 -240 60 200
+  tri 150 -200 200 -200 170 120
+end
+
+list fur_pattern 16                 # Giraffe Tiles: blocky patches with a pale seam
+block group=3 anchor=head lod=all view=all
+  use fur
+  band -150 -120 60 50
+  band 20 -170 50 40
+  band 160 -80 56 60
+  band -160 60 50 50
+  band 10 20 44 40
+  band 150 150 56 44
+  band -50 170 44 36
+end
+
+list fur_pattern 17                 # Eyebrow Dots: a round spot above each eye
+block group=3 anchor=head lod=all view=all
+  use fur
+  mirror on
+  ellipse 105 -80 50 44
+end
+
+list fur_pattern 18                 # Paw Print: a pad and three toes on the brow
+block group=3 anchor=head lod=all view=all
+  use fur
+  ellipse 110 -100 70 56
+  ellipse 40 -170 26 30
+  ellipse 110 -200 26 30
+  ellipse 180 -170 26 30
+end
+
+list fur_pattern 19                 # Harlequin: diamonds in two tones
+block group=3 anchor=head lod=all view=all
+  use fur
+  tri -140 -200 -60 -110 -220 -110
+  tri -140 -20 -60 -110 -220 -110
+  tri 60 -220 140 -120 -20 -120
+  tri 60 -20 140 -120 -20 -120
+  tri -130 80 -50 160 -210 160
+  tri -130 240 -50 160 -210 160
+  tri 140 80 220 160 60 160
+  tri 140 240 220 160 60 160
+end
+
+list fur_pattern 20                 # Skunk Stripe: one wide stripe straight up the middle
+block group=3 anchor=head lod=all view=all
+  use fur
+  capsule 0 -250 0 210 50 50
+  use dusk
+  capsule 0 -250 0 210 18 18
+end
+
+list fur_pattern 21                 # Temple Swoops: curved sweeps at the temples
+block group=3 anchor=head lod=all view=all
+  use fur
+  mirror on
+  capsule 150 -230 220 -150 24 24
+  capsule 220 -150 240 -60 24 24
+  capsule 100 -190 170 -120 24 24
+  capsule 170 -120 190 -40 24 24
+  capsule 40 -240 100 -210 20 20
+end
+
+list fur_pattern 22                 # Camo Blobs: lumpy patches in two tones
+block group=3 anchor=head lod=all view=all
+  use fur
+  ellipse -150 -110 80 54
+  ellipse 90 -60 70 50
+  ellipse -40 100 90 54
+  ellipse 190 130 56 50
+  use dusk
+  ellipse 60 -190 60 36
+  ellipse -190 70 44 54
+  ellipse 130 60 40 34
+end
+
+list fur_pattern 23                 # Patch Eye: a dark patch around one eye
+block group=3 anchor=head lod=all view=all
+  use fur
+  ellipse -110 10 96 86
+  ellipse -170 -50 50 40
+end
+
+list fur_pattern 24                 # Checkerboard: a chequered band across the brow
+block group=3 anchor=head lod=all view=all
+  use fur
+  band -200 -210 36 30
+  band -60 -210 36 30
+  band 80 -210 36 30
+  band -130 -150 36 30
+  band 10 -150 36 30
+  band 150 -150 36 30
+  band -200 -90 36 30
+  band -60 -90 36 30
+  band 80 -90 36 30
+end
