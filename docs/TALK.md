@@ -1093,9 +1093,11 @@ Before (3,000 kid rooms per act): insult, mock, tease, threaten, dismiss 100.00%
 lines, so no deflection line had to be added. A unit test (`talk_census_cool_kid_reply_rate`,
 1,500 rooms an act) holds each act to 99% or more.
 
-Census after the fix (2,000,000 contexts and 2,000,000 conversations, `make -C core talk-census`
-without the grid change): see the table in 6d. Evidence: before and after logs in the evidence
-directory.
+Census after the fix (2,000,000 contexts and 2,000,000 conversations on the same tree): quality
+failures **4 -> 0** (Q6 lint), S3 lint hits **9 -> 0** (4 in the contexts, 5 in the conversations),
+Surface 767,799 distinct (Chao1 3,829,245; the 1,000,000 target is still missed, that is the
+bank's size, not this package), Skeleton 719,360, Meaning 41,208, conversations 1,999,981
+distinct. (The 6d table below is the older starter-bank run.)
 
 **T5B-OPEN (openers, parts and the rest, content only)**: +648 alternatives in seven new files,
 `grammar/en/open_greet.tlk` (97: greetings by time of day, first meeting, old friends, family,
