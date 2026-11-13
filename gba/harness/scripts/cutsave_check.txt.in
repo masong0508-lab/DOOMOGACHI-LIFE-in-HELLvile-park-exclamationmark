@@ -1,0 +1,12 @@
+# cutsave_check.txt.in - S2-10 power-cut test, step 3 (cutsave.sh fills in @SEED@): boot on the flash file the cut
+# left, load slot 1, remember the town's CRC, rebuild the island @SEED@ and require the same CRC: the slot holds
+# exactly that island (verify first: the whole slot's CRC).
+wait 40
+expect-log doomo: init
+seed 4242
+verify 1
+load 1
+town-crc
+town-fill @SEED@
+expect-town-crc
+wait 2

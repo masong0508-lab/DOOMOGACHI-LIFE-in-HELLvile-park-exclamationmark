@@ -1,0 +1,12 @@
+# cutsave_prev.txt - S2-10 power-cut test, step 1: a valid free-play save (the "previous save", a lived-in Classic
+# island) in slot 1 of a fresh flash file. gba/harness/cutsave.sh then cuts a second save of another island at
+# several points and looks at the slot.
+wait 40
+expect-log doomo: init
+seed 4242
+town-fill 0x80000001
+town-crc
+save 1
+expect-save 1
+verify 1
+wait 5

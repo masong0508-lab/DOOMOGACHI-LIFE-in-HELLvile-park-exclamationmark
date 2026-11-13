@@ -1,0 +1,4 @@
+# cutsave_exists.txt - S2-10 power-cut test: succeeds when slot 1 reads as a save, fails when it reads as empty
+wait 40
+expect-log doomo: init
+expect-save 1

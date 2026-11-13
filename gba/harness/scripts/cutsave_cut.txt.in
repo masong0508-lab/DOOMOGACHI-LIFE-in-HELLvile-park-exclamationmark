@@ -1,0 +1,9 @@
+# cutsave_cut.txt.in - S2-10 power-cut test, step 2 (cutsave.sh fills in @K@): a different island, saved with
+# save_game on the GBA; the emulator is stopped @K@ video frames into it, mid-write (the harness keeps the flash
+# file in sync while the ROM programs it, so the file is what a power cut would leave).
+wait 40
+expect-log doomo: init
+seed 4242
+town-fill 4242
+post 1 1
+frames @K@

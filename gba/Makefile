@@ -152,7 +152,7 @@ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 # over the core's weak stubs, and the core's strong definitions win over both.
 ALL_OBJS  := $(GBA_OBJS) $(CORE_OBJS)
 
-.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-optvol test-speed test-life profile-title profile-pause profile-invaded profile-all test-talk profile-sung profile-creator test-creator test-creator-sliders test-speed2 test-breach2 profile-speed2 profile-concert profile-exorcism clean sizes
+.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-cutsave test-home test-ow test-lang test-optvol test-speed test-life profile-title profile-pause profile-invaded profile-all test-talk profile-sung profile-creator test-creator test-creator-sliders test-speed2 test-breach2 profile-speed2 profile-concert profile-exorcism clean sizes
 .DEFAULT_GOAL := all
 
 # Cartridge size (user decision 2026-11-01): the game ROM is a full 256 Mbit
@@ -275,6 +275,7 @@ test:
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-game
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-talk
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-coresave
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-cutsave
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-story
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-home
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-ow
@@ -318,6 +319,12 @@ test-coresave: harness
 	    --save $(BUILD)/coresave.sav --quiet
 	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/coresave2.txt \
 	    --save $(BUILD)/coresave.sav --quiet
+
+# S2-10: a save cut off at several points (a power cut or a reset mid-write) leaves a complete save or an empty slot
+# (gba/harness/cutsave.sh); CUTS="100 450" picks the cut points (video frames into the save)
+test-cutsave: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@$(GBA)/harness/cutsave.sh $(BUILD)/doomogachi.gba $(HARNESS) $(BUILD)/cutsave
 
 # --- S2 (for H2, SPEC sec.12): the story's scripts, every
 # harness/scripts/story_*.txt (Ch1: P0, Ep 1.1, Ep 1.6, cutscene fps) ---
