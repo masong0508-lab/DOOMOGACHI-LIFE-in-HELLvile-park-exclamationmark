@@ -152,6 +152,7 @@ uint32_t nat_calls[NC_N];
 void plat_clear(uint8_t color)
 {
     nat_calls[NC_CLEAR]++;
+    nat_clip_viol += nat_clip_on;
     nat_panel_op(NP_CLEAR, 0, 0, nat_w, nat_h);
     memset(nat_fb, color, (size_t)(nat_w * nat_h));
     nat_panel_op_end();
@@ -159,11 +160,23 @@ void plat_clear(uint8_t color)
 
 static int clip(int *x, int *y, int *w, int *h)
 {
-    if (*x < 0) { *w += *x; *x = 0; }
-    if (*y < 0) { *h += *y; *y = 0; }
-    if (*x + *w > nat_w) *w = nat_w - *x;
-    if (*y + *h > nat_h) *h = nat_h - *y;
+    int x0 = 0, y0 = 0, x1 = nat_w, y1 = nat_h;
+    if (nat_clip_on) {                              /* (G2-EX) plat_clip */
+        x0 = DOOMO_MAX(x0, nat_clipbox[0]); y0 = DOOMO_MAX(y0, nat_clipbox[1]);
+        x1 = DOOMO_MIN(x1, nat_clipbox[2]); y1 = DOOMO_MIN(y1, nat_clipbox[3]);
+    }
+    if (*x < x0) { *w -= x0 - *x; *x = x0; }
+    if (*y < y0) { *h -= y0 - *y; *y = y0; }
+    if (*x + *w > x1) *w = x1 - *x;
+    if (*y + *h > y1) *h = y1 - *y;
     return *w > 0 && *h > 0;
+}
+
+/* nat_px inside the plat_clip box (the lines, text, checkers and images below) */
+static void nat_cpx(int x, int y, uint8_t c)
+{
+    if (nat_clip_on && (x < nat_clipbox[0] || x >= nat_clipbox[2] || y < nat_clipbox[1] || y >= nat_clipbox[3])) return;
+    nat_px(x, y, c);
 }
 
 void plat_rect(int x, int y, int w, int h, uint8_t color)
@@ -227,9 +240,10 @@ void plat_checker(int x, int y, int w, int h, uint8_t color)
 {
     nat_calls[NC_CHECKER]++;
     int i, j;
+    nat_clip_viol += nat_clip_on;
     nat_panel_op(NP_OTHER, x, y, x + w, y + h);
     for (j = 0; j < h; j++)
-        for (i = j & 1; i < w; i += 2) nat_px(x + i, y + j, color);
+        for (i = j & 1; i < w; i += 2) nat_cpx(x + i, y + j, color);
     nat_panel_op_end();
 }
 
@@ -239,10 +253,11 @@ void plat_line(int x0, int y0, int x1, int y1, uint8_t color)
     int dx = x1 > x0 ? x1 - x0 : x0 - x1, sx = x0 < x1 ? 1 : -1;
     int dy = y1 > y0 ? y0 - y1 : y1 - y0, sy = y0 < y1 ? 1 : -1;
     int err = dx + dy, n = 0;
+    nat_clip_viol += nat_clip_on;
     nat_panel_op((x0 == x1 || y0 == y1) ? NP_RECT : NP_OTHER, DOOMO_MIN(x0, x1), DOOMO_MIN(y0, y1),
                  DOOMO_MAX(x0, x1) + 1, DOOMO_MAX(y0, y1) + 1);
     for (;;) {
-        nat_px(x0, y0, color);
+        nat_cpx(x0, y0, color);
         if ((x0 == x1 && y0 == y1) || ++n > 4096) break;
         {
             int e2 = 2 * err;
@@ -257,6 +272,7 @@ void plat_text(int x, int y, const char *s, uint8_t color)
 {
     nat_calls[NC_TEXT]++;
     int cx = x;
+    nat_clip_viol += nat_clip_on;
     if (!s) return;                       /* bytes as given: ui.c translated them (L2a) */
     {
         /* the box the glyphs can touch (G7 panels) */
@@ -277,7 +293,7 @@ void plat_text(int x, int y, const char *s, uint8_t color)
             for (col = 0; col < 5; col++) {
                 uint8_t bits = doomo_font[ch - FONT_FIRST][col];
                 for (row = 0; row < 8; row++)
-                    if (bits & (1 << row)) nat_px(cx + col, y + row, color);
+                    if (bits & (1 << row)) nat_cpx(cx + col, y + row, color);
             }
         }
         cx += FONT_ADVANCE;
@@ -292,6 +308,7 @@ void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
     int ix, iy, w, h;
     if (!img || !img->pix || !img->w || !img->h) return;
     scale = DOOMO_CLAMP(scale, 1, 4);
+    nat_clip_viol += nat_clip_on && (scale != 1 || (flags & IMG_FLIPX));
     w = img->w; h = img->h;
     if (ur_shape_image(img) && !(flags & (IMG_SHADOW | IMG_SILHOUETTE))) {
         nat_panel_op(NP_SHAPE, x, y, x + w * scale, y + h * scale);
@@ -311,7 +328,9 @@ void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
                     for (b = 0; b < scale; b++)
                         for (a = 0; a < scale; a++) {
                             int qx = px + a, qy = py + b;
-                            if ((unsigned)qx < (unsigned)nat_w && (unsigned)qy < (unsigned)nat_h)
+                            if ((unsigned)qx < (unsigned)nat_w && (unsigned)qy < (unsigned)nat_h &&
+                                (!nat_clip_on || (qx >= nat_clipbox[0] && qx < nat_clipbox[2] &&
+                                                  qy >= nat_clipbox[1] && qy < nat_clipbox[3])))
                                 nat_fb[qy * nat_w + qx] = doomo_colormap[5][nat_fb[qy * nat_w + qx]];
                         }
                 }
@@ -323,7 +342,7 @@ void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
             uint8_t c = img->pix[iy * w + sx];
             if (!c) continue;
             if (flags & IMG_SILHOUETTE) c = color;
-            if (scale == 1) nat_px(x + ix, y + iy, c);
+            if (scale == 1) nat_cpx(x + ix, y + iy, c);
             else plat_rect(x + ix * scale, y + iy * scale, scale, scale, c);
         }
     }

@@ -782,6 +782,33 @@ static int L(int id, int x, int y, int w, int h, uint32_t key)
     return stage_draw(id);
 }
 
+/* (G2-EX) L for a layer that draws only with plat_rect, plat_shade_rect and plat_image at scale 1 (no text,
+ * lines or scaled images): the stage may draw it clipped to the part of the dirty set in its box, which is
+ * what CLIPPED does (backdrop.h) */
+static int LC(int id, int x, int y, int w, int h, uint32_t key)
+{
+    if (lpass == 1) {
+        stage_layer_clip(id, x, y, w, h, hk(key, (uint32_t)X.state * 131u + (uint32_t)id));
+        return 0;
+    }
+    return stage_draw(id);
+}
+#define CLIPPED(id, call)                                                   \
+    do {                                                                    \
+        int cn_ = stage_clip_n(id), ck_;                                    \
+        if (cn_ <= 0) {                                                     \
+            call;                                                           \
+        } else {                                                            \
+            for (ck_ = 0; ck_ < cn_; ck_++) {                               \
+                int16_t cr_[4];                                             \
+                stage_clip_get(id, ck_, cr_);                               \
+                plat_clip(cr_[0], cr_[1], cr_[2], cr_[3]);                  \
+                call;                                                       \
+            }                                                               \
+            plat_clip_end();                                                \
+        }                                                                   \
+    } while (0)
+
 /* the host's frame at (cx, cy) (exo_host_frame), its outer w / h in *w, *h */
 static void host_layer(int cx, int cy, int scale, int expr, uint32_t t, int *w, int *h)
 {
@@ -802,8 +829,8 @@ static void host_layer(int cx, int cy, int scale, int expr, uint32_t t, int *w, 
                   (uint32_t)(dx + 64) | (uint32_t)(dy + 64) << 8 | (uint32_t)pulse << 16 |
                   (uint32_t)((X.dread > 10) | (X.dread < 6) << 1 | (X.dread < 11) << 2) << 20), img);
     /* aura radii up to w / 2 + 7, h / 2 + 6; the shadow 3 px down-right */
-    if (L(LY_HOST, cx + dx - fw / 2 - 8, cy + dy - fh / 2 - 7, fw + 17, fh + 15, k))
-        exo_host_frame(cx, cy, img, scale, sh, X.dread, t, w, h);
+    if ((img && scale == 1 ? LC : L)(LY_HOST, cx + dx - fw / 2 - 8, cy + dy - fh / 2 - 7, fw + 17, fh + 15, k))
+        CLIPPED(LY_HOST, exo_host_frame(cx, cy, img, scale, sh, X.dread, t, w, h));
     *w = fw;
     *h = fh;
 }
@@ -815,7 +842,8 @@ static void candles_layer(int cx, int y, int lit, int total, uint32_t t, int big
     uint32_t k = hk(hk(0xCA9Du, (uint32_t)(cx & 1023) | (uint32_t)(y & 1023) << 10 | (uint32_t)lit << 20 |
                                 (uint32_t)total << 24 | (uint32_t)big << 28),
                     lit < total ? t : t / 3);
-    if (L(LY_CANDLES, x0 - 5, y - 15, (total - 1) * sp + 11, ch + 18, k)) exo_candles(cx, y, lit, total, t, big);
+    if (LC(LY_CANDLES, x0 - 5, y - 15, (total - 1) * sp + 11, ch + 18, k))
+        CLIPPED(LY_CANDLES, exo_candles(cx, y, lit, total, t, big));
 }
 
 static void fuzz_layer(int cx, int foot, uint32_t t, int expr)
@@ -826,10 +854,10 @@ static void fuzz_layer(int cx, int foot, uint32_t t, int expr)
     img = ly_fuzz_img;
     if (!img) { L(LY_FUZZ, 0, 0, 0, 0, 0); return; }
     hw = DOOMO_MAX(14, img->w / 2 + 1) + 1;
-    if (L(LY_FUZZ, cx - hw, foot - img->h - 2, 2 * hw + 1, img->h + 5,
-          hk_img(hk(0xF022u, (uint32_t)(cx & 1023) | (uint32_t)(foot & 1023) << 10 |
-                             (uint32_t)(ui_wave((int)t, 48, 1) + 2) << 20), img)))
-        exo_fuzz_draw(cx, foot, t, img);
+    if (LC(LY_FUZZ, cx - hw, foot - img->h - 2, 2 * hw + 1, img->h + 5,
+           hk_img(hk(0xF022u, (uint32_t)(cx & 1023) | (uint32_t)(foot & 1023) << 10 |
+                              (uint32_t)(ui_wave((int)t, 48, 1) + 2) << 20), img)))
+        CLIPPED(LY_FUZZ, exo_fuzz_draw(cx, foot, t, img));
 }
 
 static void demon_layer(int x, int y, uint32_t t, int flash, int scale)
@@ -839,10 +867,10 @@ static void demon_layer(int x, int y, uint32_t t, int flash, int scale)
     if (!img) { L(LY_DEMON, 0, 0, 0, 0, 0); return; }
     w = img->w * scale;
     h = img->h * scale;
-    if (L(LY_DEMON, x - w / 2 - 1, y - h / 2 - 2, w + scale + 3, h + scale + 4,
+    if ((scale == 1 ? LC : L)(LY_DEMON, x - w / 2 - 1, y - h / 2 - 2, w + scale + 3, h + scale + 4,
           hk_img(hk(0xDE30u, (uint32_t)(x & 1023) | (uint32_t)(y & 1023) << 10 | (uint32_t)scale << 20 |
                              (uint32_t)sil << 24 | (uint32_t)(sil ? 0 : ui_wave((int)t, 20, 1) + 2) << 26), img)))
-        exo_demon(x, y, t, flash, scale);
+        CLIPPED(LY_DEMON, exo_demon(x, y, t, flash, scale));
 }
 
 /* exo_bubble's box: the bubble, its outline and the tail from (tx, ty) */
@@ -1222,19 +1250,25 @@ static void exo_layers(uint32_t t)
         candles_layer(w / 2, hy + hh / 2 + 3, X.practice ? 3 : exorcism_tries_left(X.host), 3, t, big);
         fuzz_layer(fuzz_x, fuzz_foot, t, EXPR_TALK);
         demon_layer(w / 2 + hw / 2 + 10, hy - hh / 2 + ui_wave((int)t, 40, 4), t, X.shake > 3 ? X.shake : 0, 1);
-        if (L(LY_U0, fx - 2, fyy - 10, 12, fh + 12, hk(0xFA17u, (uint32_t)faith | (uint32_t)(X.dread < 8) << 16)))
-            draw_faith_meter(fx, fyy, fh, faith);
+        if (LC(LY_U0, fx - 2, fyy - 10, 12, fh + 12, hk(0xFA17u, (uint32_t)faith | (uint32_t)(X.dread < 8) << 16)))
+            CLIPPED(LY_U0, draw_faith_meter(fx, fyy, fh, faith));
         lane_geom(&ly, &lane_h, &lhx);
         /* the ribbon and its prompts (a missed prompt sinks 10 px; sparkles, outlines) */
         if (L(LY_U0 + 1, 0, ly - 4, w, lane_h + 32, hk(0x1A9Eu, (uint32_t)X.pt ^ (uint32_t)(X.dread < 8) << 20)))
             draw_lane(t, LANE_RIBBON);
-        if (L(LY_U0 + 2, 0, ly - 24, w, 21,
-              hk(0x90Bu, (X.fb && X.fb_t < 24 ? (uint32_t)X.fb | (uint32_t)X.fb_t << 4 : 0u) |
-                         (uint32_t)(X.combo >= 3 ? X.combo : 0) << 12)))
-            draw_lane(t, LANE_POP);
-        if (L(LY_U0 + 3, w / 2 - 10, ly - 36, 34, 22,
-              hk(0xC0u, X.pt < 4 * EXORCISM_TICKS_PER_BEAT && X.pt >= 0 ? (uint32_t)(X.pt / EXORCISM_TICKS_PER_BEAT) + 1 : 0u)))
-            draw_lane(t, LANE_COUNT);
+        /* (G2-EX) a part that draws nothing has no box: a box that lies on the dirty ones of every
+         * tick (the full-width pop strip over the host, Fuzz and the curtains) would drag the whole
+         * stage into the redraw */
+        {
+            int pop = (X.fb && X.fb_t < 24) || X.combo >= 3, cnt = X.pt < 4 * EXORCISM_TICKS_PER_BEAT && X.pt >= 0;
+            if (L(LY_U0 + 2, 0, ly - 24, pop ? w : 0, pop ? 21 : 0,
+                  hk(0x90Bu, (X.fb && X.fb_t < 24 ? (uint32_t)X.fb | (uint32_t)X.fb_t << 4 : 0u) |
+                             (uint32_t)(X.combo >= 3 ? X.combo : 0) << 12)))
+                draw_lane(t, LANE_POP);
+            if (L(LY_U0 + 3, w / 2 - 10, ly - 36, cnt ? 34 : 0, cnt ? 22 : 0,
+                  hk(0xC0u, cnt ? (uint32_t)(X.pt / EXORCISM_TICKS_PER_BEAT) + 1 : 0u)))
+                draw_lane(t, LANE_COUNT);
+        }
         if (X.taunt_t > 0)
             bubble_layer(LY_U0 + 4, w / 2 + hw / 2 - (big ? 10 : 30), big ? 6 : 2, big ? 120 : 96, X.taunt,
                          w / 2 + hw / 2 + 10, hy - hh / 2 - 6, 1);
@@ -1425,14 +1459,16 @@ static void exo_draw(void)
         int16_t box[4];
         uint32_t key;
         exo_church_part(p, X.dread, t, box, &key);
-        stage_layer(p, box[0], box[1], box[2], box[3], hk(key, (uint32_t)p));
+        stage_layer_clip(p, box[0], box[1], box[2], box[3], hk(key, (uint32_t)p));
     }
     exo_layers(t);
     stage_resolve();
     lpass = 2;
     ly_fetch = 0;
-    for (p = 0; p < EXO_PARTS; p++)
-        if (stage_draw(p)) exo_church_part_draw(p, X.dread, t);
+    for (p = 0; p < EXO_PARTS; p++) {
+        if (!stage_draw(p)) continue;
+        CLIPPED(p, exo_church_part_draw(p, X.dread, t));
+    }
     exo_layers(t);
     stage_end();
 }

@@ -176,6 +176,7 @@ void hold_flipped(int page);              /* video_flip: page shown, -1 tiles */
 /* ---- stage.c (SP7): the kept backdrop's pages ----------------------------- */
 void stage_flipped(int page);             /* video_flip: page shown, -1 tiles / not flipped */
 void stage_note(int x0, int y0, int x1, int y1);   /* drawn after plat_stage_end */
+extern int16_t stage_box[4];                       /* (G2-EX) the clip box inside plat_clip (stage.c) */
 int  hold_page(void);                     /* page held as the backdrop, -1 none */
 void hold_band_release(void);            /* SP5: a world frame: the band's borrowed cache bytes go back (hold.c) */
 void view_hold_drop(void);                /* S2-2 (viewhold.c): the held 3D view copy is gone */

@@ -59,6 +59,22 @@ void stage_layer(int i, int x, int y, int w, int h, uint32_t key);
 void stage_resolve(void);
 int  stage_draw(int i);
 void stage_end(void);
+/* (G2-EX) Clipped redraw. A layer declared with stage_layer_clip draws only through plat_rect,
+ * plat_shade_rect and plat_image at scale 1 without a flip (the calls a platform's plat_clip honours
+ * exactly: plat_ext.h), and its draw is the same whatever the screen under it holds. When such a
+ * layer did not change but lies on a dirty box, the stage does not put its whole box back and draw
+ * it again (which would drag every layer that lies on that box into the redraw, and so on): it
+ * draws the layer only through the pieces of the dirty set that lie in its box, clipped to each.
+ * After stage_draw(i) says 1:
+ *     n = stage_clip_n(i);                       0: draw it once, as usual (a changed layer, a
+ *     if (n == 0) draw(); else for (k < n) {       full frame, a clean box)
+ *         stage_clip_get(i, k, r);               piece k, [r[0], r[2]) x [r[1], r[3])
+ *         plat_clip(r[0], r[1], r[2], r[3]); draw(); }
+ *     plat_clip_end();                           (always, after the layer)
+ * The pieces are disjoint, so a layer's shading lands once on every pixel. */
+void stage_layer_clip(int i, int x, int y, int w, int h, uint32_t key);
+int  stage_clip_n(int i);
+void stage_clip_get(int i, int k, int16_t r[4]);
 /* The stage's memory, stage_mem_bytes() long (~1.1 KB): the caller binds a block it owns (the
  * exorcism binds its scene scratch, and binds it again when another scene took the scratch);
  * binding forgets every record. Unbound (NULL), stage_begin always returns 0. */
@@ -68,7 +84,7 @@ void stage_bind(void *mem);
 void stage_reset(void);
 /* Statistics of the last resolved frame (tests, harness logs): layers drawn, boxes put back,
  * and whether the frame was drawn in full. */
-typedef struct StageStats { uint8_t drawn, restored, full, retained; } StageStats;
+typedef struct StageStats { uint8_t drawn, restored, full, retained, clipped; } StageStats;
 void stage_stats(StageStats *s);
 
 #endif

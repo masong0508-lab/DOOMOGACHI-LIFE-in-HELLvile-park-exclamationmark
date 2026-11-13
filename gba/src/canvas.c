@@ -344,6 +344,7 @@ int vid_route(int x0, int y0, int x1, int y1)
         stage_note(x0, y0, x1, y1);
         if (pn_active()) pn_route(x0, y0, x1, y1);
         return 1;
+    case GBA_NODRAW_CLIP: return 1;              /* (G2-EX) inside plat_clip: the calls that honour it cut themselves */
     case GBA_NODRAW_CANVAS:
         if (cv_op(x0, y0, x1, y1)) return 2;
         return gba_nodraw ? 0 : 1;              /* dropped / converted   */

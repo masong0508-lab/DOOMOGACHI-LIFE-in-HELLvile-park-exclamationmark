@@ -45,6 +45,15 @@ static int16_t buf_dirt[2][4];
 static int cur_buf, frame_stage, tracking, frames, last_kept;
 static int16_t trk[4];
 
+/* (G2-EX) plat_clip: every rect, shade and (scale 1, unflipped) image in plat_native.c honours the box */
+int nat_clip_on, nat_clipbox[4], nat_clip_viol;
+void plat_clip(int x0, int y0, int x1, int y1)
+{
+    nat_clipbox[0] = x0; nat_clipbox[1] = y0; nat_clipbox[2] = x1; nat_clipbox[3] = y1;
+    nat_clip_on = 1;
+}
+void plat_clip_end(void) { nat_clip_on = 0; }
+
 static void pics_flush(void)
 {
     int i;
@@ -237,6 +246,7 @@ void nat_stage_reset(void)
     pics_flush();
     stamps_drawn = 0;
     cur_buf = frame_stage = tracking = frames = 0;
+    nat_clip_on = 0;
 }
 
 /* ---- the baker: every key of every family at the runner's screen size --------------------

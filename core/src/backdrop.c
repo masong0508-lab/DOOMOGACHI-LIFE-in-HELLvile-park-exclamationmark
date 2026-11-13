@@ -11,9 +11,13 @@
  * layers in the same places, nothing drawn over them since. A buffer that holds nothing the
  * stage knows, or another backdrop key, is drawn in full (the whole backdrop put back).
  *
- * RAM: two records of STAGE_MAX_LAYERS layers (12 B each), the frame being built and the dirty
- * boxes, ~1.1 KB, in memory the caller binds (stage_bind: the exorcism's scene scratch, a cache
- * it re-binds when another scene took the scratch); 16 B of .bss here.
+ * (G2-EX) A layer declared with stage_layer_clip that did not change but lies on a dirty box is not
+ * redrawn whole over its whole box put back (which dragged in every layer that lies on that box):
+ * it is drawn only through the pieces of the dirty set in its box, clipped to each (backdrop.h).
+ *
+ * RAM: two records of STAGE_MAX_LAYERS layers (12 B each), the frame being built, the dirty
+ * boxes and the pieces put back, ~1.5 KB, in memory the caller binds (stage_bind: the exorcism's
+ * scene scratch, a cache it re-binds when another scene took the scratch); 16 B of .bss here.
  */
 #include "doomo/backdrop.h"
 #include "doomo/plat_ext.h"
@@ -60,6 +64,8 @@ WEAK void plat_stage_restore_list(const int16_t *xywh, int n, int dx, int dy)
     for (; n > 0; n--, xywh += 4) plat_stage_restore(xywh[0] + dx, xywh[1] + dy, xywh[2], xywh[3]);
 }
 #endif
+WEAK void plat_clip(int x0, int y0, int x1, int y1) { (void)x0; (void)y0; (void)x1; (void)y1; }
+WEAK void plat_clip_end(void) {}
 
 /* ---- the stage ------------------------------------------------------------------------ */
 typedef struct { int16_t x0, y0, x1, y1; uint32_t key; } SLayer;     /* box: [x0, x1) x [y0, y1) */
@@ -67,22 +73,26 @@ typedef struct {
     uint32_t serial, bkey;
     int16_t  bid;
     uint8_t  n, pad;
+    uint32_t clip;                /* bit i: layer i may be drawn clipped (stage_layer_clip) */
     SLayer   l[STAGE_MAX_LAYERS];
 } SRec;
 
 #define DIRTY_MAX 40
+#define PIECE_MAX 48
 typedef struct {
     SRec rec[2];                  /* the last two frames drawn with the stage   */
     SRec cur;                     /* this frame                                 */
     PlatStageInfo info;
     int16_t d[DIRTY_MAX][4];      /* boxes put back                             */
-    int nd;
+    int16_t pc[PIECE_MAX][4];     /* the disjoint pieces the dirty set is cut into (what was restored) */
+    int nd, npc;
 } SMem;
 /* the bound memory (the caller's: the exorcism's scene scratch) and the per-frame state */
 static SMem *M;
 static struct {
     int8_t on;                    /* plat_stage_begin said yes                  */
     uint32_t draw_mask;           /* layers to draw this frame                  */
+    uint32_t clip_mask;           /* ... of them, the ones drawn through pieces  */
     StageStats st;
 } S;
 #define SS (*M)
@@ -108,11 +118,14 @@ int stage_begin(int id, uint32_t key, void (*draw)(uint32_t key))
 {
     S.on = 0;
     S.draw_mask = 0xFFFFFFFFu;
-    S.st.drawn = S.st.restored = 0;
+    S.clip_mask = 0;
+    S.st.drawn = S.st.restored = S.st.clipped = 0;
     S.st.full = 1;
     S.st.retained = 0;
     if (!M) return 0;
     SS.cur.n = 0;
+    SS.cur.clip = 0;
+    SS.npc = 0;
     SS.cur.bid = (int16_t)id;
     SS.cur.bkey = key;
     SS.cur.serial = 0;
@@ -125,7 +138,7 @@ int stage_begin(int id, uint32_t key, void (*draw)(uint32_t key))
     return 1;
 }
 
-void stage_layer(int i, int x, int y, int w, int h, uint32_t key)
+static void layer_set(int i, int x, int y, int w, int h, uint32_t key, int clip)
 {
     SLayer *l;
     int W = plat_screen_w(), H = plat_screen_h();
@@ -137,6 +150,8 @@ void stage_layer(int i, int x, int y, int w, int h, uint32_t key)
     }
     l = &SS.cur.l[i];
     l->key = key;
+    if (clip) SS.cur.clip |= 1u << i;
+    else SS.cur.clip &= ~(1u << i);
     if (w <= 0 || h <= 0) { l->x0 = l->y0 = l->x1 = l->y1 = 0; return; }
     l->x0 = (int16_t)DOOMO_CLAMP(x, 0, W);
     l->y0 = (int16_t)DOOMO_CLAMP(y, 0, H);
@@ -144,6 +159,9 @@ void stage_layer(int i, int x, int y, int w, int h, uint32_t key)
     l->y1 = (int16_t)DOOMO_CLAMP(y + h, 0, H);
     if (l->x0 >= l->x1 || l->y0 >= l->y1) l->x0 = l->y0 = l->x1 = l->y1 = 0;
 }
+
+void stage_layer(int i, int x, int y, int w, int h, uint32_t key) { layer_set(i, x, y, w, h, key, 0); }
+void stage_layer_clip(int i, int x, int y, int w, int h, uint32_t key) { layer_set(i, x, y, w, h, key, 1); }
 
 static int empty(const SLayer *l) { return l->x0 >= l->x1 || l->y0 >= l->y1; }
 
@@ -192,13 +210,14 @@ static void add_dirty(int x0, int y0, int x1, int y1)
     SS.nd++;
 }
 
-/* Put the backdrop back on the union of the dirty boxes, every pixel once: the rows are cut
- * into bands at every box edge, and in each band the spans of the boxes that cover it are
- * merged. Returns the number of restores. */
-static int restore_dirty(int dry, int32_t *area)
+/* Cut the dirty set into disjoint pieces whose union it is, every pixel in one piece (SS.pc): the
+ * rows are cut into bands at every box edge, in each band the spans of the boxes that cover it are
+ * merged, and a span that has the same columns as a piece ending where its band starts continues that
+ * piece. Returns the number of pieces, -1 when there are more than PIECE_MAX; *area is their area. */
+static int build_pieces(int32_t *area)
 {
     int16_t ys[2 * DIRTY_MAX], sp[DIRTY_MAX][2];
-    int ny = 0, i, j, k, n, calls = 0;
+    int ny = 0, i, j, k, n, np = 0;
     *area = 0;
     for (i = 0; i < SS.nd; i++) {
         ys[ny++] = SS.d[i][1];
@@ -219,12 +238,17 @@ static int restore_dirty(int dry, int32_t *area)
         for (i = 0; i < n;) {                        /* merged spans */
             int x0 = sp[i][0], x1 = sp[i][1];
             for (i++; i < n && sp[i][0] <= x1; i++) x1 = DOOMO_MAX(x1, sp[i][1]);
-            if (!dry) plat_stage_restore(x0, y0, x1 - x0, y1 - y0);
-            *area += (int32_t)(x1 - x0) * (y1 - y0);
-            calls++;
+            for (j = np - 1; j >= 0; j--)            /* the piece above, same columns, ends here */
+                if (SS.pc[j][3] == y0 && SS.pc[j][0] == x0 && SS.pc[j][2] == x1) break;
+            if (j >= 0) { SS.pc[j][3] = (int16_t)y1; continue; }
+            if (np >= PIECE_MAX) return -1;
+            SS.pc[np][0] = (int16_t)x0; SS.pc[np][1] = (int16_t)y0;
+            SS.pc[np][2] = (int16_t)x1; SS.pc[np][3] = (int16_t)y1;
+            np++;
         }
     }
-    return calls;
+    for (j = 0; j < np; j++) *area += (int32_t)(SS.pc[j][2] - SS.pc[j][0]) * (SS.pc[j][3] - SS.pc[j][1]);
+    return np;
 }
 
 static const SRec *held_record(void)
@@ -236,26 +260,37 @@ static const SRec *held_record(void)
     return NULL;
 }
 
+/* the whole screen is put back and every layer is drawn in full */
+static void resolve_full(void)
+{
+    plat_stage_restore(0, 0, plat_screen_w(), plat_screen_h());
+    S.draw_mask = 0xFFFFFFFFu;
+    S.clip_mask = 0;
+    SS.npc = 0;
+    S.st.full = 1;
+    S.st.restored = 1;
+    S.st.drawn = SS.cur.n;
+}
+
 void stage_resolve(void)
 {
     const SRec *old;
-    int i, n, changed;
+    int i, n, changed, np;
+    int32_t area;
     int W = plat_screen_w(), H = plat_screen_h();
     if (!S.on) return;
     SS.nd = 0;
+    SS.npc = 0;
     old = held_record();
     if (!old || old->bkey != SS.cur.bkey) {
         /* nothing known about this buffer, or another backdrop: all of it */
-        plat_stage_restore(0, 0, W, H);
-        S.draw_mask = 0xFFFFFFFFu;
-        S.st.full = 1;
-        S.st.restored = 1;
-        S.st.drawn = SS.cur.n;
+        resolve_full();
         return;
     }
     S.st.full = 0;
     n = DOOMO_MAX(SS.cur.n, old->n);
     S.draw_mask = 0;
+    S.clip_mask = 0;
     add_dirty(SS.info.dx0, SS.info.dy0, SS.info.dx1, SS.info.dy1);
     for (i = 0; i < n; i++) {
         static const SLayer none = { 0, 0, 0, 0, 0 };
@@ -266,41 +301,81 @@ void stage_resolve(void)
         if (!empty(a)) add_dirty(a->x0, a->y0, a->x1, a->y1);
         if (!empty(b)) add_dirty(b->x0, b->y0, b->x1, b->y1);
     }
-    /* close over: a layer on a dirty box is drawn again, over a clean backdrop under its
-     * whole box (its shading must not land twice) */
+    /* close over: a layer on a dirty box is drawn again, over a clean backdrop under its whole box
+     * (its shading must not land twice), so its box is dirty too. A layer that may be clipped
+     * (stage_layer_clip) does not widen the dirty set: it is drawn only inside it, below. */
     do {
         changed = 0;
         for (i = 0; i < SS.cur.n; i++) {
             const SLayer *b = &SS.cur.l[i];
-            if ((S.draw_mask >> i) & 1u || empty(b)) continue;
+            if (((S.draw_mask >> i) & 1u) || empty(b) || ((SS.cur.clip >> i) & 1u)) continue;
             if (!hits_dirty(b->x0, b->y0, b->x1, b->y1)) continue;
             S.draw_mask |= 1u << i;
             add_dirty(b->x0, b->y0, b->x1, b->y1);
             changed = 1;
         }
     } while (changed);
-    {
-        /* when most of the screen is dirty anyway, one full restore (whole rows: the fastest
-         * copy) and every layer beat many partial ones */
-        int32_t area;
-        restore_dirty(1, &area);
-        if (area * 20 >= (int32_t)W * H * 17) {
-            plat_stage_restore(0, 0, W, H);
-            S.draw_mask = 0xFFFFFFFFu;
-            S.st.full = 1;
-            S.st.restored = 1;
-            S.st.drawn = SS.cur.n;
-            return;
-        }
-        S.st.restored = (uint8_t)DOOMO_MIN(restore_dirty(0, &area), 255);
+    /* when most of the screen is dirty anyway, one full restore (whole rows: the fastest copy) and
+     * every layer beat many partial ones */
+    np = build_pieces(&area);
+    if (np < 0 || area * 20 >= (int32_t)W * H * 17) {
+        resolve_full();
+        return;
     }
-    for (i = 0; i < SS.cur.n; i++) S.st.drawn = (uint8_t)(S.st.drawn + ((S.draw_mask >> i) & 1u));
+    for (i = 0; i < SS.cur.n; i++) {
+        const SLayer *b = &SS.cur.l[i];
+        if (((S.draw_mask >> i) & 1u) || empty(b) || !((SS.cur.clip >> i) & 1u)) continue;
+        if (!hits_dirty(b->x0, b->y0, b->x1, b->y1)) continue;
+        S.draw_mask |= 1u << i;
+        S.clip_mask |= 1u << i;
+    }
+    SS.npc = np;
+    for (i = 0; i < np; i++)
+        plat_stage_restore(SS.pc[i][0], SS.pc[i][1], SS.pc[i][2] - SS.pc[i][0], SS.pc[i][3] - SS.pc[i][1]);
+    S.st.restored = (uint8_t)DOOMO_MIN(np, 255);
+    for (i = 0; i < SS.cur.n; i++) {
+        S.st.drawn = (uint8_t)(S.st.drawn + ((S.draw_mask >> i) & 1u));
+        S.st.clipped = (uint8_t)(S.st.clipped + ((S.clip_mask >> i) & 1u));
+    }
 }
 
 int stage_draw(int i)
 {
     if (!S.on || i < 0 || i >= STAGE_MAX_LAYERS) return 1;
     return (int)((S.draw_mask >> i) & 1u);
+}
+
+/* the pieces a layer is drawn through: those of the dirty set that lie in its box, cut to it. 0 when
+ * the layer is drawn once as usual (not drawn clipped, or one piece holds its whole box) */
+int stage_clip_n(int i)
+{
+    const SLayer *b;
+    int k, n = 0;
+    if (!S.on || i < 0 || i >= SS.cur.n || !((S.clip_mask >> i) & 1u)) return 0;
+    b = &SS.cur.l[i];
+    for (k = 0; k < SS.npc; k++) {
+        const int16_t *p = SS.pc[k];
+        if (!hits(b->x0, b->y0, b->x1, b->y1, p)) continue;
+        if (p[0] <= b->x0 && p[1] <= b->y0 && p[2] >= b->x1 && p[3] >= b->y1) return 0;
+        n++;
+    }
+    return n;
+}
+
+void stage_clip_get(int i, int k, int16_t r[4])
+{
+    const SLayer *b;
+    int j;
+    r[0] = r[1] = r[2] = r[3] = 0;
+    if (!S.on || i < 0 || i >= SS.cur.n) return;
+    b = &SS.cur.l[i];
+    for (j = 0; j < SS.npc; j++) {
+        const int16_t *p = SS.pc[j];
+        if (!hits(b->x0, b->y0, b->x1, b->y1, p) || k-- > 0) continue;
+        r[0] = (int16_t)DOOMO_MAX(p[0], b->x0); r[1] = (int16_t)DOOMO_MAX(p[1], b->y0);
+        r[2] = (int16_t)DOOMO_MIN(p[2], b->x1); r[3] = (int16_t)DOOMO_MIN(p[3], b->y1);
+        return;
+    }
 }
 
 void stage_end(void)

@@ -6,6 +6,7 @@
 
 #include "doomo/doomo.h"
 #include "doomo/backdrop.h"
+#include "doomo/plat_ext.h"             /* plat_clip */
 
 /* "dread" 0..15: 0 = sugary pastel church, 15 = blood-red nightmare.
  * exo_church draws it all: the backdrop for (dread, t), then every live part. */

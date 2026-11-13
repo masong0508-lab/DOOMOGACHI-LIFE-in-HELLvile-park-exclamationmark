@@ -277,7 +277,13 @@ void plat_shade_rect(int x, int y, int w, int h, int level)
     if (x1 > SCREEN_W) x1 = SCREEN_W;
     if (y1 > SCREEN_H) y1 = SCREEN_H;
     if (x >= x1 || y >= y1) return;
-    if (gba_nodraw) {
+    if (gba_nodraw == GBA_NODRAW_CLIP) {        /* (G2-EX) inside plat_clip: only the box's part of it */
+        if (x < stage_box[0]) x = stage_box[0];
+        if (y < stage_box[1]) y = stage_box[1];
+        if (x1 > stage_box[2]) x1 = stage_box[2];
+        if (y1 > stage_box[3]) y1 = stage_box[3];
+        if (x >= x1 || y >= y1) return;
+    } else if (gba_nodraw) {
         int k;
         pn_op = PN_OP_SHADE;                    /* G7: not a panel's body */
         k = vid_route(x, y, x1, y1);
@@ -366,6 +372,32 @@ void plat_line(int x0, int y0, int x1, int y1, uint8_t color)
     else if (gba_nodraw != 1) plat_line_slow(x0, y0, x1, y1, color);
 }
 
+/* (G2-EX) vid_blit of the part of an image (scale 1, no flip) inside the plat_clip box: the whole rows
+ * that show as one cropped image when the box covers the image's columns, else each row's visible
+ * columns as a one-row image */
+static void clip_blit(int x, int y, const DoomoImage *img, int flags, uint32_t color)
+{
+    int w = img->w, h = img->h, rx0 = stage_box[0] > x ? stage_box[0] - x : 0;
+    int rx1 = stage_box[2] < x + w ? stage_box[2] - x : w, ry0 = stage_box[1] > y ? stage_box[1] - y : 0;
+    int ry1 = stage_box[3] < y + h ? stage_box[3] - y : h;
+    DoomoImage sub;
+    if (rx0 >= rx1 || ry0 >= ry1) return;
+    sub.uid = 0;
+    if (rx0 == 0 && rx1 == w) {
+        sub.w = (uint16_t)w;
+        sub.h = (uint16_t)(ry1 - ry0);
+        sub.pix = img->pix + ry0 * w;
+        vid_blit(x, y + ry0, &sub, 1, flags, color);
+        return;
+    }
+    sub.w = (uint16_t)(rx1 - rx0);
+    sub.h = 1;
+    for (; ry0 < ry1; ry0++) {
+        sub.pix = img->pix + ry0 * w + rx0;
+        vid_blit(x + rx0, y + ry0, &sub, 1, flags, color);
+    }
+}
+
 /* 8bpp image, index 0 transparent, integer scale 1..4 */
 void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
                 uint8_t color)
@@ -374,6 +406,11 @@ void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
     if (scale < 1) scale = 1;
     if (scale > 4) scale = 4;
     if (!color) color = PAL_BLACK;
+    if (gba_nodraw == GBA_NODRAW_CLIP) {        /* (G2-EX) inside plat_clip (scale 1, no flip) */
+        if (flags & IMG_SHADOW) clip_blit(x + 1, y + 1, img, IMG_SILHOUETTE, PAL_BLACK);
+        clip_blit(x, y, img, flags & IMG_SILHOUETTE, color);
+        return;
+    }
     if (gba_nodraw && !pn_clear_rows(y, y + img->h * scale + 1)) {
         int sh = (flags & IMG_SHADOW) ? 1 : 0, k;
         int x0 = DOOMO_MAX(x, 0), y0 = DOOMO_MAX(y, 0);

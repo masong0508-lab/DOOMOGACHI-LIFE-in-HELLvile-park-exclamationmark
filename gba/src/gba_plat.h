@@ -32,6 +32,8 @@ extern int gba_nodraw;
 #define GBA_NODRAW_PANEL   5     /* Mode 4, panels up (G7, panel.c): 2D calls are checked */
 #define GBA_NODRAW_TRACK   6     /* Mode 4 after plat_stage_end (SP7, stage.c): 2D calls widen
                                     the page's overlay box (and panels are checked as with 5) */
+#define GBA_NODRAW_CLIP    7     /* Mode 4 inside plat_clip .. plat_clip_end (G2-EX, stage.c): plat_rect,
+                                    plat_shade_rect and plat_image draw only inside the clip box */
 uint32_t gba_read_pad(void);             /* BTN_* mask incl. SYNTH_XY flag */
 void cutview_enter(void);                 /* debug cutscene viewer (cutview.c) */
 void gba_pacing_reset(void);             /* forget frame debt (after loads) */

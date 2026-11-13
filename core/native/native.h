@@ -90,6 +90,9 @@ int  nat_stage_stamps(void);        /* (S2-4b) stamps drawn since nat_stage_rese
 int  nat_bake_backdrops(const char *path);
 int  nat_bake_poses(const char *path);    /* (S2-4c) Granny's poses, cookpose_native.c */
 int  nat_cook_pose_unlisted(int *asked);  /* (S2-4c, tests) poses drawn that the baker would not bake */
+/* (G2-EX) plat_clip: the box in force, and the 2D calls made inside it that a platform's clip does not
+ * honour (text, lines, checkers, clears, scaled or flipped images; tests check it stays 0) */
+extern int nat_clip_on, nat_clipbox[4], nat_clip_viol;
 
 /* PNG writer: 8bpp indexed image -> indexed PNG with the master palette,
  * optionally zoomed by an integer factor. Returns 1 on success. */

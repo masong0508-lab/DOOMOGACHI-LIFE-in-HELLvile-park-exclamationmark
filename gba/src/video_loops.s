@@ -48,6 +48,10 @@ plat_rect_nz:
     cmp     r12, #2
     ldreq   r12, =cv_rect_fast
     bxeq    r12
+    @ G2-EX: inside plat_clip (stage.c): the room group's clipped fill (plat_clip loaded the group)
+    cmp     r12, #7
+    ldreq   r12, =stage_clip_rect
+    bxeq    r12
     @ G7: panels up (GBA_NODRAW_PANEL, panel.c): a rect that cannot touch
     @ them (pn_box, their bounding box; the whole screen while one is drawn)
     @ takes the Mode 4 path as if nothing were up

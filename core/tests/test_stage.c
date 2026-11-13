@@ -52,7 +52,7 @@ static uint32_t pad(int f)
     return 0;
 }
 
-static int retained_n, full_n;
+static int retained_n, full_n, clipped_n;
 
 static void run(int n, uint32_t *out, int stage)
 {
@@ -66,12 +66,13 @@ static void run(int n, uint32_t *out, int stage)
     scene_set(&SCENE_TITLE, 0);
     frame(0);
     scene_set(&SCENE_EXORCISM, -1);
-    retained_n = full_n = 0;
+    retained_n = full_n = clipped_n = 0;
+    nat_clip_viol = 0;
     for (f = 0; f < n; f++) {
         frame(pad(f));
         out[f] = fb_hash();
         stage_stats(&st);
-        if (st.retained) { retained_n++; if (st.full) full_n++; }
+        if (st.retained) { retained_n++; if (st.full) full_n++; if (st.clipped) clipped_n++; }
     }
     nat_stage_on = 0;
 }
@@ -106,8 +107,15 @@ static int compare(int w, int h, int n)
             test_fail(__FILE__, __LINE__, m);
             return 0;
         }
-    printf("      stage exorcism %dx%d: %d frames, %d retained, %d of them drawn in full\n", w, h, n,
-           retained_n, full_n);
+    printf("      stage exorcism %dx%d: %d frames, %d retained, %d of them drawn in full, %d with a clipped layer\n", w, h, n,
+           retained_n, full_n, clipped_n);
+    if (clipped_n < n / 4 || nat_clip_viol) {          /* (G2-EX) the clipped redraw is really used, with calls it honours */
+        char m[200];
+        snprintf(m, sizeof(m), "exorcism %dx%d: %d frames with a clipped layer of %d, %d calls the clip does not honour",
+                 w, h, clipped_n, n, nat_clip_viol);
+        test_fail(__FILE__, __LINE__, m);
+        return 0;
+    }
     if (retained_n < n * 9 / 10 || full_n * 4 > retained_n) {
         char m[200];
         snprintf(m, sizeof(m), "exorcism %dx%d: the stage kept too little (%d retained, %d full of %d)",

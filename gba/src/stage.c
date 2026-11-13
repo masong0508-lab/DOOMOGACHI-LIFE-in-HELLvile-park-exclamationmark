@@ -35,7 +35,7 @@ static const BkEnt *cur;                       /* the restores' source picture (
 static uint32_t serial;                        /* Mode 4 frames presented           */
 static uint32_t page_serial[2];                /* stage frame each page holds, 0    */
 static int16_t page_dirt[2][4];                /* drawn over it after plat_stage_end */
-static int16_t trk[4];
+int16_t stage_box[4];                          /* the box 2D calls cover after plat_stage_end; before it (plat_clip) the clip box */
 static uint8_t frame_stage, tracking;
 
 /* ARM in the room group of the IWRAM overlay (iwram_ovl.h; the group no stage scene uses): the per-row work and
@@ -191,12 +191,47 @@ int plat_stage_stamp(int id, uint32_t key, int x, int y)
     return 1;
 }
 
+/* (G2-EX) the stage draws a layer that did not change only inside the pieces of the dirty set: until
+ * plat_clip_end every plat_rect, plat_shade_rect and plat_image takes its slow path (GBA_NODRAW_CLIP:
+ * canvas.c, video.c) and is cut to this box, which lives in stage_box (nothing is tracked before
+ * plat_stage_end). The box is already inside the screen. */
+static uint8_t clip_prev;                      /* the gba_nodraw the clip replaced */
+void plat_rect_m4(int x, int y, int w, int h, uint8_t color) IWRAM_CALL;
+/* plat_rect inside plat_clip: plat_rect's gba_nodraw != 0 path (video_loops.s) jumps here with the call's
+ * own arguments. ARM in the room group, which plat_clip loads (so it is in the slot for the whole clip) */
+STAGE_ARM void stage_clip_rect(int x, int y, int w, int h, uint8_t color)
+{
+    int x1 = x + w, y1 = y + h;
+    if (x < stage_box[0]) x = stage_box[0];
+    if (y < stage_box[1]) y = stage_box[1];
+    if (x1 > stage_box[2]) x1 = stage_box[2];
+    if (y1 > stage_box[3]) y1 = stage_box[3];
+    if (x < x1 && y < y1) plat_rect_m4(x, y, x1 - x, y1 - y, color);
+}
+
+void plat_clip(int x0, int y0, int x1, int y1)
+{
+    if (!frame_stage || gba_nodraw == 1) return;
+    iwram_ovl_use(OVL_ROOM);
+    stage_box[0] = (int16_t)(x0 < 0 ? 0 : x0);
+    stage_box[1] = (int16_t)(y0 < 0 ? 0 : y0);
+    stage_box[2] = (int16_t)(x1 > SCREEN_W ? SCREEN_W : x1);
+    stage_box[3] = (int16_t)(y1 > SCREEN_H ? SCREEN_H : y1);
+    if (gba_nodraw != GBA_NODRAW_CLIP) clip_prev = (uint8_t)gba_nodraw;    /* (a layer's next piece resets the box) */
+    gba_nodraw = GBA_NODRAW_CLIP;
+}
+
+void plat_clip_end(void)
+{
+    if (gba_nodraw == GBA_NODRAW_CLIP) gba_nodraw = clip_prev;
+}
+
 void plat_stage_end(void)
 {
     if (!frame_stage || gba_nodraw == 1) return;
     tracking = 1;
-    trk[0] = trk[1] = 0x7FFF;
-    trk[2] = trk[3] = -0x7FFF;
+    stage_box[0] = stage_box[1] = 0x7FFF;
+    stage_box[2] = stage_box[3] = -0x7FFF;
     if (gba_nodraw == 0 || gba_nodraw == GBA_NODRAW_PANEL) gba_nodraw = GBA_NODRAW_TRACK;
 }
 
@@ -204,10 +239,10 @@ void plat_stage_end(void)
 void stage_note(int x0, int y0, int x1, int y1)
 {
     if (!tracking) return;
-    if (x0 < trk[0]) trk[0] = (int16_t)x0;
-    if (y0 < trk[1]) trk[1] = (int16_t)y0;
-    if (x1 > trk[2]) trk[2] = (int16_t)x1;
-    if (y1 > trk[3]) trk[3] = (int16_t)y1;
+    if (x0 < stage_box[0]) stage_box[0] = (int16_t)x0;
+    if (y0 < stage_box[1]) stage_box[1] = (int16_t)y0;
+    if (x1 > stage_box[2]) stage_box[2] = (int16_t)x1;
+    if (y1 > stage_box[3]) stage_box[3] = (int16_t)y1;
 }
 
 /* video_flip: the page now shown (0 / 1), -1 for a tile frame or a frame presented again */
@@ -218,9 +253,9 @@ void stage_flipped(int page)
         page_serial[0] = page_serial[1] = 0;
     } else {
         page_serial[page] = frame_stage ? serial : 0;
-        if (frame_stage && tracking && trk[0] < trk[2] && trk[1] < trk[3]) {
-            page_dirt[page][0] = trk[0]; page_dirt[page][1] = trk[1];
-            page_dirt[page][2] = trk[2]; page_dirt[page][3] = trk[3];
+        if (frame_stage && tracking && stage_box[0] < stage_box[2] && stage_box[1] < stage_box[3]) {
+            page_dirt[page][0] = stage_box[0]; page_dirt[page][1] = stage_box[1];
+            page_dirt[page][2] = stage_box[2]; page_dirt[page][3] = stage_box[3];
         } else {
             page_dirt[page][0] = page_dirt[page][1] = page_dirt[page][2] = page_dirt[page][3] = 0;
         }
