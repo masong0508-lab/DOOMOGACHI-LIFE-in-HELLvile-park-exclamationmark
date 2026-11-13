@@ -24,6 +24,8 @@ enum { EXO_PART_HEART, EXO_PART_CURTAIN_L, EXO_PART_CURTAIN_R, EXO_PART_MOTE0, E
        EXO_PARTS = EXO_PART_MOTE0 + EXO_MOTES };
 int  exo_church_part(int part, int dread, uint32_t t, int16_t box[4], uint32_t *key);
 void exo_church_part_draw(int part, int dread, uint32_t t);
+uint32_t exo_aura_bytes(void);          /* (G2-EX) the aura's rect list (exorcism_gfx.c), kept in the scene scratch */
+void exo_aura_bind(void *mem);
 extern const struct DoomoBackdrop exo_church_family;
 /* SP7: on a fill-bound screen (GBA, native) a shape drawn between exo_hole() and exo_hole_off()
  * leaves out the hole [x0, x1) x [y0, y1), and exo_shade_hole() shades its rect less the hole:

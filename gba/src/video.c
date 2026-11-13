@@ -310,11 +310,41 @@ static int text_route(int x, int y, const char *s, int pad)
     return k;
 }
 
+/* (G2-EX) text inside the plat_clip box, the pixels vid_text / vid_text_dil draw (the same glyph rows, plus
+ * the dilated outline's 7 x 11 for ol != 0) that lie in the box, one by one; a glyph clear of the box
+ * draws nothing */
+static void clip_text(int x, int y, const char *s, uint32_t color, int ol)
+{
+    int cx = x, cy = y, bx0 = stage_box[0], by0 = stage_box[1], bx1 = stage_box[2], by1 = stage_box[3];
+    for (; *s; s++) {
+        unsigned ch = (unsigned char)*s;
+        if (ch == '\n') { cx = x; cy += FONT_LINE; continue; }
+        if (ch >= FONT_FIRST && ch <= FONT_LAST && ch != ' ' && cx + 8 > bx0 && cx - 1 < bx1 && cy + 11 > by0 && cy - 1 < by1) {
+            uint16_t g[11];
+            const uint8_t *rows = vid_glyph_rows(ch);
+            int ox = cx, oy = cy, nr = 8, nc = 5, r, c;
+            if (ol) {
+                vid_glyph_dilate(rows, g);
+                ox = cx - 1; oy = cy - 1; nr = 11; nc = 7;
+            }
+            for (r = 0; r < nr; r++) {
+                int py = oy + r;
+                uint32_t bits = ol ? g[r] : rows[r];
+                if (py < by0 || py >= by1 || !bits) continue;
+                for (c = 0; c < nc; c++)
+                    if ((bits >> c) & 1 && ox + c >= bx0 && ox + c < bx1) vid_pixel(ox + c, py, color);
+            }
+        }
+        cx += FONT_ADVANCE;
+    }
+}
+
 void plat_text(int x, int y, const char *s, uint8_t color)
 {
     if (gba_text_armed && s) gba_text_probe(s);   /* harness expect-text */
     if (gba_nodraw == 1 || !s) return;
     if (!color) color = PAL_BLACK;
+    if (gba_nodraw == GBA_NODRAW_CLIP) { clip_text(x, y, s, color, 0); return; }
     if (gba_nodraw && !pn_clear_rows(y, SCREEN_H)) {    /* (G7: text runs down from y) */
         int k = text_route(x, y, s, 0);
         if (k == 2) cv_text(x, y, s, color, 0);
@@ -340,6 +370,11 @@ void plat_text_outline(int x, int y, const char *s, uint8_t color, uint8_t outli
     if (gba_nodraw == 1 || !s) return;
     if (!color) color = PAL_BLACK;
     if (!outline) outline = PAL_BLACK;
+    if (gba_nodraw == GBA_NODRAW_CLIP) {        /* (G2-EX) the outline, then the text, inside the box */
+        clip_text(x, y, s, outline, 1);
+        clip_text(x, y, s, color, 0);
+        return;
+    }
     if (gba_nodraw && !pn_clear_rows(y - 2, SCREEN_H)) {
         int k = text_route(x, y, s, 2);
         if (k == 2) { cv_text(x, y, s, outline, 1); cv_text(x, y, s, color, 0); }

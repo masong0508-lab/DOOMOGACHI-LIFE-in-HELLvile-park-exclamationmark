@@ -40,6 +40,8 @@ static void call(int kind, int x, int y, int w, int h, const DoomoImage *img, in
     case 1: plat_shade_rect(x, y, w, h, c & 15); break;
     case 2: plat_image(x, y, img, 1, 0, 0); break;
     case 3: plat_image(x, y, img, 1, IMG_SHADOW, 0); break;
+    case 5: plat_text(x, y, "Holy water\nPray 90%", (uint8_t)c); break;
+    case 6: plat_text_outline(x, y, "Name: Nox", (uint8_t)c, (uint8_t)(c ^ 0x55)); break;
     default: plat_image(x, y, img, 1, IMG_SILHOUETTE, (uint8_t)c); break;
     }
 }
@@ -55,7 +57,7 @@ TEST(clip_draws_exactly_the_unclipped_pixels_inside_the_box)
     for (i = 0; i < (int)sizeof(pix); i++) pix[i] = (uint8_t)(rnd(3) ? 1 + rnd(200) : 0);   /* holes */
     img.w = 20; img.h = 14; img.pix = pix; img.uid = doomo_image_new_uid();
     for (n = 0; n < 400 && !bad; n++) {
-        int kind = rnd(5), x = rnd(260) - 20, y = rnd(180) - 20, w = 1 + rnd(50), h = 1 + rnd(40);
+        int kind = rnd(7), x = rnd(260) - 20, y = rnd(180) - 20, w = 1 + rnd(50), h = 1 + rnd(40);
         int bx = rnd(240), by = rnd(160), bw = 1 + rnd(120), bh = 1 + rnd(90), c = 1 + rnd(200);
         int x0 = bx, y0 = by, x1 = DOOMO_MIN(bx + bw, nat_w), y1 = DOOMO_MIN(by + bh, nat_h);
         noise();
@@ -180,4 +182,110 @@ TEST(stage_clip_pieces_are_disjoint_and_cover_the_dirty_part_of_the_layer)
     if (f.n[A] > 0) CHECK_EQ(n_in, n_exp);
     for (k = 0; k < f.n[A] && k < 8; k++) CHECK(f.piece[A][k][2] > f.piece[A][k][0] && f.piece[A][k][3] > f.piece[A][k][1]);
     nat_stage_on = 0;
+}
+
+/* ---- the ritual to its end, against a full redraw ------------------------------------------------ */
+#include "../src/exorcism_int.h"          /* exo_aura_bind */
+int exo_probe_result(void);          /* exorcism_scene.c (DOOMO_HITCHECK): 0 not at the result, 1 a failure, 2 a cast out */
+
+#define RITUAL_FRAMES 1700                 /* the result screen to its fade to black */
+
+static void rframe(uint32_t b) { plat_begin_frame(); doomo_frame(b); plat_end_frame(); }
+
+static uint32_t fb_hash(void)
+{
+    uint32_t h = 2166136261u;
+    int i, n = nat_w * nat_h;
+    for (i = 0; i < n; i++) h = (h ^ nat_fb[i]) * 16777619u;
+    return h;
+}
+
+/* core/tests/scripts/life_exorcism.txt as a pad (test_stage.c: the same presses) */
+static uint32_t pad(int f)
+{
+    static const struct { int16_t at; uint16_t b; } p[] = {
+        { 40, BTN_A }, { 46, BTN_A }, { 52, BTN_A }, { 58, BTN_A }, { 64, BTN_A }, { 70, BTN_A },
+        { 92, BTN_DOWN }, { 94, BTN_A }, { 96, BTN_DOWN }, { 98, BTN_DOWN }, { 100, BTN_DOWN }, { 102, BTN_A },
+        { 114, BTN_START }, { 126, BTN_A }, { 134, BTN_A },
+        { 206, BTN_A }, { 213, BTN_LEFT }, { 222, BTN_B }, { 233, BTN_RIGHT },
+        { 505, BTN_A }, { 513, BTN_A }, { 521, BTN_A }, { 529, BTN_A },
+        { 575, BTN_A }, { 590, BTN_A }, { 605, BTN_A }, { 620, BTN_A }, { 635, BTN_A }, { 650, BTN_A },
+        { 1180, BTN_A }, { 1188, BTN_A }, { 1196, BTN_A }, { 1204, BTN_A },
+        { 1230, BTN_RIGHT }, { 1240, BTN_A },
+    };
+    unsigned i;
+    if (f >= 550 && f < 570) return BTN_UP;
+    for (i = 0; i < sizeof(p) / sizeof(p[0]); i++)
+        if (p[i].at == f) return p[i].b;
+    return 0;
+}
+
+/* plays the ritual with `seed` into out[]; returns the result screen's kind (exo_probe_result) and counts
+ * the frames drawn over the kept backdrop with a clipped layer */
+static int ritual_noaura;                  /* 1: the aura without its rect list, as the shape code draws it */
+static int ritual(uint32_t seed, int stage, uint32_t *out, int *clipped)
+{
+    NatOptions o;
+    StageStats st;
+    int f;
+    memset(&o, 0, sizeof(o));
+    o.w = 240; o.h = 160; o.seed = seed; o.quiet = 1; o.save_dir = test_tmp_dir;
+    nat_init(&o);
+    nat_stage_on = stage;
+    nat_stage_buffers = 2;
+    nat_stage_reset();
+    test_reset();
+    doomo_init();
+    scene_set(&SCENE_TITLE, 0);
+    rframe(0);
+    scene_set(&SCENE_EXORCISM, -1);
+    if (ritual_noaura) exo_aura_bind(NULL);
+    *clipped = 0;
+    nat_clip_viol = 0;
+    for (f = 0; f < RITUAL_FRAMES; f++) {
+        rframe(pad(f));
+        out[f] = fb_hash();
+        stage_stats(&st);
+        if (st.retained && st.clipped) (*clipped)++;
+    }
+    nat_stage_on = 0;
+    return exo_probe_result();
+}
+
+/* a failure to the end of its fade, and a cast out (a seed whose roll succeeds is found, not assumed) */
+TEST(stage_exorcism_result_screens_are_pixel_identical)
+{
+    static uint32_t off[RITUAL_FRAMES], off2[RITUAL_FRAMES], on[RITUAL_FRAMES];
+    uint32_t seed;
+    int kinds = 0, f, clipped, got;
+    for (seed = 0x5EED1234u; seed < 0x5EED1234u + 80u && kinds != 3; seed++) {
+        got = ritual(seed, 0, off2, &clipped);             /* (the first run of a seed warms the portrait caches) */
+        if (got < 1 || (kinds & got)) continue;            /* not at the result, or this kind is done */
+        ritual(seed, 0, off, &clipped);
+        ritual(seed, 1, on, &clipped);
+        for (f = 0; f < RITUAL_FRAMES; f++)
+            CHECK_MSG(on[f] == off[f], "seed %u (%s): frame %d differs with the stage on", (unsigned)seed,
+                      got == 2 ? "cast out" : "failure", f);
+        CHECK_MSG(clipped > RITUAL_FRAMES / 4 && !nat_clip_viol, "seed %u: %d frames with a clipped layer, %d unhonoured calls",
+                  (unsigned)seed, clipped, nat_clip_viol);
+        kinds |= got;
+    }
+    CHECK_MSG(kinds == 3, "no seed gave both a failure and a cast out (got %d)", kinds);
+    set_res(240, 160);
+}
+
+/* the aura's kept rect list draws the pixels the shape code draws (prayer to the result: dread 5 to 12) */
+TEST(exorcism_aura_rect_list_equals_the_shape_code)
+{
+    static uint32_t a[RITUAL_FRAMES], b[RITUAL_FRAMES];
+    int f, clipped, i, diff = 0;
+    ritual_noaura = 0;
+    ritual(0x5EED1234u, 0, a, &clipped);                   /* (the first run warms the portrait caches) */
+    ritual(0x5EED1234u, 0, a, &clipped);
+    ritual_noaura = 1;
+    ritual(0x5EED1234u, 0, b, &clipped);
+    ritual_noaura = 0;
+    for (f = 0, i = 0; f < RITUAL_FRAMES; f++) diff += a[f] != b[f], i = f;
+    CHECK_MSG(diff == 0, "%d of %d frames differ without the rect list (last %d)", diff, RITUAL_FRAMES, i);
+    set_res(240, 160);
 }

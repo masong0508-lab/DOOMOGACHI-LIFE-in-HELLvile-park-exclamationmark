@@ -266,12 +266,12 @@ void plat_stage_restore(int x, int y, int w, int h);
 void plat_stage_end(void);
 int  plat_stage_stamp(int id, uint32_t key, int x, int y);
 void plat_stage_restore_list(const int16_t *xywh, int n, int dx, int dy);
-/* (G2-EX) plat_clip(x0, y0, x1, y1)  until plat_clip_end() every plat_rect, plat_shade_rect and plat_image
- *       (scale 1, no flip) draws exactly the pixels of the unclipped call that lie in [x0, x1) x [y0, y1)
- *       and nothing outside it (backdrop.h: the stage draws a layer that did not change only through the
- *       pieces of the dirty set). Only valid between plat_stage_begin and plat_stage_end; it does not nest.
- *       Text, lines, checkers, clears and scaled images are not clipped (a clipped layer does not use
- *       them). Defaults (core/src/backdrop.c): nothing, for a platform whose plat_stage_begin says 0. */
+/* (G2-EX) plat_clip(x0, y0, x1, y1)  until plat_clip_end() every plat_rect, plat_shade_rect, plat_text,
+ *       plat_text_outline and plat_image (scale 1, no flip) draws exactly the pixels of the unclipped call
+ *       that lie in [x0, x1) x [y0, y1) and nothing outside it (backdrop.h: the stage draws a layer that did
+ *       not change only through the pieces of the dirty set). Only valid between plat_stage_begin and
+ *       plat_stage_end; a new plat_clip replaces the box. Lines, checkers, clears and scaled or flipped
+ *       images are not clipped (a clipped layer does not use them). Defaults (core/src/backdrop.c): nothing, for a platform whose plat_stage_begin says 0. */
 void plat_clip(int x0, int y0, int x1, int y1);
 void plat_clip_end(void);
 

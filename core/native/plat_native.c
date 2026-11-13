@@ -272,7 +272,6 @@ void plat_text(int x, int y, const char *s, uint8_t color)
 {
     nat_calls[NC_TEXT]++;
     int cx = x;
-    nat_clip_viol += nat_clip_on;
     if (!s) return;                       /* bytes as given: ui.c translated them (L2a) */
     {
         /* the box the glyphs can touch (G7 panels) */

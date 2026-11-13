@@ -252,10 +252,11 @@ typedef struct {
 static NameCache *exo_nc;
 static void *exo_scratch_claim(void)
 {
-    uint32_t off = (stage_mem_bytes() + 3u) & ~3u;
-    uint8_t *p = (uint8_t *)scene_scratch(EXO_SCRATCH_TAG, off + (uint32_t)sizeof(NameCache));
+    uint32_t off = (stage_mem_bytes() + 3u) & ~3u, off2 = (off + (uint32_t)sizeof(NameCache) + 3u) & ~3u;
+    uint8_t *p = (uint8_t *)scene_scratch(EXO_SCRATCH_TAG, off2 + exo_aura_bytes());
     exo_nc = p ? (NameCache *)(void *)(p + off) : NULL;
     if (exo_nc) exo_nc->ok = 0;
+    exo_aura_bind(p ? p + off2 : NULL);           /* (G2-EX) after the name cache */
     return p;
 }
 static void stage_mem(void)
@@ -1133,13 +1134,13 @@ static void draw_name_ui(uint32_t t)
     }
 }
 
-static void draw_verdict(uint32_t t)
+/* The verdict screen in four layers (G2-EX), in the order the one layer drew them: the dim of the whole
+ * screen, the holy heart with its sparkles, the swelling percentage, the caption. The dim is a clippable
+ * layer with a key that never changes: when something under it changes only that part is dimmed again, the
+ * rest of the screen keeps the dim it had. */
+static void verdict_heart(int cx, int cy, int size, int gold, uint32_t t)
 {
-    int cx = W() / 2, cy = H() / 2 + 4, size = BIG() ? 30 : 22;
-    int shown = X.st_t < 45 ? X.chance * X.st_t / 45 : X.chance;
-    int gold = DOOMO_MAX(2, size * shown / 100), i;
-    char b[32];
-    plat_shade_rect(0, 0, W(), H(), 8);
+    int i;
     /* the holy heart swells with the power you gathered */
     ui_heart(cx, cy, size + 3, PAL_RAMP(RAMP_VAPE, 0));
     ui_heart(cx, cy, size + 1, PAL_RAMP(RAMP_VAPE, 2));
@@ -1149,8 +1150,15 @@ static void draw_verdict(uint32_t t)
         ui_sparkle(cx + ((fx_cos(a) * rr) >> 16), cy + ((fx_sin(a) * rr) >> 16),
                    (int)((t / 2 + (uint32_t)i * 3) & 15), PAL_UI_GOLD);
     }
-    doomo_snprintf(b, sizeof(b), "%d%%", shown);
+}
+
+static void verdict_pct(int cx, int cy, const char *b)
+{
     ui_text_big(cx - ui_text_big_width(b, 2) / 2, cy - 8, b, 2, PAL_WHITE, PAL_RAMP(RAMP_CANDY, 1));
+}
+
+static void verdict_caption(int cx, int cy, int size)
+{
     ui_text_outline(cx - ui_text_width("Holy power...") / 2, cy + size + 10, "Holy power...",
                     PAL_WHITE, PAL_RAMP(RAMP_VAPE, 0));
 }
@@ -1358,54 +1366,76 @@ static void exo_layers(uint32_t t)
         break;
     }
     case ST_VERDICT: {
-        int hy = fy - (big ? 48 : 34);
+        int hy = fy - (big ? 48 : 34), cx = w / 2, cy = h / 2 + 4, size = big ? 30 : 22, tw, rr = size + 14;
+        int shown = X.st_t < 45 ? X.chance * X.st_t / 45 : X.chance;
+        int gold = DOOMO_MAX(2, size * shown / 100);
         host_layer(w / 2, hy, 1, EXPR_POSSESSED, t, &hw, &hh);
-        if (L(LY_U0, 0, 0, w, h, t)) draw_verdict(t);          /* the whole screen dims */
+        if (LC(LY_U0, 0, 0, w, h, 0xD1u)) CLIPPED(LY_U0, plat_shade_rect(0, 0, w, h, 8));   /* the whole screen dims */
+        /* the heart (its extent is its size) and the sparkles on their ring (up to 3 px arms) lie in rr */
+        if (LC(LY_U0 + 1, cx - rr, cy - rr, 2 * rr + 1, 2 * rr + 1, hk(hk(0x4EA7u, (uint32_t)gold), t)))
+            CLIPPED(LY_U0 + 1, verdict_heart(cx, cy, size, gold, t));
+        doomo_snprintf(b, sizeof(b), "%d%%", shown);
+        tw = ui_text_big_width(b, 2);
+        if (LC(LY_U0 + 2, cx - tw / 2 - 3, cy - 11, tw + 6, 28, hk(0xB16u, (uint32_t)shown)))
+            CLIPPED(LY_U0 + 2, verdict_pct(cx, cy, b));
+        tw = ui_text_width("Holy power...");
+        if (LC(LY_U0 + 3, cx - tw / 2 - 3, cy + size + 7, tw + 6, 17, 0xCA97u))
+            CLIPPED(LY_U0 + 3, verdict_caption(cx, cy, size));
         break;
     }
     case ST_RESULT: {
-        int hy = fy - (big ? 40 : 30);
+        /* (G2-EX) in layers, in the order the one layer drew them: the cloud and the confetti (a cast out) or
+         * the demon (a failure), the title, the line under it, the strip with the figures, the hint and, last,
+         * the failure's slow fade to black (a clippable layer: only what changed under it is dimmed again) */
+        int hy = fy - (big ? 40 : 30), ty = big ? 8 : 4, ly2 = big ? 30 : 22, sy = h - (big ? 34 : 26), tw, lw;
         int expr = X.success ? EXPR_HAPPY : EXPR_POSSESSED;
         int tries = X.practice ? 3 : exorcism_tries_left(X.host);
+        int fade_on = !X.success && X.st_t > 110, fade = fade_on ? DOOMO_MIN(14, (X.st_t - 110) / 4) : 0;   /* (level 0 is black) */
+        int hint = X.st_t > 30 && !(!X.success && !X.practice && town_res(X.host)->status == RES_SOUL_LOST);
+        char s[64];
         host_layer(w / 2, hy, 1, expr, t, &hw, &hh);
         candles_layer(w / 2, hy + hh / 2 + 4, tries, 3, t, big);
         if (X.success) fuzz_layer(fuzz_x, fuzz_foot, t, EXPR_HAPPY);
-        if (!L(LY_U0, 0, 0, w, h, t)) break;                   /* confetti, texts, the dim: everything */
         if (X.success) {
-            if (X.st_t < 24) {
-                const DoomoImage *p = sprite_image(SPR_PUFF, X.st_t / 6);
-                if (p) plat_image(w / 2 + hw / 2 - p->w / 2, hy - hh / 2 - p->h / 2, p, 2, 0, 0);
+            if (L(LY_U0, 0, 0, w, h, t)) {                      /* the cloud and the confetti: everything moves */
+                if (X.st_t < 24) {
+                    const DoomoImage *p = sprite_image(SPR_PUFF, X.st_t / 6);
+                    if (p) plat_image(w / 2 + hw / 2 - p->w / 2, hy - hh / 2 - p->h / 2, p, 2, 0, 0);
+                }
+                draw_confetti(t);
             }
-            draw_confetti(t);
-            ui_text_big(w / 2 - ui_text_big_width("CAST OUT!", 2) / 2, big ? 8 : 4, "CAST OUT!", 2,
-                        PAL_UI_GOLD, PAL_RAMP(RAMP_PASTEL_PINK, 1));
             doomo_snprintf(b, sizeof(b), "%s fled from %s!", demon_name(), host_name());
-            ui_text_outline(w / 2 - ui_text_width(b) / 2, big ? 30 : 22, b, PAL_WHITE, PAL_RAMP(RAMP_PASTEL_PINK, 1));
         } else {
-            exo_demon(w / 2 + hw / 2 + 6, hy - hh / 2 + ui_wave((int)t, 20, 3), t, 0, 1);
-            ui_text_big(w / 2 - ui_text_big_width("IT HOLDS ON...", 2) / 2, big ? 8 : 4, "IT HOLDS ON...", 2,
-                        PAL_UI_RED, PAL_BLACK);
+            demon_layer(w / 2 + hw / 2 + 6, hy - hh / 2 + ui_wave((int)t, 20, 3), t, 0, 1);
             if (X.practice) doomo_snprintf(b, sizeof(b), "Just practice! Try again anytime.");
             else if (tries > 0) doomo_snprintf(b, sizeof(b), "%d %s left before the soul is lost.",
                                                tries, tries == 1 ? "try" : "tries");
             else doomo_snprintf(b, sizeof(b), "The last candle goes out...");
-            ui_text_outline(w / 2 - ui_text_width(b) / 2, big ? 30 : 22, b, PAL_WHITE, PAL_BLACK);
         }
-        {
-            char s[64];
-            doomo_snprintf(s, sizeof(s), "Prayer %d%%  Water %d%%  Name %s  Chance %d%%",
-                           X.rhythm, X.water, X.name_ok ? STR_ICON_CHECK : STR_ICON_X, X.chance);
-            if (!big) doomo_snprintf(s, sizeof(s), "Pray %d%% Water %d%% Name %s",
-                                     X.rhythm, X.water, X.name_ok ? STR_ICON_CHECK : STR_ICON_X);
-            plat_shade_rect(0, h - (big ? 34 : 26), w, 11, 9);
-            ui_text_center(w / 2, h - (big ? 32 : 24), s, PAL_WHITE);
+        tw = ui_text_big_width(X.success ? "CAST OUT!" : "IT HOLDS ON...", 2);
+        if (LC(LY_U0 + 1, w / 2 - tw / 2 - 3, ty - 3, tw + 6, 25, hk(0x7171u, (uint32_t)X.success))) {
+            if (X.success)
+                CLIPPED(LY_U0 + 1, ui_text_big(w / 2 - tw / 2, ty, "CAST OUT!", 2, PAL_UI_GOLD, PAL_RAMP(RAMP_PASTEL_PINK, 1)));
+            else
+                CLIPPED(LY_U0 + 1, ui_text_big(w / 2 - tw / 2, ty, "IT HOLDS ON...", 2, PAL_UI_RED, PAL_BLACK));
         }
-        if (X.st_t > 30 && !(!X.success && !X.practice && town_res(X.host)->status == RES_SOUL_LOST))
+        lw = ui_text_width(b);
+        if (LC(LY_U0 + 2, w / 2 - lw / 2 - 3, ly2 - 3, lw + 6, 16, hk_str(hk(0x11E5u, (uint32_t)X.success), b)))
+            CLIPPED(LY_U0 + 2, ui_text_outline(w / 2 - lw / 2, ly2, b, PAL_WHITE,
+                                               X.success ? PAL_RAMP(RAMP_PASTEL_PINK, 1) : PAL_BLACK));
+        doomo_snprintf(s, sizeof(s), "Prayer %d%%  Water %d%%  Name %s  Chance %d%%",
+                       X.rhythm, X.water, X.name_ok ? STR_ICON_CHECK : STR_ICON_X, X.chance);
+        if (!big) doomo_snprintf(s, sizeof(s), "Pray %d%% Water %d%% Name %s",
+                                 X.rhythm, X.water, X.name_ok ? STR_ICON_CHECK : STR_ICON_X);
+        if (LC(LY_U0 + 3, 0, sy, w, 11, hk_str(0x57A1u, s))) {
+            CLIPPED(LY_U0 + 3, (plat_shade_rect(0, sy, w, 11, 9), ui_text_center(w / 2, h - (big ? 32 : 24), s, PAL_WHITE)));
+        }
+        /* the hint is a pill over the middle of the bottom row */
+        /* (a layer with no box draws nothing, but a platform without the stage asks every layer) */
+        if (L(LY_U0 + 4, w / 2 - 90, h - 14, hint ? 180 : 0, hint ? 14 : 0, hk(0x417u, (uint32_t)X.success)) && hint)
             ui_hint(STR_ICON_A " Done", X.success ? WIN_CUTE : WIN_HELL);
-        if (!X.success && X.st_t > 110) {
-            int lv = DOOMO_MIN(14, (X.st_t - 110) / 4);
-            plat_shade_rect(0, 0, w, h, lv);
-        }
+        if (LC(LY_U0 + 5, 0, 0, fade_on ? w : 0, fade_on ? h : 0, hk(0xFADEu, (uint32_t)fade)) && fade_on)
+            CLIPPED(LY_U0 + 5, plat_shade_rect(0, 0, w, h, fade));
         break;
     }
     case ST_LOST: {
@@ -1474,3 +1504,7 @@ static void exo_draw(void)
 }
 
 const DoomoScene SCENE_EXORCISM = { "EXORCISM", exo_enter, exo_leave, exo_update, exo_draw, 0 };
+#ifdef DOOMO_HITCHECK
+/* tests (the native build): the ritual ended in a cast out / the figure count of the result screen */
+int exo_probe_result(void) { return X.state == ST_RESULT ? 1 + X.success : 0; }
+#endif

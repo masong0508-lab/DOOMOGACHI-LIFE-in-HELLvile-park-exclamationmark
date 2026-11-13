@@ -540,17 +540,63 @@ void exo_fuzz(int cx, int foot_y, uint32_t t, int expr)
 #endif
 #if HOST_HOLES
 static int16_t hole[4];                      /* [x0, x1) x [y0, y1) */
+static void (*hole_emit)(int, int, int, int, uint8_t) = plat_rect;   /* where the rects that are left go */
 static void hole_tap(int x, int y, int w, int h, uint8_t c)
 {
     int x1 = x + w, y1 = y + h, a, b;
-    if (x >= hole[2] || x1 <= hole[0] || y >= hole[3] || y1 <= hole[1]) { plat_rect(x, y, w, h, c); return; }
-    if (y < hole[1]) plat_rect(x, y, w, hole[1] - y, c);                     /* above */
-    if (y1 > hole[3]) plat_rect(x, hole[3], w, y1 - hole[3], c);             /* below */
+    if (x >= hole[2] || x1 <= hole[0] || y >= hole[3] || y1 <= hole[1]) { hole_emit(x, y, w, h, c); return; }
+    if (y < hole[1]) hole_emit(x, y, w, hole[1] - y, c);                     /* above */
+    if (y1 > hole[3]) hole_emit(x, hole[3], w, y1 - hole[3], c);             /* below */
     a = DOOMO_MAX(y, hole[1]);
     b = DOOMO_MIN(y1, hole[3]);
-    if (x < hole[0]) plat_rect(x, a, hole[0] - x, b - a, c);                 /* left  */
-    if (x1 > hole[2]) plat_rect(hole[2], a, x1 - hole[2], b - a, c);         /* right */
+    if (x < hole[0]) hole_emit(x, a, hole[0] - x, b - a, c);                 /* left  */
+    if (x1 > hole[2]) hole_emit(hole[2], a, x1 - hole[2], b - a, c);         /* right */
 }
+
+/* (G2-EX) The aura's rects, the frame's hole already left out, kept for each pulse (-2..2) of the frame size and
+ * colour that made them, and drawn again at the frame's place (the shape code and the hole's split cost ~5 ms a
+ * frame on the GBA, and the pulse changes every third tick; the rects are the same, so are the pixels). The
+ * entries are plat_rect_run's, in screen coordinates for the frame origin (ox, oy) they were last drawn at, and
+ * move with it. Lives in the scene scratch (exo_aura_bind); a frame with rows off the screen, or a shape with
+ * more rects than a list holds, is drawn as before. */
+#define AURA_MAX 96
+typedef struct { int16_t x, y; uint8_t w, h, c, pad; } AuraRect;
+typedef struct { int16_t fw, fh, ox, oy; int8_t cls, valid, pad[2]; uint16_t n, pad2; AuraRect r[AURA_MAX]; } Aura;
+static Aura *aura;                           /* [5], one per pulse */
+extern void plat_rect_run(const void *list, int n) __attribute__((weak));   /* the GBA's ARM run (video_loops.s) */
+extern int gba_nodraw __attribute__((weak));        /* 0: drawing to Mode 4, the only case the run handles */
+uint32_t exo_aura_bytes(void) { return 5u * (uint32_t)sizeof(Aura); }
+void exo_aura_bind(void *mem)
+{
+    int i;
+    aura = (Aura *)mem;
+    for (i = 0; aura && i < 5; i++) aura[i].valid = 0;
+}
+static Aura *aura_cur;                       /* the list being recorded */
+static void aura_rec(int x, int y, int w, int h, uint8_t c)
+{
+    if (aura_cur->n < AURA_MAX && w < 256 && h < 256) {
+        AuraRect *r = &aura_cur->r[aura_cur->n];
+        r->x = (int16_t)x; r->y = (int16_t)y; r->w = (uint8_t)w; r->h = (uint8_t)h; r->c = c; r->pad = 0;
+    }
+    aura_cur->n++;                           /* (more than AURA_MAX: not valid) */
+}
+
+/* draw the list with its origin at (x, y) */
+static void aura_draw(Aura *a, int x, int y)
+{
+    int i, dx = x - a->ox, dy = y - a->oy;
+    if (dx || dy)
+        for (i = 0; i < a->n; i++) {
+            a->r[i].x = (int16_t)(a->r[i].x + dx);
+            a->r[i].y = (int16_t)(a->r[i].y + dy);
+        }
+    a->ox = (int16_t)x; a->oy = (int16_t)y;
+    if (plat_rect_run && !gba_nodraw) plat_rect_run(a->r, a->n);
+    else
+        for (i = 0; i < a->n; i++) plat_rect(a->r[i].x, a->r[i].y, a->r[i].w, a->r[i].h, a->r[i].c);
+}
+
 static void with_hole(int x0, int y0, int x1, int y1)
 {
     hole[0] = (int16_t)x0; hole[1] = (int16_t)y0; hole[2] = (int16_t)x1; hole[3] = (int16_t)y1;
@@ -561,6 +607,8 @@ static void with_hole(int x0, int y0, int x1, int y1)
 #else
 #define HOLE(x0, y0, x1, y1) ((void)0)
 #define NO_HOLE() ((void)0)
+uint32_t exo_aura_bytes(void) { return 0; }       /* (a GPU platform draws the aura's shapes whole) */
+void exo_aura_bind(void *mem) { (void)mem; }
 #endif
 
 /* exorcism_int.h: the same holes for the scene's own shapes (the prayer lane) */
@@ -602,6 +650,34 @@ void exo_host_frame(int cx, int cy, const DoomoImage *img, int scale, int shake,
      * frame's, whose outer round rect fills every row of [y + 4, y + h - 4) edge to edge) */
     if (dread > 3) {
         int pulse = ui_wave((int)t, 24, 2);
+#if HOST_HOLES
+        /* (G2-EX) the list of rects it draws, made once for a frame size, pulse and colour (the aura is 8 or so
+         * rows clear of the screen's top and bottom, else its rows would be cut: not kept) */
+        if (aura && pulse >= -2 && pulse <= 2 && y >= 8 && y + h + 8 <= plat_screen_h() && !plat_draw_skipped()) {
+            int cls = dread > 10;
+            Aura *a = &aura[pulse + 2];
+            if (a->valid >= 0 && (!a->valid || a->fw != w || a->fh != h || a->cls != cls)) {
+                void (*saved)(int, int, int, int, uint8_t) = hole_emit;
+                a->n = 0;
+                aura_cur = a;
+                hole_emit = aura_rec;
+                HOLE(x, y + 4, x + w, y + h - 4);
+                ui_fill_ellipse(x + w / 2, y + h / 2, w / 2 + 5 + pulse, h / 2 + 4 + pulse,
+                                cls ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_RAMP(RAMP_VAPE, 2));
+                ui_fill_ellipse(x + w / 2, y + h / 2, w / 2 + 2 + pulse / 2, h / 2 + 2 + pulse / 2,
+                                cls ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_RAMP(RAMP_VAPE, 3));
+                NO_HOLE();
+                hole_emit = saved;
+                a->fw = (int16_t)w; a->fh = (int16_t)h; a->cls = (int8_t)cls;
+                a->ox = (int16_t)x; a->oy = (int16_t)y;
+                a->valid = a->n <= AURA_MAX ? 1 : -1;       /* (-1: too many rects, drawn as before) */
+            }
+            if (a->valid > 0) {
+                aura_draw(a, x, y);
+                goto aura_done;
+            }
+        }
+#endif
         HOLE(x, y + 4, x + w, y + h - 4);
         ui_fill_ellipse(cx + dx, cy + dy, w / 2 + 5 + pulse, h / 2 + 4 + pulse,
                         dread > 10 ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_RAMP(RAMP_VAPE, 2));
@@ -609,6 +685,7 @@ void exo_host_frame(int cx, int cy, const DoomoImage *img, int scale, int shake,
                         dread > 10 ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_RAMP(RAMP_VAPE, 3));
         NO_HOLE();
     }
+aura_done:
 #if HOST_HOLES
     /* the drop shadow (x + 3, y + 3, w, h): only the band the frame does not paint over (the
      * right 7 columns and the bottom 7 rows of it hold every pixel its round corners leave) */

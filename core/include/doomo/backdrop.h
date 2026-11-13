@@ -60,8 +60,8 @@ void stage_resolve(void);
 int  stage_draw(int i);
 void stage_end(void);
 /* (G2-EX) Clipped redraw. A layer declared with stage_layer_clip draws only through plat_rect,
- * plat_shade_rect and plat_image at scale 1 without a flip (the calls a platform's plat_clip honours
- * exactly: plat_ext.h), and its draw is the same whatever the screen under it holds. When such a
+ * plat_shade_rect, plat_text and plat_image at scale 1 without a flip (the calls a platform's plat_clip
+ * honours exactly: plat_ext.h; UI shapes and text go through them), and its draw is the same whatever the screen under it holds. When such a
  * layer did not change but lies on a dirty box, the stage does not put its whole box back and draw
  * it again (which would drag every layer that lies on that box into the redraw, and so on): it
  * draws the layer only through the pieces of the dirty set that lie in its box, clipped to each.
