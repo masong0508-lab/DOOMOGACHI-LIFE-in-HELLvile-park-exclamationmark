@@ -197,6 +197,10 @@ fps start
 wait 130
 expect-fps 28 fair: memory play sweet
 shot fair_memory_play_sweet
+wait 200
+fps start
+wait 100
+fps fair: memory play sweet late
 seed 1
 scene TITLE
 wait 2
@@ -206,6 +210,10 @@ fps start
 wait 130
 expect-fps 28 fair: memory play hellfire
 shot fair_memory_play_hellfire
+wait 200
+fps start
+wait 100
+fps fair: memory play hellfire late
 
 # ---- Prize Wheel (arg 16: spin even if already spun today; 32: the bot spins) ----
 seed 1

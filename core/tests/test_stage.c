@@ -359,6 +359,56 @@ TEST(stage_bake_file_has_bands_and_stamps)
     remove(path);
 }
 
+/* (S2-4b, review) a baked stamp holds no text: ui_text follows Language and Font style at draw time, so a
+ * stamp drawn in Spanish with another font style must equal the English one (the HUD pill's label is
+ * drawn live over its stamp) */
+TEST(stage_stamps_do_not_depend_on_language_or_font)
+{
+    static uint8_t file[16 * 1024 * 1024], en[240 * 160];
+    char path[600];
+    FILE *f;
+    uint32_t n, i;
+    int checked = 0, bad = 0;
+    set_res(240, 160);
+    nat_stage_reset();
+    snprintf(path, sizeof(path), "%s/bake_lang.bin", test_tmp_dir);
+    CHECK(nat_bake_backdrops(path) > 0);
+    f = fopen(path, "rb");
+    CHECK(f != NULL);
+    CHECK(fread(file, 1, sizeof(file), f) > 12);
+    fclose(f);
+    remove(path);
+    n = (uint32_t)file[8] | (uint32_t)file[9] << 8 | (uint32_t)file[10] << 16 | (uint32_t)file[11] << 24;
+    test_reset();
+    doomo_init();
+    for (i = 0; i < n; i++) {
+        const uint8_t *e = file + 12 + 16 * i;
+        uint32_t idkey = (uint32_t)e[0] | (uint32_t)e[1] << 8 | (uint32_t)e[2] << 16 | (uint32_t)e[3] << 24;
+        const DoomoBackdrop *fam = NULL;
+        int16_t part[2] = { 0, 0 };
+        int k;
+        for (k = 0; k < backdrop_family_count(); k++)
+            if (backdrop_family(k)->id == (int)(idkey >> 24)) fam = backdrop_family(k);
+        if (!fam || !fam->part || (fam->part(idkey & 0xFFFFFFu, part) != BACKDROP_STAMP && fam->part(idkey & 0xFFFFFFu, part) != BACKDROP_STRIP))
+            continue;
+        doomo_town.opt[OPT_LANGUAGE] = LANG_EN;
+        doomo_town.opt[OPT_FONT_STYLE] = 0;
+        memset(nat_fb, 0, 240 * 160);
+        fam->draw(idkey & 0xFFFFFFu);
+        memcpy(en, nat_fb, sizeof(en));
+        doomo_town.opt[OPT_LANGUAGE] = LANG_ES;
+        doomo_town.opt[OPT_FONT_STYLE] = 1;
+        memset(nat_fb, 0, 240 * 160);
+        fam->draw(idkey & 0xFFFFFFu);
+        if (memcmp(en, nat_fb, sizeof(en)) != 0) bad++;
+        checked++;
+    }
+    doomo_town.opt[OPT_LANGUAGE] = LANG_EN;
+    doomo_town.opt[OPT_FONT_STYLE] = 0;
+    CHECK(checked > 100);
+    CHECK_MSG(bad == 0, "%d of %d stamps draw differently with Language / Font style (text baked)", bad, checked);
+}
+
 /* (S2-4b) mg_undo: a still part drawn again between mg_undo and mg_undo_end puts the kept picture
  * back in its own spans, inside the box only; listed once (mg_undo_rec) and repeated (mg_kept_puts) it
  * is the same pixels */

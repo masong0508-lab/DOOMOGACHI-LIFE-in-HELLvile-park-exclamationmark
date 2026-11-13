@@ -459,7 +459,7 @@ static void imp_body(int cx, int cy, int rx, int ry, int mood, int gold, int fla
     }
 }
 
-/* the HUD's still pieces (hud_part): a heart (value: held), the score pill with its label (value: its
+/* the HUD's still pieces (hud_part): a heart (value: held), the score pill without its label (value: its
  * width), the time bar's frame (value: the bar's width) */
 enum { HUDP_HEART = 0 << 8, HUDP_PILL = 1 << 8, HUDP_TIME = 2 << 8, HUDP_PART = 3 << 8 };
 static void hud_part(int part, int v, int x, int y);
@@ -783,7 +783,7 @@ static void hud_part(int part, int v, int x, int y)
         ui_round_rect(x + 1, y + 1, v, 15, 7, PAL_RAMP(RAMP_STONE, 0));
         ui_round_rect(x, y, v, 14, 7, mg.hell ? PAL_RAMP(RAMP_BLOOD, 1) : PAL_RAMP(RAMP_PASTEL_PINK, 2));
         ui_round_rect(x + 1, y + 1, v - 2, 12, 6, mg.hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_RAMP(RAMP_PASTEL_PINK, 5));
-        ui_text(x + 5, y + 3, "SCORE", PAL_WHITE);
+        /* the label "SCORE" is NOT part of the stamp: ui_text follows Language and Font style (hud_draw) */
     } else {                                       /* the time bar's frame; v: the bar's width */
         ui_round_rect(x - 1, y, v + 2, 8, 4, PAL_RAMP(RAMP_STONE, 0));
     }
@@ -791,10 +791,10 @@ static void hud_part(int part, int v, int x, int y)
 static void hud_draw(int part, int v, int x, int y)
 {
 #if !defined(DOOMO_PLATFORM_PS1)
-    if (v >= 0 && v < 256 && mg_stamp_common((uint32_t)(MCS_HUD | part | v) | (part == HUDP_PILL && mg.hell ? MG_BK_HELL : 0u), x, y))
-        return;
+    if (!(v >= 0 && v < 256 && mg_stamp_common((uint32_t)(MCS_HUD | part | v) | (part == HUDP_PILL && mg.hell ? MG_BK_HELL : 0u), x, y)))
 #endif
-    hud_part(part, v, x, y);
+        hud_part(part, v, x, y);
+    if (part == HUDP_PILL) ui_text(x + 5, y + 3, "SCORE", PAL_WHITE);   /* live: Language, Font style */
 }
 
 void mg_draw_hearts(int x, int y, int n, int max)

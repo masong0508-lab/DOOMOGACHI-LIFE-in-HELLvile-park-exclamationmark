@@ -1973,6 +1973,25 @@ frame at 2 vblanks (the vblank histogram has no 3 in it); the 0.1 is the window'
 
 **Still short.**
 
+* **Memory after the opening of the round** (review finding, measured with the autoplay bot in 100-tick windows from tick 60, seeds
+  1, 2, 3, 5, 8): once cards flip, match and lift, Sweet runs 17-27 fps (the base 16-22; frames of 3-8 vblanks) and Hellfire seed 3
+  22-23. Only the opening window (ticks 60-190, every card face down) is at 30. The cost is `back_again()` per face-down card for
+  every non-home card and every sparkle. Two windows now follow it in `speed2_fair.txt` (`memory play sweet late`, `... hellfire
+  late`, not gated). Memory is NOT at 30 in a whole round.
+* **The results card of Whack, Dodge, Gallery, Derby and Memory**: `mg_kept_draw()` returns 0 on `MGP_RESULTS`, so the card
+  is a full redraw every tick: 11-12 fps (Whack, work 77-80 ms), 17-20 (Dodge), 15.5 (Gallery), 14.5-15.5 (Derby), 11.6-12.5
+  (Memory) (review probe, 45-tick windows after the round; the base was equal or slower; Candy Catch's results hold 30). Not
+  measured by `speed2_fair.txt` before; next: hold the frozen playfield behind the card (S2-1 style).
+* **Gallery hitches in normal play**: 3-15 frames of 3 vblanks (~50 ms) per 800 ticks in the autoplay bot (0.3-1.7% of the
+  frames), and Candy Catch Hellfire 1-16 (base 83-173). "No frame over 33 ms" holds in the 130-tick windows, not a whole round.
+  Whack, Derby and Dodge Sweet held 30.0 in every probed window.
+* **Text is never baked** (review finding, fixed): the HUD pill's "SCORE" is drawn live over its stamp (it followed neither
+  Language nor Font style when it was in the stamp; `stage_stamps_do_not_depend_on_language_or_font`). Still baked, with no
+  visible effect today because the strings have no Spanish entry: the Gallery's weapon names and "L/R swap" in the counter
+  band; a Spanish entry for them needs those drawn live first.
+* **The shake moves the banners too**: `plat_post_offset` moves the whole displayed frame, so READY / END / pause / the flash
+  drawn after the kept frame shake with it as well as the HUD (shake is on by default). Before / after screenshots of the
+  shaken Whack and Gallery frames: `tools/` `shot` at ticks 142 / 248 (the offset is a few pixels); with shake off the frames are identical.
 * **The Prize Wheel's spin window has one frame of 67 ms** (work 60.6 ms, the same as before this package): the first frame of
   the result card, and the wheel's result phase after it is ~60 ms a tick (17 fps: the wheel's disc is drawn live, 40% of it
   `vid_rect_narrow` and the wheel's own loop; no window of `speed2_fair.txt` stands in it). The Wheel is not one of the games
