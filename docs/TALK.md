@@ -43,7 +43,7 @@ Contents:
 | **T4** | the safety gate: the input classifier S1, the audience gate S2 (`talk_safe_ctx`, one source of "minor"), the output lint S3, the template lints TK1-TK9, the safety and adversarial corpora, the hashed hate list, the property tests | **done** (TK2): green. The generator-level halves of P1-P8 go live with T5a / T6 |
 | **T5a** | the generator: `talk_gen.c` (the grammar VM, guards, fillers, sim-fact callbacks, novelty, re-picks, the bubble fit, the per-conversation RNG, the trace), the `.tlk` grammar compiler `talkc_gen.py`, the adjacency table `acts.tsv`, a plain exchange (the gate first, who answers, reactions between residents) | **done** (TK3); a **starter** English bank (718 alternatives in 12 files, the K-10 grief and comfort banks included) so every act, refusal and part plays |
 | T5b | the English line banks (about 6,000 alternatives, design 3.6) and the owner's review | in progress: 4,172 alternatives (starter 718 + T5B-WARM 739: warm acts + T5B-COOL 600: cool and rude acts + T5b-ASK 975: questions and answers + T5B-OPEN 648: openers, parts and the rest + T5B-ROM 492: romance, adults only) |
-| T6 | the drama manager, outcomes, the talk memory chunk | **memory and chunk done** (T6-MEM, 6e); **drama manager done** (T6-DM, 6f: `talk_dm.c`, `beats.tlk`); outcomes into the sim (T6-OUT) to do |
+| T6 | the drama manager, outcomes, the talk memory chunk | **memory and chunk done** (T6-MEM, 6e); **drama manager done** (T6-DM, 6f: `talk_dm.c`, `beats.tlk`); **outcomes into the sim done** (T6-OUT, 6g: `talk_outcome.c`) |
 | **T7** | the census (`core/tools/talk_census.c`: the three tiers, Chao1, the quality checks Q1-Q6, the conversation tier), the grid `census_en.tsv`, `make -C core talk-census`, the smoke census in `make test`, the Q7 review sheet `talk_sample.py` | **done** (TK3): the tools and the measurement. The full run's numbers are in 6d: Skeleton, Meaning, conversations and quality meet the design's targets; **Surface does not** (it needs T5b's bank); Q7 (a person rating 300 exchanges) has not been done |
 | T8 | the house mode `HM_TALK` on native, with its UI | to do |
 | T9, T10 | pointer input; other languages (after the script rewrite) | to do |
@@ -865,11 +865,55 @@ runs first on every player turn; the S3 lint runs on every line.
   P2 in both directions, P3 (K-7), the gate's stand-alone answers, and P2 / P7
   over 400 random sessions (no romance line in a minor's room, no couple, crush or
   romance-sweep hit made).
-* **Not here** (other packages): applying outcomes to the sim and the caps per
-  day (T6-OUT), the talk memory chunk and `beats_recent` / `mem_*` (T6-MEM), the
+* **Not here** (other packages): applying outcomes to the sim (done in 6g), the
   beat lines at full size (T5b: about 5 a beat now), the PS1 build (TP2: the
   object is 22 KB on x86 at -O2; the MIPS size and the stack use of `talk_dm_say`
   (288 B on x86) are to be measured).
+
+## 6g. Outcomes into the sim (T6-OUT)
+
+`core/src/talk_outcome.c`: the only place where Talk writes to the sim. It
+applies the `TalkSummary` of `talk_dm_end` under the daily caps of design 5.5.
+A small ledger of the town day (keyed by day and town seed, 64 residents and 64
+pairs, about 800 bytes `.bss`, not saved: a reload forgets the day) keeps the caps
+across conversations, so no number of talks farms more than they allow.
+
+| Effect | How | Cap |
+|---|---|---|
+| Bond with the player | `rel_adjust(avatar slot, id, d)`; friendship `level` +1 per 4 bond gained; `family_care(id)` once a day (the bond nibble of a family member; a pool member gets only that) | net +-12 a resident a day (`TALK_CAP_REL_DAY`), level +3 (`TALK_CAP_LEVEL_DAY`) |
+| Resident-resident | `rel_adjust(a, b, d)`; an ultimatum costs the pair 3 more, so a big row can end in `REL_RIVAL` through `rel_adjust`'s own rules | net +-8 a pair a day |
+| Moods | `STAT_HAPPY += mood_d`; `STAT_SOCIAL` +4..+12 by engagement (none for one who walked out); then `sim_mood_of` | happy +-12, social 12 a day |
+| Problems | `TEV_PROBLEM`: `sim_problem_resolve` (the sim keeps an item or possession problem open and Talk does not count it) | 1 a resident a day |
+| Mediation | `TEV_MEDIATED`: the sim's own `sim_make_up(a, b)` (a pair with no bond is skipped) | 1 a pair a day |
+| News | `NT_TALK_MADE_UP`, then `NT_TALK_ROW` (an ultimatum), `NT_TALK_WALKOUT`, `NT_TALK_GREAT_NIGHT` | 1 a conversation, 4 a town day (`TALK_CAP_NEWS_DAY`); none when a minor is in the row or walks out, none for a pair of minors |
+| Romance | a yes (`TEV_ROMANCE_YES`) to CONFESS or ASK_OUT only **asks** `sim_confess(avatar, id, 10)`; the sim rolls, applies its gate again and owns every crush bit and dating edge. When the avatar is the hero or a family member the sim has no romance edge, so nothing is asked. A flirt asks nothing | 1 a pair a day |
+
+* **Use.** `talk_outcome_begin` (= `talk_dm_begin` + `talk_mem_begin`, and
+  `TPF_REFUSED` from "refused today"), the turns as before, then
+  `talk_outcome_end(s, &out, &sum)`: it writes the talk memory (the last topic of
+  those who spoke, the flags the player earned for those who stayed in the room,
+  `refused today`), calls `talk_dm_end`, and applies the summary. `talk_outcome_apply`
+  alone applies a summary. `TalkOutcome` says what was really applied.
+* **Fix in T6-DM's end.** `talk_dm_end` no longer sets `TalkConv.ended` (that is
+  K-7's, and `talk_mem_end` locks the whole room for the day on it: every talk would
+  have locked everyone out). `TDF_OVER` is what ends the talk.
+* **Not done here.** "Learning likes" (a GAME beat or an ASK_ABOUT answer marks a
+  like as known): the summary does not say which like was asked about; it needs a
+  `TEV_LEARNED` event from the drama manager (T5B-ASK / T8). `beats_recent` is not
+  filled from memory (the table keeps no beats). Hate and the K-8 penalty are already in
+  `rel_d_player`.
+* **Tests** (`test_talk_outcome.c`, 14): the bond / level / mood / pair caps, the
+  next day, a leaver gets no social, mediation once a pair a day and one headline,
+  strangers skipped, news rules and none for minors, a problem once a resident a
+  day and an item problem left open, romance asked and never forced (hero avatar,
+  a flirt, a child, the sweep), 100 sessions by a greedy player stay under every
+  cap (the sessions asked for a summed 1,310 bond; headlines 4), the talk memory
+  written back (and nobody locked out), refused today across talks and days, and
+  P7 over 1,500 random sessions with romance acts (the romance sweep finds nothing).
+* **Memory.** Native only (like talk_save.c): 0 B on GBA / PS1 / Dreamcast, GBA
+  EWRAM / IWRAM net zero, PS1 margin unchanged.
+
+---------------------------------------------------------------------------
 
 ## 7. Sizes (measured)
 
@@ -1053,6 +1097,7 @@ Other measurements:
 | `core/tests/test_talk_gen.c` | T5a on the test grammar `core/tests/talk_gen/gentest.tlk` (`TALK_gentest.BIN`): every modifier and field, names, likes, the job callback for an adult and none for a child, the weights, Q5 novelty, sub-rules, the fit and the safe fallback, K-9 (one swear a conversation, none with a kid), K-6 (a Mature variant only with the option and premade adults), the cast's own lines, faces, the optional parts with every callback true (Q4), the exchange (the gate first: K-7 ends it unseen, refusals, distress, romance at a child both ways; a romance yes, a no remembered for the day), reactions that answer the line before (Q2), a typed name the room may not hear, determinism; K-10 (`talk_gen_grief`): a grief topic takes the sincere bank whatever the act, the core part alone and an act that may answer, a quiet safe line when no grief line may answer, the safety acts keep their banks, the loss fact (a household member, not a move away, 28 days), `{lost}`, one comfort reaction at most and never the pet |
 | `core/tests/test_talk_census.c` | T7 and T5a over the English banks: the smoke census (6d) and the generator-level property tests P1-P8 (section 2; `DOOMO_TALK_PROPERTY_N` for the design's 200,000) and K-10 (`talk_gen_property_grief`: every act about every grief topic in adults', kids' and pet rooms) |
 | `core/tests/test_talk_save.c` | T6-MEM (6e): the table (find, touch, last two topics, LRU of 24, likes, who may have an entry), the day rollover (refused today only), the flags of a running conversation, the chunk (empty = 0 bytes, worst case 292 B, full save round trip, an old save without the chunk, truncated / too long / wrong version / count over 24, a gone resident, the pet, a double id, a retired concept), and the generator guards and callback through `core/tests/talk_gen/mem.tlk` (K-5 across two conversations) |
+| `core/tests/test_talk_outcome.c` | T6-OUT (6g): the daily caps, mediation, problems, news, romance asked and never forced, 100 greedy sessions, the talk memory write-back, P7 over 1,500 random sessions |
 | `make -C core talk-check` | `talkc --check` (now also TK1-TK9, the corpora and the grammar compiler) and `--selftest` (51 seeded refusals: 12 lexicon files, 4 bad edges, 13 templates, 2 rule files, 20 grammars; and `core/tests/talk_good.tlk` must lint clean) (part of `make -C core test`) |
 | `make -C core talk-census` | the full census (6d; not in `make test`: about 25-30 minutes) |
 | `python3 core/tools/talk_sample.py selftest` | the Q7 sheet's scoring |

@@ -1049,8 +1049,7 @@ void talk_dm_end(TalkState *s, TalkSummary *out)
     for (k = 0; great && k < s->nev; k++)
         if (s->ev[k].kind == TEV_GREAT_NIGHT || s->ev[k].kind == TEV_HATE || s->ev[k].kind == TEV_ULTIMATUM) great = 0;
     if (great) add_event(s, TEV_GREAT_NIGHT, -1, -1);
-    s->flags |= TDF_OVER;
-    s->conv.ended = 1;
+    s->flags |= TDF_OVER;                                   /* conv.ended stays K-7's: talk_mem_end locks the room for the day on it */
     out->avatar = s->conv.avatar;
     out->n = s->nparts;
     out->turns = s->turn;

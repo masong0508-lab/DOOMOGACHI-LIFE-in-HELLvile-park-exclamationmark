@@ -982,6 +982,39 @@ int  talk_dm_consent(const TalkState *s, int who, int act);
  * and copy what it did into out. Applies nothing to the sim. May be called
  * at any time; the conversation is over afterwards. */
 void talk_dm_end(TalkState *s, TalkSummary *out);
+/* ---- T6-OUT: the outcomes into the sim (core/src/talk_outcome.c; docs/TALK.md 6g) ----
+ * The ONLY place where Talk writes to the sim. The caps of design 5.5 are
+ * per town day and live in a small ledger (native builds only; saved
+ * nothing: a reload forgets today's ledger). */
+#define TALK_CAP_REL_DAY    12     /* bond with the player, per resident per town day (+-)  */
+#define TALK_CAP_LEVEL_DAY  3      /* friendship level, per resident per day                */
+#define TALK_CAP_PAIR_DAY   8      /* resident-resident bond, per pair per day (+-)         */
+#define TALK_CAP_MOOD_DAY   12     /* STAT_HAPPY change, per resident per day (+-)          */
+#define TALK_CAP_NEWS_DAY   4      /* Talk headlines a town day (one a conversation)         */
+#define TALK_CAP_SOCIAL_DAY 12     /* STAT_SOCIAL gain, per resident per day                */
+typedef struct TalkOutcome {
+    int8_t   rel[TALK_PARTS_MAX];  /* the bond change with the player really applied        */
+    int8_t   mood[TALK_PARTS_MAX]; /* the STAT_HAPPY change really applied                  */
+    int8_t   pair[6];              /* the pair bond change really applied (as pair_d)       */
+    uint8_t  level;                /* friendship level gained, all of them                  */
+    uint8_t  social;               /* STAT_SOCIAL gained, all of them                       */
+    uint8_t  problems;             /* problems resolved (sim_problem_resolve)               */
+    uint8_t  made_up;              /* sim_make_up calls                                     */
+    uint8_t  confessed;            /* sim_confess calls                                     */
+    uint8_t  dating;               /* ... and how many of them the sim said yes to          */
+    uint8_t  news;                 /* NT_TALK_* posted, 0 none (one headline a conversation) */
+} TalkOutcome;
+/* talk_dm_begin, then the talk memory of the participants (talk_mem_begin:
+ * last topic, last-time flags, "refused today" as TPF_REFUSED). */
+void talk_outcome_begin(TalkState *s, int avatar, const int *ids, int n, uint32_t seed);
+/* Close the conversation: the talk memory (topics, flags, refused today), then
+ * talk_dm_end, then talk_outcome_apply. sum may be NULL. */
+void talk_outcome_end(TalkState *s, TalkOutcome *out, TalkSummary *sum);
+/* Apply a summary to the sim under the daily caps. Never sets a crush or a
+ * dating edge: a yes to CONFESS / ASK_OUT only asks sim_confess. */
+void talk_outcome_apply(const TalkSummary *sum, TalkOutcome *out);
+/* Forget today's ledger (a new town does it by itself: the ledger is keyed by day and town seed). */
+void talk_outcome_reset(void);
 /* The target tension of player turn `turn` (design 5.2: up to a peak at
  * turns 8-10, down by 14-16, then "lively"). */
 int  talk_dm_target_tension(int turn);
