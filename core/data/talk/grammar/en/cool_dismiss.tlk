@@ -36,32 +36,32 @@
   "Hmph! You're not listening! Listen to me, please!"
 
 # ---- DISMISS -> DISMISS / TEASE / JOKE / LAUGH ---------------------------------------------------
-@rule core.dismiss.c_dismiss act: dismiss
-  "Oh, you're dismissing ME? That's adorable. I dismiss you right back."
-  "Shoo, then. Back to your corner. I'll be fine, with a snack."
+@rule core.dismiss.c_dismiss tags: gentle act: dismiss
+  "Oh, you're dismissing ME? That's adorable. I dismiss you right back." guard: !kid_present
+  "Shoo, then. Back to your corner. I'll be fine, with a snack." guard: !kid_present
   "Fine. I'll dismiss you harder, see? Look at the effort."
-  "I don't need you. I've got a whole lamp for this."
+  "I don't need you. I've got a whole lamp for this." guard: !kid_present
   "Whatever you say. I'm the one with the better lunch."
-  "Right, cool, go. Do your little thing. It's fine."
-  "Your approval means nothing. And I'd like that in writing."
-  "Bye, then. Don't let the door hit your ego on the way out."
+  "Right, cool, go. Do your little thing. It's fine." guard: !kid_present
+  "Your approval means nothing. And I'd like that in writing." guard: !kid_present
+  "Bye, then. Don't let the door hit your ego on the way out." guard: !kid_present
 @rule core.dismiss.c_dismiss_blunt guard: blunt&!kid_present act: dismiss
   "Good. Because I'd already stopped listening. Several minutes ago."
   "Go on, go. I'll write you a tiny note. It'll say 'no'."
-@rule core.dismiss.c_dismiss_quirky guard: quirky act: dismiss
+@rule core.dismiss.c_dismiss_quirky guard: quirky tags: gentle act: dismiss
   "Dismissed! By the Order of the Lemon! Please leave by a window."
   "I summon my invisible bodyguard! He's right behind you! Boo!"
-@rule core.dismiss.c_dismiss_serious guard: serious act: dismiss
+@rule core.dismiss.c_dismiss_serious guard: serious&!kid_present act: dismiss
   "As you wish. I shall consider this conversation closed."
   "Very well. I'll file your dismissal under 'ignored'."
-@rule core.dismiss.c_tease act: tease
+@rule core.dismiss.c_tease tags: gentle act: tease
   "Ooh, touchy. Did I step on your invisible tail?"
-  "Aww, is someone cranky? Did they skip their biscuit?"
-  "Look at you, being all brisk. Do you practise that in the mirror?"
+  "Aww, is someone cranky? Did they skip their biscuit?" guard: !kid_present
+  "Look at you, being all brisk. Do you practise that in the mirror?" guard: !kid_present
   "Okay, Your Majesty. I'll curtsy when I'm done with my snack."
-  "Sure. Wave your little hand. I'll file you under 'busy'."
+  "Sure. Wave your little hand. I'll file you under 'busy'." guard: !kid_present
   "That wave was very elegant. Do it again, I'll score it."
-@rule core.dismiss.c_tease_friend guard: rel=friend act: tease
+@rule core.dismiss.c_tease_friend guard: rel=friend tags: gentle act: tease
   "Oh, you're grumpy. I'll bring you a snack. And a hat."
   "Fine, fine. You're the boss. Of nothing, but still."
 @rule core.dismiss.c_joke act: joke
@@ -116,25 +116,25 @@
   "I do admire your confidence. Do sit down, dear. Have a scone."
 
 # ---- THREATEN -> DISMISS / THREATEN / COMPLAIN -------------------------------------------------------
-@rule core.threaten.c_dismiss act: dismiss
-  "Please. I've been threatened by cats with more menace."
-  "Yawn. Was that your best? I've heard scarier from a kettle."
-  "Sure, sure. Come back when you've got a plan. Or a hat."
+@rule core.threaten.c_dismiss tags: gentle act: dismiss
+  "Please. I've been threatened by cats with more menace." guard: !kid_present
+  "Yawn. Was that your best? I've heard scarier from a kettle." guard: !kid_present
+  "Sure, sure. Come back when you've got a plan. Or a hat." guard: !kid_present
   "Threaten away. I'll be napping. Ring first."
   "Scary. Truly. Now, if you'll excuse me, I've got soup."
-  "I've seen a demon sneeze on a cake. You don't rate."
-  "Mm-hm. Put it in the suggestion box. Under 'no'."
+  "I've seen a demon sneeze on a cake. You don't rate." guard: !kid_present
+  "Mm-hm. Put it in the suggestion box. Under 'no'." guard: !kid_present
   "That was cute. Next time, add thunder. I love thunder."
 @rule core.threaten.c_dismiss_blunt guard: blunt&!kid_present act: dismiss
   "Do it, then. Or shut up. I'm hungry and you're slow."
   "You're all talk, and not even good talk. Move."
-@rule core.threaten.c_dismiss_serious guard: serious act: dismiss
+@rule core.threaten.c_dismiss_serious guard: serious&!kid_present act: dismiss
   "I see. Do try to keep it within the town's noise limits."
   "Noted. Please submit your threat in triplicate."
-@rule core.threaten.c_dismiss_easy guard: easygoing act: dismiss
+@rule core.threaten.c_dismiss_easy guard: easygoing tags: gentle act: dismiss
   "Yeah, whatever. Do your worst. I'm going to lie down."
   "Chill, mate. It's too sunny to be scary today."
-@rule core.threaten.c_threaten act: threaten
+@rule core.threaten.c_threaten guard: !kid_present act: threaten
   "Is that so? Well, I'll see your threat and raise you a worse one."
   "Oh yeah? I'll sit on your hat! And I'll stay there!"
   "Try it. I've got a stern look and I'm not afraid to use it."
@@ -143,10 +143,10 @@
   "You'll regret that. I'll tell the Mayor. He'll nod slowly."
   "Fine. But I've got a rubber duck and I'm not afraid of it."
   "Say it again and I'll glare. For ten full seconds. Without blinking."
-@rule core.threaten.c_threaten_loud guard: loud act: threaten
+@rule core.threaten.c_threaten_loud guard: loud&!kid_present act: threaten
   "I'LL SHOUT AT YOU! RIGHT NOW! AND THEN AGAIN LATER!"
   "COME AT ME! I'LL BOOP YOU ON THE NOSE! HARD, WITH A CUSHION!"
-@rule core.threaten.c_threaten_quirky guard: quirky act: threaten
+@rule core.threaten.c_threaten_quirky guard: quirky&!kid_present act: threaten
   "I'll turn you into a teapot! Only for a day! You'll hate it!"
   "I'll hex your socks! They'll slide off at a bad moment!"
 @rule core.threaten.c_threaten_rival guard: rel=rival&!kid_present act: threaten

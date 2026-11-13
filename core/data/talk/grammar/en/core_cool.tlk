@@ -3,21 +3,21 @@
 # bank). Mean is fine, cruel is not (SCRIPT_STYLE R4). Syntax: core/tools/talkc_gen.py.
 
 # ---- INSULT ---------------------------------------------------------------------------
-@rule core.insult.back act: insult
+@rule core.insult.back guard: !kid_present act: insult
   "Wow. Okay, your hat is ugly. Now we're even."
-  "Rude! I'd insult you back, but nature beat me to it."
+  "Rude! I'd insult you back, but I'm saving it for later."
   "Says the one with spinach in their soul."
 @rule core.insult.hurt act: complain
   "Ouch. That one's going in the diary. In red."
   "Hey! I have feelings. Small, delicate, vengeful feelings."
   "Well that's just mean. I'm telling the Mayor. He won't care."
-@rule core.insult.dismiss act: dismiss
-  "Cute. Did you practise that in the mirror?"
+@rule core.insult.dismiss tags: gentle act: dismiss
+  "Cute. Did you practise that in the mirror?" guard: !kid_present
   "I've been insulted by better. Mostly by ducks."
 @rule core.insult.quirky guard: quirky act: laugh
   "Ha! Do it again, insult my shoes! They love it!"
-@rule core.insult.blunt guard: blunt act: insult
-  "Oh, we're doing this? Great. You smell like a sock drawer."
+@rule core.insult.blunt guard: blunt&!kid_present act: insult
+  "Oh, we're doing this? Great. You've got the charm of a sock drawer."
 @rule core.insult.swear guard: blunt&adults_only&!kid_present act: complain
   "Damn. Okay. I'll be crying in the pantry if you need me."
 @rule core.insult.memory guard: fact.insulted act: complain
@@ -37,9 +37,9 @@
   "Oh dear, you're right. I'm so sorry. I'll do better-ish."
 
 # ---- TEASE / MOCK ----------------------------------------------------------------------
-@rule core.tease.back act: tease
+@rule core.tease.back tags: gentle act: tease
   "Oh, you think you're funny? You're a little funny."
-  "Says you. With that walk."
+  "Says you. With that walk." guard: !kid_present
   "Careful. I tease back. And I'm better at it."
 @rule core.tease.laugh act: laugh
   "Ha! Okay, that's fair. Rude, but fair."
@@ -47,11 +47,11 @@
   "Hey! I'm sensitive on the inside. Way inside."
 @rule core.tease.kid guard: kid_speaker tags: kid act: tease
   "You're silly! Silly silly silly!"
-@rule core.mock.back act: mock
+@rule core.mock.back tags: gentle act: mock
   "Is that an impression of me? It's very bad. Do it again."
 @rule core.mock.complain act: complain
   "I do NOT sound like that. {.}Do I sound like that?"
-@rule core.mock.dismiss act: dismiss
+@rule core.mock.dismiss tags: gentle act: dismiss
   "Mock all you want. I've been mocked by professionals."
 
 # ---- COMPLAIN / BLAME ---------------------------------------------------------------
@@ -62,7 +62,7 @@
   "Right?! I've been saying that for years. To my plant."
 @rule core.complain.comfort act: comfort
   "Hey. It'll be weird first, then okay."
-@rule core.complain.dismiss guard: blunt act: dismiss
+@rule core.complain.dismiss guard: blunt&!kid_present act: dismiss
   "Life's hard. Wear a helmet."
 @rule core.complain.topic act: complain
   "Don't talk to me about {x}. I've got complaints. A list."
@@ -71,7 +71,7 @@
   "That wasn't me. That was a ghost. Ghosts do stuff."
 @rule core.blame.apologize act: apologize
   "Okay, fine, it was me. But for a good reason. Mostly."
-@rule core.blame.back act: blame
+@rule core.blame.back guard: !kid_present act: blame
   "Me? You were holding the ladder!"
 
 # ---- DISMISS / THREATEN ------------------------------------------------------------------
@@ -83,7 +83,7 @@
 @rule core.threaten.laugh act: laugh
   "Ha! You and which duck? I know all the ducks."
   "Ooh, scary. I'm shaking. {.}That's the fridge."
-@rule core.threaten.dismiss act: dismiss
+@rule core.threaten.dismiss tags: gentle act: dismiss
   "Please. A demon threatened me twice before lunch."
 @rule core.threaten.kid guard: kid_speaker tags: kid act: complain
   "I'm telling! I'm telling EVERYONE!"

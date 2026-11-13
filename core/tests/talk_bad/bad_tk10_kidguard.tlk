@@ -1,0 +1,3 @@
+# expect: TK10: core.insult.c_back_quirky turns on the listener
+@rule core.insult.c_back_quirky guard: quirky act: insult
+  "Your aura is the colour of old toast. I'm not even kidding."

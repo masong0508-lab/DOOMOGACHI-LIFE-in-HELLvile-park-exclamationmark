@@ -4,43 +4,43 @@
 # Syntax: core/tools/talkc_gen.py.
 
 # ---- with the topic ----------------------------------------------------------------------------
-@rule core.insult.c_x act: dismiss
+@rule core.insult.c_x tags: gentle act: dismiss
   "Insult me about {x} all you like. I've heard worse from {x}."
-  "Oh, so now it's about {x}? Pick a lane, you menace."
-  "Funny, you only get snippy when {x} comes up."
+  "Oh, so now it's about {x}? Pick a lane, you menace." guard: !kid_present
+  "Funny, you only get snippy when {x} comes up." guard: !kid_present
 @rule core.criticize.c_x act: complain
   "I'm sorry, but you're not an expert on {x}. I am. Mostly."
   "Don't blame {x}! It's not {x}'s fault. It's yours."
-@rule core.tease.c_x act: tease
+@rule core.tease.c_x guard: !kid_present act: tease
   "Says the one who's all fluster about {x}. Cute."
   "Ooh, touchy about {x}? I'll be using that later."
-@rule core.mock.c_x act: dismiss
+@rule core.mock.c_x tags: gentle act: dismiss
   "Mock {x} all you want. {x:cap} won't mind. It's a good sport."
 @rule core.complain.c_x act: agree
   "Ugh, {x}! Don't get me started. It's been a whole week."
   "Right? {x:cap} is the worst. Somebody's got to say it."
 @rule core.blame.c_x act: disagree
   "Blame {x} if you want. {x:cap} can take it, I can't."
-@rule core.dismiss.c_x act: tease
+@rule core.dismiss.c_x guard: !kid_present act: tease
   "So much for {x}. You've got a short attention span, you."
-@rule core.threaten.c_x act: dismiss
+@rule core.threaten.c_x guard: !kid_present act: dismiss
   "Threatening me over {x}? That's the silliest thing I've heard."
 
 # ---- with a memory of rudeness today ------------------------------------------------------------
-@rule core.insult.c_memory guard: fact.insulted act: dismiss
-  "Another one? You're getting lazy. Where's the flair?"
-  "That's your third insult. I'd give you a prize, but no."
+@rule core.insult.c_memory guard: fact.insulted tags: gentle act: dismiss
+  "Another one? You're getting lazy. Where's the flair?" guard: !kid_present
+  "That's your third insult. I'd give you a prize, but no." guard: !kid_present
   "You're on a roll today. Don't pull a muscle."
 @rule core.insult.c_memory_kind guard: fact.insulted act: complain
   "You keep being mean. Did something happen? You can tell me."
   "That's the second time today. Are you okay? Really?"
 @rule core.mock.c_memory guard: fact.insulted act: complain
   "First you insult me, then you mock me. What's next, a tax?"
-@rule core.tease.c_memory guard: fact.insulted act: tease
+@rule core.tease.c_memory guard: fact.insulted&!kid_present act: tease
   "Aren't you the nasty one today. I like you better like that."
-@rule core.threaten.c_memory guard: fact.insulted act: dismiss
+@rule core.threaten.c_memory guard: fact.insulted&!kid_present act: dismiss
   "Rude AND scary? You're stuffing a lot into one visit."
-@rule core.complain.c_memory guard: fact.complimented act: tease
+@rule core.complain.c_memory guard: fact.complimented&!kid_present act: tease
   "I thought you were nice earlier. Who stole your good mood?"
 @rule core.dismiss.c_memory guard: fact.complimented act: complain
   "You were being nice to me ten minutes ago. What changed?"
@@ -49,7 +49,7 @@
 @rule core.insult.c_best guard: rel=best act: laugh
   "You did NOT just say that. {.}Okay, I deserved it. Carry on."
   "Only my best friend gets to be this rude. It's an honour."
-@rule core.tease.c_best guard: rel=best act: tease
+@rule core.tease.c_best guard: rel=best tags: gentle act: tease
   "Oh, we're roasting? Good. I've saved ten years of material."
   "You think you can out-tease me? I know all your secrets."
 @rule core.criticize.c_best guard: rel=best act: agree
@@ -71,9 +71,9 @@
   "Hello to you too. A threat, how welcoming. Do you want a seat?"
 @rule core.insult.c_rival guard: rel=rival&!kid_present act: dismiss
   "Predictable. You'd insult a sunrise if it got up before you."
-@rule core.blame.c_rival guard: rel=rival act: blame
+@rule core.blame.c_rival guard: rel=rival&!kid_present act: blame
   "Of course you'd say it's me. You'd blame the moon if you could reach."
-@rule core.criticize.c_rival guard: rel=rival act: dismiss
+@rule core.criticize.c_rival guard: rel=rival&!kid_present act: dismiss
   "Your opinion on me is like a bad coat: nobody asked and it itches."
 @rule core.mock.c_rival guard: rel=rival&!kid_present act: insult
   "Mock me? You couldn't mimic a clock. Just ticks, no hands."

@@ -1,0 +1,4 @@
+# expect: TK10: core.tease.c_back_loud turns on the listener
+@rule core.tease.c_back_loud guard: loud act: tease
+  "YOU TEASE LIKE A FEATHER!" guard: !kid_present
+  "YOU ARE A SOCK WITH OPINIONS!"

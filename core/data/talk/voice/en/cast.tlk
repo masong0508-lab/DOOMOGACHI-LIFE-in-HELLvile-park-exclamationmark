@@ -109,7 +109,7 @@
   "Obviously, sweetie. Tag me. - V"
 @rule core.flirt.vex guard: speaker=vex&adults_only&!kid_present&!pet&consent act: flirt
   "Ooh, a collab? Send me your rates, sweetie. Kisses! - V"
-@rule core.insult.vex guard: speaker=vex act: insult
+@rule core.insult.vex guard: speaker=vex&!kid_present act: insult
   "Rude. Blocked, unblocked, blocked again. - V"
 
 # ---- Grumbleguts: slow purr, pet names, belly; "Needs salt."; "Open late, darlin'." ----

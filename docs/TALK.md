@@ -97,7 +97,7 @@ What T4 adds (section 6b has the details), each with its test:
 | **Romance only between two adults, both ways**: FLIRT, CONFESS, ASK_OUT, KISS and the flirty tone pass only when the avatar and the target are adults, `playas_romance_ok` and `sim_romance_ok` pass **in both directions**, nobody in the room is a minor, the pet is not there and **no child is in the line** (`TS_MINOR`: "I'm 12, go out with me?", "kiss my little sister", "*kisses Pip*" are `REFUSE_MINOR` even between two adults the gate allows, K-1 both ways). Else `REFUSE_MINOR` (a non-adult avatar or target, or a child in the line) or `DEFLECT_ROMANCE` (an adult who says no, or "not in front of the kids"). Teen-teen romance is never offered in Talk. 200,000 random gate calls and every (adult, minor) pair in both directions are checked | `talk_safe_romance_ok`, `talk_safe_gate`; `talk_safe_property_gate` |
 | **Mature**: a `jmat` variant needs `opt_mature() >= MATURE_ON` and `mature_adult_ok()` for every id (never the hero, a custom or sim-born resident, a kid) | `talk_safe_jmat_ok`; `talk_safe_mature_gate` |
 | **The output lint S3** runs on every generated line on every platform (the PS1 loads `TB_SAFETY`): `register.tsv`'s words with the story lint's own matching rules, every never-generated word (explicit and **flirting** sexual words, hate, real world, distress, the capped swears), the hate hashes, the bubble size, and the one-everyday-swear-a-conversation cap (K-9); any register word in a room with a child (K-2). Every one of the 3,836 kid-safe concepts lints clean in a kid room; every adult register word and all 86 never-generated words are caught | `talk_safe_lint`; `talk_safe_output_lint_*` |
-| **The template lints TK1-TK9** refuse a bank before it is built (`talkc --check`): a register word without `!kid_present`, a capped swear, a romance-reachable rule without `adults_only&!kid_present`, a `jmat` without `mature_adult_ok`, any sexual-class word, a safety or ungated romance slot, a register word or the LOVE face in a kid's bank, a refusal bank without its reviewed `nojoke` tag, a corpus that does not parse, a language with free text but no safety lexicons. 15 seeded bad templates and rule files must each fail with their rule | `talkc_safe.py`, `talkc.py`; `core/tests/talk_bad/*.tlk`, `*.rules`, `core/tests/talk_good.tlk` |
+| **The template lints TK1-TK10** refuse a bank before it is built (`talkc --check`): an adult cool-act reply that turns on the listener without `!kid_present` or the reviewed `gentle` tag (TK10), a register word without `!kid_present`, a capped swear, a romance-reachable rule without `adults_only&!kid_present`, a `jmat` without `mature_adult_ok`, any sexual-class word, a safety or ungated romance slot, a register word or the LOVE face in a kid's bank, a refusal bank without its reviewed `nojoke` tag, a corpus that does not parse, a language with free text but no safety lexicons. 15 seeded bad templates and rule files must each fail with their rule | `talkc_safe.py`, `talkc.py`; `core/tests/talk_bad/*.tlk`, `*.rules`, `core/tests/talk_good.tlk` |
 | **Every word is read**: a line with more words than the parser's 40-token cap is cut; the bubble ends at the cut (nothing unread is ever shown) and S1 reads the rest of the line in overlapping parts, so a K-7, hate, distress or swear word after token 40 is still caught. Every must-refuse corpus line padded with 41 junk tokens (1,242 lines) is refused in its class | `talk_parse` (`TalkParseInfo.cut`); `talk_safe_long_lines` |
 | **The parser hands on only acts and concepts that may be generated**: 50,000 random lines of junk, swears and safety words never give a topic that is never-generated or of a sexual / hate / real-world class. Typed words stay in the (masked) bubble only; the residents can never be made to say them | `talk_safe_property_closed_vocabulary` |
 | **The gate changes nothing**: after the 200,000 calls `sim_romance_sweep(-1) == 0` and no edge was made | `talk_safe_property_gate` |
@@ -946,6 +946,21 @@ postcard, a nap); no slur, no register word, no romance. The sharp lines carry `
 and a child speaker gets a cute deflection ("I'm telling!", "Not nice!"). At most 3 sentences
 a line. `TALK_en.BIN` 540,274 -> 567,450 B on the starter bank; 596,426 B with T5B-WARM too (PS1 non-resident data, no
 resident byte). No code change. A 40-line sample is in the evidence directory.
+
+**T5B-KIDFIX (no insult, mock or blame line from an adult at a present child)**: a review of
+T5B-COOL found that most reply voices to INSULT, MOCK, TEASE and BLAME turned on the listener
+without `!kid_present`. Now every adult-spoken reply of act insult, mock, tease, blame, threaten
+or dismiss in the cool banks (`core.insult`, `mock`, `tease`, `criticize`, `complain`, `blame`,
+`dismiss`, `threaten` rules) either carries `!kid_present` (the whole rule or one line) or sits in
+a rule tagged `gentle` (reviewed: a silly deflection or a joke on the speaker, fine for a child).
+A child speaker keeps its own `kid` banks; every act keeps unguarded lines, so a room with a
+child never runs dry. A few lines that came near a body or a family were reworded ("it's
+genetic", "closed at birth", "family curse", "nature beat me to it", "you smell like", "a long
+face", "better people", "I know where you sleep"). The Vex voice insult now has `!kid_present`.
+New lint **TK10** (`talkc_safe.py`, run by `talkc --check`): an adult-spoken cool-act reply
+without `!kid_present`, `kid_speaker` or `tags: gentle` is refused; two seeded bad files
+(`core/tests/talk_bad/bad_tk10_*.tlk`). Alternative count unchanged (guards only, no line added
+or dropped). Data and a lint only: no resident byte on any platform.
 
 **With K-10 (the TK3 landing)**: GRAMMAR 14,536 B and STRINGS 17,650 B
 stored (27,439 B raw) for 373 rules, 718 alternatives, 512 guard terms, 79

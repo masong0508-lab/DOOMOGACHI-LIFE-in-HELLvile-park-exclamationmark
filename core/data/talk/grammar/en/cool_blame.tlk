@@ -83,13 +83,13 @@
 @rule core.complain.c_complain_quirky guard: quirky act: complain
   "It's the moon's fault. The moon's been rude all week."
   "I'm also upset! At a chair! It looked at me funny!"
-@rule core.complain.c_dismiss act: dismiss
-  "Boo hoo. Have a biscuit and sort it out."
+@rule core.complain.c_dismiss tags: gentle act: dismiss
+  "Boo hoo. Have a biscuit and sort it out." guard: !kid_present
   "That's life. Put a hat on it and keep walking."
-  "Stop moaning, you big baby. And pass the salt."
-  "Hm, and? Everyone's got problems. Mine's longer."
-  "Wow, what a story. I'd feel for you, but I'm busy."
-@rule core.complain.c_dismiss_polite guard: polite act: dismiss
+  "Stop moaning, you big baby. And pass the salt." guard: !kid_present
+  "Hm, and? Everyone's got problems. Mine's longer." guard: !kid_present
+  "Wow, what a story. I'd feel for you, but I'm busy." guard: !kid_present
+@rule core.complain.c_dismiss_polite guard: polite&!kid_present act: dismiss
   "I'm sure it will all come right in the end, dear. Do excuse me."
   "How trying. Well, I must be getting on. Lovely chat."
 @rule core.complain.c_joke act: joke
@@ -99,11 +99,11 @@
   "Life's rough. Good thing we've got snacks and spite."
   "Don't fret, we'll all be ghosts someday. Think of the savings."
   "Ah, the sweet song of whining. It's my favourite lullaby."
-@rule core.complain.c_tease act: tease
+@rule core.complain.c_tease guard: !kid_present act: tease
   "Aww, is somebody grumpy? Is it the big bad Thursday?"
   "Look at you, being all moany. It's adorable. Do a little more."
   "There it is. The famous grumble. Right on schedule."
-  "Someone's got a long face. Don't let it hit the floor."
+  "Someone's grumpy. Don't let it hit the floor."
 
 # ---- BLAME -> DISAGREE ------------------------------------------------------------------------------
 @rule core.blame.c_disagree act: disagree
@@ -150,13 +150,13 @@
 @rule core.blame.c_apologize_kid guard: kid_speaker tags: kid act: apologize
   "I'm sorry, it was me! Don't be mad! I'll tidy!"
   "Okay, it was me, I was scared, sorry. Can I have a hug? Or not."
-@rule core.blame.c_blame act: blame
-  "Excuse me? That was YOU! You held the ladder!"
-  "Oh, so it's my fault? Who left the door open? Hm?"
-  "No way. If anyone's to blame, it's you. And the weather."
+@rule core.blame.c_blame tags: gentle act: blame
+  "Excuse me? That was YOU! You held the ladder!" guard: !kid_present
+  "Oh, so it's my fault? Who left the door open? Hm?" guard: !kid_present
+  "No way. If anyone's to blame, it's you. And the weather." guard: !kid_present
   "Don't pin it on me. I've got a very slippery back."
-  "You started it! You're always starting it! It's your hobby!"
-  "Blame me? Fine, then I'm blaming you. Back to square one."
+  "You started it! You're always starting it! It's your hobby!" guard: !kid_present
+  "Blame me? Fine, then I'm blaming you. Back to square one." guard: !kid_present
 @rule core.blame.c_blame_blunt guard: blunt&!kid_present act: blame
   "Stop passing the buck. It's yours. You broke it, you bought it."
   "Look in a mirror. That's the culprit. Gorgeous, but guilty."
@@ -169,10 +169,10 @@
   "Well, that's lovely. Being accused before lunch. Thank you."
   "It's always me, isn't it? Never the vase. The vase is a menace."
   "Ugh, great. Another thing I didn't do. My list is long."
-@rule core.blame.c_dismiss act: dismiss
+@rule core.blame.c_dismiss tags: gentle act: dismiss
   "Think what you like. I've got a clear conscience and a nap."
   "Blame away. The rain doesn't mind. It's used to it."
-  "Meh. Take it up with someone who cares. It's a short list."
+  "Meh. Take it up with someone who cares. It's a short list." guard: !kid_present
   "Sure, sure. Put it on my tab. I've got an infinite tab."
 @rule core.blame.c_joke act: joke
   "Fine, it was me. And the butler. And a sneaky cat."

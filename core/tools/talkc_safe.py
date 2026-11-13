@@ -50,6 +50,11 @@ ROMANCE_ROOTS = ("core.flirt", "core.confess", "core.ask_out", "core.kiss", "bea
                  "player.flirty", "romance")
 KID_BANKS = ("voice.kid", "kid_moment", "beat.kid_moment")
 REFUSAL_BANKS = ("refuse", "deflect", "distress", "end")   # T5a: the K-11 and K-7 banks too
+# TK10 (T5B-KIDFIX): the cool-act banks (replies to insult, mock, tease, criticize, complain, blame,
+# dismiss, threaten) and the acts that turn on the listener
+COOL_ROOTS = ("core.insult", "core.mock", "core.tease", "core.criticize", "core.complain", "core.blame",
+              "core.dismiss", "core.threaten")
+COOL_ATTACKS = ("insult", "mock", "tease", "blame", "threaten", "dismiss")
 
 
 def squeeze(w):
@@ -245,7 +250,7 @@ def build_safety_bank(b, suggestive, salt, exact, dele):
 
 
 # ---------------------------------------------------------------------------
-# template lints TK1-TK7 (TK8, TK9 are in talkc.py's check)
+# template lints TK1-TK7 and TK10 (TK8, TK9 are in talkc.py's check)
 # ---------------------------------------------------------------------------
 class Tlk:
     def __init__(self):
@@ -404,6 +409,11 @@ def lint_tlk(T, b, suggestive, die):
                     probs.append("%s: TK6: kid-voice bank %s has register word %r" % (where, r["name"], hits[0].text))
                 if "[LOVE]" in text:
                     probs.append("%s: TK6: kid-voice bank %s uses the LOVE face" % (where, r["name"]))
+            if (_starts(r["name"], COOL_ROOTS) and r["act"] in COOL_ATTACKS and "gentle" not in r["tags"]
+                    and "kid_speaker" not in g and "!kid_present" not in g):
+                probs.append("%s: TK10: %s turns on the listener (act: %s) and may play with a child in the "
+                             "room: guard: !kid_present, or tags: gentle (reviewed: a silly deflection)"
+                             % (where, r["name"], r["act"]))
             if refusal and ("[LOVE]" in text or "[HEARTS]" in text):
                 probs.append("%s: TK7: a refusal never uses the LOVE face or hearts" % where)
     return probs
