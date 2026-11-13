@@ -1219,7 +1219,8 @@ the GBA (the byte-wise libc `memmove` was the 3-7 ms tail). GBA: shop gifts tab 
 Options Accessibility 23.7 / 28.2 -> 30.0, pet-care boss 28.6 -> 30.0, citizen picker 22.9 -> 29.7, pet 28.5 -> 29.8; no run
 of long frames anywhere any more. What the package did not do: the sim now costs ~0.4 ms in every tick, so windows within
 ~3 ms of the budget (Black Market 32.4 -> 32.9 ms average, the news third tab, the pet's busy phases) lose a frame now and
-then: that is S3-13's list. New group `speed2_sim.txt` (four 1,200-tick windows, GBA gates).
+then: that is S3-13's list. PS1: the island hub window had 4 frames of 50 ms, now none (resident bytes unchanged);
+Dreamcast: no long tick from the pass before or after. New group `speed2_sim.txt` (four 1,200-tick windows, GBA gates).
 
 ## 5. Suggested order
 
