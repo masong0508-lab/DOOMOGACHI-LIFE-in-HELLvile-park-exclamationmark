@@ -158,11 +158,13 @@ int  sim_mood_of(int id);                /* recompute + return MOOD_*      */
  * 21:00..05:59 (town_is_night). pet_tick_minute() runs once per game
  * minute from inside the sim.
  *
- * Cost: one sim_tick() updates at most SIM_BATCH residents (round robin,
- * ~32 ticks per full pass over the 1000 slots) and at most SIM_EDGE_BATCH
- * relationship edges (about one pass over the graph per game hour), all
- * cheap integer math. Never loops over all residents per tick. */
-#define SIM_BATCH       32
+ * Cost: one sim_tick() updates at most SIM_BATCH residents (round robin;
+ * S3-1: the pass over the 1000 slots is spread over 15 game minutes, so a
+ * tick at the default clock updates one resident at most and the fastest
+ * clock 15) and at most SIM_EDGE_BATCH relationship edges (about one pass
+ * over the graph per game hour), all cheap integer math. Never loops over
+ * all residents per tick. */
+#define SIM_BATCH       16
 #define SIM_EDGE_BATCH  32
 
 /* Care actions (sim_feed, sim_gift, sim_heal) take the item from the

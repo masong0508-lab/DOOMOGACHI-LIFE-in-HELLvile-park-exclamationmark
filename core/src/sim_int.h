@@ -20,8 +20,23 @@
 #define SIM_RING 8                 /* recent visitors remembered per venue */
 #define SIM_BITS ((DOOMO_MAX_RESIDENTS + 7) / 8)
 #define SIM_MAX_ELAPSED 720        /* minutes one resident update may cover */
-#define SIM_MIN_ELAPSED 15         /* a resident is updated at most every 15
-                                      game minutes (keeps turbo speed cheap) */
+#define SIM_MIN_ELAPSED 15         /* a fast-forward chunk updates a resident
+                                      only when 15 game minutes have passed */
+/* S3-1: the resident pass is spread over the whole interval. The cursor
+ * moves at a steady DOOMO_MAX_RESIDENTS slots per SIM_INTERVAL game minutes
+ * (about 0.9 slots a tick at the default clock, 14.2 at the fastest), so
+ * every resident is updated once per SIM_INTERVAL and no tick does a
+ * town's worth of work. A tick earns SIM_PASS_NUM * speed credit, a slot
+ * costs SIM_PASS_DEN * ticks_per_minute_q (200 / 3 = 1000 / 15). A visit
+ * that would cover less than SIM_PASS_MIN minutes (the first pass after
+ * sim_init, a load or a fast-forward set every stamp to "now") is left to
+ * the next pass: no minute is lost or counted twice. */
+#define SIM_INTERVAL    15
+#define SIM_PASS_MIN    ((SIM_INTERVAL + 1) / 2)
+#define SIM_PASS_NUM    (DOOMO_MAX_RESIDENTS / 5)
+#define SIM_PASS_DEN    (SIM_INTERVAL / 5)
+DOOMO_STATIC_ASSERT(SIM_PASS_NUM * 5 == DOOMO_MAX_RESIDENTS && SIM_PASS_DEN * 5 == SIM_INTERVAL,
+                    sim_pass_rate_is_exact);
 
 /* Short-lived feelings stored per resident (hi nibble = TR_*, lo nibble =
  * game hours left). */
@@ -36,6 +51,9 @@ typedef struct SimState {
     uint16_t  acc;                       /* clock accumulator (1/4 ticks)  */
     uint16_t  cursor;                    /* resident round robin           */
     uint16_t  edge_cursor;               /* edge round robin               */
+    uint16_t  pass_credit;               /* S3-1: owed resident slots x SIM_PASS_DEN x
+                                            ticks_per_minute_q (in the padding
+                                            before edge_credit: no new RAM) */
     uint32_t  edge_credit;               /* owed edge visits x 60          */
     uint16_t  stamp[DOOMO_MAX_RESIDENTS];/* last update, absolute minute   */
     uint8_t   transient[DOOMO_MAX_RESIDENTS];

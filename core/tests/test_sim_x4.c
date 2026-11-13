@@ -6,7 +6,13 @@
  * the tree before X4 (origin 4851147). A long freeplay run at turbo speed (hourly routines, needs, venues,
  * problems), a story-mode town past chapter 2 at the highest possession rate (residents at 99 corruption ask
  * whether they may be possessed on every update) and a fast-forward (sim_advance_minutes: every resident's
- * routine is chosen again each hour) all have to end in the same bytes. */
+ * routine is chosen again each hour) all have to end in the same bytes.
+ *
+ * S3-1 (speed audit 3) recorded the three goldens again, on purpose: the resident pass no longer runs all 1,000
+ * residents in the same 32 ticks every 15 game minutes but one resident after another over the whole
+ * interval (sim_tick, test_sim_pass.c). Every resident is still updated once per interval at the same rates;
+ * only the order of the updates, and so the seeded random path of the sim, is another one. X4's own
+ * equivalence (the cheaper inputs change nothing) was proved at its landing against the old tree. */
 #include "test.h"
 #include "../src/sim_int.h"
 
@@ -54,7 +60,7 @@ TEST(sim_x4_same_town_as_before)
     uint32_t c = run(TOWN_FREEPLAY, 9, 2, 2, 600);
     opt_set(OPT_POSSESSION_RATE, 1);
     CHECK_MSG(possessed > 0, "the story run possessed nobody: it does not exercise the cap");
-    CHECK_MSG(a == 0x81fe3990u && b == 0x9c13a1d2u && c == 0x97b018b2u,
+    CHECK_MSG(a == 0x7c7a4fd5u && b == 0xf7510243u && c == 0x5d2fad80u,
               "freeplay 0x%08x, story possession 0x%08x, fast-forward 0x%08x", (unsigned)a, (unsigned)b,
               (unsigned)c);
 }
