@@ -250,7 +250,7 @@ def build_safety_bank(b, suggestive, salt, exact, dele):
 
 
 # ---------------------------------------------------------------------------
-# template lints TK1-TK7 and TK10 (TK8, TK9 are in talkc.py's check)
+# template lints TK1-TK7, TK10, TK11 and TK12 (TK8, TK9 are in talkc.py's check)
 # ---------------------------------------------------------------------------
 class Tlk:
     def __init__(self):
@@ -420,6 +420,11 @@ def lint_tlk(T, b, suggestive, die):
                                   r"|end it|end this|run out of road|good run|can'?t stay)\b", low)):
                 probs.append("%s: TK11: a decline to a romance act must not end the relationship in text "
                              "(no break-up act exists): soft decline only" % where)
+            m12 = re.search(r"\{(?:x|food|hobby|music|fear|hate|like|mem|job)(?:[.:][^}]*)?\}'", text)
+            if m12:
+                probs.append("%s: TK12: a topic word followed by a literal apostrophe (%s): the S3 lint reads "
+                             "\"spice's\" as one word and a hate-list plural squeezes out of it; write {x:s}, "
+                             "which the filler probes whole" % (where, m12.group(0)))
             if refusal and ("[LOVE]" in text or "[HEARTS]" in text):
                 probs.append("%s: TK7: a refusal never uses the LOVE face or hearts" % where)
     return probs

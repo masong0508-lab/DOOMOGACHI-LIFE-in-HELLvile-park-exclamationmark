@@ -801,6 +801,52 @@ int talk_census_run(const CensusCfg *cfg, CensusResult *res, char *err, int errc
     return 0;
 }
 
+/* The cool acts in kid rooms: does a resident still answer? (T5B-S3FIX; docs/TALK.md) */
+const uint8_t talk_census_cool_acts[CENSUS_COOL_N] = { TA_INSULT, TA_MOCK, TA_TEASE, TA_BLAME, TA_THREATEN, TA_DISMISS };
+
+int talk_census_cool_kid(const CensusCfg *cfg, uint32_t rooms_per_act, CensusCoolKid *res, char *err, int errcap)
+{
+    Grid g;
+    uint32_t s, a, n;
+    memset(res, 0, sizeof *res);
+    if (talk_db_open(lang_find("en")) != TALK_DB_OK || !talk_gen_ready()) {
+        snprintf(err, (size_t)errcap, "no TALK_en.BIN with the generator banks (make -C core talk)");
+        return -1;
+    }
+    if (load_grid(cfg->grid, &g, err, errcap) < 0) { talk_db_close(); return -1; }
+    census_town(&g);
+    s = cfg->seed ? cfg->seed : (g.seed ? g.seed : 1u);
+    for (a = 0; a < CENSUS_COOL_N; a++) {
+        for (n = 0; n < rooms_per_act; ) {
+            Ctx x;
+            TalkConv c;
+            TalkUtter u;
+            TalkExchange ex;
+            TalkTrace tr[TALK_EXCHANGE_MAX];
+            draw_context(&g, &s, &x);
+            x.act = talk_census_cool_acts[a];
+            begin(&c, &g, &x, s ^ (n * 2654435761u));
+            if (!c.aud.any_minor) continue;   /* only rooms with a child */
+            memset(&u, 0, sizeof u);
+            u.act[0] = x.act;
+            u.topic[0] = x.topic;
+            u.target = (int8_t)x.target;
+            u.conf = 15;
+            talk_gen_exchange(&c, &u, &ex, tr);
+            n++;
+            res->rooms[a]++;
+            if (ex.n && !(ex.line[0].flags & (TLF_FALLBACK | TLF_SAFE))) res->replied[a]++;
+            else if (res->shown < 5 && cfg->fails) { /* the first few misses, for the log */
+                fprintf(cfg->fails, "%s\t", act_names[x.act]);
+                write_sample(cfg->fails, n, &c, &u, &ex, tr);
+                res->shown++;
+            }
+        }
+    }
+    talk_db_close();
+    return 0;
+}
+
 static void tier_line(FILE *f, const char *name, const CensusTier *t, uint64_t n, uint64_t target)
 {
     fprintf(f, "  %-9s %10llu distinct of %llu (%.1f%% unique), Chao1 %.0f, target %llu%s\n", name,
@@ -927,7 +973,7 @@ int main(int argc, char **argv)
     CensusResult r;
     NatOptions o;
     char err[256];
-    int i, smoke = 0, do_pick = 0, full = 0;
+    int i, smoke = 0, do_pick = 0, full = 0, cool_kid = 0;
     const char *sample = NULL;
     memset(&cfg, 0, sizeof cfg);
     cfg.grid = "core/data/talk/census_en.tsv";
@@ -947,8 +993,9 @@ int main(int argc, char **argv)
         else if (strcmp(argv[i], "--full") == 0) full = 1;
         else if (strcmp(argv[i], "--pick") == 0) do_pick = 1;
         else if (strcmp(argv[i], "--quiet") == 0) cfg.quiet = 1;
+        else if (strcmp(argv[i], "--cool-kid") == 0) cool_kid = 1;
         else { fprintf(stderr, "usage: talk_census [--grid F] [--full|--smoke] [--contexts N] [--conversations N] "
-                               "[--seed N] [--sample F --every N] [--fails F] [--pick]\n"); return 2; }
+                               "[--seed N] [--sample F --every N] [--fails F] [--pick] [--cool-kid [--contexts N-per-act]]\n"); return 2; }
     }
     memset(&o, 0, sizeof o);
     o.w = 320; o.h = 240; o.seed = 1; o.quiet = getenv("DOOMO_TALK_LOG") ? 0 : 1; o.save_dir = "/tmp";
@@ -980,6 +1027,15 @@ int main(int argc, char **argv)
         if (talk_db_open(lang_find("en")) == TALK_DB_OK && load_grid(cfg.grid, &g, err, (int)sizeof err) == 0)
             if (!cfg.conversations) cfg.conversations = g.conversations;
         talk_db_close();
+    }
+    if (cool_kid) {
+        CensusCoolKid ck;
+        uint32_t a, per = cfg.contexts ? cfg.contexts : 20000u;
+        if (talk_census_cool_kid(&cfg, per, &ck, err, (int)sizeof err) < 0) { fprintf(stderr, "talk_census: %s\n", err); return 2; }
+        for (a = 0; a < CENSUS_COOL_N; a++)
+            printf("cool-kid %-9s %u kid rooms, %u answered (%.2f%%)\n", act_names[talk_census_cool_acts[a]], ck.rooms[a],
+                   ck.replied[a], ck.rooms[a] ? 100.0 * ck.replied[a] / ck.rooms[a] : 0.0);
+        return 0;
     }
     if (talk_census_run(&cfg, &r, err, (int)sizeof err) < 0) {
         fprintf(stderr, "talk_census: %s\n", err);

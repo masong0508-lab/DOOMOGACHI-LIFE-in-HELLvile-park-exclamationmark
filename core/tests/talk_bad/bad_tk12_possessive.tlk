@@ -1,0 +1,3 @@
+# expect: TK12: a topic word followed by a literal apostrophe
+@rule core.blame.c_back_quirky guard: quirky act: blame
+  "It was {x}'s fault, not mine."

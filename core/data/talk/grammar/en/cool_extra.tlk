@@ -10,7 +10,7 @@
   "Funny, you only get snippy when {x} comes up." guard: !kid_present
 @rule core.criticize.c_x act: complain
   "I'm sorry, but you're not an expert on {x}. I am. Mostly."
-  "Don't blame {x}! It's not {x}'s fault. It's yours."
+  "Don't blame {x}! It's not {x:s} fault. It's yours."
 @rule core.tease.c_x guard: !kid_present act: tease
   "Says the one who's all fluster about {x}. Cute."
   "Ooh, touchy about {x}? I'll be using that later."

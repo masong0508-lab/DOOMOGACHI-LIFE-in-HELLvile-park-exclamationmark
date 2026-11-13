@@ -72,6 +72,14 @@ void talk_census_print(const CensusResult *r, FILE *f);
 /* The design's targets for a full run: 1 if every one holds. */
 int  talk_census_targets_met(const CensusResult *r);
 
+/* The cool acts (insult, mock, tease, blame, threaten, dismiss) said in a room
+ * with a child: how often does a resident still answer (a real line, not the
+ * fallback or a safe line)? rooms_per_act kid rooms for each act. */
+#define CENSUS_COOL_N 6
+typedef struct CensusCoolKid { uint32_t rooms[CENSUS_COOL_N], replied[CENSUS_COOL_N], shown; } CensusCoolKid;
+extern const uint8_t talk_census_cool_acts[CENSUS_COOL_N];
+int talk_census_cool_kid(const CensusCfg *cfg, uint32_t rooms_per_act, CensusCoolKid *res, char *err, int errcap);
+
 /* The quality checks of one exchange (Q1-Q4, Q6), for the census and the
  * unit tests: the first failure (QF_*) or QF_NONE. u is the utterance
  * after the gate. */

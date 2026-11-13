@@ -133,7 +133,7 @@
   "I'd never, dear. I've been in my chair since Tuesday."
   "Pish! I was asleep. It's the only thing I do on time."
 @rule core.blame.c_disagree_x guard: topic act: disagree
-  "It was {x}'s fault, not mine! Go and blame {x}!"
+  "It was {x:s} fault, not mine! Go and blame {x}!"
   "Don't look at me! Blame {x}! It's always {x}!"
 
 # ---- BLAME -> APOLOGIZE / BLAME / COMPLAIN / DISMISS / JOKE -----------------------------------------

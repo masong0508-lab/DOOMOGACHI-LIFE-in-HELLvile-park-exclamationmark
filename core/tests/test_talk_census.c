@@ -376,3 +376,76 @@ TEST(talk_gen_property_grief)
     CHECK(comforts > 50 && named > 5);
     talk_db_close();
 }
+
+/* T5B-S3FIX: a template's "{x}'s" reads to the S3 lint as one word: "spice's" squeezes to a
+ * hate-list plural, the line was replaced by a safe one and the lint counted (4 hits in the
+ * 2,000,000-context census). The cool_blame and cool_extra lines now say {x:s}, which the filler
+ * probes whole (talkc lint TK12 refuses the literal form). Fails with the old lines: 124 hits
+ * here. Also: no resident's name makes a hate-list word with a possessive or contraction "'s"
+ * after it ({them}'s right), since the templates still spell those literally. */
+TEST(talk_gen_possessive_hate_plural)
+{
+    uint16_t spice;
+    int it, a, safe = 0, id, names = 0;
+    static const uint8_t acts[] = { TA_BLAME, TA_COMPLAIN, TA_DISAGREE, TA_ACCUSE, TA_TELL, TA_ASK_OPINION };
+    uint32_t h0;
+    TalkAudience adults;
+    test_reset();
+    town_new(TOWN_FREEPLAY, 7, TOWN_POP_PREMADE);
+    CHECK(talk_db_open(lang_find("en")) == TALK_DB_OK && talk_gen_ready());
+    people();
+    spice = concept_by_key("spice");
+    CHECK(spice != 0);
+    h0 = talk_safe_lint_hits();
+    for (it = 0; it < 1500; it++) {
+        for (a = 0; a < (int)sizeof acts; a++) {
+            TalkConv c;
+            TalkUtter u;
+            TalkExchange x;
+            int ids[3] = { adults_g[prnd((uint32_t)nadult_g)], 666, minors_g[prnd((uint32_t)nminor_g)] }, k;
+            if (ids[0] == 666) ids[0] = 1;
+            talk_gen_begin(&c, DOOMO_PLAYER_ID, ids, it & 1 ? 3 : 2, 31000u + (uint32_t)(it * 8 + a));
+            memset(&u, 0, sizeof u);
+            u.act[0] = acts[a];
+            u.topic[0] = it & 2 ? spice : (uint16_t)(1 + prnd((uint32_t)talk_db_nconcepts()));
+            u.target = (int8_t)(it % 3 == 0 ? -1 : (int)prnd(2));
+            talk_gen_exchange(&c, &u, &x, NULL);
+            for (k = 0; k < x.n; k++) {
+                safe += (x.line[k].flags & TLF_SAFE) != 0;
+                CHECK_MSG(!strstr(x.line[k].text, "pice's"), "a hate-list plural got in: %s", x.line[k].text);
+            }
+        }
+    }
+    CHECK_EQ(talk_safe_lint_hits(), h0);
+    CHECK_EQ(safe, 0);
+    memset(&adults, 0, sizeof adults);
+    for (id = 0; id < DOOMO_MAX_RESIDENTS; id++) {
+        char n[DOOMO_NAME_LEN + 4];
+        if (town_res(id)->status != RES_ALIVE) continue;
+        snprintf(n, sizeof n, "%s's", town_res(id)->name);
+        CHECK_MSG(talk_safe_lint_probe(n, &adults, 1) == TL_OK, "a resident name with 's reads as a hate word: %s", n);
+        names++;
+    }
+    printf("      %d exchanges with spice: 0 lint hits, 0 safe lines; %d resident names with 's lint clean\n",
+           1500 * (int)sizeof acts, names);
+    talk_db_close();
+}
+
+/* T5B-S3FIX: the cool acts (insult, mock, tease, blame, threaten, dismiss) said in a room with a child
+ * still get a real reply (docs/TALK.md "Cool acts with a child in the room"): 99% or more per act */
+TEST(talk_census_cool_kid_reply_rate)
+{
+    CensusCfg cfg;
+    CensusCoolKid ck;
+    char err[256], gp[512];
+    int a;
+    memset(&cfg, 0, sizeof cfg);
+    cfg.grid = grid_path(gp, (int)sizeof gp);
+    test_reset();
+    CHECK_MSG(talk_census_cool_kid(&cfg, 1500, &ck, err, (int)sizeof err) == 0, "%s", err);
+    for (a = 0; a < CENSUS_COOL_N; a++) {
+        CHECK_EQ(ck.rooms[a], 1500u);
+        CHECK_MSG(ck.replied[a] * 100u >= ck.rooms[a] * 99u, "act %s: %u of %u answered", act_names[talk_census_cool_acts[a]],
+                  ck.replied[a], ck.rooms[a]);
+    }
+}

@@ -1,3 +1,3 @@
-# expect: TK11: a decline to a romance act must not end the relationship in text
+# expect: TK12: a decline to a romance act must not end the relationship in text
 @rule core.confess.r_split_seed guard: adults_only&!kid_present&!pet&!consent&rel=partner act: deflect_romance
   "It's over, I'm sorry. I'll say why if you want. I'd rather not."
