@@ -152,7 +152,7 @@ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 # over the core's weak stubs, and the core's strong definitions win over both.
 ALL_OBJS  := $(GBA_OBJS) $(CORE_OBJS)
 
-.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-optvol test-speed test-life profile-title profile-pause profile-invaded profile-all test-talk profile-sung profile-creator test-creator test-speed2 test-breach2 profile-speed2 profile-concert profile-exorcism clean sizes
+.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-optvol test-speed test-life profile-title profile-pause profile-invaded profile-all test-talk profile-sung profile-creator test-creator test-creator-sliders test-speed2 test-breach2 profile-speed2 profile-concert profile-exorcism clean sizes
 .DEFAULT_GOAL := all
 
 # Cartridge size (user decision 2026-11-01): the game ROM is a full 256 Mbit
@@ -453,6 +453,21 @@ test-creator: harness
 	echo "test-creator: log $(CREATOR_SCROLL_LOG)"; \
 	exit $$rc
 # --- end CR9 ---
+# --- CR-BODY: every build slider moved across its whole range in the ROM (harness/scripts/creator_sliders.txt),
+# then tools/slider_shots_check.py compares the preview of the lowest and the highest step of each slider.
+# Output: build/creator_sliders.log, the shots in build/shots/creator_sliders ---
+CREATOR_SLIDERS_LOG ?= $(BUILD)/creator_sliders.log
+test-creator-sliders: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@rm -rf $(SHOTS)/creator_sliders; mkdir -p $(SHOTS)/creator_sliders
+	@rc=0; \
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/creator_sliders.txt \
+	    --shots $(SHOTS)/creator_sliders --quiet > $(CREATOR_SLIDERS_LOG) 2>&1 || rc=1; \
+	grep -E "expected|HANG|FAIL" $(CREATOR_SLIDERS_LOG); \
+	$(PYTHON) -I $(ROOT)/tools/slider_shots_check.py $(SHOTS)/creator_sliders || rc=1; \
+	echo "test-creator-sliders: log $(CREATOR_SLIDERS_LOG)"; \
+	exit $$rc
+# --- end CR-BODY ---
 # --- SP7: the exorcism's speed, phase by phase (harness/scripts/exorcism_profile.txt, docs/EXORCISM_SPEED.md):
 # the intro under its dialogue, the tools menu, the prayer rhythm, the holy water, the true name, the
 # verdict and the result: fps + work per tick, the hottest functions and each phase's frame hashes.

@@ -89,7 +89,7 @@ wait 6
 # ---- Supernatural: a tail turns the citizen round ----------------------------
 press L
 wait 10
-press DOWN
+# Horns, Horn colour, Tail (the Horn size row shows only while horns are worn: CR-BODY)
 press DOWN
 press DOWN
 wait 6
