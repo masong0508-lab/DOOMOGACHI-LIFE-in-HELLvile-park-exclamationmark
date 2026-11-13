@@ -16,6 +16,7 @@
 #include "../src/creator_int.h"
 #include "../src/combat_int.h"     /* SP8: combat_hurt_player */
 #include "doomo/library.h"         /* S2-8 */
+#include "../src/weld_int.h"       /* S2-9: weld_pending */
 
 #define MAXF 420
 
@@ -253,6 +254,37 @@ static uint32_t p_help(int f)
     return 0;
 }
 
+/* (S2-9) Rivet's workshop (workshop.c): the part list's rows but the cursor's, and the stat bars (of the Weld tab's
+ * pane and the Armory's), are panels. A story town with four weapons in the Armory; the cursor down the whole list
+ * (past the scroll and back to the first row), the options of a few parts (the rows under the cursor change, a
+ * locked option shows its mark, the stat bars change), up again, the Armory (the list and its pane, the cursor
+ * down and up the weapons), and back to the Weld tab (the shine of the bars passes over them in all of it) */
+static void s_workshop(void)
+{
+    int i;
+    story_town();
+    memset(&weld_pending, 0, sizeof(weld_pending));     /* the design on the table outlives a run */
+    for (i = 1; i < 5; i++) {
+        DoomoWeapon *w = &doomo_town.weapons[i];
+        weld_default(w, (i * 3) % WFRAME_COUNT, i & 1);
+        w->flags = WF_VALID;
+        w->quality = 60;
+    }
+    scene_set(&SCENE_WORKSHOP, 0);
+}
+static uint32_t p_workshop(int f)
+{
+    if (f == 12) return BTN_A;                                  /* the tip card, if it is up */
+    if (f >= 20 && f < 120 && f % 6 == 2) return BTN_DOWN;     /* every row, the scroll, the wrap to the top */
+    if (f >= 120 && f < 200 && f % 8 == 4) return (f / 8) % 3 ? BTN_RIGHT : BTN_LEFT;
+    if (f >= 200 && f < 260 && f % 6 == 0) return BTN_UP;
+    if (f == 270) return BTN_L;                                 /* the Armory */
+    if (f >= 280 && f < 340 && f % 10 == 0) return f < 310 ? BTN_DOWN : BTN_UP;
+    if (f == 350) return BTN_R;
+    if (f >= 360 && f < 410 && f % 5 == 0) return BTN_RIGHT;
+    return 0;
+}
+
 /* the language switch: Spanish from frame 120 on */
 static uint32_t p_visit_lang(int f)
 {
@@ -428,6 +460,11 @@ TEST(panel_almanac_page_is_pixel_identical)
 TEST(panel_field_guide_text_is_pixel_identical)
 {
     CHECK(both("help", s_help, p_help, 420, 200));
+}
+
+TEST(panel_workshop_list_and_bars_are_pixel_identical)
+{
+    CHECK(both("workshop", s_workshop, p_workshop, 420, 100));
 }
 
 TEST(panel_language_switch_redraws)

@@ -398,6 +398,25 @@ void ui_backdrop_hole(int style, uint32_t t, int hx0, int hy0, int hx1, int hy1)
 }
 
 #if !defined(DOOMO_PLATFORM_PS1)
+/* (S2-9, pixel-changing) ui_backdrop_holes() without what drifts over the bands: the bands and their seams only.
+ * For a scene whose windows leave a few slivers of backdrop (the GBA's workshop: the dots, hearts and twinkles were
+ * 2/3 of the backdrop's 4 ms there) and whose panels stand on a backdrop that does not move. */
+void ui_backdrop_flat(int style, const int *hl, int n)
+{
+    Backdrop b;
+    int w = plat_screen_w(), h = plat_screen_h();
+    int b1 = h / 3, b2 = h * 2 / 3;
+    if (plat_draw_skipped()) return;
+    backdrop_colors(style, &b);
+    RECT_OUTSIDE(0, 0, w, b1, b.top);
+    RECT_OUTSIDE(0, b1, w, b2 - b1, b.mid);
+    RECT_OUTSIDE(0, b2, w, h - b2, b.bot);
+    seam_row(b1 - 1, w, b.mid, 0);
+    seam_row(b1, w, b.top, 1);
+    seam_row(b2 - 1, w, b.bot, 0);
+    seam_row(b2, w, b.mid, 1);
+}
+
 void ui_backdrop_hole(int style, uint32_t t, int hx0, int hy0, int hx1, int hy1)
 {
     int hl[4];

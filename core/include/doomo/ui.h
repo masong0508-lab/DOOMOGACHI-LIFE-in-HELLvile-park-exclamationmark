@@ -390,6 +390,24 @@ uint32_t ui_panel_key(void);
 #else
 #define UI_PANELS 1
 #endif
+#if UI_PANELS
+/* (S2-9) ui_window() without the rect [x0, x1) x [y0, y1) of its main fill: for a scene that puts that rect
+ * back from the last frame (a solid retained panel on the window's still body: plat_panel_solid). The rect
+ * must lie where the window is plain fill colour: below the gloss band and its seam row, above the rounded
+ * bottom rows of the main fill, clear of the outline and the rim shadow column (ui_window_open_ok() says so;
+ * a rect that does not is ignored and the whole window is drawn). Its colour is ui_style(style)->fill. */
+int  ui_window_open_ok(int x, int y, int w, int h, int x0, int y0, int x1, int y1);
+void ui_window_open(int x, int y, int w, int h, int style, int x0, int y0, int x1, int y1);
+/* (S2-9) ui_bar() without the shine that sweeps across it: a bar on a kept panel (the workshop's stats) would
+ * otherwise change the panel's pixels every frame the shine is on it (pixel-changing: no shine there). */
+void ui_bar_still(int x, int y, int w, int h, int value, int max, uint8_t fill);
+/* (S2-9) The style that ui_value_row() and the other widgets without a style argument read: the one the last
+ * ui_window() set. For a scene that draws a window's rows after another window (a kept panel's redraw). */
+void ui_style_use(int style);
+/* (S2-9, pixel-changing) ui_backdrop_holes() without the drifting dots, hearts and twinkles: the bands and their
+ * seams (for a scene whose windows leave only slivers of backdrop and whose panels stand on a still one) */
+void ui_backdrop_flat(int style, const int *holes, int n);
+#endif
 uint32_t ui_key_int(uint32_t h, int32_t v);
 uint32_t ui_key_str(uint32_t h, const char *s);
 /* Where ui_window(x, y, w, h)'s sliding glint is this frame, -1 = none. */

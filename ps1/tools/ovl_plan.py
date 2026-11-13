@@ -54,7 +54,7 @@ GROUPS = [
     ("minigame", r"mg(_\w+)?$"),
     ("library",  r"lib_\w+$"),
     ("combat",   r"levels(_\w+)?$|lv_script$|arena(_modes)?$|combat(_\w+)?$|actor(_\w+)?$|weld_gfx$"),
-    ("workshop", r"workshop$|weld_game$"),
+    ("workshop", r"workshop$|weld_game$|weld_slice$"),   # S2-9: the sliced weapon picture is the workshop's
     ("island",   r"fp_island(_gfx)?$"),
     ("freeplay", r"fp_(apartments|family|graveyard|newisland|news|options|resident|roster|saveload|shop|title|unlocks)$|playas_scene$"),
     # the story's cutscenes with their Grumbleguts renderer are a group of
@@ -86,7 +86,9 @@ OVL_KINDS = (".text", ".rodata")
 # FP_ISLAND_SCRATCH in fp_island.h; keep the two equal). The linker script
 # grows the slot if a group gets too big to leave it (it never does today:
 # the slot is set by bigger groups), so the room is there by construction. ---
-SCRATCH = {"island": 20480}
+# S2-9: the workshop's sliced weapon picture keeps its state there (weld_slice.c
+# struct Ws, ~100 B: no resident BSS).
+SCRATCH = {"island": 20480, "workshop": 256}
 # --- end SP3 ---
 
 # --- H3 (SPEC C4/C5): the house group borrows the 3D views' tables. Its

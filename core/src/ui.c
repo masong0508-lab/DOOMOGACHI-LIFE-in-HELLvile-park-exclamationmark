@@ -46,7 +46,9 @@ void ui_pill(int x, int y, int w, int h, uint8_t fill, uint8_t outline, uint8_t 
     if (!ur_cache_end()) pill_draw(x, y, w, h, fill, outline, hi);
 }
 
-void ui_window(int x, int y, int w, int h, int style)
+/* (S2-9) `open` = { x0, y0, x1, y1 }: a rect of the window that only its main fill reaches (ui_window_open)
+ * and that is left out; NULL: the whole window */
+static void window_draw(int x, int y, int w, int h, int style, const int *open)
 {
     const UiStyle *st = ui_style(style);
     int r = (w >= 24 && h >= 20) ? 4 : 2;
@@ -72,8 +74,16 @@ void ui_window(int x, int y, int w, int h, int style)
     plat_rect(x, y + r, 1, h - 2 * r, st->outline);
     plat_rect(x + w - 1, y + r, 1, h - 2 * r, st->outline);
     ui_round_rect_rows(x + 1, y + 1, w - 2, h - 2, ir, st->fill_lo, h - 2 - lo - ir, h - 2);
-    ui_round_rect_rows(x + 1, y + 1, w - 2, h - 2 - lo, ir, st->fill,
-                       DOOMO_MIN(band, h - 2), h - 2 - lo);
+    if (!open) {
+        ui_round_rect_rows(x + 1, y + 1, w - 2, h - 2 - lo, ir, st->fill,
+                           DOOMO_MIN(band, h - 2), h - 2 - lo);
+    } else {
+        /* the main fill around the rect: its rows above and below, the two strips beside it */
+        ui_round_rect_rows(x + 1, y + 1, w - 2, h - 2 - lo, ir, st->fill, DOOMO_MIN(band, h - 2), open[1] - (y + 1));
+        ui_round_rect_rows(x + 1, y + 1, w - 2, h - 2 - lo, ir, st->fill, open[3] - (y + 1), h - 2 - lo);
+        plat_rect(x + 1, open[1], open[0] - (x + 1), open[3] - open[1], st->fill);
+        plat_rect(open[2], open[1], x + w - 1 - open[2], open[3] - open[1], st->fill);
+    }
     for (i = 0; i < band && i < h - 2;) {
         int in = i < ir ? ui_corner_inset(ir, i) : 0, j = i + 1;
         while (j < band && j < h - 2 && (j < ir ? ui_corner_inset(ir, j) : 0) == in) j++;
@@ -98,6 +108,29 @@ void ui_window(int x, int y, int w, int h, int style)
         }
     }
 }
+
+void ui_window(int x, int y, int w, int h, int style)
+{
+    window_draw(x, y, w, h, style, NULL);
+}
+
+#if UI_PANELS
+/* (S2-9, ui.h) */
+int ui_window_open_ok(int x, int y, int w, int h, int x0, int y0, int x1, int y1)
+{
+    int band = DOOMO_CLAMP(h / 6, 3, 8), lo = DOOMO_CLAMP(h / 8, 2, 5);
+    int ir = ((w >= 24 && h >= 20) ? 4 : 2) - 1;
+    return w >= 6 && h >= 6 && x0 < x1 && y0 < y1 && x0 >= x + 1 && x1 <= x + w - 2 &&
+           y0 > y + 1 + band && y1 <= y + h - 1 - lo - ir;
+}
+
+void ui_window_open(int x, int y, int w, int h, int style, int x0, int y0, int x1, int y1)
+{
+    int open[4];
+    open[0] = x0; open[1] = y0; open[2] = x1; open[3] = y1;
+    window_draw(x, y, w, h, style, ui_window_open_ok(x, y, w, h, x0, y0, x1, y1) ? open : NULL);
+}
+#endif
 
 /* ui_window(x, y, w, h, style)'s body pixels in [cx0, cx1) x [ry0, ry1),
  * a rect clear of its edges, corners, rim and gloss row (cx0 >= x + 4,
@@ -607,7 +640,8 @@ void ui_text_big(int x, int y, const char *s, int scale, uint8_t color, uint8_t 
 
 /* ====================================================================== */
 /* meters & sliders                                                         */
-void ui_bar(int x, int y, int w, int h, int value, int max, uint8_t fill)
+/* (shine = 0: ui_bar_still, S2-9) */
+static void bar_draw(int x, int y, int w, int h, int value, int max, uint8_t fill, int shine)
 {
     if (plat_draw_skipped()) return;
     int v, fw, r = h >= 6 ? 2 : 1, t = frame_t();
@@ -629,13 +663,30 @@ void ui_bar(int x, int y, int w, int h, int value, int max, uint8_t fill)
             if (h >= 5) plat_rect(x + 2, y + h - 2, fw - 2, 1, ui_darker(f));
         }
         /* shine sweeping across every two seconds */
-        {
+        if (shine) {
             int sx = (t * 3) % (w + 60) - 10;
             if (sx >= 0 && sx < fw - 1 && h >= 4)
                 plat_rect(x + 1 + sx, y + 2, 2, h - 4, PAL_WHITE);
         }
     }
 }
+
+void ui_bar(int x, int y, int w, int h, int value, int max, uint8_t fill)
+{
+    bar_draw(x, y, w, h, value, max, fill, 1);
+}
+
+#if UI_PANELS
+void ui_style_use(int style)
+{
+    ui_cur_style = style;
+}
+
+void ui_bar_still(int x, int y, int w, int h, int value, int max, uint8_t fill)
+{
+    bar_draw(x, y, w, h, value, max, fill, 0);
+}
+#endif
 
 void ui_slider(int x, int y, int w, const char *label, int value, int max,
                int selected)
