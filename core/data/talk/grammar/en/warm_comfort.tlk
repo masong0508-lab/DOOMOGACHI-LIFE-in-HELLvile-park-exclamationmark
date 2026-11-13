@@ -1,0 +1,249 @@
+# core/data/talk/grammar/en/warm_comfort.tlk - more replies to comfort, encouragement and
+# sympathy (owner: TK; T5b package T5B-WARM). The light kind: a bad day, a nerve, a grumble.
+# Real grief and distress have their own sincere banks (grief.tlk, safety.tlk): nothing here
+# jokes about loss, and no line here makes light of someone being truly hurt. No register
+# word, no filler that needs a guard the rule lacks. Syntax: core/tools/talkc_gen.py.
+
+# ---- COMFORT: thank -------------------------------------------------------------------------
+@rule core.comfort.w_thank act: thank
+  "Thank you. I didn't know how much I needed that."
+  "That's really kind. I feel a little lighter."
+  "Thanks for sitting with me. It helps. A lot, actually."
+  "You're good at this. Don't tell anyone, they'll all line up."
+  "Okay, deep breath. {.}Better. Thank you."
+  "I was a mess a minute ago. Now I'm a smaller mess."
+  "That's nice of you. I'm keeping it somewhere safe."
+  "Thanks. I think the cloud is moving off."
+  "You always say the right thing. Even when you say nothing."
+  "That helped. A warm drink would help more, but this is great."
+  "Thank you. I'm going to try believing that."
+  "Yeah. Yeah, okay. Thanks for the hand."
+  "I feel heard. It's a strange feeling. I like it."
+  "My chest feels less tight. That's all you."
+  "Thanks. You make a good blanket."
+@rule core.comfort.w_thank_polite guard: polite act: thank
+  "That's very thoughtful of you. I'm grateful."
+  "You are kind to say so. It truly helps."
+  "Thank you for your patience with me. It means a lot."
+@rule core.comfort.w_thank_flat guard: flat act: thank
+  "Thanks. {.}I feel it. It's just very quiet in here."
+  "Okay. That helped. I'm saying it flat, but I mean it."
+  "Huh. That worked. Thanks."
+@rule core.comfort.w_thank_blunt guard: blunt act: thank
+  "Fine. That helped. Don't gloat."
+  "Thanks. I hate that it worked."
+  "Yeah, okay, thanks. Now never mention it."
+@rule core.comfort.w_thank_elder guard: elder act: thank
+  "Bless you, dear. I've had worse days, but not many."
+  "That's good of you. Kindness keeps an old heart ticking."
+  "Thanks, dear. A good talk is better than a pill."
+@rule core.comfort.w_thank_teen guard: teen&!kid_speaker act: thank
+  "Okay. Thanks. I didn't think anyone would get it."
+  "That's, like, actually helpful. Don't make it weird."
+  "Thanks. I'm fine. Better, anyway, mostly."
+@rule core.comfort.w_thank_sad guard: mood=sad act: thank
+  "Thank you. I'm still sad, but less alone about it."
+  "I'm not okay yet. But it helps that you're here."
+  "That means a lot. I'm just going to sit here a bit."
+@rule core.comfort.w_thank_tired guard: mood=tired act: thank
+  "Thanks. I'm so tired. But you made it easier."
+  "Mm. That's nice. I could fall asleep on that."
+@rule core.comfort.w_thank_scared guard: mood=scared act: thank
+  "Thanks. I'm still jumpy, but I feel braver with you here."
+  "Okay. Breathing. Thank you for staying."
+@rule core.comfort.w_thank_friend guard: rel=friend act: thank
+  "That's why you're my friend. You just show up."
+  "I'm lucky to have you. Seriously. Thank you."
+@rule core.comfort.w_thank_best guard: rel=best act: thank
+  "I'd be lost without you. Please don't leave."
+  "You always know. How do you always know?"
+@rule core.comfort.w_thank_kid guard: kid_speaker tags: kid act: thank
+  "Thank you. I feel better. Can I have a cookie now?"
+  "Okay. I'll stop crying now. Thanks for the hug-words."
+  "You're nice. I like it when you're nice."
+  "Thanks. My tummy stopped feeling funny."
+@rule core.comfort.w_thank_night guard: night act: thank
+  "Thanks. Things always feel bigger at night. You made it smaller."
+  "That's kind. I'll sleep better now. Maybe."
+
+# ---- COMFORT: answer, complain, joke ---------------------------------------------------------
+@rule core.comfort.w_answer act: answer
+  "It's just been a lot lately. Everything at once."
+  "I don't know. I woke up on the wrong side of everything."
+  "Mostly I'm worried I'm not good enough. Silly, right?"
+  "It's nothing big. Lots of small things in a pile."
+  "I'm tired in a way sleep can't fix. You know?"
+  "Things piled up. I just need a minute. And a snack."
+  "I keep thinking I forgot something. I don't know what."
+  "It'll pass. It always does. I just wish it passed faster."
+@rule core.comfort.w_answer_flat guard: flat act: answer
+  "It's fine. I'm fine. {.}It's a quiet kind of not fine."
+  "Nothing's wrong. I just feel grey. Like a Monday."
+@rule core.comfort.w_answer_blunt guard: blunt act: answer
+  "Bad day. That's it. Don't fuss."
+  "I'm in a mood. Give it an hour. Bring cake."
+@rule core.comfort.w_answer_slow guard: slow act: answer
+  "I'm okay. {.}I think. Give me a moment to check."
+  "It's a slow, heavy sort of day. I'll get through it."
+@rule core.comfort.w_answer_elder guard: elder act: answer
+  "Oh, my bones ache and my mind drifts. It's the weather."
+  "I miss how it used to be. That's all. It's just a feeling."
+@rule core.comfort.w_answer_kid guard: kid_speaker tags: kid act: answer
+  "Somebody took my crayon and didn't say sorry."
+  "I'm sad because it's raining and I can't go out."
+  "I had a bad dream. There was a really big spoon."
+@rule core.comfort.w_complain act: complain
+  "Don't be nice to me, I'll cry. Ugh. Too late."
+  "I'm fine! I just really, really hate everything right now."
+  "It's not fair. None of it. I want a refund."
+  "Why is the world like this? Who do I talk to?"
+  "I was doing okay until you asked. Now I'm mad about it."
+  "Everything's annoying. Even the nice things are annoying."
+@rule core.comfort.w_joke act: joke
+  "Don't be nice, I might get used to it. Then what?"
+  "My mood bar went from red to a slightly softer red."
+  "You're like a big, warm sandwich. Say another kind thing."
+  "Keep talking like that and I'll start a fan club."
+  "I'm weeping, but in a cool, controlled way."
+  "I was going to feel sorry for myself. You ruined my schedule."
+@rule core.comfort.w_joke_quirky guard: quirky act: joke
+  "My feelings are in a pocket. I'll go find them."
+  "It's okay. I put my worries in the fridge. They'll keep."
+
+# ---- ENCOURAGE: thank -----------------------------------------------------------------------
+@rule core.encourage.w_thank act: thank
+  "You believe in me? Huh. Then I'd better believe too."
+  "Thanks. I needed someone to say that out loud."
+  "Okay! I'll give it a go. A real go, with effort."
+  "That's the push I wanted. A gentle push. Not a shove."
+  "You're right. I can do hard things. I did one before breakfast."
+  "I like how you say that. Like it's already true."
+  "Thanks, coach. Do I get a whistle?"
+  "Well, now I have to try. You've got me all inspired."
+  "That actually helps. I'll take it with me."
+  "Good point. Worst case, I try again tomorrow."
+  "Okay, deep breath. {.}Here I go. Thank you."
+  "Thanks for having my back. It's a good back. Hard to find."
+@rule core.encourage.w_thank_polite guard: polite act: thank
+  "How encouraging of you. I'll do my best."
+  "You are very kind to say so. I shall try."
+@rule core.encourage.w_thank_flat guard: flat act: thank
+  "Okay. I'll try. {.}That's me being fired up."
+  "Sure. Thanks. I'll go be brave now, quietly."
+@rule core.encourage.w_thank_blunt guard: blunt act: thank
+  "Fine. I'll do it. But if it goes badly, you're blamed."
+  "Yeah, okay. You've convinced me. Don't get smug."
+@rule core.encourage.w_thank_loud guard: loud act: thank
+  "YES! I'm doing it. Watch me, I'm so ready."
+  "You're right! I'm going to be AMAZING at this!"
+@rule core.encourage.w_thank_elder guard: elder act: thank
+  "Well, I did a lot of things at your age. Some on purpose."
+  "Thank you, dear. A little courage goes a long way at my age."
+@rule core.encourage.w_thank_teen guard: teen&!kid_speaker act: thank
+  "Okay, that actually helped. I'll go for it. Maybe."
+  "Thanks. Everyone else just says, like, whatever. You mean it."
+@rule core.encourage.w_thank_tired guard: mood=tired act: thank
+  "Thanks. I'll do it after a nap. A short, brave nap."
+  "Okay, I'm doing it. Slowly, so don't watch."
+@rule core.encourage.w_thank_scared guard: mood=scared act: thank
+  "I'm scared, but I'll try anyway. That counts, right?"
+  "Okay. My knees are knocking, but I'm going."
+@rule core.encourage.w_thank_friend guard: rel=friend act: thank
+  "You always cheer me on. I'll cheer you on next time."
+  "With a friend like you, how can I lose? Easily, but still."
+@rule core.encourage.w_thank_kid guard: kid_speaker tags: kid act: thank
+  "Okay! I'll be brave. Super brave, or medium brave."
+  "Thanks! I'll try so hard I'll go red in the face!"
+  "You really think I can? Then I really can!"
+
+# ---- ENCOURAGE: yes, joke, complain ----------------------------------------------------------
+@rule core.encourage.w_yes act: yes
+  "Yes! You're right, let's do it. Right after this."
+  "Yes. I'm going to do it. For real this time."
+  "Okay, fine, yes, I'll do it. Stop being so persuasive."
+  "Right, no more excuses. Okay, one more excuse. Done."
+  "You're right. I'm ready. Mostly ready."
+  "Yes! A new me starts today. Probably after lunch."
+@rule core.encourage.w_yes_blunt guard: blunt act: yes
+  "Fine, yes, I'm doing it. Quit staring."
+  "Fair. I'll go. Don't clap yet."
+@rule core.encourage.w_yes_flat guard: flat act: yes
+  "Yes. {.}Consider me emotionally invested."
+  "Okay. I'll do it. That's my excited voice."
+@rule core.encourage.w_joke act: joke
+  "Next you'll say I'm a winner. I'll go lie down."
+  "Keep going, that was almost a pep talk."
+  "I'd get up and do it, but my chair's so loyal."
+  "Great speech. Do you take requests? Mine's 'again.'"
+  "You should write cards. I'd buy one. With glitter."
+  "I'm so motivated, I'm going to plan to plan."
+  "That was inspiring. I'm going to need to sit down."
+@rule core.encourage.w_complain act: complain
+  "Easy for you to say. You're not the one doing it."
+  "I don't want to be brave. I want a nap and a donut."
+  "That's a lot of pressure. Can I get a smaller pep talk?"
+  "Don't say 'you can do it.' It sounds like a threat."
+  "I'm trying! I'm just not very good at trying."
+
+# ---- SYMPATHIZE: thank ----------------------------------------------------------------------
+@rule core.sympathize.w_thank act: thank
+  "Thank you. It's nice not to be the only one who sees it."
+  "That's kind. Most people just say 'oh well.'"
+  "I appreciate that. It helps to be understood."
+  "Thanks for getting it. I mean that."
+  "You're a good listener. I'm going to tell everyone."
+  "That's nice of you to say. It really is."
+  "Thanks. I didn't want advice. I wanted exactly that."
+  "Aw. You get me. Two points for you."
+  "Thanks. It's been a rough stretch, and that helps."
+  "You know what? That made me feel less silly about it."
+@rule core.sympathize.w_thank_polite guard: polite act: thank
+  "You are most understanding. Thank you."
+  "That's very considerate of you. I'm touched."
+@rule core.sympathize.w_thank_flat guard: flat act: thank
+  "Thanks. {.}I wasn't expecting someone to get it."
+  "Noted. And appreciated. I'm just saying it plain."
+@rule core.sympathize.w_thank_blunt guard: blunt act: thank
+  "Yeah. Thanks. Most people don't bother."
+  "Fine. That was nice. Don't tell anyone."
+@rule core.sympathize.w_thank_elder guard: elder act: thank
+  "Thank you, dear. Not many listen to an old one."
+  "That's sweet. You're young, but you've got a good heart."
+@rule core.sympathize.w_thank_kid guard: kid_speaker tags: kid act: thank
+  "Thanks for being nice about it. It was a big deal."
+  "I feel less sad now. You said sorry the right way."
+@rule core.sympathize.w_thank_sad guard: mood=sad act: thank
+  "Thanks. It really is hard right now. It helps to hear that."
+  "That's kind. I'm trying to stay strong. It's okay to wobble."
+@rule core.sympathize.w_thank_friend guard: rel=friend act: thank
+  "Thanks, friend. You always get the whole story."
+  "You're a good friend. Seriously."
+
+# ---- SYMPATHIZE: complain, agree, joke ------------------------------------------------------
+@rule core.sympathize.w_complain act: complain
+  "It's just so unfair. I did everything right!"
+  "Right? And then they act like it's my fault. Unbelievable."
+  "Ugh, exactly. I could go on all day. Shall I?"
+  "Thank you! And that's not even the worst part."
+  "I know! It never ends. I'm going to scream into a pillow."
+  "It's the little things that get me. And the big things."
+@rule core.sympathize.w_complain_blunt guard: blunt act: complain
+  "Exactly. It stinks. All of it."
+  "Yeah, it's garbage. Total garbage. Say it with me."
+@rule core.sympathize.w_agree act: agree
+  "Yes. Exactly. You understand."
+  "That's what I've been saying. Nobody listens."
+  "Right? It's not just me. Thank goodness."
+  "Yep. It is what it is. But it is a lot."
+  "I'd say it better, but you nailed it."
+  "True. Thanks for saying so. It's nice to be agreed with."
+@rule core.sympathize.w_joke act: joke
+  "Thanks for the sympathy. I'll put it in my pocket with my feelings."
+  "That's nice. Sympathy is my second favourite snack."
+  "I accept this sympathy. Please send it in a card next time."
+  "You'd make a good pillow. A sympathetic pillow."
+  "Is it weird that I'm enjoying being pitied? A bit?"
+  "My problems and I thank you. They feel seen."
+@rule core.sympathize.w_joke_quirky guard: quirky act: joke
+  "Sympathy accepted! I'll pay you in marbles."
+  "It's all right. I've been rained on by worse. Tuesday."
