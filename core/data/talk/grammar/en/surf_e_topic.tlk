@@ -1,0 +1,64 @@
+# core/data/talk/grammar/en/surf_e_topic.tlk - topic-slot lines, push E (owner: TK; T5B-SURF5).
+# Every line names the topic ({x}, {x:cap}). Clean in any room: no register word, no romance,
+# no cool or tease act, nothing aimed at the player. Grief topics go to the grief bank.
+# Rule names start with se_. Syntax: core/tools/talkc_gen.py.
+
+@rule core.opine_pos.se_pos_a guard: topic act: agree
+  "{x:cap} is a good one, and I'm not just being polite about it."
+  "I'd happily have {x} on the table every day of the week."
+  "Oh, I like {x}. It's the sort of thing that makes a day better."
+  "{x:cap} gets my vote. Not that there's a ballot, but still."
+@rule core.opine_pos.se_pos_b guard: topic act: agree
+  "I'm a sucker for {x}. Always have been, always will be."
+  "{x:cap} is quietly one of the best things around here."
+  "Yes, {x}. I think about it more than I'd ever admit out loud."
+  "Nice choice, {x}. You've got a knack for picking the good ones."
+@rule core.opine_neg.se_neg_a guard: topic act: disagree
+  "{x:cap} and I don't really get along. We've agreed to be polite."
+  "Honestly, {x} just isn't my scene. Sorry, I know it's a letdown."
+  "I'd rather not spend much time on {x}, if that's alright with you."
+  "{x:cap}? I'll be polite, but I'm not keen on it."
+@rule core.opine_neg.se_neg_b guard: topic act: disagree
+  "No, {x} doesn't do it for me. I'm sure it's lovely for others."
+  "I find {x} a bit dull, if I'm honest. Nothing personal."
+  "{x:cap} has had its day, as far as I'm concerned."
+@rule core.answer.se_ans_a guard: topic act: backchannel
+  "{x:cap}? I'd say it's a bit of a mixed bag. Good and bad."
+  "On {x}, I'll give you my honest take. It's not the whole story."
+  "Ah, {x}. The short answer is yes, the long one is more fun."
+  "{x:cap}, you say? I've got a few opinions. Want them all?"
+@rule core.answer.se_ans_b guard: topic act: backchannel
+  "{x:cap} is something I'd rather show you than explain."
+  "I'd answer {x} with a question of my own. Are you asking for fun?"
+  "{x:cap}? It depends whether we're being serious or silly."
+  "Good thinking, {x}. I'd need to sleep on that before I answer."
+@rule core.joke.se_joke_a guard: topic act: laugh
+  "{x:cap}? Ha! That's the best thing I've heard all morning."
+  "Oh, {x}. You've set me off now, I can't stop giggling."
+  "Hah, {x}! I'd say that's a proper joke, and a good one."
+  "{x:cap} with a punchline like that? Well played, I say."
+@rule core.joke.se_joke_b guard: topic act: laugh
+  "Ha, {x}! Don't tell me that's your whole act. I'm impressed."
+  "{x:cap} is funny, but you're funnier for saying it."
+  "Hee, {x}. I'll be thinking about that all afternoon."
+@rule core.tell.se_tell_a guard: topic act: backchannel
+  "Oh, {x}! Where do I even start? It's a long story, but a good one."
+  "{x:cap} is a subject I could talk about for ages, so brace yourself."
+  "Right, {x}. Picture it: a normal day, and then this happened."
+  "I've got a whole pile of thoughts on {x}. Here's the best bit."
+@rule core.tell.se_tell_b guard: topic act: backchannel
+  "{x:cap} came up once before, and it turned out differently than I thought."
+  "The trick with {x} is to ignore what everyone else says about it."
+  "{x:cap}, eh. I'll tell you a thing I've never told anyone."
+@rule core.agree.se_agree_a guard: topic act: agree
+  "Yes, {x}. You've put that better than I ever could."
+  "{x:cap}, exactly. I was just about to say the same thing."
+  "You're right about {x}. Let's agree on that and be done."
+@rule core.disagree.se_disagree_a guard: topic act: disagree
+  "I see {x} differently, but I'll hear you out on it."
+  "Hmm, not about {x}. I'd put it another way, but it's close."
+  "{x:cap}? I'd push back on that, just a little."
+@rule core.change_topic.se_chg_a guard: topic act: answer
+  "{x:cap}, why not? Anything beats the last subject, honestly."
+  "Let's move on to {x}. My head's been stuck on the last thing."
+  "{x:cap}, good call. We needed a change of scene."

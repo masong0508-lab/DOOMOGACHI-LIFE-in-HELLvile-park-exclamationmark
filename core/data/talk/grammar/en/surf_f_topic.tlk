@@ -1,0 +1,58 @@
+# core/data/talk/grammar/en/surf_f_topic.tlk - topic-slot lines, push F (owner: TK; T5B-SURF6).
+# Every line names the topic ({x}, {x:cap}). Clean in any room. Grief topics go to the grief bank.
+# Rule names start with sf_. Syntax: core/tools/talkc_gen.py.
+
+@rule core.opine_pos.sf_pos_a guard: topic act: agree
+  "{x:cap} brightens things up, and that's not something I say lightly."
+  "I could listen to someone talk about {x} all day. Honestly."
+  "{x:cap} makes me want to smile, and I'm not much of a smiler."
+  "Yes, {x}. A really good pick. I'd have chosen it myself."
+@rule core.opine_pos.sf_pos_b guard: topic act: agree
+  "{x:cap} is in my top few. Don't ask me to rank them all."
+  "I think {x} is the best thing you could have brought up today."
+  "Oh, I'm into {x}. Always have been, even when nobody else was."
+@rule core.opine_neg.sf_neg_a guard: topic act: disagree
+  "I'd take a pass on {x}, if I'm allowed. It's not my kind of thing."
+  "{x:cap} has its fans, and I'm just not one of them, sorry."
+  "Not for me, {x}. Maybe tell me what I'm missing."
+  "I've never got on with {x}. Nothing dramatic, just a shrug."
+@rule core.opine_neg.sf_neg_b guard: topic act: disagree
+  "{x:cap}? Meh. I'd sooner talk about nearly anything else."
+  "I don't care much for {x}. It's a bit of a yawn for me."
+@rule core.answer.sf_ans_a guard: topic act: backchannel
+  "{x:cap}? Well, the honest answer is that it's a bit of both."
+  "I'd say {x} is more interesting than most people think it is."
+  "On {x}, I'd need a moment. It's not something I've put into words."
+  "{x:cap}, right. I've got an answer, but you might not like it."
+@rule core.answer.sf_ans_b guard: topic act: backchannel
+  "{x:cap}? I think it's worth a try, even if it goes wrong."
+  "Good question about {x}. My answer is yes, but with a grumble."
+  "{x:cap} is one of those things where I change my mind every week."
+@rule core.joke.sf_joke_a guard: topic act: laugh
+  "Ha! {x:cap} again, you're really committed to this bit."
+  "Oh, {x}. That's the kind of joke that needs a drumroll."
+  "Hah, {x}. I'd laugh harder, but I'm trying to look serious."
+  "{x:cap}? You've got timing, I'll give you that."
+@rule core.joke.sf_joke_b guard: topic act: laugh
+  "Hee hee! {x} is funny when you say it like that, honestly."
+  "Ha, {x}. I'm going to repeat that to everyone I meet today."
+@rule core.tell.sf_tell_a guard: topic act: backchannel
+  "Right, {x}. I'll tell you what happened the last time I was into it."
+  "{x:cap} is one of my favourite stories to tell, so listen closely."
+  "Ooh, {x}. I've got an odd little memory about that, if you want it."
+  "The best part about {x} is the bit nobody ever mentions."
+@rule core.tell.sf_tell_b guard: topic act: backchannel
+  "{x:cap} is simple on the surface. It's the detail that gets you."
+  "I'll tell you about {x}, but you have to promise not to laugh."
+@rule core.agree.sf_agree_a guard: topic act: agree
+  "Yes, {x}! You and I are thinking along the same lines."
+  "{x:cap}, you've got it. That's exactly what I was going to say."
+  "On {x}, I'm completely with you. No arguments from me."
+@rule core.disagree.sf_disagree_a guard: topic act: disagree
+  "Not about {x}, I don't think. I'd want to look at it again."
+  "I see {x} differently. We can agree to disagree, I suppose."
+  "{x:cap}? Hmm. I'd argue it, though I'm not sure I'd win."
+@rule core.change_topic.sf_chg_a guard: topic act: answer
+  "{x:cap}, go on then. A new subject is always welcome."
+  "Let's do {x}. It's a better use of the next ten minutes."
+  "Right, {x}. I'm bored of the last one, so this suits me."
