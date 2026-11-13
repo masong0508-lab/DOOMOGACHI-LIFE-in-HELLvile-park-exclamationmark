@@ -1218,7 +1218,7 @@ voice, stance, topic and (for kid speakers) `kid_speaker` with `tags: kid`. A hu
 stranger, a rival or an unfamiliar child may decline; no tease or blame reply (TK10 untouched), no register
 word, no romance. Rule names start with `sa_`. Census, 200,000 contexts, same grid, before -> after:
 Surface 116,536 -> 124,834 distinct (+7.1%; Chao1 655,750 -> 734,511), Skeleton 113,387 -> 121,363,
-Meaning 15,191 -> 16,195, 0 of 200,000 failed quality, 0 S3 hits. A full run is expected near 830,000
+Meaning 15,191 -> 16,195, 0 of 200,000 failed quality, 0 S3 hits. A full 2M run was not measured (the estimate of about 830,000 was a guess; the lead's census gives the number). Hard gap at 200k: Chao1 734,511 vs the 1,000,000 target
 Surface: **the 1,000,000 target is still missed**; it needs roughly 3 to 4 more pushes of this size, or lines with
 topic slots in the high-volume rules. `TALK_en.BIN` 755,772 -> 788,732 B (+32,960 B, about 46 B an
 alternative; PS1 non-resident data, no resident byte; GBA and PS1 sections unchanged). No engine change.
