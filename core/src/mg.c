@@ -225,6 +225,9 @@ void mg_scene_enter(const MgGame *g, int arg)
     if (mg.tier >= MG_TIERS) mg.tier = 0;
     mg.autoplay = (arg & MG_ARG_AUTOPLAY) != 0;
     mg.autostart = (arg & MG_ARG_AUTOSTART) != 0;
+#if !defined(DOOMO_PLATFORM_PS1)
+    mg.plain = (arg & MG_ARG_PLAIN) != 0;
+#endif
     mg.hell = mg.tier == MG_TIER_HELLFIRE;
     prev_song = (uint8_t)audio_music_current();
     mg_scratch_claim();
@@ -580,76 +583,234 @@ static void draw_flash(void)
     }
 }
 
-/* ---- (S2-4) the kept playfield (mg.h "the kept playfield"; docs/GBA.md "Speed wave 2: S2-4") ---- */
+/* ---- (S2-4) the kept playfield (mg.h "the kept playfield"; docs/GBA.md "Speed wave 2: S2-4", "S2-4b") ---- */
 #if !defined(DOOMO_PLATFORM_PS1)
 uint8_t mg_kept_mode;
+#if !defined(DOOMO_PLATFORM_GBA)
 uint32_t mg_bake_key;
+#define MG_SET_BAKE_KEY(k) (mg_bake_key = (k))
+#else
+#define MG_SET_BAKE_KEY(k) ((void)0)
+#endif
+extern void (*ur_tap)(int, int, int, int, uint8_t);   /* ui_raster.c: every rect of a UI shape */
 
 #define MG_BK_GAME_SHIFT 16
-static const MgGame *mg_kept_game(int id)
+static const MgGame *mg_key_game(uint32_t key)
 {
-    int i;
+    int i, id = (int)(key >> MG_BK_GAME_SHIFT);
     for (i = 0; i < MG_GAME_COUNT; i++)
-        if (mg_games[i]->id == id && mg_games[i]->kept_key) return mg_games[i];
+        if (mg_games[i]->id == id) return mg_games[i];
     return NULL;
 }
 
-/* the backdrop of a key: the game's still parts as its playing frames show them (the baker and the
- * native platform draw it with this; the GBA ROM holds every key) */
-static void mg_backdrop_draw(uint32_t key)
+/* the still parts (a kept picture) or the stamp of a key, drawn by the game's own code (the baker and
+ * the native platform draw with these; the GBA ROM holds every key and never calls them) */
+static void mg_key_draw(uint32_t key, int stamp)
 {
     MgState save = mg;
     uint8_t mode = mg_kept_mode;
+#if !defined(DOOMO_PLATFORM_GBA)
     uint32_t bk = mg_bake_key;
-    const MgGame *g = mg_kept_game((int)(key >> MG_BK_GAME_SHIFT));
-    if (!g) { plat_clear(PAL_BLACK); return; }
-    mg.g = g;
+#endif
+    const MgGame *g = mg_key_game(key);
+    int common = stamp && (int)(key >> MG_BK_GAME_SHIFT) == MG_COMMON_ID;
+    if (!common && (!g || (stamp ? !g->stamp : !g->kept_key))) { if (!stamp) plat_clear(PAL_BLACK); return; }
+    if (g) mg.g = g;
     mg.hell = (key & MG_BK_HELL) != 0;
     mg.ox = mg.oy = 0;
     mg.t = mg.play_t = 0;
     mg.phase = MGP_PLAY;
     mg_kept_mode = MGK_BAKE;
-    mg_bake_key = key & (MG_BK_HELL - 1u);
-    g->draw();
+    MG_SET_BAKE_KEY(key & (MG_BK_HELL - 1u));
+    if (common) mg_common_stamp(key & 0xFFFFu, mg_w() / 2, mg_h() / 2);
+    else if (stamp) g->stamp(key & 0xFFFFu, mg_w() / 2, mg_h() / 2);
+    else g->draw();
     mg_kept_mode = mode;
-    mg_bake_key = bk;
+    MG_SET_BAKE_KEY(bk);
     mg = save;
 }
+static void mg_backdrop_draw(uint32_t key) { mg_key_draw(key, 0); }
+static void mg_stamp_draw(uint32_t key) { mg_key_draw(key, 1); }
 
 static int mg_backdrop_keys(uint32_t *out, int cap)
 {
-    uint32_t k[32];                                /* (the baker's: on the stack, no .bss) */
     int i, j, h, n = 0;
     for (i = 0; i < MG_GAME_COUNT; i++) {
         const MgGame *g = mg_games[i];
-        int m;
         if (!g->kept_key || !g->kept_keys) continue;
-        m = DOOMO_MIN(g->kept_keys(k, 32), 32);
-        for (h = 0; h < 2; h++)
-            for (j = 0; j < m; j++) {
-                if (n < cap) out[n] = (uint32_t)g->id << MG_BK_GAME_SHIFT | (h ? MG_BK_HELL : 0u) | (k[j] & (MG_BK_HELL - 1u));
-                n++;
-            }
+        for (h = 0; h < 2; h++) {
+            int m = g->kept_keys(n < cap ? out + n : out, n < cap ? cap - n : 0, h);
+            for (j = 0; j < m && n + j < cap; j++)
+                out[n + j] = (uint32_t)g->id << MG_BK_GAME_SHIFT | (h ? MG_BK_HELL : 0u) | (out[n + j] & (MG_BK_HELL - 1u));
+            n += m;
+        }
     }
     return n;
 }
-const DoomoBackdrop mg_backdrop_family = { DOOMO_BACKDROP_MG, mg_backdrop_draw, mg_backdrop_keys };
+static int mg_backdrop_part(uint32_t key, int16_t out[2])
+{
+    const MgGame *g = mg_key_game(key);
+    return g && g->kept_part && g->kept_part(key & (MG_BK_HELL - 1u), out) ? BACKDROP_ROWS : BACKDROP_WHOLE;
+}
+const DoomoBackdrop mg_backdrop_family = { DOOMO_BACKDROP_MG, mg_backdrop_draw, mg_backdrop_keys, mg_backdrop_part };
+
+static int mg_stamp_keys(uint32_t *out, int cap)
+{
+    int i, j, n = 0;
+    for (i = 0; i < MG_GAME_COUNT; i++) {
+        const MgGame *g = mg_games[i];
+        int m;
+        if (!g->stamp || !g->stamp_keys) continue;
+        m = g->stamp_keys(n < cap ? out + n : out, n < cap ? cap - n : 0);
+        for (j = 0; j < m && n + j < cap; j++)
+            out[n + j] = (uint32_t)g->id << MG_BK_GAME_SHIFT | (out[n + j] & 0xFFFFu);
+        n += m;
+    }
+    {
+        int m = mg_common_stamp_keys(n < cap ? out + n : out, n < cap ? cap - n : 0);
+        for (j = 0; j < m && n + j < cap; j++)
+            out[n + j] = (uint32_t)MG_COMMON_ID << MG_BK_GAME_SHIFT | (out[n + j] & 0xFFFFu);
+        n += m;
+    }
+    return n;
+}
+static int mg_stamp_part(uint32_t key, int16_t out[2])
+{
+    (void)key;
+    out[0] = (int16_t)(mg_w() / 2);
+    out[1] = (int16_t)(mg_h() / 2);
+    return BACKDROP_STAMP;
+}
+const DoomoBackdrop mg_stamp_family = { DOOMO_BACKDROP_MG_STAMP, mg_stamp_draw, mg_stamp_keys, mg_stamp_part };
+
+static uint32_t mg_key_full(uint32_t key)
+{
+    return (uint32_t)mg.g->id << MG_BK_GAME_SHIFT | (mg.hell ? MG_BK_HELL : 0u) | (key & (MG_BK_HELL - 1u));
+}
+
+int mg_kept_band(uint32_t key)
+{
+    PlatStageInfo info;
+    if (!plat_stage_begin(DOOMO_BACKDROP_MG, mg_key_full(key), mg_backdrop_draw, &info)) return 0;
+    plat_stage_restore(0, 0, mg_w(), mg_h());      /* the picture's whole box (GBA: DMA, ~3.5 ms a screen) */
+    return 1;
+}
+
+void mg_kept_src(uint32_t key)
+{
+    PlatStageInfo info;
+    (void)plat_stage_begin(DOOMO_BACKDROP_MG, mg_key_full(key), mg_backdrop_draw, &info);
+}
+
+void mg_kept_put(int x, int y, int w, int h)
+{
+    if (mg_kept_mode == MGK_LIVE) plat_stage_restore(x, y, w, h);
+}
+
+/* undo (mg.h): the box of the section and, while a game lists its restores, the list. Both sit at the
+ * end of the game's arena in the scene scratch (MG_UNDO_AT, zeroed with it): no .bss */
+typedef struct { MgBox *list; uint8_t n, cap, over, on; int16_t box[4]; } MgRec;
+DOOMO_STATIC_ASSERT(sizeof(MgRec) <= MG_UNDO_BYTES, mg_undo_state_fits);
+#define UNDO_REC ((MgRec *)(void *)((uint8_t *)mg_state() + MG_UNDO_AT))
+static void mg_undo_tap(int x, int y, int w, int h, uint8_t c)
+{
+    MgRec *r = UNDO_REC;
+    int x0 = DOOMO_MAX(x, r->box[0]), y0 = DOOMO_MAX(y, r->box[1]);
+    int x1 = DOOMO_MIN(x + w, r->box[2]), y1 = DOOMO_MIN(y + h, r->box[3]);
+    (void)c;
+    if (x0 >= x1 || y0 >= y1) return;
+    if (mg_kept_mode == MGK_REC) {
+        int i;
+        for (i = 0; i < r->n; i++) {              /* inside a box of the list already (a nested shape) */
+            const MgBox *q = &r->list[i];
+            if (x0 >= q->x && y0 >= q->y && x1 <= q->x + q->w && y1 <= q->y + q->h) return;
+        }
+        if (r->n >= r->cap) { r->over = 1; return; }
+        r->list[r->n].x = (int16_t)x0; r->list[r->n].y = (int16_t)y0;
+        r->list[r->n].w = (int16_t)(x1 - x0); r->list[r->n].h = (int16_t)(y1 - y0);
+        r->n++;
+    } else {
+        plat_stage_restore(x0, y0, x1 - x0, y1 - y0);
+    }
+}
+
+void mg_undo(int x0, int y0, int x1, int y1)
+{
+    MgRec *r = UNDO_REC;
+    if (mg_kept_mode != MGK_LIVE) return;
+    r->box[0] = (int16_t)x0; r->box[1] = (int16_t)y0; r->box[2] = (int16_t)x1; r->box[3] = (int16_t)y1;
+    mg_kept_mode = r->on ? MGK_REC : MGK_UNDO;
+    ur_tap = mg_undo_tap;
+}
+
+void mg_undo_end(void)
+{
+    if (mg_kept_mode < MGK_UNDO) return;
+    mg_kept_mode = MGK_LIVE;
+    ur_tap = 0;
+}
+
+void mg_undo_rec(MgBox *list, int cap)
+{
+    MgRec *r = UNDO_REC;
+    r->list = list;
+    r->cap = (uint8_t)DOOMO_MIN(cap, 255);
+    r->n = r->over = 0;
+    r->on = 1;
+}
+
+int mg_undo_rec_end(void)
+{
+    MgRec *r = UNDO_REC;
+    r->on = 0;
+    return r->over ? -1 : r->n;
+}
+
+void mg_kept_puts(const MgBox *list, int n, int dx, int dy)
+{
+    if (mg_kept_mode == MGK_LIVE && n > 0) plat_stage_restore_list(&list[0].x, n, dx, dy);
+}
+
+void mg_rect(int x, int y, int w, int h, uint8_t c)
+{
+    if (mg_kept_mode >= MGK_UNDO) mg_undo_tap(x, y, w, h, c);
+    else plat_rect(x, y, w, h, c);
+}
+
+int mg_stamp_common(uint32_t key, int x, int y)
+{
+    if (mg_kept_mode == MGK_BAKE || mg.plain) return 0;
+    return plat_stage_stamp(DOOMO_BACKDROP_MG_STAMP, (uint32_t)MG_COMMON_ID << MG_BK_GAME_SHIFT | (key & 0xFFFFu), x, y);
+}
+
+int mg_stamp(uint32_t key, int x, int y)
+{
+    if (mg_kept_mode == MGK_BAKE || mg.plain || !mg.g->stamp) return 0;
+    return plat_stage_stamp(DOOMO_BACKDROP_MG_STAMP, (uint32_t)mg.g->id << MG_BK_GAME_SHIFT | (key & 0xFFFFu), x, y);
+}
 
 /* the playfield over its kept picture: 1 when drawn that way (fx and HUD included) */
 static int mg_kept_draw(void)
 {
     const MgGame *g = mg.g;
-    PlatStageInfo info;
-    uint32_t key;
-    if (!g->kept_key || mg.phase == MGP_RESULTS || mg.ox || mg.oy) return 0;
-    key = (uint32_t)g->id << MG_BK_GAME_SHIFT | (mg.hell ? MG_BK_HELL : 0u) | (g->kept_key() & (MG_BK_HELL - 1u));
-    if (!plat_stage_begin(DOOMO_BACKDROP_MG, key, mg_backdrop_draw, &info)) return 0;
-    plat_stage_restore(0, 0, mg_w(), mg_h());      /* the still parts, whole (GBA: a ~3.5 ms DMA) */
+    int sx = mg.ox, sy = mg.oy;
+    if (!g->kept_key || mg.phase == MGP_RESULTS || mg.plain) return 0;
+#if !defined(DOOMO_PLATFORM_GBA)
+    if (sx || sy) return 0;                        /* a shake: the full frame, every part offset */
+#endif
+    if (!mg_kept_band(g->kept_key())) return 0;
+#if defined(DOOMO_PLATFORM_GBA)
+    /* (S2-4b, pixel-changing) a shake is the kept frame, moved as a whole by the display */
+    if (sx || sy) { plat_post_offset(sx, sy); mg.ox = mg.oy = 0; }
+#endif
     mg_kept_mode = MGK_LIVE;
     g->draw();
+    mg_undo_end();
     mg_kept_mode = MGK_OFF;
     mg_fx_draw();
     mg_hud();
+    mg.ox = (int8_t)sx;
+    mg.oy = (int8_t)sy;
     return 1;
 }
 #endif

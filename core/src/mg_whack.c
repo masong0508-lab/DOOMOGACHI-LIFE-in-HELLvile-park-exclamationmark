@@ -17,11 +17,21 @@ typedef struct WHole {
     uint8_t kind, st, t, hits, stay, dazed;
 } WHole;
 
+#define WK_FL_PUTS 80
+#define WK_SIGN_PUTS 32
+#define WK_RING_PUTS 24
 typedef struct Whack {
     WHole hole[9];
     uint8_t aim, swing, cool, hit_hole, fuzz_bonks, misses;
     int16_t mx16, my16;         /* mallet position (smoothed) */
     uint16_t spawn_t;
+    /* (S2-4b) made once a round: the rows of a hole's front ring (outer and inner half widths), and,
+     * for the frames over the kept picture, the boxes to put back (mg.h "undo"): where a hole lies on
+     * a flower, and where the sign board lies on each of its two imps */
+    uint8_t front[2][12];
+    int8_t puts_ok, n_fl, n_sign[2], n_ring;
+    MgBox fl_put[WK_FL_PUTS], sign_put[2][WK_SIGN_PUTS], ring_put[WK_RING_PUTS];   /* (ring_put: hole 0's front ring) */
+    struct { int16_t x, y; uint8_t pink; } flower[14];      /* where the flowers stand (flower_at) */
 } Whack;
 MG_ARENA_FITS(Whack);
 #define S (MG_ARENA(Whack))
@@ -35,8 +45,19 @@ static int hole_y(int i) { return field_top() + 6 + (i / 3) * row_dy() + row_dy(
 static int hole_rx(void) { return crit_r() + 5; }
 static int hole_ry(void) { return hole_rx() / 3 + 1; }
 
+static void front_rows(int rx, int ry, uint8_t *o, uint8_t *in);
+static uint32_t flower_at(int k, int *fx2, int *fy);
+
 static void wh_start(void)
 {
+    int k;
+    front_rows(hole_rx(), hole_ry(), S->front[0], S->front[1]);
+    for (k = 0; k < 14; k++) {
+        int fx2, fy;
+        S->flower[k].pink = (uint8_t)(flower_at(k, &fx2, &fy) >> 20 & 1);
+        S->flower[k].x = (int16_t)fx2;
+        S->flower[k].y = (int16_t)fy;
+    }
     S->aim = 4;
     S->mx16 = (int16_t)(hole_x(4) * 16);
     S->my16 = (int16_t)(hole_y(4) * 16);
@@ -232,46 +253,33 @@ static void critter(const WHole *h, int x, int y, int r, int t)
     }
 }
 
-/* the front half of the hole's dirt ring + the ground in front of it */
-static void hole_front(int cx, int hy, int rx, int ry, int row, int cover)
+/* the rows of a hole's front ring: per row y (0..ry + 3) the outer and the inner half width */
+static void front_rows(int rx, int ry, uint8_t *o, uint8_t *in)
+{
+    int y, orx = rx + 4, ory = ry + 3;
+    for (y = 0; y <= ory && y < 12; y++) {
+        o[y] = (uint8_t)(orx * fx_isqrt((uint32_t)((ory * ory - y * y) * 256 / (ory * ory))) / 16);
+        in[y] = (uint8_t)(y < ry ? rx * fx_isqrt((uint32_t)((ry * ry - y * y) * 256 / (ry * ry))) / 16 : 0);
+    }
+}
+
+/* the front half of the hole's dirt ring + the ground in front of it (mg_rect: over the kept picture
+ * the same spans are put back, mg.h "undo"). tab: front_rows' rows. */
+static void hole_front(int cx, int hy, int rx, int ry, int row, int cover, uint8_t tab[2][12])
 {
     int y, orx = rx + 4, ory = ry + 3;
     uint8_t dirt = mg.hell ? PAL_RAMP(RAMP_WOOD, 1) : PAL_PAINT(PAINT_CARAMEL, 1);
     uint8_t dirt_l = mg.hell ? PAL_RAMP(RAMP_WOOD, 2) : PAL_PAINT(PAINT_CARAMEL, 2);
     for (y = 0; y <= ory; y++) {
-        int o = orx * fx_isqrt((uint32_t)((ory * ory - y * y) * 256 / (ory * ory))) / 16;
-        int in = y < ry ? rx * fx_isqrt((uint32_t)((ry * ry - y * y) * 256 / (ry * ry))) / 16 : 0;
+        int o = tab[0][y], in = tab[1][y];
         if (in > 0) {
-            plat_rect(cx - o, hy + y, o - in, 1, y < 2 ? dirt_l : dirt);
-            plat_rect(cx + in, hy + y, o - in, 1, y < 2 ? dirt_l : dirt);
+            mg_rect(cx - o, hy + y, o - in, 1, y < 2 ? dirt_l : dirt);
+            mg_rect(cx + in, hy + y, o - in, 1, y < 2 ? dirt_l : dirt);
         } else {
-            plat_rect(cx - o, hy + y, o * 2, 1, y == ory ? ui_darker(dirt) : dirt);
+            mg_rect(cx - o, hy + y, o * 2, 1, y == ory ? ui_darker(dirt) : dirt);
         }
     }
-    plat_rect(cx - orx - 2, hy + ory + 1, (orx + 2) * 2, cover, band_col(row));
-}
-
-/* (S2-4) the same pixels put back from the kept backdrop, which holds every hole's front as
- * hole_front drew it (the same spans, so the critter sinks behind it exactly as drawn); the
- * ground in front only down to `cover` rows (below them the critter drew nothing) */
-static void hole_front_kept(int cx, int hy, int rx, int ry, int cover)
-{
-#if !defined(DOOMO_PLATFORM_PS1)
-    int y, orx = rx + 4, ory = ry + 3;
-    for (y = 0; y <= ory; y++) {
-        int o = orx * fx_isqrt((uint32_t)((ory * ory - y * y) * 256 / (ory * ory))) / 16;
-        int in = y < ry ? rx * fx_isqrt((uint32_t)((ry * ry - y * y) * 256 / (ry * ry))) / 16 : 0;
-        if (in > 0) {
-            plat_stage_restore(cx - o, hy + y, o - in, 1);
-            plat_stage_restore(cx + in, hy + y, o - in, 1);
-        } else {
-            plat_stage_restore(cx - o, hy + y, o * 2, 1);
-        }
-    }
-    plat_stage_restore(cx - orx - 2, hy + ory + 1, (orx + 2) * 2, cover);
-#else
-    (void)cx; (void)hy; (void)rx; (void)ry; (void)cover;
-#endif
+    mg_rect(cx - orx - 2, hy + ory + 1, (orx + 2) * 2, cover, band_col(row));
 }
 
 static void hole_back(int x, int hy, int rx, int ry)
@@ -282,107 +290,143 @@ static void hole_back(int x, int hy, int rx, int ry)
     ui_fill_ellipse(x, hy + 1, rx - 2, ry - 1, mg.hell ? PAL_RAMP(RAMP_LAVA, 1) : PAL_PAINT(PAINT_CHOCOLATE, 0));
 }
 
-/* (S2-4) the holes a flower lies on (its dirt ring or the ground in front): their live part paints
- * the ring and the front over the flower again, as the full frame does; elsewhere the kept picture
- * is the ring already. The flowers' spots are wh_draw's (the same hash). */
-static unsigned holes_flowered(void)
+/* flower k (or its bones): where it stands, and the box of every pixel it can paint */
+static uint32_t flower_at(int k, int *fx2, int *fy)
 {
-    int k, i, r = crit_r(), rx = hole_rx(), ry = hole_ry(), W = mg_w(), H = mg_h(), ft = field_top();
-    int hx[3], hy[3];
-    unsigned m = 0;
-    for (i = 0; i < 3; i++) { hx[i] = hole_x(i); hy[i] = hole_y(i * 3); }
-    for (k = 0; k < 14; k++) {
-        uint32_t h = doomo_hash32((uint32_t)k * 2654435761u + 7u);
-        int fx2 = (int)(h % (uint32_t)W), fy = ft + 8 + (int)((h >> 10) % (uint32_t)(H - ft - 12));
-        for (i = 0; i < 9; i++) {
-            int x = hx[i % 3], y = hy[i / 3];
-            if (fx2 + 5 > x - rx - 6 && fx2 - 2 < x + rx + 6 && fy + 3 > y - ry - 4 && fy - 3 < y + ry + r * 2 + 13)
-                m |= 1u << i;
-        }
-    }
-    return m;
+    uint32_t h = doomo_hash32((uint32_t)k * 2654435761u + 7u);
+    int ft = field_top();
+    *fx2 = (int)(h % (uint32_t)mg_w());
+    *fy = ft + 8 + (int)((h >> 10) % (uint32_t)(mg_h() - ft - 12));
+    return h;
+}
+static void flower_box(int k, int *x0, int *y0, int *x1, int *y1)
+{
+    int fx2, fy;
+    flower_at(k, &fx2, &fy);
+    if (mg.hell) { *x0 = fx2 - 1; *x1 = fx2 + 5; *y0 = fy - 1; *y1 = fy + 2; }
+    else { *x0 = fx2 - 2; *x1 = fx2 + 3; *y0 = fy - 3; *y1 = fy + 3; }
 }
 
-/* (S2-4) the kept playfield (mg.h): the tent at one of its five sways (the key), the grass bands
- * and every empty hole are still; the sign with its imps, the flowers, the critters, the mallet live */
-#define WK_BULBS 8       /* key: sway + 2 (0..4) | the sign's bulb phase (0..2) << 3 */
+/* (S2-4, S2-4b) the kept playfield (mg.h): two bands. The tent at one of its five sways with the sign
+ * board at one of its three bulb phases (rows above the field: 15 keys a tier), and the field with its
+ * grass bands and nine empty holes (one key). Live: the sign's imps, the flowers, the critters, the
+ * mallet. */
+#define WK_BULBS 8       /* tent key: sway + 2 (0..4) | the sign's bulb phase (0..2) << 3 */
+#define WK_FIELD 0x40    /* the field's key */
 static uint32_t wh_kept_key(void)
 {
     int t = mg.play_t + mg.t;
     return (uint32_t)(ui_wave(t, 150, 2) + 2) | (uint32_t)((t / 4) % 3) * WK_BULBS;
 }
-static int wh_kept_keys(uint32_t *out, int cap)
+static int wh_kept_keys(uint32_t *out, int cap, int hell)
 {
     int i, b, n = 0;
+    (void)hell;
     for (b = 0; b < 3; b++)
         for (i = 0; i < 5; i++) {
             if (n < cap) out[n] = (uint32_t)i | (uint32_t)b * WK_BULBS;
             n++;
         }
-    return n;
+    if (n < cap) out[n] = WK_FIELD;
+    return n + 1;
+}
+static int wh_kept_part(uint32_t key, int16_t rows[2])
+{
+    int ft = field_top();
+    rows[0] = (int16_t)(key == WK_FIELD ? ft : 0);
+    rows[1] = (int16_t)(key == WK_FIELD ? mg_h() : ft);
+    return 1;
 }
 
-/* (S2-4) the sign board (its shadow, the board, the panel; ui_round_rect's rows) put back from the
- * kept picture over the imps behind it, rows [sy, sy + rows) */
-static void sign_kept(int sx, int sy, int sw, int sh, int rows)
+/* the painted sign board with its marquee bulbs (and its words, which no imp reaches: left out when
+ * the board is put back over the imps behind it) */
+static void sign_board(int sx, int sy, int sw, int sh, int tb, int cx)
 {
-#if !defined(DOOMO_PLATFORM_PS1)
-    int j;
-    for (j = 0; j < rows && j < sh + 2; j++) {
-        int a = ui_round_rect_inset(sw, sh, 5, j), b = ui_round_rect_inset(sw, sh, 5, j - 2);
-        int x0 = a >= 0 ? sx + a : sx + 2 + b, x1 = b >= 0 ? sx + 2 + sw - b : sx + sw - a;
-        if (a < 0 && b < 0) continue;
-        plat_stage_restore(x0, sy + j, x1 - x0, 1);
-    }
-    {   /* the marquee bulbs' crosses stick out of the board's corners (mg_bulbs' spots) */
-        int x = sx + 1, y = sy + 1, w = sw - 2, h = sh - 2, per = 2 * (w + h) / 8, i;
-        for (i = 0; i < per; i++) {
-            int d = i * 8, bx, by;
-            if (d < w) { bx = x + d; by = y; }
-            else if (d < w + h) { bx = x + w - 1; by = y + d - w; }
-            else if (d < 2 * w + h) { bx = x + w - 1 - (d - w - h); by = y + h - 1; }
-            else { bx = x; by = y + h - 1 - (d - 2 * w - h); }
-            if (by - 1 >= sy + rows) continue;
-            plat_stage_restore(bx - 1, by, 3, 1);
-            plat_stage_restore(bx, by - 1, 1, 3);
+    ui_round_rect(sx + 2, sy + 2, sw, sh, 5, PAL_RAMP(RAMP_STONE, 1));
+    ui_round_rect(sx, sy, sw, sh, 5, PAL_RAMP(RAMP_WOOD, 1));
+    ui_round_rect(sx + 2, sy + 2, sw - 4, sh - 4, 4, mg.hell ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_RAMP(RAMP_WOOD, 5));
+    mg_bulbs(sx + 1, sy + 1, sw - 2, sh - 2, tb);
+    if (mg_kept_mode < MGK_UNDO)
+        mg_textc(cx, sy + sh / 2 - 3, "BONK 'EM!", mg.hell ? PAL_RAMP(RAMP_LAVA, 6) : PAL_WHITE);
+}
+
+/* (S2-4b) the first frame of a round over the kept picture lists what it must put back every frame:
+ * each hole's ring, front and ground inside the box of every flower they are painted over (the full
+ * frame paints the flowers first), and the sign board inside the box its imp peeks in. Nothing here
+ * moves during a round, so the lists hold. -1: a list was too short (the frame then replays them). */
+static void holes_over_flowers(uint8_t tab[2][12])
+{
+    int i, k, r = crit_r(), rx = hole_rx(), ry = hole_ry();
+    for (i = 0; i < 9; i++) {
+        int x = hole_x(i), y = hole_y(i);
+        for (k = 0; k < 14; k++) {
+            int x0, y0, x1, y1;
+            flower_box(k, &x0, &y0, &x1, &y1);
+            if (x1 <= x - rx - 6 || x0 >= x + rx + 6 || y1 <= y - ry - 4 || y0 >= y + ry + r * 2 + 13) continue;
+            mg_undo(x0, y0, x1, y1);
+            hole_back(x, y, rx, ry);
+            hole_front(x, y, rx, ry, i / 3, r * 2 + 8, tab);
+            mg_undo_end();
         }
     }
-#else
-    (void)sx; (void)sy; (void)sw; (void)sh; (void)rows;
-#endif
+}
+static void sign_over_imp(int k, int sx, int sy, int sw, int sh)
+{
+    int ix = k ? sx + sw - 12 : sx + 12;
+    mg_undo(ix - 14, sy - 12, ix + 14, sy + 14);          /* (the imp: 11 px to each side, 3 rows of peek) */
+    sign_board(sx, sy, sw, sh, 0, 0);
+    mg_undo_end();
+}
+static void wh_puts(int sx, int sy, int sw, int sh, uint8_t tab[2][12])
+{
+    int k;
+    mg_undo_rec(S->fl_put, WK_FL_PUTS);
+    holes_over_flowers(tab);
+    S->n_fl = (int8_t)mg_undo_rec_end();
+    for (k = 0; k < 2; k++) {
+        mg_undo_rec(S->sign_put[k], WK_SIGN_PUTS);
+        sign_over_imp(k, sx, sy, sw, sh);
+        S->n_sign[k] = (int8_t)mg_undo_rec_end();
+    }
+    mg_undo_rec(S->ring_put, WK_RING_PUTS);        /* hole 0's front ring (no ground rows) */
+    mg_undo(0, 0, mg_w(), mg_h());
+    hole_front(hole_x(0), hole_y(0), hole_rx(), hole_ry(), 0, 0, tab);
+    mg_undo_end();
+    S->n_ring = (int8_t)mg_undo_rec_end();
+    S->puts_ok = 1;
 }
 
 static void wh_draw(void)
 {
     int W = mg_w(), H = mg_h(), t = mg.play_t + mg.t, i, r = crit_r(), rx = hole_rx(), ry = hole_ry();
     int ft = field_top(), ox = mg.ox, oy = mg.oy, dy = row_dy();
-    unsigned flw;
+    int bake = mg_kept_mode == MGK_BAKE;
+    uint8_t tab_[2][12], (*tab)[12] = bake ? tab_ : S->front;
+    if (bake) front_rows(rx, ry, tab_[0], tab_[1]);
     /* booth backdrop: tent wall + a painted sign board */
     if (mg_still()) {
         uint8_t a = mg.hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_PAINT(PAINT_LEMON, 1);
         uint8_t b = mg.hell ? PAL_RAMP(RAMP_BLOOD, 1) : PAL_WHITE;
         uint8_t trim = mg.hell ? PAL_RAMP(RAMP_LAVA, 4) : PAL_PAINT(PAINT_TANGERINE, 1);
-        if (mg_kept_mode == MGK_BAKE) mg_tent_sway(0, ft + oy, a, b, trim, (int)(mg_bake_key % WK_BULBS) - 2);
+        if (bake) mg_tent_sway(0, ft + oy, a, b, trim, (int)(mg_bake_key % WK_BULBS) - 2);
         else mg_tent(0, ft + oy, a, b, trim, t);
     }
     {
         int sw = mg_big() ? 150 : 112, sh = mg_big() ? 24 : 18, sx = W / 2 - sw / 2 + ox, sy = ft - sh - 6 + oy;
+        int tb = bake ? (int)(mg_bake_key / WK_BULBS % 3) * 4 : t;
         if (mg_live()) {
-            /* two cheeky imps peeking over the sign's corners */
-            int pk = ui_wave(t, 90, 3);
-            mg_imp(sx + 12, sy - 1 + (pk > 0 ? pk : 0), 7, 6, t, IMP_SNEAKY);
-            mg_imp(sx + sw - 12, sy - 1 + (pk < 0 ? -pk : 0), 7, 6, t + 33, IMP_GRIN);
+            /* two cheeky imps peeking over the sign's corners; over the kept picture the board is put
+             * back over each (its round rects and bulbs in the imp's box) */
+            int pk = ui_wave(t, 90, 3), k;
+            for (k = 0; k < 2; k++) {
+                int ix = k ? sx + sw - 12 : sx + 12, iy = sy - 1 + (k ? (pk < 0 ? -pk : 0) : (pk > 0 ? pk : 0));
+                if (mg_kept() && !S->puts_ok) wh_puts(sx, sy, sw, sh, tab);
+                mg_imp(ix, iy, 7, 6, k ? t + 33 : t, k ? IMP_GRIN : IMP_SNEAKY);
+                if (S->n_sign[k] >= 0) mg_kept_puts(S->sign_put[k], S->n_sign[k], 0, 0);
+                else if (mg_kept()) sign_over_imp(k, sx, sy, sw, sh);
+            }
         }
-        if (mg_kept()) {
-            sign_kept(sx, sy, sw, sh, 14);            /* (the imps reach 10 rows down; the bulbs ride on top) */
-        } else if (mg_still()) {
-            int tb = mg_kept_mode == MGK_BAKE ? (int)(mg_bake_key / WK_BULBS) * 4 : t;
-            ui_round_rect(sx + 2, sy + 2, sw, sh, 5, PAL_RAMP(RAMP_STONE, 1));
-            ui_round_rect(sx, sy, sw, sh, 5, PAL_RAMP(RAMP_WOOD, 1));
-            ui_round_rect(sx + 2, sy + 2, sw - 4, sh - 4, 4, mg.hell ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_RAMP(RAMP_WOOD, 5));
-            mg_bulbs(sx + 1, sy + 1, sw - 2, sh - 2, tb);
-            mg_textc(W / 2 + ox, sy + sh / 2 - 3, "BONK 'EM!", mg.hell ? PAL_RAMP(RAMP_LAVA, 6) : PAL_WHITE);
-        }
+        if (mg_still()) sign_board(sx, sy, sw, sh, tb, W / 2 + ox);
     }
     /* mowed grass bands, one per row of holes */
     if (mg_still()) {
@@ -393,16 +437,16 @@ static void wh_draw(void)
         }
         plat_rect(0, ft + oy, W, 2, mg.hell ? PAL_RAMP(RAMP_LAVA, 3) : PAL_RAMP(RAMP_GRASS, 7));
     }
+    if (mg_kept()) mg_kept_band(WK_FIELD);         /* the field's band; the holes' restores come from it */
     /* flowers (or bones and embers) between the holes */
     for (i = 0; i < 14 && mg_live(); i++) {
-        uint32_t h = doomo_hash32((uint32_t)i * 2654435761u + 7u);
-        int fx2 = (int)(h % (uint32_t)W) + ox, fy = ft + 8 + (int)((h >> 10) % (uint32_t)(H - ft - 12)) + oy;
+        int fx2 = S->flower[i].x + ox, fy = S->flower[i].y + oy;
         if (mg.hell) {
             plat_rect(fx2, fy, 4, 1, PAL_RAMP(RAMP_BONE, 5));
             plat_rect(fx2 - 1, fy - 1, 1, 3, PAL_RAMP(RAMP_BONE, 6));
             plat_rect(fx2 + 4, fy - 1, 1, 3, PAL_RAMP(RAMP_BONE, 6));
         } else {
-            uint8_t c = (h >> 20) & 1 ? PAL_PAINT(PAINT_BUBBLEGUM, 2) : PAL_WHITE;
+            uint8_t c = S->flower[i].pink ? PAL_PAINT(PAINT_BUBBLEGUM, 2) : PAL_WHITE;
             int sway = ui_wave(t + i * 11, 70, 1);
             plat_rect(fx2, fy, 1, 3, PAL_RAMP(RAMP_GRASS, 3));
             plat_rect(fx2 - 1 + sway, fy - 2, 3, 1, c);
@@ -410,20 +454,22 @@ static void wh_draw(void)
             plat_rect(fx2 + sway, fy - 2, 1, 1, PAL_UI_GOLD);
         }
     }
-    flw = mg_kept() ? holes_flowered() : 0u;
+    if (!mg_kept()) {}                             /* the holes over the flowers (wh_puts) */
+    else if (S->n_fl >= 0) mg_kept_puts(S->fl_put, S->n_fl, 0, 0);
+    else holes_over_flowers(tab);
     for (i = 0; i < 9; i++) {
         const WHole *h = &S->hole[i];
         int x = hole_x(i) + ox, hy = hole_y(i) + oy, rise;
-        int row = i / 3, up, fl = (flw >> i) & 1;
-        if (mg_kept_mode == MGK_BAKE) {           /* the still hole: its dirt ring and front */
+        int row = i / 3, up;
+        if (bake) {                               /* the still hole: its dirt ring and front */
             hole_back(x, hy, rx, ry);
-            hole_front(x, hy, rx, ry, row, r * 2 + 8);
+            hole_front(x, hy, rx, ry, row, r * 2 + 8, tab);
             continue;
         }
         rise = rise_of(h);
         up = h->st != H_DOWN && rise > 0;
-        /* back of the dirt ring + the hole (the kept picture has it, unless a flower lies on it) */
-        if (!mg_kept() || fl) hole_back(x, hy, rx, ry);
+        /* back of the dirt ring + the hole (over the kept picture it is there already) */
+        if (!mg_kept()) hole_back(x, hy, rx, ry);
         if (up) critter(h, x, hy + r + 3 - rise, r, t + i * 17);
         else if (((t / 40 + i * 5) % 9) == 0 && (t % 40) > 6) {   /* glowing eyes in the dark */
             uint8_t ec = mg.hell ? PAL_RAMP(RAMP_LAVA, 6) : PAL_PAINT(PAINT_LEMON, 2);
@@ -432,11 +478,20 @@ static void wh_draw(void)
                 plat_rect(x + 3, hy, 2, 2, ec);
             }
         }
-        if (!mg_kept()) hole_front(x, hy, rx, ry, row, r * 2 + 8);
-        else if (fl) hole_front_kept(x, hy, rx, ry, r * 2 + 8);
-        /* (the ground in front hides the critter's body only as low as it reaches: a wraith's
-         * tail, 3r + 12 below the rim at rise 0) */
-        else if (up) hole_front_kept(x, hy, rx, ry, DOOMO_MIN(r * 2 + 8, r * 3 + 12 - rise - (ry + 4)));
+        if (!mg_kept()) hole_front(x, hy, rx, ry, row, r * 2 + 8, tab);
+        else if (up) {
+            /* (the ground in front hides the critter's body only as low as it reaches: a wraith's
+             * tail, 3r + 12 below the rim at rise 0) */
+            int cover = DOOMO_MIN(r * 2 + 8, r * 3 + 12 - rise - (ry + 4));
+            if (S->n_ring >= 0) {
+                mg_kept_puts(S->ring_put, S->n_ring, x - hole_x(0), hy - hole_y(0));
+                mg_kept_put(x - rx - 6, hy + ry + 4, (rx + 6) * 2, cover);
+            } else {
+                mg_undo(0, hy, W, hy + ry + 4 + cover);
+                hole_front(x, hy, rx, ry, row, r * 2 + 8, tab);
+                mg_undo_end();
+            }
+        }
         if (i == S->aim) {                     /* aim marker under the hole */
             int b = ui_wave(t, 20, 1);
             ui_heart(x, hy + ry + 8 + b, 3, PAL_PAINT(PAINT_BUBBLEGUM, 1));
@@ -504,7 +559,7 @@ const MgGame mg_game_whack = {
     { MG_WHACK_B, MG_WHACK_S, MG_WHACK_G }, 24, 45 * 30,
     { PAL_PAINT(PAINT_LEMON, 1), PAL_WHITE, PAL_PAINT(PAINT_TANGERINE, 1) },
     wh_start, wh_update, wh_draw, wh_art, wh_bot,
-    wh_kept_key, wh_kept_keys
+    wh_kept_key, wh_kept_keys, wh_kept_part, NULL, NULL
 };
 
 MG_DEFINE_SCENE(SCENE_MG_WHACK, "MG_WHACK", mg_game_whack);

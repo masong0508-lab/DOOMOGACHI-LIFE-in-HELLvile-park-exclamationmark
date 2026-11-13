@@ -169,6 +169,7 @@ static uint32_t mg_pad(int f)
     return 0;
 }
 
+static int stamps_n;
 static void mg_run(const DoomoScene *sc, int arg, int n, uint32_t *out, int stage)
 {
     int f;
@@ -186,6 +187,7 @@ static void mg_run(const DoomoScene *sc, int arg, int n, uint32_t *out, int stag
         out[f] = fb_hash();
         if (nat_stage_kept()) retained_n++;
     }
+    stamps_n = nat_stage_stamps();
     nat_stage_on = 0;
 }
 
@@ -220,7 +222,11 @@ static int mg_compare(int id, int arg, int w, int h, int n)
             test_fail(__FILE__, __LINE__, m);
             return 0;
         }
-    printf("      kept minigame %d arg %d %dx%d: %d frames, %d over the kept picture\n", id, arg, w, h, n, retained_n);
+    printf("      kept minigame %d arg %d %dx%d: %d frames, %d over the kept picture, %d stamps\n", id, arg, w, h, n, retained_n, stamps_n);
+    if (stamps_n < n) {                          /* (S2-4b) the HUD alone is a few stamps a frame */
+        test_fail(__FILE__, __LINE__, "kept minigame: stamps were not used");
+        return 0;
+    }
     if (retained_n < n / 2) {
         char m[200];
         snprintf(m, sizeof(m), "minigame %d %dx%d: too few frames over the kept picture (%d of %d)",
@@ -246,28 +252,155 @@ TEST(stage_kept_minigames_are_pixel_identical)
     CHECK(ok);
 }
 
-/* every key a staged game asks for is in the baked list */
+/* (S2-4b) every picture a kept game asks for (bands and stamps: what the native stage was asked to
+ * draw while the bot played) is in the lists the GBA build bakes into the ROM */
 TEST(stage_kept_minigame_keys_are_baked)
 {
-    static uint32_t keys[512];
-    const DoomoBackdrop *f = backdrop_family(1);
+    static uint32_t baked[8192], asked[8192], off[900];
     unsigned i;
-    int n, j, t;
-    CHECK(f && f->id == DOOMO_BACKDROP_MG);
-    n = f->keys(keys, 512);
-    CHECK(n > 0 && n <= 512);
-    for (i = 0; i < sizeof(kept_games); i++) {
-        const MgGame *g = mg_games[kept_games[i]];
-        CHECK(g->kept_key != NULL);
-        for (t = 0; t < 3000; t++) {
-            uint32_t k;
-            mg.g = g; mg.t = 0; mg.play_t = (uint16_t)t;
-            k = (uint32_t)g->id << 16 | (g->kept_key() & 0x7FFFu);
-            for (j = 0; j < n && keys[j] != k; j++) {}
-            CHECK_MSG(j < n, "game %d tick %d: key 0x%x is not baked", g->id, t, (unsigned)k);
-            for (j = 0; j < n && keys[j] != (k | MG_BK_HELL); j++) {}
-            CHECK_MSG(j < n, "game %d tick %d: hell key 0x%x is not baked", g->id, t, (unsigned)k);
+    int nb = 0, na, j, k, fam, arg, bands = 0, stamps = 0;
+    for (fam = 0; fam < backdrop_family_count(); fam++) {
+        const DoomoBackdrop *f = backdrop_family(fam);
+        int n = f->keys(asked, 8192);
+        CHECK(n >= 0 && nb + n <= 8192);
+        for (j = 0; j < n; j++) baked[nb++] = (uint32_t)f->id << 24 | (asked[j] & 0xFFFFFFu);
+    }
+    for (j = 1; j < nb; j++)
+        for (k = 0; k < j; k++) CHECK_MSG(baked[j] != baked[k], "key 0x%x is listed twice", (unsigned)baked[j]);
+    set_res(240, 160);
+    for (i = 0; i < sizeof(kept_games); i++)
+        for (arg = 49; arg <= 51; arg++) {
+            mg_run(mg_scene_of(kept_games[i]), arg, 900, off, 1);
+            na = nat_stage_pics(asked, 8192);
+            CHECK(na > 0 && na <= 8192);
+            for (j = 0; j < na; j++) {
+                for (k = 0; k < nb && baked[k] != asked[j]; k++) {}
+                CHECK_MSG(k < nb, "game %d arg %d: picture 0x%x is not baked", kept_games[i], arg, (unsigned)asked[j]);
+                if ((asked[j] >> 24) == DOOMO_BACKDROP_MG) bands++;
+                if ((asked[j] >> 24) == DOOMO_BACKDROP_MG_STAMP) stamps++;
+            }
+        }
+    CHECK(bands > 0 && stamps > 0);
+    nat_stage_reset();
+    memset(&mg, 0, sizeof(mg));
+}
+
+/* (S2-4b) the file the GBA build links (runner --bake-backdrops): sorted keys, a band holds its rows
+ * only, a stamp is the box of what its draw painted, and its pixels are that drawing */
+TEST(stage_bake_file_has_bands_and_stamps)
+{
+    static uint8_t file[16 * 1024 * 1024];
+    char path[600];
+    FILE *f;
+    long len;
+    uint32_t n, i, prev = 0;
+    int bands = 0, stamps = 0, wholes = 0, checked = 0;
+    set_res(240, 160);
+    nat_stage_reset();
+    snprintf(path, sizeof(path), "%s/bake_test.bin", test_tmp_dir);
+    CHECK(nat_bake_backdrops(path) > 0);
+    f = fopen(path, "rb");
+    CHECK(f != NULL);
+    len = (long)fread(file, 1, sizeof(file), f);
+    fclose(f);
+    CHECK(len > 12 && len < (long)sizeof(file));
+    CHECK(memcmp(file, "BKD2", 4) == 0 && (file[4] | file[5] << 8) == 240 && (file[6] | file[7] << 8) == 160);
+    n = (uint32_t)file[8] | (uint32_t)file[9] << 8 | (uint32_t)file[10] << 16 | (uint32_t)file[11] << 24;
+    for (i = 0; i < n; i++) {
+        const uint8_t *e = file + 12 + 16 * i;
+        uint32_t idkey = (uint32_t)e[0] | (uint32_t)e[1] << 8 | (uint32_t)e[2] << 16 | (uint32_t)e[3] << 24;
+        uint32_t off = (uint32_t)e[4] | (uint32_t)e[5] << 8 | (uint32_t)e[6] << 16 | (uint32_t)e[7] << 24;
+        int bx = (int16_t)(e[8] | e[9] << 8), by = (int16_t)(e[10] | e[11] << 8);
+        int w = e[12] | e[13] << 8, h = e[14] | e[15] << 8;
+        const DoomoBackdrop *fam = NULL;
+        int16_t part[2] = { 0, 0 };
+        int k, kind;
+        CHECK(i == 0 || idkey > prev);
+        prev = idkey;
+        CHECK((off & 3) == 0 && off + (uint32_t)(w * h) <= (uint32_t)len);
+        for (k = 0; k < backdrop_family_count(); k++)
+            if (backdrop_family(k)->id == (int)(idkey >> 24)) fam = backdrop_family(k);
+        CHECK(fam != NULL);
+        kind = fam->part ? fam->part(idkey & 0xFFFFFFu, part) : BACKDROP_WHOLE;
+        if (kind == BACKDROP_WHOLE) { wholes++; CHECK(bx == 0 && by == 0 && w == 240 && h == 160); }
+        if (kind == BACKDROP_ROWS) { bands++; CHECK(bx == 0 && w == 240 && by == part[0] && h == part[1] - part[0] && h > 0 && h < 160); }
+        if (kind == BACKDROP_STAMP) {
+            stamps++;
+            CHECK(w > 0 && h > 0 && w < 240 && h < 160);
+            if ((stamps % 37) == 1) {             /* a sample of them, against the drawing */
+                int x, y, bad = 0;
+                memset(nat_fb, 0, 240 * 160);
+                fam->draw(idkey & 0xFFFFFFu);
+                for (y = 0; y < 160; y++)
+                    for (x = 0; x < 240; x++) {
+                        int sx = x - part[0] - bx, sy = y - part[1] - by;
+                        uint8_t want = sx >= 0 && sy >= 0 && sx < w && sy < h ? file[off + (uint32_t)(sy * w + sx)] : 0;
+                        if (nat_fb[y * 240 + x] != want) bad++;
+                    }
+                CHECK_MSG(bad == 0, "stamp 0x%x: %d pixels differ from its drawing", (unsigned)idkey, bad);
+                checked++;
+            }
         }
     }
-    memset(&mg, 0, sizeof(mg));
+    CHECK(wholes > 0 && bands > 0 && stamps > 0 && checked > 0);
+    printf("      baked: %u pictures (%d whole screens, %d bands, %d stamps), %ld bytes\n", (unsigned)n, wholes, bands, stamps, len);
+    remove(path);
+}
+
+/* (S2-4b) mg_undo: a still part drawn again between mg_undo and mg_undo_end puts the kept picture
+ * back in its own spans, inside the box only; listed once (mg_undo_rec) and repeated (mg_kept_puts) it
+ * is the same pixels */
+static void undo_bd(uint32_t key) { (void)key; plat_clear(PAL_UI_PINK); ui_fill_circle(60, 60, 20, PAL_WHITE); }
+static int undo_part(uint32_t key, int16_t out[2]) { (void)key; (void)out; return BACKDROP_WHOLE; }
+TEST(stage_undo_puts_a_shape_back_in_its_spans)
+{
+    static uint8_t want[240 * 160], got[240 * 160];
+    static MgBox list[64];
+    PlatStageInfo info;
+    int x, y, n, pass;
+    (void)undo_part;
+    set_res(240, 160);
+    doomo_init();
+    for (pass = 0; pass < 2; pass++) {
+        nat_stage_on = 1;
+        nat_stage_reset();
+        mg_scratch_claim();
+        memset(mg_state(), 0, MG_ARENA_BYTES);
+        plat_begin_frame();
+        /* the full frame: pink, a live bar, then the white disc over it */
+        plat_clear(PAL_UI_PINK);
+        plat_rect(40, 55, 60, 10, PAL_UI_RED);
+        ui_fill_circle(60, 60, 20, PAL_WHITE);
+        memcpy(want, nat_fb, sizeof(want));
+        /* over the kept picture (which holds the disc): the bar, then the disc put back over the
+         * bar's left half only: the right half of the bar stays on the disc */
+        CHECK(plat_stage_begin(77, 1, undo_bd, &info));
+        plat_stage_restore(0, 0, 240, 160);
+        plat_rect(40, 55, 60, 10, PAL_UI_RED);
+        mg_kept_mode = MGK_LIVE;
+        if (pass) mg_undo_rec(list, 64);
+        mg_undo(40, 55, 60, 65);
+        ui_fill_circle(60, 60, 20, PAL_WHITE);
+        mg_rect(0, 0, 240, 160, PAL_BLACK);        /* (a rect is a still part too: the box clips it) */
+        mg_undo_end();
+        n = pass ? mg_undo_rec_end() : 0;
+        if (pass) {
+            CHECK(n > 0 && n < 64);
+            for (y = 55; y < 65; y++) for (x = 40; x < 60; x++) CHECK(nat_fb[y * 240 + x] == PAL_UI_RED);   /* only listed */
+            mg_kept_puts(list, n, 0, 0);
+        }
+        mg_kept_mode = MGK_OFF;
+        memcpy(got, nat_fb, sizeof(got));
+        plat_end_frame();
+        for (y = 0; y < 160; y++)
+            for (x = 0; x < 240; x++) {
+                int in_box = x >= 40 && x < 60 && y >= 55 && y < 65;
+                uint8_t w = in_box ? (want[y * 240 + x] == PAL_UI_RED ? PAL_UI_PINK : want[y * 240 + x])
+                                   : (x >= 60 && x < 100 && y >= 55 && y < 65 ? PAL_UI_RED : want[y * 240 + x]);
+                if (in_box) w = (x - 60) * (x - 60) + (y - 60) * (y - 60) <= 21 * 21 && want[y * 240 + x] == PAL_WHITE ? PAL_WHITE : PAL_UI_PINK;
+                if (got[y * 240 + x] != w) { CHECK_MSG(0, "pass %d: pixel %d,%d is %d, not %d", pass, x, y, got[y * 240 + x], w); y = 160; break; }
+            }
+    }
+    nat_stage_on = 0;
+    nat_stage_reset();
 }

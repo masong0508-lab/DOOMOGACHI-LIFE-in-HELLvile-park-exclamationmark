@@ -3,8 +3,10 @@
  *
  * The backdrops are baked at build time: the native runner draws every key of every family
  * (core/include/doomo/backdrop.h) with the core's own drawing code at 240x160 and the ROM
- * links the file (backdrop_blob.s, build/gen/backdrops.bin: "BKD1", w, h, n, a sorted table of
- * id << 24 | key -> offset, then raw 8bpp pictures). A frame that asks for a baked key gets
+ * links the file (backdrop_blob.s, build/gen/backdrops.bin: "BKD2", w, h, n, a sorted table of
+ * { id << 24 | key, offset, box }, then raw 8bpp pictures; (S2-4b) a picture is a whole screen, a
+ * band of screen rows, or a stamp: a small picture with holes that plat_stage_stamp draws anywhere
+ * as an image, straight from the ROM). A frame that asks for a baked key gets
  * plat_stage_begin = 1 and restores boxes of the picture with DMA from the ROM: the church the
  * exorcism drew in ~70 ms of rects, lines and circles is a ~3.5 ms copy, and only where a
  * layer changed.
@@ -25,32 +27,30 @@
 
 extern const uint8_t gba_backdrops[];          /* backdrop_blob.s */
 
-static const uint8_t *cur_img;                 /* this frame's backdrop (ROM)       */
+/* a table entry (4-aligned in the ROM): a whole screen or a band has w = SCREEN_W and its rows
+ * [by, by + h); a stamp has its box's corner (bx, by) from the anchor */
+typedef struct { uint32_t idkey, off; int16_t bx, by; uint16_t w, h; } BkEnt;
+static const BkEnt *cur;                       /* the restores' source picture (ROM) */
 static uint32_t serial;                        /* Mode 4 frames presented           */
 static uint32_t page_serial[2];                /* stage frame each page holds, 0    */
 static int16_t page_dirt[2][4];                /* drawn over it after plat_stage_end */
 static int16_t trk[4];
 static uint8_t frame_stage, tracking;
 
-static uint32_t rd32(const uint8_t *p)
-{
-    return (uint32_t)p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24;
-}
-
 /* the baked picture of (id, key), NULL if it is not in the ROM (binary search) */
-static const uint8_t *find(int id, uint32_t key)
+static const BkEnt *find(int id, uint32_t key)
 {
     const uint8_t *b = gba_backdrops;
-    uint32_t want = (uint32_t)id << 24 | (key & 0xFFFFFFu), n;
+    const BkEnt *t = (const BkEnt *)(const void *)(b + 12);
+    uint32_t want = (uint32_t)id << 24 | (key & 0xFFFFFFu);
     int lo = 0, hi;
-    if (b[0] != 'B' || b[1] != 'K' || b[2] != 'D' || b[3] != '1') return NULL;
+    if (b[0] != 'B' || b[1] != 'K' || b[2] != 'D' || b[3] != '2') return NULL;
     if ((b[4] | b[5] << 8) != SCREEN_W || (b[6] | b[7] << 8) != SCREEN_H) return NULL;
-    n = rd32(b + 8);
-    hi = (int)n - 1;
+    hi = (int)*(const uint32_t *)(const void *)(b + 8) - 1;
     while (lo <= hi) {
         int mid = (lo + hi) / 2;
-        uint32_t k = rd32(b + 12 + 8 * mid);
-        if (k == want) return b + rd32(b + 16 + 8 * mid);
+        uint32_t k = t[mid].idkey;
+        if (k == want) return &t[mid];
         if (k < want) lo = mid + 1;
         else hi = mid - 1;
     }
@@ -66,8 +66,8 @@ int plat_stage_begin(int id, uint32_t key, void (*draw)(uint32_t key), PlatStage
     if (gba_nodraw == GBA_NODRAW_FIRST) gba_nodraw = 0;  /* (G5) the first call: Mode 4 */
     if (gba_nodraw != 0 && gba_nodraw != GBA_NODRAW_PANEL) return 0;   /* a tile frame */
     if (hold_building() || hold_page() >= 0) return 0;   /* held / built frames: not ours */
-    cur_img = find(id, key);
-    if (!cur_img) return 0;
+    cur = find(id, key);
+    if (!cur || cur->w != SCREEN_W) { cur = NULL; return 0; }   /* (a stamp is not a backdrop) */
     back = gba_back == (uint16_t *)VRAM_PAGE1;
     info->held = page_serial[back];
     info->serial = serial + 1;
@@ -108,13 +108,42 @@ STAGE_ARM void stage_rows(volatile uint16_t *page, const uint8_t *img, int x0, i
     }
 }
 
+/* (S2-4b) n boxes (x, y, w, h), each moved by (dx, dy) and clipped to the screen's columns and the
+ * picture's rows [ylo, yhi): the many small restores of a frame without a ROM (THUMB) call each */
+STAGE_ARM void stage_list(volatile uint16_t *page, const uint8_t *img, const int16_t *b, int n, int dx, int dy, int ylo, int yhi)
+{
+    for (; n > 0; n--, b += 4) {
+        int x0 = b[0] + dx, y0 = b[1] + dy, x1 = x0 + b[2], y1 = y0 + b[3];
+        if (x0 < 0) x0 = 0;
+        if (x1 > SCREEN_W) x1 = SCREEN_W;
+        if (y0 < ylo) y0 = ylo;
+        if (y1 > yhi) y1 = yhi;
+        if (x0 < x1 && y0 < y1) stage_rows(page, img, x0, x1, y0, y1);
+    }
+}
+
+void plat_stage_restore_list(const int16_t *xywh, int n, int dx, int dy)
+{
+    int ylo, yhi;
+    if (!frame_stage || !cur || gba_nodraw == 1 || n <= 0) return;
+    ylo = cur->by < 0 ? 0 : cur->by;
+    yhi = cur->by + cur->h > SCREEN_H ? SCREEN_H : cur->by + cur->h;
+    iwram_ovl_use(OVL_ROOM);
+    stage_list(gba_back, gba_backdrops + cur->off - cur->by * SCREEN_W, xywh, n, dx, dy, ylo, yhi);
+}
+
 /* rows [y0, y1) of the picture, columns [x0, x1), into the back page. Full rows go 16 at a time
  * in one 32-bit DMA, so the VBlank IRQ (the mixer) waits at most ~0.4 ms. */
 void plat_stage_restore(int x, int y, int w, int h)
 {
     int x0 = x < 0 ? 0 : x, y0 = y < 0 ? 0 : y;
     int x1 = x + w > SCREEN_W ? SCREEN_W : x + w, y1 = y + h > SCREEN_H ? SCREEN_H : y + h, yy;
-    if (!frame_stage || !cur_img || gba_nodraw == 1 || x0 >= x1 || y0 >= y1) return;
+    const uint8_t *cur_img;
+    if (!frame_stage || !cur || gba_nodraw == 1) return;
+    if (y0 < cur->by) y0 = cur->by;                      /* (S2-4b) a band holds only its rows */
+    if (y1 > cur->by + cur->h) y1 = cur->by + cur->h;
+    if (x0 >= x1 || y0 >= y1) return;
+    cur_img = gba_backdrops + cur->off - cur->by * SCREEN_W;     /* row yy of the screen at yy * SCREEN_W */
     if (x0 == 0 && x1 == SCREEN_W) {
         for (yy = y0; yy < y1; yy += 16) {
             int n = y1 - yy < 16 ? y1 - yy : 16;
@@ -124,6 +153,21 @@ void plat_stage_restore(int x, int y, int w, int h)
     }
     iwram_ovl_use(OVL_ROOM);
     stage_rows(gba_back, cur_img, x0, x1, y0, y1);
+}
+
+/* (S2-4b) the stamp of (id, key) with its anchor at (x, y): an image in the ROM (index 0 a hole) */
+int plat_stage_stamp(int id, uint32_t key, int x, int y)
+{
+    const BkEnt *e = find(id, key);
+    DoomoImage im;
+    if (!e) return 0;
+    if (!e->w || gba_nodraw == 1) return 1;
+    im.w = e->w;
+    im.h = e->h;
+    im.pix = gba_backdrops + e->off;
+    im.uid = 0x80000000u | e->off;
+    plat_image(x + e->bx, y + e->by, &im, 1, 0, 0);
+    return 1;
 }
 
 void plat_stage_end(void)

@@ -18,12 +18,23 @@
 #include "types.h"
 
 enum { DOOMO_BACKDROP_EXO_CHURCH = 1,
-       DOOMO_BACKDROP_MG = 2 };            /* (S2-4) the Fun Fair booths' still playfields (mg.c) */
+       DOOMO_BACKDROP_MG = 2,              /* (S2-4) the Fun Fair booths' still playfields (mg.c) */
+       DOOMO_BACKDROP_MG_STAMP = 3 };      /* (S2-4b) the Fun Fair's stamps: small pictures of its actors */
+
+/* (S2-4b) what a key's picture holds (DoomoBackdrop.part; NULL: every key is BACKDROP_WHOLE):
+ *   BACKDROP_WHOLE  the whole screen
+ *   BACKDROP_ROWS   only the screen rows [out[0], out[1]) (a band: the baker keeps those rows, and
+ *                   plat_stage_restore copies only inside them)
+ *   BACKDROP_STAMP  a small picture with holes: draw(key) paints an actor around the anchor
+ *                   (out[0], out[1]) on a screen cleared to index 0 (which no drawing call writes); the
+ *                   baker keeps the box of what was painted, and plat_stage_stamp() puts it anywhere */
+enum { BACKDROP_WHOLE, BACKDROP_ROWS, BACKDROP_STAMP };
 
 typedef struct DoomoBackdrop {
     int id;                                    /* DOOMO_BACKDROP_*                     */
     void (*draw)(uint32_t key);                /* paints every pixel of the screen      */
     int (*keys)(uint32_t *out, int cap);       /* every key; returns the count          */
+    int (*part)(uint32_t key, int16_t out[2]); /* (S2-4b) BACKDROP_*; NULL: whole       */
 } DoomoBackdrop;
 
 /* The families, 0..count-1 (the baker walks them). */

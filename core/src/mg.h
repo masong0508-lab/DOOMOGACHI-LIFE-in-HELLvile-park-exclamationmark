@@ -39,6 +39,7 @@ enum { MG_MEDAL_NONE, MG_MEDAL_BRONZE, MG_MEDAL_SILVER, MG_MEDAL_GOLD };
 #define MG_ARG_AUTOSTART 0x10
 #define MG_ARG_AUTOPLAY  0x20
 #define MG_ARG_DEMO      0x40   /* debug: an empty island gets the premade cast */
+#define MG_ARG_PLAIN     0x80   /* (S2-4b) tests: every frame drawn in full (no kept playfield, no stamps) */
 
 /* Unlock ids (bit indices; the minigames own 832..863, the unused part of
  * art's range - the concert hall took 864..895). */
@@ -98,9 +99,14 @@ typedef struct MgGame {
     void (*draw)(void);         /* the playfield, offset by mg.ox/oy     */
     void (*art)(int cx, int cy, int t);   /* title card mascot          */
     uint32_t (*bot)(void);      /* autoplay: buttons held this tick      */
-    /* (S2-4) the playfield's still parts as a kept backdrop (mg.h "kept playfield"); NULL: none */
-    uint32_t (*kept_key)(void);   /* this frame's backdrop key bits 0..14 (game id, tier added) */
-    int (*kept_keys)(uint32_t *out, int cap);    /* every key kept_key can return          */
+    /* (S2-4) the playfield's still parts as kept pictures (mg.h "kept playfield"); NULL: none */
+    uint32_t (*kept_key)(void);   /* this frame's first kept picture: key bits 0..14 (game id, tier added) */
+    int (*kept_keys)(uint32_t *out, int cap, int hell);   /* every key the game asks for on a Hellfire (1) or another (0) tier */
+    /* (S2-4b) a key whose picture is a band of screen rows: 1 and rows[0..1]; 0 (or NULL): a whole screen */
+    int (*kept_part)(uint32_t key, int16_t rows[2]);
+    /* (S2-4b) the game's stamps (mg.h "stamps"): the actor of a key drawn around (cx, cy); every key */
+    void (*stamp)(uint32_t key, int cx, int cy);
+    int (*stamp_keys)(uint32_t *out, int cap);
 } MgGame;
 
 enum { MGP_TITLE, MGP_READY, MGP_PLAY, MGP_PAUSE, MGP_END, MGP_RESULTS };
@@ -121,6 +127,7 @@ typedef struct MgState {
     const char *end_text;
     uint32_t bot_now, bot_prev;
     uint8_t  stat_a, stat_b;    /* per-game flags for trophies            */
+    uint8_t  plain;             /* MG_ARG_PLAIN                           */
 } MgState;
 extern MgState mg;
 
@@ -131,6 +138,8 @@ extern MgState mg;
  * minigames only open modals over themselves). */
 #define MG_ARENA_BYTES 2048
 #define MG_FX_BYTES 512
+#define MG_UNDO_BYTES 24           /* (S2-4b) mg.c's undo state: the end of the arena */
+#define MG_UNDO_AT (MG_ARENA_BYTES - MG_UNDO_BYTES)
 #define MG_SCRATCH_TAG SAVE_EXT_TAG('M', 'G', 'A', 'M')
 void mg_scratch_claim(void);
 /* The arena as an opaque pointer (keeps the type punning out of sight of
@@ -138,7 +147,7 @@ void mg_scratch_claim(void);
 void *mg_state(void) __attribute__((const));
 #define MG_ARENA(type) ((type *)mg_state())
 #define MG_ARENA_FITS(type) \
-    DOOMO_STATIC_ASSERT(sizeof(type) <= MG_ARENA_BYTES, type##_fits_arena)
+    DOOMO_STATIC_ASSERT(sizeof(type) <= MG_ARENA_BYTES - MG_UNDO_BYTES, type##_fits_arena)
 
 /* ---- scene plumbing --------------------------------------------------- */
 void mg_scene_enter(const MgGame *g, int arg);
@@ -257,11 +266,15 @@ const char *mg_host_name(int id);
  *   MGK_LIVE  the live parts only, over the kept picture
  * A still part drawn AFTER a live one in the usual order (a hole's front over the critter rising from
  * it) is put back from the kept picture with plat_stage_restore, in the same spans, when mg_kept(). */
-enum { MGK_OFF, MGK_BAKE, MGK_LIVE };
+enum { MGK_OFF, MGK_BAKE, MGK_LIVE, MGK_UNDO, MGK_REC };
 #define MG_BK_HELL   0x8000u        /* key bit: the Hellfire tier (mg.hell); bits 0..14 are the game's */
 #if !defined(DOOMO_PLATFORM_PS1)
 extern uint8_t mg_kept_mode;
+#if defined(DOOMO_PLATFORM_GBA)     /* (the GBA never bakes: its ROM holds the pictures; no RAM) */
+#define mg_bake_key 0u
+#else
 extern uint32_t mg_bake_key;        /* MGK_BAKE: the key being baked (bits 0..14) */
+#endif
 #else                               /* (the PS1 draws every frame whole: no code, no RAM) */
 #define mg_kept_mode ((uint8_t)MGK_OFF)
 #define mg_bake_key 0u
@@ -269,6 +282,56 @@ extern uint32_t mg_bake_key;        /* MGK_BAKE: the key being baked (bits 0..14
 static inline int mg_still(void) { return mg_kept_mode != MGK_LIVE; }  /* draw the still parts  */
 static inline int mg_live(void) { return mg_kept_mode != MGK_BAKE; }   /* draw the live parts   */
 static inline int mg_kept(void) { return mg_kept_mode == MGK_LIVE; }   /* over the kept picture */
+/* ---- (S2-4b) bands, undo, stamps, the shake (docs/GBA.md "Speed wave 2: S2-4b") ----------------
+ * BANDS. A kept picture may hold only a band of screen rows (kept_part): the tent with its sway is one
+ * band, the field under it another, so the ROM holds 15 small tents and one field instead of 15 whole
+ * screens. kept_key() names the frame's first picture (the flow copies it in); the game's draw copies
+ * the others with mg_kept_band() while mg_kept().
+ * UNDO. A still part that the usual order draws AFTER a live one hides it. Over the kept picture the
+ * game draws the live part, then runs the still part's own drawing code between mg_undo() and
+ * mg_undo_end(): every mg_rect and every UI shape (circles, round rects: ui_raster.c's tap) then puts
+ * its rows back from the kept picture instead of painting, clipped to the box given (the live part's),
+ * so the still part comes back in exactly the spans it was drawn with. mg_kept_src() picks the picture
+ * the rows come from (the frame's last band by default). Where the live part's box and the still part
+ * never move (a flower on a hole), the game lists those restores once (mg_undo_rec .. mg_undo_rec_end
+ * around the undo sections: they fill a list instead of copying) and repeats the list every frame
+ * with mg_kept_puts().
+ * STAMPS. An actor that is a pure function of a small key (an imp at one wing beat, a ring of one
+ * size and colour, the cloud couch at one tick of its sway) is a stamp: the GBA build bakes
+ * stamp(key, cx, cy) of every key in stamp_keys into the ROM as a small picture with holes, and
+ * mg_stamp() draws it as one image. It returns 0 where no stamps are kept (PS1, Dreamcast, native,
+ * while baking): the caller then draws the actor with the same code the baker ran.
+ * SHAKE (GBA only, pixel-changing): a shaken frame is the kept frame drawn unshaken and moved as a
+ * whole by the display (plat_post_offset: the HUD moves with it, the edge shows the border colour)
+ * instead of a full frame with every part offset. */
+#if !defined(DOOMO_PLATFORM_PS1)
+int  mg_kept_band(uint32_t key);             /* copy the band of `key` in (and make it the source); 0: not kept */
+void mg_kept_src(uint32_t key);              /* make the picture of `key` the source of the restores */
+void mg_kept_put(int x, int y, int w, int h);/* put that box back from the source picture */
+void mg_undo(int x0, int y0, int x1, int y1);/* box [x0, x1) x [y0, y1) */
+void mg_undo_end(void);
+typedef struct MgBox { int16_t x, y, w, h; } MgBox;
+void mg_undo_rec(MgBox *list, int cap);      /* the undo sections that follow list their restores */
+int  mg_undo_rec_end(void);                  /* how many; -1: the list was too short */
+void mg_kept_puts(const MgBox *list, int n, int dx, int dy);   /* put those boxes, moved by (dx, dy), back */
+void mg_rect(int x, int y, int w, int h, uint8_t c);   /* plat_rect, or a restore between mg_undo and mg_undo_end */
+int  mg_stamp(uint32_t key, int x, int y);   /* key: bits 0..14 the game's, MG_BK_HELL if the picture depends on it */
+/* the stamps every game shares (mg_draw.c: imps, Father Fuzz); mg_imp / mg_fuzz use them themselves */
+#define MG_COMMON_ID 15
+int  mg_stamp_common(uint32_t key, int x, int y);
+void mg_common_stamp(uint32_t key, int cx, int cy);
+int  mg_common_stamp_keys(uint32_t *out, int cap);
+#else
+#define mg_kept_band(key) 0
+#define mg_kept_src(key) ((void)0)
+#define mg_kept_put(x, y, w, h) ((void)0)
+#define mg_undo(x0, y0, x1, y1) ((void)0)
+#define mg_undo_end() ((void)0)
+#define mg_kept_puts(list, n, dx, dy) ((void)0)
+#define mg_rect plat_rect
+#define mg_stamp(key, x, y) 0
+#define mg_stamp_common(key, x, y) 0
+#endif
 /* HUD pieces */
 void mg_hud(void);
 void mg_draw_hearts(int x, int y, int n, int max);

@@ -491,7 +491,7 @@ void exo_church(int dread, uint32_t t, int floor_y)
     for (p = 0; p < EXO_PARTS; p++) exo_church_part_draw(p, dread, t);
 }
 
-const DoomoBackdrop exo_church_family = { DOOMO_BACKDROP_EXO_CHURCH, exo_church_backdrop, exo_church_keys };
+const DoomoBackdrop exo_church_family = { DOOMO_BACKDROP_EXO_CHURCH, exo_church_backdrop, exo_church_keys, 0 };
 
 /* ---------------------------------------------------------------------- */
 /* Father Fuzz                                                              */

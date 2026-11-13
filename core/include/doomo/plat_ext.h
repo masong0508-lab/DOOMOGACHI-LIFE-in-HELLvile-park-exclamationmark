@@ -226,7 +226,18 @@ void plat_loading(void);
  *       frame is presented the platform records the box of every 2D call (the next frame
  *       drawn into this buffer gets it as info.dirt).
  * Serials count the frames a platform presents; a skipped tick has none. Weak defaults
- * (core/src/backdrop.c): begin returns 0, restore and end do nothing. */
+ * (core/src/backdrop.c): begin returns 0, restore and end do nothing.
+ * (S2-4b) A key's picture may be a band of screen rows (backdrop.h BACKDROP_ROWS): then
+ * plat_stage_restore copies only inside those rows. A frame may call plat_stage_begin more than
+ * once: each call makes its key the source of the restores that follow (a frame built from
+ * several bands; a box put back from another picture).
+ *   plat_stage_stamp(id, key, x, y)  draw the stamp (backdrop.h BACKDROP_STAMP) of a key with its
+ *       anchor at (x, y), like plat_image (index 0 is a hole). Returns 1 when the platform holds
+ *       it (the GBA ROM; native when nat_stage_on), 0 when not: the caller draws the actor. Not
+ *       on the PS1 (no weak default there: the callers are compiled out).
+ *   plat_stage_restore_list(xywh, n, dx, dy)  plat_stage_restore of n boxes (x, y, w, h: four
+ *       int16 each), every one moved by (dx, dy): one call for the many small boxes a frame puts
+ *       back (the GBA walks the list in IWRAM). Not on the PS1 either. */
 typedef struct PlatStageInfo {
     uint32_t held, serial;
     int16_t  dx0, dy0, dx1, dy1;
@@ -234,6 +245,8 @@ typedef struct PlatStageInfo {
 int  plat_stage_begin(int id, uint32_t key, void (*draw)(uint32_t key), PlatStageInfo *info);
 void plat_stage_restore(int x, int y, int w, int h);
 void plat_stage_end(void);
+int  plat_stage_stamp(int id, uint32_t key, int x, int y);
+void plat_stage_restore_list(const int16_t *xywh, int n, int dx, int dy);
 
 /* ---- content packs (E0 pack.h, E2, E7-E10) -----------------------------------
  * blob: a pack that is directly addressable (the GBA mature ROM variant's

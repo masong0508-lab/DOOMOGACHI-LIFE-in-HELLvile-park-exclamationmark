@@ -129,9 +129,9 @@ void mg_bulbs(int x, int y, int w, int h, int t)
         else if (d < w + h) { bx = x + w - 1; by = y + d - w; }
         else if (d < 2 * w + h) { bx = x + w - 1 - (d - w - h); by = y + h - 1; }
         else { bx = x; by = y + h - 1 - (d - 2 * w - h); }
-        plat_rect(bx - 1, by, 3, 1, lit ? PAL_UI_GOLD : PAL_RAMP(RAMP_CANDY, 2));
-        plat_rect(bx, by - 1, 1, 3, lit ? PAL_UI_GOLD : PAL_RAMP(RAMP_CANDY, 2));
-        if (lit) plat_rect(bx, by, 1, 1, PAL_WHITE);
+        mg_rect(bx - 1, by, 3, 1, lit ? PAL_UI_GOLD : PAL_RAMP(RAMP_CANDY, 2));    /* (mg_rect: mg.h "undo") */
+        mg_rect(bx, by - 1, 1, 3, lit ? PAL_UI_GOLD : PAL_RAMP(RAMP_CANDY, 2));
+        if (lit) mg_rect(bx, by, 1, 1, PAL_WHITE);
     }
 }
 
@@ -369,16 +369,14 @@ static void eye(int x, int y, int r, int look, int blink, uint8_t iris)
     plat_rect(x + look - 1, y - 1, 1, 1, PAL_WHITE);
 }
 
-void mg_imp(int cx, int cy, int rx, int ry, int t, int mood)
+/* the imp at one wing beat (flap -2..2), eye position (look -1..1) or blink; t only turns a bonked
+ * imp's stars. Everything but the golden imp's sparkle, which mg_imp adds. */
+static void imp_body(int cx, int cy, int rx, int ry, int mood, int gold, int flap, int look, int blink, int t)
 {
-    int gold = (mood & IMP_GOLD) != 0;
     uint8_t base = gold ? PAL_PAINT(PAINT_HONEY, 1) : PAL_PAINT(PAINT_CHERRY, 1);
     uint8_t dark = gold ? PAL_PAINT(PAINT_RUST, 1) : PAL_PAINT(PAINT_BLOOD, 1);
     uint8_t lite = gold ? PAL_PAINT(PAINT_LEMON, 2) : PAL_PAINT(PAINT_CHERRY, 2);
-    int flap = ui_wave(t * 2, 16, 2), k, er = rx > 9 ? 3 : 2;
-    int blink;
-    mood &= 7;
-    blink = mood != IMP_BONK && (t % 70) < 3;
+    int k, er = rx > 9 ? 3 : 2;
     /* bat wings */
     for (k = 0; k < 4; k++) {
         int wy = cy - ry / 2 + k * 2 - flap * (3 - k) / 3, wl = rx / 2 + 3 - k;
@@ -411,7 +409,6 @@ void mg_imp(int cx, int cy, int rx, int ry, int t, int mood)
             ui_sparkle(cx + FIX2INT(fx_cos(a) * (rx + 2)), cy - ry - 2 + FIX2INT(fx_sin(a) * 3), 6, PAL_UI_GOLD);
         }
     } else {
-        int look = ui_wave(t, 90, 1);
         uint8_t iris = gold ? PAL_PAINT(PAINT_RUST, 0) : PAL_RAMP(RAMP_STONE, 0);
         eye(cx - rx / 3, cy - ry / 5, er, look, blink, iris);
         eye(cx + rx / 3, cy - ry / 5, er, look, blink, iris);
@@ -429,6 +426,99 @@ void mg_imp(int cx, int cy, int rx, int ry, int t, int mood)
         plat_rect(cx - rx / 2 - 1, cy + 1, 2, 1, PAL_PAINT(PAINT_ROSE, 2));
         plat_rect(cx + rx / 2, cy + 1, 2, 1, PAL_PAINT(PAINT_ROSE, 2));
     }
+}
+
+/* the HUD's still pieces (hud_part): a heart (value: held), the score pill with its label (value: its
+ * width), the time bar's frame (value: the bar's width) */
+enum { HUDP_HEART = 0 << 8, HUDP_PILL = 1 << 8, HUDP_TIME = 2 << 8, HUDP_PART = 3 << 8 };
+static void hud_part(int part, int v, int x, int y);
+
+#if !defined(DOOMO_PLATFORM_PS1)
+/* ---- (S2-4b) the stamps every game shares (mg.h "stamps"; key bits 12..13: the kind) ----------
+ * imp:  size 0..7 | mood << 3 (2 bits) | gold << 5 | (flap + 2) << 6 | eyes << 9 (look + 1, 3: blink)
+ * fuzz: size 0..3 | ouch << 3 | blink << 4       (without his sparkle)
+ * Sizes are the ones the 240x160 games draw; another size is drawn, not stamped. */
+enum { MCS_IMP = 0 << 12, MCS_FUZZ = 1 << 12, MCS_HUD = 2 << 12, MCS_KIND = 3 << 12 };
+/* hud:  HUDP_* | value (| MG_BK_HELL for the pill): hud_part's pieces */
+
+static const struct { uint8_t rx, ry, moods, golds; } imp_sizes[] = {   /* moods / golds: bit masks of what is baked */
+    { 10, 10, 1 << IMP_GRIN | 1 << IMP_SNEAKY, 3 },      /* Whack's critters                 */
+    { 7, 6, 1 << IMP_GRIN | 1 << IMP_SNEAKY, 3 },        /* Whack's sign, the Gallery's cards */
+};
+#define IMP_SIZES ((int)(sizeof(imp_sizes) / sizeof(imp_sizes[0])))
+static const uint8_t fuzz_sizes[] = { 8 };               /* Whack's Father Fuzz */
+#define FUZZ_SIZES ((int)sizeof(fuzz_sizes))
+static void fuzz_body(int cx, int cy, int r, int ouch, int blink);
+
+static int imp_key(int rx, int ry, int mood, int gold, int flap, int eyes)
+{
+    int i;
+    for (i = 0; i < IMP_SIZES; i++)
+        if (imp_sizes[i].rx == rx && imp_sizes[i].ry == ry) break;
+    if (i == IMP_SIZES || mood > 3 || !(imp_sizes[i].moods >> mood & 1) || !(imp_sizes[i].golds >> gold & 1)) return -1;
+    return MCS_IMP | i | mood << 3 | gold << 5 | (flap + 2) << 6 | eyes << 9;
+}
+
+void mg_common_stamp(uint32_t key, int cx, int cy)
+{
+    int i = (int)(key & 7);
+    if ((key & MCS_KIND) == MCS_IMP && i < IMP_SIZES) {
+        int eyes = (int)(key >> 9 & 3);
+        imp_body(cx, cy, imp_sizes[i].rx, imp_sizes[i].ry, (int)(key >> 3 & 3), (int)(key >> 5 & 1),
+                 (int)(key >> 6 & 7) - 2, eyes == 3 ? 0 : eyes - 1, eyes == 3, 0);
+    } else if ((key & MCS_KIND) == MCS_FUZZ && i < FUZZ_SIZES) {
+        fuzz_body(cx, cy, fuzz_sizes[i], (int)(key >> 3 & 1), (int)(key >> 4 & 1));
+    } else if ((key & MCS_KIND) == MCS_HUD) {
+        hud_part((int)(key & HUDP_PART), (int)(key & 255), cx, cy);
+    }
+}
+
+int mg_common_stamp_keys(uint32_t *out, int cap)
+{
+    int i, m, g, f, e, n = 0;
+    for (i = 0; i < IMP_SIZES; i++)
+        for (m = 0; m < 4; m++)
+            for (g = 0; g < 2; g++)
+                for (f = -2; f <= 2; f++)
+                    for (e = 0; e < 4; e++) {
+                        int k = imp_key(imp_sizes[i].rx, imp_sizes[i].ry, m, g, f, e);
+                        if (k < 0) continue;
+                        if (n < cap) out[n] = (uint32_t)k;
+                        n++;
+                    }
+    for (i = 0; i < FUZZ_SIZES; i++)
+        for (m = 0; m < 3; m++) {                   /* looking, blinking, ouch */
+            if (n < cap) out[n] = (uint32_t)(MCS_FUZZ | i | (m == 2) << 3 | (m == 1) << 4);
+            n++;
+        }
+    for (m = 0; m < 2; m++) {                       /* a heart, lost or held */
+        if (n < cap) out[n] = (uint32_t)(MCS_HUD | HUDP_HEART | m);
+        n++;
+    }
+    for (i = 1; i <= 7; i++)                        /* the score pill, 1 to 7 digits, both looks */
+        for (m = 0; m < 2; m++) {
+            if (n < cap) out[n] = (uint32_t)(MCS_HUD | HUDP_PILL | (ui_text_width("0000000" + 7 - i) + 44)) | (m ? MG_BK_HELL : 0u);
+            n++;
+        }
+    if (n < cap) out[n] = (uint32_t)(MCS_HUD | HUDP_TIME | (mg_big() ? 70 : 50));
+    return n + 1;
+}
+#endif
+
+void mg_imp(int cx, int cy, int rx, int ry, int t, int mood)
+{
+    int gold = (mood & IMP_GOLD) != 0, flap = ui_wave(t * 2, 16, 2), blink, look = ui_wave(t, 90, 1);
+    mood &= 7;
+    blink = mood != IMP_BONK && (t % 70) < 3;
+#if !defined(DOOMO_PLATFORM_PS1)
+    {
+        int key = mood != IMP_BONK ? imp_key(rx, ry, mood, gold, flap, blink ? 3 : look + 1) : -1;
+        if (key < 0 || !mg_stamp_common((uint32_t)key, cx, cy))
+            imp_body(cx, cy, rx, ry, mood, gold, flap, look, blink, t);
+    }
+#else
+    imp_body(cx, cy, rx, ry, mood, gold, flap, look, blink, t);
+#endif
     if (gold) ui_sparkle(cx + rx, cy - ry, (t / 2) & 15, PAL_WHITE);
 }
 
@@ -469,7 +559,8 @@ void mg_wraith(int cx, int cy, int r, int t, int hurt)
     if ((t / 8) & 1) ui_fill_circle(cx + r / 2 + 11, cy + r / 3 - 3 - (t & 7) / 2, 2, PAL_RAMP(RAMP_VAPE, 6));
 }
 
-void mg_fuzz(int cx, int cy, int r, int t, int ouch)
+/* Father Fuzz looking, blinking or bonked; mg_fuzz adds his sparkle */
+static void fuzz_body(int cx, int cy, int r, int ouch, int blink)
 {
     uint8_t fur = PAL_PAINT(PAINT_CARAMEL, 1), fur_d = PAL_PAINT(PAINT_CHOCOLATE, 1);
     uint8_t fur_l = PAL_PAINT(PAINT_CARAMEL, 2);
@@ -502,7 +593,6 @@ void mg_fuzz(int cx, int cy, int r, int t, int ouch)
         plat_line(cx + r / 2 + 2, cy, cx + r / 2 - 1, cy - 2, OUTLINE_DARK);
         plat_rect(cx - 2, cy + r / 2, 5, 2, PAL_PAINT(PAINT_BLOOD, 1));
     } else {
-        int blink = (t % 80) < 3;
         eye(cx - r / 2, cy - 2, 2, 0, blink, PAL_RAMP(RAMP_STONE, 0));
         eye(cx + r / 2, cy - 2, 2, 0, blink, PAL_RAMP(RAMP_STONE, 0));
         plat_rect(cx - 2, cy + r / 2, 1, 1, OUTLINE_DARK);
@@ -511,6 +601,17 @@ void mg_fuzz(int cx, int cy, int r, int t, int ouch)
         plat_rect(cx - r / 2 - 2, cy + 2, 3, 1, PAL_PAINT(PAINT_ROSE, 2));
         plat_rect(cx + r / 2, cy + 2, 3, 1, PAL_PAINT(PAINT_ROSE, 2));
     }
+}
+
+void mg_fuzz(int cx, int cy, int r, int t, int ouch)
+{
+    int blink = !ouch && (t % 80) < 3;
+#if !defined(DOOMO_PLATFORM_PS1)
+    int i;
+    for (i = 0; i < FUZZ_SIZES && fuzz_sizes[i] != r; i++) {}
+    if (i == FUZZ_SIZES || !mg_stamp_common((uint32_t)(MCS_FUZZ | i | (ouch != 0) << 3 | blink << 4), cx, cy))
+#endif
+    fuzz_body(cx, cy, r, ouch, blink);
     ui_sparkle(cx + r + 2, cy - r, (t / 3) & 15, PAL_UI_GOLD);
 }
 
@@ -584,11 +685,33 @@ void mg_host_frame(int x, int y, int id, int expr, int t)
 }
 
 /* ---- HUD -------------------------------------------------------------------------- */
+/* the HUD's still pieces at (x, y) (a stamp where stamps are kept: mg.h) */
+static void hud_part(int part, int v, int x, int y)
+{
+    if (part == HUDP_HEART) {
+        ui_heart(x, y, 4, v ? PAL_PAINT(PAINT_ROSE, 1) : PAL_GRAY);
+    } else if (part == HUDP_PILL) {                /* (x, y) = (2, 2) on the screen; v: its width */
+        ui_round_rect(x + 1, y + 1, v, 15, 7, PAL_RAMP(RAMP_STONE, 0));
+        ui_round_rect(x, y, v, 14, 7, mg.hell ? PAL_RAMP(RAMP_BLOOD, 1) : PAL_RAMP(RAMP_PASTEL_PINK, 2));
+        ui_round_rect(x + 1, y + 1, v - 2, 12, 6, mg.hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_RAMP(RAMP_PASTEL_PINK, 5));
+        ui_text(x + 5, y + 3, "SCORE", PAL_WHITE);
+    } else {                                       /* the time bar's frame; v: the bar's width */
+        ui_round_rect(x - 1, y, v + 2, 8, 4, PAL_RAMP(RAMP_STONE, 0));
+    }
+}
+static void hud_draw(int part, int v, int x, int y)
+{
+#if !defined(DOOMO_PLATFORM_PS1)
+    if (v >= 0 && v < 256 && mg_stamp_common((uint32_t)(MCS_HUD | part | v) | (part == HUDP_PILL && mg.hell ? MG_BK_HELL : 0u), x, y))
+        return;
+#endif
+    hud_part(part, v, x, y);
+}
+
 void mg_draw_hearts(int x, int y, int n, int max)
 {
     int i;
-    for (i = 0; i < max; i++)
-        ui_heart(x + i * 11, y, 4, i < n ? PAL_PAINT(PAINT_ROSE, 1) : PAL_GRAY);
+    for (i = 0; i < max; i++) hud_draw(HUDP_HEART, i < n, x + i * 11, y);
 }
 
 void mg_medal_icon(int cx, int cy, int medal, int t)
@@ -617,10 +740,7 @@ void mg_hud(void)
     /* score pill */
     doomo_snprintf(buf, sizeof(buf), "%d", (int)mg.score);
     x = ui_text_width(buf) + 44;
-    ui_round_rect(3, 3, x, 15, 7, PAL_RAMP(RAMP_STONE, 0));
-    ui_round_rect(2, 2, x, 14, 7, mg.hell ? PAL_RAMP(RAMP_BLOOD, 1) : PAL_RAMP(RAMP_PASTEL_PINK, 2));
-    ui_round_rect(3, 3, x - 2, 12, 6, mg.hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_RAMP(RAMP_PASTEL_PINK, 5));
-    ui_text(7, 5, "SCORE", PAL_WHITE);
+    hud_draw(HUDP_PILL, x, 2, 2);
     mg_text(40, 5 - bump, buf, bump ? PAL_UI_GOLD : PAL_WHITE);
     /* combo */
     if (mg.combo >= 2) {
@@ -637,7 +757,7 @@ void mg_hud(void)
         uint8_t c = secs <= 5 ? ((mg.play_t / 4) & 1 ? PAL_UI_RED : PAL_PAINT(PAINT_CHERRY, 2)) : PAL_PAINT(PAINT_MINT, 1);
         doomo_snprintf(buf, sizeof(buf), "%d", secs);
         x -= bw + 2;
-        ui_round_rect(x - 1, 4, bw + 2, 8, 4, PAL_RAMP(RAMP_STONE, 0));
+        hud_draw(HUDP_TIME, bw, x, 4);
         ui_bar(x, 5, bw, 6, mg.time_left, g->time, c);
         mg_text(x - ui_text_width(buf) - 4, 4, buf, PAL_WHITE);
         x -= ui_text_width(buf) + 8;

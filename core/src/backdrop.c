@@ -28,7 +28,8 @@ extern const DoomoBackdrop exo_church_family;            /* exorcism_gfx.c */
 
 #if !defined(DOOMO_PLATFORM_PS1)
 extern const DoomoBackdrop mg_backdrop_family;           /* (S2-4) mg.c: the fair booths */
-int backdrop_family_count(void) { return 2; }
+extern const DoomoBackdrop mg_stamp_family;              /* (S2-4b) mg.c: the fair's stamps */
+int backdrop_family_count(void) { return 3; }
 #else
 int backdrop_family_count(void) { return 1; }            /* (the PS1 never bakes) */
 #endif
@@ -37,6 +38,7 @@ const DoomoBackdrop *backdrop_family(int i)
 {
 #if !defined(DOOMO_PLATFORM_PS1)
     if (i == 1) return &mg_backdrop_family;
+    if (i == 2) return &mg_stamp_family;
 #endif
     return i == 0 ? &exo_church_family : NULL;
 }
@@ -49,6 +51,13 @@ WEAK int plat_stage_begin(int id, uint32_t key, void (*draw)(uint32_t key), Plat
 }
 WEAK void plat_stage_restore(int x, int y, int w, int h) { (void)x; (void)y; (void)w; (void)h; }
 WEAK void plat_stage_end(void) {}
+#if !defined(DOOMO_PLATFORM_PS1)
+WEAK int plat_stage_stamp(int id, uint32_t key, int x, int y) { (void)id; (void)key; (void)x; (void)y; return 0; }
+WEAK void plat_stage_restore_list(const int16_t *xywh, int n, int dx, int dy)
+{
+    for (; n > 0; n--, xywh += 4) plat_stage_restore(xywh[0] + dx, xywh[1] + dy, xywh[2], xywh[3]);
+}
+#endif
 
 /* ---- the stage ------------------------------------------------------------------------ */
 typedef struct { int16_t x0, y0, x1, y1; uint32_t key; } SLayer;     /* box: [x0, x1) x [y0, y1) */
