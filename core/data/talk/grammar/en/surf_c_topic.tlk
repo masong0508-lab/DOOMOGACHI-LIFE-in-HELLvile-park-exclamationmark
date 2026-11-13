@@ -1,0 +1,80 @@
+# core/data/talk/grammar/en/surf_c_topic.tlk - topic-slot lines for the high-volume plain acts
+# (owner: TK; T5b package T5B-SURF3, Surface push C). Every line names the topic ({x}, {x:cap},
+# {x.adj} ...), because a line without a topic slot adds about 2 distinct Surface lines per 300k
+# contexts and a line naming the topic about 13 (SURF2 finding). Clean in any room: no register word,
+# no romance, no cool or tease act, nothing aimed at the player. A grief topic never reaches these
+# (the grief bank takes it). Rule names start with sc_. Syntax: core/tools/talkc_gen.py.
+
+# ---- opinions about a topic, positive ------------------------------------------------------------------
+@rule core.opine_pos.sc_love guard: topic act: agree
+  "Oh, I adore {x}. It's the best thing about this whole town, honestly."
+  "{x:cap} is wonderful. I could talk about it all afternoon and not get bored."
+  "Yes, {x}! Now there's a subject that never lets me down."
+  "I'm a big fan of {x}. Always have been. Don't tell the others."
+  "{x:cap}? Lovely. It makes the rest of the week bearable."
+  "You've got good taste. {x:cap} is one of my favourite things to think about."
+@rule core.opine_pos.sc_nice guard: topic act: agree
+  "{x:cap} sounds nice. I'd like a bit more of that, please."
+  "I like {x}, I really do. It's one of the good parts of living here."
+  "Good call on {x}. Somebody around here has to notice the good things."
+  "{x:cap}, yes. A little bit of it goes a long way for me."
+@rule core.opine_pos.sc_good_ex guard: x.good act: agree
+  "{x:cap} is good, and I say that as someone who's tried most of it."
+  "It's really good, {x}. You can tell someone cared about it."
+  "I'd recommend {x} to anybody. Not that anybody asks me."
+
+# ---- opinions about a topic, negative -------------------------------------------------------------------
+@rule core.opine_neg.sc_meh guard: topic act: disagree
+  "Mm, {x}. Not really my thing, if I'm honest with you."
+  "I don't mind {x}, but I wouldn't go out of my way for it."
+  "{x:cap} is fine. Fine is about as far as I'll go, though."
+  "Well, {x} has its place. That place is a long way from me."
+@rule core.opine_neg.sc_hate guard: topic act: disagree
+  "Ugh, {x}. I'd rather talk about almost anything else."
+  "I can't stand {x}. Can we please leave it there?"
+  "No, {x} gets on my nerves. Let's pick something cheerier."
+@rule core.opine_neg.sc_bad_ex guard: x.bad act: disagree
+  "{x:cap} is a bit rubbish, isn't it? I'll be honest, I'm not a fan."
+  "Honestly, {x} has been a letdown. Or maybe it's just me today."
+
+# ---- answers that name the topic -----------------------------------------------------------------------
+@rule core.answer.sc_fact guard: topic act: backchannel
+  "The thing about {x} is, it depends who you ask. I'll tell you what I think."
+  "{x:cap}? Good question. Short answer: more than you'd expect."
+  "Oh, {x}? That's a fair question. I'd say it's worth a look."
+  "{x:cap}, right. I know a bit about that. More than a bit, maybe."
+  "As far as {x} goes, I've got a few things to say. Mostly good ones."
+@rule core.answer.sc_hedge guard: topic act: backchannel
+  "I'm not sure about {x}. I'd have to think about it a while."
+  "{x:cap}? Hmm. I'd need a minute to get that one straight."
+  "I don't know much about {x}, but I'll give you my best guess."
+
+# ---- jokes that name the topic (never about a grief topic: that bank handles it) ----------------------
+@rule core.joke.sc_pun guard: topic act: laugh
+  "{x:cap}! Now there's a subject with some punch in it. Yes."
+  "Ha! {x} again. Everything in this town comes back to {x} eventually."
+  "Ha! {x} again. Everything in this town comes back to it eventually."
+  "{x:cap}, the gift that keeps on giving. Mostly giving me a headache."
+@rule core.joke.sc_tease guard: topic act: laugh
+  "Oh, {x}! You always bring up {x} when you're in a silly mood."
+  "Hah! You and {x}. I'm starting to think it's a whole personality."
+
+# ---- telling about a topic --------------------------------------------------------------------------------
+@rule core.tell.sc_story guard: topic act: backchannel
+  "Right, {x}. Let me tell you the story I always end up telling about it."
+  "So, {x}. You'd think it's simple. It is not, I promise you that."
+  "The funny thing about {x} is how it creeps up on you when you're not looking."
+  "Oh, {x}. I've got a whole thing about {x}, if you've got a minute."
+@rule core.tell.sc_fact guard: topic act: backchannel
+  "{x:cap} is something most people only half know. Here's the other half."
+  "I'll tell you one thing about {x} that nobody mentions. It's a small thing."
+  "Here's what I know about {x}. It's not much, but it's mine."
+
+# ---- a plain reply to a yes or a no, with the topic ----------------------------------------------------
+@rule core.agree.sc_yes_topic guard: topic act: agree
+  "Yes, {x}. You're right about that. I don't say that often."
+  "Agreed on {x}. I think we just found something we both like."
+  "{x:cap} it is, then. I'm with you all the way."
+@rule core.disagree.sc_no_topic guard: topic act: disagree
+  "I don't agree about {x}, but I like that you're sure of it."
+  "Hm, no. Not about {x}. I'd put it differently, but we're close."
