@@ -1,0 +1,40 @@
+# stick_option.txt - STKOPT on Flycast (dcrun): Options > Controls > Stick: Turn / Strafe.
+# Default Turn: the stick's X turns. Pick Strafe: X strafes and the R trigger turns. Run:
+#   dc/harness/build/dcrun FLYCAST.so dc/build/doomogachi.cdi --nm dc/build/doomogachi.nm \
+#       --fresh --script dc/tests/sticks/stick_option.txt --shots OUT
+wait 160
+scene TITLE
+wait 10
+push OPTIONS 2
+wait 30
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+wait 6
+shot row_turn
+press RIGHT
+wait 10
+shot row_strafe
+press B
+wait 20
+seed 1234
+push COMBAT 3
+wait 60
+expect-scene COMBAT
+shot combat_before
+gaps-reset
+stick 127 0
+wait 20
+stick 0 0
+wait 10
+shot combat_stick_x_strafe
+trigger R 255
+wait 30
+trigger R 0
+wait 10
+shot combat_trigger_turn
+expect-gap 34

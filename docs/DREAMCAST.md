@@ -731,6 +731,12 @@ speed, eased like the stick). It is `OPT_STICK_MODE`, the last id of the
 second option table (OPT2); it rides in the 'OPT2' chunk (one more byte,
 inside `SAVE_EXT_MAX_OPT2`). A chunk from before it (or a save with no chunk)
 loads as Turn. Test: `sticks_option_strafe_mode`, `u0_opt2_chunk_round_trip`.
+On Flycast (`dc/tests/sticks/stick_option.txt`): the row shows on the Controls
+page (below Rumble), RIGHT picks Strafe, the stick's X then strafes and R
+turns; `sticks.txt` (the default) runs as before; 0 of 397 ticks over 33 ms
+(worst 19.6 ms in the shooter). One new row on the Dreamcast's Controls page
+is the only visible change; the GBA, PS1 and native screens are unchanged.
+GBA EWRAM / IWRAM net zero (the value is a bit next to the two option flags).
 
 The core's "smooth feel" (`input_set_feel(1)`: eased turning, fire
 buffering, aim friction) is on, as on the PS1. One visible consequence: the
