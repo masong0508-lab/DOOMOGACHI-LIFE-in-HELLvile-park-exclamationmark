@@ -376,6 +376,72 @@ card), so its 150 KB need about 100 KB of slot. On `696ffa6` the disc ends 79,56
 top: 14,032 B above the 64 KB reserve and 5,840 B above the 72 KB plan gate (CRB's resident cost:
 80 B; docs/PS1.md has how it was brought down from 832 B).
 
+### S3-3: the held frame and panels drawn first (2026-11-13)
+
+The speed audit 3's package S3-3 (the old G2-CR). Two GBA pieces and one PS1 piece, all in
+`creator_draw.c`, `creator_grid.c` and `part_icons.c`.
+
+* **The held frame** (the saved G2-CR work, GBA only: `CR_HOLD` = panels and `CR_CALM`). On the still
+  stage nothing but four regions ever changes: the tab strip, the list window (or the part grid in its
+  place), the preview pane and the button bar. After one full frame (`cr_still`: nothing is moving,
+  `hd_strip`: the button bar's rows have a clean copy, `plat_strip`) the platform keeps the picture in
+  both pages (`ui_modal_hold`), and a tick draws only the regions whose key changed, on two drawn ticks
+  (one for each page); a tick with nothing new draws nothing. A skipped (catch-up) tick no longer
+  drops the bar's clean copy (`cr_draw` set `hd_strip` to 0 on every skipped tick, so under any load the
+  held frame never began).
+* **Panels drawn first** (`cr_region_pre`, the recipe of S2-6). A region whose key the platform cannot
+  keep (it was not begun with that key on the last drawn tick: `pk_key`, `pk_dn`) is drawn before its
+  panel, on the fast path, and then taken as one solid panel (`cr_region_pre_end`: begin, solid, end with
+  nothing between them). Drawn inside a panel every 2D call is routed and checked (`pn_route`,
+  `plat_rect_slow`, `vid_route`: 10-30 ms more on a capture frame). The tab strip, the list, the grid and
+  the pane do it; the button bar does not, because `ui_hint`'s own pill is a retained panel too and a
+  top-level one is not put back from the page the creator's panel keeps (the bar vanished: the
+  panel test caught it). `plat_ui_loops()` runs before the pane's frame, so the figure's 2x and 3x
+  scaled images take the UI group's loop (S2-5).
+* **PS1: the grid's unpacked icons stay** (`part_icon_image_kept`, `grid_icon`). `part_icon_unpack` was
+  30% of the hat grid's try-on frames: every cell was unpacked again on every draw. Each cell's icon now
+  stays in the tail of the overlay slot (`plat_scene_scratch`, 48 cells x 400 B; the creator group
+  needs about 100 KB of the 131 KB slot; no resident RAM, no new `ovl_plan.py` entry: the call returns
+  NULL when the room is not there and the old unpack runs).
+
+Measured on the GBA (libmgba, `sync on`, seed 1; `make -C gba test-creator` and `make -C gba
+test-speed2 SPEED2=creator`; drawn fps, frames of 50 ms or more in brackets):
+
+| window | before (`4c0f369`) | after |
+|---|---|---|
+| idle | 30.0 | 30.0 |
+| grid scrolled (species) | 17.2 | **26.8** |
+| rows (Outfit, DOWN held) | 29.4 | **30.0** |
+| a value held (Outfit, Top) | 22.2 | **29.4** |
+| tab change (5 of the 8 tabs): frames over 33 ms | one of 50 and one of 67 | two of 50 |
+| hat grid (bust camera) | 27.2 | **29.8** (none over 33 ms) |
+| hat grid try-on move | 15.2 | **23.8** |
+| hat grid filter chip | 21.7 | **31.0** |
+| colour swatches / swatch move | 30.0 / 26.0 | 30.0 / 26.0 |
+
+PS1 (PCSX-Redux, `creator_speed.txt` and `speed2_creator`): grid scrolled 29.39 -> **30.00**, hat grid
+try-on 28.57 -> 29.03 (2:27 3:1 4:1 against 2:26 3:2 4:1: one frame less; the target 30 is not reached),
+idle, rows and a value held unchanged (30.13, 30.13, 29.88). The disc ends at the same address as before
+(0x801efe60, 64 KB below the stack top with the boot FMV): no resident byte.
+
+**Same pixels** (`vhash-seq` over the tab tour and the scroll script, `HARNESS_VHASH_SHOTS` frames, against
+`4c0f369`). 18 of the 20 settled shots (every tab, the grids at rest, the swatches, the START menu, the species grid
+scrolled) are byte-identical. The other two (the try-on 30 ticks after a move, a value held mid-step) differ in 17 and
+122 pixels of the preview pane: its landing sparkle is at another phase. Frames in between may land a tick or two
+later than before (the held frame leaves the pane's pending picture to the idle time after the frame, `pane_view`, so
+the preview's hop and sparkle begin later while a direction is held): 102 of 2,130 frames of the tab tour and 221 of
+1,026 of the scroll script differ, every one inside the pane (x 7-84, y 37-138), plus the first three ticks of the
+entry fade, which is timed by the clock. `core/tests/test_panel.c` plays the creator and the species grid with the
+panel cache on and off (identical) and counts the captures that drew nothing inside (`nat_panel_stats.empty`: at
+least half; without `cr_region_pre` none).
+
+What is left: a tab change still has two frames of 50 ms (the first two ticks after the press: the list's
+new page plus the first slices of the new camera's picture; the audit's target was one), the hat grid's
+try-on moves have a few 67-84 ms frames (each move draws a whole new bust: S3-2's portrait work), and the
+species grid held is 26.8, not 30, for the same reason. The lock overlay (`lock_compose`) is composed once
+per picture (it was already memoised by the picture's key since CR9); making it once per page would need
+the pictures of a whole page, which the scratch does not hold.
+
 ## Nicknames
 
 `DoomoResident` has no room for a nickname, so the creator keeps a small

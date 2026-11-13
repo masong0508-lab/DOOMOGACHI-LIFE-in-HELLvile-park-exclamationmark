@@ -433,6 +433,7 @@ against the LAST row, not against a figure from an older base.
 | 40 | S2-4: the Fun Fair's kept playfield (docs: "Speed wave 2: S2-4" below) | `183f2e8` | 1,796 B | **1,788 B** | -8 B | 6,308 B | measured on `183f2e8` + S2-4: the kept-playfield mode and the key being baked in `mg.c` (5 B, padded to 8); IWRAM unchanged (no new ARM code: the restores use SP7's `stage_rows` in the room group); ROM 6.85 -> 8.00 MB (Whack's 30 baked pictures, 38,400 B each, in `backdrops.bin`). PS1: compiled out (`mg.h` macros, `ui_round_rect_inset` not built), 65 KB below the stack top with the boot FMV (`_end` unchanged by S2-4) |
 | 41 | CR5a: the island hub's recorded lists in the arena (docs: "CR5a" below) | `4c0f369` | 1,788 B | **15,444 B** | +13,656 B | 6,308 B | `.bss` 259,460 -> 245,804 B: the 13 recorded rect lists of `fp_island_gfx.c` (land 640, patches 320, roads 160, glints 40, walkers 60, weather 48, deco variants 400 rects, `dv_tmp` 40; 1,715 rects, 13,720 B) now live at the top of the arena (`plat_scene_scratch` in `bigbuf.c`, owner `GBA_BIG_BY_ISL`), over the other owners' regions and the billboards that the 2D hub does not use; IWRAM and the main stack unchanged; ROM +~0.2 KB. Frames identical (below) |
 | 42 | CR3: the gene lists live, the gene's new look fields (docs/CREATOR.md "CR3") | measured on `ee686c7` and that tree + CR3 | 15,444 B | **15,444 B** | 0 | 6,308 B | `.bss` 245,804 B before and after, `.iwram` 11,256 B, `.iwram_bss` 4,084 B, `.data` 816 B all unchanged (`make -C gba sizes`). The new fields ride in a resolved set (`DoomoDeep`, 21 B) that the render job already held: `Phase`, `Job.status` / `Job.expr` and the frame struct were narrowed to bytes and the job's `D` moved next to them so the job did not grow. ROM: `.text` +2,224 B, `.rodata` +20,212 B (the catalog rows and part icons of the live lists, the creator rows). |
+| 43 | S3-3: the creator's held frame, regions drawn before their panels (docs: "Speed wave 3: S3-3" below) | after CR3 (`0df7284`) | 15,444 B | **15,444 B** | 0 B | 6,308 B | measured on `4c0f369` + S3-3: no EWRAM or IWRAM (the new state is 26 B in `CrState`, inside the 12 KB scene scratch the creator already claims: `pk_key`, `pk_dn`, `dn`, and the PS1-only icon tags); IWRAM resident 11,256 B and the overlay groups unchanged. ROM 8,004,784 -> 8,006,400 B (+1,616). PS1: no resident byte (the disc ends at 0x801efe60 before and after: 64 KB below the stack top with the boot FMV; the icon cache lives in the overlay slot's unused tail) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -1260,6 +1261,35 @@ sprite governor (V14, `GBA_GOV_MS_N` 29 ms) drops the far marchers while the fra
 the GBA parade shows only the few marchers nearest the middle (pre-existing; the PS1, Dreamcast and native show all
 of them). Both want the parade's frame under ~26 ms: a held overworld under the parade's text (S2-4 style) or text as
 kept panels.
+
+### Speed wave 3: S3-3, the creator (2026-11-13)
+
+The speed audit 3's S3-3 (the old G2-CR; docs/CREATOR.md "S3-3" has the table and the detail). On the GBA the creator
+is four retained panels on a still stage (CR9). Two things were still slow: every frame that captured a panel drew
+inside it (every 2D call routed and checked: `pn_route`, `plat_rect_slow`, `vid_route`, 10-30 ms a capture), and
+every tick redrew all four regions even when nothing moved.
+
+* **The held frame** (the saved G2-CR work, `CR_HOLD`): after one full still frame (with a clean copy of the button
+  bar's rows, `plat_strip`) the platform keeps the picture in both pages and a tick draws only the regions whose key
+  changed, on two ticks (one per page). `hd_strip` is no longer reset by a skipped tick: under catch-up ticks the
+  hold never began, which is why this alone gave 76-84 ms frames at first.
+* **Panels drawn first** (`cr_region_pre`, S2-6's recipe): a region whose key the platform cannot keep is drawn before
+  its `plat_panel_begin` on the fast path and taken as one solid panel. The state is `pk_key` / `pk_dn` (the key a
+  region was begun with on the last drawn tick): the held frame's `hd_n` is zeroed by every full frame, so it cannot
+  say whether the platform still has the panel (a first version drew every region first on every full frame and the
+  persona / home tabs fell to 20 fps). Not the button bar: `ui_hint`'s pill is a panel of its own, and as a top-level
+  one it is not put back from the page the creator's panel keeps (the bar vanished; `test_panel`'s creator test
+  caught it).
+* `plat_ui_loops()` before the pane's frame: the figure's 2x / 3x images take `vid_blitn` (S2-5).
+
+Measured on this tree (libmgba, `make -C gba test-creator`, `test-speed2 SPEED2=creator`, `profile-creator`): idle
+30.0 -> 30.0, grid scrolled 17.2 -> 26.8, rows 29.4 -> 30.0, a value held 22.2 -> 29.4, the Outfit picker 22.7 -> 29.1
+(`creator_profile`), the hat grid at rest 27.2 -> 29.8, the try-on move 15.2 -> 23.8, the filter chip 21.7 -> 31.0, a
+tab change two frames of 50 ms (before: one of 50 and one of 67 on five of the eight tabs). Not reached: 30 on the held grid and
+the try-on (each step is a whole new bust: S3-2), one 50 ms frame a tab change (two). Settled screens are exact
+(18 of 20 shots byte-identical, the other two differ by the pane's sparkle phase); in-between frames differ only inside
+the preview pane (the new picture's landing and its sparkle come a tick or two later), and the first three frames of
+the entry fade, which is timed by the clock.
 
 ### Where the title's time goes (`make -C gba profile-title`)
 

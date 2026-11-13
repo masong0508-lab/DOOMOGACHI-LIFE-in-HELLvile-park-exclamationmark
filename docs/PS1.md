@@ -1443,6 +1443,19 @@ unchanged, 65 KB below the stack top with the boot FMV.
 
 **S2-4 (the fair's kept playfield).** Nothing is built here: `mg.h` turns the kept-playfield mode into constants (`MGK_OFF`), so Whack draws its whole booth as before (the restore helpers and `ui_round_rect_inset` compile out); only the drawing order was regrouped (`mg_tent_sway`, `hole_back`), same pixels. 65 KB below the stack top with the boot FMV on the rebased tree (`_end` the same as without S2-4); the minigame overlay group grows by a few hundred bytes of code, the slot is unchanged (168 KB, the house's). PCSX-Redux `speed2_fair`: the Whack title, Sweet and Hellfire windows 30.17 / 30.12 / 30.12 fps (all 2-vsync frames), as before.
 
+**S3-3 (the creator's part grid).** `part_icon_unpack` was 30% of the hat grid's try-on frames: every visible cell
+(10 to 40 of them) was unpacked again on every draw. `grid_icon` now keeps each cell's unpacked icon in the unused tail
+of the overlay slot (`plat_scene_scratch`, 48 cells x 400 B = 19,200 B; the creator group needs about 100 KB of the
+131 KB slot, so no `ovl_plan.py` `SCRATCH` entry: the call returns NULL when the room is not there and the old unpack
+runs; the generation is the overlay load count, a changed one clears the cell tags). A cursor that moves over the page
+unpacks nothing (`part_icon_image_kept`, tested on the host). The GBA parts of S3-3 (held frame, panels drawn first)
+are not built here (`UI_PANELS` 0). Measured (PCSX-Redux, `creator_speed.txt`, `speed2_creator`): species grid scrolled
+29.39 -> 30.00, hat grid try-on 28.57 -> 29.03 (2:27 3:1 4:1), a cursor move in the species grid 30.00 -> 29.51 (one
+67 ms frame where there was a 50 ms one: the slices of the new look land on other ticks now that the frames are
+shorter), idle 30.13, rows 30.13, a value held 29.88 as before. The try-on's profile after: `rect_slow` 13%, the pane's
+ellipses 10%, `lock_compose` 8%, `out_rect` 7% (`part_icon_unpack` is gone). The disc ends at 0x801efe60 both
+before and after (64 KB below the stack top with the boot FMV; the 72 KB gate is the SPEED stream's PS1-RAM package).
+
 ## 13. Notes for the core
 
 * The 2D layer is fastest with few, large rectangles: one `plat_rect` per
