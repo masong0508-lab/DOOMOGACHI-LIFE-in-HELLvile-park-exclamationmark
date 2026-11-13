@@ -959,7 +959,7 @@ get the safety banks. A guard audit of all 95 rules is in the evidence directory
 sexual-class or flirt-class word (TK4 / TK5 refuse `flirt` and `flirting`, so the lines say
 "charm", "woo", "sweet talk"), no topic echo, no catchphrase, no LOVE face on a no. Every line ends
 on a joke or a kind close; a no is never at the refused person's expense. At most 3 sentences and
-78 characters a line. `TALK_en.BIN` 672,124 -> 694,396 B on the rebased branch (+22,272 B of PS1 non-resident data, about 45 B an alternative; no resident byte on any port).
+78 characters a line. `TALK_en.BIN` 672,124 -> 694,396 B on the rebased branch (+22,272 B of PS1 non-resident data, about 45 B an alternative; no resident byte on any port; the PS1 EXE with the FMV still ends 0x801ef4e0, 66 KB below the stack top, and the GBA sections are unchanged).
 Review fix: the break-up rules (`core.confess.r_split*`) were removed, because no break-up act exists and a declined confession from a partner must not end the relationship in text; new lint TK11 (`talkc_safe.py`, seeded bad file `core/tests/talk_bad/bad_tk11_breakup.tlk`) refuses break-up wording in any romance decline (act `no` or `deflect_romance` under a romance root). A break-up bank waits for a real act (T6 / sim). A 40-line sample is in the evidence directory.
 
 **T5B-KIDFIX (no insult, mock or blame line from an adult at a present child)**: a review of
