@@ -328,7 +328,7 @@ TEST(talk_outcome_romance_asked_not_forced)
 {
     TalkSummary s;
     TalkOutcome o;
-    int k, k0;
+    int k0;
     premade_town();
     /* the hero as avatar: the sim has no romance edge for the hero, so nothing is asked and nothing is set */
     summary(&s, ID_NANA, -1, -1);
@@ -350,11 +350,10 @@ TEST(talk_outcome_romance_asked_not_forced)
     add_ev(&s, TEV_ROMANCE_YES, 0, TA_CONFESS);
     talk_outcome_apply(&s, &o);
     CHECK_EQ(o.confessed, 1);
-    k = o.dating;
+    CHECK(o.dating == 0 || rel_kind(ID_RIVET, ID_NANA) == REL_DATING);   /* only the sim decides, and it is consistent */
     talk_outcome_apply(&s, &o);
     CHECK_EQ(o.confessed, 0);                                        /* not again today */
     CHECK_EQ(sim_romance_sweep(-1), 0);
-    (void)k;
     /* a child: the sim's gate says no, Talk cannot get around it */
     summary(&s, ID_PIP, -1, -1);
     s.avatar = ID_RIVET;
@@ -399,7 +398,7 @@ TEST(talk_outcome_no_farming_100_sessions)
     TalkState s;
     TalkOutcome o;
     int base_rel[3], base_lv[3], base_soc[3], base_hap[3], base_pair[3];
-    int i, t, k, sum_rel_d = 0, sum_pair_d = 0, made = 0, news = 0, probs = 0;
+    int i, t, k, sum_rel_d = 0, made = 0, news = 0, probs = 0;
     uint16_t pie;
     premade_town();
     CHECK(open_db());
@@ -425,7 +424,6 @@ TEST(talk_outcome_no_farming_100_sessions)
         talk_outcome_end(&s, &o, &sum);
         CHECK(talk_dm_over(&s));
         for (k = 0; k < 3; k++) sum_rel_d += sum.rel_d_player[k];
-        for (k = 0; k < 3; k++) sum_pair_d += sum.pair_d[k] > 0 ? sum.pair_d[k] : 0;
         made += o.made_up;
         if (o.news) news++;
         probs += o.problems;
@@ -454,7 +452,6 @@ TEST(talk_outcome_no_farming_100_sessions)
     }
     CHECK(probs <= 3);
     CHECK(news <= TALK_CAP_NEWS_DAY);
-    (void)sum_pair_d;
     CHECK_EQ(sim_romance_sweep(-1), 0);
     /* the next day the caps are new: the same player can gain again */
     next_day();
