@@ -1,0 +1,243 @@
+# core/data/talk/grammar/en/grief_loss.tlk - T5b package T5B-GRIEF: more sincere grief and loss lines
+# (owner: TK; K-10, SCRIPT_STYLE R6 and J5; design 3.6 and 7.1). NON-NEGOTIABLE (docs/TALK.md "Safety").
+#
+# These rules join the `grief.*` family of grief.tlk: the generator takes them when the topic is
+# grief or loss (grief, mourning, condolences, loss, memorial, funeral) and picks among every rule
+# whose reply act may answer what was said. Same rules as grief.tlk: tags: nojoke (no punchline,
+# no button, no wordplay), no register word, no sub-rule, no catchphrase, no LOVE face, no [JMAT];
+# {lost} (the one the speaker lost lately) only where the rule can say it. Nothing here jokes at
+# loss or turns it into a mechanic. A rule with no kid guard may be said by a child or heard by one,
+# so its lines are plain and gentle; the heavier ones are for !kid_speaker.
+
+# ---- answering (ask, thank, change of topic): plain, steady, no cure offered ---------------------
+@rule grief.more.answer act: answer tags: nojoke
+  "It doesn't have a size. It just has a weight."
+  "Some days it's quiet. Some days it's loud. Both are okay."
+  "I don't have the right words. I have time, though."
+  "It's allowed to hurt. That's how you know it mattered."
+  "I'm not going to say it's fine. It isn't. I'm still here."
+  "[SAD]I wish I had a better answer. I only have company."
+  "There's no schedule for this. Not mine, not yours."
+  "Missing someone is just love with the lights on."
+  "You don't have to be strong in front of me."
+  "Thank you for asking. It's a gentle thing to ask."
+  "It comes in waves. The waves get further apart. Slowly."
+  "I'd rather be quiet with you than say something wrong."
+  "{x:cap}. Yes, a heavy word. We can go slowly."
+  "{x:cap} is a hard thing to carry. We can carry it together."
+@rule grief.more.answer_lost act: answer tags: nojoke
+  "[SAD]I still say {lost}'s name out loud. It helps."
+  "I keep one of {lost}'s things near. Nothing fancy. It helps."
+  "Some mornings I forget. Then I remember. Those are the hard ones."
+  "I think {lost} would want me to eat something. So I did."
+  "{lost:cap} used to say it gets lighter. It does. Slowly."
+@rule grief.more.answer_adult act: answer guard: !kid_present tags: nojoke
+  "You can't skip it. You can only walk through it, a bit at a time."
+  "I've learned not to hurry anyone's grief. Mine included."
+  "The first year is the hardest. After that it just changes shape."
+  "Be kind to yourself. You'd be that kind to a friend."
+  "Eat something. Sleep if you can. The rest can wait."
+  "People say strange things at times like this. I'll try not to."
+
+# ---- telling (the speaker shares a little, never a lesson) -----------------------------------------
+@rule grief.more.tell act: tell tags: nojoke
+  "I light a small candle sometimes. Just to say hello."
+  "Some days I talk to the empty chair. It listens well."
+  "I find a song and it's like a door opening. I let it."
+  "I don't want to forget. So I tell the stories. Even the plain ones."
+  "It's quiet in the house lately. I'm getting used to the quiet."
+  "A smell, a song, a chair. That's all it takes."
+  "I keep thinking I should tell someone. So, I'm telling you."
+  "[SAD]I'm okay. I'm not great. But I'm okay."
+@rule grief.more.tell_lost act: tell tags: nojoke
+  "I was thinking about {lost}. Something small. It's always something small."
+  "I made {lost}'s favourite thing today. I ate it slowly."
+  "[SAD]I walked past {lost}'s door and almost knocked."
+  "{lost:cap} had a way of laughing. I'm trying to keep it."
+@rule grief.more.tell_adult act: tell guard: !kid_present tags: nojoke
+  "Grief doesn't ask when. It just shows up at the grocery store."
+  "I thought I was past the worst. I wasn't. That's allowed."
+  "I used to be afraid to talk about it. Now I'm afraid not to."
+
+# ---- an opinion about loss ---------------------------------------------------------------------------
+@rule grief.more.opine act: opine_neg tags: nojoke
+  "It's the hardest thing. I won't pretend it isn't."
+  "Nobody gets through it unchanged. And that's not a failure."
+  "There's no good way to lose someone. There's just a gentle way to be after."
+  "It hurts because love was real. That's the only good news in it."
+  "You can't hurry it and you can't dodge it. You can just be kind to yourself."
+  "The people who never talk about it are carrying it too."
+@rule grief.more.opine_adult act: opine_neg guard: !kid_present tags: nojoke
+  "Towns throw parties for hellos. Goodbyes are quiet, and that's okay."
+  "I don't think grief is a sickness. It's love with nowhere to go."
+
+# ---- sympathy (the player is sad, or said something heavy) -----------------------------------------
+@rule grief.more.sympathize act: sympathize tags: nojoke
+  "I'm so sorry. Really. I'm so sorry."
+  "[SAD]That's a hard thing to lose. I'm sorry you're going through it."
+  "I'm here. I'm not going anywhere."
+  "That's too much for one heart. Let me hold some of it."
+  "I wish I could do more. I can do this: I can stay."
+  "Oh, friend. I'm sorry. Come sit."
+  "It's okay to cry. It's okay not to, too."
+  "Whatever you're feeling right now is the right amount."
+  "You loved them. That's all this is. It just hurts a lot."
+@rule grief.more.sympathize_adult act: sympathize guard: !kid_present tags: nojoke
+  "I'm sorry for your loss. I know the words are small. I mean them big."
+  "You don't have to explain it to me. Just sit a while."
+
+# ---- comfort (to someone who complained, apologized or broke down) ------------------------------------
+@rule grief.more.comfort act: comfort tags: nojoke
+  "It's not your fault. None of it. Hear me say that."
+  "Don't apologize for crying. This is what it's for."
+  "Breathe with me, in and out. There you go."
+  "You're allowed to fall apart a little. I've got the floor."
+  "Whatever you need to say, say it. I won't flinch."
+  "You're not alone in this. You never were."
+  "Take all the time you want. I'm not in a hurry."
+  "Cry if you need to. I'm not going anywhere."
+  "It's okay to not be okay. We can be not okay together."
+@rule grief.more.comfort_adult act: comfort guard: !kid_present tags: nojoke
+  "There's no shame in it. Feeling this much means you loved well."
+  "Let me make some tea. You don't have to do anything. Just sit."
+
+# ---- encouragement (asked for advice): gentle, small, never a fix ------------------------------------
+@rule grief.more.encourage act: encourage tags: nojoke
+  "One small thing today. A glass of water, a walk. That's enough."
+  "Be gentle with yourself. You're doing something very hard."
+  "Talk about them. Say their name. It helps more than you'd think."
+  "You don't have to do it all at once. Just the next hour."
+  "Let people bring you soup. It's how they love you right now."
+  "Rest. The world can manage without you for a day."
+  "It'll get softer. Not today. But it will."
+@rule grief.more.encourage_adult act: encourage guard: !kid_present tags: nojoke
+  "Keep one small ritual, like tea at the same time each day. It holds you up."
+  "If it gets too heavy, tell someone you trust. That's wisdom, not weakness."
+
+# ---- offers ----------------------------------------------------------------------------------------------
+@rule grief.more.offer act: offer tags: nojoke
+  "I'll sit with you. We don't have to talk."
+  "I can bring tea. Or I can just be here. Your choice."
+  "Want company? I can be quiet really well."
+  "I'll stay as long as you like. I mean it."
+  "We could go for a walk. Slowly. No destination."
+  "I'll come by tomorrow, too. And the day after."
+  "Anything you need. Even if it's just someone to hold the umbrella."
+
+# ---- asking about it, gently (never pushing) ----------------------------------------------------------------
+@rule grief.more.ask act: ask_about tags: nojoke
+  "Do you want to talk about them? Only if you want."
+  "What do you miss the most?"
+  "Is there a story you'd like to tell? I've got time."
+  "How are you holding up? The true answer is fine."
+  "Is there anything I can do, even a little thing?"
+  "Would it help to say their name out loud?"
+@rule grief.more.ask_lost act: ask_about tags: nojoke
+  "Do you ever think about {lost}? I do. I'd like to hear your stories."
+@rule grief.more.continue act: continue tags: nojoke
+  "Go on. I'm listening. There's no rush."
+  "Take your time. I'm right here."
+  "Tell me more, if you'd like. I'll just be quiet and hear it."
+  "Keep going. You're doing fine."
+  "I'm still here. Say it however it comes."
+
+# ---- going along with it ---------------------------------------------------------------------------------------
+@rule grief.more.backchannel act: backchannel tags: nojoke
+  "[SAD]Mm. I hear you."
+  "Yeah. Of course it does."
+  "That makes sense. All of it."
+  "I know. I know. Take a breath."
+  "Mm-hm. Keep going, if you like."
+  "That sounds like love, to me."
+  "I'm right here. I'm not going anywhere."
+  "Mm. That's real."
+@rule grief.more.agree act: agree tags: nojoke
+  "Yes. Exactly. It's a lot."
+  "I think so too. It's the quiet that gets you."
+  "You're right. There aren't any right words."
+  "Yeah. It's heavy. We can set it down for a minute, though."
+  "I agree. We should be gentle with each other."
+  "True. It doesn't stop mattering. And that's okay."
+@rule grief.more.disagree act: disagree tags: nojoke
+  "I don't think it's small. It's allowed to be as big as it is."
+  "I'm not sure that's true. It matters. They mattered."
+  "I'd say it's okay to hurt. Hurting doesn't mean you're doing it wrong."
+@rule grief.more.thank act: thank tags: nojoke
+  "Thank you. I really needed that."
+  "Thanks. That was kind. It landed."
+  "[SAD]Thank you for staying. That's the whole thing."
+  "Thank you. I'll remember it."
+  "That means more than I can say. So, thank you."
+  "You're good to me. Thank you."
+@rule grief.more.yes act: yes guard: !act=ask_fact tags: nojoke
+  "Yes. Please. That would help."
+  "Yes. That sounds nice. Thank you."
+  "I'd like that. Yes."
+  "Yes. I'd really like that, actually."
+@rule grief.more.no_hug act: no guard: act=hug tags: nojoke
+  "Not just now. Thank you, though. I mean it."
+  "I need a little space. I'm not shutting you out."
+  "Maybe later. Please don't take it personally."
+@rule grief.more.no_favor act: no guard: act=ask_favor tags: nojoke
+  "I can't, not today. I'm sorry. Ask me again soon."
+  "Not right now. I have no strength left today. Soon, though."
+
+# ---- complaining, said softly: the speaker's own heavy day (asked how they are) ---------------------------------
+@rule grief.more.complain act: complain guard: act=ask_feeling tags: nojoke
+  "[SAD]It's been a heavy week. I'm trying to be gentle with myself."
+  "Tired. The kind of tired sleep doesn't fix."
+  "Sad. Quietly. Mostly I'm sad quietly."
+  "Not great. But thank you for asking. Most people don't."
+  "Some days it's like carrying a coat that's too heavy. Today's one."
+
+# ---- a promise, after a goodbye ------------------------------------------------------------------------------------
+@rule grief.more.promise act: promise guard: act=farewell tags: nojoke
+  "I'll check on you tomorrow. I promise."
+  "I'll leave the light on. You know where I am."
+  "Come back whenever. I'll be here. I promise."
+  "I'll save you a seat. Anytime."
+
+# ---- hello and goodbye -------------------------------------------------------------------------------------------------
+@rule grief.more.greet act: greet tags: nojoke
+  "Hi. It's good to see you. I'm having a quiet day."
+  "Hello. Come in. I'm glad you're here."
+  "Hi, friend. It's a slow kind of day. Sit with me?"
+  "Oh, hello. I'm a little sad today, but I'm glad it's you."
+@rule grief.more.farewell act: farewell tags: nojoke
+  "Goodbye. Look after yourself. Please."
+  "Take care. Eat something. Rest."
+  "Go gently. I'll be thinking of you."
+  "See you soon. You're not alone, you know."
+  "Bye for now. Come back anytime. I mean that."
+
+# ---- not joking about it (a joke, a tease, a laugh at it); no cold shoulder, a plain no -------------------------------
+@rule grief.more.dismiss act: dismiss guard: !pact=ask&!pact=open&!pact=flow&!act=compliment&!act=promise&!act=hug&!act=complain tags: nojoke
+  "No. Not that one. It's too close."
+  "Please don't. That one's not for laughing."
+  "Ask me anything else. Not this one."
+  "[SAD]That one's tender. Let's leave it alone."
+  "I know you don't mean harm. But please. Not this."
+
+# ---- romance about it: not now, kindly --------------------------------------------------------------------------------------
+@rule grief.more.deflect act: deflect_romance tags: nojoke
+  "Not now. My heart's somewhere else today. Thank you for understanding."
+  "Please. Not with this on me. I hope you understand."
+
+# ---- comfort: another resident's reaction to a grief line (agree or backchannel) ----------------------------------------------
+@rule comfort.more.agree act: agree tags: nojoke
+  "Yes. And you don't have to be fine."
+  "We're all thinking of you."
+  "That's right. We've got you."
+  "Yeah. We'll sit with you. As long as you like."
+  "Yes. It's okay to take all the time."
+  "We love you. Remember that."
+@rule comfort.more.backchannel act: backchannel tags: nojoke
+  "[SAD]I'm sorry too. We're here."
+  "Whenever you're ready. We're not going anywhere."
+  "Mm. We'll keep the lights on."
+  "You're not alone. Not one bit."
+  "Let us bring something. Please."
+  "We'll look after each other."
+@rule comfort.more.adult act: backchannel guard: !kid_present tags: nojoke
+  "I'll put the kettle on. Nobody has to say anything."
+  "Come by any time, day or night. I mean it."

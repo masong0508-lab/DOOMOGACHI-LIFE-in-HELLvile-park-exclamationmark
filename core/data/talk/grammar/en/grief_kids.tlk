@@ -1,0 +1,110 @@
+# core/data/talk/grammar/en/grief_kids.tlk - T5b package T5B-GRIEF: grief and loss for and from children
+# (owner: TK; K-10, SCRIPT_STYLE R6 and the cute filter, design 7.1 K-2). Two families of grief.* rules:
+#   * a child speaks (guard kid_speaker, tags: nojoke,kid): short, simple, honest words a child would use;
+#     no big idea about death, never graphic, never a joke, never a lesson. A child may be sad out loud
+#     and may say no to a hug.
+#   * an adult speaks with a child in the room (guard !kid_speaker&kid_present, tags: nojoke): warm,
+#     simple, age-appropriate. The grown-up stays close, says the feeling is allowed, offers (never
+#     presses) a hug, and says a grown-up will help. Nothing frightening, no detail, no joke.
+# Same safety as grief.tlk: no register word, no catchphrase, no LOVE face, no [JMAT], no sub-rule,
+# {lost} only where the rule can say it. Kids' banks: no cast name or voice (those are in grief_voices).
+
+# ---- a child speaks -------------------------------------------------------------------------------------
+@rule grief.kid.answer act: answer guard: kid_speaker tags: nojoke,kid
+  "I'm sad. It's okay to be sad, right?"
+  "It's a big feeling. It's too big for me sometimes."
+  "I don't know what to say. I'm just sad."
+  "My tummy feels funny when I think about it."
+  "Sometimes I cry. Then I feel a bit better."
+  "It's really hard. But I'm not alone. That helps."
+@rule grief.kid.answer_lost act: answer guard: kid_speaker tags: nojoke,kid
+  "I miss {lost}. I miss {lost} lots."
+  "[SAD]I look for {lost}. Then I remember."
+@rule grief.kid.tell act: tell guard: kid_speaker tags: nojoke,kid
+  "I draw pictures when I'm sad. It helps."
+  "I hug my pillow a lot. It's soft."
+  "I'm trying to be brave. It's hard. I'm doing my best."
+  "When it gets big, I count to ten. Sometimes twenty."
+@rule grief.kid.tell_lost act: tell guard: kid_speaker tags: nojoke,kid
+  "I told {lost} goodnight. I know they can't hear. But I did."
+@rule grief.kid.sympathize act: sympathize guard: kid_speaker tags: nojoke,kid
+  "I'm sorry. I'm really, really sorry."
+  "That's so sad. I'm sad with you."
+  "Oh no. I'm here. I'll stay."
+  "I'm sorry. Do you want to sit with me?"
+@rule grief.kid.comfort act: comfort guard: kid_speaker tags: nojoke,kid
+  "It's okay to cry. I cry too."
+  "I'll sit with you. We don't have to talk."
+  "You're not alone. I'm right here."
+  "Want to hold my hand? You don't have to."
+@rule grief.kid.backchannel act: backchannel guard: kid_speaker tags: nojoke,kid
+  "Mm. Okay. I'm here."
+  "Yeah. I know."
+  "I'm listening. Take your time."
+@rule grief.kid.agree act: agree guard: kid_speaker tags: nojoke,kid
+  "Yeah. It's really sad."
+  "I think so too."
+@rule grief.kid.thank act: thank guard: kid_speaker tags: nojoke,kid
+  "Thank you. That was nice."
+  "Thanks. I feel a little better."
+  "Thank you for being nice to me."
+@rule grief.kid.yes act: yes guard: kid_speaker&!act=ask_fact tags: nojoke,kid
+  "Yes, please."
+  "Yes. I'd like that."
+@rule grief.kid.no act: no guard: kid_speaker&act=hug tags: nojoke,kid
+  "No, thank you. Not right now. Maybe later?"
+  "I don't want a hug now. I'm okay. Thank you."
+@rule grief.kid.greet act: greet guard: kid_speaker tags: nojoke,kid
+  "Hi. I'm a bit sad today. It's okay."
+@rule grief.kid.farewell act: farewell guard: kid_speaker tags: nojoke,kid
+  "Bye. Come back soon, okay?"
+  "Bye. Thank you for talking to me."
+@rule grief.kid.continue act: continue guard: kid_speaker tags: nojoke,kid
+  "You can tell me more. I'll listen."
+@rule grief.kid.encourage act: encourage guard: kid_speaker tags: nojoke,kid
+  "Tell a grown-up you trust. They help."
+  "Drink some water. It helps me."
+@rule grief.kid.offer act: offer guard: kid_speaker tags: nojoke,kid
+  "You can sit with me. I'll share my blanket."
+  "I could draw you a picture. Want one?"
+
+# ---- a grown-up speaks, a child is in the room ------------------------------------------------------------
+@rule grief.close.answer act: answer guard: !kid_speaker&kid_present tags: nojoke
+  "It's okay to feel sad. It's okay to ask me anything."
+  "It's sad. We'll go slowly. I'm right here."
+  "You didn't do anything wrong. Nobody did. Remember that."
+  "Big feelings come and go. We'll sit with them together."
+  "I'm sad too. We can be sad together."
+  "Thank you for asking. You can always ask me."
+@rule grief.close.answer_lost act: answer guard: !kid_speaker&kid_present tags: nojoke
+  "I miss {lost}. It's okay to miss people. It's a kind of love."
+@rule grief.close.tell act: tell guard: !kid_speaker&kid_present tags: nojoke
+  "When I'm sad, I go for a little walk. And I tell someone."
+  "I look at a picture and I smile a little. Then I cry a little."
+  "I drink some tea and I rest. Rest helps."
+@rule grief.close.sympathize act: sympathize guard: !kid_speaker&kid_present tags: nojoke
+  "I'm so sorry, sweetheart. I'm right here with you."
+  "Oh, little one. I'm sorry. You're safe with me."
+  "That's a very sad thing. It's okay to feel sad."
+@rule grief.close.comfort act: comfort guard: !kid_speaker&kid_present tags: nojoke
+  "You're safe. I'm here. We'll find a grown-up to help, too."
+  "A hug is here if you want one. And if you don't, that's okay."
+  "Cry as much as you like. Nobody will mind."
+  "None of this is your fault. Not even a little bit."
+@rule grief.close.encourage act: encourage guard: !kid_speaker&kid_present tags: nojoke
+  "Draw a picture, or tell a story about them. It helps."
+  "Talk to a grown-up you trust. Tell them how you feel."
+  "Be kind to yourself. You're doing a good job."
+@rule grief.close.offer act: offer guard: !kid_speaker&kid_present tags: nojoke
+  "I'll sit with you. We can be quiet or we can talk."
+  "I'll fetch you some water and a blanket. Is that okay?"
+@rule grief.close.backchannel act: backchannel guard: !kid_speaker&kid_present tags: nojoke
+  "I hear you. Take your time."
+  "Yes. I understand. I'm listening."
+@rule grief.close.thank act: thank guard: !kid_speaker&kid_present tags: nojoke
+  "Thank you. That was very kind of you."
+  "Thank you for being so caring."
+@rule grief.close.farewell act: farewell guard: !kid_speaker&kid_present tags: nojoke
+  "Goodbye for now. Come to me any time. I mean that."
+@rule grief.close.no act: no guard: !kid_speaker&kid_present&act=hug tags: nojoke
+  "Not right now, little one. Thank you. I'll take one later."

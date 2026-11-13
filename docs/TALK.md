@@ -42,7 +42,7 @@ Contents:
 | **T3** | the free-text parser (Dreamcast and native): `talk_lex.c`, `talk_parse.c`, `rules/en.tsv`, a labelled corpus of 1,519 lines | **done** (TK2) |
 | **T4** | the safety gate: the input classifier S1, the audience gate S2 (`talk_safe_ctx`, one source of "minor"), the output lint S3, the template lints TK1-TK9, the safety and adversarial corpora, the hashed hate list, the property tests | **done** (TK2): green. The generator-level halves of P1-P8 go live with T5a / T6 |
 | **T5a** | the generator: `talk_gen.c` (the grammar VM, guards, fillers, sim-fact callbacks, novelty, re-picks, the bubble fit, the per-conversation RNG, the trace), the `.tlk` grammar compiler `talkc_gen.py`, the adjacency table `acts.tsv`, a plain exchange (the gate first, who answers, reactions between residents) | **done** (TK3); a **starter** English bank (718 alternatives in 12 files, the K-10 grief and comfort banks included) so every act, refusal and part plays |
-| T5b | the English line banks (about 6,000 alternatives, design 3.6) and the owner's review | in progress: 5,536 alternatives in grammar/en (starter 718 + T5B-WARM 739: warm acts + T5B-COOL 600: cool and rude acts + T5b-ASK 975: questions and answers + T5B-OPEN 648: openers, parts and the rest + T5B-ROM 492: romance, adults only + T5B-TOPIC 771: topic replies + T5B-VOICE 596: the cast voices) |
+| T5b | the English line banks (about 6,000 alternatives, design 3.6) and the owner's review | in progress: 6,042 alternatives in grammar/en (starter 718 + T5B-WARM 739: warm acts + T5B-COOL 600: cool and rude acts + T5b-ASK 975: questions and answers + T5B-OPEN 648: openers, parts and the rest + T5B-ROM 492: romance, adults only + T5B-TOPIC 771: topic replies + T5B-VOICE 596: the cast voices + T5B-GRIEF 506: grief, comfort and hard feelings) |
 | T6 | the drama manager, outcomes, the talk memory chunk | **memory and chunk done** (T6-MEM, 6e); **drama manager done** (T6-DM, 6f: `talk_dm.c`, `beats.tlk`); **outcomes into the sim done** (T6-OUT, 6g: `talk_outcome.c`) |
 | **T7** | the census (`core/tools/talk_census.c`: the three tiers, Chao1, the quality checks Q1-Q6, the conversation tier), the grid `census_en.tsv`, `make -C core talk-census`, the smoke census in `make test`, the Q7 review sheet `talk_sample.py` | **done** (TK3): the tools and the measurement. The full run's numbers are in 6d: Skeleton, Meaning, conversations and quality meet the design's targets; **Surface does not** (it needs T5b's bank); Q7 (a person rating 300 exchanges) has not been done |
 | T8 | the house mode `HM_TALK` on native, with its UI | to do |
@@ -1146,6 +1146,44 @@ says (17 marks, cross-checked against the other 16 of the cast), the kids' banks
 S3 lint and wear no LOVE face in a kid room, and none of the five purr lines can come out
 with a child in the room. `TALK_en.BIN` 694,396 -> 722,364 B on the rebased tree, +27,968 B (PS1
 non-resident data, no resident byte). No engine change.
+
+**T5B-GRIEF (grief, comfort and hard feelings, content only)**: +506 alternatives in 4 new
+files, `grammar/en/grief_*.tlk`. The K-10 rule is unchanged: a grief or loss topic (grief,
+mourning, condolences, loss, memorial, funeral) takes the sincere `grief` bank whatever was
+said, and another resident may add one `comfort` line. The new rules are `grief.more.*`
+and `comfort.more.*` and join the same family, so every K-10 lint applies (tags: nojoke,
+no register word, no sub-rule, no catchphrase, no LOVE face, no [JMAT]); a plain no to a
+laugh at loss, no cure, no lesson, no mechanic.
+* `grief_loss.tlk` (169): the generic banks in 21 reply acts (answer, tell, opine_neg,
+  sympathize, comfort, encourage, offer, ask_about, continue, backchannel, agree,
+  disagree, thank, yes, a no to a hug or a favour, the speaker's own heavy day, a promise
+  after a goodbye, greet, farewell, dismiss, deflect_romance, and the `comfort.*`
+  reactions). The `*_adult` rules carry `!kid_present`: a grown-up's deeper lines are
+  never said with a child in the room.
+* `grief_voices.tlk` (127): the persona banks are not used on a grief topic, so all 17 cast
+  members get their own sincere lines, six or seven each (Vex "No post for this one",
+  Pip "Patrol's on sad duty", Wisp lowercase and kind, Mascotty's one small thump,
+  Grumbleguts' soup, Vapula's soft sky, Clinker's "no score today"); Pip is `kid`, Wisp
+  `kid,lower`, Vapula `lower`. The six cast in `grief.tlk` keep theirs and get more. No
+  line is a joke and none jokes about the loss.
+* `grief_kids.tlk` (69): a child speaks (`kid_speaker`, tags kid): short, honest, never
+  graphic, may say no to a hug; and a grown-up with a child present (`!kid_speaker&
+  kid_present`): "you're safe", "none of this is your fault", a hug only if wanted, "tell a
+  grown-up you trust". Strict kid-room lint, no LOVE face.
+* `grief_feelings.tlk` (141): the hard feelings that are not grief (loneliness, worry,
+  homesickness, regret, shame, stress; fears), when the speaker does not like the topic
+  (`root=feelings&stance=con`, `root=fears&stance=con`): listening, asking, a small step
+  for advice, comfort for a complaint; and the speaker's own sad, scared or lonely moment
+  (`mood=sad`, `mood=scared`, `prob=lonely`) and thanks for kindness while low. The comic
+  banks still joke about these feelings; these lines weigh 4 so the careful side is
+  heard. Typed self-harm words keep their existing out-of-character path (`safety.tlk`,
+  K-11); nothing here touches it.
+New test `core/tests/test_talk_grief.c`: every generic family is reached on all six grief
+topics over 22 acts, every line is sincere and never a fallback and S3-lint clean; a cast
+voice is said by its own speaker only; with a child in the room none of the grown-up-only
+lines come out and the room stays strict-lint clean; a hard feeling is still a plain topic
+(never the grief bank). `TALK_en.BIN` 755,772 -> 776,188 B (+20,416 B, PS1/GBA banks are
+streamed: no resident byte). No engine change. A sample is in the evidence directory.
 
 **With K-10 (the TK3 landing)**: GRAMMAR 14,536 B and STRINGS 17,650 B
 stored (27,439 B raw) for 373 rules, 718 alternatives, 512 guard terms, 79

@@ -1,0 +1,243 @@
+# core/data/talk/grammar/en/grief_voices.tlk - T5b package T5B-GRIEF: the cast in grief (owner: TK;
+# K-10, SCRIPT_STYLE R6 and section 7 "Voices"). When the topic is grief or loss the persona banks are
+# not used, so each of the 17 cast members gets a few sincere lines of their own here. Each is still
+# recognisably themselves (the soup, the bunting, the chalk, the letters, "- V"), and none is a
+# joke: no punchline, no button, no wordplay, a plain no to a laugh at loss. tags: nojoke on every
+# rule; Pip is a kid bank (tags kid), Wisp a kid bank in lowercase (kid,lower), Lord Vapula lowercase.
+# No register word, no catchphrase, no LOVE face, no sub-rule. Lines that name a past loss are
+# the speaker's own story, never {lost} (they need no fact). The six in grief.tlk keep theirs.
+
+
+@rule grief.v_mayor_giggs_answer guard: speaker=mayor_giggs act: answer tags: nojoke
+  "I took the bunting down today. Some days the town should be quiet." w=2
+  "A mayor is meant to be cheerful. Today I'm just here, with you." w=2
+  "No bunting today. I am sad, and I am allowed to be." w=2
+@rule grief.v_mayor_giggs_sympathize guard: speaker=mayor_giggs act: sympathize tags: nojoke
+  "I'm so sorry, friend. The town grieves with you. So do I." w=2
+  "Oh my, my. Come here, friend. There's a chair for you." w=2
+@rule grief.v_mayor_giggs_comfort guard: speaker=mayor_giggs act: comfort tags: nojoke
+  "Take the day, take the week. The town can wait. I'll see to it." w=2
+@rule grief.v_mayor_giggs_backchannel guard: speaker=mayor_giggs act: backchannel tags: nojoke
+  "Of course. Of course. Take your time." w=2
+@rule grief.v_mayor_giggs_thank guard: speaker=mayor_giggs act: thank tags: nojoke
+  "Thank you. A mayor needs this too, you know." w=2
+@rule grief.v_mayor_giggs_tell guard: speaker=mayor_giggs act: tell tags: nojoke
+  "I wrote a speech once for a day like this. I couldn't read it." w=2
+
+@rule grief.v_hattie_haha_answer guard: speaker=hattie_haha act: answer tags: nojoke
+  "No bit for this one, hon. I've got a thousand jokes and none go here." w=2
+  "I make people laugh for a living. This isn't that. Just me and you." w=2
+  "[SAD]You know what? I've got nothing funny. And that's right." w=2
+@rule grief.v_hattie_haha_sympathize guard: speaker=hattie_haha act: sympathize tags: nojoke
+  "I'm so sorry, hon. I'll just be here. No material." w=2
+  "That's real and it's awful. I'm here." w=2
+@rule grief.v_hattie_haha_comfort guard: speaker=hattie_haha act: comfort tags: nojoke
+  "Cry all you like. I'm not performing today. Just a friend." w=2
+@rule grief.v_hattie_haha_backchannel guard: speaker=hattie_haha act: backchannel tags: nojoke
+  "Mm. I hear you, hon." w=2
+@rule grief.v_hattie_haha_thank guard: speaker=hattie_haha act: thank tags: nojoke
+  "Thanks, hon. That was real. Even a comic needs real." w=2
+@rule grief.v_hattie_haha_tell guard: speaker=hattie_haha act: tell tags: nojoke
+  "On the worst nights the stage felt warm. That's the truth." w=2
+
+@rule grief.v_wisp_answer guard: speaker=wisp act: answer tags: nojoke,kid,lower
+  "sorry. i don't know what to say. but i'm sad with you." w=2
+  "i think it's okay to be sad for a long time. sorry, i mean, i think so." w=2
+@rule grief.v_wisp_sympathize guard: speaker=wisp act: sympathize tags: nojoke,kid,lower
+  "i'm sorry. i'm really sorry. i'll sit with you." w=2
+  "oh. i'm so sorry. i'm good at sitting." w=2
+@rule grief.v_wisp_comfort guard: speaker=wisp act: comfort tags: nojoke,kid,lower
+  "it's okay. you can be sad. i'll stay right here." w=2
+@rule grief.v_wisp_backchannel guard: speaker=wisp act: backchannel tags: nojoke,kid,lower
+  "mm. i'm here." w=2
+@rule grief.v_wisp_thank guard: speaker=wisp act: thank tags: nojoke,kid,lower
+  "thank you. sorry. i mean, thank you, that helped." w=2
+@rule grief.v_wisp_tell guard: speaker=wisp act: tell tags: nojoke,kid,lower
+  "i miss people sometimes too. it feels like a cold spot. but it gets warmer." w=2
+
+@rule grief.v_charlotte_answer guard: speaker=charlotte act: answer tags: nojoke
+  "We could write them a letter. We needn't send it. It helps to say it." w=2
+  "I keep an envelope of small things. It's company on the quiet days." w=2
+  "There's no etiquette for this one, dear. Only kindness." w=2
+@rule grief.v_charlotte_sympathize guard: speaker=charlotte act: sympathize tags: nojoke
+  "My dear, I'm so very sorry. Let me make you some tea." w=2
+  "I'm sorry for your loss. I shall sit with you as long as you like." w=2
+@rule grief.v_charlotte_comfort guard: speaker=charlotte act: comfort tags: nojoke
+  "Hush now. There's nothing you need to do but breathe." w=2
+@rule grief.v_charlotte_backchannel guard: speaker=charlotte act: backchannel tags: nojoke
+  "Yes, dear. I understand." w=2
+@rule grief.v_charlotte_thank guard: speaker=charlotte act: thank tags: nojoke
+  "Thank you, dear. That was thoughtful. I shall remember it." w=2
+@rule grief.v_charlotte_tell guard: speaker=charlotte act: tell tags: nojoke
+  "I write their name at the top of a page and just remember. It helps." w=2
+
+@rule grief.v_anvil_answer guard: speaker=anvil act: answer tags: nojoke
+  "Some things you don't hammer. You hold them. I'll hold it with you." w=2
+  "I don't talk much. But I'll stand here as long as you need." w=2
+  "Grief's like iron. It's heavy and it's real. It doesn't mean you're broken." w=2
+@rule grief.v_anvil_sympathize guard: speaker=anvil act: sympathize tags: nojoke
+  "I'm sorry. Plain as that. I'm sorry." w=2
+  "That's a hard blow. Sit. I'll stay." w=2
+@rule grief.v_anvil_comfort guard: speaker=anvil act: comfort tags: nojoke
+  "You don't have to be hard. Not here. Put it down." w=2
+@rule grief.v_anvil_backchannel guard: speaker=anvil act: backchannel tags: nojoke
+  "Mm. I hear you." w=2
+@rule grief.v_anvil_thank guard: speaker=anvil act: thank tags: nojoke
+  "Thanks. That meant a lot. More than I say." w=2
+@rule grief.v_anvil_tell guard: speaker=anvil act: tell tags: nojoke
+  "I made a small thing for someone I lost. It sits by the forge, warm." w=2
+
+@rule grief.v_vex_answer guard: speaker=vex act: answer tags: nojoke
+  "No post for this one. Phone's down. I'm just here. - V" w=2
+  "A million followers, and I know what to say: I'm here. - V" w=2
+  "[SAD]Not everything's content, sweetie. This isn't. - V" w=2
+@rule grief.v_vex_sympathize guard: speaker=vex act: sympathize tags: nojoke
+  "I'm so sorry, sweetie. Seriously. I'm here. - V" w=2
+  "That's rough. The real kind. Come sit. - V" w=2
+@rule grief.v_vex_comfort guard: speaker=vex act: comfort tags: nojoke
+  "Delete the filter. Be sad as long as you need. - V" w=2
+@rule grief.v_vex_backchannel guard: speaker=vex act: backchannel tags: nojoke
+  "Mm. I'm here. No camera. - V" w=2
+@rule grief.v_vex_thank guard: speaker=vex act: thank tags: nojoke
+  "Thanks, sweetie. That's the realest thing today. - V" w=2
+@rule grief.v_vex_tell guard: speaker=vex act: tell tags: nojoke
+  "I don't post about the people I miss. They're mine. - V" w=2
+
+@rule grief.v_clinker_answer guard: speaker=clinker act: answer tags: nojoke
+  "I can't rate this. There's no scale. I'm just here." w=2
+  "No score today. No chalk. Only company." w=2
+  "It isn't a number. It's a hole. We can sit by it." w=2
+@rule grief.v_clinker_sympathize guard: speaker=clinker act: sympathize tags: nojoke
+  "I'm sorry. That's a hard one. I'm not rating it, just sorry." w=2
+  "That's a lot. I'll sit down with you." w=2
+@rule grief.v_clinker_comfort guard: speaker=clinker act: comfort tags: nojoke
+  "You're doing fine. I'm not scoring it. I'm just saying." w=2
+@rule grief.v_clinker_backchannel guard: speaker=clinker act: backchannel tags: nojoke
+  "Mm. Yeah. I hear you." w=2
+@rule grief.v_clinker_thank guard: speaker=clinker act: thank tags: nojoke
+  "Thanks. That helped. I'll keep it to myself." w=2
+@rule grief.v_clinker_tell guard: speaker=clinker act: tell tags: nojoke
+  "I keep a little chalk mark for the people I miss. Nobody sees it. It's mine." w=2
+
+@rule grief.v_grumbleguts_answer guard: speaker=grumbleguts act: answer tags: nojoke
+  "I'll bring soup. Don't argue. And I'll stay till it's gone, and a bit more." w=2
+  "No clever words. Just a warm bowl and a chair. Sit." w=2
+  "I'm not good at this. I'm good at feeding people. So, eat." w=2
+@rule grief.v_grumbleguts_sympathize guard: speaker=grumbleguts act: sympathize tags: nojoke
+  "I'm sorry. Real sorry. Come on, I've got the kettle on." w=2
+  "Hm. That's heavy. Sit, and I'll sit too." w=2
+@rule grief.v_grumbleguts_comfort guard: speaker=grumbleguts act: comfort tags: nojoke
+  "Eat a little. Then cry a little. Then eat a little more." w=2
+@rule grief.v_grumbleguts_backchannel guard: speaker=grumbleguts act: backchannel tags: nojoke
+  "Mm. I'm here." w=2
+@rule grief.v_grumbleguts_thank guard: speaker=grumbleguts act: thank tags: nojoke
+  "Hm. Thanks, that landed. Go on, sit." w=2
+@rule grief.v_grumbleguts_tell guard: speaker=grumbleguts act: tell tags: nojoke
+  "I cooked for somebody for years. Their chair's still there. I don't move it." w=2
+
+@rule grief.v_lord_vapula_answer guard: speaker=lord_vapula act: answer tags: nojoke,lower
+  "grey is allowed. i'll keep the rain light. i'm here." w=2
+  "no storm today. just a soft sky. take your time." w=2
+  "i know a lot about heavy weather. it passes, slowly. but it does." w=2
+@rule grief.v_lord_vapula_sympathize guard: speaker=lord_vapula act: sympathize tags: nojoke,lower
+  "i'm sorry. truly. i'll keep the sky quiet for you." w=2
+  "that's a heavy thing. sit by me. i'll be still." w=2
+@rule grief.v_lord_vapula_comfort guard: speaker=lord_vapula act: comfort tags: nojoke,lower
+  "let it rain a bit. i'm not going anywhere." w=2
+@rule grief.v_lord_vapula_backchannel guard: speaker=lord_vapula act: backchannel tags: nojoke,lower
+  "mm. i hear you." w=2
+@rule grief.v_lord_vapula_thank guard: speaker=lord_vapula act: thank tags: nojoke,lower
+  "thank you. that was kind. the sky feels lighter." w=2
+@rule grief.v_lord_vapula_tell guard: speaker=lord_vapula act: tell tags: nojoke,lower
+  "i keep a little patch of weather for the ones i miss. it's always soft there." w=2
+
+@rule grief.v_mascotty_answer guard: speaker=mascotty act: answer tags: nojoke
+  "*a single, small thump* I'm here." w=2
+  "*a slow nod, a soft thump* I'm sorry. I'm staying." w=2
+  "No words from me. Just company. *thump*" w=2
+@rule grief.v_mascotty_sympathize guard: speaker=mascotty act: sympathize tags: nojoke
+  "*a gentle thump* I'm so sorry. I'll stay right here." w=2
+  "*puts a big soft paw on your shoulder* I'm sorry." w=2
+@rule grief.v_mascotty_comfort guard: speaker=mascotty act: comfort tags: nojoke
+  "*sits beside you, very still* Take all the time you need." w=2
+@rule grief.v_mascotty_backchannel guard: speaker=mascotty act: backchannel tags: nojoke
+  "*a small thump* I hear you." w=2
+@rule grief.v_mascotty_thank guard: speaker=mascotty act: thank tags: nojoke
+  "*a small thump* Thank you. That helped." w=2
+@rule grief.v_mascotty_tell guard: speaker=mascotty act: tell tags: nojoke
+  "It's quiet inside the head. I think about people I miss. It helps to say so." w=2
+
+@rule grief.v_pip_answer guard: speaker=pip act: answer tags: nojoke,kid
+  "Patrol's on sad duty today. I'll stay till it's done." w=2
+  "That's the saddest thing. I'll be your buddy, okay?" w=2
+@rule grief.v_pip_sympathize guard: speaker=pip act: sympathize tags: nojoke,kid
+  "I'm sorry. I'm really sorry. I'm here." w=2
+  "Oh no. I'll sit with you. Patrol never leaves anyone." w=2
+@rule grief.v_pip_comfort guard: speaker=pip act: comfort tags: nojoke,kid
+  "It's okay to cry. Even on Patrol. I'll stay with you." w=2
+@rule grief.v_pip_backchannel guard: speaker=pip act: backchannel tags: nojoke,kid
+  "Okay. I'm here. I'm listening." w=2
+@rule grief.v_pip_thank guard: speaker=pip act: thank tags: nojoke,kid
+  "Thanks. That helps a little. I'm okay, mostly." w=2
+@rule grief.v_pip_tell guard: speaker=pip act: tell tags: nojoke,kid
+  "I miss someone too. It's like a hole. But talking helps it get smaller." w=2
+
+@rule grief.v_nana_puddin_sympathize guard: speaker=nana_puddin act: sympathize tags: nojoke
+  "Oh, sweet pea. I'm so sorry. Sit down, I'll fetch the blanket." w=2
+  "There, there. Let it out. I've got you." w=2
+@rule grief.v_nana_puddin_comfort guard: speaker=nana_puddin act: comfort tags: nojoke
+  "Come here, sweet pea. Nobody's rushing you." w=2
+@rule grief.v_nana_puddin_tell guard: speaker=nana_puddin act: tell tags: nojoke
+  "I still make two cups out of habit. I drink both. It's company." w=2
+@rule grief.v_nana_puddin_thank guard: speaker=nana_puddin act: thank tags: nojoke
+  "Bless you, sweet pea. I needed that." w=2
+
+@rule grief.v_father_fuzz_sympathize guard: speaker=father_fuzz act: sympathize tags: nojoke
+  "I'm so sorry, child. May the quiet hold you." w=2
+  "You are not alone in this. We carry it together." w=2
+@rule grief.v_father_fuzz_comfort guard: speaker=father_fuzz act: comfort tags: nojoke
+  "Come, sit. Nothing needs to be said. I'll be here." w=2
+@rule grief.v_father_fuzz_tell guard: speaker=father_fuzz act: tell tags: nojoke
+  "I say a small prayer each night for the ones I miss. It's a comfort." w=2
+@rule grief.v_father_fuzz_thank guard: speaker=father_fuzz act: thank tags: nojoke
+  "Thank you. Your kindness is a gift." w=2
+
+@rule grief.v_bonejangles_sympathize guard: speaker=bonejangles act: sympathize tags: nojoke
+  "Clack. I'm sorry, truly. I'll stay." w=2
+  "I'm so sorry. I'm bones, but I feel it. Sit." w=2
+@rule grief.v_bonejangles_comfort guard: speaker=bonejangles act: comfort tags: nojoke
+  "You're allowed to rattle. I won't mind. I'm here." w=2
+@rule grief.v_bonejangles_tell guard: speaker=bonejangles act: tell tags: nojoke
+  "I was built to remember. I remember someone every day. It keeps them near." w=2
+@rule grief.v_bonejangles_thank guard: speaker=bonejangles act: thank tags: nojoke
+  "Thank you. That was a good thing to say." w=2
+
+@rule grief.v_dr_bloom_sympathize guard: speaker=dr_bloom act: sympathize tags: nojoke
+  "I'm very sorry. Whatever you feel is normal. Be gentle with yourself." w=2
+  "I'm sorry. Take it slowly. Eat, drink and rest first." w=2
+@rule grief.v_dr_bloom_comfort guard: speaker=dr_bloom act: comfort tags: nojoke
+  "You're not broken. This is what love looks like after a loss." w=2
+@rule grief.v_dr_bloom_tell guard: speaker=dr_bloom act: tell tags: nojoke
+  "I see this often in my work. It's never easy to witness. I stay anyway." w=2
+@rule grief.v_dr_bloom_thank guard: speaker=dr_bloom act: thank tags: nojoke
+  "Thank you. That's kind. I'll take it." w=2
+
+@rule grief.v_rivet_sympathize guard: speaker=rivet act: sympathize tags: nojoke
+  "I'm sorry. Don't make it weird. I mean it, though." w=2
+  "That stinks. I'm sorry. I'll sit here." w=2
+@rule grief.v_rivet_comfort guard: speaker=rivet act: comfort tags: nojoke
+  "You don't have to fix it. Sit. I'll hold the other end." w=2
+@rule grief.v_rivet_tell guard: speaker=rivet act: tell tags: nojoke
+  "I keep a bolt from a thing we built together. It's in my pocket." w=2
+@rule grief.v_rivet_thank guard: speaker=rivet act: thank tags: nojoke
+  "Thanks. Don't tell anyone I said so." w=2
+
+@rule grief.v_mother_nox_sympathize guard: speaker=mother_nox act: sympathize tags: nojoke
+  "Oh, my darling. I'm so sorry. Sit, I'll bring soup." w=2
+  "Come here. I'll hold the whole weight, a while." w=2
+@rule grief.v_mother_nox_comfort guard: speaker=mother_nox act: comfort tags: nojoke
+  "Eat. Rest. I'll sit up with you tonight, if you like." w=2
+@rule grief.v_mother_nox_tell guard: speaker=mother_nox act: tell tags: nojoke
+  "I lit a lamp in the window for someone. It's burned every night since." w=2
+@rule grief.v_mother_nox_thank guard: speaker=mother_nox act: thank tags: nojoke
+  "Thank you, darling. That helps more than soup." w=2

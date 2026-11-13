@@ -1,0 +1,209 @@
+# core/data/talk/grammar/en/grief_feelings.tlk - T5b package T5B-GRIEF: hard feelings that are not grief
+# (owner: TK; K-10 spirit, SCRIPT_STYLE R6, design 3.6 and 7.1). Loneliness, worry, failure, fear,
+# homesickness, stress, regret and shame, when the topic is one of them (root=feelings or root=fears,
+# a feeling the speaker does not like: stance=con), and the speaker's own sad, scared or lonely
+# moments (mood=sad, mood=scared, prob=lonely). Gentle and sincere: comfort, a small step, company;
+# no cure promised, no lecture, no punchline at someone's hurt. The comic banks keep their jokes
+# about these feelings elsewhere; the rules here only add the careful side. Self-harm is not here:
+# a typed distress word keeps its out-of-character path (safety.tlk, K-11) and nothing here is a
+# mechanic. No register word, no catchphrase, no LOVE face. {x} is the topic and appears in guards
+# that need a topic. A kid's rules are tagged kid; a grown-up with a child present keeps it simple.
+
+# ---- asked about a hard feeling (answer, own view, own story) ---------------------------------------------
+@rule core.ask_about.h_view guard: root=feelings&stance=con act: opine_neg
+  "{x:cap}? It's heavy, and very human. You're not odd for it." w=4
+  "{x:cap}? Hard one. It eases when you say it out loud." w=4
+  "{x:cap} is real. I won't wave it away." w=4
+  "{x:cap}? Everyone gets it. It doesn't mean you're doing life wrong." w=4
+  "{x:cap}? It visits me too. It leaves again, slowly." w=4
+  "{x:cap}? Gentle with that one. It bruises easily." w=4
+  "{x:cap}? It feels forever, but it isn't. It really isn't." w=4
+  "{x:cap}? Nobody picks it. Nobody should carry it alone." w=4
+@rule core.ask_about.h_answer guard: root=feelings&stance=con act: answer
+  "{x:cap}? Some days it's quiet, some days it knocks. I answer either way." w=4
+  "{x:cap}? I'm learning to sit with it. Not fight it." w=4
+  "{x:cap}? It helps me to name it. So yes, that's what it is." w=4
+  "{x:cap}? I take it a little at a time. Tea and company help." w=4
+  "{x:cap}? I talk to a friend. That's my whole trick." w=4
+@rule core.ask_about.h_tell guard: root=feelings&stance=con act: tell
+  "I felt {x} last week. A walk and a friend made it smaller." w=4
+  "{x:cap} found me on a Tuesday. I did one small thing. Then another." w=4
+  "I had a rough stretch of {x}. A hot drink and a kind word helped." w=4
+@rule core.ask_about.h_kid guard: root=feelings&stance=con&kid_speaker tags: kid act: answer
+  "{x:cap}? That's a big feeling. I get it sometimes." w=4
+  "{x:cap}? It's yucky, but it goes away. I hug my blanket." w=4
+  "{x:cap}? Yeah. I tell a grown-up, and they help." w=4
+  "{x:cap}? It feels big. But you're not alone." w=4
+@rule core.ask_opinion.h_view guard: root=feelings&stance=con act: opine_neg
+  "{x:cap}? I think it's a sign you care. It still hurts." w=4
+  "{x:cap}? Hard. And nothing to be ashamed of." w=4
+  "{x:cap}? I'd say go gently. With yourself, most of all." w=4
+  "{x:cap}? It's honest, a little scary, and it passes." w=4
+@rule core.ask_opinion.h_answer guard: root=feelings&stance=con act: answer
+  "{x:cap}? I'd listen to it. Then I'd have some soup." w=4
+  "{x:cap}? I think it needs a friend more than a fix." w=4
+@rule core.ask_opinion.h_kid guard: root=feelings&stance=con&kid_speaker tags: kid act: opine_neg
+  "{x:cap}? It's a hard one. Hugs help." w=4
+
+# ---- a fear: asked about, told about ---------------------------------------------------------------------------------
+@rule core.ask_about.h_fear guard: root=fears&stance=con&!kid_speaker act: answer
+  "It's okay to be afraid. Being scared means you care about staying safe." w=4
+  "Fear is a good alarm. It just rings too loud sometimes." w=4
+  "I get scared too. I breathe slowly. In for four, out for four." w=4
+  "{x:cap}? It can be scary. Bring a friend and a snack." w=4
+@rule core.ask_about.h_fear_kid guard: root=fears&stance=con&kid_speaker tags: kid act: answer
+  "It's scary. I hold my blanket tight. It helps." w=4
+  "I get scared too. We can be scared together." w=4
+  "It's okay to be scared. I tell a grown-up. They keep me safe." w=4
+@rule core.tell.h_fear guard: root=fears&stance=con&!kid_speaker act: backchannel
+  "That sounds really scary. I'm glad you told me." w=4
+  "Yeah. Being scared is hard. You're not alone with it." w=4
+  "Mm. That's a real fear. Take your time, I'm listening." w=4
+@rule core.tell.h_fear_kid guard: root=fears&stance=con&kid_speaker tags: kid act: backchannel
+  "That sounds scary. I'm here." w=4
+  "Oh. That's a big scare. It's okay." w=4
+
+# ---- told about a hard feeling (listening: backchannel, asking, going on) -------------------------------------------
+@rule core.tell.h_listen guard: root=feelings&stance=con act: backchannel
+  "Mm. That sounds hard. I'm here." w=4
+  "I'm glad you told me. That took some doing." w=4
+  "Yeah. That's a lot to hold. Thank you for saying it." w=4
+  "I hear you. I'm not going anywhere." w=4
+  "That makes sense. Anyone would feel that." w=4
+  "Okay. I've got you. Say it however it comes." w=4
+@rule core.tell.h_ask guard: root=feelings&stance=con act: ask_about
+  "Do you want to talk about it? I've got time." w=4
+  "What's the heaviest part? We can start there." w=4
+  "How long has it been like this?" w=4
+  "Is there someone who can sit with you today? I can, too." w=4
+  "What would feel a little bit kinder right now?" w=4
+@rule core.tell.h_continue guard: root=feelings&stance=con act: continue
+  "Go on. I'm listening." w=4
+  "Take your time. No hurry at all." w=4
+  "Keep going. You're doing fine." w=4
+@rule core.tell.h_agree guard: root=feelings&stance=con act: agree
+  "Yes. It's a hard one. You're not alone in it." w=4
+  "I know that one. It's heavy, and it's real." w=4
+@rule core.tell.h_kid guard: root=feelings&stance=con&kid_speaker tags: kid act: backchannel
+  "Oh. That sounds sad. I'm here." w=4
+  "Okay. I'm listening. Take your time." w=4
+  "I feel that sometimes too." w=4
+
+# ---- complained to: comfort and sympathy ------------------------------------------------------------------------------------------
+@rule core.complain.h_sympathize guard: root=feelings&stance=con act: sympathize
+  "I'm sorry. That sounds really hard." w=4
+  "That's rough. I'm sorry it's like this." w=4
+  "Oh, friend. I'm sorry. That's a heavy thing." w=4
+  "It makes sense you feel that way. I'm here." w=4
+  "That's a lot for one person. Let me share some of it." w=4
+  "I'm sorry. You deserve some gentleness today." w=4
+@rule core.complain.h_comfort guard: root=feelings&stance=con act: comfort
+  "It's okay. You're allowed to feel it. I've got you." w=4
+  "Breathe a little. In and out. You don't have to solve it today." w=4
+  "You're not failing. You're hurting. Those are different." w=4
+  "Whatever happens, you're not alone. Remember that." w=4
+  "It won't always feel like this. Hold on to that." w=4
+  "I'm proud of you for saying it. That's brave." w=4
+@rule core.complain.h_comfort_kid guard: root=feelings&stance=con&kid_speaker tags: kid act: comfort
+  "It's okay. I'm here. A hug, only if you want one?" w=4
+  "You're not alone. I'm right here." w=4
+@rule core.complain.h_close guard: root=feelings&stance=con&!kid_speaker&kid_present act: comfort
+  "It's okay to feel it. A grown-up is here, and you're safe." w=4
+  "That's a lot. Let's tell someone who can help. I'll go with you." w=4
+@rule core.opine_neg.h_sympathize guard: root=feelings&stance=con act: sympathize
+  "I'm sorry you feel that way. Truly." w=4
+  "I understand. It's a hard feeling to have." w=4
+  "That's fair. I'd feel it too." w=4
+
+# ---- asked for advice about a hard feeling: small, kind steps ----------------------------------------------------------------
+@rule core.ask_advice.h_encourage guard: root=feelings&stance=con act: encourage
+  "One small thing today. A glass of water, a walk, a friend." w=4
+  "Say it out loud to someone. It gets lighter." w=4
+  "Don't fix it all today. Just the next hour." w=4
+  "Be as kind to yourself as you'd be to me." w=4
+  "Sleep, food, a little sun. Then see how it looks." w=4
+  "Tell someone you trust. That's strength, not weakness." w=4
+@rule core.ask_advice.h_answer guard: root=feelings&stance=con act: answer
+  "I'd start by telling someone. Anyone kind. Then take it slowly." w=4
+  "I'd write it down. Then put it away for a night." w=4
+  "I'd go outside for ten minutes. It doesn't fix it. It helps." w=4
+@rule core.ask_advice.h_kid guard: root=feelings&stance=con&kid_speaker tags: kid act: encourage
+  "Tell a grown-up. They know what to do." w=4
+  "Take a big breath. Then another." w=4
+  "Draw it. Then you can tell someone." w=4
+
+# ---- the speaker's own heavy moment (asked how they are) ------------------------------------------------------------------------
+@rule core.ask_feeling.h_sad guard: mood=sad&!kid_speaker act: answer
+  "I'm low today. Not for any reason. It's just heavy." w=4
+  "I'm not great, honestly. Thanks for asking." w=4
+  "Sad. A grey sort of sad. It'll lift, it's just sitting on me." w=4
+  "I'm having a hard day. Don't fix it. Just stay." w=4
+  "[SAD]Tired in my chest. That's the best way I can say it." w=4
+  "I'm okay. Mostly. The 'mostly' is a bit big today." w=4
+  "Honestly, I could use a friend. You'll do nicely." w=4
+@rule core.ask_feeling.h_sad_tell guard: mood=sad&!kid_speaker act: tell
+  "I've been feeling small lately. I'm working on it. Slowly." w=4
+  "I haven't been sleeping. My head won't stop. It's a lot." w=4
+  "I keep thinking I should be doing better. I'm trying to be kinder to me." w=4
+@rule core.ask_feeling.h_sad_kid guard: mood=sad&kid_speaker tags: kid act: answer
+  "I feel sad. Just sad. I don't know why." w=4
+  "My heart feels heavy. Can you sit with me?" w=4
+  "I'm a bit sad today. A hug might help. Maybe." w=4
+@rule core.ask_feeling.h_scared guard: mood=scared&!kid_speaker act: answer
+  "A bit scared, honestly. My heart's going fast. It'll slow." w=4
+  "Nervous. Everything feels loud. I'm breathing through it." w=4
+  "I'm afraid. I'm saying it out loud. That helps." w=4
+  "On edge. I'd love some company. A calm one." w=4
+@rule core.ask_feeling.h_scared_kid guard: mood=scared&kid_speaker tags: kid act: answer
+  "I'm scared. Can you stay with me?" w=4
+  "I'm a bit scared. Not a lot. But a bit." w=4
+  "My heart goes boom-boom. It's scared. I'm holding it." w=4
+@rule core.ask_feeling.h_lonely guard: prob=lonely&!kid_speaker act: answer
+  "Lonely, to be honest. Odd, with all these people around." w=4
+  "A bit alone. It's not anybody's fault. It just is." w=4
+  "Quiet inside. It would help to talk. So, this is nice." w=4
+  "I've felt alone lately. Thank you for asking. It matters." w=4
+@rule core.ask_feeling.h_lonely_kid guard: prob=lonely&kid_speaker tags: kid act: answer
+  "I feel alone. Can you be my friend?" w=4
+  "I don't have anyone to play with. I'm lonely." w=4
+@rule core.ask_feeling.h_homesick guard: mood=sad&fact.family&!kid_speaker act: answer
+  "A bit homesick. A smell, a song, and there it is." w=4
+  "I miss the old place. I'm happy here, too. Both are true." w=4
+
+# ---- thanked for kindness while low (comfort, sympathy, encouragement, a hug) -----------------------------------------------
+@rule core.comfort.h_thank guard: mood=sad&!kid_speaker act: thank
+  "Thank you. I'm still sad. But less alone." w=4
+  "That helps. I didn't know how much I needed it." w=4
+  "Thanks. I'll keep it. I'll take it out on bad days." w=4
+  "You're good at this. Thank you. Really." w=4
+  "Thank you. I feel a bit lighter. A very little bit, but real." w=4
+@rule core.comfort.h_thank_kid guard: mood=sad&kid_speaker tags: kid act: thank
+  "Thank you. I feel a little better." w=4
+  "Thanks. I'm still sad. But it's smaller." w=4
+@rule core.sympathize.h_thank guard: mood=sad act: thank
+  "Thank you. It's good to be understood." w=4
+  "That helps. More than you'd think." w=4
+@rule core.encourage.h_thank guard: mood=sad act: thank
+  "Okay. I'll try, little by little. Thank you." w=4
+  "Thanks. I don't feel it yet. But I'll borrow your belief." w=4
+  "I'll try. I really will. Thank you for asking me to." w=4
+@rule core.comfort.h_thank_scared guard: mood=scared act: thank
+  "Thanks. I'm still scared. But I'm braver with you here." w=4
+  "Okay. Breathing. Thank you for staying." w=4
+@rule core.comfort.h_thank_lonely guard: prob=lonely act: thank
+  "Thank you for sitting here. It's the nicest thing." w=4
+  "That's what I needed. Someone. Thank you." w=4
+
+# ---- failure and shame (the speaker, or someone, got it wrong) -----------------------------------------------------------------
+@rule core.comfort.h_failed guard: mood=sad&!kid_speaker act: complain
+  "I messed it up. I keep replaying it. I know it won't help." w=4
+  "I failed at it. I feel foolish. I'm trying not to." w=4
+  "I'm ashamed of how it went. It's silly. It still stings." w=4
+@rule core.encourage.h_failed guard: mood=sad&!kid_speaker act: complain
+  "I know. I just feel like a failure. I'm trying not to." w=4
+  "Easy to say. Hard to feel. But I'll try." w=4
+@rule core.encourage.h_failed_kid guard: mood=sad&kid_speaker tags: kid act: complain
+  "I messed up. I feel bad. Is it okay?" w=4
+  "I tried and it went wrong. I'm sad." w=4
+@rule core.comfort.h_fail_kid guard: kid_speaker&mood=sad tags: kid act: answer
+  "I made a mistake. Everyone does. I'm learning." w=4
