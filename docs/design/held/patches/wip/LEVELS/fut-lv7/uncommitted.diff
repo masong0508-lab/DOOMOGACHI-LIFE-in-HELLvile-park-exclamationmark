@@ -1,0 +1,39 @@
+diff --git a/core/tests/test_art.c b/core/tests/test_art.c
+index 98b325d7..1f95eebf 100644
+--- a/core/tests/test_art.c
++++ b/core/tests/test_art.c
+@@ -191,7 +191,7 @@ TEST(art_image_uids_unique)
+     for (i = 0; i < n; i++) CHECK(uids[i] != 0);
+ }
+ 
+-/* LV7: the 7 shared level textures (ids 49..55) and the 3 level skies. */
++/* LV7: the 7 shared level textures (ids 48..54) and the 3 level skies. */
+ TEST(art_lv7_textures_and_skies)
+ {
+     static const char *const tn[7] = {"steam_tile", "pipe_steel", "office_carpet", "cubicle_fabric",
+diff --git a/docs/LEVELS.md b/docs/LEVELS.md
+index edfa3363..4a282a51 100644
+--- a/docs/LEVELS.md
++++ b/docs/LEVELS.md
+@@ -247,6 +247,8 @@ was the same in two runs. No resident byte changed (tools, tests and scripts onl
+ 
+ ## LV7a: the shared textures and skies (art kit, first landing)
+ 
++Dreamcast RAM note: `s_tslot` / `s_tstamp` in `dc/src/view3d.c` and `overworld.c` are sized by `TEX_COUNT`, which is 55 now (was 48): about 7 x (light levels x 4 B) more static RAM, small against 16 MB. Before/after Library screenshots are not in the evidence; the artgen sheets are.
++
+ Plan section 8.6, package LV7. This landing is the art that every level can use at once; the demon
+ sprite sets, the Duchess portrait, the per-level banks and all the audio are the follow-up (status
+ file, "LV7b").
+diff --git a/docs/design/levels/LEVELS_EXPANSION_PLAN.md b/docs/design/levels/LEVELS_EXPANSION_PLAN.md
+index 0d60c8f2..a6b4c58f 100644
+--- a/docs/design/levels/LEVELS_EXPANSION_PLAN.md
++++ b/docs/design/levels/LEVELS_EXPANSION_PLAN.md
+@@ -1822,7 +1822,7 @@ its bot edges with it.
+ * **Weld rewards** (charms Rubber Duck, Stamp, Objection!, Horned heart; underbarrel Tow hook; paint Anvil's
+   mark) through the action range's spare ids 551..563 (6 of 13).
+ * **Furniture** rewards arrive as gifts in the house's storage (no unlock id).
+-* **Textures.** 15 ids are free under the 64 cap: 7 shared new textures on ids 49..55 (steam tile, pipe
++* **Textures.** 15 ids are free under the 64 cap: 7 shared new textures on ids 48..54 (the old art ends at id 47; id 55 stays free) (steam tile, pipe
+   steel, office carpet, cubicle fabric, felt, ledger page, vault metal) and ids 56..63 reserved as **level
+   slots** that each map's `texbank` fills from its own bank. **Skies:** +3 (OVERCAST for the dark levels,
+   INK for the Ledger, DUSK_LANTERNS for the Mingle): `SKY_COUNT` 8.

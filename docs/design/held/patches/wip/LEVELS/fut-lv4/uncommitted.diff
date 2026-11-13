@@ -1,0 +1,21 @@
+diff --git a/gba/src/r3d.c b/gba/src/r3d.c
+index f24440fc..96cbdd5c 100644
+--- a/gba/src/r3d.c
++++ b/gba/src/r3d.c
+@@ -310,6 +310,7 @@ typedef struct SprOrder { int32_t depth; int16_t idx; } SprOrder;
+ static void draw_sprites(const DoomoView3D *v)
+ {
+     int i, n = 0, count = v->sprite_count;
++    const int32_t smax = (int32_t)(r3f.maxd << 6);     /* (LV4) the level's view distance in 16.16 world units (64 a cell) */
+     if (!v->sprites || count <= 0) return;
+     if (count > R3D_MAXSPR) count = R3D_MAXSPR;
+     /* (SP8, from G9) the list comes nearest first (combat_build_view):
+@@ -324,7 +325,7 @@ static void draw_sprites(const DoomoView3D *v)
+         dy = b->y - r3f.ey;
+         depth = (int32_t)((r3d_smull(dx, r3f.fx) + r3d_smull(dy, r3f.fy)) >> 16);
+         if (depth < (4 << 16)) continue;                 /* behind / at the eye */
+-        if (depth > ((int32_t)(r3f.maxd >> 16) * 64) << 16) continue;   /* (LV4) the level's view distance */
++        if (depth > smax) continue;
+         spr_order[n].depth = depth;
+         spr_order[n].idx = (int16_t)i;
+         n++;

@@ -1,0 +1,1176 @@
+From e0e826e7fc59dc5eec24f7849fc0659663e0be32 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 17:22:11 +0000
+Subject: [PATCH 1/2] LV3 part 1: mechanic kit A movement rules (ride, zip,
+ bounce, low gravity, carry, tube, raft), kit test map, 17 host tests
+
+levels_mech_move.c: pure rules on DoomoMapExt + a 16-byte MmMove; mm_edges gives the
+autopilot the same edges as map_bfs.h. Nothing calls it yet (no resident byte).
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cz7PBDFwYoagK8oCML
+---
+ ROADMAP.md                        |   1 +
+ core/src/levels_mech_move.c       | 377 ++++++++++++++++++++++
+ core/src/levels_mech_move.h       | 134 ++++++++
+ core/tests/maps/t3_kit.txt        |  36 +++
+ core/tests/test_levels_mech.c     | 498 ++++++++++++++++++++++++++++++
+ docs/LEVELS.md                    |  36 +++
+ docs/design/held/status/LEVELS.md |   3 +-
+ 7 files changed, 1084 insertions(+), 1 deletion(-)
+ create mode 100644 core/src/levels_mech_move.c
+ create mode 100644 core/src/levels_mech_move.h
+ create mode 100644 core/tests/maps/t3_kit.txt
+ create mode 100644 core/tests/test_levels_mech.c
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index 67406492..58081ae9 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -28,6 +28,7 @@ before redoing any of them; a zip without `.git` cannot tell.
+ - **Speed audit 3 (2026-11-13, measure and plan, no game code; `docs/design/SPEED_AUDIT3.md`):** every scene measured again after S2-1..S2-8, S2-12 and the sticks, on the tree at `89a28b56`. GBA (libmgba): 311 windows, 11 of them combat reference, 155 hold a steady 30 with no frame over 33 ms, 145 miss (25 in slow motion, 57 at a steady low rate, 31 with hitches, 32 with one or two long frames). Worst: Shooting Gallery 11 fps, dreams 11-13, the fog vignette 10, the concert band 13, and the sim's 15-minute pass (17 frames of 50-67 ms every 37.7 s on every free-play screen). The file has every window, the cause of each miss from a profile of the window's own ticks, the packages S3-1..S3-14 (what is left of S2-4 and S2-11 and the exorcism / concert / creator / pet gaps folded in), a suggested order, and what cannot reach 30 without an owner call. PS1 (PCSX-Redux): 247 windows, 8 combat, 221 OK, 18 miss (6 of them the in-flight save, loads and workshop; the rest: the busy house layout 28.9 fps, the creator's hat try-on 28.6, single 50-67 ms frames, overlay reads at scene changes); 64 KB below the stack top with the FMV. Dreamcast (Flycast): 218 windows, 211 OK; only the save and two load frames miss (S2-10), the house holds 30 since DC8.
+ - **LV1, map format v2 and levelcheck (2026-11-13, LEVELS round 1; `core/data/maps/README.md` "Format v2", docs/LEVELS.md):** `tools/mapc.py` learns `format 2`, header keys (`fog view gravity dark note gba detail hero`), `zone`, `path`, `swap` blocks, `texbank` and `tflags2`, and refuses what the plan lists; a v2 map gets a ROM `DoomoMapExt` (map.h), accessors in `core/src/levels_mapx.c`. The 12 existing maps are v1 and byte-identical (`check-gen`). New `tools/levelcheck.py` + `core/tools/map_bfs.h` / `mapreach.c` (the one reachability search `test_maps` also runs: walk, zip, arc, tube, ride, raft, bounce, gravity, swap sets by trigger / kill event / lever, hooks, soft locks) with one test map per edge kind; `make -C core test` now also runs `mapc-check` (75 + 9 Python tests) and `levelcheck`. No resident byte on any platform; the script VM (`on EVENT do ACTION`) is LV2.
+ - **LV2, level script VM (2026-11-13, LEVELS round 2; docs/LEVELS.md "The level script VM"):** `core/src/lv_script.c` + `core/include/doomo/lv_script.h`: a deterministic bytecode interpreter (8 events, 20 actions, 32 byte variables, 16 actions a tick, 64 handlers / 2 KB, a queue of 16) with one host function for everything outside the VM; `tools/mapc.py` compiles `on EVENT [repeat] do ACTION ; ...` into `DoomoMapExt.script` and refuses what the VM would. Host tests per action and event, budgets, the checker, and a mapc-compiled script run twice with equal hashes. Nothing in the game calls it yet, so no byte on any platform (GBA sizes identical, PS1 EXE identical).
++- **LV3 part 1, mechanic kit A: movement rules (2026-11-13, LEVELS round 3a; docs/LEVELS.md "Mechanic kit A, movement"):** `core/src/levels_mech_move.c`: ride cycles, ziplines, bounce pads + low gravity, carry, tubes and the raft as pure rules on a 16-byte `MmMove`, plus `mm_edges` (the same edges as the BFS) for the autopilot; kit test map `core/tests/maps/t3_kit.txt` and 17 host tests, among them a bot that plans over the BFS walk rule + `mm_edges` and plays the plan through the real state machine across all six mechanics. Nothing calls it yet (no resident byte on any platform). **Not yet (LV3 part 2):** the ride state in `combat.c`, the zone triggers in the runtime and the edges inside `combat_bot.c`, each with its Vape Cellar fps before / after.
+ - **Speed S3-3 (2026-11-13, the creator, speed audit 3; measured on libmgba and PCSX-Redux; docs/CREATOR.md "S3-3", docs/GBA.md "Speed wave 3: S3-3", docs/PS1.md "S3-3"):** the held creator frame (the saved G2-CR work) and creator panels drawn on the fast path before their capture (S2-6's recipe, `plat_ui_loops` before the pane). GBA: grid scrolled 17.2 -> 26.8 fps, rows 29.4 -> 30.0, a value held 22.2 -> 29.4, the picker 22.7 -> 29.1, hat grid 27.2 -> 29.8, try-on 15.2 -> 26.9, filter chip 21.7 -> 30.5; four tab changes still have two 50 ms frames, the held grid and the try-on stay under 30 (each step is a whole new bust: S3-2). PS1: the grid keeps its unpacked icons in the overlay scratch, grid scrolled 29.39 -> 30.00, try-on 28.57 -> 29.03; no resident byte (64 KB below the stack top with the FMV). Settled screens byte-identical; the pane's in-between frames come a tick later.
+ - **No 3D character models inside houses (PS1-FLAT, 2026-11-13; the owner: "disabled the 3d models of your player character and vice versa when you are inside their houses - save up some ram there", `OWNER_DECISIONS.md` "HOUSE CHARACTERS FLAT"; measured on PCSX-Redux; docs/PS1.md "No 3D models in houses", section 7):** only the PS1 drew a 3D figure in the house, the player's chibi (`model.c`). `ps1/src/room.c` now draws the player with the same `billboard()` as every resident, visitor, guest and demon, from the body sprite the core hands over (direction, walk frame, sit squash; the picture the GBA and the Dreamcast show, and the avatar being played), in Build, Live, Photo, Score, Hold the Door and a visit; it keeps its contact shadow and still rests in the kept backdrop while it stands still. With the house out, `model.c` (4,132 B) left resident RAM for the combat overlay group: `ovl_plan.py` `PLAT_GROUPS` / `GUARDED`, and `plat_view3d()` asks `ovl_code_in()` before it draws the model (the plan fails if house code, or anything else, would call it; `ps1/tools/test_ovl_guard.py`, 6 tests, in CI). The house's hooks in the 3D code are gone (`g_model_hold`, `g_r3_area`). **PS1 game disc with the boot FMV: 65,952 -> 70,480 B below the stack top (+4,528 B); on the tip it landed on (`19d01fe`) 68,224 -> 72,736 B (+4,512 B), 992 B under the 72 KB gate**; the slot keeps its 131,072 B (combat group 124,056 -> 128,188 B, home 130,856 -> 129,420 B). `prims.c` (3,612 B) stays resident: with it the combat group would pass the slot. House fps (`home.txt`, on the landing tip): plain 30.17 -> 30.17, steady 29.39 -> 30.00, orbit 27.17 -> 30.00, cellar (stress layout) 27.80 -> 27.80, defend stress (stress layout) 19.10 -> 22.78, modal 29.19 -> 30.00, Hold the Door wave 3 30.13 -> 30.13 (15.1 -> 6.5 ms of CPU), visit 30.17 -> 30.17; the speed tour's 19 house windows all hold 30 (the busy Live layout 28.78 -> 30.00). Third-person combat is unchanged: `perf_combat`'s shots are byte-identical, fps 29.5-30.0 as before. The core, the GBA and the Dreamcast are untouched (no file of theirs changed).
+ - **Real stick support (ST1, 2026-11-08; the owner: "actual dualshock/stick support so I don't have to move the camera controls with wacky controlling"; measured on PCSX-Redux and Flycast; docs/PS1.md "Sticks", docs/DREAMCAST.md 5):** PS1: a DualShock no longer needs its ANALOG button: when a pad shows up (boot or hot-plug) and reads digital, `ps1/src/pad.c` sends the config sequence (43h / 44h 01 03 analog + lock / 43h) over SIO0 between two BIOS polls (three tries, a digital pad is left alone); L3 / R3 read (`BTN_L3` / `BTN_R3`). Options > Controls gains **Auto** (the new default; Classic / Auto / Dual stick / Modern): Dual stick while an analog pad is plugged in, Modern otherwise, live; explicit Classic / Modern win; saves' old default Modern (stored 1) reads as Auto, an explicit Modern is stored as 3 (`controls_scheme()`). The sticks drive: the shooter (left walk / strafe, right turn / look, R3 lock-on), the overworld (analog walk in any direction: creep, walk, run at the rim), the house view (a right-stick flick = one 90-degree step, repeat on hold; build, live, photo), the creator (the right stick spins the citizen: the turntable opens as a peek). Dreamcast (Auto): the stick's X turns, Y walks, the analog triggers strafe by pressure, both triggers lock on; the overworld walks off the stick. Shared dead zone / curve in `input.c` (`stick_dz`, `stick_curve`, `input_rflick`). Prompts, the control card and the shooter tip follow the scheme in effect; Dual stick on a digital pad says "Analog sticks: use a DualShock". Tests: `core/tests/test_sticks.c` (scheme resolution, dead zone / curve, flick repeat, trigger strafe, each consumer), `dc/tests/vmu` (caps / triggers), harness `stick LX LY RX RY` on the PS1 (`ps1/harness/scripts/sticks.txt`; `sticks_auto.txt` with `run.py --analog-pad`: Redux's DualShock powering up digital is switched by the game, "pad: analog", the card still saves, the D-pad still drives), the native runner and dcrun (`dc/tests/sticks/sticks.txt`). PS1 fps with the sticks moving: combat turn 30.17, house turn 30.17, creator spin 30.34, overworld walk 30.00. PS1 resident +1.6 KB (65,952 B below the stack top with the FMV, was 67,568). GBA unchanged (the stick code compiles out; the Controls row reads Auto = Modern). (STKOPT, 2026-11-13: the Dreamcast Options row "Stick: Turn / Strafe" is done, `OPT_STICK_MODE` in OPT2, docs/DREAMCAST.md 5.) Not done: stick use in the remaining cameras (fishing cast aim, minigame cursors, the 3D level select, exorcism), a right-stick tilt / zoom in the creator (its preview has none).
+diff --git a/core/src/levels_mech_move.c b/core/src/levels_mech_move.c
+new file mode 100644
+index 00000000..fd624b65
+--- /dev/null
++++ b/core/src/levels_mech_move.c
+@@ -0,0 +1,377 @@
++/* levels_mech_move.c - mechanic kit A, movement (owner: levels, LV3). See levels_mech_move.h.
++ * Pure rules on the caller's DoomoMapExt and MmMove: no statics, nothing allocated. On the PS1 this is
++ * in the combat + levels overlay group (ps1/tools/ovl_plan.py matches levels_*), and nothing of it
++ * links until a level calls it (--gc-sections; LV_HAS_NEW is 0 there).
++ */
++#include <string.h>
++#include "levels_mech_move.h"
++
++#define MM_ZIP_HANG   20        /* world units the zipline hangs the player above the floor */
++#define MM_NO_PATH    255
++
++void mm_reset(MmMove *m) { memset(m, 0, sizeof *m); }
++
++/* ---- paths ---------------------------------------------------------------- */
++static int seg_len(const uint8_t *a, const uint8_t *b)
++{
++    int dx = a[0] > b[0] ? a[0] - b[0] : b[0] - a[0];
++    int dy = a[1] > b[1] ? a[1] - b[1] : b[1] - a[1];
++    int hi = dx > dy ? dx : dy, lo = dx > dy ? dy : dx;
++    return (2 * hi + lo) * (MM_U / 2);               /* (max + min / 2) cells */
++}
++
++int mm_path_index(const DoomoMapExt *x, const DoomoPath *p)
++{
++    return (x && p && p >= x->paths && p < x->paths + x->path_count) ? (int)(p - x->paths) : -1;
++}
++
++int mm_path_len(const DoomoMapExt *x, const DoomoPath *p)
++{
++    const uint8_t *pt;
++    int i, n = 0;
++    if (!x || !p) return 0;
++    pt = &x->path_pts[p->first * 2];
++    for (i = 1; i < p->count; i++) n += seg_len(pt + (i - 1) * 2, pt + i * 2);
++    return n;
++}
++
++/* the distance of point i from the first point */
++static int point_dist(const uint8_t *pt, int i)
++{
++    int k, n = 0;
++    for (k = 1; k <= i; k++) n += seg_len(pt + (k - 1) * 2, pt + k * 2);
++    return n;
++}
++
++/* the position on segment k of the path at `dist` (the unit vector of the segment goes to *dir) */
++static void pos_on(const DoomoMapExt *x, const DoomoPath *p, int dist, int *px, int *py, int *dirx, int *diry)
++{
++    const uint8_t *pt = &x->path_pts[p->first * 2];
++    int i, d = dist < 0 ? 0 : dist;
++    *dirx = *diry = 0;
++    for (i = 1; i < p->count; i++) {
++        const uint8_t *a = pt + (i - 1) * 2, *b = pt + i * 2;
++        int len = seg_len(a, b);
++        *dirx = (b[0] > a[0]) - (b[0] < a[0]);
++        *diry = (b[1] > a[1]) - (b[1] < a[1]);
++        if (d <= len || i == p->count - 1) {
++            if (d > len) d = len;
++            *px = a[0] * 256 + (len ? ((int)b[0] - a[0]) * 256 * d / len : 0);
++            *py = a[1] * 256 + (len ? ((int)b[1] - a[1]) * 256 * d / len : 0);
++            return;
++        }
++        d -= len;
++    }
++    *px = pt[0] * 256;
++    *py = pt[1] * 256;
++}
++
++void mm_path_pos(const DoomoMapExt *x, const DoomoPath *p, int dist, int *px256, int *py256)
++{
++    int dx, dy;
++    if (!x || !p || p->count < 1) { *px256 = *py256 = 0; return; }
++    pos_on(x, p, dist, px256, py256, &dx, &dy);
++}
++
++/* ---- gravity -------------------------------------------------------------- */
++int mm_gravity_at(const DoomoMapExt *x, int cx, int cy)
++{
++    int g = 100, z;
++    if (!x) return g;
++    if (x->gravity) g = x->gravity;
++    z = map_zone_at(x, cx, cy, ZONE_GRAVITY, 0);
++    if (z >= 0) g = x->zones[z].arg;
++    return g < 1 ? 1 : g > 250 ? 250 : g;
++}
++
++/* the same number as map_bfs_rise (core/tools/map_bfs.h): test_levels_mech proves it */
++int mm_step_rise(const DoomoMapExt *x, int cx, int cy)
++{
++    int rise = DOOMO_STEP_UP, z;
++    if (!x) return rise;
++    rise = DOOMO_STEP_UP * 100 / mm_gravity_at(x, cx, cy);
++    z = map_zone_at(x, cx, cy, ZONE_BOUNCE, 0);
++    if (z >= 0 && x->zones[z].arg * DOOMO_HEIGHT_STEP > rise) rise = x->zones[z].arg * DOOMO_HEIGHT_STEP;
++    return rise;
++}
++
++int mm_arc_height(int rise, int air, int t)
++{
++    if (air < 1 || rise < 1) return 0;
++    if (t < 0) t = 0;
++    if (t > air) t = air;
++    return rise * DOOMO_HEIGHT_STEP * 4 * t * (air - t) / (air * air);
++}
++
++/* ---- ride cycles ---------------------------------------------------------- */
++void mm_ride_platform(const DoomoMapExt *x, const DoomoPath *p, int clock, int speed, int *px256, int *py256)
++{
++    int len = mm_path_len(x, p), d;
++    if (len < 1) { mm_path_pos(x, p, 0, px256, py256); return; }
++    d = (clock * (speed ? speed : MM_RIDE_SPEED)) % (2 * len);
++    if (d > len) d = 2 * len - d;                    /* out and back */
++    mm_path_pos(x, p, d, px256, py256);
++}
++
++void mm_ride_tick(MmMove *m)
++{
++    if (!m->stopped) m->clock++;
++}
++
++void mm_ride_stop(MmMove *m, int stopped) { m->stopped = stopped ? 1 : 0; }
++
++static int cell_of(int v256) { return (v256 + 128) >> 8; }     /* nearest cell */
++
++int mm_ride_board(const DoomoMapExt *x, MmMove *m, int cx, int cy)
++{
++    int i;
++    if (!x || m->mode != MM_ON_FOOT) return -1;
++    for (i = 0; i < x->path_count; i++) {
++        const DoomoPath *p = &x->paths[i];
++        int px, py;
++        if (p->kind != MPATH_RIDE) continue;
++        mm_ride_platform(x, p, m->clock, 0, &px, &py);
++        if (cell_of(px) != cx || cell_of(py) != cy) continue;
++        m->mode = MM_RIDE; m->path = (uint8_t)i; m->t = 0;
++        return i;
++    }
++    return -1;
++}
++
++/* ---- ziplines ------------------------------------------------------------- */
++static int board_at_point(const DoomoMapExt *x, MmMove *m, int kind, int mode, int cx, int cy, int any_point)
++{
++    int i, j;
++    if (!x || m->mode != MM_ON_FOOT) return -1;
++    for (i = 0; i < x->path_count; i++) {
++        const DoomoPath *p = &x->paths[i];
++        const uint8_t *pt = &x->path_pts[p->first * 2];
++        if (p->kind != kind || p->count < 2) continue;
++        for (j = 0; j < (any_point ? p->count - 1 : 1); j++) {
++            if (pt[j * 2] != cx || pt[j * 2 + 1] != cy) continue;
++            m->mode = (uint8_t)mode; m->path = (uint8_t)i; m->t = 0; m->side = 0; m->buoy = (uint8_t)j;
++            m->dist = (uint16_t)point_dist(pt, j);
++            return i;
++        }
++    }
++    return -1;
++}
++
++int mm_zip_board(const DoomoMapExt *x, MmMove *m, int cx, int cy)
++{
++    return board_at_point(x, m, MPATH_ZIP, MM_ZIP, cx, cy, 0);
++}
++
++int mm_raft_board(const DoomoMapExt *x, MmMove *m, int cx, int cy)
++{
++    return board_at_point(x, m, MPATH_RAFT, MM_RAFT, cx, cy, 1);
++}
++
++/* ---- bounce pads ---------------------------------------------------------- */
++int mm_bounce_start(const DoomoMapExt *x, MmMove *m, int cx, int cy)
++{
++    int z, i, g, air;
++    if (!x || m->mode != MM_ON_FOOT) return 0;
++    z = map_zone_at(x, cx, cy, ZONE_BOUNCE, 0);
++    if (z < 0) return 0;
++    g = mm_gravity_at(x, cx, cy);
++    air = MM_BOUNCE_AIR * 100 / g;                   /* low gravity hangs longer */
++    m->air = (uint8_t)(air < 4 ? 4 : air > 255 ? 255 : air);
++    m->rise = x->zones[z].arg;
++    m->mode = MM_BOUNCE; m->t = 0; m->path = MM_NO_PATH;
++    for (i = 0; i < x->path_count; i++) {
++        const DoomoPath *p = &x->paths[i];
++        const uint8_t *pt = &x->path_pts[p->first * 2];
++        if (p->kind == MPATH_ARC && p->count >= 2 && pt[0] == cx && pt[1] == cy) { m->path = (uint8_t)i; break; }
++    }
++    return 1;
++}
++
++/* ---- tubes ---------------------------------------------------------------- */
++int mm_tube_dest(const DoomoMapExt *x, const MmMove *m, int cx, int cy, int *to_x, int *to_y)
++{
++    int i, pick = -1, pick_to = 0;
++    if (!x) return -1;
++    for (i = 0; i < x->path_count; i++) {
++        const DoomoPath *p = &x->paths[i];
++        const uint8_t *pt = &x->path_pts[p->first * 2];
++        int to;
++        if (p->kind != MPATH_TUBE || p->count < 2) continue;
++        if (pt[0] == cx && pt[1] == cy) to = p->count - 1;
++        else if (pt[(p->count - 1) * 2] == cx && pt[(p->count - 1) * 2 + 1] == cy) to = 0;
++        else continue;
++        /* the first tube whose lever bit is set; with none set, the first one at the station */
++        if (pick < 0) { pick = i; pick_to = to; }
++        if (i < 8 && (m->lever & (1 << i))) { pick = i; pick_to = to; break; }
++    }
++    if (pick < 0) return -1;
++    *to_x = x->path_pts[(x->paths[pick].first + pick_to) * 2];
++    *to_y = x->path_pts[(x->paths[pick].first + pick_to) * 2 + 1];
++    return pick;
++}
++
++int mm_tube_enter(const DoomoMapExt *x, MmMove *m, int cx, int cy)
++{
++    int tx, ty, i;
++    if (m->mode != MM_ON_FOOT) return -1;
++    i = mm_tube_dest(x, m, cx, cy, &tx, &ty);
++    if (i < 0) return -1;
++    m->mode = MM_TUBE; m->path = (uint8_t)i; m->t = 0; m->cx = (uint8_t)tx; m->cy = (uint8_t)ty;
++    return i;
++}
++
++int mm_tube_fade(int t)
++{
++    int h = MM_TUBE_TICKS / 2;
++    if (t < 0) t = 0;
++    if (t > MM_TUBE_TICKS) t = MM_TUBE_TICKS;
++    return (t <= h ? t : MM_TUBE_TICKS - t) * 255 / h;
++}
++
++void mm_tube_lever(MmMove *m, int n)
++{
++    if (n >= 0 && n < 8) m->lever ^= (uint8_t)(1 << n);
++}
++
++/* ---- carry ---------------------------------------------------------------- */
++int mm_carry_take(MmMove *m, int item)
++{
++    if (m->carry || item < 1 || item > 255) return 0;
++    m->carry = (uint8_t)item;
++    return 1;
++}
++
++int mm_carry_drop(MmMove *m)
++{
++    int it = m->carry;
++    m->carry = 0;
++    return it;
++}
++
++int mm_carry_blocks_fire(const MmMove *m) { return m->carry != 0; }
++
++int mm_carry_lay_tag(const DoomoMapExt *x, int cx, int cy)
++{
++    int z = -1;
++    if (!x) return 0;
++    while ((z = map_zone_at(x, cx, cy, ZONE_NONE, z + 1)) >= 0)
++        if (x->zones[z].tag) return x->zones[z].tag;
++    return 0;
++}
++
++/* ---- the tick ------------------------------------------------------------- */
++static void end_move(MmMove *m) { m->mode = MM_ON_FOOT; m->t = 0; m->side = 0; }
++
++int mm_tick(const DoomoMapExt *x, MmMove *m, int steer, int off, int *px256, int *py256, int *height)
++{
++    const DoomoPath *p;
++    int len, dx, dy;
++    *px256 = *py256 = -1;
++    *height = 0;
++    if (!x || m->mode == MM_ON_FOOT || (m->mode != MM_BOUNCE && m->path >= x->path_count)) { m->mode = MM_ON_FOOT; return 0; }
++    p = &x->paths[m->path < x->path_count ? m->path : 0];
++    switch (m->mode) {
++    case MM_RIDE:
++        mm_ride_platform(x, p, m->clock, 0, px256, py256);
++        m->t++;
++        if (off) { end_move(m); return 0; }
++        return 1;
++    case MM_ZIP:
++        len = mm_path_len(x, p);
++        m->dist = (uint16_t)(m->dist + MM_ZIP_SPEED);
++        *height = MM_ZIP_HANG;
++        if (m->dist >= len || off) {
++            mm_path_pos(x, p, m->dist >= len ? len : m->dist, px256, py256);
++            *height = 0;
++            end_move(m);
++            return 0;
++        }
++        mm_path_pos(x, p, m->dist, px256, py256);
++        return 1;
++    case MM_BOUNCE:
++        m->t++;
++        *height = mm_arc_height(m->rise, m->air, m->t);
++        if (m->path != MM_NO_PATH && m->path < x->path_count) {
++            const DoomoPath *a = &x->paths[m->path];
++            mm_path_pos(x, a, mm_path_len(x, a) * m->t / m->air, px256, py256);
++        }
++        if (m->t >= m->air) { *height = 0; end_move(m); return 0; }
++        return 1;
++    case MM_TUBE:
++        m->t++;
++        if (m->t >= MM_TUBE_TICKS / 2) { *px256 = m->cx * 256; *py256 = m->cy * 256; }
++        if (m->t >= MM_TUBE_TICKS) { end_move(m); return 0; }
++        return 1;
++    case MM_RAFT: {
++        const uint8_t *pt = &x->path_pts[p->first * 2];
++        int i, px, py;
++        len = mm_path_len(x, p);
++        m->dist = (uint16_t)(m->dist + MM_RAFT_SPEED);
++        m->side = (int8_t)(m->side + steer * 2);
++        for (i = 0; i < p->count; i++)
++            if (point_dist(pt, i) <= m->dist) m->buoy = (uint8_t)i;
++        if (m->side > MM_RAFT_SIDE || m->side < -MM_RAFT_SIDE) {
++            /* capsized: back to the last buoy, on foot */
++            *px256 = pt[m->buoy * 2] * 256;
++            *py256 = pt[m->buoy * 2 + 1] * 256;
++            end_move(m);
++            return 0;
++        }
++        pos_on(x, p, m->dist >= len ? len : m->dist, &px, &py, &dx, &dy);
++        *px256 = px - dy * m->side * (256 / MM_U);        /* sideways: perpendicular to the current */
++        *py256 = py + dx * m->side * (256 / MM_U);
++        if (m->dist >= len || off) {
++            if (m->dist >= len) { *px256 = pt[(p->count - 1) * 2] * 256; *py256 = pt[(p->count - 1) * 2 + 1] * 256; }
++            end_move(m);
++            return 0;
++        }
++        return 1;
++    }
++    }
++    end_move(m);
++    return 0;
++}
++
++/* ---- the autopilot's edges ------------------------------------------------- */
++static int edge_add(MmEdge *out, int n, int max, const uint8_t *pt, int to, int kind, int path, int ticks)
++{
++    if (n >= max) return n;
++    out[n].to_x = pt[to * 2]; out[n].to_y = pt[to * 2 + 1];
++    out[n].kind = (uint8_t)kind; out[n].path = (uint8_t)path;
++    out[n].ticks = (uint16_t)(ticks > 65535 ? 65535 : ticks);
++    return n + 1;
++}
++
++int mm_edges(const DoomoMapExt *x, int cx, int cy, MmEdge *out, int max)
++{
++    int i, j, n = 0;
++    if (!x || !x->path_count) return 0;
++    for (i = 0; i < x->path_count; i++) {
++        const DoomoPath *p = &x->paths[i];
++        const uint8_t *pt = &x->path_pts[p->first * 2];
++        int len, last, at;
++        if (p->count < 2 || p->kind == MPATH_ROUTE || p->kind == MPATH_CHASE) continue;
++        len = mm_path_len(x, p);
++        last = p->count - 1;
++        for (j = 0; j < p->count; j++) {
++            if (pt[j * 2] != cx || pt[j * 2 + 1] != cy) continue;
++            at = j;
++            if (p->kind == MPATH_ZIP && at == 0) n = edge_add(out, n, max, pt, last, p->kind, i, len / MM_ZIP_SPEED + 1);
++            if (p->kind == MPATH_ARC && at == 0) n = edge_add(out, n, max, pt, last, p->kind, i, MM_BOUNCE_AIR);
++            if (p->kind == MPATH_TUBE && (at == 0 || at == last))
++                n = edge_add(out, n, max, pt, at ? 0 : last, p->kind, i, MM_TUBE_TICKS);
++            if (p->kind == MPATH_RIDE || p->kind == MPATH_RAFT) {
++                int t;
++                for (t = p->kind == MPATH_RAFT ? at + 1 : 0; t < p->count; t++) {
++                    int d = point_dist(pt, t) - point_dist(pt, at);
++                    if (t == at) continue;
++                    if (d < 0) d = -d;
++                    /* a ride: wait for the platform (at most one full out-and-back) and ride; a raft: drift */
++                    n = edge_add(out, n, max, pt, t, p->kind, i,
++                                 p->kind == MPATH_RAFT ? d / MM_RAFT_SPEED + 1 : (2 * len + d) / MM_RIDE_SPEED);
++                }
++            }
++        }
++    }
++    return n;
++}
+diff --git a/core/src/levels_mech_move.h b/core/src/levels_mech_move.h
+new file mode 100644
+index 00000000..22d737b7
+--- /dev/null
++++ b/core/src/levels_mech_move.h
+@@ -0,0 +1,134 @@
++/* levels_mech_move.h - mechanic kit A, movement (owner: levels, LV3; levels plan 8.3).
++ *
++ * Ride cycles (HB10), ziplines (HB14), bounce pads and low gravity (HB16), two-handed carry (N1),
++ * pneumatic tubes (N2) and the raft (N5). Pure rules on a DoomoMapExt (zones and paths of map format
++ * v2, map.h) and one small state block, `MmMove`: no statics, no allocation, nothing drawn. A level
++ * without these zones never calls any of it, so it pays nothing per frame; a function that finds
++ * nothing to do returns at once.
++ *
++ * Units: a distance along a path is in 1/16 cell (`dist`), a position is returned in 1/256 cell, a
++ * height in world units (DOOMO_HEIGHT_STEP is 8). One tick is one 30 fps frame.
++ *
++ * The rules match core/tools/map_bfs.h edge for edge (that file is what proves a level can be
++ * finished): `mm_edges` lists the same edges as the search, so the autopilot (combat_bot.c, a
++ * follow-up: see docs/design/held/status/LEVELS.md) and the BFS cannot disagree. The player's own
++ * ride state is an `MmMove` kept by the levels runtime (LvRun mechanic union, 16 bytes).
++ *
++ * Not part of the contract. On the PS1 nothing links until a level calls it (LV_HAS_NEW is 0 there).
++ */
++#ifndef DOOMO_LEVELS_MECH_MOVE_H
++#define DOOMO_LEVELS_MECH_MOVE_H
++
++#include "doomo/map.h"
++
++/* MmMove.mode */
++enum { MM_ON_FOOT, MM_RIDE, MM_ZIP, MM_BOUNCE, MM_TUBE, MM_RAFT };
++
++#define MM_U            16      /* path distance units per cell */
++#define MM_TUBE_TICKS   12      /* the whoosh (plan 8.3: a 12-tick fade) */
++#define MM_ZIP_SPEED    3       /* 1/16 cell per tick: 5.6 cells a second */
++#define MM_RIDE_SPEED   1       /* the default speed of a ride cycle (1/16 cell per tick) */
++#define MM_RAFT_SPEED   2       /* the current's drift */
++#define MM_RAFT_SIDE    12      /* sideways limit, 1/16 cell: past it the raft capsizes */
++#define MM_BOUNCE_AIR   18      /* air time of a pad at normal gravity, ticks */
++#define MM_CARRY_SLOW   3       /* a carrying player walks at MM_CARRY_SLOW / 4 speed */
++
++typedef struct MmMove {
++    uint8_t  mode;        /* MM_*                                                   */
++    uint8_t  path;        /* index into ext->paths of the zip / ride / tube / raft / arc in use */
++    uint16_t dist;        /* 1/16 cell along that path (raft: along its current)    */
++    uint8_t  t;           /* ticks in the mode (tube whoosh, bounce air time)        */
++    uint8_t  air;         /* bounce: total air time, ticks                          */
++    int8_t   side;        /* raft: sideways offset from the current, 1/16 cell       */
++    uint8_t  buoy;        /* raft: the last point passed (capsizing puts you there)  */
++    uint8_t  carry;       /* two-handed carry: the item id held, 0 = hands free      */
++    uint8_t  lever;       /* tube junction levers, one bit each                      */
++    uint8_t  stopped;     /* the ride cycles are stopped by a booth (1)              */
++    uint8_t  rise;        /* bounce: peak height in height steps                     */
++    uint16_t clock;       /* ride cycles: the ticks they have run                    */
++    uint8_t  cx, cy;      /* tube: the station the whoosh ends at                    */
++} MmMove;                 /* 16 bytes */
++
++/* A way the player can get from one cell to another by one of the mechanics. */
++typedef struct MmEdge {
++    uint8_t to_x, to_y;
++    uint8_t kind;         /* MPATH_* (a zone bounce is MPATH_ARC) */
++    uint8_t path;         /* path index */
++    uint16_t ticks;       /* how long the trip takes */
++} MmEdge;
++
++void mm_reset(MmMove *m);
++
++/* ---- paths ---- */
++/* Length of a path in 1/16 cell (a diagonal step counts max + min / 2). */
++int  mm_path_len(const DoomoMapExt *x, const DoomoPath *p);
++/* The position `dist` (1/16 cell) along the path, in 1/256 cell. A dist past the end is the last point. */
++void mm_path_pos(const DoomoMapExt *x, const DoomoPath *p, int dist, int *px256, int *py256);
++/* Path index of `p` in x->paths. */
++int  mm_path_index(const DoomoMapExt *x, const DoomoPath *p);
++
++/* ---- gravity ---- */
++/* Percent of normal gravity at a cell: a ZONE_GRAVITY zone, else the map's `gravity`, else 100. */
++int  mm_gravity_at(const DoomoMapExt *x, int cx, int cy);
++/* The highest step the player gets onto at that gravity, world units (the BFS's `rise`). */
++int  mm_step_rise(const DoomoMapExt *x, int cx, int cy);
++/* Height above the floor, world units, of a hop of `rise` height steps at `t` of `air` ticks (a parabola). */
++int  mm_arc_height(int rise, int air, int t);
++
++/* ---- ride cycles ---- */
++/* The platform of a ride path (MPATH_RIDE) after the machine's clock, in 1/256 cell. It runs the path
++ * out and back. `speed` is 1/16 cell per tick, 0 = MM_RIDE_SPEED. */
++void mm_ride_platform(const DoomoMapExt *x, const DoomoPath *p, int clock, int speed, int *px256, int *py256);
++/* Advance the cycle clock by one tick (the levels runtime calls it only for a map with a ride path).
++ * One clock runs every ride; a booth stops all of them at once. */
++void mm_ride_tick(MmMove *m);
++/* A booth (A) stops or starts the rides. */
++void mm_ride_stop(MmMove *m, int stopped);
++/* Step onto the ride whose platform is in cell (cx, cy) now: the path index, or -1. */
++int  mm_ride_board(const DoomoMapExt *x, MmMove *m, int cx, int cy);
++
++/* ---- ziplines ---- */
++/* Hang on the zipline whose first point is the cell (cx, cy): the path index, or -1. */
++int  mm_zip_board(const DoomoMapExt *x, MmMove *m, int cx, int cy);
++
++/* ---- bounce pads ---- */
++/* Step onto a ZONE_BOUNCE cell: starts the hop (along the zone's arc path, if one starts in the zone). Returns 1. */
++int  mm_bounce_start(const DoomoMapExt *x, MmMove *m, int cx, int cy);
++
++/* ---- tubes ---- */
++/* The station a tube sends (cx, cy) to: writes it and returns the path index, or -1 if (cx, cy) is no
++ * station. A station on several tubes takes the one its lever picks (bit 0 of the lever count). */
++int  mm_tube_dest(const DoomoMapExt *x, const MmMove *m, int cx, int cy, int *to_x, int *to_y);
++/* Climb into the tube at (cx, cy). Returns the path index or -1. */
++int  mm_tube_enter(const DoomoMapExt *x, MmMove *m, int cx, int cy);
++/* 0..255: how black the screen is `t` ticks into a whoosh (up, then down). */
++int  mm_tube_fade(int t);
++/* A junction lever (script or A on a lever): flips bit `n` (0..7). */
++void mm_tube_lever(MmMove *m, int n);
++
++/* ---- the raft ---- */
++/* Step onto a raft current at one of its points (the BFS's rule: from there to any later point). Returns the path index or -1. */
++int  mm_raft_board(const DoomoMapExt *x, MmMove *m, int cx, int cy);
++
++/* ---- carry ---- */
++int  mm_carry_take(MmMove *m, int item);          /* 1 if the hands were free */
++int  mm_carry_drop(MmMove *m);                    /* the item that was held (0: none) */
++/* Held in both hands: no weapon, slow walk. */
++int  mm_carry_blocks_fire(const MmMove *m);
++/* The tag of the first tagged zone over the cell: where a dropped item is laid (0 = no zone: it is dropped on the floor). */
++int  mm_carry_lay_tag(const DoomoMapExt *x, int cx, int cy);
++
++/* ---- the tick ---- */
++/* One tick of whatever the player is doing (the hop, the zipline, the tube, the raft, a ride). `steer` is
++ * the stick's sideways push (-1, 0, +1; raft) and `off` asks to get off (zipline, ride, raft). Writes
++ * the position in 1/256 cell (-1: leave the player where they are: the tube's first half, a hop with no
++ * arc) and the height above the floor in world units. Returns 1 while the move
++ * goes on, 0 on the tick it ends (the position is where the player lands) or when the player is on foot. */
++int  mm_tick(const DoomoMapExt *x, MmMove *m, int steer, int off, int *px256, int *py256, int *height);
++
++/* ---- the autopilot's edges ---- */
++/* Every mechanic edge out of cell (cx, cy), the same ones map_bfs.h follows. Returns how many were
++ * written (at most max). A level without a table returns 0 at once. */
++int  mm_edges(const DoomoMapExt *x, int cx, int cy, MmEdge *out, int max);
++
++#endif
+diff --git a/core/tests/maps/t3_kit.txt b/core/tests/maps/t3_kit.txt
+new file mode 100644
+index 00000000..53e6d315
+--- /dev/null
++++ b/core/tests/maps/t3_kit.txt
+@@ -0,0 +1,36 @@
++# Kit test map (core/tests/test_levels_mech.c): one of every movement mechanic of kit A (LV3), in a line.
++# zipline over a wall, a ride cycle through an island, a bounce pad with an arc over a wall, a low-gravity
++# step, a tube under a wall, a raft through an island. The exit is only reachable through all six.
++# Not shipped: mapc compiles it into the test binary only.
++format 2
++title "T3 Kit"
++kind dungeon
++sky PASTEL_DAY
++music HAHALAND_DAY
++ambient 12
++
++cell # wall=PASTEL_BRICK
++cell . floor=WOOD_FLOOR ceil=CLOUD_PUFF ch=14
++cell p like=. thing=PLAYER_START
++cell x like=. flags=exit
++cell h like=. fh=10 ch=26
++cell g like=. fh=6 ch=20
++
++grid
++####################################
++#...##...####...#hh...ggg#...#####..
++#...##...####...#hh...ggg#...#####..
++#p..##...#.##...#hh...ggg#...#.###.x
++#...##...####...#hh...ggg#...#####..
++#...##...####...#hh...ggg#...#####..
++####################################
++end
++
++path 1 kind=zip 3,3 6,3
++path 2 kind=ride 8,3 10,3 13,3
++path 3 kind=arc 15,3 17,3
++path 4 kind=tube 24,3 27,3
++path 5 kind=raft 28,3 30,3 34,3
++zone 15 3 15 3 bounce arg=10
++zone 19 1 21 5 gravity arg=50
++zone 1 1 3 1 safe tag=7
+diff --git a/core/tests/test_levels_mech.c b/core/tests/test_levels_mech.c
+new file mode 100644
+index 00000000..aa7ca17f
+--- /dev/null
++++ b/core/tests/test_levels_mech.c
+@@ -0,0 +1,498 @@
++/* test_levels_mech.c - LV3 (owner: levels): mechanic kit A, movement (core/src/levels_mech_move.c).
++ * A test per mechanic, then a scripted bot that plans over the walk edges of core/tools/map_bfs.h plus
++ * mm_edges and drives the real state machine across the kit test map core/tests/maps/t3_kit.txt
++ * (compiled by tools/mapc.py): zipline, ride cycle, bounce arc, low gravity, tube and raft in a line. */
++#include "test.h"
++#include "../src/levels_mech_move.h"
++#include "../tools/map_bfs.h"
++
++extern const DoomoMapDef map_def_t3_kit, map_def_t2_gravity, map_def_t2_bounce;
++extern const DoomoMapExt map_ext_t3_kit, map_ext_t2_gravity, map_ext_t2_bounce;
++
++#define KX (&map_ext_t3_kit)
++
++/* ---- paths and gravity ----------------------------------------------------- */
++TEST(mech_path_length_and_position)
++{
++    int x, y;
++    const DoomoPath *p = map_path_by_id(KX, 1);                   /* zip 3,3 -> 6,3: 3 cells */
++    CHECK(p != NULL);
++    CHECK_EQ(mm_path_len(KX, p), 3 * MM_U);
++    CHECK_EQ(mm_path_index(KX, p), 0);
++    mm_path_pos(KX, p, 0, &x, &y);        CHECK_EQ(x, 3 * 256); CHECK_EQ(y, 3 * 256);
++    mm_path_pos(KX, p, 24, &x, &y);       CHECK_EQ(x, 4 * 256 + 128); CHECK_EQ(y, 3 * 256);
++    mm_path_pos(KX, p, 9999, &x, &y);     CHECK_EQ(x, 6 * 256);          /* past the end: the last point */
++    p = map_path_by_id(KX, 2);                                    /* ride 8,3 10,3 13,3: 5 cells */
++    CHECK_EQ(mm_path_len(KX, p), 5 * MM_U);
++    mm_path_pos(KX, p, 2 * MM_U, &x, &y); CHECK_EQ(x, 10 * 256);          /* the island */
++    CHECK_EQ(mm_path_len(NULL, p), 0);
++    CHECK_EQ(mm_path_index(KX, NULL), -1);
++}
++
++TEST(mech_gravity_matches_the_bfs)
++{
++    /* the one rule of how high a step is: mm_step_rise is map_bfs_rise on every cell of three maps */
++    static MapBfs b;
++    static MapBfsResult r;
++    const DoomoMapDef *defs[3] = { &map_def_t3_kit, &map_def_t2_gravity, &map_def_t2_bounce };
++    const DoomoMapExt *exts[3] = { &map_ext_t3_kit, &map_ext_t2_gravity, &map_ext_t2_bounce };
++    int i, c, n = 0;
++    for (i = 0; i < 3; i++) {
++        map_bfs_run(&b, defs[i], exts[i], NULL, 1, 1, &r);
++        for (c = 0; c < defs[i]->w * defs[i]->h; c++) {
++            CHECK_EQ(mm_step_rise(exts[i], c % defs[i]->w, c / defs[i]->w), map_bfs_rise(&b, c));
++            n++;
++        }
++    }
++    CHECK(n > 100);
++    CHECK_EQ(mm_gravity_at(KX, 20, 3), 50);
++    CHECK_EQ(mm_gravity_at(KX, 2, 3), 100);
++    CHECK_EQ(mm_step_rise(KX, 20, 3), 48);          /* 24 * 100 / 50 */
++    CHECK_EQ(mm_step_rise(KX, 2, 3), DOOMO_STEP_UP);
++    CHECK_EQ(mm_step_rise(KX, 15, 3), 80);          /* the pad: 10 steps */
++    CHECK_EQ(mm_step_rise(NULL, 15, 3), DOOMO_STEP_UP);
++    CHECK_EQ(mm_gravity_at(NULL, 1, 1), 100);
++}
++
++TEST(mech_arc_height_is_a_parabola)
++{
++    CHECK_EQ(mm_arc_height(10, 18, 0), 0);
++    CHECK_EQ(mm_arc_height(10, 18, 18), 0);
++    CHECK_EQ(mm_arc_height(10, 18, 9), 80);          /* the peak is the rise */
++    CHECK(mm_arc_height(10, 18, 4) == mm_arc_height(10, 18, 14));
++    CHECK(mm_arc_height(10, 18, 4) < 80 && mm_arc_height(10, 18, 4) > 0);
++    CHECK_EQ(mm_arc_height(0, 18, 9), 0);
++    CHECK_EQ(mm_arc_height(10, 0, 9), 0);
++    CHECK_EQ(mm_arc_height(10, 18, 99), 0);          /* clamped */
++}
++
++/* ---- ride cycles ------------------------------------------------------------ */
++TEST(mech_ride_runs_out_and_back_and_a_booth_stops_it)
++{
++    const DoomoPath *p = map_path_by_id(KX, 2);
++    MmMove m;
++    int x, y, t, len = mm_path_len(KX, p);
++    mm_reset(&m);
++    mm_ride_platform(KX, p, 0, 0, &x, &y);          CHECK_EQ(x, 8 * 256);
++    mm_ride_platform(KX, p, len, 0, &x, &y);        CHECK_EQ(x, 13 * 256);          /* the far end */
++    mm_ride_platform(KX, p, 2 * len, 0, &x, &y);    CHECK_EQ(x, 8 * 256);           /* and back */
++    mm_ride_platform(KX, p, len / 2, 2, &x, &y);    CHECK_EQ(x, 13 * 256);          /* twice as fast */
++    for (t = 0; t < 10; t++) mm_ride_tick(&m);
++    CHECK_EQ(m.clock, 10);
++    mm_ride_stop(&m, 1);
++    for (t = 0; t < 10; t++) mm_ride_tick(&m);
++    CHECK_EQ(m.clock, 10);                          /* stopped */
++    mm_ride_stop(&m, 0);
++    mm_ride_tick(&m);
++    CHECK_EQ(m.clock, 11);
++}
++
++TEST(mech_ride_boards_only_where_the_platform_is)
++{
++    MmMove m;
++    int x, y, h, t;
++    mm_reset(&m);
++    m.clock = (uint16_t)(2 * MM_U);                 /* platform at the island (10,3) */
++    CHECK_EQ(mm_ride_board(KX, &m, 8, 3), -1);
++    CHECK_EQ(m.mode, MM_ON_FOOT);
++    CHECK_EQ(mm_ride_board(KX, &m, 10, 3), 1);
++    CHECK_EQ(m.mode, MM_RIDE);
++    CHECK_EQ(mm_ride_board(KX, &m, 10, 3), -1);     /* already riding */
++    /* the platform moves the player; the clock is the caller's */
++    mm_ride_tick(&m);
++    CHECK_EQ(mm_tick(KX, &m, 0, 0, &x, &y, &h), 1);
++    CHECK(x > 10 * 256 - 1 && x < 10 * 256 + 64);
++    CHECK_EQ(h, 0);
++    for (t = 0; t < 1000; t++) mm_ride_tick(&m);
++    CHECK_EQ(mm_tick(KX, &m, 0, 1, &x, &y, &h), 0);  /* off */
++    CHECK_EQ(m.mode, MM_ON_FOOT);
++    CHECK(x >= 8 * 256 && x <= 13 * 256);
++}
++
++/* ---- ziplines ---------------------------------------------------------------- */
++TEST(mech_zip_slides_first_to_last_point)
++{
++    MmMove m;
++    int x, y, h, n = 0, r;
++    mm_reset(&m);
++    CHECK_EQ(mm_zip_board(KX, &m, 4, 3), -1);       /* not at the anchor */
++    CHECK_EQ(mm_zip_board(KX, &m, 6, 3), -1);       /* the far end is not an anchor: one way */
++    CHECK_EQ(mm_zip_board(KX, &m, 3, 3), 0);
++    CHECK_EQ(m.mode, MM_ZIP);
++    while ((r = mm_tick(KX, &m, 0, 0, &x, &y, &h)) == 1 && n < 200) { n++; CHECK(h > 0); }
++    CHECK_EQ(r, 0);
++    CHECK_EQ(n, 3 * MM_U / MM_ZIP_SPEED - 1);       /* 16 ticks, the 16th lands */
++    CHECK_EQ(x, 6 * 256); CHECK_EQ(y, 3 * 256); CHECK_EQ(h, 0);
++    CHECK_EQ(m.mode, MM_ON_FOOT);
++    /* dropping off early lands where the line is */
++    mm_zip_board(KX, &m, 3, 3);
++    mm_tick(KX, &m, 0, 0, &x, &y, &h);
++    mm_tick(KX, &m, 0, 0, &x, &y, &h);
++    CHECK_EQ(mm_tick(KX, &m, 0, 1, &x, &y, &h), 0);
++    CHECK(x > 3 * 256 && x < 6 * 256);
++    CHECK_EQ(m.mode, MM_ON_FOOT);
++}
++
++/* ---- bounce pads ------------------------------------------------------------- */
++TEST(mech_bounce_arc_lands_on_the_far_ledge)
++{
++    MmMove m;
++    int x, y, h, n = 0, r, top = 0;
++    mm_reset(&m);
++    CHECK_EQ(mm_bounce_start(KX, &m, 14, 3), 0);    /* not on the pad */
++    CHECK_EQ(mm_bounce_start(KX, &m, 15, 3), 1);
++    CHECK_EQ(m.mode, MM_BOUNCE);
++    CHECK_EQ(m.path, 2);                            /* the arc that starts on the pad */
++    CHECK_EQ(m.air, MM_BOUNCE_AIR);
++    while ((r = mm_tick(KX, &m, 0, 0, &x, &y, &h)) == 1 && n < 100) { n++; if (h > top) top = h; }
++    CHECK_EQ(r, 0);
++    CHECK_EQ(n, MM_BOUNCE_AIR - 1);
++    CHECK(top >= 78 && top <= 80);
++    CHECK_EQ(x, 17 * 256); CHECK_EQ(y, 3 * 256); CHECK_EQ(h, 0);
++}
++
++TEST(mech_bounce_without_an_arc_hops_in_place_and_low_gravity_hangs_longer)
++{
++    MmMove m;
++    int x, y, h, n = 0;
++    mm_reset(&m);
++    CHECK_EQ(mm_bounce_start(&map_ext_t2_bounce, &m, 3, 1), 1);
++    CHECK_EQ(m.path, 255);
++    while (mm_tick(&map_ext_t2_bounce, &m, 0, 0, &x, &y, &h) == 1 && n < 100) { n++; CHECK_EQ(x, -1); }   /* stays put */
++    CHECK_EQ(n, MM_BOUNCE_AIR - 1);
++    /* a pad in a half-gravity zone: twice the air time (the t2_gravity map has no pad: build the case by hand) */
++    {
++        static const DoomoZone zs[2] = { { 1, 1, 1, 1, ZONE_BOUNCE, 4, 0 }, { 0, 0, 3, 3, ZONE_GRAVITY, 50, 0 } };
++        DoomoMapExt e;
++        memset(&e, 0, sizeof e);
++        e.zone_count = 2; e.zones = zs;
++        mm_reset(&m);
++        CHECK_EQ(mm_bounce_start(&e, &m, 1, 1), 1);
++        CHECK_EQ(m.air, 2 * MM_BOUNCE_AIR);
++        CHECK_EQ(m.rise, 4);
++    }
++}
++
++/* ---- tubes ------------------------------------------------------------------- */
++TEST(mech_tube_whoosh_teleports_under_the_fade)
++{
++    MmMove m;
++    int x, y, h, tx, ty, n = 0, r;
++    mm_reset(&m);
++    CHECK_EQ(mm_tube_dest(KX, &m, 24, 3, &tx, &ty), 3);
++    CHECK_EQ(tx, 27); CHECK_EQ(ty, 3);
++    CHECK_EQ(mm_tube_dest(KX, &m, 27, 3, &tx, &ty), 3);       /* both ways */
++    CHECK_EQ(tx, 24);
++    CHECK_EQ(mm_tube_dest(KX, &m, 25, 3, &tx, &ty), -1);      /* not a station */
++    CHECK_EQ(mm_tube_enter(KX, &m, 25, 3), -1);
++    CHECK_EQ(mm_tube_enter(KX, &m, 24, 3), 3);
++    CHECK_EQ(m.mode, MM_TUBE);
++    while ((r = mm_tick(KX, &m, 0, 0, &x, &y, &h)) == 1 && n < 50) {
++        n++;
++        if (m.t < MM_TUBE_TICKS / 2) CHECK_EQ(x, -1);          /* not yet moved */
++        else CHECK_EQ(x, 27 * 256);                            /* moved under the black */
++    }
++    CHECK_EQ(r, 0);
++    CHECK_EQ(n + 1, MM_TUBE_TICKS);
++    CHECK_EQ(x, 27 * 256); CHECK_EQ(y, 3 * 256);
++    CHECK_EQ(m.mode, MM_ON_FOOT);
++    CHECK_EQ(mm_tube_fade(0), 0);
++    CHECK_EQ(mm_tube_fade(MM_TUBE_TICKS / 2), 255);
++    CHECK_EQ(mm_tube_fade(MM_TUBE_TICKS), 0);
++    CHECK(mm_tube_fade(2) == mm_tube_fade(MM_TUBE_TICKS - 2));
++    CHECK_EQ(mm_tube_fade(-5), 0);
++    CHECK_EQ(mm_tube_fade(99), 0);
++}
++
++TEST(mech_tube_junction_lever_picks_the_tube)
++{
++    /* two tubes leave (2,2): path 0 to (6,2), path 1 to (2,6). Without a lever the first; lever 1 the second. */
++    static const uint8_t pts[8] = { 2, 2, 6, 2, 2, 2, 2, 6 };
++    static const DoomoPath ps[2] = { { 10, MPATH_TUBE, 2, 0, 0 }, { 11, MPATH_TUBE, 2, 0, 2 } };
++    DoomoMapExt e;
++    MmMove m;
++    int tx, ty;
++    memset(&e, 0, sizeof e);
++    e.path_count = 2; e.paths = ps; e.path_pts = pts;
++    mm_reset(&m);
++    CHECK_EQ(mm_tube_dest(&e, &m, 2, 2, &tx, &ty), 0);
++    CHECK_EQ(tx, 6); CHECK_EQ(ty, 2);
++    mm_tube_lever(&m, 1);
++    CHECK_EQ(m.lever, 2);
++    CHECK_EQ(mm_tube_dest(&e, &m, 2, 2, &tx, &ty), 1);
++    CHECK_EQ(tx, 2); CHECK_EQ(ty, 6);
++    mm_tube_lever(&m, 1);                                     /* flipped back */
++    CHECK_EQ(mm_tube_dest(&e, &m, 2, 2, &tx, &ty), 0);
++    mm_tube_lever(&m, 9);                                     /* out of range: ignored */
++    CHECK_EQ(m.lever, 0);
++    CHECK_EQ(mm_tube_dest(&e, &m, 6, 2, &tx, &ty), 0);        /* the far end of tube 0 */
++    CHECK_EQ(tx, 2);
++}
++
++/* ---- the raft ---------------------------------------------------------------- */
++TEST(mech_raft_drifts_to_the_end_and_can_hop_off_at_an_island)
++{
++    MmMove m;
++    int x, y, h, n = 0, r;
++    mm_reset(&m);
++    CHECK_EQ(mm_raft_board(KX, &m, 29, 3), -1);
++    CHECK_EQ(mm_raft_board(KX, &m, 28, 3), 4);
++    CHECK_EQ(m.mode, MM_RAFT);
++    while ((r = mm_tick(KX, &m, 0, 0, &x, &y, &h)) == 1 && n < 200) {
++        n++;
++        CHECK_EQ(y, 3 * 256);                                  /* centred: no sideways offset */
++    }
++    CHECK_EQ(r, 0);
++    CHECK_EQ(n + 1, 6 * MM_U / MM_RAFT_SPEED);                  /* 6 cells of current */
++    CHECK_EQ(x, 34 * 256); CHECK_EQ(y, 3 * 256);
++    CHECK_EQ(m.mode, MM_ON_FOOT);
++    /* hop off at the island (30,3): from a point to a later one only, and any point may board */
++    mm_reset(&m);
++    CHECK_EQ(mm_raft_board(KX, &m, 30, 3), 4);
++    CHECK_EQ(m.dist, 2 * MM_U);
++    CHECK_EQ(m.buoy, 1);
++}
++
++TEST(mech_raft_steering_and_capsizing)
++{
++    MmMove m;
++    int x, y, h, n = 0, r;
++    mm_reset(&m);
++    mm_raft_board(KX, &m, 28, 3);
++    /* steer right (+1) on an eastward current: sideways is +y (south) */
++    mm_tick(KX, &m, 1, 0, &x, &y, &h);
++    CHECK(y > 3 * 256);
++    CHECK_EQ(m.side, 2);
++    /* keep steering: past MM_RAFT_SIDE it capsizes to the last buoy (28,3) */
++    while ((r = mm_tick(KX, &m, 1, 0, &x, &y, &h)) == 1 && n < 50) n++;
++    CHECK_EQ(r, 0);
++    CHECK_EQ(m.mode, MM_ON_FOOT);
++    CHECK_EQ(x, 28 * 256); CHECK_EQ(y, 3 * 256);
++    CHECK_EQ(n, MM_RAFT_SIDE / 2 - 1);                /* the first tick is above; tick 7 capsizes */
++    /* a later buoy: capsizing after passing the island puts you on the island */
++    mm_reset(&m);
++    mm_raft_board(KX, &m, 28, 3);
++    for (n = 0; n < 2 * MM_U / MM_RAFT_SPEED + 1; n++) mm_tick(KX, &m, 0, 0, &x, &y, &h);
++    CHECK_EQ(m.buoy, 1);
++    while (mm_tick(KX, &m, -1, 0, &x, &y, &h) == 1) {}
++    CHECK_EQ(x, 30 * 256); CHECK_EQ(y, 3 * 256);
++    /* off asks to leave where the raft is */
++    mm_reset(&m);
++    mm_raft_board(KX, &m, 28, 3);
++    mm_tick(KX, &m, 0, 0, &x, &y, &h);
++    CHECK_EQ(mm_tick(KX, &m, 0, 1, &x, &y, &h), 0);
++    CHECK_EQ(m.mode, MM_ON_FOOT);
++}
++
++/* ---- carry ------------------------------------------------------------------- */
++TEST(mech_carry_holds_one_item_and_blocks_the_gun)
++{
++    MmMove m;
++    mm_reset(&m);
++    CHECK_EQ(mm_carry_blocks_fire(&m), 0);
++    CHECK_EQ(mm_carry_take(&m, 0), 0);                          /* no such item */
++    CHECK_EQ(mm_carry_take(&m, 3), 1);
++    CHECK_EQ(mm_carry_take(&m, 4), 0);                          /* both hands are full */
++    CHECK_EQ(mm_carry_blocks_fire(&m), 1);
++    CHECK_EQ(mm_carry_drop(&m), 3);
++    CHECK_EQ(mm_carry_drop(&m), 0);
++    CHECK_EQ(mm_carry_blocks_fire(&m), 0);
++    CHECK_EQ(mm_carry_lay_tag(KX, 2, 1), 7);                    /* the tagged zone at (1..3, 1) */
++    CHECK_EQ(mm_carry_lay_tag(KX, 2, 3), 0);                    /* nothing tagged here: dropped on the floor */
++    CHECK_EQ(mm_carry_lay_tag(NULL, 2, 1), 0);
++}
++
++/* ---- idle and degenerate input ------------------------------------------------- */
++TEST(mech_idle_and_bad_state_cost_nothing)
++{
++    MmMove m;
++    int x, y, h;
++    mm_reset(&m);
++    CHECK_EQ(sizeof(MmMove), 16);
++    CHECK_EQ(mm_tick(KX, &m, 0, 0, &x, &y, &h), 0);             /* on foot: nothing */
++    CHECK_EQ(x, -1);
++    CHECK_EQ(mm_tick(NULL, &m, 0, 0, &x, &y, &h), 0);
++    m.mode = MM_ZIP; m.path = 99;                               /* a stale path: back on foot */
++    CHECK_EQ(mm_tick(KX, &m, 0, 0, &x, &y, &h), 0);
++    CHECK_EQ(m.mode, MM_ON_FOOT);
++    CHECK_EQ(mm_zip_board(NULL, &m, 3, 3), -1);
++    CHECK_EQ(mm_bounce_start(NULL, &m, 3, 3), 0);
++    CHECK_EQ(mm_ride_board(NULL, &m, 3, 3), -1);
++    CHECK_EQ(mm_edges(NULL, 3, 3, NULL, 0), 0);
++    CHECK_EQ(mm_edges(&map_ext_t2_gravity, 1, 1, NULL, 0), 0);  /* a map without paths */
++}
++
++/* ---- the autopilot's edges ------------------------------------------------------- */
++TEST(mech_edges_match_the_bfs_rules)
++{
++    MmEdge e[8];
++    int n;
++    n = mm_edges(KX, 3, 3, e, 8);                               /* zip anchor */
++    CHECK_EQ(n, 1);
++    CHECK_EQ(e[0].to_x, 6); CHECK_EQ(e[0].kind, MPATH_ZIP);
++    CHECK_EQ(mm_edges(KX, 6, 3, e, 8), 0);                      /* not back */
++    n = mm_edges(KX, 8, 3, e, 8);                               /* ride: to every other stop */
++    CHECK_EQ(n, 2);
++    CHECK_EQ(e[0].to_x, 10); CHECK_EQ(e[1].to_x, 13);
++    CHECK_EQ(mm_edges(KX, 13, 3, e, 8), 2);
++    n = mm_edges(KX, 15, 3, e, 8);
++    CHECK_EQ(n, 1); CHECK_EQ(e[0].kind, MPATH_ARC); CHECK_EQ(e[0].to_x, 17);
++    n = mm_edges(KX, 24, 3, e, 8);
++    CHECK_EQ(n, 1); CHECK_EQ(e[0].kind, MPATH_TUBE); CHECK_EQ(e[0].ticks, MM_TUBE_TICKS);
++    CHECK_EQ(mm_edges(KX, 27, 3, e, 8), 1);                     /* both ways */
++    n = mm_edges(KX, 28, 3, e, 8);                              /* raft: to every LATER point */
++    CHECK_EQ(n, 2);
++    CHECK_EQ(e[0].to_x, 30); CHECK_EQ(e[1].to_x, 34);
++    CHECK_EQ(mm_edges(KX, 34, 3, e, 8), 0);
++    CHECK_EQ(mm_edges(KX, 28, 3, e, 1), 1);                     /* max respected */
++    CHECK_EQ(mm_edges(KX, 2, 2, e, 8), 0);
++}
++
++/* ---- the bot crosses the kit map ------------------------------------------------- */
++/* The bot plans with the BFS's walk rule and mm_edges, then plays the plan with the state machine. */
++typedef struct { int from, to, kind, path; } Step;
++static MapBfs g_bw;
++static MapBfsResult g_br;
++static int g_prev[64 * 64], g_pkind[64 * 64], g_ppath[64 * 64];
++
++static int bot_plan(Step *out, int max, int sx, int sy, int use_edges, int *used_kinds)
++{
++    const DoomoMapDef *d = &map_def_t3_kit;
++    static int q[64 * 64];
++    int head = 0, tail = 0, start = sy * d->w + sx, goal = -1, i, n = 0;
++    map_bfs_run(&g_bw, d, KX, NULL, sx, sy, &g_br);
++    for (i = 0; i < d->w * d->h; i++) g_prev[i] = -2;
++    g_prev[start] = -1;
++    q[tail++] = start;
++    while (head < tail) {
++        int c = q[head++], k, ne;
++        static const int dx[4] = { 1, -1, 0, 0 }, dy[4] = { 0, 0, 1, -1 };
++        MmEdge e[8];
++        if (d->cells[c].flags & CELL_EXIT) { goal = c; break; }
++        for (k = 0; k < 4; k++) {
++            int nx = c % d->w + dx[k], ny = c / d->w + dy[k], ni;
++            if (nx < 0 || ny < 0 || nx >= d->w || ny >= d->h) continue;
++            ni = ny * d->w + nx;
++            if (g_prev[ni] != -2 || !map_bfs_can_step(&g_bw, c, ni, 0)) continue;
++            g_prev[ni] = c; g_pkind[ni] = -1; g_ppath[ni] = 0;
++            q[tail++] = ni;
++        }
++        ne = use_edges ? mm_edges(KX, c % d->w, c / d->w, e, 8) : 0;
++        for (k = 0; k < ne; k++) {
++            int ni = e[k].to_y * d->w + e[k].to_x;
++            if (g_prev[ni] != -2) continue;
++            g_prev[ni] = c; g_pkind[ni] = e[k].kind; g_ppath[ni] = e[k].path;
++            q[tail++] = ni;
++        }
++    }
++    if (goal < 0) return -1;
++    for (i = goal; g_prev[i] >= 0 && n < max; i = g_prev[i]) n++;
++    for (i = goal, max = n; g_prev[i] >= 0; i = g_prev[i]) {
++        out[--n].from = g_prev[i]; out[n].to = i; out[n].kind = g_pkind[i]; out[n].path = g_ppath[i];
++        if (g_pkind[i] >= 0) *used_kinds |= 1 << g_pkind[i];
++    }
++    return max;
++}
++
++static int g_bad;
++#define BCHK(c) do { if (!(c)) g_bad++; } while (0)
++
++/* play one mechanic edge: the player is at `from`; returns the cell the player stands on after it */
++static int bot_ride_edge(MmMove *m, int w, const Step *s, int *ticks)
++{
++    int fx = s->from % w, fy = s->from / w, tx = s->to % w, ty = s->to / w;
++    int x = fx * 256, y = fy * 256, h, r, guard = 0;
++    switch (s->kind) {
++    case MPATH_ZIP: BCHK(mm_zip_board(KX, m, fx, fy) == s->path); break;
++    case MPATH_ARC: BCHK(mm_bounce_start(KX, m, fx, fy) == 1); break;
++    case MPATH_TUBE: BCHK(mm_tube_enter(KX, m, fx, fy) == s->path); break;
++    case MPATH_RAFT: BCHK(mm_raft_board(KX, m, fx, fy) == s->path); break;
++    case MPATH_RIDE: {
++        /* wait until the platform is in the player's cell, step on, ride until it is in the target cell */
++        int px, py;
++        while (guard++ < 1000) {
++            mm_ride_platform(KX, &KX->paths[s->path], m->clock, 0, &px, &py);
++            if (((px + 128) >> 8) == fx && ((py + 128) >> 8) == fy) break;
++            mm_ride_tick(m); (*ticks)++;
++        }
++        BCHK(mm_ride_board(KX, m, fx, fy) == s->path);
++        break;
++    }
++    }
++    guard = 0;
++    for (;;) {
++        int nx, ny;
++        if (guard++ > 2000) { BCHK(0 == 1); break; }
++        if (s->kind == MPATH_RIDE) mm_ride_tick(m);
++        (*ticks)++;
++        r = mm_tick(KX, m, 0, 0, &nx, &ny, &h);
++        if (nx >= 0) { x = nx; y = ny; }
++        if (s->kind == MPATH_RIDE && ((x + 128) >> 8) == tx && ((y + 128) >> 8) == ty) {
++            mm_tick(KX, m, 0, 1, &nx, &ny, &h);                  /* off, on the far stop */
++            x = nx; y = ny; break;
++        }
++        if (s->kind == MPATH_RAFT && s->to != s->from && ((x + 128) >> 8) == tx && ((y + 128) >> 8) == ty && r) {
++            if (tx == 30) { mm_tick(KX, m, 0, 1, &nx, &ny, &h); x = nx; y = ny; break; }
++        }
++        if (!r) break;
++    }
++    BCHK((m->mode) == (MM_ON_FOOT));
++    return ((y + 128) >> 8) * w + ((x + 128) >> 8);
++}
++
++static uint32_t bot_cross(int *used, int *ticks, int *steps_out)
++{
++    Step plan[128];
++    MmMove m;
++    int i, n, at, sx = 1, sy = 3;
++    uint32_t hash = 2166136261u;
++    *used = 0; *ticks = 0;
++    mm_reset(&m);
++    n = bot_plan(plan, 128, sx, sy, 1, used);
++    BCHK(n > 0);
++    *steps_out = n;
++    at = sy * map_def_t3_kit.w + sx;
++    for (i = 0; i < n; i++) {
++        BCHK((plan[i].from) == (at));
++        if (plan[i].kind < 0) { at = plan[i].to; (*ticks)++; }
++        else at = bot_ride_edge(&m, map_def_t3_kit.w, &plan[i], ticks);
++        BCHK((at) == (plan[i].to));                         /* the machine put the bot where the edge said */
++        hash = (hash ^ (uint32_t)at) * 16777619u;
++    }
++    BCHK(map_def_t3_kit.cells[at].flags & CELL_EXIT);
++    return hash;
++}
++
++TEST(mech_bot_crosses_the_kit_map_with_all_five_edge_kinds)
++{
++    int used, ticks, steps, used2, ticks2, steps2;
++    uint32_t h1;
++    g_bad = 0;
++    h1 = bot_cross(&used, &ticks, &steps);
++    uint32_t h2 = bot_cross(&used2, &ticks2, &steps2);
++    CHECK_EQ(g_bad, 0);
++    CHECK_EQ(used, (1 << MPATH_ZIP) | (1 << MPATH_RIDE) | (1 << MPATH_ARC) | (1 << MPATH_TUBE) | (1 << MPATH_RAFT));
++    CHECK_EQ(h1, h2);                                    /* deterministic */
++    CHECK_EQ(ticks, ticks2);
++    CHECK(ticks < 600);                                  /* under 20 seconds of play */
++}
++
++TEST(mech_kit_map_needs_the_mechanics)
++{
++    Step plan[128];
++    int used = 0;
++    CHECK(bot_plan(plan, 128, 1, 3, 1, &used) > 0);
++    CHECK(g_br.exit_reached == 1 && g_br.stuck == 0);
++    CHECK_EQ(bot_plan(plan, 128, 1, 3, 0, &used), -1);   /* walking alone never gets there */
++    /* and the low-gravity step is one of the BFS's walk edges: without the zone it is not */
++    CHECK(map_bfs_can_step(&g_bw, 21 + 3 * map_def_t3_kit.w, 22 + 3 * map_def_t3_kit.w, 0) == 1);
++    CHECK(map_bfs_can_step(&g_bw, 2 + 3 * map_def_t3_kit.w, 3 + 3 * map_def_t3_kit.w, 0) == 1);
++    {
++        MapBfsResult r2;
++        static MapBfs b2;
++        DoomoMapExt nog = map_ext_t3_kit;
++        nog.zone_count = 0;                              /* no zones: neither the gravity nor the pad */
++        map_bfs_run(&b2, &map_def_t3_kit, &nog, NULL, 1, 3, &r2);
++        CHECK(!map_bfs_can_step(&b2, 21 + 3 * map_def_t3_kit.w, 22 + 3 * map_def_t3_kit.w, 0));
++    }
++}
+diff --git a/docs/LEVELS.md b/docs/LEVELS.md
+index 5a7cf4f2..a758df46 100644
+--- a/docs/LEVELS.md
++++ b/docs/LEVELS.md
+@@ -146,6 +146,42 @@ spent until a level starts a VM.
+   mechanic union of LV3-LV5, or a block of the combat overlay), a `LVE_USE` source (usables:
+   LV3), a `LVE_PHASE` source (boss phases), `levelcheck` counting the script bytes.
+ 
++## Mechanic kit A, movement (LV3 part 1, 2026-11-13)
++
++`core/src/levels_mech_move.c` + `levels_mech_move.h`: the rules of six movement mechanics as pure
++functions on a `DoomoMapExt` and one 16-byte state block `MmMove` (it will be the movement member of
++the `LvRun` mechanic union). No statics, nothing allocated, nothing drawn. A level without these zones
++or paths never calls any of it, so it pays nothing per frame.
++
++| Mechanic | Map data | Rule |
++|---|---|---|
++| ride cycle (HB10) | `path ... kind=ride` | one clock; the platform runs the path out and back; `mm_ride_board` when the platform is in your cell; a booth stops all rides (`mm_ride_stop`) |
++| zipline (HB14) | `kind=zip` | board at the first point, slide 3/16 cell a tick, land on the last point; get off early with `off` |
++| bounce pad (HB16) | `zone ... bounce arg=N` + `kind=arc` | a hop of N height steps (a parabola, 18 ticks, longer in low gravity); along the arc path if one starts on the pad, else in place |
++| low gravity (HB16) | `zone ... gravity arg=P` or the header `gravity` | step height 24 * 100 / P (`mm_step_rise` is the BFS's number, a test compares them on every cell) |
++| carry (N1) | none (tagged zones say where it is laid) | one item, no weapon while held (`mm_carry_blocks_fire`), `mm_carry_lay_tag` names the zone tag it is laid on |
++| tube (N2) | `kind=tube` | at either end, a 12-tick whoosh; the move happens under the black at tick 6 (`mm_tube_fade`); junction levers are bits of `MmMove.lever`, the first tube with its bit set wins |
++| raft (N5) | `kind=raft` | board at any point, drift 2/16 cell a tick to the end; the stick pushes it sideways, past 12/16 cell it capsizes to the last buoy (point passed) |
++
++`mm_tick` runs whatever the player is doing. `mm_edges` lists the mechanic edges out of a cell, the same
++ones `core/tools/map_bfs.h` follows (zip and arc first to last, tube both ways, ride any to any, raft to
++every later point), with a tick cost for the autopilot.
++
++* **Tests:** `core/tests/test_levels_mech.c` (17 tests: one or more per mechanic, idle and bad state,
++  edges against the BFS rules, and a scripted bot). The kit map `core/tests/maps/t3_kit.txt` (mapc v2,
++  test binary only) puts a zipline, a ride cycle, a bounce arc, a low-gravity step, a tube and a raft in a
++  line; the exit is reachable only through all six. The bot plans over `map_bfs_can_step` plus `mm_edges`
++  and then plays the plan with the real state machine, checking that every edge ends in the cell it
++  promised; walking alone never reaches the exit (the same test proves it).
++* **Memory:** nothing in the game calls it yet, so `--gc-sections` drops it (GBA `sizes` and the PS1 EXE
++  are unchanged); `levels_mech_move` is already in the PS1 combat overlay group (`levels_*`).
++* **Not yet (LV3 part 2, a follow-up package):** the player's ride state in `combat.c` (position and
++  height taken from `mm_tick`, the stick routed to `steer`, fire blocked while carrying), the zone and
++  usable triggers in `lv_runtime_*`, the raft and zipline billboard, the bot's edges inside
++  `combat_bot.c` (its BFS asks `mm_edges` and presses A at the anchor), and the Vape Cellar fps
++  measurement that those two files require. Each of them touches a per-frame path, so each comes with its
++  before / after fps on GBA and PS1.
++
+ ## Files
+ 
+ `core/src/levels.c` (tables, ranks, runtime, activities),
+diff --git a/docs/design/held/status/LEVELS.md b/docs/design/held/status/LEVELS.md
+index 9f79dcfa..9cf477dd 100644
+--- a/docs/design/held/status/LEVELS.md
++++ b/docs/design/held/status/LEVELS.md
+@@ -4,13 +4,14 @@ Kept by the stream's lead (rules: ../PARALLEL_WAVES.md section 5). Update it wit
+ What goes in: last update, lead session, landed (package, commit, key numbers, PS1 margin and
+ delta, GBA sizes), in flight (package and stage), next up, blockers, needs from other streams.
+ 
+-- **Last update:** 2026-11-13: LV2 (level script VM) landed on claude/nice-allen-gr6czm (after LV0, LV1, LV10)
++- **Last update:** 2026-11-13: LV3 part 1 (movement kit rules) built; LV2 (level script VM) landed on claude/nice-allen-gr6czm (after LV0, LV1, LV10)
+ - **Lead:** session_01Xd63cvXV9YcGJn2CBo4zvt (machine: every toolchain and emulator installed: GBA, PS1 SDK + PCSX-Redux, KallistiOS + Flycast)
+ - **Landed:** the plan and the owner answers are in docs/design/levels/LEVELS_EXPANSION_PLAN.md. **LV0 (level registry, `BRCH` records, select pages) landed** (rebased onto `0df72845`, 4 commits, head `LV0: rebase fixes...`): `LV_COUNT` 31, `lv_info` and `lv_reg` in `levels2.c`, the 24 new levels registered as not built, `BRCH` save chunk (slot 14, declared 160 B; 148 B with all 24 levels, 80 B on the GBA), the level select in pages. Numbers measured on the rebased tree (base `0df72845`, after CR3), both sides built clean: GBA EWRAM free 15,444 -> **15,460 B** (+16 B; `.bss` 245,804 -> 245,788), IWRAM, `.iwram_bss` and the overlay slot unchanged (11,256 / 4,084 / 10,352; 6,308 B of stack left); PS1 EXE with the boot FMV ends 0x801ef450 against the base's 0x801ef4e0 (**-144 B resident**), **68,512 B below the stack top** against the base's 68,368 B (the tree is still under the 72 KB rule until PS1-RAM lands; LV0 does not make it smaller). Gates on the rebased tree: core 1,133 passed / 0 failed, the same under SAN, check-gen, xcheck (410 files, gcc arm mipsel sh4), `make -C gba` + `make -C gba test` + sizes, `make dc-host-test`, `make -C dc` (KallistiOS is installed now), PS1 build + `game_smoke` + the `levels_select` harness script PASS.
+   Also landed: LV1 (map format v2, `tools/levelcheck.py`, `core/tools/map_bfs.h`): core tests 1112 passed 0 failed (SAN=1 the same, only the 4 known UBSan reports), check-gen clean, xcheck 406 files OK, mapc tests 75, levelcheck tests 10, the 12 shipped maps stay v1 and byte-identical. Review fix: the soft-lock test runs only on dungeons with an exit (a v2 overworld or arena has no exit). levelcheck's ROM figure counts map tables only (not script, text, art). GBA sizes unchanged (.iwram 11256, .iwram_bss 4084, .bss 259460); `levels_mapx.c` is dropped at link. PS1 margin: 64 KB below the stack top on this tree (PS1-RAM not landed, so this tree is under 72 KB); LV1 adds no resident byte (EXE identical to the baseline). The PS1 harness was not run (code not in the EXE).
+ - **LV10 (level test harness) landed, partial** (rebased on LV0): `tools/breach_scripts.py` writes 28 scripts for the 7 built levels (checked against `LV_OLD_COUNT`), `make -C gba test-breach2`, `tools/breach_fps.py`, `core/tests/test_levels2.c`. Core 1135 passed, SAN=1 1135 (4 known UBSan reports), check-gen and xcheck (410 files) clean, GBA tests and test-breach2 with floors green, dc-host-test ok. GBA drawn fps in the autopilot 4-17 (combat; far below 30, the speed stream's). Autopilot finishes 44 of 84 cells. PS1 and DC scripts generated and op-checked only (no PS1 SDK / Flycast on the landing machine); no PS1 or GBA resident bytes changed (PS1 margin unchanged from the base). vhash-seq is printed, not gated. Next: play one PS1 and one DC script, LV9 detail modes, LV11/ranks coverage; feed `LEVELS` from the registry as levels get maps.
+ - **LV2 (level script VM) landed** (round 2): `core/src/lv_script.c`, `core/include/doomo/lv_script.h`, mapc `on EVENT do ...`, `core/tests/test_lv_script.c` (30 tests), t2_script test map. Core 1162 passed 0 failed (SAN=1 the same, only the 4 known UBSan reports), check-gen, xcheck (411 files), mapc tests 79, GBA tests and sizes identical (.iwram 11256, .iwram_bss 4084, .bss 245788, .text/.rodata unchanged), dc-host-test ok, PS1 EXE ends 0x801ef450 (same as before) and `game_smoke` PASS. No resident byte on any platform (nothing calls it yet; GBA sizes and PS1 EXE unchanged, `lv_script` added to the PS1 combat overlay group). Follow-up (first level that needs it, LV3-LV5): wire `lv_vm_tick` into `lv_runtime_pre/post` with a host function, give `LvVm` (about 84 B + 4 pointers) a home (the mechanic union, or the combat overlay), and the LVE_USE / LVE_PHASE event sources.
+   LV2 review fixes (landing): `end` now also stops a camera sweep in flight (`lv_vm_frozen` was true forever), a once-handler dropped by a full queue stays armed (it was marked fired and lost), `lv_vm_idle(NULL)` is safe, `lv_vm_hash` covers the open choice's fields; 3 new tests (end during a sweep, set to the same value does not re-fire a `var` handler, dropped once-handler) plus `end` drops the queued handlers. Rebased tree (on `3a847919`): core 1195 passed 0 failed (SAN=1 the same, only the 4 known UBSan reports), check-gen, xcheck 415 files, mapc tests 79, dc-host-test ok, GBA `test` ok; GBA `.iwram` 11256, `.iwram_bss` 4084, `.bss` 245788 (EWRAM and IWRAM net zero), `.text` 1403584, `.rodata` 6643580 (other streams' growth; no `lv_vm` / `t2_script` symbol in the ELF). PS1: `_end` 0x801ef580, 68,208 B below the stack top (unchanged by LV2; still under the 72 KB rule until PS1-RAM), `game_smoke` PASS. `ps1/tools/ovl_plan.py` got one regex (`lv_script` in the combat group), a shared file. Known limits: mapc does not check that `on use` names a usable thing or that a tag is ever posted; `tools/levelcheck.py` does not count script bytes.
++- **LV3 part 1 (mechanic kit A, movement rules) landed** (round 3a): `core/src/levels_mech_move.{c,h}` (ride cycles, ziplines, bounce pads + low gravity, carry, tubes, raft as pure rules on a 16-byte `MmMove`; `mm_edges` for the autopilot, the same edges as `map_bfs.h`), kit test map `core/tests/maps/t3_kit.txt`, `core/tests/test_levels_mech.c` (17 tests: per mechanic, `mm_step_rise` equals the BFS's rise on every cell of three maps, and a bot that plans over the BFS walk rule + `mm_edges` and plays the plan through the state machine, crossing the kit map with all five edge kinds, deterministic). No caller yet: GBA sizes and the PS1 EXE unchanged (see the numbers in the landing commit). Touches no combat*.c / actor.c / map.c / renderer, so no Vape Cellar fps change. **LV3 part 2 (follow-up package, M):** (1) player ride state in `combat.c`: `MmMove` in the LvRun mechanic union (16 B; needs a home: the combat overlay or the union), position / height from `mm_tick`, stick to `steer`, A to `off`, fire blocked by `mm_carry_blocks_fire`; (2) the zone and use triggers in `lv_runtime_pre/post` (bounce zone entry, A at a zip anchor / tube station / raft point / ride stop, lever and booth usables through `LVE_USE`); (3) the bot edges in `combat_bot.c` (BFS asks `mm_edges`; press A at the anchor; wait for the ride platform); (4) raft and zipline billboards; (5) the Vape Cellar fps before and after on GBA and PS1 for (1)-(3).
+ - **In flight:** round 1 done for LV0, LV1, LV10.
+ - **Next up:** round 2: LV7 (art and audio kit), LV2 (script VM, after LV1), LV11 (content notes, after LV0); then LV6, LV3, LV4, LV9, LV5, LV8 (GBA side, tool and host tests first)
+ - **Blockers:** none. Carried notes from LV0: (1) the new UI strings (page names, the locked reasons, the page hint) are English only and fall back to English in Spanish - add them in a Talk / i18n wave; (2) a save moved to a platform that lists fewer levels and re-saved there loses the records of the levels that platform does not list (`docs/LEVELS.md` says so; keeping them as raw bytes costs about 68 B of GBA EWRAM, which is not there); (3) the unlock rules of the new levels are placeholders where the plan is vague (HB9 / HB11 both on BEAT_EP3_4, HB10 on chapter 3) - the level packages re-point them; (4) the PS1 builds the old seven only (`LV_HAS_NEW` / `LV_TABLE_N` in `core/src/levels_int.h`) until the LEVELS share of PS1 RAM is released after PS1-RAM.
+-- 
+2.43.0
+

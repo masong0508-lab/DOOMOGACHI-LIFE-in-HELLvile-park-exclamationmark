@@ -1,0 +1,1519 @@
+From dcfc63427e4650d77e42cbe79aa04c902e176e83 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 17:32:02 +0000
+Subject: [PATCH] LV4: mechanic kit B (environment and light), per-level view
+ distance
+
+levels_mech_env.c: fog zones with valves, the glum tide, lantern and candles, the Wall's two faces,
+showtime light swap, collapsing floors, dissolving rooms; every cell rebuilt from the definition plus
+the state, so restores are exact. New zone kinds candle / show / collapse. DoomoView3D.view_dist
+(header key view) in the native raycaster (matching light fall-off) and the GBA r3d.c (r3f.maxd, sprite
+cull); PS1 compiled out until PS1-RAM. GBA RAM identical, speed tour frame-exact. 15 host tests incl.
+the renderer at 240x160 and 320x240.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cz7PBDFwYoagK8oCML
+---
+ ROADMAP.md                        |   1 +
+ core/data/maps/README.md          |   4 +-
+ core/include/doomo/lv_env.h       | 129 ++++++++
+ core/include/doomo/map.h          |   3 +
+ core/include/doomo/platform.h     |   5 +
+ core/native/raycast.c             |  19 +-
+ core/src/levels.c                 |   7 +
+ core/src/levels_int.h             |   1 +
+ core/src/levels_mech_env.c        | 451 ++++++++++++++++++++++++++
+ core/tests/maps/t4_env.txt        |  62 ++++
+ core/tests/test_lv_env.c          | 509 ++++++++++++++++++++++++++++++
+ docs/GBA.md                       |   1 +
+ docs/LEVELS.md                    |  55 ++++
+ docs/PS1.md                       |   9 +
+ docs/design/held/status/LEVELS.md |   3 +-
+ gba/src/r3d.c                     |   9 +-
+ gba/src/r3d_int.h                 |   1 +
+ 17 files changed, 1263 insertions(+), 6 deletions(-)
+ create mode 100644 core/include/doomo/lv_env.h
+ create mode 100644 core/src/levels_mech_env.c
+ create mode 100644 core/tests/maps/t4_env.txt
+ create mode 100644 core/tests/test_lv_env.c
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index 67406492..a3d96768 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -28,6 +28,7 @@ before redoing any of them; a zip without `.git` cannot tell.
+ - **Speed audit 3 (2026-11-13, measure and plan, no game code; `docs/design/SPEED_AUDIT3.md`):** every scene measured again after S2-1..S2-8, S2-12 and the sticks, on the tree at `89a28b56`. GBA (libmgba): 311 windows, 11 of them combat reference, 155 hold a steady 30 with no frame over 33 ms, 145 miss (25 in slow motion, 57 at a steady low rate, 31 with hitches, 32 with one or two long frames). Worst: Shooting Gallery 11 fps, dreams 11-13, the fog vignette 10, the concert band 13, and the sim's 15-minute pass (17 frames of 50-67 ms every 37.7 s on every free-play screen). The file has every window, the cause of each miss from a profile of the window's own ticks, the packages S3-1..S3-14 (what is left of S2-4 and S2-11 and the exorcism / concert / creator / pet gaps folded in), a suggested order, and what cannot reach 30 without an owner call. PS1 (PCSX-Redux): 247 windows, 8 combat, 221 OK, 18 miss (6 of them the in-flight save, loads and workshop; the rest: the busy house layout 28.9 fps, the creator's hat try-on 28.6, single 50-67 ms frames, overlay reads at scene changes); 64 KB below the stack top with the FMV. Dreamcast (Flycast): 218 windows, 211 OK; only the save and two load frames miss (S2-10), the house holds 30 since DC8.
+ - **LV1, map format v2 and levelcheck (2026-11-13, LEVELS round 1; `core/data/maps/README.md` "Format v2", docs/LEVELS.md):** `tools/mapc.py` learns `format 2`, header keys (`fog view gravity dark note gba detail hero`), `zone`, `path`, `swap` blocks, `texbank` and `tflags2`, and refuses what the plan lists; a v2 map gets a ROM `DoomoMapExt` (map.h), accessors in `core/src/levels_mapx.c`. The 12 existing maps are v1 and byte-identical (`check-gen`). New `tools/levelcheck.py` + `core/tools/map_bfs.h` / `mapreach.c` (the one reachability search `test_maps` also runs: walk, zip, arc, tube, ride, raft, bounce, gravity, swap sets by trigger / kill event / lever, hooks, soft locks) with one test map per edge kind; `make -C core test` now also runs `mapc-check` (75 + 9 Python tests) and `levelcheck`. No resident byte on any platform; the script VM (`on EVENT do ACTION`) is LV2.
+ - **LV2, level script VM (2026-11-13, LEVELS round 2; docs/LEVELS.md "The level script VM"):** `core/src/lv_script.c` + `core/include/doomo/lv_script.h`: a deterministic bytecode interpreter (8 events, 20 actions, 32 byte variables, 16 actions a tick, 64 handlers / 2 KB, a queue of 16) with one host function for everything outside the VM; `tools/mapc.py` compiles `on EVENT [repeat] do ACTION ; ...` into `DoomoMapExt.script` and refuses what the VM would. Host tests per action and event, budgets, the checker, and a mapc-compiled script run twice with equal hashes. Nothing in the game calls it yet, so no byte on any platform (GBA sizes identical, PS1 EXE identical).
++- **LV4, mechanic kit B: environment and light (2026-11-13, LEVELS round 3a; docs/LEVELS.md "Mechanic kit B"):** `core/src/levels_mech_env.c` + `lv_env.h`: fog zones with valves, the glum tide, lantern (25 cells) and candles, the Wall's two faces, the showtime light swap, collapsing floors and dissolving rooms, each rebuilt exactly from the definition (new zone kinds `candle`, `show`, `collapse`); per-level view distance (`DoomoView3D.view_dist`, header key `view`) in the native raycaster and the GBA `r3d.c`, PS1 compiled out until PS1-RAM (no resident byte), DC ignores it for now. 15 host tests incl. the renderer at both sizes. GBA RAM identical, speed tour frame-exact, PS1 EXE unchanged. Nothing calls it yet; the first level that needs a piece wires it (follow-up LV4b in `docs/design/held/status/LEVELS.md`).
+ - **Speed S3-3 (2026-11-13, the creator, speed audit 3; measured on libmgba and PCSX-Redux; docs/CREATOR.md "S3-3", docs/GBA.md "Speed wave 3: S3-3", docs/PS1.md "S3-3"):** the held creator frame (the saved G2-CR work) and creator panels drawn on the fast path before their capture (S2-6's recipe, `plat_ui_loops` before the pane). GBA: grid scrolled 17.2 -> 26.8 fps, rows 29.4 -> 30.0, a value held 22.2 -> 29.4, the picker 22.7 -> 29.1, hat grid 27.2 -> 29.8, try-on 15.2 -> 26.9, filter chip 21.7 -> 30.5; four tab changes still have two 50 ms frames, the held grid and the try-on stay under 30 (each step is a whole new bust: S3-2). PS1: the grid keeps its unpacked icons in the overlay scratch, grid scrolled 29.39 -> 30.00, try-on 28.57 -> 29.03; no resident byte (64 KB below the stack top with the FMV). Settled screens byte-identical; the pane's in-between frames come a tick later.
+ - **No 3D character models inside houses (PS1-FLAT, 2026-11-13; the owner: "disabled the 3d models of your player character and vice versa when you are inside their houses - save up some ram there", `OWNER_DECISIONS.md` "HOUSE CHARACTERS FLAT"; measured on PCSX-Redux; docs/PS1.md "No 3D models in houses", section 7):** only the PS1 drew a 3D figure in the house, the player's chibi (`model.c`). `ps1/src/room.c` now draws the player with the same `billboard()` as every resident, visitor, guest and demon, from the body sprite the core hands over (direction, walk frame, sit squash; the picture the GBA and the Dreamcast show, and the avatar being played), in Build, Live, Photo, Score, Hold the Door and a visit; it keeps its contact shadow and still rests in the kept backdrop while it stands still. With the house out, `model.c` (4,132 B) left resident RAM for the combat overlay group: `ovl_plan.py` `PLAT_GROUPS` / `GUARDED`, and `plat_view3d()` asks `ovl_code_in()` before it draws the model (the plan fails if house code, or anything else, would call it; `ps1/tools/test_ovl_guard.py`, 6 tests, in CI). The house's hooks in the 3D code are gone (`g_model_hold`, `g_r3_area`). **PS1 game disc with the boot FMV: 65,952 -> 70,480 B below the stack top (+4,528 B); on the tip it landed on (`19d01fe`) 68,224 -> 72,736 B (+4,512 B), 992 B under the 72 KB gate**; the slot keeps its 131,072 B (combat group 124,056 -> 128,188 B, home 130,856 -> 129,420 B). `prims.c` (3,612 B) stays resident: with it the combat group would pass the slot. House fps (`home.txt`, on the landing tip): plain 30.17 -> 30.17, steady 29.39 -> 30.00, orbit 27.17 -> 30.00, cellar (stress layout) 27.80 -> 27.80, defend stress (stress layout) 19.10 -> 22.78, modal 29.19 -> 30.00, Hold the Door wave 3 30.13 -> 30.13 (15.1 -> 6.5 ms of CPU), visit 30.17 -> 30.17; the speed tour's 19 house windows all hold 30 (the busy Live layout 28.78 -> 30.00). Third-person combat is unchanged: `perf_combat`'s shots are byte-identical, fps 29.5-30.0 as before. The core, the GBA and the Dreamcast are untouched (no file of theirs changed).
+ - **Real stick support (ST1, 2026-11-08; the owner: "actual dualshock/stick support so I don't have to move the camera controls with wacky controlling"; measured on PCSX-Redux and Flycast; docs/PS1.md "Sticks", docs/DREAMCAST.md 5):** PS1: a DualShock no longer needs its ANALOG button: when a pad shows up (boot or hot-plug) and reads digital, `ps1/src/pad.c` sends the config sequence (43h / 44h 01 03 analog + lock / 43h) over SIO0 between two BIOS polls (three tries, a digital pad is left alone); L3 / R3 read (`BTN_L3` / `BTN_R3`). Options > Controls gains **Auto** (the new default; Classic / Auto / Dual stick / Modern): Dual stick while an analog pad is plugged in, Modern otherwise, live; explicit Classic / Modern win; saves' old default Modern (stored 1) reads as Auto, an explicit Modern is stored as 3 (`controls_scheme()`). The sticks drive: the shooter (left walk / strafe, right turn / look, R3 lock-on), the overworld (analog walk in any direction: creep, walk, run at the rim), the house view (a right-stick flick = one 90-degree step, repeat on hold; build, live, photo), the creator (the right stick spins the citizen: the turntable opens as a peek). Dreamcast (Auto): the stick's X turns, Y walks, the analog triggers strafe by pressure, both triggers lock on; the overworld walks off the stick. Shared dead zone / curve in `input.c` (`stick_dz`, `stick_curve`, `input_rflick`). Prompts, the control card and the shooter tip follow the scheme in effect; Dual stick on a digital pad says "Analog sticks: use a DualShock". Tests: `core/tests/test_sticks.c` (scheme resolution, dead zone / curve, flick repeat, trigger strafe, each consumer), `dc/tests/vmu` (caps / triggers), harness `stick LX LY RX RY` on the PS1 (`ps1/harness/scripts/sticks.txt`; `sticks_auto.txt` with `run.py --analog-pad`: Redux's DualShock powering up digital is switched by the game, "pad: analog", the card still saves, the D-pad still drives), the native runner and dcrun (`dc/tests/sticks/sticks.txt`). PS1 fps with the sticks moving: combat turn 30.17, house turn 30.17, creator spin 30.34, overworld walk 30.00. PS1 resident +1.6 KB (65,952 B below the stack top with the FMV, was 67,568). GBA unchanged (the stick code compiles out; the Controls row reads Auto = Modern). (STKOPT, 2026-11-13: the Dreamcast Options row "Stick: Turn / Strafe" is done, `OPT_STICK_MODE` in OPT2, docs/DREAMCAST.md 5.) Not done: stick use in the remaining cameras (fishing cast aim, minigame cursors, the 3D level select, exorcism), a right-stick tilt / zoom in the creator (its preview has none).
+diff --git a/core/data/maps/README.md b/core/data/maps/README.md
+index ef257122..e8e17fa4 100644
+--- a/core/data/maps/README.md
++++ b/core/data/maps/README.md
+@@ -208,7 +208,9 @@ tflags2=a,b                              on a thing, a legend entry or `thing` l
+ ```
+ 
+ * Zone KINDs: `fog tide gravity dark noise face_a face_b ward chase safe
+-  bounce web`. `gravity` needs `arg=1..250` (percent), `bounce` needs
++  bounce web candle show collapse` (`candle show collapse` are mechanic kit B, LV4:
++  docs/LEVELS.md; `candle`: `arg` = flame light, `tag` = its number; `show`: `arg` = the room's
++  light between shows; `collapse`: `arg` = drop in steps). `gravity` needs `arg=1..250` (percent), `bounce` needs
+   `arg=1..127` (rise in height steps). Zones of one kind may not overlap;
+   `face_a`/`face_b` and `safe`/`chase` may not overlap each other.
+ * Path KINDs: `route` (default, nobody rides it), `zip` (first point to last,
+diff --git a/core/include/doomo/lv_env.h b/core/include/doomo/lv_env.h
+new file mode 100644
+index 00000000..de417014
+--- /dev/null
++++ b/core/include/doomo/lv_env.h
+@@ -0,0 +1,129 @@
++/* lv_env.h - mechanic kit B, environment and light (owner: levels, LV4; plan 8.3).
++ *
++ * Fog zones cleared by valves, the glum tide, the lantern and candles, the Wall's two faces, the
++ * showtime light swap, collapsing floors and dissolving rooms. Every piece is a rule over the
++ * LIVE map and the level's ROM zones (map.h: ZONE_*): no clock, no rng, no allocation, no statics.
++ * The caller owns one LvEnv (the mechanic union of the level runtime; 84 B with the pointers) and
++ * calls lv_env_tick() once per game tick with the player's cell.
++ *
++ * What it writes in the live cells, and nothing else: `light` (fog, candles, lantern, showtime),
++ * `floor_h` and CELL_WATER (the tide, collapses), `wall` (dissolved rooms). Each of those fields is
++ * recomputed from the DEFINITION's cell plus the state ("a cell is rebuilt, never patched"), so
++ * a restore is exact whatever happened in between. Doors, lifts and the rest of a cell are left
++ * to map.c. Swap sets (the two faces) XOR whole cells: a swap set of an env level may not
++ * touch `light` / `floor_h` / `wall` of a cell that one of these zones covers
++ * (lv_env_check() refuses it).
++ *
++ * The code is for the host, GBA and DC builds. The PS1 compiles it out (LV_HAS_NEW is 0 there,
++ * no new resident byte before PS1-RAM): see docs/LEVELS.md.
++ */
++#ifndef DOOMO_LV_ENV_H
++#define DOOMO_LV_ENV_H
++
++#include "map.h"
++
++/* tunables (ticks are game ticks: 30 a second) */
++#define LV_ENV_VIEW_MIN      8      /* shortest view distance a renderer takes (cells)       */
++#define LV_ENV_TIDE_N        4      /* tide zones with state                                   */
++#define LV_ENV_TIDE_TICKS    180    /* the sludge rises one step every 6 s while you are in it */
++#define LV_ENV_DECAY_N       8      /* collapse / ward zones with a timer                      */
++#define LV_ENV_DECAY_DIV     4      /* the timer counts in ticks / 4 (a byte)                  */
++#define LV_ENV_DISSOLVE_TICKS 240   /* a room you left unnamed dissolves after 8 s             */
++#define LV_ENV_COLLAPSE_TICKS 45    /* a floor you left falls after 1.5 s                      */
++#define LV_ENV_OIL_MAX       1800   /* the lantern: 60 s of oil                                */
++#define LV_ENV_LAMP_R        2      /* lights the cells within this many (5 x 5 = 25)          */
++#define LV_ENV_LAMP_LIGHT    10     /* its light at the centre, 2 less per cell away           */
++#define LV_ENV_CANDLE_LIGHT  9      /* a lit candle's cells when the zone's arg is 0           */
++#define LV_ENV_FOG_DROP      5      /* light a fog zone takes off                              */
++#define LV_ENV_SHOW_TICKS    300    /* showtime cycle: every 10 s ...                          */
++#define LV_ENV_SHOW_ON       120    /* ... the lights blaze for 4 s                             */
++#define LV_ENV_SHOW_LIGHT    15     /* ... at this light                                       */
++#define LV_ENV_FOGWALL       TEX_CLOUD_PUFF   /* the wall a dissolved room turns into          */
++#define LV_ENV_USE_RANGE     1      /* a candle is used from inside its zone or this close     */
++
++typedef struct LvEnv {
++    const DoomoMapExt *x;
++    DoomoMap          *map;
++    uint32_t fog_off;          /* bit per zone: this fog zone is cleared                  */
++    uint32_t lit;              /* bit per zone: this candle is lit                        */
++    uint32_t seen;             /* bit per zone: the player has been in this ward / collapse zone */
++    uint32_t gone;             /* bit per zone: this ward dissolved / floor fell          */
++    uint32_t named;            /* bit per zone: this ward is named (never dissolves)      */
++    uint32_t drained;          /* bit per zone: this tide zone is drained for good        */
++    uint16_t tick;
++    uint16_t oil;              /* lantern oil left, ticks                                 */
++    uint16_t show_t;           /* showtime clock                                          */
++    uint16_t applied;          /* swap sets applied by lv_env_face_flip                   */
++    uint8_t  lamp_x, lamp_y;   /* where the lantern last lit, 255 = off                   */
++    uint8_t  tide_t;           /* ticks spent in a tide zone since the last step          */
++    uint8_t  face;             /* 0 = face A, 1 = face B                                  */
++    uint8_t  show_on;          /* the lights are up                                       */
++    int8_t   tide[LV_ENV_TIDE_N];       /* surface height of tide zone k (steps)          */
++    uint8_t  decay[LV_ENV_DECAY_N];     /* ward / collapse zone k: ticks / 4 left, 255 = not counting */
++} LvEnv;
++
++/* lv_env_check results (0 = fine) */
++enum { LVENV_OK, LVENV_TIDE_MANY, LVENV_DECAY_MANY, LVENV_SWAP_OWNED, LVENV_TIDE_ARG };
++
++/* ---- the level header ---- */
++/* The view distance a level asks of the renderers, for DoomoView3D.view_dist: 0 = the renderer's own.
++ * `view N` of the header, clamped to LV_ENV_VIEW_MIN.. . NULL (a v1 map): 0. */
++int  lv_env_view(const DoomoMapExt *x);
++
++/* ---- the run ---- */
++int  lv_env_check(const DoomoMapExt *x);
++/* Start: clears the state, fills the lantern, reads the tide basins' bottoms. 0 = fine, else LVENV_*. */
++int  lv_env_begin(LvEnv *e, DoomoMap *map, const DoomoMapExt *x);
++/* One game tick. (cx, cy) = the player's cell (cx < 0: nobody). Returns the number of live cells
++ * rewritten this tick. */
++int  lv_env_tick(LvEnv *e, int cx, int cy);
++/* The view distance for this frame: the level's, cut by a fog zone the player stands in
++ * (its arg), never under LV_ENV_VIEW_MIN. 0 = the renderer's own. */
++int  lv_env_view_at(const LvEnv *e, int cx, int cy);
++/* A hash of the whole state: two runs with the same inputs must agree. */
++uint32_t lv_env_hash(const LvEnv *e);
++
++/* ---- fog and valves ---- */
++/* Clear (or bring back) every fog zone with that tag. Returns zones changed. */
++int  lv_env_fog_set(LvEnv *e, int tag, int on);
++/* 1 if an uncleared fog zone holds the cell. */
++int  lv_env_fog_at(const LvEnv *e, int cx, int cy);
++
++/* ---- the tide ---- */
++/* The valve with that tag drains every tide zone with it (the sludge goes down and stays down).
++ * Returns zones drained. */
++int  lv_env_drain(LvEnv *e, int tag);
++/* The sludge surface of the first tide zone with that tag, in height steps; -128 if none. */
++int  lv_env_tide_level(const LvEnv *e, int tag);
++
++/* ---- lantern and candles ---- */
++/* A on a candle: lights the candle zone the cell is in (or next to). Returns its zone number + 1,
++ * 0 if there is none or it was lit already. */
++int  lv_env_candle_use(LvEnv *e, int cx, int cy);
++int  lv_env_candles_lit(const LvEnv *e);
++int  lv_env_candles_total(const LvEnv *e);
++/* An oil jar: fills the lantern. */
++void lv_env_refill(LvEnv *e);
++/* 1 while the lantern burns (oil left). */
++int  lv_env_lantern_on(const LvEnv *e);
++
++/* ---- the two faces ---- */
++/* Flip the Wall: apply (or revert) swap set `set` and switch the face. Returns cells changed. */
++int  lv_env_face_flip(LvEnv *e, int set);
++/* Which face a cell belongs to: 0 = both, 1 = A, 2 = B. */
++int  lv_env_face_of(const LvEnv *e, int cx, int cy);
++/* 1 if the cell belongs to the face that is not showing (its actors go translucent and cannot be hurt). */
++int  lv_env_out_of_phase(const LvEnv *e, int cx, int cy);
++
++/* ---- showtime ---- */
++/* 1 while the stage lights are up: animatronics freeze and cannot be hurt. */
++int  lv_env_showtime(const LvEnv *e);
++
++/* ---- collapse and dissolving rooms ---- */
++/* Name a ward: zone of kind ZONE_WARD with arg == ward. It never dissolves, and a dissolved
++ * one comes back. Returns 1 if something changed. */
++int  lv_env_name(LvEnv *e, int ward);
++/* 1 if the ward / collapse zone holding the cell is gone. */
++int  lv_env_gone_at(const LvEnv *e, int cx, int cy);
++
++#endif
+diff --git a/core/include/doomo/map.h b/core/include/doomo/map.h
+index b0d777ba..a49b6654 100644
+--- a/core/include/doomo/map.h
++++ b/core/include/doomo/map.h
+@@ -222,6 +222,9 @@ enum { ZONE_NONE,
+        ZONE_SAFE,     /* a safe room                                        */
+        ZONE_BOUNCE,   /* bounce pad; arg = rise in height steps             */
+        ZONE_WEB,      /* slowing floor                                      */
++       ZONE_CANDLE,   /* (LV4) a candle's lit cells; arg = flame light, tag = its number */
++       ZONE_SHOW,     /* (LV4) a showtime room; arg = its light between shows */
++       ZONE_COLLAPSE, /* (LV4) floor that falls after you leave; arg = drop in steps */
+        ZONE_COUNT };
+ 
+ typedef struct DoomoZone {
+diff --git a/core/include/doomo/platform.h b/core/include/doomo/platform.h
+index 34feb646..88c4346b 100644
+--- a/core/include/doomo/platform.h
++++ b/core/include/doomo/platform.h
+@@ -169,6 +169,11 @@ typedef struct DoomoView3D {
+                                    renderer must never clip the camera into
+                                    it; it may draw it translucent when the
+                                    camera is very close.                   */
++    uint8_t view_dist;          /* (LV4) view distance in cells: 0 = the
++                                   renderer's own; a level's `view N` key
++                                   (lv_env_view). A renderer clamps it to
++                                   its range; the PS1 ignores it until the
++                                   LEVELS share of PS1 RAM is released.     */
+ } DoomoView3D;
+ enum { CAM_FIRST_PERSON, CAM_THIRD_PERSON };
+ 
+diff --git a/core/native/raycast.c b/core/native/raycast.c
+index 64b55c3d..e0101b78 100644
+--- a/core/native/raycast.c
++++ b/core/native/raycast.c
+@@ -28,6 +28,9 @@
+ #define NEAR_UNITS 4            /* sprites closer than this are not drawn */
+ #define MAX_STEPS 96
+ #define MAX_DIST_UNITS (48 * DOOMO_CELL_UNITS)
++/* (LV4) a level's view distance (DoomoView3D.view_dist, 8..48 cells): rays stop there and the light falls
++ * off fast enough to reach the darkest step at it, so the cut is not a visible edge. 0 = the old values. */
++#define VIEW_MIN 8
+ #define CLIP_MAX 64
+ #define SKY_Z (100000)
+ 
+@@ -44,6 +47,8 @@ static int64_t camx, camy;      /* fix16 world units */
+ static int focal;               /* pixels */
+ static int horizon;             /* screen row */
+ static int vx0, vy0, vw0, vh0;
++static int64_t max_dist;        /* fix16 world units: rays stop here */
++static int fade_div;            /* world units per light step */
+ 
+ static int light_at(const DoomoCell *c)
+ {
+@@ -53,7 +58,7 @@ static int light_at(const DoomoCell *c)
+ 
+ static int fade(int light, int64_t dist_fx)
+ {
+-    int l = light - (int)((dist_fx >> 16) / 128);
++    int l = light - (int)((dist_fx >> 16) / fade_div);
+     return DOOMO_CLAMP(l, 1, 15);
+ }
+ 
+@@ -279,7 +284,7 @@ static void cast_column(int x, int64_t dirx, int64_t diry, int64_t plx, int64_t
+         my = nmy;
+         d0 = d1;
+         push_clip(x, d1, ytop, ybot);
+-        if (ytop > ybot || d1 > ((int64_t)MAX_DIST_UNITS * 65536)) break;
++        if (ytop > ybot || d1 > max_dist) break;
+     }
+     if (ytop <= ybot) {
+         if (cur_sky) sky_column(x, rdx, rdy, ytop, ybot);
+@@ -385,6 +390,16 @@ void plat_view3d(const DoomoView3D *v)
+     diry = fx_sin(v->angle);
+     plx = (-diry * plane) >> 16;
+     ply = (dirx * plane) >> 16;
++    {
++        int vd = v->view_dist;
++        if (vd < VIEW_MIN || vd > MAX_DIST_UNITS / DOOMO_CELL_UNITS) {
++            max_dist = (int64_t)MAX_DIST_UNITS * 65536;
++            fade_div = 128;
++        } else {
++            max_dist = (int64_t)vd * DOOMO_CELL_UNITS * 65536;
++            fade_div = vd * 4;               /* vd = 32 is the old 128; 12 cells: 48 units a step */
++        }
++    }
+     focal = (int)(((int64_t)vw0 / 2 * 65536) / plane);
+     horizon = vy0 + vh0 / 2 + (int)((int64_t)v->pitch * focal * 84 / (256 * 100));
+     camx = v->x;
+diff --git a/core/src/levels.c b/core/src/levels.c
+index 39241438..12720ba0 100644
+--- a/core/src/levels.c
++++ b/core/src/levels.c
+@@ -725,6 +725,13 @@ void lv_runtime_view(DoomoView3D *v)
+         v->tint = (uint8_t)tint;
+         v->tint_level = (uint8_t)(opt_get(OPT_REDUCE_FLASH) ? lvl / 2 : lvl);
+     }
++#if LV_HAS_NEW && !defined(DOOMO_PLATFORM_GBA)
++    /* (LV4) the level's own view distance (header key `view N`, a v2 map; the seven built levels have none: 0).
++     * Not on the GBA yet: no GBA level has a v2 map today, and these 64 bytes of ROM moved the code after them
++     * and cost the Vape Cellar's middle window 2.2 ms of 80 (alignment of the ROM fetches). r3d.c reads
++     * DoomoView3D.view_dist already; the first GBA level with a `view` key adds this line and measures. */
++    v->view_dist = (uint8_t)lv_env_view(map_ext_of(doomo_map.def));
++#endif
+ }
+ 
+ void lv_runtime_hud(void)
+diff --git a/core/src/levels_int.h b/core/src/levels_int.h
+index b1302d49..808f7ba2 100644
+--- a/core/src/levels_int.h
++++ b/core/src/levels_int.h
+@@ -27,6 +27,7 @@
+ 
+ #include "combat_int.h"
+ #include "doomo/unlock_ids.h"
++#include "doomo/lv_env.h"         /* LV4: mechanic kit B, environment and light (levels_mech_env.c; not on the PS1) */
+ #include "doomo/lv_script.h"      /* LV2: the level script VM (lv_script.c; nothing links until a level has a script) */
+ 
+ /* ---- the levels ------------------------------------------------------------ */
+diff --git a/core/src/levels_mech_env.c b/core/src/levels_mech_env.c
+new file mode 100644
+index 00000000..04b87ef9
+--- /dev/null
++++ b/core/src/levels_mech_env.c
+@@ -0,0 +1,451 @@
++/* levels_mech_env.c - mechanic kit B, environment and light (owner: levels, LV4).
++ *
++ * See core/include/doomo/lv_env.h. Every function reads ROM zones and writes the caller's LvEnv
++ * and the live map's `light`, `floor_h`, CELL_WATER and `wall` bytes; no statics. A cell is
++ * REBUILT from the definition's cell plus the state (cell_sync), never patched, so a fog that
++ * comes back, a drained basin or a named ward restores the exact original bytes.
++ *
++ * Not on the PS1 (no new resident byte before PS1-RAM: LV_HAS_NEW is 0 there): the file is empty
++ * in that build. On the GBA nothing links until a level calls it (--gc-sections).
++ */
++#include "doomo/lv_env.h"
++
++#if !defined(DOOMO_PLATFORM_PS1)
++
++#include "doomo/textures.h"
++#include <stddef.h>
++#include <string.h>
++
++#define NO_LAMP 255
++#define IDLE    255
++
++static int in_rect(const DoomoZone *z, int cx, int cy)
++{
++    return cx >= z->x0 && cx <= z->x1 && cy >= z->y0 && cy <= z->y1;
++}
++
++static int is_decay(const DoomoZone *z) { return z->kind == ZONE_WARD || z->kind == ZONE_COLLAPSE; }
++
++/* the ordinal of a tide / decay zone among its kind, -1 beyond the state's size */
++static int tide_slot(const DoomoMapExt *x, int zi)
++{
++    int i, k = 0;
++    for (i = 0; i < zi; i++) if (x->zones[i].kind == ZONE_TIDE) k++;
++    return k < LV_ENV_TIDE_N ? k : -1;
++}
++
++static int decay_slot(const DoomoMapExt *x, int zi)
++{
++    int i, k = 0;
++    for (i = 0; i < zi; i++) if (is_decay(&x->zones[i])) k++;
++    return k < LV_ENV_DECAY_N ? k : -1;
++}
++
++static int cheb(int a, int b) { a = a < 0 ? -a : a; b = b < 0 ? -b : b; return a > b ? a : b; }
++
++/* ---- the header --------------------------------------------------------------------- */
++int lv_env_view(const DoomoMapExt *x)
++{
++    if (!x || !x->view) return 0;
++    return x->view < LV_ENV_VIEW_MIN ? LV_ENV_VIEW_MIN : x->view;
++}
++
++/* ---- one cell, rebuilt ---------------------------------------------------------------- */
++static int cell_sync(LvEnv *e, int cx, int cy)
++{
++    const DoomoMapExt *x = e->x;
++    DoomoMap *m = e->map;
++    int i = cy * m->w + cx, zi, eff, mod = 0, fl, wall, water;
++    DoomoCell *c = &m->cells[i];
++    const DoomoCell *d = &m->def->cells[i];
++    DoomoCell was = *c;
++    int mover = (d->flags & (CELL_DOOR | CELL_LIFT)) != 0;
++
++    /* floor: the tide raises it, a fallen floor drops it */
++    fl = d->floor_h;
++    wall = d->wall;
++    water = d->flags & CELL_WATER;
++    if (!mover && !d->wall) {
++        for (zi = map_zone_at(x, cx, cy, ZONE_TIDE, 0); zi >= 0; zi = map_zone_at(x, cx, cy, ZONE_TIDE, zi + 1)) {
++            int k = tide_slot(x, zi);
++            if (k >= 0 && e->tide[k] > d->floor_h && e->tide[k] <= d->ceil_h - 7) {
++                fl = e->tide[k];
++                water = CELL_WATER;
++            }
++        }
++        for (zi = map_zone_at(x, cx, cy, ZONE_COLLAPSE, 0); zi >= 0; zi = map_zone_at(x, cx, cy, ZONE_COLLAPSE, zi + 1))
++            if (e->gone & (1u << zi)) {
++                fl = d->floor_h - x->zones[zi].arg;
++                if (fl < -128) fl = -128;
++            }
++    }
++    for (zi = map_zone_at(x, cx, cy, ZONE_WARD, 0); zi >= 0; zi = map_zone_at(x, cx, cy, ZONE_WARD, zi + 1))
++        if (e->gone & (1u << zi)) wall = LV_ENV_FOGWALL;
++    c->floor_h = (int8_t)fl;
++    c->wall = (uint8_t)wall;
++    c->flags = (uint8_t)((c->flags & ~CELL_WATER) | water);
++
++    /* light: the cell's own, held by a dark zone / a show room between shows, raised by candles,
++     * the lantern and the lights, lowered by fog */
++    eff = d->light ? d->light : (m->ambient ? m->ambient : 12);
++    zi = map_zone_at(x, cx, cy, ZONE_DARK, 0);
++    if (zi >= 0) { eff = x->zones[zi].arg; mod = 1; }
++    zi = map_zone_at(x, cx, cy, ZONE_SHOW, 0);
++    if (zi >= 0) {
++        if (e->show_on) { if (eff < LV_ENV_SHOW_LIGHT) eff = LV_ENV_SHOW_LIGHT; mod = 1; }
++        else if (x->zones[zi].arg) { eff = x->zones[zi].arg; mod = 1; }
++    }
++    for (zi = map_zone_at(x, cx, cy, ZONE_CANDLE, 0); zi >= 0; zi = map_zone_at(x, cx, cy, ZONE_CANDLE, zi + 1))
++        if (e->lit & (1u << zi)) {
++            int l = x->zones[zi].arg ? x->zones[zi].arg : LV_ENV_CANDLE_LIGHT;
++            if (eff < l) eff = l;
++            mod = 1;
++        }
++    if (e->lamp_x != NO_LAMP) {
++        int dd = cheb(cx - e->lamp_x, cy - e->lamp_y);
++        if (dd <= LV_ENV_LAMP_R) {
++            int l = LV_ENV_LAMP_LIGHT - 2 * dd;
++            if (eff < l) eff = l;
++            mod = 1;
++        }
++    }
++    for (zi = map_zone_at(x, cx, cy, ZONE_FOG, 0); zi >= 0; zi = map_zone_at(x, cx, cy, ZONE_FOG, zi + 1))
++        if (!(e->fog_off & (1u << zi))) { eff -= LV_ENV_FOG_DROP; if (eff < 1) eff = 1; mod = 1; }
++    c->light = mod ? (uint8_t)(eff > 15 ? 15 : eff) : d->light;
++    return memcmp(&was, c, sizeof(was)) != 0;
++}
++
++static int sync_rect(LvEnv *e, int x0, int y0, int x1, int y1)
++{
++    int cx, cy, n = 0;
++    if (x0 < 0) x0 = 0;
++    if (y0 < 0) y0 = 0;
++    if (x1 >= e->map->w) x1 = e->map->w - 1;
++    if (y1 >= e->map->h) y1 = e->map->h - 1;
++    for (cy = y0; cy <= y1; cy++)
++        for (cx = x0; cx <= x1; cx++) n += cell_sync(e, cx, cy);
++    return n;
++}
++
++static int sync_zone(LvEnv *e, int zi)
++{
++    const DoomoZone *z = &e->x->zones[zi];
++    return sync_rect(e, z->x0, z->y0, z->x1, z->y1);
++}
++
++/* the lowest open floor of a tide zone in the definition: its basin's bottom */
++static int basin_bottom(const LvEnv *e, const DoomoZone *z)
++{
++    int cx, cy, lo = 127;
++    for (cy = z->y0; cy <= z->y1 && cy < e->map->h; cy++)
++        for (cx = z->x0; cx <= z->x1 && cx < e->map->w; cx++) {
++            const DoomoCell *d = &e->map->def->cells[cy * e->map->w + cx];
++            if (!d->wall && d->floor_h < lo) lo = d->floor_h;
++        }
++    return lo;
++}
++
++/* ---- begin / check ---------------------------------------------------------------------- */
++int lv_env_check(const DoomoMapExt *x)
++{
++    int i, nt = 0, nd = 0, s;
++    if (!x) return LVENV_OK;
++    for (i = 0; i < x->zone_count; i++) {
++        const DoomoZone *z = &x->zones[i];
++        if (z->kind == ZONE_TIDE) {
++            nt++;
++            if (z->arg > 127) return LVENV_TIDE_ARG;
++        }
++        if (is_decay(z)) nd++;
++    }
++    if (nt > LV_ENV_TIDE_N) return LVENV_TIDE_MANY;
++    if (nd > LV_ENV_DECAY_N) return LVENV_DECAY_MANY;
++    /* a swap set may not rewrite what a zone of this kit owns */
++    for (s = 0; s < x->swap_count; s++) {
++        const DoomoSwapSet *ss = &x->swaps[s];
++        for (i = 0; i < ss->count; i++) {
++            const DoomoSwapCell *o = &x->swap_cells[ss->first + i];
++            int z, cx, cy;
++            if (!x->def || !x->def->w) continue;
++            cx = o->cell % x->def->w;
++            cy = o->cell / x->def->w;
++            if (!o->x[offsetof(DoomoCell, wall)] && !o->x[offsetof(DoomoCell, floor_h)] &&
++                !o->x[offsetof(DoomoCell, light)]) continue;
++            for (z = 0; z < x->zone_count; z++) {
++                int k = x->zones[z].kind;
++                if ((k == ZONE_TIDE || k == ZONE_COLLAPSE || k == ZONE_WARD || k == ZONE_FOG || k == ZONE_CANDLE ||
++                     k == ZONE_SHOW || k == ZONE_DARK) && in_rect(&x->zones[z], cx, cy))
++                    return LVENV_SWAP_OWNED;
++            }
++        }
++    }
++    return LVENV_OK;
++}
++
++int lv_env_begin(LvEnv *e, DoomoMap *map, const DoomoMapExt *x)
++{
++    int i, k = 0, r;
++    memset(e, 0, sizeof(*e));
++    e->lamp_x = e->lamp_y = NO_LAMP;
++    memset(e->decay, IDLE, sizeof(e->decay));
++    if (!map || !map->def || !x) return LVENV_OK;      /* a v1 map: inert */
++    r = lv_env_check(x);
++    if (r != LVENV_OK) return r;
++    e->x = x;
++    e->map = map;
++    e->oil = LV_ENV_OIL_MAX;
++    for (i = 0; i < x->zone_count && k < LV_ENV_TIDE_N; i++)
++        if (x->zones[i].kind == ZONE_TIDE) e->tide[k++] = (int8_t)basin_bottom(e, &x->zones[i]);
++    /* the zones that start changed (fog, held darkness, show rooms off) */
++    for (i = 0; i < x->zone_count; i++) {
++        int kd = x->zones[i].kind;
++        if (kd == ZONE_FOG || kd == ZONE_DARK || kd == ZONE_SHOW) sync_zone(e, i);
++    }
++    return LVENV_OK;
++}
++
++/* ---- the tick ----------------------------------------------------------------------------- */
++int lv_env_tick(LvEnv *e, int cx, int cy)
++{
++    const DoomoMapExt *x = e->x;
++    int i, n = 0, in_tide = 0;
++    if (!x) return 0;
++    e->tick++;
++    for (i = 0; i < x->zone_count; i++) {
++        const DoomoZone *z = &x->zones[i];
++        int inside = cx >= 0 && in_rect(z, cx, cy);
++        if (z->kind == ZONE_TIDE && inside) {
++            int k = tide_slot(x, i);
++            in_tide = 1;
++            if (k >= 0 && !(e->drained & (1u << i)) && e->tide[k] < (int)z->arg) {
++                if (++e->tide_t >= LV_ENV_TIDE_TICKS) {
++                    e->tide_t = 0;
++                    e->tide[k]++;
++                    n += sync_zone(e, i);
++                }
++            }
++        } else if (is_decay(z)) {
++            int k = decay_slot(x, i);
++            uint32_t bit = 1u << i;
++            if (k < 0) continue;
++            if (inside) {
++                e->seen |= bit;
++                e->decay[k] = IDLE;
++            } else if ((e->seen & bit) && !(e->gone & bit) && !(z->kind == ZONE_WARD && (e->named & bit))) {
++                if (e->decay[k] == IDLE) {
++                    e->decay[k] = (uint8_t)((z->kind == ZONE_WARD ? LV_ENV_DISSOLVE_TICKS : LV_ENV_COLLAPSE_TICKS) /
++                                            LV_ENV_DECAY_DIV);
++                } else if (e->tick % LV_ENV_DECAY_DIV == 0 && --e->decay[k] == 0) {
++                    e->gone |= bit;
++                    e->decay[k] = IDLE;
++                    n += sync_zone(e, i);
++                }
++            }
++        }
++    }
++    if (!in_tide) e->tide_t = 0;
++
++    /* showtime: the lights blaze for the last LV_ENV_SHOW_ON ticks of every cycle */
++    if (map_zone_next(x, ZONE_SHOW, 0) >= 0) {
++        int on;
++        if (++e->show_t >= LV_ENV_SHOW_TICKS) e->show_t = 0;
++        on = e->show_t >= LV_ENV_SHOW_TICKS - LV_ENV_SHOW_ON;
++        if (on != e->show_on) {
++            e->show_on = (uint8_t)on;
++            for (i = map_zone_next(x, ZONE_SHOW, 0); i >= 0; i = map_zone_next(x, ZONE_SHOW, i + 1)) n += sync_zone(e, i);
++        }
++    }
++
++    /* the lantern (dark levels): burns while you walk, lights the 5 x 5 round you */
++    if (x->flags & MAPX_DARK) {
++        int nx = NO_LAMP, ny = NO_LAMP;
++        if (cx >= 0 && e->oil > 0) e->oil--;
++        if (cx >= 0 && e->oil > 0) { nx = cx; ny = cy; }
++        if (nx != e->lamp_x || ny != e->lamp_y) {
++            int ox = e->lamp_x, oy = e->lamp_y;
++            e->lamp_x = (uint8_t)nx;
++            e->lamp_y = (uint8_t)ny;
++            if (ox != NO_LAMP) n += sync_rect(e, ox - LV_ENV_LAMP_R, oy - LV_ENV_LAMP_R, ox + LV_ENV_LAMP_R, oy + LV_ENV_LAMP_R);
++            if (nx != NO_LAMP) n += sync_rect(e, nx - LV_ENV_LAMP_R, ny - LV_ENV_LAMP_R, nx + LV_ENV_LAMP_R, ny + LV_ENV_LAMP_R);
++        }
++    }
++    return n;
++}
++
++int lv_env_view_at(const LvEnv *e, int cx, int cy)
++{
++    const DoomoMapExt *x = e->x;
++    int v, f, zi;
++    if (!x) return 0;
++    v = lv_env_view(x);
++    f = x->fog;
++    for (zi = map_zone_at(x, cx, cy, ZONE_FOG, 0); zi >= 0; zi = map_zone_at(x, cx, cy, ZONE_FOG, zi + 1))
++        if (!(e->fog_off & (1u << zi)) && (!f || x->zones[zi].arg < f)) f = x->zones[zi].arg;
++    if (f) {
++        if (f < LV_ENV_VIEW_MIN) f = LV_ENV_VIEW_MIN;
++        if (!v || f < v) v = f;
++    }
++    return v;
++}
++
++uint32_t lv_env_hash(const LvEnv *e)
++{
++    uint32_t h = 2166136261u;
++    int i;
++#define MIX(v) do { h ^= (uint32_t)(v); h *= 16777619u; } while (0)
++    MIX(e->fog_off); MIX(e->lit); MIX(e->seen); MIX(e->gone); MIX(e->named); MIX(e->drained);
++    MIX(e->tick); MIX(e->oil); MIX(e->show_t); MIX(e->applied);
++    MIX(e->lamp_x); MIX(e->lamp_y); MIX(e->tide_t); MIX(e->face); MIX(e->show_on);
++    for (i = 0; i < LV_ENV_TIDE_N; i++) MIX((uint8_t)e->tide[i]);
++    for (i = 0; i < LV_ENV_DECAY_N; i++) MIX(e->decay[i]);
++#undef MIX
++    return h;
++}
++
++/* ---- fog and valves ------------------------------------------------------------------------- */
++int lv_env_fog_set(LvEnv *e, int tag, int on)
++{
++    int zi, n = 0;
++    if (!e->x || !tag) return 0;
++    for (zi = map_zone_next(e->x, ZONE_FOG, 0); zi >= 0; zi = map_zone_next(e->x, ZONE_FOG, zi + 1)) {
++        uint32_t bit = 1u << zi;
++        int off = (e->fog_off & bit) != 0;
++        if (e->x->zones[zi].tag != tag || off == !on) continue;
++        if (on) e->fog_off &= ~bit; else e->fog_off |= bit;
++        sync_zone(e, zi);
++        n++;
++    }
++    return n;
++}
++
++int lv_env_fog_at(const LvEnv *e, int cx, int cy)
++{
++    int zi;
++    if (!e->x) return 0;
++    for (zi = map_zone_at(e->x, cx, cy, ZONE_FOG, 0); zi >= 0; zi = map_zone_at(e->x, cx, cy, ZONE_FOG, zi + 1))
++        if (!(e->fog_off & (1u << zi))) return 1;
++    return 0;
++}
++
++/* ---- the tide ------------------------------------------------------------------------------- */
++int lv_env_drain(LvEnv *e, int tag)
++{
++    int zi, n = 0;
++    if (!e->x || !tag) return 0;
++    for (zi = map_zone_next(e->x, ZONE_TIDE, 0); zi >= 0; zi = map_zone_next(e->x, ZONE_TIDE, zi + 1)) {
++        int k = tide_slot(e->x, zi);
++        if (e->x->zones[zi].tag != tag || k < 0 || (e->drained & (1u << zi))) continue;
++        e->drained |= 1u << zi;
++        e->tide[k] = (int8_t)basin_bottom(e, &e->x->zones[zi]);
++        sync_zone(e, zi);
++        n++;
++    }
++    return n;
++}
++
++int lv_env_tide_level(const LvEnv *e, int tag)
++{
++    int zi;
++    if (!e->x) return -128;
++    for (zi = map_zone_next(e->x, ZONE_TIDE, 0); zi >= 0; zi = map_zone_next(e->x, ZONE_TIDE, zi + 1))
++        if (e->x->zones[zi].tag == tag) {
++            int k = tide_slot(e->x, zi);
++            return k >= 0 ? e->tide[k] : -128;
++        }
++    return -128;
++}
++
++/* ---- lantern and candles -------------------------------------------------------------------- */
++int lv_env_candle_use(LvEnv *e, int cx, int cy)
++{
++    int zi;
++    if (!e->x) return 0;
++    for (zi = map_zone_next(e->x, ZONE_CANDLE, 0); zi >= 0; zi = map_zone_next(e->x, ZONE_CANDLE, zi + 1)) {
++        const DoomoZone *z = &e->x->zones[zi];
++        if (cx < z->x0 - LV_ENV_USE_RANGE || cx > z->x1 + LV_ENV_USE_RANGE ||
++            cy < z->y0 - LV_ENV_USE_RANGE || cy > z->y1 + LV_ENV_USE_RANGE) continue;
++        if (e->lit & (1u << zi)) continue;           /* lit already: a candle beside it may be out */
++        e->lit |= 1u << zi;
++        sync_zone(e, zi);
++        return zi + 1;
++    }
++    return 0;
++}
++
++int lv_env_candles_total(const LvEnv *e)
++{
++    int zi, n = 0;
++    if (!e->x) return 0;
++    for (zi = map_zone_next(e->x, ZONE_CANDLE, 0); zi >= 0; zi = map_zone_next(e->x, ZONE_CANDLE, zi + 1)) n++;
++    return n;
++}
++
++int lv_env_candles_lit(const LvEnv *e)
++{
++    uint32_t v = e->lit;
++    int n = 0;
++    for (; v; v &= v - 1) n++;
++    return n;
++}
++
++void lv_env_refill(LvEnv *e) { e->oil = LV_ENV_OIL_MAX; }
++int  lv_env_lantern_on(const LvEnv *e) { return e->oil > 0; }
++
++/* ---- the two faces ---------------------------------------------------------------------------- */
++int lv_env_face_flip(LvEnv *e, int set)
++{
++    int n;
++    if (!e->x || !e->map || set < 0 || set >= e->x->swap_count) return 0;
++    if (e->applied & (1u << set)) n = map_swap_revert(e->map, e->x, set, &e->applied);
++    else n = map_swap_apply(e->map, e->x, set, &e->applied);
++    e->face ^= 1;
++    return n;
++}
++
++int lv_env_face_of(const LvEnv *e, int cx, int cy)
++{
++    if (!e->x) return 0;
++    if (map_zone_at(e->x, cx, cy, ZONE_FACE_A, 0) >= 0) return 1;
++    if (map_zone_at(e->x, cx, cy, ZONE_FACE_B, 0) >= 0) return 2;
++    return 0;
++}
++
++int lv_env_out_of_phase(const LvEnv *e, int cx, int cy)
++{
++    int f = lv_env_face_of(e, cx, cy);
++    return f && f != (e->face ? 2 : 1);
++}
++
++/* ---- showtime ---------------------------------------------------------------------------------- */
++int lv_env_showtime(const LvEnv *e) { return e->show_on; }
++
++/* ---- wards and collapses ----------------------------------------------------------------------- */
++int lv_env_name(LvEnv *e, int ward)
++{
++    int zi, n = 0;
++    if (!e->x) return 0;
++    for (zi = map_zone_next(e->x, ZONE_WARD, 0); zi >= 0; zi = map_zone_next(e->x, ZONE_WARD, zi + 1)) {
++        uint32_t bit = 1u << zi;
++        int k = decay_slot(e->x, zi);
++        if (e->x->zones[zi].arg != ward || (e->named & bit)) continue;
++        e->named |= bit;
++        if (k >= 0) e->decay[k] = IDLE;
++        if (e->gone & bit) {
++            e->gone &= ~bit;
++            sync_zone(e, zi);
++        }
++        n++;
++    }
++    return n != 0;
++}
++
++int lv_env_gone_at(const LvEnv *e, int cx, int cy)
++{
++    int zi;
++    if (!e->x) return 0;
++    for (zi = map_zone_at(e->x, cx, cy, ZONE_NONE, 0); zi >= 0; zi = map_zone_at(e->x, cx, cy, ZONE_NONE, zi + 1))
++        if (is_decay(&e->x->zones[zi]) && (e->gone & (1u << zi))) return 1;
++    return 0;
++}
++
++#endif /* !DOOMO_PLATFORM_PS1 */
+diff --git a/core/tests/maps/t4_env.txt b/core/tests/maps/t4_env.txt
+new file mode 100644
+index 00000000..7289b732
+--- /dev/null
++++ b/core/tests/maps/t4_env.txt
+@@ -0,0 +1,62 @@
++# LV4 test map (core/tests/test_lv_env.c): every zone kind of mechanic kit B once.
++# Not shipped: mapc compiles it into the test binary only.
++format 2
++title "T4 Env"
++kind dungeon
++sky PASTEL_DAY
++music HAHALAND_DAY
++ambient 8
++view 12
++dark yes
++note 7
++
++cell # wall=PASTEL_BRICK
++cell . floor=WOOD_FLOOR ceil=CLOUD_PUFF ch=14
++cell p like=. thing=PLAYER_START
++cell x like=. flags=exit
++cell ~ floor=SLIME ceil=CLOUD_PUFF ch=14 fh=-2
++cell B wall=CANDY_STRIPE
++cell o like=. light=5
++
++grid
++########################
++#p.....#~~~~#..........#
++#......#~~~~#..........#
++#......#~~~~#..........#
++#......................#
++#......................#
++#......................#
++#......................#
++#..............B......x#
++########################
++end
++
++# the fog: a valve (tag 30) clears it
++zone 1 1 5 3 fog arg=9 tag=30
++# the glum tide: the basin rises to floor height 2; valve 40 drains it
++zone 8 1 11 3 tide arg=2 tag=40
++# two candles
++zone 14 1 16 3 candle tag=1
++zone 14 5 16 7 candle arg=11 tag=2
++# a showtime room (dim between shows)
++zone 1 5 5 8 show arg=3
++# a floor that falls 20 steps after you leave it
++zone 8 5 11 7 collapse arg=20
++# two wards
++zone 18 1 21 3 ward arg=1
++zone 18 5 21 7 ward arg=2
++# the Wall's two faces
++zone 1 9 3 9 face_a
++zone 5 9 7 9 face_b
++# script-mode swap: the pillar at (15,8) opens
++swap faces
++.
++.
++.
++.
++.
++.
++.
++.
++...............o
++end
+diff --git a/core/tests/test_lv_env.c b/core/tests/test_lv_env.c
+new file mode 100644
+index 00000000..51573bc2
+--- /dev/null
++++ b/core/tests/test_lv_env.c
+@@ -0,0 +1,509 @@
++/* test_lv_env.c - LV4 (owner: levels): mechanic kit B, environment and light (core/src/levels_mech_env.c)
++ * on the test map core/tests/maps/t4_env.txt (compiled by tools/mapc.py into the test binary only):
++ * fog zones and valves, the tide, the lantern and candles, the two faces, showtime, collapsing
++ * floors, dissolving rooms, the per-level view distance, and the raycaster with a short view at both
++ * screen sizes. Every piece restores the exact original bytes when it ends. */
++#include "test.h"
++#include "doomo/lv_env.h"
++#include "doomo/platform.h"
++
++extern const DoomoMapExt map_ext_t4_env;
++
++static DoomoMap g_map;
++static LvEnv    g_env;
++
++#define CELL(cx, cy) (g_map.cells[(cy) * g_map.w + (cx)])
++#define DEF(cx, cy)  (g_map.def->cells[(cy) * g_map.w + (cx)])
++
++static void load(int ambient)
++{
++    const DoomoMapDef *d = map_ext_t4_env.def;
++    memset(&g_map, 0, sizeof(g_map));
++    g_map.def = d;
++    g_map.w = d->w; g_map.h = d->h; g_map.kind = d->kind; g_map.sky = d->sky;
++    g_map.ambient = (uint8_t)ambient;
++    memcpy(g_map.cells, d->cells, (size_t)d->w * d->h * sizeof(DoomoCell));
++}
++
++static int begin(int ambient)
++{
++    load(ambient);
++    return lv_env_begin(&g_env, &g_map, &map_ext_t4_env);
++}
++
++static void run(int n, int cx, int cy) { while (n-- > 0) lv_env_tick(&g_env, cx, cy); }
++
++/* every live cell equals the definition's (what a restore must give) */
++static int pristine(void)
++{
++    return memcmp(g_map.cells, g_map.def->cells, (size_t)g_map.w * g_map.h * sizeof(DoomoCell)) == 0;
++}
++
++/* the cells of a rectangle equal the definition's */
++static int rect_pristine(int x0, int y0, int x1, int y1)
++{
++    int cx, cy;
++    for (cy = y0; cy <= y1; cy++)
++        for (cx = x0; cx <= x1; cx++)
++            if (memcmp(&CELL(cx, cy), &DEF(cx, cy), sizeof(DoomoCell)) != 0) return 0;
++    return 1;
++}
++
++TEST(lvenv_view_distance_header)
++{
++    DoomoMapExt x = map_ext_t4_env;
++    CHECK_EQ(lv_env_view(&map_ext_t4_env), 12);
++    CHECK_EQ(lv_env_view(NULL), 0);
++    x.view = 0;  CHECK_EQ(lv_env_view(&x), 0);          /* not set: the renderer's own */
++    x.view = 5;  CHECK_EQ(lv_env_view(&x), LV_ENV_VIEW_MIN);
++    x.view = 40; CHECK_EQ(lv_env_view(&x), 40);
++}
++
++TEST(lvenv_check_and_inert)
++{
++    DoomoMapExt x = map_ext_t4_env;
++    DoomoZone z[6];
++    DoomoSwapCell sc;
++    DoomoSwapSet ss;
++    int i;
++    CHECK_EQ(lv_env_check(&map_ext_t4_env), LVENV_OK);
++    CHECK_EQ(lv_env_check(NULL), LVENV_OK);
++    /* five tide zones */
++    for (i = 0; i < 6; i++) { memset(&z[i], 0, sizeof(z[i])); z[i].x0 = z[i].x1 = (uint8_t)(1 + i); z[i].y0 = z[i].y1 = 1; z[i].kind = ZONE_TIDE; }
++    x.zones = z; x.zone_count = 5;
++    CHECK_EQ(lv_env_check(&x), LVENV_TIDE_MANY);
++    z[0].arg = 200; x.zone_count = 1;
++    CHECK_EQ(lv_env_check(&x), LVENV_TIDE_ARG);
++    for (i = 0; i < 9; i++) { z[i % 6].kind = ZONE_WARD; }
++    x.zone_count = 6;
++    CHECK_EQ(lv_env_check(&x), LVENV_OK);
++    {   DoomoZone w[9];
++        for (i = 0; i < 9; i++) { memset(&w[i], 0, sizeof(w[i])); w[i].x0 = w[i].x1 = (uint8_t)(1 + i); w[i].y0 = w[i].y1 = 1; w[i].kind = ZONE_COLLAPSE; }
++        x.zones = w; x.zone_count = 9;
++        CHECK_EQ(lv_env_check(&x), LVENV_DECAY_MANY);
++    }
++    /* a swap set that rewrites a cell a zone owns */
++    x = map_ext_t4_env;
++    memset(&sc, 0, sizeof(sc)); memset(&ss, 0, sizeof(ss));
++    sc.cell = (uint16_t)(2 * g_map.w + 2);           /* (2,2) is in the fog zone */
++    sc.cell = (uint16_t)(2 * map_ext_t4_env.def->w + 2);
++    sc.x[5] = 3;                                     /* a light delta */
++    ss.first = 0; ss.count = 1;
++    x.swaps = &ss; x.swap_cells = &sc; x.swap_count = 1;
++    CHECK_EQ(lv_env_check(&x), LVENV_SWAP_OWNED);
++    sc.x[5] = 0; sc.x[1] = 1;                        /* only the floor texture: not owned */
++    CHECK_EQ(lv_env_check(&x), LVENV_OK);
++    /* a v1 map or a refused ext leaves the env inert */
++    load(8);
++    CHECK_EQ(lv_env_begin(&g_env, &g_map, NULL), LVENV_OK);
++    CHECK_EQ(lv_env_tick(&g_env, 3, 3), 0);
++    CHECK_EQ(lv_env_view_at(&g_env, 3, 3), 0);
++    CHECK_EQ(lv_env_fog_set(&g_env, 30, 0), 0);
++    CHECK(pristine());
++}
++
++TEST(lvenv_fog_and_valves)
++{
++    CHECK_EQ(begin(8), LVENV_OK);
++    /* the fog zone starts dark: light 8 - 5 = 3 inside, the byte untouched outside */
++    CHECK_EQ(CELL(2, 2).light, 3);
++    CHECK_EQ(CELL(7, 8).light, 0);
++    CHECK(lv_env_fog_at(&g_env, 2, 2));
++    CHECK(!lv_env_fog_at(&g_env, 7, 8));
++    CHECK_EQ(lv_env_view_at(&g_env, 2, 2), 9);          /* inside the fog: its distance */
++    CHECK_EQ(lv_env_view_at(&g_env, 7, 8), 12);         /* outside: the level's */
++    CHECK_EQ(lv_env_fog_set(&g_env, 0, 0), 0);          /* tag 0 is no valve */
++    CHECK_EQ(lv_env_fog_set(&g_env, 31, 0), 0);         /* no such valve */
++    CHECK_EQ(lv_env_fog_set(&g_env, 30, 0), 1);         /* the valve turns: the fog clears */
++    CHECK_EQ(CELL(2, 2).light, 0);                      /* the exact original byte */
++    CHECK(!lv_env_fog_at(&g_env, 2, 2));
++    CHECK_EQ(lv_env_view_at(&g_env, 2, 2), 12);
++    CHECK_EQ(lv_env_fog_set(&g_env, 30, 0), 0);         /* twice: nothing changes */
++    CHECK_EQ(lv_env_fog_set(&g_env, 30, 1), 1);         /* and back */
++    CHECK_EQ(CELL(2, 2).light, 3);
++    /* the header's fog cuts the view, never under the minimum */
++    {
++        DoomoMapExt x = map_ext_t4_env;
++        LvEnv e;
++        x.fog = 4; x.view = 0;
++        load(8);
++        CHECK_EQ(lv_env_begin(&e, &g_map, &x), LVENV_OK);
++        CHECK_EQ(lv_env_view_at(&e, 7, 8), LV_ENV_VIEW_MIN);
++    }
++}
++
++TEST(lvenv_tide_rises_while_you_are_in_the_basin)
++{
++    int i;
++    CHECK_EQ(begin(8), LVENV_OK);
++    CHECK_EQ(lv_env_tide_level(&g_env, 40), -2);         /* the basin's bottom */
++    CHECK_EQ(lv_env_tide_level(&g_env, 99), -128);
++    run(LV_ENV_TIDE_TICKS * 3, 3, 7);                    /* elsewhere: nothing rises */
++    CHECK_EQ(lv_env_tide_level(&g_env, 40), -2);
++    run(LV_ENV_TIDE_TICKS - 1, 9, 2);
++    CHECK_EQ(lv_env_tide_level(&g_env, 40), -2);
++    run(1, 9, 2);                                        /* 6 s in the basin: one step */
++    CHECK_EQ(lv_env_tide_level(&g_env, 40), -1);
++    CHECK_EQ(CELL(9, 2).floor_h, -1);
++    CHECK(CELL(9, 2).flags & CELL_WATER);                /* sludge slows */
++    CHECK_EQ(CELL(7, 2).wall != 0, 1);                   /* the basin's wall is untouched */
++    CHECK_EQ(CELL(3, 7).floor_h, DEF(3, 7).floor_h);
++    run(LV_ENV_TIDE_TICKS * 2, 9, 2);
++    CHECK_EQ(CELL(9, 2).floor_h, 1);
++    /* leaving resets the count: a half step does not carry over */
++    run(LV_ENV_TIDE_TICKS - 5, 9, 2);
++    run(1, 3, 7);
++    run(LV_ENV_TIDE_TICKS - 5, 9, 2);
++    CHECK_EQ(lv_env_tide_level(&g_env, 40), 1);
++    /* it stops at the high-water mark (arg 2) */
++    for (i = 0; i < 10; i++) run(LV_ENV_TIDE_TICKS, 9, 2);
++    CHECK_EQ(lv_env_tide_level(&g_env, 40), 2);
++    CHECK_EQ(CELL(10, 3).floor_h, 2);
++    /* the valve drains it for good: the exact bytes come back and it does not rise again */
++    CHECK_EQ(lv_env_drain(&g_env, 0), 0);
++    CHECK_EQ(lv_env_drain(&g_env, 40), 1);
++    CHECK_EQ(CELL(9, 2).floor_h, -2);
++    CHECK(!(CELL(9, 2).flags & CELL_WATER));
++    for (i = 0; i < 3; i++) run(LV_ENV_TIDE_TICKS, 9, 2);
++    CHECK_EQ(lv_env_tide_level(&g_env, 40), -2);
++    CHECK_EQ(lv_env_drain(&g_env, 40), 0);
++    run(2, 3, 7);
++    CHECK_EQ(memcmp(&CELL(9, 2), &DEF(9, 2), sizeof(DoomoCell)), 0);
++}
++
++TEST(lvenv_tide_leaves_doors_and_low_ceilings)
++{
++    static DoomoCell cells[DOOMO_MAP_MAX_W * DOOMO_MAP_MAX_H];
++    static DoomoMapDef def;
++    DoomoMapExt x = map_ext_t4_env;
++    LvEnv e;
++    int i, j;
++    /* a copy of the definition with a door cell and a low ceiling in the basin */
++    def = *map_ext_t4_env.def;
++    memcpy(cells, def.cells, (size_t)def.w * def.h * sizeof(DoomoCell));
++    cells[2 * def.w + 9].flags |= CELL_DOOR;
++    cells[3 * def.w + 10].ceil_h = 3;                    /* floor -2, ceiling 3: no room for the sludge to come up */
++    def.cells = cells;
++    x.def = &def;
++    memset(&g_map, 0, sizeof(g_map));
++    g_map.def = &def; g_map.w = def.w; g_map.h = def.h; g_map.kind = def.kind; g_map.sky = def.sky; g_map.ambient = 8;
++    memcpy(g_map.cells, cells, (size_t)def.w * def.h * sizeof(DoomoCell));
++    CHECK_EQ(lv_env_begin(&e, &g_map, &x), LVENV_OK);
++    for (i = 0; i < 4; i++) for (j = 0; j < LV_ENV_TIDE_TICKS; j++) lv_env_tick(&e, 10, 2);
++    CHECK_EQ(CELL(9, 2).floor_h, -2);                    /* movers belong to map.c */
++    CHECK_EQ(CELL(10, 3).floor_h, -2);                   /* under a low ceiling the floor stays */
++    CHECK_EQ(CELL(10, 2).floor_h, 2);                    /* the rest of the basin is full */
++}
++
++TEST(lvenv_lantern_lights_a_five_by_five_and_burns_oil)
++{
++    int n, i;
++    CHECK_EQ(begin(3), LVENV_OK);                        /* a dark level: ambient 3 */
++    CHECK(lv_env_lantern_on(&g_env));
++    n = lv_env_tick(&g_env, 13, 8);
++    CHECK(n > 0 && n <= 25);
++    CHECK_EQ(CELL(13, 8).light, 10);                     /* the centre */
++    CHECK_EQ(CELL(14, 8).light, 8);
++    CHECK_EQ(CELL(15, 9).light, 6);                      /* two away, diagonal */
++    CHECK_EQ(CELL(16, 8).light, 0);                      /* three away: untouched */
++    /* a step: at most 25 bytes change, the cells left behind get their own byte back exactly */
++    n = lv_env_tick(&g_env, 14, 8);
++    CHECK(n <= 25);
++    CHECK_EQ(CELL(14, 8).light, 10);
++    CHECK_EQ(CELL(11, 8).light, DEF(11, 8).light);
++    CHECK_EQ(CELL(12, 8).light, 6);
++    /* running through the level never writes more than 25 cells' light a tick */
++    for (i = 1; i < 22; i++) { n = lv_env_tick(&g_env, i, 4); CHECK(n <= 50); }
++    /* the lantern lights from the ring's cell up only: it never darkens a lit cell */
++    CHECK_EQ(begin(3), LVENV_OK);
++    lv_env_tick(&g_env, 18, 8);                          /* beside the exit; cell (15,8) is the pillar */
++    CHECK(CELL(16, 8).light >= DEF(16, 8).light);
++    /* the oil runs out after 60 s: every byte is the original again; a jar fills it and it relights */
++    CHECK_EQ(begin(3), LVENV_OK);
++    run(LV_ENV_OIL_MAX - 1, 13, 8);
++    CHECK_EQ(CELL(13, 8).light, 10);
++    run(1, 13, 8);
++    CHECK(!lv_env_lantern_on(&g_env));
++    CHECK(rect_pristine(10, 6, 16, 9));
++    run(5, 13, 8);
++    CHECK(rect_pristine(10, 6, 16, 9));
++    lv_env_refill(&g_env);
++    CHECK(lv_env_lantern_on(&g_env));
++    lv_env_tick(&g_env, 13, 8);
++    CHECK_EQ(CELL(13, 8).light, 10);
++    /* nobody on the map: the lantern goes out of the map (no player, no light) */
++    lv_env_tick(&g_env, -1, -1);
++    CHECK(rect_pristine(10, 6, 16, 9));
++}
++
++TEST(lvenv_lantern_is_for_dark_levels_only)
++{
++    DoomoMapExt x = map_ext_t4_env;
++    LvEnv e;
++    x.flags = 0;                                         /* not `dark yes` */
++    load(3);
++    CHECK_EQ(lv_env_begin(&e, &g_map, &x), LVENV_OK);
++    lv_env_tick(&e, 13, 8);
++    CHECK_EQ(CELL(13, 8).light, 0);
++}
++
++TEST(lvenv_candles_stay_lit)
++{
++    int i;
++    CHECK_EQ(begin(3), LVENV_OK);
++    CHECK_EQ(lv_env_candles_total(&g_env), 2);
++    CHECK_EQ(lv_env_candles_lit(&g_env), 0);
++    CHECK_EQ(lv_env_candle_use(&g_env, 18, 8), 0);       /* nothing near */
++    CHECK_EQ(lv_env_candle_use(&g_env, 15, 2) > 0, 1);   /* the first candle */
++    CHECK_EQ(CELL(14, 1).light, LV_ENV_CANDLE_LIGHT);    /* its 3 x 3 cells */
++    CHECK_EQ(CELL(16, 3).light, LV_ENV_CANDLE_LIGHT);
++    CHECK_EQ(CELL(17, 2).light, 0);                      /* not beside it */
++    CHECK_EQ(CELL(15, 6).light, 0);                      /* the other candle is still out */
++    CHECK_EQ(lv_env_candle_use(&g_env, 15, 2), 0);       /* lit already */
++    CHECK_EQ(lv_env_candles_lit(&g_env), 1);
++    CHECK_EQ(lv_env_candle_use(&g_env, 15, 4) > 0, 1);   /* from beside it (use range 1) */
++    CHECK_EQ(CELL(15, 6).light, 11);                     /* this one burns at its own arg */
++    CHECK_EQ(lv_env_candles_lit(&g_env), 2);
++    /* they stay lit whatever the lantern does, and the lantern never dims them */
++    for (i = 0; i < 40; i++) lv_env_tick(&g_env, 14 + (i % 3), 2);
++    CHECK_EQ(CELL(14, 1).light, LV_ENV_CANDLE_LIGHT + (CELL(14, 1).light - LV_ENV_CANDLE_LIGHT));
++    CHECK(CELL(14, 1).light >= LV_ENV_CANDLE_LIGHT);
++    run(LV_ENV_OIL_MAX, 2, 7);
++    CHECK_EQ(CELL(14, 1).light, LV_ENV_CANDLE_LIGHT);
++    CHECK_EQ(CELL(15, 6).light, 11);
++}
++
++TEST(lvenv_two_faces)
++{
++    DoomoCell before;
++    CHECK_EQ(begin(8), LVENV_OK);
++    CHECK_EQ(lv_env_face_of(&g_env, 2, 9), 1);
++    CHECK_EQ(lv_env_face_of(&g_env, 6, 9), 2);
++    CHECK_EQ(lv_env_face_of(&g_env, 10, 6), 0);
++    CHECK(!lv_env_out_of_phase(&g_env, 2, 9));           /* face A shows first */
++    CHECK(lv_env_out_of_phase(&g_env, 6, 9));
++    CHECK(!lv_env_out_of_phase(&g_env, 10, 6));          /* both faces: never */
++    before = CELL(15, 8);
++    CHECK(before.wall != 0);
++    CHECK_EQ(lv_env_face_flip(&g_env, 5), 0);            /* no such set: nothing flips */
++    CHECK_EQ(g_env.face, 0);
++    CHECK_EQ(lv_env_face_flip(&g_env, 0), 1);            /* the lever: the Wall's other face */
++    CHECK_EQ(g_env.face, 1);
++    CHECK_EQ(CELL(15, 8).wall, 0);
++    CHECK(lv_env_out_of_phase(&g_env, 2, 9));
++    CHECK(!lv_env_out_of_phase(&g_env, 6, 9));
++    CHECK_EQ(lv_env_face_flip(&g_env, 0), 1);            /* and back, exactly */
++    CHECK_EQ(g_env.face, 0);
++    CHECK_EQ(memcmp(&CELL(15, 8), &before, sizeof(before)), 0);
++    CHECK(rect_pristine(10, 6, 16, 9));
++}
++
++TEST(lvenv_showtime_swaps_the_room_light)
++{
++    int i, saw_on = 0, on_ticks = 0;
++    CHECK_EQ(begin(8), LVENV_OK);
++    CHECK_EQ(CELL(3, 6).light, 3);                       /* between shows: the room's own dim */
++    CHECK_EQ(CELL(8, 6).light, 0);                       /* another room: untouched */
++    CHECK(!lv_env_showtime(&g_env));
++    for (i = 0; i < LV_ENV_SHOW_TICKS - LV_ENV_SHOW_ON - 1; i++) lv_env_tick(&g_env, 14, 8);
++    CHECK(!lv_env_showtime(&g_env));
++    CHECK_EQ(CELL(3, 6).light, 3);
++    lv_env_tick(&g_env, 14, 8);                          /* the lights blaze */
++    CHECK(lv_env_showtime(&g_env));
++    CHECK_EQ(CELL(3, 6).light, LV_ENV_SHOW_LIGHT);
++    CHECK_EQ(CELL(8, 6).light, 0);
++    for (i = 0; i < LV_ENV_SHOW_TICKS * 2; i++) {
++        lv_env_tick(&g_env, 14, 8);
++        if (lv_env_showtime(&g_env)) { saw_on = 1; on_ticks++; CHECK_EQ(CELL(3, 6).light, LV_ENV_SHOW_LIGHT); }
++        else CHECK_EQ(CELL(3, 6).light, 3);
++    }
++    CHECK(saw_on);
++    CHECK_EQ(on_ticks, LV_ENV_SHOW_ON * 2);                       /* two 10 s cycles: the window of each */
++}
++
++TEST(lvenv_a_floor_falls_after_you_leave)
++{
++    int i;
++    CHECK_EQ(begin(8), LVENV_OK);
++    run(200, 3, 7);                                      /* never entered: it never falls */
++    CHECK_EQ(CELL(9, 6).floor_h, 0);
++    run(5, 9, 6);                                        /* stand on it */
++    run(300, 9, 6);
++    CHECK_EQ(CELL(9, 6).floor_h, 0);                     /* standing there it holds */
++    CHECK(!lv_env_gone_at(&g_env, 9, 6));
++    run(LV_ENV_COLLAPSE_TICKS / 2, 3, 7);                /* step off, come back in time */
++    run(1, 9, 6);
++    run(LV_ENV_COLLAPSE_TICKS * 2, 9, 6);
++    CHECK_EQ(CELL(9, 6).floor_h, 0);
++    for (i = 0; i < LV_ENV_COLLAPSE_TICKS + LV_ENV_DECAY_DIV; i++) {
++        CHECK_EQ(CELL(9, 6).floor_h, 0);                 /* it holds until the delay is up */
++        lv_env_tick(&g_env, 3, 7);
++        if (lv_env_gone_at(&g_env, 9, 6)) break;
++    }
++    CHECK(lv_env_gone_at(&g_env, 9, 6));
++    CHECK(i >= LV_ENV_COLLAPSE_TICKS - LV_ENV_DECAY_DIV);
++    CHECK_EQ(CELL(9, 6).floor_h, -20);                   /* into the ink */
++    CHECK_EQ(CELL(8, 5).floor_h, -20);
++    CHECK_EQ(CELL(12, 6).floor_h, DEF(12, 6).floor_h);   /* outside the zone */
++    run(2000, 3, 7);
++    CHECK_EQ(CELL(9, 6).floor_h, -20);                   /* it does not come back */
++}
++
++TEST(lvenv_unnamed_rooms_dissolve_and_names_restore_them)
++{
++    int i;
++    CHECK_EQ(begin(8), LVENV_OK);
++    run(5, 19, 2);                                       /* into ward 1 */
++    run(LV_ENV_DISSOLVE_TICKS * 2, 19, 2);               /* standing in it: it holds */
++    CHECK_EQ(CELL(19, 2).wall, 0);
++    run(LV_ENV_DISSOLVE_TICKS - 20, 3, 7);               /* out, but not long enough */
++    CHECK_EQ(CELL(19, 2).wall, 0);
++    for (i = 0; i < 40; i++) lv_env_tick(&g_env, 3, 7);
++    CHECK_EQ(CELL(19, 2).wall, LV_ENV_FOGWALL);          /* a fog wall now */
++    CHECK_EQ(CELL(18, 1).wall, LV_ENV_FOGWALL);
++    CHECK(lv_env_gone_at(&g_env, 19, 2));
++    CHECK_EQ(CELL(19, 6).wall, 0);                       /* the other ward was never entered */
++    CHECK_EQ(lv_env_name(&g_env, 9), 0);                 /* no such ward */
++    CHECK_EQ(lv_env_name(&g_env, 1), 1);                 /* its name: it comes back, byte for byte */
++    CHECK_EQ(memcmp(&CELL(19, 2), &DEF(19, 2), sizeof(DoomoCell)), 0);
++    CHECK(!lv_env_gone_at(&g_env, 19, 2));
++    CHECK_EQ(lv_env_name(&g_env, 1), 0);                 /* once */
++    /* a named ward never dissolves, however long you are away */
++    run(5, 19, 2);
++    run(LV_ENV_DISSOLVE_TICKS * 3, 3, 7);
++    CHECK_EQ(CELL(19, 2).wall, 0);
++    /* naming before it dissolves: ward 2 */
++    run(5, 19, 6);
++    run(20, 3, 7);
++    CHECK_EQ(lv_env_name(&g_env, 2), 1);
++    run(LV_ENV_DISSOLVE_TICKS * 3, 3, 7);
++    CHECK_EQ(CELL(19, 6).wall, 0);
++    CHECK(rect_pristine(18, 1, 21, 7));
++}
++
++TEST(lvenv_mechanics_compose_and_restore_exactly)
++{
++    CHECK_EQ(begin(3), LVENV_OK);
++    /* the lantern in the fog: 10 - 5 = 5 at the centre; the valve clears the fog and the lantern shows */
++    lv_env_tick(&g_env, 3, 2);
++    CHECK_EQ(CELL(3, 2).light, 5);
++    CHECK_EQ(CELL(5, 2).light, 1);                       /* 6 - 5 */
++    lv_env_fog_set(&g_env, 30, 0);
++    CHECK_EQ(CELL(3, 2).light, 10);
++    /* a candle inside a dark level plus the lantern: the brighter wins */
++    lv_env_candle_use(&g_env, 15, 2);
++    lv_env_tick(&g_env, 15, 2);
++    CHECK_EQ(CELL(15, 2).light, 10);
++    CHECK_EQ(CELL(14, 1).light, LV_ENV_CANDLE_LIGHT > 8 ? LV_ENV_CANDLE_LIGHT : 8);
++    /* a dissolve, a tide and a collapse in one level do not disturb each other's cells */
++    run(5, 19, 2); run(300, 3, 7);
++    run(LV_ENV_TIDE_TICKS, 9, 2);
++    CHECK_EQ(CELL(19, 2).wall, LV_ENV_FOGWALL);
++    CHECK_EQ(CELL(9, 2).floor_h, -1);
++    CHECK_EQ(CELL(9, 6).floor_h, 0);
++}
++
++static uint32_t drive(void)
++{
++    int i;
++    if (begin(3) != LVENV_OK) return 0;
++    for (i = 0; i < 900; i++) {
++        lv_env_tick(&g_env, 1 + (i / 7) % 22, 1 + (i / 90) % 8);
++        if (i == 100) lv_env_candle_use(&g_env, 15, 2);
++        if (i == 300) lv_env_fog_set(&g_env, 30, 0);
++        if (i == 500) lv_env_name(&g_env, 1);
++        if (i == 700) lv_env_face_flip(&g_env, 0);
++    }
++    return lv_env_hash(&g_env) ^ (uint32_t)(g_map.cells[3].light * 31u) ^
++           (uint32_t)(memcmp(g_map.cells, g_map.def->cells, sizeof(DoomoCell) * 240) ? 1 : 2);
++}
++
++TEST(lvenv_deterministic)
++{
++    uint32_t a = drive(), b = drive(), h;
++    CHECK_EQ_U(a, b);
++    CHECK_EQ(begin(3), LVENV_OK);
++    h = lv_env_hash(&g_env);
++    g_env.oil--;
++    CHECK(lv_env_hash(&g_env) != h);
++    g_env.oil++;
++    g_env.tide[1]++;
++    CHECK(lv_env_hash(&g_env) != h);
++    g_env.tide[1]--;
++    CHECK_EQ_U(lv_env_hash(&g_env), h);
++}
++
++/* ---- the renderers: a short view distance leaves no holes at either screen size ------------------ */
++static int count_color(int w, int h, uint8_t c)
++{
++    int x, y, n = 0;
++    for (y = 0; y < h; y++)
++        for (x = 0; x < w; x++)
++            if (nat_fb[y * nat_w + x] == c) n++;
++    return n;
++}
++
++static uint32_t fb_hash(int w, int h)
++{
++    uint32_t a = 2166136261u;
++    int x, y;
++    for (y = 0; y < h; y++)
++        for (x = 0; x < w; x++) { a ^= nat_fb[y * nat_w + x]; a *= 16777619u; }
++    return a;
++}
++
++TEST(lvenv_short_view_distance_renders_without_holes)
++{
++    static const int sizes[2][2] = { { 240, 160 }, { 320, 240 } };
++    static const int views[5] = { 0, 8, 12, 16, 40 };
++    int s, k, a;
++    for (s = 0; s < 2; s++) {
++        NatOptions o;
++        uint32_t h_default = 0, h_short = 0;
++        memset(&o, 0, sizeof(o));
++        o.w = sizes[s][0]; o.h = sizes[s][1]; o.seed = 1; o.quiet = 1; o.save_dir = test_tmp_dir;
++        nat_init(&o);
++        load(8);
++        for (k = 0; k < 5; k++) {
++            for (a = 0; a < 3; a++) {
++                DoomoView3D v;
++                memset(&v, 0, sizeof(v));
++                v.map = &g_map;
++                v.x = INT2FIX(1 * 64 + 32); v.y = INT2FIX(4 * 64 + 32);
++                v.z = INT2FIX(map_floor_z(&g_map, 1, 4) + DOOMO_EYE_HEIGHT);
++                v.angle = (int16_t)(a == 0 ? 0 : a == 1 ? 300 : 3800);          /* down the long hall, a bit either way */
++                v.vw = (int16_t)o.w; v.vh = (int16_t)o.h;
++                v.player_sprite = -1;
++                v.view_dist = (uint8_t)views[k];
++                plat_clear(PAL_UI_RED);
++                plat_view3d(&v);
++                CHECK_MSG(count_color(o.w, o.h, PAL_UI_RED) == 0, "%dx%d view %d angle %d left holes", o.w, o.h, views[k], a);
++                if (a == 0 && k == 0) h_default = fb_hash(o.w, o.h);
++                if (a == 0 && k == 1) h_short = fb_hash(o.w, o.h);
++                if (a == 0 && k == 4) CHECK(fb_hash(o.w, o.h) != h_short);
++            }
++        }
++        CHECK(h_default != h_short);                   /* the variable does something ... */
++    }
++    {   /* ... and the old call (view_dist 0) is the same picture as a view struct that never heard of it */
++        NatOptions o;
++        DoomoView3D v;
++        uint32_t h1, h2;
++        memset(&o, 0, sizeof(o));
++        o.w = 240; o.h = 160; o.seed = 1; o.quiet = 1; o.save_dir = test_tmp_dir;
++        nat_init(&o);
++        load(8);
++        memset(&v, 0, sizeof(v));
++        v.map = &g_map; v.x = INT2FIX(96); v.y = INT2FIX(288); v.z = INT2FIX(DOOMO_EYE_HEIGHT);
++        v.vw = 240; v.vh = 160; v.player_sprite = -1;
++        plat_view3d(&v);
++        h1 = fb_hash(240, 160);
++        v.view_dist = 200;                             /* out of range: the renderer's own */
++        plat_view3d(&v);
++        h2 = fb_hash(240, 160);
++        CHECK_EQ_U(h1, h2);
++        v.view_dist = 3;                               /* under the minimum: the renderer's own */
++        plat_view3d(&v);
++        CHECK_EQ_U(fb_hash(240, 160), h1);
++    }
++}
+diff --git a/docs/GBA.md b/docs/GBA.md
+index 0d8d960f..4d877178 100644
+--- a/docs/GBA.md
++++ b/docs/GBA.md
+@@ -437,6 +437,7 @@ against the LAST row, not against a figure from an older base.
+ | 44 | LV0: the level registry (`levels2.c`), the `BRCH` records chunk (7 of the 24 new levels on the GBA: 76 B working copy), the packed size classes | `0df72845` | 15,444 B | **15,460 B** | +16 B | 6,308 B | measured on `0df72845` (after CR3) + LV0 (`make -C gba sizes`, both trees built clean): `.bss` 245,804 -> 245,788, IWRAM and the overlay slot unchanged (0 B). The 76 B of `BRCH` (`levels_rec.c`: arc 48 B + 7 records x 4 B) are paid by `LvRun.size_cls` going from one byte an actor (128 B) to two bits (32 B, 96 B saved). The GBA lists the seven old levels and HB8, HB9, HB13, HB15, N1, N7, N14 (`LVG_GBA` in `lv_reg`); the 17 others are registered (their rows are in ROM) but not listed, so the select, the records and the unlock rules skip them. `make -C gba test`: 0 failures. ROM +3.6 KB (the 24 registered levels' text and tables) |
+ | 45 | CR4 A2: 32 hair styles and 8 beards (docs/CREATOR.md "CR4 batch A2") | after S3-3 (`b63abec`) | 15,444 B | **15,444 B** | 0 B | 6,308 B | measured on `b63abec` and `b63abec` + A2 (`make -C gba sizes`): `.bss` 245,804 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B before and after, `.text` 1,401,336 B before and after; the part scripts, the catalog rows and the 40 part icons are `const` ROM: `.rodata` 6,587,868 -> 6,608,008 B (+20,140). PS1: no resident byte (`_end` 0x801ef4e0 before and after, 68,368 B below the stack top with the boot FMV; the overlay slot ends 0x801ef3b4 both times) |
+ | 46 | CR4 A3: 60 spooky parts (docs/CREATOR.md "CR4 batch A3") | after A2 (`224b192`) | 15,444 B | **15,444 B** | 0 B | 6,308 B | measured on `0c1fc51` and `0c1fc51` + A3 (clean `make -C gba` builds, `make -C gba sizes`): `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B, `.data` 816 B, `.text` 1,403,440 B all identical before and after; the part scripts (5.8 KB), the catalog rows and the 60 part icons are `const` ROM: `.rodata` 6,591,380 -> 6,623,356 B (+31,976, measured on the pre-rebase tree; on the rebased tree the whole `.rodata` is 6,643,580 B and `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B, `.data` 816 B, unchanged). `make -C gba test` and `test-creator` pass on the rebased tree (creator rows 29.9 fps, value step 30.0) |
++| 47 | LV4: mechanic kit B (`levels_mech_env.c`, `DoomoView3D.view_dist`, `r3f.maxd` from the per-level view distance) | after CR4 A1a (`501f6f16`) | 15,444 B | **15,444 B** | 0 B | 6,308 B | measured on `501f6f16` and `501f6f16` + LV4 (`make -C gba sizes`): .iwram 11,256, .iwram_bss 4,084, .bss 245,788 and every overlay slot identical; .text +24 B (r3d.c: the range check and the sprite cull from `r3f.maxd`); `lv_env_*` is not linked (nothing calls it). The new `view_dist` byte sits in the padding of `DoomoView3D` (stack, and the one static copy in combat_hud.c). Speed tour: every `vhash-seq` identical |
+ 
+ Known claimants still to land (their own packages measure and add rows):
+ 
+diff --git a/docs/LEVELS.md b/docs/LEVELS.md
+index 5a7cf4f2..f3071fa7 100644
+--- a/docs/LEVELS.md
++++ b/docs/LEVELS.md
+@@ -146,6 +146,61 @@ spent until a level starts a VM.
+   mechanic union of LV3-LV5, or a block of the combat overlay), a `LVE_USE` source (usables:
+   LV3), a `LVE_PHASE` source (boss phases), `levelcheck` counting the script bytes.
+ 
++## Mechanic kit B: environment and light (LV4, 2026-11-13)
++
++`core/src/levels_mech_env.c` + `core/include/doomo/lv_env.h`. Seven rules over the live map and the level's
++ROM zones (map format v2). The state is one caller-owned `LvEnv` (about 84 bytes with its two pointers; the
++mechanic union of the level runtime, no static in the file), `lv_env_begin()` then `lv_env_tick(env, cx, cy)`
++once a game tick. Nothing in the game calls it yet (the first level that needs it wires it, like the script VM),
++so no byte of it links on any platform.
++
++| Mechanic | Zone kinds (`zone X0 Y0 X1 Y1 KIND arg= tag=`) | What it does |
++|---|---|---|
++| fog and valves (HB8) | `fog arg=cells tag=valve` | the zone's cells take 5 light off (never under 1); `lv_env_fog_set(tag)` clears it (the exact byte comes back); `lv_env_view_at()` cuts the view to the fog's `arg` while you stand in it |
++| glum tide (HB11) | `tide arg=high-water tag=valve` | the basin's floor rises one step per 6 s while you are in the zone, to `arg`; the risen cells get CELL_WATER; `lv_env_drain(tag)` lowers it for good. Doors, lifts, walls and cells under a low ceiling keep their floor. At most 4 tide zones |
++| lantern (HB9, dark levels) | (`dark yes` header) | lights the 5 x 5 cells round the player (10 at the centre, 2 less each cell away), 60 s of oil, `lv_env_refill()` at a jar; at most 25 cells lit and 25 restored a tick |
++| candles (HB9) | `candle arg=light tag=n` | `lv_env_candle_use()` (A beside it) lights the zone for good (light `arg`, 9 if 0) |
++| two faces (HB12) | `face_a`, `face_b` | `lv_env_face_flip(set)` applies / reverts a swap set and switches the face; `lv_env_out_of_phase()` says whether a cell belongs to the face that is not showing (its actors translucent, unhurtable: the combat side reads it) |
++| showtime (HB13) | `show arg=dim-light` | the room is held at `arg` between shows; every 10 s the lights blaze (15) for 4 s; `lv_env_showtime()` is 1 then (animatronics freeze) |
++| collapse (N-levels) | `collapse arg=steps` | a floor you have stood on drops `arg` steps 1.5 s after you leave it, for good |
++| dissolving rooms (N10) | `ward arg=number` | a ward you have been in turns into fog walls 8 s after you leave it unnamed; `lv_env_name(number)` restores it byte for byte and it never dissolves again. At most 8 collapse + ward zones with a timer |
++
++* **Rebuilt, never patched.** A live cell's `light`, `floor_h`, CELL_WATER and `wall` are recomputed from the
++  definition's cell plus the state, so a restore is exact whatever happened in between and several mechanics on
++  one cell compose (the lantern in fog: 10 - 5; a lit candle under the lantern: the brighter). Doors and lifts
++  are left to `map.c`. `lv_env_check()` (run by `lv_env_begin()`) refuses a swap set that rewrites `light`,
++  `floor_h` or `wall` of a cell these zones cover, more than 4 tide or 8 decay zones, and a tide `arg` over 127.
++* **The zone kinds are new** (`ZONE_CANDLE`, `ZONE_SHOW`, `ZONE_COLLAPSE`, appended to map.h; mapc reads the
++  names from the enum). Zones of one kind may not overlap, so a candle (3 x 3) and a show room can overlap each other.
++* **Per-level view distance.** The header key `view N` (and `fog N` for a level-wide fog) reaches the
++  renderers through `DoomoView3D.view_dist` (cells; 0 = the renderer's own, clamped to 8 .. its maximum):
++  - host / native runner (`core/native/raycast.c`): rays stop there and the light falls off fast enough
++    (`vd * 4` world units a step, the old 128 at 32 cells) to reach the darkest step at the limit, so there is
++    no hard edge. Test: `lvenv_short_view_distance_renders_without_holes` (views 0, 8, 12, 16, 40, three
++    angles, 240 x 160 and 320 x 240, no pixel left unpainted; 0, 3 and 200 give the old picture).
++  - GBA (`gba/src/r3d.c`): `r3f.maxd` and the sprite cull come from the variable (it was the constant
++    `R3D_MAXDIST` 40; `R3D_MINDIST` 8); the floor and the ceiling already run to the horizon where the
++    ray walk stops, so a short view has no hole. The variable is a field in the padding of the
++    `DoomoView3D` struct (stack and one static copy): no EWRAM / IWRAM. `lv_runtime_view()` fills it from the
++    map's `view` key on every build except the GBA (see "GBA" below).
++  - PS1: **compiled out** (`ps1/src/view3d.c` keeps its governor's `s_view_dist`; the field is ignored and
++    `levels_mech_env.c` is empty there) until PS1-RAM releases the LEVELS share (`LV_HAS_NEW`); the PS1 EXE
++    is identical. Dreamcast: ignored for now (its governor owns `dc_view3d_set_dist`; the cap
++    `min(governor, view_dist)` is a three-line follow-up with DC6).
++* **GBA.** `make -C gba sizes`: .iwram 11,256, .iwram_bss 4,084, .bss 245,788, overlay slots: all identical;
++  .text +24 B (r3d.c). The speed tour is frame-exact (every `vhash-seq` identical) and the Vape Cellar
++  windows keep their drawn fps. The call that copies the map's `view` key into the view is not in the GBA
++  build yet: it added 64 B of ROM in `levels.c` and moved the code after it, which cost the Vape Cellar's
++  middle window 2.2 ms of 80 (ROM fetch alignment, frames identical). The first GBA level with a `view` key
++  (HB8) adds the line to `lv_runtime_view()` and measures it.
++* **Tests:** `core/tests/test_lv_env.c` (15 tests) on `core/tests/maps/t4_env.txt`: every mechanic, its exact
++  restore, the composition, the budgets, determinism (`lv_env_hash`), and the renderer at both sizes.
++* **Not yet (follow-up LV4b, with the first level that uses a piece):** calling `lv_env_tick` from
++  `lv_runtime_pre`; the actors' side of the faces (translucent, unhurtable) and showtime (frozen); steam
++  billboards and the tide's PS1 / DC smooth light; the autopilot's valve / candle / oil goals (LV6); mapc
++  checks for the new zones (a candle needs a tag, a tide needs a valve tag); `levelcheck` BFS over the
++  swap-set faces by lever (the test map's swap is script-mode).
++
+ ## Files
+ 
+ `core/src/levels.c` (tables, ranks, runtime, activities),
+diff --git a/docs/PS1.md b/docs/PS1.md
+index 6733e2f2..056e578f 100644
+--- a/docs/PS1.md
++++ b/docs/PS1.md
+@@ -1633,6 +1633,15 @@ tables and `creator_data.c` is compiled `-G0` (`ps1/CMakeLists.txt`). Measured o
+ --preset ps1 -DDOOMO_INTRO_REQUIRED=ON`): `_end` 0x801efe60 -> 0x801ef4e0 with the gene fields live, 65,936 B ->
+ 68,368 B below the stack top. Check the link map for the same trap whenever a creator-group file gains a pointer
+ table: `grep "creator_data.c.obj(" ps1/build/doomogachi.ldmap` must show its `.rodata.str1.4` only in the overlay part.
++## LV4 (mechanic kit B, environment and light): compiled out
++
++`core/src/levels_mech_env.c` (fog, tide, lantern, candles, faces, showtime, collapse, dissolving rooms) is empty on
++the PS1 (`#if !defined(DOOMO_PLATFORM_PS1)`), and `lv_runtime_view()` does not fill `DoomoView3D.view_dist` there
++(`LV_HAS_NEW` is 0): the PS1 EXE is unchanged (no resident byte). `ps1/src/view3d.c` ignores the new field and
++keeps its governor's `s_view_dist`. When the LEVELS share of PS1 memory is released: drop the `#if`, take
++`min(s_view_dist, view_dist)` in `cast()`, and put `levels_mech_env` in the combat overlay group
++(`ps1/tools/ovl_plan.py` matches `levels_*` already).
++
+ ## LV0 (levels registry): resident delta -112 B
+ 
+ The 24 new levels are registered on the host, GBA and Dreamcast builds only. The PS1 keeps the old seven
+diff --git a/docs/design/held/status/LEVELS.md b/docs/design/held/status/LEVELS.md
+index 9f79dcfa..10281b41 100644
+--- a/docs/design/held/status/LEVELS.md
++++ b/docs/design/held/status/LEVELS.md
+@@ -4,13 +4,14 @@ Kept by the stream's lead (rules: ../PARALLEL_WAVES.md section 5). Update it wit
+ What goes in: last update, lead session, landed (package, commit, key numbers, PS1 margin and
+ delta, GBA sizes), in flight (package and stage), next up, blockers, needs from other streams.
+ 
+-- **Last update:** 2026-11-13: LV2 (level script VM) landed on claude/nice-allen-gr6czm (after LV0, LV1, LV10)
++- **Last update:** 2026-11-13: LV4 (mechanic kit B, environment and light) built on branch fut-lv4 (after LV0, LV1, LV2, LV10), waiting for review and landing
+ - **Lead:** session_01Xd63cvXV9YcGJn2CBo4zvt (machine: every toolchain and emulator installed: GBA, PS1 SDK + PCSX-Redux, KallistiOS + Flycast)
+ - **Landed:** the plan and the owner answers are in docs/design/levels/LEVELS_EXPANSION_PLAN.md. **LV0 (level registry, `BRCH` records, select pages) landed** (rebased onto `0df72845`, 4 commits, head `LV0: rebase fixes...`): `LV_COUNT` 31, `lv_info` and `lv_reg` in `levels2.c`, the 24 new levels registered as not built, `BRCH` save chunk (slot 14, declared 160 B; 148 B with all 24 levels, 80 B on the GBA), the level select in pages. Numbers measured on the rebased tree (base `0df72845`, after CR3), both sides built clean: GBA EWRAM free 15,444 -> **15,460 B** (+16 B; `.bss` 245,804 -> 245,788), IWRAM, `.iwram_bss` and the overlay slot unchanged (11,256 / 4,084 / 10,352; 6,308 B of stack left); PS1 EXE with the boot FMV ends 0x801ef450 against the base's 0x801ef4e0 (**-144 B resident**), **68,512 B below the stack top** against the base's 68,368 B (the tree is still under the 72 KB rule until PS1-RAM lands; LV0 does not make it smaller). Gates on the rebased tree: core 1,133 passed / 0 failed, the same under SAN, check-gen, xcheck (410 files, gcc arm mipsel sh4), `make -C gba` + `make -C gba test` + sizes, `make dc-host-test`, `make -C dc` (KallistiOS is installed now), PS1 build + `game_smoke` + the `levels_select` harness script PASS.
+   Also landed: LV1 (map format v2, `tools/levelcheck.py`, `core/tools/map_bfs.h`): core tests 1112 passed 0 failed (SAN=1 the same, only the 4 known UBSan reports), check-gen clean, xcheck 406 files OK, mapc tests 75, levelcheck tests 10, the 12 shipped maps stay v1 and byte-identical. Review fix: the soft-lock test runs only on dungeons with an exit (a v2 overworld or arena has no exit). levelcheck's ROM figure counts map tables only (not script, text, art). GBA sizes unchanged (.iwram 11256, .iwram_bss 4084, .bss 259460); `levels_mapx.c` is dropped at link. PS1 margin: 64 KB below the stack top on this tree (PS1-RAM not landed, so this tree is under 72 KB); LV1 adds no resident byte (EXE identical to the baseline). The PS1 harness was not run (code not in the EXE).
+ - **LV10 (level test harness) landed, partial** (rebased on LV0): `tools/breach_scripts.py` writes 28 scripts for the 7 built levels (checked against `LV_OLD_COUNT`), `make -C gba test-breach2`, `tools/breach_fps.py`, `core/tests/test_levels2.c`. Core 1135 passed, SAN=1 1135 (4 known UBSan reports), check-gen and xcheck (410 files) clean, GBA tests and test-breach2 with floors green, dc-host-test ok. GBA drawn fps in the autopilot 4-17 (combat; far below 30, the speed stream's). Autopilot finishes 44 of 84 cells. PS1 and DC scripts generated and op-checked only (no PS1 SDK / Flycast on the landing machine); no PS1 or GBA resident bytes changed (PS1 margin unchanged from the base). vhash-seq is printed, not gated. Next: play one PS1 and one DC script, LV9 detail modes, LV11/ranks coverage; feed `LEVELS` from the registry as levels get maps.
+ - **LV2 (level script VM) landed** (round 2): `core/src/lv_script.c`, `core/include/doomo/lv_script.h`, mapc `on EVENT do ...`, `core/tests/test_lv_script.c` (30 tests), t2_script test map. Core 1162 passed 0 failed (SAN=1 the same, only the 4 known UBSan reports), check-gen, xcheck (411 files), mapc tests 79, GBA tests and sizes identical (.iwram 11256, .iwram_bss 4084, .bss 245788, .text/.rodata unchanged), dc-host-test ok, PS1 EXE ends 0x801ef450 (same as before) and `game_smoke` PASS. No resident byte on any platform (nothing calls it yet; GBA sizes and PS1 EXE unchanged, `lv_script` added to the PS1 combat overlay group). Follow-up (first level that needs it, LV3-LV5): wire `lv_vm_tick` into `lv_runtime_pre/post` with a host function, give `LvVm` (about 84 B + 4 pointers) a home (the mechanic union, or the combat overlay), and the LVE_USE / LVE_PHASE event sources.
+   LV2 review fixes (landing): `end` now also stops a camera sweep in flight (`lv_vm_frozen` was true forever), a once-handler dropped by a full queue stays armed (it was marked fired and lost), `lv_vm_idle(NULL)` is safe, `lv_vm_hash` covers the open choice's fields; 3 new tests (end during a sweep, set to the same value does not re-fire a `var` handler, dropped once-handler) plus `end` drops the queued handlers. Rebased tree (on `3a847919`): core 1195 passed 0 failed (SAN=1 the same, only the 4 known UBSan reports), check-gen, xcheck 415 files, mapc tests 79, dc-host-test ok, GBA `test` ok; GBA `.iwram` 11256, `.iwram_bss` 4084, `.bss` 245788 (EWRAM and IWRAM net zero), `.text` 1403584, `.rodata` 6643580 (other streams' growth; no `lv_vm` / `t2_script` symbol in the ELF). PS1: `_end` 0x801ef580, 68,208 B below the stack top (unchanged by LV2; still under the 72 KB rule until PS1-RAM), `game_smoke` PASS. `ps1/tools/ovl_plan.py` got one regex (`lv_script` in the combat group), a shared file. Known limits: mapc does not check that `on use` names a usable thing or that a tag is ever posted; `tools/levelcheck.py` does not count script bytes.
++- **LV4 (mechanic kit B, environment and light) built, not yet landed** (round 3a, branch `fut-lv4`): `core/src/levels_mech_env.c` + `core/include/doomo/lv_env.h` (fog zones and valves, the glum tide, lantern and candles, the two faces, showtime light swap, collapsing floors, dissolving rooms; one caller-owned `LvEnv`, a cell is rebuilt from the definition plus the state so every restore is byte exact), three new zone kinds (`candle`, `show`, `collapse`), per-level view distance as `DoomoView3D.view_dist` (native raycaster with a matching light fall-off, GBA `r3f.maxd` + sprite cull; PS1 compiled out, DC ignores it until DC6). `core/tests/test_lv_env.c` 15 tests on `core/tests/maps/t4_env.txt`, including the renderer at 240 x 160 and 320 x 240 without holes. GBA: .iwram 11,256, .iwram_bss 4,084, .bss 245,788, overlays identical, .text +24 B; speed tour every `vhash-seq` identical, Vape Cellar drawn fps unchanged (work avg +-0.1 ms; the first try that also wired `lv_runtime_view` on the GBA cost the middle window 2.2 ms of 80 through ROM alignment, so that line is host / DC only until the first GBA level with a `view` key). PS1 EXE unchanged (code compiled out until PS1-RAM, `LV_HAS_NEW`). Follow-up LV4b (first level that uses a piece): call `lv_env_tick` from `lv_runtime_pre`, the actors' side of faces and showtime, steam billboards / PS1 and DC smooth light, mapc checks for the new zones, autopilot goals (LV6), the GBA wiring line. docs/LEVELS.md "Mechanic kit B".
+ - **In flight:** round 1 done for LV0, LV1, LV10.
+ - **Next up:** round 2: LV7 (art and audio kit), LV2 (script VM, after LV1), LV11 (content notes, after LV0); then LV6, LV3, LV4, LV9, LV5, LV8 (GBA side, tool and host tests first)
+ - **Blockers:** none. Carried notes from LV0: (1) the new UI strings (page names, the locked reasons, the page hint) are English only and fall back to English in Spanish - add them in a Talk / i18n wave; (2) a save moved to a platform that lists fewer levels and re-saved there loses the records of the levels that platform does not list (`docs/LEVELS.md` says so; keeping them as raw bytes costs about 68 B of GBA EWRAM, which is not there); (3) the unlock rules of the new levels are placeholders where the plan is vague (HB9 / HB11 both on BEAT_EP3_4, HB10 on chapter 3) - the level packages re-point them; (4) the PS1 builds the old seven only (`LV_HAS_NEW` / `LV_TABLE_N` in `core/src/levels_int.h`) until the LEVELS share of PS1 RAM is released after PS1-RAM.
+diff --git a/gba/src/r3d.c b/gba/src/r3d.c
+index 6506e677..f24440fc 100644
+--- a/gba/src/r3d.c
++++ b/gba/src/r3d.c
+@@ -324,7 +324,7 @@ static void draw_sprites(const DoomoView3D *v)
+         dy = b->y - r3f.ey;
+         depth = (int32_t)((r3d_smull(dx, r3f.fx) + r3d_smull(dy, r3f.fy)) >> 16);
+         if (depth < (4 << 16)) continue;                 /* behind / at the eye */
+-        if (depth > (R3D_MAXDIST * 64) << 16) continue;
++        if (depth > ((int32_t)(r3f.maxd >> 16) * 64) << 16) continue;   /* (LV4) the level's view distance */
+         spr_order[n].depth = depth;
+         spr_order[n].idx = (int16_t)i;
+         n++;
+@@ -599,7 +599,12 @@ void plat_view3d(const DoomoView3D *v)
+     r3f.cells = m->cells;
+     r3f.mw = m->w;
+     r3f.mh = m->h;
+-    r3f.maxd = (uint32_t)R3D_MAXDIST << 16;
++    {   /* (LV4) per-level view distance: a short one stops the ray walk early (the floor and ceiling run to
++         * the horizon there); 0 or out of range = R3D_MAXDIST, the same frames as before */
++        uint32_t vd = v->view_dist;
++        if (vd < R3D_MINDIST || vd > R3D_MAXDIST) vd = R3D_MAXDIST;
++        r3f.maxd = vd << 16;
++    }
+     if (m->def != cache_mapdef || m->w != cache_mw || m->h != cache_mh || frame_no == 0)
+         setup_map(m);
+     if (m->ambient != cache_amb) setup_fade(m->ambient);
+diff --git a/gba/src/r3d_int.h b/gba/src/r3d_int.h
+index e7ef9a1b..930073aa 100644
+--- a/gba/src/r3d_int.h
++++ b/gba/src/r3d_int.h
+@@ -23,6 +23,7 @@
+ #define R3D_FADE_N    128          /* fade buckets of 32 world units     */
+ #define R3D_MAXTEX    64
+ #define R3D_MAXDIST   40           /* max ray length in cells            */
++#define R3D_MINDIST   8            /* shortest per-level view distance (LV4) */
+ 
+ /* Window checkpoint: after the ray passed distance d8 (1/8 world units),
+  * the still-open rows of the column were [top, bot). Sprites at depth d
+-- 
+2.43.0
+

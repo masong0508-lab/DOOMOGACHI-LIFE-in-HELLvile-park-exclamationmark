@@ -1,0 +1,1038 @@
+From 713f173890e5555f80a3fa061a4a750c344beefa Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 16:33:55 +0000
+Subject: [PATCH 1/2] LV11: content notes and the dark-level presentation
+
+The nine dark levels get their content notes (plan 6.3): the card's note page
+on a first visit (A goes on, B goes back; a demo skips it), the note as one
+line above the goal on later visits, a moon badge and a note strip on the
+level select, the first-visit bits in the BRCH arc's spare bytes (chunk size
+unchanged), and the two options (Content notes: Every time / First time only;
+Memorial names: On / Off), with lv_memorial_label() for the Vault.
+
+No dark level has a map yet, so nothing shows on a real run; the host tests
+re-point a level to play it. GBA RAM sections unchanged. PS1 has neither
+option id and no new code: the EXE is byte-identical to the base.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cz7PBDFwYoagK8oCML
+---
+ ROADMAP.md                         |   1 +
+ core/include/doomo/options_store.h |   5 +-
+ core/include/doomo/town.h          |   8 ++
+ core/src/combat_card.c             |  46 +++++-
+ core/src/combat_int.h              |   8 ++
+ core/src/fp_options.c              |  18 ++-
+ core/src/levels2.c                 |  42 ++++++
+ core/src/levels_int.h              |  25 ++++
+ core/src/levels_play.c             |  42 +++++-
+ core/src/levels_rec.c              |  20 ++-
+ core/src/levels_select.c           |  14 ++
+ core/src/options_store.c           |  55 ++++++-
+ core/tests/test_levels_rec.c       | 221 +++++++++++++++++++++++++++++
+ core/tests/test_options_store.c    |  72 ++++++++++
+ core/tests/test_tips.c             |   4 +-
+ docs/GBA.md                        |   1 +
+ docs/LEVELS.md                     |  44 ++++++
+ docs/design/held/status/LEVELS.md  |   2 +-
+ 18 files changed, 612 insertions(+), 16 deletions(-)
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index 2a9ad37a..4c313b7c 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -24,6 +24,7 @@ before redoing any of them; a zip without `.git` cannot tell.
+ - **Creator CR4 batch A3, spooky (2026-11-13; docs/CREATOR.md "CR4 batch A3"):** 60 new parts live: 10 horns (gene `horns` 16..25), 16 tails (`tail` 16..31), 14 wings (`wings` 10..23), 4 halos (`halo` 12..15) and 16 auras (`aura` 8..23), hand-written part scripts in `core/data/parts/spooky` (no new painter code), shape gate, cost weights, frozen ids, review line A3, contact sheets incl. the new `portrait_sheet --slot tail|wings --views` (figure and the fighter's five views), runner walk-through `creator_parts_spooky.txt`, `test_cr4_a3.c`. Old saves, premades and Classic islands unchanged. Not in A3 (deep fields, need CR5): horn page 2 (6), horn / antenna bits (32), tail accessories (16), wing accessories (8), halo page 2 (6) = 68 of the batch's 134 (the other 6 are the painted halos live since CR3).
+ - **Levels LV0 (2026-11-13, level registry and records; `docs/LEVELS.md` "LV0", plan section 9):** `LV_COUNT` 31 (the seven built levels, Hell Breach 8-16 as ids 7..15, the 15 Arrears Notices as 16..30), the table moved to `levels2.c` with a registry (page, platform manifest, dark flag, unlock rule and its locked reason; rules by level, chapter, episode, flag, New Game+), the 24 new levels registered as not built (no map: not shown, never startable), the `BRCH` save chunk (slot 14, 148 B for all 24 levels and the arc state, 80 B on the GBA which lists 7 of them, declared 160 B; round trip, empty / absent / bad chunk, a save from another platform loads), the level select in pages (UP / DOWN, pips per page, 15 fit at 240 wide; one page today and pixel-identical to before: 2,196 runner screenshots byte-identical to the base). GBA: EWRAM 15,444 -> 15,460 B free (on `0df72845`, after CR3), IWRAM unchanged; PS1: -144 B resident, the EXE ends at 0x801ef450 against the base's 0x801ef4e0, 68,512 B below the stack top against 68,368 B (the PS1 build keeps the old seven until its LEVELS share is released); `make -C core test` 1,133 passed, SAN, check-gen, xcheck, `make -C gba test`, `dc-host-test`, `make -C dc`, PS1 build + game_smoke + the level-select harness script PASS. Next: LV1, LV10, then the level packages.
+ - **LV10, level test harness (2026-11-13, `docs/LEVELS.md` "Level test harness"):** `tools/breach_scripts.py` (a `gen` generator) writes the runner, GBA, PS1 and Dreamcast scripts of every level from one list (the 7 existing levels first); `make -C gba test-breach2` plays the 7 on the GBA harness (autopilot, three fps windows, `vhash-seq` printed (equal across two manual runs, not gated), floors at 85% of the first measurement); `tools/breach_fps.py` builds the platform x level x window fps table; `core/tests/test_levels2.c` asserts the autopilot finishes every level at Plushie in Hell Breach and Time Trial mode and sweeps the whole mode x difficulty matrix on request. The GBA autopilot runs at 4-17 drawn fps (combat, the speed stream's). PS1 / Dreamcast scripts generated and syntax-checked, not run (toolchains were still installing). Partial: the autopilot finishes 44 of 84 mode x difficulty cells (14 asserted); the rest is LV6's. Core 1135 passed (SAN=1 the same, the 4 known UBSan reports), GBA tests and `test-breach2` (floors on) green, no resident byte on any platform.
++- **LV11, content notes and the dark-level presentation (2026-11-13, `docs/LEVELS.md` "LV11", plan section 6.3 / 6.4):** the nine dark levels' notes (`lv_note`, `lv_note_short`), the card's note page on the first visit (A goes on, B goes back; the demo skips it), the note as one line above the goal on later visits, the select's moon badge and note strip, the first-visit flag in the 'BRCH' arc's spare bytes (chunk size unchanged), the two options (Content notes: Every time / First time only; Memorial names: On / Off, the Game page, machine-wide, bits in an existing byte) and `lv_memorial_label` for the Vault. No dark level is built yet, so nothing shows on a real run; the host tests play it by re-pointing a level. GBA: EWRAM, IWRAM, `.data` and `.bss` unchanged, ROM +1.4 KB `.text` / +1.8 KB `.rodata`; PS1: EXE byte-identical (`_end` 0x801ef580 before and after, 66 KB below the stack top). `make -C core test` 1,165 passed (SAN the same, the 4 known reports), check-gen, xcheck, GBA tests, `dc-host-test`, PS1 build.
+ - **Creator CR4 batch A2, hair (2026-11-13; docs/CREATOR.md "CR4 batch A2", GBA ledger row 45):** 40 new parts live: 32 hair styles (gene `hair_style` 32..63) and 8 beards (`facial_hair` 8..15), hand-written part scripts (`core/data/parts/hair`, `beard`), shape gate, cost weights, frozen ids, review line A2, contact sheets incl. the new `portrait_sheet --interplay` (hats x big hair, buns, horns), runner walk-through `creator_parts_hair.txt`, `test_cr4_a2.c`. Old saves, premades and Classic islands unchanged. GBA: EWRAM / IWRAM net zero, ROM +20,140 B; PS1: `_end` unchanged (68,368 B below the stack top). Not in A2 (needs CR5 saved deep parts and new `DF_` ids with painter hooks): hair page 2 (24), bangs (12), ahoge (12), hair accessories (52), facial hair page 2 (8) = 108 of the batch's 148.
+ - **Speed S2-11 (2026-11-13, the house's view turn and the busy Live layout, speed audit 2 causes C7 / C5, audit 3 ranks 26 and 29; measured on libmgba, PCSX-Redux and Flycast; docs/GBA.md "Speed wave 2: S2-11", docs/PS1.md "Speed tour 2", docs/DREAMCAST.md "Speed tour 2"):** (1) turning the house's view recomposed the room in one tick (106 ms of work, one 117 ms frame): the GBA now builds the new view over 2-3 ticks in the hidden page while the shown page keeps the old one (the shell's tables one at a time with a key each, so a turn of a square room rebuilds almost none; then the page a band of block rows at a time; then the ordinary incremental pass), the slice ticks say "no flip" and the core draws nothing over the room on them (new `PLAT_BUILD_BUSY` op of `plat_build_frame`, asked after `plat_room()` in `home_draw`; the PS1 is not asked, the host and Dreamcast get the weak 0); repeated turns drop and restart the build, and after two restarts in a row draw in one go (a turn every 4-5 ticks on the busy layout still draws one frame of up to 84 ms). Pixel-changing: the old view stays 2 ticks longer (4 on the busy layout; before / after in the package's evidence). (2) The busy Live layout already restored one rect per walker; its time was the per-row control code running as THUMB from ROM, so the shell's row loops, the pieces' runs, the block checksum pass (`scan_row` / `store_row`: 59,600 -> about 40,000 cycles a tick), the cursor diamond (a 96-pixel ROM table instead of six Bresenham walks per dirty rect) and the roof's pixel functions are ARM in the IWRAM room group (exact: frame hashes of every tick, the room-parity lines). The review found the busy layout at 2 frames of 50 ms on the rebased tip (only 0.1-0.3 ms under the miss line), so the checksum pass and the cursor were added: work max 36.0 -> 33.8 ms. (3) HomeMart and the Black Market ask for the UI group's loops (their preview picture came from the C blit; exact). GBA speed2 house: rotate view 27.5 -> **30.0** fps (work max 106 -> 22.9 ms, no frame over 34 ms), live 4 chibis 26.8 -> **30.0** (32.4 -> 24.4 ms, work max 47.7 -> 33.8, the 27 frames of 50 ms gone), siege wave 3 29.5 -> **30.0**, Black Market 33.2 -> 28.7 ms, HomeMart cursor move 31.6 -> 29.1 ms; every one of the 19 house windows 30.0 with no frame over two vblanks (`expect-fps 29.5` + `expect-gap 34` on the turn, the busy layout and Hold the Door); test-home `home_steady` 29.2 -> 30.0, `home_rotate` 24.5 -> 30.0 (their floors are 29.5 now; `expect-gap` no longer stops report-only runs). Tests: `room-parity` path 3 (every golden line 0..57 as a sliced turn, hashed against the one-go golden; a mutant that never slices fails), `home_turn.txt`, two core tests. GBA ROM +4,880 B, EWRAM and resident IWRAM unchanged (ledger row 47; the room group 3,588 -> 9,512 B inside the 3D group's slot, 840 B free). PS1: nothing changes (the EXE and the overlays are byte for byte the tip's, 72,736 B below the stack top with the boot FMV, delta 0 B), every house window 30.0-30.5 (the busy layout, 28.8 fps on the base, is 30.00 since PS1-FLAT landed); Dreamcast: all 19 windows under 33.3 ms, as before (work mean 3.4 ms, max 20.6 ms). **Still short:** the house entry (a 152 ms first frame and a 129 ms recompose the tick after, under the load fade: S3-10), the stress layouts `home_cellar_full` (26.0), `home_modal_busy` (25.0) and `home_defend_w3` (14.7), and the creator hat try-on named in the roadmap row (not touched).
+ - **Speed audit 3 (2026-11-13, measure and plan, no game code; `docs/design/SPEED_AUDIT3.md`):** every scene measured again after S2-1..S2-8, S2-12 and the sticks, on the tree at `89a28b56`. GBA (libmgba): 311 windows, 11 of them combat reference, 155 hold a steady 30 with no frame over 33 ms, 145 miss (25 in slow motion, 57 at a steady low rate, 31 with hitches, 32 with one or two long frames). Worst: Shooting Gallery 11 fps, dreams 11-13, the fog vignette 10, the concert band 13, and the sim's 15-minute pass (17 frames of 50-67 ms every 37.7 s on every free-play screen). The file has every window, the cause of each miss from a profile of the window's own ticks, the packages S3-1..S3-14 (what is left of S2-4 and S2-11 and the exorcism / concert / creator / pet gaps folded in), a suggested order, and what cannot reach 30 without an owner call. PS1 (PCSX-Redux): 247 windows, 8 combat, 221 OK, 18 miss (6 of them the in-flight save, loads and workshop; the rest: the busy house layout 28.9 fps, the creator's hat try-on 28.6, single 50-67 ms frames, overlay reads at scene changes); 64 KB below the stack top with the FMV. Dreamcast (Flycast): 218 windows, 211 OK; only the save and two load frames miss (S2-10), the house holds 30 since DC8.
+diff --git a/core/include/doomo/options_store.h b/core/include/doomo/options_store.h
+index 20574742..1dd0ff33 100644
+--- a/core/include/doomo/options_store.h
++++ b/core/include/doomo/options_store.h
+@@ -14,7 +14,7 @@ void opt2_set(int opt, int value);       /* clamps; runs the option's side effec
+ void opt2_defaults(void);                /* all ids >= OPT2_FIRST to their defaults (side effects too) */
+ 
+ /* opt_set calls this after any option changes: a machine-wide one (language, the three volumes,
+- * OPT_3D_FAST, OPT_MATURE, OPT_RUMBLE, OPT_TIPS) marks the machine config record changed (it is
++ * OPT_3D_FAST, OPT_MATURE, OPT_RUMBLE, OPT_TIPS, OPT_NOTES, OPT_MEMORIAL) marks the machine config record changed (it is
+  * written later, once: opt_config_flush), and the platform is told about the ones it applies itself
+  * (plat_option_changed). */
+ void opt_machine_changed(int opt, int value);
+@@ -23,7 +23,8 @@ void opt_machine_changed(int opt, int value);
+  * to the adults' security code (U5 / E11) and are kept as they are when we write.
+  *   0 'D' 1 'O' 2 version (1) 3 0 | 4 language 5 music 6 sfx 7 voice 8 3D 9 mature 10 rumble |
+  *   11 tips + 1 (CL4; 0 = never written: the default) | 12..15 the tips' seen flags (tips.h, u32 LE) |
+- *   16..29 0 | 30..31 CRC-16/CCITT of bytes 0..29, little endian */
++ *   16 (LV11) bit 0 content notes "first time only", bit 1 memorial names Off (0 = both defaults) |
++ *   17..29 0 | 30..31 CRC-16/CCITT of bytes 0..29, little endian */
+ #define OPT_CONFIG_VERSION 1
+ #define OPT_CONFIG_SETTINGS_SZ 32u
+ /* Boot: apply the record if there is a valid one (doomo_init calls it after opt_defaults). 1 = applied. */
+diff --git a/core/include/doomo/town.h b/core/include/doomo/town.h
+index 83173214..b8672bf2 100644
+--- a/core/include/doomo/town.h
++++ b/core/include/doomo/town.h
+@@ -151,9 +151,17 @@ enum {
+     OPT_RUMBLE,               /* controller rumble, apart from Screen shake: 0 off, 1 on; machine-wide */
+     OPT_TIPS,                 /* (CL4) first-time tip cards (tips.h): 0 off, 1 on; machine-wide */
+     OPT_STICK_MODE,           /* (STKOPT) Dreamcast one-stick: 0 Turn (stick X turns, triggers strafe), 1 Strafe (X strafes, triggers turn); saved with the world */
++#if !defined(DOOMO_PLATFORM_PS1)    /* the PS1 lists no dark level yet and has no resident byte to spare: it has neither id */
++    OPT_NOTES,                /* (LV11) content notes: 0 every time, 1 first time only; machine-wide */
++    OPT_MEMORIAL,             /* (LV11) show the town's dead by name on the Vault's memorial wall: 0 off, 1 on; machine-wide */
++#endif
+     OPT2_END
+ };
+ enum { STICK_TURN = 0, STICK_STRAFE = 1 };
++#if defined(DOOMO_PLATFORM_PS1)     /* (LV11) code shared with the PS1 still names them: no such option there (opt_get answers 0) */
++#define OPT_NOTES    OPT2_END
++#define OPT_MEMORIAL OPT2_END
++#endif
+ #define OPT2_COUNT (OPT2_END - OPT2_FIRST)
+ /* Option pages (DoomoOptionInfo.page). */
+ /* (U2) OPTPAGE_QUICK is the front page: callers that pass 0 land on it. */
+diff --git a/core/src/combat_card.c b/core/src/combat_card.c
+index 4ae40556..5c667707 100644
+--- a/core/src/combat_card.c
++++ b/core/src/combat_card.c
+@@ -119,6 +119,13 @@ const char *ccard_goal(int cgoal)
+            cgoal == CGOAL_EXIT ? STR_ICON_STAR " Goal: find the exit" : STR_ICON_STAR " Goal: survive";
+ }
+ 
++/* (LV11) a dark level's one-line content note above the goal: not on the PS1 (no dark level is listed there) */
++#if defined(DOOMO_PLATFORM_PS1)
++#define NOTE_ON(n) 0
++#else
++#define NOTE_ON(n) ((n) && (n)[0])
++#endif
++
+ int ccard_height(int w, const char *goal, const char *rule)
+ {
+     char l[CCARD_MAX_LINES][CCARD_LINE_CAP];
+@@ -126,13 +133,14 @@ int ccard_height(int w, const char *goal, const char *rule)
+     return 6 + (n + 1 + (goal && goal[0]) + (rule && rule[0])) * FONT_LINE + 2;
+ }
+ 
+-static void ccard_draw_lines(int x, int y, int w, int h, int style, const char *goal, const char *rule,
++static void ccard_draw_lines(int x, int y, int w, int h, int style, const char *note, const char *goal, const char *rule,
+                              char l[][CCARD_LINE_CAP], int n)
+ {
+     const UiStyle *st = ui_style(style);
+     int i, ty;
+     ui_window(x, y, w, h, style);
+     ty = y + 4;
++    if (NOTE_ON(note)) { ui_text(x + 6, ty, note, st->text_dim); ty += FONT_LINE; }
+     if (goal && goal[0]) { ui_text(x + 6, ty, goal, st->text); ty += FONT_LINE; }
+     if (rule && rule[0]) { ui_text(x + 6, ty, rule, style == WIN_HELL ? PAL_UI_GOLD : PAL_UI_PINK_D); ty += FONT_LINE; }
+     for (i = 0; i < n; i++, ty += FONT_LINE) ui_text(x + 6, ty, l[i], st->text);
+@@ -145,7 +153,7 @@ void ccard_draw(int x, int y, int w, int style, const char *goal, const char *ru
+     int n;
+     if (plat_draw_skipped()) return;
+     n = ccard_lines(l, CCARD_MAX_LINES, w - 12);
+-    ccard_draw_lines(x, y, w, 6 + (n + 1 + (goal && goal[0]) + (rule && rule[0])) * FONT_LINE + 2, style, goal, rule,
++    ccard_draw_lines(x, y, w, 6 + (n + 1 + (goal && goal[0]) + (rule && rule[0])) * FONT_LINE + 2, style, NULL, goal, rule,
+                      l, n);
+ }
+ 
+@@ -158,5 +166,37 @@ void ccard_draw_above(int cx, int bottom, int w, int style, const char *goal, co
+     if (plat_draw_skipped()) return;
+     n = ccard_lines(l, CCARD_MAX_LINES, w - 12);
+     h = 6 + (n + 1 + (goal && goal[0]) + (rule && rule[0])) * FONT_LINE + 2;
+-    ccard_draw_lines(cx - w / 2, bottom - h, w, h, style, goal, rule, l, n);
++    ccard_draw_lines(cx - w / 2, bottom - h, w, h, style, NULL, goal, rule, l, n);
++}
++
++#if !defined(DOOMO_PLATFORM_PS1)
++/* (LV11) the card of a dark level on a later visit: the same card with the content note's one line above the goal */
++int ccard_height_note(int w, const char *note, const char *goal, const char *rule)
++{
++    return ccard_height(w, goal, rule) + (NOTE_ON(note) ? FONT_LINE : 0);
+ }
++
++void ccard_draw_above_note(int cx, int bottom, int w, int style, const char *note, const char *goal, const char *rule)
++{
++    char l[CCARD_MAX_LINES][CCARD_LINE_CAP];
++    int n, h;
++    if (plat_draw_skipped()) return;
++    n = ccard_lines(l, CCARD_MAX_LINES, w - 12);
++    h = 6 + (n + 1 + (goal && goal[0]) + (rule && rule[0]) + (NOTE_ON(note) ? 1 : 0)) * FONT_LINE + 2;
++    ccard_draw_lines(cx - w / 2, bottom - h, w, h, style, note, goal, rule, l, n);
++}
++
++/* (LV11) the note page of a dark level's first visit: the full text in a window, 6 px margins, centred on
++ * (cx, y + h / 2); the scene adds its own hint. ccard_note_page_h() is its height for the same text. */
++int ccard_note_page_h(int w, const char *note)
++{
++    return 6 + ui_text_wrap(0, 0, w - 12, note, 0, 0) * FONT_LINE + 2;
++}
++
++void ccard_note_page(int cx, int y, int w, int style, const char *note)
++{
++    if (plat_draw_skipped()) return;
++    ui_window(cx - w / 2, y, w, ccard_note_page_h(w, note), style);
++    ui_text_wrap(cx - w / 2 + 6, y + 4, w - 12, note, ui_style(style)->text, 1);
++}
++#endif
+diff --git a/core/src/combat_int.h b/core/src/combat_int.h
+index b18faa3a..ea384b8b 100644
+--- a/core/src/combat_int.h
++++ b/core/src/combat_int.h
+@@ -235,6 +235,14 @@ const char *ccard_goal(int cgoal);                /* the card's goal line for a
+ int  ccard_height(int w, const char *goal, const char *rule);
+ void ccard_draw(int x, int y, int w, int style, const char *goal, const char *rule);
+ void ccard_draw_above(int cx, int bottom, int w, int style, const char *goal, const char *rule);   /* (S2-2) */
++/* (LV11) a dark level's content note: the later visits' one line above the goal, and the first visit's page.
++ * Not built for the PS1 (no dark level there yet): the callers are inside LV_HAS_NEW. */
++#if !defined(DOOMO_PLATFORM_PS1)
++int  ccard_height_note(int w, const char *note, const char *goal, const char *rule);
++void ccard_draw_above_note(int cx, int bottom, int w, int style, const char *note, const char *goal, const char *rule);
++int  ccard_note_page_h(int w, const char *note);
++void ccard_note_page(int cx, int y, int w, int style, const char *note);
++#endif
+ 
+ /* (S2-2) a menu window (x, y, w, h) held over the still combat view with S2-1's modal hold (ui.h ui_modal_hold):
+  * mode 0 asks at the top of the draw (1: draw only the window, then ui_modal_hold_end(), and return), mode 1 marks
+diff --git a/core/src/fp_options.c b/core/src/fp_options.c
+index 3a71d7bb..7a6c9b53 100644
+--- a/core/src/fp_options.c
++++ b/core/src/fp_options.c
+@@ -19,6 +19,7 @@
+ #include "doomo/ending.h"
+ #include "doomo/plat_ext.h"
+ #include "doomo/tips.h"
++#include "levels_int.h"      /* LV11: LV_HAS_NEW, lv_unlocked (the notes rows) */
+ 
+ #define ROWS_MAX 24
+ #define ROW_PRESET 100          /* U2: the Quick page's preset row (not an option id) */
+@@ -186,6 +187,10 @@ static const char *help_of(int opt)
+     if (opt == OPT_RUMBLE) return "Controller rumble, apart from Screen shake.";
+ #if DOOMO_TRIGGERS                       /* the row only shows on a one-stick Dreamcast pad: no byte on the PS1 / GBA */
+     if (opt == OPT_STICK_MODE) return "Controls: Auto only. Turn: stick X turns, L / R strafe. Strafe: stick X strafes, L / R turn.";
++#endif
++#if LV_HAS_NEW                           /* (the PS1 has no dark level and no row) */
++    if (opt == OPT_NOTES) return "Dark levels open on a content note. Every time: a line stays on the card. First time only: just once.";
++    if (opt == OPT_MEMORIAL) return "The Vault's memorial wall names the residents you lost. Off: it says \"Someone we lost.\"";
+ #endif
+     if (opt == OPT_TIPS) return "A short card the first time you reach a new place: what it is and which buttons do what.";
+     if (opt == OPT_MATURE)
+@@ -207,6 +212,13 @@ static int value_ok(int opt, int v)
+ static const uint8_t quick_rows[] = { OPT_LANGUAGE, OPT_MUSIC_VOL, OPT_SFX_VOL, OPT_TEXT_SPEED,
+                                       OPT_DIFFICULTY, OPT_GORE };
+ 
++/* LV11: Content notes shows wherever the options exist (not on the PS1: no such id there); Memorial names once Notice 13 is open */
++#if LV_HAS_NEW
++#define ROW_LV11(i) ((i) != OPT_MEMORIAL || lv_unlocked(LV_N13))
++#else
++#define ROW_LV11(i) 1
++#endif
++
+ static void build_rows(void)
+ {
+     int i;
+@@ -226,7 +238,8 @@ static void build_rows(void)
+     for (i = OPT_LOSS; i < OPT2_END && O.nrows < ROWS_MAX; i++)          /* U2: Loss (Life Sim), Rumble */
+         if (doomo_option2_info[i - OPT2_FIRST].page == O.page &&
+             (i != OPT_RUMBLE || (plat_features() & PLATF_RUMBLE)) &&
+-            (i != OPT_STICK_MODE || (input_pad() == PAD_DC && !(input_caps() & INPUT_CAP_RSTICK))))
++            (i != OPT_STICK_MODE || (input_pad() == PAD_DC && !(input_caps() & INPUT_CAP_RSTICK))) &&
++            ROW_LV11(i))
+             O.rows[O.nrows++] = i;
+     if (O.page == OPTPAGE_GAME && O.nrows < ROWS_MAX) O.rows[O.nrows++] = ROW_TIPS_RESET;  /* CL4 */
+     if (O.page == OPTPAGE_GAME && O.nrows < ROWS_MAX) O.rows[O.nrows++] = OPT_MATURE;   /* E11: last row */
+@@ -353,6 +366,9 @@ static int preset_may(int opt)
+     switch (opt) {
+     case OPT_MONSTER_MODE: case OPT_LANGUAGE: case OPT_MUSIC_VOL: case OPT_SFX_VOL: case OPT_VOICE_VOL:
+     case OPT_MATURE: case OPT_WINDOW_SKIN: case OPT_TITLE_THEME: case OPT_CURSOR: case OPT_CAMERA_FILTER:
++#if LV_HAS_NEW
++    case OPT_NOTES: case OPT_MEMORIAL:
++#endif
+     case OPT_TIPS: case OPT_STICK_MODE:      /* (STKOPT) a pad preference, not a game setting */
+         return 0;
+     }
+diff --git a/core/src/levels2.c b/core/src/levels2.c
+index 1e5d4c8d..2573b341 100644
+--- a/core/src/levels2.c
++++ b/core/src/levels2.c
+@@ -229,4 +229,46 @@ int lv_rec_slot(int level)
+ int lv_built(int level) { return lv_listed(level) && lv_info[level].map != LV_NO_MAP; }
+ 
+ int lv_page_of(int level) { return level >= 0 && level < LV_TABLE_N ? lv_reg[level].page : LVP_BREACH; }
++
++/* ---- content notes (LV11; plan 6.3) ---------------------------------------------
++ * One row per dark level, in level order (the order is the bit of the first-visit
++ * flag in 'BRCH': never reorder, only append). The text is the plan's, at most three
++ * lines on the 240 px card; the short line fits the select's strip. A test keeps this
++ * table and the LVG_DARK flags of the registry the same set. */
++static const struct { uint8_t level; const char *note, *brief; } lv_notes[LV_NOTE_N] = {
++    { LV_HB9, "Content note: this level is darker than most of the game. It deals with guilt, failure and souls that could not be saved.",
++      "Note: guilt, failure, lost souls" },
++    { LV_HB11, "Content note: a quieter, sadder level about grief and the things people never said.",
++      "Note: grief and things unsaid" },
++    { LV_HB12, "Content note: this level is about people trapped by a contract and left behind by the town they worked for.",
++      "Note: people trapped by a contract" },
++    { LV_N1, "Content note: New Game+ starts darker. This level is about workers trapped by a contract and left behind.",
++      "Note: workers trapped, left behind" },
++    { LV_N8, "Content note: imprisonment, guilt, and a hard choice that costs someone.",
++      "Note: guilt and a hard choice" },
++    { LV_N9, "Content note: death, a failed exorcism and grief, with disturbing images of demons and broken machines.",
++      "Note: death, grief, dark images" },
++    { LV_N10, "Content note: forgetting, losing who you are, and being alone.",
++      "Note: forgetting, being alone" },
++    { LV_N11, "Content note: abandonment and regret, and a choice that costs someone in your town.",
++      "Note: abandonment and regret" },
++    { LV_N13, "Content note: the darkest level in the game. Grief and loss; it shows the names of residents who have died in your town (Options can hide them).",
++      "Note: grief, loss, the town's dead" },
++};
++
++int lv_note_idx(int level)
++{
++    int i;
++    for (i = 0; i < LV_NOTE_N; i++) if (lv_notes[i].level == level) return i;
++    return -1;
++}
++
++const char *lv_note(int level) { int i = lv_note_idx(level); return i < 0 ? NULL : lv_notes[i].note; }
++const char *lv_note_short(int level) { int i = lv_note_idx(level); return i < 0 ? NULL : lv_notes[i].brief; }
++
++/* the memorial wall (LV41, Notice 13) prints every name through this */
++const char *lv_memorial_label(const char *name)
++{
++    return opt_get(OPT_MEMORIAL) ? name : "Someone we lost.";
++}
+ #endif /* LV_HAS_NEW */
+diff --git a/core/src/levels_int.h b/core/src/levels_int.h
+index b1302d49..73eca0a7 100644
+--- a/core/src/levels_int.h
++++ b/core/src/levels_int.h
+@@ -116,6 +116,31 @@ extern const LevelReg lv_reg[LV_TABLE_N];
+ extern const char *const lv_reason_text[];
+ extern const char *const lv_page_names[LVP_COUNT];
+ #endif
++/* ---- content notes (LV11; plan 6.3): levels2.c, levels_rec.c --------------------
++ * The dark levels (LVG_DARK) each have a content note. lv_note() is the full text of
++ * the card's note page, lv_note_short() the one line of the later visits and of the
++ * select's strip; NULL for a level with none. lv_note_seen() is the first-visit flag
++ * (the 'BRCH' arc's spare bytes 42..43, one bit per dark level; a level that is not
++ * on this platform keeps its bit untouched). lv_memorial_label() is what the Vault's
++ * memorial wall prints for one name: the name, or "Someone we lost." when Options >
++ * Show memorial names is Off (plan 6.4, owner question 3).
++ * Not on the PS1 for now (LV_TABLE_N): no dark level is listed there. */
++#define LV_NOTE_N 9
++#if LV_HAS_NEW
++const char *lv_note(int level);
++const char *lv_note_short(int level);
++int  lv_note_idx(int level);                  /* 0..LV_NOTE_N-1 in level order, -1 = no note */
++int  lv_note_seen(int level);
++void lv_note_set_seen(int level);
++const char *lv_memorial_label(const char *name);
++#else
++#define lv_note(l)       ((const char *)0)
++#define lv_note_short(l) ((const char *)0)
++#define lv_note_idx(l)   (-1)
++#define lv_note_seen(l)  1
++#define lv_note_set_seen(l) ((void)0)
++#endif
++
+ /* The platform manifest: the GBA lists the 7 old levels and its seven of
+  * the new ones (LVG_GBA), every other platform all 31 (the PS1: see
+  * LV_TABLE_N). The host build can pretend to be the GBA for the tests:
+diff --git a/core/src/levels_play.c b/core/src/levels_play.c
+index 66a3e0a0..14e10d4b 100644
+--- a/core/src/levels_play.c
++++ b/core/src/levels_play.c
+@@ -13,7 +13,13 @@
+ #include "levels_int.h"
+ #include "doomo/tips.h"
+ 
+-enum { BR_INTRO, BR_PLAY, BR_PAUSE, BR_DONE, BR_DEAD };
++enum { BR_INTRO, BR_PLAY, BR_PAUSE, BR_DONE, BR_DEAD, BR_NOTE };   /* BR_NOTE: (LV11) the first visit's content note page, before BR_INTRO */
++/* the intro card and the note page both stand over the dimmed, held world */
++#if LV_HAS_NEW
++#define br_introish() (br.state == BR_INTRO || br.state == BR_NOTE)
++#else
++#define br_introish() (br.state == BR_INTRO)
++#endif
+ enum { BP_RESUME, BP_MUSIC, BP_WEAPON, BP_CAMERA, BP_OPTIONS, BP_RESTART, BP_QUIT, BP_COUNT };
+ 
+ static struct {
+@@ -105,6 +111,9 @@ static void br_enter(int arg)
+     br.mode = (uint8_t)(((arg >> 8) & 0xF) < LVM_COUNT ? (arg >> 8) & 0xF : LVM_NORMAL);
+     br.demo = (uint8_t)((arg & LVF_DEMO) != 0);
+     br_start();
++    /* LV11 (plan 6.3): a dark level's first visit opens on its content note and waits for A; B goes back. A demo
++     * and the autopilot skip it and leave the flag alone. */
++    if (lv_note(br.level) && !lv_note_seen(br.level) && !br.demo && !combat_autopilot_on()) br.state = BR_NOTE;
+ }
+ 
+ static void br_leave(void)
+@@ -179,6 +188,19 @@ static void br_update(void)
+ {
+     br.t++;
+     switch (br.state) {
++#if LV_HAS_NEW
++    case BR_NOTE:
++        if (br.t > 12 && btn_pressed(BTN_A | BTN_START)) {
++            lv_note_set_seen(br.level);
++            br.state = BR_INTRO;
++            br.t = 0;
++            audio_sfx(SFX_SELECT);
++        } else if (btn_pressed(BTN_B)) {
++            audio_sfx(SFX_CANCEL);
++            leave_scene();
++        }
++        break;
++#endif
+     case BR_INTRO:
+         if (!br.demo && br.t > 4) tip_once(TIP_SHOOTER);           /* CL4: the controls, once */
+         if (tip_active()) { br.t = DOOMO_MIN(br.t, 40); break; }   /* the level waits for it */
+@@ -263,6 +285,14 @@ static void intro_draw(int shaded)
+     char buf[48], tb[12];
+     if (!shaded) plat_shade_rect(0, 0, sw, sh, intro_shade());   /* (S2-2: else the held view came back dimmed) */
+     lvd_banner(cy, L->tag, L->title, t, hell);
++#if LV_HAS_NEW
++    if (br.state == BR_NOTE) {       /* LV11: the first visit's content note, before the controls */
++        int w = big ? 300 : 230, top = cy + (big ? 30 : 24), h = ccard_note_page_h(w, lv_note(br.level));
++        ccard_note_page(sw / 2, top + (sh - 20 - top - h) / 2, w, hell ? WIN_HELL : WIN_CUTE, lv_note(br.level));
++        ui_hint(STR_ICON_A " Continue  " STR_ICON_B " Back", hell ? WIN_HELL : WIN_CUTE);
++        return;
++    }
++#endif
+     if (t > 14) {
+         int w = ui_text_width(L->flavor) + 16, x = sw / 2 - w / 2, y = cy + (big ? 26 : 20);
+         ui_round_rect(x + 1, y + 2, w, 13, 6, PAL_BLACK);
+@@ -282,7 +312,13 @@ static void intro_draw(int shaded)
+         if (!br.demo && !combat_autopilot_on()) {
+             /* C10: how to play, on every difficulty and in every mode (Brutal Only included) */
+             int w = big ? 300 : 230;
++#if LV_HAS_NEW      /* LV11: a later visit to a dark level: its note as one line above the goal (Options: Every time) */
++            /* (a mode rule line takes the room the note's line needs at 240x160: the first visit's page has shown it) */
++            ccard_draw_above_note(sw / 2, sh - 17, w, hell ? WIN_HELL : WIN_CUTE,
++                                  opt_get(OPT_NOTES) || intro_rule() ? NULL : lv_note_short(br.level), intro_goal(), intro_rule());
++#else
+             ccard_draw_above(sw / 2, sh - 17, w, hell ? WIN_HELL : WIN_CUTE, intro_goal(), intro_rule());
++#endif
+         }
+         if (lv_info[br.level].boss != LB_NONE && big && (br.demo || combat_autopilot_on())) {
+             /* the mini-boss waiting at the end, in the corner */
+@@ -471,9 +507,9 @@ static void br_draw(void)
+     lv_runtime_view(&v);
+     /* S2-2: the world stands still under the intro card, the pause menu, the results and the death screen */
+     shaded = combat_view_draw(&v, br.state != BR_PLAY, combat_stats()->ticks,
+-                              br.state == BR_INTRO ? intro_shade() : -1) == 2;
++                              br_introish() ? intro_shade() : -1) == 2;
+     if (plat_draw_skipped()) return;
+-    if (br.state == BR_INTRO) {
++    if (br_introish()) {
+         intro_draw(shaded);
+         intro_hold(1);
+         return;
+diff --git a/core/src/levels_rec.c b/core/src/levels_rec.c
+index 5f79c8ae..4669a29e 100644
+--- a/core/src/levels_rec.c
++++ b/core/src/levels_rec.c
+@@ -19,7 +19,8 @@
+  *            8      the fourth player line
+  *            9      held residents, 0..16
+  *            10..41 their ids, 16 x u16
+- *            42..47 spare, 0
++ *            42..43 the content notes seen (LV11), one bit per dark level, 9 used
++ *            44..47 spare, 0
+  *   52..   4 B per record, in level order: rank 3 bits | gold 1 | feats 3 |
+  *          cleared 1; secrets found (best); 16 collectible bits
+  * All little endian. A fresh island is all zero and writes an empty chunk
+@@ -44,7 +45,9 @@
+ #define ARC_LINE4   8
+ #define ARC_HELD_N  9
+ #define ARC_HELD    10
+-DOOMO_STATIC_ASSERT(ARC_HELD + 2 * LV_ARC_HELD <= LV_BRCH_ARC, arc_fits_its_bytes);
++#define ARC_NOTES   42       /* LV11: 16 bits, bit = a dark level's content note was shown (lv_note_idx) */
++DOOMO_STATIC_ASSERT(ARC_HELD + 2 * LV_ARC_HELD <= ARC_NOTES && ARC_NOTES + 2 <= LV_BRCH_ARC && LV_NOTE_N <= 16,
++                    arc_fits_its_bytes);
+ DOOMO_STATIC_ASSERT(LV2_COUNT == 24, the_mask_is_24_bits);
+ 
+ static struct {
+@@ -199,6 +202,19 @@ void lv_arc_set_last_ending(int ending) { R.arc[ARC_ENDING] = (uint8_t)(ending >
+ int  lv_arc_line4(void) { return R.arc[ARC_LINE4]; }
+ void lv_arc_set_line4(int v) { R.arc[ARC_LINE4] = (uint8_t)v; }
+ 
++/* LV11: the first-visit flag of a dark level's content note (a level with no note reads "seen") */
++int lv_note_seen(int level)
++{
++    int i = lv_note_idx(level);
++    return i < 0 || ((R.arc[ARC_NOTES] | R.arc[ARC_NOTES + 1] << 8) >> i & 1);
++}
++
++void lv_note_set_seen(int level)
++{
++    int i = lv_note_idx(level);
++    if (i >= 0) R.arc[ARC_NOTES + (i >> 3)] |= (uint8_t)(1 << (i & 7));
++}
++
+ /* ---- the chunk -------------------------------------------------------------------- */
+ static void brch_reset(void) { memset(&R, 0, sizeof(R)); }
+ 
+diff --git a/core/src/levels_select.c b/core/src/levels_select.c
+index 3a76fecb..fddaf964 100644
+--- a/core/src/levels_select.c
++++ b/core/src/levels_select.c
+@@ -376,11 +376,25 @@ static void ls_draw(void)
+         plat_shade_rect(px, py + ph - 14, pw, 14, 6);
+         ui_text_center(sw / 2, py + ph - 11, "Clear it once to race the clock", PAL_WHITE);
+     }
++#if LV_HAS_NEW
++    else if (lv_note(ls.sel)) {      /* LV11 (plan 6.3): the dark level's content note, as a strip on the preview */
++        plat_shade_rect(px, py + ph - 14, pw, 14, 6);
++        ui_text_center(sw / 2, py + ph - 11, lv_note_short(ls.sel), PAL_WHITE);
++    }
++#endif
+     /* tag pill + rank stamp on the preview */
+     {
+         int tw = ui_text_width(L->tag) + 10;
+         ui_round_rect(px + 4, py + 4, tw, 11, 5, L->accent);
+         ui_text(px + 9, py + 6, L->tag, PAL_WHITE);
++#if LV_HAS_NEW
++        if (lv_note(ls.sel)) {       /* LV11: the moon badge of a dark level */
++            int mx = px + 4 + tw + 10, my = py + 9;
++            ui_round_rect(mx - 8, py + 4, 16, 11, 5, PAL_BLACK);
++            ui_fill_circle(mx, my, 4, PAL_UI_GOLD);
++            ui_fill_circle(mx + 2, my - 1, 3, PAL_BLACK);
++        }
++#endif
+         if (unl && lv_rank(ls.sel) != RANK_NONE)
+             lvd_rank_stamp(px + pw - (big ? 18 : 14), py + (big ? 18 : 14), lv_rank(ls.sel), 40 + ls.t, 0);
+         else if (unl) {
+diff --git a/core/src/options_store.c b/core/src/options_store.c
+index b72bcfe5..7cdcd8dd 100644
+--- a/core/src/options_store.c
++++ b/core/src/options_store.c
+@@ -8,6 +8,9 @@
+  *   - OPT_RUMBLE  controller rumble on / off, apart from Screen shake. Machine-wide.
+  *   - OPT_STICK_MODE (STKOPT) Dreamcast one stick: X turns (default) or X strafes. A property of the
+  *                 pad's owner but saved with the world (the chunk); an old chunk without it reads Turn.
++ *   - OPT_NOTES, OPT_MEMORIAL (LV11) the dark levels' content notes (every time / first time only) and
++ *                 the names on the Vault's memorial wall (On / Off). Machine-wide; one bit each (like the
++ *                 stick), so no EWRAM: the record's byte 16 carries both, 0 = both defaults.
+  *   - OPT_TIPS    (CL4) first-time tip cards on / off (tips.h). Machine-wide; the record (or, without
+  *                 one, the chunk) also carries the tips' seen flags, so they survive New Game.
+  * Machine-wide options (these two plus language, the volumes and OPT_3D_FAST) go to the config
+@@ -27,6 +30,12 @@
+ 
+ static const char *const v_off_on_[] = { "Off", "On" };
+ static const char *const v_stick_[] = { "Turn", "Strafe" };
++#if !defined(DOOMO_PLATFORM_PS1)    /* no dark level is listed on the PS1 yet (levels_int.h LV_TABLE_N, no resident byte before PS1-RAM): town.h has no OPT_NOTES / OPT_MEMORIAL there */
++#define OPT_LV11 1
++static const char *const v_notes_[] = { "Every time", "First time only" };
++#else
++#define OPT_LV11 0
++#endif
+ static const char *const v_mature_[] = { "Off", "Censored", "On", "On + pack" };
+ 
+ const DoomoOptionInfo doomo_option2_info[OPT2_COUNT] = {
+@@ -34,22 +43,51 @@ const DoomoOptionInfo doomo_option2_info[OPT2_COUNT] = {
+     /* OPT_LOSS   */ { "Loss",    2, 1, v_off_on_, OPTPAGE_SIM },
+     /* OPT_RUMBLE */ { "Rumble",  2, 1, v_off_on_, OPTPAGE_CONTROLS },
+     /* OPT_TIPS   */ { "Tips",    2, 1, v_off_on_, OPTPAGE_GAME },
+-    /* OPT_STICK_MODE */ { "Stick", 2, STICK_TURN, v_stick_, OPTPAGE_CONTROLS }
++    /* OPT_STICK_MODE */ { "Stick", 2, STICK_TURN, v_stick_, OPTPAGE_CONTROLS },
++#if OPT_LV11
++    /* OPT_NOTES  */ { "Content notes", 2, 0, v_notes_, OPTPAGE_GAME },
++    /* OPT_MEMORIAL */ { "Memorial names", 2, 1, v_off_on_, OPTPAGE_GAME }
++#endif
+ };
+ 
+ #define STICK_IDX (OPT_STICK_MODE - OPT2_FIRST)
+ static uint8_t s_opt2[STICK_IDX] = { MATURE_OFF, 1, 1, 1 };    /* the ids before OPT_STICK_MODE */
+ /* quiet: applying a record, no writes back, no platform calls; cfg_dirty: a machine-wide option changed
+  * since the record was last written. One byte for both (GBA EWRAM: STKOPT paid for its new option with these bits). */
++#if OPT_LV11
++/* the bit options: OPT_STICK_MODE, OPT_NOTES, OPT_MEMORIAL (stored inverted: zero is On) */
++static struct { uint8_t quiet : 1, cfg_dirty : 1, stick : 1, notes : 1, memo_off : 1; } s_fl;
++typedef char opt2_bits_are_the_last_ids[OPT2_END == OPT_MEMORIAL + 1 ? 1 : -1];   /* a later id grows s_opt2 */
++#define NOTES_IDX (OPT_NOTES - OPT2_FIRST)
++#define MEMO_IDX  (OPT_MEMORIAL - OPT2_FIRST)
++static int o2_load(int i)
++{
++    return i == STICK_IDX ? s_fl.stick : i == NOTES_IDX ? s_fl.notes : i == MEMO_IDX ? !s_fl.memo_off : s_opt2[i];
++}
++static void o2_store(int i, int v)     /* anything else reads the first value (Turn, Every time) / On */
++{
++    if (i == STICK_IDX) s_fl.stick = v == STICK_STRAFE;
++    else if (i == NOTES_IDX) s_fl.notes = v == 1;
++    else if (i == MEMO_IDX) s_fl.memo_off = v == 0;
++    else s_opt2[i] = (uint8_t)v;
++}
++#else
+ static struct { uint8_t quiet : 1, cfg_dirty : 1, stick : 1; } s_fl;   /* stick = OPT_STICK_MODE's value */
+ typedef char opt2_stick_is_the_last_id[OPT2_END == OPT_STICK_MODE + 1 ? 1 : -1];   /* a later id grows s_opt2 */
+ static int o2_load(int i) { return i == STICK_IDX ? s_fl.stick : s_opt2[i]; }
+ static void o2_store(int i, int v) { if (i == STICK_IDX) s_fl.stick = v == STICK_STRAFE;   /* anything else reads Turn */ else s_opt2[i] = (uint8_t)v; }
++#endif
+ 
++#if OPT_LV11
++#define LV11_MACHINE(opt) ((opt) == OPT_NOTES || (opt) == OPT_MEMORIAL)
++#else
++#define LV11_MACHINE(opt) 0
++#endif
+ static int is_machine(int opt)
+ {
+     return opt == OPT_LANGUAGE || opt == OPT_MUSIC_VOL || opt == OPT_SFX_VOL || opt == OPT_VOICE_VOL ||
+-           opt == OPT_3D_FAST || opt == OPT_MATURE || opt == OPT_RUMBLE || opt == OPT_TIPS;
++           opt == OPT_3D_FAST || opt == OPT_MATURE || opt == OPT_RUMBLE || opt == OPT_TIPS ||
++           LV11_MACHINE(opt);
+ }
+ 
+ static void apply2(int opt)
+@@ -249,6 +287,10 @@ int opt_config_load(void)
+     s_fl.quiet = 1;
+     for (k = 0; k < 7; k++) put_machine(k_rec[k], rec[4 + k]);
+     if (rec[11]) put_machine(OPT_TIPS, rec[11] - 1);          /* CL4: 0 = never written (default On) */
++#if OPT_LV11
++    put_machine(OPT_NOTES, rec[16] & 1);                       /* LV11: bit 0 first time only, bit 1 memorial Off; 0 = defaults */
++    put_machine(OPT_MEMORIAL, !(rec[16] & 2));
++#endif
+     tip_seen_merge((uint32_t)rec[12] | (uint32_t)rec[13] << 8 | (uint32_t)rec[14] << 16 | (uint32_t)rec[15] << 24);
+     tips_clean();
+     s_fl.quiet = 0;
+@@ -265,7 +307,10 @@ int opt_config_save(void)
+     if (!have_config()) return 0;
+     memset(rec, 0, sizeof(rec));
+     rec[0] = 'D'; rec[1] = 'O'; rec[2] = OPT_CONFIG_VERSION; rec[3] = 0;
+-    for (k = 0; k < 7; k++) rec[4 + k] = (uint8_t)opt_get(k_rec[k]);   /* 16..29 stay 0 */
++    for (k = 0; k < 7; k++) rec[4 + k] = (uint8_t)opt_get(k_rec[k]);   /* 17..29 stay 0 */
++#if OPT_LV11
++    rec[16] = (uint8_t)(opt_get(OPT_NOTES) | (!opt_get(OPT_MEMORIAL) << 1));
++#endif
+     {
+         uint32_t seen = tip_seen_bits();                       /* CL4: Tips + the tips' seen flags */
+         rec[11] = (uint8_t)(opt_get(OPT_TIPS) + 1);
+@@ -340,6 +385,10 @@ static void opt2_reset(void)
+     if (!have_config()) {
+         o2_store(OPT_MATURE - OPT2_FIRST, MATURE_OFF);
+         o2_store(OPT_RUMBLE - OPT2_FIRST, 1);
++#if OPT_LV11
++        o2_store(NOTES_IDX, 0);
++        o2_store(MEMO_IDX, 1);
++#endif
+     }
+ }
+ 
+diff --git a/core/tests/test_levels_rec.c b/core/tests/test_levels_rec.c
+index 8e4a715e..dc125ad7 100644
+--- a/core/tests/test_levels_rec.c
++++ b/core/tests/test_levels_rec.c
+@@ -568,3 +568,224 @@ TEST(levels_select_focus_a_level_that_is_not_built_falls_back)
+     CHECK_EQ(press_a(), LV_SEWERS);                      /* the first open level not played */
+     scene_set(&SCENE_TITLE, 0);
+ }
++
++/* ---- LV11: content notes and the dark-level presentation (plan 6) ---------------------------------- */
++static void idle_frames(int n) { while (n-- > 0) frame(0); }
++
++TEST(lv11_notes_are_the_dark_levels_and_fit_both_screens)
++{
++    int i, n = 0, last = -1;
++    reset();
++    for (i = 0; i < LV_COUNT; i++) {
++        int dark = (lv_reg[i].flags & LVG_DARK) != 0;
++        CHECK_MSG((lv_note(i) != NULL) == dark, "%s: note and the LVG_DARK flag disagree", lv_info[i].title);
++        CHECK_EQ(lv_note_short(i) != NULL, dark);
++        if (!dark) { CHECK_EQ(lv_note_idx(i), -1); CHECK_EQ(lv_note_seen(i), 1); continue; }
++        CHECK_EQ(lv_note_idx(i), n);                        /* level order is the flag's bit: never reorder */
++        CHECK(lv_note_idx(i) > last);
++        last = lv_note_idx(i);
++        n++;
++        CHECK(strncmp(lv_note(i), "Content note: ", 14) == 0);
++        CHECK(strncmp(lv_note_short(i), "Note: ", 6) == 0);
++        /* the strip on the select's preview (220 px wide at 240x160, minus margins) */
++        CHECK_MSG(ui_text_width(lv_note_short(i)) <= 220 - 8, "%s: the strip is %d px", lv_info[i].title, ui_text_width(lv_note_short(i)));
++        /* the full page (the card is 230 px at 240x160, 300 at 320x240): it goes under the banner (top = 30 + 24 at
++         * 240x160) and above the hint (20 px): at most 86 px, five lines. The plan's "three lines" holds for the short
++         * notes only: the long ones (HB9, N9, N13) take four or five at 240 wide. */
++        CHECK_MSG(ccard_note_page_h(230, lv_note(i)) <= 160 - 20 - 54, "%s: the page is %d px tall at 240 wide",
++                  lv_info[i].title, ccard_note_page_h(230, lv_note(i)));
++        printf("      note page %-30s %d lines at 240x160\n", lv_info[i].title, ui_text_wrap(0, 0, 230 - 12, lv_note(i), 0, 0));
++        CHECK(ccard_note_page_h(300, lv_note(i)) <= ccard_note_page_h(230, lv_note(i)));
++        /* the later visits' line sits in the control card at both sizes */
++        CHECK(ui_text_width(lv_note_short(i)) <= 230 - 12 && ui_text_width(lv_note_short(i)) <= 300 - 12);
++    }
++    CHECK_EQ(n, LV_NOTE_N);
++    CHECK_EQ(lv_note_idx(LV_N13), 8);
++    CHECK(strstr(lv_note(LV_N13), "Options can hide them") != NULL);
++    /* the whole card with the line leaves the banner above it (clarity C10's budget at 240x160: 160 - 17 - 77 px) */
++    printf("      card heights at 240x160: goal %d, goal + note %d, goal + rule + note %d\n", ccard_height(230, "x", NULL),
++           ccard_height_note(230, lv_note_short(LV_HB9), "x", NULL),
++           ccard_height_note(230, lv_note_short(LV_HB9), "x", ccard_mode_rule(CCARD_RULE_BRUTAL)));
++    CHECK(ccard_height_note(230, lv_note_short(LV_HB9), "x", NULL) <= 160 - 17 - 77);
++    CHECK_EQ(ccard_height_note(230, NULL, "x", NULL), ccard_height(230, "x", NULL));
++    CHECK_EQ(ccard_height_note(230, lv_note_short(LV_HB9), "x", NULL), ccard_height(230, "x", NULL) + FONT_LINE);
++}
++
++TEST(lv11_note_seen_flags_ride_in_brch)
++{
++    const DoomoSaveExt *e = doomo_save_ext_breach;
++    uint8_t a[SAVE_EXT_MAX_BRCH];
++    uint32_t n;
++    reset();
++    CHECK(!lv_note_seen(LV_HB9) && !lv_note_seen(LV_N13));
++    lv_note_set_seen(LV_N13);
++    lv_note_set_seen(LV_HB9);
++    lv_note_set_seen(LV_VAPE_CELLAR);                       /* no note: nothing to set */
++    lv_note_set_seen(LV_HB9);                               /* twice: still one bit */
++    CHECK(lv_note_seen(LV_HB9) && lv_note_seen(LV_N13) && !lv_note_seen(LV_HB11) && !lv_note_seen(LV_N1));
++    n = save_serialize(image, sizeof(image));
++    CHECK(n > 0);
++    CHECK(e->size() > 0);                                    /* the flags alone make the chunk non-empty */
++    CHECK_EQ(e->write(a, sizeof(a)), e->size());
++    CHECK_EQ(a[4 + 42], 1 | 0);                              /* arc byte 42 bit 0 = HB9 */
++    CHECK_EQ(a[4 + 43], 1);                                  /* bit 8 = the ninth dark level, N13 */
++    reset();
++    CHECK(!lv_note_seen(LV_HB9));
++    CHECK(save_deserialize(image, n));
++    CHECK(lv_note_seen(LV_HB9) && lv_note_seen(LV_N13) && !lv_note_seen(LV_HB11));
++    /* the GBA lists fewer levels but keeps every flag (its chunk is smaller, the arc is the same) */
++    lv_list_req = LVG_GBA;
++    CHECK(lv_note_seen(LV_N13));
++    n = save_serialize(image, sizeof(image));
++    reset();
++    lv_list_req = LVG_GBA;
++    CHECK(save_deserialize(image, n));
++    CHECK(lv_note_seen(LV_HB9) && lv_note_seen(LV_N13) && !lv_note_seen(LV_HB11));
++    lv_list_req = 0;
++    /* a chunk written before LV11 (spare arc bytes 0) reads as "nothing seen" */
++    reset();
++    lv_arc_set_act(LVA_ACT1);
++    CHECK_EQ(e->write(a, sizeof(a)), e->size());
++    CHECK_EQ(a[4 + 42] | a[4 + 43], 0);
++    CHECK(!lv_note_seen(LV_HB9));
++    reset();
++}
++
++/* the memorial wall prints every name through lv_memorial_label (the Vault's package wires it) */
++TEST(lv11_memorial_names_option)
++{
++    reset();
++    CHECK_EQ(opt_get(OPT_MEMORIAL), 1);                      /* On by default */
++    CHECK_STR(lv_memorial_label("Grampy Wick"), "Grampy Wick");
++    opt_set(OPT_MEMORIAL, 0);
++    CHECK_STR(lv_memorial_label("Grampy Wick"), "Someone we lost.");
++    opt_set(OPT_MEMORIAL, 1);
++    CHECK_STR(lv_memorial_label("Grampy Wick"), "Grampy Wick");
++}
++
++/* the first visit opens on the note and waits for A (B backs out, nothing is marked); later visits show the control
++ * card as before; a demo skips it and marks nothing */
++TEST(lv11_first_visit_opens_on_the_note_page)
++{
++    int i;
++    reset();
++    built_all(1);
++    scene_set(&SCENE_TITLE, 0);
++    frame(0);
++    /* B on the first visit: back to the scene below, still unseen */
++    scene_push(&SCENE_BREACH, LV_ARG(LV_HB9, LVM_NORMAL));
++    idle_frames(6);
++    CHECK(scene_top() == &SCENE_BREACH);
++    frame(BTN_B); frame(0);
++    CHECK(scene_top() == &SCENE_TITLE);
++    CHECK(!lv_note_seen(LV_HB9));
++    /* A (after the first dozen ticks) shows the controls card next and marks the note seen */
++    scene_push(&SCENE_BREACH, LV_ARG(LV_HB9, LVM_NORMAL));
++    idle_frames(6);
++    frame(BTN_A); frame(0);
++    CHECK(scene_top() == &SCENE_BREACH && !lv_note_seen(LV_HB9));   /* too early: the page ignores A for 12 ticks */
++    idle_frames(12);
++    frame(BTN_A); frame(0);
++    CHECK(lv_note_seen(LV_HB9));
++    CHECK(scene_top() == &SCENE_BREACH);
++    for (i = 0; i < 30; i++) frame(0);
++    frame(BTN_B); frame(0);                                  /* the control card: B does nothing, as before */
++    CHECK(scene_top() == &SCENE_BREACH);
++    scene_pop(); frame(0);
++    /* a later visit goes straight to the control card: B does not back out */
++    scene_push(&SCENE_BREACH, LV_ARG(LV_HB9, LVM_NORMAL));
++    idle_frames(20);
++    frame(BTN_B); frame(0);
++    CHECK(scene_top() == &SCENE_BREACH);
++    scene_pop(); frame(0);
++    /* the demo skips the page and marks nothing */
++    scene_push(&SCENE_BREACH, LV_ARG(LV_HB11, LVM_NORMAL) | LVF_DEMO);
++    idle_frames(20);
++    CHECK(scene_top() == &SCENE_BREACH && !lv_note_seen(LV_HB11));
++    scene_pop(); frame(0);
++    /* a level with no note opens on its card as it always did */
++    scene_push(&SCENE_BREACH, LV_ARG(LV_HB8, LVM_NORMAL));
++    idle_frames(20);
++    frame(BTN_B); frame(0);
++    CHECK(scene_top() == &SCENE_BREACH);
++    scene_pop(); frame(0);
++    scene_set(&SCENE_TITLE, 0);
++    built_all(0);
++    reset();
++}
++
++TEST(lv11_pages_badge_and_strip_draw_at_both_sizes)
++{
++    int res;
++    reset();
++    built_all(1);
++    lv_set_rank(LV_VAPE_CELLAR, RANK_C);
++    lv_set_rank(LV_HB8, RANK_C);
++    lv_set_rank(LV_HB9, RANK_C);                             /* open: the badge and the strip show */
++    for (res = 0; res < 2; res++) {
++        nat_w = res ? 320 : 240;
++        nat_h = res ? 240 : 160;
++        scene_set(&SCENE_TITLE, 0);
++        scene_push(&SCENE_LEVEL_SELECT, LVM_NORMAL | ((LV_HB9 + 1) << 4));
++        idle_frames(14);
++        shot(res ? "select_dark_320x240" : "select_dark_240x160");
++        scene_pop(); frame(0);
++        scene_push(&SCENE_BREACH, LV_ARG(LV_HB9, LVM_NORMAL));
++        idle_frames(20);
++        shot(res ? "note_page_320x240" : "note_page_240x160");
++        frame(BTN_A); idle_frames(40);                       /* the controls card, first visit just done */
++        scene_pop(); frame(0);
++        scene_push(&SCENE_BREACH, LV_ARG(LV_HB9, LVM_NORMAL));
++        idle_frames(40);
++        shot(res ? "card_note_line_320x240" : "card_note_line_240x160");
++        scene_pop(); frame(0);
++        opt_set(OPT_NOTES, 1);                               /* first time only: no line on a later visit */
++        scene_push(&SCENE_BREACH, LV_ARG(LV_HB9, LVM_NORMAL));
++        idle_frames(40);
++        shot(res ? "card_no_note_320x240" : "card_no_note_240x160");
++        scene_pop(); frame(0);
++        opt_set(OPT_NOTES, 0);
++        lv_arc_set_act(LVA_NONE);
++        reset();
++        built_all(0);
++        built_all(1);
++        lv_set_rank(LV_VAPE_CELLAR, RANK_C);
++        lv_set_rank(LV_HB8, RANK_C);
++        lv_set_rank(LV_HB9, RANK_C);
++    }
++    nat_w = 240;
++    nat_h = 160;
++    scene_set(&SCENE_TITLE, 0);
++    built_all(0);
++    reset();
++}
++
++TEST(lv11_options_rows_show_where_they_belong)
++{
++    int i;
++    reset();
++    scene_set(&SCENE_OPTIONS, OPTPAGE_GAME);
++    idle_frames(4);
++    /* up from the end: Reset page, Mature, Show all tips again, Content notes (no memorial row before Notice 13 is open) */
++    for (i = 0; i < 4; i++) { frame(BTN_UP); frame(0); }
++    CHECK_EQ(opt_get(OPT_NOTES), 0);
++    frame(BTN_RIGHT); frame(0);
++    CHECK_EQ(opt_get(OPT_NOTES), 1);
++    CHECK_EQ(opt_get(OPT_MEMORIAL), 1);
++    frame(BTN_LEFT); frame(0);
++    CHECK_EQ(opt_get(OPT_NOTES), 0);
++    /* Notice 13 built and open: the memorial row appears between Show all tips again and Content notes */
++    built_all(1);
++    lv_set_rank(LV_N13, RANK_C);
++    scene_set(&SCENE_OPTIONS, OPTPAGE_GAME);
++    idle_frames(4);
++    for (i = 0; i < 4; i++) { frame(BTN_UP); frame(0); }
++    CHECK_EQ(opt_get(OPT_MEMORIAL), 1);
++    frame(BTN_LEFT); frame(0);
++    CHECK_EQ(opt_get(OPT_MEMORIAL), 0);
++    CHECK_EQ(opt_get(OPT_NOTES), 0);
++    built_all(0);
++    scene_set(&SCENE_TITLE, 0);
++    reset();
++    opt_defaults();
++}
+diff --git a/core/tests/test_options_store.c b/core/tests/test_options_store.c
+index e30c89d2..9aa89f9c 100644
+--- a/core/tests/test_options_store.c
++++ b/core/tests/test_options_store.c
+@@ -881,3 +881,75 @@ TEST(refresh_a_change_outside_the_options_is_written_when_its_scene_is_left)
+     CHECK_EQ(g_cfg_writes, 2);
+     CHECK_EQ(g_cfg[6], 2);
+ }
++
++/* LV11: Content notes (every time / first time only) and Show memorial names (On / Off): bits, not bytes */
++TEST(lv11_notes_and_memorial_round_trip)
++{
++    const DoomoSaveExt *e = doomo_save_ext_opt2;
++    uint8_t buf[SAVE_EXT_MAX_OPT2];
++    fresh(0);
++    CHECK_EQ(opt_get(OPT_NOTES), 0);                           /* every time */
++    CHECK_EQ(opt_get(OPT_MEMORIAL), 1);                        /* On */
++    CHECK_EQ(doomo_option2_info[OPT_NOTES - OPT2_FIRST].page, OPTPAGE_GAME);
++    CHECK_EQ(doomo_option2_info[OPT_MEMORIAL - OPT2_FIRST].page, OPTPAGE_GAME);
++    opt_set(OPT_NOTES, 1);
++    opt_set(OPT_MEMORIAL, 0);
++    opt_set(OPT_NOTES, 7);                                     /* clamped to the last value */
++    CHECK_EQ(opt_get(OPT_NOTES), 1);
++    /* no machine record: the chunk carries both */
++    CHECK_EQ(e->write(buf, sizeof(buf)), e->size());
++    CHECK(e->size() <= e->max_size);
++    opt_defaults();
++    CHECK_EQ(opt_get(OPT_NOTES), 0);
++    CHECK_EQ(opt_get(OPT_MEMORIAL), 1);
++    CHECK(e->read(buf, e->size(), e->version));
++    CHECK_EQ(opt_get(OPT_NOTES), 1);
++    CHECK_EQ(opt_get(OPT_MEMORIAL), 0);
++    /* an older chunk (before LV11: 5 value bytes) leaves them alone... */
++    {
++        uint8_t old[4 + 5] = { 0, 0, 0, 0, MATURE_OFF, 1, 1, 1, STICK_TURN };
++        CHECK(e->read(old, sizeof old, 2));
++        CHECK_EQ(opt_get(OPT_NOTES), 1);
++    }
++    /* ... and a save with no chunk at all, on a machine with no record, goes back to the defaults */
++    e->reset();
++    CHECK_EQ(opt_get(OPT_NOTES), 0);
++    CHECK_EQ(opt_get(OPT_MEMORIAL), 1);
++}
++
++TEST(lv11_notes_and_memorial_in_the_machine_record)
++{
++    fresh(1);
++    CHECK(!opt_config_flush());                                /* defaults: nothing changed */
++    opt_set(OPT_MEMORIAL, 0);
++    CHECK(opt_config_flush());                                 /* machine-wide: the record follows */
++    CHECK_EQ(g_cfg[16], 2);                                    /* bit 1: memorial Off */
++    opt_set(OPT_NOTES, 1);
++    CHECK(opt_config_flush());
++    CHECK_EQ(g_cfg[16], 3);
++    CHECK_EQ(g_cfg[17] | g_cfg[29], 0);
++    opt_defaults();
++    CHECK(opt_config_load());                                  /* a new boot */
++    CHECK_EQ(opt_get(OPT_NOTES), 1);
++    CHECK_EQ(opt_get(OPT_MEMORIAL), 0);
++    /* a save does not bring its own values over the machine's (the chunk is skipped for machine options) */
++    {
++        const DoomoSaveExt *e = doomo_save_ext_opt2;
++        uint8_t buf[SAVE_EXT_MAX_OPT2];
++        opt_defaults();
++        CHECK_EQ(e->write(buf, sizeof(buf)), e->size());
++        opt_set(OPT_NOTES, 1);
++        CHECK(e->read(buf, e->size(), e->version));
++        CHECK_EQ(opt_get(OPT_NOTES), 1);
++    }
++    /* a record from before LV11 (byte 16 = 0) is both defaults */
++    opt_set(OPT_NOTES, 0);
++    opt_set(OPT_MEMORIAL, 1);
++    CHECK(opt_config_save());
++    CHECK_EQ(g_cfg[16], 0);
++    opt_set(OPT_NOTES, 1);
++    opt_set(OPT_MEMORIAL, 0);
++    CHECK(opt_config_load());
++    CHECK_EQ(opt_get(OPT_NOTES), 0);
++    CHECK_EQ(opt_get(OPT_MEMORIAL), 1);
++}
+diff --git a/core/tests/test_tips.c b/core/tests/test_tips.c
+index 0e2f17cc..f28a68f3 100644
+--- a/core/tests/test_tips.c
++++ b/core/tests/test_tips.c
+@@ -155,10 +155,11 @@ TEST(cl4_options_game_page_has_tips_and_show_again)
+     test_reset();
+     scene_set(&SCENE_OPTIONS, OPTPAGE_GAME);
+     idle(4);
+-    /* the page ends ... Tips, Show all tips again, Mature, then "Reset page" */
++    /* the page ends ... Tips, Content notes (LV11), Show all tips again, Mature, then "Reset page" */
+     press(BTN_UP);                                          /* wraps to "Reset page" */
+     press(BTN_UP);                                          /* Mature */
+     press(BTN_UP);                                          /* Show all tips again */
++    press(BTN_UP);                                          /* Content notes */
+     press(BTN_UP);                                          /* Tips */
+     CHECK_EQ(opt_get(OPT_TIPS), 1);
+     press(BTN_LEFT);
+@@ -166,6 +167,7 @@ TEST(cl4_options_game_page_has_tips_and_show_again)
+     press(BTN_RIGHT);
+     CHECK_EQ(opt_get(OPT_TIPS), 1);
+     tip_seen_merge(1u << TIP_SHOOTER);
++    press(BTN_DOWN);                                        /* Content notes */
+     press(BTN_DOWN);                                        /* "Show all tips again" */
+     press(BTN_LEFT);                                        /* not a value row: nothing changes */
+     CHECK(tip_seen(TIP_SHOOTER));
+diff --git a/docs/GBA.md b/docs/GBA.md
+index 6263ec08..776c17a2 100644
+--- a/docs/GBA.md
++++ b/docs/GBA.md
+@@ -438,6 +438,7 @@ against the LAST row, not against a figure from an older base.
+ | 45 | CR4 A2: 32 hair styles and 8 beards (docs/CREATOR.md "CR4 batch A2") | after S3-3 (`b63abec`) | 15,444 B | **15,444 B** | 0 B | 6,308 B | measured on `b63abec` and `b63abec` + A2 (`make -C gba sizes`): `.bss` 245,804 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B before and after, `.text` 1,401,336 B before and after; the part scripts, the catalog rows and the 40 part icons are `const` ROM: `.rodata` 6,587,868 -> 6,608,008 B (+20,140). PS1: no resident byte (`_end` 0x801ef4e0 before and after, 68,368 B below the stack top with the boot FMV; the overlay slot ends 0x801ef3b4 both times) |
+ | 46 | CR4 A3: 60 spooky parts (docs/CREATOR.md "CR4 batch A3") | after A2 (`224b192`) | 15,444 B | **15,444 B** | 0 B | 6,308 B | measured on `0c1fc51` and `0c1fc51` + A3 (clean `make -C gba` builds, `make -C gba sizes`): `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B, `.data` 816 B, `.text` 1,403,440 B all identical before and after; the part scripts (5.8 KB), the catalog rows and the 60 part icons are `const` ROM: `.rodata` 6,591,380 -> 6,623,356 B (+31,976, measured on the pre-rebase tree; on the rebased tree the whole `.rodata` is 6,643,580 B and `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B, `.data` 816 B, unchanged). `make -C gba test` and `test-creator` pass on the rebased tree (creator rows 29.9 fps, value step 30.0) |
+ | 47 | S2-11: the house's view turn built over several ticks, the room group's row loops, checksum pass and cursor, HomeMart's UI loops (docs: "Speed wave 2: S2-11" below) | after CR4 A3 and PS1-FLAT (`ee4e053`) | 15,460 B | **15,460 B** | 0 B | 6,308 B | measured on `ee4e053` and that tree + S2-11, both built clean (`make -C gba sizes`; ROM 8,087,036 -> 8,091,916 B): `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B and `.data` 816 B all unchanged, no resident EWRAM or IWRAM. `RBig` (the house's region, in the scene scratch arena) loses `match` (56 B, now on the stack in `incremental()`) and gains 32 B of turn-build state (`tkey[5]`, `bkey`, `bsub`, `bstep`, `brow`, `bld`, `bturns`, `k_last`); the overlay's room group grows 3,588 -> 9,512 B inside the 3D group's 10,352 B slot (840 B free in the slot); `hold.c` one flag bit. PS1: the EXE and the overlays are byte for byte the tip's (the hooks are not built there), `_end` 0x801ee3e0 before and after, 72,736 B below the stack top with the boot FMV (the margin delta is 0 B) |
++| 48 | LV11: content notes (the card's note page, the select's badge, two bit options; docs/LEVELS.md "LV11") | after CR4 A2 (`224b192`) | 15,444 B | **15,444 B** | 0 B | 6,308 B | `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B and `.data` 816 B before and after (`make -C gba sizes`): the two options are bits in the byte the Stick option already uses (`options_store.c` `s_fl`), the first-visit flags are arc bytes 42..43 of the existing 'BRCH' working copy, the note page is a play state (`BR_NOTE`, no new field). ROM `.text` +1,376 B, `.rodata` +1,824 B (nine notes and short lines, two option rows, the card code) |
+ 
+ Known claimants still to land (their own packages measure and add rows):
+ 
+diff --git a/docs/LEVELS.md b/docs/LEVELS.md
+index 5a7cf4f2..43f17304 100644
+--- a/docs/LEVELS.md
++++ b/docs/LEVELS.md
+@@ -212,6 +212,50 @@ with `map = LV_NO_MAP` ("not built"), so it is not shown in the select and canno
+   save without `BRCH` leaves nothing). On the host `lv_list_req = LVG_GBA` makes the build list what the GBA
+   lists, and `lv_info` is writable so a test can re-point a not-built level at an existing map.
+ 
++## LV11: content notes and the dark-level presentation (levels plan 6.3, 6.4)
++
++Nine levels are dark (`LVG_DARK` in the registry: HB9, HB11, HB12, N1, N8, N9, N10, N11, N13). Each has a
++content note, and nothing in the game starts a dark level without showing it. No dark level has a map yet,
++so none of this shows on a real run today; the host tests re-point a dark level at the Vape Cellar to play it.
++
++* **Text** (`levels2.c`, `lv_notes[]`; `lv_note()`, `lv_note_short()`): the plan's nine notes, and a short
++  line for each ("Note: guilt, failure, lost souls") for the strip and the later visits. The table's order is
++  the order of the first-visit bit: only ever append. A test keeps the table and the `LVG_DARK` flags the
++  same set. The plan says "at most three lines at 240x160": that holds for four of the nine; HB9, HB12, N1
++  and N9 take four and N13 takes five at 240 wide. The page has room for five (86 px), so the plan's text is
++  kept word for word.
++* **The card's note page** (`levels_play.c`, `BR_NOTE`; `combat_card.c`, `ccard_note_page`): the first visit
++  to a dark level opens on a window with the full note over the dimmed level, under the banner. A (after 12
++  ticks) goes on to the control card and marks the note seen; B goes back to the select and marks nothing.
++  A demo and the autopilot skip the page and mark nothing. A restart and a retry do not show it again.
++* **Later visits**: the control card has the short note as one line above the goal (`ccard_draw_above_note`),
++  unless Content notes is "First time only". A mode rule line (Cute-Only, Brutal-Only, Time Trial) takes the
++  room the line needs at 240x160, so the line is left out then; the first visit's page showed the note.
++* **The first-visit flag** (`levels_rec.c`, `lv_note_seen()` / `lv_note_set_seen()`): one bit per dark level in
++  the 'BRCH' arc's spare bytes 42..43. The chunk size does not change; a chunk from before LV11 reads "nothing
++  seen". A level with no note reads "seen". The GBA keeps the bits of the dark levels it does not list.
++* **The select** (`levels_select.c`): a small moon badge next to the tag pill, and the short note as a strip
++  on the preview's bottom edge (where "Clear it once to race the clock" goes, which wins).
++* **Options** (`options_store.c`, add-only ids at the end of OPT2): `OPT_NOTES` "Content notes": Every time
++  (default) / First time only; `OPT_MEMORIAL` "Memorial names": On (default) / Off. Both are on the Game page,
++  machine-wide (the config record's byte 16: bit 0 first time only, bit 1 memorial Off, so 0 is both defaults
++  and an older record reads right; without a record the 'OPT2' chunk carries them), and both are bits in the
++  byte the Stick option already uses (no EWRAM). The memorial row only shows once Notice 13 is built and open.
++  A preset does not touch them. `lv_memorial_label(name)` is what the Vault's memorial wall prints for each
++  name: the name, or "Someone we lost." when Off (the Vault's package, LV41, calls it).
++* **PS1**: nothing. The PS1 lists no dark level, so `town.h` has no `OPT_NOTES` / `OPT_MEMORIAL` there, the
++  card and play code is behind `LV_HAS_NEW`, and the EXE is byte-identical to the base (ends `0x801ef580`,
++  66 KB below the stack top, both before and after). When the LEVELS share of PS1 RAM is released, add the
++  ids and flip `LV_HAS_NEW`.
++* **Visible change on the other platforms**: the Options Game page has one more row, "Content notes", on
++  the GBA, Dreamcast and native builds (not the PS1).
++* **Tests**: `test_levels_rec.c` (`lv11_*`: the notes and the dark flags are the same set, every line fits at
++  both sizes, the flag in a real save and on the GBA's list, the first visit's flow with B / A / a later
++  visit / a demo, the pages and the badge at both sizes (screenshots), the memorial label, the options
++  rows), `test_options_store.c` (`lv11_*`: round trip through the chunk and the record, an older record and
++  chunk), `test_tips.c` (the Game page has one more row). Not done here: the Vault wires
++  `lv_memorial_label` (LV41); the `note TEXTID` map header key (a note per map) is LV2's; Spanish text.
++
+ ## Level test harness (LV10)
+ 
+ One list makes every level's scripts: `LEVELS` in `tools/breach_scripts.py` (a `make -C core gen`
+diff --git a/docs/design/held/status/LEVELS.md b/docs/design/held/status/LEVELS.md
+index 9f79dcfa..013f1aa3 100644
+--- a/docs/design/held/status/LEVELS.md
++++ b/docs/design/held/status/LEVELS.md
+@@ -11,7 +11,7 @@ delta, GBA sizes), in flight (package and stage), next up, blockers, needs from
+ - **LV10 (level test harness) landed, partial** (rebased on LV0): `tools/breach_scripts.py` writes 28 scripts for the 7 built levels (checked against `LV_OLD_COUNT`), `make -C gba test-breach2`, `tools/breach_fps.py`, `core/tests/test_levels2.c`. Core 1135 passed, SAN=1 1135 (4 known UBSan reports), check-gen and xcheck (410 files) clean, GBA tests and test-breach2 with floors green, dc-host-test ok. GBA drawn fps in the autopilot 4-17 (combat; far below 30, the speed stream's). Autopilot finishes 44 of 84 cells. PS1 and DC scripts generated and op-checked only (no PS1 SDK / Flycast on the landing machine); no PS1 or GBA resident bytes changed (PS1 margin unchanged from the base). vhash-seq is printed, not gated. Next: play one PS1 and one DC script, LV9 detail modes, LV11/ranks coverage; feed `LEVELS` from the registry as levels get maps.
+ - **LV2 (level script VM) landed** (round 2): `core/src/lv_script.c`, `core/include/doomo/lv_script.h`, mapc `on EVENT do ...`, `core/tests/test_lv_script.c` (30 tests), t2_script test map. Core 1162 passed 0 failed (SAN=1 the same, only the 4 known UBSan reports), check-gen, xcheck (411 files), mapc tests 79, GBA tests and sizes identical (.iwram 11256, .iwram_bss 4084, .bss 245788, .text/.rodata unchanged), dc-host-test ok, PS1 EXE ends 0x801ef450 (same as before) and `game_smoke` PASS. No resident byte on any platform (nothing calls it yet; GBA sizes and PS1 EXE unchanged, `lv_script` added to the PS1 combat overlay group). Follow-up (first level that needs it, LV3-LV5): wire `lv_vm_tick` into `lv_runtime_pre/post` with a host function, give `LvVm` (about 84 B + 4 pointers) a home (the mechanic union, or the combat overlay), and the LVE_USE / LVE_PHASE event sources.
+   LV2 review fixes (landing): `end` now also stops a camera sweep in flight (`lv_vm_frozen` was true forever), a once-handler dropped by a full queue stays armed (it was marked fired and lost), `lv_vm_idle(NULL)` is safe, `lv_vm_hash` covers the open choice's fields; 3 new tests (end during a sweep, set to the same value does not re-fire a `var` handler, dropped once-handler) plus `end` drops the queued handlers. Rebased tree (on `3a847919`): core 1195 passed 0 failed (SAN=1 the same, only the 4 known UBSan reports), check-gen, xcheck 415 files, mapc tests 79, dc-host-test ok, GBA `test` ok; GBA `.iwram` 11256, `.iwram_bss` 4084, `.bss` 245788 (EWRAM and IWRAM net zero), `.text` 1403584, `.rodata` 6643580 (other streams' growth; no `lv_vm` / `t2_script` symbol in the ELF). PS1: `_end` 0x801ef580, 68,208 B below the stack top (unchanged by LV2; still under the 72 KB rule until PS1-RAM), `game_smoke` PASS. `ps1/tools/ovl_plan.py` got one regex (`lv_script` in the combat group), a shared file. Known limits: mapc does not check that `on use` names a usable thing or that a tag is ever posted; `tools/levelcheck.py` does not count script bytes.
+-- **In flight:** round 1 done for LV0, LV1, LV10.
++- **In flight:** round 1 done for LV0, LV1, LV10. Round 2: **LV11 (content notes) built, awaiting review and landing** (branch fut-lv11): the nine dark levels' notes and short lines, the first-visit note page (`BR_NOTE`) and the one-line note on later visits, the select badge and strip, the first-visit bits in the 'BRCH' arc (bytes 42..43, chunk size unchanged), `OPT_NOTES` and `OPT_MEMORIAL` (bits, machine record byte 16), `lv_memorial_label()` for LV41. GBA RAM sections unchanged (EWRAM net zero), PS1 EXE byte-identical (`_end` 0x801ef580, 66 KB below the stack top; the PS1 has neither option id). Follow-ups: the Vault (LV41) must print every name through `lv_memorial_label`; the `note TEXTID` header key and per-map notes are LV2's; the plan's "three lines" holds for 4 of 9 notes (N13 takes 5 at 240 wide; the page has room for 5); a mode rule line hides the one-line note on later visits (no room at 240x160); the Game page gains a Content notes row on GBA / DC / native.
+ - **Next up:** round 2: LV7 (art and audio kit), LV2 (script VM, after LV1), LV11 (content notes, after LV0); then LV6, LV3, LV4, LV9, LV5, LV8 (GBA side, tool and host tests first)
+ - **Blockers:** none. Carried notes from LV0: (1) the new UI strings (page names, the locked reasons, the page hint) are English only and fall back to English in Spanish - add them in a Talk / i18n wave; (2) a save moved to a platform that lists fewer levels and re-saved there loses the records of the levels that platform does not list (`docs/LEVELS.md` says so; keeping them as raw bytes costs about 68 B of GBA EWRAM, which is not there); (3) the unlock rules of the new levels are placeholders where the plan is vague (HB9 / HB11 both on BEAT_EP3_4, HB10 on chapter 3) - the level packages re-point them; (4) the PS1 builds the old seven only (`LV_HAS_NEW` / `LV_TABLE_N` in `core/src/levels_int.h`) until the LEVELS share of PS1 RAM is released after PS1-RAM.
+ - **Needs from other streams:** SPEED: PS1-RAM must land before LV8's PS1 packs add any resident byte. DC: DC6 before the Dreamcast level reader and runs. CREATOR: nothing yet.
+-- 
+2.43.0
+
