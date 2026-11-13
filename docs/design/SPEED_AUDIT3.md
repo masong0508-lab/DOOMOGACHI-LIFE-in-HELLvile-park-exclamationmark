@@ -12,8 +12,8 @@ welding freezes), S2-10 (saves and loads without a frozen screen). Their windows
 | platform | windows | combat (reference) | OK: 30 fps, no frame over 33 ms | MISS |
 |---|---:|---:|---:|---:|
 | GBA (libmgba) | 311 | 11 | **155** | **145** (slow 25, low 57, hitch 31, 1x 32) |
-| PS1 (PCSX-Redux) | being measured | | | |
-| Dreamcast (Flycast) | being measured | | | |
+| PS1 (PCSX-Redux) | 247 | 8 | **221** | **18** (slow 7, hitch 2, 1x 9); 6 of them are in flight |
+| Dreamcast (Flycast) | 218 | 4 (no 3D view yet: DC6) | **211** | **3** (the save and two loads: in flight) |
 
 A window is OK only when logic and drawn fps are 30 and no presented frame took over 33 ms. MISS classes:
 **slow** = the game logic itself under 30 ticks/s (slow motion); **low** = a steady low frame rate (a quarter or
@@ -37,7 +37,13 @@ renders inside one frame (95-325 ms frames on list moves and scene entries), the
 In flight and still the longest frames: the save (11.4 s), title to New story (2.07 s), new island (1.99 s),
 the workshop (three 260 ms frames a visit).
 
-PS1 and Dreamcast: Being measured; this section lands in the next commit of this file.
+**PS1:** what is not in flight is small: the busy house layout 28.9 fps, the creator's hat try-on 28.6 and grid
+scroll 29.4, single 50-67 ms frames in five scenes, and 98-502 ms of overlay reading at every scene change.
+The Dodge hang, the credits (1.5 fps), the wheel, the Hell Breach card and chapter card 2 of audit 2 all hold 30.
+The EXE ends 64 KB below the stack top with the boot FMV (gate 72 KB; PS1-RAM is in flight).
+
+**Dreamcast:** every 2D scene holds 30, the house included (DC8). Only the save (4.47 s) and two load frames
+(98-100 ms) miss, and S2-10 owns them. Combat is not built there yet (DC6).
 
 ## 1. Method and versions
 
@@ -493,11 +499,586 @@ the verdict.
 
 ### 2.2 PS1 (PCSX-Redux)
 
-Being measured; this section lands in the next commit of this file.
+Tags are the GBA window names in lower case. One tick a frame: fps is also the game speed, so a window under
+29.5 fps is "slow". "Overlay loads" are the `ovl:` reads since the previous window (the PS1's scene-change
+freeze). A lone 3-vsync frame is the lockstep resume and is not counted; with two, one is real.
+
+**fair** (speed tour 2: `speed2_fair.txt`)
+
+| window | fps (= logic) | frames by vsyncs | >33 / >50 ms | worst ms | overlay loads ms | audit 2 fps | verdict |
+|---|---:|---|---:|---:|---|---:|---|
+| fair_catch_title | 30.17 | 2:89 | 0 / 0 | 33 | 314+314 | 30.17 | OK |
+| fair_catch_play_sweet | 30.12 | 2:129 | 0 / 0 | 33 | 314+313 | 30.12 | OK |
+| fair_catch_results | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| fair_catch_play_hellfire | 30.12 | 2:129 | 0 / 0 | 33 | 314+314 | 30.12 | OK |
+| fair_whack_title | 30.17 | 2:89 | 0 / 0 | 33 | 311+311 | 30.17 | OK |
+| fair_whack_play_sweet | 30.12 | 2:129 | 0 / 0 | 33 | 315+314 | 30.12 | OK |
+| fair_whack_play_hellfire | 30.12 | 2:129 | 0 / 0 | 33 | 314+316 | 30.12 | OK |
+| fair_dodge_title | 30.17 | 2:89 | 0 / 0 | 33 | 314+313 | 30.17 | OK |
+| fair_dodge_play_sweet | 30.12 | 2:129 | 0 / 0 | 33 | 313+311 | 30.12 | OK |
+| fair_dodge_play_late | 30.12 | 2:129 | 0 / 0 | 33 | - | 30.12 | OK |
+| fair_dodge_play_hellfire | 30.12 | 2:129 | 0 / 0 | 33 | 313+316 | 30.12 | OK |
+| fair_gallery_title | 30.17 | 2:89 | 0 / 0 | 33 | 313+316 | 30.17 | OK |
+| fair_gallery_play_sweet | 30.00 | 2:128 3:1 | 0 / 0 | 50 | 312+315 | 30.00 | OK |
+| fair_gallery_play_hellfire | 30.00 | 2:128 3:1 | 0 / 0 | 50 | 315+315 | 30.00 | OK |
+| fair_derby_title | 30.17 | 2:89 | 0 / 0 | 33 | 311+312 | 30.17 | OK |
+| fair_derby_race_sweet | 30.00 | 2:128 3:1 | 0 / 0 | 50 | 314+313 | 30.00 | OK |
+| fair_derby_race_mid | 30.00 | 2:128 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| fair_derby_race_hellfire | 30.00 | 2:128 3:1 | 0 / 0 | 50 | 314+312 | 30.00 | OK |
+| fair_memory_title | 30.17 | 2:89 | 0 / 0 | 33 | 316+312 | 30.17 | OK |
+| fair_memory_play_sweet | 30.12 | 2:129 | 0 / 0 | 33 | 312+314 | 30.12 | OK |
+| fair_memory_play_hellfire | 30.12 | 2:129 | 0 / 0 | 33 | 315+312 | 30.12 | OK |
+| fair_wheel_intro | 30.00 | 2:88 3:1 | 0 / 0 | 50 | 314+313 | 22.41 | OK |
+| fair_wheel_spin | 30.00 | 2:128 3:1 | 0 / 0 | 50 | - | 22.41 | OK |
+
+**fishcook** (speed tour 2: `speed2_fishcook.txt`)
+
+| window | fps (= logic) | frames by vsyncs | >33 / >50 ms | worst ms | overlay loads ms | audit 2 fps | verdict |
+|---|---:|---|---:|---:|---|---:|---|
+| fish_pier_day | 30.12 | 2:129 | 0 / 0 | 33 | 314+286 | 30.12 | OK |
+| fish_bot_cast_and_wait | 30.12 | 2:129 | 0 / 0 | 33 | - | 30.12 | OK |
+| fish_reel | 30.51 | 2:29 | 0 / 0 | 33 | - | 30.51 | OK |
+| fish_catch_card | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| fish_fishdex | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| fish_cooler | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| fish_night_reel | 30.15 | 2:99 | 0 / 0 | 33 | - | 30.15 | OK |
+| cook_recipe_book | 30.17 | 2:89 | 0 / 0 | 33 | 313+288 | 30.17 | OK |
+| cook_chop | 30.12 | 2:129 | 0 / 0 | 33 | - | 30.12 | OK |
+| cook_stir | 30.12 | 2:129 | 0 / 0 | 33 | - | 30.12 | OK |
+| cook_fry | 30.12 | 2:129 | 0 / 0 | 33 | - | 30.12 | OK |
+| cook_result_card | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| cook_bake | 30.12 | 2:129 | 0 / 0 | 33 | - | 30.12 | OK |
+| cook_simmer | 30.12 | 2:129 | 0 / 0 | 33 | - | 30.12 | OK |
+| cook_counter | 29.83 | 2:87 3:2 | 2 / 0 | 50 | - | 29.83 | MISS 1x |
+| cook_serving | 30.00 | 2:58 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+
+**library** (speed tour 2: `speed2_library.txt`)
+
+| window | fps (= logic) | frames by vsyncs | >33 / >50 ms | worst ms | overlay loads ms | audit 2 fps | verdict |
+|---|---:|---|---:|---:|---|---:|---|
+| library_lobby | 30.12 | 2:129 | 0 / 0 | 33 | 288 | 30.12 | OK |
+| library_lobby_shelf_move | 29.51 | 2:28 4:1 | 1 / 1 | 67 | - | 29.51 | MISS 1x |
+| library_bestiary_list | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| library_bestiary_jar | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| library_almanac_list | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| library_almanac_list_move | 29.51 | 2:28 4:1 | 1 / 1 | 67 | - | 29.51 | MISS 1x |
+| library_almanac_profile | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| library_almanac_face | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| library_weapons_frames | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| library_weapons_plan | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| library_items | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| library_items_card | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| library_trophies | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| library_trophy_page | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| library_jukebox | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| library_jukebox_playing | 30.00 | 2:128 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| library_gallery_textures | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| library_gallery_tiled | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| library_gallery_sky | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| library_field_guide_contents | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| library_field_guide_page | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| library_field_guide_page_turn | 30.77 | 2:19 | 0 / 0 | 33 | - | 30.77 | OK |
+| library_field_guide_scroll | 30.77 | 2:19 | 0 / 0 | 33 | - | 30.77 | OK |
+
+**action** (speed tour 2: `speed2_action.txt`)
+
+| window | fps (= logic) | frames by vsyncs | >33 / >50 ms | worst ms | overlay loads ms | audit 2 fps | verdict |
+|---|---:|---|---:|---:|---|---:|---|
+| action_level_select | 30.00 | 2:128 3:1 | 0 / 0 | 50 | 314+361 | 30.00 | OK |
+| action_level_select_move | 30.77 | 2:19 | 0 / 0 | 33 | - | 30.77 | OK |
+| action_breach_intro_card | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | 22.88 | OK |
+| action_breach_play_combat_reference | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | 30.00 | combat (ref) |
+| action_breach_pause_menu | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| action_level_select_after_a_level | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| action_arena_intro_card | 30.00 | 2:88 3:1 | 0 / 0 | 50 | 314+359 | 30.00 | OK |
+| action_arena_fight_combat_reference | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | 30.00 | combat (ref) |
+| action_arena_pause_menu | 30.00 | 2:58 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| action_arena_results | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| action_boss_rush_intro_card | 30.00 | 2:88 3:1 | 0 / 0 | 50 | 316+361 | 30.00 | OK |
+| action_boss_rush_round_1_combat_reference | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | 30.00 | combat (ref) |
+| action_boss_rush_results | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| action_horde_intro_card | 30.00 | 2:88 3:1 | 0 / 0 | 50 | 314+362 | 30.00 | OK |
+| action_horde_results | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| action_mayhem_intro_card | 30.00 | 2:88 3:1 | 0 / 0 | 50 | 314+362 | 30.00 | OK |
+| action_mayhem_chaos_combat_reference | 29.83 | 2:87 3:2 | 2 / 0 | 50 | - | 29.51 | combat (ref) |
+| action_workshop | 28.78 | 2:126 6:3 | 3 / 3 | 100 | 315+125 | 28.78 | MISS slow |
+| action_workshop_part_change | 30.51 | 2:29 | 0 / 0 | 33 | - | 30.51 | OK |
+| action_workshop_armory | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| action_weld_intro_card | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| action_welding | 30.12 | 2:129 | 0 / 0 | 33 | - | 30.00 | OK |
+
+**dream** (speed tour 2: `speed2_dream.txt`)
+
+| window | fps (= logic) | frames by vsyncs | >33 / >50 ms | worst ms | overlay loads ms | audit 2 fps | verdict |
+|---|---:|---|---:|---:|---|---:|---|
+| dream_bedroom | 30.17 | 2:89 | 0 / 0 | 33 | 182 | 30.17 | OK |
+| dream_thought_bubble | 30.25 | 2:59 | 0 / 0 | 33 | - | 30.25 | OK |
+| dream_vignette_1_cute | 30.00 | 2:108 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| dream_vignette_1_twist | 30.00 | 2:98 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| dream_vignette_2 | 30.00 | 2:128 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| dream_nightmare_vignette_1 | 30.00 | 2:128 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| dream_nightmare_vignette_2 | 29.89 | 2:128 4:1 | 1 / 1 | 67 | - | 29.89 | MISS 1x |
+| dream_nightmare_vignette_3_cute_then_red | 30.00 | 2:98 3:1 | 0 / 0 | 50 | - | 29.85 | OK |
+| dream_wake_up_choice | 30.00 | 1:1 2:57 4:1 | 1 / 1 | 67 | - | 29.75 | MISS 1x |
+
+**house** (speed tour 2: `speed2_house.txt`)
+
+| window | fps (= logic) | frames by vsyncs | >33 / >50 ms | worst ms | overlay loads ms | audit 2 fps | verdict |
+|---|---:|---|---:|---:|---|---:|---|
+| house_build_mode | 30.12 | 2:129 | 0 / 0 | 33 | 502 | 30.12 | OK |
+| house_build_cursor_move | 30.51 | 2:29 | 0 / 0 | 33 | - | 30.51 | OK |
+| house_catalog_modal | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| house_catalog_cursor_move | 30.51 | 2:29 | 0 / 0 | 33 | - | 30.51 | OK |
+| house_held_piece | 30.25 | 2:59 | 0 / 0 | 33 | - | 30.25 | OK |
+| house_rotate_view | 30.51 | 2:29 | 0 / 0 | 33 | - | 30.51 | OK |
+| house_photo_mode | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| house_photo_snap | 30.51 | 2:29 | 0 / 0 | 33 | - | 30.51 | OK |
+| house_live_mode | 30.12 | 2:129 | 0 / 0 | 33 | - | 30.12 | OK |
+| house_score_panel | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| house_live_4_chibis_room_test_1 | 28.89 | 2:120 3:8 4:1 | 9 / 1 | 67 | 98 | 28.89 | MISS slow |
+| house_defend_tutorial | 30.12 | 2:129 | 0 / 0 | 33 | 314+502+100 | 30.12 | OK |
+| house_defend_siege_wave_3 | 30.12 | 2:129 | 0 / 0 | 33 | 314+496+99 | 30.12 | OK |
+| house_defend_siege_freeze_double_clock | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| house_visit_nana | 30.12 | 2:129 | 0 / 0 | 33 | 316+501+106 | 30.12 | OK |
+| house_homemart | 30.17 | 2:89 | 0 / 0 | 33 | 316+500+114 | 30.17 | OK |
+| house_homemart_cursor_move | 30.51 | 2:29 | 0 / 0 | 33 | - | 30.51 | OK |
+| house_homemart_season_tab | 30.25 | 2:59 | 0 / 0 | 33 | - | 30.25 | OK |
+| house_black_market | 30.17 | 2:89 | 0 / 0 | 33 | 313+501+113 | 30.17 | OK |
+
+**studio** (speed tour 2: `speed2_studio.txt`)
+
+| window | fps (= logic) | frames by vsyncs | >33 / >50 ms | worst ms | overlay loads ms | audit 2 fps | verdict |
+|---|---:|---|---:|---:|---|---:|---|
+| studio_choir_quick_fill | 30.25 | 2:59 | 0 / 0 | 33 | 314+276 | 30.25 | OK |
+| studio_choir_member_card | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| studio_citizen_picker | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| studio_citizen_picker_move | 30.00 | 2:28 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| studio_stage_tab | 30.12 | 2:129 | 0 / 0 | 33 | - | 30.12 | OK |
+| studio_file_tab | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| studio_song_book | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| studio_templates | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| studio_templates_move | 30.51 | 2:29 | 0 / 0 | 33 | - | 30.51 | OK |
+
+**creator** (speed tour 2: `speed2_creator.txt`)
+
+| window | fps (= logic) | frames by vsyncs | >33 / >50 ms | worst ms | overlay loads ms | audit 2 fps | verdict |
+|---|---:|---|---:|---:|---|---:|---|
+| creator_species_and_body_tab | 30.17 | 2:89 | 0 / 0 | 33 | 314+415 | 30.17 | OK |
+| creator_tab_change_to_head_and_face | 30.77 | 2:19 | 0 / 0 | 33 | - | 30.77 | OK |
+| creator_head_and_face_tab | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| creator_tab_change_to_hair | 30.00 | 2:18 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| creator_hair_tab | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| creator_tab_change_to_supernatural | 30.00 | 2:18 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| creator_supernatural_tab | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| creator_tab_change_to_outfit | 30.00 | 2:18 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| creator_outfit_tab | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| creator_tab_change_to_voice | 30.77 | 2:19 | 0 / 0 | 33 | - | 30.77 | OK |
+| creator_voice_tab | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| creator_tab_change_to_personality | 30.00 | 2:18 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| creator_personality_tab | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| creator_tab_change_to_profile | 30.77 | 2:19 | 0 / 0 | 33 | - | 30.77 | OK |
+| creator_profile_tab | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| creator_tab_change_to_home | 30.77 | 2:19 | 0 / 0 | 33 | - | 30.77 | OK |
+| creator_home_tab | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| creator_grid_first_row | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| creator_grid_cursor_move | 30.00 | 2:28 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| creator_hat_grid_bust_camera | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| creator_hat_grid_try_on_move | 28.57 | 2:26 3:2 4:1 | 3 / 1 | 67 | - | 28.57 | MISS slow |
+| creator_hat_grid_filter_chip | 30.00 | 2:28 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| creator_colour_swatches | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| creator_swatch_move | 30.00 | 2:28 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| creator_start_menu | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+
+**life** (speed tour 2: `speed2_life.txt`)
+
+| window | fps (= logic) | frames by vsyncs | >33 / >50 ms | worst ms | overlay loads ms | audit 2 fps | verdict |
+|---|---:|---|---:|---:|---|---:|---|
+| life_new_island_hub_the_load | 16.52 | 2:64 3:2 112:1 | 3 / 1 | 1867 | 314+207+314+209 | 14.52 | MISS slow |
+| life_family_dashboard | 30.17 | 2:89 | 0 / 0 | 33 | 313+208+315 | 30.17 | OK |
+| life_add_member_kind | 30.25 | 2:59 | 0 / 0 | 33 | - | 30.25 | OK |
+| life_add_member_pick_a_resident | 30.00 | 2:58 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| life_add_member_pick_move | 30.51 | 2:29 | 0 / 0 | 33 | - | 30.51 | OK |
+| life_add_member_role | 30.25 | 2:59 | 0 / 0 | 33 | - | 30.25 | OK |
+| life_family_with_a_member | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| life_play_as_switcher | 30.17 | 2:89 | 0 / 0 | 33 | 206+310 | 30.17 | OK |
+| life_play_as_move | 30.51 | 2:29 | 0 / 0 | 33 | - | 30.51 | OK |
+| life_options_controls | 30.25 | 2:59 | 0 / 0 | 33 | 207+315 | 30.25 | OK |
+| life_options_page_turn_to_shooter | 30.77 | 2:19 | 0 / 0 | 33 | - | 30.77 | OK |
+| life_options_shooter | 30.25 | 2:59 | 0 / 0 | 33 | - | 30.25 | OK |
+| life_options_page_turn_to_life | 30.77 | 2:19 | 0 / 0 | 33 | - | 30.77 | OK |
+| life_options_life | 30.25 | 2:59 | 0 / 0 | 33 | - | 30.25 | OK |
+| life_options_page_turn_to_audio | 30.77 | 2:19 | 0 / 0 | 33 | - | 30.77 | OK |
+| life_options_audio | 30.25 | 2:59 | 0 / 0 | 33 | - | 30.25 | OK |
+| life_options_page_turn_to_display | 30.77 | 2:19 | 0 / 0 | 33 | - | 30.77 | OK |
+| life_options_display | 30.25 | 2:59 | 0 / 0 | 33 | - | 30.25 | OK |
+| life_options_page_turn_to_performance | 30.77 | 2:19 | 0 / 0 | 33 | - | 30.77 | OK |
+| life_options_performance | 30.25 | 2:59 | 0 / 0 | 33 | - | 30.25 | OK |
+| life_options_page_turn_to_accessibility | 30.77 | 2:19 | 0 / 0 | 33 | - | 30.77 | OK |
+| life_options_accessibility | 30.25 | 2:59 | 0 / 0 | 33 | - | 30.25 | OK |
+| life_options_page_turn_to_cheats | 30.77 | 2:19 | 0 / 0 | 33 | - | 30.77 | OK |
+| life_options_cheats | 30.25 | 2:59 | 0 / 0 | 33 | - | 30.25 | OK |
+| life_options_page_turn_to_game | 30.77 | 2:19 | 0 / 0 | 33 | - | 30.77 | OK |
+| life_options_game | 30.25 | 2:59 | 0 / 0 | 33 | - | 30.25 | OK |
+| life_options_cursor_move | 30.51 | 2:29 | 0 / 0 | 33 | - | 30.51 | OK |
+| life_save_load | 30.17 | 2:89 | 0 / 0 | 33 | 206+314 | 30.17 | OK |
+| life_save_load_cursor_move | 30.51 | 2:29 | 0 / 0 | 33 | - | 30.51 | OK |
+| life_saving_the_save_freeze | 3.25 | 1:2 2:38 | 1 / 1 | 11600 | - | 3.25 | MISS slow |
+| life_care_popup_feed | 30.25 | 2:59 | 0 / 0 | 33 | 206+313 | 30.25 | OK |
+| life_care_popup_toast_gone | 30.00 | 2:58 3:1 | 0 / 0 | 50 | - | new | OK |
+| life_care_reaction | 29.75 | 2:57 3:2 | 2 / 0 | 50 | - | 30.00 | MISS 1x |
+| life_shop_food | 30.17 | 2:89 | 0 / 0 | 33 | 206+313 | 30.00 | OK |
+| life_shop_cursor_move | 30.51 | 2:29 | 0 / 0 | 33 | - | 30.51 | OK |
+| life_shop_quantity_popup | 30.25 | 2:59 | 0 / 0 | 33 | - | 30.00 | OK |
+| life_shop_gifts_tab | 30.25 | 2:59 | 0 / 0 | 33 | - | 30.25 | OK |
+| life_black_market | 30.00 | 2:88 3:1 | 0 / 0 | 50 | 204+312 | 30.17 | OK |
+| life_cafe_counter | 30.17 | 2:89 | 0 / 0 | 33 | 206+313 | 30.17 | OK |
+| life_news_help_wanted | 30.17 | 2:89 | 0 / 0 | 33 | 207+312 | 30.17 | OK |
+| life_news_third_tab | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| life_graveyard | 30.17 | 2:89 | 0 / 0 | 33 | 207+316 | 30.17 | OK |
+| life_unlocks | 30.00 | 2:88 3:1 | 0 / 0 | 50 | 205+313 | 30.00 | OK |
+| life_unlocks_cursor_move | 30.00 | 2:28 3:1 | 0 / 0 | 50 | - | 30.00 | OK |
+| life_unlocks_row_moves | 30.00 | 2:70 3:1 | 0 / 0 | 50 | - | new | OK |
+| life_unlocks_paints_tab | 30.25 | 2:59 | 0 / 0 | 33 | - | 30.25 | OK |
+| life_citizen_picker | 30.17 | 2:89 | 0 / 0 | 33 | 206+314 | 30.00 | OK |
+| life_citizen_picker_move | 30.51 | 2:29 | 0 / 0 | 33 | - | 30.51 | OK |
+
+**story** (speed tour 2: `speed2_story.txt`)
+
+| window | fps (= logic) | frames by vsyncs | >33 / >50 ms | worst ms | overlay loads ms | audit 2 fps | verdict |
+|---|---:|---|---:|---:|---|---:|---|
+| story_first_boot_language_picker | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| story_language_picker_move | 30.51 | 2:29 | 0 / 0 | 33 | - | 30.51 | OK |
+| story_first_boot_security_code | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| story_security_code_digit | 30.51 | 2:29 | 0 / 0 | 33 | - | 30.51 | OK |
+| story_title_new_story_the_load | 8.54 | 2:39 71:1 145:1 | 2 / 2 | 2417 | 314+369+315+367+350+366+348 | 8.78 | MISS slow |
+| story_prologue_cutscene | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| story_quest_log_story_tab | 30.17 | 2:89 | 0 / 0 | 33 | 366 | 30.17 | OK |
+| story_quest_log_side_tab | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| story_quest_log_side_cursor_move | 30.51 | 2:29 | 0 / 0 | 33 | - | 30.51 | OK |
+| story_quest_log_items_tab | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| story_quest_log_map_tab | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| story_quest_log_map_cursor_move | 30.51 | 2:29 | 0 / 0 | 33 | - | 30.51 | OK |
+| story_quest_log_friends_tab | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| story_quest_log_trophies_tab | 30.17 | 2:89 | 0 / 0 | 33 | - | 30.17 | OK |
+| story_cutscene_chapter_card_2 | 30.00 | 2:88 3:1 | 0 / 0 | 50 | 351 | 26.73 | OK |
+| story_cutscene_chapter_card_3 | 30.17 | 2:89 | 0 / 0 | 33 | 371+349 | 30.17 | OK |
+| story_cutscene_chapter_card_4 | 30.17 | 2:89 | 0 / 0 | 33 | 369+347 | 30.17 | OK |
+| story_cutscene_home_vignette | 30.17 | 2:89 | 0 / 0 | 33 | 366+347 | 30.17 | OK |
+| story_cutscene_fog_vignette | 30.17 | 2:89 | 0 / 0 | 33 | 366+348 | 30.17 | OK |
+| story_cutscene_eruption_vignette | 30.17 | 2:89 | 0 / 0 | 33 | 367+347 | 30.00 | OK |
+| story_cutscene_vapula_vignette | 30.17 | 2:89 | 0 / 0 | 33 | 368+347 | 30.17 | OK |
+| story_cutscene_after_a_press | 30.25 | 2:59 | 0 / 0 | 33 | - | 30.25 | OK |
+| story_credits | 29.89 | 2:128 4:1 | 1 / 1 | 67 | 367 | 10.89 | MISS 1x |
+| story_credits_parade | 30.00 | 2:128 3:1 | 0 / 0 | 50 | - | 1.52 | OK |
+
+**perf scripts** (`ps1/harness/scripts/perf_*.txt` and `creator_speed.txt`, one at a time)
+
+| window | fps (= logic) | frames by vsyncs | >33 / >50 ms | worst ms | overlay loads ms | audit 2 fps | verdict |
+|---|---:|---|---:|---:|---|---:|---|
+| title | 30.13 | 2:119 | 0 / 0 | 33 | 314 | - | OK |
+| island | 29.88 | 2:117 3:2 | 2 / 0 | 50 | 314+207+314+209 | - | MISS 1x |
+| townhall | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | - | OK |
+| life_hub | 29.83 | 2:87 3:2 | 2 / 0 | 50 | 314+207+314+209 | - | MISS 1x |
+| life_news | 30.17 | 2:89 | 0 / 0 | 33 | 313+208+315 | - | OK |
+| life_menu | 30.00 | 2:88 3:1 | 0 / 0 | 50 | 206 | - | OK |
+| life_roster | 30.17 | 2:89 | 0 / 0 | 33 | 310+207+315 | - | OK |
+| life_resident | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | - | OK |
+| life_apartments | 30.17 | 2:89 | 0 / 0 | 33 | 206+314+206+313 | - | OK |
+| dialogue | 29.67 | 2:86 3:3 | 3 / 0 | 50 | 365+348+366+349+368+348+367+348+369+350+370+347+369 | - | MISS hitch |
+| concert | 30.00 | 2:118 3:1 | 0 / 0 | 50 | 268 | - | OK |
+| creator | 30.13 | 2:119 | 0 / 0 | 33 | 416 | - | OK |
+| creator_idle | 30.13 | 2:119 | 0 / 0 | 33 | 416 | - | OK |
+| creator_grid_scroll | 29.39 | 2:113 3:6 | 6 / 0 | 50 | - | - | MISS slow |
+| creator_rows | 30.13 | 2:119 | 0 / 0 | 33 | - | - | OK |
+| creator_value | 29.88 | 1:1 2:115 3:3 | 3 / 0 | 50 | - | - | MISS hitch |
+| pet | 30.00 | 2:118 3:1 | 0 / 0 | 50 | 148 | - | OK |
+| exorcism | 30.00 | 2:118 3:1 | 0 / 0 | 50 | 193 | - | OK |
+| exo_intro | 30.00 | 2:88 3:1 | 0 / 0 | 50 | 314+195 | - | OK |
+| exo_tools | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | - | OK |
+| exo_prayer | 30.00 | 2:118 3:1 | 0 / 0 | 50 | - | - | OK |
+| exo_water | 30.00 | 2:102 3:1 | 0 / 0 | 50 | - | - | OK |
+| exo_name | 30.00 | 2:58 3:1 | 0 / 0 | 50 | - | - | OK |
+| exo_verdict | 30.00 | 2:58 3:1 | 0 / 0 | 50 | - | - | OK |
+| exo_result | 30.00 | 2:88 3:1 | 0 / 0 | 50 | - | - | OK |
+| balanced_tp | 29.81 | 2:235 3:4 | 4 / 0 | 50 | 314+361 | - | combat (ref) |
+| balanced_fp | 30.00 | 2:238 3:1 | 0 / 0 | 50 | 314+359 | - | combat (ref) |
+| smooth_tp | 29.94 | 2:237 3:2 | 2 / 0 | 50 | 316+361 | - | combat (ref) |
+| max_tp | 29.45 | 2:229 3:10 | 10 / 0 | 50 | 314+362 | - | combat (ref) |
 
 ### 2.3 Dreamcast (Flycast)
 
-Being measured; this section lands in the next commit of this file.
+Per window: logic ticks/s and the ticks whose work was over 33.3 ms (dcrun's `work:` lines). The group line
+gives dcrun's drawn count and worst tick. The first-person 3D view (DC6) is not built on the Dreamcast yet, so
+the four combat windows of `action` run without it: they are listed, not counted, and say nothing about combat
+speed there.
+
+**fair** (`speed2_fair.txt`; game drew 6040 of 6040 ticks, work mean 7644 us max 15916 us; 2D prims max 2062, vertex bytes max 172224, dropped 0, texture uploads 773, evictions 0, cached 773; work over 33333 us on 0 of 6040 ticks; worst 15916 us at tick 4866 (MG_DERBY); dcrun: 0 failures)
+
+| window | logic t/s | ticks >33.3 / >50 ms | worst ms | audit 2 | verdict |
+|---|---:|---:|---:|---|---|
+| fair: catch title | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fair: catch play sweet | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fair: catch results | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fair: catch play hellfire | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fair: whack title | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fair: whack play sweet | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fair: whack play hellfire | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fair: dodge title | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fair: dodge play sweet | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fair: dodge play late | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fair: dodge play hellfire | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fair: gallery title | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fair: gallery play sweet | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fair: gallery play hellfire | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fair: derby title | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fair: derby race sweet | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fair: derby race mid | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fair: derby race hellfire | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fair: memory title | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fair: memory play sweet | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fair: memory play hellfire | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fair: wheel intro | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fair: wheel spin | 30.0 | 0 / 0 | <33.3 | ok | OK |
+
+**fishcook** (`speed2_fishcook.txt`; game drew 3335 of 3335 ticks, work mean 6514 us max 18053 us; 2D prims max 1726, vertex bytes max 128448, dropped 0, texture uploads 624, evictions 0, cached 624; work over 33333 us on 0 of 3335 ticks; worst 18053 us at tick 3263 (COOKING); dcrun: 0 failures)
+
+| window | logic t/s | ticks >33.3 / >50 ms | worst ms | audit 2 | verdict |
+|---|---:|---:|---:|---|---|
+| fish: pier day | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fish: bot cast and wait | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fish: reel | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fish: catch card | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fish: fishdex | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fish: cooler | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| fish: night reel | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| cook: recipe book | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| cook: chop | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| cook: stir | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| cook: fry | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| cook: result card | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| cook: bake | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| cook: simmer | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| cook: counter | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| cook: serving | 30.0 | 0 / 0 | <33.3 | ok | OK |
+
+**library** (`speed2_library.txt`; game drew 2631 of 2631 ticks, work mean 8844 us max 20087 us; 2D prims max 2085, vertex bytes max 153472, dropped 0, texture uploads 505, evictions 0, cached 505; work over 33333 us on 0 of 2631 ticks; worst 20087 us at tick 784 (LIB_ALMANAC); dcrun: 0 failures)
+
+| window | logic t/s | ticks >33.3 / >50 ms | worst ms | audit 2 | verdict |
+|---|---:|---:|---:|---|---|
+| library: lobby | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| library: lobby shelf move | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| library: bestiary list | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| library: bestiary jar | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| library: almanac list | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| library: almanac list move | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| library: almanac profile | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| library: almanac face | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| library: weapons frames | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| library: weapons plan | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| library: items | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| library: items card | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| library: trophies | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| library: trophy page | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| library: jukebox | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| library: jukebox playing | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| library: gallery textures | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| library: gallery tiled | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| library: gallery sky | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| library: field guide contents | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| library: field guide page | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| library: field guide page turn | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| library: field guide scroll | 30.0 | 0 / 0 | <33.3 | ok | OK |
+
+**action** (`speed2_action.txt`; game drew 3258 of 3258 ticks, work mean 4997 us max 23916 us; 2D prims max 1378, vertex bytes max 101600, dropped 0, texture uploads 355, evictions 0, cached 355; work over 33333 us on 0 of 3258 ticks; worst 23916 us at tick 2622 (WORKSHOP); dcrun: 0 failures)
+
+| window | logic t/s | ticks >33.3 / >50 ms | worst ms | audit 2 | verdict |
+|---|---:|---:|---:|---|---|
+| action: level select | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| action: level select move | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| action: breach intro card | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| action: breach play (combat, reference) | 30.0 | 0 / 0 | <33.3 | ok | combat (ref) |
+| action: breach pause menu | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| action: level select after a level | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| action: arena intro card | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| action: arena fight (combat, reference) | 30.0 | 0 / 0 | <33.3 | ok | combat (ref) |
+| action: arena pause menu | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| action: arena results | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| action: boss rush intro card | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| action: boss rush round 1 (combat, reference) | 30.0 | 0 / 0 | <33.3 | ok | combat (ref) |
+| action: boss rush results | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| action: horde intro card | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| action: horde results | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| action: mayhem intro card | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| action: mayhem chaos (combat, reference) | 30.0 | 0 / 0 | <33.3 | ok | combat (ref) |
+| action: workshop | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| action: workshop part change | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| action: workshop armory | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| action: weld intro card | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| action: welding | 30.0 | 0 / 0 | <33.3 | ok | OK |
+
+**dream** (`speed2_dream.txt`; game drew 1482 of 1483 ticks, work mean 8474 us max 14879 us; 2D prims max 1455, vertex bytes max 119552, dropped 0, texture uploads 411, evictions 0, cached 411; work over 33333 us on 0 of 1482 ticks; worst 14879 us at tick 1368 (DREAM); dcrun: 0 failures)
+
+| window | logic t/s | ticks >33.3 / >50 ms | worst ms | audit 2 | verdict |
+|---|---:|---:|---:|---|---|
+| dream: bedroom | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| dream: thought bubble | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| dream: vignette 1 cute | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| dream: vignette 1 twist | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| dream: vignette 2 | 30.2 | 0 / 0 | <33.3 | ok | OK |
+| dream: nightmare vignette 1 | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| dream: nightmare vignette 2 | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| dream: nightmare vignette 3 (cute, then red) | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| dream: wake-up choice | 30.0 | 0 / 0 | <33.3 | ok | OK |
+
+**house** (`speed2_house.txt`; game drew 2461 of 2461 ticks, work mean 3512 us max 20511 us; 2D prims max 1146, vertex bytes max 76256, dropped 0, texture uploads 147, evictions 0, cached 147; work over 33333 us on 0 of 2461 ticks; worst 20511 us at tick 42 (HOME); dcrun: 0 failures)
+
+| window | logic t/s | ticks >33.3 / >50 ms | worst ms | audit 2 | verdict |
+|---|---:|---:|---:|---|---|
+| house: build mode | 30.0 | 0 / 0 | <33.3 | 115 over, worst 40.2 | OK |
+| house: build cursor move | 30.0 | 0 / 0 | <33.3 | 27 over, worst 39.8 | OK |
+| house: catalog modal | 30.0 | 0 / 0 | <33.3 | 65 over, worst 49.1 | OK |
+| house: catalog cursor move | 30.0 | 0 / 0 | <33.3 | 21 over, worst 46.8 | OK |
+| house: held piece | 30.0 | 0 / 0 | <33.3 | 53 over, worst 40.5 | OK |
+| house: rotate view | 30.0 | 0 / 0 | <33.3 | 26 over, worst 40.0 | OK |
+| house: photo mode | 30.0 | 0 / 0 | <33.3 | 74 over, worst 42.8 | OK |
+| house: photo snap | 30.0 | 0 / 0 | <33.3 | 25 over, worst 46.6 | OK |
+| house: live mode | 30.0 | 0 / 0 | <33.3 | 105 over, worst 43.6 | OK |
+| house: score panel | 30.0 | 0 / 0 | <33.3 | 69 over, worst 46.1 | OK |
+| house: live, 4 chibis (room-test 1) | 30.0 | 0 / 0 | <33.3 | 105 over, worst 43.6 | OK |
+| house: defend tutorial | 30.0 | 0 / 0 | <33.3 | 109 over, worst 42.1 | OK |
+| house: defend siege wave 3 | 30.0 | 0 / 0 | <33.3 | 108 over, worst 42.6 | OK |
+| house: defend siege freeze + double clock | 30.0 | 0 / 0 | <33.3 | 74 over, worst 42.8 | OK |
+| house: visit (Nana) | 30.0 | 0 / 0 | <33.3 | 0 over, worst <33.3 | OK |
+| house: homemart | 30.0 | 0 / 0 | <33.3 | 0 over, worst <33.3 | OK |
+| house: homemart cursor move | 30.0 | 0 / 0 | <33.3 | 0 over, worst <33.3 | OK |
+| house: homemart season tab | 30.0 | 0 / 0 | <33.3 | 0 over, worst <33.3 | OK |
+| house: black market | 30.0 | 0 / 0 | <33.3 | 0 over, worst <33.3 | OK |
+
+**studio** (`speed2_studio.txt`; game drew 1165 of 1165 ticks, work mean 7176 us max 30403 us; 2D prims max 1260, vertex bytes max 91008, dropped 0, texture uploads 351, evictions 0, cached 351; work over 33333 us on 0 of 1165 ticks; worst 18296 us at tick 234 (STUDIO); dcrun: 0 failures)
+
+| window | logic t/s | ticks >33.3 / >50 ms | worst ms | audit 2 | verdict |
+|---|---:|---:|---:|---|---|
+| studio: choir quick fill | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| studio: choir member card | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| studio: citizen picker | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| studio: citizen picker move | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| studio: stage tab | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| studio: file tab | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| studio: song book | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| studio: templates | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| studio: templates move | 30.0 | 0 / 0 | <33.3 | ok | OK |
+
+**creator** (`speed2_creator.txt`; game drew 2335 of 2335 ticks, work mean 8442 us max 15994 us; 2D prims max 1403, vertex bytes max 102304, dropped 0, texture uploads 422, evictions 0, cached 422; work over 33333 us on 0 of 2335 ticks; worst 15994 us at tick 2312 (CREATOR); dcrun: 0 failures)
+
+| window | logic t/s | ticks >33.3 / >50 ms | worst ms | audit 2 | verdict |
+|---|---:|---:|---:|---|---|
+| creator: species and body tab | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| creator: tab change to head and face | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| creator: head and face tab | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| creator: tab change to hair | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| creator: hair tab | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| creator: tab change to supernatural | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| creator: supernatural tab | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| creator: tab change to outfit | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| creator: outfit tab | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| creator: tab change to voice | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| creator: voice tab | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| creator: tab change to personality | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| creator: personality tab | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| creator: tab change to profile | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| creator: profile tab | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| creator: tab change to home | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| creator: home tab | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| creator: grid (first row) | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| creator: grid cursor move | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| creator: hat grid (bust camera) | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| creator: hat grid try-on move | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| creator: hat grid filter chip | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| creator: colour swatches | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| creator: swatch move | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| creator: start menu | 30.0 | 0 / 0 | <33.3 | ok | OK |
+
+**life** (`speed2_life.txt`; game drew 3918 of 3919 ticks, work mean 8905 us max 4474135 us; 2D prims max 2754, vertex bytes max 224928, dropped 0, texture uploads 621, evictions 0, cached 621; work over 33333 us on 2 of 3918 ticks; worst 4474135 us at tick 1968 (SAVELOAD); dcrun: 0 failures)
+
+| window | logic t/s | ticks >33.3 / >50 ms | worst ms | audit 2 | verdict |
+|---|---:|---:|---:|---|---|
+| life: new island -> hub (the load) | 30.4 | 1 / 1 | 97.7 | 1 over, worst 97.7 | MISS 1x |
+| life: family dashboard | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: add member: kind | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: add member: pick a resident | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: add member: pick move | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: add member: role | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: family with a member | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: play-as switcher | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: play-as move | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: options controls | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: options page turn to shooter | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: options shooter | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: options page turn to life | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: options life | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: options page turn to audio | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: options audio | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: options page turn to display | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: options display | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: options page turn to performance | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: options performance | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: options page turn to accessibility | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: options accessibility | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: options page turn to cheats | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: options cheats | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: options page turn to game | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: options game | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: options cursor move | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: save/load | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: save/load cursor move | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: saving (the save freeze) | 30.0 | 1 / 1 | 4474.1 | 1 over, worst 4473.9 | MISS 1x |
+| life: care popup (feed) | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: care popup, toast gone | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: care reaction | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: shop (food) | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: shop cursor move | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: shop quantity popup | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: shop gifts tab | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: black market | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: cafe counter | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: news help wanted | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: news third tab | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: graveyard | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: unlocks | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: unlocks cursor move | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: unlocks row moves | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: unlocks paints tab | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: citizen picker | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| life: citizen picker move | 30.0 | 0 / 0 | <33.3 | ok | OK |
+
+**story** (`speed2_story.txt`; game drew 3206 of 3208 ticks, work mean 6395 us max 99688 us; 2D prims max 4524, vertex bytes max 292032, dropped 0, texture uploads 665, evictions 0, cached 665; work over 33333 us on 1 of 3206 ticks; worst 99688 us at tick 562 (CUTSCENE); dcrun: 0 failures)
+
+| window | logic t/s | ticks >33.3 / >50 ms | worst ms | audit 2 | verdict |
+|---|---:|---:|---:|---|---|
+| story: first boot language picker | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| story: language picker move | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| story: first boot security code | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| story: security code digit | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| story: title -> new story (the load) | 31.4 | 1 / 1 | 99.7 | 1 over, worst 99.7 | MISS 1x |
+| story: prologue cutscene | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| story: quest log story tab | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| story: quest log side tab | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| story: quest log side cursor move | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| story: quest log items tab | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| story: quest log map tab | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| story: quest log map cursor move | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| story: quest log friends tab | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| story: quest log trophies tab | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| story: cutscene chapter card 2 | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| story: cutscene chapter card 3 | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| story: cutscene chapter card 4 | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| story: cutscene home vignette | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| story: cutscene fog vignette | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| story: cutscene eruption vignette | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| story: cutscene vapula vignette | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| story: cutscene after a press | 30.0 | 0 / 0 | <33.3 | ok | OK |
+| story: credits | 30.0 | 0 / 0 | <33.3 | 21 over, worst 35.5 | OK |
+| story: credits parade | 30.0 | 0 / 0 | <33.3 | 72 over, worst 62.2 | OK |
 
 ## 3. Ranked misses
 
@@ -544,11 +1125,39 @@ the cause column is per drawn frame, from the in-window profiles. "Touched by" n
 
 ### 3.2 PS1
 
-Being measured; this section lands in the next commit of this file.
+239 windows besides combat: 221 OK, 18 miss. Of the 214 speed tour 2 windows 201 are OK (audit 2: the fair hung
+at Dodge; credits 10.9 and 1.5 fps; wheel 22.4; Hell Breach card 22.9; chapter card 2 26.7: all of these hold 30
+now). The exorcism holds 30.00 in every phase on this Redux build (SP7 measured 27.1-30).
+
+| rank | scene | now | audit 2 | cause | package |
+|---:|---|---|---|---|---|
+| 1 | In flight: the save | one 11.6 s frame | the same | the memory card write in one tick | S2-10 |
+| 2 | In flight: title to New story; new island | New story: frames of 2.42 s and 1.18 s and 7 overlay reads of 314-369 ms. New island: one 1.87 s frame and 4 reads, then 2 frames of 50 ms (audit 2: 40) | 2.33 s + 1.13 s; 1.77 s | town generation in one tick; `OVL.BIN` reads | S2-10 |
+| 3 | In flight: workshop | 28.78 fps, three 100 ms frames | the same | `seg` + `outline` (the weapon composition) | S2-9 |
+| 4 | House, busy Live layout (room-test 1) | 28.89 fps: 8 frames of 50 ms, one of 67 | the same | the 3D room with four walkers: `draw_piece` 15.6%, `g4` 12.2%, `tri` 5.9%, `g3` 5.6%, `room_render` 5.2%, `lit` 4.8%, `tone` 4.8% (CPU-bound in Redux) | the owner decision of 2026-11-12 (no 3D character models inside houses: chibis as billboards) takes the walkers' polygons out; measure again after it |
+| 5 | Creator: hat try-on move; grid scroll; value held | 28.57 fps (2 frames of 50 ms, one of 67); `creator_speed.txt`: grid scroll 29.39 (6 frames of 50), value 29.88 (3) | 28.57; CR9: floors only | try-on: `part_icon_unpack` 30% of the samples (icons unpacked again on each step), `rect_slow` 6%, `memcpy` 5% | S3-3 (PS1 part: keep the page's unpacked icons in the creator's overlay scratch) |
+| 6 | Dialogue (`perf_dialogue`); island hub | dialogue 29.67 (2 real frames of 50 ms in 90); hub 29.83-29.88 (1 in 90-120) | SP2: 29.7 | portrait slices in a full frame (not profiled: one sample a vsync cannot name one frame) | S3-2 (`ps1/src/pslice.c`) |
+| 7 | Single 67 ms frames | lobby shelf move, Almanac list move, nightmare vignette 2, wake-up choice, credits (one each); kitchen counter and care reaction one 50 ms frame | the same; care reaction is new | on the GBA the same moments are a whole chibi drawn in one tick | S3-2 |
+| - | every scene change | 98-502 ms of overlay reads a group, two groups on most changes (176 reads in this audit) | 260-630 ms | `OVL.BIN` from the drive; SP5 darkens the screen over it | S3-15 |
+
+Everything else holds 30 with no frame over 33 ms: all seven fair games, fishing and cooking, every library
+wing, every action card and menu, dreams, the house (Build, catalog, Photo, Live, Score, Hold the Door, visit,
+HomeMart), every creator tab, the life screens, the quest log, the cutscenes, the studio, the title, pet, concert
+and the exorcism. Combat (reference): 29.45-30.00 fps (`perf_combat`), Monster Mayhem 29.83.
 
 ### 3.3 Dreamcast
 
-Being measured; this section lands in the next commit of this file.
+214 windows besides combat: 211 OK. The house (audit 2: 1,487 ticks over budget) holds 30 since DC8: worst tick
+20.5 ms. The credits hold 30 since S2-7. Every group drew every tick (the save aside); no 2D prim was dropped.
+
+| rank | scene | now | audit 2 | cause | package |
+|---:|---|---|---|---|---|
+| 1 | In flight: the save | one 4.47 s tick | the same | the VMU write in one tick | S2-10 |
+| 2 | In flight: title to New story; new island | one tick of 99.7 ms; one of 97.7 ms | the same | town generation in one tick | S2-10 |
+
+Worst tick per group otherwise: fair 15.9 ms (Derby), fishcook 18.1, library 20.1 (Almanac), action 23.9
+(workshop), dream 14.9, house 20.5, studio 18.3, creator 16.0. Nothing to plan for the Dreamcast besides S2-10
+and DC6 itself (the DC stream).
 
 ### 3.4 GBA: long frames outside the windows (scene entries and the second after a press)
 
@@ -589,7 +1198,7 @@ entries of 100-330 ms (3.4).
 |---|---|---|---|---|---|---|
 | **S3-1** | **The sim's 15-minute pass, spread.** `sim_init`, load and fast-forward set every resident's stamp to the same minute, so all 1,000 come due in the same 32 ticks every 15 game minutes. Stagger the stamps over the 15 minutes (slot mod 15), so about 67 residents are due per game minute | every free-play screen: 17 frames of 50-67 ms every 37.7 s -> none (16-22 ms a tick in the pass -> about 1 ms): shop gifts tab 21.5 -> 30, citizen picker 22.9 -> 30, apartments 25.7 -> 30, Options Accessibility 23.7 / 28.2 -> 30, pet's 5 frames of 67-84 ms -> 0, pet-care boss 28.6 -> 30. Helps the story-map entry second in part | `core/src/sim.c`, the sim goldens (SPEED) | S | no pixels change; the sim's random details do (another update order, the same rates): `test_sim_x4` and other sim goldens are recorded again | 0 B |
 | **S3-2** | **No whole portrait or chibi inside a drawn frame.** (a) A brand-new look with nothing to stand in is "drawn at once" today: on the GBA and PS1 a UI preview starts a sliced job instead and shows the previous picture or an empty frame for the 4-12 ticks it takes; list cursors prefetch their neighbours in idle time (as the dialogue does). (b) A scene's first faces are prefetched under the loading fade, or come in one per few ticks (S2-7's lazy bodies for the studio choir row and the quest log's friends). (c) `pslice.c`: a forced slice only when it fits under the vblank; dear slices cut finer. (d) The title's figures as patient jobs | studio picker close 325 ms, Friends tab 230 ms, creator entry 162 ms, shop / cafe / picker entries 106-167 ms, picker and add-member moves 95 ms, swatch move 100 ms, roster cursor 65-92 ms, kitchen counter 60-79 ms, lobby 64-70 ms: all to under 34 ms. Title 28.6 -> 30 (5-16 frames of 67-84 ms -> 0). The one or two 50 ms frames in shop, Black Market, cafe, roster, resident, pause, quest log, studio picker -> 0 | `core/src/portrait.c`, `gba/src/pslice.c`, `ps1/src/pslice.c` (CREATOR area: agree first); callers `fp_roster.c`, `fp_common.c` (the picker), `fp_family.c`, `fp_shop.c`, `story_questlog.c`, `lib_almanac.c`, `lib_common.c`, `cook_scene.c`, `studio*.c`, `creator_draw.c`, `fp_title.c` (after S2-10) | M | pixel-changing: a stand-in or an empty preview for a few ticks (SPEED DEFAULTS: stand-ins) | 0 B (the job and prefetch slots exist); a second prefetch slot would be about 40 B EWRAM |
-| **S3-3** | **Creator: panels captured on the fast path, the preview through the UI group.** A frame that recaptures a creator panel pays `pn_route` 3.1-13.3 ms + `plat_rect_slow` 1.5-5.6 + `vid_route` 0.6-2.5. Use S2-6's recipe (a new key: draw first on the fast path, then a solid panel). `plat_ui_loops()` before the scaled preview (S2-5's `vid_blitn`: 10.1 -> about 3.5 ms a redraw). The lock overlay composed once a page (`lock_compose` 2.9-3.6 ms a frame) | tab changes: frames of 50-67 ms -> at most one 50 ms frame; value held 22.2-23.2 -> about 28 (30 with S3-2); rows 27.2-29.4 -> 30; hat grid 27.2 -> 30; filter chip 21.7 -> about 28; part picker 21.8 -> about 27; grid scroll 17.2 -> about 24; try-on 15.2 -> about 22 | `core/src/creator_draw.c`, `creator_grid.c`, `creator.c` (CREATOR: this is its G2-CR) | M | exact (`test_panel` with the cache on and off) | 0 B |
+| **S3-3** | **Creator: panels captured on the fast path, the preview through the UI group.** A frame that recaptures a creator panel pays `pn_route` 3.1-13.3 ms + `plat_rect_slow` 1.5-5.6 + `vid_route` 0.6-2.5. Use S2-6's recipe (a new key: draw first on the fast path, then a solid panel). `plat_ui_loops()` before the scaled preview (S2-5's `vid_blitn`: 10.1 -> about 3.5 ms a redraw). The lock overlay composed once a page (`lock_compose` 2.9-3.6 ms a frame). PS1 part: the hat grid unpacks its part icons again on every step (`part_icon_unpack` 30% of the samples): keep the page's icons in the creator's overlay scratch | tab changes: frames of 50-67 ms -> at most one 50 ms frame; value held 22.2-23.2 -> about 28 (30 with S3-2); rows 27.2-29.4 -> 30; hat grid 27.2 -> 30; filter chip 21.7 -> about 28; part picker 21.8 -> about 27; grid scroll 17.2 -> about 24; try-on 15.2 -> about 22. PS1: try-on 28.6 -> 30, grid scroll 29.4 -> 30 | `core/src/creator_draw.c`, `creator_grid.c`, `creator.c` (CREATOR: this is its G2-CR) | M | exact (`test_panel` with the cache on and off) | 0 B |
 | **S3-4** | **Fun Fair: the kept playfield for the other games** (rest of S2-4, family 1). Gallery: the booth baked per key. Dodge: tent and ground kept, clouds live. Derby: divisions through steppers (5.1-5.7 ms), the HUD text as a kept strip (3.3-4.5), sky / grandstand / bunting kept as a wide strip. Memory: the card grid kept, a flip redraws one card. Whack: copy back only what the live parts covered (the whole-picture copy is 5 ms + `stage_rows` 3.3), ring rows without `fx_isqrt` and divisions (3.3), HUD strip. The wheel's result card over a kept card | Gallery 85-87 ms -> about 28-35: 11 -> 24-30 fps, logic 19 -> 30. Dodge 38.6-42.1 -> about 30: 21-27 -> 27-30. Derby 38 -> about 27: 22 -> 30. Memory Hellfire 38.4 -> about 26: 21.5 -> 30. Whack 40-45 -> about 31-35: 20-21 -> 26-30. Catch Hellfire and Memory Sweet lose their 3-4 frames of 50 ms | `core/src/mg_gallery.c`, `mg_dodge.c`, `mg_derby.c`, `mg_memory.c`, `mg_whack.c`, `mg_wheel.c`, `mg_draw.c`, `backdrop.c` (SPEED) | L, one game at a time | exact (`test_stage`, kept on and off) | ROM about +1.1 MB a game (30 pictures of 38,400 B), about +4 MB; EWRAM up to 8 B a game; PS1 / DC compiled out |
 | **S3-5** | **Kitchen and Fishdex** (S2-4, family 2). `kitchen_draw_back` stands still but for a sparkle and a cloud in the window: bake it per day / night, draw tools, food and HUD live. Recipe book and result card stand still: hold them (S2-1's `ui_modal_full`). Fishdex: hold the settled page, or cache each fish picture (today `fish_draw` + `fx_isqrt` + divisions are 22 ms a frame). Catch card: dim only outside the popping card (S2-2's `ui_dim_under_window_pop`). The simmer banner's shape made before it shows | stations 38.5-42.7 ms -> about 24-27: 20-22 -> 30. Book 48.6 and result card 54.1 -> about 10-15: 17-20 -> 30. Counter / serving 44-45 -> about 30-32 with S3-2: 19 -> 27-30. Fishdex 56 -> about 10: 15 -> 30. Catch card 25.6 -> about 29 | `core/src/cook_gfx.c`, `cook_scene.c`, `fish_gfx.c`, `fish_scene.c`, `backdrop.c` (SPEED) | M | exact; a held book / card freezes its idle motion (pixel-changing, held frames) | ROM about +0.2-0.4 MB |
 | **S3-6** | **Dreams** (S2-4, family 3). The sky cannot be kept: it waves every tick. Exact steps: a wave stepper instead of two divisions per column (SP6's `ws_*`: 4.4-6.4 -> about 1 ms); draw each band only where the next does not cover it (about half of the 28-33 ms of rects is overdraw); band rect and `cspan` in one call; the wake-up choice under S2-1's modal hold; the red dim cut to what the card does not cover | choice 80.8 ms -> about 12: 10.6 -> 30 fps. Vignettes 61-71 -> about 42-48: 13 -> 20-22 fps, logic 24 -> 30. Nightmare 3 81 -> about 50. Not 30: see 6 | `core/src/dream_gfx.c`, `dream.c` (SPEED) | M | exact | 0 B |
@@ -601,6 +1210,7 @@ entries of 100-330 ms (3.4).
 | **S3-12** | **Big text made once.** A wide outlined title is rasterised again whenever its shape leaves the cache: chapter card 4 has 12 frames of 83-87 ms (`text_emit` 23 ms + `ur_run` 11.6 + `em_finish_row` 10 + `out_rect` 9.4), simmer 2 frames of 63-78, every Fun Fair title card and game start 100-201 ms on its first frame. Keep those shapes (pin them while their scene is up; make them under the loading fade) | card 4 22.7 -> 30 fps; simmer's two frames; fair entries 100-201 ms -> about 60-100 | `core/src/ui_raster.c`, `cutscene.c`, `mg.c` (SPEED) | S | exact | GBA shape cache: the scene scratch, 0 B resident |
 | **S3-13** | **Menu headroom.** About 30 windows sit at 30-33 ms: shop 32.1, Black Market 32.4 (house 33.2), cafe 30.7, roster 31.0, resident 31, news 32.2-32.6, Almanac list 32.4, items 30.4, Unlocks 30.9, SONG 31.3-32.0, LYRICS 32.1, CHOIR 30.8, swatches 32.0, HomeMart cursor 31.6, pet 28-30. One helper: a list window's body and still text as a retained panel, the cursor row its hole (S2-6 / S2-8). The add-member wizard and the care reaction: the screen under the box held as SP5 holds the world under a dialogue. Credits: card and ticker text as panels. Pet: the new pet picture sliced or prefetched (its 48 ms frames) | menus 30-33 ms -> about 22-26, so a slice, a toast or a recapture no longer costs a frame: news, resident, Unlocks row moves, pet health, pause lose their 4-6 frames of 50 ms. Wizard 34-35 ms -> about 15: 25-27 -> 30. Care reaction 44.5 -> about 22: 19 -> 30. Credits parade 34.3 -> about 30: 26.3 -> 29-30 | `core/src/ui.c`, `ui_draw.c`, `fp_shop.c`, `fp_roster.c`, `fp_resident.c`, `fp_news.c`, `fp_family.c`, `lib_*.c`, `studio*.c`, `credits.c`, `pet*.c` (SPEED; the studio and library parts with S3-8) | L, in slices | exact (`test_panel`); the two holds freeze idle motion | 0 B (panels live in the pages) |
 | **S3-14** | **Island hub leftovers.** A tip card is a modal: hold the hub under it (S2-1). Do not build map parts under the town hall menu, or finish them first. The second after a new island's load: 39 frames of 67-117 ms of map parts (after S2-10's fade) | tip card up 19.0 fps, logic 23.8 -> 30. Town hall menu's first seconds 26.2 -> 30 (with S3-2). New island: 39 slow frames -> under the fade | `core/src/fp_island.c`, `fp_island_gfx.c`, `tips.c` (SPEED, after S2-10) | S/M | exact but the hold under the card | 0 B |
+| **S3-15** | **PS1: scene-change reads.** Every scene change reads one or two overlay groups: 98-502 ms each, about 150 ms of it waiting for the drive. Read the group a menu is about to open while its cursor rests on the entry (the slot is free until the change), or keep the last group so going back costs nothing | scene changes 260-680 ms -> the fade alone when the guess was right | `ps1/src/overlay.c`, `core/src/scene.c` hook (SPEED) | M | exact | must fit the existing slot and the 72 KB gate: no new resident buffer |
 
 ## 5. Suggested order
 
@@ -612,7 +1222,7 @@ Three packages a round. Biggest win a player sees first. No two packages of a ro
 | 2 | **S3-2** portraits, **S3-6** dreams, **S3-12** big text | S3-2 removes every 95-325 ms frame on list moves and entries. Dreams run in slow motion. S3-12 is small |
 | 3 | **S3-3** creator, **S3-7** cutscenes, **S3-10** house | the creator's held input and tab changes; the story's cards and vignettes; the house turn |
 | 4 | **S3-9** concert, **S3-11** exorcism, **S3-8** lobby / jukebox / STAGE / level select | the two old gaps, and the last S2-4 family |
-| 5 | **S3-13** menu headroom (in slices), **S3-14** island hub leftovers | headroom turns "mostly 30" menus into "always 30"; S3-14 waits for S2-10 |
+| 5 | **S3-13** menu headroom (in slices), **S3-14** island hub leftovers; **S3-15** PS1 scene-change reads (after PS1-RAM lands) | headroom turns "mostly 30" menus into "always 30"; S3-14 waits for S2-10 |
 
 Shared files to watch: S3-2 and S3-3 both touch `creator_draw.c` and are in the CREATOR stream's area (rounds 2
 and 3, never together). S3-2 touches `fp_title.c`, which S2-10 (in flight) also changes: do the title part after
