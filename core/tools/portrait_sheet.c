@@ -4,6 +4,8 @@
  *
  *   portrait_sheet --out DIR [--zoom N] [--only NAME] [--stats]
  *                  [--bust LIST [--fig]]
+ *   portrait_sheet --out DIR --slot KEY [--set NAME] [--shape]   (CR2 review sheets)
+ *   portrait_sheet --out DIR --interplay                          (CR4 A2: hats x big hair, buns, horns)
  *
  * Writes PNG sheets (see docs/PORTRAIT.md):
  *   opt_<list>.png     every option of one catalog list on a fixed citizen
@@ -258,6 +260,7 @@ static void sheet_stage(DoomoLook *l, int list)
     if (list == GF_LEGWEAR) { l->bottom = BOTTOM_SHORTS; l->shoes = SHOES_SANDALS; l->pattern_color = PAINT_CHERRY; }
     if (list == GF_OUTER) l->top_color = PAINT_WHITE;
     if (list == GF_FUR_PATTERN) { l->top = TOP_NONE; l->skin = 8 + PAINT_CARAMEL; l->marking_color = PAINT_CHOCOLATE; }
+    if (list == GF_FACIAL_HAIR) { l->hair_color = PAINT_CHOCOLATE; l->hair_style = HAIR_BALD; }   /* A2: a beard against the fur */
     if (list == GF_GLASSES || list == GF_PUPIL || list == GF_SCLERA) l->eye_size = 12;
 }
 
@@ -320,6 +323,53 @@ static void sheet_slot(const char *key, const char *set, int shape)
     portrait_shape_mode(0);
     snprintf(fname, sizeof(fname), "slot_%s%s%s%s.png", key, set ? "_" : "", set ? set : "", shape ? "_shape" : "");
     sh_save(&s, fname, zoom > 1 ? zoom : 2);
+}
+
+/* --interplay: the review sheet of CR4 plan 3.5, hats x {big hair, long hair, buns, horns}: every hat
+ * of the catalog (live, or scripted and hidden) on one row of seven busts, 12 rows to a page
+ * (interplay_hats_N.png). The columns are named in `cols`: a hair value, or a horn choice. */
+static void sheet_interplay(void)
+{
+    static const struct { const char *name; int list, value, hair; } cols[7] = {
+        { "none", GF_HAIR_STYLE, 0, 0 }, { "beehive", GF_HAIR_STYLE, 38, 0 }, { "bouffant", GF_HAIR_STYLE, 39, 0 },
+        { "pom tufts", GF_HAIR_STYLE, 54, 0 }, { "waterfall", GF_HAIR_STYLE, 53, 0 },
+        { "horns", GF_HORNS, HORNS_DEVIL_TALL, 1 }, { "space buns", GF_HAIR_STYLE, 34, 0 } };
+    const PartSlotInfo *sl = NULL;
+    int i, n = 0, page = 0, row = 0, c, hats[128];
+    Sheet s;
+    char fname[48];
+    for (i = 0; i < PART_SLOT_COUNT; i++)
+        if (!strcmp(doomo_part_slots[i].key, "hat")) sl = &doomo_part_slots[i];
+    if (!sl) return;
+    for (i = sl->first; i < sl->first + sl->count && n < 128; i++) {
+        const PartMeta *m = &doomo_part_meta[i];
+        if (m->value && (PMF_STATE(m->flags) == PSTATE_LIVE || (PMF_STATE(m->flags) == PSTATE_HIDDEN && (m->flags & PMF_SCRIPTED))))
+            hats[n++] = i;
+    }
+    while (row < n) {
+        int rows = n - row < 12 ? n - row : 12, r;
+        sh_new(&s, 84 + 7 * 50, 12 + rows * 58, PAL_UI_CREAM);
+        for (c = 0; c < 7; c++) sh_text(&s, 84 + c * 50, 2, cols[c].name, PAL_UI_PINK_D);
+        for (r = 0; r < rows; r++) {
+            const PartMeta *hm = &doomo_part_meta[hats[row + r]];
+            sh_text(&s, 2, 12 + r * 58 + 20, part_meta_name(hm), PAL_GRAY_D);
+            for (c = 0; c < 7; c++) {
+                uint8_t por[PORTRAIT_W * PORTRAIT_H];
+                DoomoLook l = base_look();
+                DoomoDeep d = doomo_deep_zero;
+                l.hat_color = PAINT_LAVENDER;
+                if (cols[c].hair) l.hair_style = 32;                       /* Pixie under the horns / hood */
+                look_part_set(&l, &d, cols[c].list, cols[c].value);
+                look_part_set(&l, &d, GF_HAT, hm->value);
+                portrait_render_deep(&l, &d, RES_ALIVE, EXPR_NEUTRAL, 0, por);
+                cell_bg(&s, 84 + c * 50, 12 + r * 58, 48, 56, r + c);
+                sh_blit(&s, 84 + c * 50, 12 + r * 58, por, PORTRAIT_W, PORTRAIT_H);
+            }
+        }
+        snprintf(fname, sizeof(fname), "interplay_hats_%d.png", page++);
+        sh_save(&s, fname, zoom > 1 ? zoom : 2);
+        row += rows;
+    }
 }
 
 typedef struct Slider { const char *name; int off, lo, hi; } Slider;
@@ -579,7 +629,7 @@ static void sheet_closeup(void)
 
 int main(int argc, char **argv)
 {
-    int i, stats = 0, figure = 0, shape = 0;
+    int i, stats = 0, figure = 0, shape = 0, interplay = 0;
     const char *bust = NULL, *slot = NULL, *set = NULL;
     NatOptions o;
     for (i = 1; i < argc; i++) {
@@ -592,8 +642,10 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--slot") && i + 1 < argc) slot = argv[++i];
         else if (!strcmp(argv[i], "--set") && i + 1 < argc) set = argv[++i];
         else if (!strcmp(argv[i], "--shape")) shape = 1;
+        else if (!strcmp(argv[i], "--interplay")) interplay = 1;
         else { fprintf(stderr, "usage: portrait_sheet --out DIR [--zoom N] [--only NAME] [--stats] [--bust LIST [--fig]]\n"
-                               "       portrait_sheet --out DIR --slot KEY [--set NAME] [--shape]\n"); return 2; }
+                               "       portrait_sheet --out DIR --slot KEY [--set NAME] [--shape]\n"
+                               "       portrait_sheet --out DIR --interplay\n"); return 2; }
     }
     if (zoom < 1) zoom = 1;
     memset(&o, 0, sizeof(o));
@@ -602,6 +654,7 @@ int main(int argc, char **argv)
     palette_init();
     if (bust) { sheet_bust(bust, figure); return 0; }
     if (slot) { sheet_slot(slot, set, shape); return 0; }
+    if (interplay) { sheet_interplay(); return 0; }
     sheet_closeup();
     sheet_options();
     sheet_sliders();

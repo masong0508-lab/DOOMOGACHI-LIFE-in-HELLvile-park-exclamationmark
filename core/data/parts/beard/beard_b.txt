@@ -1,0 +1,98 @@
+# core/data/parts/beard/beard_b.txt - facial hair batch A2 (CR4): 8 beards on the gene list values 8..15.
+# Group 3 (drawn with the face, after the mouth), so none of them covers the mouth. Every one is
+# hair_color on one ramp. Coordinates as in hair_b.txt (256 = one head radius, the mouth is at y 120).
+
+
+list facial_hair 8                      # Chin Puff
+block group=3 anchor=head lod=mid,big view=portrait,figure,fighter
+  scale 128
+  mat hair_color
+  shade ball
+  solid
+  ellipse 0 95 45 30
+end
+
+list facial_hair 9                      # Chinstrap
+block group=3 anchor=head lod=mid,big view=portrait,figure,fighter
+  scale 128
+  mat hair_color
+  shade ball
+  solid
+  mirror on
+  capsule 113 -5 107 65 12 12
+  capsule 107 65 75 110 12 11
+  capsule 75 110 0 122 11 10
+end
+
+list facial_hair 10                      # Van Dyke
+block group=3 anchor=head lod=mid,big view=portrait,figure,fighter
+  scale 128
+  mat hair_color
+  shade ball
+  solid
+  mirror on
+  ellipse 28 40 30 12
+  tri -30 80 30 80 0 170
+end
+
+list facial_hair 11                      # Horseshoe
+block group=3 anchor=head lod=mid,big view=portrait,figure,fighter
+  scale 128
+  mat hair_color
+  shade ball
+  solid
+  mirror on
+  ellipse 25 42 28 12
+  capsule 55 45 62 125 12 10
+end
+
+list facial_hair 12                      # Braided Beard
+block group=3 anchor=head lod=mid,big view=portrait,figure,fighter
+  scale 128
+  mat hair_color
+  shade ball
+  solid
+  ellipse 0 95 48 33
+  capsule 0 110 0 170 17 12
+  ellipse 0 180 19 17
+  mat accessory_color
+  shade ball
+  solid
+  ring 0 145 15 4
+end
+
+list facial_hair 13                      # Pencil Stache
+block group=3 anchor=head lod=mid,big view=portrait,figure,fighter
+  scale 128
+  mat hair_color
+  shade ball
+  solid
+  capsule -65 42 65 42 10 10
+  ellipse -75 28 12 18
+  ellipse 75 28 12 18
+end
+
+list facial_hair 14                      # Sea Captain
+block group=3 anchor=head lod=mid,big view=portrait,figure,fighter
+  scale 128
+  mat hair_color
+  shade ball
+  solid
+  ellipse 0 115 95 45
+  tri -115 20 -75 110 -125 85
+  tri 115 20 75 110 125 85
+  tri -40 125 40 125 0 180
+end
+
+list facial_hair 15                      # Cloud Beard
+block group=3 anchor=head lod=mid,big view=portrait,figure,fighter
+  scale 128
+  mat hair_color
+  shade ball
+  solid
+  ellipse -55 90 50 45
+  ellipse 55 90 50 45
+  ellipse 0 130 55 40
+  ellipse -30 165 35 25
+  ellipse 30 165 35 25
+end

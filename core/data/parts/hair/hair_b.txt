@@ -1,0 +1,498 @@
+# core/data/parts/hair/hair_b.txt - hair batch A2 (CR4): 32 hair styles on the gene list values 32..63.
+# Hand-authored from the part-script ops; every style is a back block (group 0: what hangs behind
+# the head) and a front block (group 4: cap, bangs, top pieces). Hair is hair_color, one ramp, so
+# the shape alone tells the styles apart (the shape gate). Coordinates: 256 = one head radius,
+# x to the right, y down, `mirror on` doubles a shape to the other side. Chibis get the same blocks.
+
+def hp
+  mat hair_color
+  shade ball
+  solid
+enddef
+def hpl
+  mat hair_color light
+  shade ball
+  solid
+enddef
+def hpd
+  mat hair_color dark
+  shade ball
+  solid
+enddef
+def acc
+  mat accessory_color
+  shade ball
+  solid
+enddef
+# the hair cap over the top of the head: a dome standing on the hairline Y
+def cap Y W H
+  mat hair_color
+  shade ball
+  solid
+  crown dome 0 $Y $W $H
+enddef
+# seen from behind the whole head is hair
+def nape
+  ifyaw 3,4
+    mat hair_color
+    shade ball
+    solid
+    crown dome 0 75 127 127
+  endif
+  mat hair_color
+  shade ball
+  solid
+enddef
+
+list hair_style 32                      # Pixie
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -43 127 84
+  mirror on
+  tri 107 -45 133 -5 100 5
+  mirror off
+  tri -35 -48 25 -48 -10 -10
+end
+
+list hair_style 33                      # Shag
+block group=0 anchor=head lod=all view=all
+  scale 128
+  mat hair_color
+  shade ball
+  solid
+  mirror on
+  capsule 100 -20 118 95 20 11
+end
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -35 129 95
+  mirror on
+  tri -20 -120 25 -120 0 -160
+  tri 35 -115 85 -95 75 -145
+  tri 100 -40 135 30 95 60
+end
+
+list hair_style 34                      # Space Buns
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -50 125 75
+  mirror on
+  ellipse 75 -150 35 35
+  use acc
+  ring 75 -150 25 4
+end
+
+list hair_style 35                      # Top Knot
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -48 125 79
+  ellipse 0 -165 31 35
+  capsule 0 -135 0 -125 15 20
+  mirror on
+  capsule 119 -30 125 50 13 10
+end
+
+list hair_style 36                      # Braid Pair
+block group=0 anchor=head lod=all view=all
+  scale 128
+  mat hair_color
+  shade ball
+  solid
+  mirror on
+  capsule 122 10 131 75 20 18
+  ellipse 133 90 17 19
+  ellipse 131 125 14 16
+  ellipse 129 155 11 13
+end
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -43 127 82
+  tri -20 -45 20 -45 0 -5
+end
+
+list hair_style 37                      # Curtains
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -60 125 70
+  mirror on
+  tri 5 -62 125 -55 10 30
+  tri 125 -45 125 20 95 65
+end
+
+list hair_style 38                      # Beehive
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -45 125 80
+  ellipse 0 -150 75 75
+  use hpd
+  ellipse 0 -165 50 55
+end
+
+list hair_style 39                      # Bouffant
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  ellipse 0 -85 135 70
+  use cap -30 131 100
+end
+
+list hair_style 40                      # Rattail
+block group=0 anchor=head lod=all view=all
+  scale 128
+  mat hair_color
+  shade ball
+  solid
+  capsule 125 5 145 210 15 4
+end
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -35 129 95
+end
+
+list hair_style 41                      # Fauxhawk
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -50 119 56
+  tri -30 -95 30 -95 0 -190
+  tri 15 -100 60 -90 50 -165
+  tri -60 -95 -15 -100 -45 -160
+  mirror on
+  capsule 119 -35 125 30 12 9
+end
+
+list hair_style 42                      # Undercut
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -62 118 62
+  capsule -25 -100 75 -160 30 10
+  tri -90 -55 0 -59 -35 -30
+end
+
+list hair_style 43                      # Bubble Pony
+block group=0 anchor=head lod=all view=all
+  scale 128
+  mat hair_color
+  shade ball
+  solid
+  ellipse 128 30 25 25
+  ellipse 134 75 23 23
+  ellipse 131 118 20 20
+  ellipse 128 155 16 16
+end
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -46 126 80
+  use acc
+  ellipse 0 -85 11 9
+end
+
+list hair_style 44                      # Side Pony
+block group=0 anchor=head lod=all view=all
+  scale 128
+  mat hair_color
+  shade ball
+  solid
+  capsule 110 -75 150 50 23 14
+  ellipse 152 75 17 30
+end
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -45 126 80
+  tri -100 -55 20 -59 -40 -15
+  use acc
+  ellipse 110 -70 12 11
+end
+
+list hair_style 45                      # Half Up
+block group=0 anchor=head lod=all view=all
+  scale 128
+  mat hair_color
+  shade ball
+  solid
+  capsule -120 5 -135 125 20 17
+  capsule 120 5 135 125 20 17
+  capsule 0 10 0 125 40 30
+end
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -48 125 78
+  ellipse 0 -125 35 30
+  mirror on
+  tri 100 -35 135 40 95 55
+end
+
+list hair_style 46                      # Victory Rolls
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -48 125 79
+  mirror on
+  ring 95 -85 30 14
+  ring 115 -20 26 12
+end
+
+list hair_style 47                      # Pageboy
+block group=0 anchor=head lod=all view=all
+  scale 128
+  mat hair_color
+  shade ball
+  solid
+  capsule -125 -40 -131 85 20 18
+  capsule 125 -40 131 85 20 18
+  ellipse 0 40 85 40
+end
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -46 129 85
+  tri -125 -40 125 -40 0 -10
+  use hp
+end
+
+list hair_style 48                      # Flip
+block group=0 anchor=head lod=all view=all
+  scale 128
+  mat hair_color
+  shade ball
+  solid
+  capsule 95 -10 130 100 20 30
+end
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -45 128 84
+  mirror on
+  tri 70 -30 150 -20 135 20
+end
+
+list hair_style 49                      # Mop Top
+block group=0 anchor=head lod=all view=all
+  scale 128
+  mat hair_color
+  shade ball
+  solid
+  capsule -115 -40 -125 60 22 28
+  capsule 115 -40 125 60 22 28
+end
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -30 129 100
+  tri -130 -50 130 -50 0 -5
+  tri -45 -30 45 -30 0 10
+end
+
+list hair_style 50                      # Cloud Puff
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -45 125 75
+  ellipse -75 -100 35 30
+  ellipse 75 -100 35 30
+  ellipse 0 -135 40 30
+  ellipse -125 -30 25 25
+  ellipse 125 -30 25 25
+end
+
+list hair_style 51                      # Cat Tufts
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -48 125 79
+  mirror on
+  tri 45 -115 105 -85 80 -170
+  tri 60 -100 95 -95 85 -145
+end
+
+list hair_style 52                      # Icicle Spikes
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -50 126 75
+  mirror on
+  tri 20 -120 50 -125 45 -165
+  tri 55 -105 95 -105 100 -150
+  tri 95 -75 130 -60 145 -105
+  tri 100 -35 130 -25 155 -60
+end
+
+list hair_style 53                      # Waterfall
+block group=0 anchor=head lod=all view=all
+  scale 128
+  mat hair_color
+  shade ball
+  solid
+  capsule -125 0 -145 225 20 15
+  capsule 125 0 145 225 20 15
+  ellipse 0 65 45 65
+end
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -46 126 82
+  mirror on
+  tri 100 -50 135 -20 115 40
+end
+
+list hair_style 54                      # Pom Tufts
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -48 125 78
+  mirror on
+  ellipse 100 -95 28 28
+  ellipse 122 -55 22 22
+  ellipse 131 -15 18 18
+end
+
+list hair_style 55                      # Bedhead
+block group=0 anchor=head lod=all view=all
+  scale 128
+  mat hair_color
+  shade ball
+  solid
+  capsule -105 -25 -150 40 20 15
+  capsule 105 -25 145 60 20 15
+end
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -40 127 89
+  tri -75 -115 -30 -125 -130 -165
+  tri 15 -125 60 -120 75 -175
+  tri 80 -95 115 -75 150 -125
+  tri -120 -75 -125 -40 -165 -75
+end
+
+list hair_style 56                      # Lampshade
+block group=0 anchor=head lod=all view=all
+  scale 128
+  mat hair_color
+  shade ball
+  solid
+  ellipse 0 30 115 50
+  capsule -120 30 -140 125 17 23
+  capsule 120 30 140 125 17 23
+end
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -25 130 105
+end
+
+list hair_style 57                      # Spiral Curls
+block group=0 anchor=head lod=all view=all
+  scale 128
+  mat hair_color
+  shade ball
+  solid
+  mirror on
+  ring 125 15 20 11
+  ring 130 65 19 10
+  ring 126 112 17 9
+end
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -47 126 80
+  mirror on
+  ring 110 -35 20 10
+end
+
+list hair_style 58                      # Crescent Sweep
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -50 126 78
+  capsule -115 -45 50 -70 35 15
+  tri 50 -75 130 -60 110 10
+end
+
+list hair_style 59                      # Mini Mohawk Row
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -50 126 75
+  ellipse -60 -135 15 28
+  ellipse -30 -150 15 30
+  ellipse 0 -155 15 32
+  ellipse 30 -150 15 30
+  ellipse 60 -135 15 28
+end
+
+list hair_style 60                      # Fringe Curtain
+block group=0 anchor=head lod=all view=all
+  scale 128
+  mat hair_color
+  shade ball
+  solid
+  ellipse 0 35 118 70
+end
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -30 131 100
+  mirror on
+  tri 0 -35 100 -35 50 10
+  tri 95 -30 135 -20 125 35
+end
+
+list hair_style 61                      # Wisp Ponytail
+block group=0 anchor=head lod=all view=all
+  scale 128
+  mat hair_color
+  shade ball
+  solid
+  capsule 0 -95 80 -40 20 25
+  capsule 80 -40 105 170 25 4
+end
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -55 119 63
+  use acc
+  ellipse 0 -115 14 12
+end
+
+list hair_style 62                      # Long Droop
+block group=0 anchor=head lod=all view=all
+  scale 128
+  mat hair_color
+  shade ball
+  solid
+  mirror on
+  capsule 123 -10 131 80 16 13
+  ellipse 131 95 16 19
+  capsule 95 20 100 75 13 10
+  ellipse 100 88 13 15
+end
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -45 127 84
+end
+
+list hair_style 63                      # Star Spikes
+block group=4 anchor=head lod=all view=all
+  scale 128
+  use nape
+  use cap -50 126 75
+  tri -30 -115 30 -115 0 -175
+  tri -70 -100 -40 -120 -115 -160
+  tri 40 -120 70 -100 115 -160
+  tri 95 -75 125 -40 170 -85
+  tri -125 -40 -95 -75 -170 -85
+end

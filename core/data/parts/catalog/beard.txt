@@ -10,3 +10,13 @@ slot beard list=facial_hair name="Facial hair" method=P target=8 new=S
 5   "Handlebar"            set=teaparty tags=fancy,retro
 6   "Mutton Chops"         set=elders tags=elder,retro
 7   "Wizard"               set=elders tags=elder,magic
+
+# CR4 batch A2 (core/data/parts/beard/beard_b.txt): live with review.txt A2
+8   "Chin Puff" set=littleones tags=cute,silly method=S
+9   "Chinstrap" set=basics tags=plain,sporty method=S
+10  "Van Dyke" set=royal tags=royal,fancy method=S
+11  "Horseshoe" set=punk tags=punk,retro method=S
+12  "Braided Beard" set=partypals tags=silly,party method=S
+13  "Pencil Stache" set=teaparty tags=fancy,retro method=S
+14  "Sea Captain" set=sewers tags=sea,elder method=S
+15  "Cloud Beard" set=cloud9 tags=magic,elder method=S

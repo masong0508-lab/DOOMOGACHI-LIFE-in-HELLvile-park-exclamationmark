@@ -21,3 +21,7 @@ review halo     6-11  batch=CR3.0 date=2026-11-08 by=claude sheets="slot_halo, s
 review hat      24-35 batch=CR3.0 date=2026-11-08 by=claude sheets="slot_hat, slot_hat_shape: the 12 family hats (gumdrop .. lure bucket)"
 review top      24    batch=CR3.0 date=2026-11-08 by=claude sheets="slot_top: the pageant sash over a plain top"
 review accessory 20-21 batch=CR3.0 date=2026-11-08 by=claude sheets="slot_accessory: explorer satchel, pearl necklace"
+
+# CR4 batch A2 (hair): 32 hair styles (gene hair_style 32..63) and 8 beards (gene facial_hair 8..15)
+review hair        32-63 batch=A2 date=2026-11-13 by=claude sheets="slot_hair, slot_hair_shape (bust 1x, head 2x, figure, chibi 3x, fighter back), interplay_hats_0..2 (every hat x beehive, bouffant, pom tufts, waterfall, space buns, tall horns); no sexual content, no real-world symbols, nothing suggestive on a minor"
+review beard       8-15  batch=A2 date=2026-11-13 by=claude sheets="slot_beard, slot_beard_shape (dark beards on a bald citizen); facial hair is dropped by look_for_stage for every minor, so none shows on one"

@@ -34,3 +34,37 @@ slot hair list=hair_style name="Hair" method=P target=32 new=S
 29  "Tentacles"            set=monster tags=monster
 30  "Slime Drip"           set=sewers tags=monster,silly
 31  "Crown Braid"          set=royal tags=fancy
+
+# CR4 batch A2 (core/data/parts/hair/hair_b.txt): live with review.txt A2
+32  "Pixie" set=basics tags=plain,cute method=S
+33  "Shag" set=punk tags=punk,retro method=S
+34  "Space Buns" set=candy tags=cute,candy method=S
+35  "Top Knot" set=basics tags=plain method=S
+36  "Braid Pair" set=basics tags=plain,cute method=S
+37  "Curtains" set=basics tags=plain,retro method=S
+38  "Beehive" set=concert tags=retro,glam method=S
+39  "Bouffant" set=royal tags=royal,glam method=S
+40  "Rattail" set=punk tags=punk,silly method=S
+41  "Fauxhawk" set=punk tags=punk method=S
+42  "Undercut" set=punk tags=punk,sporty method=S
+43  "Bubble Pony" set=candy tags=cute,candy method=S
+44  "Side Pony" set=littleones tags=cute,baby method=S
+45  "Half Up" set=basics tags=plain,fancy method=S
+46  "Victory Rolls" set=concert tags=retro,glam method=S
+47  "Pageboy" set=elders tags=elder,retro method=S
+48  "Flip" set=concert tags=retro,music method=S
+49  "Mop Top" set=concert tags=retro,music method=S
+50  "Cloud Puff" set=cloud9 tags=cute,magic method=S
+51  "Cat Tufts" set=critter tags=critter,cute method=S
+52  "Icicle Spikes" set=seasons tags=nature method=S
+53  "Waterfall" set=royal tags=royal,fancy method=S
+54  "Pom Tufts" set=partypals tags=party,cute method=S
+55  "Bedhead" set=cozy tags=cozy,silly method=S
+56  "Lampshade" set=elders tags=elder,silly method=S
+57  "Spiral Curls" set=royal tags=glam,fancy method=S
+58  "Crescent Sweep" set=indieart tags=silly method=S
+59  "Mini Mohawk Row" set=punk tags=punk,cute method=S
+60  "Fringe Curtain" set=plushie tags=stitched,cute method=S
+61  "Wisp Ponytail" set=cloud9 tags=magic,cute method=S
+62  "Long Droop" set=sewers tags=monster,silly method=S
+63  "Star Spikes" set=indieart tags=silly,cute method=S
