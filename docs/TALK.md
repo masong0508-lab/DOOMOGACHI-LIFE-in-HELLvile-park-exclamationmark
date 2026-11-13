@@ -638,8 +638,8 @@ in `ask_topic.tlk`. No romance. `TALK_en.BIN` 540,274 -> 582,443 B (about 43
 B an alternative; the PS1 subset grows by the same rate, so TKP's lever
 choice matters more now). No resident code changed.
 
-**T5B-TOPIC: topics from the word network and more beat lines (+768
-alternatives).** Sixteen new files `grammar/en/topic_<root>.tlk` (+651) give
+**T5B-TOPIC: topics from the word network and more beat lines (+771
+alternatives).** Sixteen new files `grammar/en/topic_<root>.tlk` (+654) give
 every talkable root of the category tree its own replies, so a word the
 player names gets an answer about that kind of thing and not the generic
 one: `topic_people.tlk`, `topic_places.tlk`, `topic_food.tlk`,
@@ -669,7 +669,7 @@ lines keep `consent&adults_only&!kid_present&!pet`, the row and the
 ultimatum keep `!kid_present`, the kid lines keep `kid_speaker` and the
 `kid` tag. A long session now draws from 2-3 times as many beat lines
 (e.g. `beat.smalltalk` 4 -> 11, `excuse` 5 -> 10, `prod` 4 -> 8).
-`TALK_en.BIN` 643,516 -> 676,732 B, the PS1 subset 312,185 -> 345,490 B of
+`TALK_en.BIN` 643,516 -> 676,924 B, the PS1 subset 312,185 -> 345,612 B of
 the 312 KB budget (**the PS1 subset is now over that budget: TKP must pick
 its lever, see 6.4 and TP1**). Data only: no code, no resident byte on any
 platform. A 40-line sample is in the evidence directory.
