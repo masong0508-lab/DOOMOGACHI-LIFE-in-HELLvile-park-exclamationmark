@@ -28,11 +28,11 @@
   "{x:cap}? Hold on, I had a joke for that. It wandered off."
   "{x:cap}? I'd tell you, but it'd be all over town by lunch."
   "{x:cap} and I have a bit. It's mostly staring."
-@rule core.ask_about.people_person guard: root=people&x.person act: answer
-  "{x:indef:cap}? I know one. Nice, but they still have my ladder." needs: x.countable
-  "{x:cap}? Good people. Loud at parties, but good people."
-  "I'd lend {x:indef} a spoon. A good one, even." needs: x.countable
-  "Every town has {x:indef}. Ours waves too much." needs: x.countable
+@rule core.ask_about.people_more guard: root=people act: answer
+  "{x:cap}? Everybody's got one. Mine is unremarkable." needs: x.countable
+  "{x:cap}? Good company, in small doses."
+  "We have a few of those in town. One waves too much." needs: x.countable
+  "{x:cap}? I'd lend mine out. Nobody asks."
 @rule core.ask_opinion.people guard: root=people act: answer
   "My opinion of {x}? Warm. Slightly damp, but warm."
   "{x:cap}? Solid. I'd keep it around."
