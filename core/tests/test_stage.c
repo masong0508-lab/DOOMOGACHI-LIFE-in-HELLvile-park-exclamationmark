@@ -245,7 +245,7 @@ static int mg_compare(int id, int arg, int w, int h, int n)
     return 1;
 }
 
-static const uint8_t kept_games[] = { MG_WHACK, MG_DODGE };
+static const uint8_t kept_games[] = { MG_WHACK, MG_DODGE, MG_GALLERY };
 
 TEST(stage_kept_minigames_are_pixel_identical)
 {
@@ -332,9 +332,9 @@ TEST(stage_bake_file_has_bands_and_stamps)
         kind = fam->part ? fam->part(idkey & 0xFFFFFFu, part) : BACKDROP_WHOLE;
         if (kind == BACKDROP_WHOLE) { wholes++; CHECK(bx == 0 && by == 0 && w == 240 && h == 160); }
         if (kind == BACKDROP_ROWS) { bands++; CHECK(bx == 0 && w == 240 && by == part[0] && h == part[1] - part[0] && h > 0 && h < 160); }
-        if (kind == BACKDROP_STAMP) {
+        if (kind == BACKDROP_STAMP || kind == BACKDROP_STRIP) {
             stamps++;
-            CHECK(w > 0 && h > 0 && w < 240 && h < 160);
+            CHECK(w > 0 && h > 0 && (w < 240 || kind == BACKDROP_STRIP) && h < 160);
             if ((stamps % 37) == 1) {             /* a sample of them, against the drawing */
                 int x, y, bad = 0;
                 memset(nat_fb, 0, 240 * 160);

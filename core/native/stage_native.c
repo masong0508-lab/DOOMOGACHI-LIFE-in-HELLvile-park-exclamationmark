@@ -87,7 +87,7 @@ static const NPic *pic_get(int id, uint32_t key, void (*draw)(uint32_t))
     tracking = 0;
     memcpy(save[depth], nat_fb, n);
     depth++;
-    if (p->kind == BACKDROP_STAMP) {
+    if (p->kind == BACKDROP_STAMP || p->kind == BACKDROP_STRIP) {
         int x, y, x0 = nat_w, y0 = nat_h, x1 = -1, y1 = -1;
         memset(nat_fb, 0, n);
         draw(key);
@@ -130,7 +130,7 @@ int plat_stage_begin(int id, uint32_t key, void (*draw)(uint32_t key), PlatStage
     const NPic *p;
     if (!nat_stage_on || !draw || !info) return 0;
     p = pic_get(id, key, draw);
-    if (!p || p->kind == BACKDROP_STAMP) return 0;
+    if (!p || p->kind == BACKDROP_STAMP || p->kind == BACKDROP_STRIP) return 0;
     cur_pic = p;
     info->held = buf_serial[cur_buf];
     info->serial = serial + 1;
@@ -159,7 +159,7 @@ int plat_stage_stamp(int id, uint32_t key, int x, int y)
     const NPic *p;
     if (!nat_stage_on || !f) return 0;
     p = pic_get(id, key, f->draw);
-    if (!p || p->kind != BACKDROP_STAMP) return 0;
+    if (!p || (p->kind != BACKDROP_STAMP && p->kind != BACKDROP_STRIP)) return 0;
     if (p->pix) plat_image(x + p->bx, y + p->by, &p->img, 1, 0, 0);
     stamps_drawn++;
     return 1;
@@ -282,7 +282,7 @@ int nat_bake_backdrops(const char *path)
         if (kind == BACKDROP_ROWS) {
             y0 = DOOMO_CLAMP(part[0], 0, nat_h);
             y1 = DOOMO_CLAMP(part[1], y0, nat_h);
-        } else if (kind == BACKDROP_STAMP) {
+        } else if (kind == BACKDROP_STAMP || kind == BACKDROP_STRIP) {
             x0 = nat_w; y0 = nat_h; x1 = y1 = 0;
             for (y = 0; y < nat_h; y++)
                 for (x = 0; x < nat_w; x++)
@@ -293,15 +293,15 @@ int nat_bake_backdrops(const char *path)
                         if (y + 1 > y1) y1 = y + 1;
                     }
             if (x1 <= x0) x0 = y0 = x1 = y1 = 0;
-            if (x1 > x0 && (x0 == 0 || y0 == 0 || x1 == nat_w || y1 == nat_h)) {
+            if (x1 > x0 && (y0 == 0 || y1 == nat_h || (kind == BACKDROP_STAMP && (x0 == 0 || x1 == nat_w)))) {
                 fprintf(stderr, "bake: stamp 0x%x touches the screen edge (clipped?)\n", (unsigned)ids[i]);
                 return 0;
             }
         }
         pic[i].w = (uint16_t)(x1 - x0);
         pic[i].h = (uint16_t)(y1 - y0);
-        pic[i].bx = (int16_t)(kind == BACKDROP_STAMP ? x0 - part[0] : x0);
-        pic[i].by = (int16_t)(kind == BACKDROP_STAMP ? y0 - part[1] : y0);
+        pic[i].bx = (int16_t)(kind >= BACKDROP_STAMP ? x0 - part[0] : x0);
+        pic[i].by = (int16_t)(kind >= BACKDROP_STAMP ? y0 - part[1] : y0);
         pic[i].pix = (uint8_t *)malloc((size_t)pic[i].w * pic[i].h + 4);
         if (!pic[i].pix) return 0;
         for (y = y0; y < y1; y++)

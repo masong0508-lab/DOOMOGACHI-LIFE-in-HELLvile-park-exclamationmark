@@ -676,10 +676,11 @@ static int mg_stamp_keys(uint32_t *out, int cap)
 }
 static int mg_stamp_part(uint32_t key, int16_t out[2])
 {
-    (void)key;
+    const MgGame *g = mg_key_game(key);
     out[0] = (int16_t)(mg_w() / 2);
     out[1] = (int16_t)(mg_h() / 2);
-    return BACKDROP_STAMP;
+    return (int)(key >> MG_BK_GAME_SHIFT) != MG_COMMON_ID && g && g->stamp_strip && g->stamp_strip(key & 0xFFFFu)
+           ? BACKDROP_STRIP : BACKDROP_STAMP;
 }
 const DoomoBackdrop mg_stamp_family = { DOOMO_BACKDROP_MG_STAMP, mg_stamp_draw, mg_stamp_keys, mg_stamp_part };
 

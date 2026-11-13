@@ -246,6 +246,119 @@ static void gl_update(void)
 }
 
 /* ---- drawing ------------------------------------------------------------------ */
+/* ---- (S2-4b) the kept playfield and the stamps (mg.h): the tent with its sway (rows above the rails) and
+ * the counter are bands of the ROM; the cardboard card, the wraith (t % 240), the weapons, a wavelet of
+ * the water and the marquee bulbs are stamps. Still drawn in full where nothing is kept (PS1, the 320x240
+ * screen, native without the stage, a shaken native frame). */
+#define GK_COUNTER 8                    /* band key: the counter; 0..4: the tent at sway - 2 */
+
+enum { GS_CARD = 0 << 12, GS_WRAITH = 1 << 12, GS_WEAPON = 2 << 12, GS_WATER = 3 << 12, GS_BULBS = 4 << 12,
+       GS_NAME = 5 << 12, GS_KIND = 7 << 12 };
+static int counter_y(void) { return mg_h() - (mg_big() ? 30 : 22); }
+
+static uint32_t gl_kept_key(void) { return (uint32_t)(ui_wave(mg.play_t + mg.t, 150, 2) + 2); }
+static int gl_kept_keys(uint32_t *out, int cap, int hell)
+{
+    int i;
+    (void)hell;
+    for (i = 0; i < 5; i++) if (i < cap) out[i] = (uint32_t)i;
+    if (5 < cap) out[5] = GK_COUNTER;
+    return 6;
+}
+static int gl_kept_part(uint32_t key, int16_t rows[2])
+{
+    rows[0] = (int16_t)(key == GK_COUNTER ? counter_y() : 0);
+    rows[1] = (int16_t)(key == GK_COUNTER ? mg_h() : rail_top() - 4);
+    return 1;
+}
+
+static void tent_draw(int sway)
+{
+    mg_tent_sway(0, rail_top() - 4, mg.hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_PAINT(PAINT_SKY, 1),
+                 mg.hell ? PAL_RAMP(RAMP_STONE, 1) : PAL_WHITE, mg.hell ? PAL_RAMP(RAMP_LAVA, 4) : PAL_PAINT(PAINT_COBALT, 1), sway);
+}
+
+/* the counter's boards and its "L/R swap" sign (the weapon and its name live) */
+static void counter_still(void)
+{
+    int W = mg_w(), H = mg_h(), i, cy = counter_y();
+    plat_rect(0, cy, W, H - cy, PAL_RAMP(RAMP_WOOD, 3));
+    plat_rect(0, cy, W, 3, PAL_RAMP(RAMP_WOOD, 5));
+    plat_rect(0, cy + 3, W, 1, PAL_RAMP(RAMP_WOOD, 1));
+    for (i = 0; i < W; i += 20) plat_rect(i, cy + 6, 10, H - cy - 8, PAL_RAMP(RAMP_WOOD, 4));
+    mg_text(W - 6 - ui_text_width("L/R swap"), cy + 7, "L/R swap", PAL_RAMP(RAMP_WOOD, 7));
+}
+
+/* a cardboard card standing up (its stick, outline and board), its base at (x, base) */
+static void card_up(int x, int base)
+{
+    int s = tsize(), ch = s * 2 + 6, cy = base - ch, cw = s * 2 + 4;
+    plat_rect(x - 1, base - 4, 3, 6, PAL_RAMP(RAMP_WOOD, 2));
+    ui_round_rect(x - cw / 2 - 1, cy - 1, cw + 2, ch + 2, 4, PAL_RAMP(RAMP_WOOD, 2));
+    ui_round_rect(x - cw / 2, cy, cw, ch, 3, PAL_PAINT(PAINT_BONE, 1));
+}
+
+/* a wavelet of the water: its two circles and the foam, the crest at (cx, y) */
+static void wavelet(int cx, int y, int r)
+{
+    int wl = 16;
+    uint8_t c = mg.hell ? PAL_RAMP(RAMP_LAVA, 3 + (r & 1)) : (r & 1 ? PAL_PAINT(PAINT_SKY, 1) : PAL_PAINT(PAINT_COBALT, 2));
+    uint8_t d = mg.hell ? PAL_RAMP(RAMP_LAVA, 1) : PAL_PAINT(PAINT_COBALT, 0);
+    ui_fill_circle(cx, y + 4, wl / 2, d);
+    ui_fill_circle(cx, y + 5, wl / 2 - 1, c);
+    plat_rect(cx - 3, y, 4, 1, mg.hell ? PAL_RAMP(RAMP_LAVA, 6) : PAL_WHITE);
+}
+
+static int stamped(uint32_t key, int x, int y);
+
+/* the water of rail r at scroll `off` (0..15 mod 16): two bands of colour and a wavelet every 16 px */
+static void waves_draw(int y, int r, int off)
+{
+    int W = mg_w(), x, wl = 16;
+    uint8_t c = mg.hell ? PAL_RAMP(RAMP_LAVA, 3 + (r & 1)) : (r & 1 ? PAL_PAINT(PAINT_SKY, 1) : PAL_PAINT(PAINT_COBALT, 2));
+    uint8_t d = mg.hell ? PAL_RAMP(RAMP_LAVA, 1) : PAL_PAINT(PAINT_COBALT, 0);
+    plat_rect(0, y + 3, W, 8, d);
+    plat_rect(0, y + 4, W, 7, c);
+    for (x = -wl + off; x < W + wl; x += wl) wavelet(x + wl / 2, y, r);
+}
+
+static void weapon_draw(int x, int y, int w, int t, int recoil);
+static void gl_stamp(uint32_t key, int cx, int cy)
+{
+    int v = (int)(key & 0xFFF);
+    switch (key & GS_KIND) {
+    case GS_CARD: card_up(cx, cy); break;
+    case GS_WRAITH: mg_wraith(cx, cy, 6, v + 240, 0); break;
+    case GS_WEAPON: weapon_draw(cx, cy, v & 3, (v >> 4 & 3) * 3, v >> 2 & 3); break;
+    case GS_WATER: waves_draw(cy, v & 1, v >> 1 & 15); break;
+    case GS_BULBS: mg_bulbs(cx - mg_w() / 2 + 2, cy - mg_h() / 2 + rail_top() - 6, mg_w() - 4, 4, v * 4); break;
+    case GS_NAME: mg_text(6 + cx - mg_w() / 2, counter_y() + 7 + cy - mg_h() / 2, wnames[v & 3], v & 4 ? PAL_UI_GOLD : PAL_WHITE); break;
+    default: break;
+    }
+}
+static int gl_stamp_strip(uint32_t key) { return (key & GS_KIND) == GS_WATER; }
+static int gl_stamp_keys(uint32_t *out, int cap)
+{
+    int n = 0, h, i, w, rc, ph;
+#define ADD(k) do { if (n < cap) out[n] = (uint32_t)(k); n++; } while (0)
+    ADD(GS_CARD);
+    for (i = 0; i < 240; i++) ADD(GS_WRAITH | (uint32_t)i);
+    for (i = 0; i < 3; i++) ADD(GS_BULBS | (uint32_t)i);
+    for (w = 0; w < W_COUNT; w++)
+        for (rc = 0; rc < 4; rc++)
+            for (ph = 0; ph < (w == W_CONFETTI ? 4 : 1); ph++) ADD(GS_WEAPON | (uint32_t)(w | rc << 2 | ph << 4));
+    for (w = 0; w < W_COUNT; w++) { ADD(GS_NAME | (uint32_t)w); ADD(GS_NAME | (uint32_t)(w | 4)); }   /* the weapon's name */
+    for (h = 0; h < 2; h++)                            /* the water: its parity, its 16 scrolls */
+        for (i = 0; i < 32; i++) ADD(GS_WATER | (h ? MG_BK_HELL : 0u) | (uint32_t)i);
+#undef ADD
+    return n;
+}
+/* a stamp at (x, y) where stamps are kept (240x160 only); 0: the caller draws it */
+static int stamped(uint32_t key, int x, int y)
+{
+    return !mg_big() && mg_stamp(key, x, y);
+}
+
 static void cutout(const GTarget *g, int x, int base, int t)
 {
     int s = tsize(), h = 256, back = 0;
@@ -255,9 +368,13 @@ static void cutout(const GTarget *g, int x, int base, int t)
     if (h < 32) h = 32;
     {
         int ch = (s * 2 + 6) * h / 256, cy = base - ch, cw = s * 2 + 4;
-        plat_rect(x - 1, base - 4, 3, 6, PAL_RAMP(RAMP_WOOD, 2));         /* the stick */
-        ui_round_rect(x - cw / 2 - 1, cy - 1, cw + 2, ch + 2, 4, PAL_RAMP(RAMP_WOOD, 2));
-        ui_round_rect(x - cw / 2, cy, cw, ch, 3, back ? PAL_PAINT(PAINT_CARAMEL, 1) : PAL_PAINT(PAINT_BONE, 1));
+        if (h == 256 && !back) {
+            if (!stamped(GS_CARD, x, base)) card_up(x, base);
+        } else {
+            plat_rect(x - 1, base - 4, 3, 6, PAL_RAMP(RAMP_WOOD, 2));         /* the stick */
+            ui_round_rect(x - cw / 2 - 1, cy - 1, cw + 2, ch + 2, 4, PAL_RAMP(RAMP_WOOD, 2));
+            ui_round_rect(x - cw / 2, cy, cw, ch, 3, back ? PAL_PAINT(PAINT_CARAMEL, 1) : PAL_PAINT(PAINT_BONE, 1));
+        }
         if (back) {
             plat_rect(x - cw / 2 + 3, cy + ch / 2, cw - 6, 1, PAL_PAINT(PAINT_CARAMEL, 0));
             return;
@@ -274,7 +391,7 @@ static void cutout(const GTarget *g, int x, int base, int t)
             plat_rect(x - cw / 2 + 2, cy + 2, cw - 4, 1, PAL_WHITE);
             break;
         case T_WRAITH:
-            mg_wraith(x - 1, cy + ch / 2 - 2, s - 3, t, 0);
+            if (!stamped(GS_WRAITH | (uint32_t)(t % 240), x - 1, cy + ch / 2 - 2)) mg_wraith(x - 1, cy + ch / 2 - 2, s - 3, t, 0);
             break;
         default:
             mg_imp(x, cy + ch / 2 + 1, s - 2, s - 3, t, IMP_GRIN | (g->kind == T_GOLD ? IMP_GOLD : 0));
@@ -283,18 +400,11 @@ static void cutout(const GTarget *g, int x, int base, int t)
     }
 }
 
+/* the water of rail r: one strip stamp (rows y - 4 .. y + 12 across the whole screen) per scroll */
 static void waves(int y, int r, int t)
 {
-    int W = mg_w(), x, wl = 16, off = ((r & 1 ? t : -t) / 2) % wl;
-    uint8_t c = mg.hell ? PAL_RAMP(RAMP_LAVA, 3 + (r & 1)) : (r & 1 ? PAL_PAINT(PAINT_SKY, 1) : PAL_PAINT(PAINT_COBALT, 2));
-    uint8_t d = mg.hell ? PAL_RAMP(RAMP_LAVA, 1) : PAL_PAINT(PAINT_COBALT, 0);
-    plat_rect(0, y + 3, W, 8, d);
-    plat_rect(0, y + 4, W, 7, c);
-    for (x = -wl + off; x < W + wl; x += wl) {
-        ui_fill_circle(x + wl / 2, y + 4, wl / 2, d);
-        ui_fill_circle(x + wl / 2, y + 5, wl / 2 - 1, c);
-        plat_rect(x + wl / 2 - 3, y, 4, 1, mg.hell ? PAL_RAMP(RAMP_LAVA, 6) : PAL_WHITE);
-    }
+    int off = ((r & 1 ? t : -t) / 2) % 16;
+    if (!stamped(GS_WATER | (mg.hell ? MG_BK_HELL : 0u) | (uint32_t)((r & 1) | ((off + 16) & 15) << 1), mg_w() / 2, y)) waves_draw(y, r, off);
 }
 
 static void weapon_draw(int x, int y, int w, int t, int recoil)
@@ -339,19 +449,23 @@ static void weapon_draw(int x, int y, int w, int t, int recoil)
 static void gl_draw(void)
 {
     int W = mg_w(), H = mg_h(), t = mg.play_t + mg.t, r, i, ox = mg.ox, oy = mg.oy;
-    int rt = rail_top();
-    /* booth: back wall and a striped awning */
+    int rt = rail_top(), kept = mg_kept();
+    if (mg_kept_mode == MGK_BAKE) {                    /* a band of the ROM */
+        if (mg_bake_key == GK_COUNTER) counter_still(); else tent_draw((int)mg_bake_key - 2);
+        return;
+    }
+    /* booth: back wall and a striped awning (the tent band is in place already when kept) */
     plat_rect(0, rt - 4, W, H - rt, mg.hell ? PAL_RAMP(RAMP_BLOOD, 1) : PAL_PAINT(PAINT_NAVY, 2));
     for (i = 0; i < 16; i++) {
         uint32_t h = doomo_hash32((uint32_t)i * 9973u);
         int ph = (int)((t / 2 + (h >> 20)) & 31);
-        ui_sparkle((int)(h % (uint32_t)W), rt + (int)((h >> 8) % (uint32_t)(H - rt)), ph < 16 ? ph : 0,
+        mg_sparkle((int)(h % (uint32_t)W), rt + (int)((h >> 8) % (uint32_t)(H - rt)), ph < 16 ? ph : 0,
                    mg.hell ? PAL_RAMP(RAMP_LAVA, 5) : PAL_PAINT(PAINT_LEMON, 2));
     }
-    mg_tent(0, rt - 4, mg.hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_PAINT(PAINT_SKY, 1),
-            mg.hell ? PAL_RAMP(RAMP_STONE, 1) : PAL_WHITE,
-            mg.hell ? PAL_RAMP(RAMP_LAVA, 4) : PAL_PAINT(PAINT_COBALT, 1), t);
-    mg_bulbs(2, rt - 6, W - 4, 4, t);
+    if (!kept) mg_tent(0, rt - 4, mg.hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_PAINT(PAINT_SKY, 1),
+                       mg.hell ? PAL_RAMP(RAMP_STONE, 1) : PAL_WHITE,
+                       mg.hell ? PAL_RAMP(RAMP_LAVA, 4) : PAL_PAINT(PAINT_COBALT, 1), t);
+    if (!stamped(GS_BULBS | (uint32_t)((t / 4) % 3), W / 2, H / 2)) mg_bulbs(2, rt - 6, W - 4, 4, t);
     for (r = 0; r < RAILS; r++) {
         int y = rail_y(r) + oy;
         plat_rect(0, y - 3, W, 3, PAL_RAMP(RAMP_WOOD, 1));
@@ -368,19 +482,19 @@ static void gl_draw(void)
     }
     /* counter + weapon */
     {
-        int cy = H - (mg_big() ? 30 : 22);
-        plat_rect(0, cy + oy, W, H - cy, PAL_RAMP(RAMP_WOOD, 3));
-        plat_rect(0, cy + oy, W, 3, PAL_RAMP(RAMP_WOOD, 5));
-        plat_rect(0, cy + 3 + oy, W, 1, PAL_RAMP(RAMP_WOOD, 1));
-        for (i = 0; i < W; i += 20) plat_rect(i, cy + 6 + oy, 10, H - cy - 8, PAL_RAMP(RAMP_WOOD, 4));
-        weapon_draw(W / 2 + ox, H - 8 + oy, S->weapon, t, S->recoil);
+        int cy = counter_y(), rc = S->recoil > 3 ? 3 : S->recoil;
+        if (kept) (void)mg_kept_band(GK_COUNTER);
+        else counter_still();
+        if (!stamped(GS_WEAPON | (uint32_t)(S->weapon | rc << 2 | (S->weapon == W_CONFETTI ? ((t / 3) & 3) << 4 : 0)),
+                     W / 2 + ox, H - 8 + oy))
+            weapon_draw(W / 2 + ox, H - 8 + oy, S->weapon, t, S->recoil);
         for (i = 0; i < W_COUNT; i++) {
             int dx = W / 2 + (i - 1) * 12 + (i == 0 ? -26 : i == 2 ? 26 : 0);
             if (i == 1) continue;
             ui_fill_circle(dx, H - 8, 3, i == S->weapon ? PAL_UI_GOLD : PAL_GRAY);
         }
-        mg_text(6, cy + 7, wnames[S->weapon], S->wswitch ? PAL_UI_GOLD : PAL_WHITE);
-        mg_text(W - 6 - ui_text_width("L/R swap"), cy + 7, "L/R swap", PAL_RAMP(RAMP_WOOD, 7));
+        if (!stamped(GS_NAME | (uint32_t)(S->weapon | (S->wswitch ? 4 : 0)), W / 2, H / 2))
+            mg_text(6, cy + 7, wnames[S->weapon], S->wswitch ? PAL_UI_GOLD : PAL_WHITE);
     }
     /* shots in flight */
     for (i = 0; i < SHOTS; i++) {
@@ -457,7 +571,7 @@ const MgGame mg_game_gallery = {
     { MG_GALLERY_B, MG_GALLERY_S, MG_GALLERY_G }, 32, 45 * 30,
     { PAL_PAINT(PAINT_SKY, 1), PAL_WHITE, PAL_PAINT(PAINT_COBALT, 1) },
     gl_start, gl_update, gl_draw, gl_art, gl_bot,
-    NULL, NULL, NULL, NULL, NULL
+    gl_kept_key, gl_kept_keys, gl_kept_part, gl_stamp, gl_stamp_keys, gl_stamp_strip
 };
 
 MG_DEFINE_SCENE(SCENE_MG_GALLERY, "MG_GALLERY", mg_game_gallery);

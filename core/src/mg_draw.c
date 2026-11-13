@@ -438,9 +438,11 @@ static void hud_part(int part, int v, int x, int y);
  * imp:  size 0..7 | mood << 3 (2 bits) | gold << 5 | (flap + 2) << 6 | eyes << 9 (look + 1, 3: blink)
  * fuzz: size 0..3 | ouch << 3 | blink << 4       (without his sparkle)
  * Sizes are the ones the 240x160 games draw; another size is drawn, not stamped. */
-enum { MCS_IMP = 0 << 12, MCS_FUZZ = 1 << 12, MCS_HUD = 2 << 12, MCS_SPARK = 3 << 12, MCS_KIND = 3 << 12 };
+enum { MCS_IMP = 0 << 12, MCS_FUZZ = 1 << 12, MCS_HUD = 2 << 12, MCS_SPARK = 3 << 12, MCS_MASCOT = 4 << 12, MCS_KIND = 7 << 12 };
 /* hud:  HUDP_* | value (| MG_BK_HELL for the pill): hud_part's pieces
- * spark: size 1..3 | colour << 2 (spark_cols): ui_sparkle at a phase of that size */
+ * spark: size 1..3 | colour << 2 (spark_cols): ui_sparkle at a phase of that size
+ * mascot: Tix at radius 6: hop (-2..2) + 2 | ear twitch << 3 | eyes (look + 1) << 4 | blink << 6 */
+static void mascot_body(int cx, int cy, int r, int hop, int twitch, int look, int blink);
 static const uint8_t spark_cols[4] = { PAL_WHITE, PAL_RAMP(RAMP_LAVA, 5), PAL_PAINT(PAINT_LEMON, 2), PAL_UI_GOLD };
 
 static const struct { uint8_t rx, ry, moods, golds; } imp_sizes[] = {   /* moods / golds: bit masks of what is baked */
@@ -474,6 +476,8 @@ void mg_common_stamp(uint32_t key, int cx, int cy)
         hud_part((int)(key & HUDP_PART), (int)(key & 255), cx, cy);
     } else if ((key & MCS_KIND) == MCS_SPARK) {
         ui_sparkle(cx, cy, (int)(key & 3), spark_cols[key >> 2 & 3]);
+    } else if ((key & MCS_KIND) == MCS_MASCOT) {
+        mascot_body(cx, cy, 6, (int)(key & 7) - 2, (int)(key >> 3 & 1), (int)(key >> 4 & 3) - 1, (int)(key >> 6 & 1));
     }
 }
 
@@ -509,6 +513,11 @@ int mg_common_stamp_keys(uint32_t *out, int cap)
             if (n < cap) out[n] = (uint32_t)(MCS_SPARK | i | m << 2);
             n++;
         }
+    for (i = 0; i < 5; i++)                         /* Tix: hop, twitch, eyes, blink */
+        for (m = 0; m < 12; m++) {
+            if (n < cap) out[n] = (uint32_t)(MCS_MASCOT | i | (m & 1) << 3 | (m >> 1) % 3 << 4 | (m >= 6) << 6);
+            n++;
+        }
     if (n < cap) out[n] = (uint32_t)(MCS_HUD | HUDP_TIME | (mg_big() ? 70 : 50));
     return n + 1;
 }
@@ -528,7 +537,7 @@ void mg_imp(int cx, int cy, int rx, int ry, int t, int mood)
 #else
     imp_body(cx, cy, rx, ry, mood, gold, flap, look, blink, t);
 #endif
-    if (gold) ui_sparkle(cx + rx, cy - ry, (t / 2) & 15, PAL_WHITE);
+    if (gold) mg_sparkle(cx + rx, cy - ry, (t / 2) & 15, PAL_WHITE);
 }
 
 /* ui_sparkle, as a stamp where stamps are kept and the colour is one of spark_cols' */
@@ -635,14 +644,15 @@ void mg_fuzz(int cx, int cy, int r, int t, int ouch)
     ui_sparkle(cx + r + 2, cy - r, (t / 3) & 15, PAL_UI_GOLD);
 }
 
-void mg_mascot(int cx, int cy, int r, int t)
+/* Tix at one hop (-2..2), twitch, look (-1..1) and blink; mg_mascot picks them from t */
+static void mascot_body(int cx, int cy, int r, int hop, int twitch, int look, int blink)
 {
-    int hop = ui_wave(t, 30, 2), sq = hop < 0 ? 1 : 0, k;
+    int sq = hop < 0 ? 1 : 0, k;
     uint8_t p = PAL_PAINT(PAINT_BUBBLEGUM, 1), pd = PAL_PAINT(PAINT_ROSE, 0);
     cy += hop;
     /* bunny ears with a twitch */
     for (k = -1; k <= 1; k += 2) {
-        int tw = k > 0 && (t % 90) < 6 ? 2 : 0;
+        int tw = k > 0 && twitch ? 2 : 0;
         ui_fill_ellipse(cx + k * r / 2 + tw, cy - r - r / 2, r / 4 + 1, r / 2 + 1, pd);
         ui_fill_ellipse(cx + k * r / 2 + tw, cy - r - r / 2, r / 4, r / 2, p);
         ui_fill_ellipse(cx + k * r / 2 + tw, cy - r - r / 2 + 1, r / 8 + 1, r / 3, PAL_PAINT(PAINT_BUBBLEGUM, 2));
@@ -654,11 +664,22 @@ void mg_mascot(int cx, int cy, int r, int t)
     ui_fill_circle(cx - r - 1, cy + 2, 2, pd);
     ui_fill_circle(cx + r + 1, cy + 2, 2, pd);
     for (k = -r + 3; k < r - 2; k += 3) plat_rect(cx + k, cy + r / 2 + 3, 1, 1, pd);
-    eye(cx - r / 3, cy - 1, 2, ui_wave(t, 100, 1), (t % 75) < 3, PAL_RAMP(RAMP_STONE, 0));
-    eye(cx + r / 3, cy - 1, 2, ui_wave(t, 100, 1), (t % 75) < 3, PAL_RAMP(RAMP_STONE, 0));
+    eye(cx - r / 3, cy - 1, 2, look, blink, PAL_RAMP(RAMP_STONE, 0));
+    eye(cx + r / 3, cy - 1, 2, look, blink, PAL_RAMP(RAMP_STONE, 0));
     plat_rect(cx - 1, cy + 3, 3, 1, OUTLINE_DARK);
     plat_rect(cx - r / 2 - 2, cy + 2, 3, 1, PAL_PAINT(PAINT_CHERRY, 2));
     plat_rect(cx + r / 2, cy + 2, 3, 1, PAL_PAINT(PAINT_CHERRY, 2));
+}
+
+void mg_mascot(int cx, int cy, int r, int t)
+{
+    int hop = ui_wave(t, 30, 2), twitch = (t % 90) < 6, look = ui_wave(t, 100, 1), blink = (t % 75) < 3;
+#if !defined(DOOMO_PLATFORM_PS1)
+    if (r == 6 && !mg_big() && hop >= -2 && hop <= 2 && look >= -1 && look <= 1 &&
+        mg_stamp_common((uint32_t)(MCS_MASCOT | (hop + 2) | twitch << 3 | (look + 1) << 4 | blink << 6), cx, cy))
+        return;
+#endif
+    mascot_body(cx, cy, r, hop, twitch, look, blink);
 }
 
 /* ---- hosts --------------------------------------------------------------------- */

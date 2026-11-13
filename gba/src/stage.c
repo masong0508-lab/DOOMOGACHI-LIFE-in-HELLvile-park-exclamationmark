@@ -37,18 +37,24 @@ static int16_t page_dirt[2][4];                /* drawn over it after plat_stage
 static int16_t trk[4];
 static uint8_t frame_stage, tracking;
 
-/* the baked picture of (id, key), NULL if it is not in the ROM (binary search) */
+/* the baked picture of (id, key), NULL if it is not in the ROM (binary search). The blob's header is
+ * checked once (a game asks for a hundred stamps a frame); `bk_n` is the entry count, 0 until then, -1
+ * for a blob that is not this build's */
+static int16_t bk_n;
 static const BkEnt *find(int id, uint32_t key)
 {
     const uint8_t *b = gba_backdrops;
     const BkEnt *t = (const BkEnt *)(const void *)(b + 12);
     uint32_t want = (uint32_t)id << 24 | (key & 0xFFFFFFu);
     int lo = 0, hi;
-    if (b[0] != 'B' || b[1] != 'K' || b[2] != 'D' || b[3] != '2') return NULL;
-    if ((b[4] | b[5] << 8) != SCREEN_W || (b[6] | b[7] << 8) != SCREEN_H) return NULL;
-    hi = (int)*(const uint32_t *)(const void *)(b + 8) - 1;
+    if (bk_n <= 0) {
+        if (bk_n < 0 || b[0] != 'B' || b[1] != 'K' || b[2] != 'D' || b[3] != '2' ||
+            (b[4] | b[5] << 8) != SCREEN_W || (b[6] | b[7] << 8) != SCREEN_H) { bk_n = -1; return NULL; }
+        bk_n = (int16_t)*(const uint32_t *)(const void *)(b + 8);
+    }
+    hi = bk_n - 1;
     while (lo <= hi) {
-        int mid = (lo + hi) / 2;
+        int mid = (lo + hi) >> 1;
         uint32_t k = t[mid].idkey;
         if (k == want) return &t[mid];
         if (k < want) lo = mid + 1;

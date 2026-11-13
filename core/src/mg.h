@@ -107,6 +107,8 @@ typedef struct MgGame {
     /* (S2-4b) the game's stamps (mg.h "stamps"): the actor of a key drawn around (cx, cy); every key */
     void (*stamp)(uint32_t key, int cx, int cy);
     int (*stamp_keys)(uint32_t *out, int cap);
+    /* (S2-4b) 1 for a key whose stamp is a wide strip that reaches the screen's side edges (backdrop.h BACKDROP_STRIP) */
+    int (*stamp_strip)(uint32_t key);
 } MgGame;
 
 enum { MGP_TITLE, MGP_READY, MGP_PLAY, MGP_PAUSE, MGP_END, MGP_RESULTS };

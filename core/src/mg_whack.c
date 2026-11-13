@@ -559,7 +559,7 @@ const MgGame mg_game_whack = {
     { MG_WHACK_B, MG_WHACK_S, MG_WHACK_G }, 24, 45 * 30,
     { PAL_PAINT(PAINT_LEMON, 1), PAL_WHITE, PAL_PAINT(PAINT_TANGERINE, 1) },
     wh_start, wh_update, wh_draw, wh_art, wh_bot,
-    wh_kept_key, wh_kept_keys, wh_kept_part, NULL, NULL
+    wh_kept_key, wh_kept_keys, wh_kept_part, NULL, NULL, NULL
 };
 
 MG_DEFINE_SCENE(SCENE_MG_WHACK, "MG_WHACK", mg_game_whack);

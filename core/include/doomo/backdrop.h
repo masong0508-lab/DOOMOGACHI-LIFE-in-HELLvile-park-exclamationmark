@@ -28,7 +28,8 @@ enum { DOOMO_BACKDROP_EXO_CHURCH = 1,
  *   BACKDROP_STAMP  a small picture with holes: draw(key) paints an actor around the anchor
  *                   (out[0], out[1]) on a screen cleared to index 0 (which no drawing call writes); the
  *                   baker keeps the box of what was painted, and plat_stage_stamp() puts it anywhere */
-enum { BACKDROP_WHOLE, BACKDROP_ROWS, BACKDROP_STAMP };
+enum { BACKDROP_WHOLE, BACKDROP_ROWS, BACKDROP_STAMP,
+       BACKDROP_STRIP };      /* a stamp that may reach the left and right screen edges (a strip: the water) */
 
 typedef struct DoomoBackdrop {
     int id;                                    /* DOOMO_BACKDROP_*                     */
