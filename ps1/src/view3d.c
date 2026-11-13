@@ -378,7 +378,12 @@ static void visibility(int32_t ex, int32_t ey, int ang, int pitch_a, int32_t fx,
     }
 }
 
-/* ---- player model hook (model.c) --------------------------------------------- */
+/* ---- player model hook (model.c) ---------------------------------------------
+ * On the game disc model.c is in the combat overlay group (ovl_plan.py
+ * PLAT_GROUPS / GUARDED): the only third-person views are combat's, drawn
+ * by that group's code, so it is in the slot whenever they are. The call
+ * below still asks ovl_code_in() first; without the model the player is
+ * its billboard. */
 int model_player_draw(const DoomoView3D *v, const DoomoBillboard *bb, uint32_t light);
 
 static uint32_t sprite_light(const DoomoBillboard *b, int *visible)
@@ -551,7 +556,7 @@ void plat_view3d(const DoomoView3D *v)
             r3_shadow(b->x, b->y, b->z, (w * 3 >> 3) + 2);
         }
         if (i == v->player_sprite && v->camera == CAM_THIRD_PERSON &&
-            model_player_draw(v, b, col))
+            ovl_code_in(OVL_CODE_MODEL) && model_player_draw(v, b, col))
             continue;
         if (b->img) {
             int fl = (b->flags & BB_FULLBRIGHT) ? R3F_NOFOG : 0;

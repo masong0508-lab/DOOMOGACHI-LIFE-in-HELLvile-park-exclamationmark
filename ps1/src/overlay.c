@@ -272,6 +272,18 @@ void plat_code_part(int part)
 
 uint32_t overlay_loads(void) { return s_loads; }
 
+/* --- HOUSE CHARACTERS FLAT (ps1.h OVL_CODE_*; ovl_plan.py GUARDED): is the
+ * platform code that lives in a scene group in RAM now? Its resident
+ * caller asks before every call and does without it otherwise. --- */
+extern const unsigned char ps1_ovl_code_grp[];   /* ovl_table.c: 0 = not in a group */
+
+int ovl_code_in(int code)
+{
+    int g = ps1_ovl_code_grp[code];
+    return !g || g == s_cur;
+}
+/* --- end HOUSE CHARACTERS FLAT --- */
+
 /* --- SP3 / P-I1 (plat_ext.h plat_scene_scratch): the part of the slot after the group (and its part) that is in
  * is the running scene's to use: the island records its rect lists there (fp_island_gfx.c, ~19 KB of the ~73 KB the
  * island group leaves). Any load can overwrite it (a group's code, or a packed group's sectors read into the end of
@@ -341,5 +353,6 @@ void overlay_init(void) {}
 uint32_t overlay_loads(void) { return 0; }
 int ovl_borrow_take(uint32_t *seen) { (void)seen; return 0; }   /* H3: nothing borrows */
 void plat_code_part(int part) { (void)part; }                     /* H4: no parts */
+int ovl_code_in(int code) { (void)code; return 1; }               /* all code is resident */
 
 #endif

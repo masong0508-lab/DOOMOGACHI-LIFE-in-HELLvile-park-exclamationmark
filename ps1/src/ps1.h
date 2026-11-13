@@ -255,6 +255,12 @@ uint32_t overlay_loads(void);
  * the house and returns 1 (and updates *seen) when it was loaded since
  * the caller last looked, i.e. the tables must be rebuilt. */
 int      ovl_borrow_take(uint32_t *seen);
+/* (HOUSE CHARACTERS FLAT) Platform code that lives in a scene group (ovl_plan.py
+ * PLAT_GROUPS) is called from resident code only behind this guard: 1 = the
+ * code is in RAM now (its group is in the slot; on the engine-test disc all
+ * code is resident). The ids are the positions in ovl_plan.py GUARDED. */
+enum { OVL_CODE_MODEL };          /* model.c: the third-person chibi (combat group) */
+int      ovl_code_in(int code);
 
 /* ---- engine test / fallback assets (etest*.c) ------------------------------- */
 const uint8_t *etest_texture(int tex_id, uint16_t time);

@@ -323,6 +323,11 @@ jobs:
           echo "## PS1 game disc: 40 biggest .bss/.data symbols (bytes)" | tee -a "$GITHUB_STEP_SUMMARY"
           "$nm" -S --size-sort -t d "$f" | grep -E ' [bBdD] ' | tail -40 | tac | awk '{print $2, $4}' | tee -a "$GITHUB_STEP_SUMMARY" || true
 
+      # ovl_plan.py PLAT_GROUPS / GUARDED on a made-up game (the third-person model lives in the combat
+      # group; house code calling it fails the plan): docs/PS1.md "No 3D models in houses"
+      - name: Overlay planner tests (platform code in a group, guarded calls)
+        run: python3 ps1/tools/test_ovl_guard.py
+
       - name: Build the engine-test disc (preset ps1-enginetest)
         working-directory: ps1
         run: |

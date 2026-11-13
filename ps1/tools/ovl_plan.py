@@ -26,7 +26,10 @@ hand:
     (SCENE_*), because scene.c calls those through plat_scene_code(),
     which loads the scene's overlay first;
   * the rest of a group is reachable only through its scenes' entry
-    points; a section that two groups need is made resident.
+    points; a section that two groups need is made resident;
+  * a call listed in GUARDED (resident platform code calling a group's
+    function only after ovl_code_in() said the group is in the slot) is
+    not followed either: its target belongs to its own group.
 
 Outputs: a linker script fragment (OVERLAY statement with one output
 section per group, inserted before .ctors) and a C table mapping scene
@@ -234,6 +237,26 @@ MODAL_CALLBACKS = {
 }
 # --- end G0 ---
 
+# --- HOUSE CHARACTERS FLAT (owner 2026-11-12; docs/PS1.md "No 3D models in houses"): platform files
+# that belong to a group, and the guarded calls that reach them.
+# PLAT_GROUPS: ps1/src object base -> group. model.c is the player's third-person chibi. Since the
+# house draws everyone as a billboard, only plat_view3d (view3d.c, resident) calls it, and only for a
+# CAM_THIRD_PERSON view with a player sprite: the combat group's views (combat.c; levels_select.c's
+# preview has no player sprite). prims.c (4.0 KB, the chibi's boxes and blobs) is NOT listed: with
+# it the combat group would pass the slot's size and the slot grows in 2 KB steps. Add it here when
+# the combat group has 4.1 KB to spare under the slot (--report: "slot demand").
+# GUARDED: (caller object base, callee object base, callee function). The caller is resident code
+# that calls the function only when ovl_code_in(k) (src/overlay.c; k = the entry's position here,
+# ps1.h OVL_CODE_*) says the callee's group is in the slot, and does without it otherwise (view3d.c
+# falls back to the player's billboard). So the call does not make the callee resident, and a wrong
+# guess about who calls plat_view3d can cost a picture, never a jump into another group's code. The
+# planner fails the build when the callee would be resident after all: its address escapes, or
+# something else reaches it (resident code, or another group's: house code calling the model, say).
+# The owner's rule and 4 KB of RAM would otherwise go quietly. ---
+PLAT_GROUPS = {"model": "combat"}
+GUARDED = (("view3d", "model", "model_player_draw"),)
+# --- end HOUSE CHARACTERS FLAT ---
+
 # --- S4: registries read only by their own group (object base -> symbol).
 # doomo_story_mg_a / _b point at the S4 / S5 story minigames; their only
 # reader is story_mg.c's story_mg_find (the storymg scene, group loaded).
@@ -275,6 +298,8 @@ def group_of(path):
     if "/core/" not in path and "/src/" in path and base(path) in ("room", "room_test"):
         return "home"
     # --- end H3 ---
+    if "/core/" not in path and "/src/" in path and base(path) in PLAT_GROUPS:
+        return PLAT_GROUPS[base(path)]      # HOUSE CHARACTERS FLAT
     if "/core/src/" not in path:
         return None                     # platform, generated data, SDK
     b = base(path)
@@ -457,6 +482,23 @@ def main(argv):
     entry = {(gdef["main"][0], gdef["main"][1])}
     entry |= {n for n in alloc if n[1].startswith((".ctors", ".dtors"))}
     live = closure_all(entry)
+    # --- HOUSE CHARACTERS FLAT: the guarded calls (GUARDED). The edge is taken out of the graph (the
+    # link still keeps the callee: `live` is already known) and the callee is claimed for its group
+    # below, like a scene's entry point: from a node that stands for the guarded call. ---
+    guards = []                           # per GUARDED entry: its callee's section, or None
+    guard_src = []                        # the nodes that stand for the live guarded calls
+    for caller, callee, fn in GUARDED:
+        tgt = next(((oi, ".text." + fn) for oi, o in enumerate(objs)
+                    if base(o.path) == callee and group_of(o.path) and (oi, ".text." + fn) in alloc), None)
+        guards.append(tgt if tgt in live else None)
+        if tgt not in live:
+            continue
+        for n in live:
+            if base(objs[n[0]].path) == caller and group_of(objs[n[0]].path) is None and n in edges:
+                edges[n] = [e for e in edges[n] if e[0] != tgt]
+        guard_src.append((tgt[0], ".text..guard." + fn))
+        edges[guard_src[-1]] = [(tgt, "R_MIPS_26")]
+    # --- end HOUSE CHARACTERS FLAT ---
     roots = {n for n in live if grp(n) is None} | (set() if os.environ.get("OVL_NOESC") else (escaped & live))
     # --- S4: group-local registries (LOCAL_REGISTRIES). The pointer itself
     # is small data (.sdata under -G8) and stays resident, but when only its
@@ -491,7 +533,7 @@ def main(argv):
     while True:
         owner = {}
         clash = set()
-        for s in scene_live:
+        for s in scene_live + guard_src:
             g = grp(s)
             for t, _ in edges.get(s, ()):
                 if t in resident or not is_code(t):
@@ -535,6 +577,21 @@ def main(argv):
                 chain.append("%s:%s%s" % (base(objs[m[0]].path), m[1], "*" if m in escaped else ""))
                 m = par.get(m)
             print("why %6d %s" % (node_size(n), " <- ".join(chain)))
+    # --- HOUSE CHARACTERS FLAT: a guarded callee must have ended up in its group ---
+    bad = 0
+    for (caller, callee, fn), t in zip(GUARDED, guards):
+        if t is None or t in owner:
+            continue
+        users = sorted({"%s:%s" % (base(objs[n[0]].path), n[1]) for n in live
+                        if n not in guard_src and any(x == t for x, _ in edges.get(n, ()))})
+        print("ovl_plan: ERROR: %s:%s must be in the %s group (PLAT_GROUPS) but would be resident: %s. "
+              "Only %s may call it, behind ovl_code_in()" % (
+                  callee, fn, group_of(objs[t[0]].path),
+                  "its address is taken" if t in escaped else "called by " + ", ".join(users), caller))
+        bad = 1
+    if bad:
+        return 1
+    # --- end HOUSE CHARACTERS FLAT ---
     groups = collections.defaultdict(list)
     for r, g in owner.items():
         groups[g].append(r)
@@ -856,6 +913,9 @@ def main(argv):
                  "".join(', "%s.%s"' % (g, PARTS[g][k - 1][0]) for (g, k) in sorted(pid, key=pid.get)))
         C.append("};")
         # --- end H4 ---
+        # HOUSE CHARACTERS FLAT: GUARDED entry -> the group its callee is in (0 = not linked, or no entry)
+        C.append("const unsigned char ps1_ovl_code_grp[] = { %s };   /* ps1.h OVL_CODE_* -> group, 0 = none */" %
+                 (", ".join(str(gid[in_ovl[t]] if t in in_ovl else 0) for t in guards) or "0"))
         with open(a.out_c, "w") as f:
             f.write("\n".join(C) + "\n")
 
@@ -912,6 +972,12 @@ def main(argv):
                 print("ovl_plan: %s keeps %d B of scene scratch after its %d B (needs %d B of the slot)" % (
                     g, SCRATCH[g], sz, sz + SCRATCH[g]))
         # --- end SP3 ---
+        # HOUSE CHARACTERS FLAT: what the guarded calls (GUARDED) took out of resident RAM
+        for (caller, callee, fn), t in zip(GUARDED, guards):
+            if t in in_ovl:
+                own = [n for n in groups[in_ovl[t]] if base(objs[n[0]].path) in PLAT_GROUPS]
+                print("ovl_plan: guarded call %s -> %s:%s: in %s (platform code in that group: %d B)" % (
+                    caller, callee, fn, in_ovl[t], sum(node_size(n) for n in own)))
         if os.environ.get("OVL_WHY"):
             c = collections.Counter()
             for n in resident:
