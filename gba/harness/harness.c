@@ -1097,9 +1097,14 @@ static int run_script(const char *path)
         } else if (!strcmp(argv[0], "expect-gap") && argc >= 2) {
             /* Refresh: expect-gap MS fails when a frame of the last "fps" window took over MS ms */
             if (gap_last_ms > atof(argv[1])) {
-                fprintf(stderr, "harness: %s:%d a frame took %.1f ms, expected <= %s\n",
-                        path, lineno, gap_last_ms, argv[1]);
-                failed = 1;
+                if (no_fps_gates)   /* --no-fps-gates: report, go on (the report-only speed2 runs) */
+                    fprintf(stderr, "harness: %s:%d a frame took %.1f ms, over %s (gates off)\n",
+                            path, lineno, gap_last_ms, argv[1]);
+                else {
+                    fprintf(stderr, "harness: %s:%d a frame took %.1f ms, expected <= %s\n",
+                            path, lineno, gap_last_ms, argv[1]);
+                    failed = 1;
+                }
             }
         } else if (!strcmp(argv[0], "latency") && argc >= 2) {
             /* --- M0: press-to-picture latency (see latency()) --- */

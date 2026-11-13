@@ -2147,28 +2147,36 @@ static void draw_box_item(const RG *g, const RItem *it, int cx0, int cy0, int cx
 #undef CLIPFILL
 }
 
+/* (S2-11) room_ref's cursor diamond through the GBA plat_line's stepping, as the 96 pixels that stepping puts
+ * down (dx, dy from the cursor's point, 0: the diamond's colour, 1: the shadow's; a pixel two segments reach
+ * keeps the colour the later one gave it, which is the colour the old Bresenham walk left). It was that walk,
+ * six lines of put_px calls in THUMB from ROM, on every dirty rect the cursor touched: 1 ms of a tick of the busy
+ * Live layout when the blink changes (every 8 ticks), now about a tenth of it. Pixels outside the clip are skipped. */
+static const int8_t cur_pt[96][3] = {
+    {-1,0,0}, {0,0,0}, {-3,1,0}, {-2,1,0}, {1,1,0}, {2,1,0}, {-5,2,0}, {-4,2,0}, {3,2,0}, {4,2,0}, {-7,3,0},
+    {-6,3,0}, {5,3,0}, {6,3,0}, {-9,4,0}, {-8,4,0}, {7,4,0}, {8,4,0}, {-11,5,0}, {-10,5,0}, {9,5,0}, {10,5,0},
+    {-13,6,0}, {-12,6,0}, {11,6,0}, {12,6,0}, {-15,7,0}, {-14,7,0}, {13,7,0}, {14,7,0}, {-16,8,0}, {-15,8,0},
+    {15,8,0}, {16,8,0}, {-15,9,1}, {-14,9,0}, {-13,9,0}, {14,9,0}, {15,9,0}, {16,9,1}, {-14,10,1}, {-13,10,1},
+    {-12,10,0}, {-11,10,0}, {12,10,0}, {13,10,0}, {14,10,1}, {15,10,1}, {-12,11,1}, {-11,11,1}, {-10,11,0},
+    {-9,11,0}, {10,11,0}, {11,11,0}, {12,11,1}, {13,11,1}, {-10,12,1}, {-9,12,1}, {-8,12,0}, {-7,12,0}, {8,12,0},
+    {9,12,0}, {10,12,1}, {11,12,1}, {-8,13,1}, {-7,13,1}, {-6,13,0}, {-5,13,0}, {6,13,0}, {7,13,0}, {8,13,1},
+    {9,13,1}, {-6,14,1}, {-5,14,1}, {-4,14,0}, {-3,14,0}, {4,14,0}, {5,14,0}, {6,14,1}, {7,14,1}, {-4,15,1},
+    {-3,15,1}, {-2,15,0}, {-1,15,0}, {2,15,0}, {3,15,0}, {4,15,1}, {5,15,1}, {-2,16,1}, {-1,16,1}, {0,16,0},
+    {1,16,0}, {2,16,1}, {3,16,1}, {0,17,1}, {1,17,1},
+};
+ROOM_ARM static void cursor_px(int bx, int by, uint8_t c, uint8_t c2, int cx0, int cy0, int cx1, int cy1)
+{
+    const int8_t (*t)[3] = cur_pt;
+    int i;
+    for (i = 0; i < 96; i++, t++) {
+        int x = bx + t[0][0], y = by + t[0][1];
+        if (x >= cx0 && x < cx1 && y >= cy0 && y < cy1) arm_px(x, y, t[0][2] ? c2 : c);
+    }
+}
+
 static void draw_cursor_item(const RItem *it, int cx0, int cy0, int cx1, int cy1)
 {
-    /* room_ref's diamond through the GBA plat_line's stepping, clipped */
-    static const int8_t seg4[6][4] = {
-        { 0, 0, 16, 8 }, { 16, 8, 0, 16 }, { 0, 16, -16, 8 }, { -16, 8, 0, 0 },
-        { 0, 17, -15, 9 }, { 1, 17, 16, 9 } };
-    int i, bx = it->px, by = it->py;
-    uint8_t c = it->flip ? PAL_WHITE : PAL_UI_GOLD;
-    for (i = 0; i < 6; i++) {
-        int x0 = bx + seg4[i][0], y0 = by + seg4[i][1], x1 = bx + seg4[i][2], y1 = by + seg4[i][3];
-        int dx = x1 > x0 ? x1 - x0 : x0 - x1, dy = y1 > y0 ? y0 - y1 : y1 - y0;
-        int sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1, err = dx + dy, n = 256;
-        uint8_t col = i < 4 ? c : PAL_UI_PINK_D;
-        while (n-- > 0) {
-            int e2;
-            if (x0 >= cx0 && x0 < cx1 && y0 >= cy0 && y0 < cy1) put_px(x0, y0, col);
-            if (x0 == x1 && y0 == y1) break;
-            e2 = 2 * err;
-            if (e2 >= dy) { err += dy; x0 += sx; }
-            if (e2 <= dx) { err += dx; y0 += sy; }
-        }
-    }
+    cursor_px(it->px, it->py, it->flip ? PAL_WHITE : PAL_UI_GOLD, PAL_UI_PINK_D, cx0, cy0, cx1, cy1);
 }
 
 HOT static void draw_item(const RG *g, const RItem *it, int cx0, int cy0, int cx1, int cy1)
@@ -2230,11 +2238,15 @@ HOT static void draw_region(const RG *g, int x0, int y0, int x1, int y1)
 /* ---- block checksums ----------------------------------------------------------- */
 /* A 16 px x rows block of the back page: four words a row (ldmia), mixed
  * by add / xor / rotate - every word changes the result. */
-#define BLOCK_ROW(s, p) do { uint32_t a_, b_, c_, d_; \
+/* (S2-11) The four words sit in r0-r3 by name: ldmia fills its list in register order whatever order it is
+ * written in, so with free registers two inlined copies of this macro could mix the words in different orders
+ * (a sum stored by one loop would never equal the same block's sum from another). */
+#define BLOCK_ROW(s, p) do { register uint32_t a_ __asm__("r0"), b_ __asm__("r1"), c_ __asm__("r2"), d_ __asm__("r3"); \
         __asm__ volatile("ldmia %4!, {%0, %1, %2, %3}" \
-                         : "=l"(a_), "=l"(b_), "=l"(c_), "=l"(d_), "+l"(p) : : "memory"); \
+                         : "=r"(a_), "=r"(b_), "=r"(c_), "=r"(d_), "+r"(p) : : "memory"); \
         s = (((s + a_) ^ b_) + c_) ^ d_; s = (s << 5) | (s >> 27); p += LINE / 2 - 4; } while (0)
-ROOM_ARM static uint32_t block_sum(int bx, int y, int rows)
+/* the checksum of one block (inlined into the room group's loops below) */
+static ALWAYS_INLINE uint32_t block_sum_at(int bx, int y, int rows)
 {
     const uint32_t *p = (const uint32_t *)(gba_back + y * LINE + bx * 8);
     uint32_t s = 0x9E3779B9u;
@@ -2247,6 +2259,32 @@ ROOM_ARM static uint32_t block_sum(int bx, int y, int rows)
     return s;
 }
 
+/* (S2-11) one block row's checksums against the page's (sum[bx]): a mask of the blocks that differ (bit bx).
+ * ARM in the room group: this was a THUMB loop in ROM calling block_sum for each of the 255 blocks of a frame,
+ * and the loop's calls, compares and branches at ROM waits cost about as much as the sums themselves
+ * (the busy Live layout: 59,600 cycles a tick, 3.5 ms) */
+ROOM_ARM static uint32_t scan_row(int bx0, int bx1, int y, int rows, const uint32_t *sum)
+{
+    uint32_t mask = 0;
+    int bx;
+    if (rows == 8) {
+        for (bx = bx0; bx < bx1; bx++)
+            if (block_sum_at(bx, y, 8) != sum[bx]) mask |= 1u << bx;
+    } else {
+        for (bx = bx0; bx < bx1; bx++)
+            if (block_sum_at(bx, y, rows) != sum[bx]) mask |= 1u << bx;
+    }
+    return mask;
+}
+
+/* (S2-11) one block row's checksums stored into the page's (sum[bx]): the blocks marked in dirty[bx], or all */
+ROOM_ARM static void store_row(int bx0, int bx1, int y, int rows, const uint8_t *dirty, uint32_t *sum, int all)
+{
+    int bx;
+    for (bx = bx0; bx < bx1; bx++)
+        if (all || dirty[bx]) sum[bx] = block_sum_at(bx, y, rows);
+}
+
 static int block_rows(const RG *g, int by)
 {
     return DOOMO_MIN(8, g->my1 - (g->my0 + by * 8));
@@ -2254,12 +2292,9 @@ static int block_rows(const RG *g, int by)
 
 static void sums_store(const RG *g, RPage *pg, int all)
 {
-    int bx, by;
+    int by;
     for (by = 0; by < g->nby; by++)
-        for (bx = g->bx0; bx < g->bx1; bx++) {
-            int b = by * RB_BX + bx;
-            if (all || B->dirty[b]) pg->sum[b] = block_sum(bx, g->my0 + by * 8, block_rows(g, by));
-        }
+        store_row(g->bx0, g->bx1, g->my0 + by * 8, block_rows(g, by), B->dirty + by * RB_BX, pg->sum + by * RB_BX, all);
 }
 
 static void mark(const RG *g, int x0, int y0, int x1, int y1)
@@ -2366,9 +2401,10 @@ __attribute__((noinline)) static void incremental(const RG *g, RPage *pg)
      *    each changed block row run becomes a rect */
     for (by = 0; by < g->nby; by++) {
         int y = g->my0 + by * 8, rows = block_rows(g, by), run = -1;
+        uint32_t ch = scan_row(g->bx0, g->bx1, y, rows, pg->sum + by * RB_BX);
+        if (!ch) continue;                  /* (S2-11) no run is open at the end of a row */
         for (bx = g->bx0; bx <= g->bx1; bx++) {
-            int changed = bx < g->bx1 && block_sum(bx, y, rows) != pg->sum[by * RB_BX + bx] &&
-                          !(op_n && block_opaque(bx, y, rows));
+            int changed = bx < g->bx1 && ((ch >> bx) & 1) && !(op_n && block_opaque(bx, y, rows));
             if (changed && run < 0) run = bx;
             if (!changed && run >= 0) { add_rect(g, run * 16, y, bx * 16, y + rows); run = -1; }
         }
@@ -2463,13 +2499,12 @@ __attribute__((noinline)) static void incremental(const RG *g, RPage *pg)
  * in four ticks whatever else the scene does); 1 = every row drawn */
 static int build_bands(const RG *g, RPage *pg, uint32_t stop)
 {
-    int did = 0, bx;
+    int did = 0;
     for (; B->brow < g->nby; B->brow++, did++) {
         const int by = B->brow;
         if (did >= 5 && gba_work_now() >= stop) return 0;
         draw_region(g, 0, by ? g->my0 + 8 * by : g->dy0, SCREEN_W, by + 1 < g->nby ? g->my0 + 8 * (by + 1) : g->dy1);
-        for (bx = g->bx0; bx < g->bx1; bx++)
-            pg->sum[by * RB_BX + bx] = block_sum(bx, g->my0 + by * 8, block_rows(g, by));
+        store_row(g->bx0, g->bx1, g->my0 + by * 8, block_rows(g, by), B->dirty + by * RB_BX, pg->sum + by * RB_BX, 1);
     }
     save_records(g, pg);
     return 1;
