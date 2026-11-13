@@ -1537,9 +1537,29 @@ static void update_menu(void)
 /* CR3: a part row with nothing to pick yet (a gene list with no live part this build can draw: fur
  * pattern, outer layer and legwear until their art lands) is not shown, and neither is the colour row
  * that only it uses */
+/* CR-BODY: a slider that changes nothing on this look is not offered: the horn size without horns (the
+ * turkey's top hat reads it as its crown height), and the turkey's six face sliders: its head is its own
+ * drawing (portrait_turkey.c), which has no head size, eye gap, eye height, tilt, brow height or mouth size to move.
+ * core/tests/test_cr_body.c checks every other slider moves the picture on every species. */
+int cr_slider_dead(const CrRow *row, const DoomoResident *r)
+{
+    int turkey = RES_SPECIES(r) == SPECIES_TURKEY;
+    if (!row || row->kind != RK_SLIDER) return 0;
+    switch (row->field) {
+    case GF_HORN_SIZE:
+        return RES_LOOK(r, GF_HORNS) == 0 && !(turkey && RES_LOOK(r, GF_HAT) == HAT_TOP_HAT);
+    case GF_HEAD_SIZE: case GF_EYE_SPACING: case GF_EYE_HEIGHT: case GF_EYE_TILT: case GF_BROW_HEIGHT:
+    case GF_MOUTH_SIZE:
+        return turkey;
+    default:
+        return 0;
+    }
+}
+
 static int row_empty(const CrRow *row)
 {
     int gf;
+    if (row->kind == RK_SLIDER) return cr_slider_dead(row, &cr.draft);
 #if !DOOMO_GENE_EXT
     if (row->kind == RK_ENUM && (row->field == GF_HOOD_UP || row->field == GF_HANDEDNESS)) return 1;   /* look_fields.h */
 #endif
@@ -1910,10 +1930,17 @@ static void press_a(const CrRow *row)
         if (cr.browse >= 0) set_action_index(row->aux, cr.browse);
         run_action(row);
         break;
-    case RK_SLIDER:
+    case RK_SLIDER: {
+        /* CR-BODY: A puts the slider back to its default (its own undo step) */
+        const CrSlider *sl = cr_slider_of(row);
+        if (sl && cr_row_value(&cr.draft, row) != sl->def) {
+            cr.browse = -1;
+            cr_row_set(&cr.draft, row, sl->def);
+            commit(-1);
+        }
         if (!CR_SLICE) cr.hop = 6;
         audio_sfx(SFX_BLIP);
-        break;
+        break; }
     default:
         break;
     }

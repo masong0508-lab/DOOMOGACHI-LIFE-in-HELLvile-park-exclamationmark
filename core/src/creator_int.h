@@ -57,6 +57,13 @@ typedef struct CrRow {
     const char *label;
     const char *const *names;
 } CrRow;
+/* CR-BODY: every slider's range in one table (creator_data.c CR_SLIDERS). A slider row's `count` and
+ * ends come from it; `def` is what the per-slider reset (A) puts back. */
+typedef struct CrSlider { uint8_t field, count, def; } CrSlider;
+extern const CrSlider cr_sliders[];
+extern const int cr_slider_count;
+const CrSlider *cr_slider_of(const CrRow *row);     /* NULL for a row that is not a slider */
+int  cr_slider_dead(const CrRow *row, const DoomoResident *r);   /* 1: this slider changes nothing for this look */
 /* The Age row (LS0): an RK_ENUM on the life-stage bits of `romance`. */
 #define CR_IS_AGE_ROW(row) ((row)->kind == RK_ENUM && (row)->aux == LIFE_STAGE_MASK)
 

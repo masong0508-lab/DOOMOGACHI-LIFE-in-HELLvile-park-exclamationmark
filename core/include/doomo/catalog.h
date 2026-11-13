@@ -30,6 +30,10 @@ enum {
 enum { BODY_AVERAGE, BODY_ROUND, BODY_LANKY, BODY_STOCKY, BODY_TINY,
        BODY_HUNCHED, BODY_BUFF, BODY_NOODLE, BODY_PEAR, BODY_TOP_HEAVY,
        BODY_COUNT };
+/* CR-BODY: the six body types after the classic ten (gene body, 4 bits: ids append-only). BODY_COUNT stays
+ * the classic count (generators, premades); the live count is the catalog's (part_live_count(GF_BODY)). */
+enum { BODY_ATHLETIC = BODY_COUNT, BODY_GANGLY, BODY_BEAN, BODY_BRICK, BODY_WILLOWY, BODY_BOBBLE,
+       BODY_TYPES };
 
 enum { HEAD_ROUND, HEAD_OVAL, HEAD_SQUARE, HEAD_HEART, HEAD_TRIANGLE,
        HEAD_PEAR, HEAD_BEAN, HEAD_SKULL, HEAD_STAR, HEAD_BLOB, HEAD_DIAMOND,

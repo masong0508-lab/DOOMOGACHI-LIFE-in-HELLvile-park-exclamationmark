@@ -12,3 +12,12 @@ slot body list=body name="Body type" method=P target=6 new=P
 7   "Noodle"               set=monster tags=silly
 8   "Pear"                 set=basics tags=plain
 9   "Top-Heavy"            set=basics tags=plain
+
+# CR-BODY: six more body types (portrait_body.c body_mod rows 10..15: proportions only, painted by the same
+# code, so every one is "method P"; docs/CREATOR.md "CR-BODY"). All ages: a plain physique, never a shape.
+10  "Athletic"             set=basics tags=plain,sporty
+11  "Gangly"               set=basics tags=silly
+12  "Bean"                 set=basics tags=cute,silly
+13  "Brick"                set=basics tags=plain,sporty
+14  "Willowy"              set=basics tags=plain,fancy
+15  "Bobble"               set=basics tags=cute,silly

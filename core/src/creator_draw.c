@@ -255,7 +255,7 @@ static void toggle_switch(int x, int y, int on, int sel)
     ui_fill_circle(on ? x + 11 : x + 4, y + 4 - b, 2, PAL_WHITE);
 }
 
-static void mini_slider(int x, int y, int w, int v, int max, int sel)
+static void mini_slider(int x, int y, int w, int v, int max, int sel, int def)
 {
     const UiStyle *st = ui_style(list_style());
     int kx;
@@ -263,6 +263,7 @@ static void mini_slider(int x, int y, int w, int v, int max, int sel)
     ui_round_rect(x, y + 2, w, 5, 2, st->outline);
     ui_round_rect(x + 1, y + 3, w - 2, 3, 1, st->fill_lo);
     kx = x + 2 + (w - 4) * v / max;
+    if (def != v) plat_rect(x + 2 + (w - 4) * def / max, y + 3, 1, 3, sel ? st->title_bg : st->outline);   /* CR-BODY: the default */
     if (kx > x + 2) plat_rect(x + 1, y + 3, kx - x - 1, 3, sel ? st->accent : st->title_bg);
     plat_rect(x + 2, y + 3, DOOMO_MAX(kx - x - 3, 0), 1, PAL_WHITE);
     if (sel) {
@@ -942,8 +943,11 @@ static void draw_value(const CrRow *row, int vx_right, int y, int maxw, int sel)
     switch (row->kind) {
     case RK_SLIDER: {
         int sw = DOOMO_CLAMP(maxw - 12, 18, crl.big ? 64 : 40);
-        doomo_snprintf(buf, sizeof(buf), "%2d", idx);
-        mini_slider(vx_right - sw - 14, y, sw, idx, n - 1, sel);
+        /* CR-BODY: the value is the distance from the default ("+3", "-2", "0"); the bar has a notch at the default */
+        const CrSlider *sl = cr_slider_of(row);
+        int def = sl ? sl->def : 0;
+        doomo_snprintf(buf, sizeof(buf), "%s%d", idx > def ? "+" : "", idx - def);
+        mini_slider(vx_right - sw - 14, y, sw, idx, n - 1, sel, def);
         ui_text(vx_right - 12, y, buf, vc);
         return; }
     case RK_FLAG:

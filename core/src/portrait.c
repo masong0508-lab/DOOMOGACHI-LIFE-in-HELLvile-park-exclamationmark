@@ -45,7 +45,7 @@ static void sanitize(DoomoLook *l)
 #else
 #define FIXM(f, n, gf) FIXE(f, n)
 #endif
-    FIXE(species, SPECIES_COUNT); FIXE(body, BODY_COUNT); FIXP(head_shape, HEAD_COUNT, GF_HEAD_SHAPE);
+    FIXE(species, SPECIES_COUNT); FIXE(body, BODY_TYPES); FIXP(head_shape, HEAD_COUNT, GF_HEAD_SHAPE);
     FIXP(eye_style, EYE_COUNT, GF_EYE_STYLE); FIXP(brow_style, BROW_COUNT, GF_BROW_STYLE);
     FIXP(nose_style, NOSE_COUNT, GF_NOSE_STYLE); FIXP(mouth_style, MOUTH_COUNT, GF_MOUTH_STYLE);
     FIXP(hair_style, HAIR_COUNT, GF_HAIR_STYLE); FIXP(facial_hair, FHAIR_COUNT, GF_FACIAL_HAIR);
@@ -58,6 +58,7 @@ static void sanitize(DoomoLook *l)
     FIXS(eye_spacing, 15); FIXS(eye_height, 15); FIXS(eye_tilt, 15);
     FIXS(brow_height, 15); FIXS(nose_size, 15); FIXS(mouth_size, 15);
     FIXS(fangs, 3); FIXS(horn_size, 15);
+    l->head_size = (uint8_t)DOOMO_CLAMP(l->head_size + pb_head_adj(l->body), 0, 15);   /* CR-BODY: the body's step, once */
     if (l->eye_count < 1) l->eye_count = 1;
     if (l->eye_count > 3) l->eye_count = 3;
     if (l->skin >= 8 + PAL_PAINT_COUNT) l->skin = SKIN_FAIR;

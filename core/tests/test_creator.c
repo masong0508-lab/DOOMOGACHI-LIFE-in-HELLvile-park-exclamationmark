@@ -1034,6 +1034,10 @@ TEST(creator_rows_with_nothing_to_pick_are_not_shown)
             else if (row->kind == RK_PAINT_NONE && row->field == GF_FUR_COLOR3) gf = GF_FUR_PATTERN;
             else if (row->kind == RK_PAINT && (row->aux & CR_AUX_SHARED))
                 gf = (row->aux & CR_AUX_LEGS) ? GF_LEGWEAR : GF_OUTER;
+            if (row->kind == RK_SLIDER && cr_slider_dead(row, &cr.draft)) {       /* CR-BODY: horn size with no horns */
+                CHECK_MSG(!cr_row_shown(t, i), "tab %d row %d (%s) changes nothing", t, i, row->label);
+                continue;
+            }
             if (gf >= 0 && part_live_drawable(gf) <= 1) {
                 CHECK_MSG(!cr_row_shown(t, i), "tab %d row %d (%s) has nothing to pick", t, i, row->label);
                 n_hidden++;

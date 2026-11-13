@@ -101,33 +101,68 @@
 #define ENUM_R(lbl, m, n, nm)       { RK_ENUM, OFS(m), n, 0, CR_NOLIST, 0, lbl, nm }
 /* an enum on the bits `mask` of a shared byte (romance: preference + age) */
 #define ENUM_RM(lbl, m, n, nm, mask) { RK_ENUM, OFS(m), n, 0, CR_NOLIST, mask, lbl, nm }
-#define SLIDE_L(lbl, m, n, nm)      { RK_SLIDER, LK(m), n, 0, CR_NOLIST, 0, lbl, nm }
-#define SLIDE_R(lbl, m, n, nm)      { RK_SLIDER, OFS(m), n, 0, CR_NOLIST, 0, lbl, nm }
+/* CR-BODY: a slider row takes its range and ends from the one table below (CR_SLIDERS) */
+#define SLIDE_L(lbl, m)             { RK_SLIDER, LK(m), SLN_##m, 0, CR_NOLIST, 0, lbl, sln_##m }
+#define SLIDE_R(lbl, m)             { RK_SLIDER, OFS(m), SLN_##m, 0, CR_NOLIST, 0, lbl, sln_##m }
 #define PAINT_L(lbl, m)             { RK_PAINT, LK(m), PAL_PAINT_COUNT, 0, CR_NOLIST, 0, lbl, NULL }
 #define PAINT_R(lbl, m)             { RK_PAINT, OFS(m), PAL_PAINT_COUNT, 0, CR_NOLIST, 0, lbl, NULL }
 #define CHEEK(lbl, bit)             { RK_FLAG, LK(cheeks), 2, 0, CR_NOLIST, bit, lbl, NULL }
 #define ACTION(lbl, a)              { RK_ACTION, CR_NOFIELD, 0, 0, CR_NOLIST, a, lbl, NULL }
 
-static const char *const n_size[2]      = { "Small", "Big" };
-static const char *const n_height[2]    = { "Short", "Tall" };
-static const char *const n_build[2]     = { "Skinny", "Chonky" };
-static const char *const n_eye_size[2]  = { "Tiny", "Huge" };
-static const char *const n_spacing[2]   = { "Close", "Wide" };
-static const char *const n_lowhigh[2]   = { "Low", "High" };
-static const char *const n_tilt[2]      = { "Droopy", "Sharp" };
-static const char *const n_horn[2]      = { "Nubbly", "Mighty" };
+/* CR-BODY: EVERY slider's range in one table (X-macro: row kind, gene field, label of the ends, steps,
+ * default). The rows below, the per-slider reset (A), the signed value shown on the bar and the slider
+ * test (core/tests/test_cr_body.c) all read it; the cheat "Slider range x1..x4" (CR-SLIDERX) scales a
+ * slider around its default: lo = def - (def * m), hi = def + ((count - 1 - def) * m), then clamps
+ * to the gene field. The look sliders are 0..15 (4 bits), voice 0..31 (5 bits). */
+#define CR_SLIDERS(X) \
+    X(LK, height,       "Short",   "Tall",       16, 7)  \
+    X(LK, build,        "Skinny",  "Chonky",     16, 8)  \
+    X(LK, head_size,    "Small",   "Big",        16, 11) \
+    X(LK, eye_size,     "Tiny",    "Huge",       16, 10) \
+    X(LK, eye_spacing,  "Close",   "Wide",       16, 7)  \
+    X(LK, eye_height,   "Low",     "High",       16, 8)  \
+    X(LK, eye_tilt,     "Droopy",  "Sharp",      16, 8)  \
+    X(LK, brow_height,  "Low",     "High",       16, 7)  \
+    X(LK, nose_size,    "Small",   "Big",        16, 6)  \
+    X(LK, mouth_size,   "Small",   "Big",        16, 6)  \
+    X(LK, horn_size,    "Nubbly",  "Mighty",     16, 7)  \
+    X(OFS, VOICE_PITCH,        "Deep",      "Squeaky",   32, 16) \
+    X(OFS, VOICE_SPEED,        "Slow",      "Fast",      32, 16) \
+    X(OFS, VOICE_QUALITY,      "Thin",      "Round",     32, 16) \
+    X(OFS, VOICE_INTONATION,   "Flat",      "Sing-song", 32, 16) \
+    X(OFS, VOICE_ACCENT,       "Plain",     "Fancy",     32, 16) \
+    X(OFS, PERS_MOVEMENT,      "Slow",      "Quick",     16, 8)  \
+    X(OFS, PERS_SPEECH,        "Polite",    "Blunt",     16, 8)  \
+    X(OFS, PERS_EXPRESSION,    "Flat",      "Expressive",16, 8)  \
+    X(OFS, PERS_ATTITUDE,      "Serious",   "Easygoing", 16, 8)  \
+    X(OFS, PERS_QUIRK,         "Normal",    "Unhinged",  16, 4)
+enum {
+#define X(F, m, lo, hi, n, d) SLN_##m = n, SLD_##m = d,
+CR_SLIDERS(X)
+#undef X
+    SLN_END
+};
+#define X(F, m, lo, hi, n, d) static const char *const sln_##m[2] = { lo, hi };
+CR_SLIDERS(X)
+#undef X
+const CrSlider cr_sliders[] = {
+#define X(F, m, lo, hi, n, d) { F(m), SLN_##m, SLD_##m },
+CR_SLIDERS(X)
+#undef X
+};
+const int cr_slider_count = (int)DOOMO_COUNTOF(cr_sliders);
+
+const CrSlider *cr_slider_of(const CrRow *row)
+{
+    int i;
+    if (!row || row->kind != RK_SLIDER) return NULL;
+    for (i = 0; i < cr_slider_count; i++)
+        if (cr_sliders[i].field == row->field) return &cr_sliders[i];
+    return NULL;
+}
+
 static const char *const n_eye_count[3] = { "One", "Two", "Three" };
 static const char *const n_fangs[4]     = { "None", "Tiny", "Pointy", "Vampy" };
-static const char *const n_pitch[2]     = { "Deep", "Squeaky" };
-static const char *const n_speed[2]     = { "Slow", "Fast" };
-static const char *const n_quality[2]   = { "Thin", "Round" };
-static const char *const n_inton[2]     = { "Flat", "Sing-song" };
-static const char *const n_accent[2]    = { "Plain", "Fancy" };
-static const char *const n_move[2]      = { "Slow", "Quick" };
-static const char *const n_speech[2]    = { "Polite", "Blunt" };
-static const char *const n_expr[2]      = { "Flat", "Expressive" };
-static const char *const n_attitude[2]  = { "Serious", "Easygoing" };
-static const char *const n_quirk[2]     = { "Normal", "Unhinged" };
 static const char *const n_born[2]      = { "Hillvile", "Hellvile" };
 static const char *const n_yesno[2]     = { "No", "Yes" };
 static const char *const n_hood[2]      = { "Down", "Up" };
@@ -141,8 +176,8 @@ static const CrRow rows_body[] = {
     ACTION("Preset", CA_SPECIES_PRESET),
     HDR("Body"),
     ENUM_L("Body", body, BODY_COUNT, doomo_body_names, CLIST_BODY),
-    SLIDE_L("Height", height, 16, n_height),
-    SLIDE_L("Build", build, 16, n_build),
+    SLIDE_L("Height", height),
+    SLIDE_L("Build", build),
     { RK_SKIN, LK(skin), 8 + PAL_PAINT_COUNT, 0, CR_NOLIST, 0, "Skin", NULL },
     HDR("Fur pattern"),
     PART_L("Fur pattern", fur_pattern),
@@ -152,25 +187,25 @@ static const CrRow rows_body[] = {
 static const CrRow rows_face[] = {
     HDR("Head"),
     ENUM_L("Shape", head_shape, HEAD_COUNT, doomo_head_names, CLIST_HEAD),
-    SLIDE_L("Head size", head_size, 16, n_size),
+    SLIDE_L("Head size", head_size),
     HDR("Eyes"),
     ENUM_L("Eyes", eye_style, EYE_COUNT, doomo_eye_names, CLIST_EYE),
     PART_L("Pupils", pupil),
     PART_L("Eye whites", sclera),
     PAINT_L("Eye colour", eye_color),
-    SLIDE_L("Eye size", eye_size, 16, n_eye_size),
-    SLIDE_L("Spacing", eye_spacing, 16, n_spacing),
-    SLIDE_L("Eye height", eye_height, 16, n_lowhigh),
-    SLIDE_L("Tilt", eye_tilt, 16, n_tilt),
+    SLIDE_L("Eye size", eye_size),
+    SLIDE_L("Eye gap", eye_spacing),
+    SLIDE_L("Eye height", eye_height),
+    SLIDE_L("Eye tilt", eye_tilt),
     { RK_ENUM, LK(eye_count), 3, 1, CR_NOLIST, 0, "How many", n_eye_count },
     HDR("Brows"),
     ENUM_L("Brows", brow_style, BROW_COUNT, doomo_brow_names, CLIST_BROW),
-    SLIDE_L("Brow height", brow_height, 16, n_lowhigh),
+    SLIDE_L("Brow height", brow_height),
     HDR("Nose & mouth"),
     ENUM_L("Nose", nose_style, NOSE_COUNT, doomo_nose_names, CLIST_NOSE),
-    SLIDE_L("Nose size", nose_size, 16, n_size),
+    SLIDE_L("Nose size", nose_size),
     ENUM_L("Mouth", mouth_style, MOUTH_COUNT, doomo_mouth_names, CLIST_MOUTH),
-    SLIDE_L("Mouth size", mouth_size, 16, n_size),
+    SLIDE_L("Mouth size", mouth_size),
     ENUM_L("Fangs", fangs, 4, n_fangs, CR_NOLIST),
     HDR("Ears & cheeks"),
     ENUM_L("Ears", ears, EARS_COUNT, doomo_ear_names, CLIST_EARS),
@@ -200,7 +235,7 @@ static const CrRow rows_spooky[] = {
     HDR("Horns"),
     ENUM_L("Horns", horns, HORNS_COUNT, doomo_horn_names, CLIST_HORNS),
     PAINT_L("Horn colour", horn_color),
-    SLIDE_L("Horn size", horn_size, 16, n_horn),
+    SLIDE_L("Horn size", horn_size),
     HDR("Tail & wings"),
     ENUM_L("Tail", tail, TAIL_COUNT, doomo_tail_names, CLIST_TAIL),
     ENUM_L("Wings", wings, WINGS_COUNT, doomo_wing_names, CLIST_WINGS),
@@ -241,22 +276,22 @@ static const CrRow rows_outfit[] = {
 static const CrRow rows_voice[] = {
     ACTION("Preset", CA_VOICE_PRESET),
     HDR("Voice"),
-    SLIDE_R("Pitch", VOICE_PITCH, 32, n_pitch),
-    SLIDE_R("Speed", VOICE_SPEED, 32, n_speed),
-    SLIDE_R("Quality", VOICE_QUALITY, 32, n_quality),
-    SLIDE_R("Intonation", VOICE_INTONATION, 32, n_inton),
-    SLIDE_R("Accent", VOICE_ACCENT, 32, n_accent),
+    SLIDE_R("Pitch", VOICE_PITCH),
+    SLIDE_R("Speed", VOICE_SPEED),
+    SLIDE_R("Quality", VOICE_QUALITY),
+    SLIDE_R("Intonation", VOICE_INTONATION),
+    SLIDE_R("Accent", VOICE_ACCENT),
     ACTION("Test it!", CA_TEST_VOICE),
 };
 
 /* doomo_life_stage_names and doomo_unlocks_creator live in unlocks_creator.c (resident) */
 
 static const CrRow rows_persona[] = {
-    SLIDE_R("Movement", PERS_MOVEMENT, 16, n_move),
-    SLIDE_R("Speech", PERS_SPEECH, 16, n_speech),
-    SLIDE_R("Expression", PERS_EXPRESSION, 16, n_expr),
-    SLIDE_R("Attitude", PERS_ATTITUDE, 16, n_attitude),
-    SLIDE_R("Quirk", PERS_QUIRK, 16, n_quirk),
+    SLIDE_R("Movement", PERS_MOVEMENT),
+    SLIDE_R("Speech", PERS_SPEECH),
+    SLIDE_R("Expression", PERS_EXPRESSION),
+    SLIDE_R("Attitude", PERS_ATTITUDE),
+    SLIDE_R("Quirk", PERS_QUIRK),
     ENUM_L("Handed", handedness, 2, n_hand, CR_NOLIST),
     /* LS0: the saved life stage. Babies and kids never get romance, teens
      * only with teens (sim.h sim_romance_ok); the story hero stays grown */
@@ -996,7 +1031,7 @@ const char *cr_row_help(const CrRow *row)
             return "Shapes how they act and talk";
         if (row->field >= OFS(VOICE_PITCH) && row->field <= OFS(VOICE_ACCENT))
             return "Then try \"Test it!\" to hear them";
-        return STR_ICON_ARROW_L STR_ICON_ARROW_R " slide between the two ends";
+        return STR_ICON_ARROW_L STR_ICON_ARROW_R " slide   " STR_ICON_A " reset";
     case RK_PAINT: case RK_PAINT_NONE: case RK_SKIN: {
         static const char h_outer_c[] = "Same as Acc. colour";
         static const char h_legs_c[] = "Same as Print colour";

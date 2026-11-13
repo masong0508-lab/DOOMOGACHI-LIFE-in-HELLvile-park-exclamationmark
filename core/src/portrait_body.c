@@ -26,19 +26,34 @@ typedef struct PBody {
 
 static PBody B;
 
-/* body-type modifiers: shoulder%, hip%, torso height%, legs%, arm%, belly */
-static const int16_t body_mod[BODY_COUNT][6] = {
-    /* AVERAGE   */ { 100, 100, 100, 100, 100, 0 },
-    /* ROUND     */ { 112, 124, 96, 80, 100, 40 },
-    /* LANKY     */ { 84, 82, 118, 135, 86, 0 },
-    /* STOCKY    */ { 124, 118, 88, 74, 118, 10 },
-    /* TINY      */ { 80, 80, 74, 70, 84, 10 },
-    /* HUNCHED   */ { 104, 96, 90, 92, 100, 0 },
-    /* BUFF      */ { 140, 98, 106, 96, 150, 0 },
-    /* NOODLE    */ { 70, 70, 120, 140, 66, 0 },
-    /* PEAR      */ { 84, 136, 100, 90, 92, 20 },
-    /* TOP_HEAVY */ { 142, 78, 104, 92, 120, 0 },
+/* body-type modifiers (CR-BODY: 16 types; one row per type, one byte per column, so the table is 112 bytes):
+ * shoulder%, hip%, torso height%, legs%, arm%, belly, head size step (signed: added to the head size slider
+ * in pb_head_adj, 0 for every classic type). The sliders (height, build, head size) then adjust these. */
+#define BH(n) ((uint8_t)(n))
+static const uint8_t body_mod[BODY_TYPES][7] = {
+    /* AVERAGE   */ { 100, 100, 100, 100, 100, 0, 0 },
+    /* ROUND     */ { 112, 124, 96, 80, 100, 40, 0 },
+    /* LANKY     */ { 84, 82, 118, 135, 86, 0, 0 },
+    /* STOCKY    */ { 124, 118, 88, 74, 118, 10, 0 },
+    /* TINY      */ { 80, 80, 74, 70, 84, 10, 0 },
+    /* HUNCHED   */ { 104, 96, 90, 92, 100, 0, 0 },
+    /* BUFF      */ { 140, 98, 106, 96, 150, 0, 0 },
+    /* NOODLE    */ { 70, 70, 120, 140, 66, 0, 0 },
+    /* PEAR      */ { 84, 136, 100, 90, 92, 20, 0 },
+    /* TOP_HEAVY */ { 142, 78, 104, 92, 120, 0, 0 },
+    /* ATHLETIC  */ { 120, 96, 106, 112, 118, 0, 0 },
+    /* GANGLY    */ { 76, 76, 94, 130, 112, 0, 1 },
+    /* BEAN      */ { 106, 112, 82, 58, 90, 30, 1 },
+    /* BRICK     */ { 130, 126, 96, 84, 126, 0, BH(-1) },
+    /* WILLOWY   */ { 88, 84, 112, 118, 74, 0, 0 },
+    /* BOBBLE    */ { 80, 82, 78, 76, 80, 8, 4 },
 };
+
+/* CR-BODY: the head size step of a body type (portrait.c sanitize adds it once per look) */
+int pb_head_adj(int body)
+{
+    return (int8_t)body_mod[body < BODY_TYPES ? body : 0][6];
+}
 
 static int mag_or1(int m) { return m > 0 ? m : 1; }
 
@@ -51,7 +66,7 @@ static int species_nolegs(int sp)
 void pb_layout(PCtx *c, int vk, int byaw, int step, int anim)
 {
     const DoomoLook *l = c->l;
-    const int16_t *bm = body_mod[l->body < BODY_COUNT ? l->body : 0];
+    const uint8_t *bm = body_mod[l->body < BODY_TYPES ? l->body : 0];
     int build = l->build, height = l->height;
     int H, legs, s;
     (void)anim;

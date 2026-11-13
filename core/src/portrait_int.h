@@ -291,6 +291,7 @@ void pg_draw_flash(int anim);
 /* body layout queries (portrait_body.c) */
 int  pb_head_y(PCtx *c, int ry);
 int  pb_torso_top(void);
+int  pb_head_adj(int body);     /* CR-BODY: the body type's head size step */
 void pb_shift(int dy);
 void pb_set_neck(int y);
 void pb_draw_neck(PCtx *c);  /* chest fluff, ruffs, neckwear (after head) */
