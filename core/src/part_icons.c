@@ -96,11 +96,11 @@ int part_icon_image(int row, DoomoImage *out, uint8_t *buf)
  * where the icons are packed (DOOMO_ICONS_RLE) and the platform lends it the room (plat_scene_scratch). */
 int part_icon_image_kept(int row, DoomoImage *out, uint8_t *buf, uint16_t *tag)
 {
-    int i = part_icon_index(row);
-    if (i < 0 || !out || !buf || !tag) return 0;
+    int i = part_icon_index(row), ip = part_icon_index_in(row, 1);  /* CR3: the packed set has its own indices */
+    if (i < 0 || ip < 0 || !out || !buf || !tag) return 0;
     if (*tag != (uint16_t)(row + 1)) {
         *tag = 0;
-        if (!part_icon_unpack(i, buf)) return 0;
+        if (!part_icon_unpack(ip, buf)) return 0;
         *tag = (uint16_t)(row + 1);
     }
     out->w = PART_ICON_W;
