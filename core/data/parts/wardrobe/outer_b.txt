@@ -1,0 +1,533 @@
+# core/data/parts/wardrobe/outer_b.txt - outer layers (CR4 A5), gene list `outer` values 1..31.
+# The painters' hook draws a script in three layer groups: 0 behind the body (a cape's back), 1 over the
+# top, 4 over the chin (collars, lapels). Torso anchor, 256 = the torso half size. On the bust the torso
+# is 18 x 15 px and only its upper half shows (y -256 is the collar line, y 0 the paws; the shoulders
+# are drawn over group 1), on the figure it is 10 x 6 px and shows whole. The colour is the accessory
+# colour. No block draws on a chibi (its torso is 4 x 2 px).
+
+def body
+  mat accessory_color
+  shade ball
+  solid
+enddef
+def light
+  mat accessory_color light
+  decal
+enddef
+def dark
+  mat accessory_color dark
+  decal
+enddef
+# a front panel pair: the outer edge x, the half width r, from the collar (y0) to the hem (y1)
+def panels X R Y0 Y1
+  mat accessory_color
+  shade ball
+  solid
+  mirror on
+  capsule -$X $Y0 -$X $Y1 $R $R
+enddef
+
+# two sleeves over the arms: the shoulder to the paw, drawn in group 4 (after the arms and the head)
+def sleeves R
+  mat accessory_color
+  shade ball
+  solid
+  mirror on
+  capsule -215 -170 -165 -10 $R $R
+enddef
+def cuffs
+  mat accessory_color light
+  decal
+  mirror on
+  line -200 -50 -135 -40 2
+  line -195 -35 -130 -25 2
+enddef
+
+list outer 1                      # Open Cardigan
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use panels 150 60 -230 200
+  use dark
+  mirror on
+  line -90 -220 -90 190 1
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use sleeves 48
+  use cuffs
+end
+
+
+list outer 2                      # Poncho
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use body
+  tri -250 -250 250 -250 0 160
+  use light
+  line -120 -170 120 -170 1
+end
+
+list outer 3                      # Apron
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use body
+  band 0 0 110 220
+  use dark
+  mirror on
+  line -110 -200 -40 -250 1
+  line -110 -120 110 -120 1
+end
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use light
+  band 0 60 55 30
+  line -55 30 55 30 2
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use body
+  ring 0 -215 90 9
+end
+
+list outer 4                      # Puffer Vest
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use panels 130 55 -230 170
+  use dark
+  mirror on
+  line -200 -150 -40 -150 1
+  line -200 -60 -40 -60 1
+  line -200 30 -40 30 1
+  line -200 110 -40 110 1
+  line -200 180 -40 180 1
+  line -130 -230 -130 190 1
+end
+
+list outer 5                      # Denim Jacket
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use panels 150 60 -230 200
+  use light
+  mirror on
+  dot -160 -120 1
+  dot -130 -120 1
+  dot -160 -40 1
+  dot -130 -40 1
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use body
+  mirror on
+  tri -220 -250 -40 -250 -90 -130
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use sleeves 50
+end
+
+
+list outer 6                      # Raincoat: long panels, a zip and a high collar
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use panels 115 50 -240 200
+  use light
+  line 0 -240 0 200 1
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use body
+  mirror on
+  tri -250 -256 -30 -256 -120 -100
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use sleeves 55
+  use cuffs
+end
+
+
+list outer 7                      # Trench Coat: panels, a belt and lapels
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use panels 140 60 -230 210
+  mat accessory_color dark
+  shade flat
+  solid
+  band 0 90 250 22
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use body
+  mirror on
+  tri -200 -250 -40 -250 -140 -140
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use sleeves 50
+  use cuffs
+end
+
+
+list outer 8                      # Varsity Jacket: panels, hem stripes and a chest letter
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use panels 150 55 -230 200
+  use light
+  mirror on
+  ellipse -150 -130 45 50
+  line -230 150 -80 150 1
+  line -230 190 -80 190 1
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use sleeves 50
+  mat accessory_color light
+  decal
+  mirror on
+  line -215 -130 -150 -110 2
+  line -210 -105 -145 -85 2
+end
+
+
+list outer 9                      # Bomber: a knit collar and a zip
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use panels 140 65 -200 200
+  use dark
+  line 0 -200 0 200 1
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  mat accessory_color dark
+  shade flat
+  solid
+  band 0 -235 130 28
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use sleeves 52
+  use cuffs
+end
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  mat accessory_color dark
+  shade flat
+  solid
+  mirror on
+  band -120 190 90 20
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  mat accessory_color dark
+  shade flat
+  solid
+  mirror on
+  ellipse -175 -30 50 30
+end
+
+list outer 10                     # Shawl: a drape pinned at the shoulder
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use body
+  tri -256 -256 254 -256 80 130
+  use dark
+  line -180 -160 130 -60 1
+  dot 130 -90 1
+  dot 110 -50 1
+end
+
+list outer 11                     # Short Cape: behind the shoulders, a clasp at the throat
+block group=0 anchor=torso lod=all view=portrait,figure,fighter
+  scale 85
+  use body
+  ellipse 0 -70 215 110
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use light
+  ring 0 -235 40 9
+  chain -40 -200 40 -200 5 220
+end
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  ifyaw 3,4
+  scale 64
+  use body
+  ellipse 0 -60 245 160
+  endif
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use light
+  mirror on
+  ellipse -225 -185 62 48
+end
+
+list outer 12                     # Lab Smock: panels, two pockets and a plain collar
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use panels 130 55 -230 220
+  use body
+  pouch -150 20 50 40
+  pouch 150 20 50 40
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use body
+  mirror on
+  tri -170 -250 -20 -250 -100 -170
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use sleeves 46
+end
+
+
+list outer 13                     # Overall Bib: a bib, two straps, two buttons
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use body
+  band 0 -10 70 110
+  mirror on
+  capsule -85 -130 -130 -250 38 38
+  use light
+  dot -75 -110 1
+  dot 75 -110 1
+end
+
+list outer 14                     # Bolero: short, round, sitting on the shoulders
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use body
+  mirror on
+  ellipse -170 -130 85 120
+  use dark
+  line -230 -20 -110 -20 1
+end
+
+list outer 15                     # Suspenders: two straps, a cross bar
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use body
+  mirror on
+  capsule -120 -256 -120 230 40 40
+  use light
+  line -120 -256 -120 230 2
+  line -120 -40 120 -40 2
+end
+
+list outer 16                     # Cross Harness: two straps over the chest and a ring
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use body
+  capsule -210 -230 210 150 22 22
+  capsule 210 -230 -210 150 22 22
+  use light
+  ring 0 -40 55 8
+end
+
+list outer 17                     # Tabard: a front panel over the shoulders and a badge
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use body
+  band 0 -20 150 230
+  use light
+  ellipse 0 -100 45 45
+  mat accessory_color dark
+  line -150 130 150 130 1
+end
+
+list outer 18                     # Fur Stole: round puffs over the shoulders
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use body
+  frill -230 230 -215 7 55
+end
+
+list outer 19                     # Ruff Cape: a ruff at the neck and a short cape behind
+block group=0 anchor=torso lod=all view=portrait,figure,fighter
+  scale 90
+  use body
+  ellipse 0 -90 190 105
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use light
+  frill -150 150 -235 5 42
+end
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  ifyaw 3,4
+  scale 64
+  use body
+  ellipse 0 -60 245 150
+  endif
+end
+
+list outer 20                     # Blanket Wrap: a thick sash from shoulder to hip
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use body
+  capsule -230 -220 230 120 55 55
+  use dark
+  line -230 -170 230 170 1
+  dot 190 90 1
+  dot 130 120 1
+end
+
+list outer 21                     # Tool Vest: panels with four pockets
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use panels 125 50 -230 210
+  use body
+  pouch -140 -90 38 32
+  pouch -140 40 38 32
+  pouch 140 -90 38 32
+  pouch 140 40 38 32
+end
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  mat accessory_color dark
+  shade flat
+  solid
+  band 0 -200 190 22
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use light
+  mirror on
+  dot -60 -150 1
+  dot -60 -100 1
+  dot -60 -50 1
+  dot -60 0 1
+end
+
+list outer 22                     # Life Vest: thick panels and a cross strap
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use panels 100 60 -230 190
+  mat accessory_color dark
+  shade flat
+  solid
+  band 0 70 250 22
+  use light
+  dot -150 -130 1
+  dot 150 -130 1
+end
+
+list outer 23                     # Haori: wide panels with a trim line
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use panels 190 50 -230 210
+  use light
+  mirror on
+  line -140 -230 -140 200 1
+  line -240 100 -140 100 1
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use sleeves 70
+  use cuffs
+end
+
+
+list outer 24                     # Long Cape: a train behind the whole body
+block group=0 anchor=torso lod=all view=portrait,figure,fighter
+  scale 100
+  use body
+  tri -150 -250 150 -250 0 130
+  use dark
+  line -120 -150 -60 200 1
+  line 120 -150 60 200 1
+end
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  ifyaw 3,4
+  scale 64
+  use body
+  tri -250 -250 250 -250 0 250
+  endif
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use body
+  mirror on
+  tri -250 -256 -110 -256 -200 -60
+  use light
+  line -240 -230 -200 -90 1
+end
+
+list outer 25                     # Chef Jacket: double-breasted buttons and a stand collar
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use panels 120 58 -230 200
+  use light
+  mirror on
+  dot -50 -170 1
+  dot -50 -80 1
+  dot -50 10 1
+  dot -50 100 1
+  dot -50 190 1
+  dot -140 -170 1
+  dot -140 -80 1
+  dot -140 10 1
+  dot -140 100 1
+  dot -140 190 1
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use body
+  band 0 -240 110 22
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use sleeves 52
+  use cuffs
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  mat accessory_color light
+  shade flat
+  solid
+  tri -60 -256 60 -256 0 -120
+end
+
+list outer 26                     # Letter Vest: a deep V with a stripe
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use body
+  mirror on
+  tri -235 -250 -10 -250 -110 120
+  use light
+  line -235 -250 -110 100 1
+end
+
+list outer 27                     # Fringe Vest: panels with a fringe at the hem
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use panels 125 50 -230 150
+  use body
+  frill -220 -60 190 5 45
+  frill 60 220 190 5 45
+end
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use dark
+  mirror on
+  line -90 -230 -90 150 1
+  line -170 -200 -170 150 1
+  dot -130 -100 1
+  dot -130 0 1
+end
+
+list outer 28                     # Shrug: two round shoulder wraps
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use body
+  mirror on
+  ellipse -200 -190 75 65
+  use light
+  line -240 -190 -150 -190 1
+end
+
+list outer 29                     # Pauldrons: studded shoulder plates
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  mat accessory_color
+  shade gloss
+  solid
+  mirror on
+  ellipse -215 -180 70 60
+  use light
+  dot -240 -180 1
+  dot -190 -180 1
+  dot -215 -150 1
+end
+
+list outer 30                     # Tinsel Boa: a fat chain of fluff round the neck
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use body
+  chain -240 -190 240 -190 9 120
+  use light
+  dot -150 -130 1
+  dot 0 -110 1
+  dot 150 -130 1
+end
+
+list outer 31                     # Starry Mantle: a cape behind and a star-clasp collar
+block group=0 anchor=torso lod=all view=portrait,figure,fighter
+  scale 85
+  use body
+  ellipse 0 -70 190 100
+  use light
+  dot -200 100 1
+  dot 190 60 1
+  dot -150 200 1
+  dot 150 190 1
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use light
+  ring 0 -245 55 9
+  mirror on
+  dot -230 -170 1
+  dot -200 -120 1
+  dot -240 -90 1
+  dot -170 -60 1
+  dot -230 -30 1
+end
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  ifyaw 3,4
+  scale 64
+  use body
+  ellipse 0 -40 245 160
+  endif
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use body
+  mirror on
+  ellipse -230 -185 55 45
+end

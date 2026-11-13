@@ -1,0 +1,326 @@
+# core/data/parts/outfit/tops_b.txt - tops, batch A5 (CR4): 24 tops on the gene list `top` values 25..48.
+# A scripted top is drawn OVER the plain long-sleeved top the painter gives an unknown value, in the top
+# colour: group 1 after the torso (stripes, plackets, emblems, pockets: torso anchor, 256 = the torso
+# half size; on the bust only the upper half shows, y -256 the collar line), group 4 after the head and
+# the arms (collars, necklines, sleeve bands over the arms). The trim colour is the accessory colour.
+# No block draws on a chibi (its torso is 4 x 2 px).
+
+def tdark
+  mat top_color dark
+  shade flat
+  decal
+enddef
+def tlight
+  mat top_color light
+  shade flat
+  decal
+enddef
+def trim
+  mat accessory_color
+  shade ball
+  solid
+enddef
+def trimd
+  mat accessory_color
+  shade flat
+  decal
+enddef
+def trimdark
+  mat accessory_color dark
+  shade flat
+  decal
+enddef
+def sleeves R
+  mat top_color
+  shade ball
+  solid
+  mirror on
+  capsule -215 -170 -165 -10 $R $R
+enddef
+
+list top 25                       # Breton Stripes: bands across the chest and the arms
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use trimd
+  line -250 -190 250 -190 1
+  line -250 -120 250 -120 1
+  line -250 -50 250 -50 1
+  line -250 20 250 20 1
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use trimdark
+  mirror on
+  line -250 -150 -150 -150 1
+  line -230 -90 -150 -90 1
+  line -220 -30 -140 -30 1
+end
+
+list top 26                       # Turtleneck: a tall rolled neck
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  mat top_color
+  shade ball
+  solid
+  band 0 -230 160 50
+  use tdark
+  line -150 -230 150 -230 1
+  line -90 -256 -90 -190 1
+  line 0 -256 0 -190 1
+  line 90 -256 90 -190 1
+end
+
+list top 27                       # Polo: a folded collar and a short placket
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  mat accessory_color
+  shade ball
+  solid
+  mirror on
+  tri -230 -256 -20 -256 -130 -120
+end
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use trimdark
+  line 0 -100 0 50 1
+  dot 0 -70 1
+  dot 0 -20 1
+  dot 0 30 1
+end
+
+list top 28                       # Henley: a button strip down the chest
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use trim
+  band 0 -90 38 140
+  use trimdark
+  dot 0 -170 1
+  dot 0 -110 1
+  dot 0 -50 1
+  dot 0 10 1
+end
+
+list top 29                       # V-Neck Tee: a deep V
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  mat skin
+  shade ball
+  solid
+  tri -150 -256 150 -256 0 -40
+  mat top_color dark
+  shade flat
+  decal
+  line -150 -256 0 -40 1
+  line 150 -256 0 -40 1
+  line -110 -256 0 -90 1
+  line 110 -256 0 -90 1
+end
+
+list top 30                       # Sailor Top: a square collar and a tie
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use trim
+  mirror on
+  tri -240 -256 -20 -256 -220 -60
+  use trimdark
+  line -200 -240 -170 -90 1
+  line -150 -230 -125 -110 1
+end
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use trim
+  bow 0 -90 100
+end
+
+list top 31                       # Peter Pan Blouse: a round frilled collar
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use trim
+  frill -190 190 -190 6 60
+  use trimdark
+  dot 0 -120 1
+end
+
+list top 32                       # Ruffle Blouse: a frill down the chest
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use trim
+  mirror on
+  ellipse -80 -80 50 45
+  ellipse -80 10 50 45
+  ellipse -180 -60 45 40
+end
+
+list top 33                       # Tracksuit Top: a zip and side stripes
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use trimd
+  line 0 -240 0 200 1
+  mirror on
+  line -170 -240 -170 200 1
+  line -145 -240 -145 200 1
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use trimdark
+  mirror on
+  line -225 -170 -170 -10 2
+  line -200 -190 -145 -30 2
+end
+
+list top 34                       # Jersey: a big chest number panel
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use trim
+  band 0 -90 110 100
+  use tdark
+  line -60 -150 60 -150 1
+  line 0 -150 0 -30 1
+  line -60 -30 60 -30 1
+end
+
+list top 35                       # Star Tee: a big star on the chest
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use trim
+  tri -120 -30 120 -30 0 -150
+  tri -120 -90 120 -90 0 30
+end
+
+list top 36                       # Heart Tee: a heart on the chest
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use trim
+  ellipse -60 -80 65 55
+  ellipse 60 -80 65 55
+  tri -120 -60 120 -60 0 50
+end
+
+list top 37                       # Pocket Tee: one pocket over the heart
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use trim
+  pouch -110 -70 85 65
+end
+
+list top 38                       # Tunic: a laced neck and a hem trim
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use trimdark
+  line 0 -230 0 -100 1
+  line -50 -210 50 -180 1
+  line 50 -210 -50 -180 1
+  line -50 -160 50 -130 1
+  line 50 -160 -50 -130 1
+  line -250 0 250 0 1
+  line -250 30 250 30 1
+  line -250 60 250 60 1
+  line -250 -60 250 -60 1
+  line -250 -90 250 -90 1
+end
+
+list top 39                       # Waistcoat Shirt: dark vest panels and buttons
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  mat accessory_color dark
+  shade ball
+  solid
+  mirror on
+  tri -170 -250 -10 -250 -100 100
+  use tlight
+  dot -40 -150 1
+  dot -40 -70 1
+  dot -40 10 1
+end
+
+list top 40                       # Fisherman Knit: cable stitches
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use trimdark
+  mirror on
+  line -60 -100 -100 -50 1
+  line -100 -50 -60 0 1
+  line -60 0 -100 50 1
+  line -170 -150 -210 -90 1
+  line -210 -90 -170 -30 1
+  line -170 -30 -210 30 1
+  line -20 -100 -20 50 1
+end
+
+list top 41                       # Rugby Shirt: wide bands and a white collar
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use trim
+  band 0 -130 250 28
+  band 0 -40 250 28
+end
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  mat top_color light
+  shade ball
+  solid
+  band 0 -240 100 24
+end
+
+list top 42                       # Bib Shirt: a scalloped bib
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use trim
+  frill -150 150 -30 5 55
+end
+
+list top 43                       # Raglan Tee: contrast sleeves
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  mat accessory_color
+  shade ball
+  solid
+  mirror on
+  capsule -215 -170 -165 -10 50 50
+end
+
+list top 44                       # Lace-Up Top: criss-cross lacing
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use trimdark
+  line -90 -240 90 -160 1
+  line 90 -240 -90 -160 1
+  line -90 -160 90 -80 1
+  line 90 -160 -90 -80 1
+  line -90 -80 90 0 1
+  line 90 -80 -90 0 1
+end
+
+list top 45                       # Sequin Top: scattered sparkle
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use trim
+  ellipse -200 -130 28 26
+  ellipse -140 -50 28 26
+  ellipse -210 -10 28 26
+  ellipse -60 -90 28 26
+  ellipse -40 0 28 26
+  ellipse 60 -60 28 26
+  ellipse 120 -120 28 26
+  ellipse 160 -30 28 26
+  ellipse 220 -80 28 26
+  mat accessory_color light
+  shade flat
+  decal
+  dot -100 -140 1
+  dot 20 -40 1
+  dot 100 20 1
+  dot -170 40 1
+  dot 200 20 1
+end
+
+list top 46                       # Hawaiian Shirt: a collar and big flowers
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use trim
+  mirror on
+  tri -200 -256 -10 -256 -110 -130
+end
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use trim
+  ring -90 -40 60 9
+  ring 100 20 50 9
+  use trimdark
+  dot -90 -40 1
+  dot 100 20 1
+end
+
+list top 47                       # Scrubs: a V neck and a chest pocket
+block group=4 anchor=torso lod=all view=portrait,figure,fighter
+  use trim
+  mirror on
+  tri -190 -256 -10 -256 -100 -90
+end
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use trim
+  pouch 110 -50 60 55
+end
+
+list top 48                       # Cheer Top: chevrons and a hair bow on the chest
+block group=1 anchor=torso lod=all view=portrait,figure,fighter
+  use trimd
+  line -200 -230 0 -110 2
+  line 200 -230 0 -110 2
+  line -200 -170 0 -50 2
+  line 200 -170 0 -50 2
+  line -200 -110 0 10 2
+  line 200 -110 0 10 2
+end

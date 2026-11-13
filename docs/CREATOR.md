@@ -807,6 +807,60 @@ plugs in).
 * **Not done here / next.** The language packs do not carry the slider and body names yet: the labels are in English
   like every creator label (the part names reach the packs with CR14). A saved look made with a new body type loads on
   an older build as the average body (its `sanitize` puts a value past its list back): new saves only.
+## CR4 batch A5: outfit (2026-11-13)
+
+* **70 new parts live, the gene-stored part of the plan's 224:** 24 tops (gene `top` 25..48: Breton Stripes, Turtleneck,
+  Polo, Henley, V-Neck Tee, Sailor Top, Peter Pan Blouse, Ruffle Blouse, Tracksuit Top, Jersey, Star Tee, Heart Tee,
+  Pocket Tee, Tunic, Waistcoat Shirt, Fisherman Knit, Rugby Shirt, Bib Shirt, Raglan Tee, Lace-Up Top, Sequin Top,
+  Hawaiian Shirt, Scrubs, Cheer Top), 31 outer layers (gene `outer` 1..31, the list was empty: Open Cardigan, Poncho,
+  Apron, Puffer Vest, Denim Jacket, Raincoat, Trench Coat, Varsity Jacket, Bomber, Shawl, Short Cape, Lab Smock, Overall
+  Bib, Bolero, Suspenders, Cross Harness, Tabard, Fur Stole, Ruff Cape, Blanket Wrap, Tool Vest, Life Vest, Haori, Long
+  Cape, Chef Jacket, Letter Vest, Fringe Vest, Shrug, Pauldrons, Tinsel Boa, Starry Mantle) and 15 legwear (gene `legwear`
+  1..15, empty too: Knee Socks, Thigh Highs, Striped Socks, Leg Warmers, Tights, Argyle Tights, Ankle Socks, Shin Wraps,
+  Polka Tights, Striped Tights, Ruffle Socks, Shin Guards, Spats, Pom Socks, Ankle Bows). The lists are now 49, 32 and 16
+  long. The Outfit tab's Outer layer and Legwear rows (and their colour rows) appear for the first time: the lists were
+  not live before. No save change (the gene had the bits). Old saves and Classic premades draw as before.
+* **Left for the next outfit package (about 150 of the batch):** gene-stored: tops 49..63 (15), bottoms 12..31 (20), shoes
+  12..31 (20), prints 8..31 (24). Deep fields (need CR5): tops page 2 (24), outer page 2 (17), bottoms page 2 (16), legwear
+  page 2 (9), socks (16), shoes page 2 (16), fabric tiles (32). Bottoms and shoes have a script hook but only on the torso
+  anchor (shoes would want a foot frame like legwear's leg frame: a small hook in `foot()`, compiled to nothing on the PS1), and
+  the generic shape gate measures the bust, which shows neither; prints are tiles (`p_pattern_tiles`, a C table) and need a
+  painter hook and tile data. Each of those is its own step.
+* **Authoring:** hand-written part scripts, no new painter code. Tops in `core/data/parts/outfit/tops_b.txt` (a list lives in
+  one set, so they sit with the Pageant Sash), outer layers and legwear in the new `core/data/parts/wardrobe/`. What the
+  geometry taught (all in the files' headers): on the bust the torso anchor's centre is at the bottom of the picture, so
+  only y -256 (collar line) to 0 shows, the paws cover the lower middle, and a furred species' chest fluff (drawn after
+  group 1 and 4's top blocks) covers the upper middle: put details at the sides and low. A top or outer layer is drawn in
+  group 1 (over the torso, under the arms) and group 4 (after the arms and the head: collars, **sleeves** over the arms,
+  shoulder pieces): the sleeved jackets are a group 4 capsule pair, which is what makes them read. A cape is group 0
+  (behind, from the front) plus a group 1 `ifyaw 3,4` block (over the back), and carries something on the front (clasp,
+  collar, shoulder studs) so it is not invisible on the bust. Legwear is `anchor=frame` in the leg frame (x 256 the leg
+  radius, y -256 the hip, 0 the foot); a dress or a robe hides it and so does a hoof over an ankle sock. No block draws on a
+  chibi (the torso is 4 x 2 px; except the Pageant Sash's, which was already there), so the chibi shape gate stays out of it.
+* **Age:** all 70 are age class ALL; plain garments, no body shapes, none suggestive (the lace-up top is a high-necked lacing, the
+  Scrubs a V neck that stops at the collar bone line, the Sailor collar and Peter Pan frills are cartoon cloth).
+* **Gates:** shape gate (outer layers >= 24 px of the bust against every other value, in shape mode; tops >= 24 px of the bust
+  against every other top including the painted ones; legwear >= 8 px of the figure in colour: every legwear shares the leg's
+  silhouette, so a tight and a sock differ by coverage and pattern), cost weights measured (`costs.txt`: the dearest new part
+  costs 11 against 50 for the dearest classic one), names unique, one set each, frozen ids (72 with the two `None` values),
+  review lines `A5`, part icons regenerated.
+* **Test changes:** `test_part_render.c` measures the cost of the gene-only outfit lists (outer, legwear; the other gene-only
+  lists keep a cost of 0) and puts a part under the chibi gate only if its script has a chibi block (`draws_on_chibi`: a scripted
+  top without one still shows the painter's plain top, which differs from value 0 without drawing a pixel of its own);
+  `test_creator.c` expects two rows with nothing to pick (the fur pattern and its colour) instead of six.
+* **Review sheets:** `portrait_sheet --slot top|outer|legwear [--shape]`, `--slot outer --views` (the capes from behind),
+  and the new `--interplay-outfit`: every outer layer over six tops (T-Shirt, Hoodie, Suit, Armour, Breton Stripes, Hawaiian
+  Shirt) as busts and from behind with the backpack and the cape accessory (the plan's "outer layers x tops x backpieces";
+  the real backpieces are deep fields that do not exist yet). `--views` and the sheets now stage a layer over a white top and
+  legwear on bare legs (`sheet_stage`).
+* **Runner walk-through:** `core/tests/scripts/creator_parts_outfit.txt` (both resolutions): the Outfit tab, the Top, Outer
+  layer and Legwear rows opened as grids, a new part found by letters and worn (Breton Stripes, Poncho, Knee Socks), the
+  preview showing it.
+* **Tests:** `test_cr4_a5.c` (the lists full and the 46 outer / legwear parts catalogued and inside the cost cap; the shape gate
+  the generic test cannot run for gene-only lists; every outer layer shows on the figure and a cape from behind; legwear shows
+  on the legs; a child may wear all of it; they survive a save and sanitize; they draw on three other citizens). The PS1 reads
+  none of the scripts yet (the part VM waits for CR10): its creator keeps offering the painted values (it offers no outer
+  layer or legwear at all, and the 24 painted tops).
 
 ## Extending
 

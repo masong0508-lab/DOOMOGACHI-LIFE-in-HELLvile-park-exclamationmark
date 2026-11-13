@@ -1,0 +1,76 @@
+# CR4 A5: the outfit batch in the creator's picture grid: the Outfit tab's Top (24 new), Outer layer (31 new)
+# and Legwear (15 new) rows. A new Hellvile citizen: the Outfit tab is the fifth tab (four tabs right of
+# Species & Body); the cursor starts on the Preset row, the Top row is one down. Each row opens its grid
+# with A, a new choice is found by letters (START) and worn with A, and the citizen in the preview shows
+# it (shot after each). Outer layer is five rows below Top (Top colour, Print, Print colour, Hood, Outer);
+# Legwear is four below Outer (Outer colour, Bottom, Bottom colour, Legwear).
+scene CREATOR -1
+expect-scene CREATOR
+wait 30
+press R
+wait 4
+press R
+wait 4
+press R
+wait 4
+press R
+wait 12
+shot 01_outfit_tab
+press DOWN
+wait 8
+press A
+wait 14
+shot 02_top_grid
+press START
+wait 6
+type bret
+press START
+wait 10
+shot 03_find_breton_stripes
+press A
+wait 14
+shot 04_top_worn
+press DOWN
+wait 2
+press DOWN
+wait 2
+press DOWN
+wait 2
+press DOWN
+wait 2
+press DOWN
+wait 2
+wait 6
+press A
+wait 14
+shot 05_outer_grid
+press START
+wait 6
+type poncho
+press START
+wait 10
+shot 06_find_poncho
+press A
+wait 14
+shot 07_outer_worn
+press DOWN
+wait 2
+press DOWN
+wait 2
+press DOWN
+wait 2
+press DOWN
+wait 2
+wait 6
+press A
+wait 14
+shot 08_legwear_grid
+press START
+wait 6
+type knee
+press START
+wait 10
+shot 09_find_knee_socks
+press A
+wait 14
+shot 10_legwear_worn

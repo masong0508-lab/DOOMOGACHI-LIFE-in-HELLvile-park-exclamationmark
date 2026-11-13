@@ -6,6 +6,7 @@
  *                  [--bust LIST [--fig]]
  *   portrait_sheet --out DIR --slot KEY [--set NAME] [--shape]   (CR2 review sheets)
  *   portrait_sheet --out DIR --interplay                          (CR4 A2: hats x big hair, buns, horns)
+ *   portrait_sheet --out DIR --interplay-outfit                   (CR4 A5: outer layers x tops, and x backpieces)
  *
  * Writes PNG sheets (see docs/PORTRAIT.md):
  *   opt_<list>.png     every option of one catalog list on a fixed citizen
@@ -257,7 +258,7 @@ static void sheet_bust(const char *name, int figure)
 static void sheet_stage(DoomoLook *l, int list)
 {
     if (list == GF_EAR_FOLD) { l->ears = EARS_BUNNY; l->hair_style = HAIR_SHORT; }
-    if (list == GF_LEGWEAR) { l->bottom = BOTTOM_SHORTS; l->shoes = SHOES_SANDALS; l->pattern_color = PAINT_CHERRY; }
+    if (list == GF_LEGWEAR) { l->bottom = BOTTOM_NONE; l->shoes = SHOES_SANDALS; l->pattern_color = PAINT_CHERRY; }   /* A5: bare legs under it */
     if (list == GF_HEAD_SHAPE) { l->hair_style = HAIR_BALD; l->hat = 0; l->ears = 0; l->species = SPECIES_HUMAN; }   /* CR4: the silhouette bare */
     if (list == GF_OUTER) l->top_color = PAINT_WHITE;
     if (list == GF_FUR_PATTERN || list == GF_MARKING) { l->top = TOP_NONE; l->skin = 8 + PAINT_CARAMEL; l->marking_color = PAINT_CHOCOLATE; l->hair_style = HAIR_BALD; l->hat = 0; l->ears = 0; l->horns = 0; l->marking = list == GF_MARKING ? l->marking : MARK_NONE; }   /* CR4 A4: the bare head, the pattern against the fur */
@@ -378,6 +379,58 @@ static void sheet_interplay(void)
     }
 }
 
+/* --interplay-outfit: the review sheet of CR4 plan 3.5 for A5, every outer layer (rows, 8 to a page,
+ * interplay_outer_N.png) over six tops (T-Shirt, Hoodie, Suit, Armour, Breton Stripes, Hawaiian Shirt) as
+ * busts, then from behind with the backpack and with the cape accessory (the fighter's view 0). The outer
+ * layer wears the accessory colour, so the backpiece shares it: that is the real clash a player can make. */
+static void sheet_interplay_outfit(void)
+{
+    static const int tops[6] = { TOP_TSHIRT, TOP_HOODIE, TOP_SUIT, TOP_ARMOR, 25, 46 };
+    static const char *const names[8] = { "t-shirt", "hoodie", "suit", "armour", "breton", "hawaiian", "backpack", "cape" };
+    const PartSlotInfo *sl = NULL;
+    int i, n = 0, page = 0, row = 0, c, outs[64];
+    Sheet s;
+    char fname[48];
+    for (i = 0; i < PART_SLOT_COUNT; i++)
+        if (!strcmp(doomo_part_slots[i].key, "outer")) sl = &doomo_part_slots[i];
+    if (!sl) return;
+    for (i = sl->first; i < sl->first + sl->count && n < 64; i++)
+        if (doomo_part_meta[i].value) outs[n++] = i;
+    while (row < n) {
+        int rows = n - row < 8 ? n - row : 8, r;
+        sh_new(&s, 84 + 6 * 50 + 2 * (FIGHTER_W + 2), 12 + rows * 58, PAL_UI_CREAM);
+        for (c = 0; c < 8; c++) sh_text(&s, 84 + (c < 6 ? c * 50 : 300 + (c - 6) * (FIGHTER_W + 2)), 2, names[c], PAL_UI_PINK_D);
+        for (r = 0; r < rows; r++) {
+            const PartMeta *om = &doomo_part_meta[outs[row + r]];
+            sh_text(&s, 2, 12 + r * 58 + 20, part_meta_name(om), PAL_GRAY_D);
+            for (c = 0; c < 8; c++) {
+                uint8_t por[PORTRAIT_W * PORTRAIT_H], fgt[FIGHTER_W * FIGHTER_H];
+                DoomoLook l = base_look();
+                DoomoDeep d = doomo_deep_zero;
+                l.accessory_color = PAINT_COBALT;
+                l.top_color = PAINT_ROSE;
+                l.top = c < 6 ? tops[c] : TOP_TSHIRT;
+                if (c == 6) l.accessory = ACC_BACKPACK;
+                if (c == 7) l.accessory = ACC_CAPE;
+                look_part_set(&l, &d, GF_OUTER, om->value);
+                if (c < 6) {
+                    portrait_render_deep(&l, &d, RES_ALIVE, EXPR_NEUTRAL, 0, por);
+                    cell_bg(&s, 84 + c * 50, 12 + r * 58, 48, 56, r + c);
+                    sh_blit(&s, 84 + c * 50, 12 + r * 58, por, PORTRAIT_W, PORTRAIT_H);
+                } else {
+                    int x = 84 + 300 + (c - 6) * (FIGHTER_W + 2);
+                    fighter_render_d(&l, &d, RES_ALIVE, 0, 0, -1, fgt);
+                    cell_bg(&s, x, 12 + r * 58, FIGHTER_W, FIGHTER_H, r + c);
+                    sh_blit(&s, x, 12 + r * 58, fgt, FIGHTER_W, FIGHTER_H);
+                }
+            }
+        }
+        snprintf(fname, sizeof(fname), "interplay_outer_%d.png", page++);
+        sh_save(&s, fname, zoom > 1 ? zoom : 2);
+        row += rows;
+    }
+}
+
 /* CR4 A3: --slot KEY --views [--from N]: the body parts' review sheet (tails, wings, auras, halos): per part the
  * figure at 3x and the fighter's five views (0..4, front to back) at 2x on a plain citizen, so a tail or a
  * wing is seen from the side and from behind too. --from keeps the values from N up. */
@@ -412,6 +465,7 @@ static void sheet_slot_views(const char *key, int from, int shape)
         char nm[64];
         if (m->value < from) continue;
         l.accessory_color = PAINT_COBALT;
+        sheet_stage(&l, m->list);                              /* A5: an outer layer over a white top, legwear on shorts */
         look_part_set(&l, &d, m->list, m->value);
         figure_render_deep(&l, &d, RES_ALIVE, EXPR_NEUTRAL, 0, fig);
         cell_bg(&s, x, y, FIGURE_W * 3, FIGURE_H * 3, k);
@@ -691,7 +745,7 @@ int main(int argc, char **argv)
 {
     int i, stats = 0, figure = 0, shape = 0, interplay = 0;
     const char *bust = NULL, *slot = NULL, *set = NULL;
-    int views = 0, from = 0;
+    int views = 0, from = 0, interplay_outfit = 0;
     NatOptions o;
     for (i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--out") && i + 1 < argc) outdir = argv[++i];
@@ -704,11 +758,12 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--set") && i + 1 < argc) set = argv[++i];
         else if (!strcmp(argv[i], "--shape")) shape = 1;
         else if (!strcmp(argv[i], "--interplay")) interplay = 1;
+        else if (!strcmp(argv[i], "--interplay-outfit")) interplay_outfit = 1;
         else if (!strcmp(argv[i], "--views")) views = 1;
         else if (!strcmp(argv[i], "--from") && i + 1 < argc) from = atoi(argv[++i]);
         else { fprintf(stderr, "usage: portrait_sheet --out DIR [--zoom N] [--only NAME] [--stats] [--bust LIST [--fig]]\n"
                                "       portrait_sheet --out DIR --slot KEY [--set NAME] [--shape]\n"
-                               "       portrait_sheet --out DIR --interplay\n"); return 2; }
+                               "       portrait_sheet --out DIR --interplay | --interplay-outfit\n"); return 2; }
     }
     if (zoom < 1) zoom = 1;
     memset(&o, 0, sizeof(o));
@@ -719,6 +774,7 @@ int main(int argc, char **argv)
     if (slot && views) { sheet_slot_views(slot, from, shape); return 0; }
     if (slot) { sheet_slot(slot, set, shape); return 0; }
     if (interplay) { sheet_interplay(); return 0; }
+    if (interplay_outfit) { sheet_interplay_outfit(); return 0; }
     sheet_closeup();
     sheet_options();
     sheet_sliders();

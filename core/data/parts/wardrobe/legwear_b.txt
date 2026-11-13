@@ -1,0 +1,156 @@
+# core/data/parts/wardrobe/legwear_b.txt - legwear (CR4 A5), gene list `legwear` values 1..15.
+# One leg's frame (portrait_body.c legs): origin the foot, x 256 = the leg's radius (mirrored on the
+# left leg), y -256 = the hip, y 0 = the foot. Drawn after the bare leg, under the bottom and the shoes,
+# in the legwear colour (the creator's "Legwear col." row). Legs show on the figure, the fighter and
+# the chibi, never on the bust, so the blocks skip the bust.
+
+def leg
+  mat pattern_color
+  shade ball
+  solid
+enddef
+def legl
+  mat pattern_color light
+  decal
+enddef
+def legd
+  mat pattern_color dark
+  decal
+enddef
+
+list legwear 1                    # Knee Socks
+block group=1 anchor=frame lod=all view=figure,fighter,chibi
+  use leg
+  capsule 0 -140 0 0 255 255
+  use legl
+  line -240 -140 240 -140 2
+end
+
+list legwear 2                    # Thigh Highs
+block group=1 anchor=frame lod=all view=figure,fighter
+  use leg
+  capsule 0 -230 0 0 255 255
+  use legl
+  line -240 -230 240 -230 2
+end
+
+list legwear 3                    # Striped Socks
+block group=1 anchor=frame lod=all view=figure,fighter
+  use leg
+  capsule 0 -150 0 0 255 255
+  use legl
+  line -240 -110 240 -110 1
+  line -240 -60 240 -60 1
+  line -240 -10 240 -10 1
+end
+
+list legwear 4                    # Leg Warmers
+block group=1 anchor=frame lod=all view=figure,fighter
+  use leg
+  ellipse 0 -90 255 95
+  use legl
+  line -250 -150 250 -150 2
+  line -250 -30 250 -30 2
+end
+
+list legwear 5                    # Tights
+block group=1 anchor=frame lod=all view=figure,fighter,chibi
+  use leg
+  capsule 0 -250 0 0 255 255
+end
+
+list legwear 6                    # Argyle Tights
+block group=1 anchor=frame lod=all view=figure,fighter
+  use leg
+  capsule 0 -250 0 0 255 255
+  use legd
+  line -250 -210 250 -170 1
+  line -250 -170 250 -210 1
+  line -250 -110 250 -70 1
+  line -250 -70 250 -110 1
+  line -250 -30 250 10 1
+end
+
+list legwear 7                    # Ankle Socks
+block group=1 anchor=frame lod=all view=figure,fighter
+  use leg
+  capsule 0 -60 0 0 255 255
+  use legl
+  line -240 -60 240 -60 2
+end
+
+list legwear 8                    # Shin Wraps
+block group=1 anchor=frame lod=all view=figure,fighter
+  use leg
+  capsule 0 -170 0 -20 240 240
+  use legd
+  line -240 -140 240 -100 1
+  line -240 -90 240 -50 1
+  line -240 -40 240 0 1
+end
+
+list legwear 9                    # Polka Tights
+block group=1 anchor=frame lod=all view=figure,fighter
+  use leg
+  capsule 0 -250 0 0 255 255
+  use legl
+  dot -100 -210 1
+  dot 100 -150 1
+  dot -100 -90 1
+  dot 100 -30 1
+end
+
+list legwear 10                   # Striped Tights
+block group=1 anchor=frame lod=all view=figure,fighter
+  use leg
+  capsule 0 -250 0 0 255 255
+  use legl
+  line -250 -210 250 -210 1
+  line -250 -150 250 -150 1
+  line -250 -90 250 -90 1
+  line -250 -30 250 -30 1
+end
+
+list legwear 11                   # Ruffle Socks
+block group=1 anchor=frame lod=all view=figure,fighter
+  use leg
+  capsule 0 -90 0 0 255 255
+  frill -254 254 -90 4 80
+end
+
+list legwear 12                   # Shin Guards
+block group=1 anchor=frame lod=all view=figure,fighter
+  mat pattern_color
+  shade gloss
+  solid
+  ellipse 0 -90 190 120
+  use legl
+  line -120 -160 120 -160 1
+end
+
+list legwear 13                   # Spats
+block group=1 anchor=frame lod=all view=figure,fighter
+  use leg
+  capsule 0 -110 0 0 255 255
+  use legl
+  dot -150 -70 1
+  dot -150 -30 1
+  dot 150 -70 1
+  dot 150 -30 1
+end
+
+list legwear 14                   # Pom Socks
+block group=1 anchor=frame lod=all view=figure,fighter
+  use leg
+  capsule 0 -120 0 0 255 255
+  use legl
+  ellipse 0 -120 140 70
+end
+
+list legwear 15                   # Ankle Bows
+block group=1 anchor=frame lod=all view=figure,fighter
+  use leg
+  capsule 0 -50 0 0 255 255
+  use legl
+  bow 0 -50 140
+end

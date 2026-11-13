@@ -28,3 +28,29 @@ slot top list=top name="Top" method=P target=40 new=F
 23  "Pajamas"              set=cozy tags=cozy
 # CR2 outfit family, first batch (core/data/parts/outfit/family_a.txt): drawn, not selectable yet
 24  "Pageant Sash"         set=royal tags=royal,glam method=F
+
+# CR4 batch A5 (core/data/parts/outfit/tops_b.txt): live with review.txt A5
+25  "Breton Stripes"     set=seasons tags=nature,retro method=S
+26  "Turtleneck"         set=cozy tags=cozy,formal method=S
+27  "Polo"               set=teaparty tags=formal,sporty method=S
+28  "Henley"             set=basics tags=plain method=S
+29  "V-Neck Tee"         set=basics tags=plain method=S
+30  "Sailor Top"         set=sewers tags=sea,cute method=S
+31  "Peter Pan Blouse"   set=teaparty tags=fancy,cute method=S
+32  "Ruffle Blouse"      set=royal tags=glam,fancy method=S
+33  "Tracksuit Top"      set=hellbreach tags=sporty,retro method=S
+34  "Jersey"             set=concert tags=sporty method=S
+35  "Star Tee"           set=funfair tags=party,silly method=S
+36  "Heart Tee"          set=candy tags=cute,candy method=S
+37  "Pocket Tee"         set=basics tags=plain,work method=S
+38  "Tunic"              set=royal tags=fancy,retro method=S
+39  "Waistcoat Shirt"    set=teaparty tags=formal,fancy method=S
+40  "Fisherman Knit"     set=fishcook tags=cozy,work method=S
+41  "Rugby Shirt"        set=hellbreach tags=sporty method=S
+42  "Bib Shirt"          set=littleones tags=baby,cute method=S
+43  "Raglan Tee"         set=concert tags=sporty,retro method=S
+44  "Lace-Up Top"        set=punk tags=punk,goth method=S
+45  "Sequin Top"         set=partypals tags=glam,party method=S
+46  "Hawaiian Shirt"     set=seasons tags=nature,silly method=S
+47  "Scrubs"             set=indieart tags=work,tech method=S
+48  "Cheer Top"          set=funfair tags=sporty,party method=S

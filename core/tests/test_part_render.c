@@ -170,6 +170,29 @@ TEST(part_sanitize_keeps_scripted_values_and_clamps_the_rest)
     CHECK(render_hash(&b) == render_hash(&z));
 }
 
+/* CR4 A5: 1 if the script of (list, value) has a block that draws on the chibi. A scripted top without one
+ * still shows the plain top the painter gives it, so its chibi differs from value 0 without drawing a
+ * pixel of its own: that must not put it under the chibi gate. */
+static int draws_on_chibi(int list, int value)
+{
+    int s, i, j;
+    for (s = 0; s < doomo_part_script_count; s++) {
+        const PartSet *set = doomo_part_scripts[s];
+        if (!set->ops) continue;
+        for (i = 0; i < set->nlists; i++) {
+            if (set->lists[i].list != list) continue;
+            for (j = set->lists[i].first; j < set->lists[i].first + set->lists[i].n; j++) {
+                const uint8_t *p;
+                if (set->ref[j].value != value) continue;
+                for (p = set->ops + set->ref[j].ofs; p[0] != PH_END; p += 4 + p[3])
+                    if ((PLV_VIEW(p[2]) >> VK_CHIBI) & 1) return 1;
+                return 0;
+            }
+        }
+    }
+    return 0;
+}
+
 static int px_diff(const uint8_t *a, const uint8_t *b, int n)
 {
     int i, d = 0;
@@ -207,7 +230,7 @@ TEST(part_scripts_pass_the_shape_gate)
             const PartMeta *m = &doomo_part_meta[i];
             int c0;
             if (!scripted(m)) continue;
-            c0 = px_diff(chibi[m->value], chibi[0], BODYSPR_W * BODYSPR_H);
+            c0 = draws_on_chibi(m->list, m->value) ? px_diff(chibi[m->value], chibi[0], BODYSPR_W * BODYSPR_H) : 0;
             for (k = sl->first; k < sl->first + sl->count; k++) {
                 const PartMeta *o = &doomo_part_meta[k];
                 int d, dc;
@@ -352,11 +375,18 @@ static int measure_cost(const PartMeta *m)
     DoomoLook l = bench_look();
     uint32_t with = 0, without = 0;
     int pass;
-    if (look_off(m->list) < 0 && !PL_IS_DEEP(m->list)) return 0;
+    int gene_only = m->list == GF_OUTER || m->list == GF_LEGWEAR;   /* CR4 A5: the gene-only outfit lists */
+    if (look_off(m->list) < 0 && !PL_IS_DEEP(m->list) && !gene_only) return 0;
     for (pass = 0; pass < 2; pass++) {
         uint32_t t = 0;
         int v = pass ? 0 : m->value;
-        if (PL_IS_DEEP(m->list)) {
+        if (gene_only) {
+            DoomoDeep d = doomo_deep_zero;
+            look_part_set(&l, &d, m->list, v);
+            portrait_render_deep(&l, &d, RES_ALIVE, EXPR_NEUTRAL, 0, por); t += portrait_last_ops();
+            figure_render_deep(&l, &d, RES_ALIVE, EXPR_NEUTRAL, 0, fig); t += portrait_last_ops();
+            bodyspr_render_deep(&l, &d, RES_ALIVE, 0, 0, spr); t += portrait_last_ops();
+        } else if (PL_IS_DEEP(m->list)) {
             DoomoDeep d = doomo_deep_zero;
             d.v[m->list - PL_DEEP0] = (uint8_t)v;
             portrait_render_deep(&l, &d, RES_ALIVE, EXPR_NEUTRAL, 0, por);

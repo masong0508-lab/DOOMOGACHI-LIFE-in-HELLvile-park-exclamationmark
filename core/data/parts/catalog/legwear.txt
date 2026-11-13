@@ -1,0 +1,20 @@
+# core/data/parts/catalog/legwear.txt - legwear, gene field legwear (CR4 A5; format: tools/partcat_build.py).
+# Drawn on the legs by core/data/parts/wardrobe/legwear_b.txt in the legwear colour.
+slot legwear list=legwear name="Legwear" method=P target=15 new=F
+
+0   "None"           set=basics tags=plain
+1   "Knee Socks"     set=basics tags=plain,cute method=S
+2   "Thigh Highs"    set=teaparty tags=fancy,glam method=S
+3   "Striped Socks"  set=candy tags=cute,candy method=S
+4   "Leg Warmers"    set=partypals tags=retro,cozy method=S
+5   "Tights"         set=basics tags=plain,fancy method=S
+6   "Argyle Tights"  set=elders tags=elder,formal method=S
+7   "Ankle Socks"    set=basics tags=plain,sporty method=S
+8   "Shin Wraps"     set=punk tags=punk,sporty method=S
+9   "Polka Tights"   set=funfair tags=party,cute method=S
+10  "Striped Tights" set=indieart tags=silly,retro method=S
+11  "Ruffle Socks"   set=littleones tags=baby,cute method=S
+12  "Shin Guards"    set=hellbreach tags=armor,sporty method=S
+13  "Spats"          set=teaparty tags=formal,retro method=S
+14  "Pom Socks"      set=seasons tags=cute,cozy method=S
+15  "Ankle Bows"     set=candy tags=cute,glam method=S

@@ -1,0 +1,37 @@
+# core/data/parts/catalog/outer.txt - outer layers, gene field outer (CR4 A5; format: tools/partcat_build.py).
+# Drawn over the top by core/data/parts/wardrobe/outer_b.txt; the colour is the accessory colour.
+slot outer list=outer name="Outer layer" method=P target=31 new=F
+
+0   "None"           set=basics tags=plain
+1   "Open Cardigan"  set=cozy tags=cozy method=S
+2   "Poncho"         set=seasons tags=nature,cozy method=S
+3   "Apron"          set=fishcook tags=work method=S
+4   "Puffer Vest"    set=seasons tags=cozy,sporty method=S
+5   "Denim Jacket"   set=punk tags=punk method=S
+
+6   "Raincoat"       set=sewers tags=sea,work method=S
+7   "Trench Coat"    set=teaparty tags=formal,fancy method=S
+8   "Varsity Jacket" set=concert tags=sporty,retro method=S
+9   "Bomber"         set=hellbreach tags=sporty,tech method=S
+10  "Shawl"          set=elders tags=elder,cozy method=S
+11  "Short Cape"     set=royal tags=royal,magic method=S
+12  "Lab Smock"      set=indieart tags=work,tech method=S
+13  "Overall Bib"    set=fishcook tags=work method=S
+14  "Bolero"         set=teaparty tags=fancy,glam method=S
+15  "Suspenders"     set=basics tags=plain,retro method=S
+16  "Cross Harness"  set=punk tags=punk method=S
+17  "Tabard"         set=royal tags=royal,formal method=S
+18  "Fur Stole"      set=royal tags=glam,fancy method=S
+19  "Ruff Cape"      set=cathedral tags=holy,fancy method=S
+20  "Blanket Wrap"   set=cozy tags=cozy method=S
+21  "Tool Vest"      set=hellbreach tags=work,armor method=S
+22  "Life Vest"      set=sewers tags=sea,sporty method=S
+23  "Haori"          set=basics tags=fancy method=S
+24  "Long Cape"      set=spooky tags=goth,magic method=S
+25  "Chef Jacket"    set=fishcook tags=food,work method=S
+26  "Letter Vest"    set=concert tags=retro,sporty method=S
+27  "Fringe Vest"    set=partypals tags=retro,party method=S
+28  "Shrug"          set=cozy tags=cozy,cute method=S
+29  "Pauldrons"      set=hellbreach tags=armor method=S
+30  "Tinsel Boa"     set=funfair tags=party,glam method=S
+31  "Starry Mantle"  set=cloud9 tags=magic,holy method=S

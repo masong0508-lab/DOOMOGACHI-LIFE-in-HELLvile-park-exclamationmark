@@ -591,6 +591,13 @@ middle of the hem, and give the bust its own `view=portrait` block with a smalle
 block that does not draw on the bust against the figure's torso (`NOMINAL_TORSO_BODY`). `portrait_sheet --slot tail --views
 [--from N] [--shape]` writes `views_tail.png`: the figure at 3x and the fighter's five views (0 behind .. 4 front).
 
+**Outfit parts as scripts (CR4 A5).** A top or an outer layer is a torso-anchored script drawn in layer group 1 (over the
+torso, under the arms and paws) and group 4 (after the head and the arms: collars, sleeves, shoulder pieces). On the bust the torso
+anchor's centre sits at the bottom of the picture: only y -256 .. 0 and x +-256 show, the paws cover the lower middle and a
+furred species' chest fluff the upper middle. Legwear is a frame block (`anchor=frame`, the leg's frame). `test_cr4_a5.c` runs the
+shape gate for the gene-only lists (outer, legwear) that `test_part_render.c` skips, and `draws_on_chibi()` keeps a top without a
+chibi block out of the chibi gate. `portrait_sheet --interplay-outfit` writes the outer layer x top / backpiece sheets.
+
 **Age.** `look_for_stage()` ends with `part_age_filter_look()` (CR12): a part whose catalog age class is
 above the stage is drawn as its slot's default. See docs/CREATOR.md "The age gate for parts".
 

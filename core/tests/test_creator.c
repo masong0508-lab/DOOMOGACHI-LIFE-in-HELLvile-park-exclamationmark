@@ -1048,7 +1048,7 @@ TEST(creator_rows_with_nothing_to_pick_are_not_shown)
             }
         }
     }
-    CHECK_EQ(n_hidden, 4);                                  /* today: outer layer and legwear and their 2 colour rows (the fur pattern is live since CR4 A4) */
+    CHECK_EQ(n_hidden, 0);                                  /* today: every row has something to pick (CR4 A4 made the fur pattern, CR4 A5 the outer layer and legwear live) */
     /* the cursor never lands on one */
     for (t = 0; t < CR_TAB_COUNT; t++) {
         for (i = 0; i < 60; i++) {
