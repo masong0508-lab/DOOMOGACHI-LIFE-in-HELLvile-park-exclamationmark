@@ -1,0 +1,205 @@
+# core/data/talk/grammar/en/cool_insult.tlk - more replies to INSULT and MOCK (owner: TK; T5b
+# package T5B-COOL). Mean is fine, cruel is not (SCRIPT_STYLE R4): the target is a hat, a walk,
+# a haircut, never a body, a family, a loss or anything real. No slur, no register word. The
+# sharp lines need `!kid_present`; every other line is silly enough for any room. A child
+# speaker gets a cute-filtered deflection. Syntax: core/tools/talkc_gen.py.
+
+# ---- INSULT -> INSULT --------------------------------------------------------------------------
+@rule core.insult.c_back act: insult
+  "Oh, you want to trade? Fine. Your jokes are stale bread."
+  "Bold move. Your face is a rumour I refuse to believe."
+  "You walk like a shopping trolley with one bad wheel."
+  "I've met cleverer cushions. They were nicer, too."
+  "You have the charm of a damp sock in a lift."
+  "Wow. Did you borrow that line? It's got your fingerprints on it."
+  "Your fashion sense called. It wants a lawyer."
+  "You're like a candle in the wind. A bit smelly, a bit sad."
+  "I'd call you a cab, but I wouldn't wish you on a cabbie."
+  "Careful, you'll hurt yourself with that edge. It's made of cheese."
+@rule core.insult.c_back_sharp guard: !kid_present act: insult
+  "You're the human version of a Monday. Everyone's tired of you."
+  "If you were any slower, you'd be a rumour."
+  "Somewhere a village is missing its genius. It's okay, you're no use there."
+  "You have your whole life to be wrong. Don't rush it."
+  "I'd explain why you're awful, but I left my crayons at home."
+  "Impressive. It takes real talent to be that loud and that empty."
+@rule core.insult.c_back_blunt guard: blunt&!kid_present act: insult
+  "You've got a face like a dropped pie. Everyone looks, nobody helps."
+  "That was weak. Try again. I'll wait, I've got all day."
+  "Is that all? My cat insults harder. And she's a lamp."
+  "Come back when you've got material. Bring a note."
+@rule core.insult.c_back_polite guard: polite act: insult
+  "I beg your pardon? I'd say something, but I was raised properly."
+  "How rude. I'll be rude back, but with a nice napkin."
+  "Well! Forgive me for saying so, but you're a bit of a lemon."
+  "Goodness. And I thought we'd had such a nice start."
+@rule core.insult.c_back_loud guard: loud act: insult
+  "OH, IS THAT RIGHT? WELL, YOU'RE A BIG HAT WITH NO HEAD!"
+  "HA! YOU CALL THAT AN INSULT? I'VE SEEN BETTER ON A LUNCH BOX!"
+  "Take that back! Take it back RIGHT now! And a bit extra!"
+@rule core.insult.c_back_flat guard: flat act: insult
+  "That's nice. {.}You're a puddle with opinions."
+  "Noted. Also, you're boring. Equal trade."
+  "Sure. I'd get angry, but I'm saving it for something nice."
+@rule core.insult.c_back_quirky guard: quirky act: insult
+  "You're a sock! A sock in a boot, in a shoe, inside a bigger shoe!"
+  "Your aura is the colour of old toast. I'm not even kidding."
+  "You're like a spoon. {.}Mostly harmless, mostly in the wrong drawer."
+@rule core.insult.c_back_elder guard: elder act: insult
+  "In my day we called that a Tuesday. Now sit down and learn manners."
+  "I've outlived better insults than that. And better people."
+  "You've the manners of a goat, dear. A cheerful goat, but a goat."
+@rule core.insult.c_back_rival guard: rel=rival&!kid_present act: insult
+  "Of course it's you. The one splinter in my otherwise lovely day."
+  "Look who found a voice. Shame it came without a brain."
+  "You again. I'd say it's a pleasure, but I don't lie before lunch."
+@rule core.insult.c_back_friend guard: rel=friend act: insult
+  "Hey! Only I get to call you that. Rude, and accurate."
+  "Oh, we're doing this? I love you, you're a goblin."
+  "Okay, that was funny. I hate that it was funny."
+@rule core.insult.c_back_kid guard: kid_speaker tags: kid act: insult
+  "You're a poopy-head! No wait, that's rude. You're a pickle!"
+  "I'm rubber, you're glue! Everything you say sticks to YOU!"
+  "Hmph! You're not the boss of me. You're not even the boss of the cat."
+
+# ---- INSULT -> COMPLAIN ------------------------------------------------------------------------
+@rule core.insult.c_hurt act: complain
+  "Okay, that stung. I'm putting a plaster on my feelings."
+  "Wow. I came here for a nice chat and got slapped with a word."
+  "That was uncalled for. I'm filing a complaint with myself."
+  "Was that necessary? My self-esteem just went to lie down."
+  "Hey, that's not nice. I'd cry, but I'm too stubborn."
+  "Ouch. I'll be thinking about that in the shower. Thanks."
+  "You could have just waved. Instead, you chose violence. Of words."
+  "That's the nicest way you could've said it? Wow."
+@rule core.insult.c_hurt_sad guard: mood=sad act: complain
+  "Today? Really? I was having a quiet little sulk, and now this."
+  "I'm already low, and you came with a shovel. Thanks."
+  "Please don't. I'm barely holding my smile on with tape."
+@rule core.insult.c_hurt_angry guard: mood=angry act: complain
+  "Don't start. I'm one more rude word from a very loud afternoon."
+  "Careful. I've got a temper and I know where you sleep. Roughly."
+@rule core.insult.c_hurt_scared guard: mood=scared act: complain
+  "Not now! I'm already jumpy. I jump at my own shoes."
+  "Ow! Could you be mean tomorrow? I'm busy being nervous."
+@rule core.insult.c_hurt_tired guard: mood=tired act: complain
+  "I'm too sleepy for this. Insult me after my nap. Book a slot."
+  "Mm? Was that an insult? I'll feel hurt after I wake up."
+@rule core.insult.c_hurt_polite guard: polite act: complain
+  "That's rather unkind. I'd ask you to apologise, but I'd take tea."
+  "Oh dear. I thought we were having such a civil morning."
+@rule core.insult.c_hurt_elder guard: elder act: complain
+  "Well, I never. In my day we insulted people behind their backs."
+  "Kids these days. Everyone's a poet, nobody's a gentleman."
+@rule core.insult.c_hurt_kid guard: kid_speaker tags: kid act: complain
+  "That's mean! I'm telling a grown-up. I'm telling TWO."
+  "Hey! That hurt my feelings. They're very little feelings."
+  "Not nice! Say sorry or I'm taking my ball home."
+@rule core.insult.c_hurt_memory guard: fact.insulted act: complain
+  "That's two today. I'm starting a tally, and I'm winning."
+  "Again with the insults? You're running out of nouns."
+
+# ---- INSULT -> DISMISS -------------------------------------------------------------------------
+@rule core.insult.c_dismiss act: dismiss
+  "Mm-hm. Anything else? Besides the nonsense?"
+  "I'd be hurt, but I've got a lot of better things to be."
+  "That's adorable. Do you do birthdays?"
+  "Say it again, but slower. I'd like to savour how little I care."
+  "You've got a lot of opinions for a person with no taste."
+  "Yeah, yeah. Put it in the box marked Whatever."
+  "Funny. I've been called worse by weather."
+  "I'm going to pretend you said something nice. Thanks!"
+  "Insulted by you? Like being bitten by a sleepy kitten."
+@rule core.insult.c_dismiss_flat guard: flat act: dismiss
+  "Cool. {.}I'll add it to the pile. It's a big pile."
+  "Okay. {.}Anyway."
+  "Uh-huh. Insult received. Insult filed."
+@rule core.insult.c_dismiss_easy guard: easygoing act: dismiss
+  "Eh. Whatever. Mean words wash off like a rainy Tuesday."
+  "No worries! I'll insult you back later. I'm on a break."
+  "It's fine. I'm too comfy to be offended."
+@rule core.insult.c_dismiss_serious guard: serious act: dismiss
+  "That is a poor use of your breath. Please conserve it."
+  "I will note your objection. In writing. And then bin it."
+  "Your comment has been noted and rejected."
+@rule core.insult.c_dismiss_blunt guard: blunt&!kid_present act: dismiss
+  "Cool story. Get lost. Come back when you're interesting."
+  "I don't take notes from people who dress like that."
+  "Talk to the hand. It's more polite and it's got better ideas."
+
+# ---- INSULT -> JOKE / LAUGH / TEASE / MOCK / THREATEN ---------------------------------------------
+@rule core.insult.c_joke act: joke
+  "Fair. I did fall for a pigeon once. Don't tell the pigeon."
+  "You're right. I'm a mess. A glamorous, spilled mess."
+  "I've been called a lot of things. Mostly late for dinner."
+  "That's my stage name, actually. Coming soon to a bin near you."
+  "I prefer 'a legend in my own lunchtime', but go on."
+  "Accurate! I'll have it printed on a mug."
+@rule core.insult.c_laugh act: laugh
+  "Ha! That one hit. Do another, I want to see where it lands."
+  "Oh, that's good. Rude, rude and good. Like soup."
+  "Haha, okay, okay. I'll let that one slide. Just this once."
+  "Hee! You're terrible. Let's be friends."
+  "Wow, you actually went there. Respect, you maniac."
+@rule core.insult.c_tease act: tease
+  "Aww, you're cute when you try to be scary. Like a mad biscuit."
+  "Is that your mean face? It's a bit like your regular face."
+  "Look at you, being edgy. Does your mum know you're out?"
+  "You're doing great, sweetie. Keep going. It's hilarious."
+@rule core.insult.c_mock act: mock
+  "'Oh, I'm so mean, look at me.' Nyah nyah. You sound like a kettle."
+  "Ooh, 'you're a dork'. How original. Did you think that up alone?"
+@rule core.insult.c_threaten act: threaten
+  "Say that again and I'll feed your hat to the ducks."
+  "One more word and I'll send you a strongly worded postcard."
+  "Careful. I know a demon who does eviction notices. He loves them."
+  "Keep going and I'll tell your mum. And the pigeons."
+@rule core.insult.c_threaten_blunt guard: blunt&!kid_present act: threaten
+  "Push me. Go on. I haven't had a good scrap since Thursday."
+  "I'll pop your hat so hard it'll need therapy."
+
+# ---- MOCK -> MOCK --------------------------------------------------------------------------------
+@rule core.mock.c_back act: mock
+  "'Ooh, I'm a mocker!' Mm, no. That's the worst impression ever."
+  "Is that how I sound? It's like a goose with a head cold."
+  "Okay, you try the voice. 'Hi, I'm me.' See? Terrible, you."
+  "You do my walk too? It's like watching a hen cross a road."
+  "Mock on, mighty mimic. I'll be over here being original."
+  "That's a nice impression. Of a pudding. Is that a pudding?"
+  "Hold on, I'll do you. 'Blah blah blah, look at me.' There."
+  "You want to see a real mock? Watch. {.}Nope, can't compete."
+@rule core.mock.c_back_quirky guard: quirky act: mock
+  "Beep boop, I'm a Dr. Bloom! Look, I've got the clipboard! And no joy!"
+  "Ooh, ooh, let me! 'Wah, I'm a mock.' See? It's you."
+@rule core.mock.c_back_loud guard: loud act: mock
+  "I DO NOT HONK LIKE THAT! {.}Okay, a little. But NOT LIKE THAT!"
+  "LOOK AT ME, I'M A BIG IMPRESSION! EVERYONE CLAP FOR THE BIG GUY!"
+@rule core.mock.c_complain act: complain
+  "Hey, stop that. It's hard enough being me without a cover act."
+  "That's not funny. {.}Okay, it's a bit funny. Stop it."
+  "Quit copying me! It's creepy. You've got my elbows right."
+  "I do not talk like that. My voice is much more dignified."
+  "I'm very sensitive about my voice. It's a delicate instrument."
+  "Don't! Everyone looks at me and I'm shy. Under the loudness."
+@rule core.mock.c_complain_kid guard: kid_speaker tags: kid act: complain
+  "Stop copying me! Stop it, stop it! You're copying me!"
+  "That's not how I talk! You're silly and wrong!"
+@rule core.mock.c_dismiss act: dismiss
+  "Whatever. Mimic me all day. I'll be over here, being the original."
+  "Do your worst. I've got no worse to give you back."
+  "That was a bad impression. Of someone I'd never be."
+  "You do you. I'd say me, but you're already doing it badly."
+  "Wake me when you've got your own personality."
+@rule core.mock.c_joke act: joke
+  "Not bad! Now do the splits. Or my sneeze, it's a sight."
+  "That's a spot-on me. You've even got the hair. Where's the hair?"
+  "Ha, that's uncanny. Can you do my mum? I miss her scolding."
+  "Do me paying a bill! It's a horror film."
+@rule core.mock.c_insult act: insult
+  "You're a rubbish mimic and a worse friend. And your hat's off."
+  "Copycat! Cheese-brain! I'd say more but I'm being polite."
+  "You do me like a toad does an opera: loud, wrong, and confident."
+@rule core.mock.c_laugh act: laugh
+  "Hahaha! That's the nose, you nailed the nose! Do the ears!"
+  "Oh no, it's really me. Stop, it's too good. I'm cackling."
+  "Ha! I'm going to do that to someone in the pub now. Cheers."
