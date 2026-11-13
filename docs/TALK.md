@@ -42,7 +42,7 @@ Contents:
 | **T3** | the free-text parser (Dreamcast and native): `talk_lex.c`, `talk_parse.c`, `rules/en.tsv`, a labelled corpus of 1,519 lines | **done** (TK2) |
 | **T4** | the safety gate: the input classifier S1, the audience gate S2 (`talk_safe_ctx`, one source of "minor"), the output lint S3, the template lints TK1-TK9, the safety and adversarial corpora, the hashed hate list, the property tests | **done** (TK2): green. The generator-level halves of P1-P8 go live with T5a / T6 |
 | **T5a** | the generator: `talk_gen.c` (the grammar VM, guards, fillers, sim-fact callbacks, novelty, re-picks, the bubble fit, the per-conversation RNG, the trace), the `.tlk` grammar compiler `talkc_gen.py`, the adjacency table `acts.tsv`, a plain exchange (the gate first, who answers, reactions between residents) | **done** (TK3); a **starter** English bank (718 alternatives in 12 files, the K-10 grief and comfort banks included) so every act, refusal and part plays |
-| T5b | the English line banks (about 6,000 alternatives, design 3.6) and the owner's review | in progress: 1,457 alternatives (starter 718 + T5B-WARM 739: warm acts) |
+| T5b | the English line banks (about 6,000 alternatives, design 3.6) and the owner's review | in progress: 2,057 alternatives (starter 718 + T5B-WARM 739: warm acts + T5B-COOL 600: cool and rude acts) |
 | T6 | the drama manager, outcomes, the talk memory chunk | **memory and chunk done** (T6-MEM, 6e); the drama manager (T6-DM) and outcomes (T6-OUT) to do |
 | **T7** | the census (`core/tools/talk_census.c`: the three tiers, Chao1, the quality checks Q1-Q6, the conversation tier), the grid `census_en.tsv`, `make -C core talk-census`, the smoke census in `make test`, the Q7 review sheet `talk_sample.py` | **done** (TK3): the tools and the measurement. The full run's numbers are in 6d: Skeleton, Meaning, conversations and quality meet the design's targets; **Surface does not** (it needs T5b's bank); Q7 (a person rating 300 exchanges) has not been done |
 | T8 | the house mode `HM_TALK` on native, with its UI | to do |
@@ -835,6 +835,20 @@ kid (tagged `kid`), mood, relationship, time of day, hellborn and ghost. Rules: 
 one exclamation mark except loud and kid lines, no register word, no filler, no romance,
 nothing a kid may not hear. `TALK_en.BIN` 540,274 -> 569,233 B (PS1 non-resident data,
 no resident byte). No code change.
+
+**T5B-COOL (the cool and rude acts, content only)**: +600 alternatives in five new files,
+`grammar/en/cool_insult.tlk` (150: INSULT and MOCK), `cool_tease.tlk` (139: CRITICIZE and
+TEASE), `cool_blame.tlk` (134: COMPLAIN and BLAME), `cool_dismiss.tlk` (122: DISMISS and
+THREATEN) and `cool_extra.tlk` (55: sarcasm and brush-offs by topic, by the memory of an
+insult or compliment, by relationship, night, ghost, hellborn, possessed and stance).
+Every reply act the adjacency table allows after a cool act has lines. Voices by guard:
+polite, flat, blunt, loud, quirky, serious, easygoing, elder, kid (tagged `kid`), mood,
+relationship, night, hellborn, ghost. Rude stays PG-21 comedy (SCRIPT_STYLE R4): the target
+is a hat, a walk or a joke, never a body, a family or a loss; threats are cartoon (a duck, a
+postcard, a nap); no slur, no register word, no romance. The sharp lines carry `!kid_present`
+and a child speaker gets a cute deflection ("I'm telling!", "Not nice!"). At most 3 sentences
+a line. `TALK_en.BIN` 546,971 -> 567,450 B on the starter bank (PS1 non-resident data, no
+resident byte). No code change. A 40-line sample is in the evidence directory.
 
 **With K-10 (the TK3 landing)**: GRAMMAR 14,536 B and STRINGS 17,650 B
 stored (27,439 B raw) for 373 rules, 718 alternatives, 512 guard terms, 79

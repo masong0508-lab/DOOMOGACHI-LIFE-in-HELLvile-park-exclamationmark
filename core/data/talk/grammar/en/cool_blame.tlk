@@ -107,7 +107,7 @@
 
 # ---- BLAME -> DISAGREE ------------------------------------------------------------------------------
 @rule core.blame.c_disagree act: disagree
-  "Me? Never, I'm a model citizen. Ask my mum."
+  "Me? Never, I'm a model citizen. Ask the pigeons."
   "That's a lie, and a rude one. And I was nowhere near it."
   "Excuse me? I was reading. In another town, entirely."
   "I didn't do it. I was busy being innocent. It's exhausting."

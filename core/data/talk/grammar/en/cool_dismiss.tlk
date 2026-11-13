@@ -161,7 +161,7 @@
   "You're being scary, stop it! I'll tell the Patrol! They've got whistles!"
 @rule core.threaten.c_complain_scared guard: mood=scared act: complain
   "Please don't. I'm already shaking. Even my hair's shaking."
-  "Eep, don't! I scare easily! I scared at my own shadow today!"
+  "Eep, don't! I scare easily! I got scared by my own shadow today!"
 @rule core.threaten.c_complain_kid guard: kid_speaker tags: kid act: complain
   "That's not fair! I'm telling the grown-ups! Right now!"
   "Stop it! I don't like it! Let's play a nice game instead?"

@@ -7,13 +7,13 @@
 # ---- INSULT -> INSULT --------------------------------------------------------------------------
 @rule core.insult.c_back act: insult
   "Oh, you want to trade? Fine. Your jokes are stale bread."
-  "Bold move. Your face is a rumour I refuse to believe."
+  "Bold move. Your comeback is a rumour I refuse to believe."
   "You walk like a shopping trolley with one bad wheel."
   "I've met cleverer cushions. They were nicer, too."
   "You have the charm of a damp sock in a lift."
   "Wow. Did you borrow that line? It's got your fingerprints on it."
   "Your fashion sense called. It wants a lawyer."
-  "You're like a candle in the wind. A bit smelly, a bit sad."
+  "You're like a candle in the wind. A bit flickery, a bit sad."
   "I'd call you a cab, but I wouldn't wish you on a cabbie."
   "Careful, you'll hurt yourself with that edge. It's made of cheese."
 @rule core.insult.c_back_sharp guard: !kid_present act: insult
@@ -24,7 +24,7 @@
   "I'd explain why you're awful, but I left my crayons at home."
   "Impressive. It takes real talent to be that loud and that empty."
 @rule core.insult.c_back_blunt guard: blunt&!kid_present act: insult
-  "You've got a face like a dropped pie. Everyone looks, nobody helps."
+  "You've got the charm of a dropped pie. Everyone looks, nobody helps."
   "That was weak. Try again. I'll wait, I've got all day."
   "Is that all? My cat insults harder. And she's a lamp."
   "Come back when you've got material. Bring a note."
@@ -143,8 +143,8 @@
   "Wow, you actually went there. Respect, you maniac."
 @rule core.insult.c_tease act: tease
   "Aww, you're cute when you try to be scary. Like a mad biscuit."
-  "Is that your mean face? It's a bit like your regular face."
-  "Look at you, being edgy. Does your mum know you're out?"
+  "Is that your mean voice? It's a bit like your regular voice."
+  "Look at you, being edgy. Does your hat know you're out?"
   "You're doing great, sweetie. Keep going. It's hilarious."
 @rule core.insult.c_mock act: mock
   "'Oh, I'm so mean, look at me.' Nyah nyah. You sound like a kettle."
@@ -153,7 +153,7 @@
   "Say that again and I'll feed your hat to the ducks."
   "One more word and I'll send you a strongly worded postcard."
   "Careful. I know a demon who does eviction notices. He loves them."
-  "Keep going and I'll tell your mum. And the pigeons."
+  "Keep going and I'll tell the pigeons. They gossip."
 @rule core.insult.c_threaten_blunt guard: blunt&!kid_present act: threaten
   "Push me. Go on. I haven't had a good scrap since Thursday."
   "I'll pop your hat so hard it'll need therapy."
@@ -193,13 +193,13 @@
 @rule core.mock.c_joke act: joke
   "Not bad! Now do the splits. Or my sneeze, it's a sight."
   "That's a spot-on me. You've even got the hair. Where's the hair?"
-  "Ha, that's uncanny. Can you do my mum? I miss her scolding."
+  "Ha, that's uncanny. Can you do my landlord? He needs a good scolding."
   "Do me paying a bill! It's a horror film."
 @rule core.mock.c_insult act: insult
   "You're a rubbish mimic and a worse friend. And your hat's off."
   "Copycat! Cheese-brain! I'd say more but I'm being polite."
   "You do me like a toad does an opera: loud, wrong, and confident."
 @rule core.mock.c_laugh act: laugh
-  "Hahaha! That's the nose, you nailed the nose! Do the ears!"
+  "Hahaha! That's the walk, you nailed the walk! Do the hat!"
   "Oh no, it's really me. Stop, it's too good. I'm cackling."
   "Ha! I'm going to do that to someone in the pub now. Cheers."
