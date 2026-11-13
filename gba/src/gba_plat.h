@@ -134,7 +134,7 @@ extern uint8_t gba_r3d[];               /* == GBA_BIG(GBA_BIG_R3D) */
 extern uint8_t gba_ow[];                /* == GBA_BIG(GBA_BIG_OW)  */
 extern uint32_t gba_big_epoch;          /* (SP5) bumps whenever gba_big_claim changes the owner or the claim */
 extern uint8_t gba_room[];              /* == GBA_BIG(GBA_BIG_ROOM) */
-enum { GBA_BIG_FREE, GBA_BIG_BY_OW, GBA_BIG_BY_R3D, GBA_BIG_BY_SAVE, GBA_BIG_BY_ROOM };
+enum { GBA_BIG_FREE, GBA_BIG_BY_OW, GBA_BIG_BY_R3D, GBA_BIG_BY_SAVE, GBA_BIG_BY_ROOM, GBA_BIG_BY_ISL };
 void gba_big_claim(int who);
 /* (H10) the autopilot's BFS work area (core/src/combat_bot.c, demo mode
  * and tests): GBA_BIG_BOT bytes at the bottom of the raycaster's clip

@@ -21,6 +21,8 @@
  */
 #include "gba_plat.h"
 #include "doomo/save.h"
+#include "doomo/plat_ext.h"
+#include "../../core/src/fp_island.h"
 
 EWRAM_BSS uint8_t gba_arena[GBA_ARENA_SIZE] __attribute__((aligned(8)));
 /* the core's per-frame billboard list (scene.h), at the top */
@@ -55,6 +57,9 @@ DOOMO_STATIC_ASSERT(GBA_ARENA_SIZE - 11312u >= DOOMO_SAVE_STREAM_MIN + 1024u, is
  * three arrays add up to 4,096 B; GBA_BIG_BOT is pinned to the same size
  * so neither side can change alone */
 DOOMO_STATIC_ASSERT(GBA_BIG_BOT == 4096, bot_work_is_4k);
+/* (CR5a) the island hub's lists (fp_island.h FP_ISLAND_SCRATCH_GBA) fit above the largest scratch claim */
+DOOMO_STATIC_ASSERT(FP_ISLAND_SCRATCH_GBA % 8 == 0 && DOOMO_SCENE_SCRATCH + FP_ISLAND_SCRATCH_GBA <= GBA_ARENA_SIZE,
+                    island_lists_beside_any_claim);
 DOOMO_STATIC_ASSERT(GBA_BIG_CLIPS + GBA_BIG_BOT <= GBA_BIG_ROOF && (GBA_ARENA_BB - GBA_BIG_R3D + GBA_BIG_CLIPS) % 4 == 0,
                     bot_in_clips);
 
@@ -90,6 +95,24 @@ int gba_big_fits(uint32_t bytes)
 void gba_bot_claim(void)
 {
     gba_big_claim(GBA_BIG_BY_R3D);
+}
+
+/* (CR5a) The island hub's recorded rect lists (core/src/fp_island_gfx.c lr_bind: 13,720 B, formerly .bss) live at
+ * the top of the arena, over the region of the other owners and the billboards, which the 2D hub does not use
+ * (the owner GBA_BIG_BY_ISL; a scene scratch claim of up to 12 KB sits below, asserted). The pointer is good
+ * while *gen keeps its value: the raycaster, the overworld, the house (all claim, and fill the billboards only
+ * after they claimed), a save's stream or a new scratch claim change gba_big_epoch, and the hub then records
+ * its lists again (the same rects: a frame's work, no pixel changes). NULL (cap 0 lists, every phase drawn
+ * live) only if the scratch claim leaves no room, which the assert below rules out. */
+void *plat_scene_scratch(uint32_t bytes, uint32_t *gen)
+{
+    if (bytes > (uint32_t)GBA_ARENA_SIZE || scene_scratch_used() > (uint32_t)GBA_ARENA_SIZE - bytes) {
+        if (gen) *gen = 0;
+        return 0;
+    }
+    gba_big_claim(GBA_BIG_BY_ISL);
+    if (gen) *gen = gba_big_epoch;
+    return gba_arena + GBA_ARENA_SIZE - bytes;
 }
 
 void *plat_save_scratch(uint32_t *cap)

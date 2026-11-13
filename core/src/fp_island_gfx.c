@@ -131,12 +131,15 @@ static int hidden(int x, int y, int w, int h)
  * 8,960 B here and 3,200 B of deco variants below). (SP3, P-I1, docs/ISLAND_SPEED.md I12) So on the PS1 they have no
  * BSS: they live in the scene scratch the platform lends the island (plat_scene_scratch: the overlay slot's unused
  * tail while the island group is loaded), bound by lr_bind() before every map draw; without it (a platform that
- * lends none) every list has cap 0, each record overflows and the phase is drawn live, as before I1..I3. The GBA
- * and the native runner keep them in BSS (the runner can be told to lend scratch: the PS1 path under test). */
+ * lends none) every list has cap 0, each record overflows and the phase is drawn live, as before I1..I3. The native
+ * runner keeps them in BSS (it can be told to lend scratch: the PS1 path under test).
+ * (CR5a) The GBA's EWRAM is full too (the creator's LOOK pool needs the room): there the lists are in the arena
+ * region the hub does not use (gba/src/bigbuf.c plat_scene_scratch, GBA_BIG_ISL), 13,720 B of .bss less, and the
+ * caps stay the old BSS caps, so the recorded rects and the frames are the same. */
 #define LR_MAX 640
 #define LR_PATCH 320
 #define LR_ROAD 160
-#if defined(DOOMO_PLATFORM_PS1)
+#if defined(DOOMO_PLATFORM_PS1) || defined(DOOMO_PLATFORM_GBA)
 #define LR_BSS(n) 0
 #else
 #define LR_BSS(n) (n)
@@ -812,7 +815,15 @@ static LRect *dv_pool = dv_pool_bss;
 static int dv_cap = LR_BSS(DV_POOL);        /* 0: no room, every variant is "bad" and the deco is drawn live */
 static DVar dv_tab[DV_TAGS];
 static int dv_ntab, dv_used;
-static LRect dv_tmp[40];                    /* a variant's rects shifted to one deco's spot */
+#define DV_TMP 40
+#if defined(DOOMO_PLATFORM_GBA)
+/* (CR5a) after the lists in the arena region: a pointer and a cap, set by lr_bind (0 without the region) */
+static LRect *dv_tmp;
+static int dv_tmp_cap;
+#else
+static LRect dv_tmp[DV_TMP];                /* a variant's rects shifted to one deco's spot (no byte more than before CR5a) */
+#define dv_tmp_cap DV_TMP
+#endif
 
 static unsigned deco_state(const Deco *d, unsigned flowers)
 {
@@ -868,7 +879,7 @@ static void draw_decos(void)
         if (v->bad) { draw_deco_xy(d, x, y); continue; }
         r = dv_pool + v->start;
         for (k = 0; k < v->n; ) {
-            int m = DOOMO_MIN(v->n - k, (int)DOOMO_COUNTOF(dv_tmp)), j;
+            int m = DOOMO_MIN(v->n - k, dv_tmp_cap), j;
             if (!g_occ && plat_rect_run && !gba_nodraw) {
                 for (j = 0; j < m; j++) {
                     dv_tmp[j] = r[k + j];
@@ -1594,6 +1605,17 @@ int fp_island_tint(void)
  * generation stays the same (an overlay load overwrites it), and a new one means every list starts over. */
 /* in the scratch the lists are sized for 320x240 too (the PS1; measured on the Classic island at 320x240: land 761,
  * patches 174, roads 157 rects; at 240x160 480, 136, 125) */
+#if defined(DOOMO_PLATFORM_GBA)
+/* (CR5a) the GBA's lists are the old BSS lists, byte for byte the same caps */
+#define LRS_LAND  LR_MAX
+#define LRS_PATCH LR_PATCH
+#define LRS_ROAD  LR_ROAD
+#define LRS_GLINT AL_GLINT
+#define LRS_WALK  AL_WALK
+#define LRS_WX    AL_WX
+#define LRS_DV    DV_POOL
+#define LRS_TMP   DV_TMP
+#else
 #define LRS_LAND  1024
 #define LRS_PATCH 384
 #define LRS_ROAD  256
@@ -1601,9 +1623,15 @@ int fp_island_tint(void)
 #define LRS_WALK  64
 #define LRS_WX    64
 #define LRS_DV    512
+#define LRS_TMP   0
+#endif
 #define LR_SCRATCH_RECTS (LRS_LAND + 1 + LRS_PATCH + 1 + LRS_ROAD + 1 + LRS_GLINT + 1 + LRS_WALK + 1 + LRS_WX + 1 + \
-                          LRS_DV + 1)
+                          LRS_DV + 1 + LRS_TMP)
+#if defined(DOOMO_PLATFORM_GBA)
+DOOMO_STATIC_ASSERT(LR_SCRATCH_RECTS * sizeof(LRect) == FP_ISLAND_SCRATCH_GBA, island_lists_are_the_gba_region);
+#else
 DOOMO_STATIC_ASSERT(LR_SCRATCH_RECTS * sizeof(LRect) <= FP_ISLAND_SCRATCH, island_lists_fit_the_scene_scratch);
+#endif
 static int lr_binds;                         /* times the lists were (re)bound to a scratch (test hook) */
 int fp_island_lists_bound(void) { return lr_binds; }
 
@@ -1632,6 +1660,10 @@ static void lr_bind(void)
     lr_attach(&L_wx, &p, lr_wx_r, LR_BSS(AL_WX), LRS_WX);
     if (p) { dv_pool = p; dv_cap = LRS_DV; }
     else { dv_pool = dv_pool_bss; dv_cap = LR_BSS(DV_POOL); }
+#if defined(DOOMO_PLATFORM_GBA)
+    dv_tmp = p ? p + LRS_DV + 1 : 0;
+    dv_tmp_cap = p ? LRS_TMP : 0;
+#endif
     dv_ntab = 0;
     dv_used = 0;
 }

@@ -393,6 +393,7 @@ void enginetest_main(void)
     video_load_palette();
     gba_log("ENGINE TEST: boot");
     et_div_test();
+    et_arena_test();
     et_blit_test();
     et_blit2_test();
     if (save_test) et_save_test();

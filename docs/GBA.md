@@ -431,6 +431,7 @@ against the LAST row, not against a figure from an older base.
 | 39 | S2-5: scaled images in the UI group, the Derby's racer pictures, the welding runs (docs: "Speed wave 2: S2-5" below) | `c0dc4ba` | 1,796 B | **1,796 B** | 0 B | 6,308 B | no resident EWRAM or IWRAM: `vid_blitn_arm` is in the overlay's UI group (2,720 -> 3,916 B, the slot stays the 3D group's 10,352 B); the Derby's six racer pictures (6 KB) and the weld seam's y table (640 B) live in their scenes' scratch claims; ROM 6,847,476 -> 6,850,520 B. PS1: the Derby path and `plat_ui_loops` are GBA-only, the weld runs are in the workshop overlay group; resident RAM unchanged, 65 KB below the stack top with the boot FMV |
 
 | 40 | S2-4: the Fun Fair's kept playfield (docs: "Speed wave 2: S2-4" below) | `183f2e8` | 1,796 B | **1,788 B** | -8 B | 6,308 B | measured on `183f2e8` + S2-4: the kept-playfield mode and the key being baked in `mg.c` (5 B, padded to 8); IWRAM unchanged (no new ARM code: the restores use SP7's `stage_rows` in the room group); ROM 6.85 -> 8.00 MB (Whack's 30 baked pictures, 38,400 B each, in `backdrops.bin`). PS1: compiled out (`mg.h` macros, `ui_round_rect_inset` not built), 65 KB below the stack top with the boot FMV (`_end` unchanged by S2-4) |
+| 41 | CR5a: the island hub's recorded lists in the arena (docs: "CR5a" below) | `4c0f369` | 1,788 B | **15,444 B** | +13,656 B | 6,308 B | `.bss` 259,460 -> 245,804 B: the 13 recorded rect lists of `fp_island_gfx.c` (land 640, patches 320, roads 160, glints 40, walkers 60, weather 48, deco variants 400 rects, `dv_tmp` 40; 1,715 rects, 13,720 B) now live at the top of the arena (`plat_scene_scratch` in `bigbuf.c`, owner `GBA_BIG_BY_ISL`), over the other owners' regions and the billboards that the 2D hub does not use; IWRAM and the main stack unchanged; ROM +~0.2 KB. Frames identical (below) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -2708,3 +2709,38 @@ touches the stock ROM). `gba/src/packrom.c` `.incbin`s the pack into `.rodata` (
   mpack refuses an LZ or wrong-size still for port gba. `mpack.py example --out x.dmpk --port gba` makes the SFW example.
 - Cost: 0 B EWRAM / IWRAM; the ROM grows by the pack's size (the cartridge image is 32 MB either way).
 - Not yet run in mgba with a real pack (no ARM toolchain in the session that wrote it).
+
+### CR5a: GBA EWRAM room for the creator's LOOK pool
+
+The creator plan (CREATOR_PLAN 4.2, CR5a) needs about 8.5 KB of EWRAM for the deep parts' `LOOK` pool and the prefs.
+The island hub's recorded rect lists were the biggest block that is live in one scene only, so they moved into the
+arena (bigbuf.c) and EWRAM free went from 1,788 to **15,444 B** (`make -C gba sizes`: `.bss` 259,460 -> 245,804).
+The 4 KB GBA-only look pool is not needed first; the CR5 package can place the `LOOK` pool in `.bss` (or in the
+arena) and still keep more than 6 KB free.
+
+* Where: the top 13,720 B of the arena (`gba_arena + 26,992 - 13,720`). That is above the scene scratch even when
+  a scene claims all 12,288 B (asserted in `bigbuf.c`: `DOOMO_SCENE_SCRATCH + FP_ISLAND_SCRATCH_GBA <=
+  GBA_ARENA_SIZE`), and it overlaps the billboard list and the raycaster / overworld / house regions, which the 2D
+  island hub does not use. The hub's own scratch (`IslScratch`, about 12 KB) sits below it.
+* How: the core already had a hook for a platform that lends scene scratch (`plat_scene_scratch`, SP3: the PS1's
+  overlay slot tail). The GBA now implements it: it claims the arena as the new owner `GBA_BIG_BY_ISL` and returns
+  the generation `gba_big_epoch`. Whoever else takes the arena (the raycaster, the overworld, the house, a save's
+  stream, a new scratch claim) changes the epoch, and `lr_bind()` starts the lists over (they are recorded again in
+  one frame; same rects). The caps are the old `.bss` caps (`LRS_*` equal `LR_*` on the GBA), so what is recorded,
+  overflowed and replayed is the same as before. `dv_tmp` joined the block on the GBA (a pointer and a cap now).
+* Cost: one re-record after a save, and after any visit of the raycaster / overworld / house. An island autosave
+  (day change) re-records the lists in the next hub frame.
+* Proof (libmgba, `4c0f369` against the branch, evidence in the CR5a run's scratch directory): speed tour fps
+  identical on all scenes but the Town Hall menu (see next point), `profile-all` shows no fps loss (island hub 30.0 /
+  14.6 ms avg, Town Hall menu 29.0 / 38.0 ms in both; the combat rows moved by timing noise only, they do not touch
+  these lists); island hub `vhash-seq` 94cd2df9 before and after; the island hub shot byte-identical. The Town Hall
+  menu's `vhash-seq` moved 9fe9806d -> 9b8d7163 (drawn fps 26.2 -> 25.5, avg work +0.3 ms): the screenshot differs
+  only inside the menu's portrait box (x 17..55, y 79..133: the citizen's eye / blink phase); the map around it is
+  byte-identical. The baseline with autosave off (`opt 10 0` after `expect-scene ISLAND`) gives the same 9b8d7163 /
+  94cd2df9 as the branch (with autosave on or off), so the frames of the lists are the same and the 9fe9806d window
+  is the baseline's autosave hitch moving the portrait's animation phase by a tick. Not isolated further (the
+  branch's menu window does not show that shift); the Town Hall menu is bound by the portrait (X1), not by the lists.
+* Test: the engine test's boot check `ET arena ok` (`gba/enginetest/et_arena.c`, run by `make -C gba test-et`): the
+  region's address and alignment beside a 12 KB claim, a stable generation, a new one after the autopilot's /
+  raycaster claim and after a save's stream, refusal of a block bigger than the arena. It fails on the old code (the
+  weak default returns no scratch).

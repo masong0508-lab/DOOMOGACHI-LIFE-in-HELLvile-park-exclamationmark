@@ -67,6 +67,9 @@ void fp_island_occluder(int x, int y, int w, int h);
 /* (SP3, P-I1) bytes of scene scratch (plat_ext.h plat_scene_scratch) the island's recorded lists take where the
  * platform lends it (the PS1); ps1/tools/ovl_plan.py SCRATCH reserves the same after the island group */
 #define FP_ISLAND_SCRATCH 20480
+/* (CR5a) the GBA's lists (the old BSS caps, 1,715 rects of 8 B) at the top of the arena, above the hub's scratch
+ * (gba/src/bigbuf.c plat_scene_scratch; it asserts they fit beside the largest claim) */
+#define FP_ISLAND_SCRATCH_GBA 13720
 int  fp_island_lists_bound(void);           /* test hook: times the lists were (re)bound to a scene scratch */
 void fp_island_replay_flush(void);          /* test hooks: drop every recorded list, count replays */
 int  fp_island_replay_hits(void);

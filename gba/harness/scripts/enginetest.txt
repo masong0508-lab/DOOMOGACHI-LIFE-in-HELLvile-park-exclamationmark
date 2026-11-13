@@ -12,6 +12,7 @@ expect-audio 200 psg
 wait 21
 expect-log ENGINE TEST: boot
 expect-log ET divtest ok
+expect-log ET arena ok
 expect-log ET blittest ok
 expect-log ET blit2test ok
 expect-log ET audio: tones

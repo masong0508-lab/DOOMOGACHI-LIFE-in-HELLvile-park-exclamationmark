@@ -308,7 +308,7 @@ randomise-by-theme, unlock rewards and the "new" badges. Built-in content is non
 | Icons 20x20 4bpp | ~320 KB ROM (0 render while browsing) | `ICONS.BIN` on disc, one slot's page read on section entry and uploaded to the VRAM image cache | linked |
 | Creator UI (grid, filters, search, outfits, delta undo) | ~30 KB ROM; `CrState` grows ~5.0 KB inside the 12 KB scratch (fits) | creator overlay +30 KB (55.7 -> ~86 KB + names ~32 KB = ~118 KB: at the slot edge, so names on disc) | - |
 | Translations (es first, 7 more later) | ~25 KB ROM per language | disc (`lang` packs) | - |
-| `LOOK` pool | **+8,200 B EWRAM: does not fit** (CR5a) | +8,200 B resident | - |
+| `LOOK` pool | **+8,200 B EWRAM: fits since CR5a (15,444 B free, GBA.md row 41)** | +8,200 B resident | - |
 | `CRPF` prefs | +256 B EWRAM | +256 B | - |
 | **Verdict** | **ROM: trivial (~0.6 MB of 27.7 MB free). EWRAM: the 524 gene parts fit with 0 B; the deep parts need ~8.5 KB that only a reclaim provides** | **Tight: needs ~+20 KB resident (VM ops, pool, prefs, arena) against ~9.8 KB free. Needs SPEC's P3 reclaims first (bios to disc -23 KB, edges -9 KB) and part data in SPU RAM** | **no constraint** |
 
