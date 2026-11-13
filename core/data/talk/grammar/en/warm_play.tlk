@@ -82,7 +82,7 @@
   "That was acceptable. I'll offer a counter, but only a short one."
   "I'm told that was a joke. I will submit a rebuttal in writing."
 @rule core.joke.w_top_kid guard: kid_speaker tags: kid act: joke
-  "Knock knock! Who's there? Boo! Don't cry, it's a joke."
+  "Knock knock, who's there? Boo. Don't cry, it's a joke."
   "What's brown and sticky? A stick! Ha ha ha!"
   "I know a better one! Why did the banana go to the doctor?"
 @rule core.joke.w_tease act: tease
