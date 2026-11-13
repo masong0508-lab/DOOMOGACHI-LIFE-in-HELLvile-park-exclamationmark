@@ -1,8 +1,8 @@
-From 78c3fe1a35a3b9f3bc471680f5bafdf233ebe5a9 Mon Sep 17 00:00:00 2001
+From b2b89db2c8bd45b6e1e4c2558e1a5aecc2ff991d Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Thu, 12 Nov 2026 23:33:31 +0000
-Subject: [PATCH 1/9] PS1-RAM: the build warns under the 72 KB plan gate; a RAM
- ledger tool and the CI summary
+Subject: [PATCH 01/11] PS1-RAM: the build warns under the 72 KB plan gate; a
+ RAM ledger tool and the CI summary
 
 ps1/tools/elf2exe.py prints the exact bytes left below the stack top and a
 WARNING (a GitHub annotation on CI) when they are under the 72 KB plan gate,
@@ -592,10 +592,10 @@ index 00000000..df0ed072
 2.43.0
 
 
-From f696425e2510eae999c57b2858ff5da4fd5aff56 Mon Sep 17 00:00:00 2001
+From 5ed049a65714379c55122d8971ea61303b502ec2 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Thu, 12 Nov 2026 23:35:11 +0000
-Subject: [PATCH 2/9] PS1-RAM step 1: island and free-play callbacks leave
+Subject: [PATCH 02/11] PS1-RAM step 1: island and free-play callbacks leave
  resident RAM (+21,808 B)
 
 ovl_plan.py kept a function resident as soon as its address was taken. 22 KB
@@ -938,10 +938,10 @@ index df0ed072..eae1597c 100644
 2.43.0
 
 
-From 1de1dd3107249cb1acb6985ac2df3476ea40d1ca Mon Sep 17 00:00:00 2001
+From f3c76293f79d487c47caa6a39c144d87a55a6b8c Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Thu, 12 Nov 2026 23:36:46 +0000
-Subject: [PATCH 3/9] PS1-RAM step 2: table strings in sections of their own
+Subject: [PATCH 03/11] PS1-RAM step 2: table strings in sections of their own
  (+29,376 B)
 
 With -fdata-sections every function's string literals have a section of
@@ -1457,11 +1457,11 @@ index eae1597c..02d9230e 100644
 2.43.0
 
 
-From aaef02632f637a44f98c4f4e1b8bd0ab7c2968db Mon Sep 17 00:00:00 2001
+From 60618df926fd29d542d24a86c44a38f02d4c20f0 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Thu, 12 Nov 2026 23:41:59 +0000
-Subject: [PATCH 4/9] PS1-RAM step 3: the busy banner keeps its pixels in VRAM
- (+8,640 B)
+Subject: [PATCH 04/11] PS1-RAM step 3: the busy banner keeps its pixels in
+ VRAM (+8,640 B)
 
 gfx_busy_banner() saved the 252 x 16 pixels under the "Checking MEMORY
 CARD..." / "Saving settings..." banner with StoreImage into 8,064 B of
@@ -1559,11 +1559,11 @@ index d6ca8043..b5ef5785 100644
 2.43.0
 
 
-From 8a6123c71a8eafa8cee543e38cec7164826f5c10 Mon Sep 17 00:00:00 2001
+From 5acdee9a5873006b01610ca6d98f272f094d92cd Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Thu, 12 Nov 2026 23:42:35 +0000
-Subject: [PATCH 5/9] PS1: the boot log says what went into SPU RAM (a checksum
- line)
+Subject: [PATCH 05/11] PS1: the boot log says what went into SPU RAM (a
+ checksum line)
 
 spu_upload() keeps an FNV-1a sum of every byte it sends to SPU RAM, and
 audio_hw_sfx_preload() logs it once: "spu: N of 62 effects, top XXXXX, sum
@@ -1619,11 +1619,11 @@ index e14f2d2e..4692f273 100644
 2.43.0
 
 
-From 6b1759f84279acdf1ef36031c694a572b086b2eb Mon Sep 17 00:00:00 2001
+From 6e8ca73161ce8513e66e0422bd21e2d3723ae047 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Thu, 12 Nov 2026 23:43:07 +0000
-Subject: [PATCH 6/9] PS1-RAM step 4: the SPU's conversion buffers are the idle
- display lists at boot (+8,640 B)
+Subject: [PATCH 06/11] PS1-RAM step 4: the SPU's conversion buffers are the
+ idle display lists at boot (+8,640 B)
 
 The PCM chunk, its ADPCM blocks and the DMA's word-aligned copy (3,584 +
 1,024 + 4,096 B of .bss) are only used while a waveform or an effect is
@@ -1767,10 +1767,10 @@ index 4692f273..44331d8a 100644
 2.43.0
 
 
-From 9779e3195659e46eab6ea8008e11229abeeb0889 Mon Sep 17 00:00:00 2001
+From 359964fb2c054d6f6fb7af6291df9502864e2d6f Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Thu, 12 Nov 2026 23:43:42 +0000
-Subject: [PATCH 7/9] PS1-RAM step 5: image cache tiles go straight into the
+Subject: [PATCH 07/11] PS1-RAM step 5: image cache tiles go straight into the
  upload packets (+8,656 B)
 
 vram_image() built every tile with its transparent border in a 130 x 130
@@ -1959,10 +1959,10 @@ index b7e1b26c..96c12a7d 100644
 2.43.0
 
 
-From 83f6d7816b975c1f35607a4e09a404f899b03db1 Mon Sep 17 00:00:00 2001
+From d11456b86c637067838ab07cbd02aa2cde1e096a Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Thu, 12 Nov 2026 23:57:50 +0000
-Subject: [PATCH 8/9] PS1-RAM step 6: shared core files give their one-group
+Subject: [PATCH 08/11] PS1-RAM step 6: shared core files give their one-group
  parts to that group (+18,448 B)
 
 A core file outside the planner's GROUPS was resident as a whole, the parts
@@ -2263,10 +2263,10 @@ index 02d9230e..50fb36e8 100644
 2.43.0
 
 
-From e82ef8bdb4203b93f5d691310e2bdbd5ef3a3ba8 Mon Sep 17 00:00:00 2001
+From 80bb4abcfc1b27fd41bbbd8e67c1d56a983e45ee Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Fri, 13 Nov 2026 00:01:54 +0000
-Subject: [PATCH 9/9] PS1-RAM step 6: SHARED lists only the files whose parts
+Subject: [PATCH 09/11] PS1-RAM step 6: SHARED lists only the files whose parts
  moved
 
 art_data_ps1 and mus_core gave nothing to a group (the sprite name table is
@@ -2317,6 +2317,551 @@ index 7911af13..122026f4 100644
              and re.fullmatch(SHARED, base(path)) is not None)
  
  
+-- 
+2.43.0
+
+
+From 3c7b9626e400cd397a1bd8a601eaaeb9f3ed0f2f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 05:04:16 +0000
+Subject: [PATCH 10/11] PS1-RAM: a host test of the image cache's tile rows;
+ the smoke run checks the boot-time SPU load
+
+Step 5 writes a cached tile's bordered rows straight into the upload packets.
+The row writer is now ps1/src/tilerow.h (tile_row, inlined into upload_rows:
+the same code), and ps1/harness/tilerow_test.c compares it on the host with
+the staging code it replaced, for full, narrow and short tiles, plain and
+mirrored. The `harness` targets and the CI PS1 job run it.
+
+Step 4 converts every effect at boot with buffers taken from the idle display
+lists. The boot line now reads "spu: N of N effects (all), top ..., sum ..."
+and game_smoke.txt expects "effects (all)": a conversion that found no
+buffer would fail the smoke run instead of leaving the game silent.
+
+Game disc with the boot FMV: 161,312 B below the stack top (48 B of text for
+the log line).
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ .github/workflows/ci.yml           |  3 +
+ ps1/CMakeLists.txt                 |  7 ++-
+ ps1/harness/scripts/game_smoke.txt |  3 +
+ ps1/harness/tilerow_test.c         | 92 ++++++++++++++++++++++++++++++
+ ps1/src/gfx.c                      | 17 +-----
+ ps1/src/spu.c                      |  8 ++-
+ ps1/src/tilerow.h                  | 38 ++++++++++++
+ 7 files changed, 150 insertions(+), 18 deletions(-)
+ create mode 100644 ps1/harness/tilerow_test.c
+ create mode 100644 ps1/src/tilerow.h
+
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 600a7d61..f9ee2615 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -302,6 +302,9 @@ jobs:
+       - name: PS1 build tool tests (elf2exe gate, RAM ledger, string sections, overlay planner)
+         run: python3 ps1/tools/test_tools.py
+ 
++      - name: PS1 host test (the image cache's bordered tile rows, ps1/src/tilerow.h)
++        run: cc -O2 -Wall -I ps1/src ps1/harness/tilerow_test.c -o /tmp/tilerow_test && /tmp/tilerow_test
++
+       - name: Build the game disc (preset ps1)
+         working-directory: ps1
+         run: |
+diff --git a/ps1/CMakeLists.txt b/ps1/CMakeLists.txt
+index 6ac52b29..2001f760 100644
+--- a/ps1/CMakeLists.txt
++++ b/ps1/CMakeLists.txt
+@@ -396,7 +396,12 @@ if(DOOMO_HOST_CC)
+ 		        ${CMAKE_CURRENT_SOURCE_DIR}/harness/adpcm_test.c
+ 		        ${CMAKE_CURRENT_SOURCE_DIR}/src/adpcm.c -lm
+ 		        -o ${CMAKE_CURRENT_BINARY_DIR}/adpcm_test
+-		COMMAND ${CMAKE_CURRENT_BINARY_DIR}/adpcm_test)
++		COMMAND ${CMAKE_CURRENT_BINARY_DIR}/adpcm_test
++		# RAM headroom 2026-11-12: the image cache's bordered tile rows (src/tilerow.h)
++		COMMAND ${DOOMO_HOST_CC} -O2 -I${CMAKE_CURRENT_SOURCE_DIR}/src
++		        ${CMAKE_CURRENT_SOURCE_DIR}/harness/tilerow_test.c
++		        -o ${CMAKE_CURRENT_BINARY_DIR}/tilerow_test
++		COMMAND ${CMAKE_CURRENT_BINARY_DIR}/tilerow_test)
+ else()
+ 	set(_adpcm "")
+ endif()
+diff --git a/ps1/harness/scripts/game_smoke.txt b/ps1/harness/scripts/game_smoke.txt
+index be205217..c719e28e 100644
+--- a/ps1/harness/scripts/game_smoke.txt
++++ b/ps1/harness/scripts/game_smoke.txt
+@@ -7,6 +7,9 @@
+ #       --script harness/scripts/game_smoke.txt --out OUT --expect "memcard: wrote"
+ wait 30
+ shot smoke_01_boot
++# every sound effect of SFX.BIN went into SPU RAM at boot (spu.c audio_hw_sfx_preload: its staging
++# buffers are the idle display lists; an effect that was not converted there stays silent)
++expect-log effects (all)
+ wait 120
+ expect-scene TITLE
+ shot smoke_02_title
+diff --git a/ps1/harness/tilerow_test.c b/ps1/harness/tilerow_test.c
+new file mode 100644
+index 00000000..5e6202c9
+--- /dev/null
++++ b/ps1/harness/tilerow_test.c
+@@ -0,0 +1,92 @@
++/* tilerow_test.c - host test of the image-cache tile rows (ps1/src/tilerow.h).
++ *
++ *   cc -O2 -I ps1/src ps1/harness/tilerow_test.c -o tilerow_test
++ *   ./tilerow_test
++ *
++ * RAM headroom 2026-11-12: gfx.c writes a tile's bordered rows straight into
++ * the GPU upload packets (tile_row) instead of copying them from the 130 x
++ * 130 staging buffer vram.c used to fill. The reference here IS that old
++ * staging code; every tile shape the cache can ask for (up to 128 x 128, plain and
++ * mirrored, at the image's left edge, right edge and in the middle, a full
++ * tile and the narrow / short ones at the image's end) must give the same bytes.
++ * Exit code 0 = pass.
++ */
++#include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include "tilerow.h"
++
++#define IMG_TILE 128
++
++/* vram.c vram_image() before the change: the tile with its border, staged */
++static void stage_ref(uint8_t *stage, int sw, const uint8_t *pix, int img_w, int x0, int y0,
++                      int tw, int th, int flip)
++{
++    int row, col;
++    memset(stage, 0, (size_t)sw * (th + 1));
++    for (row = 0; row < th; row++) {
++        const uint8_t *src = pix + (size_t)(y0 + row) * img_w;
++        uint8_t *d = stage + row * sw + 1;
++        if (!flip) {
++            memcpy(d, src + x0, (size_t)tw);
++        } else {
++            int sx = img_w - 1 - x0;
++            for (col = 0; col < tw; col++)
++                d[col] = src[sx - col];
++        }
++    }
++}
++
++/* vram.c + gfx.c now: the rows as upload_rows() writes them into the packets */
++static void rows_now(uint8_t *out, int sw, const uint8_t *pix, int img_w, int x0, int y0,
++                     int tw, int th, int flip)
++{
++    const uint8_t *src = pix + (size_t)y0 * img_w + (flip ? img_w - 1 - x0 : x0);
++    int h = th + 1, r;
++    for (r = 0; r < h; r++) {
++        tile_row(out + r * sw, sw, src, tw, flip ? -1 : 1, h - r <= 1);
++        src += img_w;
++    }
++}
++
++int main(void)
++{
++    static uint8_t ref[(IMG_TILE + 2) * (IMG_TILE + 2)], now[(IMG_TILE + 2) * (IMG_TILE + 2)];
++    static const int widths[] = { 1, 2, 3, 7, 64, 127, 128, 129, 200, 300 };
++    unsigned wi;
++    long tiles = 0;
++    for (wi = 0; wi < sizeof(widths) / sizeof(widths[0]); wi++) {
++        int img_w = widths[wi], img_h = 150, i, flip, x0, y0;
++        /* exactly the image: a read outside it is a fault under a sanitizer */
++        uint8_t *pix = (uint8_t *)malloc((size_t)img_w * img_h);
++        if (!pix) return 2;
++        for (i = 0; i < img_w * img_h; i++)
++            pix[i] = (uint8_t)(1 + (i * 7 + i / img_w * 13) % 255);     /* never 0: a border byte shows */
++        for (flip = 0; flip < 2; flip++)
++            for (x0 = 0; x0 < img_w; x0 += IMG_TILE)
++                for (y0 = 0; y0 < img_h; y0 += IMG_TILE) {
++                    int tw = img_w - x0 < IMG_TILE ? img_w - x0 : IMG_TILE;
++                    int th = img_h - y0 < IMG_TILE ? img_h - y0 : IMG_TILE;
++                    int sw = (tw + 2 + 1) & ~1;
++                    memset(ref, 0xaa, sizeof(ref));
++                    memset(now, 0x55, sizeof(now));
++                    stage_ref(ref, sw, pix, img_w, x0, y0, tw, th, flip);
++                    rows_now(now, sw, pix, img_w, x0, y0, tw, th, flip);
++                    if (memcmp(ref, now, (size_t)sw * (th + 1))) {
++                        printf("tilerow: FAIL image %dx%d tile at (%d,%d) %dx%d flip %d\n",
++                               img_w, img_h, x0, y0, tw, th, flip);
++                        return 1;
++                    }
++                    /* nothing written past the tile's rows */
++                    if ((size_t)sw * (th + 1) < sizeof(now) && now[(size_t)sw * (th + 1)] != 0x55) {
++                        printf("tilerow: FAIL wrote past the rows (image %d wide, tile %dx%d)\n", img_w, tw, th);
++                        return 1;
++                    }
++                    tiles++;
++                }
++        free(pix);
++    }
++    printf("tilerow: PASS (%ld tiles, plain and mirrored, the same bytes as the staging buffer)\n", tiles);
++    return 0;
++}
+diff --git a/ps1/src/gfx.c b/ps1/src/gfx.c
+index c96dc51a..fcc82e0a 100644
+--- a/ps1/src/gfx.c
++++ b/ps1/src/gfx.c
+@@ -25,6 +25,7 @@
+ #include <psxetc.h>
+ #include "ps1.h"
+ #include "postfx.h"
++#include "tilerow.h"
+ 
+ typedef struct FrameBuf {
+     DISPENV  disp;
+@@ -288,20 +289,8 @@ static int upload_rows(int x, int y, int w, int h, const uint8_t *src, int strid
+             if (tw < 0) {
+                 memcpy(d, src, (size_t)w * 2);
+             } else {
+-                uint8_t *b = (uint8_t *)d;
+-                int k = 0;
+-                if (h - r > 1) {            /* not the tile's last row */
+-                    b[k++] = 0;
+-                    if (step > 0) {
+-                        memcpy(b + 1, src, (size_t)tw);
+-                        k += tw;
+-                    } else {
+-                        for (; k <= tw; k++)
+-                            b[k] = src[1 - k];
+-                    }
+-                }
+-                while (k < w * 2)
+-                    b[k++] = 0;
++                /* the tile's last row is the transparent one below it */
++                tile_row((uint8_t *)d, w * 2, src, tw, step, h - r <= 1);
+             }
+             d += w;
+             src += stride;
+diff --git a/ps1/src/spu.c b/ps1/src/spu.c
+index 44331d8a..f9899ac7 100644
+--- a/ps1/src/spu.c
++++ b/ps1/src/spu.c
+@@ -383,9 +383,11 @@ void audio_hw_sfx_preload(void)
+         ok += convert_sfx(id);
+     stage_close();
+     s_bg_next = SFX_COUNT;
+-    /* what is in SPU RAM now: the same line from two builds = the same sound data */
+-    dbg("spu: %d of %d effects, top %05x, sum %08x\n", ok, SFX_COUNT - 1, (unsigned)s_sfx_top,
+-        (unsigned)s_up_sum);
++    /* what is in SPU RAM now: the same line from two builds = the same sound data.
++     * "(all)" is what harness/scripts/game_smoke.txt expects: an effect that was not
++     * converted here stays silent (nothing converts after boot, see "staging" above) */
++    dbg("spu: %d of %d effects (%s), top %05x, sum %08x\n", ok, SFX_COUNT - 1,
++        ok == SFX_COUNT - 1 ? "all" : "SOME MISSING", (unsigned)s_sfx_top, (unsigned)s_up_sum);
+ #endif
+ }
+ 
+diff --git a/ps1/src/tilerow.h b/ps1/src/tilerow.h
+new file mode 100644
+index 00000000..f1e93889
+--- /dev/null
++++ b/ps1/src/tilerow.h
+@@ -0,0 +1,38 @@
++/* tilerow.h - one row of an image-cache tile with its transparent border
++ * (owner: ps1; RAM headroom 2026-11-12, docs/PS1.md).
++ *
++ * vram.c gives every cached tile a transparent border: one texel on the
++ * left, the texels from tw + 1 up to the (even) upload width on the right,
++ * and one row below. gfx.c writes the bordered rows straight into the GPU
++ * upload packets with this (it used to copy them from a 16.9 KB staging
++ * buffer). Host test: harness/tilerow_test.c (the old staging buffer is its
++ * reference).
++ */
++#ifndef PS1_TILEROW_H
++#define PS1_TILEROW_H
++#include <stdint.h>
++#include <string.h>
++
++/* Writes n bytes (the upload width in texels, even, >= tw + 2) to b: one
++ * transparent texel, tw texels read from src in steps of `step` (+1, or -1
++ * for a mirrored image: src is then the row's LAST texel of the tile in the
++ * image), then transparent texels; `blank` = the row below the tile, all
++ * transparent (src is not read). */
++static inline void tile_row(uint8_t *b, int n, const uint8_t *src, int tw, int step, int blank)
++{
++    int k = 0;
++    if (!blank) {
++        b[k++] = 0;
++        if (step > 0) {
++            memcpy(b + 1, src, (size_t)tw);
++            k += tw;
++        } else {
++            for (; k <= tw; k++)
++                b[k] = src[1 - k];
++        }
++    }
++    while (k < n)
++        b[k++] = 0;
++}
++
++#endif
+-- 
+2.43.0
+
+
+From 06f6f90452a65e0b89130c851b2194ae7b09265b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 05:36:07 +0000
+Subject: [PATCH 11/11] PS1-RAM step 7: the groups on the hub's path take
+ nothing new (HOLD)
+
+What a group takes out of resident RAM is read with it from then on: about
+2 ms of its load per KB at the drive's 2x speed. Measured on PCSX-Redux
+with everything moved (161,312 B below the stack top): free play loaded in
+340 ms instead of 314, the island in 226 instead of 206, the cutscenes in
+355 instead of 348, and the two load windows of the speed tour that hold
+those reads were 0.4-0.9% slower (new island: 16.52 -> 16.45 fps, title to
+New story: 8.54 -> 8.46). Every other window was unchanged.
+
+ovl_plan.py HOLD names those three groups: the title and the free-play
+screens, the island hub (the player crosses both all the time) and the
+cutscenes. A held group takes nothing new: its callbacks of steps 1
+(HELD_CALLBACKS; they stay in their reviewed tables) are resident, its
+objects' table strings stay together, it takes no shared code. The three
+groups are byte for byte as big as on 89a28b56 (106,248 / 58,324 /
+118,768 B), so their loads are as long as before. Taking a group off HOLD
+releases it: free play 13.5 KB, the island 13.1 KB, the cutscenes 3.7 KB.
+
+Game disc with the boot FMV: 131,312 B below the stack top (the 128 KiB of
+the old goal is 131,072 B).
+
+test_tools.py: a held group, a released one, a hold on the group next to
+it, and that every held callback is in a reviewed table.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ ps1/tools/ovl_plan.py   | 39 ++++++++++++++++--
+ ps1/tools/test_tools.py | 90 ++++++++++++++++++++++++++++++++++++++---
+ 2 files changed, 119 insertions(+), 10 deletions(-)
+
+diff --git a/ps1/tools/ovl_plan.py b/ps1/tools/ovl_plan.py
+index 122026f4..8be807c8 100644
+--- a/ps1/tools/ovl_plan.py
++++ b/ps1/tools/ovl_plan.py
+@@ -29,6 +29,9 @@ hand:
+     points; a section that two groups need is made resident;
+   * a shared core file named in SHARED is no root: each of its sections
+     is resident or joins the one group that reaches it, by the same rules;
++  * a group named in HOLD takes nothing new (its loads stay as long as
++    they were): its held callbacks, table strings and shared code stay
++    resident;
+   * the string literals of a file's tables arrive one per section
+     (tools/strsec.py), so only the strings resident code or data can
+     reach stay resident (STR_WHOLE below: the groups that set the slot's
+@@ -279,7 +282,7 @@ PICK_CALLBACKS = {
+ # size must not grow by its strings (the slot grows in 2 KB steps, and every step is resident RAM
+ # lost): for the groups named here an object's table strings stay together, all resident as soon as
+ # one of them is (what the linker did before the split). Take a group off the list when it has
+-# room under the slot again.
++# room under the slot again. The HOLD groups below keep theirs together too.
+ STR_WHOLE = ("story", "home")
+ RX_STR = re.compile(r"\.rodata\.str1\.\d+\.LC\d+$")
+ 
+@@ -292,13 +295,39 @@ RX_STR = re.compile(r"\.rodata\.str1\.\d+\.LC\d+$")
+ # slot: the argument that holds for the group's own files); reached by two groups it stays resident.
+ # The file's .data / .bss stay resident, and a scene defined in such a file is a resident scene.
+ # SHARED_NOT: groups that take none: they set the slot's size or are within a few KB of it, where a
+-# KB more is a KB of slot, not of room found (free play keeps its 10 KB for its own screens).
++# KB more is a KB of slot, not of room found (free play keeps its 10 KB for its own screens). The
++# HOLD groups below take none either.
+ # To add a file: OVL_WHY=1 lists the resident core objects; a file is worth listing when part of it
+ # is reached by one group only AND not through another resident file (its accessors must be listed
+ # too: the sprite name table is read by the library alone, but through sprites.c).
+ SHARED = r"fishcook$|catalog$|ui$|song_player$|fp_common$|audio$"
+ SHARED_NOT = ("story", "home", "combat", "freeplay")
+ SHARED_TAG = "+"                # what grp() says for a candidate section of a shared file
++
++# --- RAM headroom 2026-11-12: HOLD. What a group takes out of resident RAM is read with it from
++# then on: about 2 ms of its load per KB at the drive's 2x speed (docs/PS1.md "RAM headroom
++# 2026-11-12", the cost table). The groups named here are the ones the player crosses all the
++# time (the title and the free-play screens, the island hub), or their reads are inside a measured
++# load window (the cutscenes after "New story"). They take NOTHING new, so their loads are as long
++# as before:
++#   * their callbacks in HELD_CALLBACKS stay resident. Each is also listed in LOCAL_CALLBACKS /
++#     MODAL_CALLBACKS / PICK_CALLBACKS above, reviewed against its call sites, so the hold is the
++#     only thing that keeps it resident;
++#   * their objects' table strings stay together, like STR_WHOLE's;
++#   * they take no part of a shared file, like SHARED_NOT's.
++# Taking a group off HOLD is all it needs to release it. Measured on the 2026-11-12 tree: free
++# play gives 13.5 KB of resident RAM for +26 ms on each of its loads (314 -> 340 ms on PCSX-Redux),
++# the island 13.1 KB for +20 ms (206 -> 226), the cutscenes 3.7 KB for +7 ms (348 -> 355).
++HOLD = ("freeplay", "island", "cutscene")
++#   object base -> function names
++HELD_CALLBACKS = {
++    "fp_island_gfx": ("draw_glints_body", "draw_land_body", "draw_patches_body", "draw_roads_body",
++                      "draw_walkers_body", "draw_weather_body", "lr_tap"),
++    "fp_title": ("pc_pill", "pc_in", "pc_vile", "finished_pick", "fresh_world_go"),
++    "fp_family": ("mem_flowers", "wz_neighbour"),
++    "fp_resident": ("cb_manage", "cb_introduce"),
++    "playas_scene": ("pf_leave", "pf_renamed", "pf_join"),
++}
+ # --- end RAM headroom ---
+ 
+ # --- S4: registries read only by their own group (object base -> symbol).
+@@ -496,6 +525,8 @@ def main(argv):
+         if f[1] not in tuple(".text." + n for n in names + picks):
+             continue
+         g = group_of(o.path)
++        if g in HOLD and f[1] in tuple(".text." + n for n in HELD_CALLBACKS.get(base(o.path), ())):
++            continue                # reviewed, but its group takes nothing new (HOLD): resident
+         if f[1] in tuple(".text." + n for n in picks) and picker_group != {g}:
+             print("ovl_plan: %s:%s is not in the picker's group; it stays resident" % (base(o.path), f[1]))
+             continue
+@@ -574,7 +605,7 @@ def main(argv):
+     # RAM headroom 2026-11-12 (STR_WHOLE above): the table strings of each object of those groups
+     str_whole = collections.defaultdict(set)
+     for n in live:
+-        if grp(n) in STR_WHOLE and RX_STR.search(n[1]):
++        if grp(n) in STR_WHOLE + HOLD and RX_STR.search(n[1]):
+             str_whole[n[0]].add(n)
+     while True:
+         owner = {}
+@@ -591,7 +622,7 @@ def main(argv):
+                     if r in resident:
+                         continue
+                     gr = grp(r)
+-                    mine = gr == g or (gr == SHARED_TAG and g not in SHARED_NOT)
++                    mine = gr == g or (gr == SHARED_TAG and g not in SHARED_NOT + HOLD)
+                     if not mine or owner.get(r, g) != g:
+                         clash.add(r)
+                     else:
+diff --git a/ps1/tools/test_tools.py b/ps1/tools/test_tools.py
+index 50fb36e8..fb5fc6ef 100644
+--- a/ps1/tools/test_tools.py
++++ b/ps1/tools/test_tools.py
+@@ -412,13 +412,15 @@ def plan(root, objs):
+ class Planner(unittest.TestCase):
+     def setUp(self):
+         self.dir = tempfile.TemporaryDirectory()
+-        self.saved = (dict(ovl_plan.PICK_CALLBACKS), dict(ovl_plan.MODAL_CALLBACKS))
++        self.saved = (dict(ovl_plan.PICK_CALLBACKS), dict(ovl_plan.MODAL_CALLBACKS), ovl_plan.HOLD)
++        ovl_plan.HOLD = ()          # the tables themselves; HOLD has its own tests (PlannerHold)
+ 
+     def tearDown(self):
+         ovl_plan.PICK_CALLBACKS.clear()
+         ovl_plan.PICK_CALLBACKS.update(self.saved[0])
+         ovl_plan.MODAL_CALLBACKS.clear()
+         ovl_plan.MODAL_CALLBACKS.update(self.saved[1])
++        ovl_plan.HOLD = self.saved[2]
+         self.dir.cleanup()
+ 
+     def test_callbacks_that_may_leave_resident_ram(self):
+@@ -476,12 +478,13 @@ def strsec_compiler(cmd):
+ class PlannerStrings(unittest.TestCase):
+     def setUp(self):
+         self.dir = tempfile.TemporaryDirectory()
+-        self.whole = ovl_plan.STR_WHOLE
++        self.whole = (ovl_plan.STR_WHOLE, ovl_plan.HOLD)
++        ovl_plan.HOLD = ()
+         self.fake = dict(FAKE)
+         self.fake["core/src/fp_family.c"] = FAMILY_TABLES
+ 
+     def tearDown(self):
+-        ovl_plan.STR_WHOLE = self.whole
++        ovl_plan.STR_WHOLE, ovl_plan.HOLD = self.whole
+         self.dir.cleanup()
+ 
+     def strings(self, where, key):
+@@ -534,11 +537,11 @@ SHARED_FAKE["core/src/fp_island.c"] = FAKE["core/src/fp_island.c"].replace(
+ class PlannerShared(unittest.TestCase):
+     def setUp(self):
+         self.dir = tempfile.TemporaryDirectory()
+-        self.saved = (ovl_plan.SHARED, ovl_plan.SHARED_NOT)
+-        ovl_plan.SHARED, ovl_plan.SHARED_NOT = r"ui$", ()
++        self.saved = (ovl_plan.SHARED, ovl_plan.SHARED_NOT, ovl_plan.HOLD)
++        ovl_plan.SHARED, ovl_plan.SHARED_NOT, ovl_plan.HOLD = r"ui$", (), ()
+ 
+     def tearDown(self):
+-        ovl_plan.SHARED, ovl_plan.SHARED_NOT = self.saved
++        ovl_plan.SHARED, ovl_plan.SHARED_NOT, ovl_plan.HOLD = self.saved
+         self.dir.cleanup()
+ 
+     def plan(self):
+@@ -571,6 +574,81 @@ class PlannerShared(unittest.TestCase):
+         self.assertIn(("ui", ".text.ui_island_only"), where["island"])
+ 
+ 
++# HOLD: a group whose loads must not get longer takes nothing new. The made-up FAMILY screen with
++# its tables (strings), its callbacks and the shared UI kit; the island next to it is not held.
++HOLD_FAKE = dict(SHARED_FAKE)
++HOLD_FAKE["core/src/fp_family.c"] = SHARED_FAKE["core/src/fp_family.c"].replace(
++    "static void fam_update(void) {",
++    'static const char *const tabs[2] = { "Tab one", "Tab two" };\n'
++    'static const char *const rows[4] = { "row alpha", "row beta", "row gamma", "row delta" };\n'
++    "static void fam_update(void) { sink += tabs[sink & 1][0] + rows[sink & 3][0];")
++
++
++@unittest.skipUnless(CROSS, "no MIPS compiler (mipsel-linux-gnu-gcc / mipsel-none-elf-gcc)")
++class PlannerHold(unittest.TestCase):
++    def setUp(self):
++        self.dir = tempfile.TemporaryDirectory()
++        self.saved = (ovl_plan.SHARED, ovl_plan.SHARED_NOT, ovl_plan.STR_WHOLE, ovl_plan.HOLD,
++                      dict(ovl_plan.HELD_CALLBACKS))
++        ovl_plan.SHARED, ovl_plan.SHARED_NOT, ovl_plan.STR_WHOLE = r"ui$", (), ()
++        ovl_plan.HELD_CALLBACKS.clear()
++        ovl_plan.HELD_CALLBACKS.update({"fp_family": ("mem_flowers", "wz_neighbour")})
++
++    def tearDown(self):
++        ovl_plan.SHARED, ovl_plan.SHARED_NOT, ovl_plan.STR_WHOLE, ovl_plan.HOLD = self.saved[:4]
++        ovl_plan.HELD_CALLBACKS.clear()
++        ovl_plan.HELD_CALLBACKS.update(self.saved[4])
++        self.dir.cleanup()
++
++    def plan(self):
++        return plan(self.dir.name, compile_fake(self.dir.name, HOLD_FAKE, strsec_compiler))[0]
++
++    def strings(self, where, key):
++        return [sec for obj, sec in where.get(key, ()) if obj == "fp_family" and ".str1." in sec]
++
++    def test_a_held_group_takes_nothing_new(self):
++        ovl_plan.HOLD = ("freeplay",)
++        where = self.plan()
++        fp = where["freeplay"]
++        # its own scene code is in the group as ever
++        self.assertIn(("fp_family", ".text.fam_update"), fp)
++        # its reviewed callbacks, its table strings and the shared code only it calls stay resident
++        for sec in (".text.mem_flowers", ".text.wz_neighbour"):
++            self.assertIn(("fp_family", sec), where["resident"])
++            self.assertNotIn(("fp_family", sec), fp)
++        self.assertEqual(self.strings(where, "freeplay"), [])
++        self.assertEqual(len(self.strings(where, "resident")), 7)
++        self.assertIn(("ui", ".text.ui_family_only"), where["resident"])
++        self.assertFalse([x for x in fp if x[0] == "ui"])
++        # the group next to it is not held and still takes its part of the shared file
++        self.assertIn(("ui", ".text.ui_island_only"), where["island"])
++
++    def test_released_it_takes_all_of_it(self):
++        ovl_plan.HOLD = ()
++        where = self.plan()
++        fp = where["freeplay"]
++        for sec in (".text.mem_flowers", ".text.wz_neighbour"):
++            self.assertIn(("fp_family", sec), fp)
++        self.assertEqual(len(self.strings(where, "freeplay")), 4)
++        self.assertIn(("ui", ".text.ui_family_only"), fp)
++
++    def test_a_hold_on_another_group_changes_nothing_here(self):
++        ovl_plan.HOLD = ("island",)
++        where = self.plan()
++        self.assertIn(("fp_family", ".text.mem_flowers"), where["freeplay"])
++        self.assertIn(("ui", ".text.ui_family_only"), where["freeplay"])
++        self.assertIn(("ui", ".text.ui_island_only"), where["resident"])
++
++    def test_every_held_callback_is_in_a_reviewed_table(self):
++        # HELD_CALLBACKS only holds back entries of the three callback tables
++        held = self.saved[4]
++        for obj, names in held.items():
++            listed = (ovl_plan.LOCAL_CALLBACKS.get(obj, ()) + ovl_plan.MODAL_CALLBACKS.get(obj, ())
++                      + ovl_plan.PICK_CALLBACKS.get(obj, ()))
++            for n in names:
++                self.assertIn(n, listed, "%s:%s is held but in no callback table" % (obj, n))
++
++
+ if __name__ == "__main__":
+     import warnings
+     warnings.simplefilter("ignore", ResourceWarning)    # the tools read files in one expression
 -- 
 2.43.0
 

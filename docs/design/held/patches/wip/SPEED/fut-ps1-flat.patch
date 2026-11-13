@@ -1,0 +1,1256 @@
+From 69fcd94bad0a025916fdea8acff5ad0b28cc1d17 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 05:19:08 +0000
+Subject: [PATCH 1/3] PS1-FLAT: no 3D model in the house, the player is a
+ billboard like every actor
+
+Owner decision HOUSE CHARACTERS FLAT (2026-11-12): inside any house nobody
+is drawn as a 3D model. ps1/src/room.c drew the player as model.c's chibi;
+it now goes through the same billboard() as every resident, visitor, guest
+and demon (the body sprite the core hands over: direction, walk frame, sit
+squash; the same ordering slot and day light). The player keeps its contact
+shadow, drawn as a billboard's.
+
+The resting player stays: while its picture, place and squash have not
+changed for two frames it is part of the backdrop and is drawn again only
+inside the clips of what moves over it (without it the Hell-Cellar layout
+runs at 18 fps instead of 28: everything in front of a moving element at
+the back is drawn again every frame). A translucent player never rests.
+
+Gone with the house's call: model.c g_model_hold, the per-polygon drawing
+area g_r3_area (r3d.c, prims.c), room.c's player(), player_box(), ang_of().
+
+home.txt (PCSX-Redux): plain 30.17 -> 30.17, steady 29.39 -> 30.00, orbit
+27.27 -> 30.00, cellar_full 27.80 -> 27.80, defend_stress 19.25 -> 23.00,
+modal 29.19 -> 30.00, defend_w3 30.13 -> 30.13, visit 30.17 -> 30.17; parity
+pairs 0 px. Home group 130,856 -> 129,420 B; 496 B of resident code and
+.bss freed. Core, GBA and Dreamcast files are untouched.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ ps1/src/model.c     |   7 --
+ ps1/src/prims.c     |  21 ++---
+ ps1/src/prims.h     |   6 +-
+ ps1/src/r3d.c       |  20 +----
+ ps1/src/r3d.h       |   5 --
+ ps1/src/room.c      | 215 ++++++++++++++------------------------------
+ ps1/src/room_test.c |   2 +-
+ 7 files changed, 76 insertions(+), 200 deletions(-)
+
+diff --git a/ps1/src/model.c b/ps1/src/model.c
+index 9c4e98f9..52592c64 100644
+--- a/ps1/src/model.c
++++ b/ps1/src/model.c
+@@ -110,11 +110,6 @@ static int atan2_4096(int y, int x)
+ static int32_t s_lastx, s_lasty;
+ static int     s_phase, s_speed;
+ static int     s_have;
+-/* --- H3: the house (room.c) holds the idle chibi's pose: a resting player
+- * is drawn into the backdrop and again inside clips, and every one of
+- * those draws must give the same polygons --- */
+-uint8_t g_model_hold;
+-/* --- end H3 --- */
+ 
+ #define U(v) ((v) * 16)        /* model units -> 1/16 */
+ 
+@@ -135,7 +130,6 @@ int model_player_draw(const DoomoView3D *v, const DoomoBillboard *bb, uint32_t l
+     dy = (bb->y - s_lasty) >> 12;
+     if (!s_have || dx > 4096 || dx < -4096 || dy > 4096 || dy < -4096)
+         dx = dy = 0;
+-    if (!g_model_hold) {                    /* H3: a held pose does not move on */
+     s_have = 1;
+     s_lastx = bb->x;
+     s_lasty = bb->y;
+@@ -144,7 +138,6 @@ int model_player_draw(const DoomoView3D *v, const DoomoBillboard *bb, uint32_t l
+         s_speed += (sp - s_speed) / 3;
+     }
+     s_phase = (s_phase + 40 + s_speed * 6) & 4095;
+-    }                                       /* H3 */
+     /* facing: the player's aim, else the movement, else away from the camera */
+     if (ps)
+         ang = ps->angle & 4095;
+diff --git a/ps1/src/prims.c b/ps1/src/prims.c
+index 2aa512c4..cc19cd28 100644
+--- a/ps1/src/prims.c
++++ b/ps1/src/prims.c
+@@ -3,9 +3,9 @@
+  *
+  * Speed (H3): every vertex is transformed ONCE (RTPT per three) and the
+  * triangles are emitted from the transformed vertices exactly as
+- * r3_tri_g() emits them (the same near test, winding cull, fog, ordering
+- * slot and r3d's per-polygon drawing area); r3_quad_g() used to transform
+- * a blob's vertices five or six times over. Output is unchanged.
++ * r3_tri_g() emits them (the same near test, winding cull, fog and
++ * ordering slot); r3_quad_g() used to transform a blob's vertices five or
++ * six times over. Output is unchanged.
+  */
+ #include <inline_c.h>
+ #include "prims.h"
+@@ -75,11 +75,10 @@ static void xf(R3V *v, int n)
+ }
+ 
+ /* r3_tri_g() after its transform: near test, cull (closed meshes wound
+- * counter-clockwise), fog per vertex, the ordering slot, r3d's area */
++ * counter-clockwise), fog per vertex, the ordering slot */
+ static void tri(const R3V *a, const R3V *b, const R3V *c, uint32_t ca, uint32_t cb, uint32_t cc, int bias)
+ {
+     POLY_G3 *p;
+-    uint32_t *slot;
+     int otz;
+     if (a->sz < R3_NEAR || b->sz < R3_NEAR || c->sz < R3_NEAR)
+         return;
+@@ -101,17 +100,7 @@ static void tri(const R3V *a, const R3V *b, const R3V *c, uint32_t ca, uint32_t
+     otz = (int)((int32_t)(a->sz + b->sz + c->sz + c->sz) >> (2 + g_cam.ot_shift)) + bias;
+     if (otz < 1) otz = 1;
+     if (otz > OT_LEN - 2) otz = OT_LEN - 2;
+-    slot = g_cam.ot + otz;
+-    addPrim(slot, p);
+-    if (g_r3_area) {
+-        uint32_t *ar = (uint32_t *)gfx_alloc(12);
+-        if (ar) {
+-            ar[0] = 0x02000000u;
+-            ar[1] = g_r3_area[0];
+-            ar[2] = g_r3_area[1];
+-            addPrim(slot, ar);
+-        }
+-    }
++    addPrim(g_cam.ot + otz, p);
+     g_r3stats.polys++;
+ }
+ 
+diff --git a/ps1/src/prims.h b/ps1/src/prims.h
+index 64b048aa..1f0c7ab9 100644
+--- a/ps1/src/prims.h
++++ b/ps1/src/prims.h
+@@ -1,8 +1,8 @@
+ /* prims.h - low-poly 3D primitives in a model's local space (owner: H3).
+  *
+- * Factored out of model.c (SPEC H3 M0) so the player's chibi (model.c)
+- * and the house's furniture (room.c, FurnPrim lists) share one set of
+- * boxes, plush blobs and pyramids. Behaviour is exactly model.c's.
++ * Factored out of model.c (SPEC H3 M0): the boxes, plush blobs and
++ * pyramids of the player's third-person chibi (model.c, the 3D view's only
++ * model; the house draws its furniture with room.c's own and no models).
+  *
+  * Local space: x right, y forward, z up, in 1/16 model units; prim_xf
+  * places the model (feet) relative to the camera and gives its yaw and
+diff --git a/ps1/src/r3d.c b/ps1/src/r3d.c
+index 6f973e4f..6673b436 100644
+--- a/ps1/src/r3d.c
++++ b/ps1/src/r3d.c
+@@ -7,12 +7,6 @@
+ 
+ R3Cam   g_cam;
+ R3Stats g_r3stats;
+-/* --- H3: the house clips each model polygon to the player's box
+- * (room.c draws its moving things into one table, each with its own
+- * drawing area): when set, a copy of this DR_AREA precedes every
+- * r3_tri_g polygon --- */
+-const uint32_t *g_r3_area;
+-/* --- end H3 --- */
+ 
+ /* the GTE load macros do not tell the compiler they read memory */
+ #define MEMBAR() __asm__ volatile("" ::: "memory")
+@@ -578,19 +572,7 @@ void r3_tri_g(R3V *a, R3V *b, R3V *c, int bias)
+     *(uint32_t *)&p->x0 = a->sxy;
+     *(uint32_t *)&p->x1 = b->sxy;
+     *(uint32_t *)&p->x2 = c->sxy;
+-    {
+-        uint32_t *slot = g_cam.ot + ot_index(a->sz + b->sz + c->sz + c->sz, bias);
+-        addPrim(slot, p);
+-        if (g_r3_area) {                                    /* H3 */
+-            uint32_t *ar = (uint32_t *)gfx_alloc(12);
+-            if (ar) {
+-                ar[0] = 0x02000000u;
+-                ar[1] = g_r3_area[0];
+-                ar[2] = g_r3_area[1];
+-                addPrim(slot, ar);
+-            }
+-        }
+-    }
++    addPrim(g_cam.ot + ot_index(a->sz + b->sz + c->sz + c->sz, bias), p);
+     g_r3stats.polys++;
+ }
+ 
+diff --git a/ps1/src/r3d.h b/ps1/src/r3d.h
+index fe5370c3..c417d845 100644
+--- a/ps1/src/r3d.h
++++ b/ps1/src/r3d.h
+@@ -113,11 +113,6 @@ void r3_shadow(int32_t bx, int32_t by, int32_t bz, int radius);
+ /* Sky backdrop across the viewport (view3d). */
+ void r3_sky(int sky_id, uint16_t time, int brightness);
+ 
+-/* --- H3: when set (2 words: GP0 E3h, E4h), every r3_tri_g polygon is
+- * preceded by this drawing area (room.c) --- */
+-extern const uint32_t *g_r3_area;
+-/* --- end H3 --- */
+-
+ /* statistics for the current frame */
+ void r3_stats_reset(void);
+ 
+diff --git a/ps1/src/room.c b/ps1/src/room.c
+index 4cf9aef6..efff0b72 100644
+--- a/ps1/src/room.c
++++ b/ps1/src/room.c
+@@ -8,8 +8,8 @@
+  *  - scale: a tile is RT = 32 world units and one unit of the iso art (1/16
+  *    tile, one pixel of height) is RU = 2, so walls are 128 units tall (the
+  *    room_ref 64 px wall of a 320x240 view) and the furniture keeps the iso
+- *    sprites' proportions next to the 3D chibi, whom model.c builds 56 units
+- *    tall. (HF said 64 units per tile; at that scale the chibi would stand
++ *    sprites' proportions next to the chibi sprites, drawn at the same
++ *    scale. (HF said 64 units per tile; at that scale a chibi would stand
+  *    shorter than a picket fence.)
+  *  - the room box: the floor is one textured quad per tile (8bpp, 16 texels
+  *    per tile), the four walls are slabs (inner face textured per tile
+@@ -36,9 +36,11 @@
+  *    smaller), and faces that look down (the camera never goes below the
+  *    floor) are not even tested. Ghosts are 50% translucent (RO_INVALID
+  *    red, RO_SEMI grey), RO_SELECTED blinks lighter.
+- *  - characters: the player (RA_PLAYER) is model.c's 3D chibi, facing where
+- *    it walks; every other actor is a camera-facing billboard of its image
+- *    with its own x / y squash, standing on its feet.
++ *  - characters: every actor, the player (RA_PLAYER) included, is a
++ *    camera-facing billboard of its image with its own x / y squash,
++ *    standing on its feet. Nobody is a 3D model inside a house (owner,
++ *    2026-11-12: OWNER_DECISIONS "HOUSE CHARACTERS FLAT"); the player keeps
++ *    the contact shadow it always had, drawn as a billboard's.
+  *  - light: ambient = the overworld's day colour, up to 4 lamp pools on the
+  *    floor vertices (H8: room_ref's light sources, a lit FF_LIGHT piece or a
+  *    hearth, with its falloff, room_ref's k_lamp table at 32 d^2 / r^2; none
+@@ -80,14 +82,16 @@
+  * single full pass: while orbiting, during the wall drop-and-pop, or when
+  * the pass would cost about as much as a full render).
+  *
+- * THE RESTING PLAYER (H4): the 3D chibi is the dearest thing in the room
+- * (about 9 ms in Redux), and in Live / Build it mostly stands still. While
+- * it has not moved, turned or changed frame for a moment it joins the
+- * static layer: drawn into the backdrop with everything else (model.c
+- * g_model_hold keeps its walk cycle where it was), and drawn again in the
+- * clipped pass only when something moving overlaps it, without its contact
+- * shadow (the backdrop has it already). It leaves the layer the frame it
+- * moves.
++ * THE RESTING PLAYER (H4): in Live / Build the player mostly stands still,
++ * often at the back of a full room, where a moving element would have
++ * everything in front of it drawn again every frame (the Hell-Cellar: 18
++ * fps instead of 28). While its picture, place and squash have not changed
++ * for a moment it joins the static layer: drawn into the backdrop with
++ * everything else, and drawn again in the clipped pass only when something
++ * moving overlaps it, without its contact shadow (the backdrop has it
++ * already). It leaves the layer the frame it changes. (The core's idle
++ * breath never fires today, home_draw.c HT_BREATH; if it ever does, each
++ * breath is a new backdrop.)
+  *
+  * Every vertex is transformed once (RTPT per 3), faces are culled by their
+  * screen winding and emitted as POLY_F4/G4/F3/G3/GT4 straight into the
+@@ -170,11 +174,8 @@ static struct {
+     uint8_t  wall_age[4];           /* frames since it flipped, 0xFF settled      */
+     int32_t  zoom_q8;               /* smoothed close-up 256..410                 */
+     int32_t  lx, ly;                /* smoothed look-at, world 16.16              */
+-    int32_t  px, py;                /* the player's last position (fix16)         */
+-    int16_t  pang;                  /* the player's facing                        */
+-    int32_t  rp_x, rp_y;            /* the player actor last frame (fix16) ...     */
+-    int16_t  rp_z;                  /* ... its height                              */
+-    uint8_t  still;                 /* frames it has not moved (capped)           */
++    uint32_t rp[5];                 /* the player actor last frame (rest_state)   */
++    uint8_t  still;                 /* frames it has not changed (capped)         */
+     uint16_t clut;                  /* the borrowed CLUT row (getClut id)         */
+     uint32_t clut_key;
+     uint32_t fit_key;               /* fitted projection for this room / view     */
+@@ -261,25 +262,6 @@ static uint32_t mix(uint32_t h, uint32_t v)
+     return h ^ (h >> 13);
+ }
+ 
+-/* 0..4095 heading of (dx, dy) */
+-static int ang_of(int32_t dx, int32_t dy)
+-{
+-    int32_t ax = dx < 0 ? -dx : dx, ay = dy < 0 ? -dy : dy;
+-    int a;
+-    if (!ax && !ay) return 0;
+-    /* atan on [0, 45 deg] ~ 512 * t * (1.27 - 0.27 t), t = small / big */
+-    if (ax >= ay) {
+-        int t = (int)((ay << 12) / ax);
+-        a = (t * (5202 - ((t * 1106) >> 12))) >> 14;  /* 0..512 */
+-    } else {
+-        int t = (int)((ax << 12) / ay);
+-        a = 1024 - ((t * (5202 - ((t * 1106) >> 12))) >> 14);
+-    }
+-    if (dx < 0) a = 2048 - a;
+-    if (dy < 0) a = 4096 - a;
+-    return a & 4095;
+-}
+-
+ /* 1 / (1 + 16 d^2 / r^2 / 16), minus its value at 4 r^2, as 0..128 */
+ static const uint8_t k_lamp[64] = {
+     128, 118, 110, 102, 96, 89, 84, 79, 74, 70, 66, 62, 59, 56, 53, 50, 48, 45, 43, 41, 39,
+@@ -1658,9 +1640,6 @@ static void draw_piece(RC *c, const DoomoRoomObj *o, const DoomoFurn *f, int par
+ }
+ 
+ /* ---- actors ---------------------------------------------------------------------- */
+-int model_player_draw(const DoomoView3D *v, const DoomoBillboard *bb, uint32_t light);
+-extern uint8_t g_model_hold;          /* model.c: keep the pose (a resting player) */
+-
+ static void blob_set(RC *c, int i, int32_t wx, int32_t wy, int32_t wz, int32_t r)
+ {
+     vset(c, i, wx - r, wy - r, wz + 1);
+@@ -1709,8 +1688,10 @@ static int bill_verts(RC *c, const DoomoRoomActor *a, int *tw, int *th)
+ }
+ COLD_END
+ 
++/* shadow 0: without its contact shadow (the resting player in the pass:
++ * the backdrop has it); the player always has one, as it always did */
+ COLD_BEGIN
+-static void billboard(RC *c, const DoomoRoomActor *a)
++static void billboard(RC *c, const DoomoRoomActor *a, int shadow)
+ {
+     TexRef tr;
+     POLY_FT4 *p;
+@@ -1718,7 +1699,7 @@ static void billboard(RC *c, const DoomoRoomActor *a)
+     if (!bill_verts(c, a, &tw, &th)) return;
+     c->allin = 0;
+     slot = actor_slot(c);
+-    if (a->flags & BB_SHADOW) blob_quad(c, 4, slot + 1);
++    if (shadow && (a->flags & (BB_SHADOW | RA_PLAYER))) blob_quad(c, 4, slot + 1);
+     if (!on_screen(c, 0, 1, 2, 3) || !vram_image(a->img, flip << 8, 0, &tr)) return;
+     p = (POLY_FT4 *)gfx_alloc(sizeof(POLY_FT4));
+     if (!p) return;
+@@ -1737,72 +1718,33 @@ static void billboard(RC *c, const DoomoRoomActor *a)
+ }
+ COLD_END
+ 
+-/* the player's box: about the model's size (56 units tall) and its shadow;
+- * its slots are a little wider than the model's polygons */
++/* an actor's box on screen (its card and shadow, a little wider), its floor
++ * footprint and its slots; 0 = nothing to draw */
+ COLD_BEGIN
+-static void player_box(RC *c, const DoomoRoomActor *a, SBox *b)
++static int actor_box(RC *c, const DoomoRoomActor *a, SBox *b)
+ {
+-    int32_t wx = (a->x * RT) >> 16, wy = (a->y * RT) >> 16, wz = a->z * RU;
+-    int i, s0 = OT_LEN, s1 = 0;
+-    for (i = 0; i < 8; i++)
+-        vset(c, i, wx + ((i & 1) ? 15 : -15), wy + ((i & 2) ? 15 : -15), wz + ((i & 4) ? 62 : 0));
+-    xform(c, 8);
+-    foot_of(c, 8, 1, b);
++    int tw, th, s;
++    if (!bill_verts(c, a, &tw, &th)) return 0;
++    foot_of(c, 8, 2, b);
+     sbox_of(c, 8, b);
+-    for (i = 0; i < 8; i++) {
+-        int s = (int)(c->sz[i] >> g_cam.ot_shift);
+-        if (s < s0) s0 = s;
+-        if (s > s1) s1 = s;
+-    }
+-    b->s0 = (int16_t)clampi(s0 - 16, 1, OT_LEN - 2);
+-    b->s1 = (int16_t)clampi(s1 + 16, 1, OT_LEN - 2);
++    s = actor_slot(c);
++    b->s0 = (int16_t)s;
++    b->s1 = (int16_t)(s + 1);
+     b->x0 = (int16_t)(b->x0 - 2); b->x1 = (int16_t)(b->x1 + 2);
+     b->y0 = (int16_t)(b->y0 - 2); b->y1 = (int16_t)(b->y1 + 2);
++    return 1;
+ }
+-COLD_END
+ 
+-/* the player: model.c's 3D chibi, facing where it walks (the core's combat
+- * aim angle is borrowed for the call and put back); r3d puts it into the
+- * view's full ordering table (g_cam.ot) */
+-COLD_BEGIN
+-static void player(RC *c, const DoomoRoomActor *a, int shadow)
+-{
+-    DoomoBillboard bb;
+-    DoomoPlayerState *ps = core_player();
+-    int16_t sa = 0, sr = 0;
+-    int32_t dx = a->x - R.px, dy = a->y - R.py;
+-    int light = (c->amb_r + c->amb_g + c->amb_b) / 3;
+-    if (!R.pang) R.pang = (int16_t)(((g_cam.ang + 2048) & 4095) | 1);   /* face the camera */
+-    if ((dx > 256 || dx < -256 || dy > 256 || dy < -256) && dx < FIX_ONE && dx > -FIX_ONE &&
+-        dy < FIX_ONE && dy > -FIX_ONE)
+-        R.pang = (int16_t)(ang_of(dx, dy) | 1);
+-    R.px = a->x;
+-    R.py = a->y;
+-    if (shadow) {                       /* its contact shadow (the backdrop has a resting one's) */
+-        blob_set(c, 0, (a->x * RT) >> 16, (a->y * RT) >> 16, a->z * RU, 13);
+-        xform(c, 4);
+-        c->allin = 0;
+-        blob_quad(c, 0, -1);
+-    }
+-    memset(&bb, 0, sizeof(bb));
+-    bb.x = a->x * RT;
+-    bb.y = a->y * RT;
+-    bb.z = ((int32_t)a->z * RU) << 16;
+-    bb.img = a->img;
+-    bb.scale = 256;
+-    if (ps) {
+-        sa = ps->angle;
+-        sr = ps->recoil;
+-        ps->angle = R.pang;
+-        ps->recoil = 0;
+-    }
+-    g_model_hold = (uint8_t)(c->prest >= 0 && a == &c->v->actors[c->prest]);
+-    model_player_draw(NULL, &bb, (uint32_t)light);
+-    g_model_hold = 0;
+-    if (ps) {
+-        ps->angle = sa;
+-        ps->recoil = sr;
+-    }
++/* everything an actor's billboard depends on (the camera and the light are
++ * in the static key): the rest test compares it, the key mixes it in */
++static void rest_state(const DoomoRoomActor *a, uint32_t s[5])
++{
++    const DoomoImage *img = a->img;
++    s[0] = !img ? 0 : img->uid ? img->uid : (uint32_t)(uintptr_t)img->pix;
++    s[1] = (uint32_t)a->x;
++    s[2] = (uint32_t)a->y;
++    s[3] = (uint16_t)a->z | ((uint32_t)(uint16_t)a->sx << 16);
++    s[4] = (uint16_t)a->sy | ((uint32_t)a->flags << 16);
+ }
+ COLD_END
+ 
+@@ -2055,7 +1997,7 @@ static void draw_set(RC *c, const TexRef *wt, const TexRef *ft, int resting_only
+         if (k == PK_DYNAMIC) continue;
+         draw_piece(c, o, f, DP_SHADOW | (k == PK_SPLIT ? DP_BODY : DP_ALL), NULL, 0);
+     }
+-    if (resting_only && c->prest >= 0) player(c, &v->actors[c->prest], 1);
++    if (resting_only && c->prest >= 0) billboard(c, &v->actors[c->prest], 1);
+ }
+ 
+ /* the actors and the marks, in the order of the full render */
+@@ -2063,11 +2005,7 @@ static void draw_actors_marks(RC *c)
+ {
+     const DoomoRoomView *v = c->v;
+     int i;
+-    for (i = 0; i < v->nact; i++) {
+-        const DoomoRoomActor *ac = &v->actors[i];
+-        if (ac->flags & RA_PLAYER) player(c, ac, 1);
+-        else billboard(c, ac);
+-    }
++    for (i = 0; i < v->nact; i++) billboard(c, &v->actors[i], 1);
+     if (cursor_on(c)) draw_cursor(c);
+     for (i = 0; i < c->W * c->D && i < 128; i++)
+         if (sel_on(c, i)) tile_mark(c, i % c->W, i / c->W, 0x402818u, 1);
+@@ -2107,7 +2045,7 @@ COLD_BEGIN
+ static int el_cost(const RC *c, const El *e)
+ {
+     if (e->kind == EK_OBJ || e->kind == EK_BODY) return 2 + doomo_furn[c->v->objs[e->idx].furn].nprim * 3;
+-    return e->kind == EK_PLAYER ? 40 : e->kind == EK_ANIM ? 4 : 2;
++    return e->kind == EK_ANIM ? 4 : 2;
+ }
+ COLD_END
+ 
+@@ -2162,10 +2100,9 @@ static int static_boxes(RC *c, STab *t)
+         c->fx = 0;
+         n++;
+     }
+-    if (c->prest >= 0 && n < MAXEL) {
+-        /* the resting player: drawn again (the same held pose) inside the
+-         * clips of what moves behind it */
+-        player_box(c, &v->actors[c->prest], &el[n].b);
++    if (c->prest >= 0 && n < MAXEL && actor_box(c, &v->actors[c->prest], &el[n].b)) {
++        /* the resting player: drawn again inside the clips of what moves
++         * behind it */
+         el[n].kind = EK_PLAYER;
+         el[n].idx = (uint8_t)c->prest;
+         el[n].far = 0;
+@@ -2194,7 +2131,7 @@ COLD_BEGIN
+ static int dynamic_boxes(RC *c, El *el)
+ {
+     const DoomoRoomView *v = c->v;
+-    int i, n = 0, tw, th;
++    int i, n = 0;
+     for (i = 0; i < v->nobj; i++) {
+         const DoomoRoomObj *o = &v->objs[i];
+         const DoomoFurn *f = furn_of(o);
+@@ -2223,21 +2160,8 @@ static int dynamic_boxes(RC *c, El *el)
+         if (n >= MAXEL) return -1;
+         b = &el[n].b;
+         el[n].far = 0;
+-        if (a->flags & RA_PLAYER) {
+-            player_box(c, a, b);
+-            el[n].kind = EK_PLAYER;
+-        } else {
+-            int s;
+-            if (!bill_verts(c, a, &tw, &th)) continue;
+-            foot_of(c, 8, 2, b);
+-            sbox_of(c, 8, b);
+-            s = actor_slot(c);
+-            b->s0 = (int16_t)s;
+-            b->s1 = (int16_t)(s + 1);
+-            el[n].kind = EK_ACTOR;
+-            b->x0 = (int16_t)(b->x0 - 2); b->x1 = (int16_t)(b->x1 + 2);
+-            b->y0 = (int16_t)(b->y0 - 2); b->y1 = (int16_t)(b->y1 + 2);
+-        }
++        if (!actor_box(c, a, b)) continue;
++        el[n].kind = EK_ACTOR;
+         if (b->x1 < c->clx0 || b->x0 > c->clx1 || b->y1 < c->cly0 || b->y0 > c->cly1) continue;
+         el[n].idx = (uint8_t)i;
+         n++;
+@@ -2464,20 +2388,12 @@ static void run_pass(RC *c, const El *dyn, int nd, const Clip *dc, const STab *t
+     for (i = 0; i < ns; i++)
+         if (st[i].kind == EK_PLAYER && sc[i].x0 <= sc[i].x1) {
+             set_clip(c, &sc[i]);
+-            g_r3_area = c->area;
+-            player(c, &v->actors[st[i].idx], 0);
+-            g_r3_area = NULL;
++            billboard(c, &v->actors[st[i].idx], 0);
+         }
+     for (i = 0; i < nd; i++) {
+-        if (dyn[i].kind != EK_PLAYER && dyn[i].kind != EK_ACTOR) continue;
++        if (dyn[i].kind != EK_ACTOR) continue;
+         set_clip(c, &dc[i]);
+-        if (dyn[i].kind == EK_PLAYER) {
+-            g_r3_area = c->area;
+-            player(c, &v->actors[dyn[i].idx], 1);
+-            g_r3_area = NULL;
+-        } else {
+-            billboard(c, &v->actors[dyn[i].idx]);
+-        }
++        billboard(c, &v->actors[dyn[i].idx], 1);
+     }
+     for (i = 0; i < nd; i++)
+         if (dyn[i].kind == EK_CURSOR) { set_clip(c, &dc[i]); draw_cursor(c); }
+@@ -2510,8 +2426,7 @@ static uint32_t static_key(const RC *c, int a, int H)
+               g_rgb[PAL_RAMP(RAMP_VAPE, 1)] ^ (g_rgb[PAL_RAMP(RAMP_SKY, 5)] << 1));
+     for (i = 0; i < c->nlamp; i++) key = mix(key, (uint32_t)(c->lamp_x[i] | (c->lamp_y[i] << 12)));
+     if (c->prest >= 0)
+-        key = mix(mix(key, (uint32_t)R.rp_x ^ 0x9E3779B9u),
+-                  (uint32_t)R.rp_y ^ ((uint32_t)R.rp_z << 20) ^ ((uint32_t)(uint16_t)R.pang << 4));
++        for (i = 0; i < 5; i++) key = mix(key, R.rp[i] ^ 0x9E3779B9u);
+     for (i = 0; i < v->nobj; i++) {
+         const DoomoRoomObj *o = &v->objs[i];
+         const DoomoFurn *f = furn_of(o);
+@@ -2636,20 +2551,22 @@ void room_render(const DoomoRoomView *v, int force)
+     lamps(&c);
+     c.pane = room_pane_mode(v->daylight > 15 ? 15 : v->daylight);
+     /* the player at rest (Build mode stands it by the door, mostly behind
+-     * the furniture): after 2 frames on one spot it joins the backdrop with
+-     * its pose held (model.c g_model_hold), so what stands in front of it
+-     * is not drawn again every frame */
++     * the furniture): after 2 frames without a change it joins the
++     * backdrop, so what stands in front of it is not drawn again every
++     * frame (never a translucent one: drawn again over its own picture in
++     * the backdrop it would blend twice) */
+     c.prest = -1;
+     for (i = 0; i < v->nact; i++)
+         if (v->actors[i].flags & RA_PLAYER) {
+-            const DoomoRoomActor *pa = &v->actors[i];
+-            if (pa->x == R.rp_x && pa->y == R.rp_y && pa->z == R.rp_z) {
++            uint32_t s[5];
++            rest_state(&v->actors[i], s);
++            if (!memcmp(s, R.rp, sizeof(s))) {
+                 if (R.still < 255) R.still++;
+             } else {
+                 R.still = 0;
++                memcpy(R.rp, s, sizeof(s));
+             }
+-            R.rp_x = pa->x; R.rp_y = pa->y; R.rp_z = pa->z;
+-            if (R.still >= 2) c.prest = i;
++            if (R.still >= 2 && !(v->actors[i].flags & BB_TRANSLUCENT)) c.prest = i;
+             break;
+         }
+     /* the backdrop: at the frame's dither phase (x and y mod 4) */
+@@ -2687,7 +2604,7 @@ void room_render(const DoomoRoomView *v, int force)
+             const DoomoFurn *f = furn_of(&v->objs[i]);
+             if (f) live += 2 + f->nprim * 3;
+         }
+-        for (i = 0; i < v->nact; i++) live += (v->actors[i].flags & RA_PLAYER) ? 40 : 2;
++        live += v->nact * 2;
+         cost = close_clips(&c, dyn, nd, dc, tab, sc, lim);
+         if (force != RM_FILL && cost * 10 >= live * 8) mode = RM_LIVE;
+     }
+diff --git a/ps1/src/room_test.c b/ps1/src/room_test.c
+index 8e19bfd4..c3a9d805 100644
+--- a/ps1/src/room_test.c
++++ b/ps1/src/room_test.c
+@@ -145,7 +145,7 @@ void room_test_render(const DoomoRoomView *v)
+     }
+     if (parity) {
+         /* the player standing still (so it rests in the backdrop) with a
+-         * walker passing behind it: its clip draws it again, held pose */
++         * walker passing behind it: its clip draws the player again */
+         memset(&acts[na], 0, sizeof(acts[na]));
+         acts[na].img = bodyspr_image(DOOMO_PLAYER_ID, 0, 0);
+         acts[na].x = INT2FIX(1);
+-- 
+2.43.0
+
+
+From f00ed94f1f710aab05a1d2f618ebc3dc49f5b225 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 05:19:08 +0000
+Subject: [PATCH 2/3] PS1-FLAT: model.c leaves resident RAM for the combat
+ overlay group (+4,032 B)
+
+With the house no longer calling it, the third-person chibi (model.c,
+4,132 B of code) is needed only by plat_view3d's third-person views, which
+only combat draws. ovl_plan.py: PLAT_GROUPS puts a platform file into a
+group; GUARDED names the resident call that reaches it (view3d.c ->
+model_player_draw), which is not followed. view3d.c asks
+ovl_code_in(OVL_CODE_MODEL) (overlay.c) before the call and draws the
+player's billboard if the combat group were ever not in the slot. The plan
+fails when anything else would call the model (resident code, another
+group such as the house, or an address that escapes).
+
+prims.c (4,044 B) stays resident: with it the combat group would pass the
+slot's size and the slot grows in 2 KB steps.
+
+Game disc with the boot FMV: 65,952 -> 70,480 B below the stack top with the
+commit before (+4,528 B in all); combat group 124,056 -> 128,188 B, slot
+unchanged (131,072 B, set by the story group).
+
+ps1/tools/test_ovl_guard.py (6 tests on a made-up game, in CI's PS1 job).
+Third person exactly as before: perf_combat's 4 shots byte-identical,
+fast_cellar_tp with the entropy pinned 183 of 184 shots byte-identical (one
+frame differs by the adaptive view distance, which follows frame time), fps
+28.86 -> 28.94; perf_combat 29.81 / 30.00 / 29.94 / 29.45 -> 29.88 / 30.00 /
+29.94 / 29.51.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ .github/workflows/ci.yml    |   5 +
+ ps1/src/overlay.c           |  13 +++
+ ps1/src/ps1.h               |   6 +
+ ps1/src/view3d.c            |   9 +-
+ ps1/tools/ovl_plan.py       |  70 +++++++++++-
+ ps1/tools/test_ovl_guard.py | 218 ++++++++++++++++++++++++++++++++++++
+ 6 files changed, 317 insertions(+), 4 deletions(-)
+ create mode 100644 ps1/tools/test_ovl_guard.py
+
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 1355fcd9..830eba3b 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -315,6 +315,11 @@ jobs:
+           echo "## PS1 game disc: 40 biggest .bss/.data symbols (bytes)" | tee -a "$GITHUB_STEP_SUMMARY"
+           "$nm" -S --size-sort -t d "$f" | grep -E ' [bBdD] ' | tail -40 | tac | awk '{print $2, $4}' | tee -a "$GITHUB_STEP_SUMMARY" || true
+ 
++      # ovl_plan.py PLAT_GROUPS / GUARDED on a made-up game (the third-person model lives in the combat
++      # group; house code calling it fails the plan): docs/PS1.md "No 3D models in houses"
++      - name: Overlay planner tests (platform code in a group, guarded calls)
++        run: python3 ps1/tools/test_ovl_guard.py
++
+       - name: Build the engine-test disc (preset ps1-enginetest)
+         working-directory: ps1
+         run: |
+diff --git a/ps1/src/overlay.c b/ps1/src/overlay.c
+index 02db7896..956730a3 100644
+--- a/ps1/src/overlay.c
++++ b/ps1/src/overlay.c
+@@ -272,6 +272,18 @@ void plat_code_part(int part)
+ 
+ uint32_t overlay_loads(void) { return s_loads; }
+ 
++/* --- HOUSE CHARACTERS FLAT (ps1.h OVL_CODE_*; ovl_plan.py GUARDED): is the
++ * platform code that lives in a scene group in RAM now? Its resident
++ * caller asks before every call and does without it otherwise. --- */
++extern const unsigned char ps1_ovl_code_grp[];   /* ovl_table.c: 0 = not in a group */
++
++int ovl_code_in(int code)
++{
++    int g = ps1_ovl_code_grp[code];
++    return !g || g == s_cur;
++}
++/* --- end HOUSE CHARACTERS FLAT --- */
++
+ /* --- SP3 / P-I1 (plat_ext.h plat_scene_scratch): the part of the slot after the group (and its part) that is in
+  * is the running scene's to use: the island records its rect lists there (fp_island_gfx.c, ~19 KB of the ~73 KB the
+  * island group leaves). Any load can overwrite it (a group's code, or a packed group's sectors read into the end of
+@@ -341,5 +353,6 @@ void overlay_init(void) {}
+ uint32_t overlay_loads(void) { return 0; }
+ int ovl_borrow_take(uint32_t *seen) { (void)seen; return 0; }   /* H3: nothing borrows */
+ void plat_code_part(int part) { (void)part; }                     /* H4: no parts */
++int ovl_code_in(int code) { (void)code; return 1; }               /* all code is resident */
+ 
+ #endif
+diff --git a/ps1/src/ps1.h b/ps1/src/ps1.h
+index 2ffe89cb..3e363fc0 100644
+--- a/ps1/src/ps1.h
++++ b/ps1/src/ps1.h
+@@ -255,6 +255,12 @@ uint32_t overlay_loads(void);
+  * the house and returns 1 (and updates *seen) when it was loaded since
+  * the caller last looked, i.e. the tables must be rebuilt. */
+ int      ovl_borrow_take(uint32_t *seen);
++/* (HOUSE CHARACTERS FLAT) Platform code that lives in a scene group (ovl_plan.py
++ * PLAT_GROUPS) is called from resident code only behind this guard: 1 = the
++ * code is in RAM now (its group is in the slot; on the engine-test disc all
++ * code is resident). The ids are the positions in ovl_plan.py GUARDED. */
++enum { OVL_CODE_MODEL };          /* model.c: the third-person chibi (combat group) */
++int      ovl_code_in(int code);
+ 
+ /* ---- engine test / fallback assets (etest*.c) ------------------------------- */
+ const uint8_t *etest_texture(int tex_id, uint16_t time);
+diff --git a/ps1/src/view3d.c b/ps1/src/view3d.c
+index 5fb72847..3ebd4601 100644
+--- a/ps1/src/view3d.c
++++ b/ps1/src/view3d.c
+@@ -378,7 +378,12 @@ static void visibility(int32_t ex, int32_t ey, int ang, int pitch_a, int32_t fx,
+     }
+ }
+ 
+-/* ---- player model hook (model.c) --------------------------------------------- */
++/* ---- player model hook (model.c) ---------------------------------------------
++ * On the game disc model.c is in the combat overlay group (ovl_plan.py
++ * PLAT_GROUPS / GUARDED): the only third-person views are combat's, drawn
++ * by that group's code, so it is in the slot whenever they are. The call
++ * below still asks ovl_code_in() first; without the model the player is
++ * its billboard. */
+ int model_player_draw(const DoomoView3D *v, const DoomoBillboard *bb, uint32_t light);
+ 
+ static uint32_t sprite_light(const DoomoBillboard *b, int *visible)
+@@ -551,7 +556,7 @@ void plat_view3d(const DoomoView3D *v)
+             r3_shadow(b->x, b->y, b->z, (w * 3 >> 3) + 2);
+         }
+         if (i == v->player_sprite && v->camera == CAM_THIRD_PERSON &&
+-            model_player_draw(v, b, col))
++            ovl_code_in(OVL_CODE_MODEL) && model_player_draw(v, b, col))
+             continue;
+         if (b->img) {
+             int fl = (b->flags & BB_FULLBRIGHT) ? R3F_NOFOG : 0;
+diff --git a/ps1/tools/ovl_plan.py b/ps1/tools/ovl_plan.py
+index 406f95a4..2819064a 100644
+--- a/ps1/tools/ovl_plan.py
++++ b/ps1/tools/ovl_plan.py
+@@ -26,7 +26,10 @@ hand:
+     (SCENE_*), because scene.c calls those through plat_scene_code(),
+     which loads the scene's overlay first;
+   * the rest of a group is reachable only through its scenes' entry
+-    points; a section that two groups need is made resident.
++    points; a section that two groups need is made resident;
++  * a call listed in GUARDED (resident platform code calling a group's
++    function only after ovl_code_in() said the group is in the slot) is
++    not followed either: its target belongs to its own group.
+ 
+ Outputs: a linker script fragment (OVERLAY statement with one output
+ section per group, inserted before .ctors) and a C table mapping scene
+@@ -234,6 +237,26 @@ MODAL_CALLBACKS = {
+ }
+ # --- end G0 ---
+ 
++# --- HOUSE CHARACTERS FLAT (owner 2026-11-12; docs/PS1.md "No 3D models in houses"): platform files
++# that belong to a group, and the guarded calls that reach them.
++# PLAT_GROUPS: ps1/src object base -> group. model.c is the player's third-person chibi. Since the
++# house draws everyone as a billboard, only plat_view3d (view3d.c, resident) calls it, and only for a
++# CAM_THIRD_PERSON view with a player sprite: the combat group's views (combat.c; levels_select.c's
++# preview has no player sprite). prims.c (4.0 KB, the chibi's boxes and blobs) is NOT listed: with
++# it the combat group would pass the slot's size and the slot grows in 2 KB steps. Add it here when
++# the combat group has 4.1 KB to spare under the slot (--report: "slot demand").
++# GUARDED: (caller object base, callee object base, callee function). The caller is resident code
++# that calls the function only when ovl_code_in(k) (src/overlay.c; k = the entry's position here,
++# ps1.h OVL_CODE_*) says the callee's group is in the slot, and does without it otherwise (view3d.c
++# falls back to the player's billboard). So the call does not make the callee resident, and a wrong
++# guess about who calls plat_view3d can cost a picture, never a jump into another group's code. The
++# planner fails the build when the callee would be resident after all: its address escapes, or
++# something else reaches it (resident code, or another group's: house code calling the model, say).
++# The owner's rule and 4 KB of RAM would otherwise go quietly. ---
++PLAT_GROUPS = {"model": "combat"}
++GUARDED = (("view3d", "model", "model_player_draw"),)
++# --- end HOUSE CHARACTERS FLAT ---
++
+ # --- S4: registries read only by their own group (object base -> symbol).
+ # doomo_story_mg_a / _b point at the S4 / S5 story minigames; their only
+ # reader is story_mg.c's story_mg_find (the storymg scene, group loaded).
+@@ -275,6 +298,8 @@ def group_of(path):
+     if "/core/" not in path and "/src/" in path and base(path) in ("room", "room_test"):
+         return "home"
+     # --- end H3 ---
++    if "/core/" not in path and "/src/" in path and base(path) in PLAT_GROUPS:
++        return PLAT_GROUPS[base(path)]      # HOUSE CHARACTERS FLAT
+     if "/core/src/" not in path:
+         return None                     # platform, generated data, SDK
+     b = base(path)
+@@ -457,6 +482,23 @@ def main(argv):
+     entry = {(gdef["main"][0], gdef["main"][1])}
+     entry |= {n for n in alloc if n[1].startswith((".ctors", ".dtors"))}
+     live = closure_all(entry)
++    # --- HOUSE CHARACTERS FLAT: the guarded calls (GUARDED). The edge is taken out of the graph (the
++    # link still keeps the callee: `live` is already known) and the callee is claimed for its group
++    # below, like a scene's entry point: from a node that stands for the guarded call. ---
++    guards = []                           # per GUARDED entry: its callee's section, or None
++    guard_src = []                        # the nodes that stand for the live guarded calls
++    for caller, callee, fn in GUARDED:
++        tgt = next(((oi, ".text." + fn) for oi, o in enumerate(objs)
++                    if base(o.path) == callee and group_of(o.path) and (oi, ".text." + fn) in alloc), None)
++        guards.append(tgt if tgt in live else None)
++        if tgt not in live:
++            continue
++        for n in live:
++            if base(objs[n[0]].path) == caller and group_of(objs[n[0]].path) is None and n in edges:
++                edges[n] = [e for e in edges[n] if e[0] != tgt]
++        guard_src.append((tgt[0], ".text..guard." + fn))
++        edges[guard_src[-1]] = [(tgt, "R_MIPS_26")]
++    # --- end HOUSE CHARACTERS FLAT ---
+     roots = {n for n in live if grp(n) is None} | (set() if os.environ.get("OVL_NOESC") else (escaped & live))
+     # --- S4: group-local registries (LOCAL_REGISTRIES). The pointer itself
+     # is small data (.sdata under -G8) and stays resident, but when only its
+@@ -491,7 +533,7 @@ def main(argv):
+     while True:
+         owner = {}
+         clash = set()
+-        for s in scene_live:
++        for s in scene_live + guard_src:
+             g = grp(s)
+             for t, _ in edges.get(s, ()):
+                 if t in resident or not is_code(t):
+@@ -535,6 +577,21 @@ def main(argv):
+                 chain.append("%s:%s%s" % (base(objs[m[0]].path), m[1], "*" if m in escaped else ""))
+                 m = par.get(m)
+             print("why %6d %s" % (node_size(n), " <- ".join(chain)))
++    # --- HOUSE CHARACTERS FLAT: a guarded callee must have ended up in its group ---
++    bad = 0
++    for (caller, callee, fn), t in zip(GUARDED, guards):
++        if t is None or t in owner:
++            continue
++        users = sorted({"%s:%s" % (base(objs[n[0]].path), n[1]) for n in live
++                        if n not in guard_src and any(x == t for x, _ in edges.get(n, ()))})
++        print("ovl_plan: ERROR: %s:%s must be in the %s group (PLAT_GROUPS) but would be resident: %s. "
++              "Only %s may call it, behind ovl_code_in()" % (
++                  callee, fn, group_of(objs[t[0]].path),
++                  "its address is taken" if t in escaped else "called by " + ", ".join(users), caller))
++        bad = 1
++    if bad:
++        return 1
++    # --- end HOUSE CHARACTERS FLAT ---
+     groups = collections.defaultdict(list)
+     for r, g in owner.items():
+         groups[g].append(r)
+@@ -856,6 +913,9 @@ def main(argv):
+                  "".join(', "%s.%s"' % (g, PARTS[g][k - 1][0]) for (g, k) in sorted(pid, key=pid.get)))
+         C.append("};")
+         # --- end H4 ---
++        # HOUSE CHARACTERS FLAT: GUARDED entry -> the group its callee is in (0 = not linked, or no entry)
++        C.append("const unsigned char ps1_ovl_code_grp[] = { %s };   /* ps1.h OVL_CODE_* -> group, 0 = none */" %
++                 (", ".join(str(gid[in_ovl[t]] if t in in_ovl else 0) for t in guards) or "0"))
+         with open(a.out_c, "w") as f:
+             f.write("\n".join(C) + "\n")
+ 
+@@ -912,6 +972,12 @@ def main(argv):
+                 print("ovl_plan: %s keeps %d B of scene scratch after its %d B (needs %d B of the slot)" % (
+                     g, SCRATCH[g], sz, sz + SCRATCH[g]))
+         # --- end SP3 ---
++        # HOUSE CHARACTERS FLAT: what the guarded calls (GUARDED) took out of resident RAM
++        for (caller, callee, fn), t in zip(GUARDED, guards):
++            if t in in_ovl:
++                own = [n for n in groups[in_ovl[t]] if base(objs[n[0]].path) in PLAT_GROUPS]
++                print("ovl_plan: guarded call %s -> %s:%s: in %s (platform code in that group: %d B)" % (
++                    caller, callee, fn, in_ovl[t], sum(node_size(n) for n in own)))
+         if os.environ.get("OVL_WHY"):
+             c = collections.Counter()
+             for n in resident:
+diff --git a/ps1/tools/test_ovl_guard.py b/ps1/tools/test_ovl_guard.py
+new file mode 100644
+index 00000000..a23ce4b4
+--- /dev/null
++++ b/ps1/tools/test_ovl_guard.py
+@@ -0,0 +1,218 @@
++#!/usr/bin/env python3
++"""test_ovl_guard.py - unit tests of ovl_plan.py's platform groups and guarded
++calls (owner: ps1; HOUSE CHARACTERS FLAT, docs/PS1.md "No 3D models in houses").
++
++    python3 ps1/tools/test_ovl_guard.py
++
++A made-up game is compiled with the MIPS compiler and planned: the resident
++view3d.c calls model.c's model_player_draw behind ovl_code_in(), a combat
++scene draws the view. The model must leave resident RAM for the combat
++group, and the plan must fail when anything else (house code, say) would
++call it. Stdlib only; skipped without a MIPS compiler.
++"""
++import contextlib
++import io
++import os
++import re
++import shutil
++import subprocess
++import sys
++import tempfile
++import unittest
++
++HERE = os.path.dirname(os.path.abspath(__file__))
++sys.path.insert(0, HERE)
++import ovl_plan         # noqa: E402
++
++CROSS = next((p for p in ("mipsel-linux-gnu-", "mipsel-none-elf-") if shutil.which(p + "gcc")), None)
++CFLAGS = ["-O1", "-G8", "-march=r3000", "-mabi=32", "-msoft-float", "-mno-abicalls", "-fno-pic",
++          "-ffreestanding", "-fno-builtin", "-nostdlib", "-ffunction-sections", "-fdata-sections"]
++
++SCENE_H = """
++typedef struct DoomoScene { const char *name; void (*enter)(int); void (*leave)(void);
++                            void (*update)(void); void (*draw)(void); unsigned char overlay; } DoomoScene;
++void plat_view3d(int third_person);
++int ovl_code_in(int code);
++int model_player_draw(int x);
++int prim_box(int x);
++extern int sink;
++"""
++GAME = {
++    "src/main.c": """#include "scene.h"
++extern const DoomoScene *const doomo_all_scenes[];
++int sink;
++int main(void)
++{
++    int i;
++    for (i = 0; doomo_all_scenes[i]; i++) doomo_all_scenes[i]->draw();
++    return sink;
++}
++""",
++    "src/overlay.c": """#include "scene.h"
++extern const unsigned char ps1_ovl_code_grp[];
++int ovl_code_in(int code) { return !ps1_ovl_code_grp[code]; }
++""",
++    # resident: the 3D view calls the model behind the guard; it also lends its tables (BORROW)
++    "src/view3d.c": """#include "scene.h"
++unsigned char s_vis[64], s_vlist[64];
++void plat_view3d(int third_person)
++{
++    if (third_person && ovl_code_in(0) && model_player_draw(third_person)) return;
++    sink++;
++}
++""",
++    "src/model.c": """#include "scene.h"
++static int walk_phase;
++static __attribute__((noinline)) int limb(int x) { return prim_box(x) + walk_phase++; }
++int model_player_draw(int x) { return limb(x) + limb(x + 1); }
++""",
++    "src/prims.c": """#include "scene.h"
++int prim_box(int x) { sink += x; return 1; }
++""",
++    # the other lenders ovl_plan.py BORROW names
++    "src/world.c": "unsigned char g_world_wtop[64], g_world_corner[64];\n",
++    "src/memcard.c": "unsigned char s_blk[64];\n",
++    "core/src/combat_bot.c": "unsigned char first_dir[64], queue[64], target_bits[64];\n",
++    "core/src/scene.c": """#include "scene.h"
++extern const DoomoScene SCENE_COMBAT, SCENE_PET;
++const DoomoScene *const doomo_all_scenes[] = { &SCENE_COMBAT, &SCENE_PET, 0 };
++""",
++    "core/src/combat.c": """#include "scene.h"
++static void combat_draw(void) { plat_view3d(1); }
++const DoomoScene SCENE_COMBAT = { "COMBAT", 0, 0, 0, combat_draw, 0 };
++""",
++    "core/src/pet.c": """#include "scene.h"
++static void pet_draw(void) { sink += 2; }
++const DoomoScene SCENE_PET = { "PET", 0, 0, 0, pet_draw, 0 };
++""",
++}
++
++
++def plan(files, guarded=None):
++    """compile the made-up game and run the planner: (rc, report, ld script, C table)"""
++    with tempfile.TemporaryDirectory() as d:
++        with open(os.path.join(d, "scene.h"), "w") as f:
++            f.write(SCENE_H)
++        objs = []
++        for rel, text in sorted(files.items()):
++            src = os.path.join(d, rel)
++            os.makedirs(os.path.dirname(src), exist_ok=True)
++            with open(src, "w") as f:
++                f.write(text)
++            obj = src + ".obj"
++            subprocess.run([CROSS + "gcc"] + CFLAGS + ["-I", d, "-c", src, "-o", obj], check=True)
++            objs.append(obj)
++        ld, c = os.path.join(d, "ovl.ld"), os.path.join(d, "ovl_table.c")
++        out = io.StringIO()
++        old = ovl_plan.GUARDED
++        if guarded is not None:
++            ovl_plan.GUARDED = guarded
++        try:
++            with contextlib.redirect_stdout(out):
++                rc = ovl_plan.main(["ovl_plan.py", "--readelf", CROSS + "readelf", "--out-ld", ld,
++                                    "--out-c", c, "--report"] + objs)
++        finally:
++            ovl_plan.GUARDED = old
++        ldt = ct = ""                     # a failed plan writes neither
++        if os.path.exists(ld):
++            with open(ld) as f:
++                ldt = f.read()
++        if os.path.exists(c):
++            with open(c) as f:
++                ct = f.read()
++        return rc, out.getvalue(), ldt, ct
++
++
++def group_sections(ld, group):
++    """the input sections the linker script puts into `group`'s overlay"""
++    m = re.search(r"\.ovl_\d+ (?:__ovl_borrow : AT \([^\n]*\) )?\{\t/\* %s \*/\n(.*?)\n\t*\}" % re.escape(group), ld, re.S)
++    return m.group(1) if m else ""
++
++
++def code_grp(c):
++    m = re.search(r"ps1_ovl_code_grp\[\] = \{ ([^}]*) \}", c)
++    return [int(x) for x in m.group(1).split(",")]
++
++
++def group_id(c, group):
++    names = re.search(r"ps1_ovl_name\[\] = \{\n\s*(.*)\n\};", c).group(1)
++    return [n.strip().strip('"') for n in names.split(",")].index(group)
++
++
++@unittest.skipUnless(CROSS, "no MIPS compiler")
++class Guarded(unittest.TestCase):
++    def test_the_model_joins_the_combat_group(self):
++        rc, rep, ld, c = plan(GAME)
++        self.assertEqual(rc, 0, rep)
++        combat = group_sections(ld, "combat")
++        # the guarded function and what only it reaches (its static helper) are in the group
++        self.assertIn(".text.model_player_draw", combat)
++        self.assertIn(".text.limb", combat)
++        # the table the run-time guard reads names the combat group
++        self.assertEqual(code_grp(c), [group_id(c, "combat")])
++        self.assertIn("guarded call view3d -> model:model_player_draw: in combat", rep)
++        # prims.c is no PLAT_GROUPS file: resident, and so is the caller
++        self.assertNotIn("prims.c.obj", combat)
++        self.assertNotIn("view3d.c.obj", combat)
++        # the resident .text names model.c's sections one by one and lists none of the moved ones
++        res = ld[ld.index("\t.text : {"):ld.index("\t.ctors")]
++        self.assertIn("EXCLUDE_FILE(", res)
++        self.assertNotIn(".text.model_player_draw", res)
++
++    def test_without_the_guard_entry_the_model_stays_resident(self):
++        # the same game, the call not listed: resident code reaches the model, so it must stay
++        rc, rep, ld, c = plan(GAME, guarded=())
++        self.assertEqual(rc, 0, rep)
++        self.assertNotIn("model.c.obj", group_sections(ld, "combat"))
++        self.assertEqual(code_grp(c), [0])              # an empty table is still valid C
++
++    def test_a_second_resident_caller_fails_the_plan(self):
++        files = dict(GAME)
++        files["src/etest.c"] = '#include "scene.h"\nvoid etest_tick(void) { sink += model_player_draw(3); }\n'
++        files["src/main.c"] = GAME["src/main.c"].replace("return sink;", "etest_tick(); return sink;").replace(
++            "int sink;", "int sink;\nvoid etest_tick(void);")
++        rc, rep, ld, c = plan(files)
++        self.assertEqual(rc, 1, rep)
++        self.assertIn("ERROR: model:model_player_draw must be in the combat group", rep)
++        self.assertIn("called by etest:.text.etest_tick", rep)
++
++    def test_an_escaping_address_fails_the_plan(self):
++        files = dict(GAME)
++        files["src/view3d.c"] = GAME["src/view3d.c"] + "int (*model_hook)(int);\nvoid hook(void) { model_hook = model_player_draw; }\n"
++        files["src/main.c"] = GAME["src/main.c"].replace("return sink;", "hook(); return sink;").replace(
++            "int sink;", "int sink;\nvoid hook(void);")
++        rc, rep, ld, c = plan(files)
++        self.assertEqual(rc, 1, rep)
++        self.assertIn("ERROR: model:model_player_draw must be in the combat group", rep)
++        self.assertIn("its address is taken", rep)
++
++    def test_house_code_calling_the_model_fails_the_plan(self):
++        # the owner's rule (no 3D character models inside houses): the home group cannot draw the chibi
++        files = dict(GAME)
++        files["core/src/home.c"] = """#include "scene.h"
++static void home_draw(void) { sink += model_player_draw(2); }
++const DoomoScene SCENE_HOME = { "HOME", 0, 0, 0, home_draw, 0 };
++"""
++        files["core/src/scene.c"] = GAME["core/src/scene.c"].replace("SCENE_PET;", "SCENE_PET, SCENE_HOME;").replace(
++            "&SCENE_PET, 0", "&SCENE_PET, &SCENE_HOME, 0")
++        rc, rep, ld, c = plan(files)
++        self.assertEqual(rc, 1, rep)
++        self.assertIn("ERROR: model:model_player_draw must be in the combat group", rep)
++        self.assertIn("called by home:.text.home_draw", rep)
++        # the same house without the call plans fine, the model in the combat group
++        files["core/src/home.c"] = files["core/src/home.c"].replace("model_player_draw(2)", "2")
++        rc, rep, ld, c = plan(files)
++        self.assertEqual(rc, 0, rep)
++        self.assertIn(".text.model_player_draw", group_sections(ld, "combat"))
++        self.assertNotIn("model.c.obj", group_sections(ld, "home"))
++
++    def test_the_real_lists_name_the_model(self):
++        # the game's own entry: view3d.c (resident) -> model.c in the combat group; ps1.h OVL_CODE_MODEL is 0
++        self.assertEqual(ovl_plan.PLAT_GROUPS.get("model"), "combat")
++        self.assertEqual(ovl_plan.GUARDED[0], ("view3d", "model", "model_player_draw"))
++        with open(os.path.join(HERE, "..", "src", "ps1.h")) as f:
++            self.assertRegex(f.read(), r"enum \{ OVL_CODE_MODEL \};")
++
++
++if __name__ == "__main__":
++    unittest.main()
+-- 
+2.43.0
+
+
+From 4b2bb756a3088215cdcc05835968380572a2f010 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 05:28:06 +0000
+Subject: [PATCH 3/3] PS1-FLAT docs: docs/PS1.md (the house section, section 7,
+ the planner, the RAM ledger), ROADMAP Done, the defaults in OWNER_DECISIONS
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ ROADMAP.md                          |  1 +
+ docs/PS1.md                         | 97 ++++++++++++++++++++++++++---
+ docs/design/held/OWNER_DECISIONS.md |  1 +
+ 3 files changed, 91 insertions(+), 8 deletions(-)
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index f8484f67..65c8db9e 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -21,6 +21,7 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
+ before redoing any of them; a zip without `.git` cannot tell.
+ 
+ ### Done
++- **No 3D character models inside houses (PS1-FLAT, 2026-11-13; the owner: "disabled the 3d models of your player character and vice versa when you are inside their houses - save up some ram there", `OWNER_DECISIONS.md` "HOUSE CHARACTERS FLAT"; measured on PCSX-Redux; docs/PS1.md "No 3D models in houses", section 7):** only the PS1 drew a 3D figure in the house, the player's chibi (`model.c`). `ps1/src/room.c` now draws the player with the same `billboard()` as every resident, visitor, guest and demon, from the body sprite the core hands over (direction, walk frame, sit squash; the picture the GBA and the Dreamcast show, and the avatar being played), in Build, Live, Photo, Score, Hold the Door and a visit; it keeps its contact shadow and still rests in the kept backdrop while it stands still. With the house out, `model.c` (4,132 B) left resident RAM for the combat overlay group: `ovl_plan.py` `PLAT_GROUPS` / `GUARDED`, and `plat_view3d()` asks `ovl_code_in()` before it draws the model (the plan fails if house code, or anything else, would call it; `ps1/tools/test_ovl_guard.py`, 6 tests, in CI). The house's hooks in the 3D code are gone (`g_model_hold`, `g_r3_area`). **PS1 game disc with the boot FMV: 65,952 -> 70,480 B below the stack top (+4,528 B)**; the slot keeps its 131,072 B (combat group 124,056 -> 128,188 B, home 130,856 -> 129,420 B). `prims.c` (4,044 B) stays resident: with it the combat group would pass the slot. House fps (`home.txt`): plain 30.17 -> 30.17, steady 29.39 -> 30.00, orbit 27.27 -> 30.00, cellar 27.80 -> 27.80, defend stress 19.25 -> 23.00, modal 29.19 -> 30.00, Hold the Door wave 3 30.13 -> 30.13 (14.9 -> 6.4 ms of CPU), visit 30.17 -> 30.17; the speed tour's 19 house windows all hold 30 (the busy Live layout 28.89 -> 30.00). Third-person combat is unchanged: `perf_combat`'s shots are byte-identical, fps 29.5-30.0 as before. The core, the GBA and the Dreamcast are untouched (no file of theirs changed).
+ - **Real stick support (ST1, 2026-11-08; the owner: "actual dualshock/stick support so I don't have to move the camera controls with wacky controlling"; measured on PCSX-Redux and Flycast; docs/PS1.md "Sticks", docs/DREAMCAST.md 5):** PS1: a DualShock no longer needs its ANALOG button: when a pad shows up (boot or hot-plug) and reads digital, `ps1/src/pad.c` sends the config sequence (43h / 44h 01 03 analog + lock / 43h) over SIO0 between two BIOS polls (three tries, a digital pad is left alone); L3 / R3 read (`BTN_L3` / `BTN_R3`). Options > Controls gains **Auto** (the new default; Classic / Auto / Dual stick / Modern): Dual stick while an analog pad is plugged in, Modern otherwise, live; explicit Classic / Modern win; saves' old default Modern (stored 1) reads as Auto, an explicit Modern is stored as 3 (`controls_scheme()`). The sticks drive: the shooter (left walk / strafe, right turn / look, R3 lock-on), the overworld (analog walk in any direction: creep, walk, run at the rim), the house view (a right-stick flick = one 90-degree step, repeat on hold; build, live, photo), the creator (the right stick spins the citizen: the turntable opens as a peek). Dreamcast (Auto): the stick's X turns, Y walks, the analog triggers strafe by pressure, both triggers lock on; the overworld walks off the stick. Shared dead zone / curve in `input.c` (`stick_dz`, `stick_curve`, `input_rflick`). Prompts, the control card and the shooter tip follow the scheme in effect; Dual stick on a digital pad says "Analog sticks: use a DualShock". Tests: `core/tests/test_sticks.c` (scheme resolution, dead zone / curve, flick repeat, trigger strafe, each consumer), `dc/tests/vmu` (caps / triggers), harness `stick LX LY RX RY` on the PS1 (`ps1/harness/scripts/sticks.txt`; `sticks_auto.txt` with `run.py --analog-pad`: Redux's DualShock powering up digital is switched by the game, "pad: analog", the card still saves, the D-pad still drives), the native runner and dcrun (`dc/tests/sticks/sticks.txt`). PS1 fps with the sticks moving: combat turn 30.17, house turn 30.17, creator spin 30.34, overworld walk 30.00. PS1 resident +1.6 KB (65,952 B below the stack top with the FMV, was 67,568). GBA unchanged (the stick code compiles out; the Controls row reads Auto = Modern). Not done: a Dreamcast Options row "Stick: turn / strafe" (needs an OPT2 id), stick use in the remaining cameras (fishing cast aim, minigame cursors, the 3D level select, exorcism), a right-stick tilt / zoom in the creator (its preview has none).
+ - **Speed S2-4, first family (2026-11-08, the Fun Fair's kept playfield, speed audit 2 cause C3; measured on libmgba and PCSX-Redux; docs/GBA.md "Speed wave 2: S2-4", docs/PS1.md "Speed tour 2"):** a fair game may split its playfield into still parts, baked into the GBA ROM per key with its own drawing code (`DOOMO_BACKDROP_MG`, SP7's baker), and live parts drawn over a whole-picture copy each frame; still parts the usual order draws over live ones (a hole's front over the rising critter, the sign board over the peeking imps) are put back from the ROM in their own spans. Exact (`test_stage`: Whack's bot rounds with the kept picture on / off, every frame identical; every key baked). Whack-an-Imp: GBA 15.1 -> 20.9 fps Sweet, 15.0 -> 20.0 Hellfire (57.5 -> 40.3 / 61.5 -> 44.9 ms); ROM +1.15 MB, EWRAM -8 B (ledger row 40), PS1 compiled out (65 KB below the stack top with the FMV, unchanged by S2-4). **Still short of 30 / not done:** Whack's live part (imps, critters, HUD text; next: OBJ sprites, partial copies), the other fair games (Gallery 11, Derby 22, Dodge 21-27, Memory Hellfire 21.5 fps), the kitchen (17-22), dreams (11-13), cutscenes (10-23), library lobby / jukebox (20) and studio STAGE (23): S2-4 stays open for them.
+ - **Speed S2-5 (2026-11-08, scaled art, speed audit 2 cause C4; measured on libmgba and PCSX-Redux; docs/GBA.md "Speed wave 2: S2-5", docs/PS1.md "Speed tour 2"):** instead of pre-scaled ROM copies (the weapon plans and the welding icon are composed at run time, and the scale-1 blit reading ROM is no faster), the GBA draws every scale-2..4 image through `vid_blitn`, an ARM loop of the IWRAM UI group (a source row expanded once, then word copies of its opaque runs on each covered row; exact, `blit2test`), asked for by the cutscenes, the weapons wing and the welding game (`plat_ui_loops`); the Derby's racers become 8bpp pictures in the scene scratch drawn with the scale-1 blit instead of a `plat_rect` per colour run; the welding seam and bead are drawn as runs of same-y columns. All exact (`vhash-seq` against `c0dc4ba`). GBA drawn fps: weapons frames 24.9 -> **30**, weld intro 22.2 -> **30**, welding 21.5 -> **29.9** (every frame 2 vblanks), Derby races 15.0 -> 22.1-22.6, Vapula vignette 12.0 -> 16.1; PS1 unchanged at 30 (welding 30.12); no Dreamcast run (these scenes already held 30 there). GBA EWRAM / IWRAM unchanged (ledger row 39), PS1 resident unchanged (65 KB below the stack top with the FMV). `expect-fps` floors 28 / 20 / 14. Still short: the Derby (38 ms: sky, grandstand and bunting) and the Vapula and home vignettes (sky bands, puffs, the full-screen wallpaper): S2-4's held backdrops.
+diff --git a/docs/PS1.md b/docs/PS1.md
+index 07937735..ab131e21 100644
+--- a/docs/PS1.md
++++ b/docs/PS1.md
+@@ -258,6 +258,12 @@ disc no longer fitted (`0x802ec0b4`, 1.1 MB over the limit), so:
+     (combat is the biggest group). This took 60 KB of the studio, concert,
+     free play, creator, exorcism, workshop and gallery code out of
+     resident RAM;
++  - (2026-11-13, "No 3D models in houses" below) a platform file can
++    belong to a group (`PLAT_GROUPS`: `model.c`, the third-person chibi, in
++    the combat group). Its resident caller is listed in `GUARDED` and asks
++    `ovl_code_in()` (`overlay.c`) before every call; that call is not
++    followed either. The plan fails if anything else would call such a
++    file (`tools/test_ovl_guard.py`);
+   - it writes the linker script (every group is an output section of one
+     `OVERLAY` at the slot, `NOCROSSREFS`) and the scene -> group table.
+ 
+@@ -606,6 +612,37 @@ B), `fp_options.c`'s per-pad help rows (+816 B), the `unlock_find` memo
+ `run.py` PASS, the pet's bar with the PS1's names (L1 / R1, Square /
+ Triangle).
+ 
++**No 3D models in houses (PS1-FLAT, owner 2026-11-12, `OWNER_DECISIONS.md`
++"HOUSE CHARACTERS FLAT").** The house (`room.c`) draws the player as a
++billboard like everyone else (section 7), so `model.c` is called by
++`plat_view3d()` alone, and only for combat's third-person views. It moved
++out of resident RAM into the combat overlay group: `ovl_plan.py`
++`PLAT_GROUPS` puts the file there, and `GUARDED` names the one resident
++call (`view3d.c`), which asks `ovl_code_in(OVL_CODE_MODEL)` first and
++draws the player's billboard if the group were ever not in the slot. The
++hooks the house had in the 3D code are gone (`g_model_hold`, the
++per-polygon drawing area `g_r3_area` in `r3d.c` and `prims.c`).
++
++| | base `ce2d7e8` | PS1-FLAT |
++|---|---:|---:|
++| EXE image (code, data) | 1,287,360 B | 1,282,852 B (-4,508) |
++| `.bss` | 547,232 B | 547,212 B (-20) |
++| `_end` | `0x801efe60` | `0x801eecb0` |
++| **below the stack top** (boot FMV linked) | **65,952 B** | **70,480 B (+4,528)** |
++| combat group (slot demand) | 124,056 B | 128,188 B (`model.c` 4,132 B) |
++| home group (slot demand) | 130,856 B | 129,420 B (-1,436) |
++| slot | 131,072 B (home) | 131,072 B (story, 129,980 B) |
++
++70,480 B is still 3,248 B under the 72 KB plan gate: PS1-RAM closes that.
++Not moved: `prims.c` (4,044 B, the chibi's boxes and blobs, -O2). With it
++the combat group would need 132,232 B and the slot grows in 2 KB steps
++(+2,048 B here, +4,096 B on PS1-RAM's tree, where the combat group is
++126,696 B before this). When the combat group has 4.1 KB to spare under
++the slot, add `prims` to `PLAT_GROUPS` (one word). After this package the
++combat group has 2,884 B left under the slot (about 200 B on PS1-RAM's
++tree): growth of `combat*.c` / `actor.c` / `levels*.c` beyond that moves
++the slot.
++
+ The biggest remaining consumers of RAM: resident core code (portraits,
+ UI, sim, story engine, ...) ~650 KB, merged string literals of resident
+ code ~110 KB, `doomo_town` 107 KB, the display lists 112 KB + OTs 24 KB,
+@@ -864,22 +901,39 @@ the level's ordering table. When no resident is set up yet (engine test),
+ it wears a premade roster citizen's look. If the camera is closer than 24
+ units it is not drawn (first-person-like close-ups).
+ 
+-The chibi's boxes, plush blobs and pyramids live in `prims.c` (shared
+-with the house). Each one transforms its vertices once (RTPT per three)
++The chibi's boxes, plush blobs and pyramids live in `prims.c`. Each one
++transforms its vertices once (RTPT per three)
+ and emits the same triangles `r3_tri_g()` would; an in-emulator A/B build
+ that recorded both paths for every call (10,240 calls of `model.txt`)
+ found no difference.
+ 
++The model is for the 3D view only. Inside a house nobody is a 3D model
++(owner, 2026-11-12; "The dream house" below). On the game disc `model.c`
++is part of the combat overlay group (section 3, "No 3D models in
++houses"): `plat_view3d()` asks `ovl_code_in(OVL_CODE_MODEL)` before it
++calls `model_player_draw()`. The engine-test disc links it resident.
++
+ ### The dream house (`room.c`, H3)
+ 
+ `plat_room()` builds the house's `DoomoRoomView` as a small GTE diorama
+ (the header of `src/room.c` has the details): the floor and wall slabs
+ from the grid, CLUT-recoloured wallpaper and floor, the furniture from
+ its `DoomoFurnPrim` lists (round prims get 8 / 6 / 4 sides by their size
+-on screen), the player as the 3D chibi, everyone else as billboards,
++on screen), every character as a camera-facing billboard,
+ lamp pools and contact shadows, a camera on a `TW_BOING` spring with the
+ 4-frame drop-and-pop of the cut-away walls.
+ 
++* **No 3D models in houses (PS1-FLAT, owner 2026-11-12).** Until
++  2026-11-13 the player was `model.c`'s 3D chibi here. Now the player
++  (`RA_PLAYER`) is drawn by the same `billboard()` as every resident,
++  visitor, guest and demon, from the body sprite the core hands over (its
++  direction and walk frame, the sit squash): the same picture the GBA and
++  the Dreamcast show, in every mode (Build, Live, Photo, Score, Hold the
++  Door, a visit; HomeMart draws no room). Same ordering slot and day light
++  as any actor. The player keeps the contact shadow it always had, now the
++  billboard's. It also shows the avatar being played (`playas_avatar()`),
++  where the chibi showed the combat player's look.
++
+ * **The backdrop.** While the camera and the furniture rest, the static
+   layer (floor, walls, every resting piece) is drawn once into the first
+   three world-texture pages (the house uses no world textures) and every
+@@ -895,11 +949,13 @@ lamp pools and contact shadows, a camera on a `TW_BOING` spring with the
+   `piece_setup()`) that counter-shear would double into a diagonal sliver,
+   so `prim_mir()` mirrors the prims' x across the footprint, as the sprite
+   ports draw facing 0 flipped there: the same choice in every view.
+-* **The resting player (H4).** While the chibi stands still it is drawn
+-  into the backdrop with the furniture (`model.c` `g_model_hold` keeps its
+-  walk cycle where it was) and again only inside the clips of what moves
+-  over it, without its contact shadow. The Hell-Cellar with the player at
+-  the back went from 17 to 30 fps with it.
++* **The resting player (H4).** While the player's billboard has not
++  changed (picture, place, squash) for two frames it is drawn into the
++  backdrop with the furniture and again only inside the clips of what
++  moves over it, without its contact shadow. A moving element at the back
++  of a full room has everything in front of it drawn again every frame:
++  the Hell-Cellar ran at 18 fps without this and 28 with it (PS1-FLAT;
++  17 and 30 with the 3D chibi, H4).
+ * **Memory.** `room.c` belongs to the `home` overlay group. That group is
+   linked 53,764 B *below* the slot, over the `.bss` tables of `world.c`
+   and `view3d.c`, the arena bot's path-search scratch (`combat_bot.c`:
+@@ -954,6 +1010,31 @@ lamp pools and contact shadows, a camera on a `TW_BOING` spring with the
+ | `home_defend_w3` (Hold the Door, the siege's wave 3) | - | - | 30.1 | 22 |
+ | `home_visit` (Nana Puddin's flat) | - | - | 30.2 | 28 |
+ 
++PS1-FLAT (the player as a billboard), `home.txt` on this machine before
++and after, fps and the CPU time of one sampled frame (`perf:` line):
++
++| scene | base `ce2d7e8` | PS1-FLAT |
++|---|---:|---:|
++| `home_plain` (the own cottage, Build) | 30.17, 3.1 ms | 30.17, 3.1 ms |
++| `home_steady` | 29.39, 37.1 ms | 30.00, 28.1 ms |
++| `home_orbit` | 27.27, 35.0 ms | 30.00, 26.3 ms |
++| `home_cellar_full` | 27.80, 35.8 ms | 27.80, 35.9 ms |
++| `home_defend_stress` | 19.25, 53.6 ms | 23.00, 45.0 ms |
++| `home_modal` | 29.19, 21.0 ms | 30.00, 21.0 ms |
++| `home_defend_w3` | 30.13, 14.9 ms | 30.13, 6.4 ms |
++| `home_visit` | 30.17, 9.9 ms | 30.17, 9.9 ms |
++
++The parity pairs still differ by 0 pixels. The speed tour's house group
++(`speed2.sh OUT house`, 19 windows: Build, the catalog, a held piece, the
++turn, Photo, Live, Score, Hold the Door, a visit, HomeMart, the Black
++Market) holds 30 in every window; its one miss, the busy Live layout
++(28.89, 9 frames over 33 ms), is 30.00 now (one frame of 50 ms).
++Third person is as it was: `perf_combat.txt`'s four shots are
++byte-identical (29.88 / 30.00 / 29.94 / 29.51 fps, base 29.81 / 30.00 /
++29.94 / 29.45), `fast_cellar_tp.txt` with the entropy pinned gives 183
++of 184 identical shots (the other frame differs by the adaptive view
++distance, which follows frame time) at 28.94 fps (base 28.86).
++
+ Since H6 the cellar layout (`room_test.c`) holds the bunny beanbag on frame
+ 0, as it was before H6 (one frame): the beanbag now sinks only while
+ someone sits on it and sighs for `HT_SIGH` after (`home_draw.c`
+diff --git a/docs/design/held/OWNER_DECISIONS.md b/docs/design/held/OWNER_DECISIONS.md
+index e4b4b9c5..a3d7c6a5 100644
+--- a/docs/design/held/OWNER_DECISIONS.md
++++ b/docs/design/held/OWNER_DECISIONS.md
+@@ -120,3 +120,4 @@
+ - MACHINE RESET (2026-11-12): the cloud container was rebuilt while paused; every toolchain and emulator is reinstalled by `tools/dev_setup.sh` (new; about an hour). This file (docs/design/held/OWNER_DECISIONS.md) is now the living decisions file: the scratchpad copy is gone.
+ - MORE AGENTS (user 2026-11-12): "have more agents running faster, so you can complete this damn thing sooner". This replaces "one wave at a time": the waves now run side by side as five streams (SPEED, TALK, DC, CREATOR, LEVELS), each on its own cloud machine, all landing on claude/nice-allen-gr6czm. Rules, file ownership, shared memory budgets, the landing and pause protocols: docs/design/held/PARALLEL_WAVES.md; progress: docs/design/held/status/. Every package still gets an independent review and the full gates before it lands. The usage allowance is shared by all sessions: say "pause" and every stream saves its work and stops.
+ - HOUSE CHARACTERS FLAT (user 2026-11-12, to the TALK lead): "disabled the 3d models of your player character and vice versa when you are inside their houses - save up some ram there". Read as: inside any house (your own or one you visit) nobody is drawn as a 3D model. The player is a camera-facing billboard like every resident, and a resident never gets a 3D model there either. Today only the PS1 draws a 3D figure in the house (the player's chibi, `ps1/src/model.c` called from `ps1/src/room.c`; residents are billboards already; the Dreamcast and the GBA draw no character models in the house). The point is PS1 memory: with the house no longer calling it, `model.c` (and what only it uses of `prims.c`) can leave resident memory for the 3D / combat overlay group. Owner of the work: SPEED (its files, and it belongs with PS1-RAM); the freed bytes go into the shared PS1 budget of PARALLEL_WAVES.md section 3. Talk's house mode (T8, TP3) plans for billboards only. Interpretation by Claude (TALK); the owner may correct it.
++- HOUSE CHARACTERS FLAT, as built (PS1-FLAT, 2026-11-13; defaults chosen by Claude (SPEED), the owner may override): (1) the player's billboard keeps the contact shadow the 3D chibi had; residents in a real house have none on the PS1, as before. (2) `ps1/src/model.c` moved to the combat overlay group; `ps1/src/prims.c` (4 KB, the chibi's boxes and blobs) stays resident, because with it the combat group would pass the overlay slot's size and the slot grows in 2 KB steps. (3) In the house the PS1 now shows the avatar being played (the body sprite the core hands over, as on the GBA and the Dreamcast); the chibi showed the combat player's look. Numbers: docs/PS1.md "No 3D models in houses".
+-- 
+2.43.0
+
+=== UNCOMMITTED ===
