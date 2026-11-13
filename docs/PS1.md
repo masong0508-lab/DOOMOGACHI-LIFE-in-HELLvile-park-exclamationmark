@@ -1542,7 +1542,7 @@ the resident age table is unchanged). The creator offers the PS1 only the painte
 ## CR4 A3 (2026-11-13): spooky batch
 
 Measured on `0c1fc51` and `0c1fc51` + A3 (clean builds, `cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON`, `PSN00BSDK_LIBS=/opt/psn00bsdk/lib/libpsn00b`):
-`_end` 0x801ef450 both times, the overlay slot ends 0x801ef324 both times, 68,512 B below the stack top, the disc image and
+`_end` 0x801ef450 both times, the overlay slot ends 0x801ef324 both times, 68,512 B below the stack top (on the rebased tree after A2, STKOPT and Talk: `_end` 0x801ef580, 68,208 B below the stack top, identical to origin before A3; the elf2exe line prints "66 KB left"), the disc image and
 `OVL.BIN` the same size (the EXE bytes differ: the resident part age table is rebuilt from the catalog). The 60 new parts
 (10 horns, 16 tails, 14 wings, 4 halos, 16 auras) are part scripts the PS1 does not read yet (the part VM is off until CR10):
 their catalog rows are creator-overlay data and all are age class ALL (no new age row). The creator offers the PS1 only the
