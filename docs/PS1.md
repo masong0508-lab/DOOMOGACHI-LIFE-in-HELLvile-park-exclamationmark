@@ -1636,6 +1636,17 @@ again) instead of a flag and a conditional line (-16 B). The EXE with the boot F
 -16 B) the same 16 B: `_end` 0x801ee560 -> 0x801ee550, 72,352 -> **72,368 B** (the 72 KB gate, 73,728 B, is the PS1-RAM
 package's; this package takes 16 B off the shortfall). The halfword edge move is GBA-only (`DOOMO_PLATFORM_GBA`); the PS1 keeps `memmove`.
 
+**S2-4b (the other fair games, 2026-11-13).** Nothing is built here either: stamps, bands and undo lists are GBA-only (`mg.h`:
+`MG_BAKED(f)` is NULL, the baked-only functions are under `#if !defined(DOOMO_PLATFORM_PS1)`, the macros are `(void)` stubs), so
+every game draws as before; `MgBox` is declared everywhere, and `mg_mod6` (the Derby crowd's `x % 6` without a division, the
+same values) does the crowd's arithmetic here too. **Resident RAM: +0 B**, found the hard way: the first build of the package was
+16 B over the base (`_end` 0x801efe70 against 0x801efe60), because `mg_mod6` kept a 6-byte `static const` table, and a static
+const in a minigame file lands in the resident `.data` (the overlay group moves code, not the data). It is now arithmetic;
+`_end` is 0x801efe60 as on the base (`411d9812`), 64 KB below the stack top with the boot FMV, the overlay slot unchanged (168 KB).
+PCSX-Redux `speed2_fair` (23 windows): the fps and the vsync histograms are those of speed audit 3 in every window, i.e. the
+title cards, Whack, Dodge, Memory and Candy Catch at 30.12-30.17 with every frame at 2 vsyncs, the Gallery, the Derby and the
+Wheel at 30.00 with one 3-vsync frame each (as in speed audit 3); `game_smoke.txt` passes.
+
 ## 13. Notes for the core
 
 * The 2D layer is fastest with few, large rectangles: one `plat_rect` per
