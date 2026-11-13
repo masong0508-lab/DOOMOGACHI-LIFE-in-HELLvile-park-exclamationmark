@@ -258,6 +258,12 @@ disc no longer fitted (`0x802ec0b4`, 1.1 MB over the limit), so:
     (combat is the biggest group). This took 60 KB of the studio, concert,
     free play, creator, exorcism, workshop and gallery code out of
     resident RAM;
+  - (2026-11-13, "No 3D models in houses" below) a platform file can
+    belong to a group (`PLAT_GROUPS`: `model.c`, the third-person chibi, in
+    the combat group). Its resident caller is listed in `GUARDED` and asks
+    `ovl_code_in()` (`overlay.c`) before every call; that call is not
+    followed either. The plan fails if anything else would call such a
+    file (`tools/test_ovl_guard.py`);
   - it writes the linker script (every group is an output section of one
     `OVERLAY` at the slot, `NOCROSSREFS`) and the scene -> group table.
 
@@ -606,6 +612,37 @@ B), `fp_options.c`'s per-pad help rows (+816 B), the `unlock_find` memo
 `run.py` PASS, the pet's bar with the PS1's names (L1 / R1, Square /
 Triangle).
 
+**No 3D models in houses (PS1-FLAT, owner 2026-11-12, `OWNER_DECISIONS.md`
+"HOUSE CHARACTERS FLAT").** The house (`room.c`) draws the player as a
+billboard like everyone else (section 7), so `model.c` is called by
+`plat_view3d()` alone, and only for combat's third-person views. It moved
+out of resident RAM into the combat overlay group: `ovl_plan.py`
+`PLAT_GROUPS` puts the file there, and `GUARDED` names the one resident
+call (`view3d.c`), which asks `ovl_code_in(OVL_CODE_MODEL)` first and
+draws the player's billboard if the group were ever not in the slot. The
+hooks the house had in the 3D code are gone (`g_model_hold`, the
+per-polygon drawing area `g_r3_area` in `r3d.c` and `prims.c`).
+
+| | base `ce2d7e8` | PS1-FLAT |
+|---|---:|---:|
+| EXE image (code, data) | 1,287,360 B | 1,282,852 B (-4,508) |
+| `.bss` | 547,232 B | 547,212 B (-20) |
+| `_end` | `0x801efe60` | `0x801eecb0` |
+| **below the stack top** (boot FMV linked) | **65,952 B** | **70,480 B (+4,528)** |
+| combat group (slot demand) | 124,056 B | 128,188 B (`model.c` 4,132 B) |
+| home group (slot demand) | 130,856 B | 129,420 B (-1,436) |
+| slot | 131,072 B (home) | 131,072 B (story, 129,980 B) |
+
+70,480 B is still 3,248 B under the 72 KB plan gate: PS1-RAM closes that.
+Not moved: `prims.c` (4,044 B, the chibi's boxes and blobs, -O2). With it
+the combat group would need 132,232 B and the slot grows in 2 KB steps
+(+2,048 B here, +4,096 B on PS1-RAM's tree, where the combat group is
+126,696 B before this). When the combat group has 4.1 KB to spare under
+the slot, add `prims` to `PLAT_GROUPS` (one word). After this package the
+combat group has 2,884 B left under the slot (about 200 B on PS1-RAM's
+tree): growth of `combat*.c` / `actor.c` / `levels*.c` beyond that moves
+the slot.
+
 The biggest remaining consumers of RAM: resident core code (portraits,
 UI, sim, story engine, ...) ~650 KB, merged string literals of resident
 code ~110 KB, `doomo_town` 107 KB, the display lists 112 KB + OTs 24 KB,
@@ -864,11 +901,17 @@ the level's ordering table. When no resident is set up yet (engine test),
 it wears a premade roster citizen's look. If the camera is closer than 24
 units it is not drawn (first-person-like close-ups).
 
-The chibi's boxes, plush blobs and pyramids live in `prims.c` (shared
-with the house). Each one transforms its vertices once (RTPT per three)
+The chibi's boxes, plush blobs and pyramids live in `prims.c`. Each one
+transforms its vertices once (RTPT per three)
 and emits the same triangles `r3_tri_g()` would; an in-emulator A/B build
 that recorded both paths for every call (10,240 calls of `model.txt`)
 found no difference.
+
+The model is for the 3D view only. Inside a house nobody is a 3D model
+(owner, 2026-11-12; "The dream house" below). On the game disc `model.c`
+is part of the combat overlay group (section 3, "No 3D models in
+houses"): `plat_view3d()` asks `ovl_code_in(OVL_CODE_MODEL)` before it
+calls `model_player_draw()`. The engine-test disc links it resident.
 
 ### The dream house (`room.c`, H3)
 
@@ -876,9 +919,20 @@ found no difference.
 (the header of `src/room.c` has the details): the floor and wall slabs
 from the grid, CLUT-recoloured wallpaper and floor, the furniture from
 its `DoomoFurnPrim` lists (round prims get 8 / 6 / 4 sides by their size
-on screen), the player as the 3D chibi, everyone else as billboards,
+on screen), every character as a camera-facing billboard,
 lamp pools and contact shadows, a camera on a `TW_BOING` spring with the
 4-frame drop-and-pop of the cut-away walls.
+
+* **No 3D models in houses (PS1-FLAT, owner 2026-11-12).** Until
+  2026-11-13 the player was `model.c`'s 3D chibi here. Now the player
+  (`RA_PLAYER`) is drawn by the same `billboard()` as every resident,
+  visitor, guest and demon, from the body sprite the core hands over (its
+  direction and walk frame, the sit squash): the same picture the GBA and
+  the Dreamcast show, in every mode (Build, Live, Photo, Score, Hold the
+  Door, a visit; HomeMart draws no room). Same ordering slot and day light
+  as any actor. The player keeps the contact shadow it always had, now the
+  billboard's. It also shows the avatar being played (`playas_avatar()`),
+  where the chibi showed the combat player's look.
 
 * **The backdrop.** While the camera and the furniture rest, the static
   layer (floor, walls, every resting piece) is drawn once into the first
@@ -895,11 +949,13 @@ lamp pools and contact shadows, a camera on a `TW_BOING` spring with the
   `piece_setup()`) that counter-shear would double into a diagonal sliver,
   so `prim_mir()` mirrors the prims' x across the footprint, as the sprite
   ports draw facing 0 flipped there: the same choice in every view.
-* **The resting player (H4).** While the chibi stands still it is drawn
-  into the backdrop with the furniture (`model.c` `g_model_hold` keeps its
-  walk cycle where it was) and again only inside the clips of what moves
-  over it, without its contact shadow. The Hell-Cellar with the player at
-  the back went from 17 to 30 fps with it.
+* **The resting player (H4).** While the player's billboard has not
+  changed (picture, place, squash) for two frames it is drawn into the
+  backdrop with the furniture and again only inside the clips of what
+  moves over it, without its contact shadow. A moving element at the back
+  of a full room has everything in front of it drawn again every frame:
+  the Hell-Cellar ran at 18 fps without this and 28 with it (PS1-FLAT;
+  17 and 30 with the 3D chibi, H4).
 * **Memory.** `room.c` belongs to the `home` overlay group. That group is
   linked 53,764 B *below* the slot, over the `.bss` tables of `world.c`
   and `view3d.c`, the arena bot's path-search scratch (`combat_bot.c`:
@@ -953,6 +1009,31 @@ lamp pools and contact shadows, a camera on a `TW_BOING` spring with the
 | `home_defend_stress` (8x8, 24 lit pieces, 10 walkers) | - | 21.1 | 20.8 | 19 (floor) |
 | `home_defend_w3` (Hold the Door, the siege's wave 3) | - | - | 30.1 | 22 |
 | `home_visit` (Nana Puddin's flat) | - | - | 30.2 | 28 |
+
+PS1-FLAT (the player as a billboard), `home.txt` on this machine before
+and after, fps and the CPU time of one sampled frame (`perf:` line):
+
+| scene | base `ce2d7e8` | PS1-FLAT |
+|---|---:|---:|
+| `home_plain` (the own cottage, Build) | 30.17, 3.1 ms | 30.17, 3.1 ms |
+| `home_steady` | 29.39, 37.1 ms | 30.00, 28.1 ms |
+| `home_orbit` | 27.27, 35.0 ms | 30.00, 26.3 ms |
+| `home_cellar_full` | 27.80, 35.8 ms | 27.80, 35.9 ms |
+| `home_defend_stress` | 19.25, 53.6 ms | 23.00, 45.0 ms |
+| `home_modal` | 29.19, 21.0 ms | 30.00, 21.0 ms |
+| `home_defend_w3` | 30.13, 14.9 ms | 30.13, 6.4 ms |
+| `home_visit` | 30.17, 9.9 ms | 30.17, 9.9 ms |
+
+The parity pairs still differ by 0 pixels. The speed tour's house group
+(`speed2.sh OUT house`, 19 windows: Build, the catalog, a held piece, the
+turn, Photo, Live, Score, Hold the Door, a visit, HomeMart, the Black
+Market) holds 30 in every window; its one miss, the busy Live layout
+(28.89, 9 frames over 33 ms), is 30.00 now (one frame of 50 ms).
+Third person is as it was: `perf_combat.txt`'s four shots are
+byte-identical (29.88 / 30.00 / 29.94 / 29.51 fps, base 29.81 / 30.00 /
+29.94 / 29.45), `fast_cellar_tp.txt` with the entropy pinned gives 183
+of 184 identical shots (the other frame differs by the adaptive view
+distance, which follows frame time) at 28.94 fps (base 28.86).
 
 Since H6 the cellar layout (`room_test.c`) holds the bunny beanbag on frame
 0, as it was before H6 (one frame): the beanbag now sinks only while
