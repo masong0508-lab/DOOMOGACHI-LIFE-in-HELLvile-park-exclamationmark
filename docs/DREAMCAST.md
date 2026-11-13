@@ -431,6 +431,15 @@ target. The sim is stopped for the whole job here too (the table's logic column,
 order; the read-back only reports). `dc/tests/vmu` (`make -C dc vmu-test`) checks the images (saves, full, novmu,
 console, input, optvol pass on the landed tree). **Power cut:** the VMU save writes a new file and replaces the old one
 (atomic by design); no test cuts it.
+**G2-EX (the exorcism).** No retained stage here (`plat_clip` and the stage hooks are the weak no-ops, the aura's list is not
+built: `HOST_HOLES` 0), so the Dreamcast gets the wall drips' hold and the host's and Fuzz's held pose (fewer texture
+uploads); `backdrop.c` is built and `plat_stage_begin` is the weak 0 (every frame is drawn whole). `make -C dc` builds (image
++4.6 KB, 6.93 MB free above `_end`). The exorcism's seven phases (`perf_exorcism_phases.txt`'s steps turned into a `speed2` script, Flycast, base
+`9877a45e` against G2-EX, the same script): ticks over 33.3 ms 723 -> 592 of ~1,310 drawn (intro 24 -> 3, tools 14 -> 0, prayer
+55 -> 45, holy water 79 -> 80, true name 43 -> 44, verdict 10 -> 2, result 71 -> 72), work mean 34.5 -> 33.9 ms, worst tick
+51.8 -> 48.8 ms, texture uploads 659 -> 183 with evictions 510 -> 0. Flycast is not cycle-accurate and the base is
+already over 33 ms on 55% of these ticks (723 of 1,307): the numbers say G2-EX is not slower here, not that the phases hold
+30 on a console.
 
 ### The harness mailbox (`dc_mailbox`, `dc/harness/dc_mailbox.h`)
 

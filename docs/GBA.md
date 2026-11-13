@@ -455,6 +455,7 @@ against the LAST row, not against a figure from an older base.
 | 62 | LV7a: 7 shared textures, 3 skies, the texture bank format (docs/LEVELS.md "LV7a") | origin tip `fe410024` | 6,420 B | **6,436 B** | -16 B | 6,288 B | measured on `fe410024` and the same + LV7a (clean `make -C gba`, `make -C gba sizes`): `.bss` 254,828 -> 254,812 B (the overworld's `frame_tex_ok[TEX_COUNT]` flag array is gone, a NULL pointer means "not looked up yet"; it paid for the 7 new `frame_tex` pointers), `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B and the four overlay slots identical; `.text` 1,524,016 -> 1,524,080 B (+64), `.rodata` 8,246,748 -> 8,349,684 B (**+102,936 B ROM**: 7 x 4,096 + 3 x 24,576 of pixels and tables). The texture bank reader (`texbank.c`) and the sample bank are compiled out on the GBA (`DOOMO_TEXBANK_ACTIVE` 0): no byte. `make -C gba test` passes. |
 | 63 | CR10: the PS1 draws scripted parts (docs/CREATOR.md "CR10"; shared code: the part store hooks `DOOMO_PARTS_SPU(_TEST)`, the packed icon set made complete) | after LV7a (row 62) | 6,436 B | **6,436 B** | 0 B | 6,288 B | measured on the rebased tree (`make -C gba`, `make -C gba sizes`): `.bss` 254,820 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, the same as row 55. The new code is `#if`ed on PS1-only macros (no GBA object changes); the packed part icons (`part_icons_rle.c`, now every icon: 121,577 B instead of the painted parts' only) are `const` ROM the GBA does not read: ROM only. PS1 side (not GBA RAM): 21,024 B resident, none in an overlay group: portraits are drawn in almost every scene and from resident code, and the one-group slot would swap the renderer in and out on every scene change (docs/PS1.md "CR10"). |
 | S2-4d | S2-4d: the dreams (sky, shapes, floor and outlined text on faster paths, the mirror's flipped face in ARM, the caption's cloud trimmed, the held wake-up choice, the concert's beam calling the checker; docs: "Speed wave 2: S2-4d" below) | after S2-10 (`8fe2134f`) | 6,412 B | **6,412 B** | 0 B | 6,288 B | measured 2026-11-15 on `8fe2134f` and that tree + S2-4d, both built clean (`make -C gba sizes`, memreport): `.bss` 254,836 B, `.data` 816 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, all identical; 6,412 B of EWRAM free on both. The dream's state `D` stays 184 B (the held choice's top row is a padding byte). No resident IWRAM: the overlay's **UI group** 10,124 -> 10,100 B of the 3D group's 10,352 B slot (252 B left): the dreams add 584 B (`hshapes_fill`'s inline span fill +172 B, the outline pass `vid_text_dil_ui` 344 B compiled `Os`, `vid_blitn`'s scale-1 line +72 B) and `vid_beam_ui` calling `vid_checker_ui` instead of inlining S2-4b's checker a second time gives back 608 B (without it the link stops at the 6 KB main stack); `plat_tile_rows` is ROM code (a 240 B row on the stack, DMA copies). ROM 9,823,708 -> 9,830,056 B (+6,348: `.text` +6,328, `.rodata` +44, the overlay's copy -24; 48 B of it the cross-stream fix to S2-10's hold below). PS1: `_end` 0x801e0610 -> 0x801e05f0 (32 B less code; 129,504 -> 129,536 B below `elf2exe`'s stack top with the boot FMV) |
+| 48 | G2-EX: clipped redraw in the retained stage, the exorcism's aura list (docs: "Speed wave 2: G2-EX" below, `docs/EXORCISM_SPEED.md`) | after S2-11 (`ee4e053`) | 15,460 B | **15,452 B** | +8 B | 6,292 B | measured on `0cb159e` (ROM 6,475,500 B): the aura's pointer (4 B) and the clip box's fifth halfword (`stage_box[5]`, the old `trk[4]` plus the saved `gba_nodraw`; padding); the aura's five lists (3.9 KB) and the stage's clip mask are in the exorcism's scene scratch and the stage's bound memory. IWRAM resident +16 B (`plat_rect`'s mode-7 dispatch, 11,256 -> 11,272 B; the main stack's room 6,308 -> 6,292 B, gate 6,144 B); the overlay's room group +152 B (`stage_clip_rect`, 3,588 -> 3,740 B; 6,612 B of the slot free). ROM -1.53 MB (the wall drips' hold: 19 church pictures baked, not 59). PS1: no aura list (no holes), `exorcism_gfx.c` and `backdrop.c` stay in the exorcism overlay group |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -1163,6 +1164,29 @@ ROM +~11 KB (the tables). Dreamcast (Flycast, no hold there): intro, spin, resul
 14.7 ms. Floors:
 `expect-fps 28` on both wheel windows of `speed2_fair.txt`. Still short of 30: the result card (S2-4's kept backdrop
 with restored rects under the confetti would cover it) and the done state's first second.
+
+### Speed wave 2: G2-EX, the exorcism at 30 (2026-11-13)
+
+Full story, numbers and what is still short: `docs/EXORCISM_SPEED.md` "G2-EX". The GBA parts:
+
+- **`plat_clip` (stage.c, canvas.c, video.c, video_loops.s).** `GBA_NODRAW_CLIP` (mode 7) is set between `plat_clip` and
+  `plat_clip_end`; the box is in `stage_box[]` (the array that tracks the 2D calls after `plat_stage_end`; nothing is
+  tracked before it), its fifth halfword holds the mode the clip replaced. Every 2D call takes its slow path in this mode
+  (`vid_route` says "draw" for the calls that do not cut themselves): `plat_rect`'s resident ARM code jumps to
+  `stage_clip_rect` (ARM in the room group, loaded by `plat_clip`, which clips to the box and calls `plat_rect_m4`);
+  `plat_shade_rect`, `plat_image` (scale 1, no flip: `clip_blit` crops whole rows as one `vid_blit`, else one call per
+  row) and `plat_text` / `plat_text_outline` (`clip_text`: the glyph rows' pixels inside the box through `vid_pixel`)
+  cut themselves. A line, a checker, a clear or a scaled image inside a clip draws whole; the clippable layers use none
+  (native counts them: `nat_clip_viol`, checked by `test_stage_clip.c`). The cost of a rect call inside a clip is the
+  resident dispatch plus ~50 cycles (the first version, in ROM C, was 250 and made the clipped host frame slower than
+  the whole one).
+- **The kept aura** (`exorcism_gfx.c`): `plat_rect_run` (island I3's ARM run) draws the list on the plain Mode 4 path.
+- **Where the time was** (per drawn frame, `exo_mark` build, SP7 tree): the stage's own work 10.8 ms in the intro, 12.7 in
+  the prayer; the host frame 4.6-9.5; the portraits' re-renders 2.6-9; the verdict's dim 15.8.
+- **Measuring.** `make -C gba profile-exorcism` as before. Hashing every tick of it for an exactness check needs
+  deterministic portrait slices (docs file); the per-layer costs came from a local copy of the harness that charges
+  each sampled cycle to a layer mark the ROM keeps in a byte (not in the tree).
+
 ### Speed wave 2: S2-6, the Unlocks gallery (2026-11-08)
 
 The speed audit 2's cause C6: the Unlocks gallery (`fp_unlocks.c`) took 66 ms a tick (11 fps; the Paints tab 40 ms,
