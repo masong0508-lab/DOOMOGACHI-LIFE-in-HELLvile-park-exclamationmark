@@ -43,7 +43,7 @@ Contents:
 | **T4** | the safety gate: the input classifier S1, the audience gate S2 (`talk_safe_ctx`, one source of "minor"), the output lint S3, the template lints TK1-TK9, the safety and adversarial corpora, the hashed hate list, the property tests | **done** (TK2): green. The generator-level halves of P1-P8 go live with T5a / T6 |
 | **T5a** | the generator: `talk_gen.c` (the grammar VM, guards, fillers, sim-fact callbacks, novelty, re-picks, the bubble fit, the per-conversation RNG, the trace), the `.tlk` grammar compiler `talkc_gen.py`, the adjacency table `acts.tsv`, a plain exchange (the gate first, who answers, reactions between residents) | **done** (TK3); a **starter** English bank (718 alternatives in 12 files, the K-10 grief and comfort banks included) so every act, refusal and part plays |
 | T5b | the English line banks (about 6,000 alternatives, design 3.6) and the owner's review | in progress: 1,457 alternatives (starter 718 + T5B-WARM 739: warm acts) |
-| T6 | the drama manager, outcomes, the talk memory chunk | to do |
+| T6 | the drama manager, outcomes, the talk memory chunk | **memory and chunk done** (T6-MEM, 6e); the drama manager (T6-DM) and outcomes (T6-OUT) to do |
 | **T7** | the census (`core/tools/talk_census.c`: the three tiers, Chao1, the quality checks Q1-Q6, the conversation tier), the grid `census_en.tsv`, `make -C core talk-census`, the smoke census in `make test`, the Q7 review sheet `talk_sample.py` | **done** (TK3): the tools and the measurement. The full run's numbers are in 6d: Skeleton, Meaning, conversations and quality meet the design's targets; **Surface does not** (it needs T5b's bank); Q7 (a person rating 300 exchanges) has not been done |
 | T8 | the house mode `HM_TALK` on native, with its UI | to do |
 | T9, T10 | pointer input; other languages (after the script rewrite) | to do |
@@ -132,7 +132,7 @@ What T5a adds (section 6c), each with its test:
 | `core/include/doomo/talk.h` | `TA_*` discourse acts. Their ids are fixed (they are saved in talk memory), and `test_contracts_talk.c` locks them. There are 59 acts plus 5 gate classes, including the gesture `TA_HIGH_FIVE` and the gate rewrite `TA_DEFLECT_ROMANCE`. Also: `TONE_*`; the `TS_*` input safety bits; `TalkUtter` (106 B: the one record every input path produces); `TalkAudience`; the talk memory sizes; the `TALK_<lang>.BIN` format; the `talk_db_*` reader API; `home_talk_enter()` |
 | `plat_ext.h` | `PLATF_TALK` (bit 9). `plat_talk_load(code)` returns the file size, 0, or `PLAT_TALK_LOADING` while the PS1 is still staging it. `plat_talk_read(off, dst, len)`. `plat_room_project(view, x, y, z, &sx, &sy)` |
 | `platform.h` | `DoomoRoomView.zoom == 2` is "talk framing", with `focus_x`, `focus_y` and `focus_r` (tile space, 16.16). Renderers that do not know zoom 2 treat it as the close-up (the PS1 already does, and `room_ref` ignores zoom) |
-| `save_ext.h`, `save_budget.h` | The `'TALK'` chunk: slot 13, weak NULL until T6, `SAVE_EXT_MAX_TALK` 320 B (292 B worst case). The joint worst case with it fits both slots: a post-game story save at its worst is 29,139 B, plus the 2,048 B margin is 31,187 B, under the 32,768 B gate (36 KB minus PA10's 4 KB); free play 68,945 B of 90,112 B |
+| `save_ext.h`, `save_budget.h` | The `'TALK'` chunk: slot 13, registered by `talk_save.c` where the build defines `DOOMO_HAS_TALK` (the native host), weak NULL elsewhere, `SAVE_EXT_MAX_TALK` 320 B (292 B worst case). The joint worst case with it fits both slots: a post-game story save at its worst is 29,139 B, plus the 2,048 B margin is 31,187 B, under the 32,768 B gate (36 KB minus PA10's 4 KB); free play 68,945 B of 90,112 B |
 | `sim.h`, `sim_events.c` | `NT_TALK_ROW`, `NT_TALK_MADE_UP`, `NT_TALK_GREAT_NIGHT`, `NT_TALK_WALKOUT` ("Big night at yours! %s and %s still giggle."). They fit the 64 B feed line with two 11-letter names |
 | `core/src/weak_talk.c` | The weak `plat_talk_*` hooks and `home_talk_enter` (all "no Talk here") |
 | `core/src/room_ref.c` | `room_ref_project()`. It shares `room_ref_draw()`'s origin, and it is the weak `plat_room_project()`. It is the anchor `draw_actor()` puts a resident's feet on |
@@ -736,6 +736,44 @@ after K-10, with 5 grief exchanges); the review is T5b's release gate.
 
 ---------------------------------------------------------------------------
 
+## 6e. Talk memory and the TALK chunk (T6-MEM)
+
+`core/src/talk_save.c`: what a resident remembers of the player's talks.
+The table holds at most 24 entries of 12 bytes, most recently used first;
+a 25th person evicts the last one. With a 4-byte header that is 292 bytes of
+`.bss` (`TALK_MEM_WORST`). Each entry has the person id, the town day of
+the last talk, the last two topics, the flags (complimented, insulted,
+promised, refused today) and the likes the player has learned.
+
+* **Chunk.** Tag `'TALK'` (slot 13, already reserved by T0), version 1, the
+  same bytes written little endian. An empty table is a chunk of 0 bytes.
+  A save with no chunk (an old save) loads with an empty table. A chunk that
+  `read()` refuses (unknown version, truncated, too long, count over 24)
+  also leaves it empty. No other tag or layout changed.
+* **Who may have an entry.** A resident or the hero on the island, or a
+  family pool member. The pet, anyone who left and a second entry of the
+  same id are dropped on load and on lookup.
+* **Refused today (K-5).** Cleared when the town day changes; every public
+  call checks first, so a save loaded on a later day forgets it too. The
+  chunk callbacks never roll the day.
+* **Last time stays true.** The flags of a running conversation wait in the
+  high nibble (never saved) until `talk_mem_end()`, so a "you were nice to
+  me last time" line can never speak of the conversation it is said in.
+* **Retired topics.** Topic ids are kept as they are; one the open database
+  no longer has is skipped when a conversation begins.
+* **Where it lives.** The save registry is link-time, so the descriptor is
+  compiled only with `-DDOOMO_HAS_TALK` (the native host in `core/Makefile`;
+  a console port adds it when it gets Talk). On the GBA, PS1 and Dreamcast
+  nothing references the file and `--gc-sections` drops it: 0 bytes
+  resident there, so GBA EWRAM and IWRAM and the PS1 EXE are unchanged.
+  On native the 292 bytes are `.bss`.
+* **API.** `talk_mem_touch / find / note_topic / set_flags / clear_flags /
+  know_like / like_known / refused_today / begin / end / forget / reset`
+  in `talk.h`. T6-DM calls `talk_mem_begin` and `talk_mem_end` around a
+  conversation.
+
+---------------------------------------------------------------------------
+
 ## 7. Sizes (measured)
 
 All figures are for `TALK_en.BIN` after the TK1 content (`talkc --stats`):
@@ -850,6 +888,7 @@ Other measurements:
 | `core/tests/test_talk_safety.c` | One source of "minor" (1,000 premade ids, the kid cast file, pool stages, unknown ids, the pet); the safety and adversarial corpora (run with a town person lookup, as the game will); the `lovers` room really allows romance; a child named but not in the room (the lookup, the roster's cast, a shared name, a `names_en.txt` name); every must-refuse line past the token cap (and the bubble never shows past the cut); invisible characters and space-split words; the mutation fuzz; the hate hash (C equals Python, no lexicon word on it, `DOOMO_HATE_PLAIN`); the gate properties P1-P4 and P7 over 200,000 random calls and every (adult, minor) pair both ways; P5 Mature; P6 closed vocabulary over 50,000 random lines; the S3 lint (units and the whole vocabulary); the masked bubble |
 | `core/tests/test_talk_gen.c` | T5a on the test grammar `core/tests/talk_gen/gentest.tlk` (`TALK_gentest.BIN`): every modifier and field, names, likes, the job callback for an adult and none for a child, the weights, Q5 novelty, sub-rules, the fit and the safe fallback, K-9 (one swear a conversation, none with a kid), K-6 (a Mature variant only with the option and premade adults), the cast's own lines, faces, the optional parts with every callback true (Q4), the exchange (the gate first: K-7 ends it unseen, refusals, distress, romance at a child both ways; a romance yes, a no remembered for the day), reactions that answer the line before (Q2), a typed name the room may not hear, determinism; K-10 (`talk_gen_grief`): a grief topic takes the sincere bank whatever the act, the core part alone and an act that may answer, a quiet safe line when no grief line may answer, the safety acts keep their banks, the loss fact (a household member, not a move away, 28 days), `{lost}`, one comfort reaction at most and never the pet |
 | `core/tests/test_talk_census.c` | T7 and T5a over the English banks: the smoke census (6d) and the generator-level property tests P1-P8 (section 2; `DOOMO_TALK_PROPERTY_N` for the design's 200,000) and K-10 (`talk_gen_property_grief`: every act about every grief topic in adults', kids' and pet rooms) |
+| `core/tests/test_talk_save.c` | T6-MEM (6e): the table (find, touch, last two topics, LRU of 24, likes, who may have an entry), the day rollover (refused today only), the flags of a running conversation, the chunk (empty = 0 bytes, worst case 292 B, full save round trip, an old save without the chunk, truncated / too long / wrong version / count over 24, a gone resident, the pet, a double id, a retired concept), and the generator guards and callback through `core/tests/talk_gen/mem.tlk` (K-5 across two conversations) |
 | `make -C core talk-check` | `talkc --check` (now also TK1-TK9, the corpora and the grammar compiler) and `--selftest` (51 seeded refusals: 12 lexicon files, 4 bad edges, 13 templates, 2 rule files, 20 grammars; and `core/tests/talk_good.tlk` must lint clean) (part of `make -C core test`) |
 | `make -C core talk-census` | the full census (6d; not in `make test`: about 25-30 minutes) |
 | `python3 core/tools/talk_sample.py selftest` | the Q7 sheet's scoring |

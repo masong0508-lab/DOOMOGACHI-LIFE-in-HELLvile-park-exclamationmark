@@ -544,6 +544,8 @@ enum { TCB_NONE = 0, TCB_JOB, TCB_PARTNER, TCB_PET, TCB_NEWS, TCB_PROBLEM, TCB_B
 #define TMF_COMPLIMENTED 0x01u
 #define TMF_INSULTED     0x02u
 #define TMF_PROMISED     0x04u
+#define TMF_REFUSED_TODAY 0x08u   /* T6 (K-5): said no to a romance act this town day; the table only
+                                   * (talk_mem_begin turns it into TalkConv.refused), never in mem_flags */
 /* grammar entry points besides core.<act> and react.<act> */
 enum { TGE_OPEN = 0, TGE_CB, TGE_TAG, TGE_HANDOFF, TGE_SAFE, TGE_END_K7, TGE_PET, TGE_IDLE,
        TGE_GRIEF,    /* K-10: the sincere core of a line about grief or loss */
@@ -613,6 +615,61 @@ typedef struct TalkConv {
     uint16_t mem_topic[TALK_PARTS_MAX];          /* talk memory (T6): last topic      */
     uint8_t  mem_flags[TALK_PARTS_MAX];          /* talk memory (T6): TMF_*           */
 } TalkConv;
+
+/* ---- T6: talk memory (core/src/talk_save.c; docs/TALK.md 6e) ------------------
+ * What a resident remembers of the player's talks: the 'TALK' chunk's table
+ * (TALK_MEM_MAX entries, the most recently used first; a 25th person evicts
+ * the last). Ids are a resident, the hero or a family pool id; the pet and
+ * anyone who is gone have no entry. Every call first clears
+ * TMF_REFUSED_TODAY when the town day has changed. The chunk itself is
+ * registered only where the build defines DOOMO_HAS_TALK (the link-time
+ * twin of PLATF_TALK: the native host today); without it this is a plain
+ * table nobody saves, and --gc-sections drops it where nobody calls it. */
+#define TALK_MEM_VERSION 1
+typedef struct TalkMem {
+    uint16_t id;                  /* a resident, the hero or a pool id            */
+    uint16_t day;                 /* the town day (low 16 bits) of the last talk  */
+    uint16_t topic_a, topic_b;    /* the last topic and the one before (12 bits)  */
+    uint8_t  flags;               /* TMF_* (the high nibble is the running conversation's, never saved) */
+    uint8_t  likes_known;         /* bit `which` of talk_gen_like(): 0 food, 1 hobby, 2 music, 3 fear, 4 hated food */
+    uint16_t spare;               /* 0                                            */
+} TalkMem;                        /* TALK_MEM_ENTRY = 12 B                        */
+/* Entries held, and entry i (0 the most recent), NULL past the end. */
+int  talk_mem_count(void);
+const TalkMem *talk_mem_at(int i);
+/* The entry of id, or NULL. An entry whose person is gone is dropped here. */
+const TalkMem *talk_mem_find(int id);
+/* Find or make the entry of id and move it to the front (day = today). 1,
+ * or 0 for the pet and for an id that is nobody. */
+int  talk_mem_touch(int id);
+/* The topic just talked about with id (touches): it becomes topic_a. */
+void talk_mem_note_topic(int id, uint16_t topic);
+/* Set TMF_* for id (touches). TMF_REFUSED_TODAY holds at once. The other
+ * three belong to the running conversation: later conversations see them
+ * once talk_mem_end() has run, never this one ("last time" stays true). */
+void talk_mem_set_flags(int id, unsigned flags);
+/* Clear TMF_* of id, set or pending (a promise kept). Does not touch. */
+void talk_mem_clear_flags(int id, unsigned flags);
+/* The player learned id's like `which` (0..4, as talk_gen_like; touches);
+ * and the query (1 known). */
+void talk_mem_know_like(int id, int which);
+int  talk_mem_like_known(int id, int which);
+/* 1 if id said no to a romance act today (K-5): the gate's refused_today. */
+int  talk_mem_refused_today(int id);
+/* A conversation begins (after talk_gen_begin): fill c->mem_topic and
+ * c->mem_flags (TMF_COMPLIMENTED / INSULTED / PROMISED) of every participant
+ * and set c->refused for those who said no today. A remembered topic the
+ * open database no longer has (a retired id) is left out. */
+void talk_mem_begin(TalkConv *c);
+/* A conversation ends: every participant who spoke, said no or got a flag
+ * is touched; "complimented" and "insulted" become this conversation's,
+ * "promised" stays until cleared, c->refused becomes TMF_REFUSED_TODAY
+ * (for everyone in the room after a K-7 end). */
+void talk_mem_end(const TalkConv *c);
+/* Forget id (the resident left the island; a new one may get the slot). */
+void talk_mem_forget(int id);
+/* Empty the table (a new town does it through the save registry). */
+void talk_mem_reset(void);
 
 /* One generated line. */
 #define TLF_REACTION 0x01u          /* a reaction to another resident                    */

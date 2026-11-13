@@ -51,7 +51,9 @@ ifeq ($(SAN),1)
 CFLAGS_COMMON += -fsanitize=address,undefined -fno-omit-frame-pointer
 LDFLAGS_SAN := -fsanitize=address,undefined
 endif
-CORE_CFLAGS   := $(CFLAGS_COMMON) -DDOOMO_HITCHECK -DDOOMO_PARTS_LZ_TEST -DDOOMO_PART_AGE_TEST -I$(CORE_INC)
+# T6: the native host has Talk, so it registers the 'TALK' save chunk (core/src/talk_save.c);
+# a console build defines DOOMO_HAS_TALK when it gets Talk (docs/TALK.md 6e).
+CORE_CFLAGS   := $(CFLAGS_COMMON) -DDOOMO_HITCHECK -DDOOMO_PARTS_LZ_TEST -DDOOMO_PART_AGE_TEST -DDOOMO_HAS_TALK=1 -I$(CORE_INC)
 # Native platform + tests may use the host libc.
 HOST_CFLAGS   := $(CFLAGS_COMMON) -DDOOMO_PARTS_LZ_TEST -DDOOMO_PART_AGE_TEST -D_POSIX_C_SOURCE=200809L -I$(CORE_INC) -I$(CORE)/native \
                  -DNAT_TALK_DIR='"$(BUILD)/talk"'

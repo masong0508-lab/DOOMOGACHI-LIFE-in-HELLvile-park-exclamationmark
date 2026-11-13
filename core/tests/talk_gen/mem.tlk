@@ -1,0 +1,17 @@
+# core/tests/talk_gen/mem.tlk - the talk memory probes (test_talk_save.c, T6). Not game
+# text. Compiled into TALK_gentest.BIN after gentest.tlk; each rule answers an act that
+# gentest.tlk has no rule for, so a test picks it by the act.
+@rule core.promise act: tease
+  "You promised last time." guard: fact.promised
+  "A first promise." guard: !fact.promised
+@rule core.apologize act: complain
+  "Still cross about last time." guard: fact.insulted
+  "Sorry for what?" guard: !fact.insulted
+@rule core.offer act: thank
+  "You were kind last time." guard: fact.complimented
+  "Oh, thanks." guard: !fact.complimented
+@rule core.ask_advice act: answer
+  "Last time: {mem}." guard: fact.memory
+  "Nothing yet." guard: !fact.memory
+@rule cb.memory
+  "Again {mem}." guard: fact.memory

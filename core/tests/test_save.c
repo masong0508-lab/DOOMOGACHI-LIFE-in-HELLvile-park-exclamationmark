@@ -698,8 +698,9 @@ TEST(save_version1_loads_with_life_stages)
     /* (+ PA1: the empty PLAY chunk's header, written for everyone) */
     /* (+ U0: the OPT2 chunk's header and its OPT2_COUNT value bytes, written for everyone) */
     /* (+ MP0: the empty PROF chunk's header, written for everyone) */
+    /* (+ T6: the empty TALK chunk's header, written on the native host) */
     CHECK(n <= sizeof(save_v1_classic) + 32 + SAVE_BUDGET_CHUNK_HDR + 8 + SAVE_BUDGET_CHUNK_HDR +
-               SAVE_BUDGET_CHUNK_HDR + SAVE_BUDGET_CHUNK_HDR + OPT2_COUNT +
+               SAVE_BUDGET_CHUNK_HDR + SAVE_BUDGET_CHUNK_HDR + SAVE_BUDGET_CHUNK_HDR + OPT2_COUNT +
                SAVE_BUDGET_LZ_WORST(doomo_save_ext_life->size()));
     CHECK_EQ(RES_STAGE(town_res(V1A_BABY)), LIFE_BABY);
     CHECK_EQ(RES_STAGE(town_res(V1A_KID_MADEOVER)), LIFE_CHILD);
