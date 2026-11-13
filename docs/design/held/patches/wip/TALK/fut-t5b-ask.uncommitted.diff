@@ -1,0 +1,451 @@
+diff --git a/core/data/talk/grammar/en/ask_topic.tlk b/core/data/talk/grammar/en/ask_topic.tlk
+new file mode 100644
+index 0000000..65f5372
+--- /dev/null
++++ b/core/data/talk/grammar/en/ask_topic.tlk
+@@ -0,0 +1,445 @@
++# core/data/talk/grammar/en/ask_topic.tlk - T5b: more replies to ASK_ABOUT(x) and
++# ASK_OPINION(x), the two question acts that carry a topic (owner: TK; the starter lines
++# are in core_ask.tlk; syntax: core/tools/talkc_gen.py; register: SCRIPT_STYLE.md).
++#
++# How the topic is written here, so one template reads right for a food, a job, a place,
++# a person and a mass noun:
++#   "{x:cap}?"            the echo of the player's word: any topic
++#   {x:pl}                the generic form ("pies", "butter", "dancing", "Nana Puddin"):
++#                         only with verbs that do not agree (past tense, can, "made")
++#   {x:def} {x.is}        "the pie is", "the slippers are", "Nana Puddin is"
++#   {x.it}                it / they, after an echo
++# A template that needs a count noun says needs: x.countable. Everything here is kid-safe.
++
++# ---- the verdict sub-rules (one short sentence each; they follow an echo) ---------------
++@rule ask.star.pro
++  "Five stars."
++  "Ten out of ten."
++  "Cozy grade: A."
++  "Gold sticker."
++  "Top shelf."
++  "Two thumbs up."
++  "Blue ribbon."
++@rule ask.star.con
++  "One star."
++  "Zero out of ten."
++  "Cozy grade: F."
++  "No sticker."
++  "Bottom shelf."
++  "Two thumbs down."
++@rule ask.star.mid
++  "Three stars."
++  "Five out of ten."
++  "Cozy grade: C."
++  "A firm shrug."
++  "Middle shelf."
++  "One thumb, sideways."
++
++# ---- ASK_ABOUT(x), by stance ---------------------------------------------------------------
++@rule core.ask_about.pro2 guard: stance=pro act: opine_pos
++  "{x:pl:cap} got me through a bad winter. I still send a card."
++  "{x:cap}? Sit down. This takes a while and I have slides."
++  "I'd put {x:pl} on the town flag. Right over the turkey."
++  "{x:cap}? Best thing since the save point."
++  "Ask me about {x:pl} again. Slower. I want to enjoy it."
++  "{x:def:cap} {x.is} {x.good}, and I'll say so at the town meeting."
++  "{x:cap}? My happy meter just went up. I felt it click."
++  "If loving {x:pl} is wrong, I'm wrong. Loudly. Daily."
++  "{x:cap}? {ask.star.pro} I checked twice."
++  "I'd trade a whole cake for {x:indef}. A small cake. Still."
++  "I keep a list of good things. {x:pl:cap} made the list. In pen."
++  "{x:cap}? {x.good:cap}. Like {x.assoc:indef}, but more so."
++  "You said {x} and my whole day got better. Say it again."
++  "{x:cap}? {ask.star.pro} And I'm a tough crowd."
++@rule core.ask_about.con2 guard: stance=con act: opine_neg
++  "{x:cap}? {ask.star.con} And I'm being kind."
++  "Me and {x:pl} had a falling out. I started it. I'd do it again."
++  "{x:cap}? My happy meter just dipped. You did that."
++  "I keep a list of things to avoid. {x:pl:cap} made the top three."
++  "{x:def:cap} {x.is} {x.bad}. I don't make the rules. I'd make worse ones."
++  "{x:cap}? Oh no. Who let {x.it} in?"
++  "You want my honest answer on {x:pl}? Get a helmet."
++  "{x:cap}? I'd cross the street. Then I'd cross another street."
++  "I tried to like {x:pl}. I gave it a whole afternoon."
++  "{x:cap}. Hm. Is there a form to un-hear that?"
++  "{x:cap}? Needs salt. Needs a lot more than salt."
++  "{x:cap}? {ask.star.con} I'd go lower, but the scale stops."
++  "I don't trust {x:pl}. I trust the fog more, and the fog lies."
++@rule core.ask_about.neutral2 guard: stance=neutral act: answer
++  "{x:cap}? {ask.star.mid} That's my whole review."
++  "{x:def:cap} {x.is} {x.adj}. I read that on a sign."
++  "I know two things about {x:pl}. Both are wrong."
++  "{x:cap}? I never think about {x.it}. Now I am, thanks to you."
++  "{x:pl:cap} happened to me once. I got over it."
++  "{x:cap}? Goes with {x.assoc:pl}, right? Don't quote me."
++  "What about {x:pl}? You brought it up. You go first."
++  "{x:cap}? I can take {x.it} or leave {x.it}. Mostly I leave {x.it}."
++  "There's a pamphlet on {x:pl} at Town Hall. Nobody's read it."
++  "{x:cap}, right. I had an opinion on that. It's in my other coat."
++  "Honestly? I filed {x:pl} under 'later'. It's a big folder."
++  "{x:cap}? I'm told {x.it} {x.is} {x.adj}. I'm told a lot of things."
++  "{x:cap}? {ask.star.mid} Ask me again when I've eaten."
++
++# ---- ASK_ABOUT(x): a story, a joke, a pass, a new subject ----------------------------------
++@rule core.ask_about.story guard: topic act: tell
++  "I saw {x:indef} at the Boneyard Buffet once. Not on the menu."
++  "My nana had a saying about {x:pl}. It was mostly coughing."
++  "Last time {x:pl} came up, the Mayor hid under a tablecloth."
++  "I wrote a poem about {x:pl}. Six lines. Needs salt."
++  "There's a Bandstand Tape about {x:pl}. It's a cooking segment."
++  "{x:cap} reminds me of {x.assoc:pl}. Everything does, lately."
++  "I had a dream about {x:pl}. You were there. You were a lamp."
++  "{x:cap}? Long story. {.}Short version: I was right."
++  "We voted on {x:pl} at the town meeting. It was a tie. Then a fire."
++@rule core.ask_about.joke guard: topic act: joke
++  "{x:cap}? In this economy? In this fog?"
++  "Fun fact about {x:pl}: I don't have one. Fun, right?"
++  "{x:cap}? Never heard of {x.it}. {.}Kidding, I've heard of everything."
++  "You know what they say about {x:pl}. {.}I don't. I hoped you did."
++  "{x:cap}? There's a quest for that. The reward is more {x}." needs: x.mass
++  "{x:indef:cap} walks into a room. This room. That's the joke, hi." needs: x.countable
++  "I'd tell you about {x:pl}, but then it'd be a tutorial."
++@rule core.ask_about.pass guard: topic act: dismiss
++  "{x:cap}? Not today. I've got a nap booked."
++  "Ask me about {x:pl} tomorrow. I'll be out."
++  "No {x} talk before lunch. House rule."
++  "{x:cap}? Pass. I'm saving my words for something good."
++  "That's a question for somebody smarter. Or taller."
++@rule core.ask_about.swerve act: change_topic
++  "Never mind that. Let's do {like:pl}. I've got a whole speech."
++  "That reminds me of {like:pl}. Everything reminds me of {like:pl}."
++  "Good question. Better question: {like:pl}. Go."
++  "I'll answer that right after we cover {like:pl}. So, never."
++
++# ---- ASK_ABOUT(x), by what the topic is -----------------------------------------------------
++@rule core.ask_about.people guard: root=people act: answer
++  "{x:indef:cap}? I know one. Nice enough, but still has my ladder." needs: x.countable
++  "Every town needs {x:indef}. Ours has a few. One waves too much." needs: x.countable
++  "{x:cap}? Good people. Loud at parties, but good people."
++  "I was {x:indef} for one whole day once. I got a certificate." needs: x.countable
++@rule core.ask_about.places guard: root=places act: answer
++  "{x:def:cap}? I go there to think. Then I stop and get a snack."
++  "{x:def:cap} {x.is} nice this time of year. This time of year is fog."
++  "I got lost near {x:def} once. Found a duck. Kept walking."
++  "{x:def:cap}? Cozy grade: B. Loses points for the smell."
++  "They want to put a gift shop in {x:def}. Another one."
++@rule core.ask_about.food2 guard: root=food act: answer
++  "{x:cap}? I have a recipe. Step one is buying {x.it}."
++  "{x:cap} for breakfast, {x} for dinner. Lunch is a mystery."
++  "Nana hides things in {x:pl}. Keys, mostly. Once, a map."
++  "{x:cap}? My hunger meter just blinked. Now look what you did."
++  "Grumbleguts gave {x} a six. He gives everything a six."
++@rule core.ask_about.music guard: root=music act: answer
++  "{x:cap}? I can't sit still for {x.it}. I tapped through a town meeting."
++  "{x:cap}? Bonejangles does it better. On his own ribs."
++  "{x:cap} gets stuck in my head. It's crowded in there already."
++  "I know {x}. Well, the first bit. Then I hum with confidence."
++@rule core.ask_about.hobbies guard: root=hobbies act: answer
++  "{x:cap}? I tried {x.it} once and pulled something. Not mine."
++  "{x:cap} {x.is} how I relax. I'm bad at it. That's the relaxing part."
++  "I'd do more {x} if I had the time. I have the time. I nap." needs: x.gerund
++  "There's a club for {x}. Two members. They aren't speaking."
++  "I took up {x} last spring. {x:cap} put me down again by summer."
++@rule core.ask_about.creatures guard: root=creatures act: answer
++  "{x:indef:cap} lives under my porch. We have an understanding." needs: x.countable
++  "{x:pl:cap}? Cute until they look at you. Then still cute, that's the trap." needs: x.countable
++  "I named {x:indef} once. It didn't answer. Rude." needs: x.countable
++  "{x:pl:cap} know something. I can't prove it. They can." needs: x.countable
++  "{x:cap}? I saw one. It saw me first, and we agreed to say nothing."
++@rule core.ask_about.work guard: root=work act: answer
++  "{x:cap}? That sounds like work. I just sat down."
++  "{x:cap}? It's on my to-do list. The list is lost."
++  "{x:indef:cap}? Honest work. I'd be terrible at it." needs: x.person
++  "We had {x:indef} in town once. Left for the city. The city sent a note." needs: x.person
++  "{x:cap}? I have a meter for that. It's empty, it's always empty."
++@rule core.ask_about.time guard: root=time act: answer
++  "{x:cap}, already? I had plans. Well, I had a plan."
++  "{x:cap}? I lose track. My calendar is a drawing of a duck."
++  "{x:cap} comes around too fast. I blame the fog."
++  "I do my worrying around {x}. I'm fully booked."
++@rule core.ask_about.school guard: root=school act: answer
++  "I got a gold star for {x}. It fell off. I kept the glue."
++  "{x:cap}. I still have the dream where I forgot my shoes."
++  "I learned one thing about {x}. It was 'don't lick the flagpole'."
++  "{x:cap}? Miss Lulla covers that. Twice, for the ones at the back."
++@rule core.ask_about.feelings guard: root=feelings act: answer
++  "{x:cap}? I had that on Tuesday, all day. It passed."
++  "{x:cap} {x.is} a meter I don't have. I checked the menu."
++  "{x:cap}? Father Fuzz says hug it out. He says that about soup."
++  "I keep {x} in a drawer. Under the good spoons."
++@rule core.ask_about.stuff guard: root=stuff act: answer
++  "{x:indef:cap}? I own one, somewhere. The house ate it." needs: x.countable
++  "I found {x:indef} in the couch once. Not my couch." needs: x.countable
++  "{x:cap}? The gift shop sells that. With a little turkey on it."
++  "{x:cap}? I traded mine for a biscuit. Good biscuit, no regrets."
++@rule core.ask_about.describe guard: root=describe act: answer
++  "{x:cap}? That's a word, all right. I've used it in a sentence."
++  "{x:cap}? People say that about me. I've never asked why."
++  "{x:cap}. Good word. I'd put it on a sign."
++@rule core.ask_about.house2 guard: root=house act: answer
++  "{x:indef:cap} ties a room together. Mine ties me to the room." needs: x.countable
++  "{x:cap}? Plus two cozy. Minus one if it's haunted."
++  "I moved {x:def} one pixel left. The rating went up. Don't ask me why."
++@rule core.ask_about.lore2 guard: root=lore act: answer
++  "{x:cap}? I paused the tape on that. It's a smudge, a secret smudge."
++  "{x:cap}? Everybody has a theory. Mine has string on it."
++  "They don't put {x} on the tour. I asked. The guide went quiet."
++@rule core.ask_about.hellvile2 guard: root=hellvile act: answer
++  "{x:cap}? That's a downstairs thing. Lovely people, warm, too warm."
++  "{x:cap}? You get used to it. Then you get a fan."
++@rule core.ask_about.fear2 guard: fears_topic act: opine_neg
++  "{x:cap}? Don't. I can hear my heart packing a bag."
++  "{x:cap}?! I sleep with the light on. And the other light."
++  "Not {x}, anything but {x}. I'll talk about taxes. I'll DO taxes." guard: !kid_speaker
++@rule core.ask_about.likes2 guard: likes_topic act: opine_pos
++  "{x:cap}! Who told you? I have a shelf for {x.it}, a big shelf."
++  "{x:cap}? Oh, we're doing this. Cancel your afternoon."
++  "I could talk about {x:pl} all day. I have. They asked me to stop."
++
++# ---- ASK_ABOUT(x), by voice ---------------------------------------------------------------------
++@rule core.ask_about.voice guard: topic act: answer
++  "{x:cap}? What a lovely thing to ask. Now, where to start?" guard: polite
++  "{x:cap}? It's {x:indef}. What else do you want, a parade?" guard: blunt needs: x.countable
++  "{x:cap}? You're asking me? Bold, wrong, but bold." guard: blunt
++  "{x:cap}. Yes. That exists." guard: flat
++  "{x:cap}. I have a feeling about {x.it}. It's a small one." guard: flat
++  "{x:up}! I have SO much to say! Hold my hat!" guard: loud
++  "{x:cap}? That's a serious subject. I'll need my serious chair." guard: serious
++  "{x:cap}? Eh, it'll sort itself out. Things do." guard: easygoing
++  "{x:cap}? I asked my left shoe. It says maybe." guard: quirky
++  "{x:cap}? Purple. That's all I'm getting, a strong purple." guard: quirky
++  "{x:cap}? Yes, no, maybe, next. I've got a thing at three." guard: quick
++  "{x:cap}... Give me a minute. {.}Give me several." guard: slow
++  "{x:cap}? In my day we had one, and we shared it. Uphill." guard: elder
++  "{x:cap}? Oh, I remember when that was new. So was I." guard: elder
++  "{x:cap}? I guess, whatever, it's fine. Why, what did you hear?" guard: teen
++  "{x:cap}? Nobody says it like that any more. But okay." guard: teen
++  "{x:cap}? We have that downstairs. Ours is on fire, so it's nicer." guard: hellborn
++  "{x:cap}? I knew about that when I was alive. Less now." guard: ghost
++  "{x:cap}? At this hour? I only know things in the daytime." guard: night
++  "{x:cap}? We just met. That's a second-visit question." guard: rel=stranger
++  "{x:cap}? For you, the long answer. Get comfy." guard: rel=best
++  "{x:cap}? Why, so you can use it against me? {.}Fine, listen." guard: rel=rival
++@rule core.ask_about.kid2 guard: kid_speaker&topic tags: kid act: answer
++  "{x:cap}? My teacher told us about that! I forgot it, but it was good."
++  "I drew {x:indef} once. Everybody said it was a dog."
++  "{x:cap}? I know a secret about {x.it}. It's that I don't know."
++  "Is {x} the one with the wheels? No? Then I don't know."
++  "{x:cap}! Can we get one? Can we get TWO?" needs: x.countable
++  "I asked a grown-up about {x}. They said 'later'. It's later now."
++
++# ---- ASK_ABOUT(x), by persona type --------------------------------------------------------------
++@rule core.ask_about.type guard: topic act: answer
++  "{x:cap}? I read about {x.it}. Well, the back of the book." guard: type=quiet_bookworm
++  "{x:cap}... There's a footnote on that. I'd have to whisper it." guard: type=quiet_bookworm
++  "{x:cap}? Sounds tiring. Give me the short version and I'll nap on it." guard: type=cozy_napper
++  "{x:cap}? I'd look into it, but the blanket has me." guard: type=cozy_napper
++  "{x:cap}? Bah. It was better before, everything was." guard: type=grumpy_gremlin
++  "{x:cap}? Don't get me started. {.}Too late, I've started." guard: type=grumpy_gremlin
++  "{x:cap}. It's there, I'm here. That's the whole relationship." guard: type=deadpan_drifter
++  "{x:cap}? Saw it once, passing through. Kept passing." guard: type=deadpan_drifter
++  "{x:cap}? I think about {x.it} when the clouds go pink." guard: type=gentle_dreamer
++  "{x:cap}... That's a soft word. I'd like to float in it." guard: type=gentle_dreamer
++  "{x:cap}? Oh, I just think that's lovely! Is it lovely?" guard: type=sweet_sunbeam
++  "{x:cap}! I made a sticker chart for that. Everyone gets a sticker." guard: type=sweet_sunbeam
++  "{x:cap}! The very word is a curtain rising. On ME." guard: type=dramatic_poet
++  "Alas, {x}. I have wept over less. I have wept over toast." guard: type=dramatic_poet
++  "{x:cap}? I'm an expert. Ask anyone I've told." guard: type=cheeky_charmer
++  "{x:cap}? I'd tell you, but you'd only be impressed." guard: type=cheeky_charmer
++  "{x:cap}? I have a checklist for that. Item one: find the checklist." guard: type=diligent_helper
++  "{x:cap}? Leave it with me. I'll have a report by Thursday." guard: type=diligent_helper
++  "{x:cap}? Seen it up a mountain once. No worries either way." guard: type=chill_adventurer
++  "{x:cap}? Sure. Bring a rope and a snack, that covers most things." guard: type=chill_adventurer
++  "{x:cap}? There are rules about that. Three, and I wrote all three." guard: type=stern_captain
++  "{x:cap}. Stand up straight when you ask about {x.it}." guard: type=stern_captain
++  "{x:cap}? Flip a coin. Heads I know, tails I make it up." guard: type=wild_card
++  "{x:cap}? I bet a hat on that once. Notice I'm not wearing a hat." guard: type=wild_card
++  "{x:cap}? I've got a five-step plan for that. Step one: more steps." guard: type=eager_go_getter
++  "{x:cap}? Great question. I'm adding it to my goals, all of them." guard: type=eager_go_getter
++  "{x:cap}! Ooh, does it come in glitter? It should!" guard: type=bubbly_sparkler
++  "{x:cap}? Yay! I don't know what we're doing, but yay!" guard: type=bubbly_sparkler
++  "{x:cap}? Right, everyone listen up. I'll say this once, maybe twice." guard: type=fiery_leader
++  "{x:cap}! Good. We move on {x.it} at dawn, so bring snacks." guard: type=fiery_leader
++  "{x:cap}? What if we took it apart? I have a spoon." guard: type=chaos_goblin
++  "{x:cap}? Hee, I hid one of those. I won't say where, because I forgot." guard: type=chaos_goblin
++
++# ---- ASK_OPINION(x), by stance ----------------------------------------------------------------
++@rule core.ask_opinion.pro2 guard: stance=pro act: opine_pos
++  "{x:cap}? {ask.star.pro} Next question."
++  "I like {x:pl} {ask.more}. There, I said it."
++  "My opinion of {x:pl}? High. Embarrassingly high."
++  "{x:def:cap} {x.is} {x.good}. That's my opinion and I'm framing it."
++  "{x:cap}? I'm for {x.it}. I'd wear the badge, I'd make the badge."
++  "I think {x:pl} never let me down. People have. Chairs have."
++  "{x:cap}? Yes. Easy, ask me a hard one."
++  "Honestly? I think about {x:pl} more than is normal. Fondly."
++  "{x:cap} gets my vote. I vote early. I vote with a flag."
++  "If {x:pl} ran for Mayor, I'd knock on doors."
++  "{x:cap}? Good. {x.good:cap}, even, and I don't say that lightly."
++  "I'd give {x:pl} a trophy. A real one. With a tiny me on top."
++@rule core.ask_opinion.con2 guard: stance=con act: opine_neg
++  "{x:cap}? {ask.star.con} Next question."
++  "I like {x:pl} {ask.less}. There, I said it."
++  "My opinion of {x:pl}? Low. You'd need a shovel."
++  "{x:def:cap} {x.is} {x.bad}. That's my opinion and I'm laminating it."
++  "{x:cap}? Against. I'd sign a thing, I'd start the thing."
++  "I think {x:pl} let me down once. I don't forget. I have a book."
++  "{x:cap}? Not for me. For somebody, maybe, somebody far away."
++  "Do you want the polite answer on {x:pl}? I don't have one."
++  "{x:cap} lost my vote. Then found it. Then lost it again."
++  "If {x:pl} ran for Mayor, I'd move. I'd take the house."
++  "{x:cap}? Bad. {x.bad:cap}, even, and I'm in a good mood."
++  "I think {x:pl} peaked early. Before I got there."
++@rule core.ask_opinion.neutral2 guard: stance=neutral act: answer
++  "{x:cap}? {ask.star.mid} Don't make me pick a side."
++  "I've got half an opinion on {x:pl}. Want the top half?"
++  "{x:cap}? I'm waiting for more reviews to come in."
++  "{x:def:cap} {x.is} {x.adj}. Past that, I plead the nap."
++  "What do I think of {x:pl}? Rarely. I rarely think of {x:pl}."
++  "{x:cap}? I can see both sides. I'm standing on neither."
++  "My opinion of {x:pl} is on order. Six to eight weeks."
++  "{x:cap}? Some days yes, some days no. Today is a some day."
++  "I'd vote 'present' on {x:pl}. Then I'd go home."
++  "{x:cap}? Fine. That's the word, and I looked for a better one."
++  "I thought about {x:pl} once. Nothing came of it."
++@rule core.ask_opinion.joke guard: topic act: joke
++  "My opinion on {x:pl} costs one biscuit. {.}I'll wait."
++  "{x:cap}? I have opinions on everything. Most are about soup."
++  "You want my take on {x:pl}? I left it at the Buffet."
++  "{x:cap}? I'd tell you, but I charge by the word. That's eleven."
++@rule core.ask_opinion.pass guard: topic act: dismiss
++  "{x:cap}? No comment. I've been burned before, by the Mayor."
++  "I keep my opinions on {x:pl} to myself. And one duck."
++  "Opinions? In front of everyone? What is this, a town meeting?"
++@rule core.ask_opinion.swerve act: change_topic
++  "I'd rather give you my opinion on {like:pl}. It's longer."
++  "Skip that. Ask what I think of {like:pl}. Go on, ask."
++  "No opinion. But on {like:pl}? Sit down."
++@rule core.ask_opinion.likes guard: likes_topic act: opine_pos
++  "{x:cap}? You're asking the president of the fan club. And the treasurer."
++  "My opinion of {x:pl}? I have the tattoo. It's a drawing, but still."
++@rule core.ask_opinion.hates guard: hates_topic act: opine_neg
++  "{x:cap}? I'd rather eat the plate."
++  "You know how I feel about {x}. The whole street knows."
++@rule core.ask_opinion.fears guard: fears_topic act: opine_neg
++  "My opinion of {x:pl}? From far away. Behind a door."
++  "{x:cap}? Let {x.it} stay far away. I'll stay here, behind a door."
++
++# ---- the comparison sub-rules: "I like pies {ask.more}." --------------------------------------
++@rule ask.more
++  "more than soup"
++  "more than naps"
++  "more than my own porch"
++  "more than a day off"
++  "more than is healthy"
++  "more than the Mayor likes hats"
++@rule ask.less
++  "less than wet socks"
++  "less than Mondays"
++  "less than the fog"
++  "less than a cold bath"
++  "less than a queue"
++  "less than soup with a hair in it"
++
++# ---- ASK_OPINION(x), by what the topic is -----------------------------------------------------
++@rule core.ask_opinion.root_pos guard: topic act: opine_pos
++  "{x:cap}? Tasty. I judge all food on one question: is there more?" guard: root=food&stance=pro
++  "{x:def:cap}? Lovely spot. I'd live there if my house would let me." guard: root=places&stance=pro
++  "{x:cap}? Turn it up. Turn it up until the Mayor complains." guard: root=music&stance=pro
++  "{x:cap}? Great way to spend a day. I've spent several, ask my chores." guard: root=hobbies&stance=pro
++  "{x:pl:cap}? Good neighbours. Quiet, and they never borrow anything." guard: root=creatures&stance=pro needs: x.countable
++  "{x:cap}? Every home should have one. Mine has the box it came in." guard: root=house&stance=pro
++  "{x:cap}? Best one of the week. I've ranked them, there's a chart." guard: root=time&stance=pro
++  "{x:cap}? It's a classic. They made a plush and I own the plush." guard: root=lore&stance=pro
++@rule core.ask_opinion.root_ans guard: topic act: answer
++  "{x:cap}? I'd eat {x.it}. I'd complain, but I'd eat {x.it}." guard: root=food&stance=neutral
++  "{x:def:cap}? It's a place. It has a floor, I'll give it that." guard: root=places&stance=neutral
++  "{x:indef:cap}? Fine work if you can get it. I couldn't." guard: root=work&x.person&!kid_speaker
++@rule core.ask_opinion.root_neg guard: topic act: opine_neg
++  "{x:cap}? Needs salt. And a different cook, and a different food." guard: root=food&stance=con
++  "{x:def:cap}? I went once. I've been meaning to stop going." guard: root=places&stance=con
++  "{x:cap}? I'd rather listen to the fridge. The fridge has range." guard: root=music&stance=con
++  "{x:cap}? As a hobby? I'd sooner alphabetise the fog." guard: root=hobbies&stance=con
++  "{x:pl:cap}? Too many legs, or not enough. I forget which." guard: root=creatures&stance=con needs: x.countable
++  "{x:cap}? Minus two cozy. I've seen the numbers." guard: root=house&stance=con
++  "{x:cap}? Worst one of the week. I've ranked them, there's a chart." guard: root=time&stance=con
++  "{x:cap}? Overdone. They made a plush and nobody bought the plush." guard: root=lore&stance=con
++
++# ---- ASK_OPINION(x), by voice -----------------------------------------------------------------
++@rule core.ask_opinion.voice_pos guard: topic act: opine_pos
++  "{x:cap}? How kind of you to ask. I think it's rather nice." guard: polite&stance=pro
++  "{x:cap}? Good. Done, that's the opinion." guard: blunt&stance=pro
++  "{x:cap}? Damn good. Put that on the poster." guard: blunt&adults_only&!kid_present&stance=pro
++  "{x:cap}. It's good. This is my excited face." guard: flat&stance=pro
++  "{x:up}! YES, I LOVE {x.it}! Sorry, indoor voice: yes." guard: loud&stance=pro
++  "{x:cap}? After careful thought: yes. I don't joke about {x}." guard: serious&stance=pro
++  "{x:cap}? Love it. But I love most things, I love that chair." guard: easygoing&stance=pro
++  "{x:cap}? Tastes like Thursday. In a good way." guard: quirky&stance=pro
++  "{x:cap}? Yes, good, love it. Next!" guard: quick&stance=pro
++  "{x:cap}? Best thing they ever came up with. And I was there." guard: elder&stance=pro
++  "{x:cap}? It's actually kind of good. Don't tell anyone I said." guard: teen&stance=pro
++  "{x:cap}? You Hillvile folk got that one right. Just the one." guard: hellborn&stance=pro
++  "My opinion, for a stranger? Fine: it's good. That's the free one." guard: rel=stranger&stance=pro
++@rule core.ask_opinion.voice_neg guard: topic act: opine_neg
++  "{x:cap}? I'd rather not say. {.}It isn't my favourite, sorry." guard: polite&stance=con
++  "{x:cap}? Bad. You asked, so don't look at me like that." guard: blunt&stance=con
++  "{x:cap}? It's crap. Sorry, no, I'm not sorry." guard: blunt&adults_only&!kid_present&stance=con
++  "{x:cap}. I dislike it. This is my upset face, same face." guard: flat&stance=con
++  "{x:up}? NO! I'm booing, join me, boo!" guard: loud&stance=con
++  "{x:cap}? I've weighed it. It came up short." guard: serious&stance=con
++  "{x:cap}? Not my thing. No big deal, more for you." guard: easygoing&stance=con
++  "{x:cap}? It hums at me. I don't like things that hum at me." guard: quirky&stance=con
++  "{x:cap}? No, bad, gone. Next!" guard: quick&stance=con
++  "{x:cap}? We didn't have that. We were happier, and colder." guard: elder&stance=con
++  "{x:cap}? So boring, I'd rather do homework. {.}No, I wouldn't." guard: teen&stance=con
++  "{x:cap}? Too cold up here. Ours comes with flames, much better." guard: hellborn&stance=con
++  "Between friends? {x:cap} {x.is} {x.bad}. Tell no one." guard: rel=best&stance=con
++@rule core.ask_opinion.voice_ans guard: topic act: answer
++  "{x:cap}? Triangle-shaped opinion. Three sides, no point." guard: quirky&stance=neutral
++  "{x:cap}? Hm... {.}I'll get back to you, in spring, maybe." guard: slow
++  "{x:cap}? It's okay, I guess. Everything's okay, I guess." guard: teen&stance=neutral
++  "Whatever you think of {x:pl}, I think the opposite. Harder." guard: rel=rival
++@rule core.ask_opinion.kid2_pos guard: kid_speaker&topic tags: kid act: opine_pos
++  "{x:cap} is the best thing ever! After dinosaurs. And juice." guard: stance=pro
++  "I like {x}! I like it this much! My arms don't go wider." guard: stance=pro
++@rule core.ask_opinion.kid2_neg guard: kid_speaker&topic tags: kid act: opine_neg
++  "{x:cap} is yucky. I made a face. Did you see my face?" guard: stance=con
++  "I don't like {x}. It's a rule. I made the rule." guard: stance=con
++@rule core.ask_opinion.kid2_ans guard: kid_speaker&topic tags: kid act: answer
++  "{x:cap} is okay. It's not a puppy. But it's okay." guard: stance=neutral
++  "I think {x} is medium. That's a real answer. Teacher said." guard: stance=neutral
++
++# ---- ASK_OPINION(x), by persona type ----------------------------------------------------------
++@rule core.ask_opinion.type guard: topic act: answer
++  "{x:cap}? I'd need to read more. I'd always need to read more." guard: type=quiet_bookworm
++  "Um, on {x:pl}? I have a view. It's a quiet view, it's shy." guard: type=quiet_bookworm
++  "{x:cap}? If I can do it lying down, I'm for it." guard: type=cozy_napper
++  "{x:cap}? I'll sleep on it. That's not a saying, that's the plan." guard: type=cozy_napper
++  "{x:cap}? I've got complaints. I've got them in order." guard: type=grumpy_gremlin
++  "My opinion? Nobody likes my opinions. That's how I know they're right." guard: type=grumpy_gremlin
++  "{x:cap}? It's fine, everything's fine. That's not praise." guard: type=deadpan_drifter
++  "{x:cap}. I've felt more, I've felt less. Hard to say." guard: type=deadpan_drifter
++  "{x:cap}? I think it has a nice colour. Inside, I mean, in spirit." guard: type=gentle_dreamer
++  "I think {x:pl} would look pretty in the rain. Most things do." guard: type=gentle_dreamer
++  "{x:cap}? I love it! I love that you asked, I love asking!" guard: type=sweet_sunbeam
++  "I think {x:pl} tried their best. Everyone's trying their best." guard: type=sweet_sunbeam
++  "{x:cap}? It moved me. To the left, a little, I was in the way." guard: type=dramatic_poet
++  "My opinion of {x:pl}? I shall need a balcony. And silence." guard: type=dramatic_poet
++  "{x:cap}? Second best thing in this room." guard: type=cheeky_charmer
++  "{x:cap}? Not bad. Could use more me in it." guard: type=cheeky_charmer
++  "{x:cap}? I rated it. Tidy: yes, on time: no, overall: we'll talk." guard: type=diligent_helper
++  "My opinion? I'll write it up. Do you want it stapled?" guard: type=diligent_helper
++  "{x:cap}? It's all good. Even the bad bits, they're good later." guard: type=chill_adventurer
++  "{x:cap}? Had it by a campfire once. Everything's better by a campfire." guard: type=chill_adventurer
++  "{x:cap}? Acceptable, if kept clean. Is it kept clean?" guard: type=stern_captain
++  "{x:cap}? I don't have opinions. I have standards." guard: type=stern_captain
++  "{x:cap}? Love it, or hate it, one of those. I'll know by dinner." guard: type=wild_card
++  "{x:cap}? I'd swap it for a goat. I'd swap most things for a goat." guard: type=wild_card
++  "{x:cap}? Huge potential. I see a stand, I see a second stand." guard: type=eager_go_getter
++  "{x:cap}? Good, but I could make it faster. Give me a week." guard: type=eager_go_getter
++  "{x:cap}? So cute! I haven't looked yet, I just decided!" guard: type=bubbly_sparkler
++  "{x:cap}? Sparkly! Not outside, on the inside, I can tell!" guard: type=bubbly_sparkler
++  "{x:cap}? I'll tell you what we think. I've decided for all of us." guard: type=fiery_leader
++  "{x:cap}? Strong, useful. I want ten by morning." guard: type=fiery_leader
++  "{x:cap}? Better with the lid off. Everything's better with the lid off." guard: type=chaos_goblin
++  "{x:cap}? Boring. Until you put it in the fountain, then ooh." guard: type=chaos_goblin

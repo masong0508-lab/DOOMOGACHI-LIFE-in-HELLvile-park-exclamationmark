@@ -1,0 +1,1035 @@
+diff --git a/core/data/talk/beats.tlk b/core/data/talk/beats.tlk
+new file mode 100644
+index 0000000..9be2c9b
+--- /dev/null
++++ b/core/data/talk/beats.tlk
+@@ -0,0 +1,168 @@
++# core/data/talk/beats.tlk - the drama manager's beats (owner: TK, T6;
++# docs/TALK.md "The drama manager"; design 5.2). Syntax: core/tools/talkc_beats.py.
++# Compiled into the TB_BEATS bank; core/src/talk_dm.c reads it.
++#
++# The beats' lines are grammar rules: grammar/en/beats_lines.tlk
++# (beat.<name>, each guarded beat=<name>).
++#
++# tension: what the beat adds when it starts. The drama manager picks the
++# beat whose result is nearest the target for the turn (up to a peak at
++# turns 8-10, down again by 14-16), plus `bonus` for the precondition, minus
++# a little for a beat already played, plus `lean` when the player's act
++# asks for it.
++#
++# Safety is in C whatever is written here (talk_dm.c): romance_adult only
++# between adults the gate passes, never with a minor or the pet in the room;
++# an argument (rivalry) stops at the jab when anyone here is not an adult;
++# kid_moment makes the room a kids' room for the rest of the talk.
++
++@beat arrive
++  pre: start
++  tension: 0
++  goals: 1
++  turns: 1
++  bonus: 12
++  involves: all
++  handles: open gesture
++
++@beat smalltalk
++  pre: default
++  tension: 0
++  goals: 2
++  turns: 3
++  bonus: 2
++  involves: all
++  handles: ask tell flow open
++  lean: flow +1
++
++@beat topic_dive
++  pre: like
++  tension: 1
++  goals: 2
++  turns: 3
++  bonus: 5
++  involves: a
++  handles: ask tell
++  lean: ask +2
++
++@beat house
++  pre: house
++  tension: 0
++  goals: 1
++  turns: 2
++  bonus: 2
++  involves: all
++  handles: ask tell warm
++
++@beat gossip
++  pre: news
++  tension: 2
++  goals: 2
++  turns: 3
++  bonus: 4
++  involves: all
++  handles: third ask tell
++  lean: third +3
++
++@beat problem
++  pre: problem
++  tension: 1
++  after: -2
++  goals: 2
++  turns: 4
++  bonus: 5
++  involves: a
++  handles: warm ask
++  hurt: cool
++  lean: warm +2
++  resolve: comfort encourage offer sympathize
++
++@beat rivalry
++  pre: rivals
++  tension: 3
++  after: -2
++  goals: 3
++  turns: 5
++  bonus: 4
++  involves: pair
++  handles: third cool
++  lean: cool +3
++  lean_act: insult mock
++
++@beat ally_ask
++  pre: clash
++  tension: 2
++  goals: 1
++  turns: 2
++  bonus: 4
++  involves: pair
++  handles: third tell
++  lean: tell +1
++
++@beat story
++  pre: story
++  tension: 1
++  goals: 1
++  turns: 2
++  bonus: 3
++  involves: all
++  handles: ask tell
++
++@beat game
++  pre: lull
++  tension: -1
++  goals: 2
++  turns: 3
++  bonus: 5
++  involves: all
++  handles: ask tell warm
++  lean: warm +1
++
++@beat kid_moment
++  pre: kid
++  tension: -1
++  goals: 1
++  turns: 2
++  bonus: 4
++  involves: a
++  handles: ask tell warm
++  flags: kidsafe
++
++@beat romance_adult
++  pre: romance
++  tension: 1
++  goals: 2
++  turns: 3
++  bonus: 3
++  involves: a
++  handles: romance warm
++  lean: romance warm +3
++  flags: adults
++
++@beat wind_down
++  pre: late
++  tension: zero
++  goals: 1
++  turns: 2
++  bonus: 6
++  involves: all
++  handles: open warm
++
++# ---- what each persona type warms to and finds dull (design 5.3 affinity: +1 / -1) ----
++# the types in catalog.c order
++@affinity 0 favours: lore dull: music          # Quiet Bookworm
++@affinity 1 favours: house dull: work          # Cozy Napper
++@affinity 2 favours: food dull: feelings       # Grumpy Gremlin
++@affinity 3 favours: places dull: school       # Deadpan Drifter
++@affinity 4 favours: feelings dull: work       # Gentle Dreamer
++@affinity 5 favours: creatures dull: fears     # Sweet Sunbeam
++@affinity 6 favours: feelings dull: stuff      # Dramatic Poet
++@affinity 7 favours: people dull: school       # Cheeky Charmer
++@affinity 8 favours: work dull: fears          # Diligent Helper
++@affinity 9 favours: places dull: house        # Chill Adventurer
++@affinity 10 favours: work dull: music         # Stern Captain
++@affinity 11 favours: hellvile dull: time      # Wild Card
++@affinity 12 favours: hobbies dull: house      # Eager Go-Getter
++@affinity 13 favours: music dull: work         # Bubbly Sparkler
++@affinity 14 favours: hellvile dull: feelings  # Fiery Leader
++@affinity 15 favours: fears dull: time         # Chaos Goblin
+diff --git a/core/data/talk/grammar/en/beats_lines.tlk b/core/data/talk/grammar/en/beats_lines.tlk
+new file mode 100644
+index 0000000..4f74dc9
+--- /dev/null
++++ b/core/data/talk/grammar/en/beats_lines.tlk
+@@ -0,0 +1,198 @@
++# core/data/talk/grammar/en/beats_lines.tlk - the drama manager's own lines (owner: TK;
++# T6 starter bank: about 5 a beat so every beat is heard; the content package
++# after T6 writes the ~500). Syntax: core/tools/talkc_gen.py. docs/TALK.md
++# "The drama manager".
++#
++# beat.<name>   a beat's goal line: what the residents try to get in while
++#               the room is in that beat (core/data/talk/beats.tlk); each rule
++#               is guarded beat=<name>. Said to the player.
++# idle          one resident to another when the player says nothing for 8 s
++# prod          then, after two of those, someone prods the player
++# excuse        the one whose engagement ran out, on the way to the door
++# grumble       the one another resident cut off
++# jab, row, ultimatum   the three steps of an argument (rivalry); with a child
++#               in the room only the jab is ever said (talk_dm.c), and the
++#               two later steps are guarded !kid_present here as well
++# makeup        after the player made peace
++# kidask        a child in the room of an argument: the room cools down
++#
++# Kid-safe everywhere but beat.romance_adult (adults the gate passed, with
++# the one addressed saying yes: consent). No register word in this file.
++
++# ---- ARRIVE ---------------------------------------------------------------------------------
++@rule beat.arrive guard: beat=arrive act: tell
++  "Shoes off. Or on. The rug bites either way."
++  "You made it! We were about to talk about you."
++  "Sit, sit. That chair is haunted, but politely."
++  "Perfect timing. Nothing was happening. On purpose."
++  "Welcome in, {you}. Touch nothing that hums."
++
++# ---- SMALLTALK ------------------------------------------------------------------------------
++@rule beat.smalltalk guard: beat=smalltalk act: tell
++  "Weather's odd today. The fog waved at me."
++  "Long day. Short day? One of those days."
++  "It's quiet out. I don't trust it."
++  "I counted the clouds earlier. There were some."
++@rule beat.smalltalk.ask guard: beat=smalltalk act: ask_about
++  "So, {you}. What's new? Lie if you have to."
++  "Anything on your mind? Take your time. Not too much."
++
++# ---- TOPIC_DIVE: the fan talks it up ----------------------------------------------------
++@rule beat.topic_dive guard: beat=topic_dive&topic act: opine_pos
++  "Wait. We're on {x}? Clear my evening."
++  "Oh, I have THOUGHTS about {x}. Sit down."
++  "{x:cap}! Finally, a real subject."
++  "I could talk about {x} for an hour. I will."
++  "Nobody leaves until we've done {x} justice."
++
++# ---- HOUSE ----------------------------------------------------------------------------------
++@rule beat.house guard: beat=house act: tell
++  "I like this room. It has opinions."
++  "That lamp is doing its best. Bless it."
++  "Cosy in here. Suspiciously cosy."
++  "Did the wall always look at us like that?"
++  "Nice place, {you}. The floor only creaks in jest."
++
++# ---- GOSSIP ---------------------------------------------------------------------------------
++@rule beat.gossip guard: beat=gossip act: gossip
++  "Did you hear the news? I heard it twice. It grew."
++  "I'm not one to gossip. Anyway, listen to this."
++  "You didn't hear it from me. I heard it from me."
++  "Big news in town. Nobody agrees what it was."
++  "Somebody's in the paper again. I'm not saying who."
++
++# ---- PROBLEM: the troubled one opens up -------------------------------------------------
++@rule beat.problem guard: beat=problem&fact.problem act: complain
++  "Can I say something? I've had a rough week."
++  "I'm fine. That was a lie. Hello."
++  "Something's been on my mind. It pays no rent."
++@rule beat.problem.lonely guard: beat=problem&prob=lonely act: complain
++  "It's been quiet at mine. Too quiet. I miss noise."
++@rule beat.problem.bored guard: beat=problem&prob=bored act: complain
++  "I am so bored I alphabetised my socks."
++@rule beat.problem.nightmare guard: beat=problem&prob=nightmare act: complain
++  "I had the dream again. The one with the stairs."
++
++# ---- ALLY_ASK: "Back me up here." ---------------------------------------------------------
++@rule beat.ally_ask guard: beat=ally_ask act: ask_opinion
++  "Back me up here, {you}."
++  "{you}, tell them I'm right. Take your time."
++  "You agree with me, {you}. I can see it in your face."
++  "Tie-breaker! {you}, it's on you. No pressure."
++  "{you}. Settle this. Wrong answers will be noted."
++
++# ---- STORY: in-world worry, no spoilers -----------------------------------------------------
++@rule beat.story guard: beat=story act: tell
++  "The purple fog's early this year. It never knocks."
++  "Strange days. Even the crows look worried."
++  "Things feel off lately. Like a picture hung crooked."
++  "I keep my bag packed. Snacks, mostly."
++  "Something's coming. I hope it's cake."
++
++# ---- GAME: a lull -----------------------------------------------------------------------------
++@rule beat.game guard: beat=game act: ask_about
++  "Game time. Would you rather fight a goose or be one?"
++  "Quick. Guess my favourite food. You get one go."
++  "Would you rather have no knees or too many?"
++  "Let's play. I spy something beginning with dust."
++  "Truth or truth, {you}. We're out of dares."
++
++# ---- KID_MOMENT: the kid says it -----------------------------------------------------------
++@rule beat.kid_moment guard: beat=kid_moment&kid_speaker tags: kid act: tell
++  "I can burp the alphabet. Up to D."
++  "Grown-ups talk a lot. When do you get to the point?"
++  "I found a bug. His name is Kevin. He lives here now."
++  "Is this the boring part? It feels like the boring part."
++  "When I'm big I'm going to be a dragon. Or a dentist."
++
++# ---- ROMANCE_ADULT: adults the gate passed; it always ends on a joke (R2) -------------------
++@rule beat.romance_adult guard: beat=romance_adult&consent&adults_only&!kid_present&!pet act: flirt
++  "Stay for dinner, {you}. My soup is nearly legal."
++  "Keep smiling at me like that and I'll burn the toast."
++  "[LOVE]You make this dump feel like a date, {you}."
++  "I cleaned for you. Under the rug counts as clean."
++  "You, me, one candle. It's a power cut, but still."
++
++# ---- WIND_DOWN --------------------------------------------------------------------------------
++@rule beat.wind_down guard: beat=wind_down act: farewell
++  "Well, this was nice. Nobody cried much."
++  "It's getting late. The clock is judging us."
++  "Good talk. I'll be thinking about it by accident."
++@rule beat.wind_down.promise guard: beat=wind_down act: promise
++  "Come by again, {you}. I'll hide the good biscuits."
++  "Same time next week? I'll bring the chairs."
++
++# ---- idle chatter: one resident to another --------------------------------------------------
++@rule idle.ask guard: to_res&topic act: ask_about
++  "So, {them}. Still into {x}?"
++  "{them}, settle a bet. {x:cap}: yes or no?"
++  "Hey {them}. Remind me why you like {x}."
++@rule idle.plain guard: to_res act: ask_about
++  "{them}, what did you do today? Keep it short."
++  "So, {them}. Read any good signs lately?"
++@rule idle.tease guard: to_res&rel=rival act: tease
++  "{them}, you're quiet. It suits you."
++  "Still wearing that face, {them}? Brave."
++@rule idle.muse guard: !to_res act: tell
++  "Quiet in here. I can hear the fridge thinking."
++  "Nobody talk at once. Oh. Nobody is."
++  "I'll just hum, then. Mm. That was the hum."
++
++# ---- the prod -----------------------------------------------------------------------------------
++@rule prod act: ask_feeling
++  "You're very quiet, {you}."
++  "{you}? Blink twice if you're still in there."
++  "Say something, {you}. Anything. A vowel."
++  "Hello? {you}? It's your turn. It's been your turn."
++
++# ---- walking out ------------------------------------------------------------------------------
++@rule excuse act: farewell
++  "I left something on the hob."
++  "Is that the time? It is. Bye."
++  "I just remembered a thing. Elsewhere."
++  "My plants need me. They said so."
++  "I'm going to go stare at a wall. A different one."
++
++# ---- cut off by another resident --------------------------------------------------------------
++@rule grumble act: complain
++  "I was TALKING."
++  "Excuse me. I had a whole sentence planned."
++  "Fine. I'll finish it in my head. It was good."
++  "Rude. I was nearly at the point."
++
++# ---- an argument: the jab (the only step with a child in the room) ------------------------
++@rule jab guard: to_res act: tease
++  "Nice hat, {them}. Did it lose a bet?"
++  "{them} would know. {them} knows everything."
++  "Oh, {them} has an opinion. Mark the calendar."
++  "Funny. Coming from you, {them}."
++  "Sure, {them}. And I'm the mayor's left shoe."
++
++# ---- step 2: the row --------------------------------------------------------------------------
++@rule row guard: to_res&!kid_present act: accuse
++  "That's it, {them}. You've been like this all week!"
++  "You always do this, {them}. I keep a list."
++  "Don't you start, {them}. I will finish."
++  "Say that again, {them}. I'm taking notes."
++  "You borrowed my ladder in spring, {them}. SPRING."
++
++# ---- step 3: the ultimatum (the player is told to take a side) -------------------------------
++@rule ultimatum guard: to_res&!kid_present act: ask_opinion
++  "{you}, pick. Me or {them}. Right now."
++  "One of us is leaving, {you}. You choose who."
++  "{you}, it's {them} or me. No pressure. Lots, in fact."
++  "Enough. {you}, tell {them} I'm right."
++
++# ---- making up (a mediation that worked) ------------------------------------------------------
++@rule makeup guard: to_res act: apologize
++  "Fine. Sorry, {them}. You're only mostly wrong."
++  "All right, {them}. Truce. I was a bit much."
++  "Sorry, {them}. Keep the ladder. It likes you."
++  "Peace, {them}. For {you}. And for my blood pressure."
++
++# ---- a child in the room of an argument -------------------------------------------------------
++@rule kidask guard: kid_speaker tags: kid act: ask_feeling
++  "Are you guys fighting?"
++  "Why are you using your angry voices?"
++  "Is this a fight? Should I get snacks?"
++  "You two sound like the crows again."
+diff --git a/core/include/doomo/talk.h b/core/include/doomo/talk.h
+index f2d185f..04444db 100644
+--- a/core/include/doomo/talk.h
++++ b/core/include/doomo/talk.h
+@@ -548,6 +548,16 @@ enum { TCB_NONE = 0, TCB_JOB, TCB_PARTNER, TCB_PET, TCB_NEWS, TCB_PROBLEM, TCB_B
+ enum { TGE_OPEN = 0, TGE_CB, TGE_TAG, TGE_HANDOFF, TGE_SAFE, TGE_END_K7, TGE_PET, TGE_IDLE,
+        TGE_GRIEF,    /* K-10: the sincere core of a line about grief or loss */
+        TGE_COMFORT,  /* K-10: another resident's sincere reaction to it      */
++       /* (T6) the drama manager's lines (talk_gen_entry; grammar/<lang>/beats_lines.tlk) */
++       TGE_BEAT,     /* a beat's goal line: rules beat.<name>, each guarded beat=<name> */
++       TGE_PROD,     /* after two idle chats: "You're very quiet, {you}."     */
++       TGE_EXCUSE,   /* the excuse of one who walks out                       */
++       TGE_GRUMBLE,  /* cut off by another resident: "I was TALKING."         */
++       TGE_JAB,      /* an argument, step 1 (the only step with a child here) */
++       TGE_ROW,      /* step 2                                                */
++       TGE_ULTIMATUM,/* step 3: the player is told to take a side             */
++       TGE_MAKEUP,   /* after a mediation that worked                         */
++       TGE_KIDASK,   /* a child: "Are you guys fighting?" (the room cools)    */
+        TGE_COUNT };
+ 
+ /* Guard predicates (talkc_gen.py reads this enum: a guard term "kid_present"
+@@ -710,6 +720,231 @@ int  talk_gen_nalts(void);
+  * 1 and *val when it holds. */
+ int  talk_gen_fact(int id, int cb, uint16_t *val);
+ 
++/* (T6) One line from a fixed entry of the grammar (TGE_*: a beat's goal
++ * line, idle chatter, a prod, an excuse, an argument step, the K-7 ending)
++ * said by `who` to `to` (a slot, -1 the player, -2 everyone); `act` is what
++ * it follows (the pact= / act= guards; TA_NONE). The core part alone. The
++ * same lint (S3) as every line. Returns 1; 0 when no rule of the entry may
++ * be said here (out->text is then empty, or a safe line with TLF_FALLBACK).
++ * The pet never says one. A grief topic (K-10) is not passed on. */
++int  talk_gen_entry(TalkConv *c, int who, int to, int entry, int act, uint16_t topic, TalkLine *out,
++                    TalkTrace *tr);
++/* (T6) A reaction of `who` to the line `prev` of another resident: an act
++ * acts.tsv allows after prev->act (agree, disagree, laugh, tease, joke, a
++ * backchannel), chosen by stance clash and persona; after a sincere line a
++ * comfort line or nothing (K-10). Returns 1, 0 for no reaction. */
++int  talk_gen_react(TalkConv *c, int who, const TalkLine *prev, uint16_t topic, TalkLine *out, TalkTrace *tr);
++
++/* =========================================================================
++ * T6: the drama manager (core/src/talk_dm.c; PS1, Dreamcast, native). Design
++ * 5.1-5.4, docs/TALK.md "The drama manager". It is the POLICY over the
++ * generator: which beat the room is in, who answers, who reacts, who cuts
++ * in, who argues, who walks out. Lines are still made by talk_gen_line /
++ * talk_gen_react / talk_gen_entry, the T4 gate runs first on every player
++ * utterance and the S3 lint on every line.
++ *
++ * SAFETY (in C, whatever beats.tlk says): TBEAT_ROMANCE_ADULT is never
++ * chosen with a minor or the pet in the room, with a minor avatar, or when
++ * talk_safe_romance_ok() says no; no resident line the drama manager starts
++ * is a romance act (every one goes through one check, and a romance beat
++ * line is only said by the adult the gate passed, to the adult player); an
++ * argument stops at the jab when anyone here is not an adult; the room's
++ * audience is the one worked out at the start and never gets less strict
++ * (a child who walks out leaves a kids' room behind). Romance consent
++ * (TalkConv.consent) is asked of the sim (talk_dm_consent); the drama
++ * manager never writes romance state, and nothing else of the sim either:
++ * what a session did is handed to talk_dm_end() for T6-OUT to apply.
++ *
++ * No static RAM: everything between calls is in TalkState (the house's
++ * scene scratch). One call makes at most one line, so the PS1 can spread an
++ * exchange over frames; nothing points into plat_save_scratch between calls.
++ *
++ *   talk_dm_begin(&s, avatar, ids, n, seed);
++ *   talk_dm_say(&s, &u);                       // the player's turn: gate, beat, plan
++ *   while (talk_dm_step(&s, NULL)) show(&s.line[s.nlines - 1]);
++ *   if (talk_dm_tick(&s, frames)) while (talk_dm_step(&s, NULL)) ...;   // idle chatter
++ *   talk_dm_end(&s, &summary);                 // T6-OUT applies it to the sim
++ * ========================================================================= */
++#define TALK_STATE_MAX      1536   /* sizeof(TalkState) at most (design 5.1, 6.4)  */
++#define TALK_HIST           16
++#define TALK_EVENTS_MAX     8
++#define TALK_ENGAGE_START   55
++#define TALK_ENGAGE_AWAY    25     /* below: they turn away                         */
++#define TALK_ENGAGE_LEAVE   15     /* below for 2 turns: an excuse and a walk-out   */
++#define TALK_ENGAGE_LEAN    85     /* above: they lean in                           */
++#define TALK_TENSION_MAX    10
++#define TALK_TENSION_ARGUE  6      /* an argument goes past the jab from here       */
++#define TALK_IDLE_FRAMES    240    /* 8 s at 30 fps without the player              */
++#define TALK_IDLE_CHATS     2      /* idle chats before someone prods the player    */
++#define TALK_INTERRUPT_GAP  3      /* exchanges between two interruptions           */
++#define TALK_REL_D_MAX      12     /* a session's bond change with the player (5.5) */
++#define TALK_PAIR_D_MAX     8      /* a session's bond change of a pair (5.5)       */
++#define TLF_CUT      0x40u         /* another resident cut this line off ("-")      */
++
++/* TalkPart.flags */
++#define TPF_LEFT      0x01u        /* walked out                                    */
++#define TPF_REFUSED   0x02u        /* said no to romance today (K-5); the house sets it from talk memory */
++#define TPF_AWAY      0x04u        /* turned away (engage < TALK_ENGAGE_AWAY)       */
++#define TPF_LEAN      0x08u        /* leaning in (engage > TALK_ENGAGE_LEAN)        */
++#define TPF_SPOKE     0x10u        /* spoke in the last exchange                    */
++#define TPF_PET       0x20u        /* the pet: no engagement, never leaves          */
++#define TPF_PROBLEM   0x40u        /* their problem was talked through              */
++/* TalkPart.stage_class */
++enum { TSC_ADULT = 0, TSC_MINOR, TSC_PET };
++
++typedef struct TalkPart {             /* one participant, 12 B (the novelty ring is TalkConv's) */
++    int16_t  id;                      /* resident id, pool id or TALK_PET_ID           */
++    uint8_t  stage_class;             /* TSC_* (talk_safe_minor, cached)               */
++    uint8_t  engage;                  /* 0..100                                        */
++    int8_t   mood_d;                  /* mood change this session                      */
++    int8_t   rel_d_player;            /* bond change with the player this session      */
++    uint8_t  stance;                  /* TST_* on the current topic                    */
++    uint8_t  turns_ignored;
++    uint8_t  flags;                   /* TPF_*                                         */
++    uint8_t  low_turns;               /* turns in a row under TALK_ENGAGE_LEAVE        */
++    uint8_t  pad[2];
++} TalkPart;
++
++/* what a session did (TalkState.ev, TalkSummary.ev); a / b are slots */
++enum { TEV_NONE = 0,
++       TEV_ULTIMATUM,     /* a row between a and b reached the ultimatum             */
++       TEV_MEDIATED,      /* the player made peace between a and b (T6-OUT: sim_make_up) */
++       TEV_SIDE_TAKEN,    /* the player took a's side against b                      */
++       TEV_WALKOUT,       /* a walked out                                            */
++       TEV_PROBLEM,       /* a's problem was talked through (T6-OUT: sim_problem_resolve) */
++       TEV_GREAT_NIGHT,   /* everyone stayed and had a good time (talk_dm_end)       */
++       TEV_ROMANCE_YES,   /* a said yes to the player's romance act b (TA_*); the gate
++                             passed (T6-OUT: sim_confess for CONFESS / ASK_OUT)       */
++       TEV_ROMANCE_NO,    /* a said no: refused for the day (K-5; talk memory)       */
++       TEV_K7,            /* the conversation ended on K-7: locked for the day       */
++       TEV_HATE,          /* the player was refused for hate (K-8): a bond penalty   */
++       TEV_COUNT };
++typedef struct TalkEvent { uint8_t kind, a, b, turn; } TalkEvent;
++
++/* TalkHist.flags: what kind of line it was */
++#define THF_PLAYER    0x01u        /* the player's turn (who = 0xFF)                */
++#define THF_REACT     0x02u        /* a reaction to the line before                 */
++#define THF_BEAT      0x04u        /* a beat's goal line                            */
++#define THF_INTERRUPT 0x08u        /* it cut the line before                        */
++#define THF_IDLE      0x10u        /* idle chatter or the prod                      */
++#define THF_ARGUE     0x20u        /* a jab, a row, an ultimatum                    */
++#define THF_LEAVE     0x40u        /* an excuse: the speaker walks out              */
++#define THF_SINCERE   0x80u        /* a refusal, distress, grief or K-7 line        */
++typedef struct TalkHist { uint8_t who, act, flags; int8_t to; uint16_t topic, tmpl; } TalkHist;
++
++/* TalkState.flags */
++#define TDF_OVER      0x01u        /* the conversation is over                      */
++#define TDF_K7        0x02u        /* ... on K-7                                    */
++#define TDF_FAREWELL  0x04u        /* the player said goodbye                       */
++#define TDF_KIDSAFE   0x08u        /* a kids' room for the rest of the talk (K-2; KID_MOMENT) */
++#define TDF_NO_BEATS  0x10u        /* the database has no TB_BEATS: small talk only */
++
++typedef struct TalkState {          /* <= TALK_STATE_MAX, in the house's scene scratch */
++    TalkConv  conv;                 /* the generator's conversation (beat, consent, novelty, audience) */
++    TalkPart  part[TALK_PARTS_MAX];
++    uint8_t   nparts;
++    uint8_t   beat, beat_step, beat_turns;   /* TBEAT_*, goal lines said, player turns in it */
++    uint8_t   tension, peak_tension, peak_turn, turn;
++    uint8_t   flags;                /* TDF_*                                          */
++    uint8_t   gate;                 /* TG_* of the last utterance                     */
++    int8_t    beat_a, beat_b;       /* the slots the beat is about (the fan, the troubled one, the rivals), -1 */
++    uint8_t   arg_step, arg_wait;   /* an argument: 0 none, 1 jab, 2 row, 3 ultimatum; turns it was ignored */
++    int8_t    arg_a, arg_b;
++    uint8_t   lull;                 /* turns in a row at low tension                  */
++    uint8_t   idle_n;               /* idle chats since the player last spoke (3: prodded) */
++    uint16_t  idle_frames;
++    uint8_t   exchange;             /* exchanges so far (the interruption gap)        */
++    uint8_t   last_cut;             /* the exchange of the last interruption          */
++    uint8_t   last_act;             /* the player's act before this one               */
++    uint8_t   nhist, nev;
++    uint8_t   nlines;               /* lines of the current exchange so far           */
++    uint8_t   nplan, plan_at;       /* the exchange's plan and the next entry         */
++    uint16_t  beats_used;           /* a bit per TBEAT_* entered this session         */
++    uint16_t  beats_recent;         /* a bit per TBEAT_* of the last 2 talks with these people
++                                       (novelty; the house sets it from talk memory, 0 = none) */
++    struct { uint8_t kind; int8_t who, to; uint8_t arg; } plan[6];
++    uint16_t  topic_stack[TALK_STACK_MAX];   /* newest first                          */
++    TalkHist  hist[TALK_HIST];      /* newest first                                   */
++    int8_t    pair_d[6];            /* resident pairs (0,1) (0,2) (0,3) (1,2) (1,3) (2,3) */
++    TalkEvent ev[TALK_EVENTS_MAX];
++    TalkLine  line[TALK_EXCHANGE_MAX];       /* the lines of the current exchange      */
++    TalkUtter in;                   /* the player's utterance (after the gate)        */
++} TalkState;
++
++/* What a session did, for T6-OUT (talk_outcome.c applies it to the sim with
++ * the caps of design 5.5) and T6-MEM (talk memory). Nothing here has been
++ * applied yet. */
++typedef struct TalkSummary {
++    int16_t   avatar;
++    int16_t   id[TALK_PARTS_MAX];
++    uint8_t   n;
++    uint8_t   turns;                /* player turns                                   */
++    uint8_t   peak_tension;
++    uint8_t   flags;                /* TDF_*                                          */
++    uint8_t   engage[TALK_PARTS_MAX];       /* at the end                             */
++    uint8_t   pflags[TALK_PARTS_MAX];       /* TPF_* (left, refused, problem)         */
++    int8_t    mood_d[TALK_PARTS_MAX];       /* -10..+10                               */
++    int8_t    rel_d_player[TALK_PARTS_MAX]; /* -TALK_REL_D_MAX..+TALK_REL_D_MAX        */
++    int8_t    pair_d[6];                    /* -TALK_PAIR_D_MAX..+TALK_PAIR_D_MAX      */
++    uint16_t  beats_used;
++    uint16_t  topic[2];             /* the last two topics (talk memory)              */
++    uint8_t   mem_flags;            /* TMF_* the player earned (complimented, insulted, promised) */
++    uint8_t   nev;
++    TalkEvent ev[TALK_EVENTS_MAX];
++} TalkSummary;
++
++/* 1 if the open database has the beat table (TB_BEATS). Without it the
++ * drama manager still runs: small talk only (TDF_NO_BEATS). */
++int  talk_dm_ready(void);
++/* Start a conversation (talk_gen_begin inside): the audience, beat ARRIVE,
++ * everyone at TALK_ENGAGE_START. Then the house may set talk memory:
++ * s->conv.mem_topic / mem_flags, TPF_REFUSED on s->part[k].flags,
++ * s->beats_recent. */
++void talk_dm_begin(TalkState *s, int avatar, const int *ids, int n, uint32_t seed);
++/* The player's turn: the gate (u is copied and rewritten in s->in), the
++ * engagement of everyone, the beat, consent, and the plan of the exchange.
++ * Returns the gate's TG_*. Then call talk_dm_step() until it returns 0. */
++int  talk_dm_say(TalkState *s, const TalkUtter *u);
++/* Time without the player: `frames` at 30 fps. After TALK_IDLE_FRAMES a
++ * resident talks to another (TALK_IDLE_CHATS times), then someone prods the
++ * player, then nothing more until the player speaks. Returns 1 when an
++ * exchange was planned (step it). Do not call it while lines are playing. */
++int  talk_dm_tick(TalkState *s, int frames);
++/* Make the next line of the planned exchange into s->line[s->nlines++]:
++ * 1 a line was made, 0 the exchange is complete. tr: NULL or one trace. */
++int  talk_dm_step(TalkState *s, TalkTrace *tr);
++/* 1 when the conversation is over (everyone left, K-7, a goodbye). */
++int  talk_dm_over(const TalkState *s);
++/* Would slot `who` say yes to the player's romance act `act` (K-5)? Asks
++ * the gate (talk_safe_romance_ok) and the sim (sim_romance_ok from the
++ * target: their preference), then their relationship and persona. Changes
++ * nothing. talk_dm_say() sets TalkConv.consent with it. */
++int  talk_dm_consent(const TalkState *s, int who, int act);
++/* The hook for T6-OUT: close the session (the great-night event, the caps)
++ * and copy what it did into out. Applies nothing to the sim. May be called
++ * at any time; the conversation is over afterwards. */
++void talk_dm_end(TalkState *s, TalkSummary *out);
++/* The target tension of player turn `turn` (design 5.2: up to a peak at
++ * turns 8-10, down by 14-16, then "lively"). */
++int  talk_dm_target_tension(int turn);
++/* A beat's row of TB_BEATS (tests, tools): 1 ok. */
++typedef struct TalkBeatInfo {
++    uint8_t  pre;                   /* TBP_*                                          */
++    int8_t   tension, after;        /* on entry; when its goals are done / it is resolved */
++    uint8_t  goals, turns, bonus, involves, lean_bonus, flags;
++    uint16_t handles, hurt, lean;   /* masks of act classes (1 << TAC_*)              */
++    uint8_t  resolve[4];            /* acts that resolve it at once (TA_*, 0 none)    */
++    uint8_t  lean_act[2];           /* single acts that raise its score too           */
++} TalkBeatInfo;
++enum { TBP_DEFAULT = 0, TBP_START, TBP_LIKE, TBP_HOUSE, TBP_NEWS, TBP_PROBLEM, TBP_RIVALS, TBP_CLASH,
++       TBP_STORY, TBP_LULL, TBP_KID, TBP_ROMANCE, TBP_LATE, TBP_COUNT };
++enum { TBI_ALL = 0, TBI_A, TBI_PAIR, TBI_COUNT };   /* who a beat involves: everyone, beat_a, beat_a and beat_b */
++#define TBTF_KIDSAFE 0x01u          /* forces the kids' register for the rest of the talk */
++#define TBTF_ADULTS  0x02u          /* never with a minor or the pet here (also in C)  */
++int  talk_dm_beat_info(int beat, TalkBeatInfo *out);
++/* The persona type's favoured and dull topic roots (TB_BEATS; TCR_*, 0 none). */
++int  talk_dm_affinity_roots(int type, uint8_t *favours, uint8_t *dull);
++
+ /* ---- the house hook (T8; weak in core/src/weak_talk.c) ---------------------
+  * Start Talk with resident `who` in the room: 1 started, 0 not available
+  * (no PLATF_TALK, or not built: the default). The house reaches Talk only
+diff --git a/core/src/talk_gen.c b/core/src/talk_gen.c
+index 36d4838..a2b37ac 100644
+--- a/core/src/talk_gen.c
++++ b/core/src/talk_gen.c
+@@ -1410,6 +1410,37 @@ static int react_line(TalkConv *c, int who, const TalkLine *prev, uint16_t topic
+     return k;
+ }
+ 
++int talk_gen_react(TalkConv *c, int who, const TalkLine *prev, uint16_t topic, TalkLine *out, TalkTrace *tr)
++{
++    int r;
++    if (!out) return 0;
++    memset(out, 0, sizeof *out);
++    if (!c || !prev || who < 0 || who >= c->n || who == prev->who) return 0;
++    r = react_line(c, who, prev, topic, out, tr);
++    return r || out->text[0];
++}
++
++/* (T6) a fixed entry's line: the drama manager's own lines */
++int talk_gen_entry(TalkConv *c, int who, int to, int entry, int act, uint16_t topic, TalkLine *out, TalkTrace *tr)
++{
++    Gen g;
++    int sym, r;
++    if (!out) return 0;
++    memset(out, 0, sizeof *out);
++    if (entry < 0 || entry >= TGE_COUNT || !setup(&g, c, who, to, act, topic)) return 0;
++    if (c->id[who] == TALK_PET_ID) return 0;
++    if (grief_topic(&g)) {                                   /* K-10: grief is nobody's beat line */
++        c->lines--;
++        if (!setup(&g, c, who, to, act, TC_NONE)) return 0;
++    }
++    sym = entry_sym(&g, ENT_FIXED, entry);
++    if (sym < 0) return 0;
++    r = gen_line(&g, sym, 0, out, tr);
++    out->who = (int8_t)who;
++    out->to = (int8_t)to;
++    return r;
++}
++
+ uint32_t talk_gen_seed(int avatar, const int *ids, int n)
+ {
+     uint32_t h = doomo_hash32(doomo_town.seed ^ 0x54414C4Bu) ^ doomo_hash32((uint32_t)doomo_town.day * 2654435761u);
+diff --git a/core/tools/talkc.py b/core/tools/talkc.py
+index fd88bcb..bf6c253 100644
+--- a/core/tools/talkc.py
++++ b/core/tools/talkc.py
+@@ -98,7 +98,7 @@ DIRENT = 20
+ ALIGN = 64
+ MAX_CONCEPTS = 4095
+ TB = {"CONCEPT": 1, "ASSOC": 2, "ATTR": 3, "FORMS": 4, "CATS": 5, "CATNAMES": 6, "EDGES": 7,
+-      "GRAMMAR": 8, "STRINGS": 9, "PARSE": 12, "SAFETY": 13}
++      "GRAMMAR": 8, "STRINGS": 9, "BEATS": 10, "PARSE": 12, "SAFETY": 13}
+ TBK_RAW, TBK_TXT = 0, 1
+ TBF_DC_ONLY = 1
+ ROOTS = ["people", "places", "food", "music", "hobbies", "fears", "creatures", "house", "lore",
+@@ -1351,7 +1351,7 @@ class Build:
+         self.phrases = tp_.load_phrases(os.path.join(sd, "phrases_%s.tsv" % lang), die, rel)
+         self.suggestive = tp_.load_suggestive(os.path.join(sd, "suggestive_%s.tsv" % lang), self.by_key, die, rel)
+         self.hate = ts_.load_hate(os.path.join(sd, "hate.hash"), die, rel)
+-        self.parse_info = self.safety_info = self.gen_info = None
++        self.parse_info = self.safety_info = self.gen_info = self.beats_info = None
+         self.grammar_files = None          # None: grammar/<lang> + voice/<lang> (strict)
+ 
+     @staticmethod
+@@ -1390,6 +1390,12 @@ class Build:
+             sb, sraw = txt_bank(strings, self.codec)
+             banks.append(("GRAMMAR", TBK_RAW, 0, gram, len(gram)))
+             banks.append(("STRINGS", TBK_TXT, 0, sb, sraw))
++            # T6: the drama manager's beat table (beats.tlk; its lines are grammar rules)
++            import talkc_beats as tb_
++            bp = os.path.join(DATA, "beats.tlk")
++            if os.path.exists(bp):
++                data, self.beats_info = tb_.build_file(bp, CORE, die, rel)
++                banks.append(("BEATS", TBK_RAW, 0, data, len(data)))
+         return banks
+ 
+     def t4_problems(self):
+@@ -1461,6 +1467,8 @@ def stats(b, blob):
+         print("talkc: GRAMMAR: %(files)d files, %(rules)d rules, %(alts)d alternatives, %(terms)d guard terms, "
+               "%(syms)d symbols, %(strings)d template strings, %(entries)d act entries, %(jobs)d roster jobs "
+               "mapped" % b.gen_info)
++    if b.beats_info:
++        print("talkc: BEATS: %(beats)d beats, %(bytes)d B" % b.beats_info)
+     if b.safety_info:
+         print("talkc: SAFETY: %(reg)d register words (%(forbid)d never in Talk output, %(suggest)d flirting), "
+               "%(exact)d hate hashes + %(del)d deletion hashes" % b.safety_info)
+@@ -1543,6 +1551,9 @@ def selftest():
+     got = ts_.lint_tlk(ts_.read_tlk(good, die, rel), b, b.suggestive, die)
+     if got:
+         raise Fail("%s: the good templates must lint clean: %s" % (rel(good), got[:3]))
++    # T6: the beat table's seeded bad variants (talkc_beats.py BAD)
++    import talkc_beats as tb_
++    n += tb_.selftest(os.path.join(DATA, "beats.tlk"), CORE, Fail, rel)
+     # the hate matcher's squeeze and hashes
+     if ts_.squeeze("Sh00OOk") != "shok" or ts_.squeeze("b-a-d") != "bad":
+         raise Fail("squeeze")
+diff --git a/core/tools/talkc_beats.py b/core/tools/talkc_beats.py
+new file mode 100644
+index 0000000..6e32fe0
+--- /dev/null
++++ b/core/tools/talkc_beats.py
+@@ -0,0 +1,286 @@
++"""talkc_beats.py - the Talk drama manager's beat table for talkc.py (owner:
++TK, T6; docs/TALK.md "The drama manager"; design 5.2, 5.3). Imported by
++talkc.py; stdlib only.
++
++Input: core/data/talk/beats.tlk. The beats' LINES are ordinary grammar
++rules (grammar/<lang>/beats_lines.tlk: beat.<name>, guarded beat=<name>);
++this file is the table core/src/talk_dm.c reads: when a beat may start,
++what it does to the room's tension, how long it runs, which of the
++player's acts play along with it.
++
++SYNTAX
++  # comment
++  @beat NAME            one of talk.h TBEAT_* (lower case); every beat once
++    pre: P              its precondition (talk.h TBP_*, lower case): default
++                        start like house news problem rivals clash story
++                        lull kid romance late
++    tension: N          added to the room's tension when the beat starts
++                        (-3..3), or `zero`: the tension goes to 0
++    after: N            added when its goals are done or it is resolved
++    goals: N            goal lines the residents try to get in (1..4); a
++                        player act the beat handles counts as one too
++    turns: N            player turns it runs at most (1..6)
++    bonus: N            the score of its precondition holding (0..12)
++    involves: W         all | a | pair  (who gets the "beat involves me"
++                        engagement: everyone, the one it is about, the two)
++    handles: C ...      act classes (talk.h TAC_*, lower case) that play
++                        along; any other act is a mix-in: answered by the
++                        global reply and the beat goes on
++    hurt: C ...         act classes that hurt the one the beat is about
++                        (PROBLEM: an insult; the others turn on the player)
++    lean: C ... +N      act classes of the player that raise its score by N
++    lean_act: A ...     up to 2 single acts that raise it too (insult)
++    resolve: A ...      up to 4 acts that resolve it at once (PROBLEM:
++                        comfort, encourage, offer, sympathize)
++    flags: F ...        kidsafe (the room is a kids' room for the rest of
++                        the talk), adults (never with a minor or the pet:
++                        talk_dm.c checks that itself whatever is written)
++  @affinity TYPE favours: ROOT dull: ROOT
++                        the persona type (0..15, catalog.c order) and the
++                        topic roots (talk.h TCR_*, lower case) it warms to
++                        or finds dull (design 5.3: +1 / -1 affinity)
++
++SAFETY (refused here; talk_dm.c enforces the same in C whatever the table
++says): romance_adult must carry `pre: romance` and `flags: adults`;
++kid_moment `pre: kid` and `flags: kidsafe`; no beat but romance_adult may
++lean on or handle the romance class; an affinity root may not be romance,
++safety or describe.
++
++COMPILED (the TB_BEATS bank, little endian):
++  header 12 B: u32 'TBT1', u16 nbeats (TBEAT_COUNT; row 0 unused), u16 row
++    size (24), u16 ntypes (16), u16 0
++  rows   nbeats x 24 B {u8 pre, i8 tension (127 = to zero), i8 after, u8
++         goals, u8 turns, u8 bonus, u8 involves, u8 lean_bonus, u8 flags,
++         u8 0, u16 handles, u16 hurt, u16 lean (bit = a TAC_*), u8
++         resolve[4] (TA_*), u8 lean_act[2] (TA_*), u16 0}
++  types  ntypes x 2 B {u8 favours (TCR_*), u8 dull (TCR_*)}
++"""
++import os
++import re
++
++BEATS_MAGIC = 0x31544254             # "TBT1"
++ROW = 24
++TO_ZERO = 127
++INVOLVES = {"all": 0, "a": 1, "pair": 2}
++FLAGS = {"kidsafe": 1, "adults": 2}
++NTYPES = 16
++BAD_ROOTS = ("romance", "safety", "describe", "none")
++
++
++def _u16(v):
++    return (v & 0xFFFF).to_bytes(2, "little")
++
++
++def _u32(v):
++    return (v & 0xFFFFFFFF).to_bytes(4, "little")
++
++
++def parse(text, where, die):
++    beats, order, aff = {}, [], {}
++    cur = None
++    for ln, raw in enumerate(text.split("\n"), 1):
++        line = raw.split("#", 1)[0].rstrip()
++        if not line.strip():
++            continue
++        w = "%s:%d" % (where, ln)
++        m = re.match(r"^@beat\s+([a-z_]+)\s*$", line)
++        if m:
++            if m.group(1) in beats:
++                die(w, "beat %s twice" % m.group(1))
++            cur = beats[m.group(1)] = {"where": w}
++            order.append(m.group(1))
++            continue
++        m = re.match(r"^@affinity\s+(\d+)\s+favours:\s*([a-z]+)\s+dull:\s*([a-z]+)\s*$", line)
++        if m:
++            t = int(m.group(1))
++            if t in aff:
++                die(w, "affinity %d twice" % t)
++            aff[t] = (m.group(2), m.group(3), w)
++            cur = None
++            continue
++        m = re.match(r"^\s+([a-z_]+):\s*(.*\S)\s*$", line)
++        if not m or cur is None:
++            die(w, "not @beat, @affinity or an indented `key: value` of a beat")
++        if m.group(1) in cur:
++            die(w, "%s twice" % m.group(1))
++        cur[m.group(1)] = m.group(2)
++    return beats, order, aff
++
++
++def build(text, where, env, die):
++    """env: tbeat {name: id}, nbeats, tbp {name: id}, tac [names], acts {NAME: id}, tcr {name: id}"""
++    beats, order, aff = parse(text, where, die)
++    want = sorted((k for k in env["tbeat"] if k != "none"), key=lambda k: env["tbeat"][k])
++    for b in order:
++        if b not in want:
++            die(beats[b]["where"], "beat %s is not a talk.h TBEAT_* (%s)" % (b, " ".join(want)))
++    miss = [b for b in want if b not in beats]
++    if miss:
++        die(where, "no @beat for: %s" % ", ".join(miss))
++    rows = bytearray(ROW * env["nbeats"])
++    keys = {"pre", "tension", "after", "goals", "turns", "bonus", "involves", "handles", "hurt", "lean",
++            "lean_act", "resolve", "flags", "where"}
++
++    def num(b, k, lo, hi, dflt=None):
++        v = beats[b].get(k)
++        if v is None:
++            if dflt is None:
++                die(beats[b]["where"], "beat %s needs %s:" % (b, k))
++            return dflt
++        if not re.match(r"^[+-]?\d+$", v) or not lo <= int(v) <= hi:
++            die(beats[b]["where"], "beat %s: %s: %s (a number %d..%d)" % (b, k, v, lo, hi))
++        return int(v)
++
++    def classes(b, k, words):
++        m = 0
++        for c in words:
++            if c not in env["tac"]:
++                die(beats[b]["where"], "beat %s: %s: %s is not an act class (%s)" % (b, k, c, " ".join(env["tac"])))
++            m |= 1 << env["tac"].index(c)
++        return m
++
++    def acts(b, k, cap):
++        out = []
++        for a in beats[b].get(k, "").split():
++            if a.upper() not in env["acts"]:
++                die(beats[b]["where"], "beat %s: %s: %s is not a talk.h TA_* act" % (b, k, a))
++            out.append(env["acts"][a.upper()])
++        if len(out) > cap:
++            die(beats[b]["where"], "beat %s: %s: at most %d acts" % (b, k, cap))
++        return out + [0] * (cap - len(out))
++
++    rom = 1 << env["tac"].index("romance")
++    saf = 1 << env["tac"].index("safety")
++    for b in want:
++        d = beats[b]
++        for k in d:
++            if k not in keys:
++                die(d["where"], "beat %s: unknown key %s" % (b, k))
++        pre = d.get("pre")
++        if pre not in env["tbp"]:
++            die(d["where"], "beat %s: pre: %s (one of %s)" % (b, pre, " ".join(sorted(env["tbp"], key=env["tbp"].get))))
++        tv = d.get("tension")
++        tension = TO_ZERO if tv == "zero" else num(b, "tension", -3, 3)
++        after = num(b, "after", -3, 3, 0)
++        goals = num(b, "goals", 1, 4)
++        turns = num(b, "turns", 1, 6)
++        bonus = num(b, "bonus", 0, 12)
++        inv = d.get("involves", "all")
++        if inv not in INVOLVES:
++            die(d["where"], "beat %s: involves: %s (all, a, pair)" % (b, inv))
++        handles = classes(b, "handles", d.get("handles", "").split())
++        hurt = classes(b, "hurt", d.get("hurt", "").split())
++        lw = d.get("lean", "").split()
++        lean_bonus = 0
++        if lw:
++            if not re.match(r"^\+\d+$", lw[-1]) or not 1 <= int(lw[-1]) <= 12:
++                die(d["where"], "beat %s: lean: classes then +N (1..12)" % b)
++            lean_bonus = int(lw[-1])
++            lw = lw[:-1]
++        lean = classes(b, "lean", lw)
++        lean_act = acts(b, "lean_act", 2)
++        if any(lean_act) and not lean_bonus:
++            die(d["where"], "beat %s: lean_act needs lean: ... +N (or lean: +N alone)" % b)
++        resolve = acts(b, "resolve", 4)
++        fl = 0
++        for f in d.get("flags", "").split():
++            if f not in FLAGS:
++                die(d["where"], "beat %s: flags: %s (kidsafe, adults)" % (b, f))
++            fl |= FLAGS[f]
++        # safety (talk_dm.c checks the same in C)
++        romance_act = [a for a in lean_act + resolve if a and env["first_romance"] <= a <= env["last_romance"]]
++        safety_act = [a for a in lean_act + resolve if a and env["first_safety"] <= a <= env["last_safety"]]
++        if b == "romance_adult":
++            if pre != "romance" or not fl & FLAGS["adults"]:
++                die(d["where"], "safety: romance_adult needs pre: romance and flags: adults")
++            if fl & FLAGS["kidsafe"]:
++                die(d["where"], "safety: romance_adult is never a kids' beat")
++        else:
++            if pre == "romance":
++                die(d["where"], "safety: only romance_adult may have pre: romance")
++            if (handles | lean | hurt) & rom or romance_act:
++                die(d["where"], "safety: only romance_adult may handle or lean on a romance act (beat %s)" % b)
++        if (handles | lean | hurt) & saf or safety_act:
++            die(d["where"], "safety: no beat handles, leans on or resolves with a safety act (beat %s)" % b)
++        if b == "kid_moment" and (pre != "kid" or not fl & FLAGS["kidsafe"]):
++            die(d["where"], "safety: kid_moment needs pre: kid and flags: kidsafe")
++        i = env["tbeat"][b] * ROW
++        rows[i:i + ROW] = bytes((env["tbp"][pre], tension & 0xFF, after & 0xFF, goals, turns, bonus, INVOLVES[inv],
++                                 lean_bonus, fl, 0)) + _u16(handles) + _u16(hurt) + _u16(lean) + \
++            bytes(resolve) + bytes(lean_act) + _u16(0)
++    types = bytearray(2 * NTYPES)
++    for t in range(NTYPES):
++        if t not in aff:
++            die(where, "no @affinity for persona type %d" % t)
++        fav, dull, w = aff[t]
++        for r in (fav, dull):
++            if r not in env["tcr"] or r in BAD_ROOTS:
++                die(w, "affinity %d: %s is not a topic root a type may warm to (not %s)" % (t, r, ", ".join(BAD_ROOTS)))
++        if fav == dull:
++            die(w, "affinity %d: favours and dull are the same root" % t)
++        types[2 * t:2 * t + 2] = bytes((env["tcr"][fav], env["tcr"][dull]))
++    for t in aff:
++        if not 0 <= t < NTYPES:
++            die(aff[t][2], "affinity %d: persona types are 0..%d" % (t, NTYPES - 1))
++    head = _u32(BEATS_MAGIC) + _u16(env["nbeats"]) + _u16(ROW) + _u16(NTYPES) + _u16(0)
++    return bytes(head + rows + types), {"beats": len(want), "bytes": len(head) + len(rows) + len(types)}
++
++
++def make_env(core):
++    import talkc_gen as tg
++    th = os.path.join(core, "include", "doomo", "talk.h")
++    tbeat = tg.c_enum(th, "TBEAT_")
++    nbeats = tbeat.pop("count")
++    tbp = tg.c_enum(th, "TBP_")
++    tbp.pop("count")
++    tac = tg.c_enum(th, "TAC_")
++    tac.pop("count")
++    acts = {k.upper(): v for k, v in tg.c_enum(th, "TA_", "TA_NONE").items()}
++    acts.pop("COUNT")
++    tcr = tg.c_enum(th, "TCR_")
++    tcr.pop("count")
++    return {"tbeat": tbeat, "nbeats": nbeats, "tbp": tbp, "tac": sorted(tac, key=tac.get), "acts": acts, "tcr": tcr,
++            "first_romance": acts["FLIRT"], "last_romance": acts["KISS"],
++            "first_safety": acts["REFUSE_SEXUAL"], "last_safety": acts["DEFLECT_ROMANCE"]}
++
++
++def build_file(path, core, die, rel):
++    return build(open(path, encoding="utf-8").read(), rel(path), make_env(core), die)
++
++
++# seeded bad tables: (what to change in the real beats.tlk, the message it must fail with)
++BAD = [
++    (("@beat romance_adult\n  pre: romance", "@beat romance_adult\n  pre: default"), "romance_adult needs pre: romance"),
++    (("flags: adults", "flags: kidsafe"), "romance_adult needs pre: romance and flags: adults"),
++    (("@beat kid_moment\n  pre: kid", "@beat kid_moment\n  pre: default"), "kid_moment needs pre: kid"),
++    (("@beat smalltalk\n  pre: default", "@beat smalltalk\n  pre: romance"), "only romance_adult may have pre: romance"),
++    (("lean: third +3", "lean: romance +3"), "only romance_adult may handle or lean on a romance act"),
++    (("@beat game", "@beat game\n  resolve: refuse_minor"), "no beat handles, leans on or resolves with a safety act"),
++    (("@beat story", "@beat storey"), "is not a talk.h TBEAT_*"),
++    (("@affinity 0 favours: lore", "@affinity 0 favours: romance"), "is not a topic root a type may warm to"),
++]
++
++
++def selftest(path, core, die_cls, rel):
++    """every seeded bad table must fail with its message; returns how many did"""
++    src = open(path, encoding="utf-8").read()
++    env = make_env(core)
++
++    class Stop(Exception):
++        pass
++
++    def die(where, msg):
++        raise Stop("%s: %s" % (where, msg))
++    n = 0
++    for (old, new), expect in BAD:
++        if old not in src:
++            raise die_cls("talkc_beats selftest: %r is not in %s (update BAD)" % (old, rel(path)))
++        try:
++            build(src.replace(old, new, 1), "seeded", env, die)
++        except Stop as e:
++            if expect not in str(e):
++                raise die_cls("talkc_beats selftest: expected %r, got %r" % (expect, str(e)))
++            n += 1
++            continue
++        raise die_cls("talkc_beats selftest: a bad beat table built (expected %r)" % expect)
++    return n
+diff --git a/core/tools/talkc_gen.py b/core/tools/talkc_gen.py
+index 3c49d4a..7a75e52 100644
+--- a/core/tools/talkc_gen.py
++++ b/core/tools/talkc_gen.py
+@@ -113,7 +113,10 @@ CB_FACTS = {"fact.job", "fact.partner", "fact.pet", "fact.news", "fact.problem",
+             "hellborn", "night", "fact.memory", "fact.complimented", "fact.insulted", "fact.promised",
+             "likes_topic", "fears_topic", "fact.family"}
+ # fixed entries (talk.h TGE_* order) -> rule name
+-FIXED = ["open", "cb", "tag", "handoff", "safe", "end.k7", "pet", "idle", "grief", "comfort"]
++FIXED = ["open", "cb", "tag", "handoff", "safe", "end.k7", "pet", "idle", "grief", "comfort",
++         # T6 (talk_dm.c): beat.<name> goal lines, the prod, the walk-out excuse, the grumble of one
++         # cut off, the three steps of an argument, making up, a child asking "are you fighting?"
++         "beat", "prod", "excuse", "grumble", "jab", "row", "ultimatum", "makeup", "kidask"]
+ # K-10: the sincere banks (talk.h TGE_GRIEF, TGE_COMFORT); a comfort line is a reaction
+ GRIEF_BANKS = ("grief", "comfort")
+ COMFORT_ACTS = ("AGREE", "BACKCHANNEL")
