@@ -20,7 +20,7 @@ int plat_screen_h(void) { return DC_SCREEN_H; }
 /* every 2D call, the post effects and plat_hold_frame: gfx2d.c (DC3) */
 
 /* ---- 3D and the world renderers (DC6; the overworld is DC7's, the house DC8's) ---- */
-void plat_view3d(const DoomoView3D *v) { (void)v; }
+/* plat_view3d: view3d.c (DC6) */
 /* plat_overworld: overworld.c (DC7); plat_room, plat_room_project: room.c (DC8) */
 
 /* plat_tone, plat_sample and the music hooks: audio.c (DC5) */

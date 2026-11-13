@@ -179,7 +179,6 @@ static void test_parity(void)
     printf("parity: %d level frames below %.0f%% (eyes beside a border block lower than their floor: docs/DREAMCAST.md)\n", lowf, FRAME_MIN * 100.0);
     CHECK(lsum / ln >= PARITY_MIN, "parity: level views mean %.1f%% below %.0f%%", lsum / ln * 100.0, PARITY_MIN * 100.0);
     CHECK(psum / pn >= PITCH_MIN, "parity: pitched views mean %.1f%% below %.0f%%", psum / pn * 100.0, PITCH_MIN * 100.0);
-    CHECK(sum / frames >= PARITY_MIN * 0.0, "parity: mean %.1f%% below %.0f%%", sum / frames * 100.0, PARITY_MIN * 100.0);
     CHECK(nodraw == 0, "parity: %d views saw no cell", nodraw);
 }
 
@@ -200,7 +199,7 @@ static void test_tint(void)
     both(&v, rgb);
     tinted = parity(rgb, 0, 0, DC2D_LW, DC2D_LH);
     printf("tint: plain %.1f%%, red 12/16 %.1f%%\n", plain * 100.0, tinted * 100.0);
-    CHECK(tinted >= 0.5, "tint: a red view matches only %.1f%%", tinted * 100.0);
+    CHECK(tinted >= 0.6, "tint: a red view matches only %.1f%%", tinted * 100.0);
 }
 
 static void test_viewport(void)
