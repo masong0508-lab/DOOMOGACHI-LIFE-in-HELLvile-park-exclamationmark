@@ -1,0 +1,284 @@
+# core/data/talk/grammar/en/warm_play.tlk - more replies to jokes, laughs, high fives and warm
+# greetings (owner: TK; T5b package T5B-WARM). PG-21 for adults means mean-quick comedy, not
+# crude: these lines are clean in any room, nothing aimed at a kid, no register word, no
+# joke about grief, ghosts' deaths excepted as the game's own gag. One exclamation mark a line
+# unless the speaker is loud or a kid. Syntax: core/tools/talkc_gen.py.
+
+# ---- JOKE (the player jokes): laugh ----------------------------------------------------------
+@rule core.joke.w_laugh act: laugh
+  "Ha! That was good. I'm angry at how good that was."
+  "Ha ha! Okay, you got me. Take a bow."
+  "Oh no, I laughed. I was trying to keep a straight face."
+  "Heh. That one snuck up on me. Nice."
+  "Bwah! Do the voice again. The voice was perfect."
+  "I snorted. In public. You owe me a tissue."
+  "Ha! Hold on, I need to write that down. {.}Nope, forgot it."
+  "That's so dumb. I love it. Do another."
+  "I'm cackling in my head. It's loud in here."
+  "Good one. I'll be laughing about that in the shower."
+  "Ha, ha, ha. {.}Okay, that last one was real."
+  "Hah! You're a menace. A funny menace."
+  "Stop, my cheeks hurt. They're not used to this."
+  "Ha! I'm stealing that. I'll say it as my own."
+  "Ha! The timing. Chef's kiss, whatever that means."
+@rule core.joke.w_laugh_polite guard: polite act: laugh
+  "Oh, how delightful. That made me chuckle."
+  "What a clever thing to say. You've got a way with words."
+  "I do enjoy your wit. It's a pleasure."
+@rule core.joke.w_laugh_flat guard: flat act: laugh
+  "Ha. {.}That was a laugh. Internal, but hearty."
+  "Heh. That was funny. I'm doing a little smile."
+  "Good one. I'm laughing. Just in my head."
+@rule core.joke.w_laugh_blunt guard: blunt act: laugh
+  "Okay, that was funny. Once. Don't push it."
+  "Ha. Fine, I laughed. Are you happy?"
+@rule core.joke.w_laugh_loud guard: loud act: laugh
+  "HA HA HA! Oh, that's GOOD. Tell it AGAIN!"
+  "BWAHAHA! Wait, hold on, I need to sit. That was GREAT!"
+  "Oh my gosh, I'm DYING. That's the best one yet!"
+@rule core.joke.w_laugh_elder guard: elder act: laugh
+  "Ha! In my day we only had three jokes. That's a fourth."
+  "Oh, that's a good one. I'll save it for the bingo hall."
+  "Heh heh. You young ones are quick. I like it."
+@rule core.joke.w_laugh_teen guard: teen&!kid_speaker act: laugh
+  "Okay, that was actually funny. I'm so mad."
+  "Ha, I'm dead. Send help. {.}Not literally."
+  "Stop, that's so dumb. Do it again."
+@rule core.joke.w_laugh_kid guard: kid_speaker tags: kid act: laugh
+  "Ha ha ha! That's the funniest. Tell it to my mom!"
+  "Hee hee! I laughed so hard my nose did a thing!"
+  "Another one! Another one! Please?"
+  "Ha ha! My tummy hurts. The good kind!"
+@rule core.joke.w_laugh_happy guard: mood=happy act: laugh
+  "Ha! I'm in such a good mood, everything's funny."
+  "Oh, that did it. I'm laughing and I can't stop."
+@rule core.joke.w_laugh_friend guard: rel=friend act: laugh
+  "Ha! You always know how to make me laugh."
+  "Of course you'd say that. That's why I like you."
+@rule core.joke.w_laugh_hellborn guard: hellborn&!kid_speaker act: laugh
+  "Ha! Down in the pit, we call that a good time. Good one."
+  "Heh. That's almost as funny as the damned queue. Almost."
+@rule core.joke.w_laugh_ghost guard: ghost act: laugh
+  "Oooh ha ha! I'm so tickled. I'm going to rattle."
+  "That's to die for. {.}Sorry. Old habit."
+
+# ---- JOKE: joke back, tease, dismiss, mock, agree -------------------------------------------
+@rule core.joke.w_top act: joke
+  "That reminds me of a joke. {.}I forgot it. That's the joke."
+  "You think that's funny? Wait till you hear my cousin's."
+  "I have a better one. It involves a duck and a loan."
+  "Why did the chicken join the band? Because it had the drumsticks."
+  "What do you call a sleeping bull? A bulldozer. {.}I'll see myself out."
+  "Knock knock. {.}It's the punchline. Let it in."
+  "Okay, you're hired. We need more of that."
+  "I was going to say that. Then I forgot. Then you said it."
+  "Here's a joke. {.}No, it's too good. I'll save it for later."
+  "That joke is a lot like my life. Short, and over too soon."
+@rule core.joke.w_top_quirky guard: quirky act: joke
+  "What did the sock say to the shoe? Nothing, they're both busy."
+  "A cloud walked into a bar. It was a mist-take."
+  "I once told a joke to a hedge. It's still laughing."
+@rule core.joke.w_top_serious guard: serious act: joke
+  "That was acceptable. I'll offer a counter, but only a short one."
+  "I'm told that was a joke. I will submit a rebuttal in writing."
+@rule core.joke.w_top_kid guard: kid_speaker tags: kid act: joke
+  "Knock knock! Who's there? Boo! Don't cry, it's a joke."
+  "What's brown and sticky? A stick! Ha ha ha!"
+  "I know a better one! Why did the banana go to the doctor?"
+@rule core.joke.w_tease act: tease
+  "Did you practice that? I could hear the gears."
+  "Hm. Funny for you. Let me check with the other people."
+  "I'd laugh harder if you didn't look so proud."
+  "That's cute. Did you just think of it, or did it find you?"
+  "You think you're funny. And honestly? Fair."
+  "Wow. You got that from a cereal box."
+  "Nice. Do you have a cousin who does stand-up?"
+  "That joke walked so my next joke could run."
+@rule core.joke.w_tease_rival guard: rel=rival act: tease
+  "Was that a joke? I thought your face just tripped."
+  "Ha, ha, ha. {.}There, I laughed. We're even."
+@rule core.joke.w_dismiss act: dismiss
+  "Boo, bad, terrible. {.}Say it again, though."
+  "I'll give that a six out of ten. Maybe a seven."
+  "That was a joke? I thought you were clearing your throat."
+  "Eh. It's got potential. It needs a nap, and some work."
+  "Close. You were so close to funny. Keep trying."
+  "Nope. Not today. Come back with a better one."
+@rule core.joke.w_dismiss_blunt guard: blunt act: dismiss
+  "Nope. Didn't land. Try something else."
+  "No. That was bad. Please stop."
+@rule core.joke.w_mock act: mock
+  "Oh, a comedian! Everybody, we have a comedian. {.}Does anybody want him?"
+  "You should do that at open mic. Far, far away."
+  "Haha. Hilarious. I'm so impressed I forgot to breathe."
+  "Truly, the next generation of comedy is here. Quick, hide."
+@rule core.joke.w_agree act: agree
+  "That's so true, though. It's funny because it's true."
+  "Yes! That's exactly it. You said it better than I could."
+  "Ha, you're not wrong. That's the worst part."
+  "Right? Somebody had to say it."
+  "Honestly, same. {.}That's my life."
+
+# ---- LAUGH (the player laughs): laugh, joke, tease, backchannel, complain --------------------
+@rule core.laugh.w_laugh act: laugh
+  "Ha ha! Your laugh is contagious. Now I'm doing it."
+  "Heh. Okay, it's funny. We're both laughing for no reason."
+  "Hee hee! Stop, I can't breathe!"
+  "Ha ha ha! Wait, what are we laughing at?"
+  "Now you've got me started. Oh dear. {.}Ha ha ha!"
+  "Hah! That's the kind of laugh I like. A real one."
+  "Ha! I love it when you do that."
+  "Oh, we're both gone. Somebody call the laugh police."
+  "Hee. It's the best sound. Do it more."
+  "Ha ha! Okay, okay. {.}Phew, wow."
+@rule core.laugh.w_laugh_flat guard: flat act: laugh
+  "Ha. {.}I'm laughing. It's inward, but it's big."
+  "Heh. Your laugh is nicer than mine. Mine's a sigh."
+@rule core.laugh.w_laugh_loud guard: loud act: laugh
+  "HA HA HA! Yes, laugh with me. Louder!"
+  "BWAHAHA! Oh my gosh, we're a DUO!"
+@rule core.laugh.w_laugh_elder guard: elder act: laugh
+  "Ha ha ha! Oh dear, my back. Worth it."
+  "Hee hee. Haven't laughed like that since last Thursday."
+@rule core.laugh.w_laugh_kid guard: kid_speaker tags: kid act: laugh
+  "Hee hee hee! You're funny when you laugh!"
+  "Ha ha ha! Do it again, do the snort!"
+@rule core.laugh.w_laugh_friend guard: rel=friend act: laugh
+  "Ha! It's the best part of my day, laughing with you."
+  "We always do this. I love that we always do this."
+@rule core.laugh.w_joke act: joke
+  "What's so funny? Wait, was it me? It was me, wasn't it."
+  "I didn't even say anything and you're laughing. I'm that good."
+  "Is it the hat? It's the hat. Everyone laughs at the hat."
+  "You laugh like a goose in a hurry. Bless your heart."
+  "Hold on, let me get my notes. {.}I think I'm hilarious."
+  "Let it out. Laughing is cheaper than therapy."
+@rule core.laugh.w_tease act: tease
+  "Are you laughing at me, or with me? I need to know."
+  "You laughed at your own thing again, didn't you?"
+  "That's not a laugh, that's a hiccup with ambition."
+  "You do realise I didn't say anything funny?"
+  "Okay, go on. Get it out of your system."
+@rule core.laugh.w_backchannel act: backchannel
+  "Heh. Yeah."
+  "Ha. Mm-hm."
+  "Right? Good times."
+  "Aw, yes. That was fun."
+  "Mm. I love a good giggle."
+@rule core.laugh.w_complain act: complain
+  "Okay, that's enough. I can't breathe. I'm done."
+  "My ribs hurt. That's your fault. Send a bill."
+  "Stop, stop. I have to stand up. I have to sit down."
+  "You're making it worse. I've got hiccups now."
+
+# ---- HIGH_FIVE -------------------------------------------------------------------------------
+@rule core.high_five.w_back act: high_five
+  "High five! {.}Ow. That's a good ow."
+  "Up top! Perfect. Whoo!"
+  "Smack! Nice one. We're a great team."
+  "Yes! Did you hear the clap? That was a pro clap."
+  "Gimme five! {.}Gimme another. I like them."
+  "Boom. Textbook. We should do this professionally."
+  "High five! Wait, I missed. Let's go again."
+  "Tap! Nice. That's how it's done."
+@rule core.high_five.w_back_flat guard: flat act: high_five
+  "Up top. {.}That was my happy slap."
+  "Sure. Five. {.}That's me being thrilled."
+@rule core.high_five.w_back_loud guard: loud act: high_five
+  "WHOOP! HIGH FIVE! That was the BEST one ever."
+  "YEAH, BOOM! We're a PAIR of CHAMPIONS!"
+@rule core.high_five.w_back_elder guard: elder act: high_five
+  "Oh, careful. Gentle. These old hands have seen things."
+  "A high five! Haven't had one since the nineties."
+@rule core.high_five.w_back_kid guard: kid_speaker tags: kid act: high_five
+  "Yay, high five! Now a low five, now a sideways five!"
+  "Slap! That was loud. I'm the loudest!"
+@rule core.high_five.w_laugh act: laugh
+  "Ha! We totally missed. That counts, right?"
+  "Ha ha! It felt like clapping in slow motion."
+  "Oops, my hand slid. Let's call it a stylish miss."
+@rule core.high_five.w_joke act: joke
+  "That was a five. This is a five-and-a-half. Ow."
+  "Keep your hand up. I'm going for the world record."
+  "Nice. I'm putting that on my record. And my wrist."
+  "Five! Out of ten, I'd rate us eleven."
+@rule core.high_five.w_dismiss act: dismiss
+  "Not now, I'm busy. Maybe later. Okay, now."
+  "Nope. I'm not in a high five mood. {.}Okay, fine."
+
+# ---- GREET, with warmth ----------------------------------------------------------------------
+@rule core.greet.w_warm act: greet
+  "Hi! There you are! I was hoping you'd come by."
+  "Hello, you! It's so good to see you."
+  "Well, look who's here. My favourite person today."
+  "Hey! Come in, come in. I'm glad you're here."
+  "Good to see you! You're looking well. Or at least upright."
+  "Hi there! Perfect timing. I was just thinking about you."
+  "Oh, hello! You've made my day a little better."
+  "Hey, you! Pull up a chair. Or a floor."
+  "A friendly face! Be still my heart. Welcome."
+  "Hi! I was starting to feel lonely. Now I'm fine."
+  "Hello hello! Welcome. Your timing is magical."
+  "Hey! I just put the kettle on. Metaphorically."
+@rule core.greet.w_warm_polite guard: polite act: greet
+  "Good day to you. It's always a pleasure."
+  "How lovely to see you. Do come in."
+  "Welcome, welcome. I trust you're well?"
+@rule core.greet.w_warm_flat guard: flat act: greet
+  "Hi. {.}I'm happy to see you. This is my happy face."
+  "Hello. Good to see you, I mean it. Look, I'm smiling."
+@rule core.greet.w_warm_blunt guard: blunt act: greet
+  "Oh, it's you. Good. Sit."
+  "There you are. About time. I missed you, so don't say anything."
+@rule core.greet.w_warm_loud guard: loud act: greet
+  "HEY! It's YOU. I'm so happy to see you I could scream!"
+  "HELLO! You came. I'm SO glad you came!"
+@rule core.greet.w_warm_elder guard: elder act: greet
+  "Ah, there you are, dear. Come, sit, it's nice to see a face."
+  "Hello, hello. My old eyes light up when you come in."
+@rule core.greet.w_warm_teen guard: teen&!kid_speaker act: greet
+  "Hey. Good to see you. Don't make it weird."
+  "Oh, hey. Sit down, I'm glad you're here. Whatever."
+@rule core.greet.w_warm_kid guard: kid_speaker tags: kid act: greet
+  "Hi hi hi! You came! Do you want to play?"
+  "Yay, it's you! I made a thing. Come see my thing!"
+  "Hello! I was waiting. Look, I'm waiting right now!"
+@rule core.greet.w_warm_morning guard: time=morning act: greet
+  "Good morning! The day's a little brighter with you in it."
+  "Morning! I made coffee, mostly. It's warm water."
+  "Good morning, sunshine. Or whatever your weather is."
+@rule core.greet.w_warm_evening guard: time=evening act: greet
+  "Good evening! Perfect time for a visit."
+  "Hello! Come in, the evening's just starting."
+@rule core.greet.w_warm_night guard: time=night act: greet
+  "Hi. Late visit! I like it, it's cosy at night."
+  "Hello, night owl. Come on in, I'm up."
+@rule core.greet.w_warm_friend guard: rel=friend act: greet
+  "There's my friend! I missed you. A normal amount."
+  "Hey, buddy! Get in here. Tell me everything."
+  "My favourite friend! No offence to the others."
+@rule core.greet.w_warm_best guard: rel=best act: greet
+  "My best friend! I was just about to call you."
+  "Oh, finally! Now the day can start properly."
+@rule core.greet.w_warm_family guard: rel=family act: greet
+  "Hi, family! Come in. There's always room."
+  "Oh, hello! Home is where you are. Cheesy, but true."
+@rule core.greet.w_feeling act: ask_feeling
+  "Hi! How are you doing today? Really, how are you?"
+  "Hey there. How's your day going so far?"
+  "Hello! You look good. Is everything good?"
+  "Hi, hi. Tell me everything. How are things?"
+  "Good to see you. How've you been?"
+@rule core.greet.w_joke act: joke
+  "Hi! I'd get up, but I'm committed to this chair."
+  "Hello! I've been waiting. Time moves slowly in this room."
+  "Hey! You're late by my clock. It's a banana."
+  "Hi, welcome. Mind the doormat. It judges."
+@rule core.greet.w_tell act: tell
+  "Hi! I was just thinking about something silly. Want to hear?"
+  "Hey! You won't believe my morning. I barely do."
+  "Hello! I've got news. Small news, but still."
+@rule core.greet.w_tease act: tease
+  "Look who finally remembered I exist!"
+  "Oh, hello. Did you get lost, or just lazy?"
+  "There you are. Do you have an excuse? I'd love one."
