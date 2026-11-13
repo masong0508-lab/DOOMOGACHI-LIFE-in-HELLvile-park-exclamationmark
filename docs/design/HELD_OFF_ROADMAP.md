@@ -32,8 +32,9 @@ clarity (done) -> speed -> sticks -> Talk -> Dreamcast -> creator -> new levels,
 
 Rules that apply to every package below:
 
-* **Steady 30 fps on every screen and platform** (GBA, PS1, Dreamcast). Combat is the one
-  exception (SP8 left GBA combat at full-speed logic, ~15-17 drawn fps). A package that
+* **Steady 30 fps on every screen and platform** (GBA, PS1, Dreamcast). Combat was the one
+  exception (SP8 left GBA combat at full-speed logic, ~15-17 drawn fps); since 2026-11-13 it
+  has its own stream and the same goal, after speed audit 4 (OWNER_DECISIONS.md). A package that
   cannot reach 30 lands what helps and reports the measured number and the gap; it is never
   called done at a lower number.
 * **Comprehensibility first**: every new screen has a plain one-line instruction and a
@@ -68,6 +69,8 @@ Rules that apply to every package below:
 | Sticks (ST1) | **running at the stop** | - | all of `STICKS_PLAN.md` (section 3) |
 | Talk | held | TK1 (T0-T2), TK2 (T3+T4), TK3 (T5a + T7 + K-10) | TK4, TK5, TKP, TD (section 4) |
 | Dreamcast | held | DC3, DC4, DC5, DC7, DC8 | DC6, DC9, DC5b (section 5) |
+| Speed audit 4 | waits for the SPEED stream | - | re-measure every scene on the three ports once every S2 / S3 package is on origin; `SPEED_AUDIT4.md` |
+| Combat | prepares, builds after audit 4 | - | the 3D view on GBA, PS1, Dreamcast: good, coherent, fast (`held/leads/COMBAT.md`) |
 | Creator | held | CRA (CR0/1/2/12), CRB (CR6/7/9) | CRC (CR3 patch saved + CR4 first art), slice 2 (section 6) |
 | New levels | held, planned | plan + owner answers | LV0-LV38 (section 7) |
 

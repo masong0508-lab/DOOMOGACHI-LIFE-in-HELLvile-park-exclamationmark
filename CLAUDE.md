@@ -20,7 +20,8 @@ how to land and how to resolve rebase conflicts); progress is in `docs/design/he
 - Never weaken `mature_adult_ok` or the kid-cast list. Talk: adults-only romance both
   ways, refusal/deflection with minors, no teen-teen romance; a hug toward a child stays a
   plain hug the child may decline.
-- Every screen targets a steady 30 fps on GBA, PS1, Dreamcast (combat excepted).
+- Every screen targets a steady 30 fps on GBA, PS1, Dreamcast. Combat has its own stream (COMBAT,
+  `docs/design/held/status/COMBAT.md`): it is held to the same target after speed audit 4.
 - PS1: the EXE built with the boot FMV must end >= 72 KB below the stack top
   (`docs/PS1.md`, "RAM fix 2026-11-08"). GBA EWRAM/IWRAM are nearly full: check
   `make -C gba sizes` after any GBA-side change.
