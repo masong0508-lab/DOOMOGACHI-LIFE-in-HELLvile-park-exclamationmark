@@ -306,6 +306,12 @@ typedef struct CrState {
     uint8_t  hd_sig;                /* the backdrop the last full frame drew + 1 */
     uint8_t  hd_n[CRR_COUNT];       /* drawn ticks in a row with hd_key (2: both pages carry it) */
     uint32_t hd_key[CRR_COUNT];
+    /* S3-3: what the platform may still keep: each region's key on the last drawn tick it was begun, and
+     * that tick's number (pk_dn) in the count of drawn ticks (dn); a region is drawn before its panel
+     * (cr_region_pre) when it is not what the last drawn tick showed */
+    uint32_t pk_key[CRR_COUNT];
+    uint16_t pk_dn[CRR_COUNT];
+    uint16_t dn;
 } CrState;
 
 /* (integration, memory budget) The editor state (~6.4 KB with the undo
@@ -427,6 +433,10 @@ void cr_draw_tab_icon(int x, int y, int tab);
 /* G2-CR: plat_panel_begin for a creator region (CRR_*): 1 draw, 0 kept, 2 nothing to do (the held
  * frame carries it on both pages: return without plat_panel_end) */
 int  cr_region(int r, int id, int x, int y, int w, int h, uint32_t key);
+/* S3-3: the recipe of S2-6: a region whose key is new is drawn before its panel on the fast path, then taken as a
+ * solid panel (creator_draw.c) */
+int  cr_region_pre(int r, uint32_t key);
+void cr_region_pre_end(int r, int id, int x, int y, int w, int h, uint32_t key, int solid, int hole_x, int hole_w);
 /* Rows of the copy picker / option picker that fit. */
 int  cr_pick_rows(void);
 

@@ -8,7 +8,7 @@
  */
 #include "creator_int.h"
 #include "doomo/look_pool.h"
-#include "doomo/plat_ext.h"             /* G2-CR: plat_strip (the button bar's rows on the held frame) */
+#include "doomo/plat_ext.h"             /* G2-CR: plat_strip (the button bar's rows on the held frame); S3-3: plat_ui_loops */
 
 CrLayout crl;
 
@@ -294,6 +294,7 @@ static void mini_slider(int x, int y, int w, int v, int max, int sel)
  * held frame both pages carry it: nothing to do (no plat_panel_end) */
 int cr_region(int r, int id, int x, int y, int w, int h, uint32_t key)
 {
+    if (CR_HOLD && !plat_draw_skipped()) { cr.pk_key[r] = key; cr.pk_dn[r] = cr.dn; }
     if (CR_HOLD && !plat_draw_skipped()) {
         if (cr.hd_n[r] && cr.hd_key[r] == key) {
             if (cr.hd_in && cr.hd_n[r] >= 2) return 2;
@@ -304,6 +305,28 @@ int cr_region(int r, int id, int x, int y, int w, int h, uint32_t key)
         }
     }
     return plat_panel_begin(id, x, y, w, h, key);
+}
+
+/* S3-3 (the recipe of S2-6, docs/GBA.md): a region whose key the platform cannot have (it was not drawn with it on
+ * the last tick) is drawn BEFORE its panel, on the platform's fast path, and then taken as one solid panel
+ * (cr_region_pre_end: begin, solid, end with nothing between them). Inside a panel every 2D call is routed and
+ * checked, and the capture frame cost 10-30 ms more. 1: draw before the panel (no cr_region call yet). The pixels
+ * are the same: a solid panel keeps its whole rect as it is at plat_panel_end, however it got there. */
+int cr_region_pre(int r, uint32_t key)
+{
+    if (!CR_HOLD || plat_draw_skipped()) return 0;
+    if (cr.hd_n[r] && cr.hd_key[r] == key) return 0;                    /* the held frame's: cr_region says */
+    return !(cr.pk_key[r] == key && (uint16_t)(cr.pk_dn[r] + 1) == cr.dn);
+}
+
+/* the end of a region drawn before its panel: the panel takes the rect as it is */
+void cr_region_pre_end(int r, int id, int x, int y, int w, int h, uint32_t key, int solid, int hole_x, int hole_w)
+{
+    if (cr_region(r, id, x, y, w, h, key)) {
+        if (solid) plat_panel_solid();
+        if (hole_w > 0) plat_panel_hole(hole_x, y, hole_w, h);
+    }
+    plat_panel_end();
 }
 
 /* the frame can be held: nothing outside the four regions moves, and each is a retained panel
@@ -360,7 +383,7 @@ static void draw_tabs(void)
     int panel = UI_PANELS && cr.phase != CRP_HERO;
     /* CR_CALM (GBA): the selected tab stands still too once it has popped up, so the whole strip
      * is kept (no hole) */
-    int still = CR_CALM && cr.tab_t >= 6, key;
+    int still = CR_CALM && cr.tab_t >= 6, key, pre = 0;
     hx0 = DOOMO_MAX(hx0, lx);
     hx1 = DOOMO_MIN(hx1, rx + 12);
     key = 0;
@@ -369,22 +392,28 @@ static void draw_tabs(void)
         if (still) key = ui_key_int(key, (int)cr.tab_t < 6 ? (int)cr.tab_t : 6);
     }
     if (panel) {
-        panel = cr_region(CRR_TABS, PANEL_CR_TABS, 0, 0, crl.sw, pb, (uint32_t)key);
-        if (panel == 2) return;                         /* G2-CR: on both held pages already */
-        panel = panel ? 3 : 1;                          /* (3: to be drawn) */
+        pre = cr_region_pre(CRR_TABS, (uint32_t)key);   /* S3-3: a new strip is drawn before the panel */
+        if (pre) {
+            panel = 3;
+        } else {
+            panel = cr_region(CRR_TABS, PANEL_CR_TABS, 0, 0, crl.sw, pb, (uint32_t)key);
+            if (panel == 2) return;                     /* G2-CR: on both held pages already */
+            panel = panel ? 3 : 1;                      /* (3: to be drawn) */
+        }
     }
     if (!panel || panel == 3) {
-        if (panel && CR_CALM) plat_panel_solid();       /* CR9: a still backdrop */
+        if (panel && !pre && CR_CALM) plat_panel_solid();   /* CR9: a still backdrop */
         tab_shelf(0, crl.sw, pb, st);
         tab_bumper(0, st);
         tab_bumper(1, st);
         for (i = 0; i < CR_TAB_COUNT; i++)
             if (i != cr.tab) tab_pill(i, st);
-        if (panel && !still) plat_panel_hole(hx0, 0, hx1 - hx0, pb);
+        if (panel && !pre && !still) plat_panel_hole(hx0, 0, hx1 - hx0, pb);
         if (still) goto selected;
     }
     if (panel) {
-        plat_panel_end();
+        if (pre) cr_region_pre_end(CRR_TABS, PANEL_CR_TABS, 0, 0, crl.sw, pb, (uint32_t)key, CR_CALM, hx0, hx1 - hx0);
+        else plat_panel_end();
         if (still) return;
         /* the hole: whatever of the strip lies in it */
         tab_shelf(hx0, hx1, pb, st);
@@ -407,7 +436,10 @@ selected:
         draw_icon(x + (w - CR_ICON_W) / 2, y + (ch + 1 - CR_ICON_W) / 2, cr.tab, 1, 0);
         if (!still) ui_sparkle(x + w - 2, y + 1, (t / 3) & 15, PAL_UI_GOLD);
     }
-    if (panel && still) plat_panel_end();
+    if (panel && still) {
+        if (pre) cr_region_pre_end(CRR_TABS, PANEL_CR_TABS, 0, 0, crl.sw, pb, (uint32_t)key, CR_CALM, 0, 0);
+        else plat_panel_end();
+    }
 }
 
 /* ====================================================================== */
@@ -783,7 +815,8 @@ static void draw_pane(void)
     int cx = ix + iw / 2, status = cr_preview_status(), expr = cr_preview_expr();
     int hop = cr.hop ? -ui_wave((int)(9 - cr.hop) * 2, 36, crl.big ? 5 : 3) : 0;
     const CrView *v = pane_view(status, expr);
-    int cam = v->cam, locked = v->locked, turn = cr.phase == CRP_TURN, flip = 0, panel;
+    int cam = v->cam, locked = v->locked, turn = cr.phase == CRP_TURN, flip = 0, panel, pre = 0;
+    uint32_t pane_k = 0;
     const DoomoImage *im;
     stage_colors(&sg);
     st = ui_style(sg.style);
@@ -804,19 +837,26 @@ static void draw_pane(void)
         k = ui_key_str(k, cr.draft.name);
         if (locked) k = ui_key_str(k, bubble_hint());
         if (cr.talk) k = ui_key_int(ui_key_str(k, cr.talk), cr.talk_pos);
-        switch (cr_region(CRR_PANE, PANEL_CR_PANE, x, y, w + 3, DOOMO_MIN(h + 3, crl.sh - 13 - y), k)) {
-        case 2: return;                                 /* G2-CR: on both held pages already */
-        case 0:
-            ui_window_shadow(x, y, w, h);               /* kept: its drop shadow only */
-            plat_panel_end();
-            return;
-        default: break;
+        pane_k = k;
+        pre = cr_region_pre(CRR_PANE, k);               /* S3-3: a new picture is drawn before the panel */
+        if (!pre) {
+            switch (cr_region(CRR_PANE, PANEL_CR_PANE, x, y, w + 3, DOOMO_MIN(h + 3, crl.sh - 13 - y), k)) {
+            case 2: return;                             /* G2-CR: on both held pages already */
+            case 0:
+                ui_window_shadow(x, y, w, h);           /* kept: its drop shadow only */
+                plat_panel_end();
+                return;
+            default: break;
+            }
+            plat_panel_solid();                         /* a still backdrop (CR_CALM) */
         }
-        plat_panel_solid();                             /* a still backdrop (CR_CALM) */
     } else {
         cr.hd_n[CRR_PANE] = 0;                          /* G2-CR: drawn plainly: again on the next tick */
     }
     /* frame */
+#if !defined(DOOMO_PLATFORM_PS1)
+    plat_ui_loops();                            /* S3-3 (S2-5): the platform's scaled-image loop for the figure below */
+#endif
     ui_window(x, y, w, h, sg.style);
     ui_round_rect(ix - 1, iy - 1, iw + 2, ih + 2, 3, st->outline);
     ui_round_rect(ix, iy, iw, ih, 2, sg.wall[0]);
@@ -879,7 +919,8 @@ static void draw_pane(void)
     if (cr.spooky && !locked)
         ui_text_outline(ix + 4, iy + 3 + (cr.talk ? 30 : 0), "POSSESSED!", PAL_PAINT(PAINT_CHERRY, 1),
                         PAL_RAMP(RAMP_BLOOD, 0));
-    if (panel) plat_panel_end();
+    if (pre) cr_region_pre_end(CRR_PANE, PANEL_CR_PANE, x, y, w + 3, DOOMO_MIN(h + 3, crl.sh - 13 - y), pane_k, 1, 0, 0);
+    else if (panel) plat_panel_end();
     if (turn) {
         int b = ui_wave((int)cr.t, 20, 1) > 0;
         ui_frame(x - 1 - b, y - 1 - b, w + 2 + 2 * b, h + 2 + 2 * b, PAL_UI_GOLD);
@@ -1214,6 +1255,8 @@ static void draw_list(void)
      * nothing in it changes (the cursor and arrow stand still). Not under the persona / home panels
      * (animated). */
     int panel = UI_PANELS && cr.phase == CRP_MAIN && cr.tab != CR_TAB_PERSONA && cr.tab != CR_TAB_HOME;
+    int pre = 0;
+    uint32_t list_k = 0;
     /* CR6: only the rows the current mode shows (cr_row_shown) */
     for (i = 0; i < n; i++) {
         if (!cr_row_shown(cr.tab, i)) continue;
@@ -1225,19 +1268,22 @@ static void draw_list(void)
     st = ui_style(style);
     /* (its rect stops above the button bar, drawn after it) */
     if (panel) {
-        switch (cr_region(CRR_LIST, PANEL_CR_LIST, x, y, w + 3, DOOMO_MIN(h + 3, crl.sh - 13 - y),
-                          list_key(top, ui_window_glint(x, y, w, h), inner_r))) {
-        case 2: return;                            /* G2-CR: on both held pages already */
-        case 0:
-            ui_window_shadow(x, y, w, h);          /* kept: its drop shadow only */
-            plat_panel_end();
-            return;
-        default: break;
+        list_k = list_key(top, ui_window_glint(x, y, w, h), inner_r);
+        pre = cr_region_pre(CRR_LIST, list_k);     /* S3-3: a new page is drawn before the panel */
+        if (!pre) {
+            switch (cr_region(CRR_LIST, PANEL_CR_LIST, x, y, w + 3, DOOMO_MIN(h + 3, crl.sh - 13 - y), list_k)) {
+            case 2: return;                        /* G2-CR: on both held pages already */
+            case 0:
+                ui_window_shadow(x, y, w, h);      /* kept: its drop shadow only */
+                plat_panel_end();
+                return;
+            default: break;
+            }
         }
     } else {
         cr.hd_n[CRR_LIST] = 0;
     }
-    if (panel && CR_CALM) plat_panel_solid();      /* a still backdrop */
+    if (panel && !pre && CR_CALM) plat_panel_solid();      /* a still backdrop */
     ui_window(x, y, w, h, style);
     /* header: icon + tab name > the selected row's section + page */
     {
@@ -1316,7 +1362,8 @@ static void draw_list(void)
             ui_text(x + 7, crl.foot_y + 11, cr_fit(cr_row_help(cr_cur_row()), w - 14, b2), st->text_dim);
         }
     }
-    if (panel) plat_panel_end();
+    if (pre) cr_region_pre_end(CRR_LIST, PANEL_CR_LIST, x, y, w + 3, DOOMO_MIN(h + 3, crl.sh - 13 - y), list_k, CR_CALM, 0, 0);
+    else if (panel) plat_panel_end();
 }
 
 /* ====================================================================== */
@@ -1798,6 +1845,8 @@ static int draw_hint(void)
         if (CR_HOLD && cr.hd_in && !plat_draw_skipped() &&
             !(cr.hd_n[CRR_HINT] >= 2 && cr.hd_key[CRR_HINT] == key) &&
             !(cr.hd_strip && plat_strip(PLAT_STRIP_RESTORE, crl.sh - 13, 13))) return 0;
+        /* (not drawn before its panel, S3-3: ui_hint's pill is a retained panel of its own, and a top-level one
+         * is not put back from the page the creator's solid panel keeps) */
         r = cr_region(CRR_HINT, PANEL_CR_HINT, 0, crl.sh - 13, crl.sw, 13, key);
         if (r == 2) return 1;
         if (!r) {
@@ -1886,6 +1935,7 @@ void cr_draw(void)
 {
     if (!scene_scratch_mine(CR_SCRATCH_TAG)) { ui_modal_hold(cr_sp, 0, 0, 0, 0, 0); plat_clear(PAL_UI_PINK); return; }
     cr_layout();
+    if (!plat_draw_skipped()) cr.dn++;          /* S3-3: the drawn ticks, for cr_region_pre */
 #if !defined(DOOMO_PLATFORM_PS1)
     {
         /* S2-1 (docs/GBA.md "Speed wave 2"): the START menu, fully popped and with no portrait job under way,
@@ -1927,7 +1977,8 @@ void cr_draw(void)
     }
 #if !defined(DOOMO_PLATFORM_PS1)
     /* G2-CR: a clean copy of the button bar's rows, for the held frame */
-    cr.hd_strip = (uint8_t)(cr_still() && !plat_draw_skipped() && plat_strip(PLAT_STRIP_SAVE, crl.sh - 13, 13));
+    if (!plat_draw_skipped())                   /* (a skipped tick draws nothing: the copy of the last drawn one stays) */
+        cr.hd_strip = (uint8_t)(cr_still() && plat_strip(PLAT_STRIP_SAVE, crl.sh - 13, 13));
 #endif
     draw_pane();
     switch (cr.phase) {

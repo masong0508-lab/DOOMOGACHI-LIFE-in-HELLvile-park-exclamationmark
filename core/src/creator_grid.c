@@ -250,6 +250,15 @@ static int grid_footer_moves(const CrRow *row)
     return ui_text_width(buf) > crl.lw - 16;
 }
 
+/* the end of the grid window: its panel (S3-3: one drawn before it is taken now) */
+static void grid_end(int panel, int pre, uint32_t key)
+{
+    if (!panel) return;
+    if (pre) cr_region_pre_end(CRR_LIST, PANEL_CR_LIST, crl.lx, crl.ly, crl.lw + 3,
+                               DOOMO_MIN(crl.lh + 3, crl.sh - 13 - crl.ly), key, CR_CALM, 0, 0);
+    else plat_panel_end();
+}
+
 void cr_grid_draw(void)
 {
     const UiStyle *st;
@@ -258,7 +267,8 @@ void cr_grid_draw(void)
     int x = crl.lx, y = crl.ly, w = crl.lw, h = crl.lh, t = (int)cr.phase_t;
     int cols, rows, cell, gx, gy, i, total;
     char buf[64], b2[48], b3[48];
-    int panel;
+    int panel, pre = 0;
+    uint32_t grid_k = 0;
     if (!row) return;
     sl = &doomo_part_slots[cr.g_slot];
     cr_grid_layout(&cols, &rows, &cell, &gx, &gy);
@@ -271,19 +281,23 @@ void cr_grid_draw(void)
         k = ui_key_str(k, cr.g_find);
         k = ui_key_int(k, (int)(cr.lmemo_sig & 0x7FFFFFFF));          /* the lock bits were made from it */
         if (grid_footer_moves(row)) k = ui_key_int(k, (int)(cr.t / 7));
-        switch (cr_region(CRR_LIST, PANEL_CR_LIST, x, y, w + 3, DOOMO_MIN(h + 3, crl.sh - 13 - y), k)) {
-        case 2: return;                             /* G2-CR: on both held pages already */
-        case 0:
-            ui_window_shadow(x, y, w, h);
-            plat_panel_end();
-            return;
-        default: break;
+        grid_k = k;
+        pre = cr_region_pre(CRR_LIST, k);           /* S3-3: a new page is drawn before the panel */
+        if (!pre) {
+            switch (cr_region(CRR_LIST, PANEL_CR_LIST, x, y, w + 3, DOOMO_MIN(h + 3, crl.sh - 13 - y), k)) {
+            case 2: return;                         /* G2-CR: on both held pages already */
+            case 0:
+                ui_window_shadow(x, y, w, h);
+                plat_panel_end();
+                return;
+            default: break;
+            }
+            if (CR_CALM) plat_panel_solid();        /* a still backdrop */
         }
-        if (CR_CALM) plat_panel_solid();            /* a still backdrop */
     } else {
         cr.hd_n[CRR_LIST] = 0;
     }
-    if (!ui_window_pop(x, y, w, h, WIN_CREAM, t)) { if (panel) plat_panel_end(); return; }
+    if (!ui_window_pop(x, y, w, h, WIN_CREAM, t)) { grid_end(panel, pre, grid_k); return; }
     st = ui_style(WIN_CREAM);
     /* header: the row's name and where the cursor is */
     cr_draw_tab_icon(x + 6, y + 4, cr.tab);
@@ -350,7 +364,7 @@ void cr_grid_draw(void)
         int v = cr_grid_choice(cr.g_sel), fy = y + h - (crl.big ? 25 : 13);
         const PartMeta *m = v >= 0 ? cr_choice_meta(row, v) : NULL;
         plat_rect(x + 5, fy - 2, w - 10, 1, st->fill_lo);
-        if (!m) { if (panel) plat_panel_end(); return; }
+        if (!m) { grid_end(panel, pre, grid_k); return; }
         if (locked_at(v)) {
             doomo_snprintf(buf, sizeof(buf), "%s: %s", part_meta_name(m), cr_lock_hint(row, v));
             cr_padlock(x + 8, fy + 1, PAL_PAINT(PAINT_CHERRY, 1), st->fill);
@@ -361,7 +375,7 @@ void cr_grid_draw(void)
             } else {
                 ui_text(x + 16, fy, cr_marquee(buf, w - 24, b2), PAL_PAINT(PAINT_CHERRY, 0));
             }
-            if (panel) plat_panel_end();
+            grid_end(panel, pre, grid_k);
             return;
         }
         if (crl.big) {
@@ -372,6 +386,6 @@ void cr_grid_draw(void)
             ui_text(x + 8, fy, cr_marquee(buf, w - 16, b2), st->text);
         }
     }
-    if (panel) plat_panel_end();
+    grid_end(panel, pre, grid_k);
     (void)sl;
 }
