@@ -1029,9 +1029,14 @@ restarts the noise so every hit sounds the same; a key-on of a silent
 pitched voice starts at phase 0, a sounding voice keeps its phase). The
 soft envelope is already in the volume, so `env` and the hardware hints
 (`DVF_KEYOFF`, `LEGATO`, `REVERSE_ENV`, `SWEEP_HW`) do nothing. Voices 0-3
-also leave their classic tone in `mus_bridge_tones[]`: `audio_channel_state`
-(the jukebox meters) answers from it under an IRQ tier (`audio_seq.c`: no
-resident byte, the bridge path is unchanged).
+also leave their classic tone in `mus_bridge_tones[]`, and `musvoice.c`
+defines `audio_channel_state` (the jukebox meters) from it. In the core it
+is a weak alias of `audio_seq_out()` (`audio_seq.c`: no code and no byte
+on any port; the babble's hand-back in `audio.c` calls `audio_seq_out()`,
+which stays what the sequencer sent: silence here). The first version of
+this answered the meters from the core itself, and the hand-back then put
+the harmony on tone channel 1 a second time after 21 of 40 blips; test_tier
+checks it now.
 
 S1's effects: the core applies mute, duck and tape stop only in the bridge's
 flush, so `dc_music_tick()` asks `audio_fx_music()` once per logic tick (a

@@ -123,6 +123,26 @@ void plat_voice(int voice, const DoomoVoice *v)
     dcsnd_mvoice(voice, &m);
 }
 
+/* the jukebox's meters (core/src/audio_seq.c has a weak alias): the classic
+ * tone of voice c through S1's gains, as the bridge's flush would send it.
+ * The babble's hand-back reads audio_seq_out() instead (silence here), or it
+ * would put the harmony on tone channel 1 a second time. */
+void audio_channel_state(int c, DoomoToneState *out)
+{
+    const DoomoToneState *t;
+    uint16_t f;
+    int v;
+    if (!out) return;
+    if (c < 0 || c >= 4) { memset(out, 0, sizeof(*out)); return; }
+    t = &mus_bridge_tones[c];
+    f = t->freq;
+    v = t->vol;
+    audio_fx_music(c, &f, &v);
+    out->freq = v ? f : 0;
+    out->vol = (uint8_t)v;
+    out->wave = t->wave;
+}
+
 void plat_audio_bus(int bus, uint8_t gain_q8)
 {
     if (bus == 0) dcsnd_music_gain(gain_q8);

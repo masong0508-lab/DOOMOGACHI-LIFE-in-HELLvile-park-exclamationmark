@@ -552,7 +552,7 @@ static void test_babble_and_state(void)
     DoomoToneState st;
     int t, harm = 0, sang = 0, seen = 0, c;
     game_reset();
-    run_begin(300);
+    run_begin(1300);
     audio_music(SONG_TITLE);
     game_ticks(60);
     CHECK(tone_calls >= 0 && last_tone[0].vol == 0 && last_tone[2].vol == 0 && last_tone[3].vol == 0,
@@ -572,6 +572,18 @@ static void test_babble_and_state(void)
     }
     CHECK(sang >= 8, "the babble sounded on %d ticks", sang);
     CHECK(harm >= 4, "the harmony voice sounded on %d babble ticks", harm);
+    {   /* the hand-back at the end of a blip must not put the harmony on tone channel 1 a second time
+         * (it did when audio_channel_state, the meters' view, was also the hand-back's source) */
+        int k, n, leak = 0;
+        for (k = 0; k < 40; k++) {
+            audio_voice_char(NULL, 'a');
+            n = 0; while (!audio_voice_busy() && n++ < 3) game_ticks(1);
+            n = 0; while (audio_voice_busy() && n++ < 40) game_ticks(1);
+            if (last_tone[1].vol) leak++;
+            game_ticks(1 + k % 5);
+        }
+        CHECK(leak == 0, "the babble's hand-back left tone channel 1 sounding after %d of 40 blips", leak);
+    }
     game_ticks(10);
     CHECK(!audio_voice_busy() && last_tone[1].vol == 0, "tone channel 1 is not silent after the babble (vol %d)",
           last_tone[1].vol);

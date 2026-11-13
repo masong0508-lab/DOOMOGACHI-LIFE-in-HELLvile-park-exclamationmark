@@ -579,21 +579,17 @@ uint32_t audio_music_ticks(void) { return E.ticks; }
 uint32_t audio_note_count(void) { return mus_drv_keyons() - E.notes0; }
 int audio_seq_song(void) { return E.song; }
 
-void audio_channel_state(int c, DoomoToneState *out)
+/* What the sequencer sent to channel c (the voice babble hands channel 1 back
+ * to it). audio_channel_state() is a weak alias: a platform whose music engine
+ * plays on its own voices (the Dreamcast's IRQ tier, dc/src/musvoice.c) answers
+ * the jukebox's meters from them, while this one stays what the hand-back reads. */
+void audio_seq_out(int c, DoomoToneState *out)
 {
     if (!out) return;
     if (c < 0 || c >= AUDIO_CH) { memset(out, 0, sizeof(*out)); return; }
-    if (mus_core_bridge() || c >= 4) { *out = E.out[c]; return; }
-    {   /* an IRQ tier sends the music itself: the view is the classic tone of voice c through S1's gains */
-        const DoomoToneState *t = &mus_bridge_tones[c];
-        uint16_t f = t->freq;
-        int v = t->vol;
-        audio_fx_music(c, &f, &v);
-        out->freq = v ? f : 0;
-        out->vol = (uint8_t)v;
-        out->wave = t->wave;
-    }
+    *out = E.out[c];
 }
+void audio_channel_state(int c, DoomoToneState *out) __attribute__((weak, alias("audio_seq_out")));
 
 static uint8_t legacy_wave(const MusInst *in)
 {

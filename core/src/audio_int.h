@@ -89,6 +89,7 @@ int  audio_int_inited(void);
 void audio_seq_init(void);                 /* audio_init, before audio_fx_reset */
 void audio_seq_reset(void);                /* audio_init, after audio_fx_reset: silence */
 void audio_seq_tick(void);                 /* audio_tick, after the voice babble */
+void audio_seq_out(int c, DoomoToneState *out);   /* what the sequencer sent to channel c */
 int  audio_seq_song(void);                 /* the song playing now (SONG_NONE: none) */
 /* audio_seq.c: the classic interpreter as T1's reference (MU1 M1; native
  * tests only, never the game; M5 deletes it). Pure: no gains, no plat_tone. */

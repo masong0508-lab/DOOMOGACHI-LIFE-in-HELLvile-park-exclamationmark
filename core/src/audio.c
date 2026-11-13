@@ -200,7 +200,7 @@ static void voice_tick(void)
     if (audio_seq_song() == SONG_NONE) send(AUDIO_VOICE_CHANNEL, 0, 0, WAVE_PULSE50);
     else {
         DoomoToneState st;
-        audio_channel_state(AUDIO_VOICE_CHANNEL, &st);
+        audio_seq_out(AUDIO_VOICE_CHANNEL, &st);
         send(AUDIO_VOICE_CHANNEL, st.freq, st.vol, st.wave);
     }
 }
