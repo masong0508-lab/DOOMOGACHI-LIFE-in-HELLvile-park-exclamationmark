@@ -687,6 +687,61 @@ tick, both with the card on screen. The worst steady tick is 23.1 ms (creator,
 the moving-in confirm). The vertex high-water is 223 KB of the 983 KB
 budget.
 
+### The full game's scripts and frame times (DC9A)
+
+`make -C dc family-test` (`dc/tests/families/run_flycast.sh`) plays every
+`story_*`, `fp_*` and `side_*` script of `core/tests/scripts` (28 scripts,
+about 38,000 ticks) twice in dcrun on the CDI, from the native runner's
+start (`--native-seed`). A script passes when both runs end with "0
+failures" and the two runs are identical: the same tick and frame counts, the
+same work summary, and the same bytes in every shot (md5 of each PNG).
+Measured 2026-11-13: 28 of 28 pass, 28 of 28 identical. Four of them failed
+at first on a command the native runner has and dcrun lacked: `lang` /
+`expect-lang` (fp_playas_free, story_es), `expect-hero`
+(story_newgame_hero), `story-fp` (story_engine), plus `ending-seen` and
+`story-done`. They are mailbox commands now (`DC_HC_LANG`, `_HERO`,
+`_ENDING_SEEN`, `_STORY_DONE`; `story-fp` uses the old `DC_HC_STORY_FP`) and
+the mock-core self-test covers each (`make -C dc/harness test`).
+
+Ticks over 33.3 ms of work (Flycast's emulated time): none in 19 scripts,
+the worst steady tick 31.5 ms (story_invasion, the combat view). The other
+nine scripts have the loading ticks of the next table.
+
+| what | ticks | work |
+|---|---|---|
+| making a new island (New Island screen) | 1 in fp_apartments, fp_care, fp_dark, fp_island, fp_night, fp_playas_free, fp_shop, fp_screens | 125 ms |
+| title to a new story (story_newgame_hero) | 1 | 127 ms |
+| VMU save and load in fp_screens (the card with its progress bar is on screen) | the other 2 of its 3 | 3.2 s (the save) |
+
+Speed tour 2 on the Dreamcast (`sh dc/harness/speed2.sh OUT`, the ten
+groups of `gba/harness/scripts/speed2_*.txt`, 218 windows, every window the
+same script as on the GBA and PS1): 215 hold 30 logic ticks a second with no
+tick over 33.3 ms; 3 windows do not:
+
+| group | ticks | work mean / worst | ticks over 33.3 ms (worst) |
+|---|---:|---|---|
+| action | 3,254 | 13.0 / 28.4 ms | 0 |
+| creator | 2,335 | 8.2 / 15.6 ms | 0 |
+| dream | 1,483 | 8.3 / 16.3 ms | 0 |
+| fair (minigames) | 6,040 | 7.5 / 15.8 ms | 0 |
+| fishcook | 3,334 | 6.3 / 17.8 ms | 0 |
+| house | 2,461 | 3.4 / 20.6 ms | 0 |
+| library | 2,632 | 8.8 / 18.9 ms | 0 |
+| life | 3,920 | 8.8 ms mean | 2: new island 125 ms, saving 4.54 s |
+| story | 3,214 | 6.2 ms mean | 1: title to new story 129 ms |
+| studio | 1,165 | 7.2 / 30.8 ms | 0 |
+
+The credits and the credits parade, which speed audit 2 named, hold 30 on
+the Dreamcast now (no tick over 33.3 ms). The three misses are what is left: the two loads are the
+core making a town (`town_new` / the story's start, about 100 ms of SH4
+compute) and the save is the VMU's block writes (about 40 blocks, each a
+Maple round trip). All three belong to speed package S2-10 (saves and loads
+without a frozen screen), which is in flight on the SPEED stream and changes
+core code; nothing on the Dreamcast side can shorten them without it. The
+save already keeps the screen alive: its card redraws every vblank with a
+progress bar while the writes run. Raw logs of the runs: `dc/build/shots/families/`
+and the speed2 output directory.
+
 ### Owed on hardware
 
 - The frame time on a real console (Flycast's timing is not exact), on
