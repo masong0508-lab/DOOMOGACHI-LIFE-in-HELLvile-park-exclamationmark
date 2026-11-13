@@ -1,0 +1,220 @@
+# core/data/talk/grammar/en/ask_feel.tlk - T5b: more replies to ASK_FEELING ("how are you?",
+# "how was your day?", "what are you up to?"). Owner: TK. Syntax: core/tools/talkc_gen.py;
+# register: SCRIPT_STYLE.md. No topic, so nothing here uses {x}. Kid-safe throughout.
+
+# ---- by mood: the day, the plans, the past, the family, in the pet's words ----------------
+@rule core.ask_feeling.happy2 guard: mood=happy act: answer
+  "Good! I'm good. Write the date down, it may not happen again."
+  "Today? Eleven out of ten. I counted twice, and I can't count."
+  "I woke up smiling. I checked: it was my face. Still is."
+  "My day is going so well I'm a little worried. I'll worry later."
+  "Great. I found a coin and a sandwich, not in the same pocket."
+  "Happy! Ask me why. {.}No, don't, I'd have to find a reason."
+  "I'm sunshine with legs. Moderate legs."
+  "Top of the morning, and the afternoon, and I'll take a bit of evening."
+  "I'd say 'on top of the world', but the world's way up there. Near the ceiling."
+  "Excellent! Nana called and said 'stop singing'. I did not stop."
+  "Today has been a gift. With a bow. I'm saving the bow."
+  "Plans? Eat, nap, be delightful. In that order, or mixed."
+  "I'm good. The kind of good where I wave at doors."
+  "My happy meter's so full it's dancing. Don't look at it directly."
+@rule core.ask_feeling.ok2 guard: mood=ok act: answer
+  "Middling. A solid, respectable middling."
+  "I'm all right. All right is underrated. It has no surprises."
+  "Okay! My day so far: one sandwich, one stare, one nap. Standard."
+  "Not bad, not good. Like soup, but a person."
+  "Fine. Ask me again after lunch and I'll lie more convincingly."
+  "I'm doing a day. It's going. That's all a day has to do."
+  "Fair to partly fair, with a chance of snacks."
+  "Plans? Maybe a walk, maybe a lie-down. Basically the same walk."
+  "Comfortably okay. Like a chair you don't have to think about."
+  "I'm alive, fed and not on fire. That's a good week, here."
+  "So-so. I put the 'so' in 'so-so', and half of the other 'so'."
+  "Good enough to wave, bad enough to sit down."
+  "I'm okay! I told my meters and they shrugged. We agree."
+  "The day's fine. It hasn't done anything to me, and I've been watching."
+@rule core.ask_feeling.sad2 guard: mood=sad act: answer
+  "A little blue. Just the hem. I'll be fine by the weekend."
+  "Not my best. I'm having a quiet day with my sad. It's polite company."
+  "Down. But I'm told 'down' is also a kind of fluffy. So I'm trying that."
+  "Sad. It'll pass. It always does, on the scenic route."
+  "Not great, but now that you've asked, a bit better. Thanks."
+  "I've had a gray one. I'm going to make tea and glare at it."
+  "I miss somebody. I forgot who. It's the feeling that stuck around."
+  "Low. Low-ish. I'm keeping a hat on to hold things together."
+  "Honestly? Wobbly. I'd love a hug, but biscuit first."
+  "Not today. I'll be back tomorrow, and be better. Probably."
+  "I'm leaking a bit, eyes mostly. It's fine, it's weather."
+  "Sad, but sitting next to you helps. I didn't plan that. It just does."
+@rule core.ask_feeling.angry2 guard: mood=angry act: complain
+  "Mad! Somebody put my chair on the wrong side of the room!"
+  "I'm not cross. I'm just standing in a cross way."
+  "Furious about everything. I made a long list."
+  "Grr. That's the whole answer. Grr, with feeling."
+  "I'm having a day and the day is losing."
+  "Annoyed. I'm saving the rest for the right moment."
+  "I stepped on a Lego. Nobody here owns Lego. Think about that."
+  "Steaming. Don't touch me, don't talk to me, do sit nearby."
+  "Angry. I'd stomp, but I'd probably tip over. Stomping's got a lot of steps."
+  "I'm a kettle. I'm a kettle with feelings. I'm about to whistle."
+  "Grumpy. The good kind. The kind with a snack at the end."
+  "I've counted to ten. I'm not calm. I'm at eleven."
+@rule core.ask_feeling.scared2 guard: mood=scared act: answer
+  "Jumpy. Something's moving. It may be me."
+  "A bit scared. Stay close? Not too close, close-ish."
+  "I heard a thump. I'm choosing to believe it's a very large cat."
+  "Nervous. My knees are practicing a new routine. It's a shake."
+  "I checked under the bed twice. Nothing there. That's the scary part."
+  "I'm fine! {.}I'm fine, I'm fine. Is it dark in here?"
+  "A bit scared. Somebody say something comforting, like weather."
+  "I locked the door. Then I checked it. Then I checked the checking."
+  "I'm scared. But I'm doing it politely, so nobody notices."
+  "Today's plan is to stay near the light. I'm very committed."
+@rule core.ask_feeling.tired2 guard: mood=tired act: complain
+  "Tired. My eyelids have unionized."
+  "My day? Haven't had it yet. I'm still on the last one."
+  "Wiped. Flat. Pressed like a flower in a heavy book."
+  "I need a nap the way a plant needs rain. Pitifully."
+  "Today's plan is to sit down, and then to sit down more."
+  "I'm so tired my yawn has a yawn. It's yawns all the way down."
+  "Running on fumes, and the fumes ran out. Now I run on spite."
+  "I could sleep standing up. I did. Ask the lamp post."
+  "Don't ask me anything hard. Ask me anything soft. A soft question, please."
+  "I'm worn out. I'm worn so thin you can see through me. Hello."
+  "Exhausted, but in a nice, accomplished way. {.}No, not nice. Just exhausted."
+@rule core.ask_feeling.weird2 guard: mood=weird act: answer
+  "Strange. Good-strange. Like a sock that fits."
+  "I feel like a Tuesday on a Friday."
+  "Odd. I keep hearing a tiny song. It's my stomach, and it's a good song."
+  "Weird! I've been looking at a spoon for ten minutes. It looked back."
+  "Very well, thank you, and slightly to the left of myself."
+  "I feel like a button that wants to be a door."
+  "Fuzzy and round at the edges. Maybe it's the fog. Maybe it's me."
+  "Like a cloud, but with elbows."
+  "I'm having a feeling I haven't been introduced to."
+  "Confusingly fine. I'd put a bow on it, but it keeps moving."
+@rule core.ask_feeling.ghost2 guard: ghost act: answer
+  "Dead, thanks. Not bad for it. The no-lunch part's a bonus."
+  "Spooky as usual. How about you? You look warm, which is rude."
+  "Cold, drafty, and floating. The usual. It's a living."
+  "Eternal, thanks. The days run together. So do I."
+  "I'm a little see-through today. It's the humidity."
+  "Fine. I've been rattling a chain and nobody noticed. Rattling again."
+
+# ---- by voice ---------------------------------------------------------------------------------
+@rule core.ask_feeling.voice act: answer
+  "How very kind of you to ask! I'm well, truly. And you?" guard: polite
+  "I'm good, thank you. That was a lovely question. Do ask more of those." guard: polite
+  "How am I? Alive and fed. Done with the small talk." guard: blunt
+  "Fine. Why? Did somebody say something?" guard: blunt
+  "I'm fine. This is my fine voice. It's the same voice." guard: flat
+  "Feelings: present. Number of feelings: one. It's big, hard to tell." guard: flat
+  "I'M GREAT! HOW ARE YOU?! I DIDN'T ASK QUIETLY!" guard: loud
+  "GOOD! LOUD AND READY! WHAT'S THE QUESTION?!" guard: loud
+  "How am I? A fair question. {.}Fine, after a moment." guard: serious
+  "I've been reflecting on my day. It's been adequate, in an important way." guard: serious
+  "Oh, you know. Rolling with it. Mostly rolling downhill, but rolling." guard: easygoing
+  "Fine, fine, it's all good. Even the bad part's good. It's a good bad part." guard: easygoing
+  "My day was a trapeze. I'm holding it like a banana." guard: quirky
+  "I feel like a Thursday afternoon with a stripy sock on." guard: quirky
+  "Good, bye, wait, hi, no, good. Done." guard: quick
+  "Great, going, gotta go, great, how are you, bye!" guard: quick
+  "I'm... good. {.}Ask me again after next lunch." guard: slow
+  "Well... {.}Fine. {.}I'd say more, but give me a long minute." guard: slow
+  "In my day nobody asked. We just carried on, and complained in private." guard: elder
+  "Creaky. But steady. At my age that's a good review." guard: elder
+  "I'm fine, why are you asking? It's weird. {.}It's fine." guard: teen
+  "Fine. I'm just, whatever. How are YOU?" guard: teen
+  "Warm. Cozy. Down home it's hot, so up here I'm chilly." guard: hellborn
+  "Hot, in a way you wouldn't like. I'm well. How are you?" guard: hellborn
+  "Night is my time. Ask me at midnight, I'm thrilling." guard: night
+  "Awake, at this hour. Don't ask me anything. I'm a ghost of an idea." guard: night
+  "We've only just met. I'm 'fine' and I'll say 'fine' to a stranger." guard: rel=stranger
+  "For you? The long answer. I wrote notes, so sit." guard: rel=best
+  "Why, so you can gloat? I'm fine. Better than you." guard: rel=rival
+@rule core.ask_feeling.kid2 guard: kid_speaker tags: kid act: answer
+  "I'm GOOD! I had juice! And a stick, and then another stick!"
+  "I'm okay! I skinned nothing today! A record!"
+  "Good! I drew a picture of me! It looks like a potato and I love it!"
+  "A bit tired. I ran everywhere. Even where there wasn't a where."
+  "Hungry. And good. And hungry, mostly."
+  "I'm having a bad day. It's okay. I have my blanket on."
+  "I'm fine! Nana says I'm a handful. I have five, so it works."
+  "I'm happy! I won a race against a snail. It was close!"
+
+# ---- by persona type -------------------------------------------------------------------------
+@rule core.ask_feeling.type act: answer
+  "I'm all right. I'm reading, so I'm better than all right." guard: type=quiet_bookworm
+  "Oh! Um, fine. It's nice that you asked, and so is page forty-two." guard: type=quiet_bookworm
+  "Sleepy. Soft. In a good, blanket-shaped way." guard: type=cozy_napper
+  "Mm. Warm. I'll answer more after I stop being a lump." guard: type=cozy_napper
+  "Cranky, as always. Mind your own business. {.}Thank you for asking." guard: type=grumpy_gremlin
+  "How do I feel? Pestered. Next." guard: type=grumpy_gremlin
+  "I'm a person, in a day. It's doing its thing." guard: type=deadpan_drifter
+  "Same as yesterday. Possibly the same day. Who's counting." guard: type=deadpan_drifter
+  "I feel like the sky just before it rains. Soft, and a bit blue." guard: type=gentle_dreamer
+  "Floaty. I think I left a piece of me on a cloud. I'll fetch it." guard: type=gentle_dreamer
+  "I'm wonderful, thank you for asking! Are you wonderful? I hope so!" guard: type=sweet_sunbeam
+  "A little tired and a lot happy. Who needs a hug? I have extras!" guard: type=sweet_sunbeam
+  "My soul is a thunderstorm. Also, I'm fine, thanks." guard: type=dramatic_poet
+  "Oh, how do I feel? Like the last page of a tragic novel. In the good way." guard: type=dramatic_poet
+  "Better now that you're here. Don't tell my other friends." guard: type=cheeky_charmer
+  "Fabulous. Obviously. Ask me something I don't know." guard: type=cheeky_charmer
+  "Productive! I've done four things before lunch. Two of them were lunch." guard: type=diligent_helper
+  "Fine, thank you. I'm behind schedule, but in a relaxed way." guard: type=diligent_helper
+  "Good! Hungry. Ready for a hike, if there's a snack involved." guard: type=chill_adventurer
+  "Sunburnt on one side, thrilled on the other. Perfect." guard: type=chill_adventurer
+  "Alert, rested, standing very straight. How are you? Report." guard: type=stern_captain
+  "Fit for duty. Sore in the usual places. Carry on." guard: type=stern_captain
+  "Who knows? Coin flip! Heads I'm great, tails I'm the other thing." guard: type=wild_card
+  "I woke up feeling lucky. Then I checked my pockets. Still lucky." guard: type=wild_card
+  "Pumped! I've got twelve plans, and a plan for the plans." guard: type=eager_go_getter
+  "Ready, fired up, rested and fed! Let's go! Anywhere!" guard: type=eager_go_getter
+  "Sparkly! Fizzy! Like pop, but I'm the pop!" guard: type=bubbly_sparkler
+  "I'm so great I'm giggling at nothing. Hee! See?" guard: type=bubbly_sparkler
+  "Steady. Focused. The mood is: we've got this." guard: type=fiery_leader
+  "Strong and ready. Somebody say 'rally' and I'll do the rest." guard: type=fiery_leader
+  "I'm doing fine, but the spoon is not. I've had a day with a spoon." guard: type=chaos_goblin
+  "Feeling great! I did something, won't say what, regret nothing yet." guard: type=chaos_goblin
+
+# ---- the small-talk questions that are not about the pet's own feelings --------------------
+@rule core.ask_feeling.day act: tell
+  "My day? I got up, put my feet on the floor, and the floor held. A win."
+  "Today I did two things. One was breakfast. The second was lunch."
+  "Same as every day: walked around, looked at things, had opinions."
+  "My day has had a beginning and I'm told there's a middle coming."
+  "Nothing happened and I was there for all of it."
+  "I'd tell you my day, but it's under embargo. Nana's embargo."
+  "The Mayor held me twenty minutes to talk about a hat. A long hat."
+  "I fed a duck. The duck fed on me. Even trade."
+  "Morning: mostly fog. Afternoon: more fog. Evening: it's the fog's night off."
+  "I tripped over the same stair twice. The stair's very proud."
+@rule core.ask_feeling.plans act: tell
+  "Plans? A walk, a snack, a strongly worded sigh."
+  "Today I'm doing whatever's nearest. Right now it's you."
+  "Big plans. I'll sit, then I'll stand, then I'll wonder if I should sit."
+  "I'm going to do something great. Probably around four. Don't make it a thing."
+  "No plans. That's the plan. It's going very well."
+  "I'm going to the Bandstand and then home. And then the Bandstand."
+  "I've got an appointment with a nap. Very exclusive. It's a bed."
+  "Tonight? A bath and a duck. I'll flip a coin for which goes first."
+  "Plans for tomorrow: survive today. Then I'll check the schedule."
+  "A bit of everything: baking, napping, tripping, napping."
+@rule core.ask_feeling.past act: tell
+  "When I was little I ate a candle. I was told it was cake. Not wrong."
+  "My first memory is a spoon. Not saying it's important. It was there."
+  "I used to be better at hopscotch. Now I'm just hopping."
+  "I lived above a bakery once. Everything smelled good, tasted like floor."
+  "Back then, I was a different pet. Taller. In my head."
+  "I once won a ribbon. For being a good sport. I'm still not sure who I beat."
+  "I remember a lot of fog. And somebody singing. I think it was me."
+  "Last year I tried to learn the trumpet. The trumpet won."
+@rule core.ask_feeling.family act: tell
+  "Family? Nana, mostly. And a cousin I've only met on paper."
+  "Nana raised me on soup and strongly held opinions."
+  "My family's loud, large and a bit too fond of the phrase 'back in my day'."
+  "I have a cousin who sells hats. I have one hat. I've been supporting him."
+  "My family is mostly aunts. Not mine. They're related to each other."
+  "Nana says family's who stays when the soup runs out. She's still here."
+  "I'd tell you about my family, but I'd have to do voices. They'd take all day."
+  "My family would say they miss me. Then they'd say 'when are you visiting'."
