@@ -676,12 +676,12 @@ int sim_mood_of(int id)
 
 /* ---------------------------------------------------------------------- */
 /* one resident                                                             */
-/* force_decide: a fast-forward chunk stands on the last minute of the hour the
- * elapsed span belongs to, so the routine is chosen again even though the clock
- * has not crossed an hour boundary since the last update.
- * An update that would cover too few game minutes is skipped, the stamp stays and the next visit applies them
- * all: under SIM_MIN_ELAPSED for a fast-forward chunk, under SIM_PASS_MIN for the pass. */
-static void update_resident_ex(int id, int force_decide)
+/* min_el: the fewest game minutes an update may cover. An update that would cover fewer is skipped, the stamp
+ * stays and the next visit applies them all. SIM_PASS_MIN for the pass of sim_tick (S3-1); SIM_MIN_ELAPSED for a
+ * fast-forward chunk (sim_advance_minutes), which also chooses the routine again (min_el > SIM_PASS_MIN): a chunk
+ * stands on the last minute of the hour the elapsed span belongs to, so the clock has not crossed an hour boundary
+ * since the last update. (One argument for both jobs: 16 B less PS1 resident code than a flag and a conditional line.) */
+static void update_resident_ex(int id, int min_el)
 {
     DoomoResident *r = &doomo_town.res[id];
     uint16_t now16;
@@ -691,13 +691,13 @@ static void update_resident_ex(int id, int force_decide)
     sim_s.ops++;
     now16 = (uint16_t)sim_now();
     el = (uint16_t)(now16 - sim_s.stamp[id]);
-    if (el < (force_decide ? SIM_MIN_ELAPSED : SIM_PASS_MIN)) return;
+    if (el < min_el) return;
     if (el > SIM_MAX_ELAPSED) el = SIM_MAX_ELAPSED;
     sim_s.stamp[id] = now16;
     res_in(r, &in);
 
     /* routines change on the hour (or when a need gets urgent) */
-    if (force_decide || doomo_town.minute / 60 != ((doomo_town.minute + 1440 - el) % 1440) / 60 || el >= 60 ||
+    if (min_el > SIM_PASS_MIN || doomo_town.minute / 60 != ((doomo_town.minute + 1440 - el) % 1440) / 60 || el >= 60 ||
         r->stat[STAT_HEALTH] < 25 || r->stat[STAT_HUNGER] < 28 || r->stat[STAT_ENERGY] < 12 ||
         r->status != RES_ALIVE) {
         act = decide_activity(id, r, &in);
@@ -712,7 +712,7 @@ static void update_resident_ex(int id, int force_decide)
     sim_mood_of(id);
 }
 
-static void update_resident(int id) { update_resident_ex(id, 0); }
+static void update_resident(int id) { update_resident_ex(id, SIM_PASS_MIN); }
 
 /* ---------------------------------------------------------------------- */
 /* the clock                                                                */
@@ -898,7 +898,7 @@ void sim_advance_minutes(int minutes)
         if (chunk > left) chunk = left;
         for (i = 0; i < chunk; i++) minute_step();
         sim_s.job_budget = 32;
-        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) update_resident_ex(i, 1);
+        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) update_resident_ex(i, SIM_MIN_ELAPSED);
     }
     /* give the graph a proportional share of attention (at most one full pass) */
     passes = (int)(sim_s.edge_credit / 60u);
