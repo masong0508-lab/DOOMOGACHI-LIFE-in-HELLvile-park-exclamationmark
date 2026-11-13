@@ -53,7 +53,8 @@ int lv_script_check(const uint8_t *s, int len, const DoomoMapExt *x)
             int op = s[off];
             if (op >= LVO_COUNT) return LVERR_OP;
             if (off + 1 + LV_OP_LEN[op] > end) return LVERR_FORMAT;
-            a = s[off + 1]; b = s[off + 2];
+            a = LV_OP_LEN[op] > 0 ? s[off + 1] : 0;       /* never read past the action */
+            b = LV_OP_LEN[op] > 1 ? s[off + 2] : 0;
             switch (op) {
             case LVO_SWAP: case LVO_UNSWAP:
                 if (x && a >= x->swap_count) return LVERR_OPERAND;
@@ -153,7 +154,7 @@ static void set_var(LvVm *vm, int v, int val)
 static void step(LvVm *vm)
 {
     const uint8_t *p = vm->x->script + vm->run_pc;
-    int op = p[0], a = p[1], b = p[2];
+    int op = p[0], a = LV_OP_LEN[op] > 0 ? p[1] : 0, b = LV_OP_LEN[op] > 1 ? p[2] : 0;
     vm->run_pc = (uint16_t)(vm->run_pc + 1 + LV_OP_LEN[op]);
     switch (op) {
     case LVO_NOP: break;
