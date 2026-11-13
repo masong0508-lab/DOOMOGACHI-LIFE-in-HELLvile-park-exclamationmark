@@ -103,6 +103,7 @@ void plat_end_frame(void)
     uint64_t next;
     dc_frames++;
     dc_mailbox.ticks = dc_frames;
+    dc_busy_end();                      /* S2-10: a save / load / build card ends with its tick */
     dc_audio_frame();                   /* DC5: this tick's sound, queued */
     if (scene_open) {
         uint32_t w;

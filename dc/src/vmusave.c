@@ -98,17 +98,27 @@ static void card_draw(int done, int total)
     dc_mailbox.drawn++;                 /* S2-10: a card is a presented picture (the harness's gaps see the tick's stall) */
 }
 
+static int card_last, card_pass, card_passes;    /* S2-10: a save's read-back restarts the count: one bar, two halves */
+
 static void card_progress(void *ctx, int done, int total)
 {
     (void)ctx;
-    /* one picture a vblank at most: the PVR shows no more */
+    if (done > 0 && done < card_last) card_pass++;   /* the second pass (the read-back) starts again at 1 */
+    if (done > 0) card_last = done;
+    if (total > 0 && card_passes > 1) {
+        done += card_pass * total;
+        total *= card_passes;
+    }
+    /* one picture a vblank at most: the PVR shows no more; 0 of 0 is a keep-alive (the card as it is) */
     if (card_title && (dc_vblanks != card_vbl || done >= total)) card_draw(done, total);
 }
 
-static void card_open(const char *title, const char *line)
+static void card_open(const char *title, const char *line, int passes)
 {
     card_title = title;
     card_line = line;
+    card_last = card_pass = 0;
+    card_passes = passes;
     card_draw(0, 0);
 }
 
@@ -131,6 +141,33 @@ static void card_error(int err, const char *what)
     until = dc_vblanks + 60;
     while ((int32_t)(dc_vblanks - until) < 0) vid_waitvbl();
     card_close();
+}
+
+/* ---- S2-10: the card over the core's own long work (plat_ext.h plat_busy / plat_busy_step) -------------------------
+ * A save encodes the whole island before the VMU is touched (0.2 s), a load decodes it after the VMU is read (0.25 s),
+ * a New story builds it in ~100 ms. The core calls plat_busy_step per citizen; once the work has run BUSY_LATE
+ * vblanks (so a ~100 ms build shows nothing) the card below is drawn with its bar at done / total, a picture a vblank at
+ * most. While a VMU card is up (card_title) that one is the picture. dc_busy_end() (plat_end_frame) ends it. */
+#define BUSY_LATE 8
+static uint8_t busy_kind;
+static uint32_t busy_v0;
+
+void plat_busy(int kind)
+{
+    busy_kind = (uint8_t)kind;
+    busy_v0 = dc_vblanks;
+}
+
+void dc_busy_end(void) { busy_kind = 0; }
+
+void plat_busy_step(int done, int total)
+{
+    static const char *const title[] = { "", "Saving your game...", "Loading your game...", "Getting everything ready..." };
+    if (!busy_kind || card_title || (int32_t)(dc_vblanks - busy_v0) < BUSY_LATE || dc_vblanks == card_vbl) return;
+    card_title = title[busy_kind];
+    card_line = busy_kind == PLAT_BUSY_BUILD ? NULL : "Do not remove the VMU or switch off the power";
+    card_draw(done, total);
+    card_title = card_line = NULL;
 }
 
 /* ---- the device ---------------------------------------------------------------------- */
@@ -276,7 +313,7 @@ static int write_file(int which, const void *data, uint32_t size, const char *ti
     bytes = vms_build(s_file, sizeof(s_file), &d, data, size);
     if (!bytes) return VMU_ERR_ARG;
     blocks = (int)(bytes / VMU_BLOCK);
-    card_open(title, "Do not remove the VMU or switch off the power");
+    card_open(title, "Do not remove the VMU or switch off the power", 2);   /* write, then read back */
     r = vmu_begin(&io, 1);
     if (r == VMU_OK) {
         timestamp(ts);
@@ -318,7 +355,7 @@ static int read_file(int which, void *data, uint32_t cap, uint32_t *size, int bi
             r = VMU_ERR_NOFILE;
         } else {
             if (big) {
-                card_open("Loading your game...", "Do not remove the VMU or switch off the power");
+                card_open("Loading your game...", "Do not remove the VMU or switch off the power", 1);
                 io.progress = card_progress;
                 shown = 1;
             }
@@ -385,7 +422,7 @@ int plat_save_erase(int slot)
     VmuIo io;
     int r;
     if (slot < 0 || slot > 1) return 0;
-    card_open("Erasing...", "Do not remove the VMU or switch off the power");
+    card_open("Erasing...", "Do not remove the VMU or switch off the power", 1);
     r = vmu_begin(&io, 0);
     if (r == VMU_OK) {
         r = vmu_remove(&s_vol, &io, k_name[slot], k_tmp[slot]);

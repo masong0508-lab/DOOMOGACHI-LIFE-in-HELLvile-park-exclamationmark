@@ -185,8 +185,10 @@ int vmu_mount(VmuVol *v, const VmuIo *io)
         if (io->read(io->ctx, v->fat_loc, blk)) return VMU_ERR_IO;
         for (i = 0; i < 256; i++) v->fat[i] = get16(blk + i * 2);
     }
-    for (i = 0; i < v->dir_blocks; i++)
+    for (i = 0; i < v->dir_blocks; i++) {
         if (io->read(io->ctx, v->dir_loc - i, v->dir + i * VMU_BLOCK)) return VMU_ERR_IO;
+        if (io->progress) io->progress(io->ctx, 0, 0);   /* S2-10: a keep-alive (the card stays live): 0 of 0 */
+    }
     return VMU_OK;
 }
 
@@ -367,10 +369,10 @@ static int verify(const VmuVol *v, const VmuIo *io, int idx, const uint8_t *file
                   uint8_t *check)
 {
     int r;
-    VmuIo quiet = *io;
-    quiet.progress = NULL;
     if (vmu_file_blocks(v, idx) != blocks) return VMU_ERR_VERIFY;
-    r = vmu_read_blocks(v, &quiet, idx, check, (uint32_t)blocks * VMU_BLOCK, blocks);
+    /* S2-10: the read-back reports its blocks like the write did (a second pass of the same progress: 0.3-0.7 s of
+     * a console's save, the screen stays live) */
+    r = vmu_read_blocks(v, io, idx, check, (uint32_t)blocks * VMU_BLOCK, blocks);
     if (r != VMU_OK) return r;
     return memcmp(check, file, (uint32_t)blocks * VMU_BLOCK) ? VMU_ERR_VERIFY : VMU_OK;
 }

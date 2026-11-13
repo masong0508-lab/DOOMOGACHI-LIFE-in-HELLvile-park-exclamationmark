@@ -32,6 +32,7 @@ int dc_rumble_present(void);             /* rumble.c: a Puru Puru pack on pad 1 
 void dc_vmu_init(void);                  /* vmusave.c: at boot, before doomo_init */
 void dc_vmu_poll(void);                  /* vmusave.c: after each tick (config write-behind) */
 void dc_pacing_reset(void);              /* forget frame debt (after loads)     */
+void dc_busy_end(void);                /* S2-10 (vmusave.c): the tick is over; the busy card (plat_busy_step) stops */
 void dc_audio_init(void);                /* audio.c: the stream, before doomo_init */
 void dc_fmv_play(void);                  /* fmv.c: the boot FMV, after dc_audio_init */
 void dc_audio_frame(void);               /* audio.c: end of every logic tick    */
