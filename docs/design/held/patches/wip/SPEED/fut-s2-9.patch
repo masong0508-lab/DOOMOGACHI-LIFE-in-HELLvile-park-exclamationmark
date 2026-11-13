@@ -1,0 +1,1497 @@
+=== UNCOMMITTED ===
+diff --git a/core/include/doomo/portrait.h b/core/include/doomo/portrait.h
+index 206b721e..ca641fc6 100644
+--- a/core/include/doomo/portrait.h
++++ b/core/include/doomo/portrait.h
+@@ -108,7 +108,8 @@ int  portrait_job_on(void);
+  * measured cost fits before the next vblank (gba/src/pslice.c, ps1/src/gfx.c). */
+ int  portrait_prefetch(int resident_id, int expr);      /* 1: cached already (or being drawn): nothing queued */
+ int  figure_prefetch(const DoomoLook *l, int status, int expr);
+-#define PORTRAIT_SLICE_CLASSES 78      /* slice classes: 3 kinds (portrait, figure, chibi) x 26 slices */
++#define PORTRAIT_SLICE_CLASSES 79      /* slice classes: 3 kinds (portrait, figure, chibi) x 26 slices, and
++                                        * (S2-9) the last one: a slice of a weapon picture (weld_slice.c) */
+ int  portrait_idle_next(void);
+ void portrait_idle_run(void);
+ /* Platform hooks (weak defaults in portrait.c: always yes / nothing): may one more slice of class `cls` run inside
+diff --git a/core/include/doomo/weld.h b/core/include/doomo/weld.h
+index 6a651931..3edd138d 100644
+--- a/core/include/doomo/weld.h
++++ b/core/include/doomo/weld.h
+@@ -177,6 +177,29 @@ int  weld_cost(const DoomoWeapon *w, uint8_t *items, uint8_t *counts, int max);
+ /* First-person view sprite for the weapon (frame 0 idle, 1 fire, 2 fire2,
+  * 3 reload). Built from all parts + paint + style. */
+ const DoomoImage *weld_view_image(const DoomoWeapon *w, int frame);
++/* (S2-9, weld_slice.c) The same picture for a scene that must not wait for it (Rivet's workshop). Where the
++ * platform runs slices (GBA, PS1) it is composed a slice at a time in the frame's spare time, into a slot other
++ * than the one on show: this returns the picture of (w, frame) with *ready = 1 once it is complete, and until
++ * then, with *ready = 0, the picture it returned last (the old one stays up) or NULL when it has none.
++ * Elsewhere it is weld_view_image(): composed in the call, always ready.
++ * weld_view_prefetch(): (w, frame) will be asked for soon. It is composed ahead in the same slices, never over
++ * the picture on show nor over one asked for in this tick; returns 1 when it is cached (so several coming
++ * pictures are asked in order: stop at the first 0). Where no slices run it composes nothing.
++ * One picture is under way at a time: asking for another one drops it, but a prefetch never drops one that
++ * weld_view_image_sliced() is still waiting for. The cache is weld_view_image()'s: 2 pictures, 4 where the
++ * platform lends the scene more room (plat_ext.h plat_scene_scratch). */
++const DoomoImage *weld_view_image_sliced(const DoomoWeapon *w, int frame, int *ready);
++int weld_view_prefetch(const DoomoWeapon *w, int frame);
++/* For the platform's idle time (gba/src/pslice.c): the slice class of the picture under way (portrait.h
++ * PORTRAIT_SLICE_CLASSES - 1) when the frame just drawn asked for it, else -1. weld_idle_run(0) runs one slice of
++ * it (the size of the slices inside a frame); weld_idle_run(until), on the GBA, everything that ends before the
++ * tick's work clock (gba_work_now()) reaches `until`: one pass for the whole of a frame's idle time. */
++int  weld_idle_next(void);
++void weld_idle_run(uint32_t until);
++/* Tests: mode 0 = composed in the call (the default off the GBA and the PS1), 1 = by weld_idle_run() and, after
++ * 4 ticks without a slice, in the call (the GBA), 2 = in the call while plat_portrait_slice_ok() says so (the
++ * PS1); units = the size of a slice (0: the default). Forgets the picture under way and the one on show. */
++void weld_slice_test(int mode, int units);
+ /* Small icon for menus (24x16). */
+ const DoomoImage *weld_icon_image(const DoomoWeapon *w);
+ 
+diff --git a/core/src/portrait.c b/core/src/portrait.c
+index d3a1c1e2..29a72032 100644
+--- a/core/src/portrait.c
++++ b/core/src/portrait.c
+@@ -1127,7 +1127,7 @@ static struct {
+ static const DoomoResident *res_of(int rid, int *status);
+ static int pf_start(void);
+ 
+-DOOMO_STATIC_ASSERT(3 * SL_N == PORTRAIT_SLICE_CLASSES, slice_classes_match_portrait_h);
++DOOMO_STATIC_ASSERT(3 * SL_N + 1 == PORTRAIT_SLICE_CLASSES, slice_classes_match_portrait_h);   /* (+1: weld_slice.c's) */
+ 
+ int portrait_idle_next(void)
+ {
+diff --git a/core/src/weld_gfx.c b/core/src/weld_gfx.c
+index 07aa95ea..23c75fc6 100644
+--- a/core/src/weld_gfx.c
++++ b/core/src/weld_gfx.c
+@@ -29,12 +29,19 @@
+ #include "doomo/scene.h"
+ #include "doomo/portrait.h"
+ #include "doomo/save_ext.h"
+-
++#include "weld_gfx_int.h"
++
++/* (S2-9) weld_slice.c compiles this file a second time (WELD_SLICED) for the
++ * workshop: the same recipes on primitives of its own, which can stop and
++ * go on (a picture composed over several ticks) and are faster. What that
++ * build leaves out or replaces is marked WELD_SLICED below. This build is
++ * the one every other scene uses, and the reference the tests compare the
++ * other one with (core/tests/test_weld_slice.c). */
+ #define VW WELD_VIEW_W
+ #define VH WELD_VIEW_H
+ #define IW WELD_ICON_W
+ #define IH WELD_ICON_H
+-#define VIEW_SLOTS 2
++#define VIEW_SLOTS WELD_VIEW_SLOTS
+ #define VIEW_WSC 390          /* width scale of the first-person sprite */
+ 
+ /* (integration, memory budget) The two 96x64 view slots (12 KB) live in
+@@ -44,17 +51,19 @@
+  * own there. When another scene took the scratch the slots are simply
+  * composed again. Scenes that keep their own state in the scratch must
+  * not call weld_view_image(). The 24x16 icons stay here. */
+-#define WELD_SCRATCH_TAG SAVE_EXT_TAG('W', 'E', 'L', 'D')
+-typedef uint8_t ViewPix[VW * VH];
+ DOOMO_STATIC_ASSERT(VIEW_SLOTS * VW * VH <= DOOMO_SCENE_SCRATCH, weld_view_fits_scratch);
+-static ViewPix   *view_pix;
+-static DoomoImage view_img[VIEW_SLOTS];
+-static uint32_t  view_key[VIEW_SLOTS], view_used[VIEW_SLOTS];
++#ifndef WELD_SLICED
++/* (S2-9) the slots' state is weld_gfx_int.h's: one cache, whichever build
++ * composed a picture */
++WeldViewPix *weld_view_pix;
++DoomoImage   weld_view_img[WELD_VIEW_ALL];
++uint32_t     weld_view_key[WELD_VIEW_ALL], weld_view_used[WELD_VIEW_ALL];
++uint32_t     weld_view_clock;
+ /* (integration, memory budget) the 24x16 icons are one block each of the
+  * portrait cache's pool (portrait_pool_image), LRU with the portraits,
+  * instead of six RAM slots; icon_gen re-keys them after an invalidate */
+ static uint32_t  icon_gen;
+-static uint32_t  use_clock;
++#endif
+ 
+ /* ---- materials ---------------------------------------------------------- */
+ typedef struct Mat { uint8_t c[5]; } Mat;   /* 0 darkest .. 4 highlight */
+@@ -97,6 +106,18 @@ typedef struct G {
+ 
+ static int isqrt_i(int v) { return v > 0 ? (int)fx_isqrt((uint32_t)v) : 0; }
+ 
++#ifdef WELD_SLICED
++/* (S2-9) weld_slice.c's primitives: the same pixels, written in units that a
++ * pass may stop between */
++static void put(G *g, int x, int y, uint8_t c);
++static void put_over(G *g, int x, int y, uint8_t c);
++static void clear_px(G *g, int x, int y);
++static void canvas_clear(uint8_t *px, int n);
++static void seg(G *g, int t0, int t1, int s16, int w0, int w1, const Mat *m, int shade, int caps);
++static void ell(G *g, int cx16, int cy16, int rx16, int ry16, const Mat *m, int glow);
++static void tri(G *g, int ax, int ay, int bx, int by, int cx, int cy, uint8_t c);
++static void outline(G *g);
++#else
+ static void put(G *g, int x, int y, uint8_t c)
+ {
+     if (c == PAL_BLACK) c = PAL_RAMP(RAMP_STONE, 0);       /* 1 is the outline marker */
+@@ -108,6 +129,11 @@ static void clear_px(G *g, int x, int y)
+     if ((unsigned)x < (unsigned)g->w && (unsigned)y < (unsigned)g->h) g->px[y * g->w + x] = 0;
+ }
+ 
++/* a pixel of the picture so far in another colour (nothing where it is empty); the canvas emptied */
++#define put_over(g, x, y, c) do { if (get(g, x, y)) put(g, x, y, c); } while (0)
++#define canvas_clear(px, n) memset(px, 0, (size_t)(n))
++#endif
++
+ static uint8_t get(const G *g, int x, int y)
+ {
+     if ((unsigned)x < (unsigned)g->w && (unsigned)y < (unsigned)g->h) return g->px[y * g->w + x];
+@@ -146,6 +172,7 @@ static void at(const G *g, int t, int s, int *x, int *y)
+ enum { SH_CYL, SH_BOX, SH_GLOW, SH_FLAT };
+ enum { CAP_NONE = 0, CAP_NEAR = 1, CAP_FAR = 2 };
+ 
++#ifndef WELD_SLICED
+ static uint8_t tone_cyl(const Mat *m, int u)          /* u -256..256, lit from the left */
+ {
+     if (u < -200) return m->c[2];
+@@ -246,6 +273,7 @@ static void ell(G *g, int cx16, int cy16, int rx16, int ry16, const Mat *m, int
+             else put(g, x, y, m->c[1]);
+         }
+ }
++#endif /* !WELD_SLICED */
+ 
+ static void ell_at(G *g, int t, int s, int r, const Mat *m, int glow)
+ {
+@@ -254,6 +282,7 @@ static void ell_at(G *g, int t, int s, int r, const Mat *m, int glow)
+     ell(g, x * 16 + 8, y * 16 + 8, DOOMO_MAX(rr, 12), DOOMO_MAX(rr, 12), m, glow);
+ }
+ 
++#ifndef WELD_SLICED
+ static void tri(G *g, int ax, int ay, int bx, int by, int cx, int cy, uint8_t c)
+ {
+     int minx = DOOMO_MIN(ax, DOOMO_MIN(bx, cx)), maxx = DOOMO_MAX(ax, DOOMO_MAX(bx, cx));
+@@ -267,6 +296,7 @@ static void tri(G *g, int ax, int ay, int bx, int by, int cx, int cy, uint8_t c)
+             if ((e0 >= 0 && e1 >= 0 && e2 >= 0) || (e0 <= 0 && e1 <= 0 && e2 <= 0)) put(g, x, y, c);
+         }
+ }
++#endif
+ 
+ static void line(G *g, int x0, int y0, int x1, int y1, uint8_t c)
+ {
+@@ -328,7 +358,7 @@ static void splat(G *g, int t, int s, uint32_t seed)
+     for (k = 0; k < 7; k++) {
+         uint32_t h = doomo_hash32(seed + (uint32_t)k * 77u);
+         int ox = (int)(h % 5) - 2, oy = (int)((h >> 4) % 5) - 2;
+-        if (get(g, x + ox, y + oy)) put(g, x + ox, y + oy, k < 2 ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_RAMP(RAMP_BLOOD, 4));
++        put_over(g, x + ox, y + oy, k < 2 ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_RAMP(RAMP_BLOOD, 4));
+     }
+ }
+ 
+@@ -349,6 +379,7 @@ static void spikes(G *g, int t0, int t1, int side_px, int n, int len)
+ }
+ 
+ /* ---- the outline pass: coloured selective outlines --------------------- */
++#ifndef WELD_SLICED
+ static void outline(G *g)
+ {
+     int x, y, w = g->w, h = g->h;
+@@ -378,6 +409,7 @@ static void outline(G *g)
+             g->px[y * w + x] = d;
+         }
+ }
++#endif
+ 
+ /* ---- recipes ---------------------------------------------------------------- */
+ typedef struct Recipe {
+@@ -1233,7 +1265,7 @@ static void compose(uint8_t *px, int w, int h, const DoomoWeapon *wp, int frame,
+     const Recipe *r = &recipes[wp->frame < WFRAME_COUNT ? wp->frame : WFRAME_FISTS];
+     int fire = frame == 1 || frame == 2;
+     memset(&g, 0, sizeof(g));
+-    memset(px, 0, (size_t)(w * h));
++    canvas_clear(px, w * h);
+     g.px = px; g.w = w; g.h = h;
+     setup_mats(&g, wp);
+     if (icon) {
+@@ -1326,6 +1358,7 @@ static uint32_t weapon_key(const DoomoWeapon *w, int frame)
+     return k | 1u;
+ }
+ 
++#ifndef WELD_SLICED
+ const DoomoImage *weld_view_image(const DoomoWeapon *w, int frame)
+ {
+     static const DoomoWeapon fists = { WFRAME_FISTS, 0, 0, 0, 0, 0, 0, 0, 0, WSTYLE_CUTE,
+@@ -1335,23 +1368,23 @@ const DoomoImage *weld_view_image(const DoomoWeapon *w, int frame)
+     if (!w) w = &fists;
+     frame = DOOMO_CLAMP(frame, 0, 3);
+     key = weapon_key(w, frame);
+-    use_clock++;
+-    if (!view_pix || !scene_scratch_mine(WELD_SCRATCH_TAG)) {
++    weld_view_clock++;
++    if (!weld_view_pix || !scene_scratch_mine(WELD_SCRATCH_TAG)) {
+         /* (re)claim the scene scratch: whatever the slots held is gone */
+-        view_pix = (ViewPix *)scene_scratch(WELD_SCRATCH_TAG, (uint32_t)sizeof(ViewPix) * VIEW_SLOTS);
+-        memset(view_key, 0, sizeof(view_key));
++        weld_view_pix = (WeldViewPix *)scene_scratch(WELD_SCRATCH_TAG, (uint32_t)sizeof(WeldViewPix) * VIEW_SLOTS);
++        memset(weld_view_key, 0, sizeof(weld_view_key));
+     }
+     for (i = 0; i < VIEW_SLOTS; i++)
+-        if (view_key[i] == key) { view_used[i] = use_clock; return &view_img[i]; }
+-    for (i = 1; i < VIEW_SLOTS; i++) if (view_used[i] < view_used[slot]) slot = i;
+-    compose(view_pix[slot], VW, VH, w, frame, 0);
+-    view_key[slot] = key;
+-    view_used[slot] = use_clock;
+-    view_img[slot].w = VW;
+-    view_img[slot].h = VH;
+-    view_img[slot].pix = view_pix[slot];
+-    view_img[slot].uid = doomo_image_new_uid();
+-    return &view_img[slot];
++        if (weld_view_key[i] == key) { weld_view_used[i] = weld_view_clock; return &weld_view_img[i]; }
++    for (i = 1; i < VIEW_SLOTS; i++) if (weld_view_used[i] < weld_view_used[slot]) slot = i;
++    compose(weld_view_pix[slot], VW, VH, w, frame, 0);
++    weld_view_key[slot] = key;
++    weld_view_used[slot] = weld_view_clock;
++    weld_view_img[slot].w = VW;
++    weld_view_img[slot].h = VH;
++    weld_view_img[slot].pix = weld_view_pix[slot];
++    weld_view_img[slot].uid = doomo_image_new_uid();
++    return &weld_view_img[slot];
+ }
+ 
+ const DoomoImage *weld_icon_image(const DoomoWeapon *w)
+@@ -1395,6 +1428,7 @@ void weld_view_points(const DoomoWeapon *w, int *mx, int *my, int *gx, int *gy)
+ 
+ void weld_gfx_invalidate(void)
+ {
+-    memset(view_key, 0, sizeof(view_key));
++    memset(weld_view_key, 0, sizeof(weld_view_key));
+     icon_gen++;
+ }
++#endif /* !WELD_SLICED */
+diff --git a/core/src/weld_gfx_int.h b/core/src/weld_gfx_int.h
+new file mode 100644
+index 00000000..b3d0986a
+--- /dev/null
++++ b/core/src/weld_gfx_int.h
+@@ -0,0 +1,28 @@
++/* weld_gfx_int.h - the weapon view cache, shared by the two builds of
++ * weld_gfx.c: the plain one (weld_view_image: combat, the library, every
++ * scene but the workshop) and weld_slice.c's (S2-9: the same pictures
++ * composed in slices, weld_view_image_sliced). Not part of the contract. */
++#ifndef DOOMO_WELD_GFX_INT_H
++#define DOOMO_WELD_GFX_INT_H
++
++#include "doomo/weld.h"
++#include "doomo/save_ext.h"
++
++#define WELD_SCRATCH_TAG SAVE_EXT_TAG('W', 'E', 'L', 'D')
++typedef uint8_t WeldViewPix[WELD_VIEW_W * WELD_VIEW_H];
++
++/* Slots 0 .. WELD_VIEW_SLOTS-1 are the scene scratch (scene.h, tag WELD):
++ * weld_view_pix[i], (re)claimed by whoever finds it gone, which empties
++ * every key. Slots WELD_VIEW_SLOTS .. WELD_VIEW_ALL-1 exist only while the
++ * platform lends weld_slice.c more room (plat_ext.h plat_scene_scratch);
++ * only weld_slice.c composes into them or looks there. A slot's key is 0
++ * while it holds no finished picture. */
++#define WELD_VIEW_SLOTS 2
++#define WELD_VIEW_FAR   2
++#define WELD_VIEW_ALL   (WELD_VIEW_SLOTS + WELD_VIEW_FAR)
++extern WeldViewPix *weld_view_pix;
++extern DoomoImage   weld_view_img[WELD_VIEW_ALL];
++extern uint32_t     weld_view_key[WELD_VIEW_ALL], weld_view_used[WELD_VIEW_ALL];
++extern uint32_t     weld_view_clock;          /* counts the askings (the slots' last use) */
++
++#endif
+diff --git a/core/src/weld_slice.c b/core/src/weld_slice.c
+new file mode 100644
+index 00000000..51f48464
+--- /dev/null
++++ b/core/src/weld_slice.c
+@@ -0,0 +1,816 @@
++/* weld_slice.c - the first-person weapon picture composed in slices (S2-9;
++ * owner: action; weld.h weld_view_image_sliced / weld_view_prefetch).
++ *
++ * weld_gfx.c composes a 96x64 picture in one go: 220 ms of one tick on the
++ * GBA, 100 ms on the PS1. Fine where a picture is made once (a weapon
++ * switch in combat), not in Rivet's workshop, which shows a new one with
++ * every part the player tries and three a cycle for the test fire.
++ *
++ * This file compiles weld_gfx.c's recipes a second time (WELD_SLICED) on
++ * primitives of its own:
++ *
++ *   - Units. A composition writes its pixels in units, always in the same
++ *     order: a lone pixel (decals, lines, rivets), or a filled primitive
++ *     (seg, ell, tri, each scan of the outline, the canvas clear) row by
++ *     row. A pass (job_slice) spends a number of rows' worth of pixels,
++ *     starting at unit sl.at (its row sl.row), and notes where it stopped.
++ *     The units before sl.at are skipped without their geometry. So the
++ *     passes together do what one pass without a limit does: every write of
++ *     the composition, once, in its order. Nothing a unit computes depends
++ *     on the canvas except put_over() (one unit: its read and its write) and
++ *     the outline scans (row by row, in the plain scan's order).
++ *   - Rows. The filled primitives' rows are written for speed (on the GBA
++ *     they are ARM code in the IWRAM overlay's UI group): numerators
++ *     stepped instead of multiplied, the two divisions of a seg pixel by a
++ *     reciprocal, tones compared by multiplication, a row cut to the run
++ *     its pixels can lie in. Every shortcut is exact: the pixels are the
++ *     plain build's (core/tests/test_weld_slice.c compares the two builds
++ *     pixel by pixel over thousands of weapons, sliced at every size).
++ *
++ * The cache is weld_gfx.c's (weld_gfx_int.h): a finished picture is the
++ * same whichever build made it. One picture is under way at a time (the
++ * job), in a slot other than the one on show; its key stays 0 until the
++ * last slice, so nothing finds it half drawn.
++ *
++ * When slices run:
++ *   GBA     in the idle time of a frame: one pass that goes on until just
++ *           before the vblank the frame waits for (gba/src/pslice.c,
++ *           weld_idle_next / weld_idle_run: a pass costs ~0.9 ms before its
++ *           first unit, so it is one long one, not many short ones); inside
++ *           a frame only when the job got no slice for 4 ticks
++ *   PS1     inside the frame, a slice at a time while the platform has
++ *           room for one more (ps1/src/pslice.c, plat_portrait_slice_ok)
++ *   others  none: the picture is composed in the call that asks for it, as
++ *           weld_view_image() does (and nothing is composed ahead)
++ */
++#define WELD_SLICED 1
++#include "weld_gfx.c"                   /* Mat, G, at(), the recipes, compose(), weapon_key() */
++#include "doomo/game.h"
++#include "doomo/plat_ext.h"
++
++/* ---- where the row loops live -------------------------------------------- */
++#if defined(DOOMO_PLATFORM_GBA)
++/* ARM code in the IWRAM overlay's UI group (gba/src/iwram_ovl.h: IWRAM_UI_CODE). gba_weld_rows_in() brings the
++ * group in and says what was there; gba_weld_rows_out() puts that back (gba/src/pslice.c). */
++#define WELD_ROWS __attribute__((section(".iwram_ui"), target("arm"), long_call, noinline))
++extern int  gba_weld_rows_in(void);
++extern void gba_weld_rows_out(int had);
++/* cycles of this tick's work so far (gba/src/main.c): a pass can be told to stop at a time (sl.until) */
++extern uint32_t gba_work_now(void);
++#define SL_TIMED 1
++#else
++#define WELD_ROWS
++#define gba_weld_rows_in() 0
++#define gba_weld_rows_out(had) ((void)(had))
++#define gba_work_now() 0u
++#define SL_TIMED 0
++#endif
++/* a helper of the row loops: always part of the loop that uses it */
++#define WELD_ROWS_INL static inline __attribute__((always_inline))
++
++/* word reads of the canvas (it is 4-aligned and its rows are whole words) */
++typedef uint32_t __attribute__((may_alias)) Word;
++DOOMO_STATIC_ASSERT((VW & 3) == 0, weld_view_rows_are_whole_words);
++
++/* ---- units ------------------------------------------------------------------ */
++#define SL_TOP (-1)                     /* sl.row: from the unit's first row */
++#define SL_ALL 0x3FFFFFFF               /* a pass without a limit */
++#define SL_LOOK 96                      /* a timed pass looks at the clock every so many units' cost */
++static struct {
++    int32_t  left;                      /* what this pass may still spend (<= 0: it stops at the next unit or row) */
++    uint32_t until;                     /* (SL_TIMED) a timed pass: it stops once gba_work_now() is past this; 0: not timed */
++    uint16_t n;                         /* units met so far in this pass */
++    uint16_t at;                        /* the first unit that is not finished */
++    uint16_t cur;                       /* the filled primitive whose rows run now */
++    int16_t  row;                       /* unit `at`: its first row not written yet, or SL_TOP */
++    int16_t  look;                      /* (SL_TIMED) cost left until the next look at the clock */
++    uint8_t  stopped;                   /* this pass ran out: (at, row) is where the next one goes on */
++    uint8_t  box[4];                    /* the outline scans' box: x0, y0, x1, y1 (taken when the first scan starts) */
++} sl;
++
++/* spend `cost` of the pass: 0 = it is over (nothing was spent) */
++#define SL_SPEND(cost) \
++    do { \
++        if (sl.left <= 0) return 0; \
++        if (SL_TIMED && sl.until && (sl.look -= (int16_t)(cost)) <= 0) { \
++            sl.look = SL_LOOK; \
++            if (gba_work_now() >= sl.until) { sl.left = 0; return 0; } \
++        } \
++        sl.left -= (cost); \
++        return 1; \
++    } while (0)
++static int sl_spend1(void) { SL_SPEND(1); }
++
++/* a lone pixel: 1 = write it now */
++static int sl_one(void)
++{
++    unsigned k = sl.n++;
++    if (sl.stopped || k < sl.at) return 0;
++    if (!sl_spend1()) {
++        sl.stopped = 1;
++        sl.at = (uint16_t)k;
++        sl.row = SL_TOP;
++        return 0;
++    }
++    return 1;
++}
++
++/* a filled primitive: -2 = nothing of it in this pass (done before, or the pass is over); SL_TOP = from its
++ * first row; else the row to go on with. Called before its geometry, which a finished unit never needs. */
++static int sl_fill(void)
++{
++    unsigned k = sl.n++;
++    if (sl.stopped || k < sl.at) return -2;
++    sl.cur = (uint16_t)k;
++    return k == sl.at ? sl.row : SL_TOP;
++}
++
++/* before row y of the filled primitive sl.cur, which costs `cost` (<= 255): 0 = the pass stops here */
++WELD_ROWS_INL int sl_spend(int cost) { SL_SPEND(cost); }
++WELD_ROWS_INL int sl_row(int y, int cost)
++{
++    if (sl_spend(cost)) return 1;
++    sl.stopped = 1;
++    sl.at = sl.cur;
++    sl.row = (int16_t)y;
++    return 0;
++}
++
++/* ---- lone pixels -------------------------------------------------------------- */
++static void put(G *g, int x, int y, uint8_t c)
++{
++    if (!sl_one()) return;
++    if (c == PAL_BLACK) c = PAL_RAMP(RAMP_STONE, 0);       /* 1 is the outline marker */
++    if ((unsigned)x < (unsigned)g->w && (unsigned)y < (unsigned)g->h && c) g->px[y * g->w + x] = c;
++}
++
++/* a pixel of the picture so far in another colour (nothing where it is empty): its read and its write are one
++ * unit, so the read always sees every earlier unit and nothing else */
++static void put_over(G *g, int x, int y, uint8_t c)
++{
++    if (!sl_one()) return;
++    if (!get(g, x, y)) return;
++    if (c == PAL_BLACK) c = PAL_RAMP(RAMP_STONE, 0);
++    if (c) g->px[y * g->w + x] = c;                        /* (get() said it is on the canvas) */
++}
++
++static void clear_px(G *g, int x, int y)
++{
++    if (!sl_one()) return;
++    if ((unsigned)x < (unsigned)g->w && (unsigned)y < (unsigned)g->h) g->px[y * g->w + x] = 0;
++}
++
++static void canvas_clear(uint8_t *px, int n)
++{
++    if (!sl_one()) return;
++    sl.left -= n / 64;
++    memset(px, 0, (size_t)n);
++}
++
++/* a material's five tones as put() writes them (0: nothing) */
++static void put_tones(const Mat *m, uint8_t *cm)
++{
++    int i;
++    for (i = 0; i < 5; i++) cm[i] = m->c[i] == PAL_BLACK ? (uint8_t)PAL_RAMP(RAMP_STONE, 0) : m->c[i];
++}
++
++/* ---- exact helpers of the rows ---------------------------------------------------- */
++/* n / d for 0 <= n <= lim by a reciprocal (the estimate is never low and at most a few high: the loop lands on
++ * the quotient); anything else divides */
++typedef struct Rcp { uint32_t d, rec, lim; } Rcp;
++static void rcp_init(Rcp *r, int d)
++{
++    r->d = (uint32_t)(d > 0 ? d : 1);
++    r->rec = (1u << 20) / r->d + 1u;
++    r->lim = 0xFFFFFFFFu / r->rec;
++}
++WELD_ROWS_INL int rcp_div(const Rcp *r, int n)
++{
++    uint32_t q, un = (uint32_t)n;
++    if (n < 0 || un > r->lim) return n / (int)r->d;
++    q = (un * r->rec) >> 20;
++    while (q * r->d > un) q--;
++    return (int)q;
++}
++
++/* fx_isqrt()'s bit loop (the rows call nothing outside their section) */
++WELD_ROWS_INL uint32_t isqrt_bits(uint32_t v)
++{
++    uint32_t res = 0, bit = 1u << 30;
++    while (bit > v) bit >>= 2;
++    while (bit) {
++        if (v >= res + bit) {
++            v -= res + bit;
++            res = (res >> 1) + bit;
++        } else {
++            res >>= 1;
++        }
++        bit >>= 2;
++    }
++    return res;
++}
++
++/* isqrt_i(v), stepped from the root found last: next to each other along a row the roots differ by little */
++WELD_ROWS_INL int isqrt_near(int v, int *last)
++{
++    int r = *last;
++    if (v <= 0) return 0;
++    if (r * r > v) {
++        if (r < 4 || (r - 4) * (r - 4) > v) r = (int)isqrt_bits((uint32_t)v);
++        else while (r * r > v) r--;
++    } else if ((r + 4) * (r + 4) <= v) {
++        r = (int)isqrt_bits((uint32_t)v);
++    } else {
++        while ((r + 1) * (r + 1) <= v) r++;
++    }
++    *last = r;
++    return r;
++}
++
++/* floor(v / d) for 0 <= v < 2^31 from rec = 0xFFFFFFFF / d: the quotient or one less */
++WELD_ROWS_INL int32_t quot_est(int32_t v, uint32_t rec)
++{
++    return (int32_t)(((uint64_t)(uint32_t)v * rec) >> 32);
++}
++
++/* The steps k in [*k0, *k1] at which lo < n0 + d * k < hi can hold: cut to a run that holds them all (it may hold
++ * a few more: the caller still tests every pixel). rec = 0xFFFFFFFF / |d| (d != 0). */
++WELD_ROWS_INL void run_cut(int32_t n0, int32_t d, uint32_t rec, int32_t lo, int32_t hi, int *k0, int *k1)
++{
++    int32_t a, b;
++    if (d == 0) {
++        if (n0 <= lo || n0 >= hi) *k1 = *k0 - 1;
++        return;
++    }
++    if (d < 0) { int32_t t = -hi; n0 = -n0; hi = -lo; lo = t; }     /* -hi < -n0 + |d| k < -lo */
++    a = lo - n0;                        /* |d| k > a */
++    b = hi - n0;                        /* |d| k < b */
++    if (b <= 0) { *k1 = *k0 - 1; return; }
++    if (a > 0) {
++        int32_t q = quot_est(a, rec) - 1;
++        if (q > *k0) *k0 = (int)q;
++    }
++    {
++        int32_t q = quot_est(b, rec) + 2;
++        if (q < *k1) *k1 = (int)q;
++    }
++}
++
++/* ---- seg ---------------------------------------------------------------------------- */
++/* A segment along the axis from t0 to t1, centred s px to the side, half widths w0 -> w1 (px x16). weld_gfx.c's
++ * seg() per pixel, with: the along / side numerators stepped; t = al * 256 / len and the width's interpolation by
++ * a reciprocal; u = (sd - sc) * 256 / hw never formed, only compared (tone index below); a row cut to where
++ * al can lie in [lt0, lt1] and sd in the band a pixel can be in at all. */
++typedef struct SegRun {
++    uint8_t *px;
++    int w, minx, maxx, maxy;
++    int ax, ay, ux, uy, vx, vy, persp, wsc;
++    int lt0, lt1, w0, dw, adw, s16, sdlo, sdhi, shade, caps;
++    uint32_t reca, recs;                /* 0xFFFFFFFF / |16 ux|, / |16 vx| */
++    Rcp rlen, rdl;
++    uint8_t cm[5];
++} SegRun;
++
++/* the tone index of u = n / d (d > 0; truncated as C does) without the division:
++ * for n >= 0, u < T exactly when n < T d; for n < 0 (u = -floor(-n / d)), u < T exactly when -n >= (1 - T) d */
++WELD_ROWS_INL int tone_cyl_i(int n, int d)
++{
++    if (n >= 0) return n < 90 * d ? 2 : n < 190 * d ? 1 : 0;
++    n = -n;
++    return n >= 201 * d ? 2 : n >= 131 * d ? 4 : n >= 41 * d ? 3 : 2;
++}
++
++WELD_ROWS_INL int tone_box_i(int n, int d, int near_end, int far_end)
++{
++    if (n >= 151 * d) return n >= 226 * d ? 0 : 1;             /* u > 150: u > 225 */
++    if (far_end) return 3;
++    if (near_end) return 1;
++    if (n >= 0) return 2;
++    n = -n;
++    return n >= 206 * d ? 2 : n >= 151 * d ? 4 : n >= 61 * d ? 3 : 2;
++}
++
++WELD_ROWS_INL int tone_glow_i(int n, int d)
++{
++    if (n < 0) n = -n;
++    return n < 70 * d ? 4 : n < 150 * d ? 3 : n < 220 * d ? 2 : 1;
++}
++
++static WELD_ROWS void seg_rows(const SegRun *r, int y)
++{
++    int rnear = 0, rfar = 0;
++    const int width = r->maxx - r->minx + 1, da = 16 * r->ux, ds = 16 * r->vx;
++    /* the numerators at the row's first pixel (x16 x256) */
++    int32_t ry = y * 16 + 8 - r->ay, rx0 = r->minx * 16 + 8 - r->ax;
++    int32_t na0 = rx0 * r->ux + ry * r->uy, ns0 = rx0 * r->vx + ry * r->vy;
++    for (; y <= r->maxy; y++, na0 += 16 * r->uy, ns0 += 16 * r->vy) {
++        uint8_t *row = r->px + y * r->w + r->minx;
++        int32_t na, ns;
++        int k, k0 = 0, k1 = width - 1;
++        if (!sl_row(y, width)) return;
++        /* al = na / 256 truncates, so al in [lt0, lt1] needs 256 (lt0 - 1) < na < 256 (lt1 + 1); sd alike */
++        run_cut(na0, da, r->reca, 256 * (r->lt0 - 1), 256 * (r->lt1 + 1), &k0, &k1);
++        run_cut(ns0, ds, r->recs, 256 * (r->sdlo - 1), 256 * (r->sdhi + 1), &k0, &k1);
++        for (k = k0, na = na0 + da * k0, ns = ns0 + ds * k0; k <= k1; k++, na += da, ns += ds) {
++            int al = na / 256;                              /* along, x16 */
++            int sd = ns / 256;                              /* side, x16 */
++            int t, ps, hw, sc, e0, e1, iw, n, i;
++            if (al < r->lt0 || al > r->lt1 || sd < r->sdlo || sd > r->sdhi) continue;
++            t = rcp_div(&r->rlen, al * 256);                /* al * 256 / len */
++            ps = (256 - r->persp * t / 256) * r->wsc / 256; /* pscale() */
++            iw = r->adw ? rcp_div(&r->rdl, r->adw * (al - r->lt0)) : 0;     /* |w1 - w0| (al - lt0) / dl */
++            hw = (r->w0 + (r->dw < 0 ? -iw : iw)) * ps / 256;
++            sc = r->s16 * ps / 256;
++            if (hw < 6) hw = 6;
++            /* rounded caps */
++            e0 = al - r->lt0;
++            e1 = r->lt1 - al;
++            if ((r->caps & CAP_NEAR) && e0 < hw) hw = isqrt_near(hw * hw - (hw - e0) * (hw - e0), &rnear);
++            if ((r->caps & CAP_FAR) && e1 < hw) hw = isqrt_near(hw * hw - (hw - e1) * (hw - e1), &rfar);
++            if (sd < sc - hw || sd > sc + hw || hw <= 0) continue;
++            n = (sd - sc) * 256;
++            switch (r->shade) {
++            case SH_CYL: i = tone_cyl_i(n, hw); break;
++            case SH_BOX: i = tone_box_i(n, hw, e0 < 16, e1 < 16); break;
++            case SH_GLOW: i = tone_glow_i(n, hw); break;
++            default: i = 2; break;
++            }
++            if (r->cm[i]) row[k] = r->cm[i];
++        }
++    }
++}
++
++static void seg(G *g, int t0, int t1, int s16, int w0, int w1, const Mat *m, int shade, int caps)
++{
++    int x0, y0, x1, y1, x2, y2, x3, y3, minx, maxx, miny, maxy, ya;
++    int lt0, lt1, wmax, ps0, ps1, sc0, sc1, hwmax, dl;
++    SegRun r;
++    if (t1 <= t0) return;
++    ya = sl_fill();
++    if (ya == -2) return;
++    lt0 = g->len * t0 / 256;
++    lt1 = g->len * t1 / 256;
++    wmax = DOOMO_MAX(w0, w1);
++    at(g, t0, s16 / 16 - wmax / 16 - 1, &x0, &y0);
++    at(g, t0, s16 / 16 + wmax / 16 + 1, &x1, &y1);
++    at(g, t1, s16 / 16 - wmax / 16 - 1, &x2, &y2);
++    at(g, t1, s16 / 16 + wmax / 16 + 1, &x3, &y3);
++    minx = DOOMO_MIN(DOOMO_MIN(x0, x1), DOOMO_MIN(x2, x3)) - 1;
++    maxx = DOOMO_MAX(DOOMO_MAX(x0, x1), DOOMO_MAX(x2, x3)) + 1;
++    miny = DOOMO_MIN(DOOMO_MIN(y0, y1), DOOMO_MIN(y2, y3)) - 1;
++    maxy = DOOMO_MAX(DOOMO_MAX(y0, y1), DOOMO_MAX(y2, y3)) + 1;
++    minx = DOOMO_MAX(minx, 0); miny = DOOMO_MAX(miny, 0);
++    maxx = DOOMO_MIN(maxx, g->w - 1); maxy = DOOMO_MIN(maxy, g->h - 1);
++    if (maxx < minx) return;
++    /* The side band a pixel can be in at all. t, the perspective scale ps and the centre sc are monotone along
++     * the axis (a truncating division keeps that), so their ranges come from the two ends; the half width is
++     * at most the larger width times the larger scale (+1 for the truncations), at least 6, and only shrinks
++     * under the caps. A pixel outside the band fails the side test of the plain row. */
++    ps0 = pscale(g, lt0 * 256 / g->len);
++    ps1 = pscale(g, lt1 * 256 / g->len);
++    sc0 = s16 * ps0 / 256;
++    sc1 = s16 * ps1 / 256;
++    hwmax = DOOMO_MAX(w0 < 0 ? -w0 : w0, w1 < 0 ? -w1 : w1) * DOOMO_MAX(ps0 < 0 ? -ps0 : ps0, ps1 < 0 ? -ps1 : ps1) / 256 + 1;
++    if (hwmax < 6) hwmax = 6;
++    dl = DOOMO_MAX(lt1 - lt0, 1);
++    r.px = g->px; r.w = g->w;
++    r.minx = minx; r.maxx = maxx; r.maxy = maxy;
++    r.ax = g->ax; r.ay = g->ay; r.ux = g->ux; r.uy = g->uy; r.vx = g->vx; r.vy = g->vy;
++    r.persp = g->persp; r.wsc = g->wsc;
++    r.lt0 = lt0; r.lt1 = lt1;
++    r.w0 = w0; r.dw = w1 - w0; r.adw = r.dw < 0 ? -r.dw : r.dw;
++    r.s16 = s16;
++    r.sdlo = DOOMO_MIN(sc0, sc1) - hwmax;
++    r.sdhi = DOOMO_MAX(sc0, sc1) + hwmax;
++    r.shade = shade; r.caps = caps;
++    r.reca = g->ux ? 0xFFFFFFFFu / (uint32_t)(16 * (g->ux < 0 ? -g->ux : g->ux)) : 0;
++    r.recs = g->vx ? 0xFFFFFFFFu / (uint32_t)(16 * (g->vx < 0 ? -g->vx : g->vx)) : 0;
++    rcp_init(&r.rlen, g->len);
++    rcp_init(&r.rdl, dl);
++    put_tones(m, r.cm);
++    seg_rows(&r, ya == SL_TOP ? miny : ya);
++}
++
++/* ---- ell ------------------------------------------------------------------------------ */
++/* Shaded ellipse in screen space (centre x16, radii x16), lit top-left: weld_gfx.c's ell() with each column's dx
++ * and each row's dy divided once (dxs / dys, made by ell()), only on the canvas (put() drops the rest), and the
++ * glow's tone from d2 itself: isqrt(d2) < a exactly when d2 < a a. */
++static WELD_ROWS void ell_rows(uint8_t *px, int w, int x0, int y, int x1, int y1, const int16_t *dxs,
++                               const int16_t *dys, const uint8_t *cm, int glow)
++{
++    for (; y <= y1; y++, dys++) {
++        uint8_t *row = px + y * w + x0;
++        int dy = *dys, k, n = x1 - x0;
++        if (!sl_row(y, n + 1)) return;
++        if (dy * dy > 65536) continue;
++        for (k = 0; k <= n; k++) {
++            int dx = dxs[k], d2 = dx * dx + dy * dy, l, i;
++            if (d2 > 65536) continue;
++            if (glow) {
++                i = d2 < 70 * 70 ? 4 : d2 < 150 * 150 ? 3 : d2 < 220 * 220 ? 2 : 1;
++            } else {
++                l = -dx - dy;                              /* light from the upper left */
++                if (d2 > 52000 && l < 0) i = 0;
++                else if (l > 200 && d2 < 30000 && d2 > 4000) i = 4;
++                else if (l > 60) i = 3;
++                else if (l > -150) i = 2;
++                else i = 1;
++            }
++            if (cm[i]) row[k] = cm[i];
++        }
++    }
++}
++
++static void ell(G *g, int cx16, int cy16, int rx16, int ry16, const Mat *m, int glow)
++{
++    int x0 = (cx16 - rx16) >> 4, x1 = (cx16 + rx16) >> 4, y0 = (cy16 - ry16) >> 4, y1 = (cy16 + ry16) >> 4;
++    int16_t dxs[VW], dys[VH];
++    uint8_t cm[5];
++    int x, y, ya;
++    if (rx16 < 8 || ry16 < 8) return;
++    ya = sl_fill();
++    if (ya == -2) return;
++    x0 = DOOMO_MAX(x0, 0); x1 = DOOMO_MIN(x1, g->w - 1);
++    y0 = DOOMO_MAX(y0, 0); y1 = DOOMO_MIN(y1, g->h - 1);
++    if (x1 < x0 || y1 < y0 || x1 - x0 >= VW || y1 - y0 >= VH) return;
++    if (ya != SL_TOP) y0 = ya;
++    /* (|dx|, |dy| <= 257 + 2048 / r: inside the ellipse's box a pixel centre is at most r + 8 from the centre) */
++    for (x = x0; x <= x1; x++) dxs[x - x0] = (int16_t)((x * 16 + 8 - cx16) * 256 / rx16);
++    for (y = y0; y <= y1; y++) dys[y - y0] = (int16_t)((y * 16 + 8 - cy16) * 256 / ry16);
++    put_tones(m, cm);
++    ell_rows(g->px, g->w, x0, y0, x1, y1, dxs, dys, cm, glow);
++}
++
++/* ---- tri -------------------------------------------------------------------------------- */
++/* weld_gfx.c's tri() on the canvas only, its three edge values stepped along the row */
++static void tri(G *g, int ax, int ay, int bx, int by, int cx, int cy, uint8_t c)
++{
++    int minx = DOOMO_MIN(ax, DOOMO_MIN(bx, cx)), maxx = DOOMO_MAX(ax, DOOMO_MAX(bx, cx));
++    int miny = DOOMO_MIN(ay, DOOMO_MIN(by, cy)), maxy = DOOMO_MAX(ay, DOOMO_MAX(by, cy));
++    int x, y, ya = sl_fill();
++    if (ya == -2) return;
++    minx = DOOMO_MAX(minx, 0); maxx = DOOMO_MIN(maxx, g->w - 1);
++    miny = DOOMO_MAX(miny, 0); maxy = DOOMO_MIN(maxy, g->h - 1);
++    if (maxx < minx) return;
++    if (c == PAL_BLACK) c = PAL_RAMP(RAMP_STONE, 0);
++    for (y = ya == SL_TOP ? miny : ya; y <= maxy; y++) {
++        int e0 = (bx - ax) * (y - ay) - (by - ay) * (minx - ax);
++        int e1 = (cx - bx) * (y - by) - (cy - by) * (minx - bx);
++        int e2 = (ax - cx) * (y - cy) - (ay - cy) * (minx - cx);
++        uint8_t *row = g->px + y * g->w;
++        if (!sl_row(y, maxx - minx + 1)) return;
++        if (!c) continue;
++        for (x = minx; x <= maxx; x++, e0 -= by - ay, e1 -= cy - by, e2 -= ay - cy)
++            if ((e0 >= 0 && e1 >= 0 && e2 >= 0) || (e0 <= 0 && e1 <= 0 && e2 <= 0)) row[x] = c;
++    }
++}
++
++/* ---- the outline pass --------------------------------------------------------------------- */
++/* weld_gfx.c's outline(): scan 1 marks an empty pixel (with 1, never a colour of the composition) when one of its
++ * four neighbours is solid (neither empty nor a mark), whatever the order; scan 2 gives a marked pixel a dark
++ * shade of its first solid neighbour right, down, left, up (left and up may be outline already), or empties it.
++ * Here both scans read the canvas directly and look only inside the box of the non-empty pixels grown by one
++ * (taken once, when scan 1 starts: every pixel either scan can change is in it), four pixels at a time where a
++ * word shows there is nothing to do. */
++#define OUTLINE_ROW(w) ((w) / 8)        /* a scan row's cost (a filled row costs its width) */
++#define SOLID(v) ((uint8_t)((v) - 2) < 254)
++#define HAS_ZERO(v) (((v) - 0x01010101u) & ~(v) & 0x80808080u)     /* a zero byte in the word */
++
++/* the box of the non-empty pixels of a w x h canvas (word-aligned, w a multiple of 4), grown by one and clipped,
++ * its columns rounded out to whole words; an empty canvas gives y0 > y1 */
++static WELD_ROWS void outline_box(const uint8_t *p, int w, int h, uint8_t *box)
++{
++    int y, x0 = w, x1 = -1, y0 = h, y1 = -1;
++    for (y = 0; y < h; y++, p += w) {
++        const Word *r = (const Word *)(const void *)p;
++        int a = 0, b = w / 4 - 1;
++        while (a <= b && !r[a]) a++;
++        if (a > b) continue;
++        while (!r[b]) b--;
++        if (y < y0) y0 = y;
++        y1 = y;
++        if (a * 4 < x0) x0 = a * 4;
++        if (b * 4 + 3 > x1) x1 = b * 4 + 3;
++    }
++    if (y1 < 0) { box[0] = 0; box[1] = 1; box[2] = 0; box[3] = 0; return; }
++    x0 -= 4; x1 += 4; y0--; y1++;
++    box[0] = (uint8_t)(x0 < 0 ? 0 : x0);
++    box[2] = (uint8_t)(x1 >= w ? w - 1 : x1);
++    box[1] = (uint8_t)(y0 < 0 ? 0 : y0);
++    box[3] = (uint8_t)(y1 >= h ? h - 1 : y1);
++}
++
++static WELD_ROWS void outline_mark_rows(uint8_t *p, int w, int h, int y, const uint8_t *box)
++{
++    const int bx0 = box[0], by0 = box[1], bx1 = box[2], by1 = box[3];
++    for (; y < h; y++) {
++        uint8_t *r = p + y * w;
++        int x;
++        if (!sl_row(y, OUTLINE_ROW(w))) return;
++        if (y < by0 || y > by1) continue;
++        for (x = bx0; x <= bx1; x += 4) {
++            Word v = *(const Word *)(const void *)(r + x);
++            int k;
++            if (!HAS_ZERO(v)) continue;                     /* four pixels of the picture */
++            if (!v) {
++                /* four empty pixels: nothing to mark unless something solid touches them */
++                Word nb = 0;
++                if (y > 0) nb |= *(const Word *)(const void *)(r + x - w);
++                if (y + 1 < h) nb |= *(const Word *)(const void *)(r + x + w);
++                if (!(nb & 0xFEFEFEFEu) && !(x > 0 && SOLID(r[x - 1])) && !(x + 4 < w && SOLID(r[x + 4]))) continue;
++            }
++            for (k = x; k < x + 4; k++) {
++                if (r[k]) continue;
++                if ((k + 1 < w && SOLID(r[k + 1])) || (y + 1 < h && SOLID(r[k + w])) ||
++                    (k > 0 && SOLID(r[k - 1])) || (y > 0 && SOLID(r[k - w])))
++                    r[k] = 1;
++            }
++        }
++    }
++}
++
++static WELD_ROWS void outline_ink_rows(uint8_t *p, int w, int h, int y, const uint8_t *box, const uint8_t *darker)
++{
++    const int bx0 = box[0], by0 = box[1], bx1 = box[2], by1 = box[3];
++    for (; y < h; y++) {
++        uint8_t *r = p + y * w;
++        int x;
++        if (!sl_row(y, OUTLINE_ROW(w))) return;
++        if (y < by0 || y > by1) continue;
++        for (x = bx0; x <= bx1; x += 4) {
++            Word v = *(const Word *)(const void *)(r + x) ^ 0x01010101u;
++            int k;
++            if (!HAS_ZERO(v)) continue;                     /* no mark in these four */
++            for (k = x; k < x + 4; k++) {
++                uint8_t c, d;
++                if (r[k] != 1) continue;
++                if (k + 1 < w && SOLID(r[k + 1])) c = r[k + 1];
++                else if (y + 1 < h && SOLID(r[k + w])) c = r[k + w];
++                else if (k > 0 && SOLID(r[k - 1])) c = r[k - 1];
++                else if (y > 0 && SOLID(r[k - w])) c = r[k - w];
++                else { r[k] = 0; continue; }
++                d = darker[darker[c]];
++                if (d == c || d == 0 || d == PAL_BLACK) d = PAL_RAMP(RAMP_STONE, 0);
++                r[k] = d;
++            }
++        }
++    }
++}
++
++/* (the canvas is a view slot: 4-aligned, VW x VH; slot_pix() below) */
++static void outline(G *g)
++{
++    int ya = sl_fill();
++    if (ya != -2) {
++        if (ya == SL_TOP) {
++            outline_box(g->px, g->w, g->h, sl.box);
++            ya = 0;
++        }
++        outline_mark_rows(g->px, g->w, g->h, ya, sl.box);
++    }
++    ya = sl_fill();
++    if (ya != -2) outline_ink_rows(g->px, g->w, g->h, ya == SL_TOP ? 0 : ya, sl.box, doomo_art_darker);
++}
++
++/* ---- the job: one picture under way --------------------------------------------------------- */
++#define SLICE_CLASS (PORTRAIT_SLICE_CLASSES - 1)    /* portrait.h: the platform's cost class of a slice here */
++/* a slice inside a frame: rows' worth of pixels (a filled row costs its width, an outline row an eighth, a lone
++ * pixel 1); a picture is 4,000-12,000. About 2 ms on the PS1 (PCSX-Redux), 3-5 ms on the GBA */
++#define SLICE_UNITS 350
++#define PATIENCE 4                      /* WS_IDLE: ticks without a slice before one is asked for inside a frame */
++
++enum { WS_NOW, WS_IDLE, WS_FRAME };
++#if defined(DOOMO_PLATFORM_GBA)
++#define ws_mode WS_IDLE
++#define ws_units SLICE_UNITS
++#elif defined(DOOMO_PLATFORM_PS1)
++#define ws_mode WS_FRAME
++#define ws_units SLICE_UNITS
++#else
++static uint8_t ws_mode = WS_NOW;        /* weld_slice_test() */
++static int32_t ws_units = SLICE_UNITS;
++#endif
++
++static const DoomoWeapon view_fists = { WFRAME_FISTS, 0, 0, 0, 0, 0, 0, 0, 0, WSTYLE_CUTE,
++                                        PAINT_ROSE, PAINT_WHITE, 50, WF_VALID, 0, 0 };
++
++static struct {
++    uint32_t key;
++    uint32_t asked;                     /* the tick it was last asked for */
++    uint32_t last;                      /* the tick of its last slice (or of its start) */
++    DoomoWeapon w;
++    uint8_t on, slot, frame;
++    uint8_t wanted;                     /* weld_view_image_sliced() waits for it (a prefetch does not replace it) */
++} job;
++static WeldViewPix *far_pix;            /* slots WELD_VIEW_SLOTS.. (plat_scene_scratch), NULL: none */
++static uint32_t far_gen;
++static uint32_t shown_key;              /* the picture weld_view_image_sliced() returned last ... */
++static int8_t   shown_slot = -1;        /* ... and its slot (it is still that picture while the keys agree) */
++static uint8_t  asked_mask;             /* slots asked for in tick asked_tick: a prefetch leaves them alone */
++static uint32_t asked_tick;
++
++static uint32_t now(void) { return doomo_frame_count(); }
++
++static uint8_t *slot_pix(int slot)
++{
++    return slot < WELD_VIEW_SLOTS ? weld_view_pix[slot] : far_pix[slot - WELD_VIEW_SLOTS];
++}
++
++/* the far slots as the platform lends them now: 1 = still the ones seen last */
++static int far_same(void)
++{
++    uint32_t gen = 0;
++    WeldViewPix *far = (WeldViewPix *)plat_scene_scratch((uint32_t)sizeof(WeldViewPix) * WELD_VIEW_FAR, &gen);
++    if (far && ((uintptr_t)far & 3)) far = NULL;
++    if (far == far_pix && (!far || gen == far_gen)) return 1;
++    far_pix = far;
++    far_gen = gen;
++    return 0;
++}
++
++static void far_drop(void)
++{
++    int i;
++    for (i = WELD_VIEW_SLOTS; i < WELD_VIEW_ALL; i++) weld_view_key[i] = 0;
++    if (job.on && job.slot >= WELD_VIEW_SLOTS) job.on = 0;
++}
++
++/* Claim or re-check the slots' memory, forget what was lost with it; returns how many slots there are. */
++static int view_sync(void)
++{
++    if (!weld_view_pix || !scene_scratch_mine(WELD_SCRATCH_TAG)) {
++        /* (re)claim the scene scratch: whatever the slots held is gone */
++        weld_view_pix = (WeldViewPix *)scene_scratch(WELD_SCRATCH_TAG, (uint32_t)sizeof(WeldViewPix) * WELD_VIEW_SLOTS);
++        memset(weld_view_key, 0, sizeof(weld_view_key));
++        job.on = 0;
++    }
++    if (!far_same()) far_drop();
++    if (asked_tick != now()) { asked_tick = now(); asked_mask = 0; }
++    weld_view_clock++;
++    return far_pix ? WELD_VIEW_ALL : WELD_VIEW_SLOTS;
++}
++
++static int view_find(uint32_t key, int n)
++{
++    int i;
++    for (i = 0; i < n; i++)
++        if (weld_view_key[i] == key) {
++            weld_view_used[i] = weld_view_clock;
++            asked_mask |= (uint8_t)(1u << i);
++            return i;
++        }
++    return -1;
++}
++
++static int shown_ok(int n)
++{
++    return shown_slot >= 0 && shown_slot < n && weld_view_key[shown_slot] == shown_key;
++}
++
++/* units [sl.at ..) of the job's picture: `units` of them, or (until != 0, where passes can be timed) all that end
++ * before gba_work_now() reaches `until`; finishes the picture when they are the last */
++static void job_slice(int32_t units, uint32_t until)
++{
++    int had;
++    sl.left = units;
++    sl.until = until;
++    sl.look = 0;                        /* (a timed pass looks at the clock before its first unit) */
++    sl.n = 0;
++    sl.stopped = 0;
++    had = gba_weld_rows_in();
++    compose(slot_pix(job.slot), VW, VH, &job.w, job.frame, 0);
++    gba_weld_rows_out(had);
++    job.last = now();
++    if (sl.stopped) return;
++    weld_view_key[job.slot] = job.key;
++    weld_view_used[job.slot] = weld_view_clock;
++    weld_view_img[job.slot].w = VW;
++    weld_view_img[job.slot].h = VH;
++    weld_view_img[job.slot].pix = slot_pix(job.slot);
++    weld_view_img[job.slot].uid = doomo_image_new_uid();
++    job.on = 0;
++}
++
++/* Make (w, frame) the picture under way unless it is already. A picture someone waits for (wanted) replaces
++ * whatever is under way; a prefetch leaves a wanted one alone while it is still asked for, and takes no slot that
++ * was asked for in this tick. Never the slot on show. */
++static void job_want(const DoomoWeapon *w, int frame, uint32_t key, int n, int wanted)
++{
++    int i, slot = -1;
++    if (job.on && job.key == key) {
++        job.asked = now();
++        if (wanted) job.wanted = 1;
++        return;
++    }
++    if (job.on && job.wanted && !wanted && job.asked == now()) return;
++    for (i = 0; i < n; i++) {
++        if (shown_ok(n) && i == shown_slot) continue;
++        if (!wanted && (asked_mask & (1u << i))) continue;
++        if (slot < 0 || (weld_view_key[i] == 0 && weld_view_key[slot] != 0) ||
++            ((weld_view_key[i] == 0) == (weld_view_key[slot] == 0) && weld_view_used[i] < weld_view_used[slot]))
++            slot = i;
++    }
++    if (slot < 0) return;
++    job.on = 1;
++    job.key = key;
++    job.w = *w;
++    job.frame = (uint8_t)frame;
++    job.slot = (uint8_t)slot;
++    job.wanted = (uint8_t)wanted;
++    job.asked = job.last = now();
++    weld_view_key[slot] = 0;
++    sl.at = 0;
++    sl.row = SL_TOP;
++}
++
++/* the slices the asking call itself may run */
++static void job_pump(void)
++{
++    if (ws_mode == WS_NOW) {
++        while (job.on) job_slice(SL_ALL, 0);
++    } else if (ws_mode == WS_FRAME) {
++        while (job.on && plat_portrait_slice_ok(SLICE_CLASS, (int)(now() - job.last))) {
++            job_slice(ws_units, 0);
++            plat_portrait_slice_done(SLICE_CLASS);
++        }
++    } else if (job.on && (int32_t)(now() - job.last) >= PATIENCE &&
++               plat_portrait_slice_ok(SLICE_CLASS, (int)(now() - job.last))) {
++        /* the frames leave no idle time: one slice a tick all the same, so the picture always comes */
++        job_slice(ws_units, 0);
++        plat_portrait_slice_done(SLICE_CLASS);
++    }
++}
++
++const DoomoImage *weld_view_image_sliced(const DoomoWeapon *w, int frame, int *ready)
++{
++    uint32_t key;
++    int n, i;
++    if (!w) w = &view_fists;
++    frame = DOOMO_CLAMP(frame, 0, 3);
++    key = weapon_key(w, frame);
++    n = view_sync();
++    i = view_find(key, n);
++    if (i < 0) {
++        job_want(w, frame, key, n, 1);
++        job_pump();
++        i = view_find(key, n);
++    }
++    if (ready) *ready = i >= 0;
++    if (i >= 0) {
++        shown_slot = (int8_t)i;
++        shown_key = key;
++        return &weld_view_img[i];
++    }
++    if (!shown_ok(n)) return NULL;
++    weld_view_used[shown_slot] = weld_view_clock;       /* the old picture meanwhile */
++    asked_mask |= (uint8_t)(1u << shown_slot);
++    return &weld_view_img[shown_slot];
++}
++
++int weld_view_prefetch(const DoomoWeapon *w, int frame)
++{
++    uint32_t key;
++    int n;
++    if (!w) w = &view_fists;
++    frame = DOOMO_CLAMP(frame, 0, 3);
++    key = weapon_key(w, frame);
++    n = view_sync();
++    if (view_find(key, n) >= 0) return 1;
++    if (ws_mode == WS_NOW) return 0;                    /* no slices: composed when it is asked for, as before */
++    job_want(w, frame, key, n, 0);
++    job_pump();
++    return view_find(key, n) >= 0;
++}
++
++int weld_idle_next(void)
++{
++    if (!job.on || job.asked != now()) return -1;       /* (asked for by the frame just drawn) */
++    if (!scene_scratch_mine(WELD_SCRATCH_TAG) || weld_view_key[job.slot] != 0) {
++        job.on = 0;                                     /* its slot went to someone else */
++        return -1;
++    }
++    if (!far_same()) {
++        far_drop();
++        if (!job.on) return -1;
++    }
++    return SLICE_CLASS;
++}
++
++void weld_idle_run(uint32_t until)
++{
++    if (weld_idle_next() < 0) return;
++    if (SL_TIMED && until) job_slice(SL_ALL, until);
++    else job_slice(ws_units, 0);
++}
++
++void weld_slice_test(int mode, int units)
++{
++#if defined(DOOMO_PLATFORM_GBA) || defined(DOOMO_PLATFORM_PS1)
++    (void)mode; (void)units;
++#else
++    ws_mode = (uint8_t)(mode == 1 ? WS_IDLE : mode == 2 ? WS_FRAME : WS_NOW);
++    ws_units = units > 0 ? units : SLICE_UNITS;
++    job.on = 0;
++    shown_slot = -1;
++#endif
++}
+diff --git a/core/src/workshop.c b/core/src/workshop.c
+index 3f6e7d5a..2f31173a 100644
+--- a/core/src/workshop.c
++++ b/core/src/workshop.c
+@@ -13,9 +13,17 @@
+  * C3 / C15 (clarity): one prompt bar (ui.h ui_prompts, the pad's own
+  * button names: "SEL+A Random" on a GBA), and START asks Rivet what the
+  * stat letters mean (DMG, RATE... and the Armory's Q / Lv).
++ *
++ * S2-9 (speed): the weapon picture never makes a tick wait. It comes from
++ * weld_view_image_sliced() (weld.h): on the GBA and the PS1 a new picture
++ * is composed over a few ticks while the one shown before stays up, and
++ * the pictures that come next (the test fire's two frames, the design one
++ * step further along the row under the cursor, the next weapon of the
++ * Armory list) are composed ahead (weld_view_prefetch).
+  */
+ #include "weld_int.h"
+ #include "doomo/tips.h"
++#include "doomo/plat_ext.h"     /* S2-9: plat_ui_loops */
+ 
+ DoomoWeapon weld_pending;
+ int weld_game_result = -1;
+@@ -34,6 +42,8 @@ static const uint8_t wp_clist[WP_COUNT] = {
+ 
+ static int ws_tab, ws_sel, ws_top, ws_t, ws_arm_sel, ws_preview_t, ws_msg_t;
+ static const char *ws_msg;
++static int8_t ws_dir = 1;       /* S2-9: the way the cursor last stepped (a part's value, the Armory list) */
++static uint8_t ws_shown;        /* S2-9: the animation frame of the preview picture on show */
+ static const char *const rivet_lines[] = {
+     "Sparks are just tiny fireworks!",
+     "Cute or brutal, a weld's a weld.",
+@@ -77,36 +87,39 @@ static const char *wp_name(int k, int v)
+     return "";
+ }
+ 
+-static void wp_set(int k, int v)
++/* part k of design *wp becomes option v (wrapped) */
++static void wp_set_on(DoomoWeapon *wp, int k, int v)
+ {
+     int n = wp_count(k);
+     if (n <= 0) return;
+     v = (v % n + n) % n;
+     if (k == WP_FRAME) {
+         /* a new frame comes with its natural core; looks and charm stay */
+-        DoomoWeapon keep = weld_pending;
+-        weld_default(&weld_pending, v, keep.style);
+-        weld_pending.paint = keep.paint;
+-        weld_pending.accent = keep.accent;
+-        weld_pending.charm = keep.charm;
+-        weld_pending.barrel = keep.barrel;
+-        weld_pending.mod = keep.mod;
+-        weld_pending.mag = keep.mag;
+-        weld_pending.under = keep.under;
+-        if (keep.sight != WSIGHT_IRON) weld_pending.sight = keep.sight;
++        DoomoWeapon keep = *wp;
++        weld_default(wp, v, keep.style);
++        wp->paint = keep.paint;
++        wp->accent = keep.accent;
++        wp->charm = keep.charm;
++        wp->barrel = keep.barrel;
++        wp->mod = keep.mod;
++        wp->mag = keep.mag;
++        wp->under = keep.under;
++        if (keep.sight != WSIGHT_IRON) wp->sight = keep.sight;
+     } else if (k < WP_STYLE) {
+-        weld_part_set(&weld_pending, wp_clist[k], v);
++        weld_part_set(wp, wp_clist[k], v);
+     } else if (k == WP_STYLE) {
+-        weld_pending.style = (uint8_t)v;
++        wp->style = (uint8_t)v;
+     } else if (k == WP_PAINT) {
+-        weld_pending.paint = (uint8_t)v;
++        wp->paint = (uint8_t)v;
+     } else if (k == WP_ACCENT) {
+-        weld_pending.accent = (uint8_t)v;
++        wp->accent = (uint8_t)v;
+     }
+-    weld_pending.quality = 60;
+-    weld_pending.xp = 0;
++    wp->quality = 60;
++    wp->xp = 0;
+ }
+ 
++static void wp_set(int k, int v) { wp_set_on(&weld_pending, k, v); }
++
+ static int design_locked(const char **how)
+ {
+     int k;
+@@ -298,7 +311,8 @@ static void workshop_update(void)
+         if (btn_repeat(BTN_UP)) { ws_sel = (ws_sel + WP_COUNT - 1) % WP_COUNT; audio_sfx(SFX_CURSOR); }
+         if (btn_repeat(BTN_DOWN)) { ws_sel = (ws_sel + 1) % WP_COUNT; audio_sfx(SFX_CURSOR); }
+         if (ws_sel < WP_WELD && (btn_repeat(BTN_LEFT) || btn_repeat(BTN_RIGHT))) {
+-            wp_set(ws_sel, wp_get(ws_sel) + (btn_down(BTN_LEFT) ? -1 : 1));
++            ws_dir = (int8_t)(btn_down(BTN_LEFT) ? -1 : 1);
++            wp_set(ws_sel, wp_get(ws_sel) + ws_dir);
+             ws_preview_t = 0;
+             audio_sfx(SFX_BLIP);
+         }
+@@ -330,8 +344,8 @@ static void workshop_update(void)
+         int slots[DOOMO_MAX_WEAPONS], n = armory_list(slots), cur = 0, i;
+         for (i = 0; i < n; i++) if (slots[i] == ws_arm_sel) cur = i;
+         if (n == 0) return;
+-        if (btn_repeat(BTN_UP)) { cur = (cur + n - 1) % n; audio_sfx(SFX_CURSOR); }
+-        if (btn_repeat(BTN_DOWN)) { cur = (cur + 1) % n; audio_sfx(SFX_CURSOR); }
++        if (btn_repeat(BTN_UP)) { cur = (cur + n - 1) % n; ws_dir = -1; audio_sfx(SFX_CURSOR); }
++        if (btn_repeat(BTN_DOWN)) { cur = (cur + 1) % n; ws_dir = 1; audio_sfx(SFX_CURSOR); }
+         ws_arm_sel = slots[cur];
+         if (btn_pressed(BTN_A)) {
+             doomo_town.story.equipped = (uint8_t)ws_arm_sel;
+@@ -359,22 +373,42 @@ static void workshop_update(void)
+ }
+ 
+ /* ---- draw --------------------------------------------------------------------- */
++/* (S2-9) The preview breathes on the idle picture and test-fires through frames 1 and 2 every 96 ticks. The
++ * picture asked for is the frame the clock says; while it is not ready the one on show stays, drawn where its own
++ * frame sits (ws_shown), and the muzzle star waits for the real fire frame. Once the picture is ready the next
++ * frames of the fire are composed ahead, then the design one step further along the row under the cursor. */
+ static void preview(int x, int y, const DoomoWeapon *w, int silhouette)
+ {
+-    int frame = 0, t = ws_preview_t % 96, bob = ui_wave(ws_t, 60, 1);
++    int frame = 0, t = ws_preview_t % 96, bob = ui_wave(ws_t, 60, 1), ready = 0;
+     int mx, my, gx, gy;
++    const DoomoImage *img;
+     if (t >= 70 && t < 74) frame = 1;
+     else if (t >= 74 && t < 78) frame = 2;
++    if (silhouette) frame = 0;
++    img = weld_view_image_sliced(w, frame, &ready);
++    if (ready) ws_shown = (uint8_t)frame;
+     weld_view_points(w, &mx, &my, &gx, &gy);
+     /* soft shadow + spotlight disc */
+     ui_fill_ellipse(x + 48, y + 60, 34, 5, PAL_RAMP(RAMP_WOOD, 2));
+-    if (silhouette) plat_image(x, y + bob, weld_view_image(w, 0), 1, IMG_SILHOUETTE, PAL_RAMP(RAMP_STONE, 1));
+-    else plat_image(x, y + bob + (frame == 1 ? 3 : 0), weld_view_image(w, frame), 1, 0, 0);
+-    if (!silhouette && frame == 1) {
++    if (!img) { /* (the first picture is still under way) */ }
++    else if (silhouette) plat_image(x, y + bob, img, 1, IMG_SILHOUETTE, PAL_RAMP(RAMP_STONE, 1));
++    else plat_image(x, y + bob + (ws_shown == 1 ? 3 : 0), img, 1, 0, 0);
++    if (!silhouette && ready && frame == 1) {
+         ui_star(x + mx, y + my + bob, 7, w->style == WSTYLE_CUTE ? PAL_PAINT(PAINT_BUBBLEGUM, 1) : PAL_RAMP(RAMP_LAVA, 5));
+         ui_star(x + mx, y + my + bob, 3, PAL_WHITE);
+     }
+     if (!silhouette && (ws_t / 20) % 3 == 0) ui_sparkle(x + 12 + (ws_t * 7) % 70, y + 8 + (ws_t * 3) % 30, ws_t & 15, PAL_WHITE);
++    if (ready) {
++        /* ahead: the fire's next two pictures (none for a locked design: it never fires), then the neighbour */
++        int next = (frame + 1) % 3;
++        if (silhouette || (weld_view_prefetch(w, next) && weld_view_prefetch(w, (next + 1) % 3))) {
++            if (ws_sel < WP_WELD) {
++                DoomoWeapon nb = *w;
++                wp_set_on(&nb, ws_sel, wp_get(ws_sel) + ws_dir);
++                weld_view_prefetch(&nb, 0);
++            }
++        }
++    }
+ }
+ 
+ static void stat_bars(int x, int y, int w, const DoomoWeapon *wp, int compact)
+@@ -515,11 +549,17 @@ static void draw_armory_tab(int sw, int sh)
+     ui_scroll_arrows(lx + lw - 6, ly - 2, ly + rows * 20 - 4, top > 0, top + rows < n);
+     if (n > 0) {
+         const DoomoWeapon *w = &doomo_town.weapons[ws_arm_sel];
++        const DoomoImage *img;
+         DoomoWeaponStats st;
+-        int ph = big ? 152 : 126;
++        int ph = big ? 152 : 126, ready = 0;
+         weld_stats(w, &st);
+         ui_window(px, ly - 4, pw, ph, WIN_CUTE);
+-        plat_image(px + (pw - WELD_VIEW_W) / 2, ly - 3 + ui_wave(ws_t, 60, 1), weld_view_image(w, 0), 1, 0, 0);
++        /* (S2-9) composed over a few ticks (the picture shown before stays up meanwhile), and the next weapon
++         * down or up the list ahead */
++        img = weld_view_image_sliced(w, 0, &ready);
++        ws_shown = 0;                   /* (an idle picture, whatever the Weld tab showed last) */
++        if (img) plat_image(px + (pw - WELD_VIEW_W) / 2, ly - 3 + ui_wave(ws_t, 60, 1), img, 1, 0, 0);
++        if (ready && n > 1) weld_view_prefetch(&doomo_town.weapons[slots[(cur + n + ws_dir) % n]], 0);
+         doomo_snprintf(buf, sizeof(buf), "%s %s", doomo_wclass_names[st.wclass],
+                        st.ammo_type == 0xFF ? "" : doomo_ammo_names[st.ammo_type]);
+         ui_text_center(px + pw / 2, ly + 62, buf, PAL_UI_PINK_D);
+@@ -536,6 +576,7 @@ static void workshop_draw(void)
+     static const char *const tabs[2] = { "Weld", "Armory" };
+     int sw = plat_screen_w(), sh = plat_screen_h();
+     const char *title = "Rivet's Workshop";
++    plat_ui_loops();                    /* S2-9: the platform's 2D loops stay in for the whole visit (GBA) */
+     ui_backdrop(WIN_CREAM, (uint32_t)ws_t);
+     /* a few welding sparks drifting across the backdrop */
+     {
+diff --git a/core/tests/test_weld_slice.c b/core/tests/test_weld_slice.c
+new file mode 100644
+index 00000000..66cd6f30
+--- /dev/null
++++ b/core/tests/test_weld_slice.c
+@@ -0,0 +1,104 @@
++/* test_weld_slice.c - S2-9: the weapon picture composed in slices (weld.h weld_view_image_sliced /
++ * weld_view_prefetch; core/src/weld_slice.c; docs/GBA.md "Speed wave 2: S2-9").
++ *
++ *   - weld_slice.c builds weld_gfx.c's recipes a second time on primitives of its own (units a pass can stop
++ *     between, faster rows). Its pictures must be weld_view_image()'s, pixel for pixel: every frame type in both
++ *     styles and thousands of random weapons, all four animation frames, composed at once and in slices of every
++ *     size down to one unit.
++ *   - The job: nothing half drawn is ever returned, the old picture stays up meanwhile, a prefetch never takes
++ *     the slot on show nor one asked for in the same tick, a slot taken by someone else is not written to, and
++ *     the two more slots a platform may lend come and go with their generation.
++ */
++#include <stdlib.h>
++#include "test.h"
++#include "doomo/scene.h"
++#include "../src/weld_gfx_int.h"
++
++#define NPIX (WELD_VIEW_W * WELD_VIEW_H)
++
++static void random_weapon(DoomoRng *r, DoomoWeapon *w)
++{
++    memset(w, 0, sizeof(*w));
++    w->frame = (uint8_t)rng_range(r, WFRAME_COUNT);
++    w->barrel = (uint8_t)rng_range(r, WBARREL_COUNT);
++    w->core = (uint8_t)rng_range(r, WCORE_COUNT);
++    w->mod = (uint8_t)rng_range(r, WMOD_COUNT);
++    w->sight = (uint8_t)rng_range(r, WSIGHT_COUNT);
++    w->stock = (uint8_t)rng_range(r, WSTOCK_COUNT);
++    w->mag = (uint8_t)rng_range(r, WMAG_COUNT);
++    w->under = (uint8_t)rng_range(r, WUNDER_COUNT);
++    w->charm = (uint8_t)rng_range(r, WCHARM_COUNT);
++    w->style = (uint8_t)rng_range(r, 2);
++    w->paint = (uint8_t)rng_range(r, 32);
++    w->accent = (uint8_t)rng_range(r, 32);
++    w->quality = 60;
++    w->flags = WF_VALID;
++}
++
++/* the picture of (w, frame) by the sliced build, `units` to a slice (0: composed in the call); *slices = the
++ * slices it took. Returns its pixels, or NULL when something else than a finished picture ever came back. */
++static const uint8_t *sliced(const DoomoWeapon *w, int frame, int units, int *slices)
++{
++    const DoomoImage *img;
++    int ready = 0, n = 0;
++    weld_gfx_invalidate();                      /* the cache is shared: compose it again */
++    weld_slice_test(units ? 1 : 0, units);
++    img = weld_view_image_sliced(w, frame, &ready);
++    while (!ready) {
++        if (img || n > 200000 || weld_idle_next() < 0) return NULL;    /* nothing was on show: nothing to return yet */
++        weld_idle_run(0);
++        n++;
++        img = weld_view_image_sliced(w, frame, &ready);
++    }
++    if (slices) *slices = n;
++    weld_slice_test(0, 0);
++    return img && img->w == WELD_VIEW_W && img->h == WELD_VIEW_H ? img->pix : NULL;
++}
++
++static int same_as_plain(const DoomoWeapon *w, int frame, int units, int *slices)
++{
++    static uint8_t ref[NPIX];
++    const uint8_t *got;
++    weld_gfx_invalidate();
++    memcpy(ref, weld_view_image(w, frame)->pix, NPIX);
++    got = sliced(w, frame, units, slices);
++    return got && memcmp(ref, got, NPIX) == 0;
++}
++
++TEST(weld_slice_every_frame_type_is_the_plain_picture)
++{
++    static const int sizes[] = { 0, 350, 97, 13 };
++    DoomoWeapon w;
++    int f, s, fr, k;
++    for (f = 0; f < WFRAME_COUNT; f++)
++        for (s = 0; s < 2; s++) {
++            weld_default(&w, f, s);
++            for (fr = 0; fr < 4; fr++)
++                for (k = 0; k < (int)DOOMO_COUNTOF(sizes); k++)
++                    CHECK_MSG(same_as_plain(&w, fr, sizes[k], NULL), "frame type %d style %d anim %d, slices of %d",
++                              f, s, fr, sizes[k]);
++        }
++}
++
++TEST(weld_slice_random_weapons_are_the_plain_picture)
++{
++    DoomoRng r;
++    DoomoWeapon w;
++    int i, most = 0;
++    rng_seed(&r, 20261112);
++    for (i = 0; i < 6000; i++) {
++        /* at once, the game's slice, and odd sizes down to a few units; now and then one unit a slice */
++        int fr = (int)rng_range(&r, 4), pick = (int)rng_range(&r, 8), n = 0;
++        int units = pick == 0 ? 0 : pick == 1 ? 350 : pick == 2 ? 1 + (int)rng_range(&r, 12)
++                    : 20 + (int)rng_range(&r, 3000);
++        random_weapon(&r, &w);
++        if (pick == 2 && (i % 40) != 0) units += 40;            /* (one unit a slice takes ~10,000 slices) */
++        CHECK_MSG(same_as_plain(&w, fr, units, &n),
++                  "weapon %d (frame type %d barrel %d core %d mod %d sight %d stock %d mag %d under %d charm %d "
++                  "style %d paints %d/%d) anim %d, slices of %d", i, w.frame, w.barrel, w.core, w.mod, w.sight,
++                  w.stock, w.mag, w.under, w.charm, w.style, w.paint, w.accent, fr, units);
++        if (units == 350 && n > most) most = n;
++    }
++    /* a picture is a few dozen slices of the in-frame size at most */
++    CHECK_MSG(most >= 12 && most <= 60, "the longest composition took %d slices of 350 units", most);
++}
+diff --git a/gba/src/pslice.c b/gba/src/pslice.c
+index d3a16e6c..f684e0e9 100644
+--- a/gba/src/pslice.c
++++ b/gba/src/pslice.c
+@@ -14,13 +14,25 @@
+  *
+  * Costs are learned per slice class (PORTRAIT_SLICE_CLASSES: kind x slice): the newest sample, or the old
+  * value less an eighth if that is more (a slow outlier fades in a few samples, a fast one never lowers the
+- * guess at once). 172 B of EWRAM. */
++ * guess at once). 172 B of EWRAM.
++ *
++ * (S2-9) The weapon picture of Rivet's workshop is composed in idle time too (core/src/weld_slice.c): after the
++ * portrait cache's slices, when at least WELD_MIN_CYC are left before the vblank, weld_idle_run() gets the time up
++ * to WELD_MARGIN_CYC before it and stops by its own clock (gba_work_now(), main.c): one pass of whatever length
++ * fits, because a pass costs ~0.9 ms before its first unit. Its row loops are ARM code of the IWRAM overlay's UI
++ * group: gba_weld_rows_in() / gba_weld_rows_out() bring the group in around a pass and put back what was there
++ * (the workshop keeps the UI group in, plat_ui_loops(), so nothing is copied there). A slice inside a frame (only
++ * when the frames leave no idle time for 4 ticks) is timed as the last slice class: +2 B of EWRAM. */
+ #include "gba_plat.h"
++#include "iwram_ovl.h"
+ #include "doomo/portrait.h"
+ 
+ /* weak references: the engine test's NOCORE build links no portrait cache (then there is nothing to run) */
+ extern int portrait_idle_next(void) __attribute__((weak));
+ extern void portrait_idle_run(void) __attribute__((weak));
++extern int weld_idle_next(void) __attribute__((weak));      /* (S2-9) core/src/weld_slice.c */
++extern void weld_idle_run(uint32_t until) __attribute__((weak));
++extern uint32_t gba_work_now(void);                         /* main.c */
+ 
+ #define FRAME_CYC   280896u                 /* one video frame */
+ #define LINE_CYC    1232u
+@@ -31,6 +43,9 @@ extern void portrait_idle_run(void) __attribute__((weak));
+ #define PATIENCE_BIG 15                     /* ... before one dear slice (over CHEAP_CYC) is */
+ #define CHEAP_CYC   90000u
+ #define NCLS        PORTRAIT_SLICE_CLASSES
++#define WELD_MIN_CYC    50000u              /* (S2-9) a weapon pass is worth starting with 3 ms of idle time */
++#define WELD_MARGIN_CYC 25000u              /* ... and stops looking for work 1.5 ms before the vblank (it looks at
++                                             * the clock every ~1 ms of work, and a row is up to 0.5 ms) */
+ 
+ static uint16_t cost64[NCLS];               /* learned cost, 64-cycle units (0: never timed) */
+ static uint32_t c0;                         /* gba_cycles() when the slice started */
+@@ -107,13 +122,32 @@ static uint32_t cycles_until(uint32_t target)
+ void gba_pslice_idle(uint32_t target)
+ {
+     int n;
+-    if (!portrait_idle_next || !portrait_idle_run) return;
+     in_idle = 1;
+-    for (n = 0; n < 24; n++) {
+-        int cls = portrait_idle_next();
+-        if (cls < 0) break;
+-        if (est(cls) > cycles_until(target)) break;
+-        portrait_idle_run();                /* calls plat_portrait_slice_ok / _done: timed and learned */
+-    }
++    if (portrait_idle_next && portrait_idle_run)
++        for (n = 0; n < 24; n++) {
++            int cls = portrait_idle_next();
++            if (cls < 0) break;
++            if (est(cls) > cycles_until(target)) break;
++            portrait_idle_run();            /* calls plat_portrait_slice_ok / _done: timed and learned */
++        }
+     in_idle = 0;
++    /* (S2-9) then the weapon picture under way, if the frame just drawn asked for one: one pass until the vblank */
++    if (weld_idle_next && weld_idle_run && weld_idle_next() >= 0) {
++        uint32_t left = cycles_until(target);
++        if (left >= WELD_MIN_CYC) weld_idle_run(gba_work_now() + left - WELD_MARGIN_CYC);
++    }
++}
++
++/* (S2-9) core/src/weld_slice.c, around a slice: the IWRAM overlay's UI group in (returns the group that was
++ * there), and that group back. Never called from an IRQ (iwram_ovl.h). */
++int gba_weld_rows_in(void)
++{
++    int had = iwram_ovl_current();
++    if (had != OVL_UI) iwram_ovl_use(OVL_UI);
++    return had;
++}
++
++void gba_weld_rows_out(int had)
++{
++    if (had != OVL_UI && had != OVL_NONE) iwram_ovl_use(had);
+ }

@@ -1,0 +1,2323 @@
+From 78c3fe1a35a3b9f3bc471680f5bafdf233ebe5a9 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 12 Nov 2026 23:33:31 +0000
+Subject: [PATCH 1/9] PS1-RAM: the build warns under the 72 KB plan gate; a RAM
+ ledger tool and the CI summary
+
+ps1/tools/elf2exe.py prints the exact bytes left below the stack top and a
+WARNING (a GitHub annotation on CI) when they are under the 72 KB plan gate,
+long before the hard failure at 64 KB. The line the show engine reads keeps
+its shape.
+
+ps1/tools/ram_ledger.py reads the linker map: the layout (resident .text,
+.rodata, .data, .bss, the borrowed .bss, the overlay slot, the margin), the
+biggest resident objects with code / const data / strings / .bss apart, the
+overlay groups by name and, with readelf, the biggest resident symbols. The
+PS1 job writes it to the job summary.
+
+ps1/tools/test_tools.py: unit tests of both (made-up ELF and map), run by CI.
+
+Baseline on this machine (89a28b56, boot FMV linked): 65,936 B below the
+stack top.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ .github/workflows/ci.yml |  15 +++
+ ps1/tools/elf2exe.py     |  31 ++++-
+ ps1/tools/ram_ledger.py  | 250 +++++++++++++++++++++++++++++++++++++++
+ ps1/tools/test_tools.py  | 190 +++++++++++++++++++++++++++++
+ 4 files changed, 482 insertions(+), 4 deletions(-)
+ create mode 100644 ps1/tools/ram_ledger.py
+ create mode 100644 ps1/tools/test_tools.py
+
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 1355fcd9..600a7d61 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -299,12 +299,27 @@ jobs:
+         with:
+           commit: ${{ env.PSXAVENC_COMMIT }}
+ 
++      - name: PS1 build tool tests (elf2exe gate, RAM ledger, string sections, overlay planner)
++        run: python3 ps1/tools/test_tools.py
++
+       - name: Build the game disc (preset ps1)
+         working-directory: ps1
+         run: |
+           cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON
+           cmake --build --preset ps1
+ 
++      # The margin below the stack top and where the 2 MB go, in the job summary (docs/PS1.md "RAM
++      # headroom 2026-11-12"). elf2exe.py already printed a WARNING annotation under the 72 KB plan
++      # gate and failed the build under 64 KB; this table says what to shrink.
++      - name: PS1 RAM ledger (margin below the stack top, biggest resident objects and symbols)
++        if: always()
++        working-directory: ps1
++        run: |
++          if [ ! -f build/doomogachi.ldmap ]; then echo "(no doomogachi.ldmap: the link did not run)"; exit 0; fi
++          python3 tools/ram_ledger.py build/doomogachi.ldmap --ld build/ovl.ld \
++            --readelf mipsel-linux-gnu-readelf --elf build/doomogachi.elf \
++            --objs 30 --syms 30 --gate 73728 --md | tee -a "$GITHUB_STEP_SUMMARY" || true
++
+       - name: Biggest PS1 statics (names the culprits when the disc overflows its RAM)
+         if: always()
+         working-directory: ps1
+diff --git a/ps1/tools/elf2exe.py b/ps1/tools/elf2exe.py
+index ff15875b..244acf23 100644
+--- a/ps1/tools/elf2exe.py
++++ b/ps1/tools/elf2exe.py
+@@ -11,13 +11,23 @@ Segments whose load address differs from their run address are the scene
+ overlays (ovl_plan.py / ovl_pack.py): they are left out of the EXE, but
+ the RAM slot they run in counts towards the 2 MB.
+ 
+-usage: elf2exe.py input.elf output.exe [--region NA|EU|JP]
++The image, its BSS and the overlay slot must end at least 64 KB below
++0x80200000 (the stack reserve): under that the conversion fails. Under the
++72 KB PLAN GATE (docs/PS1.md "RAM headroom 2026-11-12") it still passes but
++prints a WARNING (and a GitHub Actions annotation), so a CI log shows the
++disc running out of RAM long before the hard failure.
++
++usage: elf2exe.py input.elf output.exe [--region NA|EU|JP] [--gate BYTES]
+ Stdlib only, deterministic output.
+ """
++import os
+ import struct
+ import sys
+ 
+ PT_LOAD = 1
++STACK_TOP = 0x1FFFF0            # system.cnf: STACK = 801FFFF0
++RESERVE_END = 0x200000 - 0x10000   # the image must end here or lower (64 KB of stack)
++PLAN_GATE = 72 * 1024           # bytes below the stack top the plan asks for
+ 
+ 
+ def main(argv):
+@@ -28,6 +38,9 @@ def main(argv):
+     region = "NA"
+     if "--region" in argv:
+         region = argv[argv.index("--region") + 1].upper()
++    gate = PLAN_GATE
++    if "--gate" in argv:
++        gate = int(argv[argv.index("--gate") + 1], 0)
+     data = open(src, "rb").read()
+     if data[:4] != b"\x7fELF" or data[4] != 1 or data[5] != 1:
+         print("elf2exe: not a 32-bit little-endian ELF: %s" % src)
+@@ -87,12 +100,22 @@ def main(argv):
+     print("elf2exe: layout: image 0x%x-0x%x (%d B), bss 0x%x-0x%x (%d B), overlay slot ends 0x%x, _end 0x%x" % (
+         lo, hi, hi - lo, bss_lo or 0, bss_hi or 0, (bss_hi - bss_lo) if bss_lo is not None else 0,
+         ovl_hi or 0, sym_end))
+-    if end > 0x200000 - 0x10000:
++    left = STACK_TOP - end
++    print("elf2exe: %d B left below the stack top 0x%x (fails under %d B, plan gate %d B)" % (
++        left, 0x80000000 + STACK_TOP, STACK_TOP - RESERVE_END, gate))
++    if end > RESERVE_END:
+         print("elf2exe: image + bss end at 0x%x, leaves no room for the stack "
+               "in 2 MB RAM" % (end + 0x80000000))
+         print("elf2exe: %d B over the limit 0x%x (the stack reserve is 64 KB); "
+-              "shrink at least that much" % (end - (0x200000 - 0x10000), 0x80000000 + 0x200000 - 0x10000))
++              "shrink at least that much" % (end - RESERVE_END, 0x80000000 + RESERVE_END))
+         return 1
++    if left < gate:
++        msg = ("only %d B left below the stack top: %d B under the %d KB plan gate "
++               "(the build fails %d B from here; docs/PS1.md \"RAM headroom\", tools/ram_ledger.py)" % (
++                   left, gate - left, gate // 1024, RESERVE_END - end))
++        print("elf2exe: WARNING: " + msg)
++        if os.environ.get("GITHUB_ACTIONS"):
++            print("::warning title=PS1 RAM under the plan gate::" + msg)
+     hdr = bytearray(2048)
+     hdr[0:8] = b"PS-X EXE"
+     struct.pack_into("<IIIIIIIIII", hdr, 0x10,
+@@ -112,7 +135,7 @@ def main(argv):
+           "below the stack top), entry 0x%08x" % (
+               dst, lo, size // 1024,
+               ((bss_hi - bss_lo) if bss_lo is not None else 0) // 1024,
+-              end + 0x80000000, (0x1FFFF0 - end) // 1024, e_entry))
++              end + 0x80000000, left // 1024, e_entry))
+     return 0
+ 
+ 
+diff --git a/ps1/tools/ram_ledger.py b/ps1/tools/ram_ledger.py
+new file mode 100644
+index 00000000..2a6441b1
+--- /dev/null
++++ b/ps1/tools/ram_ledger.py
+@@ -0,0 +1,250 @@
++#!/usr/bin/env python3
++"""ram_ledger.py - where the PS1 game's 2 MB of RAM go (owner: ps1).
++Stdlib only, deterministic.
++
++    ram_ledger.py build/doomogachi.ldmap [--ld build/ovl.ld]
++                  [--readelf READELF --elf build/doomogachi.elf]
++                  [--objs N] [--syms N] [--md] [--gate BYTES]
++
++Reads the linker map of the game disc (ld -Map: every build writes
++build/doomogachi.ldmap) and prints the resident ledger of docs/PS1.md
++"RAM headroom 2026-11-12":
++
++  * the layout: resident .text / .rodata / .data / .bss, the borrowed
++    .bss, the overlay slot, and what is left below the stack top;
++  * the N biggest resident objects with .text, .rodata, string literals,
++    .data and .bss apart. The linker merges the string literals of all
++    resident objects into one block: an object's "strings" are its share
++    before the merge, the block's real size is in the layout;
++  * the overlay groups, named from ovl.ld with --ld (not resident: one
++    group at a time is read from OVL.BIN into the slot, so only the
++    biggest sets the slot's size);
++  * with --readelf and --elf: the N biggest resident symbols, each with
++    its kind and object.
++
++--md prints GitHub markdown (the CI job summary). --gate BYTES adds a
++WARNING line when less than BYTES are left below the stack top (the
++exit code stays 0: tools/elf2exe.py is what fails a build).
++"""
++import argparse
++import bisect
++import collections
++import re
++import subprocess
++import sys
++
++STACK_TOP = 0x801FFFF0
++RESIDENT = (".text", ".rodata", ".ctors", ".dtors", ".data", ".sdata", ".sbss", ".bss", ".borrow")
++KIND = {".text": "text", ".rodata": "rodata", ".ctors": "data", ".dtors": "data",
++        ".data": "data", ".sdata": "data", ".sbss": "bss", ".bss": "bss", ".borrow": "borrow"}
++
++
++def obj_name(path):
++    """the object as the docs name it: core/src/ui, ps1/src/gfx, sdk/libpsxgpu(image.c)"""
++    m = re.search(r"/(lib\w+?)(?:_exe_gprel)?\.a\((.+?)\.o(?:bj)?\)$", path)
++    if m:
++        return "sdk/%s(%s)" % (m.group(1), m.group(2))
++    p = path
++    for ext in (".c.obj", ".s.obj", ".obj", ".o"):
++        if p.endswith(ext):
++            p = p[: -len(ext)]
++            break
++    k = p.find("/core/")
++    if k >= 0:
++        return p[k + 1:]
++    k = p.find("doomo_objs.dir/")
++    if k >= 0:
++        rest = p[k + len("doomo_objs.dir/"):]
++        return ("ps1/" + rest) if rest.startswith("src/") else ("build/" + rest)
++    return p.rsplit("/", 1)[-1]
++
++
++def parse_map(path):
++    """-> (outs, syms). outs: output section -> [addr, size, [(input section, addr, size, object)]];
++    syms: the layout symbols the map prints (_end, __ovl_slot, ...)"""
++    outs = collections.OrderedDict()
++    syms = {}
++    cur = pend = None
++    started = False
++    rx_out = re.compile(r"^(\.[\w.]+)\s+0x([0-9a-f]+)\s+0x([0-9a-f]+)")
++    rx_in1 = re.compile(r"^ (\.[^\s]+|COMMON)\s+0x([0-9a-f]+)\s+0x([0-9a-f]+)\s+(\S.*)$")
++    rx_in0 = re.compile(r"^ (\.[^\s]+|COMMON)\s*$")
++    rx_in2 = re.compile(r"^\s+0x([0-9a-f]+)\s+0x([0-9a-f]+)\s+(\S.*)$")
++    rx_sym = re.compile(r"^\s+0x([0-9a-f]+)\s+(\w+) = ")
++    with open(path, errors="replace") as f:
++        lines = f.read().split("\n")
++    for line in lines:
++        if not started:
++            started = line.startswith("Linker script and memory map")
++            continue
++        m = rx_out.match(line)
++        if m:
++            cur = m.group(1)
++            outs[cur] = [int(m.group(2), 16), int(m.group(3), 16), []]
++            pend = None
++            continue
++        if line and not line.startswith(" "):
++            cur = pend = None           # the next statement of the script, or the map's tail
++            continue
++        m = rx_sym.match(line)
++        if m:
++            syms[m.group(2)] = int(m.group(1), 16)
++            continue
++        if cur is None:
++            continue
++        m = rx_in1.match(line)
++        if m:
++            outs[cur][2].append((m.group(1), int(m.group(2), 16), int(m.group(3), 16), m.group(4).strip()))
++            pend = None
++            continue
++        m = rx_in0.match(line)
++        if m:
++            pend = m.group(1)           # a long section name: its address is on the next line
++            continue
++        m = rx_in2.match(line)
++        if m and pend:
++            outs[cur][2].append((pend, int(m.group(1), 16), int(m.group(2), 16), m.group(3).strip()))
++        pend = None
++    return outs, syms
++
++
++def is_str(name):
++    return ".str1." in name
++
++
++def group_names(ld_path):
++    """.ovl_NN -> group name, from the comments ovl_plan.py writes into ovl.ld"""
++    names = {}
++    try:
++        with open(ld_path) as f:
++            for line in f:
++                m = re.match(r"\s*(\.ovl_\d+)\s.*/\*\s*(\S+)\s*\*/", line)
++                if m:
++                    names[m.group(1)] = m.group(2)
++    except OSError:
++        pass
++    return names
++
++
++def main(argv):
++    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
++    ap.add_argument("map")
++    ap.add_argument("--ld")
++    ap.add_argument("--readelf")
++    ap.add_argument("--elf")
++    ap.add_argument("--objs", type=int, default=40)
++    ap.add_argument("--syms", type=int, default=40)
++    ap.add_argument("--md", action="store_true")
++    ap.add_argument("--gate", type=int, default=0)
++    a = ap.parse_args(argv[1:])
++
++    outs, syms = parse_map(a.map)
++    if ".text" not in outs:
++        print("ram_ledger: no .text in %s (not a linker map?)" % a.map)
++        return 2
++    ovl = [(n, o[0], o[1]) for n, o in outs.items() if n.startswith(".ovl_")]
++    end = syms.get("_end") or max(o[0] + o[1] for n, o in outs.items() if n in RESIDENT or n.startswith(".ovl_"))
++    slot = syms.get("__ovl_slot", 0)
++    slot_end = syms.get("__ovl_slot_end", end)
++    left = STACK_TOP - end
++    size = {n: outs[n][1] for n in RESIDENT if n in outs}
++    # the merged string block: the map prints it at its first input, with the block's real size
++    merged, merged_at = 0, None
++    for i, (name, _, sz, _) in enumerate(outs.get(".rodata", [0, 0, []])[2]):
++        if is_str(name) and sz > merged:
++            merged, merged_at = sz, i
++
++    def row(*cells):
++        if a.md:
++            print("| " + " | ".join(str(c) for c in cells) + " |")
++        else:
++            print("  " + "  ".join(str(c) for c in cells))
++
++    def head(title, cols):
++        print()
++        if a.md:
++            print("### " + title)
++            print()
++            print("| " + " | ".join(cols) + " |")
++            print("|" + "|".join("---" if i == 0 else "---:" for i in range(len(cols))) + "|")
++        else:
++            print(title + "  (" + ", ".join(cols) + ")")
++
++    head("PS1 game disc: the 2 MB", ["what", "bytes"])
++    row("resident .text (code)", size.get(".text", 0))
++    row("resident .rodata (const data; %d B of it the merged string literals)" % merged, size.get(".rodata", 0))
++    row(".data + .sdata + ctors / dtors", sum(size.get(n, 0) for n in (".ctors", ".dtors", ".data", ".sdata")))
++    row(".sbss + .bss", size.get(".sbss", 0) + size.get(".bss", 0))
++    row(".borrow (the .bss the house and creator groups load over)", size.get(".borrow", 0))
++    if slot:
++        row("overlay slot (after the .bss; the biggest group sets it)", slot_end - slot)
++    row("the EXE ends at", "0x%08x" % end)
++    row("left below the stack top (0x801FFFF0)", left)
++
++    # --- resident objects ---
++    per = collections.defaultdict(collections.Counter)
++    for n in RESIDENT:
++        for i, (name, _, sz, obj) in enumerate(outs.get(n, [0, 0, []])[2]):
++            if name == "*fill*":
++                continue
++            k = KIND[n]
++            if n == ".rodata" and is_str(name):
++                k = "str"
++                if i == merged_at:
++                    continue            # the block's size, not this object's share
++            per[obj_name(obj)][k] += sz
++    rows = sorted(per.items(), key=lambda kv: (-sum(kv[1].values()), kv[0]))
++    cols = ["object", "total", ".text", ".rodata", "strings", ".data", ".bss", "borrowed .bss"]
++    head("The %d biggest resident objects" % min(a.objs, len(rows)), cols)
++    for obj, c in rows[: a.objs]:
++        row(obj, sum(c.values()), c["text"], c["rodata"], c["str"], c["data"], c["bss"], c["borrow"])
++    if rows[a.objs:]:
++        c = collections.Counter()
++        for _, x in rows[a.objs:]:
++            c.update(x)
++        row("(%d more)" % len(rows[a.objs:]), sum(c.values()), c["text"], c["rodata"], c["str"], c["data"],
++            c["bss"], c["borrow"])
++
++    # --- overlay groups ---
++    if ovl:
++        names = group_names(a.ld) if a.ld else {}
++        head("Overlay groups (one at a time in the slot)", ["group", "bytes", "loads at"])
++        for n, addr, sz in sorted(ovl, key=lambda x: (-x[2], x[0])):
++            row(names.get(n, n), sz, "0x%08x%s" % (addr, "" if addr >= slot or not slot else " (over .borrow)"))
++
++    # --- resident symbols ---
++    if a.readelf and a.elf:
++        out = subprocess.run([a.readelf, "-S", "-s", "-W", a.elf], check=True, capture_output=True, text=True).stdout
++        secname = {}
++        symrows = []
++        for line in out.splitlines():
++            m = re.match(r"\s*\[\s*(\d+)\]\s+(\S+)\s+\S+\s+[0-9a-f]+", line)
++            if m:
++                secname[int(m.group(1))] = m.group(2)
++                continue
++            # (readelf prints a size over 99999 in hex)
++            m = re.match(r"\s*\d+:\s+([0-9a-f]+)\s+(\d+|0x[0-9a-f]+)\s+(\w+)\s+\w+\s+\w+\s+(\d+)\s+(\S+)", line)
++            if m and m.group(3) in ("OBJECT", "FUNC") and int(m.group(2), 0):
++                sec = secname.get(int(m.group(4)))
++                if sec in RESIDENT:
++                    symrows.append((int(m.group(2), 0), m.group(5), int(m.group(1), 16), sec))
++        spans = {}
++        for n in RESIDENT:
++            s = sorted((addr, addr + sz, obj_name(obj)) for name, addr, sz, obj in outs.get(n, [0, 0, []])[2] if sz)
++            spans[n] = (s, [x[0] for x in s])
++        head("The %d biggest resident symbols" % a.syms, ["symbol", "bytes", "kind", "object"])
++        for sz, name, addr, sec in sorted(symrows, key=lambda r: (-r[0], r[1]))[: a.syms]:
++            s, starts = spans[sec]
++            i = bisect.bisect_right(starts, addr) - 1
++            obj = s[i][2] if i >= 0 and s[i][0] <= addr < s[i][1] else "?"
++            row(name, sz, KIND[sec], obj)
++
++    if a.gate and left < a.gate:
++        print()
++        print("ram_ledger: WARNING: %d B left below the stack top, %d B under the %d B gate" % (
++            left, a.gate - left, a.gate))
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main(sys.argv))
+diff --git a/ps1/tools/test_tools.py b/ps1/tools/test_tools.py
+new file mode 100644
+index 00000000..df0ed072
+--- /dev/null
++++ b/ps1/tools/test_tools.py
+@@ -0,0 +1,190 @@
++#!/usr/bin/env python3
++"""test_tools.py - unit tests of the PS1 build tools (owner: ps1).
++
++    python3 ps1/tools/test_tools.py            (CI: the PS1 job runs it)
++
++elf2exe.py (the stack reserve and the plan gate's WARNING) and
++ram_ledger.py (the linker map reader) are tested on files made here. Stdlib
++only; the tests that need the MIPS compiler are skipped without one.
++"""
++import contextlib
++import io
++import os
++import struct
++import sys
++import tempfile
++import unittest
++
++HERE = os.path.dirname(os.path.abspath(__file__))
++sys.path.insert(0, HERE)
++import elf2exe          # noqa: E402
++import ram_ledger       # noqa: E402
++
++
++def tiny_elf(end):
++    """a 32-bit little-endian ELF with one loadable segment at 0x80010000
++    whose image + BSS end at `end` (an address in RAM)"""
++    ph = struct.pack("<IIIIIIII", 1, 0x1000, 0x80010000, 0x80010000, 16, end - 0x80010000, 7, 0x1000)
++    eh = b"\x7fELF\x01\x01\x01" + bytes(9) + struct.pack(
++        "<HHIIIIIHHHHHH", 2, 8, 1, 0x80010000, 52, 0, 0, 52, 32, 1, 40, 0, 0)
++    blob = eh + ph
++    return blob + bytes(0x1000 - len(blob)) + bytes(16)
++
++
++def run_elf2exe(end, *extra, env=None):
++    with tempfile.TemporaryDirectory() as d:
++        src, dst = os.path.join(d, "a.elf"), os.path.join(d, "a.exe")
++        with open(src, "wb") as f:
++            f.write(tiny_elf(end))
++        out = io.StringIO()
++        old = dict(os.environ)
++        os.environ.pop("GITHUB_ACTIONS", None)
++        os.environ.update(env or {})
++        try:
++            with contextlib.redirect_stdout(out):
++                rc = elf2exe.main(["elf2exe.py", src, dst] + list(extra))
++        finally:
++            os.environ.clear()
++            os.environ.update(old)
++        return rc, out.getvalue(), os.path.exists(dst)
++
++
++class Elf2Exe(unittest.TestCase):
++    TOP = 0x801FFFF0
++
++    def test_room_above_the_gate_is_quiet(self):
++        rc, out, made = run_elf2exe(self.TOP - 73728)
++        self.assertEqual(rc, 0)
++        self.assertTrue(made)
++        self.assertNotIn("WARNING", out)
++        self.assertIn("73728 B left below the stack top", out)
++        # the line the show engine's ram_report.py reads keeps its shape
++        self.assertRegex(out, r"size \d+ KB \(\+bss \d+ KB, ends 0x[0-9a-f]+, 72 KB left")
++
++    def test_under_the_plan_gate_warns_but_passes(self):
++        rc, out, made = run_elf2exe(self.TOP - 73724)
++        self.assertEqual(rc, 0)
++        self.assertTrue(made)
++        self.assertIn("elf2exe: WARNING: only 73724 B left below the stack top: 4 B under the 72 KB plan gate", out)
++        self.assertNotIn("::warning", out)
++
++    def test_the_warning_is_an_annotation_on_github(self):
++        rc, out, _ = run_elf2exe(self.TOP - 70000, env={"GITHUB_ACTIONS": "true"})
++        self.assertEqual(rc, 0)
++        self.assertIn("::warning title=PS1 RAM under the plan gate::only 70000 B left", out)
++
++    def test_the_gate_is_an_option(self):
++        rc, out, _ = run_elf2exe(self.TOP - 70000, "--gate", "69000")
++        self.assertEqual(rc, 0)
++        self.assertNotIn("WARNING", out)
++
++    def test_into_the_stack_reserve_fails(self):
++        rc, out, made = run_elf2exe(0x801F0000 + 16)
++        self.assertEqual(rc, 1)
++        self.assertFalse(made)
++        self.assertIn("16 B over the limit 0x801f0000", out)
++        rc, _, made = run_elf2exe(0x801F0000)
++        self.assertEqual(rc, 0)             # exactly at the limit still links
++        self.assertTrue(made)
++
++
++MAP = """\
++Discarded input sections
++
++ .text.dead     0x00000000       0x40 CMakeFiles/doomo_objs.dir/src/gfx.c.obj
++
++Linker script and memory map
++
++.text           0x80010000      0x300
++                0x80010000                        __text_start = .
++ .text.a        0x80010000      0x100 CMakeFiles/doomo_objs.dir/src/gfx.c.obj
++                0x80010000                a
++ .text.a_very_long_function_name_here
++                0x80010100      0x200 CMakeFiles/doomo_objs.dir/x/core/src/ui.c.obj
++
++.rodata         0x80010300      0x130
++ .rodata.a.str1.4
++                0x80010300       0x30 CMakeFiles/doomo_objs.dir/src/gfx.c.obj
++                                 0x14 (size before relaxing)
++ .rodata.str1.4.LC0
++                0x80010330       0x20 CMakeFiles/doomo_objs.dir/x/core/src/ui.c.obj
++ .rodata.tab    0x80010330      0x100 CMakeFiles/doomo_objs.dir/x/core/src/ui.c.obj
++ *fill*         0x80010430        0x0
++
++.data           0x80010430        0x8
++ .data.d        0x80010430        0x8 /opt/psn00bsdk/lib/libpsn00b/release/libpsxgpu_exe_gprel.a(image.c.obj)
++
++.bss            0x80010438     0x1000
++ .bss.big       0x80010438     0x1000 CMakeFiles/doomo_objs.dir/src/gfx.c.obj
++
++.borrow         0x80011438      0x800
++                0x80011438                        __ovl_borrow = .
++ .bss.lent      0x80011438      0x800 CMakeFiles/doomo_objs.dir/src/world.c.obj
++                0x80011c38                        __ovl_slot = .
++
++.ovl_01         0x80011c38     0x2000 load address 0x10000000
++ .text.s        0x80011c38     0x2000 CMakeFiles/doomo_objs.dir/x/core/src/combat.c.obj
++
++.ovl_02         0x80011438     0x2400 load address 0x10002000
++ .text.h        0x80011438     0x2400 CMakeFiles/doomo_objs.dir/x/core/src/home.c.obj
++                0x80014000                        __ovl_slot_end = .
++                0x80014000                        _end = .
++"""
++
++
++class Ledger(unittest.TestCase):
++    def setUp(self):
++        self.dir = tempfile.TemporaryDirectory()
++        self.map = os.path.join(self.dir.name, "x.ldmap")
++        with open(self.map, "w") as f:
++            f.write(MAP)
++        self.ld = os.path.join(self.dir.name, "ovl.ld")
++        with open(self.ld, "w") as f:
++            f.write("\t\t.ovl_01 {\t/* combat */\n\t.ovl_02 __ovl_borrow : AT (0) {\t/* home */\n")
++
++    def tearDown(self):
++        self.dir.cleanup()
++
++    def run_ledger(self, *extra):
++        out = io.StringIO()
++        with contextlib.redirect_stdout(out):
++            rc = ram_ledger.main(["ram_ledger.py", self.map, "--ld", self.ld] + list(extra))
++        return rc, out.getvalue()
++
++    def test_map_reader(self):
++        outs, syms = ram_ledger.parse_map(self.map)
++        self.assertEqual(outs[".text"][:2], [0x80010000, 0x300])
++        self.assertEqual([s[0] for s in outs[".text"][2]], [".text.a", ".text.a_very_long_function_name_here"])
++        self.assertEqual(outs[".text"][2][1][2], 0x200)
++        self.assertEqual(syms["_end"], 0x80014000)
++        self.assertNotIn(".text.dead", [s[0] for o in outs.values() for s in o[2]])   # discarded: not in RAM
++
++    def test_layout_and_objects(self):
++        rc, out = self.run_ledger()
++        self.assertEqual(rc, 0)
++        self.assertIn("resident .text (code)  768", out)
++        self.assertIn("48 B of it the merged string literals)  304", out)
++        self.assertIn("overlay slot (after the .bss; the biggest group sets it)  9160", out)
++        self.assertIn("left below the stack top (0x801FFFF0)  %d" % (0x801FFFF0 - 0x80014000), out)
++        # gfx: 256 text + 4096 bss; the merged block's size is not its strings
++        self.assertIn("  ps1/src/gfx  4352  256  0  0  0  4096  0", out)
++        self.assertIn("  core/src/ui  800  512  256  32  0  0  0", out)
++        self.assertIn("  ps1/src/world  2048  0  0  0  0  0  2048", out)
++        self.assertIn("  sdk/libpsxgpu(image.c)  8  0  0  0  8  0  0", out)
++        self.assertIn("  home  9216  0x80011438 (over .borrow)", out)
++        self.assertIn("  combat  8192  0x80011c38", out)
++
++    def test_gate_line_and_markdown(self):
++        left = 0x801FFFF0 - 0x80014000
++        rc, out = self.run_ledger("--gate", str(left + 100), "--md")
++        self.assertEqual(rc, 0)
++        self.assertIn("ram_ledger: WARNING: %d B left below the stack top, 100 B under" % left, out)
++        self.assertIn("| ps1/src/gfx | 4352 | 256 | 0 | 0 | 0 | 4096 | 0 |", out)
++        rc, out = self.run_ledger("--gate", str(left))
++        self.assertNotIn("WARNING", out)
++
++
++if __name__ == "__main__":
++    import warnings
++    warnings.simplefilter("ignore", ResourceWarning)    # the tools read files in one expression
++    unittest.main(warnings="ignore")
+-- 
+2.43.0
+
+
+From f696425e2510eae999c57b2858ff5da4fd5aff56 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 12 Nov 2026 23:35:11 +0000
+Subject: [PATCH 2/9] PS1-RAM step 1: island and free-play callbacks leave
+ resident RAM (+21,808 B)
+
+ovl_plan.py kept a function resident as soon as its address was taken. 22 KB
+of code were resident for addresses that never leave their own group:
+
+- fp_island_gfx.c: the six draw_*_body functions go to its own lr_run(),
+  which runs them at once; lr_tap sits in ui_raster's ur_tap only around one
+  ui_fill_circle / ui_fill_ellipse call (LOCAL_CALLBACKS). 10.6 KB of the
+  island's drawing move into the island group (58 -> 69 KB of the 131 KB
+  slot, plus its 20 KB of scene scratch).
+- fp_title.c: pc_pill / pc_in / pc_vile go to its own logo_snap().
+- modal callbacks that were not listed yet (MODAL_CALLBACKS): the citizen
+  page's cb_manage (with do_action and everything it opens, 6 KB), the
+  memorial's mem_flowers, the title's finished_pick / fresh_world_go, the
+  profile row's pf_leave / pf_renamed / pf_join.
+- new PICK_CALLBACKS: a callback a free-play screen gives to the citizen
+  picker is called by the picker's own update, with the free-play group in
+  the slot (wz_neighbour, cb_introduce). The planner checks that the
+  function's group is the picker's; the island's picker callbacks are not
+  listed and stay resident.
+
+The free-play group grows from 106 to 117 KB; the slot (131,072 B, set by
+the house and the story) is unchanged. No source file changes: the same
+code runs from the slot instead of from resident RAM.
+
+Game disc with the boot FMV: 65,936 -> 87,744 B below the stack top.
+
+test_tools.py: the planner on a made-up game of four scenes (which callbacks
+may leave, which must stay).
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ ps1/tools/ovl_plan.py   |  52 +++++++++++--
+ ps1/tools/test_tools.py | 165 +++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 209 insertions(+), 8 deletions(-)
+
+diff --git a/ps1/tools/ovl_plan.py b/ps1/tools/ovl_plan.py
+index 406f95a4..586a1547 100644
+--- a/ps1/tools/ovl_plan.py
++++ b/ps1/tools/ovl_plan.py
+@@ -169,6 +169,18 @@ LOCAL_CALLBACKS = {
+     # which draws the visible rows with them and returns (home group).
+     "home_draw": ("label_main", "label_catalog", "label_theme", "label_bp",
+                   "label_room", "label_group"),
++    # RAM headroom 2026-11-12. fp_island_gfx.c: the draw_*_body functions go to
++    # its own lr_run(), which runs the body at once (or replays its recorded
++    # rects) and returns. lr_tap is put into ui_raster.c's ur_tap by C() / E()
++    # around ONE ui_fill_circle / ui_fill_ellipse call and taken out again
++    # before they return: the resident rasteriser calls it only inside that
++    # call, with the island group in the slot. 10.6 KB of the island's drawing
++    # were resident for these seven addresses.
++    "fp_island_gfx": ("draw_glints_body", "draw_land_body", "draw_patches_body", "draw_roads_body",
++                      "draw_walkers_body", "draw_weather_body", "lr_tap"),
++    # fp_title.c: pc_* go to its own logo_snap(), which paints the piece
++    # with them twice (measure, then into the logo's image) and returns.
++    "fp_title": ("pc_pill", "pc_in", "pc_vile"),
+ }
+ 
+ # --- G0 (task #79): callbacks of a scene's modals. A function whose address
+@@ -202,11 +214,12 @@ MODAL_CALLBACKS = {
+     # native runner call them, never the PS1
+     "exorcism_gfx": ("exo_church_backdrop", "exo_church_keys"),
+     # F-phase family wizard + member screens: every callback goes to ui_choice / ui_confirm /
+-    # ui_text_entry only (wz_neighbour goes to fp_pick and stays resident, so it is not listed)
++    # ui_text_entry only (wz_neighbour goes to fp_pick: PICK_CALLBACKS below)
+     "fp_apartments": ("house_pick",),
++    # (RAM headroom 2026-11-12) mem_flowers: the memorial's ui_choice
+     "fp_family": ("care_all", "care_top_pick", "do_remove", "do_renamed", "do_uplift", "member_act",
+                   "role_done", "role_more", "will_pick", "wz_kind", "wz_named", "wz_pron",
+-                  "wz_stage"),
++                  "wz_stage", "mem_flowers"),
+     "fp_graveyard": ("cb_grave",),
+     "fp_island": ("cb_name_island", "cb_pet_name", "cb_title"),
+     "fp_newisland": ("cb_ask_name", "cb_name", "cb_seed"),
+@@ -215,14 +228,20 @@ MODAL_CALLBACKS = {
+     # CL4: cb_tips_reset is "Show all tips again?" (ui_confirm only)
+     "fp_options": ("cb_adult", "cb_defaults", "cb_monster_final", "cb_monster_typed", "cb_preset",
+                    "cb_tips_reset"),
++    # (RAM headroom 2026-11-12) cb_manage is the citizen page's "What would you like to do?"
++    # (ui_choice only): with it resident, do_action and everything it opens were too (6 KB)
+     "fp_resident": ("cb_advice", "cb_help_choice", "cb_monster_typed", "cb_rest_final",
+-                    "cb_rest_first"),
++                    "cb_rest_first", "cb_manage"),
+     "fp_roster": ("cb_search",),
+     "fp_saveload": ("cb_erase1", "cb_erase2", "cb_load", "cb_overwrite"),
++    # (RAM headroom 2026-11-12) the finished-story menu (ui_choice) and its "A new world as a
++    # villager?" (ui_confirm; finished_pick also calls it directly)
++    "fp_title": ("finished_pick", "fresh_world_go"),
+     "overworld": ("title_yes",),
+     "pet_scene": ("on_named",),
+-    # new-life confirms (ui_confirm only)
+-    "playas_scene": ("nl_done", "nl_start"),
++    # new-life confirms (ui_confirm only); (RAM headroom 2026-11-12) the profile row's leave
++    # confirm and its two name entries (ui_text_entry)
++    "playas_scene": ("nl_done", "nl_start", "pf_leave", "pf_renamed", "pf_join"),
+     "story_mg": ("te_cb",),
+     "studio": ("leave_choice",),
+     "studio_edit": ("notes_tools", "order_tools", "song_tools", "title_done"),
+@@ -234,6 +253,22 @@ MODAL_CALLBACKS = {
+ }
+ # --- end G0 ---
+ 
++# --- RAM headroom 2026-11-12: callbacks given to the citizen picker by its own group. fp_pick() /
++# fp_pick_act() (fp_roster.c) keep the function in the picker's state, and the picker's finish_pick()
++# calls it from the picker's own update, i.e. with the picker's group (free play) in the slot. So a
++# callback of a free-play screen is called with its code loaded and need not be resident; one of
++# another group (the island's cb_treat / cb_exorcise / cb_open) is not listed and stays resident.
++# The planner checks that every taker is code of the function's group AND that this group is the
++# picker's (PICKER below); anything else stays resident.
++#   object base -> function names
++PICKER = "fp_roster"
++PICK_CALLBACKS = {
++    "fp_family": ("wz_neighbour",),     # the family wizard's "Who moves in?"
++    "fp_resident": ("cb_introduce",),   # the citizen page's "Introduce to..."
++}
++
++# --- end RAM headroom ---
++
+ # --- S4: registries read only by their own group (object base -> symbol).
+ # doomo_story_mg_a / _b point at the S4 / S5 story minigames; their only
+ # reader is story_mg.c's story_mg_find (the storymg scene, group loaded).
+@@ -410,12 +445,17 @@ def main(argv):
+                 takers[tgt].add(src)
+     # LOCAL_CALLBACKS / MODAL_CALLBACKS (above): not escaped when every taker
+     # is in their group
++    picker_group = {group_of(o.path) for o in objs if base(o.path) == PICKER}
+     for f in sorted(escaped):
+         o = objs[f[0]]
+         names = LOCAL_CALLBACKS.get(base(o.path), ()) + MODAL_CALLBACKS.get(base(o.path), ())
+-        if not names or f[1] not in tuple(".text." + n for n in names):
++        picks = PICK_CALLBACKS.get(base(o.path), ())
++        if f[1] not in tuple(".text." + n for n in names + picks):
+             continue
+         g = group_of(o.path)
++        if f[1] in tuple(".text." + n for n in picks) and picker_group != {g}:
++            print("ovl_plan: %s:%s is not in the picker's group; it stays resident" % (base(o.path), f[1]))
++            continue
+         if g and all(group_of(objs[t[0]].path) == g and t[1].startswith(OVL_KINDS) for t in takers[f]):
+             escaped.discard(f)
+         else:
+diff --git a/ps1/tools/test_tools.py b/ps1/tools/test_tools.py
+index df0ed072..eae1597c 100644
+--- a/ps1/tools/test_tools.py
++++ b/ps1/tools/test_tools.py
+@@ -4,13 +4,18 @@
+     python3 ps1/tools/test_tools.py            (CI: the PS1 job runs it)
+ 
+ elf2exe.py (the stack reserve and the plan gate's WARNING) and
+-ram_ledger.py (the linker map reader) are tested on files made here. Stdlib
+-only; the tests that need the MIPS compiler are skipped without one.
++ram_ledger.py (the linker map reader) are tested on files made here;
++ovl_plan.py on a made-up game of four scenes compiled with the MIPS
++compiler (which callbacks may leave resident RAM). Stdlib only; the
++tests that need the MIPS compiler are skipped without one.
+ """
+ import contextlib
+ import io
+ import os
++import re
++import shutil
+ import struct
++import subprocess
+ import sys
+ import tempfile
+ import unittest
+@@ -18,8 +23,13 @@ import unittest
+ HERE = os.path.dirname(os.path.abspath(__file__))
+ sys.path.insert(0, HERE)
+ import elf2exe          # noqa: E402
++import ovl_plan         # noqa: E402
+ import ram_ledger       # noqa: E402
+ 
++CROSS = next((p for p in ("mipsel-linux-gnu-", "mipsel-none-elf-") if shutil.which(p + "gcc")), None)
++CFLAGS = ["-O1", "-G8", "-march=r3000", "-mabi=32", "-msoft-float", "-mno-abicalls", "-fno-pic",
++          "-ffreestanding", "-fno-builtin", "-nostdlib", "-ffunction-sections", "-fdata-sections"]
++
+ 
+ def tiny_elf(end):
+     """a 32-bit little-endian ELF with one loadable segment at 0x80010000
+@@ -184,6 +194,157 @@ class Ledger(unittest.TestCase):
+         self.assertNotIn("WARNING", out)
+ 
+ 
++# ---- ovl_plan.py on a made-up game -------------------------------------------
++# Four scenes: FAMILY and the citizen PICKER (free play), ISLAND (island), all
++# listed by the resident scene.c. main.c stands for the platform and the
++# resident modals (ui_choice keeps the callback and calls it later).
++SCENE_H = """
++typedef struct DoomoScene { const char *name; void (*enter)(int); void (*leave)(void);
++                            void (*update)(void); void (*draw)(void); unsigned char overlay; } DoomoScene;
++void fp_pick(void (*done)(int));
++void ui_choice(void (*done)(int));
++extern int sink;
++"""
++FAKE = {
++    "src/main.c": """#include "scene.h"
++extern const DoomoScene *const doomo_all_scenes[];
++int sink;
++static void (*modal_done)(int);
++void ui_choice(void (*done)(int)) { modal_done = done; }
++int main(void)
++{
++    int i;
++    for (i = 0; doomo_all_scenes[i]; i++) { doomo_all_scenes[i]->update(); if (modal_done) modal_done(i); }
++    return sink;
++}
++""",
++    # the lenders ovl_plan.py BORROW names
++    "src/world.c": "unsigned char g_world_wtop[64], g_world_corner[64];\n",
++    "src/view3d.c": "unsigned char s_vis[64], s_vlist[64];\n",
++    "src/memcard.c": "unsigned char s_blk[64];\n",
++    "core/src/combat_bot.c": "unsigned char first_dir[64], queue[64], target_bits[64];\n",
++    "core/src/scene.c": """#include "scene.h"
++extern const DoomoScene SCENE_FAMILY, SCENE_PICKER, SCENE_ISLAND;
++const DoomoScene *const doomo_all_scenes[] = { &SCENE_FAMILY, &SCENE_PICKER, &SCENE_ISLAND, 0 };
++""",
++    "core/src/fp_roster.c": """#include "scene.h"
++static void (*pick_done)(int);
++void fp_pick(void (*done)(int)) { pick_done = done; }
++static void picker_update(void) { if (pick_done) pick_done(7); }
++const DoomoScene SCENE_PICKER = { "PICKER", 0, 0, picker_update, 0, 0 };
++""",
++    "core/src/fp_family.c": """#include "scene.h"
++static void wz_neighbour(int id) { sink += id * 3; }    /* to fp_pick: PICK_CALLBACKS */
++static void mem_flowers(int c) { sink += c * 5; }       /* to ui_choice: MODAL_CALLBACKS */
++static void not_listed(int c) { sink += c * 7; }        /* to ui_choice, in no table */
++static void fam_update(void) { fp_pick(wz_neighbour); ui_choice(mem_flowers); ui_choice(not_listed); }
++const DoomoScene SCENE_FAMILY = { "FAMILY", 0, 0, fam_update, 0, 0 };
++""",
++    "core/src/fp_island.c": """#include "scene.h"
++static void cb_treat(int id) { sink += id * 11; }       /* to fp_pick from ANOTHER group */
++static void isl_update(void) { fp_pick(cb_treat); }
++const DoomoScene SCENE_ISLAND = { "ISLAND", 0, 0, isl_update, 0, 0 };
++""",
++}
++
++
++def compile_fake(root, sources, compiler=None):
++    """the made-up game's objects, named as the PS1 build names them"""
++    with open(os.path.join(root, "scene.h"), "w") as f:
++        f.write(SCENE_H)
++    objs = []
++    for rel, text in sorted(sources.items()):
++        src = os.path.join(root, rel)
++        os.makedirs(os.path.dirname(src), exist_ok=True)
++        with open(src, "w") as f:
++            f.write(text)
++        obj = src + ".obj"
++        cmd = [CROSS + "gcc"] + CFLAGS + ["-I", root, "-o", obj, "-c", src]
++        rc = compiler(cmd) if compiler else subprocess.run(cmd).returncode
++        if rc:
++            raise RuntimeError("cannot compile " + rel)
++        objs.append(obj)
++    return objs
++
++
++def plan(root, objs):
++    """run the planner; ({group or 'resident': {(object base, section)}}, its report)"""
++    ld = os.path.join(root, "ovl.ld")
++    out = io.StringIO()
++    with contextlib.redirect_stdout(out):
++        rc = ovl_plan.main(["ovl_plan.py", "--readelf", CROSS + "readelf", "--out-ld", ld,
++                            "--out-c", os.path.join(root, "ovl_table.c"), "--report"] + objs)
++    if rc:
++        raise RuntimeError("ovl_plan failed:\n" + out.getvalue())
++    where = {}
++    cur = None
++    with open(ld) as f:
++        for line in f:
++            m = re.match(r"\s*\.ovl_\d+\s.*/\*\s*(\S+)\s*\*/", line)
++            if m:
++                cur = m.group(1)
++            elif re.match(r"\s*\.(text|rodata) : \{", line):
++                cur = "resident"
++            elif re.match(r"\s*\}", line):
++                cur = None
++            m = re.match(r"\s*\*(\S+)\(([^)]*)\)\s*$", line)
++            if m and cur and not m.group(1).startswith("("):
++                for sec in m.group(2).split():
++                    where.setdefault(cur, set()).add((ovl_plan.base(m.group(1)), sec))
++    return where, out.getvalue()
++
++
++@unittest.skipUnless(CROSS, "no MIPS compiler (mipsel-linux-gnu-gcc / mipsel-none-elf-gcc)")
++class Planner(unittest.TestCase):
++    def setUp(self):
++        self.dir = tempfile.TemporaryDirectory()
++        self.saved = (dict(ovl_plan.PICK_CALLBACKS), dict(ovl_plan.MODAL_CALLBACKS))
++
++    def tearDown(self):
++        ovl_plan.PICK_CALLBACKS.clear()
++        ovl_plan.PICK_CALLBACKS.update(self.saved[0])
++        ovl_plan.MODAL_CALLBACKS.clear()
++        ovl_plan.MODAL_CALLBACKS.update(self.saved[1])
++        self.dir.cleanup()
++
++    def test_callbacks_that_may_leave_resident_ram(self):
++        where, _ = plan(self.dir.name, compile_fake(self.dir.name, FAKE))
++        fp = where["freeplay"]
++        # the scenes' own code is in their groups
++        self.assertIn(("fp_family", ".text.fam_update"), fp)
++        self.assertIn(("fp_roster", ".text.picker_update"), fp)
++        self.assertIn(("fp_island", ".text.isl_update"), where["island"])
++        # a modal's callback and a picker callback of the picker's own group go with the group
++        self.assertIn(("fp_family", ".text.mem_flowers"), fp)
++        self.assertIn(("fp_family", ".text.wz_neighbour"), fp)
++        # a callback in no table is resident, and so is the island's picker callback
++        self.assertIn(("fp_family", ".text.not_listed"), where["resident"])
++        self.assertIn(("fp_island", ".text.cb_treat"), where["resident"])
++
++    def test_a_picker_callback_of_another_group_stays_resident_even_if_listed(self):
++        ovl_plan.PICK_CALLBACKS["fp_island"] = ("cb_treat",)
++        where, report = plan(self.dir.name, compile_fake(self.dir.name, FAKE))
++        self.assertIn("fp_island:.text.cb_treat is not in the picker's group; it stays resident", report)
++        self.assertIn(("fp_island", ".text.cb_treat"), where["resident"])
++        self.assertNotIn(("fp_island", ".text.cb_treat"), where["island"])
++
++    def test_without_its_table_entry_a_picker_callback_is_resident(self):
++        del ovl_plan.PICK_CALLBACKS["fp_family"]
++        where, _ = plan(self.dir.name, compile_fake(self.dir.name, FAKE))
++        self.assertIn(("fp_family", ".text.wz_neighbour"), where["resident"])
++        self.assertNotIn(("fp_family", ".text.wz_neighbour"), where["freeplay"])
++
++    def test_a_listed_callback_taken_by_another_group_stays_resident(self):
++        fake = dict(FAKE)
++        fake["core/src/fp_island.c"] = fake["core/src/fp_island.c"].replace(
++            "static void isl_update(void) { fp_pick(cb_treat); }",
++            "void wz_neighbour(int);\nstatic void isl_update(void) { fp_pick(cb_treat); fp_pick(wz_neighbour); }")
++        fake["core/src/fp_family.c"] = fake["core/src/fp_family.c"].replace("static void wz_neighbour", "void wz_neighbour")
++        where, report = plan(self.dir.name, compile_fake(self.dir.name, fake))
++        self.assertIn("fp_family:.text.wz_neighbour is taken outside its group; it stays resident", report)
++        self.assertIn(("fp_family", ".text.wz_neighbour"), where["resident"])
++
++
+ if __name__ == "__main__":
+     import warnings
+     warnings.simplefilter("ignore", ResourceWarning)    # the tools read files in one expression
+-- 
+2.43.0
+
+
+From 1de1dd3107249cb1acb6985ac2df3476ea40d1ca Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 12 Nov 2026 23:36:46 +0000
+Subject: [PATCH 3/9] PS1-RAM step 2: table strings in sections of their own
+ (+29,376 B)
+
+With -fdata-sections every function's string literals have a section of
+their own, but all the literals a file's tables point to share one
+(.rodata.str1.4), and the overlay planner places whole sections. One
+resident pointer into it (a scene's name, two tab labels in .sdata) kept
+every table string of the file in resident RAM: 40 KB in 61 files.
+
+ps1/tools/strsec.py is a compiler launcher (DOOMO_STRING_SECTIONS, default
+ON): it compiles to assembly, gives each $LC<n> of .rodata.str1.4 its own
+mergeable section, and assembles with the command's machine flags. Without
+the rewrite the two steps give the one-step object byte for byte
+(STRSEC_VERIFY=1 checks it per file: all 315 objects of the game disc pass).
+ovl_plan.py then keeps resident exactly the strings resident code or data
+reach; the linker still merges equal strings and now drops unread ones.
+
+STR_WHOLE: the story and house groups set the slot's size, so their objects
+keep their table strings together as before (2.2 + 1.4 KB more in them
+would grow the slot by 2 KB each).
+
+Resident merged strings 108,748 -> 77,948 B. Groups: library 90 -> 96 KB,
+creator 150 -> 154, cutscene 116 -> 119, combat 121 -> 123, free play 117
+(slot 131,072 B, unchanged). No source file changes.
+
+Game disc with the boot FMV: 87,744 -> 117,120 B below the stack top.
+
+test_tools.py: the rewrite on assembly text and on real compiles, and the
+planner's placement of split strings.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ ps1/CMakeLists.txt      |  13 +++
+ ps1/tools/ovl_plan.py   |  28 ++++++-
+ ps1/tools/strsec.py     | 178 ++++++++++++++++++++++++++++++++++++++++
+ ps1/tools/test_tools.py | 164 +++++++++++++++++++++++++++++++++++-
+ 4 files changed, 379 insertions(+), 4 deletions(-)
+ create mode 100644 ps1/tools/strsec.py
+
+diff --git a/ps1/CMakeLists.txt b/ps1/CMakeLists.txt
+index ce136d99..6ac52b29 100644
+--- a/ps1/CMakeLists.txt
++++ b/ps1/CMakeLists.txt
+@@ -190,6 +190,19 @@ set_target_properties(doomo_objs PROPERTIES PSN00BSDK_TARGET_TYPE EXECUTABLE_GPR
+ # (the SDK libraries' interface carries the compile flags for the target type)
+ target_link_libraries(doomo_objs PRIVATE ${PSN00BSDK_EXECUTABLE_LINK_LIBRARIES})
+ 
++# RAM headroom 2026-11-12 (docs/PS1.md): every string literal a file-scope table points to gets
++# a section of its own (tools/strsec.py, a compiler launcher: compile to assembly, give each
++# `$LC<n>:` of .rodata.str1.4 its own section, assemble). ovl_plan.py then moves a group's table
++# strings with the group instead of keeping a file's whole string section resident for one
++# pointer (a scene's name, two tab labels in .sdata), and --gc-sections drops unread ones.
++option(DOOMO_STRING_SECTIONS "Table string literals in sections of their own (tools/strsec.py)" ON)
++if(DOOMO_STRING_SECTIONS)
++	set_target_properties(doomo_objs PROPERTIES C_COMPILER_LAUNCHER
++		"${Python3_EXECUTABLE};${CMAKE_CURRENT_SOURCE_DIR}/tools/strsec.py")
++	set_property(SOURCE ${PS1_SRCS} ${CORE_SRCS} APPEND PROPERTY
++		OBJECT_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tools/strsec.py)
++endif()
++
+ # Scene overlays (game disc only; docs/PS1.md section 3): ovl_plan.py reads
+ # the relocations of all objects, decides which scene code and const data
+ # can live in a slot loaded from the disc, and writes the linker script and
+diff --git a/ps1/tools/ovl_plan.py b/ps1/tools/ovl_plan.py
+index 586a1547..87a78159 100644
+--- a/ps1/tools/ovl_plan.py
++++ b/ps1/tools/ovl_plan.py
+@@ -26,7 +26,11 @@ hand:
+     (SCENE_*), because scene.c calls those through plat_scene_code(),
+     which loads the scene's overlay first;
+   * the rest of a group is reachable only through its scenes' entry
+-    points; a section that two groups need is made resident.
++    points; a section that two groups need is made resident;
++  * the string literals of a file's tables arrive one per section
++    (tools/strsec.py), so only the strings resident code or data can
++    reach stay resident (STR_WHOLE below: the groups that set the slot's
++    size keep an object's strings together, as before the split).
+ 
+ Outputs: a linker script fragment (OVERLAY statement with one output
+ section per group, inserted before .ctors) and a C table mapping scene
+@@ -267,6 +271,15 @@ PICK_CALLBACKS = {
+     "fp_resident": ("cb_introduce",),   # the citizen page's "Introduce to..."
+ }
+ 
++# --- RAM headroom 2026-11-12: the string literals of file-scope tables. tools/strsec.py gives each
++# its own section (.rodata.str1.4.LC<n>), so the closure below keeps resident exactly the strings
++# resident code or data can reach, and the rest move with their group. A group that sets the slot's
++# size must not grow by its strings (the slot grows in 2 KB steps, and every step is resident RAM
++# lost): for the groups named here an object's table strings stay together, all resident as soon as
++# one of them is (what the linker did before the split). Take a group off the list when it has
++# room under the slot again.
++STR_WHOLE = ("story", "home")
++RX_STR = re.compile(r"\.rodata\.str1\.\d+\.LC\d+$")
+ # --- end RAM headroom ---
+ 
+ # --- S4: registries read only by their own group (object base -> symbol).
+@@ -528,6 +541,11 @@ def main(argv):
+     # groups (or a resident scene) reach becomes resident, and so does all
+     # it reaches; repeat until stable.
+     scene_live = sorted(n for n in scene_secs if n in live)
++    # RAM headroom 2026-11-12 (STR_WHOLE above): the table strings of each object of those groups
++    str_whole = collections.defaultdict(set)
++    for n in live:
++        if grp(n) in STR_WHOLE and RX_STR.search(n[1]):
++            str_whole[n[0]].add(n)
+     while True:
+         owner = {}
+         clash = set()
+@@ -546,6 +564,9 @@ def main(argv):
+                         clash.add(r)
+                     else:
+                         owner[r] = g
++        for ss in str_whole.values():
++            if (ss & resident or ss & clash) and not ss <= resident:
++                clash |= ss - resident
+         if not clash:
+             break
+         resident |= closure(clash, False)
+@@ -591,8 +612,11 @@ def main(argv):
+     # Scene structs and their name strings are resident by design.
+     save_ok = closure({n for n in live if n[1] == ".sdata.doomo_save_ext_home"
+                        and base(objs[n[0]].path) == "home"} | set(scene_secs), False)
++    # (RAM headroom 2026-11-12) an object's table strings stay together (STR_WHOLE): they may be
++    # resident when one of them is one of those names, as the object's one string section was
++    str_ok = {n[0] for n in save_ok if RX_STR.search(n[1])}
+     pinned = sorted(n for n in resident if n in live and grp(n) == "home" and node_size(n)
+-                    and n not in save_ok)
++                    and n not in save_ok and not (n[0] in str_ok and RX_STR.search(n[1])))
+     if pinned:
+         par = {r: None for r in roots}
+         todo = list(roots)
+diff --git a/ps1/tools/strsec.py b/ps1/tools/strsec.py
+new file mode 100644
+index 00000000..c36dc357
+--- /dev/null
++++ b/ps1/tools/strsec.py
+@@ -0,0 +1,178 @@
++#!/usr/bin/env python3
++"""strsec.py - every string literal of a file-scope table in a section of
++its own (owner: ps1). A compiler launcher: CMake runs
++
++    strsec.py CC ARGS... -o X.obj -c X.c
++
++for every C file of the PS1 build (ps1/CMakeLists.txt, DOOMO_STRING_SECTIONS).
++Stdlib only, deterministic.
++
++Why. With -fdata-sections GCC gives every function's string literals a
++section of their own (.rodata.<function>.str1.4), but all the literals a
++file's TABLES point to share one, .rodata.str1.4. The overlay planner
++(ovl_plan.py) places whole sections: one resident pointer into that
++section (a scene's name, two tab labels in .sdata) kept every string of
++the file's tables in resident RAM, 40 KB of them on 2026-11-12 (docs/PS1.md
++"RAM headroom 2026-11-12"). Here each of those literals gets its own
++section, .rodata.str1.4.LC<n>, so the planner moves exactly the strings a
++group alone reads into that group, and --gc-sections drops the ones
++nothing reads.
++
++How. The file is compiled to assembly (the same command with -S), the
++assembly is rewritten (split_strings below: only the `.section
++.rodata.str1.N` blocks change, each `$LC<n>:` label opens its own
++mergeable section), and the result is assembled with the command's
++machine flags. Without the rewrite the two steps give the same object,
++byte for byte, as the one-step compile: STRSEC_VERIFY=1 checks exactly
++that on every file (and fails the compile when it does not hold). The
++linker still merges equal strings inside an output section, as before.
++
++Anything that is not a plain `CC ... -c one.c -o obj` is run unchanged.
++"""
++import os
++import re
++import subprocess
++import sys
++
++RX_GENERIC = re.compile(r'^\s*\.section\s+(\.rodata\.str1\.\d+)\s*(,.*)?$')
++RX_SECTION = re.compile(r'^\s*\.(section|text|data|bss|rdata|sdata|sbss|lcomm|comm)\b')
++RX_UNKNOWN = re.compile(r'^\s*\.(previous|pushsection|popsection|subsection)\b')
++RX_LABEL = re.compile(r'^([.$]LC\d+):\s*$')
++RX_ALIGN = re.compile(r'^\s*\.(align|p2align|balign)\b')
++RX_BLANK = re.compile(r'^\s*(#.*)?$')
++
++
++def split_strings(text):
++    """the assembly with every labelled literal of a generic string section
++    (.rodata.str1.N) in a section of its own, named after its label. Returns
++    (new text, literals moved). A file that uses the section stack after its
++    first string section (GCC only does at the very top: `.section
++    .mdebug.abi32` / `.previous`), or has data in a string section before any
++    label, is returned unchanged."""
++    out = []
++    moved = 0
++    cur = None          # the generic string section we are in
++    flags = {}          # section name -> its flags, from the directive that carried them
++    held = []           # the generic .section line and .align lines not yet written
++    labelled = False    # a label was seen since the last .section line
++    for line in text.split("\n"):
++        if RX_UNKNOWN.match(line):
++            if flags:
++                return text, 0
++            out.append(line)
++            continue
++        m = RX_GENERIC.match(line)
++        if m:
++            cur = m.group(1)
++            if m.group(2):
++                flags[cur] = m.group(2)
++            if cur not in flags:
++                return text, 0          # re-entered before it was ever declared
++            held = [line]
++            labelled = False
++            continue
++        if cur is None:
++            out.append(line)
++            continue
++        if RX_SECTION.match(line):
++            if not labelled:
++                out.extend(held)        # an empty visit: keep it as it was
++            cur, held = None, []
++            out.append(line)
++            continue
++        if RX_ALIGN.match(line):
++            held.append(line)
++            continue
++        m = RX_LABEL.match(line)
++        if m:
++            out.append("\t.section\t%s.%s%s" % (cur, m.group(1).lstrip(".$"), flags[cur]))
++            out.extend(l for l in held if RX_ALIGN.match(l))
++            out.append(line)
++            held = []
++            labelled = True
++            moved += 1
++            continue
++        if not labelled and not RX_BLANK.match(line):
++            return text, 0              # data before a label: not GCC's layout
++        out.extend(held)                # (an .align inside a literal: keep its place)
++        held = []
++        out.append(line)
++    if cur is not None and not labelled:
++        out.extend(held)
++    return "\n".join(out), moved
++
++
++def assembler_args(args):
++    """the flags of a compile command that the assembler step needs (the
++    target, the ABI, -G, -Wa,...); everything else was used up by the -S step"""
++    keep = []
++    for a in args:
++        if a.startswith(("-m", "-G", "-Wa,", "-EL", "-EB")) or a in ("-fno-pic", "-fpic", "-fPIC", "-fno-PIC"):
++            keep.append(a)
++    return keep
++
++
++def parse(argv):
++    """(cc, args, index of -c, index of the source, index of the object path)
++    or None when this is not a plain one-file C compile"""
++    if len(argv) < 2:
++        return None
++    cc, args = argv[0], argv[1:]
++    if args.count("-c") != 1 or "-o" not in args or "-S" in args or "-E" in args:
++        return None
++    srcs = [i for i, a in enumerate(args) if a.endswith(".c") and not a.startswith("-")
++            and (i == 0 or args[i - 1] not in ("-o", "-MT", "-MF", "-MQ", "-include", "-I"))]
++    if len(srcs) != 1:
++        return None
++    oi = args.index("-o") + 1
++    if oi >= len(args):
++        return None
++    return cc, args, args.index("-c"), srcs[0], oi
++
++
++def run(cmd):
++    return subprocess.run(cmd).returncode
++
++
++def main(argv):
++    p = parse(argv[1:])
++    if p is None:
++        if len(argv) < 2:
++            print(__doc__)
++            return 2
++        return run(argv[1:])
++    cc, args, ci, si, oi = p
++    obj = args[oi]
++    asm = obj + ".s"
++    step1 = list(args)
++    step1[ci] = "-S"
++    step1[oi] = asm
++    rc = run([cc] + step1)
++    if rc:
++        return rc
++    text = open(asm).read()
++    if os.environ.get("STRSEC_VERIFY"):
++        # the two steps without the rewrite must give the one-step object
++        plain = [a for i, a in enumerate(args) if not (a in ("-MD", "-MMD") or
++                 (i and args[i - 1] in ("-MT", "-MF", "-MQ")) or a in ("-MT", "-MF", "-MQ"))]
++        plain[plain.index("-o") + 1] = obj + ".direct"
++        if run([cc] + plain) or run([cc] + assembler_args(args) + ["-c", asm, "-o", obj + ".twostep"]):
++            return 1
++        same = open(obj + ".direct", "rb").read() == open(obj + ".twostep", "rb").read()
++        os.remove(obj + ".direct")
++        os.remove(obj + ".twostep")
++        if not same:
++            print("strsec: %s: compile + assemble differs from the one-step compile" % args[si])
++            return 1
++    new, moved = split_strings(text)
++    if moved:
++        with open(asm, "w") as f:
++            f.write(new)
++    rc = run([cc] + assembler_args(args) + ["-c", asm, "-o", obj])
++    if rc == 0:
++        os.remove(asm)
++    return rc
++
++
++if __name__ == "__main__":
++    sys.exit(main(sys.argv))
+diff --git a/ps1/tools/test_tools.py b/ps1/tools/test_tools.py
+index eae1597c..02d9230e 100644
+--- a/ps1/tools/test_tools.py
++++ b/ps1/tools/test_tools.py
+@@ -5,8 +5,10 @@
+ 
+ elf2exe.py (the stack reserve and the plan gate's WARNING) and
+ ram_ledger.py (the linker map reader) are tested on files made here;
+-ovl_plan.py on a made-up game of four scenes compiled with the MIPS
+-compiler (which callbacks may leave resident RAM). Stdlib only; the
++strsec.py (the assembly rewrite that gives every table string a section
++of its own) on assembly text and on real compiles; ovl_plan.py on a
++made-up game of four scenes compiled with the MIPS compiler (which
++callbacks and which strings may leave resident RAM). Stdlib only; the
+ tests that need the MIPS compiler are skipped without one.
+ """
+ import contextlib
+@@ -25,6 +27,7 @@ sys.path.insert(0, HERE)
+ import elf2exe          # noqa: E402
+ import ovl_plan         # noqa: E402
+ import ram_ledger       # noqa: E402
++import strsec           # noqa: E402
+ 
+ CROSS = next((p for p in ("mipsel-linux-gnu-", "mipsel-none-elf-") if shutil.which(p + "gcc")), None)
+ CFLAGS = ["-O1", "-G8", "-march=r3000", "-mabi=32", "-msoft-float", "-mno-abicalls", "-fno-pic",
+@@ -194,6 +197,116 @@ class Ledger(unittest.TestCase):
+         self.assertNotIn("WARNING", out)
+ 
+ 
++# ---- strsec.py -----------------------------------------------------------------
++ASM = """\t.section .mdebug.abi32
++\t.previous
++\t.text
++f:
++\tjr\t$31
++\t.section\t.rodata.f.str1.4,"aMS",@progbits,1
++\t.align\t2
++$LC0:
++\t.ascii\t"in a function\\000"
++\t.section\t.rodata.str1.4,"aMS",@progbits,1
++\t.align\t2
++$LC1:
++\t.ascii\t"Plan\\000"
++\t.align\t2
++$LC2:
++\t.ascii\t"a long one, "
++\t.ascii\t"in two lines\\000"
++\t.section\t.sdata.subs,"aw"
++\t.align\t2
++subs:
++\t.word\t$LC1
++\t.word\t$LC2
++\t.section\t.rodata.str1.4
++\t.align\t2
++$LC3:
++\t.ascii\t"Open\\000"
++\t.text
++"""
++
++
++class StrSec(unittest.TestCase):
++    def test_every_table_string_gets_its_own_section(self):
++        new, moved = strsec.split_strings(ASM)
++        self.assertEqual(moved, 3)
++        lines = new.split("\n")
++        for lab in ("LC1", "LC2", "LC3"):
++            i = lines.index("$%s:" % lab)
++            self.assertEqual(lines[i - 2], '\t.section\t.rodata.str1.4.%s,"aMS",@progbits,1' % lab)
++            self.assertEqual(lines[i - 1], "\t.align\t2")
++        # the generic section itself is gone, everything else is untouched and in order
++        self.assertFalse([l for l in lines if re.match(r"\s*\.section\s+\.rodata\.str1\.4\s*(,|$)", l)])
++        rest = [l for l in lines if ".rodata.str1.4." not in l]
++        orig = [l for l in ASM.split("\n") if not re.match(r"\s*\.section\s+\.rodata\.str1\.4\s*(,|$)", l)]
++        self.assertEqual(rest, orig)
++        self.assertIn('\t.section\t.rodata.f.str1.4,"aMS",@progbits,1', lines)   # a function's strings stay
++        self.assertEqual(lines[lines.index("$LC2:") + 2], '\t.ascii\t"in two lines\\000"')
++
++    def test_a_file_without_table_strings_is_unchanged(self):
++        text = '\t.text\nf:\n\tjr\t$31\n\t.section\t.rodata.f.str1.4,"aMS",@progbits,1\n$LC0:\n\t.ascii\t"x\\000"\n'
++        self.assertEqual(strsec.split_strings(text), (text, 0))
++
++    def test_layouts_it_does_not_know_are_left_alone(self):
++        late = ASM + "\t.previous\n"
++        self.assertEqual(strsec.split_strings(late), (late, 0))             # the section stack after strings
++        odd = '\t.section\t.rodata.str1.4,"aMS",@progbits,1\n\t.ascii\t"no label\\000"\n$LC0:\n\t.ascii\t"x\\000"\n'
++        self.assertEqual(strsec.split_strings(odd), (odd, 0))               # data before a label
++        bare = '\t.section\t.rodata.str1.4\n$LC0:\n\t.ascii\t"x\\000"\n'
++        self.assertEqual(strsec.split_strings(bare), (bare, 0))             # never declared with flags
++
++    def test_an_empty_visit_is_kept(self):
++        text = '\t.section\t.rodata.str1.4,"aMS",@progbits,1\n\t.align\t2\n\t.text\nf:\n'
++        self.assertEqual(strsec.split_strings(text), (text, 0))
++
++    def test_command_line(self):
++        cmd = ["gcc", "-DX=1", "-I", "inc.c", "-O2", "-g", "-G8", "-march=r3000", "-mno-abicalls", "-fno-pic",
++               "-Wa,--strip-local-absolute", "-MD", "-MT", "o/x.c.obj", "-MF", "o/x.c.obj.d", "-o", "o/x.c.obj",
++               "-c", "src/x.c"]
++        cc, args, ci, si, oi = strsec.parse(cmd)
++        self.assertEqual((cc, args[ci], args[si], args[oi]), ("gcc", "-c", "src/x.c", "o/x.c.obj"))
++        self.assertEqual(strsec.assembler_args(args),
++                         ["-G8", "-march=r3000", "-mno-abicalls", "-fno-pic", "-Wa,--strip-local-absolute"])
++        self.assertIsNone(strsec.parse(["gcc", "-o", "x.elf", "a.obj", "b.obj"]))        # a link
++        self.assertIsNone(strsec.parse(["gcc", "-S", "-o", "x.s", "-c", "x.c"]))
++        self.assertIsNone(strsec.parse(["gcc", "-o", "x.obj", "-c", "x.s"]))             # not C
++
++    @unittest.skipUnless(CROSS, "no MIPS compiler")
++    def test_real_compile(self):
++        with tempfile.TemporaryDirectory() as d:
++            src = os.path.join(d, "t.c")
++            with open(src, "w") as f:
++                f.write('static const char *const tabs[2] = { "Plan", "In paw" };\n'
++                        'const char *const rows[3] = { "alpha", "beta", "gamma" };\n'
++                        'const char *pick(int i) { return i > 5 ? "in the function" : tabs[i & 1]; }\n')
++            cmd = [CROSS + "gcc"] + CFLAGS + ["-g", "-o", os.path.join(d, "t.obj"), "-c", src]
++            old = os.environ.get("STRSEC_VERIFY")
++            os.environ["STRSEC_VERIFY"] = "1"      # the two steps without the rewrite = the one-step object
++            try:
++                self.assertEqual(strsec.main(["strsec.py"] + cmd), 0)
++            finally:
++                os.environ.pop("STRSEC_VERIFY")
++                if old is not None:
++                    os.environ["STRSEC_VERIFY"] = old
++            self.assertEqual(sorted(os.listdir(d)), ["t.c", "t.obj"])       # nothing left behind
++            secs = subprocess.run([CROSS + "readelf", "-S", "-W", os.path.join(d, "t.obj")], check=True,
++                                  capture_output=True, text=True).stdout
++            own = re.findall(r"\.rodata\.str1\.4\.LC\d+\s+PROGBITS\s+\S+\s+\S+\s+\S+\s+01\s+AMS", secs)
++            self.assertEqual(len(own), 5)                                   # 2 + 3 table strings
++            self.assertIn(".rodata.pick.str1.4", secs)                      # the function's own stay together
++            self.assertNotRegex(secs, r"\.rodata\.str1\.4\s")
++            # a file without table strings: the object is the one-step compile's, byte for byte
++            with open(src, "w") as f:
++                f.write('const char *pick(int i) { return i ? "yes" : "no"; }\n')
++            direct = os.path.join(d, "direct.obj")
++            subprocess.run([CROSS + "gcc"] + CFLAGS + ["-g", "-o", direct, "-c", src], check=True)
++            self.assertEqual(strsec.main(["strsec.py"] + cmd), 0)
++            with open(direct, "rb") as a, open(os.path.join(d, "t.obj"), "rb") as b:
++                self.assertEqual(a.read(), b.read())
++
++
+ # ---- ovl_plan.py on a made-up game -------------------------------------------
+ # Four scenes: FAMILY and the citizen PICKER (free play), ISLAND (island), all
+ # listed by the resident scene.c. main.c stands for the platform and the
+@@ -345,6 +458,53 @@ class Planner(unittest.TestCase):
+         self.assertIn(("fp_family", ".text.wz_neighbour"), where["resident"])
+ 
+ 
++# the made-up FAMILY screen with two tables: `tabs` is 8 bytes, so -G8 puts it into .sdata, which is
++# always resident (its two strings must stay); `rows` is plain const data of the group
++FAMILY_TABLES = FAKE["core/src/fp_family.c"].replace(
++    "static void fam_update(void) {",
++    'static const char *const tabs[2] = { "Tab one", "Tab two" };\n'
++    'static const char *const rows[4] = { "row alpha", "row beta", "row gamma", "row delta" };\n'
++    "static void fam_update(void) { sink += tabs[sink & 1][0] + rows[sink & 3][0];")
++
++
++def strsec_compiler(cmd):
++    return strsec.main(["strsec.py"] + cmd)
++
++
++@unittest.skipUnless(CROSS, "no MIPS compiler (mipsel-linux-gnu-gcc / mipsel-none-elf-gcc)")
++class PlannerStrings(unittest.TestCase):
++    def setUp(self):
++        self.dir = tempfile.TemporaryDirectory()
++        self.whole = ovl_plan.STR_WHOLE
++        self.fake = dict(FAKE)
++        self.fake["core/src/fp_family.c"] = FAMILY_TABLES
++
++    def tearDown(self):
++        ovl_plan.STR_WHOLE = self.whole
++        self.dir.cleanup()
++
++    def strings(self, where, key):
++        return sorted(sec for obj, sec in where.get(key, ()) if obj == "fp_family" and ".str1." in sec)
++
++    def test_one_string_section_per_file_is_resident_for_one_pointer(self):
++        # what the plain compile gives: the scene's name and the .sdata table pin every table string
++        where, _ = plan(self.dir.name, compile_fake(self.dir.name, self.fake))
++        self.assertEqual(self.strings(where, "resident"), [".rodata.str1.4"])
++        self.assertEqual(self.strings(where, "freeplay"), [])
++
++    def test_split_strings_follow_their_readers(self):
++        where, _ = plan(self.dir.name, compile_fake(self.dir.name, self.fake, strsec_compiler))
++        self.assertEqual(len(self.strings(where, "freeplay")), 4)       # rows: only the group reads them
++        self.assertEqual(len(self.strings(where, "resident")), 3)       # the name + the two .sdata labels
++        self.assertTrue(all(ovl_plan.RX_STR.search(s) for s in self.strings(where, "freeplay")))
++
++    def test_a_group_that_sets_the_slot_keeps_its_strings_together(self):
++        ovl_plan.STR_WHOLE = ("freeplay",)
++        where, _ = plan(self.dir.name, compile_fake(self.dir.name, self.fake, strsec_compiler))
++        self.assertEqual(self.strings(where, "freeplay"), [])
++        self.assertEqual(len(self.strings(where, "resident")), 7)
++
++
+ if __name__ == "__main__":
+     import warnings
+     warnings.simplefilter("ignore", ResourceWarning)    # the tools read files in one expression
+-- 
+2.43.0
+
+
+From aaef02632f637a44f98c4f4e1b8bd0ab7c2968db Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 12 Nov 2026 23:41:59 +0000
+Subject: [PATCH 4/9] PS1-RAM step 3: the busy banner keeps its pixels in VRAM
+ (+8,640 B)
+
+gfx_busy_banner() saved the 252 x 16 pixels under the "Checking MEMORY
+CARD..." / "Saving settings..." banner with StoreImage into 8,064 B of
+.bss and put them back with LoadImage. They are now copied VRAM to VRAM
+(MoveImage) into the same rows of the other framebuffer and back: that
+buffer holds the frame before the newest, which is never shown again once
+the banner's frame is up, and the next game frame clears and redraws it.
+The frame the game drew is restored exactly as before.
+
+The banner's glyphs and the loading screen's lines share one array of 40
+sprites (each line is drawn and finished before the next): -800 B.
+
+Game disc with the boot FMV: 117,120 -> 125,760 B below the stack top.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ ps1/src/gfx.c | 30 ++++++++++++++++++++++--------
+ 1 file changed, 22 insertions(+), 8 deletions(-)
+
+diff --git a/ps1/src/gfx.c b/ps1/src/gfx.c
+index d6ca8043..b5ef5785 100644
+--- a/ps1/src/gfx.c
++++ b/ps1/src/gfx.c
+@@ -337,18 +337,27 @@ void gfx_upload_now(int x, int y, int w, int h, const void *data)
+  * a second per 8 KB block), so a long save does not look like a hang.
+  * Drawn straight into the newest finished frame, which is then shown;
+  * gfx_busy_end() puts the pixels under it back (so that frame stays what
+- * the game drew, e.g. for harness screenshots). */
++ * the game drew, e.g. for harness screenshots).
++ * (RAM headroom 2026-11-12) The pixels under it are kept in VRAM, in the
++ * same rows of the OTHER framebuffer, not in 8 KB of .bss: that buffer
++ * holds the frame before the newest, which is never shown again once the
++ * banner's frame is up (the next game frame is drawn into it, cleared
++ * first). For the few hundred microseconds until the banner's frame is
++ * shown, the picture on screen has the newest frame's pixels in that
++ * strip: the pixels that are shown next anyway. */
+ #define BANNER_MAX 40
+-#define BANNER_W (BANNER_MAX * 6 + 12)
+ #define BANNER_H 16
+-static uint16_t s_banner_save[BANNER_W * BANNER_H];
+-static RECT s_banner_rect;
++static RECT s_banner_rect;              /* in the framebuffer shown; w 0 = no banner up */
++static int16_t s_banner_keep_y;         /* its rows in the other framebuffer             */
++/* the glyphs of the banner and of the loading screen's lines (LS_TEXT_MAX):
++ * one line at a time, each drawn and finished (DrawSync) before the next */
++static SPRT s_glyph[BANNER_MAX];
+ 
+ void gfx_busy_banner(const char *msg)
+ {
+     static TILE box[2];
+-    static SPRT glyph[BANNER_MAX];
+     static DR_TPAGE tp;
++    SPRT *glyph = s_glyph;
+     DRAWENV env;
+     int fb = g_cur ^ 1, n = 0, x, y, w, i;
+     uint16_t clut = vram_font_clut(PAL_UI_CREAM);
+@@ -361,7 +370,8 @@ void gfx_busy_banner(const char *msg)
+     x = SCR_W - w - 10;
+     y = SCR_H - 26;
+     setRECT(&s_banner_rect, x - 1, fb * SCR_H + y - 1, w + 2, BANNER_H);
+-    StoreImage(&s_banner_rect, (uint32_t *)s_banner_save);
++    s_banner_keep_y = (int16_t)((fb ^ 1) * SCR_H + y - 1);
++    MoveImage(&s_banner_rect, s_banner_rect.x, s_banner_keep_y);
+     DrawSync(0);
+     env = s_fb[fb].draw;
+     env.isbg = 0;
+@@ -399,9 +409,11 @@ void gfx_busy_banner(const char *msg)
+ 
+ void gfx_busy_end(void)
+ {
++    RECT keep = s_banner_rect;
+     if (!s_banner_rect.w)
+         return;
+-    LoadImage(&s_banner_rect, (const uint32_t *)s_banner_save);
++    keep.y = s_banner_keep_y;
++    MoveImage(&keep, s_banner_rect.x, s_banner_rect.y);
+     DrawSync(0);
+     s_banner_rect.w = 0;
+ }
+@@ -481,9 +493,11 @@ static void busy_box(TILE *t, int x, int y, int w, int h, int r, int g, int b)
+     DrawPrim(t);
+ }
+ 
++typedef char ls_text_fits[LS_TEXT_MAX <= BANNER_MAX ? 1 : -1];
++
+ static void busy_puts(int y, const char *msg, uint8_t pal)
+ {
+-    static SPRT glyph[LS_TEXT_MAX];
++    SPRT *glyph = s_glyph;
+     static DR_TPAGE tp;
+     uint16_t clut = vram_font_clut(pal);
+     int n = 0, x, i;
+-- 
+2.43.0
+
+
+From 8a6123c71a8eafa8cee543e38cec7164826f5c10 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 12 Nov 2026 23:42:35 +0000
+Subject: [PATCH 5/9] PS1: the boot log says what went into SPU RAM (a checksum
+ line)
+
+spu_upload() keeps an FNV-1a sum of every byte it sends to SPU RAM, and
+audio_hw_sfx_preload() logs it once: "spu: N of 62 effects, top XXXXX, sum
+XXXXXXXX". Two builds with the same line have the same sound data: the
+check for the next step, which moves the conversion buffers. 144 B resident.
+
+Game disc with the boot FMV: 125,616 B below the stack top.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ ps1/src/spu.c | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/ps1/src/spu.c b/ps1/src/spu.c
+index e14f2d2e..4692f273 100644
+--- a/ps1/src/spu.c
++++ b/ps1/src/spu.c
+@@ -65,11 +65,14 @@ static int      s_bg_next = 1;
+ static int      s_ready;
+ 
+ /* ---- upload ------------------------------------------------------------- */
++static uint32_t s_up_sum = 2166136261u;    /* FNV-1a of every byte sent to SPU RAM (the boot log) */
++
+ static void spu_upload(uint32_t addr, const void *data, size_t bytes)
+ {
+     /* DMA wants 64-byte chunks of word-aligned data */
+     static uint32_t tmp[1024];
+     const uint8_t *src = (const uint8_t *)data;
++    s_up_sum = sum_bytes(s_up_sum, src, bytes);
+     while (bytes) {
+         size_t n = bytes > sizeof(tmp) ? sizeof(tmp) : bytes;
+         size_t padded = (n + 63) & ~(size_t)63;
+@@ -330,12 +333,15 @@ void audio_hw_init(void)
+ void audio_hw_sfx_preload(void)
+ {
+ #ifdef DOOMO_SFX_ON_DISC
+-    int id;
++    int id, ok = 0;
+     if (!s_ready)
+         return;
+     for (id = 1; id < SFX_COUNT; id++)
+-        convert_sfx(id);
++        ok += convert_sfx(id);
+     s_bg_next = SFX_COUNT;
++    /* what is in SPU RAM now: the same line from two builds = the same sound data */
++    dbg("spu: %d of %d effects, top %05x, sum %08x\n", ok, SFX_COUNT - 1, (unsigned)s_sfx_top,
++        (unsigned)s_up_sum);
+ #endif
+ }
+ 
+-- 
+2.43.0
+
+
+From 6b1759f84279acdf1ef36031c694a572b086b2eb Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 12 Nov 2026 23:43:07 +0000
+Subject: [PATCH 6/9] PS1-RAM step 4: the SPU's conversion buffers are the idle
+ display lists at boot (+8,640 B)
+
+The PCM chunk, its ADPCM blocks and the DMA's word-aligned copy (3,584 +
+1,024 + 4,096 B of .bss) are only used while a waveform or an effect is
+converted. On the game disc that is boot only: audio_hw_init() builds the
+waveforms and audio_hw_sfx_preload() converts all of SFX.BIN before the
+first game frame; every effect is ready or failed after that, so nothing
+converts later. stage_open() now takes the three buffers from the display
+lists, idle until the game loop starts (plat_save_scratch), and
+stage_close() drops them; a conversion without buffers fails like a full
+SPU RAM. The engine test converts at run time too (its self test) and keeps
+the statics.
+
+Game disc with the boot FMV: 125,616 -> 134,256 B below the stack top.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ ps1/src/spu.c | 62 +++++++++++++++++++++++++++++++++++++++++++--------
+ 1 file changed, 53 insertions(+), 9 deletions(-)
+
+diff --git a/ps1/src/spu.c b/ps1/src/spu.c
+index 4692f273..44331d8a 100644
+--- a/ps1/src/spu.c
++++ b/ps1/src/spu.c
+@@ -64,17 +64,61 @@ static uint32_t s_age;
+ static int      s_bg_next = 1;
+ static int      s_ready;
+ 
++/* ---- staging -------------------------------------------------------------
++ * PCM -> ADPCM staging, shared by the boot-time waveforms and the converted
++ * effects (load_pcm8): the PCM of one chunk, its ADPCM blocks, and the
++ * word-aligned copy the SPU DMA wants (spu_upload).
++ * (RAM headroom 2026-11-12) On the game disc every conversion runs at boot,
++ * before the first game frame: the waveforms (audio_hw_init) and all of
++ * SFX.BIN (audio_hw_sfx_preload). So the three buffers are no .bss there
++ * (8.7 KB): stage_open() takes them from the display lists, which are idle
++ * until the game loop starts (plat_save_scratch, gfx.c), and stage_close()
++ * drops them. Nothing converts later (every effect is ready or failed by
++ * then); a conversion that found no buffer would fail like a full SPU RAM.
++ * The engine test also converts at run time (its self test) and keeps the
++ * buffers as statics. */
++#define STAGE_PCM    (28 * 64)          /* samples per chunk       */
++#define STAGE_ADPCM  (64 * 16)          /* their ADPCM blocks      */
++#define STAGE_UP     4096               /* bytes per DMA transfer  */
++#if defined(DOOMO_SFX_ON_DISC) && !defined(DOOMO_ENGINE_TEST)
++static int16_t  *s_pcm;
++static uint8_t  *s_adpcm;
++static uint32_t *s_up;
++typedef char stage_fits[STAGE_UP + STAGE_PCM * 2 + STAGE_ADPCM <= 2 * PRIM_BYTES ? 1 : -1];
++
++static void stage_open(void)
++{
++    uint8_t *b = (uint8_t *)plat_save_scratch(NULL);
++    s_up = (uint32_t *)b;
++    s_pcm = (int16_t *)(b + STAGE_UP);
++    s_adpcm = b + STAGE_UP + STAGE_PCM * 2;
++}
++
++static void stage_close(void)
++{
++    s_up = NULL;
++    s_pcm = NULL;
++    s_adpcm = NULL;
++}
++#else
++static int16_t  s_pcm[STAGE_PCM];
++static uint8_t  s_adpcm[STAGE_ADPCM];
++static uint32_t s_up[STAGE_UP / 4];
++static void stage_open(void) {}
++static void stage_close(void) {}
++#endif
++
+ /* ---- upload ------------------------------------------------------------- */
+ static uint32_t s_up_sum = 2166136261u;    /* FNV-1a of every byte sent to SPU RAM (the boot log) */
+ 
+ static void spu_upload(uint32_t addr, const void *data, size_t bytes)
+ {
+     /* DMA wants 64-byte chunks of word-aligned data */
+-    static uint32_t tmp[1024];
++    uint32_t *tmp = s_up;
+     const uint8_t *src = (const uint8_t *)data;
+     s_up_sum = sum_bytes(s_up_sum, src, bytes);
+     while (bytes) {
+-        size_t n = bytes > sizeof(tmp) ? sizeof(tmp) : bytes;
++        size_t n = bytes > STAGE_UP ? STAGE_UP : bytes;
+         size_t padded = (n + 63) & ~(size_t)63;
+         memset(tmp, 0, padded);
+         memcpy(tmp, src, n);
+@@ -109,11 +153,7 @@ static int16_t wave_sample(int wave, int i, int len, uint32_t *rng)
+ }
+ 
+ #define NOISE_LEN (28 * 64)
+-
+-/* PCM -> ADPCM staging, shared by the boot-time waveforms and the lazily
+- * converted effects (load_pcm8): 4.5 KB once instead of twice */
+-static int16_t s_pcm[28 * 64];
+-static uint8_t s_adpcm[64 * 16];
++typedef char noise_fits[NOISE_LEN <= STAGE_PCM ? 1 : -1];
+ 
+ static void build_waves(void)
+ {
+@@ -227,14 +267,14 @@ static uint32_t load_pcm8(const int8_t *src, uint32_t len)
+     if (len > 44100u * 3u)
+         len = 44100u * 3u;
+     bytes = (len + 27) / 28 * 16 + 16;
+-    if (s_sfx_top + bytes > SPU_SFX_END)
++    if (s_sfx_top + bytes > SPU_SFX_END || !pcm)
+         return 0;
+     /* chunks of 64 blocks; the encoder state restarts per chunk (filter 0
+      * on each chunk's first block), inaudible at these lengths */
+     while (done < len) {
+         uint32_t n = len - done, i;
+         int blocks;
+-        if (n > sizeof(s_pcm) / 2) n = sizeof(s_pcm) / 2;
++        if (n > STAGE_PCM) n = STAGE_PCM;
+         for (i = 0; i < n; i++)
+             pcm[i] = (int16_t)(src[done + i] * 256);
+         blocks = adpcm_encode(pcm, (int)n, adpcm, 1);
+@@ -318,7 +358,9 @@ void audio_hw_init(void)
+     SpuInit();
+     SPU_MASTER_VOL_L = 0x3fff;
+     SPU_MASTER_VOL_R = 0x3fff;
++    stage_open();
+     build_waves();
++    stage_close();
+     for (v = 0; v < 24; v++) {
+         SPU_CH_VOL_L(v) = 0;
+         SPU_CH_VOL_R(v) = 0;
+@@ -336,8 +378,10 @@ void audio_hw_sfx_preload(void)
+     int id, ok = 0;
+     if (!s_ready)
+         return;
++    stage_open();
+     for (id = 1; id < SFX_COUNT; id++)
+         ok += convert_sfx(id);
++    stage_close();
+     s_bg_next = SFX_COUNT;
+     /* what is in SPU RAM now: the same line from two builds = the same sound data */
+     dbg("spu: %d of %d effects, top %05x, sum %08x\n", ok, SFX_COUNT - 1, (unsigned)s_sfx_top,
+-- 
+2.43.0
+
+
+From 9779e3195659e46eab6ea8008e11229abeeb0889 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 12 Nov 2026 23:43:42 +0000
+Subject: [PATCH 7/9] PS1-RAM step 5: image cache tiles go straight into the
+ upload packets (+8,656 B)
+
+vram_image() built every tile with its transparent border in a 130 x 130
+staging buffer (16.9 KB of .bss) and gfx_upload_strided() then copied it
+into the frame's upload packets. gfx_upload_tile() writes the bordered rows
+straight into the packets: one transparent texel, the tile's texels (read
+backwards for a mirrored image), transparent up to the even width, and one
+transparent row below. The same packets with the same bytes, one copy less
+per cache miss.
+
+The staging union is now only the hash table's rebuild copy (8,192 B),
+which the boot-time font / CLUT uploads also stage in (their biggest is
+exactly 8,192 B: a compile-time check).
+
+Game disc with the boot FMV: 134,256 -> 142,912 B below the stack top.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ ps1/src/gfx.c  | 44 ++++++++++++++++++++++++++++++++++++++++----
+ ps1/src/ps1.h  |  2 ++
+ ps1/src/vram.c | 35 ++++++++++++++---------------------
+ 3 files changed, 56 insertions(+), 25 deletions(-)
+
+diff --git a/ps1/src/gfx.c b/ps1/src/gfx.c
+index b5ef5785..c96dc51a 100644
+--- a/ps1/src/gfx.c
++++ b/ps1/src/gfx.c
+@@ -258,7 +258,13 @@ void gfx_ot_end(void)
+     s_view_ot = NULL;
+ }
+ 
+-static int upload_rows(int x, int y, int w, int h, const uint8_t *src, int stride)
++/* Rows of w halfwords from src (stride bytes apart) into GP0(A0h) packets.
++ * tw < 0: the rows as they are. tw >= 0: an image-cache tile with its
++ * border (gfx_upload_tile below): every row but the last is one transparent
++ * texel, tw texels read from src in steps of `step` (+1, or -1 for a
++ * mirrored image), then transparent texels up to w * 2; the last row is
++ * transparent. */
++static int upload_rows(int x, int y, int w, int h, const uint8_t *src, int stride, int tw, int step)
+ {
+     /* GP0(A0h) packets of at most 252 data words */
+     int rows_per = (252 * 2) / w;
+@@ -279,7 +285,24 @@ static int upload_rows(int x, int y, int w, int h, const uint8_t *src, int strid
+         p[3] = ((uint32_t)rows << 16) | (uint32_t)w;
+         d = (uint16_t *)&p[4];
+         for (r = 0; r < rows; r++) {
+-            memcpy(d, src, (size_t)w * 2);
++            if (tw < 0) {
++                memcpy(d, src, (size_t)w * 2);
++            } else {
++                uint8_t *b = (uint8_t *)d;
++                int k = 0;
++                if (h - r > 1) {            /* not the tile's last row */
++                    b[k++] = 0;
++                    if (step > 0) {
++                        memcpy(b + 1, src, (size_t)tw);
++                        k += tw;
++                    } else {
++                        for (; k <= tw; k++)
++                            b[k] = src[1 - k];
++                    }
++                }
++                while (k < w * 2)
++                    b[k++] = 0;
++            }
+             d += w;
+             src += stride;
+         }
+@@ -295,13 +318,26 @@ static int upload_rows(int x, int y, int w, int h, const uint8_t *src, int strid
+ 
+ int gfx_upload(int x, int y, int w, int h, const uint16_t *data)
+ {
+-    return upload_rows(x, y, w, h, (const uint8_t *)data, w * 2);
++    return upload_rows(x, y, w, h, (const uint8_t *)data, w * 2, -1, 0);
+ }
+ 
+ /* strided variant used by vram.c (rows of `stride` bytes) */
+ int gfx_upload_strided(int x, int y, int w, int h, const uint8_t *src, int stride)
+ {
+-    return upload_rows(x, y, w, h, src, stride);
++    return upload_rows(x, y, w, h, src, stride, -1, 0);
++}
++
++/* (RAM headroom 2026-11-12) An image-cache tile of tw x th texels, uploaded
++ * to (x, y) as sw x (th + 1) texels with the transparent border vram.c
++ * gives every tile: one column on the left, the columns from tw + 1 to sw
++ * on the right, one row below. src is the first texel of the tile's first
++ * row (stride bytes a row); step -1 reads every row backwards from there
++ * (a mirrored image). The rows are written straight into the upload
++ * packets: the same bytes, without the 16.9 KB buffer vram.c staged them
++ * in first. sw is even and at least tw + 2. */
++int gfx_upload_tile(int x, int y, int sw, int th, const uint8_t *src, int stride, int tw, int step)
++{
++    return upload_rows(x, y, sw >> 1, th + 1, src, stride, tw, step);
+ }
+ 
+ void gfx_upload_now(int x, int y, int w, int h, const void *data)
+diff --git a/ps1/src/ps1.h b/ps1/src/ps1.h
+index 2ffe89cb..e4b38176 100644
+--- a/ps1/src/ps1.h
++++ b/ps1/src/ps1.h
+@@ -135,6 +135,8 @@ void  gfx_ofs_follow(uint32_t *e5);
+ int   gfx_upload(int x, int y, int w, int h, const uint16_t *data);
+ /* Synchronous upload (boot time / when no frame is in flight). */
+ int   gfx_upload_strided(int x, int y, int w, int h, const uint8_t *src, int stride);
++/* an image-cache tile with its transparent border, straight into the upload packets (gfx.c) */
++int   gfx_upload_tile(int x, int y, int sw, int th, const uint8_t *src, int stride, int tw, int step);
+ void  gfx_upload_now(int x, int y, int w, int h, const void *data);
+ /* Set the GPU texpage / semi-transparency mode for following 2D prims. */
+ void  gfx_tpage(uint16_t tpage);
+diff --git a/ps1/src/vram.c b/ps1/src/vram.c
+index b7e1b26c..96c12a7d 100644
+--- a/ps1/src/vram.c
++++ b/ps1/src/vram.c
+@@ -132,12 +132,13 @@ typedef struct Entry {
+ static Page   s_page[IMG_PAGES];
+ static Entry  s_hash[HASH_SIZE];
+ static int    s_hash_used;
+-/* tile staging buffer; also the scratch copy for hash_rebuild() */
++/* the scratch copy for hash_rebuild() (and the boot uploads' staging, below).
++ * (RAM headroom 2026-11-12) A tile is no longer staged here with its border
++ * before it is uploaded (a 130 x 130 buffer, 16.9 KB): gfx_upload_tile()
++ * writes the bordered rows straight into the upload packets. */
+ static union {
+-    uint8_t stage[(IMG_TILE + 2) * (IMG_TILE + 2)];
+     Entry   tmp[HASH_SIZE];
+ } s_scr;
+-#define s_stage s_scr.stage
+ 
+ static uint32_t hash2(uint32_t a, uint32_t b)
+ {
+@@ -253,7 +254,7 @@ int vram_image(const DoomoImage *img, int tx, int ty, TexRef *out)
+ {
+     uint32_t k1, k2, h;
+     int flip = (tx >> 8) & 1;
+-    int tw, th, x0, y0, u, v, pg, row, col;
++    int tw, th, x0, y0, u, v, pg;
+     Entry *e, *free_e = NULL;
+     out->ok = 0;
+     tx &= 0xff;
+@@ -308,24 +309,14 @@ probe:
+     e->u = (uint8_t)(u + 1);     /* 1 transparent column on the left  */
+     e->v = (uint8_t)v;
+     {
+-        /* stage: (tw+2) x (th+1), transparent border right/bottom/left */
++        /* (tw+2) x (th+1) texels: transparent border right/bottom/left */
+         int sw = (tw + 2 + 1) & ~1;
+         const uint8_t *pix = packart_resolve(img->pix);   /* a texture image? */
+-        memset(s_stage, 0, (size_t)sw * (th + 1));
+-        for (row = 0; row < th; row++) {
+-            const uint8_t *src = pix + (size_t)(y0 + row) * img->w;
+-            uint8_t *d = s_stage + row * sw + 1;
+-            if (!flip) {
+-                memcpy(d, src + x0, (size_t)tw);
+-            } else {
+-                /* flipped image: tile tx counts from the right edge */
+-                int sx = img->w - 1 - x0;
+-                for (col = 0; col < tw; col++)
+-                    d[col] = src[sx - col];
+-            }
+-        }
+-        if (!gfx_upload_strided(s_page[pg].vx + (u >> 1), VR_IMG_Y + v,
+-                                sw >> 1, th + 1, s_stage, sw)) {
++        /* the tile's first row; a flipped image's tile tx counts from the
++         * right edge and is read backwards */
++        const uint8_t *src = pix + (size_t)y0 * img->w + (flip ? img->w - 1 - x0 : x0);
++        if (!gfx_upload_tile(s_page[pg].vx + (u >> 1), VR_IMG_Y + v, sw, th, src, img->w,
++                             tw, flip ? -1 : 1)) {
+             e->state = 2;          /* tombstone: retry next time */
+             return 0;
+         }
+@@ -432,8 +423,10 @@ void vram_frame(void)
+ 
+ /* ---- init -------------------------------------------------------------------- */
+ /* Boot-time staging for the font / CLUT uploads: the image cache's
+- * staging union (16.9 KB) is idle until the first frame, so these need
++ * rebuild scratch (8 KB) is idle until the first frame, so these need
+  * no RAM of their own (they were 12 KB of static buffers used once). */
++typedef char init_scratch_fits[sizeof(s_scr) >= 16 * 256 * 2 ? 1 : -1];   /* the biggest: the font CLUTs */
++
+ static uint16_t *init_scratch(size_t bytes)
+ {
+     memset(&s_scr, 0, sizeof(s_scr));
+-- 
+2.43.0
+
+
+From 83f6d7816b975c1f35607a4e09a404f899b03db1 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 12 Nov 2026 23:57:50 +0000
+Subject: [PATCH 8/9] PS1-RAM step 6: shared core files give their one-group
+ parts to that group (+18,448 B)
+
+A core file outside the planner's GROUPS was resident as a whole, the parts
+only one screen family calls included. For the files named in SHARED
+(fishcook, catalog, ui, song_player, fp_common, audio, art_data_ps1,
+mus_core) every .text / .rodata section is now a candidate like a group's
+own: resident when resident code or data reach it or its address escapes;
+when the scenes of exactly one group reach it, it joins that group; reached
+by two groups it stays resident. A scene defined in such a file is a
+resident scene. SHARED_NOT (story, home, combat, free play) take none: they
+set the slot's size or are within a few KB of it.
+
+Moved: the fishing / cooking effects and unlock checks (fishcook.c, 5.6 KB,
+which also frees the fish and recipe tables it alone read: the fishcook
+group 93 -> 101 KB), the creator's option names (catalog.c, 4.0 KB), the
+paint picker and slider only the UI gallery draws (ui.c, 2.5 KB), the
+island's ticker and HUD (fp_common.c, 2.0 KB), the studio's song helpers
+(song_player.c, 1.6 KB). The linker script lists a shared file's sections
+per group (one file can feed several groups). No source file changes.
+
+Game disc with the boot FMV: 142,912 -> 161,360 B below the stack top.
+
+test_tools.py: a shared file in the made-up game (one group, two groups,
+the platform, its own scene, a group that takes none).
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ ps1/tools/ovl_plan.py   | 71 +++++++++++++++++++++++++++++++++--------
+ ps1/tools/test_tools.py | 70 ++++++++++++++++++++++++++++++++++++++--
+ 2 files changed, 126 insertions(+), 15 deletions(-)
+
+diff --git a/ps1/tools/ovl_plan.py b/ps1/tools/ovl_plan.py
+index 87a78159..7911af13 100644
+--- a/ps1/tools/ovl_plan.py
++++ b/ps1/tools/ovl_plan.py
+@@ -27,6 +27,8 @@ hand:
+     which loads the scene's overlay first;
+   * the rest of a group is reachable only through its scenes' entry
+     points; a section that two groups need is made resident;
++  * a shared core file named in SHARED is no root: each of its sections
++    is resident or joins the one group that reaches it, by the same rules;
+   * the string literals of a file's tables arrive one per section
+     (tools/strsec.py), so only the strings resident code or data can
+     reach stay resident (STR_WHOLE below: the groups that set the slot's
+@@ -280,6 +282,22 @@ PICK_CALLBACKS = {
+ # room under the slot again.
+ STR_WHOLE = ("story", "home")
+ RX_STR = re.compile(r"\.rodata\.str1\.\d+\.LC\d+$")
++
++# --- RAM headroom 2026-11-12: shared modules. A core file outside the GROUPS (the UI kit, the item
++# catalog, the fishing / cooking effects, free play's helpers) was resident as a whole, the parts
++# only one screen family calls included. For the files named here (object base; core/src, core/gen
++# and the build's packed tables) every .text / .rodata section is a candidate like a group's own:
++# resident when resident code or data can reach it or its address escapes; else, when the scenes of
++# exactly ONE group reach it, it joins that group (it only runs, or is read, with that group in the
++# slot: the argument that holds for the group's own files); reached by two groups it stays resident.
++# The file's .data / .bss stay resident, and a scene defined in such a file is a resident scene.
++# SHARED_NOT: groups that take none: they set the slot's size or are within a few KB of it, where a
++# KB more is a KB of slot, not of room found (free play keeps its 10 KB for its own screens).
++# To add a file: OVL_WHY=1 lists the resident core objects; a file is worth listing when part of it
++# is reached by one group only.
++SHARED = r"fishcook$|catalog$|ui$|song_player$|art_data_ps1$|fp_common$|audio$|mus_core$"
++SHARED_NOT = ("story", "home", "combat", "freeplay")
++SHARED_TAG = "+"                # what grp() says for a candidate section of a shared file
+ # --- end RAM headroom ---
+ 
+ # --- S4: registries read only by their own group (object base -> symbol).
+@@ -332,6 +350,12 @@ def group_of(path):
+     return None
+ 
+ 
++def is_shared(path):
++    """a core file of no group whose sections may join the one group that reaches them (SHARED)"""
++    return (group_of(path) is None and ("/core/src/" in path or "/core/gen/" in path or "/packed/" in path)
++            and re.fullmatch(SHARED, base(path)) is not None)
++
++
+ class Obj:
+     def __init__(self, path, readelf):
+         self.path = path
+@@ -431,12 +455,17 @@ def main(argv):
+                 if tgt != src:
+                     edges[src].append((tgt, typ))
+ 
++    shared_objs = {oi for oi, o in enumerate(objs) if is_shared(o.path)}
++
+     def grp(n):
++        # the group a section may live in: its file's group, SHARED_TAG (the one group that reaches
++        # it, SHARED above), or None (always resident)
+         o = objs[n[0]]
+-        g = group_of(o.path)
+-        if g is None or not n[1].startswith(OVL_KINDS):
++        if not n[1].startswith(OVL_KINDS):
+             return None
+-        return g
++        if n[0] in shared_objs:
++            return SHARED_TAG
++        return group_of(o.path)
+ 
+     # scene structs: sections named .rodata.SCENE_* (their function
+     # pointers are the cut edges); they stay resident themselves
+@@ -554,13 +583,15 @@ def main(argv):
+             for t, _ in edges.get(s, ()):
+                 if t in resident or not is_code(t):
+                     continue
+-                if g is None:
++                if g is None or g == SHARED_TAG:        # a resident scene (one in a shared file too)
+                     clash.add(t)
+                     continue
+                 for r in closure({t}, False):
+                     if r in resident:
+                         continue
+-                    if grp(r) != g or owner.get(r, g) != g:
++                    gr = grp(r)
++                    mine = gr == g or (gr == SHARED_TAG and g not in SHARED_NOT)
++                    if not mine or owner.get(r, g) != g:
+                         clash.add(r)
+                     else:
+                         owner[r] = g
+@@ -677,7 +708,10 @@ def main(argv):
+     for g in names:
+         for n in groups[g]:
+             in_ovl[n] = g
+-    grp_objs = [oi for oi, o in enumerate(objs) if group_of(o.path)]
++    # the objects the linker script names section by section: the groups' files, and the shared
++    # files that have a section in a group
++    grp_objs = [oi for oi, o in enumerate(objs)
++                if group_of(o.path) or (oi in shared_objs and any(n[0] == oi for n in in_ovl))]
+ 
+     def pat(oi):
+         # the object as the link command names it: a unique path suffix
+@@ -687,12 +721,14 @@ def main(argv):
+             k = p.rfind("/")
+         return "*" + p[k:]
+ 
+-    def secs_of(oi, kinds, want_ovl):
++    def secs_of(oi, kinds, want):
++        # the object's sections that stay resident (want None) or are in group `want` (a shared
++        # file's sections can be in several groups)
+         out = []
+         for name, size, al in objs[oi].secs.values():
+             if not al or not name.startswith(kinds):
+                 continue
+-            if ((oi, name) in in_ovl) == want_ovl:
++            if in_ovl.get((oi, name)) == want:
+                 out.append(name)
+         return sorted(set(out))
+ 
+@@ -731,7 +767,7 @@ def main(argv):
+             L.append("\t\tEXCLUDE_FILE(%s) *(%s %s.* .gnu.linkonce.%s.*)" % (
+                 excl, out, out, "t" if out == ".text" else "r"))
+             for oi in grp_objs:
+-                ss = secs_of(oi, kinds, False)
++                ss = secs_of(oi, kinds, None)
+                 if ss:
+                     L.append("\t\t%s(%s)" % (pat(oi), " ".join(ss)))
+             if extra:
+@@ -803,7 +839,7 @@ def main(argv):
+                 continue
+             L.append("\t\t.ovl_%02d {\t/* %s */" % (gid[g], g))
+             for oi in sorted({n[0] for n in groups[g]}):
+-                ss = secs_of(oi, (".text", ".rodata"), True)
++                ss = secs_of(oi, (".text", ".rodata"), g)
+                 if ss:
+                     L.append("\t\t\t%s(%s)" % (pat(oi), " ".join(ss)))
+             L.append("\t\t\t. = ALIGN(4);")
+@@ -826,7 +862,7 @@ def main(argv):
+                 sec = ".ovl_%02d" % gid[g]
+                 L.append("\t%s __ovl_borrow : AT (LOADADDR(%s) + SIZEOF(%s)) {\t/* %s */" % (sec, last, last, g))
+                 for oi in sorted({n[0] for n in groups[g]}):
+-                    ss = [s for s in secs_of(oi, (".text", ".rodata"), True) if (oi, s) not in part_of]
++                    ss = [s for s in secs_of(oi, (".text", ".rodata"), g) if (oi, s) not in part_of]
+                     if ss:
+                         L.append("\t\t%s(%s)" % (pat(oi), " ".join(ss)))
+                 L.append("\t\t. = ALIGN(4);")
+@@ -932,6 +968,15 @@ def main(argv):
+             tot += sz
+             print("ovl_plan:   %-10s %4d KB  %d sections" % (g, sz // 1024, len(groups[g])))
+         print("ovl_plan: overlays total %d KB" % (tot // 1024))
++        # RAM headroom 2026-11-12: what the shared files (SHARED) gave to the groups
++        for g in sorted(groups):
++            c = collections.Counter()
++            for n in groups[g]:
++                if n[0] in shared_objs:
++                    c[base(objs[n[0]].path)] += node_size(n)
++            if c:
++                print("ovl_plan: shared code and data in %s: %d B (%s)" % (
++                    g, sum(c.values()), ", ".join("%s %d" % kv for kv in c.most_common())))
+         if borrow:
+             print("ovl_plan: %s load%s %d B lower, over borrowed .bss (BORROW)" % (
+                 ", ".join(g for g in sorted(groups) if g in BORROW_GROUPS),
+@@ -979,13 +1024,13 @@ def main(argv):
+         if os.environ.get("OVL_WHY"):
+             c = collections.Counter()
+             for n in resident:
+-                if n in live and grp(n) is not None:
++                if n in live and n[1].startswith(OVL_KINDS) and group_of(objs[n[0]].path):
+                     c[base(objs[n[0]].path)] += node_size(n)
+             for k, v in c.most_common(40):
+                 print("ovl_plan:   resident from group objs: %6d %s" % (v, k))
+             c = collections.Counter()
+             for n in resident:
+-                if n in live and n[1].startswith(OVL_KINDS) and grp(n) is None:
++                if n in live and n[1].startswith(OVL_KINDS) and not group_of(objs[n[0]].path):
+                     c[base(objs[n[0]].path)] += node_size(n)
+             for k, v in c.most_common(60):
+                 print("ovl_plan:   resident core: %6d %s" % (v, k))
+diff --git a/ps1/tools/test_tools.py b/ps1/tools/test_tools.py
+index 02d9230e..50fb36e8 100644
+--- a/ps1/tools/test_tools.py
++++ b/ps1/tools/test_tools.py
+@@ -8,8 +8,9 @@ ram_ledger.py (the linker map reader) are tested on files made here;
+ strsec.py (the assembly rewrite that gives every table string a section
+ of its own) on assembly text and on real compiles; ovl_plan.py on a
+ made-up game of four scenes compiled with the MIPS compiler (which
+-callbacks and which strings may leave resident RAM). Stdlib only; the
+-tests that need the MIPS compiler are skipped without one.
++callbacks, strings and parts of shared files may leave resident RAM).
++Stdlib only; the tests that need the MIPS compiler are skipped without
++one.
+ """
+ import contextlib
+ import io
+@@ -505,6 +506,71 @@ class PlannerStrings(unittest.TestCase):
+         self.assertEqual(len(self.strings(where, "resident")), 7)
+ 
+ 
++# a shared file (ovl_plan.py SHARED): the UI kit of the made-up game, used by both screen families,
++# by the platform, and with a scene of its own
++SHARED_FAKE = dict(FAKE)
++SHARED_FAKE["core/src/ui.c"] = """#include "scene.h"
++static const short island_tab[8] = { 3, 1, 4, 1, 5, 9, 2, 6 };
++void ui_family_only(void) { sink += 2; }
++void ui_island_only(void) { sink += island_tab[sink & 7]; }
++void ui_both(void) { sink += 5; }
++void ui_resident(void) { sink += 7; }
++static void uix_update(void) { sink += 9; }
++const DoomoScene SCENE_UIX = { "UIX", 0, 0, uix_update, 0, 0 };
++"""
++SHARED_FAKE["src/main.c"] = FAKE["src/main.c"].replace(
++    "int main(void)\n{", "void ui_resident(void);\nint main(void)\n{\n    ui_resident();")
++SHARED_FAKE["core/src/scene.c"] = FAKE["core/src/scene.c"].replace(
++    "SCENE_ISLAND;", "SCENE_ISLAND, SCENE_UIX;").replace("&SCENE_ISLAND, 0", "&SCENE_ISLAND, &SCENE_UIX, 0")
++SHARED_FAKE["core/src/fp_family.c"] = FAKE["core/src/fp_family.c"].replace(
++    "static void fam_update(void) {",
++    "void ui_family_only(void); void ui_both(void);\nstatic void fam_update(void) { ui_family_only(); ui_both();")
++SHARED_FAKE["core/src/fp_island.c"] = FAKE["core/src/fp_island.c"].replace(
++    "static void isl_update(void) {",
++    "void ui_island_only(void); void ui_both(void);\nstatic void isl_update(void) { ui_island_only(); ui_both();")
++
++
++@unittest.skipUnless(CROSS, "no MIPS compiler (mipsel-linux-gnu-gcc / mipsel-none-elf-gcc)")
++class PlannerShared(unittest.TestCase):
++    def setUp(self):
++        self.dir = tempfile.TemporaryDirectory()
++        self.saved = (ovl_plan.SHARED, ovl_plan.SHARED_NOT)
++        ovl_plan.SHARED, ovl_plan.SHARED_NOT = r"ui$", ()
++
++    def tearDown(self):
++        ovl_plan.SHARED, ovl_plan.SHARED_NOT = self.saved
++        self.dir.cleanup()
++
++    def plan(self):
++        return plan(self.dir.name, compile_fake(self.dir.name, SHARED_FAKE))
++
++    def test_a_shared_files_sections_join_the_one_group_that_reaches_them(self):
++        where, report = self.plan()
++        self.assertIn(("ui", ".text.ui_family_only"), where["freeplay"])
++        self.assertIn(("ui", ".text.ui_island_only"), where["island"])
++        self.assertIn(("ui", ".rodata.island_tab"), where["island"])        # its table goes with it
++        self.assertNotIn(("ui", ".text.ui_island_only"), where["freeplay"])  # one file, two groups
++        self.assertNotIn(("ui", ".text.ui_family_only"), where["island"])
++        # two groups, the platform, or a scene of the shared file itself: resident
++        for sec in (".text.ui_both", ".text.ui_resident", ".text.uix_update"):
++            self.assertIn(("ui", sec), where["resident"])
++            self.assertNotIn(("ui", sec), where["freeplay"] | where["island"])
++        self.assertIn("ovl_plan: shared code and data in island:", report)
++
++    def test_a_file_that_is_not_listed_stays_resident(self):
++        ovl_plan.SHARED = r"nothing$"
++        where, report = self.plan()
++        self.assertFalse([x for g in ("freeplay", "island") for x in where[g] if x[0] == "ui"])
++        self.assertNotIn("shared code and data", report)
++
++    def test_a_group_that_takes_none(self):
++        ovl_plan.SHARED_NOT = ("freeplay",)
++        where, _ = self.plan()
++        self.assertIn(("ui", ".text.ui_family_only"), where["resident"])
++        self.assertNotIn(("ui", ".text.ui_family_only"), where["freeplay"])
++        self.assertIn(("ui", ".text.ui_island_only"), where["island"])
++
++
+ if __name__ == "__main__":
+     import warnings
+     warnings.simplefilter("ignore", ResourceWarning)    # the tools read files in one expression
+-- 
+2.43.0
+
+
+From e82ef8bdb4203b93f5d691310e2bdbd5ef3a3ba8 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 00:01:54 +0000
+Subject: [PATCH 9/9] PS1-RAM step 6: SHARED lists only the files whose parts
+ moved
+
+art_data_ps1 and mus_core gave nothing to a group (the sprite name table is
+read by the library alone, but through sprites.c, which is resident), and
+the build's packed tables are not candidates. The list is now the six files
+that moved something; the comment says what makes a file worth listing.
+The disc is byte-identical (EXE and OVL.BIN): 161,360 B below the stack top.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ ps1/tools/ovl_plan.py | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/ps1/tools/ovl_plan.py b/ps1/tools/ovl_plan.py
+index 7911af13..122026f4 100644
+--- a/ps1/tools/ovl_plan.py
++++ b/ps1/tools/ovl_plan.py
+@@ -285,8 +285,8 @@ RX_STR = re.compile(r"\.rodata\.str1\.\d+\.LC\d+$")
+ 
+ # --- RAM headroom 2026-11-12: shared modules. A core file outside the GROUPS (the UI kit, the item
+ # catalog, the fishing / cooking effects, free play's helpers) was resident as a whole, the parts
+-# only one screen family calls included. For the files named here (object base; core/src, core/gen
+-# and the build's packed tables) every .text / .rodata section is a candidate like a group's own:
++# only one screen family calls included. For the files named here (object base; core/src and
++# core/gen) every .text / .rodata section is a candidate like a group's own:
+ # resident when resident code or data can reach it or its address escapes; else, when the scenes of
+ # exactly ONE group reach it, it joins that group (it only runs, or is read, with that group in the
+ # slot: the argument that holds for the group's own files); reached by two groups it stays resident.
+@@ -294,8 +294,9 @@ RX_STR = re.compile(r"\.rodata\.str1\.\d+\.LC\d+$")
+ # SHARED_NOT: groups that take none: they set the slot's size or are within a few KB of it, where a
+ # KB more is a KB of slot, not of room found (free play keeps its 10 KB for its own screens).
+ # To add a file: OVL_WHY=1 lists the resident core objects; a file is worth listing when part of it
+-# is reached by one group only.
+-SHARED = r"fishcook$|catalog$|ui$|song_player$|art_data_ps1$|fp_common$|audio$|mus_core$"
++# is reached by one group only AND not through another resident file (its accessors must be listed
++# too: the sprite name table is read by the library alone, but through sprites.c).
++SHARED = r"fishcook$|catalog$|ui$|song_player$|fp_common$|audio$"
+ SHARED_NOT = ("story", "home", "combat", "freeplay")
+ SHARED_TAG = "+"                # what grp() says for a candidate section of a shared file
+ # --- end RAM headroom ---
+@@ -352,7 +353,7 @@ def group_of(path):
+ 
+ def is_shared(path):
+     """a core file of no group whose sections may join the one group that reaches them (SHARED)"""
+-    return (group_of(path) is None and ("/core/src/" in path or "/core/gen/" in path or "/packed/" in path)
++    return (group_of(path) is None and ("/core/src/" in path or "/core/gen/" in path)
+             and re.fullmatch(SHARED, base(path)) is not None)
+ 
+ 
+-- 
+2.43.0
+
+=== UNCOMMITTED ===

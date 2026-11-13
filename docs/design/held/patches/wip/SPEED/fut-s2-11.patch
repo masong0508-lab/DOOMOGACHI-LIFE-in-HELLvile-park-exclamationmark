@@ -1,0 +1,151 @@
+=== UNCOMMITTED ===
+diff --git a/gba/src/room.c b/gba/src/room.c
+index f8972d56..35fb2c38 100644
+--- a/gba/src/room.c
++++ b/gba/src/room.c
+@@ -361,6 +361,10 @@ HOT static void fill(int x0, int y0, int x1, int y1, uint8_t c)
+     if (x0 < x1 && y0 < y1) vid_rect(x0, y0, x1, y1, c ? c : PAL_BLACK);
+ }
+ 
++/* TEMP INSTRUMENTATION (S2-11 measurement, not committed) */
++static uint32_t ti_acc[10], ti_n, ti_t0;
++#define TI_BEGIN() (ti_t0 = gba_cycles())
++#define TI_END(k) do { uint32_t n_ = gba_cycles(); ti_acc[k] += n_ - ti_t0; ti_t0 = n_; } while (0)
+ /* ---- the claim -------------------------------------------------------------- */
+ static void reset_state(void)
+ {
+@@ -649,6 +653,8 @@ static void strip_col(const RG *g, uint8_t *S, int c, int u, int side, int s0)
+ __attribute__((noinline)) static void build_shell(RG *g)
+ {
+     int q, par, o, c, r, j;
++    uint32_t tb_ = gba_cycles(), tn_;
++#define TB(name) do { tn_ = gba_cycles(); gba_logf("TI bs %s %u", name, tn_ - tb_); tb_ = gba_cycles(); } while (0)
+     B->strip_h = 0;
+     if (g->walls && g->wall_h + 8 <= STRIP_ROWS && g->wpat < 4) {   /* (H2) 4..7: wall_cols */
+         /* the two 16 px strips (rows s = 0 .. wall_h + 7), then each strip
+@@ -672,6 +678,7 @@ __attribute__((noinline)) static void build_shell(RG *g)
+         B->strip_h = (uint8_t)(g->wall_h + 8);
+     }
+     B->s15 = 0;                                     /* (H8) the stage was scratch */
++    TB("strips");
+     if (g->roof_on && g->roof_tab) {                /* (HART) the roof's tables */
+         const RoomRoof *f = &g->roof;
+         uint16_t tmp[ROOM_ROOF_EAVE + 128];
+@@ -687,6 +694,7 @@ __attribute__((noinline)) static void build_shell(RG *g)
+                 }
+                 for (j = 0; j < 8; j++) d[j] = tmp[j];
+             }
++            TB("roofphase");
+             if (!c && g->ftab) {                     /* the chimney / tank rows */
+                 int y;
+                 for (y = f->ftop - 12; y < g->fy1; y++) {
+@@ -696,6 +704,7 @@ __attribute__((noinline)) static void build_shell(RG *g)
+                     for (j = 0; j < g->ftw / 2; j++) d[j] = tmp[j];
+                 }
+             }
++            TB("rooffeat");
+             for (i = 0; i < g->nsp[c]; i++) {
+                 const int16_t *e = g->sp[c][i];
+                 w = e[1] - e[0];
+@@ -709,6 +718,7 @@ __attribute__((noinline)) static void build_shell(RG *g)
+             }
+         }
+     }
++    TB("roofspec");
+     for (q = 0; q < 8; q++)
+         for (par = 0; par < 2; par++) {
+             int h1 = 2 * (q + 1);
+@@ -2067,12 +2077,16 @@ HOT static void draw_region(const RG *g, int x0, int y0, int x1, int y1)
+ {
+     int i;
+     if (x0 >= x1 || y0 >= y1) return;
++    TI_BEGIN();
+     draw_shell(g, x0, y0, x1, y1);
++    TI_END(4);
+     for (i = 0; i < B->nitem; i++) {
+         const RItem *it = &B->item[i];
+         if (it->xf || it->x0 >= x1 || it->x1 <= x0 || it->y0 >= y1 || it->y1 <= y0) continue;
+         draw_item(g, it, x0, y0, x1, y1);
++        if (it->kind == RK_ACTOR) TI_END(6); else TI_END(5);
+     }
++    ti_acc[9] += (uint32_t)((x1 - x0) * (y1 - y0));
+ }
+ 
+ /* ---- block checksums ----------------------------------------------------------- */
+@@ -2204,6 +2218,7 @@ __attribute__((noinline)) static void incremental(const RG *g, RPage *pg)
+     B->nrect = 0;
+     B->rect_over = 0;
+     memset(B->dirty, 0, sizeof(B->dirty));
++    TI_BEGIN();
+     /* 1. whatever was drawn over the room since this page's last frame:
+      *    each changed block row run becomes a rect */
+     for (by = 0; by < g->nby; by++) {
+@@ -2215,6 +2230,7 @@ __attribute__((noinline)) static void incremental(const RG *g, RPage *pg)
+             if (!changed && run >= 0) { add_rect(g, run * 16, y, bx * 16, y + rows); run = -1; }
+         }
+     }
++    TI_END(2);
+     /* 2. the draw list against the page's: changed items dirty their old
+      *    and new boxes */
+     memset(B->match, 0, sizeof(B->match));
+@@ -2256,6 +2272,7 @@ __attribute__((noinline)) static void incremental(const RG *g, RPage *pg)
+             }
+     for (i = 0; i < B->nrect; i++) area += rect_area(&B->rect[i]);
+     room_stats.blocks = (uint16_t)(area >> 7);
++    TI_END(3);
+     if (B->rect_over || area * 100 > nb * 128 * DIRTY_FULL) { full(g, pg); return; }
+     /* 3. redraw the rects, then re-checksum every block they touched */
+     for (i = 0; i < B->nrect; i++) {
+@@ -2263,11 +2280,14 @@ __attribute__((noinline)) static void incremental(const RG *g, RPage *pg)
+         draw_region(g, r->x0, r->y0, r->x1, r->y1);
+         mark(g, r->x0, r->y0, r->x1, r->y1);
+     }
++    TI_BEGIN();
+     xforms(g);
+     sums_store(g, pg, 0);
+     save_records(g, pg);
++    TI_END(7);
+     room_stats.full = 0;
+     room_stats.rects = B->nrect;
++    ti_acc[8] += B->nrect;
+ }
+ 
+ /* ---- harness test layouts ---------------------------------------------------- */
+@@ -2291,7 +2311,8 @@ static void render(const DoomoRoomView *v)
+     band_cur[1] = band_pend[1];
+     band_pend[0] = 0;
+     band_pend[1] = SCREEN_H;
+-    geometry(&g, v);
++    TI_BEGIN();
++    { uint32_t t0_ = gba_cycles(); geometry(&g, v); t0_ = gba_cycles() - t0_; if (t0_ > 30000) gba_logf("TI geometry %u", t0_); }
+     /* the brake wobble and the zoom punch are BG2 (postfx.c latches them) */
+     if (v->pan_x >= -4 && v->pan_x <= 4 && v->pan_y >= -4 && v->pan_y <= 4 && (v->pan_x || v->pan_y))
+         plat_post_offset(v->pan_x, v->pan_y);
+@@ -2302,7 +2323,9 @@ static void render(const DoomoRoomView *v)
+         B->shell_key = key;
+         build_shell(&g);
+     }
++    TI_END(0);
+     build_items(&g, v);
++    TI_END(1);
+     pg = &B->page[gba_back == (uint16_t *)VRAM_PAGE1];
+     {
+         OwFrame save = owf;
+@@ -2325,6 +2348,17 @@ static void render(const DoomoRoomView *v)
+     }
+     room_stats.items = B->nitem;
+     room_stats.cycles = gba_cycles() - c0;
++    {
++        static uint32_t tot;
++        tot += room_stats.cycles;
++        if (++ti_n == 1) {
++            gba_logf("TI room %u: geo %u items %u sums %u diff %u shell %u pieces %u actors %u store %u | rects %u px %u full %u",
++                     tot, ti_acc[0], ti_acc[1], ti_acc[2], ti_acc[3], ti_acc[4], ti_acc[5],
++                     ti_acc[6], ti_acc[7], ti_acc[8], ti_acc[9], room_stats.full);
++            memset(ti_acc, 0, sizeof(ti_acc));
++            ti_n = 0; tot = 0;
++        }
++    }
+ }
+ 
+ void plat_room(const DoomoRoomView *v)

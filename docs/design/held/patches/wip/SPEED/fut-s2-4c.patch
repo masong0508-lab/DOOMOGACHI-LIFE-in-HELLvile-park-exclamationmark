@@ -1,0 +1,115 @@
+=== UNCOMMITTED ===
+diff --git a/core/src/cook_gfx.c b/core/src/cook_gfx.c
+index 4779178a..2287f4b4 100644
+--- a/core/src/cook_gfx.c
++++ b/core/src/cook_gfx.c
+@@ -6,6 +6,7 @@
+  * steams or twinkles. */
+ #include "fishcook_int.h"
+ 
++extern uint32_t cook_abl;   /* TEMP */
+ #define P(p)  PAL_PAINT(PAINT_##p, 1)
+ #define PL(p) PAL_PAINT(PAINT_##p, 2)
+ #define PD(p) PAL_PAINT(PAINT_##p, 0)
+@@ -39,6 +40,7 @@ void kitchen_draw_back(uint32_t tt, int busy)
+     int night = town_is_night();
+     uint8_t s1 = R(PASTEL_PINK, 7), s2 = PL(PEACH);
+     if (plat_draw_skipped()) return;
++    if (cook_abl & 1) { plat_rect(0, 0, w, h, s1); return; }
+     /* striped wallpaper with tiny hearts */
+     plat_rect(0, 0, w, h, s1);
+     for (x = 0; x < w; x += 16) plat_rect(x, 0, 8, h, s2);
+@@ -121,6 +123,7 @@ void kitchen_draw_counter(int y, uint32_t tt)
+ {
+     int w = fc_w(), h = fc_h(), x, t = (int)tt;
+     if (plat_draw_skipped()) return;
++    if (cook_abl & 2) return;
+     plat_rect(0, y, w, 6, R(WOOD, 5));
+     plat_rect(0, y, w, 1, R(WOOD, 6));
+     plat_rect(0, y + 6, w, 2, R(WOOD, 2));
+@@ -150,6 +153,7 @@ void granny_draw(int cx, int cy, int s, int t, int mood)
+     uint8_t inner = PL(BUBBLEGUM), ink = R(STONE, 0);
+     int blink = (t % 120) < 5, talk = mood == GRAN_TALK && ((t / 4) & 1);
+     if (plat_draw_skipped()) return;
++    if (cook_abl & 4) return;
+     /* body: lavender dress, white apron with a heart pocket */
+     ui_fill_ellipse(cx, cy + 2, u * 17 / 16 + 1, u * 14 / 16 + 1 - br, PD(LAVENDER));
+     ui_fill_ellipse(cx, cy + 2, u * 17 / 16, u * 14 / 16 - br, P(LAVENDER));
+diff --git a/core/src/cook_scene.c b/core/src/cook_scene.c
+index 5cb59f5b..a276a704 100644
+--- a/core/src/cook_scene.c
++++ b/core/src/cook_scene.c
+@@ -46,6 +46,7 @@ DOOMO_STATIC_ASSERT(sizeof(CookState) <= FC_STATE_MAX, cook_state_fits_scratch);
+  * it while the scene runs. Only the music to restore stays in .bss. */
+ static CookState *ks;
+ static uint8_t cook_music;
++uint32_t cook_abl;   /* TEMP */
+ #define K (*ks)
+ 
+ /* ---- input ---------------------------------------------------------------------- */
+@@ -57,7 +58,13 @@ static int pressed(uint32_t b)
+ }
+ static int repeat(uint32_t b) { return K.autoplay ? pressed(b) : btn_repeat(b); }
+ 
+-static void go(int st) { K.st = (uint8_t)st; K.t = 0; }
++static void go(int st)
++{
++    char b[48];
++    K.st = (uint8_t)st; K.t = 0;
++    doomo_snprintf(b, sizeof(b), "cookst %d %d", st, K.step);
++    plat_log(b);
++}
+ 
+ static const Recipe *RC(void) { return &cook_recipes[K.recipe < RECIPE_COUNT ? K.recipe : 0]; }
+ static int heat(void) { return RC()->heat; }
+@@ -413,6 +420,7 @@ static void cook_enter(int arg)
+ {
+     int r = (arg >> 8) & 0xFF;
+     cook_music = (uint8_t)audio_music_current();
++    cook_abl = (uint32_t)arg >> 16;
+     ks = (CookState *)fc_scratch_claim(sizeof(CookState));
+     if (!ks) return;
+     if ((arg & COOK_ARG_DEMO) && town_count(-1) == 0)
+@@ -590,6 +598,7 @@ static void cook_update(void)
+ /* ---- drawing ------------------------------------------------------------------------ */
+ static void title_bar(const char *s)
+ {
++    if (cook_abl & 8) return;
+     ui_title(W() / 2, 3, s, WIN_CUTE);
+     fc_money_pill(W() - 3, 3);
+ }
+@@ -980,7 +989,8 @@ static void draw_cooking(void)
+     kitchen_draw_counter(counter_y(), (uint32_t)t);
+     doomo_snprintf(buf, sizeof(buf), "%s", RC()->name);
+     title_bar(buf);
+-    switch (K.step) {
++    switch ((cook_abl & 16) ? 99 : K.step) {
++    case 99: break;
+     case 0: if (K.st != CS_INTRO) draw_board(t); break;
+     case 1: if (K.st != CS_INTRO) draw_bowl(t); break;
+     default:
+@@ -1002,13 +1012,13 @@ static void draw_cooking(void)
+             ui_fill_circle(x, y, 3, c);
+         }
+     }
+-    if (K.st == CS_INTRO) {
++    if (K.st == CS_INTRO && !(cook_abl & 128)) {
+         step_banner();
+         fc_bubble(4, fc_big() ? 30 : 24, stage_x() - (fc_big() ? 70 : 62), step_tip(), gran_x() + 8,
+                   counter_y() - (fc_big() ? 44 : 34), K.t * 2);
+     }
+-    fc_fx_draw(0, 0);
+-    switch (K.st) {
++    if (!(cook_abl & 32)) fc_fx_draw(0, 0);
++    switch ((cook_abl & 64) ? 99 : K.st) {
+     case CS_CHOP: ui_hint(STR_ICON_A " Chop on the lines!", WIN_CUTE); break;
+     case CS_STIR: ui_hint("Spin the D-pad clockwise!", WIN_CUTE); break;
+     case CS_HEAT:
+@@ -1162,6 +1172,7 @@ static void draw_counter(void)
+ static void cook_draw(void)
+ {
+     if (plat_draw_skipped() || !ks || !fc_scratch_mine()) return;
++    if (cook_abl & 256) { plat_rect(0, 0, 8, 8, 1); return; }
+     switch (K.st) {
+     case CS_BOOK: draw_book(); fc_fx_draw(0, 0); break;
+     case CS_BUY: draw_book(); draw_buy(); break;
