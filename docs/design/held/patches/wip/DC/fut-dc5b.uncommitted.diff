@@ -1,0 +1,1410 @@
+diff --git a/dc/src/audio_int.h b/dc/src/audio_int.h
+index 87851d6..8f40f19 100644
+--- a/dc/src/audio_int.h
++++ b/dc/src/audio_int.h
+@@ -1,7 +1,9 @@
+ /* audio_int.h - the Dreamcast sound mixer (DC5; owner: dreamcast).
+  *
+  * The core speaks to the platform through plat_tone() (four chiptune
+- * channels; the music engine's legacy bridge and the voice babble) and
++ * channels: the voice babble, the comedy one-shots, the Concert Hall; and
++ * the music when it runs as the legacy bridge), plat_voice() (DC5b: the
++ * music engine's voices on its IRQ tier, see below) and
+  * plat_sample() / plat_sample_ex() (one-shot effects). On the Dreamcast
+  * those calls only change the mixer's "current state" on the main thread;
+  * at the end of every logic tick dcsnd_push() applies that state and
+@@ -39,6 +41,9 @@
+ #define DCSND_QUEUE     16               /* PCM slots (power of two; 94 KB)    */
+ #define DCSND_PREFILL   2                /* slots ready before playing         */
+ #define DCSND_MAXLAG    4                /* more ready at a slot start: skip   */
++#define DCSND_MVOICES   8                /* music voices (DoomoVoice records;
++                                          * the core's driver has 4 today)     */
++#define DCSND_MT        8                /* driver ticks (mt) per logic tick   */
+ 
+ typedef struct DcSndTone { uint16_t freq; uint8_t vol, wave; } DcSndTone;   /* plat_tone */
+ typedef struct DcSndTrig {
+@@ -70,6 +75,49 @@ void dcsnd_trigger(int sfx, uint8_t vol, int8_t pan, uint8_t prio, int8_t semis)
+ /* end of a tick: render it into the next slot; 0: the ring is full (the
+  * state and the triggers wait for the next push, nothing is rendered) */
+ int  dcsnd_push(void);
++
++/* ---- the music engine's IRQ tier (DC5b; musvoice.c makes these calls) ---------
++ * With a driver set, dcsnd_push() calls it DCSND_MT times per slot, each
++ * time right before it renders the frames of that mt (mt k of a slot starts
++ * at frame k * DCSND_PER_TICK / DCSND_MT, rounded down: 0, 183, 367, 551,
++ * 735, 918, 1102, 1286), so a record the driver sends from inside the call
++ * (dcsnd_mvoice) is heard from exactly that frame. The mixer renders on the
++ * main thread, the thread that runs music_update(), so nothing is locked.
++ * A push into a full ring still runs the driver (the music keeps the game's
++ * time, as the tone channels do) but renders nothing.
++ * NULL (the default): no driver, the music arrives as plat_tone (the legacy
++ * bridge). dcsnd_reset() leaves the hook as it is. */
++void dcsnd_set_driver(void (*tick)(void));
++/* one music voice, as the platform's renderer needs it */
++enum { DCMW_PULSE, DCMW_TRI, DCMW_SAW, DCMW_NOISE15, DCMW_NOISE7 };
++typedef struct DcSndMV {
++    uint16_t p16;                        /* pitch, 1/16 semitones above C0      */
++    uint16_t hz;                         /* noise: the LFSR's clock in Hz; 0 =
++                                          * clocked at the pitch                */
++    uint8_t  vol_l, vol_r;               /* 0..63 (63 = a tone at volume 15)    */
++    uint8_t  wave;                       /* DCMW_*                              */
++    uint8_t  duty;                       /* DCMW_PULSE: the duty in 1/32, 1..31 */
++    uint8_t  keyon, pad[3];              /* a note starts with this record      */
++} DcSndMV;
++/* voice v (0..DCSND_MVOICES-1) from the current render position on. Voices
++ * 0-3 sit where the tone channels do (lead and bass centre, harmony a
++ * little left, kit a little right); vol_l / vol_r pan on top of that.
++ * keyon restarts a noise voice's LFSR and phase (every hit sounds the
++ * same) and the phase of a pitched voice that was silent (a sounding one
++ * keeps its phase: no click on a legato note). */
++void dcsnd_mvoice(int v, const DcSndMV *m);
++/* the music bus: 255 = full, 0 = mute (S1's mute and duck); the sample
++ * voices and the tone channels are not on it */
++void dcsnd_music_gain(uint8_t gain);
++/* S1's tape stop: every music voice sounds down16 sixteenths of a semitone
++ * lower (0 = off), never below 20 Hz */
++void dcsnd_music_tape(int down16);
++/* the phase step (Q32 per output frame) of pitch p16 (tests) */
++uint32_t dcsnd_pitch_step(int p16);
++/* musvoice.c: plat_audio_caps / plat_voice / plat_audio_bus / plat_audio_fx
++ * of the IRQ tier, and the hook (a no-op when built with DC_MUSIC_IRQ=0) */
++void dc_music_init(void);
++
+ /* 1 = a known pause (a load, a VMU write, a harness hold): an empty ring
+  * then is not an underrun. It lasts until the next dcsnd_push(); 0 is a
+  * no-op (the stream may reach the empty ring after the pause ended). */
+@@ -90,6 +138,8 @@ typedef struct DcSndStats {
+     uint32_t voice_frames;                /* frames rendered by sample voices   */
+     uint32_t hash;                        /* FNV-1a of the rendered stream      */
+     uint32_t hash600;                     /* the same after 600 slots (20 s)    */
++    uint32_t records;                     /* music voice records (dcsnd_mvoice) */
++    uint32_t drv_ticks;                   /* driver calls (8 per push)          */
+ } DcSndStats;
+ extern volatile DcSndStats dcsnd_stats;
+ int dcsnd_queued(void);                   /* slots not finished (incl. playing) */
+diff --git a/dc/src/mixer.c b/dc/src/mixer.c
+index 7d901ef..d2ab2d7 100644
+--- a/dc/src/mixer.c
++++ b/dc/src/mixer.c
+@@ -21,6 +21,14 @@
+  *     stereo field (lead and bass centre, harmony / babble a little left,
+  *     kit a little right), with constant-sum gains so L + R is the mono
+  *     reference;
++ *   - (DC5b) up to 8 music voices, the DoomoVoice records of the music
++ *     engine's IRQ tier (dcsnd_mvoice, from musvoice.c's plat_voice): the
++ *     same oscillators with a pitch in 1/16 semitones (a 192-entry table
++ *     of phase steps, shifted per octave), any pulse duty in 1/32, the
++ *     7-bit noise, a volume of 0..63 per side, the music bus gain and the
++ *     tape stop's pitch. With a driver set (dcsnd_set_driver) dcsnd_push()
++ *     calls it 8 times a slot, before the frames of each mt, so the 240 Hz
++ *     driver's records land at sample-exact positions (audio_int.h);
+  *   - 8 sample voices for plat_sample() / plat_sample_ex(): 16-bit PCM at
+  *     the effect's own rate with linear interpolation, volume, pan, pitch in
+  *     semitones and priority stealing (a free voice, else the lowest
+@@ -68,8 +76,21 @@ typedef struct Voice {
+     uint32_t age;
+ } Voice;
+ 
++/* a music voice (DC5b): the last record, and what the oscillator runs on */
++typedef struct MVoice {
++    uint32_t ph, step, duty;
++    int32_t  gl, gr;                      /* 0 / 0: silent                       */
++    uint16_t lfsr;
++    uint8_t  wave, pad;
++    DcSndMV  m;
++} MVoice;
++
+ static Tone     tone[DCSND_TONES];
+ static Voice    voice[DCSND_VOICES];
++static MVoice   mv[DCSND_MVOICES];
++static uint8_t  m_gain = 255;             /* the music bus                       */
++static uint16_t m_tape;                   /* the tape stop, 1/16 semitones down  */
++static void   (*drv_tick)(void);          /* the 240 Hz music driver, or NULL    */
+ static uint32_t age_ctr;
+ static int32_t  dcx[2], dcy[2], lp[2];
+ 
+@@ -84,10 +105,56 @@ static const int16_t tone_pan[DCSND_TONES][2] = { { 128, 128 }, { 152, 104 }, {
+ static const uint32_t semi_q16[12] = { 65536, 69433, 73562, 77936, 82570, 87480,
+                                        92682, 98193, 104032, 110218, 116772, 123715 };
+ 
++/* the phase step (Q32 per output frame) of C8 .. B8 in 1/16 semitones:
++ * round(C0 * 2^(8 + i / 192) * 2^32 / 44100), C0 = 440 * 2^(-57/12) Hz.
++ * A lower octave is the same step shifted right (test_tier checks every
++ * pitch against the formula). */
++static const uint32_t step_c8[192] = {
++    407681904u, 409156353u, 410636135u, 412121268u, 413611773u, 415107669u, 416608975u, 418115710u,
++    419627895u, 421145549u, 422668692u, 424197343u, 425731523u, 427271252u, 428816550u, 430367436u,
++    431923931u, 433486056u, 435053830u, 436627274u, 438206409u, 439791256u, 441381834u, 442978164u,
++    444580268u, 446188167u, 447801880u, 449421430u, 451046837u, 452678123u, 454315309u, 455958415u,
++    457607465u, 459262478u, 460923477u, 462590483u, 464263518u, 465942604u, 467627763u, 469319017u,
++    471016387u, 472719896u, 474429566u, 476145419u, 477867478u, 479595765u, 481330303u, 483071114u,
++    484818220u, 486571646u, 488331413u, 490097545u, 491870064u, 493648994u, 495434357u, 497226178u,
++    499024479u, 500829283u, 502640616u, 504458499u, 506282957u, 508114013u, 509951692u, 511796017u,
++    513647012u, 515504702u, 517369110u, 519240261u, 521118180u, 523002890u, 524894417u, 526792785u,
++    528698018u, 530610142u, 532529182u, 534455162u, 536388108u, 538328045u, 540274997u, 542228992u,
++    544190053u, 546158206u, 548133478u, 550115894u, 552105479u, 554102260u, 556106263u, 558117514u,
++    560136038u, 562161863u, 564195015u, 566235520u, 568283405u, 570338696u, 572401421u, 574471605u,
++    576549277u, 578634463u, 580727191u, 582827487u, 584935380u, 587050895u, 589174062u, 591304908u,
++    593443461u, 595589747u, 597743796u, 599905636u, 602075294u, 604252800u, 606438180u, 608631465u,
++    610832681u, 613041859u, 615259027u, 617484213u, 619717447u, 621958758u, 624208175u, 626465728u,
++    628731445u, 631005357u, 633287492u, 635577882u, 637876554u, 640183541u, 642498871u, 644822575u,
++    647154683u, 649495225u, 651844232u, 654201735u, 656567764u, 658942351u, 661325525u, 663717318u,
++    666117762u, 668526888u, 670944726u, 673371309u, 675806668u, 678250835u, 680703842u, 683165720u,
++    685636503u, 688116221u, 690604907u, 693102595u, 695609315u, 698125102u, 700649987u, 703184004u,
++    705727186u, 708279565u, 710841176u, 713412051u, 715992224u, 718581729u, 721180599u, 723788868u,
++    726406571u, 729033741u, 731670412u, 734316620u, 736972398u, 739637780u, 742312803u, 744997501u,
++    747691908u, 750396060u, 753109992u, 755833739u, 758567337u, 761310822u, 764064229u, 766827594u,
++    769600953u, 772384343u, 775177799u, 777981358u, 780795057u, 783618932u, 786453020u, 789297357u,
++    792151982u, 795016931u, 797892242u, 800777952u, 803674098u, 806580719u, 809497852u, 812425535u,
++};
++#define P16_MAX   (192 * 9 - 1)           /* B8 + 15/16                          */
++#define P16_20HZ  56                      /* the first pitch at or above 20 Hz   */
++
++uint32_t dcsnd_pitch_step(int p16)
++{
++    int oct;
++    if (p16 < 1) p16 = 1;
++    if (p16 > P16_MAX) p16 = P16_MAX;
++    oct = p16 / 192;
++    return step_c8[p16 - oct * 192] >> (8 - oct);
++}
++
+ void dcsnd_reset(void)
+ {
+     int c;
+     memset(&cur, 0, sizeof(cur));
++    memset(mv, 0, sizeof(mv));
++    for (c = 0; c < DCSND_MVOICES; c++) mv[c].lfsr = 0x7FFF;
++    m_gain = 255;
++    m_tape = 0;
+     q_wr = q_rd = 0;
+     stalled = 0;
+     memset(tone, 0, sizeof(tone));
+@@ -193,16 +260,18 @@ static void start_voice(const DcSndTrig *t)
+ #define BLOCK 128
+ static int32_t acc_l[BLOCK], acc_r[BLOCK];
+ 
+-/* one tone channel into the block: +-4096 * vol per sample, panned */
+-static void tone_block(Tone *t, const int16_t pan[2], int n)
++/* one oscillator into the block: +-4096 per sample times the two gains.
++ * wave is DCMW_*; duty the pulse's high part of the phase (Q32). */
++static void osc_block(uint32_t *php, uint32_t step, uint16_t *lfsrp, int wave, uint32_t duty,
++                      int32_t gl, int32_t gr, int n)
+ {
+-    const int32_t gl = pan[0] * t->vol, gr = pan[1] * t->vol;
+-    uint32_t ph = t->ph, step = t->step;
++    uint32_t ph = *php;
+     int i;
+-    if (!t->vol || !t->freq) return;
+-    switch (t->wave) {
+-    case WAVE_NOISE: {
+-        uint32_t lfsr = t->lfsr;
++    switch (wave) {
++    case DCMW_NOISE15:
++    case DCMW_NOISE7: {
++        const uint32_t tap7 = wave == DCMW_NOISE7;
++        uint32_t lfsr = *lfsrp;
+         for (i = 0; i < n; i++) {
+             uint32_t p0 = ph;
+             int32_t s;
+@@ -210,15 +279,16 @@ static void tone_block(Tone *t, const int16_t pan[2], int n)
+             if (ph < p0) {                /* the LFSR clocks at the frequency */
+                 uint32_t bit = (lfsr ^ (lfsr >> 1)) & 1u;
+                 lfsr = (lfsr >> 1) | (bit << 14);
++                if (tap7) lfsr = (lfsr & ~0x40u) | (bit << 6);   /* the short, metallic one */
+             }
+             s = (lfsr & 1) ? 4096 : -4096;
+             acc_l[i] += s * gl;
+             acc_r[i] += s * gr;
+         }
+-        t->lfsr = (uint16_t)lfsr;
++        *lfsrp = (uint16_t)lfsr;
+         break;
+     }
+-    case WAVE_TRIANGLE:
++    case DCMW_TRI:
+         for (i = 0; i < n; i++) {
+             int32_t u = (int32_t)(ph >> 16), s;
+             s = ((u < 32768 ? u : 65535 - u) - 16384) >> 2;
+@@ -227,7 +297,7 @@ static void tone_block(Tone *t, const int16_t pan[2], int n)
+             acc_r[i] += s * gr;
+         }
+         break;
+-    case WAVE_SAW:
++    case DCMW_SAW:
+         for (i = 0; i < n; i++) {
+             int32_t s = ((int32_t)(ph >> 16) - 32768) >> 3;
+             ph += step;
+@@ -235,9 +305,7 @@ static void tone_block(Tone *t, const int16_t pan[2], int n)
+             acc_r[i] += s * gr;
+         }
+         break;
+-    default: {                            /* the pulses: 12.5 / 25 / 50 % */
+-        const uint32_t duty = t->wave == WAVE_PULSE12 ? 0x20000000u :
+-                              t->wave == WAVE_PULSE25 ? 0x40000000u : 0x80000000u;
++    default: {                            /* the pulse */
+         const int32_t hl = 4096 * gl, hr = 4096 * gr;
+         for (i = 0; i < n; i++) {
+             if (ph < duty) { acc_l[i] += hl; acc_r[i] += hr; }
+@@ -247,9 +315,97 @@ static void tone_block(Tone *t, const int16_t pan[2], int n)
+         break;
+     }
+     }
+-    t->ph = ph;
++    *php = ph;
++}
++
++/* one tone channel into the block: +-4096 * vol per sample, panned */
++static void tone_block(Tone *t, const int16_t pan[2], int n)
++{
++    int wave = DCMW_PULSE;
++    uint32_t duty = 0x80000000u;
++    if (!t->vol || !t->freq) return;
++    switch (t->wave) {
++    case WAVE_NOISE:    wave = DCMW_NOISE15; break;
++    case WAVE_TRIANGLE: wave = DCMW_TRI; break;
++    case WAVE_SAW:      wave = DCMW_SAW; break;
++    case WAVE_PULSE12:  duty = 0x20000000u; break;
++    case WAVE_PULSE25:  duty = 0x40000000u; break;
++    default: break;                       /* 50 % */
++    }
++    osc_block(&t->ph, t->step, &t->lfsr, wave, duty, pan[0] * t->vol, pan[1] * t->vol, n);
++}
++
++/* ---- the music voices (DC5b) ------------------------------------------------------------ */
++/* a tone at volume 15 and a music voice at 63 are equally loud: the gain is
++ * place * vol * 15 / 63, times the bus (255 = 1) */
++static int32_t mv_gain(int place, int vol)
++{
++    return (int32_t)(((uint32_t)place * (uint32_t)vol * m_gain * 15u + 8032u) / 16065u);
+ }
+ 
++/* the voice's step and gains from its record, the bus and the tape stop */
++static void mv_apply(int v)
++{
++    MVoice *o = &mv[v];
++    const DcSndMV *m = &o->m;
++    const int16_t *pan = tone_pan[v < DCSND_TONES ? v : 0];
++    uint32_t step;
++    if (m->wave >= DCMW_NOISE15 && m->hz) {
++        step = (uint32_t)(((uint64_t)m->hz << 32) / DCSND_RATE);
++        if (m_tape) {                     /* x 2^(-tape / 192), not below 20 Hz */
++            int oct = m_tape / 192, r = m_tape - oct * 192;
++            if (r) step = (uint32_t)(((uint64_t)step * step_c8[192 - r]) / step_c8[0]) >> 1;
++            step >>= oct;
++            if (step < 1947816u) step = 1947816u;      /* 20 Hz */
++        }
++    } else if (m->p16) {
++        int p = m->p16;
++        if (m_tape) { p -= m_tape; if (p < P16_20HZ) p = P16_20HZ; }
++        step = dcsnd_pitch_step(p);
++    } else step = 0;
++    o->step = step;
++    o->gl = step ? mv_gain(pan[0], m->vol_l) : 0;
++    o->gr = step ? mv_gain(pan[1], m->vol_r) : 0;
++}
++
++void dcsnd_mvoice(int v, const DcSndMV *m)
++{
++    MVoice *o;
++    if (v < 0 || v >= DCSND_MVOICES || !m) return;
++    o = &mv[v];
++    if (m->keyon) {
++        if (m->wave >= DCMW_NOISE15) { o->lfsr = 0x7FFF; o->ph = 0; }
++        else if (!(o->gl | o->gr)) o->ph = 0;
++    }
++    o->m = *m;
++    if (o->m.vol_l > 63) o->m.vol_l = 63;
++    if (o->m.vol_r > 63) o->m.vol_r = 63;
++    o->wave = m->wave <= DCMW_NOISE7 ? m->wave : DCMW_PULSE;
++    o->duty = (uint32_t)(m->duty < 1 ? 16 : m->duty > 31 ? 31 : m->duty) << 27;
++    mv_apply(v);
++    dcsnd_stats.records++;
++}
++
++void dcsnd_music_gain(uint8_t gain)
++{
++    int v;
++    if (gain == m_gain) return;
++    m_gain = gain;
++    for (v = 0; v < DCSND_MVOICES; v++) mv_apply(v);
++}
++
++void dcsnd_music_tape(int down16)
++{
++    int v;
++    if (down16 < 0) down16 = 0;
++    if (down16 > 16 * 48) down16 = 16 * 48;
++    if ((uint16_t)down16 == m_tape) return;
++    m_tape = (uint16_t)down16;
++    for (v = 0; v < DCSND_MVOICES; v++) mv_apply(v);
++}
++
++void dcsnd_set_driver(void (*tick)(void)) { drv_tick = tick; }
++
+ /* one sample voice into the block (linear interpolation; the guard sample
+  * at len makes pcm[ipos + 1] safe). The weight is the position's top 15
+  * fraction bits: neighbours of the 8-bit PCM x 256 can be 65,280 apart
+@@ -331,6 +487,10 @@ static void synth(int16_t *out, int n)
+         memset(acc_l, 0, (size_t)m * sizeof(int32_t));
+         memset(acc_r, 0, (size_t)m * sizeof(int32_t));
+         for (c = 0; c < DCSND_TONES; c++) tone_block(&tone[c], tone_pan[c], m);
++        for (c = 0; c < DCSND_MVOICES; c++) {
++            MVoice *o = &mv[c];
++            if (o->gl | o->gr) osc_block(&o->ph, o->step, &o->lfsr, o->wave, o->duty, o->gl, o->gr, m);
++        }
+         for (c = 0; c < DCSND_VOICES; c++) if (voice[c].on) voice_block(&voice[c], m);
+         for (i = 0; i < m; i++) {
+             int16_t l = out_sample(0, acc_l[i]), r = out_sample(1, acc_r[i]);
+@@ -351,12 +511,24 @@ int dcsnd_push(void)
+     int c, i;
+     if (used >= DCSND_QUEUE) {            /* the stream is not taking slots */
+         dcsnd_stats.overruns++;
++        /* the music keeps the game's time (its records still reach the voices) */
++        if (drv_tick) for (i = 0; i < DCSND_MT; i++) { drv_tick(); dcsnd_stats.drv_ticks++; }
+         return 0;                         /* the state and triggers wait for the next push */
+     }
+     for (c = 0; c < DCSND_TONES; c++) set_tone(c, &cur.tone[c]);
+     for (i = 0; i < cur.ntrig; i++) start_voice(&cur.trig[i]);
+     cur.ntrig = 0;
+-    synth(ring[q_wr & (DCSND_QUEUE - 1)], DCSND_PER_TICK);
++    if (!drv_tick) synth(ring[q_wr & (DCSND_QUEUE - 1)], DCSND_PER_TICK);
++    else {
++        /* the IRQ tier: the driver's mt k, then the frames of mt k */
++        int16_t *slot = ring[q_wr & (DCSND_QUEUE - 1)];
++        for (i = 0; i < DCSND_MT; i++) {
++            int f0 = i * DCSND_PER_TICK / DCSND_MT, f1 = (i + 1) * DCSND_PER_TICK / DCSND_MT;
++            drv_tick();
++            dcsnd_stats.drv_ticks++;
++            synth(slot + f0 * 2, f1 - f0);
++        }
++    }
+     n = dcsnd_stats.pushed + 1;
+     if (n == 600) dcsnd_stats.hash600 = dcsnd_stats.hash;
+     DCSND_BARRIER();
+diff --git a/dc/src/musvoice.c b/dc/src/musvoice.c
+new file mode 100644
+index 0000000..d51e496
+--- /dev/null
++++ b/dc/src/musvoice.c
+@@ -0,0 +1,117 @@
++/* musvoice.c - the music engine's IRQ tier on the Dreamcast (DC5b; owner:
++ * dreamcast): plat_audio_caps, plat_voice, plat_audio_bus and plat_audio_fx
++ * on the software mixer (mixer.c). Portable C99 (no KOS): the host test
++ * dc/tests/audio/test_tier links this very file.
++ *
++ * The caps say CAP_DRV_IRQ, so the core's music_update() only writes events
++ * ahead into the driver's rings; the mixer calls mus_drv_tick() 8 times per
++ * logic tick, right before it renders each mt's frames (dcsnd_set_driver,
++ * audio_int.h). The driver answers with DoomoVoice records (plat_voice, on
++ * change only), which become mixer voices here:
++ *
++ *   pitch16        the phase step, 1/16 semitone exact (the bridge rounded
++ *                  to whole Hz: up to 30 cents off in the bass)
++ *   vol_l / vol_r  0..63 per side, on top of the voice's place in the
++ *                  stereo field (the core sends both alike today: its
++ *                  driver stores MEV_PAN but does not apply it yet)
++ *   env            not used: vol_l / vol_r already carry the soft envelope
++ *   inst, tparam   the instrument's timbre: pulse with a duty of tparam / 32
++ *                  (PULSE, PWM), saw (SAW, SYNC_SAW), triangle (TRI, TRI4,
++ *                  SINE), noise (NOISE15, NOISE7); every other timbre is a
++ *                  50 % pulse, as on the bridge (the bank has none today)
++ *   kit hits       inst >= MUS_INST_KIT0: pitch16 is the hit, tparam the
++ *                  frames since key-on; the classic kit's noise sweep
++ *                  (mus_kit_classic), as the bridge plays it
++ *   DVF_KEYON      a noise voice restarts (every hit sounds the same), a
++ *                  silent pitched voice starts at phase 0
++ *   DVF_CUT        silent at once
++ *   DVF_NOISE7     the 7-bit noise
++ *   DVF_KEYOFF, DVF_LEGATO, DVF_REVERSE_ENV, DVF_SWEEP_HW
++ *                  hints for hardware envelopes: nothing to do, the soft
++ *                  envelope is in the volume
++ *   DVF_ECHO       ignored: no echo yet (below)
++ *
++ * plat_audio_bus(0, g): the music bus (S1's mute and duck; 255 = full).
++ * plat_audio_fx(MFX_TAPE, d, 0): S1's tape stop, d sixteenths of a semitone
++ * down. Both come from audio_seq.c once per tick. MFX_ECHO, MFX_REVERB,
++ * MFX_FREEZE, MFX_CRACKLE, MFX_PSG_DUCK and MFX_STEMS are accepted and do
++ * nothing: the core never sends the first three and defines no parameters
++ * for them (docs/DREAMCAST.md section 6).
++ *
++ * latency_mt is 0, as on the bridge: music and effects share the one
++ * stream, so the game's timing calls answer as they did.
++ *
++ * DC_MUSIC_IRQ=0 (make -C dc MUSIC_IRQ=0) builds none of this: the core's
++ * weak functions then make the legacy bridge, as before DC5b.
++ */
++#include "doomo/doomo.h"
++#include "doomo/music.h"
++#include "../../core/src/mus_int.h"     /* MUS_INST, mus_kit_classic */
++#include "audio_int.h"
++
++#ifndef DC_MUSIC_IRQ
++#define DC_MUSIC_IRQ 1
++#endif
++
++#if DC_MUSIC_IRQ
++void plat_audio_caps(DoomoAudioCaps *out)
++{
++    if (!out) return;
++    memset(out, 0, sizeof(*out));
++    out->tier = AT_NATIVE;
++    out->soft_voices = DCSND_MVOICES;
++    out->flags = CAP_STEREO | CAP_DRV_IRQ;
++    out->mix_rate = DCSND_RATE;
++}
++
++void plat_voice(int voice, const DoomoVoice *v)
++{
++    DcSndMV m;
++    if (!v) return;
++    memset(&m, 0, sizeof(m));
++    m.wave = DCMW_PULSE;
++    m.duty = 16;
++    m.keyon = (uint8_t)((v->flags & DVF_KEYON) != 0);
++    if (v->pitch16 && !(v->flags & DVF_CUT)) {
++        m.vol_l = v->vol_l;
++        m.vol_r = v->vol_r;
++        if (v->inst >= MUS_INST_KIT0) {
++            const MusKitHit *d = &mus_kit_classic[v->pitch16 & 7];
++            int t = v->tparam;
++            m.wave = (uint8_t)((v->flags & DVF_NOISE7) ? DCMW_NOISE7 : DCMW_NOISE15);
++            m.hz = (t >= d->ticks_sweep || d->ticks_sweep == 0) ? d->f1 :
++                   (uint16_t)(d->f0 + ((int32_t)d->f1 - d->f0) * t / d->ticks_sweep);
++            if (!m.hz) m.vol_l = m.vol_r = 0;
++        } else {
++            m.p16 = v->pitch16;
++            switch (MUS_INST(v->inst)->timbre) {
++            case TIMBRE_PULSE: case TIMBRE_PWM:
++                m.duty = (uint8_t)(v->tparam ? v->tparam : 4);   /* 0: the bridge's 12.5 % */
++                break;
++            case TIMBRE_SAW: case TIMBRE_SYNC_SAW: m.wave = DCMW_SAW; break;
++            case TIMBRE_TRI: case TIMBRE_TRI4: case TIMBRE_SINE: m.wave = DCMW_TRI; break;
++            case TIMBRE_NOISE15: m.wave = DCMW_NOISE15; break;
++            case TIMBRE_NOISE7: m.wave = DCMW_NOISE7; break;
++            default: break;
++            }
++            if ((v->flags & DVF_NOISE7) && m.wave == DCMW_NOISE15) m.wave = DCMW_NOISE7;
++        }
++    }
++    dcsnd_mvoice(voice, &m);
++}
++
++void plat_audio_bus(int bus, uint8_t gain_q8)
++{
++    if (bus == 0) dcsnd_music_gain(gain_q8);
++}
++
++void plat_audio_fx(int fx, int a, int b)
++{
++    (void)b;
++    if (fx == MFX_TAPE) dcsnd_music_tape(a);
++}
++
++void dc_music_init(void) { dcsnd_set_driver(mus_drv_tick); }
++#else
++void dc_music_init(void) { dcsnd_set_driver(NULL); }
++#endif
+diff --git a/dc/tests/audio/test_tier.c b/dc/tests/audio/test_tier.c
+new file mode 100644
+index 0000000..7afe76a
+--- /dev/null
++++ b/dc/tests/audio/test_tier.c
+@@ -0,0 +1,654 @@
++/* test_tier.c - the music engine's two tiers on the Dreamcast mixer (DC5b;
++ * owner: dreamcast). Host gcc, no KOS. Built twice:
++ *
++ *   tier_irq     -DTIER_IRQ, with dc/src/musvoice.c: CAP_DRV_IRQ, the
++ *                driver ticked 8 times a slot inside dcsnd_push(), the
++ *                voices as DoomoVoice records (what the console runs)
++ *   tier_bridge  without it: the core's weak legacy bridge, the music as
++ *                plat_tone (what the console ran before DC5b, and what a
++ *                DC_MUSIC_IRQ=0 build runs)
++ *
++ *   tier_X list                         the song table: "N ticks name"
++ *   tier_X song N TICKS OUT.raw KEYS    play song N for TICKS logic ticks:
++ *                                       the mixer's stream (s16 stereo,
++ *                                       44,100 Hz) and the driver's key-on
++ *                                       count after every tick
++ *   tier_irq unit                       the tier's unit tests
++ *
++ * tier_irq taps plat_voice / plat_audio_bus / plat_audio_fx (musvoice.c is
++ * compiled with those three renamed to dc_*): every call also goes to the
++ * reference renderer (voiceref.c) at the frame it takes effect, and `song`
++ * compares the two streams sample by sample ("ref maxdiff").
++ * run_tier.sh plays every song on both and tier_compare.py gates the pair.
++ */
++#include <math.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include "doomo/doomo.h"
++#include "doomo/music.h"
++#include "../../../core/src/mus_int.h"
++#include "../../../core/src/audio_int.h"
++#include "audio_int.h"
++#include "voiceref.h"
++
++void ref_tone(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave);   /* plat_native.c, unused */
++
++/* ---- the platform's sound calls ------------------------------------------------------ */
++static DoomoToneState last_tone[4];
++static int tone_calls;
++
++void plat_tone(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave)
++{
++    if (channel >= 0 && channel < 4) {
++        last_tone[channel].freq = freq_hz;
++        last_tone[channel].vol = vol;
++        last_tone[channel].wave = wave;
++    }
++    tone_calls++;
++    dcsnd_tone(channel, freq_hz, vol, wave);
++}
++void plat_sample(int sfx_id, uint8_t vol) { dcsnd_trigger(sfx_id, vol, 0, 0, 0); }
++void plat_end_frame(void) { }
++
++#ifdef TIER_IRQ
++void dc_plat_voice(int voice, const DoomoVoice *v);
++void dc_plat_audio_bus(int bus, uint8_t gain_q8);
++void dc_plat_audio_fx(int fx, int a, int b);
++
++static DoomoVoice last_rec[DCSND_MVOICES];
++static uint32_t n_rec, n_keyon;
++static int last_bus = 255, last_tape, max_tape, timbre_seen[TIMBRE_COUNT], kit_seen;
++static int tap_frame = -1;               /* unit: the frame of the first record */
++static int cur_frame;
++
++void plat_voice(int voice, const DoomoVoice *v)
++{
++    if (voice >= 0 && voice < DCSND_MVOICES) last_rec[voice] = *v;
++    n_rec++;
++    if (v->flags & DVF_KEYON) n_keyon++;
++    if (v->inst >= MUS_INST_KIT0) kit_seen++;
++    else if (v->pitch16) timbre_seen[MUS_INST(v->inst)->timbre]++;
++    if (tap_frame < 0) tap_frame = cur_frame;
++    ref_voice(voice, v);
++    dc_plat_voice(voice, v);
++}
++void plat_audio_bus(int bus, uint8_t g)
++{
++    if (bus == 0) { last_bus = g; ref_bus(g); }
++    dc_plat_audio_bus(bus, g);
++}
++void plat_audio_fx(int fx, int a, int b)
++{
++    if (fx == MFX_TAPE) { last_tape = a; if (a > max_tape) max_tape = a; ref_tape(a); }
++    dc_plat_audio_fx(fx, a, b);
++}
++#endif
++
++/* ---- one run: ticks of the game's audio into two streams ---------------------------------- */
++static int16_t *mix, *refb;
++static size_t mix_n, ref_n, cap_frames;
++static int seg_k, pending;
++static void (*inner_tick)(void);
++
++static void ref_flush(void)
++{
++    if (pending && refb && ref_n + (size_t)pending <= cap_frames) {
++        ref_render(refb + ref_n * 2, pending);
++        ref_n += (size_t)pending;
++    }
++    cur_frame += pending;
++    pending = 0;
++}
++
++/* the driver as the mixer calls it: mt k of the slot, before its frames */
++static void tap_tick(void)
++{
++    ref_flush();
++    if (inner_tick) inner_tick();
++    pending = (seg_k + 1) * DCSND_PER_TICK / DCSND_MT - seg_k * DCSND_PER_TICK / DCSND_MT;
++    seg_k = (seg_k + 1) % DCSND_MT;
++}
++
++static void run_begin(int ticks)
++{
++    cap_frames = (size_t)(ticks + DCSND_QUEUE) * DCSND_PER_TICK;
++    free(mix); free(refb);
++    mix = calloc(cap_frames * 2, sizeof(int16_t));
++    refb = calloc(cap_frames * 2, sizeof(int16_t));
++    if (!mix || !refb) { fprintf(stderr, "test_tier: out of memory\n"); exit(2); }
++    mix_n = ref_n = 0;
++    seg_k = pending = 0;
++    cur_frame = 0;
++    dcsnd_reset();
++    ref_reset();
++#ifdef TIER_IRQ
++    inner_tick = mus_drv_tick;
++    dcsnd_set_driver(tap_tick);
++    memset(last_rec, 0, sizeof(last_rec));
++    last_bus = 255;
++    last_tape = max_tape = 0;
++    tap_frame = -1;
++#else
++    dcsnd_set_driver(NULL);
++#endif
++}
++
++static void take_slot(void)
++{
++    if (mix_n + DCSND_PER_TICK > cap_frames) return;
++    dcsnd_render(mix + mix_n * 2, DCSND_PER_TICK);
++    mix_n += DCSND_PER_TICK;
++}
++
++/* the end of a logic tick: render it (the platform's plat_end_frame) */
++static void end_tick(void)
++{
++    dcsnd_push();
++    ref_flush();
++#ifndef TIER_IRQ
++    cur_frame += DCSND_PER_TICK;
++#endif
++    if (dcsnd_queued() >= DCSND_PREFILL) take_slot();
++}
++
++static void run_end(void)
++{
++    int n;
++    for (n = dcsnd_queued(); n > 0; n--) take_slot();
++}
++
++static void game_reset(void)
++{
++    opt_defaults();
++    audio_init();
++}
++
++static long ref_maxdiff(void)
++{
++    size_t i, n = (mix_n < ref_n ? mix_n : ref_n) * 2;
++    long worst = 0;
++    for (i = 0; i < n; i++) {
++        long d = labs((long)mix[i] - (long)refb[i]);
++        if (d > worst) worst = d;
++    }
++    if (mix_n != ref_n) worst = 99999;
++    return worst;
++}
++
++static int cmd_list(void)
++{
++    int s;
++    game_reset();
++    for (s = SONG_NONE + 1; s < SONG_COUNT; s++)
++        printf("%d %u %s\n", s, (unsigned)audio_song_length(s), audio_song_name(s));
++    return 0;
++}
++
++static int cmd_song(int song, int ticks, const char *out, const char *keys)
++{
++    FILE *f, *k;
++    int t;
++    game_reset();
++    run_begin(ticks);
++    k = fopen(keys, "w");
++    if (!k) { fprintf(stderr, "test_tier: cannot write %s\n", keys); return 2; }
++    audio_music(song);
++    for (t = 0; t < ticks; t++) {
++        audio_tick();
++        end_tick();
++        fprintf(k, "%u\n", (unsigned)mus_drv_keyons());
++    }
++    fclose(k);
++    run_end();
++    f = fopen(out, "wb");
++    if (!f) { fprintf(stderr, "test_tier: cannot write %s\n", out); return 2; }
++    fwrite(mix, sizeof(int16_t) * 2, mix_n, f);
++    fclose(f);
++#ifdef TIER_IRQ
++    {
++        long d = ref_maxdiff();
++        int i;
++        printf("song %d ticks %d frames %u records %u keyons %u underruns %u clips %u ref_maxdiff %ld hash 0x%08x timbres",
++               song, ticks, (unsigned)mix_n, (unsigned)n_rec, (unsigned)mus_drv_keyons(),
++               (unsigned)mus_drv_underruns(), (unsigned)dcsnd_stats.clips, d, (unsigned)dcsnd_stats.hash);
++        for (i = 0; i < TIMBRE_COUNT; i++) if (timbre_seen[i]) printf(" %d:%d", i, timbre_seen[i]);
++        printf(" kit:%d\n", kit_seen);
++        return d <= 1 && mus_drv_underruns() == 0 ? 0 : 1;
++    }
++#else
++    printf("song %d ticks %d frames %u keyons %u clips %u hash 0x%08x\n", song, ticks, (unsigned)mix_n,
++           (unsigned)mus_drv_keyons(), (unsigned)dcsnd_stats.clips, (unsigned)dcsnd_stats.hash);
++    return 0;
++#endif
++}
++
++#ifdef TIER_IRQ
++/* ---- unit tests --------------------------------------------------------------------------- */
++static int fails, checks;
++#define CHECK(c, ...) do { checks++; if (!(c)) { fails++; printf("FAIL %s:%d: ", __FILE__, __LINE__); \
++    printf(__VA_ARGS__); printf("\n"); } } while (0)
++
++static int inst_with(int timbre)
++{
++    int i;
++    for (i = 0; i < (int)mus_bank()->n_inst; i++)
++        if (mus_bank_inst(i)->timbre == timbre) return i;
++    return -1;
++}
++
++static DoomoVoice rec(int inst, int p16, int vl, int vr, int tparam, int flags)
++{
++    DoomoVoice r;
++    memset(&r, 0, sizeof(r));
++    r.pitch16 = (uint16_t)p16;
++    r.vol_l = (uint8_t)vl;
++    r.vol_r = (uint8_t)vr;
++    r.env = 240;
++    r.inst = (uint8_t)inst;
++    r.tparam = (uint8_t)tparam;
++    r.flags = (uint8_t)flags;
++    return r;
++}
++
++/* a scripted driver: records by (slot, mt) */
++typedef struct Step { int slot, mt, voice; DoomoVoice r; } Step;
++static const Step *sc_steps;
++static int sc_n, sc_slot, sc_mt;
++static void script_tick(void)
++{
++    int i;
++    for (i = 0; i < sc_n; i++)
++        if (sc_steps[i].slot == sc_slot && sc_steps[i].mt == sc_mt) plat_voice(sc_steps[i].voice, &sc_steps[i].r);
++    if (++sc_mt == DCSND_MT) { sc_mt = 0; sc_slot++; }
++}
++
++static void play_script(const Step *st, int n, int slots)
++{
++    int t;
++    run_begin(slots);
++    inner_tick = script_tick;
++    sc_steps = st; sc_n = n; sc_slot = sc_mt = 0;
++    for (t = 0; t < slots; t++) end_tick();
++    run_end();
++}
++
++static double rms(const int16_t *s, size_t f0, size_t f1, int ch)
++{
++    double a = 0;
++    size_t i;
++    for (i = f0; i < f1; i++) a += (double)s[i * 2 + ch] * s[i * 2 + ch];
++    return f1 > f0 ? sqrt(a / (double)(f1 - f0)) : 0;
++}
++
++static double zc_hz(const int16_t *s, size_t f0, size_t f1)
++{
++    size_t i;
++    int n = 0;
++    for (i = f0 + 1; i < f1; i++) if (s[(i - 1) * 2] < 0 && s[i * 2] >= 0) n++;
++    return n * (double)DCSND_RATE / (double)(f1 - f0);
++}
++
++static void test_pitch(void)
++{
++    const double c0 = 440.0 * pow(2.0, -57.0 / 12.0);
++    int p, bad = 0;
++    double worst = 0;
++    for (p = 1; p <= 1727; p++) {
++        uint32_t s = dcsnd_pitch_step(p);
++        double hz = s * 44100.0 / 4294967296.0, want = c0 * pow(2.0, p / 192.0), e = fabs(hz / want - 1.0);
++        if (s != ref_pitch_step(p)) bad++;
++        if (e > worst) worst = e;
++    }
++    CHECK(bad == 0, "%d of 1727 pitch steps differ from the formula", bad);
++    /* the low octaves lose the shifted-out bits: under a tenth of a cent */
++    CHECK(worst < 5e-5, "the worst pitch is %.2e off", worst);
++    CHECK(dcsnd_pitch_step(0) == dcsnd_pitch_step(1) && dcsnd_pitch_step(5000) == dcsnd_pitch_step(1727),
++          "pitches outside 1..1727 are not clamped");
++}
++
++static void test_records(void)
++{
++    int pulse = inst_with(TIMBRE_PULSE), tri = inst_with(TIMBRE_TRI), saw = inst_with(TIMBRE_SAW);
++    int k, a4 = 57 * 16;
++    CHECK(pulse >= 0, "the bank has no pulse instrument");
++    {   /* a full voice sounds like a full tone: A4, the same level, exact against the reference */
++        Step st[1];
++        double hz, lv, tone_lv;
++        size_t i;
++        st[0].slot = 0; st[0].mt = 0; st[0].voice = 0; st[0].r = rec(pulse, a4, 63, 63, 16, DVF_KEYON);
++        play_script(st, 1, 40);
++        hz = zc_hz(mix, 4410, 44100);
++        lv = rms(mix, 22050, 44100, 0);
++        CHECK(fabs(hz - 440.0) < 0.6, "A4 plays at %.2f Hz", hz);
++        CHECK(ref_maxdiff() == 0, "one record: %ld off the reference", ref_maxdiff());
++        run_begin(40);
++        dcsnd_set_driver(NULL);
++        dcsnd_tone(0, 440, 15, WAVE_PULSE50);
++        for (i = 0; i < 40; i++) end_tick();
++        run_end();
++        tone_lv = rms(mix, 22050, 44100, 0);
++        CHECK(fabs(lv / tone_lv - 1.0) < 0.01, "a voice at 63 is %.3f of a tone at 15", lv / tone_lv);
++    }
++    for (k = 0; k < DCSND_MT; k++) {   /* a record of mt k is heard from frame k * 1470 / 8 of its slot */
++        Step st[1];
++        size_t i, first = 0;
++        st[0].slot = 3; st[0].mt = k; st[0].voice = 2; st[0].r = rec(pulse, a4, 63, 63, 16, DVF_KEYON);
++        play_script(st, 1, 6);
++        for (i = 0; i < mix_n; i++) if (mix[i * 2]) { first = i; break; }
++        CHECK(first == (size_t)(3 * DCSND_PER_TICK + k * DCSND_PER_TICK / DCSND_MT),
++              "mt %d: the first sample is frame %u", k, (unsigned)first);
++        CHECK(tap_frame == (int)first, "mt %d: the tap saw frame %d", k, tap_frame);
++    }
++    {   /* stereo: one side only */
++        Step st[2];
++        st[0].slot = 0; st[0].mt = 0; st[0].voice = 0; st[0].r = rec(pulse, a4, 63, 0, 16, DVF_KEYON);
++        st[1].slot = 10; st[1].mt = 0; st[1].voice = 0; st[1].r = rec(pulse, a4, 0, 63, 16, 0);
++        play_script(st, 2, 20);
++        CHECK(rms(mix, 1470, 14700, 0) > 3000 && rms(mix, 1470, 14700, 1) == 0, "vol_r 0 is not silent on the right");
++        CHECK(rms(mix, 22050, 29400, 1) > 3000 && rms(mix, 22050, 29400, 0) < 40, "vol_l 0 is not silent on the left");
++        CHECK(ref_maxdiff() == 0, "stereo: %ld off the reference", ref_maxdiff());
++    }
++    {   /* duty: tparam / 32; the mean of a 12.5 % pulse sits 3/4 of its swing below zero before the DC block
++         * takes it out, so compare the share of high samples instead */
++        static const int duty[3] = { 4, 8, 16 };
++        for (k = 0; k < 3; k++) {
++            Step st[1];
++            size_t i, hi = 0;
++            st[0].slot = 0; st[0].mt = 0; st[0].voice = 0; st[0].r = rec(pulse, a4, 63, 63, duty[k], DVF_KEYON);
++            play_script(st, 1, 30);
++            for (i = 22050; i < 44100; i++) {
++                double mid = 0;
++                size_t j;
++                for (j = i - 50; j < i + 50; j++) mid += mix[j * 2];
++                if (mix[i * 2] > mid / 100.0) hi++;
++            }
++            CHECK(fabs(hi / 22050.0 - duty[k] / 32.0) < 0.03, "duty %d/32: high %.3f of the time", duty[k], hi / 22050.0);
++        }
++    }
++    if (tri >= 0 && saw >= 0) {   /* the other waves: the right pitch, exact */
++        Step st[2];
++        st[0].slot = 0; st[0].mt = 0; st[0].voice = 0; st[0].r = rec(tri, a4 - 192, 63, 63, 0, DVF_KEYON);
++        st[1].slot = 20; st[1].mt = 0; st[1].voice = 0; st[1].r = rec(saw, a4 + 192, 63, 63, 0, 0);
++        play_script(st, 2, 40);
++        CHECK(fabs(zc_hz(mix, 4410, 26460) - 220.0) < 0.6, "the triangle plays at %.2f Hz", zc_hz(mix, 4410, 26460));
++        CHECK(fabs(zc_hz(mix, 30870, 57330) - 880.0) < 1.0, "the saw plays at %.2f Hz", zc_hz(mix, 30870, 57330));
++        CHECK(ref_maxdiff() == 0, "triangle and saw: %ld off the reference", ref_maxdiff());
++    }
++    {   /* a kit hit is noise, the same samples every time; DVF_CUT is silence */
++        Step st[8];
++        size_t i;
++        long d = 0;
++        int n = 0;
++        for (k = 0; k < 3; k++) {
++            st[n].slot = k; st[n].mt = 0; st[n].voice = 3;
++            st[n++].r = rec(MUS_INST_KIT0, KH_SNARE, 50, 50, k, k ? 0 : DVF_KEYON);
++        }
++        st[n].slot = 3; st[n].mt = 0; st[n].voice = 3; st[n++].r = rec(MUS_INST_KIT0, KH_SNARE, 50, 50, 3, DVF_CUT);
++        for (k = 0; k < 3; k++) {
++            st[n].slot = 60 + k; st[n].mt = 0; st[n].voice = 3;
++            st[n++].r = rec(MUS_INST_KIT0, KH_SNARE, 50, 50, k, k ? 0 : DVF_KEYON);
++        }
++        st[n].slot = 63; st[n].mt = 0; st[n].voice = 3; st[n++].r = rec(MUS_INST_KIT0, 0, 0, 0, 0, 0);
++        play_script(st, n, 70);
++        for (i = 0; i < 3 * DCSND_PER_TICK; i++) {
++            long e = labs((long)mix[i * 2] - (long)mix[(i + 60 * DCSND_PER_TICK) * 2]);
++            if (e > d) d = e;
++        }
++        CHECK(rms(mix, 0, 4410, 0) > 1000, "a snare hit is silent");
++        CHECK(d <= 1, "the second snare differs from the first by %ld", d);
++        CHECK(rms(mix, 8 * 1470, 50 * 1470, 0) < 2, "DVF_CUT leaves sound behind");
++        CHECK(ref_maxdiff() == 0, "kit: %ld off the reference", ref_maxdiff());
++    }
++}
++
++/* random records of every kind, bus and tape changes: the mixer against the reference */
++static uint32_t rng = 20261112u;
++static uint32_t rnd(void) { rng ^= rng << 13; rng ^= rng >> 17; rng ^= rng << 5; return rng; }
++static int fz_inst[8], fz_n;
++static void fuzz_tick(void)
++{
++    if (rnd() % 3 == 0) {
++        int v = (int)(rnd() % (DCSND_MVOICES + 1));     /* one past the end: ignored */
++        DoomoVoice r;
++        if (rnd() % 4 == 0)
++            r = rec(MUS_INST_KIT0 + (int)(rnd() % 6), (int)(rnd() % 8), (int)(rnd() % 64), (int)(rnd() % 64),
++                    (int)(rnd() % 12), (rnd() & 1 ? DVF_KEYON : 0) | (rnd() % 5 == 0 ? DVF_NOISE7 : 0));
++        else
++            r = rec(fz_inst[rnd() % (unsigned)fz_n], (int)(rnd() % 1800), (int)(rnd() % 70), (int)(rnd() % 64),
++                    (int)(rnd() % 40), (rnd() & 1 ? DVF_KEYON : 0) | (rnd() % 9 == 0 ? DVF_CUT : 0) |
++                    (rnd() % 7 == 0 ? DVF_NOISE7 | DVF_ECHO | DVF_LEGATO : 0));
++        if (v < DCSND_MVOICES || rnd() % 2) plat_voice(v, &r);
++    }
++    if (rnd() % 40 == 0) plat_audio_bus(0, (uint8_t)(rnd() % 3 ? rnd() % 256 : 255));
++    if (rnd() % 60 == 0) plat_audio_fx(MFX_TAPE, (int)(rnd() % 3 ? rnd() % 300 : 0), 0);
++}
++
++static void test_fuzz(void)
++{
++    int i, t;
++    fz_n = 0;
++    for (i = 0; i < TIMBRE_COUNT && fz_n < 8; i++) {
++        int in = inst_with(i);
++        if (in >= 0) fz_inst[fz_n++] = in;
++    }
++    CHECK(fz_n >= 3, "only %d timbres in the bank", fz_n);
++    run_begin(900);
++    inner_tick = fuzz_tick;
++    for (t = 0; t < 900; t++) end_tick();
++    run_end();
++    CHECK(rms(mix, 0, mix_n, 0) > 500 && rms(mix, 0, mix_n, 1) > 500, "the fuzz run is silent");
++    CHECK(ref_maxdiff() == 0, "900 ticks of random records: %ld off the reference", ref_maxdiff());
++}
++
++/* the game's audio for n ticks (the song keeps playing) */
++static void game_ticks(int n)
++{
++    int t;
++    for (t = 0; t < n; t++) { audio_tick(); end_tick(); }
++}
++
++static void test_s1(void)
++{
++    double before, during, after;
++    size_t f;
++    int t, grew = 1, prev = 0;
++    /* mute: silent at once, back afterwards, the song still on the grid */
++    game_reset();
++    run_begin(400);
++    audio_music(SONG_TITLE);
++    game_ticks(90);
++    f = mix_n;
++    before = rms(mix, f - 30 * 1470, f, 0);
++    audio_music_mute(40);
++    game_ticks(40);
++    during = rms(mix, f + 8 * 1470, f + 38 * 1470, 0);
++    game_ticks(60);
++    after = rms(mix, f + 60 * 1470, f + 98 * 1470, 0);
++    CHECK(before > 1000, "the title cue is silent on the IRQ tier (rms %.0f)", before);
++    CHECK(during < 5, "a mute leaves rms %.1f", during);
++    CHECK(after > before * 0.5, "the music does not come back after a mute (%.0f of %.0f)", after, before);
++    CHECK(last_bus == 255, "the bus is %d after the mute", last_bus);
++    /* duck to 128 / 256: about half */
++    f = mix_n;
++    audio_music_duck(128, 60);
++    game_ticks(60);
++    during = rms(mix, f + 4 * 1470, f + 58 * 1470, 0);
++    game_ticks(10);
++    CHECK(last_bus == 255, "the bus is %d after the duck", last_bus);
++    run_end();
++    CHECK(ref_maxdiff() <= 1, "mute and duck: %ld off the reference", ref_maxdiff());
++    {   /* the same 60 ticks without the duck */
++        double plain;
++        game_reset();
++        run_begin(400);
++        audio_music(SONG_TITLE);
++        game_ticks(90); game_ticks(40); game_ticks(60);
++        f = mix_n;
++        game_ticks(70);
++        run_end();
++        plain = rms(mix, f + 4 * 1470, f + 58 * 1470, 0);
++        CHECK(during > plain * 0.42 && during < plain * 0.58, "a duck to 128 plays at %.2f", during / plain);
++    }
++    /* tape stop: the pitch falls 15 semitones over the frames, then the music stays muted */
++    game_reset();
++    run_begin(300);
++    audio_music(SONG_TITLE);
++    game_ticks(60);
++    audio_tapestop(30);
++    for (t = 0; t < 30; t++) {
++        game_ticks(1);
++        if (last_tape < prev) grew = 0;
++        prev = last_tape;
++    }
++    CHECK(grew && max_tape == 15 * 16, "the tape stop reached %d sixteenths (240)", max_tape);
++    f = mix_n;
++    game_ticks(40);
++    CHECK(last_bus == 0, "the music is not held muted after a tape stop (bus %d)", last_bus);
++    CHECK(rms(mix, f + 8 * 1470, f + 36 * 1470, 0) < 5, "sound after the tape stop");
++    audio_music(SONG_SHOP);                 /* a new song ends the hold */
++    game_ticks(60);
++    f = mix_n;
++    run_end();
++    CHECK(last_bus == 255 && last_tape == 0, "a new song starts with bus %d tape %d", last_bus, last_tape);
++    CHECK(rms(mix, f - 30 * 1470, f, 0) > 500, "the new song is silent");
++    CHECK(ref_maxdiff() <= 1, "tape stop: %ld off the reference", ref_maxdiff());
++    {   /* the tape's pitch on a plain voice: an octave down halves it */
++        Step st[1];
++        st[0].slot = 0; st[0].mt = 0; st[0].voice = 0; st[0].r = rec(inst_with(TIMBRE_PULSE), 57 * 16, 63, 63, 16, DVF_KEYON);
++        run_begin(60);
++        inner_tick = script_tick;
++        sc_steps = st; sc_n = 1; sc_slot = sc_mt = 0;
++        for (t = 0; t < 30; t++) end_tick();
++        plat_audio_fx(MFX_TAPE, 192, 0);
++        for (t = 0; t < 30; t++) end_tick();
++        run_end();
++        CHECK(fabs(zc_hz(mix, 46305, 86730) - 220.0) < 0.6, "an octave of tape plays A4 at %.2f Hz", zc_hz(mix, 46305, 86730));
++        CHECK(ref_maxdiff() == 0, "tape on a voice: %ld off the reference", ref_maxdiff());
++    }
++}
++
++static void test_babble_and_state(void)
++{
++    DoomoToneState st;
++    int t, harm = 0, sang = 0, seen = 0, c;
++    game_reset();
++    run_begin(300);
++    audio_music(SONG_TITLE);
++    game_ticks(60);
++    CHECK(tone_calls >= 0 && last_tone[0].vol == 0 && last_tone[2].vol == 0 && last_tone[3].vol == 0,
++          "the music reached plat_tone on the IRQ tier");
++    /* the visualisers' view (the jukebox bars) still shows the music */
++    for (t = 0; t < 60; t++) {
++        game_ticks(1);
++        for (c = 0; c < 4; c++) { audio_channel_state(c, &st); if (st.vol && st.freq) seen |= 1 << c; }
++    }
++    CHECK(seen == 15, "audio_channel_state shows channels %x of the title cue", seen);
++    /* the babble sings on tone channel 1 while the harmony voice keeps playing */
++    for (t = 0; t < 40; t++) {
++        if (t % 4 == 0) audio_voice_char(NULL, "aeiou"[(t / 4) % 5]);
++        game_ticks(1);
++        if (audio_voice_busy() && last_tone[1].vol) sang++;
++        if (audio_voice_busy() && last_rec[1].vol_l) harm++;
++    }
++    CHECK(sang >= 8, "the babble sounded on %d ticks", sang);
++    CHECK(harm >= 4, "the harmony voice sounded on %d babble ticks", harm);
++    game_ticks(10);
++    CHECK(!audio_voice_busy() && last_tone[1].vol == 0, "tone channel 1 is not silent after the babble (vol %d)",
++          last_tone[1].vol);
++    /* a comedy one-shot borrows tone channels 2 and 3 and gives them back silent */
++    audio_sfx(SFX_BOING);
++    game_ticks(3);
++    CHECK(last_tone[2].vol > 0, "the boing is silent");
++    game_ticks(20);
++    CHECK(last_tone[2].vol == 0 && last_tone[3].vol == 0, "the one-shot's channels are not silent afterwards");
++    /* no music: every voice silent, exact zeros in the end */
++    audio_music(SONG_NONE);
++    game_ticks(60);
++    run_end();
++    CHECK(rms(mix, mix_n - 20 * 1470, mix_n, 0) == 0 && rms(mix, mix_n - 20 * 1470, mix_n, 1) == 0,
++          "SONG_NONE leaves sound behind");
++}
++
++static void test_queue(void)
++{
++    uint32_t k0, t;
++    game_reset();
++    run_begin(10);
++    audio_music(SONG_BOSS);
++    /* nothing takes slots: the ring fills, then the driver still runs 8 mt a push */
++    for (t = 0; t < DCSND_QUEUE; t++) { audio_tick(); dcsnd_push(); }
++    k0 = mus_drv_keyons();
++    CHECK(dcsnd_stats.drv_ticks == DCSND_QUEUE * DCSND_MT && dcsnd_stats.overruns == 0, "16 pushes: %u driver ticks",
++          (unsigned)dcsnd_stats.drv_ticks);
++    for (t = 0; t < 60; t++) { audio_tick(); dcsnd_push(); }
++    CHECK(dcsnd_stats.overruns == 60 && dcsnd_stats.pushed == DCSND_QUEUE, "60 pushes into a full ring: %u overruns",
++          (unsigned)dcsnd_stats.overruns);
++    CHECK(dcsnd_stats.drv_ticks == (DCSND_QUEUE + 60) * DCSND_MT, "the driver stopped with the ring full (%u ticks)",
++          (unsigned)dcsnd_stats.drv_ticks);
++    CHECK(mus_drv_keyons() > k0 + 20, "the music stood still with the ring full");
++    CHECK(mus_drv_underruns() == 0, "%u driver under-runs", (unsigned)mus_drv_underruns());
++    /* without a driver the music engine is not ticked at all (the bridge build) */
++    dcsnd_reset();
++    dcsnd_set_driver(NULL);
++    dcsnd_push();
++    CHECK(dcsnd_stats.drv_ticks == 0, "a driver ran without one set");
++}
++
++static void test_caps(void)
++{
++    DoomoAudioCaps c;
++    plat_audio_caps(&c);
++    CHECK(c.tier != AT_BRIDGE && (c.flags & CAP_DRV_IRQ) && (c.flags & CAP_STEREO), "caps: tier %d flags 0x%x",
++          c.tier, c.flags);
++    CHECK(c.soft_voices == DCSND_MVOICES && c.mix_rate == DCSND_RATE && c.latency_mt == 0, "caps: voices %d rate %d",
++          c.soft_voices, c.mix_rate);
++    game_reset();
++    CHECK(!mus_core_bridge(), "the core still runs the bridge");
++    /* the classic law needs 30 Hz control frames: 8 mt (the core keeps them for an IRQ port) */
++    {
++        uint32_t r0;
++        run_begin(40);
++        audio_music(SONG_TITLE);
++        music_profile(AP_OVERWORLD);
++        game_ticks(10);
++        r0 = n_rec;
++        game_ticks(20);
++        run_end();
++        CHECK(n_rec - r0 <= 20 * 4, "%u records in 20 ticks: more than one control frame a tick", (unsigned)(n_rec - r0));
++    }
++}
++
++static int cmd_unit(void)
++{
++    game_reset();
++    dc_sfx_init();
++    test_caps();
++    test_pitch();
++    test_records();
++    test_fuzz();
++    test_s1();
++    test_babble_and_state();
++    test_queue();
++    printf("test_tier: %d checks, %d failed\n", checks, fails);
++    return fails ? 1 : 0;
++}
++#endif
++
++int main(int argc, char **argv)
++{
++    (void)ref_tone;
++    if (argc == 2 && !strcmp(argv[1], "list")) return cmd_list();
++    if (argc == 6 && !strcmp(argv[1], "song")) return cmd_song(atoi(argv[2]), atoi(argv[3]), argv[4], argv[5]);
++#ifdef TIER_IRQ
++    if (argc == 2 && !strcmp(argv[1], "unit")) return cmd_unit();
++#endif
++    fprintf(stderr, "usage: %s list | song N TICKS OUT.raw KEYS.txt%s\n", argv[0],
++#ifdef TIER_IRQ
++            " | unit"
++#else
++            ""
++#endif
++            );
++    return 2;
++}
+diff --git a/dc/tests/audio/voiceref.c b/dc/tests/audio/voiceref.c
+new file mode 100644
+index 0000000..7e2d72e
+--- /dev/null
++++ b/dc/tests/audio/voiceref.c
+@@ -0,0 +1,219 @@
++/* voiceref.c - the reference render at DoomoVoice level (DC5b; owner:
++ * dreamcast). What musrender is for plat_tone, this is for plat_voice: a
++ * second renderer, written from the rules in docs/DREAMCAST.md section 6
++ * and nothing of dc/src, one frame at a time with no blocks, no tables and
++ * no state shared with the mixer. test_tier feeds it the very records the
++ * core's driver sends (and the bus and tape calls) at the frame they take
++ * effect, and compares its output with the Dreamcast mixer's, sample by
++ * sample.
++ *
++ * The rules:
++ *   pitch   C0 = 440 * 2^(-57/12) Hz. The phase step of pitch p (1/16
++ *           semitones above C0, 1..1727) is the step of the same note in
++ *           octave 8, round(C0 * 2^(8 + (p mod 192) / 192) * 2^32 / 44100),
++ *           shifted right by 8 - p / 192. A tape stop of d lowers p by d,
++ *           not below 56 (20 Hz).
++ *   kit     a hit's noise is clocked at f0 + (f1 - f0) * t / sweep Hz (f1
++ *           from t = sweep on), t = the record's tparam; the step is
++ *           floor(f * 2^32 / 44100); a tape stop multiplies it by
++ *           2^(-d / 192) (floor(step * step8(192 - d mod 192) / step8(0)),
++ *           halved, then halved per whole octave), not below 20 Hz.
++ *   waves   pulse: high while phase < duty / 32 (PULSE and PWM: the
++ *           record's tparam, 0 = 4, at most 31; other timbres 16); triangle and saw from the
++ *           phase's top 16 bits; noise: the 15-bit LFSR (taps 0 and 1, the
++ *           new bit also to bit 6 for the 7-bit one), clocked when the
++ *           phase wraps. A sample is +-4096 at most.
++ *   gain    round(place * vol * bus * 15 / (63 * 255)) per side; place is
++ *           128 / 128 for voices 0 and 2 (and 4 up), 152 / 104 for voice 1,
++ *           104 / 152 for voice 3.
++ *   key-on  noise: LFSR 0x7FFF, phase 0. Pitched: phase 0 if the voice was
++ *           silent (both gains 0), else the phase runs on.
++ *   output  the mixer's chain (audio_int.h): the sum / 128 through the
++ *           14 Hz DC block and the 12 kHz low-pass, x 24 / 256, the knee.
++ */
++#include <math.h>
++#include <string.h>
++#include "doomo/doomo.h"
++#include "doomo/music.h"
++#include "../../../core/src/mus_int.h"
++#include "voiceref.h"
++
++#define NV 8
++typedef struct RefVoice {
++    DoomoVoice rec;
++    uint32_t ph, lfsr;
++    int32_t gl, gr;
++    int on;
++} RefVoice;
++
++static RefVoice rv[NV];
++static int bus = 255, tape;
++static int64_t dcx[2], dcy[2], lp[2];
++static uint32_t ref_clips;
++
++static uint32_t step8(int i)
++{
++    const double c0 = 440.0 * pow(2.0, -57.0 / 12.0);
++    return (uint32_t)llround(c0 * pow(2.0, 8.0 + i / 192.0) * 4294967296.0 / 44100.0);
++}
++
++uint32_t ref_pitch_step(int p)
++{
++    if (p < 1) p = 1;
++    if (p > 1727) p = 1727;
++    return step8(p % 192) >> (8 - p / 192);
++}
++
++static int is_kit(const DoomoVoice *r) { return r->inst >= MUS_INST_KIT0; }
++
++static int wave_of(const DoomoVoice *r)      /* 0 pulse, 1 tri, 2 saw, 3 noise15, 4 noise7 */
++{
++    int w = 0;
++    if (is_kit(r)) w = 3;
++    else switch (MUS_INST(r->inst)->timbre) {
++    case TIMBRE_SAW: case TIMBRE_SYNC_SAW: w = 2; break;
++    case TIMBRE_TRI: case TIMBRE_TRI4: case TIMBRE_SINE: w = 1; break;
++    case TIMBRE_NOISE15: w = 3; break;
++    case TIMBRE_NOISE7: w = 4; break;
++    default: break;
++    }
++    if (w == 3 && (r->flags & DVF_NOISE7)) w = 4;
++    return w;
++}
++
++static uint32_t step_of(const DoomoVoice *r)
++{
++    if (!r->pitch16 || (r->flags & DVF_CUT)) return 0;
++    if (is_kit(r)) {
++        const MusKitHit *d = &mus_kit_classic[r->pitch16 & 7];
++        int t = r->tparam;
++        long f = (d->ticks_sweep == 0 || t >= d->ticks_sweep) ? d->f1 :
++                 (long)d->f0 + ((long)d->f1 - d->f0) * t / d->ticks_sweep;
++        uint64_t s;
++        f &= 0xFFFF;
++        if (!f) return 0;
++        s = ((uint64_t)f << 32) / 44100u;
++        if (tape) {
++            int r192 = tape % 192;
++            if (r192) s = (s * step8(192 - r192) / step8(0)) >> 1;
++            s >>= tape / 192;
++            if (s < 1947816u) s = 1947816u;
++        }
++        return (uint32_t)s;
++    } else {
++        int p = r->pitch16;
++        if (tape) { p -= tape; if (p < 56) p = 56; }
++        return ref_pitch_step(p);
++    }
++}
++
++static void gains(int v)
++{
++    static const int place[4][2] = { { 128, 128 }, { 152, 104 }, { 128, 128 }, { 104, 152 } };
++    RefVoice *o = &rv[v];
++    const int *pl = place[v < 4 ? v : 0];
++    int vl = o->rec.vol_l > 63 ? 63 : o->rec.vol_l, vr = o->rec.vol_r > 63 ? 63 : o->rec.vol_r;
++    if (!step_of(&o->rec)) { o->gl = o->gr = 0; return; }
++    o->gl = (int32_t)lround((double)pl[0] * vl * bus * 15.0 / 16065.0);
++    o->gr = (int32_t)lround((double)pl[1] * vr * bus * 15.0 / 16065.0);
++}
++
++void ref_reset(void)
++{
++    int i;
++    memset(rv, 0, sizeof(rv));
++    for (i = 0; i < NV; i++) rv[i].lfsr = 0x7FFF;
++    bus = 255;
++    tape = 0;
++    memset(dcx, 0, sizeof(dcx));
++    memset(dcy, 0, sizeof(dcy));
++    memset(lp, 0, sizeof(lp));
++    ref_clips = 0;
++}
++
++void ref_voice(int v, const DoomoVoice *r)
++{
++    RefVoice *o;
++    if (v < 0 || v >= NV) return;
++    o = &rv[v];
++    if (r->flags & DVF_KEYON) {
++        if (wave_of(r) >= 3) { o->lfsr = 0x7FFF; o->ph = 0; }
++        else if (!o->gl && !o->gr) o->ph = 0;
++    }
++    o->rec = *r;
++    o->on = 1;
++    gains(v);
++}
++
++void ref_bus(int g) { int v; bus = g; for (v = 0; v < NV; v++) if (rv[v].on) gains(v); }
++void ref_tape(int d) { int v; tape = d < 0 ? 0 : d > 768 ? 768 : d; for (v = 0; v < NV; v++) if (rv[v].on) gains(v); }
++
++static int64_t fdiv(int64_t a, int64_t b)   /* floor(a / b), b > 0 */
++{
++    int64_t q = a / b;
++    return (a % b < 0) ? q - 1 : q;
++}
++
++static int16_t out_chain(int ch, int64_t mix)
++{
++    int64_t x = fdiv(mix, 128), v = dcy[ch], d, y, a, e;
++    /* the leak: v / 512 rounded away from zero */
++    v -= v >= 0 ? fdiv(v + 511, 512) : -fdiv(511 - v, 512);
++    dcy[ch] = x - dcx[ch] + v;
++    dcx[ch] = x;
++    d = dcy[ch] - lp[ch];
++    lp[ch] += fdiv(d * 210, 256);
++    y = lp[ch] * 3;
++    y = y < 0 ? -((-y) / 32) : y / 32;        /* toward zero */
++    a = y < 0 ? -y : y;
++    if (a > 24576) {
++        if (a > 32767) ref_clips++;
++        e = a - 24576;
++        a = 24576 + e * 8191 / (e + 8191);
++        y = y < 0 ? -a : a;
++    }
++    return (int16_t)y;
++}
++
++void ref_render(int16_t *out, int frames)
++{
++    int i, v;
++    for (i = 0; i < frames; i++) {
++        int64_t l = 0, r = 0;
++        for (v = 0; v < NV; v++) {
++            RefVoice *o = &rv[v];
++            uint32_t step;
++            int w, s;
++            if (!o->on || (!o->gl && !o->gr)) continue;
++            step = step_of(&o->rec);
++            w = wave_of(&o->rec);
++            if (w >= 3) {
++                uint32_t p0 = o->ph;
++                o->ph += step;
++                if (o->ph < p0) {
++                    uint32_t bit = (o->lfsr ^ (o->lfsr >> 1)) & 1u;
++                    o->lfsr = (o->lfsr >> 1) | (bit << 14);
++                    if (w == 4) o->lfsr = (o->lfsr & ~0x40u) | (bit << 6);
++                }
++                s = (o->lfsr & 1) ? 4096 : -4096;
++            } else {
++                uint32_t ph = o->ph;
++                long u = (long)(ph >> 16);
++                o->ph += step;
++                if (w == 1) s = (int)fdiv((u < 32768 ? u : 65535 - u) - 16384, 4);
++                else if (w == 2) s = (int)fdiv(u - 32768, 8);
++                else {
++                    /* PULSE / PWM: tparam / 32 (0: 4, at most 31); any other timbre 16 */
++                    int tb = MUS_INST(o->rec.inst)->timbre, duty = 16;
++                    if (tb == TIMBRE_PULSE || tb == TIMBRE_PWM) duty = o->rec.tparam ? o->rec.tparam : 4;
++                    if (duty > 31) duty = 31;
++                    s = ((uint64_t)ph < ((uint64_t)duty << 27)) ? 4096 : -4096;
++                }
++            }
++            l += (int64_t)s * o->gl;
++            r += (int64_t)s * o->gr;
++        }
++        out[i * 2] = out_chain(0, l);
++        out[i * 2 + 1] = out_chain(1, r);
++    }
++}
+diff --git a/dc/tests/audio/voiceref.h b/dc/tests/audio/voiceref.h
+new file mode 100644
+index 0000000..a317740
+--- /dev/null
++++ b/dc/tests/audio/voiceref.h
+@@ -0,0 +1,12 @@
++/* voiceref.h - the DoomoVoice-level reference renderer (voiceref.c) */
++#ifndef DC_VOICEREF_H
++#define DC_VOICEREF_H
++#include <stdint.h>
++#include "doomo/mus_data.h"
++void     ref_reset(void);
++void     ref_voice(int v, const DoomoVoice *r);   /* from the next frame on */
++void     ref_bus(int gain);                       /* 255 = full */
++void     ref_tape(int down16);
++void     ref_render(int16_t *out, int frames);    /* stereo, L R */
++uint32_t ref_pitch_step(int p16);
++#endif
