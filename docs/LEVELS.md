@@ -212,6 +212,50 @@ with `map = LV_NO_MAP` ("not built"), so it is not shown in the select and canno
   save without `BRCH` leaves nothing). On the host `lv_list_req = LVG_GBA` makes the build list what the GBA
   lists, and `lv_info` is writable so a test can re-point a not-built level at an existing map.
 
+## LV11: content notes and the dark-level presentation (levels plan 6.3, 6.4)
+
+Nine levels are dark (`LVG_DARK` in the registry: HB9, HB11, HB12, N1, N8, N9, N10, N11, N13). Each has a
+content note, and nothing in the game starts a dark level without showing it. No dark level has a map yet,
+so none of this shows on a real run today; the host tests re-point a dark level at the Vape Cellar to play it.
+
+* **Text** (`levels2.c`, `lv_notes[]`; `lv_note()`, `lv_note_short()`): the plan's nine notes, and a short
+  line for each ("Note: guilt, failure, lost souls") for the strip and the later visits. The table's order is
+  the order of the first-visit bit: only ever append. A test keeps the table and the `LVG_DARK` flags the
+  same set. The plan says "at most three lines at 240x160": that holds for four of the nine; HB9, HB12, N1
+  and N9 take four and N13 takes five at 240 wide. The page has room for five (86 px), so the plan's text is
+  kept word for word.
+* **The card's note page** (`levels_play.c`, `BR_NOTE`; `combat_card.c`, `ccard_note_page`): the first visit
+  to a dark level opens on a window with the full note over the dimmed level, under the banner. A (after 12
+  ticks) goes on to the control card and marks the note seen; B goes back to the select and marks nothing.
+  A demo and the autopilot skip the page and mark nothing. A restart and a retry do not show it again.
+* **Later visits**: the control card has the short note as one line above the goal (`ccard_draw_above_note`),
+  unless Content notes is "First time only". A mode rule line (Cute-Only, Brutal-Only, Time Trial) takes the
+  room the line needs at 240x160, so the line is left out then; the first visit's page showed the note.
+* **The first-visit flag** (`levels_rec.c`, `lv_note_seen()` / `lv_note_set_seen()`): one bit per dark level in
+  the 'BRCH' arc's spare bytes 42..43. The chunk size does not change; a chunk from before LV11 reads "nothing
+  seen". A level with no note reads "seen". The GBA keeps the bits of the dark levels it does not list.
+* **The select** (`levels_select.c`): a small moon badge next to the tag pill, and the short note as a strip
+  on the preview's bottom edge (where "Clear it once to race the clock" goes, which wins).
+* **Options** (`options_store.c`, add-only ids at the end of OPT2): `OPT_NOTES` "Content notes": Every time
+  (default) / First time only; `OPT_MEMORIAL` "Memorial names": On (default) / Off. Both are on the Game page,
+  machine-wide (the config record's byte 16: bit 0 first time only, bit 1 memorial Off, so 0 is both defaults
+  and an older record reads right; without a record the 'OPT2' chunk carries them), and both are bits in the
+  byte the Stick option already uses (no EWRAM). The memorial row only shows once Notice 13 is built and open.
+  A preset does not touch them. `lv_memorial_label(name)` is what the Vault's memorial wall prints for each
+  name: the name, or "Someone we lost." when Off (the Vault's package, LV41, calls it).
+* **PS1**: nothing. The PS1 lists no dark level, so `town.h` has no `OPT_NOTES` / `OPT_MEMORIAL` there, the
+  card and play code is behind `LV_HAS_NEW`, and the EXE is byte-identical to the base (ends `0x801ef580`,
+  66 KB below the stack top, both before and after). When the LEVELS share of PS1 RAM is released, add the
+  ids and flip `LV_HAS_NEW`.
+* **Visible change on the other platforms**: the Options Game page has one more row, "Content notes", on
+  the GBA, Dreamcast and native builds (not the PS1).
+* **Tests**: `test_levels_rec.c` (`lv11_*`: the notes and the dark flags are the same set, every line fits at
+  both sizes, the flag in a real save and on the GBA's list, the first visit's flow with B / A / a later
+  visit / a demo, the pages and the badge at both sizes (screenshots), the memorial label, the options
+  rows), `test_options_store.c` (`lv11_*`: round trip through the chunk and the record, an older record and
+  chunk), `test_tips.c` (the Game page has one more row). Not done here: the Vault wires
+  `lv_memorial_label` (LV41); the `note TEXTID` map header key (a note per map) is LV2's; Spanish text.
+
 ## Level test harness (LV10)
 
 One list makes every level's scripts: `LEVELS` in `tools/breach_scripts.py` (a `make -C core gen`

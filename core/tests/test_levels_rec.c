@@ -568,3 +568,224 @@ TEST(levels_select_focus_a_level_that_is_not_built_falls_back)
     CHECK_EQ(press_a(), LV_SEWERS);                      /* the first open level not played */
     scene_set(&SCENE_TITLE, 0);
 }
+
+/* ---- LV11: content notes and the dark-level presentation (plan 6) ---------------------------------- */
+static void idle_frames(int n) { while (n-- > 0) frame(0); }
+
+TEST(lv11_notes_are_the_dark_levels_and_fit_both_screens)
+{
+    int i, n = 0, last = -1;
+    reset();
+    for (i = 0; i < LV_COUNT; i++) {
+        int dark = (lv_reg[i].flags & LVG_DARK) != 0;
+        CHECK_MSG((lv_note(i) != NULL) == dark, "%s: note and the LVG_DARK flag disagree", lv_info[i].title);
+        CHECK_EQ(lv_note_short(i) != NULL, dark);
+        if (!dark) { CHECK_EQ(lv_note_idx(i), -1); CHECK_EQ(lv_note_seen(i), 1); continue; }
+        CHECK_EQ(lv_note_idx(i), n);                        /* level order is the flag's bit: never reorder */
+        CHECK(lv_note_idx(i) > last);
+        last = lv_note_idx(i);
+        n++;
+        CHECK(strncmp(lv_note(i), "Content note: ", 14) == 0);
+        CHECK(strncmp(lv_note_short(i), "Note: ", 6) == 0);
+        /* the strip on the select's preview (220 px wide at 240x160, minus margins) */
+        CHECK_MSG(ui_text_width(lv_note_short(i)) <= 220 - 8, "%s: the strip is %d px", lv_info[i].title, ui_text_width(lv_note_short(i)));
+        /* the full page (the card is 230 px at 240x160, 300 at 320x240): it goes under the banner (top = 30 + 24 at
+         * 240x160) and above the hint (20 px): at most 86 px, five lines. The plan's "three lines" holds for the short
+         * notes only: the long ones (HB9, N9, N13) take four or five at 240 wide. */
+        CHECK_MSG(ccard_note_page_h(230, lv_note(i)) <= 160 - 20 - 54, "%s: the page is %d px tall at 240 wide",
+                  lv_info[i].title, ccard_note_page_h(230, lv_note(i)));
+        printf("      note page %-30s %d lines at 240x160\n", lv_info[i].title, ui_text_wrap(0, 0, 230 - 12, lv_note(i), 0, 0));
+        CHECK(ccard_note_page_h(300, lv_note(i)) <= ccard_note_page_h(230, lv_note(i)));
+        /* the later visits' line sits in the control card at both sizes */
+        CHECK(ui_text_width(lv_note_short(i)) <= 230 - 12 && ui_text_width(lv_note_short(i)) <= 300 - 12);
+    }
+    CHECK_EQ(n, LV_NOTE_N);
+    CHECK_EQ(lv_note_idx(LV_N13), 8);
+    CHECK(strstr(lv_note(LV_N13), "Options can hide them") != NULL);
+    /* the whole card with the line leaves the banner above it (clarity C10's budget at 240x160: 160 - 17 - 77 px) */
+    printf("      card heights at 240x160: goal %d, goal + note %d, goal + rule + note %d\n", ccard_height(230, "x", NULL),
+           ccard_height_note(230, lv_note_short(LV_HB9), "x", NULL),
+           ccard_height_note(230, lv_note_short(LV_HB9), "x", ccard_mode_rule(CCARD_RULE_BRUTAL)));
+    CHECK(ccard_height_note(230, lv_note_short(LV_HB9), "x", NULL) <= 160 - 17 - 77);
+    CHECK_EQ(ccard_height_note(230, NULL, "x", NULL), ccard_height(230, "x", NULL));
+    CHECK_EQ(ccard_height_note(230, lv_note_short(LV_HB9), "x", NULL), ccard_height(230, "x", NULL) + FONT_LINE);
+}
+
+TEST(lv11_note_seen_flags_ride_in_brch)
+{
+    const DoomoSaveExt *e = doomo_save_ext_breach;
+    uint8_t a[SAVE_EXT_MAX_BRCH];
+    uint32_t n;
+    reset();
+    CHECK(!lv_note_seen(LV_HB9) && !lv_note_seen(LV_N13));
+    lv_note_set_seen(LV_N13);
+    lv_note_set_seen(LV_HB9);
+    lv_note_set_seen(LV_VAPE_CELLAR);                       /* no note: nothing to set */
+    lv_note_set_seen(LV_HB9);                               /* twice: still one bit */
+    CHECK(lv_note_seen(LV_HB9) && lv_note_seen(LV_N13) && !lv_note_seen(LV_HB11) && !lv_note_seen(LV_N1));
+    n = save_serialize(image, sizeof(image));
+    CHECK(n > 0);
+    CHECK(e->size() > 0);                                    /* the flags alone make the chunk non-empty */
+    CHECK_EQ(e->write(a, sizeof(a)), e->size());
+    CHECK_EQ(a[4 + 42], 1 | 0);                              /* arc byte 42 bit 0 = HB9 */
+    CHECK_EQ(a[4 + 43], 1);                                  /* bit 8 = the ninth dark level, N13 */
+    reset();
+    CHECK(!lv_note_seen(LV_HB9));
+    CHECK(save_deserialize(image, n));
+    CHECK(lv_note_seen(LV_HB9) && lv_note_seen(LV_N13) && !lv_note_seen(LV_HB11));
+    /* the GBA lists fewer levels but keeps every flag (its chunk is smaller, the arc is the same) */
+    lv_list_req = LVG_GBA;
+    CHECK(lv_note_seen(LV_N13));
+    n = save_serialize(image, sizeof(image));
+    reset();
+    lv_list_req = LVG_GBA;
+    CHECK(save_deserialize(image, n));
+    CHECK(lv_note_seen(LV_HB9) && lv_note_seen(LV_N13) && !lv_note_seen(LV_HB11));
+    lv_list_req = 0;
+    /* a chunk written before LV11 (spare arc bytes 0) reads as "nothing seen" */
+    reset();
+    lv_arc_set_act(LVA_ACT1);
+    CHECK_EQ(e->write(a, sizeof(a)), e->size());
+    CHECK_EQ(a[4 + 42] | a[4 + 43], 0);
+    CHECK(!lv_note_seen(LV_HB9));
+    reset();
+}
+
+/* the memorial wall prints every name through lv_memorial_label (the Vault's package wires it) */
+TEST(lv11_memorial_names_option)
+{
+    reset();
+    CHECK_EQ(opt_get(OPT_MEMORIAL), 1);                      /* On by default */
+    CHECK_STR(lv_memorial_label("Grampy Wick"), "Grampy Wick");
+    opt_set(OPT_MEMORIAL, 0);
+    CHECK_STR(lv_memorial_label("Grampy Wick"), "Someone we lost.");
+    opt_set(OPT_MEMORIAL, 1);
+    CHECK_STR(lv_memorial_label("Grampy Wick"), "Grampy Wick");
+}
+
+/* the first visit opens on the note and waits for A (B backs out, nothing is marked); later visits show the control
+ * card as before; a demo skips it and marks nothing */
+TEST(lv11_first_visit_opens_on_the_note_page)
+{
+    int i;
+    reset();
+    built_all(1);
+    scene_set(&SCENE_TITLE, 0);
+    frame(0);
+    /* B on the first visit: back to the scene below, still unseen */
+    scene_push(&SCENE_BREACH, LV_ARG(LV_HB9, LVM_NORMAL));
+    idle_frames(6);
+    CHECK(scene_top() == &SCENE_BREACH);
+    frame(BTN_B); frame(0);
+    CHECK(scene_top() == &SCENE_TITLE);
+    CHECK(!lv_note_seen(LV_HB9));
+    /* A (after the first dozen ticks) shows the controls card next and marks the note seen */
+    scene_push(&SCENE_BREACH, LV_ARG(LV_HB9, LVM_NORMAL));
+    idle_frames(6);
+    frame(BTN_A); frame(0);
+    CHECK(scene_top() == &SCENE_BREACH && !lv_note_seen(LV_HB9));   /* too early: the page ignores A for 12 ticks */
+    idle_frames(12);
+    frame(BTN_A); frame(0);
+    CHECK(lv_note_seen(LV_HB9));
+    CHECK(scene_top() == &SCENE_BREACH);
+    for (i = 0; i < 30; i++) frame(0);
+    frame(BTN_B); frame(0);                                  /* the control card: B does nothing, as before */
+    CHECK(scene_top() == &SCENE_BREACH);
+    scene_pop(); frame(0);
+    /* a later visit goes straight to the control card: B does not back out */
+    scene_push(&SCENE_BREACH, LV_ARG(LV_HB9, LVM_NORMAL));
+    idle_frames(20);
+    frame(BTN_B); frame(0);
+    CHECK(scene_top() == &SCENE_BREACH);
+    scene_pop(); frame(0);
+    /* the demo skips the page and marks nothing */
+    scene_push(&SCENE_BREACH, LV_ARG(LV_HB11, LVM_NORMAL) | LVF_DEMO);
+    idle_frames(20);
+    CHECK(scene_top() == &SCENE_BREACH && !lv_note_seen(LV_HB11));
+    scene_pop(); frame(0);
+    /* a level with no note opens on its card as it always did */
+    scene_push(&SCENE_BREACH, LV_ARG(LV_HB8, LVM_NORMAL));
+    idle_frames(20);
+    frame(BTN_B); frame(0);
+    CHECK(scene_top() == &SCENE_BREACH);
+    scene_pop(); frame(0);
+    scene_set(&SCENE_TITLE, 0);
+    built_all(0);
+    reset();
+}
+
+TEST(lv11_pages_badge_and_strip_draw_at_both_sizes)
+{
+    int res;
+    reset();
+    built_all(1);
+    lv_set_rank(LV_VAPE_CELLAR, RANK_C);
+    lv_set_rank(LV_HB8, RANK_C);
+    lv_set_rank(LV_HB9, RANK_C);                             /* open: the badge and the strip show */
+    for (res = 0; res < 2; res++) {
+        nat_w = res ? 320 : 240;
+        nat_h = res ? 240 : 160;
+        scene_set(&SCENE_TITLE, 0);
+        scene_push(&SCENE_LEVEL_SELECT, LVM_NORMAL | ((LV_HB9 + 1) << 4));
+        idle_frames(14);
+        shot(res ? "select_dark_320x240" : "select_dark_240x160");
+        scene_pop(); frame(0);
+        scene_push(&SCENE_BREACH, LV_ARG(LV_HB9, LVM_NORMAL));
+        idle_frames(20);
+        shot(res ? "note_page_320x240" : "note_page_240x160");
+        frame(BTN_A); idle_frames(40);                       /* the controls card, first visit just done */
+        scene_pop(); frame(0);
+        scene_push(&SCENE_BREACH, LV_ARG(LV_HB9, LVM_NORMAL));
+        idle_frames(40);
+        shot(res ? "card_note_line_320x240" : "card_note_line_240x160");
+        scene_pop(); frame(0);
+        opt_set(OPT_NOTES, 1);                               /* first time only: no line on a later visit */
+        scene_push(&SCENE_BREACH, LV_ARG(LV_HB9, LVM_NORMAL));
+        idle_frames(40);
+        shot(res ? "card_no_note_320x240" : "card_no_note_240x160");
+        scene_pop(); frame(0);
+        opt_set(OPT_NOTES, 0);
+        lv_arc_set_act(LVA_NONE);
+        reset();
+        built_all(0);
+        built_all(1);
+        lv_set_rank(LV_VAPE_CELLAR, RANK_C);
+        lv_set_rank(LV_HB8, RANK_C);
+        lv_set_rank(LV_HB9, RANK_C);
+    }
+    nat_w = 240;
+    nat_h = 160;
+    scene_set(&SCENE_TITLE, 0);
+    built_all(0);
+    reset();
+}
+
+TEST(lv11_options_rows_show_where_they_belong)
+{
+    int i;
+    reset();
+    scene_set(&SCENE_OPTIONS, OPTPAGE_GAME);
+    idle_frames(4);
+    /* up from the end: Reset page, Mature, Show all tips again, Content notes (no memorial row before Notice 13 is open) */
+    for (i = 0; i < 4; i++) { frame(BTN_UP); frame(0); }
+    CHECK_EQ(opt_get(OPT_NOTES), 0);
+    frame(BTN_RIGHT); frame(0);
+    CHECK_EQ(opt_get(OPT_NOTES), 1);
+    CHECK_EQ(opt_get(OPT_MEMORIAL), 1);
+    frame(BTN_LEFT); frame(0);
+    CHECK_EQ(opt_get(OPT_NOTES), 0);
+    /* Notice 13 built and open: the memorial row appears between Show all tips again and Content notes */
+    built_all(1);
+    lv_set_rank(LV_N13, RANK_C);
+    scene_set(&SCENE_OPTIONS, OPTPAGE_GAME);
+    idle_frames(4);
+    for (i = 0; i < 4; i++) { frame(BTN_UP); frame(0); }
+    CHECK_EQ(opt_get(OPT_MEMORIAL), 1);
+    frame(BTN_LEFT); frame(0);
+    CHECK_EQ(opt_get(OPT_MEMORIAL), 0);
+    CHECK_EQ(opt_get(OPT_NOTES), 0);
+    built_all(0);
+    scene_set(&SCENE_TITLE, 0);
+    reset();
+    opt_defaults();
+}

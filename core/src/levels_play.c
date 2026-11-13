@@ -13,7 +13,13 @@
 #include "levels_int.h"
 #include "doomo/tips.h"
 
-enum { BR_INTRO, BR_PLAY, BR_PAUSE, BR_DONE, BR_DEAD };
+enum { BR_INTRO, BR_PLAY, BR_PAUSE, BR_DONE, BR_DEAD, BR_NOTE };   /* BR_NOTE: (LV11) the first visit's content note page, before BR_INTRO */
+/* the intro card and the note page both stand over the dimmed, held world */
+#if LV_HAS_NEW
+#define br_introish() (br.state == BR_INTRO || br.state == BR_NOTE)
+#else
+#define br_introish() (br.state == BR_INTRO)
+#endif
 enum { BP_RESUME, BP_MUSIC, BP_WEAPON, BP_CAMERA, BP_OPTIONS, BP_RESTART, BP_QUIT, BP_COUNT };
 
 static struct {
@@ -105,6 +111,9 @@ static void br_enter(int arg)
     br.mode = (uint8_t)(((arg >> 8) & 0xF) < LVM_COUNT ? (arg >> 8) & 0xF : LVM_NORMAL);
     br.demo = (uint8_t)((arg & LVF_DEMO) != 0);
     br_start();
+    /* LV11 (plan 6.3): a dark level's first visit opens on its content note and waits for A; B goes back. A demo
+     * and the autopilot skip it and leave the flag alone. */
+    if (lv_note(br.level) && !lv_note_seen(br.level) && !br.demo && !combat_autopilot_on()) br.state = BR_NOTE;
 }
 
 static void br_leave(void)
@@ -179,6 +188,19 @@ static void br_update(void)
 {
     br.t++;
     switch (br.state) {
+#if LV_HAS_NEW
+    case BR_NOTE:
+        if (br.t > 12 && btn_pressed(BTN_A | BTN_START)) {
+            lv_note_set_seen(br.level);
+            br.state = BR_INTRO;
+            br.t = 0;
+            audio_sfx(SFX_SELECT);
+        } else if (btn_pressed(BTN_B)) {
+            audio_sfx(SFX_CANCEL);
+            leave_scene();
+        }
+        break;
+#endif
     case BR_INTRO:
         if (!br.demo && br.t > 4) tip_once(TIP_SHOOTER);           /* CL4: the controls, once */
         if (tip_active()) { br.t = DOOMO_MIN(br.t, 40); break; }   /* the level waits for it */
@@ -263,6 +285,14 @@ static void intro_draw(int shaded)
     char buf[48], tb[12];
     if (!shaded) plat_shade_rect(0, 0, sw, sh, intro_shade());   /* (S2-2: else the held view came back dimmed) */
     lvd_banner(cy, L->tag, L->title, t, hell);
+#if LV_HAS_NEW
+    if (br.state == BR_NOTE) {       /* LV11: the first visit's content note, before the controls */
+        int w = big ? 300 : 230, top = cy + (big ? 30 : 24), h = ccard_note_page_h(w, lv_note(br.level));
+        ccard_note_page(sw / 2, top + (sh - 20 - top - h) / 2, w, hell ? WIN_HELL : WIN_CUTE, lv_note(br.level));
+        ui_hint(STR_ICON_A " Continue  " STR_ICON_B " Back", hell ? WIN_HELL : WIN_CUTE);
+        return;
+    }
+#endif
     if (t > 14) {
         int w = ui_text_width(L->flavor) + 16, x = sw / 2 - w / 2, y = cy + (big ? 26 : 20);
         ui_round_rect(x + 1, y + 2, w, 13, 6, PAL_BLACK);
@@ -282,7 +312,13 @@ static void intro_draw(int shaded)
         if (!br.demo && !combat_autopilot_on()) {
             /* C10: how to play, on every difficulty and in every mode (Brutal Only included) */
             int w = big ? 300 : 230;
+#if LV_HAS_NEW      /* LV11: a later visit to a dark level: its note as one line above the goal (Options: Every time) */
+            /* (a mode rule line takes the room the note's line needs at 240x160: the first visit's page has shown it) */
+            ccard_draw_above_note(sw / 2, sh - 17, w, hell ? WIN_HELL : WIN_CUTE,
+                                  opt_get(OPT_NOTES) || intro_rule() ? NULL : lv_note_short(br.level), intro_goal(), intro_rule());
+#else
             ccard_draw_above(sw / 2, sh - 17, w, hell ? WIN_HELL : WIN_CUTE, intro_goal(), intro_rule());
+#endif
         }
         if (lv_info[br.level].boss != LB_NONE && big && (br.demo || combat_autopilot_on())) {
             /* the mini-boss waiting at the end, in the corner */
@@ -471,9 +507,9 @@ static void br_draw(void)
     lv_runtime_view(&v);
     /* S2-2: the world stands still under the intro card, the pause menu, the results and the death screen */
     shaded = combat_view_draw(&v, br.state != BR_PLAY, combat_stats()->ticks,
-                              br.state == BR_INTRO ? intro_shade() : -1) == 2;
+                              br_introish() ? intro_shade() : -1) == 2;
     if (plat_draw_skipped()) return;
-    if (br.state == BR_INTRO) {
+    if (br_introish()) {
         intro_draw(shaded);
         intro_hold(1);
         return;

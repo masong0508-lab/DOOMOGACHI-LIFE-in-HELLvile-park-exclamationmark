@@ -153,9 +153,17 @@ enum {
     OPT_TIPS,                 /* (CL4) first-time tip cards (tips.h): 0 off, 1 on; machine-wide */
     OPT_STICK_MODE,           /* (STKOPT) Dreamcast one-stick: 0 Turn (stick X turns, triggers strafe), 1 Strafe (X strafes, triggers turn); saved with the world */
     OPT_SLIDER_RANGE,         /* (CR-SLIDERX) cheat "Slider range": 0 x1, 1 x2, 2 x3, 3 x4 (portrait.h look_slider_range); saved with the world, an old save reads x1 */
+#if !defined(DOOMO_PLATFORM_PS1)    /* the PS1 lists no dark level yet and has no resident byte to spare: it has neither id */
+    OPT_NOTES,                /* (LV11) content notes: 0 every time, 1 first time only; machine-wide */
+    OPT_MEMORIAL,             /* (LV11) show the town's dead by name on the Vault's memorial wall: 0 off, 1 on; machine-wide */
+#endif
     OPT2_END
 };
 enum { STICK_TURN = 0, STICK_STRAFE = 1 };
+#if defined(DOOMO_PLATFORM_PS1)     /* (LV11) code shared with the PS1 still names them: no such option there (opt_get answers 0) */
+#define OPT_NOTES    OPT2_END
+#define OPT_MEMORIAL OPT2_END
+#endif
 #define OPT2_COUNT (OPT2_END - OPT2_FIRST)
 /* Option pages (DoomoOptionInfo.page). */
 /* (U2) OPTPAGE_QUICK is the front page: callers that pass 0 land on it. */

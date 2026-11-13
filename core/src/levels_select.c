@@ -376,11 +376,25 @@ static void ls_draw(void)
         plat_shade_rect(px, py + ph - 14, pw, 14, 6);
         ui_text_center(sw / 2, py + ph - 11, "Clear it once to race the clock", PAL_WHITE);
     }
+#if LV_HAS_NEW
+    else if (lv_note(ls.sel)) {      /* LV11 (plan 6.3): the dark level's content note, as a strip on the preview */
+        plat_shade_rect(px, py + ph - 14, pw, 14, 6);
+        ui_text_center(sw / 2, py + ph - 11, lv_note_short(ls.sel), PAL_WHITE);
+    }
+#endif
     /* tag pill + rank stamp on the preview */
     {
         int tw = ui_text_width(L->tag) + 10;
         ui_round_rect(px + 4, py + 4, tw, 11, 5, L->accent);
         ui_text(px + 9, py + 6, L->tag, PAL_WHITE);
+#if LV_HAS_NEW
+        if (lv_note(ls.sel)) {       /* LV11: the moon badge of a dark level */
+            int mx = px + 4 + tw + 10, my = py + 9;
+            ui_round_rect(mx - 8, py + 4, 16, 11, 5, PAL_BLACK);
+            ui_fill_circle(mx, my, 4, PAL_UI_GOLD);
+            ui_fill_circle(mx + 2, my - 1, 3, PAL_BLACK);
+        }
+#endif
         if (unl && lv_rank(ls.sel) != RANK_NONE)
             lvd_rank_stamp(px + pw - (big ? 18 : 14), py + (big ? 18 : 14), lv_rank(ls.sel), 40 + ls.t, 0);
         else if (unl) {

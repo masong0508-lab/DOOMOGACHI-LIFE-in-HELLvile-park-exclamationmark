@@ -881,3 +881,75 @@ TEST(refresh_a_change_outside_the_options_is_written_when_its_scene_is_left)
     CHECK_EQ(g_cfg_writes, 2);
     CHECK_EQ(g_cfg[6], 2);
 }
+
+/* LV11: Content notes (every time / first time only) and Show memorial names (On / Off): bits, not bytes */
+TEST(lv11_notes_and_memorial_round_trip)
+{
+    const DoomoSaveExt *e = doomo_save_ext_opt2;
+    uint8_t buf[SAVE_EXT_MAX_OPT2];
+    fresh(0);
+    CHECK_EQ(opt_get(OPT_NOTES), 0);                           /* every time */
+    CHECK_EQ(opt_get(OPT_MEMORIAL), 1);                        /* On */
+    CHECK_EQ(doomo_option2_info[OPT_NOTES - OPT2_FIRST].page, OPTPAGE_GAME);
+    CHECK_EQ(doomo_option2_info[OPT_MEMORIAL - OPT2_FIRST].page, OPTPAGE_GAME);
+    opt_set(OPT_NOTES, 1);
+    opt_set(OPT_MEMORIAL, 0);
+    opt_set(OPT_NOTES, 7);                                     /* clamped to the last value */
+    CHECK_EQ(opt_get(OPT_NOTES), 1);
+    /* no machine record: the chunk carries both */
+    CHECK_EQ(e->write(buf, sizeof(buf)), e->size());
+    CHECK(e->size() <= e->max_size);
+    opt_defaults();
+    CHECK_EQ(opt_get(OPT_NOTES), 0);
+    CHECK_EQ(opt_get(OPT_MEMORIAL), 1);
+    CHECK(e->read(buf, e->size(), e->version));
+    CHECK_EQ(opt_get(OPT_NOTES), 1);
+    CHECK_EQ(opt_get(OPT_MEMORIAL), 0);
+    /* an older chunk (before LV11: 5 value bytes) leaves them alone... */
+    {
+        uint8_t old[4 + 5] = { 0, 0, 0, 0, MATURE_OFF, 1, 1, 1, STICK_TURN };
+        CHECK(e->read(old, sizeof old, 2));
+        CHECK_EQ(opt_get(OPT_NOTES), 1);
+    }
+    /* ... and a save with no chunk at all, on a machine with no record, goes back to the defaults */
+    e->reset();
+    CHECK_EQ(opt_get(OPT_NOTES), 0);
+    CHECK_EQ(opt_get(OPT_MEMORIAL), 1);
+}
+
+TEST(lv11_notes_and_memorial_in_the_machine_record)
+{
+    fresh(1);
+    CHECK(!opt_config_flush());                                /* defaults: nothing changed */
+    opt_set(OPT_MEMORIAL, 0);
+    CHECK(opt_config_flush());                                 /* machine-wide: the record follows */
+    CHECK_EQ(g_cfg[16], 2);                                    /* bit 1: memorial Off */
+    opt_set(OPT_NOTES, 1);
+    CHECK(opt_config_flush());
+    CHECK_EQ(g_cfg[16], 3);
+    CHECK_EQ(g_cfg[17] | g_cfg[29], 0);
+    opt_defaults();
+    CHECK(opt_config_load());                                  /* a new boot */
+    CHECK_EQ(opt_get(OPT_NOTES), 1);
+    CHECK_EQ(opt_get(OPT_MEMORIAL), 0);
+    /* a save does not bring its own values over the machine's (the chunk is skipped for machine options) */
+    {
+        const DoomoSaveExt *e = doomo_save_ext_opt2;
+        uint8_t buf[SAVE_EXT_MAX_OPT2];
+        opt_defaults();
+        CHECK_EQ(e->write(buf, sizeof(buf)), e->size());
+        opt_set(OPT_NOTES, 1);
+        CHECK(e->read(buf, e->size(), e->version));
+        CHECK_EQ(opt_get(OPT_NOTES), 1);
+    }
+    /* a record from before LV11 (byte 16 = 0) is both defaults */
+    opt_set(OPT_NOTES, 0);
+    opt_set(OPT_MEMORIAL, 1);
+    CHECK(opt_config_save());
+    CHECK_EQ(g_cfg[16], 0);
+    opt_set(OPT_NOTES, 1);
+    opt_set(OPT_MEMORIAL, 0);
+    CHECK(opt_config_load());
+    CHECK_EQ(opt_get(OPT_NOTES), 0);
+    CHECK_EQ(opt_get(OPT_MEMORIAL), 1);
+}

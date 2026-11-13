@@ -14,7 +14,7 @@ void opt2_set(int opt, int value);       /* clamps; runs the option's side effec
 void opt2_defaults(void);                /* all ids >= OPT2_FIRST to their defaults (side effects too) */
 
 /* opt_set calls this after any option changes: a machine-wide one (language, the three volumes,
- * OPT_3D_FAST, OPT_MATURE, OPT_RUMBLE, OPT_TIPS) marks the machine config record changed (it is
+ * OPT_3D_FAST, OPT_MATURE, OPT_RUMBLE, OPT_TIPS, OPT_NOTES, OPT_MEMORIAL) marks the machine config record changed (it is
  * written later, once: opt_config_flush), and the platform is told about the ones it applies itself
  * (plat_option_changed). */
 void opt_machine_changed(int opt, int value);
@@ -23,7 +23,8 @@ void opt_machine_changed(int opt, int value);
  * to the adults' security code (U5 / E11) and are kept as they are when we write.
  *   0 'D' 1 'O' 2 version (1) 3 0 | 4 language 5 music 6 sfx 7 voice 8 3D 9 mature 10 rumble |
  *   11 tips + 1 (CL4; 0 = never written: the default) | 12..15 the tips' seen flags (tips.h, u32 LE) |
- *   16..29 0 | 30..31 CRC-16/CCITT of bytes 0..29, little endian */
+ *   16 (LV11) bit 0 content notes "first time only", bit 1 memorial names Off (0 = both defaults) |
+ *   17..29 0 | 30..31 CRC-16/CCITT of bytes 0..29, little endian */
 #define OPT_CONFIG_VERSION 1
 #define OPT_CONFIG_SETTINGS_SZ 32u
 /* Boot: apply the record if there is a valid one (doomo_init calls it after opt_defaults). 1 = applied. */

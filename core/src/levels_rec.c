@@ -19,7 +19,8 @@
  *            8      the fourth player line
  *            9      held residents, 0..16
  *            10..41 their ids, 16 x u16
- *            42..47 spare, 0
+ *            42..43 the content notes seen (LV11), one bit per dark level, 9 used
+ *            44..47 spare, 0
  *   52..   4 B per record, in level order: rank 3 bits | gold 1 | feats 3 |
  *          cleared 1; secrets found (best); 16 collectible bits
  * All little endian. A fresh island is all zero and writes an empty chunk
@@ -44,7 +45,9 @@
 #define ARC_LINE4   8
 #define ARC_HELD_N  9
 #define ARC_HELD    10
-DOOMO_STATIC_ASSERT(ARC_HELD + 2 * LV_ARC_HELD <= LV_BRCH_ARC, arc_fits_its_bytes);
+#define ARC_NOTES   42       /* LV11: 16 bits, bit = a dark level's content note was shown (lv_note_idx) */
+DOOMO_STATIC_ASSERT(ARC_HELD + 2 * LV_ARC_HELD <= ARC_NOTES && ARC_NOTES + 2 <= LV_BRCH_ARC && LV_NOTE_N <= 16,
+                    arc_fits_its_bytes);
 DOOMO_STATIC_ASSERT(LV2_COUNT == 24, the_mask_is_24_bits);
 
 static struct {
@@ -198,6 +201,19 @@ void lv_arc_set_last_ending(int ending) { R.arc[ARC_ENDING] = (uint8_t)(ending >
 
 int  lv_arc_line4(void) { return R.arc[ARC_LINE4]; }
 void lv_arc_set_line4(int v) { R.arc[ARC_LINE4] = (uint8_t)v; }
+
+/* LV11: the first-visit flag of a dark level's content note (a level with no note reads "seen") */
+int lv_note_seen(int level)
+{
+    int i = lv_note_idx(level);
+    return i < 0 || ((R.arc[ARC_NOTES] | R.arc[ARC_NOTES + 1] << 8) >> i & 1);
+}
+
+void lv_note_set_seen(int level)
+{
+    int i = lv_note_idx(level);
+    if (i >= 0) R.arc[ARC_NOTES + (i >> 3)] |= (uint8_t)(1 << (i & 7));
+}
 
 /* ---- the chunk -------------------------------------------------------------------- */
 static void brch_reset(void) { memset(&R, 0, sizeof(R)); }

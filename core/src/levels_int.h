@@ -116,6 +116,31 @@ extern const LevelReg lv_reg[LV_TABLE_N];
 extern const char *const lv_reason_text[];
 extern const char *const lv_page_names[LVP_COUNT];
 #endif
+/* ---- content notes (LV11; plan 6.3): levels2.c, levels_rec.c --------------------
+ * The dark levels (LVG_DARK) each have a content note. lv_note() is the full text of
+ * the card's note page, lv_note_short() the one line of the later visits and of the
+ * select's strip; NULL for a level with none. lv_note_seen() is the first-visit flag
+ * (the 'BRCH' arc's spare bytes 42..43, one bit per dark level; a level that is not
+ * on this platform keeps its bit untouched). lv_memorial_label() is what the Vault's
+ * memorial wall prints for one name: the name, or "Someone we lost." when Options >
+ * Show memorial names is Off (plan 6.4, owner question 3).
+ * Not on the PS1 for now (LV_TABLE_N): no dark level is listed there. */
+#define LV_NOTE_N 9
+#if LV_HAS_NEW
+const char *lv_note(int level);
+const char *lv_note_short(int level);
+int  lv_note_idx(int level);                  /* 0..LV_NOTE_N-1 in level order, -1 = no note */
+int  lv_note_seen(int level);
+void lv_note_set_seen(int level);
+const char *lv_memorial_label(const char *name);
+#else
+#define lv_note(l)       ((const char *)0)
+#define lv_note_short(l) ((const char *)0)
+#define lv_note_idx(l)   (-1)
+#define lv_note_seen(l)  1
+#define lv_note_set_seen(l) ((void)0)
+#endif
+
 /* The platform manifest: the GBA lists the 7 old levels and its seven of
  * the new ones (LVG_GBA), every other platform all 31 (the PS1: see
  * LV_TABLE_N). The host build can pretend to be the GBA for the tests:

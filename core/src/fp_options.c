@@ -19,6 +19,7 @@
 #include "doomo/ending.h"
 #include "doomo/plat_ext.h"
 #include "doomo/tips.h"
+#include "levels_int.h"      /* LV11: LV_HAS_NEW, lv_unlocked (the notes rows) */
 
 #define ROWS_MAX 24
 #define ROW_PRESET 100          /* U2: the Quick page's preset row (not an option id) */
@@ -188,6 +189,10 @@ static const char *help_of(int opt)
     if (opt == OPT_STICK_MODE) return "Controls: Auto only. Turn: stick X turns, L / R strafe. Strafe: stick X strafes, L / R turn.";
 #endif
     if (opt == OPT_SLIDER_RANGE) return "Cheat: grown-ups' build sliders go x2, x3 or x4 as far. Saved looks never change; x1 is normal.";
+#if LV_HAS_NEW                           /* (the PS1 has no dark level and no row) */
+    if (opt == OPT_NOTES) return "Dark levels open on a content note. Every time: a line stays on the card. First time only: just once.";
+    if (opt == OPT_MEMORIAL) return "The Vault's memorial wall names the residents you lost. Off: it says \"Someone we lost.\"";
+#endif
     if (opt == OPT_TIPS) return "A short card the first time you reach a new place: what it is and which buttons do what.";
     if (opt == OPT_MATURE)
         /* (CL5 land) three lines at 240x160 (it took five, and the help pill shows three) */
@@ -208,6 +213,13 @@ static int value_ok(int opt, int v)
 static const uint8_t quick_rows[] = { OPT_LANGUAGE, OPT_MUSIC_VOL, OPT_SFX_VOL, OPT_TEXT_SPEED,
                                       OPT_DIFFICULTY, OPT_GORE };
 
+/* LV11: Content notes shows wherever the options exist (not on the PS1: no such id there); Memorial names once Notice 13 is open */
+#if LV_HAS_NEW
+#define ROW_LV11(i) ((i) != OPT_MEMORIAL || lv_unlocked(LV_N13))
+#else
+#define ROW_LV11(i) 1
+#endif
+
 static void build_rows(void)
 {
     int i;
@@ -227,7 +239,8 @@ static void build_rows(void)
     for (i = OPT_LOSS; i < OPT2_END && O.nrows < ROWS_MAX; i++)          /* U2: Loss (Life Sim), Rumble */
         if (doomo_option2_info[i - OPT2_FIRST].page == O.page &&
             (i != OPT_RUMBLE || (plat_features() & PLATF_RUMBLE)) &&
-            (i != OPT_STICK_MODE || (input_pad() == PAD_DC && !(input_caps() & INPUT_CAP_RSTICK))))
+            (i != OPT_STICK_MODE || (input_pad() == PAD_DC && !(input_caps() & INPUT_CAP_RSTICK))) &&
+            ROW_LV11(i))
             O.rows[O.nrows++] = i;
     if (O.page == OPTPAGE_GAME && O.nrows < ROWS_MAX) O.rows[O.nrows++] = ROW_TIPS_RESET;  /* CL4 */
     if (O.page == OPTPAGE_GAME && O.nrows < ROWS_MAX) O.rows[O.nrows++] = OPT_MATURE;   /* E11: last row */
@@ -354,6 +367,9 @@ static int preset_may(int opt)
     switch (opt) {
     case OPT_MONSTER_MODE: case OPT_LANGUAGE: case OPT_MUSIC_VOL: case OPT_SFX_VOL: case OPT_VOICE_VOL:
     case OPT_MATURE: case OPT_WINDOW_SKIN: case OPT_TITLE_THEME: case OPT_CURSOR: case OPT_CAMERA_FILTER:
+#if LV_HAS_NEW
+    case OPT_NOTES: case OPT_MEMORIAL:
+#endif
     case OPT_TIPS: case OPT_STICK_MODE:      /* (STKOPT) a pad preference, not a game setting */
         return 0;
     }

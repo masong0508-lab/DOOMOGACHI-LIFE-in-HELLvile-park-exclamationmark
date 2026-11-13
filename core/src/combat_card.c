@@ -119,6 +119,13 @@ const char *ccard_goal(int cgoal)
            cgoal == CGOAL_EXIT ? STR_ICON_STAR " Goal: find the exit" : STR_ICON_STAR " Goal: survive";
 }
 
+/* (LV11) a dark level's one-line content note above the goal: not on the PS1 (no dark level is listed there) */
+#if defined(DOOMO_PLATFORM_PS1)
+#define NOTE_ON(n) 0
+#else
+#define NOTE_ON(n) ((n) && (n)[0])
+#endif
+
 int ccard_height(int w, const char *goal, const char *rule)
 {
     char l[CCARD_MAX_LINES][CCARD_LINE_CAP];
@@ -126,13 +133,14 @@ int ccard_height(int w, const char *goal, const char *rule)
     return 6 + (n + 1 + (goal && goal[0]) + (rule && rule[0])) * FONT_LINE + 2;
 }
 
-static void ccard_draw_lines(int x, int y, int w, int h, int style, const char *goal, const char *rule,
+static void ccard_draw_lines(int x, int y, int w, int h, int style, const char *note, const char *goal, const char *rule,
                              char l[][CCARD_LINE_CAP], int n)
 {
     const UiStyle *st = ui_style(style);
     int i, ty;
     ui_window(x, y, w, h, style);
     ty = y + 4;
+    if (NOTE_ON(note)) { ui_text(x + 6, ty, note, st->text_dim); ty += FONT_LINE; }
     if (goal && goal[0]) { ui_text(x + 6, ty, goal, st->text); ty += FONT_LINE; }
     if (rule && rule[0]) { ui_text(x + 6, ty, rule, style == WIN_HELL ? PAL_UI_GOLD : PAL_UI_PINK_D); ty += FONT_LINE; }
     for (i = 0; i < n; i++, ty += FONT_LINE) ui_text(x + 6, ty, l[i], st->text);
@@ -145,7 +153,7 @@ void ccard_draw(int x, int y, int w, int style, const char *goal, const char *ru
     int n;
     if (plat_draw_skipped()) return;
     n = ccard_lines(l, CCARD_MAX_LINES, w - 12);
-    ccard_draw_lines(x, y, w, 6 + (n + 1 + (goal && goal[0]) + (rule && rule[0])) * FONT_LINE + 2, style, goal, rule,
+    ccard_draw_lines(x, y, w, 6 + (n + 1 + (goal && goal[0]) + (rule && rule[0])) * FONT_LINE + 2, style, NULL, goal, rule,
                      l, n);
 }
 
@@ -158,5 +166,37 @@ void ccard_draw_above(int cx, int bottom, int w, int style, const char *goal, co
     if (plat_draw_skipped()) return;
     n = ccard_lines(l, CCARD_MAX_LINES, w - 12);
     h = 6 + (n + 1 + (goal && goal[0]) + (rule && rule[0])) * FONT_LINE + 2;
-    ccard_draw_lines(cx - w / 2, bottom - h, w, h, style, goal, rule, l, n);
+    ccard_draw_lines(cx - w / 2, bottom - h, w, h, style, NULL, goal, rule, l, n);
 }
+
+#if !defined(DOOMO_PLATFORM_PS1)
+/* (LV11) the card of a dark level on a later visit: the same card with the content note's one line above the goal */
+int ccard_height_note(int w, const char *note, const char *goal, const char *rule)
+{
+    return ccard_height(w, goal, rule) + (NOTE_ON(note) ? FONT_LINE : 0);
+}
+
+void ccard_draw_above_note(int cx, int bottom, int w, int style, const char *note, const char *goal, const char *rule)
+{
+    char l[CCARD_MAX_LINES][CCARD_LINE_CAP];
+    int n, h;
+    if (plat_draw_skipped()) return;
+    n = ccard_lines(l, CCARD_MAX_LINES, w - 12);
+    h = 6 + (n + 1 + (goal && goal[0]) + (rule && rule[0]) + (NOTE_ON(note) ? 1 : 0)) * FONT_LINE + 2;
+    ccard_draw_lines(cx - w / 2, bottom - h, w, h, style, note, goal, rule, l, n);
+}
+
+/* (LV11) the note page of a dark level's first visit: the full text in a window, 6 px margins, centred on
+ * (cx, y + h / 2); the scene adds its own hint. ccard_note_page_h() is its height for the same text. */
+int ccard_note_page_h(int w, const char *note)
+{
+    return 6 + ui_text_wrap(0, 0, w - 12, note, 0, 0) * FONT_LINE + 2;
+}
+
+void ccard_note_page(int cx, int y, int w, int style, const char *note)
+{
+    if (plat_draw_skipped()) return;
+    ui_window(cx - w / 2, y, w, ccard_note_page_h(w, note), style);
+    ui_text_wrap(cx - w / 2 + 6, y + 4, w - 12, note, ui_style(style)->text, 1);
+}
+#endif

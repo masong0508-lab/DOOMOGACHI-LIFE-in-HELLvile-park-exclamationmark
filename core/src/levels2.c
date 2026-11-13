@@ -229,4 +229,46 @@ int lv_rec_slot(int level)
 int lv_built(int level) { return lv_listed(level) && lv_info[level].map != LV_NO_MAP; }
 
 int lv_page_of(int level) { return level >= 0 && level < LV_TABLE_N ? lv_reg[level].page : LVP_BREACH; }
+
+/* ---- content notes (LV11; plan 6.3) ---------------------------------------------
+ * One row per dark level, in level order (the order is the bit of the first-visit
+ * flag in 'BRCH': never reorder, only append). The text is the plan's, at most three
+ * lines on the 240 px card; the short line fits the select's strip. A test keeps this
+ * table and the LVG_DARK flags of the registry the same set. */
+static const struct { uint8_t level; const char *note, *brief; } lv_notes[LV_NOTE_N] = {
+    { LV_HB9, "Content note: this level is darker than most of the game. It deals with guilt, failure and souls that could not be saved.",
+      "Note: guilt, failure, lost souls" },
+    { LV_HB11, "Content note: a quieter, sadder level about grief and the things people never said.",
+      "Note: grief and things unsaid" },
+    { LV_HB12, "Content note: this level is about people trapped by a contract and left behind by the town they worked for.",
+      "Note: people trapped by a contract" },
+    { LV_N1, "Content note: New Game+ starts darker. This level is about workers trapped by a contract and left behind.",
+      "Note: workers trapped, left behind" },
+    { LV_N8, "Content note: imprisonment, guilt, and a hard choice that costs someone.",
+      "Note: guilt and a hard choice" },
+    { LV_N9, "Content note: death, a failed exorcism and grief, with disturbing images of demons and broken machines.",
+      "Note: death, grief, dark images" },
+    { LV_N10, "Content note: forgetting, losing who you are, and being alone.",
+      "Note: forgetting, being alone" },
+    { LV_N11, "Content note: abandonment and regret, and a choice that costs someone in your town.",
+      "Note: abandonment and regret" },
+    { LV_N13, "Content note: the darkest level in the game. Grief and loss; it shows the names of residents who have died in your town (Options can hide them).",
+      "Note: grief, loss, the town's dead" },
+};
+
+int lv_note_idx(int level)
+{
+    int i;
+    for (i = 0; i < LV_NOTE_N; i++) if (lv_notes[i].level == level) return i;
+    return -1;
+}
+
+const char *lv_note(int level) { int i = lv_note_idx(level); return i < 0 ? NULL : lv_notes[i].note; }
+const char *lv_note_short(int level) { int i = lv_note_idx(level); return i < 0 ? NULL : lv_notes[i].brief; }
+
+/* the memorial wall (LV41, Notice 13) prints every name through this */
+const char *lv_memorial_label(const char *name)
+{
+    return opt_get(OPT_MEMORIAL) ? name : "Someone we lost.";
+}
 #endif /* LV_HAS_NEW */

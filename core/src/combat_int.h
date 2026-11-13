@@ -235,6 +235,14 @@ const char *ccard_goal(int cgoal);                /* the card's goal line for a 
 int  ccard_height(int w, const char *goal, const char *rule);
 void ccard_draw(int x, int y, int w, int style, const char *goal, const char *rule);
 void ccard_draw_above(int cx, int bottom, int w, int style, const char *goal, const char *rule);   /* (S2-2) */
+/* (LV11) a dark level's content note: the later visits' one line above the goal, and the first visit's page.
+ * Not built for the PS1 (no dark level there yet): the callers are inside LV_HAS_NEW. */
+#if !defined(DOOMO_PLATFORM_PS1)
+int  ccard_height_note(int w, const char *note, const char *goal, const char *rule);
+void ccard_draw_above_note(int cx, int bottom, int w, int style, const char *note, const char *goal, const char *rule);
+int  ccard_note_page_h(int w, const char *note);
+void ccard_note_page(int cx, int y, int w, int style, const char *note);
+#endif
 
 /* (S2-2) a menu window (x, y, w, h) held over the still combat view with S2-1's modal hold (ui.h ui_modal_hold):
  * mode 0 asks at the top of the draw (1: draw only the window, then ui_modal_hold_end(), and return), mode 1 marks

@@ -155,10 +155,11 @@ TEST(cl4_options_game_page_has_tips_and_show_again)
     test_reset();
     scene_set(&SCENE_OPTIONS, OPTPAGE_GAME);
     idle(4);
-    /* the page ends ... Tips, Show all tips again, Mature, then "Reset page" */
+    /* the page ends ... Tips, Content notes (LV11), Show all tips again, Mature, then "Reset page" */
     press(BTN_UP);                                          /* wraps to "Reset page" */
     press(BTN_UP);                                          /* Mature */
     press(BTN_UP);                                          /* Show all tips again */
+    press(BTN_UP);                                          /* Content notes */
     press(BTN_UP);                                          /* Tips */
     CHECK_EQ(opt_get(OPT_TIPS), 1);
     press(BTN_LEFT);
@@ -166,6 +167,7 @@ TEST(cl4_options_game_page_has_tips_and_show_again)
     press(BTN_RIGHT);
     CHECK_EQ(opt_get(OPT_TIPS), 1);
     tip_seen_merge(1u << TIP_SHOOTER);
+    press(BTN_DOWN);                                        /* Content notes */
     press(BTN_DOWN);                                        /* "Show all tips again" */
     press(BTN_LEFT);                                        /* not a value row: nothing changes */
     CHECK(tip_seen(TIP_SHOOTER));

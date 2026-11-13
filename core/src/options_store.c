@@ -8,6 +8,9 @@
  *   - OPT_RUMBLE  controller rumble on / off, apart from Screen shake. Machine-wide.
  *   - OPT_STICK_MODE (STKOPT) Dreamcast one stick: X turns (default) or X strafes. A property of the
  *                 pad's owner but saved with the world (the chunk); an old chunk without it reads Turn.
+ *   - OPT_NOTES, OPT_MEMORIAL (LV11) the dark levels' content notes (every time / first time only) and
+ *                 the names on the Vault's memorial wall (On / Off). Machine-wide; one bit each (like the
+ *                 stick), so no EWRAM: the record's byte 16 carries both, 0 = both defaults.
  *   - OPT_TIPS    (CL4) first-time tip cards on / off (tips.h). Machine-wide; the record (or, without
  *                 one, the chunk) also carries the tips' seen flags, so they survive New Game.
  * Machine-wide options (these two plus language, the volumes and OPT_3D_FAST) go to the config
@@ -28,6 +31,12 @@
 
 static const char *const v_off_on_[] = { "Off", "On" };
 static const char *const v_stick_[] = { "Turn", "Strafe" };
+#if !defined(DOOMO_PLATFORM_PS1)    /* no dark level is listed on the PS1 yet (levels_int.h LV_TABLE_N, no resident byte before PS1-RAM): town.h has no OPT_NOTES / OPT_MEMORIAL there */
+#define OPT_LV11 1
+static const char *const v_notes_[] = { "Every time", "First time only" };
+#else
+#define OPT_LV11 0
+#endif
 static const char *const v_mature_[] = { "Off", "Censored", "On", "On + pack" };
 static const char *const v_srange_[] = { "x1", "x2", "x3", "x4" };
 
@@ -37,7 +46,11 @@ const DoomoOptionInfo doomo_option2_info[OPT2_COUNT] = {
     /* OPT_RUMBLE */ { "Rumble",  2, 1, v_off_on_, OPTPAGE_CONTROLS },
     /* OPT_TIPS   */ { "Tips",    2, 1, v_off_on_, OPTPAGE_GAME },
     /* OPT_STICK_MODE */ { "Stick", 2, STICK_TURN, v_stick_, OPTPAGE_CONTROLS },
-    /* OPT_SLIDER_RANGE */ { "Slider range", 4, 0, v_srange_, OPTPAGE_CHEATS }     /* (CR-SLIDERX) a cheat */
+    /* OPT_SLIDER_RANGE */ { "Slider range", 4, 0, v_srange_, OPTPAGE_CHEATS }     /* (CR-SLIDERX) a cheat */,
+#if OPT_LV11
+    /* OPT_NOTES  */ { "Content notes", 2, 0, v_notes_, OPTPAGE_GAME },
+    /* OPT_MEMORIAL */ { "Memorial names", 2, 1, v_off_on_, OPTPAGE_GAME }
+#endif
 };
 
 #define STICK_IDX (OPT_STICK_MODE - OPT2_FIRST)
@@ -46,15 +59,40 @@ const DoomoOptionInfo doomo_option2_info[OPT2_COUNT] = {
 static uint8_t s_opt2[SRANGE_IDX + 1] = { MATURE_OFF, 1, 1, 1 };
 /* quiet: applying a record, no writes back, no platform calls; cfg_dirty: a machine-wide option changed
  * since the record was last written. One byte for both (GBA EWRAM: STKOPT paid for its new option with these bits). */
+#if OPT_LV11
+/* the bit options (OPT_SLIDER_RANGE is the byte after the stick hole): OPT_STICK_MODE, OPT_NOTES, OPT_MEMORIAL (stored inverted: zero is On) */
+static struct { uint8_t quiet : 1, cfg_dirty : 1, stick : 1, notes : 1, memo_off : 1; } s_fl;
+typedef char opt2_bits_are_the_last_ids[OPT2_END == OPT_MEMORIAL + 1 && OPT_NOTES == OPT_SLIDER_RANGE + 1 && SRANGE_IDX == STICK_IDX + 1 ? 1 : -1];   /* a later id grows s_opt2 */
+#define NOTES_IDX (OPT_NOTES - OPT2_FIRST)
+#define MEMO_IDX  (OPT_MEMORIAL - OPT2_FIRST)
+static int o2_load(int i)
+{
+    return i == STICK_IDX ? s_fl.stick : i == NOTES_IDX ? s_fl.notes : i == MEMO_IDX ? !s_fl.memo_off : s_opt2[i];
+}
+static void o2_store(int i, int v)     /* anything else reads the first value (Turn, Every time) / On */
+{
+    if (i == STICK_IDX) s_fl.stick = v == STICK_STRAFE;
+    else if (i == NOTES_IDX) s_fl.notes = v == 1;
+    else if (i == MEMO_IDX) s_fl.memo_off = v == 0;
+    else s_opt2[i] = (uint8_t)v;
+}
+#else
 static struct { uint8_t quiet : 1, cfg_dirty : 1, stick : 1; } s_fl;   /* stick = OPT_STICK_MODE's value */
 typedef char opt2_srange_is_the_last_id[OPT2_END == SRANGE_IDX + OPT2_FIRST + 1 && SRANGE_IDX == STICK_IDX + 1 ? 1 : -1];   /* a later id grows s_opt2 */
 static int o2_load(int i) { return i == STICK_IDX ? s_fl.stick : s_opt2[i]; }
 static void o2_store(int i, int v) { if (i == STICK_IDX) s_fl.stick = v == STICK_STRAFE;   /* anything else reads Turn */ else s_opt2[i] = (uint8_t)v; }
+#endif
 
+#if OPT_LV11
+#define LV11_MACHINE(opt) ((opt) == OPT_NOTES || (opt) == OPT_MEMORIAL)
+#else
+#define LV11_MACHINE(opt) 0
+#endif
 static int is_machine(int opt)
 {
     return opt == OPT_LANGUAGE || opt == OPT_MUSIC_VOL || opt == OPT_SFX_VOL || opt == OPT_VOICE_VOL ||
-           opt == OPT_3D_FAST || opt == OPT_MATURE || opt == OPT_RUMBLE || opt == OPT_TIPS;
+           opt == OPT_3D_FAST || opt == OPT_MATURE || opt == OPT_RUMBLE || opt == OPT_TIPS ||
+           LV11_MACHINE(opt);
 }
 
 static void apply2(int opt)
@@ -255,6 +293,10 @@ int opt_config_load(void)
     s_fl.quiet = 1;
     for (k = 0; k < 7; k++) put_machine(k_rec[k], rec[4 + k]);
     if (rec[11]) put_machine(OPT_TIPS, rec[11] - 1);          /* CL4: 0 = never written (default On) */
+#if OPT_LV11
+    put_machine(OPT_NOTES, rec[16] & 1);                       /* LV11: bit 0 first time only, bit 1 memorial Off; 0 = defaults */
+    put_machine(OPT_MEMORIAL, !(rec[16] & 2));
+#endif
     tip_seen_merge((uint32_t)rec[12] | (uint32_t)rec[13] << 8 | (uint32_t)rec[14] << 16 | (uint32_t)rec[15] << 24);
     tips_clean();
     s_fl.quiet = 0;
@@ -271,7 +313,10 @@ int opt_config_save(void)
     if (!have_config()) return 0;
     memset(rec, 0, sizeof(rec));
     rec[0] = 'D'; rec[1] = 'O'; rec[2] = OPT_CONFIG_VERSION; rec[3] = 0;
-    for (k = 0; k < 7; k++) rec[4 + k] = (uint8_t)opt_get(k_rec[k]);   /* 16..29 stay 0 */
+    for (k = 0; k < 7; k++) rec[4 + k] = (uint8_t)opt_get(k_rec[k]);   /* 17..29 stay 0 */
+#if OPT_LV11
+    rec[16] = (uint8_t)(opt_get(OPT_NOTES) | (!opt_get(OPT_MEMORIAL) << 1));
+#endif
     {
         uint32_t seen = tip_seen_bits();                       /* CL4: Tips + the tips' seen flags */
         rec[11] = (uint8_t)(opt_get(OPT_TIPS) + 1);
@@ -348,6 +393,10 @@ static void opt2_reset(void)
     if (!have_config()) {
         o2_store(OPT_MATURE - OPT2_FIRST, MATURE_OFF);
         o2_store(OPT_RUMBLE - OPT2_FIRST, 1);
+#if OPT_LV11
+        o2_store(NOTES_IDX, 0);
+        o2_store(MEMO_IDX, 1);
+#endif
     }
 }
 
