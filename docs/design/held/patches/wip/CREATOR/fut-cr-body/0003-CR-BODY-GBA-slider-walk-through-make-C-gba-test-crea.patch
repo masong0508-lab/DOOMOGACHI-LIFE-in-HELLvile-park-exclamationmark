@@ -1,0 +1,339 @@
+From ca3abb83ca674174801a2d3232e0c9a14e99d7b3 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 17:05:40 +0000
+Subject: [PATCH 3/4] CR-BODY: GBA slider walk-through (make -C gba
+ test-creator-sliders), creator_grid.txt skips the hidden Horn size row
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvvRYHgPW3b8GJby1n
+---
+ core/tests/scripts/creator_grid.txt     |   2 +-
+ gba/Makefile                            |  17 +-
+ gba/harness/scripts/creator_sliders.txt | 267 ++++++++++++++++++++++++
+ 3 files changed, 284 insertions(+), 2 deletions(-)
+ create mode 100644 gba/harness/scripts/creator_sliders.txt
+
+diff --git a/core/tests/scripts/creator_grid.txt b/core/tests/scripts/creator_grid.txt
+index 20ab1f10..754dcf52 100644
+--- a/core/tests/scripts/creator_grid.txt
++++ b/core/tests/scripts/creator_grid.txt
+@@ -89,7 +89,7 @@ wait 6
+ # ---- Supernatural: a tail turns the citizen round ----------------------------
+ press L
+ wait 10
+-press DOWN
++# Horns, Horn colour, Tail (the Horn size row shows only while horns are worn: CR-BODY)
+ press DOWN
+ press DOWN
+ wait 6
+diff --git a/gba/Makefile b/gba/Makefile
+index 1e4c8304..de9cd994 100644
+--- a/gba/Makefile
++++ b/gba/Makefile
+@@ -141,7 +141,7 @@ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
+ # over the core's weak stubs, and the core's strong definitions win over both.
+ ALL_OBJS  := $(GBA_OBJS) $(CORE_OBJS)
+ 
+-.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-optvol test-speed test-life profile-title profile-pause profile-invaded profile-all profile-sung profile-creator test-creator test-speed2 test-breach2 profile-speed2 profile-concert profile-exorcism clean sizes
++.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-optvol test-speed test-life profile-title profile-pause profile-invaded profile-all profile-sung profile-creator test-creator test-creator-sliders test-speed2 test-breach2 profile-speed2 profile-concert profile-exorcism clean sizes
+ .DEFAULT_GOAL := all
+ 
+ # Cartridge size (user decision 2026-11-01): the game ROM is a full 256 Mbit
+@@ -421,6 +421,21 @@ test-creator: harness
+ 	echo "test-creator: log $(CREATOR_SCROLL_LOG)"; \
+ 	exit $$rc
+ # --- end CR9 ---
++# --- CR-BODY: every build slider moved across its whole range in the ROM (harness/scripts/creator_sliders.txt),
++# then tools/slider_shots_check.py compares the preview of the lowest and the highest step of each slider.
++# Output: build/creator_sliders.log, the shots in build/shots/creator_sliders ---
++CREATOR_SLIDERS_LOG ?= $(BUILD)/creator_sliders.log
++test-creator-sliders: harness
++	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
++	@rm -rf $(SHOTS)/creator_sliders; mkdir -p $(SHOTS)/creator_sliders
++	@rc=0; \
++	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/creator_sliders.txt \
++	    --shots $(SHOTS)/creator_sliders --quiet > $(CREATOR_SLIDERS_LOG) 2>&1 || rc=1; \
++	grep -E "expected|HANG|FAIL" $(CREATOR_SLIDERS_LOG); \
++	$(PYTHON) -I $(ROOT)/tools/slider_shots_check.py $(SHOTS)/creator_sliders || rc=1; \
++	echo "test-creator-sliders: log $(CREATOR_SLIDERS_LOG)"; \
++	exit $$rc
++# --- end CR-BODY ---
+ # --- SP7: the exorcism's speed, phase by phase (harness/scripts/exorcism_profile.txt, docs/EXORCISM_SPEED.md):
+ # the intro under its dialogue, the tools menu, the prayer rhythm, the holy water, the true name, the
+ # verdict and the result: fps + work per tick, the hottest functions and each phase's frame hashes.
+diff --git a/gba/harness/scripts/creator_sliders.txt b/gba/harness/scripts/creator_sliders.txt
+new file mode 100644
+index 00000000..6a8098d5
+--- /dev/null
++++ b/gba/harness/scripts/creator_sliders.txt
+@@ -0,0 +1,267 @@
++# creator_sliders.txt (GBA) - CR-BODY: every build slider moved across its whole range in the real ROM,
++# `make -C gba test-creator-sliders`. The moves, the shots and the checker are the same as the native
++# runner's core/tests/scripts/creator_sliders.txt (read its header; the body below is that script's), only
++# the start is the GBA harness's: sync on, seed 1, the title, then the creator. The checker
++# (tools/slider_shots_check.py) fails when a slider's lowest and highest preview are not different.
++wait 40
++expect-log doomo: init
++sync on 61
++seed 1
++scene TITLE
++wait 2
++push CREATOR -1
++wait 200
++shot 00_open
++# ---- Species & Body tab: Species, Preset, Body, Height
++# ---- height
++press DOWN
++press DOWN
++press DOWN
++wait 6
++hold LEFT 80
++wait 14
++shot 01_height_min
++wait 7
++shot 01_height_min_b
++hold RIGHT 90
++wait 14
++shot 01_height_max
++wait 7
++shot 01_height_max_b
++press A
++wait 14
++shot 01_height_reset
++# ---- build
++press DOWN
++wait 6
++hold LEFT 80
++wait 14
++shot 02_build_min
++wait 7
++shot 02_build_min_b
++hold RIGHT 90
++wait 14
++shot 02_build_max
++wait 7
++shot 02_build_max_b
++press A
++wait 14
++shot 02_build_reset
++# ---- Head & Face tab (Shape, Head size, Eyes, Pupils, Eye whites, Eye colour, Eye size, Eye gap, Eye height, Eye tilt, How many, Brows, Brow height, Nose, Nose size, Mouth, Mouth size)
++press R
++wait 8
++# ---- head_size
++press DOWN
++wait 6
++hold LEFT 80
++wait 14
++shot 03_head_size_min
++wait 7
++shot 03_head_size_min_b
++hold RIGHT 90
++wait 14
++shot 03_head_size_max
++wait 7
++shot 03_head_size_max_b
++press A
++wait 14
++shot 03_head_size_reset
++# ---- eye_size
++press DOWN
++press DOWN
++press DOWN
++press DOWN
++press DOWN
++wait 6
++hold LEFT 80
++wait 14
++shot 04_eye_size_min
++wait 7
++shot 04_eye_size_min_b
++hold RIGHT 90
++wait 14
++shot 04_eye_size_max
++wait 7
++shot 04_eye_size_max_b
++press A
++wait 14
++shot 04_eye_size_reset
++# ---- eye_gap
++press DOWN
++wait 6
++hold LEFT 80
++wait 14
++shot 05_eye_gap_min
++wait 7
++shot 05_eye_gap_min_b
++hold RIGHT 90
++wait 14
++shot 05_eye_gap_max
++wait 7
++shot 05_eye_gap_max_b
++press A
++wait 14
++shot 05_eye_gap_reset
++# ---- eye_height
++press DOWN
++wait 6
++hold LEFT 80
++wait 14
++shot 06_eye_height_min
++wait 7
++shot 06_eye_height_min_b
++hold RIGHT 90
++wait 14
++shot 06_eye_height_max
++wait 7
++shot 06_eye_height_max_b
++press A
++wait 14
++shot 06_eye_height_reset
++# ---- eye_tilt
++press DOWN
++wait 6
++hold LEFT 80
++wait 14
++shot 07_eye_tilt_min
++wait 7
++shot 07_eye_tilt_min_b
++hold RIGHT 90
++wait 14
++shot 07_eye_tilt_max
++wait 7
++shot 07_eye_tilt_max_b
++press A
++wait 14
++shot 07_eye_tilt_reset
++# ---- brow_height
++press DOWN
++press DOWN
++press DOWN
++wait 6
++hold LEFT 80
++wait 14
++shot 08_brow_height_min
++wait 7
++shot 08_brow_height_min_b
++hold RIGHT 90
++wait 14
++shot 08_brow_height_max
++wait 7
++shot 08_brow_height_max_b
++press A
++wait 14
++shot 08_brow_height_reset
++# ---- nose_size
++press DOWN
++press DOWN
++wait 6
++hold LEFT 80
++wait 14
++shot 09_nose_size_min
++wait 7
++shot 09_nose_size_min_b
++hold RIGHT 90
++wait 14
++shot 09_nose_size_max
++wait 7
++shot 09_nose_size_max_b
++press A
++wait 14
++shot 09_nose_size_reset
++# ---- mouth_size
++press DOWN
++press DOWN
++wait 6
++hold LEFT 80
++wait 14
++shot 10_mouth_size_min
++wait 7
++shot 10_mouth_size_min_b
++hold RIGHT 90
++wait 14
++shot 10_mouth_size_max
++wait 7
++shot 10_mouth_size_max_b
++press A
++wait 14
++shot 10_mouth_size_reset
++# ---- Supernatural tab: horns on first (the horn size row shows only with horns), then Horn colour, Horn size
++press R
++press R
++wait 8
++press RIGHT
++wait 10
++# ---- horn_size
++press DOWN
++press DOWN
++wait 6
++hold LEFT 80
++wait 14
++shot 11_horn_size_min
++wait 7
++shot 11_horn_size_min_b
++hold RIGHT 90
++wait 14
++shot 11_horn_size_max
++wait 7
++shot 11_horn_size_max_b
++press A
++wait 14
++shot 11_horn_size_reset
++# ---- the sixteen body types: back on the Body tab, the Body row, RIGHT one body at a time
++press L
++press L
++press L
++wait 8
++press UP
++press UP
++wait 6
++shot body_00
++press RIGHT
++wait 12
++shot body_01
++press RIGHT
++wait 12
++shot body_02
++press RIGHT
++wait 12
++shot body_03
++press RIGHT
++wait 12
++shot body_04
++press RIGHT
++wait 12
++shot body_05
++press RIGHT
++wait 12
++shot body_06
++press RIGHT
++wait 12
++shot body_07
++press RIGHT
++wait 12
++shot body_08
++press RIGHT
++wait 12
++shot body_09
++press RIGHT
++wait 12
++shot body_10
++press RIGHT
++wait 12
++shot body_11
++press RIGHT
++wait 12
++shot body_12
++press RIGHT
++wait 12
++shot body_13
++press RIGHT
++wait 12
++shot body_14
++press RIGHT
++wait 12
++shot body_15
++press RIGHT
++wait 12
+-- 
+2.43.0
+

@@ -1,0 +1,479 @@
+diff --git a/core/include/doomo/look_pool.h b/core/include/doomo/look_pool.h
+index a42dbedb..ed7fce95 100644
+--- a/core/include/doomo/look_pool.h
++++ b/core/include/doomo/look_pool.h
+@@ -35,12 +35,10 @@ const uint8_t *look_pool_find(int id, int kind, int *len);        /* NULL if the
+ int  look_pool_put(int id, int kind, const uint8_t *data, int len); /* 1 stored, 0 pool full       */
+ void look_pool_drop(int id);                                      /* every run of one id          */
+ /* CR5. put keeps the old run when the new one does not fit (0 returned); len 0 removes the run. */
+-void look_pool_reset(void);                                       /* every run (new town, load)   */
+-int  look_pool_free(void);                                        /* bytes left                   */
+-unsigned look_pool_gen(void);                                     /* changes with every change    */
+-/* The saved form: whole records, at most cap bytes (dst NULL: only counts); load replaces the pool,
+- * 1 ok, 0 malformed (what came before the fault is kept). */
+-uint32_t look_pool_emit(uint8_t *dst, uint32_t cap);
++#define look_pool_reset() ((void)look_pool_load(NULL, 0))               /* every run (new town, load)   */
++/* The saved form: the records as they are. raw gives the bytes and their count; load replaces the pool,
++ * 1 ok, 0 malformed (the pool is then empty). */
++const uint8_t *look_pool_raw(uint32_t *len);
+ int  look_pool_load(const uint8_t *src, uint32_t len);
+ 
+ #endif
+diff --git a/core/src/creator.c b/core/src/creator.c
+index 4392e995..304f512c 100644
+--- a/core/src/creator.c
++++ b/core/src/creator.c
+@@ -118,7 +118,7 @@ static int nick_set(int id, const char *name, const char *nick)
+ 
+ /* ---- save extension 'NICK': [count][id lo hi][hash lo hi][12 name bytes]...
+  * CR5 (version 2) appends the look pool after the gene trailer: [u16 length][the pool's records,
+- * look_pool_emit]: the deep choices of the citizens who have any (the "LOOK" section; the 14
++ * the pool bytes]: the deep choices of the citizens who have any (the "LOOK" section; the 14
+  * registry slots are full and the chunk has the room: nicknames <= 1 KB, the pool <= 6 KB). It is
+  * written only when the pool holds something; the gene trailer then always comes first (an empty one,
+  * [0 0], when no record has gene bits), so a reader finds the pool by the trailer's length.
+@@ -136,27 +136,25 @@ static int nick_count_used(void)
+     return n;
+ }
+ 
+-/* the pool's saved bytes: whole records that still leave the chunk under DOOMO_SAVE_EXT_MAX */
+-static uint32_t pool_saved(uint32_t others)
+-{
+-    return others + 4u > DOOMO_SAVE_EXT_MAX ? 0 : look_pool_emit(NULL, DOOMO_SAVE_EXT_MAX - others - 2u);
+-}
+-
++/* CR5: the chunk is [nicknames][gene trailer][pool section] (above). base = the bytes before the
++ * section (a missing gene trailer counts 2 when the pool follows: [0 0]). The pool is left out when
++ * it would take the chunk over DOOMO_SAVE_EXT_MAX (the creator refuses to grow it that far). */
+ static uint32_t nickext_size(void)
+ {
+     int n = nick_count_used();
+-    uint32_t g = look_gene_ext_size(), head = (uint32_t)(1 + n * NICK_REC), p;
+-    p = pool_saved(head + (g ? g : 2u));
+-    if (p) return head + (g ? g : 2u) + 2u + p;
+-    return n || g ? head + g : 0;
++    uint32_t base = (uint32_t)(1 + n * NICK_REC), g = look_gene_ext_size(), p, t;
++    look_pool_raw(&p);
++    t = base + (g ? g : 2u) + 2u + p;
++    if (p && t <= DOOMO_SAVE_EXT_MAX) return t;
++    return n || g ? base + g : 0;
+ }
+ 
+ static uint32_t nickext_write(uint8_t *dst, uint32_t cap)
+ {
+     uint32_t n = nickext_size(), o = 0, g = look_gene_ext_size(), p;
++    const uint8_t *pool = look_pool_raw(&p);
+     int i;
+     if (n == 0 || n > cap) return 0;
+-    p = pool_saved((uint32_t)(1 + nick_count_used() * NICK_REC) + (g ? g : 2u));
+     dst[o++] = (uint8_t)nick_count_used();
+     for (i = 0; i < CR_NICKS; i++) {
+         if (nicks[i].id == 0xFFFF || !nicks[i].nick[0]) continue;
+@@ -168,11 +166,12 @@ static uint32_t nickext_write(uint8_t *dst, uint32_t cap)
+         o += DOOMO_NAME_LEN;
+     }
+     o += look_gene_ext_write(dst + o, cap - o);           /* CR3 */
+-    if (p) {                                              /* CR5: the look pool */
++    if (n > o) {                                          /* CR5: the look pool follows */
+         if (!g) { dst[o++] = 0; dst[o++] = 0; }
+         dst[o++] = (uint8_t)(p & 255);
+         dst[o++] = (uint8_t)(p >> 8);
+-        o += look_pool_emit(dst + o, p);
++        memcpy(dst + o, pool, p);
++        o += p;
+     }
+     return o;
+ }
+@@ -191,7 +190,7 @@ static int nickext_read(const uint8_t *src, uint32_t len, uint16_t version)
+         uint32_t gl = 2u + 8u * (uint32_t)(src[1 + n * NICK_REC] | (src[2 + n * NICK_REC] << 8));
+         if (gl < rest) {
+             const uint8_t *q = src + 1 + n * NICK_REC + gl;
+-            uint32_t pl = rest - gl >= 2 ? (uint32_t)(q[0] | (q[1] << 8)) : 0xFFFFu;
++            uint32_t pl = (uint32_t)(q[0] | (q[1] << 8));      /* (a one-byte tail reads the next byte: it then differs) */
+             if (pl + 2u != rest - gl || !look_pool_load(q + 2, pl)) ok = 0;
+             rest = gl;
+         }
+@@ -1386,13 +1385,15 @@ static int deep_commit(int id)
+     uint8_t run[2 * DF_POOL_N], old[2 * DF_POOL_N];
+     const uint8_t *o;
+     int rl = deep_run(cr.dd, run), ol = 0, ok;
+-    uint32_t others;
++    uint32_t n, g = look_gene_ext_size();
+     o = look_pool_find(id, RUN_DEEP, &ol);
+     if (o) memcpy(old, o, (size_t)ol);
+     ok = look_pool_put(id, RUN_DEEP, run, rl);
+-    /* the whole pool must still fit the chunk beside the nicknames and the gene bits (8 B for this record) */
+-    others = (uint32_t)(1 + nick_count_used() * NICK_REC) + (look_gene_ext_size() ? look_gene_ext_size() : 2u) + 8u;
+-    if (ok && rl > ol && look_pool_emit(NULL, 0xFFFFu) != pool_saved(others)) ok = 0;   /* only growth is refused */
++    /* only growth is refused: the whole pool must still fit the chunk beside the nicknames and the gene
++     * bits (8 B more for this record) */
++    look_pool_raw(&n);
++    if (ok && rl > ol && 1u + (uint32_t)nick_count_used() * NICK_REC + (g ? g : 2u) + 8u + 2u + n > DOOMO_SAVE_EXT_MAX)
++        ok = 0;
+     if (!ok) look_pool_put(id, RUN_DEEP, ol ? old : NULL, ol);       /* back to what it was */
+     return ok;
+ }
+diff --git a/core/src/look_pool.c b/core/src/look_pool.c
+index 6bdbfd7b..d4c5cf28 100644
+--- a/core/src/look_pool.c
++++ b/core/src/look_pool.c
+@@ -3,7 +3,7 @@
+  * Replaces the weak stubs of look_pool_find / put / drop (stubs.c). The pool holds the runs of the
+  * citizens whose look has deep fields (a record: id lo, id hi, kind, len, data): LOOK_POOL_CAP bytes
+  * (6,144 B; the PS1 keeps 384 B, its resident RAM is full). The creator writes it when it commits a
+- * citizen; it is saved as a section of the creator's save chunk (creator.c: look_pool_emit /
++ * citizen; it is saved as a section of the creator's save chunk (creator.c: look_pool_raw /
+  * look_pool_load) and cleared by a new town, a load and town_free. With no run stored the renderer
+  * is bit-for-bit what it was. */
+ #include "doomo/doomo.h"
+@@ -14,7 +14,6 @@
+ /* record: id lo, id hi, kind, len, data[len] */
+ static uint8_t  pool[LOOK_POOL_CAP];
+ static uint16_t used;
+-static uint16_t pool_gen;
+ 
+ const DoomoDeep doomo_deep_zero = { { 0 } };
+ const uint8_t doomo_df_flags[DF_COUNT] = {
+@@ -59,13 +58,12 @@ int look_pool_put(int id, int kind, const uint8_t *data, int len)
+     if (id < 0 || id > 1023 || kind < 0 || kind > 255 || len < 0 || len > 255 || (len && !data)) return 0;
+     if (rec_find(id, kind, &at)) had = 4 + pool[at + 3];
+     if (len && used - had + 4 + len > LOOK_POOL_CAP) return 0;        /* full: the old run stays */
+-    if (had) { rec_cut(at); pool_gen++; }
++    if (had) rec_cut(at);
+     if (!len) return 1;
+     pool[used] = (uint8_t)id; pool[used + 1] = (uint8_t)(id >> 8);
+     pool[used + 2] = (uint8_t)kind; pool[used + 3] = (uint8_t)len;
+     memcpy(pool + used + 4, data, (size_t)len);
+     used = (uint16_t)(used + 4 + len);
+-    pool_gen++;
+     return 1;
+ }
+ 
+@@ -73,53 +71,29 @@ void look_pool_drop(int id)
+ {
+     int p = 0;
+     while (p + 4 <= used) {
+-        if ((pool[p] | (pool[p + 1] << 8)) == id) { rec_cut(p); pool_gen++; }
++        if ((pool[p] | (pool[p + 1] << 8)) == id) rec_cut(p);
+         else p += 4 + pool[p + 3];
+     }
+ }
+ 
+-void look_pool_reset(void)
++/* The saved form is the records as they are (creator.c writes and reads it in its chunk). */
++const uint8_t *look_pool_raw(uint32_t *len)
+ {
+-    if (used) pool_gen++;
+-    used = 0;
+-}
+-
+-int look_pool_free(void) { return LOOK_POOL_CAP - used; }
+-unsigned look_pool_gen(void) { return pool_gen; }
+-
+-/* The saved form: the records as they are, whole ones only, at most `cap` bytes. dst NULL only counts. */
+-uint32_t look_pool_emit(uint8_t *dst, uint32_t cap)
+-{
+-    uint32_t n = 0;
+-    int p = 0;
+-    while (p + 4 <= used) {
+-        uint32_t r = 4u + pool[p + 3];
+-        if (n + r > cap) break;
+-        if (dst) memcpy(dst + n, pool + p, r);
+-        n += r;
+-        p += (int)r;
+-    }
+-    return n;
++    *len = used;
++    return pool;
+ }
+ 
+ /* Replace the pool by saved records. 1 ok; 0 if the bytes are malformed (a record that runs past the
+- * end, an id over 1023, no room): the records before the fault are kept. */
++ * end, no room): the pool is then empty. */
+ int look_pool_load(const uint8_t *src, uint32_t len)
+ {
+-    uint32_t p = 0;
+-    look_pool_reset();
+-    while (p < len) {
+-        uint32_t n;
+-        int id;
+-        if (len - p < 4) return 0;
+-        n = 4u + src[p + 3];
+-        id = src[p] | (src[p + 1] << 8);
+-        if (n > len - p || id > 1023 || used + n > LOOK_POOL_CAP) return 0;
+-        memcpy(pool + used, src + p, n);
+-        used = (uint16_t)(used + n);
+-        p += n;
+-    }
+-    pool_gen++;
++    uint32_t p;
++    used = 0;
++    if (len > LOOK_POOL_CAP) return 0;
++    for (p = 0; p < len; p += 4u + src[p + 3])
++        if (len - p < 4 || 4u + src[p + 3] > len - p) return 0;
++    if (len) memcpy(pool, src, len);
++    used = (uint16_t)len;
+     return 1;
+ }
+ 
+diff --git a/core/tests/test_cr5.c b/core/tests/test_cr5.c
+index fb1efa18..015f2f5c 100644
+--- a/core/tests/test_cr5.c
++++ b/core/tests/test_cr5.c
+@@ -1,7 +1,7 @@
+ /* test_cr5.c - CR5: the look pool and its save (docs/CREATOR.md "CR5").
+  *
+  * - the pool: put / find / drop, a run replaced in place, a full pool keeps the old run, reset, the
+- *   saved form (emit / load) and what a malformed one does;
++ *   saved form (raw / load) and what a malformed one does;
+  * - the LOOK section of the creator's save chunk: a town's runs survive save_serialize /
+  *   save_deserialize (with and without nicknames and gene bits beside them); a save without it (an old
+  *   build's, a town that never used a deep part) loads with an empty pool and the same town;
+@@ -15,6 +15,22 @@
+ #include "doomo/save.h"
+ #include "doomo/save_ext.h"
+ 
++static int pool_free(void)
++{
++    uint32_t n;
++    look_pool_raw(&n);
++    return (int)LOOK_POOL_CAP - (int)n;
++}
++
++/* the pool's saved bytes into dst; returns how many */
++static uint32_t pool_copy(uint8_t *dst)
++{
++    uint32_t n;
++    const uint8_t *p = look_pool_raw(&n);
++    memcpy(dst, p, n);
++    return n;
++}
++
+ static const uint8_t RUN_A[] = { DF_LASH, 2, DF_LINER, 1 };
+ static const uint8_t RUN_B[] = { DF_LID, 3 };
+ 
+@@ -22,17 +38,14 @@ TEST(cr5_pool_put_find_drop)
+ {
+     const uint8_t *r;
+     int len = -1;
+-    unsigned g0;
+     look_pool_reset();
+     CHECK(look_pool_find(7, RUN_DEEP, &len) == NULL);
+     CHECK_EQ(len, 0);
+-    CHECK_EQ(look_pool_free(), (int)LOOK_POOL_CAP);
+-    g0 = look_pool_gen();
++    CHECK_EQ(pool_free(), (int)LOOK_POOL_CAP);
+     CHECK(look_pool_put(7, RUN_DEEP, RUN_A, 4));
+-    CHECK(look_pool_gen() != g0);
+     r = look_pool_find(7, RUN_DEEP, &len);
+     CHECK(r != NULL && len == 4 && memcmp(r, RUN_A, 4) == 0);
+-    CHECK_EQ(look_pool_free(), (int)LOOK_POOL_CAP - 8);
++    CHECK_EQ(pool_free(), (int)LOOK_POOL_CAP - 8);
+     /* another kind and another id are other runs */
+     CHECK(look_pool_find(7, RUN_NICK, &len) == NULL);
+     CHECK(look_pool_put(8, RUN_DEEP, RUN_B, 2));
+@@ -41,7 +54,7 @@ TEST(cr5_pool_put_find_drop)
+     CHECK(look_pool_put(7, RUN_DEEP, RUN_B, 2));
+     r = look_pool_find(7, RUN_DEEP, &len);
+     CHECK(r != NULL && len == 2 && memcmp(r, RUN_B, 2) == 0);
+-    CHECK_EQ(look_pool_free(), (int)LOOK_POOL_CAP - 12);
++    CHECK_EQ(pool_free(), (int)LOOK_POOL_CAP - 12);
+     /* ... a zero length removes it ... */
+     CHECK(look_pool_put(7, RUN_DEEP, NULL, 0));
+     CHECK(look_pool_find(7, RUN_DEEP, &len) == NULL);
+@@ -50,7 +63,7 @@ TEST(cr5_pool_put_find_drop)
+     CHECK(look_pool_put(8, RUN_NICK, RUN_A, 4));
+     look_pool_drop(8);
+     CHECK(look_pool_find(8, RUN_DEEP, &len) == NULL && look_pool_find(8, RUN_NICK, &len) == NULL);
+-    CHECK_EQ(look_pool_free(), (int)LOOK_POOL_CAP);
++    CHECK_EQ(pool_free(), (int)LOOK_POOL_CAP);
+     /* bad arguments */
+     CHECK(!look_pool_put(-1, RUN_DEEP, RUN_A, 4));
+     CHECK(!look_pool_put(1024, RUN_DEEP, RUN_A, 4));
+@@ -67,9 +80,9 @@ TEST(cr5_a_full_pool_keeps_the_old_run)
+     memset(big, 1, sizeof(big));
+     for (id = 100; look_pool_put(id, RUN_DEEP, big, 200); id++) n++;
+     CHECK(n >= 1);
+-    CHECK(look_pool_free() < 204);
+-    CHECK(look_pool_put(5, RUN_NICK, big, look_pool_free() - 4));      /* a filler: no byte left */
+-    CHECK_EQ(look_pool_free(), 0);
++    CHECK(pool_free() < 204);
++    CHECK(look_pool_put(5, RUN_NICK, big, pool_free() - 4));      /* a filler: no byte left */
++    CHECK_EQ(pool_free(), 0);
+     /* a longer run for a stored id does not fit: it is refused and the old run is still there */
+     CHECK(look_pool_put(101, RUN_DEEP, big, 200));                     /* same length: fine */
+     CHECK(!look_pool_put(101, RUN_DEEP, big, 201));                    /* one byte more: refused */
+@@ -80,40 +93,41 @@ TEST(cr5_a_full_pool_keeps_the_old_run)
+     CHECK(look_pool_put(100, RUN_DEEP, RUN_A, 4));                     /* a shorter one frees room ... */
+     CHECK(look_pool_put(id, RUN_DEEP, RUN_B, 2));                      /* ... for a new run */
+     look_pool_reset();
+-    CHECK_EQ(look_pool_free(), (int)LOOK_POOL_CAP);
++    CHECK_EQ(pool_free(), (int)LOOK_POOL_CAP);
+ }
+ 
+-TEST(cr5_pool_emit_and_load_round_trip)
++TEST(cr5_pool_raw_and_load_round_trip)
+ {
+     static uint8_t buf[LOOK_POOL_CAP + 8];
+     const uint8_t *r;
+-    uint32_t n;
++    uint32_t n, m;
+     int len;
+     look_pool_reset();
+-    CHECK_EQ(look_pool_emit(NULL, 100), 0u);
++    look_pool_raw(&n);
++    CHECK_EQ(n, 0u);
+     CHECK(look_pool_put(3, RUN_DEEP, RUN_A, 4));
+     CHECK(look_pool_put(900, RUN_DEEP, RUN_B, 2));
+     CHECK(look_pool_put(1001, RUN_DEEP, RUN_B, 2));                   /* a Look Book style */
+-    n = look_pool_emit(NULL, sizeof(buf));
++    n = pool_copy(buf);
+     CHECK_EQ(n, 8u + 6u + 6u);
+-    CHECK_EQ(look_pool_emit(buf, sizeof(buf)), n);
+-    CHECK_EQ(look_pool_emit(NULL, 15), 14u);                          /* whole records only */
+-    CHECK_EQ(look_pool_emit(NULL, 7), 0u);
+     look_pool_reset();
+     CHECK(look_pool_find(3, RUN_DEEP, &len) == NULL);
+     CHECK(look_pool_load(buf, n));
+     r = look_pool_find(3, RUN_DEEP, &len);
+     CHECK(r != NULL && len == 4 && memcmp(r, RUN_A, 4) == 0);
+     CHECK(look_pool_find(900, RUN_DEEP, &len) != NULL && look_pool_find(1001, RUN_DEEP, &len) != NULL);
+-    CHECK_EQ(look_pool_free(), (int)LOOK_POOL_CAP - (int)n);
+-    /* malformed: a record that runs past the end, an id over 1023, half a header */
++    CHECK_EQ(pool_free(), (int)LOOK_POOL_CAP - (int)n);
++    look_pool_raw(&m);
++    CHECK_EQ(m, n);
++    /* malformed: a record that runs past the end, half a header, too many bytes: refused, the pool is empty */
+     CHECK(!look_pool_load(buf, n - 1));
+-    CHECK(look_pool_find(3, RUN_DEEP, &len) != NULL);                 /* what came before the fault stays */
+-    buf[0] = 0xFF; buf[1] = 0x7F;
+-    CHECK(!look_pool_load(buf, n));
++    CHECK(look_pool_find(3, RUN_DEEP, &len) == NULL);
+     CHECK(!look_pool_load(buf, 3));
++    CHECK(!look_pool_load(buf, LOOK_POOL_CAP + 1));
++    CHECK(look_pool_load(buf, n));
+     CHECK(look_pool_load(buf, 0));                                    /* nothing: an empty pool */
+-    CHECK_EQ(look_pool_free(), (int)LOOK_POOL_CAP);
++    CHECK_EQ(pool_free(), (int)LOOK_POOL_CAP);
++    look_pool_reset();
+ }
+ 
+ static int pool_get(int id, int df)
+@@ -147,14 +161,14 @@ TEST(cr5_look_survives_a_save)
+         CHECK(look_pool_put(3, RUN_DEEP, RUN_A, 4));
+         CHECK(look_pool_put(77, RUN_DEEP, RUN_B, 2));
+         CHECK(look_pool_put(DOOMO_PLAYER_ID, RUN_DEEP, RUN_A, 4));
+-        kept = look_pool_emit(keep, sizeof(keep));
++        kept = pool_copy(keep);
+         CHECK_EQ(kept, 8u + 6u + 8u);
+         n = save_serialize(img, sizeof(img));
+         CHECK(n > 0);
+         look_pool_reset();                                      /* a fresh boot */
+         CHECK(look_pool_find(3, RUN_DEEP, &len) == NULL);
+         CHECK(save_deserialize(img, n));
+-        CHECK(look_pool_emit(now, sizeof(now)) == kept && memcmp(keep, now, kept) == 0);
++        CHECK(pool_copy(now) == kept && memcmp(keep, now, kept) == 0);
+         CHECK_EQ(pool_get(3, DF_LASH), 2);
+         CHECK_EQ(pool_get(77, DF_LID), 3);
+         CHECK_EQ(pool_get(DOOMO_PLAYER_ID, DF_LINER), 1);
+@@ -269,3 +283,30 @@ TEST(cr5_the_portrait_cache_sees_a_run)
+     look_pool_reset();
+     portrait_cache_reset();
+ }
++
++TEST(cr5_the_chunk_never_goes_over_its_limit)
++{
++    static uint8_t chunk[DOOMO_SAVE_EXT_MAX + 16];
++    uint8_t big[200];
++    int i, id;
++    town_new(TOWN_FREEPLAY, 31u, TOWN_POP_PREMADE);
++    look_pool_reset();
++    memset(big, 1, sizeof(big));
++    for (id = 100; look_pool_put(id, RUN_DEEP, big, 200); id++) { }       /* a full pool */
++    /* few gene entries: the pool is in the chunk */
++    CHECK(look_ext()->size() > 5000u);
++    CHECK(look_ext()->size() <= DOOMO_SAVE_EXT_MAX);
++    CHECK_EQ(chunk_of(chunk, sizeof(chunk)), look_ext()->size());
++    /* a town where every citizen has gene bits (8 B each): the pool no longer fits, so it is left out and
++     * the chunk stays under the limit (the creator refuses a commit that would grow it that far) */
++    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
++        DoomoResident *r = town_res(i);
++        if (r->status == RES_EMPTY) continue;
++        res_gset(r, GF_GLASSES, 3);
++    }
++    CHECK(look_gene_ext_size() > 4000u);
++    CHECK(look_ext()->size() <= DOOMO_SAVE_EXT_MAX);
++    CHECK_EQ(chunk_of(chunk, sizeof(chunk)), look_ext()->size());
++    CHECK_EQ(look_ext()->size(), 1u + look_gene_ext_size());          /* the nick count and the gene trailer only */
++    look_pool_reset();
++}
+diff --git a/core/tests/test_creator.c b/core/tests/test_creator.c
+index b393490b..b88e6649 100644
+--- a/core/tests/test_creator.c
++++ b/core/tests/test_creator.c
+@@ -1302,9 +1302,11 @@ TEST(cr5_a_full_pool_refuses_the_commit_and_leaves_the_town)
+     look_pool_reset();
+     memset(big, 1, sizeof(big));
+     for (id = 600; look_pool_put(id, RUN_DEEP, big, 200); id++) { }
+-    CHECK(look_pool_put(5, RUN_NICK, big, look_pool_free() - 4));     /* a filler: no byte left */
+-    CHECK_EQ(look_pool_free(), 0);
+-    n0 = look_pool_emit(keep, sizeof(keep));
++    look_pool_raw(&n0);
++    CHECK(look_pool_put(5, RUN_NICK, big, (int)(LOOK_POOL_CAP - n0) - 4));   /* a filler: no byte left */
++    look_pool_raw(&n0);
++    CHECK_EQ(n0, (uint32_t)LOOK_POOL_CAP);
++    { const uint8_t *q = look_pool_raw(&n0); memcpy(keep, q, n0); }
+     memcpy(&snap, &doomo_town, sizeof(snap));
+     scene_set(&base_scene, 0);
+     scene_push(&SCENE_CREATOR, -1);
+@@ -1320,7 +1322,7 @@ TEST(cr5_a_full_pool_refuses_the_commit_and_leaves_the_town)
+     CHECK(scene_top() == &SCENE_CREATOR);
+     CHECK(ui_toast_pending() > 0);
+     CHECK(memcmp(&snap, &doomo_town, sizeof(snap)) == 0);   /* the town is as it was */
+-    n1 = look_pool_emit(now, sizeof(now));
++    { const uint8_t *q = look_pool_raw(&n1); memcpy(now, q, n1); }
+     CHECK(n0 == n1 && memcmp(keep, now, n0) == 0);           /* and so is the pool */
+     CHECK(look_pool_find(0, RUN_DEEP, &id) == NULL);
+     frames(200, 0);                                     /* the toast goes */
+diff --git a/gba/src/hcmd.c b/gba/src/hcmd.c
+index fb33c266..4177af1b 100644
+--- a/gba/src/hcmd.c
++++ b/gba/src/hcmd.c
+@@ -42,6 +42,8 @@
+ #include "room_int.h"
+ #include "doomo/doomo.h"
+ #include "doomo/plat_ext.h"
++#include "doomo/look_fields.h"
++#include "doomo/look_pool.h"
+ 
+ /* (CL4) the harness's test flags (gba_plat.h GbaMailbox.test_flags): the
+  * first-time tip cards stay off in scripted runs unless a script asks */
+@@ -111,6 +113,14 @@ static void town_fill(uint32_t seed)
+     }
+     resident_sanitize(&doomo_town.player);
+     rel_normalize();
++    /* CR5: the worst case includes a full look pool (10 deep choices for as many citizens as fit),
++     * saved in the creator's chunk and checked by town_crc */
++    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
++        uint8_t run[2 * DF_POOL_N];
++        int k;
++        for (k = 0; k < DF_POOL_N; k++) { run[2 * k] = (uint8_t)(DF_POOL_FIRST + k); run[2 * k + 1] = (uint8_t)(1 + rng_range(&r, 3)); }
++        if (!look_pool_put(i, RUN_DEEP, run, (int)sizeof(run))) break;
++    }
+ }
+ 
+ static uint32_t crc_more(uint32_t crc, const void *p, uint32_t n)
+@@ -140,6 +150,13 @@ static uint32_t town_crc(void)
+     c = crc_more(c, t->opt, sizeof(t->opt));
+     c = crc_more(c, t->unlocks, sizeof(t->unlocks));
+     c = crc_more(c, t->progress, sizeof(t->progress));
++    {                                                    /* CR5: the look pool, run by run */
++        int id, len;
++        for (id = 0; id < 1024; id++) {
++            const uint8_t *run = look_pool_find(id, RUN_DEEP, &len);
++            if (run) { c = crc_more(c, &id, sizeof(id)); c = crc_more(c, run, (uint32_t)len); }
++        }
++    }
+     return c;
+ }
+ 

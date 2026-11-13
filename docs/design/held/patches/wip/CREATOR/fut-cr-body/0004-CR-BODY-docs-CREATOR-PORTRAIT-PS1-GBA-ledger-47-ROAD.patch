@@ -1,0 +1,233 @@
+From bc7c0a3bdbabf6e726e3d8322207eb17ebbf1cf4 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 17:19:26 +0000
+Subject: [PATCH 4/4] CR-BODY: docs (CREATOR, PORTRAIT, PS1, GBA ledger 47,
+ ROADMAP, status), PS1 harness and Dreamcast ui-compare run the slider
+ walk-through
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvvRYHgPW3b8GJby1n
+---
+ ROADMAP.md                         |  1 +
+ dc/harness/ui_compare.sh           |  9 +++-
+ docs/CREATOR.md                    | 79 ++++++++++++++++++++++++++++++
+ docs/GBA.md                        |  1 +
+ docs/PORTRAIT.md                   |  7 +++
+ docs/PS1.md                        | 12 +++++
+ docs/design/held/status/CREATOR.md |  3 +-
+ ps1/CMakeLists.txt                 |  4 ++
+ 8 files changed, 114 insertions(+), 2 deletions(-)
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index 2a9ad37a..6f817a32 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -21,6 +21,7 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
+ before redoing any of them; a zip without `.git` cannot tell.
+ 
+ ### Done
++- **Creator CR-BODY, body types and better sliders (2026-11-13; docs/CREATOR.md "CR-BODY", GBA ledger row 48, docs/PS1.md "CR-BODY"):** 6 new body types (gene `body` 10..15: Athletic, Gangly, Bean, Brick, Willowy, Bobble) as table rows (no new painter), one table for every slider's range (`CR_SLIDERS`, ready for the x1..x4 cheat of CR-SLIDERX), A resets a slider (own undo step), the bar shows the distance from the default, the horn size without horns and the turkey's six face sliders (they changed nothing) are not offered, and the test that moves EVERY build slider across its range (`test_cr_body.c`: each slider on every species and body, every step on the bench, canary bytes; `creator_sliders.txt` + `tools/slider_shots_check.py` on the native runner, GBA `make -C gba test-creator-sliders`, PS1 harness and Dreamcast `ui-compare`). PS1 `_end` -16 B, GBA EWRAM / IWRAM identical, ROM +2.9 KB; old saves and Classic premades unchanged. Left for CR-SLIDERX: the cheat itself.
+ - **Creator CR4 batch A3, spooky (2026-11-13; docs/CREATOR.md "CR4 batch A3"):** 60 new parts live: 10 horns (gene `horns` 16..25), 16 tails (`tail` 16..31), 14 wings (`wings` 10..23), 4 halos (`halo` 12..15) and 16 auras (`aura` 8..23), hand-written part scripts in `core/data/parts/spooky` (no new painter code), shape gate, cost weights, frozen ids, review line A3, contact sheets incl. the new `portrait_sheet --slot tail|wings --views` (figure and the fighter's five views), runner walk-through `creator_parts_spooky.txt`, `test_cr4_a3.c`. Old saves, premades and Classic islands unchanged. Not in A3 (deep fields, need CR5): horn page 2 (6), horn / antenna bits (32), tail accessories (16), wing accessories (8), halo page 2 (6) = 68 of the batch's 134 (the other 6 are the painted halos live since CR3).
+ - **Levels LV0 (2026-11-13, level registry and records; `docs/LEVELS.md` "LV0", plan section 9):** `LV_COUNT` 31 (the seven built levels, Hell Breach 8-16 as ids 7..15, the 15 Arrears Notices as 16..30), the table moved to `levels2.c` with a registry (page, platform manifest, dark flag, unlock rule and its locked reason; rules by level, chapter, episode, flag, New Game+), the 24 new levels registered as not built (no map: not shown, never startable), the `BRCH` save chunk (slot 14, 148 B for all 24 levels and the arc state, 80 B on the GBA which lists 7 of them, declared 160 B; round trip, empty / absent / bad chunk, a save from another platform loads), the level select in pages (UP / DOWN, pips per page, 15 fit at 240 wide; one page today and pixel-identical to before: 2,196 runner screenshots byte-identical to the base). GBA: EWRAM 15,444 -> 15,460 B free (on `0df72845`, after CR3), IWRAM unchanged; PS1: -144 B resident, the EXE ends at 0x801ef450 against the base's 0x801ef4e0, 68,512 B below the stack top against 68,368 B (the PS1 build keeps the old seven until its LEVELS share is released); `make -C core test` 1,133 passed, SAN, check-gen, xcheck, `make -C gba test`, `dc-host-test`, `make -C dc`, PS1 build + game_smoke + the level-select harness script PASS. Next: LV1, LV10, then the level packages.
+ - **LV10, level test harness (2026-11-13, `docs/LEVELS.md` "Level test harness"):** `tools/breach_scripts.py` (a `gen` generator) writes the runner, GBA, PS1 and Dreamcast scripts of every level from one list (the 7 existing levels first); `make -C gba test-breach2` plays the 7 on the GBA harness (autopilot, three fps windows, `vhash-seq` printed (equal across two manual runs, not gated), floors at 85% of the first measurement); `tools/breach_fps.py` builds the platform x level x window fps table; `core/tests/test_levels2.c` asserts the autopilot finishes every level at Plushie in Hell Breach and Time Trial mode and sweeps the whole mode x difficulty matrix on request. The GBA autopilot runs at 4-17 drawn fps (combat, the speed stream's). PS1 / Dreamcast scripts generated and syntax-checked, not run (toolchains were still installing). Partial: the autopilot finishes 44 of 84 mode x difficulty cells (14 asserted); the rest is LV6's. Core 1135 passed (SAN=1 the same, the 4 known UBSan reports), GBA tests and `test-breach2` (floors on) green, no resident byte on any platform.
+diff --git a/dc/harness/ui_compare.sh b/dc/harness/ui_compare.sh
+index 62593539..0834dc97 100644
+--- a/dc/harness/ui_compare.sh
++++ b/dc/harness/ui_compare.sh
+@@ -21,7 +21,7 @@ set -u
+ FLY=$1 DCRUN=$2 IMG=$3 NM=$4 RUNNER=$5 OUT=$6
+ here=$(cd "$(dirname "$0")" && pwd)
+ root=$(cd "$here/../.." && pwd)
+-SCRIPTS=${UI_SCRIPTS:-"ui_gallery fp_title fp_screens creator library_lobby pause_options"}
++SCRIPTS=${UI_SCRIPTS:-"ui_gallery fp_title fp_screens creator creator_sliders library_lobby pause_options"}
+ mkdir -p "$OUT"
+ sum=$OUT/summary.txt
+ : > "$sum"
+@@ -50,6 +50,13 @@ for s in $SCRIPTS; do
+     } >>"$sum"
+     if [ $rc -ne 0 ] || [ $nrc -ne 0 ] || [ $crc -ne 0 ]; then bad=1; fi
+ done
++# CR-BODY: every build slider moved the creator's preview on the console too (tools/slider_shots_check.py)
++if [ -d "$OUT/creator_sliders/dc" ] && [ -n "$(ls "$OUT/creator_sliders/dc" 2>/dev/null)" ]; then
++    {
++        echo "== creator_sliders (slider check on the Dreamcast shots)"
++        python3 -I "$root/tools/slider_shots_check.py" "$OUT/creator_sliders/dc" || bad=1
++    } >>"$sum" 2>&1
++fi
+ cat "$sum"
+ n_ok=$(grep -c '^ok \|^known ' "$sum")
+ n_fail=$(grep -c '^FAIL \|^MISSING ' "$sum")
+diff --git a/docs/CREATOR.md b/docs/CREATOR.md
+index 57dd3d40..64dc5b2a 100644
+--- a/docs/CREATOR.md
++++ b/docs/CREATOR.md
+@@ -683,6 +683,85 @@ Review: sheets in the stream's evidence (`slot_head`, `slot_eyes`, `slot_pupil`,
+ PS1: scripted values draw as the slot's default until CR10 (no part VM yet), so the PS1 creator does not
+ offer them (`part_live_drawable`); the new parts add no resident byte there.
+ 
++## CR-BODY: body types and better sliders (2026-11-13)
++
++Owner request 2026-11-13 ("proper body type and better sliders, every single one of them works"). Part 1 of the
++package (the cheat "Slider range x1..x4" is CR-SLIDERX, the next package; the slider table below is where it
++plugs in).
++
++* **16 body types.** The gene's `body` field (4 bits, already 16 wide) now offers six more after the classic ten:
++  Athletic (broad shoulders, long legs), Gangly (small torso, long legs, a head a size up), Bean (short legs,
++  round middle, a head a size up), Brick (wide and square), Willowy (tall and slim, thin arms) and Bobble (a
++  small body under a head four sizes up). Ids 10..15, append-only (`core/tests/golden/part_ids.txt`), age class ALL
++  (a plain physique, never a shape), method P: no part script, no new painter, only table rows
++  (`portrait_body.c` `body_mod`: shoulder %, hip %, torso height %, legs %, arm %, belly, one byte each, and
++  `pb_body_head`: the head size step). The body type sets the base, then the Height, Build and Head size sliders
++  adjust it (the head step is added to the Head size slider once, in `portrait.c` `sanitize`, and clamped to 15; the
++  classic ten have step 0, so every old look draws exactly as before). `BODY_COUNT` stays 10 (the classic count the
++  generators and premades use); `BODY_TYPES` is 16 and the live count is the catalog's.
++  Sheets: `portrait_sheet --slot body` (looked at: the six read as what they are called at bust, figure, chibi and
++  fighter size); review line `CR-BODY`; `costs.txt` rows measured.
++* **One table for every slider's range** (`creator_data.c` `CR_SLIDERS`, an X-macro: gene field, ends, steps,
++  default; the rows, the reset, the bar and the tests all read it, `cr_sliders[]` / `cr_slider_of`). The build
++  sliders are 0..15 (4 bits), the voice sliders 0..31 (5 bits), the personality sliders 0..15. CR-SLIDERX will scale
++  a slider around its `def` (lo = def - def * m, hi = def + (count - 1 - def) * m, clamped to the gene field) by reading
++  this table; no row has its own range any more.
++
++  | slider | steps | default | ends |
++  |---|---|---|---|
++  | Height | 16 | 7 | Short / Tall |
++  | Build | 16 | 8 | Skinny / Chonky |
++  | Head size | 16 | 11 | Small / Big |
++  | Eye size | 16 | 10 | Tiny / Huge |
++  | Eye gap (was "Spacing") | 16 | 7 | Close / Wide |
++  | Eye height | 16 | 8 | Low / High |
++  | Eye tilt (was "Tilt") | 16 | 8 | Droopy / Sharp |
++  | Brow height | 16 | 7 | Low / High |
++  | Nose size | 16 | 6 | Small / Big |
++  | Mouth size | 16 | 6 | Small / Big |
++  | Horn size | 16 | 7 | Nubbly / Mighty |
++  | Pitch, Speed, Quality, Intonation, Accent | 32 | 16 | Deep-Squeaky, Slow-Fast, Thin-Round, Flat-Sing-song, Plain-Fancy |
++  | Movement, Speech, Expression, Attitude, Quirk | 16 | 8 (Quirk 4) | Slow-Quick, Polite-Blunt, Flat-Expressive, Serious-Easygoing, Normal-Unhinged |
++
++* **Better sliders.** A on a slider puts it back to its default (its own undo step: X brings the value back; nothing
++  happens when it is already there). The bar shows the distance from the default ("+3", "-2", "0") instead of the
++  raw step, with a notch at the default. The help line says "slide, A reset". Two labels are clearer ("Eye gap",
++  "Eye tilt"). Each step is one press; a held direction repeats and stops at the ends (it never wraps). Pixel change:
++  the slider value text, the notch and the help line (before / after shots: evidence `face_tab_*`; every other pixel of
++  every creator shot is the same: the preview pane of 136 shots of the creator scripts was compared with the tree before).
++* **Sliders that did nothing are not offered.** The test found two cases, and the creator now hides them: the **Horn
++  size** with no horns worn (it shows as soon as a horn is worn; a turkey in its top hat reads it as the crown height) and the
++  **turkey's** Head size, Eye gap, Eye height, Eye tilt, Brow height and Mouth size (its head is its own drawing,
++  `portrait_turkey.c`, which has none of those). `cr_slider_dead` is the one function; the test checks that what is hidden
++  is exactly what changes nothing. Nothing was removed from the data: a hidden slider's byte is still saved, and the
++  rows come back when the horns or another species are chosen. `creator_grid.txt` lost one DOWN (the row it passed).
++* **The test that moves every slider** (`core/tests/test_cr_body.c`, host, in `make -C core test`): each of the 11 build
++  sliders (Body, Face and Supernatural tabs) is moved from its lowest to its highest step on the bench citizen: the bust
++  or the figure must change, and every single step must change the picture (a table is printed: slider, steps, pixels,
++  result); then on every species and six body types (0, 3, 6, 9, 12, 15) (the creator does not offer it where `cr_slider_dead`); the 16 body
++  types are each a different figure; the new ones set the proportions they are named for; no render writes outside its
++  picture (canary bytes around every buffer; the SAN=1 run adds the sanitizer's eyes); the voice and personality sliders
++  (not build sliders: they change what is said and how a citizen acts, not the picture) reach both ends, keep them through
++  `resident_sanitize` and clamp; A resets and undo brings it back; the Body row cycles all 16. Numbers on the bench
++  (lowest to highest, bust + figure px): Height 2,969, Build 1,237, Head size 2,198, Eye size 463, Eye gap 530,
++  Eye height 673, Eye tilt 193, Brow height 75, Nose size 101, Mouth size 39, Horn size 1,645 (the smallest is the mouth).
++* **The same moves on every platform** (`core/tests/scripts/creator_sliders.txt`; GBA `gba/harness/scripts/creator_sliders.txt`):
++  each slider is held to its lowest step (a shot, and again a few ticks later), held to its highest (two shots), then A
++  (a shot), then the 16 body types are stepped through. `tools/slider_shots_check.py DIR` reads the shots of any platform
++  (the preview pane only, the animation's own pixels left out) and fails, listing each slider, when a slider's lowest
++  and highest preview do not differ or A did not bring it back. Where it runs: the native runner at both resolutions
++  (`make -C core test`, `scripts`), the GBA ROM (`make -C gba test-creator-sliders`), the PS1 harness (`cmake --build
++  --preset ps1 --target harness`, or `run.py --script core/tests/scripts/creator_sliders.txt` and the checker),
++  the Dreamcast on Flycast (`make -C dc ui-compare`, the script is in the default list and the checker runs on its shots).
++  The checker has a self-test (`parts-check`: a slider that moves nothing fails, an animation does not count).
++* **Memory.** PS1: the resident table is 96 B + a 16 B step array (was 120 B) and `sanitize` gained one load and add:
++  `_end` 0x801ee3e0 -> 0x801ee3d0 (16 B less: 72,720 -> 72,736 B below the stack top = 71.0 KB, so the tree is still 992 B under the 72 KB plan gate until SPEED PS1-RAM, docs/PS1.md "CR-BODY");
++  the catalog rows, the six part icons and the slider table are overlay / disc data. GBA: `.bss`, `.iwram`, `.iwram_bss`,
++  `.data` identical, `.text` +328 B and `.rodata` +2,624 B in ROM (docs/GBA.md ledger row 48).
++* **Not done here / next.** The language packs do not carry the slider and body names yet: the labels are in English
++  like every creator label (the part names reach the packs with CR14). A saved look made with a new body type loads on
++  an older build as the average body (its `sanitize` puts a value past its list back): new saves only.
++
+ ## Extending
+ 
+ * **A new catalog option** (e.g. a new hat): nothing to do - rows use the
+diff --git a/docs/GBA.md b/docs/GBA.md
+index 6263ec08..9f50ebcd 100644
+--- a/docs/GBA.md
++++ b/docs/GBA.md
+@@ -438,6 +438,7 @@ against the LAST row, not against a figure from an older base.
+ | 45 | CR4 A2: 32 hair styles and 8 beards (docs/CREATOR.md "CR4 batch A2") | after S3-3 (`b63abec`) | 15,444 B | **15,444 B** | 0 B | 6,308 B | measured on `b63abec` and `b63abec` + A2 (`make -C gba sizes`): `.bss` 245,804 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B before and after, `.text` 1,401,336 B before and after; the part scripts, the catalog rows and the 40 part icons are `const` ROM: `.rodata` 6,587,868 -> 6,608,008 B (+20,140). PS1: no resident byte (`_end` 0x801ef4e0 before and after, 68,368 B below the stack top with the boot FMV; the overlay slot ends 0x801ef3b4 both times) |
+ | 46 | CR4 A3: 60 spooky parts (docs/CREATOR.md "CR4 batch A3") | after A2 (`224b192`) | 15,444 B | **15,444 B** | 0 B | 6,308 B | measured on `0c1fc51` and `0c1fc51` + A3 (clean `make -C gba` builds, `make -C gba sizes`): `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B, `.data` 816 B, `.text` 1,403,440 B all identical before and after; the part scripts (5.8 KB), the catalog rows and the 60 part icons are `const` ROM: `.rodata` 6,591,380 -> 6,623,356 B (+31,976, measured on the pre-rebase tree; on the rebased tree the whole `.rodata` is 6,643,580 B and `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B, `.data` 816 B, unchanged). `make -C gba test` and `test-creator` pass on the rebased tree (creator rows 29.9 fps, value step 30.0) |
+ | 47 | S2-11: the house's view turn built over several ticks, the room group's row loops, checksum pass and cursor, HomeMart's UI loops (docs: "Speed wave 2: S2-11" below) | after CR4 A3 and PS1-FLAT (`ee4e053`) | 15,460 B | **15,460 B** | 0 B | 6,308 B | measured on `ee4e053` and that tree + S2-11, both built clean (`make -C gba sizes`; ROM 8,087,036 -> 8,091,916 B): `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B and `.data` 816 B all unchanged, no resident EWRAM or IWRAM. `RBig` (the house's region, in the scene scratch arena) loses `match` (56 B, now on the stack in `incremental()`) and gains 32 B of turn-build state (`tkey[5]`, `bkey`, `bsub`, `bstep`, `brow`, `bld`, `bturns`, `k_last`); the overlay's room group grows 3,588 -> 9,512 B inside the 3D group's 10,352 B slot (840 B free in the slot); `hold.c` one flag bit. PS1: the EXE and the overlays are byte for byte the tip's (the hooks are not built there), `_end` 0x801ee3e0 before and after, 72,736 B below the stack top with the boot FMV (the margin delta is 0 B) |
++| 48 | CR-BODY: 16 body types, the slider table, the slider test (docs/CREATOR.md "CR-BODY") | after A3 | 15,444 B | **15,444 B** | 0 B | 6,308 B | measured on `ee4e053` (clean worktree) and `ee4e053` + CR-BODY (`make -C gba`, `make -C gba sizes`): `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B, `.data` 816 B identical; ROM `.text` 1,403,584 -> 1,403,912 B (+328), `.rodata` 6,643,580 -> 6,646,204 B (+2,624: six rows of the catalog, six icons, the slider table). `make -C gba test`, `test-creator` (idle 30.0, rows 29.9, value step 27.9, grid scroll 27.7: the S3-3 numbers) and the new `test-creator-sliders` (11 sliders, 16 bodies) pass |
+ 
+ Known claimants still to land (their own packages measure and add rows):
+ 
+diff --git a/docs/PORTRAIT.md b/docs/PORTRAIT.md
+index 4dc6e858..b70d1323 100644
+--- a/docs/PORTRAIT.md
++++ b/docs/PORTRAIT.md
+@@ -597,3 +597,10 @@ deep-field hooks and saving (CR5), icons (CR7), the grid picker (CR6), the SPU-R
+ `PS_MAT_INK` 125 and `PS_MAT_WHITE` 126 in `portrait_int.h`, built into the render's material memo by
+ `pm_of()`. Pupils, glints and eye whites use them. A `solid same` shape may reach 2,200 px at bust scale
+ (a head silhouette); every other solid is still held to 600.
++
++**Body types (CR-BODY).** `body` has 16 types (BODY_AVERAGE .. BODY_BOBBLE; `BODY_COUNT` 10 is the classic count, `BODY_TYPES` 16).
++`portrait_body.c` `body_mod[type][6]` (shoulder %, hip %, torso height %, legs %, arm %, belly) shapes the figure,
++chibi, fighter and bust in `pb_layout`, and `pb_body_head[type]` is a head size step that `portrait.c` `sanitize` adds to
++the head size slider (once per look; clamped to 15; 0 for the classic ten). The sliders then adjust the base. Contact sheet:
++`portrait_sheet --out DIR --slot body`.
++
+diff --git a/docs/PS1.md b/docs/PS1.md
+index f4236d2e..ea91f06f 100644
+--- a/docs/PS1.md
++++ b/docs/PS1.md
+@@ -1682,3 +1682,15 @@ their catalog rows are creator-overlay data and all are age class ALL (no new ag
+ painted choices (`part_live_drawable`: Tail 1/16, Aura 1/8), as for every scripted part since CR3. Harness (PCSX-Redux):
+ `game_smoke`, `creator`, `creator_grid` and the new `creator_parts_spooky` PASS; `creator_speed` idle 30.13, grid scroll
+ 29.39, rows 30.13, value 29.88 (the S3-3 numbers: nothing resident changed).
++
++## CR-BODY (2026-11-13): body types and the slider test
++
++Measured on `ee4e053` (clean worktree) and `ee4e053` + CR-BODY (clean builds, `cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON`,
++`PSN00BSDK_LIBS=/opt/psn00bsdk/lib/libpsn00b`): `_end` 0x801ee3e0 before, 0x801ee3d0 after, so 16 B less resident
++(72,720 B -> 72,736 B = 71.0 KB below the stack top with the boot FMV, the elf2exe line prints "71 KB left" both times: still 992 B under the 72 KB plan gate, as before this package, until SPEED PS1-RAM). The first
++version of the step (a function plus a seven column table) was +96 B; the head size step is now a 16 byte array read inline
++in `sanitize` before its existing clamp, and the body table is back to six one-byte columns (96 B, was 120 B as int16).
++The 6 new body types are table rows (method P, age class ALL: no new age row); their catalog rows and icons are overlay
++data. Harness (PCSX-Redux): `game_smoke`, `creator`, `creator_grid`, `creator_parts_spooky`, `creator_speed` (idle 30.13,
++grid scroll 29.39, rows 30.13, value 29.88: the S3-3 numbers) and the new `creator_sliders` (11 sliders, 16 bodies) PASS.
++
+diff --git a/docs/design/held/status/CREATOR.md b/docs/design/held/status/CREATOR.md
+index db9079f4..bf2db3ee 100644
+--- a/docs/design/held/status/CREATOR.md
++++ b/docs/design/held/status/CREATOR.md
+@@ -4,12 +4,13 @@ Kept by the stream's lead (rules: ../PARALLEL_WAVES.md section 5). Update it wit
+ What goes in: last update, lead session, landed (package, commit, key numbers, PS1 margin and
+ delta, GBA sizes), in flight (package and stage), next up, blockers, needs from other streams.
+ 
+-- **Last update:** 2026-11-13 (CR4 A1a landed, LAND agent)
++- **Last update:** 2026-11-13 (CR4 A1a landed, LAND agent; CR-BODY built on branch fut-cr-body, awaiting review and landing)
+ - **Lead:** session_01Xd63cwsuWNoECo4JeUnWy3 (GBA and PS1 tools installed; Dreamcast toolchain installing again after a container restart)
+ - **Landed:** landed before the restart: CRA (CR0, CR1, CR2, CR12), CRB (CR6, CR7, CR9). 433 parts catalogued, 351 live with icons.
+ - **CR5a (landed 2026-11-13):** GBA EWRAM free 1,788 -> 15,444 B (island hub lists moved into the arena top, 13,720 B); island hub frames identical (vhash-seq 94cd2df9, fps 30.0); IWRAM unchanged; PS1 object sizes identical (the full PS1 EXE margin: see the commit message); docs/GBA.md ledger row 41. The Town Hall menu speed-tour hash moved (portrait phase only; a log line, not a gate).
+ - **CR3 (landed 2026-11-13, the commits "CR3: ..." on the branch; docs/CREATOR.md "CR3"):** every gene list offers its live count, the gene's 11 new look fields (pupils, eye whites, fur pattern, spot colour, glasses, outer layer, legwear, blush style, ear fold, hood, handedness) have creator rows and reach every renderer path and the cache key (0 for a Classic look); the NICK chunk carries their bits; speed work kept (sliced / retained drawing). Core tests 1,119 passed, 0 failed (`creator_rows_cover_every_field`, `test_cr3.c`); SAN=1 only the 4 known reports; check-gen clean; xcheck 408 files OK; GBA `test` and `test-creator` pass, `.bss` 245,804 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B before and after (ROM +2,224 B text, +20,212 B rodata); DC host compare ok, `make -C dc` builds, Flycast `ui-compare` creator 36 shots pass. PS1: live there too (painted values; the part VM is CR10), `_end` 0x801ef4e0, 68,368 B below the stack top (base `ee686c7`: 65,936 B, so +2,432 B: creator_data.c's 6 KB string pool went to the overlay, docs/PS1.md "CR3"); harness game_smoke, creator, creator_grid, creator_speed PASS, speed2 creator equals the base. Not done: the PS1 is still 3.6 KB under the 72 KB plan gate (SPEED PS1-RAM); no test builds `DOOMO_GENE_EXT=0`; no frame-hash proof of Classic pixels beyond the unit tests (premade fingerprints, HITCHECK exact hits); GBA `speed2` groups not run.
+ - **S3-3 (landed 2026-11-13, partial, the commits "S3-3: ..."; docs/CREATOR.md "S3-3"):** the held creator frame (saved G2-CR work, GBA), regions drawn on the fast path before their panels, `plat_ui_loops` before the pane, PS1 hat-grid icons kept in the overlay's scene scratch. On the landed tree (libmgba, drawn fps, `0df7284` -> S3-3): species grid scrolled 17.1 -> 27.7, rows 27.3 -> 29.9, value held 17.9 -> 27.9, hat grid try-on 21.3 -> 23.4, hat grid 29.0 (not 30), filter chip 26.3 -> 26.4, idle work 16.0 -> 3.9 ms/tick; no tab change has a frame over 50 ms (was up to 84 ms); 50 ms frames per change: home 0, voice 1, profile 1, hair/supernatural/outfit/personality 2, head 3. PS1: 68,368 B below the stack top (identical to CR3, +0 B), try-on 30.00, creator_speed all >= 29.39. GBA EWRAM 15,444 B free and IWRAM 11,256 B unchanged. Still open: tab changes with more than one 50 ms frame (five of eight), hat grid 30, filter chip 28, species grid held 30 and try-on (need S3-2 portrait work), lock overlay once per page. Not run: Dreamcast build, harness and ui-compare (no KallistiOS on the landing machine; the builder saw 2 Performance-page shots fail there, unverified against a baseline: re-check on a DC machine).
++- **CR-BODY (built 2026-11-13 on `fut-cr-body`, not landed yet; docs/CREATOR.md "CR-BODY"):** 6 new body types (gene `body` 10..15), one table for every slider range (`CR_SLIDERS`, for CR-SLIDERX), A resets a slider, signed value and default notch on the bar, sliders that change nothing hidden (horn size without horns, the turkey's six face sliders), and the test that moves every build slider (`test_cr_body.c`; `creator_sliders.txt` + `tools/slider_shots_check.py` on the runner, `make -C gba test-creator-sliders`, the PS1 harness, Dreamcast `ui-compare`). Core 1,179 passed; check-gen, xcheck (414 files), `make dc-host-test`, GBA `test` and `test-creator`, PS1 harness (game_smoke, creator, creator_grid, creator_parts_spooky, creator_speed 30.13 / 29.39 / 30.13 / 29.88, creator_sliders) and Dreamcast `ui-compare` (142 shots, creator_sliders on the console) pass. PS1 `_end` 0x801ee3e0 -> 0x801ee3d0 (-16 B; 72,736 B below the stack top, 992 B under the 72 KB plan gate as before); GBA EWRAM / IWRAM identical, ROM +2.9 KB. SAN=1 was run for the creator, portrait, part and CR3 tests only (full SAN not run: hours on the shared machine). Next: CR-SLIDERX (the x1..x4 cheat reads `cr_sliders[]`).
+ - **CR4 A2 hair (landed 2026-11-13, partial; docs/CREATOR.md "CR4 batch A2"):** 40 new parts live of the batch's 148: 32 hair styles (gene 32..63) and 8 beards (gene 8..15), contact sheets and the interplay sheet reviewed, `creator_parts_hair.txt`, `test_cr4_a2.c`; GBA ROM +20,140 B, EWRAM / IWRAM net zero; PS1 `_end` unchanged by A2 (rebased tree: 0x801ef450 after LV0, 0x801ef580 after the later STKOPT/Talk commits = 68,208 B below the stack top with the FMV, A2 adds nothing; still under the 72 KB rule until PS1-RAM); rebased tree: core 1,139 passed, SAN, check-gen, xcheck, GBA test and test-creator, dc-host-test, PS1 build and harness (game_smoke, creator_speed, creator, creator_grid, creator_parts_hair) pass. Review: the lander and an independent reviewer viewed the sheets (no nudity, nothing suggestive, no real-world symbols, no tobacco / vape / drug props); the reviewer found the beards weak on the fur-coloured bench cat (they read on the bald shape sheet). The walk-through has no assertion that the style was worn (the runner has no worn-gene check yet). **Left for the next hair package (108 parts):** hair page 2 (24), bangs (12), ahoge (12), hair accessories (52), facial hair page 2 (8). They are deep fields: each needs a `DF_` id (`look_fields.h`, `look_pool.c` flags), a painter hook in `portrait_hair.c` / `portrait_head.c` and an entry in `tools/parts_build.py` HOOKS, and they stay hidden until CR5 saves deep parts and the creator rows take a deep field (`CrRow.field` is a u8 gene id).
+ - **CR4 A3 spooky (landed 2026-11-13, partial; docs/CREATOR.md "CR4 batch A3"):** 60 new parts live of the batch's 134: 10 horns (gene 16..25), 16 tails (16..31), 14 wings (10..23), 4 halos (12..15) and 16 auras (8..23; 16..23 use the aura's fifth bit that the NICK trailer carries); hand-written scripts in `core/data/parts/spooky`, no new painter code; sheets reviewed (incl. the new `portrait_sheet --slot tail|wings --views`), `creator_parts_spooky.txt`, `test_cr4_a3.c`. Rebased tree (after T5B-VOICE): core 1,165 passed, check-gen, xcheck (414 files, four compilers), `make dc-host-test`, GBA `test` and `test-creator` pass; GBA EWRAM / IWRAM / `.text` identical, ROM `.rodata` +31,976 B; PS1 `_end` 0x801ef580 unchanged by A3 (68,208 B below the stack top, still under the 72 KB rule until PS1-RAM); PS1 harness game_smoke passes (the creator scripts: see below). SAN=1 NOT run to the end: it was stopped after about 404 of the 1,163 unit tests (incl. all `cr4_a3` tests) and 201 of the 376 script runs (incl. `creator_parts_spooky`) because the shared machine made it take many hours; no failure and only the known UBSan reports (concert_gfx.c) before the stop. The builder's full SAN run on the pre-rebase tree passed. **Left (68 parts, deep fields, need CR5):** horn page 2 (6), horn / antenna bits (32), tail accessories (16), wing accessories (8), halo page 2 (6): each needs a `DF_` id, a painter hook and a creator row that takes a deep field. `parts_build.py` now estimates a torso block that never draws on the bust against the figure's torso (`NOMINAL_TORSO_BODY`).
+ - **CR4 A1a (landed 2026-11-13, partial, the commits "CR4 A1a: ..."; docs/CREATOR.md "CR4 A1a"):** 96 new parts live (plan about 145): 12 head shapes, 24 eye styles, 27 pupils, 13 eye whites, 20 brows; script materials `mat ink` / `mat white`; the shape gate honours per-slot `gate=`; `make -C core portrait-sheet`. Left for the next package: 31 lashes / lids / liner (CR5 deep fields) and 3 extra eyes 4-6 (a gene change). Weak gates, recorded: pupils gate 2 px, eye whites 4, brows 4 (not 24); several eyes are identical on chibis (Dash/Plus/Starburst, Smile Cups/Slot, Chomp/Heart Iris); the lead may want a bigger default iris or a pupil-size control. Landing fix: the review found the new `portrait-sheet` Makefile block had been inserted inside the `gen` recipe, so `make gen` and `check-gen` skipped textpack, talkc, PY_GENS_REST and ulgen; moved below the recipe, `check-gen` still clean with all generators running. On the tree rebased onto A2 / A3 (final): core 1,168 passed / 0 failed, SAN=1 1,168 passed (only the 4 known reports), check-gen clean, xcheck 414 files OK, GBA build + test + test-creator OK (`.text` 1,403,736, `.rodata` 6,688,236, `.iwram` 11,256, `.iwram_bss` 4,084, `.bss` 245,788: EWRAM net zero; this package's ROM growth about +44.7 KB rodata, +152 B text), PS1 EXE with the boot FMV ends 0x801ee3e0 on the tree rebased onto PS1-FLAT, 72,736 B below the stack top, equal to the origin tip's figure (before PS1-FLAT: 0x801ef580, 68,208 B, equal to a clean build of origin without this package, measured): 0 B resident added; harness game_smoke, creator_parts_face_a, creator_grid, creator_speed (rows 30.13, value 29.88) PASS; dc-host-test OK, `make -C dc` builds (no Flycast run). Part catalog 629 parts / 602 live (with A2 and A3).
+diff --git a/ps1/CMakeLists.txt b/ps1/CMakeLists.txt
+index 1c3bc239..43ccf541 100644
+--- a/ps1/CMakeLists.txt
++++ b/ps1/CMakeLists.txt
+@@ -436,6 +436,10 @@ else()
+ 		# CR9: the creator's speed gates (expect-fps floors; docs/CREATOR.md "Speed")
+ 		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${_hs}/creator_speed.txt
+ 		        --out ${_shots}/creator_speed
++		# CR-BODY: every build slider moved across its range, the preview must change (tools/slider_shots_check.py)
++		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/scripts/creator_sliders.txt
++		        --out ${_shots}/creator_sliders
++		COMMAND ${Python3_EXECUTABLE} -I ${CORE_DIR}/../tools/slider_shots_check.py ${_shots}/creator_sliders
+ 		# S2-12: the image cache under pressure (Candy Catch's session + Whack, then Dodge: the old hang)
+ 		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${_hs}/fair_cache.txt
+ 		        --out ${_shots}/fair_cache
+-- 
+2.43.0
+

@@ -1,0 +1,32 @@
+diff --git a/core/src/portrait.c b/core/src/portrait.c
+index 57fa0fd2..5853d419 100644
+--- a/core/src/portrait.c
++++ b/core/src/portrait.c
+@@ -39,12 +39,18 @@ static void sanitize(DoomoLook *l)
+ /* CR2: a value past the painters' range is kept when a part script draws it (ps_has) */
+ #define FIXP(f, n, gf) if (l->f >= (n) && !ps_has((gf), l->f)) l->f = 0
+ #define FIXS(f, m) if (l->f > (m)) l->f = (m)
++/* CR4 A4: a scripted mark (past the painted ones) is kept; with no part VM (the PS1) it is cleared as before, no code */
++#if DOOMO_PARTS_VM
++#define FIXM(f, n, gf) FIXP(f, n, gf)
++#else
++#define FIXM(f, n, gf) FIXE(f, n)
++#endif
+     FIXE(species, SPECIES_COUNT); FIXE(body, BODY_COUNT); FIXP(head_shape, HEAD_COUNT, GF_HEAD_SHAPE);
+     FIXP(eye_style, EYE_COUNT, GF_EYE_STYLE); FIXP(brow_style, BROW_COUNT, GF_BROW_STYLE);
+     FIXP(nose_style, NOSE_COUNT, GF_NOSE_STYLE); FIXP(mouth_style, MOUTH_COUNT, GF_MOUTH_STYLE);
+     FIXP(hair_style, HAIR_COUNT, GF_HAIR_STYLE); FIXP(facial_hair, FHAIR_COUNT, GF_FACIAL_HAIR);
+     FIXP(ears, EARS_COUNT, GF_EARS); FIXP(horns, HORNS_COUNT, GF_HORNS); FIXP(tail, TAIL_COUNT, GF_TAIL);
+-    FIXP(wings, WINGS_COUNT, GF_WINGS); FIXP(halo, HALO_ALL_COUNT, GF_HALO); FIXP(marking, MARK_COUNT, GF_MARKING);
++    FIXP(wings, WINGS_COUNT, GF_WINGS); FIXP(halo, HALO_ALL_COUNT, GF_HALO); FIXM(marking, MARK_COUNT, GF_MARKING);
+     FIXP(top, TOP_COUNT, GF_TOP); FIXP(bottom, BOTTOM_COUNT, GF_BOTTOM); FIXP(shoes, SHOES_COUNT, GF_SHOES);
+     FIXP(hat, HAT_COUNT, GF_HAT); FIXP(accessory, ACC_COUNT, GF_ACCESSORY); FIXP(aura, AURA_COUNT, GF_AURA);
+     FIXE(pattern, PATTERN_COUNT);
+@@ -64,6 +70,7 @@ static void sanitize(DoomoLook *l)
+ #undef FIXE
+ #undef FIXP
+ #undef FIXS
++#undef FIXM
+ }
+ 
+ /* CR2 shape-only renders: every material on one grey ramp (portrait_shape_mode) */
