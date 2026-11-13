@@ -668,6 +668,8 @@ def selftest():
         ("unknown template", "list hat 30\nblock group=5\n use nope 1\nend\n"),
         ("template args", "def t A B\n dot $A $B 2\nenddef\nlist hat 30\nblock group=5\n use t 1\nend\n"),
         ("big crown", "list hat 30\nblock group=5\n solid\n crown cylinder 0 0 255 255\nend\n"),
+        ("big torso part on the bust", "list tail 30\nblock group=1 anchor=torso view=all\n scale 255\n mat skin\n"
+         " solid\n ellipse 0 0 100 100\nend\n"),
     ]
     ok = 0
     for name, text in cases:
@@ -696,6 +698,18 @@ def selftest():
         print("selftest: a template did not expand like the written-out ops")
         return 1
     print("selftest: templates and top extents OK")
+    # CR4 A3: the same torso part is fine when the block never draws on the bust (the figure's torso is smaller)
+    with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as f:
+        f.write("list tail 30\nblock group=1 anchor=torso view=figure,fighter,chibi\n scale 255\n mat skin\n"
+                " solid\n ellipse 0 0 100 100\nend\n")
+    try:
+        parse(f.name, fields)
+    except PartError as e:
+        print("selftest: a torso block off the bust was rejected: %s" % e)
+        return 1
+    finally:
+        os.unlink(f.name)
+    print("selftest: torso blocks off the bust are estimated on the figure torso OK")
     # the LZ blocks: round trip, whole entries per block, none over PART_BLK
     import random
     rng = random.Random(7)
