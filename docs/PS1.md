@@ -1489,3 +1489,14 @@ design_grow.md (the jukebox waveform reads the PCM through the window).
 ## RAM fix 2026-11-08: disc over the stack reserve with the boot FMV
 
 CI on 18be42b failed: with `INTRO.STR` and `fmv.c` linked the EXE ended at `0x801f0220`, 544 B into the 64 KB stack reserve. `pet_gfx.c` (16.5 KB resident, it was in `DOOMO_CORE_HOT` at -O2) is now compiled -Os and `fmv.c` joined the -Os cold list: resident 6.7 KB smaller, the EXE ends at `0x801ee790`, 70 KB below the stack top. The pet screen still runs 30.00 fps on PCSX-Redux (`perf_pet.txt`, CPU 24.5 ms per frame).
+
+## CR3 (2026-11-13): the creator's string pool leaves the resident image
+
+The planner (`tools/ovl_plan.py`) moves `.text` and `.rodata` sections of a group's files into the overlay,
+but a merged string section (`.rodata.str1.4`) is one section per object: if anything resident points into it,
+the whole pool stays. `creator_data.c` kept about 6 KB of row labels and help lines resident that way (two
+tables read by resident code, and its 8-byte `n_*` name lists in `.sdata`). Now `unlocks_creator.c` holds the two
+tables and `creator_data.c` is compiled `-G0` (`ps1/CMakeLists.txt`). Measured on `ee686c7` (clean builds, `cmake
+--preset ps1 -DDOOMO_INTRO_REQUIRED=ON`): `_end` 0x801efe60 -> 0x801ef4e0 with the gene fields live, 65,936 B ->
+68,368 B below the stack top. Check the link map for the same trap whenever a creator-group file gains a pointer
+table: `grep "creator_data.c.obj(" ps1/build/doomogachi.ldmap` must show its `.rodata.str1.4` only in the overlay part.

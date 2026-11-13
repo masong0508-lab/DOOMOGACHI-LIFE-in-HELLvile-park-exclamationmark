@@ -447,10 +447,23 @@ held; on the GBA the bust's effect frames change every 16 ticks).
 * Runner scripts `creator.txt` and `creator_grid.txt` step over the new rows (Hood, Pupils, Eye whites,
   Ear fold, Blush style); the eye picker step uses the Unlocked chip so both screen sizes reach the
   same row.
-* PS1: `DOOMO_GENE_EXT` is 0 there (with `DOOMO_PARTS_VM=0`, `look_fields.h`): the new fields are not
-  read, drawn, saved or offered, so a PS1 behaves as before CR3 until the PS1-RAM package has freed
-  resident bytes. Even so the PS1 EXE ends 704 B higher than `4c0f369` (the build fails the 64 KB
-  stack reserve check by 288 B): see docs/design/held/status/CREATOR.md.
+* PS1 (2026-11-13, measured on `ee686c7` + CR3): the new fields are live there too, as far as the PS1
+  can draw them. It has no part VM yet (`DOOMO_PARTS_VM=0`, until CR10), so the painted values show
+  (pupils, eye whites, blush styles, ear fold, hood, handedness) and the creator offers only those
+  (`part_live_drawable`); the scripted ones (glasses, outer layer, legwear, fur pattern) wait for CR10
+  and their rows stay hidden. `DOOMO_GENE_EXT=0` (a `-D`) still compiles the whole feature out
+  (`look_fields.h`); no build uses it and no test covers it.
+* PS1 memory: the first build grew the EXE and failed the 64 KB stack reserve. The cause was not the
+  new code: `creator_data.c` held its whole merged string pool (about 6 KB of row labels, help lines
+  and names) resident, because resident code reads two of its tables (`doomo_unlocks_creator`,
+  `doomo_life_stage_names`, now in `unlocks_creator.c`) and its 8-byte `n_*` pointer tables sat in
+  `.sdata` (always resident; `creator_data.c` is built `-G0` now). The pool now goes with the creator
+  overlay group. EXE `_end` `0x801ef4e0` against `0x801efe60` on `ee686c7`: 68,368 B below the stack
+  top against 65,936 B, so CR3 leaves the PS1 2,432 B better than it found it. Still below the 72 KB
+  plan gate (SPEED PS1-RAM). Harness: `game_smoke`, `creator.txt`, `creator_grid.txt`,
+  `creator_speed.txt` PASS; `speed2` creator equals the base table.
+* The part live counts (`doomo_part_live`, `part_live_count`, `part_live_drawable`) moved to the
+  catalog files (`part_meta_data.c` / `part_meta.c`, creator overlay on the PS1).
 
 ## Extending
 
