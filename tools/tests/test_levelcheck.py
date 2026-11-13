@@ -69,6 +69,13 @@ class TestLevelcheck(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("first at 1,1", out)
 
+    def test_a_v2_overworld_or_arena_without_an_exit_passes(self):
+        for kind in ("overworld", "arena"):
+            grid = "grid\n############\n#p.........#\n#..........#\n############\nend\n"
+            rc, out, err = check_text(test_mapc.build(grid=grid).replace("kind dungeon", "kind " + kind))
+            self.assertEqual(rc, 0, kind + out + err)
+            self.assertNotIn("soft lock", out)
+
     def test_a_mapc_refusal_fails_the_map(self):
         rc, out, err = check_text(test_mapc.build(head="dark yes\n"))
         self.assertEqual(rc, 1, out)

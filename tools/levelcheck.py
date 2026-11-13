@@ -9,7 +9,7 @@ With no FILE: every core/data/maps/*.txt. For each map it
     zones and paths outside the map, swaps on walls that never open, a
     `dark yes` map without a note, a `gba yes` map that breaks the GBA budgets
     of the levels plan, section 7.2);
-  * checks the ROM size (at most 300 KB per level, plan 7.2);
+  * checks the ROM size (tables only: at most 300 KB per level, plan 7.2; script, text and art are not counted here);
   * runs the reachability search (core/tools/mapreach.c, the code that
     core/tests/test_maps.c runs) and fails if
       - a dungeon's exit cannot be reached from the start,
@@ -90,12 +90,13 @@ def check_map(name, m, cells, things, r):
     """The list of plain sentences about what is wrong with the map, empty if it passes."""
     bad = []
     w = r["w"]
-    if m["kind"] == "dungeon" and r["start"] is not None:
+    has_exit = r["exit"][0] > 0
+    if m["kind"] == "dungeon" and r["start"] is not None and has_exit:
         if r["exit"][1] == 0:
             bad.append("no exit can be reached from the start")
     if r["overflow"]:
         bad.append("the reachability search overflowed (too many swap sets to prove)")
-    if m["v2"] and r["stuck"]:
+    if m["v2"] and m["kind"] == "dungeon" and has_exit and r["stuck"]:
         bad.append("soft lock: %d reachable states can no longer reach an exit (first at %d,%d)" % (
             r["stuck"], r["stuck_at"][0], r["stuck_at"][1]))
     first, n = None, 0
@@ -162,7 +163,7 @@ def main(argv):
         bad = []
         rom = rom_estimate(m, cells, things)
         if rom > ROM_MAX:
-            bad.append("%d bytes of tables, at most %d" % (rom, ROM_MAX))
+            bad.append("%d bytes of map tables (script, text and art not counted), at most %d" % (rom, ROM_MAX))
         if name not in res:
             bad.append("mapreach printed nothing for it")
         else:
