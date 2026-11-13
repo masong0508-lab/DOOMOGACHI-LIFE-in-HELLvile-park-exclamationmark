@@ -467,6 +467,154 @@ TEST(panel_workshop_list_and_bars_are_pixel_identical)
     CHECK(both("workshop", s_workshop, p_workshop, 420, 100));
 }
 
+/* ---- (S2-9) the ui helpers the workshop's panels stand on ------------------------------------------- */
+static uint32_t rect_hash(int x, int y, int w, int h)
+{
+    uint32_t hh = 2166136261u;
+    int i, j;
+    for (j = y; j < y + h; j++)
+        for (i = x; i < x + w; i++) hh = (hh ^ nat_fb[j * nat_w + i]) * 16777619u;
+    return hh;
+}
+
+/* ui_window_open(): the window without a rect of its plain fill; with the rect filled in again it is the window */
+TEST(panel_window_open_is_the_window_less_its_rect)
+{
+    int st, k, i;
+    static uint8_t full[NAT_MAX_W * NAT_MAX_H];
+    set_res(240, 160);
+    nat_panel_cache = 0;
+    test_reset();
+    for (st = 0; st < 6; st++)
+        for (k = 0; k < 3; k++) {
+            int x = 10 + k * 3, y = 20 + k, w = 100 + k * 7, h = 60 + k * 9;
+            int x0 = x + 8, x1 = x + w - 8, y0 = y + 14, y1 = y + h - 12;
+            CHECK(ui_window_open_ok(x, y, w, h, x0, y0, x1, y1));
+            plat_clear(PAL_BLACK);
+            ui_window(x, y, w, h, st);
+            memcpy(full, nat_fb, (size_t)(nat_w * nat_h));
+            plat_clear(PAL_BLACK);
+            ui_window_open(x, y, w, h, st, x0, y0, x1, y1);
+            for (i = 0; i < nat_w * nat_h; i++) {                   /* outside the rect: the window's pixels */
+                int px = i % nat_w, py = i / nat_w;
+                if (px >= x0 && px < x1 && py >= y0 && py < y1) {
+                    CHECK_EQ(nat_fb[i], PAL_BLACK);                 /* ... inside it: nothing drawn */
+                } else if (nat_fb[i] != full[i]) {
+                    CHECK_EQ(nat_fb[i], full[i]);
+                    return;
+                }
+            }
+            plat_rect(x0, y0, x1 - x0, y1 - y0, ui_style(st)->fill);
+            CHECK(memcmp(nat_fb, full, (size_t)(nat_w * nat_h)) == 0);
+            /* rects the window's other layers reach are not taken (the whole window is drawn) */
+            CHECK(!ui_window_open_ok(x, y, w, h, x0, y, x1, y1 - 12));              /* the gloss band */
+            CHECK(!ui_window_open_ok(x, y, w, h, x, y0, x1, y1));                   /* the outline column */
+            CHECK(!ui_window_open_ok(x, y, w, h, x0, y0, x1, y + h - 1));           /* the rounded bottom */
+            plat_clear(PAL_BLACK);
+            ui_window_open(x, y, w, h, st, x0, y, x1, y1 - 12);
+            memcpy(&full[0], nat_fb, (size_t)(nat_w * nat_h));
+            plat_clear(PAL_BLACK);
+            ui_window(x, y, w, h, st);
+            CHECK(memcmp(nat_fb, full, (size_t)(nat_w * nat_h)) == 0);
+        }
+}
+
+/* ui_bar_still(): ui_bar() without its shine; the shine is the only difference, in every frame of its sweep */
+TEST(panel_bar_still_differs_from_the_bar_by_its_shine_only)
+{
+    static uint8_t a[NAT_MAX_W * NAT_MAX_H];
+    int f, i, v, shone = 0, same = 0;
+    set_res(240, 160);
+    nat_panel_cache = 0;
+    test_reset();
+    doomo_init();
+    for (f = 0; f < 90; f++) {
+        frame(0);
+        for (v = 8; v <= 100; v += 46) {                    /* a bar under a quarter blinks; both blink alike */
+            int diff = 0;
+            plat_clear(PAL_BLACK);
+            ui_bar(20, 30, 60, 6, v, 100, PAL_PAINT(PAINT_CHERRY, 1));
+            memcpy(a, nat_fb, (size_t)(nat_w * nat_h));
+            plat_clear(PAL_BLACK);
+            ui_bar_still(20, 30, 60, 6, v, 100, PAL_PAINT(PAINT_CHERRY, 1));
+            for (i = 0; i < nat_w * nat_h; i++)
+                if (a[i] != nat_fb[i]) {
+                    diff++;
+                    CHECK_EQ(a[i], PAL_WHITE);              /* what the bar has over the still one: shine pixels */
+                }
+            if (diff) shone++; else same++;
+        }
+    }
+    CHECK(shone > 20 && same > 20);                         /* the shine was on and off in the run */
+}
+
+/* ui_backdrop_flat(): the bands and seams of ui_backdrop(), none of its dots, hearts and twinkles, and nothing in a hole */
+TEST(panel_backdrop_flat_is_the_backdrop_without_its_drifting_things)
+{
+    static uint8_t full[NAT_MAX_W * NAT_MAX_H];
+    int holes[8] = { 20, 30, 100, 120, 130, 40, 220, 100 };
+    int i, nb = 0, bands[8], t;
+    set_res(240, 160);
+    nat_panel_cache = 0;
+    test_reset();
+    for (t = 0; t < 3; t++) {
+        plat_clear(PAL_BLACK);
+        ui_backdrop_flat(WIN_CREAM, holes, 2);
+        nb = 0;
+        for (i = 0; i < nat_w * nat_h; i++) {
+            int px = i % nat_w, py = i / nat_w, j, c = nat_fb[i], hole = 0;
+            for (j = 0; j < 2; j++)
+                if (px >= holes[4 * j] && px < holes[4 * j + 2] && py >= holes[4 * j + 1] && py < holes[4 * j + 3]) hole = 1;
+            if (hole) {
+                /* a hole is left alone (but for the four seam rows, which run the screen's width as ui_backdrop's) */
+                if (py != nat_h / 3 - 1 && py != nat_h / 3 && py != nat_h * 2 / 3 - 1 && py != nat_h * 2 / 3)
+                    CHECK_EQ(c, PAL_BLACK);
+                continue;
+            }
+            for (j = 0; j < nb && bands[j] != c; j++) {}
+            if (j == nb) { if (nb < 8) bands[nb++] = c; }
+        }
+        CHECK(nb >= 3 && nb <= 3);                          /* top, middle and bottom band (a seam row mixes two) */
+        memcpy(full, nat_fb, (size_t)(nat_w * nat_h));
+        plat_clear(PAL_BLACK);
+        ui_backdrop_holes(WIN_CREAM, (uint32_t)(t * 37), holes, 2);
+        for (i = 0; i < nat_w * nat_h; i++) {
+            int j, band = 0;
+            for (j = 0; j < nb; j++) band |= nat_fb[i] == bands[j];
+            if (band && nat_fb[i] != full[i]) {             /* wherever the full backdrop shows a band, so does the flat one */
+                CHECK_EQ(nat_fb[i], full[i]);
+                return;
+            }
+        }
+    }
+}
+
+/* ui_style_use(): the style ui_value_row() reads, as ui_window() leaves it */
+TEST(panel_style_use_sets_the_style_widgets_read)
+{
+    uint32_t a, b;
+    set_res(240, 160);
+    nat_panel_cache = 0;
+    test_reset();
+    plat_clear(PAL_BLACK);
+    ui_window(150, 20, 60, 40, WIN_CUTE);                   /* the last window drawn was another style ... */
+    ui_style_use(WIN_CREAM);
+    ui_value_row(20, 30, 100, "Barrel", "Standard", 0);
+    ui_value_row(20, 50, 100, "Core", "Bullet", 1);
+    a = rect_hash(10, 20, 120, 50);
+    plat_clear(PAL_BLACK);
+    ui_window(150, 20, 60, 40, WIN_CREAM);                  /* ... or this one, as the list's window is */
+    ui_value_row(20, 30, 100, "Barrel", "Standard", 0);
+    ui_value_row(20, 50, 100, "Core", "Bullet", 1);
+    b = rect_hash(10, 20, 120, 50);
+    CHECK_EQ(a, b);
+    plat_clear(PAL_BLACK);
+    ui_window(150, 20, 60, 40, WIN_CUTE);                   /* (and without it the rows do read the last window's) */
+    ui_value_row(20, 30, 100, "Barrel", "Standard", 0);
+    ui_value_row(20, 50, 100, "Core", "Bullet", 1);
+    CHECK(rect_hash(10, 20, 120, 50) != a);
+}
+
 TEST(panel_language_switch_redraws)
 {
     CHECK(both("lang", s_visit, p_visit_lang, 240, 200));

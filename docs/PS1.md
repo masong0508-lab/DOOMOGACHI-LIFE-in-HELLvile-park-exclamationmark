@@ -1574,6 +1574,22 @@ and bead drawn as runs of same-y columns: the same pixels, ~200 fewer `plat_rect
 press 30.25. `plat_ui_loops` is the weak no-op here and the Derby's 8bpp racer pictures are GBA-only; resident RAM
 unchanged, 65 KB below the stack top with the boot FMV.
 
+**S2-9 (the workshop).** `weld_gfx` composed a weapon picture in one tick (100 ms: three frames of 100 ms in the
+`action_workshop` window, 28.78 fps). `weld_slice.c` (docs/GBA.md "Speed wave 2: S2-9") composes it in slices, one of
+350 units (1.5-5 ms) a tick, inside the frame, while the picture shown before stays up, and composes the next ones
+ahead. The gate is the core's one slice a tick, not `plat_portrait_slice_ok` alone: its base is the frame's drawing
+(`g_perf.cpu_us`), which leaves out the logic tick before it (11 ms in the workshop), so with room for "one more" three
+slices ran in one frame and it took 3 vsyncs (cpu 21-25 ms, 32-36 ms from the vsync). A picture takes ~14 ticks. Measured
+after (PCSX-Redux, the workshop windows of `speed2_action`): workshop **30.12** (2:129, every frame 33 ms), part change
+30.00 (2:28 3:1: the one 50 ms frame has 18.6 ms of update and draw and exactly 33,433 us (two vblanks) between the
+previous vsync and `gfx_begin`: `hcmd_poll`'s lockstep stop (`hcmd.c`: `DrawSync`, serve the harness, one more vblank),
+not the game's code; it follows the press when the script moves it, and with the window opened 12 ticks after the press
+all 30 frames are 33 ms), armory 30.17, weld intro 30.17,
+welding 30.12. The PS1 has no panels (`UI_PANELS` 0) and draws the screen as before: no kept panels, the stat bars keep
+their shine, the backdrop its dots. Memory: `weld_slice.c` is in the workshop overlay group (`ovl_plan.py`), the job's
+state (~100 B) in the overlay slot's scene scratch (`SCRATCH` 256 B for the group); the resident layout is
+byte-identical (`_end` 0x801efe60, 65,952 B below the stack top with the boot FMV, as before).
+
 **S2-4 (the fair's kept playfield).** Nothing is built here: `mg.h` turns the kept-playfield mode into constants (`MGK_OFF`), so Whack draws its whole booth as before (the restore helpers and `ui_round_rect_inset` compile out); only the drawing order was regrouped (`mg_tent_sway`, `hole_back`), same pixels. 65 KB below the stack top with the boot FMV on the rebased tree (`_end` the same as without S2-4); the minigame overlay group grows by a few hundred bytes of code, the slot is unchanged (168 KB, the house's). PCSX-Redux `speed2_fair`: the Whack title, Sweet and Hellfire windows 30.17 / 30.12 / 30.12 fps (all 2-vsync frames), as before.
 
 **S3-3 (the creator's part grid).** `part_icon_unpack` was 30% of the hat grid's try-on frames: every visible cell

@@ -20,11 +20,18 @@
  * the pictures that come next (the test fire's two frames, the design one
  * step further along the row under the cursor, the next weapon of the
  * Armory list) are composed ahead (weld_view_prefetch).
- * The backdrop leaves out what the two windows cover (ui_backdrop_holes),
- * and where the platform keeps panels (the GBA) the part list's rows but
- * the cursor's and the stat bars are solid retained panels on their
- * windows' plain fill (ui_window_open): put back from the last frame
- * while nothing in them changes. The same pixels (core/tests/test_panel.c).
+ * Where the platform keeps panels (the GBA; the native runner's panel model in
+ * the tests) the Weld tab's part list (its rows but the cursor's pill, which
+ * is the panel's hole), both panes' stat bars and the header strip (tabs,
+ * title) are solid retained panels, put back from the last frame while
+ * nothing in them changes; they are drawn last in the frame (a panel shown
+ * earlier slows every later 2D call on the GBA). Two things differ from the
+ * other platforms there, both pixel-changing: the stat bars have no shine
+ * (ui_bar_still) and the backdrop is its bands without the drifting dots,
+ * hearts and twinkles (ui_backdrop_flat; the header strip is flat). Else the
+ * backdrop leaves out what the windows cover (ui_backdrop_holes). The
+ * pictures are the same otherwise (core/tests/test_panel.c: every frame the
+ * same with the panel cache on and off). docs/GBA.md "Speed wave 2: S2-9".
  */
 #include "weld_int.h"
 #include "doomo/tips.h"
@@ -519,10 +526,10 @@ static void name_lines(int x, int y, int w, const char *name, uint8_t col)
 
 /* ---- S2-9: the stat bars as a kept panel ------------------------------------------------------- */
 /* The bars lie on the plain fill of the pane's window. stat_window() draws that window and decides: the bars'
- * rect is left out of it (ui_window_open) when the panel can put it back; stat_show(), after everything else
- * of the pane, draws the bars or lets the platform put them back. The key is the weapon, the place, and the
- * two things ui_bar animates: the shine while it is on a bar, the blink of a bar under a quarter. Where no
- * panels are kept (the PS1) this is ui_window() and stat_bars(). */
+ * rect is left out of it (ui_window_open) when the panel can put it back; stat_draw() draws the bars on a frame
+ * whose key is new and stat_show(), last of the frame, shows the panel. The key is the weapon, the place, and the
+ * blink of a bar under a quarter (ui_bar), the one thing about the bars that moves (their shine is off where
+ * panels are kept: WS_BAR). Where no panels are kept this is ui_window() and stat_bars(). */
 typedef struct StatKeep {
     int16_t x, y, w, h;         /* the bars' rect */
     uint8_t keep, fresh, compact, style;
@@ -568,7 +575,7 @@ static void stat_window(StatKeep *k, int wx, int wy, int ww, int wh, int style, 
         return;
     }
 #else
-    (void)on;
+    (void)on; (void)wp;
 #endif
     ui_window(wx, wy, ww, wh, style);
 }
@@ -627,7 +634,6 @@ typedef struct ListKeep {
     int x0, y0, x1, y1;                 /* the panel's rect */
     int hy;                             /* the hole's first row (12 rows: the cursor's pill) */
     int top, seli;
-    WsLay lay;
 } ListKeep;
 static ListKeep ws_lk;
 #endif
@@ -671,6 +677,7 @@ static void part_row(const WsLay *l, int top, int i)
 static void list_show(void)
 {
     const ListKeep *k = &ws_lk;
+    WsLay lay;
     int i;
     if (!k->keep) {
         ws_list_key = 0;                /* (no panel on this frame: the next one draws it whole) */
@@ -681,11 +688,12 @@ static void list_show(void)
         if (k->hole) plat_panel_hole(k->x0, k->hy, k->x1 - k->x0, 12);
         if (!k->fresh) {
             /* the platform lost it: the fill ui_window_open() left out, the rows, then the hole again */
+            ws_layout(&lay, WT_WELD);
             plat_rect(k->x0, k->y0, k->x1 - k->x0, k->y1 - k->y0, ui_style(WIN_CREAM)->fill);
             ui_style_use(WIN_CREAM);            /* (the rows read the style of the last window: the pane's by now) */
-            for (i = 1; i <= k->lay.rows - 2; i++) if (i != k->seli) part_row(&k->lay, k->top, i);
+            for (i = 1; i <= lay.rows - 2; i++) if (i != k->seli) part_row(&lay, k->top, i);
             plat_panel_end();
-            if (k->hole) part_row(&k->lay, k->top, k->seli);
+            if (k->hole) part_row(&lay, k->top, k->seli);
         } else {
             plat_panel_end();
         }
@@ -757,7 +765,6 @@ static void draw_weld_tab(const WsLay *l)
         ws_lk.x0 = kx0; ws_lk.y0 = ky0; ws_lk.x1 = kx1; ws_lk.y1 = ky1;
         ws_lk.hy = ly + seli * 11 - 2;
         ws_lk.top = top; ws_lk.seli = seli;
-        ws_lk.lay = *l;
     }
 #else
     (void)keep; (void)kx0; (void)kx1; (void)ky0; (void)ky1;
@@ -856,13 +863,15 @@ static void header_content(int sw, int still)
  * (the backdrop leaves the strip out): put back from the last frame while the selected tab stands where it did
  * (its bounce is the key). A frame whose key is new draws the strip here, before the panel (head_show()). */
 #if WS_KEPT
-static uint32_t ws_head_next;           /* this frame's key */
+static uint32_t head_key(int sw)
+{
+    return ui_key_int(ui_panel_key(), ws_tab | (ui_wave((int)doomo_frame_count(), 20, 1) > 0) << 1 | sw << 4);
+}
 #endif
 static void head_draw(int sw)
 {
 #if WS_KEPT
-    ws_head_next = ui_key_int(ui_panel_key(), ws_tab | (ui_wave((int)doomo_frame_count(), 20, 1) > 0) << 1 | sw << 4);
-    if (ws_head_next != ws_head_key) header_content(sw, 1);
+    if (head_key(sw) != ws_head_key) header_content(sw, 1);
 #else
     header_content(sw, 0);
 #endif
@@ -871,13 +880,13 @@ static void head_draw(int sw)
 #if WS_KEPT
 static void head_show(int sw)
 {
-    int fresh = ws_head_next != ws_head_key;
-    if (plat_panel_begin(PANEL_WS_HEAD, 0, 0, sw, HDR_H, ws_head_next)) {
+    uint32_t key = head_key(sw);
+    if (plat_panel_begin(PANEL_WS_HEAD, 0, 0, sw, HDR_H, key)) {
         plat_panel_solid();
-        if (!fresh) header_content(sw, 1);                       /* the platform lost it */
+        if (key == ws_head_key) header_content(sw, 1);           /* the platform lost it */
     }
     plat_panel_end();
-    ws_head_key = ws_head_next;
+    ws_head_key = key;
 }
 #endif
 

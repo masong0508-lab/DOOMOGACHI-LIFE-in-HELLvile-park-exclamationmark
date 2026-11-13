@@ -351,6 +351,11 @@ per window, with the run's `game drew` and `work over` lines. Flycast is not cyc
 windows 30.0, 0 of 2,461 ticks over 33.3 ms, work mean 3.4 ms and worst 20.6 ms at the house's entry, the same as before. The Dreamcast takes
 the new core hooks with their weak defaults: `plat_build_frame(PLAT_BUILD_BUSY)` returns 0 and `plat_ui_loops()` does
 nothing, so `plat_room` (DC8) is untouched and a house frame is one weak call heavier.)
+**S2-9 (the workshop).** Nothing changes on the Dreamcast: the weapon picture is composed in the asking call as before
+(`weld_view_image_sliced` is `weld_view_image` here: no slices, nothing composed ahead), the workshop keeps no panels
+(`WS_KEPT` is 0 where `DOOMO_PLATFORM_DC` is set: the screen is drawn as it always was, the stat bars with their shine and
+the backdrop with its dots). `speed2.sh action` after the package: every window 30.0, no tick over 33.3 ms, the worst
+tick of the group 22.7 ms (the workshop's entry; 23.9 ms in speed audit 3).
 
 ### The harness mailbox (`dc_mailbox`, `dc/harness/dc_mailbox.h`)
 

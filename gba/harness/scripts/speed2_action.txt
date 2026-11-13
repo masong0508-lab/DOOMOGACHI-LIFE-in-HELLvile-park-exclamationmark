@@ -4,7 +4,7 @@
 # Mayhem: intro card, one fight window for reference, the give-up results card), the welding
 # workshop and the welding minigame (pushed in practice mode, arg 1). Args: core/src/levels_int.h.
 # Window rules: speed2_fair.txt. S2-2: the cards, pause menus, results and the level select carry expect-fps
-# floors (make -C gba test-speed2 SPEED2=action SPEED2_GATES=1).
+# floors (make -C gba test-speed2 SPEED2=action SPEED2_GATES=1); S2-9: the workshop windows too.
 wait 40
 expect-log doomo: init
 sync on 61
@@ -153,13 +153,13 @@ push WORKSHOP
 wait 30
 fps start
 wait 130
-fps action: workshop
+expect-fps 28 action: workshop
 shot act_workshop
 press RIGHT
 wait 2
 fps start
 wait 30
-fps action: workshop part change
+expect-fps 28 action: workshop part change
 shot act_workshop_part
 press LEFT
 wait 10
@@ -167,7 +167,7 @@ press L
 wait 10
 fps start
 wait 90
-fps action: workshop armory
+expect-fps 28 action: workshop armory
 shot act_workshop_armory
 press R
 wait 10
