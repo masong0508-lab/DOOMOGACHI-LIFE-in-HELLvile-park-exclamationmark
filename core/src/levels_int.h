@@ -110,9 +110,11 @@ typedef struct LevelReg {
     uint8_t arg;              /* the rule's level / chapter / story flag  */
     uint8_t reason;           /* LVT_*: why it is locked, for the select  */
 } LevelReg;
+#if LV_HAS_NEW
 extern const LevelReg lv_reg[LV_TABLE_N];
 extern const char *const lv_reason_text[];
 extern const char *const lv_page_names[LVP_COUNT];
+#endif
 /* The platform manifest: the GBA lists the 7 old levels and its seven of
  * the new ones (LVG_GBA), every other platform all 31 (the PS1: see
  * LV_TABLE_N). The host build can pretend to be the GBA for the tests:
@@ -128,11 +130,18 @@ extern const char *const lv_page_names[LVP_COUNT];
 extern uint8_t lv_list_req;           /* tests only */
 #define LV_LIST_REQ lv_list_req
 #endif
+#if LV_HAS_NEW
 int  lv_listed(int level);            /* 1 if this build has the level at all   */
 int  lv_listed_count(void);
 int  lv_rec_slot(int level);          /* index of a new level's record, or -1   */
 int  lv_built(int level);             /* listed and it has a map                */
 int  lv_page_of(int level);           /* LVP_* (0 for a bad id)                 */
+#else   /* the PS1 for now: the seven old levels, one page, all built */
+#define lv_listed(l)        ((l) >= 0 && (l) < LV_OLD_COUNT)
+#define lv_listed_count()   LV_OLD_COUNT
+#define lv_built(l)         lv_listed(l)
+#define lv_page_of(l)       LVP_BREACH
+#endif
 
 /* ---- mini-boss variants ------------------------------------------------------ */
 enum { LB_GUTTERKING, LB_FLUFFNUTS, LB_WIDOW, LB_BONEBOTTOM, LB_GRUMBLEGUTS,
@@ -234,14 +243,18 @@ int  lv_unlocked(int level);                     /* playable in the select */
 int  lv_prereq_of(int level);                    /* level to clear first, -1 */
 /* LV0: one rule of the table (LVK_*, its arg), and the rule of `level` with
  * the page's New Game+ condition. */
+#if LV_HAS_NEW
 int  lv_rule_eval(int kind, int arg);
 int  lv_rule_met(int level);
+#endif
 /* The level to start for a SCENE_BREACH / select argument: `level` itself
  * when it is built, else the last built one of the old seven (what the
  * clamp did before LV0). */
 int  lv_startable(int level);
 /* Why `level` is locked, as a line for the select ("" when it is open). */
+#if LV_HAS_NEW
 void lv_locked_reason(int level, char *buf, int cap);
+#endif
 int  lv_cleared_count(void);
 int  lv_gold(int level);                         /* time trial gold medal */
 int  lv_horde_best(void);

@@ -97,6 +97,26 @@ int lv_gold(int level)
     return level < LV_OLD_COUNT ? unlock_has(LVU_GOLD0 + level) : lv_rec_gold(level);
 }
 
+#if !LV_HAS_NEW
+/* The PS1 for now (LV_TABLE_N): the seven levels, as before LV0. The cellar is
+ * always open; the spire and the sewers after the cellar; then one after the other. */
+static const int8_t lv_prereq[LV_OLD_COUNT] = { -1, LV_VAPE_CELLAR, LV_VAPE_CELLAR, LV_SEWERS,
+                                                LV_FACTORY, LV_GRAVEYARD, LV_CATHEDRAL };
+
+int lv_prereq_of(int level) { return level >= 0 && level < LV_OLD_COUNT ? lv_prereq[level] : -1; }
+
+int lv_unlocked(int level)
+{
+    int p;
+    if (level < 0 || level >= LV_OLD_COUNT) return 0;
+    p = lv_prereq[level];
+    if (p < 0 || lv_rank(p) != RANK_NONE || lv_rank(level) != RANK_NONE) return 1;
+    /* the story already took you through the first breaches */
+    return p == LV_VAPE_CELLAR && unlock_has(530);
+}
+
+int lv_startable(int level) { return DOOMO_CLAMP(level, 0, LV_OLD_COUNT - 1); }
+#else
 /* ---- who opens what: the rule table (lv_reg[], levels2.c) ----------------------- */
 static int lv_was_cleared(int level)
 {
@@ -170,6 +190,7 @@ void lv_locked_reason(int level, char *buf, int cap)
     if (t == LVT_CLEAR_FIRST) doomo_snprintf(buf, cap, lv_reason_text[t], lv_info[DOOMO_MAX(lv_prereq_of(level), 0)].title);
     else doomo_snprintf(buf, cap, "%s", lv_reason_text[t]);
 }
+#endif /* LV_HAS_NEW */
 
 /* The old seven: the trophies and mode gates count these (as before LV0). */
 int lv_cleared_count(void)

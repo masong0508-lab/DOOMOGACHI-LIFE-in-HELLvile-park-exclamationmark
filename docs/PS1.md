@@ -1513,3 +1513,13 @@ tables and `creator_data.c` is compiled `-G0` (`ps1/CMakeLists.txt`). Measured o
 --preset ps1 -DDOOMO_INTRO_REQUIRED=ON`): `_end` 0x801efe60 -> 0x801ef4e0 with the gene fields live, 65,936 B ->
 68,368 B below the stack top. Check the link map for the same trap whenever a creator-group file gains a pointer
 table: `grep "creator_data.c.obj(" ps1/build/doomogachi.ldmap` must show its `.rodata.str1.4` only in the overlay part.
+## LV0 (levels registry): resident delta -112 B
+
+The 24 new levels are registered on the host, GBA and Dreamcast builds only. The PS1 keeps the old seven
+(`LV_TABLE_N` and `LV_HAS_NEW` in `core/src/levels_int.h`): no new table rows, no `BRCH` chunk, no page code,
+until the LEVELS share of PS1 memory is released (flip the two macros then). Measured with the boot FMV on
+`4c0f369`: the EXE ends at 0x801efe60 (64 KB left below the stack top); with LV0 at 0x801efdf0, 112 B lower.
+Gain: the save registry is a pointer table instead of a 13-case switch, `LvRun.size_cls` is packed to two
+bits an actor (96 B). `game_smoke` and the level select script PASS; every level-select screenshot is
+byte-identical to the base except the autopilot demo shot, which moves with the emulated timing (both builds
+are deterministic by themselves).

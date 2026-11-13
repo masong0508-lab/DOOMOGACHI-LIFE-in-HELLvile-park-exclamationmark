@@ -134,6 +134,7 @@ LV_HOSTVAR LevelInfo lv_info[LV_TABLE_N] = {
 #endif
 };
 
+#if LV_HAS_NEW          /* (the PS1 has the level table above and nothing of this, for now: LV_TABLE_N) */
 /* ---- the registry: page, manifest, unlock rule -------------------------------
  * The old seven: the cellar is always open; the spire and the sewers after
  * the cellar; then one after the other (as before LV0). Hell Breach 8-16
@@ -152,7 +153,6 @@ const LevelReg lv_reg[LV_TABLE_N] = {
     { LVP_BREACH, LVG_GBA, LVK_AFTER_LEVEL, LV_FACTORY, LVT_CLEAR_FIRST },
     { LVP_BREACH, LVG_GBA, LVK_AFTER_LEVEL, LV_GRAVEYARD, LVT_CLEAR_FIRST },
     { LVP_BREACH, LVG_GBA, LVK_AFTER_LEVEL, LV_CATHEDRAL, LVT_CLEAR_FIRST },
-#if LV_HAS_NEW
     { LVP_HELL, LVG_GBA, LVK_BEAT, BEAT_EP2_6, LVT_CH2 },                     /* Steam Room Panic */
     { LVP_HELL, LVG_GBA | LVG_DARK, LVK_BEAT, BEAT_EP3_4, LVT_CH3 },          /* The Undercroft */
     { LVP_HELL, 0, LVK_CHAPTER, STORY_CH3, LVT_CH3 },                         /* Fright Night at the Fun Fair */
@@ -177,14 +177,12 @@ const LevelReg lv_reg[LV_TABLE_N] = {
     { LVP_ARREARS, LVG_DARK, LVK_AFTER_LEVEL, LV_N12, LVT_NOTICE_BEFORE },    /* The Vault of Unfelt Things */
     { LVP_ARREARS, LVG_GBA, LVK_AFTER_LEVEL, LV_N13, LVT_NOTICE_BEFORE },     /* The Ledger */
     { LVP_ARREARS, 0, LVK_AFTER_LEVEL, LV_N14, LVT_NOTICE_BEFORE },           /* Both Are Better */
-#endif
 };
 
 /* "%s" is the title of the level to clear first (LVT_CLEAR_FIRST only). */
 const char *const lv_reason_text[] = {
     "",
     "Clear %s first",
-#if LV_HAS_NEW
     "Opens in Chapter 2",
     "Opens in Chapter 3",
     "Opens in Chapter 4",
@@ -196,14 +194,9 @@ const char *const lv_reason_text[] = {
     "New Game+, Chapter 4",
     "Clear the Notice before it",
     "Not built yet",
-#endif
 };
 
-const char *const lv_page_names[LVP_COUNT] = { "Breach 1-7",
-#if LV_HAS_NEW
-    "Hell Breach 8-16", "Arrears"
-#endif
-};
+const char *const lv_page_names[LVP_COUNT] = { "Breach 1-7", "Hell Breach 8-16", "Arrears" };
 
 /* ---- the platform manifest ---------------------------------------------------- */
 #if !defined(DOOMO_LEVELS_GBA_SET) && !defined(DOOMO_PLATFORM_PS1)
@@ -236,3 +229,4 @@ int lv_rec_slot(int level)
 int lv_built(int level) { return lv_listed(level) && lv_info[level].map != LV_NO_MAP; }
 
 int lv_page_of(int level) { return level >= 0 && level < LV_TABLE_N ? lv_reg[level].page : LVP_BREACH; }
+#endif /* LV_HAS_NEW */

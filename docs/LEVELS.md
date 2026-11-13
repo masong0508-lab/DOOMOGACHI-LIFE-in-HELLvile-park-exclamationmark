@@ -131,3 +131,45 @@ ps1/build/doomogachi.cue --script core/tests/scripts/levels_arena.txt --out DIR`
 Budgets: .bss 345 bytes, no .data, 7.7 KB const tables + strings, code
 25.6 KB (GBA thumb -O2) / 39 KB (PS1 -Os, in the combat overlay group);
 the five maps are 103 KB of ROM data (cells LZ-packed on the PS1).
+
+## LV0: the registry, the records and the select pages (levels plan 2.5, 8.5, 9)
+
+The level ids are fixed (saves use them): 0..6 the seven built levels, 7..15 Hell Breach 8-16, 16..30
+New Game+ Notices 1-15 (`LV_COUNT` 31, `levels_int.h`). Nothing past id 6 has a map yet: each is registered
+with `map = LV_NO_MAP` ("not built"), so it is not shown in the select and cannot be started. A level package
+(LV12 and later) fills in its row and nothing else has to change.
+
+* **`levels2.c`** holds the level table (`lv_info`, all 31 rows, the old seven moved out of `levels.c`) and the
+  registry `lv_reg[]`: the page (Breach 1-7 / Hell Breach 8-16 / Arrears), the platform manifest flag
+  (`LVG_GBA`: the seven old levels plus HB8, HB9, HB13, HB15, N1, N7, N14), a dark flag, the unlock rule and
+  the text of the locked reason. `lv_listed()` says whether a build has a level, `lv_built()` whether it also
+  has a map.
+* **Unlock rules** (`lv_rule_eval`, `levels.c`): always, after a level, a story chapter, a story episode done
+  (`LVK_BEAT`: the episode's done bit, or a later chapter so an older save that is further on is not locked
+  out), a story flag, New Game+. A level of the Arrears page also needs New Game+ (or a finished arc). A
+  level that was cleared once stays open. A Notice that follows one that is not on this platform follows that
+  one's own rule, so the GBA's Notice 7 opens by the chain and not by a level it does not have. The rows name
+  the plan's episodes where it names them; LV21 and LV22 re-point a row when the story lands a better beat.
+* **`BRCH`** (`levels_rec.c`, save tag, slot 14, declared 160 B, `SAVE_EXT_SLOTS` 14): per new level 4 B (rank
+  3 bits, gold, feats 3 bits, cleared; secrets; 16 collectible bits) and 48 B of arc state (act, 16 flag
+  bits, the buy-back mask, two choice bytes, the fourth player line, up to 16 held resident ids, the previous
+  run's last ending). A header carries the version and a 24-bit mask of the records that follow, so a save
+  made on one platform loads on another (a record of a level the build does not list is skipped). 148 B with
+  all 24 levels, 80 B on the GBA. A fresh island writes the empty chunk; a save without the chunk, an empty
+  or a bad one loads as "nothing recorded". The old seven keep `PROG_BREACH_RANKS` and their gold unlock ids
+  (no migration). `lv_rank`, `lv_set_rank` and `lv_gold` answer for all 31.
+* **Select pages** (`levels_select.c`): the level select shows only levels the build lists and has a map
+  for, in pages. LEFT / RIGHT walk the page (they wrap), UP / DOWN turn the page (to the first level on it
+  that still needs you), the title is the page's name and the pips are the page's levels (15 fit at 240 wide).
+  With one page (today) the screen is pixel-identical to before. `SCENE_LEVEL_SELECT` takes the level to focus
+  in bits 4..9 of its argument.
+* **PS1.** Until the PS1-RAM package releases the LEVELS share of the resident memory (PARALLEL_WAVES.md section
+  3) the PS1 build keeps the old seven only (`LV_TABLE_N`, `LV_HAS_NEW` 0 in `levels_int.h`): no new rows, no
+  `BRCH` chunk, no page code. Flip those two macros when the share is released; the host and GBA builds run
+  the full registry already. Measured: the PS1 EXE ends 112 B lower than before (the room it frees is paid
+  for by the slot table and the packed size classes).
+* **Tests**: `core/tests/test_levels_rec.c` (ids, pages, the GBA manifest, records that only improve,
+  the arc, the `BRCH` round trip through a real save, the GBA's smaller chunk both ways, bad chunks, the joint
+  budget, every unlock rule kind and the GBA chain, the select pages at both sizes) plus `test_save.c` (a
+  save without `BRCH` leaves nothing). On the host `lv_list_req = LVG_GBA` makes the build list what the GBA
+  lists, and `lv_info` is writable so a test can re-point a not-built level at an existing map.

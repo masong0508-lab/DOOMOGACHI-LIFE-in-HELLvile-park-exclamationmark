@@ -52,15 +52,16 @@ static uint32_t unlocked_mask(void)
 {
     int i;
     uint32_t m = 0;
-    for (i = 0; i < LV_COUNT; i++) if (lv_unlocked(i)) m |= 1u << i;
+    for (i = 0; i < LV_TABLE_N; i++) if (lv_unlocked(i)) m |= 1u << i;
     return m;
 }
 
 /* ---- pages: the shown levels of a page, and the pages that have any ---------- */
+#if LV_HAS_NEW
 static int page_n(int page, int *first)
 {
     int i, n = 0;
-    for (i = 0; i < LV_COUNT; i++)
+    for (i = 0; i < LV_TABLE_N; i++)
         if (lv_built(i) && lv_page_of(i) == page) { if (!n && first) *first = i; n++; }
     return n;
 }
@@ -71,6 +72,12 @@ static int pages_shown(void)
     for (p = 0; p < LVP_COUNT; p++) n += page_n(p, NULL) > 0;
     return n;
 }
+#define page_title() (pages_shown() > 1 ? lv_page_names[lv_page_of(ls.sel)] : "HELL BREACH LEVELS")
+#else   /* the PS1 for now: one page of seven */
+#define page_n(p, first) LV_OLD_COUNT
+#define pages_shown()    1
+#define page_title()     "HELL BREACH LEVELS"
+#endif
 
 static void load_preview(void)
 {
@@ -90,8 +97,8 @@ static void ls_enter(int arg)
     else {
         /* the first new level that is open but not cleared, else the last open one */
         ls.sel = 0;
-        for (i = 0; i < LV_COUNT; i++) if (lv_unlocked(i)) ls.sel = (uint8_t)i;
-        for (i = LV_FIRST_NEW; i < LV_COUNT; i++)
+        for (i = 0; i < LV_TABLE_N; i++) if (lv_unlocked(i)) ls.sel = (uint8_t)i;
+        for (i = LV_FIRST_NEW; i < LV_TABLE_N; i++)
             if (lv_unlocked(i) && lv_rank(i) == RANK_NONE) { ls.sel = (uint8_t)i; break; }
     }
     ls.unlocked_mask = unlocked_mask();
@@ -111,6 +118,7 @@ static void say(const char *m)
 static void move_sel(int dir, int page_dir)
 {
     int i = ls.sel, k, page = lv_page_of(i);
+#if LV_HAS_NEW
     if (page_dir) {
         int p = page, first = -1;
         for (k = 0; k < LVP_COUNT; k++) {
@@ -118,12 +126,14 @@ static void move_sel(int dir, int page_dir)
             if (page_n(p, &first)) break;
         }
         if (p == page) return;
-        for (i = 0; i < LV_COUNT; i++)
+        for (i = 0; i < LV_TABLE_N; i++)
             if (lv_built(i) && lv_page_of(i) == p && lv_unlocked(i) && lv_rank(i) == RANK_NONE) { first = i; break; }
         i = first;
-    } else {
-        for (k = 0; k < LV_COUNT; k++) {
-            i = (i + dir + LV_COUNT) % LV_COUNT;
+    } else
+#endif
+    {
+        for (k = 0; k < LV_TABLE_N; k++) {
+            i = (i + dir + LV_TABLE_N) % LV_TABLE_N;
             if (lv_built(i) && lv_page_of(i) == page) break;
         }
         if (i == ls.sel) return;
@@ -138,7 +148,11 @@ static void move_sel(int dir, int page_dir)
 static void launch(int demo)
 {
     if (!lv_unlocked(ls.sel)) {
+#if LV_HAS_NEW
         say(lv_prereq_of(ls.sel) >= 0 ? "Locked! Clear the one before." : "Locked! It is not open yet.");
+#else
+        say("Locked! Clear the one before.");
+#endif
         audio_sfx(SFX_ERROR);
         return;
     }
@@ -164,7 +178,7 @@ static void ls_update(void)
         uint32_t now = unlocked_mask(), fresh = now & ~ls.unlocked_mask;
         int i;
         ls.launched = 0;
-        for (i = 0; i < LV_COUNT; i++)
+        for (i = 0; i < LV_TABLE_N; i++)
             if (fresh & (1u << i)) {
                 ls.sel = (uint8_t)i;
                 ls.flash_lv = (uint8_t)i;
@@ -182,8 +196,10 @@ static void ls_update(void)
     if (btn_pressed(BTN_B)) { audio_sfx(SFX_CANCEL); scene_pop(); return; }
     if (btn_repeat(BTN_LEFT)) move_sel(-1, 0);
     if (btn_repeat(BTN_RIGHT)) move_sel(1, 0);
+#if LV_HAS_NEW
     if (btn_pressed(BTN_UP)) move_sel(0, -1);
     if (btn_pressed(BTN_DOWN)) move_sel(0, 1);
+#endif
     if (btn_pressed(BTN_L) || btn_pressed(BTN_R)) {
         int dir = btn_pressed(BTN_L) ? -1 : 1, m = ls.mode, k;
         for (k = 0; k < LVM_COUNT; k++) {
@@ -301,7 +317,7 @@ static void draw_pips(int cy, int big)
     char nb[4];
     if (n > 1 && gap * (n - 1) > sw - 24) gap = (sw - 24) / (n - 1);
     x0 = sw / 2 - gap * (n - 1) / 2;
-    for (i = 0; i < LV_COUNT; i++) {
+    for (i = 0; i < LV_TABLE_N; i++) {
         int x, sel = i == ls.sel, r = (big ? 8 : 6) + sel * 2, rank = lv_rank(i);
         if (!lv_built(i) || lv_page_of(i) != page) continue;
         x = x0 + at * gap;
@@ -336,8 +352,7 @@ static void ls_draw(void)
     char buf[64], tb[12];
     ui_backdrop(style, ls.t);
     if (plat_draw_skipped()) return;
-    ui_title(sw / 2, 3, ls.mode != LVM_NORMAL ? lv_mode_names[ls.mode]
-                        : pages_shown() > 1 ? lv_page_names[lv_page_of(ls.sel)] : "HELL BREACH LEVELS", style);
+    ui_title(sw / 2, 3, ls.mode != LVM_NORMAL ? lv_mode_names[ls.mode] : page_title(), style);
     if (mode_open(LVM_TIME_TRIAL)) {
         ui_text_outline(4, 5, "L", ui_style(style)->accent, PAL_BLACK);
         ui_text_outline(sw - 10, 5, "R", ui_style(style)->accent, PAL_BLACK);
@@ -351,7 +366,11 @@ static void ls_draw(void)
     if (!unl) {
         plat_shade_rect(px, py, pw, ph, 9);
         lvd_padlock(sw / 2, py + ph / 2 - (big ? 8 : 6), big ? 2 : 1, ls.t);
+#if LV_HAS_NEW
         lv_locked_reason(ls.sel, buf, sizeof(buf));
+#else
+        doomo_snprintf(buf, sizeof(buf), "Clear %s first", lv_info[DOOMO_MAX(lv_prereq_of(ls.sel), 0)].title);
+#endif
         ui_text_outline(sw / 2 - ui_text_width(buf) / 2, py + ph / 2 + (big ? 16 : 10), buf, PAL_WHITE, PAL_BLACK);
     } else if (ls.mode == LVM_TIME_TRIAL && lv_rank(ls.sel) == RANK_NONE) {
         plat_shade_rect(px, py + ph - 14, pw, 14, 6);
