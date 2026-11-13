@@ -10,7 +10,7 @@ fp_title	title_menu.png	mask 214 228 40 12	plat_name() corner label: DC (native:
 fp_title	title_story_menu.png	mask 214 228 40 12	plat_name() corner label: DC (native: NATIVE)
 fp_title	title_theme_row.png	mask 214 228 40 12	plat_name() corner label: DC (native: NATIVE)
 pause_options	opt_0_controls.png	mask 20 100 280 24	Controls page: the Dreamcast has a Rumble row (rumble pack); the native runner has none, so the reset row moves down
-pause_options	pause_menu.png	gate 45	the 3D level behind the pause menu: plat_view3d on the Dreamcast is DC6 (the 2D layer is exact)
-pause_options	pause_back.png	gate 45	the 3D level behind the pause menu: plat_view3d on the Dreamcast is DC6 (the 2D layer is exact)
-pause_options	opt_5_perf.png	mask 20 45 280 34	Performance page: the Draw distance row shows where the core has the analog feel on (input_feel(), DC4 turns it on as the PS1 does; DC6 honours OPT_DRAW_DIST); the native runner has no row, so the rows below move down
-fp_screens	options_cheats.png	mask 20 45 280 34	Performance page: the Draw distance row (input_feel(), DC4), as pause_options opt_5_perf.png
+pause_options	pause_menu.png	gate 30	the 3D level behind the pause menu: plat_view3d draws polygons where the native draws columns (DC6A; 36% exact, 66% within a few counts; the host parity test dcv3d_test is the pixel measure)
+pause_options	pause_back.png	gate 30	the 3D level behind the pause menu: plat_view3d draws polygons where the native draws columns (DC6A; 36% exact, 66% within a few counts; the host parity test dcv3d_test is the pixel measure)
+pause_options	opt_5_perf.png	mask 20 45 280 46	Performance page: the Draw distance row shows where the core has the analog feel on (input_feel(), DC4 turns it on as the PS1 does; DC6 honours OPT_DRAW_DIST); the native runner has no row, so the rows below move down
+fp_screens	options_cheats.png	mask 20 45 280 46	Performance page: the Draw distance row (input_feel(), DC4), as pause_options opt_5_perf.png

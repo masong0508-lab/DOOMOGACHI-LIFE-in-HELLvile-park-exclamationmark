@@ -266,6 +266,7 @@ int dc2d_tex_remap(int src, int level, const uint8_t *map)
         ent[s].last = cur_frame;
         return s;
     }
+    if (!map) return -1;                 /* a lookup only (DC6: a budget of new copies per view) */
     /* src was used by this frame, so no eviction below can take it */
     s = free_dyn_slot();
     bytes = (uint32_t)tex[src].tw * (uint32_t)tex[src].th;
@@ -297,7 +298,10 @@ int dc2d_tex_find(uint32_t uid, int w, int h)
     return s;
 }
 
-int dc2d_tex_image(const DoomoImage *img)
+int dc2d_tex_image(const DoomoImage *img) { return dc2d_tex_image_new(img, 1); }
+
+/* make_new 0: only look for a cached upload (-1 when there is none; DC6's budget of new textures per view) */
+int dc2d_tex_image_new(const DoomoImage *img, int make_new)
 {
     int w = img->w, h = img->h, uid = img->uid != 0, s;
     uint32_t key, sum, handle;
@@ -308,6 +312,7 @@ int dc2d_tex_image(const DoomoImage *img)
         ent[s].last = cur_frame;
         return s;
     }
+    if (!make_new) return -1;
     if (!fits(w, h)) { dc2d_stats.tex_fail++; return -1; }
     s = free_dyn_slot();
     if (s < 0 || !alloc_tex((uint32_t)pow2(w) * (uint32_t)pow2(h), &handle)) {

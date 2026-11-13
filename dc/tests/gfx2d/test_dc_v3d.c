@@ -75,6 +75,8 @@ static void view_of(DoomoView3D *v, int cx, int cy, int heading, int pitch)
 }
 
 /* both sides: the native frame in nat_fb, the Dreamcast frame in out */
+void dc2d_view3d_remap_budget(int n);
+
 static void both(const DoomoView3D *v, uint8_t *out)
 {
     plat_begin_frame();
@@ -180,6 +182,30 @@ static void test_parity(void)
     CHECK(lsum / ln >= PARITY_MIN, "parity: level views mean %.1f%% below %.0f%%", lsum / ln * 100.0, PARITY_MIN * 100.0);
     CHECK(psum / pn >= PITCH_MIN, "parity: pitched views mean %.1f%% below %.0f%%", psum / pn * 100.0, PITCH_MIN * 100.0);
     CHECK(nodraw == 0, "parity: %d views saw no cell", nodraw);
+}
+
+/* new textures per view are budgeted on the console; with none allowed a view still draws (the plain
+ * texture darkened by the fit) and is close to the full one */
+static void test_remap_budget(void)
+{
+    DoomoView3D v;
+    double full, part;
+    map_load(MAPID_VAPE_CELLAR);
+    view_of(&v, 5, 5, 0, 0);
+    if (!open_cell(&doomo_map, 5, 5)) {
+        int x, y;
+        for (y = 1; y < doomo_map.h - 1; y++) for (x = 1; x < doomo_map.w - 1; x++)
+            if (open_cell(&doomo_map, x, y)) { view_of(&v, x, y, 0, 0); y = 99; break; }
+    }
+    dc2d_tex_init();                                /* an empty cache: nothing is there yet */
+    dc2d_view3d_remap_budget(0);
+    both(&v, rgb);
+    part = parity(rgb, 0, 0, DC2D_LW, DC2D_LH);
+    dc2d_view3d_remap_budget(100000);
+    both(&v, rgb);
+    full = parity(rgb, 0, 0, DC2D_LW, DC2D_LH);
+    printf("remap budget: full %.1f%%, no new copies %.1f%%\n", full * 100.0, part * 100.0);
+    CHECK(part >= 0.5, "remap budget: a view with no new textures matches only %.1f%%", part * 100.0);
 }
 
 static void test_tint(void)
@@ -369,9 +395,11 @@ int main(void)
             return 0;
         }
     }
+    dc2d_view3d_remap_budget(100000);
     test_tintfit();
     test_parity();
     test_tint();
+    test_remap_budget();
     test_viewport();
     test_dist();
     test_backdrop();

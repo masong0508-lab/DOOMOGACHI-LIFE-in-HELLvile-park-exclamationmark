@@ -216,7 +216,8 @@ int  dc2d_tex_find(uint32_t uid, int w, int h);
 /* A copy of texture `slot` with its texel indices sent through map[256]
  * (plat_shade_rect over an image: doomo_colormap[level]); cached under
  * (slot's key, level). -1 if it cannot be made. */
-int  dc2d_tex_remap(int slot, int level, const uint8_t *map);
+int  dc2d_tex_image_new(const DoomoImage *img, int make_new);   /* make_new 0: a cached upload or -1 */
+int  dc2d_tex_remap(int slot, int level, const uint8_t *map);   /* map NULL: only look for a cached copy (-1 when none) */
 /* A texture that stays (font pages, the checker): slot or -1. */
 int  dc2d_tex_static(const uint8_t *pix, int w, int h, int tw, int th);
 /* Replace a static texture's texels (a new glyph page). */

@@ -197,6 +197,17 @@ typedef struct Face {
     uint32_t base;                           /* 0xFFFFFF, or the flat colour (0xRRGGBB) */
 } Face;
 
+/* New textures per view (uploads and remapped copies): a level's first frame
+ * wants every wall texture at every light level it sees (a 37-50 ms entry tick
+ * on Flycast). Past the budget a face uses the plain texture darkened by the
+ * fit, or the texture's flat colour, for a frame or two; the rest come in the
+ * next frames (the cache keeps them) */
+#define V3D_TEX_BUDGET 4
+static int s_tex_budget = V3D_TEX_BUDGET, s_new_tex;
+#ifdef DC2D_HOST
+void dc2d_view3d_remap_budget(int n) { s_tex_budget = n; }
+#endif
+
 static void face_tex(Face *f, int id, float lmax)
 {
     int lv = (int)ceilf(lmax - 0.001f);
@@ -209,13 +220,22 @@ static void face_tex(Face *f, int id, float lmax)
             s_tstamp[id][lv] = s_stamp;
             if (s_tstamp[id][DOOMO_LIGHT_LEVELS - 1] != s_stamp || lv == DOOMO_LIGHT_LEVELS - 1) {
                 const DoomoImage *img = texture_image(id, s_time);
-                s_tslot[id][DOOMO_LIGHT_LEVELS - 1] = (int16_t)(img ? dc2d_tex_image(img) : -1);
+                int up = img ? dc2d_tex_image_new(img, 0) : -1;
+                if (img && up < 0 && s_new_tex < s_tex_budget) {
+                    s_new_tex++;
+                    up = dc2d_tex_image_new(img, 1);
+                }
+                s_tslot[id][DOOMO_LIGHT_LEVELS - 1] = (int16_t)up;
                 s_tstamp[id][DOOMO_LIGHT_LEVELS - 1] = s_stamp;
             }
             slot = s_tslot[id][DOOMO_LIGHT_LEVELS - 1];
             if (lv < DOOMO_LIGHT_LEVELS - 1) {
                 /* no room for the copy: the plain texture, darkened by the fit alone */
-                int r = slot >= 0 ? dc2d_tex_remap(slot, lv, doomo_colormap[lv]) : -1;
+                int r = slot >= 0 ? dc2d_tex_remap(slot, lv, NULL) : -1;
+                if (r < 0 && slot >= 0 && s_new_tex < s_tex_budget) {
+                    s_new_tex++;
+                    r = dc2d_tex_remap(slot, lv, doomo_colormap[lv]);
+                }
                 s_tslot[id][lv] = (int16_t)(r >= 0 ? r : -2 - slot);
             }
         }
@@ -688,6 +708,7 @@ void plat_view3d(const DoomoView3D *v)
         return;
     }
     t0 = dc3d_be_us();
+    s_new_tex = 0;
     M = v->map;
     s_time = v->time;
     if (++s_stamp == 0) {
