@@ -169,6 +169,8 @@ static const char *const n_hood[2]      = { "Down", "Up" };
 static const char *const n_hand[2]      = { "Right paw", "Left paw" };
 /* CR3: a part row whose choices are all in the catalog (its live count and names: part_meta.h) */
 #define PART_L(lbl, m)              { RK_ENUM, LK(m), 1, 0, CR_NOLIST, 0, lbl, NULL }
+/* CR5: a deep part row (look_fields.h DF_POOL_*): saved in the look pool, named by the catalog */
+#define DEEP_ROW(lbl, df)           { RK_DEEP, (uint8_t)(CR_DEEP0 + (df)), 1, 0, CR_NOLIST, 0, lbl, NULL }
 
 static const CrRow rows_body[] = {
     HDR("Species"),
@@ -219,6 +221,10 @@ static const CrRow rows_face[] = {
     CHEEK("Tear tattoo", CHEEK_TEAR_TATTOO),
     CHEEK("Dimples", CHEEK_DIMPLES),
     CHEEK("Sparkles", CHEEK_SPARKLES),
+    HDR("Eye makeup"),
+    DEEP_ROW("Lashes", DF_LASH),                 /* CR5: deep parts, saved in the look pool */
+    DEEP_ROW("Eyelids", DF_LID),
+    DEEP_ROW("Eyeliner", DF_LINER),
 };
 
 static const CrRow rows_hair[] = {
@@ -995,6 +1001,8 @@ const char *cr_row_help(const CrRow *row)
 {
     if (!row) return "";
     switch (row->kind) {
+    case RK_DEEP:
+        return STR_ICON_A " see them all as pictures";
     case RK_ENUM: {
         /* CR3: the new rows say what the part is (named arrays: see RK_ACTION below) */
         static const char h_pupil[] = "Middle of each eye  " STR_ICON_A " pictures";

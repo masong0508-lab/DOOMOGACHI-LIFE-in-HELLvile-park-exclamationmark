@@ -29,6 +29,13 @@ static int icon_list(int list)
     }
 }
 
+/* CR5: the deep parts the look pool saves, in a slot with something to choose (look_fields.h) */
+static int deep_icon_list(const PartMeta *m)
+{
+    return m->list >= PL_DEEP0 + DF_POOL_FIRST && m->list < PL_DEEP0 + DF_POOL_FIRST + DF_POOL_N &&
+           doomo_part_slots[m->slot].live >= 2;
+}
+
 TEST(part_icons_one_per_live_part)
 {
     int i, n = 0;
@@ -36,7 +43,7 @@ TEST(part_icons_one_per_live_part)
         CHECK_MSG(doomo_part_icon_rows[i - 1] < doomo_part_icon_rows[i], "icon rows not ascending at %d", i);
     for (i = 0; i < PART_META_COUNT; i++) {
         const PartMeta *m = &doomo_part_meta[i];
-        int want = icon_list(m->list) && PMF_STATE(m->flags) == PSTATE_LIVE;
+        int want = (icon_list(m->list) || deep_icon_list(m)) && PMF_STATE(m->flags) == PSTATE_LIVE;
         CHECK_MSG((part_icon_index_in(i, 0) >= 0) == want, "%s \"%s\": icon %s", doomo_part_slots[m->slot].key,
                   part_meta_name(m), want ? "missing" : "for a part that is not live");
         /* CR3: the PS1's packed set has exactly the ones it can draw (no part scripts there) */

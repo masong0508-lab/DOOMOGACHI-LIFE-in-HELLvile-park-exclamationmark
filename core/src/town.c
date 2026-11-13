@@ -10,6 +10,7 @@
 #include "doomo/rng.h"
 #include "doomo/portrait.h"
 #include "doomo/ui.h"
+#include "doomo/look_pool.h"
 #include "doomo/save_ext.h"
 #include "doomo/sim.h"                 /* sim_life_stage (LS0 migration) */
 
@@ -59,6 +60,7 @@ void town_free(int id)
         if (doomo_town.graves[i].resident != id) doomo_town.graves[n++] = doomo_town.graves[i];
     doomo_town.grave_count = (uint16_t)n;
     portrait_invalidate(id);
+    look_pool_drop(id);                         /* CR5: the deep parts of whoever was there */
 }
 
 int town_count(int status)

@@ -1,8 +1,8 @@
 # core/data/parts/catalog/lash.txt - Lashes (CR1; format: tools/partcat_build.py).
-# A deep field (provisional shim id DF_LASH until P0/CR5 lands): painted, not selectable or saved yet.
+# A deep field (DF_LASH, CR5): saved in the look pool, selectable in the creator.
 slot lash deep=DF_LASH name="Lashes" method=P target=14 new=F
 
 0   "None"       set=basics tags=plain
-1   "Flicks"        set=basics tags=glam state=hidden
-2   "Wing Lashes"   set=teaparty tags=glam,fancy state=hidden
-3   "Lower Lashes"  set=candy tags=cute,glam state=hidden
+1   "Flicks"        set=basics tags=glam
+2   "Wing Lashes"   set=teaparty tags=glam,fancy
+3   "Lower Lashes"  set=candy tags=cute,glam

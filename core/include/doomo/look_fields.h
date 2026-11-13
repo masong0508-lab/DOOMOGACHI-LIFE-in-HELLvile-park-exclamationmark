@@ -24,6 +24,12 @@ enum {
     DF_COUNT
 };
 
+/* CR5: the deep fields the look pool carries and the save keeps (look_pool.c, the creator's chunk): the
+ * ones with no gene field. The others (DF_PUPIL .. DF_HOOD_HEAD, DF_FUR_PATTERN .. DF_HANDED) ride in
+ * the gene (look_gene_deep). */
+#define DF_POOL_FIRST DF_LASH
+#define DF_POOL_N     (DF_AURA2 - DF_LASH + 1)
+
 #define DFF_CHIBI 1u     /* resolves for chibis (and is part of the chibi cache key) */
 #define DFF_ANIM  2u     /* the field animates: it asks for effect frames            */
 

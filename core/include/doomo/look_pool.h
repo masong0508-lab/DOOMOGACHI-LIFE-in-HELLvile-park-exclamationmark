@@ -21,10 +21,26 @@ typedef struct DoomoLookPool {
 DOOMO_STATIC_ASSERT(sizeof(DoomoLookPool) == 8200, look_pool_is_8200_bytes);
 DOOMO_STATIC_ASSERT(LOOK_POOL_BYTES + 8 <= DOOMO_SAVE_EXT_MAX, look_pool_fits_one_chunk);
 
+/* CR5: bytes of the pool (look_pool.c). 6,144 B keeps the creator's save chunk (nicknames, gene bits, this
+ * pool) under DOOMO_SAVE_EXT_MAX; the PS1 keeps 384 B (its resident RAM is full, docs/PS1.md). */
+#if defined(DOOMO_PLATFORM_PS1)
+#define LOOK_POOL_CAP 384
+#else
+#define LOOK_POOL_CAP 6144
+#endif
+
 /* The pool API (weak stubs in stubs.c until M1 allocates a pool). A run is the bytes of one kind
  * (RUN_*) for one id. These shapes are provisional: M1 may refine them before anyone calls them. */
 const uint8_t *look_pool_find(int id, int kind, int *len);        /* NULL if there is no such run */
 int  look_pool_put(int id, int kind, const uint8_t *data, int len); /* 1 stored, 0 pool full       */
 void look_pool_drop(int id);                                      /* every run of one id          */
+/* CR5. put keeps the old run when the new one does not fit (0 returned); len 0 removes the run. */
+void look_pool_reset(void);                                       /* every run (new town, load)   */
+int  look_pool_free(void);                                        /* bytes left                   */
+unsigned look_pool_gen(void);                                     /* changes with every change    */
+/* The saved form: whole records, at most cap bytes (dst NULL: only counts); load replaces the pool,
+ * 1 ok, 0 malformed (what came before the fault is kept). */
+uint32_t look_pool_emit(uint8_t *dst, uint32_t cap);
+int  look_pool_load(const uint8_t *src, uint32_t len);
 
 #endif

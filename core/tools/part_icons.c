@@ -53,7 +53,8 @@ static int is_look_list(int list)
     case GF_BLUSH_STYLE: case GF_EAR_FOLD:
         return 1;
     default:
-        return 0;
+        /* CR5: the deep parts the look pool saves (look_fields.h DF_POOL_*), through look_part_set */
+        return list >= PL_DEEP0 + DF_POOL_FIRST && list < PL_DEEP0 + DF_POOL_FIRST + DF_POOL_N;
     }
 }
 
@@ -82,7 +83,7 @@ static void mannequin(DoomoLook *l, int list)
     if (list == GF_PATTERN) { l->top = TOP_TSHIRT; l->pattern_color = PAINT_CHERRY; }
     if (list == GF_HAT || list == GF_HORNS || list == GF_HALO || list == GF_HEAD_SHAPE || list == GF_EARS ||
         list == GF_EYE_STYLE || list == GF_MOUTH_STYLE || list == GF_BROW_STYLE || list == GF_NOSE_STYLE ||
-        list == GF_GLASSES || list == GF_EAR_FOLD)
+        list == GF_GLASSES || list == GF_EAR_FOLD || PL_IS_DEEP(list))
         l->hair_style = 0;                        /* bald: the part reads alone */
     if (list == GF_EAR_FOLD) l->ears = EARS_BUNNY;              /* CR3: long ears show a fold */
     if (list == GF_LEGWEAR) { l->bottom = BOTTOM_SHORTS; l->shoes = SHOES_SANDALS; l->pattern_color = PAINT_CHERRY; }
@@ -242,6 +243,7 @@ static void do_slot(const PartSlotInfo *sl)
     if (list == PL_SPECIES) cam = ICAM_BUST;
     else if (is_look_list(list)) cam = cam_of(list);
     else return;
+    if (PL_IS_DEEP(list) && sl->live < 2) return;      /* CR5: a deep slot with nothing to choose has no grid */
     iw = cam == ICAM_FIG ? FIGURE_W : PORTRAIT_W;
     ih = cam == ICAM_FIG ? FIGURE_H : PORTRAIT_H;
     n0 = sl->count ? part_meta_name(&doomo_part_meta[sl->first]) : "";

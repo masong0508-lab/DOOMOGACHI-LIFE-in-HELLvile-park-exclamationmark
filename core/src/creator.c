@@ -18,6 +18,7 @@
  */
 #include "creator_int.h"
 #include "doomo/look_fields.h"
+#include "doomo/look_pool.h"
 #include "doomo/playas.h"
 #include "doomo/part_meta.h"
 
@@ -55,6 +56,7 @@ static uint16_t name_hash(const char *s)
 static void nicks_reset(void)
 {
     int i;
+    look_pool_reset();                                  /* CR5: the look pool goes with the nicknames */
     memset(nicks, 0, sizeof(nicks));
     for (i = 0; i < CR_NICKS; i++) nicks[i].id = 0xFFFF;
     nicks_ready = 1;
@@ -115,6 +117,11 @@ static int nick_set(int id, const char *name, const char *nick)
 }
 
 /* ---- save extension 'NICK': [count][id lo hi][hash lo hi][12 name bytes]...
+ * CR5 (version 2) appends the look pool after the gene trailer: [u16 length][the pool's records,
+ * look_pool_emit]: the deep choices of the citizens who have any (the "LOOK" section; the 14
+ * registry slots are full and the chunk has the room: nicknames <= 1 KB, the pool <= 6 KB). It is
+ * written only when the pool holds something; the gene trailer then always comes first (an empty one,
+ * [0 0], when no record has gene bits), so a reader finds the pool by the trailer's length.
  * CR3 appends the gene bits the v1 save stream has no place for (look_gene.c: the new look fields
  * such as glasses and outer layers, and the high bit of aura, print and eye count) when any record
  * has some: [u16 n][n x 8 B]. The chunk keeps version 1: a build from before CR3 reads the nicknames
@@ -129,18 +136,27 @@ static int nick_count_used(void)
     return n;
 }
 
+/* the pool's saved bytes: whole records that still leave the chunk under DOOMO_SAVE_EXT_MAX */
+static uint32_t pool_saved(uint32_t others)
+{
+    return others + 4u > DOOMO_SAVE_EXT_MAX ? 0 : look_pool_emit(NULL, DOOMO_SAVE_EXT_MAX - others - 2u);
+}
+
 static uint32_t nickext_size(void)
 {
     int n = nick_count_used();
-    uint32_t g = look_gene_ext_size();
-    return n || g ? (uint32_t)(1 + n * NICK_REC) + g : 0;
+    uint32_t g = look_gene_ext_size(), head = (uint32_t)(1 + n * NICK_REC), p;
+    p = pool_saved(head + (g ? g : 2u));
+    if (p) return head + (g ? g : 2u) + 2u + p;
+    return n || g ? head + g : 0;
 }
 
 static uint32_t nickext_write(uint8_t *dst, uint32_t cap)
 {
-    uint32_t n = nickext_size(), o = 0;
+    uint32_t n = nickext_size(), o = 0, g = look_gene_ext_size(), p;
     int i;
     if (n == 0 || n > cap) return 0;
+    p = pool_saved((uint32_t)(1 + nick_count_used() * NICK_REC) + (g ? g : 2u));
     dst[o++] = (uint8_t)nick_count_used();
     for (i = 0; i < CR_NICKS; i++) {
         if (nicks[i].id == 0xFFFF || !nicks[i].nick[0]) continue;
@@ -151,19 +167,36 @@ static uint32_t nickext_write(uint8_t *dst, uint32_t cap)
         memcpy(dst + o, nicks[i].nick, DOOMO_NAME_LEN);
         o += DOOMO_NAME_LEN;
     }
-    o += look_gene_ext_write(dst + o, cap - o);           /* CR3 (v2) */
+    o += look_gene_ext_write(dst + o, cap - o);           /* CR3 */
+    if (p) {                                              /* CR5: the look pool */
+        if (!g) { dst[o++] = 0; dst[o++] = 0; }
+        dst[o++] = (uint8_t)(p & 255);
+        dst[o++] = (uint8_t)(p >> 8);
+        o += look_pool_emit(dst + o, p);
+    }
     return o;
 }
 
 static int nickext_read(const uint8_t *src, uint32_t len, uint16_t version)
 {
     int n, i, k, ok = 1;
+    uint32_t rest;
     nicks_reset();
     if (len < 1) return 1;
     n = src[0];
     if ((uint32_t)(1 + n * NICK_REC) > len || n > CR_NICKS) return 0;
     (void)version;
-    if (!look_gene_ext_read(src + 1 + n * NICK_REC, len - (uint32_t)(1 + n * NICK_REC)))
+    rest = len - (uint32_t)(1 + n * NICK_REC);
+    if (rest >= 2) {                                    /* CR5: the pool follows the gene trailer */
+        uint32_t gl = 2u + 8u * (uint32_t)(src[1 + n * NICK_REC] | (src[2 + n * NICK_REC] << 8));
+        if (gl < rest) {
+            const uint8_t *q = src + 1 + n * NICK_REC + gl;
+            uint32_t pl = rest - gl >= 2 ? (uint32_t)(q[0] | (q[1] << 8)) : 0xFFFFu;
+            if (pl + 2u != rest - gl || !look_pool_load(q + 2, pl)) ok = 0;
+            rest = gl;
+        }
+    }
+    if (!look_gene_ext_read(src + 1 + n * NICK_REC, rest))
         ok = 0;                                         /* CR3: the gene bits (the town is decoded) */
     for (i = 0; i < n; i++) {
         const uint8_t *b = src + 1 + i * NICK_REC;
@@ -181,7 +214,7 @@ static int nickext_read(const uint8_t *src, uint32_t len, uint16_t version)
 }
 
 static const DoomoSaveExt nick_ext = {
-    SAVE_EXT_TAG('N', 'I', 'C', 'K'), 1,
+    SAVE_EXT_TAG('N', 'I', 'C', 'K'), 2,
     nickext_size, nickext_write, nickext_read, nicks_reset, 0 /* max_size (S0) */
 };
 const DoomoSaveExt *const doomo_save_ext_extra = &nick_ext;
@@ -226,10 +259,20 @@ static int age_locked(int stage)
     return 0;
 }
 
+/* ---- CR5: deep rows. Their value is not in the record: it is cr.dd (the draft) or cr.ddo (what the
+ * creator opened with); any other record has none (a preview copy: the callers that edit one handle
+ * RK_DEEP themselves). ---- */
+#define DEEP_IX(row) ((row)->field - CR_DEEP0 - DF_POOL_FIRST)
+static uint8_t *deep_of(const DoomoResident *r)
+{
+    return r == &cr.draft ? cr.dd : r == &cr.orig ? cr.ddo : NULL;
+}
+
 /* ---- CR12: the age gate for parts ----------------------------------------------------------- */
 /* the catalog list of a part row (part_meta.h), or -1 for a row that is not a part */
 int cr_row_part_list(const CrRow *row)
 {
+    if (row && row->kind == RK_DEEP) return PL_DEEP0 + (row->field - CR_DEEP0);
     if (!row || row->kind != RK_ENUM || CR_IS_AGE_ROW(row) || row->aux) return -1;
     if (row->field == RES_F_SPECIES) return PL_SPECIES;
     if (row->field < GF_COUNT && RES_F_IS_LOOK(row->field)) return row->field;
@@ -341,7 +384,7 @@ int cr_is_hellish(void)
 
 int cr_dirty(void)
 {
-    return memcmp(&cr.draft, &cr.orig, sizeof(cr.draft)) != 0 ||
+    return memcmp(&cr.draft, &cr.orig, sizeof(cr.draft)) != 0 || memcmp(cr.dd, cr.ddo, DF_POOL_N) != 0 ||
            strcmp(cr.nick, cr.nick_orig) != 0 ||
            (cr.mode == CR_NEW && cr.district != (cr.arg == -2 ? 1 : (cr.target >= 0 ? RES_DISTRICT(cr.target) : 0)));
 }
@@ -500,6 +543,10 @@ int cr_preset_locked(const CrPreset *p, const char **hint)
 static int part_row_count(const CrRow *row)
 {
     int list = cr_row_part_list(row), n;
+    if (row->kind == RK_DEEP) {                 /* CR5: the live values of the deep slot (catalog) */
+        const PartSlotInfo *sl = part_slot_of_list(list);
+        return sl && sl->live > 0 ? sl->live : 1;
+    }
     if (list >= 0 && list < PART_GENE_FIELDS && !row->base && (n = part_live_drawable(list)) > 0) return n;
     return row->count;
 }
@@ -508,7 +555,7 @@ int cr_row_count(const CrRow *row)
 {
     if (!row) return 1;
     switch (row->kind) {
-    case RK_ENUM:
+    case RK_ENUM: case RK_DEEP:
         return part_row_count(row);
     case RK_SLIDER: case RK_PAINT: case RK_PAINT_NONE: case RK_SKIN:
         return row->count;
@@ -529,6 +576,11 @@ int cr_row_value(const DoomoResident *r, const CrRow *row)
     case RK_ENUM:
         v = enum_get(r, row) - row->base;
         return DOOMO_CLAMP(v, 0, part_row_count(row) - 1);
+    case RK_DEEP: {
+        const uint8_t *d = deep_of(r);
+        v = d ? d[DEEP_IX(row)] : 0;
+        return DOOMO_CLAMP(v, 0, part_row_count(row) - 1);
+    }
     case RK_SLIDER: case RK_PAINT: case RK_SKIN:
         v = cbyte(r, row->field);
         return DOOMO_CLAMP(v, 0, row->count - 1);
@@ -554,6 +606,11 @@ void cr_row_set(DoomoResident *r, const CrRow *row, int index)
     if (row->kind == RK_DISTRICT) { cr.district = (uint8_t)index; refresh_home(); return; }
     if (row->kind == RK_ACTION) { set_action_index(row->aux, index); return; }
     if (row->field == CR_NOFIELD) return;
+    if (row->kind == RK_DEEP) {
+        uint8_t *d = deep_of(r);
+        if (d) d[DEEP_IX(row)] = (uint8_t)index;
+        return;
+    }
     cur = cbyte(r, row->field);
     switch (row->kind) {
     case RK_ENUM:
@@ -713,7 +770,7 @@ const char *cr_choice_name(const CrRow *row, int index, char *buf)
     buf[0] = 0;
     if (!row) return buf;
     switch (row->kind) {
-    case RK_ENUM:
+    case RK_ENUM: case RK_DEEP:
         /* CR3: a part past the v1 name table (or a row with none) is named by the catalog */
         if (row->names && index >= 0 && index < row->count) return row->names[index];
         {
@@ -761,6 +818,7 @@ const char *cr_choice_name(const CrRow *row, int index, char *buf)
 /* ====================================================================== */
 /* undo timeline                                                            */
 #define HIST(i) cr.hist[(cr.hbase + (i)) % CR_UNDO]
+#define HIST_DD(i) cr.hist_dd[(cr.hbase + (i)) % CR_UNDO]
 
 static void hist_reset(void)
 {
@@ -768,6 +826,7 @@ static void hist_reset(void)
     cr.hcount = 1;
     cr.hcur = 0;
     cr.hist[0] = cr.draft;
+    memcpy(cr.hist_dd[0], cr.dd, DF_POOL_N);
     cr.last_key = -1;
 }
 
@@ -785,7 +844,8 @@ static void on_changed(void)
  * within a second (holding a direction) merge into one undo step. */
 static void commit(int key)
 {
-    if (memcmp(&HIST(cr.hcur), &cr.draft, sizeof(cr.draft)) == 0) return;
+    if (memcmp(&HIST(cr.hcur), &cr.draft, sizeof(cr.draft)) == 0 &&
+        memcmp(HIST_DD(cr.hcur), cr.dd, DF_POOL_N) == 0) return;
     if (key >= 0 && key == cr.last_key && cr.t - cr.last_commit_t < 30 && cr.hcur > 0) {
         HIST(cr.hcur) = cr.draft;
     } else {
@@ -797,6 +857,7 @@ static void commit(int key)
         cr.hcount = (uint8_t)(cr.hcur + 1);
         HIST(cr.hcur) = cr.draft;
     }
+    memcpy(HIST_DD(cr.hcur), cr.dd, DF_POOL_N);
     cr.last_key = (int16_t)key;
     cr.last_commit_t = cr.t;
     on_changed();
@@ -807,6 +868,7 @@ static int do_undo(void)
     if (cr.hcur == 0) { audio_sfx(SFX_ERROR); return 0; }
     cr.hcur--;
     cr.draft = HIST(cr.hcur);
+    memcpy(cr.dd, HIST_DD(cr.hcur), DF_POOL_N);
     cr.last_key = -1;
     cr.browse = -1;
     audio_sfx(SFX_BLIP);
@@ -821,6 +883,7 @@ static int do_redo(void)
     if (cr.hcur + 1 >= cr.hcount) { audio_sfx(SFX_ERROR); return 0; }
     cr.hcur++;
     cr.draft = HIST(cr.hcur);
+    memcpy(cr.dd, HIST_DD(cr.hcur), DF_POOL_N);
     cr.last_key = -1;
     cr.browse = -1;
     audio_sfx(SFX_BLIP);
@@ -898,27 +961,44 @@ static void talk_update(void)
 /* ====================================================================== */
 /* preview                                                                  */
 /* CR3: a record's look and its gene-only fields (glasses, outer layer ...) as the preview draws them */
-static void view_of(const DoomoResident *r, DoomoLook *out, DoomoDeep *dout)
+/* CR5: dd = the pool-backed deep choices that go with the record (DF_POOL_N bytes), or NULL for none */
+static void view_of(const DoomoResident *r, DoomoLook *out, DoomoDeep *dout, const uint8_t *dd)
 {
     res_get_look(r, out);
     *dout = doomo_deep_zero;
     look_gene_deep(r, LV_ALL, dout);
+    if (dd) memcpy(dout->v + DF_POOL_FIRST, dd, DF_POOL_N);
+}
+
+/* CR5: resident `id`'s pool-backed choices (look_pool.c) into dd */
+static void pool_deep_get(int id, uint8_t *dd)
+{
+    DoomoDeep t;
+    look_resolve(NULL, id, &t);
+    memcpy(dd, t.v + DF_POOL_FIRST, DF_POOL_N);
 }
 
 static void target_look(DoomoLook *out, DoomoDeep *dout, uint8_t *locked)
 {
     DoomoResident tmp;
+    uint8_t dd[DF_POOL_N];
     const CrRow *row = cr_cur_row();
     *locked = 0;
     if (cr.phase == CRP_COPY) {
-        const DoomoResident *src = cr_copy_res(cr_copy_id_at(cr.copy_sel));
-        view_of(src ? src : &cr.draft, out, dout);
+        int cid = cr_copy_id_at(cr.copy_sel);
+        const DoomoResident *src = cr_copy_res(cid);
+        memset(dd, 0, sizeof(dd));
+        if (src && !cr.copy_src) pool_deep_get(cid, dd);
+        view_of(src ? src : &cr.draft, out, dout, src ? dd : cr.dd);
         return;
     }
-    view_of(&cr.draft, out, dout);
+    view_of(&cr.draft, out, dout, cr.dd);
     if (cr.browse < 0 || !row) return;
     tmp = cr.draft;
-    if (row->kind == RK_ACTION) {
+    memcpy(dd, cr.dd, sizeof(dd));
+    if (row->kind == RK_DEEP) {                /* CR5: a locked deep choice, looked at */
+        dd[DEEP_IX(row)] = (uint8_t)DOOMO_CLAMP(cr.browse, 0, cr_row_count(row) - 1);
+    } else if (row->kind == RK_ACTION) {
         const CrPreset *p = cr_action_preset(row->aux, cr.browse);
         if (!p) return;
         if (row->aux == CA_SPECIES_PRESET) apply_species_preset(&tmp, p);
@@ -928,7 +1008,7 @@ static void target_look(DoomoLook *out, DoomoDeep *dout, uint8_t *locked)
     } else {
         return;
     }
-    view_of(&tmp, out, dout);
+    view_of(&tmp, out, dout, dd);
     *locked = (uint8_t)cr_value_locked(row, cr.browse);
 }
 
@@ -937,9 +1017,12 @@ static void target_look(DoomoLook *out, DoomoDeep *dout, uint8_t *locked)
 void cr_lock_base(DoomoLook *out, DoomoDeep *dout)
 {
     DoomoResident tmp = cr.draft;
+    uint8_t dd[DF_POOL_N];
     const CrRow *row = cr_cur_row();
+    memcpy(dd, cr.dd, sizeof(dd));
     if (row && row->kind == RK_ENUM && row->field != CR_NOFIELD && RES_F_IS_LOOK(row->field)) cr_row_set(&tmp, row, 0);
-    view_of(&tmp, out, dout);
+    if (row && row->kind == RK_DEEP) dd[DEEP_IX(row)] = 0;
+    view_of(&tmp, out, dout, dd);
 }
 
 int cr_preview_status(void)
@@ -1073,6 +1156,7 @@ static void randomise_all(void)
     DoomoResident r;
     gen_random(&r);
     copy_editable(&cr.draft, &r, cr.name_ok);
+    memset(cr.dd, 0, DF_POOL_N);                /* CR5: a new roll has no deep parts */
     fix_locks(&cr.draft);
     cr.n_random++;
     if (cr.n_random >= 25) unlock_grant(CRU_RANDOMISE_LOTS);
@@ -1097,6 +1181,9 @@ static void randomise_tab(void)
         case RK_SLIDER: case RK_PAINT: case RK_PAINT_NONE:
         case RK_SKIN: case RK_FLAG:
             sbyte(&cr.draft, row->field, cbyte(&r, row->field));
+            break;
+        case RK_DEEP:                               /* CR5: any live choice */
+            cr.dd[DEEP_IX(row)] = (uint8_t)(doomo_hash32(roll_seed() + (uint32_t)i) % (uint32_t)cr_row_count(row));
             break;
         case RK_NAME:
             if (!cr.name_ok) memcpy(cr.draft.name, r.name, DOOMO_NAME_LEN);
@@ -1281,13 +1368,48 @@ static void open_nick_entry(void)
 }
 
 /* Write the draft into the town. Returns the id written or -1. */
+/* CR5: the draft's deep choices as the pool's run: (field, value) pairs, the non-zero ones; returns the
+ * length (0 = none) */
+static int deep_run(const uint8_t *dd, uint8_t *out)
+{
+    int i, n = 0;
+    for (i = 0; i < DF_POOL_N; i++)
+        if (dd[i]) { out[n++] = (uint8_t)(DF_POOL_FIRST + i); out[n++] = dd[i]; }
+    return n;
+}
+
+/* CR5: put the draft's run in the pool for resident `id` before the town is touched. 0 = it does not
+ * fit (the pool is full, or the save chunk would be over its limit): the pool is left as it was, so
+ * the caller refuses the commit and the town stays unchanged. */
+static int deep_commit(int id)
+{
+    uint8_t run[2 * DF_POOL_N], old[2 * DF_POOL_N];
+    const uint8_t *o;
+    int rl = deep_run(cr.dd, run), ol = 0, ok;
+    uint32_t others;
+    o = look_pool_find(id, RUN_DEEP, &ol);
+    if (o) memcpy(old, o, (size_t)ol);
+    ok = look_pool_put(id, RUN_DEEP, run, rl);
+    /* the whole pool must still fit the chunk beside the nicknames and the gene bits (8 B for this record) */
+    others = (uint32_t)(1 + nick_count_used() * NICK_REC) + (look_gene_ext_size() ? look_gene_ext_size() : 2u) + 8u;
+    if (ok && rl > ol && look_pool_emit(NULL, 0xFFFFu) != pool_saved(others)) ok = 0;   /* only growth is refused */
+    if (!ok) look_pool_put(id, RUN_DEEP, ol ? old : NULL, ol);       /* back to what it was */
+    return ok;
+}
+
 static int write_town(void)
 {
     DoomoResident rec = cr.draft;
     DoomoResident *dst;
-    int id, first = 0;
+    int id, first = 0, pid;
     resident_sanitize(&rec);
     part_age_filter_resident(&rec, -1);         /* CR12: never store a part above their stage */
+    /* CR5: the deep choices go to the look pool first; a full pool refuses the whole commit */
+    pid = cr.mode == CR_NEW ? (cr.target >= 0 ? cr.target : town_alloc(cr.district)) :
+          cr.mode == CR_PLAYER ? DOOMO_PLAYER_ID : cr.target;
+    if (pid >= 0 && pid <= DOOMO_PLAYER_ID && town_res(pid) &&
+        (cr.mode != CR_NEW || town_res(pid)->status == RES_EMPTY) && !deep_commit(pid))
+        return -2;
     if (cr.mode == CR_NEW) {
         id = cr.target >= 0 ? cr.target : town_alloc(cr.district);
         if (id < 0 || !town_res(id) || town_res(id)->status != RES_EMPTY) {
@@ -1349,6 +1471,11 @@ static void finish(void)
         return;
     }
     id = write_town();
+    if (id == -2) {                             /* CR5: the look pool is full */
+        audio_sfx(SFX_ERROR);
+        ui_toast("Wardrobe full! Take a part off.");
+        return;
+    }
     if (id < 0) {
         char m[48];
         audio_sfx(SFX_ERROR);
@@ -1387,6 +1514,7 @@ static void cb_reset(int yes)
 {
     if (!yes) return;
     cr.draft = cr.orig;
+    memcpy(cr.dd, cr.ddo, DF_POOL_N);
     memcpy(cr.nick, cr.nick_orig, sizeof(cr.nick));
     cr.browse = -1;
     commit(-1);
@@ -1896,14 +2024,14 @@ static void open_picker(const CrRow *row)
     cr.pick_top = 0;
     cr.pick_err = 0;
     cr.browse = cr_value_locked(row, cr.pick_sel) ? cr.pick_sel : -1;
-    go_phase(row->kind == RK_ENUM ? CRP_PICK : CRP_COLOR);
+    go_phase(row->kind == RK_ENUM || row->kind == RK_DEEP ? CRP_PICK : CRP_COLOR);
     audio_sfx(SFX_SELECT);
 }
 
 static void press_a(const CrRow *row)
 {
     switch (row->kind) {
-    case RK_ENUM:
+    case RK_ENUM: case RK_DEEP:
         if (cr_row_slot(row) >= 0) {             /* CR6: a part row opens the picture grid */
             cr_grid_open(row);
             go_phase(CRP_GRID);
@@ -2139,6 +2267,8 @@ static void update_copy(void)
         const DoomoResident *src = cr_copy_res(cr_copy_id_at(cr.copy_sel));
         if (!src) { audio_sfx(SFX_ERROR); return; }
         res_set_look(&cr.draft, RES_LOOK_VIEW(src));
+        if (cr.copy_src) memset(cr.dd, 0, DF_POOL_N);                 /* CR5: their deep choices too */
+        else pool_deep_get(cr_copy_id_at(cr.copy_sel), cr.dd);
         fix_locks(&cr.draft);
         commit(-1);
         if (cr.copy_src) unlock_grant(CRU_COPY_PREMADE);
@@ -2256,6 +2386,7 @@ static void cr_enter(int arg)
         r = town_res(DOOMO_PLAYER_ID);
         if (r && r->status != RES_EMPTY) {
             cr.draft = *r;
+            pool_deep_get(DOOMO_PLAYER_ID, cr.dd);     /* CR5 */
             /* town_new() calls the protagonist "You" until they pick a name */
             cr.name_ok = r->name[0] != 0 && strcmp(r->name, "You") != 0;
         } else {
@@ -2276,6 +2407,7 @@ static void cr_enter(int arg)
         } else {
             cr.mode = CR_EDIT;
             cr.draft = *r;
+            pool_deep_get(arg, cr.dd);                 /* CR5 */
             cr.name_ok = 1;
             nick_copy(cr.nick, creator_nickname(arg));
         }
@@ -2291,6 +2423,7 @@ static void cr_enter(int arg)
     if (!cr.name_ok && cr.mode != CR_PLAYER)
         memset(cr.draft.name, 0, DOOMO_NAME_LEN);                /* sanitize said "Nameless" */
     cr.orig = cr.draft;
+    memcpy(cr.ddo, cr.dd, DF_POOL_N);
     memcpy(cr.nick_orig, cr.nick, DOOMO_NAME_LEN);
     hist_reset();
     cr.show = CR_SHOW_ALL;
@@ -2299,7 +2432,7 @@ static void cr_enter(int arg)
     cr.preset_i = 0;
     refresh_home();
     if (cr.phase == CRP_HERO) hero_preview();
-    view_of(&cr.draft, &cr.shown, &cr.shown_d);
+    view_of(&cr.draft, &cr.shown, &cr.shown_d, cr.dd);
     cr.img.uid = 0;
     cr.disp.ok = cr.pend.ok = 0;
     if (CR_CALM) {

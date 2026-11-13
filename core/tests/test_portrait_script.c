@@ -300,9 +300,9 @@ TEST(deep_pool_is_bounded_and_replaces_runs)
     CHECK(!look_pool_put(-1, RUN_DEEP, big, 2));
     CHECK(!look_pool_put(5000, RUN_DEEP, big, 2));
     CHECK(!look_pool_put(8, RUN_DEEP, big, 300));
-    for (id = 20; id < 30; id++) n += look_pool_put(id, RUN_DEEP, big, 200);
-    CHECK(n >= 1 && n < 10);
-    for (id = 20; id < 30; id++) look_pool_drop(id);
+    for (id = 20; id < 60; id++) n += look_pool_put(id, RUN_DEEP, big, 200);    /* CR5: 6,144 B holds 30 of them */
+    CHECK(n >= 1 && n < 40);
+    for (id = 20; id < 60; id++) look_pool_drop(id);
     CHECK(look_pool_find(20, RUN_DEEP, &n) == NULL);
     CHECK(look_pool_put(9, RUN_DEEP, (const uint8_t *)"\x02\x01", 2));
     CHECK(look_pool_put(9, RUN_DEEP, (const uint8_t *)"\x02\x02\x03\x01", 4));

@@ -38,8 +38,13 @@ enum {
     RK_NAME,        /* the name: A types it, LEFT/RIGHT rolls a name idea    */
     RK_NICK,        /* the nickname (creator_nickname), A types it           */
     RK_ACTION,      /* aux = CA_*: LEFT/RIGHT picks a choice, A runs it      */
-    RK_DISTRICT     /* new citizens: which side of the park they move to     */
+    RK_DISTRICT,    /* new citizens: which side of the park they move to     */
+    RK_DEEP         /* CR5: a deep field the look pool saves (look_fields.h DF_POOL_*): field =
+                       CR_DEEP0 + DF_x, count = 1 (the live count comes from the catalog), base 0,
+                       aux 0, no names (the catalog names the choices). Its value lives in cr.dd. */
 };
+/* CR5: the `field` of an RK_DEEP row is CR_DEEP0 + the DF_ id (above RES_F_*, below CR_NOFIELD) */
+#define CR_DEEP0 0x90
 #define CR_NOLIST  0xFF
 #define CR_NOFIELD 0xFF
 /* CR3: RK_PAINT rows' aux bits: a second row for a colour another row also edits (the outer
@@ -206,6 +211,9 @@ typedef struct CrState {
     DoomoResident draft;            /* what the player is making             */
     DoomoResident orig;             /* as it was when the creator opened     */
     DoomoResident hist[CR_UNDO];    /* timeline ring; hist[hcur] == draft    */
+    /* CR5: the draft's pool-backed deep choices (DF_POOL_FIRST + i), as they are now, when the creator
+     * opened, and per undo step: the look pool's run once the citizen is made (write_town) */
+    uint8_t  dd[DF_POOL_N], ddo[DF_POOL_N], hist_dd[CR_UNDO][DF_POOL_N];
     uint8_t  hbase, hcount, hcur;
     int16_t  last_key;              /* row that made the last commit         */
     uint32_t last_commit_t;

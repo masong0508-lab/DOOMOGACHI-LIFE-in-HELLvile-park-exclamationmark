@@ -1007,7 +1007,7 @@ static void draw_footer(const CrRow *row, int x, int y, int w)
                        row->names ? row->names[0] : "", row->names ? row->names[1] : "");
         s = buf;
         break;
-    case RK_ENUM: {
+    case RK_ENUM: case RK_DEEP: {
         const PartMeta *m = cr_choice_meta(row, idx);
         c = st->text;
         if (m) {                              /* CR6: a part names its themed set too */

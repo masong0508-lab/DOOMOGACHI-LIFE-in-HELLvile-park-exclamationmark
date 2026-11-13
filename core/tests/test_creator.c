@@ -11,6 +11,7 @@
 #include "../src/creator_int.h"
 #include "doomo/playas.h"
 #include "doomo/part_meta.h"
+#include "doomo/look_pool.h"
 
 static void frames(int n, uint32_t b)
 {
@@ -78,6 +79,10 @@ TEST(creator_rows_cover_every_field)
         for (i = 0; i < cr_tabs[t].nrows; i++) {
             const CrRow *r = &cr_tabs[t].rows[i];
             if (r->field == CR_NOFIELD) continue;
+            if (r->kind == RK_DEEP) {                     /* CR5: CR_DEEP0 + a DF_ id of the look pool */
+                CHECK(r->field >= CR_DEEP0 + DF_POOL_FIRST && r->field < CR_DEEP0 + DF_POOL_FIRST + DF_POOL_N);
+                continue;
+            }
             CHECK(r->field < GF_COUNT || (r->field >= RES_F_SPECIES && r->field <= RES_F_NAME));
             covered[r->field] = 1;
         }
@@ -1209,4 +1214,125 @@ TEST(creator_select_jumps_between_sections)
     CHECK_EQ(cr.row[cr.tab], start);
     press(BTN_SELECT);                                   /* a plain SELECT still turns the citizen */
     CHECK_EQ(cr.phase, CRP_TURN);
+}
+
+/* ---------------------------------------------------------------------- */
+/* CR5: deep parts (the look pool)                                          */
+static int pool_deep(int id, int df)          /* what the pool says for resident id */
+{
+    DoomoDeep d;
+    look_resolve(NULL, id, &d);
+    return d.v[df];
+}
+
+/* open the creator on a new citizen, name them, and pick lashes `v` on the Face tab; returns with
+ * the menu not yet opened */
+static void new_with_lashes(int v)
+{
+    int row;
+    open_creator(-1);
+    row = row_index(CR_TAB_FACE, CR_DEEP0 + DF_LASH, RK_DEEP);
+    CHECK(row >= 0);
+    go_row(CR_TAB_FACE, row);
+    press_n(BTN_RIGHT, v);
+    CHECK_EQ(cr_row_value(&cr.draft, cr_cur_row()), v);
+    go_row(CR_TAB_PROFILE, 0);
+    press(BTN_A);
+    type_text("Lash\n");
+}
+
+TEST(cr5_creator_offers_and_saves_a_deep_choice)
+{
+    int id, row;
+    const DoomoResident *r;
+    look_pool_reset();
+    new_with_lashes(2);
+    CHECK(cr_dirty());
+    press(BTN_START);
+    press(BTN_A);
+    CHECK_EQ(cr.phase, CRP_MOVEIN);
+    id = creator_last_result();
+    CHECK(id >= 0);
+    CHECK_EQ(pool_deep(id, DF_LASH), 2);              /* the run is in the pool ... */
+    CHECK_EQ(pool_deep(id, DF_LID), 0);
+    r = town_res(id);
+    CHECK_STR(r->name, "Lash");
+    /* ... it reaches the renderer's set (what the cache key hashes) ... */
+    CHECK(look_run_hash(id, 0) != 0);
+    CHECK_EQ(look_run_hash(id, 1), 0u);               /* lashes are not on a chibi */
+    /* ... and the creator opened on them again shows it, clean; taking it off removes the run */
+    frames(30, 0);
+    press(BTN_A);
+    open_creator(id);
+    row = row_index(CR_TAB_FACE, CR_DEEP0 + DF_LASH, RK_DEEP);
+    CHECK_EQ(cr_row_value(&cr.draft, &cr_tabs[CR_TAB_FACE].rows[row]), 2);
+    CHECK(!cr_dirty());
+    go_row(CR_TAB_FACE, row);
+    press_n(BTN_LEFT, 2);
+    CHECK(cr_dirty());
+    press(BTN_START);
+    press(BTN_A);
+    CHECK_EQ(cr.phase, CRP_MOVEIN);
+    CHECK_EQ(pool_deep(id, DF_LASH), 0);
+    CHECK(look_pool_find(id, RUN_DEEP, &row) == NULL);
+}
+
+TEST(cr5_deep_choice_is_in_the_undo_ring_and_reset)
+{
+    int row;
+    look_pool_reset();
+    open_creator(-1);
+    row = row_index(CR_TAB_FACE, CR_DEEP0 + DF_LID, RK_DEEP);
+    go_row(CR_TAB_FACE, row);
+    press(BTN_RIGHT);
+    CHECK_EQ(cr.dd[DF_LID - DF_POOL_FIRST], 1);
+    CHECK_EQ(cr_undo_count(), 1);
+    press(BTN_X);                                       /* undo */
+    CHECK_EQ(cr.dd[DF_LID - DF_POOL_FIRST], 0);
+    CHECK(!cr_dirty());
+    press(BTN_Y);                                       /* redo: the lid is back */
+    CHECK_EQ(cr.dd[DF_LID - DF_POOL_FIRST], 1);
+    CHECK(cr_dirty());
+}
+
+TEST(cr5_a_full_pool_refuses_the_commit_and_leaves_the_town)
+{
+    static DoomoTown snap;
+    static uint8_t keep[LOOK_POOL_CAP], now[LOOK_POOL_CAP];
+    uint8_t big[200];
+    uint32_t n0, n1;
+    int id;
+    town_new(TOWN_FREEPLAY, 5, TOWN_POP_EMPTY);                 /* homes are free: only the pool says no */
+    look_pool_reset();
+    memset(big, 1, sizeof(big));
+    for (id = 600; look_pool_put(id, RUN_DEEP, big, 200); id++) { }
+    CHECK(look_pool_put(5, RUN_NICK, big, look_pool_free() - 4));     /* a filler: no byte left */
+    CHECK_EQ(look_pool_free(), 0);
+    n0 = look_pool_emit(keep, sizeof(keep));
+    memcpy(&snap, &doomo_town, sizeof(snap));
+    scene_set(&base_scene, 0);
+    scene_push(&SCENE_CREATOR, -1);
+    frames(3, 0);
+    go_row(CR_TAB_FACE, row_index(CR_TAB_FACE, CR_DEEP0 + DF_LASH, RK_DEEP));
+    press(BTN_RIGHT);
+    go_row(CR_TAB_PROFILE, 0);
+    press(BTN_A);
+    type_text("Nope\n");
+    press(BTN_START);
+    press(BTN_A);                                       /* Done */
+    CHECK(cr.phase != CRP_MOVEIN);
+    CHECK(scene_top() == &SCENE_CREATOR);
+    CHECK(ui_toast_pending() > 0);
+    CHECK(memcmp(&snap, &doomo_town, sizeof(snap)) == 0);   /* the town is as it was */
+    n1 = look_pool_emit(now, sizeof(now));
+    CHECK(n0 == n1 && memcmp(keep, now, n0) == 0);           /* and so is the pool */
+    CHECK(look_pool_find(0, RUN_DEEP, &id) == NULL);
+    frames(200, 0);                                     /* the toast goes */
+    /* take the lashes off: the same citizen moves in (no deep part, no pool bytes needed) */
+    go_row(CR_TAB_FACE, row_index(CR_TAB_FACE, CR_DEEP0 + DF_LASH, RK_DEEP));
+    press(BTN_LEFT);
+    press(BTN_START);
+    press(BTN_A);
+    CHECK_EQ(cr.phase, CRP_MOVEIN);
+    look_pool_reset();
 }
