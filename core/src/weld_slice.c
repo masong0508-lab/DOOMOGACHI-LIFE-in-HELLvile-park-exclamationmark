@@ -628,6 +628,7 @@ typedef struct Ws {
     uint8_t  asked_mask;                /* slots asked for in tick asked_tick: a prefetch leaves them alone */
     uint32_t asked_tick;
     uint32_t gfx_gen;                   /* weld_gfx_gen when all this was made */
+    uint32_t ran;                       /* the tick of the last slice run inside a frame (WS_FRAME: one a tick) */
 #if !defined(DOOMO_PLATFORM_PS1)
     uint32_t far_key[WELD_VIEW_FAR], far_used[WELD_VIEW_FAR];
     const DoomoImage *far_img[WELD_VIEW_FAR];   /* its picture in the pool as found by the last far_sync(), or NULL */
@@ -842,9 +843,13 @@ static void job_want(Ws *s, const DoomoWeapon *w, int frame, uint32_t key, int n
 static void job_pump(Ws *s)
 {
     if (ws_mode == WS_FRAME) {
-        while (s->on && plat_portrait_slice_ok(SLICE_CLASS, (int)(now() - s->last))) {
+        /* One slice a tick: the platform's gate (plat_portrait_slice_ok) counts the frame's drawing, not the
+         * logic tick before it (11 ms in the workshop on the PS1), and with several slices in a frame (3 x 2-5 ms)
+         * the frame took 3 vsyncs. */
+        if (s->on && s->ran != now() && plat_portrait_slice_ok(SLICE_CLASS, (int)(now() - s->last))) {
             job_slice(s, ws_units, 0);
             plat_portrait_slice_done(SLICE_CLASS);
+            s->ran = now();
         }
     } else if (s->on && (int32_t)(now() - s->last) >= PATIENCE) {
         /* the frames leave no idle time: one slice all the same, so the picture always comes (the platform

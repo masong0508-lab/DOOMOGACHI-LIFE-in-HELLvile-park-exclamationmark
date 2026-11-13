@@ -323,17 +323,30 @@ TEST(weld_slice_without_slices_is_weld_view_image)
     CHECK(weld_view_prefetch(&tw[0], 0) == 1);
 }
 
-/* The PS1's way (mode 2): slices in the asking call while the platform has room for one more. The native
- * platform always has: a picture is whole in the call that asks for it, and the same picture. */
-TEST(weld_slice_in_frame_slices_finish_in_the_call)
+/* The PS1's way (mode 2): a slice in the asking call while the platform has room for one more, and one a tick at
+ * most (a frame with three slices took 3 vsyncs: the platform's gate counts the frame's drawing, not its logic).
+ * The native platform always has room: the picture comes after as many ticks as it has slices, and is the same
+ * picture; asking twice in a tick runs one slice. */
+TEST(weld_slice_in_frame_runs_one_slice_a_tick)
 {
     const DoomoImage *img;
-    int ready = 0;
+    int ready = 0, t, slices;
     job_setup(0);
     weld_slice_test(2, 350, 0);
     img = weld_view_image_sliced(&tw[1], 0, &ready);
+    CHECK(ready == 0 && img == NULL);                           /* a slice ran; the picture is not whole yet */
+    img = weld_view_image_sliced(&tw[1], 0, &ready);
+    CHECK(ready == 0 && img == NULL);                           /* ... and asking again in this tick ran none */
+    CHECK(weld_view_prefetch(&tw[2], 0) == 0);
+    for (t = 0; t < 200 && !ready; t++) {
+        tick();
+        img = weld_view_image_sliced(&tw[1], 0, &ready);
+    }
+    slices = t + 1;
     CHECK(ready == 1 && is_ref(img, 1));
-    CHECK(weld_view_prefetch(&tw[2], 0) == 1);
+    CHECK(slices > 3 && slices < 100);                          /* a picture is several slices, not one tick */
+    for (t = 0; t < 200 && !weld_view_prefetch(&tw[2], 0); t++) tick();
+    CHECK(t < 200);
     img = weld_view_image_sliced(&tw[2], 0, &ready);
     CHECK(ready == 1 && is_ref(img, 2));
     weld_slice_test(0, 0, 0);
