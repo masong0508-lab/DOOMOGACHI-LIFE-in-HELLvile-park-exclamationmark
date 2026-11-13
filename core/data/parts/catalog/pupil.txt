@@ -1,9 +1,37 @@
 # core/data/parts/catalog/pupil.txt - pupils, gene field pupil (CR1; format: tools/partcat_build.py).
 # Painted (wave 2, P1.M2) but not selectable yet: until CR3 flips the list live.
-slot pupil list=pupil name="Pupils" method=P target=31 new=T
+slot pupil list=pupil name="Pupils" method=P target=31 new=T gate=2
 
 0   "Normal"     set=basics tags=plain
 1   "Slit"       set=spooky tags=spooky,critter
 2   "Pinpoint"   set=basics tags=plain
 3   "Wide"       set=candy tags=cute
 4   "Bar"        set=critter tags=critter
+# CR4 A1a (core/data/parts/face/a1a_pupil.txt): 27 more pupils
+5   "Heart Pupil" set=candy tags=cute method=S
+6   "Star Pupil" set=candy tags=cute,glam method=S
+7   "Diamond Pupil" set=royal tags=glam method=S
+8   "Cross Pupil" set=graveyard tags=spooky method=S
+9   "Ring Pupil" set=basics tags=plain method=S
+10  "Double Dot" set=critter tags=critter method=S
+11  "Crescent Pupil" set=cloud9 tags=holy method=S
+12  "Keyhole" set=indieart tags=silly method=S
+13  "Square Pupil" set=indieart tags=tech method=S
+14  "Peak Pupil" set=punk tags=punk method=S
+15  "Drop Pupil" set=cozy tags=cute method=S
+16  "Flower Pupil" set=seasons tags=nature,cute method=S
+17  "Hourglass" set=graveyard tags=spooky,silly method=S
+18  "Bow Tie Pupil" set=teaparty tags=fancy method=S
+19  "Fat Slit" set=critter tags=critter,monster method=S
+20  "Rect Bar" set=critter tags=critter method=S
+21  "Needle" set=spooky tags=spooky method=S
+22  "Stack" set=funfair tags=silly method=S
+23  "Swirl Pupil" set=funfair tags=silly method=S
+24  "Trio" set=monster tags=monster method=S
+25  "Teardrop Pupil" set=cozy tags=cute method=S
+26  "X Pupil" set=graveyard tags=spooky,silly method=S
+27  "Slash" set=punk tags=punk method=S
+28  "Sparkle Pupil" set=candy tags=cute,glam method=S
+29  "Wave Pupil" set=sewers tags=silly method=S
+30  "Note Pupil" set=concert tags=music method=S
+31  "Eclipse" set=spooky tags=spooky,magic method=S

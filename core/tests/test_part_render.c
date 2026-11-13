@@ -15,6 +15,7 @@
 #include "doomo/portrait.h"
 #include "doomo/part_meta.h"
 #include "doomo/parts.h"
+#include "doomo/look_fields.h"
 #include "../src/portrait_int.h"
 
 static DoomoLook bench_look(void)
@@ -45,20 +46,33 @@ static void set_part(DoomoLook *l, int list, int v)
     if (o >= 0) *((uint8_t *)l + o) = (uint8_t)v;
 }
 
-static uint32_t render_hash(const DoomoLook *l)
+/* CR4: lists the gate tests: the look's own bytes, and the two gene-only fields A1a scripts */
+static int testable(int list) { return look_off(list) >= 0 || list == GF_PUPIL || list == GF_SCLERA; }
+
+static int sl_shape(const PartSlotInfo *sl) { return sl->list != GF_PUPIL && sl->list != GF_SCLERA; }
+
+static void set_part_d(DoomoLook *l, DoomoDeep *d, int list, int v)
+{
+    if (look_off(list) >= 0) set_part(l, list, v);
+    else look_part_set(l, d, list, v);
+}
+
+static uint32_t render_hash_d(const DoomoLook *l, const DoomoDeep *d)
 {
     static uint8_t por[PORTRAIT_W * PORTRAIT_H], fig[FIGURE_W * FIGURE_H], spr[BODYSPR_W * BODYSPR_H];
     static uint8_t fgt[FIGHTER_W * FIGHTER_H];
     uint32_t h = 2166136261u;
-    portrait_render(l, RES_ALIVE, EXPR_NEUTRAL, 0, por);
+    portrait_render_deep(l, d, RES_ALIVE, EXPR_NEUTRAL, 0, por);
     h = fnv(por, (int)sizeof(por), h);
-    figure_render(l, RES_ALIVE, EXPR_NEUTRAL, 0, fig);
+    figure_render_deep(l, d, RES_ALIVE, EXPR_NEUTRAL, 0, fig);
     h = fnv(fig, (int)sizeof(fig), h);
-    bodyspr_render(l, RES_ALIVE, 0, 0, spr);
+    bodyspr_render_deep(l, d, RES_ALIVE, 0, 0, spr);
     h = fnv(spr, (int)sizeof(spr), h);
-    fighter_render(l, RES_ALIVE, 4, 0, -1, fgt);
+    fighter_render_d(l, d, RES_ALIVE, 4, 0, -1, fgt);
     return fnv(fgt, (int)sizeof(fgt), h);
 }
+
+static uint32_t render_hash(const DoomoLook *l) { return render_hash_d(l, &doomo_deep_zero); }
 
 /* a value the slot can show: live, or drawn by a script (hidden rows of scripted lists) */
 static int drawable(const PartMeta *m)
@@ -69,7 +83,7 @@ static int drawable(const PartMeta *m)
 
 static int scripted(const PartMeta *m)
 {
-    return (m->flags & PMF_SCRIPTED) && PMF_STATE(m->flags) != PSTATE_TEST && look_off(m->list) >= 0;
+    return (m->flags & PMF_SCRIPTED) && PMF_STATE(m->flags) != PSTATE_TEST && testable(m->list);
 }
 
 TEST(part_scripts_are_drawn_by_their_slot_hooks_and_distinct)
@@ -79,16 +93,17 @@ TEST(part_scripts_are_drawn_by_their_slot_hooks_and_distinct)
         const PartSlotInfo *sl = &doomo_part_slots[s];
         static uint32_t h[256];
         int any = 0;
-        if (look_off(sl->list) < 0) continue;
+        if (!testable(sl->list)) continue;
         for (i = sl->first; i < sl->first + sl->count; i++) any |= scripted(&doomo_part_meta[i]);
         if (!any) continue;
         for (i = sl->first; i < sl->first + sl->count; i++) {
             const PartMeta *m = &doomo_part_meta[i];
             DoomoLook l = bench_look();
+            DoomoDeep dd = doomo_deep_zero;
             if (!drawable(m)) continue;
-            set_part(&l, m->list, m->value);
+            set_part_d(&l, &dd, m->list, m->value);
             if (m->list == GF_TOP) l.top_color = PAINT_COBALT;
-            h[m->value] = render_hash(&l);
+            h[m->value] = render_hash_d(&l, &dd);
             for (k = sl->first; k < i; k++) {
                 const PartMeta *o = &doomo_part_meta[k];
                 if (drawable(o) && (scripted(m) || scripted(o)) && h[o->value] == h[m->value]) {
@@ -106,7 +121,9 @@ TEST(part_scripts_are_drawn_by_their_slot_hooks_and_distinct)
 TEST(part_scripts_show_on_other_citizens_too)
 {
     static const uint32_t seeds[3] = { 11u, 4242u, 9001u };
+    static uint8_t miss[PART_META_COUNT];
     int c, i, bad = 0;
+    memset(miss, 0, sizeof(miss));
     for (c = 0; c < 3; c++) {
         DoomoResident r;
         DoomoLook base;
@@ -115,15 +132,28 @@ TEST(part_scripts_show_on_other_citizens_too)
         for (i = 0; i < PART_META_COUNT; i++) {
             const PartMeta *m = &doomo_part_meta[i];
             DoomoLook a = base, z = base;
+            DoomoDeep da = doomo_deep_zero, dz = doomo_deep_zero;
             if (!scripted(m)) continue;
-            set_part(&a, m->list, m->value);
-            set_part(&z, m->list, 0);
-            if (render_hash(&a) == render_hash(&z)) {
+            if (!sl_shape(&doomo_part_slots[m->slot])) {      /* pupils / whites show on a big round eye only */
+                a.eye_style = z.eye_style = EYE_ROUND;
+                a.eye_size = z.eye_size = 12;
+            }
+            if (m->list == GF_BROW_STYLE) {                  /* a fringe or a hat may cover brows */
+                a.hair_style = z.hair_style = HAIR_BALD;
+                a.hat = z.hat = 0;
+            }
+            set_part_d(&a, &da, m->list, m->value);
+            set_part_d(&z, &dz, m->list, 0);
+            if (render_hash_d(&a, &da) == render_hash_d(&z, &dz)) {
                 fprintf(stderr, "    citizen %d: %s is invisible\n", c, part_meta_name(m));
-                bad++;
+                miss[i]++;
             }
         }
     }
+    /* a big part must show on every citizen; a small face mark (slot gate under 24 px: brows ..) may be
+     * lost on one citizen's tiny or covered face, but not on all of them */
+    for (i = 0; i < PART_META_COUNT; i++)
+        if (miss[i] && (miss[i] >= 3 || doomo_part_slots[doomo_part_meta[i].slot].gate >= 24)) bad++;
     CHECK_EQ(bad, 0);
 }
 
@@ -157,16 +187,21 @@ TEST(part_scripts_pass_the_shape_gate)
     for (s = 0; s < PART_SLOT_COUNT; s++) {
         const PartSlotInfo *sl = &doomo_part_slots[s];
         int any = 0;
-        if (look_off(sl->list) < 0) continue;
+        if (!testable(sl->list)) continue;
         for (i = sl->first; i < sl->first + sl->count; i++) any |= scripted(&doomo_part_meta[i]);
         if (!any) continue;
+        /* pupils and eye whites are inks on the iris: the one-ramp shape mode would erase them, so they
+         * are compared in colour on a big eye (a pinpoint pupil leaves the whites showing) */
+        portrait_shape_mode(sl_shape(sl));
         for (i = sl->first; i < sl->first + sl->count; i++) {
             const PartMeta *m = &doomo_part_meta[i];
             DoomoLook l = bench_look();
+            DoomoDeep dd = doomo_deep_zero;
             if (!drawable(m)) continue;
-            set_part(&l, m->list, m->value);
-            portrait_render(&l, RES_ALIVE, EXPR_NEUTRAL, 0, bust[m->value]);
-            bodyspr_render(&l, RES_ALIVE, 0, 0, chibi[m->value]);
+            if (!sl_shape(sl)) { l.eye_size = 12; l.eye_color = PAINT_COBALT; if (sl->list == GF_SCLERA) look_part_set(&l, &dd, GF_PUPIL, 2); }
+            set_part_d(&l, &dd, m->list, m->value);
+            portrait_render_deep(&l, &dd, RES_ALIVE, EXPR_NEUTRAL, 0, bust[m->value]);
+            bodyspr_render_deep(&l, &dd, RES_ALIVE, 0, 0, chibi[m->value]);
         }
         for (i = sl->first; i < sl->first + sl->count; i++) {
             const PartMeta *m = &doomo_part_meta[i];
@@ -179,13 +214,13 @@ TEST(part_scripts_pass_the_shape_gate)
                 if (o == m || !drawable(o)) continue;
                 d = px_diff(bust[m->value], bust[o->value], PORTRAIT_W * PORTRAIT_H);
                 dc = px_diff(chibi[m->value], chibi[o->value], BODYSPR_W * BODYSPR_H);
-                if (d < 24) {
-                    fprintf(stderr, "    %s: %s vs %s differ by %d px (shape gate 24)\n", sl->key,
-                            part_meta_name(m), part_meta_name(o), d);
+                if (d < sl->gate) {                  /* the slot's gate: 24 px unless the catalog says less */
+                    fprintf(stderr, "    %s: %s vs %s differ by %d px (shape gate %d)\n", sl->key,
+                            part_meta_name(m), part_meta_name(o), d, sl->gate);
                     bad++;
                 }
-                if (c0 && o->value && dc < 6 && (o->flags & PMF_SCRIPTED)) {
-                    fprintf(stderr, "    %s: %s vs %s differ by %d chibi px (gate 6)\n", sl->key,
+                if (c0 && o->value && dc < (sl->gate >= 24 ? 6 : 0) && (o->flags & PMF_SCRIPTED)) {
+                    fprintf(stderr, "    %s: %s vs %s differ by %d chibi px\n", sl->key,
                             part_meta_name(m), part_meta_name(o), dc);
                     bad++;
                 }
@@ -194,6 +229,37 @@ TEST(part_scripts_pass_the_shape_gate)
     }
     portrait_shape_mode(0);
     CHECK_EQ(bad, 0);
+}
+
+static int count_px(const uint8_t *p, int n, uint8_t c)
+{
+    int i, k = 0;
+    for (i = 0; i < n; i++) k += p[i] == c;
+    return k;
+}
+
+TEST(part_scripts_can_use_the_fixed_ink_and_white_materials)
+{
+    /* CR4: `mat white` (eye whites, glints) and `mat ink` (pupils) do not follow a colour gene */
+    static uint8_t w0[PORTRAIT_W * PORTRAIT_H], w1[PORTRAIT_W * PORTRAIT_H];
+    static uint8_t k0[PORTRAIT_W * PORTRAIT_H], k1[PORTRAIT_W * PORTRAIT_H];
+    DoomoLook l = bench_look();
+    DoomoDeep d0 = doomo_deep_zero, d1 = doomo_deep_zero;
+    l.eye_size = 12;
+    l.eye_color = PAINT_COBALT;
+    look_part_set(&l, &d0, GF_PUPIL, 2);
+    d1 = d0;
+    look_part_set(&l, &d1, GF_SCLERA, 3);                      /* Big Round: `mat white` */
+    portrait_render_deep(&l, &d0, RES_ALIVE, EXPR_NEUTRAL, 0, w0);
+    portrait_render_deep(&l, &d1, RES_ALIVE, EXPR_NEUTRAL, 0, w1);
+    CHECK(px_diff(w0, w1, PORTRAIT_W * PORTRAIT_H) > 10);
+    d0 = doomo_deep_zero;
+    d1 = doomo_deep_zero;
+    look_part_set(&l, &d1, GF_PUPIL, 20);                      /* Rect Bar: `mat ink` */
+    portrait_render_deep(&l, &d0, RES_ALIVE, EXPR_NEUTRAL, 0, k0);
+    portrait_render_deep(&l, &d1, RES_ALIVE, EXPR_NEUTRAL, 0, k1);
+    CHECK(px_diff(k0, k1, PORTRAIT_W * PORTRAIT_H) > 0);
+    CHECK(count_px(k1, PORTRAIT_W * PORTRAIT_H, PAL_PAINT(PAINT_JET, 1)) > 0);
 }
 
 TEST(part_without_a_chibi_block_changes_no_chibi_pixel)

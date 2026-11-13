@@ -110,12 +110,8 @@ press DOWN
 press DOWN
 press DOWN
 press A
-press DOWN
-press DOWN
-press DOWN
-press DOWN
-press DOWN
-press DOWN
+# CR4: the Brows grid is 32 parts long now (rows of six): the walk of six rows down used to wrap back to None
+# on 12 parts; it would land on a locked part now, so the grid keeps None
 press A
 wait 6
 shot 11_cheeks

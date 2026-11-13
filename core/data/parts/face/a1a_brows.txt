@@ -1,0 +1,158 @@
+# core/data/parts/face/a1a_brows.txt - CR4 batch A1a: 20 brows (values 12..31 of brow_style).
+# Frame blocks, one per brow: 256 = the eye radius, +x outward on both brows, y down from the brow's
+# own height. Drawn in the hair colour. Brows are not drawn on chibis (lod mid, big only), as the
+# painted ones.
+
+def hair
+  mat hair_color
+  shade flat
+  decal
+enddef
+
+list brow_style 12                  # Soft Arc: a gentle bridge
+block group=4 anchor=frame lod=mid,big view=portrait,figure,fighter
+  use hair
+  capsule -200 30 -60 -30 36 36
+  capsule -60 -30 90 -30 36 36
+  capsule 90 -30 220 40 36 36
+end
+
+list brow_style 13                  # Rise: the outer end flicks up
+block group=4 anchor=frame lod=mid,big view=portrait,figure,fighter
+  use hair
+  capsule -220 70 220 -90 36 36
+end
+
+list brow_style 14                  # Fall: the outer end droops
+block group=4 anchor=frame lod=mid,big view=portrait,figure,fighter
+  use hair
+  capsule -220 -90 220 70 36 36
+end
+
+list brow_style 15                  # Stub: short and round
+block group=4 anchor=frame lod=mid,big view=portrait,figure,fighter
+  use hair
+  capsule -80 0 80 0 44 44
+end
+
+list brow_style 16                  # Long Line: one thin flat line
+block group=4 anchor=frame lod=mid,big view=portrait,figure,fighter
+  use hair
+  capsule -254 0 254 0 36 36
+end
+
+list brow_style 17                  # Double: two stacked lines
+block group=4 anchor=frame lod=mid,big view=portrait,figure,fighter
+  use hair
+  capsule -200 -60 200 -60 36 36
+  capsule -200 60 200 60 36 36
+end
+
+list brow_style 18                  # Wedge: thin inside, heavy outside
+block group=4 anchor=frame lod=mid,big view=portrait,figure,fighter
+  use hair
+  tri -230 20 230 -80 230 80
+end
+
+list brow_style 19                  # Zigzag
+block group=4 anchor=frame lod=mid,big view=portrait,figure,fighter
+  use hair
+  capsule -200 40 -90 -50 36 36
+  capsule -90 -50 20 40 36 36
+  capsule 20 40 130 -50 36 36
+  capsule 130 -50 220 20 36 36
+end
+
+list brow_style 20                  # Dashes: a row of dots
+block group=4 anchor=frame lod=mid,big view=portrait,figure,fighter
+  use hair
+  ellipse -180 0 40 40
+  ellipse -60 0 40 40
+  ellipse 60 0 40 40
+  ellipse 180 0 40 40
+end
+
+list brow_style 21                  # Broken: a gap in the middle
+block group=4 anchor=frame lod=mid,big view=portrait,figure,fighter
+  use hair
+  capsule -230 10 -90 -10 36 36
+  capsule 60 -10 230 10 36 36
+end
+
+list brow_style 22                  # Block: a heavy slab
+block group=4 anchor=frame lod=mid,big view=portrait,figure,fighter
+  use hair
+  tri -220 -60 220 -60 220 60
+  tri -220 -60 220 60 -220 60
+end
+
+list brow_style 23                  # Swoop: thin at the nose, a thick tip
+block group=4 anchor=frame lod=mid,big view=portrait,figure,fighter
+  use hair
+  capsule -200 40 -20 -40 36 36
+  capsule -20 -40 220 -30 36 36
+end
+
+list brow_style 24                  # Curl: a small loop at the inner end
+block group=4 anchor=frame lod=mid,big view=portrait,figure,fighter
+  use hair
+  ellipse -170 -20 70 70
+  mat skin
+  ellipse -170 -20 28 28
+  use hair
+  capsule -110 -30 220 -10 36 36
+end
+
+list brow_style 25                  # Question: arched with a hook
+block group=4 anchor=frame lod=mid,big view=portrait,figure,fighter
+  use hair
+  capsule -150 50 -20 -60 36 36
+  capsule -20 -60 130 -30 36 36
+  capsule 130 -30 190 70 36 36
+end
+
+list brow_style 26                  # Comb: three small spikes
+block group=4 anchor=frame lod=mid,big view=portrait,figure,fighter
+  use hair
+  tri -200 60 -120 60 -160 -80
+  tri -40 60 40 60 0 -100
+  tri 120 60 200 60 160 -80
+end
+
+list brow_style 27                  # High Float: a raised line
+block group=4 anchor=frame lod=mid,big view=portrait,figure,fighter
+  use hair
+  capsule -150 -150 150 -150 36 36
+end
+
+list brow_style 28                  # Sprout: two leaves
+block group=4 anchor=frame lod=mid,big view=portrait,figure,fighter
+  use hair
+  ellipse -80 30 110 40
+  ellipse 100 -50 110 40
+  capsule -200 60 -100 40 36 36
+end
+
+list brow_style 29                  # Pips: three dots stacked outward
+block group=4 anchor=frame lod=mid,big view=portrait,figure,fighter
+  use hair
+  ellipse -140 70 44 44
+  ellipse 0 0 44 44
+  ellipse 140 -70 44 44
+end
+
+list brow_style 30                  # Crown: spiky top over a bar
+block group=4 anchor=frame lod=mid,big view=portrait,figure,fighter
+  use hair
+  capsule -200 50 200 50 36 36
+  tri -200 50 -140 50 -170 -70
+  tri -40 50 40 50 0 -100
+  tri 140 50 200 50 170 -70
+end
+
+list brow_style 31                  # Bar and Dot
+block group=4 anchor=frame lod=mid,big view=portrait,figure,fighter
+  use hair
+  capsule -230 40 120 40 36 36
+  ellipse 190 -40 46 46
+end

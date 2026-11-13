@@ -1,6 +1,6 @@
 # core/data/parts/catalog/brows.txt - the brows parts (CR1; format: tools/partcat_build.py).
 # Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
-slot brows list=brow_style name="Brows" method=P target=20 new=S
+slot brows list=brow_style name="Brows" method=P target=20 new=S gate=4
 
 0   "None"                 set=basics tags=plain
 1   "Thin"                 set=basics tags=plain
@@ -14,3 +14,24 @@ slot brows list=brow_style name="Brows" method=P target=20 new=S
 9   "Scarred"              set=punk tags=punk
 10  "Flat"                 set=basics tags=plain
 11  "Raised"               set=basics tags=plain
+# CR4 A1a (core/data/parts/face/a1a_brows.txt): 20 more brows
+12  "Soft Arc" set=basics tags=plain method=S
+13  "Rise" set=basics tags=plain method=S
+14  "Fall" set=basics tags=plain method=S
+15  "Stub" set=basics tags=plain method=S
+16  "Long Line" set=basics tags=plain method=S
+17  "Double" set=punk tags=punk method=S
+18  "Wedge" set=punk tags=punk method=S
+19  "Zigzag" set=hellbreach tags=punk,silly method=S
+20  "Dashes" set=indieart tags=silly method=S
+21  "Broken" set=punk tags=punk method=S
+22  "Block" set=elders tags=elder method=S
+23  "Swoop" set=teaparty tags=fancy method=S
+24  "Curl" set=teaparty tags=fancy,silly method=S
+25  "Question" set=funfair tags=silly method=S
+26  "Comb" set=spooky tags=spooky,punk method=S
+27  "High Float" set=candy tags=cute,silly method=S
+28  "Sprout" set=seasons tags=nature,cute method=S
+29  "Pips" set=candy tags=cute method=S
+30  "Crown Brows" set=royal tags=royal,glam method=S
+31  "Bar and Dot" set=concert tags=tech method=S

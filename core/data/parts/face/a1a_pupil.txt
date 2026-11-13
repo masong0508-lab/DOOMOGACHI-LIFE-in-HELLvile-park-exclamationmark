@@ -1,0 +1,329 @@
+# core/data/parts/face/a1a_pupil.txt - CR4 batch A1a: 27 pupils (values 5..31 of pupil) and 13 eye
+# whites (values 3..15 of sclera). Frame blocks, one per eye (256 = the eye radius, +x outward). The
+# painter (eye_glossy) draws the iris around them: a pupil sits on the iris (centre about y = -25),
+# whites sit under it and the iris then shrinks to 80% so they show as a rim.
+
+def inkp
+  mat ink
+  shade flat
+  decal
+enddef
+
+list pupil 5                        # Heart
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  ellipse -56 -60 64 64
+  ellipse 56 -60 64 64
+  tri -116 -36 116 -36 0 110
+end
+
+list pupil 6                        # Star: a four-point twinkle
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  tri -50 -20 0 -170 50 -20
+  tri -50 -20 0 130 50 -20
+  tri 0 -70 -140 -20 0 30
+  tri 0 -70 140 -20 0 30
+end
+
+list pupil 7                        # Diamond
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  tri -140 -20 0 -90 140 -20
+  tri -140 -20 0 50 140 -20
+end
+
+list pupil 8                        # Cross
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  capsule -120 -20 120 -20 36 36
+  capsule 0 -140 0 100 36 36
+end
+
+list pupil 9                        # Ring: dark round with the iris showing in its middle
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  ellipse 0 -20 130 130
+  mat eye_color
+  ellipse 0 -20 56 56
+end
+
+list pupil 10                       # Double Dot: two small dots side by side
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  ellipse -66 -20 52 80
+  ellipse 66 -20 52 80
+end
+
+list pupil 11                       # Crescent
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  ellipse 0 -20 120 120
+  mat eye_color
+  ellipse 56 -34 100 112
+end
+
+list pupil 12                       # Keyhole
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  ellipse 0 -70 80 80
+  tri -50 110 50 110 0 -40
+end
+
+list pupil 13                       # Square
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  tri -100 -120 100 -120 100 80
+  tri -100 -120 100 80 -100 80
+end
+
+list pupil 14                       # Peak: a triangle pointing up
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  tri 0 -150 -110 90 110 90
+end
+
+list pupil 15                       # Drop Pupil: a triangle pointing down
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  tri -110 -120 110 -120 0 110
+end
+
+list pupil 16                       # Flower: a dot with four petals
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  ellipse 0 -20 50 50
+  ellipse -76 -20 46 46
+  ellipse 76 -20 46 46
+  ellipse 0 -96 46 46
+  ellipse 0 56 46 46
+end
+
+list pupil 17                       # Hourglass
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  tri 0 -20 -100 -140 100 -140
+  tri 0 -20 -100 100 100 100
+end
+
+list pupil 18                       # Bow Tie
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  tri 0 -20 -130 -100 -130 60
+  tri 0 -20 130 -100 130 60
+end
+
+list pupil 19                       # Fat Slit: a wide upright oval
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  ellipse 0 -20 62 200
+end
+
+list pupil 20                       # Rect Bar: a wide low box
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  tri -150 -80 150 -80 150 40
+  tri -150 -80 150 40 -150 40
+end
+
+list pupil 21                       # Needle Diamond: a very thin lozenge
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  tri -36 -20 0 -200 36 -20
+  tri -36 -20 0 160 36 -20
+end
+
+list pupil 22                       # Stack: two dots one over the other
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  ellipse 0 -100 66 66
+  ellipse 0 60 66 66
+end
+
+list pupil 23                       # Swirl
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  ellipse 0 -20 130 130
+  mat eye_color
+  ellipse 20 -10 80 80
+  mat ink
+  dot 0 -20 0
+end
+
+list pupil 24                       # Trio: three dots in a triangle
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  ellipse 0 -100 50 50
+  ellipse -76 40 50 50
+  ellipse 76 40 50 50
+end
+
+list pupil 25                       # Drop: a round base with a tip
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  ellipse 0 30 90 90
+  tri -80 20 80 20 0 -170
+end
+
+list pupil 26                       # X
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  capsule -100 -120 100 80 34 34
+  capsule 100 -120 -100 80 34 34
+end
+
+list pupil 27                       # Slash: a diagonal bar
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  capsule -90 90 90 -130 40 40
+end
+
+list pupil 28                       # Sparkle: a big eight-ray burst
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  ellipse 0 -20 60 60
+  tri -40 -20 0 -190 40 -20
+  tri -40 -20 0 150 40 -20
+  tri 0 -60 -190 -20 0 20
+  tri 0 -60 190 -20 0 20
+end
+
+list pupil 29                       # Wave: a zigzag
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  capsule -150 40 -70 -100 30 30
+  capsule -70 -100 10 40 30 30
+  capsule 10 40 90 -100 30 30
+  capsule 90 -100 150 20 30 30
+end
+
+list pupil 30                       # Note: a little music note
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  ellipse -40 60 72 56
+  capsule 30 60 30 -140 20 20
+  tri 30 -140 130 -60 30 -80
+end
+
+list pupil 31                       # Eclipse: a dark disc half covered by the iris
+block group=3 anchor=frame lod=all view=all
+  use inkp
+  ellipse 0 -20 130 130
+  mat eye_color
+  ellipse -100 -20 80 130
+end
+
+# ---- eye whites (sclera) ------------------------------------------------------------------
+
+def white
+  mat white
+  shade flat
+  decal
+enddef
+
+list sclera 3                       # Big Round: a generous white all round
+block group=3 anchor=frame lod=all view=all
+  scale 88
+  use white
+  ellipse 0 0 252 252
+end
+
+list sclera 4                       # Almond: a pointed lens
+block group=3 anchor=frame lod=all view=all
+  scale 88
+  use white
+  tri -254 0 0 -190 254 0
+  tri -254 0 0 190 254 0
+end
+
+list sclera 5                       # Tall Oval
+block group=3 anchor=frame lod=all view=all
+  scale 88
+  use white
+  ellipse 0 0 170 254
+end
+
+list sclera 6                       # Square Whites
+block group=3 anchor=frame lod=all view=all
+  scale 88
+  use white
+  tri -230 -230 230 -230 230 230
+  tri -230 -230 230 230 -230 230
+end
+
+list sclera 7                       # Diamond Whites
+block group=3 anchor=frame lod=all view=all
+  scale 88
+  use white
+  tri 0 -254 -220 0 220 0
+  tri 0 254 -220 0 220 0
+end
+
+list sclera 8                       # Top Rim: the white shows above the iris
+block group=3 anchor=frame lod=all view=all
+  scale 88
+  use white
+  ellipse 0 -70 254 200
+end
+
+list sclera 9                       # Lower Rim: the white shows under the iris
+block group=3 anchor=frame lod=all view=all
+  scale 88
+  use white
+  ellipse 0 80 254 190
+end
+
+list sclera 10                      # Double Ring: a pale ring inside the white
+block group=3 anchor=frame lod=all view=all
+  scale 88
+  use white
+  ellipse 0 0 254 254
+  mat eye_color light
+  ellipse 0 0 190 190
+end
+
+list sclera 11                      # Heart Whites
+block group=3 anchor=frame lod=all view=all
+  scale 88
+  use white
+  ellipse -110 -70 130 130
+  ellipse 110 -70 130 130
+  tri -230 -20 230 -20 0 240
+end
+
+list sclera 12                      # Star Whites: four pale points around the iris
+block group=3 anchor=frame lod=all view=all
+  scale 88
+  use white
+  tri -100 0 0 -254 100 0
+  tri -100 0 0 254 100 0
+  tri 0 -100 -254 0 0 100
+  tri 0 -100 254 0 0 100
+end
+
+list sclera 13                      # Dark Whites: a flat dark socket, the iris glows in it
+block group=3 anchor=frame lod=all view=all
+  scale 88
+  mat ink
+  shade flat
+  decal
+  ellipse 0 0 254 190
+end
+
+list sclera 14                      # Bloom Whites: four soft petals
+block group=3 anchor=frame lod=all view=all
+  scale 88
+  use white
+  ellipse -140 0 120 150
+  ellipse 140 0 120 150
+  ellipse 0 -140 150 120
+  ellipse 0 140 150 120
+end
+
+list sclera 15                      # Cat Whites: a lens with a flicked outer corner
+block group=3 anchor=frame lod=all view=all
+  scale 88
+  use white
+  tri -230 40 20 -200 254 -120
+  tri -230 40 20 200 254 -120
+end

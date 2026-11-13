@@ -70,10 +70,23 @@ static const PMat *fur3_mat(PCtx *c)
 
 const PMat *pm_of(PCtx *c, int lf, int tone)
 {
-    const PMat *b = PM_BASE(c, lf);
+    const PMat *b;
     uint16_t key;
     PMemo *e;
     int i, free_slot = -1;
+    if (lf == PS_MAT_INK || lf == PS_MAT_WHITE) {       /* CR4: fixed colours (pupils, whites), in the memo: no RAM of their own */
+        key = (uint16_t)((lf << 2) | 3);
+        for (i = 0; i < 16; i++) {
+            if (c->memo[i].used && c->memo[i].key == key) return &c->memo[i].m;
+            if (!c->memo[i].used && free_slot < 0) free_slot = i;
+        }
+        e = &c->memo[free_slot >= 0 ? free_slot : (key & 15)];
+        e->used = 1;
+        e->key = key;
+        pm_paint(&e->m, lf == PS_MAT_INK ? PAINT_JET : PAINT_WHITE);
+        return &e->m;
+    }
+    b = PM_BASE(c, lf);
     if (tone != PM_LIGHT && tone != PM_DARK) return b;
     key = (uint16_t)((lf << 2) | tone);
     for (i = 0; i < 16; i++) {

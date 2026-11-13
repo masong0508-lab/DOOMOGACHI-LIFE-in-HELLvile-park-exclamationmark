@@ -1,0 +1,266 @@
+# core/data/parts/face/a1a_eyes.txt - CR4 batch A1a: 24 eye styles (values 24..47 of eye_style).
+# Frame blocks (anchor=frame): one block per eye, 256 = the eye radius, +x is outward on both eyes
+# (the left eye is mirrored), y down. The iris colour is the citizen's eye colour; the dark tone of
+# the same ramp is the ink. Blinks, sleepy, happy, love and dead faces are drawn by the painter.
+
+def glint X Y
+  mat white
+  decal
+  dot $X $Y 2
+enddef
+
+list eye_style 24                   # Bean: a tall narrow oval
+block group=3 anchor=frame lod=all view=all
+  mat eye_color
+  shade vgrad
+  solid noline
+  ellipse 0 0 164 254
+  use glint -50 -110
+end
+
+list eye_style 25                   # Wide Oval: a low, wide eye
+block group=3 anchor=frame lod=all view=all
+  mat eye_color
+  shade vgrad
+  solid noline
+  ellipse 0 40 254 150
+  use glint -90 -10
+end
+
+list eye_style 26                   # Teardrop: a round eye that lifts to a point
+block group=3 anchor=frame lod=all view=all
+  mat eye_color
+  shade vgrad
+  solid noline
+  ellipse 0 60 208 196
+  tri -170 30 170 30 0 -240
+  use glint -50 20
+end
+
+list eye_style 27                   # Half Moon: a round eye under a flat lid
+block group=3 anchor=frame lod=all view=all
+  mat eye_color
+  shade vgrad
+  solid noline
+  ellipse 0 0 254 254
+  mat ink
+  decal
+  line -250 -20 250 -20 0
+  tri -250 -20 250 -20 0 -250
+  use glint -90 70
+end
+
+list eye_style 28                   # Gem: a faceted diamond
+block group=3 anchor=frame lod=all view=all
+  mat eye_color
+  shade vgrad
+  solid noline
+  tri -254 0 0 -250 254 0
+  tri -254 0 0 250 254 0
+  mat eye_color light
+  decal
+  tri -100 0 0 -110 100 0
+end
+
+list eye_style 29                   # Dash: a thick flat bar
+block group=3 anchor=frame lod=all view=all
+  mat ink
+  shade flat
+  solid noline
+  capsule -220 0 220 0 60 60
+end
+
+list eye_style 30                   # Plus: a cross
+block group=3 anchor=frame lod=all view=all
+  mat ink
+  shade flat
+  solid noline
+  capsule -230 0 230 0 50 50
+  capsule 0 -230 0 230 50 50
+end
+
+list eye_style 31                   # Smile Cups: content, closed, curved up
+block group=3 anchor=frame lod=all view=all
+  mat ink
+  shade flat
+  solid noline
+  capsule -220 -80 -110 60 40 40
+  capsule -110 60 0 110 40 40
+  capsule 0 110 110 60 40 40
+  capsule 110 60 220 -80 40 40
+end
+
+list eye_style 32                   # Ring: a hollow circle
+block group=3 anchor=frame lod=all view=all
+  mat ink
+  shade flat
+  solid noline
+  ellipse 0 0 254 254
+  mat skin light
+  decal
+  ellipse 0 0 130 130
+  mat eye_color
+  dot 0 0 2
+end
+
+list eye_style 33                   # Starburst: a four-point sparkle
+block group=3 anchor=frame lod=all view=all
+  mat eye_color
+  shade vgrad
+  solid noline
+  tri -64 0 0 -254 64 0
+  tri -64 0 0 254 64 0
+  tri 0 -64 -254 0 0 64
+  tri 0 -64 254 0 0 64
+  use glint 0 0
+end
+
+list eye_style 34                   # Square: a box with a corner glint
+block group=3 anchor=frame lod=all view=all
+  mat eye_color
+  shade vgrad
+  solid noline
+  tri -210 -210 210 -210 210 210
+  tri -210 -210 210 210 -210 210
+  use glint -110 -110
+end
+
+list eye_style 35                   # Peak: a triangle pointing up
+block group=3 anchor=frame lod=all view=all
+  mat eye_color
+  shade vgrad
+  solid noline
+  tri 0 -240 -240 210 240 210
+  use glint 0 60
+end
+
+list eye_style 36                   # Dagger: a triangle pointing down, a stern look
+block group=3 anchor=frame lod=all view=all
+  mat eye_color
+  shade vgrad
+  solid noline
+  tri -240 -200 240 -200 0 240
+  use glint -110 -120
+end
+
+list eye_style 37                   # Crescent: a thin moon opening outwards
+block group=3 anchor=frame lod=all view=all
+  mat eye_color light
+  shade flat
+  solid noline
+  ellipse 0 0 254 254
+  mat skin
+  decal
+  ellipse -100 -10 220 230
+end
+
+list eye_style 38                   # Comma: a dot with a tail
+block group=3 anchor=frame lod=all view=all
+  mat ink
+  shade flat
+  solid noline
+  ellipse 0 -80 150 150
+  tri -120 -40 120 -40 -70 250
+end
+
+list eye_style 39                   # Slot: a thin upright line
+block group=3 anchor=frame lod=all view=all
+  mat ink
+  shade flat
+  solid noline
+  capsule 0 -220 0 220 50 50
+end
+
+list eye_style 40                   # Chomp: a round eye with a wedge bitten out
+block group=3 anchor=frame lod=all view=all
+  mat eye_color
+  shade vgrad
+  solid noline
+  ellipse 0 0 254 254
+  mat skin
+  decal
+  tri 0 0 254 -150 254 150
+end
+
+list eye_style 41                   # Twin Dots: two small round eyes stacked side by side
+block group=3 anchor=frame lod=all view=all
+  mat eye_color
+  shade vgrad
+  solid noline
+  ellipse -120 0 100 130
+  ellipse 120 0 100 130
+  use glint -140 -60
+end
+
+list eye_style 42                   # Lens Flare: a bright eye with a streak
+block group=3 anchor=frame lod=all view=all
+  mat eye_color
+  shade vgrad
+  solid noline
+  ellipse 0 0 200 200
+  mat eye_color light
+  decal
+  ellipse -70 -70 70 70
+  line -254 0 254 0 4
+  line 0 -254 0 254 4
+end
+
+list eye_style 43                   # Sleepy Slit: a half-open, heavy-lidded eye
+block group=3 anchor=frame lod=all view=all
+  mat eye_color
+  shade vgrad
+  solid noline
+  ellipse 0 60 254 130
+  mat ink
+  decal
+  line -254 -60 254 -60 0
+  line -254 -40 254 -40 0
+end
+
+list eye_style 44                   # Heart Iris: a round eye with a heart in it
+block group=3 anchor=frame lod=all view=all
+  mat eye_color
+  shade vgrad
+  solid noline
+  ellipse 0 0 254 254
+  mat ink
+  decal
+  ellipse -60 -50 64 64
+  ellipse 60 -50 64 64
+  tri -120 -20 120 -20 0 130
+end
+
+list eye_style 45                   # Flame: a round eye with a licking tip
+block group=3 anchor=frame lod=all view=all
+  mat eye_color
+  shade vgrad
+  solid noline
+  ellipse 0 70 190 170
+  tri -150 60 -20 -250 60 40
+  tri 0 40 120 -120 170 80
+  use glint -50 70
+end
+
+list eye_style 46                   # Clover: four round lobes
+block group=3 anchor=frame lod=all view=all
+  mat eye_color
+  shade vgrad
+  solid noline
+  ellipse -100 -100 110 110
+  ellipse 100 -100 110 110
+  ellipse -100 100 110 110
+  ellipse 100 100 110 110
+  mat eye_color light
+  decal
+  dot 0 0 4
+end
+
+list eye_style 47                   # Bolt: a lightning flash
+block group=3 anchor=frame lod=all view=all
+  mat eye_color
+  shade vgrad
+  solid noline
+  tri -60 -250 -200 40 20 40
+  tri 60 250 200 -40 -20 -40
+  tri -20 -20 20 20 120 -40
+end

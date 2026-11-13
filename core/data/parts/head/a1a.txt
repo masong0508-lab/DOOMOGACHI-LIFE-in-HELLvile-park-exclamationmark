@@ -1,0 +1,127 @@
+# core/data/parts/head/a1a.txt - CR4 batch A1a: twelve head shapes (values 12..23 of head_shape).
+# Each is drawn into the head part itself (`solid same`, so the skin, the outline and the fur extras
+# stay the painter's) from ellipses and triangles; 256 = the head radius, so the head-size slider and
+# the yaw move them. They draw on the chibi too (the silhouette is what a crowd sees).
+
+list head_shape 12                  # Lemon: a tall oval pointed at the crown and the chin
+block group=2 anchor=head lod=all view=all
+  mat skin
+  solid same
+  ellipse 0 0 200 220
+  tri -100 -150 100 -150 0 -254
+  tri -100 150 100 150 0 254
+end
+
+list head_shape 13                  # Hexagon: flat top and bottom, points at the cheeks
+block group=2 anchor=head lod=all view=all
+  mat skin
+  solid same
+  tri -252 0 -126 -160 126 -160
+  tri -252 0 126 -160 252 0
+  tri -252 0 252 0 126 160
+  tri -252 0 126 160 -126 160
+end
+
+list head_shape 14                  # Cloud: five puffs
+block group=2 anchor=head lod=all view=all
+  mat skin
+  solid same
+  ellipse 0 20 220 180
+  ellipse -140 -10 120 130
+  ellipse 140 -10 120 130
+  ellipse -60 -110 120 120
+  ellipse 70 -100 120 120
+end
+
+list head_shape 15                  # Acorn: a wide flat cap over a round nut
+block group=2 anchor=head lod=all view=all
+  mat skin
+  solid same
+  ellipse 0 70 200 190
+  ellipse 0 -110 252 120
+  tri -90 -220 90 -220 0 -250
+end
+
+list head_shape 16                  # Bell: narrow dome, flared hem
+block group=2 anchor=head lod=all view=all
+  mat skin
+  solid same
+  ellipse 0 -60 170 190
+  tri -150 -40 150 -40 254 190
+  tri -150 -40 -254 190 254 190
+  ellipse 0 160 254 70
+end
+
+list head_shape 17                  # Brick: a wide flat box
+block group=2 anchor=head lod=all view=all
+  mat skin
+  solid same
+  tri -250 -140 250 -140 250 150
+  tri -250 -140 250 150 -250 150
+  ellipse 0 -20 200 160
+end
+
+list head_shape 18                  # Teardrop: pointed forehead, round chin
+block group=2 anchor=head lod=all view=all
+  mat skin
+  solid same
+  ellipse 0 60 232 196
+  tri -190 10 190 10 0 -254
+end
+
+list head_shape 19                  # Shield: flat brow, chin to a point
+block group=2 anchor=head lod=all view=all
+  mat skin
+  solid same
+  ellipse 0 -90 250 140
+  tri -250 -90 250 -90 0 250
+  tri -250 -90 -240 40 0 250
+  tri 250 -90 240 40 0 250
+end
+
+list head_shape 20                  # Whiskerface: round with big swept cheek tufts
+block group=2 anchor=head lod=all view=all
+  scale 96
+  mat skin
+  solid same
+  ellipse 0 0 160 154
+  tri -140 10 -254 -40 -254 140
+  tri 140 10 254 -40 254 140
+  tri -110 70 -230 130 -150 170
+  tri 110 70 230 130 150 170
+end
+
+list head_shape 21                  # Pumpkin: three fat lobes, flat and wide
+block group=2 anchor=head lod=all view=all
+  mat skin
+  solid same
+  ellipse 0 40 120 168
+  ellipse -134 40 112 160
+  ellipse 134 40 112 160
+  ellipse -204 50 56 110
+  ellipse 204 50 56 110
+  tri -24 -140 24 -140 0 -200
+end
+
+list head_shape 22                  # Capsule: a tall pill
+block group=2 anchor=head lod=all view=all
+  mat skin
+  solid same
+  ellipse 0 -110 182 150
+  ellipse 0 110 182 150
+  tri -182 -110 182 -110 182 110
+  tri -182 -110 182 110 -182 110
+end
+
+list head_shape 23                  # Ghost Sheet: a dome that ends in a scalloped hem
+block group=2 anchor=head lod=all view=all
+  mat skin
+  solid same
+  ellipse 0 -40 232 220
+  tri -232 -40 232 -40 232 180
+  tri -232 -40 232 180 -232 180
+  ellipse -160 190 74 60
+  ellipse -54 190 74 60
+  ellipse 54 190 74 60
+  ellipse 160 190 74 60
+end

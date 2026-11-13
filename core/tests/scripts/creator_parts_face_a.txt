@@ -1,0 +1,99 @@
+# CR4 A1a: the creator's Head & Face grids with the new parts (12 head shapes, 24 eyes, 27 pupils,
+# 13 eye whites, 20 brows). A new citizen: the Face tab's Shape, Eyes, Pupils, Eye whites and Brows
+# rows each open their picture grid; the cursor walks onto the new parts (the grid wraps), the
+# citizen tries each on, and a part is kept. Both screen sizes shoot every grid and one kept look.
+scene CREATOR -1
+expect-scene CREATOR
+wait 30
+press R
+wait 14
+shot 01_face_tab
+# ---- head shapes: the cursor goes left from Round and wraps to the last (new) shapes ------------
+press A
+wait 14
+shot 02_head_grid
+press LEFT
+wait 6
+press LEFT
+wait 6
+shot 03_head_new_end
+press LEFT
+press LEFT
+press LEFT
+wait 8
+shot 04_head_new_mid
+press A
+wait 10
+shot 05_head_kept
+# ---- eyes ------------------------------------------------------------------------------------
+press DOWN
+press DOWN
+press A
+wait 14
+press LEFT
+wait 6
+shot 06_eyes_new_end
+press LEFT
+press LEFT
+press LEFT
+press LEFT
+wait 8
+shot 07_eyes_new_mid
+press A
+wait 10
+shot 08_eyes_kept
+# ---- pupils -----------------------------------------------------------------------------------
+press DOWN
+press A
+wait 14
+press LEFT
+wait 6
+shot 09_pupils_new_end
+press LEFT
+press LEFT
+press LEFT
+press LEFT
+wait 8
+shot 10_pupils_new_mid
+press A
+wait 10
+shot 11_pupil_kept
+# ---- eye whites -------------------------------------------------------------------------------
+press DOWN
+press A
+wait 14
+press LEFT
+wait 6
+shot 12_whites_new_end
+press LEFT
+press LEFT
+press LEFT
+wait 8
+shot 13_whites_new_mid
+press A
+wait 10
+shot 14_whites_kept
+# ---- brows ------------------------------------------------------------------------------------
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+wait 6
+shot 15_brows_row
+press A
+wait 14
+press LEFT
+wait 6
+shot 16_brows_new_end
+press LEFT
+press LEFT
+press LEFT
+press LEFT
+wait 8
+shot 17_brows_new_mid
+press A
+wait 10
+shot 18_brows_kept

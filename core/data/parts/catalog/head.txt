@@ -14,4 +14,17 @@ slot head list=head_shape name="Head shape" method=P target=12 new=S
 9   "Blob"                 set=monster tags=monster,silly
 10  "Diamond"              set=royal tags=glam
 11  "Mochi"                set=candy tags=cute,food
+# CR4 A1a (core/data/parts/head/a1a.txt): twelve new silhouettes
+12  "Lemon"                set=candy tags=food,silly method=S
+13  "Hexagon"              set=indieart tags=silly,tech method=S
+14  "Cloud Head"           set=cloud9 tags=cute,holy method=S
+15  "Acorn"                set=seasons tags=nature,cute method=S
+16  "Bell Head"            set=cathedral tags=holy,music method=S
+17  "Brick"                set=hellbreach tags=armor,silly method=S
+18  "Teardrop"             set=cozy tags=cute method=S
+19  "Shield"               set=royal tags=royal,armor method=S
+20  "Whiskerface"          set=critter tags=critter,cute method=S
+21  "Pumpkin Head"         set=seasons tags=spooky,nature method=S
+22  "Capsule"              set=concert tags=tech,silly method=S
+23  "Ghost Sheet"          set=graveyard tags=spooky,silly method=S
 31  "M1 Demo Tuft"   set=basics tags=plain method=S state=test

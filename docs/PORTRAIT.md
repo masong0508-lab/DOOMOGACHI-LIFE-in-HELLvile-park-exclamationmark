@@ -592,3 +592,8 @@ Tests: `test_part_render.c` (9), `test_part_meta.c` (8), and in `test_portrait_s
 and the arena against the raw scripts for every set, the 2-slot LRU and the once-per-render arena;
 `MAXOPT` in `test_portrait.c` is 160. Not done here: art batches (CR4), flipping lists live (CR3),
 deep-field hooks and saving (CR5), icons (CR7), the grid picker (CR6), the SPU-RAM loader (CR10).
+
+**CR4 A1a: fixed materials.** A script may use `mat ink` (jet black) and `mat white` (white): pseudo fields
+`PS_MAT_INK` 125 and `PS_MAT_WHITE` 126 in `portrait_int.h`, built into the render's material memo by
+`pm_of()`. Pupils, glints and eye whites use them. A `solid same` shape may reach 2,200 px at bust scale
+(a head silhouette); every other solid is still held to 600.

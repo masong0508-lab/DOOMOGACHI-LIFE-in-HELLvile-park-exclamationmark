@@ -51,6 +51,8 @@ typedef struct PMat { uint8_t c[5]; uint8_t line; } PMat;
 
 void pm_from3(PMat *m, uint8_t dark, uint8_t base, uint8_t light);
 void pm_paint(PMat *m, int paint);
+/* CR4: fixed script materials (`mat ink`, `mat white`): ids above every gene field, below the deep ones */
+enum { PS_MAT_INK = 125, PS_MAT_WHITE = 126 };
 void pm_ramp(PMat *m, int ramp, int base_shade);   /* base_shade 1..6 */
 void pm_skin(PMat *m, const DoomoLook *l);
 void pm_flat(PMat *m, uint8_t c);                  /* one colour, dark line */

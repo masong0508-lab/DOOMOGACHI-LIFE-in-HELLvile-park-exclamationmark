@@ -33,3 +33,11 @@ review tail        16-31 batch=A3 date=2026-11-13 by=claude sheets="views_tail, 
 review wings       10-23 batch=A3 date=2026-11-13 by=claude sheets="views_wings, slot_wings, slot_wings_shape (figure 3x and the fighter's five views); nothing sharp on a child, no real-world symbols"
 review halo        12-15 batch=A3 date=2026-11-13 by=claude sheets="slot_halo, slot_halo_shape: vinyl record, candle crown (cartoon candles), cloud wisp, orbit ring above the bust"
 review aura        8-23  batch=A3 date=2026-11-13 by=claude sheets="slot_aura, slot_aura_shape: orbit dots, rain cloud, music notes, snowflakes, star ring, zzz, spirit wisps, petals, fireflies, circling bats, falling leaves, question marks, sweat drops, floating eyes (cartoon, no gore), confetti, embers (both animation frames drawn by the script)"
+
+# CR4 A1a: head shapes, eyes, pupils, eye whites, brows (the lash / lid / liner deep fields and the 4-6 extra
+# eyes wait for CR5 and a gene change; see docs/CREATOR.md "CR4 A1a")
+review head    12-23 batch=A1a date=2026-11-13 by=claude sheets="slot_head, slot_head_shape (bald human, chibi 3x, fighter): lemon, hexagon, cloud, acorn, bell, brick, teardrop, shield, whiskerface, pumpkin, capsule, ghost sheet; plain silhouettes, no face or body detail"
+review eyes    24-47 batch=A1a date=2026-11-13 by=claude sheets="slot_eyes, slot_eyes_shape: 24 eye styles at 2x on a cobalt-eyed citizen; no gore, no sexual reading, nothing that copies a character"
+review pupil   5-31  batch=A1a date=2026-11-13 by=claude sheets="slot_pupil, slot_pupil_shape: 27 ink shapes (heart, star, keyhole, note ...) on a big cobalt iris"
+review sclera  3-15  batch=A1a date=2026-11-13 by=claude sheets="slot_sclera, slot_sclera_shape: 13 white shapes round a pinpoint pupil; dark whites read as a hollow socket, not blood"
+review brows   12-31 batch=A1a date=2026-11-13 by=claude sheets="slot_brows, slot_brows_shape: 20 brow marks in the hair colour"

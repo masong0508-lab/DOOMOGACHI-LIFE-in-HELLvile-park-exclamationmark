@@ -635,6 +635,54 @@ held; on the GBA the bust's effect frames change every 16 ticks).
   save and sanitize; the old values still differ from the new). The PS1 reads none of the scripts yet (the part VM waits for
   CR10): its creator keeps offering the painted values.
 
+## CR4 A1a: head shapes, eyes, pupils, eye whites, brows (2026-11-13)
+
+The first art batch of the part plan (CREATOR_PLAN 3.1, "Head & face" rows), drawn as part scripts
+(`core/data/parts/head/a1a.txt`, `core/data/parts/face/a1a_{eyes,pupil,brows}.txt`) and live:
+
+| slot | values | new | live now | gate (shape, bust px) |
+|---|---|--:|--:|--:|
+| head shape | 12..23 | 12 | 24 | 24 |
+| eye style | 24..47 | 24 | 48 | 20 |
+| pupil | 5..31 | 27 | 32 | 2 |
+| eye whites (sclera) | 3..15 | 13 | 16 | 4 |
+| brows | 12..31 | 20 | 32 | 4 |
+
+**96 new parts live** (plan A1a: about 145). Left for the next package, with the reason:
+* lashes, lids and liner (31 new, deep fields `DF_LASH`, `DF_LID`, `DF_LINER`): a deep field is not saved
+  or chosen yet (CR5); they cannot go live before it.
+* extra eyes 4-6 (3): `eye_count` is 1..3 in the look, the creator, the generators and `resident_sanitize`; a
+  gene change belongs with the save work, not an art batch.
+* the pupil gate is weak: at the creator's default eye size a pupil is 1-3 px, so the 27 shapes differ by
+  only 2-14 px at 1x (they read at the creator's 2x crop and with a big eye). Ideas for the next pass:
+  a pupil-size slider tied to the eye, or a bigger default iris.
+
+**What changed besides data.**
+* `mat ink` and `mat white` (script materials, `PS_MAT_INK` / `PS_MAT_WHITE`): fixed jet black and white
+  that follow no colour gene; the pupils, glints and eye whites need them (the dark tone of an eye
+  colour is too close to its iris). They live in the render's 16-slot material memo: no RAM of their own.
+* `tools/parts_build.py`: a `solid same` shape (a head silhouette drawn into the head's own part) is held
+  to 2,200 px, not the 600 px of a new part (a nominal head is about 900 px); selftest covers it.
+* The shape gate (`part_scripts_pass_the_shape_gate`, `part_scripts_are_drawn_by_their_slot_hooks_and_distinct`,
+  `part_scripts_show_on_other_citizens_too`) now reads each slot's `gate=` from the catalog (it was a
+  constant 24 px and a stale binary hid that), tests the gene-only lists pupil and sclera through the deep
+  set, compares pupils and whites in colour on a big eye (the one-ramp shape mode erases an ink on an iris),
+  and applies the 6 px chibi rule only to slots with a 24 px gate (an eye is 1-2 px on a chibi). A small
+  face mark may vanish on one of the three test citizens (a covered or tiny face) but not on all three.
+* `make -C core portrait-sheet` builds the contact-sheet tool; its slot sheets stage heads on a bald
+  citizen and eyes / pupils / whites / brows on a cobalt-eyed one with the face band at 2x.
+* `core/tests/scripts/creator_parts_face_a.txt` (both screen sizes): opens the Shape, Eyes, Pupils, Eye
+  whites and Brows grids, walks onto the new parts, wears one of each. `creator.txt` kept its Brows step
+  (a 32-part grid lands six rows down on a locked brow, so the grid now keeps None as before).
+* Sets: new parts sit in the existing themed sets (no new set); reward sets (Royal Court, Plushie ...) keep
+  their new parts behind the set unlock, so about a third of the new face parts show as locked.
+
+Review: sheets in the stream's evidence (`slot_head`, `slot_eyes`, `slot_pupil`, `slot_sclera`,
+`slot_brows`, each colour and `_shape`) were looked at; the sign-off is the `A1a` lines in
+`core/data/parts/review.txt`. All 96 are age class ALL (plain shapes: no gore, no suggestive reading, no props).
+PS1: scripted values draw as the slot's default until CR10 (no part VM yet), so the PS1 creator does not
+offer them (`part_live_drawable`); the new parts add no resident byte there.
+
 ## Extending
 
 * **A new catalog option** (e.g. a new hat): nothing to do - rows use the

@@ -1,7 +1,21 @@
 # core/data/parts/catalog/sclera.txt - sclera, gene field sclera (CR1; format: tools/partcat_build.py).
 # Painted (wave 2, P1.M2) but not selectable yet: until CR3 flips the list live.
-slot sclera list=sclera name="Eye whites" method=P target=15 new=F
+slot sclera list=sclera name="Eye whites" method=P target=15 new=F gate=4
 
 0   "Plain"      set=basics tags=plain
 1   "White"      set=basics tags=plain
 2   "Shaded"     set=spooky tags=spooky
+# CR4 A1a (core/data/parts/face/a1a_pupil.txt): 13 more eye whites
+3   "Big Round" set=basics tags=plain method=S
+4   "Almond Whites" set=basics tags=plain method=S
+5   "Tall Oval" set=basics tags=plain method=S
+6   "Square Whites" set=indieart tags=tech method=S
+7   "Diamond Whites" set=royal tags=glam method=S
+8   "Top Rim" set=cozy tags=cozy method=S
+9   "Lower Rim" set=cozy tags=cozy method=S
+10  "Double Ring" set=cloud9 tags=holy method=S
+11  "Heart Whites" set=candy tags=cute method=S
+12  "Star Whites" set=candy tags=cute,glam method=S
+13  "Dark Whites" set=spooky tags=spooky,monster method=S
+14  "Bloom Whites" set=seasons tags=nature,cute method=S
+15  "Cat Whites" set=critter tags=critter method=S

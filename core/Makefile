@@ -71,7 +71,7 @@ PLAT_OBJS   := $(call obj,$(NATIVE_PLAT))
 MAIN_OBJ    := $(call obj,$(NATIVE_MAIN))
 TEST_OBJS   := $(call obj,$(TEST_SRCS))
 
-.PHONY: all lib runner test unit scripts journeys gen check-gen xcheck sizes clean story-check talk talk-check parts-check part-icons-sheet levelcheck mapc-check
+.PHONY: all lib runner test unit scripts journeys gen check-gen xcheck sizes clean story-check talk talk-check parts-check part-icons-sheet portrait-sheet levelcheck mapc-check
 .DEFAULT_GOAL := runner
 
 all: runner $(BUILD)/tests
@@ -278,6 +278,16 @@ endif
 	@$(MAKE) --no-print-directory -f $(CORE)/Makefile BUILD=$(BUILD) $(BUILD)/part_icons
 	@echo "gen: part_icons"; mkdir -p "$(GEN_ROOT)/core/gen"; $(BUILD)/part_icons --out-root "$(GEN_ROOT)" >/dev/null
 	@# --- end CR7 ---
+
+# --- CR4: the portrait contact-sheet tool (core/tools/portrait_sheet.c): `make -C core portrait-sheet`
+# builds $(BUILD)/portrait_sheet (run it with --out DIR --slot KEY [--set NAME] [--shape]) ---
+$(BUILD)/obj/tools/portrait_sheet.o: $(CORE)/tools/portrait_sheet.c
+	@mkdir -p $(dir $@)
+	$(CC) $(HOST_CFLAGS) -c $< -o $@
+$(BUILD)/portrait_sheet: $(CORE_OBJS) $(PLAT_OBJS) $(BUILD)/obj/tools/portrait_sheet.o
+	$(CC) $(LDFLAGS_SAN) -o $@ $^
+portrait-sheet: $(BUILD)/portrait_sheet
+# --- end CR4 ---
 	@# --- S2: textpack, the story text packs (SPEC sec.5; reads core/data/story/) ---
 	@echo "gen: textpack"; mkdir -p "$(GEN_ROOT)/core/gen"; $(PYTHON) $(CORE)/tools/textpack.py --out-root "$(GEN_ROOT)"
 	@# --- end S2 ---

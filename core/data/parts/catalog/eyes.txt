@@ -1,6 +1,6 @@
 # core/data/parts/catalog/eyes.txt - the eyes parts (CR1; format: tools/partcat_build.py).
 # Values are append-only: a shipped value never changes meaning (core/tests/golden/part_ids.txt).
-slot eyes list=eye_style name="Eyes" method=P target=24 new=S
+slot eyes list=eye_style name="Eyes" method=P target=24 new=S gate=20
 
 0   "Dot"                  set=basics tags=plain
 1   "Round"                set=basics tags=plain
@@ -26,4 +26,29 @@ slot eyes list=eye_style name="Eyes" method=P target=24 new=S
 21  "Hollow"               set=graveyard tags=spooky
 22  "Glow"                 set=spooky tags=spooky,magic
 23  "Compound"             set=monster tags=monster
+# CR4 A1a (core/data/parts/face/a1a_eyes.txt): 24 more eyes
+24  "Bean" set=basics tags=plain method=S
+25  "Wide Oval" set=basics tags=plain method=S
+26  "Teardrop Eyes" set=cozy tags=cute method=S
+27  "Half Moon" set=cozy tags=cozy,plain method=S
+28  "Gem Eyes" set=royal tags=glam,royal method=S
+29  "Dash" set=basics tags=plain method=S
+30  "Plus Eyes" set=indieart tags=silly,tech method=S
+31  "Smile Cups" set=candy tags=cute method=S
+32  "Ring Eyes" set=concert tags=tech method=S
+33  "Starburst" set=candy tags=cute,glam method=S
+34  "Square Eyes" set=indieart tags=tech,silly method=S
+35  "Peak Eyes" set=punk tags=punk method=S
+36  "Dagger Eyes" set=punk tags=punk,spooky method=S
+37  "Crescent Eyes" set=cloud9 tags=holy,cute method=S
+38  "Comma Eyes" set=funfair tags=silly method=S
+39  "Slot Eyes" set=hellbreach tags=tech,armor method=S
+40  "Chomp" set=funfair tags=silly method=S
+41  "Twin Dots" set=critter tags=critter,cute method=S
+42  "Lens Flare" set=concert tags=tech,glam method=S
+43  "Sleepy Slit" set=cozy tags=cozy method=S
+44  "Heart Iris" set=candy tags=cute method=S
+45  "Flame Eyes" set=spooky tags=fire,spooky method=S
+46  "Clover Eyes" set=seasons tags=nature,cute method=S
+47  "Bolt Eyes" set=hellbreach tags=punk,tech method=S
 63  "M1 Demo Eyes"   set=basics tags=plain method=S state=test

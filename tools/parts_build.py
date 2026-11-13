@@ -19,7 +19,7 @@ stored in steps of 2; radii 0..255):
                               replaced by the `use` arguments ($P+N, $P-N and $P*N also work)
     list FIELD VALUE          the script of one style: FIELD is a gene field of fields.txt or DF_x
     block group=G anchor=head|torso|frame lod=tiny,mid,big|all view=portrait,figure,fighter,chibi|all
-      mat FIELD [light|dark]      anchor head|torso|frame    shade NAME      solid [noline,nocast,..,same]
+      mat FIELD|ink|white [light|dark]      anchor head|torso|frame    shade NAME      solid [noline,nocast,..,same]
       decal    mirror on|off    scale N (64 = 1.0)     region none|head|eye_l|eye_r|muzzle|torso
       ellipse X Y RX RY         capsule X0 Y0 X1 Y1 R0 R1      tri X0 Y0 X1 Y1 X2 Y2
       line X0 Y0 X1 Y1 C        dot X Y C              stamp NAME X Y [Q4]
@@ -86,6 +86,7 @@ VIEWS = ["portrait", "figure", "fighter", "chibi"]
 LODS = ["tiny", "mid", "big"]
 ANIMS = ["blink", "breath", "twitch", "wag"]
 MAX_PART_PX = 600
+MAX_SAME_PX = 2200       # a `solid same` shape (a head silhouette: the nominal head is about 900 px; the sum counts overlaps twice)
 # bust-scale half sizes in px, measured on the bust (portrait.c setup_portrait: the head radius is
 # 14 + head_size / 4 px, about 18 x 16 at the largest head; the torso about 18 x 15). CR2 corrected
 # these from 36 x 42 / 20 x 26, which overstated every part's area about four times.
@@ -115,6 +116,8 @@ def field_ids():
         if name == "DF_COUNT":
             break
         ids[name] = PL_DEEP0 + i
+    ids["ink"] = 125                                    # CR4: fixed materials (PS_MAT_INK / PS_MAT_WHITE)
+    ids["white"] = 126
     return ids
 
 
@@ -172,10 +175,18 @@ class Area:
     def __init__(self):
         self.px = 0.0
         self.worst = 0.0
+        self.same = False                               # the open solid continues an existing part
 
     def close(self):
-        self.worst = max(self.worst, self.px)
+        # CR4: `solid same` adds to a part the painter already draws (a head shape): it is held to
+        # the head's own size (MAX_SAME_PX), not to the budget of a new part
+        if self.same:
+            if self.px > MAX_SAME_PX:
+                self.worst = max(self.worst, self.px)       # reported against MAX_PART_PX below
+        else:
+            self.worst = max(self.worst, self.px)
         self.px = 0.0
+        self.same = False
 
 
 def compile_block(lines, stamps, fields, where, views=15):
@@ -225,6 +236,7 @@ def compile_block(lines, stamps, fields, where, views=15):
                 for n in (t[1].split(",") if len(t) > 1 else []):
                     fl |= PFLAGS[n]
                 area.close()
+                area.same = bool(fl & PFLAGS["same"])
                 out += bytes([OP["SOLID"], fl])
             elif k == "decal":
                 area.close()
@@ -667,6 +679,7 @@ def selftest():
         ("bad crown", "list hat 30\nblock group=5\n crown tophat 0 -200 100 100\nend\n"),
         ("unknown template", "list hat 30\nblock group=5\n use nope 1\nend\n"),
         ("template args", "def t A B\n dot $A $B 2\nenddef\nlist hat 30\nblock group=5\n use t 1\nend\n"),
+        ("huge same part", "list head_shape 1\nblock group=2\n mat skin\n solid same\n ellipse 0 0 255 255\n ellipse 0 0 255 255\n ellipse 0 0 255 255\nend\n"),
         ("big crown", "list hat 30\nblock group=5\n solid\n crown cylinder 0 0 255 255\nend\n"),
         ("big torso part on the bust", "list tail 30\nblock group=1 anchor=torso view=all\n scale 255\n mat skin\n"
          " solid\n ellipse 0 0 100 100\nend\n"),
@@ -684,6 +697,18 @@ def selftest():
         finally:
             os.unlink(f.name)
     print("selftest: %d rejects OK" % ok)
+    # CR4: a head silhouette (`solid same`) may exceed a new part's 600 px; the fixed ink / white materials parse
+    with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as f:
+        f.write("list head_shape 1\nblock group=2\n mat skin\n solid same\n ellipse 0 0 255 255\n ellipse 0 0 120 120\nend\n"
+                "list pupil 5\nblock group=3 anchor=frame\n mat ink\n decal\n dot 0 0 2\n mat white\n dot 0 0 2\nend\n")
+    try:
+        parse(f.name, fields)
+    except PartError as e:
+        print("selftest: a same-part head shape or an ink / white material was rejected: %s" % e)
+        return 1
+    finally:
+        os.unlink(f.name)
+    print("selftest: same-part shapes and fixed materials OK")
     # a template expands to the same bytes as the ops written out, and the top extent is measured
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as f:
         f.write("def peak X H\n mat hat_color\n solid\n tri -$X -200 $X -200 0 -200-$H\nenddef\n"
