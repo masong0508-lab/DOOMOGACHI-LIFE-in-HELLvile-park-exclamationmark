@@ -17,6 +17,7 @@
  * Drawing lives in creator_draw.c. See docs/CREATOR.md.
  */
 #include "creator_int.h"
+#include "doomo/look_fields.h"
 #include "doomo/playas.h"
 #include "doomo/part_meta.h"
 
@@ -1539,6 +1540,9 @@ static void update_menu(void)
 static int row_empty(const CrRow *row)
 {
     int gf;
+#if !DOOMO_GENE_EXT
+    if (row->kind == RK_ENUM && (row->field == GF_HOOD_UP || row->field == GF_HANDEDNESS)) return 1;   /* look_fields.h */
+#endif
     if (row->kind == RK_ENUM) return !CR_IS_AGE_ROW(row) && cr_row_count(row) <= 1;
     if (row->kind == RK_PAINT_NONE && row->field == GF_FUR_COLOR3) gf = GF_FUR_PATTERN;
     else if (row->kind == RK_PAINT && (row->aux & CR_AUX_SHARED)) gf = (row->aux & CR_AUX_LEGS) ? GF_LEGWEAR : GF_OUTER;

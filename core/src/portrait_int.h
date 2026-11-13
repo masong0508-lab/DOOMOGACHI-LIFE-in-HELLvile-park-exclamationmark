@@ -331,7 +331,7 @@ int  ps_slot(PCtx *c, int list, int value, int group);
  * (pupils, eye whites, scripted eyes), a cheek (blush), a brow, the nose, the mouth, the pair of eyes
  * (glasses), a leg (legwear). Origin (Q4); position units px, py and radius units rx, ry are Q4 per
  * 256 normalised units, a negative px mirrors (the left eye of a pair). */
-void ps_frame(int ox, int oy, int px, int py, int rx, int ry);
+void ps_frame_set(int ox, int oy, int px, int py, int rx, int ry);
 int  ps_slot_frame(PCtx *c, int list, int value, int group);
 /* DOOMO_PARTS_VM 0 builds the renderer without the script VM: every hook is a constant 0, nothing
  * scripted is drawn (sanitize then clamps a scripted value to its slot's default). The PS1 builds
@@ -341,11 +341,14 @@ int  ps_slot_frame(PCtx *c, int list, int value, int group);
 #define DOOMO_PARTS_VM 1
 #endif
 #if DOOMO_PARTS_VM
+#define ps_frame ps_frame_set
 #define PS_SLOT(c, list, value, group) \
     ((value) >= doomo_part_minv[(list)] && ps_slot((c), (list), (value), (group)))
 #define PS_SLOT_FRAME(c, list, value, group) \
     ((value) >= doomo_part_minv[(list)] && ps_slot_frame((c), (list), (value), (group)))
 #else
+/* no VM: nothing is drawn in a frame, so setting one costs no code */
+#define ps_frame(ox, oy, px, py, rx, ry) ((void)(ox), (void)(oy), (void)(px), (void)(py), (void)(rx), (void)(ry))
 #define PS_SLOT(c, list, value, group) ((void)(c), (void)(value), 0)
 #define PS_SLOT_FRAME(c, list, value, group) ((void)(c), (void)(value), 0)
 #endif

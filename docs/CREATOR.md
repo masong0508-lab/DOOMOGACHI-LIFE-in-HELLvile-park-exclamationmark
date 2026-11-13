@@ -430,6 +430,28 @@ bust or fighter render when the look, the expression or the animation
 phase changes (the figure re-renders are throttled while a direction is
 held; on the GBA the bust's effect frames change every 16 ticks).
 
+## CR3: the gene lists live, the gene's new fields (2026-11-13)
+
+* Every gene list now offers its live catalog count (`part_live_count`), not only the old `*_COUNT`
+  enums; `resident_sanitize` keeps every live choice and the classic generators keep rolling the v1
+  values, so Classic towns, premade fingerprints and old saves are unchanged.
+* The gene's eleven new fields (pupils, eye whites, fur pattern, spot colour, glasses, outer layer,
+  legwear, blush style, ear fold, hood up, handedness) have creator rows, help lines and reach every
+  renderer path through the resolved set (`look_gene_deep`; the cache key hashes it, 0 for a Classic
+  look). Rows of a list with no live value yet stay hidden (Outer layer, Legwear, Fur pattern until art
+  batches A1-A3).
+* Saves are still the v1 wire image: the NICK chunk carries the new bits after the nicknames
+  (`look_gene_ext_*`, version 1 kept so an older build reads the nicknames).
+* Speed work kept: the deep set is threaded through `job_begin` / `job_start` / stand-ins / the
+  prefetch; the sliced and retained drawing is unchanged.
+* Runner scripts `creator.txt` and `creator_grid.txt` step over the new rows (Hood, Pupils, Eye whites,
+  Ear fold, Blush style); the eye picker step uses the Unlocked chip so both screen sizes reach the
+  same row.
+* PS1: `DOOMO_GENE_EXT` is 0 there (with `DOOMO_PARTS_VM=0`, `look_fields.h`): the new fields are not
+  read, drawn, saved or offered, so a PS1 behaves as before CR3 until the PS1-RAM package has freed
+  resident bytes. Even so the PS1 EXE ends 704 B higher than `4c0f369` (the build fails the 64 KB
+  stack reserve check by 288 B): see docs/design/held/status/CREATOR.md.
+
 ## Extending
 
 * **A new catalog option** (e.g. a new hat): nothing to do - rows use the

@@ -7,8 +7,15 @@
 
 int part_icon_index_in(int row, int packed)
 {
+#if defined(DOOMO_ICONS_RLE)
+    /* the PS1 links only the packed set (the raw one is ~10x the size): no raw rows there */
+    const uint16_t *rows = doomo_part_icon_rle_rows;
+    int lo = 0, hi = (int)doomo_part_icon_rle_count - 1;
+    if (!packed) return -1;
+#else
     const uint16_t *rows = packed ? doomo_part_icon_rle_rows : doomo_part_icon_rows;
     int lo = 0, hi = (int)(packed ? doomo_part_icon_rle_count : doomo_part_icon_count) - 1;
+#endif
     while (lo <= hi) {
         int mid = (lo + hi) >> 1, r = rows[mid];
         if (r == row) return mid;

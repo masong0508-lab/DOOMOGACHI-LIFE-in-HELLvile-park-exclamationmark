@@ -1819,12 +1819,17 @@ static void whiskers(PCtx *c, int n, int len)
  * in the marking colour or the third fur colour (mat fur_color3) */
 static void fur_pattern(PCtx *c)
 {
+#if !DOOMO_PARTS_VM
+    (void)c;                                                  /* the PS1 has no part VM: nothing to draw */
+    return;
+#else
     int fp = c->d->v[DF_FUR_PATTERN];
     if (!fp || phs.h->yaw >= 3) return;
     pc_mask_none();
     pc_mask_add(c->head_id);
     (void)PS_SLOT(c, GF_FUR_PATTERN, fp, 3);
     pc_mask_none();
+#endif
 }
 
 static void markings(PCtx *c, int big)

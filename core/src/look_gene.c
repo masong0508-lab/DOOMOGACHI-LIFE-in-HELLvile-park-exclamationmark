@@ -12,6 +12,7 @@
 #include "doomo/look_fields.h"
 #include "doomo/part_meta.h"
 
+#if DOOMO_GENE_EXT
 /* gene field -> resolved-set slot */
 static const uint8_t gmap[][2] = {
     { GF_PUPIL, DF_PUPIL }, { GF_SCLERA, DF_SCLERA }, { GF_BLUSH_STYLE, DF_BLUSH2 },
@@ -49,20 +50,6 @@ void look_gene_deep_put(DoomoResident *r, const DoomoDeep *d)
     }
 }
 
-uint32_t deep_hash(const DoomoDeep *d, int chibi)
-{
-    uint32_t h = 2166136261u;
-    int f, any = 0;
-    if (!d) return 0;
-    for (f = 0; f < DF_COUNT; f++) {
-        if (!d->v[f] || (chibi && !(doomo_df_flags[f] & DFF_CHIBI))) continue;
-        h = (h ^ (uint32_t)f) * 16777619u;
-        h = (h ^ d->v[f]) * 16777619u;
-        any = 1;
-    }
-    return any ? h : 0;
-}
-
 /* ---- the gene bits the v1 save stream does not carry (CR3) ---------------------------------------
  * Saves are still the v1 wire image (save.c SaveResV1, until P0.M1 stores the gene): it has no place
  * for the eleven new fields, and it gives aura and print 4 bits and the eye count 2 (their genes have
@@ -79,48 +66,35 @@ static const uint8_t xf[] = {
 #define XHI_N 3
 static const uint8_t xhi[XHI_N][2] = { { GF_AURA, 4 }, { GF_PATTERN, 4 }, { GF_EYE_COUNT, 2 } };
 
-/* bit-field helpers over the 6 bytes of an entry (no 64-bit maths: the GBA and the PS1 would call
- * libgcc for it) */
-static void bput(uint8_t *b, int at, uint32_t v, int w)
+/* One walk over the 14 pieces of an entry's 48 bits (the 11 fields whole, then the high bit of aura,
+ * print and eye count), either way: write != 0 packs the record's bits into b[6] (no 64-bit maths: the
+ * GBA and the PS1 would call libgcc for it), else sets the record's bits from b. One body keeps the
+ * PS1's resident bytes down. */
+static void ext_xfer(DoomoResident *r, uint8_t *b, int write)
 {
-    int i;
-    for (i = 0; i < w; i++, at++)
-        if ((v >> i) & 1u) b[at >> 3] = (uint8_t)(b[at >> 3] | (1u << (at & 7)));
-}
-static uint32_t bget(const uint8_t *b, int at, int w)
-{
-    uint32_t v = 0;
-    int i;
-    for (i = 0; i < w; i++, at++) v |= (uint32_t)((b[at >> 3] >> (at & 7)) & 1u) << i;
-    return v;
+    int i, k, at = 0;
+    for (i = 0; i < (int)DOOMO_COUNTOF(xf) + XHI_N; i++) {
+        int hi = i >= (int)DOOMO_COUNTOF(xf), gf = hi ? xhi[i - DOOMO_COUNTOF(xf)][0] : xf[i];
+        int sh = hi ? xhi[i - DOOMO_COUNTOF(xf)][1] : 0, w = hi ? 1 : doomo_gene_field[gf].bits;
+        uint32_t v = gene_get(r->gene, gf), x = 0;
+        for (k = 0; k < w; k++, at++) {
+            int m = at >> 3, bit = at & 7;
+            if (write) {
+                if ((v >> (sh + k)) & 1u) b[m] = (uint8_t)(b[m] | (1u << bit));
+            } else {
+                x |= (uint32_t)((b[m] >> bit) & 1u) << k;
+            }
+        }
+        if (!write) gene_set(r->gene, gf, (v & ~(((1u << w) - 1u) << sh)) | (x << sh));
+    }
 }
 
 /* the 48 extra bits of a record into b[6]; returns 1 if any is set */
 static int ext_bits(const DoomoResident *r, uint8_t *b)
 {
-    int i, at = 0;
     memset(b, 0, 6);
-    for (i = 0; i < (int)DOOMO_COUNTOF(xf); i++) {
-        int w = doomo_gene_field[xf[i]].bits;
-        bput(b, at, gene_get(r->gene, xf[i]), w);
-        at += w;
-    }
-    for (i = 0; i < XHI_N; i++) bput(b, at++, gene_get(r->gene, xhi[i][0]) >> xhi[i][1], 1);
+    ext_xfer((DoomoResident *)r, b, 1);          /* write mode only reads the record */
     return (b[0] | b[1] | b[2] | b[3] | b[4] | b[5]) != 0;
-}
-
-static void ext_apply(DoomoResident *r, const uint8_t *b)
-{
-    int i, at = 0;
-    for (i = 0; i < (int)DOOMO_COUNTOF(xf); i++) {
-        int w = doomo_gene_field[xf[i]].bits;
-        gene_set(r->gene, xf[i], bget(b, at, w));
-        at += w;
-    }
-    for (i = 0; i < XHI_N; i++, at++) {
-        uint32_t v = gene_get(r->gene, xhi[i][0]), hi = 1u << xhi[i][1];
-        gene_set(r->gene, xhi[i][0], bget(b, at, 1) ? (v | hi) : (v & ~hi));
-    }
 }
 
 static const DoomoResident *ext_rec(int id)
@@ -129,35 +103,40 @@ static const DoomoResident *ext_rec(int id)
     return r && r->status != RES_EMPTY ? r : NULL;
 }
 
-uint32_t look_gene_ext_size(void)
+/* the chunk's entries: dst NULL only counts them; returns the entry count, written (or counted) */
+static uint32_t ext_emit(uint8_t *dst)
 {
     uint8_t b[6];
-    int id, n = 0;
+    uint32_t n = 0;
+    int id;
     for (id = 0; id <= DOOMO_PLAYER_ID; id++) {
         const DoomoResident *r = ext_rec(id);
-        if (r && ext_bits(r, b)) n++;
+        if (!r || !ext_bits(r, b)) continue;
+        if (dst) {
+            uint8_t *e = dst + 2 + 8 * n;
+            e[0] = (uint8_t)(id & 255);
+            e[1] = (uint8_t)(id >> 8);
+            memcpy(e + 2, b, 6);
+        }
+        n++;
     }
-    return n ? (uint32_t)(2 + 8 * n) : 0;
+    return n;
+}
+
+uint32_t look_gene_ext_size(void)
+{
+    uint32_t n = ext_emit(NULL);
+    return n ? 2 + 8 * n : 0;
 }
 
 uint32_t look_gene_ext_write(uint8_t *dst, uint32_t cap)
 {
-    uint32_t need = look_gene_ext_size(), o = 2;
-    uint8_t b[6];
-    int id, n = 0;
-    if (!need || need > cap) return 0;
-    for (id = 0; id <= DOOMO_PLAYER_ID; id++) {
-        const DoomoResident *r = ext_rec(id);
-        if (!r || !ext_bits(r, b)) continue;
-        dst[o++] = (uint8_t)(id & 255);
-        dst[o++] = (uint8_t)(id >> 8);
-        memcpy(dst + o, b, 6);
-        o += 6;
-        n++;
-    }
+    uint32_t n = ext_emit(NULL);
+    if (!n || 2 + 8 * n > cap) return 0;
+    ext_emit(dst);
     dst[0] = (uint8_t)(n & 255);
     dst[1] = (uint8_t)(n >> 8);
-    return o;
+    return 2 + 8 * n;
 }
 
 int look_gene_ext_read(const uint8_t *src, uint32_t len)
@@ -172,11 +151,30 @@ int look_gene_ext_read(const uint8_t *src, uint32_t len)
         int id = e[0] | (e[1] << 8);
         DoomoResident *r = id <= DOOMO_PLAYER_ID ? town_res(id) : NULL;
         if (!r || r->status == RES_EMPTY) { ok = 0; continue; }
-        ext_apply(r, e + 2);
+        ext_xfer(r, (uint8_t *)(e + 2), 0);           /* read mode only reads the bytes */
     }
     return ok;
 }
 
+#else  /* !DOOMO_GENE_EXT: the PS1 until PS1-RAM (look_fields.h) */
+void look_gene_deep(const DoomoResident *r, uint32_t lv, DoomoDeep *out) { (void)r; (void)lv; (void)out; }
+void look_gene_deep_put(DoomoResident *r, const DoomoDeep *d) { (void)r; (void)d; }
+uint32_t look_gene_ext_size(void) { return 0; }
+uint32_t look_gene_ext_write(uint8_t *dst, uint32_t cap) { (void)dst; (void)cap; return 0; }
+int look_gene_ext_read(const uint8_t *src, uint32_t len) { (void)src; return len == 0 || len >= 2; }
+#endif
+
+uint32_t deep_hash(const DoomoDeep *d, int chibi)
+{
+    uint32_t h = 0;                                      /* 0 stays 0: a Classic look adds nothing */
+    int f;
+    if (!d) return 0;
+    for (f = 0; f < DF_COUNT; f++)
+        if (!chibi || (doomo_df_flags[f] & DFF_CHIBI)) h = (h + d->v[f]) * 0x01000193u;
+    return h;
+}
+
+#if DOOMO_GENE_EXT
 /* ---- one part on a look you hold (tests, tools) ------------------------------------------------ */
 int look_part_set(DoomoLook *l, DoomoDeep *d, int list, int v)
 {
@@ -192,3 +190,4 @@ int look_part_set(DoomoLook *l, DoomoDeep *d, int list, int v)
     if (list >= 128 && list - 128 < DF_COUNT) { d->v[list - 128] = (uint8_t)v; return 1; }   /* PL_DEEP0 */
     return 0;
 }
+#endif

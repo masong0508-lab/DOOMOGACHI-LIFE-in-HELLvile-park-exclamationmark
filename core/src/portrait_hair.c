@@ -1336,6 +1336,9 @@ static void glasses2(PCtx *c, int style, int r, const PMat *m)
 
 /* CR3: scripted glasses, in the pair-of-eyes frame (x = +-256 the eye centres, radii in eye radii);
  * their own slot, so they go with any accessory */
+#if !DOOMO_PARTS_VM
+#define glasses_script(c) ((void)(c), 0)                        /* the PS1 has no part VM (portrait_int.h) */
+#else
 static int glasses_script(PCtx *c)
 {
     int g = c->d->v[DF_GLASSES2], X, Y, X2, Y2, r;
@@ -1347,6 +1350,7 @@ static int glasses_script(PCtx *c)
     ps_frame((X + X2) / 2, (Y + Y2) / 2, (X2 - X) / 2, r, r, r);
     return PS_SLOT_FRAME(c, GF_GLASSES, g, 5);
 }
+#endif
 
 void ph_face_acc(PCtx *c)
 {

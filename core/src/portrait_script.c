@@ -210,7 +210,7 @@ static int i8(const uint8_t *p, int k) { return (int8_t)p[k] * 2; }
 /* CR3: the frame of PA_FRAME blocks (ps_frame): origin, position units and radius units, Q4 per 256 */
 static struct { int16_t ox, oy, px, py, rx, ry; } fr;   /* int16: these are screen units, no EWRAM to spare */
 
-void ps_frame(int ox, int oy, int px, int py, int rx, int ry)
+void ps_frame_set(int ox, int oy, int px, int py, int rx, int ry)
 {
     fr.ox = ox; fr.oy = oy; fr.px = px; fr.py = py;
     fr.rx = rx < 0 ? -rx : rx; fr.ry = ry < 0 ? -ry : ry;
@@ -597,7 +597,6 @@ int ps_run_group(PCtx *c, int list, int value, int anchor, int group)
 }
 int ps_run(PCtx *c, int list, int value, int anchor) { (void)c; (void)list; (void)value; (void)anchor; return 0; }
 int ps_slot(PCtx *c, int list, int value, int group) { (void)c; (void)list; (void)value; (void)group; return 0; }
-void ps_frame(int ox, int oy, int px, int py, int rx, int ry) { (void)ox; (void)oy; (void)px; (void)py; (void)rx; (void)ry; }
 int ps_slot_frame(PCtx *c, int list, int value, int group) { (void)c; (void)list; (void)value; (void)group; return 0; }
 #endif
 

@@ -32,6 +32,18 @@ typedef struct DoomoDeep { uint8_t v[DF_COUNT]; } DoomoDeep;   /* resolved choic
 extern const uint8_t doomo_df_flags[DF_COUNT];
 extern const DoomoDeep doomo_deep_zero;
 
+/* DOOMO_GENE_EXT 0: the gene's new look fields (look_gene.c) are not read, drawn or saved. The PS1
+ * builds that way with DOOMO_PARTS_VM=0 until the PS1-RAM package frees the resident bytes (its EXE
+ * ends 400 B above the 64 KB stack reserve); the creator hides their rows there (part_live_drawable,
+ * row_empty) and look_gene_deep reads zeros, so a PS1 renders and saves exactly as before CR3. */
+#ifndef DOOMO_GENE_EXT
+#if defined(DOOMO_PARTS_VM) && !DOOMO_PARTS_VM
+#define DOOMO_GENE_EXT 0
+#else
+#define DOOMO_GENE_EXT 1
+#endif
+#endif
+
 #define LV_ALL   0u
 #define LV_CHIBI 1u
 
