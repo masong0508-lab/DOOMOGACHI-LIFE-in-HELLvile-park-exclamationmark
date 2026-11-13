@@ -1,0 +1,172 @@
+# core/data/talk/grammar/en/warm_offers.tlk - more replies to offers, invitations and promises
+# (owner: TK; T5b package T5B-WARM). Friendly and clean in any room: an invitation here is a
+# walk, a snack, a game, never a date (romance has its own adults-only rules); with a kid in
+# the room it is an outing among friends. No register word. Syntax: core/tools/talkc_gen.py.
+
+# ---- OFFER: yes, no, thank, joke -------------------------------------------------------------
+@rule core.offer.w_yes act: yes
+  "Yes, please. You read my mind. It was very empty."
+  "Oh, that'd be great. I'd love that."
+  "I accept. Do I need to sign something?"
+  "Sure, why not? I'm easy. Easily bribed."
+  "That's so thoughtful. Yes, I'll take it."
+  "Absolutely. Hand it over, nice and slow."
+  "Yes! You're a lifesaver. A tiny, generous lifesaver."
+  "Oh, go on, then. Twist my arm."
+@rule core.offer.w_yes_polite guard: polite act: yes
+  "How very kind. I'd be delighted to accept."
+  "Thank you, I'd love that. If it's no trouble."
+@rule core.offer.w_yes_flat guard: flat act: yes
+  "Yes. {.}Please. This is my excited face."
+  "Sure, I'll take it. I'm overjoyed. Look at my eyebrows."
+@rule core.offer.w_yes_blunt guard: blunt act: yes
+  "Yes. Obviously. Give it here."
+  "Fine. If you insist. I insist more."
+@rule core.offer.w_yes_loud guard: loud act: yes
+  "YES! A thousand times yes. Gimme!"
+  "Oh WOW, yes! You're the BEST!"
+@rule core.offer.w_yes_elder guard: elder act: yes
+  "Oh, that's sweet, dear. Yes, I'll take it, and a seat."
+  "Well, I won't say no. My knees won't say no either."
+@rule core.offer.w_yes_kid guard: kid_speaker tags: kid act: yes
+  "Yes, please! Thank you. Is it a surprise?"
+  "Ooh, I want it! Can I have two? One for later?"
+@rule core.offer.w_no act: no
+  "That's kind of you, but I'm all set. Honest."
+  "No, thanks. I'd hate to be a bother."
+  "Keep it. I'm saving my appetite for something dramatic."
+  "I'll pass, thanks. But I'll remember you asked."
+  "No, no, I couldn't. Well, I could, but I won't."
+  "I'm good, thanks. Offer it to someone who needs it."
+  "Not today. Ask me tomorrow, when I'm weaker."
+@rule core.offer.w_no_polite guard: polite act: no
+  "How generous, but I mustn't. Thank you, all the same."
+  "That's most kind. I'll have to decline, though."
+@rule core.offer.w_no_blunt guard: blunt act: no
+  "No. I don't want it. But thanks."
+  "Nope. Not my thing. Offer someone else."
+@rule core.offer.w_no_kid guard: kid_speaker tags: kid act: no
+  "No, thank you. My mom says not to take things."
+  "I'm full. Really full. Full to the ears."
+@rule core.offer.w_thank act: thank
+  "Aw, you didn't have to. Thank you so much."
+  "That's the nicest thing anyone's done all week."
+  "Thank you. I don't deserve this. I'm taking it anyway."
+  "You're too kind. I'll pay you back in cookies."
+  "What a lovely surprise. Thank you, truly."
+  "I don't know what to say. Thanks. A lot of thanks."
+@rule core.offer.w_joke act: joke
+  "Is it a trap? It's a very nice trap."
+  "Careful, I'm easy to spoil. I'm basically a pet."
+  "Let me guess, it comes with a catch. And a bow."
+  "I'd say yes, but I'm playing hard to get. Okay, yes."
+  "You're offering? To me? Quick, take a photo."
+  "Is it free? If it's free, I'll take two."
+
+# ---- INVITE: yes, no, joke, ask ----------------------------------------------------------------
+@rule core.invite.w_yes act: yes
+  "Yes! I'd love to. Tell me when and I'll be there."
+  "Count me in. I'll even wear socks."
+  "I'm there. I'll bring a snack. Maybe two."
+  "That sounds like fun. Yes, please."
+  "Oh, definitely. I've got nothing planned. Nothing at all."
+  "Yes. I was hoping you'd ask. I didn't want to invite myself."
+  "I'm in. Save me a good spot. By the door."
+  "Okay, sold. I'll pack my good mood."
+@rule core.invite.w_yes_polite guard: polite act: yes
+  "I'd be honoured. Do let me know the details."
+  "How kind of you to ask. I shall be there."
+@rule core.invite.w_yes_flat guard: flat act: yes
+  "Sure. I'll come. {.}I'm excited in a very small way."
+  "Yes. Sounds good. I'll try to look thrilled."
+@rule core.invite.w_yes_blunt guard: blunt act: yes
+  "Fine. I'll come. Don't make it a big deal."
+  "Sure. If there's food. There'd better be food."
+@rule core.invite.w_yes_loud guard: loud act: yes
+  "YES! I'm SO coming. I'll bring EVERYONE!"
+  "Oh WOW! Sign me up, sign me up twice!"
+@rule core.invite.w_yes_elder guard: elder act: yes
+  "I'd be glad to. Provided there's a chair."
+  "Oh, how nice to be asked. Of course, dear."
+@rule core.invite.w_yes_kid guard: kid_speaker tags: kid act: yes
+  "Yes yes yes! Can my friend come? Please?"
+  "Okay! I'll bring my best toy, and my second-best."
+@rule core.invite.w_yes_friend guard: rel=friend act: yes
+  "Of course! It's us. When it's us, it's always a yes."
+  "Absolutely. Where you go, I go. And I bring snacks."
+@rule core.invite.w_no act: no
+  "I'd love to, but I can't. Next time, for sure."
+  "Ah, I wish I could. I'm already booked. By my sofa."
+  "Thanks for asking, but not this time. Rain check?"
+  "Sorry, I've got a thing. A big, important thing. A nap."
+  "I can't, but please ask again. I mean it."
+  "I'm going to pass. Not because of you. It's me."
+@rule core.invite.w_no_polite guard: polite act: no
+  "How kind of you to think of me. I'm afraid I can't."
+  "I'm so sorry, I must decline. Another time, perhaps."
+@rule core.invite.w_no_blunt guard: blunt act: no
+  "No. Don't feel like it. Ask me again next season."
+  "Nah. Crowds. Pass."
+@rule core.invite.w_no_tired guard: mood=tired act: no
+  "I'd love to, but I'm exhausted. Can we do it next week?"
+  "Not tonight. I'm running on fumes. Thanks, though."
+@rule core.invite.w_no_kid guard: kid_speaker tags: kid act: no
+  "I can't, I have to ask my mom first. Ask me again?"
+  "No, it's too late for me. I have to be in bed."
+@rule core.invite.w_joke act: joke
+  "Is there cake? There's always cake, right? Tell me yes."
+  "I'll come if there's a chair. I'm a chair person."
+  "Your invitation is on the list. Near the top. After lunch."
+  "Wow, I got invited. I'm going to frame this moment."
+  "Who else is going? I'll bring a ranking."
+@rule core.invite.w_ask act: ask_about
+  "That sounds lovely. When and where?"
+  "Ooh. Who's coming? And is there food?"
+  "Tell me more. What do I wear? Do I bring anything?"
+  "Sure, maybe. What's the plan? Give me the juicy parts."
+  "I'm interested. What time, and how long? Can I leave early?"
+
+# ---- PROMISE: thank, tease, joke, dismiss, agree -----------------------------------------------
+@rule core.promise.w_thank act: thank
+  "Thank you. That means more than you know."
+  "I believe you. And I'm going to hold on to that."
+  "That's so kind. I'll count on it."
+  "You're a good one. Thank you. Really."
+  "Okay. I'm putting that in the jar. The promise jar."
+  "That's a relief. Thank you for saying it out loud."
+@rule core.promise.w_thank_polite guard: polite act: thank
+  "I'm most grateful. A promise from you is gold."
+  "Thank you. I take you at your word."
+@rule core.promise.w_thank_flat guard: flat act: thank
+  "Thanks. {.}I'll believe it. I'm believing it right now."
+  "Good. I'll count on that. Quietly."
+@rule core.promise.w_thank_elder guard: elder act: thank
+  "I'll hold you to it, dear. I've got a long memory."
+  "That's good to hear. Few people keep their word these days."
+@rule core.promise.w_thank_kid guard: kid_speaker tags: kid act: thank
+  "You promise? Cross your heart? Okay, I believe you!"
+  "Thanks! I'll remember. I'm good at remembering the good stuff."
+@rule core.promise.w_tease act: tease
+  "Do you? Pinky promise? Triple pinky?"
+  "I'll write it down. In ink. With a witness."
+  "A promise from you. That's a collector's item."
+  "Careful. I keep a list. It's a long list."
+  "That's what everybody says. Until it's laundry day."
+  "Say it again, I'm recording. {.}I'm not. {.}I am."
+@rule core.promise.w_joke act: joke
+  "Great! That's a promise, and I'm taking it to the bank."
+  "Your word is good. It's practically a cheque."
+  "You promise? I'll get a notary. I know a very tired one."
+  "Wow. Big words. I'll frame them."
+  "Hold on, I need a pen. This is a historic moment."
+@rule core.promise.w_dismiss act: dismiss
+  "You don't have to promise. I know you'll do your best."
+  "No need to swear. I trust you. Mostly."
+  "Don't make a big thing of it. A nod would do."
+  "Eh, don't promise. Just do it. It's easier."
+@rule core.promise.w_agree act: agree
+  "Deal. I'll do my part. You do yours."
+  "Agreed. Shake on it, or wave on it. Whichever."
+  "Okay. I promise too. We're in this together."
+  "Good. We both keep our word. That's a pact."
+  "That's what I was going to say. Well, a promise back."
