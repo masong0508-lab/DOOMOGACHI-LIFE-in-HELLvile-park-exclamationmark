@@ -142,7 +142,7 @@
   "{them:cap} thinks that's funny. It's not. A bit."
   "Listen to {them}. Making things up, as usual."
 @rule react.tease.r_friend guard: rel=friend
-  "{them:cap}, I love you, but that's a lot."
+  "{them:cap}, you're a lot, and I like it."
 @rule react.tease.r_rival guard: rel=rival
   "That's {them} for you. All noise, no shoes."
 @rule react.tease.r_blunt guard: blunt
