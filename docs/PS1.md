@@ -1518,8 +1518,13 @@ table: `grep "creator_data.c.obj(" ps1/build/doomogachi.ldmap` must show its `.r
 The 24 new levels are registered on the host, GBA and Dreamcast builds only. The PS1 keeps the old seven
 (`LV_TABLE_N` and `LV_HAS_NEW` in `core/src/levels_int.h`): no new table rows, no `BRCH` chunk, no page code,
 until the LEVELS share of PS1 memory is released (flip the two macros then). Measured with the boot FMV on
-`4c0f369`: the EXE ends at 0x801efe60 (64 KB left below the stack top); with LV0 at 0x801efdf0, 112 B lower.
+`0df72845` (after CR3, clean builds both sides): the EXE ends at 0x801ef4e0, 68,368 B below the stack top;
+with LV0 at 0x801ef450, 144 B lower, so 68,512 B below the stack top. LV0 does not shrink the margin; the
+tree is still under the 72 KB rule until PS1-RAM lands.
 Gain: the save registry is a pointer table instead of a 13-case switch, `LvRun.size_cls` is packed to two
 bits an actor (96 B). `game_smoke` and the level select script PASS; every level-select screenshot is
-byte-identical to the base except the autopilot demo shot, which moves with the emulated timing (both builds
-are deterministic by themselves).
+byte-identical to the base except the autopilot demo shot (`breach_demo.png`). That shot is not evidence of
+a behaviour change: the demo's first 100 ticks are byte-identical on both builds, two adjacent demo frames of
+one build already differ in 87 % of their pixels (the camera turns fast), the HUD reads the same state in
+both (90 HP, 0/17, 111 candy), and a semantics-preserving edit alone (the `size_cls` pack applied to the base
+on its own) moves the shot in the same way. Each build is deterministic by itself.
