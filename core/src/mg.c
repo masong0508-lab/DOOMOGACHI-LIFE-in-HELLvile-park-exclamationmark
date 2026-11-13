@@ -576,8 +576,10 @@ static void draw_results(void)
 static void draw_flash(void)
 {
     if (!mg.flash_t || opt_get(OPT_REDUCE_FLASH)) return;
-    if (mg.flash_t > 2) plat_checker(0, 0, mg_w(), mg_h(), mg.flash_c);
-    else {
+    if (mg.flash_t > 2) {
+        plat_ui_loops();                    /* (S2-4b) the GBA's word-at-a-time checker: the full-screen flash 13 -> ~5 ms */
+        plat_checker(0, 0, mg_w(), mg_h(), mg.flash_c);
+    } else {
         plat_rect(0, 0, mg_w(), 3, mg.flash_c);
         plat_rect(0, mg_h() - 3, mg_w(), 3, mg.flash_c);
     }

@@ -245,7 +245,7 @@ static int mg_compare(int id, int arg, int w, int h, int n)
     return 1;
 }
 
-static const uint8_t kept_games[] = { MG_WHACK, MG_DODGE, MG_GALLERY, MG_DERBY, MG_MEMORY };
+static const uint8_t kept_games[] = { MG_CATCH, MG_WHACK, MG_DODGE, MG_GALLERY, MG_DERBY, MG_MEMORY };
 
 TEST(stage_kept_minigames_are_pixel_identical)
 {
@@ -253,8 +253,12 @@ TEST(stage_kept_minigames_are_pixel_identical)
     int ok = 1;
     for (i = 0; i < sizeof(kept_games) && ok; i++) {
         int id = kept_games[i];
-        ok = mg_compare(id, 49, 240, 160, MAXF) && mg_compare(id, 51, 240, 160, MAXF) &&
-             mg_compare(id, 50, 320, 240, 900);
+        /* Candy Catch: only up to its first Sugar Rush (frame ~426): the rainbow's stripes stop short of the right edge
+         * in some phases, and what the gap shows is the buffer's old frame, which the stage emulation's two buffers
+         * and the one buffer of a plain run hold differently (a gap in the game's own drawing, not the stamps') */
+        int n = id == MG_CATCH ? 420 : MAXF;
+        ok = mg_compare(id, 49, 240, 160, n) && mg_compare(id, 51, 240, 160, n) &&
+             mg_compare(id, 50, 320, 240, id == MG_CATCH ? 420 : 900);
     }
     set_res(240, 160);
     CHECK(ok);

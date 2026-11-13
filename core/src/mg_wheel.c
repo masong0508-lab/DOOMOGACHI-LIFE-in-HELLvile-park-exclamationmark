@@ -503,7 +503,7 @@ static void wh_draw_body(void)
             }
         }
     }
-    if (!opt_get(OPT_REDUCE_FLASH) && mg.flash_t) { plat_checker(0, 0, W, H, mg.flash_c); mg.flash_t--; }
+    if (!opt_get(OPT_REDUCE_FLASH) && mg.flash_t) { plat_ui_loops(); plat_checker(0, 0, W, H, mg.flash_c); mg.flash_t--; }
     ui_hint(S->st == WH_DONE || S->st == WH_RESULT ? STR_ICON_A " OK" :
             STR_ICON_A " Spin  " STR_ICON_B " Leave", WIN_CUTE);
     ui_modal_no_band();                             /* the band copy is the POWER bar's (plat_strip has one) */
