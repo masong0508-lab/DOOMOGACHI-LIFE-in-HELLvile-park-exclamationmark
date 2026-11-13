@@ -1102,8 +1102,8 @@ with a child. No romance act, no cool act, so TK10 does not apply and no line tu
 the listener. New test `core/tests/test_talk_voice.c`: every voice says a phrase only it
 says (17 marks, cross-checked against the other 16 of the cast), the kids' banks pass the
 S3 lint and wear no LOVE face in a kid room, and none of the five purr lines can come out
-with a child in the room. `TALK_en.BIN` 643,516 -> 671,420 B (PS1 non-resident data, no
-resident byte). No engine change.
+with a child in the room. `TALK_en.BIN` 672,124 -> 700,028 B on the rebased tree, +27,904 B (PS1
+non-resident data, no resident byte). No engine change.
 
 **With K-10 (the TK3 landing)**: GRAMMAR 14,536 B and STRINGS 17,650 B
 stored (27,439 B raw) for 373 rules, 718 alternatives, 512 guard terms, 79
