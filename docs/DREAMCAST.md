@@ -362,10 +362,11 @@ modes, not the workshop).
 **S3-1 (the sim's 15-minute pass).** The core change (docs/GBA.md "Speed wave 3: S3-1": one resident a tick over the 15 game
 minutes instead of 32 residents in 32 ticks every 15 minutes) is shared. The SH4 never had a long frame from the pass: the new
 `sim` group (`speed2_sim.txt`: the island hub, the shop's gifts tab, the citizen picker and the pet, 1,200 ticks each, a pass
-inside every window) reads 30.1 ticks/s with no tick over 33.3 ms of work in all four windows both before (`698f4eee`) and
-after; the work mean over the run went 10,255 -> 10,278 us a tick (the steady cost of the update, ~20 us) and the worst tick of
-the group is the same 97.7 ms dialog entry in both (tick 54). `.text` +96 B, `.bss` unchanged (4,555,892 B). The
-halfword edge move is GBA-only. `make dc-host-test` passes.
+inside every window) reads 30.1 ticks/s with no tick over 33.3 ms of work in all four windows both before (origin
+`f91bd3e4`) and after (Flycast, `sh dc/harness/speed2.sh OUT sim`, the stripped ELF and `doomogachi.nm` rebuilt first); the
+work mean over the run went 10,054 -> 10,077 us a tick (the steady cost of the update, ~20 us) and the worst tick of the group
+is the same 125 ms dialog entry in both (tick 53). `.text` +32 B, `.bss` unchanged (4,580,884 B). The halfword edge move is
+GBA-only. `make dc-host-test` passes.
 
 ### The harness mailbox (`dc_mailbox`, `dc/harness/dc_mailbox.h`)
 

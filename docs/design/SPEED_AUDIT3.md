@@ -1215,12 +1215,15 @@ entries of 100-330 ms (3.4).
 **Landed:** **S3-1** (2026-11-13, `docs/GBA.md` "Speed wave 3: S3-1"). The resident pass is one resident a tick over the whole
 15 game minutes (a credit-driven cursor, not staggered stamps: `sim_init`, a load and a fast-forward may still set every
 stamp to "now", the pass cannot burst), and a new bond in the sorted edge table is made room for with a halfword move on
-the GBA (the byte-wise libc `memmove` was the 3-7 ms tail). GBA: shop gifts tab 21.5 -> 30.0, apartments 25.7 -> 30.0,
-Options Accessibility 23.7 / 28.2 -> 30.0, pet-care boss 28.6 -> 30.0, citizen picker 22.9 -> 29.7, pet 28.5 -> 29.8; no run
-of long frames anywhere any more. What the package did not do: the sim now costs ~0.4 ms in every tick, so windows within
-~3 ms of the budget (Black Market 32.4 -> 32.9 ms average, the news third tab, the pet's busy phases) lose a frame now and
-then: that is S3-13's list. PS1: the island hub window had 4 frames of 50 ms, now none (resident bytes unchanged);
-Dreamcast: no long tick from the pass before or after. New group `speed2_sim.txt` (four 1,200-tick windows, GBA gates).
+the GBA (the byte-wise libc `memmove` was the 3-7 ms tail). GBA (origin `f91bd3e4` before and after): shop gifts tab 21.5 ->
+30.0, apartments 25.2 -> 30.0, Options Accessibility 23.7 / 28.2 -> 30.0, pet-care boss 28.6 -> 30.0, citizen picker 22.9 ->
+29.5, pet 28.5 -> 29.8; frames over 33 ms in the four tours 574 -> 476, over 50 ms 268 -> 203; no run of long frames anywhere
+any more. **Not met:** "no frame over 33 ms from the sim". The work now arrives as 0.3-1.2 ms in every tick (+0.4 ms mean over
+50 windows, against a floor ROM with the resident updates off), so windows within ~3 ms of the budget still lose a frame now
+and then: sim group frames over 33 ms 0 / 3 / 6 / 13 (hub / shop / picker / pet; floor 0 / 0 / 1 / 5), Black Market 2 -> 7,
+the news third tab 1 -> 2: S3-13's list. PS1: the island hub window had 4 frames of 50 ms, now none (resident code -12 B, the
+EXE ends where it did); Dreamcast: no long tick from the pass before or after. New group `speed2_sim.txt` (four 1,200-tick
+windows, GBA gates).
 
 ## 5. Suggested order
 
