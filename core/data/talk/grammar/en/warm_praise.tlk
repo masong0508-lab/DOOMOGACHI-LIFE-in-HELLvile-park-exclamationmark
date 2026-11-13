@@ -1,0 +1,293 @@
+# core/data/talk/grammar/en/warm_praise.tlk - more replies to compliments, praise of a third
+# party and thanks (owner: TK; T5b package T5B-WARM). Same rules as core_warm.tlk: PG-21 adults,
+# nothing a kid may not hear, no register word, at most one exclamation mark a line (the
+# exclamation budget of a quiet resident), no filler that needs a guard the rule lacks.
+# Syntax: core/tools/talkc_gen.py. Writing register: docs/design/story/SCRIPT_STYLE.md.
+
+# ---- COMPLIMENT: thank -----------------------------------------------------------------------
+@rule core.compliment.w_thank act: thank
+  "Thank you. I'll wear that all day, like a hat."
+  "That's kind. I'm blushing in at least three places."
+  "Oh, I needed that. My morale was at two bars."
+  "You're too nice. Keep going, though."
+  "Thanks. I'll tell my mirror you said so."
+  "Stop it. {.}Okay, don't stop it."
+  "Well, that made my whole afternoon. And it's morning."
+  "Thank you, truly. I'm saving that one for a bad day."
+  "That means a lot. A normal amount, plus tax."
+  "You really think so? Okay! Thank you."
+  "Gosh, thanks. I forgot how to take a compliment. Is it a handshake?"
+  "I'll treasure that. Somewhere dry, with the good spoons."
+  "How sweet. My happy meter just went up a notch."
+  "Thanks, I try. Mostly I trip and it works out."
+  "You've made me feel like a full health bar."
+  "That's lovely to hear. Say it again, slower, so I can record it."
+  "Aw. You're the reason the day has a good part."
+  "Thanks! I'm going to float home now. Don't wait up."
+  "Oh, hush. {.}No, don't hush. Tell the others."
+  "I accept this compliment and will use it wisely."
+@rule core.compliment.w_thank_polite guard: polite act: thank
+  "How very generous of you. Thank you kindly."
+  "You're too gracious. Thank you, truly."
+  "Oh, that is lovely of you to say. Thank you."
+  "I'm much obliged. You've warmed up the whole room."
+  "What a charming thing to say. I'm flattered."
+@rule core.compliment.w_thank_flat guard: flat act: thank
+  "Thanks. {.}Internally I'm doing a little dance."
+  "Noted, and appreciated. Very much. This is my excited voice."
+  "Huh, nice. That landed somewhere. I'm not sure where."
+  "That's good to hear. I'll feel it later."
+  "I'm smiling. You can't see it. Trust me."
+@rule core.compliment.w_thank_loud guard: loud act: thank
+  "WOW! Thank you! Say it to the whole park."
+  "You're the BEST! I mean, I am. But you're second best!"
+  "Ha ha, stop! No, don't stop. Louder!"
+  "Thank you! That gave me goosebumps. On my goosebumps!"
+@rule core.compliment.w_thank_slow guard: slow act: thank
+  "Oh. {.}That's nice. I'll thank you properly in a minute."
+  "Mmm. Thank you. I'm going to enjoy that one slowly."
+  "Well, aren't you kind. {.}Thank you."
+  "That was very sweet. Give me a second to glow."
+@rule core.compliment.w_thank_quick guard: quick act: thank
+  "Thanks! Gotta go! Kidding."
+  "Ooh, nice, thank you, you're lovely, anyway, hi."
+  "Aw thanks! I'd hug you but I'm mid-sentence."
+@rule core.compliment.w_thank_elder guard: elder act: thank
+  "Well, that's the nicest thing since the last nice thing."
+  "Bless you. At my age, nobody says that. Say it again."
+  "Thank you, dear. I'll tell my knees. They'll be thrilled."
+  "Kind of you. I was starting to think I'd gone invisible."
+@rule core.compliment.w_thank_teen guard: teen&!kid_speaker act: thank
+  "Wait, really? Okay, thanks. That's actually nice."
+  "I'm not blushing. It's warm in here. Thanks, though."
+  "Huh. Cool, thanks. Don't make it weird."
+  "Okay, that was good. I'm keeping it."
+@rule core.compliment.w_thank_sad guard: mood=sad act: thank
+  "Thank you. I really needed that today."
+  "That's kind. I'm having a hard day, and that helped."
+  "Oh. Thank you. That was the best thing I heard all week."
+@rule core.compliment.w_thank_happy guard: mood=happy act: thank
+  "Thank you! I'm having a great day and you just made it better."
+  "Aw, I'm so happy right now. You made it better. Thanks."
+  "My cheeks hurt from smiling. Blame yourself."
+@rule core.compliment.w_thank_tired guard: mood=tired act: thank
+  "Thank you. That just woke me up. Slightly."
+  "Aww. Best thing I've heard since I last slept."
+@rule core.compliment.w_thank_friend guard: rel=friend act: thank
+  "Coming from you? That counts double."
+  "You always know what to say. It's annoying. Thanks."
+  "Okay, now I owe you a snack. A big snack."
+  "You're good for me, you know that? Thanks."
+@rule core.compliment.w_thank_night guard: night act: thank
+  "That's a nice thing to hear in the dark. Thank you."
+  "Thanks. A kind word at night is worth two in daylight."
+@rule core.compliment.w_thank_hellborn guard: hellborn&!kid_speaker act: thank
+  "Hm. In the pit, compliments are rarer than rain. Thank you."
+  "My horns are tingling. That's how I know it's sincere."
+  "Thanks. I'll remember that when the downstairs neighbours complain."
+@rule core.compliment.w_thank_ghost guard: ghost act: thank
+  "Aww. I'm glowing. More than usual, I mean."
+  "That's so kind. I'd float, but I always do."
+@rule core.compliment.w_thank_kid guard: kid_speaker tags: kid act: thank
+  "Really? Wow, thanks! I'm telling my whole class."
+  "Yay! Thank you! That's my new favourite thing you said."
+  "Hee hee! You're nice! Do you want a sticker?"
+  "I did my best! I did my best and my best was good."
+  "Thanks! Can you say it to my teacher too?"
+  "Aw, thanks! I'll give you my second-best crayon."
+
+# ---- COMPLIMENT: joke -------------------------------------------------------------------------
+@rule core.compliment.w_joke act: joke
+  "I know, right? I'm basically a limited edition."
+  "Careful, I bruise easily. Mostly my ego."
+  "Please clap. {.}Fine, a small clap."
+  "I was going to say the same about me, but you beat me to it."
+  "Stop it, you'll make me insufferable. More insufferable."
+  "I'm just a regular tamagotchi with extra steps."
+  "Compliment accepted. Please deposit another to continue."
+  "Is this a compliment or a very kind ambush?"
+  "That's twice today! Once from me, and once from you."
+  "Keep talking. I'm collecting these for my trophy shelf."
+  "Say that again, but slower, and into this tiny recorder."
+  "I wake up like this. It takes hours of practice."
+@rule core.compliment.w_joke_blunt guard: blunt act: joke
+  "Finally, someone with eyes."
+  "Obviously. But go on."
+  "Correct. Do you have more? I have time."
+@rule core.compliment.w_joke_quirky guard: quirky act: joke
+  "Is that so? The fish told me the same, and they're never wrong."
+  "I'll add it to the wall of nice things. Next to the spoon."
+  "A compliment! Quick, someone check it for pigeons."
+@rule core.compliment.w_joke_easygoing guard: easygoing act: joke
+  "Ha, cool. I'll take that with a side of nap."
+  "Sure, why not. I'll be fabulous right after lunch."
+@rule core.compliment.w_joke_serious guard: serious act: joke
+  "Noted. I will accept it as a formal commendation."
+  "I'll add that to my permanent record. Under accomplishments."
+  "Please put that in writing. In triplicate. With stickers."
+
+# ---- COMPLIMENT: return, tease, dismiss, laugh -------------------------------------------------
+@rule core.compliment.w_return act: compliment
+  "You first. You have a really nice, uh, whole thing going on."
+  "Right back at you. Double. With a bow on it."
+  "And you! Look at you, being all pleasant!"
+  "Stop. You're making me say nice things back."
+  "Oh, you're sweet. You're the sweetest thing in this zip code."
+  "That's what I was about to say about you. Honest."
+  "Nice! We're both great. What a coincidence."
+  "I think you're swell. Isn't that a word? Swell?"
+@rule core.compliment.w_return_polite guard: polite act: compliment
+  "And you are an absolute delight, if I may say so."
+  "Likewise, truly. You have a lovely way about you."
+@rule core.compliment.w_return_friend guard: rel=friend act: compliment
+  "Best friend energy. You've got loads of it."
+  "Ugh, you're making me say it. You're awesome. There."
+@rule core.compliment.w_tease act: tease
+  "Flattery will get you everywhere. {.}What do you want?"
+  "Is this a compliment, or are you about to ask for money?"
+  "Aww. Did you rehearse that? You did, didn't you."
+  "You're sucking up. It's working. Don't stop."
+  "Easy there. My head doesn't fit in the doorway as it is."
+  "Smooth talker. Do you do that for everyone, or just me?"
+  "Okay, who sent you? I want to meet your boss."
+  "That's the nicest thing you've said since never."
+  "Look at you being charming. I'm filing a report."
+@rule core.compliment.w_tease_rival guard: rel=rival act: tease
+  "Are you being nice? Should I check for a trap?"
+  "A compliment from you? I'm taking my wallet out of my pocket."
+@rule core.compliment.w_dismiss act: dismiss
+  "Eh, it's nothing. I just stood there."
+  "Nah. I'm basically wallpaper. Nice wallpaper, though."
+  "Oh, come on. It's just a Tuesday for me."
+  "That's very kind. But I'm really not special."
+  "Aw, you're just saying that. Thank you for saying that."
+@rule core.compliment.w_dismiss_blunt guard: blunt act: dismiss
+  "Don't flatter me. It's weird."
+  "Sure. Whatever you need. Moving on."
+@rule core.compliment.w_dismiss_flat guard: flat act: dismiss
+  "Okay. Thanks. Let's not make it a thing."
+  "Sure. I'll take it. Quietly."
+@rule core.compliment.w_laugh act: laugh
+  "Ha ha! Oh, that's too nice. I need a minute."
+  "Ha! Okay, okay, you got me. I'm lovely."
+  "Oh, stop, you're making me giggle. It's undignified."
+  "Hee. Sorry, I laugh when I'm happy. It's a medical thing."
+
+# ---- PRAISE_OTHER: agree ------------------------------------------------------------------------
+@rule core.praise_other.w_agree act: agree
+  "Completely. They're a gem. A slightly chipped gem."
+  "I was just thinking that! Great minds, tiny budget."
+  "Absolutely. I'd say so to their face, but their face intimidates me."
+  "Right? They're one of the good ones."
+  "Totally. It's rare. Like finding a clean mug."
+  "Yes! Somebody finally says it out loud."
+  "I couldn't agree more. And I never agree."
+  "Oh, for sure. We should give them a medal. A big one."
+  "That's true. They deserve a little parade."
+  "I've said that myself. In my head. Very loudly."
+@rule core.praise_other.w_agree_polite guard: polite act: agree
+  "How true. They are a credit to the neighbourhood."
+  "Indeed. I always speak very warmly of them."
+@rule core.praise_other.w_agree_friend guard: rel=friend act: agree
+  "See, this is why we're friends. Good taste in people."
+  "You and I think alike. Terrifying, honestly."
+@rule core.praise_other.w_agree_loud guard: loud act: agree
+  "YES! They're AMAZING. Somebody throw confetti!"
+  "I love that you said that! I LOVE it!"
+@rule core.praise_other.w_agree_elder guard: elder act: agree
+  "I've known them for years. A fine soul. Mostly."
+  "Hm, yes. Good people are scarcer than good soup."
+@rule core.praise_other.w_agree_kid guard: kid_speaker tags: kid act: agree
+  "Yeah! They're so cool. I want to be them when I'm big!"
+  "I think so too! They gave me a cookie once. A whole cookie!"
+
+# ---- PRAISE_OTHER: disagree, joke, tease, gossip ----------------------------------------------
+@rule core.praise_other.w_disagree act: disagree
+  "Hm. Nice is a stretch. Tolerable, maybe."
+  "I'd like to agree. I really do. I'll think about it."
+  "Eh. Good days, bad days. Today's a medium day."
+  "I wouldn't go that far. Maybe halfway. With a bus."
+  "Well. They have their moments. Some of them are short."
+@rule core.praise_other.w_disagree_blunt guard: blunt act: disagree
+  "No. Overrated. Next."
+  "Meh. I've seen better. I've seen toast with more charm."
+@rule core.praise_other.w_disagree_polite guard: polite act: disagree
+  "I'm afraid I see it a little differently. But I'm glad you do."
+  "That's a lovely view. I'm not quite there myself."
+@rule core.praise_other.w_joke act: joke
+  "They're great. They don't know it. Let's not tell them."
+  "Sure, they're great. At naps. They're an athlete."
+  "Praise them any louder and they'll want a raise."
+  "They're so great that the walls clap when they walk by."
+  "They'd love to hear that. They won't, but they'd love to."
+  "Great? They invented the word. Then lost it."
+@rule core.praise_other.w_tease act: tease
+  "Aww. You have a little crush on them, don't you."
+  "Careful, I'm telling them you said that."
+  "You're their biggest fan. Do you want a banner?"
+  "Look at you being loyal. Tell me what they gave you."
+@rule core.praise_other.w_gossip act: gossip
+  "They are great. Between us, they once cried at a sandwich."
+  "True, true. I heard they hum when nobody's around."
+  "Yep. Though they were up very late last night. I won't say why."
+  "Good one. I heard they make their own jam. In secret."
+
+# ---- THANK: replies to the player's thanks --------------------------------------------------
+@rule core.thank.w_answer act: answer
+  "My pleasure. I'll bill you later. In hugs."
+  "You're welcome. Don't mention it. Seriously, don't."
+  "Anytime, friend. Or at least until my break."
+  "Glad I could help. I'd do it again for a muffin."
+  "No worries! That's what I'm here for. That and the snacks."
+  "Of course. It was nothing. It was a little something, but still."
+  "Happy to help. Really. It's good for my aura."
+  "Oh, don't thank me. Thank my mother. She raised me right."
+  "Any time. I mean it. I'm very bored."
+  "You're very welcome. Say, are you hungry?"
+  "Sure thing. Come back when you need something else."
+  "That's what neighbours are for. That and complaining about the weather."
+@rule core.thank.w_answer_polite guard: polite act: answer
+  "It was no trouble at all. Truly."
+  "You are most welcome. It was a pleasure."
+  "Please, think nothing of it. I insist."
+@rule core.thank.w_answer_flat guard: flat act: answer
+  "You're welcome. {.}That was a smile. I swear."
+  "Sure. No big deal. It's what I do."
+  "Mm. Don't mention it. Yes, I mean that kindly."
+@rule core.thank.w_answer_blunt guard: blunt act: answer
+  "Yep. Fine. You're welcome."
+  "Okay. Don't make it weird. You're welcome."
+@rule core.thank.w_answer_loud guard: loud act: answer
+  "Oh, ANYTIME! I mean it! Even at three AM!"
+  "You are SO welcome! Seriously, ask again for fun."
+@rule core.thank.w_answer_elder guard: elder act: answer
+  "Of course, dear. You'd do the same for me. Or you'd better."
+  "No trouble. I had nothing else planned. Thirty years, nothing."
+@rule core.thank.w_answer_friend guard: rel=friend act: answer
+  "Always. That's the deal with us, isn't it?"
+  "You don't have to thank me. But I'll take it anyway."
+@rule core.thank.w_answer_kid guard: kid_speaker tags: kid act: answer
+  "You're welcome! I'm a good helper! Right?"
+  "Yay, I helped! Do I get a sticker? A small one?"
+  "No problem! I do this all the time, mostly by accident."
+@rule core.thank.w_joke act: joke
+  "You're welcome. The tip jar is on the left."
+  "I'd say it was nothing, but I did a lot of nothing for you."
+  "Thanks accepted. Please take a number for the next one."
+  "Aw. Thank me again, I need it for my morale quota."
+  "Thanks noted and filed under 'I'm the best.'"
+  "Say that again. I'm collecting them. I have two."
+@rule core.thank.w_tease act: tease
+  "Wow, thank me a few more times, it's a real bonding moment."
+  "Is this the part where you owe me a favour? I'll think of one."
+  "You said please and thanks in one day. Who are you?"
+  "I'm going to need that in writing, with a seal."
+@rule core.thank.w_backchannel act: backchannel
+  "Mm-hm. Anytime."
+  "Sure. Yep."
+  "Aw. Of course."
+  "Mhm. Glad it worked out."
+@rule core.thank.w_dismiss act: dismiss
+  "Pfft. It's nothing. Forget it."
+  "Don't mention it. Really. I'll forget by lunch."
+  "Oh, hush. It's fine. We're good."
