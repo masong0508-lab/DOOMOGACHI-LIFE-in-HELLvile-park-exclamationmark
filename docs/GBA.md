@@ -2728,6 +2728,7 @@ arena) and still keep more than 6 KB free.
   stream, a new scratch claim) changes the epoch, and `lr_bind()` starts the lists over (they are recorded again in
   one frame; same rects). The caps are the old `.bss` caps (`LRS_*` equal `LR_*` on the GBA), so what is recorded,
   overflowed and replayed is the same as before. `dv_tmp` joined the block on the GBA (a pointer and a cap now).
+* Rule for new arena writers: the island lists are only noticed as stale through `gba_big_epoch`. Any new code that writes the arena (or a billboard user without its own scene scratch claim) must call `gba_big_claim` (or claim a scene scratch) first. Today the overworld and combat billboard writers are safe because their scenes own a scratch claim, and the island re-claims its own on return.
 * Cost: one re-record after a save, and after any visit of the raycaster / overworld / house. An island autosave
   (day change) re-records the lists in the next hub frame.
 * Proof (libmgba, `4c0f369` against the branch, evidence in the CR5a run's scratch directory): speed tour fps

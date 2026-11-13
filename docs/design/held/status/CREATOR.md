@@ -7,7 +7,7 @@ delta, GBA sizes), in flight (package and stage), next up, blockers, needs from 
 - **Last update:** 2026-11-13 04:55 UTC (lead) - resumed after the pause
 - **Lead:** session_01Xd63cwsuWNoECo4JeUnWy3 (GBA and PS1 tools installed; Dreamcast toolchain installing again after a container restart)
 - **Landed:** landed before the restart: CRA (CR0, CR1, CR2, CR12), CRB (CR6, CR7, CR9). 433 parts catalogued, 351 live with icons.
-- **CR5a (build done, awaiting review / land):** GBA EWRAM free 1,788 -> 15,444 B (island hub lists moved into the arena top, 13,720 B); island hub frames identical; see docs/GBA.md ledger row 41.
+- **CR5a (landed 2026-11-13):** GBA EWRAM free 1,788 -> 15,444 B (island hub lists moved into the arena top, 13,720 B); island hub frames identical (vhash-seq 94cd2df9, fps 30.0); IWRAM unchanged; PS1 object sizes identical (the full PS1 EXE margin: see the commit message); docs/GBA.md ledger row 41. The Town Hall menu speed-tour hash moved (portrait phase only; a log line, not a gate).
 - **In flight:** round 1 restarted 04:52 UTC, all three building (they continue from the paused worktrees; the wip patches under `../patches/wip/CREATOR/` are deleted as each package lands): CR3 (the saved patch fut-crc.mbox, gene lists go live); G2-CR (GBA creator held-input speed gap, 20.5-26.2 fps -> 30; lands after CR3); CR5a (GBA EWRAM room for the LOOK pool)
 - **Next up:** round 2 as soon as CR3 has landed: CR4 art batches A1 face and eyes (283), A2 hair (148), A3 spooky (134); then A4, A5, CR5, the later batches; CR8, CR11, CR13, CR14; CR10 after PS1-RAM; the six level sets when LEVELS asks or last
 - **Blockers:** none
