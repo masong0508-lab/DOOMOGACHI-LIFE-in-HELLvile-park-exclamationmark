@@ -146,6 +146,42 @@ spent until a level starts a VM.
   mechanic union of LV3-LV5, or a block of the combat overlay), a `LVE_USE` source (usables:
   LV3), a `LVE_PHASE` source (boss phases), `levelcheck` counting the script bytes.
 
+## Mechanic kit A, movement (LV3 part 1, 2026-11-13)
+
+`core/src/levels_mech_move.c` + `levels_mech_move.h`: the rules of six movement mechanics as pure
+functions on a `DoomoMapExt` and one 16-byte state block `MmMove` (it will be the movement member of
+the `LvRun` mechanic union). No statics, nothing allocated, nothing drawn. A level without these zones
+or paths never calls any of it, so it pays nothing per frame.
+
+| Mechanic | Map data | Rule |
+|---|---|---|
+| ride cycle (HB10) | `path ... kind=ride` | one clock; the platform runs the path out and back; `mm_ride_board` when the platform is in your cell; a booth stops all rides (`mm_ride_stop`) |
+| zipline (HB14) | `kind=zip` | board at the first point, slide 3/16 cell a tick, land on the last point; get off early with `off` |
+| bounce pad (HB16) | `zone ... bounce arg=N` + `kind=arc` | a hop of N height steps (a parabola, 18 ticks, longer in low gravity); along the arc path if one starts on the pad, else in place |
+| low gravity (HB16) | `zone ... gravity arg=P` or the header `gravity` | step height 24 * 100 / P (`mm_step_rise` is the BFS's number, a test compares them on every cell) |
+| carry (N1) | none (tagged zones say where it is laid) | one item, no weapon while held (`mm_carry_blocks_fire`), `mm_carry_lay_tag` names the zone tag it is laid on |
+| tube (N2) | `kind=tube` | at either end, a 12-tick whoosh; the move happens under the black at tick 6 (`mm_tube_fade`); junction levers are bits of `MmMove.lever`, the first tube with its bit set wins |
+| raft (N5) | `kind=raft` | board at any point, drift 2/16 cell a tick to the end; the stick pushes it sideways, past 12/16 cell it capsizes to the last buoy (point passed) |
+
+`mm_tick` runs whatever the player is doing. `mm_edges` lists the mechanic edges out of a cell, the same
+ones `core/tools/map_bfs.h` follows (zip and arc first to last, tube both ways, ride any to any, raft to
+every later point), with a tick cost for the autopilot.
+
+* **Tests:** `core/tests/test_levels_mech.c` (17 tests: one or more per mechanic, idle and bad state,
+  edges against the BFS rules, and a scripted bot). The kit map `core/tests/maps/t3_kit.txt` (mapc v2,
+  test binary only) puts a zipline, a ride cycle, a bounce arc, a low-gravity step, a tube and a raft in a
+  line; the exit is reachable only through all six. The bot plans over `map_bfs_can_step` plus `mm_edges`
+  and then plays the plan with the real state machine, checking that every edge ends in the cell it
+  promised; walking alone never reaches the exit (the same test proves it).
+* **Memory:** nothing in the game calls it yet, so `--gc-sections` drops it (GBA `sizes` and the PS1 EXE
+  are unchanged); `levels_mech_move` is already in the PS1 combat overlay group (`levels_*`).
+* **Not yet (LV3 part 2, a follow-up package):** the player's ride state in `combat.c` (position and
+  height taken from `mm_tick`, the stick routed to `steer`, fire blocked while carrying), the zone and
+  usable triggers in `lv_runtime_*`, the raft and zipline billboard, the bot's edges inside
+  `combat_bot.c` (its BFS asks `mm_edges` and presses A at the anchor), and the Vape Cellar fps
+  measurement that those two files require. Each of them touches a per-frame path, so each comes with its
+  before / after fps on GBA and PS1.
+
 ## Files
 
 `core/src/levels.c` (tables, ranks, runtime, activities),

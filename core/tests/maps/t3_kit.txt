@@ -1,0 +1,36 @@
+# Kit test map (core/tests/test_levels_mech.c): one of every movement mechanic of kit A (LV3), in a line.
+# zipline over a wall, a ride cycle through an island, a bounce pad with an arc over a wall, a low-gravity
+# step, a tube under a wall, a raft through an island. The exit is only reachable through all six.
+# Not shipped: mapc compiles it into the test binary only.
+format 2
+title "T3 Kit"
+kind dungeon
+sky PASTEL_DAY
+music HAHALAND_DAY
+ambient 12
+
+cell # wall=PASTEL_BRICK
+cell . floor=WOOD_FLOOR ceil=CLOUD_PUFF ch=14
+cell p like=. thing=PLAYER_START
+cell x like=. flags=exit
+cell h like=. fh=10 ch=26
+cell g like=. fh=6 ch=20
+
+grid
+####################################
+#...##...####...#hh...ggg#...#####..
+#...##...####...#hh...ggg#...#####..
+#p..##...#.##...#hh...ggg#...#.###.x
+#...##...####...#hh...ggg#...#####..
+#...##...####...#hh...ggg#...#####..
+####################################
+end
+
+path 1 kind=zip 3,3 6,3
+path 2 kind=ride 8,3 10,3 13,3
+path 3 kind=arc 15,3 17,3
+path 4 kind=tube 24,3 27,3
+path 5 kind=raft 28,3 30,3 34,3
+zone 15 3 15 3 bounce arg=10
+zone 19 1 21 5 gravity arg=50
+zone 1 1 3 1 safe tag=7
