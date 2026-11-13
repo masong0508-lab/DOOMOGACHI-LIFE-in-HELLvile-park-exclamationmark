@@ -79,7 +79,7 @@ reports the frame rate. See docs/PS1.md section 10.
 | `src/r3d.c`, `src/r3d.h` | GTE pipeline: subdivision, clipping, fog, sky, billboards |
 | `src/view3d.c`, `src/world.c` | `plat_view3d()`: the map as 3D polygons |
 | `src/overworld.c` | `plat_overworld()`: 3D town terrain |
-| `src/model.c` | third-person 3D citizen from the resident's look |
+| `src/model.c`, `src/prims.c` | third-person 3D citizen from the resident's look (combat only: no house draws a 3D model; `model.c` is in the combat overlay group) |
 | `src/spu.c`, `src/adpcm.c` | SPU tones and samples, our ADPCM encoder |
 | `src/memcard.c` | memory card saves (BIOS file API, icon, Shift-JIS title) |
 | `src/pad.c`, `src/timer.c` | controller input, CPU timing |

@@ -333,7 +333,7 @@ The 20 fps target is met with about 2x margin. The worst case is a full recompos
   - Optional per-face texture from a small furniture atlas (cushion fabric, book spines, screen, poster art) through `vram_image`.
   - **Small decor** (plushies, plants, candles, skulls, food) are **billboards** of the GBA-style front sprites (`r3_billboard` + `r3_shadow`). Paper-doll charm is the "2.5" part.
 - **Characters.**
-  - Player: the real 3D chibi (`model_player_draw`, `model.c:248`).
+  - Player: the real 3D chibi (`model_player_draw`, `model.c:248`). (Built differently since 2026-11-13: the owner had the 3D chibi taken out of houses, the player is a billboard like everyone, PS1-FLAT in docs/PS1.md.)
   - Visitors: billboards of `figure_render` 48x80 (`portrait.h:49-53`) with **independent x/y scale for squash and stretch**. `DoomoRoomActor` carries `sx`, `sy`. Note that `DoomoBillboard` has only `scale`, so the room API carries its own.
   - Up to 3 visitors plus the player.
 - **Camera.** It looks at the room centre.

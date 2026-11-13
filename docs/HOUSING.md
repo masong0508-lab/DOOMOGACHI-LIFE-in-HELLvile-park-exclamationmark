@@ -458,7 +458,9 @@ tutorials ran, the Black Market found) are set without a toast.
   ridge bands rising 32 units over a 32-unit run (a valley or a hip at each
   end), the chimney, dormer, skylight, spikes, parapet and tank as boxes and
   faces; `fit()` leaves 44 units of headroom for it. H4 adds the resting player:
-  the chibi joins the static layer while it stands still.
+  its billboard joins the static layer while it stands still (since
+  2026-11-13 the PS1 draws no 3D character in a house: the player is a
+  billboard like everyone, PS1-FLAT, docs/PS1.md).
 * **Dreamcast** (`dc/src/room.c`, DC8; docs/DREAMCAST.md, section 8):
   room_ref's picture on the PVR. Its shell pixel code (`floor_tile`,
   `wall_column`, the backdrop, the lip, `iso_box`), the sprite recolour and

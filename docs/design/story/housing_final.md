@@ -376,7 +376,7 @@ The 20 fps floor holds everywhere; the common case is 30. `plat_draw_skipped()` 
 - **Cutaway:** the two walls whose outward normal faces the camera drop to a 12-unit stub. When an orbit crosses a quadrant, the stub swap plays a 4-frame drop-and-pop (the walls fall, bounce, and the new pair rises).
 - **Furniture = recipes, drawn live:** the same `FurnPrim` list, emitted through `box()`, `blob()`, `cylinder()`, `pyramid()` factored out of `ps1/src/model.c:78-158` into `ps1/src/prims.c` (the player model uses them too). Back-face culled, gouraud lit, optional per-face texture from a 128x128 furniture atlas (cushion fabric, book spines, screens, posters).
 - **Billboards vs low-poly:** a piece with `FF_BILLBOARD` (plushies, plants, candles, skulls, snacks, the sign: anything whose charm is its drawing) is an `r3_billboard` of its baked front sprite plus `r3_shadow`, with independent x/y scale for squash. Everything with volume (seats, beds, tables, wardrobes, appliances, lamps' bodies) is a mesh. The paper-doll decor among solid furniture is the "2.5".
-- **Characters:** the player is the real 3D chibi (`model_player_draw`); visitors are `figure_render` 48x80 billboards with `sx, sy` for squash (`DoomoBillboard` has only `scale`, so `DoomoRoomActor` carries its own). Up to 3 visitors plus the player.
+- **Characters:** (built differently since 2026-11-13: the owner had the 3D chibi taken out of houses, the player is a billboard like everyone, PS1-FLAT in docs/PS1.md) the player is the real 3D chibi (`model_player_draw`); visitors are `figure_render` 48x80 billboards with `sx, sy` for squash (`DoomoBillboard` has only `scale`, so `DoomoRoomActor` carries its own). Up to 3 visitors plus the player.
 
 ### 7.2 Camera and lighting
 
