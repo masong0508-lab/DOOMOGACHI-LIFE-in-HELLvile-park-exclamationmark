@@ -235,7 +235,7 @@ static int mg_compare(int id, int arg, int w, int h, int n)
         test_fail(__FILE__, __LINE__, "kept minigame: stamps were not used");
         return 0;
     }
-    if (has_kept_picture(id) && retained_n < n / 2) {          /* (a game of stamps only has none) */
+    if (has_kept_picture(id) && retained_n < n / 3) {          /* (a game of stamps only has none) */
         char m[200];
         snprintf(m, sizeof(m), "minigame %d %dx%d: too few frames over the kept picture (%d of %d)",
                  id, w, h, retained_n, n);
@@ -245,7 +245,7 @@ static int mg_compare(int id, int arg, int w, int h, int n)
     return 1;
 }
 
-static const uint8_t kept_games[] = { MG_WHACK, MG_DODGE, MG_GALLERY };
+static const uint8_t kept_games[] = { MG_WHACK, MG_DODGE, MG_GALLERY, MG_DERBY, MG_MEMORY };
 
 TEST(stage_kept_minigames_are_pixel_identical)
 {

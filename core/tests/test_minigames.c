@@ -400,3 +400,16 @@ TEST(mg_draws_at_both_sizes)
     o.w = 240; o.h = 160;
     nat_init(&o);
 }
+
+/* (S2-4b) the Derby's crowd takes x % 6 with no division: it must be the remainder for every value */
+TEST(mg_mod6_is_the_remainder)
+{
+    uint32_t x = 0x9E3779B9u, v;
+    int i;
+    for (v = 0; v < 70000; v++) CHECK_MSG(mg_mod6(v) == v % 6, "mg_mod6(%u) = %u", (unsigned)v, mg_mod6(v));
+    for (v = 0xFFFF0000u; v != 0xFFFF0000u + 70000u; v++) CHECK_MSG(mg_mod6(v) == v % 6, "mg_mod6(%u)", (unsigned)v);
+    for (i = 0; i < 2000000; i++) {                 /* xorshift32: the whole range */
+        x ^= x << 13; x ^= x >> 17; x ^= x << 5;
+        CHECK_MSG(mg_mod6(x) == x % 6, "mg_mod6(%u) = %u", (unsigned)x, mg_mod6(x));
+    }
+}

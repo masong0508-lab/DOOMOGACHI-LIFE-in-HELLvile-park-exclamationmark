@@ -336,6 +336,8 @@ void mg_sparkle(int cx, int cy, int phase, uint8_t c);   /* ui_sparkle, stamped 
 #define mg_stamp_common(key, x, y) 0
 #define mg_sparkle ui_sparkle
 #endif
+/* x % 6 without a division (mg_derby.c: the crowd) */
+unsigned mg_mod6(uint32_t x);
 /* HUD pieces */
 void mg_hud(void);
 void mg_draw_hearts(int x, int y, int n, int max);

@@ -30,6 +30,7 @@ typedef struct Memory {
     MCard c[MAXC];
     uint8_t n, cols, rows, cur, first, second, wait, misses, pairs_left, bite_t, bite_card;
     uint8_t shuffle_a, shuffle_b, shuffle_t;
+    int16_t px[MAXC], py[MAXC];     /* (S2-4b) the cards' centres, made once (card_x / card_y divide) */
 } Memory;
 MG_ARENA_FITS(Memory);
 #define S (MG_ARENA(Memory))
@@ -73,6 +74,8 @@ int mg_memory_pick_faces(int pairs, int16_t *out, uint32_t seed)
     return n;
 }
 
+static void geo_fill(void);
+
 static void mm_start(void)
 {
     int16_t faces[MAXC / 2];
@@ -95,12 +98,21 @@ static void mm_start(void)
     S->pairs_left = (uint8_t)pairs;
     S->first = S->second = 0xFF;
     S->cur = 0;
+    geo_fill();
 }
 
 static int cell_w(void) { return DOOMO_MIN((mg_w() - 12) / S->cols, mg_big() ? 72 : 54); }
 static int cell_h(void) { return DOOMO_MIN((mg_h() - 24) / S->rows, mg_big() ? 64 : 46); }
-static int card_x(int i) { return mg_w() / 2 - S->cols * cell_w() / 2 + (i % S->cols) * cell_w() + cell_w() / 2; }
-static int card_y(int i) { return 21 + (mg_h() - 22 - S->rows * cell_h()) / 2 + (i / S->cols) * cell_h() + cell_h() / 2; }
+static int card_x_calc(int i) { return mg_w() / 2 - S->cols * cell_w() / 2 + (i % S->cols) * cell_w() + cell_w() / 2; }
+static int card_y_calc(int i) { return 21 + (mg_h() - 22 - S->rows * cell_h()) / 2 + (i / S->cols) * cell_h() + cell_h() / 2; }
+/* the cards' centres, made once a round (the divisions above cost a frame's worth on the GBA) */
+static void geo_fill(void)
+{
+    int i;
+    for (i = 0; i < S->n; i++) { S->px[i] = (int16_t)card_x_calc(i); S->py[i] = (int16_t)card_y_calc(i); }
+}
+static int card_x(int i) { return S->px[i]; }
+static int card_y(int i) { return S->py[i]; }
 
 static void flip_up(int i)
 {
@@ -203,7 +215,8 @@ static void fallback_face(int face, int x, int y, int r, int t)
     }
 }
 
-static void card_back(int x, int y, int w, int h, int t, int i)
+/* the back of a card; `heart` 0 leaves the cute tiers' bobbing heart off (the kept table has the rest) */
+static void card_back_draw(int x, int y, int w, int h, int t, int i, int heart)
 {
     uint8_t a = mg.hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_PAINT(PAINT_LAVENDER, 1);
     uint8_t b = mg.hell ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_PAINT(PAINT_GRAPE, 1);
@@ -212,10 +225,11 @@ static void card_back(int x, int y, int w, int h, int t, int i)
     if (w > 10) {
         ui_frame(x - w / 2 + 3, y - h / 2 + 3, w - 6, h - 6, mg.hell ? PAL_RAMP(RAMP_LAVA, 4) : PAL_PAINT(PAINT_LAVENDER, 2));
         if (mg.hell) ui_star(x, y, 5, PAL_RAMP(RAMP_LAVA, 4));
-        else ui_heart(x, y + ui_wave(t + i * 7, 60, 1), 4, PAL_PAINT(PAINT_BUBBLEGUM, 1));
+        else if (heart) ui_heart(x, y + ui_wave(t + i * 7, 60, 1), 4, PAL_PAINT(PAINT_BUBBLEGUM, 1));
         plat_rect(x - w / 2 + 3, y - h / 2 + 2, w / 3, 1, PAL_WHITE);
     }
 }
+static void card_back(int x, int y, int w, int h, int t, int i) { card_back_draw(x, y, w, h, t, i, 1); }
 
 static void card_face_bg(int x, int y, int w, int h, int biter)
 {
@@ -271,28 +285,102 @@ static void matched(int i, int x, int y, int w, int h, int t)
     if (((t + i * 13) % 50) < 16) ui_sparkle(x + w / 2 - 4, y - h / 2 + 4, ((t + i * 13) % 50), PAL_WHITE);
 }
 
+/* ---- (S2-4b) the kept playfield (mg.h): the room, the velvet table with its fringe and every card face down
+ * (the cute tiers' hearts and the Hellfire stars: the stars are in it, the hearts bob and are stamps), one
+ * picture a tier. A card that is not face down at home is covered by the velvet again first; a sparkle that
+ * floats over a face-down card is covered by the card again (its round rect's own spans, inside the sparkle's
+ * box); the rest of the frame is drawn as ever. */
+enum { MS_HEART = 0 << 12 };
+static uint32_t mm_kept_key(void) { return mg.tier; }
+static int mm_kept_keys(uint32_t *out, int cap, int hell)
+{
+    int i, n = 0;
+    for (i = 0; i < MG_TIERS; i++)
+        if ((i == MG_TIER_HELLFIRE) == (hell != 0)) { if (n < cap) out[n] = (uint32_t)i; n++; }
+    return n;
+}
+static int mm_kept_part(uint32_t key, int16_t rows[2]) { (void)key; (void)rows; return 0; }
+
+static void mm_stamp(uint32_t key, int cx, int cy)
+{
+    (void)key;
+    ui_heart(cx, cy, 4, PAL_PAINT(PAINT_BUBBLEGUM, 1));
+}
+static int mm_stamp_keys(uint32_t *out, int cap)
+{
+    if (cap > 0) out[0] = MS_HEART;
+    return 1;
+}
+
+/* a card face down at its place (not being shuffled) */
+static int home_down(int i)
+{
+    return S->c[i].st == CS_DOWN && !(S->shuffle_t && (i == S->shuffle_a || i == S->shuffle_b));
+}
+
+/* the back of face-down card k put back from the kept picture inside the box [bx0, bx1) x [by0, by1): the
+ * round rects' own spans, so only the back's pixels come back */
+static void back_again(int k, int w, int h, int bx0, int by0, int bx1, int by1)
+{
+    int x = card_x(k) - w / 2, y = card_y(k) - h / 2;          /* the card's corner */
+    if (bx1 <= x || bx0 >= x + w || by1 <= y || by0 >= y + h) return;
+    mg_undo(bx0, by0, bx1, by1);
+    ui_round_rect_rows(x, y, w, h, 4, PAL_PAINT(PAINT_GRAPE, 1), DOOMO_MAX(by0 - y, 0), DOOMO_MIN(by1 - y, h));
+    ui_round_rect_rows(x + 1, y + 1, w - 2, h - 2, 3, PAL_PAINT(PAINT_LAVENDER, 1), DOOMO_MAX(by0 - y - 1, 0), DOOMO_MIN(by1 - y - 1, h - 2));
+    mg_undo_end();
+}
+
+/* the room and the velvet table with its fringe, offset by (ox, oy) */
+static void table_draw(int ox, int oy)
+{
+    int W = mg_w(), H = mg_h(), i, cw = cell_w(), ch = cell_h();
+    int tx = W / 2 - S->cols * cw / 2 - 5, ty = card_y(0) - ch / 2 - 5, tw = S->cols * cw + 10, th = S->rows * ch + 10;
+    uint8_t bg = mg.hell ? PAL_RAMP(RAMP_BLOOD, 0) : PAL_PAINT(PAINT_NAVY, 1);
+    /* the room only around the table (no overdraw under it) */
+    plat_rect(0, 0, W, ty + oy + 8, bg);
+    plat_rect(0, ty + th + oy - 8, W, H - (ty + th + oy - 8), bg);
+    plat_rect(0, ty + oy + 8, tx + ox + 8, th - 16, bg);
+    plat_rect(tx + tw + ox - 8, ty + oy + 8, W - (tx + tw + ox - 8), th - 16, bg);
+    plat_rect(tx + 8 + ox, ty + th + oy, tw - 16, 2, PAL_RAMP(RAMP_STONE, 0));
+    ui_round_rect(tx + ox, ty + oy, tw, th, 8, mg.hell ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_PAINT(PAINT_GRAPE, 0));
+    ui_round_rect(tx + 2 + ox, ty + 2 + oy, tw - 4, th - 4, 7, mg.hell ? PAL_RAMP(RAMP_BLOOD, 1) : PAL_PAINT(PAINT_VAPE_PURPLE, 0));
+    for (i = tx + 4; i < tx + tw - 4; i += 4) plat_rect(i + ox, ty + th + oy + 2, 2, 3 + ((i / 4) & 1), PAL_UI_GOLD);
+}
+
 static void mm_draw(void)
 {
-    int W = mg_w(), H = mg_h(), t = mg.play_t + mg.t, i, cw = cell_w(), ch = cell_h();
-    int w = cw - 4, h = ch - 4, ox = mg.ox, oy = mg.oy;
-    /* Madame Moth's velvet table with a fringe */
-    {
-        int tx = W / 2 - S->cols * cw / 2 - 5, ty = card_y(0) - ch / 2 - 5, tw = S->cols * cw + 10, th = S->rows * ch + 10;
-        uint8_t bg = mg.hell ? PAL_RAMP(RAMP_BLOOD, 0) : PAL_PAINT(PAINT_NAVY, 1);
-        /* the room only around the table (no overdraw under it) */
-        plat_rect(0, 0, W, ty + oy + 8, bg);
-        plat_rect(0, ty + th + oy - 8, W, H - (ty + th + oy - 8), bg);
-        plat_rect(0, ty + oy + 8, tx + ox + 8, th - 16, bg);
-        plat_rect(tx + tw + ox - 8, ty + oy + 8, W - (tx + tw + ox - 8), th - 16, bg);
-        plat_rect(tx + 8 + ox, ty + th + oy, tw - 16, 2, PAL_RAMP(RAMP_STONE, 0));
-        ui_round_rect(tx + ox, ty + oy, tw, th, 8, mg.hell ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_PAINT(PAINT_GRAPE, 0));
-        ui_round_rect(tx + 2 + ox, ty + 2 + oy, tw - 4, th - 4, 7, mg.hell ? PAL_RAMP(RAMP_BLOOD, 1) : PAL_PAINT(PAINT_VAPE_PURPLE, 0));
-        for (i = tx + 4; i < tx + tw - 4; i += 4) plat_rect(i + ox, ty + th + oy + 2, 2, 3 + ((i / 4) & 1), PAL_UI_GOLD);
+    int W = mg_w(), H = mg_h(), t = mg.play_t + mg.t, i, cw, ch, w, h, ox = mg.ox, oy = mg.oy, kept = mg_kept();
+    if (mg_kept_mode == MGK_BAKE) {                   /* the table of tier mg_bake_key, every card down */
+        uint8_t n0 = S->n, c0 = S->cols, r0 = S->rows;
+        S->cols = tier_cols[mg_bake_key];
+        S->rows = tier_rows[mg_bake_key];
+        S->n = (uint8_t)(S->cols * S->rows);
+        cw = cell_w(); ch = cell_h();
+        geo_fill();
+        table_draw(0, 0);
+        for (i = 0; i < S->n; i++) card_back_draw(card_x(i), card_y(i), cw - 4, ch - 4, 0, i, 0);
+        S->n = n0; S->cols = c0; S->rows = r0;
+        return;
+    }
+    cw = cell_w(); ch = cell_h();
+    w = cw - 4; h = ch - 4;
+    /* Madame Moth's velvet table with a fringe (kept: it is in place, and so is every card face down) */
+    if (!kept) table_draw(ox, oy);
+    else {
+        uint8_t velvet = mg.hell ? PAL_RAMP(RAMP_BLOOD, 1) : PAL_PAINT(PAINT_VAPE_PURPLE, 0);
+        for (i = 0; i < S->n; i++)
+            if (!home_down(i)) plat_rect(card_x(i) - w / 2, card_y(i) - h / 2, w, h, velvet);
     }
     for (i = 0; i < 10; i++) {                   /* floating moth-dust and stars */
         uint32_t hs = doomo_hash32((uint32_t)i * 6151u + 1u);
         int ph = (int)((t / 2 + (hs >> 20)) & 31);
-        if (ph < 16) ui_sparkle((int)(hs % (uint32_t)W), (int)((hs >> 8) % (uint32_t)H), ph, PAL_PAINT(PAINT_LEMON, 2));
+        if (ph < 16) {
+            int sx = (int)(hs % (uint32_t)W), sy = (int)((hs >> 8) % (uint32_t)H);
+            mg_sparkle(sx, sy, ph, PAL_PAINT(PAINT_LEMON, 2));
+            if (kept && ui_sparkle_size(ph))             /* over a face-down card it is under the card */
+                for (int k = 0; k < S->n; k++)
+                    if (home_down(k)) back_again(k, w, h, sx - 3, sy - 3, sx + 4, sy + 4);
+        }
     }
     if (S->shuffle_t) {
         int k;
@@ -307,7 +395,12 @@ static void mm_draw(void)
         if (S->shuffle_t && (i == S->shuffle_a || i == S->shuffle_b)) y -= ui_wave(S->shuffle_t * 4, 32, 4);
         switch (m->st) {
         case CS_DOWN:
-            card_back(x, y, w, h, t, i);
+            if (kept && home_down(i)) {              /* the back is in the picture: the cute tiers' heart bobs over it */
+                if (!mg.hell && w > 10) {
+                    int wob = ui_wave(t + i * 7, 60, 1);
+                    if (wob < -1 || wob > 1 || mg_big() || !mg_stamp(MS_HEART, x, y + wob)) ui_heart(x, y + wob, 4, PAL_PAINT(PAINT_BUBBLEGUM, 1));
+                }
+            } else card_back(x, y, w, h, t, i);
             break;
         case CS_FLIP_UP:
             sq = m->t < 4 ? w * (4 - m->t) / 4 : w * (m->t - 4) / 4;
@@ -324,6 +417,11 @@ static void mm_draw(void)
             break;
         default:
             break;
+        }
+        if (kept && !home_down(i)) {                 /* the cards after it are drawn over what it spilled (a wraith's tail) */
+            int k;
+            for (k = i + 1; k < S->n; k++)
+                if (home_down(k)) back_again(k, w, h, x - w / 2 - 8, y - h / 2 - 8, x - w / 2 + w + 8, y - h / 2 + h + 8);
         }
     }
     /* lifted face-up cards go on top */
@@ -384,7 +482,7 @@ const MgGame mg_game_memory = {
     { MG_MEMORY_B, MG_MEMORY_S, MG_MEMORY_G }, 12, 90 * 30,
     { PAL_PAINT(PAINT_LAVENDER, 1), PAL_PAINT(PAINT_NAVY, 2), PAL_PAINT(PAINT_GRAPE, 1) },
     mm_start, mm_update, mm_draw, mm_art, mm_bot,
-    NULL, NULL, NULL, NULL, NULL, NULL
+    mm_kept_key, mm_kept_keys, mm_kept_part, mm_stamp, mm_stamp_keys, NULL
 };
 
 MG_DEFINE_SCENE(SCENE_MG_MEMORY, "MG_MEMORY", mg_game_memory);

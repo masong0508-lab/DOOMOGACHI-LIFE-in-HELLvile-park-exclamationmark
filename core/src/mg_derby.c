@@ -36,6 +36,7 @@ typedef struct Derby {
     uint8_t imgs_ok;                /* (S2-5, GBA) the racers' 8bpp pictures are in the scratch */
     uint16_t race_t, end_t;
     int32_t cam16;
+    int8_t hop[40];                 /* (S2-4b) the crowd's hops: ui_wave(i, 40, 1), made at the start */
 } Derby;
 MG_ARENA_FITS(Derby);
 #define S (MG_ARENA(Derby))
@@ -156,6 +157,7 @@ static void dy_start(void)
 {
     int i, used = 0, me = your_form();
     static const uint8_t skill[MG_TIERS] = { 65, 82, 94 };
+    for (i = 0; i < 40; i++) S->hop[i] = (int8_t)ui_wave(i, 40, 1);       /* the crowd's hops, one period */
     used |= 1 << me;
     for (i = 0; i < RACERS; i++) {
         Racer *r = &S->r[i];
@@ -325,18 +327,62 @@ static void dy_update(void)
 }
 
 /* ---- drawing ------------------------------------------------------------------ */
+/* ---- (S2-4b) stamps (mg.h "stamps"): the bunting (t % 50, a strip across the screen) and a racer's shadow (its
+ * half width) ------------------------------------------------------------------------------------------------ */
+enum { DY_SHADOW = 0 << 12, DY_BUNT = 1 << 12, DY_KIND = 7 << 12 };
+static const uint8_t head_paint[6] = { PAINT_PEACH, PAINT_BUBBLEGUM, PAINT_SKY, PAINT_LEMON, PAINT_MINT, PAINT_LAVENDER };
+
+static void dy_stamp(uint32_t key, int cx, int cy)
+{
+    int v = (int)(key & 0xFFF);
+    if ((key & DY_KIND) == DY_SHADOW) mg_shadow(cx, cy, v);
+    else mg_bunting(0, mg_w(), cy, 3, v);
+}
+static int dy_stamp_strip(uint32_t key) { return (key & DY_KIND) == DY_BUNT; }
+static int dy_stamp_keys(uint32_t *out, int cap)
+{
+    int n = 0, h, i;
+#define ADD(k) do { if (n < cap) out[n] = (uint32_t)(k); n++; } while (0)
+    for (i = 3; i <= 10; i++) ADD(DY_SHADOW | (uint32_t)i);
+    for (h = 0; h < 2; h++)
+        for (i = 0; i < 50; i++) ADD(DY_BUNT | (h ? MG_BK_HELL : 0u) | (uint32_t)i);
+#undef ADD
+    return n;
+}
+/* a stamp at (x, y) where stamps are kept (240x160 only); 0: the caller draws it */
+static int stamped(uint32_t key, int x, int y)
+{
+    return !mg_big() && mg_stamp(key, x, y);
+}
+
+/* x % 6 without a division (the crowd asks for it 63 times a frame): the remainder mod 3 by folding the
+ * bits (2^2 = 1 mod 3), the parity from bit 0, the two put together as the Chinese remainders say */
+unsigned mg_mod6(uint32_t x)
+{
+    static const uint8_t crt[6] = { 0, 3, 4, 1, 2, 5 };       /* [x % 3 * 2 + x % 2] */
+    uint32_t r = (x >> 16) + (x & 0xFFFFu);
+    r = (r >> 8) + (r & 0xFFu);
+    r = (r >> 4) + (r & 0xFu);
+    r = (r >> 2) + (r & 3u);
+    r = (r >> 2) + (r & 3u);
+    if (r >= 3) r -= 3;                                       /* (r <= 6 here) */
+    if (r >= 3) r -= 3;
+    return crt[r * 2 + (x & 1u)];
+}
+
 static void grandstand(int y0, int h, int cam, int t)
 {
-    int W = mg_w(), row, x, rh = h / 3;
-    static const uint8_t heads[6] = { PAINT_PEACH, PAINT_BUBBLEGUM, PAINT_SKY, PAINT_LEMON, PAINT_MINT, PAINT_LAVENDER };
+    int W = mg_w(), row, x, rh = h / 3, tm = t % 40;
     plat_rect(0, y0, W, h, mg.hell ? PAL_RAMP(RAMP_STONE, 1) : PAL_RAMP(RAMP_WOOD, 4));
     for (row = 0; row < 3; row++) {
-        int y = y0 + row * rh, off = (cam / (3 - row + 1)) % 12;
+        int y = y0 + row * rh, cd = cam / (4 - row), off = cd % 12, n = cd / 12;   /* n: the first head's number */
         plat_rect(0, y + rh - 2, W, 2, mg.hell ? PAL_RAMP(RAMP_STONE, 0) : PAL_RAMP(RAMP_WOOD, 2));
-        for (x = -off; x < W; x += 12) {
-            uint32_t hs = doomo_hash32((uint32_t)((x + cam / (3 - row + 1)) / 12 * 31 + row));
-            int jump = S->cheer && ((hs >> 4) & 1) ? ui_wave(t * 3 + (int)(hs & 63), 12, 2) : ui_wave(t + (int)(hs & 63), 40, 1);
-            uint8_t c = mg.hell ? PAL_RAMP(RAMP_BLOOD, 3 + (hs & 1)) : PAL_PAINT(heads[hs % 6], 1);
+        for (x = -off; x < W; x += 12, n++) {
+            uint32_t hs = doomo_hash32((uint32_t)(n * 31 + row));
+            int hi = tm + (int)(hs & 63), jump;
+            while (hi >= 40) hi -= 40;
+            jump = S->cheer && ((hs >> 4) & 1) ? ui_wave(t * 3 + (int)(hs & 63), 12, 2) : S->hop[hi];
+            uint8_t c = mg.hell ? PAL_RAMP(RAMP_BLOOD, 3 + (hs & 1)) : PAL_PAINT(head_paint[mg_mod6(hs)], 1);
             int hx = x + 6, hy = y + rh - 6 + (jump < 0 ? jump : 0);
             plat_rect(hx - 2, hy - 2, 5, 5, c);
             plat_rect(hx - 1, hy - 1, 1, 1, PAL_RAMP(RAMP_STONE, 0));
@@ -344,7 +390,7 @@ static void grandstand(int y0, int h, int cam, int t)
             if ((hs >> 8) & 1) { plat_rect(hx - 3, hy - 4, 1, 2, c); plat_rect(hx + 3, hy - 4, 1, 2, c); }
         }
     }
-    mg_bunting(0, W, y0 - 2, 3, t);
+    if (!stamped(DY_BUNT | (uint32_t)(t % 50) | (mg.hell ? MG_BK_HELL : 0u), W / 2, y0 - 2)) mg_bunting(0, W, y0 - 2, 3, t);
 }
 
 static void racer_pal(const Racer *r, uint8_t pal[3])
@@ -363,7 +409,7 @@ static void racer_draw(int i, int x, int t)
     if (r->air) hop = (18 - r->air) * r->air / 4;
     else if (r->stun) sy = 180 + (r->stun & 3) * 10;
     else { int ph = ((int)(r->x16 / 16) / 6 + i) & 3; hop = ph == 1 || ph == 2 ? 2 : 0; sy = ph == 0 ? 236 : 262; }
-    mg_shadow(x, y, 9 - hop / 4);
+    if (!stamped(DY_SHADOW | (uint32_t)(9 - hop / 4), x, y)) mg_shadow(x, y, 9 - hop / 4);
 #if defined(DOOMO_PLATFORM_GBA)
     if (S->imgs_ok) dy_blit(x - PET_SPR / 2, y - PET_SPR - hop + 2, i, sy);
     else
@@ -383,7 +429,7 @@ static void racer_draw(int i, int x, int t)
 
 static void dy_draw(void)
 {
-    int W = mg_w(), H = mg_h(), t = mg.play_t + mg.t, i, l, k, ox = mg.ox, oy = mg.oy;
+    int W = mg_w(), H = mg_h(), t = mg.play_t + mg.t, i, l, k, ox = mg.ox, oy = mg.oy, h0;
     int cam = (int)(S->cam16 / 16), tt = track_top(), lh = lane_h();
     mg_fair_sky(0, sky_h() + oy, t);
     grandstand(sky_h() + oy, stand_h(), cam, t);
@@ -414,15 +460,18 @@ static void dy_draw(void)
             }
     }
     /* boost pads + hurdles, then racers, lane by lane (back to front) */
+    h0 = next_hurdle(cam - 40);
     for (l = 0; l < RACERS; l++) {
         int y = lane_y(l) + oy;
         for (k = 0; k < 6; k++) {
-            int px = pad_at(l, k) - cam + ox;
+            int px, base = 250 + k * 520 - cam + ox;         /* pad_at lies 0..199 beyond it: no hash for a pad out of view */
+            if (base > W + 20 || base + 199 < -20) continue;
+            px = pad_at(l, k) - cam + ox;
             if (px < -20 || px > W + 20) continue;
             plat_rect(px, y - lh / 2 - 1, 12, 4, mg.hell ? PAL_RAMP(RAMP_LAVA, 4) : PAL_PAINT(PAINT_MINT, 2));
             plat_rect(px + 2 + (t / 2) % 4, y - lh / 2, 3, 2, PAL_WHITE);
         }
-        for (k = next_hurdle(cam - 40); k < cam + W + 40 && k < TRACK_LEN; k += HURDLE_EVERY) {
+        for (k = h0; k < cam + W + 40 && k < TRACK_LEN; k += HURDLE_EVERY) {
             int hx = k - cam + ox + (RACERS - 1 - l), hh = lh * 2 / 3 + 2, s;
             plat_rect(hx - 6, y - hh, 2, hh, PAL_RAMP(RAMP_STONE, 5));
             plat_rect(hx + 5, y - hh, 2, hh, PAL_RAMP(RAMP_STONE, 5));
@@ -499,7 +548,7 @@ const MgGame mg_game_derby = {
     { MG_DERBY_B, MG_DERBY_S, MG_DERBY_G }, 20, 0,
     { PAL_PAINT(PAINT_LIME, 1), PAL_WHITE, PAL_PAINT(PAINT_FOREST, 1) },
     dy_start, dy_update, dy_draw, dy_art, dy_bot,
-    NULL, NULL, NULL, NULL, NULL, NULL
+    NULL, NULL, NULL, dy_stamp, dy_stamp_keys, dy_stamp_strip
 };
 
 MG_DEFINE_SCENE(SCENE_MG_DERBY, "MG_DERBY", mg_game_derby);

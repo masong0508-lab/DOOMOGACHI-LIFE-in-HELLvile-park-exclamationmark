@@ -15,6 +15,20 @@ static const uint8_t flag_cols[6] = {
     PAL_PAINT(PAINT_SKY, 1), PAL_PAINT(PAINT_LAVENDER, 1), PAL_PAINT(PAINT_TANGERINE, 1)
 };
 
+/* (S2-4b) the kinds of the stamps every game shares (mg.h "stamps"; key bits 12..14, bit 15 the Hellfire look) */
+enum { MCS_IMP = 0 << 12, MCS_FUZZ = 1 << 12, MCS_HUD = 2 << 12, MCS_SPARK = 3 << 12, MCS_MASCOT = 4 << 12,
+       MCS_CLOUD = 5 << 12, MCS_GOND = 7 << 12, MCS_KIND = 7 << 12 };
+/* a shared stamp at (x, y) when stamps are kept (the 240x160 screen); 0: the caller draws it */
+static int cstamp(uint32_t key, int x, int y)
+{
+#if !defined(DOOMO_PLATFORM_PS1)
+    return !mg_big() && mg_stamp_common(key | (mg.hell ? MG_BK_HELL : 0u), x, y);
+#else
+    (void)key; (void)x; (void)y;
+    return 0;
+#endif
+}
+
 /* ---- text ------------------------------------------------------------------ */
 void mg_text(int x, int y, const char *s, uint8_t c)
 {
@@ -144,6 +158,15 @@ void mg_shadow(int cx, int cy, int rx)
     }
 }
 
+/* a gondola of the wheel hanging at (gx, gy2), swung sw (-1..1) to the side */
+static void gondola(int gx, int gy2, uint8_t c, int sw, uint8_t spoke)
+{
+    plat_rect(gx + sw, gy2 + 1, 1, 2, spoke);
+    ui_round_rect(gx - 3 + sw, gy2 + 3, 7, 6, 2, ui_darker(c));
+    plat_rect(gx - 2 + sw, gy2 + 4, 5, 2, c);
+    plat_rect(gx - 2 + sw, gy2 + 4, 5, 1, ui_lighter(c));
+}
+
 static void ferris_wheel(int cx, int cy, int r, int t)
 {
     int k, base = (t * 3) & DOOMO_ANG_MASK, gy = cy + r + r / 3;
@@ -174,10 +197,7 @@ static void ferris_wheel(int cx, int cy, int r, int t)
         int gx = cx + FIX2INT(fx_cos(a) * r), gy2 = cy + FIX2INT(fx_sin(a) * r);
         uint8_t c = mg.hell ? PAL_RAMP(RAMP_BLOOD, 2 + (k & 1)) : flag_cols[k % 6];
         int sw = ui_wave(t + k * 20, 70, 1);
-        plat_rect(gx + sw, gy2 + 1, 1, 2, spoke);
-        ui_round_rect(gx - 3 + sw, gy2 + 3, 7, 6, 2, ui_darker(c));
-        plat_rect(gx - 2 + sw, gy2 + 4, 5, 2, c);
-        plat_rect(gx - 2 + sw, gy2 + 4, 5, 1, ui_lighter(c));
+        if (!cstamp(MCS_GOND | (mg.hell ? k & 1 : k % 6) | (sw + 1) << 3, gx, gy2)) gondola(gx, gy2, c, sw, spoke);
     }
     ui_fill_circle(cx, cy, 3, mg.hell ? PAL_RAMP(RAMP_STONE, 0) : PAL_RAMP(RAMP_PASTEL_PINK, 4));
     ui_fill_circle(cx, cy, 2, mg.hell ? PAL_RAMP(RAMP_LAVA, 4) : PAL_UI_GOLD);
@@ -193,7 +213,7 @@ static void cloud(int cx, int cy, int s)
     ui_fill_ellipse(cx + s, cy, s, s - 3, c);
 }
 
-static void far_tent(int x, int ground, int w, uint8_t c, int t)
+static void far_tent_flag(int x, int ground, int w, uint8_t c, int flag)
 {
     int h = w * 3 / 4, r;
     uint8_t c2 = mg.hell ? PAL_RAMP(RAMP_STONE, 0) : PAL_WHITE;
@@ -206,8 +226,18 @@ static void far_tent(int x, int ground, int w, uint8_t c, int t)
     plat_rect(x + w / 8, ground - h / 2, w / 4, h / 2, c);
     plat_rect(x - 2, ground - h / 3, 4, h / 3, PAL_RAMP(RAMP_STONE, mg.hell ? 0 : 2));
     plat_rect(x, ground - h - 4, 1, 4, PAL_RAMP(RAMP_WOOD, 2));
-    plat_rect(x + 1, ground - h - 4 + (ui_wave(t, 30, 1) & 1), 3, 2, mg.hell ? PAL_RAMP(RAMP_LAVA, 4) : PAL_PAINT(PAINT_CHERRY, 1));
+    plat_rect(x + 1, ground - h - 4 + flag, 3, 2, mg.hell ? PAL_RAMP(RAMP_LAVA, 4) : PAL_PAINT(PAINT_CHERRY, 1));
 }
+
+/* the three far tents of the sky (not the 320x240 sizes): number, width, colour */
+static int far_w(int i) { return i == 0 ? 30 : i == 1 ? 22 : 26; }
+static uint8_t far_c(int i)
+{
+    return i == 0 ? (mg.hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_PAINT(PAINT_CHERRY, 1))
+         : i == 1 ? (mg.hell ? PAL_RAMP(RAMP_STONE, 2) : PAL_PAINT(PAINT_SKY, 1))
+                  : (mg.hell ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_PAINT(PAINT_LAVENDER, 1));
+}
+
 
 void mg_fair_sky(int y0, int y1, int t)
 {
@@ -234,15 +264,16 @@ void mg_fair_sky(int y0, int y1, int t)
     for (i = 0; i < 3; i++) {
         int s = 5 + i * 2 + (mg_big() ? 2 : 0);
         int span = W + 60, cx = (int)((uint32_t)(t / (3 + i) + i * 97) % (uint32_t)span) - 30;
-        cloud(cx, y0 + 10 + i * (h / 6), s);
+        if (!cstamp(MCS_CLOUD | i, cx, y0 + 10 + i * (h / 6))) cloud(cx, y0 + 10 + i * (h / 6), s);
     }
     {
         int r = DOOMO_MIN(h * 3 / 10, mg_big() ? 52 : 40);
         ferris_wheel(W * 3 / 4, y1 - r - r / 3 - 1, r, t);
     }
-    far_tent(W / 3, y1, mg_big() ? 40 : 30, mg.hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_PAINT(PAINT_CHERRY, 1), t);
-    far_tent(W / 2 + 10, y1, mg_big() ? 30 : 22, mg.hell ? PAL_RAMP(RAMP_STONE, 2) : PAL_PAINT(PAINT_SKY, 1), t + 15);
-    far_tent(W - 14, y1, mg_big() ? 34 : 26, mg.hell ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_PAINT(PAINT_LAVENDER, 1), t + 30);
+    for (i = 0; i < 3; i++) {
+        int x = i == 0 ? W / 3 : i == 1 ? W / 2 + 10 : W - 14, flag = ui_wave(t + i * 15, 30, 1) & 1;
+        far_tent_flag(x, y1, mg_big() ? (i == 0 ? 40 : i == 1 ? 30 : 34) : far_w(i), far_c(i), flag);   /* (a stamp costs more than its rows) */
+    }
     if (mg.hell)
         for (i = 0; i < 8; i++) {
             uint32_t s = doomo_hash32((uint32_t)i * 7177u + 3u);
@@ -438,7 +469,6 @@ static void hud_part(int part, int v, int x, int y);
  * imp:  size 0..7 | mood << 3 (2 bits) | gold << 5 | (flap + 2) << 6 | eyes << 9 (look + 1, 3: blink)
  * fuzz: size 0..3 | ouch << 3 | blink << 4       (without his sparkle)
  * Sizes are the ones the 240x160 games draw; another size is drawn, not stamped. */
-enum { MCS_IMP = 0 << 12, MCS_FUZZ = 1 << 12, MCS_HUD = 2 << 12, MCS_SPARK = 3 << 12, MCS_MASCOT = 4 << 12, MCS_KIND = 7 << 12 };
 /* hud:  HUDP_* | value (| MG_BK_HELL for the pill): hud_part's pieces
  * spark: size 1..3 | colour << 2 (spark_cols): ui_sparkle at a phase of that size
  * mascot: Tix at radius 6: hop (-2..2) + 2 | ear twitch << 3 | eyes (look + 1) << 4 | blink << 6 */
@@ -476,6 +506,12 @@ void mg_common_stamp(uint32_t key, int cx, int cy)
         hud_part((int)(key & HUDP_PART), (int)(key & 255), cx, cy);
     } else if ((key & MCS_KIND) == MCS_SPARK) {
         ui_sparkle(cx, cy, (int)(key & 3), spark_cols[key >> 2 & 3]);
+    } else if ((key & MCS_KIND) == MCS_CLOUD) {
+        cloud(cx, cy, 5 + 2 * (int)(key & 3));
+    } else if ((key & MCS_KIND) == MCS_GOND) {
+        int idx = (int)(key & 7);
+        gondola(cx, cy, mg.hell ? PAL_RAMP(RAMP_BLOOD, 2 + idx) : flag_cols[idx], (int)(key >> 3 & 3) - 1,
+                mg.hell ? PAL_RAMP(RAMP_STONE, 0) : PAL_RAMP(RAMP_PASTEL_PINK, 5));
     } else if ((key & MCS_KIND) == MCS_MASCOT) {
         mascot_body(cx, cy, 6, (int)(key & 7) - 2, (int)(key >> 3 & 1), (int)(key >> 4 & 3) - 1, (int)(key >> 6 & 1));
     }
@@ -513,6 +549,18 @@ int mg_common_stamp_keys(uint32_t *out, int cap)
             if (n < cap) out[n] = (uint32_t)(MCS_SPARK | i | m << 2);
             n++;
         }
+    for (m = 0; m < 2; m++) {                       /* the sky's clouds and the wheel's gondolas */
+        uint32_t hb = m ? MG_BK_HELL : 0u;
+        for (i = 0; i < 3; i++) {
+            if (n < cap) out[n] = (uint32_t)(MCS_CLOUD | i) | hb;
+            n++;
+        }
+        for (i = 0; i < (m ? 2 : 6); i++)
+            for (g = 0; g < 3; g++) {
+                if (n < cap) out[n] = (uint32_t)(MCS_GOND | i | g << 3) | hb;
+                n++;
+            }
+    }
     for (i = 0; i < 5; i++)                         /* Tix: hop, twitch, eyes, blink */
         for (m = 0; m < 12; m++) {
             if (n < cap) out[n] = (uint32_t)(MCS_MASCOT | i | (m & 1) << 3 | (m >> 1) % 3 << 4 | (m >= 6) << 6);

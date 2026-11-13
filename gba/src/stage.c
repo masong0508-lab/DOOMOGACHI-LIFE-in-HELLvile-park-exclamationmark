@@ -24,6 +24,7 @@
 #include "canvas_int.h"
 #include "doomo/plat_ext.h"
 #include "iwram_ovl.h"
+#include "video_int.h"                               /* vid_blit */
 
 extern const uint8_t gba_backdrops[];          /* backdrop_blob.s */
 
@@ -37,6 +38,24 @@ static int16_t page_dirt[2][4];                /* drawn over it after plat_stage
 static int16_t trk[4];
 static uint8_t frame_stage, tracking;
 
+/* ARM in the room group of the IWRAM overlay (iwram_ovl.h; the group no stage scene uses): the per-row work and
+ * the table search run from IWRAM instead of the cartridge */
+#define STAGE_ARM IWRAM_ROOM_CODE __attribute__((optimize("O2", "no-tree-loop-distribute-patterns")))
+
+/* the entry of `want` in the sorted table t[0..n) (a stamp is asked for a hundred times a frame) */
+STAGE_ARM const BkEnt *stage_find(const BkEnt *t, int n, uint32_t want)
+{
+    int lo = 0, hi = n - 1;
+    while (lo <= hi) {
+        int mid = (lo + hi) >> 1;
+        uint32_t k = t[mid].idkey;
+        if (k == want) return &t[mid];
+        if (k < want) lo = mid + 1;
+        else hi = mid - 1;
+    }
+    return NULL;
+}
+
 /* the baked picture of (id, key), NULL if it is not in the ROM (binary search). The blob's header is
  * checked once (a game asks for a hundred stamps a frame); `bk_n` is the entry count, 0 until then, -1
  * for a blob that is not this build's */
@@ -46,21 +65,13 @@ static const BkEnt *find(int id, uint32_t key)
     const uint8_t *b = gba_backdrops;
     const BkEnt *t = (const BkEnt *)(const void *)(b + 12);
     uint32_t want = (uint32_t)id << 24 | (key & 0xFFFFFFu);
-    int lo = 0, hi;
     if (bk_n <= 0) {
         if (bk_n < 0 || b[0] != 'B' || b[1] != 'K' || b[2] != 'D' || b[3] != '2' ||
             (b[4] | b[5] << 8) != SCREEN_W || (b[6] | b[7] << 8) != SCREEN_H) { bk_n = -1; return NULL; }
         bk_n = (int16_t)*(const uint32_t *)(const void *)(b + 8);
     }
-    hi = bk_n - 1;
-    while (lo <= hi) {
-        int mid = (lo + hi) >> 1;
-        uint32_t k = t[mid].idkey;
-        if (k == want) return &t[mid];
-        if (k < want) lo = mid + 1;
-        else hi = mid - 1;
-    }
-    return NULL;
+    iwram_ovl_use(OVL_ROOM);
+    return stage_find(t, bk_n, want);
 }
 
 int plat_stage_begin(int id, uint32_t key, void (*draw)(uint32_t key), PlatStageInfo *info)
@@ -87,7 +98,6 @@ int plat_stage_begin(int id, uint32_t key, void (*draw)(uint32_t key), PlatStage
  * read-modify-write for an odd edge (VRAM takes no byte writes); a short span by the CPU, a long
  * one by DMA. ARM in the room group of the IWRAM overlay (iwram_ovl.h: the house's group, which
  * no stage scene uses; loaded by plat_stage_restore), so the per-row work runs from IWRAM. */
-#define STAGE_ARM IWRAM_ROOM_CODE __attribute__((optimize("O2", "no-tree-loop-distribute-patterns")))
 STAGE_ARM void stage_rows(volatile uint16_t *page, const uint8_t *img, int x0, int x1, int y0, int y1)
 {
     int yy;
@@ -164,15 +174,18 @@ void plat_stage_restore(int x, int y, int w, int h)
 /* (S2-4b) the stamp of (id, key) with its anchor at (x, y): an image in the ROM (index 0 a hole) */
 int plat_stage_stamp(int id, uint32_t key, int x, int y)
 {
-    const BkEnt *e = find(id, key);
+    const BkEnt *e;
     DoomoImage im;
+    if (gba_nodraw == 1) return 1;                       /* a skipped tick draws nothing */
+    e = find(id, key);
     if (!e) return 0;
-    if (!e->w || gba_nodraw == 1) return 1;
+    if (!e->w) return 1;
     im.w = e->w;
     im.h = e->h;
     im.pix = gba_backdrops + e->off;
     im.uid = 0x80000000u | e->off;
-    plat_image(x + e->bx, y + e->by, &im, 1, 0, 0);
+    if (!gba_nodraw) vid_blit(x + e->bx, y + e->by, &im, 1, 0, 0);     /* a plain Mode 4 frame: the ARM blit */
+    else plat_image(x + e->bx, y + e->by, &im, 1, 0, 0);               /* tracked frames: the routed path */
     return 1;
 }
 
