@@ -1,0 +1,62 @@
+# LV4 test map (core/tests/test_lv_env.c): every zone kind of mechanic kit B once.
+# Not shipped: mapc compiles it into the test binary only.
+format 2
+title "T4 Env"
+kind dungeon
+sky PASTEL_DAY
+music HAHALAND_DAY
+ambient 8
+view 12
+dark yes
+note 7
+
+cell # wall=PASTEL_BRICK
+cell . floor=WOOD_FLOOR ceil=CLOUD_PUFF ch=14
+cell p like=. thing=PLAYER_START
+cell x like=. flags=exit
+cell ~ floor=SLIME ceil=CLOUD_PUFF ch=14 fh=-2
+cell B wall=CANDY_STRIPE
+cell o like=. light=5
+
+grid
+########################
+#p.....#~~~~#..........#
+#......#~~~~#..........#
+#......#~~~~#..........#
+#......................#
+#......................#
+#......................#
+#......................#
+#..............B......x#
+########################
+end
+
+# the fog: a valve (tag 30) clears it
+zone 1 1 5 3 fog arg=9 tag=30
+# the glum tide: the basin rises to floor height 2; valve 40 drains it
+zone 8 1 11 3 tide arg=2 tag=40
+# two candles
+zone 14 1 16 3 candle tag=1
+zone 14 5 16 7 candle arg=11 tag=2
+# a showtime room (dim between shows)
+zone 1 5 5 8 show arg=3
+# a floor that falls 20 steps after you leave it
+zone 8 5 11 7 collapse arg=20
+# two wards
+zone 18 1 21 3 ward arg=1
+zone 18 5 21 7 ward arg=2
+# the Wall's two faces
+zone 1 9 3 9 face_a
+zone 5 9 7 9 face_b
+# script-mode swap: the pillar at (15,8) opens
+swap faces
+.
+.
+.
+.
+.
+.
+.
+.
+...............o
+end

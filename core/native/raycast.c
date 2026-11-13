@@ -28,6 +28,9 @@
 #define NEAR_UNITS 4            /* sprites closer than this are not drawn */
 #define MAX_STEPS 96
 #define MAX_DIST_UNITS (48 * DOOMO_CELL_UNITS)
+/* (LV4) a level's view distance (DoomoView3D.view_dist, 8..48 cells): rays stop there and the light falls
+ * off fast enough to reach the darkest step at it, so the cut is not a visible edge. 0 = the old values. */
+#define VIEW_MIN 8
 #define CLIP_MAX 64
 #define SKY_Z (100000)
 
@@ -44,6 +47,8 @@ static int64_t camx, camy;      /* fix16 world units */
 static int focal;               /* pixels */
 static int horizon;             /* screen row */
 static int vx0, vy0, vw0, vh0;
+static int64_t max_dist;        /* fix16 world units: rays stop here */
+static int fade_div;            /* world units per light step */
 
 static int light_at(const DoomoCell *c)
 {
@@ -53,7 +58,7 @@ static int light_at(const DoomoCell *c)
 
 static int fade(int light, int64_t dist_fx)
 {
-    int l = light - (int)((dist_fx >> 16) / 128);
+    int l = light - (int)((dist_fx >> 16) / fade_div);
     return DOOMO_CLAMP(l, 1, 15);
 }
 
@@ -279,7 +284,7 @@ static void cast_column(int x, int64_t dirx, int64_t diry, int64_t plx, int64_t 
         my = nmy;
         d0 = d1;
         push_clip(x, d1, ytop, ybot);
-        if (ytop > ybot || d1 > ((int64_t)MAX_DIST_UNITS * 65536)) break;
+        if (ytop > ybot || d1 > max_dist) break;
     }
     if (ytop <= ybot) {
         if (cur_sky) sky_column(x, rdx, rdy, ytop, ybot);
@@ -385,6 +390,16 @@ void plat_view3d(const DoomoView3D *v)
     diry = fx_sin(v->angle);
     plx = (-diry * plane) >> 16;
     ply = (dirx * plane) >> 16;
+    {
+        int vd = v->view_dist;
+        if (vd < VIEW_MIN || vd > MAX_DIST_UNITS / DOOMO_CELL_UNITS) {
+            max_dist = (int64_t)MAX_DIST_UNITS * 65536;
+            fade_div = 128;
+        } else {
+            max_dist = (int64_t)vd * DOOMO_CELL_UNITS * 65536;
+            fade_div = vd * 4;               /* vd = 32 is the old 128; 12 cells: 48 units a step */
+        }
+    }
     focal = (int)(((int64_t)vw0 / 2 * 65536) / plane);
     horizon = vy0 + vh0 / 2 + (int)((int64_t)v->pitch * focal * 84 / (256 * 100));
     camx = v->x;

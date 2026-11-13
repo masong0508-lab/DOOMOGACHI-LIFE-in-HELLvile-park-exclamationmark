@@ -208,7 +208,9 @@ tflags2=a,b                              on a thing, a legend entry or `thing` l
 ```
 
 * Zone KINDs: `fog tide gravity dark noise face_a face_b ward chase safe
-  bounce web`. `gravity` needs `arg=1..250` (percent), `bounce` needs
+  bounce web candle show collapse` (`candle show collapse` are mechanic kit B, LV4:
+  docs/LEVELS.md; `candle`: `arg` = flame light, `tag` = its number; `show`: `arg` = the room's
+  light between shows; `collapse`: `arg` = drop in steps). `gravity` needs `arg=1..250` (percent), `bounce` needs
   `arg=1..127` (rise in height steps). Zones of one kind may not overlap;
   `face_a`/`face_b` and `safe`/`chase` may not overlap each other.
 * Path KINDs: `route` (default, nobody rides it), `zip` (first point to last,

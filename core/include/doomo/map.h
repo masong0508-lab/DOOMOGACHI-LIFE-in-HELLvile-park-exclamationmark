@@ -222,6 +222,9 @@ enum { ZONE_NONE,
        ZONE_SAFE,     /* a safe room                                        */
        ZONE_BOUNCE,   /* bounce pad; arg = rise in height steps             */
        ZONE_WEB,      /* slowing floor                                      */
+       ZONE_CANDLE,   /* (LV4) a candle's lit cells; arg = flame light, tag = its number */
+       ZONE_SHOW,     /* (LV4) a showtime room; arg = its light between shows */
+       ZONE_COLLAPSE, /* (LV4) floor that falls after you leave; arg = drop in steps */
        ZONE_COUNT };
 
 typedef struct DoomoZone {

@@ -1828,6 +1828,15 @@ tables and `creator_data.c` is compiled `-G0` (`ps1/CMakeLists.txt`). Measured o
 --preset ps1 -DDOOMO_INTRO_REQUIRED=ON`): `_end` 0x801efe60 -> 0x801ef4e0 with the gene fields live, 65,936 B ->
 68,368 B below the stack top. Check the link map for the same trap whenever a creator-group file gains a pointer
 table: `grep "creator_data.c.obj(" ps1/build/doomogachi.ldmap` must show its `.rodata.str1.4` only in the overlay part.
+## LV4 (mechanic kit B, environment and light): compiled out
+
+`core/src/levels_mech_env.c` (fog, tide, lantern, candles, faces, showtime, collapse, dissolving rooms) is empty on
+the PS1 (`#if !defined(DOOMO_PLATFORM_PS1)`), and `lv_runtime_view()` does not fill `DoomoView3D.view_dist` there
+(`LV_HAS_NEW` is 0): the PS1 EXE is unchanged (no resident byte). `ps1/src/view3d.c` ignores the new field and
+keeps its governor's `s_view_dist`. When the LEVELS share of PS1 memory is released: drop the `#if`, take
+`min(s_view_dist, view_dist)` in `cast()`, and put `levels_mech_env` in the combat overlay group
+(`ps1/tools/ovl_plan.py` matches `levels_*` already).
+
 ## LV0 (levels registry): resident delta -112 B
 
 The 24 new levels are registered on the host, GBA and Dreamcast builds only. The PS1 keeps the old seven

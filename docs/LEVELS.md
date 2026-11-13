@@ -181,6 +181,60 @@ every later point), with a tick cost for the autopilot.
   `combat_bot.c` (its BFS asks `mm_edges` and presses A at the anchor), and the Vape Cellar fps
   measurement that those two files require. Each of them touches a per-frame path, so each comes with its
   before / after fps on GBA and PS1.
+## Mechanic kit B: environment and light (LV4, 2026-11-13)
+
+`core/src/levels_mech_env.c` + `core/include/doomo/lv_env.h`. Seven rules over the live map and the level's
+ROM zones (map format v2). The state is one caller-owned `LvEnv` (about 84 bytes with its two pointers; the
+mechanic union of the level runtime, no static in the file), `lv_env_begin()` then `lv_env_tick(env, cx, cy)`
+once a game tick. Nothing in the game calls it yet (the first level that needs it wires it, like the script VM),
+so no byte of it links on any platform.
+
+| Mechanic | Zone kinds (`zone X0 Y0 X1 Y1 KIND arg= tag=`) | What it does |
+|---|---|---|
+| fog and valves (HB8) | `fog arg=cells tag=valve` | the zone's cells take 5 light off (never under 1); `lv_env_fog_set(tag)` clears it (the exact byte comes back); `lv_env_view_at()` cuts the view to the fog's `arg` while you stand in it |
+| glum tide (HB11) | `tide arg=high-water tag=valve` | the basin's floor rises one step per 6 s while you are in the zone, to `arg`; the risen cells get CELL_WATER; `lv_env_drain(tag)` lowers it for good. Doors, lifts, walls and cells under a low ceiling keep their floor. At most 4 tide zones |
+| lantern (HB9, dark levels) | (`dark yes` header) | lights the 5 x 5 cells round the player (10 at the centre, 2 less each cell away), 60 s of oil, `lv_env_refill()` at a jar; at most 25 cells lit and 25 restored a tick |
+| candles (HB9) | `candle arg=light tag=n` | `lv_env_candle_use()` (A beside it) lights the zone for good (light `arg`, 9 if 0) |
+| two faces (HB12) | `face_a`, `face_b` | `lv_env_face_flip(set)` applies / reverts a swap set and switches the face; `lv_env_out_of_phase()` says whether a cell belongs to the face that is not showing (its actors translucent, unhurtable: the combat side reads it) |
+| showtime (HB13) | `show arg=dim-light` | the room is held at `arg` between shows; every 10 s the lights blaze (15) for 4 s; `lv_env_showtime()` is 1 then (animatronics freeze) |
+| collapse (N-levels) | `collapse arg=steps` | a floor you have stood on drops `arg` steps 1.5 s after you leave it, for good |
+| dissolving rooms (N10) | `ward arg=number` | a ward you have been in turns into fog walls 8 s after you leave it unnamed; `lv_env_name(number)` restores it byte for byte and it never dissolves again. At most 8 collapse + ward zones with a timer |
+
+* **Rebuilt, never patched.** A live cell's `light`, `floor_h`, CELL_WATER and `wall` are recomputed from the
+  definition's cell plus the state, so a restore is exact whatever happened in between and several mechanics on
+  one cell compose (the lantern in fog: 10 - 5; a lit candle under the lantern: the brighter). Doors and lifts
+  are left to `map.c`. `lv_env_check()` (run by `lv_env_begin()`) refuses a swap set that rewrites `light`,
+  `floor_h` or `wall` of a cell these zones cover, more than 4 tide or 8 decay zones, and a tide `arg` over 127.
+* **The zone kinds are new** (`ZONE_CANDLE`, `ZONE_SHOW`, `ZONE_COLLAPSE`, appended to map.h; mapc reads the
+  names from the enum). Zones of one kind may not overlap, so a candle (3 x 3) and a show room can overlap each other.
+* **Per-level view distance.** The header key `view N` (and `fog N` for a level-wide fog) reaches the
+  renderers through `DoomoView3D.view_dist` (cells; 0 = the renderer's own, clamped to 8 .. its maximum):
+  - host / native runner (`core/native/raycast.c`): rays stop there and the light falls off fast enough
+    (`vd * 4` world units a step, the old 128 at 32 cells) to reach the darkest step at the limit, so there is
+    no hard edge. Test: `lvenv_short_view_distance_renders_without_holes` (views 0, 8, 12, 16, 40, three
+    angles, 240 x 160 and 320 x 240, no pixel left unpainted; 0, 3 and 200 give the old picture).
+  - GBA (`gba/src/r3d.c`): `r3f.maxd` and the sprite cull come from the variable (it was the constant
+    `R3D_MAXDIST` 40; `R3D_MINDIST` 8); the floor and the ceiling already run to the horizon where the
+    ray walk stops, so a short view has no hole. The variable is a field in the padding of the
+    `DoomoView3D` struct (stack and one static copy): no EWRAM / IWRAM. `lv_runtime_view()` fills it from the
+    map's `view` key on every build except the GBA (see "GBA" below).
+  - PS1: **compiled out** (`ps1/src/view3d.c` keeps its governor's `s_view_dist`; the field is ignored and
+    `levels_mech_env.c` is empty there) until PS1-RAM releases the LEVELS share (`LV_HAS_NEW`); the PS1 EXE
+    is identical. Dreamcast: ignored for now (its governor owns `dc_view3d_set_dist`; the cap
+    `min(governor, view_dist)` is a three-line follow-up with DC6).
+* **GBA.** `make -C gba sizes`: .iwram 11,256, .iwram_bss 4,084, .bss 245,788, overlay slots: all identical;
+  .text +24 B (r3d.c). The speed tour is frame-exact (every `vhash-seq` identical) and the Vape Cellar
+  windows keep their drawn fps. The call that copies the map's `view` key into the view is not in the GBA
+  build yet: it added 64 B of ROM in `levels.c` and moved the code after it, which cost the Vape Cellar's
+  middle window 2.2 ms of 80 (ROM fetch alignment, frames identical). The first GBA level with a `view` key
+  (HB8) adds the line to `lv_runtime_view()` and measures it.
+* **Tests:** `core/tests/test_lv_env.c` (15 tests) on `core/tests/maps/t4_env.txt`: every mechanic, its exact
+  restore, the composition, the budgets, determinism (`lv_env_hash`), and the renderer at both sizes.
+* **Not yet (follow-up LV4b, with the first level that uses a piece):** calling `lv_env_tick` from
+  `lv_runtime_pre`; the actors' side of the faces (translucent, unhurtable) and showtime (frozen); steam
+  billboards and the tide's PS1 / DC smooth light; the autopilot's valve / candle / oil goals (LV6); mapc
+  checks for the new zones (a candle needs a tag, a tide needs a valve tag); `levelcheck` BFS over the
+  swap-set faces by lever (the test map's swap is script-mode).
 
 ## Files
 

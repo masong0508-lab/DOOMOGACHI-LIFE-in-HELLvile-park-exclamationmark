@@ -169,6 +169,11 @@ typedef struct DoomoView3D {
                                    renderer must never clip the camera into
                                    it; it may draw it translucent when the
                                    camera is very close.                   */
+    uint8_t view_dist;          /* (LV4) view distance in cells: 0 = the
+                                   renderer's own; a level's `view N` key
+                                   (lv_env_view). A renderer clamps it to
+                                   its range; the PS1 ignores it until the
+                                   LEVELS share of PS1 RAM is released.     */
 } DoomoView3D;
 enum { CAM_FIRST_PERSON, CAM_THIRD_PERSON };
 

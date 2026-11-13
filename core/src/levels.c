@@ -725,6 +725,13 @@ void lv_runtime_view(DoomoView3D *v)
         v->tint = (uint8_t)tint;
         v->tint_level = (uint8_t)(opt_get(OPT_REDUCE_FLASH) ? lvl / 2 : lvl);
     }
+#if LV_HAS_NEW && !defined(DOOMO_PLATFORM_GBA)
+    /* (LV4) the level's own view distance (header key `view N`, a v2 map; the seven built levels have none: 0).
+     * Not on the GBA yet: no GBA level has a v2 map today, and these 64 bytes of ROM moved the code after them
+     * and cost the Vape Cellar's middle window 2.2 ms of 80 (alignment of the ROM fetches). r3d.c reads
+     * DoomoView3D.view_dist already; the first GBA level with a `view` key adds this line and measures. */
+    v->view_dist = (uint8_t)lv_env_view(map_ext_of(doomo_map.def));
+#endif
 }
 
 void lv_runtime_hud(void)

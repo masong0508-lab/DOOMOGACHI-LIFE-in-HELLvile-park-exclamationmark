@@ -23,6 +23,7 @@
 #define R3D_FADE_N    128          /* fade buckets of 32 world units     */
 #define R3D_MAXTEX    64
 #define R3D_MAXDIST   40           /* max ray length in cells            */
+#define R3D_MINDIST   8            /* shortest per-level view distance (LV4) */
 
 /* Window checkpoint: after the ray passed distance d8 (1/8 world units),
  * the still-open rows of the column were [top, bot). Sprites at depth d

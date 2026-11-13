@@ -324,7 +324,7 @@ static void draw_sprites(const DoomoView3D *v)
         dy = b->y - r3f.ey;
         depth = (int32_t)((r3d_smull(dx, r3f.fx) + r3d_smull(dy, r3f.fy)) >> 16);
         if (depth < (4 << 16)) continue;                 /* behind / at the eye */
-        if (depth > (R3D_MAXDIST * 64) << 16) continue;
+        if (depth > ((int32_t)(r3f.maxd >> 16) * 64) << 16) continue;   /* (LV4) the level's view distance */
         spr_order[n].depth = depth;
         spr_order[n].idx = (int16_t)i;
         n++;
@@ -599,7 +599,12 @@ void plat_view3d(const DoomoView3D *v)
     r3f.cells = m->cells;
     r3f.mw = m->w;
     r3f.mh = m->h;
-    r3f.maxd = (uint32_t)R3D_MAXDIST << 16;
+    {   /* (LV4) per-level view distance: a short one stops the ray walk early (the floor and ceiling run to
+         * the horizon there); 0 or out of range = R3D_MAXDIST, the same frames as before */
+        uint32_t vd = v->view_dist;
+        if (vd < R3D_MINDIST || vd > R3D_MAXDIST) vd = R3D_MAXDIST;
+        r3f.maxd = vd << 16;
+    }
     if (m->def != cache_mapdef || m->w != cache_mw || m->h != cache_mh || frame_no == 0)
         setup_map(m);
     if (m->ambient != cache_amb) setup_fade(m->ambient);

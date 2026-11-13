@@ -27,6 +27,7 @@
 
 #include "combat_int.h"
 #include "doomo/unlock_ids.h"
+#include "doomo/lv_env.h"         /* LV4: mechanic kit B, environment and light (levels_mech_env.c; not on the PS1) */
 #include "doomo/lv_script.h"      /* LV2: the level script VM (lv_script.c; nothing links until a level has a script) */
 
 /* ---- the levels ------------------------------------------------------------ */
