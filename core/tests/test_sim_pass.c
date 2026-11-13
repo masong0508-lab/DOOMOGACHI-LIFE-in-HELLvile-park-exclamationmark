@@ -111,7 +111,7 @@ TEST(sim_pass_default_clock_once_per_interval_one_update_a_tick)
 
 /* The first passes after a load (sim_init: every stamp is the same minute, the cursor is at 0). The burst of
  * the old code is the whole point: at tick 1,125 it updated every resident in 32 ticks. No tick may do more than
- * one update, nobody is updated twice in the first interval, nobody waits longer than two intervals and the
+ * one update, nobody is updated twice in the first interval, nobody waits longer than 1.5 intervals and the
  * minutes a visit found too few (under SIM_PASS_MIN: the first passes) are lived by the next one. */
 TEST(sim_pass_after_a_load_has_no_burst_and_loses_nothing)
 {

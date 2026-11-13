@@ -1212,6 +1212,15 @@ entries of 100-330 ms (3.4).
 | **S3-14** | **Island hub leftovers.** A tip card is a modal: hold the hub under it (S2-1). Do not build map parts under the town hall menu, or finish them first. The second after a new island's load: 39 frames of 67-117 ms of map parts (after S2-10's fade) | tip card up 19.0 fps, logic 23.8 -> 30. Town hall menu's first seconds 26.2 -> 30 (with S3-2). New island: 39 slow frames -> under the fade | `core/src/fp_island.c`, `fp_island_gfx.c`, `tips.c` (SPEED, after S2-10) | S/M | exact but the hold under the card | 0 B |
 | **S3-15** | **PS1: scene-change reads.** Every scene change reads one or two overlay groups: 98-502 ms each, about 150 ms of it waiting for the drive. Read the group a menu is about to open while its cursor rests on the entry (the slot is free until the change), or keep the last group so going back costs nothing | scene changes 260-680 ms -> the fade alone when the guess was right | `ps1/src/overlay.c`, `core/src/scene.c` hook (SPEED) | M | exact | must fit the existing slot and the 72 KB gate: no new resident buffer |
 
+**Landed:** **S3-1** (2026-11-13, `docs/GBA.md` "Speed wave 3: S3-1"). The resident pass is one resident a tick over the whole
+15 game minutes (a credit-driven cursor, not staggered stamps: `sim_init`, a load and a fast-forward may still set every
+stamp to "now", the pass cannot burst), and a new bond in the sorted edge table is made room for with a halfword move on
+the GBA (the byte-wise libc `memmove` was the 3-7 ms tail). GBA: shop gifts tab 21.5 -> 30.0, apartments 25.7 -> 30.0,
+Options Accessibility 23.7 / 28.2 -> 30.0, pet-care boss 28.6 -> 30.0, citizen picker 22.9 -> 29.7, pet 28.5 -> 29.8; no run
+of long frames anywhere any more. What the package did not do: the sim now costs ~0.4 ms in every tick, so windows within
+~3 ms of the budget (Black Market 32.4 -> 32.9 ms average, the news third tab, the pet's busy phases) lose a frame now and
+then: that is S3-13's list. New group `speed2_sim.txt` (four 1,200-tick windows, GBA gates).
+
 ## 5. Suggested order
 
 Three packages a round. Biggest win a player sees first. No two packages of a round share files.

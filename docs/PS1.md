@@ -1611,6 +1611,16 @@ are not built here (`UI_PANELS` 0). Measured (PCSX-Redux, `creator_speed.txt`, `
 shorter), idle 30.13, rows 30.13, a value held 29.88 as before. The try-on's profile after: `rect_slow` 13%, the pane's
 ellipses 10%, `lock_compose` 8%, `out_rect` 7% (`part_icon_unpack` is gone). The disc ends at 0x801efe60 both
 before and after (64 KB below the stack top with the boot FMV; the 72 KB gate is the SPEED stream's PS1-RAM package).
+**S3-1 (the sim's 15-minute pass).** The core change (docs/GBA.md "Speed wave 3: S3-1": the resident pass is one resident a
+tick over the 15 game minutes, not 32 residents in 32 ticks every 15 minutes) is shared by the PS1. The R3000 hid most of
+the old pass: in the new `sim` group (`speed2_sim.txt`, four 1,200-tick windows with a pass inside each) the shop gifts
+tab, the citizen picker and the pet already held 30.0 with no frame over 33 ms; the island hub had 4 frames of 50 ms
+(29.96 fps), now **30.00 with none**. The `life` group after the change: every window 30.0 but the new island load, the
+save freeze (S2-10) and the care reaction (2 frames of 50 ms). `game_smoke` passes. **PS1 resident: unchanged**: the
+package's code in `sim.c` is +4 B of text (2,818,396 -> 2,818,400 B; `minute_step` reads the event-rate option once, the
+activity is stored without the compare, `sim_edge_remove` was a copy of `town.c`'s `remove_edge` and is `rel_remove_at`
+now), the EXE still ends at `0x801efe60`: 65,952 B below the stack top with the boot FMV, as on `698f4eee`. The halfword edge
+move is GBA-only (`DOOMO_PLATFORM_GBA`); the PS1 keeps `memmove`.
 
 ## 13. Notes for the core
 

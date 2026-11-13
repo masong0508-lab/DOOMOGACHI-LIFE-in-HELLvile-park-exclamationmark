@@ -359,6 +359,14 @@ tick of the group 22.7 ms (the workshop's entry; 23.9 ms in speed audit 3). Agai
 S2-9): every window 30.0, 0 of 3,254 ticks over 33.3 ms, work mean 13.0 ms, the group's worst tick 27.5 ms (the arena
 modes, not the workshop).
 
+**S3-1 (the sim's 15-minute pass).** The core change (docs/GBA.md "Speed wave 3: S3-1": one resident a tick over the 15 game
+minutes instead of 32 residents in 32 ticks every 15 minutes) is shared. The SH4 never had a long frame from the pass: the new
+`sim` group (`speed2_sim.txt`: the island hub, the shop's gifts tab, the citizen picker and the pet, 1,200 ticks each, a pass
+inside every window) reads 30.1 ticks/s with no tick over 33.3 ms of work in all four windows both before (`698f4eee`) and
+after; the work mean over the run went 10,255 -> 10,278 us a tick (the steady cost of the update, ~20 us) and the worst tick of
+the group is the same 97.7 ms dialog entry in both (tick 54). `.text` +96 B, `.bss` unchanged (4,555,892 B). The
+halfword edge move is GBA-only. `make dc-host-test` passes.
+
 ### The harness mailbox (`dc_mailbox`, `dc/harness/dc_mailbox.h`)
 
 The layout is one header shared by the game and the Flycast harness (DC1):
