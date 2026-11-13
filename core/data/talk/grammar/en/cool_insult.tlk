@@ -8,11 +8,11 @@
 @rule core.insult.c_back tags: gentle act: insult
   "Oh, you want to trade? Fine. Your jokes are stale bread." guard: !kid_present
   "Bold move. Your comeback is a rumour I refuse to believe." guard: !kid_present
-  "You walk like a shopping trolley with one bad wheel."
+  "You walk like a shopping trolley with one bad wheel." guard: !kid_present
   "I've met cleverer cushions. They were nicer, too." guard: !kid_present
-  "You have the charm of a damp sock in a lift."
+  "You have the charm of a damp sock in a lift." guard: !kid_present
   "Wow. Did you borrow that line? It's got your fingerprints on it."
-  "Your fashion sense called. It wants a lawyer."
+  "Your fashion sense called. It wants a lawyer." guard: !kid_present
   "You're like a candle in the wind. A bit flickery, a bit sad." guard: !kid_present
   "I'd call you a cab, but I wouldn't wish you on a cabbie." guard: !kid_present
   "Careful, you'll hurt yourself with that edge. It's made of cheese."
@@ -144,7 +144,7 @@
 @rule core.insult.c_tease tags: gentle act: tease
   "Aww, you're cute when you try to be scary. Like a mad biscuit."
   "Is that your mean voice? It's a bit like your regular voice." guard: !kid_present
-  "Look at you, being edgy. Does your hat know you're out?"
+  "Look at you, being edgy. Does your hat know you're out?" guard: !kid_present
   "You're doing great, sweetie. Keep going. It's hilarious." guard: !kid_present
 @rule core.insult.c_mock guard: !kid_present act: mock
   "'Oh, I'm so mean, look at me.' Nyah nyah. You sound like a kettle."

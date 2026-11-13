@@ -25,7 +25,7 @@
   "Well, that was hardly civil. I only asked for a moment of your time."
   "I do think you might have been kinder, dear. But there we are."
 @rule core.dismiss.c_complain_elder guard: elder act: complain
-  "Young people. No respect. In my day, you'd be given a smack with a spoon."
+  "Young people. No respect. In my day, you'd be given a stern look."
   "Well! I've been dismissed by better. And worse, to be honest."
 @rule core.dismiss.c_complain_flat guard: flat act: complain
   "Wow. {.}Dismissed. I'll put my crying in the diary for later."
