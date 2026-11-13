@@ -76,6 +76,9 @@
 
 #define CELL       DOOMO_CELL_UNITS
 #define MAXCELLS   (DOOMO_MAP_MAX_W * DOOMO_MAP_MAX_H)
+#ifndef V3D_RAY_PX
+#define V3D_RAY_PX 2                 /* logical pixels between two visibility rays */
+#endif
 #define V3D_ZNEAR  4.0f              /* the player's radius is 14: a wall the eye
                                         leans on is never cut where it shows   */
 #define V3D_FAR_Z  0.002f            /* the backdrop's depth: behind every polygon
@@ -495,7 +498,7 @@ static void cast(float rdx, float rdy, float sb, float st, float eps)
 
 static void visibility(float plane, int vw)
 {
-    int n = vw / 2 + 5, i, cx = (int)floorf(s_ex / CELL), cy = (int)floorf(s_ey / CELL), dx, dy;
+    int n = vw / V3D_RAY_PX + 5, i, cx = (int)floorf(s_ex / CELL), cy = (int)floorf(s_ey / CELL), dx, dy;
     float span = 1.0f + 4.0f / (float)(n - 1);          /* two rays beyond each edge */
     float dc = 2.0f * span / (float)(n - 1);
     float st = (cam.cy - cam.vy0) / cam.focal, sb = (cam.cy - cam.vy1) / cam.focal;
@@ -610,14 +613,19 @@ static void billboard(const DoomoView3D *view, int idx, float depth)
     DcVert *v;
     float x = (float)b->x / 65536.0f, y = (float)b->y / 65536.0f, z = (float)b->z / 65536.0f;
     float scale = (float)(b->scale ? b->scale : 256) / 256.0f, w = (float)img->w * scale, h = (float)img->h * scale;
-    float lat = (x - s_ex) * -s_dy + (y - s_ey) * s_dx, k = cam.focal / depth;
-    float sx0 = cam.cx + (lat - w * 0.5f) * k, sx1 = sx0 + w * k;
-    float sy0 = cam.cy - (z + h - s_ez) * k, sy1 = sy0 + h * k;
+    float lat = (x - s_ex) * -s_dy + (y - s_ey) * s_dx, fl = cam.focal / (float)DC2D_SCALE;
+    /* the reference's integer rectangle (raycast.c draw_sprite) on the logical picture, doubled: the
+     * same pixels the reference fills, so the two pictures put a sprite in the same place */
+    int sw = (int)(w * fl / depth), sh = (int)(h * fl / depth);
+    int lx0 = (int)(cam.cx / (float)DC2D_SCALE) + (int)(lat * fl / depth) - sw / 2;
+    int ly0 = (int)(cam.cy / (float)DC2D_SCALE) - (int)((z + h - s_ez) * fl / depth);
+    float sx0 = (float)(lx0 * DC2D_SCALE), sx1 = (float)((lx0 + sw) * DC2D_SCALE);
+    float sy0 = (float)(ly0 * DC2D_SCALE), sy1 = (float)((ly0 + sh) * DC2D_SCALE);
     float u0 = 0.0f, u1, v0 = 0.0f, v1, level;
     uint32_t argb;
     int slot, lv, cx = (int)floorf(x / CELL), cy = (int)floorf(y / CELL);
     if (sx1 <= cam.vx0 || sx0 >= cam.vx1 || sy1 <= cam.vy0 || sy0 >= cam.vy1) { dc3d_stats.culled++; return; }
-    if (sx1 - sx0 > 4.0f * DC2D_W || sy1 - sy0 > 4.0f * DC2D_H) return;
+    if (sw < 1 || sh < 1 || sw > 4 * DC2D_LW || sh > 4 * DC2D_LH) return;
     if (b->flags & BB_SHADOW) shadow(x, y, z + 1.0f, w * 0.375f + 2.0f);
     slot = dc2d_tex_image(img);
     if (slot < 0) return;
@@ -640,6 +648,11 @@ static void billboard(const DoomoView3D *view, int idx, float depth)
     u1 = (float)img->w / (float)tx->tw;
     v1 = (float)img->h / (float)tx->th;
     if (b->flags & BB_FLIPX) { u0 = u1; u1 = 0.0f; }
+    /* the reference takes a texel at a pixel's left edge, a polygon at its centre: a quarter of a logical pixel back */
+    { float du = (u1 - u0) * 0.25f / (float)sw, dv = (v1 - v0) * 0.25f / (float)sh; u0 -= du; u1 -= du; v0 -= dv; v1 -= dv; }
+    /* (the texture wraps: past its edge it reads the zero padding, or the far side of a power-of-two image) */
+    if (tx->tw == img->w) { if (u0 < 0.0f) u0 = 0.0f; if (u1 < 0.0f) u1 = 0.0f; }
+    if (tx->th == img->h && v0 < 0.0f) v0 = 0.0f;
     /* cut to the viewport, the texture with it */
     if (sx0 < cam.vx0) { u0 += (u1 - u0) * (cam.vx0 - sx0) / (sx1 - sx0); sx0 = cam.vx0; }
     if (sx1 > cam.vx1) { u1 -= (u1 - u0) * (sx1 - cam.vx1) / (sx1 - sx0); sx1 = cam.vx1; }

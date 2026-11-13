@@ -34,6 +34,8 @@
 #include "doomo/doomo.h"
 #include "doomo/map.h"
 #include "doomo/palette.h"
+#include "doomo/sprites.h"
+#include "doomo/fixmath.h"
 
 void ref_view3d(const DoomoView3D *v);
 
@@ -41,6 +43,9 @@ void ref_view3d(const DoomoView3D *v);
 #define PARITY_MIN  0.75   /* measured 79.2% on 2026-11-13; the gap is listed in docs/DREAMCAST.md section 9 */
 #define FRAME_MIN   0.45   /* at most 3% of the level frames may be below it */
 #define PITCH_MIN   0.60
+#define SPR_MIN     0.72   /* sprite rectangles (measured 79.1%), see test_sprites */
+#define SPR_FRAME_MIN 0.25
+#define SPR_PX_MIN  0.85   /* the sprites' own pixels (measured 90.5%; 77.9% with the exact rectangle off) */
 
 static int fails, checks;
 #define CHECK(c, ...) do { checks++; if (!(c)) { fails++; printf("FAIL %s:%d: ", __FILE__, __LINE__); \
@@ -361,6 +366,168 @@ static void test_budget(void)
     CHECK(dc2d_stats.dropped == d2, "budget: %u 2D prims dropped", dc2d_stats.dropped - d2);
 }
 
+/* ---- sprites and the HUD over them (DC6 part 2) -------------------------------------------
+ * Three billboards (a shadowed imp, a full-bright tree, a see-through candy) stand 70..200 units
+ * in front of an eye whose line of sight is open; the same view goes to the reference raycaster
+ * and to the polygons. The parity is measured in the sprites' own rectangles (native pixels):
+ * the sprite's colours through the light level's colormap, its transparent texels, its flip, the
+ * far-to-near order and the wall that hides it. The HUD the core draws after the view is
+ * the same 2D calls on both sides: a pill over a sprite must come out equal. */
+static const struct { int spr, flags, light, lat, depth; } spr_set[3] = {
+    { SPR_IMPLING, BB_SHADOW, 0, -26, 190 }, { SPR_TREE, BB_FULLBRIGHT, 0, 22, 130 }, { SPR_CANDY, BB_TRANSLUCENT, 0, 0, 80 } };
+
+static int line_clear(int cx, int cy, float dx, float dy, float len)
+{
+    float t;
+    for (t = 0.0f; t <= len; t += 8.0f) {
+        int x = (int)floorf(((float)(cx * 64 + 32) + dx * t) / 64.0f), y = (int)floorf(((float)(cy * 64 + 32) + dy * t) / 64.0f);
+        const DoomoCell *c;
+        if (x < 1 || y < 1 || x >= doomo_map.w - 1 || y >= doomo_map.h - 1) return 0;
+        c = &doomo_map.cells[y * doomo_map.w + x];
+        if (c->wall || map_floor_z(&doomo_map, x, y) != map_floor_z(&doomo_map, cx, cy)) return 0;
+    }
+    return 1;
+}
+
+static DoomoBillboard sbb[3];
+
+/* the three sprites in front of the eye (cx,cy), heading hd; NULL when the line is not open */
+static int place_sprites(DoomoView3D *v, int cx, int cy, int hd)
+{
+    float dx = (float)fx_cos(v->angle) / 65536.0f, dy = (float)fx_sin(v->angle) / 65536.0f;
+    int i;
+    (void)hd;
+    if (!line_clear(cx, cy, dx, dy, 210.0f)) return 0;
+    for (i = 0; i < 3; i++) {
+        float x = (float)(cx * 64 + 32) + dx * (float)spr_set[i].depth - dy * (float)spr_set[i].lat;
+        float y = (float)(cy * 64 + 32) + dy * (float)spr_set[i].depth + dx * (float)spr_set[i].lat;
+        memset(&sbb[i], 0, sizeof(sbb[i]));
+        sbb[i].x = (fix16)(x * 65536.0f); sbb[i].y = (fix16)(y * 65536.0f);
+        sbb[i].z = (fix16)(map_floor_z(&doomo_map, cx, cy) * 65536);
+        sbb[i].img = sprite_image(spr_set[i].spr, 0);
+        sbb[i].scale = 256;
+        sbb[i].flags = (uint8_t)spr_set[i].flags;
+        sbb[i].light = (uint8_t)spr_set[i].light;
+    }
+    v->sprites = sbb;
+    v->sprite_count = 3;
+    v->player_sprite = -1;
+    return 1;
+}
+
+/* a sprite's rectangle on the 320x240 picture */
+static int sprite_rect(const DoomoView3D *v, const DoomoBillboard *b, int *x0, int *y0, int *x1, int *y1)
+{
+    const Dc3dCam *c = dc2d_view3d_cam();
+    float dx = (float)fx_cos(v->angle) / 65536.0f, dy = (float)fx_sin(v->angle) / 65536.0f;
+    float ex = (float)v->x / 65536.0f, ey = (float)v->y / 65536.0f, ez = (float)v->z / 65536.0f;
+    float x = (float)b->x / 65536.0f, y = (float)b->y / 65536.0f, z = (float)b->z / 65536.0f;
+    float d = (x - ex) * dx + (y - ey) * dy, lat = (x - ex) * -dy + (y - ey) * dx;
+    float w = (float)b->img->w * (float)b->scale / 256.0f, h = (float)b->img->h * (float)b->scale / 256.0f, k;
+    if (d < 4.0f) return 0;
+    k = c->focal / d;
+    *x0 = (int)((c->cx + (lat - w * 0.5f) * k) / 2.0f);
+    *x1 = (int)((c->cx + (lat + w * 0.5f) * k) / 2.0f);
+    *y1 = (int)((c->cy - (z - ez) * k) / 2.0f);
+    *y0 = (int)((c->cy - (z + h - ez) * k) / 2.0f);
+    if (*x0 < 0) *x0 = 0;
+    if (*y0 < 0) *y0 = 0;
+    if (*x1 > DC2D_LW) *x1 = DC2D_LW;
+    if (*y1 > DC2D_LH) *y1 = DC2D_LH;
+    return *x1 > *x0 && *y1 > *y0;
+}
+
+/* the pixels where the reference drew the sprite (its native pixel is one of the texel's light levels):
+ * how many, and how many of them the polygons match */
+static void sprite_pixels(const DoomoView3D *v, const DoomoBillboard *b, int *vis, int *hit)
+{
+    const Dc3dCam *c = dc2d_view3d_cam();
+    float dx = (float)fx_cos(v->angle) / 65536.0f, dy = (float)fx_sin(v->angle) / 65536.0f;
+    float x = (float)b->x / 65536.0f - (float)v->x / 65536.0f, y = (float)b->y / 65536.0f - (float)v->y / 65536.0f;
+    float d = x * dx + y * dy, lat = x * -dy + y * dx;
+    int sw = (int)((float)b->img->w * (float)b->scale / 256.0f * c->focal / d / 2.0f);
+    int sh = (int)((float)b->img->h * (float)b->scale / 256.0f * c->focal / d / 2.0f);
+    int cx = (int)((c->cx + lat * c->focal / d) / 2.0f), sx0 = cx - sw / 2;
+    int sy1 = (int)((c->cy - ((float)b->z / 65536.0f - (float)v->z / 65536.0f) * c->focal / d) / 2.0f), sy0 = sy1 - sh;
+    int px, py;
+    for (px = sx0; px < sx0 + sw; px++)
+        for (py = sy0; py < sy0 + sh; py++) {
+            int tx, ty, l, seen = 0;
+            uint8_t t;
+            if (px < 0 || py < 0 || px >= DC2D_LW || py >= DC2D_LH) continue;
+            tx = (px - sx0) * b->img->w / sw;
+            if (b->flags & BB_FLIPX) tx = b->img->w - 1 - tx;
+            ty = (py - sy0) * b->img->h / sh;
+            t = b->img->pix[ty * b->img->w + tx];
+            if (!t) continue;
+            for (l = 1; l < DOOMO_LIGHT_LEVELS; l++) if (doomo_colormap[l][t] == nat_fb[py * nat_w + px]) seen = 1;
+            if (!seen) continue;
+            (*vis)++;
+            *hit += match_px(rgb, px, py);
+        }
+}
+
+static void test_sprites(void)
+{
+    long pvis = 0, phit = 0;
+    int mi, k, frames = 0, rects = 0, lowr = 0;
+    double sum = 0, hsum = 0;
+    int hn = 0;
+    for (mi = 0; mi < NMAPS; mi++) {
+        int cells[2000][2], nc = 0, x, y, stride;
+        map_load(maps[mi]);
+        for (y = 1; y < doomo_map.h - 1; y++)
+            for (x = 1; x < doomo_map.w - 1; x++)
+                if (open_cell(&doomo_map, x, y) && nc < 2000) { cells[nc][0] = x; cells[nc][1] = y; nc++; }
+        stride = nc / 40 > 0 ? nc / 40 : 1;
+        for (k = 0; k < nc; k += stride) {
+            int hd;
+            for (hd = 0; hd < 4; hd++) {
+                DoomoView3D v;
+                int i;
+                view_of(&v, cells[k][0], cells[k][1], hd, 0);
+                if (!place_sprites(&v, cells[k][0], cells[k][1], hd)) continue;
+                plat_begin_frame();
+                plat_clear(PAL_BLACK);
+                ref_view3d(&v);
+                dc2d_view3d_draw(&v);
+                /* the HUD over the middle sprite: the same 2D calls on both sides */
+                plat_rect(130, 90, 60, 40, PAL_UI_GOLD);
+                plat_text(134, 100, "HUD 100", PAL_BLACK);
+                plat_end_frame();
+                swpvr_render(dc2d_last(), rgb);
+                frames++;
+                if (getenv("DC6_PNG") && frames % 40 == 1) {
+                    char nm[512];
+                    snprintf(nm, sizeof(nm), "%s/spr_%03d_nat.png", getenv("DC6_PNG"), frames);
+                    nat_png_write(nm, nat_fb, nat_w, nat_h, 1);
+                    snprintf(nm, sizeof(nm), "%s/spr_%03d_dc.png", getenv("DC6_PNG"), frames);
+                    png_write_rgb(nm, rgb, DC2D_W, DC2D_H);
+                }
+                for (i = 0; i < 3; i++) {
+                    int x0, y0, x1, y1;
+                    double p;
+                    if (!sprite_rect(&v, &sbb[i], &x0, &y0, &x1, &y1)) continue;
+                    if ((x1 - x0) * (y1 - y0) < 64) continue;
+                    p = parity(rgb, x0, y0, x1 - x0, y1 - y0);
+                    sum += p; rects++;
+                    if (p < SPR_FRAME_MIN) lowr++;
+                    { int a = 0, h = 0; sprite_pixels(&v, &sbb[i], &a, &h); pvis += a; phit += h; }
+                }
+                hsum += parity(rgb, 130, 90, 60, 40); hn++;
+            }
+        }
+    }
+    printf("sprites: the sprites' own pixels (%ld seen in the reference): %.1f%% match\n", pvis, pvis ? (double)phit / (double)pvis * 100.0 : 0.0);
+    printf("sprites: %d frames, %d sprite rectangles, mean %.1f%% within %d/255; %d below %.0f%%; HUD over them %.1f%%\n",
+           frames, rects, sum / (rects ? rects : 1) * 100.0, TOL, lowr, SPR_FRAME_MIN * 100.0, hsum / (hn ? hn : 1) * 100.0);
+    CHECK(rects > 100, "sprites: only %d rectangles measured", rects);
+    CHECK(sum / (rects ? rects : 1) >= SPR_MIN, "sprites: mean %.1f%% below %.0f%%", sum / (rects ? rects : 1) * 100.0, SPR_MIN * 100.0);
+    CHECK(pvis > 100000 && (double)phit / (double)pvis >= SPR_PX_MIN, "sprites: own pixels match %.1f%% (%ld seen), below %.0f%%",
+          pvis ? (double)phit / (double)pvis * 100.0 : 0.0, pvis, SPR_PX_MIN * 100.0);
+    CHECK(hsum / (hn ? hn : 1) >= 0.97, "sprites: the HUD over them matches only %.1f%%", hsum / (hn ? hn : 1) * 100.0);
+}
+
 static void test_tintfit(void)
 {
     int t, k;
@@ -397,7 +564,13 @@ int main(void)
     }
     dc2d_view3d_remap_budget(100000);
     test_tintfit();
+    if (getenv("DC6_ONLY") && !strcmp(getenv("DC6_ONLY"), "sprites")) {
+        test_sprites();
+        printf("dc6 view3d tests: %d checks, %d failed\n", checks, fails);
+        return fails ? 1 : 0;
+    }
     test_parity();
+    test_sprites();
     test_tint();
     test_remap_budget();
     test_viewport();
