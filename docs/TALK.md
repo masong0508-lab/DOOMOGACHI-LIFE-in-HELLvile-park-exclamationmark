@@ -42,7 +42,7 @@ Contents:
 | **T3** | the free-text parser (Dreamcast and native): `talk_lex.c`, `talk_parse.c`, `rules/en.tsv`, a labelled corpus of 1,519 lines | **done** (TK2) |
 | **T4** | the safety gate: the input classifier S1, the audience gate S2 (`talk_safe_ctx`, one source of "minor"), the output lint S3, the template lints TK1-TK9, the safety and adversarial corpora, the hashed hate list, the property tests | **done** (TK2): green. The generator-level halves of P1-P8 go live with T5a / T6 |
 | **T5a** | the generator: `talk_gen.c` (the grammar VM, guards, fillers, sim-fact callbacks, novelty, re-picks, the bubble fit, the per-conversation RNG, the trace), the `.tlk` grammar compiler `talkc_gen.py`, the adjacency table `acts.tsv`, a plain exchange (the gate first, who answers, reactions between residents) | **done** (TK3); a **starter** English bank (718 alternatives in 12 files, the K-10 grief and comfort banks included) so every act, refusal and part plays |
-| T5b | the English line banks (about 6,000 alternatives, design 3.6) and the owner's review | in progress: 3,032 alternatives (starter 718 + T5B-WARM 739: warm acts + T5B-COOL 600: cool and rude acts + T5b-ASK 975: questions and answers) |
+| T5b | the English line banks (about 6,000 alternatives, design 3.6) and the owner's review | in progress: 3,680 alternatives (starter 718 + T5B-WARM 739: warm acts + T5B-COOL 600: cool and rude acts + T5b-ASK 975: questions and answers + T5B-OPEN 648: openers, parts and the rest) |
 | T6 | the drama manager, outcomes, the talk memory chunk | **memory and chunk done** (T6-MEM, 6e); **drama manager done** (T6-DM, 6f: `talk_dm.c`, `beats.tlk`); outcomes into the sim (T6-OUT) to do |
 | **T7** | the census (`core/tools/talk_census.c`: the three tiers, Chao1, the quality checks Q1-Q6, the conversation tier), the grid `census_en.tsv`, `make -C core talk-census`, the smoke census in `make test`, the Q7 review sheet `talk_sample.py` | **done** (TK3): the tools and the measurement. The full run's numbers are in 6d: Skeleton, Meaning, conversations and quality meet the design's targets; **Surface does not** (it needs T5b's bank); Q7 (a person rating 300 exchanges) has not been done |
 | T8 | the house mode `HM_TALK` on native, with its UI | to do |
@@ -982,8 +982,8 @@ more lines than before (greet 75 to 172, farewell 9 to 71, apologize 6 to 31, in
 28, hug 6 to 31, and so on). Rules: at most 3 sentences a line, no register word, no romance (a
 greeting never flirts), kid voices tagged `kid`. A hug stays a plain hug: a stranger or a rival
 (and a child who does not know the player) answers with a polite no or a wave. Rule names end
-in `o_` / `r_`. `TALK_en.BIN` 601,084 -> 629,756 B (PS1 non-resident data, no resident byte).
-No code change. A 40-line sample is in the evidence directory. 2,705 alternatives in 27 grammar files.
+in `o_` / `r_`. `TALK_en.BIN` 672,124 B on the landed tree, about +28.7 KB for this package (PS1 non-resident data, no resident byte).
+No code change. A 40-line sample is in the evidence directory. 3,680 alternatives in 30 grammar files with T5b-ASK.
 
 **With K-10 (the TK3 landing)**: GRAMMAR 14,536 B and STRINGS 17,650 B
 stored (27,439 B raw) for 373 rules, 718 alternatives, 512 guard terms, 79
