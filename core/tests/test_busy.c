@@ -40,7 +40,8 @@ TEST(busy_town_new_steps_every_citizen)
     town_new(TOWN_STORY, 1, TOWN_POP_PREMADE);
     CHECK_EQ(b_calls, 1);
     CHECK_EQ(b_kind, PLAT_BUSY_BUILD);
-    CHECK_EQ(b_steps, DOOMO_MAX_RESIDENTS);          /* one step per citizen built: never a long run without one */
+    /* one step per citizen built (never a long run without one), and a few more while the relationships sort */
+    CHECK(b_steps >= DOOMO_MAX_RESIDENTS && b_steps <= 2 * DOOMO_MAX_RESIDENTS);
     CHECK_EQ(b_bad, 0);
     CHECK_EQ(b_max_done, DOOMO_MAX_RESIDENTS - 1);
     CHECK_EQ(b_steps_before_busy, 0);
@@ -48,7 +49,7 @@ TEST(busy_town_new_steps_every_citizen)
     busy_reset();
     town_new(TOWN_FREEPLAY, 31337, TOWN_POP_RANDOM);
     CHECK_EQ(b_calls, 1);
-    CHECK_EQ(b_steps, DOOMO_MAX_RESIDENTS);
+    CHECK(b_steps >= DOOMO_MAX_RESIDENTS && b_steps <= 2 * DOOMO_MAX_RESIDENTS);
     CHECK_EQ(b_bad, 0);
 
     busy_reset();
@@ -91,6 +92,28 @@ TEST(busy_save_and_load_step_every_citizen)
         CHECK(memcmp(&snap.res, &doomo_town.res, sizeof(snap.res)) == 0);
     }
     nat_save_stream = 0;
+}
+
+/* the relationship graph is 0.2 s of encoding on the GBA before the first citizen: it steps too, every 32 edges */
+TEST(busy_steps_cover_the_relationship_graph)
+{
+    DoomoRng r;
+    int i, edges;
+    town_new(TOWN_FREEPLAY, 3, TOWN_POP_PREMADE);
+    rng_seed(&r, 5);
+    for (i = 0; i < 1500; i++) rel_adjust(rng_range(&r, 1000), rng_range(&r, 1000), rng_between(&r, -40, 40));
+    edges = doomo_town.edge_count;
+    CHECK(edges > 1200);
+    nat_save_stream = 0;
+    busy_reset();
+    CHECK(save_game(1));
+    CHECK(b_steps >= DOOMO_MAX_RESIDENTS + edges / 32);
+    busy_reset();
+    CHECK(load_game(1));
+    CHECK(b_steps >= DOOMO_MAX_RESIDENTS + edges / 32);
+    busy_reset();
+    rel_normalize();                                 /* the sort alone: ~8 passes over the edges */
+    CHECK(b_steps >= edges / 64);
 }
 
 TEST(busy_a_missing_save_does_not_start_a_busy_card)

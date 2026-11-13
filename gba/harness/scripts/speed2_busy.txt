@@ -1,0 +1,91 @@
+# speed2_busy.txt - speed wave 2, S2-10 (docs/GBA.md "Speed wave 2: S2-10"): the long jobs that run inside one tick
+# and used to freeze the screen: the title -> New story build, a new island, a free-play save and load of a Classic
+# island, and the same for the worst-case island (1,000 custom citizens, 2,048 relationships: ~58 KB). The core tells
+# the platform (plat_busy / plat_busy_step) and the platform keeps the screen moving: a dim or fade, a card with a
+# spinner, 30 pictures a second. `make -C gba test-speed2 SPEED2=busy` prints the table (the "worst frame" column is
+# the longest gap between two presented pictures; the logic column stays low by design: the sim holds while the
+# work runs). `expect-gap` fails a run when a presented frame of the window took over the given ms.
+# tools/speed2.py turns this file into the PS1 and Dreamcast scripts too (expect-gap is dropped there: the PS1 harness
+# counts the pictures the game shows outside its loop, the Dreamcast one the card's pictures).
+# Window rules: speed2_fair.txt.
+wait 40
+expect-log doomo: init
+sync on 61
+
+# ---- the title -> New story build ---------------------------------------------------------
+seed 1
+scene TITLE
+wait 150
+press START
+wait 24
+press A
+wait 16
+fps start
+press A
+wait 40
+fps busy: title -> new story (the build)
+shot busy_new_story
+wait 30
+
+# ---- a new island (Hellvile Park Classic) --------------------------------------------------
+seed 1
+scene NEW_ISLAND
+wait 10
+fps start
+press A
+wait 20
+press A
+wait 2
+press A
+wait 10
+expect-scene ISLAND
+wait 30
+fps busy: new island -> hub (the build)
+shot busy_hub
+
+# ---- a save and a load of the Classic island (slot 2) ---------------------------------------
+push SAVELOAD 0
+wait 30
+fps start
+press A
+wait 40
+fps busy: save (Classic island)
+shot busy_saved
+press RIGHT
+wait 2
+press A
+wait 4
+press LEFT
+wait 2
+fps start
+press A
+wait 60
+fps busy: load (Classic island)
+shot busy_loaded
+wait 30
+
+# ---- the worst case: 1,000 custom citizens (~58 KB) ----------------------------------------
+town-fill 7
+push SAVELOAD 0
+wait 30
+press A
+wait 4
+press LEFT
+wait 2
+fps start
+press A
+wait 40
+fps busy: save (worst-case island)
+shot busy_saved_worst
+press RIGHT
+wait 2
+press A
+wait 4
+press LEFT
+wait 2
+fps start
+press A
+wait 60
+fps busy: load (worst-case island)
+shot busy_loaded_worst
+wait 10

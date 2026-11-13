@@ -424,6 +424,7 @@ void rel_normalize(void)
             DoomoEdge t = E[i];
             uint32_t k = ekey(&t);
             int j = i;
+            if (!(i & 63)) plat_busy_step(0, DOOMO_MAX_RESIDENTS);   /* S2-10: the sort of ~2,000 edges is 0.17 s on the GBA */
             while (j >= gap && ekey(&E[j - gap]) > k) {
                 E[j] = E[j - gap];
                 j -= gap;

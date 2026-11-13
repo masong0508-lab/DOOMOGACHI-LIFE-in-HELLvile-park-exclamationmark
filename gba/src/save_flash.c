@@ -26,6 +26,7 @@
 #include "gba_plat.h"
 #include "flash_int.h"
 #include "doomo/save.h"
+#include "doomo/plat_ext.h"        /* plat_busy_step (S2-10) */
 
 /* ---- the chip routines' RAM copy (flash_int.h) ---------------------------
  * The ARM block __flash_ram_start .. __flash_ram_end (flash_ram.c) must run
@@ -207,6 +208,7 @@ static int save_write_body(int slot, const void *data, uint32_t size)
         if (s != last && !erase_sector(s)) { gba_log("save: erase failed"); return 0; }
         if (!program(s, src + done, k)) { gba_logf("save: program/verify failed at 0x%x", s); return 0; }
         done += k;
+        plat_busy_step((int)done, (int)size);       /* S2-10: a picture when one is due, once per sector */
     }
     /* 3. commit: the trailer */
     t[0] = 'D'; t[1] = 'M'; t[2] = 'S'; t[3] = 'V';
@@ -267,6 +269,7 @@ static int stream_write_body(const void *data, uint32_t n)
             return 0;
         }
         ws.pos += k; src += k; n -= k;
+        plat_busy_step((int)ws.pos, (int)ws.size);  /* S2-10 (plat_ext.h): a picture when one is due, per sector */
     }
     return 1;
 }

@@ -20,6 +20,7 @@
 #include "doomo/family.h"
 #include "doomo/ending.h"
 #include "doomo/life_events.h"
+#include "doomo/plat_ext.h"             /* plat_busy_step (S2-10) */
 
 SimState sim_s;
 
@@ -827,6 +828,7 @@ void sim_init(void)
         res_in(r, &in);
         r->activity = (uint8_t)decide_activity(i, r, &in);
         sim_mood_of(i);
+        plat_busy_step(i, DOOMO_MAX_RESIDENTS);   /* S2-10: a picture when one is due (plat_ext.h) */
     }
     sim_events_reset();
     sim_news_welcome(town_count(-1));     /* LS1: once per town or load */
