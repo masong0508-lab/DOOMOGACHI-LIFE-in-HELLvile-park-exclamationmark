@@ -183,7 +183,7 @@ TEST(talk_dm_scripted_session)
     talk_db_close();
 }
 
-/* the arc: a calm session of 18 turns peaks in the middle and is calm by the end (5.2) */
+/* the arc (peak_tension is a running maximum, so 'ends under the peak' holds by definition and is only printed): a calm session of 18 turns peaks in the middle and is calm by the end (5.2) */
 TEST(talk_dm_arc)
 {
     TalkState s;
@@ -201,10 +201,9 @@ TEST(talk_dm_arc)
         runs++;
         if (s.peak_turn >= 3 && s.peak_turn <= 13) inrange++;
         if (s.tension <= s.peak_tension) calm++;
-        CHECK(s.peak_tension >= s.tension);
     }
     printf("      arc: %d runs, peak in turns 3-13: %d, ends at or under the peak: %d\n", runs, inrange, calm);
-    CHECK(runs >= 20 && inrange * 10 >= runs * 8 && calm == runs);
+    CHECK(runs >= 20 && inrange * 10 >= runs * 8);
     CHECK_EQ(talk_safe_lint_hits(), h0);
     talk_db_close();
 }
@@ -324,7 +323,7 @@ TEST(talk_dm_argument_steps)
     talk_db_close();
 }
 
-TEST(talk_dm_mediation_calls_sim_make_up)
+TEST(talk_dm_mediation_makes_up)
 {
     TalkState s;
     TalkSummary sum;
@@ -347,13 +346,12 @@ TEST(talk_dm_mediation_calls_sim_make_up)
                 CHECK_EQ(s.arg_step, 0);
                 talk_dm_end(&s, &sum);
                 CHECK(sum.rel_d_player[a] > sum.rel_d_player[b]);
-                CHECK(sum.pair_d[a == 0 ? (b == 1 ? 0 : 1) : (b == 2 ? 4 : 3)] < 0 || 1);
                 side++;
             }
             continue;
         }
         turn(&s, TA_MEDIATE, TC_NONE, a, NULL);
-        if (!has_event(&s, TEV_MEDIATED)) { failed++; CHECK(s.arg_step >= 1 || s.arg_step == 0); continue; }
+        if (!has_event(&s, TEV_MEDIATED)) { failed++; CHECK(!has_event(&s, TEV_MEDIATED)); continue; }
         for (k = 0; k < s.nev; k++) if (s.ev[k].kind == TEV_MEDIATED) { CHECK_EQ(s.ev[k].a, a); CHECK_EQ(s.ev[k].b, b); }
         CHECK_EQ(s.arg_step, 0);
         {   /* the "make up" line is said (a to b) */
