@@ -12,6 +12,7 @@
 #include "doomo/ui.h"
 #include "doomo/look_pool.h"
 #include "doomo/save_ext.h"
+#include "doomo/plat_ext.h"          /* plat_busy (S2-10) */
 #include "doomo/sim.h"                 /* sim_life_stage (LS0 migration) */
 
 DoomoTown doomo_town;
@@ -551,6 +552,7 @@ void town_new(int mode, uint32_t seed, int population)
     int i;
     DoomoResident *p;
 
+    plat_busy(PLAT_BUSY_BUILD); /* S2-10: a new town and the sim's start after it take 2 s on the GBA: a card */
     memcpy(opt, doomo_town.opt, sizeof(opt));
     memcpy(unl, doomo_town.unlocks, sizeof(unl));
     memset(&doomo_town, 0, sizeof(doomo_town));
@@ -580,14 +582,17 @@ void town_new(int mode, uint32_t seed, int population)
         for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
             town_premade_record(i, &doomo_town.res[i]);
             resident_sanitize(&doomo_town.res[i]);
+            plat_busy_step(i, DOOMO_MAX_RESIDENTS);
         }
         for (i = 0; i < doomo_roster_edge_count && n < DOOMO_MAX_EDGES; i++)
             doomo_town.edges[n++] = doomo_roster_edges[i];
         doomo_town.edge_count = (uint16_t)n;
         rel_normalize();
     } else if (doomo_town.population == TOWN_POP_RANDOM) {
-        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
+        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
             town_random_record(seed, i, &doomo_town.res[i]);
+            plat_busy_step(i, DOOMO_MAX_RESIDENTS);
+        }
         random_edges(seed);
     }
     save_ext_reset_all();       /* save_ext.h: module data back to defaults */

@@ -26,6 +26,7 @@
  *   plat_scene_scratch       SP3 P-I1 (PS1: the overlay slot's unused tail)
  *   plat_hold_band           SP5 (held dialogue backdrop: GBA, native)
  *   plat_loading             SP5 (loading fades: GBA, PS1)
+ *   plat_busy / _step        S2-10 (a live screen over a save / load / town build: GBA, PS1)
  *   plat_stage_*             SP7 (a kept backdrop: the GBA's ROM-baked
  *                            exorcism church; native for tests)
  *   plat_pack_blob/read      E0 declares the pack format (pack.h, which
@@ -204,6 +205,21 @@ int  plat_hold_band(int op, const PlatBand *band);
  * and bring the next picture in from there. Draw-side only: no logic, timing or saved state sees it.
  * Default: nothing. */
 void plat_loading(void);
+
+/* ---- (S2-10) a live screen over a save, a load and a town build (docs/GBA.md "Speed wave 2: S2-10") --------
+ * save_game (PLAT_BUSY_SAVE), load_game (PLAT_BUSY_LOAD) and town_new (PLAT_BUSY_BUILD: a New story or a new island
+ * builds 1,000 citizens) run to the end inside the one tick that called them. On the GBA that is 10.7 s for a save,
+ * 6 s for a load and 2 s for a build (the codec and the town rebuild every citizen's base record); on the PS1 the
+ * memory card write is 11 s. The sim must not move meanwhile, so the work stays in one tick; what changes is that
+ * the screen is not frozen. plat_busy(kind) is called first; plat_busy_step(done, total) is called often after
+ * that (every citizen the codec or the build handles, every flash sector or card frame the platform writes: never
+ * more than ~8 ms of work between two calls on the GBA). A platform may then present pictures of its own from
+ * inside the call (a card with a spinner or a bar, at most 30 a second) once the work is clearly late, and the
+ * next real frame ends it. Draw-side only: the saved bytes, the logic and the timing are the same (every call is
+ * a no-op in the host build and in a run that hashes every frame). Default: nothing. */
+enum { PLAT_BUSY_SAVE = 1, PLAT_BUSY_LOAD = 2, PLAT_BUSY_BUILD = 3 };
+void plat_busy(int kind);
+void plat_busy_step(int done, int total);
 
 /* ---- a kept backdrop and a retained stage (SP7, docs/EXORCISM_SPEED.md) ----------------
  * A scene whose picture is a full-screen BACKDROP that depends only on a small key (the

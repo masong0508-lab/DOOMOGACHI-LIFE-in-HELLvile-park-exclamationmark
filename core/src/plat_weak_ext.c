@@ -54,6 +54,8 @@ WEAK void *plat_scene_scratch(uint32_t bytes, uint32_t *gen)
 }
 
 WEAK void plat_loading(void) {}
+WEAK void plat_busy(int kind) { (void)kind; }
+WEAK void plat_busy_step(int done, int total) { (void)done; (void)total; }
 
 WEAK int plat_view_hold(int op, uint32_t key) { (void)op; (void)key; return 0; }
 

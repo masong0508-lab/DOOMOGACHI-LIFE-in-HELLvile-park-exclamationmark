@@ -58,6 +58,7 @@
 #include "doomo/doomo.h"
 #include "doomo/playas.h"
 #include "doomo/options_store.h"
+#include "doomo/plat_ext.h"
 
 /* Every enum must fit the bit width the format gives it. Growing past a
  * width needs a new DOOMO_SAVE_VERSION. */
@@ -850,12 +851,14 @@ static void write_town(void)
             continue;
         }
         cur = t->res[i];
+        plat_busy_step(i, DOOMO_MAX_RESIDENTS);   /* S2-10: a picture when one is due (plat_ext.h) */
         resident_sanitize(&cur);
         has_base = base_of(t->population, t->seed, i, &base);
         if (has_base && memcmp(&cur, &base, sizeof(cur)) == 0) {
             for (run = 1; i + run < DOOMO_MAX_RESIDENTS && run < 1024; run++) {
                 DoomoResident c2 = t->res[i + run], b2;
                 if (c2.status == RES_EMPTY) break;
+                plat_busy_step(i + run, DOOMO_MAX_RESIDENTS);
                 resident_sanitize(&c2);
                 base_of(t->population, t->seed, i + run, &b2);
                 if (memcmp(&c2, &b2, sizeof(c2)) != 0) break;
@@ -971,12 +974,14 @@ static int read_town(int apply)
     while (i < DOOMO_MAX_RESIDENTS) {
         uint32_t tag = rbits(2);
         if (Z.ld_err) return 0;
+        plat_busy_step(i, DOOMO_MAX_RESIDENTS);   /* S2-10 */
         if (tag == 0 || tag == 1) {
             int run = (int)rbits(10) + 1, k;
             if (i + run > DOOMO_MAX_RESIDENTS) return 0;
             if (tag == 1 && pop == TOWN_POP_EMPTY) return 0;
             if (apply) {
                 for (k = 0; k < run; k++) {
+                    plat_busy_step(i + k, DOOMO_MAX_RESIDENTS);
                     if (tag == 0) memset(&t->res[i + k], 0, sizeof(DoomoResident));
                     else base_of(pop, seed, i + k, &t->res[i + k]);
                 }
@@ -1329,7 +1334,9 @@ static int save_game_body(int slot);
 /* CL4: a save also writes the machine config record when tips were seen since (options_store.c) */
 int save_game(int slot)
 {
-    int ok = save_game_body(slot);
+    int ok;
+    plat_busy(PLAT_BUSY_SAVE);                /* S2-10: a card while it runs (plat_ext.h) */
+    ok = save_game_body(slot);
     if (ok) opt_config_flush();
     return ok;
 }
@@ -1447,6 +1454,7 @@ int load_game(int slot)
     buf = stream_window(slot, &cap);
     if (buf) {
         int ok;
+        plat_busy(PLAT_BUSY_LOAD);            /* S2-10: the slot has a save: the CRC pass and the decodes take seconds */
         if (!stream_check(slot, buf, cap, hdr)) return 0;
         Z.ld_slot = slot;
         Z.ld_wbuf = buf;
@@ -1460,6 +1468,7 @@ int load_game(int slot)
         doomo_snprintf(last_error, sizeof(last_error), "No save in slot %d", slot);
         return 0;
     }
+    plat_busy(PLAT_BUSY_LOAD);                /* S2-10: (the read had its own progress) the decodes take seconds */
     return deserialize_from(buf, size);
 }
 
