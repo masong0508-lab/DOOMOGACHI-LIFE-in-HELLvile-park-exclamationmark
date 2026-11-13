@@ -188,7 +188,9 @@ TEST(contracts_registries_read_through_volatile)
         doomo_save_ext_life, doomo_save_ext_playas, doomo_save_ext_endings,
         doomo_save_ext_opt2, doomo_save_ext_profiles,
         /* T0 */
-        doomo_save_ext_talk };
+        doomo_save_ext_talk,
+        /* LV0 */
+        doomo_save_ext_breach };
     const DoomoActivity *const acts[] = {
         doomo_activities_minigames, doomo_activities_concert, doomo_activities_collections,
         doomo_activities_combat, doomo_activities_extra, doomo_activities_studio,

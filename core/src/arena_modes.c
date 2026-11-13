@@ -125,7 +125,7 @@ static int spawn_demon(int type)
     a = actor_spawn_demon(type, x, y, 1, 0, 0);
     if (a >= 0) {
         doomo_actors[a].target = TARGET_PLAYER;
-        lv_run.size_cls[a] = LVS_NONE;
+        lv_size_cls_set(a, LVS_NONE);
     }
     return a;
 }

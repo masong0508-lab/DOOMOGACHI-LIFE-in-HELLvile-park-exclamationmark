@@ -20,29 +20,28 @@ __attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_profiles = 0;
 /* --- end K0 --- */
 /* --- T0: 'TALK' (docs/TALK.md 6.8); owner T6 --- */
 __attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_talk = 0;
+/* --- LV0: 'BRCH' (levels plan 8.5); owner levels_rec.c --- */
+__attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_breach = 0;
+
+/* The registry order (a chunk's position is its bit in save.c's "seen"
+ * mask and its place in the budget snapshot; add at the end only). A
+ * table of the pointers' addresses, not a switch: LV0 added the 14th slot
+ * and this form is smaller than the 13-case switch was. */
+static const DoomoSaveExt *const *const slots[SAVE_EXT_SLOTS] = {
+    &doomo_save_ext_studio, &doomo_save_ext_extra, &doomo_save_ext_test,
+    &doomo_save_ext_freeplay, &doomo_save_ext_fishcook,
+    &doomo_save_ext_home, &doomo_save_ext_story2,                       /* S0 */
+    &doomo_save_ext_life, &doomo_save_ext_playas, &doomo_save_ext_endings,
+    &doomo_save_ext_opt2, &doomo_save_ext_profiles,                     /* K0 */
+    &doomo_save_ext_talk,                                               /* T0 */
+    &doomo_save_ext_breach                                              /* LV0 */
+};
 
 /* The defaults above are weak CONSTANTS: without the volatile read GCC
  * folds their value (0) into this file and never sees a module's strong
- * definition (the registry then always looks empty). */
-#define EXT_SLOT(p) (*(const DoomoSaveExt *const volatile *)&(p))
-
+ * definition (the registry then always looks empty). i is 0..SAVE_EXT_SLOTS-1. */
 static const DoomoSaveExt *slot(int i) {
-    switch (i) {
-    case 0: return EXT_SLOT(doomo_save_ext_studio);
-    case 1: return EXT_SLOT(doomo_save_ext_extra);
-    case 2: return EXT_SLOT(doomo_save_ext_test);
-    case 3: return EXT_SLOT(doomo_save_ext_freeplay);
-    case 4: return EXT_SLOT(doomo_save_ext_fishcook);
-    case 5: return EXT_SLOT(doomo_save_ext_home);      /* S0 */
-    case 6: return EXT_SLOT(doomo_save_ext_story2);    /* S0 */
-    case 7: return EXT_SLOT(doomo_save_ext_life);      /* K0 */
-    case 8: return EXT_SLOT(doomo_save_ext_playas);    /* K0 */
-    case 9: return EXT_SLOT(doomo_save_ext_endings);   /* K0 */
-    case 10: return EXT_SLOT(doomo_save_ext_opt2);     /* K0 */
-    case 11: return EXT_SLOT(doomo_save_ext_profiles); /* K0 */
-    case 12: return EXT_SLOT(doomo_save_ext_talk);     /* T0 */
-    default: return 0;
-    }
+    return *(const DoomoSaveExt *const volatile *)slots[i];
 }
 
 int save_ext_count(void) {
@@ -62,9 +61,9 @@ const DoomoSaveExt *save_ext_at(int i) {
 }
 
 void save_ext_reset_all(void) {
-    int i, n = save_ext_count();
-    for (i = 0; i < n; i++) {
-        const DoomoSaveExt *e = save_ext_at(i);
+    int k;
+    for (k = 0; k < SAVE_EXT_SLOTS; k++) {
+        const DoomoSaveExt *e = slot(k);
         if (e && e->reset) e->reset();
     }
 }

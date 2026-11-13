@@ -9,16 +9,19 @@
 #include "doomo/save_budget.h"
 
 /* 2 x 36 B of .bss (only linked once something asks for a budget; 2 x 24 B
- * before K0 raised SAVE_EXT_SLOTS 7 -> 12; T0's 13th slot fills the pad,
- * still 36 B): chunk sizes are kept by registry
- * position (stable in a build) and fit 16 bits (each chunk <=
- * DOOMO_SAVE_EXT_MAX). */
+ * before K0 raised SAVE_EXT_SLOTS 7 -> 12; T0's 13th slot filled the pad;
+ * LV0's 14th ('BRCH') takes the two bytes of `valid` and `n`, still 36 B:
+ * "valid" is now the top bit of `total` (a file is far below 2 GB) and the
+ * count is not kept, since the sizes after it are 0 anyway): chunk sizes
+ * are kept by registry position (stable in a build) and fit 16 bits (each
+ * chunk <= DOOMO_SAVE_EXT_MAX). */
+#define SNAP_VALID 0x80000000u
 typedef struct BudgetSnap {
-    uint32_t total;                              /* file size on the medium */
+    uint32_t total;                              /* SNAP_VALID | file size on the medium */
     uint32_t seed;                               /* doomo_town.seed at the I/O */
     uint16_t size[SAVE_EXT_SLOTS];
-    uint8_t  valid, n;
 } BudgetSnap;
+DOOMO_STATIC_ASSERT(sizeof(BudgetSnap) == 36, the_budget_snapshot_stays_36_bytes);
 
 static BudgetSnap snap[2];
 static uint32_t seen_last_size;
@@ -67,10 +70,8 @@ void save_budget_note_io(int slot, uint32_t total)
     memset(s, 0, sizeof(*s));
     n = chunk_sizes(now);
     for (i = 0; i < n; i++) s->size[i] = (uint16_t)(now[i] > 0xFFFFu ? 0xFFFFu : now[i]);
-    s->n = (uint8_t)n;
     s->seed = doomo_town.seed;
-    s->total = total;
-    s->valid = 1;
+    s->total = SNAP_VALID | total;
 }
 
 void save_budget_reset(void)
@@ -96,17 +97,18 @@ int32_t save_budget_left(int slot)
 {
     uint32_t now[SAVE_EXT_SLOTS], at[SAVE_EXT_SLOTS];
     const BudgetSnap *s;
-    int i, n;
+    int i, n, valid;
     if (slot < 0 || slot > 1) return 0;
     sync(slot);
     s = &snap[slot];
     /* another town since that I/O (town_new, a load of another save that
      * happened to have the same size): the snapshot says nothing about it */
-    if (s->valid && s->seed != doomo_town.seed) snap[slot].valid = 0;
+    if ((s->total & SNAP_VALID) && s->seed != doomo_town.seed) snap[slot].total = 0;
+    valid = (s->total & SNAP_VALID) != 0;
     n = chunk_sizes(now);
-    for (i = 0; i < n; i++) at[i] = (s->valid && i < s->n) ? s->size[i] : 0;
+    for (i = 0; i < n; i++) at[i] = valid ? s->size[i] : 0;
     return save_budget_compute(slot_cap(slot),
-                               s->valid ? s->total
+                               valid ? (s->total & ~SNAP_VALID)
                                         : (slot == 0 ? SAVE_BUDGET_TOWN_BOUND_STORY
                                                      : SAVE_BUDGET_TOWN_BOUND_FP),
                                now, at, n);
@@ -138,6 +140,7 @@ uint32_t save_budget_declared_max(uint32_t tag)
     case SAVE_EXT_TAG_OPT2: return SAVE_EXT_MAX_OPT2;
     case SAVE_EXT_TAG_PROF: return SAVE_EXT_MAX_PROF;
     case SAVE_EXT_TAG_TALK: return SAVE_EXT_MAX_TALK;      /* T0 */
+    case SAVE_EXT_TAG_BRCH: return SAVE_EXT_MAX_BRCH;      /* LV0 */
     default: return 0;
     }
 }

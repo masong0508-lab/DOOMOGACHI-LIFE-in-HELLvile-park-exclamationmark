@@ -29,7 +29,7 @@ TEST(save_registry_k0_slots)
         SAVE_EXT_TAG_LIFE, SAVE_EXT_TAG_PLAY, SAVE_EXT_TAG_ENDS, SAVE_EXT_TAG_OPT2,
         SAVE_EXT_TAG_PROF };
     int i, j;
-    CHECK_EQ(SAVE_EXT_SLOTS, 13);                  /* K0's 12 + T0's 'TALK' */
+    CHECK_EQ(SAVE_EXT_SLOTS, 14);                  /* K0's 12 + T0's 'TALK' + LV0's 'BRCH' */
     CHECK_EQ(SAVE_BUDGET_K0_CHUNKS, 5);
     CHECK_EQ(SAVE_EXT_TAG_LIFE, SAVE_EXT_TAG('L', 'I', 'F', 'E'));
     CHECK_EQ(SAVE_EXT_TAG_PLAY, SAVE_EXT_TAG('P', 'L', 'A', 'Y'));

@@ -101,7 +101,7 @@ static void br_start(void)
 static void br_enter(int arg)
 {
     memset(&br, 0, sizeof(br));
-    br.level = (uint8_t)DOOMO_CLAMP(arg & 0xFF, 0, LV_COUNT - 1);
+    br.level = (uint8_t)lv_startable(arg & 0xFF);
     br.mode = (uint8_t)(((arg >> 8) & 0xF) < LVM_COUNT ? (arg >> 8) & 0xF : LVM_NORMAL);
     br.demo = (uint8_t)((arg & LVF_DEMO) != 0);
     br_start();

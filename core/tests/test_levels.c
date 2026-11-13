@@ -30,8 +30,10 @@ TEST(levels_tables_are_sane)
     int i, n = 0;
     for (i = 0; i < LV_COUNT; i++) {
         const LevelInfo *L = &lv_info[i];
-        const DoomoMapDef *d = doomo_maps[L->map];
+        const DoomoMapDef *d;
         char tb[12], how[80];
+        if (!lv_built(i)) continue;                 /* LV0: registered, its package builds the map */
+        d = doomo_maps[L->map];
         CHECK_MSG(d && d->cells && d->kind == MAP_DUNGEON, "level %d map %d missing", i, L->map);
         CHECK_STR(map_title(L->map), L->title);
         CHECK(L->dev > 30 && L->dev < L->par);
@@ -88,10 +90,12 @@ TEST(levels_maps_showcase_3d)
 {
     int lv;
     for (lv = LV_FIRST_NEW; lv < LV_COUNT; lv++) {
-        const DoomoMapDef *d = doomo_maps[lv_info[lv].map];
+        const DoomoMapDef *d;
         uint8_t seen_f[256], seen_c[256];
         int i, nf = 0, nc = 0, lifts = 0, doors = 0, sky = 0, wet = 0, secret_cells = 0, exits = 0;
         int boss = -1, boss_tag = -1, remote_with_tag = 0, triggers = 0;
+        if (!lv_built(lv)) continue;
+        d = doomo_maps[lv_info[lv].map];
         memset(seen_f, 0, sizeof(seen_f));
         memset(seen_c, 0, sizeof(seen_c));
         for (i = 0; i < d->w * d->h; i++) {
@@ -168,6 +172,7 @@ TEST(levels_autopilot_reaches_every_exit)
     for (lv = LV_FIRST_NEW; lv < LV_COUNT; lv++) {
         const DoomoCombatStats *s;
         int fin;
+        if (!lv_built(lv)) continue;
         rng_seed(&doomo_rng, 11 + lv);
         fin = play_level(lv, 1, 30 * 60 * 12, 1);
         s = combat_stats();
@@ -188,8 +193,10 @@ TEST(levels_render_fp_tp_both_sizes)
         nat_w = res ? 320 : 240;
         nat_h = res ? 240 : 160;
         for (lv = LV_FIRST_NEW; lv < LV_COUNT; lv++) {
-            const DoomoMapDef *d = doomo_maps[lv_info[lv].map];
+            const DoomoMapDef *d;
             int bx = 0, by = 0, i;
+            if (!lv_built(lv)) continue;
+            d = doomo_maps[lv_info[lv].map];
             for (i = 0; i < d->thing_count; i++)
                 if (d->things[i].flags & THF_BOSS) { bx = d->things[i].x; by = d->things[i].y; }
             /* stand a few cells from the boss, on a plain floor */

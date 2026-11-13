@@ -1,6 +1,5 @@
 /* levels.c - the levels expansion's data and shared runtime (owner:
- * levels): the seven Hell Breach levels of the level select (the two
- * story breaches + five new ones), the mini-boss variants, ranks and
+ * levels): the mini-boss variants, ranks and
  * records (packed into PROG_BREACH_RANKS), the conveyor belts and level
  * scripts that run on top of a combat session, and the activities table
  * (Arena + Hellvile). See levels_int.h.
@@ -8,46 +7,8 @@
 #include "levels_int.h"
 
 DOOMO_STATIC_ASSERT(PROG_COUNT <= 32, progress_fits_the_save);
-DOOMO_STATIC_ASSERT(LV_COUNT * 3 <= 21, ranks_fit_their_bits);
-
-/* ---- the levels ------------------------------------------------------------- */
-const LevelInfo lv_info[LV_COUNT] = {
-    { "The Vape Cellar", "HELL BREACH 1",
-      "Under Cloud Nine Vapor: crates,\na crawlspace and a vape wraith.",
-      "Smells like Brimstone Blast down here",
-      MAPID_VAPE_CELLAR, LB_CELLAR_WRAITH, 150, 95, SONG_HELL_BREACH, WIN_CUTE,
-      PAL_PAINT(PAINT_VAPE_PURPLE, 1), ICON_CLOUD, 6, 5, 3, 255 },
-    { "Cloud Nine Spire", "HELL BREACH 2",
-      "Vex's tower in the vape storm.\nLord Vapula waits at the top.",
-      "Three phases of vapour and spite.",
-      MAPID_CLOUD_NINE_SPIRE, LB_VAPULA, 300, 200, SONG_BOSS, WIN_HELL,
-      PAL_UI_PURPLE, ICON_BOLT, 28, 50, 6, 255 },
-    { "Sugar Rush Sewers", "HELL BREACH 3",
-      "Strawberry soda canals... that\nturn into something fleshy.",
-      "The soda down here tastes... meaty.",
-      MAPID_SUGAR_RUSH_SEWERS, LB_GUTTERKING, 210, 140, SONG_HELL_BREACH, WIN_MINT,
-      PAL_PAINT(PAINT_BUBBLEGUM, 1), ICON_DROP, 6, 9, 5, 200 },
-    { "Plushie Factory", "HELL BREACH 4",
-      "Conveyor belts, stuffing vats\nand plushies with demon eyes.",
-      "Now hiring: souls. No experience!",
-      MAPID_PLUSHIE_FACTORY, LB_FLUFFNUTS, 220, 150, SONG_INVASION, WIN_CREAM,
-      PAL_UI_GOLD, ICON_WRENCH, 24, 9, 6, 200 },
-    { "Graveyard Shift", "HELL BREACH 5",
-      "A night at the cemetery. Crypts,\nghosts, a weeping in the garden.",
-      "Somebody is crying in the garden...",
-      MAPID_GRAVEYARD_SHIFT, LB_WIDOW, 260, 175, SONG_HELLVILE, WIN_DARK,
-      PAL_PAINT(PAINT_ECTOPLASM, 1), ICON_GHOST, 17, 37, 5, 230 },
-    { "Bone Cathedral", "HELL BREACH 6",
-      "A gothic hell church that goes\nUP. Bell tower. Pipe organ.",
-      "Let us pray. Loudly. With rockets.",
-      MAPID_BONE_CATHEDRAL, LB_BONEBOTTOM, 280, 190, SONG_HELL_BREACH, WIN_HELL,
-      PAL_RAMP(RAMP_BONE, 6), ICON_CROSS, 22, 33, 10, 200 },
-    { "Hellvile Underbelly", "HELL BREACH 7",
-      "Below the bad city: a market,\npipes, pistons, the hell gate.",
-      "Mind the gap. He's undressing you.",
-      MAPID_HELLVILE_UNDERBELLY, LB_GRUMBLEGUTS, 300, 200, SONG_INVASION, WIN_HELL,
-      PAL_UI_RED, ICON_PENTAGRAM, 40, 7, 6, 230 },
-};
+/* the first seven only: the 24 newer levels keep their records in 'BRCH' (levels_rec.c) */
+DOOMO_STATIC_ASSERT(LV_OLD_COUNT * 3 <= 21, ranks_fit_their_bits);
 
 /* ---- the mini-bosses ------------------------------------------------------------ */
 const LevelBoss lv_boss[LB_COUNT] = {
@@ -103,7 +64,8 @@ static uint32_t packed(void) { return progress_get(PROG_BREACH_RANKS); }
 int lv_rank(int level)
 {
     int v;
-    if (level < 0 || level >= LV_COUNT) return RANK_NONE;
+    if (level < 0 || level >= LV_TABLE_N) return RANK_NONE;
+    if (level >= LV_OLD_COUNT) return lv_rec_rank(level);       /* 'BRCH' (levels_rec.c) */
     v = (int)((packed() >> RANK_BITS(level)) & 7u);
     return v > RANK_S ? RANK_S : v;
 }
@@ -111,7 +73,8 @@ int lv_rank(int level)
 int lv_set_rank(int level, int rank)
 {
     uint32_t p;
-    if (level < 0 || level >= LV_COUNT || rank <= lv_rank(level) || rank > RANK_S) return 0;
+    if (level < 0 || level >= LV_TABLE_N || rank <= lv_rank(level) || rank > RANK_S) return 0;
+    if (level >= LV_OLD_COUNT) return lv_rec_set_rank(level, rank);
     p = packed() & ~(7u << RANK_BITS(level));
     progress_set(PROG_BREACH_RANKS, p | ((uint32_t)rank << RANK_BITS(level)));
     return 1;
@@ -128,30 +91,81 @@ void lv_set_horde_best(int wave)
     progress_set(PROG_BREACH_RANKS, p | ((uint32_t)wave << HORDE_SHIFT));
 }
 
-int lv_gold(int level) { return level >= 0 && level < LV_COUNT && unlock_has(LVU_GOLD0 + level); }
+int lv_gold(int level)
+{
+    if (level < 0 || level >= LV_TABLE_N) return 0;
+    return level < LV_OLD_COUNT ? unlock_has(LVU_GOLD0 + level) : lv_rec_gold(level);
+}
 
-/* who opens what: the cellar is always open; the spire and the sewers
- * after the cellar; then one after the other */
-static const int8_t lv_prereq[LV_COUNT] = { -1, LV_VAPE_CELLAR, LV_VAPE_CELLAR, LV_SEWERS,
-                                            LV_FACTORY, LV_GRAVEYARD, LV_CATHEDRAL };
+/* ---- who opens what: the rule table (lv_reg[], levels2.c) ----------------------- */
+static int lv_was_cleared(int level)
+{
+    return lv_rank(level) != RANK_NONE || (level >= LV_OLD_COUNT && lv_rec_cleared(level));
+}
 
-int lv_prereq_of(int level) { return level >= 0 && level < LV_COUNT ? lv_prereq[level] : -1; }
+int lv_prereq_of(int level)
+{
+    return level >= 0 && level < LV_TABLE_N && lv_reg[level].rule == LVK_AFTER_LEVEL ? lv_reg[level].arg : -1;
+}
+
+int lv_rule_eval(int kind, int arg)
+{
+    switch (kind) {
+    case LVK_ALWAYS: return 1;
+    case LVK_AFTER_LEVEL:
+        if (arg < 0 || arg >= LV_TABLE_N) return 0;
+        /* a level the cartridge does not have (the GBA): its own rule stands in, so the next
+         * listed Notice opens when the chain before it is open (N7 after the GBA's Day One) */
+        if (!lv_listed(arg)) return lv_rule_met(arg);
+        /* the story already took you through the first breaches */
+        return lv_was_cleared(arg) || (arg == LV_VAPE_CELLAR && unlock_has(530));
+    case LVK_CHAPTER: return story_chapter() >= arg;
+    case LVK_BEAT: return story_episode_done(arg) || story_chapter() > story_beat_chapter(arg);
+    case LVK_FLAG: return story_flag(arg) != 0;
+    case LVK_NGPLUS: return story_flag(SF_NGPLUS) || lv_arc_finished();
+    default: return 0;
+    }
+}
+
+int lv_rule_met(int level)
+{
+    const LevelReg *r;
+    if (level < 0 || level >= LV_TABLE_N) return 0;
+    r = &lv_reg[level];
+    if (r->page == LVP_ARREARS && !lv_rule_eval(LVK_NGPLUS, 0)) return 0;
+    return lv_rule_eval(r->rule, r->arg);
+}
 
 int lv_unlocked(int level)
 {
-    int p;
-    if (level < 0 || level >= LV_COUNT) return 0;
-    p = lv_prereq[level];
-    if (p < 0 || lv_rank(p) != RANK_NONE || lv_rank(level) != RANK_NONE) return 1;
-    /* the story already took you through the first breaches */
-    if (p == LV_VAPE_CELLAR && unlock_has(530)) return 1;
-    return 0;
+    if (!lv_built(level)) return 0;            /* a bad id, not on this platform, or no map yet */
+    return lv_rule_met(level) || lv_was_cleared(level);
 }
 
+int lv_startable(int level)
+{
+    if (lv_built(level)) return level;
+    return LV_OLD_COUNT - 1;
+}
+
+void lv_locked_reason(int level, char *buf, int cap)
+{
+    const LevelReg *r;
+    int t;
+    if (cap > 0) buf[0] = 0;
+    if (level < 0 || level >= LV_TABLE_N || lv_unlocked(level)) return;
+    r = &lv_reg[level];
+    t = !lv_built(level) ? LVT_NOT_BUILT
+      : (r->page == LVP_ARREARS && !lv_rule_eval(LVK_NGPLUS, 0)) ? LVT_NGPLUS : r->reason;
+    if (t == LVT_CLEAR_FIRST) doomo_snprintf(buf, cap, lv_reason_text[t], lv_info[DOOMO_MAX(lv_prereq_of(level), 0)].title);
+    else doomo_snprintf(buf, cap, "%s", lv_reason_text[t]);
+}
+
+/* The old seven: the trophies and mode gates count these (as before LV0). */
 int lv_cleared_count(void)
 {
     int i, n = 0;
-    for (i = 0; i < LV_COUNT; i++) n += lv_rank(i) != RANK_NONE;
+    for (i = 0; i < LV_OLD_COUNT; i++) n += lv_rank(i) != RANK_NONE;
     return n;
 }
 
@@ -196,15 +210,21 @@ int lv_finish(int level, int mode, const DoomoCombatStats *s, LvScore *score, in
     money = rank_bonus[score->rank] + (first ? 200 : 0);
     unlock_grant(LVU_TIME_TRIAL);
     if (lv_cleared_count() >= 3) unlock_grant(LVU_CHALLENGES);
-    if (lv_cleared_count() >= LV_COUNT) unlock_grant(LVU_ALL_CLEAR);
+    if (lv_cleared_count() >= LV_OLD_COUNT) unlock_grant(LVU_ALL_CLEAR);
     if (score->rank == RANK_S) unlock_grant(LVU_FIRST_S);
     if (mode == LVM_TIME_TRIAL && (int)(s->ticks / DOOMO_TICK_HZ) <= lv_info[level].dev) {
-        if (unlock_grant(LVU_GOLD0 + level)) money += 250;
+        if (level < LV_OLD_COUNT) {
+            if (unlock_grant(LVU_GOLD0 + level)) money += 250;
+        } else if (!lv_rec_gold(level)) {
+            lv_rec_set_gold(level);              /* the new levels' golds are bits of 'BRCH' */
+            money += 250;
+        }
         news |= LVR_GOLD;
     }
+    if (level >= LV_OLD_COUNT) lv_rec_set_cleared(level);
     if (mode == LVM_CUTE_ONLY) { news |= LVR_CHALLENGE; money += 150; unlock_grant(LVU_CUTE_CLEAR); }
     if (mode == LVM_BRUTAL_ONLY) { news |= LVR_CHALLENGE; money += 150; unlock_grant(LVU_BRUTAL_CLEAR); }
-    for (i = 0; i < LV_COUNT; i++) {
+    for (i = 0; i < LV_OLD_COUNT; i++) {
         if (lv_rank(i) != RANK_S) all_s = 0;
         if (!lv_gold(i)) all_gold = 0;
     }
@@ -284,7 +304,7 @@ void lv_runtime_begin(int level)
     for (i = 0; i < LV_TRACK; i++) lv_run.track[i].actor = -1;
     lv_run.bar = -1;
     lv_run.intro_boss = LB_NONE;
-    lv_run.level = (uint8_t)(level >= 0 && level < LV_COUNT ? level : 255);
+    lv_run.level = (uint8_t)(level >= 0 && level < LV_TABLE_N ? level : 255);
     lv_run.base_music = (uint16_t)audio_music_current();
     find_sources();
     if (lv_run.level == 255) return;
@@ -330,7 +350,7 @@ int lv_make_boss(int a, int boss, int hp_scale8)
     lv_run.track[slot].boss = (uint8_t)boss;
     lv_run.track[slot].hp_max = ac->hp;
     lv_run.track[slot].t = (uint16_t)rng_range(&doomo_rng, 60);
-    lv_run.size_cls[a] = LVS_NONE;
+    lv_size_cls_set(a, LVS_NONE);
     combat_s.boss = a;
     combat_s.boss_max = ac->hp;
     return slot;
@@ -348,11 +368,19 @@ int lv_spawn_boss(int boss, int cx, int cy, int hp_scale8)
     return a;
 }
 
+DOOMO_STATIC_ASSERT(ACTOR_MAX % 4 == 0 && LVS_HUGE <= 3, size_classes_pack_two_bits);
+
+void lv_size_cls_set(int a, int cls)
+{
+    int sh = (a & 3) * 2;
+    lv_run.size_cls[a >> 2] = (uint8_t)((lv_run.size_cls[a >> 2] & ~(3 << sh)) | ((cls & 3) << sh));
+}
+
 void lv_size_demon(int a, int cls)
 {
     DoomoActor *ac;
     if (a < 0 || a >= ACTOR_MAX) return;
-    lv_run.size_cls[a] = (uint8_t)cls;
+    lv_size_cls_set(a, cls);
     ac = &doomo_actors[a];
     switch (cls) {
     case LVS_TINY:
@@ -652,11 +680,14 @@ void lv_runtime_view(DoomoView3D *v)
     for (i = 0; i < ACTOR_MAX; i++) {
         const DoomoActor *a;
         DoomoBillboard *bb;
-        if (!lv_run.size_cls[i]) continue;
+        int cls;
+        if (!lv_run.size_cls[i >> 2]) { i |= 3; continue; }     /* four actors a byte: none sized */
+        cls = lv_size_cls(i);
+        if (!cls) continue;
         a = &doomo_actors[i];
-        if (!(a->flags & AF_USED) || !IS_DEMON(a->type)) { lv_run.size_cls[i] = 0; continue; }
+        if (!(a->flags & AF_USED) || !IS_DEMON(a->type)) { lv_size_cls_set(i, LVS_NONE); continue; }
         bb = bb_of(v, a);
-        if (bb) bb->scale = (uint16_t)((uint32_t)bb->scale * size_scale[lv_run.size_cls[i] & 3] / 256);
+        if (bb) bb->scale = (uint16_t)((uint32_t)bb->scale * size_scale[cls] / 256);
     }
     if (tint >= 0 && v->tint_level == 0) {
         v->tint = (uint8_t)tint;

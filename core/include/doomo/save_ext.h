@@ -87,7 +87,17 @@ extern const DoomoSaveExt *const doomo_save_ext_profiles;
 #define SAVE_EXT_TAG_TALK SAVE_EXT_TAG('T', 'A', 'L', 'K')
 extern const DoomoSaveExt *const doomo_save_ext_talk;
 /* --- end T0 --- */
-#define SAVE_EXT_SLOTS 13
+/* --- LV0 (levels plan 8.5): 'BRCH', the records of the 24 newer Hell
+ * Breach levels (4 B each) and the New Game+ "Arrears" arc state (48 B):
+ * core/src/levels_rec.c. A 14th slot: no registered chunk has the room
+ * (the PROG counters and unlock bits are full, LIFE's spare bytes are used
+ * up), and a build without the levels module never registers it. Worst
+ * case SAVE_EXT_MAX_BRCH (save_budget.h); empty until something is
+ * recorded. --- */
+#define SAVE_EXT_TAG_BRCH SAVE_EXT_TAG('B', 'R', 'C', 'H')
+extern const DoomoSaveExt *const doomo_save_ext_breach;
+/* --- end LV0 --- */
+#define SAVE_EXT_SLOTS 14
 int save_ext_count(void);
 const DoomoSaveExt *save_ext_at(int i);
 void save_ext_reset_all(void);   /* called by town_new() */

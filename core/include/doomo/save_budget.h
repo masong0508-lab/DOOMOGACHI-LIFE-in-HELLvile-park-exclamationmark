@@ -106,4 +106,13 @@ uint32_t save_budget_declared_max(uint32_t tag);
 #define SAVE_BUDGET_TALK_WORST (SAVE_BUDGET_LZ_WORST(SAVE_EXT_MAX_TALK) + SAVE_BUDGET_CHUNK_HDR)
 /* --- end T0 --- */
 
+/* --- LV0 (levels plan 8.5): 'BRCH', the newer levels' records and the
+ * Arrears arc: 4 B header + 48 B arc + 24 x 4 B = 148 B worst (levels_int.h
+ * LV_BRCH_MAX; 80 B on the GBA, which lists seven of the 24), declared 160.
+ * save_budget_declared_max() knows its tag; the joint worst case with it is
+ * held in both slots by core/tests/test_levels_rec.c. --- */
+#define SAVE_EXT_MAX_BRCH     160u
+#define SAVE_BUDGET_BRCH_WORST (SAVE_BUDGET_LZ_WORST(SAVE_EXT_MAX_BRCH) + SAVE_BUDGET_CHUNK_HDR)
+/* --- end LV0 --- */
+
 #endif

@@ -5,11 +5,17 @@
  * A carousel: a LIVE 3D preview of the level (the real map through
  * plat_view3d in a viewport, the camera slowly orbiting its preview spot,
  * the level's demons, props and goodies standing around as billboards),
- * a row of rank pips for the seven levels, the title, a blurb, par / gold
+ * a row of rank pips for the levels of the page, the title, a blurb, par / gold
  * time, secrets and the mini-boss waiting at the end. L / R switch the
  * mode (Hell Breach, Time Trial, Cute-Only, Brutal-Only - the ones that
  * are unlocked), SELECT lets the autopilot play a demo. Coming back from a
  * clear that opened a new level moves the cursor to it.
+ *
+ * LV0 pages (levels plan 8.5): the levels are shown in pages (Breach 1-7,
+ * Hell Breach 8-16, Arrears), UP / DOWN turn the page, LEFT / RIGHT walk
+ * the page. Only levels this build lists and has a map for are shown, so
+ * until a level package builds a page's levels the page does not exist and
+ * the select looks as it always did (one page, seven levels).
  */
 #include "levels_int.h"
 
@@ -17,7 +23,7 @@
 
 static struct {
     uint8_t  mode, sel, launched, loaded, flash_lv;
-    uint8_t  unlocked_mask;
+    uint32_t unlocked_mask;
 #if !defined(DOOMO_PLATFORM_PS1)
     uint8_t  pv_held;                /* S2-2: the platform holds the preview: it stands still between level changes */
 #endif
@@ -42,11 +48,28 @@ static int playable(int level)
     return 1;
 }
 
-static uint8_t unlocked_mask(void)
+static uint32_t unlocked_mask(void)
 {
-    int i, m = 0;
-    for (i = 0; i < LV_COUNT; i++) if (lv_unlocked(i)) m |= 1 << i;
-    return (uint8_t)m;
+    int i;
+    uint32_t m = 0;
+    for (i = 0; i < LV_COUNT; i++) if (lv_unlocked(i)) m |= 1u << i;
+    return m;
+}
+
+/* ---- pages: the shown levels of a page, and the pages that have any ---------- */
+static int page_n(int page, int *first)
+{
+    int i, n = 0;
+    for (i = 0; i < LV_COUNT; i++)
+        if (lv_built(i) && lv_page_of(i) == page) { if (!n && first) *first = i; n++; }
+    return n;
+}
+
+static int pages_shown(void)
+{
+    int p, n = 0;
+    for (p = 0; p < LVP_COUNT; p++) n += page_n(p, NULL) > 0;
+    return n;
 }
 
 static void load_preview(void)
@@ -58,12 +81,12 @@ static void load_preview(void)
 
 static void ls_enter(int arg)
 {
-    int focus = (arg >> 4) & 15, i;
+    int focus = (arg >> 4) & 63, i;
     memset(&ls, 0, sizeof(ls));
     ls.mode = (uint8_t)((arg & 15) < LVM_COUNT ? (arg & 15) : LVM_NORMAL);
     if (!mode_open(ls.mode)) ls.mode = LVM_NORMAL;
     lv_check_monster();
-    if (focus > 0 && focus <= LV_COUNT) ls.sel = (uint8_t)(focus - 1);
+    if (focus > 0 && lv_built(focus - 1)) ls.sel = (uint8_t)(focus - 1);
     else {
         /* the first new level that is open but not cleared, else the last open one */
         ls.sel = 0;
@@ -82,9 +105,31 @@ static void say(const char *m)
     ls.msg_t = 70;
 }
 
-static void move_sel(int dir)
+/* dir +-1: the next shown level of the same page (it wraps); dir 0 with page
+ * +-1: the first level of the next page that has any, the first one that
+ * still needs you if there is such. */
+static void move_sel(int dir, int page_dir)
 {
-    ls.sel = (uint8_t)((ls.sel + dir + LV_COUNT) % LV_COUNT);
+    int i = ls.sel, k, page = lv_page_of(i);
+    if (page_dir) {
+        int p = page, first = -1;
+        for (k = 0; k < LVP_COUNT; k++) {
+            p = (p + page_dir + LVP_COUNT) % LVP_COUNT;
+            if (page_n(p, &first)) break;
+        }
+        if (p == page) return;
+        for (i = 0; i < LV_COUNT; i++)
+            if (lv_built(i) && lv_page_of(i) == p && lv_unlocked(i) && lv_rank(i) == RANK_NONE) { first = i; break; }
+        i = first;
+    } else {
+        for (k = 0; k < LV_COUNT; k++) {
+            i = (i + dir + LV_COUNT) % LV_COUNT;
+            if (lv_built(i) && lv_page_of(i) == page) break;
+        }
+        if (i == ls.sel) return;
+    }
+    ls.sel = (uint8_t)i;
+    dir = page_dir ? page_dir : dir;
     ls.slide = (int16_t)(dir * 24);
     load_preview();
     audio_sfx(SFX_CURSOR);
@@ -92,7 +137,11 @@ static void move_sel(int dir)
 
 static void launch(int demo)
 {
-    if (!lv_unlocked(ls.sel)) { say("Locked! Clear the one before."); audio_sfx(SFX_ERROR); return; }
+    if (!lv_unlocked(ls.sel)) {
+        say(lv_prereq_of(ls.sel) >= 0 ? "Locked! Clear the one before." : "Locked! It is not open yet.");
+        audio_sfx(SFX_ERROR);
+        return;
+    }
     if (!demo && !playable(ls.sel)) { say("Clear it once to race the clock!"); audio_sfx(SFX_ERROR); return; }
     audio_sfx(SFX_SELECT);
     ls.launched = 1;
@@ -112,11 +161,11 @@ static void ls_update(void)
     if (ls.slide) ls.slide = (int16_t)(ls.slide * 3 / 4);
     if (ls.launched) {
         /* back from a run: a fresh preview, and point at anything new */
-        uint8_t now = unlocked_mask(), fresh = (uint8_t)(now & ~ls.unlocked_mask);
+        uint32_t now = unlocked_mask(), fresh = now & ~ls.unlocked_mask;
         int i;
         ls.launched = 0;
         for (i = 0; i < LV_COUNT; i++)
-            if (fresh & (1 << i)) {
+            if (fresh & (1u << i)) {
                 ls.sel = (uint8_t)i;
                 ls.flash_lv = (uint8_t)i;
                 ls.flash_t = 90;
@@ -131,8 +180,10 @@ static void ls_update(void)
         return;
     }
     if (btn_pressed(BTN_B)) { audio_sfx(SFX_CANCEL); scene_pop(); return; }
-    if (btn_repeat(BTN_LEFT)) move_sel(-1);
-    if (btn_repeat(BTN_RIGHT)) move_sel(1);
+    if (btn_repeat(BTN_LEFT)) move_sel(-1, 0);
+    if (btn_repeat(BTN_RIGHT)) move_sel(1, 0);
+    if (btn_pressed(BTN_UP)) move_sel(0, -1);
+    if (btn_pressed(BTN_DOWN)) move_sel(0, 1);
     if (btn_pressed(BTN_L) || btn_pressed(BTN_R)) {
         int dir = btn_pressed(BTN_L) ? -1 : 1, m = ls.mode, k;
         for (k = 0; k < LVM_COUNT; k++) {
@@ -243,15 +294,21 @@ static int theme_style(void)
     return lv_info[ls.sel].theme;
 }
 
+/* the pips of the selected page: one per shown level, as close as the screen needs */
 static void draw_pips(int cy, int big)
 {
-    int sw = plat_screen_w(), gap = big ? 30 : 22, i, x0 = sw / 2 - gap * (LV_COUNT - 1) / 2;
+    int sw = plat_screen_w(), page = lv_page_of(ls.sel), n = page_n(page, NULL), gap = big ? 30 : 22, i, at = 0, x0;
     char nb[4];
+    if (n > 1 && gap * (n - 1) > sw - 24) gap = (sw - 24) / (n - 1);
+    x0 = sw / 2 - gap * (n - 1) / 2;
     for (i = 0; i < LV_COUNT; i++) {
-        int x = x0 + i * gap, sel = i == ls.sel, r = (big ? 8 : 6) + sel * 2, rank = lv_rank(i);
+        int x, sel = i == ls.sel, r = (big ? 8 : 6) + sel * 2, rank = lv_rank(i);
+        if (!lv_built(i) || lv_page_of(i) != page) continue;
+        x = x0 + at * gap;
+        at++;
         int y = cy - (sel ? (ui_wave(ls.t, 24, 2) + 2) : 0);
         uint8_t c = !lv_unlocked(i) ? PAL_GRAY_D : rank ? lv_rank_color(rank) : PAL_UI_CREAM;
-        if (i < LV_COUNT - 1) plat_rect(x + r, cy, gap - 2 * r + 1, 2, PAL_GRAY_D);
+        if (at < n && gap - 2 * r + 1 > 0) plat_rect(x + r, cy, gap - 2 * r + 1, 2, PAL_GRAY_D);
         ui_fill_circle(x + 1, y + 2, r, PAL_BLACK);
         ui_fill_circle(x, y, r + 1, sel ? PAL_WHITE : ui_darker(c));
         ui_fill_circle(x, y, r, c);
@@ -260,8 +317,10 @@ static void draw_pips(int cy, int big)
         } else if (rank) {
             ui_text_outline(x - 2, y - 3, lv_rank_names[rank], PAL_WHITE, ui_darker(ui_darker(c)));
         } else {
-            doomo_snprintf(nb, sizeof(nb), "%d", i + 1);
-            ui_text(x - 2, y - 3, nb, PAL_UI_PINK_D);
+            /* the number on the page: 1-7, 8-16 (the Hell Breach number), Notice 1-15 */
+            int num = page == LVP_ARREARS ? i - LV_N1 + 1 : i + 1;
+            doomo_snprintf(nb, sizeof(nb), "%d", num);
+            ui_text(x - (num > 9 ? 5 : 2), y - 3, nb, PAL_UI_PINK_D);
         }
         if (i == ls.flash_lv && ls.flash_t) ui_sparkle(x + r, y - r, (ls.t / 2) & 15, PAL_UI_GOLD);
         if (lv_gold(i)) ui_text(x + r - 3, y + r - 6, STR_ICON_STAR, PAL_UI_GOLD);
@@ -277,7 +336,8 @@ static void ls_draw(void)
     char buf[64], tb[12];
     ui_backdrop(style, ls.t);
     if (plat_draw_skipped()) return;
-    ui_title(sw / 2, 3, ls.mode == LVM_NORMAL ? "HELL BREACH LEVELS" : lv_mode_names[ls.mode], style);
+    ui_title(sw / 2, 3, ls.mode != LVM_NORMAL ? lv_mode_names[ls.mode]
+                        : pages_shown() > 1 ? lv_page_names[lv_page_of(ls.sel)] : "HELL BREACH LEVELS", style);
     if (mode_open(LVM_TIME_TRIAL)) {
         ui_text_outline(4, 5, "L", ui_style(style)->accent, PAL_BLACK);
         ui_text_outline(sw - 10, 5, "R", ui_style(style)->accent, PAL_BLACK);
@@ -291,7 +351,7 @@ static void ls_draw(void)
     if (!unl) {
         plat_shade_rect(px, py, pw, ph, 9);
         lvd_padlock(sw / 2, py + ph / 2 - (big ? 8 : 6), big ? 2 : 1, ls.t);
-        doomo_snprintf(buf, sizeof(buf), "Clear %s first", lv_info[DOOMO_MAX(lv_prereq_of(ls.sel), 0)].title);
+        lv_locked_reason(ls.sel, buf, sizeof(buf));
         ui_text_outline(sw / 2 - ui_text_width(buf) / 2, py + ph / 2 + (big ? 16 : 10), buf, PAL_WHITE, PAL_BLACK);
     } else if (ls.mode == LVM_TIME_TRIAL && lv_rank(ls.sel) == RANK_NONE) {
         plat_shade_rect(px, py + ph - 14, pw, 14, 6);
@@ -349,8 +409,13 @@ static void ls_draw(void)
     for (k = 0; k < 2; k++)
         ui_text_outline(k ? px + pw - 10 + ui_wave(ls.t, 20, 2) : px + 3 - ui_wave(ls.t, 20, 2), py + ph / 2 - 4,
                         k ? STR_ICON_ARROW_R : STR_ICON_ARROW_L, PAL_WHITE, PAL_BLACK);
-    ui_hint(big ? STR_ICON_ARROW_L STR_ICON_ARROW_R " Level  " STR_ICON_A " Play  SELECT Demo  " STR_ICON_B " Back"
-                : STR_ICON_A " Play  SEL Demo  " STR_ICON_B " Back", style);
+    if (pages_shown() > 1)           /* the page keys take the place of the demo's hint (SELECT still plays it) */
+        ui_hint(big ? STR_ICON_ARROW_L STR_ICON_ARROW_R " Level  " STR_ICON_ARROW_U STR_ICON_ARROW_D " Page  " STR_ICON_A " Play  "
+                      STR_ICON_B " Back"
+                    : STR_ICON_ARROW_U STR_ICON_ARROW_D " Page  " STR_ICON_A " Play  " STR_ICON_B " Back", style);
+    else
+        ui_hint(big ? STR_ICON_ARROW_L STR_ICON_ARROW_R " Level  " STR_ICON_A " Play  SELECT Demo  " STR_ICON_B " Back"
+                    : STR_ICON_A " Play  SEL Demo  " STR_ICON_B " Back", style);
 }
 
 const DoomoScene SCENE_LEVEL_SELECT = { "LEVEL_SELECT", ls_enter, 0, ls_update, ls_draw, 0 };
