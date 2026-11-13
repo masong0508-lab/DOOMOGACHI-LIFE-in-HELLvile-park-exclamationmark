@@ -414,6 +414,12 @@ def lint_tlk(T, b, suggestive, die):
                 probs.append("%s: TK10: %s turns on the listener (act: %s) and may play with a child in the "
                              "room: guard: !kid_present, or tags: gentle (reviewed: a silly deflection)"
                              % (where, r["name"], r["act"]))
+            # TK11 (T5B-ROM review): no act ends a relationship, so a decline never says it is over
+            if (r["name"] in romance and r["act"] in ("no", "deflect_romance")
+                    and re.search(r"\b(it'?s over|we'?re done|say goodbye|part ways|break up|breaking up"
+                                  r"|end it|end this|run out of road|good run|can'?t stay)\b", low)):
+                probs.append("%s: TK11: a decline to a romance act must not end the relationship in text "
+                             "(no break-up act exists): soft decline only" % where)
             if refusal and ("[LOVE]" in text or "[HEARTS]" in text):
                 probs.append("%s: TK7: a refusal never uses the LOVE face or hearts" % where)
     return probs

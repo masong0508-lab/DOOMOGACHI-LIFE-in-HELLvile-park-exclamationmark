@@ -43,7 +43,7 @@
   "Yes, with pleasure. I do hope you like soup."
 @rule core.ask_out.r_yes_flat guard: adults_only&!kid_present&!pet&consent&flat act: yes
   "Yes, I'm thrilled. This is thrilled. Look at my face, it's trying."
-  "Sure, A date. Great. I'm cartwheeling internally."
+  "Sure, a date. Great. I'm cartwheeling internally."
   "Okay. Yes. I'll be the one in the corner, smiling stiffly."
   "[LOVE]Yes. Note my enthusiasm. It's the quiet kind."
 @rule core.ask_out.r_yes_loud guard: adults_only&!kid_present&!pet&consent&loud act: yes
@@ -163,7 +163,7 @@
 @rule core.ask_out.r_no_elder guard: adults_only&!kid_present&!pet&!consent&elder act: no
   "Oh, you're sweet. But I'm too old and too fond of my slippers."
   "No, dear. I'd only fall asleep in the soup."
-  "Thank you, but I've had my share. Go and try the young ones."
+  "Thank you, but I've had my share. Go and try someone with a steadier pulse."
 @rule core.ask_out.r_no_sad guard: adults_only&!kid_present&!pet&!consent&mood=sad act: no
   "Thank you for asking. I'm not in a place for it. Maybe not for a while."
   "No, but it's kind. I'm a bit low. Let's just have a cup of tea."
@@ -301,26 +301,6 @@
 @rule core.confess.r_no_sad guard: adults_only&!kid_present&!pet&!consent&mood=sad act: deflect_romance
   "Thank you for saying it. I can't right now. I'm sorry, I'm not well."
   "I wish I could. I'm just not there. Let's have tea, if that helps."
-@rule core.confess.r_split guard: adults_only&!kid_present&!pet&!consent&rel=partner act: deflect_romance
-  "I think we've run out of road. I'm sorry. It's me, and the road."
-  "I care about you. I can't be what you need. I'm so sorry."
-  "We had a good run. A very good run. I need to stop running."
-  "It's been lovely. It isn't now. Can we be kind about it?"
-  "I don't want to end it with a fight. So, here's a hug. Goodbye."
-  "I think we both know. Let's part before we start to hate the soup."
-  "I'm sorry. I love you, and I can't stay. That's the whole sentence."
-  "We'll always have the park. And the bad fountain. I'll visit it."
-  "I need space. Not far. Just enough for my knees to breathe."
-@rule core.confess.r_split_polite guard: adults_only&!kid_present&!pet&!consent&rel=partner&polite act: deflect_romance
-  "I owe you the truth, and I'm sorry. I think we ought to part. Gently."
-  "Thank you for everything. I believe it's time to say goodbye."
-@rule core.confess.r_split_blunt guard: adults_only&!kid_present&!pet&!consent&rel=partner&blunt act: deflect_romance
-  "It's over, I'm sorry. I'll say why if you want. I'd rather not."
-  "We're done. I mean it kindly. Take the good spoons, I'll take the bad."
-@rule core.confess.r_split_sad guard: adults_only&!kid_present&!pet&!consent&rel=partner&mood=sad act: deflect_romance
-  "I can't do this any more. I'm so sorry. I wish it were different."
-  "I'm not good for you right now. I need to step away. I'm sorry."
-
 # ---- CONFESS: joke, confess back, awkward crush --------------------------------------------------
 @rule core.confess.r_joke guard: adults_only&!kid_present&!pet&consent act: joke
   "Wow, that's the nicest thing today. The bar was a dead bird. Still nice."
