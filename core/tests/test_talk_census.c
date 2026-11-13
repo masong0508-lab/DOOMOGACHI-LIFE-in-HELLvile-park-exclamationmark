@@ -380,8 +380,9 @@ TEST(talk_gen_property_grief)
 /* T5B-S3FIX: a template's "{x}'s" reads to the S3 lint as one word: "spice's" squeezes to a
  * hate-list plural, the line was replaced by a safe one and the lint counted (4 hits in the
  * 2,000,000-context census). The cool_blame and cool_extra lines now say {x:s}, which the filler
- * probes whole (talkc lint TK12 refuses the literal form). Fails with the old lines: 124 hits
- * here. Also: no resident's name makes a hate-list word with a possessive or contraction "'s"
+ * probes whole. The guard that fails on the old lines is talkc lint TK12 (it refuses the literal
+ * form, with or without a modifier); this test covers the {x:s} runtime probe. Also: no resident's
+ * name makes a hate-list word with a possessive or contraction "'s"
  * after it ({them}'s right), since the templates still spell those literally. */
 TEST(talk_gen_possessive_hate_plural)
 {

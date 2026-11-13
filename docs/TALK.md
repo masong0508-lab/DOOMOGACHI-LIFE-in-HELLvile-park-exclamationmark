@@ -1076,9 +1076,10 @@ to a hate-list plural. The line was replaced by a safe one ("Anyway.") and count
 only: both lines now say `{x:s}` (the filler adds the `'s` first, then probes the whole word).
 New lint **TK12** (`talkc_safe.py`): a topic-slot word (`{x}`, `{food}`, `{hobby}`, `{music}`,
 `{fear}`, `{hate}`, `{like}`, `{mem}`, `{job}`) followed by a literal `'` is refused, so the next
-one cannot get in (seeded bad file `core/tests/talk_bad/bad_tk12_possessive.tlk`; the old
-lines fail the build with it). Regression test `talk_gen_possessive_hate_plural` (9,000
-exchanges with the spice topic, 0 hits and 0 safe lines; it counted 124 hits before the fix;
+one cannot get in (seeded bad files `core/tests/talk_bad/bad_tk12_possessive.tlk` and `bad_tk12_possessive_mod.tlk`,
+the second for a slot with a modifier such as `{x:cap}'s`; the old lines fail the build with TK12, which is the
+regression guard). Regression test `talk_gen_possessive_hate_plural` (9,000
+exchanges with the spice topic, 0 hits and 0 safe lines; it covers the `{x:s}` runtime probe;
 also every resident's name with `'s` after it lints clean, since `{them}'s right` still spells
 the `'s` out). No code in `core/src`: no resident byte on any platform; `TALK_en.BIN` unchanged
 at 672,124 B.
