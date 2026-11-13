@@ -42,7 +42,7 @@ Contents:
 | **T3** | the free-text parser (Dreamcast and native): `talk_lex.c`, `talk_parse.c`, `rules/en.tsv`, a labelled corpus of 1,519 lines | **done** (TK2) |
 | **T4** | the safety gate: the input classifier S1, the audience gate S2 (`talk_safe_ctx`, one source of "minor"), the output lint S3, the template lints TK1-TK9, the safety and adversarial corpora, the hashed hate list, the property tests | **done** (TK2): green. The generator-level halves of P1-P8 go live with T5a / T6 |
 | **T5a** | the generator: `talk_gen.c` (the grammar VM, guards, fillers, sim-fact callbacks, novelty, re-picks, the bubble fit, the per-conversation RNG, the trace), the `.tlk` grammar compiler `talkc_gen.py`, the adjacency table `acts.tsv`, a plain exchange (the gate first, who answers, reactions between residents) | **done** (TK3); a **starter** English bank (718 alternatives in 12 files, the K-10 grief and comfort banks included) so every act, refusal and part plays |
-| T5b | the English line banks (about 6,000 alternatives, design 3.6) and the owner's review | in progress: 6,042 alternatives in grammar/en (starter 718 + T5B-WARM 739: warm acts + T5B-COOL 600: cool and rude acts + T5b-ASK 975: questions and answers + T5B-OPEN 648: openers, parts and the rest + T5B-ROM 492: romance, adults only + T5B-TOPIC 771: topic replies + T5B-VOICE 596: the cast voices + T5B-GRIEF 506: grief, comfort and hard feelings) |
+| T5b | the English line banks (about 6,000 alternatives, design 3.6) and the owner's review | in progress: 6,742 alternatives in grammar/en (starter 718 + T5B-WARM 739: warm acts + T5B-COOL 600: cool and rude acts + T5b-ASK 975: questions and answers + T5B-OPEN 648: openers, parts and the rest + T5B-ROM 492: romance, adults only + T5B-TOPIC 771: topic replies + T5B-VOICE 596: the cast voices + T5B- |
 | T6 | the drama manager, outcomes, the talk memory chunk | **memory and chunk done** (T6-MEM, 6e); **drama manager done** (T6-DM, 6f: `talk_dm.c`, `beats.tlk`); **outcomes into the sim done** (T6-OUT, 6g: `talk_outcome.c`) |
 | **T7** | the census (`core/tools/talk_census.c`: the three tiers, Chao1, the quality checks Q1-Q6, the conversation tier), the grid `census_en.tsv`, `make -C core talk-census`, the smoke census in `make test`, the Q7 review sheet `talk_sample.py` | **done** (TK3): the tools and the measurement. The full run's numbers are in 6d: Skeleton, Meaning, conversations and quality meet the design's targets; **Surface does not** (it needs T5b's bank); Q7 (a person rating 300 exchanges) has not been done |
 | T8 | the house mode `HM_TALK` on native, with its UI | to do |
@@ -1085,6 +1085,29 @@ the `'s` out). No code in `core/src`: no resident byte on any platform; this pac
 change `TALK_en.BIN` (755,772 B on the landed tree). The name slots in `parts.tlk` and
 `ask_answer.tlk` (`{them:cap}'s`, `{other}'s`) are not covered by TK12; the unit test checks every
 alive resident's name instead. A renamed or typed pet is the open gap.
+
+**T5B-SURF2 (Surface push B: persona, mood, time, relationship and stance variation)**: +700
+English alternatives in six new files `grammar/en/surf_b_*.tlk` (6,346 alternatives and 74 files in
+all, counting talkc's own tally), 350 rules named `sb_*`. The census showed that a line with no topic
+slot adds about 2 distinct lines per 300,000 contexts, and a line that names the topic (`{x}`) adds
+about 13, so only the first file is topic-free. `surf_b_type_1.tlk` (192: eight persona types answer
+twelve plain acts in their own voice: thank, tell, agree, disagree, joke, laugh, compliment, encourage,
+invite, offer, apologize, comfort), `surf_b_mood.tlk` (144: happy, sad, angry, scared, tired, weird times
+twelve acts, every line names the topic), `surf_b_type_topic.tlk` (192: all 16 persona types times six
+acts, topic named), `surf_b_rel.tlk` (72: stranger, acquaintance, friend, best friend, rival, family
+times six acts, topic named; a rival stays a grudging rival, never an insult), `surf_b_time.tlk` (48:
+four times of day times six acts) and `surf_b_stance.tlk` (52: a fan or no fan of the topic, 13 acts,
+some lines with `{x.adj}` or `{x.assoc}`). Rules: at most 3 sentences a line, no register word, no
+romance, no cool act (so TK10 has nothing to guard), no kid-unsafe line, no break-up wording, a grief
+topic never reaches these (the grief bank takes it). Disjoint from `surf_a` (other rule-name suffixes).
+No code change, no resident byte on any port. `TALK_en.BIN` 755,772 -> 790,460 B (+34,688 B, PS1
+non-resident, about 50 B an alternative). Census, 300,000 contexts, same grid and seed (before ->
+after): Surface 164,193 -> 169,815 distinct (Chao1 862,612 -> 959,114), Skeleton 158,769 -> 163,600,
+Meaning 18,354 -> 20,445, quality 0 failed, S3 hits 0. Surface is still short of its 1,000,000 target:
+700 alternatives are about +3.4% distinct at this size, nowhere near the +30% the gap asks for. What
+moves the number is the count of lines that name the topic, the stance or an association; more
+topic-naming alternatives (not persona words) are the lever for the next push. A 40-line sample is
+in the evidence directory.
 
 Cool acts with a child in the room (after T5B-KIDFIX): new census mode `talk_census --cool-kid
 [--contexts N]` (N kid rooms per act, drawn from the census grid; `talk_census_cool_kid()` in

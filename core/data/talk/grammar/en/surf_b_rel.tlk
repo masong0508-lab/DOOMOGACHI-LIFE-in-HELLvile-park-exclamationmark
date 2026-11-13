@@ -1,0 +1,126 @@
+# core/data/talk/grammar/en/surf_b_rel.tlk - the chat flow acts answered by how well the two know each
+# other, naming the topic (owner: TK; T5b package T5B-SURF2, Surface push B). Six relationship bands
+# (stranger, acquaintance, friend, best friend, rival, family) times six acts, two lines each, every
+# line says the topic ({x}). Clean in any room: no register word, no romance, no cool act; a rival
+# stays a rival (a grudging nod, never an insult). Rule names start with sb_r_.
+# Syntax: core/tools/talkc_gen.py.
+
+# ---- stranger ------------------------------------------------------------------------------------
+@rule core.tell.sb_r_stranger guard: rel=stranger act: backchannel
+  "Oh, {x}? Well, I don't know you yet, but go on, I'm listening."
+  "{x:cap}, you say. Interesting. I'm happy to hear it, stranger."
+@rule core.agree.sb_r_stranger guard: rel=stranger act: agree
+  "Yes, {x}. We've only just met, and already we agree. A good sign."
+  "Right, {x}. You seem sensible, for someone I don't know."
+@rule core.disagree.sb_r_stranger guard: rel=stranger act: disagree
+  "Hm, I'm not sure about {x}. Forgive me, we've only just met."
+  "Oh, I see {x} differently. Politely, though, since I barely know you."
+@rule core.opine_pos.sb_r_stranger guard: rel=stranger act: agree
+  "I like {x} too. It's nice to find something in common with a new face."
+  "Oh, {x} is good, yes. Maybe we'll get along."
+@rule core.opine_neg.sb_r_stranger guard: rel=stranger act: sympathize
+  "Ah, {x} is hard, isn't it? Even a new face can see that."
+  "Oh, {x}. I'm sorry to hear. Is there anything I can do?"
+@rule core.change_topic.sb_r_stranger guard: rel=stranger act: answer
+  "{x:cap}? Sure. It's a fine thing to talk about with someone new."
+  "Oh, {x}, all right. Lead the way, I'm still finding my feet."
+
+# ---- acquaintance ------------------------------------------------------------------------------
+@rule core.tell.sb_r_acq guard: rel=acquaintance act: backchannel
+  "Oh, {x}. I thought I knew you, but there's more to hear. Go on."
+  "{x:cap}, really? I didn't know that about you. Tell me more."
+@rule core.agree.sb_r_acq guard: rel=acquaintance act: agree
+  "Yes, {x}. See, we do have things in common. I knew it."
+  "Right, {x}. I'm glad we got to chat, it's nice to find that out."
+@rule core.disagree.sb_r_acq guard: rel=acquaintance act: disagree
+  "Hm, not {x}, I don't think. But I like hearing you say it."
+  "Oh, I see {x} another way. We can still be friendly, I hope."
+@rule core.opine_pos.sb_r_acq guard: rel=acquaintance act: agree
+  "I like {x} too. We'll have to chat about it again sometime."
+  "{x:cap} is good, you're right. See, I'm learning about you."
+@rule core.opine_neg.sb_r_acq guard: rel=acquaintance act: sympathize
+  "Oh, {x} is hard. I hope it gets easier, truly."
+  "Yes, {x}. I'm sorry. I don't know you well, but I hope it passes."
+@rule core.change_topic.sb_r_acq guard: rel=acquaintance act: answer
+  "Sure, {x}. It's always nice to find a new subject to share."
+  "{x:cap}? Why not. Let's see what we both think."
+
+# ---- friend ------------------------------------------------------------------------------------
+@rule core.tell.sb_r_friend guard: rel=friend act: backchannel
+  "Ooh, {x}! Tell me everything. You know I love your stories."
+  "{x:cap}? Go on, friend. I'm all ears, and snacks."
+@rule core.agree.sb_r_friend guard: rel=friend act: agree
+  "Yes, {x}! Of course we agree. That's why we're friends."
+  "Right? {x:cap}, exactly. You always get it."
+@rule core.disagree.sb_r_friend guard: rel=friend act: disagree
+  "Hm, not {x}, friend. But I'd rather argue with you than agree with others."
+  "I don't know about {x}. Good thing we can disagree and still share tea."
+@rule core.opine_pos.sb_r_friend guard: rel=friend act: agree
+  "I love {x} too. We've got good taste, you and I."
+  "Yes, {x}! It's even better when we talk about it together."
+@rule core.opine_neg.sb_r_friend guard: rel=friend act: sympathize
+  "Oh, {x} is hard. I'm here, friend. Tell me what you need."
+  "Ugh, {x}. I know. Come on, we'll get through it, snacks first."
+@rule core.change_topic.sb_r_friend guard: rel=friend act: answer
+  "{x:cap}? Sure, friend. Anything with you is fun."
+  "Ooh, {x}. Yes. I was hoping you'd bring that up."
+
+# ---- best friend ------------------------------------------------------------------------------
+@rule core.tell.sb_r_best guard: rel=best act: backchannel
+  "Oh, {x}! You tell me everything, and I'll tell you everything. Deal?"
+  "{x:cap}? Quick, sit down, I want every detail. Don't skip a word."
+@rule core.agree.sb_r_best guard: rel=best act: agree
+  "Yes, {x}! Of course. We've been thinking the same thing for ages."
+  "Exactly! {x:cap}! I swear you read my mind, it's uncanny."
+@rule core.disagree.sb_r_best guard: rel=best act: disagree
+  "Ha, no, not {x}! Only you could get me to argue about it and still smile."
+  "I disagree on {x}, best friend. Loudly, and with love."
+@rule core.opine_pos.sb_r_best guard: rel=best act: agree
+  "I love {x} too! We should write it on our matching mugs."
+  "Yes, {x}! It's even better with you. Everything is."
+@rule core.opine_neg.sb_r_best guard: rel=best act: sympathize
+  "Oh, {x} is awful. Don't worry, I've got you. Always."
+  "Ugh, {x}. I know, come here. We'll fix it, or at least snack about it."
+@rule core.change_topic.sb_r_best guard: rel=best act: answer
+  "{x:cap}? Sure! You pick, I'll follow, I'd follow you into a bog."
+  "Oh, {x}! Good one. We'll talk about it until the lamps go out."
+
+# ---- rival ------------------------------------------------------------------------------------
+@rule core.tell.sb_r_rival guard: rel=rival act: backchannel
+  "{x:cap}, hm. Fine, tell me. I'll try to be fair about it."
+  "Oh, {x}? Go on, I'll listen. Don't take it as a truce."
+@rule core.agree.sb_r_rival guard: rel=rival act: agree
+  "Yes, {x}. For once, you're right. Mark the date, it won't repeat."
+  "Hmph. {x:cap}, true. I agree, and I hate that I do."
+@rule core.disagree.sb_r_rival guard: rel=rival act: disagree
+  "No, {x}! Not this time! You'll have to do better, as ever!"
+  "I disagree on {x}, obviously. It's practically our tradition."
+@rule core.opine_pos.sb_r_rival guard: rel=rival act: agree
+  "Hmph, {x} is good. I'll give you that one. Only that one."
+  "Fine, {x} is nice. We have that much in common, annoyingly."
+@rule core.opine_neg.sb_r_rival guard: rel=rival act: sympathize
+  "Ugh, {x}. Yes. Even I won't argue with you on that."
+  "{x:cap} is rough. I'd say I'm sorry, but I'm only half sorry. Fine, mostly."
+@rule core.change_topic.sb_r_rival guard: rel=rival act: answer
+  "{x:cap}? Fine, I'll talk. I'll win it, but I'll talk."
+  "Sure, {x}. Let's see who's better at it, shall we?"
+
+# ---- family ------------------------------------------------------------------------------------
+@rule core.tell.sb_r_family guard: rel=family act: backchannel
+  "Oh, {x}. Tell me all about it, dear. Family always listens."
+  "{x:cap}? Go on, I'm all ears. It's what family's for."
+@rule core.agree.sb_r_family guard: rel=family act: agree
+  "Yes, {x}. It runs in the family, that good sense."
+  "Right, {x}. We think alike. It's in the blood, or the soup."
+@rule core.disagree.sb_r_family guard: rel=family act: disagree
+  "No, {x}, dear. I love you, but no. That's family, too."
+  "Hm, about {x}, I'm not so sure. We'll talk it over at supper."
+@rule core.opine_pos.sb_r_family guard: rel=family act: agree
+  "I like {x} too. Always did, even when you were small."
+  "{x:cap} is good, yes. We should do it together, as a family."
+@rule core.opine_neg.sb_r_family guard: rel=family act: sympathize
+  "Oh, {x} is hard. Come here, we'll get through it together."
+  "Yes, {x}. It's a lot. But you've got a family behind you."
+@rule core.change_topic.sb_r_family guard: rel=family act: answer
+  "{x:cap}? Of course, dear. Whatever you like."
+  "Sure, {x}. We've got all evening, and plenty of tea."

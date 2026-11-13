@@ -1,0 +1,85 @@
+# core/data/talk/grammar/en/surf_b_time.tlk - the chat flow acts answered by the time of day, naming
+# the topic (owner: TK; T5b package T5B-SURF2, Surface push B). Morning, day, evening and night times
+# six acts, two lines each, every line says the topic ({x}). Clean in any room: no register word, no
+# romance, no cool act. Rule names start with sb_d_.
+# Syntax: core/tools/talkc_gen.py.
+
+# ---- morning ------------------------------------------------------------------------------------
+@rule core.tell.sb_d_morning guard: time=morning act: backchannel
+  "Oh, {x}? Over breakfast, that's the best time. Go on."
+  "{x:cap}, this early? I like it. My brain's only half awake."
+@rule core.agree.sb_d_morning guard: time=morning act: agree
+  "Yes, {x}. A morning agreement is a good omen."
+  "Right, {x}. And before my second cup, too. Impressive."
+@rule core.disagree.sb_d_morning guard: time=morning act: disagree
+  "Hm, not {x}. At least, not before my coffee. Ask me again later."
+  "I disagree on {x}, and it's barely breakfast. Brave of us."
+@rule core.joke.sb_d_morning guard: time=morning act: laugh
+  "Ha! {x:cap}, at this hour? You've woken me up."
+  "Hee! A morning joke about {x}. That's one way to start the day."
+@rule core.opine_pos.sb_d_morning guard: time=morning act: agree
+  "I like {x} too. It goes nicely with a fresh morning."
+  "{x:cap} is good, yes. Even before breakfast, which says a lot."
+@rule core.change_topic.sb_d_morning guard: time=morning act: answer
+  "{x:cap}? Sure. A new subject for a new day."
+  "Ooh, {x}, a fresh start. I'm all for it."
+
+# ---- day ------------------------------------------------------------------------------------
+@rule core.tell.sb_d_day guard: time=day act: backchannel
+  "Oh, {x}? Go on. I've got the whole afternoon, or at least a good chunk."
+  "{x:cap}, interesting. Tell me, I'm between chores."
+@rule core.agree.sb_d_day guard: time=day act: agree
+  "Yes, {x}. That's the most sensible thing I've heard all day."
+  "Right, {x}. Well said, and in broad daylight."
+@rule core.disagree.sb_d_day guard: time=day act: disagree
+  "Hm, not {x}. I'll argue it out, but let me sit first, it's been a day."
+  "I disagree on {x}. It's a fine afternoon for a debate."
+@rule core.joke.sb_d_day guard: time=day act: laugh
+  "Ha! {x:cap}! That's funnier than the whole morning."
+  "Hee! A good one about {x}. It's made my afternoon."
+@rule core.opine_pos.sb_d_day guard: time=day act: agree
+  "I like {x}. It's a good daytime sort of thing."
+  "{x:cap} is great, yes. Best thing I've heard since lunch."
+@rule core.change_topic.sb_d_day guard: time=day act: answer
+  "{x:cap}? Sure. There's plenty of day left."
+  "Oh, {x}, all right. The afternoon is for new subjects."
+
+# ---- evening ------------------------------------------------------------------------------------
+@rule core.tell.sb_d_evening guard: time=evening act: backchannel
+  "Oh, {x}? Go on. Evening is the best time for a story."
+  "{x:cap}, hm. Tell me, I've got the lamps lit and nowhere to be."
+@rule core.agree.sb_d_evening guard: time=evening act: agree
+  "Yes, {x}. A fine thing to agree on as the sun goes down."
+  "Right, {x}. It's the kind of thing that suits supper."
+@rule core.disagree.sb_d_evening guard: time=evening act: disagree
+  "Hm, not {x}. But it's evening, so I'll disagree softly."
+  "I disagree on {x}. Let's argue it over dinner."
+@rule core.joke.sb_d_evening guard: time=evening act: laugh
+  "Ha! {x:cap}! That's a good one, a perfect evening laugh."
+  "Hee! I needed that after the day. {x:cap}, honestly."
+@rule core.opine_pos.sb_d_evening guard: time=evening act: agree
+  "I like {x} too. It's an evening sort of thing, cosy."
+  "{x:cap} is lovely, yes. The kind of topic for a warm lamp."
+@rule core.change_topic.sb_d_evening guard: time=evening act: answer
+  "{x:cap}? Sure, the day's done, we can talk about anything."
+  "Oh, {x}. A good evening subject. Let's settle in."
+
+# ---- night ------------------------------------------------------------------------------------
+@rule core.tell.sb_d_night guard: time=night act: backchannel
+  "Oh, {x}? Shh, go on. Night is for secrets, and I'm awake."
+  "{x:cap}, hm. Tell me, the night's long and the owls are listening."
+@rule core.agree.sb_d_night guard: time=night act: agree
+  "Yes, {x}. It sounds even wiser by moonlight."
+  "Right, {x}. We agree, and the night agrees with us."
+@rule core.disagree.sb_d_night guard: time=night act: disagree
+  "Hm, not {x}. But it's late, so let's not shout about it."
+  "I disagree on {x}. Softly, so as not to wake the neighbours."
+@rule core.joke.sb_d_night guard: time=night act: laugh
+  "Ha! Shh, {x:cap}! I will wake the whole street."
+  "Hee! A midnight joke about {x}. The best kind, really."
+@rule core.opine_pos.sb_d_night guard: time=night act: agree
+  "I like {x} too. It's a good night sort of thing."
+  "{x:cap} is nice, yes. Especially by candlelight."
+@rule core.change_topic.sb_d_night guard: time=night act: answer
+  "{x:cap}? Sure. It's late, and late talk is the best talk."
+  "Oh, {x}. Good, I'm not sleepy anyway. Let's talk."

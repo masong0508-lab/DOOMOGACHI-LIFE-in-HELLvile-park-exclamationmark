@@ -1,0 +1,88 @@
+# core/data/talk/grammar/en/surf_b_stance.tlk - the chat flow acts answered by the speaker's own stance on
+# the topic: a fan of it (stance=pro) or no fan (stance=con), naming the topic, its attribute or
+# something it brings to mind (owner: TK; T5b package T5B-SURF2, Surface push B). Thirteen acts times
+# two stances, two lines each. Clean in any room: no register word, no romance, no cool act; a grief
+# topic never reaches these. Rule names start with sb_s_.
+# Syntax: core/tools/talkc_gen.py.
+
+# ---- a fan of the topic -----------------------------------------------------------------------
+@rule core.tell.sb_s_pro guard: stance=pro act: backchannel
+  "Oh, {x}! I'm a big fan, so go on, tell me everything."
+  "{x:cap}? That brings me joy. It always makes me think of {x.assoc:indef}."
+@rule core.agree.sb_s_pro guard: stance=pro act: agree
+  "Yes, {x}! I'm a fan, so of course I agree."
+  "Right? {x:cap} {x.is} {x.good}. We're on the same side."
+@rule core.disagree.sb_s_pro guard: stance=pro act: disagree
+  "No, not {x}! I'm a fan, I can't let that slide."
+  "Hm, I love {x}, so I have to disagree. Kindly, though."
+@rule core.joke.sb_s_pro guard: stance=pro act: laugh
+  "Ha! A joke about {x}! I'm a fan, so I get every word."
+  "Hee! {x:cap} is my favourite thing, so I'm biased. But that was good."
+@rule core.answer.sb_s_pro guard: stance=pro act: backchannel
+  "Oh, so that's {x}! I do love hearing about it."
+  "Ah, {x}. I'm a fan, so I'm delighted. Thank you."
+@rule core.continue.sb_s_pro guard: stance=pro act: tell
+  "As I was saying, {x} is wonderful. I could go on, so I will."
+  "Right, {x}. I'm happy to say it brings me {x.adj} joy. Where was I?"
+@rule core.gossip.sb_s_pro guard: stance=pro act: backchannel
+  "Oh, gossip about {x}! I love that subject, tell me more!"
+  "{x:cap}? I'm a fan. Go on, I'll be fair."
+@rule core.change_topic.sb_s_pro guard: stance=pro act: answer
+  "Ooh, {x}! Yes, please. I'm a big fan of that."
+  "{x:cap}? Great pick. I've got plenty to say."
+@rule core.backchannel.sb_s_pro guard: stance=pro act: tell
+  "You know, I was just thinking about {x}. I'm a fan, as you know."
+  "Mm-hm. Funny, {x} is on my mind. It's one of my favourites."
+@rule core.opine_pos.sb_s_pro guard: stance=pro act: agree
+  "Yes, {x}! It's a favourite of mine, too."
+  "I love {x} as well. We should start a club."
+@rule core.opine_neg.sb_s_pro guard: stance=pro act: disagree
+  "Oh, but I like {x}! I'll have to stand up for it."
+  "Hm, I'm a fan of {x}, so I see it differently. Gently."
+@rule core.laugh.sb_s_pro guard: stance=pro act: laugh
+  "Hee! Are we laughing about {x}? I love {x}, laugh away!"
+  "Ha ha! {x:cap} makes me giggle too. I'm a fan."
+@rule core.nod.sb_s_pro guard: stance=pro act: tell
+  "Glad you nod. {x:cap} is a good one. Let me tell you why."
+  "Mm, yes, {x}. You get it. Let me explain what I love about it."
+
+# ---- no fan of the topic -----------------------------------------------------------------------
+@rule core.tell.sb_s_con guard: stance=con act: backchannel
+  "Oh, {x}? I'm not a fan, but go on. Maybe you'll change my mind."
+  "{x:cap}, hm. It brings {x.assoc:indef} to mind. I'm not thrilled."
+@rule core.agree.sb_s_con guard: stance=con act: agree
+  "Yes, {x} is not for me. Glad we agree."
+  "Right, {x} is a bit much. We're on the same side."
+@rule core.disagree.sb_s_con guard: stance=con act: disagree
+  "No, not {x}. I'm no fan, sorry, I can't pretend."
+  "Hm, I don't like {x}, so I'll have to disagree. Politely."
+@rule core.joke.sb_s_con guard: stance=con act: laugh
+  "Ha! A joke about {x}. I'm no fan, so I enjoyed that a lot."
+  "Hee! Okay, {x} is at least funny. Not much else, though."
+@rule core.answer.sb_s_con guard: stance=con act: backchannel
+  "Oh, so that's {x}. Hm. I'm not a fan, but now I understand."
+  "Ah, {x}, okay. Thanks, I think. It's not my thing."
+@rule core.continue.sb_s_con guard: stance=con act: tell
+  "As I was saying, {x} isn't for me. I'll explain, briefly."
+  "Right, {x}. I'm not a fan, and I'm {x.adj} about it. Where was I?"
+@rule core.gossip.sb_s_con guard: stance=con act: backchannel
+  "Gossip about {x}? Not my favourite subject, but go on."
+  "{x:cap}? Hm. I'll listen, but I'm not promising to like it."
+@rule core.change_topic.sb_s_con guard: stance=con act: answer
+  "{x:cap}? Hm, not my favourite. Still, I'll give it a go."
+  "Fine, {x}. I'm no fan, so be gentle."
+@rule core.backchannel.sb_s_con guard: stance=con act: tell
+  "Funny, I was just thinking about {x}. Not fondly, but still."
+  "Mm-hm. {x:cap} has been on my mind, and I'm not thrilled."
+@rule core.opine_pos.sb_s_con guard: stance=con act: disagree
+  "Oh, you like {x}? I'm not a fan. We'll have to differ."
+  "Hm, {x} isn't for me, sorry. But I'm glad you enjoy it."
+@rule core.opine_neg.sb_s_con guard: stance=con act: agree
+  "Yes, {x} is not great. I'm no fan, either."
+  "I agree, {x} isn't my thing. We have that in common."
+@rule core.laugh.sb_s_con guard: stance=con act: laugh
+  "Hee! Fine, I'll laugh about {x}. It's the best use for it."
+  "Ha ha! {x:cap} deserves a chuckle, at least."
+@rule core.nod.sb_s_con guard: stance=con act: tell
+  "I see you nodding. {x:cap} isn't my favourite, but go on, convince me."
+  "Mm, yes. {x:cap}. I'm not a fan, but I'll tell you why, politely."
