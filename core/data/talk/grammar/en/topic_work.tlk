@@ -1,46 +1,49 @@
-# core/data/talk/grammar/en/topic_work.tlk - T5b-TOPIC: replies by topic kind (root=work) for ASK_ABOUT, ASK_OPINION, TELL and the opinion acts. Kid-safe. Syntax: core/tools/talkc_gen.py.
+# core/data/talk/grammar/en/topic_work.tlk - T5b-TOPIC: replies by topic kind (root=work) for
+# ASK_ABOUT, ASK_OPINION, TELL and the opinion acts. The work root holds jobs, but also money
+# and the words of working life, so most lines here talk about the word itself; the job-only
+# ones say "that job" where a job is meant. Kid-safe. Syntax: core/tools/talkc_gen.py.
 @rule core.ask_about.work_pro guard: root=work&stance=pro act: opine_pos
-  "{x:cap}? Honest work. I'd take a shift, a short one."
-  "{x:cap}! I salute anyone who does it. From a chair."
+  "{x:cap}? Honest stuff. I'd take a shift of that, a short one."
+  "{x:cap}! I salute anyone who deals with it. From a chair."
   "{x:cap}? The town runs on it. And on snacks."
-  "{x:cap}? I'd do it. If I had the hat."
+  "{x:cap}? I'd give it a go, if I had the hat."
   "{x:cap}? Hard, honest, good. I respect that."
-  "{x:cap}? I'm paid in biscuits, and I love it."
+  "{x:cap}? I'd do it for biscuits. I have done, for biscuits."
 @rule core.ask_about.work_con guard: root=work&stance=con act: opine_neg
-  "{x:cap}? I got fired in one afternoon. I deserved it."
+  "{x:cap}? I tried that once, one afternoon. I deserved the ending."
   "{x:cap}? Too much standing. I'd rather sit."
   "{x:cap}? I'd rather nap. Naps pay in dreams."
   "{x:cap}? The pay is a pat on the head."
-  "{x:cap}? Not for me. I tried once, the chair broke."
+  "{x:cap}? Not for me. I tried, and the chair broke."
   "{x:cap}? I'd quit in a week. I quit in a day."
 @rule core.ask_about.work_neu guard: root=work&stance=neutral act: answer
-  "{x:cap}? Someone has to do it. Not me, but someone."
-  "{x:cap}? My cousin does that. Or he did, he left."
+  "{x:cap}? Somebody has to see to it. Not me, but somebody."
+  "{x:cap}? My cousin dealt with that. Or he did, before he left."
   "{x:cap}? I think there's a form for it."
   "{x:cap}? It's a living. A small, polite living."
-  "{x:cap}? The mayor handles that. When he's awake."
-  "{x:cap}? I'd need to see a uniform first."
+  "{x:cap}? The mayor handles that, when he's awake."
+  "{x:cap}? I'd need to see the paperwork first."
 @rule core.ask_about.work_joke guard: root=work act: joke
   "{x:cap}? I'm good at it. I'm just never on time."
-  "{x:cap}? It's a job. It's a good job to dodge."
+  "{x:cap}? Lovely word. Sounds like a Monday."
   "{x:cap}? My boss said I'm irreplaceable. I checked, he meant it badly."
 @rule core.ask_opinion.work guard: root=work act: answer
-  "{x:cap}? A fine job, as jobs go."
+  "{x:cap}? Fine, as these things go."
   "My take on {x}: good hours, bad coffee."
-  "{x:cap}? Honest work. I'd tip, if I had pockets."
+  "{x:cap}? Honest work, that. I'd tip, if I had pockets."
   "{x:cap}? It's a lot of standing. I'd get tired."
   "{x:cap}? Solid. Respectable, hat optional."
-  "{x:cap}? Every town needs one. Ours has two, and they argue."
+  "{x:cap}? Every town needs it. Ours has two, and they argue."
 @rule core.tell.work_pro guard: root=work&stance=pro act: opine_pos
   "{x:cap}! Good for you. I'd bring you a sandwich."
   "A person with {x} in their life has purpose. Respect."
-  "You do {x}? Tell me everything. Slowly."
+  "{x:cap}? Tell me everything. Slowly."
 @rule core.tell.work_con guard: root=work&stance=con act: opine_neg
   "{x:cap}? Rough. Hang in there, and take your breaks."
   "That sounds like a long shift. I'd bring tea."
-  "Ah, {x}. Tomorrow's another day. Or a different job."
+  "Ah, {x}. Tomorrow's another day. Or a different day."
 @rule core.opine_pos.work_agree guard: root=work&stance=pro act: agree
-  "Yes! {x:cap} is honest work. We should all give it a go."
+  "Yes! {x:cap} is honest business. We should all give it a go."
   "Right? It's tough, but it's a good thing."
 @rule core.opine_pos.work_disagree guard: root=work&stance=con act: disagree
   "{x:cap}? Hm, I'd pass. I like sitting."
@@ -49,5 +52,5 @@
   "Ha, {x}. Yes. Too many forms."
   "Right? I'd rather watch the fog."
 @rule core.opine_neg.work_disagree guard: root=work&stance=pro act: disagree
-  "Hey, {x} is good work. Give it respect."
+  "Hey, {x} deserves respect. I mean it."
   "Not {x}! It pays in pride. And a small salary."

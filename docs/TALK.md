@@ -638,6 +638,42 @@ in `ask_topic.tlk`. No romance. `TALK_en.BIN` 540,274 -> 582,443 B (about 43
 B an alternative; the PS1 subset grows by the same rate, so TKP's lever
 choice matters more now). No resident code changed.
 
+**T5B-TOPIC: topics from the word network and more beat lines (+768
+alternatives).** Sixteen new files `grammar/en/topic_<root>.tlk` (+651) give
+every talkable root of the category tree its own replies, so a word the
+player names gets an answer about that kind of thing and not the generic
+one: `topic_people.tlk`, `topic_places.tlk`, `topic_food.tlk`,
+`topic_music.tlk`, `topic_hobbies.tlk`, `topic_fears.tlk`,
+`topic_creatures.tlk`, `topic_house.tlk`, `topic_lore.tlk`,
+`topic_hellvile.tlk`, `topic_feelings.tlk`, `topic_work.tlk`,
+`topic_time.tlk`, `topic_school.tlk`, `topic_stuff.tlk` and
+`topic_describe.tlk` (the network has 406 topic concepts with mostly
+generic replies; `ask_topic.tlk` had 2-5 lines a root). Each file follows
+the same shape, all guarded `root=<root>`: ASK_ABOUT by stance (pro, con,
+neutral) and a joke rule, ASK_OPINION, TELL by stance, and the four opinion
+reactions (`core.opine_pos.*_agree` / `_disagree`, `core.opine_neg.*_agree`
+/ `_disagree`), so a stance clash between two residents on a food word now
+reads differently from one on a place or a job. `topic_fears.tlk` is the
+exception: fear answers stay kind (no laughing at the player's fear, the
+joke rule carries `!kid_speaker`), and `topic_feelings.tlk` keeps the
+comfort register of K-10's neighbours without touching the grief bank.
+New rule names only, so nothing in `core_ask.tlk` / `ask_topic.tlk`
+changed. Kid-safe everywhere: no register word, no romance, no `jmat`, at
+most 3 sentences a line.
+`grammar/en/beats_more.tlk` (+117) answers T6-DM's repeats: a `.more` rule
+beside every drama-manager rule of `beats_lines.tlk` (the 13 beats' goal
+lines, idle chatter, the prod, the walk-out excuse, the grumble, jab, row,
+ultimatum, makeup and the child's "are you fighting?"), with the same
+guards and acts; `beats_lines.tlk` is untouched. The romance beat's extra
+lines keep `consent&adults_only&!kid_present&!pet`, the row and the
+ultimatum keep `!kid_present`, the kid lines keep `kid_speaker` and the
+`kid` tag. A long session now draws from 2-3 times as many beat lines
+(e.g. `beat.smalltalk` 4 -> 11, `excuse` 5 -> 10, `prod` 4 -> 8).
+`TALK_en.BIN` 643,516 -> 676,732 B, the PS1 subset 312,185 -> 345,490 B of
+the 312 KB budget (**the PS1 subset is now over that budget: TKP must pick
+its lever, see 6.4 and TP1**). Data only: no code, no resident byte on any
+platform. A 40-line sample is in the evidence directory.
+
 **Writing a line**: add it to the right rule in `grammar/en/*.tlk` (or a new
 rule with a guard and an `act:`), run `make -C core talk-check talk`, then
 `core/build/talk_census --smoke --grid core/data/talk/census_en.tsv` and

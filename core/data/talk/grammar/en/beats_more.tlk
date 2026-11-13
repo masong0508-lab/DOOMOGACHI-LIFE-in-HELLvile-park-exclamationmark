@@ -1,0 +1,193 @@
+# core/data/talk/grammar/en/beats_more.tlk - T5b-TOPIC: more lines for the drama manager's own
+# rules, so a long session stops repeating the starter bank of beats_lines.tlk (T6-DM saw it
+# repeat). Same guards, same acts, new rule names (<name>.more): the generator reads every rule
+# whose name starts with the fixed name. Kid-safe except the adult-only beats, which keep the
+# guards of their starter rules. Syntax: core/tools/talkc_gen.py; docs/TALK.md "The drama manager".
+
+# ---- ARRIVE ---------------------------------------------------------------------------------
+@rule beat.arrive.more guard: beat=arrive act: tell
+  "There you are! I saved you the lumpy chair."
+  "Come in, {you}. Mind the draft. It's friendly."
+  "Oh good, company. I was about to talk to the toaster."
+  "Hello, {you}! Wipe your feet. Or don't, the rug is used to it."
+  "You're here! Quick, look casual. I'll look casual too."
+  "Welcome, {you}. We've been expecting someone. You'll do nicely."
+
+# ---- SMALLTALK ------------------------------------------------------------------------------
+@rule beat.smalltalk.more guard: beat=smalltalk act: tell
+  "I had a thought this morning. It left before lunch."
+  "My knees say rain. My knees also say a lot of things."
+  "The kettle and I had words. It won."
+  "Did you notice the light? Funny shade today."
+  "I tried a new route to the shop. It was the same route."
+  "Somebody parked a goat outside. Nobody knows whose."
+  "I slept well. Suspiciously well. I checked for gaps."
+@rule beat.smalltalk.ask.more guard: beat=smalltalk act: ask_about
+  "What's the best thing you ate this week, {you}? Be honest."
+  "How are the shoes, {you}? Comfortable? Haunted?"
+  "Tell me one good thing, {you}. A small one counts."
+
+# ---- TOPIC_DIVE -------------------------------------------------------------------------------
+@rule beat.topic_dive.more guard: beat=topic_dive&topic act: opine_pos
+  "Hold on, {x}? I wrote a song about {x.it}. It's short."
+  "{x:cap}! Say more. Say it slowly, I'm taking notes."
+  "If we're doing {x}, I'm getting snacks first."
+  "I've waited years for someone to bring up {x}. Years."
+  "Talking about {x}? I'm in. I'm fully in."
+  "{x:cap} is my specialist subject. I'll bring the chart."
+
+# ---- HOUSE ----------------------------------------------------------------------------------
+@rule beat.house.more guard: beat=house act: tell
+  "The floorboards are playing a tune. Listen. Off-key."
+  "Is it me, or is this house leaning toward the kitchen?"
+  "I like it here. The walls have a lived-in look."
+  "That corner is empty. Needs a plant. Or a plan."
+  "The clock has been four-twenty for a week. I respect it."
+  "Cosy, {you}. In a slightly spooky way. The best way."
+
+# ---- GOSSIP ---------------------------------------------------------------------------------
+@rule beat.gossip.more guard: beat=gossip act: gossip
+  "Psst. Somebody put a hat on the statue. Nobody knows who."
+  "Rumour has it the bakery's changing its recipe. I'm sorry."
+  "They say the mayor snores in meetings. I say that's a gift."
+  "I heard something. Then I heard it differently. Choose one."
+  "Don't repeat this. I'm repeating it, but you don't."
+  "There's a new face in town. Taller than the last one."
+
+# ---- PROBLEM ----------------------------------------------------------------------------------
+@rule beat.problem.more guard: beat=problem&fact.problem act: complain
+  "Do you have a minute? It's about something small. It's not small."
+  "I don't want to be a bother. But it's been on my chest all week."
+  "I keep saying I'm fine. It's getting a little tired of me."
+  "Something's off, {you}. I can't put a finger on it."
+@rule beat.problem.lonely.more guard: beat=problem&prob=lonely act: complain
+  "The house is so quiet it hums. I talk to the plants."
+  "I set two cups out this morning. Out of habit."
+@rule beat.problem.bored.more guard: beat=problem&prob=bored act: complain
+  "I counted the ceiling tiles. Twice. They disagreed."
+  "I'm so bored I read the back of the cereal box. Out loud."
+@rule beat.problem.nightmare.more guard: beat=problem&prob=nightmare act: complain
+  "I keep waking up at three. The same three, the same dream."
+  "The dream comes back. The door's always open, a little."
+
+# ---- ALLY_ASK ---------------------------------------------------------------------------------
+@rule beat.ally_ask.more guard: beat=ally_ask act: ask_opinion
+  "{you}, you saw it. Tell them what you saw."
+  "Be fair, {you}. Be fair, and agree with me."
+  "{you}, swing vote. The whole room's counting on you."
+  "I'd love an impartial opinion, {you}. Preferably mine."
+  "Settle it, {you}. A coin would be quicker, but you're nicer."
+
+# ---- STORY --------------------------------------------------------------------------------------
+@rule beat.story.more guard: beat=story act: tell
+  "Did you see the sky last night? It turned a shade I don't like."
+  "The bells rang once, and nobody was near them."
+  "Folks keep leaving doors unlocked. I keep locking them."
+  "Something's up with the park. The swings are too still."
+  "I had an odd dream about the church. It had a staircase."
+  "The fog changed direction today. It never does that."
+
+# ---- GAME ----------------------------------------------------------------------------------------
+@rule beat.game.more guard: beat=game act: ask_about
+  "Quick quiz. What's the capital of snacks? Think hard."
+  "Would you rather sneeze glitter or hiccup bubbles?"
+  "Name three soups. Go. You have a spoon's worth of time."
+  "Guess what I'm thinking. Hint: it's round and warm."
+  "Rock, paper, biscuit. Winner picks the next topic."
+  "Two truths and a fib, {you}. I'll start. I have the fib."
+
+# ---- KID_MOMENT ------------------------------------------------------------------------------------
+@rule beat.kid_moment.more guard: beat=kid_moment&kid_speaker tags: kid act: tell
+  "I can hold my breath for ten whole seconds! Watch."
+  "I drew a cat. It looks like a potato. A fast potato."
+  "Can we have a snack now? A small snack. A medium snack."
+  "I'm not tired. I'm just lying down very hard."
+
+# ---- ROMANCE_ADULT (adults the gate passed, with the one addressed saying yes) ------------------
+@rule beat.romance_adult.more guard: beat=romance_adult&consent&adults_only&!kid_present&!pet act: flirt
+  "I'd share my last biscuit with you, {you}. That's serious."
+  "You smell like toast. I mean it as the highest praise."
+  "Sit closer, {you}. The draft is my excuse."
+
+# ---- WIND_DOWN -------------------------------------------------------------------------------------
+@rule beat.wind_down.more guard: beat=wind_down act: farewell
+  "That was lovely. Nobody lied much."
+  "I'm out of words. I'll buy more tomorrow."
+  "Time flew. I waved."
+  "I think I'm done. My hat says so."
+  "Thanks for this. I'll replay it at bedtime."
+  "Well. The couch is calling. It's persuasive."
+@rule beat.wind_down.promise.more guard: beat=wind_down act: promise
+  "Visit again, {you}. I'll warm the chair."
+  "Next time, I'll bring a pie. Or I'll try."
+  "See you soon, {you}. Don't be a stranger. Be a regular."
+
+# ---- idle chatter, one resident to another ------------------------------------------------------
+@rule idle.ask.more guard: to_res&topic act: ask_about
+  "Hey {them}. Be honest. {x:cap}: good or bad?"
+  "{them}, quick. Say one thing about {x}."
+  "So, {them}. What's your story with {x}?"
+@rule idle.plain.more guard: to_res act: ask_about
+  "{them}, did you sleep? Or did you rest?"
+  "How's the knee, {them}? I'm asking for the knee."
+  "{them}, got any news? Fake news is fine."
+@rule idle.tease.more guard: to_res&rel=rival act: tease
+  "Good silence, {them}. You've been practising."
+  "{them}, nice shirt. Is it the same one?"
+@rule idle.muse.more guard: !to_res act: tell
+  "I'm just going to look at the ceiling. It's got character."
+  "The floor is doing its thing again."
+  "Does anyone hear that? Neither do I. Peaceful."
+
+# ---- the prod ---------------------------------------------------------------------------------------
+@rule prod.more act: ask_feeling
+  "Cat got your tongue, {you}? Hand it back when you can."
+  "Hello? The room is waiting, {you}. Gently."
+  "{you}, we're all looking at you. In a kind way."
+  "Any thoughts, {you}? Even half a thought."
+
+# ---- walking out -----------------------------------------------------------------------------------
+@rule excuse.more act: farewell
+  "I need to go feed something. Not sure what."
+  "My nap is booked. I'd hate to miss it."
+  "Gotta run. The kettle's calling."
+  "I've got a meeting with my couch. Bye."
+  "Sorry, I just remembered an appointment. With a sandwich."
+
+# ---- cut off by another resident ----------------------------------------------------------------
+@rule grumble.more act: complain
+  "Hey, I wasn't finished. I was warming up."
+  "Hmph. I'll just write it down for later."
+  "That was my turn. I had a good ending."
+  "Fine. Interrupt away. I'll be over here, sulking."
+
+# ---- an argument: the jab -----------------------------------------------------------------------
+@rule jab.more guard: to_res act: tease
+  "Oh, {them}, you're so wise. Your hat is, at least."
+  "Bold words, {them}. Bold hat, too."
+  "That's nice, {them}. Did you think of that yourself?"
+  "Interesting take, {them}. Did it come with a warranty?"
+
+# ---- step 2: the row -----------------------------------------------------------------------------
+@rule row.more guard: to_res&!kid_present act: accuse
+  "You never listen, {them}. You never, ever listen."
+  "I've had it with you, {them}. Up to here. Higher."
+  "Don't {them} me. You know what you did."
+
+# ---- step 3: the ultimatum -----------------------------------------------------------------------
+@rule ultimatum.more guard: to_res&!kid_present act: ask_opinion
+  "{you}, whose side? Mine or {them}'s? Quick."
+  "I'm done, {you}. Tell {them} they're wrong. Please."
+  "Pick one, {you}. I'll wait. I'll wait loudly."
+
+# ---- making up ------------------------------------------------------------------------------------
+@rule makeup.more guard: to_res act: apologize
+  "Sorry, {them}. I was grumpy. Mostly at the weather."
+  "Okay, {them}. You win. A little, don't gloat."
+  "I take it back, {them}. Most of it. Some."
+
+# ---- a child in the room of an argument -------------------------------------------------------
+@rule kidask.more guard: kid_speaker tags: kid act: ask_feeling
+  "Why's everyone shouty? Did someone take a biscuit?"
+  "Can you two be nice? I want you both."
+  "Is this a game? It's not a fun game."
