@@ -565,10 +565,12 @@ typedef struct { Aura *rec; Aura a[5]; } AuraSet;   /* one list per pulse; rec: 
 static AuraSet *aura;
 extern void plat_rect_run(const void *list, int n) __attribute__((weak));   /* the GBA's ARM run (video_loops.s) */
 extern int gba_nodraw __attribute__((weak));        /* 0: drawing to Mode 4, the only case the run handles */
-uint32_t exo_aura_bytes(void) { return (uint32_t)sizeof(AuraSet); }
+/* (a 64-bit host's AuraSet wants 8-byte alignment, the scratch gives 4: 4 B of slack there, none on the 32-bit targets) */
+uint32_t exo_aura_bytes(void) { return (uint32_t)sizeof(AuraSet) + (sizeof(void *) > 4 ? 4u : 0u); }
 void exo_aura_bind(void *mem)
 {
     int i;
+    if (mem && sizeof(void *) > 4) mem = (void *)(((uintptr_t)mem + 7u) & ~(uintptr_t)7u);
     aura = (AuraSet *)mem;
     if (!aura) return;
     aura->rec = NULL;
@@ -690,8 +692,8 @@ void exo_host_frame(int cx, int cy, const DoomoImage *img, int scale, int shake,
                         dread > 10 ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_RAMP(RAMP_VAPE, 3));
         NO_HOLE();
     }
-aura_done:
 #if HOST_HOLES
+aura_done:
     /* the drop shadow (x + 3, y + 3, w, h): only the band the frame does not paint over (the
      * right 7 columns and the bottom 7 rows of it hold every pixel its round corners leave) */
     plat_shade_rect(x + w - 4, y + 3, 7, h, 10);
