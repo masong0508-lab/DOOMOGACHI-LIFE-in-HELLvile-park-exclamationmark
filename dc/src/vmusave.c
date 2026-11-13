@@ -95,6 +95,7 @@ static void card_draw(int done, int total)
     if (card_line) card_text(158, card_line, PAL_UI_PINK_D);
     dc2d_side_end();
     card_vbl = dc_vblanks;
+    dc_mailbox.drawn++;                 /* S2-10: a card is a presented picture (the harness's gaps see the tick's stall) */
 }
 
 static void card_progress(void *ctx, int done, int total)

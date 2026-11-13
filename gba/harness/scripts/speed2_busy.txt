@@ -5,8 +5,9 @@
 # spinner, 30 pictures a second. `make -C gba test-speed2 SPEED2=busy` prints the table (the "worst frame" column is
 # the longest gap between two presented pictures; the logic column stays low by design: the sim holds while the
 # work runs). `expect-gap` fails a run when a presented frame of the window took over the given ms.
-# tools/speed2.py turns this file into the PS1 and Dreamcast scripts too (expect-gap is dropped there: the PS1 harness
-# counts the pictures the game shows outside its loop, the Dreamcast one the card's pictures).
+# tools/speed2.py turns this file into the PS1 and Dreamcast scripts too (expect-gap and town-fill are dropped there, so
+# their "worst-case" windows repeat the Classic island; the PS1 harness counts the pictures the game shows outside its
+# loop, the Dreamcast one the memory card's; both print the longest gap between two pictures).
 # Window rules: speed2_fair.txt.
 wait 40
 expect-log doomo: init
@@ -24,6 +25,7 @@ fps start
 press A
 wait 40
 fps busy: title -> new story (the build)
+expect-gap 100
 shot busy_new_story
 wait 30
 
@@ -41,6 +43,7 @@ wait 10
 expect-scene ISLAND
 wait 30
 fps busy: new island -> hub (the build)
+# (no expect-gap: the hub's own first 39 frames of 67-117 ms after the build are S3-14's, audit 3)
 shot busy_hub
 
 # ---- a save and a load of the Classic island (slot 2) ---------------------------------------
@@ -50,6 +53,7 @@ fps start
 press A
 wait 40
 fps busy: save (Classic island)
+expect-gap 100
 shot busy_saved
 press RIGHT
 wait 2
@@ -61,6 +65,7 @@ fps start
 press A
 wait 60
 fps busy: load (Classic island)
+expect-gap 100
 shot busy_loaded
 wait 30
 
@@ -76,6 +81,7 @@ fps start
 press A
 wait 40
 fps busy: save (worst-case island)
+expect-gap 100
 shot busy_saved_worst
 press RIGHT
 wait 2
@@ -87,5 +93,6 @@ fps start
 press A
 wait 60
 fps busy: load (worst-case island)
+expect-gap 100
 shot busy_loaded_worst
 wait 10

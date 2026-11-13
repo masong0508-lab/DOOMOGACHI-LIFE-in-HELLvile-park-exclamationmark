@@ -99,10 +99,12 @@ def conv(path, target, prof=False):
             n += 3 * sum(1 for b in body if b.strip().startswith("press "))
             out.append("log speed2: begin %d %s" % (n, label))
             out.append("mark-ticks")
+            out.append("gaps-reset")          # S2-10: the presented pictures' gaps (a save's card counts)
             for b in body:
                 m = re.match(r"\s*wait\s+(\d+)", b)
                 out.append("frames %d" % (2 * int(m.group(1))) if m else b)
             out.append("expect-ticks 0 99999")
+            out.append("expect-gap 99999 " + tag)
             out.append("log speed2: end " + label)
     print("\n".join(out))
 
@@ -187,17 +189,22 @@ def table_ps1(path):
 
 
 def table_dc(path):
-    print("| window | logic t/s | work mean ms | worst ms | ticks >33.3 ms | >50 ms | verdict |")
-    print("|---|---:|---:|---:|---:|---:|---|")
-    win, want, works, ticks, wmean, wworst = None, 1, [], None, None, None
+    print("| window | logic t/s | work mean ms | worst ms | ticks >33.3 ms | >50 ms | worst picture gap ms | verdict |")
+    print("|---|---:|---:|---:|---:|---:|---:|---|")
+    win, want, works, ticks, wmean, wworst, gap = None, 1, [], None, None, None, None
     for line in open(path, errors="replace"):
         m = re.match(r"speed2: begin (\d+) (.*)", line.strip())
         if m:
-            want, win, works, ticks, wmean, wworst = max(1, int(m.group(1))), m.group(2), [], None, None, None
+            want, win, works = max(1, int(m.group(1))), m.group(2), []
+            ticks = wmean = wworst = gap = None
             continue
         m = re.match(r"window work: \d+ ticks, mean (\d+) us, worst (\d+) us", line)
         if m and win:                       # TD3: the window's own work, printed by dcrun's expect-ticks
             wmean, wworst = int(m.group(1)) / 1000.0, int(m.group(2)) / 1000.0
+            continue
+        m = re.match(r"gaps \S+: video-frames-per-frame histogram.* max \d+ \(([\d.]+) ms\)", line)
+        if m and win:
+            gap = float(m.group(1))        # S2-10: the longest time between two presented pictures
             continue
         m = re.match(r"work: tick \d+ took (\d+) us", line)
         if m and win:
@@ -212,8 +219,8 @@ def table_dc(path):
             logic = 30.0 * ticks / want if ticks is not None else 0.0
             o33, o50 = len(works), sum(w > 50.0 for w in works)
             worst = "%.1f" % wworst if wworst is not None else "%.1f" % max(works) if works else "<33.3"
-            print("| %s | %.1f | %s | %s | %d | %d | %s |" % (win, logic, "%.1f" % wmean if wmean is not None else "-",
-                                                       worst, o33, o50,
+            print("| %s | %.1f | %s | %s | %d | %d | %s | %s |" % (win, logic, "%.1f" % wmean if wmean is not None else "-",
+                                                            worst, o33, o50, "%.0f" % gap if gap is not None else "-",
                                                        # a tenth of the ticks over budget: the PVR frame
                                                        # is skipped that often (dcrun "game drew")
                                                        "MISS" if o33 * 10 >= want else verdict(logic, logic, o33)))
