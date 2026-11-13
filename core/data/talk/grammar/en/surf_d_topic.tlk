@@ -1,0 +1,119 @@
+# core/data/talk/grammar/en/surf_d_topic.tlk - topic-slot lines for the high-volume plain acts
+# (owner: TK; T5b package T5B-SURF4, Surface push D). Every line names the topic ({x} or {x:cap}),
+# because a line that names the topic adds about 13 distinct Surface lines per 300k contexts and a
+# line without one about 2. Clean in any room: no register word, no romance, no cool or tease act,
+# nothing aimed at the player. A grief topic never reaches these (the grief bank takes it).
+# Rule names start with sd_. Syntax: core/tools/talkc_gen.py.
+
+# ---- opinions, positive ---------------------------------------------------------------------------------
+@rule core.opine_pos.sd_pos_a guard: topic act: agree
+  "I really do like {x}. It's one of the nicer things in this town."
+  "{x:cap} has a way of cheering me up, even on a grey day."
+  "Honestly, {x} is one of my favourite things. Don't tell the others."
+  "{x:cap}? I'm glad someone brought it up. I've been thinking about it."
+@rule core.opine_pos.sd_pos_b guard: topic act: agree
+  "Oh, {x} is lovely. I'd happily spend the whole afternoon on it."
+  "I think {x} is great, and I don't say that about much."
+  "{x:cap} is a good one. It keeps coming back to me when I'm bored."
+  "You picked a winner with {x}. I'll give you that."
+@rule core.opine_pos.sd_pos_c guard: topic act: agree
+  "{x:cap} makes the whole place feel a bit more like home."
+  "I'm fond of {x}. It's one of those things that grows on you."
+  "Good taste, {x}. I was hoping somebody would say that today."
+  "{x:cap} is the kind of thing I'd miss if it went away."
+@rule core.opine_pos.sd_pos_d guard: topic act: agree
+  "Yes, {x}! I'm more of a fan than I let on, if I'm honest."
+  "{x:cap} was always going to get a nod from me. Fair enough."
+  "I like {x} quite a lot. It's an easy thing to like, somehow."
+  "I'd say {x} is worth the trouble. Most good things are."
+
+# ---- opinions, negative ----------------------------------------------------------------------------------
+@rule core.opine_neg.sd_neg_a guard: topic act: disagree
+  "Not my favourite, {x}. I'd rather find something else to chat about."
+  "{x:cap} just isn't for me. No offence to anyone who likes it."
+  "I'm lukewarm on {x}, to be fair. It's fine, but that's it."
+  "Hm, {x}. I can see why people like it. I'm just not one of them."
+@rule core.opine_neg.sd_neg_b guard: topic act: disagree
+  "I can't get excited about {x}. Sorry, I know that's a bit flat."
+  "{x:cap} bores me, if I'm honest. Let's try something livelier."
+  "Ugh, {x} again? I'd much rather talk about anything else."
+  "I'm not sold on {x}. Show me why it's so good and I'll listen."
+@rule core.opine_neg.sd_neg_c guard: topic act: disagree
+  "{x:cap} has never done much for me. Maybe I haven't given it a chance."
+  "Mm, {x}. It's not terrible, but I wouldn't go looking for it."
+  "I don't rate {x} very highly. That's just my honest view."
+  "No, {x} is not my cup of tea. Yours, though, I'd like to hear."
+
+# ---- answers that name the topic ----------------------------------------------------------------------
+@rule core.answer.sd_ans_a guard: topic act: backchannel
+  "{x:cap}? Good question. The honest answer is that it's complicated."
+  "Right, {x}. I've got a view on that, and I'll share it if you like."
+  "Oh, {x}! I can tell you what I know, which is a fair bit."
+  "{x:cap}, eh. Let me think. Yes, I'd say there's more to it than people think."
+@rule core.answer.sd_ans_b guard: topic act: backchannel
+  "As for {x}, I'd say it's worth a closer look than most people give it."
+  "{x:cap}? I don't have a neat answer, but I've got some thoughts."
+  "Hm, {x}. Off the top of my head I'd say yes, with a few caveats."
+  "{x:cap} is one of those topics where everyone has a different answer."
+@rule core.answer.sd_ans_c guard: topic act: backchannel
+  "I'd answer {x} with a shrug, honestly. It's not a big deal either way."
+  "{x:cap}? Ask me tomorrow and I might say something different."
+  "On {x}, my answer is: it depends on the day, and today it's good."
+  "Good one, {x}. My answer is a bit of both, which is annoying, I know."
+
+# ---- jokes that name the topic -----------------------------------------------------------------------------
+@rule core.joke.sd_joke_a guard: topic act: laugh
+  "Ha! {x:cap}, of all things. I didn't see that one coming."
+  "Oh, {x}. You know what, that's funnier than it has any right to be."
+  "Hah, {x}. I'm going to pretend I meant to say that."
+  "{x:cap}! Okay, that got a proper laugh out of me, well done."
+@rule core.joke.sd_joke_b guard: topic act: laugh
+  "Hee! {x} is a lot to take in before breakfast, I'll admit."
+  "{x:cap} and jokes, a classic combination. I'm laughing already."
+  "Ha, {x}. If anyone else says it, I'll be the one laughing first."
+  "Oh, {x}. Somebody write that down before I forget the punchline."
+
+# ---- telling about a topic --------------------------------------------------------------------------------
+@rule core.tell.sd_tell_a guard: topic act: backchannel
+  "Ooh, {x}! I've got a story about that, if you've got a minute."
+  "{x:cap} is a good thing to talk about. Let me give you the short version."
+  "Right, {x}. Here's the bit I always get to when I tell people about it."
+  "I know a bit about {x}. Want the boring version or the fun one?"
+@rule core.tell.sd_tell_b guard: topic act: backchannel
+  "{x:cap} reminds me of something that happened a while back. Listen."
+  "The thing about {x} is that it surprises you when you least expect it."
+  "I could go on about {x} all day. Stop me when you've had enough."
+  "Oh, {x}. Everyone thinks they know it, and then they find out they don't."
+
+# ---- agreeing and disagreeing, with the topic ------------------------------------------------------------------
+@rule core.agree.sd_agree_a guard: topic act: agree
+  "Yes, {x}. That's exactly how I see it too, which is nice."
+  "You're right about {x}. I'd have said the same thing, only slower."
+  "{x:cap}, absolutely. Great minds, and all that."
+  "Agreed on {x}. Look at us, finding things in common."
+@rule core.agree.sd_agree_b guard: topic act: agree
+  "I think {x} is right, and I'm glad you're the one who said it."
+  "{x:cap}! Yes. We've had a proper conversation about that, I think."
+  "On {x} I'm with you. Let's leave it at that and move on."
+@rule core.disagree.sd_disagree_a guard: topic act: disagree
+  "I don't see {x} the way you do, but I can see your side of it."
+  "Hm, not about {x}. I'd put it another way, but we're close."
+  "{x:cap}? I'd argue the other side, but only a little."
+  "I disagree on {x}, and I'll tell you why if you want to hear it."
+@rule core.disagree.sd_disagree_b guard: topic act: disagree
+  "No, I'd say {x} isn't quite that. Close, though, very close."
+  "I'm not convinced about {x}. Convince me and I'll change my mind."
+  "{x:cap} is more complicated than that, I think. A bit less simple."
+
+# ---- a change of subject, named topic --------------------------------------------------------------------------
+@rule core.change_topic.sd_chg_a guard: topic act: answer
+  "{x:cap}, then? Sure, that's a better subject than the last one."
+  "Let's talk about {x} instead. I'm happy to move on to it."
+  "Ooh, {x}. Yes, let's. My head's been stuck on the last thing."
+  "{x:cap}, good. Anything to get away from the weather talk."
+
+# ---- gossip-free small remarks about a topic (no names, no blame) ------------------------------------------------
+@rule core.answer.sd_small_a guard: topic act: backchannel
+  "{x:cap}, I see. That's more interesting than I was expecting."
+  "Okay, {x}. Noted. I'll think about that on the walk home."
+  "Ah, {x}. Now it makes sense why you were so quiet about it."
