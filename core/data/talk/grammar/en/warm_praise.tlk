@@ -275,7 +275,7 @@
   "I'd say it was nothing, but I did a lot of nothing for you."
   "Thanks accepted. Please take a number for the next one."
   "Aw. Thank me again, I need it for my morale quota."
-  "Thanks noted and filed under 'I'm the best.'"
+  "Thanks noted and filed under I'm the best."
   "Say that again. I'm collecting them. I have two."
 @rule core.thank.w_tease act: tease
   "Wow, thank me a few more times, it's a real bonding moment."

@@ -174,7 +174,7 @@
   "Next you'll say I'm a winner. I'll go lie down."
   "Keep going, that was almost a pep talk."
   "I'd get up and do it, but my chair's so loyal."
-  "Great speech. Do you take requests? Mine's 'again.'"
+  "Great speech. Do you take requests? My request is again."
   "You should write cards. I'd buy one. With glitter."
   "I'm so motivated, I'm going to plan to plan."
   "That was inspiring. I'm going to need to sit down."
@@ -188,7 +188,7 @@
 # ---- SYMPATHIZE: thank ----------------------------------------------------------------------
 @rule core.sympathize.w_thank act: thank
   "Thank you. It's nice not to be the only one who sees it."
-  "That's kind. Most people just say 'oh well.'"
+  "That's kind. Most people just say oh well."
   "I appreciate that. It helps to be understood."
   "Thanks for getting it. I mean that."
   "You're a good listener. I'm going to tell everyone."
