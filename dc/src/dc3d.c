@@ -51,9 +51,13 @@ void dc3d_init(void)
     seg_open = -1;
 }
 
+static uint32_t cur_frame;
+uint32_t dc3d_frame_no(void) { return cur_frame; }
+
 void dc3d_frame(uint32_t frame)
 {
     DcBatch *b;
+    cur_frame = frame;
     cur_slot = (int)(frame & 1u);
     b = &batches[cur_slot];
     b->nv = b->np = b->nseg = 0;

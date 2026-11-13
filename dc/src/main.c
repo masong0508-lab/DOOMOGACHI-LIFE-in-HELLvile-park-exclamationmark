@@ -107,6 +107,7 @@ void plat_end_frame(void)
         uint32_t w;
         dc2d_end();                     /* submit the tick's prims to the PVR */
         w = (uint32_t)(timer_us_gettime64() - work_us0);
+        dc_view3d_work(w);              /* DC6C: the first-person view's governor */
         dc_mailbox.work_sum += w;
         dc_mailbox.work_n++;
         if (w > dc_mailbox.work_max) dc_mailbox.work_max = w;

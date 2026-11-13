@@ -19,6 +19,12 @@
  *   repeat     the same view twice gives the same polygons, byte for byte
  *   budget     the busiest views stay inside the batch and TA budget,
  *              nothing dropped
+ *   gov        DC6C: the governor's rule (dc_gov_step: over a mode's limit the view
+ *              loses 3 cells, under its comfort level it gains 2, in between it
+ *              stays; Smooth / Balanced / Max detail limits 25 / 29 / 31 ms),
+ *              the caps of the Combat detail and Draw distance rows, the sparse
+ *              ray fan of Smooth, the entry view that starts short and grows,
+ *              no work feed: the picture is the caps' only
  *   tintfit    dc3d_tint_fit: identity for TINT_NONE, b >= 0 everywhere
  *   edge wall  (DC6B) an eye by a low map edge sees the solid block past it, not the sky colour
  *   sprites    (DC6B) three billboards in front of the eye: the sprites' own pixels, their rectangles,
@@ -42,6 +48,7 @@
 #include "doomo/palette.h"
 #include "doomo/sprites.h"
 #include "doomo/fixmath.h"
+#include "doomo/town.h"
 
 void ref_view3d(const DoomoView3D *v);
 
@@ -628,6 +635,135 @@ static void test_sprite_budget(void)
     CHECK((int)dc3d_stats.deferred == d2, "sprite budget: still waiting after three views (%d -> %d)", d2, (int)dc3d_stats.deferred);
 }
 
+/* ---- DC6C: the governor ------------------------------------------------------------------- */
+static int view_dist_of(const DoomoView3D *v)
+{
+    both(v, rgb);
+    return dc_view3d_dist();
+}
+
+static void test_gov_rule(void)
+{
+    int d;
+    /* the rule: -3 over the limit, +2 under the comfort level, still in between */
+    CHECK(dc_gov_step(20, 32, OPT3D_BALANCED, 30000) == 17, "gov: Balanced at 30 ms must lose 3 cells");
+    CHECK(dc_gov_step(20, 32, OPT3D_BALANCED, 20000) == 22, "gov: Balanced at 20 ms must gain 2 cells");
+    CHECK(dc_gov_step(20, 32, OPT3D_BALANCED, 27000) == 20, "gov: Balanced at 27 ms must hold (between the limits)");
+    /* the modes differ: 28 ms is fine for Max detail, over the limit for Smooth, in between for Balanced */
+    CHECK(dc_gov_step(20, 32, OPT3D_MAX, 28000) == 20, "gov: Max detail must hold at 28 ms");
+    CHECK(dc_gov_step(20, 32, OPT3D_SMOOTH, 28000) == 17, "gov: Smooth must lose cells at 28 ms");
+    CHECK(dc_gov_step(20, 32, OPT3D_MAX, 32000) == 17, "gov: Max detail must lose cells at 32 ms");
+    CHECK(dc_gov_step(20, 32, OPT3D_BALANCED, 28000) == 20, "gov: Balanced must hold at 28 ms");
+    /* the clamps: never under the minimum, never over the cap */
+    for (d = DC_V3D_DIST_MIN; d <= DC_V3D_DIST_MAX; d++) {
+        int a = dc_gov_step(d, 20, OPT3D_BALANCED, 60000), b = dc_gov_step(d, 20, OPT3D_BALANCED, 1000);
+        CHECK(a >= DC_V3D_DIST_MIN && a <= d, "gov: %d at 60 ms went to %d", d, a);
+        CHECK(b <= 20 || b <= d, "gov: %d at 1 ms went to %d (cap 20)", d, b);
+        CHECK(b >= DC_V3D_DIST_MIN, "gov: %d at 1 ms went to %d", d, b);
+    }
+    CHECK(dc_gov_step(DC_V3D_DIST_MIN, 32, OPT3D_BALANCED, 90000) == DC_V3D_DIST_MIN, "gov: not under the minimum");
+    CHECK(dc_gov_step(31, 32, OPT3D_BALANCED, 1000) == 32, "gov: not over the cap (32)");
+    CHECK(dc_gov_step(12, 12, OPT3D_BALANCED, 1000) == 12, "gov: not over the Near cap (12)");
+    /* an unknown mode reads as Balanced */
+    CHECK(dc_gov_step(20, 32, 77, 30000) == 17, "gov: an unknown mode is Balanced");
+}
+
+static void test_gov_caps(void)
+{
+    CHECK(dc_gov_cap(OPT3D_BALANCED, 0) == 32 && dc_gov_cap(OPT3D_MAX, 0) == 32, "gov: Balanced / Max detail see 32 cells");
+    CHECK(dc_gov_cap(OPT3D_SMOOTH, 0) == DC_V3D_DIST_SMOOTH, "gov: Smooth caps the view at %d cells", DC_V3D_DIST_SMOOTH);
+    CHECK(dc_gov_cap(OPT3D_BALANCED, 1) == DC_V3D_DIST_NEAR && dc_gov_cap(OPT3D_MAX, 1) == DC_V3D_DIST_NEAR,
+          "gov: Draw distance Near caps the view at %d cells", DC_V3D_DIST_NEAR);
+    CHECK(dc_gov_cap(OPT3D_SMOOTH, 1) == DC_V3D_DIST_NEAR, "gov: Near under Smooth is still Near");
+    CHECK(dc_gov_rays(OPT3D_SMOOTH) == 4 && dc_gov_rays(OPT3D_BALANCED) == 2 && dc_gov_rays(OPT3D_MAX) == 2,
+          "gov: ray fans 4 / 2 / 2 columns");
+    CHECK(dc_gov_tex(OPT3D_SMOOTH) < dc_gov_tex(OPT3D_BALANCED) && dc_gov_tex(OPT3D_BALANCED) < dc_gov_tex(OPT3D_MAX),
+          "gov: new textures per view must grow Smooth < Balanced < Max detail");
+}
+
+/* the options reach the view: Near and Smooth shorten it, a shorter view sees fewer cells, and Smooth's
+ * sparse ray fan loses no cell the dense one marks (it marks the corners' neighbours instead) */
+static void test_gov_options(void)
+{
+    DoomoView3D v;
+    int n_bal, n_smooth, n_near, n_bal20, n_smooth20;
+    map_load(MAPID_ARENA);
+    view_of(&v, doomo_map.w / 2, doomo_map.h / 2, 0, 0);
+    opt_set(OPT_3D_FAST, OPT3D_BALANCED); opt_set(OPT_DRAW_DIST, 1);
+    CHECK(view_dist_of(&v) == DC_V3D_DIST_MAX, "gov: Balanced draws %d cells", dc_view3d_dist());
+    n_bal = dc2d_view3d_cells();
+    opt_set(OPT_3D_FAST, OPT3D_SMOOTH);
+    CHECK(view_dist_of(&v) == DC_V3D_DIST_SMOOTH, "gov: Smooth draws %d cells", dc_view3d_dist());
+    n_smooth = dc2d_view3d_cells();
+    opt_set(OPT_3D_FAST, OPT3D_MAX);
+    CHECK(view_dist_of(&v) == DC_V3D_DIST_MAX, "gov: Max detail draws %d cells", dc_view3d_dist());
+    opt_set(OPT_3D_FAST, OPT3D_BALANCED); opt_set(OPT_DRAW_DIST, 0);
+    CHECK(view_dist_of(&v) == DC_V3D_DIST_NEAR, "gov: Near draws %d cells", dc_view3d_dist());
+    n_near = dc2d_view3d_cells();
+    /* (the sparse fan marks the cells around more corners, so Smooth may see a few more than Balanced in a small map) */
+    CHECK(n_near < n_smooth && n_near < n_bal && n_smooth * 10 <= n_bal * 11, "gov: cells %d (Near) %d (Smooth) %d (Balanced)", n_near, n_smooth, n_bal);
+    /* a manual cap goes under the rows: set_dist(11) is 11 with the rows at their longest */
+    opt_set(OPT_DRAW_DIST, 1);
+    dc_view3d_set_dist(11);
+    CHECK(view_dist_of(&v) == 11, "gov: a manual cap of 11 draws %d cells", dc_view3d_dist());
+    dc_view3d_set_dist(20);
+    opt_set(OPT_3D_FAST, OPT3D_BALANCED);
+    both(&v, rgb); n_bal20 = dc2d_view3d_cells();
+    opt_set(OPT_3D_FAST, OPT3D_SMOOTH);
+    both(&v, rgb); n_smooth20 = dc2d_view3d_cells();
+    CHECK(n_smooth20 * 10 >= n_bal20 * 9, "gov: at 20 cells the sparse fan sees %d cells, the dense one %d", n_smooth20, n_bal20);
+    dc_view3d_set_dist(DC_V3D_DIST_MAX);
+    opt_set(OPT_3D_FAST, OPT3D_BALANCED); opt_set(OPT_DRAW_DIST, 1);
+}
+
+/* the work feed: an entry starts short and grows, work over the limit shortens, no feed leaves the caps alone */
+static void test_gov_feed(void)
+{
+    DoomoView3D v;
+    int i, d, prev, e;
+    map_load(MAPID_ARENA);
+    view_of(&v, doomo_map.w / 2, doomo_map.h / 2, 0, 0);
+    opt_set(OPT_3D_FAST, OPT3D_BALANCED); opt_set(OPT_DRAW_DIST, 1);
+    dc_view3d_gov_reset();
+    CHECK(view_dist_of(&v) == DC_V3D_DIST_MAX, "gov: no work feed, but %d cells", dc_view3d_dist());
+    /* the scene entry: the first view after the feed starts is short */
+    dc_view3d_work(15000);
+    dc_view3d_gov_reset();
+    dc_view3d_work(15000);
+    e = view_dist_of(&v);
+    CHECK(e == DC_V3D_DIST_ENTRY, "gov: the entry view draws %d cells, not %d", e, DC_V3D_DIST_ENTRY);
+    /* with room (15 ms of work) it grows 2 cells a view up to the cap */
+    prev = e;
+    for (i = 0; i < 12; i++) {
+        dc_view3d_work(15000);
+        d = view_dist_of(&v);
+        CHECK(d == (prev + 2 > DC_V3D_DIST_MAX ? DC_V3D_DIST_MAX : prev + 2), "gov: view %d draws %d cells after %d", i, d, prev);
+        prev = d;
+    }
+    CHECK(prev == DC_V3D_DIST_MAX, "gov: the view did not grow back to %d (%d)", DC_V3D_DIST_MAX, prev);
+    /* a tick over the limit shortens it, a run of them goes down to the minimum and stays */
+    dc_view3d_work(40000);
+    d = view_dist_of(&v);
+    CHECK(d == DC_V3D_DIST_MAX - 3, "gov: 40 ms of work must shorten the view by 3 (%d)", d);
+    for (i = 0; i < 12; i++) { dc_view3d_work(40000); d = view_dist_of(&v); }
+    CHECK(d == DC_V3D_DIST_MIN, "gov: a run of 40 ms ticks must end at %d cells (%d)", DC_V3D_DIST_MIN, d);
+    /* the same work in between the limits holds it */
+    dc_view3d_work(27000);
+    CHECK(view_dist_of(&v) == DC_V3D_DIST_MIN, "gov: 27 ms must hold the view");
+    /* the cap wins over the growth: Near */
+    opt_set(OPT_DRAW_DIST, 0);
+    for (i = 0; i < 12; i++) { dc_view3d_work(10000); d = view_dist_of(&v); }
+    CHECK(d == DC_V3D_DIST_NEAR, "gov: with Draw distance Near the view stops at %d (%d)", DC_V3D_DIST_NEAR, d);
+    /* a scene change (frames with no view) is an entry again */
+    opt_set(OPT_DRAW_DIST, 1);
+    for (i = 0; i < 4; i++) { plat_begin_frame(); plat_end_frame(); }
+    dc_view3d_work(10000);
+    e = view_dist_of(&v);
+    CHECK(e == DC_V3D_DIST_ENTRY, "gov: a view after 4 frames without one must be an entry (%d)", e);
+    dc_view3d_gov_reset();
+    opt_set(OPT_3D_FAST, OPT3D_BALANCED);
+}
+
 static void test_tintfit(void)
 {
     int t, k;
@@ -646,6 +782,7 @@ int main(void)
     memset(&o, 0, sizeof(o));
     o.w = 320; o.h = 240; o.save_dir = "."; o.seed = 1; o.quiet = 1;
     nat_init(&o);
+    opt_defaults();                 /* DC6C: the view reads Combat detail and Draw distance */
     if (getenv("DC6_CELLS")) {
         int m, cx, cy, x, y;
         if (sscanf(getenv("DC6_CELLS"), "%d,%d,%d", &m, &cx, &cy) == 3) {
@@ -663,6 +800,11 @@ int main(void)
         }
     }
     dc2d_view3d_remap_budget(100000);
+    if (getenv("DC6_GOV_ONLY")) {          /* the governor's tests alone (seconds, not minutes) */
+        test_gov_rule(); test_gov_caps(); test_gov_options(); test_gov_feed();
+        printf("dc6 view3d governor tests: %d checks, %d failed\n", checks, fails);
+        return fails ? 1 : 0;
+    }
     test_tintfit();
     test_tick_budget();
     test_sprite_budget();
@@ -688,6 +830,10 @@ int main(void)
     test_backdrop_first();
     test_repeat();
     test_budget();
+    test_gov_rule();
+    test_gov_caps();
+    test_gov_options();
+    test_gov_feed();
     printf("dc6 view3d tests: %d checks, %d failed\n", checks, fails);
     return fails ? 1 : 0;
 }

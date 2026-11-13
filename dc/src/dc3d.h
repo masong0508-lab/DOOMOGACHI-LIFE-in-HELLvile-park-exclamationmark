@@ -126,6 +126,7 @@ extern Dc3dStats dc3d_stats;
 
 /* ---- dc3d.c: batches --------------------------------------------------------------- */
 void dc3d_init(void);
+uint32_t dc3d_frame_no(void);             /* the drawn frame the batch is for (DC6C: scene entry) */
 void dc3d_frame(uint32_t frame);           /* dc2d_begin of a drawn frame: the new frame's batch */
 DcBatch *dc3d_batch(int slot);
 int  dc3d_cur_slot(void);
@@ -187,8 +188,19 @@ void dc3d_tint_fit(int tint, float a[3], float b[3]);
  * scaled to it, so the cut hides in the dark. */
 #define DC_V3D_DIST_MAX 32
 #define DC_V3D_DIST_MIN 10
-void dc_view3d_set_dist(int cells);
-int  dc_view3d_dist(void);
+#define DC_V3D_DIST_NEAR 12        /* Options > Draw distance: Near (the PS1's cap) */
+#define DC_V3D_DIST_SMOOTH 20      /* Options > Combat detail: Smooth */
+#define DC_V3D_DIST_ENTRY 14       /* the first view of a scene: the level's load is in that tick */
+void dc_view3d_set_dist(int cells);   /* a manual cap (tests); the governor works under it */
+int  dc_view3d_dist(void);            /* the distance the last view used */
+/* DC6C, the governor: dc_view3d_work(us) is the last drawn tick's work (main.c; tests); the
+ * next view's distance follows it. dc_gov_step is the rule: one step of it, pure. */
+void dc_view3d_work(uint32_t us);
+void dc_view3d_gov_reset(void);        /* forget the work and the distance: the next view is an entry */
+int  dc_gov_step(int dist, int cap, int mode, uint32_t work_us);
+int  dc_gov_cap(int mode, int near_opt);   /* the cap of a Combat detail mode and the Draw distance row */
+int  dc_gov_tex(int mode);                 /* new textures a view may make: Smooth 3, Balanced 4, Max 6 */
+int  dc_gov_rays(int mode);                /* logical columns between two visibility rays: 2, Smooth 4 */
 #ifdef DC2D_HOST
 void dc2d_view3d_draw(const DoomoView3D *v);        /* view3d.c (console: plat_view3d) */
 const Dc3dCam *dc2d_view3d_cam(void);               /* the last view's camera (tests) */

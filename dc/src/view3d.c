@@ -92,15 +92,85 @@
 
 typedef struct Col { float r, g, b; } Col;
 
-static int s_view_dist = DC_V3D_DIST_MAX;    /* the draw distance (the fog's scale) */
+static int s_view_dist = DC_V3D_DIST_MAX;    /* the draw distance of the view being built (the fog's scale): the governor's */
+static int s_dist_set = DC_V3D_DIST_MAX;     /* a manual cap (dc_view3d_set_dist) */
 static int s_cast_dist = DC_V3D_DIST_MAX;    /* how far this view's rays go: the tick's budget cuts it (view_budget) */
 static float s_cost_k;                       /* us per cell of the last views (a decaying peak) */
 
 void dc_view3d_set_dist(int cells)
 {
-    s_view_dist = DOOMO_CLAMP(cells, DC_V3D_DIST_MIN, DC_V3D_DIST_MAX);
+    s_dist_set = s_view_dist = DOOMO_CLAMP(cells, DC_V3D_DIST_MIN, DC_V3D_DIST_MAX);
 }
 int dc_view3d_dist(void) { return s_view_dist; }
+
+/* ---- the governor (DC6C) ------------------------------------------------------------------
+ * Options > Performance > Combat detail (OPT_3D_FAST) and Draw distance (OPT_DRAW_DIST), as the
+ * PS1 reads them (ps1/src/view3d.c): the view's distance in cells is capped by the two rows and
+ * moved by the last drawn tick's work (main.c feeds it) so a tick that crowds 33.3 ms loses
+ * distance (the fade is scaled to it: the cut ends in the dark) and a tick with room gets it
+ * back. Smooth keeps the tight cap and the sparse ray fan; Balanced and Max detail see the full
+ * 32 cells and give them up later (Max detail last). The first view after a scene change starts
+ * short (the level's load is in that tick) and grows. Drawing only: the game never sees it. */
+typedef struct GovMode { uint16_t cap; uint16_t hi_ms, lo_ms; uint8_t ray_cols, tex; } GovMode;
+static const GovMode gov_modes[3] = {
+    /* OPT3D_BALANCED */ { DC_V3D_DIST_MAX,    29, 24, V3D_RAY_PX, 4 },
+    /* OPT3D_SMOOTH   */ { DC_V3D_DIST_SMOOTH, 25, 20, 4, 3 },
+    /* OPT3D_MAX      */ { DC_V3D_DIST_MAX,    31, 27, 2, 6 }
+};
+static const GovMode *gov_mode(int mode) { return &gov_modes[mode >= 0 && mode < 3 ? mode : 0]; }
+
+int dc_gov_cap(int mode, int near_opt)
+{
+    int cap = gov_mode(mode)->cap;
+    if (near_opt && cap > DC_V3D_DIST_NEAR) cap = DC_V3D_DIST_NEAR;
+    return cap;
+}
+int dc_gov_rays(int mode) { return gov_mode(mode)->ray_cols; }
+int dc_gov_tex(int mode) { return gov_mode(mode)->tex; }
+
+/* one step: over the mode's limit the view loses 3 cells, under its comfort level it gains 2,
+ * and in between it stays (so it does not breathe) */
+int dc_gov_step(int dist, int cap, int mode, uint32_t work_us)
+{
+    const GovMode *g = gov_mode(mode);
+    if (work_us > (uint32_t)g->hi_ms * 1000u) dist -= 3;
+    else if (work_us < (uint32_t)g->lo_ms * 1000u) dist += 2;
+    return DOOMO_CLAMP(dist, DC_V3D_DIST_MIN, DOOMO_MAX(cap, DC_V3D_DIST_MIN));
+}
+
+static int      s_gov_dist = DC_V3D_DIST_MAX;
+static uint32_t s_gov_work;                  /* the last drawn tick's work, us */
+static int      s_gov_fed;                   /* dc_view3d_work has been called since the reset */
+static uint32_t s_gov_frame;                 /* the drawn frame of the last view */
+static int      s_gov_seen;
+static int      s_tex_budget = 4;            /* new textures a view may make (below) */
+static int      s_tex_force = -1;            /* tests: a fixed budget */
+
+void dc_view3d_work(uint32_t us) { s_gov_work = us; s_gov_fed = 1; }
+void dc_view3d_gov_reset(void) { s_gov_fed = s_gov_seen = 0; s_gov_dist = DC_V3D_DIST_MAX; }
+
+/* the distance of the view about to be built */
+static void gov_begin(uint32_t frame)
+{
+    int mode = opt_get(OPT_3D_FAST), cap = dc_gov_cap(mode, opt_get(OPT_DRAW_DIST) == 0);
+    if (s_gov_fed) {
+        if (!s_gov_seen || frame - s_gov_frame > 2) {            /* an entry: start short */
+            s_gov_dist = DOOMO_MIN(DC_V3D_DIST_ENTRY, cap);
+        } else {
+            s_gov_dist = dc_gov_step(s_gov_dist, cap, mode, s_gov_work);
+        }
+    } else {
+        s_gov_dist = DC_V3D_DIST_MAX;                            /* no work feed (host): the caps only */
+    }
+    /* textures: the table's budget; the entry view makes at most 4 (the level's load is in that tick) */
+    s_tex_budget = dc_gov_tex(mode);
+    if (s_gov_fed && s_gov_dist <= DC_V3D_DIST_ENTRY && s_tex_budget > 4) s_tex_budget = 4;
+    if (s_tex_force >= 0) s_tex_budget = s_tex_force;
+    s_gov_seen = 1;
+    s_gov_frame = frame;
+    s_view_dist = DOOMO_MIN(DOOMO_MIN(s_gov_dist, cap), s_dist_set);
+    if (s_view_dist < DC_V3D_DIST_MIN) s_view_dist = DC_V3D_DIST_MIN;
+}
 
 /* ---- the frame's state ------------------------------------------------------------- */
 static const DoomoMap *M;
@@ -207,11 +277,10 @@ typedef struct Face {
  * on Flycast). Past the budget a face uses the plain texture darkened by the
  * fit, or the texture's flat colour, for a frame or two; the rest come in the
  * next frames (the cache keeps them) */
-#define V3D_TEX_BUDGET 4
 #define V3D_SPR_BUDGET 3        /* ... and the sprites' own: a first sighting of an enemy is a 1 ms upload, 9 in a tick was 38 ms */
-static int s_tex_budget = V3D_TEX_BUDGET, s_new_tex, s_new_spr;
+static int s_new_tex, s_new_spr;             /* new textures / sprites this view made (the budget: s_tex_budget, the governor's table) */
 #ifdef DC2D_HOST
-void dc2d_view3d_remap_budget(int n) { s_tex_budget = n; }
+void dc2d_view3d_remap_budget(int n) { s_tex_force = n; }
 #endif
 
 static void face_tex(Face *f, int id, float lmax)
@@ -526,7 +595,7 @@ static void cast(float rdx, float rdy, float sb, float st, float eps)
 
 static void visibility(float plane, int vw)
 {
-    int n = vw / V3D_RAY_PX + 5, i, cx = (int)floorf(s_ex / CELL), cy = (int)floorf(s_ey / CELL), dx, dy;
+    int n = vw / dc_gov_rays(opt_get(OPT_3D_FAST)) + 5, i, cx = (int)floorf(s_ex / CELL), cy = (int)floorf(s_ey / CELL), dx, dy;
     float span = 1.0f + 4.0f / (float)(n - 1);          /* two rays beyond each edge */
     float dc = 2.0f * span / (float)(n - 1);
     float st = (cam.cy - cam.vy0) / cam.focal, sb = (cam.cy - cam.vy1) / cam.focal;
@@ -759,6 +828,7 @@ void plat_view3d(const DoomoView3D *v)
     t0 = dc3d_be_us();
     s_new_tex = 0;
     s_new_spr = 0;
+    gov_begin(dc3d_frame_no());
     M = v->map;
     s_time = v->time;
     if (++s_stamp == 0) {
