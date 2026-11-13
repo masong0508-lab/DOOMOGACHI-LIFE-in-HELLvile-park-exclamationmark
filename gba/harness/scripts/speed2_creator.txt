@@ -143,19 +143,19 @@ press A
 wait 20
 fps start
 wait 90
-fps creator: hat grid (bust camera)
+expect-fps 28 creator: hat grid (bust camera)
 shot creator_hat_grid
 press RIGHT
 wait 2
 fps start
 wait 30
-fps creator: hat grid try-on move
+expect-fps 22 creator: hat grid try-on move
 shot creator_hat_try
 press R
 wait 2
 fps start
 wait 30
-fps creator: hat grid filter chip
+expect-fps 28 creator: hat grid filter chip
 shot creator_hat_filter
 press B
 wait 20

@@ -22,7 +22,7 @@ fps creator_grid_scroll
 wait 120
 fpsend creator_grid_scroll
 release
-expect-fps 22 creator_grid_scroll
+expect-fps 28 creator_grid_scroll
 shot creator_grid
 press B
 wait 20

@@ -1284,8 +1284,9 @@ every tick redrew all four regions even when nothing moved.
 
 Measured on this tree (libmgba, `make -C gba test-creator`, `test-speed2 SPEED2=creator`, `profile-creator`): idle
 30.0 -> 30.0, grid scrolled 17.2 -> 26.8, rows 29.4 -> 30.0, a value held 22.2 -> 29.4, the Outfit picker 22.7 -> 29.1
-(`creator_profile`), the hat grid at rest 27.2 -> 29.8, the try-on move 15.2 -> 23.8, the filter chip 21.7 -> 31.0, a
-tab change two frames of 50 ms (before: one of 50 and one of 67 on five of the eight tabs). Not reached: 30 on the held grid and
+(`creator_profile`), the hat grid at rest 27.2 -> 29.8, the try-on move 15.2 -> 26.9, the filter chip 21.7 -> 30.5, a
+tab change two frames of 50 ms on four tabs, one on two, none on two (before: one of 50 and one of 67 on five of the
+eight tabs). Not reached: 30 on the held grid and
 the try-on (each step is a whole new bust: S3-2), one 50 ms frame a tab change (two). Settled screens are exact
 (18 of 20 shots byte-identical, the other two differ by the pane's sparkle phase); in-between frames differ only inside
 the preview pane (the new picture's landing and its sparkle come a tick or two later), and the first three frames of

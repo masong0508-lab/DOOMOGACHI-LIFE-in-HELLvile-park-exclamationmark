@@ -413,10 +413,11 @@ test-speed2 SPEED2=creator`; drawn fps, frames of 50 ms or more in brackets):
 | grid scrolled (species) | 17.2 | **26.8** |
 | rows (Outfit, DOWN held) | 29.4 | **30.0** |
 | a value held (Outfit, Top) | 22.2 | **29.4** |
-| tab change (5 of the 8 tabs): frames over 33 ms | one of 50 and one of 67 | two of 50 |
+| tab change to head, hair, supernatural, outfit: frames over 33 ms | one of 50 and one of 67 | two of 50 (none longer) |
+| tab change to voice, home / personality, profile | 2 / 1-2 over 33 ms, one of 67 on voice | 1 / 0 over 33 ms, none over 50 |
 | hat grid (bust camera) | 27.2 | **29.8** (none over 33 ms) |
-| hat grid try-on move | 15.2 | **23.8** |
-| hat grid filter chip | 21.7 | **31.0** |
+| hat grid try-on move | 15.2 | **26.9** (7 frames of 50 ms, none longer) |
+| hat grid filter chip | 21.7 | **30.5** |
 | colour swatches / swatch move | 30.0 / 26.0 | 30.0 / 26.0 |
 
 PS1 (PCSX-Redux, `creator_speed.txt` and `speed2_creator`): grid scrolled 29.39 -> **30.00**, hat grid
@@ -435,10 +436,11 @@ entry fade, which is timed by the clock. `core/tests/test_panel.c` plays the cre
 panel cache on and off (identical) and counts the captures that drew nothing inside (`nat_panel_stats.empty`: at
 least half; without `cr_region_pre` none).
 
-What is left: a tab change still has two frames of 50 ms (the first two ticks after the press: the list's
-new page plus the first slices of the new camera's picture; the audit's target was one), the hat grid's
-try-on moves have a few 67-84 ms frames (each move draws a whole new bust: S3-2's portrait work), and the
-species grid held is 26.8, not 30, for the same reason. The lock overlay (`lock_compose`) is composed once
+What is left: four tab changes (head, hair, supernatural, outfit) still have two frames of 50 ms, the first two
+ticks after the press (the audit's target was one; a try that held the pane's new picture back for those two ticks
+changed nothing, so it is the list's new page and its first-time text, not the picture), the hat grid's try-on moves
+have seven 50 ms frames a window, and the species grid held is 26.8, not 30 (each step is a whole new figure:
+S3-2's portrait work). The lock overlay (`lock_compose`) is composed once
 per picture (it was already memoised by the picture's key since CR9); making it once per page would need
 the pictures of a whole page, which the scratch does not hold.
 
