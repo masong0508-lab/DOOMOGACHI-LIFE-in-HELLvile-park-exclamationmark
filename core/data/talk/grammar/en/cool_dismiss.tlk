@@ -1,0 +1,168 @@
+# core/data/talk/grammar/en/cool_dismiss.tlk - more replies to DISMISS and THREATEN (owner: TK;
+# T5b package T5B-COOL). Brush-offs, sulks, sarcasm and cartoon threats: a duck, a postcard, a
+# nap, never real harm and never aimed at a child (a child speaker gets a cute deflection).
+# No register word. Syntax: core/tools/talkc_gen.py.
+
+# ---- DISMISS -> COMPLAIN -------------------------------------------------------------------------
+@rule core.dismiss.c_complain act: complain
+  "Hey, don't brush me off! I was in the middle of being interesting."
+  "Rude! You can't just wave a hand at people. It's not allowed."
+  "Wow, okay. Do I have a sign on my back? Kick me, please?"
+  "Fine, ignore me. I'll just sit here and sulk quietly. Loudly."
+  "That's cold. My soup is warmer than you. And it's day-old."
+  "Oh, I see how it is. Shoved off like a stale biscuit."
+  "You could at least pretend to care. Stage whisper it. Anything."
+  "I'm not nothing! I'm a whole something! With a hat!"
+  "Ugh, that stings. I'll be in the corner. Making a face."
+  "Charming. Truly. I'll tell everyone how kind you were."
+@rule core.dismiss.c_complain_sad guard: mood=sad act: complain
+  "Oh, right. Okay. I'll just go and be sad somewhere else."
+  "That hurt a bit. I'm already low. Please don't shove."
+@rule core.dismiss.c_complain_angry guard: mood=angry act: complain
+  "Don't you dare wave me off! I'm FUMING! Stand still and listen!"
+  "Oh, don't give me that. I'm cross enough as it is."
+@rule core.dismiss.c_complain_polite guard: polite act: complain
+  "Well, that was hardly civil. I only asked for a moment of your time."
+  "I do think you might have been kinder, dear. But there we are."
+@rule core.dismiss.c_complain_elder guard: elder act: complain
+  "Young people. No respect. In my day, you'd be given a smack with a spoon."
+  "Well! I've been dismissed by better. And worse, to be honest."
+@rule core.dismiss.c_complain_flat guard: flat act: complain
+  "Wow. {.}Dismissed. I'll put my crying in the diary for later."
+  "Rude. {.}I'm offended on the inside. It's quiet in there."
+@rule core.dismiss.c_complain_kid guard: kid_speaker tags: kid act: complain
+  "That's not nice! You have to listen! It's the rule!"
+  "Hey! Don't wave at me like that! I'm a person, a small one!"
+  "Hmph! You're not listening! Listen to me, please!"
+
+# ---- DISMISS -> DISMISS / TEASE / JOKE / LAUGH ---------------------------------------------------
+@rule core.dismiss.c_dismiss act: dismiss
+  "Oh, you're dismissing ME? That's adorable. I dismiss you right back."
+  "Shoo, then. Back to your corner. I'll be fine, with a snack."
+  "Fine. I'll dismiss you harder, see? Look at the effort."
+  "I don't need you. I've got a whole lamp for this."
+  "Whatever you say. I'm the one with the better lunch."
+  "Right, cool, go. Do your little thing. It's fine."
+  "Your approval means nothing. And I'd like that in writing."
+  "Bye, then. Don't let the door hit your ego on the way out."
+@rule core.dismiss.c_dismiss_blunt guard: blunt&!kid_present act: dismiss
+  "Good. Because I'd already stopped listening. Several minutes ago."
+  "Go on, go. I'll write you a tiny note. It'll say 'no'."
+@rule core.dismiss.c_dismiss_quirky guard: quirky act: dismiss
+  "Dismissed! By the Order of the Lemon! Please leave by a window."
+  "I summon my invisible bodyguard! He's right behind you! Boo!"
+@rule core.dismiss.c_dismiss_serious guard: serious act: dismiss
+  "As you wish. I shall consider this conversation closed."
+  "Very well. I'll file your dismissal under 'ignored'."
+@rule core.dismiss.c_tease act: tease
+  "Ooh, touchy. Did I step on your invisible tail?"
+  "Aww, is someone cranky? Did they skip their biscuit?"
+  "Look at you, being all brisk. Do you practise that in the mirror?"
+  "Okay, Your Majesty. I'll curtsy when I'm done with my snack."
+  "Sure. Wave your little hand. I'll file you under 'busy'."
+  "That wave was very elegant. Do it again, I'll score it."
+@rule core.dismiss.c_tease_friend guard: rel=friend act: tease
+  "Oh, you're grumpy. I'll bring you a snack. And a hat."
+  "Fine, fine. You're the boss. Of nothing, but still."
+@rule core.dismiss.c_joke act: joke
+  "That's okay. I'm used to being ignored. I'm a houseplant at heart."
+  "Dismissed? I've been dismissed from better places. A chapel, a bank."
+  "Fair enough. I'll go whisper my secrets to the toaster."
+  "No problem. I'll go and be fascinating elsewhere."
+  "Ouch. Right in the feelings. Good thing I've got spares."
+  "Mm. I'd be offended, but I'm busy being a legend."
+@rule core.dismiss.c_laugh act: laugh
+  "Ha, fair. I'd dismiss me too. I'm a lot."
+  "Hah, okay, okay! You got me. That was a smooth brush-off."
+  "Ha ha, oof! Right in the dignity. Respect."
+  "Pfft, I walked right into that one. Well played."
+
+# ---- THREATEN -> LAUGH / JOKE ----------------------------------------------------------------------
+@rule core.threaten.c_laugh act: laugh
+  "Ha, oh no, what will you do? Glare at me? Write a limerick?"
+  "Hahaha! You're adorable when you're fierce. Like an angry muffin."
+  "Ooh, I'm shaking. Look, my hat is trembling. It's the wind."
+  "That's your scary voice? Do it again. I want it as a ringtone."
+  "Heh, bold. A threat. And you're holding a spatula."
+  "Hee, I'm so scared. I've gone all goosebumpy. Are those goosebumps?"
+  "Oh, you big softie. You couldn't scare a mouse. A very sleepy mouse."
+  "Ha, go on, then. Release the pigeons. I dare you."
+@rule core.threaten.c_laugh_loud guard: loud act: laugh
+  "HA, YOU AND WHAT CREW?! A CREW OF SPOONS?! BRING IT!"
+  "OOH, I'M SO SCARED! LOOK AT ME! I'M HIDING BEHIND NOTHING!"
+@rule core.threaten.c_laugh_flat guard: flat act: laugh
+  "Ha. {.}That was my terrified laugh. It sounds the same."
+  "Oh no, {.}Fear. Look at my face. It's doing nothing, in fear."
+@rule core.threaten.c_laugh_elder guard: elder act: laugh
+  "Ha! I've been threatened by tax collectors. You don't scare me, pet."
+  "Oh, bless. Go on, I've got my walking stick. It's very pointy."
+@rule core.threaten.c_laugh_kid guard: kid_speaker tags: kid act: laugh
+  "Hee hee, you're not scary! You're funny! Do it again!"
+  "Hahaha! You're being silly! Your scary face is wiggly!"
+@rule core.threaten.c_joke act: joke
+  "Is that a threat or a poem? I can't tell. It rhymed."
+  "I'd be scared, but my diary says I'm busy on that day."
+  "Threats, eh? I'll add it to my collection. I've got a nice shelf."
+  "You'll have to take a number. I've got a queue of threats."
+  "Pencil me in for the scary bit. Right after my nap."
+  "Ooh, a threat! Did you write it on a card? I'll frame it."
+  "My therapist says I shouldn't take threats personally. So, thanks."
+  "Please do. I've always wanted a dramatic sequel."
+@rule core.threaten.c_joke_quirky guard: quirky act: joke
+  "I'll tell the moon, and the moon will tell the owl. You're done."
+  "Threaten away! My mood ring is purple. That means 'bring it'."
+@rule core.threaten.c_joke_polite guard: polite act: joke
+  "How very forceful. Might I suggest a nice cup of tea first?"
+  "I do admire your confidence. Do sit down, dear. Have a scone."
+
+# ---- THREATEN -> DISMISS / THREATEN / COMPLAIN -------------------------------------------------------
+@rule core.threaten.c_dismiss act: dismiss
+  "Please. I've been threatened by cats with more menace."
+  "Yawn. Was that your best? I've heard scarier from a kettle."
+  "Sure, sure. Come back when you've got a plan. Or a hat."
+  "Threaten away. I'll be napping. Ring first."
+  "Scary. Truly. Now, if you'll excuse me, I've got soup."
+  "I've seen a demon sneeze on a cake. You don't rate."
+  "Mm-hm. Put it in the suggestion box. Under 'no'."
+  "That was cute. Next time, add thunder. I love thunder."
+@rule core.threaten.c_dismiss_blunt guard: blunt&!kid_present act: dismiss
+  "Do it, then. Or shut up. I'm hungry and you're slow."
+  "You're all talk, and not even good talk. Move."
+@rule core.threaten.c_dismiss_serious guard: serious act: dismiss
+  "I see. Do try to keep it within the town's noise limits."
+  "Noted. Please submit your threat in triplicate."
+@rule core.threaten.c_dismiss_easy guard: easygoing act: dismiss
+  "Yeah, whatever. Do your worst. I'm going to lie down."
+  "Chill, mate. It's too sunny to be scary today."
+@rule core.threaten.c_threaten act: threaten
+  "Is that so? Well, I'll see your threat and raise you a worse one."
+  "Oh yeah? I'll sit on your hat! And I'll stay there!"
+  "Try it. I've got a stern look and I'm not afraid to use it."
+  "One more step and I'll make a very disappointed face."
+  "Watch it. I know a goblin. He owes me a sock."
+  "You'll regret that. I'll tell the Mayor. He'll nod slowly."
+  "Fine. But I've got a rubber duck and I'm not afraid of it."
+  "Say it again and I'll glare. For ten full seconds. Without blinking."
+@rule core.threaten.c_threaten_loud guard: loud act: threaten
+  "I'LL SHOUT AT YOU! RIGHT NOW! AND THEN AGAIN LATER!"
+  "COME AT ME! I'LL BOOP YOU ON THE NOSE! HARD, WITH A CUSHION!"
+@rule core.threaten.c_threaten_quirky guard: quirky act: threaten
+  "I'll turn you into a teapot! Only for a day! You'll hate it!"
+  "I'll hex your socks! They'll slide off at a bad moment!"
+@rule core.threaten.c_threaten_rival guard: rel=rival&!kid_present act: threaten
+  "Try me. You've been itching for it, so scratch."
+  "Oh, we're going there? Good. I've waited all season."
+@rule core.threaten.c_complain act: complain
+  "That's not nice! Threatening people is rude. And scary, a bit."
+  "Hey, no threats in the house. It's a rule. I made it just now."
+  "Don't say that! You're making my stomach do the wobbly thing."
+  "Ow, my nerves! Please, no threats before lunch."
+  "I don't like that. Can we go back to being friends?"
+  "You're being scary, stop it! I'll tell the Patrol! They've got whistles!"
+@rule core.threaten.c_complain_scared guard: mood=scared act: complain
+  "Please don't. I'm already shaking. Even my hair's shaking."
+  "Eep, don't! I scare easily! I scared at my own shadow today!"
+@rule core.threaten.c_complain_kid guard: kid_speaker tags: kid act: complain
+  "That's not fair! I'm telling the grown-ups! Right now!"
+  "Stop it! I don't like it! Let's play a nice game instead?"
+  "No threats! The Patrol says no threats! Rule number one!"
