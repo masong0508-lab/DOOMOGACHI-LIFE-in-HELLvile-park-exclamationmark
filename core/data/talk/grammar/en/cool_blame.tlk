@@ -1,0 +1,182 @@
+# core/data/talk/grammar/en/cool_blame.tlk - more replies to COMPLAIN and BLAME (owner: TK; T5b
+# package T5B-COOL). Grumbling is a hobby in HELLvile: sympathy, shared moaning and sulky
+# denial, clean in any room. No register word. Syntax: core/tools/talkc_gen.py.
+
+# ---- COMPLAIN -> SYMPATHIZE / COMFORT ------------------------------------------------------------
+@rule core.complain.c_sympathize act: sympathize
+  "Oh, that's awful. You poor thing. Do you want to sit down?"
+  "Ugh, I'm so sorry. That sounds exhausting. And annoying."
+  "That's rough, buddy. If it helps, I'm on your side."
+  "Hang in there. It has to get better soon. Probably."
+  "Aww, that's the worst. Come here, I'll moan with you."
+  "I hear you. It's like the whole day got up wrong."
+  "That would drive me round the bend. And I'm already round it."
+  "You're allowed to be cross. I'd be furious. In a hat."
+  "Terrible. Just terrible. Tell me more, I've got time."
+  "Honestly? You deserve better. Better days, better snacks."
+@rule core.complain.c_sympathize_polite guard: polite act: sympathize
+  "Oh, how dreadful for you. Do sit down, I'll find some tea."
+  "That does sound vexing. I'm so sorry you've had to bear it."
+@rule core.complain.c_sympathize_elder guard: elder act: sympathize
+  "There, there, dear. Life's a bumpy road. Mind the potholes."
+  "I've had days like that, and weeks, and one whole decade."
+@rule core.complain.c_sympathize_flat guard: flat act: sympathize
+  "That's awful. {.}I'm feeling bad for you. It's the eyebrows."
+  "Oh no, {.}Sorry. I'm sad on your behalf. Quietly."
+@rule core.complain.c_sympathize_kid guard: kid_speaker tags: kid act: sympathize
+  "Aw, that's no fun! Do you want half my biscuit?"
+  "That's so sad! I'll be your friend until it's better!"
+@rule core.complain.c_sympathize_x guard: topic act: sympathize
+  "Ugh, {x}. Don't get me started. Actually, do, I'm ready."
+  "{x:cap} again? The worst. The absolute worst, I tell you."
+@rule core.complain.c_comfort act: comfort
+  "Hey, it's okay. Take a breath. It'll pass, like a cloud."
+  "Deep breath, in, out, see? Still here. Still excellent."
+  "Listen, nothing lasts. Not even the bad stuff. That's the deal."
+  "Tomorrow's a new day. A bit of a mess, but new."
+  "You've survived every bad day so far. That's a hundred percent."
+  "Let it out. I'll hold your sulk. It's light as a feather."
+@rule core.complain.c_comfort_sad guard: mood=sad act: comfort
+  "I'm not feeling great either. But we can be sad together."
+  "Yeah, it's hard. I'll sit with you. Quietly, no jokes."
+
+# ---- COMPLAIN -> AGREE / DISAGREE / COMPLAIN -----------------------------------------------------
+@rule core.complain.c_agree act: agree
+  "Right? It's outrageous. Someone should write a letter."
+  "Yes! Exactly! I've been saying that since I got up."
+  "Totally, it's a crime. I'm calling the Mayor. He'll nap."
+  "Don't I know it. I've got a list. It's on the fridge."
+  "You said it. I'd say it louder, but my voice is tired."
+  "I'm with you all the way. Down the hill and back up."
+  "That's what I told the cat! She just blinked. Rude."
+  "Oh, absolutely. It's a scandal. I'm clutching my pearls."
+@rule core.complain.c_agree_loud guard: loud act: agree
+  "YES! IT'S OUTRAGEOUS! SOMEONE FETCH A MEGAPHONE!"
+  "RIGHT?! I'VE BEEN SHOUTING IT FOR WEEKS! NOBODY LISTENS!"
+@rule core.complain.c_agree_angry guard: mood=angry act: agree
+  "Don't get me started! Actually, do. I've got a speech."
+  "It makes my blood boil! And my tea, and my soup!"
+@rule core.complain.c_agree_kid guard: kid_speaker tags: kid act: agree
+  "I know! It's so not fair! Not fair at all!"
+  "Yeah, totally! Grown-ups never listen! Except you."
+@rule core.complain.c_disagree act: disagree
+  "Oh, come on. It's not that bad. You're just hungry."
+  "Hmm, I don't know. I think it's a bit nice, actually."
+  "Eh, it's fine. Everything's fine. Fine is my brand."
+  "You're being dramatic. I'm the dramatic one, back off."
+  "I disagree. But I'll still listen. I love a good moan."
+  "Really? I thought it was great. Maybe I'm just easy."
+  "Nope. Not buying it. I've seen worse on a Wednesday."
+@rule core.complain.c_disagree_blunt guard: blunt&!kid_present act: disagree
+  "Stop whining. It's fine. Go eat something."
+  "Meh. You're making it worse than it is. It's a Tuesday."
+@rule core.complain.c_complain act: complain
+  "You think that's bad? Wait till you hear mine. It's a saga."
+  "Oh, don't start me. I've got three complaints, and a stool."
+  "Same! Mine's worse though. Mine involves a duck."
+  "Everything's wrong! Everything! Look at it all, wrong!"
+  "Ugh, welcome to my life. It's a lot of this."
+  "Don't, I've had a day. I've had two. They were both bad."
+@rule core.complain.c_complain_flat guard: flat act: complain
+  "Mm. {.}Also, I'm sad about it. This is my sad voice."
+  "Tell me about it. {.}Or don't. I'll still be grumpy."
+@rule core.complain.c_complain_quirky guard: quirky act: complain
+  "It's the moon's fault. The moon's been rude all week."
+  "I'm also upset! At a chair! It looked at me funny!"
+@rule core.complain.c_dismiss act: dismiss
+  "Boo hoo. Have a biscuit and sort it out."
+  "That's life. Put a hat on it and keep walking."
+  "Stop moaning, you big baby. And pass the salt."
+  "Hm, and? Everyone's got problems. Mine's longer."
+  "Wow, what a story. I'd feel for you, but I'm busy."
+@rule core.complain.c_dismiss_polite guard: polite act: dismiss
+  "I'm sure it will all come right in the end, dear. Do excuse me."
+  "How trying. Well, I must be getting on. Lovely chat."
+@rule core.complain.c_joke act: joke
+  "Complaints? I've got a few. Would you like a number?"
+  "I could moan about it too, but I'd have to book a room."
+  "You should write that down. In a strongly worded cake."
+  "Life's rough. Good thing we've got snacks and spite."
+  "Don't fret, we'll all be ghosts someday. Think of the savings."
+  "Ah, the sweet song of whining. It's my favourite lullaby."
+@rule core.complain.c_tease act: tease
+  "Aww, is somebody grumpy? Is it the big bad Thursday?"
+  "Look at you, being all moany. It's adorable. Do a little more."
+  "There it is. The famous grumble. Right on schedule."
+  "Someone's got a long face. Don't let it hit the floor."
+
+# ---- BLAME -> DISAGREE ------------------------------------------------------------------------------
+@rule core.blame.c_disagree act: disagree
+  "Me? Never, I'm a model citizen. Ask my mum."
+  "That's a lie, and a rude one. And I was nowhere near it."
+  "Excuse me? I was reading. In another town, entirely."
+  "I didn't do it. I was busy being innocent. It's exhausting."
+  "How dare you. I've got an alibi. And a really nice hat."
+  "It wasn't me! It was the guy with the hair. Nobody knows him."
+  "I'm shocked. Shocked and appalled. And a little bit hungry."
+  "You've got the wrong person. I'm much too lazy for that."
+  "Nope, it was a goose. It's the geese. It's always the geese."
+  "I want a lawyer. Specifically one with a cape."
+@rule core.blame.c_disagree_loud guard: loud act: disagree
+  "NOT ME, I WAS HERE! EVERYONE SAW ME! I WAS VERY LOUD!"
+  "THAT'S A LIE! I DEMAND A RECOUNT! AND A SANDWICH!"
+@rule core.blame.c_disagree_polite guard: polite act: disagree
+  "I'm afraid there's been a misunderstanding. I was not involved."
+  "Oh, I do beg your pardon, but you've mistaken me for someone guilty."
+@rule core.blame.c_disagree_flat guard: flat act: disagree
+  "No, {.}It wasn't me. This is my innocent face, see? Flat."
+  "I didn't. {.}I'd tell you. I'm too tired to lie."
+@rule core.blame.c_disagree_kid guard: kid_speaker tags: kid act: disagree
+  "It wasn't me! It was the dog! We don't have a dog!"
+  "Nuh-uh, I didn't do it! I promise! Cross my heart!"
+@rule core.blame.c_disagree_elder guard: elder act: disagree
+  "I'd never, dear. I've been in my chair since Tuesday."
+  "Pish! I was asleep. It's the only thing I do on time."
+@rule core.blame.c_disagree_x guard: topic act: disagree
+  "It was {x}'s fault, not mine! Go and blame {x}!"
+  "Don't look at me! Blame {x}! It's always {x}!"
+
+# ---- BLAME -> APOLOGIZE / BLAME / COMPLAIN / DISMISS / JOKE -----------------------------------------
+@rule core.blame.c_apologize act: apologize
+  "Okay, okay, it was me. I'm sorry. I'll clean it up."
+  "Ugh, fine. Guilty, I did it. I regret it a bit."
+  "That was my fault. I'm sorry. I'll make it up to you."
+  "I knew I'd get caught. I always do. It's my face."
+  "You're right. I'm the culprit. Please be gentle with the verdict."
+  "Sorry! I panicked! Next time I'll do it quieter."
+@rule core.blame.c_apologize_polite guard: polite act: apologize
+  "I owe you an apology, and a pie. Both are on their way."
+  "How embarrassing. Yes, that was me. I'm truly sorry."
+@rule core.blame.c_apologize_kid guard: kid_speaker tags: kid act: apologize
+  "I'm sorry, it was me! Don't be mad! I'll tidy!"
+  "Okay, it was me, I was scared, sorry. Can I have a hug? Or not."
+@rule core.blame.c_blame act: blame
+  "Excuse me? That was YOU! You held the ladder!"
+  "Oh, so it's my fault? Who left the door open? Hm?"
+  "No way. If anyone's to blame, it's you. And the weather."
+  "Don't pin it on me. I've got a very slippery back."
+  "You started it! You're always starting it! It's your hobby!"
+  "Blame me? Fine, then I'm blaming you. Back to square one."
+@rule core.blame.c_blame_blunt guard: blunt&!kid_present act: blame
+  "Stop passing the buck. It's yours. You broke it, you bought it."
+  "Look in a mirror. That's the culprit. Gorgeous, but guilty."
+@rule core.blame.c_blame_kid guard: kid_speaker tags: kid act: blame
+  "It was YOU! You did it first! I only did the second part!"
+  "No, you! You, you, you! I'm telling!"
+@rule core.blame.c_complain act: complain
+  "Why does everyone always blame me? I'm a delight!"
+  "That's so unfair. I'm the nicest person here. By far."
+  "Well, that's lovely. Being accused before lunch. Thank you."
+  "It's always me, isn't it? Never the vase. The vase is a menace."
+  "Ugh, great. Another thing I didn't do. My list is long."
+@rule core.blame.c_dismiss act: dismiss
+  "Think what you like. I've got a clear conscience and a nap."
+  "Blame away. The rain doesn't mind. It's used to it."
+  "Meh. Take it up with someone who cares. It's a short list."
+  "Sure, sure. Put it on my tab. I've got an infinite tab."
+@rule core.blame.c_joke act: joke
+  "Fine, it was me. And the butler. And a sneaky cat."
+  "I'm always the prime suspect. It's an honour. I want a badge."
+  "Whodunit? Me done it, well, a bit. In a suit, with a candle."
+  "You'll never prove it. I've covered my tracks. With glitter."
+  "Guilty! Of being fabulous. The rest is hearsay."
