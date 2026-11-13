@@ -14,8 +14,10 @@ usage:
                                   --prof `prof` / `wait N` / `profend TAG` (a PC profile, harness/prof.py);
                                   GBA-only lines (sync, profile, vhash, latency, tips, room-parity, ...) dropped
   speed2.py dc SCRIPT             the script for dc/harness/dcrun on stdout: each window becomes
-                                  `log speed2: begin N NAME` / `mark-ticks` / `frames 2N` / `expect-ticks 0 99999`
-                                  / `log speed2: end NAME` (dcrun prints every tick over 33.3 ms of work)
+                                  `log speed2: begin N NAME` / `mark-ticks` / `gaps-reset` / `frames 2N` /
+                                  `expect-ticks 0 99999` / `expect-gap 99999 TAG` / `log speed2: end NAME` (dcrun
+                                  prints every tick over 33.3 ms of work and the longest gap between two presented
+                                  pictures, S2-10: a save's card counts)
   speed2.py table LOG [LOG..]     a markdown table of every window of a GBA log (harness --worklog --quiet),
                                   a PS1 tty.log (run.py OUT/tty.log) or a dcrun log; the format is detected
 
@@ -26,7 +28,7 @@ in N ms": the scene's enter runs there, outside a tick's work) plus the first dr
 PS1 columns: fps (= logic, one tick per frame), frames by vsyncs (2 = 33 ms, 3 = 50 ms, 4+ = a hitch), the
 worst frame, the overlay loads ("ovl: ... in N ms") since the previous window (the PS1's scene-change freeze:
 OVL.BIN read from the disc). Dreamcast columns: logic ticks/s over the window (frames 2N video frames), ticks
-over 33.3 ms and over 50 ms of work, the worst tick; MISS when a tenth of the window's ticks are over budget.
+over 33.3 ms and over 50 ms of work, the worst tick, the worst gap between two presented pictures; MISS when a tenth of the window's ticks are over budget.
 
 Verdict (owner, SPEED WAVE 2: a steady 30 with no hitches): MISS when drawn fps < 29.5 or logic < 29.5;
 "hitch" when any frame of the window took longer than 33.4 ms (a 50 ms frame) though the average holds;
