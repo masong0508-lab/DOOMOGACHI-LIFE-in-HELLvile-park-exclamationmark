@@ -242,9 +242,9 @@ MODAL_CALLBACKS = {
 # PLAT_GROUPS: ps1/src object base -> group. model.c is the player's third-person chibi. Since the
 # house draws everyone as a billboard, only plat_view3d (view3d.c, resident) calls it, and only for a
 # CAM_THIRD_PERSON view with a player sprite: the combat group's views (combat.c; levels_select.c's
-# preview has no player sprite). prims.c (4.0 KB, the chibi's boxes and blobs) is NOT listed: with
+# preview has no player sprite). prims.c (3.6 KB, the chibi's boxes and blobs) is NOT listed: with
 # it the combat group would pass the slot's size and the slot grows in 2 KB steps. Add it here when
-# the combat group has 4.1 KB to spare under the slot (--report: "slot demand").
+# the combat group has 3.7 KB to spare under the slot (--report: "slot demand").
 # GUARDED: (caller object base, callee object base, callee function). The caller is resident code
 # that calls the function only when ovl_code_in(k) (src/overlay.c; k = the entry's position here,
 # ps1.h OVL_CODE_*) says the callee's group is in the slot, and does without it otherwise (view3d.c

@@ -54,9 +54,12 @@ Shared files that every stream touches (keep changes small, expect to rebase): `
   the PS1** (new PS1 code goes into an overlay group, an `-Os` file that replaces more than it adds, or
   data on the disc). After it lands the coordinator writes the freed room and each stream's share
   here. Planned shares: TALK 4 KB, LEVELS 8 KB, CREATOR 4 KB, SPEED 2 KB, the rest stays in reserve.
-  Every landing reports its PS1 delta in bytes.
+  Every landing reports its PS1 delta in bytes. PS1-FLAT (houses draw no 3D model, `model.c` in the
+  combat overlay group) took it from 65,952 B to 70,480 B on 2026-11-13.
 * **PS1 overlay slot.** An overlay group must fit the slot (docs/PS1.md). Growing the slot costs
-  resident memory: ask the coordinator first.
+  resident memory: ask the coordinator first. The slot is 131,072 B. The combat group is 128,188 B
+  since PS1-FLAT (2,884 B of room; about 200 B on PS1-RAM's tree): LEVELS adds to `combat*.c`,
+  `actor.c` and `levels*.c`, and growth beyond that room grows the slot by 2 KB.
 * **GBA EWRAM / IWRAM.** About 2 KB of EWRAM free and IWRAM nearly full (`make -C gba sizes`). Net
   zero for every package unless its plan frees room first (CR5a frees EWRAM for the creator).
   Scene data lives in the scene scratch arena, not in new statics.

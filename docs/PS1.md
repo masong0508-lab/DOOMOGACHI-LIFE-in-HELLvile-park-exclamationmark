@@ -170,7 +170,7 @@ says "Analog sticks: use a DualShock". The harness feeds the sticks with
 native runner has the same line); `run.py --analog-pad` makes port 1 a
 DualShock that powers up digital, and `scripts/sticks_auto.txt` checks that
 the game switches it (`pad: analog` on the TTY) with the card still saving.
-PS1 resident cost: +1.6 KB (65,952 B below the stack top with the FMV).
+PS1 resident cost: +1.6 KB (65,952 B below the stack top with the FMV on 2026-11-12; PS1-FLAT's number is in section 3).
 
 ## 3. Hardware usage and memory maps
 
@@ -634,11 +634,13 @@ per-polygon drawing area `g_r3_area` in `r3d.c` and `prims.c`).
 | slot | 131,072 B (home) | 131,072 B (story, 129,980 B) |
 
 70,480 B is still 3,248 B under the 72 KB plan gate: PS1-RAM closes that.
-Not moved: `prims.c` (4,044 B, the chibi's boxes and blobs, -O2). With it
-the combat group would need 132,232 B and the slot grows in 2 KB steps
-(+2,048 B here, +4,096 B on PS1-RAM's tree, where the combat group is
-126,696 B before this). When the combat group has 4.1 KB to spare under
-the slot, add `prims` to `PLAT_GROUPS` (one word). After this package the
+Not moved: `prims.c` (3,612 B in the plan, the chibi's boxes and blobs,
+-O2). With it the combat group would need 131,800 B, 728 B over the slot,
+and the slot grows in 2 KB steps: +2,048 B here, a net gain of 1,564 B
+(the margin would be about 72,044 B, still under the 72 KB gate), and
++4,096 B on PS1-RAM's tree (the combat group is 126,696 B there before
+this), a net gain of about zero. When the combat group has 3.7 KB to
+spare under the slot, add `prims` to `PLAT_GROUPS` (one word). After this package the
 combat group has 2,884 B left under the slot (about 200 B on PS1-RAM's
 tree): growth of `combat*.c` / `actor.c` / `levels*.c` beyond that moves
 the slot.
@@ -1028,7 +1030,11 @@ and after, fps and the CPU time of one sampled frame (`perf:` line):
 | `home_visit` | 30.17, 9.9 ms | 30.17, 9.9 ms |
 
 The parity pairs still differ by 0 pixels (the second pair's resting
-player is translucent now). No file of `core/`, `gba/`, `dc/` or `tools/`
+player is translucent now). Every number above and the 70,480 B margin
+were measured again on the rebased tree (origin `32257f3`, after the Talk
+landings): the same. Besides the player's place, the `home_cellar` shot
+differs on the room's outline by 1 to 2 px: it now has the outline of the
+other 8x8 layout (`home_defend`), which did not change. No file of `core/`, `gba/`, `dc/` or `tools/`
 changed: built clean in one directory, the native runner, `doomogachi.gba`
 and the Dreamcast `doomogachi.elf` have the same sha256 on the base and on
 this branch. The speed tour's house group
