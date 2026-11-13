@@ -1,0 +1,58 @@
+# core/data/talk/grammar/en/voice_lord_vapula.tlk - Lord Vapula (owner: TK; T5B-VOICE:
+# SCRIPT_STYLE section 7 "Voices"). A speaker= guard wins over the persona banks (8 times the
+# weight). Replies to the player's acts, in this resident's own register, recognisable without
+# the name. Clean in any room: no register word, no romance, no jab at the listener.
+
+@rule core.greet.lord_vapula_v1 guard: speaker=lord_vapula tags: lower act: greet
+  "oh, you, it's overcast in here. it's me. i'm overcast."
+  "hello, partly cloudy. mostly sulky. try not to drip."
+  "hmph, hello. there's a mood front moving in. it's mine."
+@rule core.farewell.lord_vapula_v1 guard: speaker=lord_vapula tags: lower act: farewell
+  "bye, i'll be here. brewing, a small storm. a tiny one."
+  "go on then. take your sunshine and leave. i'll keep the drizzle."
+  "farewell. mind the puddles. they're my feelings."
+@rule core.thank.lord_vapula_v1 guard: speaker=lord_vapula tags: lower act: answer
+  "you're welcome, i guess. don't let it go to your head. i'm trying."
+  "hm. fine. warm front of gratitude noted."
+@rule core.apologize.lord_vapula_v1 guard: speaker=lord_vapula tags: lower act: answer
+  "fine, i forgive you. a little. it's spitting, not pouring."
+  "okay, the storm's passing. mostly. keep an umbrella."
+@rule core.ask_about.lord_vapula_v1 guard: speaker=lord_vapula&topic tags: lower act: answer
+  "{x}? foggy on that. a chance of ugh, with scattered sulking."
+  "{x}? it's raining on {x}, it's always raining on {x}. that's my forecast."
+  "oh, {x}, a high-pressure topic. i won't talk about it. i'll pout."
+@rule core.ask_opinion.lord_vapula_v1 guard: speaker=lord_vapula&topic tags: lower act: opine_pos
+  "{x}? partly pleasant. with a ninety percent chance of grumbling."
+  "i like {x}. a bit. it's a light drizzle of like."
+@rule core.ask_feeling.lord_vapula_v1 guard: speaker=lord_vapula tags: lower act: answer
+  "overcast. with gusts of petty. thank you for asking."
+  "foggy, misty. a little thunder. it's fine, i'm fine, it's weather."
+  "drizzly. the same as always. i'm consistent."
+@rule core.ask_advice.lord_vapula_v1 guard: speaker=lord_vapula tags: lower act: answer
+  "bring an umbrella. and a snack. and a very small cloud, for company."
+  "wait it out. all storms pass. i'd know, i make them."
+@rule core.tell.lord_vapula_v1 guard: speaker=lord_vapula tags: lower act: backchannel
+  "hm, go on. i'm listening. my cloud is, too."
+  "oh, interesting. i'll make a note. in the rain."
+@rule core.joke.lord_vapula_v1 guard: speaker=lord_vapula tags: lower act: laugh
+  "hmph. *a small rumble that is possibly a laugh*"
+  "fine, it was funny. don't tell anyone. i'll storm."
+@rule core.compliment.lord_vapula_v1 guard: speaker=lord_vapula tags: lower act: thank
+  "oh, um, shut up. thank you. a bit of sun just got in."
+  "hmph, flattery. it works, a little. a light shower of pleased."
+@rule core.comfort.lord_vapula_v1 guard: speaker=lord_vapula tags: lower act: thank
+  "thanks. the clouds are lifting. a bit, don't look."
+@rule core.offer.lord_vapula_v1 guard: speaker=lord_vapula tags: lower act: yes
+  "fine. i'll take it. but i'm still sulking."
+  "oh, yes. thank you. it's a break in the weather."
+@rule core.invite.lord_vapula_v1 guard: speaker=lord_vapula tags: lower act: yes
+  "fine, i'll come. i'll bring my own cloud. it follows me."
+  "okay, but if it rains, it's not my fault. it is. but still."
+@rule core.high_five.lord_vapula_v1 guard: speaker=lord_vapula tags: lower act: high_five
+  "hmph. fine. *a small, damp slap*"
+@rule core.hug.lord_vapula_v1 guard: speaker=lord_vapula tags: lower act: hug
+  "hm, okay. a short one. a drizzle. *pat pat*"
+@rule core.wave.lord_vapula_v1 guard: speaker=lord_vapula tags: lower act: wave
+  "*a tiny wave, with a tiny cloud above it*"
+@rule core.give.lord_vapula_v1 guard: speaker=lord_vapula tags: lower act: thank
+  "for me? oh, hm, thank you. i'll put it somewhere dry."

@@ -1,0 +1,58 @@
+# core/data/talk/grammar/en/voice_anvil.tlk - Anvil (owner: TK; T5B-VOICE:
+# SCRIPT_STYLE section 7 "Voices"). A speaker= guard wins over the persona banks (8 times the
+# weight). Replies to the player's acts, in this resident's own register, recognisable without
+# the name. Clean in any room: no register word, no romance, no jab at the listener.
+
+@rule core.greet.anvil_v1 guard: speaker=anvil act: greet
+  "Ha! There you are! Come in, the forge is warm and so am I!"
+  "Well met, mind the sparks. And the cat, the cat's on fire. It's fine."
+  "Hello, pull up an anvil. They're all anvils. Sit on one."
+@rule core.farewell.anvil_v1 guard: speaker=anvil act: farewell
+  "Off with you! Come back with a story and a bag of coal!"
+  "Goodbye! Strike while the iron's hot, and the iron's always hot!"
+  "Farewell, mind the door. I welded it shut. Kidding, mostly."
+@rule core.thank.anvil_v1 guard: speaker=anvil act: answer
+  "Don't thank me, thank the hammer! I just swing it!"
+  "Ha! Anytime. It's what a forge is for."
+@rule core.apologize.anvil_v1 guard: speaker=anvil act: answer
+  "Bah! Nothing a little heat can't mend! Come here!"
+  "Forget it! I've forged worse mistakes. You should see my first sword."
+@rule core.ask_about.anvil_v1 guard: speaker=anvil&topic act: answer
+  "{x:cap}? Hot. Heavy, ring it with a hammer, see what it says!"
+  "{x:cap}, I made one once. It lasted a week. A glorious week!"
+  "Ha, {x}! Sit, I'll tell you. It involves a fountain and shouting."
+@rule core.ask_opinion.anvil_v1 guard: speaker=anvil&topic act: opine_pos
+  "{x:cap}? Solid work! I'd forge it in a heartbeat!"
+  "I'm for {x}! Provided it's strong, loud and slightly warm!"
+@rule core.ask_feeling.anvil_v1 guard: speaker=anvil act: answer
+  "Hammered, in the good way! Sore, in the best way!"
+  "Strong! Warm, a touch homesick. It's a good ache."
+  "Ha, fine! Singed eyebrows, steady hands. Same as always!"
+@rule core.ask_advice.anvil_v1 guard: speaker=anvil act: answer
+  "Heat it. Hit it, cool it. If it breaks, you learned something!"
+  "Patience, friend! Iron doesn't mind waiting. Neither should you."
+@rule core.tell.anvil_v1 guard: speaker=anvil act: backchannel
+  "Ha, go on! I'm listening! Loudly, but I'm listening!"
+  "Mm, keep talking! I can hammer and listen. It's a gift."
+@rule core.joke.anvil_v1 guard: speaker=anvil act: laugh
+  "HA! Good one! I felt that in my anvil!"
+  "Ho ho! You've got a ring to that one! Like a bell!"
+@rule core.compliment.anvil_v1 guard: speaker=anvil act: thank
+  "Ha! Flattery! Take a hammer, you've earned one!"
+  "Thank you, thank you! Careful, I'll blush and set something on fire!"
+@rule core.comfort.anvil_v1 guard: speaker=anvil act: thank
+  "Thanks. {.}That meant something. Now someone hand me a hammer."
+@rule core.offer.anvil_v1 guard: speaker=anvil act: yes
+  "Yes! Always! Give it here!"
+  "Ha! I'll take it! And I'll give you a hinge in return!"
+@rule core.invite.anvil_v1 guard: speaker=anvil act: yes
+  "Count me in! I'll bring the fire, the hammer, and the stories!"
+  "Ha, of course! Leave a seat by the stove. The warm one."
+@rule core.high_five.anvil_v1 guard: speaker=anvil act: high_five
+  "UP TOP! *a clang you can hear across town*"
+@rule core.hug.anvil_v1 guard: speaker=anvil act: hug
+  "Ha ha, come here! Careful, I'm sooty! Worth it!"
+@rule core.wave.anvil_v1 guard: speaker=anvil act: wave
+  "*waves a hammer, then politely sets it down*"
+@rule core.give.anvil_v1 guard: speaker=anvil act: thank
+  "For me? Ha, I'll keep it by the forge. Next to the good tongs."

@@ -1,0 +1,58 @@
+# core/data/talk/grammar/en/voice_nana_puddin.tlk - Nana Puddin (owner: TK; T5B-VOICE:
+# SCRIPT_STYLE section 7 "Voices"). A speaker= guard wins over the persona banks (8 times the
+# weight). Replies to the player's acts, in this resident's own register, recognisable without
+# the name. Clean in any room: no register word, no romance, no jab at the listener.
+
+@rule core.greet.nana_puddin_v1 guard: speaker=nana_puddin act: greet
+  "Oh, there you are, sweet pea. The kettle just thought of you."
+  "Hello, dear. Wipe your feet and open your mouth. Not in that order."
+  "Come in, come in. I baked, and I mean it as a threat."
+@rule core.farewell.nana_puddin_v1 guard: speaker=nana_puddin act: farewell
+  "Off you go, dear. I put a little something in your pocket. Don't check."
+  "Mind how you go, sweet pea. And eat something on the way."
+  "Bye now, call your Nana. Or just come by. Or both."
+@rule core.thank.nana_puddin_v1 guard: speaker=nana_puddin act: answer
+  "Oh, hush, it was only a casserole. A big one. Two big ones."
+  "You're welcome, dear. Now eat."
+@rule core.apologize.nana_puddin_v1 guard: speaker=nana_puddin act: answer
+  "There, there. A cookie fixes it. {.}Two, if it was bad."
+  "Oh, sweet pea. Sit down. Nobody is cross on a full stomach."
+@rule core.ask_about.nana_puddin_v1 guard: speaker=nana_puddin&topic act: answer
+  "{x:cap}, dear? Oh, I made a pie about that once. {.}It didn't go well."
+  "Now, {x}, that takes me back. I was young. It was Tuesday."
+  "{x:cap}? Hm, I'd have to bake on it. Come back in an hour."
+@rule core.ask_opinion.nana_puddin_v1 guard: speaker=nana_puddin&topic act: opine_pos
+  "{x:cap}? Oh, I like it fine, sweet pea. Better with butter."
+  "I'm all for {x}. At my age you take what you're handed. With gravy."
+@rule core.ask_feeling.nana_puddin_v1 guard: speaker=nana_puddin act: answer
+  "Oh, I'm well, dear. A bit creaky. The hip is a barometer."
+  "Can't complain. Well. {.}I could, I'm choosing not to."
+  "Warm and full. That's all an old soul needs."
+@rule core.ask_advice.nana_puddin_v1 guard: speaker=nana_puddin act: answer
+  "Eat first, decide after, sweet pea. Nothing is bad on a full tummy."
+  "Advice? Be kind and keep a casserole in the freezer."
+@rule core.tell.nana_puddin_v1 guard: speaker=nana_puddin act: backchannel
+  "Mm-hm, go on, dear. I'm listening. I'm also kneading."
+  "Oh, is that so? Well I never. Actually I did, years ago."
+@rule core.joke.nana_puddin_v1 guard: speaker=nana_puddin act: laugh
+  "Oh, you! That one's worth a slice of cake."
+  "Hee hee, heavens. I nearly dropped my knitting. And the cat."
+@rule core.compliment.nana_puddin_v1 guard: speaker=nana_puddin act: thank
+  "Oh, go on. You'll make my gravy blush."
+  "Aren't you sweet. Here, take the whole tin."
+@rule core.comfort.nana_puddin_v1 guard: speaker=nana_puddin act: thank
+  "Bless you, dear. It's only the onions. {.}There are no onions."
+@rule core.offer.nana_puddin_v1 guard: speaker=nana_puddin act: yes
+  "Well, I couldn't. {.}Oh, go on then. A small one."
+  "That's kind. I'll take it. And I'll bake you something back."
+@rule core.invite.nana_puddin_v1 guard: speaker=nana_puddin act: yes
+  "I'd love to, dear. I'll bring a dish. Several dishes, a fleet."
+  "Count me in, I'll pack a few sandwiches. For the road. For the table."
+@rule core.high_five.nana_puddin_v1 guard: speaker=nana_puddin act: high_five
+  "Oh, gently, dear. The wrist. {.}Okay, that was nice."
+@rule core.hug.nana_puddin_v1 guard: speaker=nana_puddin act: hug
+  "Come here, sweet pea. Oof, you smell like fresh air. Lovely."
+@rule core.wave.nana_puddin_v1 guard: speaker=nana_puddin act: wave
+  "Yoo-hoo, dear! *waves a wooden spoon*"
+@rule core.give.nana_puddin_v1 guard: speaker=nana_puddin act: thank
+  "For me? Oh, you shouldn't have. {.}I'll put it by the good plates."

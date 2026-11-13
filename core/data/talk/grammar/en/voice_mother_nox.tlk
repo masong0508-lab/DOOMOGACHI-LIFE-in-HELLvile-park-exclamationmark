@@ -1,0 +1,58 @@
+# core/data/talk/grammar/en/voice_mother_nox.tlk - Mother Nox (owner: TK; T5B-VOICE:
+# SCRIPT_STYLE section 7 "Voices"). A speaker= guard wins over the persona banks (8 times the
+# weight). Replies to the player's acts, in this resident's own register, recognisable without
+# the name. Clean in any room: no register word, no romance, no jab at the listener.
+
+@rule core.greet.mother_nox_v1 guard: speaker=mother_nox act: greet
+  "Sit. Soup."
+  "Hm. You came. Bowl's on the table."
+  "Hello. Don't dawdle. It's hot."
+@rule core.farewell.mother_nox_v1 guard: speaker=mother_nox act: farewell
+  "Go. Take the rest. In a jar."
+  "Hm, fine. Come back. I'll keep the pot warm."
+  "Leave, then. Wear a scarf."
+@rule core.thank.mother_nox_v1 guard: speaker=mother_nox act: answer
+  "Hm. Eat."
+  "Don't. It was just soup."
+@rule core.apologize.mother_nox_v1 guard: speaker=mother_nox act: answer
+  "Hm, sit. Eat, then we'll talk. Maybe."
+  "Fine. Soup first. Sorry second."
+@rule core.ask_about.mother_nox_v1 guard: speaker=mother_nox&topic act: answer
+  "{x:cap}. Hm. Needs soup."
+  "{x:cap}? Maybe. Ask me after the pot's done."
+  "{x:cap}. I know, I'm not telling. Eat."
+@rule core.ask_opinion.mother_nox_v1 guard: speaker=mother_nox&topic act: opine_pos
+  "{x:cap}? Hm. It's fine, needs pepper."
+  "{x:cap}. I'd allow it. Quietly."
+@rule core.ask_feeling.mother_nox_v1 guard: speaker=mother_nox act: answer
+  "Fine. Stirring."
+  "Warm. Quiet. That's enough."
+  "I'm here. The pot's full. What else?"
+@rule core.ask_advice.mother_nox_v1 guard: speaker=mother_nox act: answer
+  "Eat. Sleep. Don't argue with the soup."
+  "Wait, stir, taste, repeat."
+@rule core.tell.mother_nox_v1 guard: speaker=mother_nox act: backchannel
+  "Mm. Go on. I'm stirring."
+  "Hm. I heard."
+@rule core.joke.mother_nox_v1 guard: speaker=mother_nox act: laugh
+  "Hm. {.}Ha, once. Don't push it."
+  "*a very small smile, into the pot*"
+@rule core.compliment.mother_nox_v1 guard: speaker=mother_nox act: thank
+  "Hm. Eat more. You'll feel better."
+  "Fine. Don't make it weird. Have a bowl."
+@rule core.comfort.mother_nox_v1 guard: speaker=mother_nox act: thank
+  "Hm, thanks. Sit. There's room."
+@rule core.offer.mother_nox_v1 guard: speaker=mother_nox act: yes
+  "Hm. Fine. Put it by the pot."
+  "Yes. Quietly. Thank you."
+@rule core.invite.mother_nox_v1 guard: speaker=mother_nox act: yes
+  "Hm. I'll bring the pot."
+  "Fine. I'll come. I won't talk."
+@rule core.high_five.mother_nox_v1 guard: speaker=mother_nox act: high_five
+  "Hm. *a very small, very warm slap*"
+@rule core.hug.mother_nox_v1 guard: speaker=mother_nox act: hug
+  "Hm, fine. One. Don't spill the soup."
+@rule core.wave.mother_nox_v1 guard: speaker=mother_nox act: wave
+  "*a nod. A real one. Then back to the pot.*"
+@rule core.give.mother_nox_v1 guard: speaker=mother_nox act: thank
+  "For me? {.}Thank you. Soup's on."

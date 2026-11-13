@@ -1,0 +1,58 @@
+# core/data/talk/grammar/en/voice_mayor_giggs.tlk - Mayor Giggs (owner: TK; T5B-VOICE:
+# SCRIPT_STYLE section 7 "Voices"). A speaker= guard wins over the persona banks (8 times the
+# weight). Replies to the player's acts, in this resident's own register, recognisable without
+# the name. Clean in any room: no register word, no romance, no jab at the listener.
+
+@rule core.greet.mayor_giggs_v1 guard: speaker=mayor_giggs act: greet
+  "Ladies, gentlemen, {you}! Step right up, step left down, step sideways!"
+  "A guest, a visitor, a person! Hee hee. Tea?"
+  "Welcome to the finest town in the county, the state, and the hat!"
+@rule core.farewell.mayor_giggs_v1 guard: speaker=mayor_giggs act: farewell
+  "Farewell, adieu, ta-ta! Mind the bunting. It's feral."
+  "Off you go! Tell them the Mayor sent you, whoever they are!"
+  "Goodbye, good day, good gravy! Gobble gobble!"
+@rule core.thank.mayor_giggs_v1 guard: speaker=mayor_giggs act: answer
+  "Don't mention it! Seriously, don't. Hee hee."
+  "My pleasure, my honour, my Tuesday!"
+@rule core.apologize.mayor_giggs_v1 guard: speaker=mayor_giggs act: answer
+  "Apology accepted, filed, and framed! Hat?"
+  "Think nothing of it! I have, and it was dull!"
+@rule core.ask_about.mayor_giggs_v1 guard: speaker=mayor_giggs&topic act: answer
+  "{x:cap}! The pride, the joy, the municipal mascot of the month!"
+  "Ah, {x}! We have a parade for it, nobody knows why. Hee hee."
+  "{x:cap}! Fine, grand, and ever so slightly on fire!"
+@rule core.ask_opinion.mayor_giggs_v1 guard: speaker=mayor_giggs&topic act: opine_pos
+  "{x:cap}? Marvellous, magnificent, mandatory! Hee."
+  "A triumph of {x}! I'd say so in a hat, if you'll hold still."
+@rule core.ask_feeling.mayor_giggs_v1 guard: speaker=mayor_giggs act: answer
+  "Tip top, shipshape, tickety-boo! Ask me again and I'll say it faster!"
+  "Splendid! I feel like a parade. A small, brave parade."
+  "Excellent! Please don't look at the left side of the room."
+@rule core.ask_advice.mayor_giggs_v1 guard: speaker=mayor_giggs act: answer
+  "Wear a hat. Then a better hat. Then see how you feel!"
+  "Three steps! Tea, tea, and a nap!"
+@rule core.tell.mayor_giggs_v1 guard: speaker=mayor_giggs act: backchannel
+  "Fascinating! I wasn't listening, but fascinating!"
+  "Hee. Hee. Do go on, I'll nod in all the right places."
+@rule core.joke.mayor_giggs_v1 guard: speaker=mayor_giggs act: laugh
+  "Ha! Gobble gobble! That one's going on the town plaque!"
+  "Hee. Hee. I'd clap, but I'm holding a teapot."
+@rule core.compliment.mayor_giggs_v1 guard: speaker=mayor_giggs act: thank
+  "Why, thank you! I did it all with a hat and a dream!"
+  "Flattery will get you everywhere! Mostly the gift shop."
+@rule core.comfort.mayor_giggs_v1 guard: speaker=mayor_giggs act: thank
+  "Very kind of you! I'm not sad. Hee hee, look at the bunting!"
+@rule core.offer.mayor_giggs_v1 guard: speaker=mayor_giggs act: yes
+  "Yes! Yes, yes, and thrice yes! Is it tea?"
+  "How generous! I accept, and so does the hat."
+@rule core.invite.mayor_giggs_v1 guard: speaker=mayor_giggs act: yes
+  "A party! I'll bring the hats, the tea, and a speech!"
+  "Count me in, out, and sideways! Gobble gobble!"
+@rule core.high_five.mayor_giggs_v1 guard: speaker=mayor_giggs act: high_five
+  "Up top! Up higher! Up the flagpole!"
+@rule core.hug.mayor_giggs_v1 guard: speaker=mayor_giggs act: hug
+  "A hug! Mind the feathers. They have opinions."
+@rule core.wave.mayor_giggs_v1 guard: speaker=mayor_giggs act: wave
+  "Hello there! *waves with the whole wing*"
+@rule core.give.mayor_giggs_v1 guard: speaker=mayor_giggs act: thank
+  "A gift! Marvellous! I'll display it, hat it, and never let it go!"

@@ -1,0 +1,58 @@
+# core/data/talk/grammar/en/voice_pip.tlk - Pip (a kid) (owner: TK; T5B-VOICE:
+# SCRIPT_STYLE section 7 "Voices"). A speaker= guard wins over the persona banks (8 times the
+# weight). Replies to the player's acts, in this resident's own register, recognisable without
+# the name. A kid bank: tags kid, zero register words, no LOVE face, never the target of an adult joke.
+
+@rule core.greet.pip_v1 guard: speaker=pip tags: kid act: greet
+  "Halt! State your name and your snack! {.}Okay, you can pass."
+  "Patrol checkpoint! Today's password is hello. You said it, pass!"
+  "Hi! Pip here! Official Patrol, reporting for greeting!"
+@rule core.farewell.pip_v1 guard: speaker=pip tags: kid act: farewell
+  "Patrol out! Over, bye, roger! Wait, that's not how it goes!"
+  "Bye, stay brave! If you get scared, hum. It works."
+  "Goodbye! I'll watch the gate until you're gone. Patrol rules."
+@rule core.thank.pip_v1 guard: speaker=pip tags: kid act: answer
+  "You're welcome! That's a gold star for you. And for me."
+  "Patrol is always on duty! Thanks accepted!"
+@rule core.apologize.pip_v1 guard: speaker=pip tags: kid act: answer
+  "It's okay! Patrol forgives. Mostly, also I wasn't mad."
+  "Apology accepted! Please sign here. Here, here."
+@rule core.ask_about.pip_v1 guard: speaker=pip&topic tags: kid act: answer
+  "{x:cap}! Patrol has a file on it. It's mostly drawings."
+  "{x:cap}? Sure, I'm an expert. I mean, I'm brave about it."
+  "Patrol Report: {x} is real. Please advise."
+@rule core.ask_opinion.pip_v1 guard: speaker=pip&topic tags: kid act: opine_pos
+  "{x:cap}? Super good! Ten out of ten, maybe eleven!"
+  "I'm for {x}! Patrol votes yes! Yes!"
+@rule core.ask_feeling.pip_v1 guard: speaker=pip tags: kid act: answer
+  "Great! I did a roll and a salute and a snack! All before lunch!"
+  "Brave! Totally! My eyes are only a bit rainy, from the wind."
+  "Hungry! But it's a patrol kind of hungry. Very official."
+@rule core.ask_advice.pip_v1 guard: speaker=pip tags: kid act: answer
+  "Be brave! Hold something soft! If it's dark, hum the Patrol song."
+  "Tell a grown-up! Then tell a different grown-up! That's the rule!"
+@rule core.tell.pip_v1 guard: speaker=pip tags: kid act: backchannel
+  "Whoa! That's a lot of facts! I'm writing it down!"
+  "Mm-hm! Patrol is listening! I'm holding my pencil!"
+@rule core.joke.pip_v1 guard: speaker=pip tags: kid act: laugh
+  "Hehehe! That's funny! I'm putting it in my report!"
+  "Ha, do another one! Do a funnier one! I'm kidding, that one was great!"
+@rule core.compliment.pip_v1 guard: speaker=pip tags: kid act: thank
+  "Thanks! I'm super brave! Also I'm a little bit shy now!"
+  "Aww! That goes on page one of my report!"
+@rule core.comfort.pip_v1 guard: speaker=pip tags: kid act: thank
+  "Thanks, I'm okay! It's just my eyes doing a rain. It stops soon."
+@rule core.offer.pip_v1 guard: speaker=pip tags: kid act: yes
+  "Yes please! Patrol never says no to snacks! I mean rations!"
+  "Okay! Thank you! I'll put it in my official pouch."
+@rule core.invite.pip_v1 guard: speaker=pip tags: kid act: yes
+  "Yes! I'll bring my badge! And my other badge!"
+  "Okay! Is it a mission? Can it be a mission?"
+@rule core.high_five.pip_v1 guard: speaker=pip tags: kid act: high_five
+  "Up top! Super high! Patrol five!"
+@rule core.hug.pip_v1 guard: speaker=pip tags: kid act: hug
+  "Okay, hugs are allowed. One minute. Patrol rules."
+@rule core.wave.pip_v1 guard: speaker=pip tags: kid act: wave
+  "*salutes, then waves, then salutes again*"
+@rule core.give.pip_v1 guard: speaker=pip tags: kid act: thank
+  "For me?! Whoa, Patrol will guard it with its life! And its snacks!"

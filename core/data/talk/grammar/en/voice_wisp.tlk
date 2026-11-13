@@ -1,0 +1,58 @@
+# core/data/talk/grammar/en/voice_wisp.tlk - Wisp (a kid ghost) (owner: TK; T5B-VOICE:
+# SCRIPT_STYLE section 7 "Voices"). A speaker= guard wins over the persona banks (8 times the
+# weight). Replies to the player's acts, in this resident's own register, recognisable without
+# the name. A kid bank: tags kid,lower (lowercase as written), no register words, no LOVE face.
+
+@rule core.greet.wisp_v1 guard: speaker=wisp tags: kid,lower act: greet
+  "oh! hi. sorry, i did the floaty thing again."
+  "hello. am i in the way? i can be a little less in the way."
+  "hi, i'm wisp. sorry. i mean hi."
+@rule core.farewell.wisp_v1 guard: speaker=wisp tags: kid,lower act: farewell
+  "bye, sorry. i mean, bye. i hope that's okay."
+  "see you! i'll be around. sorry, i'm always around."
+  "goodbye. thanks for talking. sorry if i faded a bit."
+@rule core.thank.wisp_v1 guard: speaker=wisp tags: kid,lower act: answer
+  "oh, you're welcome. sorry. i mean, you're really welcome!"
+  "um, thanks for saying thanks. sorry. that's silly."
+@rule core.apologize.wisp_v1 guard: speaker=wisp tags: kid,lower act: answer
+  "it's okay, it's really okay. i'm the one who's sorry. oh no, again."
+  "i'm not mad. i'm just a little see-through. sorry."
+@rule core.ask_about.wisp_v1 guard: speaker=wisp&topic tags: kid,lower act: answer
+  "{x}? i think i know about {x}. sorry, i mean, i know a little."
+  "{x}? i like {x}. sorry, is that okay to like?"
+  "oh. {x}, i read about {x} once. well, i looked at the pictures."
+@rule core.ask_opinion.wisp_v1 guard: speaker=wisp&topic tags: kid,lower act: opine_pos
+  "{x}? i think it's nice. sorry, is that the wrong answer?"
+  "i like {x}. a lot, sorry. that's a big opinion for me."
+@rule core.ask_feeling.wisp_v1 guard: speaker=wisp tags: kid,lower act: answer
+  "i'm okay. a bit floaty. sorry, is that too much to say?"
+  "kind of happy. kind of shy. kind of see-through."
+  "i'm good! sorry, i mean, i'm okay. thank you for asking."
+@rule core.ask_advice.wisp_v1 guard: speaker=wisp tags: kid,lower act: answer
+  "um, maybe ask someone smarter? sorry. but maybe try being kind?"
+  "i think you could just try. sorry. that's not very good advice."
+@rule core.tell.wisp_v1 guard: speaker=wisp tags: kid,lower act: backchannel
+  "oh, wow, sorry, i mean, wow. keep going. i'm listening."
+  "really? that's so cool. sorry, i interrupted."
+@rule core.joke.wisp_v1 guard: speaker=wisp tags: kid,lower act: laugh
+  "hehe, sorry. i laughed too loud. it echoes."
+  "oh, that's funny. sorry. i'm just really surprised."
+@rule core.compliment.wisp_v1 guard: speaker=wisp tags: kid,lower act: thank
+  "oh, um, thank you. sorry, nobody says that. i don't know where to look."
+  "i, um, thank you. sorry, i got a bit pink. ghosts blush."
+@rule core.comfort.wisp_v1 guard: speaker=wisp tags: kid,lower act: thank
+  "thank you. sorry, i'm okay. but i'm really glad you said that."
+@rule core.offer.wisp_v1 guard: speaker=wisp tags: kid,lower act: yes
+  "oh, yes please. sorry, i mean, yes. thank you, very much."
+  "um, okay. thanks. sorry, i'm a bit overwhelmed."
+@rule core.invite.wisp_v1 guard: speaker=wisp tags: kid,lower act: yes
+  "okay, sorry, i mean yes, i'd love to. can i bring a friend? i have none yet."
+  "oh, um. yes, i'll float over. is that okay?"
+@rule core.high_five.wisp_v1 guard: speaker=wisp tags: kid,lower act: high_five
+  "oh, um. okay, *a very soft, very cold high five* sorry. it's chilly."
+@rule core.hug.wisp_v1 guard: speaker=wisp tags: kid,lower act: hug
+  "oh, i can try. sorry if it's a bit cold. it's okay if you'd rather not."
+@rule core.wave.wisp_v1 guard: speaker=wisp tags: kid,lower act: wave
+  "*waves back. a little too fast. then stops. then waves again.*"
+@rule core.give.wisp_v1 guard: speaker=wisp tags: kid,lower act: thank
+  "for me? oh, wow, thank you. sorry, i'm going to hold it very carefully."

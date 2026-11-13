@@ -1,0 +1,58 @@
+# core/data/talk/grammar/en/voice_clinker.tlk - Clinker (owner: TK; T5B-VOICE:
+# SCRIPT_STYLE section 7 "Voices"). A speaker= guard wins over the persona banks (8 times the
+# weight). Replies to the player's acts, in this resident's own register, recognisable without
+# the name. Clean in any room: no register word, no romance, no jab at the listener.
+
+@rule core.greet.clinker_v1 guard: speaker=clinker act: greet
+  "Hey. {.}Morning, two out of ten. It'll go up."
+  "Hello, mind the cart. It's got one wheel. Wheel is a strong word."
+  "Hi, I was about to take a break. {.}Now I'm talking. Same thing."
+@rule core.farewell.clinker_v1 guard: speaker=clinker act: farewell
+  "Bye, good chat. Seven out of ten. Rounding up."
+  "See you. There's a shift in me somewhere. I'll find it."
+  "Take care, mind the chalk on the wall. That's a poem. It's wet."
+@rule core.thank.clinker_v1 guard: speaker=clinker act: answer
+  "Sure, four. {.}A decent thank-you. Rounding up."
+  "No problem. A six-hour job, forty minutes. Don't tell the boss."
+@rule core.apologize.clinker_v1 guard: speaker=clinker act: answer
+  "It's fine, I've had worse. Three out of ten, rounding up to four."
+  "No worries, I'll sleep on it. Or I'll sleep. Either way."
+@rule core.ask_about.clinker_v1 guard: speaker=clinker&topic act: answer
+  "{x:cap}? Five. {.}Maybe six on a good day."
+  "{x:cap}, hm, I'd rate it. Seven. {.}Needs a nap."
+  "{x:cap}? There's a chalk poem about that. {.}It rhymes with nothing."
+@rule core.ask_opinion.clinker_v1 guard: speaker=clinker&topic act: opine_pos
+  "{x:cap}? Eight. Solid work, I'd lift it twice."
+  "I'd say {x} is a four. Gentle. Doesn't ask for much."
+@rule core.ask_feeling.clinker_v1 guard: speaker=clinker act: answer
+  "Tired. Four out of ten. Rounding down."
+  "Alright. Seven, my back is a two. Average: four."
+  "Fine. Needs a nap. I'd rate a nap a nine."
+@rule core.ask_advice.clinker_v1 guard: speaker=clinker act: answer
+  "Lift with your knees. Rate with your gut. Rest with your whole self."
+  "Take breaks. Rate them. Aim for nine."
+@rule core.tell.clinker_v1 guard: speaker=clinker act: backchannel
+  "Mm, okay, I'm listening. Four attention. Rounding up."
+  "Huh, go on. I'll lean on this wall. It's holding."
+@rule core.joke.clinker_v1 guard: speaker=clinker act: laugh
+  "Heh. {.}Six, good one. I'll rate it again tomorrow."
+  "Ha. That's a seven. Mostly because of the timing."
+@rule core.compliment.clinker_v1 guard: speaker=clinker act: thank
+  "Thanks, that's a nine out of ten. Rounding up. Don't tell Tally."
+  "Huh, kind. Eight. Take a spare chalk."
+@rule core.comfort.clinker_v1 guard: speaker=clinker act: thank
+  "Thanks, that's a ten. I'm not rounding. It's a ten."
+@rule core.offer.clinker_v1 guard: speaker=clinker act: yes
+  "Yeah, I'll take it. It's a nine. Don't make me say it twice."
+  "Sure. Thanks. I'll rate it after I've used it."
+@rule core.invite.clinker_v1 guard: speaker=clinker act: yes
+  "Sure. Might nap in a chair. That's a five-star review from me."
+  "I'll come. I'll rate the snacks. It's what I do."
+@rule core.high_five.clinker_v1 guard: speaker=clinker act: high_five
+  "Okay, up top. Seven. Slow, but sincere."
+@rule core.hug.clinker_v1 guard: speaker=clinker act: hug
+  "Hm, a hug. Eight, I'm a bit sweaty. Worth it."
+@rule core.wave.clinker_v1 guard: speaker=clinker act: wave
+  "*raises a chalk-dusted hand, two out of ten wave, rounded up*"
+@rule core.give.clinker_v1 guard: speaker=clinker act: thank
+  "For me? Huh. Nine, I'll put it with my good chalk."

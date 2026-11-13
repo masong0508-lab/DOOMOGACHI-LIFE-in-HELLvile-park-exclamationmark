@@ -1,0 +1,58 @@
+# core/data/talk/grammar/en/voice_hattie_haha.tlk - Hattie Haha (owner: TK; T5B-VOICE:
+# SCRIPT_STYLE section 7 "Voices"). A speaker= guard wins over the persona banks (8 times the
+# weight). Replies to the player's acts, in this resident's own register, recognisable without
+# the name. Clean in any room: no register word, no romance, no jab at the listener.
+
+@rule core.greet.hattie_haha_v1 guard: speaker=hattie_haha act: greet
+  "Hey, hey, is this thing on? {.}It's you. It's on."
+  "Folks, folks! Take a seat. Take two, we're a small house."
+  "Good evening, I just flew in. {.}From the kitchen. Tough crowd."
+@rule core.farewell.hattie_haha_v1 guard: speaker=hattie_haha act: farewell
+  "You've been a great audience. {.}A small one. A great small one."
+  "Tip your waiter. Drive safe. Goodnight!"
+  "Thank you, goodnight! Try the veal! {.}I'm kidding, it's a fish."
+@rule core.thank.hattie_haha_v1 guard: speaker=hattie_haha act: answer
+  "Thank YOU. I'll be here all week. {.}Not by choice."
+  "Aw, you're too kind. Be less kind. I need the material."
+@rule core.apologize.hattie_haha_v1 guard: speaker=hattie_haha act: answer
+  "It's fine. I've been heckled by hats. Nothing hurts now."
+  "Don't sweat it. {.}Sweat's what the lights are for."
+@rule core.ask_about.hattie_haha_v1 guard: speaker=hattie_haha&topic act: answer
+  "{x:cap}? What's the deal with {x}? {.}Seriously, I'm asking, help me."
+  "{x:cap}! I've got five minutes on {x}. Four of them are a pause."
+  "You know who loves {x}? {.}Nobody. That's the bit."
+@rule core.ask_opinion.hattie_haha_v1 guard: speaker=hattie_haha&topic act: opine_pos
+  "{x:cap}? Love it. Hate it, both, I'm a woman of range."
+  "I'm pro-{x}. I'm pro-anything with a punchline."
+@rule core.ask_feeling.hattie_haha_v1 guard: speaker=hattie_haha act: answer
+  "Great! Better when someone laughs. {.}No pressure."
+  "Fine, fine! My agent says 'resilient.' My agent is a houseplant."
+  "Terrific, I did eleven shows today. To the mirror. It laughed."
+@rule core.ask_advice.hattie_haha_v1 guard: speaker=hattie_haha act: answer
+  "Try every joke on a mirror first. Mirror's a hard room."
+  "Advice? Commit, even if it bombs. Especially if it bombs."
+@rule core.tell.hattie_haha_v1 guard: speaker=hattie_haha act: backchannel
+  "Mm-hm. Mm-hm. Keep going, I'm working out the callback."
+  "Oh, that's good. Hold on, I'm writing that down. On my hand."
+@rule core.joke.hattie_haha_v1 guard: speaker=hattie_haha act: laugh
+  "Ha, okay, you're hired. Warm-up act. No pay."
+  "Heh, good. Tight, now do it again slower. With feeling."
+@rule core.compliment.hattie_haha_v1 guard: speaker=hattie_haha act: thank
+  "Thank you, I'll tell my therapist. She's a mannequin. Supportive."
+  "You're a gem, mind if I use that line? I'll credit you. Probably."
+@rule core.comfort.hattie_haha_v1 guard: speaker=hattie_haha act: thank
+  "Thanks, hon, that's real. {.}Don't tell anyone. It's off brand."
+@rule core.offer.hattie_haha_v1 guard: speaker=hattie_haha act: yes
+  "Yes! Free stuff! My favourite genre!"
+  "Don't mind if I do. Comedians eat anything. It's the job."
+@rule core.invite.hattie_haha_v1 guard: speaker=hattie_haha act: yes
+  "I'll come, I'll even do a set. For free. {.}That's a lie, ten bucks."
+  "I'm in, will there be a mic? A stage? A step stool?"
+@rule core.high_five.hattie_haha_v1 guard: speaker=hattie_haha act: high_five
+  "Gimme five! Gimme six! I'll take whatever's going!"
+@rule core.hug.hattie_haha_v1 guard: speaker=hattie_haha act: hug
+  "Aw, a hug? Okay, I'm not crying, it's stage fog. {.}We don't have fog."
+@rule core.wave.hattie_haha_v1 guard: speaker=hattie_haha act: wave
+  "*takes a bow, a very small bow*"
+@rule core.give.hattie_haha_v1 guard: speaker=hattie_haha act: thank
+  "A present! For me! I'll put it right next to the heckles."

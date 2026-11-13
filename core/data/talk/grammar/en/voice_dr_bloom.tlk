@@ -1,0 +1,58 @@
+# core/data/talk/grammar/en/voice_dr_bloom.tlk - Dr. Bloom (owner: TK; T5B-VOICE:
+# SCRIPT_STYLE section 7 "Voices"). A speaker= guard wins over the persona banks (8 times the
+# weight). Replies to the player's acts, in this resident's own register, recognisable without
+# the name. Clean in any room: no register word, no romance, no jab at the listener.
+
+@rule core.greet.dr_bloom_v1 guard: speaker=dr_bloom act: greet
+  "Hello, vitals: stable. Greeting: delivered. Next."
+  "Ah, a patient. Or a friend. The paperwork is identical."
+  "Welcome, please remove your coat. Not your shirt. This is a hallway."
+@rule core.farewell.dr_bloom_v1 guard: speaker=dr_bloom act: farewell
+  "Discharged. Mind the step. I'd hate to fill out a form."
+  "Goodbye. Hydrate. Sleep. Avoid anything labelled 'experimental.'"
+  "See you. Preferably not professionally."
+@rule core.thank.dr_bloom_v1 guard: speaker=dr_bloom act: answer
+  "You're welcome, the bill is in the mail. Joke. {.}It's a coupon."
+  "Noted. Gratitude lowers cortisol. You're welcome, cortisol."
+@rule core.apologize.dr_bloom_v1 guard: speaker=dr_bloom act: answer
+  "Accepted. Apologies are statistically useful. Mostly."
+  "No harm, no foul, no forms."
+@rule core.ask_about.dr_bloom_v1 guard: speaker=dr_bloom&topic act: answer
+  "{x:cap}: clinically interesting. {.}Mostly fine. Mostly."
+  "{x:cap}? Studies are mixed. I did one, it was mixed."
+  "On {x}: the evidence is thin. The coffee is thinner."
+@rule core.ask_opinion.dr_bloom_v1 guard: speaker=dr_bloom&topic act: opine_pos
+  "{x:cap}? Medically: acceptable. Personally: I'll take two."
+  "Cautiously in favour of {x}. Pending a second opinion. Mine."
+@rule core.ask_feeling.dr_bloom_v1 guard: speaker=dr_bloom act: answer
+  "Functional. Tired. The two are not mutually exclusive."
+  "Pulse normal. Mood neutral. Caffeine concerning."
+  "Fine. Professionally fine. Privately, a beige kind of fine."
+@rule core.ask_advice.dr_bloom_v1 guard: speaker=dr_bloom act: answer
+  "Sleep, water, walk, repeat. It isn't glamorous. It works."
+  "Rest, hydrate, and don't Google it. I'm a doctor. I mean it."
+@rule core.tell.dr_bloom_v1 guard: speaker=dr_bloom act: backchannel
+  "Mm-hm, noted. Continue. I'm taking mental notes."
+  "Interesting. Go on, I've cleared my schedule. It was empty."
+@rule core.joke.dr_bloom_v1 guard: speaker=dr_bloom act: laugh
+  "Ha. {.}That's a clinical laugh. Accept it."
+  "Hm, amusing. Mild. I'd prescribe more."
+@rule core.compliment.dr_bloom_v1 guard: speaker=dr_bloom act: thank
+  "Thank you. I'll have that framed. Next to my diploma."
+  "Noted. Flattery has no known side effects. Yet."
+@rule core.comfort.dr_bloom_v1 guard: speaker=dr_bloom act: thank
+  "Thank you. Comfort received. Dosage: sufficient."
+@rule core.offer.dr_bloom_v1 guard: speaker=dr_bloom act: yes
+  "Yes, thank you. I accept. Please don't tell the ethics board."
+  "Acceptable, I'll take it. I'm off the clock. Technically."
+@rule core.invite.dr_bloom_v1 guard: speaker=dr_bloom act: yes
+  "I'll attend, I'll bring supplies. For emergencies. And snacks."
+  "Yes. Provided no one is operating anything."
+@rule core.high_five.dr_bloom_v1 guard: speaker=dr_bloom act: high_five
+  "A high five, hand to hand contact. Fine. *clap* Wash after."
+@rule core.hug.dr_bloom_v1 guard: speaker=dr_bloom act: hug
+  "A hug, fine, oxytocin is good for you. Ten seconds. No more."
+@rule core.wave.dr_bloom_v1 guard: speaker=dr_bloom act: wave
+  "*raises one hand, as if checking for rain*"
+@rule core.give.dr_bloom_v1 guard: speaker=dr_bloom act: thank
+  "A gift. How thoughtful. I'll log it under 'unexpected.'"

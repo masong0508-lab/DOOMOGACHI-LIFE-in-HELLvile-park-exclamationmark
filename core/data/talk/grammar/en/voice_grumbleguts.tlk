@@ -1,0 +1,63 @@
+# core/data/talk/grammar/en/voice_grumbleguts.tlk - Grumbleguts (owner: TK; T5B-VOICE:
+# SCRIPT_STYLE section 7 "Voices"). A speaker= guard wins over the persona banks (8 times the
+# weight). Replies to the player's acts, in this resident's own register, recognisable without
+# the name. The purr lines are adults_only&!kid_present; with a kid in the room he is a grumpy uncle.
+
+@rule core.greet.grumbleguts_v1 guard: speaker=grumbleguts&adults_only&!kid_present act: greet
+  "Well, look what the oven dragged in. Hello, sugar."
+  "Hello, darlin'. Come sit. I saved you the good side of the belly."
+  "Hey there, hon. Don't be shy. I'm all bark and a little bit of gravy."
+@rule core.greet.grumbleguts_v2 guard: speaker=grumbleguts&kid_present act: greet
+  "Hmph, hello, don't touch the stove. Or the spoon. Or me."
+  "Hello, kid, wash your hands. Eat your greens. That's my whole speech."
+@rule core.farewell.grumbleguts_v1 guard: speaker=grumbleguts act: farewell
+  "Off you go. Bring leftovers next time. Mine, not yours."
+  "Bye, hon. Mind the step. It's a bit greasy."
+  "See you. Open late, darlin'."
+@rule core.thank.grumbleguts_v1 guard: speaker=grumbleguts act: answer
+  "Don't mention it. Well, mention it a little. It was a great meal."
+  "You're welcome. Now give me a compliment. Anything, the belly will do."
+@rule core.apologize.grumbleguts_v1 guard: speaker=grumbleguts act: answer
+  "Hmph. Fine. Apology accepted, with a side of salt."
+  "Hm, fine. Forgiven. Next time, bring pie."
+@rule core.ask_about.grumbleguts_v1 guard: speaker=grumbleguts&topic act: answer
+  "{x:cap}? Five. {.}Maybe six with gravy."
+  "{x:cap}? Seen better, tasted worse. Needs salt."
+  "{x:cap}, hon? A four. Needs more butter, like everything."
+@rule core.ask_opinion.grumbleguts_v1 guard: speaker=grumbleguts&topic act: opine_pos
+  "{x:cap}? Seven, mostly for effort. Needs salt."
+  "I'd eat {x}. If it came with fries."
+@rule core.ask_feeling.grumbleguts_v1 guard: speaker=grumbleguts act: answer
+  "Full, happy. Possibly a little bloated. Fabulous, though."
+  "Hungry. Always hungry. That's the whole personality."
+  "Fine, hon. A bit gurgly. The belly has opinions."
+@rule core.ask_advice.grumbleguts_v1 guard: speaker=grumbleguts act: answer
+  "Eat first, then regret. Then eat again. That's my method."
+  "Salt, butter. Patience. Not in that order."
+@rule core.tell.grumbleguts_v1 guard: speaker=grumbleguts act: backchannel
+  "Mm-hm, go on. I'm listening. And chewing."
+  "Huh. Is that so? Pass the pie while you tell it."
+@rule core.joke.grumbleguts_v1 guard: speaker=grumbleguts act: laugh
+  "Ha! *belly wobble* Good one. Keep it coming."
+  "Heh, cute, ten out of ten. Rounding down. Needs salt."
+@rule core.compliment.grumbleguts_v1 guard: speaker=grumbleguts&adults_only&!kid_present act: thank
+  "Keep talking, sugar. The belly's blushing. Slowly, like jelly."
+  "Ooh, thank you, darlin'. I do work hard at being this fabulous."
+@rule core.compliment.grumbleguts_v2 guard: speaker=grumbleguts&kid_present act: thank
+  "Hmph, fine. Thank you. Don't tell anyone I'm soft."
+@rule core.comfort.grumbleguts_v1 guard: speaker=grumbleguts act: thank
+  "Hm, thanks. A little gravy for the soul. Needed that."
+@rule core.offer.grumbleguts_v1 guard: speaker=grumbleguts act: yes
+  "Yes, absolutely. I never turn down food, compliments or seconds."
+  "Well, if you insist. {.}You do. Good."
+@rule core.invite.grumbleguts_v1 guard: speaker=grumbleguts act: yes
+  "I'll come, if there's a buffet. Or a table. Or an unattended pie."
+  "Count me in, darlin'. I'll even wear the nice apron."
+@rule core.high_five.grumbleguts_v1 guard: speaker=grumbleguts act: high_five
+  "Up top, hon. *a squishy, enthusiastic slap*"
+@rule core.hug.grumbleguts_v1 guard: speaker=grumbleguts act: hug
+  "Ah, a hug, come here. Mind the belly. It's the main attraction."
+@rule core.wave.grumbleguts_v1 guard: speaker=grumbleguts act: wave
+  "*a slow, lazy wave, with a spatula*"
+@rule core.give.grumbleguts_v1 guard: speaker=grumbleguts act: thank
+  "For me? Aw. I'll put it right next to the good salt."

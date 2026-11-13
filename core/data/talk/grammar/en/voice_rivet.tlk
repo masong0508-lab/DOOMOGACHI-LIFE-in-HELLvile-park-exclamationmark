@@ -1,0 +1,58 @@
+# core/data/talk/grammar/en/voice_rivet.tlk - Rivet (owner: TK; T5B-VOICE:
+# SCRIPT_STYLE section 7 "Voices"). A speaker= guard wins over the persona banks (8 times the
+# weight). Replies to the player's acts, in this resident's own register, recognisable without
+# the name. Clean in any room: no register word, no romance, no jab at the listener.
+
+@rule core.greet.rivet_v1 guard: speaker=rivet act: greet
+  "Hm, you. Wipe your boots. Don't touch the red thing."
+  "Oh good, a pair of hands. Hold this, no, that. {.}Not like that."
+  "What. {.}Fine. Hi."
+@rule core.farewell.rivet_v1 guard: speaker=rivet act: farewell
+  "Go on, get. Mind the third stair, it's loose. {.}On purpose."
+  "Bye. Come back if you need a thing fixed. Don't bring a thing to fix."
+  "See you. Bring a better wrench."
+@rule core.thank.rivet_v1 guard: speaker=rivet act: answer
+  "Yeah, yeah. It was nothing. Don't make it weird."
+  "Don't thank me. Just don't break it again."
+@rule core.apologize.rivet_v1 guard: speaker=rivet act: answer
+  "Fine. Fixed worse. Hand me the pliers."
+  "It's fine. I'll pretend it didn't happen. {.}It'll take a minute."
+@rule core.ask_about.rivet_v1 guard: speaker=rivet&topic act: answer
+  "{x:cap}? Could weld it. Could bash it, depends what's wrong."
+  "{x:cap}. Eh, I've seen worse. Held it together with a bolt."
+  "{x:cap}? Needs oil. Everything needs oil."
+@rule core.ask_opinion.rivet_v1 guard: speaker=rivet&topic act: opine_pos
+  "{x:cap}? Solid. Mostly, like a good wrench."
+  "I like {x}. Don't tell anyone."
+@rule core.ask_feeling.rivet_v1 guard: speaker=rivet act: answer
+  "Fine. A bit sore. Welded my thumb to the bench, but fine."
+  "Busy. Good busy. The grease kind."
+  "Tired. The good kind. The kind that comes from fixing things."
+@rule core.ask_advice.rivet_v1 guard: speaker=rivet act: answer
+  "Measure twice. Cut once. Swear quietly."
+  "Fix the small stuff first. The big stuff rattles itself loose."
+@rule core.tell.rivet_v1 guard: speaker=rivet act: backchannel
+  "Mm, keep going. I'm listening. With my hands full."
+  "Huh. Is that so. Hand me that bolt while you tell it."
+@rule core.joke.rivet_v1 guard: speaker=rivet act: laugh
+  "Heh. {.}Don't tell anyone I laughed."
+  "Ha, okay. That was decent. Barely."
+@rule core.compliment.rivet_v1 guard: speaker=rivet act: thank
+  "Yeah, okay. Thanks. Now stop, it's creepy."
+  "Don't make it weird. {.}But thanks."
+@rule core.comfort.rivet_v1 guard: speaker=rivet act: thank
+  "Hm, yeah. {.}Thanks. Don't make a thing of it."
+@rule core.offer.rivet_v1 guard: speaker=rivet act: yes
+  "Fine. If it's free. If it's not, I'll fix something to cover it."
+  "Yeah, okay. I'll take it. I'll owe you a hinge."
+@rule core.invite.rivet_v1 guard: speaker=rivet act: yes
+  "Hm, fine. I'll bring the tools. {.}Just in case."
+  "I'm not a party person. {.}I'll come. For a bit."
+@rule core.high_five.rivet_v1 guard: speaker=rivet act: high_five
+  "Gloves are greasy. Fine, up top. *clang*"
+@rule core.hug.rivet_v1 guard: speaker=rivet act: hug
+  "Ugh, fine, one second. {.}Okay that's enough. Okay, two."
+@rule core.wave.rivet_v1 guard: speaker=rivet act: wave
+  "*nods, wrench in hand*"
+@rule core.give.rivet_v1 guard: speaker=rivet act: thank
+  "For me? Huh. {.}Thanks, I'll put it on the good shelf."

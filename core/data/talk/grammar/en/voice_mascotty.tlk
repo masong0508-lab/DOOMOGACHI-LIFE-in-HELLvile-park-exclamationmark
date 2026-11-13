@@ -1,0 +1,56 @@
+# core/data/talk/grammar/en/voice_mascotty.tlk - Mascotty (owner: TK; T5B-VOICE:
+# SCRIPT_STYLE section 7 "Voices"). A speaker= guard wins over the persona banks (8 times the
+# weight). Replies to the player's acts, in this resident's own register, recognisable without
+# the name. Clean in any room: no register word, no romance, no jab at the listener.
+
+@rule core.greet.mascotty_v1 guard: speaker=mascotty act: greet
+  "*waves slowly, only because you stopped walking*"
+  "Hi. {.}Ignore that one. {.}I mean, ignore me."
+  "*a soft, careful thump. Then another. Then a third.*"
+@rule core.farewell.mascotty_v1 guard: speaker=mascotty act: farewell
+  "*thump, thump, thump. Then one more.* Bye. Come back."
+  "Bye. {.}Mind the Wall. It's loud at night."
+  "See you. *waves, a little late, like the wave got stuck*"
+@rule core.thank.mascotty_v1 guard: speaker=mascotty act: answer
+  "Oh. {.}You're welcome, it's warm in here. In a good way."
+  "*thumps once, quietly, like a heartbeat*"
+@rule core.apologize.mascotty_v1 guard: speaker=mascotty act: answer
+  "It's okay. I've had ten years of worse. This was nothing."
+  "It's fine. I mean it. I can't take my head off, but I do mean it."
+@rule core.ask_about.mascotty_v1 guard: speaker=mascotty&topic act: answer
+  "{x:cap}? {.}I don't know much about {x}. I've been in here a while."
+  "{x:cap}, I'd like that. Please tell me about {x}. I'll listen."
+  "{x:cap}? Hm, I think I remember {x}. A long time ago, a nice time."
+@rule core.ask_opinion.mascotty_v1 guard: speaker=mascotty&topic act: opine_pos
+  "{x:cap}? I'd like to try it. I think it'd be nice."
+  "Mm, I think {x} is good. I can't see well in here. But good."
+@rule core.ask_feeling.mascotty_v1 guard: speaker=mascotty act: answer
+  "Warm, a bit squished. Okay, mostly. Thank you for asking."
+  "Okay. {.}Better when someone asks. Nobody asks."
+  "I'm okay. The suit is itchy. The company is nice."
+@rule core.ask_advice.mascotty_v1 guard: speaker=mascotty act: answer
+  "Don't wear the head for ten years. {.}Other than that, I'm not sure."
+  "Be patient, doors open. Eventually. Sometimes someone knocks."
+@rule core.tell.mascotty_v1 guard: speaker=mascotty act: backchannel
+  "Mm. {.}I like hearing that. Please keep going."
+  "*nods, and the big head nods a beat late*"
+@rule core.joke.mascotty_v1 guard: speaker=mascotty act: laugh
+  "Hehe. {.}Sorry, it's been a while. That was a rusty laugh."
+  "*a small, muffled giggle in the head*"
+@rule core.compliment.mascotty_v1 guard: speaker=mascotty act: thank
+  "Oh. {.}Thank you, nobody has said that in ten years. Don't stop."
+@rule core.comfort.mascotty_v1 guard: speaker=mascotty act: thank
+  "Thank you. *a single, small thump* That means a lot."
+@rule core.offer.mascotty_v1 guard: speaker=mascotty act: yes
+  "Yes please. I can't take my head off, but I can hold it. I mean, it."
+  "Oh. {.}For me? Yes, please, thank you."
+@rule core.invite.mascotty_v1 guard: speaker=mascotty act: yes
+  "Okay, I'll come. I'll stand in the corner and wave, if you stand still."
+@rule core.high_five.mascotty_v1 guard: speaker=mascotty act: high_five
+  "*a very big paw, a very small clap*"
+@rule core.hug.mascotty_v1 guard: speaker=mascotty act: hug
+  "Oh. {.}It's soft in here. You'll like it. *hug*"
+@rule core.wave.mascotty_v1 guard: speaker=mascotty act: wave
+  "*waves back. A little late. A little shy.*"
+@rule core.give.mascotty_v1 guard: speaker=mascotty act: thank
+  "For me? *thump* *thump* *thump* Oh. {.}Thank you."

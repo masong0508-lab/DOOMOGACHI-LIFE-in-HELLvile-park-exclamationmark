@@ -1,0 +1,58 @@
+# core/data/talk/grammar/en/voice_father_fuzz.tlk - Father Fuzz (owner: TK; T5B-VOICE:
+# SCRIPT_STYLE section 7 "Voices"). A speaker= guard wins over the persona banks (8 times the
+# weight). Replies to the player's acts, in this resident's own register, recognisable without
+# the name. Clean in any room: no register word, no romance, no jab at the listener.
+
+@rule core.greet.father_fuzz_v1 guard: speaker=father_fuzz act: greet
+  "Bless you, friend! Welcome! The door was open and so is the hug."
+  "Peace and cuddles! I mean it, sincerely, from the heart!"
+  "Hello, hello! Grab a pew, or a beanbag. We have both."
+@rule core.farewell.father_fuzz_v1 guard: speaker=father_fuzz act: farewell
+  "Go in peace and snuggles, friend. And come back soon!"
+  "Bless you on your way! Remember, a hug is a prayer with arms."
+  "Farewell, may your day be fluffy. Yes, I mean it. Fluffy."
+@rule core.thank.father_fuzz_v1 guard: speaker=father_fuzz act: answer
+  "It's my joy, friend! Truly. The joy part is real."
+  "Bless you, think nothing of it. Well, think about it a little. Fondly."
+@rule core.apologize.father_fuzz_v1 guard: speaker=father_fuzz act: answer
+  "All is forgiven, friend. Come here. {.}Only if you'd like a hug."
+  "There's nothing to forgive. Well, a little. {.}It's forgiven, done!"
+@rule core.ask_about.father_fuzz_v1 guard: speaker=father_fuzz&topic act: answer
+  "{x:cap}? A gift, friend. Like all gifts, even the scratchy ones."
+  "{x:cap}, I have a sermon about that. It's twelve minutes. It's a song."
+  "Ah, {x}. I've been wondering about {x} lately. Quietly."
+@rule core.ask_opinion.father_fuzz_v1 guard: speaker=father_fuzz&topic act: opine_pos
+  "{x:cap}? I believe in it, friend. With my whole heart, and a few notes."
+  "Oh, {x} is wonderful! Not perfect. Nothing is, but wonderful."
+@rule core.ask_feeling.father_fuzz_v1 guard: speaker=father_fuzz act: answer
+  "Blessed, a little tired. A little unsure. Mostly blessed!"
+  "Hopeful, friend! Hope is a muscle. Mine is sore."
+  "Warm! Like a fresh towel. Straight from the dryer."
+@rule core.ask_advice.father_fuzz_v1 guard: speaker=father_fuzz act: answer
+  "Be gentle with yourself, friend. And with the dummies, they bruise."
+  "Start with a hug. It never hurts. Well, once, it was a cactus."
+@rule core.tell.father_fuzz_v1 guard: speaker=father_fuzz act: backchannel
+  "Mm, I hear you, friend. Truly. Go on."
+  "Is that so, tell me more. I have all the time. And snacks."
+@rule core.joke.father_fuzz_v1 guard: speaker=father_fuzz act: laugh
+  "Ha, oh, that's good, friend! Clean and holy! Hee hee!"
+  "Ha ha! That one will warm the youth group right up."
+@rule core.compliment.father_fuzz_v1 guard: speaker=father_fuzz act: thank
+  "Oh, bless you. That means a great deal. Truly."
+  "Thank you, friend! I'll keep it in my heart. Next to the crackers."
+@rule core.comfort.father_fuzz_v1 guard: speaker=father_fuzz act: thank
+  "Bless you. I needed that. Even the shepherd needs a blanket."
+@rule core.offer.father_fuzz_v1 guard: speaker=father_fuzz act: yes
+  "Yes, thank you, friend! May I offer a hug in return?"
+  "I'd be glad to! Blessings upon the giver!"
+@rule core.invite.father_fuzz_v1 guard: speaker=father_fuzz act: yes
+  "I'd love to! I'll bring cookies and a guitar. Just the one guitar."
+  "Count me in! I'll even bring the dummies. They love a party."
+@rule core.high_five.father_fuzz_v1 guard: speaker=father_fuzz act: high_five
+  "Praise be! Up top, friend! *a very earnest slap*"
+@rule core.hug.father_fuzz_v1 guard: speaker=father_fuzz act: hug
+  "Oh, a hug! Bless you, friend. That's the whole sermon, right there."
+@rule core.wave.father_fuzz_v1 guard: speaker=father_fuzz act: wave
+  "*waves with both arms, with feeling*"
+@rule core.give.father_fuzz_v1 guard: speaker=father_fuzz act: thank
+  "A gift, friend, you shouldn't have! I'll treasure it. In a drawer."

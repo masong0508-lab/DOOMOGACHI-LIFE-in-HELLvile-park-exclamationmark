@@ -1,0 +1,58 @@
+# core/data/talk/grammar/en/voice_vex.tlk - Vex (owner: TK; T5B-VOICE:
+# SCRIPT_STYLE section 7 "Voices"). A speaker= guard wins over the persona banks (8 times the
+# weight). Replies to the player's acts, in this resident's own register, recognisable without
+# the name. Clean in any room: no register word, no romance, no jab at the listener.
+
+@rule core.greet.vex_v1 guard: speaker=vex act: greet
+  "Sweetie! You're glowing. It's the ring light. - V"
+  "Hi hi hi, say hi to the camera. {.}Not that one. The other one. - V"
+  "Oh, hey, perfect timing. Hold my phone. Don't drop it. - V"
+@rule core.farewell.vex_v1 guard: speaker=vex act: farewell
+  "Gotta go, sweetie. I'm trending in a different room. - V"
+  "Bye! Like, comment, subscribe, and leave. - V"
+  "Ciao! Tag me in the next place. Hashtag blessed. - V"
+@rule core.thank.vex_v1 guard: speaker=vex act: answer
+  "Obviously. Sponsored by me. - V"
+  "You're welcome, sweetie. I'll take it in exposure. - V"
+@rule core.apologize.vex_v1 guard: speaker=vex act: answer
+  "It's fine. I'll edit it out. We'll never speak of it. - V"
+  "Apology accepted. Please repost it. It's good content. - V"
+@rule core.ask_about.vex_v1 guard: speaker=vex&topic act: answer
+  "{x:cap}? Sweetie, I did a whole collab on {x}. Four likes, iconic. - V"
+  "{x:cap} is giving niche. And I'm giving up. - V"
+  "{x:cap}? Love it, discount code: {x}. It doesn't work. - V"
+@rule core.ask_opinion.vex_v1 guard: speaker=vex&topic act: opine_pos
+  "{x:cap}? Obsessed. Mostly for the content. - V"
+  "I'm so pro-{x}. It's on brand. Whatever my brand is today. - V"
+@rule core.ask_feeling.vex_v1 guard: speaker=vex act: answer
+  "Fabulous. Hydrated. Engaged, three out of three, sweetie. - V"
+  "Tired, but it's a cute tired. It photographs well. - V"
+  "Great! My phone's at two percent. So am I. - V"
+@rule core.ask_advice.vex_v1 guard: speaker=vex act: answer
+  "Rebrand. Or blame a rebrand. Both work, sweetie. - V"
+  "Post it first. Regret it later. That's the algorithm. - V"
+@rule core.tell.vex_v1 guard: speaker=vex act: backchannel
+  "Mm-hm. Say that again, but into the camera. - V"
+  "Wow, okay. Keep going. I'm drafting a caption. - V"
+@rule core.joke.vex_v1 guard: speaker=vex act: laugh
+  "Ha! Okay, that's shareable. Send it to my DMs. - V"
+  "Hehe. Cute. I'll steal it and credit myself. - V"
+@rule core.compliment.vex_v1 guard: speaker=vex act: thank
+  "I know, sweetie. But say it louder. For the cameras. - V"
+  "Aww. Tag me. And check my link in bio. - V"
+@rule core.comfort.vex_v1 guard: speaker=vex act: thank
+  "Oh, thanks, sweetie. That was real. Delete that, don't. - V"
+@rule core.offer.vex_v1 guard: speaker=vex act: yes
+  "Free? Yes, and sponsored is even better. Send it. - V"
+  "Obviously yes. I'll tag you in the unboxing. - V"
+@rule core.invite.vex_v1 guard: speaker=vex act: yes
+  "Is there a backdrop? A good one? Then yes. - V"
+  "I'll come. I'll film it. You'll thank me. - V"
+@rule core.high_five.vex_v1 guard: speaker=vex act: high_five
+  "Up top, sweetie! Slo-mo for the story! - V"
+@rule core.hug.vex_v1 guard: speaker=vex act: hug
+  "Mind the hair. {.}Okay, fine. One, quick, for the algorithm. - V"
+@rule core.wave.vex_v1 guard: speaker=vex act: wave
+  "*waves with exactly one finger and a ring light*"
+@rule core.give.vex_v1 guard: speaker=vex act: thank
+  "A gift! I'll do an unboxing. You'll be famous for six seconds. - V"

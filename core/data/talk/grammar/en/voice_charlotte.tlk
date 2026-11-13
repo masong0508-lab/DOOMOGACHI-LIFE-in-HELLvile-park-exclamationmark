@@ -1,0 +1,58 @@
+# core/data/talk/grammar/en/voice_charlotte.tlk - Charlotte (owner: TK; T5B-VOICE:
+# SCRIPT_STYLE section 7 "Voices"). A speaker= guard wins over the persona banks (8 times the
+# weight). Replies to the player's acts, in this resident's own register, recognisable without
+# the name. Clean in any room: no register word, no romance, no jab at the listener.
+
+@rule core.greet.charlotte_v1 guard: speaker=charlotte act: greet
+  "Dear {you}, hello! Pardon the flour. I was mid-letter."
+  "Well, hello! Come in, mind the stack of envelopes. It's load-bearing."
+  "Greetings! I was just about to write you. Now I can say it."
+@rule core.farewell.charlotte_v1 guard: speaker=charlotte act: farewell
+  "Write back soon! Yours, always. Charlotte."
+  "Goodbye, dear. I'll send a tin along. Look under the brick."
+  "Until next time. Sincerely, warmly, and with sprinkles."
+@rule core.thank.charlotte_v1 guard: speaker=charlotte act: answer
+  "Oh, it was only a cookie. A very good cookie. {.}Two, actually."
+  "You're most welcome. Gratitude is the best stamp."
+@rule core.apologize.charlotte_v1 guard: speaker=charlotte act: answer
+  "Nothing to forgive, dear. I tore up the angry draft already."
+  "Oh, of course. A kind word fixes more than a stern letter."
+@rule core.ask_about.charlotte_v1 guard: speaker=charlotte&topic act: answer
+  "{x:cap}? Oh, I wrote a whole letter about {x}. Page four got the cookies."
+  "{x:cap}, dear? Hm. Let me look in my drawer of unsent replies."
+  "Ah, {x}. I mention it in nearly every letter. Mostly to complain."
+@rule core.ask_opinion.charlotte_v1 guard: speaker=charlotte&topic act: opine_pos
+  "{x:cap}? I think kindly of it. With a dash of cinnamon."
+  "I'm for {x}. Provided it comes with tea."
+@rule core.ask_feeling.charlotte_v1 guard: speaker=charlotte act: answer
+  "Well, thank you for asking! Fine. Ink-stained, fine."
+  "Cosy, the oven's warm. The letters are coming. What more is there?"
+  "A bit wistful, dear. A pen pal's weather."
+@rule core.ask_advice.charlotte_v1 guard: speaker=charlotte act: answer
+  "Write it down. Then sleep, then send it, or don't. The paper is patient."
+  "Be honest and be brief. And bring a snack. That's my whole philosophy."
+@rule core.tell.charlotte_v1 guard: speaker=charlotte act: backchannel
+  "Mm, go on, dear. I'll nod. In the margin."
+  "Oh, is that so? Do keep going. I'll just fetch a pen."
+@rule core.joke.charlotte_v1 guard: speaker=charlotte act: laugh
+  "Ha, oh, that's lovely. I'll tell Puddin. She'll pretend not to laugh."
+  "Heh. Wonderful. I'll steal it for a postscript."
+@rule core.compliment.charlotte_v1 guard: speaker=charlotte act: thank
+  "How kind! I'll put that in my next envelope. Right beside the stamp."
+  "Oh, you, take a cookie. They're still warm. Always."
+@rule core.comfort.charlotte_v1 guard: speaker=charlotte act: thank
+  "Thank you, dear, that was just what the day needed. I'm baking, too."
+@rule core.offer.charlotte_v1 guard: speaker=charlotte act: yes
+  "Oh, I'd be delighted. Thank you, I'll send a note. And a pie."
+  "Yes, please. I'll write you a thank-you. A long one."
+@rule core.invite.charlotte_v1 guard: speaker=charlotte act: yes
+  "I'd love to. I'll bring a tin. And a pen, in case of poems."
+  "Yes, I'll come. I'll even leave the stack of letters at home. Mostly."
+@rule core.high_five.charlotte_v1 guard: speaker=charlotte act: high_five
+  "Oh, a high five! Careful, dear. Fragile, the stationery."
+@rule core.hug.charlotte_v1 guard: speaker=charlotte act: hug
+  "Oh, a hug! Lovely, mind the apron. It's got flour."
+@rule core.wave.charlotte_v1 guard: speaker=charlotte act: wave
+  "*waves a pen, warmly*"
+@rule core.give.charlotte_v1 guard: speaker=charlotte act: thank
+  "A gift, for me? How thoughtful! I'll write you three pages about it."

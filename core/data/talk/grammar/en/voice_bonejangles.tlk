@@ -1,0 +1,58 @@
+# core/data/talk/grammar/en/voice_bonejangles.tlk - Bonejangles (owner: TK; T5B-VOICE:
+# SCRIPT_STYLE section 7 "Voices"). A speaker= guard wins over the persona banks (8 times the
+# weight). Replies to the player's acts, in this resident's own register, recognisable without
+# the name. Clean in any room: no register word, no romance, no jab at the listener.
+
+@rule core.greet.bonejangles_v1 guard: speaker=bonejangles act: greet
+  "Clack! Hello hello! Smile, the cameras are always on."
+  "*servo whirr* Welcome, friend! Please remain seated for the next song."
+  "Hey there! My jaw clicks on the downbeat. Enjoy!"
+@rule core.farewell.bonejangles_v1 guard: speaker=bonejangles act: farewell
+  "Clack, thanks for coming! The show must go on. It has no off switch."
+  "Goodnight, folks! Please exit through the gift shop. It's 1978 in there."
+  "Bye bye! Don't forget your balloon. Or your warranty card."
+@rule core.thank.bonejangles_v1 guard: speaker=bonejangles act: answer
+  "Clack! You're welcome! Applause is my power source."
+  "Happy to serve! It's in my programming. It's all in my programming."
+@rule core.apologize.bonejangles_v1 guard: speaker=bonejangles act: answer
+  "No problem! I've been apologised to by worse. A vending machine."
+  "Clack. It's fine. I reset every night anyway."
+@rule core.ask_about.bonejangles_v1 guard: speaker=bonejangles&topic act: answer
+  "{x:cap}, there's a jingle about that. Track 6. It's mostly a kazoo."
+  "{x:cap}? Hold on, rewinding the tape. *whirrrr* {.}Nope, lost it."
+  "Fun fact about {x}: I know none. But I know the rhythm!"
+@rule core.ask_opinion.bonejangles_v1 guard: speaker=bonejangles&topic act: opine_pos
+  "{x:cap}? Four out of four ribs! A strong show."
+  "I give {x} a standing ovation. I can't sit down."
+@rule core.ask_feeling.bonejangles_v1 guard: speaker=bonejangles act: answer
+  "Fully charged! Mostly, my hip squeaks in B flat. A feature!"
+  "Great, though there's dust in the bass drum. Not a drum. Don't ask."
+  "Running smooth! Routine 4 is warming up. Brace yourself."
+@rule core.ask_advice.bonejangles_v1 guard: speaker=bonejangles act: answer
+  "Keep the beat, friend. Everything else is a solo."
+  "Always read the warranty. Page 9 is where the truth is."
+@rule core.tell.bonejangles_v1 guard: speaker=bonejangles act: backchannel
+  "Clack. Fascinating. Loading audience reaction 7."
+  "Mm-hm! *nods on the downbeat* Please continue. The tape is rolling."
+@rule core.joke.bonejangles_v1 guard: speaker=bonejangles act: laugh
+  "Clack clack clack! That's laugh track 2. It's the good one."
+  "Ha, ba-dum-tss! I couldn't help it. I'm a drum kit."
+@rule core.compliment.bonejangles_v1 guard: speaker=bonejangles act: thank
+  "Aw, shucks! My cheeks would blush, if I had cheeks."
+  "Clack! Thanks! That one's going on the tape."
+@rule core.comfort.bonejangles_v1 guard: speaker=bonejangles act: thank
+  "Thanks, friend. I'm only a little rusty. Mostly emotionally."
+@rule core.offer.bonejangles_v1 guard: speaker=bonejangles act: yes
+  "Yes please! I run on gratitude and two AA batteries."
+  "Clack! Count me in. I won't eat, but I'll hold it."
+@rule core.invite.bonejangles_v1 guard: speaker=bonejangles act: yes
+  "A party! I was literally built for this! Literally!"
+  "Count me in! Do you need a band? I'm the band."
+@rule core.high_five.bonejangles_v1 guard: speaker=bonejangles act: high_five
+  "Clack! Up top! Careful, it's a bone."
+@rule core.hug.bonejangles_v1 guard: speaker=bonejangles act: hug
+  "A hug, mind the ribs. They're load-bearing. Clack!"
+@rule core.wave.bonejangles_v1 guard: speaker=bonejangles act: wave
+  "*waves, servo whirr* Clack!"
+@rule core.give.bonejangles_v1 guard: speaker=bonejangles act: thank
+  "For me? I'll cherish it for at least a full song."
