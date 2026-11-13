@@ -84,6 +84,8 @@ combat if you can't do anything else about it)". Full measurements and package t
 from its cache with `resumeFromRunId` while the session lives; after that, build the
 remaining packages one by one with the fast-land pattern.
 
+**Measured again on 2026-11-13: `../SPEED_AUDIT3.md` (speed audit 3).** It lists every window that is still not a steady 30 fps after the landed S2 packages, with causes, and re-cuts the rest of this table (S2-4, S2-11, G2-EX, G2-CO, G2-CR, G2-PET) into the packages S3-1..S3-14 with a suggested order. Plan new speed rounds from that file.
+
 | ID | What | Why (measured) | Done when |
 |---|---|---|---|
 | **S2-4** | Static backdrops kept: Fun Fair stage, kitchen, dream rooms/skies, cutscene card and vignette backgrounds, library lobby + jukebox, studio STAGE draw their unchanging backdrop once and keep it | these redraw full-screen art every frame on GBA (below 30) | each listed scene 30.0 on GBA and PS1 in the speed2 scripts |
