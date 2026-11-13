@@ -915,3 +915,14 @@ const PartSetInfo doomo_part_sets[PART_SET_COUNT] = {
 const char *const doomo_part_tag_keys[PART_TAG_COUNT] = { "plain", "cute", "spooky", "punk", "holy", "critter", "monster", "formal", "fancy", "sporty", "cozy", "royal", "party", "candy", "music", "food", "nature", "tech", "retro", "baby", "elder", "goth", "silly", "armor", "work", "stitched", "glam", "magic", "showcanon", "sea", "fire" };
 const char *const doomo_part_tag_names[PART_TAG_COUNT] = { "Plain", "Cute", "Spooky", "Punk", "Holy", "Critter", "Monster", "Formal", "Fancy", "Sporty", "Cozy", "Royal", "Party", "Candy", "Music", "Food", "Nature", "Tech", "Retro", "Little ones", "Elders", "Goth", "Silly", "Armour", "Work", "Stitched", "Glam", "Magic", "Show canon", "Sea", "Fire" };
 const char *const doomo_part_hide_keys[PART_HIDE_COUNT] = { "hat", "hair", "ears", "horns", "brows", "eyes", "nose", "mouth", "neck", "torso", "arms", "legs", "feet", "tail", "wings", "back" };
+
+/* CR3: the live count of every gene list (index: GF_* id): its values 0..N-1 are selectable,
+ * saved and kept by resident_sanitize; 0 for a field that is not a catalogued part list. */
+const uint8_t doomo_part_live[PART_GENE_FIELDS] = {
+    10, 0, 0, 0, 12, 0, 24, 0, 0, 0, 0, 0, 0, 12, 0, 12,
+    0, 20, 0, 0, 32, 0, 0, 8, 16, 16, 0, 0, 16, 10, 12, 23,
+    0, 0, 25, 0, 12, 0, 12, 0, 36, 0, 22, 0, 8, 8, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 5, 3, 0, 0, 5, 0, 0, 5, 8,
+    0, 0, 0,
+};

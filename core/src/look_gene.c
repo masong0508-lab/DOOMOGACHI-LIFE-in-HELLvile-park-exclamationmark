@@ -156,13 +156,7 @@ int look_gene_ext_read(const uint8_t *src, uint32_t len)
     return ok;
 }
 
-#else  /* !DOOMO_GENE_EXT: the PS1 until PS1-RAM (look_fields.h) */
-void look_gene_deep(const DoomoResident *r, uint32_t lv, DoomoDeep *out) { (void)r; (void)lv; (void)out; }
-void look_gene_deep_put(DoomoResident *r, const DoomoDeep *d) { (void)r; (void)d; }
-uint32_t look_gene_ext_size(void) { return 0; }
-uint32_t look_gene_ext_write(uint8_t *dst, uint32_t cap) { (void)dst; (void)cap; return 0; }
-int look_gene_ext_read(const uint8_t *src, uint32_t len) { (void)src; return len == 0 || len >= 2; }
-#endif
+#endif   /* DOOMO_GENE_EXT: without it look_fields.h has macros for these */
 
 uint32_t deep_hash(const DoomoDeep *d, int chibi)
 {

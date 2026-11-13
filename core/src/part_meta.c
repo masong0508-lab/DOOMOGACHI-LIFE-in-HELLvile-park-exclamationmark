@@ -5,6 +5,9 @@
  * creator overlay with the data (ps1/tools/ovl_plan.py): only the creator and tools read names. */
 #include "doomo/doomo.h"
 #include "doomo/part_meta.h"
+#include "doomo/parts.h"
+#include "doomo/gene.h"
+#include "doomo/look_fields.h"
 
 const PartSlotInfo *part_slot_of_list(int list)
 {
@@ -89,5 +92,24 @@ int part_search(int slot, const char *letters, int live_only, uint16_t *out, int
         if (out && n < max) out[n] = (uint16_t)row;
         n++;
     }
+    return n;
+}
+
+/* ---- CR3: live counts ------------------------------------------------------------------------ */
+int part_live_count(int gf)
+{
+    return gf >= 0 && gf < PART_GENE_FIELDS ? doomo_part_live[gf] : 0;
+}
+
+int part_live_drawable(int gf)
+{
+    int n = part_live_count(gf);
+#if !DOOMO_GENE_EXT
+    if (gf == GF_PUPIL || gf == GF_SCLERA || gf == GF_FUR_PATTERN || gf == GF_GLASSES || gf == GF_OUTER ||
+        gf == GF_LEGWEAR || gf == GF_BLUSH_STYLE || gf == GF_EAR_FOLD) return 0;   /* look_fields.h */
+#endif
+#if defined(DOOMO_PARTS_VM) && !DOOMO_PARTS_VM
+    if (n > doomo_part_minv[gf]) n = doomo_part_minv[gf];    /* no VM: the painted values only */
+#endif
     return n;
 }

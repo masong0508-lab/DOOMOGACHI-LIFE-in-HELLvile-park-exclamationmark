@@ -22,6 +22,7 @@
 
 #include "types.h"
 #include "resident.h"
+#include "look_fields.h"
 
 #define PORTRAIT_W 48
 #define PORTRAIT_H 56
@@ -94,15 +95,24 @@ const DoomoImage *portrait_image_look(const DoomoLook *l, int status, int expr);
  * (look_fields.h DoomoDeep, look_gene_deep). portrait_image / bodyspr_image / fighter_image resolve a
  * resident's own; for a look you hold, pass the set (NULL = none) or the record. */
 struct DoomoDeep;
+#if DOOMO_GENE_EXT
 const DoomoImage *figure_image_d(const DoomoLook *l, const struct DoomoDeep *d, int status, int expr);
-const DoomoImage *figure_image_res(const DoomoResident *r, int status, int expr);
 const DoomoImage *portrait_image_look_d(const DoomoLook *l, const struct DoomoDeep *d, int status, int expr);
+void fighter_render_d(const DoomoLook *l, const struct DoomoDeep *d, int status, int view, int anim,
+                      int weapon_frame, uint8_t *out);
+#else
+/* the PS1 has no gene fields (look_fields.h): the _d calls are the plain ones, no extra resident code */
+#define figure_image_d(l, d, s, e) figure_image((l), (s), (e))
+#define portrait_image_look_d(l, d, s, e) portrait_image_look((l), (s), (e))
+#define fighter_render_d(l, d, s, v, a, w, o) fighter_render((l), (s), (v), (a), (w), (o))
+#endif
+const DoomoImage *figure_image_res(const DoomoResident *r, int status, int expr);
+#if DOOMO_GENE_EXT
 void figure_render_deep(const DoomoLook *l, const struct DoomoDeep *d, int status, int expr, int anim,
                         uint8_t *out);
 void bodyspr_render_deep(const DoomoLook *l, const struct DoomoDeep *d, int status, int dir, int frame,
                          uint8_t *out);
-void fighter_render_d(const DoomoLook *l, const struct DoomoDeep *d, int status, int view, int anim,
-                      int weapon_frame, uint8_t *out);
+#endif
 /* CR9: run more layer groups of a portrait_hold() job this tick while the frame's work so far is
  * under `ms` milliseconds (GBA: a new look is ready in a few ticks instead of one group a tick).
  * Elsewhere it does nothing (a job there finishes within a tick or two anyway). */

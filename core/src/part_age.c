@@ -13,25 +13,6 @@
 #include "doomo/gene.h"
 #include "doomo/look_fields.h"
 
-/* ---- CR3: live counts ------------------------------------------------------------------------ */
-int part_live_count(int gf)
-{
-    return gf >= 0 && gf < PART_GENE_FIELDS ? doomo_part_live[gf] : 0;
-}
-
-int part_live_drawable(int gf)
-{
-    int n = part_live_count(gf);
-#if !DOOMO_GENE_EXT
-    if (gf == GF_PUPIL || gf == GF_SCLERA || gf == GF_FUR_PATTERN || gf == GF_GLASSES || gf == GF_OUTER ||
-        gf == GF_LEGWEAR || gf == GF_BLUSH_STYLE || gf == GF_EAR_FOLD) return 0;   /* look_fields.h */
-#endif
-#if defined(DOOMO_PARTS_VM) && !DOOMO_PARTS_VM
-    if (n > doomo_part_minv[gf]) n = doomo_part_minv[gf];    /* no VM: the painted values only */
-#endif
-    return n;
-}
-
 #if defined(DOOMO_PART_AGE_TEST)
 #define AGE_TEST_MAX 8
 static PartAgeRow test_rows[AGE_TEST_MAX];

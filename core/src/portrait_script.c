@@ -36,6 +36,7 @@ static const PMat *base_mat(PCtx *c, int lf)
     }
 }
 
+#if DOOMO_GENE_EXT
 /* a memo slot for `key` (found, or a free / overwritten one); *hit = 1 when it was there */
 static PMemo *memo_slot(PCtx *c, uint16_t key, int *hit)
 {
@@ -62,10 +63,14 @@ static const PMat *fur3_mat(PCtx *c)
     }
     return &e->m;
 }
+#define PM_BASE(c, lf) ((lf) == GF_FUR_COLOR3 ? fur3_mat(c) : base_mat((c), (lf)))
+#else
+#define PM_BASE(c, lf) base_mat((c), (lf))      /* no third fur colour on the PS1 (look_fields.h) */
+#endif
 
 const PMat *pm_of(PCtx *c, int lf, int tone)
 {
-    const PMat *b = lf == GF_FUR_COLOR3 ? fur3_mat(c) : base_mat(c, lf);
+    const PMat *b = PM_BASE(c, lf);
     uint16_t key;
     PMemo *e;
     int i, free_slot = -1;

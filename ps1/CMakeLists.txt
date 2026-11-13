@@ -307,6 +307,11 @@ foreach(_hot ${DOOMO_CORE_HOT})
 	set_source_files_properties(${CORE_DIR}/src/${_hot}.c PROPERTIES
 		COMPILE_OPTIONS "-std=c99;-O2")
 endforeach()
+# CR3: creator_data.c is a creator overlay file, but its small pointer tables (the 8-byte n_* name lists)
+# would land in .sdata, which always stays resident, and so pin the file's whole 6 KB string pool
+# resident (ovl_plan.py cannot split a merged string section). -G0 keeps them in .rodata.
+set_source_files_properties(${CORE_DIR}/src/creator_data.c PROPERTIES
+	COMPILE_OPTIONS "-std=c99;-Os;-G0")
 
 # objdump next to the SDK's nm (for the R3000 ISA check)
 string(REGEX REPLACE "nm$" "objdump" TOOLCHAIN_OBJDUMP "${TOOLCHAIN_NM}")

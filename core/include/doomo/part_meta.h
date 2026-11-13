@@ -81,7 +81,7 @@ extern const char *const doomo_part_tag_names[PART_TAG_COUNT];
 extern const char *const doomo_part_hide_keys[PART_HIDE_COUNT];
 extern const PartAgeRow doomo_part_age_rows[];
 extern const uint16_t doomo_part_age_count;
-extern const uint8_t doomo_part_live[PART_GENE_FIELDS];          /* part_age_data.c (resident) */
+extern const uint8_t doomo_part_live[PART_GENE_FIELDS];          /* part_meta_data.c (creator overlay on the PS1) */
 
 /* ---- the catalog (part_meta.c; creator side) ---------------------------------------------- */
 const PartMeta *part_meta_find(int list, int value);          /* NULL if not catalogued        */
@@ -97,7 +97,7 @@ int  part_search(int slot, const char *letters, int live_only, uint16_t *out, in
 /* 1 if part m's name or its set's name contains `letters` (case-insensitive; "" matches all). */
 int  part_matches(const PartMeta *m, const char *letters);
 
-/* ---- live counts (CR3; part_age.c, resident) ------------------------------------------------- */
+/* ---- live counts (CR3; part_meta.c: the PS1 reads them in the creator only) ------------------------------------------------- */
 /* How many choices of gene list `gf` (a GF_* id) are live: its values 0..N-1 are selectable, saved
  * and kept by resident_sanitize. 0 if the field is not a catalogued part list. The same on every
  * platform (a save never depends on the build that wrote it). */

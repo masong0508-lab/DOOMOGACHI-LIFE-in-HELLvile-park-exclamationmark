@@ -94,20 +94,12 @@ void look_resolve(const DoomoResident *r, int id, DoomoDeep *out)
     look_resolve_mask(r, id, LV_ALL, out);
 }
 
+/* the run's own part of a cache key: deep_hash of what the run resolves to (the PS1's resident bytes) */
 uint32_t look_run_hash(int id, int chibi)
 {
-    const uint8_t *run;
-    uint32_t h = 2166136261u;
-    int len, i, any = 0;
-    run = look_pool_find(id, RUN_DEEP, &len);
-    if (!run) return 0;
-    for (i = 0; i + 1 < len; i += 2) {
-        if (chibi && (run[i] >= DF_COUNT || !(doomo_df_flags[run[i]] & DFF_CHIBI))) continue;
-        h = (h ^ run[i]) * 16777619u;
-        h = (h ^ run[i + 1]) * 16777619u;
-        any = 1;
-    }
-    return any ? h : 0;
+    DoomoDeep d;
+    look_resolve_mask(NULL, id, chibi ? LV_CHIBI : LV_ALL, &d);
+    return deep_hash(&d, chibi);
 }
 
 uint32_t deep_anim_mask(const DoomoDeep *d)

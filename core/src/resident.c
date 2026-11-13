@@ -814,7 +814,7 @@ static int fix_gene_looks(DoomoResident *r)
     static const uint8_t lists[] = { GF_PUPIL, GF_SCLERA, GF_FUR_PATTERN, GF_GLASSES, GF_OUTER,
                                      GF_LEGWEAR, GF_BLUSH_STYLE, GF_EAR_FOLD };
     int i, n = 0;
-    if (!DOOMO_GENE_EXT) return 0;                          /* the PS1 never sets them (look_fields.h) */
+    if (!DOOMO_GENE_EXT) return 0;                          /* a DOOMO_GENE_EXT=0 build never sets them (look_fields.h) */
     for (i = 0; i < (int)sizeof(lists); i++) {
         uint32_t v = gene_get(r->gene, lists[i]);
         if (v && (int)v >= (part_live_count(lists[i]) > 1 ? part_live_count(lists[i]) : 1)) { gene_set(r->gene, lists[i], 0); n++; }

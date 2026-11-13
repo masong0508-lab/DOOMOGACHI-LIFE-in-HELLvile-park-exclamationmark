@@ -344,6 +344,7 @@ int  ps_slot_frame(PCtx *c, int list, int value, int group);
 #define ps_frame ps_frame_set
 #define PS_SLOT(c, list, value, group) \
     ((value) >= doomo_part_minv[(list)] && ps_slot((c), (list), (value), (group)))
+#define PS_SCRIPTED(value, list) ((value) >= doomo_part_minv[(list)])
 #define PS_SLOT_FRAME(c, list, value, group) \
     ((value) >= doomo_part_minv[(list)] && ps_slot_frame((c), (list), (value), (group)))
 #else
@@ -351,6 +352,7 @@ int  ps_slot_frame(PCtx *c, int list, int value, int group);
 #define ps_frame(ox, oy, px, py, rx, ry) ((void)(ox), (void)(oy), (void)(px), (void)(py), (void)(rx), (void)(ry))
 #define PS_SLOT(c, list, value, group) ((void)(c), (void)(value), 0)
 #define PS_SLOT_FRAME(c, list, value, group) ((void)(c), (void)(value), 0)
+#define PS_SCRIPTED(value, list) ((void)(value), 0)
 #endif
 extern const uint8_t doomo_part_minv[128];
 /* CR2 shape-only renders (contact sheets, the distinctness gate): every material of the next renders

@@ -764,7 +764,7 @@ static void eye_glossy(PCtx *c, int ex, int ey, int erx, int ery, int shear, int
         pc_decal(&ring, SH_FLAT);
         pc_ellipse_sh(ex, ey, erx + 10, ery + 8, shear);
     }
-    if (dp >= doomo_part_minv[GF_PUPIL] || ds >= doomo_part_minv[GF_SCLERA])
+    if (PS_SCRIPTED(dp, GF_PUPIL) || PS_SCRIPTED(ds, GF_SCLERA))
         ps_frame(ex, ey, phs.s * erx, ery, erx, ery);       /* CR3: this eye, for scripted pupils / whites */
     if (big && PS_SLOT_FRAME(c, GF_SCLERA, ds, 3)) {        /* CR3: scripted eye whites */
         ix = erx * 80 / 100;
@@ -1152,7 +1152,7 @@ static void eyes(PCtx *c)
         }
         return;
     }
-    if (l->eye_style >= EYE_COUNT) st = EYE_ROUND;            /* CR3: a scripted style, emoting */
+    if (PS_SCRIPTED(l->eye_style, GF_EYE_STYLE) && l->eye_style >= EYE_COUNT) st = EYE_ROUND;            /* CR3: a scripted style, emoting */
     if (c->expr == EXPR_SICK || c->expr == EXPR_SAD) shear += (c->expr == EXPR_SAD ? 30 : 0);
     if (n == 1) {
         v = fpt(0, F.ey, &X, &Y);
@@ -1500,7 +1500,7 @@ static void mouth(PCtx *c)
         if (v > 0) { ps_frame(X, Y + (l->mouth_size & 1) * 8, W, W, W, W); ps_slot_frame(c, GF_MOUTH_STYLE, st, 3); }
         return;
     }
-    if (st >= MOUTH_COUNT) st = MOUTH_SMILE;                  /* CR3: a scripted style, emoting */
+    if (PS_SCRIPTED(st, GF_MOUTH_STYLE) && st >= MOUTH_COUNT) st = MOUTH_SMILE;                  /* CR3: a scripted style, emoting */
     v = fpt(0, F.my, &X, &Y);
     if (v <= 0) return;
     w = DOOMO_MAX(fshort(F.mw, v) >> 4, 1);
@@ -1712,7 +1712,7 @@ static void blush(PCtx *c, int big)
         int bx = F.ex + 46;
         v = fpt(phs.s * bx, cy, &X, &Y);
         if (v <= 30) continue;
-        if (c->d->v[DF_BLUSH2] >= doomo_part_minv[GF_BLUSH_STYLE]) {
+        if (PS_SCRIPTED(c->d->v[DF_BLUSH2], GF_BLUSH_STYLE)) {
             /* CR3: a scripted blush style in this cheek's frame (256 = the blush radius) */
             ps_frame(X, Y, phs.s * fshort(hr(52), v), hry(40), fshort(hr(52), v), hry(40));
             (void)PS_SLOT_FRAME(c, GF_BLUSH_STYLE, c->d->v[DF_BLUSH2], 3);

@@ -488,12 +488,13 @@ def emit(cat):
          "const PartAgeRow doomo_part_age_rows[%d] = {" % max(1, len(ages))]
     A += ["    { %d, %d, %d }," % r for r in ages] or ["    { 0xFFFF, 0, 0 },     /* none yet: a sentinel */"]
     A += ["};", "const uint16_t doomo_part_age_count = %d;" % len(ages), ""]
-    A += ["/* CR3: the live count of every gene list (index: GF_* id): its values 0..N-1 are selectable,",
+    M = ["/* CR3: the live count of every gene list (index: GF_* id): its values 0..N-1 are selectable,",
           " * saved and kept by resident_sanitize; 0 for a field that is not a catalogued part list. */",
           "const uint8_t doomo_part_live[PART_GENE_FIELDS] = {"]
     for i in range(0, ngf, 16):
-        A.append("    " + ", ".join(str(x) for x in livetab[i:i + 16]) + ",")
-    A += ["};", ""]
+        M.append("    " + ", ".join(str(x) for x in livetab[i:i + 16]) + ",")
+    M += ["};", ""]
+    meta = meta.rstrip("\n") + "\n\n" + "\n".join(M)
     return meta, "\n".join(hdr), "\n".join(A)
 
 

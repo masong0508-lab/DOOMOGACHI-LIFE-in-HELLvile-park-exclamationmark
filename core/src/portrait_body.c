@@ -498,7 +498,7 @@ static void legs(PCtx *c)
         }
         /* CR3: scripted legwear in this leg's frame: origin the foot, x 256 = the leg radius (mirrored
          * on the left leg), y -256 = the hip; under the bottoms and the shoes */
-        if (c->d->v[DF_LEGWEAR] >= doomo_part_minv[GF_LEGWEAR]) {
+        if (PS_SCRIPTED(c->d->v[DF_LEGWEAR], GF_LEGWEAR)) {
             ps_frame(x1, y1, s ? r : -r, y1 - y0, r, y1 - y0);
             (void)PS_SLOT_FRAME(c, GF_LEGWEAR, c->d->v[DF_LEGWEAR], 1);
         }

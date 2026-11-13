@@ -16,6 +16,21 @@
 #include "doomo/playas.h"
 #include "doomo/parts.h"
 
+/* CR3: the _d calls take a resolved set. Without the gene's fields (the PS1, look_fields.h) they are
+ * the plain calls (portrait.h macros) and these bodies are file-local: no extra resident code. */
+#if !DOOMO_GENE_EXT
+#undef figure_image_d
+#undef portrait_image_look_d
+#undef fighter_render_d
+#define PD_STATIC static
+static const DoomoImage *figure_image_d(const DoomoLook *l, const DoomoDeep *d, int status, int expr);
+static const DoomoImage *portrait_image_look_d(const DoomoLook *l, const DoomoDeep *d, int status, int expr);
+static void fighter_render_d(const DoomoLook *l, const DoomoDeep *d, int status, int view, int anim,
+                             int weapon_frame, uint8_t *out);
+#else
+#define PD_STATIC
+#endif
+
 /* ====================================================================== */
 /* context                                                                 */
 static void sanitize(DoomoLook *l)
@@ -422,6 +437,7 @@ static void render_figure_ctx(PCtx *c, uint8_t *out)
     draw_layers(c);
 }
 
+#if DOOMO_GENE_EXT
 void figure_render(const DoomoLook *l, int status, int expr, int anim, uint8_t *out)
 {
     figure_render_deep(l, &doomo_deep_zero, status, expr, anim, out);
@@ -439,6 +455,18 @@ void figure_render_deep(const DoomoLook *l, const DoomoDeep *d, int status, int 
     c.d = d;
     render_figure_ctx(&c, out);
 }
+#else
+void figure_render(const DoomoLook *l, int status, int expr, int anim, uint8_t *out)
+{
+    DoomoLook L;
+    PCtx c;
+    if (!l || !out) return;
+    L = *l;
+    sanitize(&L);
+    pctx_init(&c, &L, status, expr, anim);
+    render_figure_ctx(&c, out);
+}
+#endif
 
 /* ====================================================================== */
 /* overworld chibi                                                           */
@@ -469,6 +497,7 @@ static void render_body_ctx(PCtx *c, int dir, int frame, uint8_t *out)
     if ((dir & 3) == 2) pc_flipx();
 }
 
+#if DOOMO_GENE_EXT
 void bodyspr_render(const DoomoLook *l, int status, int dir, int frame, uint8_t *out)
 {
     bodyspr_render_deep(l, &doomo_deep_zero, status, dir, frame, out);
@@ -490,6 +519,19 @@ void bodyspr_render_deep(const DoomoLook *l, const DoomoDeep *d, int status, int
     motion_pose(&c, dir, frame);
     render_body_ctx(&c, dir, frame, out);
 }
+#else
+void bodyspr_render(const DoomoLook *l, int status, int dir, int frame, uint8_t *out)
+{
+    DoomoLook L;
+    PCtx c;
+    if (!l || !out) return;
+    L = *l;
+    sanitize(&L);
+    pctx_init(&c, &L, status, EXPR_NEUTRAL, frame * 8);
+    motion_pose(&c, dir, frame);
+    render_body_ctx(&c, dir, frame, out);
+}
+#endif
 
 /* ====================================================================== */
 /* third-person fighter                                                      */
@@ -1412,7 +1454,7 @@ const DoomoImage *portrait_image(int resident_id, int expr)
 
 /* CR9: the cached bust of any look (the creator's draft), like figure_image; CR3: with a resolved
  * set (the gene's new fields), or none */
-const DoomoImage *portrait_image_look_d(const DoomoLook *l, const DoomoDeep *d, int status, int expr)
+PD_STATIC const DoomoImage *portrait_image_look_d(const DoomoLook *l, const DoomoDeep *d, int status, int expr)
 {
     cache_init();
     if (!l) return NULL;
@@ -1435,14 +1477,20 @@ const DoomoImage *figure_image(const DoomoLook *l, int status, int expr)
 const DoomoImage *figure_image_res(const DoomoResident *r, int status, int expr)
 {
     DoomoLook l;
+#if DOOMO_GENE_EXT
     DoomoDeep d = doomo_deep_zero;
     if (!r) return figure_image_d(NULL, NULL, status, expr);
     res_get_look(r, &l);
     look_gene_deep(r, LV_ALL, &d);
     return figure_image_d(&l, &d, status, expr);
+#else
+    if (!r) return figure_image(NULL, status, expr);
+    res_get_look(r, &l);
+    return figure_image(&l, status, expr);
+#endif
 }
 
-const DoomoImage *figure_image_d(const DoomoLook *l, const DoomoDeep *d, int status, int expr)
+PD_STATIC const DoomoImage *figure_image_d(const DoomoLook *l, const DoomoDeep *d, int status, int expr)
 {
     static DoomoResident def;
     static DoomoLook def_look;
@@ -1735,7 +1783,7 @@ void fighter_render(const DoomoLook *l, int status, int view, int anim, int weap
 }
 
 /* CR3: the same with a resolved set (the creator's turntable, tools) */
-void fighter_render_d(const DoomoLook *l, const DoomoDeep *d, int status, int view, int anim,
+PD_STATIC void fighter_render_d(const DoomoLook *l, const DoomoDeep *d, int status, int view, int anim,
                       int weapon_frame, uint8_t *out)
 {
     DoomoLook L;

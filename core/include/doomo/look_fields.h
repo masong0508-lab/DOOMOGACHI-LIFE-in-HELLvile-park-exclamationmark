@@ -32,16 +32,14 @@ typedef struct DoomoDeep { uint8_t v[DF_COUNT]; } DoomoDeep;   /* resolved choic
 extern const uint8_t doomo_df_flags[DF_COUNT];
 extern const DoomoDeep doomo_deep_zero;
 
-/* DOOMO_GENE_EXT 0: the gene's new look fields (look_gene.c) are not read, drawn or saved. The PS1
- * builds that way with DOOMO_PARTS_VM=0 until the PS1-RAM package frees the resident bytes (its EXE
- * ends 400 B above the 64 KB stack reserve); the creator hides their rows there (part_live_drawable,
- * row_empty) and look_gene_deep reads zeros, so a PS1 renders and saves exactly as before CR3. */
+/* DOOMO_GENE_EXT: the gene's new look fields (look_gene.c) are read, drawn and saved. On on every
+ * platform since CR3 landed (the PS1 too: its painted values only, no part VM; the creator offers
+ * what the build can draw, part_live_drawable). DOOMO_GENE_EXT=0 (a -D) compiles the whole
+ * feature out of the renderer, the resident code and the save (the _d calls become the plain ones,
+ * the look_gene_* calls vanish): kept as a switch for a platform that runs out of RAM; no build
+ * uses it today and no test covers it. */
 #ifndef DOOMO_GENE_EXT
-#if defined(DOOMO_PARTS_VM) && !DOOMO_PARTS_VM
-#define DOOMO_GENE_EXT 0
-#else
 #define DOOMO_GENE_EXT 1
-#endif
 #endif
 
 #define LV_ALL   0u
@@ -58,10 +56,18 @@ void look_resolve_mask(const DoomoResident *r, int id, uint32_t lv, DoomoDeep *o
  * handedness -> their DF_ ids. Every other entry of `out` is left alone. With lv == LV_CHIBI only the
  * chibi-visible fields (DFF_CHIBI). A part above the record's life stage (part_age_ok) reads 0, as
  * look_for_stage() does for the look's own parts. */
+#if DOOMO_GENE_EXT
 void look_gene_deep(const DoomoResident *r, uint32_t lv, DoomoDeep *out);
 /* The same into a record (the creator writes its choices back through the gene): only the gene
  * fields look_gene_deep reads. */
 void look_gene_deep_put(DoomoResident *r, const DoomoDeep *d);
+#else
+#define look_gene_deep(r, lv, out) ((void)(r), (void)(lv), (void)(out))      /* nothing to read ... */
+#define look_gene_deep_put(r, d) ((void)(r), (void)(d))                       /* ... or write (no code) */
+#define look_gene_ext_size() 0u
+#define look_gene_ext_write(dst, cap) ((void)(dst), (void)(cap), 0u)
+#define look_gene_ext_read(src, len) ((void)(src), (len) == 0 || (len) >= 2)
+#endif
 /* FNV-1a of a resolved set, 0 when every choice is 0 (so a Classic look keeps its cache key). With
  * chibi != 0 only the DFF_CHIBI fields count. */
 uint32_t deep_hash(const DoomoDeep *d, int chibi);
@@ -72,9 +78,11 @@ uint32_t deep_hash(const DoomoDeep *d, int chibi);
  * you hold: a DoomoLook byte, or the resolved set for the gene-only and deep fields. 0 if the list
  * is neither. For tests, tools and contact sheets. */
 int look_part_set(DoomoLook *l, DoomoDeep *d, int list, int v);
+#if DOOMO_GENE_EXT
 uint32_t look_gene_ext_size(void);
 uint32_t look_gene_ext_write(uint8_t *dst, uint32_t cap);
 int      look_gene_ext_read(const uint8_t *src, uint32_t len);
+#endif
 
 /* FNV-1a of resident `id`'s deep run, 0 when it has none or nothing in it counts. With chibi != 0
  * only DFF_CHIBI entries are hashed. Folded into the portrait cache's look hash. */
