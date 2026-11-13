@@ -40,6 +40,9 @@
  *                          run script compares it with room_ref's frame
  *   DC_HC_HOME_ROOM n      (DC8) the native runner's `home-room N`
  *   DC_HC_MONEY n          (DC8) the native runner's `money N`
+ *   DC_HC_LANG, HERO, ENDING_SEEN, STORY_DONE (DC9A) the native runner's
+ *                          `lang` / `expect-lang`, `expect-hero`,
+ *                          `ending-seen`, `story-done`
  * and the tick hold of the harness's "sync on" (dc_harness_hold).
  */
 #include <string.h>
@@ -48,6 +51,8 @@
 #include "doomo/doomo.h"
 #include "doomo/story_vm.h"
 #include "doomo/plat_ext.h"
+#include "doomo/options_store.h"            /* DC9A: opt_set (lang) */
+#include "doomo/unlocks.h"                  /* DC9A: ending-seen */
 #include "../../core/src/ui_internal.h"     /* UiDialogDebug (expect-text) */
 #include "../../core/src/home_int.h"        /* DC8: home_move_in, the parity rooms */
 #include "../../core/gen/furn_ids.h"
@@ -327,6 +332,35 @@ void dc_harness_cmd(void)
         break;
     case DC_HC_MONEY:                   /* the native runner's `money N` */
         doomo_town.money = arg;
+        r = 1;
+        break;
+    /* --- DC9A: the native runner's story and free-play script commands --- */
+    case DC_HC_LANG: {
+        char nm[sizeof(dc_mailbox.name)];
+        int found;
+        mailbox_name(nm);
+        found = lang_find(nm);
+        if (found < 0) break;
+        if (arg == 0) {
+            opt_set(OPT_LANGUAGE, found);
+            r = 1;
+        } else {
+            r = lang_get() == found ? 2u : 1u;
+        }
+        break; }
+    case DC_HC_HERO: {
+        char nm[sizeof(dc_mailbox.name)];
+        const DoomoResident *p = town_res(DOOMO_PLAYER_ID);
+        mailbox_name(nm);
+        r = p && p->status != RES_EMPTY && strcmp(p->name, nm) == 0 ? 2u : 1u;
+        break; }
+    case DC_HC_ENDING_SEEN:
+        unlock_grant_quiet(UL_STORY_END(0));
+        r = 1;
+        break;
+    case DC_HC_STORY_DONE:
+        doomo_town.mode = TOWN_STORY;
+        doomo_town.story.chapter = STORY_CH_DONE;
         r = 1;
         break;
     default:

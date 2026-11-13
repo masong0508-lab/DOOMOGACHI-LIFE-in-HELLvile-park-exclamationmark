@@ -119,7 +119,14 @@ enum {
     DC_HC_CLOCK = 24,                    /* clock HH MM: the town clock = arg minutes */
     /* DC8: the native runner's house commands (core/tests/scripts/home_*.txt) */
     DC_HC_HOME_ROOM = 25,                /* home-room N: move in, room N opened */
-    DC_HC_MONEY = 26                     /* money N: the town's purse = arg */
+    DC_HC_MONEY = 26,                    /* money N: the town's purse = arg */
+    /* DC9A: the rest of the native runner's story / free-play commands */
+    DC_HC_LANG = 27,                     /* name = a language code: arg 0 sets it
+                                          * (opt_set OPT_LANGUAGE), arg 1 checks it;
+                                          * result 0 unknown code, 1 set / differs, 2 ok */
+    DC_HC_HERO = 28,                     /* result 2 when the hero's name is name, else 1 */
+    DC_HC_ENDING_SEEN = 29,              /* ending-seen: unlock UL_STORY_END(0) quietly */
+    DC_HC_STORY_DONE = 30                /* story-done: the town is a finished story */
 };
 
 #endif

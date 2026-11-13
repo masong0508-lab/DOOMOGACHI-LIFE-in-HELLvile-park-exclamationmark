@@ -1272,6 +1272,20 @@ static int run_script(FILE *f)
             uint32_t want = n >= 3 ? (uint32_t)strtoul(v[2], NULL, 0) : 1;
             if (!mb_cmd(DC_HC_FLAG, (uint32_t)strtoul(v[1], NULL, 0), NULL, &r)) return 0;
             if (r != want) fail("line %d: flag %s = %u, wanted %u", lineno, v[1], r, want);
+        } else if ((!strcmp(c, "lang") || !strcmp(c, "expect-lang")) && n >= 2) {   /* DC9A */
+            if (!mb_cmd(DC_HC_LANG, c[0] == 'e', v[1], &r)) return 0;
+            if (!r) fail("line %d: %s needs a code of core/lang/languages.tsv, got %s", lineno, c, v[1]);
+            else if (c[0] == 'e' && r != 2) fail("line %d: expected the language to be %s", lineno, v[1]);
+        } else if (!strcmp(c, "expect-hero") && n >= 2) {
+            if (!mb_cmd(DC_HC_HERO, 0, v[1], &r)) return 0;
+            if (r != 2) fail("line %d: expected the hero to be %s", lineno, v[1]);
+        } else if (!strcmp(c, "ending-seen") || !strcmp(c, "story-done")) {
+            if (!mb_cmd(c[0] == 'e' ? DC_HC_ENDING_SEEN : DC_HC_STORY_DONE, 0, NULL, &r)) return 0;
+        } else if (!strcmp(c, "story-fp")) {
+            if (!mb_cmd(DC_HC_STORY_FP, 0, NULL, &r)) return 0;
+            printf("story-fp: 0x%08x\n", r);
+            if (n >= 2 && (uint32_t)strtoul(v[1], NULL, 16) != r)
+                fail("line %d: story fingerprint differs from %s", lineno, v[1]);
         } else if (!strcmp(c, "audio-reset")) {
             a_min = 32767; a_max = -32768; a_frames = 0;
             snd_under0 = mb && mb_up ? mb->snd_underruns : 0;
