@@ -184,6 +184,7 @@ static const char *help_of(int opt)
     if (opt == OPT_CAMERA_DEFAULT) return help_camera[input_pad()];
     if (opt == OPT_LOSS) return "Family members can be lost over a life. Off: nobody is ever lost.";
     if (opt == OPT_RUMBLE) return "Controller rumble, apart from Screen shake.";
+    if (opt == OPT_STICK_MODE) return "One-stick pad. Turn: stick X turns, L / R strafe. Strafe: stick X strafes, L / R turn.";
     if (opt == OPT_TIPS) return "A short card the first time you reach a new place: what it is and which buttons do what.";
     if (opt == OPT_MATURE)
         /* (CL5 land) three lines at 240x160 (it took five, and the help pill shows three) */
@@ -222,7 +223,8 @@ static void build_rows(void)
                                           * platform (DECISIONS 2026-11-08; G7 showed it on the GBA only) */
     for (i = OPT_LOSS; i < OPT2_END && O.nrows < ROWS_MAX; i++)          /* U2: Loss (Life Sim), Rumble */
         if (doomo_option2_info[i - OPT2_FIRST].page == O.page &&
-            (i != OPT_RUMBLE || (plat_features() & PLATF_RUMBLE)))
+            (i != OPT_RUMBLE || (plat_features() & PLATF_RUMBLE)) &&
+            (i != OPT_STICK_MODE || (input_pad() == PAD_DC && !(input_caps() & INPUT_CAP_RSTICK))))
             O.rows[O.nrows++] = i;
     if (O.page == OPTPAGE_GAME && O.nrows < ROWS_MAX) O.rows[O.nrows++] = ROW_TIPS_RESET;  /* CL4 */
     if (O.page == OPTPAGE_GAME && O.nrows < ROWS_MAX) O.rows[O.nrows++] = OPT_MATURE;   /* E11: last row */

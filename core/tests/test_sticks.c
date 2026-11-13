@@ -14,6 +14,7 @@
 #include "../src/home_int.h"
 #include "../src/creator_int.h"
 #include "doomo/tips.h"
+#include "doomo/options_store.h"
 
 static void frame(uint32_t b) { plat_begin_frame(); doomo_frame(b); plat_end_frame(); }
 static void frames(int n, uint32_t b) { while (n-- > 0) frame(b); }
@@ -268,5 +269,33 @@ TEST(sticks_creator_spins_on_the_right_stick)
     pad(0, 0, 0, 0);
     frames(40, 0);
     CHECK_EQ(cr.phase, CRP_MAIN);                     /* let go: back to the editor */
+    no_pad();
+}
+
+/* (STKOPT) Options > Controls > Stick: Turn (default) / Strafe on the one-stick Dreamcast pad */
+TEST(sticks_option_strafe_mode)
+{
+    int t;
+    int16_t a0;
+    fix16 y0;
+    test_reset();
+    CHECK_EQ(doomo_option2_info[OPT_STICK_MODE - OPT2_FIRST].def, STICK_TURN);
+    CHECK_EQ(opt_get(OPT_STICK_MODE), STICK_TURN);          /* default = today's behaviour */
+    opt_set(OPT_CONTROL_SCHEME, CONTROLS_AUTO);
+    opt_set(OPT_STICK_MODE, STICK_STRAFE);
+    combat_start_at(MAPID_ARENA, CGOAL_ENDLESS, 16, 22, 0);   /* facing east (+x) */
+    for (t = 0; t < 4; t++) tick(0);
+    pad(127, 0, 0, 0);                                      /* stick X: strafes now, no turn */
+    a0 = doomo_player.angle; y0 = doomo_player.y;
+    for (t = 0; t < 10; t++) { input_set_caps(INPUT_CAP_TRIGGERS, 0, 0); tick(0); }
+    CHECK_EQ(doomo_player.angle, a0);
+    CHECK_MSG(doomo_player.y != y0, "the stick's X did not strafe");
+    combat_start_at(MAPID_ARENA, CGOAL_ENDLESS, 16, 22, 0);
+    for (t = 0; t < 4; t++) tick(0);
+    pad(0, 0, 0, 0);                                        /* the right trigger turns */
+    a0 = doomo_player.angle; y0 = doomo_player.y;
+    for (t = 0; t < 10; t++) { input_set_caps(INPUT_CAP_TRIGGERS, 0, 255); tick(0); }
+    CHECK_MSG(doomo_player.angle != a0, "the trigger did not turn");
+    opt_set(OPT_STICK_MODE, STICK_TURN);
     no_pad();
 }

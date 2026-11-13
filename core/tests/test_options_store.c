@@ -106,6 +106,20 @@ TEST(u0_opt2_chunk_round_trip)
     opt_set(OPT_RUMBLE, 1);
     CHECK(e->read(buf, 1, 1));
     CHECK_EQ(opt_get(OPT_RUMBLE), 1);
+    /* (STKOPT) an old chunk (4 values, no Stick row) loads with the default Turn, not a leftover Strafe */
+    {
+        uint8_t old[1 + 4 + 4] = { 0, 0, 0, 0, MATURE_OFF, 1, 1, 1 };
+        opt_set(OPT_STICK_MODE, STICK_STRAFE);
+        CHECK(e->read(old, 8, 2));
+        CHECK_EQ(opt_get(OPT_STICK_MODE), STICK_TURN);
+        opt_set(OPT_STICK_MODE, STICK_STRAFE);
+        CHECK(e->write(buf, sizeof(buf)) == e->size());
+        opt_defaults();
+        CHECK(e->read(buf, e->size(), e->version));      /* a new chunk keeps it */
+        CHECK_EQ(opt_get(OPT_STICK_MODE), STICK_STRAFE);
+        e->reset();
+        CHECK_EQ(opt_get(OPT_STICK_MODE), STICK_TURN);   /* a save with no chunk */
+    }
     e->reset();                                       /* an old save: loss to default */
     CHECK_EQ(opt_get(OPT_LOSS), 1);
 }

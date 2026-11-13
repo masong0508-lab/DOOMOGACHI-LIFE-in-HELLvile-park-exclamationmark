@@ -6,6 +6,8 @@
  *                 "Off" default; this file overrides it). Machine-wide: it is NOT taken from a save.
  *   - OPT_LOSS    family loss on / off (family_loss_set). A property of the world: saved with it.
  *   - OPT_RUMBLE  controller rumble on / off, apart from Screen shake. Machine-wide.
+ *   - OPT_STICK_MODE (STKOPT) Dreamcast one stick: X turns (default) or X strafes. A property of the
+ *                 pad's owner but saved with the world (the chunk); an old chunk without it reads Turn.
  *   - OPT_TIPS    (CL4) first-time tip cards on / off (tips.h). Machine-wide; the record (or, without
  *                 one, the chunk) also carries the tips' seen flags, so they survive New Game.
  * Machine-wide options (these two plus language, the volumes and OPT_3D_FAST) go to the config
@@ -24,18 +26,25 @@
 #include "doomo/tips.h"
 
 static const char *const v_off_on_[] = { "Off", "On" };
+static const char *const v_stick_[] = { "Turn", "Strafe" };
 static const char *const v_mature_[] = { "Off", "Censored", "On", "On + pack" };
 
 const DoomoOptionInfo doomo_option2_info[OPT2_COUNT] = {
     /* OPT_MATURE */ { "Mature",  MATURE_LEVELS, MATURE_OFF, v_mature_, OPTPAGE_GAME },
     /* OPT_LOSS   */ { "Loss",    2, 1, v_off_on_, OPTPAGE_SIM },
     /* OPT_RUMBLE */ { "Rumble",  2, 1, v_off_on_, OPTPAGE_CONTROLS },
-    /* OPT_TIPS   */ { "Tips",    2, 1, v_off_on_, OPTPAGE_GAME }
+    /* OPT_TIPS   */ { "Tips",    2, 1, v_off_on_, OPTPAGE_GAME },
+    /* OPT_STICK_MODE */ { "Stick", 2, STICK_TURN, v_stick_, OPTPAGE_CONTROLS }
 };
 
-static uint8_t s_opt2[OPT2_COUNT] = { MATURE_OFF, 1, 1, 1 };
-static uint8_t s_quiet;          /* applying a record: no writes back, no platform calls */
-static uint8_t s_cfg_dirty;      /* a machine-wide option changed since the record was last written */
+#define STICK_IDX (OPT_STICK_MODE - OPT2_FIRST)
+static uint8_t s_opt2[STICK_IDX] = { MATURE_OFF, 1, 1, 1 };    /* the ids before OPT_STICK_MODE */
+/* quiet: applying a record, no writes back, no platform calls; cfg_dirty: a machine-wide option changed
+ * since the record was last written. One byte for both (GBA EWRAM: STKOPT paid for its new option with these bits). */
+static struct { uint8_t quiet : 1, cfg_dirty : 1, stick : 1; } s_fl;   /* stick = OPT_STICK_MODE's value */
+typedef char opt2_stick_is_the_last_id[OPT2_END == OPT_STICK_MODE + 1 ? 1 : -1];   /* a later id grows s_opt2 */
+static int o2_load(int i) { return i == STICK_IDX ? s_fl.stick : s_opt2[i]; }
+static void o2_store(int i, int v) { if (i == STICK_IDX) s_fl.stick = v == STICK_STRAFE;   /* anything else reads Turn */ else s_opt2[i] = (uint8_t)v; }
 
 static int is_machine(int opt)
 {
@@ -45,16 +54,16 @@ static int is_machine(int opt)
 
 static void apply2(int opt)
 {
-    int v = s_opt2[opt - OPT2_FIRST];
+    int v = o2_load(opt - OPT2_FIRST);
     if (opt == OPT_LOSS) family_loss_set(v);
-    if (opt == OPT_RUMBLE && !s_quiet) plat_option_changed(opt, v);
+    if (opt == OPT_RUMBLE && !s_fl.quiet) plat_option_changed(opt, v);
 }
 
 int opt2_get(int opt)
 {
     int i = opt - OPT2_FIRST, v;
     if (i < 0 || i >= OPT2_COUNT) return 0;
-    v = s_opt2[i];
+    v = o2_load(i);
     return v < doomo_option2_info[i].count ? v : doomo_option2_info[i].def;
 }
 
@@ -62,16 +71,16 @@ void opt2_set(int opt, int value)
 {
     int i = opt - OPT2_FIRST;
     if (i < 0 || i >= OPT2_COUNT) return;
-    s_opt2[i] = (uint8_t)DOOMO_CLAMP(value, 0, doomo_option2_info[i].count - 1);
+    o2_store(i, DOOMO_CLAMP(value, 0, doomo_option2_info[i].count - 1));
     apply2(opt);
-    opt_machine_changed(opt, s_opt2[i]);
+    opt_machine_changed(opt, o2_load(i));
 }
 
 void opt2_defaults(void)
 {
     int i;
     for (i = 0; i < OPT2_COUNT; i++) {
-        s_opt2[i] = doomo_option2_info[i].def;
+        o2_store(i, doomo_option2_info[i].def);
         apply2(OPT2_FIRST + i);
     }
 }
@@ -104,7 +113,7 @@ static void put_machine(int opt, int v)
 {
     const DoomoOptionInfo *in = info_of(opt);
     if (v < 0 || v >= in->count) v = in->def;
-    if (opt >= OPT2_FIRST) { s_opt2[opt - OPT2_FIRST] = (uint8_t)v; apply2(opt); }
+    if (opt >= OPT2_FIRST) { o2_store(opt - OPT2_FIRST, v); apply2(opt); }
     else doomo_town.opt[opt] = (uint8_t)v;
 }
 
@@ -237,12 +246,12 @@ int opt_config_load(void)
         s_first_boot = 1;                                   /* no valid record: first boot (U5) */
         return 0;
     }
-    s_quiet = 1;
+    s_fl.quiet = 1;
     for (k = 0; k < 7; k++) put_machine(k_rec[k], rec[4 + k]);
     if (rec[11]) put_machine(OPT_TIPS, rec[11] - 1);          /* CL4: 0 = never written (default On) */
     tip_seen_merge((uint32_t)rec[12] | (uint32_t)rec[13] << 8 | (uint32_t)rec[14] << 16 | (uint32_t)rec[15] << 24);
     tips_clean();
-    s_quiet = 0;
+    s_fl.quiet = 0;
     if (opt_get(OPT_LANGUAGE) != lang_before) lang_changed();
     return 1;
 }
@@ -265,7 +274,7 @@ int opt_config_save(void)
     c = crc16(rec, 30);
     rec[30] = (uint8_t)c; rec[31] = (uint8_t)(c >> 8);
     memcpy(rec + OPT_CONFIG_SETTINGS_SZ, s_sec, sizeof s_sec);   /* the code (or the bytes loaded) */
-    if (plat_config_write(rec, PLAT_CONFIG_MAX)) { s_sec_dirty = 0; s_cfg_dirty = 0; tips_clean(); return 1; }
+    if (plat_config_write(rec, PLAT_CONFIG_MAX)) { s_sec_dirty = 0; s_fl.cfg_dirty = 0; tips_clean(); return 1; }
     return 0;
 }
 
@@ -275,15 +284,15 @@ int opt_config_save(void)
  * the Options, the title, a level) or at the next save (save_game). */
 int opt_config_flush(void)
 {
-    if (!s_cfg_dirty && !s_sec_dirty && !tips_dirty()) return 0;
+    if (!s_fl.cfg_dirty && !s_sec_dirty && !tips_dirty()) return 0;
     return opt_config_save();                           /* 0 where no record is kept */
 }
 
 void opt_machine_changed(int opt, int value)
 {
-    if (s_quiet) return;
+    if (s_fl.quiet) return;
     if (opt == OPT_3D_FAST) plat_option_changed(opt, value);
-    if (is_machine(opt)) s_cfg_dirty = 1;               /* written by opt_config_flush, not now */
+    if (is_machine(opt)) s_fl.cfg_dirty = 1;               /* written by opt_config_flush, not now */
 }
 
 /* ---- the 'OPT2' chunk ----
@@ -316,17 +325,21 @@ static int opt2_read(const uint8_t *src, uint32_t len, uint16_t version)
         if (is_machine(opt) && have_config()) continue;       /* the machine's record wins */
         put_machine(opt, src[i]);
     }
+    /* an older chunk is shorter: the world's options it does not carry (STKOPT) go to their defaults */
+    for (; i < OPT2_COUNT; i++)
+        if (!is_machine(OPT2_FIRST + (int)i)) o2_store((int)i, doomo_option2_info[i].def);
     return 1;
 }
 
 static void opt2_reset(void)
 {
     /* an old save without the chunk: the world's options go to their defaults, the machine's stay */
-    s_opt2[OPT_LOSS - OPT2_FIRST] = doomo_option2_info[OPT_LOSS - OPT2_FIRST].def;
+    o2_store(OPT_LOSS - OPT2_FIRST, doomo_option2_info[OPT_LOSS - OPT2_FIRST].def);
     apply2(OPT_LOSS);
+    o2_store(STICK_IDX, STICK_TURN);
     if (!have_config()) {
-        s_opt2[OPT_MATURE - OPT2_FIRST] = MATURE_OFF;
-        s_opt2[OPT_RUMBLE - OPT2_FIRST] = 1;
+        o2_store(OPT_MATURE - OPT2_FIRST, MATURE_OFF);
+        o2_store(OPT_RUMBLE - OPT2_FIRST, 1);
     }
 }
 

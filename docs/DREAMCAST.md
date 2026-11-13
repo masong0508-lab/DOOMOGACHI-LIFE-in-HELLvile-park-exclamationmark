@@ -721,8 +721,16 @@ stick. The house's view still turns on the triggers (L / R past half), the
 overworld walks with analog speed off the stick, and the creator's
 turntable opens on SELECT as before (no right stick). The control card and
 the shooter tip show the one-stick lines ("Stick Walk/turn", "L/R
-Strafe"). Not done: an Options row "Stick: turn / strafe" (the 64 option
-bytes are full; it needs an OPT2 id and its save chunk).
+Strafe").
+
+**Options > Controls > Stick: Turn / Strafe (STKOPT).** A row on the
+one-stick Dreamcast pad only (hidden on the GBA, PS1 and a twin stick).
+Turn (the default, today's behaviour): the stick's X turns, the triggers
+strafe. Strafe: the stick's X strafes and the triggers turn (pressure =
+speed, eased like the stick). It is `OPT_STICK_MODE`, the last id of the
+second option table (OPT2); it rides in the 'OPT2' chunk (one more byte,
+inside `SAVE_EXT_MAX_OPT2`). A chunk from before it (or a save with no chunk)
+loads as Turn. Test: `sticks_option_strafe_mode`, `u0_opt2_chunk_round_trip`.
 
 The core's "smooth feel" (`input_set_feel(1)`: eased turning, fire
 buffering, aim friction) is on, as on the PS1. One visible consequence: the

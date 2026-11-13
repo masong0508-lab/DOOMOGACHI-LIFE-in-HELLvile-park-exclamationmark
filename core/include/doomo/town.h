@@ -150,8 +150,10 @@ enum {
     OPT_LOSS,                 /* family loss (F6): 0 off, 1 on; family_loss_set() follows          */
     OPT_RUMBLE,               /* controller rumble, apart from Screen shake: 0 off, 1 on; machine-wide */
     OPT_TIPS,                 /* (CL4) first-time tip cards (tips.h): 0 off, 1 on; machine-wide */
+    OPT_STICK_MODE,           /* (STKOPT) Dreamcast one-stick: 0 Turn (stick X turns, triggers strafe), 1 Strafe (X strafes, triggers turn); saved with the world */
     OPT2_END
 };
+enum { STICK_TURN = 0, STICK_STRAFE = 1 };
 #define OPT2_COUNT (OPT2_END - OPT2_FIRST)
 /* Option pages (DoomoOptionInfo.page). */
 /* (U2) OPTPAGE_QUICK is the front page: callers that pass 0 land on it. */

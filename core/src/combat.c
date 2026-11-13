@@ -571,14 +571,17 @@ static void read_controls(CombatCtl *c)
     uint32_t smask = input_stick_mask();
     int lmod, left, right, up, down;
     int maxturn = 44 + speed * 9, look = 6 + speed;
-    int dual;
+    int dual, sstrafe = 0;
     memset(c, 0, sizeof(*c));
     have = input_analog(&lax, &lay, &rax, &ray);
     dual = scheme == CONTROLS_DUAL_STICK && have;       /* no sticks: behaves like Modern */
     if (have) {
         stick_dz(lax, lay, &slx, &sly);
         if (caps & INPUT_CAP_RSTICK) stick_dz(rax, ray, &srx, &sry);
-        else if (dual) { srx = slx; slx = 0; }      /* one stick (Dreamcast): X turns, Y walks */
+        else if (dual) {                            /* one stick (Dreamcast): X turns, Y walks */
+            sstrafe = opt_get(OPT_STICK_MODE) == STICK_STRAFE;   /* (STKOPT) X strafes, the triggers turn */
+            if (!sstrafe) { srx = slx; slx = 0; }
+        }
     }
     /* D-pad only: the pad driver also mirrors the left stick into the
      * D-pad bits (menus need that) - strip those here, the analog value
@@ -606,7 +609,7 @@ static void read_controls(CombatCtl *c)
                 combat_px.turn_vel += (c->turn - combat_px.turn_vel) / 2;
                 c->turn = (int16_t)combat_px.turn_vel;
             }
-        } else {
+        } else if (!sstrafe) {
             combat_px.turn_vel = 0;
         }
         if (sry) c->look = (int16_t)(-stick_curve(sry) * look * 2 / 256 * inv);
@@ -615,7 +618,13 @@ static void read_controls(CombatCtl *c)
             int lt, rt, v;
             input_triggers(&lt, &rt);
             v = combat_trigger_strafe(lt, rt);
-            if (v) { c->fstrafe = (int16_t)v; c->strafe = (int8_t)(v < 0 ? -1 : 1); }
+            if (sstrafe) {
+                c->turn = (int16_t)(v * (maxturn * 6 / 5) / 256);
+                if (feel) {
+                    combat_px.turn_vel += (c->turn - combat_px.turn_vel) / 2;
+                    c->turn = (int16_t)combat_px.turn_vel;
+                }
+            } else if (v) { c->fstrafe = (int16_t)v; c->strafe = (int8_t)(v < 0 ? -1 : 1); }
         }
     } else if (lmod) {
         /* classic: hold L = strafe with left/right, look with up/down */

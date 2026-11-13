@@ -621,3 +621,6 @@ Paw Crosshair	Mira Huella	# unlocks.c
 Defeat 20 demons cutely	Vence a 20 demonios con ternura	# unlocks.c
 unlocks: duplicate unlock id		# unlocks.c
 \x82 NEW UNLOCK! %s	\x82 ¡NUEVO DESBLOQUEO! %s	# unlocks.c
+Stick	Stick	# options_store.c
+Turn	Girar	# options_store.c
+Strafe	Desplazar	# options_store.c
