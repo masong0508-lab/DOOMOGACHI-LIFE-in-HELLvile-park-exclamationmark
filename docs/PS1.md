@@ -634,22 +634,24 @@ per-polygon drawing area `g_r3_area` in `r3d.c` and `prims.c`).
 | slot | 131,072 B (home) | 131,072 B (story, 129,980 B) |
 
 70,480 B was 3,248 B under the 72 KB plan gate. On the tip it landed on
-(origin `0df7284`, after the Talk, LV1 and CR3 landings; the same
-overlay plan, the combat group 128,188 B) the margin went from 68,384 B to
-**72,928 B** (+4,544 B): 800 B under the 72 KB plan gate (73,728 B), 7,392 B
-above the 64 KB reserve. PS1-RAM closes the rest.
+(origin `c827410`, after the Talk, LV0, LV1, CR3 and S3-3 landings; the
+same overlay plan, the combat group 128,232 B) the EXE ends at `0x801ef450`
+before and `0x801ee2a0` after: the margin went from 68,528 B to
+**73,056 B** (+4,528 B; `0x80200000` minus `_end`, as above): 672 B under
+the 72 KB plan gate (73,728 B), 7,520 B above the 64 KB reserve. PS1-RAM
+closes the rest.
 
 Not moved: `prims.c` (3,612 B in the plan, the chibi's boxes and blobs,
 -O2). With it the combat group would need 131,800 B, 728 B over the slot,
 and the slot grows in 2 KB steps: +2,048 B here, a net gain of 1,564 B
-(the margin on the tip would be about 74,490 B, past the 72 KB gate). On
+(the margin on the tip would be about 74,620 B, past the 72 KB gate). On
 PS1-RAM's tree the combat group is 126,696 B before this and 134,440 B
 with `model.c` and `prims.c`: the slot would grow by 4,096 B, a net loss
 of 484 B. Growing the slot costs resident memory and needs the
 coordinator (`PARALLEL_WAVES.md` section 3), so it was left: whoever
 lands second, with the numbers of both trees, adds `prims` to
 `PLAT_GROUPS` (one word) when the combat group has 3.7 KB to spare under
-the slot. After this package the combat group has 2,884 B left under the
+the slot. After this package the combat group has 2,840 B left under the
 slot (about 200 B on PS1-RAM's tree): growth of `combat*.c` / `actor.c` /
 `levels*.c` beyond that moves the slot.
 
@@ -1024,38 +1026,51 @@ lamp pools and contact shadows, a camera on a `TW_BOING` spring with the
 | `home_visit` (Nana Puddin's flat) | - | - | 30.2 | 28 |
 
 PS1-FLAT (the player as a billboard), `home.txt` on this machine before
-and after, fps and the CPU time of one sampled frame (`perf:` line):
+and after, on the tip it landed on (`c827410`), fps and the CPU time of
+one sampled frame (`perf:` line). On `ce2d7e8` the same scenes gave the
+same within 0.2 fps (steady 29.39 -> 30.00, orbit 27.27 -> 30.00, defend
+stress 19.25 -> 23.00):
 
-| scene | base `ce2d7e8` | PS1-FLAT |
+| scene | base `c827410` | PS1-FLAT |
 |---|---:|---:|
 | `home_plain` (the own cottage, Build) | 30.17, 3.1 ms | 30.17, 3.1 ms |
-| `home_steady` | 29.39, 37.1 ms | 30.00, 28.1 ms |
-| `home_orbit` | 27.27, 35.0 ms | 30.00, 26.3 ms |
-| `home_cellar_full` | 27.80, 35.8 ms | 27.80, 35.9 ms |
-| `home_defend_stress` | 19.25, 53.6 ms | 23.00, 45.0 ms |
-| `home_modal` | 29.19, 21.0 ms | 30.00, 21.0 ms |
-| `home_defend_w3` | 30.13, 14.9 ms | 30.13, 6.4 ms |
+| `home_steady` | 29.39, 37.2 ms | 30.00, 28.2 ms |
+| `home_orbit` | 27.17, 35.5 ms | 30.00, 26.4 ms |
+| `home_cellar_full` | 27.80, 35.9 ms | 27.80, 36.0 ms |
+| `home_defend_stress` | 19.10, 53.6 ms | 22.78, 45.4 ms |
+| `home_modal` | 29.19, 21.0 ms | 30.00, 21.1 ms |
+| `home_defend_w3` | 30.13, 15.1 ms | 30.13, 6.5 ms |
 | `home_visit` | 30.17, 9.9 ms | 30.17, 9.9 ms |
 
 The parity pairs still differ by 0 pixels (the second pair's resting
-player is translucent now). Every number above and the 70,480 B margin
-were measured again on the rebased tree (origin `32257f3`, after the Talk
-landings): the same; the house, combat and speed-tour runs again on
-the tip it landed on (`0df7284`): the same, shot for shot. Besides the player's place, the `home_cellar` shot
-differs on the room's outline by 1 to 2 px: it now has the outline of the
-other 8x8 layout (`home_defend`), which did not change. No file of `core/`, `gba/`, `dc/` or `tools/`
+player is translucent now). The numbers above were measured three times
+on three trees (`ce2d7e8`, `32257f3` after the Talk landings, and the tip
+`c827410`); the CPU time of a sampled frame is about 0.13 ms higher on
+the tip, base and head alike (not this package), and the fps agree within
+0.2. Besides the player's place, the `home_cellar` shot differs on the
+room's outline by 1 to 2 px: it now has the outline of the other 8x8
+layout (`home_defend`), which did not change. No file of `core/`, `gba/`, `dc/` or `tools/`
 changed: built clean in one directory, the native runner, `doomogachi.gba`
 and the Dreamcast `doomogachi.elf` have the same sha256 on the base and on
 this branch. The speed tour's house group
 (`speed2.sh OUT house`, 19 windows: Build, the catalog, a held piece, the
 turn, Photo, Live, Score, Hold the Door, a visit, HomeMart, the Black
 Market) holds 30 in every window; its one miss, the busy Live layout
-(28.89, 9 frames over 33 ms), is 30.00 now (one frame of 50 ms).
+(28.78, 10 frames over 33 ms), is 30.00 now (one frame of 50 ms).
+`home_cellar_full` and `home_defend_stress` are stress layouts that were
+below 30 before and are below 30 now (the second is cheaper).
 Third person is as it was: `perf_combat.txt`'s four shots are
-byte-identical (29.88 / 30.00 / 29.94 / 29.51 fps, base 29.81 / 30.00 /
-29.94 / 29.45), `fast_cellar_tp.txt` with the entropy pinned gives 183
-of 184 identical shots (the other frame differs by the adaptive view
-distance, which follows frame time) at 28.94 fps (base 28.86).
+byte-identical (29.81 / 30.00 / 29.94 / 29.51 fps, base 29.81 / 30.00 /
+29.88 / 29.45). `fast_cellar_tp.txt` picks its spawn from the entropy,
+which differs from build to build (28.64 base, 27.57 here, each
+repeatable), so it is played with `seed N` (the same game on both discs):
+seeds 1, 2, 3, 7 give 28.90 / 28.45 / 28.86 / 28.42 fps on the base and
+28.86 / 28.34 / 29.01 / 28.42 on PS1-FLAT (both average 28.66), and
+184, 170, 175, 178 of 184 identical shots. The other shots differ by the
+adaptive view distance (it follows frame time) or, in seed 2's shots 61
+to 70, by the 3D chibi's run cycle (it follows the frames drawn): the
+same PS1-FLAT disc started one vsync later reproduces the base's pixels at
+those shots, so it is pacing, not drawing.
 
 Since H6 the cellar layout (`room_test.c`) holds the bunny beanbag on frame
 0, as it was before H6 (one frame): the beanbag now sinks only while
