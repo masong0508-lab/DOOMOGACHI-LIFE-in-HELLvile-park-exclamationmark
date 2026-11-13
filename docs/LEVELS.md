@@ -154,7 +154,7 @@ with `map = LV_NO_MAP` ("not built"), so it is not shown in the select and canno
   3 bits, gold, feats 3 bits, cleared; secrets; 16 collectible bits) and 48 B of arc state (act, 16 flag
   bits, the buy-back mask, two choice bytes, the fourth player line, up to 16 held resident ids, the previous
   run's last ending). A header carries the version and a 24-bit mask of the records that follow, so a save
-  made on one platform loads on another (a record of a level the build does not list is skipped). 148 B with
+  made on one platform loads on another (a record of a level the build does not list is skipped). Note: such a record is not kept as raw bytes, so a save moved to a platform that lists fewer levels and saved there loses the records of the levels that platform does not list. 148 B with
   all 24 levels, 80 B on the GBA. A fresh island writes the empty chunk; a save without the chunk, an empty
   or a bad one loads as "nothing recorded". The old seven keep `PROG_BREACH_RANKS` and their gold unlock ids
   (no migration). `lv_rank`, `lv_set_rank` and `lv_gold` answer for all 31.

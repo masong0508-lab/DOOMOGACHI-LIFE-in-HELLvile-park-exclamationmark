@@ -129,7 +129,8 @@ int lv_prereq_of(int level)
 }
 
 #if LV_HAS_NEW
-/* the chapter a BEAT_EP* episode belongs to (1..4); the beats are ids, not an order (story.h) */
+/* the chapter a BEAT_EP* episode belongs to (1..4); relies on the BEAT_EP* ids being contiguous in story.h order (asserted below) */
+typedef char ep_order_ok[(BEAT_EP1_6 < BEAT_EP2_1 && BEAT_EP2_7 < BEAT_EP3_1 && BEAT_EP3_7 < BEAT_EP4_1) ? 1 : -1];
 static int ep_chapter(int beat)
 {
     return beat <= BEAT_EP1_6 ? 1 : beat <= BEAT_EP2_7 ? 2 : beat <= BEAT_EP3_7 ? 3 : 4;
