@@ -25,6 +25,7 @@
 #include <psxetc.h>
 #include "ps1.h"
 #include "postfx.h"
+#include "tilerow.h"
 
 typedef struct FrameBuf {
     DISPENV  disp;
@@ -288,20 +289,8 @@ static int upload_rows(int x, int y, int w, int h, const uint8_t *src, int strid
             if (tw < 0) {
                 memcpy(d, src, (size_t)w * 2);
             } else {
-                uint8_t *b = (uint8_t *)d;
-                int k = 0;
-                if (h - r > 1) {            /* not the tile's last row */
-                    b[k++] = 0;
-                    if (step > 0) {
-                        memcpy(b + 1, src, (size_t)tw);
-                        k += tw;
-                    } else {
-                        for (; k <= tw; k++)
-                            b[k] = src[1 - k];
-                    }
-                }
-                while (k < w * 2)
-                    b[k++] = 0;
+                /* the tile's last row is the transparent one below it */
+                tile_row((uint8_t *)d, w * 2, src, tw, step, h - r <= 1);
             }
             d += w;
             src += stride;

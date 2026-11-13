@@ -7,6 +7,9 @@
 #       --script harness/scripts/game_smoke.txt --out OUT --expect "memcard: wrote"
 wait 30
 shot smoke_01_boot
+# every sound effect of SFX.BIN went into SPU RAM at boot (spu.c audio_hw_sfx_preload: its staging
+# buffers are the idle display lists; an effect that was not converted there stays silent)
+expect-log effects (all)
 wait 120
 expect-scene TITLE
 shot smoke_02_title

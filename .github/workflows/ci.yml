@@ -310,6 +310,9 @@ jobs:
       - name: PS1 build tool tests (elf2exe gate, RAM ledger, string sections, overlay planner)
         run: python3 ps1/tools/test_tools.py
 
+      - name: PS1 host test (the image cache's bordered tile rows, ps1/src/tilerow.h)
+        run: cc -O2 -Wall -I ps1/src ps1/harness/tilerow_test.c -o /tmp/tilerow_test && /tmp/tilerow_test
+
       - name: Build the game disc (preset ps1)
         working-directory: ps1
         run: |

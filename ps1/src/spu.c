@@ -383,9 +383,11 @@ void audio_hw_sfx_preload(void)
         ok += convert_sfx(id);
     stage_close();
     s_bg_next = SFX_COUNT;
-    /* what is in SPU RAM now: the same line from two builds = the same sound data */
-    dbg("spu: %d of %d effects, top %05x, sum %08x\n", ok, SFX_COUNT - 1, (unsigned)s_sfx_top,
-        (unsigned)s_up_sum);
+    /* what is in SPU RAM now: the same line from two builds = the same sound data.
+     * "(all)" is what harness/scripts/game_smoke.txt expects: an effect that was not
+     * converted here stays silent (nothing converts after boot, see "staging" above) */
+    dbg("spu: %d of %d effects (%s), top %05x, sum %08x\n", ok, SFX_COUNT - 1,
+        ok == SFX_COUNT - 1 ? "all" : "SOME MISSING", (unsigned)s_sfx_top, (unsigned)s_up_sum);
 #endif
 }
 
