@@ -7,7 +7,7 @@ For every level of the list it writes four scripts, so a level cannot ship witho
                                         intro card, control card, first / third person, the autopilot
   gba/harness/scripts/breach_SLUG.txt   the GBA harness (make -C gba test-breach2): the autopilot (LVF_DEMO)
                                         with `sync on`, three fps windows (start room, middle, late), a
-                                        vhash-seq (determinism), shots
+                                        vhash-seq (printed, not gated), shots
   ps1/harness/scripts/breach_SLUG.txt   the same, for ps1/harness/run.py (converted by tools/speed2.py ps1:
                                         fps / fpsend windows, the vsyncs-per-frame histogram)
   dc/harness/scripts/breach_SLUG.txt    the same, for dc/harness/dcrun (tools/speed2.py dc)
@@ -78,13 +78,14 @@ DETAIL_MODES = [("", [])]
 
 
 def level_count(root):
-    """LV_COUNT of core/src/levels_int.h (None when the registry no longer spells it as an enum)"""
+    """LV_OLD_COUNT of core/src/levels_int.h: the levels that are built (ids 0..N-1). The registry also lists
+    unbuilt ids (LV_NO_MAP); each gets its scripts when it is built and added to LEVELS. None if the macro is gone."""
     try:
         text = open(os.path.join(root, "core/src/levels_int.h")).read()
     except OSError:
         return None
-    m = re.search(r"enum \{([^}]*\bLV_COUNT\b[^}]*)\}", text)
-    return len([x for x in m.group(1).split(",") if x.strip()]) - 1 if m else None
+    m = re.search(r"#define\s+LV_OLD_COUNT\s+(\d+)", text)
+    return int(m.group(1)) if m else None
 
 
 def arg_of(level, demo):
@@ -120,7 +121,7 @@ def gba_script(level, slug, title):
             floor = FLOORS.get((slug, what))
             s += ["%s breach %s: %s" % ("expect-fps %d" % floor if floor else "fps", tag, what),
                   "shot breach_%s_%s" % (slug, what.replace(" ", "_"))]
-        s += ["vhash-seq 30 breach %s: determinism" % tag]
+        s += ["vhash-seq 30 breach %s: hash printed for run-to-run comparison, not gated" % tag]
     return "\n".join(s) + "\n"
 
 
@@ -158,7 +159,7 @@ def main():
     root = ap.parse_args().out_root
     n = level_count(os.path.dirname(HERE))
     if n is not None and n != len(LEVELS):
-        sys.exit("breach_scripts: LEVELS has %d levels but core/src/levels_int.h has LV_COUNT = %d: add the new "
+        sys.exit("breach_scripts: LEVELS has %d levels but core/src/levels_int.h has LV_OLD_COUNT = %d (built levels): add the new "
                  "level(s) to LEVELS so they get their scripts" % (len(LEVELS), n))
     import tempfile
     with tempfile.TemporaryDirectory() as tmp:

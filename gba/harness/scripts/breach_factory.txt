@@ -23,4 +23,4 @@ fps start
 wait 130
 expect-fps 5 breach factory: late
 shot breach_factory_late
-vhash-seq 30 breach factory: determinism
+vhash-seq 30 breach factory: hash printed for run-to-run comparison, not gated

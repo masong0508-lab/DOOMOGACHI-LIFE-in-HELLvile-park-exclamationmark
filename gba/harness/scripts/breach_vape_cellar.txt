@@ -23,4 +23,4 @@ fps start
 wait 130
 expect-fps 14 breach vape_cellar: late
 shot breach_vape_cellar_late
-vhash-seq 30 breach vape_cellar: determinism
+vhash-seq 30 breach vape_cellar: hash printed for run-to-run comparison, not gated

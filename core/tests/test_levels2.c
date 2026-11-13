@@ -8,7 +8,7 @@
  *     finish every cell yet (the two challenge modes need a weapon choice it lacks; the Ultra-Hellvile
  *     and Normal cells of some levels stall); docs/LEVELS.md keeps the measured matrix. When the
  *     autopilot gets there (LV6), move the cell into the asserted set below.
- *   - tools/breach_scripts.py refuses to run when its list and LV_COUNT differ, so a level cannot
+ *   - tools/breach_scripts.py refuses to run when its list and LV_OLD_COUNT differ, so a level cannot
  *     ship without its generated scripts.
  * Add a level-specific block below when a level brings a mechanic. */
 #include <stdlib.h>
@@ -37,7 +37,7 @@ static int demo_run(int lv, int mode, int diff)
 TEST(levels2_autopilot_finishes_every_level_at_plushie)
 {
     int lv, mode;
-    for (lv = 0; lv < LV_COUNT; lv++)
+    for (lv = 0; lv < LV_OLD_COUNT; lv++)
         for (mode = LVM_NORMAL; mode <= LVM_TIME_TRIAL; mode++) {
             int ticks = demo_run(lv, mode, DIFF_PLUSHIE);
             CHECK_MSG(ticks >= 0, "%s, %s: the autopilot is still playing after %d ticks",
@@ -55,7 +55,7 @@ TEST(levels2_sweep)
     static const uint8_t diffs[3] = { DIFF_PLUSHIE, DIFF_NORMAL, DIFF_ULTRA_HELLVILE };
     int lv, mode, d, done = 0, total = 0;
     if (!getenv("LEVELS2_SWEEP")) return;
-    for (lv = 0; lv < LV_COUNT; lv++) {
+    for (lv = 0; lv < LV_OLD_COUNT; lv++) {
         printf("      %-18s", lv_info[lv].title);
         for (mode = 0; mode < LVM_COUNT; mode++)
             for (d = 0; d < 3; d++) {

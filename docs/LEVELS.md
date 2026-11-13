@@ -177,11 +177,11 @@ with `map = LV_NO_MAP` ("not built"), so it is not shown in the select and canno
 ## Level test harness (LV10)
 
 One list makes every level's scripts: `LEVELS` in `tools/breach_scripts.py` (a `make -C core gen`
-generator, so `check-gen` catches a stale file; it refuses to run when the list and `LV_COUNT` differ).
+generator, so `check-gen` catches a stale file; it refuses to run when the list and `LV_OLD_COUNT` (the built levels) differ).
 Per level it writes `core/tests/scripts/levels2_SLUG.txt` (the runner: intro card, control card,
 first and third person, then the autopilot in two rooms; `make -C core test` plays it at 240x160 and
 320x240), `gba/harness/scripts/breach_SLUG.txt` (`push BREACH level|LVF_DEMO`, `sync on`, three fps
-windows of 130 ticks in the start room, the middle and the late part, a `vhash-seq` for determinism,
+windows of 130 ticks in the start room, the middle and the late part, a `vhash-seq` (the hash is printed so two runs can be compared by hand; nothing gates it),
 shots) and the PS1 and Dreamcast versions of it (`tools/speed2.py` turns the windows into `fps` /
 `fpsend` for `ps1/harness/run.py` and `log` / `mark-ticks` / `expect-ticks` for `dcrun`). Windows are
 labelled `breach SLUG: WHAT`.
