@@ -145,7 +145,7 @@ void room_test_render(const DoomoRoomView *v)
     }
     if (parity) {
         /* the player standing still (so it rests in the backdrop) with a
-         * walker passing behind it: its clip draws it again, held pose */
+         * walker passing behind it: its clip draws the player again */
         memset(&acts[na], 0, sizeof(acts[na]));
         acts[na].img = bodyspr_image(DOOMO_PLAYER_ID, 0, 0);
         acts[na].x = INT2FIX(1);

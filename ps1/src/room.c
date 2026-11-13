@@ -8,8 +8,8 @@
  *  - scale: a tile is RT = 32 world units and one unit of the iso art (1/16
  *    tile, one pixel of height) is RU = 2, so walls are 128 units tall (the
  *    room_ref 64 px wall of a 320x240 view) and the furniture keeps the iso
- *    sprites' proportions next to the 3D chibi, whom model.c builds 56 units
- *    tall. (HF said 64 units per tile; at that scale the chibi would stand
+ *    sprites' proportions next to the chibi sprites, drawn at the same
+ *    scale. (HF said 64 units per tile; at that scale a chibi would stand
  *    shorter than a picket fence.)
  *  - the room box: the floor is one textured quad per tile (8bpp, 16 texels
  *    per tile), the four walls are slabs (inner face textured per tile
@@ -36,9 +36,11 @@
  *    smaller), and faces that look down (the camera never goes below the
  *    floor) are not even tested. Ghosts are 50% translucent (RO_INVALID
  *    red, RO_SEMI grey), RO_SELECTED blinks lighter.
- *  - characters: the player (RA_PLAYER) is model.c's 3D chibi, facing where
- *    it walks; every other actor is a camera-facing billboard of its image
- *    with its own x / y squash, standing on its feet.
+ *  - characters: every actor, the player (RA_PLAYER) included, is a
+ *    camera-facing billboard of its image with its own x / y squash,
+ *    standing on its feet. Nobody is a 3D model inside a house (owner,
+ *    2026-11-12: OWNER_DECISIONS "HOUSE CHARACTERS FLAT"); the player keeps
+ *    the contact shadow it always had, drawn as a billboard's.
  *  - light: ambient = the overworld's day colour, up to 4 lamp pools on the
  *    floor vertices (H8: room_ref's light sources, a lit FF_LIGHT piece or a
  *    hearth, with its falloff, room_ref's k_lamp table at 32 d^2 / r^2; none
@@ -80,14 +82,16 @@
  * single full pass: while orbiting, during the wall drop-and-pop, or when
  * the pass would cost about as much as a full render).
  *
- * THE RESTING PLAYER (H4): the 3D chibi is the dearest thing in the room
- * (about 9 ms in Redux), and in Live / Build it mostly stands still. While
- * it has not moved, turned or changed frame for a moment it joins the
- * static layer: drawn into the backdrop with everything else (model.c
- * g_model_hold keeps its walk cycle where it was), and drawn again in the
- * clipped pass only when something moving overlaps it, without its contact
- * shadow (the backdrop has it already). It leaves the layer the frame it
- * moves.
+ * THE RESTING PLAYER (H4): in Live / Build the player mostly stands still,
+ * often at the back of a full room, where a moving element would have
+ * everything in front of it drawn again every frame (the Hell-Cellar: 18
+ * fps instead of 28). While its picture, place and squash have not changed
+ * for a moment it joins the static layer: drawn into the backdrop with
+ * everything else, and drawn again in the clipped pass only when something
+ * moving overlaps it, without its contact shadow (the backdrop has it
+ * already). It leaves the layer the frame it changes. (The core's idle
+ * breath never fires today, home_draw.c HT_BREATH; if it ever does, each
+ * breath is a new backdrop.)
  *
  * Every vertex is transformed once (RTPT per 3), faces are culled by their
  * screen winding and emitted as POLY_F4/G4/F3/G3/GT4 straight into the
@@ -170,11 +174,8 @@ static struct {
     uint8_t  wall_age[4];           /* frames since it flipped, 0xFF settled      */
     int32_t  zoom_q8;               /* smoothed close-up 256..410                 */
     int32_t  lx, ly;                /* smoothed look-at, world 16.16              */
-    int32_t  px, py;                /* the player's last position (fix16)         */
-    int16_t  pang;                  /* the player's facing                        */
-    int32_t  rp_x, rp_y;            /* the player actor last frame (fix16) ...     */
-    int16_t  rp_z;                  /* ... its height                              */
-    uint8_t  still;                 /* frames it has not moved (capped)           */
+    uint32_t rp[5];                 /* the player actor last frame (rest_state)   */
+    uint8_t  still;                 /* frames it has not changed (capped)         */
     uint16_t clut;                  /* the borrowed CLUT row (getClut id)         */
     uint32_t clut_key;
     uint32_t fit_key;               /* fitted projection for this room / view     */
@@ -259,25 +260,6 @@ static uint32_t mix(uint32_t h, uint32_t v)
     h ^= v;
     h *= 0x01000193u;
     return h ^ (h >> 13);
-}
-
-/* 0..4095 heading of (dx, dy) */
-static int ang_of(int32_t dx, int32_t dy)
-{
-    int32_t ax = dx < 0 ? -dx : dx, ay = dy < 0 ? -dy : dy;
-    int a;
-    if (!ax && !ay) return 0;
-    /* atan on [0, 45 deg] ~ 512 * t * (1.27 - 0.27 t), t = small / big */
-    if (ax >= ay) {
-        int t = (int)((ay << 12) / ax);
-        a = (t * (5202 - ((t * 1106) >> 12))) >> 14;  /* 0..512 */
-    } else {
-        int t = (int)((ax << 12) / ay);
-        a = 1024 - ((t * (5202 - ((t * 1106) >> 12))) >> 14);
-    }
-    if (dx < 0) a = 2048 - a;
-    if (dy < 0) a = 4096 - a;
-    return a & 4095;
 }
 
 /* 1 / (1 + 16 d^2 / r^2 / 16), minus its value at 4 r^2, as 0..128 */
@@ -1658,9 +1640,6 @@ static void draw_piece(RC *c, const DoomoRoomObj *o, const DoomoFurn *f, int par
 }
 
 /* ---- actors ---------------------------------------------------------------------- */
-int model_player_draw(const DoomoView3D *v, const DoomoBillboard *bb, uint32_t light);
-extern uint8_t g_model_hold;          /* model.c: keep the pose (a resting player) */
-
 static void blob_set(RC *c, int i, int32_t wx, int32_t wy, int32_t wz, int32_t r)
 {
     vset(c, i, wx - r, wy - r, wz + 1);
@@ -1709,8 +1688,10 @@ static int bill_verts(RC *c, const DoomoRoomActor *a, int *tw, int *th)
 }
 COLD_END
 
+/* shadow 0: without its contact shadow (the resting player in the pass:
+ * the backdrop has it); the player always has one, as it always did */
 COLD_BEGIN
-static void billboard(RC *c, const DoomoRoomActor *a)
+static void billboard(RC *c, const DoomoRoomActor *a, int shadow)
 {
     TexRef tr;
     POLY_FT4 *p;
@@ -1718,7 +1699,7 @@ static void billboard(RC *c, const DoomoRoomActor *a)
     if (!bill_verts(c, a, &tw, &th)) return;
     c->allin = 0;
     slot = actor_slot(c);
-    if (a->flags & BB_SHADOW) blob_quad(c, 4, slot + 1);
+    if (shadow && (a->flags & (BB_SHADOW | RA_PLAYER))) blob_quad(c, 4, slot + 1);
     if (!on_screen(c, 0, 1, 2, 3) || !vram_image(a->img, flip << 8, 0, &tr)) return;
     p = (POLY_FT4 *)gfx_alloc(sizeof(POLY_FT4));
     if (!p) return;
@@ -1737,72 +1718,33 @@ static void billboard(RC *c, const DoomoRoomActor *a)
 }
 COLD_END
 
-/* the player's box: about the model's size (56 units tall) and its shadow;
- * its slots are a little wider than the model's polygons */
+/* an actor's box on screen (its card and shadow, a little wider), its floor
+ * footprint and its slots; 0 = nothing to draw */
 COLD_BEGIN
-static void player_box(RC *c, const DoomoRoomActor *a, SBox *b)
+static int actor_box(RC *c, const DoomoRoomActor *a, SBox *b)
 {
-    int32_t wx = (a->x * RT) >> 16, wy = (a->y * RT) >> 16, wz = a->z * RU;
-    int i, s0 = OT_LEN, s1 = 0;
-    for (i = 0; i < 8; i++)
-        vset(c, i, wx + ((i & 1) ? 15 : -15), wy + ((i & 2) ? 15 : -15), wz + ((i & 4) ? 62 : 0));
-    xform(c, 8);
-    foot_of(c, 8, 1, b);
+    int tw, th, s;
+    if (!bill_verts(c, a, &tw, &th)) return 0;
+    foot_of(c, 8, 2, b);
     sbox_of(c, 8, b);
-    for (i = 0; i < 8; i++) {
-        int s = (int)(c->sz[i] >> g_cam.ot_shift);
-        if (s < s0) s0 = s;
-        if (s > s1) s1 = s;
-    }
-    b->s0 = (int16_t)clampi(s0 - 16, 1, OT_LEN - 2);
-    b->s1 = (int16_t)clampi(s1 + 16, 1, OT_LEN - 2);
+    s = actor_slot(c);
+    b->s0 = (int16_t)s;
+    b->s1 = (int16_t)(s + 1);
     b->x0 = (int16_t)(b->x0 - 2); b->x1 = (int16_t)(b->x1 + 2);
     b->y0 = (int16_t)(b->y0 - 2); b->y1 = (int16_t)(b->y1 + 2);
+    return 1;
 }
-COLD_END
 
-/* the player: model.c's 3D chibi, facing where it walks (the core's combat
- * aim angle is borrowed for the call and put back); r3d puts it into the
- * view's full ordering table (g_cam.ot) */
-COLD_BEGIN
-static void player(RC *c, const DoomoRoomActor *a, int shadow)
+/* everything an actor's billboard depends on (the camera and the light are
+ * in the static key): the rest test compares it, the key mixes it in */
+static void rest_state(const DoomoRoomActor *a, uint32_t s[5])
 {
-    DoomoBillboard bb;
-    DoomoPlayerState *ps = core_player();
-    int16_t sa = 0, sr = 0;
-    int32_t dx = a->x - R.px, dy = a->y - R.py;
-    int light = (c->amb_r + c->amb_g + c->amb_b) / 3;
-    if (!R.pang) R.pang = (int16_t)(((g_cam.ang + 2048) & 4095) | 1);   /* face the camera */
-    if ((dx > 256 || dx < -256 || dy > 256 || dy < -256) && dx < FIX_ONE && dx > -FIX_ONE &&
-        dy < FIX_ONE && dy > -FIX_ONE)
-        R.pang = (int16_t)(ang_of(dx, dy) | 1);
-    R.px = a->x;
-    R.py = a->y;
-    if (shadow) {                       /* its contact shadow (the backdrop has a resting one's) */
-        blob_set(c, 0, (a->x * RT) >> 16, (a->y * RT) >> 16, a->z * RU, 13);
-        xform(c, 4);
-        c->allin = 0;
-        blob_quad(c, 0, -1);
-    }
-    memset(&bb, 0, sizeof(bb));
-    bb.x = a->x * RT;
-    bb.y = a->y * RT;
-    bb.z = ((int32_t)a->z * RU) << 16;
-    bb.img = a->img;
-    bb.scale = 256;
-    if (ps) {
-        sa = ps->angle;
-        sr = ps->recoil;
-        ps->angle = R.pang;
-        ps->recoil = 0;
-    }
-    g_model_hold = (uint8_t)(c->prest >= 0 && a == &c->v->actors[c->prest]);
-    model_player_draw(NULL, &bb, (uint32_t)light);
-    g_model_hold = 0;
-    if (ps) {
-        ps->angle = sa;
-        ps->recoil = sr;
-    }
+    const DoomoImage *img = a->img;
+    s[0] = !img ? 0 : img->uid ? img->uid : (uint32_t)(uintptr_t)img->pix;
+    s[1] = (uint32_t)a->x;
+    s[2] = (uint32_t)a->y;
+    s[3] = (uint16_t)a->z | ((uint32_t)(uint16_t)a->sx << 16);
+    s[4] = (uint16_t)a->sy | ((uint32_t)a->flags << 16);
 }
 COLD_END
 
@@ -2055,7 +1997,7 @@ static void draw_set(RC *c, const TexRef *wt, const TexRef *ft, int resting_only
         if (k == PK_DYNAMIC) continue;
         draw_piece(c, o, f, DP_SHADOW | (k == PK_SPLIT ? DP_BODY : DP_ALL), NULL, 0);
     }
-    if (resting_only && c->prest >= 0) player(c, &v->actors[c->prest], 1);
+    if (resting_only && c->prest >= 0) billboard(c, &v->actors[c->prest], 1);
 }
 
 /* the actors and the marks, in the order of the full render */
@@ -2063,11 +2005,7 @@ static void draw_actors_marks(RC *c)
 {
     const DoomoRoomView *v = c->v;
     int i;
-    for (i = 0; i < v->nact; i++) {
-        const DoomoRoomActor *ac = &v->actors[i];
-        if (ac->flags & RA_PLAYER) player(c, ac, 1);
-        else billboard(c, ac);
-    }
+    for (i = 0; i < v->nact; i++) billboard(c, &v->actors[i], 1);
     if (cursor_on(c)) draw_cursor(c);
     for (i = 0; i < c->W * c->D && i < 128; i++)
         if (sel_on(c, i)) tile_mark(c, i % c->W, i / c->W, 0x402818u, 1);
@@ -2107,7 +2045,7 @@ COLD_BEGIN
 static int el_cost(const RC *c, const El *e)
 {
     if (e->kind == EK_OBJ || e->kind == EK_BODY) return 2 + doomo_furn[c->v->objs[e->idx].furn].nprim * 3;
-    return e->kind == EK_PLAYER ? 40 : e->kind == EK_ANIM ? 4 : 2;
+    return e->kind == EK_ANIM ? 4 : 2;
 }
 COLD_END
 
@@ -2162,10 +2100,9 @@ static int static_boxes(RC *c, STab *t)
         c->fx = 0;
         n++;
     }
-    if (c->prest >= 0 && n < MAXEL) {
-        /* the resting player: drawn again (the same held pose) inside the
-         * clips of what moves behind it */
-        player_box(c, &v->actors[c->prest], &el[n].b);
+    if (c->prest >= 0 && n < MAXEL && actor_box(c, &v->actors[c->prest], &el[n].b)) {
+        /* the resting player: drawn again inside the clips of what moves
+         * behind it */
         el[n].kind = EK_PLAYER;
         el[n].idx = (uint8_t)c->prest;
         el[n].far = 0;
@@ -2194,7 +2131,7 @@ COLD_BEGIN
 static int dynamic_boxes(RC *c, El *el)
 {
     const DoomoRoomView *v = c->v;
-    int i, n = 0, tw, th;
+    int i, n = 0;
     for (i = 0; i < v->nobj; i++) {
         const DoomoRoomObj *o = &v->objs[i];
         const DoomoFurn *f = furn_of(o);
@@ -2223,21 +2160,8 @@ static int dynamic_boxes(RC *c, El *el)
         if (n >= MAXEL) return -1;
         b = &el[n].b;
         el[n].far = 0;
-        if (a->flags & RA_PLAYER) {
-            player_box(c, a, b);
-            el[n].kind = EK_PLAYER;
-        } else {
-            int s;
-            if (!bill_verts(c, a, &tw, &th)) continue;
-            foot_of(c, 8, 2, b);
-            sbox_of(c, 8, b);
-            s = actor_slot(c);
-            b->s0 = (int16_t)s;
-            b->s1 = (int16_t)(s + 1);
-            el[n].kind = EK_ACTOR;
-            b->x0 = (int16_t)(b->x0 - 2); b->x1 = (int16_t)(b->x1 + 2);
-            b->y0 = (int16_t)(b->y0 - 2); b->y1 = (int16_t)(b->y1 + 2);
-        }
+        if (!actor_box(c, a, b)) continue;
+        el[n].kind = EK_ACTOR;
         if (b->x1 < c->clx0 || b->x0 > c->clx1 || b->y1 < c->cly0 || b->y0 > c->cly1) continue;
         el[n].idx = (uint8_t)i;
         n++;
@@ -2464,20 +2388,12 @@ static void run_pass(RC *c, const El *dyn, int nd, const Clip *dc, const STab *t
     for (i = 0; i < ns; i++)
         if (st[i].kind == EK_PLAYER && sc[i].x0 <= sc[i].x1) {
             set_clip(c, &sc[i]);
-            g_r3_area = c->area;
-            player(c, &v->actors[st[i].idx], 0);
-            g_r3_area = NULL;
+            billboard(c, &v->actors[st[i].idx], 0);
         }
     for (i = 0; i < nd; i++) {
-        if (dyn[i].kind != EK_PLAYER && dyn[i].kind != EK_ACTOR) continue;
+        if (dyn[i].kind != EK_ACTOR) continue;
         set_clip(c, &dc[i]);
-        if (dyn[i].kind == EK_PLAYER) {
-            g_r3_area = c->area;
-            player(c, &v->actors[dyn[i].idx], 1);
-            g_r3_area = NULL;
-        } else {
-            billboard(c, &v->actors[dyn[i].idx]);
-        }
+        billboard(c, &v->actors[dyn[i].idx], 1);
     }
     for (i = 0; i < nd; i++)
         if (dyn[i].kind == EK_CURSOR) { set_clip(c, &dc[i]); draw_cursor(c); }
@@ -2510,8 +2426,7 @@ static uint32_t static_key(const RC *c, int a, int H)
               g_rgb[PAL_RAMP(RAMP_VAPE, 1)] ^ (g_rgb[PAL_RAMP(RAMP_SKY, 5)] << 1));
     for (i = 0; i < c->nlamp; i++) key = mix(key, (uint32_t)(c->lamp_x[i] | (c->lamp_y[i] << 12)));
     if (c->prest >= 0)
-        key = mix(mix(key, (uint32_t)R.rp_x ^ 0x9E3779B9u),
-                  (uint32_t)R.rp_y ^ ((uint32_t)R.rp_z << 20) ^ ((uint32_t)(uint16_t)R.pang << 4));
+        for (i = 0; i < 5; i++) key = mix(key, R.rp[i] ^ 0x9E3779B9u);
     for (i = 0; i < v->nobj; i++) {
         const DoomoRoomObj *o = &v->objs[i];
         const DoomoFurn *f = furn_of(o);
@@ -2636,20 +2551,22 @@ void room_render(const DoomoRoomView *v, int force)
     lamps(&c);
     c.pane = room_pane_mode(v->daylight > 15 ? 15 : v->daylight);
     /* the player at rest (Build mode stands it by the door, mostly behind
-     * the furniture): after 2 frames on one spot it joins the backdrop with
-     * its pose held (model.c g_model_hold), so what stands in front of it
-     * is not drawn again every frame */
+     * the furniture): after 2 frames without a change it joins the
+     * backdrop, so what stands in front of it is not drawn again every
+     * frame (never a translucent one: drawn again over its own picture in
+     * the backdrop it would blend twice) */
     c.prest = -1;
     for (i = 0; i < v->nact; i++)
         if (v->actors[i].flags & RA_PLAYER) {
-            const DoomoRoomActor *pa = &v->actors[i];
-            if (pa->x == R.rp_x && pa->y == R.rp_y && pa->z == R.rp_z) {
+            uint32_t s[5];
+            rest_state(&v->actors[i], s);
+            if (!memcmp(s, R.rp, sizeof(s))) {
                 if (R.still < 255) R.still++;
             } else {
                 R.still = 0;
+                memcpy(R.rp, s, sizeof(s));
             }
-            R.rp_x = pa->x; R.rp_y = pa->y; R.rp_z = pa->z;
-            if (R.still >= 2) c.prest = i;
+            if (R.still >= 2 && !(v->actors[i].flags & BB_TRANSLUCENT)) c.prest = i;
             break;
         }
     /* the backdrop: at the frame's dither phase (x and y mod 4) */
@@ -2687,7 +2604,7 @@ void room_render(const DoomoRoomView *v, int force)
             const DoomoFurn *f = furn_of(&v->objs[i]);
             if (f) live += 2 + f->nprim * 3;
         }
-        for (i = 0; i < v->nact; i++) live += (v->actors[i].flags & RA_PLAYER) ? 40 : 2;
+        live += v->nact * 2;
         cost = close_clips(&c, dyn, nd, dc, tab, sc, lim);
         if (force != RM_FILL && cost * 10 >= live * 8) mode = RM_LIVE;
     }

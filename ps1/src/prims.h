@@ -1,8 +1,8 @@
 /* prims.h - low-poly 3D primitives in a model's local space (owner: H3).
  *
- * Factored out of model.c (SPEC H3 M0) so the player's chibi (model.c)
- * and the house's furniture (room.c, FurnPrim lists) share one set of
- * boxes, plush blobs and pyramids. Behaviour is exactly model.c's.
+ * Factored out of model.c (SPEC H3 M0): the boxes, plush blobs and
+ * pyramids of the player's third-person chibi (model.c, the 3D view's only
+ * model; the house draws its furniture with room.c's own and no models).
  *
  * Local space: x right, y forward, z up, in 1/16 model units; prim_xf
  * places the model (feet) relative to the camera and gives its yaw and

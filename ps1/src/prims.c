@@ -3,9 +3,9 @@
  *
  * Speed (H3): every vertex is transformed ONCE (RTPT per three) and the
  * triangles are emitted from the transformed vertices exactly as
- * r3_tri_g() emits them (the same near test, winding cull, fog, ordering
- * slot and r3d's per-polygon drawing area); r3_quad_g() used to transform
- * a blob's vertices five or six times over. Output is unchanged.
+ * r3_tri_g() emits them (the same near test, winding cull, fog and
+ * ordering slot); r3_quad_g() used to transform a blob's vertices five or
+ * six times over. Output is unchanged.
  */
 #include <inline_c.h>
 #include "prims.h"
@@ -75,11 +75,10 @@ static void xf(R3V *v, int n)
 }
 
 /* r3_tri_g() after its transform: near test, cull (closed meshes wound
- * counter-clockwise), fog per vertex, the ordering slot, r3d's area */
+ * counter-clockwise), fog per vertex, the ordering slot */
 static void tri(const R3V *a, const R3V *b, const R3V *c, uint32_t ca, uint32_t cb, uint32_t cc, int bias)
 {
     POLY_G3 *p;
-    uint32_t *slot;
     int otz;
     if (a->sz < R3_NEAR || b->sz < R3_NEAR || c->sz < R3_NEAR)
         return;
@@ -101,17 +100,7 @@ static void tri(const R3V *a, const R3V *b, const R3V *c, uint32_t ca, uint32_t 
     otz = (int)((int32_t)(a->sz + b->sz + c->sz + c->sz) >> (2 + g_cam.ot_shift)) + bias;
     if (otz < 1) otz = 1;
     if (otz > OT_LEN - 2) otz = OT_LEN - 2;
-    slot = g_cam.ot + otz;
-    addPrim(slot, p);
-    if (g_r3_area) {
-        uint32_t *ar = (uint32_t *)gfx_alloc(12);
-        if (ar) {
-            ar[0] = 0x02000000u;
-            ar[1] = g_r3_area[0];
-            ar[2] = g_r3_area[1];
-            addPrim(slot, ar);
-        }
-    }
+    addPrim(g_cam.ot + otz, p);
     g_r3stats.polys++;
 }
 
