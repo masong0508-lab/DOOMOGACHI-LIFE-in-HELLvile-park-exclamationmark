@@ -186,6 +186,10 @@ typedef struct CrView {
     uint8_t locked, cam, ok, pad;
 } CrView;
 
+/* G2-CR: the creator's screen regions (each a retained panel on the GBA): on the held frame a region
+ * is drawn only when its key changed, on two drawn ticks (the two pages), then left alone */
+enum { CRR_TABS, CRR_LIST, CRR_PANE, CRR_HINT, CRR_COUNT };
+
 /* what the shared pixel buffer currently holds */
 enum { CRB_NONE, CRB_PORTRAIT, CRB_FIGHTER, CRB_LEGS };
 
@@ -295,6 +299,13 @@ typedef struct CrState {
     uint32_t lc_uid;
     uint16_t lc_opaque;
     uint8_t  lc_has[32], lc_dark[32], lc_dark_ok;
+
+    /* G2-CR: the held creator frame (creator_draw.c "the held frame"): what each region last drew */
+    uint8_t  hd_in;                 /* this tick is drawn on the held frame      */
+    uint8_t  hd_strip;              /* the button bar's rows have a clean copy   */
+    uint8_t  hd_sig;                /* the backdrop the last full frame drew + 1 */
+    uint8_t  hd_n[CRR_COUNT];       /* drawn ticks in a row with hd_key (2: both pages carry it) */
+    uint32_t hd_key[CRR_COUNT];
 } CrState;
 
 /* (integration, memory budget) The editor state (~6.4 KB with the undo
@@ -413,6 +424,9 @@ void cr_padlock(int x, int y, uint8_t c, uint8_t hole);
 const char *cr_fit(const char *s, int maxw, char *buf);       /* buf >= 48 */
 const char *cr_marquee(const char *s, int maxw, char *buf);   /* buf >= 48 */
 void cr_draw_tab_icon(int x, int y, int tab);
+/* G2-CR: plat_panel_begin for a creator region (CRR_*): 1 draw, 0 kept, 2 nothing to do (the held
+ * frame carries it on both pages: return without plat_panel_end) */
+int  cr_region(int r, int id, int x, int y, int w, int h, uint32_t key);
 /* Rows of the copy picker / option picker that fit. */
 int  cr_pick_rows(void);
 

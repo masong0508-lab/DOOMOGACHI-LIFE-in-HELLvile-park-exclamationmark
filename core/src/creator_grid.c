@@ -271,12 +271,17 @@ void cr_grid_draw(void)
         k = ui_key_str(k, cr.g_find);
         k = ui_key_int(k, (int)(cr.lmemo_sig & 0x7FFFFFFF));          /* the lock bits were made from it */
         if (grid_footer_moves(row)) k = ui_key_int(k, (int)(cr.t / 7));
-        if (!plat_panel_begin(PANEL_CR_LIST, x, y, w + 3, DOOMO_MIN(h + 3, crl.sh - 13 - y), k)) {
+        switch (cr_region(CRR_LIST, PANEL_CR_LIST, x, y, w + 3, DOOMO_MIN(h + 3, crl.sh - 13 - y), k)) {
+        case 2: return;                             /* G2-CR: on both held pages already */
+        case 0:
             ui_window_shadow(x, y, w, h);
             plat_panel_end();
             return;
+        default: break;
         }
         if (CR_CALM) plat_panel_solid();            /* a still backdrop */
+    } else {
+        cr.hd_n[CRR_LIST] = 0;
     }
     if (!ui_window_pop(x, y, w, h, WIN_CREAM, t)) { if (panel) plat_panel_end(); return; }
     st = ui_style(WIN_CREAM);
