@@ -724,6 +724,85 @@ Review: sheets in the stream's evidence (`slot_head`, `slot_eyes`, `slot_pupil`,
 PS1: scripted values draw as the slot's default until CR10 (no part VM yet), so the PS1 creator does not
 offer them (`part_live_drawable`); the new parts add no resident byte there.
 
+## CR-BODY: body types and better sliders (2026-11-13)
+
+Owner request 2026-11-13 ("proper body type and better sliders, every single one of them works"). Part 1 of the
+package (the cheat "Slider range x1..x4" is CR-SLIDERX, the next package; the slider table below is where it
+plugs in).
+
+* **16 body types.** The gene's `body` field (4 bits, already 16 wide) now offers six more after the classic ten:
+  Athletic (broad shoulders, long legs), Gangly (small torso, long legs, a head a size up), Bean (short legs,
+  round middle, a head a size up), Brick (wide and square), Willowy (tall and slim, thin arms) and Bobble (a
+  small body under a head four sizes up). Ids 10..15, append-only (`core/tests/golden/part_ids.txt`), age class ALL
+  (a plain physique, never a shape), method P: no part script, no new painter, only table rows
+  (`portrait_body.c` `body_mod`: shoulder %, hip %, torso height %, legs %, arm %, belly, one byte each, and
+  `pb_body_head`: the head size step). The body type sets the base, then the Height, Build and Head size sliders
+  adjust it (the head step is added to the Head size slider once, in `portrait.c` `sanitize`, and clamped to 15; the
+  classic ten have step 0, so every old look draws exactly as before). `BODY_COUNT` stays 10 (the classic count the
+  generators and premades use); `BODY_TYPES` is 16 and the live count is the catalog's.
+  Sheets: `portrait_sheet --slot body` (looked at: the six read as what they are called at bust, figure, chibi and
+  fighter size); review line `CR-BODY`; `costs.txt` rows measured.
+* **One table for every slider's range** (`creator_data.c` `CR_SLIDERS`, an X-macro: gene field, ends, steps,
+  default; the rows, the reset, the bar and the tests all read it, `cr_sliders[]` / `cr_slider_of`). The build
+  sliders are 0..15 (4 bits), the voice sliders 0..31 (5 bits), the personality sliders 0..15. CR-SLIDERX will scale
+  a slider around its `def` (lo = def - def * m, hi = def + (count - 1 - def) * m, clamped to the gene field) by reading
+  this table; no row has its own range any more.
+
+  | slider | steps | default | ends |
+  |---|---|---|---|
+  | Height | 16 | 7 | Short / Tall |
+  | Build | 16 | 8 | Skinny / Chonky |
+  | Head size | 16 | 11 | Small / Big |
+  | Eye size | 16 | 10 | Tiny / Huge |
+  | Eye gap (was "Spacing") | 16 | 7 | Close / Wide |
+  | Eye height | 16 | 8 | Low / High |
+  | Eye tilt (was "Tilt") | 16 | 8 | Droopy / Sharp |
+  | Brow height | 16 | 7 | Low / High |
+  | Nose size | 16 | 6 | Small / Big |
+  | Mouth size | 16 | 6 | Small / Big |
+  | Horn size | 16 | 7 | Nubbly / Mighty |
+  | Pitch, Speed, Quality, Intonation, Accent | 32 | 16 | Deep-Squeaky, Slow-Fast, Thin-Round, Flat-Sing-song, Plain-Fancy |
+  | Movement, Speech, Expression, Attitude, Quirk | 16 | 8 (Quirk 4) | Slow-Quick, Polite-Blunt, Flat-Expressive, Serious-Easygoing, Normal-Unhinged |
+
+* **Better sliders.** A on a slider puts it back to its default (its own undo step: X brings the value back; nothing
+  happens when it is already there). The bar shows the distance from the default ("+3", "-2", "0") instead of the
+  raw step, with a notch at the default. The help line says "slide, A reset". Two labels are clearer ("Eye gap",
+  "Eye tilt"). Each step is one press; a held direction repeats and stops at the ends (it never wraps). Pixel change:
+  the slider value text, the notch and the help line (before / after shots: evidence `face_tab_*`; every other pixel of
+  every creator shot is the same: the preview pane of 136 shots of the creator scripts was compared with the tree before).
+* **Sliders that did nothing are not offered.** The test found two cases, and the creator now hides them: the **Horn
+  size** with no horns worn (it shows as soon as a horn is worn; a turkey in its top hat reads it as the crown height) and the
+  **turkey's** Head size, Eye gap, Eye height, Eye tilt, Brow height and Mouth size (its head is its own drawing,
+  `portrait_turkey.c`, which has none of those). `cr_slider_dead` is the one function; the test checks that what is hidden
+  is exactly what changes nothing. Nothing was removed from the data: a hidden slider's byte is still saved, and the
+  rows come back when the horns or another species are chosen. `creator_grid.txt` lost one DOWN (the row it passed).
+* **The test that moves every slider** (`core/tests/test_cr_body.c`, host, in `make -C core test`): each of the 11 build
+  sliders (Body, Face and Supernatural tabs) is moved from its lowest to its highest step on the bench citizen: the bust
+  or the figure must change, and every single step must change the picture (a table is printed: slider, steps, pixels,
+  result); then on every species and six body types (0, 3, 6, 9, 12, 15) (the creator does not offer it where `cr_slider_dead`); the 16 body
+  types are each a different figure; the new ones set the proportions they are named for; no render writes outside its
+  picture (canary bytes around every buffer; the SAN=1 run adds the sanitizer's eyes); the voice and personality sliders
+  (not build sliders: they change what is said and how a citizen acts, not the picture) reach both ends, keep them through
+  `resident_sanitize` and clamp; A resets and undo brings it back; the Body row cycles all 16. Numbers on the bench
+  (lowest to highest, bust + figure px): Height 2,969, Build 1,237, Head size 2,198, Eye size 463, Eye gap 530,
+  Eye height 673, Eye tilt 193, Brow height 75, Nose size 101, Mouth size 39, Horn size 1,645 (the smallest is the mouth).
+* **The same moves on every platform** (`core/tests/scripts/creator_sliders.txt`; GBA `gba/harness/scripts/creator_sliders.txt`):
+  each slider is held to its lowest step (a shot, and again a few ticks later), held to its highest (two shots), then A
+  (a shot), then the 16 body types are stepped through. `tools/slider_shots_check.py DIR` reads the shots of any platform
+  (the preview pane only, the animation's own pixels left out) and fails, listing each slider, when a slider's lowest
+  and highest preview do not differ or A did not bring it back. Where it runs: the native runner at both resolutions
+  (`make -C core test`, `scripts`), the GBA ROM (`make -C gba test-creator-sliders`), the PS1 harness (`cmake --build
+  --preset ps1 --target harness`, or `run.py --script core/tests/scripts/creator_sliders.txt` and the checker),
+  the Dreamcast on Flycast (`make -C dc ui-compare`, the script is in the default list and the checker runs on its shots).
+  The checker has a self-test (`parts-check`: a slider that moves nothing fails, an animation does not count).
+* **Memory.** PS1: the resident table is 96 B + a 16 B step array (was 120 B) and `sanitize` gained one load and add:
+  `_end` 0x801ee3e0 -> 0x801ee3d0 (16 B less: 72,720 -> 72,736 B below the stack top = 71.0 KB, so the tree is still 992 B under the 72 KB plan gate until SPEED PS1-RAM, docs/PS1.md "CR-BODY");
+  the catalog rows, the six part icons and the slider table are overlay / disc data. GBA: `.bss`, `.iwram`, `.iwram_bss`,
+  `.data` identical, `.text` +328 B and `.rodata` +2,624 B in ROM (docs/GBA.md ledger row 48).
+* **Not done here / next.** The language packs do not carry the slider and body names yet: the labels are in English
+  like every creator label (the part names reach the packs with CR14). A saved look made with a new body type loads on
+  an older build as the average body (its `sanitize` puts a value past its list back): new saves only.
+
 ## Extending
 
 * **A new catalog option** (e.g. a new hat): nothing to do - rows use the

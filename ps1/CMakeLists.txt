@@ -436,6 +436,10 @@ else()
 		# CR9: the creator's speed gates (expect-fps floors; docs/CREATOR.md "Speed")
 		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${_hs}/creator_speed.txt
 		        --out ${_shots}/creator_speed
+		# CR-BODY: every build slider moved across its range, the preview must change (tools/slider_shots_check.py)
+		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/scripts/creator_sliders.txt
+		        --out ${_shots}/creator_sliders
+		COMMAND ${Python3_EXECUTABLE} -I ${CORE_DIR}/../tools/slider_shots_check.py ${_shots}/creator_sliders
 		# S2-12: the image cache under pressure (Candy Catch's session + Whack, then Dodge: the old hang)
 		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${_hs}/fair_cache.txt
 		        --out ${_shots}/fair_cache

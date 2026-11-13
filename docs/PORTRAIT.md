@@ -603,3 +603,10 @@ deep-field hooks and saving (CR5), icons (CR7), the grid picker (CR6), the SPU-R
 `PS_MAT_INK` 125 and `PS_MAT_WHITE` 126 in `portrait_int.h`, built into the render's material memo by
 `pm_of()`. Pupils, glints and eye whites use them. A `solid same` shape may reach 2,200 px at bust scale
 (a head silhouette); every other solid is still held to 600.
+
+**Body types (CR-BODY).** `body` has 16 types (BODY_AVERAGE .. BODY_BOBBLE; `BODY_COUNT` 10 is the classic count, `BODY_TYPES` 16).
+`portrait_body.c` `body_mod[type][6]` (shoulder %, hip %, torso height %, legs %, arm %, belly) shapes the figure,
+chibi, fighter and bust in `pb_layout`, and `pb_body_head[type]` is a head size step that `portrait.c` `sanitize` adds to
+the head size slider (once per look; clamped to 15; 0 for the classic ten). The sliders then adjust the base. Contact sheet:
+`portrait_sheet --out DIR --slot body`.
+

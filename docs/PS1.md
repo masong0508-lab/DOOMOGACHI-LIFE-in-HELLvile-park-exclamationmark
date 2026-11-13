@@ -1705,3 +1705,15 @@ their catalog rows are creator-overlay data and all are age class ALL (no new ag
 painted choices (`part_live_drawable`: Tail 1/16, Aura 1/8), as for every scripted part since CR3. Harness (PCSX-Redux):
 `game_smoke`, `creator`, `creator_grid` and the new `creator_parts_spooky` PASS; `creator_speed` idle 30.13, grid scroll
 29.39, rows 30.13, value 29.88 (the S3-3 numbers: nothing resident changed).
+
+## CR-BODY (2026-11-13): body types and the slider test
+
+Measured on `ee4e053` (clean worktree) and `ee4e053` + CR-BODY (clean builds, `cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON`,
+`PSN00BSDK_LIBS=/opt/psn00bsdk/lib/libpsn00b`): `_end` 0x801ee3e0 before, 0x801ee3d0 after, so 16 B less resident
+(72,720 B -> 72,736 B = 71.0 KB below the stack top with the boot FMV, the elf2exe line prints "71 KB left" both times: still 992 B under the 72 KB plan gate, as before this package, until SPEED PS1-RAM). The first
+version of the step (a function plus a seven column table) was +96 B; the head size step is now a 16 byte array read inline
+in `sanitize` before its existing clamp, and the body table is back to six one-byte columns (96 B, was 120 B as int16).
+The 6 new body types are table rows (method P, age class ALL: no new age row); their catalog rows and icons are overlay
+data. Harness (PCSX-Redux): `game_smoke`, `creator`, `creator_grid`, `creator_parts_spooky`, `creator_speed` (idle 30.13,
+grid scroll 29.39, rows 30.13, value 29.88: the S3-3 numbers) and the new `creator_sliders` (11 sliders, 16 bodies) PASS.
+
