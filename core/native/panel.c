@@ -43,6 +43,7 @@ typedef struct {
 
 static NatPanel pn[PANEL_COUNT];
 static int cap = -1;               /* the panel being drawn, -1 none  */
+static uint32_t cap_ops;             /* 2D calls the panel being drawn has seen (S3-3: none = drawn before its begin) */
 static int put = -1;               /* the kept panel whose shading is drawn */
 static int depth;                  /* nested 2D calls (plat_image's rects) */
 static int nest;                   /* panels begun inside a panel (drawn as part of it, as gba/src/panel.c) */
@@ -113,6 +114,7 @@ int nat_panel_op(int kind, int x0, int y0, int x1, int y1)
     }
     if (cap >= 0) {
         NatPanel *p = &pn[cap];
+        cap_ops++;
         if (kind == NP_CLEAR) { rule("plat_clear"); return 1; }
         if (x0 >= x1 || y0 >= y1) return 1;
         if (x0 < p->x || y0 < p->y || x1 > p->x + p->w || y1 > p->y + p->h) {
@@ -203,6 +205,7 @@ int plat_panel_begin(int id, int x, int y, int w, int h, uint32_t key)
     for (j = DOOMO_MAX(y, 0); j < DOOMO_MIN(y + h, nat_h); j++)
         for (i = DOOMO_MAX(x, 0); i < DOOMO_MIN(x + w, nat_w); i++) p->mask[j * nat_w + i] = 0;
     cap = id;
+    cap_ops = 0;
     nat_panel_stats.drawn++;
     return 1;
 }
@@ -240,6 +243,7 @@ void plat_panel_end(void)
     }
     if (cap < 0) return;
     p = &pn[cap];
+    if (!cap_ops) nat_panel_stats.empty++;
     for (j = DOOMO_MAX(p->y, 0); j < DOOMO_MIN(p->y + p->h, nat_h); j++)
         for (i = DOOMO_MAX(p->x, 0); i < DOOMO_MIN(p->x + p->w, nat_w); i++) {
             int k = j * nat_w + i;

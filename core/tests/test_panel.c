@@ -379,9 +379,35 @@ TEST(panel_creator_tabs_and_list_are_pixel_identical)
 TEST(panel_creator_calm_pane_and_bar_are_pixel_identical)
 {
     int ok = both("creator calm", s_creator_calm, p_creator_calm, 400, 400);
+    uint32_t empty = nat_panel_stats.empty, drawn = nat_panel_stats.drawn;
     cr_calm = 0;
     portrait_cache_reset();
     CHECK(ok);
+    /* S3-3 (the recipe of S2-6): a region whose key is new (the tab strip, the list or grid, the pane) is drawn
+     * before its panel and the panel then takes the rect as it is: its capture sees no 2D call of its own. Without
+     * it every capture frame draws inside the panel (the GBA: every call routed, 10-30 ms more) */
+    CHECK(empty > 0);
+    CHECK(empty * 2 >= drawn);
+}
+
+/* the species grid (A on the first row), the cursor moved along it every few frames */
+static uint32_t p_creator_grid(int f)
+{
+    if (f == 60) return BTN_A;
+    if (f >= 100 && f % 6 == 0) return BTN_RIGHT;
+    return 0;
+}
+
+TEST(panel_creator_grid_page_is_pixel_identical_and_drawn_before_its_panel)
+{
+    /* the part grid's window is the list region's panel: each move of the cursor makes a new key */
+    int ok = both("creator grid", s_creator_calm, p_creator_grid, 260, 40);
+    uint32_t empty = nat_panel_stats.empty, drawn = nat_panel_stats.drawn;
+    cr_calm = 0;
+    portrait_cache_reset();
+    CHECK(ok);
+    CHECK(drawn > 0);
+    CHECK(empty * 2 >= drawn);
 }
 
 TEST(panel_combat_hud_is_pixel_identical)

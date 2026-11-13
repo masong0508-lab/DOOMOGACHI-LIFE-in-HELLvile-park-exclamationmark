@@ -55,6 +55,8 @@ enum { NP_RECT, NP_OTHER, NP_SHADE, NP_CLEAR, NP_SHAPE };
 typedef struct NatPanelStats {
     uint32_t begins, kept, drawn;  /* plat_panel_begin calls, kept (returned 0), drawn */
     uint32_t spoiled;              /* drawn over later on their frame   */
+    uint32_t empty;                /* captures that drew nothing inside: the core drew the panel before its begin
+                                      (S3-3: a solid panel takes the rect as it is) */
     uint32_t rule;                 /* captures that broke a panel rule  */
     int      rule_panel;           /* the last one's id                 */
     const char *first_rule;        /* the first rule broken             */
