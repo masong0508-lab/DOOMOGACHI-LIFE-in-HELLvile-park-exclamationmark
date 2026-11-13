@@ -53,6 +53,7 @@ TEST(clip_draws_exactly_the_unclipped_pixels_inside_the_box)
     int n, i, bad = 0;
     set_res(240, 160);
     nat_stage_reset();
+    nat_clip_viol = 0;
     rnd_s = 12345u;
     for (i = 0; i < (int)sizeof(pix); i++) pix[i] = (uint8_t)(rnd(3) ? 1 + rnd(200) : 0);   /* holes */
     img.w = 20; img.h = 14; img.pix = pix; img.uid = doomo_image_new_uid();
@@ -186,6 +187,7 @@ TEST(stage_clip_pieces_are_disjoint_and_cover_the_dirty_part_of_the_layer)
 
 /* ---- the ritual to its end, against a full redraw ------------------------------------------------ */
 #include "../src/exorcism_int.h"          /* exo_aura_bind */
+uint32_t exo_probe_host_uid(void);        /* the host's picture of the last frame */
 int exo_probe_result(void);          /* exorcism_scene.c (DOOMO_HITCHECK): 0 not at the result, 1 a failure, 2 a cast out */
 
 #define RITUAL_FRAMES 1700                 /* the result screen to its fade to black */
@@ -287,5 +289,50 @@ TEST(exorcism_aura_rect_list_equals_the_shape_code)
     ritual_noaura = 0;
     for (f = 0, i = 0; f < RITUAL_FRAMES; f++) diff += a[f] != b[f], i = f;
     CHECK_MSG(diff == 0, "%d of %d frames differ without the rect list (last %d)", diff, RITUAL_FRAMES, i);
+    set_res(240, 160);
+}
+
+/* (G2-EX, pixel-changing) the wall's drips hold one length: the church's key no longer changes every 8 ticks from
+ * dread 9 on (it redrew the whole screen on two frames in a row each time) */
+TEST(exorcism_church_key_does_not_carry_a_drip_step)
+{
+    int d;
+    uint32_t t;
+    for (d = 0; d <= 15; d++)
+        for (t = 0; t < 240; t++) {
+            uint32_t k = exo_church_key(d, t), k0 = exo_church_key(d, d >= 13 ? 1u : 0u);
+            if (d < 13) CHECK_MSG(k == k0, "dread %d tick %u: key 0x%x moves", d, (unsigned)t, (unsigned)k);
+            CHECK_MSG((k & ~0x80u) == (uint32_t)d, "dread %d tick %u: key 0x%x holds more than the dread and the beams", d, (unsigned)t, (unsigned)k);
+        }
+}
+
+/* (G2-EX, pixel-changing) the host holds one pose: its picture changes with its expression, not with the blink,
+ * breath and aura frames (each re-rendered 6-8 ms of a GBA frame, every few ticks) */
+TEST(exorcism_host_holds_one_pose)
+{
+    static uint32_t out[RITUAL_FRAMES];
+    uint32_t seen[16];
+    int f, clipped, n = 0, i;
+    NatOptions o;
+    StageStats st;
+    (void)out; (void)st; (void)clipped;
+    memset(&o, 0, sizeof(o));
+    o.w = 240; o.h = 160; o.seed = 0x5EED1234u; o.quiet = 1; o.save_dir = test_tmp_dir;
+    nat_init(&o);
+    nat_stage_on = 0;
+    nat_stage_reset();
+    test_reset();
+    doomo_init();
+    scene_set(&SCENE_TITLE, 0);
+    rframe(0);
+    scene_set(&SCENE_EXORCISM, -1);
+    for (f = 0; f < 1300; f++) {                      /* the intro to the true name: the host's expression is the same */
+        uint32_t u;
+        rframe(pad(f));
+        u = exo_probe_host_uid();
+        for (i = 0; i < n && seen[i] != u; i++) {}
+        if (i == n && n < 16) seen[n++] = u;
+    }
+    CHECK_MSG(n <= 3, "the host showed %d different pictures (a held pose is 1, a re-render at most 2 more)", n);
     set_res(240, 160);
 }

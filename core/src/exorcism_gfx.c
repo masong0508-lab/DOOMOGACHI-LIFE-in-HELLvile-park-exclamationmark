@@ -225,36 +225,35 @@ static void altar(const ChurchGeo *g, int dread)
 }
 
 /* ---- the backdrop key (SP7) ----------------------------------------------------------
- * Everything of the church that does not move every few ticks: the dread level (0..15), the
- * drips' step (dread >= 9: their length cycles every 8 ticks over 5 steps) and the failing
- * beams (dread >= 13: off one tick in four of every 12). The heart in the rose window, the
- * dust motes and the swaying lower curtains are drawn over it (exo_church_live). */
-#define EXO_KEY_DRIP_SHIFT 4
+ * Everything of the church that does not move every few ticks: the dread level (0..15) and the failing
+ * beams (dread >= 13: off one tick in four of every 12). The heart in the rose window, the dust motes and
+ * the swaying lower curtains are drawn over it (exo_church_live). (G2-EX) The wall's blood drips (dread >= 9)
+ * no longer change their length every 8 ticks: that changed the key, and so redrew the whole screen on two
+ * frames in a row every 8 ticks (the new picture on each of the GBA's two pages): 15-20 ms of hitch on every
+ * screen from the true name on. They stay as the first step of the old cycle. */
 #define EXO_KEY_BEAMS_OFF  0x80u
 uint32_t exo_church_key(int dread, uint32_t t)
 {
     uint32_t d = (uint32_t)DOOMO_CLAMP(dread, 0, 15), k = d;
-    if (d >= 9) k |= ((t / 8) % 5) << EXO_KEY_DRIP_SHIFT;
     if (beams_off((int)d, t)) k |= EXO_KEY_BEAMS_OFF;
     return k;
 }
 
 int exo_church_keys(uint32_t *out, int cap)
 {
-    int n = 0, d, p, b;
+    int n = 0, d, b;
     for (d = 0; d < 16; d++)
-        for (p = 0; p < (d >= 9 ? 5 : 1); p++)
-            for (b = 0; b < (d >= 13 ? 2 : 1); b++) {
-                if (n < cap) out[n] = (uint32_t)d | (uint32_t)p << EXO_KEY_DRIP_SHIFT | (b ? EXO_KEY_BEAMS_OFF : 0u);
-                n++;
-            }
+        for (b = 0; b < (d >= 13 ? 2 : 1); b++) {
+            if (n < cap) out[n] = (uint32_t)d | (b ? EXO_KEY_BEAMS_OFF : 0u);
+            n++;
+        }
     return n;
 }
 
 void exo_church_backdrop(uint32_t key)
 {
     ChurchGeo g;
-    int dread = (int)(key & 15), drip = (int)((key >> EXO_KEY_DRIP_SHIFT) & 7);
+    int dread = (int)(key & 15);
     int x, y, W, H, floor_y, big;
     uint8_t whi = exo_col(EC_WALL_HI, dread), wlo = exo_col(EC_WALL_LO, dread);
     uint8_t stripe = exo_col(EC_STRIPE, dread);
@@ -270,7 +269,7 @@ void exo_church_backdrop(uint32_t key)
     for (y = 10; y < floor_y - 16; y += 22)
         for (x = 11 + ((y / 22) & 1) * 7; x < W; x += 28) {
             if (dread < 9) ui_heart_flat(x, y, 2, stripe);
-            else { plat_rect(x, y, 2, 3 + (x * 7 + drip) % 5, PAL_UI_RED_D); }
+            else { plat_rect(x, y, 2, 3 + (x * 7) % 5, PAL_UI_RED_D); }
         }
     /* wainscot panel + gold trim */
     plat_rect(0, floor_y - 12, W, 12, exo_col(EC_WOOD, dread));
