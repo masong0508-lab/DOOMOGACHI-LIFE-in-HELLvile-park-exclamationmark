@@ -1,0 +1,53 @@
+# core/data/talk/grammar/en/topic_hobbies.tlk - T5b-TOPIC: replies by topic kind (root=hobbies) for ASK_ABOUT, ASK_OPINION, TELL and the opinion acts. Kid-safe. Syntax: core/tools/talkc_gen.py.
+@rule core.ask_about.hobbies_pro guard: root=hobbies&stance=pro act: opine_pos
+  "{x:cap}? I'd do it all weekend. Then the weekend after."
+  "{x:cap}! My hands itch to start. Yours too, I bet."
+  "{x:cap}? I bought the gear. I still have the gear."
+  "{x:cap}? The best way to lose an afternoon, on purpose."
+  "I'd join a club for {x}. I did, and we met twice."
+  "{x:cap}? Teach me. I'll bring snacks and a bad attitude."
+@rule core.ask_about.hobbies_con guard: root=hobbies&stance=con act: opine_neg
+  "{x:cap}? I tried. The hobby tried back, nobody won."
+  "{x:cap}? Too much effort. I get tired reading the rules."
+  "{x:cap}? I'd sooner alphabetize the fog."
+  "I quit {x} after one round. The round was a long one."
+  "{x:cap}? Everyone's good at it but me. It's a conspiracy."
+  "{x:cap}? Fine for others. For me, a nap beats it."
+@rule core.ask_about.hobbies_neu guard: root=hobbies&stance=neutral act: answer
+  "{x:cap}? I watched somebody do it. They looked pleased."
+  "{x:cap}? I've never tried. I've also never ruled it out."
+  "I think {x} needs a hat. I'm not sure. Maybe a glove."
+  "{x:cap}? Somebody told me the rules. They wandered off."
+  "{x:cap}? Ask the Mayor. He's tried everything, once."
+  "{x:cap}? Nice. I'm told it's good for the knees."
+@rule core.ask_about.hobbies_joke guard: root=hobbies act: joke
+  "{x:cap}? I'm a natural. Naturally bad, I mean."
+  "I took up {x}, and it let go of me."
+  "{x:cap}? I'm training for it. I'm on a break."
+@rule core.ask_opinion.hobbies guard: root=hobbies act: answer
+  "{x:cap}? A fine way to waste a day, and I mean it kindly."
+  "My take on {x}: good for the soul, bad for the schedule."
+  "{x:cap}? Three stars. Four if the snacks are good."
+  "{x:cap}? It's a hobby. That's the whole point of it."
+  "I'd say {x} is a good thing to be bad at."
+  "{x:cap}? The kind of thing you'd do on a lazy Sunday."
+@rule core.tell.hobbies_pro guard: root=hobbies&stance=pro act: opine_pos
+  "{x:cap}! Good for you. I'd come watch, with a flag."
+  "A person with {x} in their life is a person with plans."
+  "You do {x}? Show me. I'll hold your jacket."
+@rule core.tell.hobbies_con guard: root=hobbies&stance=con act: opine_neg
+  "{x:cap}? Hm. Maybe the equipment was the problem."
+  "Not everyone clicks with {x}. I didn't, and I'm fine."
+  "Try another one. There's a whole shelf of hobbies."
+@rule core.opine_pos.hobbies_agree guard: root=hobbies&stance=pro act: agree
+  "Yes! {x:cap} is a good one. It keeps the hands busy."
+  "Right? It's the best way to spend a weekend."
+@rule core.opine_pos.hobbies_disagree guard: root=hobbies&stance=con act: disagree
+  "{x:cap}? Hm. I gave it a go, it gave me a blister."
+  "Not for me. I'm a spectator at heart, with snacks."
+@rule core.opine_neg.hobbies_agree guard: root=hobbies&stance=con act: agree
+  "Ha, {x}. Yes. Too many rules, not enough naps."
+  "Right? I tried it. It's a lot."
+@rule core.opine_neg.hobbies_disagree guard: root=hobbies&stance=pro act: disagree
+  "Not {x}! It's the best part of my week."
+  "Hey, give {x} an hour. It grows on you."

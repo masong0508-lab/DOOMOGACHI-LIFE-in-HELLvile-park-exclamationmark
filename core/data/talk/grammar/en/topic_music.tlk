@@ -1,0 +1,53 @@
+# core/data/talk/grammar/en/topic_music.tlk - T5b-TOPIC: replies by topic kind (root=music) for ASK_ABOUT, ASK_OPINION, TELL and the opinion acts. Kid-safe. Syntax: core/tools/talkc_gen.py.
+@rule core.ask_about.music_pro guard: root=music&stance=pro act: opine_pos
+  "{x:cap}? I dance to it in my head. The head has no rhythm."
+  "{x:cap}! Turn it up. I'll turn it up louder."
+  "{x:cap}? It makes my toes tap. Both sets."
+  "I hum {x} while I do chores. The chores take longer."
+  "{x:cap}? Best thing since the bandstand got a roof."
+  "I'd put {x} on every day. Even Mondays. Especially Mondays."
+@rule core.ask_about.music_con guard: root=music&stance=con act: opine_neg
+  "{x:cap}? It gives me a headache and a twitch."
+  "{x:cap}? Louder isn't better. It's just louder."
+  "I'd hush {x} if I could. I can't. I've tried."
+  "{x:cap}? My ears asked to be excused."
+  "{x:cap}. It's not you, it's the noise."
+  "I can't hum {x}. My throat refuses. We have an agreement."
+@rule core.ask_about.music_neu guard: root=music&stance=neutral act: answer
+  "{x:cap}? I've heard it. It was in the background."
+  "{x:cap}? I clap on the wrong beat. Every time."
+  "{x:cap}? Bonejangles can explain it. Slowly, with a drum."
+  "I know it from the radio. The radio hiccups."
+  "{x:cap}? Nice rhythm. Or a nice rash, I forget."
+  "{x:cap}? A little like the mayor snoring, but with a melody."
+@rule core.ask_about.music_joke guard: root=music act: joke
+  "{x:cap}? I'd play it, but I only know the first bit. Over and over."
+  "What's my favourite note? The one that ends. Kidding."
+  "{x:cap}? Sorry, I'm a little flat. Mostly in the head."
+@rule core.ask_opinion.music guard: root=music act: answer
+  "{x:cap}? Good beat, good feel, good excuse to wiggle."
+  "My take on {x}: I'd hum it in the shower, yes."
+  "{x:cap}? Four stars and a tambourine."
+  "I'd give {x} a spin. A short spin."
+  "{x:cap}? Fine, if you bring snacks to the show."
+  "{x:cap}? The kind of sound that makes the lamps lean in."
+@rule core.tell.music_pro guard: root=music&stance=pro act: opine_pos
+  "{x:cap}! Yes. Please, play it for me sometime."
+  "You have good ears. I can tell. They're even."
+  "{x:cap}? My toes just agreed. They never agree."
+@rule core.tell.music_con guard: root=music&stance=con act: opine_neg
+  "{x:cap}? Hm. Maybe the volume was the problem, or the music."
+  "Oof, {x}. Earplugs are cheap, you know."
+  "That's rough, {x}. I'd hum something sweeter."
+@rule core.opine_pos.music_agree guard: root=music&stance=pro act: agree
+  "Yes! {x:cap} is a good one. I'd learn the words."
+  "Right? It's the kind of sound I'd marry. Politely."
+@rule core.opine_pos.music_disagree guard: root=music&stance=con act: disagree
+  "{x:cap}? Hm. It gives me a small headache."
+  "Not for me. My ears are shy."
+@rule core.opine_neg.music_agree guard: root=music&stance=con act: agree
+  "Ha, yes. {x:cap} is a lot. A whole lot."
+  "Right? Take it away. Quietly."
+@rule core.opine_neg.music_disagree guard: root=music&stance=pro act: disagree
+  "Not {x}! It's a good tune. You just need rhythm."
+  "Hey, I love {x}. Take that back, nicely."

@@ -1,0 +1,45 @@
+# core/data/talk/grammar/en/topic_fears.tlk - T5b-TOPIC: replies by topic kind (root=fears) for ASK_ABOUT, ASK_OPINION, TELL and the opinion acts. Kid-safe. Syntax: core/tools/talkc_gen.py.
+@rule core.ask_about.fears_a guard: root=fears act: opine_neg
+  "{x:cap}? I keep a light on for that one. And a second one."
+  "{x:cap}? Small steps. Very small, mouse-sized."
+  "Everyone is scared of something. Mine's {x}, the others are worse."
+  "{x:cap}? I get a funny tummy. It passes with a biscuit."
+  "{x:cap}? I'm braver when somebody holds my hat."
+  "{x:cap}? I hum loudly until it's gone. It's a whole technique."
+  "{x:cap}? Yes. I do not look under the bed, we agree."
+  "I'm scared of {x}, and I don't mind admitting it. Loudly."
+@rule core.ask_about.fears_b guard: root=fears act: answer
+  "{x:cap}? Lots of folks fear that. It's not a small club."
+  "{x:cap}? It helps to say it out loud. Like now."
+  "{x:cap}? I'd stand next to you if it came up. Behind you, slightly."
+  "You can tell me about {x}. I won't tell the mayor."
+  "{x:cap}? Fair enough. I'd run too, in circles."
+  "Nobody likes {x}. Not even {x.it}. Probably."
+@rule core.ask_about.fears_joke guard: root=fears&!kid_speaker act: joke
+  "{x:cap}? I'm not afraid. My knees are just doing their own thing."
+  "{x:cap}? I faced it once. It blinked first."
+  "{x:cap}? I rehearse my brave face in the mirror. The mirror laughs."
+@rule core.ask_opinion.fears guard: root=fears act: opine_neg
+  "{x:cap}? Not a fan. A tiny, tiny fan, who hides."
+  "My opinion of {x}? It can stay in the other room."
+  "{x:cap}? I'd put it in a box. A sturdy box, with a lock."
+  "{x:cap}? Scary, sure, but it can't catch me. I have snacks."
+  "{x:cap}? Honestly, I'd rather talk about biscuits."
+@rule core.tell.fears_a guard: root=fears act: agree
+  "{x:cap}? Oh, that's a hard one. I'm here, at a safe distance."
+  "That's okay. Plenty of us are scared of {x}."
+  "Thanks for telling me about {x}. It helps to say it."
+  "{x:cap}? We can keep the lights on, both of us."
+  "{x:cap}? You're braver than you think. I'm sure of it."
+@rule core.tell.fears_b guard: root=fears act: backchannel
+  "Mm. {x:cap}. I get that."
+  "I hear you. {x:cap} is a big one."
+  "{x:cap}? Go on. I'm listening, and the door is open."
+  "That sounds like a lot. Want a snack?"
+@rule core.opine_neg.fears_agree guard: root=fears act: agree
+  "Yes. {x:cap}? Can we please not."
+  "Same here. I get shivers just from the word."
+  "Right? Let's talk about something with sprinkles."
+@rule core.opine_pos.fears_disagree guard: root=fears act: disagree
+  "Really? {x:cap} gives me goosebumps, and I don't like them."
+  "You like {x}? Bold. I'd stay close to you, then."

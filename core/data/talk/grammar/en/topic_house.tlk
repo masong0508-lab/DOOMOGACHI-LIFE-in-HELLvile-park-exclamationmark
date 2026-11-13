@@ -1,0 +1,53 @@
+# core/data/talk/grammar/en/topic_house.tlk - T5b-TOPIC: replies by topic kind (root=house) for ASK_ABOUT, ASK_OPINION, TELL and the opinion acts. Kid-safe. Syntax: core/tools/talkc_gen.py.
+@rule core.ask_about.house_pro guard: root=house&stance=pro act: opine_pos
+  "{x:cap}? Best thing in the house. I dusted it, twice."
+  "{x:cap}! I'd move in with it, if I didn't already."
+  "{x:cap}? It ties the room together. And the cat."
+  "{x:cap}? My house is not a home without it."
+  "I talk to {x:def} when nobody's listening. It's a good listener."
+  "{x:cap}? I'd give it a plant. Or a hat."
+@rule core.ask_about.house_con guard: root=house&stance=con act: opine_neg
+  "{x:cap}? It creaks. It groans, it judges me."
+  "{x:cap}? I'd rather live without it. I try, it follows."
+  "{x:cap}? It's in my way. Always, every time."
+  "I keep stubbing a toe on {x:def}. We're not speaking."
+  "{x:cap}? Out of sight, out of mind, please."
+  "{x:cap}? Replace it. Replace it with a rug."
+@rule core.ask_about.house_neu guard: root=house&stance=neutral act: answer
+  "{x:cap}? Every house has one. Mine has two, and one's a mystery."
+  "{x:cap}? It's there. It does its job, quietly."
+  "I think {x:def} is by the door. Or the other door."
+  "{x:cap}? I bought one once. It's in the garage, somewhere."
+  "{x:cap}? Nana says it's haunted. She says that about all of them."
+  "{x:cap}? I'd need to see it first, from different angles."
+@rule core.ask_about.house_joke guard: root=house act: joke
+  "{x:cap}? It's a staple. A staple of the household."
+  "{x:cap}? Built to last. Mine lasted a week."
+  "I asked {x:def} for advice. It stood there, supportively."
+@rule core.ask_opinion.house guard: root=house act: answer
+  "{x:cap}? A fine addition to any room. I'd keep it."
+  "My take on {x}: comfy, a bit dusty, and always there."
+  "{x:cap}? Plus two cozy. Minus one if it squeaks."
+  "{x:cap}? A solid pick. I'd rearrange the room around it."
+  "{x:cap}? Honestly, it needs a better spot."
+  "{x:cap}? It's got character. Mostly the creaky kind."
+@rule core.tell.house_pro guard: root=house&stance=pro act: opine_pos
+  "{x:cap}! Good taste. The room is lucky."
+  "A cosy home needs {x:indef}. You've got it right." needs: x.countable
+  "You have {x}? Now I want one. I'll move the couch."
+@rule core.tell.house_con guard: root=house&stance=con act: opine_neg
+  "{x:cap}? Hm. Maybe try a new corner, corners change everything."
+  "Ah, that's a shame. A pillow might help."
+  "Not every piece of house fits. I own three that don't."
+@rule core.opine_pos.house_agree guard: root=house&stance=pro act: agree
+  "Yes! {x:cap} makes the room. I'd say so on a plaque."
+  "Right? Homes are made of small good things."
+@rule core.opine_pos.house_disagree guard: root=house&stance=con act: disagree
+  "{x:cap}? Hm, it's in my way. I trip on it daily."
+  "Not for me. I'd swap it for a rug."
+@rule core.opine_neg.house_agree guard: root=house&stance=con act: agree
+  "Ha, yes. {x:cap} is a lot of room for a little use."
+  "Right? It's always where my foot wants to be."
+@rule core.opine_neg.house_disagree guard: root=house&stance=pro act: disagree
+  "Not {x}! It's the best part of the room."
+  "Hey, I love {x}. Be nice to it. It's listening."

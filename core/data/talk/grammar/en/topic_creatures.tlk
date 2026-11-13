@@ -1,0 +1,53 @@
+# core/data/talk/grammar/en/topic_creatures.tlk - T5b-TOPIC: replies by topic kind (root=creatures) for ASK_ABOUT, ASK_OPINION, TELL and the opinion acts. Kid-safe. Syntax: core/tools/talkc_gen.py.
+@rule core.ask_about.creatures_pro guard: root=creatures&stance=pro act: opine_pos
+  "{x:cap}? Adorable. I'd let one sleep on my feet."
+  "{x:cap}! I'd name one Gerald. Then they'd all be Gerald."
+  "{x:cap}? I leave out water for them. And a tiny hat."
+  "I have a drawing of {x:indef} on my fridge. Needs a refresh." needs: x.countable
+  "{x:cap}? Soft, wiggly, somehow in charge."
+  "{x:cap}? I talk to them. They agree with everything."
+@rule core.ask_about.creatures_con guard: root=creatures&stance=con act: opine_neg
+  "{x:cap}? Too many legs. Or too few, either way, no."
+  "{x:cap}? I walk around them, politely, at speed."
+  "I'd rather see a ghost. The ghosts say hi."
+  "{x:cap}? They look at me like I owe them money."
+  "{x:cap}? They have opinions. I can see it in their eyes."
+  "{x:cap}? No. I'm happy to say no, cheerfully."
+@rule core.ask_about.creatures_neu guard: root=creatures&stance=neutral act: answer
+  "{x:cap}? I've seen one in a book. It was an okay book."
+  "{x:cap}? Never owned one. I did own a rock named Bob."
+  "I'd say {x} is fine. In a field, from far."
+  "{x:cap}? Grumbleguts keeps a photo. Won't say why."
+  "{x:cap}? I'm told they're quiet. Mine weren't."
+  "{x:cap}? Fun fact, I don't have a fun fact."
+@rule core.ask_about.creatures_joke guard: root=creatures act: joke
+  "{x:cap}? I'm not scared. I just move very quickly, away."
+  "{x:cap}? They say a dog is a friend. A friend with a tail."
+  "What do you call {x:indef} in a hat? A hat-wearer." needs: x.countable
+@rule core.ask_opinion.creatures guard: root=creatures act: answer
+  "{x:cap}? A creature, yes. Nature's little surprise."
+  "My take on {x}: charming, a bit loud, great at naps."
+  "{x:cap}? Four paws up. Or six, whatever it has."
+  "{x:cap}? Lovely, as long as it respects boundaries."
+  "I think {x} would make a fine neighbour. Fewer ladders, too."
+  "{x:cap}? Cozy grade: B plus. Minus fur."
+@rule core.tell.creatures_pro guard: root=creatures&stance=pro act: opine_pos
+  "{x:cap}! Show me pictures. Show me a lot of pictures."
+  "A friend of {x} is a friend of mine."
+  "Oh, {x}! Say hi for me. Gently, I'm told."
+@rule core.tell.creatures_con guard: root=creatures&stance=con act: opine_neg
+  "{x:cap}? Hm. Maybe it was a bad one, they're not all like that."
+  "That sounds scary. Cute doesn't cover everything."
+  "Oof, {x}. Give it a wide berth. A really wide berth."
+@rule core.opine_pos.creatures_agree guard: root=creatures&stance=pro act: agree
+  "Yes! {x:cap} is the best. I'd hug one, a small, polite hug."
+  "Right? Everything is better with a little creature in it."
+@rule core.opine_pos.creatures_disagree guard: root=creatures&stance=con act: disagree
+  "{x:cap}? Hm. I'd keep my distance, cute is a trap."
+  "Not for me. They stare. It's a lot."
+@rule core.opine_neg.creatures_agree guard: root=creatures&stance=con act: agree
+  "Ha, {x}. Yes. They have too many opinions."
+  "Right? They're not my cup of tea. Or my cup of anything."
+@rule core.opine_neg.creatures_disagree guard: root=creatures&stance=pro act: disagree
+  "Hey, not {x}! They're lovely. They just don't know it."
+  "Give {x} a chance. They grow on you, like moss."

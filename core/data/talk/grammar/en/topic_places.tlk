@@ -1,0 +1,52 @@
+# core/data/talk/grammar/en/topic_places.tlk - T5b-TOPIC: replies by topic kind (root=places) for ASK_ABOUT, ASK_OPINION, TELL and the opinion acts. Kid-safe. Syntax: core/tools/talkc_gen.py.
+@rule core.ask_about.places_pro guard: root=places&stance=pro act: opine_pos
+  "{x:cap}? My happy place. I have a bench there, unofficially."
+  "{x:cap}! I'd move there. I'd bring the whole couch."
+  "Everything is better in {x:def}, even the weather. Especially the weather."
+  "{x:cap}? Take me. I'll pack snacks, then more snacks."
+  "I go to {x:def} when I need to think. I think about snacks."
+  "{x:cap}? Postcard-grade. I'd send one to myself."
+@rule core.ask_about.places_con guard: root=places&stance=con act: opine_neg
+  "{x:cap}? I went once. The map lied, and so did the sign."
+  "{x:cap}? Not on my route. My route has opinions."
+  "I'd skip {x:def}. I'd skip it twice, on purpose."
+  "{x:cap}? Bad smell, worse parking, no snacks."
+  "Nothing against {x:def}. Everything, actually. Quietly."
+  "{x:cap}? I get lost on the way there, and on the way back."
+@rule core.ask_about.places_neu guard: root=places&stance=neutral act: answer
+  "{x:cap}? I've walked past it. Waved, a little."
+  "{x:cap}? It's on a map somewhere, I'm told."
+  "I think {x:def} is left of the fog. Or in it."
+  "{x:cap}? Never been, but my cousin sent a postcard. Blank."
+  "A guide once pointed toward {x:def}. Then he pointed elsewhere."
+  "{x:cap}? Somebody gave me directions. I kept the napkin."
+@rule core.ask_about.places_joke guard: root=places act: joke
+  "{x:cap}? It's easy to find. It's right where I'm not."
+  "{x:cap}? Great place. Very much a place."
+  "Take the first left after the fog. Then the other fog."
+@rule core.ask_opinion.places guard: root=places act: answer
+  "{x:cap}? It's a place, and that's the nicest thing I can say."
+  "Honest take on {x:def}: cozy, a bit drafty, good echo."
+  "{x:cap}? Three stars and a bench."
+  "I think {x:def} has potential. Everything does. Even the ditch."
+  "{x:cap}? Nice for a visit. I'd bring a sandwich and a witness."
+@rule core.tell.places_pro guard: root=places&stance=pro act: opine_pos
+  "{x:cap}, yes! Good spot. Great spot, if you like spots."
+  "Oh, {x:def}. Say no more. Say a little more, though."
+  "I like that you go to {x:def}. It says something. Something nice."
+@rule core.tell.places_con guard: root=places&stance=con act: opine_neg
+  "{x:cap}? Brave of you. I'd have taken the other road."
+  "Ah, {x:def}. I'm sorry. Next time bring a friend."
+  "{x:cap}? Hm. Wear sturdy shoes, and good luck."
+@rule core.opine_pos.places_agree guard: root=places&stance=pro act: agree
+  "Right? {x:cap} has a lovely feel, and it doesn't bite."
+  "Yes! {x:cap} is the best. I mean it, I wrote it down."
+@rule core.opine_pos.places_disagree guard: root=places&stance=con act: disagree
+  "Hm, {x:def} always seemed damp to me."
+  "Not {x:def}! I got lost there twice. It was awful."
+@rule core.opine_neg.places_agree guard: root=places&stance=con act: agree
+  "Ha, {x:cap}. Yes. I wandered off and found nothing."
+  "Right? Not my kind of place. I prefer ones with chairs."
+@rule core.opine_neg.places_disagree guard: root=places&stance=pro act: disagree
+  "Oh, give {x:def} a chance. It's grown on me, like moss."
+  "Not {x:def}! I got married there. Okay, I got lunch."

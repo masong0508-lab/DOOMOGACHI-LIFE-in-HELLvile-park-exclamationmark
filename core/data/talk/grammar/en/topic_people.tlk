@@ -1,0 +1,60 @@
+# core/data/talk/grammar/en/topic_people.tlk - T5b-TOPIC: replies that depend on what KIND of
+# topic the player named (root=people), for the question acts (ASK_ABOUT, ASK_OPINION) and for
+# a TELL about it. One file a root; the rules guard root= and stance= so a person word gets a
+# person answer and not the generic one. Kid-safe. Syntax: core/tools/talkc_gen.py.
+@rule core.ask_about.people_pro guard: root=people&stance=pro act: opine_pos
+  "{x:cap}? Love them. Best thing on this street, and the street is mostly fog."
+  "{x:cap}! I'd bake for them. I'd even wash the pan."
+  "{x:cap}? Oh, good people. I save them the seat by the window."
+  "Anyone who says {x} gets my full attention. And my last biscuit."
+  "{x:cap}? They wave first, every time. I respect that."
+  "I wrote {x} on my good-neighbour list. The list is short. They're on it."
+@rule core.ask_about.people_con guard: root=people&stance=con act: opine_neg
+  "{x:cap}? We don't speak, we nod. The nod is cold."
+  "{x:cap}? They borrowed my ladder in spring. It's autumn."
+  "I'm being polite about {x}. That's why I'm quiet."
+  "{x:cap}? They laughed at my hat. It's a good hat."
+  "I keep a distance from {x}. About two porches."
+  "{x:cap}. Next question. A kinder one, please."
+@rule core.ask_about.people_neu guard: root=people&stance=neutral act: answer
+  "{x:cap}? I've met some. Nice enough, mostly taller than me."
+  "I couldn't pick {x} out of a lineup. Pick me out of one. I'm easy."
+  "{x:cap}? Ask the mayor. He knows everyone and tells them all so."
+  "A friend of a friend knows {x}. That's as close as I've been."
+  "{x:cap}? I'd need a name tag first. And lighting."
+  "People like {x} come and go. I stay and nap."
+@rule core.ask_about.people_joke guard: root=people act: joke
+  "{x:cap}? They walk into a bar, it's closed, that is the joke."
+  "How many {x:pl} does it take to change a lamp? I'd call a lamp guy."
+  "{x:cap}? I'd tell you a joke, but they'd hear about it by lunch."
+  "{x:cap} and I have a bit. It's mostly staring."
+@rule core.ask_opinion.people guard: root=people act: answer
+  "My opinion of {x}? Warm. Slightly damp, but warm."
+  "{x:cap}? Solid. I'd lend them a spoon, a good one."
+  "I think {x} means well. I think the fog means well too, and look."
+  "{x:cap}? I'd trust them with a spare key. A spare spare key."
+  "Honest take on {x}: good company, loud snacker."
+  "{x:cap}? Four out of five handshakes."
+@rule core.tell.people_pro guard: root=people&stance=pro act: opine_pos
+  "Ah, {x}! Say hi from me. Don't say who I am."
+  "{x:cap}, yes! You know the good ones."
+  "I like that you talk about {x}. It's a good sign in a person."
+  "{x:cap}? They owe me nothing. I'd help them move."
+@rule core.tell.people_con guard: root=people&stance=con act: opine_neg
+  "{x:cap}? Hm. I'm staying out of that, I have a hat to protect."
+  "I'd keep my distance from {x}. And my ladder."
+  "That's a lot to say about {x}. All of it is fair."
+  "{x:cap}, huh. We'll talk later. Quietly."
+@rule core.opine_pos.people_agree guard: root=people&stance=pro act: agree
+  "Right? {x:cap} is a gem. A noisy gem."
+  "Exactly. {x:cap} gets it. Gets all of it."
+  "Yes. Give {x} a medal. A small one."
+@rule core.opine_pos.people_disagree guard: root=people&stance=con act: disagree
+  "Hm, I'd say {x} is fine. Fine and loud."
+  "Not {x}! They fixed my gate. Eventually."
+@rule core.opine_neg.people_agree guard: root=people&stance=con act: agree
+  "Ha, {x}. You noticed too. I thought it was only me."
+  "Right? I said nothing. Loudly."
+@rule core.opine_neg.people_disagree guard: root=people&stance=pro act: disagree
+  "Go easy on {x}. They've had a week."
+  "Oh, not {x}. They once carried my groceries. Some of them."

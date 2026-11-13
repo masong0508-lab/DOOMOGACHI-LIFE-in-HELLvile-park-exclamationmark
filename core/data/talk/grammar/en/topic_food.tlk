@@ -1,0 +1,53 @@
+# core/data/talk/grammar/en/topic_food.tlk - T5b-TOPIC: replies by topic kind (root=food) for ASK_ABOUT, ASK_OPINION, TELL and the opinion acts. Kid-safe. Syntax: core/tools/talkc_gen.py.
+@rule core.ask_about.food_pro guard: root=food&stance=pro act: opine_pos
+  "{x:cap}? Yes. I'd eat {x.it} for breakfast, and for the other meals."
+  "{x:cap}! My stomach just stood up and clapped."
+  "{x:cap}? I'd cross the whole fog for a bite of {x.it}."
+  "A day without {x} is a day I'd redo."
+  "{x:cap}? Seconds. Thirds, if nobody's counting."
+  "I keep a spoon in my pocket for {x}. Just in case."
+@rule core.ask_about.food_con guard: root=food&stance=con act: opine_neg
+  "{x:cap}? I took a bite once. My tongue filed a complaint."
+  "{x:cap}? No, thank you. And also no."
+  "I'd rather chew a doorknob. A clean one."
+  "{x:cap}? My plate would run away. I'd help it."
+  "{x:cap}. I smell it and my face does a thing."
+  "{x:cap}? Hard pass. I pass it with both hands."
+@rule core.ask_about.food_neu guard: root=food&stance=neutral act: answer
+  "{x:cap}? Never tried. I've watched somebody try."
+  "{x:cap}? It's food. I'm food-adjacent myself."
+  "I'd try {x}. Once. With a witness."
+  "{x:cap}? A fork says yes. My stomach says maybe."
+  "{x:cap}? Sounds like a thing you'd serve on a tray. A small tray."
+  "Is {x} the one in the blue bowl? Or the other blue bowl?"
+@rule core.ask_about.food_joke guard: root=food act: joke
+  "{x:cap}? I'd say it's good, but my mouth is full of opinions."
+  "What did {x} say to the plate? Nothing. It was eaten."
+  "{x:cap}? Delicious. At least in the dream I just had."
+@rule core.ask_opinion.food guard: root=food act: answer
+  "{x:cap}? Needs more butter. Everything needs more butter."
+  "{x:cap}? Warm and with a side of regret. A good side."
+  "My honest take on {x}? Eat it hot, think about it later."
+  "Two forks up for {x}. Three if it's free."
+  "{x:cap}? I give it a seven. Add a pickle, nine."
+  "{x:cap}? Decent. I'd have it again, then forget I did."
+@rule core.tell.food_pro guard: root=food&stance=pro act: opine_pos
+  "{x:cap}! Now we're talking. Pass the napkins."
+  "You said {x} and my stomach noticed."
+  "{x:cap}? Yes, a classic. Save me a bite."
+@rule core.tell.food_con guard: root=food&stance=con act: opine_neg
+  "{x:cap}? Oh dear. You can scrape it off, or run."
+  "Mm, not {x}. I'm sorry. I'll get you a cracker."
+  "{x:cap}? Hope there was a back-up snack."
+@rule core.opine_pos.food_agree guard: root=food&stance=pro act: agree
+  "Yes! {x:cap} is the best. Don't tell the other foods."
+  "Right? One bite and the day gets better."
+@rule core.opine_pos.food_disagree guard: root=food&stance=con act: disagree
+  "{x:cap}? Hm. I had it once, and it was a lot."
+  "Eh, not for me. My tongue disagrees."
+@rule core.opine_neg.food_agree guard: root=food&stance=con act: agree
+  "{x:cap}? Ugh, yes. I only ate it to be polite."
+  "Right? One bite, one mistake."
+@rule core.opine_neg.food_disagree guard: root=food&stance=pro act: disagree
+  "Not {x}! It is a classic. You have bad taste, lovely but bad."
+  "Hey, hands off {x}. That's my favourite."
