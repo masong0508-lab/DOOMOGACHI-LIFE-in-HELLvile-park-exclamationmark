@@ -202,11 +202,19 @@ void lv_arc_set_line4(int v) { R.arc[ARC_LINE4] = (uint8_t)v; }
 /* ---- the chunk -------------------------------------------------------------------- */
 static void brch_reset(void) { memset(&R, 0, sizeof(R)); }
 
+/* the records this build lists (all 24, or the GBA's seven): the rows of R in use */
+static int rec_rows(void)
+{
+    int i, n = 0;
+    for (i = 0; i < LV2_COUNT; i++) n += REC_SLOT(i) >= 0;
+    return n;
+}
+
 static uint32_t brch_size(void)
 {
     const uint8_t *p = (const uint8_t *)&R;
-    uint32_t i;
-    for (i = 0; i < sizeof(R); i++) if (p[i]) return LV_BRCH_HDR + (uint32_t)sizeof(R);
+    uint32_t i, used = LV_BRCH_ARC + 4u * (uint32_t)rec_rows();
+    for (i = 0; i < used; i++) if (p[i]) return LV_BRCH_HDR + used;
     return 0;                                    /* nothing recorded: an empty chunk */
 }
 
@@ -218,7 +226,8 @@ static uint32_t brch_write(uint8_t *d, uint32_t cap)
     for (i = 0; i < LV2_COUNT; i++) if (REC_SLOT(i) >= 0) mask |= 1u << i;
     d[0] = LV_BRCH_VERSION;
     d[1] = (uint8_t)mask; d[2] = (uint8_t)(mask >> 8); d[3] = (uint8_t)(mask >> 16);
-    memcpy(d + LV_BRCH_HDR, &R, sizeof(R));
+    memcpy(d + LV_BRCH_HDR, R.arc, LV_BRCH_ARC);
+    memcpy(d + LV_BRCH_HDR + LV_BRCH_ARC, R.rec, n - LV_BRCH_HDR - LV_BRCH_ARC);   /* the rows in use are first */
     return n;
 }
 

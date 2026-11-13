@@ -43,6 +43,16 @@ enum { LV_VAPE_CELLAR, LV_CLOUD_NINE, LV_SEWERS, LV_FACTORY, LV_GRAVEYARD,
 #define LV_OLD_COUNT 7                /* ranks in PROG_BREACH_RANKS, golds as unlock ids */
 #define LV2_COUNT    (LV_COUNT - LV_OLD_COUNT)   /* records in the 'BRCH' chunk (levels_rec.c) */
 #define LV_NO_MAP    255              /* LevelInfo.map of a level that is not built yet */
+#if defined(DOOMO_PLATFORM_GBA) && !defined(DOOMO_LEVELS_GBA_SET)
+#define DOOMO_LEVELS_GBA_SET 1
+#endif
+/* The level table is writable on the host builds so that a test can re-point a not-built
+ * level at an existing map (core/tests/test_levels_rec.c); a constant on the console builds. */
+#if defined(DOOMO_LEVELS_GBA_SET) || defined(DOOMO_PLATFORM_PS1)
+#define LV_HOSTVAR const
+#else
+#define LV_HOSTVAR
+#endif
 /* Rows the tables hold on this build. The PS1 keeps the old seven only until
  * its resident-memory share is released (PARALLEL_WAVES.md section 3: no new
  * resident byte before PS1-RAM): its tables, 'BRCH' and the new records are
@@ -73,7 +83,7 @@ typedef struct LevelInfo {
     uint8_t  pv_z;            /* preview eye height above the floor (8u)  */
     uint8_t  hell_at;         /* hell blend (0..255) that switches music   */
 } LevelInfo;
-extern const LevelInfo lv_info[LV_TABLE_N];       /* levels2.c */
+extern LV_HOSTVAR LevelInfo lv_info[LV_TABLE_N];       /* levels2.c */
 
 /* ---- the registry (levels2.c): page, platform manifest, unlock rule ---------- */
 enum { LVP_BREACH, LVP_HELL, LVP_ARREARS, LVP_COUNT };   /* select pages */
@@ -107,9 +117,6 @@ extern const char *const lv_page_names[LVP_COUNT];
  * the new ones (LVG_GBA), every other platform all 31 (the PS1: see
  * LV_TABLE_N). The host build can pretend to be the GBA for the tests:
  * lv_list_req = LVG_GBA (a level is listed when it has every flag asked). */
-#if defined(DOOMO_PLATFORM_GBA) && !defined(DOOMO_LEVELS_GBA_SET)
-#define DOOMO_LEVELS_GBA_SET 1
-#endif
 #if defined(DOOMO_LEVELS_GBA_SET)
 #define LV_REC_N 7                    /* new levels with a record on this build */
 #define LV_LIST_REQ LVG_GBA

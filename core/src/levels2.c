@@ -20,7 +20,7 @@
     "", LV_NO_MAP, LB_NONE, par, dev, SONG_HELL_BREACH, theme, accent, icon, 0, 0, 0, 255
 
 /* ---- the levels ------------------------------------------------------------- */
-const LevelInfo lv_info[LV_TABLE_N] = {
+LV_HOSTVAR LevelInfo lv_info[LV_TABLE_N] = {
     { "The Vape Cellar", "HELL BREACH 1",
       "Under Cloud Nine Vapor: crates,\na crawlspace and a vape wraith.",
       "Smells like Brimstone Blast down here",

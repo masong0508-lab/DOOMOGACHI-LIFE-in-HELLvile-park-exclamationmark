@@ -108,6 +108,14 @@ int lv_prereq_of(int level)
     return level >= 0 && level < LV_TABLE_N && lv_reg[level].rule == LVK_AFTER_LEVEL ? lv_reg[level].arg : -1;
 }
 
+#if LV_HAS_NEW
+/* the chapter a BEAT_EP* episode belongs to (1..4); the beats are ids, not an order (story.h) */
+static int ep_chapter(int beat)
+{
+    return beat <= BEAT_EP1_6 ? 1 : beat <= BEAT_EP2_7 ? 2 : beat <= BEAT_EP3_7 ? 3 : 4;
+}
+#endif
+
 int lv_rule_eval(int kind, int arg)
 {
     switch (kind) {
@@ -119,10 +127,12 @@ int lv_rule_eval(int kind, int arg)
         if (!lv_listed(arg)) return lv_rule_met(arg);
         /* the story already took you through the first breaches */
         return lv_was_cleared(arg) || (arg == LV_VAPE_CELLAR && unlock_has(530));
+#if LV_HAS_NEW          /* (the PS1's rows are LVK_ALWAYS and LVK_AFTER_LEVEL only, for now) */
     case LVK_CHAPTER: return story_chapter() >= arg;
-    case LVK_BEAT: return story_episode_done(arg) || story_chapter() > story_beat_chapter(arg);
+    case LVK_BEAT: return story_episode_done(arg) || story_chapter() > ep_chapter(arg);
     case LVK_FLAG: return story_flag(arg) != 0;
     case LVK_NGPLUS: return story_flag(SF_NGPLUS) || lv_arc_finished();
+#endif
     default: return 0;
     }
 }

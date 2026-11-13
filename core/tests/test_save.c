@@ -5,6 +5,7 @@
 #include "doomo/life.h"
 #include "data/save_v1_fixtures.h"     /* LS0: two real version-1 saves */
 #include "doomo/save_budget.h"
+#include "../src/levels_int.h"      /* LV0: the BRCH records */
 
 static DoomoTown snapshot;
 static uint8_t image[256 * 1024];
@@ -653,7 +654,10 @@ TEST(save_version1_loads_with_life_stages)
     uint32_t n;
     int i;
     CHECK_EQ(save_v1_classic[4], 1);                       /* really version 1 */
+    CHECK(lv_set_rank(LV_HB8, RANK_A) && lv_arc_hold(77));  /* LV0: a save without 'BRCH' leaves nothing of these */
     CHECK(save_deserialize(save_v1_classic, sizeof(save_v1_classic)));
+    CHECK_EQ(lv_rank(LV_HB8), RANK_NONE);
+    CHECK_EQ(lv_arc_held_count(), 0);
     CHECK_EQ(doomo_town.population, TOWN_POP_PREMADE);
     CHECK_EQ(RES_STAGE(town_res(V1A_KID_UNTOUCHED)), LIFE_CHILD);
     r = town_res(V1A_KID_RENAMED);
