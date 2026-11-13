@@ -1748,6 +1748,13 @@ at `0x801dff00`, **131,312 B below the stack top** (128.2 KB, +65,376 B). That i
 below the stack top; step 7 gives 30,000 B of that back on purpose, because they would have made three scene
 loads longer.
 
+The ledger, the steps and the checks below were measured on the tree of `4c0f369e` (the base plus this package).
+Rebased on `0df72845` (CR3's gene code and its creator string pool, Talk T5B-OPEN, DC6A) the disc ends at
+`0x801e0640`, **129,456 B below the stack top**: those packages add 1,856 B of resident code and data
+net (mainly `look_gene` 1,544 B, `unlocks_creator` 1,388, `portrait` 412 and `resident` 216, less the 1,916 B of
+`creator_data` that CR3's `-G0` takes out of the resident image: its `.sdata` name lists, which no string
+section can move). That is 55,728 B above the plan gate and 1,616 B short of the old 128 KB goal.
+
 ### The gate and the ledger tools
 
 * `tools/elf2exe.py` prints the exact margin on every build: `elf2exe: N B left below the stack top 0x801ffff0
@@ -2037,10 +2044,20 @@ emulator at a time; the fps numbers are the game's own frame counts, so a busy h
   removed; `harness/tilerow_test.c` (56 tiles) fails on a wrong row; with `STRSEC_VERIFY=1` the whole PS1
   build (316 objects) compiles every file the same in two steps as in one, and the EXE it links is the same
   file as the normal build's.
-* **Gates.** `make -C core -j2 test`: 1067 passed, 0 failed (also with `SAN=1`: only the four old UBSan
-  reports of `concert_gfx.c` / `fixmath.c` and their tests); `check-gen`; `core/tools/xcheck.sh` (403 files on
-  gcc, arm, mipsel, sh4, no warning); `make -C gba` and `make -C gba test` (`make -C gba sizes` is byte for
-  byte the same: nothing under `core/`, `gba/` or `dc/` changes in this package); `make dc-host-test`.
+* **Rebased tree.** The package on `0df72845` against `0df72845` itself (68,368 B below the stack top; with the
+  package 129,456 B), PCSX-Redux again: the speed tour (218 windows) has the same fps in 212, a better fps in
+  6 (the care and kitchen windows, the dream windows, the library shelf move, the new-island load) and a
+  lower one in none; one window (`library_weapons_plan`) shows a 3-vsync frame, which is the window's first
+  frame (the lockstep resume, 0 frames over 33 ms in its table row). The loads are as in the table above
+  (free play, the island and the cutscenes +0-2 ms). 179 of the 182 tour shots are byte for byte the same (the
+  arena's 3D view and one animated portrait differ). 23 harness scripts on both builds all pass, with the same
+  fps (two windows slightly better: third-person combat 29.81 -> 29.88, the options exit 26.41 -> 26.54);
+  `game_smoke` 7 of 7 shots the same and the same SPU line (`sum 50d935f7`). The shots that differ are the
+  random / time-sliced ones named above (title, island, life, concert).
+* **Gates** (on the rebased tree). `make -C core -j2 test`: 1119 passed, 0 failed (1067 before the rebase; also
+  with `SAN=1`: only the four old UBSan reports of `concert_gfx.c` / `fixmath.c` and their tests);
+  `check-gen`; `core/tools/xcheck.sh` (408 files on gcc, arm, mipsel, sh4, no warning); `make -C gba` and
+  `make -C gba test` (nothing under `core/`, `gba/` or `dc/` changes in this package); `make dc-host-test`.
 
 ### Keeping the room (for the packages that follow)
 
