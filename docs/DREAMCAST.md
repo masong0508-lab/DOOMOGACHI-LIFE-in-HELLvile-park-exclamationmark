@@ -1799,7 +1799,7 @@ Measured on the host (software PVR, `dcv3d_test`, 2026-11-13): 8 first-person
 maps (Hell Breach 1..7 and the arena), 24 eyes each, 4 headings, level and
 looking up 120: 1182 frames, 2x2 block mean within 40/255 per channel of the
 native pixel. Level views 79.2 % of pixels (gate 75 %), looking up 80.2 %
-(gate 60 %); the red tint 66 %; the busiest view 769 polygons, 102 KB of TA
+(gate 60 %); the red tint 66 %; the busiest view about 780 polygons, about 103 KB of TA (moves a little between runs)
 data (budget 576 KB). Polygons against columns will never be pixel equal.
 
 **Known gaps (part 1 is not finished):**
@@ -1863,6 +1863,8 @@ What part 2 changed in `view3d.c`:
 - Texture budget for sprites: a sprite the cache does not have is uploaded inside a per-view budget
   (`V3D_SPR_BUDGET`, 3 uploads or colormap copies); the rest wait a tick (`dc3d_stats.deferred`).
   Nine uploads in one tick were a 38 ms tick (`test_sprite_budget`).
+  A colormap copy that does not fit the budget falls back to the fitted flat colour for that tick: the
+  sprite's brightness can change for one tick (host: remap budget full 84.4 %, no new copies 56.5 %).
 - Visibility casts a ray per 4 logical pixels (`V3D_RAY_PX`, it was 2): the casting was 6-8 ms of the
   13 ms a big view cost on Flycast; host parity moved by less than 1 point (numbers below).
 - The tick's budget (`view_budget`): the core's own work before the view varies (the demo bot's plan takes
@@ -1902,7 +1904,7 @@ native runner is not synced with dcrun, so the bot's moves, and so the scenes, d
 Host parity (`make -C dc v3d-test`, 2026-11-13): level views 85.6 % of pixels within 40/255 (gate 80 %),
 looking up 90.1 % (gate 85 %), the red tint 66 %; 1 of 788 level frames under 45 % (gate 1 %); the sprites'
 own pixels 90.5 % (gate 85 %), the sprite rectangles 79.5 % (gate 72 %, they include the world behind
-the sprite), the HUD over them 100 % (gate 97 %); the busiest view 769 polygons, 102 KB of TA data.
+the sprite), the HUD over them 100 % (gate 97 %); the busiest view about 780 polygons, about 103 KB of TA (moves a little between runs) data.
 
 Memory: no resident RAM anywhere (all under `dc/`; the PS1 and GBA are untouched). Still open: a Flycast-to-host picture compare of the view (the host numbers are the only pixel measure),
 a real console, the scene-entry tick (DC6C), the real draw-distance option and governor (DC6C), the
