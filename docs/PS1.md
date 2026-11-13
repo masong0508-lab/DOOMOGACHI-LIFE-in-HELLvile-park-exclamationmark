@@ -1538,3 +1538,14 @@ FMV, so A2 adds no resident byte; the tree is still under the 72 KB rule until P
 VM is off until CR10); their catalog rows (names, sets, tags) are overlay data, no new age row (age class ALL, so
 the resident age table is unchanged). The creator offers the PS1 only the painted hair and facial hair
 (`part_live_drawable`), as for every scripted part since CR3.
+
+## CR4 A3 (2026-11-13): spooky batch
+
+Measured on `0c1fc51` and `0c1fc51` + A3 (clean builds, `cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON`, `PSN00BSDK_LIBS=/opt/psn00bsdk/lib/libpsn00b`):
+`_end` 0x801ef450 both times, the overlay slot ends 0x801ef324 both times, 68,512 B below the stack top, the disc image and
+`OVL.BIN` the same size (the EXE bytes differ: the resident part age table is rebuilt from the catalog). The 60 new parts
+(10 horns, 16 tails, 14 wings, 4 halos, 16 auras) are part scripts the PS1 does not read yet (the part VM is off until CR10):
+their catalog rows are creator-overlay data and all are age class ALL (no new age row). The creator offers the PS1 only the
+painted choices (`part_live_drawable`: Tail 1/16, Aura 1/8), as for every scripted part since CR3. Harness (PCSX-Redux):
+`game_smoke`, `creator`, `creator_grid` and the new `creator_parts_spooky` PASS; `creator_speed` idle 30.13, grid scroll
+29.39, rows 30.13, value 29.88 (the S3-3 numbers: nothing resident changed).
