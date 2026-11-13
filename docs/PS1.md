@@ -220,7 +220,10 @@ is still opaque, and index 0 maps to 0x0000 (transparent) in the CLUTs.
 Everything - code, const data and BSS - is loaded into these 2 MB, and
 `tools/elf2exe.py` refuses an image that leaves less than 64 KB for the
 stack. The build prints the numbers (`elf2exe: ... ends 0x..., N KB
-left below the stack top`). With every module of the game landed the
+left below the stack top`; under the 72 KB plan gate it also prints a
+WARNING). The numbers of 2026-11-12 (131,312 B below the stack top with the
+boot FMV) and the ledger of where the 2 MB go are in "RAM headroom
+2026-11-12" at the end of this file. With every module of the game landed the
 disc no longer fitted (`0x802ec0b4`, 1.1 MB over the limit), so:
 
 * **Scene overlays** (game disc only; `tools/ovl_plan.py`,
@@ -1734,3 +1737,328 @@ The 6 new body types are table rows (method P, age class ALL: no new age row); t
 data. Harness (PCSX-Redux): `game_smoke`, `creator`, `creator_grid`, `creator_parts_spooky`, `creator_speed` (idle 30.13,
 grid scroll 29.39, rows 30.13, value 29.88: the S3-3 numbers) and the new `creator_sliders` (11 sliders, 16 bodies) PASS.
 
+## RAM headroom 2026-11-12 (PS1-RAM)
+
+On `89a28b56` the game disc with the boot FMV ended **65,936 B below the stack top** (65,952 B on `e89f329`):
+416 B above the build's hard limit and 7.8 KB under the 72 KB plan gate. Two packages had already hit that
+wall. This package gives resident memory back without touching the game's logic or a pixel: the disc now ends
+at `0x801dff00`, **131,312 B below the stack top** (128.2 KB, +65,376 B). That is 57,584 B above the plan gate,
+33,008 B above the 96 KB aim and 240 B above the old 128 KB goal (131,072 B). The overlay slot is unchanged
+(131,072 B). Every PS1 window that held 30 fps still does (tables below). Steps 1 to 6 alone ended 161,312 B
+below the stack top; step 7 gives 30,000 B of that back on purpose, because they would have made three scene
+loads longer.
+
+### The gate and the ledger tools
+
+* `tools/elf2exe.py` prints the exact margin on every build: `elf2exe: N B left below the stack top 0x801ffff0
+  (fails under 65520 B, plan gate 73728 B)`. Under the 72 KB plan gate it also prints `elf2exe: WARNING: only N B
+  left below the stack top: M B under the 72 KB plan gate ...` (on GitHub Actions a `::warning` annotation too)
+  and still passes. Under 64 KB it fails as before. `--gate BYTES` moves the plan gate.
+* `tools/ram_ledger.py build/doomogachi.ldmap --ld build/ovl.ld --readelf mipsel-linux-gnu-readelf --elf
+  build/doomogachi.elf [--objs N] [--syms N] [--md] [--gate BYTES]` reads the linker map and prints the ledger
+  below: the layout, the biggest resident objects (code, const data, string literals, `.data`, `.bss` apart;
+  the linker merges all resident string literals into one block, an object's "strings" are its share of it),
+  the overlay groups, and the biggest resident symbols.
+* CI (the PS1 job): "PS1 build tool tests" runs `tools/test_tools.py` (the gate, the ledger, the string splitter
+  and the planner rules below on made-up inputs) and the host test `harness/tilerow_test.c`; "PS1 RAM ledger"
+  writes the ledger into the job summary, next to "Biggest PS1 statics".
+
+### Ledger
+
+Layout, `89a28b56` against this package (the game disc with the boot FMV):
+
+| what (bytes) | before | after | change |
+|---|---:|---:|---:|
+| resident `.text` (code) | 713,292 | 704,320 | -8,972 |
+| resident `.rodata` (const data) | 569,920 | 539,772 | -30,148 |
+| of it: the merged string literals | 108,748 | 81,304 | -27,444 |
+| `.data` + `.sdata` + ctors / dtors | 4,136 | 4,140 | +4 |
+| `.sbss` + `.bss` | 493,448 | 467,180 | -26,268 |
+| `.borrow` (the `.bss` the house and creator groups load over) | 53,776 | 53,776 | 0 |
+| overlay slot | 131,072 | 131,072 | 0 |
+| the EXE ends at | `0x801efe60` | `0x801dff00` | |
+| **left below the stack top** | **65,936** | **131,312** | **+65,376** |
+
+(The rows add up to 65,384 B; 8 B are the sections' alignment.) Where the freed bytes came from, by object
+(resident total before -> after; an object's total counts its share of the merged strings, so the objects add
+up to a little more than the layout does): `ps1/src/vram` 35,217 -> 26,297, `ps1/src/gfx` 152,386 -> 143,852,
+`ps1/src/spu` 12,556 -> 4,116, `fishcook` 7,152 -> 1,596, `catalog` 12,756 -> 7,284, `creator_data` 6,772 -> 1,916,
+`lib_weapons` 4,269 -> 61, `fish_data` 3,184 -> 8, `ui` 24,280 -> 21,420, `levels` 2,949 -> 897, `song_player`
+14,842 -> 13,194, `lib_common` 2,476 -> 904, `dream` 1,768 -> 224, `cook_data` 1,500 -> 0, and 35 more files
+with under 1 KB each (9 KB together, mostly their table strings). The ledger of the final build
+(`tools/ram_ledger.py`, 24 objects and 24 symbols):
+
+**The 24 biggest resident objects**
+
+| object | total | .text | .rodata | strings | .data | .bss | borrowed .bss |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| build/packed/packed_art | 193658 | 0 | 185816 | 0 | 14 | 7828 | 0 |
+| ps1/src/gfx | 143852 | 7524 | 0 | 196 | 6 | 136126 | 0 |
+| core/gen/roster_data | 137698 | 0 | 137696 | 0 | 2 | 0 | 0 |
+| core/src/town | 95844 | 5776 | 124 | 184 | 0 | 89760 | 0 |
+| core/src/ui_raster | 60736 | 22536 | 1240 | 32 | 12 | 36916 | 0 |
+| core/src/portrait | 43662 | 19760 | 128 | 0 | 29 | 23745 | 0 |
+| core/src/portrait_head | 41496 | 40404 | 984 | 0 | 24 | 84 | 0 |
+| core/src/portrait_body | 39324 | 38528 | 592 | 0 | 8 | 196 | 0 |
+| core/src/map | 37704 | 3916 | 72 | 220 | 36 | 33460 | 0 |
+| core/src/portrait_hair | 32312 | 31476 | 804 | 0 | 28 | 4 | 0 |
+| core/src/weld_gfx | 28412 | 27344 | 964 | 48 | 4 | 52 | 0 |
+| ps1/src/world | 26356 | 1228 | 12 | 0 | 0 | 24 | 25092 |
+| ps1/src/vram | 26297 | 5620 | 0 | 0 | 4 | 20673 | 0 |
+| ps1/src/view3d | 26209 | 9372 | 20 | 0 | 14 | 419 | 16384 |
+| ps1/src/txtload | 24852 | 1392 | 0 | 148 | 12 | 23300 | 0 |
+| core/src/weld | 22480 | 10932 | 4748 | 6760 | 40 | 0 | 0 |
+| core/src/ui | 21420 | 20732 | 148 | 248 | 10 | 282 | 0 |
+| core/src/family | 21058 | 18524 | 72 | 1580 | 54 | 828 | 0 |
+| core/src/portrait_gfx | 20805 | 13400 | 2184 | 0 | 0 | 5221 | 0 |
+| core/src/fp_common | 18054 | 13680 | 592 | 1788 | 76 | 1918 | 0 |
+| core/src/sim | 17604 | 11028 | 716 | 824 | 4 | 5032 | 0 |
+| core/src/actor | 17121 | 8820 | 724 | 784 | 4 | 6789 | 0 |
+| ps1/src/r3d | 16149 | 15172 | 24 | 0 | 0 | 953 | 0 |
+| core/gen/mus_data | 15784 | 0 | 15784 | 0 | 0 | 0 | 0 |
+| (276 more) | 645438 | 377156 | 105016 | 73916 | 3676 | 73386 | 12288 |
+
+**The 24 biggest resident symbols**
+
+| symbol | bytes | kind | object |
+|---|---:|---:|---:|
+| s_prim | 108544 | bss | ps1/src/gfx |
+| ps1_pack_spr | 108543 | rodata | build/packed/packed_art |
+| doomo_town | 89504 | bss | core/src/town |
+| ps1_pack_tex | 64428 | rodata | build/packed/packed_art |
+| doomo_roster_pack | 58000 | rodata | core/gen/roster_data |
+| doomo_roster_bio_text | 44931 | rodata | core/gen/roster_data |
+| doomo_map | 32780 | bss | core/src/map |
+| s_fb | 24936 | bss | ps1/src/gfx |
+| pool | 18432 | bss | core/src/portrait |
+| g_world_corner | 16900 | borrow | ps1/src/world |
+| si_pool | 16384 | bss | core/src/ui_raster |
+| doomo_mus_bank | 15784 | rodata | core/gen/mus_data |
+| pl_bandlut | 12675 | rodata | core/src/portrait_lut |
+| pb_draw_body_part | 12608 | text | core/src/portrait_body |
+| compose | 12468 | text | core/src/weld_gfx |
+| block.0 | 12288 | bss | core/src/scene_scratch |
+| win_e | 12288 | bss | ps1/src/txtload |
+| ph_face_part | 11232 | text | core/src/portrait_head |
+| ps1_pack_sky | 11001 | rodata | build/packed/packed_art |
+| sc_pool | 10240 | bss | core/src/ui_raster |
+| doomo_roster_name_text | 9431 | rodata | core/gen/roster_data |
+| doomo_roster_edges | 9258 | rodata | core/gen/roster_data |
+| doomo_lang_es_res | 8260 | rodata | core/gen/lang_res_es |
+| g_world_wtop | 8192 | borrow | ps1/src/world |
+
+### The steps
+
+The margin of each row is the `elf2exe` line of that commit's build. The last column is PCSX-Redux on the scenes
+the step could slow (`ps1/harness/scripts/perf_*.txt`, `options_volume.txt`, `fair_cache.txt`; the whole tour
+and the whole harness are in "Checks"): steps 1 and 2, 3 and 3b, and 4 and 5 were measured together, on the
+builds of steps 2, 3b and 5, and every number is the base's unless a difference is named.
+
+| step | what | freed (B) | left below the stack top (B) | scenes it could slow, base -> this build (PCSX-Redux) |
+|---|---|---:|---:|---|
+| 0 | `89a28b56`, before the package | | 65,936 | |
+| 1 | island and free-play callbacks go to their groups (`ovl_plan.py`) | +21,808 | 87,744 | measured with step 2 (below) |
+| 2 | table strings in sections of their own (`strsec.py`) | +29,376 | 117,120 | island 29.88 / 30.00, title 30.13, dialogue 29.67, creator 30.13: all as before; CPU per frame 21.1 ms against 21.0. Loads: free play 314 -> 340 ms, island 207 -> 229, cutscenes 348 -> 354, creator 416 -> 422 |
+| 3 | the busy banner keeps its pixels in VRAM (`gfx.c`) | +8,640 | 125,760 | measured with the next row |
+| 3b | the boot log says what went into SPU RAM (`spu.c`: one more log line, a checksum) | -144 | 125,616 | options volume windows 34.92 / 26.41 / 27.88 (the saving banner), creator 30.13, fair cache 30.17 / 30.12, pet 30.00: all as before |
+| 4 | the SPU's conversion buffers are the idle display lists at boot (`spu.c`) | +8,640 | 134,256 | boot only: the SPU line is the same (`sum 50d935f7`), see the next row |
+| 5 | image-cache tiles go straight into the upload packets (`vram.c`, `gfx.c`) | +8,656 | 142,912 | after steps 4 and 5: creator 30.13, fair cache 30.17 / 30.12, pet 30.00 (CPU 24.4 ms, as before), options volume 34.92 / 26.41 / 27.88: all as before |
+| 6 | shared core files give their one-group parts to that group (`SHARED`) | +18,448 | 161,360 | every speed-tour window: two load windows 0.4-0.9% slower (new island 16.52 -> 16.45, title to New story 8.54 -> 8.46): the reason for step 7 |
+| 6b | a host test for step 5 and the boot-time SPU check (48 B of log text) | -48 | 161,312 | |
+| 7 | HOLD: free play, the island and the cutscenes take nothing new (`ovl_plan.py`) | -30,000 | **131,312** | every speed-tour window and every harness script ("Checks"): none slower; the loads of the three groups are as before |
+
+No source file of the game changes in steps 1, 2, 6 and 7: the same code and data run from the overlay slot
+instead of from resident RAM. Steps 3 to 5 change three platform buffers in `ps1/src`.
+
+**Step 1: callbacks that never leave their group (`ovl_plan.py`).** The planner keeps a function resident as
+soon as its address is taken, because resident code may call it later. 22 KB were resident for addresses that
+never leave their own group:
+
+* `LOCAL_CALLBACKS`: `fp_island_gfx.c`'s six `draw_*_body` functions go to its own `lr_run()`, which runs them
+  at once; `lr_tap` sits in `ui_raster.c`'s `ur_tap` only around one `ui_fill_circle` / `ui_fill_ellipse` call.
+  `fp_title.c`'s `pc_pill` / `pc_in` / `pc_vile` go to its own `logo_snap()`.
+* `MODAL_CALLBACKS` (called through `scene_callback_begin()`, section 3): the citizen page's `cb_manage` (with
+  `do_action` and all it opens, 6 KB), the memorial's `mem_flowers`, the title's `finished_pick` /
+  `fresh_world_go`, the profile row's `pf_leave` / `pf_renamed` / `pf_join`.
+* `PICK_CALLBACKS` (new): a callback a free-play screen gives to the citizen picker (`fp_pick()`) is called by
+  the picker's own update (`finish_pick()`: `scene_pop()`, then the callback), with the free-play group in the
+  slot. `wz_neighbour` and `cb_introduce` are listed. The planner checks that the function's group is the
+  picker's; the island's picker callbacks (`cb_treat`, `cb_exorcise`, `cb_open`) are not listed and stay resident.
+
+**Step 2: table strings in sections of their own (`tools/strsec.py`, `DOOMO_STRING_SECTIONS`, default ON).**
+With `-fdata-sections` every function's string literals get a section of their own, but all literals a file's
+tables point to share one (`.rodata.str1.4`), and the planner places whole sections. One resident pointer into
+it (a scene's name, two tab labels in `.sdata`) kept every table string of the file resident: 40 KB in 61
+files. `strsec.py` is a compiler launcher: it compiles to assembly, gives each `$LC<n>` of `.rodata.str1.4`
+its own mergeable section (`.rodata.str1.4.LC<n>`), and assembles. Without the rewrite the two steps give the
+one-step object byte for byte (`STRSEC_VERIFY=1` checks that per file; all 316 objects passed). The planner
+then keeps resident exactly the strings resident code or data can reach; the linker still merges equal
+strings and now drops unread ones. `STR_WHOLE` (`story`, `home`): the groups that set the slot's size keep an
+object's table strings together as before, so the slot does not grow.
+
+**Step 3: the busy banner keeps its pixels in VRAM (`gfx.c`).** `gfx_busy_banner()` saved the 252 x 16 pixels
+under "Checking MEMORY CARD..." / "Saving settings..." into 8,064 B of `.bss` (`StoreImage`). They are now
+copied VRAM to VRAM (`MoveImage`) into the same rows of the other framebuffer and back. That buffer is the next
+frame's target, which is cleared before it is drawn (`isbg`). The banner's glyphs and the loading screen's lines
+share one array of 40 sprites. One thing differs on screen, and no capture shows it: when the banner goes up
+over a frame that was not shown yet, the picture on screen has that frame's pixels in the strip for the few
+hundred microseconds until the banner's frame is shown (the pixels that are shown next anyway).
+
+**Step 4: the SPU's conversion buffers are the idle display lists at boot (`spu.c`).** The PCM chunk, its ADPCM
+blocks and the DMA's word-aligned copy (8.7 KB of `.bss`) are only used while a waveform or an effect is
+converted. On the game disc that is boot only (`audio_hw_init()`, `audio_hw_sfx_preload()`): `stage_open()`
+takes the three buffers from the display lists (`plat_save_scratch`, idle until the game loop starts) and
+`stage_close()` drops them. A conversion without buffers fails like a full SPU RAM (the effect stays silent,
+nothing is written). The boot log says what is in SPU RAM: `spu: 35 of 35 effects (all), top 08be0, sum
+50d935f7` (an FNV-1a sum of every byte uploaded; the same sum before and after this step, see "Checks"), and
+`game_smoke.txt` expects `effects (all)`. The engine test also converts at run time (its self test) and keeps
+the statics. **For Talk on the PS1 (TP1):** code that uploads to SPU RAM after boot must take its staging
+buffer the same way, from the game's update (`stage_open()` uses the save scratch: both display lists, idle
+until the frame's drawing starts), never from an interrupt.
+
+**Step 5: image-cache tiles go straight into the upload packets (`vram.c`, `gfx.c`, `tilerow.h`).**
+`vram_image()` built every tile with its transparent border in a 130 x 130 staging buffer (16.9 KB) and
+`gfx_upload_strided()` copied it into the frame's upload packets. `gfx_upload_tile()` writes the bordered rows
+straight into the packets (`tile_row()`: one transparent texel, the tile's texels, read backwards for a
+mirrored image, transparent up to the even width, one transparent row below). The same packets with the same
+bytes, one copy less per cache miss. The staging union is now only the hash table's rebuild copy (8,192 B),
+which the boot-time font / CLUT uploads also use. `harness/tilerow_test.c` compares the rows on the host with
+the old staging code (full, narrow and short tiles, plain and mirrored).
+
+**Step 6: shared core files give their one-group parts to that group (`ovl_plan.py` `SHARED`).** A core file
+outside the planner's `GROUPS` was resident as a whole. For the files named in `SHARED` (`fishcook`, `catalog`,
+`ui`, `song_player`, `fp_common`, `audio`) every `.text` / `.rodata` section is a candidate like a group's
+own: resident when resident code or data reach it or its address escapes; when the scenes of exactly one group
+reach it, it joins that group; reached by two groups it stays resident. `SHARED_NOT` (`story`, `home`,
+`combat`, `freeplay`) take none: they set the slot's size or are close to it. Moved: the fishing / cooking
+effects and unlock checks (5.6 KB, which also frees the fish and recipe tables only they read), the creator's
+option names (4.0 KB), the paint picker and slider only the UI gallery draws (2.5 KB), the studio's song
+helpers (1.6 KB), the jukebox's effect names (0.5 KB). The placement follows the call graph on every build: if
+a second group starts to call one of these, it is resident again by itself (and costs that much resident RAM:
+the build's `ovl_plan: shared code and data in GROUP: N B (...)` lines show what each group holds).
+
+**Step 7: HOLD, the groups on the hub's path take nothing new (`ovl_plan.py` `HOLD`).** What leaves resident
+RAM is read with its group from then on: about 2 ms of a load per KB at the drive's 2x speed. With steps 1 to 6
+alone the disc ended 161,312 B below the stack top, and three groups took 30,000 B of it: free play (the title and
+every free-play screen; 52 loads in the speed tour) loaded in 340 ms instead of 314, the island hub in 227
+instead of 206, the cutscenes in 356 instead of 347. The two speed-tour windows that hold those reads were
+0.4-0.9% slower (new island: 16.52 -> 16.45 fps; title to New story: 8.54 -> 8.46). The player crosses those
+groups all the time, so `HOLD = ("freeplay", "island", "cutscene")` keeps them as they were: their callbacks of
+step 1 (`HELD_CALLBACKS`, still in their reviewed tables) are resident, their objects' table strings stay
+together, and they take no shared code. The three groups are byte for byte as big as on `89a28b56` (106,248 /
+58,324 / 118,768 B). Taking a group off `HOLD` releases it: free play 13.5 KB, the island 13.1 KB, the
+cutscenes 3.7 KB (30,000 B in all). That is the lever to pull when the room is needed more than the loads.
+
+### What it costs: bigger groups, longer loads
+
+Code and strings that leave resident RAM are read with their group. The slot does not grow (the house group with
+its biggest part ends 552 B and the story group 1,192 B below the slot's end, which is a whole number of 2 KB
+sectors), but the groups that took something load a little longer. A load is a scene change (the loading fade,
+section 4) that happens before the scene's first frame, so it is not a frame time; the only speed-tour windows
+that contain one are the two `..._the_load` windows named in step 7. Bytes are the group's size in `OVL.BIN`
+before packing; load ms are PCSX-Redux's own (`ovl: GROUP (N KB) in M ms`) in the speed tour and the harness
+runs (a load takes 1-3 ms more or less when its group sits at another offset in `OVL.BIN`: seek time):
+
+| group | bytes before | bytes after | change | load ms before | after | change |
+|---|---:|---:|---:|---:|---:|---:|
+| home | 172,404 | 172,152 | -252 | 502 | 502 | 0 |
+| creator | 153,600 | 161,976 | +8,376 | 416 | 429 | +13 |
+| story | 129,880 | 129,880 | 0 | 366 | 368 | +2 |
+| combat | 123,532 | 126,088 | +2,556 | 361 | 368 | +7 |
+| cutscene | 118,768 | 118,768 | 0 | 348 | 346 | -2 |
+| freeplay | 106,248 | 106,248 | 0 | 314 | 314 | 0 |
+| fishcook | 93,196 | 103,816 | +10,620 | 289 | 315 | +26 |
+| minigame | 98,768 | 100,648 | +1,880 | 314 | 314 | 0 |
+| library | 90,572 | 99,116 | +8,544 | 288 | 307 | +19 |
+| studio | 83,824 | 85,636 | +1,812 | 276 | 282 | +6 |
+| concert | 75,140 | 75,300 | +160 | 268 | 267 | -1 |
+| island | 58,324 | 58,324 | 0 | 207 | 208 | +1 |
+| exorcism | 47,228 | 47,768 | +540 | 194 | 200 | +6 |
+| dream | 40,068 | 41,616 | +1,548 | 182 | 181 | -1 |
+| storymg | 38,056 | 38,148 | +92 | - | - | - |
+| pet | 27,116 | 27,216 | +100 | 148 | 147 | -1 |
+| workshop | 16,596 | 17,084 | +488 | 125 | 128 | +3 |
+| cutx | 14,024 | 14,024 | 0 | - | - | - |
+| home.mart | 12,144 | 12,144 | 0 | 114 | 113 | -1 |
+| home.visit | 8,824 | 9,076 | +252 | 106 | 107 | +1 |
+| home.build | 8,916 | 8,916 | 0 | - | - | - |
+| gallery | 5,352 | 8,276 | +2,924 | 102 | 108 | +6 |
+| home.defend | 7,308 | 7,308 | 0 | 100 | 99 | -1 |
+| home.roomtest | 5,296 | 5,296 | 0 | 98 | 101 | +3 |
+| all groups | 1,535,184 | 1,574,824 | +39,640 | | | |
+
+The groups that load longer than before are fishing and cooking (+26 ms of 289), the library (+19 ms of 288),
+the creator (+13 ms of 416) and combat (+7 ms of 361): once per scene change, each under one frame. The three
+HOLD groups (free play, the island, the cutscenes) load as before. To make one of the others as fast as before
+too, add it to `HOLD`: it keeps about the group's growth resident (fishing and cooking 10.6 KB, the library 8.5 KB, the
+creator 8.4 KB of the 131,312 B).
+
+### Checks (PCSX-Redux, base `89a28b56` against the final build)
+
+Base is the build of `89a28b56` (65,936 B below the stack top); the final build is the tip of the package
+(131,312 B). Both disc images were played by PCSX-Redux (`ps1/harness/run.py`, `ps1/harness/speed2.sh`), one
+emulator at a time; the fps numbers are the game's own frame counts, so a busy host does not change them.
+
+* **Boot and SPU.** `game_smoke` passes on both and its 7 screenshots are byte for byte the same. The SPU line
+  of the boot log is `spu: 35 of 35 effects, top 08be0, sum 50d935f7` before and after step 4 (the buffers'
+  move; `(all)` was added to it later), so the same bytes went into SPU RAM. `memcard_check.py` finds the game's
+  save blocks on the smoke run's card. The engine-test disc (918,848 B below the stack top) passes its audio
+  self test, its memory card self test (and `memcard_check.py` on that card) and the model script.
+* **Frame rate.** `speed2.sh`, all 10 groups, 218 windows: 213 have the same fps (212 the same frame histogram
+  too; the dream wake-up window has a 3-vsync frame where it had a 4). Four are one frame better (the kitchen
+  counter 29.83 -> 30.00, the library shelf move 29.51 -> 30.00, the new-island load window 16.52 -> 16.65, the
+  care popup 30.00 -> 30.25) and one is 0.03 fps lower: `story_title_new_story_the_load`, 8.54 -> 8.51. That
+  window is 2.4 s of overlay reads; they add up to 2,428 ms against 2,429 ms before, and one frame after the
+  last read ends at 3 vsyncs instead of 2 because the reads' seek times moved by 1-3 ms (the groups sit at other
+  offsets in `OVL.BIN`). No window has a worse worst frame. The perf scripts and `home`, `fair_cache`,
+  `options_volume`, `creator_speed`, ... (53 fps numbers): 51 equal; the two others are the third-person combat
+  views, 29.81 -> 29.88 and 29.45 -> 29.51 (slightly faster). Combat did not get slower.
+* **Scripts.** The 44 scripts played on both builds (`game_smoke`, 25 of `core/tests/scripts` (boot, UI gallery, saves,
+  library, free play, studio, exorcism, workshop, creator, ...), 7 of `ps1/harness/scripts`, the 10 `perf_*` and
+  `es_perf`) all
+  pass; so do the 15 press journeys on the final build. No `ovl: ERROR` line anywhere. The old diagnostic
+  `gfx: save scratch taken mid-frame, list drawn early` appears as often in every script as before.
+* **Pixels.** The speed tour's 182 screenshots: 177 byte for byte the same. The harness scripts' 428: 346 the
+  same, and every shot in 25 of the 44 scripts. The rest are animated sprites whose picture depends on when a
+  time-sliced job ran (`pslice.c` budgets the portrait cache's slices in microseconds of CPU time) and on the
+  global random generator (`plat_entropy()` is the VSync counter and two hardware timers, so any change of boot
+  time re-rolls the title's pair of citizens, a chaotic house's pits, a ghost's sparkles). The scripts with a
+  differing shot were played again on both builds with `seed 1` as their first line (the generator pinned): 309
+  of those 320 shots are the same. The 11 left are the 3D view behind the combat pause menus (combat's own
+  timing, which this package does not touch) and its arenas, the almanac's animated portraits, the exorcist's
+  ghost and a 10 x 10 px sparkle. Six of them are the same picture a few game frames later (shots one game frame
+  apart: base and final are identical from the 1st to the 8th frame on, the arena pause menu after a shift of two
+  frames); five are never in step within 12 frames (random sparkles and particles, the arena's 3D floor). A
+  control: the build with every move of steps 1-6 (161,312 B) differs from the final build by the placement of
+  30,000 B of unchanged code only, and one of the 182 tour shots differs between them (the same 10 x 10 px
+  sparkle). No UI panel, text, tile or static picture differs anywhere.
+* **The tool tests.** `ps1/tools/test_tools.py` (28 tests): each rule of the planner (callbacks, pick callbacks,
+  strings, shared files, HOLD), the gate's WARNING and the string splitter fail a test when its line is
+  removed; `harness/tilerow_test.c` (56 tiles) fails on a wrong row; with `STRSEC_VERIFY=1` the whole PS1
+  build (316 objects) compiles every file the same in two steps as in one, and the EXE it links is the same
+  file as the normal build's.
+* **Gates.** `make -C core -j2 test`: 1067 passed, 0 failed (also with `SAN=1`: only the four old UBSan
+  reports of `concert_gfx.c` / `fixmath.c` and their tests); `check-gen`; `core/tools/xcheck.sh` (403 files on
+  gcc, arm, mipsel, sh4, no warning); `make -C gba` and `make -C gba test` (`make -C gba sizes` is byte for
+  byte the same: nothing under `core/`, `gba/` or `dc/` changes in this package); `make dc-host-test`.
+
+### Keeping the room (for the packages that follow)
+
+* The shared budget is in `docs/design/held/PARALLEL_WAVES.md` section 3. Every landing reports the margin
+  line of its own build; the WARNING and the CI summary show it long before the hard limit.
+* New scene code belongs in a group, not in a resident file. A new callback handed to `ui_confirm` /
+  `ui_choice` / `ui_text_entry` or to `fp_pick()` from a free-play screen goes into `MODAL_CALLBACKS` /
+  `PICK_CALLBACKS` (after a look at its call sites), or the planner keeps it and all it reaches resident
+  (`OVL_WHY=1` on the build lists resident code by file; `OVL_WHY_OBJ=name` explains one object).
+* A resident module must not keep a pointer to a group's string or table across scenes (section 3). That now
+  also holds for the table strings of a group's files and for the `SHARED` files' name tables: they are in the
+  slot only while their group is.
+* The slot is 552 B from growing: 2 KB more in the house group (or 1.2 KB in the story group) is 2 KB less
+  resident RAM. Combat has 4,984 B of room, the cutscenes 12,304 B, free play 24,824 B. A group that reaches
+  the slot can keep its table strings resident instead (`STR_WHOLE`) or take no shared code (`SHARED_NOT`).
+* The held groups (`HOLD`) keep their loads as long as they were; a new callback of theirs is resident, too.
+* Levers not used here (the ledger above): `weld_gfx` (28 KB resident, reached by the workshop and by combat),
+  the portrait files (130 KB of code every scene uses), `s_prim` (the display lists, 108 KB: frames have needed
+  at most 40 KB of the 54 KB each), `doomo_town` (89 KB), the resident Spanish table (8 KB, L6), `model.c` once
+  the house draws no 3D figure (4.3 KB, with what only it uses of `prims.c` 8.4 KB; owner decision 2026-11-12, "HOUSE
+  CHARACTERS FLAT": a change of what the house shows, so not part of this package), and the 30,000 B of `HOLD`.
