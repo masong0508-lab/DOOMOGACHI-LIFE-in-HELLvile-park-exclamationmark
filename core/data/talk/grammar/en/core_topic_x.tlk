@@ -1,0 +1,167 @@
+# core/data/talk/grammar/en/core_topic_x.tlk - topic lines that use the richer slots ({x.adj},
+# {x.assoc}, {x.good}, {x.bad}, {x.is}) in the high-volume rules, because each such slot multiplies
+# the distinct Surface (owner: TK; T5b, Surface push C). Clean in any room: no register word, no
+# romance, no cool act, no guard change beyond the slot's own. Rule names end in _ty.
+# Syntax: core/tools/talkc_gen.py.
+
+# ---- OPINE_POS ---------------------------------------------------------------------------------
+@rule core.opine_pos.adj_ty act: agree
+  "Yes! {x:cap} {x.is} {x.adj}. That's why I like {x}."
+  "{x:cap} {x.is} so {x.adj}. I could sit and look at {x} all day."
+  "I love how {x.adj} {x} {x.is}. Nobody warned me."
+  "If {x} {x.is} {x.adj}, I'm in."
+  "{x:cap}, {x.adj} as ever. I'd vote for {x}."
+@rule core.opine_pos.assoc_ty act: backchannel
+  "{x:cap} always makes me think of {x.assoc:indef}. Nice pair."
+  "I like {x}. It goes with {x.assoc:indef}, somehow."
+  "{x:cap} and {x.assoc}. That's a good combination."
+  "You like {x}? Do you also like {x.assoc:indef}? They feel related."
+  "{x:cap} reminds me of {x.assoc:indef}, and I love that."
+@rule core.opine_pos.good_ty act: agree
+  "Yes, {x} {x.is} {x.good}. I'd say it with my whole chest."
+  "Exactly. {x:cap} {x.is} {x.good}, and we all know it."
+  "Funny, I think {x} {x.is} {x.good} too."
+  "{x:cap}? {x.good:cap}. That's my review."
+
+# ---- OPINE_NEG ---------------------------------------------------------------------------------
+@rule core.opine_neg.adj_ty act: sympathize
+  "Yeah, {x} {x.is} {x.adj}. Not everybody's cup of tea."
+  "I get it. {x:cap} {x.is} a bit too {x.adj} for me too."
+  "{x:cap}, so {x.adj}. That's a lot to take in."
+  "Oh, {x} {x.is} {x.adj}. I'd need a minute as well."
+  "Honestly, {x.adj} {x} {x.is} hard to love."
+@rule core.opine_neg.assoc_ty act: backchannel
+  "{x:cap} makes me think of {x.assoc:indef}, and now I'm sad too."
+  "Ugh, {x}. It's tangled up with {x.assoc:indef} in my head."
+  "I can't hear {x} without picturing {x.assoc:indef}."
+  "{x:cap} and {x.assoc}. A rough pair."
+@rule core.opine_neg.bad_ty act: agree
+  "Yes, {x} {x.is} {x.bad}. No arguments here."
+  "Right? {x.bad:cap}. That's the word for {x}."
+  "I'd call {x} {x.bad}, and I'm being polite."
+  "{x:cap}? {x.bad:cap}. Next topic, please."
+
+# ---- TELL --------------------------------------------------------------------------------------
+@rule core.tell.adj_ty act: backchannel
+  "{x:cap} {x.is} {x.adj}? Huh. I never thought of it like that."
+  "So {x} {x.is} {x.adj}. I'll remember that."
+  "Okay, {x.adj} {x}. That's a picture."
+  "{x:cap}, {x.adj}, noted. Go on."
+@rule core.tell.assoc_ty act: ask_about
+  "Does {x} have something to do with {x.assoc:indef}?"
+  "Wait, is {x} like {x.assoc:indef}, or the opposite?"
+  "That makes me wonder about {x.assoc:indef}. Any link?"
+  "{x:cap} and {x.assoc}, are they friends?"
+@rule core.tell.joke_ty act: joke
+  "{x:cap}? {x.adj:cap}? Next you'll tell me {x.assoc:indef} has opinions."
+  "I bet {x.assoc:indef} would have something to say about {x}."
+  "Sure, {x}. And I'm the mayor of {x.assoc}."
+@rule core.tell.tease_ty act: tease
+  "You and your {x.adj} {x}. We get it."
+  "Oh, {x} again. Your {x.adj} little obsession."
+
+# ---- ANSWER ------------------------------------------------------------------------------------
+@rule core.answer.adj_ty act: backchannel
+  "{x:cap} {x.is} {x.adj}, then. Good to know."
+  "Ah, {x.adj} {x}. That clears things up."
+  "So it's {x}, and it's {x.adj}. I see."
+  "{x:cap}, huh. {x.adj:cap}. Okay."
+@rule core.answer.assoc_ty act: tell
+  "That reminds me of {x.assoc:indef}. Long story."
+  "Interesting. I always link {x} with {x.assoc:indef}."
+  "{x:cap} and {x.assoc:indef}. That's a thing I just learned."
+  "Funny, I'd have said {x.assoc} before {x}."
+@rule core.answer.agree_ty act: agree
+  "Yes, {x}. {x.adj:cap} indeed."
+  "Right, {x} {x.is} {x.adj}. I'd have said the same."
+  "Exactly. {x:cap}, in all its {x.adj} glory."
+
+# ---- ASK_ABOUT ---------------------------------------------------------------------------------
+@rule core.ask_about.adj_ty guard: stance=neutral act: answer
+  "{x:cap}? {x.adj:cap}. That's about all I've got."
+  "I'd call {x} {x.adj}. Not good, not bad."
+  "{x:cap} {x.is} {x.adj}, I think. I could be wrong."
+  "Mm, {x}. {x.adj:cap}, and a little bit {x.assoc}."
+  "{x:cap}? Let's say {x.adj} and leave it there."
+@rule core.ask_about.assoc_ty act: tell
+  "{x:cap} reminds me of {x.assoc:indef}. Don't ask me why."
+  "{x:cap}? I link that with {x.assoc:indef}, for some reason."
+  "I can't think of {x} without {x.assoc:indef}."
+  "Funny, {x} and {x.assoc:indef} feel like cousins."
+@rule core.ask_about.pro_ty guard: stance=pro act: opine_pos
+  "{x:cap} {x.is} {x.good}! I could go on for hours."
+  "Easy. {x:cap} {x.is} {x.good}. Next question."
+  "Ask me about {x} and watch me glow. {x.good:cap}!"
+@rule core.ask_about.con_ty guard: stance=con act: opine_neg
+  "{x:cap} {x.is} {x.bad}. I won't say more. Okay, a little more."
+  "{x.bad:cap}. That's my full review of {x}."
+  "Oh, {x}. {x.bad:cap}. I've said too much."
+
+# ---- ASK_OPINION -------------------------------------------------------------------------------
+@rule core.ask_opinion.adj_ty act: answer
+  "I think {x} {x.is} {x.adj}. Whether that's good, I'm unsure."
+  "{x:cap}? {x.adj:cap}, mostly. Sometimes {x.assoc}."
+  "Honest opinion? {x.adj:cap}, and I'll leave it at that."
+  "{x:cap} {x.is} {x.adj}. I'd change nothing about it."
+@rule core.ask_opinion.pro_ty guard: stance=pro act: opine_pos
+  "I love {x}. It's {x.good}, and it's {x.adj}."
+  "{x:cap}? {x.good:cap}! And so {x.adj}!"
+@rule core.ask_opinion.con_ty guard: stance=con act: opine_neg
+  "{x:cap}? {x.bad:cap}. And {x.adj}, which doesn't help."
+  "I'd skip {x}. It's {x.bad} and {x.adj}."
+@rule core.ask_opinion.assoc_ty act: opine_pos
+  "I like {x} best next to {x.assoc:indef}."
+  "{x:cap} with {x.assoc:indef} is my idea of a good time."
+
+# ---- CHANGE_TOPIC ------------------------------------------------------------------------------
+@rule core.change_topic.adj_ty act: answer
+  "Oh, {x}? That's {x.adj:indef} subject. Sure."
+  "New topic: {x}. {x.adj:cap} choice."
+  "{x:cap}, fine. I'll get my {x.adj} thoughts ready."
+@rule core.change_topic.assoc_ty act: tell
+  "Speaking of {x}, did you ever think about {x.assoc:indef}?"
+  "{x:cap}? Okay, but I'll connect it to {x.assoc:indef} somehow."
+  "Right, {x}. It does remind me of {x.assoc:indef}."
+@rule core.change_topic.joke_ty act: joke
+  "{x:cap}? Bold, and {x.adj}. I respect it."
+  "We were doing so well, and now it's {x}."
+
+# ---- AGREE / DISAGREE --------------------------------------------------------------------------
+@rule core.agree.adj_ty act: laugh
+  "Ha! {x.adj:cap} {x}, we're on the same page."
+  "Hee, yes. {x:cap} {x.is} {x.adj}. We win."
+@rule core.disagree.adj_ty act: disagree
+  "Hm, {x} {x.is} more {x.adj} than that, I think."
+  "Not sure it's {x.adj}. I'd say {x.assoc}."
+  "I'd argue {x} {x.is} {x.adj}, not what you said."
+@rule core.disagree.joke_ty act: joke
+  "{x:cap}, {x.adj}? Prove it. I'll wait."
+  "Bold take on {x}. I'll allow it, barely."
+
+# ---- COMPLIMENT / COMFORT / ENCOURAGE ----------------------------------------------------------
+@rule core.compliment.adj_ty act: thank
+  "Thanks! You're {x.adj} yourself. Like {x}, kind of."
+  "Aw, thank you. That's as {x.adj} as {x}."
+@rule core.comfort.adj_ty act: thank
+  "Thanks. It's {x.adj}, but I'm coping."
+  "I appreciate it. {x:cap} {x.is} {x.adj}, but you help."
+@rule core.encourage.adj_ty act: thank
+  "Okay, I'll try. {x:cap} {x.is} {x.adj}, but so am I."
+  "You're right. I can do {x.adj} things."
+@rule core.sympathize.adj_ty act: thank
+  "Thanks. It really is {x.adj}, isn't it?"
+  "Yes, {x} {x.is} {x.adj}. Thank you for getting it."
+
+# ---- JOKE / LAUGH ------------------------------------------------------------------------------
+@rule core.joke.adj_ty act: laugh
+  "Ha! {x.adj:cap} {x}, and I thought I'd heard everything."
+  "Hee, {x} {x.is} {x.adj}, now I can't unhear it."
+@rule core.joke.assoc_ty act: joke
+  "Fine. Why did {x} cross the road? To meet {x.assoc:indef}."
+  "My turn: what do {x} and {x.assoc:indef} have in common? Me, trying to get away."
+@rule core.laugh.adj_ty act: laugh
+  "Ha! {x.adj:cap} {x}! I'm done, I'm gone."
+  "Hee! You said {x.adj} {x} and I lost it."
+@rule core.laugh.assoc_ty act: joke
+  "Wait, {x.assoc:indef}? Now I'm laughing at that too."
+  "And then {x.assoc:indef} showed up. Classic."
