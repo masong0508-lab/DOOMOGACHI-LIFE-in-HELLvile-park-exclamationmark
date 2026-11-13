@@ -480,6 +480,44 @@ static void test_budget(void)
     CHECK(dc2d_stats.dropped == d2, "budget: %u 2D prims dropped", dc2d_stats.dropped - d2);
 }
 
+/* the texture sort: stable grouping by (mode, texture), through the hash; more kinds than it holds leave the order */
+static int sort_run(int kinds, int per)
+{
+    DcBatch *b;
+    int i, j, n = kinds * per, groups = 0, last = -1, seen[400];
+    plat_begin_frame();
+    CHECK(dc3d_seg_begin(0, 0, 320, 240), "sort: a segment opens");
+    for (j = 0; j < per; j++)                       /* round robin: the worst order for the headers */
+        for (i = 0; i < kinds; i++) {
+            DcVert *v = dc3d_poly(DC3D_OPAQUE, i, 3);
+            if (v) memset(v, 0, 3 * sizeof(*v));
+        }
+    b = dc3d_batch(dc3d_cur_slot());
+    CHECK(b->np >= n, "sort: %d polygons built, %d wanted", b->np, n);
+    dc3d_sort_from(b->np - n);
+    memset(seen, 0, sizeof(seen));
+    for (i = b->np - n; i < b->np; i++) {
+        int t = b->p[i].tex;
+        if (t != last) { groups++; last = t; }
+        seen[t]++;
+    }
+    for (i = 0; i < kinds; i++) CHECK(seen[i] == per, "sort: texture %d kept %d of %d polygons", i, seen[i], per);
+    dc3d_seg_end();
+    plat_end_frame();
+    return groups;
+}
+
+static void test_sort(void)
+{
+    int g;
+    g = sort_run(100, 2);                           /* above the old 96 kinds */
+    CHECK(g == 100, "sort: 100 textures give %d header runs, want 100", g);
+    g = sort_run(300, 1);                           /* above 256: the order is left as it was */
+    CHECK(g == 300, "sort: 300 kinds give %d runs", g);
+    g = sort_run(40, 3);
+    CHECK(g == 40, "sort: 40 textures x 3 give %d runs, want 40", g);
+}
+
 int main(void)
 {
     NatOptions o;
@@ -499,6 +537,7 @@ int main(void)
     test_tint();
     test_repeat();
     test_budget();
+    test_sort();
     printf("dc3d tests: %d checks, %d failed\n", checks, fails);
     return fails ? 1 : 0;
 }

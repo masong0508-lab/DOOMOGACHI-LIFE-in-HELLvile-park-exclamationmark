@@ -745,13 +745,20 @@ void plat_view3d(const DoomoView3D *v)
     poly0 = dc3d_batch(dc3d_cur_slot())->np;
     s_any_sky = 0;
     visibility(plane, vw);
+    /* the backdrop goes FIRST: on the console the list is drawn in order and
+     * the backdrop's far z does not keep it behind the walls (Flycast, the
+     * translucent list), so a backdrop emitted last painted over everything */
+    if (s_backdrop) {
+        for (i = 0; i < s_nvis; i++) {             /* open cells under the sky: the sky is drawn */
+            const DoomoCell *c = &M->cells[s_vlist[i]];
+            if (!c->wall && is_sky(c)) { s_any_sky = 1; break; }
+        }
+        if (s_any_sky) sky(v->angle, plane, vh);
+        else backdrop_quad(-1, cam.vy0, cam.vy1, 0.0f, 0.0f, NULL, tinted_pal(PAL_RAMP(RAMP_STONE, 0)));
+    }
     for (i = 0; i < s_nvis; i++) {
         int idx = s_vlist[i], cy = idx / M->w;
         emit_cell(idx - cy * M->w, cy);
-    }
-    if (s_backdrop) {
-        if (s_any_sky) sky(v->angle, plane, vh);
-        else backdrop_quad(-1, cam.vy0, cam.vy1, 0.0f, 0.0f, NULL, tinted_pal(PAL_RAMP(RAMP_STONE, 0)));
     }
     dc3d_sort_from(poly0);               /* the opaque world: one header per texture */
     /* billboards over it, far to near (DC6 part 2: the player's model,

@@ -247,6 +247,35 @@ static void test_dist(void)
     CHECK(n_near <= n_far, "dist: a short view sees %d cells, a long one %d", n_near, n_far);
 }
 
+/* the backdrop is the segment's FIRST polygon: on the console the list is drawn in order and a backdrop
+ * emitted last painted over the walls (Flycast; found on the first run there) */
+static void test_backdrop_first(void)
+{
+    static const int maps[] = { MAPID_VAPE_CELLAR, MAPID_ARENA };
+    int m;
+    for (m = 0; m < 2; m++) {
+        DoomoView3D v;
+        const DcBatch *b;
+        int i, x, y, ex = 1, ey = 1, far_n = 0, near_seen = 0, late_far = 0;
+        map_load(maps[m]);
+        for (y = 1; y < doomo_map.h - 1; y++) for (x = 1; x < doomo_map.w - 1; x++)
+            if (open_cell(&doomo_map, x, y) && !(ex > 1 || ey > 1)) { ex = x; ey = y; }
+        view_of(&v, ex, ey, 0, 0);
+        plat_begin_frame();
+        plat_clear(PAL_BLACK);
+        dc2d_view3d_draw(&v);
+        b = dc3d_batch(dc3d_cur_slot());
+        for (i = (int)b->seg[b->nseg - 1].poly0; i < b->np; i++) {
+            if (b->p[i].mode != DC3D_OPAQUE) continue;
+            if (b->v[b->p[i].first].z < 0.0021f) { far_n++; if (near_seen) late_far++; }
+            else near_seen = 1;
+        }
+        plat_end_frame();
+        CHECK(far_n > 0 && near_seen, "backdrop first: map %d: %d backdrop polygons, near ones %d", maps[m], far_n, near_seen);
+        CHECK(late_far == 0, "backdrop first: map %d: %d backdrop polygons come after a wall or floor", maps[m], late_far);
+    }
+}
+
 static void test_backdrop(void)
 {
     DoomoView3D v;
@@ -346,6 +375,7 @@ int main(void)
     test_viewport();
     test_dist();
     test_backdrop();
+    test_backdrop_first();
     test_repeat();
     test_budget();
     printf("dc6 view3d tests: %d checks, %d failed\n", checks, fails);

@@ -1691,6 +1691,8 @@ its light and distance fade, its sky mapping. What the code does:
 - `dc3d_sort_from` found texture kinds by a linear scan; a view has a texture
   per light level, so it uses a small hash (256 kinds).
 
+`dc3d_sort_from` is checked by `test_sort` (100 and 300 textures, 3 per texture: grouping, and the order left alone above 256 kinds).
+
 Measured on the host (software PVR, `dcv3d_test`, 2026-11-13): 8 first-person
 maps (Hell Breach 1..7 and the arena), 24 eyes each, 4 headings, level and
 looking up 120: 1182 frames, 2x2 block mean within 40/255 per channel of the
@@ -1704,10 +1706,20 @@ data (budget 576 KB). Polygons against columns will never be pixel equal.
   edge, looking at the border). The reference draws a picture there that the
   Dreamcast does not (the wall face has zero height in `vface`). Not
   understood yet; look at `DC6_PNG=DIR` output for the worst frames.
-- Nothing was built with KallistiOS or run on Flycast in this change (the
-  toolchain was still being installed). Owed: `make -C dc`, a Hell Breach
-  script on dcrun with no tick over 33 ms, and a screenshot next to the
-  native one. Until that, the per-tick cost is only the host's number.
+- Flycast (2026-11-13, `dcrun` on the nodebug ELF, emulated time): the first
+  run drew only the dark stone backdrop with the billboards on it. The
+  backdrop was emitted last; on the console the list is drawn in emission
+  order and its far z did not keep it behind the walls (the same family as
+  the 2D sprites' depth in DC7). It is now emitted first
+  (`test_backdrop_first`). After that, Hell Breach 1 shows the walls, floor,
+  ceiling and sky next to the HUD (evidence: `breach_b.png` against the native
+  `nat/breach_b.png`). Five levels (`push COMBAT 0, 1, 2, 4, 6`, each walked 120 ticks) in one script
+  (`levels.txt`): 1056 ticks, 1000 views, the view costs 4 ms a tick in the
+  first room (mean 13 ms and 30 ms worst in the big levels); the only ticks
+  over 33.3 ms are the five scene-entry ticks (37-50 ms: the level loads and
+  uploads its textures in that tick), no tick after them. Not run: a
+  Flycast-to-host picture compare of the view (the host parity numbers are
+  the only pixel measure) and a real console.
 - No ticks, memory or PS1/GBA effect: all changes are under `dc/`; the
   tint fit moved from `overworld.c` to `dc3d.c` unchanged.
 
