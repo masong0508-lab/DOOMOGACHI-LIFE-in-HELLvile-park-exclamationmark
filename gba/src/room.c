@@ -112,6 +112,8 @@
  * (iwram_ovl.h; render() loads it), self-contained (they call nothing:
  * the slot is far from ROM), no memset idiom (that would be a call) */
 #define ROOM_ARM IWRAM_ROOM_CODE __attribute__((optimize("O2", "no-tree-loop-distribute-patterns")))
+/* (S2-11) what the room group's code calls in ROM (the rare paths that stay THUMB there) */
+#define ROM_CALL __attribute__((long_call))
 
 #define LINE        120                /* halfwords per screen row          */
 #define RB_ITEMS    56                 /* draw list: 41 objects + 14 actors + cursor */
@@ -324,18 +326,26 @@ HOT static void put_px(int x, int y, uint8_t c)
     else *p = (uint16_t)((*p & 0xFF00) | c);
 }
 
+/* put_px for the room group's ARM code (inlined there) */
+static ALWAYS_INLINE void arm_px(int x, int y, uint8_t c)
+{
+    vu16_t *p = (vu16_t *)(gba_back + y * LINE + (x >> 1));
+    if (x & 1) *p = (uint16_t)((*p & 0x00FF) | (c << 8));
+    else *p = (uint16_t)((*p & 0xFF00) | c);
+}
+
 /* pixels [x0, x1) of row y from src (src[0] is x0's); clipped by the caller.
  * Halfword-aligned copies (even x0, even src: walls, floor and most runs)
  * go by DMA3 (2 cycles a pixel from EWRAM, no call into IWRAM); the rest
  * through ow_out (which reads up to 4 bytes past the end: every source has
- * 4 spare). */
-HOT static void row_copy(int y, int x0, int x1, const uint8_t *src)
+ * 4 spare). (S2-11) ARM in the room group, like its callers there. */
+ROOM_ARM static void row_copy(int y, int x0, int x1, const uint8_t *src)
 {
     uint16_t *row = gba_back + y * LINE;
     int n;
     if (x0 >= x1) return;
     if (x0 & 1) {
-        put_px(x0, y, src[0]);
+        arm_px(x0, y, src[0]);
         x0++;
         src++;
     }
@@ -349,7 +359,7 @@ HOT static void row_copy(int y, int x0, int x1, const uint8_t *src)
             ow_out(row + (x0 >> 1), src, n);
         }
     }
-    if ((x1 - x0) & 1) put_px(x1 - 1, y, src[n]);
+    if ((x1 - x0) & 1) arm_px(x1 - 1, y, src[n]);
 }
 
 HOT static void fill(int x0, int y0, int x1, int y1, uint8_t c)
@@ -855,6 +865,7 @@ static void tile_row(const RG *g, uint8_t *buf, int x0, int x1, int i, int j, in
 #undef TPUT
 }
 
+static void floor_row_pat(const RG *g, int y, int t, int x0, int x1) ROM_CALL;
 __attribute__((noinline)) static void floor_row_pat(const RG *g, int y, int t, int x0, int x1)
 {
     const int s = t >> 3, q = t & 7;
@@ -888,14 +899,6 @@ __attribute__((noinline)) static void floor_row_pat(const RG *g, int y, int t, i
  * into their colours), its two pixels through the tile level's g->wcol
  * row. Columns are 2 px wide and start at even x (ox is even), so a whole
  * column is one halfword. */
-/* put_px for the room group's ARM code (inlined there) */
-static ALWAYS_INLINE void arm_px(int x, int y, uint8_t c)
-{
-    vu16_t *p = (vu16_t *)(gba_back + y * LINE + (x >> 1));
-    if (x & 1) *p = (uint16_t)((*p & 0x00FF) | (c << 8));
-    else *p = (uint16_t)((*p & 0xFF00) | c);
-}
-
 ROOM_ARM static void wall_lit(const RG *g, int y, int x0, int x1)
 {
     const RoomLight *L = g->L;
@@ -937,7 +940,7 @@ ROOM_ARM static void wall_lit(const RG *g, int y, int x0, int x1)
     }
 }
 
-HOT static void wall_rows(const RG *g, int y, int x0, int x1)
+ROOM_ARM static void wall_rows(const RG *g, int y, int x0, int x1)
 {
     const int H = g->wall_h, tA = y - g->oy + H, a = tA >> 3, r = tA & 7;
     int lo, hi, s, m, xa, xb;
@@ -973,8 +976,8 @@ HOT static void wall_rows(const RG *g, int y, int x0, int x1)
     if (g->L->n && B->s15) wall_lit(g, y, x0, x1);
     /* the corner post */
     if (y >= g->oy - H && y < g->oy) {
-        if (g->ox - 1 >= x0 && g->ox - 1 < x1) put_px(g->ox - 1, y, g->corner);
-        if (g->ox >= x0 && g->ox < x1) put_px(g->ox, y, g->corner);
+        if (g->ox - 1 >= x0 && g->ox - 1 < x1) arm_px(g->ox - 1, y, g->corner);
+        if (g->ox >= x0 && g->ox < x1) arm_px(g->ox, y, g->corner);
     }
 }
 
@@ -1044,7 +1047,7 @@ ROOM_ARM static void floor_row_lit(const RG *g, int y, int t, int x0, int x1)
     }
 }
 
-HOT static void floor_row(const RG *g, int y, int x0, int x1)
+ROOM_ARM static void floor_row(const RG *g, int y, int x0, int x1)
 {
     const int W = g->W, D = g->D, t = y - g->oy;
     int s, q, h1, h2, xL, xR, lp = 0, rp = 0, p0, a, b;
@@ -1075,12 +1078,12 @@ HOT static void floor_row(const RG *g, int y, int x0, int x1)
         a += n;
     }
     if (lp) {
-        if (xL >= x0 && xL < x1) put_px(xL, y, g->fl_g);
-        if (xL + 1 >= x0 && xL + 1 < x1) put_px(xL + 1, y, fl);
+        if (xL >= x0 && xL < x1) arm_px(xL, y, g->fl_g);
+        if (xL + 1 >= x0 && xL + 1 < x1) arm_px(xL + 1, y, fl);
     }
     if (rp) {
-        if (xR - 2 >= x0 && xR - 2 < x1) put_px(xR - 2, y, fl);
-        if (xR - 1 >= x0 && xR - 1 < x1) put_px(xR - 1, y, g->fl_g);
+        if (xR - 2 >= x0 && xR - 2 < x1) arm_px(xR - 2, y, fl);
+        if (xR - 1 >= x0 && xR - 1 < x1) arm_px(xR - 1, y, g->fl_g);
     }
 }
 
@@ -1091,6 +1094,7 @@ HOT static void floor_row(const RG *g, int y, int x0, int x1)
  * (u + 16D) >> 1 in [t - LIP_H + 1, t], t = y - oy, i.e. u in
  * [2(t - LIP_H + 1) - 16D, 2t + 1 - 16D]; the row index r = t - ((u + 16D)
  * >> 1) is constant over each pair of columns. Front A' first, then B'. */
+static void lip_row(const RG *g, int y, int x0, int x1) ROM_CALL;
 HOT static void lip_row(const RG *g, int y, int x0, int x1)
 {
     int t = y - g->oy, side;
@@ -1114,6 +1118,7 @@ HOT static void lip_row(const RG *g, int y, int x0, int x1)
  * spans rows [oy + (u >> 1) - h, oy + (u >> 1)), of side B' at x = ox -
  * u - 2 rows [oy + ((u + 2) >> 1) - h, ...): room_backdrop_px per pixel
  * pair (only the Garden's / the Park Plot's few dozen columns) */
+static void backdrop_row(const RG *g, int y, int x0, int x1) ROM_CALL;
 HOT static void backdrop_row(const RG *g, int y, int x0, int x1)
 {
     const RoomBackdrop *b = &g->bd;
@@ -1135,7 +1140,7 @@ HOT static void backdrop_row(const RG *g, int y, int x0, int x1)
 
 /* (HART) a run of row y from a VRAM table: one halfword DMA when it is
  * even-aligned at both ends (it nearly always is), else row_copy */
-static inline void dma16(uint16_t *dst, const void *src, int halves);
+static ALWAYS_INLINE void dma16(uint16_t *dst, const void *src, int halves);
 static ALWAYS_INLINE void roof_copy(int y, int x0, int x1, const uint8_t *src)
 {
     if (!((x0 | x1 | (int)(uintptr_t)src) & 1)) {
@@ -1233,6 +1238,7 @@ NOIPA HOT static void roof_runs(int y, int x0, int x1, const uint8_t *buf)
 /* (HART) the roof's pixels on row y within [x0, x1): per side the band
  * (every pixel opaque: copies), what stands above it (the dormer's gable,
  * the spikes), then the chimney / tank */
+static void roof_row(const RG *g, int y, int x0, int x1) ROM_CALL;
 NOIPA HOT static void roof_row(const RG *g, int y, int x0, int x1)
 {
     uint8_t buf[SCREEN_W + 4];
@@ -1304,10 +1310,25 @@ static void wall_strips15(const RG *g)
     B->s15 = 1;
 }
 
-HOT static void draw_shell(const RG *g, int x0, int y0, int x1, int y1)
+/* (S2-11) a region's shell rows: the loop and its two common row kinds (wall_rows, floor_row) run from the
+ * room group; the roof's rows, the open kinds' backdrop and lip stay in ROM */
+ROOM_ARM static void shell_rows(const RG *g, int x0, int y0, int x1, int y1, int walls)
 {
     const int fy0 = g->oy, fy1 = g->oy + 8 * (g->W + g->D);
     const int wy0 = g->oy - g->wall_h, wy1 = g->oy + 8 * DOOMO_MAX(g->W, g->D) + 1;
+    int y;
+    for (y = y0; y < y1; y++) {
+        if (g->roof_on && y >= g->ry0 && y < g->ry1) roof_row(g, y, x0, x1);
+        if (g->bd.style) backdrop_row(g, y, x0, x1);
+        if (walls && y >= wy0 && y < wy1) wall_rows(g, y, x0, x1);
+        if (y >= fy0 && y < fy1) floor_row(g, y, x0, x1);
+        if (!g->walls) lip_row(g, y, x0, x1);
+    }
+}
+
+HOT static void draw_shell(const RG *g, int x0, int y0, int x1, int y1)
+{
+    const int fy0 = g->oy, fy1 = g->oy + 8 * (g->W + g->D);
     const int walls = g->walls && B->strip_h == g->wall_h + 8;
     int y;
     if (walls && g->L->n) {
@@ -1335,13 +1356,7 @@ HOT static void draw_shell(const RG *g, int x0, int y0, int x1, int y1)
         for (y = DOOMO_MAX(y0, fy0); y < DOOMO_MIN(y1, fy1); y++) floor_row(g, y, x0, x1);
         return;
     }
-    for (y = y0; y < y1; y++) {
-        if (g->roof_on && y >= g->ry0 && y < g->ry1) roof_row(g, y, x0, x1);
-        if (g->bd.style) backdrop_row(g, y, x0, x1);
-        if (walls && y >= wy0 && y < wy1) wall_rows(g, y, x0, x1);
-        if (y >= fy0 && y < fy1) floor_row(g, y, x0, x1);
-        if (!g->walls) lip_row(g, y, x0, x1);
-    }
+    shell_rows(g, x0, y0, x1, y1, walls);
 }
 
 /* ---- LUTs: paint recolour composed with the light level -------------------- */
@@ -1722,7 +1737,7 @@ ROOM_ARM static void lut_copy(uint8_t *d, const uint8_t *s, int n, const uint8_t
     while (n-- > 0) *d++ = lut[*s++];
 }
 
-static inline void dma16(uint16_t *dst, const void *src, int halves)
+static ALWAYS_INLINE void dma16(uint16_t *dst, const void *src, int halves)
 {
     REG_DMA3SAD = (uint32_t)(uintptr_t)src;
     REG_DMA3DAD = (uint32_t)(uintptr_t)dst;
@@ -1731,7 +1746,7 @@ static inline void dma16(uint16_t *dst, const void *src, int halves)
 
 /* rows [r0, r1) of a plain facing (no LUT), clipped to
  * [cx0, cx1): runs straight from ROM */
-HOT static void runs_plain(const DoomoFurnIso *im, int px, int py, int r0, int r1, int cx0, int cx1)
+ROOM_ARM static void runs_plain(const DoomoFurnIso *im, int px, int py, int r0, int r1, int cx0, int cx1)
 {
     const uint8_t *base = doomo_furn_iso_data + im->off;
     const int xe = DOOMO_MIN(px + im->w, cx1);
@@ -1750,14 +1765,14 @@ HOT static void runs_plain(const DoomoFurnIso *im, int px, int py, int r0, int r
             if (a < cx0) { src += cx0 - a; a = cx0; }
             if (b > xe) b = xe;
             if (a >= b) continue;
-            if (a & 1) { put_px(a, py + r, *src++); a++; }
+            if (a & 1) { arm_px(a, py + r, *src++); a++; }
             if (b - a >= 2) {
                 int n = (b - a) & ~1;
                 if (!((uintptr_t)src & 1)) dma16(row + (a >> 1), src, n >> 1);
                 else ow_out(row + (a >> 1), src, n);
                 src += n; a += n;
             }
-            if (a < b) put_px(a, py + r, *src);
+            if (a < b) arm_px(a, py + r, *src);
         }
     }
 }
@@ -1767,6 +1782,8 @@ HOT static void runs_plain(const DoomoFurnIso *im, int px, int py, int r0, int r
  * luts[0] into the buffer as usual and its spans (furn.h) are patched in
  * there before the one copy (cutting the run at them would cost a copy per
  * piece). Out of line, so runs_lut() keeps its tight loop. */
+static void runs_cls(const DoomoFurnIso *im, int px, int py, const uint8_t *const *luts, int night, int r0, int r1,
+                     int cx0, int cx1) ROM_CALL;
 __attribute__((noinline)) HOT static void runs_cls(const DoomoFurnIso *im, int px, int py,
                                                    const uint8_t *const *luts, int night, int r0, int r1,
                                                    int cx0, int cx1)
@@ -1878,7 +1895,7 @@ ROOM_ARM static void runs_glow(const DoomoFurnIso *im, int px, int py,
  * through a stack buffer laid out at the destination's pixel parity, so
  * the copy to VRAM is always a halfword DMA. (H8) luts[0] is the piece's;
  * when its glow spans (luts[1]) or panes (luts[2]) differ: runs_cls() */
-HOT static void runs_lut(const DoomoFurnIso *im, int px, int py, const uint8_t *const *luts,
+ROOM_ARM static void runs_lut(const DoomoFurnIso *im, int px, int py, const uint8_t *const *luts,
                      int night, int r0, int r1, int cx0, int cx1)
 {
     const uint8_t *base = doomo_furn_iso_data + im->off;
@@ -1911,9 +1928,9 @@ HOT static void runs_lut(const DoomoFurnIso *im, int px, int py, const uint8_t *
                 uint8_t *d = buf + (a & 1);
                 lut_copy(d, run + (a - (px + x - len)), m, lut);
                 k = a;
-                if (k & 1) { put_px(k, py + r, *d++); k++; }
+                if (k & 1) { arm_px(k, py + r, *d++); k++; }
                 if (a + m - k >= 2) { dma16(row + (k >> 1), d, (a + m - k) >> 1); d += (a + m - k) & ~1; k += (a + m - k) & ~1; }
-                if (k < a + m) put_px(k, py + r, *d);
+                if (k < a + m) arm_px(k, py + r, *d);
                 a += m;
             }
         }
@@ -2082,7 +2099,7 @@ HOT static void draw_region(const RG *g, int x0, int y0, int x1, int y1)
         __asm__ volatile("ldmia %4!, {%0, %1, %2, %3}" \
                          : "=l"(a_), "=l"(b_), "=l"(c_), "=l"(d_), "+l"(p) : : "memory"); \
         s = (((s + a_) ^ b_) + c_) ^ d_; s = (s << 5) | (s >> 27); p += LINE / 2 - 4; } while (0)
-HOT static uint32_t block_sum(int bx, int y, int rows)
+ROOM_ARM static uint32_t block_sum(int bx, int y, int rows)
 {
     const uint32_t *p = (const uint32_t *)(gba_back + y * LINE + bx * 8);
     uint32_t s = 0x9E3779B9u;
