@@ -1,0 +1,209 @@
+From fb311a1990eb831f437637f5378e01aa4a356b69 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 15:46:41 +0000
+Subject: [PATCH 3/6] Talk T8a: a bubble slides beside the speaker's head when
+ it would sit on another face (test, docs)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63czJHmFDCnjA8mf9GoY
+---
+ core/src/home_int.h         |  1 +
+ core/src/home_talk.c        | 57 +++++++++++++++++++++++++++++++++++--
+ core/tests/test_home_talk.c | 41 ++++++++++++++++++++++++++
+ docs/TALK.md                | 11 +++++--
+ 4 files changed, 104 insertions(+), 6 deletions(-)
+
+diff --git a/core/src/home_int.h b/core/src/home_int.h
+index d2b880d4..c853a718 100644
+--- a/core/src/home_int.h
++++ b/core/src/home_int.h
+@@ -740,6 +740,7 @@ void home_talk_abort(void);                          /* the scene went away: end
+ int  home_talk_on(void);                             /* Talk is running (gathering, talking or leaving) */
+ int  home_talk_busy(void);                           /* ... and not waiting for the player: gathering, leaving, a bubble up or lines to come */
+ int  home_talk_bubble(int which, char *text, int cap, int *who, int *shown);   /* tests: bubble 0 current / 1 faded previous: phase 0 none 1 typing 2 held */
++int  home_talk_bubble_rect(const DoomoRoomView *v, int *x, int *y, int *w, int *h);   /* tests: the current bubble's box in view v, 0 none */
+ void home_talk_cam_stats(int *moves, int *min_gap);  /* tests: camera moves made, the shortest gap between two (frames) */
+ const struct TalkState *home_talk_state(void);       /* tests, the runner */
+ const struct TalkSummary *home_talk_summary(void);   /* what the last session did (T6-OUT applies it); NULL while none */
+diff --git a/core/src/home_talk.c b/core/src/home_talk.c
+index 53b8b050..c157ce00 100644
+--- a/core/src/home_talk.c
++++ b/core/src/home_talk.c
+@@ -829,9 +829,41 @@ static int wrap(const char *s, int cols, int *start, int *len, int maxl)
+     return n ? n : 0;
+ }
+ 
+-typedef struct HtBox { int x, y, w, h, tail_x, flip, side; } HtBox;
++typedef struct HtBox { int x, y, w, h, tail_x, tail_y, sidetail, flip, side; } HtBox;
+ typedef struct HtLay { HtBox box; int n, more, start[TALK_BUBBLE_LINES + 1], len[TALK_BUBBLE_LINES + 1]; } HtLay;
+ 
++/* A bubble above the speaker's head can sit on top of someone standing behind them on the screen. When it
++ * would, it slides to the left or the right of the head (the nearer free side), keeping its tail at the head,
++ * so every face stays visible. */
++static int hits_a_head(const DoomoRoomView *v, const HtBubble *b, const HtBox *bx)
++{
++    int k;
++    for (k = -1; k < T.n; k++) {
++        const HtPerson *p = k < 0 ? &T.me : &T.p[k];
++        int16_t fx, fy;
++        if (k == b->who || p->gone || p->out) continue;
++        plat_room_project(v, p->x, p->y, 0, &fx, &fy);
++        if (fx + 9 > bx->x && fx - 9 < bx->x + bx->w && fy - 12 > bx->y - 9 && fy - 34 < bx->y + bx->h + 5) return 1;   /* their head and shoulders */
++    }
++    return 0;
++}
++
++static void bub_clear_of_heads(const DoomoRoomView *v, const HtBubble *b, HtBox *bx, int head_x, int head_y, int sw)
++{
++    int k, y_side = DOOMO_MAX(16, head_y + 6 - bx->h);       /* its foot level with the head */
++    if (!hits_a_head(v, b, bx)) return;
++    for (k = 0; k < 2; k++) {                            /* beside the head: the roomier side first */
++        int right = (k == 0) == (head_x < sw / 2), x = right ? head_x + 20 : head_x - 20 - bx->w;
++        HtBox t = *bx;
++        t.x = DOOMO_CLAMP(x, 3, sw - bx->w - 3);
++        t.y = y_side;
++        t.flip = 0;
++        t.sidetail = right ? -1 : 1;                     /* the tail points back at the head */
++        t.tail_y = DOOMO_CLAMP(head_y + 2, t.y + 4, t.y + t.h - 4);
++        if (!hits_a_head(v, b, &t) && iabs(t.x - head_x) < sw) { *bx = t; return; }
++    }
++}
++
+ /* where a bubble goes: above the speaker's head (plat_room_project, the platform's own projection), kept on
+  * the screen, below the figure when there is no room above; the player's line is bottom left */
+ static void bub_layout(const DoomoRoomView *v, const HtBubble *b, HtLay *l, int faded)
+@@ -858,6 +890,7 @@ static void bub_layout(const DoomoRoomView *v, const HtBubble *b, HtLay *l, int
+     if (bx->y < 22) { bx->y = py + 8; bx->flip = 1; }
+     bx->tail_x = DOOMO_CLAMP(sx, bx->x + 6, bx->x + bx->w - 6);
+     bx->side = sx < 0 ? -1 : sx >= sw ? 1 : 0;
++    bub_clear_of_heads(v, b, bx, sx, py, sw);
+ }
+ 
+ static void bub_draw(const HtBubble *b, const HtLay *l, int faded)
+@@ -877,8 +910,13 @@ static void bub_draw(const HtBubble *b, const HtLay *l, int faded)
+         ui_round_rect(x - 1, y - 1, bx->w + 2, bx->h + 2, 5, st->outline);
+         ui_round_rect(x, y, bx->w, bx->h, 4, fill);
+         for (i = 0; i < 5; i++) {                       /* the tail, pointing at the head */
+-            int ty = bx->flip ? y - 1 - i : y + bx->h + i;
+-            plat_rect(bx->tail_x - 4 + i + dx, ty, 9 - 2 * i, 1, i == 4 ? st->outline : fill);
++            if (bx->sidetail) {                         /* the bubble is beside the head: a tail out of its side */
++                int tx = bx->sidetail < 0 ? x - 1 - i : x + bx->w + i;
++                plat_rect(tx, bx->tail_y - 4 + i, 1, 9 - 2 * i, i == 4 ? st->outline : fill);
++            } else {
++                int ty = bx->flip ? y - 1 - i : y + bx->h + i;
++                plat_rect(bx->tail_x - 4 + i + dx, ty, 9 - 2 * i, 1, i == 4 ? st->outline : fill);
++            }
+         }
+         if (!faded) {                                   /* who is speaking: a name tab on the bubble */
+             const char *nm = name_of(T.p[b->who].id);
+@@ -899,6 +937,19 @@ static void bub_draw(const HtBubble *b, const HtLay *l, int faded)
+     }
+ }
+ 
++/* tests: where the current bubble is drawn in view v (the box, not its tail); 0 when no bubble is up */
++int home_talk_bubble_rect(const DoomoRoomView *v, int *x, int *y, int *w, int *h)
++{
++    HtLay l;
++    if (T.state == HTS_OFF || T.cur.phase == HTB_NONE) return 0;
++    bub_layout(v, &T.cur, &l, 0);
++    if (x) *x = l.box.x;
++    if (y) *y = l.box.y;
++    if (w) *w = l.box.w;
++    if (h) *h = l.box.h;
++    return 1;
++}
++
+ static const char *instruction(void)
+ {
+     if (T.state == HTS_GATHER) return "Everyone gathers round. B leaves.";
+diff --git a/core/tests/test_home_talk.c b/core/tests/test_home_talk.c
+index 0fb8d5e4..5f8819d4 100644
+--- a/core/tests/test_home_talk.c
++++ b/core/tests/test_home_talk.c
+@@ -549,6 +549,47 @@ TEST(home_talk_a_resident_who_walks_out_goes_to_the_door_and_the_talk_ends_when_
+     }
+ }
+ 
++/* ---- a bubble never sits on another face ---------------------------------------------------------------------------- */
++TEST(home_talk_a_bubble_keeps_off_the_other_faces)
++{
++    HomeTalkRoom rm;
++    DoomoRoomView v;
++    int k, bx, by, bw, bh, seen = 0, clear = 0, who, shown;
++    premade();
++    rm = synth_room();
++    add_who(&rm, ID_NANA, 3, 2);                         /* Nana stands behind Rivet on the screen: the same column */
++    add_who(&rm, ID_RIVET, 4, 3);
++    rm.px = INT2FIX(6) + FIX_ONE / 2;
++    rm.py = INT2FIX(6) + FIX_ONE / 2;
++    CHECK(home_talk_begin(&rm, -1) >= 0);
++    run_idle(60);
++    CHECK(say_text("hello everyone"));
++    memset(&v, 0, sizeof(v));
++    v.w = 8; v.d = 8; v.vw = 320; v.vh = 216; v.vy = 12;
++    for (k = 0; k < 900 && home_talk_busy(); k++) {
++        HomeTalkActor a[6];
++        int n, i, hit = 0;
++        frames(1);
++        if (home_talk_bubble(0, NULL, 0, &who, &shown) != 1 || who < 0) continue;    /* a resident's line, typing */
++        home_talk_view(&v);
++        if (!home_talk_bubble_rect(&v, &bx, &by, &bw, &bh)) continue;
++        seen++;
++        n = home_talk_actors(a, 6);
++        for (i = 0; i < n; i++) {
++            int16_t fx, fy;
++            if (a[i].id < 0 || i == 0) continue;
++            if (home_talk_state()->part[who].id == a[i].id) continue;
++            room_ref_project(&v, a[i].x, a[i].y, 0, &fx, &fy);
++            if (fx + 9 > bx && fx - 9 < bx + bw && fy - 12 > by && fy - 34 < by + bh) hit = 1;      /* their head and shoulders */
++        }
++        clear += !hit;
++        CHECK_MSG(bx >= 0 && bx + bw <= 320 && by >= 12, "the bubble left the screen: %d,%d %dx%d", bx, by, bw, bh);
++    }
++    CHECK(seen >= 5);
++    CHECK_EQ(clear, seen);
++    home_talk_abort();
++}
++
+ /* ---- the native framing: a pan toward the group ------------------------------------------------------------------ */
+ TEST(home_talk_view_slides_the_room_toward_the_group_on_the_reference_renderer)
+ {
+diff --git a/docs/TALK.md b/docs/TALK.md
+index eea5c9bb..25d1fa84 100644
+--- a/docs/TALK.md
++++ b/docs/TALK.md
+@@ -962,7 +962,7 @@ reused and forgets its caps (known, accepted; T8 may save the ledger in the TALK
+ `core/src/home_talk.c` (inside `DOOMO_HAS_TALK`: the native build only until
+ TKP), the hooks in `core/src/home_draw.c` (also inside it), the glue types in
+ `core/src/home_int.h`, the runner commands in `core/native/runner_main.c`,
+-`core/tests/test_home_talk.c` (17 tests), the script
++`core/tests/test_home_talk.c` (18 tests), the script
+ `core/tests/scripts/home_talk_basic.txt` (320x240 only). Design 4.1-4.3.
+ This is **package 1** of T8. The portrait inset, emotes, quick replies,
+ catch-the-word, the composer, the typed line and invites are T8b / T8c / T8d
+@@ -1019,7 +1019,12 @@ Talk is not offered at 240x160 (a GBA-sized screen; the menu has no row and
+    (the weak default is room_ref's projection; a platform's own wins): 3 lines of 26
+    columns (the lint's rule and `talk_safe_bubble_lines`' wrap), the tail pointing at
+    the head, a name tab, kept on the screen, below the figure when there is no room
+-   above, an arrow at the edge for a speaker who is off screen. The typewriter runs at
++   above, an arrow at the edge for a speaker who is off screen. A bubble that would
++   sit on someone else's head and shoulders (people stand in a column on the iso
++   screen) slides to the roomier side of the speaker's head at head height, with the
++   tail out of its side, so every face stays visible (`bub_clear_of_heads`). Two
++   people in one screen column still look alike from a distance: the name tab says
++   who speaks, and T8b's portrait inset and speaker highlight make it clearer. The typewriter runs at
+    the dialogue's `OPT_TEXT_SPEED` with the speaker's voice babble. A line cut by an
+    interruption ends in "-" and the bubble shakes for 4 frames. The line codes
+    (`{d}`, `{!}` ...) are taken out. At most two bubbles show: the current one and the
+@@ -1437,7 +1442,7 @@ Other measurements:
+ | `core/tests/test_talk_safety.c` | One source of "minor" (1,000 premade ids, the kid cast file, pool stages, unknown ids, the pet); the safety and adversarial corpora (run with a town person lookup, as the game will); the `lovers` room really allows romance; a child named but not in the room (the lookup, the roster's cast, a shared name, a `names_en.txt` name); every must-refuse line past the token cap (and the bubble never shows past the cut); invisible characters and space-split words; the mutation fuzz; the hate hash (C equals Python, no lexicon word on it, `DOOMO_HATE_PLAIN`); the gate properties P1-P4 and P7 over 200,000 random calls and every (adult, minor) pair both ways; P5 Mature; P6 closed vocabulary over 50,000 random lines; the S3 lint (units and the whole vocabulary); the masked bubble |
+ | `core/tests/test_talk_gen.c` | T5a on the test grammar `core/tests/talk_gen/gentest.tlk` (`TALK_gentest.BIN`): every modifier and field, names, likes, the job callback for an adult and none for a child, the weights, Q5 novelty, sub-rules, the fit and the safe fallback, K-9 (one swear a conversation, none with a kid), K-6 (a Mature variant only with the option and premade adults), the cast's own lines, faces, the optional parts with every callback true (Q4), the exchange (the gate first: K-7 ends it unseen, refusals, distress, romance at a child both ways; a romance yes, a no remembered for the day), reactions that answer the line before (Q2), a typed name the room may not hear, determinism; K-10 (`talk_gen_grief`): a grief topic takes the sincere bank whatever the act, the core part alone and an act that may answer, a quiet safe line when no grief line may answer, the safety acts keep their banks, the loss fact (a household member, not a move away, 28 days), `{lost}`, one comfort reaction at most and never the pet |
+ | `core/tests/test_talk_census.c` | T7 and T5a over the English banks: the smoke census (6d) and the generator-level property tests P1-P8 (section 2; `DOOMO_TALK_PROPERTY_N` for the design's 200,000) and K-10 (`talk_gen_property_grief`: every act about every grief topic in adults', kids' and pet rooms) |
+-| `core/tests/test_home_talk.c` | T8a (6h): entering and gathering through the house (distinct free tiles, 12-20 frames, a GBA-sized screen refused, the housemates' spots equal Live mode's, a visit's host); seats (the largest cluster, the pet stands, the quarter turn that shows the seats' fronts, a half circle round a table); the audience (a full room drops an adult before a child or the pet, a child makes the room kid-safe and it never relaxes while romance acts toward the room are refused or deflected and no romance line comes back, an adult room stays unflagged); bubbles in order (the player's line first, the typewriter only grows, no line codes, at most two visible); idle chatter and the prod; the camera (talk framing, at most one move in 45 frames); the framing pan nearer the middle; leaving (B, the summary, Live again); a resident who walks out; the contract hook with no house |
++| `core/tests/test_home_talk.c` | T8a (6h): entering and gathering through the house (distinct free tiles, 12-20 frames, a GBA-sized screen refused, the housemates' spots equal Live mode's, a visit's host); seats (the largest cluster, the pet stands, the quarter turn that shows the seats' fronts, a half circle round a table); the audience (a full room drops an adult before a child or the pet, a child makes the room kid-safe and it never relaxes while romance acts toward the room are refused or deflected and no romance line comes back, an adult room stays unflagged); bubbles in order (the player's line first, the typewriter only grows, no line codes, at most two visible); idle chatter and the prod; the camera (talk framing, at most one move in 45 frames); the framing pan nearer the middle; leaving (B, the summary, Live again); a bubble that keeps off the other faces; a resident who walks out; the contract hook with no house |
+ | `core/tests/test_talk_save.c` | T6-MEM (6e): the table (find, touch, last two topics, LRU of 24, likes, who may have an entry), the day rollover (refused today only), the flags of a running conversation, the chunk (empty = 0 bytes, worst case 292 B, full save round trip, an old save without the chunk, truncated / too long / wrong version / count over 24, a gone resident, the pet, a double id, a retired concept), and the generator guards and callback through `core/tests/talk_gen/mem.tlk` (K-5 across two conversations) |
+ | `core/tests/test_talk_outcome.c` | T6-OUT (6g): the daily caps, mediation, problems, news, romance asked and never forced, 100 greedy sessions, the talk memory write-back, P7 over 1,500 random sessions |
+ | `make -C core talk-check` | `talkc --check` (now also TK1-TK9, the corpora and the grammar compiler) and `--selftest` (51 seeded refusals: 12 lexicon files, 4 bad edges, 13 templates, 2 rule files, 20 grammars; and `core/tests/talk_good.tlk` must lint clean) (part of `make -C core test`) |
+-- 
+2.43.0
+

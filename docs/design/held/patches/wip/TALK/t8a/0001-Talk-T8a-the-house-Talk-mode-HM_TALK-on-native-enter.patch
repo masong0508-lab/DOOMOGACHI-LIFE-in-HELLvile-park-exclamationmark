@@ -1,0 +1,2334 @@
+From 0adde9f4818bce16c22382d2bb5254cfe484d8b7 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 15:18:39 +0000
+Subject: [PATCH 1/6] Talk T8a: the house Talk mode HM_TALK on native (enter,
+ gather, seats, camera, bubbles, talk_dm driven)
+
+home_talk.c (inside DOOMO_HAS_TALK: native only until TKP, so the GBA, PS1 and DC builds do not link it):
+START > Talk or A next to a housemate in Live mode (320x240 only); everyone present joins and is the
+audience (an adult is dropped before a child or the pet when the room is over full), gathers in 12-20
+frames (largest seat cluster, else a half circle round a table or the middle; the player takes a spare
+seat or the open side), the camera frames the group (zoom 2 + focus circle + a pan for the unscaled
+reference renderer; view from the seats' fronts; at most one move in 45 frames), bubbles at the speakers'
+heads through plat_room_project (3x26, typewriter and babble, previous bubble faded and shrunk, player's
+line bottom left), talk_dm_say / _step / _tick / _end, B leaves, control card and one instruction line,
+five starters until T8c. room_ref.c is unchanged (the T0 contract and the Dreamcast port rely on zoom 2
+being ignored there). Runner: talk-enter, talk-say, talk-wait, talk-leave, expect-talk, family-add,
+frame-time. run_scripts.sh reads "# resolutions:". Script home_talk_basic, test_home_talk.c (17 tests).
+
+Pixels: only the START menu of a house or visit with someone in it gains a Talk row (native 320x240);
+the other 100 scripts at both sizes hash identical frame for frame against origin 4303597.
+GBA: .text / .data / .bss / .iwram byte for byte equal (nm -S names and sizes equal, home_draw.o code equal).
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63czJHmFDCnjA8mf9GoY
+---
+ core/native/runner_main.c              |  98 ++-
+ core/src/home_draw.c                   | 265 ++++++-
+ core/src/home_int.h                    |  60 ++
+ core/src/home_talk.c                   | 967 +++++++++++++++++++++++++
+ core/tests/run_scripts.sh              |   8 +-
+ core/tests/scripts/home_talk_basic.txt |  79 ++
+ core/tests/test_home_talk.c            | 585 +++++++++++++++
+ 7 files changed, 2053 insertions(+), 9 deletions(-)
+ create mode 100644 core/src/home_talk.c
+ create mode 100644 core/tests/scripts/home_talk_basic.txt
+ create mode 100644 core/tests/test_home_talk.c
+
+diff --git a/core/native/runner_main.c b/core/native/runner_main.c
+index d9d753cf..c26a8b17 100644
+--- a/core/native/runner_main.c
++++ b/core/native/runner_main.c
+@@ -90,6 +90,21 @@
+  *                       security code come up as on a new console
+  *   expect-hero NAME    (CL2) fail unless the protagonist (the save's hero,
+  *                       town_res(DOOMO_PLAYER_ID)) is called NAME
++ *   family-add ROLE STAGE [NAME]  (T8a) a family pool member moves in (family_pool_add): ROLE housemate partner
++ *                       child parent sibling grand pet; STAGE adult baby toddler child teen elder. The house
++ *                       stands them on its floor in Live mode (F3), and Talk takes them
++ *   talk-enter [WHO]    (T8a) start Talk in the house you are in (SCENE_HOME, Live mode, your own house or a
++ *                       visit): WHO is a citizen's name or id, "pet", or nothing for the nearest person;
++ *                       fails when Talk does not start (a 240x160 screen, nobody here, no TALK_en.BIN)
++ *   talk-say TEXT       (T8a) the player's line, parsed like typed text and said through the audience gate;
++ *                       or `talk-say #N [SLOT]` an act number (TA_*) to everyone / participant SLOT. It waits
++ *                       (at most 900 frames) until the bubbles on screen are done
++ *   talk-wait [MAX]     (T8a) run frames until no bubble is on screen and nothing is queued (default 900)
++ *   frame-time N [LABEL] (T8a) run N frames (at most 4,000) and print the CPU time one frame took (update, draw and
++ *                       the framebuffer end: no PNG): "frame-time: LABEL N frames avg A ms p99 P ms max M ms".
++ *                       CPU time of this process, so a busy machine does not change it much
++ *   talk-leave          (T8a) leave Talk now (B), then run frames until the house is Live again
++ *   expect-talk on|off  (T8a) fail unless Talk is (not) running
+  * Buttons: UP DOWN LEFT RIGHT A B L R START SELECT X Y L2 R2.
+  * Exit status: 0 ok, 1 script failure, 2 stubs ran with --assert-no-stubs.
+  */
+@@ -98,6 +113,7 @@
+ #include <string.h>
+ #include <ctype.h>
+ #include <errno.h>
++#include <time.h>
+ #include <sys/stat.h>
+ #include "native.h"
+ #include "plat_music_native.h"            /* music: --wav (musrender) */
+@@ -108,6 +124,9 @@
+ #include "doomo/tips.h"               /* CL4: tips on, expect-tip */
+ #include "doomo/items.h"              /* M0: item, problem (journey setups) */
+ #include "doomo/sim.h"
++#include "doomo/talk.h"             /* T8a: talk-enter, talk-say */
++#include "doomo/family.h"
++#include "doomo/life.h"
+ #include "doomo/plat_ext.h"           /* CL2: first-boot (the config record) */
+ #include "doomo/options_store.h"
+ void story_verbs_cell(int cx, int cy);    /* S4: "cell", "skip-talk" (core/src/story_int.h) */
+@@ -115,6 +134,11 @@ int  story_talking(void);
+ void home_move_in(void);                  /* H4: "home-room" (core/src/home_int.h) */
+ int  owfx_hud_band(int *obj_x, int *obj_y, int *obj_w, int *obj_h);   /* CL1: hud-watch (core/src/overworld_int.h) */
+ void home_unlock_room(int room);
++int  home_talk_say(const TalkUtter *u);   /* T8a: "talk-say" (core/src/home_int.h; DOOMO_HAS_TALK) */
++int  home_talk_parse(const char *text, TalkUtter *out);
++int  home_talk_on(void);
++void home_talk_leave(void);
++int  home_talk_busy(void);
+ 
+ /* --- CL2 (C17): a console's machine config record, for "first-boot" ---
+  * Off until a script asks: every other script keeps running with no
+@@ -218,7 +242,7 @@ static int jr_setup_cmd(const char *cmd)
+     static const char *const setup[] = {
+         "scene", "push", "save", "load", "seed", "lang", "story-fp", "side",
+         "talk", "cell", "home-room", "clock", "money", "item", "problem",
+-        "first-boot", "tips",
++        "first-boot", "tips", "family-add", "talk-enter", "talk-say", "talk-wait", "talk-leave", "frame-time",
+     };
+     size_t k;
+     for (k = 0; k < sizeof(setup) / sizeof(setup[0]); k++)
+@@ -661,6 +685,78 @@ static void run_line(char *line)
+     } else if (strcmp(cmd, "money") == 0) {
+         doomo_town.money = (uint32_t)strtoul(argc > 1 ? argv[1] : "0", NULL, 0);
+     /* --- end H4 --- */
++    /* --- T8a: Talk in the house (see the command list above; docs/TALK.md "The house Talk mode") --- */
++    } else if (strcmp(cmd, "talk-enter") == 0) {
++        int who = -1;
++        if (argc > 1) {
++            int i;
++            if (strcmp(argv[1], "pet") == 0) who = TALK_PET_ID;
++            else if (isdigit((unsigned char)argv[1][0])) who = atoi(argv[1]);
++            else if ((who = res_named(argv[1])) < 0)
++                for (i = 0; i < family_count() && who < 0; i++)
++                    if (strcmp(family_name(family_member(i)), argv[1]) == 0) who = family_member(i);
++            if (who < 0) { fail("talk-enter: nobody called", argv[1]); return; }
++        }
++        if (!home_talk_enter(who)) fail("Talk did not start (is this a Live-mode house with someone in it, and TALK_en.BIN built?)", argc > 1 ? argv[1] : "");
++        else step(1);
++    } else if (strcmp(cmd, "family-add") == 0) {
++        static const char *const roles[] = { "", "partner", "child", "parent", "sibling", "grand", "housemate", "pet" };
++        static const char *const stages[] = { "adult", "baby", "toddler", "child", "teen", "elder" };
++        int r = -1, g = -1, k, id;
++        for (k = 1; k < (int)DOOMO_COUNTOF(roles); k++) if (argc > 1 && strcmp(argv[1], roles[k]) == 0) r = k;
++        for (k = 0; k < (int)DOOMO_COUNTOF(stages); k++) if (argc > 2 && strcmp(argv[2], stages[k]) == 0) g = k;
++        if (r < 0 || g < 0) { fail("family-add needs ROLE STAGE, got", argc > 1 ? argv[1] : ""); return; }
++        id = family_pool_add(r, g, 100u + (uint32_t)family_count(), argc > 3 ? argv[3] : NULL, -1);
++        if (id < 0) fail("family-add: the household would not take", argv[1]);
++    } else if (strcmp(cmd, "talk-wait") == 0) {
++        int max = argc > 1 ? atoi(argv[1]) : 900, k;
++        for (k = 0; k < max && home_talk_on() && home_talk_busy(); k++) step(1);
++    } else if (strcmp(cmd, "talk-say") == 0) {
++        TalkUtter u;
++        int k;
++        if (!home_talk_on()) { fail("talk-say: Talk is not running", ""); return; }
++        for (k = 0; k < 900 && home_talk_busy(); k++) step(1);
++        memset(&u, 0, sizeof(u));
++        if (argc > 1 && argv[1][0] == '#') {
++            u.act[0] = (uint8_t)atoi(argv[1] + 1);
++            u.target = (int8_t)(argc > 2 ? atoi(argv[2]) : -1);
++            u.conf = 15;
++            snprintf(u.shown, sizeof(u.shown), "(act %d)", (int)u.act[0]);
++        } else if (argc > 1) {
++            if (!home_talk_parse(argv[1], &u)) { fail("talk-say: no parser (TB_PARSE) for", argv[1]); return; }
++        } else { fail("talk-say needs a line or #ACT", ""); return; }
++        if (!home_talk_say(&u)) fail("talk-say: the talk would not take the line (over, or not talking yet)", argc > 1 ? argv[1] : "");
++        else step(1);
++    } else if (strcmp(cmd, "frame-time") == 0) {
++        static double ms[4000];
++        int n = argc > 1 ? atoi(argv[1]) : 300, k, j;
++        double tot = 0;
++        if (n < 1) n = 1;
++        if (n > 4000) n = 4000;
++        for (k = 0; k < n; k++) {
++            struct timespec a, b;
++            clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &a);
++            step(1);
++            clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &b);
++            ms[k] = (double)(b.tv_sec - a.tv_sec) * 1000.0 + (double)(b.tv_nsec - a.tv_nsec) / 1e6;
++            tot += ms[k];
++        }
++        for (k = 1; k < n; k++) {                                  /* sort for the percentile */
++            double v = ms[k];
++            for (j = k - 1; j >= 0 && ms[j] > v; j--) ms[j + 1] = ms[j];
++            ms[j + 1] = v;
++        }
++        printf("frame-time: %s %d frames avg %.3f ms p99 %.3f ms max %.3f ms\n", argc > 2 ? argv[2] : "", n, tot / n,
++               ms[(n * 99 - 1) / 100], ms[n - 1]);
++    } else if (strcmp(cmd, "talk-leave") == 0) {
++        int k;
++        home_talk_leave();
++        for (k = 0; k < 120 && home_talk_on(); k++) step(1);
++        if (home_talk_on()) fail("Talk did not end", "");
++    } else if (strcmp(cmd, "expect-talk") == 0) {
++        int want = argc > 1 && strcmp(argv[1], "off") != 0;
++        if ((home_talk_on() != 0) != want) fail(want ? "Talk is not running" : "Talk is still running", "");
++    /* --- end T8a --- */
+     /* --- music: render and hash commands (MU1, SPEC sec.16.3, row 39) ---
+      *   music N | music-once N | music-dual A B   audio_music*() by SONG_* number
+      *   mute N | duck Q8 N | tapestop N | resume  S1's comic-timing hooks
+diff --git a/core/src/home_draw.c b/core/src/home_draw.c
+index 521da399..3a44c1ee 100644
+--- a/core/src/home_draw.c
++++ b/core/src/home_draw.c
+@@ -1,7 +1,7 @@
+ /* home_draw.c - SCENE_HOME, the dream house scene (owner: H4; HF sec.2.1, 3,
+  * 5, 10; SPEC sec.7 H4, C9, C14).
+  *
+- * One scene, five modes over one working room (HomeEdit, the undo ring):
++ * One scene, five modes (six with Talk) over one working room (HomeEdit, the undo ring):
+  *   Build   the cursor on the grid: pick up / place / rotate / recolour
+  *           (hold A on a piece, L / R per paint slot), the view brake, the
+  *           rubber band (hold SELECT and move) with group moves, turns,
+@@ -13,6 +13,8 @@
+  *   Defend  Hold the Door (home_defend.c): the lanes, the door HP, A on the
+  *           door / turret / a guest / a window, dawn and the result
+  *   View    a photo re-rendered from its recipe (the gallery's photo wing)
++ *   Talk    (T8, native only until TKP: inside DOOMO_HAS_TALK) a conversation with the people in the
++ *           room (home_talk.c, docs/TALK.md 6g): START > Talk, or A next to a housemate; B leaves
+  * The START menu's first three rows stay Catalog, the mode toggle, Score
+  * (gba/harness/scripts/home.txt walks them); then Walls, Themes,
+  * Blueprints, Photo, Rooms, Leave. A visit's menu: Give a gift, Photo,
+@@ -230,14 +232,26 @@ static const DoomoImage spr_pet = { 10, 9, spr_pet_px, 0xF0B00004u };
+ 
+ /* ---- state ---------------------------------------------------------------------- */
+ enum { HK_OWN, HK_VISIT, HK_STORY };
+-enum { HM_LIVE, HM_BUILD, HM_PHOTO, HM_DEFEND, HM_VIEW };
++enum { HM_LIVE, HM_BUILD, HM_PHOTO, HM_DEFEND, HM_VIEW
++#ifdef DOOMO_HAS_TALK
++       , HM_TALK                 /* (T8) the conversation: home_talk.c; native only until TKP */
++#endif
++};
+ enum { HMN_NONE, HMN_MAIN, HMN_CATALOG, HMN_SCORE, HMN_WALLS, HMN_THEMES, HMN_BLUEPRINTS,
+        HMN_ROOMS, HMN_GROUP };
+ enum { MI_CATALOG, MI_MODE, MI_SCORE, MI_WALLS, MI_THEMES, MI_BLUEPRINTS, MI_PHOTO, MI_ROOMS,
+-       MI_GIFT, MI_LEAVE, MI_COUNT };
++       MI_GIFT, MI_LEAVE,
++#ifdef DOOMO_HAS_TALK
++       MI_TALK,
++#endif
++       MI_COUNT };
+ static const char *const mi_names[MI_COUNT] = {
+     "Catalog", "Live mode", "Score", "Walls", "Themes", "Blueprints", "Photo", "Rooms",
+-    "Give a gift", "Leave" };
++    "Give a gift", "Leave"
++#ifdef DOOMO_HAS_TALK
++    , "Talk"
++#endif
++};
+ enum { GI_MOVE, GI_COPY, GI_PASTE, GI_STORE, GI_COUNT };
+ static const char *const gi_names[GI_COUNT] = { "Done", "Copy", "Paste", "To storage" };
+ /* per-object effects (HomeScn.oa_k) */
+@@ -312,6 +326,9 @@ typedef struct HomeScn {
+     HomeDefend def;
+     uint8_t  def_card;
+     uint8_t  part;                   /* PLAT_PART_*: the visit / defence / build code (scene.h) */
++#ifdef DOOMO_HAS_TALK
++    uint8_t  talk_view;              /* (T8) the view before Talk turned the room                  */
++#endif
+     /* the view */
+     DoomoRoomObj objs[HOME_OBJ_MAX + 1 + HD_GHOSTS];
+     DoomoRoomActor act[AC_MAX];
+@@ -320,6 +337,10 @@ typedef struct HomeScn {
+ } HomeScn;
+ 
+ static HomeScn *H;
++#ifdef DOOMO_HAS_TALK
++static int  talk_possible(void);     /* (T8) below, with the other Talk glue */
++static void update_talk(void);
++#endif
+ static int8_t resume_arg_set;        /* .bss: re-enter after the scratch was taken */
+ static int    resume_arg;
+ 
+@@ -618,6 +639,9 @@ static void open_menu(int menu)
+         if (H->kind == HK_VISIT) {
+             if (H->visit.kind != HVK_SEALED && H->visit.kind != HVK_VACANT) H->mi[H->nmi++] = MI_GIFT;
+             H->mi[H->nmi++] = MI_PHOTO;
++#ifdef DOOMO_HAS_TALK
++            if (talk_possible()) H->mi[H->nmi++] = MI_TALK;
++#endif
+             H->mi[H->nmi++] = MI_LEAVE;
+         } else {
+             H->mi[H->nmi++] = MI_CATALOG;
+@@ -630,6 +654,9 @@ static void open_menu(int menu)
+             }
+             H->mi[H->nmi++] = MI_PHOTO;
+             if (H->kind == HK_OWN) H->mi[H->nmi++] = MI_ROOMS;
++#ifdef DOOMO_HAS_TALK
++            if (talk_possible()) H->mi[H->nmi++] = MI_TALK;
++#endif
+             H->mi[H->nmi++] = MI_LEAVE;
+         }
+         H->nrows = H->nmi;
+@@ -993,6 +1020,9 @@ static void home_enter(int arg)
+ 
+ static void home_leave(void)
+ {
++#ifdef DOOMO_HAS_TALK
++    home_talk_abort();                                       /* (T8) the scene goes away mid-talk: end it */
++#endif
+     if (H && scene_scratch_mine(HD_TAG)) {
+         plat_code_part(H->part);
+         commit();
+@@ -1284,6 +1314,17 @@ static void live_use(void)
+     /* A on what is in front of the player */
+     int tx = FIX2INT(H->px), ty = FIX2INT(H->py), k, idx = -1;
+     static const int8_t fdx[4] = { 0, -1, 1, 0 }, fdy[4] = { 1, 0, 0, -1 };
++#ifdef DOOMO_HAS_TALK
++    if (H->kind == HK_OWN) {                         /* (T8) A next to a housemate: Talk with them */
++        HomeTalkRoom rm;
++        int w;
++        if (home_draw_talk_room(&rm))
++            for (w = 0; w < rm.nwho; w++) {
++                int ddx = FIX2INT(rm.who[w].x) - tx, ddy = FIX2INT(rm.who[w].y) - ty;
++                if (rm.who[w].id != TALK_PET_ID && ddx * ddx + ddy * ddy <= 2 && home_talk_enter(rm.who[w].id)) return;
++            }
++    }
++#endif
+     if (H->kind == HK_VISIT && !H->host_out) {
+         int hx = FIX2INT(H->hx), hy = FIX2INT(H->hy), ddx = hx - tx, ddy = hy - ty;
+         if (ddx * ddx + ddy * ddy <= 2) {
+@@ -1650,6 +1691,9 @@ static void main_pick(int item)
+     case MI_BLUEPRINTS: open_menu(HMN_BLUEPRINTS); break;
+     case MI_ROOMS: open_menu(HMN_ROOMS); break;
+     case MI_PHOTO: photo_begin(); break;
++#ifdef DOOMO_HAS_TALK
++    case MI_TALK: home_talk_enter(-1); break;
++#endif
+     default: leave_now(); break;
+     }
+ }
+@@ -1875,6 +1919,9 @@ static void home_update(void)
+         return;
+     }
+     story_tick();
++#ifdef DOOMO_HAS_TALK
++    if (H->mode == HM_TALK) { update_talk(); return; }
++#endif
+     if (H->menu != HMN_NONE) { update_menu(); return; }
+     if (H->kind == HK_OWN && (H->mode == HM_BUILD || H->mode == HM_LIVE) && H->t > 10 && tip_once(TIP_HOUSE))
+         return;                                      /* CL4 */
+@@ -2098,12 +2145,198 @@ static int hop_z(int age)
+     return HOP_PX * 4 * a * (h - a) / (h * h);
+ }
+ 
++
++#ifdef DOOMO_HAS_TALK
++/* ---- (T8) Talk: the house's side of home_talk.c ---------------------------------------------------------
++ * home_talk.c owns the conversation; this is the glue that needs the scene's statics: the room as Talk sees
++ * it, the figures it asks to draw, and the way back to Live. The F3 housemate spots repeat build_actors'
++ * placement (that loop is left as it was so the GBA and PS1 code stay byte for byte): keep the two in step
++ * (test_home_talk.c compares them). */
++static int talk_housemate_spots(int *ids, fix16 *xs, fix16 *ys)
++{
++    uint16_t occ[16];
++    int i, n = family_count(), put = 0, w = room_w(), dd = room_d();
++    home_floor_occupancy(&H->ed.room, occ);
++    for (i = 0; i < n && put < HOME_HOUSEMATES; i++) {
++        int id = family_member(i), t, tiles = w * dd, start;
++        if (id < 0 || id == playas_avatar()) continue;
++        start = (id * 7 + 3) % (tiles > 0 ? tiles : 1);
++        for (t = 0; t < tiles; t++) {
++            int c = (start + t) % tiles, cx = c % w, cy = c / w;
++            if ((occ[cy] >> cx) & 1) continue;
++            occ[cy] |= (uint16_t)(1u << cx);
++            ids[put] = id;
++            xs[put] = INT2FIX(cx) + FIX_ONE / 2;
++            ys[put] = INT2FIX(cy) + FIX_ONE / 2;
++            put++;
++            break;
++        }
++    }
++    return put;
++}
++
++/* 1 if Talk could start in the house as it is now; fills rm with the room and everyone in it */
++int home_draw_talk_room(HomeTalkRoom *rm)
++{
++    const HomeRoom *r;
++    int i, x, y, ids[HOME_HOUSEMATES], n;
++    fix16 xs[HOME_HOUSEMATES], ys[HOME_HOUSEMATES];
++    memset(rm, 0, sizeof(*rm));
++    if (!H || H->mode != HM_LIVE || (H->kind != HK_OWN && H->kind != HK_VISIT)) return 0;
++    if (plat_screen_w() < 320 || plat_screen_h() < 240) return 0;          /* a GBA-sized screen: no Talk */
++    r = &H->ed.room;
++    rm->w = (uint8_t)room_w();
++    rm->d = (uint8_t)room_d();
++    rm->view_k = (uint8_t)(H->view_k & 3);
++    rm->door_x = home_room_defs[H->room].door_wall == HW_B ? 0 : home_room_defs[H->room].door_at;
++    rm->door_y = home_room_defs[H->room].door_wall == HW_B ? home_room_defs[H->room].door_at : 0;
++    home_floor_occupancy(r, rm->occ);
++    for (i = 0; i < r->nobj; i++) {
++        const DoomoFurn *f = home_furn(HO_FURN(&r->obj[i]));
++        int fw, fd;
++        if (!f || (f->flags & FF_WALL) || HO_ONSURF(&r->obj[i])) continue;
++        home_footprint(f, HO_ROT(&r->obj[i]), &fw, &fd);
++        if (f->interact == FI_SIT) {
++            for (y = HO_Y(&r->obj[i]); y < HO_Y(&r->obj[i]) + fd; y++)
++                for (x = HO_X(&r->obj[i]); x < HO_X(&r->obj[i]) + fw; x++)
++                    if (rm->nseat < HTK_SEATS) {
++                        rm->seat[rm->nseat].x = (uint8_t)x;
++                        rm->seat[rm->nseat].y = (uint8_t)y;
++                        rm->seat[rm->nseat].rot = (uint8_t)HO_ROT(&r->obj[i]);
++                        rm->nseat++;
++                    }
++        } else if (f->role == FR_TABLE && rm->ntable < 2) {
++            rm->table[rm->ntable].x = (uint8_t)HO_X(&r->obj[i]);
++            rm->table[rm->ntable].y = (uint8_t)HO_Y(&r->obj[i]);
++            rm->table[rm->ntable].w = (uint8_t)fw;
++            rm->table[rm->ntable].d = (uint8_t)fd;
++            rm->ntable++;
++        }
++    }
++    rm->px = H->px;
++    rm->py = H->py;
++    rm->avatar = (int16_t)playas_avatar();
++    if (H->kind == HK_VISIT) {
++        if (!H->host_out && rm->nwho < HTK_WHO_MAX) {
++            rm->who[rm->nwho].id = (int16_t)H->visit.id;
++            rm->who[rm->nwho].x = H->hx;
++            rm->who[rm->nwho].y = H->hy;
++            rm->nwho++;
++        }
++    } else {
++        n = talk_housemate_spots(ids, xs, ys);
++        for (i = 0; i < n && rm->nwho < HTK_WHO_MAX; i++) {
++            rm->who[rm->nwho].id = (int16_t)ids[i];
++            rm->who[rm->nwho].x = xs[i];
++            rm->who[rm->nwho].y = ys[i];
++            rm->nwho++;
++        }
++        if (H->pet_on && r->nobj && rm->nwho < HTK_WHO_MAX) {              /* where the pet is now (build_actors' hop) */
++            int to = H->pet_to < r->nobj ? H->pet_to : 0, from = H->pet_from < r->nobj ? H->pet_from : to;
++            fix16 x0 = INT2FIX(HO_X(&r->obj[from])) + FIX_ONE / 2, y0 = INT2FIX(HO_Y(&r->obj[from])) + FIX_ONE;
++            fix16 x1 = INT2FIX(HO_X(&r->obj[to])) + FIX_ONE / 2, y1 = INT2FIX(HO_Y(&r->obj[to])) + FIX_ONE;
++            if (H->pet_age != 0xFF) {
++                fix16 t = tw_t(H->pet_age, ht[HT_HOP] * 3);
++                x0 = x0 + (fix16)(((int64_t)(x1 - x0) * t) >> 16);
++                y0 = y0 + (fix16)(((int64_t)(y1 - y0) * t) >> 16);
++            } else {
++                x0 = x1; y0 = y1;
++            }
++            if (y0 > INT2FIX(room_d()) - FIX_ONE / 4) y0 = INT2FIX(room_d()) - FIX_ONE / 4;
++            rm->who[rm->nwho].id = TALK_PET_ID;
++            rm->who[rm->nwho].x = x0;
++            rm->who[rm->nwho].y = y0;
++            rm->nwho++;
++        }
++    }
++    return rm->nwho > 0;
++}
++
++int home_draw_actor(int i, fix16 *x, fix16 *y)
++{
++    if (!H || i < 0 || i >= H->nact) return 0;
++    *x = H->act[i].x;
++    *y = H->act[i].y;
++    return 1;
++}
++
++static int talk_possible(void)
++{
++    HomeTalkRoom rm;
++    return H && H->mode == HM_LIVE && home_draw_talk_room(&rm);
++}
++
++/* Start Talk (talk.h home_talk_enter is this): who = a person's id, TALK_PET_ID, or -1 the nearest */
++int home_draw_talk_start(int who)
++{
++    HomeTalkRoom rm;
++    int k, here = who < 0;
++    if (!H || scene_top() != &SCENE_HOME || !scene_scratch_mine(HD_TAG)) return 0;
++    if (!home_draw_talk_room(&rm)) return 0;
++    for (k = 0; k < rm.nwho; k++) if (rm.who[k].id == who) here = 1;
++    if (!here) return 0;
++    k = home_talk_begin(&rm, who);
++    if (k < 0) return 0;
++    H->talk_view = H->view_k;
++    H->view_k = (uint8_t)k;
++    H->mode = HM_TALK;
++    H->menu = HMN_NONE;
++    H->sitting = 0;
++    H->pwalk = 0;
++    H->held = -1;
++    return 1;
++}
++
++/* a frame of Talk; when it is over the player is where the talk left them and the house is Live again */
++static void update_talk(void)
++{
++    fix16 x, y;
++    int sit;
++    if (home_talk_update()) return;
++    home_talk_end_pos(&x, &y, &sit);
++    H->px = x;
++    H->py = y;
++    H->sitting = 0;
++    if (sit) {
++        int idx = home_obj_at(&H->ed.room, FIX2INT(x), FIX2INT(y));
++        if (idx >= 0) { H->sitting = 1; H->sit_obj = (uint8_t)idx; }
++    }
++    H->pdir = 0;
++    H->view_k = H->talk_view;
++    H->mode = HM_LIVE;
++}
++
++/* the figures of Talk: the player, the people, the pet */
++static void build_talk_actors(DoomoRoomView *v)
++{
++    HomeTalkActor ta[TALK_PARTS_MAX + 2];
++    int i, n = home_talk_actors(ta, TALK_PARTS_MAX + 2);
++    H->nact = 0;
++    for (i = 0; i < n; i++) {
++        const HomeTalkActor *t = &ta[i];
++        const DoomoImage *img = t->id == TALK_PET_ID ? &spr_pet :
++                                bodyspr_image(t->id < 0 ? playas_avatar() : t->id, t->dir, t->frame);
++        DoomoRoomActor *a = add_actor(img, t->x, t->y, t->z);
++        if (!a) continue;
++        a->sx = t->sx;
++        a->sy = t->sy;
++        a->flags = t->flags;
++        if (H->kind == HK_VISIT && H->visit.kind == HVK_GHOST && t->id == (int)H->visit.id) a->flags |= BB_TRANSLUCENT;
++    }
++    v->actors = H->act;
++    v->nact = H->nact;
++}
++#endif
++
+ static void build_actors(DoomoRoomView *v)
+ {
+     DoomoRoomActor *a;
+     int breath = ui_wave(H->t, ht[HT_BREATH], 1) > 0;
+     H->nact = 0;
+     if (H->mode == HM_VIEW) { v->actors = H->act; v->nact = 0; return; }
++#ifdef DOOMO_HAS_TALK
++    if (H->mode == HM_TALK) { build_talk_actors(v); return; }
++#endif
+     /* the player: Live, visits, the defence, Build (standing by the door) */
+     if (H->mode != HM_PHOTO || H->kind == HK_VISIT) {
+         DoomoResident *me = town_res(playas_slot());
+@@ -2264,6 +2497,9 @@ static void hud_prompts(char *nm, int nmcap)
+     UiPrompt p[4];
+     const UiPrompt *t;
+     int n;
++#ifdef DOOMO_HAS_TALK
++    if (H->mode == HM_TALK) { home_talk_prompts(); return; }      /* (T8) its own control card */
++#endif
+     if (H->menu == HMN_SCORE) HP_USE(hp_score);
+     else if (H->menu == HMN_CATALOG) HP_USE(hp_catalog);
+     else if (H->menu == HMN_WALLS) HP_USE(hp_walls);
+@@ -2314,7 +2550,11 @@ static void draw_hud(void)
+     x = 6 + ui_text_width(home_room_defs[H->room].name) + 4;
+     rescore();
+     {   /* C15: the mode is named after the room ("Living Room  Build"), the clock where it still fits */
+-        static const char *const mode_names[] = { "Live", "Build", "Photo", "Defend", "Photo" };
++        static const char *const mode_names[] = { "Live", "Build", "Photo", "Defend", "Photo"
++#ifdef DOOMO_HAS_TALK
++                                                  , "Talk"
++#endif
++        };
+         const char *mw = H->mode < DOOMO_COUNTOF(mode_names) ? mode_names[H->mode] : "";
+         char money[16];
+         int right;
+@@ -2342,7 +2582,11 @@ static void draw_caption(void)
+ {
+     int sw = plat_screen_w(), sh = plat_screen_h();
+     const UiStyle *st = ui_style(WIN_CUTE);
+-    if (H->msg_age != 0xFFFF && H->msg) {
++    if (H->msg_age != 0xFFFF && H->msg
++#ifdef DOOMO_HAS_TALK
++        && H->mode != HM_TALK            /* (T8) the instruction line has that row */
++#endif
++        ) {
+         int w = ui_text_width(H->msg) + 10, y = sh - 28;
+         int dy = H->msg_age < 4 ? (4 - H->msg_age) * 2 : 0;
+         if (w > sw - 8) w = sw - 8;
+@@ -2824,6 +3068,9 @@ static int menu_hold_rect(int *x, int *y, int *w, int *h)
+ static int house_still(void)
+ {
+     int i;
++#ifdef DOOMO_HAS_TALK
++    if (H->mode == HM_TALK) return 0;                      /* (T8) a conversation always moves */
++#endif
+     if (H->mode == HM_PHOTO || H->mode == HM_VIEW || H->mode == HM_DEFEND || H->t < ht[HT_IRIS] ||
+         ui_pop_scale((int)H->t) != 256) return 0;
+     if (H->msg_age != 0xFFFF || H->sleep_age != 0xFF || H->react_age != 0xFF || H->shot_age != 0xFF ||
+@@ -2868,6 +3115,9 @@ static void home_draw(void)
+     }
+ #endif
+     build_view(&v, cache, cap);
++#ifdef DOOMO_HAS_TALK
++    if (H->mode == HM_TALK) home_talk_view(&v);              /* (T8) the camera: yaw, talk framing, pan, punch */
++#endif
+     build_actors(&v);
+     /* (C7.3, GBA speed) the Score window is opaque and drawn whole every tick: name its body to the room renderer
+      * BEFORE plat_room so it neither checks nor restores the room under it (a static window cost 51 ms a tick).
+@@ -2914,6 +3164,9 @@ static void home_draw(void)
+     }
+     draw_hud();
+     draw_story_panel();
++#ifdef DOOMO_HAS_TALK
++    if (H->mode == HM_TALK) home_talk_draw(&v);              /* (T8) bubbles, the pick row, the instruction line */
++#endif
+     if (H->mode == HM_DEFEND) draw_defend();
+     if (H->menu != HMN_NONE) draw_menu(cache, cap);
+     draw_stamp();
+diff --git a/core/src/home_int.h b/core/src/home_int.h
+index 25efe347..d2b880d4 100644
+--- a/core/src/home_int.h
++++ b/core/src/home_int.h
+@@ -688,4 +688,64 @@ extern uint8_t home_mart_expanded;                   /* the room the house shows
+ /* (ST1) the house's current view rotation 0..3 (home_draw.c) */
+ int home_view_k(void);
+ 
++/* ---- (T8) the house Talk mode (core/src/home_talk.c, docs/TALK.md "The house Talk mode") ------------
++ * Native only until TKP: home_talk.c and the hooks in home_draw.c exist only where the build defines
++ * DOOMO_HAS_TALK (core/Makefile; the GBA, PS1 and Dreamcast builds do not), so they cost those
++ * builds nothing. home_draw.c owns the room and the scene; home_talk.c owns the conversation (who joins,
++ * where they stand, the camera, the bubbles, talk_dm); they meet in these calls. */
++#ifdef DOOMO_HAS_TALK
++#include "doomo/talk.h"
++#define HTK_WHO_MAX   6               /* people the house can name in a room (housemates, host, pet)   */
++#define HTK_SEATS     12              /* seat tiles the house can offer                                */
++typedef struct HomeTalkWho { int16_t id; fix16 x, y; } HomeTalkWho;   /* a resident / pool id or TALK_PET_ID, where they stand */
++typedef struct HomeTalkRoom {        /* what the house tells Talk about the room it is in             */
++    uint8_t  w, d;                   /* the room's size in tiles                                      */
++    uint8_t  view_k;                 /* the view it is in now (0..3)                                  */
++    uint8_t  door_x, door_y;         /* the door's tile: a resident who walks out of the talk goes there */
++    uint16_t occ[16];                /* floor tiles with a piece on them (bit x of row y)             */
++    uint8_t  nseat;                  /* seat tiles (a sofa gives one per tile)                        */
++    struct { uint8_t x, y, rot; } seat[HTK_SEATS];   /* tile and the piece's rot (0 / 1 show their front) */
++    uint8_t  ntable;                 /* tables: the rings of free tiles round them                    */
++    struct { uint8_t x, y, w, d; } table[2];
++    fix16    px, py;                 /* the player                                                    */
++    int16_t  avatar;                 /* the id the player plays (playas_avatar)                       */
++    uint8_t  nwho;
++    HomeTalkWho who[HTK_WHO_MAX];     /* everyone in the room: this is the room's audience             */
++} HomeTalkRoom;
++typedef struct HomeTalkActor {       /* one figure Talk wants drawn this frame                         */
++    int16_t id;                      /* the person, TALK_PET_ID, or -1 the player                      */
++    fix16   x, y;
++    int16_t z, sx, sy;               /* feet height px, squash Q8.8                                    */
++    uint8_t dir;                     /* 0 front .. 3 back, as bodyspr_image                            */
++    uint8_t frame;                   /* walk frame 0..3                                                */
++    uint8_t flags;                   /* RA_PLAYER                                                      */
++    uint8_t sit;                     /* seated (z, squash and the seat are already in the fields above) */
++} HomeTalkActor;
++/* home_draw.c: start Talk in the room the house is in: who = a person's id (TALK_PET_ID the pet) or -1 for
++ * the nearest. 1 started (home_talk.c took over), 0 not here (not a Live-mode house or visit, nobody in
++ * the room, no Talk data, a GBA-sized screen). home_talk_enter() (talk.h) is this. */
++int  home_draw_talk_start(int who);
++/* home_talk.c, called by home_draw.c */
++int  home_talk_begin(const HomeTalkRoom *room, int target);   /* gather; returns the view 0..3 to use, -1 not available */
++int  home_talk_update(void);                         /* one frame; 1 while Talk is on, 0 once it is over (the house goes back to Live) */
++void home_talk_view(DoomoRoomView *v);               /* the camera: yaw, zoom 2, focus, pan, punch */
++int  home_talk_actors(HomeTalkActor *out, int max);  /* the figures this frame: the player first, then the people */
++void home_talk_draw(const DoomoRoomView *v);         /* bubbles, the pick row and the instruction line */
++void home_talk_prompts(void);                        /* the control card (the prompt bar at the screen's foot) */
++void home_talk_end_pos(fix16 *x, fix16 *y, int *sitting);   /* where the player stands when Talk is over */
++int  home_talk_say(const TalkUtter *u);              /* the player's turn, through the audience gate (the runner's talk-say; the starters) */
++int  home_talk_parse(const char *text, TalkUtter *out);   /* a typed line with the room as the parser's context */
++void home_talk_leave(void);                          /* begin leaving (B) */
++void home_talk_abort(void);                          /* the scene went away: end now */
++int  home_talk_on(void);                             /* Talk is running (gathering, talking or leaving) */
++int  home_talk_busy(void);                           /* ... and not waiting for the player: gathering, leaving, a bubble up or lines to come */
++int  home_talk_bubble(int which, char *text, int cap, int *who, int *shown);   /* tests: bubble 0 current / 1 faded previous: phase 0 none 1 typing 2 held */
++void home_talk_cam_stats(int *moves, int *min_gap);  /* tests: camera moves made, the shortest gap between two (frames) */
++const struct TalkState *home_talk_state(void);       /* tests, the runner */
++const struct TalkSummary *home_talk_summary(void);   /* what the last session did (T6-OUT applies it); NULL while none */
++/* home_draw.c: the room as Talk sees it (home_draw_talk_start uses it; tests): 1 if Talk could start now */
++int  home_draw_talk_room(HomeTalkRoom *rm);
++int  home_draw_actor(int i, fix16 *x, fix16 *y);     /* tests: figure i of the last frame's view (0 the player first), 0 past the end */
++#endif
++
+ #endif
+diff --git a/core/src/home_talk.c b/core/src/home_talk.c
+new file mode 100644
+index 00000000..53b8b050
+--- /dev/null
++++ b/core/src/home_talk.c
+@@ -0,0 +1,967 @@
++/* home_talk.c - HM_TALK, the house's Talk mode (owner: TK, package T8a; docs/TALK.md "The house Talk
++ * mode"; design 4 and 2). Native only until TKP: everything below is inside DOOMO_HAS_TALK (core/Makefile),
++ * so the GBA, PS1 and Dreamcast builds link none of it and their RAM and speed do not change.
++ *
++ * What is here (T8a): entering Talk, gathering the people of the room and their seats, the camera, speech
++ * bubbles drawn at the speakers' heads (plat_room_project), driving talk_dm (talk_dm_say / _step / _tick /
++ * _end) so that a session shows its lines in bubbles, leaving, the control card and the one instruction
++ * line. What is NOT here yet (T8b / T8c): the portrait inset, emotes, quick replies, catch-the-word, the
++ * composer, the typed line, invites. The "starters" below are a stand-in so that a person at the pad can say
++ * something; the quick replies replace them.
++ *
++ * The seams, so that the later packages can build on this:
++ *   home_draw.c  owns the room and the scene (static HomeScn). It calls home_talk_begin() with a
++ *                HomeTalkRoom (everyone present, the seats, the free floor), and in HM_TALK it calls
++ *                home_talk_update / _view / _actors / _draw / _prompts. Nothing else of the house is touched.
++ *   home_talk.c  owns the conversation: gather() picks who joins and where they stand, pick_view() the
++ *                quarter turn, cam_*() the shots, bub_*() the bubbles, pump() the drama manager. T8b adds the
++ *                portrait inset and emotes in home_talk_draw(); T8c adds input sources that all end in
++ *                home_talk_say().
++ *   talk_dm.c    the policy. Every utterance goes through talk_dm_say(), which runs the audience gate, so no
++ *                caller here can skip a safety rule. The audience is everyone present: nobody is left out of
++ *                talk_dm_begin() (pick_who() drops an adult before a child or the pet), so a child in the
++ *                room makes the room kid-safe for the whole talk.
++ *
++ * State: one static HomeTalk (1,492 B on x86-64) and the room it was told about (a HomeTalkRoom, 168 B) and the parser's name buffer (96 B), native
++ * only. TP2 moves them into the house's scene scratch.
++ */
++#include "home_int.h"
++#include "doomo/tween.h"
++#include "doomo/audio.h"
++#include "doomo/portrait.h"
++#include "doomo/playas.h"
++#include "doomo/family.h"
++#include "doomo/life.h"
++#include "doomo/lang.h"
++#include "doomo/ui.h"
++#include "doomo/font.h"
++#include "doomo/input.h"
++#include "doomo/plat_ext.h"
++
++typedef int home_talk_unit_;         /* an empty unit is not allowed in ISO C */
++
++#ifdef DOOMO_HAS_TALK
++
++/* ---- timing (frames at 30 Hz) and limits ----------------------------------------------------- */
++#define HTT_GATHER_MIN   12          /* design 4.2: everyone walks to the spot in 12-20 frames        */
++#define HTT_GATHER_MAX   20
++#define HTT_LEAVE        14          /* walking back                                                  */
++#define HTT_OUT          20          /* a resident who walks out goes to the door                     */
++#define HTT_HOLD_BASE    30          /* a finished bubble stays: base + per char, up to the cap       */
++#define HTT_HOLD_CHAR    2
++#define HTT_HOLD_MAX     150
++#define HTT_HOLD_CUT     6           /* an interrupted line is cut off at once                        */
++#define HTT_ME_HOLD      30          /* the player's own bubble                                       */
++#define HTT_PREV_HOLD    150         /* the faded previous bubble stays this long once nobody is speaking */
++#define HTT_CAM_GAP      45          /* at most one camera move in this many frames (design 4.2)      */
++#define HTT_CAM_RETURN   90          /* quiet this long and the shot goes back to the group           */
++#define HTT_PUSH_Q8      26          /* 1.1x                                                          */
++#define HTT_SHAKE        4           /* an interrupted bubble shakes for 4 frames                     */
++#define HTT_OVER_HOLD    40          /* the talk is over: the last line stays, then everyone leaves   */
++#define HTT_PAN_MAX      12          /* px the shot may pan toward a speaker                          */
++#define HTT_FRAME_X      24          /* px the framing may slide the room toward the group (x, y)     */
++#define HTT_FRAME_Y      8
++#define HTT_HEAD         30          /* px above the feet where the bubble's tail points              */
++
++enum { HTS_OFF, HTS_GATHER, HTS_TALK, HTS_LEAVE };
++enum { HTB_NONE, HTB_TYPE, HTB_HOLD };
++enum { HTC_GROUP, HTC_SPEAKER, HTC_TWO };
++
++typedef struct HtPerson {
++    int16_t  id;                     /* resident / pool id, TALK_PET_ID, -1 the player                */
++    fix16    x, y;                   /* now                                                           */
++    fix16    fx, fy, tx, ty;         /* from (where the house had them), to (the conversation's spot) */
++    uint8_t  sit, out, gone;         /* seated; walking out to the door; out of the talk              */
++    uint8_t  dir, frame;             /* facing (bodyspr dir), walk frame                              */
++    uint8_t  out_t;                  /* frames spent walking out                                      */
++    uint8_t  tile_x, tile_y;         /* the tile of the spot                                          */
++    uint8_t  rot;                    /* a seat's rot                                                  */
++} HtPerson;
++
++typedef struct HtBubble {
++    char     text[TALK_LINE_MAX];    /* with the line codes taken out                                 */
++    int8_t   who;                    /* participant slot, -1 the player                               */
++    uint8_t  phase, cut;             /* HTB_*; the line was cut off (it shakes when it is all there)  */
++    uint8_t  shake, sincere;
++    uint16_t age;                    /* frames in this phase                                          */
++    uint16_t shown, len;             /* half characters shown, characters in all                      */
++} HtBubble;
++
++typedef struct HomeTalk {
++    TalkState  dm;
++    uint8_t    state, n, view_k, stepping, opened_db, starter, over_t, cam_shot;
++    uint8_t    last_who, sincere_q, have_sum, cam_ever;
++    uint16_t   t;                    /* frames in the state                                           */
++    uint16_t   dur;                  /* frames this state lasts (gather, leave)                       */
++    uint16_t   cam_t;                /* frame (T.t) of the last camera move                           */
++    uint16_t   cam_moves, cam_min_gap;   /* tests: moves made, the shortest gap between two           */
++    HtPerson   p[TALK_PARTS_MAX];
++    HtPerson   me;
++    HtBubble   cur, prev;
++    fix16      fx, fy, fr;           /* the framing now (tile space)                                  */
++    int8_t     pan_x, pan_y, pan_tx, pan_ty;
++    TwSpring   push;                 /* the boing of a new speaker's shot                             */
++    TalkSummary sum;
++    uint32_t   serial;               /* talks started (the seed)                                      */
++} HomeTalk;
++
++static HomeTalk T;
++static HomeTalkRoom R;               /* the room as told at the start (the door, the free floor)      */
++
++/* the starters: what A says until T8b's quick replies (act, tone, label, the player's bubble) */
++static const struct { uint8_t act, tone; const char *label, *say; } starters[] = {
++    { TA_GREET,       TONE_WARM,   "Say hi",           "Hi, everyone!" },
++    { TA_ASK_FEELING, TONE_PLAIN,  "Ask how they are", "How is everyone?" },
++    { TA_COMPLIMENT,  TONE_WARM,   "Compliment",       "You all look great." },
++    { TA_JOKE,        TONE_CHEEKY, "Tell a joke",      "Knock, knock!" },
++    { TA_THANK,       TONE_WARM,   "Say thanks",       "Thanks, all of you." },
++};
++#define NSTARTERS ((int)(sizeof(starters) / sizeof(starters[0])))
++
++/* ---- small helpers ------------------------------------------------------------------------- */
++static int iabs(int v) { return v < 0 ? -v : v; }
++static fix16 centre(int t) { return INT2FIX(t) + FIX_ONE / 2; }
++
++/* a tile of the room in the turned view (room_ref.c: (x, y) -> (D - 1 - y, x) a step) */
++static void rot_tile(int k, int w, int d, int *x, int *y)
++{
++    while (k-- > 0) {
++        int t = *x;
++        *x = d - 1 - *y;
++        *y = t;
++        t = w; w = d; d = t;
++    }
++}
++
++static int view_y(int k, int x, int y)
++{
++    rot_tile(k, R.w, R.d, &x, &y);
++    return y;
++}
++
++/* what a vector of the room looks like on the screen in view k: the iso projection's dx (units) and dy (x2) */
++static void screen_delta(int k, fix16 dx, fix16 dy, int *sx, int *sy)
++{
++    int vx = FIX2INT(dx * 16), vy = FIX2INT(dy * 16), t;    /* 16 units a tile, as room_ref.c */
++    for (; k > 0; k--) { t = vx; vx = -vy; vy = t; }
++    *sx = vx - vy;
++    *sy = (vx + vy) / 2;
++}
++
++/* what a seat's rot looks like in view k: rots 0 / 1 show their front (furn.h). 3 straight on, then 2, 1, 0 */
++static int seat_front(int rot, int k)
++{
++    static const uint8_t score[4] = { 3, 2, 0, 1 };
++    return score[(rot - k) & 3];
++}
++
++static int tile_free(int x, int y)
++{
++    return x >= 0 && y >= 0 && x < R.w && y < R.d && !((R.occ[y] >> x) & 1);
++}
++
++static const char *name_of(int id)
++{
++    if (id == TALK_PET_ID) return doomo_town.pet.name[0] ? doomo_town.pet.name : "Boreagotchi";
++    if (id < 0) return "You";
++    if (id > DOOMO_PLAYER_ID) return family_name(id);
++    {
++        const DoomoResident *r = town_res(id);
++        return r && r->status != RES_EMPTY ? r->name : "?";
++    }
++}
++
++/* ---- who joins (design 4.1) -------------------------------------------------------------------- */
++/* The room's audience is everyone present. At most TALK_PARTS_MAX can join; when the room holds more: the
++ * target first, then the children and the pet (the safety rules read them), then the others by distance to
++ * the player. An adult is dropped before a child or the pet is. Returns the count; order[] indexes room->who. */
++static int pick_who(const HomeTalkRoom *room, int target, int *order)
++{
++    int n = 0, i, j, used[HTK_WHO_MAX], key[HTK_WHO_MAX], nw = room->nwho < HTK_WHO_MAX ? room->nwho : HTK_WHO_MAX;
++    for (i = 0; i < nw; i++) {
++        int id = room->who[i].id, dx, dy;
++        used[i] = 0;
++        if (id < 0 || id == room->avatar) used[i] = 1;                      /* nobody, or the player themselves */
++        for (j = 0; j < i; j++) if (room->who[j].id == id) used[i] = 1;     /* once */
++        dx = FIX2INT(room->who[i].x - room->px);
++        dy = FIX2INT(room->who[i].y - room->py);
++        key[i] = 100 + iabs(dx) + iabs(dy);
++        if (id == target) key[i] = 0;
++        else if (id == TALK_PET_ID || talk_safe_minor(id)) key[i] -= 50;
++    }
++    while (n < TALK_PARTS_MAX) {
++        int best = -1;
++        for (i = 0; i < nw; i++)
++            if (!used[i] && (best < 0 || key[i] < key[best])) best = i;
++        if (best < 0) break;
++        used[best] = 1;
++        order[n++] = best;
++    }
++    return n;
++}
++
++/* ---- where they stand (design 4.2) ------------------------------------------------------------- */
++static void place(HtPerson *p, int tx, int ty, int sit, int rot)
++{
++    p->tile_x = (uint8_t)tx;
++    p->tile_y = (uint8_t)ty;
++    p->tx = centre(tx);
++    p->ty = centre(ty);
++    p->sit = (uint8_t)sit;
++    p->rot = (uint8_t)rot;
++}
++
++/* the quarter turn that shows the seated residents' fronts the most (a tie keeps the view it is in) */
++static int pick_view(const int *rots, int nrot, int cur)
++{
++    int k, best = cur, bs = -1;
++    if (!nrot) return cur;
++    for (k = 0; k < 4; k++) {
++        int kk = (cur + k) & 3, s = 0, i;
++        for (i = 0; i < nrot; i++) s += seat_front(rots[i], kk);
++        if (s > bs) { bs = s; best = kk; }
++    }
++    return best;
++}
++
++static int spot_taken(int x, int y)
++{
++    int k;
++    for (k = 0; k < T.n; k++) if (T.p[k].tx && T.p[k].tile_x == x && T.p[k].tile_y == y) return 1;
++    return T.me.tx && T.me.tile_x == x && T.me.tile_y == y;
++}
++
++/* The best free standing tile round (ax, ay) for someone starting at (sx, sy): about two tiles from the
++ * anchor (a ring), on the camera's side (a half circle: a tile behind costs more), not next to anyone, and not
++ * far to walk. `front` is the player: a little further out, pulled toward the camera (the open side). */
++static int stand_tile(int ax, int ay, int sx, int sy, int front, int *ox, int *oy)
++{
++    int x, y, best = 0x7FFFFFFF, found = 0, vya = view_y(T.view_k, ax, ay);
++    for (y = 0; y < R.d; y++)
++        for (x = 0; x < R.w; x++) {
++            int dx = x - ax, dy = y - ay, d2 = dx * dx + dy * dy, vy, cost, pen, want = front ? 9 : 4, k;
++            if (!tile_free(x, y) || d2 < 1 || spot_taken(x, y)) continue;
++            vy = view_y(T.view_k, x, y) - vya;
++            pen = front ? -6 * DOOMO_CLAMP(vy, -2, 2) : (vy < -1 ? 8 : 0);
++            for (k = 0; k < T.n; k++)                       /* room to breathe: not shoulder to shoulder */
++                if (T.p[k].tx && iabs(T.p[k].tile_x - x) <= 1 && iabs(T.p[k].tile_y - y) <= 1) pen += 10;
++            cost = (iabs(d2 - want) * 3 + pen) * 4 + iabs(x - sx) + iabs(y - sy);
++            if (cost < best) { best = cost; *ox = x; *oy = y; found = 1; }
++        }
++    return found;
++}
++
++static void gather(const HomeTalkRoom *room, int n)
++{
++    int i, k, ncl = 0, cl[HTK_SEATS], seat_taken[HTK_SEATS], nrot = 0, rots[TALK_PARTS_MAX + 1];
++    int ax = room->w / 2, ay = room->d / 2, have_anchor = 0, best_n = 0, best_i = 0, nseat = room->nseat;
++    if (nseat > HTK_SEATS) nseat = HTK_SEATS;
++    memset(seat_taken, 0, sizeof(seat_taken));
++    /* 1. the largest seat cluster: the seats within 3 tiles of the seat with the most of them near */
++    for (i = 0; i < nseat; i++) {
++        int c = 0;
++        for (k = 0; k < nseat; k++)
++            if (iabs(room->seat[k].x - room->seat[i].x) <= 3 && iabs(room->seat[k].y - room->seat[i].y) <= 3) c++;
++        if (c > best_n) { best_n = c; best_i = i; }
++    }
++    if (best_n > 0) {
++        int sx = 0, sy = 0;
++        for (k = 0; k < nseat; k++)
++            if (iabs(room->seat[k].x - room->seat[best_i].x) <= 3 && iabs(room->seat[k].y - room->seat[best_i].y) <= 3) {
++                cl[ncl++] = k;
++                sx += room->seat[k].x;
++                sy += room->seat[k].y;
++            }
++        ax = sx / ncl;
++        ay = sy / ncl;
++        have_anchor = 1;
++    }
++    for (i = 0; i < n; i++) {                           /* residents sit, the nearest free seat first; the pet stands */
++        HtPerson *p = &T.p[i];
++        int bi = -1, bd = 0x7FFF;
++        if (p->id == TALK_PET_ID) continue;
++        for (k = 0; k < ncl; k++) {
++            int s = cl[k], d = iabs(room->seat[s].x - FIX2INT(p->fx)) + iabs(room->seat[s].y - FIX2INT(p->fy));
++            if (!seat_taken[s] && d < bd) { bd = d; bi = s; }
++        }
++        if (bi < 0) continue;
++        seat_taken[bi] = 1;
++        place(p, room->seat[bi].x, room->seat[bi].y, 1, room->seat[bi].rot);
++        rots[nrot++] = room->seat[bi].rot;
++    }
++    T.view_k = (uint8_t)pick_view(rots, nrot, room->view_k);
++    /* 2. a table, if there is no seat cluster */
++    if (!have_anchor && room->ntable) {
++        ax = room->table[0].x + room->table[0].w / 2;
++        ay = room->table[0].y + room->table[0].d / 2;
++    }
++    /* 3. the rest stand in a half circle on the camera's side of the anchor */
++    for (i = 0; i < n; i++) {
++        HtPerson *p = &T.p[i];
++        int tx, ty;
++        if (p->tx) continue;
++        if (stand_tile(ax, ay, FIX2INT(p->fx), FIX2INT(p->fy), 0, &tx, &ty)) place(p, tx, ty, 0, 0);
++    }
++    /* the player: a spare seat of the cluster, else the open side */
++    {
++        int bi = -1, bd = 0x7FFF, tx, ty;
++        for (k = 0; k < ncl; k++) {
++            int s = cl[k], d = iabs(room->seat[s].x - FIX2INT(T.me.fx)) + iabs(room->seat[s].y - FIX2INT(T.me.fy));
++            if (!seat_taken[s] && d < bd) { bd = d; bi = s; }
++        }
++        if (bi >= 0) place(&T.me, room->seat[bi].x, room->seat[bi].y, 1, room->seat[bi].rot);
++        else if (stand_tile(ax, ay, FIX2INT(T.me.fx), FIX2INT(T.me.fy), 1, &tx, &ty)) place(&T.me, tx, ty, 0, 0);
++    }
++}
++
++/* ---- the camera (design 4.2) --------------------------------------------------------------------- */
++/* the group shot: everyone still in the talk and the player, a tile of head margin; the two-shot of an
++ * argument: the two who row */
++static void cam_frame(void)
++{
++    fix16 minx = 0x7FFFFFFF, maxx = -0x7FFFFFFF, miny = 0x7FFFFFFF, maxy = -0x7FFFFFFF;
++    int k, any = 0, two = T.cam_shot == HTC_TWO && T.dm.arg_a >= 0 && T.dm.arg_b >= 0;
++    for (k = -1; k < T.n; k++) {
++        const HtPerson *p = k < 0 ? &T.me : &T.p[k];
++        if (k >= 0 && (p->gone || p->out)) continue;
++        if (two && k >= 0 && k != T.dm.arg_a && k != T.dm.arg_b) continue;
++        if (two && k < 0) continue;
++        if (p->x < minx) minx = p->x;
++        if (p->x > maxx) maxx = p->x;
++        if (p->y < miny) miny = p->y;
++        if (p->y > maxy) maxy = p->y;
++        any = 1;
++    }
++    if (!any) return;
++    T.fx = (minx + maxx) / 2;
++    T.fy = (miny + maxy) / 2;
++    {
++        fix16 rx = (maxx - minx) / 2, ry = (maxy - miny) / 2;
++        T.fr = (rx > ry ? rx : ry) + FIX_ONE;
++    }
++}
++
++/* The camera may change its shot once in HTT_CAM_GAP frames; 1 if it did. */
++static int cam_move(int shot)
++{
++    if (T.cam_ever && (uint16_t)(T.t - T.cam_t) < HTT_CAM_GAP) return 0;
++    if (T.cam_ever && (uint16_t)(T.t - T.cam_t) < T.cam_min_gap) T.cam_min_gap = (uint16_t)(T.t - T.cam_t);
++    T.cam_ever = 1;
++    T.cam_t = T.t;
++    T.cam_shot = (uint8_t)shot;
++    T.cam_moves++;
++    return 1;
++}
++
++static void cam_tick(void)
++{
++    int arg = T.dm.arg_step > 0 && T.dm.arg_a >= 0 && T.dm.arg_b >= 0;
++    if (arg && T.cam_shot != HTC_TWO) cam_move(HTC_TWO);
++    else if (!arg && T.cam_shot == HTC_TWO) cam_move(HTC_GROUP);
++    else if (T.cam_shot == HTC_SPEAKER && T.cur.phase == HTB_NONE && (uint16_t)(T.t - T.cam_t) > HTT_CAM_RETURN) cam_move(HTC_GROUP);
++    cam_frame();
++    if (T.cam_shot == HTC_SPEAKER && T.last_who < T.n) {                /* pan toward the speaker's head */
++        const HtPerson *p = &T.p[T.last_who];
++        int sx, sy;
++        screen_delta(T.view_k, p->x - T.fx, p->y - T.fy, &sx, &sy);
++        T.pan_tx = (int8_t)DOOMO_CLAMP(-sx / 4, -HTT_PAN_MAX, HTT_PAN_MAX);
++        T.pan_ty = (int8_t)DOOMO_CLAMP(-sy / 4, -HTT_PAN_MAX / 2, HTT_PAN_MAX / 2);
++    } else {
++        T.pan_tx = T.pan_ty = 0;
++    }
++    if (T.pan_x < T.pan_tx) T.pan_x++; else if (T.pan_x > T.pan_tx) T.pan_x--;
++    if (T.pan_y < T.pan_ty) T.pan_y++; else if (T.pan_y > T.pan_ty) T.pan_y--;
++    tw_spring_step(&T.push);
++    /* a sincere line: a slow push in, and back out */
++    if (T.cur.sincere && T.cur.phase != HTB_NONE) { if (T.sincere_q < HTT_PUSH_Q8) T.sincere_q++; }
++    else if (T.sincere_q) T.sincere_q--;
++}
++
++/* The shot for the platform: zoom 2 with the framing circle (a renderer that can scale fits it: the
++ * Dreamcast and the PS1 do), and a pan that already slides the picture toward the group, so the native
++ * reference renderer, which draws at one scale and ignores zoom (room_ref.c, the T0 contract), frames it too:
++ * three quarters of the way from the room's middle to the group's, then the speaker's pan on top. */
++void home_talk_view(DoomoRoomView *v)
++{
++    int punch = (int)(T.push.e / 16), fsx, fsy;             /* Q4 -> Q8 */
++    if (!v) return;
++    screen_delta(T.view_k, T.fx - INT2FIX(R.w) / 2, T.fy - INT2FIX(R.d) / 2, &fsx, &fsy);
++    v->yaw = (int16_t)(T.view_k * 1024);
++    v->zoom = 2;
++    v->focus_x = T.fx;
++    v->focus_y = T.fy;
++    v->focus_r = T.fr;
++    v->pan_x = (int8_t)(DOOMO_CLAMP(-fsx * 3 / 4, -HTT_FRAME_X, HTT_FRAME_X) + T.pan_x);
++    v->pan_y = (int8_t)(DOOMO_CLAMP(-fsy * 3 / 4, -HTT_FRAME_Y, HTT_FRAME_Y) + T.pan_y);
++    v->punch_q8 = (int16_t)(256 + DOOMO_CLAMP(punch, 0, 64) + T.sincere_q);
++}
++
++/* ---- bubbles (design 4.3) ---------------------------------------------------------------------------- */
++/* the line without its ui_dialog codes: {d} {!} {big} {/} {w} {r} {cut N} {punch} {p N} and the page break */
++static void strip_codes(const char *in, char *out, int cap)
++{
++    int o = 0;
++    while (*in && o < cap - 1) {
++        if (*in == '{') {
++            while (*in && *in != '}') in++;
++            if (*in) in++;
++            continue;
++        }
++        if (*in == '/' && in[1] == '/') { in += 2; continue; }
++        out[o++] = *in++;
++    }
++    out[o] = 0;
++}
++
++static void bub_start(HtBubble *b, const char *text, int who, int cut, int sincere)
++{
++    memset(b, 0, sizeof(*b));
++    strip_codes(text, b->text, (int)sizeof(b->text));
++    b->who = (int8_t)who;
++    b->phase = HTB_TYPE;
++    b->cut = (uint8_t)cut;
++    b->sincere = (uint8_t)sincere;
++    b->len = (uint16_t)strlen(b->text);
++}
++
++static void babble(int who, char c)
++{
++    DoomoResident fr;
++    const DoomoResident *r = NULL;
++    uint8_t voice[VOICE_COUNT];
++    int id;
++    if (!opt_get(OPT_VOICE_BABBLE) || c == ' ' || who < 0 || who >= T.n) return;
++    id = T.p[who].id;
++    if (id == TALK_PET_ID) { audio_voice_char(audio_voice_preset(VOICE_GURGLE), c); return; }
++    if (id < PLAYAS_ID_FAMILY_FIRST) r = town_res(id);
++    else if (family_resident(id, &fr)) r = &fr;
++    if (!r) return;
++    res_get_voice(r, voice);
++    audio_voice_char(voice, c);
++}
++
++/* the typewriter at the dialogue's speed (OPT_TEXT_SPEED as ui_dialog.c: 0 half a char a frame, 1 one, 2 two,
++ * 3 whole); the player's own line appears whole. Returns 1 when all of it shows. */
++static int bub_type(HtBubble *b)
++{
++    int speed = opt_get(OPT_TEXT_SPEED), before = b->shown / 2, half;
++    half = speed == 0 ? (b->age & 1) : speed == 1 ? 2 : speed == 2 ? 4 : 2 * (int)b->len;
++    if (b->who < 0) half = 2 * (int)b->len;
++    b->shown = (uint16_t)DOOMO_MIN((int)b->shown + half, 2 * (int)b->len);
++    for (; before < b->shown / 2; before++) babble(b->who, b->text[before]);
++    return b->shown / 2 >= b->len;
++}
++
++static int bub_hold_len(const HtBubble *b)
++{
++    if (b->who < 0) return HTT_ME_HOLD;
++    if (b->cut) return HTT_HOLD_CUT;
++    return DOOMO_MIN(HTT_HOLD_BASE + HTT_HOLD_CHAR * (int)b->len, HTT_HOLD_MAX);
++}
++
++/* ---- driving the drama manager ---------------------------------------------------------------------- */
++static int busy(void) { return T.cur.phase != HTB_NONE || T.stepping; }
++
++/* Take the next line of the planned exchange (one talk_dm_step a call, so a slow platform may spread an
++ * exchange over frames) and show it. */
++static void next_line(void)
++{
++    const TalkLine *ln;
++    if (!talk_dm_step(&T.dm, NULL)) { T.stepping = 0; return; }
++    ln = &T.dm.line[T.dm.nlines - 1];
++    bub_start(&T.cur, ln->text, ln->who, (ln->flags & TLF_CUT) != 0, (ln->flags & TLF_SINCERE) != 0);
++    if (ln->who >= 0 && ln->who != (int)T.last_who && cam_move(HTC_SPEAKER)) {
++        T.last_who = (uint8_t)ln->who;
++        tw_spring_punch(&T.push, HTT_PUSH_Q8 * 16);
++    }
++}
++
++static void pump(void)
++{
++    if (T.prev.phase != HTB_NONE && ++T.prev.age >= HTT_PREV_HOLD) T.prev.phase = HTB_NONE;
++    if (T.cur.phase == HTB_NONE) {
++        if (T.stepping) next_line();
++        else if (!talk_dm_over(&T.dm) && talk_dm_tick(&T.dm, 1)) T.stepping = 1;       /* idle chatter, the prod */
++        return;
++    }
++    T.cur.age++;
++    if (T.cur.shake && T.cur.phase == HTB_HOLD) T.cur.shake--;
++    if (T.cur.phase == HTB_TYPE) {
++        if (bub_type(&T.cur)) {
++            T.cur.phase = HTB_HOLD;
++            T.cur.age = 0;
++            if (T.cur.cut) T.cur.shake = HTT_SHAKE;
++        }
++    } else if (T.cur.age >= bub_hold_len(&T.cur)) {
++        T.prev = T.cur;                                     /* it fades and shrinks; the next line takes its place */
++        T.prev.age = 0;
++        T.cur.phase = HTB_NONE;
++        if (T.prev.who < 0) memset(&T.prev, 0, sizeof(T.prev));
++    }
++}
++
++/* a resident who left the talk walks to the door and is gone, once the exchange is on screen */
++static void walk_outs(void)
++{
++    int k;
++    for (k = 0; k < T.n; k++) {
++        HtPerson *p = &T.p[k];
++        if ((T.dm.part[k].flags & TPF_LEFT) && !p->out && !p->gone && !busy()) {
++            p->out = 1;
++            p->out_t = 0;
++            p->fx = p->x;
++            p->fy = p->y;
++            p->tx = centre(R.door_x);
++            p->ty = centre(R.door_y);
++            p->sit = 0;
++        }
++    }
++}
++
++/* ---- input ------------------------------------------------------------------------------------------ */
++static void talk_input(void)
++{
++    if (btn_pressed(BTN_B)) { home_talk_leave(); return; }
++    if (T.cur.phase == HTB_TYPE) {
++        if (btn_pressed(BTN_A)) T.cur.shown = (uint16_t)(2 * T.cur.len);          /* A completes the line */
++    } else if (T.cur.phase == HTB_HOLD) {
++        if (btn_pressed(BTN_A)) T.cur.age = (uint16_t)bub_hold_len(&T.cur);       /* A goes on to the next */
++    } else if (!T.stepping && !talk_dm_over(&T.dm)) {
++        if (btn_pressed(BTN_LEFT)) T.starter = (uint8_t)((T.starter + NSTARTERS - 1) % NSTARTERS);
++        if (btn_pressed(BTN_RIGHT)) T.starter = (uint8_t)((T.starter + 1) % NSTARTERS);
++        if (btn_pressed(BTN_A)) {
++            TalkUtter u;
++            memset(&u, 0, sizeof(u));
++            u.act[0] = starters[T.starter].act;
++            u.target = -1;
++            u.tone = starters[T.starter].tone;
++            u.conf = 15;
++            doomo_snprintf(u.shown, sizeof(u.shown), "%s", starters[T.starter].say);
++            home_talk_say(&u);
++        }
++    }
++}
++
++/* ---- the public calls ---------------------------------------------------------------------------------- */
++/* the house hook of talk.h (weak in weak_talk.c): the house is the one that knows the room */
++int home_talk_enter(int who) { return home_draw_talk_start(who); }
++int home_talk_on(void) { return T.state != HTS_OFF; }
++/* gathering, leaving, a bubble on screen or lines still to come (the runner's talk-wait) */
++int home_talk_busy(void) { return T.state != HTS_OFF && (T.state != HTS_TALK || busy()); }
++const TalkState *home_talk_state(void) { return &T.dm; }
++const TalkSummary *home_talk_summary(void) { return T.have_sum ? &T.sum : NULL; }
++/* tests: bubble `which` (0 the current, 1 the faded previous): its phase (0 none, 1 typing, 2 held), and
++ * through the pointers the speaker's slot (-1 the player), the characters shown and the text */
++int home_talk_bubble(int which, char *text, int cap, int *who, int *shown)
++{
++    const HtBubble *b = which ? &T.prev : &T.cur;
++    if (text && cap > 0) doomo_snprintf(text, (size_t)cap, "%s", b->phase ? b->text : "");
++    if (who) *who = b->who;
++    if (shown) *shown = b->shown / 2;
++    return b->phase;
++}
++void home_talk_cam_stats(int *moves, int *min_gap)
++{
++    if (moves) *moves = T.cam_moves;
++    if (min_gap) *min_gap = T.cam_min_gap;
++}
++
++static uint32_t hash32(uint32_t h, uint32_t v)
++{
++    h ^= v;
++    h *= 16777619u;
++    return h;
++}
++
++int home_talk_begin(const HomeTalkRoom *room, int target)
++{
++    int order[HTK_WHO_MAX], ids[TALK_PARTS_MAX], n, i, maxd = 0;
++    uint32_t seed;
++    if (!room || T.state != HTS_OFF) return -1;
++    if (plat_screen_w() < 320 || plat_screen_h() < 240) return -1;      /* a GBA-sized screen: Talk is not offered */
++    n = pick_who(room, target, order);
++    if (n <= 0) return -1;
++    T.opened_db = 0;
++    if (!talk_db_is_open()) {
++        if (talk_db_open(lang_get()) != TALK_DB_OK && talk_db_open(lang_find("en")) != TALK_DB_OK) return -1;
++        T.opened_db = 1;
++    }
++    R = *room;
++    memset(T.p, 0, sizeof(T.p));
++    memset(&T.me, 0, sizeof(T.me));
++    memset(&T.cur, 0, sizeof(T.cur));
++    memset(&T.prev, 0, sizeof(T.prev));
++    T.n = (uint8_t)n;
++    for (i = 0; i < n; i++) {
++        const HomeTalkWho *w = &room->who[order[i]];
++        ids[i] = w->id;
++        T.p[i].id = w->id;
++        T.p[i].x = T.p[i].fx = w->x;
++        T.p[i].y = T.p[i].fy = w->y;
++    }
++    T.me.id = -1;
++    T.me.x = T.me.fx = room->px;
++    T.me.y = T.me.fy = room->py;
++    T.serial++;
++    seed = hash32(2166136261u, (uint32_t)room->avatar);
++    seed = hash32(seed, doomo_town.seed);
++    seed = hash32(seed, doomo_town.day);
++    seed = hash32(seed, T.serial);
++    for (i = 0; i < n; i++) seed = hash32(seed, (uint32_t)ids[i]);
++    talk_dm_begin(&T.dm, room->avatar, ids, n, seed);
++    talk_mem_begin(&T.dm.conv);                          /* what they remember, and who said no to romance today (K-5) */
++    for (i = 0; i < n; i++)
++        if ((T.dm.conv.refused >> i) & 1) T.dm.part[i].flags |= TPF_REFUSED;
++    T.view_k = room->view_k;
++    gather(room, n);
++    for (i = -1; i < n; i++) {
++        HtPerson *p = i < 0 ? &T.me : &T.p[i];
++        if (!p->tx) { p->tx = p->fx; p->ty = p->fy; p->tile_x = (uint8_t)FIX2INT(p->fx); p->tile_y = (uint8_t)FIX2INT(p->fy); }
++        maxd = DOOMO_MAX(maxd, iabs(FIX2INT(p->tx - p->fx)) + iabs(FIX2INT(p->ty - p->fy)));
++    }
++    T.dur = (uint16_t)DOOMO_CLAMP(HTT_GATHER_MIN + maxd, HTT_GATHER_MIN, HTT_GATHER_MAX);
++    T.state = HTS_GATHER;
++    T.t = 0;
++    T.stepping = 0;
++    T.starter = 0;
++    T.over_t = 0;
++    T.have_sum = 0;
++    T.cam_t = 0;
++    T.cam_ever = 0;
++    T.cam_moves = 0;
++    T.cam_min_gap = 0xFFFF;
++    T.cam_shot = HTC_GROUP;
++    T.last_who = 0xFF;
++    T.pan_x = T.pan_y = T.pan_tx = T.pan_ty = 0;
++    T.sincere_q = 0;
++    tw_spring_init(&T.push, TW_BOING, 0);
++    T.fx = T.me.x;
++    T.fy = T.me.y;
++    T.fr = 3 * FIX_ONE;
++    cam_frame();
++    return T.view_k;
++}
++
++static void finish(void)
++{
++    talk_dm_end(&T.dm, &T.sum);
++    T.have_sum = 1;
++    if (T.opened_db) talk_db_close();
++    T.opened_db = 0;
++    T.state = HTS_OFF;
++}
++
++void home_talk_abort(void)
++{
++    if (T.state != HTS_OFF) finish();
++}
++
++/* Everyone goes back to where the house had them; the player stays where the talk put them (the house
++ * reads it with home_talk_end_pos()). */
++void home_talk_leave(void)
++{
++    int k;
++    if (T.state != HTS_GATHER && T.state != HTS_TALK) return;
++    T.state = HTS_LEAVE;
++    T.t = 0;
++    T.dur = HTT_LEAVE;
++    T.stepping = 0;
++    T.cur.phase = HTB_NONE;
++    T.prev.phase = HTB_NONE;
++    for (k = 0; k < T.n; k++) {
++        HtPerson *p = &T.p[k];
++        p->tx = p->fx;
++        p->ty = p->fy;
++        p->fx = p->x;
++        p->fy = p->y;
++        p->out = 0;
++        p->gone = 0;
++        p->sit = 0;
++    }
++    T.me.fx = T.me.tx = T.me.x;
++    T.me.fy = T.me.ty = T.me.y;
++}
++
++int home_talk_say(const TalkUtter *u)
++{
++    if (!u || T.state != HTS_TALK || busy() || talk_dm_over(&T.dm)) return 0;
++    talk_dm_say(&T.dm, u);                                  /* the gate first, whatever the caller is */
++    T.stepping = 1;
++    T.prev.phase = HTB_NONE;
++    if (T.dm.in.shown[0]) bub_start(&T.cur, T.dm.in.shown, -1, 0, 0);    /* what the gate left of it; a refusal shows no echo */
++    return 1;
++}
++
++/* Parse a typed line with the room as the parser's context (the runner's talk-say; T8c's typed line). */
++int home_talk_parse(const char *text, TalkUtter *out)
++{
++    TalkParseCtx ctx;
++    static char names[TALK_PARTS_MAX][24];
++    int k;
++    if (T.state == HTS_OFF || !text || !out) return 0;
++    memset(&ctx, 0, sizeof(ctx));
++    ctx.nparts = T.n;
++    ctx.ring = -1;
++    ctx.hops = 1;
++    ctx.kid_room = T.dm.conv.aud.any_minor;
++    for (k = 0; k < T.n; k++) {
++        doomo_snprintf(names[k], sizeof(names[k]), "%s", name_of(T.p[k].id));
++        ctx.name[k] = names[k];
++    }
++    ctx.nstack = (uint8_t)DOOMO_MIN(TALK_STACK_MAX, 8);
++    for (k = 0; k < ctx.nstack; k++) ctx.stack[k] = T.dm.topic_stack[k];
++    return talk_parse(text, &ctx, out, NULL);
++}
++
++static void walk(HtPerson *p, int t, int dur)
++{
++    fix16 f = tw_smooth(tw_t(t, dur));
++    p->x = p->fx + (fix16)(((int64_t)(p->tx - p->fx) * f) >> 16);
++    p->y = p->fy + (fix16)(((int64_t)(p->ty - p->fy) * f) >> 16);
++    if (f < FIX_ONE && (p->tx != p->fx || p->ty != p->fy)) {
++        int sx, sy;
++        screen_delta(T.view_k, p->tx - p->fx, p->ty - p->fy, &sx, &sy);
++        p->dir = (uint8_t)(iabs(sx) > iabs(sy) ? (sx < 0 ? 1 : 2) : (sy > 0 ? 0 : 3));
++        p->frame = (uint8_t)((t >> 2) & 3);
++    } else {
++        p->dir = 0;
++        p->frame = 0;
++    }
++}
++
++int home_talk_update(void)
++{
++    int k;
++    if (T.state == HTS_OFF) return 0;
++    T.t++;
++    if (T.state == HTS_GATHER) {
++        for (k = -1; k < T.n; k++) walk(k < 0 ? &T.me : &T.p[k], T.t, T.dur);
++        cam_frame();
++        if (btn_pressed(BTN_B)) { home_talk_leave(); return 1; }
++        if (T.t >= T.dur) { T.state = HTS_TALK; T.t = 0; }
++    } else if (T.state == HTS_TALK) {
++        for (k = 0; k < T.n; k++) {
++            HtPerson *p = &T.p[k];
++            if (p->out && !p->gone) {
++                walk(p, ++p->out_t, HTT_OUT);
++                if (p->out_t >= HTT_OUT) p->gone = 1;
++            }
++        }
++        pump();
++        walk_outs();
++        cam_tick();
++        talk_input();
++        if (T.state == HTS_TALK && talk_dm_over(&T.dm) && !busy() && ++T.over_t >= HTT_OVER_HOLD) home_talk_leave();
++    } else {
++        for (k = -1; k < T.n; k++) walk(k < 0 ? &T.me : &T.p[k], T.t, T.dur);
++        cam_frame();
++        if (T.t >= T.dur) { finish(); return 0; }
++    }
++    return 1;
++}
++
++void home_talk_end_pos(fix16 *x, fix16 *y, int *sitting)
++{
++    if (x) *x = T.me.x;
++    if (y) *y = T.me.y;
++    if (sitting) *sitting = T.me.sit;
++}
++
++/* ---- the figures ---------------------------------------------------------------------------------------- */
++int home_talk_actors(HomeTalkActor *out, int max)
++{
++    int k, n = 0, speaker = T.cur.phase != HTB_NONE ? T.cur.who : -2, breath = (T.t >> 4) & 1;
++    static const int8_t bob[8] = { 0, 9, 15, 9, 0, -9, -15, -9 };    /* the talking bob: +-6% at 4 Hz */
++    for (k = -1; k < T.n && n < max; k++) {
++        const HtPerson *p = k < 0 ? &T.me : &T.p[k];
++        HomeTalkActor *a = &out[n];
++        int moving = T.state != HTS_TALK || (p->out && !p->gone);
++        if (p->gone) continue;
++        memset(a, 0, sizeof(*a));
++        a->id = p->id;
++        a->x = p->x;
++        a->y = p->y;
++        a->sx = a->sy = 256;
++        a->flags = k < 0 ? RA_PLAYER : 0;
++        a->sit = p->sit;
++        a->frame = p->frame;
++        if (p->sit && !moving) { a->z = 4; a->sx = 270; a->sy = 236; }
++        else if (k == speaker && T.cur.phase == HTB_TYPE) {
++            a->sy = (int16_t)(256 + bob[(T.t >> 0) & 7]);
++            a->sx = (int16_t)(256 - bob[(T.t >> 0) & 7] / 2);
++        } else if (!moving && breath) a->sy = 262;
++        /* posture: a bored one faces away, the others the speaker (the head turn is a quarter view) */
++        if (moving) a->dir = p->dir;
++        else if (k >= 0 && (T.dm.part[k].flags & TPF_AWAY)) a->dir = 3;
++        else if (p->id == TALK_PET_ID) a->dir = 0;
++        else if (speaker >= 0 && speaker != k) {
++            const HtPerson *s = &T.p[speaker];
++            int sx, sy;
++            screen_delta(T.view_k, s->x - p->x, s->y - p->y, &sx, &sy);
++            a->dir = (uint8_t)(iabs(sx) < 12 ? 0 : (sx < 0 ? 1 : 2));
++        } else a->dir = 0;
++        n++;
++    }
++    return n;
++}
++
++/* ---- drawing: bubbles, the instruction line and the control card ------------------------------------------------ */
++/* greedy word wrap at `cols` characters, the same as talk_safe_bubble_lines (the lint's count): line i is
++ * text[start[i] .. start[i] + len[i]) */
++static int wrap(const char *s, int cols, int *start, int *len, int maxl)
++{
++    int n = 0, col = 0, p = 0, ls = 0;
++    while (s[p]) {
++        int wl = 0;
++        while (s[p] == ' ') p++;
++        if (!s[p]) break;
++        while (s[p + wl] && s[p + wl] != ' ') wl++;
++        if (wl > cols) wl = cols;
++        if (col && col + 1 + wl > cols) {
++            if (n < maxl) { start[n] = ls; len[n] = col; n++; }
++            col = 0;
++        }
++        if (!col) ls = p;
++        col = (p + wl) - ls;
++        p += wl;
++    }
++    if (col && n < maxl) { start[n] = ls; len[n] = col; n++; }
++    return n ? n : 0;
++}
++
++typedef struct HtBox { int x, y, w, h, tail_x, flip, side; } HtBox;
++typedef struct HtLay { HtBox box; int n, more, start[TALK_BUBBLE_LINES + 1], len[TALK_BUBBLE_LINES + 1]; } HtLay;
++
++/* where a bubble goes: above the speaker's head (plat_room_project, the platform's own projection), kept on
++ * the screen, below the figure when there is no room above; the player's line is bottom left */
++static void bub_layout(const DoomoRoomView *v, const HtBubble *b, HtLay *l, int faded)
++{
++    int sw = plat_screen_w(), sh = plat_screen_h(), i, cols = 0, sx;
++    int16_t px = 0, py = 0;
++    HtBox *bx = &l->box;
++    l->n = wrap(b->text, TALK_BUBBLE_COLS, l->start, l->len, TALK_BUBBLE_LINES + 1);
++    if (l->n > TALK_BUBBLE_LINES) l->n = TALK_BUBBLE_LINES;
++    if (faded) {                                         /* shrunk to its first line, trailing off */
++        l->more = l->n > 1;
++        l->n = DOOMO_MIN(l->n, 1);
++    } else l->more = 0;
++    for (i = 0; i < l->n; i++) if (l->len[i] > cols) cols = l->len[i];
++    if (l->more) cols += 3;
++    memset(bx, 0, sizeof(*bx));
++    bx->w = cols * FONT_ADVANCE + 8;
++    bx->h = l->n * FONT_LINE + 5;
++    if (b->who < 0) { bx->x = 4; bx->y = sh - 12 - 13 - 14 - bx->h - 2; return; }
++    plat_room_project(v, T.p[b->who].x, T.p[b->who].y, T.p[b->who].sit ? HTT_HEAD - 4 : HTT_HEAD, &px, &py);
++    sx = px;
++    bx->x = DOOMO_CLAMP(sx - bx->w / 2, 3, sw - bx->w - 3);
++    bx->y = py - bx->h - 9;                              /* the tail and a name tab between it and the head */
++    if (bx->y < 22) { bx->y = py + 8; bx->flip = 1; }
++    bx->tail_x = DOOMO_CLAMP(sx, bx->x + 6, bx->x + bx->w - 6);
++    bx->side = sx < 0 ? -1 : sx >= sw ? 1 : 0;
++}
++
++static void bub_draw(const HtBubble *b, const HtLay *l, int faded)
++{
++    const UiStyle *st = ui_style(WIN_CUTE);
++    const HtBox *bx = &l->box;
++    int i, shown = b->shown / 2, x = bx->x, y = bx->y;
++    uint8_t fill = faded ? st->fill_lo : st->fill_hi, txt = faded ? st->text_dim : st->text;
++    char tmp[TALK_BUBBLE_COLS + 6];
++    if (l->n <= 0) return;
++    if (b->who < 0) {                                   /* the player's line: a flat-cornered box */
++        plat_rect(x - 1, y - 1, bx->w + 2, bx->h + 2, st->outline);
++        plat_rect(x, y, bx->w, bx->h, st->fill);
++    } else {
++        int dx = b->shake ? ((b->shake & 1) ? 1 : -1) * 2 : 0;
++        x += dx;
++        ui_round_rect(x - 1, y - 1, bx->w + 2, bx->h + 2, 5, st->outline);
++        ui_round_rect(x, y, bx->w, bx->h, 4, fill);
++        for (i = 0; i < 5; i++) {                       /* the tail, pointing at the head */
++            int ty = bx->flip ? y - 1 - i : y + bx->h + i;
++            plat_rect(bx->tail_x - 4 + i + dx, ty, 9 - 2 * i, 1, i == 4 ? st->outline : fill);
++        }
++        if (!faded) {                                   /* who is speaking: a name tab on the bubble */
++            const char *nm = name_of(T.p[b->who].id);
++            int ty = bx->flip ? y + bx->h : y - 8;
++            ui_round_rect(x, ty, ui_text_width(nm) + 6, 9, 3, st->title_bg);
++            ui_text(x + 3, ty + 1, nm, st->title);
++        }
++        if (bx->side) ui_text(bx->side < 0 ? 1 : plat_screen_w() - 7, y + bx->h / 2 - 3,
++                              bx->side < 0 ? STR_ICON_ARROW_L : STR_ICON_ARROW_R, st->accent);   /* off screen: an arrow */
++    }
++    for (i = 0; i < l->n; i++) {
++        int upto = DOOMO_MIN(l->len[i], shown - l->start[i]);
++        if (upto <= 0) break;
++        memcpy(tmp, b->text + l->start[i], (size_t)upto);
++        tmp[upto] = 0;
++        if (faded && l->more && upto == l->len[i]) strcat(tmp, "...");
++        ui_text(x + 4, y + 3 + i * FONT_LINE, tmp, txt);
++    }
++}
++
++static const char *instruction(void)
++{
++    if (T.state == HTS_GATHER) return "Everyone gathers round. B leaves.";
++    if (T.state == HTS_LEAVE) return "Bye for now!";
++    if (talk_dm_over(&T.dm)) return "The chat is over. They head off.";
++    if (busy()) return "They are talking. A skips ahead.";
++    return "Choose what to say, then press A.";
++}
++
++void home_talk_prompts(void)
++{
++    UiPrompt p[3];
++    int n = 0;
++    if (T.state == HTS_LEAVE) { p[n].btn = 0; p[n].prio = 0; p[n].verb = "Bye!"; n++; }
++    else {
++        if (T.state == HTS_TALK && !busy() && !talk_dm_over(&T.dm)) {
++            p[n].btn = BTN_LEFT | BTN_RIGHT; p[n].prio = 1; p[n].verb = "Pick"; n++;
++            p[n].btn = BTN_A; p[n].prio = 0; p[n].verb = "Say it"; n++;
++        } else if (T.state == HTS_TALK) { p[n].btn = BTN_A; p[n].prio = 0; p[n].verb = "Next"; n++; }
++        p[n].btn = BTN_B; p[n].prio = 0; p[n].verb = "Leave"; n++;
++    }
++    ui_prompts_at(p, n, WIN_CUTE, plat_screen_h() - 12, ui_prompts_maxw());
++}
++
++/* the previous bubble, faded and shrunk to its first line, steps up out of the current one's way */
++static void prev_layout(const DoomoRoomView *v, const HtBubble *b, HtLay *l, const HtLay *cur)
++{
++    HtBox *a;
++    bub_layout(v, b, l, 1);
++    a = &l->box;
++    if (cur && a->x < cur->box.x + cur->box.w && cur->box.x < a->x + a->w && a->y < cur->box.y + cur->box.h &&
++        cur->box.y < a->y + a->h) {
++        a->y = cur->box.y - a->h - 12;
++        a->flip = 0;
++    }
++}
++
++void home_talk_draw(const DoomoRoomView *v)
++{
++    const UiStyle *st = ui_style(WIN_CUTE);
++    int sw = plat_screen_w(), sh = plat_screen_h(), w;
++    char buf[48];
++    HtLay lc, lp;
++    int have_cur = T.cur.phase != HTB_NONE, have_prev = T.prev.phase != HTB_NONE && T.prev.who >= 0;
++    if (T.state == HTS_OFF) return;
++    if (have_cur) bub_layout(v, &T.cur, &lc, 0);
++    if (have_prev) {
++        prev_layout(v, &T.prev, &lp, have_cur && T.cur.who >= 0 ? &lc : NULL);
++        bub_draw(&T.prev, &lp, 1);
++    }
++    if (have_cur) bub_draw(&T.cur, &lc, 0);
++    /* the pick row: what A says (until the quick replies) */
++    if (T.state == HTS_TALK && !busy() && !talk_dm_over(&T.dm)) {
++        doomo_snprintf(buf, sizeof(buf), STR_ICON_ARROW_L " %s " STR_ICON_ARROW_R, starters[T.starter].label);
++        w = ui_text_width(buf) + 12;
++        ui_round_rect(4, sh - 12 - 13 - 14, w, 13, 4, st->fill_hi);
++        ui_text(10, sh - 12 - 13 - 14 + 3, buf, st->text);
++    }
++    /* the one instruction line, above the control card */
++    w = ui_text_width(instruction()) + 10;
++    if (w > sw - 8) w = sw - 8;
++    ui_round_rect((sw - w) / 2, sh - 12 - 13, w, 12, 4, st->fill_lo);
++    ui_text_center(sw / 2, sh - 12 - 13 + 2, instruction(), st->text_dim);
++}
++
++#endif /* DOOMO_HAS_TALK */
+diff --git a/core/tests/run_scripts.sh b/core/tests/run_scripts.sh
+index ef4db8b9..05c2a7cb 100755
+--- a/core/tests/run_scripts.sh
++++ b/core/tests/run_scripts.sh
+@@ -6,7 +6,9 @@
+ # "# runner-flags: ..." among the first five passes those runner options
+ # (C3: --gba-input). Every run checks its prompt bars (C3, runner
+ # --check-prompts): a bar or ui_hint line too wide for the screen, or a
+-# button word the pad lacks, fails the script. (owner: foundation)
++# button word the pad lacks, fails the script. A line "# resolutions: 320x240"
++# among the first five restricts the script to those sizes (T8a: Talk is not
++# offered on a GBA-sized screen). (owner: foundation)
+ RUNNER=$1
+ DIR=$2
+ SHOTS=$3
+@@ -19,7 +21,9 @@ for s in "$DIR"/*.txt; do
+     if head -n 1 "$s" | grep -q "assert-no-stubs"; then extra="--assert-no-stubs"; fi
+     flags=$(head -n 5 "$s" | sed -n 's/^# runner-flags: *//p' | head -n 1)
+     extra="$extra --check-prompts $flags"
+-    for res in 240x160 320x240; do
++    resl=$(head -n 5 "$s" | sed -n 's/^# resolutions: *//p' | head -n 1)
++    [ -n "$resl" ] || resl="240x160 320x240"
++    for res in $resl; do
+         w=${res%x*}
+         h=${res#*x}
+         out="$SHOTS/$res/$name"
+diff --git a/core/tests/scripts/home_talk_basic.txt b/core/tests/scripts/home_talk_basic.txt
+new file mode 100644
+index 00000000..f6611b93
+--- /dev/null
++++ b/core/tests/scripts/home_talk_basic.txt
+@@ -0,0 +1,79 @@
++# assert-no-stubs
++# resolutions: 320x240
++# T8a: the house's Talk mode (docs/TALK.md "The house Talk mode"). Own house, Live mode, two housemates
++# (Mara and Vex, adults): START > Talk gathers everyone round the middle of the room (12-20 frames), the camera
++# frames the group, the pad's starter (A) and a typed line (talk-say) go through the audience gate and the drama
++# manager, the answers come as speech bubbles at the speakers' heads, B leaves. Shots are reviewed for
++# readability: one instruction line, the control card at the foot, the player's line bottom left.
++home-room 1
++family-add housemate adult Mara
++family-add housemate adult Vex
++clock 14 0
++scene HOME -1
++wait 20
++press START
++wait 14
++press DOWN
++wait 2
++press A
++wait 20
++expect-talk off
++shot talk_0_live
++# START > Talk (the row before Leave)
++press START
++wait 14
++shot talk_1_menu
++press DOWN
++press DOWN
++press DOWN
++press DOWN
++press DOWN
++wait 4
++shot talk_1_menu_talk
++press A
++wait 5
++expect-talk on
++shot talk_2_gathering
++talk-wait
++shot talk_3_ready
++# the pad's starter: A says "Hi, everyone!"
++press A
++wait 6
++shot talk_4_player_line
++talk-wait 40
++shot talk_5_reply_typing
++talk-wait
++shot talk_6_after
++# a typed line to one of them (the runner's talk-say: parsed, gated, said)
++talk-say "Mara you look great"
++wait 40
++shot talk_7_typed_reply
++talk-wait
++# pick another starter with the pad and say it
++press RIGHT
++press RIGHT
++wait 2
++shot talk_8_pick_row
++press A
++talk-wait
++shot talk_9_compliment
++# B leaves: everyone walks back, the house is Live again
++press B
++wait 4
++shot talk_a_leaving
++wait 20
++expect-talk off
++shot talk_b_live_again
++# and again the other way in: the player stands where the talk left them, the housemates are back on their
++# floor tiles ((2,4) and (3,5)); walk up to one and press A
++hold LEFT 15
++wait 4
++shot talk_c_next_to_housemate
++press A
++wait 3
++expect-talk on
++talk-wait
++shot talk_d_ready_again
++talk-leave
++expect-talk off
++shot talk_e_end
+diff --git a/core/tests/test_home_talk.c b/core/tests/test_home_talk.c
+new file mode 100644
+index 00000000..0fb8d5e4
+--- /dev/null
++++ b/core/tests/test_home_talk.c
+@@ -0,0 +1,585 @@
++/* test_home_talk.c - T8a: the house's Talk mode (core/src/home_talk.c, hooks in home_draw.c, room_ref.c zoom 2).
++ * Owner: TK. docs/TALK.md "The house Talk mode"; design 4.1-4.3.
++ *
++ * Entering and gathering (who joins, distinct free tiles, 12-20 frames), the seats (the largest cluster, the
++ * pet stands, the quarter turn that shows the seats' fronts), the audience (everyone present joins; when the
++ * room is too full an adult is dropped before a child or the pet; a child makes the room kid-safe and nothing
++ * in the talk relaxes it, and a romance act toward the room goes through the gate), bubbles (the player's line,
++ * then the residents', typed in order, at most two on screen), the camera (talk framing, at most one move in
++ * 45 frames), leaving, a GBA-sized screen, the housemates' spots agreeing with Live mode, and room_ref's zoom 2.
++ */
++#include "test.h"
++#include <stdlib.h>
++#ifndef DOOMO_HAS_TALK
++#define DOOMO_HAS_TALK 1      /* the tests link the core built with it (core/Makefile CORE_CFLAGS): show the Talk glue of home_int.h */
++#endif
++#include "../src/home_int.h"
++#include "../gen/furn_ids.h"
++#include "doomo/family.h"
++#include "doomo/talk.h"
++#include "doomo/lang.h"
++#include "doomo/roster.h"
++#include "doomo/town.h"
++#include "doomo/ending.h"
++
++#define ID_NANA  1
++#define ID_RIVET 13
++#define ID_PIP   42           /* kid cast */
++#define ID_TEEN  11
++#define ID_VEX   666
++#define ID_GRUMB 729
++#define HTT_FRAME_X_TEST 24   /* home_talk.c HTT_FRAME_X / _Y: the most the framing slides the room */
++#define HTT_FRAME_Y_TEST 8
++
++static void big(void) { nat_w = 320; nat_h = 240; home_talk_abort(); }    /* a test that failed halfway left Talk on */
++static void small_(void) { nat_w = 240; nat_h = 160; }
++
++/* frames of the game; with no house on screen (the tests that give Talk a room of their own) the frames
++ * go straight to home_talk_update(), which is all the house calls each frame */
++static void frames(int n)
++{
++    while (n-- > 0) {
++        if (scene_top() == &SCENE_HOME) { plat_begin_frame(); doomo_frame(0); plat_end_frame(); }
++        else home_talk_update();
++    }
++}
++
++static void press(int btn)
++{
++    plat_begin_frame();
++    doomo_frame((uint32_t)btn);
++    plat_end_frame();
++    frames(1);
++}
++
++/* the house in Live mode: START, down to "Live mode", A (as test_home_render does) */
++static void live_house(int adults, int kids)
++{
++    int i;
++    big();
++    test_reset();
++    home_reset();
++    for (i = 0; i < adults; i++) family_pool_add(FAMROLE_HOUSEMATE, LIFE_ADULT, 100u + (uint32_t)i, NULL, -1);
++    for (i = 0; i < kids; i++) family_pool_add(FAMROLE_SIBLING, LIFE_CHILD, 200u + (uint32_t)i, NULL, -1);
++    scene_set(&SCENE_HOME, HOME_ARG_OWN(HOME_COTTAGE));
++    frames(20);
++    press(BTN_START);
++    press(BTN_DOWN);
++    press(BTN_A);
++    frames(10);
++}
++
++static void premade(void)
++{
++    big();
++    test_reset();
++    town_new(TOWN_FREEPLAY, 7, TOWN_POP_PREMADE);
++}
++
++static HomeTalkRoom synth_room(void)
++{
++    HomeTalkRoom rm;
++    memset(&rm, 0, sizeof(rm));
++    rm.w = 8; rm.d = 8; rm.view_k = 0;
++    rm.door_x = 3; rm.door_y = 0;
++    rm.px = INT2FIX(1) + FIX_ONE / 2;
++    rm.py = INT2FIX(6) + FIX_ONE / 2;
++    rm.avatar = DOOMO_PLAYER_ID;
++    return rm;
++}
++
++static void add_who(HomeTalkRoom *rm, int id, int tx, int ty)
++{
++    rm->who[rm->nwho].id = (int16_t)id;
++    rm->who[rm->nwho].x = INT2FIX(tx) + FIX_ONE / 2;
++    rm->who[rm->nwho].y = INT2FIX(ty) + FIX_ONE / 2;
++    rm->nwho++;
++}
++
++static void add_seat(HomeTalkRoom *rm, int x, int y, int rot)
++{
++    rm->seat[rm->nseat].x = (uint8_t)x;
++    rm->seat[rm->nseat].y = (uint8_t)y;
++    rm->seat[rm->nseat].rot = (uint8_t)rot;
++    rm->nseat++;
++}
++
++/* run until nothing is gathering or on screen; returns the frames it took */
++static int run_idle(int max)
++{
++    int k;
++    for (k = 0; k < max && home_talk_on() && home_talk_busy(); k++) frames(1);
++    return k;
++}
++
++static int say_text(const char *text)
++{
++    TalkUtter u;
++    memset(&u, 0, sizeof(u));
++    if (!home_talk_parse(text, &u)) return 0;
++    return home_talk_say(&u);
++}
++
++static int tile_of(fix16 v) { return FIX2INT(v); }
++
++/* A pressed for one frame and let go, with no house on screen: the frames go to home_talk_update() (the A edge
++ * is the input layer's, doomo_frame() makes it). Skips a typing line, then a held one: lines turn over fast */
++static void skip_a(void)
++{
++    plat_begin_frame(); doomo_frame(BTN_A); plat_end_frame();
++    home_talk_update();
++    plat_begin_frame(); doomo_frame(0); plat_end_frame();
++    home_talk_update();
++}
++
++/* ---- entering and gathering ----------------------------------------------------------------------------- */
++TEST(home_talk_enter_gathers_the_room)
++{
++    HomeTalkRoom rm;
++    fix16 x, y, seen[8][2];
++    int k, n = 0, gather = 0, i, j;
++    live_house(2, 1);
++    CHECK(!home_talk_on());
++    CHECK(home_draw_talk_room(&rm));
++    CHECK_EQ(rm.nwho, 3);
++    CHECK(!home_talk_enter(9999));                       /* nobody of that name here */
++    CHECK(!home_talk_on());
++    CHECK(home_talk_enter(-1));
++    CHECK(home_talk_on());
++    CHECK(!home_talk_enter(-1));                         /* once */
++    for (k = 0; k < 40 && home_talk_busy(); k++) { frames(1); gather++; }
++    CHECK_MSG(gather >= 12 && gather <= 21, "gathered in %d frames", gather);
++    CHECK_EQ(home_talk_state()->nparts, 3);
++    frames(1);
++    for (k = 0; home_draw_actor(k, &x, &y) && n < 8; k++) { seen[n][0] = x; seen[n][1] = y; n++; }
++    CHECK_EQ(n, 4);                                      /* the player and three people */
++    for (i = 0; i < n; i++) {
++        CHECK_MSG(!((rm.occ[tile_of(seen[i][1])] >> tile_of(seen[i][0])) & 1), "figure %d stands on a piece", i);
++        for (j = 0; j < i; j++)
++            CHECK_MSG(tile_of(seen[i][0]) != tile_of(seen[j][0]) || tile_of(seen[i][1]) != tile_of(seen[j][1]),
++                      "figures %d and %d share a tile", i, j);
++    }
++    home_talk_abort();
++    CHECK(!home_talk_on());
++}
++
++TEST(home_talk_not_offered_on_a_gba_screen)
++{
++    HomeTalkRoom rm;
++    live_house(2, 0);
++    small_();
++    CHECK(!home_draw_talk_room(&rm));
++    CHECK(!home_talk_enter(-1));
++    CHECK(!home_talk_on());
++    big();
++    CHECK(home_talk_enter(-1));                          /* the same house, a big screen */
++    home_talk_abort();
++}
++
++TEST(home_talk_housemates_stand_where_live_mode_puts_them)
++{
++    HomeTalkRoom rm;
++    fix16 x, y;
++    int k, found = 0;
++    live_house(3, 0);
++    frames(3);
++    CHECK(home_draw_talk_room(&rm));
++    CHECK_EQ(rm.nwho, 3);
++    for (k = 0; k < rm.nwho; k++) {
++        int i, hit = 0;
++        for (i = 1; home_draw_actor(i, &x, &y); i++) if (x == rm.who[k].x && y == rm.who[k].y) hit = 1;
++        found += hit;
++    }
++    CHECK_EQ(found, 3);                                  /* build_actors and talk_housemate_spots agree */
++}
++
++TEST(home_talk_in_a_visit_talks_with_the_host)
++{
++    premade();
++    scene_set(&SCENE_HOME, HOME_ARG_VISIT(ID_NANA));
++    frames(40);
++    CHECK(home_talk_enter(-1));
++    CHECK_EQ(home_talk_state()->nparts, 1);
++    CHECK_EQ(home_talk_state()->part[0].id, ID_NANA);
++    CHECK(!home_talk_state()->conv.aud.any_minor);       /* Nana is an adult */
++    run_idle(60);
++    CHECK(say_text("hi Nana"));
++    run_idle(900);
++    CHECK(home_talk_state()->nlines >= 1);
++    home_talk_abort();
++}
++
++/* ---- seats and the view -------------------------------------------------------------------------------------- */
++static int actor_sits(int id)
++{
++    HomeTalkActor a[6];
++    int n = home_talk_actors(a, 6), k;
++    for (k = 0; k < n; k++) if (a[k].id == id) return a[k].sit;
++    return -1;
++}
++
++TEST(home_talk_seats_the_largest_cluster)
++{
++    HomeTalkRoom rm = synth_room();
++    HomeTalkActor a[6];
++    int n, i, j, seated = 0;
++    premade();
++    rm = synth_room();
++    add_seat(&rm, 0, 0, 0);                              /* a lone chair in a corner */
++    add_seat(&rm, 5, 4, 0);                              /* a sofa and an armchair: the big cluster */
++    add_seat(&rm, 6, 4, 0);
++    add_seat(&rm, 6, 5, 0);
++    add_who(&rm, ID_NANA, 2, 2);
++    add_who(&rm, ID_RIVET, 3, 2);
++    add_who(&rm, TALK_PET_ID, 2, 3);
++    CHECK(home_talk_begin(&rm, ID_NANA) >= 0);
++    frames(25);
++    n = home_talk_actors(a, 6);
++    CHECK_EQ(n, 4);
++    CHECK_EQ(actor_sits(ID_NANA), 1);
++    CHECK_EQ(actor_sits(ID_RIVET), 1);
++    CHECK_EQ(actor_sits(TALK_PET_ID), 0);                /* the pet never sits */
++    for (i = 0; i < n; i++) seated += a[i].sit;
++    CHECK_EQ(seated, 3);                                 /* Nana, Rivet and the player take the cluster's three seats */
++    for (i = 0; i < n; i++) {
++        if (a[i].sit) {
++            int tx = tile_of(a[i].x), ty = tile_of(a[i].y);
++            CHECK_MSG(tx >= 5 && ty >= 4, "a seated figure left the big cluster (%d,%d)", tx, ty);
++        }
++        for (j = 0; j < i; j++) CHECK(tile_of(a[i].x) != tile_of(a[j].x) || tile_of(a[i].y) != tile_of(a[j].y));
++    }
++    home_talk_abort();
++}
++
++TEST(home_talk_turns_the_room_to_show_the_seats_fronts)
++{
++    int k, view[4];
++    premade();
++    for (k = 0; k < 4; k++) {
++        HomeTalkRoom rm = synth_room();
++        rm.view_k = 0;
++        add_seat(&rm, 4, 4, k);                          /* every seat faces rot k: front visible when (rot - view) & 3 == 0 */
++        add_seat(&rm, 5, 4, k);
++        add_who(&rm, ID_NANA, 2, 2);
++        add_who(&rm, ID_RIVET, 3, 2);
++        view[k] = home_talk_begin(&rm, ID_NANA);
++        CHECK(view[k] >= 0 && view[k] < 4);
++        CHECK_EQ(view[k], k);                            /* the view that shows them head on */
++        home_talk_abort();
++    }
++    {   /* nobody sits: the view the house is in stays */
++        HomeTalkRoom rm = synth_room();
++        rm.view_k = 2;
++        add_who(&rm, ID_NANA, 2, 2);
++        CHECK_EQ(home_talk_begin(&rm, ID_NANA), 2);
++        home_talk_abort();
++    }
++}
++
++TEST(home_talk_gathers_round_a_table_or_the_middle_in_a_half_circle)
++{
++    HomeTalkRoom rm;
++    HomeTalkActor a[6];
++    int n, i, behind = 0, near_ok = 0;
++    premade();
++    rm = synth_room();
++    rm.occ[3] |= (1u << 3) | (1u << 4);                  /* a table at (3..4, 3) */
++    rm.ntable = 1;
++    rm.table[0].x = 3; rm.table[0].y = 3; rm.table[0].w = 2; rm.table[0].d = 1;
++    add_who(&rm, ID_NANA, 1, 1);
++    add_who(&rm, ID_RIVET, 6, 1);
++    add_who(&rm, ID_VEX, 1, 6);
++    CHECK(home_talk_begin(&rm, ID_NANA) >= 0);
++    frames(25);
++    n = home_talk_actors(a, 6);
++    CHECK_EQ(n, 4);
++    for (i = 0; i < n; i++) {
++        int tx = tile_of(a[i].x), ty = tile_of(a[i].y);
++        CHECK_MSG(!((rm.occ[ty] >> tx) & 1), "figure %d on the table", i);
++        if (a[i].id >= 0 && ty < 3) behind++;            /* behind the table, away from the camera */
++        if (abs(tx - 3) <= 4 && abs(ty - 3) <= 4) near_ok++;
++    }
++    CHECK_EQ(near_ok, n);
++    CHECK_MSG(behind <= 1, "%d people stand behind the table", behind);
++    home_talk_abort();
++}
++
++/* ---- the audience -------------------------------------------------------------------------------------------- */
++TEST(home_talk_a_full_room_drops_an_adult_before_a_child_or_the_pet)
++{
++    HomeTalkRoom rm;
++    const TalkState *s;
++    int k, kid = 0, pet = 0, teen = 0;
++    premade();
++    rm = synth_room();
++    add_who(&rm, ID_NANA, 1, 1);
++    add_who(&rm, ID_RIVET, 2, 1);
++    add_who(&rm, ID_VEX, 3, 1);
++    add_who(&rm, ID_GRUMB, 4, 1);
++    add_who(&rm, ID_TEEN, 7, 1);                         /* far from the player (nearer ones would be picked anyway) */
++    add_who(&rm, ID_PIP, 7, 0);                          /* the kid cast, the furthest */
++    CHECK(home_talk_begin(&rm, ID_NANA) >= 0);
++    s = home_talk_state();
++    CHECK_EQ(s->nparts, TALK_PARTS_MAX);
++    for (k = 0; k < s->nparts; k++) {
++        kid += s->part[k].id == ID_PIP;
++        teen += s->part[k].id == ID_TEEN;
++    }
++    CHECK(kid == 1 && teen == 1);                        /* two adults went, never the children */
++    CHECK(s->conv.aud.any_minor);
++    CHECK(s->conv.aud.cast_kid);
++    CHECK(s->flags & TDF_KIDSAFE);
++    home_talk_abort();
++    rm = synth_room();
++    add_who(&rm, ID_NANA, 1, 1);
++    add_who(&rm, ID_RIVET, 2, 1);
++    add_who(&rm, ID_VEX, 3, 1);
++    add_who(&rm, ID_GRUMB, 4, 1);
++    add_who(&rm, TALK_PET_ID, 7, 0);
++    CHECK(home_talk_begin(&rm, -1) >= 0);
++    s = home_talk_state();
++    for (k = 0; k < s->nparts; k++) pet += s->part[k].id == TALK_PET_ID;
++    CHECK_EQ(pet, 1);                                    /* the pet counts for the rules: kept over an adult */
++    CHECK(s->conv.aud.pet);
++    CHECK(!s->conv.aud.mature_ok);
++    home_talk_abort();
++}
++
++TEST(home_talk_a_child_makes_the_room_kid_safe_and_it_never_relaxes)
++{
++    HomeTalkRoom rm;
++    TalkAudience at_start;
++    const TalkState *s;
++    TalkUtter u;
++    int turn, n_romance = 0, romance_lines = 0;
++    premade();
++    opt_set(OPT_MATURE, MATURE_ON);
++    rm = synth_room();
++    add_who(&rm, ID_NANA, 2, 2);
++    add_who(&rm, ID_PIP, 3, 2);
++    CHECK(home_talk_begin(&rm, -1) >= 0);
++    s = home_talk_state();
++    at_start = s->conv.aud;
++    CHECK(at_start.any_minor && !at_start.mature_ok);
++    frames(25);
++    for (turn = 0; turn < 8; turn++) {
++        static const uint8_t acts[8] = { TA_GREET, TA_FLIRT, TA_JOKE, TA_KISS, TA_COMPLIMENT, TA_CONFESS, TA_TELL, TA_ASK_OUT };
++        int j;
++        run_idle(900);
++        memset(&u, 0, sizeof(u));
++        u.act[0] = acts[turn];
++        u.target = -1;
++        u.conf = 15;
++        strcpy(u.shown, "x");
++        CHECK(home_talk_say(&u));
++        if (TA_IS_ROMANCE(acts[turn])) {
++            n_romance++;
++            CHECK_MSG(s->gate == TG_REFUSE_MINOR || s->gate == TG_DEFLECT || s->gate == TG_REFUSE || s->gate == TG_END_K7,
++                      "romance toward a room with a child passed the gate (%d)", s->gate);
++        }
++        run_idle(900);
++        for (j = 0; j < s->nlines; j++) romance_lines += TA_IS_ROMANCE(s->line[j].act);
++        CHECK(memcmp(&s->conv.aud, &at_start, sizeof(at_start)) == 0);   /* the audience only ever gets stricter */
++        CHECK(s->flags & TDF_KIDSAFE);
++        if (talk_dm_over(s)) break;
++    }
++    CHECK(n_romance >= 1);
++    CHECK_EQ(romance_lines, 0);
++    home_talk_abort();
++    CHECK(home_talk_summary() != NULL);
++}
++
++TEST(home_talk_adult_room_keeps_the_kid_safe_flag_off)
++{
++    HomeTalkRoom rm;
++    premade();
++    rm = synth_room();
++    add_who(&rm, ID_NANA, 2, 2);
++    add_who(&rm, ID_RIVET, 3, 2);
++    CHECK(home_talk_begin(&rm, -1) >= 0);
++    CHECK(!home_talk_state()->conv.aud.any_minor);
++    CHECK(!(home_talk_state()->flags & TDF_KIDSAFE));
++    home_talk_abort();
++}
++
++/* ---- bubbles --------------------------------------------------------------------------------------------------- */
++TEST(home_talk_shows_the_exchange_in_bubbles_in_order)
++{
++    HomeTalkRoom rm;
++    char txt[TALK_LINE_MAX];
++    int who, shown, k, phase, last_who = -9, last_phase = 0, last_shown = 0, first_who = -9, res_bubbles = 0, max_visible = 0;
++    premade();
++    rm = synth_room();
++    add_who(&rm, ID_NANA, 2, 2);
++    add_who(&rm, ID_RIVET, 3, 2);
++    CHECK(home_talk_begin(&rm, -1) >= 0);
++    run_idle(60);
++    CHECK(say_text("hello everyone"));
++    for (k = 0; k < 900 && home_talk_busy(); k++) {
++        int visible;
++        frames(1);
++        phase = home_talk_bubble(0, txt, sizeof(txt), &who, &shown);
++        visible = (phase != 0) + (home_talk_bubble(1, NULL, 0, NULL, NULL) != 0);
++        if (visible > max_visible) max_visible = visible;
++        if (!phase) { last_phase = 0; continue; }
++        CHECK_MSG(strchr(txt, '{') == NULL && strchr(txt, '}') == NULL, "line codes in the bubble: %s", txt);
++        CHECK(shown >= 0 && shown <= (int)strlen(txt));
++        CHECK_MSG(who >= -1 && who < 2, "speaker slot %d", who);
++        if (!last_phase || who != last_who) {                       /* a new bubble */
++            if (first_who == -9) first_who = who;
++            if (who >= 0) res_bubbles++;
++        } else {
++            CHECK_MSG(shown >= last_shown, "the typewriter went back");   /* within a bubble the text only grows */
++        }
++        last_phase = phase;
++        last_who = who;
++        last_shown = shown;
++    }
++    CHECK_EQ(first_who, -1);                             /* the player's own line comes first */
++    CHECK(res_bubbles >= 1);
++    CHECK(max_visible <= 2);                             /* the current one and the faded previous one */
++    CHECK(home_talk_state()->nlines >= 1);
++    home_talk_abort();
++}
++
++TEST(home_talk_idle_chatter_and_the_prod_run_without_the_player)
++{
++    HomeTalkRoom rm;
++    int k, lines = 0, before;
++    premade();
++    rm = synth_room();
++    add_who(&rm, ID_NANA, 2, 2);
++    add_who(&rm, ID_RIVET, 3, 2);
++    CHECK(home_talk_begin(&rm, -1) >= 0);
++    before = home_talk_state()->nhist;
++    for (k = 0; k < 45 * 30 && home_talk_on(); k++) frames(1);   /* 45 seconds of nobody saying anything */
++    lines = home_talk_state()->nhist - before;
++    CHECK_MSG(lines >= 2, "idle chatter made %d lines", lines);
++    home_talk_abort();
++}
++
++/* ---- the camera ----------------------------------------------------------------------------------------------- */
++TEST(home_talk_camera_frames_the_group_and_moves_at_most_every_45_frames)
++{
++    HomeTalkRoom rm;
++    DoomoRoomView v;
++    int k, turn, moves, gap;
++    premade();
++    rm = synth_room();
++    add_who(&rm, ID_NANA, 2, 2);
++    add_who(&rm, ID_RIVET, 3, 2);
++    add_who(&rm, ID_VEX, 4, 2);
++    CHECK(home_talk_begin(&rm, -1) >= 0);
++    for (turn = 0; turn < 6; turn++) {
++        static const char *const lines[6] = { "hello everyone", "how are you all", "nice house", "i like pie", "tell me a joke", "thanks" };
++        run_idle(60);
++        say_text(lines[turn]);
++        for (k = 0; k < 900 && home_talk_busy(); k++) {
++            frames(1);
++            memset(&v, 0, sizeof(v));
++            home_talk_view(&v);
++            CHECK_EQ(v.zoom, 2);
++            CHECK(v.focus_r > 0 && v.focus_r < 8 * FIX_ONE);
++            CHECK(v.focus_x > 0 && v.focus_x < 8 * FIX_ONE && v.focus_y > 0 && v.focus_y < 8 * FIX_ONE);
++            CHECK_EQ(v.yaw & 1023, 0);
++            CHECK(v.pan_x >= -36 && v.pan_x <= 36 && v.pan_y >= -14 && v.pan_y <= 14);   /* the framing and the speaker pan */
++            CHECK(v.punch_q8 >= 256 && v.punch_q8 <= 256 + 64 + 26);
++        }
++    }
++    /* and with A skipping every line, so the speakers change every few frames: the camera still holds 45 */
++    for (turn = 0; turn < 6; turn++) {
++        run_idle(900);
++        say_text("so what do you all think");
++        for (k = 0; k < 400 && home_talk_busy(); k++) skip_a();
++    }
++    home_talk_cam_stats(&moves, &gap);
++    CHECK_MSG(moves >= 3, "the camera made %d moves", moves);
++    CHECK_MSG(gap >= 45, "two camera moves %d frames apart", gap);
++    home_talk_abort();
++}
++
++/* ---- leaving ---------------------------------------------------------------------------------------------------- */
++TEST(home_talk_b_leaves_and_the_house_is_live_again)
++{
++    HomeTalkRoom rm;
++    int k;
++    live_house(2, 0);
++    CHECK(home_talk_enter(-1));
++    run_idle(60);
++    CHECK(home_talk_on());
++    press(BTN_B);
++    for (k = 0; k < 30 && home_talk_on(); k++) frames(1);
++    CHECK(!home_talk_on());
++    CHECK(k <= 17);                                      /* a short walk back */
++    CHECK(home_talk_summary() != NULL);
++    CHECK_EQ(home_talk_summary()->n, 2);
++    frames(2);
++    CHECK(home_draw_talk_room(&rm));                     /* Live mode again: the house can start Talk again */
++    CHECK(home_talk_enter(-1));
++    home_talk_abort();
++}
++
++TEST(home_talk_a_resident_who_walks_out_goes_to_the_door_and_the_talk_ends_when_all_left)
++{
++    HomeTalkRoom rm;
++    int k, left = 0;
++    premade();
++    rm = synth_room();
++    add_who(&rm, ID_NANA, 2, 2);
++    CHECK(home_talk_begin(&rm, -1) >= 0);
++    run_idle(60);
++    for (k = 0; k < 14 && !talk_dm_over(home_talk_state()); k++) {           /* bore them to the door */
++        TalkUtter u;
++        memset(&u, 0, sizeof(u));
++        u.act[0] = k & 1 ? TA_DISMISS : TA_INSULT;
++        u.target = 0;
++        u.conf = 15;
++        strcpy(u.shown, "meh");
++        run_idle(900);
++        if (!home_talk_say(&u)) break;
++    }
++    run_idle(900);
++    left = (home_talk_state()->part[0].flags & TPF_LEFT) != 0;
++    if (left) {
++        for (k = 0; k < 200 && home_talk_on(); k++) frames(1);
++        CHECK(!home_talk_on());                           /* everyone left: the talk is over and the house goes back */
++        CHECK(home_talk_summary() != NULL);
++    } else {
++        home_talk_abort();
++    }
++}
++
++/* ---- the native framing: a pan toward the group ------------------------------------------------------------------ */
++TEST(home_talk_view_slides_the_room_toward_the_group_on_the_reference_renderer)
++{
++    HomeTalkRoom rm = synth_room();
++    DoomoRoomView v, flat;
++    int16_t gx, gy, cx, cy, fx, fy;
++    premade();
++    rm = synth_room();
++    add_who(&rm, ID_NANA, 6, 6);                         /* a group in the far corner */
++    rm.px = INT2FIX(5) + FIX_ONE / 2;
++    rm.py = INT2FIX(6) + FIX_ONE / 2;
++    CHECK(home_talk_begin(&rm, -1) >= 0);
++    frames(25);
++    memset(&v, 0, sizeof(v));
++    v.w = 8; v.d = 8; v.vw = 320; v.vh = 216; v.vy = 12;
++    home_talk_view(&v);
++    flat = v;
++    flat.zoom = 0; flat.pan_x = flat.pan_y = 0;           /* the same room with no framing */
++    room_ref_project(&flat, v.focus_x, v.focus_y, 0, &gx, &gy);
++    room_ref_project(&v, v.focus_x, v.focus_y, 0, &fx, &fy);
++    cx = 160; cy = 12 + 216 / 2;
++    CHECK_MSG(abs(fx - cx) + abs(fy - cy) < abs(gx - cx) + abs(gy - cy), "framed (%d,%d) is no nearer the middle than (%d,%d)", fx, fy, gx, gy);
++    CHECK(abs(v.pan_x) <= HTT_FRAME_X_TEST + 12 && abs(v.pan_y) <= HTT_FRAME_Y_TEST + 6);
++    home_talk_abort();
++}
++
++TEST(home_talk_enter_contract_hook_is_the_houses)
++{
++    home_talk_abort();
++    test_reset();
++    CHECK_EQ(home_talk_enter(0), 0);                     /* no house on screen: not here (talk.h) */
++    CHECK_EQ(home_talk_enter(TALK_PET_ID), 0);
++    CHECK(!home_talk_on());
++}
+-- 
+2.43.0
+

@@ -1,0 +1,173 @@
+From 141f383a6530b126b3df07b17e0be52890b482ab Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 15:53:19 +0000
+Subject: [PATCH 4/6] Talk T8a: a bubble with no free side rises clear of the
+ other heads; the face test runs four layouts
+
+The earlier commits call this section 6g: it is 6h in docs/TALK.md (T6-OUT took 6g while this was in flight).
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63czJHmFDCnjA8mf9GoY
+---
+ core/src/home_talk.c        | 13 +++++-
+ core/tests/test_home_talk.c | 81 +++++++++++++++++++++----------------
+ docs/TALK.md                |  4 +-
+ 3 files changed, 61 insertions(+), 37 deletions(-)
+
+diff --git a/core/src/home_talk.c b/core/src/home_talk.c
+index c157ce00..9b2a7e06 100644
+--- a/core/src/home_talk.c
++++ b/core/src/home_talk.c
+@@ -829,7 +829,7 @@ static int wrap(const char *s, int cols, int *start, int *len, int maxl)
+     return n ? n : 0;
+ }
+ 
+-typedef struct HtBox { int x, y, w, h, tail_x, tail_y, sidetail, flip, side; } HtBox;
++typedef struct HtBox { int x, y, w, h, tail_x, tail_y, tail_len, sidetail, flip, side; } HtBox;
+ typedef struct HtLay { HtBox box; int n, more, start[TALK_BUBBLE_LINES + 1], len[TALK_BUBBLE_LINES + 1]; } HtLay;
+ 
+ /* A bubble above the speaker's head can sit on top of someone standing behind them on the screen. When it
+@@ -860,7 +860,13 @@ static void bub_clear_of_heads(const DoomoRoomView *v, const HtBubble *b, HtBox
+         t.flip = 0;
+         t.sidetail = right ? -1 : 1;                     /* the tail points back at the head */
+         t.tail_y = DOOMO_CLAMP(head_y + 2, t.y + 4, t.y + t.h - 4);
+-        if (!hits_a_head(v, b, &t) && iabs(t.x - head_x) < sw) { *bx = t; return; }
++        if (!hits_a_head(v, b, &t)) { *bx = t; return; }
++    }
++    for (k = 1; k <= 3 && !bx->flip; k++) {              /* or higher up, the tail longer */
++        HtBox t = *bx;
++        t.y -= 12 * k;
++        t.tail_len = bx->tail_len + 12 * k;
++        if (t.y >= 16 && !hits_a_head(v, b, &t)) { *bx = t; return; }
+     }
+ }
+ 
+@@ -889,6 +895,7 @@ static void bub_layout(const DoomoRoomView *v, const HtBubble *b, HtLay *l, int
+     bx->y = py - bx->h - 9;                              /* the tail and a name tab between it and the head */
+     if (bx->y < 22) { bx->y = py + 8; bx->flip = 1; }
+     bx->tail_x = DOOMO_CLAMP(sx, bx->x + 6, bx->x + bx->w - 6);
++    bx->tail_len = 5;
+     bx->side = sx < 0 ? -1 : sx >= sw ? 1 : 0;
+     bub_clear_of_heads(v, b, bx, sx, py, sw);
+ }
+@@ -918,6 +925,8 @@ static void bub_draw(const HtBubble *b, const HtLay *l, int faded)
+                 plat_rect(bx->tail_x - 4 + i + dx, ty, 9 - 2 * i, 1, i == 4 ? st->outline : fill);
+             }
+         }
++        for (i = 5; i < bx->tail_len && !bx->sidetail && !bx->flip; i++)   /* a bubble raised clear of other heads: a stem down to its own */
++            plat_rect(bx->tail_x + dx, y + bx->h + i, 1, 1, st->outline);
+         if (!faded) {                                   /* who is speaking: a name tab on the bubble */
+             const char *nm = name_of(T.p[b->who].id);
+             int ty = bx->flip ? y + bx->h : y - 8;
+diff --git a/core/tests/test_home_talk.c b/core/tests/test_home_talk.c
+index 5f8819d4..0d27e923 100644
+--- a/core/tests/test_home_talk.c
++++ b/core/tests/test_home_talk.c
+@@ -552,42 +552,55 @@ TEST(home_talk_a_resident_who_walks_out_goes_to_the_door_and_the_talk_ends_when_
+ /* ---- a bubble never sits on another face ---------------------------------------------------------------------------- */
+ TEST(home_talk_a_bubble_keeps_off_the_other_faces)
+ {
+-    HomeTalkRoom rm;
+-    DoomoRoomView v;
+-    int k, bx, by, bw, bh, seen = 0, clear = 0, who, shown;
+-    premade();
+-    rm = synth_room();
+-    add_who(&rm, ID_NANA, 3, 2);                         /* Nana stands behind Rivet on the screen: the same column */
+-    add_who(&rm, ID_RIVET, 4, 3);
+-    rm.px = INT2FIX(6) + FIX_ONE / 2;
+-    rm.py = INT2FIX(6) + FIX_ONE / 2;
+-    CHECK(home_talk_begin(&rm, -1) >= 0);
+-    run_idle(60);
+-    CHECK(say_text("hello everyone"));
+-    memset(&v, 0, sizeof(v));
+-    v.w = 8; v.d = 8; v.vw = 320; v.vh = 216; v.vy = 12;
+-    for (k = 0; k < 900 && home_talk_busy(); k++) {
+-        HomeTalkActor a[6];
+-        int n, i, hit = 0;
+-        frames(1);
+-        if (home_talk_bubble(0, NULL, 0, &who, &shown) != 1 || who < 0) continue;    /* a resident's line, typing */
+-        home_talk_view(&v);
+-        if (!home_talk_bubble_rect(&v, &bx, &by, &bw, &bh)) continue;
+-        seen++;
+-        n = home_talk_actors(a, 6);
+-        for (i = 0; i < n; i++) {
+-            int16_t fx, fy;
+-            if (a[i].id < 0 || i == 0) continue;
+-            if (home_talk_state()->part[who].id == a[i].id) continue;
+-            room_ref_project(&v, a[i].x, a[i].y, 0, &fx, &fy);
+-            if (fx + 9 > bx && fx - 9 < bx + bw && fy - 12 > by && fy - 34 < by + bh) hit = 1;      /* their head and shoulders */
++    /* each layout puts people in one screen column or side by side; whoever speaks, their bubble must not cover
++     * another person's head and shoulders (the faces) and must stay on the screen */
++    static const struct { int n, tx[3], ty[3]; } lay[4] = {
++        { 2, { 3, 4, 0 }, { 2, 3, 0 } },                  /* one behind the other */
++        { 3, { 2, 3, 4 }, { 2, 3, 4 } },                  /* three in a diagonal column */
++        { 2, { 3, 3, 0 }, { 3, 4, 0 } },                  /* side by side on the screen */
++        { 3, { 2, 4, 3 }, { 3, 2, 5 } },                  /* a triangle */
++    };
++    static const int ids[3] = { ID_NANA, ID_RIVET, ID_VEX };
++    int l, k, bx, by, bw, bh, seen = 0, clear = 0, who, shown, line;
++    for (l = 0; l < 4; l++) {
++        HomeTalkRoom rm;
++        DoomoRoomView v;
++        premade();
++        rm = synth_room();
++        for (k = 0; k < lay[l].n; k++) add_who(&rm, ids[k], lay[l].tx[k], lay[l].ty[k]);
++        rm.px = INT2FIX(6) + FIX_ONE / 2;
++        rm.py = INT2FIX(6) + FIX_ONE / 2;
++        CHECK(home_talk_begin(&rm, -1) >= 0);
++        run_idle(60);
++        memset(&v, 0, sizeof(v));
++        v.w = 8; v.d = 8; v.vw = 320; v.vh = 216; v.vy = 12;
++        for (line = 0; line < 3; line++) {
++            static const char *const say[3] = { "hello everyone", "how is everybody", "nice weather today" };
++            CHECK(say_text(say[line]));
++            for (k = 0; k < 900 && home_talk_busy(); k++) {
++                HomeTalkActor a[6];
++                int n, i, hit = 0;
++                frames(1);
++                if (home_talk_bubble(0, NULL, 0, &who, &shown) != 1 || who < 0) continue;   /* a resident's line, typing */
++                home_talk_view(&v);
++                if (!home_talk_bubble_rect(&v, &bx, &by, &bw, &bh)) continue;
++                seen++;
++                n = home_talk_actors(a, 6);
++                for (i = 0; i < n; i++) {                                                    /* the player too */
++                    int16_t fx, fy;
++                    if (home_talk_state()->part[who].id == a[i].id) continue;
++                    room_ref_project(&v, a[i].x, a[i].y, 0, &fx, &fy);
++                    if (fx + 9 > bx && fx - 9 < bx + bw && fy - 12 > by && fy - 34 < by + bh) hit = 1;    /* head and shoulders */
++                }
++                clear += !hit;
++                CHECK_MSG(bx >= 0 && bx + bw <= 320 && by >= 12, "the bubble left the screen: %d,%d %dx%d", bx, by, bw, bh);
++            }
++            run_idle(900);
+         }
+-        clear += !hit;
+-        CHECK_MSG(bx >= 0 && bx + bw <= 320 && by >= 12, "the bubble left the screen: %d,%d %dx%d", bx, by, bw, bh);
++        home_talk_abort();
+     }
+-    CHECK(seen >= 5);
+-    CHECK_EQ(clear, seen);
+-    home_talk_abort();
++    CHECK(seen >= 20);
++    CHECK_MSG(clear == seen, "%d of %d bubble frames sat on a face", seen - clear, seen);
+ }
+ 
+ /* ---- the native framing: a pan toward the group ------------------------------------------------------------------ */
+diff --git a/docs/TALK.md b/docs/TALK.md
+index 25d1fa84..e4ba1905 100644
+--- a/docs/TALK.md
++++ b/docs/TALK.md
+@@ -1022,7 +1022,9 @@ Talk is not offered at 240x160 (a GBA-sized screen; the menu has no row and
+    above, an arrow at the edge for a speaker who is off screen. A bubble that would
+    sit on someone else's head and shoulders (people stand in a column on the iso
+    screen) slides to the roomier side of the speaker's head at head height, with the
+-   tail out of its side, so every face stays visible (`bub_clear_of_heads`). Two
++   tail out of its side, or when neither side is free rises in steps of 12 px with a
++   longer stem, so every face stays visible (`bub_clear_of_heads`, tested over four
++   layouts and three lines each). Two
+    people in one screen column still look alike from a distance: the name tab says
+    who speaks, and T8b's portrait inset and speaker highlight make it clearer. The typewriter runs at
+    the dialogue's `OPT_TEXT_SPEED` with the speaker's voice babble. A line cut by an
+-- 
+2.43.0
+

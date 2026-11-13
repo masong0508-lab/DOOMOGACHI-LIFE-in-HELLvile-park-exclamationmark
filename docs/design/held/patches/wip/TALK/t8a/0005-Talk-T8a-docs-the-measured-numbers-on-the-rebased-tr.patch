@@ -1,0 +1,56 @@
+From d28a36692753139d802212123c38bced468d0daf Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 16:24:11 +0000
+Subject: [PATCH 5/6] Talk T8a: docs: the measured numbers on the rebased tree
+ (GBA and PS1 identical to origin 6964111, frame times)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63czJHmFDCnjA8mf9GoY
+---
+ docs/TALK.md | 19 +++++++++----------
+ 1 file changed, 9 insertions(+), 10 deletions(-)
+
+diff --git a/docs/TALK.md b/docs/TALK.md
+index e4ba1905..3ae9769f 100644
+--- a/docs/TALK.md
++++ b/docs/TALK.md
+@@ -1083,11 +1083,11 @@ in the review (Talk is 320x240 only).
+ | TP2 (PS1) | the one static `HomeTalk` (below) moves into the scene scratch; `home_talk_view()` already gives the GTE its framing; `plat_room_project` is the PS1's |
+ | the camera on a scaling renderer | `home_talk_view()` (`focus_r`, `punch_q8`) |
+ 
+-**Memory.** Native only, so no console resident byte. Measured on 2026-11-13: the GBA ELF's `.text` 1,403,440 B,
+-`.iwram` 11,256 B, `.iwram_bss` 4,084 B, `.data` 816 B, `.bss` 245,788 B (EWRAM) are the same as the origin tip's,
+-every symbol and size is the same; the PS1 EXE built with the boot FMV ends at 0x801ef450, **66 KB below the stack
+-top** (the same as before: this package adds 0 B; the 72 KB rule is the PS1-RAM package's to meet), and
+-`home_draw.c` compiles to the same MIPS code. The state is one static `HomeTalk` in
++**Memory.** Native only, so no console resident byte. Measured on 2026-11-13 against the origin tip 6964111: the
++GBA ELF's `.text` 1,403,584 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B, `.data` 816 B, `.bss` 245,788 B (EWRAM)
++are the same as the tip's and every symbol has the same size; the PS1 EXE built with the boot FMV is the same
++image (1,285,188 B), bss (547,132 B) and end (0x801ef580), **66 KB below the stack top** (this package adds 0 B;
++meeting the 72 KB rule is the PS1-RAM package's), and `home_draw.c` compiles to the same MIPS code. The state is one static `HomeTalk` in
+ `home_talk.c` (1,492 B on x86-64: the `TalkState` 940 B, the summary, two bubbles of
+ 110 B, the people and the camera), the room it was told about (a `HomeTalkRoom`,
+ 168 B) and the parser's name buffer (96 B), 1,756 B in all, plus a `HomeScn` field `talk_view` (1 B, native only). TP2 moves them
+@@ -1107,15 +1107,14 @@ sessions were using; `core/tests/scripts/home_talk_basic.txt`'s setup):
+ 
+ | Frame | origin (4303597) | T8a |
+ |---|---|---|
+-| Live house, nobody talking | 0.17 - 0.18 ms average, 0.24 - 0.39 ms worst | 0.18 - 0.23 ms average, 0.30 - 0.47 ms worst |
+-| Talk, waiting for the player (pick row) | n/a | 0.19 - 0.21 ms average, 0.28 - 0.46 ms worst |
+-| Talk, a line typing (bubbles, babble) | n/a | 0.18 - 0.20 ms average, 0.27 - 0.40 ms worst |
++| Live house, nobody talking | 0.17 - 0.18 ms average, 0.24 - 0.39 ms worst | 0.17 - 0.18 ms average, 0.23 - 0.34 ms worst |
++| Talk, waiting for the player (pick row) | n/a | 0.18 ms average, 0.22 - 0.39 ms worst |
++| Talk, a line typing (bubbles, babble) | n/a | 0.18 - 0.19 ms average, 0.27 - 0.46 ms worst |
+ 
+ So a Talk frame costs the same as a Live frame (the bubble boxes are a few rounded rectangles and a few lines
+ of text; the room is the same one `room_ref` draws), about 0.2 ms of the 33.3 ms a 30 fps frame has. That is a
+ host number, not a console's: the console cost of Talk is TP2's and TD1's to measure (the PS1's is the GTE room
+-draw plus the same 2D). The origin figures need the Live house to be as fast as before: the only change on that
+-path is one mode test. `make test`'s scripts hash every other frame the same as origin (below).
++draw plus the same 2D). The Live house is as fast as before: the only change on that path is one mode test.
+ 
+ **Not built** (and so not tested): the outcomes into the sim (the switch above), the portrait,
+ emotes, the room vibe icon, quick replies, the composer, the typed line at the pad,
+-- 
+2.43.0
+

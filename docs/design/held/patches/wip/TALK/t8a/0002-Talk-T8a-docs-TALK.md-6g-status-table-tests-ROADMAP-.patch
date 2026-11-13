@@ -1,0 +1,260 @@
+From 6f1c9dfa9b26a99105c7b92ec722fd22b5b4b3f5 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 15:42:58 +0000
+Subject: [PATCH 2/6] Talk T8a: docs (TALK.md 6g, status table, tests), ROADMAP
+ Done line
+
+Measured: GBA .text / .iwram / .iwram_bss / .data / .bss equal to origin, PS1 EXE 66 KB below the
+stack top (0x801ef450, delta 0), frame time of a Talk frame about 0.2 ms on the host, pixels: only the
+START menu of a house or visit with someone in it gains a Talk row.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63czJHmFDCnjA8mf9GoY
+---
+ ROADMAP.md           |   1 +
+ core/src/home_draw.c |   2 +-
+ docs/TALK.md         | 179 +++++++++++++++++++++++++++++++++++++++++--
+ 3 files changed, 173 insertions(+), 9 deletions(-)
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index 6d414b29..6d96eaf4 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -59,6 +59,7 @@ before redoing any of them; a zip without `.git` cannot tell.
+ - **Talk T5B-GRIEF (content, host-tested; docs/TALK.md 6c):** +506 English alternatives of grief, comfort and hard feelings in `core/data/talk/grammar/en/grief_{loss,voices,kids,feelings}.tlk`: more sincere `grief.*` / `comfort.*` lines in 21 reply acts for the six grief words (no punchline, no cure, no mechanic; a grown-up's deeper lines carry `!kid_present`), 127 lines giving all 17 cast members their own sincere voice on a grief topic, 69 child lines (a child speaks, or a grown-up with a child in the room), 141 lines for loneliness, worry, homesickness, regret, shame, stress and fears and the speaker's own sad, scared or lonely moment. Typed self-harm keeps its `safety.tlk` path (untouched). New `core/tests/test_talk_grief.c`. Data only: `TALK_en.BIN` 755,772 -> 776,188 B, no resident byte on any platform; 6,042 alternatives in grammar/en. Gates in docs/design/held/status/TALK.md.
+ - **Talk T5B-SURF1 (content, host-tested; docs/TALK.md 6c):** +722 English alternatives (5,646 -> 6,368) in `core/data/talk/grammar/en/surf_a_gesture.tlk`, `surf_a_third.tlk` and `surf_a_flow.tlk`, aimed at the 12 player acts the census repeats most (hug, no, walk away, accuse, yes, mediate, take side, shake head, nod, introduce, give, defend): plain-room and kid-room variants, guards by time, mood, relationship, voice, stance and topic, many lines with a `{x}` slot. Census (200,000 contexts, same grid): Surface 116,536 -> 124,834 distinct (+7.1%; Chao1 655,750 -> 734,511), Skeleton 113,387 -> 121,363, Meaning 15,191 -> 16,195, quality 0 failed, S3 hits 0. **The 1,000,000 Surface target is still missed** (the full 2M number is the lead's run; the 830,000 guess was not measured; the gap at 200k is Chao1 734,511 against 1,000,000); `TALK_en.BIN` 755,772 -> 788,732 B (PS1 non-resident, no resident byte). Not done: the full 2M run (the lead's) and the rest of the +30%.
+ - **Talk T5B-COOL (content, host-tested; docs/TALK.md 6c):** +600 English alternatives for the cool and rude acts (insults, mockery, criticism, teasing, complaints, blame, brush-offs, cartoon threats) in `core/data/talk/grammar/en/cool_*.tlk`, five files (2,057 alternatives in 21 files with T5B-WARM); many voices by guard (polite, flat, blunt, loud, quirky, serious, easygoing, elder, kid, mood, relationship, night, hellborn, ghost). PG-21 comedy: no slur, no real-world hate, nothing aimed at a body, family or loss, sharp lines only with `!kid_present`, kids get cute deflections. `talk talk-check` clean (TK1-TK9), safety tests 0 findings, `make -C core test` 1067 passed, `TALK_en.BIN` 567,450 B (no resident byte). Census Surface to be re-measured by the lead.
++- **Talk T8a, the house Talk mode (TK5, native only, host-tested; docs/TALK.md 6h):** `core/src/home_talk.c` (`HM_TALK`): START > **Talk** (or A next to a housemate in your own house) in Live mode, on a 320x240 screen only. Everyone in the room joins and is the audience (an adult is dropped before a child or the pet when the room holds more than four; a child makes the room kid-safe for the whole talk), gathers in 12-20 frames (the largest seat cluster, else a half circle round a table or the room's middle; the player takes a spare seat or the open side), the camera frames the group (`zoom` 2 with the focus circle, plus a pan on the native renderer, the view chosen by the seats' fronts, at most one move in 45 frames), speech bubbles at the speakers' heads through `plat_room_project` (3 lines x 26, typewriter and babble, the previous bubble faded and shrunk, the player's line bottom left), `talk_dm` driven (`say` through the audience gate, `step`, `tick` for idle chatter and the prod, `end` for the summary), B leaves, the control card and one instruction line, five starters on the pad until T8c's quick replies. Runner: `talk-enter`, `talk-say`, `talk-wait`, `talk-leave`, `expect-talk`, `family-add`, `frame-time`; script `home_talk_basic` (320x240). `room_ref.c` is unchanged (zoom 2 stays ignored, the Dreamcast relies on it). Pixels: only the START menu of a house or visit with someone in it gains a Talk row (native, 320x240); every other frame of the 100 scripts is identical. `core/src/home_talk.c` and its hooks are inside `DOOMO_HAS_TALK`: the GBA, PS1 and Dreamcast builds are byte for byte as before. Not done: the portrait inset, emotes, quick replies, catch-the-word, the composer, the typed line, invites (T8b-T8d), wiring `talk_outcome_begin` / `talk_outcome_end` (T6-OUT, landed) into the house (two calls: a talk changes nothing in the sim yet).
+ - **Talk T6-DM, the drama manager (TK4, host-tested; docs/TALK.md 6f):** `core/src/talk_dm.c` is the policy over the generator: 13 beats from `core/data/talk/beats.tlk` (compiled into the new `TB_BEATS` bank, with the persona types' affinity roots), a tension arc (peak at turns 8-10, calm by 15), engagement per resident (turn away under 25, excuse and walk-out under 15 for two turns, lean in over 85), who answers, reactions between residents (4 lines an exchange at most), interruptions (at most once in 3 exchanges, adults only), idle chatter after 8 s then the prod, alliances with Heider balance, arguments (jab, row, ultimatum; only the jab when anyone here is not an adult, a child asks "Are you guys fighting?"), mediation (`TEV_MEDIATED`, T6-OUT calls `sim_make_up`), taking a side, a problem talked through, the great night, and `talk_dm_end` handing a `TalkSummary` to T6-OUT. New generator entries `talk_gen_entry` / `talk_gen_react` and the starter beat lines `grammar/en/beats_lines.tlk`. **Safety in C**: the romance beat needs the player's own romance act, the target's yes, an adult room (no minor, pet or kid cast), and its line is said by that adult only; every other romance line is dropped; the audience only gets stricter; romance state is never written. `TalkState` 940 B, no static RAM. 17 tests in `test_talk_dm.c` (P2 both directions, P3, P2 / P7 over 400 random sessions). Not done: T6-OUT (outcomes into the sim), T6-MEM (talk memory and save chunk), the PS1 size of `talk_dm.c` on MIPS (TP2).
+ - **Talk T6-OUT, outcomes into the sim (TK4, host-tested; docs/TALK.md 6g):** `core/src/talk_outcome.c` applies a `TalkSummary` under the daily caps of design 5.5 (bond +-12 and level +3 a resident, pair +-8, happy +-12, social 12, one problem a resident, one `sim_make_up` a pair, one headline a conversation and 4 a day, none for minors), with `talk_outcome_begin` / `talk_outcome_end` wiring the talk memory around a conversation. Romance is only asked of the sim (`sim_confess` after a yes to CONFESS / ASK_OUT, once a pair a day); Talk never sets a crush or dating edge. `talk_dm_end` no longer sets `conv.ended` (it would have locked every room for the day through `talk_mem_end`). 15 tests in `test_talk_outcome.c` (100 greedy sessions under every cap, P7 over 1,500 random sessions). Native only: 0 B on GBA / PS1 / DC. Not done: learned likes (needs a drama-manager event), the full-size beat lines.
+ - **First-time tips + Field Guide (CL4, clarity C4 + C12, 2026-11-08):** a tip card the first time you reach the island hub, Town Hall, the apartments, a citizen's care tab, your house, Hold the Door, a shooter fight, an exorcism, the Boreagotchi, the Studio, Rivet's workshop, Family and the Library (13 cards, `core/src/tips.c`, `doomo/tips.h`): a line in Mayor Giggs', Rivet's or Father Fuzz's voice plus one plain instruction line, which names the buttons of the pad in hand (C3 `btn_name`: L1 / R1 on a PS1, START+Y for SELECT on a Dreamcast; the Field Guide's Buttons page says the same per pad); non-blocking (the scene keeps running, a fight or the Hold the Door night waits), any press after a short beat closes it and is never passed on; toasts wait behind it. Seen flags survive New Game: bytes 12..15 of the machine config record (PS1), else the save's `OPT2` chunk (v2, native / GBA); Options > Game: **Tips On / Off** and **Show all tips again**. Scripted runs never see a card (`PLAT_TEST_NO_TIPS` from the native runner, the GBA harness mailbox and the PS1 harness lockstep), so all 19 journeys keep their budgets; `tips on` / `expect-tip` in scripts. The **Field Guide** (`core/src/lib_help.c`): 17 glossary pages (buttons per platform, H$ and rent, the 8 needs, moods, Dark and possession, bonds, the two sides, exorcism, weld stats, the house, house score, Hold the Door, the Boreagotchi, family, play-as, Studio words, tips) as the Library's eighth book, a free play Library shortcut and the **Help** row of the island START menu and the story pause panel. English text through `lang_tr` (one TSV row per paragraph, every other language falls back to English until the post-rewrite translation pass). Tests: `test_tips.c`, `test_options_store.c` (record and chunk), `clarity_tips.txt` and `library_help.txt` at both sizes, `gba/harness/scripts/tips.txt` (`make -C gba test-tips`). Dreamcast: dcrun sets `PLAT_TEST_NO_TIPS` in DC4's `test_flags` mailbox word and has `tips on|off` too. PS1 RAM: the feature costs ~5.9 KB resident (`tips.c` is drawn from `doomo_frame`), paid back by giving `SCENE_OPTIONS`, `SCENE_ISLAND`, `SCENE_LIB_BESTIARY` and `SCENE_LIB_ITEMS` named-array names (their files' string sections, 11.9 KB, now load with their overlay groups): the disc ends 79,648 B below the stack top (73,824 B before, 5,920 B above the 72 KB gate); the PS1 harness also plays `library_help.txt`. Details: docs/GAME_DESIGN.md 4.2; RAM: docs/GBA.md ledger row 25, docs/PS1.md.
+diff --git a/core/src/home_draw.c b/core/src/home_draw.c
+index 3a44c1ee..bf13bdd9 100644
+--- a/core/src/home_draw.c
++++ b/core/src/home_draw.c
+@@ -14,7 +14,7 @@
+  *           door / turret / a guest / a window, dawn and the result
+  *   View    a photo re-rendered from its recipe (the gallery's photo wing)
+  *   Talk    (T8, native only until TKP: inside DOOMO_HAS_TALK) a conversation with the people in the
+- *           room (home_talk.c, docs/TALK.md 6g): START > Talk, or A next to a housemate; B leaves
++ *           room (home_talk.c, docs/TALK.md 6h): START > Talk, or A next to a housemate; B leaves
+  * The START menu's first three rows stay Catalog, the mode toggle, Score
+  * (gba/harness/scripts/home.txt walks them); then Walls, Themes,
+  * Blueprints, Photo, Rooms, Leave. A visit's menu: Give a gift, Photo,
+diff --git a/docs/TALK.md b/docs/TALK.md
+index 1e0dc3e2..eea5c9bb 100644
+--- a/docs/TALK.md
++++ b/docs/TALK.md
+@@ -24,6 +24,7 @@ Contents:
+ [6b The safety gate (T4)](#6b-the-safety-gate-t4) ·
+ [6c The generator (T5a)](#6c-the-generator-t5a) ·
+ [6d The census and the review sheet (T7)](#6d-the-census-and-the-review-sheet-t7) ·
++[6h The house Talk mode (T8a)](#6h-the-house-talk-mode-t8a) ·
+ [7 Sizes](#7-sizes-measured) ·
+ [8 Tests](#8-tests) ·
+ [9 Differences from the design](#9-differences-from-the-design) ·
+@@ -45,17 +46,20 @@ Contents:
+ | T5b | the English line banks (about 6,000 alternatives, design 3.6) and the owner's review | in progress: 6,742 alternatives in grammar/en (starter 718 + T5B-WARM 739: warm acts + T5B-COOL 600: cool and rude acts + T5b-ASK 975: questions and answers + T5B-OPEN 648: openers, parts and the rest + T5B-ROM 492: romance, adults only + T5B-TOPIC 771: topic replies + T5B-VOICE 596: the cast voices + T5B- |
+ | T6 | the drama manager, outcomes, the talk memory chunk | **memory and chunk done** (T6-MEM, 6e); **drama manager done** (T6-DM, 6f: `talk_dm.c`, `beats.tlk`); **outcomes into the sim done** (T6-OUT, 6g: `talk_outcome.c`) |
+ | **T7** | the census (`core/tools/talk_census.c`: the three tiers, Chao1, the quality checks Q1-Q6, the conversation tier), the grid `census_en.tsv`, `make -C core talk-census`, the smoke census in `make test`, the Q7 review sheet `talk_sample.py` | **done** (TK3): the tools and the measurement. The full run's numbers are in 6d: Skeleton, Meaning, conversations and quality meet the design's targets; **Surface does not** (it needs T5b's bank); Q7 (a person rating 300 exchanges) has not been done |
+-| T8 | the house mode `HM_TALK` on native, with its UI | to do |
++| **T8a** | the house mode `HM_TALK` on native, first package: `home_talk.c` (enter, gather, seats, camera, bubbles, `talk_dm` driven, leaving, control card, instruction line), the runner's `talk-*` commands, `home_talk_basic` | **done** (TK5, 6h) |
++| T8b-T8d | the portrait inset and emotes; quick replies, catch-the-word, the composer and the typed line; invites, the group / safety / visit scripts and the press budgets | to do |
+ | T9, T10 | pointer input; other languages (after the script rewrite) | to do |
+ | TP0-TP4, TD0-TD3 | the PS1 and Dreamcast ports | to do (TD0's prerequisites are in: DC3, DC4, DC8 with zoom 2 and `plat_room_project`, and the Flycast core, approved and built) |
+ 
+-Nothing in the game can reach Talk yet. `home_talk_enter()` is a weak
+-default that answers "not available", and no platform sets `PLATF_TALK`.
+-T5a generates lines, but **only the unit tests and the census call it**:
+-the house mode (T8) is what makes it reachable in play. Every line the
+-generator writes has already gone through the T4 gate (the player's
+-utterance) and the S3 output lint (the line), and the property tests over
+-generated lines (P1-P8, section 2) are green.
++On the **native host** the house can now start Talk (T8a, 6h): START, then
++**Talk**, or A next to a housemate in your own house. On the GBA, PS1 and
++Dreamcast nothing can reach it yet: `home_talk_enter()` is the weak
++default that answers "not available" there (`home_talk.c` and its hooks in
++`home_draw.c` are inside `DOOMO_HAS_TALK`, which only the native build
++defines), and no platform sets `PLATF_TALK`. Every line the generator
++writes has already gone through the T4 gate (the player's utterance) and the
++S3 output lint (the line), and the property tests over generated lines
++(P1-P8, section 2) are green.
+ 
+ ---------------------------------------------------------------------------
+ 
+@@ -953,6 +957,164 @@ reused and forgets its caps (known, accepted; T8 may save the ledger in the TALK
+ 
+ ---------------------------------------------------------------------------
+ 
++## 6h. The house Talk mode (T8a)
++
++`core/src/home_talk.c` (inside `DOOMO_HAS_TALK`: the native build only until
++TKP), the hooks in `core/src/home_draw.c` (also inside it), the glue types in
++`core/src/home_int.h`, the runner commands in `core/native/runner_main.c`,
++`core/tests/test_home_talk.c` (17 tests), the script
++`core/tests/scripts/home_talk_basic.txt` (320x240 only). Design 4.1-4.3.
++This is **package 1** of T8. The portrait inset, emotes, quick replies,
++catch-the-word, the composer, the typed line and invites are T8b / T8c / T8d
++(see "Where the next packages plug in").
++
++**What you do.** In your own house in Live mode: START, then **Talk** (the row
++before Leave, only when someone is in the room), or walk up to a housemate and
++press **A**. In a visit: START, then Talk (A next to the host still asks what
++they wish for, as before; design 4.1 wants A to open Talk there too: T8d).
++Talk is not offered at 240x160 (a GBA-sized screen; the menu has no row and
++`home_talk_enter()` answers 0).
++
++**What happens.**
++
++1. *Enter.* `home_draw_talk_start()` (reached through the contract's
++   `home_talk_enter(who)`) fills a `HomeTalkRoom`: the room, the free floor, the
++   seat tiles (every `FI_SIT` piece, one per footprint tile), the tables, the door,
++   the player, and everyone in the room (the housemates exactly where Live mode puts
++   them; the host of a visit; the pet in your own house). It calls
++   `home_talk_begin()` and the house goes to `HM_TALK`.
++2. *Who joins and the audience.* **Everyone present joins**, so the room's audience
++   is the whole room: `talk_dm_begin` computes `talk_safe_ctx` over all of them (the
++   adults and kids state is read from the sim by `talk_safe_minor`). The cap is
++   `TALK_PARTS_MAX` (4). When the room holds more, `pick_who()` takes the target
++   first, then children and the pet, then the rest nearest first: **an adult is
++   dropped before a child or the pet**, never the other way, so a child can not be
++   left out of the audience. A child in the room makes the room kid-safe for the
++   whole talk (`any_minor`, `TDF_KIDSAFE`), and nothing here can relax it (it is
++   `talk_dm`'s rule, and the tests check it through the house).
++   `talk_mem_begin` runs after `talk_dm_begin` (what they remember; a romance
++   refusal of today sets `TPF_REFUSED`).
++3. *Gathering* (`gather()`, 12 to 20 frames, longer walks take longer). Residents
++   sit on the **largest cluster of seats** (seats within three tiles of each other),
++   the nearest seat first; the pet never sits. The others stand in a **half circle**
++   round the cluster's middle, or round a table when there is no seat cluster, or
++   round the room's middle: about two tiles out, on the camera's side, not shoulder to
++   shoulder, not on a piece. The player takes a spare seat of the cluster or stands on
++   the open side, a little further out toward the camera. Everyone walks there with the
++   house's walk frames. B leaves even now.
++4. *The camera.* `pick_view()` chooses the quarter turn that shows the seated
++   residents' fronts the most (a seat's rot 0 / 1 shows its front; a tie keeps the
++   view the house is in; with nobody seated the view stays). `home_talk_view()` sets
++   `zoom` 2, `focus_x / y / r` (the group's middle and a tile of head margin), and the
++   pan. The reference renderer draws at one scale and ignores zoom (the T0 contract,
++   `room_ref.c` is **unchanged**; the Dreamcast port relies on it), so the framing is
++   also a **pan**: three quarters of the way from the room's middle to the group's,
++   at most 24 x 8 px, plus the speaker's pan (at most 12 x 6 px). A new speaker
++   boings the `punch_q8` push to 1.1x (`TW_BOING`; native does not scale, the PS1 and
++   Dreamcast will) and pans toward the speaker; an argument beat cuts to a two-shot of
++   the two who row; a sincere line pushes in slowly; quiet for 90 frames goes back to
++   the group shot. **At most one camera move in 45 frames**
++   (`home_talk_cam_stats()`, tested).
++5. *Bubbles.* One at a time, at the speaker's head through `plat_room_project`
++   (the weak default is room_ref's projection; a platform's own wins): 3 lines of 26
++   columns (the lint's rule and `talk_safe_bubble_lines`' wrap), the tail pointing at
++   the head, a name tab, kept on the screen, below the figure when there is no room
++   above, an arrow at the edge for a speaker who is off screen. The typewriter runs at
++   the dialogue's `OPT_TEXT_SPEED` with the speaker's voice babble. A line cut by an
++   interruption ends in "-" and the bubble shakes for 4 frames. The line codes
++   (`{d}`, `{!}` ...) are taken out. At most two bubbles show: the current one and the
++   previous one faded and shrunk to its first line ("..."), gone 150 frames after
++   nobody speaks. The player's own line is a flat-cornered bubble at the bottom left
++   and appears whole; what the gate left of it is shown, so a refusal has no echo.
++   Speakers bob (+-6% at 4 Hz), listeners breathe, an engaged resident faces the
++   speaker, a bored one (`TPF_AWAY`) turns their back, a resident who left
++   (`TPF_LEFT`) walks to the door and is gone once the exchange is on screen.
++6. *Driving the drama manager* (`pump()`): one `talk_dm_step` a frame when no bubble is
++   up (so an exchange can be spread over frames); idle, `talk_dm_tick(1)` (idle chatter
++   after 8 s of nobody talking or a bubble, then the prod); the player's turn
++   (`home_talk_say()`) always goes through `talk_dm_say()` and so through the audience
++   gate: a typed line (`home_talk_parse()` = `talk_parse` with the room as its
++   context), a starter or anything a later package builds. When the talk is over
++   (everyone left, K-7, a goodbye) the last line stays for 40 frames and everyone
++   leaves.
++7. *Leaving.* **B** (or `talk-leave`): the people walk back to where the house had them
++   (12 to 14 frames), `talk_dm_end()` fills a `TalkSummary` (`home_talk_summary()`),
++   the house is Live again and the player stands where the talk put them (sitting, if
++   they took a seat). **Nothing a talk does reaches the sim yet.** T6-OUT has landed (6g):
++   `talk_outcome_begin` is `talk_dm_begin` + `talk_mem_begin` + the refused-today flags
++   (what `home_talk_begin()` does by hand), and `talk_outcome_end` writes the talk memory,
++   calls `talk_dm_end` and applies the summary under the daily caps. T8a was built to use
++   only `talk_dm_end`'s summary (the two packages were landing side by side), so
++   `home_talk_begin()` and `finish()` keep the plain calls; switching them to
++   `talk_outcome_begin` / `talk_outcome_end` is a two-line change for the lander or T8b.
++8. *Control card and instruction line.* The foot of the screen is the shared prompt
++   bar (`ui_prompts_at`): `Pick` (LEFT / RIGHT), `Say it` (A), `Leave` (B); while a
++   bubble is up `Next` (A: finish the line, then go on). One plain instruction line sits
++   above it: "Everyone gathers round. B leaves.", "Choose what to say, then press A.",
++   "They are talking. A skips ahead.", "The chat is over. They head off.", "Bye for
++   now!". Above that, the pick row: LEFT / RIGHT chooses one of five **starters** (Say
++   hi, Ask how they are, Compliment, Tell a joke, Say thanks), a stand-in for T8c's quick
++   replies (the table `starters[]`; each is one act to everyone through the gate).
++
++**The runner** (`core/native/runner_main.c`, the list at its head):
++`family-add ROLE STAGE [NAME]`, `talk-enter [WHO]`, `talk-say TEXT` or
++`talk-say #ACT [SLOT]` (waits for the bubbles on screen, parses, says), `talk-wait`,
++`talk-leave`, `expect-talk on|off`, and `frame-time N [LABEL]` (CPU time per frame, used
++for the numbers below). `core/tests/run_scripts.sh` reads `# resolutions: 320x240` (a
++script that is not for a GBA-sized screen). `home_talk_basic` walks the whole thing:
++START > Talk, the starters, a typed line, B, then A next to a housemate; its shots are
++in the review (Talk is 320x240 only).
++
++**Where the next packages plug in.**
++
++| Package | Where |
++|---|---|
++| T8b portrait inset, emotes (`HVR_*`, "...", music note), the room vibe icon | `home_talk_draw()` (it has the speaker's slot, the line's `face`, and the bubble box in `HtLay`), `home_talk_actors()` (add the squash / z of an emote) |
++| T8c quick replies, catch-the-word, the composer, the typed line | `talk_input()` and the `starters[]` table: each source ends in `home_talk_say()` (the gate is inside `talk_dm_say`); the typed line is `home_talk_parse()` + the DC / native text entry |
++| T8d invites, visit entry (A next to the host), `home_talk_group` / `_safety` / `_visit` scripts, press budgets | `home_draw_talk_room()` (who is in the room; a person arriving through the door joins the room), `home_draw_talk_start()` |
++| T9 pointer | `talk_input()` |
++| TP2 (PS1) | the one static `HomeTalk` (below) moves into the scene scratch; `home_talk_view()` already gives the GTE its framing; `plat_room_project` is the PS1's |
++| the camera on a scaling renderer | `home_talk_view()` (`focus_r`, `punch_q8`) |
++
++**Memory.** Native only, so no console resident byte. Measured on 2026-11-13: the GBA ELF's `.text` 1,403,440 B,
++`.iwram` 11,256 B, `.iwram_bss` 4,084 B, `.data` 816 B, `.bss` 245,788 B (EWRAM) are the same as the origin tip's,
++every symbol and size is the same; the PS1 EXE built with the boot FMV ends at 0x801ef450, **66 KB below the stack
++top** (the same as before: this package adds 0 B; the 72 KB rule is the PS1-RAM package's to meet), and
++`home_draw.c` compiles to the same MIPS code. The state is one static `HomeTalk` in
++`home_talk.c` (1,492 B on x86-64: the `TalkState` 940 B, the summary, two bubbles of
++110 B, the people and the camera), the room it was told about (a `HomeTalkRoom`,
++168 B) and the parser's name buffer (96 B), 1,756 B in all, plus a `HomeScn` field `talk_view` (1 B, native only). TP2 moves them
++into the scene scratch.
++
++**Pixels, proof.** `--frame-hash` of the 100 older runner scripts at 240x160 and 320x240 (200 runs), the
++origin tip against this package: 198 runs identical frame for frame; the two that differ are `home_visit` and
++`home_gallery` at 320x240, and only in the frames where a visit's START menu is open, which now has the row
++**Talk** (before: Give a gift, Photo, Leave). Own house in Live mode with a housemate or the pet in the room gets
++the same row (no older script has one). Nothing changes on 240x160, in Build mode, or in `room_ref`. GBA: the
++ELF's `.text`, `.data`, `.bss`, `.iwram` are the same size, every symbol and its size are the same, and the code
++of `home_draw.o` is the same (`home_talk.c` is an empty unit there).
++
++**Frame time** (native x86-64 host, `frame-time N LABEL`: the CPU time of one frame, update + draw + the
++framebuffer end, at 320x240, the `home_talk_basic` house with two housemates, three runs each on a machine other
++sessions were using; `core/tests/scripts/home_talk_basic.txt`'s setup):
++
++| Frame | origin (4303597) | T8a |
++|---|---|---|
++| Live house, nobody talking | 0.17 - 0.18 ms average, 0.24 - 0.39 ms worst | 0.18 - 0.23 ms average, 0.30 - 0.47 ms worst |
++| Talk, waiting for the player (pick row) | n/a | 0.19 - 0.21 ms average, 0.28 - 0.46 ms worst |
++| Talk, a line typing (bubbles, babble) | n/a | 0.18 - 0.20 ms average, 0.27 - 0.40 ms worst |
++
++So a Talk frame costs the same as a Live frame (the bubble boxes are a few rounded rectangles and a few lines
++of text; the room is the same one `room_ref` draws), about 0.2 ms of the 33.3 ms a 30 fps frame has. That is a
++host number, not a console's: the console cost of Talk is TP2's and TD1's to measure (the PS1's is the GTE room
++draw plus the same 2D). The origin figures need the Live house to be as fast as before: the only change on that
++path is one mode test. `make test`'s scripts hash every other frame the same as origin (below).
++
++**Not built** (and so not tested): the outcomes into the sim (the switch above), the portrait,
++emotes, the room vibe icon, quick replies, the composer, the typed line at the pad,
++invites, pointer input, the table ring with a real table in a premade room (the
++synthetic room test covers it), the camera's scale (native draws at one scale).
++
+ ## 7. Sizes (measured)
+ 
+ All figures are for `TALK_en.BIN` after the TK1 content (`talkc --stats`):
+@@ -1275,6 +1437,7 @@ Other measurements:
+ | `core/tests/test_talk_safety.c` | One source of "minor" (1,000 premade ids, the kid cast file, pool stages, unknown ids, the pet); the safety and adversarial corpora (run with a town person lookup, as the game will); the `lovers` room really allows romance; a child named but not in the room (the lookup, the roster's cast, a shared name, a `names_en.txt` name); every must-refuse line past the token cap (and the bubble never shows past the cut); invisible characters and space-split words; the mutation fuzz; the hate hash (C equals Python, no lexicon word on it, `DOOMO_HATE_PLAIN`); the gate properties P1-P4 and P7 over 200,000 random calls and every (adult, minor) pair both ways; P5 Mature; P6 closed vocabulary over 50,000 random lines; the S3 lint (units and the whole vocabulary); the masked bubble |
+ | `core/tests/test_talk_gen.c` | T5a on the test grammar `core/tests/talk_gen/gentest.tlk` (`TALK_gentest.BIN`): every modifier and field, names, likes, the job callback for an adult and none for a child, the weights, Q5 novelty, sub-rules, the fit and the safe fallback, K-9 (one swear a conversation, none with a kid), K-6 (a Mature variant only with the option and premade adults), the cast's own lines, faces, the optional parts with every callback true (Q4), the exchange (the gate first: K-7 ends it unseen, refusals, distress, romance at a child both ways; a romance yes, a no remembered for the day), reactions that answer the line before (Q2), a typed name the room may not hear, determinism; K-10 (`talk_gen_grief`): a grief topic takes the sincere bank whatever the act, the core part alone and an act that may answer, a quiet safe line when no grief line may answer, the safety acts keep their banks, the loss fact (a household member, not a move away, 28 days), `{lost}`, one comfort reaction at most and never the pet |
+ | `core/tests/test_talk_census.c` | T7 and T5a over the English banks: the smoke census (6d) and the generator-level property tests P1-P8 (section 2; `DOOMO_TALK_PROPERTY_N` for the design's 200,000) and K-10 (`talk_gen_property_grief`: every act about every grief topic in adults', kids' and pet rooms) |
++| `core/tests/test_home_talk.c` | T8a (6h): entering and gathering through the house (distinct free tiles, 12-20 frames, a GBA-sized screen refused, the housemates' spots equal Live mode's, a visit's host); seats (the largest cluster, the pet stands, the quarter turn that shows the seats' fronts, a half circle round a table); the audience (a full room drops an adult before a child or the pet, a child makes the room kid-safe and it never relaxes while romance acts toward the room are refused or deflected and no romance line comes back, an adult room stays unflagged); bubbles in order (the player's line first, the typewriter only grows, no line codes, at most two visible); idle chatter and the prod; the camera (talk framing, at most one move in 45 frames); the framing pan nearer the middle; leaving (B, the summary, Live again); a resident who walks out; the contract hook with no house |
+ | `core/tests/test_talk_save.c` | T6-MEM (6e): the table (find, touch, last two topics, LRU of 24, likes, who may have an entry), the day rollover (refused today only), the flags of a running conversation, the chunk (empty = 0 bytes, worst case 292 B, full save round trip, an old save without the chunk, truncated / too long / wrong version / count over 24, a gone resident, the pet, a double id, a retired concept), and the generator guards and callback through `core/tests/talk_gen/mem.tlk` (K-5 across two conversations) |
+ | `core/tests/test_talk_outcome.c` | T6-OUT (6g): the daily caps, mediation, problems, news, romance asked and never forced, 100 greedy sessions, the talk memory write-back, P7 over 1,500 random sessions |
+ | `make -C core talk-check` | `talkc --check` (now also TK1-TK9, the corpora and the grammar compiler) and `--selftest` (51 seeded refusals: 12 lexicon files, 4 bad edges, 13 templates, 2 rule files, 20 grammars; and `core/tests/talk_good.tlk` must lint clean) (part of `make -C core test`) |
+-- 
+2.43.0
+

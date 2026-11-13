@@ -1,0 +1,266 @@
+From a682f522b2cd4377ca6fd0fe8d5ed0a360b34356 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 16:53:34 +0000
+Subject: [PATCH 6/6] Talk T8a landing: furniture in front wins over Talk, a
+ talk applies its outcome (talk_outcome_begin/end), clearer talk-enter
+ message, tests
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63czJHmFDCnjA8mf9GoY
+---
+ ROADMAP.md                  |  2 +-
+ core/native/runner_main.c   |  2 +-
+ core/src/home_draw.c        | 47 +++++++++++++++++++++++++--------
+ core/src/home_int.h         |  1 +
+ core/src/home_talk.c        |  8 +++---
+ core/tests/test_home_talk.c | 52 +++++++++++++++++++++++++++++++++++++
+ docs/TALK.md                | 13 ++++------
+ 7 files changed, 99 insertions(+), 26 deletions(-)
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index 6d96eaf4..6ab3ed0e 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -59,7 +59,7 @@ before redoing any of them; a zip without `.git` cannot tell.
+ - **Talk T5B-GRIEF (content, host-tested; docs/TALK.md 6c):** +506 English alternatives of grief, comfort and hard feelings in `core/data/talk/grammar/en/grief_{loss,voices,kids,feelings}.tlk`: more sincere `grief.*` / `comfort.*` lines in 21 reply acts for the six grief words (no punchline, no cure, no mechanic; a grown-up's deeper lines carry `!kid_present`), 127 lines giving all 17 cast members their own sincere voice on a grief topic, 69 child lines (a child speaks, or a grown-up with a child in the room), 141 lines for loneliness, worry, homesickness, regret, shame, stress and fears and the speaker's own sad, scared or lonely moment. Typed self-harm keeps its `safety.tlk` path (untouched). New `core/tests/test_talk_grief.c`. Data only: `TALK_en.BIN` 755,772 -> 776,188 B, no resident byte on any platform; 6,042 alternatives in grammar/en. Gates in docs/design/held/status/TALK.md.
+ - **Talk T5B-SURF1 (content, host-tested; docs/TALK.md 6c):** +722 English alternatives (5,646 -> 6,368) in `core/data/talk/grammar/en/surf_a_gesture.tlk`, `surf_a_third.tlk` and `surf_a_flow.tlk`, aimed at the 12 player acts the census repeats most (hug, no, walk away, accuse, yes, mediate, take side, shake head, nod, introduce, give, defend): plain-room and kid-room variants, guards by time, mood, relationship, voice, stance and topic, many lines with a `{x}` slot. Census (200,000 contexts, same grid): Surface 116,536 -> 124,834 distinct (+7.1%; Chao1 655,750 -> 734,511), Skeleton 113,387 -> 121,363, Meaning 15,191 -> 16,195, quality 0 failed, S3 hits 0. **The 1,000,000 Surface target is still missed** (the full 2M number is the lead's run; the 830,000 guess was not measured; the gap at 200k is Chao1 734,511 against 1,000,000); `TALK_en.BIN` 755,772 -> 788,732 B (PS1 non-resident, no resident byte). Not done: the full 2M run (the lead's) and the rest of the +30%.
+ - **Talk T5B-COOL (content, host-tested; docs/TALK.md 6c):** +600 English alternatives for the cool and rude acts (insults, mockery, criticism, teasing, complaints, blame, brush-offs, cartoon threats) in `core/data/talk/grammar/en/cool_*.tlk`, five files (2,057 alternatives in 21 files with T5B-WARM); many voices by guard (polite, flat, blunt, loud, quirky, serious, easygoing, elder, kid, mood, relationship, night, hellborn, ghost). PG-21 comedy: no slur, no real-world hate, nothing aimed at a body, family or loss, sharp lines only with `!kid_present`, kids get cute deflections. `talk talk-check` clean (TK1-TK9), safety tests 0 findings, `make -C core test` 1067 passed, `TALK_en.BIN` 567,450 B (no resident byte). Census Surface to be re-measured by the lead.
+-- **Talk T8a, the house Talk mode (TK5, native only, host-tested; docs/TALK.md 6h):** `core/src/home_talk.c` (`HM_TALK`): START > **Talk** (or A next to a housemate in your own house) in Live mode, on a 320x240 screen only. Everyone in the room joins and is the audience (an adult is dropped before a child or the pet when the room holds more than four; a child makes the room kid-safe for the whole talk), gathers in 12-20 frames (the largest seat cluster, else a half circle round a table or the room's middle; the player takes a spare seat or the open side), the camera frames the group (`zoom` 2 with the focus circle, plus a pan on the native renderer, the view chosen by the seats' fronts, at most one move in 45 frames), speech bubbles at the speakers' heads through `plat_room_project` (3 lines x 26, typewriter and babble, the previous bubble faded and shrunk, the player's line bottom left), `talk_dm` driven (`say` through the audience gate, `step`, `tick` for idle chatter and the prod, `end` for the summary), B leaves, the control card and one instruction line, five starters on the pad until T8c's quick replies. Runner: `talk-enter`, `talk-say`, `talk-wait`, `talk-leave`, `expect-talk`, `family-add`, `frame-time`; script `home_talk_basic` (320x240). `room_ref.c` is unchanged (zoom 2 stays ignored, the Dreamcast relies on it). Pixels: only the START menu of a house or visit with someone in it gains a Talk row (native, 320x240); every other frame of the 100 scripts is identical. `core/src/home_talk.c` and its hooks are inside `DOOMO_HAS_TALK`: the GBA, PS1 and Dreamcast builds are byte for byte as before. Not done: the portrait inset, emotes, quick replies, catch-the-word, the composer, the typed line, invites (T8b-T8d), wiring `talk_outcome_begin` / `talk_outcome_end` (T6-OUT, landed) into the house (two calls: a talk changes nothing in the sim yet).
++- **Talk T8a, the house Talk mode (TK5, native only, host-tested; docs/TALK.md 6h):** `core/src/home_talk.c` (`HM_TALK`): START > **Talk** (or A next to a housemate in your own house) in Live mode, on a 320x240 screen only. Everyone in the room joins and is the audience (an adult is dropped before a child or the pet when the room holds more than four; a child makes the room kid-safe for the whole talk), gathers in 12-20 frames (the largest seat cluster, else a half circle round a table or the room's middle; the player takes a spare seat or the open side), the camera frames the group (`zoom` 2 with the focus circle, plus a pan on the native renderer, the view chosen by the seats' fronts, at most one move in 45 frames), speech bubbles at the speakers' heads through `plat_room_project` (3 lines x 26, typewriter and babble, the previous bubble faded and shrunk, the player's line bottom left), `talk_dm` driven (`say` through the audience gate, `step`, `tick` for idle chatter and the prod, `end` for the summary), B leaves, the control card and one instruction line, five starters on the pad until T8c's quick replies. Runner: `talk-enter`, `talk-say`, `talk-wait`, `talk-leave`, `expect-talk`, `family-add`, `frame-time`; script `home_talk_basic` (320x240). `room_ref.c` is unchanged (zoom 2 stays ignored, the Dreamcast relies on it). Pixels: only the START menu of a house or visit with someone in it gains a Talk row (native, 320x240); every other frame of the 100 scripts is identical. `core/src/home_talk.c` and its hooks are inside `DOOMO_HAS_TALK`: the GBA, PS1 and Dreamcast builds are byte for byte as before. Not done: the portrait inset, emotes, quick replies, catch-the-word, the composer, the typed line, invites (T8b-T8d). A talk applies its outcome (`talk_outcome_begin` / `talk_outcome_end`, wired at landing). A next to a housemate gives way to furniture in front of the player.
+ - **Talk T6-DM, the drama manager (TK4, host-tested; docs/TALK.md 6f):** `core/src/talk_dm.c` is the policy over the generator: 13 beats from `core/data/talk/beats.tlk` (compiled into the new `TB_BEATS` bank, with the persona types' affinity roots), a tension arc (peak at turns 8-10, calm by 15), engagement per resident (turn away under 25, excuse and walk-out under 15 for two turns, lean in over 85), who answers, reactions between residents (4 lines an exchange at most), interruptions (at most once in 3 exchanges, adults only), idle chatter after 8 s then the prod, alliances with Heider balance, arguments (jab, row, ultimatum; only the jab when anyone here is not an adult, a child asks "Are you guys fighting?"), mediation (`TEV_MEDIATED`, T6-OUT calls `sim_make_up`), taking a side, a problem talked through, the great night, and `talk_dm_end` handing a `TalkSummary` to T6-OUT. New generator entries `talk_gen_entry` / `talk_gen_react` and the starter beat lines `grammar/en/beats_lines.tlk`. **Safety in C**: the romance beat needs the player's own romance act, the target's yes, an adult room (no minor, pet or kid cast), and its line is said by that adult only; every other romance line is dropped; the audience only gets stricter; romance state is never written. `TalkState` 940 B, no static RAM. 17 tests in `test_talk_dm.c` (P2 both directions, P3, P2 / P7 over 400 random sessions). Not done: T6-OUT (outcomes into the sim), T6-MEM (talk memory and save chunk), the PS1 size of `talk_dm.c` on MIPS (TP2).
+ - **Talk T6-OUT, outcomes into the sim (TK4, host-tested; docs/TALK.md 6g):** `core/src/talk_outcome.c` applies a `TalkSummary` under the daily caps of design 5.5 (bond +-12 and level +3 a resident, pair +-8, happy +-12, social 12, one problem a resident, one `sim_make_up` a pair, one headline a conversation and 4 a day, none for minors), with `talk_outcome_begin` / `talk_outcome_end` wiring the talk memory around a conversation. Romance is only asked of the sim (`sim_confess` after a yes to CONFESS / ASK_OUT, once a pair a day); Talk never sets a crush or dating edge. `talk_dm_end` no longer sets `conv.ended` (it would have locked every room for the day through `talk_mem_end`). 15 tests in `test_talk_outcome.c` (100 greedy sessions under every cap, P7 over 1,500 random sessions). Native only: 0 B on GBA / PS1 / DC. Not done: learned likes (needs a drama-manager event), the full-size beat lines.
+ - **First-time tips + Field Guide (CL4, clarity C4 + C12, 2026-11-08):** a tip card the first time you reach the island hub, Town Hall, the apartments, a citizen's care tab, your house, Hold the Door, a shooter fight, an exorcism, the Boreagotchi, the Studio, Rivet's workshop, Family and the Library (13 cards, `core/src/tips.c`, `doomo/tips.h`): a line in Mayor Giggs', Rivet's or Father Fuzz's voice plus one plain instruction line, which names the buttons of the pad in hand (C3 `btn_name`: L1 / R1 on a PS1, START+Y for SELECT on a Dreamcast; the Field Guide's Buttons page says the same per pad); non-blocking (the scene keeps running, a fight or the Hold the Door night waits), any press after a short beat closes it and is never passed on; toasts wait behind it. Seen flags survive New Game: bytes 12..15 of the machine config record (PS1), else the save's `OPT2` chunk (v2, native / GBA); Options > Game: **Tips On / Off** and **Show all tips again**. Scripted runs never see a card (`PLAT_TEST_NO_TIPS` from the native runner, the GBA harness mailbox and the PS1 harness lockstep), so all 19 journeys keep their budgets; `tips on` / `expect-tip` in scripts. The **Field Guide** (`core/src/lib_help.c`): 17 glossary pages (buttons per platform, H$ and rent, the 8 needs, moods, Dark and possession, bonds, the two sides, exorcism, weld stats, the house, house score, Hold the Door, the Boreagotchi, family, play-as, Studio words, tips) as the Library's eighth book, a free play Library shortcut and the **Help** row of the island START menu and the story pause panel. English text through `lang_tr` (one TSV row per paragraph, every other language falls back to English until the post-rewrite translation pass). Tests: `test_tips.c`, `test_options_store.c` (record and chunk), `clarity_tips.txt` and `library_help.txt` at both sizes, `gba/harness/scripts/tips.txt` (`make -C gba test-tips`). Dreamcast: dcrun sets `PLAT_TEST_NO_TIPS` in DC4's `test_flags` mailbox word and has `tips on|off` too. PS1 RAM: the feature costs ~5.9 KB resident (`tips.c` is drawn from `doomo_frame`), paid back by giving `SCENE_OPTIONS`, `SCENE_ISLAND`, `SCENE_LIB_BESTIARY` and `SCENE_LIB_ITEMS` named-array names (their files' string sections, 11.9 KB, now load with their overlay groups): the disc ends 79,648 B below the stack top (73,824 B before, 5,920 B above the 72 KB gate); the PS1 harness also plays `library_help.txt`. Details: docs/GAME_DESIGN.md 4.2; RAM: docs/GBA.md ledger row 25, docs/PS1.md.
+diff --git a/core/native/runner_main.c b/core/native/runner_main.c
+index c26a8b17..fdb85c39 100644
+--- a/core/native/runner_main.c
++++ b/core/native/runner_main.c
+@@ -697,7 +697,7 @@ static void run_line(char *line)
+                     if (strcmp(family_name(family_member(i)), argv[1]) == 0) who = family_member(i);
+             if (who < 0) { fail("talk-enter: nobody called", argv[1]); return; }
+         }
+-        if (!home_talk_enter(who)) fail("Talk did not start (is this a Live-mode house with someone in it, and TALK_en.BIN built?)", argc > 1 ? argv[1] : "");
++        if (!home_talk_enter(who)) fail("Talk did not start (toggle Live mode first: START > Live mode; needs someone in the house, and TALK_en.BIN built)", argc > 1 ? argv[1] : "");
+         else step(1);
+     } else if (strcmp(cmd, "family-add") == 0) {
+         static const char *const roles[] = { "", "partner", "child", "parent", "sibling", "grand", "housemate", "pet" };
+diff --git a/core/src/home_draw.c b/core/src/home_draw.c
+index bf13bdd9..4b271835 100644
+--- a/core/src/home_draw.c
++++ b/core/src/home_draw.c
+@@ -1314,17 +1314,6 @@ static void live_use(void)
+     /* A on what is in front of the player */
+     int tx = FIX2INT(H->px), ty = FIX2INT(H->py), k, idx = -1;
+     static const int8_t fdx[4] = { 0, -1, 1, 0 }, fdy[4] = { 1, 0, 0, -1 };
+-#ifdef DOOMO_HAS_TALK
+-    if (H->kind == HK_OWN) {                         /* (T8) A next to a housemate: Talk with them */
+-        HomeTalkRoom rm;
+-        int w;
+-        if (home_draw_talk_room(&rm))
+-            for (w = 0; w < rm.nwho; w++) {
+-                int ddx = FIX2INT(rm.who[w].x) - tx, ddy = FIX2INT(rm.who[w].y) - ty;
+-                if (rm.who[w].id != TALK_PET_ID && ddx * ddx + ddy * ddy <= 2 && home_talk_enter(rm.who[w].id)) return;
+-            }
+-    }
+-#endif
+     if (H->kind == HK_VISIT && !H->host_out) {
+         int hx = FIX2INT(H->hx), hy = FIX2INT(H->hy), ddx = hx - tx, ddy = hy - ty;
+         if (ddx * ddx + ddy * ddy <= 2) {
+@@ -1348,6 +1337,21 @@ static void live_use(void)
+             if (idx < 0 && x <= 0) idx = home_obj_at(&H->ed.room, 0, y);
+         }
+     }
++#ifdef DOOMO_HAS_TALK
++    if (H->kind == HK_OWN) {          /* (T8) A next to a housemate: Talk with them. Furniture in front wins
++                                       * unless the housemate stands on the tile in front (or sits on it). */
++        HomeTalkRoom rm;
++        int w, fx = tx + fdx[H->pdir & 3], fy = ty + fdy[H->pdir & 3];
++        if (home_draw_talk_room(&rm))
++            for (w = 0; w < rm.nwho; w++) {
++                int wx = FIX2INT(rm.who[w].x), wy = FIX2INT(rm.who[w].y);
++                int ddx = wx - tx, ddy = wy - ty;
++                if (rm.who[w].id == TALK_PET_ID || ddx * ddx + ddy * ddy > 2) continue;
++                if (idx >= 0 && !(wx == fx && wy == fy)) continue;
++                if (home_talk_enter(rm.who[w].id)) return;
++            }
++    }
++#endif
+     if (idx < 0) return;
+     {
+         const DoomoFurn *f = home_furn(HO_FURN(&H->ed.room.obj[idx]));
+@@ -2260,6 +2264,27 @@ int home_draw_actor(int i, fix16 *x, fix16 *y)
+     return 1;
+ }
+ 
++/* tests: put the player on tile (tx,ty) facing dir; returns 1 when A would find a piece (or the wall) in front */
++int home_draw_test_player(int tx, int ty, int dir)
++{
++    static const int8_t fdx[4] = { 0, -1, 1, 0 }, fdy[4] = { 1, 0, 0, -1 };
++    int k, hit = 0;
++    if (!H) return 0;
++    H->px = INT2FIX(tx) + FIX_ONE / 2;
++    H->py = INT2FIX(ty) + FIX_ONE / 2;
++    H->pdir = (uint8_t)(dir & 3);
++    for (k = 0; k < 2; k++) {
++        int x = tx + fdx[dir & 3] * k, y = ty + fdy[dir & 3] * k;
++        int idx = home_obj_at(&H->ed.room, x, y);
++        if (idx < 0 && (x <= 0 || y <= 0)) {             /* the same lookup as live_use */
++            if (y <= 0) idx = home_obj_at(&H->ed.room, x, 0);
++            if (idx < 0 && x <= 0) idx = home_obj_at(&H->ed.room, 0, y);
++        }
++        if (idx >= 0) hit = 1;
++    }
++    return hit;
++}
++
+ static int talk_possible(void)
+ {
+     HomeTalkRoom rm;
+diff --git a/core/src/home_int.h b/core/src/home_int.h
+index c853a718..8da8f027 100644
+--- a/core/src/home_int.h
++++ b/core/src/home_int.h
+@@ -746,6 +746,7 @@ const struct TalkState *home_talk_state(void);       /* tests, the runner */
+ const struct TalkSummary *home_talk_summary(void);   /* what the last session did (T6-OUT applies it); NULL while none */
+ /* home_draw.c: the room as Talk sees it (home_draw_talk_start uses it; tests): 1 if Talk could start now */
+ int  home_draw_talk_room(HomeTalkRoom *rm);
++int  home_draw_test_player(int tx, int ty, int dir);  /* tests: stand the player there facing dir; 1 if a piece / wall is in front */
+ int  home_draw_actor(int i, fix16 *x, fix16 *y);     /* tests: figure i of the last frame's view (0 the player first), 0 past the end */
+ #endif
+ 
+diff --git a/core/src/home_talk.c b/core/src/home_talk.c
+index 9b2a7e06..d21ac61a 100644
+--- a/core/src/home_talk.c
++++ b/core/src/home_talk.c
+@@ -102,6 +102,7 @@ typedef struct HomeTalk {
+     int8_t     pan_x, pan_y, pan_tx, pan_ty;
+     TwSpring   push;                 /* the boing of a new speaker's shot                             */
+     TalkSummary sum;
++    TalkOutcome out;                 /* what the summary really changed in the sim (T6-OUT, under the daily caps) */
+     uint32_t   serial;               /* talks started (the seed)                                      */
+ } HomeTalk;
+ 
+@@ -608,10 +609,7 @@ int home_talk_begin(const HomeTalkRoom *room, int target)
+     seed = hash32(seed, doomo_town.day);
+     seed = hash32(seed, T.serial);
+     for (i = 0; i < n; i++) seed = hash32(seed, (uint32_t)ids[i]);
+-    talk_dm_begin(&T.dm, room->avatar, ids, n, seed);
+-    talk_mem_begin(&T.dm.conv);                          /* what they remember, and who said no to romance today (K-5) */
+-    for (i = 0; i < n; i++)
+-        if ((T.dm.conv.refused >> i) & 1) T.dm.part[i].flags |= TPF_REFUSED;
++    talk_outcome_begin(&T.dm, room->avatar, ids, n, seed);   /* talk_dm_begin + what they remember + who said no to romance today (K-5) */
+     T.view_k = room->view_k;
+     gather(room, n);
+     for (i = -1; i < n; i++) {
+@@ -644,7 +642,7 @@ int home_talk_begin(const HomeTalkRoom *room, int target)
+ 
+ static void finish(void)
+ {
+-    talk_dm_end(&T.dm, &T.sum);
++    talk_outcome_end(&T.dm, &T.out, &T.sum);             /* talk memory, the summary, then the sim under the daily caps */
+     T.have_sum = 1;
+     if (T.opened_db) talk_db_close();
+     T.opened_db = 0;
+diff --git a/core/tests/test_home_talk.c b/core/tests/test_home_talk.c
+index 0d27e923..621db333 100644
+--- a/core/tests/test_home_talk.c
++++ b/core/tests/test_home_talk.c
+@@ -163,6 +163,40 @@ TEST(home_talk_enter_gathers_the_room)
+     CHECK(!home_talk_on());
+ }
+ 
++TEST(home_talk_a_housemate_nearby_does_not_pre_empt_the_furniture_in_front)
++{
++    HomeTalkRoom rm;
++    int w, dx, dy, d, furn_tried = 0, free_tried = 0;
++    live_house(2, 0);
++    CHECK(home_draw_talk_room(&rm));
++    for (w = 0; w < rm.nwho && !(furn_tried && free_tried); w++) {
++        int wx = tile_of(rm.who[w].x), wy = tile_of(rm.who[w].y);
++        for (dy = -1; dy <= 1; dy++)
++            for (dx = -1; dx <= 1; dx++) {
++                int tx = wx + dx, ty = wy + dy;
++                static const int fdx[4] = { 0, -1, 1, 0 }, fdy[4] = { 1, 0, 0, -1 };
++                if (!dx && !dy) continue;
++                if (tx < 1 || ty < 1 || tx >= 14 || ty >= 14 || ((rm.occ[ty] >> tx) & 1)) continue;
++                for (d = 0; d < 4; d++) {
++                    int onfront = tx + fdx[d] == wx && ty + fdy[d] == wy;
++                    int furn = home_draw_test_player(tx, ty, d);
++                    if (onfront || (furn ? furn_tried : free_tried)) continue;
++                    CHECK(home_draw_talk_room(&rm));
++                    press(BTN_A);
++                    frames(2);
++                    if (furn) { CHECK_MSG(!home_talk_on(), "furniture ahead at (%d,%d) dir %d, housemate at (%d,%d)", tx, ty, d, wx, wy); furn_tried++; }
++                    else { CHECK_MSG(home_talk_on(), "nothing ahead at (%d,%d) dir %d: Talk", tx, ty, d); free_tried++; }
++                    home_talk_abort();
++                    frames(3);
++                    if (furn_tried && free_tried) goto done;
++                }
++            }
++    }
++done:
++    CHECK(furn_tried > 0);
++    CHECK(free_tried > 0);
++}
++
+ TEST(home_talk_not_offered_on_a_gba_screen)
+ {
+     HomeTalkRoom rm;
+@@ -389,6 +423,24 @@ TEST(home_talk_a_child_makes_the_room_kid_safe_and_it_never_relaxes)
+     CHECK(home_talk_summary() != NULL);
+ }
+ 
++TEST(home_talk_the_end_goes_through_talk_outcome_and_writes_talk_memory)
++{
++    HomeTalkRoom rm;
++    int before;
++    premade();
++    rm = synth_room();
++    add_who(&rm, ID_NANA, 2, 2);
++    add_who(&rm, ID_RIVET, 3, 2);
++    before = talk_mem_count();
++    CHECK(home_talk_begin(&rm, -1) >= 0);
++    run_idle(60);
++    CHECK(say_text("hi"));
++    run_idle(600);
++    home_talk_abort();                                   /* ends the talk like B does: talk_outcome_end */
++    CHECK(home_talk_summary() != NULL);
++    CHECK(talk_mem_count() > before);                    /* the residents who spoke are remembered now */
++}
++
+ TEST(home_talk_adult_room_keeps_the_kid_safe_flag_off)
+ {
+     HomeTalkRoom rm;
+diff --git a/docs/TALK.md b/docs/TALK.md
+index 3ae9769f..8a2a0af3 100644
+--- a/docs/TALK.md
++++ b/docs/TALK.md
+@@ -970,7 +970,7 @@ catch-the-word, the composer, the typed line and invites are T8b / T8c / T8d
+ 
+ **What you do.** In your own house in Live mode: START, then **Talk** (the row
+ before Leave, only when someone is in the room), or walk up to a housemate and
+-press **A**. In a visit: START, then Talk (A next to the host still asks what
++press **A** (a piece of furniture in front of you wins over Talk, unless the housemate stands on that tile). In a visit: START, then Talk (A next to the host still asks what
+ they wish for, as before; design 4.1 wants A to open Talk there too: T8d).
+ Talk is not offered at 240x160 (a GBA-sized screen; the menu has no row and
+ `home_talk_enter()` answers 0).
+@@ -1047,13 +1047,10 @@ Talk is not offered at 240x160 (a GBA-sized screen; the menu has no row and
+ 7. *Leaving.* **B** (or `talk-leave`): the people walk back to where the house had them
+    (12 to 14 frames), `talk_dm_end()` fills a `TalkSummary` (`home_talk_summary()`),
+    the house is Live again and the player stands where the talk put them (sitting, if
+-   they took a seat). **Nothing a talk does reaches the sim yet.** T6-OUT has landed (6g):
+-   `talk_outcome_begin` is `talk_dm_begin` + `talk_mem_begin` + the refused-today flags
+-   (what `home_talk_begin()` does by hand), and `talk_outcome_end` writes the talk memory,
+-   calls `talk_dm_end` and applies the summary under the daily caps. T8a was built to use
+-   only `talk_dm_end`'s summary (the two packages were landing side by side), so
+-   `home_talk_begin()` and `finish()` keep the plain calls; switching them to
+-   `talk_outcome_begin` / `talk_outcome_end` is a two-line change for the lander or T8b.
++   they took a seat). `home_talk_begin()` runs `talk_outcome_begin` and `finish()` runs
++   `talk_outcome_end` (T6-OUT, 6g): the talk memory is written, `talk_dm_end` fills the
++   summary and it is applied to the sim under the daily caps. The lander wired this (T8a was
++   built to use only `talk_dm_end`); test `home_talk_the_end_goes_through_talk_outcome_and_writes_talk_memory`.
+ 8. *Control card and instruction line.* The foot of the screen is the shared prompt
+    bar (`ui_prompts_at`): `Pick` (LEFT / RIGHT), `Say it` (A), `Leave` (B); while a
+    bubble is up `Next` (A: finish the line, then go on). One plain instruction line sits
+-- 
+2.43.0
+
