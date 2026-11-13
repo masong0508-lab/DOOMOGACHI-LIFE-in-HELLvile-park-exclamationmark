@@ -1803,11 +1803,8 @@ native pixel. Level views 79.2 % of pixels (gate 75 %), looking up 80.2 %
 data (budget 576 KB). Polygons against columns will never be pixel equal.
 
 **Known gaps (part 1 is not finished):**
-- 16 of 788 level frames match under 45 %: eyes next to a border block whose
-  top is lower than the eye's floor (maps 8 and 9, eye at 1,1 or by the
-  edge, looking at the border). The reference draws a picture there that the
-  Dreamcast does not (the wall face has zero height in `vface`). Not
-  understood yet; look at `DC6_PNG=DIR` output for the worst frames.
+- (Fixed in DC6B: 16 of 788 level frames matched under 45 %, eyes by a map edge that is low: the reference
+  draws the solid block past the edge. See "DC6B" below.)
 - Flycast (2026-11-13, `dcrun` on the nodebug ELF, emulated time): the first
   run drew only the dark stone backdrop with the billboards on it. The
   backdrop was emitted last; on the console the list is drawn in emission
@@ -1878,11 +1875,38 @@ What part 2 changed in `view3d.c`:
   ray distance D cells`. This is a first, small governor; DC6C owns `OPT_DRAW_DIST`, the combat detail
   option and the real governor, and replaces it.
 
-Flycast (2026-11-13, `dcrun` on the nodebug ELF, the seven `dc/harness/scripts/breach_*.txt`, 1935 ticks
-each, the demo bot plays; ticks over 33.3 ms of emulated work), before -> after:
-see the table at the end of this block. Screenshots of the same scripts next to the native runner's:
-the evidence folder `DC6B/compare/` of the package (not in the repo).
+Flycast (2026-11-13, `dcrun` on the nodebug ELF, the seven `dc/harness/scripts/breach_*.txt`, about 1935
+ticks each, the demo bot plays; emulated time). Ticks over 33.3 ms of work, before -> after (the base
+tree, then this package), with the mean work per tick and the 3D view's build mean:
 
+| script | ticks over 33.3 ms | worst tick | work mean | view build mean |
+|---|---|---|---|---|
+| factory | 3 -> 0 | 34.2 -> 32.7 ms | 13.5 -> 12.0 ms | 7.4 -> 5.8 ms |
+| sewers | 2 -> 0 | 33.7 -> 31.9 ms | 14.2 -> 12.5 ms | 8.2 -> 6.5 ms |
+| cathedral | 6 -> 3 | 47.7 -> 40.0 ms | 11.6 -> 10.5 ms | 8.0 -> 6.4 ms |
+| graveyard | 38 -> 3 | 46.5 -> 35.3 ms | 17.0 -> 14.3 ms | 11.3 -> 8.5 ms |
+| underbelly | 1 -> 0 | 33.8 -> 31.6 ms | 12.8 -> 11.2 ms | 7.0 -> 5.3 ms |
+| vape cellar | 0 -> 0 | 23.7 -> 23.0 ms | 8.3 -> 7.5 ms | 3.5 -> 2.7 ms |
+| cloud nine | 55 -> 1 | 52.9 -> 36.2 ms | 15.9 -> 13.6 ms | 9.4 -> 7.0 ms |
+
+The seven that are left are not the view: three are a scene's entry tick (the level loads and uploads its
+textures: 33.5-36.2 ms, DC6C owns them) and the other four are a bot plan (16 ms of the core's own work on
+every 12th tick; the demo bot only) that lands on a tick that also uploads textures for the HUD. The
+combat scripts of the sticks tests (`dc/tests/sticks`): 0 of 396 and 0 of 346 ticks over, worst 25.8 and
+27.9 ms; the five-level walk (`COMBAT 0, 1, 2, 4, 6`, 955 ticks): 1 -> 0 over, worst 36.4 -> 32.4 ms, view
+build mean 13.6 -> 10.5 ms. `make -C dc ui-compare` 94 of 94 as before (the pause menu's 3D backdrop 36 %
+exact, 66 % close, as in part 1). Screenshots of the same scripts, the native runner's next to the base
+and this package's Dreamcast ones: the package's evidence folder (`DC6B/compare/`, not in the repo; the
+native runner is not synced with dcrun, so the bot's moves, and so the scenes, differ between the columns).
+
+Host parity (`make -C dc v3d-test`, 2026-11-13): level views 85.6 % of pixels within 40/255 (gate 80 %),
+looking up 90.1 % (gate 85 %), the red tint 66 %; 1 of 788 level frames under 45 % (gate 1 %); the sprites'
+own pixels 90.5 % (gate 85 %), the sprite rectangles 79.5 % (gate 72 %, they include the world behind
+the sprite), the HUD over them 100 % (gate 97 %); the busiest view 769 polygons, 102 KB of TA data.
+
+Memory: no resident RAM anywhere (all under `dc/`; the PS1 and GBA are untouched). Still open: a Flycast-to-host picture compare of the view (the host numbers are the only pixel measure),
+a real console, the scene-entry tick (DC6C), the real draw-distance option and governor (DC6C), the
+HUD's texture uploads in the same tick as a bot plan.
 
 ## Rumble (X2)
 

@@ -20,6 +20,12 @@
  *   budget     the busiest views stay inside the batch and TA budget,
  *              nothing dropped
  *   tintfit    dc3d_tint_fit: identity for TINT_NONE, b >= 0 everywhere
+ *   edge wall  (DC6B) an eye by a low map edge sees the solid block past it, not the sky colour
+ *   sprites    (DC6B) three billboards in front of the eye: the sprites' own pixels, their rectangles,
+ *              a HUD pill over them
+ *   tick       (DC6B) the tick's budget cuts the ray distance, and gives it back on an idle tick
+ *   sprite budget  (DC6B) six unseen sprites in one view: at most 3 uploads, the rest wait
+ * DC6_ONLY=sprites runs the DC6B tests alone (30 s), DC6_ONLY=parity the parity alone.
  * DC6_PNG=DIR writes the worst frames as DIR/v3d_N_nat.png / _dc.png.
  */
 #include <stdio.h>
