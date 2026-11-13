@@ -145,13 +145,15 @@ void room_test_render(const DoomoRoomView *v)
     }
     if (parity) {
         /* the player standing still (so it rests in the backdrop) with a
-         * walker passing behind it: its clip draws the player again */
+         * walker passing behind it: its clip draws the player again. The
+         * second layout's player is translucent: it must never rest (drawn
+         * again over its own picture in the backdrop it would blend twice) */
         memset(&acts[na], 0, sizeof(acts[na]));
         acts[na].img = bodyspr_image(DOOMO_PLAYER_ID, 0, 0);
         acts[na].x = INT2FIX(1);
         acts[na].y = INT2FIX(3) + FIX_ONE / 2;
         acts[na].sx = acts[na].sy = 256;
-        acts[na].flags = RA_PLAYER;
+        acts[na].flags = (uint8_t)(RA_PLAYER | (mode >= ROOM_TEST_PARITY2_LIVE ? BB_TRANSLUCENT : 0));
         na++;
         tv.time = (uint16_t)t;
         tv.cursor_x = (int8_t)(t == 40 ? 3 : 1);

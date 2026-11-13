@@ -26,7 +26,9 @@ expect-fps 28 home_plain
 # --- parity: the backdrop path (the static layer drawn once off screen,
 #     the moving things in clipped passes over it) must give the single
 #     full pass's frame. Two frozen layouts: 2 citizens, the TV (animated),
-#     a squashed sofa, the cursor. The budget is 16 of 76,800 pixels: two
+#     a squashed sofa, the cursor, and the player standing still (the
+#     second layout's player is translucent: it never rests in the
+#     backdrop). The budget is 16 of 76,800 pixels: two
 #     polygons of equal depth may meet in a different order on the odd
 #     pixel where a clip edge cuts them (measured: 1 per layout) ---
 room-test 6
