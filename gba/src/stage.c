@@ -35,7 +35,8 @@ static const BkEnt *cur;                       /* the restores' source picture (
 static uint32_t serial;                        /* Mode 4 frames presented           */
 static uint32_t page_serial[2];                /* stage frame each page holds, 0    */
 static int16_t page_dirt[2][4];                /* drawn over it after plat_stage_end */
-int16_t stage_box[4];                          /* the box 2D calls cover after plat_stage_end; before it (plat_clip) the clip box */
+int16_t stage_box[5];                          /* the box 2D calls cover after plat_stage_end; before it (plat_clip) the clip box and,
+                                                  in [4], the gba_nodraw the clip replaced */
 static uint8_t frame_stage, tracking;
 
 /* ARM in the room group of the IWRAM overlay (iwram_ovl.h; the group no stage scene uses): the per-row work and
@@ -195,7 +196,6 @@ int plat_stage_stamp(int id, uint32_t key, int x, int y)
  * plat_clip_end every plat_rect, plat_shade_rect and plat_image takes its slow path (GBA_NODRAW_CLIP:
  * canvas.c, video.c) and is cut to this box, which lives in stage_box (nothing is tracked before
  * plat_stage_end). The box is already inside the screen. */
-static uint8_t clip_prev;                      /* the gba_nodraw the clip replaced */
 void plat_rect_m4(int x, int y, int w, int h, uint8_t color) IWRAM_CALL;
 /* plat_rect inside plat_clip: plat_rect's gba_nodraw != 0 path (video_loops.s) jumps here with the call's
  * own arguments. ARM in the room group, which plat_clip loads (so it is in the slot for the whole clip) */
@@ -217,13 +217,13 @@ void plat_clip(int x0, int y0, int x1, int y1)
     stage_box[1] = (int16_t)(y0 < 0 ? 0 : y0);
     stage_box[2] = (int16_t)(x1 > SCREEN_W ? SCREEN_W : x1);
     stage_box[3] = (int16_t)(y1 > SCREEN_H ? SCREEN_H : y1);
-    if (gba_nodraw != GBA_NODRAW_CLIP) clip_prev = (uint8_t)gba_nodraw;    /* (a layer's next piece resets the box) */
+    if (gba_nodraw != GBA_NODRAW_CLIP) stage_box[4] = (int16_t)gba_nodraw;    /* (a layer's next piece resets the box) */
     gba_nodraw = GBA_NODRAW_CLIP;
 }
 
 void plat_clip_end(void)
 {
-    if (gba_nodraw == GBA_NODRAW_CLIP) gba_nodraw = clip_prev;
+    if (gba_nodraw == GBA_NODRAW_CLIP) gba_nodraw = stage_box[4];
 }
 
 void plat_stage_end(void)

@@ -539,7 +539,7 @@ void exo_fuzz(int cx, int foot_y, uint32_t t, int expr)
 #endif
 #if HOST_HOLES
 static int16_t hole[4];                      /* [x0, x1) x [y0, y1) */
-static void (*hole_emit)(int, int, int, int, uint8_t) = plat_rect;   /* where the rects that are left go */
+static void hole_emit(int x, int y, int w, int h, uint8_t c);   /* the rects that are left: drawn, or kept (the aura) */
 static void hole_tap(int x, int y, int w, int h, uint8_t c)
 {
     int x1 = x + w, y1 = y + h, a, b;
@@ -561,24 +561,32 @@ static void hole_tap(int x, int y, int w, int h, uint8_t c)
 #define AURA_MAX 96
 typedef struct { int16_t x, y; uint8_t w, h, c, pad; } AuraRect;
 typedef struct { int16_t fw, fh, ox, oy; int8_t cls, valid, pad[2]; uint16_t n, pad2; AuraRect r[AURA_MAX]; } Aura;
-static Aura *aura;                           /* [5], one per pulse */
+typedef struct { Aura *rec; Aura a[5]; } AuraSet;   /* one list per pulse; rec: the one being recorded, else NULL */
+static AuraSet *aura;
 extern void plat_rect_run(const void *list, int n) __attribute__((weak));   /* the GBA's ARM run (video_loops.s) */
 extern int gba_nodraw __attribute__((weak));        /* 0: drawing to Mode 4, the only case the run handles */
-uint32_t exo_aura_bytes(void) { return 5u * (uint32_t)sizeof(Aura); }
+uint32_t exo_aura_bytes(void) { return (uint32_t)sizeof(AuraSet); }
 void exo_aura_bind(void *mem)
 {
     int i;
-    aura = (Aura *)mem;
-    for (i = 0; aura && i < 5; i++) aura[i].valid = 0;
+    aura = (AuraSet *)mem;
+    if (!aura) return;
+    aura->rec = NULL;
+    for (i = 0; i < 5; i++) aura->a[i].valid = 0;
 }
-static Aura *aura_cur;                       /* the list being recorded */
 static void aura_rec(int x, int y, int w, int h, uint8_t c)
 {
-    if (aura_cur->n < AURA_MAX && w < 256 && h < 256) {
-        AuraRect *r = &aura_cur->r[aura_cur->n];
+    Aura *a = aura->rec;
+    if (a->n < AURA_MAX && w < 256 && h < 256) {
+        AuraRect *r = &a->r[a->n];
         r->x = (int16_t)x; r->y = (int16_t)y; r->w = (uint8_t)w; r->h = (uint8_t)h; r->c = c; r->pad = 0;
     }
-    aura_cur->n++;                           /* (more than AURA_MAX: not valid) */
+    a->n++;                                  /* (more than AURA_MAX: not valid) */
+}
+static void hole_emit(int x, int y, int w, int h, uint8_t c)
+{
+    if (aura && aura->rec) aura_rec(x, y, w, h, c);
+    else plat_rect(x, y, w, h, c);
 }
 
 /* draw the list with its origin at (x, y) */
@@ -654,19 +662,17 @@ void exo_host_frame(int cx, int cy, const DoomoImage *img, int scale, int shake,
          * rows clear of the screen's top and bottom, else its rows would be cut: not kept) */
         if (aura && pulse >= -2 && pulse <= 2 && y >= 8 && y + h + 8 <= plat_screen_h() && !plat_draw_skipped()) {
             int cls = dread > 10;
-            Aura *a = &aura[pulse + 2];
+            Aura *a = &aura->a[pulse + 2];
             if (a->valid >= 0 && (!a->valid || a->fw != w || a->fh != h || a->cls != cls)) {
-                void (*saved)(int, int, int, int, uint8_t) = hole_emit;
                 a->n = 0;
-                aura_cur = a;
-                hole_emit = aura_rec;
+                aura->rec = a;
                 HOLE(x, y + 4, x + w, y + h - 4);
                 ui_fill_ellipse(x + w / 2, y + h / 2, w / 2 + 5 + pulse, h / 2 + 4 + pulse,
                                 cls ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_RAMP(RAMP_VAPE, 2));
                 ui_fill_ellipse(x + w / 2, y + h / 2, w / 2 + 2 + pulse / 2, h / 2 + 2 + pulse / 2,
                                 cls ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_RAMP(RAMP_VAPE, 3));
                 NO_HOLE();
-                hole_emit = saved;
+                aura->rec = NULL;
                 a->fw = (int16_t)w; a->fh = (int16_t)h; a->cls = (int8_t)cls;
                 a->ox = (int16_t)x; a->oy = (int16_t)y;
                 a->valid = a->n <= AURA_MAX ? 1 : -1;       /* (-1: too many rects, drawn as before) */

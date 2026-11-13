@@ -85,15 +85,15 @@ typedef struct {
     PlatStageInfo info;
     int16_t d[DIRTY_MAX][4];      /* boxes put back                             */
     int16_t pc[PIECE_MAX][4];     /* the disjoint pieces the dirty set is cut into (what was restored) */
+    uint32_t clip_mask;           /* the layers to draw that are drawn through pieces (in the bound memory: no .bss) */
     int nd, npc;
 } SMem;
 /* the bound memory (the caller's: the exorcism's scene scratch) and the per-frame state */
 static SMem *M;
 static struct {
-    int8_t on;                    /* plat_stage_begin said yes                  */
     uint32_t draw_mask;           /* layers to draw this frame                  */
-    uint32_t clip_mask;           /* ... of them, the ones drawn through pieces  */
     StageStats st;
+    int8_t on;                    /* plat_stage_begin said yes                  */
 } S;
 #define SS (*M)
 
@@ -118,13 +118,13 @@ int stage_begin(int id, uint32_t key, void (*draw)(uint32_t key))
 {
     S.on = 0;
     S.draw_mask = 0xFFFFFFFFu;
-    S.clip_mask = 0;
     S.st.drawn = S.st.restored = S.st.clipped = 0;
     S.st.full = 1;
     S.st.retained = 0;
     if (!M) return 0;
     SS.cur.n = 0;
     SS.cur.clip = 0;
+    SS.clip_mask = 0;
     SS.npc = 0;
     SS.cur.bid = (int16_t)id;
     SS.cur.bkey = key;
@@ -265,7 +265,7 @@ static void resolve_full(void)
 {
     plat_stage_restore(0, 0, plat_screen_w(), plat_screen_h());
     S.draw_mask = 0xFFFFFFFFu;
-    S.clip_mask = 0;
+    SS.clip_mask = 0;
     SS.npc = 0;
     S.st.full = 1;
     S.st.restored = 1;
@@ -290,7 +290,7 @@ void stage_resolve(void)
     S.st.full = 0;
     n = DOOMO_MAX(SS.cur.n, old->n);
     S.draw_mask = 0;
-    S.clip_mask = 0;
+    SS.clip_mask = 0;
     add_dirty(SS.info.dx0, SS.info.dy0, SS.info.dx1, SS.info.dy1);
     for (i = 0; i < n; i++) {
         static const SLayer none = { 0, 0, 0, 0, 0 };
@@ -327,7 +327,7 @@ void stage_resolve(void)
         if (((S.draw_mask >> i) & 1u) || empty(b) || !((SS.cur.clip >> i) & 1u)) continue;
         if (!hits_dirty(b->x0, b->y0, b->x1, b->y1)) continue;
         S.draw_mask |= 1u << i;
-        S.clip_mask |= 1u << i;
+        SS.clip_mask |= 1u << i;
     }
     SS.npc = np;
     for (i = 0; i < np; i++)
@@ -335,7 +335,7 @@ void stage_resolve(void)
     S.st.restored = (uint8_t)DOOMO_MIN(np, 255);
     for (i = 0; i < SS.cur.n; i++) {
         S.st.drawn = (uint8_t)(S.st.drawn + ((S.draw_mask >> i) & 1u));
-        S.st.clipped = (uint8_t)(S.st.clipped + ((S.clip_mask >> i) & 1u));
+        S.st.clipped = (uint8_t)(S.st.clipped + ((SS.clip_mask >> i) & 1u));
     }
 }
 
@@ -351,7 +351,7 @@ int stage_clip_n(int i)
 {
     const SLayer *b;
     int k, n = 0;
-    if (!S.on || i < 0 || i >= SS.cur.n || !((S.clip_mask >> i) & 1u)) return 0;
+    if (!S.on || i < 0 || i >= SS.cur.n || !((SS.clip_mask >> i) & 1u)) return 0;
     b = &SS.cur.l[i];
     for (k = 0; k < SS.npc; k++) {
         const int16_t *p = SS.pc[k];
