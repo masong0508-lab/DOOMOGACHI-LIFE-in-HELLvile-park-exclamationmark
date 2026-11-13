@@ -1531,9 +1531,10 @@ on its own) moves the shot in the same way. Each build is deterministic by itsel
 
 ## CR4 A2 (2026-11-13): hair batch
 
-Measured on `b63abec` and `b63abec` + A2 (clean builds, `cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON`): `_end`
-0x801ef4e0 both times, the overlay slot ends 0x801ef3b4 both times, 68,368 B below the stack top, the disc image
-the same size. The 40 new parts (32 hair styles, 8 beards) are part scripts the PS1 does not read yet (the part
+Measured on `b63abec` and `b63abec` + A2, then again on the rebased tree (after LV0; clean builds, `cmake --preset
+ps1 -DDOOMO_INTRO_REQUIRED=ON`): `_end` 0x801ef4e0 both times on `b63abec`, the overlay slot ends 0x801ef3b4 both
+times. On the rebased tree `_end` is 0x801ef450 (the same as LV0 alone), 68,512 B below the stack top with the boot
+FMV, so A2 adds no resident byte; the tree is still under the 72 KB rule until PS1-RAM lands. The 40 new parts (32 hair styles, 8 beards) are part scripts the PS1 does not read yet (the part
 VM is off until CR10); their catalog rows (names, sets, tags) are overlay data, no new age row (age class ALL, so
 the resident age table is unchanged). The creator offers the PS1 only the painted hair and facial hair
 (`part_live_drawable`), as for every scripted part since CR3.
