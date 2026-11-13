@@ -1548,17 +1548,17 @@ stays 40 slots here), +836 B of `portrait.c` code (the body job path, until now 
 the stack top with the boot FMV (was 66 KB).
 
 **S2-11 (the house's view turn, the busy Live layout, HomeMart).** Nothing is built here: the turn is built over 2-3
-ticks in the GBA's hidden page and its row loops live in the GBA's IWRAM; the two core hooks (`plat_build_frame(
-PLAT_BUILD_BUSY)` in `home_draw`, `plat_ui_loops()` in `mart_draw`) are `!DOOMO_PLATFORM_PS1`, so the home group
-is unchanged: `doomogachi.exe`, `OVL.BIN`, `TEXT.BIN` and `SFX.BIN` are byte for byte the base's (sha256 of both
-builds; `elf2exe` prints image 1,287,360 B, bss 547,232 B, `_end` 0x801efe60, 64 KB below the stack top with the
-boot FMV, as before). The PS1 turns its 3D camera and never recomposed a room. Measured after
-(PCSX-Redux, `speed2.sh house`, `game_smoke` passes): every house window 30.12-30.51 with no frame over 33 ms but the
-busy layout, room-test 1 (4 chibis, 3 animated pieces), **28.89** fps (8 frames of 50 ms, one of 67). Its profile
-is the 3D room's polygons: `draw_piece` 15.6%, `g4` 12.2%, `tri` 5.9%, `g3` 5.6%, `room_render` 5.2%, `lit` 4.8%,
-`tone` 4.8%. There is no restore to move (the GBA's cost was one); the gap is the player's 3D model and the
-furniture's polygons, and the owner's "HOUSE CHARACTERS FLAT" decision (PS1-FLAT package: the player a billboard
-like every resident) takes the model out; measure again after it lands. `plat_ui_loops` stays the weak no-op.
+ticks in the GBA's hidden page and its row loops, checksum pass and cursor live in the GBA's IWRAM; the two core hooks
+(`plat_build_frame(PLAT_BUILD_BUSY)` in `home_draw`, `plat_ui_loops()` in `mart_draw`) are `!DOOMO_PLATFORM_PS1`, so the
+home group is unchanged: on the PS1-FLAT tip (`ee4e053`) and that tree + S2-11, `doomogachi.exe`, `OVL.BIN`,
+`TEXT.BIN` and `SFX.BIN` are byte for byte the same (sha256 of both clean builds; `elf2exe` prints image 1,280,680 B,
+bss 547,128 B, `_end` 0x801ee3e0, 72,736 B below the stack top with the boot FMV: delta 0 B). The PS1 turns its 3D
+camera and never recomposed a room. Measured (PCSX-Redux, `speed2.sh house`, `game_smoke` passes): every house window
+30.0-30.5, the busy layout (room-test 1, 4 chibis, 3 animated pieces) **30.00** (2:128 3:1, one 50 ms frame). On the
+base before PS1-FLAT it was 28.78-28.89 (8-9 frames of 50 ms, one of 67), and its profile was the 3D room's polygons
+(`draw_piece` 15.6%, `g4` 12.2%, `tri` 5.9%, `g3` 5.6%, `room_render` 5.2%, `lit` 4.8%, `tone` 4.8%), not a restore:
+the player's 3D model went with the PS1-FLAT package ("HOUSE CHARACTERS FLAT"). `plat_ui_loops` stays the weak
+no-op.
 
 **S2-8 (text pages as kept panels).** Nothing is built here (`UI_PANELS` 0: the Field Guide's and the Almanac page's
 text panels compile out, `page_text` keeps its old path; the Field Guide's preview scroll byte sits in the wing's

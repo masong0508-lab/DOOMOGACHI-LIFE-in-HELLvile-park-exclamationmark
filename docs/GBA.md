@@ -437,7 +437,7 @@ against the LAST row, not against a figure from an older base.
 | 44 | LV0: the level registry (`levels2.c`), the `BRCH` records chunk (7 of the 24 new levels on the GBA: 76 B working copy), the packed size classes | `0df72845` | 15,444 B | **15,460 B** | +16 B | 6,308 B | measured on `0df72845` (after CR3) + LV0 (`make -C gba sizes`, both trees built clean): `.bss` 245,804 -> 245,788, IWRAM and the overlay slot unchanged (0 B). The 76 B of `BRCH` (`levels_rec.c`: arc 48 B + 7 records x 4 B) are paid by `LvRun.size_cls` going from one byte an actor (128 B) to two bits (32 B, 96 B saved). The GBA lists the seven old levels and HB8, HB9, HB13, HB15, N1, N7, N14 (`LVG_GBA` in `lv_reg`); the 17 others are registered (their rows are in ROM) but not listed, so the select, the records and the unlock rules skip them. `make -C gba test`: 0 failures. ROM +3.6 KB (the 24 registered levels' text and tables) |
 | 45 | CR4 A2: 32 hair styles and 8 beards (docs/CREATOR.md "CR4 batch A2") | after S3-3 (`b63abec`) | 15,444 B | **15,444 B** | 0 B | 6,308 B | measured on `b63abec` and `b63abec` + A2 (`make -C gba sizes`): `.bss` 245,804 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B before and after, `.text` 1,401,336 B before and after; the part scripts, the catalog rows and the 40 part icons are `const` ROM: `.rodata` 6,587,868 -> 6,608,008 B (+20,140). PS1: no resident byte (`_end` 0x801ef4e0 before and after, 68,368 B below the stack top with the boot FMV; the overlay slot ends 0x801ef3b4 both times) |
 | 46 | CR4 A3: 60 spooky parts (docs/CREATOR.md "CR4 batch A3") | after A2 (`224b192`) | 15,444 B | **15,444 B** | 0 B | 6,308 B | measured on `0c1fc51` and `0c1fc51` + A3 (clean `make -C gba` builds, `make -C gba sizes`): `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B, `.data` 816 B, `.text` 1,403,440 B all identical before and after; the part scripts (5.8 KB), the catalog rows and the 60 part icons are `const` ROM: `.rodata` 6,591,380 -> 6,623,356 B (+31,976, measured on the pre-rebase tree; on the rebased tree the whole `.rodata` is 6,643,580 B and `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B, `.data` 816 B, unchanged). `make -C gba test` and `test-creator` pass on the rebased tree (creator rows 29.9 fps, value step 30.0) |
-| 47 | S2-11: the house's view turn built over several ticks, the room group's row loops, HomeMart's UI loops (docs: "Speed wave 2: S2-11" below) | `dd34812b` | 15,460 B | **15,460 B** | 0 B | 6,308 B | measured on `dd34812b` + S2-11 (ROM 8,004,784 -> 8,008,960 B): no resident EWRAM or IWRAM. `RBig` (the house's region, in the scene scratch arena) loses `match` (56 B, now on the stack in `incremental()`) and gains 32 B of turn-build state (`tkey[5]`, `bkey`, `bsub`, `bstep`, `brow`, `bld`, `bturns`, `k_last`); the overlay's room group grows 3,588 -> 8,712 B inside the 3D group's 10,352 B slot (1,640 B free in the slot); `hold.c` one flag bit. PS1: the EXE and the overlays are byte for byte the base's (the hooks are not built there), 64 KB below the stack top with the FMV as before |
+| 47 | S2-11: the house's view turn built over several ticks, the room group's row loops, checksum pass and cursor, HomeMart's UI loops (docs: "Speed wave 2: S2-11" below) | after CR4 A3 and PS1-FLAT (`ee4e053`) | 15,460 B | **15,460 B** | 0 B | 6,308 B | measured on `ee4e053` and that tree + S2-11, both built clean (`make -C gba sizes`; ROM 8,087,036 -> 8,091,916 B): `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B and `.data` 816 B all unchanged, no resident EWRAM or IWRAM. `RBig` (the house's region, in the scene scratch arena) loses `match` (56 B, now on the stack in `incremental()`) and gains 32 B of turn-build state (`tkey[5]`, `bkey`, `bsub`, `bstep`, `brow`, `bld`, `bturns`, `k_last`); the overlay's room group grows 3,588 -> 9,512 B inside the 3D group's 10,352 B slot (840 B free in the slot); `hold.c` one flag bit. PS1: the EXE and the overlays are byte for byte the tip's (the hooks are not built there), `_end` 0x801ee3e0 before and after, 72,736 B below the stack top with the boot FMV (the margin delta is 0 B) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -1522,13 +1522,13 @@ for them).
 The speed audit 2's S2-11 (causes C7 / C5), measured again by speed audit 3 (rank 26 and 29): turning the house's
 view recomposed the whole room in one tick (106 ms of work, one 117 ms frame), the busy Live layout (test-home's
 `room-test 1`: four walkers, three animated pieces) cost 32.4 ms a tick with 27 frames of 50 ms, and Hold the
-Door's wave 3 had 4. Three changes, in `gba/src/room.c`, `gba/src/hold.c` and two core files.
+Door's wave 3 had 4. Four changes, in `gba/src/room.c`, `gba/src/hold.c` and two core files.
 
 **1. The restore's row loops run from the IWRAM room group.** The busy layout already restores one rect per walker
 (3-5 rects, about 700 px each a tick), not a row band; what cost the time (`draw_region` 18%) was the per-row control
 code of those rects running as THUMB from ROM (about 3 cycles an instruction). `shell_rows` (the shell's row loop),
-`wall_rows`, `floor_row`, `row_copy`, the pieces' runs (`runs_plain`, `runs_lut`) and `block_sum` are now ARM in the
-room group (`ROOM_ARM`; the rare row kinds, the roof's, the backdrop's, the lip's and the classified runs, stay THUMB
+`wall_rows`, `floor_row`, `row_copy`, the pieces' runs (`runs_plain`, `runs_lut`) and the block checksums (change 4)
+are now ARM in the room group (`ROOM_ARM`; the rare row kinds, the roof's, the backdrop's, the lip's and the classified runs, stay THUMB
 in ROM, called by `long_call`). The same code and the same pixels.
 
 **2. A view turn is built over 2-3 ticks in the hidden page while the shown page keeps the old view.** A quarter turn
@@ -1554,10 +1554,14 @@ changes the shell key; `render()` used to rebuild the shell tables and the whole
   0, and the PS1 is not asked (the call is not in its home group). The logic runs on at 30 ticks a second.
 * **Repeated turns** (the right stick's flick repeats while held, Photo mode turns on every press): a turn asked for
   during a build drops it and starts the new view's (`B->bkey`, the page's `valid` cleared); after two such restarts
-  in a row (`B->bturns`) the frame is drawn in one go, so turns held down cannot keep the screen from changing. Turned
+  in a row (`B->bturns`) the frame is drawn in one go, so turns held down cannot keep the screen from changing (the
+  exception: a human mashing L / R every 4-5 ticks on the busy layout, whose build takes 3-4 ticks, runs into that
+  one-go frame: 2:64 3:1 4:1 5:1, up to 84 ms, at a turn every 4 ticks; every other period from 2 to 8 ticks, and
+  the cottage at every period, stays in two vblanks; the GBA has no stick, the final picture is right either way,
+  the PS1 and the Dreamcast do not slice). Turned
   back to the view on screen, the page is copied forward as before. Any other change of the shell key during a
   build (the light, the room), a frame gap or a lost claim ends it (`reset_state`).
-* No resident byte: the room group grows 3,588 -> 8,712 B inside the 3D group's 10,352 B slot; `RBig` (the house's
+* No resident byte: the room group grows 3,588 -> 9,512 B (with change 4) inside the 3D group's 10,352 B slot; `RBig` (the house's
   region) loses `match` (56 B, now a stack array in `incremental()`) and gains 32 B of build state.
 
 **Pixel-changing.** A turn's first picture of the new view appears later than before: 2 ticks in the cottage, 3-4
@@ -1579,6 +1583,26 @@ preview picture (scale 2) went through `vid_blit_c` from ROM because the slot st
 Black Market's 33.2 ms, which sat a hair under the 33.3 limit). Same pixels (frame hashes of every tick of the
 `house` script); not asked on the PS1.
 
+**4. The checksum pass and the cursor diamond (found by the review on the rebased tip).** The busy layout's
+walker / animation bursts (every 8 ticks: the three animated pieces, the cursor's blink and the walkers' steps, two
+ticks in a row because each of the two pages needs the change) cost 34-36 ms of work; on the tip that was 2 frames
+of 50 ms in 130 ticks, because only 0.1-0.3 ms kept the bursts inside two vblanks (a tick of 35.7 ms or more
+misses). The profile of the window showed two more pieces of THUMB-from-ROM control code, not pixels:
+* `incremental()` step 1 (whatever was drawn over the room since this page's last frame: every block's checksum
+  against the page's) called `block_sum` for each of the 255 blocks and compared at ROM waits: 59,600 cycles
+  (3.5 ms) every tick. `scan_row()` (ARM, room group) now does one block row and returns the mask of the blocks
+  whose sum changed (rows with no change skip the run bookkeeping), `store_row()` does the stores (`sums_store`,
+  the turn's bands): about 1.6 ms off every tick. `BLOCK_ROW` binds its four words to r0-r3, because `ldmia`
+  fills its list in register order whatever order it is written in: with free registers two inlined copies could
+  mix the words in different orders, and a stored sum would never equal the scan's (the first build of this change
+  recomposed the room every tick for that reason, 54 ms a tick).
+* The cursor diamond (it blinks every 8 ticks, so it is in the burst) was six Bresenham walks of `put_px` calls,
+  run again for every dirty rect it touched (about 1 ms of a burst tick). The 96 pixels that walk puts down
+  (a pixel two segments reach keeps the later colour) are a ROM table now (`cur_pt`), drawn by an ARM loop with the
+  clip (`cursor_px`): about 0.9 ms off a burst tick. Same pixels (the `room-parity` lines with a cursor).
+Result on the busy layout: work avg 26.1 -> 24.4 ms, max 36.0 -> **33.8 ms**, 2:130 (before the change on the same
+tree: 2:127 3:2), about 1.9 ms under the miss line.
+
 **Tests.** `make -C gba test-home`: `room-parity` path 3 (`home.txt`, block 1f: every golden line 0..57 drawn as a
 turn built slice by slice, hashed against the one-go golden, and failing unless the turn took 2 slice ticks at least;
 a mutant that never slices fails the first line), `room-parity` path 4 (block 1g: every shell line 5..57 drawn right
@@ -1589,40 +1613,52 @@ from a table key: the roof's screen-space inputs fail path 3, the floor planks p
 level, the tint, the ceiling and the wallpaper path 5 (the golden lines alone, which differ in several inputs at
 once, caught none of the last five) and `home_turn.txt` (a turn each way in Build mode, single turns
 in Photo mode, the busy layout with single turns and three in a row, which draws the third in one go, one 67 ms
-frame: `expect-fps` and `expect-gap`). `core/tests/test_home_score_opaque.c`:
+frame: `expect-fps` and `expect-gap`; `home.txt`'s `home_steady` and `home_rotate` floors are 29.5 now, `home_rotate`
+with `expect-gap 34`). `core/tests/test_home_score_opaque.c`:
 the scene draws nothing over the room on a build tick, and HomeMart asks for the UI loops each frame. The speed2
 house script closes the turn, the busy Live layout and Hold the Door with `expect-fps 29.5` and `expect-gap 34` (no
-frame over two vblanks; `tools/speed2.py` keeps `expect-gap` out of the PS1 and Dreamcast scripts).
+frame over two vblanks; `tools/speed2.py` keeps `expect-gap` out of the PS1 and Dreamcast scripts). `expect-gap`
+reports and goes on under `--no-fps-gates` like `expect-fps` (before, the report-only `test-speed2` and
+`profile-speed2` stopped at the first slow window).
 
 **Measured** (libmgba, `make -C gba test-speed2 SPEED2=house`, base `4c0f369e`; drawn fps, work avg / max ms):
 
 | window | before | after |
 |---|---:|---:|
-| rotate view | 27.5 (14.7 / 106.2), one 117 ms frame | **30.0** (11.8 / 22.9), none over 34 ms |
-| live, 4 chibis (room-test 1) | 26.8 (32.4 / 47.7), 27 frames of 50 ms | **30.0** (25.7 / 35.7), none |
-| defend siege wave 3 | 29.5 (31.4 / 37.2), 4 frames of 50 ms | **30.0** (26.6 / 31.4), none |
-| defend tutorial | 30.0 (28.8 / 35.6) | 30.0 (**24.2** / 29.3) |
-| defend siege freeze + double clock | 30.0 (30.4 / 35.4) | 30.0 (**26.2** / 30.3) |
+| rotate view | 27.5 (14.7 / 106.2), one 117 ms frame | **30.0** (10.4 / 22.9), none over 34 ms |
+| live, 4 chibis (room-test 1) | 26.8 (32.4 / 47.7), 27 frames of 50 ms | **30.0** (24.4 / 33.8), none |
+| defend siege wave 3 | 29.5 (31.4 / 37.2), 4 frames of 50 ms | **30.0** (25.6 / 30.0), none |
+| defend tutorial | 30.0 (28.8 / 35.6) | 30.0 (**22.8** / 27.2) |
+| defend siege freeze + double clock | 30.0 (30.4 / 35.4) | 30.0 (**25.2** / 28.7) |
 | black market | 30.0 (33.2 / 34.7) | 30.0 (**28.7** / 30.2) |
 | homemart cursor move | 30.0 (31.6 / 32.0) | 30.0 (**29.1** / 29.4) |
 | homemart season tab | 30.0 (26.9 / 28.4) | 30.0 (**24.5** / 26.0) |
 | every other house window | 30.0 | 30.0 (1-2 ms less) |
 
-`make -C gba test-home` (same ROM): `home_steady` 29.2 -> **30.0** (work 29.8 -> 24.3 ms, the 5 frames of 50 ms gone),
-`home_rotate` 24.5 -> **30.0** (max work 134.9 -> 35.5 ms; two turns), `home_modal_busy` 22.7 -> 24.8 (the Score panel
-over the walkers: 160 ms worst -> 120), the first house frame under the load 187 -> 153 ms. 279 parity lines
-(108 old, 58 + 53 + 60 new) pass; the 108 old fingerprints are the base ROM's.
+`make -C gba test-home` (same ROM; base = the tip before S2-11): `home_steady` 29.2 -> **30.0** (work 29.8 -> 23.1 ms,
+max 29.9, the 5 frames of 50 ms gone), `home_rotate` 24.5 -> **30.0** (max work 134.9 -> 34.7 ms; two turns, every frame
+two vblanks), `home_modal_busy` 22.7 -> 25.0 drawn (the Score panel over the walkers: 160 ms worst -> 119.5), the first
+house frame under the load 187 -> 152 ms. `home_turn.txt`: every window 30.0 with its worst frame 33.5 ms but the
+three-turns-in-a-row one (29.6 fps, one 67 ms frame, by design). 279 parity lines (108 old, 58 + 53 + 60 new) pass; the
+108 old fingerprints are the base ROM's. The life group (`hold.c` was touched) has the same frames by vblank as the tip in
+47 of its 48 windows (`life: shop gifts tab` moved one frame from 2 to 3 vblanks, work 35.4 -> 35.5 ms, a window that
+misses at 21 fps either way).
 
-**Memory.** ROM 8,004,784 -> 8,008,960 B (+4,176); EWRAM `.bss` 259,460 B and 1,788 B free, both unchanged (ledger
-row 46); IWRAM resident 11,256 B and the main stack's 6,308 B unchanged; the room group 8,712 B of the slot's 10,352.
-PS1 / Dreamcast: the PS1 EXE and overlays are byte for byte the base's (the two core hooks are not built there); Dreamcast
-runs the same core with the weak `plat_build_frame` and `plat_ui_loops` (0).
+**Memory** (the tip `ee4e053` and that tree + S2-11, both built clean). ROM 8,087,036 -> 8,091,916 B (+4,880); EWRAM
+`.bss` 245,788 B and 15,460 B free, both unchanged (ledger row 47); IWRAM resident 11,256 B, `.iwram_bss` 4,084 B and
+the main stack's 6,308 B unchanged; the room group 3,588 -> 9,512 B of the slot's 10,352 (840 B free; `scan_row` 504 B,
+`store_row` 396 B, `cursor_px` 208 B of it). PS1: the EXE, `OVL.BIN`, `TEXT.BIN` and `SFX.BIN` are byte for byte the
+tip's (sha256 of both builds; the two core hooks are not built there), `_end` 0x801ee3e0, 72,736 B below the stack top
+with the boot FMV, delta 0 B (the tip itself is 992 B under the 72 KB gate). Dreamcast runs the same core with the weak
+`plat_build_frame` and `plat_ui_loops` (0).
 
-**Still short.** The entry into a house (the first frame 153 ms, then another 129 ms recompose the tick after, under
-the load fade and the iris) and the stress layouts `home_cellar_full` (26.0: 8x8, 40 pieces all animating together),
-`home_modal_busy` (24.8) and `home_defend_w3` (14.3: 10 walkers + the player through 24 lit pieces) are not
-changed here; the PS1's busy layout (28.9 fps) is the 3D player model's polygons and belongs to the PS1-FLAT package
-(`OWNER_DECISIONS.md`, "HOUSE CHARACTERS FLAT").
+**Still short.** The entry into a house (the first frame 152 ms, then another 129 ms recompose the tick after, under
+the load fade and the iris: S3-10) and the stress layouts `home_cellar_full` (26.0: 8x8, 40 pieces all animating
+together), `home_modal_busy` (25.0, one 120 ms frame when the Score panel opens over the walkers) and `home_defend_w3`
+(14.7: 10 walkers + the player through 24 lit pieces) are not changed here (they were not in the package; the
+audit 3 lists them with H2 / S3-10). A turn asked for every 4-5 ticks on the busy layout (see Repeated turns) draws one
+frame of up to 84 ms. The creator's hat try-on, which the roadmap row names, was not touched. The PS1's busy layout,
+28.8 fps on the base (the 3D player model's polygons), is 30.00 on the PS1-FLAT tip.
 
 ## 4b. Retained panels (G7, `src/panel.c`)
 
@@ -2271,7 +2307,7 @@ bitsets and re-run only for entries that moved.
 | Resource | Use |
 |---|---|
 | arena | Claim `GBA_BIG_BY_ROOM` (`gba_plat.h`); the house's region `gba_room` (17,200 B, section 3). State is at most 15,808 B (C7's 15,488 B plus 320 B for H8's lamp-pool table; measured 15,692 B); the harness layouts sit behind it. |
-| IWRAM | No resident bytes. (H8) The IWRAM overlay's room group (3,648 B of ARM, section 3; 3,248 B after H9; (S2-11) 8,712 B: the shell's row loops, the pieces' runs, `block_sum`, the roof's pixel functions): the lamp pools' floor and wall rows, the glow spans' run copy and the LUT copy loops, loaded by `plat_room()` |
+| IWRAM | No resident bytes. (H8) The IWRAM overlay's room group (3,648 B of ARM, section 3; 3,248 B after H9; (S2-11) 9,512 B: the shell's row loops, the pieces' runs, the block checksum scan and store, the cursor's pixels, the roof's pixel functions): the lamp pools' floor and wall rows, the glow spans' run copy and the LUT copy loops, loaded by `plat_room()` |
 | `.bss` / `.data` | About 34 B for room.c and 27 B for hcmd.c (budget 64 B) |
 | OBJ VRAM | None of its own. obj.c's four squash slots fill it, and obj.c only copies OAM while a squash shows, so the cursor and the held ghost are bitmap items. |
 | THUMB ROM | About 18.3 KB, of which about 3.7 KB is harness hooks (H1: the shell frame table) |
@@ -2283,12 +2319,12 @@ before G0):
 | Scene (`home.txt`) | C-G gate | Measured |
 |---|---|---|
 | `home_plain`: template room, player, cursor | - (H8: >= 28) | 30.0 (room 80k cycles) |
-| `home_steady`: parity room, Live, 4 chibis, 3 animated pieces | >= 28 | **30.0** (S2-11: work 29.8 -> 24.3 ms; H8: 29.2-29.5) |
+| `home_steady`: parity room, Live, 4 chibis, 3 animated pieces | >= 29.5 (S2-11; was 28) | **30.0** (S2-11: work 29.8 -> 23.1 ms; H8: 29.2-29.5) |
 | `home_modal`: Score panel over the plain room | >= 18 | 20.0 (HART: 18.8; H5 18.7; H8: 18.3-18.8) |
-| `home_modal_busy`: Score panel, 3 walkers still moving under it | - | 24.8 (S2-11; H8: 12.0) |
-| `home_rotate`: two view turns (brake + the turn built over 2-3 ticks) | >= 20 | **30.0**, no frame over 34 ms (S2-11; before it 24.5 with a 134 ms frame per turn; H8: 24.1) |
+| `home_modal_busy`: Score panel, 3 walkers still moving under it | - | 25.0 (S2-11; H8: 12.0) |
+| `home_rotate`: two view turns (brake + the turn built over 2-3 ticks) | >= 29.5 and `expect-gap 34` (S2-11; was 20) | **30.0**, no frame over 34 ms (S2-11; before it 24.5 with a 134 ms frame per turn; H8: 24.1) |
 | `home_cellar_full`: 8x8, 40 pieces, dim | avg >= 24 | 26.0 (H8, its lamps now lit: 4 lamp pools, 26.2) |
-| `home_defend_w3`: 10 citizens + player walking, 24 lit pieces | >= 20 | **14.3 (not met; S2-11: 12.6 -> 14.3; H8: 12.1-12.3)** |
+| `home_defend_w3`: 10 citizens + player walking, 24 lit pieces | >= 20 | **14.7 (not met; S2-11: 12.6 -> 14.7; H8: 12.1-12.3)** |
 
 **The light (H8).** `room_ref.c` defines it (HOUSING.md section 9,
 `home_int.h` `RoomLight`) and `room.c` draws the same pixels (golden

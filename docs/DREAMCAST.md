@@ -347,8 +347,8 @@ GBA's speed tour 2 scripts (docs/GBA.md "Speed tour 2") in Flycast: `tools/speed
 `tools/speed2.py table` prints the logic ticks/s and the ticks over 33.3 / 50 ms of work (dcrun's `work:` lines)
 per window, with the run's `game drew` and `work over` lines. Flycast is not cycle-accurate: a guide, not a promise.
 
-(S2-11, 2026-11-13, a measurement note: the house group after the GBA's house work: all 19 windows 30.0, 0 of 2,461
-ticks over 33.3 ms, work mean 3.5 ms and worst 20.5 ms at the house's entry, the same as before. The Dreamcast takes
+(S2-11, 2026-11-13, a measurement note: the house group after the GBA's house work, on the tip `ee4e053` + S2-11: all 19
+windows 30.0, 0 of 2,461 ticks over 33.3 ms, work mean 3.4 ms and worst 20.6 ms at the house's entry, the same as before. The Dreamcast takes
 the new core hooks with their weak defaults: `plat_build_frame(PLAT_BUILD_BUSY)` returns 0 and `plat_ui_loops()` does
 nothing, so `plat_room` (DC8) is untouched and a house frame is one weak call heavier.)
 

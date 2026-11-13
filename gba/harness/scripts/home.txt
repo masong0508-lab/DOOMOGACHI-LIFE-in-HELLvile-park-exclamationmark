@@ -173,6 +173,7 @@ wait 30
 fps
 wait 90
 expect-fps 29.5 home_steady
+expect-gap 34
 shot home_steady
 
 # --- home_modal (C-G >= 18): the Score panel over the room. Measured on
