@@ -634,17 +634,19 @@ per-polygon drawing area `g_r3_area` in `r3d.c` and `prims.c`).
 | slot | 131,072 B (home) | 131,072 B (story, 129,980 B) |
 
 70,480 B was 3,248 B under the 72 KB plan gate. On the tip it landed on
-(origin `c827410`, after the Talk, LV0, LV1, CR3 and S3-3 landings; the
-same overlay plan, the combat group 128,232 B) the EXE ends at `0x801ef450`
-before and `0x801ee2a0` after: the margin went from 68,528 B to
-**73,056 B** (+4,528 B; `0x80200000` minus `_end`, as above): 672 B under
-the 72 KB plan gate (73,728 B), 7,520 B above the 64 KB reserve. PS1-RAM
-closes the rest.
+(origin `19d01fe`, after the Talk, LV0, LV1, CR3, S3-3, LV10 and STKOPT
+landings; the same overlay plan, the combat group 128,232 B) the EXE ends
+at `0x801ef580` before and `0x801ee3e0` after: the margin went from
+68,224 B to **72,736 B** (+4,512 B; `0x80200000` minus `_end`, as above):
+992 B under the 72 KB plan gate (73,728 B), 7,200 B above the 64 KB
+reserve. (On `c827410`, a few landings earlier, it was 68,528 -> 73,056 B,
+672 B under: every landing since eats into the margin.) PS1-RAM closes
+the rest.
 
 Not moved: `prims.c` (3,612 B in the plan, the chibi's boxes and blobs,
 -O2). With it the combat group would need 131,800 B, 728 B over the slot,
 and the slot grows in 2 KB steps: +2,048 B here, a net gain of 1,564 B
-(the margin on the tip would be about 74,620 B, past the 72 KB gate). On
+(the margin on the tip would be about 74,300 B, past the 72 KB gate). On
 PS1-RAM's tree the combat group is 126,696 B before this and 134,440 B
 with `model.c` and `prims.c`: the slot would grow by 4,096 B, a net loss
 of 484 B. Growing the slot costs resident memory and needs the
@@ -1045,7 +1047,7 @@ stress 19.25 -> 23.00):
 The parity pairs still differ by 0 pixels (the second pair's resting
 player is translucent now). The numbers above were measured three times
 on three trees (`ce2d7e8`, `32257f3` after the Talk landings, and the tip
-`c827410`); the CPU time of a sampled frame is about 0.13 ms higher on
+`c827410`, with the harness runs repeated on `19d01fe`); the CPU time of a sampled frame is about 0.13 ms higher on
 the tip, base and head alike (not this package), and the fps agree within
 0.2. Besides the player's place, the `home_cellar` shot differs on the
 room's outline by 1 to 2 px: it now has the outline of the other 8x8
