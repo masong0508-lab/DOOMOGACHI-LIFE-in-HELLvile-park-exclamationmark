@@ -958,7 +958,8 @@ level select, intro cards, pause menus, the arena and arena-mode cards and resul
 `studio` (the choir picker, STAGE, FILE, the song book, templates), `creator` (all nine tabs and each tab change,
 the grids, swatches, the START menu), `life` (the new-island load, family dashboard and add-member wizard, play-as,
 every Options page, Save / Load and a save, care popups, the shops, news tabs, graveyard, Unlocks, the picker) and
-`story` (first-boot questions, title -> New story, the quest log's six tabs, the cutscenes, the credits). Each window
+`story` (first-boot questions, title -> New story, the quest log's six tabs, the cutscenes, the credits) and `sim` (S3-1: the
+hub, the shop's gifts tab, the citizen picker and the pet, 1,200 ticks each so a whole sim interval is inside every window). Each window
 is `fps start` / `wait N` / `fps GROUP: NAME` after `seed 1` and a scene command, with `sync on`, so the numbers
 repeat exactly. `make -C gba test-speed2 [SPEED2="fair house"]` runs them with `--worklog` and prints one table per
 group (`tools/speed2.py table`); `make -C gba profile-speed2` adds a PC profile after every window
@@ -967,7 +968,8 @@ group (`tools/speed2.py table`); `make -C gba profile-speed2` adds a PC profile 
 `fps LABEL` (S2-1 onwards); `make -C gba test-speed2 SPEED2_GATES=1` fails a run under any of those floors
 (`tools/speed2.py` reads both closings, so the PS1 and Dreamcast conversions are unchanged). (S2-11) A window may follow
 its closing with `expect-gap MS` (no presented frame of the window over MS ms: 34 is two vblanks); `speed2.py` leaves
-it out of the PS1 and Dreamcast scripts.
+it out of the PS1 and Dreamcast scripts. Like `expect-fps` it only reports under `--no-fps-gates` (the default of `test-speed2`); `make -C gba
+test-optvol` (`options_volume.txt`, no `--no-fps-gates`) keeps its `expect-gap` a hard gate. The `sim` group (S3-1) uses it with 51.
 
 Every `fps` line is now followed by `harness: gaps LABEL: vblanks-per-frame histogram 2:N 3:N ... max M (ms) at
 tick T`: the presented frames by the vblanks each one stayed on screen (2 = 30 fps, 3 = a 50 ms frame, 4+ = 67 ms
@@ -1826,11 +1828,16 @@ stream 16,575 -> 16,629 bytes, same templates). No scene's pixels change by them
 the kid "Wisp" inside it: the matcher now reads the longest name (oracle test: the kid alone is still the kid).
 **Behaviour to know:** after a clock jump outside the sim (the story sets 09:00 or 21:30 after `sim_init`, night fishing 23:00)
 the residents' activities are brought up to date over the next interval, not within one second (it was a burst of 50-94 ms
-frames: the story-map entry second). The overworld only reads `activity` to skip a sleeping resident's ambient figure.
+frames: the story-map entry second). Readers of `activity` that lag by up to one interval after such a jump: the overworld's
+sleeping ambient figures (`overworld_npc.c`), the island's park and wandering figures and its "who is here" counts
+(`fp_island.c`), the apartments' rows (`fp_apartments.c`), the citizen's and the roster's activity lines and the roster's
+awake / here / sleeping filters, `dream.c` (was the resident awake) and the cafe's dinner guests (`cook_data.c`); none of
+them is a rule, all of them read a picture of the town.
 
 Tests: `core/tests/test_sim_pass.c` (once per interval and at most one update a tick at the default clock, the passes after a
-load and after a fast-forward, every day length and speed, determinism: 4 of 5 fail on the old sim) and `test_town.c`
-(`relationships_insert_matches_a_reference_table`: fails if one halfword of the move is wrong). New speed2 group `sim`
+load and after a fast-forward, every day length and speed, determinism: 5 of the 6 fail on the old sim, the determinism test passes on both by design) and `test_town.c`
+(`relationships_insert_and_remove_match_a_reference_table`: fails if one halfword of the move is wrong; a static assert
+pins the edge to 6 bytes, three halfwords). New speed2 group `sim`
 (`speed2_sim.txt`: the hub, the shop's gifts tab, the citizen picker and the pet, 1,200 ticks each, so one pass is inside
 every window; `expect-fps 29.8` + `expect-gap 51` gates, which fail on the tree before S3-1).
 

@@ -27,6 +27,7 @@ typedef struct DoomoEdge {
     int8_t   value;    /* -100 (hate) .. 100 (adore)                 */
     uint8_t  kind;     /* REL_* | REL_CRUSH_* bits                   */
 } DoomoEdge;           /* 6 bytes */
+DOOMO_STATIC_ASSERT(sizeof(DoomoEdge) == 6, edge_is_three_halfwords);   /* town.c moves them by halfwords */
 
 /* ---- welded weapons (weld.h describes the parts) ------------------------ */
 typedef struct DoomoWeapon {

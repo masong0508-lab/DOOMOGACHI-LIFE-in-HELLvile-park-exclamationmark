@@ -46,7 +46,7 @@
  *                       colour; fail unless MIN <= count <= MAX (a doubled
  *                       half-resolution 3D view: 0)
  *   expect-gap MS       (Refresh) fail when a presented frame of the last
- *                       "fps" window took over MS ms
+ *                       "fps" window took over MS ms (--no-fps-gates: reports)
  *   vhash [LABEL]       print the FNV-1a of the emulator's output frame
  *                       (240x160 as BGR555; display-mode independent).
  *                       The last frame presented, which depends on the
