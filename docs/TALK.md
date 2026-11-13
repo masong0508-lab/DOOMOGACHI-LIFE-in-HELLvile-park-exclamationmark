@@ -624,6 +624,20 @@ mature slot itself. **The distress lines (K-11) await the owner's approval
 of their wording (design D6); the grief lines (K-10) are the agent's too
 and go to the owner with the Q7 sheet.**
 
+**T5b-ASK: questions and answers (+975 alternatives).** Three new files
+in `core/data/talk/grammar/en/`: `ask_topic.tlk` (360: replies to
+ASK_ABOUT and ASK_OPINION by stance, by what the topic is, by voice and by
+persona type, with kid lines and the shared `ask.star.*` / `ask.more` /
+`ask.less` sub-rules), `ask_feel.tlk` (194: ASK_FEELING by mood, voice, type,
+plus day, plans, past and family stories) and `ask_answer.tlk` (421: ASK_FACT,
+ASK_WHO, ASK_ADVICE, ASK_FAVOR and ASK_REPEAT: honest, evasive and silly
+answers). Same rule names with a `2` / `.voice` / `.type` suffix as the
+starter's, so nothing in `core_ask.tlk` changed. Kid-safe everywhere; the
+only adults-only guards are the two `blunt&adults_only&!kid_present` swears
+in `ask_topic.tlk`. No romance. `TALK_en.BIN` 540,274 -> 582,443 B (about 43
+B an alternative; the PS1 subset grows by the same rate, so TKP's lever
+choice matters more now). No resident code changed.
+
 **Writing a line**: add it to the right rule in `grammar/en/*.tlk` (or a new
 rule with a guard and an `act:`), run `make -C core talk-check talk`, then
 `core/build/talk_census --smoke --grid core/data/talk/census_en.tsv` and

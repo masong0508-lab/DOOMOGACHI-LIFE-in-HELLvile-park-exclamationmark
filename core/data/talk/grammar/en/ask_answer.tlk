@@ -1,0 +1,470 @@
+# core/data/talk/grammar/en/ask_answer.tlk - T5b: more answers to ASK_FACT, ASK_WHO, ASK_ADVICE,
+# ASK_FAVOR and ASK_REPEAT: honest, evasive and silly. Owner: TK. Syntax: core/tools/talkc_gen.py;
+# register: SCRIPT_STYLE.md. Kid-safe throughout; nothing romantic or suggestive here.
+
+# ---- ASK_FACT: "is it true?" ----------------------------------------------------------------
+@rule core.ask_fact.yes2 act: yes
+  "Yes. I saw it myself. From behind a bush, but I saw it."
+  "True. Every word. Except the long ones."
+  "Yes, and it's even weirder than you heard."
+  "Yup. Triple-checked it. Twice, because I lost count."
+  "Absolutely. Put it on a plaque."
+  "It's true. I wish it weren't, but it is."
+  "Yes! Finally, someone asks the right question."
+  "Oh, it's true. The Mayor swore on a hat."
+  "Yes. That's not gossip, that's journalism."
+  "Correct. You've just earned a gold sticker. Imaginary."
+  "Sure is. My nana said so, and she's never wrong. Loudly."
+  "Yes. I have a witness. And a duck."
+  "Mm-hm. Quite true. Don't make a face."
+  "Yes, and the rest is worse."
+@rule core.ask_fact.no2 act: no
+  "No. That's a rumour, and a bad one."
+  "Nope. Whoever said that has never been right. Not once."
+  "Not at all. Somebody's been telling stories."
+  "No, no, no. Three nos, that's how sure I am."
+  "False. I'd bet a biscuit. A whole one."
+  "Wrong, but I admire the confidence."
+  "Nope. And I'd know. I'm in the know."
+  "No. It's a myth, like the quiet Tuesday."
+  "Absolutely not. Who has been talking? Was it the Mayor?"
+  "No. Though I wish it were true. It'd be funnier."
+  "Not that I've heard. And I hear everything."
+  "No! Where did you get that? A cereal box?"
+  "No. Next question, I'm not feeling this one."
+  "Nope, and thanks for asking before you told everybody."
+@rule core.ask_fact.unsure2 act: answer
+  "I've heard both. I believe whichever one I heard last."
+  "Maybe. I wasn't there, but I've got a feeling about it."
+  "Honestly? I don't know, and I'm not paid to find out."
+  "That's one of those things. You know the kind. Can't say."
+  "Could be. Could be not. I'd flip a coin, but I'd lose it."
+  "I'd need more facts. I'm out of facts. I've got a few feelings."
+  "Hm. Let me think. {.}Nope, still don't know."
+  "Ask somebody who reads the news. I read the weather."
+  "Don't ask me. I only know about soup and shoes."
+  "It's complicated. It has a lot of layers, and one of them is lunch."
+  "Half true. Which half? That's the fun part."
+  "It depends how you hold it. Hold it sideways. Now yes."
+  "Rumour says yes. Rumour also says I can fly. I can't."
+  "I'd tell you, but I'd have to guess. Want a guess?"
+@rule core.ask_fact.joke act: joke
+  "True? In this town? Ha, you sweet summer child."
+  "Is it true? Does it matter? Anyway, yes."
+  "True! As true as the fog. Which is wet."
+  "I'd say yes, but my nose grows. Look, it's growing. {.}It isn't, I checked."
+  "That's a question for a lawyer. Or a duck. I'd go duck."
+  "If it's true, I'm a banana. {.}Peel me, I guess."
+  "True or false? Neither, it's a sandwich. It's got layers."
+  "I'll answer that after my snack. The snack may take years."
+@rule core.ask_fact.dismiss act: dismiss
+  "I don't do facts before noon. It's a policy."
+  "Facts? I'd rather not. They only cause trouble."
+  "Why do you want to know? What are you planning?"
+  "Next question. That one's got a wrong smell."
+@rule core.ask_fact.voice act: answer
+  "I'm so sorry, I truly couldn't say. Would you like a biscuit instead?" guard: polite
+  "Yes. Done. Why are you still here?" guard: blunt
+  "Yes, no, whatever. Look it up." guard: blunt
+  "Fact: I don't know. This is the fact." guard: flat
+  "It is as it is. Facts are facts. I've said it." guard: flat
+  "TRUE! TRUE AS A TRUMPET! I'M NOT YELLING!" guard: loud
+  "FALSE! LOUDLY FALSE! WRITE IT DOWN!" guard: loud
+  "That requires evidence. I shall need a table." guard: serious
+  "I won't speculate. I will, however, sigh meaningfully." guard: serious
+  "Eh, probably. Don't sweat it either way." guard: easygoing
+  "Could be, could be. Mostly could be. Pass the cheese." guard: easygoing
+  "True in a way that's mostly a sock." guard: quirky
+  "Yes, if you're a pigeon. No if you're a lamp." guard: quirky
+  "Yes yes yes, no, yes, next!" guard: quick
+  "True, hm, wait. {.}Don't tell me. {.}Yes." guard: slow
+  "True, and I've the bunions to prove it." guard: elder
+  "Back in my day we didn't ask that. We just knew." guard: elder
+  "Yeah, no, wait, yeah. Don't make it weird." guard: teen
+  "I mean, literally yes? Obviously? Ugh." guard: teen
+  "Down home we'd know. Up here, who can say?" guard: hellborn
+  "Truth has changed since I died. Mostly it's gotten louder." guard: ghost
+  "At this hour? The truth sleeps. I'll check in the morning." guard: night
+  "Sorry, you're a stranger. I say yes to be polite." guard: rel=stranger
+  "Between you and me? Yes, don't repeat it. I'll know." guard: rel=best
+  "Why would I tell you? You'd use it. Yes, it's true, ha." guard: rel=rival
+@rule core.ask_fact.kid guard: kid_speaker tags: kid act: yes
+  "Yes! I saw it! It was under the stairs!"
+  "Yes! My friend told me! Don't tell my friend I told you!"
+  "Yep! Probably! My teacher said so, or the other teacher."
+  "Yes, it's true! Pinky promise! Both pinkies!"
+@rule core.ask_fact.kid2 guard: kid_speaker tags: kid act: no
+  "No, that's not true! Who said that? Was it a duck?"
+  "Nuh-uh, I'd know. I know EVERYTHING. A lot."
+  "No way, that's silly! I laughed. Ha, see?"
+  "Nope! That's a made-up! You made that up!"
+@rule core.ask_fact.type act: answer
+  "According to chapter nine: probably. I'd check the index." guard: type=quiet_bookworm
+  "I read about it. Briefly. {.}Mostly the pictures." guard: type=quiet_bookworm
+  "If it's true, don't wake me. If it's false, wake me later." guard: type=cozy_napper
+  "Yes? No? {.}I'll decide after my next nap." guard: type=cozy_napper
+  "Of course it's true. Everything's true. That's what's wrong with everything." guard: type=grumpy_gremlin
+  "No. Because I say so. Because I say it." guard: type=grumpy_gremlin
+  "True, or maybe not. Who's to say. I'm not." guard: type=deadpan_drifter
+  "It happened. Or it didn't. I went past it either way." guard: type=deadpan_drifter
+  "I think so, yes. It felt true. Like a little bell." guard: type=gentle_dreamer
+  "It's true in the dreaming. Out here, I'd have to ask." guard: type=gentle_dreamer
+  "Yes, I believe it! I believe everything! It's lovely!" guard: type=sweet_sunbeam
+  "Oh, I hope so! I really do, {.}yes! Let's say yes!" guard: type=sweet_sunbeam
+  "Truth! A thing more fleeting than a sunset! {.}Yes." guard: type=dramatic_poet
+  "True, my friend, and also tragic. Mostly tragic." guard: type=dramatic_poet
+  "Would I lie to you? {.}Don't answer that. Yes." guard: type=cheeky_charmer
+  "True. I wouldn't tell you a story. Not that kind, anyway." guard: type=cheeky_charmer
+  "Verified. I've got it in the log. Page twelve." guard: type=diligent_helper
+  "Let me check. {.}Checked, it's yes. Initialled." guard: type=diligent_helper
+  "True! Heard it at a campfire. Everything at a campfire is true." guard: type=chill_adventurer
+  "Yup. Or the other one. I'm pretty relaxed about which." guard: type=chill_adventurer
+  "Affirmative, confirmed. Reported. Done." guard: type=stern_captain
+  "Negative. I've checked the roster. It's wrong." guard: type=stern_captain
+  "True, false! {.}Spin the wheel! {.}True!" guard: type=wild_card
+  "I'd say yes, but then I'd have to prove it. So: sure!" guard: type=wild_card
+  "Yes! And I've got a plan to make it truer!" guard: type=eager_go_getter
+  "Yes, checking, {.}confirmed! Next question! Next!" guard: type=eager_go_getter
+  "Yes, it's true! I just decided! Sparkly!" guard: type=bubbly_sparkler
+  "Ooh, tell me it's true! {.}It's true!" guard: type=bubbly_sparkler
+  "Yes. And anyone who says otherwise answers to me." guard: type=fiery_leader
+  "It's true. Spread the word. Gently, then loudly." guard: type=fiery_leader
+  "Yes! No! {.}I broke it, but yes!" guard: type=chaos_goblin
+  "True, probably. I tested it with a hammer. A tiny one." guard: type=chaos_goblin
+
+# ---- ASK_WHO ---------------------------------------------------------------------------------
+@rule core.ask_who.gossip2 act: gossip
+  "Who? Somebody tall. Or somebody who stood on something."
+  "I heard it was somebody with a hat. That narrows it to everyone."
+  "Not telling. I'm a vault. A leaky vault."
+  "Ooh, you want names? Come closer, {.}closer. {.}Too close."
+  "The one with the thing. You know. The thing."
+  "I can't say. But I can say 'hmm', in a way that says it."
+  "Someone very close to the situation. And far from the exit."
+  "Honestly? Half the town. The other half was napping."
+  "A little bird told me. The bird was me. Don't tell the bird."
+  "Everyone knows, and nobody will say. That's the system."
+  "A person. A real, actual person. I've said too much."
+  "It's a secret. I'd tell you, but I've forgotten it."
+  "They have a funny walk and a nicer hat. {.}That's all you get."
+  "I could point, but pointing's rude. {.}I'll point with my elbow."
+@rule core.ask_who.other2 guard: other act: gossip
+  "Try {other}. {other:cap} has opinions on this, and a notebook."
+  "Don't tell {other} I told you. {other:cap} talks. Constantly."
+  "If anyone knows, it's {other}. {other:cap} was there. Taking notes."
+  "{other:cap}. Definitely {other}. {other:cap} gets everywhere."
+  "I'd say {other}. Then I'd say it wasn't. Then I'd hide."
+  "Ask {other}. {other:cap} owes me a favour. Make it a big one."
+  "My bet's on {other}. Not my money, just my gut."
+  "{other:cap} knows. {other:cap} always knows. It's slightly rude."
+  "You'll want {other}. Go now. Take a snack."
+  "Ooh, {other}'s the one. Ask nicely, {other} bites."
+@rule core.ask_who.dismiss2 act: dismiss
+  "That's not for me to say. Or for me to hear."
+  "I don't know, and I'd rather not know. It's calmer."
+  "Names are rude. I'm politely not doing them."
+  "Who? Don't ask me who, ask me what. What I'll say is no."
+@rule core.ask_who.joke act: joke
+  "Who? Me, always me. I'm everywhere."
+  "Who's who? Who knows? Who's on first?"
+  "It was the Colonel, in the library, with the candlestick. {.}Wrong town."
+  "It was the butler. We don't have a butler. {.}Yet."
+  "Who? I'd say a name, but they're all taken."
+@rule core.ask_who.voice act: gossip
+  "Oh, I wouldn't dream of naming anyone. How terribly rude." guard: polite
+  "Everybody and their dog. Pick one." guard: blunt
+  "It's them, whoever. Doesn't matter. Done." guard: blunt
+  "Someone did it. That's the end of what I know." guard: flat
+  "I DON'T KNOW BUT I'M WILLING TO SHOUT ABOUT IT!" guard: loud
+  "I'll tell you after I've verified it with three sources." guard: serious
+  "Oh, somebody. Doesn't matter. It'll all come out in the wash." guard: easygoing
+  "The one who sneezes in colour." guard: quirky
+  "Them, her! Him, whatever! Gotta go!" guard: quick
+  "Well.., {.}it was... {.}I've forgotten. {.}Come back later." guard: slow
+  "In my day, we knew who. And we said nothing. For decades." guard: elder
+  "Ugh, like, everyone? Obviously? I can't." guard: teen
+  "Probably the one with the horns. It's usually the one with the horns." guard: hellborn
+  "I saw it all. Nobody looked at me. That's the best part of being dead." guard: ghost
+  "In the dark? I couldn't see their face. It had a hat." guard: night
+  "I don't know you. I won't tell you. No offence." guard: rel=stranger
+  "You and me, best friends: it was {other}, but never tell." guard: rel=best&other
+  "You'd love that, wouldn't you? Well, no. Ha." guard: rel=rival
+@rule core.ask_who.kid guard: kid_speaker tags: kid act: gossip
+  "I know, I'm not telling! It's a secret, {.}it was a girl. Or a boy."
+  "Somebody big! With big shoes! That's all I'll say!"
+  "I saw them! They were really, really quiet!"
+  "Not me! I wasn't even there! Don't look at me!"
+
+# ---- ASK_ADVICE -----------------------------------------------------------------------------
+@rule core.ask_advice.plain2 act: answer
+  "Take a walk. If it doesn't help, take a longer walk."
+  "Eat something warm. Most problems are cold ones."
+  "Make a list. Cross off the easy bit. Feel great."
+  "Ask somebody you trust. Then ignore them. Then ask again."
+  "Whatever you pick, pick it loudly. It helps."
+  "Sleep on it, and also on the couch. Different thinking happens on the couch."
+  "Do the thing you'd do if nobody was watching. Then close the curtains."
+  "Start small, wiggle a toe. Then another toe. That's a plan."
+  "Take it one step at a time. And one biscuit at a time."
+  "When in doubt, tidy something. It's not an answer, but it's something."
+  "Go and ask the fog. It always has a view."
+  "Don't decide on an empty stomach. Don't decide on a full one either."
+  "Be kind. Then be kind again. Then see what happens."
+  "If it's scary and you're curious, go. If it's scary and you're not, don't."
+@rule core.ask_advice.encourage2 act: encourage
+  "Do it. If you fall, I'll put a cushion down. After."
+  "You're braver than you think. I'm braver than I think, too. Don't test me."
+  "I believe in you. I've got a banner. It says 'you'."
+  "Go, shine! Trip a little! It's part of it!"
+  "You've survived every bad day so far. That's a hundred percent record."
+  "Try, mess up. Try again, messier. It's the method."
+  "I'd back you in any contest. Even sitting."
+  "Just do the next small thing. I'll cheer."
+@rule core.ask_advice.joke act: joke
+  "My advice? Don't take advice from somebody who ate a candle."
+  "Sell everything, buy a goat. {.}I'm not a lawyer. Or a goat."
+  "Flip a coin. If it's heads, do it. If tails, flip again."
+  "Don't, {.}well, do. {.}Hm. {.}Do the other one."
+  "Advice costs a biscuit. Good advice costs two. This is a three."
+@rule core.ask_advice.dismiss act: dismiss
+  "Don't ask me. I put my socks on the wrong feet."
+  "I'm the wrong person. Try someone with a plan. Or a hat."
+  "If I had advice I'd keep it. It's lonely out there."
+@rule core.ask_advice.voice act: answer
+  "If I may: be gentle with yourself. And with the soup." guard: polite
+  "Stop whining. Do something." guard: blunt
+  "Just do it. Or don't. But stop asking." guard: blunt
+  "Advice: do the thing. Or not the thing." guard: flat
+  "DO IT, GO, RIGHT NOW! IN A MINUTE! SIT DOWN FIRST!" guard: loud
+  "Consider every consequence. Then consider the biscuit." guard: serious
+  "Don't stress. It'll sort itself out. It always does, eventually." guard: easygoing
+  "Ask the nearest pigeon. If it nods, go." guard: quirky
+  "Go, do, fix, done. Next." guard: quick
+  "Well.., {.}mm. {.}Sleep on it. {.}Then sleep on it again." guard: slow
+  "At my age I've learned one thing: wear the warm socks." guard: elder
+  "Ugh, I don't know. Just don't be weird about it." guard: teen
+  "Burn the bridge. {.}No, wait, that's a down-home answer. {.}Build a bridge." guard: hellborn
+  "Be bolder than I was. I regret nothing. {.}Fine, one thing." guard: ghost
+  "Ask me in the morning. Night advice is mostly nonsense." guard: night
+  "We've only just met. My advice: don't ask strangers." guard: rel=stranger
+  "For you? Honest answer, take the thing you want. Be nice, bring snacks." guard: rel=best
+  "Take my advice? You? Ha, {.}fine, here, it's free." guard: rel=rival
+@rule core.ask_advice.kid guard: kid_speaker tags: kid act: answer
+  "Share your snack. Say sorry. Wear a coat."
+  "Ask a grown-up! A good one! With cookies!"
+  "Be brave! And if you can't, be brave next time!"
+  "Hug a pillow. Count to ten. Count to ten again."
+  "Tell the truth. Then run, if it's the scary kind."
+@rule core.ask_advice.type act: answer
+  "Read up on it. If it's not in a book, make a book." guard: type=quiet_bookworm
+  "Hold on. Let me find the right page. {.}It's all of them." guard: type=quiet_bookworm
+  "Lie down first, then decide. It works wonders." guard: type=cozy_napper
+  "Best advice is a blanket and a cup of something. Then ask again." guard: type=cozy_napper
+  "Complain a bit. Then do it anyway. That's how I get by." guard: type=grumpy_gremlin
+  "Advice? You wouldn't listen, nobody listens. {.}Fine: stop thinking so loud." guard: type=grumpy_gremlin
+  "Eh. Drift a bit. The answer finds you." guard: type=deadpan_drifter
+  "Do what you were going to do. Pretend it was your idea." guard: type=deadpan_drifter
+  "Follow the nicest feeling. It knows the way." guard: type=gentle_dreamer
+  "Listen to the quiet bit inside you. It's been waiting." guard: type=gentle_dreamer
+  "Be yourself! And if that fails, be a nicer self! Hee!" guard: type=sweet_sunbeam
+  "Smile at someone! Anyone! It fixes SO much!" guard: type=sweet_sunbeam
+  "Follow your heart, dear friend, though it lead you over a cliff!" guard: type=dramatic_poet
+  "Write it down as a poem. It'll make no sense, and you'll feel better." guard: type=dramatic_poet
+  "Be confident. If that fails, be charming. If that fails, be confident again." guard: type=cheeky_charmer
+  "Smile like you know something. It's most of the job." guard: type=cheeky_charmer
+  "Make a schedule. Start with 'breathe'. Tick it off." guard: type=diligent_helper
+  "Break it into steps. Then break the steps into smaller steps." guard: type=diligent_helper
+  "Take a hike. Literally. It all looks smaller from a hill." guard: type=chill_adventurer
+  "Pack light, go far, take a snack. That's most of life." guard: type=chill_adventurer
+  "Stand straight, face it. Then do it. In that order." guard: type=stern_captain
+  "Discipline. A little every day. And a sandwich." guard: type=stern_captain
+  "Pick one at random! Don't second-guess! Spin!" guard: type=wild_card
+  "Do the opposite of what you planned. It's a good surprise." guard: type=wild_card
+  "Go big, faster! Then go bigger! I'll hold your coat!" guard: type=eager_go_getter
+  "Make a goal, then a bigger goal, then a snack goal." guard: type=eager_go_getter
+  "Do something sparkly! Sparkle fixes all!" guard: type=bubbly_sparkler
+  "Dance about it! Seriously! Dance!" guard: type=bubbly_sparkler
+  "Decide, then lead. Others will follow. Or I'll ask them." guard: type=fiery_leader
+  "Own it. Whatever it is. Own it and move forward." guard: type=fiery_leader
+  "Try the silliest solution first. It's often the right one." guard: type=chaos_goblin
+  "Take it apart and put it back wrong. You'll see." guard: type=chaos_goblin
+
+# ---- ASK_FAVOR ---------------------------------------------------------------------------------
+@rule core.ask_favor.yes2 act: yes
+  "Happy to. I've nothing better to do. {.}That came out wrong, I'm happy."
+  "Sure thing. I'll even do it with a smile. A small one."
+  "Yes. It'll cost you one biscuit. {.}Kidding, half a biscuit."
+  "Of course! I live for this. And for snacks, mostly snacks."
+  "Yeah, I'll do it. Don't make it a thing. {.}Make it a small thing."
+  "Okay! One favour, coming up. Ask me again later for a bonus."
+  "Absolutely. I'll even wear my helpful hat."
+  "Done. Consider it done. I'll consider it harder tomorrow."
+  "Yes! Favours are my love language. {.}Or biscuits, either."
+  "Okay, you owe me. I keep a tab. It's written in crayon."
+@rule core.ask_favor.no2 act: no
+  "I'd love to, but my calendar says no. In crayon."
+  "No, sorry. It's not you. It's the thing you asked."
+  "Can't. I'm in the middle of a nap. It's a deep one."
+  "No. And before you ask, no to the other one too."
+  "Mmm, no. I'd do it badly. You'd be sad."
+  "No. But I'll feel awful about it. That's something."
+  "Not today. Ask me when the moon's out. And I'm in the mood."
+  "No, thank you. It's a polite no, with a bow on."
+  "No. I'd do it, but my knees have a veto."
+  "No can do. I've a standing appointment with a chair."
+@rule core.ask_favor.offer2 act: offer
+  "I can't do that one. But I could hold your coat while you do."
+  "Not that, but how about a snack? Snacks fix most favours."
+  "That's beyond me. I'll cheer from the side."
+  "I'll do half. You do the half I'm bad at."
+  "I know someone who can. I'll go and look at them meaningfully."
+  "Not me, but my hat could. It has connections."
+@rule core.ask_favor.complain act: complain
+  "Another favour? I haven't even finished the last one."
+  "You ask a lot for somebody who gives so little. Biscuits. I mean biscuits."
+  "Favours, favours. Nobody ever asks me how I am. {.}Fine, what is it?"
+  "Fine, fine, but I'm going to sigh the whole way."
+@rule core.ask_favor.voice act: yes
+  "Certainly! It'd be my pleasure! Do let me know the details." guard: polite
+  "Yes. Fine. Don't make a speech." guard: blunt
+  "Okay. Done. Next." guard: blunt
+  "Okay. I'll do it. This is me agreeing." guard: flat
+  "YES, ABSOLUTELY! COUNT ON ME! CAN I SIT FIRST?!" guard: loud
+  "Very well. I shall take it seriously. Please do the same." guard: serious
+  "Sure, whatever you need. No pressure, no rush." guard: easygoing
+  "Yes. I'll do it with a hop. Maybe two." guard: quirky
+  "Yes yes yes, on it, go go go!" guard: quick
+  "Yes.., {.}all right. {.}I'll get to it. {.}Soon, {.}ish." guard: slow
+  "Of course, dear. Just hold my cane." guard: elder
+  "Ugh, fine. But don't, like, make it weird." guard: teen
+  "Yes. A favour for a favour. Down home that's law." guard: hellborn
+  "Sure! I've got all the time in the world. And the next one." guard: ghost
+  "At this hour? Fine. But I'll be a bit spooky about it." guard: night
+  "I don't know you. But all right, just this once." guard: rel=stranger
+  "For you? Anything, within reason. Within a biscuit's reach." guard: rel=best
+  "You? Asking me? {.}Fine, but you owe me, big." guard: rel=rival
+@rule core.ask_favor.kid guard: kid_speaker tags: kid act: yes
+  "Okay, I'll help! I'm really strong! Look!"
+  "Yes, can I use a big voice? Yes? Okay!"
+  "Sure! Then can we play after? Pinky swear?"
+  "Yes! I love helping! It's my best thing!"
+@rule core.ask_favor.kid2 guard: kid_speaker tags: kid act: no
+  "No, I'm busy! Look, busy! I'm doing busy!"
+  "Ask a grown-up! They're bigger!"
+  "Nope! My mum says no strangers. {.}Or favours, or soup."
+  "No, sorry. I have to be somewhere. Over there."
+@rule core.ask_favor.type act: yes
+  "I'd be glad to. But only if I can be quiet about it." guard: type=quiet_bookworm
+  "Sure. Let me put a bookmark here first." guard: type=quiet_bookworm
+  "Yes. After this nap. Or the one after." guard: type=cozy_napper
+  "Okay, if I can do it from the couch." guard: type=cozy_napper
+  "Fine. But I won't enjoy it. And I'll tell you." guard: type=grumpy_gremlin
+  "Ugh, fine. You owe me a grumble." guard: type=grumpy_gremlin
+  "Sure, whatever. I wasn't doing anything. I'm never doing anything." guard: type=deadpan_drifter
+  "Yes, it's on my way. I don't have a way. But yes." guard: type=deadpan_drifter
+  "Oh, of course. It sounds lovely. Everything does." guard: type=gentle_dreamer
+  "Yes, if the clouds stay in a good mood." guard: type=gentle_dreamer
+  "Of course, I'd love to! I love favours! And you!" guard: type=sweet_sunbeam
+  "Yay, a job! I'll do it so well! With sparkles!" guard: type=sweet_sunbeam
+  "Your wish is my command! And my sonnet! And my encore!" guard: type=dramatic_poet
+  "A favour! At last, a purpose! Hold my cape." guard: type=dramatic_poet
+  "For you? Sure. But I'm adding it to your account." guard: type=cheeky_charmer
+  "Sure. I'll add it to the list of things I'm brilliant at." guard: type=cheeky_charmer
+  "Of course! Noted, filed, and scheduled for Thursday." guard: type=diligent_helper
+  "Absolutely. I've set an alarm. And a backup alarm." guard: type=diligent_helper
+  "Sure, I'll bring a rope. And a snack. And a rope for the snack." guard: type=chill_adventurer
+  "No worries. I'll get it done on the way up the hill." guard: type=chill_adventurer
+  "Granted. Briefly. Report back when done." guard: type=stern_captain
+  "Understood. I'll see to it. Stand by." guard: type=stern_captain
+  "Hmm, sure! Spin a favour! What's the worst that can happen?" guard: type=wild_card
+  "Yes, no! {.}Yes! The coin says yes!" guard: type=wild_card
+  "Yes! I'll do it twice! For extra credit!" guard: type=eager_go_getter
+  "On it! I'm already on it! I was on it before you asked!" guard: type=eager_go_getter
+  "Yes yes yes! I'll make it sparkly!" guard: type=bubbly_sparkler
+  "Ooh, a favour! Is there a ribbon? There should be a ribbon!" guard: type=bubbly_sparkler
+  "Yes. Count on me. The rest of you: fall in." guard: type=fiery_leader
+  "Done. Consider it handled. Who's next?" guard: type=fiery_leader
+  "Yes! And I'll probably add a flourish. Or break it, hee!" guard: type=chaos_goblin
+  "Sure, I'll do it my way. You won't like it. You'll love it." guard: type=chaos_goblin
+
+# ---- ASK_REPEAT ---------------------------------------------------------------------------------
+@rule core.ask_repeat.plain2 act: answer
+  "I said: it's time for a snack. And it is. Always."
+  "Wasn't important. You'd have hated it. Moving on."
+  "Fine, again: I said it very, very well. Twice."
+  "What did I say? Something wise. I've already forgotten it."
+  "Sure. Let me gather my thoughts. {.}They've scattered, try tomorrow."
+  "It was a joke. A good one. You missed the good part."
+  "I said hello. In a way you didn't hear."
+  "Nothing you need to know. Everything you want to know. Mostly nothing."
+  "I'll say it louder. {.}I'll say it LOUDER. {.}Better?"
+  "I said, 'what a nice day.' It isn't. I was being polite."
+  "I mumbled. It's part of my charm. Here's a clearer one."
+  "Oh, you want the whole thing again? Fine. Sit."
+@rule core.ask_repeat.complain2 act: complain
+  "I'm not repeating it. It wasn't any better the first time."
+  "Do you know how hard it is to be this brilliant once? Don't ask for twice."
+  "I said it once. It's still true. I'm not doing an encore."
+  "You're making me say it again. Rude. Now I've lost my place."
+  "Honestly. I speak, you wander off. This is how wars start."
+  "I'll say it again, but I'm sighing the whole time."
+@rule core.ask_repeat.joke act: joke
+  "What? What did I say? {.}No, really, what did I say?"
+  "I said 'repeat after me'. You didn't. That's the bit I'm cross about."
+  "I said what I said, and I regret what I'm about to say."
+  "Say what again? Hmm? {.}Now I've lost my own lines."
+  "I'd repeat it, but I'm saving it for a rainy day. Look, it's drizzling."
+@rule core.ask_repeat.voice act: answer
+  "Of course! My pleasure! Let me say it more clearly." guard: polite
+  "No, read my lips. Oh, you can't. I'm wearing a scarf." guard: blunt
+  "I said it. You didn't hear it. Not my problem." guard: blunt
+  "I said what I said. I will say it again. It is the same." guard: flat
+  "I SAID IT ALREADY! BUT HERE IT IS AGAIN! LOUDER!" guard: loud
+  "I'll repeat it once. Listen carefully. It's important." guard: serious
+  "Sure, sure, no problem. Happy to go again." guard: easygoing
+  "The same, but with a little hat on." guard: quirky
+  "Said it. Saying it again. Fast, ready?" guard: quick
+  "I said... {.}...hm, {.}give me a moment. {.}A longer one." guard: slow
+  "Speak up, dear! {.}Oh, that was me. {.}What was I saying?" guard: elder
+  "Ugh, do I have to? It was fine the first time." guard: teen
+  "Again? It's no better the second time. Same fire, same smoke." guard: hellborn
+  "I said it ghostly the first time. It's a gift. Again?" guard: ghost
+  "Shh. At this hour I whisper. Come closer." guard: night
+@rule core.ask_repeat.kid guard: kid_speaker tags: kid act: answer
+  "I said: HI! And also: look at this stick!"
+  "I forgot! It was about a bug! Or a bun!"
+  "I said it! With my mouth! Out loud!"
+  "Again? Okay, louder this time! HELLO!"
+@rule core.ask_repeat.type act: answer
+  "I said it softly, on purpose. Come closer. Not too close." guard: type=quiet_bookworm
+  "It's in a footnote. I'll read it to you. Slowly." guard: type=quiet_bookworm
+  "Zzz.., what? Oh. I said nothing, and it was cozy." guard: type=cozy_napper
+  "I said 'five more minutes'. I'll say it again, in five." guard: type=cozy_napper
+  "Nobody listens, then they ask again. Typical." guard: type=grumpy_gremlin
+  "I said what I said, and you heard it, you just didn't like it." guard: type=grumpy_gremlin
+  "Said something. Probably. It was a while ago." guard: type=deadpan_drifter
+  "It's in the air somewhere. Catch it if you like." guard: type=deadpan_drifter
+  "I said something soft. It floated off. I'll fetch another." guard: type=gentle_dreamer
+  "It's just a feeling, really. I'll say it again slower." guard: type=gentle_dreamer
+  "Of course! I'd say it a hundred times! It's lovely!" guard: type=sweet_sunbeam
+  "Yes, again! With a smile, ready? {.}Hello!" guard: type=sweet_sunbeam
+  "Oh, gladly! It deserves a second performance! Curtain!" guard: type=dramatic_poet
+  "A fine line, worth a second reading. Brace yourself." guard: type=dramatic_poet
+  "Missed it? Pity. I'll do it again, but it won't be as good." guard: type=cheeky_charmer
+  "Again? Because you liked it. I knew you would." guard: type=cheeky_charmer
+  "Certainly. I've got it in my notes. Page three." guard: type=diligent_helper
+  "Of course. Let me find it. {.}Found, reading." guard: type=diligent_helper
+  "Say again? Sure, I'll say it on the hike. Keep up." guard: type=chill_adventurer
+  "No worries. I'll say it again. The echo's good here." guard: type=chill_adventurer
+  "Pay attention. I'll repeat this once." guard: type=stern_captain
+  "Listen up, again. The same. Don't make me do it twice." guard: type=stern_captain
+  "I said something, or did I? Spin the wheel! {.}Let's find out!" guard: type=wild_card
+  "I said it. Now I'll say it backwards, ready? {.}Gnihtyreve." guard: type=wild_card
+  "Right, again! With more energy! One, two, three!" guard: type=eager_go_getter
+  "Yes, repeat! Rehearse, improve! Repeat!" guard: type=eager_go_getter
+  "Again?, yay! I love it when it's twice! Twice!" guard: type=bubbly_sparkler
+  "Okay! Sparkly version! Here we go!" guard: type=bubbly_sparkler
+  "Listen, again, everyone. This is important. Ready?" guard: type=fiery_leader
+  "Fine. Louder, so the back row hears it." guard: type=fiery_leader
+  "I said something about a spoon. I'll say it again. With the spoon." guard: type=chaos_goblin
+  "I said it, then I threw it. You missed it. I'll do it again." guard: type=chaos_goblin
