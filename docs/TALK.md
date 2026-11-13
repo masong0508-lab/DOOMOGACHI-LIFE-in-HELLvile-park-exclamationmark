@@ -876,7 +876,9 @@ runs first on every player turn; the S3 lint runs on every line.
 applies the `TalkSummary` of `talk_dm_end` under the daily caps of design 5.5.
 A small ledger of the town day (keyed by day and town seed, 64 residents and 64
 pairs, about 900 bytes `.bss`, not saved: a reload forgets the day) keeps the caps
-across conversations, so no number of talks farms more than they allow.
+across conversations, so no number of talks farms more than they allow. The
+guarantee holds for 64 residents and 64 pairs a day: past that the oldest entry is
+reused and forgets its caps (known, accepted; T8 may save the ledger in the TALK chunk).
 
 | Effect | How | Cap |
 |---|---|---|

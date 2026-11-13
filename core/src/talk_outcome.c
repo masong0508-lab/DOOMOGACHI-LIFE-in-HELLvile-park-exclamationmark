@@ -238,7 +238,8 @@ void talk_outcome_apply(const TalkSummary *sum, TalkOutcome *out)
             break;
         case TEV_ROMANCE_YES:                                /* Talk only asks: the sim rolls and owns the result */
             if (ia >= 0 && (e->b == TA_CONFESS || e->b == TA_ASK_OUT) && resident_id(ia) && sum->avatar >= 0 &&
-                sum->avatar < DOOMO_MAX_RESIDENTS && alive_resident(sum->avatar)) {
+                sum->avatar < DOOMO_MAX_RESIDENTS && alive_resident(sum->avatar) &&
+                !minor_id(sum->avatar) && !minor_id(ia)) {   /* defence in depth: the DM and the sim gate it too */
                 LedQ *q = led_q(sum->avatar, ia);
                 if (!(q->flags & LQF_ASKED)) {
                     q->flags |= LQF_ASKED;
