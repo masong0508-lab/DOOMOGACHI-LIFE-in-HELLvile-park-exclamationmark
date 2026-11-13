@@ -1,0 +1,3 @@
+# must fail: the hero is not Dolores
+wait 20
+expect-hero Dolores

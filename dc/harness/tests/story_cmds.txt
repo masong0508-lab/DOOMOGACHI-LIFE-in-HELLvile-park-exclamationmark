@@ -1,0 +1,13 @@
+# DC9A: the native runner's story commands reach the game's mailbox
+wait 20
+lang es
+expect-lang es
+lang en
+expect-lang en
+expect-hero Marvin
+ending-seen
+story-done
+expect-log ending seen
+expect-log story done
+story-fp 0xC0FFEE
+story-fp

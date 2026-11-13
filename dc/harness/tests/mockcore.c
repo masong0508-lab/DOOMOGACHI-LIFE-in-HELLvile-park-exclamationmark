@@ -176,6 +176,17 @@ static void run_cmd(void)
     case DC_HC_TEXT_FEED: r = arg >= ' ' || arg == '\n'; if (r) mlog("feed %u", arg); break;
     case DC_HC_TOWN_FILL: town_state = arg * 2654435761u + 1u; r = 1; break;
     case DC_HC_TOWN_CRC: r = town_state ^ 0x5A5A5A5Au; mlog("town crc %x", r); break;
+    /* DC9A: the story commands: languages en / es, the hero "Marvin", the fingerprint 0xC0FFEE */
+    case DC_HC_LANG: {
+        static int lang;                 /* 0 en, 1 es */
+        int f = !strcmp(name, "en") ? 0 : !strcmp(name, "es") ? 1 : -1;
+        if (f < 0) break;
+        if (arg == 0) { lang = f; r = 1; } else r = lang == f ? 2 : 1;
+        break; }
+    case DC_HC_HERO: r = !strcmp(name, "Marvin") ? 2 : 1; break;
+    case DC_HC_ENDING_SEEN: mlog("ending seen"); r = 1; break;
+    case DC_HC_STORY_DONE: mlog("story done"); r = 1; break;
+    case DC_HC_STORY_FP: r = 0xC0FFEEu; break;
     default: r = 0xFFFFFFFFu; break;
     }
     mb->result = r;

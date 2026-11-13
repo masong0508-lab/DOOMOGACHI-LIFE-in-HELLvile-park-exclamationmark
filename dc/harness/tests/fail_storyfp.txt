@@ -1,0 +1,3 @@
+# must fail: wrong story fingerprint
+wait 20
+story-fp 0xBAD

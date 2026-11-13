@@ -28,6 +28,10 @@ run --script "$here/fail_ticks.txt" --quiet >/dev/null 2>&1; check $? 1 "expect-
 run --script "$here/fail_load.txt" --quiet >/dev/null 2>&1; check $? 1 "failed load"
 run --script "$here/fail_towncrc.txt" --quiet >/dev/null 2>&1; check $? 1 "expect-town-crc failure"
 run --script "$here/fail_savefail.txt" --quiet >/dev/null 2>&1; check $? 1 "save-must-fail on a save that works"
+run --script "$here/story_cmds.txt" --quiet >"$out/story.log" 2>&1; check $? 0 "story_cmds.txt (lang, hero, ending-seen, story-done, story-fp)"
+run --script "$here/fail_lang.txt" --quiet >/dev/null 2>&1; check $? 1 "expect-lang failure"
+run --script "$here/fail_hero.txt" --quiet >/dev/null 2>&1; check $? 1 "expect-hero failure"
+run --script "$here/fail_storyfp.txt" --quiet >/dev/null 2>&1; check $? 1 "story-fp failure"
 run --script "$here/console.txt" --console --quiet >/dev/null 2>&1; check $? 0 "--console: test flags 0"
 run --frames 100000 --timeout 1 --quiet >/dev/null 2>&1; check $? 1 "timeout"
 "$B/dcrun" "$B/mockcore.so" mock.elf --mailbox 8c020000 --run-dir "$out/run" --frames 30 --quiet >/dev/null 2>&1

@@ -1,0 +1,4 @@
+# must fail: the language is not es
+wait 20
+lang en
+expect-lang es
