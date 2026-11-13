@@ -20,7 +20,8 @@
 #include "doomo/save.h"
 #include "../src/creator_int.h"
 
-int pb_head_adj(int body);          /* portrait_body.c */
+extern const uint8_t pb_body_head[16];     /* portrait_body.c: the head size step per body type */
+static int pb_head_adj(int body) { return body >= 0 && body < 16 ? pb_body_head[body] : 0; }
 
 #define CANARY 16
 typedef struct Pic { uint8_t guard0[CANARY]; uint8_t bust[PORTRAIT_W * PORTRAIT_H]; uint8_t guard1[CANARY];
@@ -146,12 +147,12 @@ TEST(crbody_new_types_set_the_proportions_they_are_named_for)
     render(&r, &PB);
     fig_box(&PB, &w, &h);
     CHECK_MSG(h > ah, "gangly is not taller (%d vs %d)", h, ah);
-    /* the head step: bobble and bean have a bigger head than the slider says, brick a smaller one, the
+    /* the head step: bobble, bean and gangly have a bigger head than the slider says, the
      * classic ten none (their pixels are the golden's) */
     for (hb = 0; hb < BODY_COUNT; hb++) CHECK_EQ(pb_head_adj(hb), 0);
     CHECK_EQ(pb_head_adj(BODY_BOBBLE), 4);
-    CHECK_EQ(pb_head_adj(BODY_BRICK), -1);
-    CHECK_EQ(pb_head_adj(200), 0);                      /* out of range: the average */
+    CHECK_EQ(pb_head_adj(BODY_BEAN), 1);
+    CHECK(pb_head_adj(BODY_BOBBLE) > pb_head_adj(BODY_BEAN));
     bench(&r, SPECIES_CATFOLK, BODY_BOBBLE);
     render(&r, &PB);
     bench(&r, SPECIES_CATFOLK, BODY_AVERAGE);

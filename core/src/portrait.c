@@ -54,11 +54,11 @@ static void sanitize(DoomoLook *l)
     FIXP(top, TOP_COUNT, GF_TOP); FIXP(bottom, BOTTOM_COUNT, GF_BOTTOM); FIXP(shoes, SHOES_COUNT, GF_SHOES);
     FIXP(hat, HAT_COUNT, GF_HAT); FIXP(accessory, ACC_COUNT, GF_ACCESSORY); FIXP(aura, AURA_COUNT, GF_AURA);
     FIXE(pattern, PATTERN_COUNT);
+    l->head_size += pb_body_head[l->body];                      /* CR-BODY: the body's head size step, once */
     FIXS(height, 15); FIXS(build, 15); FIXS(head_size, 15); FIXS(eye_size, 15);
     FIXS(eye_spacing, 15); FIXS(eye_height, 15); FIXS(eye_tilt, 15);
     FIXS(brow_height, 15); FIXS(nose_size, 15); FIXS(mouth_size, 15);
     FIXS(fangs, 3); FIXS(horn_size, 15);
-    l->head_size = (uint8_t)DOOMO_CLAMP(l->head_size + pb_head_adj(l->body), 0, 15);   /* CR-BODY: the body's step, once */
     if (l->eye_count < 1) l->eye_count = 1;
     if (l->eye_count > 3) l->eye_count = 3;
     if (l->skin >= 8 + PAL_PAINT_COUNT) l->skin = SKIN_FAIR;
