@@ -1207,6 +1207,21 @@ voice is said by its own speaker only; with a child in the room none of the grow
 lines come out and the room stays strict-lint clean; a hard feeling is still a plain topic
 (never the grief bank). `TALK_en.BIN` 755,772 -> 776,188 B (+20,416 B, PS1/GBA banks are
 streamed: no resident byte). No engine change. A sample is in the evidence directory.
+**T5B-SURF1 (Surface push A, content only)**: +722 alternatives (5,646 -> 6,368) in three new files,
+`grammar/en/surf_a_gesture.tlk` (hug, shake of the head, nod, a gift, walking away), `surf_a_third.tlk`
+(accuse, defend, take a side, mediate) and `surf_a_flow.tlk` (yes, no, introduce). The census grid
+(`census_en.tsv`, 110,000 contexts, every exchange sampled) showed these player acts repeat one line per
+rule most: 74% to 85% distinct replies for hug, no, walk away, accuse, yes, mediate, take side, shake head,
+nod, introduce, give and defend, against 93% to 99% for the ask and cool acts. Each act got 50 to 70 new
+alternatives over the reply acts the adjacency table allows, with guards by time, mood, relationship,
+voice, stance, topic and (for kid speakers) `kid_speaker` with `tags: kid`. A hug stays a plain hug a
+stranger, a rival or an unfamiliar child may decline; no tease or blame reply (TK10 untouched), no register
+word, no romance. Rule names start with `sa_`. Census, 200,000 contexts, same grid, before -> after:
+Surface 116,536 -> 124,834 distinct (+7.1%; Chao1 655,750 -> 734,511), Skeleton 113,387 -> 121,363,
+Meaning 15,191 -> 16,195, 0 of 200,000 failed quality, 0 S3 hits. A full run is expected near 830,000
+Surface: **the 1,000,000 target is still missed**; it needs roughly 3 to 4 more pushes of this size, or lines with
+topic slots in the high-volume rules. `TALK_en.BIN` 755,772 -> 788,732 B (+32,960 B, about 46 B an
+alternative; PS1 non-resident data, no resident byte; GBA and PS1 sections unchanged). No engine change.
 
 **With K-10 (the TK3 landing)**: GRAMMAR 14,536 B and STRINGS 17,650 B
 stored (27,439 B raw) for 373 rules, 718 alternatives, 512 guard terms, 79

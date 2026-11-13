@@ -1,0 +1,322 @@
+# core/data/talk/grammar/en/surf_a_third.tlk - more replies when the player takes part in a row between
+# others: accuse, defend, take a side, mediate (owner: TK; T5b package T5B-SURF1, Surface push A).
+# Content only. Clean in any room: nobody is hurt, nothing is aimed at a child, no blame reply (the
+# cool banks are not touched), no register word, no romance. Kid voices are kid banks. Rule names start
+# with sa_. Syntax: talkc_gen.py.
+
+# ---- ACCUSE: "it was them" ------------------------------------------------------------------------------------
+@rule core.accuse.sa_disagree act: disagree
+  "Me, never, I was nowhere near it. I have a witness. A good one."
+  "Hold on, that's a big word, accuse. Do you have a receipt?"
+  "I'd never, ask anyone. Well, don't ask the cat. She knows."
+  "That's a serious charge. I want my lawyer, a sandwich and a nap."
+  "Not me, check the evidence. The evidence is a crumb. Check it."
+  "Oh, you've got the wrong person. Try again, with less pointing."
+  "Pointing fingers is rude. And my finger's shorter. Think about that."
+  "No, no, no, I was elsewhere. Possibly asleep. Hard to prove."
+@rule core.accuse.sa_disagree_topic guard: topic act: disagree
+  "Me and {x}? You've got it backwards. {x:cap} did it to me."
+  "Leave {x} out of it. It's innocent. I'd bet my hat on it."
+  "If it's about {x}, I'm completely innocent. Ask the neighbours."
+@rule core.accuse.sa_disagree_blunt guard: blunt act: disagree
+  "Nope. Wasn't me. You're pointing at the wrong thing."
+  "Wrong. Next accusation, please. Try one that's true."
+@rule core.accuse.sa_disagree_polite guard: polite act: disagree
+  "I'm afraid there's been a misunderstanding. I should never."
+  "With respect, I'd like to correct the record. It wasn't me."
+@rule core.accuse.sa_disagree_elder guard: elder act: disagree
+  "In my day, we waited for the facts. Facts first, shouting after."
+  "Dear, I haven't the knees for mischief. Look elsewhere."
+@rule core.accuse.sa_disagree_sad guard: mood=sad act: disagree
+  "[SAD]That hurts. I didn't do it. I wouldn't, please believe me."
+@rule core.accuse.sa_disagree_angry guard: mood=angry act: disagree
+  "[ANGRY]Excuse me? No. Check your facts, then come back, shouting less."
+@rule core.accuse.sa_agree act: agree
+  "Good point. It does sound like them. I won't say more."
+  "I did wonder about that. Funny how things line up."
+  "You know, you might be right. It does fit the pattern."
+  "Hm. I hadn't thought of it. But now I can't unthink it."
+  "I'd keep an eye on that. Quietly. And with snacks."
+  "Between us, I had the same feeling. Don't repeat it."
+  "That checks out. I saw something odd, and I didn't say."
+@rule core.accuse.sa_agree_quirky guard: quirky act: agree
+  "Ooh, a mystery! I'll fetch my magnifying glass and my hat."
+  "The plot thickens! Like soup, but with more consequences."
+@rule core.accuse.sa_agree_friend guard: rel=friend act: agree
+  "If you say so, I believe you. You're not one for fibs."
+@rule core.accuse.sa_joke act: joke
+  "It was the butler. It's always the butler. We haven't got one."
+  "I'd like to point out the real culprit: gravity. It started it."
+  "An accusation! Quick, dim the lights and cue the organ."
+  "Objection, sustained! Overruled! I can't tell, I'm not a judge."
+  "In this house we assume innocence and check the cookie jar."
+  "Hold the phone. We have a whodunit, and I haven't had lunch."
+  "That's the most dramatic thing I've heard today. Do continue."
+  "Someone's been at the scones. And by someone, I mean probably me."
+@rule core.accuse.sa_joke_night guard: time=night act: joke
+  "An accusation after dark? How gothic. Light a candle."
+  "At this hour, everyone's a suspect. Even the moon."
+@rule core.accuse.sa_joke_flat guard: flat act: joke
+  "Gasp, shock. A scandal. That was me being scandalised."
+@rule core.accuse.sa_defend act: defend
+  "Hang on, they'd never. They're a good egg. A bit cracked, but good."
+  "I'll vouch for them. They were with me all afternoon, being dull."
+  "Whoa, let's slow down. Let them explain before the pitchforks."
+  "That's not fair. They've got a clean record, mostly."
+  "I'm sure there's a reasonable answer. Let's ask, nicely."
+  "Hey, easy. We don't know the whole story. Nobody ever does."
+  "Not them. They can't even steal a biscuit without apologising."
+@rule core.accuse.sa_defend_best guard: rel=best act: defend
+  "No way. I know them better than I know my own socks."
+  "Back off. They're mine to defend, and I'm excellent at it."
+@rule core.accuse.sa_defend_polite guard: polite act: defend
+  "Surely not. I think we ought to hear their side first."
+@rule core.accuse.sa_defend_serious guard: serious act: defend
+  "Careful. Accusations stick. Make sure you have your facts."
+@rule core.accuse.sa_gossip act: gossip
+  "Well, since you ask, I've heard things. Hush hush, mind."
+  "Ooh, that fits with what I heard at the baker's."
+  "I shouldn't say, but there was a rumour about a hat."
+  "Between you and me, the whole street's been saying so."
+  "I heard it from someone who heard it from a sheep. Reliable."
+  "I couldn't possibly tell you. Come closer, and I will."
+  "That reminds me of the bit I heard by the well."
+@rule core.accuse.sa_gossip_quirky guard: quirky act: gossip
+  "My sources are a crow and a dream. Both agree with you."
+@rule core.accuse.sa_gossip_night guard: time=night act: gossip
+  "Whispers carry at night. I've heard a few, and they're juicy."
+@rule core.accuse.sa_kid_disagree guard: kid_speaker tags: kid act: disagree
+  "Not me, I didn't do it! I was in the garden! Digging!"
+  "Nuh-uh, it was the wind! The wind did it! Ask the wind!"
+  "No, I was being good! Ask my teddy! He saw!"
+@rule core.accuse.sa_kid_joke guard: kid_speaker tags: kid act: joke
+  "It was a ghost! A tiny ghost! With a hat, I saw him!"
+  "I'd never, I'm an angel! Look at my halo! It's a hula hoop!"
+@rule core.accuse.sa_kid_defend guard: kid_speaker tags: kid act: defend
+  "No fair! They're nice! They shared a cookie once!"
+  "Leave them alone! They're my friend! I'll tell on you!"
+@rule core.accuse.sa_kid_agree guard: kid_speaker tags: kid act: agree
+  "Hm, I did see something. It was really suspicious. It had a coat."
+
+# ---- DEFEND: the player stands up for someone -----------------------------------------------------------------
+@rule core.defend.sa_thank act: thank
+  "Thank you for saying so. Nobody ever speaks up. You did."
+  "That was kind of you. I'll remember it on a bad day."
+  "Cheers, you. That's what a good neighbour does."
+  "You stuck up for me! I'm choked up. Don't look."
+  "You're too good. Thank you. I'll find a way to repay it."
+  "That meant a lot. Properly. I'm not just saying it."
+  "Thank you. Back when it matters, you're in my corner."
+@rule core.defend.sa_thank_friend guard: rel=friend act: thank
+  "Friends do that, don't they? Thank you. I'd do the same."
+  "You're a proper pal. I'll bake something. Or buy it."
+@rule core.defend.sa_thank_sad guard: mood=sad act: thank
+  "[SAD]Thank you. I was feeling small, and you made me bigger."
+@rule core.defend.sa_thank_polite guard: polite act: thank
+  "How gracious of you. I'm most grateful for the support."
+@rule core.defend.sa_thank_elder guard: elder act: thank
+  "Bless you, dear. At my age, a friend like you is worth a pension."
+@rule core.defend.sa_agree act: agree
+  "Exactly. That's what I was going to say, only better."
+  "Hear, hear. Well argued. Do it again, louder."
+  "You're right. Quite right. I'd have said so sooner."
+  "I agree with every word. I've told everyone. They didn't listen."
+  "That's it. That's the sensible take. Frame it."
+  "Well said. I'm taking notes. Possibly a copy of your speech."
+@rule core.defend.sa_agree_topic guard: topic act: agree
+  "And as for {x}, that's what I've always said too."
+  "Absolutely. And {x} proves it. Case closed."
+@rule core.defend.sa_agree_serious guard: serious act: agree
+  "I agree. Fairness matters. Let's not rush to judge anyone."
+@rule core.defend.sa_agree_blunt guard: blunt act: agree
+  "Right. Fine, you're correct. Don't let it go to your head."
+@rule core.defend.sa_disagree act: disagree
+  "Hm, I'm not sure they deserve it. Have you heard everything?"
+  "That's kind, but I'd hold the cheering. There's more to it."
+  "I see why you'd say that. I don't quite agree, though."
+  "Let's not rush to a hero's welcome. They've got a past."
+  "Defend them if you like. I'll keep my own opinions in my pocket."
+  "Hm, maybe. But the facts are ticklish, and I'm not convinced."
+@rule core.defend.sa_disagree_blunt guard: blunt act: disagree
+  "No, they messed up. Own it. Defending isn't fixing."
+@rule core.defend.sa_disagree_polite guard: polite act: disagree
+  "I appreciate the sentiment, truly. I'm afraid I disagree."
+@rule core.defend.sa_joke act: joke
+  "My hero! In a cape that doesn't quite fit. Splendid."
+  "A defender! Quick, get this person a medal. A small one."
+  "You defend them like a lawyer. A tired one, with snacks."
+  "Careful. If you keep taking sides, people will start sending you gifts."
+  "I'd like to hire you. I've got plenty of arguments. Nobody to win them."
+  "Look at us, a defence team. We'd lose, but with style."
+  "Right, so we're the good guys. I'll take the cloak with the pockets."
+@rule core.defend.sa_joke_flat guard: flat act: joke
+  "Ah, a defender. I'd cheer, but my energy's elsewhere. Yay."
+@rule core.defend.sa_complain act: complain
+  "I'd have liked a defender sooner. It took you a while."
+  "Great, now I'm the one in the middle. I hate the middle."
+  "It's not fair, being the topic. Why's it always me?"
+  "Oh, now they all stare. Thanks. I loved the quiet."
+  "I'd rather this was about someone else. Anyone. A tree."
+@rule core.defend.sa_complain_tired guard: mood=tired act: complain
+  "[SLEEPY]Can we do this tomorrow? I'm too tired for a debate."
+@rule core.defend.sa_kid_thank guard: kid_speaker tags: kid act: thank
+  "Thank you for sticking up for me! You're a superhero!"
+  "You said it! Yay! I'll give you my best stick!"
+  "That was so nice! I'll draw you a picture. It'll have a dog."
+@rule core.defend.sa_kid_joke guard: kid_speaker tags: kid act: joke
+  "You're the defender! I'm the defendee! That's a word!"
+  "My hero! Can I have a cape too? A small cape."
+@rule core.defend.sa_kid_agree guard: kid_speaker tags: kid act: agree
+  "Yeah! What they said! I'd say it too but louder!"
+@rule core.defend.sa_kid_complain guard: kid_speaker tags: kid act: complain
+  "Why's everyone looking at me? I didn't do anything! I think!"
+
+# ---- TAKE_SIDE: the player picks a side ----------------------------------------------------------------------------
+@rule core.take_side.sa_thank act: thank
+  "Aw, you're on my side! I've never felt so supported."
+  "Thank you for picking me. I know it was a hard choice."
+  "That means so much. I'll never forget who stood by me."
+  "You've made my day. And my week. And possibly my month."
+  "Look at you, taking sides like a champion. Thank you."
+  "I'm touched, really. I'd shake your hand but I'm blushing."
+  "Thank you. It's good to have someone in the corner, holding the towel."
+@rule core.take_side.sa_thank_rival guard: rel=rival act: thank
+  "Well, well, you're on my side. That's a first. Don't make it weird."
+@rule core.take_side.sa_thank_friend guard: rel=friend act: thank
+  "I knew you'd pick me. Not that I was worried. A little worried."
+@rule core.take_side.sa_thank_polite guard: polite act: thank
+  "How kind of you to say so. I'm deeply obliged."
+@rule core.take_side.sa_thank_topic guard: topic act: thank
+  "Thank you. And on {x}, we're in total agreement. Brilliant."
+@rule core.take_side.sa_agree act: agree
+  "Right, so we're a team. I like teams. They have snacks."
+  "Same side, then. That's settled. Shake on it, or not."
+  "Yes! Finally, a reasonable person. I'd given up hope."
+  "Good call. It's the side with the better hats, anyway."
+  "Agreed. Let's keep it simple, and a little bit smug."
+  "We see things the same way. We should write a pamphlet."
+@rule core.take_side.sa_agree_stance guard: stance=pro act: agree
+  "You're with me on this? Great. It's a thing worth defending."
+@rule core.take_side.sa_agree_stance_con guard: stance=con act: agree
+  "Thank goodness. I couldn't stand it, and now I'm not alone."
+@rule core.take_side.sa_disagree act: disagree
+  "Hm, I'm not sure that's the right side. Think it over."
+  "You picked that one? Brave. I'd have picked the other."
+  "Well, that's your choice. I respect it. I disagree, loudly."
+  "Hold on, you can't just choose. There's a form to fill in."
+  "I thought you'd see it my way. Clearly, you saw some other way."
+  "Interesting pick. I'll ponder it, and then ignore it."
+@rule core.take_side.sa_disagree_blunt guard: blunt act: disagree
+  "Wrong side. Switch. I'll wait."
+@rule core.take_side.sa_disagree_serious guard: serious act: disagree
+  "Think carefully. Choosing a side shapes things. Weigh it up."
+@rule core.take_side.sa_complain act: complain
+  "Oh, so now it's sides. I was having a nice day, too."
+  "I'd hoped you'd stay out of it. It's rarely nice in here."
+  "Sides! Everyone's got a side. I'd rather have a sandwich."
+  "Great. Now there's two of you against my one good argument."
+  "Taking sides splits a room. Look at us. We're a pie chart."
+@rule core.take_side.sa_joke act: joke
+  "Oh, you've picked a side! Do you get a badge? There should be a badge."
+  "I'm on both sides. It's the only way to win with dinner guests."
+  "A side! How decisive. I'm still deciding what to have for lunch."
+  "You chose well. Or badly. We'll know on Thursday."
+  "Sides make a game of it. Do we get a scoreboard?"
+  "I'm on the side that has cake. Tell me when that's decided."
+  "Ooh, drama. I'll fetch snacks. You two continue."
+@rule core.take_side.sa_joke_night guard: time=night act: joke
+  "Sides at night. How dramatic. Someone cue the thunder."
+@rule core.take_side.sa_joke_flat guard: flat act: joke
+  "A side was chosen. I'm moved. This is my moved face."
+@rule core.take_side.sa_kid_thank guard: kid_speaker tags: kid act: thank
+  "Yay, you're on my team! Team, we're a team! Team name: Us!"
+  "You picked me! You're the best! I'll draw you a medal!"
+@rule core.take_side.sa_kid_agree guard: kid_speaker tags: kid act: agree
+  "Yeah, same side! We're the winning side! We have a flag!"
+@rule core.take_side.sa_kid_complain guard: kid_speaker tags: kid act: complain
+  "But I wanted you on my side! Why'd you pick that one?"
+  "Aww, no fair! Everyone picks the other side! I'm sad!"
+@rule core.take_side.sa_kid_joke guard: kid_speaker tags: kid act: joke
+  "Sides! Left side, right side, tummy side! Which one?"
+
+# ---- MEDIATE: the player tries to calm a row -------------------------------------------------------------------------
+@rule core.mediate.sa_agree act: agree
+  "You're right. We're being silly. We should talk like grown-ups."
+  "Okay, okay. Let's hear it out. I'll even take my coat off."
+  "Good idea. A calm word is better than a loud one."
+  "Fair. I'll listen first, and then pout, in that order."
+  "Yes, let's sort it. We've been at it long enough."
+  "You make a decent referee. Would you like a whistle?"
+  "Fine, a truce. I'll hold out my hand. A bit."
+  "All right. A deep breath, and a fresh start. Here goes."
+@rule core.mediate.sa_agree_sad guard: mood=sad act: agree
+  "[SAD]Thank you. I didn't want to fight. I just got carried away."
+@rule core.mediate.sa_agree_angry guard: mood=angry act: agree
+  "[ANGRY]Fine, I'll calm down. Give me a moment. A long moment."
+@rule core.mediate.sa_agree_polite guard: polite act: agree
+  "Of course. Let's be reasonable. I'm sorry for raising my voice."
+@rule core.mediate.sa_agree_friend guard: rel=friend act: agree
+  "You always know when to step in. Thank you for being the calm one."
+@rule core.mediate.sa_agree_topic guard: topic act: agree
+  "Right. Let's put {x} aside. Nobody wins a fight about {x}."
+  "Fair. We can talk about {x} later, calmly, with tea."
+@rule core.mediate.sa_agree_serious guard: serious act: agree
+  "Agreed. We should settle this properly. No shouting, just facts."
+@rule core.mediate.sa_agree_elder guard: elder act: agree
+  "Wise words, dear. I've seen worse rows over a fence."
+@rule core.mediate.sa_disagree act: disagree
+  "Stay out of it. This is between us. And possibly a hedge."
+  "That's kind, but no. We've got to fight it out. Politely."
+  "Peace is nice, but I'm not done being right yet."
+  "Hold on. I'll stop when I've said my piece. Maybe two pieces."
+  "Calm down? I'm perfectly calm. This is my calm voice."
+  "Mediation's a lovely idea. Not today. Today I'm busy."
+@rule core.mediate.sa_disagree_blunt guard: blunt act: disagree
+  "No, stay out of it. Thanks for the offer. Goodbye."
+@rule core.mediate.sa_disagree_angry guard: mood=angry act: disagree
+  "[ANGRY]Not now! I'm not finished! Let me finish!"
+@rule core.mediate.sa_apologize act: apologize
+  "You're right. I overreacted. I'm sorry, to everyone, and the hedge."
+  "Sorry. I got hot under the collar. It's a warm collar."
+  "I shouldn't have said that. Let me say it nicer."
+  "Okay. I'm sorry. I'll make it up with a snack."
+  "I was out of line. I'll fix it. Starting with tea."
+  "Sorry, all. Peace is better than winning. Mostly."
+@rule core.mediate.sa_apologize_polite guard: polite act: apologize
+  "I do apologise. It was uncalled for, and I regret it."
+@rule core.mediate.sa_apologize_sad guard: mood=sad act: apologize
+  "[SAD]I'm sorry. I didn't mean to be unkind. I'll try again."
+@rule core.mediate.sa_apologize_elder guard: elder act: apologize
+  "Oh, I'm sorry. Old people get cranky. It's in the pension."
+@rule core.mediate.sa_joke act: joke
+  "Here comes the referee! Make sure you wear stripes."
+  "Mediator! Quick, somebody give them a gavel and a bun."
+  "Peace talks! I'll bring biscuits. Biscuits end wars."
+  "I came for a fight, and I got a counsellor. Not ideal."
+  "Look at you, bringing calm. Do you do weddings?"
+  "Right, I'll put my fists away. They're not that big anyway."
+  "I'll make peace if you pay for lunch. That's the deal."
+@rule core.mediate.sa_joke_night guard: time=night act: joke
+  "A truce at midnight? How romantic. And how sleepy."
+@rule core.mediate.sa_joke_quirky guard: quirky act: joke
+  "Peace! Quick, before the spoons start. They're listening."
+@rule core.mediate.sa_complain act: complain
+  "It's easy to say, calm down. You're not the one who's cross."
+  "Oh, the peacemaker's here. How nice. For you."
+  "I didn't ask for a mediator. I asked for a chair."
+  "Everyone wants peace, until it's their turn to give in."
+  "It's not that simple. If it were, I'd have done it by now."
+@rule core.mediate.sa_complain_tired guard: mood=tired act: complain
+  "[SLEEPY]I'm too tired for this. Can we do it after a nap?"
+@rule core.mediate.sa_kid_agree guard: kid_speaker tags: kid act: agree
+  "Okay, I'm sorry. We can be friends again! With a hug!"
+  "Okay, truce! Truce, I'll share my snack! A quarter of it!"
+@rule core.mediate.sa_kid_apologize guard: kid_speaker tags: kid act: apologize
+  "I'm sorry I yelled. I was grumpy. I get hungry grumpy."
+  "Sorry! I didn't mean it. I just wanted the red crayon."
+@rule core.mediate.sa_kid_disagree guard: kid_speaker tags: kid act: disagree
+  "No! I'm not done! It's my turn to be right!"
+@rule core.mediate.sa_kid_joke guard: kid_speaker tags: kid act: joke
+  "Peace! Peace and pizza! That's the best peace!"
+@rule core.mediate.sa_kid_complain guard: kid_speaker tags: kid act: complain
+  "It's not my fault! They started it! I only finished it!"

@@ -1,0 +1,443 @@
+# core/data/talk/grammar/en/surf_a_gesture.tlk - more replies to gestures: hug, shake of the head, nod,
+# a gift, walking away (owner: TK; T5b package T5B-SURF1, Surface push A). Content only. The census
+# showed these player acts repeat one line per rule most (hug, shake head, nod, give, walk away). Clean
+# in any room, no register word, no romance. A hug is a plain hug a resident may decline (a stranger, a
+# rival, a child who does not know the player). Rule names start with sa_. Syntax: talkc_gen.py.
+
+# ---- HUG: a plain hug, free to decline ---------------------------------------------------------------
+@rule core.hug.sa_yes guard: !kid_speaker&!rel=stranger&!rel=rival act: hug
+  "Hug received. Filing it under good things, top drawer."
+  "Come here. Careful, I'm full of soup and old opinions."
+  "A hug! Lovely. Nobody's squeezed me since the last eclipse."
+  "Mm, good one. Firm, warm, no elbows. Ten out of ten."
+  "Oh, go on then. One hug, and I'll pretend I didn't start it."
+  "There we go. That's the stuff. I feel two inches taller."
+  "Squeeze accepted. Hold on, my glasses are on crooked now."
+  "You hug like someone who means it. Don't ever stop."
+  "Right, that was nice. Let me think of a way to be cool about it."
+  "Oh, hello, hug! Yes, in, in. Mind the hat."
+@rule core.hug.sa_yes_morning guard: time=morning&!kid_speaker&!rel=stranger&!rel=rival act: hug
+  "A morning hug! Better than coffee, and much less bitter."
+  "Hug before breakfast. That's how the day should start."
+@rule core.hug.sa_yes_night guard: time=night&!kid_speaker&!rel=stranger&!rel=rival act: hug
+  "A hug at this hour? Perfect. Bedtime hugs count double."
+  "Shh, careful. A night hug. The owls are jealous."
+@rule core.hug.sa_yes_happy guard: mood=happy&!kid_speaker&!rel=stranger&!rel=rival act: hug
+  "[HAPPY]Yes! Hugs! I was feeling cheerful and now I'm stuffed with it."
+  "[HAPPY]Ha, bring it in! I'm in a hugging mood already."
+@rule core.hug.sa_yes_tired guard: mood=tired&!kid_speaker&!rel=stranger&!rel=rival act: hug
+  "Mm, warm. I could fall asleep right here. Don't let me."
+  "A hug. Good. I was running low on everything."
+@rule core.hug.sa_yes_scared guard: mood=scared&!kid_speaker&!rel=stranger&!rel=rival act: hug
+  "[SHOCK]Oh, thank you. Everything's a bit much today, and you're not."
+  "Oh, that's helping. A lot. Stay a second."
+@rule core.hug.sa_yes_friend guard: rel=friend&!kid_speaker act: hug
+  "My favourite hug-giver! The line starts here, and it's just you."
+  "Friend hug! Better than the stranger kind. Fewer awkward pats."
+@rule core.hug.sa_yes_best guard: rel=best&!kid_speaker act: hug
+  "Best-friend hug. The deluxe model. Extra squeeze at the end."
+  "There you are! Hugs on arrival, you know the rules."
+@rule core.hug.sa_yes_family guard: rel=family&!kid_speaker act: hug
+  "Family hug! Mind my ribs. They're older than they look."
+  "Aw, come here, you. You always did hug like a bear."
+@rule core.hug.sa_yes_acq guard: rel=acquaintance&!kid_speaker act: hug
+  "Oh, we're hugging people now. Good, I'm in. Just a short one."
+  "A hug from a friendly face. That's the best sort."
+@rule core.hug.sa_yes_elder guard: elder&!rel=stranger&!rel=rival act: hug
+  "Ooh, I'll take that, dear. These old bones love a squeeze."
+  "How sweet. Mind the cardigan, it has a lot of buttons."
+@rule core.hug.sa_yes_blunt guard: blunt&!rel=stranger&!rel=rival&!kid_speaker act: hug
+  "Fine, short one. Okay, that's enough. Okay, one more."
+  "Hug done. Good. Don't tell anyone I liked it."
+@rule core.hug.sa_yes_polite guard: polite&!rel=stranger&!rel=rival&!kid_speaker act: hug
+  "How thoughtful. Thank you, truly. That was most welcome."
+  "Oh, my. What a kind gesture. I accept, warmly."
+@rule core.hug.sa_yes_quirky guard: quirky&!rel=stranger&!rel=rival&!kid_speaker act: hug
+  "Hug detected. Calibrating, yes, that's squeezing. Excellent."
+  "I'll log this as a hug. Subcategory: the good kind."
+@rule core.hug.sa_yes_topic guard: topic&!kid_speaker&!rel=stranger&!rel=rival act: hug
+  "A hug! Better than talking about {x}. Not by much, but still."
+  "Hug first, {x} after. That's my order of business."
+  "Okay, hug. And then you can explain why {x} came up."
+@rule core.hug.sa_thank guard: !kid_speaker&!rel=stranger&!rel=rival act: thank
+  "Thanks, I didn't know I needed that. I'll take another."
+  "That was kind. Truly. I'll remember it on a grey day."
+  "You're good at that. Thank you. It helped more than I'll say."
+  "Cheers for the hug. My day was crumpled and now it's flat again."
+  "Thank you. I'd say more but I'm busy feeling better."
+@rule core.hug.sa_thank_sad guard: mood=sad&!kid_speaker&!rel=stranger&!rel=rival act: thank
+  "[SAD]Thank you. I was dragging a sack of nothing, and you lifted it."
+  "[SAD]That helped. Really. Thank you for noticing."
+@rule core.hug.sa_joke guard: !kid_speaker&!rel=stranger&!rel=rival act: joke
+  "Hug! Quick, someone check my pockets, I'm being charmed."
+  "I accept this hug on behalf of my elbows, who were not consulted."
+  "Oh good, a hug. I was about to start hugging the wallpaper."
+  "Is this a hug or a rescue? Either way, I'm saved."
+  "Careful, I'm ticklish in places I haven't found yet."
+  "Hugs are free here. Tips are accepted in soup."
+  "You've hugged me. That's legally binding. I'll be in touch."
+@rule core.hug.sa_laugh guard: !kid_speaker&!rel=stranger&!rel=rival act: laugh
+  "Ha! Oh, you got me! That was a sneaky one."
+  "Hee, okay, okay, I give up. You win. More hugs."
+  "Ha ha, you absolute sweetheart! Do it again."
+@rule core.hug.sa_stranger guard: !kid_speaker&rel=stranger act: no
+  "Oh, hello! That's friendly, but we've just met. Handshake first?"
+  "I'm flattered, truly, but I like a bit of warm-up before a hug."
+  "Hm, not yet. Ask me again once I know your favourite soup."
+  "Sorry, I'm a slow hugger. Give me a few chats, then yes."
+  "Kind of you, but my hugs are reserved. Waving's open to all."
+@rule core.hug.sa_stranger_dismiss guard: !kid_speaker&rel=stranger act: dismiss
+  "Maybe later. Let's start with names. Mine's on the door."
+  "Not just now, thanks. A wave will do nicely."
+@rule core.hug.sa_rival guard: !kid_speaker&rel=rival act: no
+  "Hug, we're not there yet. Possibly never. Ask again in a decade."
+  "No, thank you. I'm still cross about the thing. You know the thing."
+  "Not from you, no. I've got a standing order of no hugs. Nothing personal."
+@rule core.hug.sa_rival_dismiss guard: !kid_speaker&rel=rival act: dismiss
+  "Ha, no. Walk it off, you'll feel better."
+  "I'll pass. Go hug a tree. They don't talk back."
+@rule core.hug.sa_angry guard: mood=angry&!kid_speaker&!rel=stranger act: no
+  "[ANGRY]Not right now. I'm a hot kettle. Give it a minute."
+  "[ANGRY]Mm, no. Today I'm all corners. Try again tomorrow."
+@rule core.hug.sa_kid_yes guard: kid_speaker&!rel=stranger tags: kid act: hug
+  "Hug, hug! Squeeze! I'm a squeezy ball!"
+  "[HAPPY]Yay, a hug! You smell like cookies. Do you have cookies?"
+  "Okay! Hug, count to five! One, two, five!"
+  "I'm hugging you back! Super hard! Wait, not that hard."
+  "Hugs are my best thing. I'm the hug champion of the street."
+  "A hug! Yes! You can hug the cat too, if she lets you."
+@rule core.hug.sa_kid_thank guard: kid_speaker&!rel=stranger tags: kid act: thank
+  "Thanks for the hug! It was a good one. Can I have another?"
+  "Thank you! That made my tummy feel nice."
+  "Thanks! You're cuddly, like a pillow with arms."
+@rule core.hug.sa_kid_joke guard: kid_speaker&!rel=stranger tags: kid act: joke
+  "You can hug me! But not the dragon. He's shy."
+  "Hug me and I turn into a frog! Ribbit! Not really."
+  "Hugs cost one cookie. Okay, no, they're free today."
+@rule core.hug.sa_kid_laugh guard: kid_speaker&!rel=stranger tags: kid act: laugh
+  "Hee hee hee! You hugged me! Do it again, do it again!"
+  "Ha ha, too tight! No, just right! Okay, tight again!"
+@rule core.hug.sa_kid_no guard: kid_speaker&rel=stranger tags: kid act: no
+  "Um, no thank you. I don't hug people I don't know. Can I wave?"
+  "I'm too shy for hugs. Can we say hi with our hands instead?"
+  "No, thanks. My grown-up says I can pick who I hug. I picked not you."
+@rule core.hug.sa_kid_dismiss guard: kid_speaker&rel=stranger tags: kid act: dismiss
+  "Nope! But you can see my rock collection. It's super good."
+  "Not today. Do you want to see my drawing instead?"
+@rule core.hug.sa_kid_rival guard: kid_speaker&rel=rival tags: kid act: no
+  "No! You didn't share your crayons. No hugs until crayons."
+  "Hm, no. I'm cross with you. Maybe after snack."
+
+# ---- SHAKE_HEAD -------------------------------------------------------------------------------------------
+@rule core.shake_head.sa_disagree act: disagree
+  "Oh, you disagree? Splendid. Argue with me, I'm bored."
+  "That's a no from you. I'll note it, and then ignore it."
+  "Shaking your head, hm? Your neck's saying something your mouth isn't."
+  "Fair enough. Wrong, but fair enough."
+  "Okay, no, then. I wasn't married to the idea. Only engaged."
+  "You shake your head like that, and I start to doubt myself."
+  "I see, we'll take a vote. I'm the only voter. I vote me."
+  "A head-shake! The world's smallest protest. I salute you."
+@rule core.shake_head.sa_disagree_topic guard: topic act: disagree
+  "No to {x}? Bold. Tell me why, and keep it short."
+  "You don't agree about {x}? Good. Now we have something to do."
+  "Hm, not {x}, then. What would you rather talk about?"
+  "A head-shake about {x}. I'll accept that and ask nothing."
+@rule core.shake_head.sa_disagree_pro guard: stance=pro act: disagree
+  "No? But I like it! I've liked it for years."
+  "Hey, I'm a fan of that. You're breaking a fan's heart."
+@rule core.shake_head.sa_disagree_con guard: stance=con act: disagree
+  "Finally, someone who sees it my way. Shake on it. Your head's still going."
+  "Ha, thank goodness. I was hoping we'd agree on that."
+@rule core.shake_head.sa_disagree_blunt guard: blunt act: disagree
+  "No? Fine. Say what you mean next time, it's cheaper."
+  "A shake of the head. Words would be quicker, you know."
+@rule core.shake_head.sa_disagree_polite guard: polite act: disagree
+  "Oh, dear. I seem to have said the wrong thing. I do apologise."
+  "I see you disagree. Please, tell me where I went astray."
+@rule core.shake_head.sa_disagree_elder guard: elder act: disagree
+  "Well, I never. In my day we said it out loud, dear."
+  "No, hm? Young people, always shaking things. Heads, hips, fists."
+@rule core.shake_head.sa_repeat act: ask_repeat
+  "Wait, that was a no? Or a shake? Or is there a bee?"
+  "Hm? Sorry, I missed the answer. Words help me a lot."
+  "Was that a no, or are you checking for water in your ears?"
+  "I need that in words, please. My head-shake reading is rusty."
+  "Hold on, say it again with your mouth. Mine isn't a mind reader."
+@rule core.shake_head.sa_repeat_kid guard: kid_speaker tags: kid act: ask_repeat
+  "Huh, you shook your head? Does that mean no? Or bugs?"
+  "Wait, what? Say it with words! I'm learning the words."
+@rule core.shake_head.sa_joke act: joke
+  "That's a shake with real flair. Judges would give it a nine."
+  "A shake of the head! Does it come with a rattle?"
+  "Don't shake it too hard. Whatever you've got in there is valuable."
+  "No means no, and also, bless you, I thought you sneezed."
+  "Careful, you'll shake something loose. Something good, hopefully."
+  "I'd shake my head back, but I'd get dizzy. You go ahead."
+  "No! My own head says yes. We're in a deadlock."
+@rule core.shake_head.sa_complain act: complain
+  "Oh, so it's no. No to everything. A big sweeping no."
+  "I put a lot of effort into that, and you shake your head."
+  "No, hm? I should've brought more snacks to this meeting."
+  "Great. Another no. My day's a no collection."
+  "That's it? A shake? I wrote a speech."
+@rule core.shake_head.sa_complain_tired guard: mood=tired act: complain
+  "Ugh, a no. I haven't the energy to argue it. Take it."
+  "[SLEEPY]No? Fine. Can we do the arguing after a nap?"
+@rule core.shake_head.sa_agree act: agree
+  "Right, no, I agree. We're a pair of shaky heads."
+  "Exactly. No, never. Not on my watch."
+  "Ha, same here. We should start a club. Heads shaken only."
+  "My head's shaking too. Look at us, being sensible."
+@rule core.shake_head.sa_agree_topic guard: topic act: agree
+  "No to {x}, same. It's the only sensible thing to say."
+  "Not {x}. Agreed. Some things are best left in the cupboard."
+@rule core.shake_head.sa_kid_disagree guard: kid_speaker tags: kid act: disagree
+  "Nuh-uh! Yes! Okay, I didn't think it through."
+  "No? But I wanted it! Why's it a no?"
+  "You said no! That's a sad sound. Can I have a yes?"
+  "No, okay. Can we do something else? A game?"
+@rule core.shake_head.sa_kid_joke guard: kid_speaker tags: kid act: joke
+  "Shake shake shake! I can do that too! My head's loose!"
+  "Don't shake too hard or your brain falls out. I read it somewhere."
+@rule core.shake_head.sa_kid_agree guard: kid_speaker tags: kid act: agree
+  "No, right! No no no, we agree! High five?"
+  "Me too! Shake shake! We're the shakiest!"
+@rule core.shake_head.sa_kid_complain guard: kid_speaker tags: kid act: complain
+  "Aww, no? But I asked nicely! Please?"
+  "That's not fair! I wanted yes! Yes is better!"
+
+# ---- NOD -------------------------------------------------------------------------------------------------
+@rule core.nod.sa_nod act: nod
+  "*nods back* We're a nodding duo. Nobody can stop us now."
+  "*gives a solemn nod* Understood. And agreed. And moving on."
+  "*nods twice* That's a double. It means extra."
+  "*tilts head and nods* Mm. Yes, wise. We've decided."
+  "*nods* Good. Excellent. The nod is the most efficient word."
+  "*nods slowly, for effect* There. Now it's official."
+@rule core.nod.sa_nod_polite guard: polite act: nod
+  "*inclines head gracefully* How agreeable. I was hoping you'd say so."
+  "*a small bow of the head* Delighted. We see eye to eye."
+@rule core.nod.sa_nod_flat guard: flat act: nod
+  "*nods, barely* That's me nodding. It took a lot."
+  "*one slow nod* Yes. That was it. I'll need a rest now."
+@rule core.nod.sa_nod_loud guard: loud act: nod
+  "*NODS HARD* YES! WE AGREE! IT'S BEEN SETTLED!"
+@rule core.nod.sa_back act: backchannel
+  "Mm-hm. Yes, quite. Exactly what I think, as well."
+  "Right, you nod, I say mm-hm. That's the rhythm of a good chat."
+  "Yeah? Good. I thought you'd see it that way."
+  "Mm. Nod noted. I'll carry on, then."
+  "Ah, you're with me. Splendid. It's lonely out here."
+  "Yes, yes. A nod's worth a thousand words. Or three."
+  "Right. Good, we're in step. I do like that."
+@rule core.nod.sa_back_topic guard: topic act: backchannel
+  "Yes, {x}! You nod like someone who gets it."
+  "Exactly. {x:cap}. That's the whole thing, in a nod."
+  "A nod for {x}! Good taste. I'm pleased."
+@rule core.nod.sa_back_pro guard: stance=pro act: backchannel
+  "You like it too? I knew it. We should start a fan club."
+  "Yes! A nod from a fellow fan. This is a good day."
+@rule core.nod.sa_back_sad guard: mood=sad act: backchannel
+  "[SAD]Mm. Thank you for nodding. It helps to be heard."
+  "[SAD]Yes. You get it. Not many people do."
+@rule core.nod.sa_tell act: tell
+  "Oh, right! Nodding, good. Then I'll tell you the rest."
+  "I'm glad you nodded, because the next part's a little silly."
+  "Well then. Since you're keeping up, here's the thing."
+  "Okay, where was I? Ah yes. The bit about the bucket."
+  "You're a good listener. Here's the rest, then, and it gets weirder."
+  "Good, good. So, as I was saying, the whole cake fell over."
+  "Nodding along! You'll love this. Nobody believes the second half."
+@rule core.nod.sa_tell_night guard: time=night act: tell
+  "Shh, listen. It's a quiet kind of story. Perfect for the dark."
+  "Okay, since you're awake: the night shift has some gossip."
+@rule core.nod.sa_tell_morning guard: time=morning act: tell
+  "Morning chat, and a nod already! Here's what I've got so far."
+  "Good. Okay. Before breakfast I'd like to tell you something."
+@rule core.nod.sa_joke act: joke
+  "You nod like a woodpecker. It's a good look. Bit loud."
+  "A nod! Or was that a sleepy lurch? I'll take it either way."
+  "Keep nodding, and we'll agree on everything. That's my plan."
+  "A nod is a yes with the sound off. I respect it."
+  "Your head went up and down. Mine's going to do the same. Watch."
+  "Careful, if you nod enough I'll start making promises."
+@rule core.nod.sa_cont act: continue
+  "Okay, I'll go on. You nodded, so I take it as a licence."
+  "Right, more of it, then. Don't say I didn't warn you."
+  "Good. Next bit. It's about a hat, and I'm sorry."
+  "Since you're still here, I'll carry on. Strap in."
+  "More? You nodded, so here's more. Go slowly, it's fragile."
+@rule core.nod.sa_cont_kid guard: kid_speaker tags: kid act: continue
+  "Okay, and then! And then, wait, I forgot. Okay, and then!"
+  "You nodded, so I'll keep going! There's a giant in it!"
+@rule core.nod.sa_kid_nod guard: kid_speaker tags: kid act: nod
+  "*nods like a bobblehead* Yes yes yes yes! Look, I'm fast!"
+  "*nods super duper hard* Nod nod nod! We're best nodders!"
+  "*nods and nods* My head's going to fall off! It's fine!"
+@rule core.nod.sa_kid_tell guard: kid_speaker tags: kid act: tell
+  "You nodded! That means I can tell you my secret! It's a snail."
+  "Okay, so, today I saw a bird. It was big. That's all."
+@rule core.nod.sa_kid_back guard: kid_speaker tags: kid act: backchannel
+  "Yeah! You get it! You get everything!"
+  "Mm-hm! I knew you'd say yes! Grown-ups know stuff!"
+
+# ---- GIVE: a gift -----------------------------------------------------------------------------------------
+@rule core.give.sa_thank act: thank
+  "Oh, thank you! It's so thoughtful. Nobody gets me things."
+  "For me, I'm speechless. Give me a moment. Okay, still speechless."
+  "Thank you! I'll put it somewhere I can see it. And fuss."
+  "You didn't have to. I'm glad you did, though. I'm very glad."
+  "Aw, it's perfect. How did you know? Have you been watching me?"
+  "I accept! With gratitude, and with both hands, and a sniff."
+  "A gift! I'll be unbearable about it for a week."
+  "Thanks, that's the nicest thing today. And it's still morning."
+@rule core.give.sa_thank_sad guard: mood=sad act: thank
+  "[SAD]Oh. Thank you. I needed something nice today."
+  "[SAD]That's very kind. You've made a grey day a bit brighter."
+@rule core.give.sa_thank_friend guard: rel=friend act: thank
+  "From you? I'll treasure it. Friends give the best presents."
+  "Oh, you, thank you. You always know. It's a talent."
+@rule core.give.sa_thank_best guard: rel=best act: thank
+  "Best friend, best present. I'll put it on the shelf of honour."
+  "You spoil me. Thank you. I'll find a way to pay you back in soup."
+@rule core.give.sa_thank_stranger guard: rel=stranger act: thank
+  "Oh! We've only just met, and you're giving me things. How nice."
+  "That's generous, for a stranger. Thank you. I'll make it count."
+@rule core.give.sa_thank_family guard: rel=family act: thank
+  "Aw, family always knows. Thank you, I'll keep it close."
+@rule core.give.sa_thank_topic guard: topic act: thank
+  "Thank you. It goes with {x}, which is a nice touch."
+  "A gift, it reminds me of {x}. Somehow. Thank you."
+@rule core.give.sa_thank_elder guard: elder act: thank
+  "Bless you, dear. It's been a while since someone brought me a present."
+  "How thoughtful! I'll show it to the girls at tea."
+@rule core.give.sa_thank_blunt guard: blunt act: thank
+  "Hm, good. Thanks. I'll use it, which is high praise."
+  "Fine, thanks. It's decent. Don't look so smug."
+@rule core.give.sa_thank_flat guard: flat act: thank
+  "Thanks, I'm delighted. This is my delighted face. Look closely."
+@rule core.give.sa_joke act: joke
+  "Is it a bribe? Because it works. What do you want?"
+  "A present! Is it alive? Please say it isn't alive."
+  "Gifts! My favourite kind of unprompted event."
+  "You've gifted me! Now I'm obliged to like you. Clever."
+  "I'll give you a hug, but I want the box too. The box is the best bit."
+  "Is it ticking? It's not ticking. Good, thank you."
+  "Careful, if you keep giving me things, I'll move in."
+@rule core.give.sa_pos act: opine_pos
+  "This is wonderful. I'll cherish it. And I'll show it to people."
+  "Oh, it's lovely. It's the right size, too, which is rare."
+  "It's just what I needed. I mean it. I'd forgotten I needed it."
+  "How clever! You've got a good eye. I'll use it all the time."
+  "A very nice thing, this. I like the weight of it."
+@rule core.give.sa_pos_topic guard: topic act: opine_pos
+  "I'd never have thought of {x}, but this is perfect for it."
+  "Ooh, now I want to talk about {x} all afternoon."
+@rule core.give.sa_pos_pro guard: stance=pro act: opine_pos
+  "You remembered what I like! That's the best part."
+  "It's perfect. You've got me figured out. Rude, but lovely."
+@rule core.give.sa_neg act: opine_neg
+  "It's, um, a gift. A gift's a gift. I'll find a spot."
+  "Oh, it's interesting. I'll put it somewhere safe. Out of sight."
+  "Hm, well. The thought counts. And I'm thinking hard."
+  "I'm not sure what it does. But I'll keep it. Out of politeness."
+  "It's... unusual. In the sense that I've never seen one."
+@rule core.give.sa_neg_con guard: stance=con act: opine_neg
+  "Oh, dear, you've picked the one thing I can't stand. Thank you, anyway."
+  "Ha, I do not like this, but I like you. Kind of you."
+@rule core.give.sa_kid_thank guard: kid_speaker tags: kid act: thank
+  "Wow, a present! Is it for keeps? Thank you thank you!"
+  "Thank you! I'll hide it in my secret place. Don't tell!"
+  "For me, really? Can I open it now? I'm opening it."
+  "Yay! I love presents! I'll give you my second-best stick."
+@rule core.give.sa_kid_joke guard: kid_speaker tags: kid act: joke
+  "Is it a frog? I hope it's a frog. A nice frog."
+  "A present, is it candy? Is it a pony? It's a sock, right?"
+@rule core.give.sa_kid_pos guard: kid_speaker tags: kid act: opine_pos
+  "I love it! It's the best! I'll sleep with it tonight!"
+  "It's awesome! It's shiny! You're the best at presents!"
+@rule core.give.sa_kid_neg guard: kid_speaker tags: kid act: opine_neg
+  "Um, thanks? What does it do? Does it do anything?"
+  "Hm, it's weird. But weird is good. I think."
+
+# ---- WALK_AWAY: the player leaves mid-chat --------------------------------------------------------------------
+@rule core.walk_away.sa_bye act: farewell
+  "Oh, bye! Off already? Well, don't let the door hit your shadow."
+  "Going? Okay, I'll keep the seat warm. Or cold, I'll try."
+  "Leaving mid-sentence is a bold move. Respect. Bye."
+  "Fine, fine, off you pop. Mind the third step, it bites."
+  "Bye then! I'll tell the next person your half of the story."
+  "See you around. I'll be here, standing in my own sentences."
+  "Running along? Right, don't fall in anything. Bye."
+  "Leaving, that's okay. I'll talk to the plant. It listens."
+@rule core.walk_away.sa_bye_night guard: time=night act: farewell
+  "Off into the dark? Careful out there. Take a lamp."
+  "Goodnight, then. Mind the moon, it's tricky tonight."
+@rule core.walk_away.sa_bye_morning guard: time=morning act: farewell
+  "Off so early? Well, good luck. Bring me a story later."
+  "Morning dash, huh? Don't forget breakfast. Breakfast is important."
+@rule core.walk_away.sa_bye_friend guard: rel=friend act: farewell
+  "Going already? Okay. Drop by again soon, I'll hold the chair."
+  "Aw, you're off. Don't be a stranger, we only have a few."
+@rule core.walk_away.sa_bye_best guard: rel=best act: farewell
+  "Bye, you. Text me if the sky falls. Or if it's just clouds."
+  "Off you go. I'll pretend I'm not sad. I'm sad, hurry back."
+@rule core.walk_away.sa_bye_family guard: rel=family act: farewell
+  "Leaving already? Take a coat, and a snack. And a bit of me."
+  "Go on, then. Call when you get there. I'll worry quietly."
+@rule core.walk_away.sa_bye_polite guard: polite act: farewell
+  "Oh, farewell, then. It was a pleasure. Do come again."
+  "Goodbye! Thank you for the company. Mind how you go."
+@rule core.walk_away.sa_bye_blunt guard: blunt act: farewell
+  "Bye, don't slam the door. Or do. See if I care."
+  "Leaving, then? Good, I need quiet. See you."
+@rule core.walk_away.sa_bye_elder guard: elder act: farewell
+  "Off you go, dear. These legs can't keep up anymore."
+  "Goodbye, then. Wrap up warm, the fog gets in the bones."
+@rule core.walk_away.sa_bye_topic guard: topic act: farewell
+  "Off already? We hadn't finished with {x}. Another time, then."
+  "Bye! Leave {x} with me, I'll look after it."
+@rule core.walk_away.sa_complain act: complain
+  "Hey! I wasn't finished! I was building to something."
+  "Oh, charming. Walk away, why don't you. I'll just stand here."
+  "There they go. Mid-story. I've been abandoned by my own audience."
+  "Wow. That's how it is. I'll tell the wall instead."
+  "Typical. I finally get a good punchline and nobody's there."
+  "Fine, fine, go. See if I save you any biscuits."
+@rule core.walk_away.sa_complain_sad guard: mood=sad act: complain
+  "[SAD]Oh. You're going. I was hoping you'd stay a bit."
+  "[SAD]Right, people leave. That's okay. I'm fine, really."
+@rule core.walk_away.sa_complain_angry guard: mood=angry act: complain
+  "[ANGRY]Fine! Walk away, just like that! See if I mind!"
+  "[ANGRY]Oh, now you leave. I've got more to say, too."
+@rule core.walk_away.sa_joke act: joke
+  "And so the hero left the chat, never to be seen again. Until lunch."
+  "Mysterious stranger walks out. Cue a dramatic gust of wind."
+  "That was the shortest talk I've had. A record. I'll frame it."
+  "Wait, come back! I have gossip! Okay, I'll yell it at your back."
+  "The player has left the building. Please enjoy this silence."
+  "Goodbye! I've been told my chat's a hit-and-run. Here we are."
+  "Off so soon? And I'd practised my entire speech. Twice."
+@rule core.walk_away.sa_dismiss act: dismiss
+  "Right, go, then. I've got things to do. Important things."
+  "Whatever. Leaving's fine. I wasn't enjoying it anyway."
+  "Okay, off with you. Don't let me keep you from nothing."
+  "Sure. Go. I'll be over here, being fine."
+@rule core.walk_away.sa_dismiss_blunt guard: blunt act: dismiss
+  "Good. I've got a nap planned and you're in the way."
+  "Off you go. Try the exit. It's the big flat thing."
+@rule core.walk_away.sa_kid_bye guard: kid_speaker tags: kid act: farewell
+  "Bye bye, see you tomorrow! Or next week! Or now!"
+  "You're going? Okay. Wave at me from the corner!"
+  "Bye! Come back and see my drawing! It's got a dog!"
+@rule core.walk_away.sa_kid_complain guard: kid_speaker tags: kid act: complain
+  "Wait, don't go! I wasn't done! I had a big thing!"
+  "Hey! You can't just walk! We were having fun!"
+  "Aw, no, come back! I'll share my snack! Half of it!"
+@rule core.walk_away.sa_kid_joke guard: kid_speaker tags: kid act: joke
+  "Walk walk walk! You're a walking robot! Beep beep!"
+  "Bye, mind the lava! It's the pavement! Actually it's the grass!"
+@rule core.walk_away.sa_kid_dismiss guard: kid_speaker tags: kid act: dismiss
+  "Okay. Go, I've got toys. They don't leave."
+  "Fine, fine. I'm busy anyway. I'm very busy playing."

@@ -1,0 +1,272 @@
+# core/data/talk/grammar/en/surf_a_flow.tlk - more replies to a plain yes, a plain no, and an
+# introduction (owner: TK; T5b package T5B-SURF1, Surface push A). Content only. Clean in any room:
+# no register word, no romance, no tease or blame reply, nothing aimed at the player. Kid voices are
+# kid banks. Rule names start with sa_. Syntax: talkc_gen.py.
+
+# ---- YES --------------------------------------------------------------------------------------------------------
+@rule core.yes.sa_back act: backchannel
+  "Good. Splendid. That's the answer I was hoping for."
+  "Mm-hm. A clear yes. I love a clear yes."
+  "Yes, you say. Yes it is. We're in perfect agreement."
+  "Right then, that settles it. Moving on, with confidence."
+  "Excellent. I'll write it down. In pencil, in case you change your mind."
+  "Yes, good. Now we know where we stand. Roughly here."
+  "A yes, no hedging. I'm impressed. Most folks hedge."
+  "Lovely. That's one thing off the list. Only forty to go."
+  "Okay. Noted, stamped and filed. The cabinet's a bit full."
+  "Nice and simple. If only the rest of the day were so."
+@rule core.yes.sa_back_topic guard: topic act: backchannel
+  "Yes to {x}! We're on the same page. A good page."
+  "So it's {x}, then. Good. I'll say no more about it."
+  "{x:cap}, yes. That's a good answer, and a good topic."
+@rule core.yes.sa_back_morning guard: time=morning act: backchannel
+  "A yes before breakfast. That's the best kind. Pure and hungry."
+@rule core.yes.sa_back_night guard: time=night act: backchannel
+  "A quiet yes in the dark. I like it. Very mysterious."
+@rule core.yes.sa_back_happy guard: mood=happy act: backchannel
+  "[HAPPY]Yes! Great! Everything's going swimmingly today!"
+@rule core.yes.sa_back_tired guard: mood=tired act: backchannel
+  "[SLEEPY]Yes, good. That's easy. I can manage easy today."
+@rule core.yes.sa_back_polite guard: polite act: backchannel
+  "Thank you for the clear answer. It's very much appreciated."
+@rule core.yes.sa_back_blunt guard: blunt act: backchannel
+  "Good. A yes is a yes. No need to dress it up."
+@rule core.yes.sa_back_elder guard: elder act: backchannel
+  "Well, that's that. In my day a yes was a handshake."
+@rule core.yes.sa_back_quirky guard: quirky act: backchannel
+  "Yes, hm. The sound of agreement. It's got a nice zigzag."
+@rule core.yes.sa_back_flat guard: flat act: backchannel
+  "Yes, okay, delighted. That's my delighted voice. Listen."
+@rule core.yes.sa_thank act: thank
+  "Thank you! You're a gem. A slightly dusty gem."
+  "Brilliant, thanks. I knew I could count on you."
+  "You said yes! I'm a lucky person. Thank you."
+  "Thanks. I was nervous to ask. Now I'm only a bit nervous."
+  "That's kind of you. I'll make it worth your while. Somehow."
+  "Thanks a lot. You've got a heart of something warm."
+  "Aw, thanks. It's good to know someone's on board."
+@rule core.yes.sa_thank_friend guard: rel=friend act: thank
+  "Thanks, friend. I knew you'd say yes. I even bet on it."
+@rule core.yes.sa_thank_best guard: rel=best act: thank
+  "Of course you said yes. You always do. Thank you."
+@rule core.yes.sa_thank_family guard: rel=family act: thank
+  "Thank you, love. That's family for you. Always game."
+@rule core.yes.sa_thank_stranger guard: rel=stranger act: thank
+  "Oh, thanks! You've only just met me, and you said yes. Brave."
+@rule core.yes.sa_thank_sad guard: mood=sad act: thank
+  "[SAD]Thank you. A yes is just what I needed today."
+@rule core.yes.sa_thank_elder guard: elder act: thank
+  "Thank you, dear. Such good manners. It's rare these days."
+@rule core.yes.sa_thank_topic guard: topic act: thank
+  "Thank you. Yes to {x} is the best yes I've had all week."
+@rule core.yes.sa_joke act: joke
+  "A yes! Put it in the newspaper. Page one, above the fold."
+  "You said yes! Quick, say it again before you change your mind."
+  "Yes. The second best word in the language. The first is cake."
+  "Yes, you say! And yet the fog says maybe. We'll see who wins."
+  "Wonderful. Now I'm legally allowed to be smug. Hold on, getting smug."
+  "A yes! Hang on, I'll record it. For later, when you say no."
+  "That's a yes with a capital Y. Or a lowercase y. I couldn't hear."
+  "Yes, you absolute champion. Don't tell the others. They'd want one."
+@rule core.yes.sa_joke_night guard: time=night act: joke
+  "A yes at this hour? You're braver than the bats."
+@rule core.yes.sa_joke_flat guard: flat act: joke
+  "Yes. Hooray. I've thrown a small party in my head."
+@rule core.yes.sa_agree act: agree
+  "Yes, indeed. We think alike. It's a bit frightening."
+  "Me too! Yes, that makes two yeses. A quorum."
+  "Same here. Yes, yes, a thousand times, yes. Well, three."
+  "Right? That's what I think, too. It's a good thing to think."
+  "Yes. Absolutely. I'd put it on a banner."
+  "We're agreed, then. It's very pleasant. Let's do it more."
+@rule core.yes.sa_agree_topic guard: topic act: agree
+  "Yes! {x:cap}, always. We have excellent taste."
+  "Absolutely, {x} is the answer. It's the answer to nearly everything."
+@rule core.yes.sa_agree_stance guard: stance=pro act: agree
+  "Yes! You like it too! I'd hoped you did."
+@rule core.yes.sa_agree_stance_con guard: stance=con act: agree
+  "Yes, thank goodness. I wasn't sure it was just me."
+@rule core.yes.sa_kid_thank guard: kid_speaker tags: kid act: thank
+  "Yay! You said yes! You're the best grown-up ever!"
+  "Thank you thank you! I'll tell everyone you're nice!"
+  "Yes, really? I'm going to dance now! This is the dance!"
+@rule core.yes.sa_kid_back guard: kid_speaker tags: kid act: backchannel
+  "Okay, yes, good! Let's go, I'm ready! Are you ready?"
+  "Yes! Yes yes yes! That's my favourite word!"
+@rule core.yes.sa_kid_joke guard: kid_speaker tags: kid act: joke
+  "You said yes! Now you have to give me a pony! A small one!"
+  "Yes, yes! Yes, I'm a yes-machine! Beep boop yes!"
+@rule core.yes.sa_kid_agree guard: kid_speaker tags: kid act: agree
+  "Yes, me too! We agree! That's the best!"
+
+# ---- NO -----------------------------------------------------------------------------------------------------------
+@rule core.no.sa_back act: backchannel
+  "Right, a no. That's fine. No is a perfectly good answer."
+  "Okay. No, then. I'll cross it off, gently."
+  "Fair enough. I'd rather a plain no than a polite maybe."
+  "Understood. No it is. I'll sleep on it, and then forget."
+  "Mm, a no. Honesty's a rare treat. Thank you."
+  "No, okay. We'll try something else. There's always something else."
+  "Got it. No. I'll make a note, and a cup of tea."
+  "That's a firm no. I respect firm. It's a nice texture."
+  "No problem. Not everything's for everyone. Even soup."
+  "Okay, scratch that. Next idea. I have forty."
+@rule core.no.sa_back_topic guard: topic act: backchannel
+  "No to {x}? Understood. We'll never speak of it."
+  "Not {x}, then. That's fine. Plenty of other things."
+  "Okay, no {x}. I'll cross it off the menu."
+@rule core.no.sa_back_morning guard: time=morning act: backchannel
+  "A morning no. Brave. Most people wait for lunch."
+@rule core.no.sa_back_night guard: time=night act: backchannel
+  "A night no. It echoes, a bit. I like it."
+@rule core.no.sa_back_sad guard: mood=sad act: backchannel
+  "[SAD]Okay, no, it's all right. I'll cope. I usually do."
+@rule core.no.sa_back_polite guard: polite act: backchannel
+  "Of course. No offence taken. I appreciate your honesty."
+@rule core.no.sa_back_blunt guard: blunt act: backchannel
+  "Fine. No, next topic. I've got a list."
+@rule core.no.sa_back_elder guard: elder act: backchannel
+  "Well, that's that. A no's a no, I always say."
+@rule core.no.sa_back_easygoing guard: easygoing act: backchannel
+  "Sure, no, no big deal. The sun's still up. Probably."
+@rule core.no.sa_complain act: complain
+  "Oh, great. A no. And I was so hopeful, too."
+  "You're no fun today. I'll write it in my diary."
+  "No? Just no? Not even a small maybe, with sprinkles?"
+  "That's disappointing. I had a speech, and everything."
+  "I put on my good shirt for this. For a no."
+  "Honestly. A no. In this economy."
+  "Fine. No. But I'll be thinking about it all night, loudly."
+@rule core.no.sa_complain_tired guard: mood=tired act: complain
+  "[SLEEPY]Ugh. A no. Another thing I've got to carry to bed."
+@rule core.no.sa_complain_angry guard: mood=angry act: complain
+  "[ANGRY]No?! Great, that's what I expected! Marvellous!"
+@rule core.no.sa_complain_friend guard: rel=friend act: complain
+  "Aw, come on. You, saying no? I thought we were pals."
+@rule core.no.sa_complain_best guard: rel=best act: complain
+  "No, from you? I'm shocked, I'll recover. With cake."
+@rule core.no.sa_complain_elder guard: elder act: complain
+  "No, hm? Young people. Everything's a no, nowadays."
+@rule core.no.sa_complain_topic guard: topic act: complain
+  "You don't want {x}? Everyone wants {x}. Or they say they do."
+@rule core.no.sa_joke act: joke
+  "No, right. I'll just pretend you said yes. Works for me."
+  "A no, splendid. I'll put it with the other no's. It's a big pile."
+  "No? That's what the last three people said. We're a trend."
+  "Noted. No, now I'll wait until you change your mind. Back soon."
+  "A flat no! Like a pancake. I respect it, I'd also eat it."
+  "I'd like to appeal. The court of me rules in my favour."
+  "No is a complete sentence. Mine usually have more words."
+  "That's a no with confidence. Frame it. Hang it by the door."
+@rule core.no.sa_joke_night guard: time=night act: joke
+  "A no in the dark. How ominous. Did the lamp flicker?"
+@rule core.no.sa_joke_flat guard: flat act: joke
+  "No, oh well. Crushed, this is my crushed face. It's flat."
+@rule core.no.sa_disagree act: disagree
+  "Now, hang on. I think you'd like it, if you gave it a chance."
+  "No, I'd say yes. We can argue about it. I love arguing."
+  "Hm, I think that's wrong. Politely, I mean. Not rudely."
+  "You can say no. I'll say maybe. We'll see who wears out first."
+  "I disagree with the no. I'm entitled. It's the town charter."
+  "That's a bold no. I'd reconsider, take your time. I'll hum."
+@rule core.no.sa_disagree_pro guard: stance=pro act: disagree
+  "No? But I love it! It's one of my best things!"
+@rule core.no.sa_disagree_topic guard: topic act: disagree
+  "No to {x}? I'd say it deserves a second look."
+@rule core.no.sa_disagree_blunt guard: blunt act: disagree
+  "No, wrong. Think again. I'll wait here with my arms crossed."
+@rule core.no.sa_disagree_polite guard: polite act: disagree
+  "I understand. I'd gently encourage you to reconsider, though."
+@rule core.no.sa_kid_back guard: kid_speaker tags: kid act: backchannel
+  "Oh, okay. No, that's okay. Can we do something else?"
+  "Okay! No, I'll find a different thing! I have lots!"
+@rule core.no.sa_kid_complain guard: kid_speaker tags: kid act: complain
+  "Awwww. No, I wanted yes. Yes is more fun than no."
+  "No, that's not fair! I asked nicely! With a please!"
+  "But why no, I'll be good! I'll be so good! Super good!"
+@rule core.no.sa_kid_joke guard: kid_speaker tags: kid act: joke
+  "No, okay! No, that's the funniest word! No, no, no!"
+  "Nope-nope-nope! That's a good no! I can do it too!"
+@rule core.no.sa_kid_disagree guard: kid_speaker tags: kid act: disagree
+  "No, but it's super fun! You'd love it! Try it, please?"
+
+# ---- INTRODUCE: "I'm ..." ------------------------------------------------------------------------------------------
+@rule core.introduce.sa_greet act: greet
+  "Nice to meet you! Welcome. The kettle's on, the ghost isn't."
+  "Hello! A pleasure. I'd say I'd heard of you, but I hadn't."
+  "Well met! Come in, sit down, mind the second chair, it's wonky."
+  "Hi there! I'm glad you stopped by. It's a quiet street."
+  "Ah, so that's your name. I'll try to remember it. Probably."
+  "Welcome to the neighbourhood. It's strange, but the soup's good."
+  "Lovely to meet you. I'll introduce you to the cat. She's picky."
+  "Hello! You've got a good name. It's got a nice shape."
+  "Pleased to meet you. Don't worry, I only bite on Tuesdays."
+  "A new face! I'll tell the others. They'll want to look."
+@rule core.introduce.sa_greet_morning guard: time=morning act: greet
+  "Morning! And a new name already. It's shaping up to be a good day."
+@rule core.introduce.sa_greet_night guard: time=night act: greet
+  "Hello, night visitor! I'm up, too. What brings you here?"
+@rule core.introduce.sa_greet_first guard: first act: greet
+  "Hello, you! We've not met, so I'm already fond. It's a rule."
+@rule core.introduce.sa_greet_happy guard: mood=happy act: greet
+  "[HAPPY]Hello! What a lovely thing, meeting someone new!"
+@rule core.introduce.sa_greet_tired guard: mood=tired act: greet
+  "[SLEEPY]Hello, nice to meet you. Excuse the yawning. It's not you."
+@rule core.introduce.sa_greet_polite guard: polite act: greet
+  "How do you do? It's a pleasure to make your acquaintance."
+@rule core.introduce.sa_greet_blunt guard: blunt act: greet
+  "Right. Hi, I'm busy, but I'll make time. Briefly."
+@rule core.introduce.sa_greet_elder guard: elder act: greet
+  "Oh, how nice, a young face. Come sit, I'll tell you everything."
+@rule core.introduce.sa_greet_quirky guard: quirky act: greet
+  "I'll remember that. I write names on the inside of my hat."
+@rule core.introduce.sa_greet_loud guard: loud act: greet
+  "HELLO, nICE TO MEET YOU! I'M A BIT LOUD! IT'S MY CHARM!"
+@rule core.introduce.sa_greet_serious guard: serious act: greet
+  "Good to meet you. I'm glad you've introduced yourself properly."
+@rule core.introduce.sa_ask act: ask_about
+  "Nice to meet you! What brings you to town? Business, soup?"
+  "Pleasure! So, what do you do? Besides introducing yourself."
+  "Hello! Are you new here, or just new to me?"
+  "Lovely! Tell me about yourself. Start with your favourite thing."
+  "Ah, hello, where do you live? Near the fountain? The graveyard?"
+  "Welcome! What's your story? I'll bring tea, you bring drama."
+  "Well hello. What's the most interesting thing about you? I'm listening."
+  "Nice name. Does it have a story? Names usually do."
+@rule core.introduce.sa_ask_topic guard: topic act: ask_about
+  "Pleased to meet you! Are you into {x}? Everyone round here is."
+  "Hello! I'd love to hear what you think about {x}."
+@rule core.introduce.sa_ask_first guard: first act: ask_about
+  "Hello! I don't know you, which means there's loads to learn."
+@rule core.introduce.sa_ask_friend guard: rel=friend act: ask_about
+  "Hi, again! You introduce yourself every time. I like it."
+@rule core.introduce.sa_ask_polite guard: polite act: ask_about
+  "Delighted. Might I ask what brings you to our little corner?"
+@rule core.introduce.sa_ask_elder guard: elder act: ask_about
+  "Oh, hello, dear. Who are your people? I might know them."
+@rule core.introduce.sa_ask_quirky guard: quirky act: ask_about
+  "Hello! What's your favourite colour? It tells me everything."
+@rule core.introduce.sa_joke act: joke
+  "I'm delighted to meet you. I'm sure we'll be great friends. Or neighbours."
+  "Pleased to meet you! I'd shake your hand, but it's in the soup."
+  "Nice to meet you! I'm a legend in my own mind. Pleased to make it two."
+  "Introductions! How formal. I'll bring the good biscuits."
+  "A new name! Quick, I need to forget it so I can ask again."
+  "That's a fine name. I'd steal it, but it wouldn't fit."
+  "Ooh, an introduction. Do I curtsy? I'm going to curtsy."
+  "A pleasure, don't mind the mess. It's not mine. Probably."
+@rule core.introduce.sa_joke_night guard: time=night act: joke
+  "A new name after dark. Mysterious. Do you have a cape?"
+@rule core.introduce.sa_joke_flat guard: flat act: joke
+  "Hello. I'm thrilled to meet you. That was my thrilled voice."
+@rule core.introduce.sa_kid_greet guard: kid_speaker tags: kid act: greet
+  "Hi, I'm a kid! You're a grown-up! We can be friends!"
+  "Hello, nice to meet you! Do you like frogs? I love frogs!"
+  "Hi hi hi, your name's cool! Mine's cooler! No, just as cool!"
+@rule core.introduce.sa_kid_ask guard: kid_speaker tags: kid act: ask_about
+  "Hi! What's your favourite animal? Mine's a snail!"
+  "Hello, do you have a pet? I want a pet dragon! A small one!"
+  "Nice to meet you! Can you do a cartwheel? I can do half."
+@rule core.introduce.sa_kid_joke guard: kid_speaker tags: kid act: joke
+  "Hello, I'm the best at hi! Hi hi! That was three hi's!"
+  "Nice to meet you! I'd shake your hand but it's sticky!"
