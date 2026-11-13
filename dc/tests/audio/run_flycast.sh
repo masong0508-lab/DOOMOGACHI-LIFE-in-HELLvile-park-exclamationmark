@@ -2,7 +2,18 @@
 # run_flycast.sh - DC5's checks on Flycast (owner: dreamcast): the game's
 # sound through the AICA stream, in dcrun.
 #
-#   sh dc/tests/audio/run_flycast.sh FLYCAST.so DCRUN IMAGE NMFILE RUNNER OUTDIR
+#   sh dc/tests/audio/run_flycast.sh FLYCAST.so DCRUN IMAGE NMFILE RUNNER OUTDIR [IRQ_RUNNER]
+#
+# IRQ_RUNNER (DC5b, an image built with the music engine's IRQ tier): the
+# host runner with the same tier (dcsnd_runner_irq); its DCSND_WAV is the
+# reference. The native runner's WAV is the bridge's sound, which the IRQ
+# tier is not meant to match (60 Hz control frames: faster envelopes on the
+# instruments that are not MIF_ENV30, exact pitch, any duty); the pair is
+# only reported ("vs bridge" in the summary), not gated. With that tier the
+# gaps are not cut (--drop-gaps): the music's own rests are exact silence
+# too, and the cut mistook them for stream gaps (title r 0.99 -> 0.63). Combat's
+# bar is 0.8 there (measured 0.83; the music lines up tick for tick, the
+# scene's own effects differ between dcrun and the runner, see combat.txt).
 #
 #   title / invasion / combat
 #              the script in dcrun with --wav (sound there: expect-audio;
@@ -20,8 +31,8 @@
 # OUTDIR/<check>/ gets the logs, the WAVs and the envelope plots;
 # OUTDIR/summary.txt one line per check. Exit status 1 when one fails.
 set -u
-[ $# -eq 6 ] || { echo "usage: run_flycast.sh FLYCAST DCRUN IMAGE NMFILE RUNNER OUTDIR" >&2; exit 2; }
-FLY=$1 DCRUN=$2 IMG=$3 NM=$4 RUNNER=$5 OUT=$6
+[ $# -eq 6 ] || [ $# -eq 7 ] || { echo "usage: run_flycast.sh FLYCAST DCRUN IMAGE NMFILE RUNNER OUTDIR [IRQ_RUNNER]" >&2; exit 2; }
+FLY=$1 DCRUN=$2 IMG=$3 NM=$4 RUNNER=$5 OUT=$6 IRQR=${7:-}
 here=$(cd "$(dirname "$0")" && pwd)
 mkdir -p "$OUT"
 sum=$OUT/summary.txt
@@ -45,17 +56,29 @@ for name in title invasion combat; do
     "$RUNNER" --quiet --script "$d/ref_script.txt" --shots "$d/ref_shots" --saves "$d/ref_saves" \
         --w 320 --h 240 --wav "$d/ref.wav" > "$d/runner.log" 2>&1
     nr=$?
+    vsb=
+    if [ -n "$IRQR" ]; then
+        mv "$d/ref.wav" "$d/bridge.wav"
+        DCSND_WAV="$d/ref.wav" "$IRQR" --quiet --script "$d/ref_script.txt" --shots "$d/ref_shots" --saves "$d/ref_saves" \
+            --w 320 --h 240 > "$d/runner_irq.log" 2>&1
+        [ $? -eq 0 ] || nr=1
+        vsb=$(python3 -I "$here/compare.py" "$d/bridge.wav" "$d/dc.wav" --label "$name" --max-lag 5 \
+              --drop-gaps 256 2>&1 | sed 's/^[A-Za-z]* //')
+        vsb="; vs bridge (not gated): $vsb"
+    fi
     rm -rf "$d/run" "$d/ref_shots" "$d/ref_saves"
     clip=; [ $name = combat ] && clip="--clip-pct 97"   # see combat.txt
     # --drop-gaps: the AICA's silent gaps while the harness held the game
     # (sync stops) are not the game's sound (compare.py, DC8)
+    gaps="--drop-gaps 256"; bar=
+    [ -n "$IRQR" ] && { gaps=; [ $name = combat ] && bar="--min-corr 0.8"; }
     c=$(python3 -I "$here/compare.py" "$d/ref.wav" "$d/dc.wav" --label "$name" --max-lag 5 \
-        --drop-gaps 256 $clip --plot "$d/envelope.png" 2>&1)
+        $gaps $bar $clip --plot "$d/envelope.png" 2>&1)
     cr=$?
     stats=$(grep '^dcrun: sound' "$d/dcrun.log" | sed 's/^dcrun: //')
     p2p=$(grep -o 'peak-to-peak [0-9]* (min' "$d/dcrun.log" | head -1)
     st=ok; [ $r -eq 0 ] && [ $nr -eq 0 ] && [ $cr -eq 0 ] || st=FAIL
-    res "$name" "$st" "(dcrun $r, runner $nr) $p2p; $c; $stats"
+    res "$name" "$st" "(dcrun $r, runner $nr) $p2p; $c; $stats$vsb"
 done
 
 # ---- repeat: the same ticks give the same sound ----

@@ -330,7 +330,8 @@ The skeleton drew only `plat_clear()`'s colour; DC3 draws all of the 2D
 | 2D, post effects, held frame | **done** (`dc/src/gfx2d.c`, section 4) | DC3 |
 | retained panels, `plat_figure_obj`, the stage sprites | the core's weak defaults (draw every frame; cheap on the PVR) | - |
 | saves | **done** (`dc/src/vmusave.c`, section 5: the VMU, a static 136 KB scratch) | DC4 |
-| `plat_tone`, `plat_sample`, `plat_sample_ex`, `plat_music_stall` | **done** (`dc/src/audio.c`, `mixer.c`, `sfx.c`, section 6); the music engine stays on the core's weak legacy bridge tier | DC5 |
+| `plat_tone`, `plat_sample`, `plat_sample_ex`, `plat_music_stall` | **done** (`dc/src/audio.c`, `mixer.c`, `sfx.c`, section 6) | DC5 |
+| `plat_audio_caps`, `plat_voice`, `plat_audio_bus`, `plat_audio_fx` | **done**: the music engine's IRQ tier (`dc/src/musvoice.c`, section 6; `MUSIC_IRQ=0` keeps the weak bridge) | DC5b |
 | `plat_overworld` | **done** (`dc/src/overworld.c` over `dc3d.c` / `pvr3d.c`, section 7) | DC7 |
 | `plat_room`, `plat_room_project` | **done** (`dc/src/room.c`, section 8) | DC8 |
 | `plat_view3d` | a no-op | DC6 |
@@ -1042,7 +1043,13 @@ sixteenths, then 224, then the hold mute). `plat_audio_bus(0, g)` does the
 same for a core that sends the gain itself. `MFX_ECHO`, `REVERB`, `FREEZE`,
 `CRACKLE`, `PSG_DUCK` and `STEMS` are accepted and do nothing (the core
 never sends the first three). The voice babble and the comedy one-shots
-stay on the four tone channels. `latency_mt` is 0: music and effects share
+stay on the four tone channels, and the music no longer gives way to
+them: on the bridge a music channel is skipped while the babble
+(`audio_voice_busy`) or a comedy one-shot (`audio_fx_owns`) holds it, but
+on this tier the music voices are mixer voices of their own and keep
+sounding underneath. Not yet listened to on a console for clutter or
+clipping under the babble; if it is too much, silence voice 1 / the owned
+channel's music voice while those two answer yes. `latency_mt` is 0: music and effects share
 the one stream. The tape calls (`plat_tape_*`) keep the weak defaults; the
 core has no `CAP_TAPE` use here. `plat_sample_ex` (pan, priority, pitch) is
 implemented and tested on the host; the core does not call it yet, so
@@ -1058,6 +1065,21 @@ play the same number of key-ons. The unit tests (72 checks) cover the
 pitch, every record kind, 900 ticks of random records, mute, duck and tape
 stop, the babble and the comedy one-shots, the queue and the caps.
 
+**Not the bridge's sound, by design.** With `CAP_DRV_IRQ` the core runs the
+driver's control frames at 4 mt (60 Hz), where the bridge runs 8 mt (30 Hz):
+the instruments that are not `MIF_ENV30` then step their envelopes twice as
+fast, so notes decay and release sooner and rests are exact digital silence
+(the bridge never reaches it). The pitch is exact and the duty is any
+tparam / 32. Measured against the bridge on the host (6 songs of 20 s,
+`dcsnd_runner` against `dcsnd_runner_irq`): envelope r 0.5-0.83, level
+0.73-0.77, same note in 50-64 % of the windows. That is the music engine's
+own 60 Hz design, not a mixer fault: the key-on counts are equal on both
+tiers on every song and tick by tick, and on the host the mixer matches the
+`DoomoVoice` reference to 1 LSB. So the Flycast gate for an IRQ image is not
+the native runner's WAV (the bridge's sound) but `dcsnd_runner_irq`'s: the
+same runner with `musvoice.c` linked (`DCSND_WAV`). The old comparison with
+the bridge is printed as "vs bridge" and not gated.
+
 ### Cost
 
 On Flycast's clock (not cycle-exact: a guide until a console is timed),
@@ -1067,7 +1089,32 @@ combat (max 1.74) and 1.45 ms on the invaded town (max 2.39): 4-5 % of the
 stayed inside the 30 fps budget (title work mean 3.4 ms, worst 12.3 ms;
 the 3D view is still DC6's stub). Memory: the ring 94,080 B and the copy
 buffer 12,288 B (`.bss`), the effects bank 95,656 B (heap, 35 effects in
-16-bit), code 4.7 KB.
+16-bit), code 4.7 KB. DC5b added 8 music voices of 36 B (`mv` 288 B), the bus and tape
+state, 2 counters and `mus_bridge_tones` (16 B): about 370 B of `.bss`/`.data`
+(measured in the ELF's symbols, 2026-11-13).
+
+On Flycast with the IRQ tier (2026-11-13, `make -C dc audio-test`, the
+three scripts against `dcsnd_runner_irq`; `--drop-gaps` is off there: the
+music's own rests are exact silence too, and the cut took them for stream
+gaps, title r 0.99 -> 0.63):
+
+| check | envelope r | same note | level | mixer per tick | work over 33.3 ms |
+|---|---|---|---|---|---|
+| title | 0.990 (bar 0.9) | 97.6 % of 85 | 0.97 | mean 1.22 ms, max 3.93 | 0 of 611 ticks (worst 13.0 ms) |
+| invasion | 0.997 (bar 0.9) | 97.3 % of 74 | 0.98 | mean 1.42 ms, max 1.65 | 0 of 454 (worst 28.9 ms at tick 2, the scene load) |
+| combat | 0.822 (bar **0.8**, clipped at p97) | 88.1 % of 67 | 0.98 | mean 1.32 ms, max 1.86 | 0 of 409 (worst 16.2 ms) |
+| repeat | title hash600 0xc3e91676 twice | | | | |
+
+The bridge image, same day: title r 0.990, invasion 0.988, combat 0.904 (the
+bar 0.9). Combat on the IRQ tier is 0.08 under that bar and is gated at 0.8:
+the music lines up with the host render tick for tick (the best lag is 100
+ticks to 0.1 ms; per tick levels agree), but the scene's own effects and
+enemy noises differ between dcrun and the runner (see `combat.txt`), and the
+60 Hz envelopes show a one-tick difference more than the bridge's did. No
+other cause was found; a stub 3D view makes it worse. The IRQ tier costs no
+more mixer time than the bridge (title mean 1.22 ms against 1.37 ms: fewer
+tone channels run). Music works with 0 sound underruns and 0 late refills in
+the three windows.
 
 ### Counters (`dc_mailbox.snd_*`, `dcrun`)
 

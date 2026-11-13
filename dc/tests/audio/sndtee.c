@@ -14,6 +14,10 @@
  * once two are ready (DCSND_PREFILL), as on the console, and the ring is
  * played out at exit, so frame block k of the Dreamcast WAV is tick k, as
  * in the reference.
+ * Built with -DTEE_IRQ (dcsnd_runner_irq, which links musvoice.c) the music
+ * arrives as DoomoVoice records through the driver hook, as on the console
+ * (DC5b); musrender's WAV then has the tones only (no music), and the
+ * DCSND_WAV one is the reference for the Flycast checks.
  * DCSND_STATS=FILE appends the mixer's counters at exit.
  */
 #include <stdio.h>
@@ -82,6 +86,9 @@ static void init(void)
     inited = 1;
     dcsnd_reset();
     dc_sfx_init();
+#ifdef TEE_IRQ
+    dc_music_init();                      /* the music engine's IRQ tier (musvoice.c) */
+#endif
     if (wp && *wp) {
         wav = fopen(wp, "wb");
         if (!wav) { fprintf(stderr, "sndtee: cannot write %s\n", wp); exit(2); }

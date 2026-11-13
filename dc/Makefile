@@ -215,12 +215,15 @@ vmu-test: $(CDI) $(BUILD)/doomogachi.nm
 	@$(MAKE) --no-print-directory -C $(HARNESS) all
 	sh $(DC)/tests/vmu/run_flycast.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(SHOTS)/vmu
 
+AUDIO_IRQ_RUNNER := $(BUILD)/host-audio/dcsnd_runner_irq
 # DC5: the sound on Flycast against the native runner's musrender
 audio-test: $(CDI) $(BUILD)/doomogachi.nm
 	@if [ -z "$(FLYCAST)" ]; then echo "audio-test: no Flycast core (make -C dc/harness flycast)" >&2; exit 1; fi
 	@$(MAKE) --no-print-directory -C $(HARNESS) all
 	@$(MAKE) --no-print-directory -C $(ROOT)/core runner
-	sh $(DC)/tests/audio/run_flycast.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(RUNNER) $(SHOTS)/audio
+	@if [ "$(MUSIC_IRQ)" = 1 ]; then $(MAKE) --no-print-directory -C $(DC)/tests/audio $(AUDIO_IRQ_RUNNER); fi
+	sh $(DC)/tests/audio/run_flycast.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(RUNNER) $(SHOTS)/audio \
+	    $(if $(filter 1,$(MUSIC_IRQ)),$(AUDIO_IRQ_RUNNER))
 
 # DC7: the overworld on Flycast against the host software PVR (dc/tests/gfx2d)
 HOSTRUN := $(BUILD)/host/dc2d_runner

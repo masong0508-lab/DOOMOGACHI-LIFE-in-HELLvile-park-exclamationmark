@@ -58,7 +58,7 @@ TEE_OBJS := $(BUILD)/sndtee.o $(BUILD)/plat_native_ref.o $(BUILD)/runner_main.o
 REN_NAT := -Dplat_tone=ref_tone -Dplat_sample=ref_sample -Dplat_end_frame=ref_end_frame
 
 .PHONY: all test unit compare tier corelib clean
-all: $(BUILD)/test_audio $(BUILD)/dcsnd_runner $(BUILD)/tier_irq $(BUILD)/tier_bridge
+all: $(BUILD)/test_audio $(BUILD)/dcsnd_runner $(BUILD)/dcsnd_runner_irq $(BUILD)/tier_irq $(BUILD)/tier_bridge
 
 # test_audio links the native platform as it is (plat_native.o), the
 # runner its renamed copy: both are built here, never assumed
@@ -90,6 +90,15 @@ $(BUILD)/runner_main.o: $(CORE)/native/runner_main.c
 
 $(BUILD)/dcsnd_runner: corelib $(SND_OBJS) $(TEE_OBJS)
 	$(CC) $(LDFLAGS) -o $@ $(CORE_OBJS) $(NATIVE_OBJS) $(SND_OBJS) $(TEE_OBJS) -lm
+
+# DC5b: the same runner with the music engine's IRQ tier (musvoice.c): its
+# DCSND_WAV is what the console's stream should be (run_flycast.sh)
+$(BUILD)/sndtee_irq.o: $(HERE)/sndtee.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -DTEE_IRQ -c $< -o $@
+$(BUILD)/dcsnd_runner_irq: corelib $(SND_OBJS) $(BUILD)/sndtee_irq.o $(BUILD)/musvoice.o $(BUILD)/plat_native_ref.o $(BUILD)/runner_main.o
+	$(CC) $(LDFLAGS) -o $@ $(CORE_OBJS) $(NATIVE_OBJS) $(SND_OBJS) $(BUILD)/sndtee_irq.o $(BUILD)/musvoice.o \
+	    $(BUILD)/plat_native_ref.o $(BUILD)/runner_main.o -lm
 
 # the unit test links the native platform as it is (plat_native.c's own
 # plat_tone etc. are never called; the mixer is driven directly)
