@@ -1027,7 +1027,11 @@ and after, fps and the CPU time of one sampled frame (`perf:` line):
 | `home_defend_w3` | 30.13, 14.9 ms | 30.13, 6.4 ms |
 | `home_visit` | 30.17, 9.9 ms | 30.17, 9.9 ms |
 
-The parity pairs still differ by 0 pixels. The speed tour's house group
+The parity pairs still differ by 0 pixels (the second pair's resting
+player is translucent now). No file of `core/`, `gba/`, `dc/` or `tools/`
+changed: built clean in one directory, the native runner, `doomogachi.gba`
+and the Dreamcast `doomogachi.elf` have the same sha256 on the base and on
+this branch. The speed tour's house group
 (`speed2.sh OUT house`, 19 windows: Build, the catalog, a held piece, the
 turn, Photo, Live, Score, Hold the Door, a visit, HomeMart, the Black
 Market) holds 30 in every window; its one miss, the busy Live layout
