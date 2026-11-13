@@ -1,0 +1,75 @@
+# speed2_sim.txt - speed tour 2 / audit 3 (S3-1, docs/GBA.md "Speed wave 3: S3-1"): the free-play screens held
+# still for longer than one sim interval, so the resident pass falls inside every window. Before S3-1 all 1,000
+# residents came due in the same 32 ticks every 15 game minutes (1,125 ticks at the default clock, 37.5 s): about
+# 17 frames of 50-67 ms in a row on every free-play screen. Now the pass is spread over the whole interval (one
+# resident a tick at the default clock).
+# `make -C gba test-speed2 SPEED2=sim SPEED2_GATES=1`; PS1: `sh ps1/harness/speed2.sh OUT sim`; Dreamcast:
+# `sh dc/harness/speed2.sh OUT sim` (tools/speed2.py turns this file into their scripts).
+#
+# Window rules: speed2_fair.txt. Each window is 1,200 logic ticks: more than one 1,125-tick interval of the default
+# clock (day length 1 hour, speed x1), so one pass is inside it wherever it starts. The hub window waits out the
+# settle after the new island (map parts and portraits, ~250 ticks) and the hub's own 67 ms frame at tick ~670.
+# The scenes are the ones the audit saw hitch: the island hub, the shop's gifts tab, the citizen picker, the pet.
+# Gates (GBA only; tools/speed2.py drops them for the PS1 and the Dreamcast): `expect-fps 29.8` and `expect-gap 51`
+# after each window: no presented frame of 4 vblanks (67 ms) or more. Before S3-1 the pass gave 4-6 vblank frames
+# in every window (worst 67 / 84 / 100 / 100 ms). What is left is a few single 50 ms frames in the picker and pet
+# windows: their ticks are within 3 ms of the budget on their own and the sim now costs ~0.4 ms in every tick.
+wait 40
+expect-log doomo: init
+sync on 61
+seed 1
+scene NEW_ISLAND
+wait 10
+press A
+wait 20
+press A
+wait 2
+press A
+wait 10
+expect-scene ISLAND
+wait 600
+
+# ---- the island hub ---------------------------------------------------------------------------
+fps start
+wait 1200
+expect-fps 29.8 sim: island hub, one interval
+expect-gap 51
+shot sim_hub
+
+# ---- the shop's gifts tab -------------------------------------------------------------------------
+push SHOP 0
+wait 40
+press R
+wait 16
+fps start
+wait 1200
+expect-fps 29.8 sim: shop gifts tab, one interval
+expect-gap 51
+shot sim_shop_gifts
+press B
+wait 10
+
+# ---- the citizen picker -----------------------------------------------------------------------------
+push PICKER 0
+wait 30
+fps start
+wait 1200
+expect-fps 29.8 sim: citizen picker, one interval
+expect-gap 51
+shot sim_picker
+press B
+wait 10
+
+# ---- the pet ------------------------------------------------------------------------------------------
+seed 1
+push PET
+wait 30
+press A
+wait 20
+press START
+wait 100
+fps start
+wait 1200
+expect-fps 29.8 sim: pet main, one interval
+expect-gap 51
+shot sim_pet

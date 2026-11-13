@@ -176,8 +176,10 @@ DOOMO_STATIC_ASSERT(GENE_LAST_BIT + 1 == DOOMO_GENE_BITS, gene_is_full);
 - the bits of every catalog `*_COUNT` fit (this replaces the `sv_*` asserts in `save.c:57-88`).
 
 **Hot read cost.** `gene_get` is a table load, 1-2 byte loads, a shift and a mask. That is about
-15-20 cycles in ARM or THUMB on the GBA. The sim updates `SIM_BATCH` = 32 residents per tick and
+15-20 cycles in ARM or THUMB on the GBA. The sim updated 32 residents per tick and
 reads about 10 identity fields each, which is about 6-8k cycles per tick, or 1.4% of a tick.
+(S3-1: now one resident a tick at the default clock, `SIM_BATCH` = 16 at most; the pass over the town
+takes the whole 15 game minutes. The reads per resident are the same.)
 `sim_compat()` (`sim.c:198`) unpacks both citizens' identity once per pair, not per field.
 
 ### 1.3 Full gene bit table (69 B = 552 bits, *calc*)
