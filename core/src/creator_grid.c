@@ -16,6 +16,7 @@
  * The lock bit of every choice is worked out once when the grid opens (CR9: no unlock lookups
  * per cell per frame). State lives in CrState (the scene scratch). docs/CREATOR.md "The grid". */
 #include "creator_int.h"
+#include "doomo/plat_ext.h"             /* S3-3: plat_scene_scratch (the PS1 icon cache) */
 
 /* A filter chip is one byte: the kind in the top 3 bits, a shape or set index in the low 5, and
  * cr_grid_open() gathers the sets of a slot in a 32-bit mask. More than 32 sets (CREATOR_PLAN 3.3
@@ -250,6 +251,29 @@ static int grid_footer_moves(const CrRow *row)
     return ui_text_width(buf) > crl.lw - 16;
 }
 
+/* the icon of a cell. S3-3 (PS1, where the icons are packed): the unpacked icon of each cell of the page stays in
+ * the scene scratch the platform lends (plat_scene_scratch: the overlay slot's unused tail, no resident RAM), so a
+ * cursor that moves over the page unpacks nothing (part_icon_unpack was 30% of the PS1's try-on frames). Anywhere
+ * else (the icons are in ROM, or the platform lends nothing) it is part_icon_image as before. */
+static int grid_icon(int cell, int row, DoomoImage *im)
+{
+#if defined(DOOMO_ICONS_RLE)
+    uint32_t gen;
+    uint8_t *mem = cell < CR_ICON_CELLS ? (uint8_t *)plat_scene_scratch(CR_ICON_CELLS * PART_ICON_PIX, &gen) : NULL;
+    if (mem) {
+        if (!cr.ic_ok || cr.ic_gen != gen) {          /* another overlay loaded since: the pixels are gone */
+            memset(cr.ic_tag, 0, sizeof(cr.ic_tag));
+            cr.ic_gen = gen;
+            cr.ic_ok = 1;
+        }
+        return part_icon_image_kept(row, im, mem + cell * PART_ICON_PIX, &cr.ic_tag[cell]);
+    }
+#else
+    (void)cell;
+#endif
+    return part_icon_image(row, im, cr.icon_buf);
+}
+
 /* the end of the grid window: its panel (S3-3: one drawn before it is taken now) */
 static void grid_end(int panel, int pre, uint32_t key)
 {
@@ -341,7 +365,7 @@ void cr_grid_draw(void)
             ui_round_rect(cx, cy, cell - 1, cell - 1, 2, st->fill_lo);
             ui_round_rect(cx + 1, cy + 1, cell - 3, cell - 3, 2, st->fill_hi);
         }
-        if (part_icon_image(cr.g_meta[pos], &im, cr.icon_buf)) {
+        if (grid_icon(i, cr.g_meta[pos], &im)) {
             int ix = cx + (cell - 1 - PART_ICON_W) / 2, iy = cy + (cell - 1 - PART_ICON_W) / 2;
             plat_image(ix, iy, &im, 1, 0, 0);
         } else {

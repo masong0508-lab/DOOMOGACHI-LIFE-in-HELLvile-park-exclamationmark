@@ -163,6 +163,8 @@ enum { CAM_FIGURE, CAM_BUST, CAM_LEGS, CAM_BACK };
 
 /* CR6: the part grid (creator_grid.c): every choice of a part row as a picture */
 #define CR_GRID_MAX   128       /* choices of one slot (gene widths <= 64, deep fields <= 127)    */
+/* S3-3 (PS1): cells of the grid page whose unpacked icon is kept (10 columns x 4 rows, a bigger screen's 14 x 3: 42) */
+#define CR_ICON_CELLS 48
 #define CR_GRID_FILT  24        /* filter chips of one slot                                      */
 enum { GFK_ALL, GFK_OPEN, GFK_SHAPE, GFK_SET };           /* filter chip kinds (g_filt[] >> 5)     */
 
@@ -290,6 +292,13 @@ typedef struct CrState {
     char     g_find[12];            /* search letters ("" none)               */
     char     g_findbuf[12];
     uint8_t  icon_buf[PART_ICON_PIX];  /* an unpacked icon (DOOMO_ICONS_RLE builds) */
+#if defined(DOOMO_ICONS_RLE)
+    /* S3-3 (PS1): the page's unpacked icons live in the scene scratch the platform lends (grid_icon): which
+     * row each cell's icon is (row + 1, 0 none), and the scratch's generation they were made under */
+    uint16_t ic_tag[CR_ICON_CELLS];
+    uint32_t ic_gen;
+    uint8_t  ic_ok;
+#endif
 
     /* CR6: a locked part on the citizen, the part alone in lavender (creator_draw.c) */
     uint8_t  lockpix[FIGURE_W * FIGURE_H] __attribute__((aligned(4)));

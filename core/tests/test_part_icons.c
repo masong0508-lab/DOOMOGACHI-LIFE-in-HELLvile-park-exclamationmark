@@ -77,6 +77,38 @@ TEST(part_icons_packed_equal_raw)
     CHECK(!part_icon_unpack((int)doomo_part_icon_rle_count, buf));
 }
 
+TEST(part_icons_image_kept_unpacks_a_row_once_per_buffer)
+{
+    /* S3-3: the PS1's grid keeps one buffer per cell of the page: the same row again unpacks nothing */
+    static uint8_t buf[PART_ICON_PIX], ref[PART_ICON_PIX];
+    const PartMeta *m = part_meta_find(GF_HAT, 3);
+    const PartMeta *m2 = part_meta_find(GF_HAT, 4);
+    DoomoImage a, b;
+    uint16_t tag = 0;
+    int row, row2;
+    CHECK(m != NULL && m2 != NULL);
+    row = (int)(m - doomo_part_meta);
+    row2 = (int)(m2 - doomo_part_meta);
+    CHECK(part_icon_image_kept(row, &a, buf, &tag));
+    CHECK_EQ((int)tag, row + 1);
+    CHECK(a.pix == buf);
+    CHECK(part_icon_image(row, &b, ref));            /* the plain call: same pixels, same uid */
+    CHECK(memcmp(buf, ref, PART_ICON_PIX) == 0 || memcmp(buf, b.pix, PART_ICON_PIX) == 0);
+    CHECK_EQ((int)a.uid, (int)b.uid);
+    memset(buf, 0x5A, sizeof(buf));                  /* the same row again: the buffer is not touched */
+    CHECK(part_icon_image_kept(row, &a, buf, &tag));
+    CHECK_EQ(buf[0], 0x5A);
+    CHECK(a.pix == buf && a.w == PART_ICON_W && a.h == PART_ICON_W);
+    CHECK(part_icon_image_kept(row2, &a, buf, &tag));  /* another row: unpacked into it */
+    CHECK_EQ((int)tag, row2 + 1);
+    CHECK(buf[0] != 0x5A || buf[PART_ICON_PIX - 1] != 0x5A);
+    tag = 0;                                          /* a lost buffer (tag 0): unpacked again */
+    memset(buf, 0x5A, sizeof(buf));
+    CHECK(part_icon_image_kept(row, &a, buf, &tag));
+    CHECK(memcmp(buf, doomo_part_icon_pix[part_icon_index(row)], PART_ICON_PIX) == 0);
+    CHECK(!part_icon_image_kept(-1, &a, buf, &tag));
+}
+
 TEST(part_icons_image_has_a_stable_uid)
 {
     static uint8_t buf[PART_ICON_PIX];

@@ -1935,8 +1935,8 @@ void cr_draw(void)
 {
     if (!scene_scratch_mine(CR_SCRATCH_TAG)) { ui_modal_hold(cr_sp, 0, 0, 0, 0, 0); plat_clear(PAL_UI_PINK); return; }
     cr_layout();
-    if (!plat_draw_skipped()) cr.dn++;          /* S3-3: the drawn ticks, for cr_region_pre */
 #if !defined(DOOMO_PLATFORM_PS1)
+    if (!plat_draw_skipped()) cr.dn++;          /* S3-3: the drawn ticks, for cr_region_pre */
     {
         /* S2-1 (docs/GBA.md "Speed wave 2"): the START menu, fully popped and with no portrait job under way,
          * holds the dimmed creator under it (ui_modal_hold); only the menu repaints */

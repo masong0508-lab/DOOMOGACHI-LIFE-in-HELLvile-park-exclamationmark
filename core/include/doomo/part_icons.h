@@ -42,5 +42,8 @@ int part_icon_image(int row, DoomoImage *out, uint8_t *buf);
 /* Unpack packed icon `i` (an index into the packed rows) into dst (PART_ICON_PIX bytes); returns 1
  * on success. Every build has it (the host tests check it against the raw icons). */
 int part_icon_unpack(int i, uint8_t *dst);
+/* The same image with the unpacked pixels kept in `buf` between calls: `*tag` (0 at first) says which row
+ * `buf` holds (row + 1), and a call with the same row unpacks nothing. 0 when the row has no icon. */
+int part_icon_image_kept(int row, DoomoImage *out, uint8_t *buf, uint16_t *tag);
 
 #endif

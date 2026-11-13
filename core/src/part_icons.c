@@ -89,3 +89,23 @@ int part_icon_image(int row, DoomoImage *out, uint8_t *buf)
 #endif
     return 1;
 }
+
+/* S3-3 (the PS1's part grid): the icon of `row` unpacked into `buf` (PART_ICON_PIX bytes of the caller's own,
+ * one per cell of the page), unless `*tag` says `buf` holds it already (tag = row + 1; 0 = nothing): a cursor
+ * that moves over a page unpacks nothing. Always unpacks (the host tests run it too); the creator asks only
+ * where the icons are packed (DOOMO_ICONS_RLE) and the platform lends it the room (plat_scene_scratch). */
+int part_icon_image_kept(int row, DoomoImage *out, uint8_t *buf, uint16_t *tag)
+{
+    int i = part_icon_index(row);
+    if (i < 0 || !out || !buf || !tag) return 0;
+    if (*tag != (uint16_t)(row + 1)) {
+        *tag = 0;
+        if (!part_icon_unpack(i, buf)) return 0;
+        *tag = (uint16_t)(row + 1);
+    }
+    out->w = PART_ICON_W;
+    out->h = PART_ICON_W;
+    out->uid = 0x1C000000u | (uint32_t)i;
+    out->pix = buf;
+    return 1;
+}
