@@ -462,7 +462,7 @@
   "I said it. Now I'll say it backwards, ready? {.}Gnihtyreve." guard: type=wild_card
   "Right, again! With more energy! One, two, three!" guard: type=eager_go_getter
   "Yes, repeat! Rehearse, improve! Repeat!" guard: type=eager_go_getter
-  "Again?, yay! I love it when it's twice! Twice!" guard: type=bubbly_sparkler
+  "Again? Yay! I love it when it's twice! Twice!" guard: type=bubbly_sparkler
   "Okay! Sparkly version! Here we go!" guard: type=bubbly_sparkler
   "Listen, again, everyone. This is important. Ready?" guard: type=fiery_leader
   "Fine. Louder, so the back row hears it." guard: type=fiery_leader
