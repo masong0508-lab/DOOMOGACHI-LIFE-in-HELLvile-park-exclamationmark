@@ -40,6 +40,10 @@
  * page then starts from a VRAM-to-VRAM copy of it (copy-forward, ~2 ms)
  * instead of a second recompose. Catch-up ticks (plat_draw_skipped) draw
  * nothing; the next drawn frame diffs against what the page really shows.
+ * (S2-11) The one full recompose a player causes on purpose, a turned VIEW,
+ * is built over 2-3 ticks in the hidden page while the shown page keeps the
+ * old view (the tick says "no flip": hold.c, PLAT_BUILD_BUSY; see "a view
+ * turn built over several ticks" below).
  * Per object, the item (box, signature, sprite, LUT) and its sort entry are
  * cached until the object or the geometry changes; the order is room_ref's
  * topological pick over bitsets, re-run only for the entries that moved.
@@ -2635,7 +2639,7 @@ uint32_t room_hc_parity(uint32_t arg)
     uint8_t keep_test = rb_test;
     int keep_nodraw = gba_nodraw;
     uint16_t *keep_back = gba_back;
-    uint32_t h;
+    uint32_t h, h_override = 0;
     rb_test = 0;
     gba_nodraw = 0;                       /* the last tick may have been a catch-up */
     if (line < ROOM_SHELL_FIRST || line >= ROOM_SHELL_LINES) {
@@ -2680,6 +2684,50 @@ uint32_t room_hc_parity(uint32_t arg)
         o2[r.nobj - 9].sq_x = 10;
         hc_frame(&v2);
         hc_frame(&v);
+    } else if (path == 4 && line >= ROOM_SHELL_FIRST && line < ROOM_SHELL_LINES) {
+        /* (S2-11) the shell's tables are kept across frames by a key each (table_key): the room of the line before
+         * is drawn first, then this line's on a cleared page with no reset between (every cache, the tables
+         * included, is kept), so a table whose key missed an input shows the line before's (a repaint, a
+         * new wallpaper or floor, a tint, another roof) */
+        HomeRoom r0;
+        DoomoRoomView v0;
+        parity_view(&v0, objs, &r0, line == ROOM_SHELL_FIRST ? ROOM_SHELL_LINES - 1 : line - 1);
+        hc_frame(&v0);
+        parity_view(&v, objs, &r, line);
+        plat_clear(PAL_BLACK);                            /* (the golden is a frame on a cleared page) */
+        hc_frame(&v);
+    } else if (path == 5 && line >= ROOM_SHELL_FIRST && line < ROOM_SHELL_LINES) {
+        /* (S2-11) ONE input of the view changed, every cache kept: the shell's tables are kept by a key each, and
+         * the golden lines differ in several inputs at once, which hides a key that missed one. The line's room is
+         * drawn, then the same room with one input changed (arg bits 4..7: 0 wall paint, 1 floor paint, 2 ceiling,
+         * 3 wallpaper, 4 floor, 5 daylight, 6 tint, 7 roof, 8 deeper room, 9 a quarter turn) on a cleared page,
+         * and that page must equal the changed room drawn alone from a reset. Returns RP_OK when it does. */
+        DoomoRoomView vb = v;
+        uint32_t href, hkept;
+        switch ((arg >> 4) & 15) {
+        case 0: vb.wall_paint = (uint8_t)((vb.wall_paint + 5) & 31); break;
+        case 1: vb.floor_paint = (uint8_t)((vb.floor_paint + 5) & 31); break;
+        case 2: vb.ceiling = (uint8_t)((vb.ceiling + 1) & 7); break;
+        case 3: vb.wallpaper = (uint8_t)((vb.wallpaper + 1) & 3); break;
+        case 4: vb.floor = (uint8_t)((vb.floor + 1) & 3); break;
+        case 5: vb.daylight = (uint8_t)(vb.daylight >= 8 ? vb.daylight - 5 : vb.daylight + 5); break;
+        case 6: vb.tint = vb.tint ? 0 : TINT_RED; vb.tint_level = (uint8_t)(vb.tint ? 4 : 0); break;
+        case 7: vb.roof = (uint8_t)(vb.roof == ROOF_SPIKE ? ROOF_COTTAGE : vb.roof + 1); break;
+        case 8: vb.d = (uint8_t)(vb.d + 2); break;
+        default: vb.yaw = (int16_t)(vb.yaw + 1024); break;
+        }
+        room_invalidate();
+        plat_clear(PAL_BLACK);
+        hc_frame(&vb);
+        href = page_fnv();
+        room_invalidate();
+        plat_clear(PAL_BLACK);
+        hc_frame(&v);
+        plat_clear(PAL_BLACK);
+        hc_frame(&vb);
+        hkept = page_fnv();
+        if (href != hkept) gba_logf("room: parity %x: kept %x, alone %x", (unsigned)arg, hkept, href);
+        h_override = href == hkept ? 0x600D600Du : hkept;
     } else if (path == 3) {
         /* (S2-11) a view turn built over several ticks: the room a quarter turn earlier is drawn whole into this
          * page, the other page becomes the hidden one (as after video_flip) and the view is turned: every tick
@@ -2715,7 +2763,7 @@ uint32_t room_hc_parity(uint32_t arg)
     } else {
         hc_frame(&v);
     }
-    h = page_fnv();
+    h = h_override ? h_override : page_fnv();
     if (path < 0) h ^= 0x5A5A5A5Au;
     room_invalidate();
     gba_back = keep_back;

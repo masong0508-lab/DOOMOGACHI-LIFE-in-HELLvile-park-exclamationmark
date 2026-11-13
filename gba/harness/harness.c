@@ -1281,7 +1281,9 @@ static int run_script(const char *path)
              * 12-19 the golden line of a shell frame (core/tests/room_shells.h,
              * 5..), else the classic layout in view ARG & 3 (night: ARG &
              * 0x10); bits 8-11 the path (0 full, 1 dirty rects, 2 UI restore, 3 (S2-11)
-             * a view turn built over several ticks, which must take 2 slice ticks at least).
+             * a view turn built over several ticks, which must take 2 slice ticks at least, 4 the golden
+             * line's room drawn right after the line before's (the shell tables kept by key), 5 one input of the
+             * room changed with every cache kept: INDEX `ok` expects the ROM's own check (0x600D600D)).
              * `xfail`: the GBA does not draw this frame yet (H2): a mismatch
              * is reported, not failed, and a match fails (drop the xfail). */
             uint32_t r, want;
@@ -1289,7 +1291,14 @@ static int run_script(const char *path)
             if (!hcmd(HC_ROOM_PARITY, (uint32_t)strtoul(argv[1], NULL, 0), &r)) failed = 1;
             else {
                 printf("harness: room-parity %s: fnv %08x\n", argv[1], (unsigned)r);
-                if (argc >= 3) {
+                if (argc >= 3 && !strcmp(argv[2], "ok")) {
+                    /* (S2-11) a self-checking line (path 5): the ROM answers 0x600D600D when it holds */
+                    if (r != 0x600D600Du) {
+                        fprintf(stderr, "harness: %s:%d room-parity %s: %08x, expected the ROM's 600d600d\n",
+                                path, lineno, argv[1], (unsigned)r);
+                        failed = 1;
+                    }
+                } else if (argc >= 3) {
                     if (!golden_hash(atoi(argv[2]), &want)) {
                         fprintf(stderr, "harness: %s:%d no golden line %s (--golden %s)\n", path,
                                 lineno, argv[2], golden_path ? golden_path : "missing");

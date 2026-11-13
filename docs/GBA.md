@@ -437,7 +437,7 @@ against the LAST row, not against a figure from an older base.
 | 44 | LV0: the level registry (`levels2.c`), the `BRCH` records chunk (7 of the 24 new levels on the GBA: 76 B working copy), the packed size classes | `0df72845` | 15,444 B | **15,460 B** | +16 B | 6,308 B | measured on `0df72845` (after CR3) + LV0 (`make -C gba sizes`, both trees built clean): `.bss` 245,804 -> 245,788, IWRAM and the overlay slot unchanged (0 B). The 76 B of `BRCH` (`levels_rec.c`: arc 48 B + 7 records x 4 B) are paid by `LvRun.size_cls` going from one byte an actor (128 B) to two bits (32 B, 96 B saved). The GBA lists the seven old levels and HB8, HB9, HB13, HB15, N1, N7, N14 (`LVG_GBA` in `lv_reg`); the 17 others are registered (their rows are in ROM) but not listed, so the select, the records and the unlock rules skip them. `make -C gba test`: 0 failures. ROM +3.6 KB (the 24 registered levels' text and tables) |
 | 45 | CR4 A2: 32 hair styles and 8 beards (docs/CREATOR.md "CR4 batch A2") | after S3-3 (`b63abec`) | 15,444 B | **15,444 B** | 0 B | 6,308 B | measured on `b63abec` and `b63abec` + A2 (`make -C gba sizes`): `.bss` 245,804 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B before and after, `.text` 1,401,336 B before and after; the part scripts, the catalog rows and the 40 part icons are `const` ROM: `.rodata` 6,587,868 -> 6,608,008 B (+20,140). PS1: no resident byte (`_end` 0x801ef4e0 before and after, 68,368 B below the stack top with the boot FMV; the overlay slot ends 0x801ef3b4 both times) |
 | 46 | CR4 A3: 60 spooky parts (docs/CREATOR.md "CR4 batch A3") | after A2 (`224b192`) | 15,444 B | **15,444 B** | 0 B | 6,308 B | measured on `0c1fc51` and `0c1fc51` + A3 (clean `make -C gba` builds, `make -C gba sizes`): `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B, `.data` 816 B, `.text` 1,403,440 B all identical before and after; the part scripts (5.8 KB), the catalog rows and the 60 part icons are `const` ROM: `.rodata` 6,591,380 -> 6,623,356 B (+31,976, measured on the pre-rebase tree; on the rebased tree the whole `.rodata` is 6,643,580 B and `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B, `.data` 816 B, unchanged). `make -C gba test` and `test-creator` pass on the rebased tree (creator rows 29.9 fps, value step 30.0) |
-| 47 | S2-11: the house's view turn built over several ticks, the room group's row loops, HomeMart's UI loops (docs: "Speed wave 2: S2-11" below) | `dd34812b` | 15,460 B | **15,460 B** | 0 B | 6,308 B | measured on `dd34812b` + S2-11 (ROM 8,004,784 -> 8,008,460 B): no resident EWRAM or IWRAM. `RBig` (the house's region, in the scene scratch arena) loses `match` (56 B, now on the stack in `incremental()`) and gains 32 B of turn-build state (`tkey[5]`, `bkey`, `bsub`, `bstep`, `brow`, `bld`, `bturns`, `k_last`); the overlay's room group grows 3,588 -> 8,712 B inside the 3D group's 10,352 B slot (1,640 B free in the slot); `hold.c` one flag bit. PS1: the EXE and the overlays are byte for byte the base's (the hooks are not built there), 64 KB below the stack top with the FMV as before |
+| 47 | S2-11: the house's view turn built over several ticks, the room group's row loops, HomeMart's UI loops (docs: "Speed wave 2: S2-11" below) | `dd34812b` | 15,460 B | **15,460 B** | 0 B | 6,308 B | measured on `dd34812b` + S2-11 (ROM 8,004,784 -> 8,008,960 B): no resident EWRAM or IWRAM. `RBig` (the house's region, in the scene scratch arena) loses `match` (56 B, now on the stack in `incremental()`) and gains 32 B of turn-build state (`tkey[5]`, `bkey`, `bsub`, `bstep`, `brow`, `bld`, `bturns`, `k_last`); the overlay's room group grows 3,588 -> 8,712 B inside the 3D group's 10,352 B slot (1,640 B free in the slot); `hold.c` one flag bit. PS1: the EXE and the overlays are byte for byte the base's (the hooks are not built there), 64 KB below the stack top with the FMV as before |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -1570,7 +1570,9 @@ because the load is shorter (the fade is a register driven by real vblanks; ever
 same picture, less faded). A second script turns the view in every mode (Build, Photo, Live, the busy layout), single,
 mashed every 2-3 ticks and back and forth, with a held piece and a daylight step in between: of its 704 frames 672
 equal the base ROM's, 30 repeat the previous frame (a turn's held ticks: 1-2 in the cottage, 3-4 in the busy layout,
-up to 6 when turns restart the build) and 2 are load-fade frames; none is another picture.
+up to 6 when turns restart the build) and 2 are load-fade frames; none is another picture. A third script opens
+the START menu on the tick the view changes and 1-3 ticks later (a build still running under the menu): 486 frames, 478
+equal the base ROM's, 6 held (2 a turn), 2 load-fade frames.
 
 **3. HomeMart and the Black Market ask for the UI group's loops** (`plat_ui_loops()` at the top of `mart_draw`): their
 preview picture (scale 2) went through `vid_blit_c` from ROM because the slot still held the room group (6 ms of the
@@ -1579,7 +1581,13 @@ Black Market's 33.2 ms, which sat a hair under the 33.3 limit). Same pixels (fra
 
 **Tests.** `make -C gba test-home`: `room-parity` path 3 (`home.txt`, block 1f: every golden line 0..57 drawn as a
 turn built slice by slice, hashed against the one-go golden, and failing unless the turn took 2 slice ticks at least;
-a mutant that never slices fails the first line) and `home_turn.txt` (a turn each way in Build mode, single turns
+a mutant that never slices fails the first line), `room-parity` path 4 (block 1g: every shell line 5..57 drawn right
+after the line before's, on a cleared page, with every cache kept, the tables included), path 5 (block 1h: one input
+of a room changed at a time, 10 inputs on 6 roofed / lit rooms, the changed room drawn after the original must equal
+it drawn alone: a table whose key missed an input shows the old picture). Checked with mutants that drop one input
+from a table key: the roof's screen-space inputs fail path 3, the floor planks path 4, the wall paint, the light
+level, the tint, the ceiling and the wallpaper path 5 (the golden lines alone, which differ in several inputs at
+once, caught none of the last five) and `home_turn.txt` (a turn each way in Build mode, single turns
 in Photo mode, the busy layout with single turns and three in a row, which draws the third in one go, one 67 ms
 frame: `expect-fps` and `expect-gap`). `core/tests/test_home_score_opaque.c`:
 the scene draws nothing over the room on a build tick, and HomeMart asks for the UI loops each frame. The speed2
@@ -1602,10 +1610,10 @@ frame over two vblanks; `tools/speed2.py` keeps `expect-gap` out of the PS1 and 
 
 `make -C gba test-home` (same ROM): `home_steady` 29.2 -> **30.0** (work 29.8 -> 24.3 ms, the 5 frames of 50 ms gone),
 `home_rotate` 24.5 -> **30.0** (max work 134.9 -> 35.5 ms; two turns), `home_modal_busy` 22.7 -> 24.8 (the Score panel
-over the walkers: 160 ms worst -> 120), the first house frame under the load 187 -> 153 ms. 166 parity lines
-(108 old, 58 new) pass; the 108 old fingerprints are the base ROM's.
+over the walkers: 160 ms worst -> 120), the first house frame under the load 187 -> 153 ms. 279 parity lines
+(108 old, 58 + 53 + 60 new) pass; the 108 old fingerprints are the base ROM's.
 
-**Memory.** ROM 8,004,784 -> 8,008,460 B (+3,676); EWRAM `.bss` 259,460 B and 1,788 B free, both unchanged (ledger
+**Memory.** ROM 8,004,784 -> 8,008,960 B (+4,176); EWRAM `.bss` 259,460 B and 1,788 B free, both unchanged (ledger
 row 46); IWRAM resident 11,256 B and the main stack's 6,308 B unchanged; the room group 8,712 B of the slot's 10,352.
 PS1 / Dreamcast: the PS1 EXE and overlays are byte for byte the base's (the two core hooks are not built there); Dreamcast
 runs the same core with the weak `plat_build_frame` and `plat_ui_loops` (0).
@@ -2783,7 +2791,7 @@ gba/build/harness ROM.gba [--script FILE] [--shots DIR] [--save FILE]
 | `test-save` | engine-test ROM twice with the same `--save` file and SELECT held at boot: first run "no previous data / write ok", second run "persisted ok" (both 30 KB slots verified byte for byte, slot 1 erased and rewritten) |
 | `test-game` | game ROM, `scripts/smoke.txt`: boot, title, START, menu presses, screenshots in `build/shots/game` |
 | `test-coresave` | game ROM, `scripts/coresave1.txt` then `coresave2.txt` with the same `--save` file: the core's streamed saves (worst-case island in slot 1, a too-big save refused in slot 0, a story island in slot 0), loads checked by town CRC, then persistence across a reboot |
-| `test-home` | game ROM, `scripts/home.txt` (H2): `plat_room` parity with the room_ref golden on every path (15 classic frames, 15 shell-frame checks, 12 roof checks and 8 open-kind checks (H5: lip, backdrop, front-edge fences); since H2 every line required, none `xfail`), then `SCENE_HOME` fps gates (section 6a), a profile, and (S2-11) every golden line again as a view turn built over several ticks (`room-parity` path 3), screenshots in `build/shots/home`; a second run, `scripts/home_turn.txt`, times the turns (`expect-fps` / `expect-gap`) |
+| `test-home` | game ROM, `scripts/home.txt` (H2): `plat_room` parity with the room_ref golden on every path (15 classic frames, 15 shell-frame checks, 12 roof checks and 8 open-kind checks (H5: lip, backdrop, front-edge fences); since H2 every line required, none `xfail`), then `SCENE_HOME` fps gates (section 6a), a profile, and (S2-11) every golden line again as a view turn built over several ticks (`room-parity` path 3) as a shell change with the tables kept (path 4) and as a one-input change with every cache kept (path 5), screenshots in `build/shots/home`; a second run, `scripts/home_turn.txt`, times the turns (`expect-fps` / `expect-gap`) |
 | `test-ow` | game ROM, `scripts/owsprite.txt` (G2): 2,400 random sprites drawn by `ow_sprite` and by the G1 baseline's per-pixel blit (`src/owtest.c`, mailbox command `GBA_HC_OW_SPRITE_TEST` = 16, posted 150 cases at a time) must leave identical back buffers (section 6) |
 
 `make -C gba test-speed` (G1, not part of `test`): game ROM,
