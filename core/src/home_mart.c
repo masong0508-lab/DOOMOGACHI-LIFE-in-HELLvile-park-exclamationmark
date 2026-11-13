@@ -25,6 +25,7 @@
 #include "doomo/audio.h"
 #include "doomo/tween.h"
 #include "doomo/camfx.h"
+#include "doomo/plat_ext.h"                     /* (S2-11) plat_ui_loops */
 #include "doomo/items.h"
 #include "doomo/story_vm.h"
 #include "doomo/font.h"
@@ -621,6 +622,10 @@ static void mart_draw(void)
     if (!M) { plat_clear(PAL_BLACK); return; }
     style = M->kind == HMA_BLACK ? WIN_HELL : M->kind == HMA_BENCH ? WIN_DARK : WIN_CUTE;
     st = ui_style(style);
+#if !defined(DOOMO_PLATFORM_PS1)
+    plat_ui_loops();                             /* (S2-11) the GBA's ARM loops for the preview picture (scale 2) and
+                                                    the backdrop's checkers; the PS1 keeps its resident bytes */
+#endif
     ui_backdrop(style, M->t);
     if (plat_draw_skipped()) return;
     plat_rect(0, 0, sw, 14, st->fill);

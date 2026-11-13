@@ -44,6 +44,15 @@ int plat_build_frame(int op)
     return build_busy;
 }
 
+/* (S2-11) HomeMart and the Black Market ask the platform for its scaled-image / checker loops once a drawn frame
+ * (the GBA: the UI group in IWRAM; its picture of the piece and the backdrop were drawn by slower code) */
+static int ui_loops_asked;
+int plat_ui_loops(void)
+{
+    ui_loops_asked++;
+    return 0;
+}
+
 void plat_room_ui_opaque(int x, int y, int w, int h)
 {
     if (opq_n < (int)DOOMO_COUNTOF(opq)) {
@@ -168,4 +177,23 @@ TEST(home_draws_nothing_over_the_room_on_a_build_tick)
     CHECK_EQ(frame(0), 0);                                   /* (and no window was named on the way) */
     CHECK(fb_fnv() != room_fnv);                             /* the HUD is back */
     CHECK(scene_top() == &SCENE_HOME);
+}
+
+/* (S2-11) HomeMart and the Black Market (Black Market: 33.2 ms of work a tick, a hair under the 33.3 limit,
+ * 6 ms of it the preview picture through the C blit) ask for the platform's UI loops on every drawn frame */
+TEST(home_mart_asks_for_the_platform_ui_loops_each_frame)
+{
+    test_reset();
+    home_reset();
+    scene_set(&SCENE_HOME_MART, 0);                     /* HMA_MART (home_mart.c) */
+    frames(3);
+    ui_loops_asked = 0;
+    frames(4);
+    CHECK_EQ(ui_loops_asked, 4);
+    CHECK(scene_top() == &SCENE_HOME_MART);
+    scene_set(&SCENE_HOME_MART, 1);                     /* HMA_BLACK */
+    frames(3);
+    ui_loops_asked = 0;
+    frames(4);
+    CHECK_EQ(ui_loops_asked, 4);
 }
