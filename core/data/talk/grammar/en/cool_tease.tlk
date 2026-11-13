@@ -1,0 +1,191 @@
+# core/data/talk/grammar/en/cool_tease.tlk - more replies to CRITICIZE and TEASE (owner: TK;
+# T5b package T5B-COOL). Friendly needling and thin skin, clean in any room. Nothing here
+# aims at a body, a family or a loss. No register word. Syntax: core/tools/talkc_gen.py.
+
+# ---- CRITICIZE -> DISAGREE ---------------------------------------------------------------------
+@rule core.criticize.c_disagree act: disagree
+  "Wrong. It's not bad, it's avant-garde. Look it up."
+  "I'm sorry, did I ask for notes? I did not. Thanks anyway."
+  "You've got it backwards. It's meant to look like that."
+  "Nope. I did that on purpose. Every crooked inch of it."
+  "That's your opinion. Mine's better, it has glitter."
+  "It's perfect. You just don't have the eyes for it."
+  "Excuse me? I worked very hard on that. For nearly a minute."
+  "Strong words from someone who can't fold a towel."
+  "I think you'll find it's a design choice. Please hold your applause."
+  "Funny, the last critic said that. Then they got a hat."
+@rule core.criticize.c_disagree_blunt guard: blunt&!kid_present act: disagree
+  "You're wrong. And I'm too busy to explain why. Bye."
+  "No. You just have no taste. It's okay, it's genetic."
+  "Cool opinion. Wrong, but cool. Keep it in your pocket."
+@rule core.criticize.c_disagree_loud guard: loud act: disagree
+  "NO, IT'S GOOD! IT'S EXCELLENT! YOU'RE LOOKING AT IT WRONG!"
+  "HOW DARE YOU! THAT'S A MASTERPIECE! ASK ANYONE, ASK THE DUCK!"
+@rule core.criticize.c_disagree_polite guard: polite act: disagree
+  "I appreciate the feedback, but I respectfully disagree. Very, very much."
+  "That's one view, and I thank you. I'll be ignoring it."
+  "How kind of you to say. I must beg to differ, dear."
+@rule core.criticize.c_disagree_quirky guard: quirky act: disagree
+  "That's what the moon said, and look how that turned out."
+  "Nuh-uh! It's art! It's a sandwich of feelings!"
+  "The spoon told me it was fine. The spoon never lies."
+@rule core.criticize.c_disagree_serious guard: serious act: disagree
+  "I have reviewed it three times. It stands. Next."
+  "Your criticism is noted and found wanting. Please try again."
+@rule core.criticize.c_disagree_elder guard: elder act: disagree
+  "Young person, I've been doing it this way since before you hatched."
+  "Pfft. It's served me forty years. It'll serve you longer."
+@rule core.criticize.c_disagree_kid guard: kid_speaker tags: kid act: disagree
+  "Nuh-uh, it's good! I made it myself! With glue!"
+  "You're wrong! It's the best one! Ask my friends!"
+@rule core.criticize.c_disagree_x guard: topic act: disagree
+  "Leave {x} out of it! {x:cap} is great. You're just jealous."
+  "{x:cap} is fine. It's you that needs fixing. Gently."
+
+# ---- CRITICIZE -> AGREE / APOLOGIZE -----------------------------------------------------------
+@rule core.criticize.c_agree act: agree
+  "Yeah, you're right. I'd say I'll fix it, but I won't."
+  "Okay, fair, it's pretty bad. I like it anyway."
+  "True, true. It's been wobbly since I got it. Like me."
+  "Ugh, you noticed. I was hoping nobody would. Stop looking."
+  "Yep. It's a mess. A beautiful, tragic mess."
+  "You're not wrong. Don't tell anyone. I've a reputation."
+  "Honestly? I've thought the same. It's good to hear it out loud."
+  "That's the nicest rude thing anyone's said all week."
+@rule core.criticize.c_agree_easy guard: easygoing act: agree
+  "Yeah, probably. I'll get to it, maybe. When the moon's right."
+  "Ha, true, oh well. Perfect's overrated. It's boring."
+@rule core.criticize.c_agree_flat guard: flat act: agree
+  "Correct. {.}I'll cry about it later. Put it in my diary."
+  "Yes, it's bad. I'm feeling something, I think. Maybe."
+@rule core.criticize.c_agree_sad guard: mood=sad act: agree
+  "You're right. I'm not great at anything. Except naps."
+  "Yeah, I know. Thanks for saying it out loud. It's honest."
+@rule core.criticize.c_agree_kid guard: kid_speaker tags: kid act: agree
+  "Aw, you're right. It's a bit wonky. Can you help me fix it?"
+  "Yeah, I messed up. I'll try again! Third time's the charm!"
+@rule core.criticize.c_apologize act: apologize
+  "Sorry, sorry! You're right. I'll try to be less me."
+  "Oops, okay. I'll do better. Tomorrow, probably."
+  "My bad! I get a bit carried away. It's a family curse."
+  "Oh dear. That's my fault. I'll be less terrible, promise."
+  "You're right and I'm sorry. I'll buy you a biscuit. A small one."
+  "I'm sorry. I'll give it another go. A smaller, quieter go."
+@rule core.criticize.c_apologize_polite guard: polite act: apologize
+  "I do apologise. I was rather careless, wasn't I? How embarrassing."
+  "You're quite right, and I'm mortified. Do forgive me."
+  "Terribly sorry. It won't happen again. At least not this week."
+@rule core.criticize.c_apologize_kid guard: kid_speaker tags: kid act: apologize
+  "Sorry, I didn't mean it. Don't be mad, please? Pretty please?"
+  "I'm sorry, I'll fix it! Don't tell! Okay, tell, but nicely."
+
+# ---- CRITICIZE -> COMPLAIN / DISMISS / JOKE ------------------------------------------------------
+@rule core.criticize.c_complain act: complain
+  "Everyone's a critic these days. Where's the encouragement?"
+  "I try my best and this is the thanks I get. A sigh."
+  "Wow, rude. I put in all the effort I had. All three units."
+  "I'm doing my best! My best is just a bit... imaginative."
+  "That's so unfair. I need a lie-down. And a medal."
+  "Could you be nicer? Just a little? I'm made of glass."
+  "Thanks for that. I'll have it engraved on my tombstone. Eventually."
+@rule core.criticize.c_complain_sad guard: mood=sad act: complain
+  "That hurts a bit. Today of all days. I was doing okay."
+  "I'm trying. I really am. It's just hard sometimes."
+@rule core.criticize.c_complain_angry guard: mood=angry act: complain
+  "Oh, great. Now I'm even crosser. You're feeding the beast."
+  "Do NOT critique me today. I'll bite. Gently, but I will."
+@rule core.criticize.c_dismiss act: dismiss
+  "Mm. Thanks for your input. It's been logged in the trash."
+  "Cool critique. Now, about my lunch."
+  "Opinions are like noses. Everyone has one, most of them run."
+  "I'll consider it. {.}I've considered it. No."
+  "Take it up with my manager. He's a coat rack."
+  "You've missed your window for notes. It closed at birth."
+@rule core.criticize.c_dismiss_blunt guard: blunt&!kid_present act: dismiss
+  "Nobody asked. Move along, nothing to see, especially you."
+  "Did you want a medal for that insight? Because I'm fresh out."
+@rule core.criticize.c_joke act: joke
+  "I take notes the way a sieve takes soup. With love and zero results."
+  "You should see my other mistakes. They're in a museum."
+  "That's my best feature, honestly. The flaws. They're load-bearing."
+  "I'll add it to my list. It's number 4,096. Right below breathing."
+  "Critique accepted. Now let's go and be wrong together."
+
+# ---- TEASE -> TEASE -------------------------------------------------------------------------------
+@rule core.tease.c_back act: tease
+  "Oh, you're asking for it now. I'll tease you till you squeak."
+  "Hah! Look who's got jokes. Did you save them up all week?"
+  "You know what you look like? Someone who's about to be teased."
+  "Careful! I've got a fresh stock of insults. Aged in barrels."
+  "Teasing me? Bold and brave, and slightly foolish. I like it."
+  "Aw, you're sweet. Like a lemon dipped in confidence."
+  "That's the best you've got? Wow. I'll teach you someday."
+  "Okay, you've started it. Now I'll finish it, with a bow."
+  "Your jokes are like your hair. They go all over the place."
+  "You're adorable when you're brave. Like a kitten in a tie."
+@rule core.tease.c_back_quirky guard: quirky act: tease
+  "Teasing me is like poking a pudding. It jiggles back."
+  "Tee-hee! I tease you backwards! Esuoh ruoy fo eno era uoy!"
+  "You've got a nice mismatched aura. Like a sock drawer."
+@rule core.tease.c_back_loud guard: loud act: tease
+  "OH YOU'RE ON, TEASE-OFF! LOSER BUYS PIE, READY? GO!"
+  "HA! YOU TEASE LIKE A FEATHER! COME ON, GIVE ME THE ELBOW!"
+@rule core.tease.c_back_rival guard: rel=rival act: tease
+  "Still tickling? I'd call it cute, but I'm trying not to like you."
+  "Oh, I tease YOU? Make a note: I'm winning. Always."
+@rule core.tease.c_back_friend guard: rel=friend act: tease
+  "Teasing me? I thought we were best friends. {.}Okay, we are."
+  "My favourite pest. Carry on. I'll heckle back in a bit."
+@rule core.tease.c_back_polite guard: polite act: tease
+  "Oh, you cheeky thing. I'll let it pass. This once."
+  "How naughty! I'll pretend I didn't hear. And store it for later."
+@rule core.tease.c_back_elder guard: elder act: tease
+  "Ha! I've teased better than you before breakfast, dear."
+  "Don't sass your elders. Or do. I'll sass right back, faster."
+@rule core.tease.c_back_flat guard: flat act: tease
+  "Teasing. {.}I'm laughing on the inside. It's a small room."
+  "Ha. {.}That was a laugh. In my head, I fell off a chair."
+@rule core.tease.c_back_kid guard: kid_speaker tags: kid act: tease
+  "You're silly! You're sillier than a goat! In a hat!"
+  "Stop it, you're funny! I'm not laughing! I'm totally laughing!"
+  "Hee! You're a big goof. A bigger goof than me!"
+
+# ---- TEASE -> LAUGH / JOKE / DISMISS / COMPLAIN / AGREE ------------------------------------------
+@rule core.tease.c_laugh act: laugh
+  "Pfft! Okay, that got me. I'll allow it, you little menace."
+  "Ha! Fair play, fair play. You're funnier than you look."
+  "Hee hee! Stop, you'll make me snort. Too late, snort."
+  "Hah, cheeky. I like cheeky. Cheeky's the new tidy."
+  "Oh, that's good! I'm stealing it. I'll say it in the pub."
+  "I'm laughing, but I'm also plotting revenge. Both things."
+  "Heh, okay. Teasing accepted. Please deliver more in writing."
+@rule core.tease.c_laugh_loud guard: loud act: laugh
+  "HA HA HA! OH, THAT'S GOOD! I'M GONNA FALL OFF MY CHAIR!"
+  "BWAHAHA! YOU'RE A DEMON! A HILARIOUS ONE!"
+@rule core.tease.c_joke act: joke
+  "I know! I'm a riot. A small, polite riot, with snacks."
+  "Oh, I'm not teased. I'm the teased. It's my job."
+  "Yes, yes, I'm a delight and a disgrace. The full set."
+  "You want teasing? Wait till you see my dancing. It's a crime."
+  "That's rich, from someone whose hat has a hat."
+@rule core.tease.c_dismiss act: dismiss
+  "Tease away. I've got thick skin and thin patience. Mostly thick."
+  "Uh-huh. I'll be over there, ignoring you in a dignified way."
+  "That wasn't teasing. That was a mild breeze. Do better."
+  "Sure. Anyway, you were saying something less boring?"
+  "It takes effort to tease me. You haven't made the effort."
+@rule core.tease.c_complain act: complain
+  "Stop picking on me! I'm a delicate flower. A cranky one."
+  "Hey! It's not nice to poke fun. It's nice to poke cake."
+  "You're so mean today! Mean as a wasp in a sock."
+  "Ugh, why do you always do this? It's like a hobby."
+  "Not cool! I'm touchy about it. Very touchy, like a cat."
+@rule core.tease.c_complain_sad guard: mood=sad act: complain
+  "Not today, please. I'm a bit fragile. Like a pretzel."
+  "I'm not in the mood. Be gentle? Just this once."
+@rule core.tease.c_agree act: agree
+  "Yeah, okay, it's true. I'm like that. It's a whole thing."
+  "Ha, you got me. I'm exactly that. Down to the socks."
+  "Guilty. I'll plead guilty and ask for a biscuit."
+  "You're not wrong. That's the scary part. You know me."
+  "Okay, okay, spot on. I'm owning it. Applaud now."
