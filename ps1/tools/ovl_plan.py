@@ -311,8 +311,8 @@ RX_STR = re.compile(r"\.rodata\.str1\.\d+\.LC\d+$")
 
 # --- RAM headroom 2026-11-12: shared modules. A core file outside the GROUPS (the UI kit, the item
 # catalog, the fishing / cooking effects, free play's helpers) was resident as a whole, the parts
-# only one screen family calls included. For the files named here (object base; core/src, core/gen
-# and the build's packed tables) every .text / .rodata section is a candidate like a group's own:
+# only one screen family calls included. For the files named here (object base; core/src and
+# core/gen) every .text / .rodata section is a candidate like a group's own:
 # resident when resident code or data can reach it or its address escapes; else, when the scenes of
 # exactly ONE group reach it, it joins that group (it only runs, or is read, with that group in the
 # slot: the argument that holds for the group's own files); reached by two groups it stays resident.
@@ -320,8 +320,9 @@ RX_STR = re.compile(r"\.rodata\.str1\.\d+\.LC\d+$")
 # SHARED_NOT: groups that take none: they set the slot's size or are within a few KB of it, where a
 # KB more is a KB of slot, not of room found (free play keeps its 10 KB for its own screens).
 # To add a file: OVL_WHY=1 lists the resident core objects; a file is worth listing when part of it
-# is reached by one group only.
-SHARED = r"fishcook$|catalog$|ui$|song_player$|art_data_ps1$|fp_common$|audio$|mus_core$"
+# is reached by one group only AND not through another resident file (its accessors must be listed
+# too: the sprite name table is read by the library alone, but through sprites.c).
+SHARED = r"fishcook$|catalog$|ui$|song_player$|fp_common$|audio$"
 SHARED_NOT = ("story", "home", "combat", "freeplay")
 SHARED_TAG = "+"                # what grp() says for a candidate section of a shared file
 # --- end RAM headroom ---
@@ -380,7 +381,7 @@ def group_of(path):
 
 def is_shared(path):
     """a core file of no group whose sections may join the one group that reaches them (SHARED)"""
-    return (group_of(path) is None and ("/core/src/" in path or "/core/gen/" in path or "/packed/" in path)
+    return (group_of(path) is None and ("/core/src/" in path or "/core/gen/" in path)
             and re.fullmatch(SHARED, base(path)) is not None)
 
 
