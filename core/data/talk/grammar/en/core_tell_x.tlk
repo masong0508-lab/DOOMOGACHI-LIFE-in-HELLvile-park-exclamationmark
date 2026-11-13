@@ -1,0 +1,196 @@
+# core/data/talk/grammar/en/core_tell_x.tlk - more replies to being told something, an opinion, an
+# answer, and to questions about a topic, a feeling, advice and favors (owner: TK; T5b step card
+# B3). Clean in any room: no register word, no romance, no cool act. Most lines say the topic ({x}).
+# Rule names end in _tx. Syntax: core/tools/talkc_gen.py.
+
+# ---- TELL ---------------------------------------------------------------------------------------
+@rule core.tell.back_tx act: backchannel
+  "Oh? Go on, I'm listening with both ears."
+  "Huh. Okay. Keep going, I'm taking notes in my head."
+  "Mm-hm. And then what happened?"
+  "Wow. I did not see that coming."
+  "Really? Tell me the rest, don't skip the good bits."
+@rule core.tell.back_x_tx act: backchannel
+  "{x:cap}, huh. I had no idea. Tell me more."
+  "Interesting, {x}. I'd like to hear the whole story."
+  "Okay, {x}. I'll remember that one."
+@rule core.tell.ask_tx act: ask_about
+  "Wait, back up. What was that about {x}?"
+  "And how do you feel about {x}, really?"
+@rule core.tell.joke_tx act: joke
+  "Breaking news: local person says {x}. More at eleven."
+  "That's the most {x} thing anyone's said today."
+@rule core.tell.laugh_tx act: laugh
+  "Ha! I love how you say {x}."
+  "Hee, you tell it so seriously. Keep going."
+@rule core.tell.tease_tx act: tease
+  "Wow, a whole speech about {x}. Do you take questions?"
+  "You're a lot of fun when you get going on {x}."
+
+# ---- OPINE_POS: the player likes something ------------------------------------------------------
+@rule core.opine_pos.agree_tx guard: stance=pro act: agree
+  "Yes! {x:cap} {x.is} great. We should start a club."
+  "Same! I could talk about {x} all day. Fair warning."
+  "Right? Nobody gets {x} like we do."
+  "I'm with you on {x}. Two for, none against."
+@rule core.opine_pos.disagree_tx guard: stance=con act: disagree
+  "Really? {x:cap}? I'd rather not, thanks."
+  "I respect that. I also respect that you're wrong about {x}."
+  "Hm, I don't see it with {x}. Convince me."
+@rule core.opine_pos.neutral_tx guard: stance=neutral act: backchannel
+  "Oh, you like {x}? Good for you. Truly."
+  "Huh, {x}. I've never really made up my mind."
+  "That's nice. I'll try {x} again, with fresh eyes."
+@rule core.opine_pos.joke_tx act: joke
+  "Careful, say {x} again and I'll start charging a fee."
+  "Somebody give {x} a trophy. It's earned it."
+@rule core.opine_pos.laugh_tx act: laugh
+  "Ha! You and {x}. A love story for the ages."
+  "Hee, you light up when you say {x}."
+@rule core.opine_pos.tease_tx act: tease
+  "Of course you like {x}. It's so you."
+  "{x:cap} again? You really are a one-note person."
+
+# ---- OPINE_NEG: the player dislikes something ----------------------------------------------------
+@rule core.opine_neg.agree_tx guard: stance=con act: agree
+  "Ugh, {x}. Don't get me started. Okay, get me started."
+  "Right?! {x:cap} {x.is} the worst. Finally someone says it."
+  "Yes. I try to avoid {x} whenever I can."
+  "Thank you! I thought it was only me."
+@rule core.opine_neg.disagree_tx guard: stance=pro act: disagree
+  "Hm, I kind of like {x}, actually. Sorry."
+  "Aw, give {x} a chance. It's not so bad."
+  "I'd defend {x} to the end. Gently, but still."
+@rule core.opine_neg.sympathize_tx guard: stance=neutral act: sympathize
+  "Oh no, {x}. That sounds rough."
+  "I'm sorry about {x}. Some things just are like that."
+  "That's fair. {x:cap} can be a lot."
+@rule core.opine_neg.laugh_tx act: laugh
+  "Ha! Tell us how you really feel about {x}."
+  "Hee, the face you made at {x}. Priceless."
+@rule core.opine_neg.joke_tx act: joke
+  "We'll put {x} on the list. Right under mornings."
+  "Noted. Next time we'll have a talk with {x}. A stern one."
+
+# ---- ANSWER: the player answers something -------------------------------------------------------
+@rule core.answer.back_tx act: backchannel
+  "Ah, okay. That makes sense."
+  "Good to know. I'll file it under helpful."
+  "Mm. Thanks for telling me."
+  "Right. I'd wondered about that."
+@rule core.answer.back_x_tx act: backchannel
+  "Ah, {x}. That explains a lot."
+  "So it's {x}. Okay, that's one mystery solved."
+@rule core.answer.agree_tx act: agree
+  "Yeah, that's what I figured too."
+  "Exactly what I'd have said, if I'd gotten there first."
+@rule core.answer.ask_tx act: ask_about
+  "And what about {x}? Where does it fit in?"
+  "Okay, and how long have you felt that way about {x}?"
+@rule core.answer.laugh_tx act: laugh
+  "Ha! Good answer. Honest, too."
+  "Hee, I asked for it, and I got it."
+@rule core.answer.tease_tx act: tease
+  "That's a very you answer. I'm not surprised."
+  "Is that your final answer? You can phone a friend."
+
+# ---- ASK_ABOUT: questions about a topic ---------------------------------------------------------
+@rule core.ask_about.pro_tx guard: stance=pro act: opine_pos
+  "{x:cap}? Yes, please. Every day, if I could."
+  "I'm a big supporter of {x}. I'd put it on a flag."
+  "Oh, {x}. That's a happy word. Say it again."
+@rule core.ask_about.con_tx guard: stance=con act: opine_neg
+  "{x:cap}? I'd rather not. It's a long story, and I'm the villain."
+  "Honestly, {x} and I are not on speaking terms."
+  "Not a fan of {x}. I have my reasons, and they're loud."
+@rule core.ask_about.neutral_tx guard: stance=neutral act: answer
+  "{x:cap}? It's all right. Not my favorite, not my enemy."
+  "I've thought about {x} a few times. No strong feelings."
+  "Hm, {x}. Ask me tomorrow, I might have an opinion by then."
+@rule core.ask_about.change_tx act: change_topic
+  "{x:cap}? Sure, but first, did you try the market today?"
+  "Talking about {x} reminds me of something else entirely."
+@rule core.ask_about.joke_tx act: joke
+  "{x:cap}? Is this a quiz? I didn't study."
+  "I could talk about {x}, or I could eat. Tough call."
+
+# ---- ASK_FEELING: how are you? ------------------------------------------------------------------
+@rule core.ask_feeling.answer_tx act: answer
+  "I'm okay. A bit tired, a bit hopeful. Mostly hungry."
+  "Pretty good, thanks for asking. Nobody does that."
+  "Not bad! Today has been oddly fine."
+  "A little wobbly, but I'm working on it."
+  "Better now that you asked."
+@rule core.ask_feeling.tell_tx act: tell
+  "Honestly? I've been thinking about {x} a lot lately."
+  "I'll tell you the truth. {x:cap} has been on my mind."
+@rule core.ask_feeling.complain_tx act: complain
+  "Not great. The whole week has been sideways."
+  "Ugh, don't ask. Okay, ask. I'll tell you everything."
+@rule core.ask_feeling.joke_tx act: joke
+  "Fine, thanks. Ask me again after lunch."
+  "I feel like a pie that's been left in the sun."
+@rule core.ask_feeling.dismiss_tx act: dismiss
+  "I'm good. Let's talk about something that isn't me."
+  "Oh, you know. Same as ever."
+
+# ---- ASK_FACT: do you know, is it true? ---------------------------------------------------------
+@rule core.ask_fact.yes_tx act: yes
+  "Yes, I'm pretty sure about that."
+  "Yep, I heard that too. From someone reliable."
+  "That's right. I'd bet a snack on it."
+@rule core.ask_fact.no_tx act: no
+  "No, I don't think so. Not that I know of."
+  "Nope. I'd remember if it were true."
+@rule core.ask_fact.answer_tx act: answer
+  "Good question. I think the answer has to do with {x}."
+  "I'm not totally sure, but {x} comes to mind."
+  "I'd have to look it up. Maybe check the library."
+@rule core.ask_fact.joke_tx act: joke
+  "I'm a pet, not an encyclopedia. But I'll guess."
+  "Fact: I know a lot of things. Most are wrong."
+
+# ---- ASK_ADVICE: what should I do? --------------------------------------------------------------
+@rule core.ask_advice.answer_tx act: answer
+  "I'd sleep on it. Not literally. Okay, literally."
+  "Trust your gut. Mine is usually hungry, but still."
+  "Do the thing that scares you a little."
+  "Take it slow. Most things look better after a snack."
+@rule core.ask_advice.answer_x_tx act: answer
+  "About {x}? I'd start small and see what happens."
+  "If it's {x}, I'd ask someone who's done it before."
+@rule core.ask_advice.encourage_tx act: encourage
+  "You'll figure it out. You always do."
+  "Whatever you choose, I've got your back."
+@rule core.ask_advice.joke_tx act: joke
+  "My advice? Never trust a stairway in the dark."
+  "Ask me later. I'm out of wisdom until lunch."
+
+# ---- ASK_FAVOR: can you help me? ----------------------------------------------------------------
+@rule core.ask_favor.yes_tx act: yes
+  "Sure, I'd be glad to."
+  "Of course! What do you need?"
+  "Yes. Just point me the right way."
+  "Happy to help. You'd do the same."
+@rule core.ask_favor.yes_x_tx act: yes
+  "Sure, I'll help with {x}. Where do we start?"
+  "{x:cap}? Absolutely. Count me in."
+@rule core.ask_favor.no_tx act: no
+  "Sorry, I can't right now. Maybe later."
+  "Not today, I'm afraid. I'm swamped."
+  "I'd love to, but I really can't."
+@rule core.ask_favor.offer_tx act: offer
+  "I can't do that, but I can help with something else."
+  "How about I do part of it and you do the rest?"
+@rule core.ask_favor.joke_tx act: joke
+  "A favor? That'll cost you one snack."
+  "Depends. Is it heavy, scary or both?"
+
+# ---- ASK_REPEAT: what did you say? --------------------------------------------------------------
+@rule core.ask_repeat.answer_tx act: answer
+  "I said it's about {x}. Sorry, I mumbled."
+  "Let me say that again, slower."
+  "I'll repeat it. It's worth a second go."
+@rule core.ask_repeat.joke_tx act: joke
+  "I said nothing. I'm a mime today."
+  "Same thing, but louder this time."
