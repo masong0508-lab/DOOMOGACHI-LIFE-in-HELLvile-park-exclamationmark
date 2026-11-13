@@ -56,12 +56,33 @@ shot visit_gift_drop
 wait 20
 shot visit_gift_react
 wait 60
-# walk up to the host and ask what they want
+# walk up to the host and talk to them (the live Talk screen)
 hold DOWN 24
 hold LEFT 14
 press A
 wait 20
 shot visit_wish
+# the native host opens the live Talk screen (home_talk_enter): its greeting
+# box, the Talk list, then B says bye; four A's page the goodbye box (a fifth
+# would be a new Talk) and hand the visit back
+expect-scene DIALOG
+press A
+wait 30
+press A
+wait 30
+expect-scene TALK
+press B
+wait 40
+expect-scene DIALOG
+press A
+wait 40
+press A
+wait 40
+press A
+wait 40
+press A
+wait 40
+expect-scene HOME
 press START
 wait 14
 press UP
