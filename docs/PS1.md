@@ -952,7 +952,10 @@ lamp pools and contact shadows, a camera on a `TW_BOING` spring with the
 * **The resting player (H4).** While the player's billboard has not
   changed (picture, place, squash) for two frames it is drawn into the
   backdrop with the furniture and again only inside the clips of what
-  moves over it, without its contact shadow. A moving element at the back
+  moves over it, without its contact shadow. A translucent player never
+  rests (drawn again over its own picture in the backdrop it would blend
+  twice); `home.txt`'s second parity pair has one (91 pixels differ
+  without the rule, 0 with it). A moving element at the back
   of a full room has everything in front of it drawn again every frame:
   the Hell-Cellar ran at 18 fps without this and 28 with it (PS1-FLAT;
   17 and 30 with the 3D chibi, H4).
