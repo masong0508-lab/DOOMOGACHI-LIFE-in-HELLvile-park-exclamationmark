@@ -68,6 +68,21 @@ TEST(cr4_a5_lists_are_full_and_every_new_part_is_catalogued)
     CHECK_EQ(n, 46);
 }
 
+TEST(cr4_a5_the_cost_weights_of_the_gene_only_lists_are_measured)
+{
+    /* test_part_render.c measures the outer and legwear lists too (they are not look bytes): a part that draws
+     * pixels has a cost, none is dearer than the cap, and the catalog carries it to the creator's Busy meter */
+    int s, v, n = 0, sum = 0;
+    for (s = 0; s < 2; s++)
+        for (v = ranges[s].first; v <= ranges[s].last; v++) {
+            const PartMeta *m = part_meta_find(ranges[s].list, v);
+            if (m && m->cost) n++;
+            if (m) sum += m->cost;
+        }
+    CHECK_MSG(n >= 20, "only %d of 46 parts have a measured cost", n);
+    CHECK(sum > 50);
+}
+
 TEST(cr4_a5_shape_gate_for_the_gene_only_outfit_lists)
 {
     /* the gate of test_part_render.c for the lists it skips (gene-only fields): every material on one ramp, a part
