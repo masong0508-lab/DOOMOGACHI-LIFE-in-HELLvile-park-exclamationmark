@@ -53,6 +53,7 @@
 #include "doomo/font.h"
 #include "doomo/life.h"
 #include "doomo/playas.h"
+#include "doomo/talk.h"
 #include "doomo/plat_ext.h"                      /* (S2-11) plat_build_frame */
 #include "../gen/furn_ids.h"
 
@@ -1289,6 +1290,7 @@ static void live_use(void)
         if (ddx * ddx + ddy * ddy <= 2) {
             DoomoResident *r = town_res(H->visit.id);
             uint8_t w[3];
+            if (home_talk_enter(H->visit.id)) return;      /* native host: the live Talk screen */
             home_visit_wants(H->visit.id, w);
             doomo_snprintf(H->line, sizeof(H->line), "I wish I had %s.", home_visit_want_text(w[(H->t >> 4) % 3]));
             H->react = HVR_DAWNING;

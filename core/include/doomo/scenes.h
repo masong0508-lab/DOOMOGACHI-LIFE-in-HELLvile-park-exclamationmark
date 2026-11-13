@@ -42,6 +42,7 @@ int creator_last_result(void);
 const char *creator_nickname(int id);
 /* life */
 extern const DoomoScene SCENE_EXORCISM;     /* arg = resident id           */
+extern const DoomoScene SCENE_TALK;         /* arg = resident id (native host only: DOOMO_HAS_TALK) */
 extern const DoomoScene SCENE_PET;          /* tamagotchi LCD screen       */
 /* action */
 extern const DoomoScene SCENE_COMBAT;       /* arg = map id                */

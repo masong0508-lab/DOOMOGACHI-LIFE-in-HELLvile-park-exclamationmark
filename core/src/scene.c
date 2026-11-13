@@ -70,6 +70,9 @@ const DoomoScene *const doomo_all_scenes[] = {
     /* --- K0: life sim / play-as / endings / settings (LIFESIM_PLAN R5) --- */
     &SCENE_FAMILY, &SCENE_PLAYAS, &SCENE_ENDING_CARD, &SCENE_MSLOT, &SCENE_LANG_PICK,
     &SCENE_SECURITY_CODE,
+#ifdef DOOMO_HAS_TALK
+    &SCENE_TALK,
+#endif
     /* --- end K0 --- */
     NULL
 };

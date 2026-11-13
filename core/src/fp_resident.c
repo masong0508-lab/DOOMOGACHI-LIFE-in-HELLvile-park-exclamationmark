@@ -12,6 +12,7 @@
  * must type "I AM A MONSTER" first. Cute right up to the moment it isn't.
  */
 #include "fp_int.h"
+#include "doomo/talk.h"
 #include "doomo/home.h"                /* H4: HOME_ARG_VISIT */
 
 enum { TAB_CARE, TAB_ABOUT, TAB_FRIENDS, TAB_FUN, TAB_COUNT };
@@ -529,6 +530,8 @@ static void do_action(int a)
         ui_say(R.id, line);
         break;
     case FPA_TALK:
+        /* TALK: the live conversation screen (native host); consoles keep the one-liner */
+        if (r->status == RES_ALIVE && home_talk_enter(R.id)) { R.wait = FP_WAIT_OTHER; break; }
         line = sim_talk(R.id);
         ui_say(R.id, line);
         if (r->status == RES_ALIVE && (fp_t() & 3) == 0)
