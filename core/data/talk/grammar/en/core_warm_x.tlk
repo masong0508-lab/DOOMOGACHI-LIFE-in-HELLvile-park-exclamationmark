@@ -1,0 +1,231 @@
+# core/data/talk/grammar/en/core_warm_x.tlk - more replies to the warm acts: compliment, praise of a
+# third party, comfort, encouragement, sympathy, joke, laugh, offer, invitation, promise
+# (owner: TK; T5b step card B1). Clean in any room: no register word, no romance, no cool act, no
+# guard change. Many lines say the topic ({x}), which adds about six times more distinct Surface
+# than a line without a topic slot. Rule names end in _wx. Syntax: core/tools/talkc_gen.py.
+
+# ---- COMPLIMENT ---------------------------------------------------------------------------
+@rule core.compliment.thank_wx act: thank
+  "Oh! Thanks. My face is doing a warm thing now."
+  "That's very kind. I'm saving it for a bad day."
+  "Thank you! You just made the whole afternoon better."
+  "Aw, thanks. I'd blush, but I'm busy smiling."
+  "You're too nice. Keep going, though."
+  "Thanks! Nobody told me that before lunch. Good timing."
+@rule core.compliment.thank_x_wx act: thank
+  "Thanks! Funny, we were just about to say the same about your {x}."
+  "You're sweet. I'll think about that every time someone says {x}."
+@rule core.compliment.joke_wx act: joke
+  "Careful, flattery gets you a slightly better chair."
+  "Say that louder. There's a crowd, and they're ignoring me."
+  "I know, I know. It's a burden, being this nice to look at."
+@rule core.compliment.dismiss_wx act: dismiss
+  "Oh, stop. You'll make me trip over my own head."
+  "Pfft, you say that to everyone. Fine, say it again."
+@rule core.compliment.laugh_wx act: laugh
+  "Ha! Okay, that one landed. Right in the heart."
+  "Hee, I'm going to tell people you said that."
+@rule core.compliment.tease_wx act: tease
+  "Who are you and what have you done with the grumpy one?"
+  "Are you buttering me up? Because I do like butter."
+
+# ---- PRAISE_OTHER ------------------------------------------------------------------------
+@rule core.praise_other.agree_wx act: agree
+  "Right? They're one of the good ones. Don't tell them, they'll get ideas."
+  "Totally. I said the same thing last week. To a wall, but still."
+  "You're so right. That one's a keeper."
+  "Yes! I was just thinking that. We're on the same page."
+@rule core.praise_other.agree_x_wx act: agree
+  "Yes, and the way they handle {x}? Chef's kiss."
+  "True. Anyone who gets {x} right is fine with me."
+@rule core.praise_other.joke_wx act: joke
+  "Great? They once lost a race to a snail. A great snail, though."
+  "Sure, great. I'd put them on a poster. A small, polite poster."
+@rule core.praise_other.tease_wx act: tease
+  "Somebody has a favorite. I'm not jealous. Much."
+  "Look at you, handing out gold stars."
+@rule core.praise_other.gossip_wx act: gossip
+  "Great, yes. Did you hear what they did at the market, though?"
+  "Great at some things. Parking is not one of them."
+@rule core.praise_other.disagree_wx act: disagree
+  "Hm, I'd say good. Great is a stretch, but I like the effort."
+  "Not sure. They're nice, but great is a very big word."
+
+# ---- COMFORT -------------------------------------------------------------------------------
+@rule core.comfort.thank_wx act: thank
+  "Thanks for staying. It helps just having you here."
+  "That means a lot. I think I needed to hear it."
+  "Okay. Deep breath. That helped a bit."
+  "You're a good one. Thank you, really."
+  "Thanks. I'll be fine. I just needed a minute and a friend."
+@rule core.comfort.thank_x_wx act: thank
+  "Thanks. Even {x} feels smaller when you're around."
+  "That helps. I'll stop thinking about {x} for a bit."
+@rule core.comfort.answer_wx act: answer
+  "It's been a lot lately. Little things, piling up."
+  "I'm okay. Mostly. Okay, a bit wobbly."
+  "I'll tell you later. Right now I just want to sit."
+@rule core.comfort.complain_wx act: complain
+  "I know you mean well, but I still feel awful."
+  "Everything is heavy today, even my hat."
+@rule core.comfort.joke_wx act: joke
+  "Don't be kind, it ruins my grumpy. I have a reputation."
+  "If you hug me I'll cry, and then you'll be wet."
+  "Good news: the worst is over. Bad news: I made that up."
+
+# ---- ENCOURAGE ------------------------------------------------------------------------------
+@rule core.encourage.thank_wx act: thank
+  "Thanks. I needed a cheerleader. A loud one."
+  "You believe in me? Okay, now I have to do it."
+  "That's the push I needed. A gentle push. A real one!"
+  "Thank you. Seriously. I'm going to try."
+  "Okay, okay, I'll do it. Because you said so."
+@rule core.encourage.thank_x_wx act: thank
+  "Thanks! Next time {x} comes up, I'll be ready."
+  "You're right. I can handle {x}, probably. Definitely."
+@rule core.encourage.yes_wx act: yes
+  "Yes! Let's go! Wait, which way?"
+  "You got it. I'm doing it right now. In a minute."
+  "Fine, fine, I'm in. Say it again for the courage."
+@rule core.encourage.joke_wx act: joke
+  "Great speech. Can I get a seat for it, though?"
+  "I'll try. If it goes wrong, I'm blaming your speech."
+@rule core.encourage.complain_wx act: complain
+  "Easy to say! You're not the one who has to do it."
+  "I know I can. It's the doing that I'm worried about."
+
+# ---- SYMPATHIZE ------------------------------------------------------------------------------
+@rule core.sympathize.thank_wx act: thank
+  "Thanks for getting it. Most people say it'll be fine."
+  "It's nice not to explain. Thank you."
+  "You listened. That's rare. Thank you."
+  "Thanks. I feel a little less alone now."
+@rule core.sympathize.thank_x_wx act: thank
+  "Thanks. You're the only one who understands about {x}."
+  "You get it. {x:cap} is the worst, and you actually get it."
+@rule core.sympathize.complain_wx act: complain
+  "And the worst part is nobody even said sorry!"
+  "It keeps happening! Every single time!"
+  "Honestly, it's been that kind of week."
+@rule core.sympathize.agree_wx act: agree
+  "Exactly. You've said it better than I could."
+  "Yes! Finally, someone on my side."
+@rule core.sympathize.joke_wx act: joke
+  "Well, at least we have each other. And snacks, I hope."
+  "Let's complain together. Loudly. With biscuits."
+
+# ---- JOKE ---------------------------------------------------------------------------------------
+@rule core.joke.laugh_wx act: laugh
+  "Ha! That's so bad it loops back around to good."
+  "Hah! Okay, you win this round."
+  "Heh, I wasn't ready. You got me."
+  "Ha ha! Say it again, slower, for the others."
+  "I'm laughing and I'm annoyed about it."
+@rule core.joke.laugh_x_wx act: laugh
+  "Ha! {x:cap}! I'll never look at it the same way."
+  "Ha! Good one about {x}. I'm telling everyone."
+@rule core.joke.joke_wx act: joke
+  "Fine, my turn. Why did the pancake blush? It saw the syrup."
+  "Okay, okay. How do you hide a ghost? Under a very small sheet."
+  "That's cute. Here's mine: I have none. Look how fast I ran out."
+@rule core.joke.tease_wx act: tease
+  "Is that the one you practiced in the mirror?"
+  "Cute. Did you think of that yourself, or did a cat?"
+@rule core.joke.dismiss_wx act: dismiss
+  "Nope. Next one. Try harder."
+  "That one's stale. Throw it out."
+@rule core.joke.mock_wx act: mock
+  "Oh no. Somebody call a joke doctor."
+  "I'd laugh, but I'm saving my energy for better ones."
+@rule core.joke.agree_wx act: agree
+  "Okay, that's actually true. Funny and true."
+  "I mean, you're not wrong. Annoying, but true."
+
+# ---- LAUGH --------------------------------------------------------------------------------------
+@rule core.laugh.laugh_wx act: laugh
+  "Ha ha ha! Stop, I'll fall off my chair."
+  "Hee! Now I can't stop either."
+  "Hah! We're both ridiculous. I love it."
+  "Ha! My cheeks hurt. Thanks a lot."
+@rule core.laugh.laugh_x_wx act: laugh
+  "Ha! Every time somebody says {x}, I lose it."
+  "Hee! {x:cap}! I'm gone, I'm done."
+@rule core.laugh.joke_wx act: joke
+  "Want to hear the one about the sleepy imp? Never mind, he's asleep."
+  "I'd tell another one, but I might laugh at my own."
+@rule core.laugh.tease_wx act: tease
+  "You laugh like a squeaky door. A happy squeaky door."
+  "That giggle! Do it again. It's contagious."
+@rule core.laugh.backchannel_wx act: backchannel
+  "Mm-hm. Nice to hear someone happy."
+  "Good laugh. Keep it going."
+@rule core.laugh.complain_wx act: complain
+  "Stop laughing, I'm trying to be serious here!"
+  "It's not funny! Okay, it's a little funny."
+
+# ---- OFFER --------------------------------------------------------------------------------------
+@rule core.offer.yes_wx act: yes
+  "Yes, please! You're a lifesaver."
+  "Sure, I'd love that. Thank you."
+  "Absolutely. I'd never say no to that."
+  "Yes! I was hoping you'd ask."
+@rule core.offer.yes_x_wx act: yes
+  "Yes, please! I could use some help with {x}."
+  "Sure! {x:cap} sounds great."
+@rule core.offer.no_wx act: no
+  "I'm okay, thanks. But it's kind of you to ask."
+  "Not today, thanks. Rain check?"
+  "No, I'm fine. Really. You keep it."
+  "That's sweet, but I can manage. Thanks."
+@rule core.offer.thank_wx act: thank
+  "That's really generous. Thank you."
+  "You're too good to me. Thanks."
+  "Aw, thanks. I owe you one. Maybe two."
+@rule core.offer.joke_wx act: joke
+  "Only if it comes with a cherry on top."
+  "Free stuff? Always. Do I have to share?"
+  "I accept. Don't tell my other friends."
+
+# ---- INVITE -------------------------------------------------------------------------------------
+@rule core.invite.yes_wx act: yes
+  "Count me in! I'll bring snacks. Maybe."
+  "Yes! I'd love to. When do we go?"
+  "Sounds great. I'll put on my good shoes."
+  "I'm in. Don't leave without me."
+@rule core.invite.yes_x_wx act: yes
+  "Yes! Anything with {x} is a yes from me."
+  "I'm in! I've wanted to try {x} for ages."
+@rule core.invite.no_wx act: no
+  "I can't today, sorry. Ask me again soon?"
+  "Not this time. I've got a lot on, but thanks."
+  "Raincheck? I'd love to, just not right now."
+  "Sorry, I'm wiped. Next time, I promise."
+@rule core.invite.ask_wx act: ask_about
+  "Ooh, who else is coming?"
+  "Where are we going? Is there food?"
+  "What time? And do I need a coat?"
+@rule core.invite.joke_wx act: joke
+  "Will there be cake? Because there should be cake."
+  "Only if I get to pick the music. Terrible music."
+
+# ---- PROMISE ------------------------------------------------------------------------------------
+@rule core.promise.thank_wx act: thank
+  "Thanks. I'll hold you to that. Gently."
+  "That's good to hear. I feel better already."
+  "You promise? Okay, I believe you. Thank you."
+  "Thank you. That means a lot to me."
+@rule core.promise.thank_x_wx act: thank
+  "Thanks. Don't forget about {x}, okay?"
+  "I'll remember that, especially about {x}."
+@rule core.promise.tease_wx act: tease
+  "I'll write it down. In ink. With witnesses."
+  "Promises, promises. Last time you forgot."
+@rule core.promise.joke_wx act: joke
+  "Pinky swear? It's legally binding, I checked."
+  "Great, now I have a promise and a snack. Today's going well."
+@rule core.promise.dismiss_wx act: dismiss
+  "Don't promise. Just do it. I'll be pleasantly surprised."
+  "Mm. We'll see. I'll believe it when it happens."
+@rule core.promise.agree_wx act: agree
+  "Deal. I'll do my part too."
+  "Okay, a promise from both of us then."
