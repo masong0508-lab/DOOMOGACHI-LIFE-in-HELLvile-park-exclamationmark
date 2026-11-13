@@ -859,7 +859,7 @@ plugs in).
   -DDOOMO_INTRO_REQUIRED=ON`): `_end` 0x801ee3e0 on both trees ("71 KB left below the stack top"), nothing resident added (the
   part scripts are creator-overlay data the PS1 does not read before CR10); harness (PCSX-Redux, xvfb) `game_smoke`,
   `creator_speed` (idle 30.13, grid scroll 29.39, rows 30.13, value 29.88: the S3-3 numbers), `creator`, `creator_grid` and the new
-  `creator_parts_outfit` PASS. Core 1,174 tests pass, `make -C core check-gen` clean, xcheck 415 files OK on all four compilers,
+  `creator_parts_outfit` PASS. Core 1,175 tests pass, `make -C core check-gen` clean, xcheck 415 files OK on all four compilers,
   `make dc-host-test` ok. Dreamcast `make -C dc` not run: no `dc/` or shared drawing / input / save code changed.
 * **Runner walk-through:** `core/tests/scripts/creator_parts_outfit.txt` (both resolutions): the Outfit tab, the Top, Outer
   layer and Legwear rows opened as grids, a new part found by letters and worn (Breton Stripes, Poncho, Knee Socks), the
