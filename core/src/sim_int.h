@@ -22,17 +22,18 @@
 #define SIM_MAX_ELAPSED 720        /* minutes one resident update may cover */
 #define SIM_MIN_ELAPSED 15         /* a fast-forward chunk updates a resident
                                       only when 15 game minutes have passed */
+#define SIM_INTERVAL    15         /* S3-1: game minutes in which every resident is visited once    */
+#define SIM_PASS_MIN    8          /* ... and a visit of the pass lives at least this many of them  */
 /* S3-1: the resident pass is spread over the whole interval. The cursor
  * moves at a steady DOOMO_MAX_RESIDENTS slots per SIM_INTERVAL game minutes
  * (about 0.9 slots a tick at the default clock, 14.2 at the fastest), so
  * every resident is updated once per SIM_INTERVAL and no tick does a
  * town's worth of work. A tick earns SIM_PASS_NUM * speed credit, a slot
- * costs SIM_PASS_DEN * ticks_per_minute_q (200 / 3 = 1000 / 15). A visit
- * that would cover less than SIM_PASS_MIN minutes (the first pass after
- * sim_init, a load or a fast-forward set every stamp to "now") is left to
- * the next pass: no minute is lost or counted twice. */
-#define SIM_INTERVAL    15
-#define SIM_PASS_MIN    ((SIM_INTERVAL + 1) / 2)
+ * costs SIM_PASS_DEN * ticks_per_minute_q (200 / 3 = 1000 / 15). The first
+ * pass after sim_init, a load or a fast-forward finds every stamp at "now":
+ * a visit that would live fewer than SIM_PASS_MIN minutes leaves the stamp
+ * alone and the next one lives them all, so no minute is lost or counted
+ * twice. */
 #define SIM_PASS_NUM    (DOOMO_MAX_RESIDENTS / 5)
 #define SIM_PASS_DEN    (SIM_INTERVAL / 5)
 DOOMO_STATIC_ASSERT(SIM_PASS_NUM * 5 == DOOMO_MAX_RESIDENTS && SIM_PASS_DEN * 5 == SIM_INTERVAL,
@@ -105,7 +106,6 @@ void sim_social_init(void);              /* rebuild taken / crush bitsets  */
 void sim_edges_step(int max_visits);
 void sim_venue_meet(int id, DoomoResident *r, int minutes);
 void sim_taken_update(int id);
-void sim_edge_remove(int index);         /* keeps the list sorted          */
 
 /* ---- sim_events.c ---- */
 void sim_events_reset(void);

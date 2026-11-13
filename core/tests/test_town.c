@@ -152,7 +152,8 @@ TEST(relationships_basic)
     CHECK(edges_sorted_valid());
 }
 
-/* S3-1: a new bond is slotted in by edges_open_gap (a halfword loop on the GBA, built by the host tests too).
+/* S3-1: a new bond is slotted in by edges_open_gap and a dropped one closed by edges_close_gap (halfword loops on the GBA,
+ * built by the host tests too).
  * Random pairs in random order, bonds before the first, between and after the last edge, against a plain
  * reference table kept sorted by insertion: every record (ids, value, kind) in the same place. */
 typedef struct { uint16_t a, b; int8_t value; uint8_t kind; } RefEdge;
@@ -162,7 +163,7 @@ static int ref_cmp(const void *x, const void *y)
     return p->a != q->a ? (int)p->a - (int)q->a : (int)p->b - (int)q->b;
 }
 
-TEST(relationships_insert_matches_a_reference_table)
+TEST(relationships_insert_and_remove_match_a_reference_table)
 {
     static RefEdge ref[DOOMO_MAX_EDGES];
     int n = 0, i, k, bad = 0;
@@ -195,6 +196,22 @@ TEST(relationships_insert_matches_a_reference_table)
     }
     CHECK_MSG(bad == 0, "%d of %d edges differ from the reference table", bad, n);
     CHECK(edges_sorted_valid());
+    /* and out again (rel_remove_at: the first, the last, a few hundred in between, one past the end is refused) */
+    for (i = 0; i < 302 && n > 2; i++) {
+        int at = i == 0 ? 0 : i == 1 ? n - 1 : rng_range(&r, n);
+        rel_remove_at(at);
+        for (k = at; k + 1 < n; k++) ref[k] = ref[k + 1];
+        n--;
+        CHECK_EQ(doomo_town.edge_count, n);
+    }
+    rel_remove_at(n);
+    rel_remove_at(-1);
+    CHECK_EQ(doomo_town.edge_count, n);
+    for (i = 0, bad = 0; i < n; i++) {
+        const DoomoEdge *e = &doomo_town.edges[i];
+        if (e->a != ref[i].a || e->b != ref[i].b || e->value != ref[i].value || e->kind != ref[i].kind) bad++;
+    }
+    CHECK_MSG(bad == 0, "%d of %d edges differ from the reference table after the removals", bad, n);
 }
 
 TEST(relationships_evict_weakest_when_full)

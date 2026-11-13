@@ -209,17 +209,31 @@ static void edges_open_gap(int i, int n)
     }
     while (h-- > 0) *--d = *--s;
 }
+/* and the other way: close the gap at edge i of n (the edges i+1..n-1 move down by one), from the bottom up */
+__attribute__((optimize("no-tree-loop-distribute-patterns")))
+static void edges_close_gap(int i, int n)
+{
+    EdgeHalf *d = (EdgeHalf *)&doomo_town.edges[i];
+    const EdgeHalf *s = d + 3;
+    int h = (n - i - 1) * 3;
+    for (; h >= 4; h -= 4) {
+        d[0] = s[0]; d[1] = s[1]; d[2] = s[2]; d[3] = s[3];
+        d += 4; s += 4;
+    }
+    while (h-- > 0) *d++ = *s++;
+}
 #else
 #define edges_open_gap(i, n) \
     memmove(&doomo_town.edges[(i) + 1], &doomo_town.edges[(i)], (size_t)((n) - (i)) * sizeof(DoomoEdge))
+#define edges_close_gap(i, n) \
+    memmove(&doomo_town.edges[(i)], &doomo_town.edges[(i) + 1], (size_t)((n) - (i) - 1) * sizeof(DoomoEdge))
 #endif
 
-static void remove_edge(int i)
+void rel_remove_at(int i)
 {
     int n = doomo_town.edge_count;
     if (i < 0 || i >= n) return;
-    memmove(&doomo_town.edges[i], &doomo_town.edges[i + 1],
-            (size_t)(n - i - 1) * sizeof(DoomoEdge));
+    edges_close_gap(i, n);
     doomo_town.edge_count = (uint16_t)(n - 1);
 }
 
@@ -237,7 +251,7 @@ DoomoEdge *rel_get_or_add(int a, int b)
             int s = edge_strength(&doomo_town.edges[i]);
             if (s < bs) { bs = s; best = i; }
         }
-        remove_edge(best);
+        rel_remove_at(best);
     }
     k = ((uint32_t)a << 16) | (uint32_t)b;
     i = lower_bound(k);

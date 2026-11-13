@@ -44,15 +44,6 @@ void sim_taken_update(int id)
     bit_set(sim_s.taken, id, sim_partner_of(id) >= 0);
 }
 
-void sim_edge_remove(int index)
-{
-    int n = doomo_town.edge_count;
-    if (index < 0 || index >= n) return;
-    memmove(&doomo_town.edges[index], &doomo_town.edges[index + 1],
-            (size_t)(n - index - 1) * sizeof(DoomoEdge));
-    doomo_town.edge_count = (uint16_t)(n - 1);
-}
-
 /* taken / crush bitsets from the graph */
 static void rebuild_bits(void)
 {
@@ -721,7 +712,7 @@ static int visit_edge(int index)
                 e->value = (int8_t)(e->value + (e->value > 0 ? -1 : 1));
             } else if (!(e->kind & (REL_CRUSH_AB | REL_CRUSH_BA))) {
                 /* forgotten: make room for new faces */
-                sim_edge_remove(index);
+                rel_remove_at(index);
                 sim_s.stats.forgotten++;
                 return 1;
             }

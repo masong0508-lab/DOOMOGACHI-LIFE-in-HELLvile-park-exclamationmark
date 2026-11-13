@@ -197,6 +197,22 @@ TEST(sim_pass_every_clock_and_speed)
     }
 }
 
+/* The day length is changed between two ticks (the Options page): the credit the slow clock left is in its units,
+ * and a tick still never visits more than SIM_BATCH residents. */
+TEST(sim_pass_day_length_change_does_not_burst)
+{
+    int i;
+    premade_town(61);
+    set_clock(0, 0);                 /* 7,200 / 2: a slot costs 21,600, a tick earns 400 */
+    for (i = 0; i < 53; i++) sim_tick();                    /* 21,200 of credit, no slot yet */
+    CHECK_EQ(sim_s.pass_credit, 21200);
+    set_clock(4, 3);                 /* 75 / 16: a slot costs 225, a tick earns 3,200 */
+    watch_start();
+    for (i = 0; i < 4; i++) watch_tick();
+    CHECK_MSG(w.max_visits <= SIM_BATCH && w.max_updates <= SIM_BATCH, "%d slots in a tick after the change", w.max_visits);
+    CHECK(w.max_visits > 1);                                /* the credit was paid out, at the cap */
+}
+
 /* The same seed gives the same town (the order of the updates changed once, S3-1, not their determinism). */
 TEST(sim_pass_is_deterministic)
 {

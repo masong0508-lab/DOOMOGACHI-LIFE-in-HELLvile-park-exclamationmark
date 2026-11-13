@@ -679,9 +679,9 @@ int sim_mood_of(int id)
 /* force_decide: a fast-forward chunk stands on the last minute of the hour the
  * elapsed span belongs to, so the routine is chosen again even though the clock
  * has not crossed an hour boundary since the last update.
- * min_el: an update that would cover fewer game minutes is skipped (the stamp
- * stays, so the minutes are applied by the next visit). */
-static void update_resident_ex(int id, int force_decide, int min_el)
+ * An update that would cover too few game minutes is skipped, the stamp stays and the next visit applies them
+ * all: under SIM_MIN_ELAPSED for a fast-forward chunk, under SIM_PASS_MIN for the pass. */
+static void update_resident_ex(int id, int force_decide)
 {
     DoomoResident *r = &doomo_town.res[id];
     uint16_t now16;
@@ -691,7 +691,7 @@ static void update_resident_ex(int id, int force_decide, int min_el)
     sim_s.ops++;
     now16 = (uint16_t)sim_now();
     el = (uint16_t)(now16 - sim_s.stamp[id]);
-    if (el < min_el) return;
+    if (el < (force_decide ? SIM_MIN_ELAPSED : SIM_PASS_MIN)) return;
     if (el > SIM_MAX_ELAPSED) el = SIM_MAX_ELAPSED;
     sim_s.stamp[id] = now16;
     res_in(r, &in);
@@ -701,7 +701,7 @@ static void update_resident_ex(int id, int force_decide, int min_el)
         r->stat[STAT_HEALTH] < 25 || r->stat[STAT_HUNGER] < 28 || r->stat[STAT_ENERGY] < 12 ||
         r->status != RES_ALIVE) {
         act = decide_activity(id, r, &in);
-        if (act != r->activity) r->activity = (uint8_t)act;
+        r->activity = (uint8_t)act;
     }
     apply_needs(id, r, el, &in);
     sim_soul_update(id, r, el);
@@ -712,7 +712,7 @@ static void update_resident_ex(int id, int force_decide, int min_el)
     sim_mood_of(id);
 }
 
-static void update_resident(int id) { update_resident_ex(id, 0, SIM_PASS_MIN); }
+static void update_resident(int id) { update_resident_ex(id, 0); }
 
 /* ---------------------------------------------------------------------- */
 /* the clock                                                                */
@@ -762,8 +762,9 @@ static void minute_step(void)
         day_rollover();
     }
     if (doomo_town.minute % 60 == 0) {
+        int rate = opt_get(OPT_EVENT_RATE);
         sim_s.args_hour = 0;
-        if (sim_chance(opt_get(OPT_EVENT_RATE) == 0 ? 4 : opt_get(OPT_EVENT_RATE) == 1 ? 9 : 18))
+        if (sim_chance(rate == 0 ? 4 : rate == 1 ? 9 : 18))
             sim_news_fluff();
     }
     pet_tick_minute();
@@ -831,9 +832,13 @@ void sim_init(void)
     sim_news_welcome(town_count(-1));     /* LS1: once per town or load */
 }
 
+/* the fastest shipped clock (speed_q 16, ticks_per_minute_q 75) earns 14.2 slots a tick: sim_tick's loop ends
+ * on its own and never goes over SIM_BATCH */
+DOOMO_STATIC_ASSERT(SIM_PASS_NUM * 16 <= (SIM_BATCH - 1) * SIM_PASS_DEN * 75, sim_pass_fits_a_tick);
+
 void sim_tick(void)
 {
-    int per, spd, steps = 0, i;
+    int per, spd, steps = 0;
     uint32_t credit, need;
     sim_ensure_init();
     sim_s.ops = 0;
@@ -848,18 +853,19 @@ void sim_tick(void)
         steps++;
     }
     if (sim_s.acc >= per) sim_s.acc = (uint16_t)(per - 1);
-    /* S3-1: the pass moves with the clock (sim_int.h), one slot per `need` of credit; SIM_BATCH is the
-     * hard cap of one tick (the shipped clocks need 15 slots at most: credit over the cap is dropped, the
-     * pass then simply takes longer than SIM_INTERVAL and every update covers the minutes it really waited) */
+    /* S3-1: the pass moves with the clock (sim_int.h): one slot per `need` of credit. What is left is under
+     * one slot. The shipped clocks earn at most SIM_BATCH - 1 slots a tick (static assert above); only a
+     * change of the day length between two ticks leaves more credit behind (in the old clock's units), and
+     * a tick never pays out more than SIM_BATCH slots. */
     need = (uint32_t)(SIM_PASS_DEN * per);
     credit = sim_s.pass_credit + (uint32_t)(SIM_PASS_NUM * spd);
-    for (i = 0; i < SIM_BATCH && credit >= need; i++) {
+    if (credit > need * SIM_BATCH) credit = need * SIM_BATCH;
+    while (credit >= need) {
         int id = sim_s.cursor;
         credit -= need;
         sim_s.cursor = (uint16_t)(sim_s.cursor + 1 >= DOOMO_MAX_RESIDENTS ? 0 : sim_s.cursor + 1);
         update_resident(id);
     }
-    if (credit > need) credit = need;
     sim_s.pass_credit = (uint16_t)credit;
     sim_edges_step(SIM_EDGE_BATCH);
     if (sim_s.ops > sim_s.max_ops) sim_s.max_ops = sim_s.ops;
@@ -892,7 +898,7 @@ void sim_advance_minutes(int minutes)
         if (chunk > left) chunk = left;
         for (i = 0; i < chunk; i++) minute_step();
         sim_s.job_budget = 32;
-        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) update_resident_ex(i, 1, SIM_MIN_ELAPSED);
+        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) update_resident_ex(i, 1);
     }
     /* give the graph a proportional share of attention (at most one full pass) */
     passes = (int)(sim_s.edge_credit / 60u);

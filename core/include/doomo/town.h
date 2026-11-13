@@ -250,6 +250,7 @@ void rel_adjust(int a, int b, int delta); /* clamps, promotes/demotes kind */
 void rel_set_kind(int a, int b, int kind);
 int  rel_list(int a, uint16_t *out_ids, int max); /* sorted by value desc */
 void rel_remove_all(int a);
+void rel_remove_at(int index);            /* drop edge #index, the table stays sorted */
 int  rel_has_crush(int from, int to);
 void rel_set_crush(int from, int to, int on);
 
