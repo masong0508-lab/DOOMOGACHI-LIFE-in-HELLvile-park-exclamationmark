@@ -53,6 +53,7 @@
 #include "doomo/font.h"
 #include "doomo/life.h"
 #include "doomo/playas.h"
+#include "doomo/plat_ext.h"                      /* (S2-11) plat_build_frame */
 #include "../gen/furn_ids.h"
 
 #define HD_TAG SAVE_EXT_TAG('H', 'O', 'M', 'E')
@@ -2879,6 +2880,12 @@ static void home_draw(void)
     }
     plat_room(&v);
     if (plat_draw_skipped()) { camfx_apply(); return; }
+#if !defined(DOOMO_PLATFORM_PS1)
+    /* (S2-11) a tick the platform spends building a turned view in its hidden page shows the old picture again:
+     * nothing is drawn over the room, as on a skipped tick (the GBA: gba/src/room.c; 0 on the host and the
+     * Dreamcast; the PS1 turns its 3D camera and is not asked: its home group stays byte for byte) */
+    if (plat_build_frame(PLAT_BUILD_BUSY)) { camfx_apply(); return; }
+#endif
     draw_effects();
     draw_reaction(&v);
     camfx_apply();

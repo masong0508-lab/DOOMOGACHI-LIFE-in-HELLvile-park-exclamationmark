@@ -36,7 +36,7 @@ import re
 import statistics as st
 import sys
 
-GBA_ONLY = ("sync", "profile", "vhash", "vhash-seq", "latency", "expect-fps", "room-parity", "audio",
+GBA_ONLY = ("sync", "profile", "vhash", "vhash-seq", "latency", "expect-fps", "expect-gap", "room-parity", "audio",
             "audio-reset", "expect-audio", "frames", "post", "town-fill", "town-crc", "expect-town-crc",
             "story-fp")
 

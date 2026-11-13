@@ -297,7 +297,7 @@ NM_SYMS = $(PREFIX)nm -n $(BUILD)/doomogachi.elf > $(BUILD)/doomogachi.nm && \
 # --- end SP1 ---
 
 # --- H2 (SPEC sec.7 H2, C2): the dream house renderer, gba/src/room.c:
-# parity with the room_ref golden on every path, then SCENE_HOME fps ---
+# parity with the room_ref golden on every path, then SCENE_HOME fps; (S2-11) then the view turn (home_turn.txt) ---
 test-home: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
 	@mkdir -p $(SHOTS)/home
@@ -305,6 +305,8 @@ test-home: harness
 	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/home.txt \
 	    --shots $(SHOTS)/home --golden $(ROOT)/core/tests/golden/room_ref.txt \
 	    --nm $(BUILD)/doomogachi.nm --quiet
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/home_turn.txt \
+	    --shots $(SHOTS)/home --nm $(BUILD)/doomogachi.nm --quiet
 # --- end H2 ---
 
 # --- G2: the overworld sprite blit against the G1 baseline's per-pixel

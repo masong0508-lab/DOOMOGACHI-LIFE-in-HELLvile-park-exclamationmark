@@ -36,14 +36,15 @@ void ow_invalidate(void);
 
 static int8_t last_page = -1;      /* the page the last flip showed, -1 tiles / none */
 static int8_t held_page = -1;      /* the page that was shown when the hold began, -1 none */
-static int8_t building;            /* I10: a frame is being built in the hidden page over several ticks */
+static int8_t building;            /* bit 0, I10: a frame is being built in the hidden page over several ticks;
+                                      bit 1, S2-11: this tick's frame is a slice of the house's view turn (room.c) */
 static int8_t on_shown;            /* I10: gba_back is pointed at the shown page (PLAT_BUILD_SHOWN) */
 
 /* video_flip: page now shown (0 / 1), -1 for a tile frame */
 void hold_flipped(int page)
 {
     last_page = (int8_t)page;
-    if (page < 0) { held_page = -1; building = 0; }  /* a tile frame ends a hold (and a build) */
+    if (page < 0) { held_page = -1; building &= ~1; }  /* a tile frame ends a hold (and a build) */
 }
 
 int hold_page(void)
@@ -54,6 +55,19 @@ int hold_page(void)
 int hold_building(void)
 {
     return building;
+}
+
+/* S2-11 (room.c): the house builds a view turn in the hidden page over several ticks, like an I10 build but on
+ * its own: this tick's frame is not whole, so video_flip presents the shown page again. The flag lasts one tick
+ * (plat_begin_frame clears it): a tick the house does not draw on flips as usual. */
+void hold_room_slice(void)
+{
+    building |= 2;
+}
+
+void hold_frame_begin(void)
+{
+    building &= ~2;
 }
 
 /* the hidden page's address back in gba_back, panels back on */
@@ -72,10 +86,10 @@ int plat_build_frame(int op)
     switch (op) {
     case 1:                                            /* PLAT_BUILD_START */
         if (gba_nodraw == 1 || last_page < 0 || held_page < 0) return 0;
-        building = 1;
+        building |= 1;
         return 1;
     case 2:                                            /* PLAT_BUILD_SHOWN */
-        if (!building || gba_nodraw == 1 || last_page < 0) return 0;
+        if (!(building & 1) || gba_nodraw == 1 || last_page < 0) return 0;
         gba_back = (uint16_t *)(last_page ? VRAM_PAGE1 : VRAM_PAGE0);
         pn_suspend(1);
         on_shown = 1;
@@ -83,6 +97,8 @@ int plat_build_frame(int op)
     case 3:                                            /* PLAT_BUILD_HIDDEN */
         build_hidden();
         return 1;
+    case 4:                                            /* PLAT_BUILD_BUSY (S2-11) */
+        return (building & 2) != 0;
     }
     return 0;
 }
@@ -108,7 +124,7 @@ int plat_hold_frame(int on)
 {
     if (on == 4) return held_page >= 0;
     build_hidden();
-    building = 0;                  /* I10: any other end of the hold ends a build, this tick flips */
+    building &= ~1;                /* I10: any other end of the hold ends a build, this tick flips */
     held_page = -1;
     if (on == 2) return hold_settle();
     if (!on) return 0;
@@ -179,7 +195,7 @@ static uint8_t *band_mem;
 
 static int band_frame_ok(void)
 {
-    if (gba_nodraw == 1 || gba_nodraw == GBA_NODRAW_CANVAS || building || on_shown || gba_text_armed) return 0;
+    if (gba_nodraw == 1 || gba_nodraw == GBA_NODRAW_CANVAS || hold_building() || on_shown || gba_text_armed) return 0;
     return 1;
 }
 

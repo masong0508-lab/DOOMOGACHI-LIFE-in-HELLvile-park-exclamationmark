@@ -1,0 +1,87 @@
+# home_turn.txt - S2-11 (make -C gba test-home): the house's view turn on the game ROM. A turn used to
+# recompose the room in one tick (106 ms of work, one 117 ms frame); now the new view is built over 2-3
+# ticks in the hidden page while the shown page keeps the old one (gba/src/room.c, "a view turn built over
+# several ticks"). Every window below is a turn (or turns) and must hold 30 fps with no frame over 34 ms;
+# the one that asks for turns faster than a build (Photo mode, three in a row) draws the third in one go, so
+# its worst frame is the old one. The pictures of the sliced turn against the one-go frame are test-home's
+# room-parity path 3 (home.txt, 1f). With `sync on` every tick is the same in any ROM.
+wait 40
+expect-log doomo: init
+sync on 61
+seed 1
+scene HOME -1
+wait 60
+
+# Build mode: R, then L (the view brake holds the picture for 10 ticks, then the new view is built)
+fps start
+press R
+wait 30
+press L
+wait 30
+expect-fps 29.5 turn: build mode R then L
+expect-gap 34
+shot turn_build
+
+# Photo mode (the START menu's seventh row), a turn each way with the picture settled between
+press START
+wait 14
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+wait 2
+press A
+wait 30
+fps start
+press R
+wait 20
+press L
+wait 20
+press R
+wait 20
+expect-fps 29.5 turn: photo mode single turns
+expect-gap 34
+shot turn_photo
+
+# the same turns on test-home's busy layout (4 chibis, 3 animated pieces)
+room-test 1
+wait 90
+fps start
+press R
+wait 20
+press L
+wait 20
+expect-fps 29.5 turn: photo mode busy layout
+expect-gap 34
+shot turn_busy
+
+# turns asked for while one is being built (the busy layout's build takes 4 ticks): R three times, a turn every
+# 3 ticks: the second restarts the build, the third in a row is drawn in one go (the tables the turn did not
+# change are kept, so it is one 67 ms frame, not the old 130; the next window is a plain turn again: the count
+# of restarts has been reset)
+fps start
+down R
+wait 1
+release
+wait 2
+down R
+wait 1
+release
+wait 2
+down R
+wait 1
+release
+wait 30
+expect-fps 28 turn: photo mode busy layout, three turns in a row
+expect-gap 70
+shot turn_mash
+fps start
+press L
+wait 30
+expect-fps 29.5 turn: photo mode busy layout, one turn after them
+expect-gap 34
+shot turn_after
+room-test 0
+wait 10

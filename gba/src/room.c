@@ -95,6 +95,7 @@
 #include "room_int.h"
 #include "canvas_int.h"
 #include "doomo/palette.h"
+#include "doomo/plat_ext.h"          /* plat_build_frame (the harness: path 3) */
 #include "doomo/furn.h"
 #include "doomo/home.h"
 #include "doomo/doomo.h"
@@ -162,6 +163,9 @@ typedef struct RRect { int16_t x0, y0, x1, y1; } RRect;
 #define RB_RECTS 24
 #define RB_OBJS  (HOME_OBJ_MAX + 1)
 enum { OK_NONE, OK_WALL, OK_FLOOR, OK_GHOST, OK_SKIP, OK_FRONT };
+uint32_t gba_work_now(void);           /* main.c: cycles of this tick's work so far */
+/* (S2-11) build_shell's steps, one per table (BT_SPEC: both sides' ranges) */
+enum { BT_STRIPS, BT_PHASE, BT_FEAT, BT_SPEC, BT_PAT, BT_COUNT };
 
 typedef struct RBig {
     uint32_t magic;                    /* RB_MAGIC ^ rb_epoch: the canary    */
@@ -175,7 +179,6 @@ typedef struct RBig {
     RSort    sort[RB_ITEMS];
     uint8_t  order[RB_ITEMS];
     uint32_t succ[RB_ITEMS][2];        /* behind-edges, a bit per item       */
-    uint8_t  match[RB_ITEMS];          /* new item -> old record + 1, 0 none */
     /* per object, kept across frames: the object as last built, its item
      * and sort entry (rebuilt only when the object or the geometry changes) */
     uint32_t ocache_key;
@@ -188,6 +191,18 @@ typedef struct RBig {
     uint8_t  dirty[RB_BLOCKS];         /* blocks to redraw / re-checksum     */
     uint8_t  nrect, rect_over, pad2[2];
     RRect    rect[RB_RECTS];           /* this frame's dirty rects           */
+    /* (S2-11) what each shell table holds (0: nothing whole), so a new shell
+     * key rebuilds only the tables whose own inputs changed; and the view
+     * turn built over several ticks in the hidden page (render()) */
+    uint32_t tkey[BT_COUNT];
+    uint32_t bkey;                     /* the shell key being built          */
+    uint16_t bsub;                     /* build_shell's next row in its step */
+    uint8_t  bstep, brow;              /* its next step; the block rows of the
+                                          hidden page drawn so far           */
+    uint8_t  bld, bturns, k_last, pad4; /* a turn is being built (1 tables, 2
+                                          bands, 3 whole: render()); turns asked
+                                          for while one was; the view the last
+                                          frame was of + 1 (0: none)         */
     RPage    page[2];
     uint8_t  lut[LUT_SLOTS][256];
     uint8_t  pat[16][PAT_W + 4];       /* floor rows: (q, parity)            */
@@ -653,82 +668,197 @@ static void strip_col(const RG *g, uint8_t *S, int c, int u, int side, int s0)
 #undef SPAN
 }
 
+/* (S2-11) The shell's tables, one step each, a key per table: a table whose
+ * own inputs did not change with the shell key is kept (a view turn of a
+ * square room changes none of the walls' strips, the roof's phase rows and
+ * the floor rows, and often not the special ranges). `stop` (0: none) is
+ * the tick's work limit in cycles (gba_work_now()): past it, the build
+ * stops between two rows and goes on from there on the next call (B->bstep,
+ * B->bsub). Returns 1 when every table is whole. A table being rewritten has
+ * key 0, so a build that is dropped half way leaves nothing that looks whole. */
+static uint32_t table_key(const RG *g, int t)
+{
+    const DoomoRoomView *v = g->v;
+    const RoomRoof *f = &g->roof;
+    uint32_t h = 2166136261u;
+    int i, c;
+    switch (t) {
+    case BT_STRIPS:
+        h = mix(h, (uint32_t)g->walls | (uint32_t)g->wall_h << 8 | (uint32_t)g->wpat << 16 | (uint32_t)g->level << 24);
+        h = mix(h, (uint32_t)v->wall_paint | (uint32_t)v->ceiling << 8 | (uint32_t)g->tint << 16);
+        break;
+    case BT_PAT:
+        h = mix(h, (uint32_t)g->plank | (uint32_t)g->fl_a << 8 | (uint32_t)g->fl_b << 16 | (uint32_t)g->fl_g << 24);
+        break;
+    default:                                        /* the roof's: its shape and colours */
+        h = mix(h, (uint32_t)t | (uint32_t)f->style << 8 | (uint32_t)f->band << 16 | (uint32_t)f->ch << 24);
+        for (i = 0; i < RFC_COUNT; i += 4)
+            h = mix(h, (uint32_t)f->c[i] | (uint32_t)f->c[i + 1] << 8 | (uint32_t)f->c[i + 2] << 16 | (uint32_t)f->c[i + 3] << 24);
+        if (t == BT_FEAT) {                         /* drawn in screen space */
+            h = mix(h, (uint32_t)(f->ox & 0xFFFF) | (uint32_t)(f->top & 0xFFFF) << 16);
+            h = mix(h, (uint32_t)(f->fx0 & 0xFFFF) | (uint32_t)(f->fx1 & 0xFFFF) << 16);
+            h = mix(h, (uint32_t)(f->ftop & 0xFFFF) | (uint32_t)f->ffoot << 16 | (uint32_t)f->fkind << 24);
+            h = mix(h, (uint32_t)(g->fy1 & 0xFFFF) | (uint32_t)g->ftw << 16 | (uint32_t)g->ftab << 24);
+        } else if (t == BT_SPEC) {                  /* in (p, d): the ranges and what stands in them */
+            h = mix(h, (uint32_t)(f->LA & 0xFFFF) | (uint32_t)(f->LB & 0xFFFF) << 16);
+            h = mix(h, (uint32_t)(f->dp & 0xFFFF) | (uint32_t)f->dside << 16 | (uint32_t)f->dw << 24);
+            h = mix(h, (uint32_t)f->dh | (uint32_t)f->dmax << 8 | (uint32_t)f->sky_side << 16);
+            h = mix(h, (uint32_t)(f->sky0 & 0xFFFF) | (uint32_t)(f->sky1 & 0xFFFF) << 16);
+            for (c = 0; c < 2; c++)
+                for (i = 0; i < g->nsp[c]; i++) {
+                    const int16_t *e = g->sp[c][i];
+                    h = mix(mix(h, (uint32_t)(e[0] & 0xFFFF) | (uint32_t)(e[1] & 0xFFFF) << 16),
+                            (uint32_t)(e[2] & 0xFFFF) | (uint32_t)(e[3] & 0xFF) << 16 | (uint32_t)(e[4] & 0xFF) << 24);
+                }
+        }
+        break;
+    }
+    return h | 1u;                                  /* 0: nothing whole */
+}
+
+/* (HART) one row of a roof table into t8[] (laid out as the screen runs: side B right to left), built at -O2:
+ * the phase row S = r of the repeating pattern (16 px), and row `rel` of a special range e (e[1] - e[0] px).
+ * (S2-11) No slope pixel lies outside d = 1 .. dmax (room_roof_slope gives 0 there), so the corners of a
+ * range's table are 0 without the call. */
+HOT static void phase_row(const RoomRoof *f, int c, int r, uint8_t *t8)
+{
+    const int st = r - RPH_S0;
+    int j;
+    if (!c) for (j = 0; j < 16; j++) t8[j] = room_roof_pattern(f, 0, j, (j >> 1) - st);
+    else for (j = 0; j < 16; j++) t8[15 - j] = room_roof_pattern(f, 1, j, ((j + 2) >> 1) - st);
+}
+
+HOT static void spec_row(const RoomRoof *f, int c, const int16_t *e, int rel, uint8_t *t8)
+{
+    const int dmax = f->dmax, p1 = e[1];
+    int p = e[0];
+    if (!c) {
+        for (; p < p1; p++) {
+            const int d = (p >> 1) - rel;
+            *t8++ = (d < 1 || d > dmax) ? 0 : room_roof_slope(f, 0, p, d);
+        }
+    } else {
+        t8 += p1 - p;
+        for (; p < p1; p++) {
+            const int d = (p ? (p + 2) >> 1 : 0) - rel;
+            *--t8 = (d < 1 || d > dmax) ? 0 : room_roof_slope(f, 1, p, d);
+        }
+    }
+}
+
 /* Floor pattern row (q, par): one 32 px period of a floor row whose upper
  * tiles have half-width h1 = 2(q+1), starting at an upper tile's left
  * grout: grout, upper fill, grout, then the visible lower tile's fill. */
-__attribute__((noinline)) static void build_shell(RG *g)
+__attribute__((noinline)) static int build_shell(RG *g, uint32_t stop)
 {
-    int q, par, o, c, r, j;
-    B->strip_h = 0;
-    if (g->walls && g->wall_h + 8 <= STRIP_ROWS && g->wpat < 4) {   /* (H2) 4..7: wall_cols */
-        /* the two 16 px strips (rows s = 0 .. wall_h + 7), then each strip
-         * row s = 8j + r goes to phase row r: wall A at 16 (WJ - 1 - j) (x
-         * grows as j falls), wall B at 16 j, so a screen row of a wall is
-         * one contiguous run of one phase row */
-        uint8_t *S = B->stage;
-        for (c = 0; c < 2; c++) {
-            uint8_t *Sc = S + c * STRIP_ROWS * 16;
-            memset(Sc, 0, STRIP_ROWS * 16);
-        }
-        for (c = 0; c < 8; c++) {
-            strip_col(g, S, c, 2 * c, 0, c);                                  /* A: u = 2c      */
-            strip_col(g, S + STRIP_ROWS * 16, c, (16 - 2 * c) & 15, 1, 8 - c);  /* B: u = 16 - 2c */
-        }
-        for (r = 0; r < 8; r++)
-            for (j = 0; j < WJ; j++) {
-                memcpy(B->wall[0][r] + 16 * (WJ - 1 - j), S + (8 * j + r) * 16, 16);
-                memcpy(B->wall[1][r] + 16 * j, S + STRIP_ROWS * 16 + (8 * j + r) * 16, 16);
-            }
-        B->strip_h = (uint8_t)(g->wall_h + 8);
-    }
-    B->s15 = 0;                                     /* (H8) the stage was scratch */
-    if (g->roof_on && g->roof_tab) {                /* (HART) the roof's tables */
-        const RoomRoof *f = &g->roof;
-        uint16_t tmp[ROOM_ROOF_EAVE + 128];
-        uint8_t *t8 = (uint8_t *)tmp;
-        for (c = 0; c < 2; c++) {
-            int i, p, w;
-            for (r = 0; r < 8 * RPH_G; r++) {         /* S = r: s = r - 40 */
-                int st = r - RPH_S0, gi = r >> 3;
-                volatile uint16_t *d = (volatile uint16_t *)(RROOF_PHASE[c][r & 7] + 16 * (c ? gi : RPH_G - 1 - gi));
-                for (j = 0; j < 16; j++) {
-                    if (!c) t8[j] = room_roof_pattern(f, 0, j, (j >> 1) - st);
-                    else t8[15 - j] = room_roof_pattern(f, 1, j, ((j + 2) >> 1) - st);
+    const RoomRoof *f = &g->roof;
+    const int roof = g->roof_on && g->roof_tab;
+    uint16_t tmp[ROOM_ROOF_EAVE + 128];
+    uint8_t *t8 = (uint8_t *)tmp;
+    int q, par, o, c, r, j, n, did = 0;
+    /* (a call always does BS_MIN rows at least, whatever the tick has spent before it: the tables are
+     * whole in a handful of ticks even under a scene that leaves the build no time at all) */
+#define BS_MIN 48
+#define BS_OVER() (stop && did >= BS_MIN && gba_work_now() >= stop)
+    for (; B->bstep < BT_COUNT; B->bstep++, B->bsub = 0) {
+        const int t = B->bstep;
+        const uint32_t key = table_key(g, t);
+        if (t != BT_STRIPS && t != BT_PAT && !roof) continue;   /* (HART) the roof's tables: not used */
+        if (key == B->tkey[t]) continue;
+        if (!B->bsub && BS_OVER()) return 0;
+        B->tkey[t] = 0;
+        n = 0;
+        switch (t) {
+        case BT_STRIPS:
+            B->strip_h = 0;
+            B->s15 = 0;                             /* (H8) the stage is scratch */
+            if (g->walls && g->wall_h + 8 <= STRIP_ROWS && g->wpat < 4) {   /* (H2) 4..7: wall_cols */
+                /* the two 16 px strips (rows s = 0 .. wall_h + 7), then each strip
+                 * row s = 8j + r goes to phase row r: wall A at 16 (WJ - 1 - j) (x
+                 * grows as j falls), wall B at 16 j, so a screen row of a wall is
+                 * one contiguous run of one phase row */
+                uint8_t *S = B->stage;
+                for (c = 0; c < 2; c++) {
+                    uint8_t *Sc = S + c * STRIP_ROWS * 16;
+                    memset(Sc, 0, STRIP_ROWS * 16);
                 }
-                for (j = 0; j < 8; j++) d[j] = tmp[j];
+                for (c = 0; c < 8; c++) {
+                    strip_col(g, S, c, 2 * c, 0, c);                                  /* A: u = 2c      */
+                    strip_col(g, S + STRIP_ROWS * 16, c, (16 - 2 * c) & 15, 1, 8 - c);  /* B: u = 16 - 2c */
+                }
+                for (r = 0; r < 8; r++)
+                    for (j = 0; j < WJ; j++) {
+                        memcpy(B->wall[0][r] + 16 * (WJ - 1 - j), S + (8 * j + r) * 16, 16);
+                        memcpy(B->wall[1][r] + 16 * j, S + STRIP_ROWS * 16 + (8 * j + r) * 16, 16);
+                    }
+                B->strip_h = (uint8_t)(g->wall_h + 8);
             }
-            if (!c && g->ftab) {                     /* the chimney / tank rows */
+            break;
+        case BT_PHASE:                              /* the pattern's phase rows, both sides */
+            for (c = 0; c < 2; c++)
+                for (r = 0; r < 8 * RPH_G; r++, n++) {     /* S = r: s = r - 40 */
+                    const int gi = r >> 3;
+                    volatile uint16_t *d = (volatile uint16_t *)(RROOF_PHASE[c][r & 7] + 16 * (c ? gi : RPH_G - 1 - gi));
+                    if (n < B->bsub) continue;
+                    if (BS_OVER()) { B->bsub = (uint16_t)n; return 0; }
+                    phase_row(f, c, r, t8);
+                    for (j = 0; j < 8; j++) d[j] = tmp[j];
+                    did++;
+                }
+            break;
+        case BT_FEAT:                               /* the chimney / tank rows */
+            if (g->ftab) {
                 int y;
-                for (y = f->ftop - 12; y < g->fy1; y++) {
+                for (y = f->ftop - 12; y < g->fy1; y++, n++) {
                     volatile uint16_t *d = (volatile uint16_t *)(RROOF_FEAT + (y - (f->ftop - 12)) * g->ftw);
+                    if (n < B->bsub) continue;
+                    if (BS_OVER()) { B->bsub = (uint16_t)n; return 0; }
                     memset(t8, 0, (size_t)g->ftw);
                     room_roof_feature_row(f, y, f->fx0 - 1, f->fx1 + 1, t8);
                     for (j = 0; j < g->ftw / 2; j++) d[j] = tmp[j];
+                    did++;
                 }
             }
-            for (i = 0; i < g->nsp[c]; i++) {
-                const int16_t *e = g->sp[c][i];
-                w = e[1] - e[0];
-                for (r = 0; r < e[4]; r++) {
-                    volatile uint16_t *d = (volatile uint16_t *)(RROOF_SPEC + e[2] + r * w);
-                    int rel = e[3] + r;
-                    for (p = e[0]; p < e[1]; p++)
-                        t8[c ? e[1] - 1 - p : p - e[0]] = room_roof_slope(f, c, p, roof_d(f, c, p, f->top + rel));
-                    for (j = 0; j < w / 2; j++) d[j] = tmp[j];
+            break;
+        case BT_SPEC:                               /* the special ranges' rows */
+            for (c = 0; c < 2; c++) {
+                int i, w;
+                for (i = 0; i < g->nsp[c]; i++) {
+                    const int16_t *e = g->sp[c][i];
+                    w = e[1] - e[0];
+
+                    for (r = 0; r < e[4]; r++, n++) {
+                        volatile uint16_t *d = (volatile uint16_t *)(RROOF_SPEC + e[2] + r * w);
+                        if (n < B->bsub) continue;
+                        if (BS_OVER()) { B->bsub = (uint16_t)n; return 0; }
+                        spec_row(f, c, e, e[3] + r, t8);
+                        for (j = 0; j < w / 2; j++) d[j] = tmp[j];
+                        did++;
+                    }
                 }
             }
+            break;
+        default:                                    /* BT_PAT: the floor's pattern rows */
+            for (q = 0; q < 8; q++)
+                for (par = 0; par < 2; par++) {
+                    int h1 = 2 * (q + 1);
+                    uint8_t fu, fl, *row = B->pat[q * 2 + par];
+                    if (g->plank) fu = fl = ((q >> 2) & 1) ? g->fl_a : g->fl_b;
+                    else { fu = par ? g->fl_a : g->fl_b; fl = par ? g->fl_b : g->fl_a; }
+                    for (o = 0; o < 32; o++)
+                        row[o] = (o == 0 || o == 2 * h1 - 1) ? g->fl_g : (o < 2 * h1 ? fu : fl);
+                    for (o = 32; o < PAT_W + 4; o++) row[o] = row[o & 31];
+                }
+            break;
         }
+        B->tkey[t] = key;
+        if (t == BT_STRIPS || t == BT_PAT) did += BS_MIN;
     }
-    for (q = 0; q < 8; q++)
-        for (par = 0; par < 2; par++) {
-            int h1 = 2 * (q + 1);
-            uint8_t fu, fl, *row = B->pat[q * 2 + par];
-            if (g->plank) fu = fl = ((q >> 2) & 1) ? g->fl_a : g->fl_b;
-            else { fu = par ? g->fl_a : g->fl_b; fl = par ? g->fl_b : g->fl_a; }
-            for (o = 0; o < 32; o++)
-                row[o] = (o == 0 || o == 2 * h1 - 1) ? g->fl_g : (o < 2 * h1 ? fu : fl);
-            for (o = 32; o < PAT_W + 4; o++) row[o] = row[o & 31];
-        }
+#undef BS_OVER
+#undef BS_MIN
+    B->bstep = 0;
+    B->bsub = 0;
+    return 1;
 }
 
 /* ---- (H2) the shell patterns that do not repeat every 16 units ------------- */
@@ -2088,6 +2218,7 @@ HOT static void draw_region(const RG *g, int x0, int y0, int x1, int y1)
     for (i = 0; i < B->nitem; i++) {
         const RItem *it = &B->item[i];
         if (it->xf || it->x0 >= x1 || it->x1 <= x0 || it->y0 >= y1 || it->y1 <= y0) continue;
+        if (B->bld && it->iso == ISO_NONE) continue;   /* (S2-11) a turn's bands: the sprite pieces only */
         draw_item(g, it, x0, y0, x1, y1);
     }
 }
@@ -2143,14 +2274,18 @@ static void mark(const RG *g, int x0, int y0, int x1, int y1)
 
 static void save_records(const RG *g, RPage *pg)
 {
-    int i;
+    int i, n = 0;
     for (i = 0; i < B->nitem; i++) {
         const RItem *it = &B->item[i];
-        pg->rec[i].x0 = it->x0; pg->rec[i].y0 = it->y0;
-        pg->rec[i].x1 = it->x1; pg->rec[i].y1 = it->y1;
-        pg->rec[i].sig = it->xf ? ~it->sig : it->sig;   /* an OBJ is never "unchanged" */
+        /* (S2-11) a turn's bands drew the sprite pieces only (draw_region): the actors, the cursor, a box
+         * piece and an OBJ are new to the pass that ends the build */
+        if (B->bld && (it->xf || it->iso == ISO_NONE)) continue;
+        pg->rec[n].x0 = it->x0; pg->rec[n].y0 = it->y0;
+        pg->rec[n].x1 = it->x1; pg->rec[n].y1 = it->y1;
+        pg->rec[n].sig = it->xf ? ~it->sig : it->sig;   /* an OBJ is never "unchanged" */
+        n++;
     }
-    pg->n = B->nitem;
+    pg->n = (uint16_t)n;
     pg->key = B->shell_key;
     pg->valid = 1;
     (void)g;
@@ -2218,6 +2353,8 @@ static void add_rect(const RG *g, int x0, int y0, int x1, int y1)
 __attribute__((noinline)) static void incremental(const RG *g, RPage *pg)
 {
     int bx, by, i, j, nb = g->nby * (g->bx1 - g->bx0), mono = 1, last = -1, area = 0;
+    uint8_t match[RB_ITEMS];           /* new item -> old record + 1, 0 none (S2-11: on the stack, its
+                                          56 B of the house's region are the turn build's state) */
     B->nrect = 0;
     B->rect_over = 0;
     memset(B->dirty, 0, sizeof(B->dirty));
@@ -2234,7 +2371,7 @@ __attribute__((noinline)) static void incremental(const RG *g, RPage *pg)
     }
     /* 2. the draw list against the page's: changed items dirty their old
      *    and new boxes */
-    memset(B->match, 0, sizeof(B->match));
+    memset(match, 0, sizeof(match));
     {
         uint8_t used[RB_ITEMS];
         memset(used, 0, sizeof(used));
@@ -2250,7 +2387,7 @@ __attribute__((noinline)) static void incremental(const RG *g, RPage *pg)
             if (m >= 0 && pg->rec[m].x0 == it->x0 && pg->rec[m].y0 == it->y0 &&
                 pg->rec[m].x1 == it->x1 && pg->rec[m].y1 == it->y1) {
                 used[m] = 1;
-                B->match[i] = (uint8_t)(m + 1);
+                match[i] = (uint8_t)(m + 1);
                 if (m < last) mono = 0;
                 last = m;
             } else {
@@ -2265,7 +2402,7 @@ __attribute__((noinline)) static void incremental(const RG *g, RPage *pg)
         for (i = 0; i < B->nitem; i++)
             for (j = i + 1; j < B->nitem; j++) {
                 const RItem *a = &B->item[i], *b = &B->item[j];
-                if (!B->match[i] || !B->match[j] || B->match[i] < B->match[j]) continue;
+                if (!match[i] || !match[j] || match[i] < match[j]) continue;
                 if (a->x0 < b->x1 && b->x0 < a->x1 && a->y0 < b->y1 && b->y0 < a->y1) {
                     add_rect(g, a->x0, a->y0, a->x1, a->y1);
                     add_rect(g, b->x0, b->y0, b->x1, b->y1);
@@ -2287,6 +2424,53 @@ __attribute__((noinline)) static void incremental(const RG *g, RPage *pg)
     room_stats.rects = B->nrect;
 }
 
+/* ---- (S2-11) a view turn built over several ticks ------------------------------
+ * A quarter turn changes the shell key: the roof's tables and the whole page
+ * had to be built in one tick (106 ms on the cottage: one 117 ms frame). Now
+ * the turn is built in the hidden page over 2-3 ticks while the shown page
+ * keeps the old view (B->bld):
+ *   1  the tables whose inputs changed (build_shell's steps, by rows);
+ *   2  the page, a band of block rows at a time: the shell and the sprite
+ *      pieces of the draw list as it stood when the tables were done (the
+ *      list is kept for every band, so a band never shows a later frame of
+ *      a piece than the band above it), each band checksummed as drawn;
+ *   3  the page is whole but the tick has no room for the pass below.
+ * Each such tick works until the frame has spent ROOM_SLICE_STOP, then says
+ * "no flip" (hold_room_slice): the core skips its own drawing on that tick
+ * (plat_build_frame(PLAT_BUILD_BUSY), home_draw.c) and the logic runs on at
+ * 30 ticks a second. The build ends with an ordinary frame: the page's
+ * records say what the bands drew (the sprite pieces of the kept list), so
+ * the incremental pass adds the actors, the cursor and whatever changed
+ * since, puts back anything drawn over the page meanwhile, and the frame
+ * flips. That pass runs on the tick of the last band when it fits there
+ * (the last ordinary frame's cost is the estimate), else on the next one.
+ * A turn asked for during a build drops it and starts the new view's (the
+ * shown page still holds a whole older view); after two such restarts in a
+ * row the frame is drawn in one go, as before, so turns held down cannot
+ * keep the screen from changing. Any other change of the shell key during a
+ * build, a frame gap or a lost claim also end it (one go / reset_state). */
+#define ROOM_SLICE_STOP 369200u       /* 22 ms of the tick's work (16.78 MHz cycles): a slice tick ends
+                                          under 30 ms (its last unit: the top band is ~3.3 ms on the
+                                          cottage, a band of test-home's busy layout up to ~7) */
+#define ROOM_SLICE_LAST 436300u       /* 26 ms: the closing pass may end here and the HUD still fits */
+#define ROOM_SLICE_PAD   50400u       /* 3 ms: what it draws beyond an ordinary frame (the actors anew) */
+
+/* block rows [B->brow, ...) of the hidden page until the tick's work limit (five at least: the page is whole
+ * in four ticks whatever else the scene does); 1 = every row drawn */
+static int build_bands(const RG *g, RPage *pg, uint32_t stop)
+{
+    int did = 0, bx;
+    for (; B->brow < g->nby; B->brow++, did++) {
+        const int by = B->brow;
+        if (did >= 5 && gba_work_now() >= stop) return 0;
+        draw_region(g, 0, by ? g->my0 + 8 * by : g->dy0, SCREEN_W, by + 1 < g->nby ? g->my0 + 8 * (by + 1) : g->dy1);
+        for (bx = g->bx0; bx < g->bx1; bx++)
+            pg->sum[by * RB_BX + bx] = block_sum(bx, g->my0 + by * 8, block_rows(g, by));
+    }
+    save_records(g, pg);
+    return 1;
+}
+
 /* ---- harness test layouts ---------------------------------------------------- */
 static DoomoRoomView *test_view(const DoomoRoomView *v, DoomoRoomView *tv, DoomoRoomObj *objs,
                                 DoomoRoomActor *acts);
@@ -2295,7 +2479,7 @@ static DoomoRoomView *test_view(const DoomoRoomView *v, DoomoRoomView *tv, Doomo
 static void render(const DoomoRoomView *v)
 {
     RG g;
-    RPage *pg;
+    RPage *pg, *fr;
     uint32_t c0 = gba_cycles(), key;
     if (!gba_big_fits(GBA_BIG_ROOM)) {   /* never with the house's 2.8 KB claim */
         gba_log("GBA: plat_room: the scene scratch claim covers the house's region");
@@ -2315,15 +2499,60 @@ static void render(const DoomoRoomView *v)
     if (v->punch_q8 && v->punch_q8 != 256 && v->punch_q8 > 128 && v->punch_q8 < 512)
         plat_post_scale(v->punch_q8, v->punch_q8, g.vx + g.vw / 2, g.vy + g.vh / 2);
     key = shell_key(&g);
-    if (key != B->shell_key) {
-        B->shell_key = key;
-        build_shell(&g);
-    }
-    build_items(&g, v);
     pg = &B->page[gba_back == (uint16_t *)VRAM_PAGE1];
+    fr = &B->page[gba_back != (uint16_t *)VRAM_PAGE1];
+    if (B->bld && key != B->bkey) {          /* (S2-11) turned again: this build is dropped */
+        B->bld = 0;
+        B->bstep = 0;
+        B->bsub = 0;
+        pg->valid = 0;
+        if (B->bturns < 255) B->bturns++;
+    }
+    if (!B->bld && key != B->shell_key) {
+        B->shell_key = 0xFFFFFFFFu;           /* the tables are being rewritten */
+        if (B->k_last && B->k_last != g.k + 1 && fr->valid && B->bturns < 2 && g.nby >= 2) {
+            /* (S2-11) a view turn while the shown page holds a whole room: built over this tick and the next ones */
+            B->bld = 1;
+            B->bkey = key;
+            B->brow = 0;
+            pg->valid = 0;
+        } else {
+            build_shell(&g, 0);
+            B->shell_key = key;
+        }
+    }
+    B->k_last = (uint8_t)(g.k + 1);
+    if (B->bld) {
+        OwFrame save = owf;
+        int whole = 0;
+        if (B->bld == 1 && (B->shell_key == key || build_shell(&g, ROOM_SLICE_STOP))) {
+            B->shell_key = key;
+            build_items(&g, v);               /* the list every band is drawn with */
+            B->bld = 2;
+        }
+        if (B->bld == 2) {
+            if (fr->valid && fr->key == key) {
+                whole = 1;                    /* turned back to the view on screen: it is copied forward below */
+            } else if (build_bands(&g, pg, ROOM_SLICE_STOP)) {
+                if (gba_work_now() + room_stats.cycles + ROOM_SLICE_PAD < ROOM_SLICE_LAST) whole = 1;
+                else B->bld = 3;              /* the closing pass has the next tick */
+            }
+        } else if (B->bld == 3) {
+            whole = 1;
+        }
+        owf = save;
+        if (!whole) {
+            hold_room_slice();                /* this tick does not flip: the old view stays */
+            band_pend[0] = band_cur[0];       /* the core draws no HUD on it: its bands hold */
+            band_pend[1] = band_cur[1];
+            return;
+        }
+        B->bld = 0;
+    }
+    B->bturns = 0;
+    build_items(&g, v);
     {
         OwFrame save = owf;
-        RPage *fr = &B->page[gba_back != (uint16_t *)VRAM_PAGE1];
         if ((!pg->valid || pg->key != key) && fr->valid && fr->key == key && g.dy1 > g.dy0) {
             /* copy-forward: the shown page already holds this room (one full
              * recompose ago): copy it (VRAM to VRAM) with its records; the
@@ -2405,6 +2634,7 @@ uint32_t room_hc_parity(uint32_t arg)
     int k = (int)(arg & 3), path = (int)((arg >> 8) & 15), line = (int)((arg >> 12) & 0xFF);
     uint8_t keep_test = rb_test;
     int keep_nodraw = gba_nodraw;
+    uint16_t *keep_back = gba_back;
     uint32_t h;
     rb_test = 0;
     gba_nodraw = 0;                       /* the last tick may have been a catch-up */
@@ -2417,7 +2647,7 @@ uint32_t room_hc_parity(uint32_t arg)
         parity_view(&v, objs, &r, line);
     }
     if (path == 1 && r.nobj < 12) path = 0;   /* the busy frame moves the parity pieces */
-    room_invalidate();
+    room_invalidate();                        /* (no page is whole: these frames are never slices of a turn) */
     band_pend[0] = 0;
     band_pend[1] = SCREEN_H;
     plat_clear(PAL_BLACK);
@@ -2450,6 +2680,29 @@ uint32_t room_hc_parity(uint32_t arg)
         o2[r.nobj - 9].sq_x = 10;
         hc_frame(&v2);
         hc_frame(&v);
+    } else if (path == 3) {
+        /* (S2-11) a view turn built over several ticks: the room a quarter turn earlier is drawn whole into this
+         * page, the other page becomes the hidden one (as after video_flip) and the view is turned: every tick
+         * that says "no flip" (PLAT_BUILD_BUSY) is a slice; the page that ends up whole must hash like the
+         * one-go frame of the same view. A turn that was not sliced (two ticks at least) fails the line. */
+        DoomoRoomView v0 = v;
+        int slices = 0, i;
+        v0.yaw = (int16_t)(v.yaw + 1024);
+        hc_frame(&v0);
+        gba_back = gba_back == (uint16_t *)VRAM_PAGE1 ? (uint16_t *)VRAM_PAGE0 : (uint16_t *)VRAM_PAGE1;
+        band_pend[0] = 0;
+        band_pend[1] = SCREEN_H;
+        plat_clear(PAL_BLACK);
+        for (i = 0; i < 64; i++) {
+            hold_frame_begin();
+            hc_frame(&v);
+            if (!plat_build_frame(PLAT_BUILD_BUSY)) break;
+            slices++;
+        }
+        if (slices < 2 || i >= 64) {
+            gba_logf("room: parity %x: the turn took %d slice ticks (a turn is 2 at least, 64 at most)", (unsigned)arg, slices);
+            path = -1;                                    /* the hash below is spoiled: the line fails */
+        }
     } else if (path == 2) {
         /* UI drawn over the room after plat_room: a window, a caption */
         hc_frame(&v);
@@ -2463,7 +2716,9 @@ uint32_t room_hc_parity(uint32_t arg)
         hc_frame(&v);
     }
     h = page_fnv();
+    if (path < 0) h ^= 0x5A5A5A5Au;
     room_invalidate();
+    gba_back = keep_back;
     rb_test = keep_test;
     gba_nodraw = keep_nodraw;
     gba_logf("room: parity %x line %d path %d: fnv %x (%u cycles, %u rects)", (unsigned)arg, line, path, h,

@@ -3,7 +3,8 @@
 # the cursor, the Catalog modal, a held piece, the view turned with R, Live mode, the Score
 # panel, Photo mode), test-home's busy Live layout (room-test 1: 4 chibis), Hold the Door (the
 # Ep 3.2 tutorial wave and the Ep 3.7 siege from wave 3), a visit (Nana Puddin, HOME 3), and
-# HomeMart and the Black Market. The window rules are in speed2_fair.txt.
+# HomeMart and the Black Market. The window rules are in speed2_fair.txt. S2-11: the turn, the busy Live
+# layout and Hold the Door close with expect-fps 29.5 and expect-gap 34 (no frame over two vblanks).
 wait 40
 expect-log doomo: init
 sync on 61
@@ -46,7 +47,8 @@ press R
 wait 2
 fps start
 wait 30
-fps house: rotate view
+expect-fps 29.5 house: rotate view
+expect-gap 34
 shot house_rotate
 wait 20
 press L
@@ -111,7 +113,8 @@ press A
 wait 30
 fps start
 wait 130
-fps house: live, 4 chibis (room-test 1)
+expect-fps 29.5 house: live, 4 chibis (room-test 1)
+expect-gap 34
 shot house_live_busy
 room-test 0
 wait 10
@@ -132,7 +135,8 @@ press RIGHT
 wait 40
 fps start
 wait 130
-fps house: defend tutorial
+expect-fps 29.5 house: defend tutorial
+expect-gap 34
 shot house_defend_tut
 seed 1
 scene TITLE
@@ -141,12 +145,14 @@ push HOME 25091
 wait 30
 fps start
 wait 130
-fps house: defend siege wave 3
+expect-fps 29.5 house: defend siege wave 3
+expect-gap 34
 shot house_defend_siege
 wait 60
 fps start
 wait 90
-fps house: defend siege freeze + double clock
+expect-fps 29.5 house: defend siege freeze + double clock
+expect-gap 34
 shot house_defend_freeze
 
 # ---- a visit: Nana Puddin's home ------------------------------------------------------

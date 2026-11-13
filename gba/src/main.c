@@ -195,6 +195,7 @@ void plat_begin_frame(void)
     }
     cv_frame_begin();
     pn_frame_begin();                           /* G7 */
+    hold_frame_begin();                         /* S2-11 */
 }
 
 /* G5 (canvas.c): a tile frame that cannot be shown after all (its pool

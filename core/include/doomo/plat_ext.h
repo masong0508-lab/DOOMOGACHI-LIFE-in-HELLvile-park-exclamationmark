@@ -120,8 +120,12 @@ int  plat_hold_frame(int on);
  *   PLAT_BUILD_SHOWN   the next 2D calls draw into the SHOWN page (the news strip, which keeps moving), with
  *                      retained panels off; only valid inside a build, and only early in the tick (before the
  *                      beam reaches what is drawn)
- *   PLAT_BUILD_HIDDEN  back to the hidden page (the build's target) */
-enum { PLAT_BUILD_START = 1, PLAT_BUILD_SHOWN = 2, PLAT_BUILD_HIDDEN = 3 };
+ *   PLAT_BUILD_HIDDEN  back to the hidden page (the build's target)
+ *   PLAT_BUILD_BUSY    (S2-11) asked after plat_room(): 1 when the platform is building that picture over several
+ *                      ticks on its own (the GBA house's view turn) and this tick's frame will not be presented:
+ *                      the old picture stays on screen, and the caller skips whatever it would draw over the room
+ *                      on this tick, as on a skipped tick (plat_draw_skipped); 0 otherwise (the default) */
+enum { PLAT_BUILD_START = 1, PLAT_BUILD_SHOWN = 2, PLAT_BUILD_HIDDEN = 3, PLAT_BUILD_BUSY = 4 };
 int  plat_build_frame(int op);
 
 /* ---- a dot-matrix screen in one call (SP4, G-P1: the pet's LCD) -------------

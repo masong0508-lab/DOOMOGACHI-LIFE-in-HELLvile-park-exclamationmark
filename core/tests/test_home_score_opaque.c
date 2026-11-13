@@ -8,6 +8,7 @@
  * one inset rect that lies wholly inside the opaque window body. */
 #include "test.h"
 #include "../src/home_int.h"
+#include "doomo/plat_ext.h"
 
 /* strong versions of the two weak platform calls: log, then do what the weak ones do */
 typedef struct { int x, y, w, h, after_room; } OpqCall;
@@ -15,10 +16,32 @@ static OpqCall opq[16];
 static int opq_n;
 static int room_seen;                          /* plat_room has run in this frame */
 
+/* (S2-11) a platform that builds a turned view over several ticks (the GBA: gba/src/room.c) says so after
+ * plat_room(): the tick is not presented, so the scene draws nothing over the room on it */
+static int build_busy;                         /* what plat_build_frame(PLAT_BUILD_BUSY) answers */
+static int busy_asked;                         /* ... and how often it was asked after plat_room in this frame */
+static uint32_t room_fnv;                      /* the frame as plat_room left it */
+
+static uint32_t fb_fnv(void)
+{
+    uint32_t h = 2166136261u;
+    int i, n = nat_w * nat_h;
+    for (i = 0; i < n; i++) h = (h ^ nat_fb[i]) * 16777619u;
+    return h;
+}
+
 void plat_room(const DoomoRoomView *v)
 {
     room_seen = 1;
     room_ref_draw(v);
+    room_fnv = fb_fnv();
+}
+
+int plat_build_frame(int op)
+{
+    if (op != PLAT_BUILD_BUSY) return 0;
+    if (room_seen) busy_asked++;
+    return build_busy;
 }
 
 void plat_room_ui_opaque(int x, int y, int w, int h)
@@ -35,6 +58,7 @@ static int frame(uint32_t pad)
     int i, n = 0, sw = plat_screen_w();
     opq_n = 0;
     room_seen = 0;
+    busy_asked = 0;
     plat_begin_frame();
     doomo_frame(pad);
     plat_end_frame();
@@ -120,4 +144,28 @@ TEST(home_score_registration_stays_inside_the_window)
     CHECK(ex >= bx + 4 && ey >= by + 4);
     CHECK(ex + ew <= bx + bw - 4 && ey + eh <= by + bh - 4);
     CHECK(ew > 0 && eh > 0);
+}
+
+/* (S2-11) the tick of a turn the platform is still building: plat_room() ran, the platform says "busy", and
+ * the scene leaves the frame as plat_room left it (no HUD, no menu, no caption), as on a skipped tick. The
+ * next tick, not busy, draws its HUD again. */
+TEST(home_draws_nothing_over_the_room_on_a_build_tick)
+{
+    uint32_t after;
+    enter_house();
+    build_busy = 0;
+    frame(0);
+    CHECK(room_seen);
+    CHECK_EQ(busy_asked, 1);                                 /* asked once, after plat_room */
+    CHECK(fb_fnv() != room_fnv);                             /* the HUD bars went over the room's frame */
+    build_busy = 1;
+    frame(0);
+    after = fb_fnv();
+    build_busy = 0;
+    CHECK(room_seen);
+    CHECK_EQ(busy_asked, 1);
+    CHECK_EQ_U(after, room_fnv);                             /* nothing drawn after plat_room */
+    CHECK_EQ(frame(0), 0);                                   /* (and no window was named on the way) */
+    CHECK(fb_fnv() != room_fnv);                             /* the HUD is back */
+    CHECK(scene_top() == &SCENE_HOME);
 }

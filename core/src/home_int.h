@@ -492,10 +492,19 @@ int  room_roof_row(const RoomRoof *f, int y, int x0, int x1, uint8_t *out);
  * column p & 15 (0..15) d rows above it, the p ranges where it does not
  * hold (pairs [r[2i], r[2i+1]), returns the count), the slope pixel
  * anywhere, and the chimney / tank row (over what out[] holds). */
+/* (S2-11) The GBA fills its roof tables from the two pixel functions a pixel at a time (about 1,500 calls when
+ * the view turns): on its ROM they are ARM code in the IWRAM overlay's room group (gba/src/iwram_ovl.h), about
+ * three times as fast as from ROM. Every caller there runs inside plat_room(), which loads the group
+ * (gba/src/room.c; room_roof_row() below). Plain functions on every other build. */
+#if defined(DOOMO_PLATFORM_GBA) && defined(__arm__)
+#define ROOM_ROOF_FAST __attribute__((section(".iwram_room"), target("arm"), long_call, noinline))
+#else
+#define ROOM_ROOF_FAST
+#endif
 int     room_roof_base(const RoomRoof *f, int side, int p);
-uint8_t room_roof_pattern(const RoomRoof *f, int side, int pp, int d);
+uint8_t room_roof_pattern(const RoomRoof *f, int side, int pp, int d) ROOM_ROOF_FAST;
 int     room_roof_specials(const RoomRoof *f, int side, int16_t r[8]);
-uint8_t room_roof_slope(const RoomRoof *f, int side, int p, int d);
+uint8_t room_roof_slope(const RoomRoof *f, int side, int p, int d) ROOM_ROOF_FAST;
 int     room_roof_feature_row(const RoomRoof *f, int y, int x0, int x1, uint8_t *out);
 #define ROOM_ROOF_PAT_ROWS 34            /* d 0..33: band + spikes, the dormer's apex at wall_h 48 */
 #define ROOM_ROOF_EAVE 4                 /* px the eaves overhang the walls' ends */

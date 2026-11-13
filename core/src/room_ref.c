@@ -666,7 +666,7 @@ void room_roof_cols(const RoomRoof *f, int *x0, int *x1)
  * caches it as a table (room_roof_pattern); room_roof_slope() adds what
  * does not repeat (the valley, the hip, the dormer, the skylight, the ends
  * of the spike row) in the ranges room_roof_specials() lists. */
-uint8_t room_roof_pattern(const RoomRoof *f, int side, int pp, int d)
+ROOM_ROOF_FAST uint8_t room_roof_pattern(const RoomRoof *f, int side, int pp, int d)
 {
     const int band = f->band, s4 = side * 4;
     if (d < 1) return 0;
@@ -716,7 +716,7 @@ int room_roof_specials(const RoomRoof *f, int side, int16_t r[8])
 }
 
 /* the colour of slope pixel (side, p) d rows above its wall top, 0 = none */
-uint8_t room_roof_slope(const RoomRoof *f, int side, int p, int d)
+ROOM_ROOF_FAST uint8_t room_roof_slope(const RoomRoof *f, int side, int p, int d)
 {
     const int band = f->band, L = side ? f->LB : f->LA;
     if (f->dp && side == f->dside && d >= 3) {
