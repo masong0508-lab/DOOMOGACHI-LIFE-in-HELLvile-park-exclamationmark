@@ -961,6 +961,13 @@ New lint **TK10** (`talkc_safe.py`, run by `talkc --check`): an adult-spoken coo
 without `!kid_present`, `kid_speaker` or `tags: gentle` is refused; two seeded bad files
 (`core/tests/talk_bad/bad_tk10_*.tlk`). Alternative count unchanged (guards only, no line added
 or dropped). Data and a lint only: no resident byte on any platform.
+Landing pass: the walk, charm, fashion and hat lines in `c_back` rules got `!kid_present`
+(the `gentle` tag stays for self-jokes and deflections), and the elder smack line is now "a stern
+look". Known gaps: TK10 covers only the acts insult, mock, tease, blame, threaten and dismiss.
+Mild listener lines in the acts complain, disagree, laugh and joke ("You're being dramatic",
+"you little menace") are not linted, and TK10 trusts the `gentle` tag. Kid-present reachability
+of the all-sharp rules (insult.c_mock, threaten, tease.c_x) is for the census, and the owner's
+human read (Q7) of the rude lines is still owed.
 
 **With K-10 (the TK3 landing)**: GRAMMAR 14,536 B and STRINGS 17,650 B
 stored (27,439 B raw) for 373 rules, 718 alternatives, 512 guard terms, 79
