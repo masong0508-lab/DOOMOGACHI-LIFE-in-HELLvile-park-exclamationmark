@@ -1823,9 +1823,8 @@ data (budget 576 KB). Polygons against columns will never be pixel equal.
   new textures (uploads and light-level copies; `V3D_TEX_BUDGET`): the rest
   of a level's first frames use the plain texture darkened by the fit, or the
   flat colour, and fill in over the next frames (`test_remap_budget`: 56 % of
-  pixels with no new texture, 84 % with them). Owed for DC6C: the entry tick
-  of the big levels and the steady 13 ms of the big views (the governor, draw
-  distance). `make -C dc ui-compare` 94 of 94 (the pause menu's 3D backdrop
+  pixels with no new texture, 84 % with them). The entry tick
+  and the governor are DC6C's (below). `make -C dc ui-compare` 94 of 94 (the pause menu's 3D backdrop
   gate went from 45 to 30 % exact: polygons against columns, 36 % exact, 66 %
   close; the Performance page's mask grew by one row for the new Effects
   detail row), `make -C dc room-test` passes, `ow-test` passes except
@@ -1909,6 +1908,67 @@ the sprite), the HUD over them 100 % (gate 97 %); the busiest view about 780 pol
 Memory: no resident RAM anywhere (all under `dc/`; the PS1 and GBA are untouched). Still open: a Flycast-to-host picture compare of the view (the host numbers are the only pixel measure),
 a real console, the scene-entry tick (DC6C), the real draw-distance option and governor (DC6C), the
 HUD's texture uploads in the same tick as a bot plan.
+
+### Draw distance, Combat detail and the governor (DC6C)
+
+`make -C dc` then `sh dc/harness/scripts/gen_detail.sh MODE DIST PLAY > script.txt` and `dcrun` (the script
+needs `opt`, a new `dcrun` command: hcmd 31, `opt ID VALUE`, like the native runner's and the GBA's).
+The view reads the two rows the PS1 reads: Options > Performance > **Combat detail** (`OPT_3D_FAST`:
+Balanced, Smooth, Max detail) and **Draw distance** (`OPT_DRAW_DIST`: Near, Normal). Drawing only; the
+game never sees them. `dc/src/view3d.c`, "the governor":
+
+| | Smooth | Balanced (default) | Max detail |
+|---|---|---|---|
+| most cells seen | 20 | 32 | 32 |
+| ray fan (logical columns a ray) | 4 | 2 | 2 |
+| new textures a view may make | 3 | 4 | 6 |
+| view loses 3 cells when the last tick's work is over | 25 ms | 29 ms | 31 ms |
+| view gains 2 cells when it is under | 20 ms | 24 ms | 27 ms |
+
+Draw distance Near caps the view at 12 cells under any mode (the PS1's cap). The work is the whole last drawn
+tick (`plat_begin_frame` to the end of the draw, what `dcrun` prints as `work:`), fed by `main.c` through
+`dc_view3d_work`. The fade is scaled to the distance (as before), so a shorter view ends in the dark and
+the cut does not pop. The first view after a scene change (a gap of more than 2 drawn frames) starts at 14
+cells and grows 2 cells a tick while the work has room, so the tick that loads a level is lighter; a
+view with no work feed (the host tests) uses the caps only, so Balanced at the default is the same
+picture as before. `dc_gov_step` is the rule, tested alone (`make -C dc v3d-test`, `DC6_GOV_ONLY=1` runs
+only the governor's tests, seconds): `test_gov_rule`, `test_gov_caps`, `test_gov_options` (the options reach
+the view; Smooth's sparse fan loses no cell), `test_gov_feed` (the entry, the growth, the shortening, the clamps).
+
+Measured on Flycast (2026-11-13, emulated time, `dcrun` on the nodebug ELF, Distance Normal; base = the tree
+before this change, the same scripts):
+
+| script | what | base | Balanced | Smooth | Max detail |
+|---|---|---|---|---|---|
+| `combat` | `COMBAT 0 1 2 4 6` entered fresh, 120 ticks walked (822 ticks) | 5 entry ticks over 33.3 ms (35.7-37.5), mean 17.2 ms | 0 over, worst 28.6 ms, mean 17.0 | 0 over, worst 26.4, mean 10.3 | 0 over, worst 28.6, mean 17.0 |
+| `walk` | the seven Hell Breach levels, a pad walks, turns and fires, 900 ticks each (6985 ticks) | 0 over, worst 31.6 ms, mean 9.2 | 0 over, worst 31.6, mean 9.2 | 0 over, worst 22.6, mean 6.2 | 0 over, worst 31.6, mean 9.2 |
+| `walk`, Draw distance Near | the same | | | | 0 over, worst 22.0, mean 6.0 |
+| `demo` | the seven levels played by the autopilot (`push BREACH 4096+N`, 6987 ticks) | 80 over, worst 51.4 ms | 82 over, worst 47.9 | 22 over, worst 37.1 | 82 over, worst 47.9 |
+
+The entry tick of the four big levels is solved: 0 ticks over 33.3 ms at every mode in `combat` (before: 5 of 5
+entries over; the worst is now 28.6 ms) and in `walk`. The 13 ms steady build of the big views is not
+faster at Balanced and Max detail (the same cells and rays as the base: view 13-17 ms of a 17 ms mean tick
+in the big COMBAT levels, and ray casting is 7-9 ms of it); Smooth is the lighter path (mean 17 to 10 ms in `combat`,
+9 to 6 ms in `walk`). **Gap, not solved:** the `demo` runs still have 82 ticks (1.2 %) over 33.3 ms at Balanced
+and Max detail, 22 at Smooth. Each one is a tick where the core's own work before the view takes about 23 ms
+(a profile of Cloud Nine's autopilot, a temporary timer: 22.6-23.2 ms before the view, 14-17 ms the view, 4-11 ms after it;
+`combat_bot.c` replans with a BFS every 12 ticks and on every cell change, which fits the spikes' spacing; not timed on its own), so the view alone cannot bring
+the tick under 33.3 ms: it would have to cost 4 ms. A governor that reacts to the last tick does not see a
+spike coming. What would close it is the planner spreading its search over several ticks (core, the speed stream's);
+shortening the view in the spike tick would make the fog flicker every 0.4 s, so it is not done. The pad
+walking in `walk` and real play have no bot.  The worst `walk` tick (31.6 ms, tick 4107, in the fifth level, about 70 ticks after the push) is not a level entry and is
+not changed by the governor; it is under budget by 1.7 ms, with little room.
+
+The picture: Balanced / Max detail at Normal are the same pixels as the base while the governor has room
+(the five `combat` shots at Balanced and at Max detail are byte-identical to the base's); Smooth and Near show a
+nearer fog (the cut ends in the dark at 20 / 12 cells; 9 to 41 % of the pixels of the `combat` shots differ at
+Smooth, `cmp_l4_base_smooth_near.png`), and the first 9 ticks of a level start with a nearer fog that opens up
+(a short fade-in, lighter than a full view). Evidence: `/tmp/claude-0/ev/DC6C/` (not in the repo; the scripts are
+`dc/harness/scripts/gen_detail.sh`). `make -C dc ui-compare` 94 of 94 (the pause menu's 3D backdrop 36.2 %
+exact as before), `room-test` ok, `ow-test` ok except `side_sample_a` (the base's 3 of 17 shots). Host parity
+`make -C dc v3d-test`: level views 79.7 %, looking up 80.1 % (the test now starts from `opt_defaults()`, as the
+game does, so its numbers moved 0.5 against section 9's: the view reads two options now). Memory: DC `.bss` +32 B,
+`.text` +472 B; no core, GBA or PS1 file changed.
 
 ## Rumble (X2)
 
