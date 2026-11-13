@@ -32,6 +32,9 @@ hand:
     not followed either: its target belongs to its own group.
   * a shared core file named in SHARED is no root: each of its sections
     is resident or joins the one group that reaches it, by the same rules;
+  * a group named in HOLD takes nothing new (its loads stay as long as
+    they were): its held callbacks, table strings and shared code stay
+    resident;
   * the string literals of a file's tables arrive one per section
     (tools/strsec.py), so only the strings resident code or data can
     reach stay resident (STR_WHOLE below: the groups that set the slot's
@@ -305,7 +308,7 @@ PICK_CALLBACKS = {
 # size must not grow by its strings (the slot grows in 2 KB steps, and every step is resident RAM
 # lost): for the groups named here an object's table strings stay together, all resident as soon as
 # one of them is (what the linker did before the split). Take a group off the list when it has
-# room under the slot again.
+# room under the slot again. The HOLD groups below keep theirs together too.
 STR_WHOLE = ("story", "home")
 RX_STR = re.compile(r"\.rodata\.str1\.\d+\.LC\d+$")
 
@@ -318,13 +321,39 @@ RX_STR = re.compile(r"\.rodata\.str1\.\d+\.LC\d+$")
 # slot: the argument that holds for the group's own files); reached by two groups it stays resident.
 # The file's .data / .bss stay resident, and a scene defined in such a file is a resident scene.
 # SHARED_NOT: groups that take none: they set the slot's size or are within a few KB of it, where a
-# KB more is a KB of slot, not of room found (free play keeps its 10 KB for its own screens).
+# KB more is a KB of slot, not of room found (free play keeps its 10 KB for its own screens). The
+# HOLD groups below take none either.
 # To add a file: OVL_WHY=1 lists the resident core objects; a file is worth listing when part of it
 # is reached by one group only AND not through another resident file (its accessors must be listed
 # too: the sprite name table is read by the library alone, but through sprites.c).
 SHARED = r"fishcook$|catalog$|ui$|song_player$|fp_common$|audio$"
 SHARED_NOT = ("story", "home", "combat", "freeplay")
 SHARED_TAG = "+"                # what grp() says for a candidate section of a shared file
+
+# --- RAM headroom 2026-11-12: HOLD. What a group takes out of resident RAM is read with it from
+# then on: about 2 ms of its load per KB at the drive's 2x speed (docs/PS1.md "RAM headroom
+# 2026-11-12", the cost table). The groups named here are the ones the player crosses all the
+# time (the title and the free-play screens, the island hub), or their reads are inside a measured
+# load window (the cutscenes after "New story"). They take NOTHING new, so their loads are as long
+# as before:
+#   * their callbacks in HELD_CALLBACKS stay resident. Each is also listed in LOCAL_CALLBACKS /
+#     MODAL_CALLBACKS / PICK_CALLBACKS above, reviewed against its call sites, so the hold is the
+#     only thing that keeps it resident;
+#   * their objects' table strings stay together, like STR_WHOLE's;
+#   * they take no part of a shared file, like SHARED_NOT's.
+# Taking a group off HOLD is all it needs to release it. Measured on the 2026-11-12 tree: free
+# play gives 13.5 KB of resident RAM for +26 ms on each of its loads (314 -> 340 ms on PCSX-Redux),
+# the island 13.1 KB for +20 ms (206 -> 226), the cutscenes 3.7 KB for +7 ms (348 -> 355).
+HOLD = ("freeplay", "island", "cutscene")
+#   object base -> function names
+HELD_CALLBACKS = {
+    "fp_island_gfx": ("draw_glints_body", "draw_land_body", "draw_patches_body", "draw_roads_body",
+                      "draw_walkers_body", "draw_weather_body", "lr_tap"),
+    "fp_title": ("pc_pill", "pc_in", "pc_vile", "finished_pick", "fresh_world_go"),
+    "fp_family": ("mem_flowers", "wz_neighbour"),
+    "fp_resident": ("cb_manage", "cb_introduce"),
+    "playas_scene": ("pf_leave", "pf_renamed", "pf_join"),
+}
 # --- end RAM headroom ---
 
 # --- S4: registries read only by their own group (object base -> symbol).
@@ -524,6 +553,8 @@ def main(argv):
         if f[1] not in tuple(".text." + n for n in names + picks):
             continue
         g = group_of(o.path)
+        if g in HOLD and f[1] in tuple(".text." + n for n in HELD_CALLBACKS.get(base(o.path), ())):
+            continue                # reviewed, but its group takes nothing new (HOLD): resident
         if f[1] in tuple(".text." + n for n in picks) and picker_group != {g}:
             print("ovl_plan: %s:%s is not in the picker's group; it stays resident" % (base(o.path), f[1]))
             continue
@@ -619,7 +650,7 @@ def main(argv):
     # RAM headroom 2026-11-12 (STR_WHOLE above): the table strings of each object of those groups
     str_whole = collections.defaultdict(set)
     for n in live:
-        if grp(n) in STR_WHOLE and RX_STR.search(n[1]):
+        if grp(n) in STR_WHOLE + HOLD and RX_STR.search(n[1]):
             str_whole[n[0]].add(n)
     while True:
         owner = {}
@@ -636,7 +667,7 @@ def main(argv):
                     if r in resident:
                         continue
                     gr = grp(r)
-                    mine = gr == g or (gr == SHARED_TAG and g not in SHARED_NOT)
+                    mine = gr == g or (gr == SHARED_TAG and g not in SHARED_NOT + HOLD)
                     if not mine or owner.get(r, g) != g:
                         clash.add(r)
                     else:

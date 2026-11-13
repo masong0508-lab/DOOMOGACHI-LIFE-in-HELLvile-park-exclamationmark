@@ -412,13 +412,15 @@ def plan(root, objs):
 class Planner(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.TemporaryDirectory()
-        self.saved = (dict(ovl_plan.PICK_CALLBACKS), dict(ovl_plan.MODAL_CALLBACKS))
+        self.saved = (dict(ovl_plan.PICK_CALLBACKS), dict(ovl_plan.MODAL_CALLBACKS), ovl_plan.HOLD)
+        ovl_plan.HOLD = ()          # the tables themselves; HOLD has its own tests (PlannerHold)
 
     def tearDown(self):
         ovl_plan.PICK_CALLBACKS.clear()
         ovl_plan.PICK_CALLBACKS.update(self.saved[0])
         ovl_plan.MODAL_CALLBACKS.clear()
         ovl_plan.MODAL_CALLBACKS.update(self.saved[1])
+        ovl_plan.HOLD = self.saved[2]
         self.dir.cleanup()
 
     def test_callbacks_that_may_leave_resident_ram(self):
@@ -476,12 +478,13 @@ def strsec_compiler(cmd):
 class PlannerStrings(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.TemporaryDirectory()
-        self.whole = ovl_plan.STR_WHOLE
+        self.whole = (ovl_plan.STR_WHOLE, ovl_plan.HOLD)
+        ovl_plan.HOLD = ()
         self.fake = dict(FAKE)
         self.fake["core/src/fp_family.c"] = FAMILY_TABLES
 
     def tearDown(self):
-        ovl_plan.STR_WHOLE = self.whole
+        ovl_plan.STR_WHOLE, ovl_plan.HOLD = self.whole
         self.dir.cleanup()
 
     def strings(self, where, key):
@@ -534,11 +537,11 @@ SHARED_FAKE["core/src/fp_island.c"] = FAKE["core/src/fp_island.c"].replace(
 class PlannerShared(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.TemporaryDirectory()
-        self.saved = (ovl_plan.SHARED, ovl_plan.SHARED_NOT)
-        ovl_plan.SHARED, ovl_plan.SHARED_NOT = r"ui$", ()
+        self.saved = (ovl_plan.SHARED, ovl_plan.SHARED_NOT, ovl_plan.HOLD)
+        ovl_plan.SHARED, ovl_plan.SHARED_NOT, ovl_plan.HOLD = r"ui$", (), ()
 
     def tearDown(self):
-        ovl_plan.SHARED, ovl_plan.SHARED_NOT = self.saved
+        ovl_plan.SHARED, ovl_plan.SHARED_NOT, ovl_plan.HOLD = self.saved
         self.dir.cleanup()
 
     def plan(self):
@@ -569,6 +572,81 @@ class PlannerShared(unittest.TestCase):
         self.assertIn(("ui", ".text.ui_family_only"), where["resident"])
         self.assertNotIn(("ui", ".text.ui_family_only"), where["freeplay"])
         self.assertIn(("ui", ".text.ui_island_only"), where["island"])
+
+
+# HOLD: a group whose loads must not get longer takes nothing new. The made-up FAMILY screen with
+# its tables (strings), its callbacks and the shared UI kit; the island next to it is not held.
+HOLD_FAKE = dict(SHARED_FAKE)
+HOLD_FAKE["core/src/fp_family.c"] = SHARED_FAKE["core/src/fp_family.c"].replace(
+    "static void fam_update(void) {",
+    'static const char *const tabs[2] = { "Tab one", "Tab two" };\n'
+    'static const char *const rows[4] = { "row alpha", "row beta", "row gamma", "row delta" };\n'
+    "static void fam_update(void) { sink += tabs[sink & 1][0] + rows[sink & 3][0];")
+
+
+@unittest.skipUnless(CROSS, "no MIPS compiler (mipsel-linux-gnu-gcc / mipsel-none-elf-gcc)")
+class PlannerHold(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.saved = (ovl_plan.SHARED, ovl_plan.SHARED_NOT, ovl_plan.STR_WHOLE, ovl_plan.HOLD,
+                      dict(ovl_plan.HELD_CALLBACKS))
+        ovl_plan.SHARED, ovl_plan.SHARED_NOT, ovl_plan.STR_WHOLE = r"ui$", (), ()
+        ovl_plan.HELD_CALLBACKS.clear()
+        ovl_plan.HELD_CALLBACKS.update({"fp_family": ("mem_flowers", "wz_neighbour")})
+
+    def tearDown(self):
+        ovl_plan.SHARED, ovl_plan.SHARED_NOT, ovl_plan.STR_WHOLE, ovl_plan.HOLD = self.saved[:4]
+        ovl_plan.HELD_CALLBACKS.clear()
+        ovl_plan.HELD_CALLBACKS.update(self.saved[4])
+        self.dir.cleanup()
+
+    def plan(self):
+        return plan(self.dir.name, compile_fake(self.dir.name, HOLD_FAKE, strsec_compiler))[0]
+
+    def strings(self, where, key):
+        return [sec for obj, sec in where.get(key, ()) if obj == "fp_family" and ".str1." in sec]
+
+    def test_a_held_group_takes_nothing_new(self):
+        ovl_plan.HOLD = ("freeplay",)
+        where = self.plan()
+        fp = where["freeplay"]
+        # its own scene code is in the group as ever
+        self.assertIn(("fp_family", ".text.fam_update"), fp)
+        # its reviewed callbacks, its table strings and the shared code only it calls stay resident
+        for sec in (".text.mem_flowers", ".text.wz_neighbour"):
+            self.assertIn(("fp_family", sec), where["resident"])
+            self.assertNotIn(("fp_family", sec), fp)
+        self.assertEqual(self.strings(where, "freeplay"), [])
+        self.assertEqual(len(self.strings(where, "resident")), 7)
+        self.assertIn(("ui", ".text.ui_family_only"), where["resident"])
+        self.assertFalse([x for x in fp if x[0] == "ui"])
+        # the group next to it is not held and still takes its part of the shared file
+        self.assertIn(("ui", ".text.ui_island_only"), where["island"])
+
+    def test_released_it_takes_all_of_it(self):
+        ovl_plan.HOLD = ()
+        where = self.plan()
+        fp = where["freeplay"]
+        for sec in (".text.mem_flowers", ".text.wz_neighbour"):
+            self.assertIn(("fp_family", sec), fp)
+        self.assertEqual(len(self.strings(where, "freeplay")), 4)
+        self.assertIn(("ui", ".text.ui_family_only"), fp)
+
+    def test_a_hold_on_another_group_changes_nothing_here(self):
+        ovl_plan.HOLD = ("island",)
+        where = self.plan()
+        self.assertIn(("fp_family", ".text.mem_flowers"), where["freeplay"])
+        self.assertIn(("ui", ".text.ui_family_only"), where["freeplay"])
+        self.assertIn(("ui", ".text.ui_island_only"), where["resident"])
+
+    def test_every_held_callback_is_in_a_reviewed_table(self):
+        # HELD_CALLBACKS only holds back entries of the three callback tables
+        held = self.saved[4]
+        for obj, names in held.items():
+            listed = (ovl_plan.LOCAL_CALLBACKS.get(obj, ()) + ovl_plan.MODAL_CALLBACKS.get(obj, ())
+                      + ovl_plan.PICK_CALLBACKS.get(obj, ()))
+            for n in names:
+                self.assertIn(n, listed, "%s:%s is held but in no callback table" % (obj, n))
 
 
 if __name__ == "__main__":
