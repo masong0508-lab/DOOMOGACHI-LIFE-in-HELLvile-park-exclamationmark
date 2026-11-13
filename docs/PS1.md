@@ -1753,7 +1753,9 @@ Rebased on `0df72845` (CR3's gene code and its creator string pool, Talk T5B-OPE
 `0x801e0640`, **129,456 B below the stack top**: those packages add 1,856 B of resident code and data
 net (mainly `look_gene` 1,544 B, `unlocks_creator` 1,388, `portrait` 412 and `resident` 216, less the 1,916 B of
 `creator_data` that CR3's `-G0` takes out of the resident image: its `.sdata` name lists, which no string
-section can move). That is 55,728 B above the plan gate and 1,616 B short of the old 128 KB goal.
+section can move). That is 55,728 B above the plan gate and 1,616 B short of the old 128 KB goal. On the
+newest tip, `f91bd3e4` (LV0, STKOPT and the Talk and DC work on top of that), the disc ends at `0x801e0a20`:
+**128,464 B below the stack top** (core tests 1153 passed, `game_smoke` passes with the same SPU line).
 
 ### The gate and the ledger tools
 
