@@ -189,6 +189,31 @@ static int edge_strength(const DoomoEdge *e)
     return v;
 }
 
+/* S3-1: open a gap at edge i of n edges (the edges i..n-1 move up by one). The GBA's libc memmove copies a block
+ * that is only 2-byte aligned byte by byte (about 11 cycles a byte): a new bond among 1,500 edges moved ~4.6 KB,
+ * 3-7 ms inside one tick, a 50 ms frame on a screen already near its budget. The edges are 6-byte records on
+ * 2-byte boundaries: three halfwords each, four halfwords a round, from the top down. (A struct copy becomes a
+ * memcpy call per edge, and a plain copy loop becomes the memmove call again: hence the halfword type that may
+ * alias the records and the attribute.) The host tests build it too (core/Makefile). */
+#if defined(DOOMO_PLATFORM_GBA) || defined(DOOMO_EDGE_GAP_LOOP)
+typedef uint16_t __attribute__((may_alias)) EdgeHalf;
+__attribute__((optimize("no-tree-loop-distribute-patterns")))
+static void edges_open_gap(int i, int n)
+{
+    const EdgeHalf *s = (const EdgeHalf *)&doomo_town.edges[n];
+    EdgeHalf *d = (EdgeHalf *)&doomo_town.edges[n + 1];
+    int h = (n - i) * 3;
+    for (; h >= 4; h -= 4) {
+        s -= 4; d -= 4;
+        d[3] = s[3]; d[2] = s[2]; d[1] = s[1]; d[0] = s[0];
+    }
+    while (h-- > 0) *--d = *--s;
+}
+#else
+#define edges_open_gap(i, n) \
+    memmove(&doomo_town.edges[(i) + 1], &doomo_town.edges[(i)], (size_t)((n) - (i)) * sizeof(DoomoEdge))
+#endif
+
 static void remove_edge(int i)
 {
     int n = doomo_town.edge_count;
@@ -217,7 +242,7 @@ DoomoEdge *rel_get_or_add(int a, int b)
     k = ((uint32_t)a << 16) | (uint32_t)b;
     i = lower_bound(k);
     n = doomo_town.edge_count;
-    memmove(&doomo_town.edges[i + 1], &doomo_town.edges[i], (size_t)(n - i) * sizeof(DoomoEdge));
+    edges_open_gap(i, n);
     e = &doomo_town.edges[i];
     e->a = (uint16_t)a;
     e->b = (uint16_t)b;

@@ -1,5 +1,6 @@
 /* test_town.c - town lifecycle, relationship graph, inventory, graves,
  * clock, options and unlocks (owner: foundation). */
+#include <stdlib.h>
 #include "test.h"
 
 static int edges_sorted_valid(void)
@@ -148,6 +149,51 @@ TEST(relationships_basic)
     rel_remove_all(4);
     CHECK_EQ(rel_list(4, ids, 8), 0);
     CHECK(rel_find(10, 600) != NULL);
+    CHECK(edges_sorted_valid());
+}
+
+/* S3-1: a new bond is slotted in by edges_open_gap (a halfword loop on the GBA, built by the host tests too).
+ * Random pairs in random order, bonds before the first, between and after the last edge, against a plain
+ * reference table kept sorted by insertion: every record (ids, value, kind) in the same place. */
+typedef struct { uint16_t a, b; int8_t value; uint8_t kind; } RefEdge;
+static int ref_cmp(const void *x, const void *y)
+{
+    const RefEdge *p = (const RefEdge *)x, *q = (const RefEdge *)y;
+    return p->a != q->a ? (int)p->a - (int)q->a : (int)p->b - (int)q->b;
+}
+
+TEST(relationships_insert_matches_a_reference_table)
+{
+    static RefEdge ref[DOOMO_MAX_EDGES];
+    int n = 0, i, k, bad = 0;
+    DoomoRng r;
+    rng_seed(&r, 17);
+    for (i = 0; i < 1500; i++) {
+        int a, b, lo, hi;
+        DoomoEdge *e;
+        RefEdge key;
+        if (i < 4) { a = i < 2 ? 900 : 1; b = i % 2 ? 901 : 902; }       /* first, then below and above it */
+        else { a = rng_range(&r, 1000); b = rng_range(&r, 1000); }
+        if (a == b) continue;
+        lo = a < b ? a : b; hi = a < b ? b : a;
+        key.a = (uint16_t)lo; key.b = (uint16_t)hi;
+        if (bsearch(&key, ref, (size_t)n, sizeof(RefEdge), ref_cmp)) continue;     /* already a bond */
+        e = rel_get_or_add(a, b);
+        CHECK(e != NULL);
+        e->value = (int8_t)rng_between(&r, -90, 90);
+        e->kind = (uint8_t)rng_range(&r, REL_KIND_COUNT);
+        key.value = e->value; key.kind = e->kind;
+        for (k = n; k > 0 && ref_cmp(&ref[k - 1], &key) > 0; k--) ref[k] = ref[k - 1];
+        ref[k] = key;
+        n++;
+        CHECK_EQ(doomo_town.edge_count, n);
+    }
+    CHECK(n > 1000);
+    for (i = 0; i < n; i++) {
+        const DoomoEdge *e = &doomo_town.edges[i];
+        if (e->a != ref[i].a || e->b != ref[i].b || e->value != ref[i].value || e->kind != ref[i].kind) bad++;
+    }
+    CHECK_MSG(bad == 0, "%d of %d edges differ from the reference table", bad, n);
     CHECK(edges_sorted_valid());
 }
 
