@@ -42,7 +42,7 @@ Contents:
 | **T3** | the free-text parser (Dreamcast and native): `talk_lex.c`, `talk_parse.c`, `rules/en.tsv`, a labelled corpus of 1,519 lines | **done** (TK2) |
 | **T4** | the safety gate: the input classifier S1, the audience gate S2 (`talk_safe_ctx`, one source of "minor"), the output lint S3, the template lints TK1-TK9, the safety and adversarial corpora, the hashed hate list, the property tests | **done** (TK2): green. The generator-level halves of P1-P8 go live with T5a / T6 |
 | **T5a** | the generator: `talk_gen.c` (the grammar VM, guards, fillers, sim-fact callbacks, novelty, re-picks, the bubble fit, the per-conversation RNG, the trace), the `.tlk` grammar compiler `talkc_gen.py`, the adjacency table `acts.tsv`, a plain exchange (the gate first, who answers, reactions between residents) | **done** (TK3); a **starter** English bank (718 alternatives in 12 files, the K-10 grief and comfort banks included) so every act, refusal and part plays |
-| T5b | the English line banks (about 6,000 alternatives, design 3.6) and the owner's review | to do: the starter bank is about a ninth of it |
+| T5b | the English line banks (about 6,000 alternatives, design 3.6) and the owner's review | in progress: 1,457 alternatives (starter 718 + T5B-WARM 739: warm acts) |
 | T6 | the drama manager, outcomes, the talk memory chunk | to do |
 | **T7** | the census (`core/tools/talk_census.c`: the three tiers, Chao1, the quality checks Q1-Q6, the conversation tier), the grid `census_en.tsv`, `make -C core talk-census`, the smoke census in `make test`, the Q7 review sheet `talk_sample.py` | **done** (TK3): the tools and the measurement. The full run's numbers are in 6d: Skeleton, Meaning, conversations and quality meet the design's targets; **Surface does not** (it needs T5b's bank); Q7 (a person rating 300 exchanges) has not been done |
 | T8 | the house mode `HM_TALK` on native, with its UI | to do |
@@ -784,6 +784,19 @@ must split it (the design's third part) or trim it (the trace and the
 exchange stand-in are host-and-T6 conveniences); measured here so TP2 starts
 from the number. `talk_safe.c` grew by the probe (one flag through the lint
 core). The census measures about 80 us a line on the host (6d).
+
+**T5B-WARM (the warm acts, content only)**: +739 alternatives in four new files,
+`grammar/en/warm_praise.tlk` (222: compliments, praise of a third party, thanks),
+`warm_comfort.tlk` (181: comfort, encouragement, sympathy; the light kind, grief
+keeps its own bank), `warm_play.tlk` (211: jokes, laughs, high fives, warm greetings)
+and `warm_offers.tlk` (125: offers, invitations, promises). 1,457 alternatives in 16
+files now. Every reply act the adjacency table allows after a warm act has lines;
+voices by guard: polite, flat, blunt, loud, slow, quick, quirky, serious, elder, teen,
+kid (tagged `kid`), mood, relationship, time of day, hellborn and ghost. Rules: at most
+3 sentences a line (an opener or a tag may add one, so most core lines have 1-2), at most
+one exclamation mark except loud and kid lines, no register word, no filler, no romance,
+nothing a kid may not hear. `TALK_en.BIN` 540,274 -> 569,240 B (PS1 non-resident data,
+no resident byte). No code change.
 
 **With K-10 (the TK3 landing)**: GRAMMAR 14,536 B and STRINGS 17,650 B
 stored (27,439 B raw) for 373 rules, 718 alternatives, 512 guard terms, 79
