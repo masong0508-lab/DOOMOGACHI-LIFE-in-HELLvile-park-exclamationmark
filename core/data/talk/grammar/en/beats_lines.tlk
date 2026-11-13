@@ -1,0 +1,198 @@
+# core/data/talk/grammar/en/beats_lines.tlk - the drama manager's own lines (owner: TK;
+# T6 starter bank: about 5 a beat so every beat is heard; the content package
+# after T6 writes the ~500). Syntax: core/tools/talkc_gen.py. docs/TALK.md
+# "The drama manager".
+#
+# beat.<name>   a beat's goal line: what the residents try to get in while
+#               the room is in that beat (core/data/talk/beats.tlk); each rule
+#               is guarded beat=<name>. Said to the player.
+# idle          one resident to another when the player says nothing for 8 s
+# prod          then, after two of those, someone prods the player
+# excuse        the one whose engagement ran out, on the way to the door
+# grumble       the one another resident cut off
+# jab, row, ultimatum   the three steps of an argument (rivalry); with a child
+#               in the room only the jab is ever said (talk_dm.c), and the
+#               two later steps are guarded !kid_present here as well
+# makeup        after the player made peace
+# kidask        a child in the room of an argument: the room cools down
+#
+# Kid-safe everywhere but beat.romance_adult (adults the gate passed, with
+# the one addressed saying yes: consent). No register word in this file.
+
+# ---- ARRIVE ---------------------------------------------------------------------------------
+@rule beat.arrive guard: beat=arrive act: tell
+  "Shoes off. Or on. The rug bites either way."
+  "You made it! We were about to talk about you."
+  "Sit, sit. That chair is haunted, but politely."
+  "Perfect timing. Nothing was happening. On purpose."
+  "Welcome in, {you}. Touch nothing that hums."
+
+# ---- SMALLTALK ------------------------------------------------------------------------------
+@rule beat.smalltalk guard: beat=smalltalk act: tell
+  "Weather's odd today. The fog waved at me."
+  "Long day. Short day? One of those days."
+  "It's quiet out. I don't trust it."
+  "I counted the clouds earlier. There were some."
+@rule beat.smalltalk.ask guard: beat=smalltalk act: ask_about
+  "So, {you}. What's new? Lie if you have to."
+  "Anything on your mind? Take your time. Not too much."
+
+# ---- TOPIC_DIVE: the fan talks it up ----------------------------------------------------
+@rule beat.topic_dive guard: beat=topic_dive&topic act: opine_pos
+  "Wait. We're on {x}? Clear my evening."
+  "Oh, I have THOUGHTS about {x}. Sit down."
+  "{x:cap}! Finally, a real subject."
+  "I could talk about {x} for an hour. I will."
+  "Nobody leaves until we've done {x} justice."
+
+# ---- HOUSE ----------------------------------------------------------------------------------
+@rule beat.house guard: beat=house act: tell
+  "I like this room. It has opinions."
+  "That lamp is doing its best. Bless it."
+  "Cosy in here. Suspiciously cosy."
+  "Did the wall always look at us like that?"
+  "Nice place, {you}. The floor only creaks in jest."
+
+# ---- GOSSIP ---------------------------------------------------------------------------------
+@rule beat.gossip guard: beat=gossip act: gossip
+  "Did you hear the news? I heard it twice. It grew."
+  "I'm not one to gossip. Anyway, listen to this."
+  "You didn't hear it from me. I heard it from me."
+  "Big news in town. Nobody agrees what it was."
+  "Somebody's in the paper again. I'm not saying who."
+
+# ---- PROBLEM: the troubled one opens up -------------------------------------------------
+@rule beat.problem guard: beat=problem&fact.problem act: complain
+  "Can I say something? I've had a rough week."
+  "I'm fine. That was a lie. Hello."
+  "Something's been on my mind. It pays no rent."
+@rule beat.problem.lonely guard: beat=problem&prob=lonely act: complain
+  "It's been quiet at mine. Too quiet. I miss noise."
+@rule beat.problem.bored guard: beat=problem&prob=bored act: complain
+  "I am so bored I alphabetised my socks."
+@rule beat.problem.nightmare guard: beat=problem&prob=nightmare act: complain
+  "I had the dream again. The one with the stairs."
+
+# ---- ALLY_ASK: "Back me up here." ---------------------------------------------------------
+@rule beat.ally_ask guard: beat=ally_ask act: ask_opinion
+  "Back me up here, {you}."
+  "{you}, tell them I'm right. Take your time."
+  "You agree with me, {you}. I can see it in your face."
+  "Tie-breaker! {you}, it's on you. No pressure."
+  "{you}. Settle this. Wrong answers will be noted."
+
+# ---- STORY: in-world worry, no spoilers -----------------------------------------------------
+@rule beat.story guard: beat=story act: tell
+  "The purple fog's early this year. It never knocks."
+  "Strange days. Even the crows look worried."
+  "Things feel off lately. Like a picture hung crooked."
+  "I keep my bag packed. Snacks, mostly."
+  "Something's coming. I hope it's cake."
+
+# ---- GAME: a lull -----------------------------------------------------------------------------
+@rule beat.game guard: beat=game act: ask_about
+  "Game time. Would you rather fight a goose or be one?"
+  "Quick. Guess my favourite food. You get one go."
+  "Would you rather have no knees or too many?"
+  "Let's play. I spy something beginning with dust."
+  "Truth or truth, {you}. We're out of dares."
+
+# ---- KID_MOMENT: the kid says it -----------------------------------------------------------
+@rule beat.kid_moment guard: beat=kid_moment&kid_speaker tags: kid act: tell
+  "I can burp the alphabet. Up to D."
+  "Grown-ups talk a lot. When do you get to the point?"
+  "I found a bug. His name is Kevin. He lives here now."
+  "Is this the boring part? It feels like the boring part."
+  "When I'm big I'm going to be a dragon. Or a dentist."
+
+# ---- ROMANCE_ADULT: adults the gate passed; it always ends on a joke (R2) -------------------
+@rule beat.romance_adult guard: beat=romance_adult&consent&adults_only&!kid_present&!pet act: flirt
+  "Stay for dinner, {you}. My soup is nearly legal."
+  "Keep smiling at me like that and I'll burn the toast."
+  "[LOVE]You make this dump feel like a date, {you}."
+  "I cleaned for you. Under the rug counts as clean."
+  "You, me, one candle. It's a power cut, but still."
+
+# ---- WIND_DOWN --------------------------------------------------------------------------------
+@rule beat.wind_down guard: beat=wind_down act: farewell
+  "Well, this was nice. Nobody cried much."
+  "It's getting late. The clock is judging us."
+  "Good talk. I'll be thinking about it by accident."
+@rule beat.wind_down.promise guard: beat=wind_down act: promise
+  "Come by again, {you}. I'll hide the good biscuits."
+  "Same time next week? I'll bring the chairs."
+
+# ---- idle chatter: one resident to another --------------------------------------------------
+@rule idle.ask guard: to_res&topic act: ask_about
+  "So, {them}. Still into {x}?"
+  "{them}, settle a bet. {x:cap}: yes or no?"
+  "Hey {them}. Remind me why you like {x}."
+@rule idle.plain guard: to_res act: ask_about
+  "{them}, what did you do today? Keep it short."
+  "So, {them}. Read any good signs lately?"
+@rule idle.tease guard: to_res&rel=rival act: tease
+  "{them}, you're quiet. It suits you."
+  "Still wearing that face, {them}? Brave."
+@rule idle.muse guard: !to_res act: tell
+  "Quiet in here. I can hear the fridge thinking."
+  "Nobody talk at once. Oh. Nobody is."
+  "I'll just hum, then. Mm. That was the hum."
+
+# ---- the prod -----------------------------------------------------------------------------------
+@rule prod act: ask_feeling
+  "You're very quiet, {you}."
+  "{you}? Blink twice if you're still in there."
+  "Say something, {you}. Anything. A vowel."
+  "Hello, {you}? It's your turn. It has been for a while."
+
+# ---- walking out ------------------------------------------------------------------------------
+@rule excuse act: farewell
+  "I left something on the hob."
+  "Is that the time? It is. Bye."
+  "I just remembered a thing. Elsewhere."
+  "My plants need me. They said so."
+  "I'm going to go stare at a wall. A different one."
+
+# ---- cut off by another resident --------------------------------------------------------------
+@rule grumble act: complain
+  "I was TALKING."
+  "Excuse me. I had a whole sentence planned."
+  "Fine. I'll finish it in my head. It was good."
+  "Rude. I was nearly at the point."
+
+# ---- an argument: the jab (the only step with a child in the room) ------------------------
+@rule jab guard: to_res act: tease
+  "Nice hat, {them}. Did it lose a bet?"
+  "{them} would know. {them} knows everything."
+  "Oh, {them} has an opinion. Mark the calendar."
+  "Funny. Coming from you, {them}."
+  "Sure, {them}. And I'm the mayor's left shoe."
+
+# ---- step 2: the row --------------------------------------------------------------------------
+@rule row guard: to_res&!kid_present act: accuse
+  "That's it, {them}. You've been like this all week!"
+  "You always do this, {them}. I keep a list."
+  "Don't you start, {them}. I will finish."
+  "Say that again, {them}. I'm taking notes."
+  "You borrowed my ladder in spring, {them}. SPRING."
+
+# ---- step 3: the ultimatum (the player is told to take a side) -------------------------------
+@rule ultimatum guard: to_res&!kid_present act: ask_opinion
+  "{you}, pick. Me or {them}. Right now."
+  "One of us is leaving, {you}. You choose who."
+  "{you}, it's {them} or me. No pressure. Lots, in fact."
+  "Enough. {you}, tell {them} I'm right."
+
+# ---- making up (a mediation that worked) ------------------------------------------------------
+@rule makeup guard: to_res act: apologize
+  "Fine. Sorry, {them}. You're only mostly wrong."
+  "All right, {them}. Truce. I was a bit much."
+  "Sorry, {them}. Keep the ladder. It likes you."
+  "Peace, {them}. For {you}. And for my blood pressure."
+
+# ---- a child in the room of an argument -------------------------------------------------------
+@rule kidask guard: kid_speaker tags: kid act: ask_feeling
+  "Are you guys fighting?"
+  "Why are you using your angry voices?"
+  "Is this a fight? Should I get snacks?"
+  "You two sound like the crows again."

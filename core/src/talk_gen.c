@@ -1410,6 +1410,37 @@ static int react_line(TalkConv *c, int who, const TalkLine *prev, uint16_t topic
     return k;
 }
 
+int talk_gen_react(TalkConv *c, int who, const TalkLine *prev, uint16_t topic, TalkLine *out, TalkTrace *tr)
+{
+    int r;
+    if (!out) return 0;
+    memset(out, 0, sizeof *out);
+    if (!c || !prev || who < 0 || who >= c->n || who == prev->who) return 0;
+    r = react_line(c, who, prev, topic, out, tr);
+    return r || out->text[0];
+}
+
+/* (T6) a fixed entry's line: the drama manager's own lines */
+int talk_gen_entry(TalkConv *c, int who, int to, int entry, int act, uint16_t topic, TalkLine *out, TalkTrace *tr)
+{
+    Gen g;
+    int sym, r;
+    if (!out) return 0;
+    memset(out, 0, sizeof *out);
+    if (entry < 0 || entry >= TGE_COUNT || !setup(&g, c, who, to, act, topic)) return 0;
+    if (c->id[who] == TALK_PET_ID) return 0;
+    if (grief_topic(&g)) {                                   /* K-10: grief is nobody's beat line */
+        c->lines--;
+        if (!setup(&g, c, who, to, act, TC_NONE)) return 0;
+    }
+    sym = entry_sym(&g, ENT_FIXED, entry);
+    if (sym < 0) return 0;
+    r = gen_line(&g, sym, 0, out, tr);
+    out->who = (int8_t)who;
+    out->to = (int8_t)to;
+    return r;
+}
+
 uint32_t talk_gen_seed(int avatar, const int *ids, int n)
 {
     uint32_t h = doomo_hash32(doomo_town.seed ^ 0x54414C4Bu) ^ doomo_hash32((uint32_t)doomo_town.day * 2654435761u);

@@ -98,7 +98,7 @@ DIRENT = 20
 ALIGN = 64
 MAX_CONCEPTS = 4095
 TB = {"CONCEPT": 1, "ASSOC": 2, "ATTR": 3, "FORMS": 4, "CATS": 5, "CATNAMES": 6, "EDGES": 7,
-      "GRAMMAR": 8, "STRINGS": 9, "PARSE": 12, "SAFETY": 13}
+      "GRAMMAR": 8, "STRINGS": 9, "BEATS": 10, "PARSE": 12, "SAFETY": 13}
 TBK_RAW, TBK_TXT = 0, 1
 TBF_DC_ONLY = 1
 ROOTS = ["people", "places", "food", "music", "hobbies", "fears", "creatures", "house", "lore",
@@ -1351,7 +1351,7 @@ class Build:
         self.phrases = tp_.load_phrases(os.path.join(sd, "phrases_%s.tsv" % lang), die, rel)
         self.suggestive = tp_.load_suggestive(os.path.join(sd, "suggestive_%s.tsv" % lang), self.by_key, die, rel)
         self.hate = ts_.load_hate(os.path.join(sd, "hate.hash"), die, rel)
-        self.parse_info = self.safety_info = self.gen_info = None
+        self.parse_info = self.safety_info = self.gen_info = self.beats_info = None
         self.grammar_files = None          # None: grammar/<lang> + voice/<lang> (strict)
 
     @staticmethod
@@ -1390,6 +1390,12 @@ class Build:
             sb, sraw = txt_bank(strings, self.codec)
             banks.append(("GRAMMAR", TBK_RAW, 0, gram, len(gram)))
             banks.append(("STRINGS", TBK_TXT, 0, sb, sraw))
+            # T6: the drama manager's beat table (beats.tlk; its lines are grammar rules)
+            import talkc_beats as tb_
+            bp = os.path.join(DATA, "beats.tlk")
+            if os.path.exists(bp):
+                data, self.beats_info = tb_.build_file(bp, CORE, die, rel)
+                banks.append(("BEATS", TBK_RAW, 0, data, len(data)))
         return banks
 
     def t4_problems(self):
@@ -1461,6 +1467,8 @@ def stats(b, blob):
         print("talkc: GRAMMAR: %(files)d files, %(rules)d rules, %(alts)d alternatives, %(terms)d guard terms, "
               "%(syms)d symbols, %(strings)d template strings, %(entries)d act entries, %(jobs)d roster jobs "
               "mapped" % b.gen_info)
+    if b.beats_info:
+        print("talkc: BEATS: %(beats)d beats, %(bytes)d B" % b.beats_info)
     if b.safety_info:
         print("talkc: SAFETY: %(reg)d register words (%(forbid)d never in Talk output, %(suggest)d flirting), "
               "%(exact)d hate hashes + %(del)d deletion hashes" % b.safety_info)
@@ -1543,6 +1551,9 @@ def selftest():
     got = ts_.lint_tlk(ts_.read_tlk(good, die, rel), b, b.suggestive, die)
     if got:
         raise Fail("%s: the good templates must lint clean: %s" % (rel(good), got[:3]))
+    # T6: the beat table's seeded bad variants (talkc_beats.py BAD)
+    import talkc_beats as tb_
+    n += tb_.selftest(os.path.join(DATA, "beats.tlk"), CORE, Fail, rel)
     # the hate matcher's squeeze and hashes
     if ts_.squeeze("Sh00OOk") != "shok" or ts_.squeeze("b-a-d") != "bad":
         raise Fail("squeeze")

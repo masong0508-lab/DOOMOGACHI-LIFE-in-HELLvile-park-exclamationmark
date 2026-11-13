@@ -550,6 +550,16 @@ enum { TCB_NONE = 0, TCB_JOB, TCB_PARTNER, TCB_PET, TCB_NEWS, TCB_PROBLEM, TCB_B
 enum { TGE_OPEN = 0, TGE_CB, TGE_TAG, TGE_HANDOFF, TGE_SAFE, TGE_END_K7, TGE_PET, TGE_IDLE,
        TGE_GRIEF,    /* K-10: the sincere core of a line about grief or loss */
        TGE_COMFORT,  /* K-10: another resident's sincere reaction to it      */
+       /* (T6) the drama manager's lines (talk_gen_entry; grammar/<lang>/beats_lines.tlk) */
+       TGE_BEAT,     /* a beat's goal line: rules beat.<name>, each guarded beat=<name> */
+       TGE_PROD,     /* after two idle chats: "You're very quiet, {you}."     */
+       TGE_EXCUSE,   /* the excuse of one who walks out                       */
+       TGE_GRUMBLE,  /* cut off by another resident: "I was TALKING."         */
+       TGE_JAB,      /* an argument, step 1 (the only step with a child here) */
+       TGE_ROW,      /* step 2                                                */
+       TGE_ULTIMATUM,/* step 3: the player is told to take a side             */
+       TGE_MAKEUP,   /* after a mediation that worked                         */
+       TGE_KIDASK,   /* a child: "Are you guys fighting?" (the room cools)    */
        TGE_COUNT };
 
 /* Guard predicates (talkc_gen.py reads this enum: a guard term "kid_present"
@@ -766,6 +776,232 @@ int  talk_gen_nalts(void);
 /* The callback fact of kind cb for resident id as the sim says now (Q4):
  * 1 and *val when it holds. */
 int  talk_gen_fact(int id, int cb, uint16_t *val);
+
+/* (T6) One line from a fixed entry of the grammar (TGE_*: a beat's goal
+ * line, idle chatter, a prod, an excuse, an argument step, the K-7 ending)
+ * said by `who` to `to` (a slot, -1 the player, -2 everyone); `act` is what
+ * it follows (the pact= / act= guards; TA_NONE). The core part alone. The
+ * same lint (S3) as every line. Returns 1; 0 when no rule of the entry may
+ * be said here (out->text is then empty, or a safe line with TLF_FALLBACK).
+ * The pet never says one. A grief topic (K-10) is not passed on. */
+int  talk_gen_entry(TalkConv *c, int who, int to, int entry, int act, uint16_t topic, TalkLine *out,
+                    TalkTrace *tr);
+/* (T6) A reaction of `who` to the line `prev` of another resident: an act
+ * acts.tsv allows after prev->act (agree, disagree, laugh, tease, joke, a
+ * backchannel), chosen by stance clash and persona; after a sincere line a
+ * comfort line or nothing (K-10). Returns 1, 0 for no reaction. */
+int  talk_gen_react(TalkConv *c, int who, const TalkLine *prev, uint16_t topic, TalkLine *out, TalkTrace *tr);
+
+/* =========================================================================
+ * T6: the drama manager (core/src/talk_dm.c; PS1, Dreamcast, native). Design
+ * 5.1-5.4, docs/TALK.md "The drama manager". It is the POLICY over the
+ * generator: which beat the room is in, who answers, who reacts, who cuts
+ * in, who argues, who walks out. Lines are still made by talk_gen_line /
+ * talk_gen_react / talk_gen_entry, the T4 gate runs first on every player
+ * utterance and the S3 lint on every line.
+ *
+ * SAFETY (in C, whatever beats.tlk says): TBEAT_ROMANCE_ADULT is never
+ * chosen with a minor or the pet in the room, with a minor avatar, or when
+ * talk_safe_romance_ok() says no; no resident line the drama manager starts
+ * is a romance act (every one goes through one check, and a romance beat
+ * line is only said by the adult the gate passed, to the adult player); an
+ * argument stops at the jab when anyone here is not an adult; the room's
+ * audience is the one worked out at the start and never gets less strict
+ * (a child who walks out leaves a kids' room behind). Romance consent
+ * (TalkConv.consent) is asked of the sim (talk_dm_consent); the drama
+ * manager never writes romance state, and nothing else of the sim either:
+ * what a session did is handed to talk_dm_end() for T6-OUT to apply.
+ *
+ * No static RAM: everything between calls is in TalkState (the house's
+ * scene scratch). One call makes at most one line, so the PS1 can spread an
+ * exchange over frames; nothing points into plat_save_scratch between calls.
+ *
+ *   talk_dm_begin(&s, avatar, ids, n, seed);
+ *   talk_dm_say(&s, &u);                       // the player's turn: gate, beat, plan
+ *   while (talk_dm_step(&s, NULL)) show(&s.line[s.nlines - 1]);
+ *   if (talk_dm_tick(&s, frames)) while (talk_dm_step(&s, NULL)) ...;   // idle chatter
+ *   talk_dm_end(&s, &summary);                 // T6-OUT applies it to the sim
+ * ========================================================================= */
+#define TALK_STATE_MAX      1536   /* sizeof(TalkState) at most (design 5.1, 6.4)  */
+#define TALK_HIST           16
+#define TALK_EVENTS_MAX     8
+#define TALK_ENGAGE_START   55
+#define TALK_ENGAGE_AWAY    25     /* below: they turn away                         */
+#define TALK_ENGAGE_LEAVE   15     /* below for 2 turns: an excuse and a walk-out   */
+#define TALK_ENGAGE_LEAN    85     /* above: they lean in                           */
+#define TALK_TENSION_MAX    10
+#define TALK_TENSION_ARGUE  6      /* an argument goes past the jab from here       */
+#define TALK_IDLE_FRAMES    240    /* 8 s at 30 fps without the player              */
+#define TALK_IDLE_CHATS     2      /* idle chats before someone prods the player    */
+#define TALK_INTERRUPT_GAP  3      /* exchanges between two interruptions           */
+#define TALK_REL_D_MAX      12     /* a session's bond change with the player (5.5) */
+#define TALK_PAIR_D_MAX     8      /* a session's bond change of a pair (5.5)       */
+#define TLF_CUT      0x40u         /* another resident cut this line off ("-")      */
+
+/* TalkPart.flags */
+#define TPF_LEFT      0x01u        /* walked out                                    */
+#define TPF_REFUSED   0x02u        /* said no to romance today (K-5); the house sets it from talk memory */
+#define TPF_AWAY      0x04u        /* turned away (engage < TALK_ENGAGE_AWAY)       */
+#define TPF_LEAN      0x08u        /* leaning in (engage > TALK_ENGAGE_LEAN)        */
+#define TPF_SPOKE     0x10u        /* spoke in the last exchange                    */
+#define TPF_PET       0x20u        /* the pet: no engagement, never leaves          */
+#define TPF_PROBLEM   0x40u        /* their problem was talked through              */
+/* TalkPart.stage_class */
+enum { TSC_ADULT = 0, TSC_MINOR, TSC_PET };
+
+typedef struct TalkPart {             /* one participant, 12 B (the novelty ring is TalkConv's) */
+    int16_t  id;                      /* resident id, pool id or TALK_PET_ID           */
+    uint8_t  stage_class;             /* TSC_* (talk_safe_minor, cached)               */
+    uint8_t  engage;                  /* 0..100                                        */
+    int8_t   mood_d;                  /* mood change this session                      */
+    int8_t   rel_d_player;            /* bond change with the player this session      */
+    uint8_t  stance;                  /* TST_* on the current topic                    */
+    uint8_t  turns_ignored;
+    uint8_t  flags;                   /* TPF_*                                         */
+    uint8_t  low_turns;               /* turns in a row under TALK_ENGAGE_LEAVE        */
+    uint8_t  pad[2];
+} TalkPart;
+
+/* what a session did (TalkState.ev, TalkSummary.ev); a / b are slots */
+enum { TEV_NONE = 0,
+       TEV_ULTIMATUM,     /* a row between a and b reached the ultimatum             */
+       TEV_MEDIATED,      /* the player made peace between a and b (T6-OUT: sim_make_up) */
+       TEV_SIDE_TAKEN,    /* the player took a's side against b                      */
+       TEV_WALKOUT,       /* a walked out                                            */
+       TEV_PROBLEM,       /* a's problem was talked through (T6-OUT: sim_problem_resolve) */
+       TEV_GREAT_NIGHT,   /* everyone stayed and had a good time (talk_dm_end)       */
+       TEV_ROMANCE_YES,   /* a said yes to the player's romance act b (TA_*); the gate
+                             passed (T6-OUT: sim_confess for CONFESS / ASK_OUT)       */
+       TEV_ROMANCE_NO,    /* a said no: refused for the day (K-5; talk memory)       */
+       TEV_K7,            /* the conversation ended on K-7: locked for the day       */
+       TEV_HATE,          /* the player was refused for hate (K-8): a bond penalty   */
+       TEV_COUNT };
+typedef struct TalkEvent { uint8_t kind, a, b, turn; } TalkEvent;
+
+/* TalkHist.flags: what kind of line it was */
+#define THF_PLAYER    0x01u        /* the player's turn (who = 0xFF)                */
+#define THF_REACT     0x02u        /* a reaction to the line before                 */
+#define THF_BEAT      0x04u        /* a beat's goal line                            */
+#define THF_INTERRUPT 0x08u        /* it cut the line before                        */
+#define THF_IDLE      0x10u        /* idle chatter or the prod                      */
+#define THF_ARGUE     0x20u        /* a jab, a row, an ultimatum                    */
+#define THF_LEAVE     0x40u        /* an excuse: the speaker walks out              */
+#define THF_SINCERE   0x80u        /* a refusal, distress, grief or K-7 line        */
+typedef struct TalkHist { uint8_t who, act, flags; int8_t to; uint16_t topic, tmpl; } TalkHist;
+
+/* TalkState.flags */
+#define TDF_OVER      0x01u        /* the conversation is over                      */
+#define TDF_K7        0x02u        /* ... on K-7                                    */
+#define TDF_FAREWELL  0x04u        /* the player said goodbye                       */
+#define TDF_KIDSAFE   0x08u        /* a kids' room for the rest of the talk (K-2; KID_MOMENT) */
+#define TDF_NO_BEATS  0x10u        /* the database has no TB_BEATS: small talk only */
+
+typedef struct TalkState {          /* <= TALK_STATE_MAX, in the house's scene scratch */
+    TalkConv  conv;                 /* the generator's conversation (beat, consent, novelty, audience) */
+    TalkPart  part[TALK_PARTS_MAX];
+    uint8_t   nparts;
+    uint8_t   beat, beat_step, beat_turns;   /* TBEAT_*, goal lines said, player turns in it */
+    uint8_t   tension, peak_tension, peak_turn, turn;
+    uint8_t   flags;                /* TDF_*                                          */
+    uint8_t   gate;                 /* TG_* of the last utterance                     */
+    int8_t    beat_a, beat_b;       /* the slots the beat is about (the fan, the troubled one, the rivals), -1 */
+    uint8_t   arg_step, arg_wait;   /* an argument: 0 none, 1 jab, 2 row, 3 ultimatum; turns it was ignored */
+    int8_t    arg_a, arg_b;
+    uint8_t   lull;                 /* turns in a row at low tension                  */
+    uint8_t   idle_n;               /* idle chats since the player last spoke (3: prodded) */
+    uint16_t  idle_frames;
+    uint8_t   exchange;             /* exchanges so far (the interruption gap)        */
+    uint8_t   last_cut;             /* the exchange of the last interruption          */
+    uint8_t   last_act;             /* the player's act before this one               */
+    uint8_t   mem_earned;           /* TMF_* the player earned this session           */
+    uint8_t   nhist, nev;
+    uint8_t   nlines;               /* lines of the current exchange so far           */
+    uint8_t   nplan, plan_at;       /* the exchange's plan and the next entry         */
+    uint16_t  beats_used;           /* a bit per TBEAT_* entered this session         */
+    uint16_t  beats_recent;         /* a bit per TBEAT_* of the last 2 talks with these people
+                                       (novelty; the house sets it from talk memory, 0 = none) */
+    struct { uint8_t kind; int8_t who, to; uint8_t arg; } plan[6];
+    uint16_t  topic_stack[TALK_STACK_MAX];   /* newest first                          */
+    TalkHist  hist[TALK_HIST];      /* newest first                                   */
+    int8_t    pair_d[6];            /* resident pairs (0,1) (0,2) (0,3) (1,2) (1,3) (2,3) */
+    TalkEvent ev[TALK_EVENTS_MAX];
+    TalkLine  line[TALK_EXCHANGE_MAX];       /* the lines of the current exchange      */
+    TalkUtter in;                   /* the player's utterance (after the gate)        */
+} TalkState;
+
+/* What a session did, for T6-OUT (talk_outcome.c applies it to the sim with
+ * the caps of design 5.5) and T6-MEM (talk memory). Nothing here has been
+ * applied yet. */
+typedef struct TalkSummary {
+    int16_t   avatar;
+    int16_t   id[TALK_PARTS_MAX];
+    uint8_t   n;
+    uint8_t   turns;                /* player turns                                   */
+    uint8_t   peak_tension;
+    uint8_t   flags;                /* TDF_*                                          */
+    uint8_t   engage[TALK_PARTS_MAX];       /* at the end                             */
+    uint8_t   pflags[TALK_PARTS_MAX];       /* TPF_* (left, refused, problem)         */
+    int8_t    mood_d[TALK_PARTS_MAX];       /* -10..+10                               */
+    int8_t    rel_d_player[TALK_PARTS_MAX]; /* -TALK_REL_D_MAX..+TALK_REL_D_MAX        */
+    int8_t    pair_d[6];                    /* -TALK_PAIR_D_MAX..+TALK_PAIR_D_MAX      */
+    uint16_t  beats_used;
+    uint16_t  topic[2];             /* the last two topics (talk memory)              */
+    uint8_t   mem_flags;            /* TMF_* the player earned (complimented, insulted, promised) */
+    uint8_t   nev;
+    TalkEvent ev[TALK_EVENTS_MAX];
+} TalkSummary;
+
+/* 1 if the open database has the beat table (TB_BEATS). Without it the
+ * drama manager still runs: small talk only (TDF_NO_BEATS). */
+int  talk_dm_ready(void);
+/* Start a conversation (talk_gen_begin inside): the audience, beat ARRIVE,
+ * everyone at TALK_ENGAGE_START. Then the house may set talk memory:
+ * s->conv.mem_topic / mem_flags, TPF_REFUSED on s->part[k].flags,
+ * s->beats_recent. */
+void talk_dm_begin(TalkState *s, int avatar, const int *ids, int n, uint32_t seed);
+/* The player's turn: the gate (u is copied and rewritten in s->in), the
+ * engagement of everyone, the beat, consent, and the plan of the exchange.
+ * Returns the gate's TG_*. Then call talk_dm_step() until it returns 0. */
+int  talk_dm_say(TalkState *s, const TalkUtter *u);
+/* Time without the player: `frames` at 30 fps. After TALK_IDLE_FRAMES a
+ * resident talks to another (TALK_IDLE_CHATS times), then someone prods the
+ * player, then nothing more until the player speaks. Returns 1 when an
+ * exchange was planned (step it). Do not call it while lines are playing. */
+int  talk_dm_tick(TalkState *s, int frames);
+/* Make the next line of the planned exchange into s->line[s->nlines++]:
+ * 1 a line was made, 0 the exchange is complete. tr: NULL or one trace. */
+int  talk_dm_step(TalkState *s, TalkTrace *tr);
+/* 1 when the conversation is over (everyone left, K-7, a goodbye). */
+int  talk_dm_over(const TalkState *s);
+/* Would slot `who` say yes to the player's romance act `act` (K-5)? Asks
+ * the gate (talk_safe_romance_ok) and the sim (sim_romance_ok from the
+ * target: their preference), then their relationship and persona. Changes
+ * nothing. talk_dm_say() sets TalkConv.consent with it. */
+int  talk_dm_consent(const TalkState *s, int who, int act);
+/* The hook for T6-OUT: close the session (the great-night event, the caps)
+ * and copy what it did into out. Applies nothing to the sim. May be called
+ * at any time; the conversation is over afterwards. */
+void talk_dm_end(TalkState *s, TalkSummary *out);
+/* The target tension of player turn `turn` (design 5.2: up to a peak at
+ * turns 8-10, down by 14-16, then "lively"). */
+int  talk_dm_target_tension(int turn);
+/* A beat's row of TB_BEATS (tests, tools): 1 ok. */
+typedef struct TalkBeatInfo {
+    uint8_t  pre;                   /* TBP_*                                          */
+    int8_t   tension, after;        /* on entry; when its goals are done / it is resolved */
+    uint8_t  goals, turns, bonus, involves, lean_bonus, flags;
+    uint16_t handles, hurt, lean;   /* masks of act classes (1 << TAC_*)              */
+    uint8_t  resolve[4];            /* acts that resolve it at once (TA_*, 0 none)    */
+    uint8_t  lean_act[2];           /* single acts that raise its score too           */
+} TalkBeatInfo;
+enum { TBP_DEFAULT = 0, TBP_START, TBP_LIKE, TBP_HOUSE, TBP_NEWS, TBP_PROBLEM, TBP_RIVALS, TBP_CLASH,
+       TBP_STORY, TBP_LULL, TBP_KID, TBP_ROMANCE, TBP_LATE, TBP_COUNT };
+enum { TBI_ALL = 0, TBI_A, TBI_PAIR, TBI_COUNT };   /* who a beat involves: everyone, beat_a, beat_a and beat_b */
+#define TBTF_KIDSAFE 0x01u          /* forces the kids' register for the rest of the talk */
+#define TBTF_ADULTS  0x02u          /* never with a minor or the pet here (also in C)  */
+int  talk_dm_beat_info(int beat, TalkBeatInfo *out);
+/* The persona type's favoured and dull topic roots (TB_BEATS; TCR_*, 0 none). */
+int  talk_dm_affinity_roots(int type, uint8_t *favours, uint8_t *dull);
 
 /* ---- the house hook (T8; weak in core/src/weak_talk.c) ---------------------
  * Start Talk with resident `who` in the room: 1 started, 0 not available

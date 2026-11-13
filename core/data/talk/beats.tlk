@@ -1,0 +1,168 @@
+# core/data/talk/beats.tlk - the drama manager's beats (owner: TK, T6;
+# docs/TALK.md "The drama manager"; design 5.2). Syntax: core/tools/talkc_beats.py.
+# Compiled into the TB_BEATS bank; core/src/talk_dm.c reads it.
+#
+# The beats' lines are grammar rules: grammar/en/beats_lines.tlk
+# (beat.<name>, each guarded beat=<name>).
+#
+# tension: what the beat adds when it starts. The drama manager picks the
+# beat whose result is nearest the target for the turn (up to a peak at
+# turns 8-10, down again by 14-16), plus `bonus` for the precondition, minus
+# a little for a beat already played, plus `lean` when the player's act
+# asks for it.
+#
+# Safety is in C whatever is written here (talk_dm.c): romance_adult only
+# between adults the gate passes, never with a minor or the pet in the room;
+# an argument (rivalry) stops at the jab when anyone here is not an adult;
+# kid_moment makes the room a kids' room for the rest of the talk.
+
+@beat arrive
+  pre: start
+  tension: 0
+  goals: 1
+  turns: 1
+  bonus: 12
+  involves: all
+  handles: open gesture
+
+@beat smalltalk
+  pre: default
+  tension: 0
+  goals: 2
+  turns: 3
+  bonus: 2
+  involves: all
+  handles: ask tell flow open
+  lean: flow +1
+
+@beat topic_dive
+  pre: like
+  tension: 1
+  goals: 2
+  turns: 3
+  bonus: 5
+  involves: a
+  handles: ask tell
+  lean: ask +2
+
+@beat house
+  pre: house
+  tension: 0
+  goals: 1
+  turns: 2
+  bonus: 2
+  involves: all
+  handles: ask tell warm
+
+@beat gossip
+  pre: news
+  tension: 2
+  goals: 2
+  turns: 3
+  bonus: 4
+  involves: all
+  handles: third ask tell
+  lean: third +3
+
+@beat problem
+  pre: problem
+  tension: 1
+  after: -2
+  goals: 2
+  turns: 4
+  bonus: 5
+  involves: a
+  handles: warm ask
+  hurt: cool
+  lean: warm +2
+  resolve: comfort encourage offer sympathize
+
+@beat rivalry
+  pre: rivals
+  tension: 3
+  after: -2
+  goals: 3
+  turns: 5
+  bonus: 4
+  involves: pair
+  handles: third cool
+  lean: cool +3
+  lean_act: insult mock
+
+@beat ally_ask
+  pre: clash
+  tension: 2
+  goals: 1
+  turns: 2
+  bonus: 4
+  involves: pair
+  handles: third tell
+  lean: tell +1
+
+@beat story
+  pre: story
+  tension: 1
+  goals: 1
+  turns: 2
+  bonus: 3
+  involves: all
+  handles: ask tell
+
+@beat game
+  pre: lull
+  tension: -1
+  goals: 2
+  turns: 3
+  bonus: 5
+  involves: all
+  handles: ask tell warm
+  lean: warm +1
+
+@beat kid_moment
+  pre: kid
+  tension: -1
+  goals: 1
+  turns: 2
+  bonus: 4
+  involves: a
+  handles: ask tell warm
+  flags: kidsafe
+
+@beat romance_adult
+  pre: romance
+  tension: 1
+  goals: 2
+  turns: 3
+  bonus: 3
+  involves: a
+  handles: romance warm
+  lean: romance warm +3
+  flags: adults
+
+@beat wind_down
+  pre: late
+  tension: zero
+  goals: 1
+  turns: 2
+  bonus: 6
+  involves: all
+  handles: open warm
+
+# ---- what each persona type warms to and finds dull (design 5.3 affinity: +1 / -1) ----
+# the types in catalog.c order
+@affinity 0 favours: lore dull: music          # Quiet Bookworm
+@affinity 1 favours: house dull: work          # Cozy Napper
+@affinity 2 favours: food dull: feelings       # Grumpy Gremlin
+@affinity 3 favours: places dull: school       # Deadpan Drifter
+@affinity 4 favours: feelings dull: work       # Gentle Dreamer
+@affinity 5 favours: creatures dull: fears     # Sweet Sunbeam
+@affinity 6 favours: feelings dull: stuff      # Dramatic Poet
+@affinity 7 favours: people dull: school       # Cheeky Charmer
+@affinity 8 favours: work dull: fears          # Diligent Helper
+@affinity 9 favours: places dull: house        # Chill Adventurer
+@affinity 10 favours: work dull: music         # Stern Captain
+@affinity 11 favours: hellvile dull: time      # Wild Card
+@affinity 12 favours: hobbies dull: house      # Eager Go-Getter
+@affinity 13 favours: music dull: work         # Bubbly Sparkler
+@affinity 14 favours: hellvile dull: feelings  # Fiery Leader
+@affinity 15 favours: fears dull: time         # Chaos Goblin

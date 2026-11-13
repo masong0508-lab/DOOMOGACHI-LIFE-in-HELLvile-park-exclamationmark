@@ -113,7 +113,10 @@ CB_FACTS = {"fact.job", "fact.partner", "fact.pet", "fact.news", "fact.problem",
             "hellborn", "night", "fact.memory", "fact.complimented", "fact.insulted", "fact.promised",
             "likes_topic", "fears_topic", "fact.family"}
 # fixed entries (talk.h TGE_* order) -> rule name
-FIXED = ["open", "cb", "tag", "handoff", "safe", "end.k7", "pet", "idle", "grief", "comfort"]
+FIXED = ["open", "cb", "tag", "handoff", "safe", "end.k7", "pet", "idle", "grief", "comfort",
+         # T6 (talk_dm.c): beat.<name> goal lines, the prod, the walk-out excuse, the grumble of one
+         # cut off, the three steps of an argument, making up, a child asking "are you fighting?"
+         "beat", "prod", "excuse", "grumble", "jab", "row", "ultimatum", "makeup", "kidask"]
 # K-10: the sincere banks (talk.h TGE_GRIEF, TGE_COMFORT); a comfort line is a reaction
 GRIEF_BANKS = ("grief", "comfort")
 COMFORT_ACTS = ("AGREE", "BACKCHANNEL")
