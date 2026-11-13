@@ -152,69 +152,6 @@ room-parity 0x36200 54
 room-parity 0x37200 55
 room-parity 0x39200 57
 
-# 1f. (S2-11) A view turn built over several ticks (path 3 of room_hc_parity): the room a quarter turn
-#    earlier on the shown page, then the turn drawn into the hidden one tick by tick (PLAT_BUILD_BUSY says
-#    "no flip" on every slice): the page that ends up whole must hash like the one-go frame of the same view
-#    (golden lines 0..57), and the turn must take 2 slice ticks at least (else the line fails).
-room-parity 0x300 0
-room-parity 0x301 1
-room-parity 0x302 2
-room-parity 0x303 3
-room-parity 0x310 4
-room-parity 0x5300 5
-room-parity 0x6300 6
-room-parity 0x7300 7
-room-parity 0x8300 8
-room-parity 0x9300 9
-room-parity 0xa300 10
-room-parity 0xb300 11
-room-parity 0xc300 12
-room-parity 0xd300 13
-room-parity 0xe300 14
-room-parity 0xf300 15
-room-parity 0x10300 16
-room-parity 0x11300 17
-room-parity 0x12300 18
-room-parity 0x13300 19
-room-parity 0x14300 20
-room-parity 0x15300 21
-room-parity 0x16300 22
-room-parity 0x17300 23
-room-parity 0x18300 24
-room-parity 0x19300 25
-room-parity 0x1a300 26
-room-parity 0x1b300 27
-room-parity 0x1c300 28
-room-parity 0x1d300 29
-room-parity 0x1e300 30
-room-parity 0x1f300 31
-room-parity 0x20300 32
-room-parity 0x21300 33
-room-parity 0x22300 34
-room-parity 0x23300 35
-room-parity 0x24300 36
-room-parity 0x25300 37
-room-parity 0x26300 38
-room-parity 0x27300 39
-room-parity 0x28300 40
-room-parity 0x29300 41
-room-parity 0x2a300 42
-room-parity 0x2b300 43
-room-parity 0x2c300 44
-room-parity 0x2d300 45
-room-parity 0x2e300 46
-room-parity 0x2f300 47
-room-parity 0x30300 48
-room-parity 0x31300 49
-room-parity 0x32300 50
-room-parity 0x33300 51
-room-parity 0x34300 52
-room-parity 0x35300 53
-room-parity 0x36300 54
-room-parity 0x37300 55
-room-parity 0x38300 56
-room-parity 0x39300 57
-
 # --- the live scene: the Living Room template, the player, the cursor ---
 scene HOME -1
 wait 30
@@ -304,3 +241,69 @@ wait 30
 profile 1000000
 room-test 0
 wait 10
+
+# (S2-11) kept after the windows above on purpose: the stress layouts' walkers move with the absolute tick, so
+# more parity lines in front of them would change their numbers.
+# --- (S2-11) 1f. A view turn built over several ticks (path 3 of room_hc_parity): the room a quarter turn
+#    earlier on the shown page, then the turn drawn into the hidden one tick by tick (PLAT_BUILD_BUSY says
+#    "no flip" on every slice): the page that ends up whole must hash like the one-go frame of the same view
+#    (golden lines 0..57), and the turn must take 2 slice ticks at least (else the line fails).
+room-parity 0x300 0
+room-parity 0x301 1
+room-parity 0x302 2
+room-parity 0x303 3
+room-parity 0x310 4
+room-parity 0x5300 5
+room-parity 0x6300 6
+room-parity 0x7300 7
+room-parity 0x8300 8
+room-parity 0x9300 9
+room-parity 0xa300 10
+room-parity 0xb300 11
+room-parity 0xc300 12
+room-parity 0xd300 13
+room-parity 0xe300 14
+room-parity 0xf300 15
+room-parity 0x10300 16
+room-parity 0x11300 17
+room-parity 0x12300 18
+room-parity 0x13300 19
+room-parity 0x14300 20
+room-parity 0x15300 21
+room-parity 0x16300 22
+room-parity 0x17300 23
+room-parity 0x18300 24
+room-parity 0x19300 25
+room-parity 0x1a300 26
+room-parity 0x1b300 27
+room-parity 0x1c300 28
+room-parity 0x1d300 29
+room-parity 0x1e300 30
+room-parity 0x1f300 31
+room-parity 0x20300 32
+room-parity 0x21300 33
+room-parity 0x22300 34
+room-parity 0x23300 35
+room-parity 0x24300 36
+room-parity 0x25300 37
+room-parity 0x26300 38
+room-parity 0x27300 39
+room-parity 0x28300 40
+room-parity 0x29300 41
+room-parity 0x2a300 42
+room-parity 0x2b300 43
+room-parity 0x2c300 44
+room-parity 0x2d300 45
+room-parity 0x2e300 46
+room-parity 0x2f300 47
+room-parity 0x30300 48
+room-parity 0x31300 49
+room-parity 0x32300 50
+room-parity 0x33300 51
+room-parity 0x34300 52
+room-parity 0x35300 53
+room-parity 0x36300 54
+room-parity 0x37300 55
+room-parity 0x38300 56
+room-parity 0x39300 57
+
