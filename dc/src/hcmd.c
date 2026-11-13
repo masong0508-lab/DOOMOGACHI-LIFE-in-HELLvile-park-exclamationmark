@@ -43,6 +43,7 @@
  *   DC_HC_LANG, HERO, ENDING_SEEN, STORY_DONE (DC9A) the native runner's
  *                          `lang` / `expect-lang`, `expect-hero`,
  *                          `ending-seen`, `story-done`
+ *   DC_HC_OPT id<<8|v      (DC6C) `opt ID VALUE`: opt_set, result opt_get
  * and the tick hold of the harness's "sync on" (dc_harness_hold).
  */
 #include <string.h>
@@ -362,6 +363,10 @@ void dc_harness_cmd(void)
         doomo_town.mode = TOWN_STORY;
         doomo_town.story.chapter = STORY_CH_DONE;
         r = 1;
+        break;
+    case DC_HC_OPT:                     /* DC6C: the native runner's `opt ID VALUE` */
+        opt_set((int)((arg >> 8) & 0xFF), (int)(arg & 0xFF));
+        r = (uint32_t)opt_get((int)((arg >> 8) & 0xFF));
         break;
     default:
         break;

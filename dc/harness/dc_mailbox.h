@@ -129,7 +129,9 @@ enum {
                                           * result 0 unknown code, 1 set / differs, 2 ok */
     DC_HC_HERO = 28,                     /* result 2 when the hero's name is name, else 1 */
     DC_HC_ENDING_SEEN = 29,              /* ending-seen: unlock UL_STORY_END(0) quietly */
-    DC_HC_STORY_DONE = 30                /* story-done: the town is a finished story */
+    DC_HC_STORY_DONE = 30,              /* story-done: the town is a finished story */
+    /* DC6C: the native runner's `opt ID VALUE` (GBA_HC_OPT) */
+    DC_HC_OPT = 31                       /* arg id << 8 | value: opt_set; result opt_get(id) */
 };
 
 #endif

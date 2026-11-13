@@ -1394,6 +1394,10 @@ static int run_script(FILE *f)
             if (!mb_cmd(DC_HC_CLOCK, (uint32_t)(((hh * 60 + mi) % 1440 + 1440) % 1440), NULL, &r)) return 0;
         } else if (!strcmp(c, "home-room") && n >= 2) {   /* DC8: the native runner's house commands */
             if (!mb_cmd(DC_HC_HOME_ROOM, (uint32_t)strtoul(v[1], NULL, 0), NULL, &r)) return 0;
+        } else if (!strcmp(c, "opt") && n >= 3) {          /* DC6C: the native runner's `opt ID VALUE` */
+            unsigned long id = strtoul(v[1], NULL, 0), val = strtoul(v[2], NULL, 0);
+            if (!mb_cmd(DC_HC_OPT, (uint32_t)((id & 0xFF) << 8 | (val & 0xFF)), NULL, &r)) return 0;
+            if (r != val) fail("line %d: opt %lu reads %u, not %lu", lineno, id, (unsigned)r, val);
         } else if (!strcmp(c, "money") && n >= 2) {
             if (!mb_cmd(DC_HC_MONEY, (uint32_t)strtoul(v[1], NULL, 0), NULL, &r)) return 0;
         } else if (!strcmp(c, "room-parity") && n >= 3) {
