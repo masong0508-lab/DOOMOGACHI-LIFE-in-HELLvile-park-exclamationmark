@@ -50,7 +50,7 @@
   "It's okay to be afraid. Being scared means you care about staying safe." w=4
   "Fear is a good alarm. It just rings too loud sometimes." w=4
   "I get scared too. I breathe slowly. In for four, out for four." w=4
-  "{x:cap}? It can be scary. Bring a friend and a snack." w=4
+  "{x:cap}? It can be scary. It helps to have someone beside you." w=4
 @rule core.ask_about.h_fear_kid guard: root=fears&stance=con&kid_speaker tags: kid act: answer
   "It's scary. I hold my blanket tight. It helps." w=4
   "I get scared too. We can be scared together." w=4
@@ -141,7 +141,7 @@
   "[SAD]Tired in my chest. That's the best way I can say it." w=4
   "I'm okay. Mostly. The 'mostly' is a bit big today." w=4
   "Honestly, I could use a friend. You'll do nicely." w=4
-@rule core.ask_feeling.h_sad_tell guard: mood=sad&!kid_speaker act: tell
+@rule core.ask_feeling.h_sad_tell guard: mood=sad&!kid_speaker&!kid_present act: tell
   "I've been feeling small lately. I'm working on it. Slowly." w=4
   "I haven't been sleeping. My head won't stop. It's a lot." w=4
   "I keep thinking I should be doing better. I'm trying to be kinder to me." w=4

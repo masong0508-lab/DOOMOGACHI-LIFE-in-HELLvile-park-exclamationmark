@@ -165,7 +165,11 @@ TEST(talk_grief_child_rooms)
 {
     /* the grown-up banks and the child banks */
     static const char *const adult_only[] = { "The first year is the hardest", "I'm sorry for your loss",
-                                              "walk through it", "grief a sickness", "Towns throw parties" };
+                                              "walk through it", "grief a sickness", "Towns throw parties",
+                                              "Eat something. Sleep if you can", "grocery store", "Let me make some tea",
+                                              "tea at the same time each day", "I'll put the kettle on",
+                                              "I'm afraid not to", "Just sit a while" };
+    enum { NADULT = (int)(sizeof adult_only / sizeof adult_only[0]) };
     static const char *const kidmarks[] = { "It's okay to feel sad", "You didn't do anything wrong", "A grown-up is here",
                                             "I'll sit with you. We can be quiet", "Tell a grown-up", "It's okay to cry",
                                             "safe" };
@@ -183,11 +187,11 @@ TEST(talk_grief_child_rooms)
     /* a grown-up with a child in the room: child bank, strict lint, no grown-up deep lines */
     memset(&s, 0, sizeof s);
     s.mark = adult_only;
-    s.n = 5;
+    s.n = NADULT;
     sweep(&s, ad_with_kid, 2, grief_topics, NTOP, gacts, NACT, 1);
     CHECK_MSG(s.bad_face == 0, "kid-room line a child may not hear: %s", s.bad_line);
     CHECK_MSG(s.bad_flags == 0, "non-sincere kid-room line: %s", s.bad_line);
-    for (i = 0; i < 5; i++) mind += s.hit[i];
+    for (i = 0; i < NADULT; i++) mind += s.hit[i];
     CHECK_MSG(mind == 0, "a grown-up-only line with a child in the room (%d times)", mind);
     printf("      adult with a child in the room: %d lines, %d grown-up-only marks heard\n", s.lines, mind);
     memset(&s, 0, sizeof s);
@@ -207,12 +211,12 @@ TEST(talk_grief_child_rooms)
     /* a grown-up alone may be a grown-up */
     memset(&s, 0, sizeof s);
     s.mark = adult_only;
-    s.n = 5;
+    s.n = NADULT;
     sweep(&s, ad_alone, 1, grief_topics, NTOP, gacts, NACT, 1);
     CHECK_MSG(s.bad_flags == 0, "non-sincere line: %s", s.bad_line);
     hit = 0;
-    for (i = 0; i < 5; i++) hit += s.hit[i] > 0;
-    CHECK_MSG(hit >= 4, "a grown-up alone reaches only %d of 5 grown-up marks", hit);
+    for (i = 0; i < NADULT; i++) hit += s.hit[i] > 0;
+    CHECK_MSG(hit >= NADULT - 3, "a grown-up alone reaches only %d of %d grown-up marks", hit, NADULT);
     CHECK_EQ(talk_safe_lint_hits(), h0);
     if (getenv("DOOMO_TALK_GRIEF_SAMPLE")) {
         print_sample(ad_with_kid, 2, "rivet+pip");

@@ -1161,7 +1161,7 @@ laugh at loss, no cure, no lesson, no mechanic.
   reactions). The `*_adult` rules carry `!kid_present`: a grown-up's deeper lines are
   never said with a child in the room.
 * `grief_voices.tlk` (127): the persona banks are not used on a grief topic, so all 17 cast
-  members get their own sincere lines, six or seven each (Vex "No post for this one",
+  members get their own sincere lines, a few each (Vex "No post for this one",
   Pip "Patrol's on sad duty", Wisp lowercase and kind, Mascotty's one small thump,
   Grumbleguts' soup, Vapula's soft sky, Clinker's "no score today"); Pip is `kid`, Wisp
   `kid,lower`, Vapula `lower`. The six cast in `grief.tlk` keep theirs and get more. No
