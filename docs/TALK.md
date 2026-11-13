@@ -669,7 +669,7 @@ lines keep `consent&adults_only&!kid_present&!pet`, the row and the
 ultimatum keep `!kid_present`, the kid lines keep `kid_speaker` and the
 `kid` tag. A long session now draws from 2-3 times as many beat lines
 (e.g. `beat.smalltalk` 4 -> 11, `excuse` 5 -> 10, `prod` 4 -> 8).
-`TALK_en.BIN` 643,516 -> 676,924 B, the PS1 subset 312,185 -> 345,612 B of
+`TALK_en.BIN` 643,516 -> 676,924 B, the PS1 subset 312,185 -> 345,634 B of
 the 312 KB budget (**the PS1 subset is now over that budget: TKP must pick
 its lever, see 6.4 and TP1**). Data only: no code, no resident byte on any
 platform. A 40-line sample is in the evidence directory.
