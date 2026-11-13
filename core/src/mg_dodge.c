@@ -437,9 +437,28 @@ static void cherub(int x, int y, int t, int flap, int focus, int hide)
         }
 }
 
+#if defined(DOOMO_PLATFORM_GBA)
+/* (S2-4b) The hit's hearts (mg_lose_life, the burst, the mercy hearts: three colours, two sizes) are shapes from ui_raster.c's
+ * cache: each is computed once (a mask, its shading, ~0.7 ms) and then replayed. The first hit of a round computed all six in one
+ * frame and was the only frame of the late window over 33 ms (39 ms). They are drawn once while READY goes by (a cheap frame) and
+ * the backdrop paints over them: the same pixels, the cost moved. Not for a shape cut by the screen's edge (it is not cached). */
+static void warm_hearts(void)
+{
+    uint8_t col[3];
+    int i;
+    col[0] = PAL_PAINT(PAINT_ROSE, 2);
+    col[1] = PAL_GRAY_L;
+    col[2] = PAL_PAINT(PAINT_BUBBLEGUM, 2);
+    for (i = 0; i < 6; i++) ui_heart(24 + 36 * i, 60, 3 - (i & 1), col[i >> 1]);
+}
+#endif
+
 static void dg_draw(void)
 {
     int i, t = mg.play_t + mg.t, ox = mg.ox, oy = mg.oy;
+#if defined(DOOMO_PLATFORM_GBA)
+    if (mg.phase == MGP_READY && mg.t >= 3 && mg.t < 12 && !mg_big() && !plat_draw_skipped()) warm_hearts();
+#endif
     lounge_bg(t);
     vapula(t);
     cherub(S->px16 / 16 + ox, S->py16 / 16 + oy, t, S->flap, S->focus, S->inv && (S->inv & 4));

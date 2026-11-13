@@ -262,6 +262,31 @@ static inline __attribute__((always_inline)) void checker_body(int x, int y, int
         if (px & 1) { keep = 0x00FF00FFu; put = color << 8 | color << 24; }
         else        { keep = 0xFF00FF00u; put = color | color << 16; }
         if (((uintptr_t)p & 2) && n) { *p = (uint16_t)((*p & keep) | put); p++; n--; }
+        /* (S2-4b) 8 words (16 pixels) a time with ldm / stm: the one-word loop costs ~13.8 cycles a word on the
+         * 16-bit VRAM bus (a read, two ALU ops, a write and the loop), this ~6.8: the full-screen flash 7.9 -> ~4 ms.
+         * ldm and stm give the same register the same word of the eight, so the order the compiler picks is free. */
+        if (n >= 16) {
+            volatile uint32_t *q = (volatile uint32_t *)p;
+            for (; n >= 16; n -= 16, p += 16) {
+                register uint32_t a0 __asm__("r3"), a1 __asm__("r4"), a2 __asm__("r5"), a3 __asm__("r6"),
+                                  a4 __asm__("r7"), a5 __asm__("r8"), a6 __asm__("r9"), a7 __asm__("r10");
+                __asm__ volatile(
+                    "ldmia %[q], {r3-r10}\n\t"
+                    "and r3, r3, %[k]\n\torr r3, r3, %[p]\n\t"
+                    "and r4, r4, %[k]\n\torr r4, r4, %[p]\n\t"
+                    "and r5, r5, %[k]\n\torr r5, r5, %[p]\n\t"
+                    "and r6, r6, %[k]\n\torr r6, r6, %[p]\n\t"
+                    "and r7, r7, %[k]\n\torr r7, r7, %[p]\n\t"
+                    "and r8, r8, %[k]\n\torr r8, r8, %[p]\n\t"
+                    "and r9, r9, %[k]\n\torr r9, r9, %[p]\n\t"
+                    "and r10, r10, %[k]\n\torr r10, r10, %[p]\n\t"
+                    "stmia %[q], {r3-r10}"
+                    : "=&r"(a0), "=&r"(a1), "=&r"(a2), "=&r"(a3), "=&r"(a4), "=&r"(a5), "=&r"(a6), "=&r"(a7)
+                    : [q] "r"(q), [k] "r"(keep), [p] "r"(put)
+                    : "memory");
+                q += 8;
+            }
+        }
         for (; n >= 2; n -= 2, p += 2) {
             volatile uint32_t *q = (volatile uint32_t *)p;
             *q = (*q & keep) | put;
