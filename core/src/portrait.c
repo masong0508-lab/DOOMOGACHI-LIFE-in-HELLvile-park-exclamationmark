@@ -619,7 +619,7 @@ static void render_fighter_ctx(PCtx *c, int view, int anim, int wframe, uint8_t 
 enum { CK_NONE, CK_PORTRAIT, CK_BODY, CK_FIGURE, CK_FIGHTER, CK_FOREIGN };
 
 /* animation phase of a cached portrait / figure */
-typedef struct Phase { int blink, breath, twitch, wag, fx, talk; } Phase;
+typedef struct Phase { int8_t blink, breath, twitch, wag, fx, talk; } Phase;   /* bytes: the job holds one (EWRAM) */
 
 typedef struct CacheEnt {
     DoomoImage img;
@@ -672,12 +672,12 @@ typedef struct Job {
     uint8_t  fq;                /* SP2: slices an urgent job still has to run this tick */
     uint8_t  restarts;          /* times other renders forced a restart      */
     int8_t   e;                 /* cache entry being filled (busy, hidden)   */
-    int      status, expr;
+    DoomoDeep D;                /* resolved at job start (P1); here so it packs (no padding in EWRAM) */
+    int8_t   status, expr;      /* RES_* / EXPR_* (small)                    */
     uint32_t gen;               /* canvas generation after our last step     */
     uint32_t want;              /* last tick its resident was asked for      */
     Phase    p;
     DoomoLook L;
-    DoomoDeep D;                /* resolved at job start (P1)                */
     PCtx     c;
 } Job;
 static Job job;

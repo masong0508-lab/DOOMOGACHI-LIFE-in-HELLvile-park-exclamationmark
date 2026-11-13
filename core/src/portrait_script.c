@@ -208,7 +208,7 @@ typedef struct VM {
 static int i8(const uint8_t *p, int k) { return (int8_t)p[k] * 2; }
 
 /* CR3: the frame of PA_FRAME blocks (ps_frame): origin, position units and radius units, Q4 per 256 */
-static struct { int ox, oy, px, py, rx, ry; } fr;
+static struct { int16_t ox, oy, px, py, rx, ry; } fr;   /* int16: these are screen units, no EWRAM to spare */
 
 void ps_frame(int ox, int oy, int px, int py, int rx, int ry)
 {
