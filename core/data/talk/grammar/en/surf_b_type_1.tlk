@@ -1,0 +1,309 @@
+# core/data/talk/grammar/en/surf_b_type_1.tlk - the first eight persona types answer twelve plain
+# acts in their own voice (owner: TK; T5b package T5B-SURF2, Surface push B). Quiet Bookworm, Cozy
+# Napper, Grumpy Gremlin, Deadpan Drifter, Gentle Dreamer, Sweet Sunbeam, Dramatic Poet, Cheeky
+# Charmer. Clean in any room: no register word, no romance, no cool act. Rule names start with sb_t_.
+# Syntax: core/tools/talkc_gen.py.
+
+# ---- Quiet Bookworm ----------------------------------------------------------------------------
+@rule core.thank.sb_t_bookworm guard: type=quiet_bookworm act: answer
+  "Oh. You're welcome. I only held the door, but thank you."
+  "Not at all. It's mentioned in no book, but it's good manners."
+@rule core.tell.sb_t_bookworm guard: type=quiet_bookworm act: backchannel
+  "Hm. That's a chapter I'd read. Please, go on."
+  "Oh, I see. I'm taking notes, in my head."
+@rule core.agree.sb_t_bookworm guard: type=quiet_bookworm act: agree
+  "Yes, exactly. I'd footnote that, but I agree."
+  "We agree. That's rare. I'll mark the page."
+@rule core.disagree.sb_t_bookworm guard: type=quiet_bookworm act: disagree
+  "Hm. I'd have to check my sources, and they say no."
+  "Oh. I read otherwise. Quietly, but I did."
+@rule core.joke.sb_t_bookworm guard: type=quiet_bookworm act: laugh
+  "Ha! Oh, sorry, that was loud. For a library."
+  "Hee. I'll tell that one to the shelves later."
+@rule core.laugh.sb_t_bookworm guard: type=quiet_bookworm act: laugh
+  "Hee! Shh, sorry, I can't stop. Hee!"
+  "Oh, you laughed, so now I'm laughing. That's how it works."
+@rule core.compliment.sb_t_bookworm guard: type=quiet_bookworm act: thank
+  "Oh! Thank you. I'll be pink for an hour."
+  "That's kind. I'll keep it somewhere safe, like a bookmark."
+@rule core.encourage.sb_t_bookworm guard: type=quiet_bookworm act: thank
+  "Thank you. I'll try. One page at a time."
+  "That helps. I'll read it again tonight, to be sure."
+@rule core.invite.sb_t_bookworm guard: type=quiet_bookworm act: yes
+  "Oh, yes, please. I'll bring a book. For emergencies."
+  "Yes. As long as there's a corner. I love a corner."
+@rule core.offer.sb_t_bookworm guard: type=quiet_bookworm act: thank
+  "Oh, that's generous. Thank you, truly."
+  "For me? I'll treasure it. And not fold the corner."
+@rule core.apologize.sb_t_bookworm guard: type=quiet_bookworm act: answer
+  "It's all right. Please don't worry, it's already a closed chapter."
+  "Oh, of course. I was just rereading anyway."
+@rule core.comfort.sb_t_bookworm guard: type=quiet_bookworm act: thank
+  "Thank you. That's like a warm page after a cold one."
+  "You're kind. I feel better, a little. A good little."
+
+# ---- Cozy Napper ----------------------------------------------------------------------------
+@rule core.thank.sb_t_napper guard: type=cozy_napper act: answer
+  "Mm, you're welcome. I'd say more, but there's a pillow."
+  "Anytime. Well, after nap time. Okay, anytime."
+@rule core.tell.sb_t_napper guard: type=cozy_napper act: backchannel
+  "Mm-hm, uh-huh. I'm listening, with my eyes closed."
+  "Mmm, interesting. Tell it again, slower, like a lullaby."
+@rule core.agree.sb_t_napper guard: type=cozy_napper act: agree
+  "Mm, yes. Agree. Now let's agree on a blanket."
+  "Yep, yep. Same. Can we do the rest lying down?"
+@rule core.disagree.sb_t_napper guard: type=cozy_napper act: disagree
+  "Mmm, no. Too much effort. But no."
+  "I'd argue, but arguing is upright. So, no, softly."
+@rule core.joke.sb_t_napper guard: type=cozy_napper act: laugh
+  "Heh. Mmm. That one's going straight in my dreams."
+  "Ha, zzz, sorry, I am awake. Good one."
+@rule core.laugh.sb_t_napper guard: type=cozy_napper act: laugh
+  "Heh, heh. Oh, that woke me up a little. Nice."
+  "Hehe. Giggling is basically a nap for the belly."
+@rule core.compliment.sb_t_napper guard: type=cozy_napper act: thank
+  "Aww, thanks. That's warm. Like a blanket, but with words."
+  "Mm, nice. I'd bow, but the couch has me."
+@rule core.encourage.sb_t_napper guard: type=cozy_napper act: thank
+  "Thanks. I'll try. After a tiny rest, for strength."
+  "Mm, you believe in me? That's a lot of work for you."
+@rule core.invite.sb_t_napper guard: type=cozy_napper act: yes
+  "Yes... if there's a comfy chair. Is there a comfy chair?"
+  "Sure. Wake me when we get there. Or carry me."
+@rule core.offer.sb_t_napper guard: type=cozy_napper act: thank
+  "Oh, thanks. Put it on the pillow, I'll get to it."
+  "Mmm, lovely. Is it a blanket? Please say blanket."
+@rule core.apologize.sb_t_napper guard: type=cozy_napper act: answer
+  "Mm, it's fine. Forgiveness is easier lying down."
+  "No worries. I've already forgotten. Napping helps."
+@rule core.comfort.sb_t_napper guard: type=cozy_napper act: thank
+  "Thanks. That's cozy. Come sit, there's room for sad."
+  "Mm, that helps. Pat me again, just there."
+
+# ---- Grumpy Gremlin ----------------------------------------------------------------------------
+@rule core.thank.sb_t_gremlin guard: type=grumpy_gremlin act: answer
+  "Yeah, yeah. You're welcome. Don't make it weird."
+  "Hmph. Fine. Don't tell anyone I was nice."
+@rule core.tell.sb_t_gremlin guard: type=grumpy_gremlin act: backchannel
+  "Hmph. Is that so. Go on, I'll complain after."
+  "Right. And? Get to the bit I can grumble about."
+@rule core.agree.sb_t_gremlin guard: type=grumpy_gremlin act: agree
+  "Huh. We agree. Don't get used to it."
+  "Fine, yes, I said it. Write it down, it won't happen twice."
+@rule core.disagree.sb_t_gremlin guard: type=grumpy_gremlin act: disagree
+  "Wrong. Wrong, wrong, wrong. But go on, I like a fight."
+  "No. Absolutely not. Over my grumpy body."
+@rule core.joke.sb_t_gremlin guard: type=grumpy_gremlin act: laugh
+  "Ha! ...Don't look at me. I did not laugh."
+  "Hmph. Heh. That was nearly funny, nearly."
+@rule core.laugh.sb_t_gremlin guard: type=grumpy_gremlin act: laugh
+  "Hmph. Stop laughing, you'll make me do it too. Heh."
+  "What's so funny? ...Oh, fine, heh. A bit funny."
+@rule core.compliment.sb_t_gremlin guard: type=grumpy_gremlin act: thank
+  "Hmph. Flattery. It's working, stop."
+  "Well, er, thanks. Don't let it go to my head. I mean yours."
+@rule core.encourage.sb_t_gremlin guard: type=grumpy_gremlin act: thank
+  "Hmph. I don't need cheering. ...Thanks, though, quietly."
+  "Yeah, yeah, I'll do it. Not because you said."
+@rule core.invite.sb_t_gremlin guard: type=grumpy_gremlin act: yes
+  "Ugh, fine. I'll come. I'll complain the whole time."
+  "Yes. Obviously. I was going to say no, but yes."
+@rule core.offer.sb_t_gremlin guard: type=grumpy_gremlin act: thank
+  "For me? Hmph. Fine, thanks, don't stare."
+  "Well, I won't say no. I'll say it's overdue, though."
+@rule core.apologize.sb_t_gremlin guard: type=grumpy_gremlin act: answer
+  "Hmph. It's fine. I'll stay annoyed anyway, for the principle."
+  "Yeah, okay. Apology accepted. Grudge pending."
+@rule core.comfort.sb_t_gremlin guard: type=grumpy_gremlin act: thank
+  "Hmph. I'm fine. ...Okay, that did help, don't say so."
+  "Thanks. That was less annoying than I expected."
+
+# ---- Deadpan Drifter ----------------------------------------------------------------------------
+@rule core.thank.sb_t_drifter guard: type=deadpan_drifter act: answer
+  "Oh. Wow, gratitude. I'll try to contain myself."
+  "You're welcome. That's my entire speech."
+@rule core.tell.sb_t_drifter guard: type=deadpan_drifter act: backchannel
+  "Huh. Fascinating. I'm on the edge of a seat, a low one."
+  "Sure. Wow. And then what, a parade?"
+@rule core.agree.sb_t_drifter guard: type=deadpan_drifter act: agree
+  "Agreed. I'd cheer, but it would ruin the mood."
+  "Yes. Wow, unanimous. Two people can't be wrong."
+@rule core.disagree.sb_t_drifter guard: type=deadpan_drifter act: disagree
+  "No. Respectfully. As much respect as I had on me."
+  "Hm. Bold. Incorrect, but bold."
+@rule core.joke.sb_t_drifter guard: type=deadpan_drifter act: laugh
+  "Ha. That's me laughing. It's the loud one."
+  "Funny. I'm smiling on the inside. It's dark in there, but still."
+@rule core.laugh.sb_t_drifter guard: type=deadpan_drifter act: laugh
+  "Ha. There, I joined in. Please clap."
+  "Hm. Contagious. I'm informing the town."
+@rule core.compliment.sb_t_drifter guard: type=deadpan_drifter act: thank
+  "Oh. Thanks. I'm thrilled, this is thrilled."
+  "Wow, a compliment. I'll put it with the others. Both of them."
+@rule core.encourage.sb_t_drifter guard: type=deadpan_drifter act: thank
+  "Thanks. I'll attempt it, with enthusiasm. This is it."
+  "Sure. I'll give it my best shrug."
+@rule core.invite.sb_t_drifter guard: type=deadpan_drifter act: yes
+  "Yes. I'll be there. Looking vaguely interested."
+  "Sure. I'll drift over. Save me a wall to lean on."
+@rule core.offer.sb_t_drifter guard: type=deadpan_drifter act: thank
+  "Oh, for me. Gosh. Thanks, I'll act surprised later."
+  "Sure. I'll take it. And my dignity, if it's free."
+@rule core.apologize.sb_t_drifter guard: type=deadpan_drifter act: answer
+  "It's fine. Honestly, I didn't notice. That's a compliment."
+  "Hm, okay, sure. All is forgiven. Wow."
+@rule core.comfort.sb_t_drifter guard: type=deadpan_drifter act: thank
+  "Thanks. That worked, slightly. Don't let it go to your head."
+  "Oh. That was nice. I'll feel it later, probably."
+
+# ---- Gentle Dreamer ----------------------------------------------------------------------------
+@rule core.thank.sb_t_dreamer guard: type=gentle_dreamer act: answer
+  "Oh, you're so welcome... it was like a little cloud, giving."
+  "Mm, of course. It's what the stars would do."
+@rule core.tell.sb_t_dreamer guard: type=gentle_dreamer act: backchannel
+  "Ooh... that sounds like a story with moonlight in it."
+  "Mm, I see. I can picture it. It's all soft at the edges."
+@rule core.agree.sb_t_dreamer guard: type=gentle_dreamer act: agree
+  "Yes... we're drifting the same way. How lovely."
+  "Oh, yes. It's like we hummed the same note."
+@rule core.disagree.sb_t_dreamer guard: type=gentle_dreamer act: disagree
+  "Oh... I think I see it another way. A softer way, maybe."
+  "Hm... no? But we can drift apart and meet again."
+@rule core.joke.sb_t_dreamer guard: type=gentle_dreamer act: laugh
+  "Hee... oh, that tickled. Like a feather made of words."
+  "Ha, oh! My giggle floated away. There it goes."
+@rule core.laugh.sb_t_dreamer guard: type=gentle_dreamer act: laugh
+  "Hee hee... your laugh sounds like tiny bells."
+  "Oh, now I'm laughing, and I don't even know why. Nice."
+@rule core.compliment.sb_t_dreamer guard: type=gentle_dreamer act: thank
+  "Oh... thank you. I'll tuck it in my pocket, with the stars."
+  "That's sweet. It's floating around me now. Can you see it?"
+@rule core.encourage.sb_t_dreamer guard: type=gentle_dreamer act: thank
+  "Thank you... I'll try. The dream is just ahead, I think."
+  "Mm, that's a good push. Like wind under a kite."
+@rule core.invite.sb_t_dreamer guard: type=gentle_dreamer act: yes
+  "Oh, yes... I'd love that. Wake me if I float off."
+  "Yes, please. We'll go slowly, and look at the sky."
+@rule core.offer.sb_t_dreamer guard: type=gentle_dreamer act: thank
+  "Oh, how kind... it's like a gift from a dream."
+  "For me? Thank you. I'll keep it near the pillow."
+@rule core.apologize.sb_t_dreamer guard: type=gentle_dreamer act: answer
+  "Oh, it's all right. It's already drifted away."
+  "Of course. Let's let it float off, like a petal."
+@rule core.comfort.sb_t_dreamer guard: type=gentle_dreamer act: thank
+  "Thank you... that was a soft place to land."
+  "Mm, I feel lighter now. Like a cloud after rain."
+
+# ---- Sweet Sunbeam ----------------------------------------------------------------------------
+@rule core.thank.sb_t_sunbeam guard: type=sweet_sunbeam act: answer
+  "[HAPPY]Aww, you're so welcome! It was my pleasure, my whole pleasure!"
+  "[HAPPY]Anytime, anytime! Helping is my favourite thing!"
+@rule core.tell.sb_t_sunbeam guard: type=sweet_sunbeam act: backchannel
+  "[HAPPY]Oh, wow! Tell me more, tell me everything!"
+  "Aww, really? That's so interesting! I'm all ears, nice big ears!"
+@rule core.agree.sb_t_sunbeam guard: type=sweet_sunbeam act: agree
+  "[HAPPY]Yes, yes, yes! We agree! That makes me so happy!"
+  "Oh, I knew we thought alike! You're just so smart!"
+@rule core.disagree.sb_t_sunbeam guard: type=sweet_sunbeam act: disagree
+  "Oh, hm, I see it a little differently! But that's okay! Everyone's lovely!"
+  "Aww, we disagree! That's all right, we can still be friends!"
+@rule core.joke.sb_t_sunbeam guard: type=sweet_sunbeam act: laugh
+  "[HAPPY]Hahaha! Oh, that's so good! You're so funny!"
+  "[HAPPY]Ha! Ha! Oh, my cheeks hurt, in a good way!"
+@rule core.laugh.sb_t_sunbeam guard: type=sweet_sunbeam act: laugh
+  "[HAPPY]Hee hee! Isn't laughing the best? Let's do it forever!"
+  "[HAPPY]Hahaha! Your laugh makes me laugh! It's a laughing chain!"
+@rule core.compliment.sb_t_sunbeam guard: type=sweet_sunbeam act: thank
+  "[HAPPY]Aww! Thank you! You're so sweet, you made my day!"
+  "[HAPPY]Oh my! I'm all blushy! That was lovely to hear!"
+@rule core.encourage.sb_t_sunbeam guard: type=sweet_sunbeam act: thank
+  "[HAPPY]Thank you! I feel so cheered! I can do it, we can do it!"
+  "Aww, you believe in me! Now I believe in me too!"
+@rule core.invite.sb_t_sunbeam guard: type=sweet_sunbeam act: yes
+  "[HAPPY]Yes, yes! I'd love to! Oh, I'm so excited!"
+  "[HAPPY]Oh, I'd love that! Can I bring cookies? I'll bring cookies!"
+@rule core.offer.sb_t_sunbeam guard: type=sweet_sunbeam act: thank
+  "[HAPPY]Oh, you're too kind! Thank you, thank you, thank you!"
+  "Aww, for me? That's so thoughtful! You're a treasure!"
+@rule core.apologize.sb_t_sunbeam guard: type=sweet_sunbeam act: answer
+  "Oh, don't you worry! It's all forgiven! Hugs, well, high fives."
+  "Aww, it's okay! Everyone makes mistakes, even me! Especially me!"
+@rule core.comfort.sb_t_sunbeam guard: type=sweet_sunbeam act: thank
+  "Aww, thank you. That helped, a lot. You're a sunshine too."
+  "Thanks. I feel better already. Your words are like warm tea."
+
+# ---- Dramatic Poet ----------------------------------------------------------------------------
+@rule core.thank.sb_t_poet guard: type=dramatic_poet act: answer
+  "Think nothing of it! A kindness is but a verse without rhyme."
+  "You are welcome, dear friend! The pleasure echoes like thunder!"
+@rule core.tell.sb_t_poet guard: type=dramatic_poet act: backchannel
+  "Ah! A tale unfolds! Continue, I beg you, I'm weeping with suspense!"
+  "Oh, the drama of it! Proceed, the stage is yours!"
+@rule core.agree.sb_t_poet guard: type=dramatic_poet act: agree
+  "Yes! Two souls, one sonnet! We are in perfect meter!"
+  "At last! A mind that rhymes with mine! Truly!"
+@rule core.disagree.sb_t_poet guard: type=dramatic_poet act: disagree
+  "Never! Not in a thousand verses! Though you speak beautifully!"
+  "Oh, the tragedy! We are two rivers, ne'er to meet!"
+@rule core.joke.sb_t_poet guard: type=dramatic_poet act: laugh
+  "Ha! Wit as sharp as a quill! I shall steal it for my next work!"
+  "Hahaha! A comedy! I'm writing it into my memoirs!"
+@rule core.laugh.sb_t_poet guard: type=dramatic_poet act: laugh
+  "Ah, laughter! The finest rhyme there is! Ha ha ha!"
+  "Hee hee! Your joy is a song, and I am its chorus!"
+@rule core.compliment.sb_t_poet guard: type=dramatic_poet act: thank
+  "You flatter me! Please, continue, there's more room in the praise!"
+  "Oh! My heart is a drum! Thank you, you're too kind, too true!"
+@rule core.encourage.sb_t_poet guard: type=dramatic_poet act: thank
+  "Your words lift me like a banner in the wind! Thank you!"
+  "Ah, encouragement! I shall carry it into the great third act!"
+@rule core.invite.sb_t_poet guard: type=dramatic_poet act: yes
+  "Yes! Of course! I shall arrive like a sunrise, with a cape!"
+  "I accept! Let the story begin, and the curtain rise!"
+@rule core.offer.sb_t_poet guard: type=dramatic_poet act: thank
+  "A gift! Oh, you honour me! I'll write an ode to it tonight!"
+  "How generous! History will remember this moment! I will, anyway."
+@rule core.apologize.sb_t_poet guard: type=dramatic_poet act: answer
+  "All is forgiven! A grudge is a poor rhyme, anyway!"
+  "Say no more! The curtain falls on it, and the audience weeps with joy!"
+@rule core.comfort.sb_t_poet guard: type=dramatic_poet act: thank
+  "Your kindness, a lantern in my stormy night! Thank you!"
+  "Ah, comfort! It falls like gentle rain on my dramatic soul."
+
+# ---- Cheeky Charmer ----------------------------------------------------------------------------
+@rule core.thank.sb_t_charmer guard: type=cheeky_charmer act: answer
+  "Don't mention it. Unless you want to. Then do, loudly."
+  "Anytime, gorgeous scenery. I mean you. And the hills."
+@rule core.tell.sb_t_charmer guard: type=cheeky_charmer act: backchannel
+  "Oh, do go on. I'm hanging on every word. Even the dull ones."
+  "Ooh, a story. I love a story. Tell it with gestures."
+@rule core.agree.sb_t_charmer guard: type=cheeky_charmer act: agree
+  "Of course we agree. We have excellent taste, both of us, mostly me."
+  "See? Great minds. And I'm the great one."
+@rule core.disagree.sb_t_charmer guard: type=cheeky_charmer act: disagree
+  "Oh, you're wrong, but you're so charming about it. Go on."
+  "Disagree? With me? Brave, I'm almost impressed."
+@rule core.joke.sb_t_charmer guard: type=cheeky_charmer act: laugh
+  "Ha! Not bad. Almost as good as mine, almost."
+  "Heh! You've got timing. I'll allow it."
+@rule core.laugh.sb_t_charmer guard: type=cheeky_charmer act: laugh
+  "Ha! Look at us, having a lovely time. As planned."
+  "Hehe! I do love a good laugh. Especially at my own jokes."
+@rule core.compliment.sb_t_charmer guard: type=cheeky_charmer act: thank
+  "Well, thank you. You have an eye for quality. Keep looking."
+  "Oh, stop. No, don't stop. Okay, stop a little."
+@rule core.encourage.sb_t_charmer guard: type=cheeky_charmer act: thank
+  "Thanks, but I was always going to win. It's nice to be cheered, though."
+  "Ooh, a cheerleader. I'll do my best. My best is great."
+@rule core.invite.sb_t_charmer guard: type=cheeky_charmer act: yes
+  "Yes, obviously. Parties love me. I'll bring the charm."
+  "I'd be delighted. Save me a good chair, a great view, and a snack."
+@rule core.offer.sb_t_charmer guard: type=cheeky_charmer act: thank
+  "For me? You shouldn't have. Well, you should, thanks."
+  "Well, how thoughtful. You've got style, friend."
+@rule core.apologize.sb_t_charmer guard: type=cheeky_charmer act: answer
+  "Oh, all forgiven. I'm too charming to stay cross."
+  "Don't sweat it. A good apology is half a favour. Thanks."
+@rule core.comfort.sb_t_charmer guard: type=cheeky_charmer act: thank
+  "Thanks, that's sweet. I'm much better now. Don't tell anyone I needed it."
+  "Aw, you're good at that. Ruin my reputation, why don't you."

@@ -1,0 +1,325 @@
+# core/data/talk/grammar/en/surf_b_type_topic.tlk - all sixteen persona types answer being told
+# something, agreement, disagreement, a liked or disliked thing and a new subject, naming the topic
+# (owner: TK; T5b package T5B-SURF2, Surface push B). Six acts, two lines each, every line says the
+# topic ({x}). Clean in any room: no register word, no romance, no cool act. Rule names start with sb_x_.
+# Syntax: core/tools/talkc_gen.py.
+
+# ---- Quiet Bookworm ----------------------------------------------------------------------------
+@rule core.tell.sb_x_bookworm guard: type=quiet_bookworm act: backchannel
+  "Oh, {x}. I read something about that once. Please, go on."
+  "{x:cap}, hm. I'll look it up later. For now, tell me yours."
+@rule core.agree.sb_x_bookworm guard: type=quiet_bookworm act: agree
+  "Yes, {x}. I'd cite three chapters, but you're right already."
+  "I agree about {x}. That's the first time all week I've said it aloud."
+@rule core.disagree.sb_x_bookworm guard: type=quiet_bookworm act: disagree
+  "Hm, about {x}, my books say otherwise. Politely, but they do."
+  "I'm not sure about {x}. I'd have to see the source."
+@rule core.opine_pos.sb_x_bookworm guard: type=quiet_bookworm act: agree
+  "I like {x} too. It's quite good in a quiet corner."
+  "Yes, {x} is lovely. I'd write a small essay about it."
+@rule core.opine_neg.sb_x_bookworm guard: type=quiet_bookworm act: sympathize
+  "Oh, {x} is difficult, isn't it? I hide from it in chapters."
+  "Yes, {x}. It's the sort of thing one reads about and then regrets."
+@rule core.change_topic.sb_x_bookworm guard: type=quiet_bookworm act: answer
+  "Oh, {x}? Yes, all right. I do have a bookmark in that."
+  "A new subject, {x}. Wonderful, I'll just turn the page."
+
+# ---- Cozy Napper ----------------------------------------------------------------------------
+@rule core.tell.sb_x_napper guard: type=cozy_napper act: backchannel
+  "Mm, {x}. Sounds like a bedtime story. Go on, softly."
+  "{x:cap}, huh. Tell me more, I'll close my eyes and picture it."
+@rule core.agree.sb_x_napper guard: type=cozy_napper act: agree
+  "Mm, yes, {x}. Agree. Pass the pillow."
+  "Yeah, {x}. You said it, and I'll nod. Lying down."
+@rule core.disagree.sb_x_napper guard: type=cozy_napper act: disagree
+  "Mmm, not about {x}. Too much effort to argue, but no."
+  "I don't know about {x}. Let me nap on it and decide."
+@rule core.opine_pos.sb_x_napper guard: type=cozy_napper act: agree
+  "I love {x}, in a cosy way. Best enjoyed with a blanket."
+  "Mm, {x} is nice. It's nearly as good as a long nap."
+@rule core.opine_neg.sb_x_napper guard: type=cozy_napper act: sympathize
+  "Ugh, {x}. It wakes me right up, and I hate that."
+  "Oh, {x} is awful. Let's discuss it from under the blanket."
+@rule core.change_topic.sb_x_napper guard: type=cozy_napper act: answer
+  "{x:cap}? Okay. As long as the new subject has a cushion."
+  "Mm, sure, {x}. Just let me find a comfier position."
+
+# ---- Grumpy Gremlin ----------------------------------------------------------------------------
+@rule core.tell.sb_x_gremlin guard: type=grumpy_gremlin act: backchannel
+  "{x:cap}? Hmph, fine, tell me. I'll find something to complain about."
+  "Oh, great, {x}. Go on. I'll grumble in the pauses."
+@rule core.agree.sb_x_gremlin guard: type=grumpy_gremlin act: agree
+  "Yes, {x}. For once, we agree. Mark the calendar."
+  "Hmph. {x:cap}, right. I'll admit you're not wrong."
+@rule core.disagree.sb_x_gremlin guard: type=grumpy_gremlin act: disagree
+  "Wrong about {x}. So wrong. Let me count the ways."
+  "No! Not {x}! You've got it backwards, as usual."
+@rule core.opine_pos.sb_x_gremlin guard: type=grumpy_gremlin act: agree
+  "Hmph, {x} is fine. I'll say fine. That's all I'll say."
+  "Fine, {x} is decent. Don't tell anyone I said so."
+@rule core.opine_neg.sb_x_gremlin guard: type=grumpy_gremlin act: sympathize
+  "{x:cap}! Ugh! Finally, someone with sense, it's the worst!"
+  "Yes, {x} is awful. Let's grumble about it together."
+@rule core.change_topic.sb_x_gremlin guard: type=grumpy_gremlin act: answer
+  "Fine, {x}. Anything to stop talking about the last thing."
+  "{x:cap}? Hmph, I'll talk. I won't enjoy it, much."
+
+# ---- Deadpan Drifter ----------------------------------------------------------------------------
+@rule core.tell.sb_x_drifter guard: type=deadpan_drifter act: backchannel
+  "Oh, {x}. Fascinating. Truly, a thing exists."
+  "Sure, {x}. I'm hanging on every word. Slowly."
+@rule core.agree.sb_x_drifter guard: type=deadpan_drifter act: agree
+  "Yes, {x}, wow. We're a team now. I'll order the matching shirts."
+  "Agreed on {x}. I'd high five, but that's effort."
+@rule core.disagree.sb_x_drifter guard: type=deadpan_drifter act: disagree
+  "No, not {x}. Respectfully, in a monotone."
+  "Hm, {x}? I don't think so. But thanks for the energy."
+@rule core.opine_pos.sb_x_drifter guard: type=deadpan_drifter act: agree
+  "Sure, {x} is good. I'm cheering inwardly. Loudly."
+  "{x:cap}, nice. I'm excited. This is my excited face."
+@rule core.opine_neg.sb_x_drifter guard: type=deadpan_drifter act: sympathize
+  "Yes, {x} is terrible. Wow. We should form a club."
+  "{x:cap}, ugh. I'd sigh, but I already did, an hour ago."
+@rule core.change_topic.sb_x_drifter guard: type=deadpan_drifter act: answer
+  "Sure, {x}. Why not. The other topic wasn't going anywhere."
+  "{x:cap}? Okay. I'll try to look interested, here it is."
+
+# ---- Gentle Dreamer ----------------------------------------------------------------------------
+@rule core.tell.sb_x_dreamer guard: type=gentle_dreamer act: backchannel
+  "Oh... {x}. That sounds like it has a lovely glow."
+  "Mm, {x}. Tell me, I'll paint it in my head, softly."
+@rule core.agree.sb_x_dreamer guard: type=gentle_dreamer act: agree
+  "Yes... {x}. It's like we're dreaming the same dream."
+  "Oh, you feel it too, about {x}. How lovely."
+@rule core.disagree.sb_x_dreamer guard: type=gentle_dreamer act: disagree
+  "Hm... I'm not sure about {x}. In my dream it was different."
+  "Oh, not {x}, I think. But maybe we're both a little right."
+@rule core.opine_pos.sb_x_dreamer guard: type=gentle_dreamer act: agree
+  "I love {x}. It floats, don't you think? Like a soft cloud."
+  "Mm, {x} is so nice. It makes everything shimmer."
+@rule core.opine_neg.sb_x_dreamer guard: type=gentle_dreamer act: sympathize
+  "Oh, {x}... yes, it's heavy. Let's float over it."
+  "Mm, {x} is sad, a little. We'll hold it gently."
+@rule core.change_topic.sb_x_dreamer guard: type=gentle_dreamer act: answer
+  "Oh, {x}... yes. Let's drift that way."
+  "{x:cap}? Lovely. My thoughts were wandering there anyway."
+
+# ---- Sweet Sunbeam ----------------------------------------------------------------------------
+@rule core.tell.sb_x_sunbeam guard: type=sweet_sunbeam act: backchannel
+  "[HAPPY]Ooh, {x}! Tell me everything! I'm so excited!"
+  "Aww, {x}! That's so interesting! Go on, go on!"
+@rule core.agree.sb_x_sunbeam guard: type=sweet_sunbeam act: agree
+  "[HAPPY]Yes, {x}! You're so right! I'm so glad we think alike!"
+  "[HAPPY]Exactly! {x:cap}! You always say the nicest things."
+@rule core.disagree.sb_x_sunbeam guard: type=sweet_sunbeam act: disagree
+  "Aww, I see {x} a little differently! But I still think you're lovely."
+  "Oh, hm, not {x}, I think! That's okay! We can both be happy!"
+@rule core.opine_pos.sb_x_sunbeam guard: type=sweet_sunbeam act: agree
+  "[HAPPY]I love {x} too! It makes me so happy, doesn't it?"
+  "[HAPPY]Yes! {x:cap} is the best! It's just the best!"
+@rule core.opine_neg.sb_x_sunbeam guard: type=sweet_sunbeam act: sympathize
+  "Aww, {x} is hard. Don't worry, I'll cheer you up! Here's a smile!"
+  "Oh, poor you, {x} sounds rough. I believe in you!"
+@rule core.change_topic.sb_x_sunbeam guard: type=sweet_sunbeam act: answer
+  "[HAPPY]Ooh, {x}! Yes! What a good idea!"
+  "[HAPPY]{x:cap}? I'd love to! Let's talk about that!"
+
+# ---- Dramatic Poet ----------------------------------------------------------------------------
+@rule core.tell.sb_x_poet guard: type=dramatic_poet act: backchannel
+  "Ah, {x}! A noble subject! Speak, and I shall weep with wonder!"
+  "{x:cap}! The very word is a drumbeat! Go on!"
+@rule core.agree.sb_x_poet guard: type=dramatic_poet act: agree
+  "Yes, {x}! You speak like a bard! We are of one verse!"
+  "Truly, {x}! My heart rings like a bell at your words!"
+@rule core.disagree.sb_x_poet guard: type=dramatic_poet act: disagree
+  "Never, {x}! Never! Though your argument is a lovely ruin!"
+  "Alas, {x}! We stand on opposite shores of this great sea!"
+@rule core.opine_pos.sb_x_poet guard: type=dramatic_poet act: agree
+  "Oh, {x}! The sweetest of themes! I'll write twelve stanzas!"
+  "Yes, {x} is a marvel! It sings to the soul like a sunrise!"
+@rule core.opine_neg.sb_x_poet guard: type=dramatic_poet act: sympathize
+  "Ah, {x}! A dark cloud upon the brow of our age! I weep!"
+  "Alas, {x}! The tragedy! Come, let us mourn it with music!"
+@rule core.change_topic.sb_x_poet guard: type=dramatic_poet act: answer
+  "{x:cap}! A fresh scene! The curtain rises anew!"
+  "Ah, a new theme, {x}! My quill trembles in anticipation!"
+
+# ---- Cheeky Charmer ----------------------------------------------------------------------------
+@rule core.tell.sb_x_charmer guard: type=cheeky_charmer act: backchannel
+  "Ooh, {x}. Do tell. I love gossip, and I'm very good at listening."
+  "{x:cap}? Go on, I'm all ears. Well, I'm all charm, but also ears."
+@rule core.agree.sb_x_charmer guard: type=cheeky_charmer act: agree
+  "Obviously, {x}. We have taste. Mine's just a bit better."
+  "Of course, {x}. You're clever. It runs in the room."
+@rule core.disagree.sb_x_charmer guard: type=cheeky_charmer act: disagree
+  "Wrong about {x}, but adorably so. Try again, I'll wait."
+  "Oh, {x}? I'd bet you a pie you're mistaken. Make it a good pie."
+@rule core.opine_pos.sb_x_charmer guard: type=cheeky_charmer act: agree
+  "{x:cap} is great, and I'd know. I'm a connoisseur."
+  "Love {x}. Great taste, yours and mine, as ever."
+@rule core.opine_neg.sb_x_charmer guard: type=cheeky_charmer act: sympathize
+  "Oh, {x} is dreadful. Don't worry, I'll charm you out of it."
+  "Ugh, {x}. Terrible. Come here, we'll make fun of it."
+@rule core.change_topic.sb_x_charmer guard: type=cheeky_charmer act: answer
+  "{x:cap}? Lovely, I can talk about anything. Mostly me, but also that."
+  "Sure, {x}. I'm good on any stage. Lead on."
+
+# ---- Diligent Helper ----------------------------------------------------------------------------
+@rule core.tell.sb_x_helper guard: type=diligent_helper act: backchannel
+  "Oh, {x}! Let me take notes. Please, go on."
+  "{x:cap}, I see. Is there anything I can do about it?"
+@rule core.agree.sb_x_helper guard: type=diligent_helper act: agree
+  "Yes, {x}! Exactly right. I'll put it on the list."
+  "Agreed on {x}. It's good to be on the same page, and a tidy one."
+@rule core.disagree.sb_x_helper guard: type=diligent_helper act: disagree
+  "Hm, I'm not sure about {x}. Let me double check, to be fair."
+  "Oh, I think {x} may be a little off. I'll explain, kindly."
+@rule core.opine_pos.sb_x_helper guard: type=diligent_helper act: agree
+  "I like {x}. It's very useful, in its way."
+  "Yes, {x} is good! Can I help you with some more?"
+@rule core.opine_neg.sb_x_helper guard: type=diligent_helper act: sympathize
+  "Oh, {x} is hard, isn't it? Let me help, even a little."
+  "Yes, {x}. It's a chore. We'll tackle it together."
+@rule core.change_topic.sb_x_helper guard: type=diligent_helper act: answer
+  "Of course, {x}. I'll just finish this thought, and I'm all yours."
+  "{x:cap}? Happy to. Is there anything you need from me?"
+
+# ---- Chill Adventurer ----------------------------------------------------------------------------
+@rule core.tell.sb_x_adventurer guard: type=chill_adventurer act: backchannel
+  "Cool, {x}. Go on, I like a story from the road."
+  "Oh, {x}! Sounds like a trail I'd walk. Tell me more."
+@rule core.agree.sb_x_adventurer guard: type=chill_adventurer act: agree
+  "Yeah, {x}. Same here. It's the best view from where I stand."
+  "Right on. {x:cap}, yes. Easy agreement, no map needed."
+@rule core.disagree.sb_x_adventurer guard: type=chill_adventurer act: disagree
+  "Hm, {x}? I'd go another way. No stress, though."
+  "Not sure about {x}, friend. There's more than one path."
+@rule core.opine_pos.sb_x_adventurer guard: type=chill_adventurer act: agree
+  "I like {x} too. It's a great way to spend an afternoon."
+  "{x:cap} is a good one. Better with a snack and a hill."
+@rule core.opine_neg.sb_x_adventurer guard: type=chill_adventurer act: sympathize
+  "Ah, {x}. Yeah, rough going. Let's take a break by the road."
+  "Oh, {x}. Bad stretch. Deep breath, we'll walk it off."
+@rule core.change_topic.sb_x_adventurer guard: type=chill_adventurer act: answer
+  "Sure, {x}. New trail, new view. Let's wander."
+  "{x:cap}? Nice detour. I'm in."
+
+# ---- Stern Captain ----------------------------------------------------------------------------
+@rule core.tell.sb_x_captain guard: type=stern_captain act: backchannel
+  "Report on {x}, heard. Continue, and be brief."
+  "{x:cap}. Noted. Go on, I'm listening, at attention."
+@rule core.agree.sb_x_captain guard: type=stern_captain act: agree
+  "Correct, {x}. Well said. You've the makings of a sergeant."
+  "Agreed on {x}. Good. That's one thing settled."
+@rule core.disagree.sb_x_captain guard: type=stern_captain act: disagree
+  "Negative on {x}. I'll hear your argument, but it'll need to be good."
+  "No, {x} is not so. Explain yourself, politely, at pace."
+@rule core.opine_pos.sb_x_captain guard: type=stern_captain act: agree
+  "{x:cap} is acceptable. Better than acceptable. I'll say good."
+  "Yes, {x} has my approval. Don't let it go to your head."
+@rule core.opine_neg.sb_x_captain guard: type=stern_captain act: sympathize
+  "{x:cap} is a hard post. Stand firm, we'll manage."
+  "Yes, {x} is a hardship. Chin up, we endure it together."
+@rule core.change_topic.sb_x_captain guard: type=stern_captain act: answer
+  "Very well, {x}. Next order of business. Proceed."
+  "{x:cap}? Understood. Moving on, smartly."
+
+# ---- Wild Card ----------------------------------------------------------------------------
+@rule core.tell.sb_x_wild guard: type=wild_card act: backchannel
+  "{x:cap}! Boop, or hm, or a squeak! Go on!"
+  "Ooh, {x}! Is that a secret? It sounds like a secret, tell me!"
+@rule core.agree.sb_x_wild guard: type=wild_card act: agree
+  "Yes, {x}! Or no, or both! I agree with everything!"
+  "{x:cap}! Absolutely, or maybe, whichever! Yes!"
+@rule core.disagree.sb_x_wild guard: type=wild_card act: disagree
+  "No, {x}! Or yes, I'm flipping a coin! It says no!"
+  "Hm, {x}? I disagree! Or I do now, I might change my mind."
+@rule core.opine_pos.sb_x_wild guard: type=wild_card act: agree
+  "{x:cap} is great! Or it's a hat! Either way, I like it!"
+  "I love {x}! It reminds me of a very nice noise!"
+@rule core.opine_neg.sb_x_wild guard: type=wild_card act: sympathize
+  "Ew, {x}! Or yay, {x}, no, ew! I'm with you!"
+  "{x:cap} is the worst! Or second worst, after Wednesdays!"
+@rule core.change_topic.sb_x_wild guard: type=wild_card act: answer
+  "{x:cap}! Yes, or not! Let's go anyway!"
+  "Ooh, {x}! A turn, a twist, a swerve! I'm in!"
+
+# ---- Eager Go-Getter ----------------------------------------------------------------------------
+@rule core.tell.sb_x_goget guard: type=eager_go_getter act: backchannel
+  "{x:cap}! Great! Tell me, and then let's do something about it!"
+  "Oh, {x}! Good stuff. Keep going, I'm taking notes on my arm."
+@rule core.agree.sb_x_goget guard: type=eager_go_getter act: agree
+  "Yes, {x}! Exactly! Let's make it happen, today, now!"
+  "Agreed on {x}! That's the energy! What's the first step?"
+@rule core.disagree.sb_x_goget guard: type=eager_go_getter act: disagree
+  "Hm, {x}? I see it differently! Let's debate it, quickly!"
+  "No, {x}! But I like your spirit! Make your case!"
+@rule core.opine_pos.sb_x_goget guard: type=eager_go_getter act: agree
+  "I love {x}! It's got such potential! Let's go for it!"
+  "{x:cap} is brilliant! We should start immediately!"
+@rule core.opine_neg.sb_x_goget guard: type=eager_go_getter act: sympathize
+  "Yes, {x} is rough! But we can beat it! One step at a time!"
+  "Oh, {x}, setback! Not a stop! We'll fix it together!"
+@rule core.change_topic.sb_x_goget guard: type=eager_go_getter act: answer
+  "{x:cap}! New goal! Let's go, let's go!"
+  "Yes, {x}! Next up! I'm so ready!"
+
+# ---- Bubbly Sparkler ----------------------------------------------------------------------------
+@rule core.tell.sb_x_bubbly guard: type=bubbly_sparkler act: backchannel
+  "[HAPPY]Ooh, {x}! Sparkle sparkle! Tell me more!"
+  "[HAPPY]{x:cap}? I'm all fizzy! Go on, go on!"
+@rule core.agree.sb_x_bubbly guard: type=bubbly_sparkler act: agree
+  "[HAPPY]Yes, {x}! Sooo true! We sparkle the same way!"
+  "[HAPPY]Exactly! {x:cap}! I'm all bubbly with agreement!"
+@rule core.disagree.sb_x_bubbly guard: type=bubbly_sparkler act: disagree
+  "Ooh, {x}? I don't think so! But I'll sparkle through it!"
+  "Hmm, not {x}, I think! But let's keep fizzing!"
+@rule core.opine_pos.sb_x_bubbly guard: type=bubbly_sparkler act: agree
+  "[HAPPY]I adore {x}! It's so sparkly! Ahh!"
+  "[HAPPY]{x:cap} is the best! I'm popping with joy!"
+@rule core.opine_neg.sb_x_bubbly guard: type=bubbly_sparkler act: sympathize
+  "Aww, {x} is a flat one! I'll fizz you back up!"
+  "Oh no, {x}! Here, have a sparkle, it helps!"
+@rule core.change_topic.sb_x_bubbly guard: type=bubbly_sparkler act: answer
+  "[HAPPY]{x:cap}! Oooh, yes, pop! New fun!"
+  "[HAPPY]Yay, {x}! I'm bubbling over!"
+
+# ---- Fiery Leader ----------------------------------------------------------------------------
+@rule core.tell.sb_x_leader guard: type=fiery_leader act: backchannel
+  "{x:cap}! Good, I'm listening. Give me the plan."
+  "Right, {x}. Go on, and don't leave out the important bits."
+@rule core.agree.sb_x_leader guard: type=fiery_leader act: agree
+  "Yes, {x}! That's the spirit! Follow me, and we'll make it real!"
+  "Agreed on {x}! Finally, a person who gets it!"
+@rule core.disagree.sb_x_leader guard: type=fiery_leader act: disagree
+  "No, {x}! I'll hear you out, but I won't budge easily!"
+  "I disagree on {x}! Loudly! But with respect!"
+@rule core.opine_pos.sb_x_leader guard: type=fiery_leader act: agree
+  "{x:cap} is worth fighting for! I'm with you!"
+  "Yes, {x} is great! Let's lift it high, for all to see!"
+@rule core.opine_neg.sb_x_leader guard: type=fiery_leader act: sympathize
+  "{x:cap}! Yes, a curse! But we'll rally and beat it!"
+  "I know, {x} is a pain! Stand tall, we've got this!"
+@rule core.change_topic.sb_x_leader guard: type=fiery_leader act: answer
+  "Very well, {x}. Next battle! Let's go!"
+  "{x:cap}? Good. Let's turn the town to it!"
+
+# ---- Chaos Goblin ----------------------------------------------------------------------------
+@rule core.tell.sb_x_chaos guard: type=chaos_goblin act: backchannel
+  "Ooh, {x}! Tell me! I'll use it for something, nothing bad, ish."
+  "{x:cap}? Delicious. I mean interesting, go on."
+@rule core.agree.sb_x_chaos guard: type=chaos_goblin act: agree
+  "Yes, {x}! Let's do something about it! Something sticky!"
+  "Agreed on {x}! I have ideas, several. Don't ask about the jam."
+@rule core.disagree.sb_x_chaos guard: type=chaos_goblin act: disagree
+  "No, {x}! Wrong, in a way I like! Argue more!"
+  "I disagree, {x}! It'll be fun, probably, mostly!"
+@rule core.opine_pos.sb_x_chaos guard: type=chaos_goblin act: agree
+  "I love {x}! I'd put it in a bucket! In a nice way!"
+  "{x:cap} is brilliant! I'm going to do things to it! Good things!"
+@rule core.opine_neg.sb_x_chaos guard: type=chaos_goblin act: sympathize
+  "Ugh, {x}! I'd throw it in the pond, metaphorically, mostly!"
+  "Yes, {x} is the worst! We should prank it! Gently!"
+@rule core.change_topic.sb_x_chaos guard: type=chaos_goblin act: answer
+  "{x:cap}! Yes! A new thing to poke!"
+  "Ooh, {x}! Let's go, I've got snacks and a plan!"

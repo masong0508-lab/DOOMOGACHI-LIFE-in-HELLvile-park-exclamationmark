@@ -1,0 +1,234 @@
+# core/data/talk/grammar/en/surf_b_mood.tlk - the chat flow acts answered by mood, naming the topic
+# (owner: TK; T5b package T5B-SURF2, Surface push B). Six moods (happy, sad, angry, scared, tired,
+# weird; "ok" keeps the plain banks) times twelve acts, two lines each, every line says the topic
+# ({x}, so the rule needs a topic). Clean in any room: no register word, no romance, no cool act, a
+# grief topic never reaches these (the grief bank takes it). Rule names start with sb_m_.
+# Syntax: core/tools/talkc_gen.py.
+
+# ---- happy ------------------------------------------------------------------------------------
+@rule core.tell.sb_m_happy guard: mood=happy act: backchannel
+  "[HAPPY]Ooh, {x}! I'm in such a good mood, tell me everything!"
+  "[HAPPY]{x:cap}! Yes! Today is a day for hearing about it."
+@rule core.agree.sb_m_happy guard: mood=happy act: agree
+  "[HAPPY]Yes, {x}! I'm so cheerful, I'd agree with anything. But this especially."
+  "[HAPPY]Exactly! {x:cap} and a good mood, what more is there?"
+@rule core.disagree.sb_m_happy guard: mood=happy act: disagree
+  "Ha, no, not about {x}! But I'm too happy to argue, so tell me why."
+  "I disagree about {x}, but cheerfully! It's a happy disagreement."
+@rule core.joke.sb_m_happy guard: mood=happy act: laugh
+  "[HAPPY]Ha! {x:cap}! That's funny, everything's funny today!"
+  "[HAPPY]Hahaha! Oh, {x}. You always get me when I'm in a good mood."
+@rule core.laugh.sb_m_happy guard: mood=happy act: laugh
+  "[HAPPY]Hee hee! Are we laughing about {x}? I'm laughing about {x}!"
+  "[HAPPY]Ha ha! Say {x} again, it makes me giggle!"
+@rule core.opine_pos.sb_m_happy guard: mood=happy act: agree
+  "[HAPPY]I love {x} too! Everything's wonderful today, even {x}!"
+  "[HAPPY]Yes! {x:cap} is great! Don't mind me, I'm just glowing."
+@rule core.opine_neg.sb_m_happy guard: mood=happy act: sympathize
+  "Aww, {x} gets you down? I'll cheer you up. I've got plenty of cheer today."
+  "Oh, {x} is bad? Hm. Well, I'm in a good mood, take some of it."
+@rule core.change_topic.sb_m_happy guard: mood=happy act: answer
+  "[HAPPY]Ooh, {x}, sure! I'm happy to talk about anything today!"
+  "[HAPPY]{x:cap}? Yes, let's! My head is full of sunshine and ideas."
+@rule core.answer.sb_m_happy guard: mood=happy act: backchannel
+  "[HAPPY]Oh, so that's {x}! Wonderful! Thank you for telling me!"
+  "[HAPPY]Great answer! {x:cap}, who knew? I did not, and I'm delighted."
+@rule core.continue.sb_m_happy guard: mood=happy act: tell
+  "[HAPPY]Where was I? Oh, yes, {x}! It's my favourite thing to ramble about today."
+  "[HAPPY]Right, {x}! Let me tell you, I'm feeling very chatty."
+@rule core.gossip.sb_m_happy guard: mood=happy act: backchannel
+  "[HAPPY]Oooh, gossip about {x}! I'm too happy to judge. Tell me more!"
+  "[HAPPY]Ha! {x:cap}? That's delicious, in a nice way."
+@rule core.backchannel.sb_m_happy guard: mood=happy act: tell
+  "[HAPPY]You know what I was thinking about? {x:cap}! It makes me smile."
+  "[HAPPY]Mm-hm! Speaking of {x}, I had such a good day."
+
+# ---- sad ------------------------------------------------------------------------------------
+@rule core.tell.sb_m_sad guard: mood=sad act: backchannel
+  "Oh. {x:cap}. I'm a bit low, but go on, I'm listening."
+  "Mm. {x:cap}, huh. Tell me, it might cheer me up."
+@rule core.agree.sb_m_sad guard: mood=sad act: agree
+  "Yeah, {x}. At least we agree on something. That's nice."
+  "Mm, you're right about {x}. I'm glad someone's on my side today."
+@rule core.disagree.sb_m_sad guard: mood=sad act: disagree
+  "I don't think so, about {x}. Sorry. I'm just not feeling it today."
+  "Oh, no. Not {x}. I'd say more, but I'm out of cheer."
+@rule core.joke.sb_m_sad guard: mood=sad act: laugh
+  "Heh, {x}. That actually helped. Thank you."
+  "Ha, a small one. A little laugh about {x}. I needed that."
+@rule core.laugh.sb_m_sad guard: mood=sad act: laugh
+  "Heh. Okay, {x} is a bit funny. Thanks for that."
+  "Hee... sorry, it's been a gloomy day. {x:cap} helps."
+@rule core.opine_pos.sb_m_sad guard: mood=sad act: agree
+  "Mm, {x} is nice. I'd feel it more if I weren't a bit sad."
+  "You like {x}? Good. Someone should, I'll try, too."
+@rule core.opine_neg.sb_m_sad guard: mood=sad act: sympathize
+  "Yeah, {x} is rough. We can be sad about it together."
+  "Oh, {x}. I get it. Some days it's a lot."
+@rule core.change_topic.sb_m_sad guard: mood=sad act: answer
+  "{x:cap}? Okay. A new subject might do me good."
+  "Sure, let's talk about {x}. Anything but my mood."
+@rule core.answer.sb_m_sad guard: mood=sad act: backchannel
+  "Oh, {x}. Thanks. That's good to know, on a grey day."
+  "I see. So it's {x}. Thanks for telling me."
+@rule core.continue.sb_m_sad guard: mood=sad act: tell
+  "Where was I? {x:cap}. I'll keep going, it takes my mind off things."
+  "Right, {x}. Sorry, I'm a little slow today."
+@rule core.gossip.sb_m_sad guard: mood=sad act: backchannel
+  "Oh, {x}? I don't have the heart for gossip today. But go on."
+  "Mm. {x:cap}. Tell me, I could use a distraction."
+@rule core.backchannel.sb_m_sad guard: mood=sad act: tell
+  "I was thinking about {x}. It's a gentle thought. A bit sad."
+  "Mm-hm. Funny, I was just thinking of {x}. Quietly."
+
+# ---- angry ------------------------------------------------------------------------------------
+@rule core.tell.sb_m_angry guard: mood=angry act: backchannel
+  "{x:cap}? Hmph, fine. Go on, but don't push it, I'm cross."
+  "Right. {x:cap}. Say it quickly, I'm in a mood."
+@rule core.agree.sb_m_angry guard: mood=angry act: agree
+  "Yes! {x:cap}! Finally, something I'm not angry about."
+  "Right? {x:cap}, exactly. Good, we're on the same side today."
+@rule core.disagree.sb_m_angry guard: mood=angry act: disagree
+  "No! Not {x}! I'm already cross, don't make it worse!"
+  "Wrong about {x}! Wrong! Sorry, I'm in a mood, but also wrong."
+@rule core.joke.sb_m_angry guard: mood=angry act: laugh
+  "Ha! Hmph, {x}. Don't think it fixed my mood."
+  "Heh! I'm furious, and that's still funny. Annoying."
+@rule core.laugh.sb_m_angry guard: mood=angry act: laugh
+  "Hmph, what's so funny about {x}? ...Heh. Okay, a bit."
+  "Don't laugh at me. Heh. Okay, laugh at {x}."
+@rule core.opine_pos.sb_m_angry guard: mood=angry act: agree
+  "Yes, {x} is good! It's the only good thing today!"
+  "Fine, {x} is nice. I'm just angry at everything else."
+@rule core.opine_neg.sb_m_angry guard: mood=angry act: sympathize
+  "{x:cap}! Ugh, I know! It makes me furious too!"
+  "Yes, {x} is the worst! Finally, someone as cross as me."
+@rule core.change_topic.sb_m_angry guard: mood=angry act: answer
+  "Fine, {x}. Anything's better than what I was stewing on."
+  "{x:cap}? Hmph, okay. At least that's something new to be cross about."
+@rule core.answer.sb_m_angry guard: mood=angry act: backchannel
+  "So it's {x}. Hmph, I'll live. Angrily."
+  "{x:cap}, huh. Fine, thanks. I'm still cross, though."
+@rule core.continue.sb_m_angry guard: mood=angry act: tell
+  "As I was saying, about {x}, and I'm still angry, so listen."
+  "Right, {x}. Where was I? Right, getting cross."
+@rule core.gossip.sb_m_angry guard: mood=angry act: backchannel
+  "{x:cap}? Hmph, tell me. I'm in the mood for a good grumble."
+  "Gossip about {x}? Fine. I'm furious, I'll be a good audience."
+@rule core.backchannel.sb_m_angry guard: mood=angry act: tell
+  "I've been stewing about {x}, if you want to know. Don't ask."
+  "Mm-hm. Hmph. Speaking of {x}, let me vent a little."
+
+# ---- scared ------------------------------------------------------------------------------------
+@rule core.tell.sb_m_scared guard: mood=scared act: backchannel
+  "{x:cap}? Oh, no, is it scary? Tell me gently."
+  "O-oh, {x}. Okay, go on. I'm listening, from behind this chair."
+@rule core.agree.sb_m_scared guard: mood=scared act: agree
+  "Yes, yes, {x}! Please agree with me, it's comforting."
+  "Y-yes, exactly, {x}. I'm glad you said it, I feel safer."
+@rule core.disagree.sb_m_scared guard: mood=scared act: disagree
+  "Oh, um, I don't think so about {x}. Sorry! Sorry!"
+  "N-no? About {x}? I'd argue, but I'm a bit shaky."
+@rule core.joke.sb_m_scared guard: mood=scared act: laugh
+  "Ha! Oh, thank goodness. {x:cap} is funny, I needed that."
+  "Hee, h-hee. Funny, {x}. My nerves are laughing."
+@rule core.laugh.sb_m_scared guard: mood=scared act: laugh
+  "Hee! Okay, that helps. Let's keep laughing about {x}."
+  "Ha, ha. Oh, good. Laughing makes {x} less scary."
+@rule core.opine_pos.sb_m_scared guard: mood=scared act: agree
+  "Yes, {x} is nice! A nice thing. Good, normal."
+  "Oh, I like {x} too. It's a safe sort of thing."
+@rule core.opine_neg.sb_m_scared guard: mood=scared act: sympathize
+  "Oh, {x} is awful, isn't it? I'm scared of that too."
+  "Yes, {x}. I know. It gives me the shivers."
+@rule core.change_topic.sb_m_scared guard: mood=scared act: answer
+  "{x:cap}? Yes, please! Anything but what I was thinking about."
+  "Sure, {x}. A new subject is good. A calm one."
+@rule core.answer.sb_m_scared guard: mood=scared act: backchannel
+  "Oh, so it's {x}, okay. That's not so scary. Thanks."
+  "{x:cap}? Good. I thought it'd be worse, thank you."
+@rule core.continue.sb_m_scared guard: mood=scared act: tell
+  "Where was I? {x:cap}. I'll keep talking, it calms me down."
+  "Um, {x}. Right. Please don't leave, I'm talking to stay brave."
+@rule core.gossip.sb_m_scared guard: mood=scared act: backchannel
+  "Oh, {x}? Okay. Tell me, but nothing scary, please."
+  "Gossip about {x}? I'd like that. It's a nice distraction."
+@rule core.backchannel.sb_m_scared guard: mood=scared act: tell
+  "I was thinking of {x}. It's calming. Please keep nodding."
+  "Mm-hm. Um. Speaking of {x}, could we stay close together?"
+
+# ---- tired ------------------------------------------------------------------------------------
+@rule core.tell.sb_m_tired guard: mood=tired act: backchannel
+  "Mmm. {x:cap}. Go on, I'm listening, mostly."
+  "{x:cap}? Okay, tell it slowly. I'm very tired."
+@rule core.agree.sb_m_tired guard: mood=tired act: agree
+  "Mm, yes. {x:cap}. I agree, but I'll say so quietly."
+  "Yes, {x}. Right. Sorry, I'm a bit sleepy."
+@rule core.disagree.sb_m_tired guard: mood=tired act: disagree
+  "Mm, no, not {x}. I'd explain, but I'm so tired."
+  "Hm. I don't think so, about {x}. Let me sleep on it."
+@rule core.joke.sb_m_tired guard: mood=tired act: laugh
+  "Heh, {x}. Good one. I'm too tired to laugh properly."
+  "Ha, mm. Funny. I'll laugh again after a nap."
+@rule core.laugh.sb_m_tired guard: mood=tired act: laugh
+  "Heh. Okay, {x} is funny. In a sleepy way."
+  "Hee... mm. Sorry, my laugh is a bit slow today."
+@rule core.opine_pos.sb_m_tired guard: mood=tired act: agree
+  "Mm, {x} is nice. Nicer when I'm rested."
+  "Yes, {x}. Lovely. I'd say more, but yawn."
+@rule core.opine_neg.sb_m_tired guard: mood=tired act: sympathize
+  "Ugh, {x}. Yes. It's exhausting just to think about."
+  "Oh, {x}. I get it. I'm too tired to be annoyed, even."
+@rule core.change_topic.sb_m_tired guard: mood=tired act: answer
+  "{x:cap}? Sure. As long as I can sit for it."
+  "Okay, {x}. I'll try to keep my eyes open."
+@rule core.answer.sb_m_tired guard: mood=tired act: backchannel
+  "Oh, {x}. Right. Thanks, mm."
+  "Okay, so, {x}. Got it, probably. I'm tired."
+@rule core.continue.sb_m_tired guard: mood=tired act: tell
+  "Where was I? {x:cap}. Right, give me a second."
+  "Mm, {x}. Yes. I'll keep going, if I stay awake."
+@rule core.gossip.sb_m_tired guard: mood=tired act: backchannel
+  "{x:cap}? Mm. Tell me, but keep it short, I'm sleepy."
+  "Gossip about {x}? Okay. I'll listen with one eye."
+@rule core.backchannel.sb_m_tired guard: mood=tired act: tell
+  "Mm. Funny, I was just thinking about {x}, in a half dream."
+  "Yes, yes. Speaking of {x}, I had a very sleepy thought."
+
+# ---- weird ------------------------------------------------------------------------------------
+@rule core.tell.sb_m_weird guard: mood=weird act: backchannel
+  "{x:cap}? Strange. I was just thinking of the colour of it."
+  "Hm, {x}. The air feels odd today. Go on, though."
+@rule core.agree.sb_m_weird guard: mood=weird act: agree
+  "Yes, {x}! Also, the walls are listening. Anyway, we agree."
+  "Exactly! {x:cap}! Everything feels like a dream, but we agree."
+@rule core.disagree.sb_m_weird guard: mood=weird act: disagree
+  "No, not {x}. Well, maybe. Today I disagree with the clouds, too."
+  "Hm, {x}? I don't think so. I feel very tilted today."
+@rule core.joke.sb_m_weird guard: mood=weird act: laugh
+  "Ha! {x:cap}! I laughed in a colour, it was green."
+  "Hee! {x:cap}! That's the funniest thing since lunch, which didn't happen."
+@rule core.laugh.sb_m_weird guard: mood=weird act: laugh
+  "Hee! I don't know why we're laughing about {x}, but I love it."
+  "Ha! The room is laughing too. {x:cap}, indeed."
+@rule core.opine_pos.sb_m_weird guard: mood=weird act: agree
+  "Yes, {x} is good, in a sideways sort of way."
+  "I like {x}. I like it with a hat, today."
+@rule core.opine_neg.sb_m_weird guard: mood=weird act: sympathize
+  "Yes, {x} is bad. It smells like a Tuesday."
+  "Oh, {x}. I know. It's inside-out, isn't it?"
+@rule core.change_topic.sb_m_weird guard: mood=weird act: answer
+  "{x:cap}! Yes! I was thinking of that, or maybe a sandwich."
+  "Sure, {x}. My brain's a bit loose today. Let's see where it goes."
+@rule core.answer.sb_m_weird guard: mood=weird act: backchannel
+  "Oh, {x}. That explains the humming. Thank you."
+  "{x:cap}? So that's why my socks feel funny. Thanks."
+@rule core.continue.sb_m_weird guard: mood=weird act: tell
+  "Where was I? Oh, {x}. And a spoon, mostly {x}."
+  "Right, {x}. I'm in an odd mood, so bear with the details."
+@rule core.gossip.sb_m_weird guard: mood=weird act: backchannel
+  "Gossip about {x}? Yes! I heard it from a lamp, continue."
+  "Oh, {x}? Tell me, I'm in the right mood for nonsense."
+@rule core.backchannel.sb_m_weird guard: mood=weird act: tell
+  "Funny you nod. I was thinking about {x}, and the number four."
+  "Mm-hm. Speaking of {x}, it's a very odd day, isn't it?"
