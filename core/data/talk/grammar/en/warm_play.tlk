@@ -42,7 +42,7 @@
   "Heh heh. You young ones are quick. I like it."
 @rule core.joke.w_laugh_teen guard: teen&!kid_speaker act: laugh
   "Okay, that was actually funny. I'm so mad."
-  "Ha, I'm dead. Send help. {.}Not literally."
+  "Ha, you got me. I give up. {.}Well played."
   "Stop, that's so dumb. Do it again."
 @rule core.joke.w_laugh_kid guard: kid_speaker tags: kid act: laugh
   "Ha ha ha! That's the funniest. Tell it to my mom!"
@@ -60,7 +60,7 @@
   "Heh. That's almost as funny as the damned queue. Almost."
 @rule core.joke.w_laugh_ghost guard: ghost act: laugh
   "Oooh ha ha! I'm so tickled. I'm going to rattle."
-  "That's to die for. {.}Sorry. Old habit."
+  "That one is gold. {.}Sorry. Old habit."
 
 # ---- JOKE: joke back, tease, dismiss, mock, agree -------------------------------------------
 @rule core.joke.w_top act: joke
@@ -266,7 +266,7 @@
 @rule core.greet.w_feeling act: ask_feeling
   "Hi! How are you doing today? Really, how are you?"
   "Hey there. How's your day going so far?"
-  "Hello! You look good. Is everything good?"
+  "Hello! Is everything good?"
   "Hi, hi. Tell me everything. How are things?"
   "Good to see you. How've you been?"
 @rule core.greet.w_joke act: joke

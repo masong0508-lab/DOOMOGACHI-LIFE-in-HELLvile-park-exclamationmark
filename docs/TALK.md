@@ -795,7 +795,7 @@ voices by guard: polite, flat, blunt, loud, slow, quick, quirky, serious, elder,
 kid (tagged `kid`), mood, relationship, time of day, hellborn and ghost. Rules: at most
 3 sentences a line (an opener or a tag may add one, so most core lines have 1-2), at most
 one exclamation mark except loud and kid lines, no register word, no filler, no romance,
-nothing a kid may not hear. `TALK_en.BIN` 540,274 -> 569,238 B (PS1 non-resident data,
+nothing a kid may not hear. `TALK_en.BIN` 540,274 -> 569,233 B (PS1 non-resident data,
 no resident byte). No code change.
 
 **With K-10 (the TK3 landing)**: GRAMMAR 14,536 B and STRINGS 17,650 B

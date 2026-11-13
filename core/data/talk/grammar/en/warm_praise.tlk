@@ -51,7 +51,7 @@
 @rule core.compliment.w_thank_quick guard: quick act: thank
   "Thanks! Gotta go! Kidding."
   "Ooh, nice, thank you, you're lovely, anyway, hi."
-  "Aw thanks! I'd hug you but I'm mid-sentence."
+  "Aw thanks! I'd high five you but I'm mid-sentence."
 @rule core.compliment.w_thank_elder guard: elder act: thank
   "Well, that's the nicest thing since the last nice thing."
   "Bless you. At my age, nobody says that. Say it again."
@@ -234,7 +234,7 @@
 
 # ---- THANK: replies to the player's thanks --------------------------------------------------
 @rule core.thank.w_answer act: answer
-  "My pleasure. I'll bill you later. In hugs."
+  "My pleasure. I'll let you owe me one."
   "You're welcome. Don't mention it. Seriously, don't."
   "Anytime, friend. Or at least until my break."
   "Glad I could help. I'd do it again for a muffin."
