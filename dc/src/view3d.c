@@ -388,13 +388,19 @@ static void emit_cell(int cx, int cy)
         for (k = 0; k < 4; k++) {
             int nx = cx + nb[k][0], ny = cy + nb[k][1], ntop;
             const DoomoCell *n;
-            if (!in_map(nx, ny)) continue;
+            if ((k == 0 && s_ey <= Y0) || (k == 1 && s_ex >= X1) || (k == 2 && s_ey >= Y1) || (k == 3 && s_ex <= X0))
+                continue;
+            if (!in_map(nx, ny)) {
+                /* past the map's edge the reference has a solid block of texture 1 (map_cell_safe) that
+                 * rises 256 units above the roof the ray went over: a wall at the edge, picture and all */
+                vface(cx + nb[k][2], cy + nb[k][3], cx + nb[k][4], cy + nb[k][5], top, top + 256, 1,
+                      light - (k == 0 || k == 2), 0);
+                continue;
+            }
             n = &M->cells[ny * M->w + nx];
             if (!n->wall) continue;
             ntop = roof_top(n, nx, ny);
             if (ntop <= top) continue;
-            if ((k == 0 && s_ey <= Y0) || (k == 1 && s_ex >= X1) || (k == 2 && s_ey >= Y1) || (k == 3 && s_ex <= X0))
-                continue;
             vface(cx + nb[k][2], cy + nb[k][3], cx + nb[k][4], cy + nb[k][5], top, ntop, n->wall,
                   light - (k == 0 || k == 2), 0);
         }

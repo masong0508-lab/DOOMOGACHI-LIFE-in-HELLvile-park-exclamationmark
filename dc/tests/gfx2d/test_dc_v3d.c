@@ -40,9 +40,9 @@
 void ref_view3d(const DoomoView3D *v);
 
 #define TOL         40
-#define PARITY_MIN  0.75   /* measured 79.2% on 2026-11-13; the gap is listed in docs/DREAMCAST.md section 9 */
+#define PARITY_MIN  0.80   /* measured 85.6% (79.2% before the map-edge wall); see docs/DREAMCAST.md section 9 */
 #define FRAME_MIN   0.45   /* at most 3% of the level frames may be below it */
-#define PITCH_MIN   0.60
+#define PITCH_MIN   0.85   /* measured 90.1% (80.2% before the map-edge wall) */
 #define SPR_MIN     0.72   /* sprite rectangles (measured 79.1%), see test_sprites */
 #define SPR_FRAME_MIN 0.25
 #define SPR_PX_MIN  0.85   /* the sprites' own pixels (measured 90.5%; 77.9% with the exact rectangle off) */
@@ -165,7 +165,7 @@ static void test_parity(void)
                             png_write_rgb(nm, rgb, DC2D_W, DC2D_H);
                         }
                     }
-                    if (png && p < FRAME_MIN && !pitch && nbad < 40) {
+                    if (png && p < FRAME_MIN + (pitch ? 0.15 : 0.0) && nbad < 60) {
                         char nm[512];
                         snprintf(nm, sizeof(nm), "%s/v3d_bad%02d_m%d_%d_%d_h%dp%d_nat.png", png, nbad, maps[mi], cells[k][0], cells[k][1], hd, pitch);
                         nat_png_write(nm, nat_fb, nat_w, nat_h, 1);
@@ -182,11 +182,29 @@ static void test_parity(void)
            frames, sum / frames * 100.0, worst * 100.0, TOL);
     printf("parity: level views %d, mean %.1f%%; pitched (look up 120) views %d, mean %.1f%%; %d skipped (native frame empty)\n",
            ln, lsum / ln * 100.0, pn, psum / pn * 100.0, skipped);
-    CHECK(lowf * 100 <= ln * 3, "parity: %d of %d level frames below %.0f%%", lowf, ln, FRAME_MIN * 100.0);
+    CHECK(lowf * 100 <= ln, "parity: %d of %d level frames below %.0f%%", lowf, ln, FRAME_MIN * 100.0);
     printf("parity: %d level frames below %.0f%% (eyes beside a border block lower than their floor: docs/DREAMCAST.md)\n", lowf, FRAME_MIN * 100.0);
     CHECK(lsum / ln >= PARITY_MIN, "parity: level views mean %.1f%% below %.0f%%", lsum / ln * 100.0, PARITY_MIN * 100.0);
     CHECK(psum / pn >= PITCH_MIN, "parity: pitched views mean %.1f%% below %.0f%%", psum / pn * 100.0, PITCH_MIN * 100.0);
     CHECK(nodraw == 0, "parity: %d views saw no cell", nodraw);
+}
+
+/* an eye by the map's edge under the open sky looks out over a border block that is lower than the eye:
+ * the reference sees the solid block past the map (map_cell_safe) rise 256 units above it, a wall of
+ * texture 1; the sky stays above it. Without that wall these views were the sky colour, 0 % */
+static void test_edge_wall(void)
+{
+    static const int heads[2] = { 2, 3 };
+    int h;
+    for (h = 0; h < 2; h++) {
+        DoomoView3D v;
+        double p;
+        map_load(MAPID_PLUSHIE_FACTORY);
+        view_of(&v, 1, 1, heads[h], 0);
+        both(&v, rgb);
+        p = parity(rgb, 0, 0, DC2D_LW, DC2D_LH);
+        CHECK(p > 0.55, "edge wall: factory at 1,1 heading %d matches %.1f%%", heads[h], p * 100.0);
+    }
 }
 
 /* new textures per view are budgeted on the console; with none allowed a view still draws (the plain
@@ -565,11 +583,18 @@ int main(void)
     dc2d_view3d_remap_budget(100000);
     test_tintfit();
     if (getenv("DC6_ONLY") && !strcmp(getenv("DC6_ONLY"), "sprites")) {
+        test_edge_wall();
         test_sprites();
         printf("dc6 view3d tests: %d checks, %d failed\n", checks, fails);
         return fails ? 1 : 0;
     }
+    if (getenv("DC6_ONLY") && !strcmp(getenv("DC6_ONLY"), "parity")) {
+        test_parity();
+        printf("dc6 view3d tests: %d checks, %d failed\n", checks, fails);
+        return fails ? 1 : 0;
+    }
     test_parity();
+    test_edge_wall();
     test_sprites();
     test_tint();
     test_remap_budget();
