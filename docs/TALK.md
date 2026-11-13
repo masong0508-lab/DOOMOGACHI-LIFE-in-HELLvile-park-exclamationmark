@@ -1082,7 +1082,7 @@ regression guard). Regression test `talk_gen_possessive_hate_plural` (9,000
 exchanges with the spice topic, 0 hits and 0 safe lines; it covers the `{x:s}` runtime probe;
 also every resident's name with `'s` after it lints clean, since `{them}'s right` still spells
 the `'s` out). No code in `core/src`: no resident byte on any platform; this package does not
-change `TALK_en.BIN` (727,804 B on the landed tree). The name slots in `parts.tlk` and
+change `TALK_en.BIN` (755,772 B on the landed tree). The name slots in `parts.tlk` and
 `ask_answer.tlk` (`{them:cap}'s`, `{other}'s`) are not covered by TK12; the unit test checks every
 alive resident's name instead. A renamed or typed pet is the open gap.
 
@@ -1102,9 +1102,9 @@ Surface 767,799 distinct (Chao1 3,829,245; the 1,000,000 target is still missed,
 bank's size, not this package), Skeleton 719,360, Meaning 41,208, conversations 1,999,981
 distinct. (The 6d table below is the older starter-bank run.)
 
-Re-measured on the rebased tree (4,172+ alternatives, `TALK_en.BIN` 727,804 B, context tier only,
-2,000,000 contexts): quality failures 0 of 2,000,000, S3 lint hits 0, Surface 771,242 distinct
-(Chao1 3,865,270), Skeleton 722,513, Meaning 41,739; cool-kid 100.00% for all six acts at 20,000
+Re-measured on the rebased tree (5,536 alternatives, `TALK_en.BIN` 755,772 B, context tier only,
+2,000,000 contexts): quality failures 0 of 2,000,000, S3 lint hits 0, Surface 775,604 distinct
+(Chao1 3,875,800), Skeleton 727,340, Meaning 41,760; cool-kid 100.00% for all six acts at 20,000
 rooms each. The lead's earlier count was 5 Q6 failures and 7 S3 hits on a different tree and
 sample; on the tree this package started from it was 4 and 9 (all `spice`, one cause).
 
