@@ -834,7 +834,8 @@ static void work_poll(void)
     wk_ticks += n - wk_n0;
     if (w > TICK_BUDGET_US) {
         wk_over += n - wk_n0;
-        if (!quiet) printf("work: tick %u took %u us (over the 30 fps budget)\n", mb->ticks, w);
+        if (!quiet) printf("work: tick %u took %u us (over the 30 fps budget; 3D view %u us)\n",
+                          mb->ticks, w, mb->g3d_us);
     }
     if (w > wk_worst) {
         wk_worst = w;
@@ -1641,6 +1642,9 @@ int main(int argc, char **argv)
                "TA bytes max %u, polygons left out %u\n",
                mb->g3d_n, mb->g3d_us_sum / mb->g3d_n, mb->g3d_us_max, mb->g3d_polys,
                mb->g3d_polys_max, mb->g3d_bytes_max, mb->g3d_dropped);
+    if (mb && mb_up && mb->g3d_n && mb->g3d_dist_min)   /* DC6B: the tick's budget */
+        printf("dcrun: first-person views cut short by the tick's budget %u of %u, shortest ray distance %u cells\n",
+               mb->g3d_cut, mb->g3d_n, mb->g3d_dist_min);
     if (mb && mb_up && mb->room_n)      /* DC8: the house */
         printf("dcrun: house views %u drawn, mean %u us max %u us; shells %u (slowest %u us), "
                "sprites decoded %u, prims max %u\n",

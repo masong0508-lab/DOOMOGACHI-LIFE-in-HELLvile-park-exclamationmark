@@ -116,7 +116,13 @@ static int blob;                        /* the polygon samples the shadows' blob
 uint32_t swpvr_tris3d;
 
 void dc3d_be_draw(const DcFrame *f, const DcPrim *marker) { (void)f; (void)marker; }
-uint32_t dc3d_be_us(void) { return 0; }
+/* the clocks: 0, unless a test sets them. dc3d_test_step is added at every dc3d_be_us() call (a view
+ * reads the clock at its start and its end, so a view "costs" the step), dc3d_test_tick_us is the time
+ * since the tick began */
+uint32_t dc3d_test_step, dc3d_test_tick_us;
+static uint32_t test_clock;
+uint32_t dc3d_be_us(void) { test_clock += dc3d_test_step; return test_clock; }
+uint32_t dc3d_be_tick_us(void) { return dc3d_test_tick_us; }
 
 static int chan(uint32_t c, int k) { return (int)((c >> (24 - 8 * k)) & 255u); }   /* k: 0 a, 1 r, 2 g, 3 b */
 

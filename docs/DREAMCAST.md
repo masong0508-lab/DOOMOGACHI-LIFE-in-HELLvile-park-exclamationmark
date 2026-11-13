@@ -1761,7 +1761,7 @@ scripts on the merge base's CDI):
 - The texture upload of the shell (up to 256 KB through the store queues)
   inside one tick.
 
-## 9. The first-person view (DC6, part 1: the world)
+## 9. The first-person view (DC6, parts 1 and 2: the world, then the sprites)
 
 ```sh
 make dc-host-test        # includes dcv3d_test
@@ -1788,7 +1788,7 @@ its light and distance fade, its sky mapping. What the code does:
   the reference's dark stone. Tints use the native tintmap fit
   (`dc3d_tint_fit`, shared with the overworld). A view smaller than the
   screen is cut at its edges (`Dc3dCam.clip`). `DC6_V3D=dc` draws it in the
-  host runner. Billboards are a plain depth-tested rectangle for now.
+  host runner. Billboards: see "DC6B" below.
 - `dc3d_sort_from` found texture kinds by a linear scan; a view has a texture
   per light level, so it uses a small hash (256 kinds), checked by `test_sort`
   (100 and 300 textures: grouping, and the order left alone above 256).
@@ -1838,6 +1838,51 @@ data (budget 576 KB). Polygons against columns will never be pixel equal.
   and a real console.
 - No ticks, memory or PS1/GBA effect: all changes are under `dc/`; the
   tint fit moved from `overworld.c` to `dc3d.c` unchanged.
+
+**DC6B: billboards, the weapon, effects and the HUD (2026-11-13)**
+
+The core hands `plat_view3d` the enemies, pickups and props as `DoomoBillboard`s; the weapon in
+the player's hands, the muzzle flash, the hit marks and the HUD are 2D calls (`plat_image`,
+`plat_rect`, `plat_text`) that the core makes after the view, so they are drawn by the 2D layer on top
+of the view's segment and need nothing from `view3d.c` (the segment is the 2D list's earlier entry).
+What part 2 changed in `view3d.c`:
+
+- Billboards use the reference's integer rectangle (`raycast.c draw_sprite`: width and height
+  `(int)(size x focal / depth)`, the centre column and the top row truncated), doubled onto the 640x480
+  frame, and read their texture a quarter logical pixel back (the reference takes a texel at a pixel's
+  left edge, a polygon at its centre). Parity of the sprites' own pixels (the pixels the reference drew
+  them on; `test_sprites`): 77.9 % before, 90.5 % now. The colours are the reference's: the sprite
+  through the colormap of its whole light level (a remapped copy), `BB_FULLBRIGHT`, `BB_FLIPX`, the
+  palette's index 0 transparent, `BB_TRANSLUCENT` and the player's own body close to the camera at 50 %
+  alpha (the reference dithers every other pixel), `BB_SHADOW` as the blob.
+- The HUD over a sprite is equal to the pixel on both sides (97 % gate, measured 100 %): the 2D list is
+  drawn after the segment.
+- The map's edge: past it the reference has a solid block of texture 1 (`map_cell_safe`). A ray that went
+  over a low border block under the open sky hits it and sees a wall 256 units above the block, so an eye
+  by the edge of a sky map sees a wall, with the sky above it. `emit_cell` now draws that wall. This was
+  both open items of part 1 (the border-cell picture gap and the sky colour when looking up): host
+  parity, level views 79.2 -> 85.6 %, looking up 80.2 -> 90.1 %, level frames under 45 % 16 -> 1 of 788
+  (`test_edge_wall`: 19 % without it).
+- Texture budget for sprites: a sprite the cache does not have is uploaded inside a per-view budget
+  (`V3D_SPR_BUDGET`, 3 uploads or colormap copies); the rest wait a tick (`dc3d_stats.deferred`).
+  Nine uploads in one tick were a 38 ms tick (`test_sprite_budget`).
+- Visibility casts a ray per 4 logical pixels (`V3D_RAY_PX`, it was 2): the casting was 6-8 ms of the
+  13 ms a big view cost on Flycast; host parity moved by less than 1 point (numbers below).
+- The tick's budget (`view_budget`): the core's own work before the view varies (the demo bot's plan takes
+  16 ms on every 12th tick; the 30 fps budget is 33.3 ms, and the HUD, the PVR hand-off and the sound
+  after the view take about 5-7). The view costs about `K x distance` (K from the last views, a decaying
+  peak, with a 1.3 safety factor), so `dc3d_be_tick_us()` (the time since `plat_begin_frame`) sets how far
+  the rays go this tick: never over the draw distance, never under `DC_V3D_DIST_MIN` (10 cells). The fog
+  keeps the draw distance's scale, so only the cut moves, where the light is nearly out
+  (`test_tick_budget`). dcrun prints `first-person views cut short by the tick's budget N of M, shortest
+  ray distance D cells`. This is a first, small governor; DC6C owns `OPT_DRAW_DIST`, the combat detail
+  option and the real governor, and replaces it.
+
+Flycast (2026-11-13, `dcrun` on the nodebug ELF, the seven `dc/harness/scripts/breach_*.txt`, 1935 ticks
+each, the demo bot plays; ticks over 33.3 ms of emulated work), before -> after:
+see the table at the end of this block. Screenshots of the same scripts next to the native runner's:
+the evidence folder `DC6B/compare/` of the package (not in the repo).
+
 
 ## Rumble (X2)
 

@@ -546,6 +546,82 @@ static void test_sprites(void)
     CHECK(hsum / (hn ? hn : 1) >= 0.97, "sprites: the HUD over them matches only %.1f%%", hsum / (hn ? hn : 1) * 100.0);
 }
 
+/* the tick's budget (view3d.c view_budget): what is left of the 33 ms sets how far the rays go. The host
+ * clock is set by the test: every view "costs" dc3d_test_step, the tick has run dc3d_test_tick_us */
+extern uint32_t dc3d_test_step, dc3d_test_tick_us;
+static void test_tick_budget(void)
+{
+    DoomoView3D v;
+    int full, mid, low, n_mid, n_full, cut0;
+    map_load(MAPID_ARENA);
+    view_of(&v, doomo_map.w / 2, doomo_map.h / 2, 0, 0);
+    dc3d_test_step = 10000;                       /* a view costs 10 ms at the full distance: K = 312 us per cell */
+    dc3d_test_tick_us = 0;
+    both(&v, rgb);
+    both(&v, rgb);
+    full = dc3d_stats.cast_dist;
+    n_full = dc2d_view3d_cells();
+    CHECK(full == dc_view3d_dist(), "budget: an idle tick casts %d cells, the draw distance is %d", full, dc_view3d_dist());
+    cut0 = (int)dc3d_stats.cut_n;
+    dc3d_test_tick_us = 20000;                    /* 20 ms gone: 33.3 - 7 - 20 = 6.3 ms left, 1.3 x 312 us a cell: 15 cells */
+    dc3d_test_step = 15 * 312;                    /* (a shorter view costs less: the model stays at K = 312) */
+    both(&v, rgb);
+    mid = dc3d_stats.cast_dist;
+    CHECK(mid >= 14 && mid <= 16, "budget: 20 ms spent, the view casts %d cells (want about 15)", mid);
+    CHECK((int)dc3d_stats.cut_n == cut0 + 1, "budget: the cut view is counted");
+    dc3d_test_tick_us = 33000;                    /* nothing left: the shortest view */
+    dc3d_test_step = DC_V3D_DIST_MIN * 312;
+    both(&v, rgb);
+    low = dc3d_stats.cast_dist;
+    n_mid = dc2d_view3d_cells();
+    CHECK(low == DC_V3D_DIST_MIN, "budget: no time left, the view casts %d cells (want %d)", low, DC_V3D_DIST_MIN);
+    CHECK(n_mid < n_full, "budget: the shortest view sees %d cells, the full one %d", n_mid, n_full);
+    dc3d_test_tick_us = 0;
+    dc3d_test_step = 10000;
+    both(&v, rgb);
+    CHECK(dc3d_stats.cast_dist == full, "budget: the next idle tick is back at %d (%d)", full, (int)dc3d_stats.cast_dist);
+    dc3d_test_step = 0;
+    dc3d_test_tick_us = 0;
+}
+
+/* a sprite the cache has not seen costs an upload: a view makes at most V3D_SPR_BUDGET new ones, the rest
+ * wait a tick (nine uploads in one tick were a 38 ms tick on Flycast) */
+static void test_sprite_budget(void)
+{
+    static uint8_t pix[6][16 * 16];
+    static DoomoImage img[6];
+    static DoomoBillboard bb[6];
+    DoomoView3D v;
+    int i, d1, d2, k, x, y, ex = 0, ey = 0, found = 0;
+    map_load(MAPID_VAPE_CELLAR);
+    for (y = 2; y < doomo_map.h - 2 && !found; y++)
+        for (x = 2; x < doomo_map.w - 2 && !found; x++) {
+            if (!open_cell(&doomo_map, x, y)) continue;
+            view_of(&v, x, y, 0, 0);
+            if (line_clear(x, y, (float)fx_cos(v.angle) / 65536.0f, (float)fx_sin(v.angle) / 65536.0f, 200.0f)) { found = 1; ex = x; ey = y; }
+        }
+    CHECK(found, "sprite budget: no open line in the map");
+    for (i = 0; i < 6; i++) {
+        float fx = (float)fx_cos(v.angle) / 65536.0f, fy = (float)fx_sin(v.angle) / 65536.0f, dist = 70.0f + 25.0f * (float)i;
+        float lat = (float)(i - 3) * 8.0f;
+        for (k = 0; k < 16 * 16; k++) pix[i][k] = (uint8_t)(1 + (k + i) % 40);
+        img[i].w = 16; img[i].h = 16; img[i].pix = pix[i]; img[i].uid = doomo_image_new_uid();
+        bb[i].x = (fix16)(((float)(v.x / 65536) + fx * dist - fy * lat) * 65536.0f);
+        bb[i].y = (fix16)(((float)(v.y / 65536) + fy * dist + fx * lat) * 65536.0f);
+        bb[i].z = (fix16)(map_floor_z(&doomo_map, ex, ey) * 65536);
+        bb[i].img = &img[i]; bb[i].scale = 256; bb[i].flags = BB_FULLBRIGHT;
+    }
+    v.sprites = bb; v.sprite_count = 6; v.player_sprite = -1;
+    both(&v, rgb);
+    d1 = (int)dc3d_stats.deferred;
+    CHECK(d1 >= 3, "sprite budget: six new sprites in one view, %d waited (want at least 3)", d1);
+    both(&v, rgb);
+    both(&v, rgb);
+    d2 = (int)dc3d_stats.deferred;
+    both(&v, rgb);
+    CHECK((int)dc3d_stats.deferred == d2, "sprite budget: still waiting after three views (%d -> %d)", d2, (int)dc3d_stats.deferred);
+}
+
 static void test_tintfit(void)
 {
     int t, k;
@@ -582,6 +658,8 @@ int main(void)
     }
     dc2d_view3d_remap_budget(100000);
     test_tintfit();
+    test_tick_budget();
+    test_sprite_budget();
     if (getenv("DC6_ONLY") && !strcmp(getenv("DC6_ONLY"), "sprites")) {
         test_edge_wall();
         test_sprites();

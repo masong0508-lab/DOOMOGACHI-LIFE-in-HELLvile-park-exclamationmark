@@ -118,6 +118,9 @@ typedef struct Dc3dStats {
     uint32_t culled;                       /* polygons wholly off the viewport, total */
     uint32_t segs;                         /* segments built, total */
     uint32_t us_last, us_max, us_sum, us_n;/* build time of the views (console timer) */
+    uint32_t deferred;                     /* DC6B: sprites that waited a tick for their texture (the budget) */
+    uint32_t cut_n;                        /* DC6B: first-person views the tick's budget cut short */
+    uint16_t cast_dist, cast_min;          /* ... the last view's ray distance in cells, the shortest of all */
 } Dc3dStats;
 extern Dc3dStats dc3d_stats;
 
@@ -201,6 +204,7 @@ const Dc3dCam *dc2d_overworld_cam(void);            /* the last view's camera (t
  * textures through bank `bank`. */
 void dc3d_be_draw(const DcFrame *f, const DcPrim *marker);
 uint32_t dc3d_be_us(void);       /* a microsecond clock for the build times (host: 0) */
+uint32_t dc3d_be_tick_us(void);  /* ... and the time since this tick began (host: dc3d_test_tick_us) */
 
 /* The marker prim: mode DC2D_VIEW3D, color = segment, pad[0] = batch
  * slot, tex = DC2D_NOTEX (so the 2D layer's texture marks skip it), argb =

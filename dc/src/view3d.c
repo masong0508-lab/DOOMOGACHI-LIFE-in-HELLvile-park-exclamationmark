@@ -77,7 +77,7 @@
 #define CELL       DOOMO_CELL_UNITS
 #define MAXCELLS   (DOOMO_MAP_MAX_W * DOOMO_MAP_MAX_H)
 #ifndef V3D_RAY_PX
-#define V3D_RAY_PX 2                 /* logical pixels between two visibility rays */
+#define V3D_RAY_PX 4                 /* logical pixels between two visibility rays */
 #endif
 #define V3D_ZNEAR  4.0f              /* the player's radius is 14: a wall the eye
                                         leans on is never cut where it shows   */
@@ -92,7 +92,9 @@
 
 typedef struct Col { float r, g, b; } Col;
 
-static int s_view_dist = DC_V3D_DIST_MAX;
+static int s_view_dist = DC_V3D_DIST_MAX;    /* the draw distance (the fog's scale) */
+static int s_cast_dist = DC_V3D_DIST_MAX;    /* how far this view's rays go: the tick's budget cuts it (view_budget) */
+static float s_cost_k;                       /* us per cell of the last views (a decaying peak) */
 
 void dc_view3d_set_dist(int cells)
 {
@@ -206,7 +208,8 @@ typedef struct Face {
  * fit, or the texture's flat colour, for a frame or two; the rest come in the
  * next frames (the cache keeps them) */
 #define V3D_TEX_BUDGET 4
-static int s_tex_budget = V3D_TEX_BUDGET, s_new_tex;
+#define V3D_SPR_BUDGET 3        /* ... and the sprites' own: a first sighting of an enemy is a 1 ms upload, 9 in a tick was 38 ms */
+static int s_tex_budget = V3D_TEX_BUDGET, s_new_tex, s_new_spr;
 #ifdef DC2D_HOST
 void dc2d_view3d_remap_budget(int n) { s_tex_budget = n; }
 #endif
@@ -421,6 +424,25 @@ static void emit_cell(int cx, int cy)
     if (s_ex > X0) edge(cx - 1, cy, cx, cy + 1, cx, cy, fz, cz, sky, light);
 }
 
+/* ---- the tick's budget --------------------------------------------------------------------
+ * A tick has 33.3 ms; the core's own work before the view varies (a path search takes 16 ms on a
+ * tick of a bot's plan), and the HUD, the PVR hand-off and the sound after it take about 5. The
+ * view costs about K * dist (K from the last views, a decaying peak), so what is left of the
+ * tick sets how far the rays go; the fog stays at the draw distance, the cut is only where the
+ * light is out. The distance never goes under DC_V3D_DIST_MIN, and never over the draw distance. */
+#define V3D_TICK_US   33333
+#define V3D_AFTER_US  7000
+#define V3D_COST_EXP  1.0f
+#define V3D_COST_SAFE 1.3f     /* the estimate is a peak of the last views, a busier one costs more */
+static int view_budget(void)
+{
+    int left = V3D_TICK_US - V3D_AFTER_US - (int)dc3d_be_tick_us();
+    float d;
+    if (s_cost_k <= 0.0f) return s_view_dist;
+    d = left > 0 ? powf((float)left / (s_cost_k * V3D_COST_SAFE), 1.0f / V3D_COST_EXP) : 0.0f;
+    return d >= (float)s_view_dist ? s_view_dist : d < (float)DC_V3D_DIST_MIN ? DC_V3D_DIST_MIN : (int)d;
+}
+
 /* ---- visibility ---------------------------------------------------------------------- */
 static void mark(int cx, int cy)
 {
@@ -443,10 +465,10 @@ static void cast(float rdx, float rdy, float sb, float st, float eps)
     float px = s_ex / CELL, py = s_ey / CELL;
     int mx = (int)floorf(px), my = (int)floorf(py);
     float ddx = rdx != 0.0f ? fabsf(1.0f / rdx) : V3D_BIG, ddy = rdy != 0.0f ? fabsf(1.0f / rdy) : V3D_BIG;
-    int stx = rdx < 0.0f ? -1 : 1, sty = rdy < 0.0f ? -1 : 1, step, steps = 2 * s_view_dist + 4;
+    int stx = rdx < 0.0f ? -1 : 1, sty = rdy < 0.0f ? -1 : 1, step, steps = 2 * s_cast_dist + 4;
     float sdx = rdx < 0.0f ? (px - (float)mx) * ddx : ((float)(mx + 1) - px) * ddx;
     float sdy = rdy < 0.0f ? (py - (float)my) * ddy : ((float)(my + 1) - py) * ddy;
-    float cur_f, cur_c, tmax = (float)s_view_dist;
+    float cur_f, cur_c, tmax = (float)s_cast_dist;
     int cur_sky;
     if (in_map(mx, my) && !M->cells[my * M->w + mx].wall) {
         const DoomoCell *c = &M->cells[my * M->w + mx];
@@ -632,9 +654,16 @@ static void billboard(const DoomoView3D *view, int idx, float depth)
     int slot, lv, cx = (int)floorf(x / CELL), cy = (int)floorf(y / CELL);
     if (sx1 <= cam.vx0 || sx0 >= cam.vx1 || sy1 <= cam.vy0 || sy0 >= cam.vy1) { dc3d_stats.culled++; return; }
     if (sw < 1 || sh < 1 || sw > 4 * DC2D_LW || sh > 4 * DC2D_LH) return;
+    /* a sprite the cache does not have yet is made inside the budget, else it waits a tick (nobody sees
+     * an enemy come in a 30th of a second late; nine uploads in one tick were a 38 ms tick) */
+    slot = dc2d_tex_image_new(img, 0);
+    if (slot < 0) {
+        if (s_new_spr >= V3D_SPR_BUDGET) { dc3d_stats.deferred++; return; }
+        s_new_spr++;
+        slot = dc2d_tex_image_new(img, 1);
+        if (slot < 0) return;
+    }
     if (b->flags & BB_SHADOW) shadow(x, y, z + 1.0f, w * 0.375f + 2.0f);
-    slot = dc2d_tex_image(img);
-    if (slot < 0) return;
     /* the reference's colours: the sprite through the colormap of its
      * whole light level (a remapped copy; the plain image when there is
      * no room, darkened by the level's fitted factor) */
@@ -646,7 +675,8 @@ static void billboard(const DoomoView3D *view, int idx, float depth)
     lv = (int)(level + 0.5f);
     argb = pack_rgb(255.0f * s_tmul.r, 255.0f * s_tmul.g, 255.0f * s_tmul.b);
     if (lv < DOOMO_LIGHT_LEVELS - 1) {
-        int r = dc2d_tex_remap(slot, lv, doomo_colormap[lv]);
+        int r = dc2d_tex_remap(slot, lv, NULL);              /* a copy the cache has */
+        if (r < 0 && s_new_spr < V3D_SPR_BUDGET) { s_new_spr++; r = dc2d_tex_remap(slot, lv, doomo_colormap[lv]); }
         if (r >= 0) slot = r;
         else argb = pack_rgb(255.0f * s_fit[lv].r * s_tmul.r, 255.0f * s_fit[lv].g * s_tmul.g, 255.0f * s_fit[lv].b * s_tmul.b);
     }
@@ -681,7 +711,7 @@ static void billboard(const DoomoView3D *view, int idx, float depth)
 static void billboards(const DoomoView3D *view)
 {
     int i, n = 0, count = DOOMO_MIN(view->sprite_count, V3D_MAX_SPRITES);
-    float maxd = (float)(s_view_dist * CELL);
+    float maxd = (float)(s_cast_dist * CELL);
     for (i = 0; i < count; i++) {
         const DoomoBillboard *b = &view->sprites[i];
         float d, x, y;
@@ -728,6 +758,7 @@ void plat_view3d(const DoomoView3D *v)
     }
     t0 = dc3d_be_us();
     s_new_tex = 0;
+    s_new_spr = 0;
     M = v->map;
     s_time = v->time;
     if (++s_stamp == 0) {
@@ -784,6 +815,9 @@ void plat_view3d(const DoomoView3D *v)
     if (!dc3d_seg_begin(vx, vy, vw, vh)) return;
     poly0 = dc3d_batch(dc3d_cur_slot())->np;
     s_any_sky = 0;
+    s_cast_dist = view_budget();
+    if (s_cast_dist < s_view_dist) dc3d_stats.cut_n++;
+    if (!dc3d_stats.cast_min || s_cast_dist < dc3d_stats.cast_min) dc3d_stats.cast_min = (uint16_t)s_cast_dist;
     visibility(plane, vw);
     /* the backdrop goes FIRST: on the console the list is drawn in order and
      * the backdrop's far z does not keep it behind the walls (Flycast, the
@@ -808,6 +842,11 @@ void plat_view3d(const DoomoView3D *v)
     {
         uint32_t us = dc3d_be_us() - t0;
         dc3d_stats.us_last = us;
+        if (us > 0) {                                    /* the cost model: us = K * dist, K a decaying peak */
+            float k = (float)us / powf((float)s_cast_dist, V3D_COST_EXP);
+            s_cost_k = k > s_cost_k * 0.97f ? k : s_cost_k * 0.97f;
+        }
+        dc3d_stats.cast_dist = (uint16_t)s_cast_dist;
         dc3d_stats.us_sum += us;
         dc3d_stats.us_n++;
         if (us > dc3d_stats.us_max) dc3d_stats.us_max = us;

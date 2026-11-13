@@ -71,6 +71,9 @@ void dc_pacing_reset(void)
     skipped_in_row = 0;
 }
 
+/* DC6B: microseconds since this tick's plat_begin_frame (the view sizes itself by what is left of the tick) */
+uint32_t dc3d_be_tick_us(void) { return (uint32_t)(timer_us_gettime64() - work_us0); }
+
 void plat_begin_frame(void)
 {
     uint64_t now = timer_us_gettime64();
@@ -125,6 +128,8 @@ void plat_end_frame(void)
         dc_mailbox.g3d_polys_max = dc3d_stats.polys_max;
         dc_mailbox.g3d_bytes_max = dc3d_stats.bytes_max;
         dc_mailbox.g3d_dropped = dc3d_stats.dropped;
+        dc_mailbox.g3d_cut = dc3d_stats.cut_n;
+        dc_mailbox.g3d_dist_min = dc3d_stats.cast_min;
         dc_mailbox.room_us = dc_room_stats.us_last;      /* DC8: the house */
         dc_mailbox.room_us_max = dc_room_stats.us_max;
         dc_mailbox.room_us_sum = dc_room_stats.us_sum;

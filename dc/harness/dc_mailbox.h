@@ -87,9 +87,12 @@ typedef struct DcMailbox {
      * sprites decoded, and the most prims one view had */
     uint32_t room_us, room_us_max, room_us_sum, room_n;
     uint32_t room_shells, room_shell_us_max, room_decodes, room_prims_max;
+    /* DC6B: the first-person views the tick's budget cut short (view3d.c view_budget), and the shortest
+     * ray distance in cells any view used */
+    uint32_t g3d_cut, g3d_dist_min;
 } DcMailbox;
 
-_Static_assert(sizeof(DcMailbox) == 268 + DC_MB_LOG_SIZE, "DcMailbox layout");
+_Static_assert(sizeof(DcMailbox) == 276 + DC_MB_LOG_SIZE, "DcMailbox layout");
 
 /* Command ids: the same numbers as the GBA's (gba_plat.h GBA_HC_* and
  * gba/src/hcmd.h), so hcmd.c can be shared in spirit. */
