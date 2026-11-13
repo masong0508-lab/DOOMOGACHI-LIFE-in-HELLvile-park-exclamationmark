@@ -965,9 +965,10 @@ static int job_hold;   /* job_hold: the job is a portrait_hold one */
 #define PC_STANDIN_HOLD 4
 static uint8_t si_ticks = PC_STANDIN;
 
-/* claim a hidden entry and set the job up (step SL_SETUP next); soft: a look-ahead / prefetch claim */
-static int job_begin(int kind, int rid, uint32_t key, uint32_t look, const DoomoLook *l, const DoomoDeep *d, int status, int expr,
-                     const Phase *p, int soft)
+/* claim a hidden entry and set the job up (step SL_SETUP next); soft: a look-ahead / prefetch claim; d: the
+ * resolved set (CR3: resolved by the caller, gene + run) */
+static int job_begin(int kind, int rid, uint32_t key, uint32_t look, const DoomoLook *l, const DoomoDeep *d,
+                     int status, int expr, const Phase *p, int soft)
 {
     CacheEnt *e = cache_alloc(kind, rid, key, look, kind == CK_FIGURE ? FIGURE_W : PORTRAIT_W,
                               kind == CK_FIGURE ? FIGURE_H : PORTRAIT_H, soft);
@@ -1319,7 +1320,7 @@ static int pf_start(void)
 {
     const DoomoLook *l;
     DoomoLook al;
-    DoomoDeep D = doomo_deep_zero;
+    DoomoDeep D = doomo_deep_zero;      /* CR3: a figure prefetch is of the bare look (figure_image) */
     uint32_t lh, base, key;
     int status, st;
     Phase p;
@@ -1332,8 +1333,8 @@ static int pf_start(void)
     } else {
         const DoomoResident *r = res_of(pf.rid, &status);
         look_for_stage(RES_LOOK_VIEW(r), RES_STAGE(r), &al);
+        look_resolve_mask(r, pf.rid, LV_ALL, &D);       /* CR3: like portrait_image */
         l = &al;
-        look_resolve_mask(r, pf.rid, LV_ALL, &D);         /* CR3: the gene's new fields + the run */
     }
     lh = look_hash(l) ^ deep_hash(&D, 0);
     base = ((uint32_t)pf.expr << 8) | ((uint32_t)(status & 15) << 12);
@@ -1350,20 +1351,17 @@ static int pf_start(void)
 }
 
 /* is (kind, rid, look, status, expr) cached in some phase, or the job drawing it? */
-static int have_any(int kind, int rid, const DoomoLook *l, int status, int expr)
+static int have_any(int kind, int rid, const DoomoLook *l, const DoomoDeep *d, int status, int expr)
 {
-    DoomoDeep D = doomo_deep_zero;
-    uint32_t lh, base = ((uint32_t)expr << 8) | ((uint32_t)(status & 15) << 12);
-    int st;
-    if (kind == CK_PORTRAIT && rid >= 0) look_resolve_mask(res_of(rid, &st), rid, LV_ALL, &D);   /* as portrait_image */
-    lh = look_hash(l) ^ deep_hash(&D, 0);
+    uint32_t lh = look_hash(l) ^ deep_hash(d, 0);
+    uint32_t base = ((uint32_t)expr << 8) | ((uint32_t)(status & 15) << 12);
     return cache_get(kind, rid, base, lh, 0xFFFFFF00u, 0) != NULL || job_for(kind, rid, lh, base, 0xFFFFFF00u);
 }
 
 /* queue one render-ahead request (a figure keeps its look; a resident's is read when the job starts) */
-static int pf_queue(int kind, int rid, const DoomoLook *l, int status, int expr)
+static int pf_queue(int kind, int rid, const DoomoLook *l, const DoomoDeep *d, int status, int expr)
 {
-    if (have_any(kind, rid, l, status, expr)) return 1;
+    if (have_any(kind, rid, l, d, status, expr)) return 1;
     pf.on = 1;
     pf_requeue = 0;
     pf.kind = (uint8_t)kind;
@@ -1380,12 +1378,14 @@ int portrait_prefetch(int resident_id, int expr)
 {
     int status;
     DoomoLook al;
+    DoomoDeep D;
     const DoomoResident *r;
     if (expr < 0 || expr >= EXPR_COUNT) return 1;
     cache_init();
     r = res_of(resident_id, &status);
     look_for_stage(RES_LOOK_VIEW(r), RES_STAGE(r), &al);
-    return pf_queue(CK_PORTRAIT, resident_id, &al, status, expr);
+    look_resolve_mask(r, resident_id, LV_ALL, &D);              /* CR3: the set portrait_image hashes */
+    return pf_queue(CK_PORTRAIT, resident_id, &al, &D, status, expr);
 }
 
 int figure_prefetch(const DoomoLook *l, int status, int expr)
@@ -1393,7 +1393,7 @@ int figure_prefetch(const DoomoLook *l, int status, int expr)
     if (!l || expr < 0 || expr >= EXPR_COUNT) return 1;
     if (status < 0 || status > 15) status = RES_ALIVE;
     cache_init();
-    return pf_queue(CK_FIGURE, -1, l, status, expr);
+    return pf_queue(CK_FIGURE, -1, l, &doomo_deep_zero, status, expr);
 }
 
 const DoomoImage *portrait_image(int resident_id, int expr)

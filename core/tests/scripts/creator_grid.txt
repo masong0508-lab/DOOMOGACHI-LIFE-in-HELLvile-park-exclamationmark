@@ -16,7 +16,9 @@ wait 4
 press R
 wait 12
 # Hat is the 10th row down from the Outfit tab's preset: Top, Top colour, Print, Print colour,
-# Bottom, Bottom colour, Shoes, Shoe colour, Hat
+# Hood (CR3), Bottom, Bottom colour, Shoes, Shoe colour, Hat. (The Outer layer and Legwear rows
+# show once a value of theirs is live: none yet.)
+press DOWN
 press DOWN
 press DOWN
 press DOWN

@@ -1533,14 +1533,27 @@ static void update_menu(void)
 /* ====================================================================== */
 /* main list                                                                */
 /* CR6: rows the tab shows in the current mode. A section caption shows while any row of it does. */
+/* CR3: a part row with nothing to pick yet (a gene list with no live part this build can draw: fur
+ * pattern, outer layer and legwear until their art lands) is not shown, and neither is the colour row
+ * that only it uses */
+static int row_empty(const CrRow *row)
+{
+    int gf;
+    if (row->kind == RK_ENUM) return !CR_IS_AGE_ROW(row) && cr_row_count(row) <= 1;
+    if (row->kind == RK_PAINT_NONE && row->field == GF_FUR_COLOR3) gf = GF_FUR_PATTERN;
+    else if (row->kind == RK_PAINT && (row->aux & CR_AUX_SHARED)) gf = (row->aux & CR_AUX_LEGS) ? GF_LEGWEAR : GF_OUTER;
+    else return 0;
+    return part_live_drawable(gf) <= 1;
+}
+
 int cr_row_shown(int tab, int i)
 {
     const CrTab *t = &cr_tabs[tab];
     int k;
     if (i < 0 || i >= t->nrows) return 0;
-    if (t->rows[i].kind != RK_HEADER) return cr_row_level(&t->rows[i]) <= cr.show;
+    if (t->rows[i].kind != RK_HEADER) return cr_row_level(&t->rows[i]) <= cr.show && !row_empty(&t->rows[i]);
     for (k = i + 1; k < t->nrows && t->rows[k].kind != RK_HEADER; k++)
-        if (cr_row_level(&t->rows[k]) <= cr.show) return 1;
+        if (cr_row_level(&t->rows[k]) <= cr.show && !row_empty(&t->rows[k])) return 1;
     return 0;
 }
 

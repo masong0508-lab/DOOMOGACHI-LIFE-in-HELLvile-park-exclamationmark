@@ -1012,13 +1012,59 @@ TEST(creator_camera_follows_the_slot)
     CHECK_EQ(cr_camera(), CAM_FIGURE);
 }
 
+/* CR3: a part list with no live part yet (fur pattern, outer layer, legwear) has a row in the table but
+ * the screen does not offer a row with one choice, nor the colour row only it uses, nor an empty section */
+TEST(creator_rows_with_nothing_to_pick_are_not_shown)
+{
+    int t, i, n_hidden = 0, hdr = -1, any = 0;
+    open_creator(-1);
+    CHECK_EQ(cr.show, CR_SHOW_ALL);
+    for (t = 0; t < CR_TAB_COUNT; t++) {
+        for (i = 0; i <= cr_tabs[t].nrows; i++) {
+            const CrRow *row = i < cr_tabs[t].nrows ? &cr_tabs[t].rows[i] : NULL;
+            int gf = -1;
+            if (!row || row->kind == RK_HEADER) {
+                if (hdr >= 0) CHECK_MSG(cr_row_shown(t, hdr) == any, "tab %d: section %d", t, hdr);
+                hdr = row ? i : -1;
+                any = 0;
+                continue;
+            }
+            if (row->kind == RK_ENUM && (row->field == GF_FUR_PATTERN || row->field == GF_OUTER ||
+                                         row->field == GF_LEGWEAR)) gf = row->field;
+            else if (row->kind == RK_PAINT_NONE && row->field == GF_FUR_COLOR3) gf = GF_FUR_PATTERN;
+            else if (row->kind == RK_PAINT && (row->aux & CR_AUX_SHARED))
+                gf = (row->aux & CR_AUX_LEGS) ? GF_LEGWEAR : GF_OUTER;
+            if (gf >= 0 && part_live_drawable(gf) <= 1) {
+                CHECK_MSG(!cr_row_shown(t, i), "tab %d row %d (%s) has nothing to pick", t, i, row->label);
+                n_hidden++;
+            } else {
+                CHECK_MSG(cr_row_shown(t, i), "tab %d row %d (%s) is hidden", t, i, row->label);
+                if (row->kind == RK_ENUM && !CR_IS_AGE_ROW(row)) CHECK(cr_row_count(row) >= 2);
+                any = 1;
+            }
+        }
+    }
+    CHECK_EQ(n_hidden, 6);                                  /* today: 3 lists and their 3 colour rows */
+    /* the cursor never lands on one */
+    for (t = 0; t < CR_TAB_COUNT; t++) {
+        for (i = 0; i < 60; i++) {
+            CHECK(cr_row_shown(cr.tab, cr.row[cr.tab]));
+            press(BTN_DOWN);
+        }
+        press(BTN_R);
+    }
+}
+
 TEST(creator_rows_mode_hides_the_fine_tuning)
 {
+    static uint8_t all[CR_TAB_COUNT][128];              /* shown with every detail (CR3: not the empty rows) */
     int t, i, n_all = 0, n_basic = 0, k;
     open_creator(-1);
     CHECK_EQ(cr.show, CR_SHOW_ALL);
-    for (t = 0; t < CR_TAB_COUNT; t++)
-        for (i = 0; i < cr_tabs[t].nrows; i++) n_all += cr_row_shown(t, i);
+    for (t = 0; t < CR_TAB_COUNT; t++) {
+        CHECK(cr_tabs[t].nrows <= 128);
+        for (i = 0; i < cr_tabs[t].nrows; i++) n_all += all[t][i] = (uint8_t)cr_row_shown(t, i);
+    }
     /* the START menu's Rows entry */
     press(BTN_START);
     k = cr_menu_index(CM_ROWS);
@@ -1031,7 +1077,7 @@ TEST(creator_rows_mode_hides_the_fine_tuning)
         for (i = 0; i < cr_tabs[t].nrows; i++) {
             const CrRow *row = &cr_tabs[t].rows[i];
             n_basic += cr_row_shown(t, i);
-            if (row->kind != RK_HEADER) CHECK_EQ(cr_row_shown(t, i), cr_row_level(row) == 0);
+            if (row->kind != RK_HEADER) CHECK_EQ(cr_row_shown(t, i), all[t][i] && cr_row_level(row) == 0);
         }
     CHECK(n_basic < n_all);
     CHECK(n_basic >= 30);

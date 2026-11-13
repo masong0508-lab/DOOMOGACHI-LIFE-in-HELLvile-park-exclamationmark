@@ -48,12 +48,15 @@ press DOWN
 press DOWN
 press A
 wait 10
-press DOWN
-press DOWN
+# the Unlocked chip: whatever eye the cursor is on is free to wear, on every screen size
+press R
 wait 6
 shot 07_eye_picker
 press A
 wait 6
+# CR3: Pupils and Eye whites rows sit between Eyes and Eye colour
+press DOWN
+press DOWN
 press DOWN
 press A
 wait 8
@@ -101,7 +104,8 @@ wait 2
 press DOWN
 press DOWN
 press RIGHT
-# cheeks: freckles + sparkles
+# cheeks: freckles + sparkles (CR3: Ear fold and Blush style rows come between)
+press DOWN
 press DOWN
 press DOWN
 press DOWN

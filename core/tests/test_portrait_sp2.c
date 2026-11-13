@@ -129,6 +129,56 @@ TEST(sp2_standin_shows_the_old_face_for_at_most_four_ticks)
     town_free(id);
 }
 
+/* CR3: the gene's new fields (here glasses) are part of what a stand-in's job and a prefetch draw: both get
+ * the resolved set of the resident, like an at-once render */
+TEST(sp2_cr3_gene_fields_ride_the_standin_and_the_prefetch)
+{
+    enum { N = 40 };
+    static uint32_t hb[N], hg[N];
+    int id = new_resident(9001u, 0), t, swap = 10, first_new = -1, bare = 0, n;
+    uint32_t h0, h1;
+    const DoomoImage *img;
+    DoomoResident *r;
+    CHECK(id >= 0);
+    r = town_res(id);
+    res_gset(r, GF_GLASSES, 0);
+    truth(id, 0, EXPR_HAPPY, N, hb);
+    res_gset(r, GF_GLASSES, 2);
+    truth(id, 0, EXPR_HAPPY, N, hg);
+    CHECK(!found(hg[0], hb, N));                            /* the glasses are in the picture */
+    portrait_cache_reset();
+    portrait_cache_standin(4);
+    for (t = 0; t < N; t++) {
+        uint32_t v;
+        portrait_cache_clock((uint32_t)t, 1);
+        img = portrait_image(id, t < swap ? EXPR_NEUTRAL : EXPR_HAPPY);
+        CHECK(img != NULL);
+        v = fnv(img->pix, img->w * img->h);
+        if (t >= swap && found(v, hb, N)) bare = 1;
+        if (t >= swap && first_new < 0 && found(v, hg, N)) first_new = t;
+    }
+    CHECK_MSG(!bare, "a stand-in's job drew the face without its glasses");
+    CHECK_MSG(first_new >= swap && first_new <= swap + 4, "the new face came at tick %d", first_new);
+    /* the prefetch: drawn in idle time with the glasses, then an exact hit */
+    portrait_cache_reset();
+    portrait_cache_clock(100, 1);
+    (void)portrait_image(id, EXPR_NEUTRAL);
+    for (n = 0; portrait_idle_next() >= 0 && n < 100; n++) portrait_idle_run();
+    CHECK(portrait_prefetch(id, EXPR_SAD) == 0);
+    for (n = 0; portrait_idle_next() >= 0 && n < 100; n++) portrait_idle_run();
+    CHECK(n >= 20 && n <= 30);
+    CHECK(portrait_prefetch(id, EXPR_SAD) == 1);
+    h0 = portrait_hitcheck_count();
+    h1 = portrait_hitcheck_fails();
+    portrait_cache_clock(109, 1);
+    img = portrait_image(id, EXPR_SAD);
+    CHECK(img != NULL);
+    CHECK(portrait_hitcheck_count() == h0 + 1);             /* an exact hit: the same key as portrait_image */
+    CHECK(portrait_hitcheck_fails() == h1);
+    portrait_cache_reset();
+    town_free(id);
+}
+
 TEST(sp2_hold3_gives_null_then_the_face)
 {
     int id = new_resident(4711u, 1), t, nulls = 0, got = -1;
