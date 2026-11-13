@@ -1,0 +1,84 @@
+# CR4 A2: the hair batch in the creator's picture grid (32 new styles on the Hair row, 8 new beards on the
+# Facial hair row). A new Hellvile citizen: the Hair tab (two tabs right of Species & Body), the Hair
+# row opens the grid, every page of it is shot (the cursor moves by rows: 18 cells a page on 240x160,
+# 35 on 320x240), a new style is found by letters and worn, then the Facial hair row's grid is paged.
+scene CREATOR -1
+expect-scene CREATOR
+wait 30
+press R
+wait 4
+press R
+wait 12
+shot 01_hair_tab
+press A
+wait 14
+shot 02_hair_grid_page1
+press DOWN
+wait 2
+press DOWN
+wait 2
+press DOWN
+wait 2
+wait 8
+shot 03_hair_grid_row4
+press DOWN
+wait 2
+press DOWN
+wait 2
+press DOWN
+wait 2
+wait 8
+shot 04_hair_grid_row7
+press DOWN
+wait 2
+press DOWN
+wait 2
+press DOWN
+wait 2
+wait 8
+shot 05_hair_grid_row10
+# the Beehive (value 38) by letters, kept with A
+press START
+wait 6
+type beeh
+press START
+wait 10
+shot 06_find_beehive
+press A
+wait 14
+shot 07_beehive_worn
+# the Facial hair row is the fifth: Style, Colour, Highlight, Match fur, Facial hair
+press DOWN
+wait 2
+press DOWN
+wait 2
+press DOWN
+wait 2
+press DOWN
+wait 2
+wait 6
+press A
+wait 14
+shot 08_beard_grid
+press RIGHT
+wait 3
+press RIGHT
+wait 3
+press RIGHT
+wait 3
+press RIGHT
+wait 3
+press RIGHT
+wait 3
+press RIGHT
+wait 3
+press RIGHT
+wait 3
+press RIGHT
+wait 3
+press RIGHT
+wait 8
+shot 09_beard_try_on
+press A
+wait 12
+shot 10_beard_worn

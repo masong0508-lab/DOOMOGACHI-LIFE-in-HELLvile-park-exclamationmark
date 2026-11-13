@@ -559,6 +559,39 @@ held; on the GBA the bust's effect frames change every 16 ticks).
 * The part live counts (`doomo_part_live`, `part_live_count`, `part_live_drawable`) moved to the
   catalog files (`part_meta_data.c` / `part_meta.c`, creator overlay on the PS1).
 
+## CR4 batch A2: hair (2026-11-13)
+
+* **40 new parts live:** 32 hair styles (gene `hair_style` 32..63: Pixie, Shag, Space Buns, Top Knot, Braid Pair,
+  Curtains, Beehive, Bouffant, Rattail, Fauxhawk, Undercut, Bubble Pony, Side Pony, Half Up, Victory Rolls, Pageboy,
+  Flip, Mop Top, Cloud Puff, Cat Tufts, Icicle Spikes, Waterfall, Pom Tufts, Bedhead, Lampshade, Spiral Curls,
+  Crescent Sweep, Mini Mohawk Row, Fringe Curtain, Wisp Ponytail, Long Droop, Star Spikes) and 8 beards (gene
+  `facial_hair` 8..15: Chin Puff, Chinstrap, Van Dyke, Horseshoe, Braided Beard, Pencil Stache, Sea Captain, Cloud
+  Beard). The lists are full (64 and 16 of their 6 and 4 bits). Saves, premades and Classic islands are untouched:
+  the gene already had the bits, and the classic generators still roll the v1 values.
+* **Authoring:** hand-written part scripts in `core/data/parts/hair/hair_b.txt` and `beard/beard_b.txt` (templates for
+  the cap and the back-view nape, `scale 128`, coordinates in head radii, hair in `hair_color` on one ramp so the
+  shape alone tells the styles apart). A hair style is a back block (group 0: what hangs behind the head) and a front
+  block (group 4: cap, bangs, top pieces, and from behind the whole head); beards are group 3, drawn after the mouth
+  so none covers it. Chibis get the same blocks. 108 more parts of the plan's hair rows (hair page 2 24, bangs 12,
+  ahoge 12, hair accessories 52, facial hair page 2 8) are deep fields: they need new `DF_` ids and painter hooks
+  in C and are only selectable after CR5 saves deep parts, so they are left for the next package (see
+  `status/CREATOR.md`).
+* **Age:** all 40 are age class ALL. Facial hair is dropped by `look_for_stage` for every minor, so no beard shows on a
+  baby, toddler, child or teen (tested for all eight); no hair is suggestive.
+* **Gates:** shape gate (>= 24 px of the bust against every other value of the slot, >= 6 px on a chibi), 600 px solid
+  cap, cost weights measured (`costs.txt`, the dearest new part costs 31, the dearest classic one 89), names unique,
+  one set each, ids frozen in `golden/part_ids.txt`, review line `A2` in `review.txt`.
+* **Review sheets** (`portrait_sheet`): `--slot hair` and `--slot hair --shape`, `--slot beard` (a dark beard on a bald
+  citizen) and `--shape`, and the new `--interplay` sheet: every hat of the catalog over Beehive, Bouffant, Pom Tufts,
+  Waterfall, Space Buns and tall horns (`interplay_hats_N.png`).
+* **Runner walk-through:** `core/tests/scripts/creator_parts_hair.txt` (both resolutions): the Hair tab, the Hair
+  grid paged, a style found by letters and worn, the Facial hair grid, a beard worn.
+* **Tests:** `test_cr4_a2.c` (lists full and every new part catalogued under the cost cap; hair seen from behind;
+  no minor wears a new beard; every hat over every new style renders the same twice).
+* **PS1:** the part VM is still off there (CR10), so the creator's Hair and Facial hair rows keep offering the painted
+  values (`part_live_drawable`); the new parts are data in the creator overlay only (names, set, tags: no resident
+  byte; the PS1 margin is unchanged, see `docs/PS1.md`).
+
 ## Extending
 
 * **A new catalog option** (e.g. a new hat): nothing to do - rows use the

@@ -1528,3 +1528,12 @@ a behaviour change: the demo's first 100 ticks are byte-identical on both builds
 one build already differ in 87 % of their pixels (the camera turns fast), the HUD reads the same state in
 both (90 HP, 0/17, 111 candy), and a semantics-preserving edit alone (the `size_cls` pack applied to the base
 on its own) moves the shot in the same way. Each build is deterministic by itself.
+
+## CR4 A2 (2026-11-13): hair batch
+
+Measured on `b63abec` and `b63abec` + A2 (clean builds, `cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON`): `_end`
+0x801ef4e0 both times, the overlay slot ends 0x801ef3b4 both times, 68,368 B below the stack top, the disc image
+the same size. The 40 new parts (32 hair styles, 8 beards) are part scripts the PS1 does not read yet (the part
+VM is off until CR10); their catalog rows (names, sets, tags) are overlay data, no new age row (age class ALL, so
+the resident age table is unchanged). The creator offers the PS1 only the painted hair and facial hair
+(`part_live_drawable`), as for every scripted part since CR3.
