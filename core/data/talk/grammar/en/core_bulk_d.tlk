@@ -1,0 +1,40 @@
+# core/data/talk/grammar/en/core_bulk_d.tlk - bulk Surface push D: reactions and small talk with the
+# topic in the line (owner: TK; T5b). Clean in any room: no register word, no romance, no cool act,
+# no guard change. Rule names end in _ud. Syntax: core/tools/talkc_gen.py.
+
+@rule core.greet.ud1 act: greet
+  "Hello! You caught me thinking about {x}. Good timing."
+  "Hi there! I was just talking about {x} with the plants."
+@rule core.farewell.ud1 act: farewell
+  "Bye for now. Keep an eye on {x} for me, will you?"
+  "See you later! I'll be the one still thinking about {x}."
+@rule core.apologize.ud1 act: answer
+  "Oh, that's okay. {x:cap} can wait, it's no big deal."
+  "No harm done. Let's not let {x} get between us."
+@rule core.introduce.ud1 act: greet
+  "Nice to meet you. I'm the one who likes {x} a lot."
+  "Hello! I'm told I'm very good at {x}. I'm still checking."
+@rule core.react.ud1 act: backchannel
+  "I like that you brought up {x}. It's a good conversation."
+  "Hm, {x}. I'll remember that one for next time."
+@rule core.react.ud2 act: laugh
+  "Ha! {x:cap}, of course. Only you would say that."
+  "Hee, {x}. That's a very you kind of answer."
+@rule core.react.ud3 act: sympathize
+  "Oh no, {x}. I'm sorry that's been on your mind."
+  "That sounds tough, with {x} in the middle of it."
+@rule core.react.ud4 act: agree
+  "Yes, {x} is definitely worth talking about. Agreed."
+  "We're on the same page about {x}. It's nice when that happens."
+@rule core.react.ud5 act: tease
+  "Wow, {x} again? You really do love it, don't you?"
+  "You and {x}. It's a whole relationship at this point."
+@rule core.react.ud6 act: joke
+  "If {x} had a theme song, I'd be humming it all day."
+  "They should put {x} on a poster. With a little hat."
+@rule core.react.ud7 act: dismiss
+  "Okay, enough about {x}. Let's do something else."
+  "We could talk about {x} forever, but I'd rather not."
+@rule core.react.ud8 act: complain
+  "Why is {x} always the problem? It's so tiring."
+  "Ugh. {x:cap} again. Who approved that?"

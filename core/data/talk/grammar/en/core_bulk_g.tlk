@@ -1,0 +1,46 @@
+# core/data/talk/grammar/en/core_bulk_g.tlk - bulk Surface push G: the topic in a list of likes and
+# dislikes, short and warm (owner: TK; T5b). Clean in any room: no register word, no romance, no
+# cool act, no guard change. Rule names end in _ug. Syntax: core/tools/talkc_gen.py.
+
+@rule core.likes.ug1 guard: stance=pro act: opine_pos
+  "I like {x}, and I like that you like it too."
+  "{x:cap} is high on my list. Also, you're on it."
+  "Give me {x} and a quiet afternoon. I'm happy."
+  "{x:cap} makes a good day better. I'm fully convinced."
+@rule core.likes.ug2 guard: stance=pro act: agree
+  "Yes, {x} is great. Let's have more of it."
+  "{x:cap}! My favorite kind of topic. Keep going."
+@rule core.likes.ug3 guard: stance=pro act: laugh
+  "Ha! {x:cap} forever. I'm not even a bit sorry."
+@rule core.dislikes.ug1 guard: stance=con act: opine_neg
+  "{x:cap} and I are not friends. We're more like coworkers."
+  "I'd put {x} at the bottom of my list, honestly."
+  "{x:cap}? Let's just say we don't see eye to eye."
+  "I try to stay away from {x}. It doesn't always work."
+@rule core.dislikes.ug2 guard: stance=con act: agree
+  "Oh, {x}. Yes. We have that in common, I think."
+  "Right, {x} is terrible. I'm glad someone agrees."
+@rule core.dislikes.ug3 guard: stance=con act: tease
+  "You don't like {x}? Shocking. Truly shocking."
+@rule core.neutral.ug1 guard: stance=neutral act: backchannel
+  "{x:cap}? Eh, it's fine. I don't have a strong view."
+  "I'm lukewarm on {x}. It's a bit of a shrug from me."
+  "{x:cap} is alright. Not my first choice, not my last."
+@rule core.neutral.ug2 guard: stance=neutral act: answer
+  "{x:cap}? Depends on the day, if I'm honest."
+  "{x:cap}? I'd take it or leave it, to be fair."
+@rule core.neutral.ug3 guard: stance=neutral act: joke
+  "{x:cap}? Meh. I'd rather be napping, but that's my answer."
+  "{x:cap}? Mm, a solid shrug from me."
+@rule core.neutral.ug4 act: backchannel
+  "Oh, {x}. Right. I can see why you'd think that."
+  "{x:cap}. I'm nodding along, even if I'm not sure why."
+@rule core.topic.ug1 act: ask_about
+  "So, {x}. What's the story behind it?"
+  "What's your favorite part about {x}, out of curiosity?"
+@rule core.topic.ug2 act: tell
+  "Funny, {x} came up for me this week too."
+  "I had a whole thought about {x} earlier. It's gone now."
+@rule core.topic.ug3 act: change_topic
+  "{x:cap} is done. Shall we talk about something new?"
+  "Okay, enough {x}. What else is going on with you?"

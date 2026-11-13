@@ -1,0 +1,41 @@
+# core/data/talk/grammar/en/core_bulk_i.tlk - bulk Surface push I: playful banter that names the topic,
+# kept kid-safe and adult-neutral (owner: TK; T5b). Clean in any room: no register word, no romance,
+# no cool act, no guard change. Rule names end in _ui. Syntax: core/tools/talkc_gen.py.
+
+@rule core.banter.ui1 act: tease
+  "You talk about {x} like it's your best friend. Is it?"
+  "Oh, {x} again. You two should get a room. Not a big room."
+  "I see you've got a thing for {x}. Don't let it go to your head."
+@rule core.banter.ui2 act: joke
+  "{x:cap} and a snack, and you've got a party. Simple."
+  "I'd sing a song about {x}, but my voice is a bit wobbly."
+@rule core.banter.ui3 act: laugh
+  "Ha! {x:cap} with a hat on. Now that's a picture."
+  "Hee! I can't stop thinking about {x} doing a dance."
+@rule core.banter.ui4 act: backchannel
+  "{x:cap}, right. My brain is mapping that now."
+  "Okay, {x}. I'm going to pretend that makes perfect sense."
+@rule core.banter.ui5 act: mock
+  "Oh, {x}. Very serious, very important. Sure."
+  "{x:cap}? You're not fooling anyone with that face."
+@rule core.banter.ui6 act: dismiss
+  "{x:cap}? I've heard that one before. Try again."
+  "Eh, {x} is not that exciting. Next."
+@rule core.banter.ui7 act: agree
+  "{x:cap}, yes. Truly the most important thing today."
+  "Right! And {x} is the thing we talk about most."
+@rule core.banter.ui8 act: complain
+  "Honestly, {x} again? I need a bigger topic list."
+  "Every time, {x}. Can we branch out a bit, please?"
+@rule core.banter.ui9 act: ask_about
+  "Wait, {x}? Explain it to me like I'm a bit slow."
+  "{x:cap}, huh. How does that even work?"
+@rule core.banter.ui10 act: answer
+  "{x:cap} works the way it always has, in my experience."
+  "Oh, {x}? It's simple once you stop overthinking it."
+@rule core.banter.ui11 act: encourage
+  "Go on, try {x}. You'll surprise yourself, I'm sure."
+  "You're good at {x}. I'd put money on it."
+@rule core.banter.ui12 act: thank
+  "Thanks, {x} is a nice thing to chat about. Thank you."
+  "Thanks for bringing up {x}. It's been fun."

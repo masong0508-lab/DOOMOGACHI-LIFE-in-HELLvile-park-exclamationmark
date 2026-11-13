@@ -1,0 +1,94 @@
+# core/data/talk/grammar/en/core_bulk_k.tlk - bulk Surface push K: replies to a telling and to an
+# opinion, each rule's name matches its act table row (owner: TK; T5b). Clean in any room: no
+# register word, no romance, no cool act, no guard change. Rule names end in _uk. Syntax:
+# core/tools/talkc_gen.py.
+
+@rule core.tell.uk1 act: backchannel
+  "Oh, that's interesting. Tell me the rest of it."
+  "Mm, I didn't know that. Go on, I'm listening."
+  "Huh. Right. That's a new one for me."
+  "I see. Keep going, I want the whole story."
+  "Okay, I'm following. What happened after that?"
+  "Hm, that sounds like a lot. How did you manage?"
+  "Wow. You've been busy. Tell me more when you can."
+  "Right, I'd not heard that before. Thanks for sharing."
+  "Oh? That's a surprise. I'm all ears."
+  "Interesting, go on. I'll try not to interrupt."
+@rule core.tell.uk2 act: ask_about
+  "Wait, what did they say when you told them?"
+  "And did it turn out the way you hoped?"
+  "Where did you hear that, if you don't mind me asking?"
+  "How did you feel about it at the time?"
+  "Was it the first time that happened, or has it happened before?"
+  "What was the best part of that, for you?"
+  "Did anyone else get involved, or was it just you?"
+  "What would you do differently, looking back on it?"
+  "Who was there with you when all that happened?"
+  "How long did that take, all told?"
+@rule core.tell.uk3 act: opine_pos
+  "That sounds like a good time, honestly. I'd have loved it."
+  "I think you handled that really well. Good for you."
+  "What a lovely thing to have happen. I'm happy for you."
+  "I'd call that a win, even if it felt small at the time."
+  "That's the kind of story I'd like to hear again."
+  "You made that sound fun. I'm jealous, a bit."
+  "I like how that turned out. Nicely done, you."
+  "That was a good call. I'd have done the same, probably."
+@rule core.tell.uk4 act: opine_neg
+  "That sounds awful. I'm sorry it went that way."
+  "Oof, I'd have hated that too. Who does that?"
+  "That's not fair. You deserved a better outcome."
+  "I'm not surprised it bothered you. It would bother me."
+  "That's a rough one. I hope the rest of the week is kinder."
+  "Honestly, that's a bit much. I'd be annoyed too."
+  "Ugh, that's the sort of thing that sticks with you."
+  "That's a pity. Things should have gone the other way."
+@rule core.tell.uk5 act: joke
+  "Plot twist. I'd have fainted and then asked for a sandwich."
+  "I'd have needed a nap, a snack and a very long sit down."
+  "Wow, that's a lot of drama for one afternoon, isn't it?"
+  "Next time, try telling it in fewer chapters. Thanks."
+  "Great story. Needs a better ending, and maybe a cat."
+@rule core.tell.uk6 act: laugh
+  "Ha! I can't believe that actually happened to you."
+  "Hee, that's the best thing I've heard all day."
+  "Ha, okay, that was a whole production. Well done."
+@rule core.tell.uk7 act: tease
+  "You always have the best stories, somehow. Show-off."
+  "Look at you, holding court with a story like that."
+  "Honestly, you could do stand-up with that material."
+@rule core.opine_pos.uk1 act: agree
+  "Yes! I'm glad we both think it's good, it's rare."
+  "You're right, it's a good one. We have excellent taste."
+  "Totally agree. It's the best part of the whole day."
+  "Exactly. I'd say the same, and I'd say it loudly."
+  "Right, it's great. I'm glad you noticed it too."
+@rule core.opine_pos.uk2 act: disagree
+  "I'm not sure about that. It was nice, but not perfect."
+  "Hm, I'd call it good, but not quite great, sorry."
+  "I see why you like it. I just don't feel it as much."
+@rule core.opine_pos.uk3 act: opine_neg
+  "I love it, but I'll admit it has a few rough edges."
+  "It's good, yes, though I'd change the last bit a little."
+@rule core.opine_pos.uk4 act: laugh
+  "Ha! You really love it, huh? It shows on your face."
+  "Hee, you sound so sure about it. I like that."
+@rule core.opine_neg.uk1 act: agree
+  "Yes, that's the truth. It's a bit of a mess, really."
+  "Right? I'd put it in the bin and start again."
+  "Exactly. You put it better than I would have."
+  "Agreed, that one's not for me either. Good call."
+@rule core.opine_neg.uk2 act: disagree
+  "Hm, I don't think it's that bad. A bit slow, maybe."
+  "I'd give it another go. It grows on you, sometimes."
+  "I see your point, though I'd be a bit kinder to it."
+@rule core.opine_neg.uk3 act: sympathize
+  "Oh no, that sounds really frustrating. I'm sorry."
+  "That's a hard feeling to shake off. I get it."
+  "I'm sorry it went that way. It's not fun to sit through."
+@rule core.opine_neg.uk4 act: tease
+  "Wow, so harsh. Did it do something to you personally?"
+  "Strong words, friend. What did it ever do to you?"
+@rule core.opine_neg.uk5 act: joke
+  "I'd put it on the list of things we don't talk about."
+  "Well, it's not winning any popularity contests today."

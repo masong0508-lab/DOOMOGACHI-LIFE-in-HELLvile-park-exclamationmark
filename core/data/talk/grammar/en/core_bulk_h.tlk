@@ -1,0 +1,47 @@
+# core/data/talk/grammar/en/core_bulk_h.tlk - bulk Surface push H: everyday chat about the house and
+# town, with the topic in the line (owner: TK; T5b). Clean in any room: no register word, no
+# romance, no cool act, no guard change. Rule names end in _uh. Syntax: core/tools/talkc_gen.py.
+
+@rule core.house.uh1 act: backchannel
+  "The house is quiet today. {x:cap} is the only thing moving."
+  "Mm, {x}. The house does like a bit of attention now and then."
+  "Oh, {x} in the house? That explains the noise downstairs."
+@rule core.house.uh2 act: tell
+  "We've got {x} in the house now. Took me a while to sort it."
+  "Did you see the new {x} in the corner? It's a bit much."
+@rule core.house.uh3 act: joke
+  "If {x} keeps growing, I'll need a bigger hat."
+  "The house has opinions about {x}. Don't ask them."
+@rule core.town.uh1 act: backchannel
+  "Town's busy today. Somebody is talking about {x} at the market."
+  "I heard {x} is the talk of the square this week."
+  "Mm, {x} in town. Everyone has an opinion about it."
+@rule core.town.uh2 act: laugh
+  "Ha! The whole town is arguing about {x}. Classic."
+  "Hee, the square is full of people discussing {x}. Lovely."
+@rule core.town.uh3 act: ask_about
+  "Did you hear anything new about {x} around town?"
+  "Is {x} still the big thing in the square, or has it moved on?"
+@rule core.town.uh4 act: complain
+  "The market is so loud about {x}. I can't hear myself think."
+  "Nobody in town agrees on {x}. It's exhausting."
+@rule core.work.uh1 act: sympathize
+  "Work and {x} at the same time? That's a lot, friend."
+  "I'm sorry {x} is eating into your workday. That's rough."
+@rule core.work.uh2 act: encourage
+  "You can do {x} between your chores. I believe it."
+  "Take a breath, then go back to {x}. One thing at a time."
+@rule core.food.uh1 act: laugh
+  "Ha! {x:cap} for lunch? Yes, I'm in, obviously."
+  "Hee, {x} is basically a meal in my book."
+@rule core.food.uh2 act: backchannel
+  "Mm, {x}. Smells like a good afternoon, somehow."
+  "{x:cap} sounds tasty. Save me a bite, please."
+@rule core.food.uh3 act: tease
+  "{x:cap} again? You really do love to eat, don't you?"
+@rule core.weather.uh1 act: backchannel
+  "Nice day for {x}, if you ask me. Sunny, mostly."
+  "Rainy again, so {x} is the plan for today."
+@rule core.weather.uh2 act: joke
+  "If the sky keeps this up, {x} will need an umbrella."
+  "The weather is no help. It keeps shifting between {x} and gloom."

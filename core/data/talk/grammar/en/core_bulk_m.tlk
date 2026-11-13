@@ -1,0 +1,76 @@
+# core/data/talk/grammar/en/core_bulk_m.tlk - bulk Surface push M: replies to a thanks, an offer, an
+# invitation and a promise (owner: TK; T5b). Clean in any room: no register word, no romance, no cool
+# act, no guard change. Rule names end in _um. Syntax: core/tools/talkc_gen.py.
+
+@rule core.thank.um1 act: backchannel
+  "You're welcome. Glad I could be useful for once."
+  "No problem at all. I'm happy to help out."
+  "Anytime. That's what friends are for, mostly."
+  "Of course. It's nice to be thanked for something."
+  "You're very welcome. Come back whenever you like."
+  "Glad that helped. Let me know if you need more."
+  "Sure thing. It's no bother, honestly."
+  "No worries. It's good to be useful."
+@rule core.thank.um2 act: answer
+  "It was nothing much, but I'm happy it was helpful."
+  "Happy to do it. I'd do it again without thinking."
+  "It's my pleasure. I like being the one who helps."
+  "You're welcome. Next time it's your turn to help me."
+@rule core.thank.um3 act: joke
+  "You're welcome. Please pay me in snacks, thank you."
+  "Anytime. The thanks is nice, but a biscuit is nicer."
+  "You're welcome. I'll add it to my tab of favors."
+@rule core.thank.um4 act: tease
+  "Oh, you're so grateful today. What do you want from me?"
+  "Thanks? Hmm, what are you up to now?"
+@rule core.thank.um5 act: dismiss
+  "It's fine, really. Don't worry about it."
+  "Oh, that's nothing. Let's move on, please."
+@rule core.offer.um1 act: yes
+  "Yes, please! That would be a big help, thanks."
+  "Yes, I'd love that. You're too kind to me."
+  "Sure, I'll take you up on that. Thank you."
+  "Yes. That's very generous, and I accept."
+@rule core.offer.um2 act: no
+  "No thanks, I'm fine for now. But it's kind of you."
+  "I'll pass, thanks. I'm all set on that one."
+  "No, that's alright. I've got it covered for now."
+@rule core.offer.um3 act: thank
+  "Thanks, that's a lovely idea. You're very kind."
+  "Thank you. That's more than I expected, honestly."
+@rule core.offer.um4 act: joke
+  "Only if the snack is shaped like a little hat."
+  "Free things? I'm very suspicious, but yes."
+@rule core.invite.um1 act: yes
+  "Yes! Count me in. I'll find my good shoes."
+  "I'd love to come. Let me know the time and place."
+  "Sounds great. I'm in, and I'll try not to be late."
+  "Yes, I'm free. Let's make a plan for it."
+@rule core.invite.um2 act: no
+  "I can't make it, sorry. Maybe next time?"
+  "Not this time, I'm afraid. I've got a lot on."
+  "Sorry, I'll have to pass. Another time, I hope."
+@rule core.invite.um3 act: ask_about
+  "Who else is coming? I'd like to know before I say yes."
+  "What's the plan for it? Is there a schedule?"
+  "Where are we going, and do I need to bring anything?"
+@rule core.invite.um4 act: joke
+  "Only if there's cake. Non-negotiable, that one."
+  "I'll come, but I'm bringing my own snacks. Just in case."
+@rule core.promise.um1 act: thank
+  "Thanks, I'm holding you to that. Happily."
+  "That's good to hear. You won't let me down, will you?"
+  "Thank you for promising. It means more than you think."
+  "Great, I'll remember you said that. Thanks."
+@rule core.promise.um2 act: agree
+  "Deal. I'll keep my side of it too."
+  "Yes, a promise is a promise. Let's both stick to it."
+@rule core.promise.um3 act: tease
+  "Promises, promises. I've heard that one before."
+  "I'll believe it when I see it, you know."
+@rule core.promise.um4 act: joke
+  "Pinky swear? It's binding, you know, I checked."
+  "Great. Now I have a promise and a snack. Good day so far."
+@rule core.promise.um5 act: dismiss
+  "Don't promise, just do it. I'll be surprised, I promise."
+  "Mm. We'll see. I'll believe it when it happens."

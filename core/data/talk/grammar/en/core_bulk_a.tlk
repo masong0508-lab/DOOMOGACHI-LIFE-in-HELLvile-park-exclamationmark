@@ -1,0 +1,110 @@
+# core/data/talk/grammar/en/core_bulk_a.tlk - bulk Surface push A: warm and tell lines that say the
+# topic (owner: TK; T5b). Clean in any room: no register word, no romance, no cool act, no guard
+# change. Rule names end in _ua. Syntax: core/tools/talkc_gen.py.
+
+@rule core.compliment.ua1 act: thank
+  "Aww, thanks. You're making my tail wag. I don't even have a tail."
+  "That's kind of you. Keep saying nice things, I'll keep glowing."
+  "Thank you! My ego just did a small dance in the hallway."
+  "You say the nicest things. I'm writing them down before I forget."
+  "Thanks! I'll pretend I was humble about it for at least a minute."
+  "That made my whole day. Possibly my whole week."
+  "Aw, you. Okay. Now I'm blushing, and it's your fault."
+  "Thank you! Honestly, I was starting to doubt myself today."
+  "Stop, my heart can only take so much praise at once."
+  "Thanks! Now I'm going to walk around like I own the place."
+@rule core.compliment.ua2 act: thank
+  "You're very sweet. I'll share the compliment with my plant."
+  "Thanks. You made the grumpy part of me go quiet for a bit."
+  "That's a lovely thing to say. I'll remember it on a cold day."
+  "Oh, I needed that. Thank you for noticing."
+  "Thanks. I'm trying to look humble. It's not working."
+@rule core.comfort.ua1 act: thank
+  "Thank you for staying with me. It makes the bad bit smaller."
+  "You're a good listener. I'd forgotten how nice that feels."
+  "Okay. Thanks. I'm breathing again, which is a start."
+  "That helps more than you'd think. Thanks for not fixing it."
+  "I'll be fine. You made the wait a lot less lonely."
+  "Thank you. I'm going to nap on that idea for a while."
+  "You're kind. My worry has gone down by a tiny, tiny bit."
+  "Thanks. I needed someone to say that out loud for me."
+@rule core.comfort.ua2 act: answer
+  "It's been one of those weeks where everything sticks to you."
+  "I'm not great, but I'm not falling apart either. Balance, sort of."
+  "I keep busy so I don't have to think too hard. It mostly works."
+  "Some days it's all fine, and some days I just want a blanket."
+@rule core.encourage.ua1 act: thank
+  "You believe in me? Then I'd better not let you down."
+  "Thanks, I'll take the pep talk and run with it. Slowly."
+  "Okay, that's a good push. Now I just have to do the thing."
+  "You're right, I've done harder things than this. Smaller ones, too."
+  "Thanks for cheering. I'll cheer back, just quieter."
+@rule core.encourage.ua2 act: yes
+  "Yes, let's try it. Worst case, we get a good story."
+  "Okay, I'm doing it. Wish me luck or at least a clean run."
+  "Sure, why not. We'll figure out the rest on the way."
+@rule core.sympathize.ua1 act: thank
+  "Thanks for understanding. That's rarer than it should be."
+  "It's nice to hear someone say that. I'd been wondering."
+  "You get it. Thank you for not making it a big thing."
+  "I feel heard now. That's a good feeling, for once."
+@rule core.sympathize.ua2 act: complain
+  "It's exhausting, honestly. Everyone wants a bit of you."
+  "Why does it always happen on the busiest day? It's rude."
+  "I try to be patient, but my patience has a short fuse."
+@rule core.joke.ua1 act: laugh
+  "Ha! That's the kind of joke that makes me lose my hat."
+  "Hah, okay, I see you're on a roll today. Keep rolling."
+  "Hee, I'm going to repeat that to the first person I see."
+  "Ha! You got me. I'll allow it, just this once."
+@rule core.joke.ua2 act: joke
+  "Here's one for you. What do ghosts eat for breakfast? Boo-berry."
+  "Okay, mine's worse. What's a pet's favorite game? Fetch, obviously."
+  "Knock knock. Who's there? Not me, I'm hiding from the ghosts."
+@rule core.laugh.ua1 act: laugh
+  "Ha ha! You're going to make me spill my tea."
+  "Hee hee, that's the best sound I've heard all afternoon."
+  "Ha! Okay, I can't stay mad at you. Not that I was."
+  "Haha, good. I needed a laugh before the next chore."
+@rule core.laugh.ua2 act: backchannel
+  "Glad to hear it. A good laugh is worth a snack."
+  "Nice. Laughing helps, even when it's a bit silly."
+  "I like it when you're happy. It's contagious, you know."
+@rule core.offer.ua1 act: yes
+  "Yes, please. That sounds much better than what I was doing."
+  "I'd love that. You have excellent ideas, usually."
+  "Sure, I'll take it. Thanks for thinking of me."
+  "Yes! Don't let me say no, I'm weak about snacks."
+@rule core.offer.ua2 act: no
+  "Maybe another time. I'm a bit stuck on something right now."
+  "No thanks, I'm all set. But I'll remember you asked."
+  "Not right now. Ask me again in an hour, I might change my mind."
+@rule core.invite.ua1 act: yes
+  "Count me in. I'll bring whatever snack is in my pockets."
+  "Yes! I've been waiting all week for someone to ask."
+  "Okay, I'm coming. Don't start without me, I'm slow today."
+@rule core.invite.ua2 act: ask_about
+  "Sounds fun. Who else is going, and where do we meet?"
+  "Okay, when? I need to know how much to dress up."
+@rule core.promise.ua1 act: thank
+  "Thank you. I'll hold you to that, so don't forget it."
+  "That makes me feel safer. Thanks for making the promise."
+  "Good. I was worried you'd forget, but you didn't."
+@rule core.promise.ua2 act: agree
+  "Deal. And I'll keep mine too, I promise. See, it works."
+  "Okay, a promise from both of us. That's a good start."
+@rule core.tell.ua1 act: backchannel
+  "Oh wow, really? I'd have guessed differently, but go on."
+  "That's new to me. Tell me how it all turned out."
+  "I see. That sounds like a lot to carry around."
+  "Interesting. I'm picturing it now, and it's a bit ridiculous."
+@rule core.tell.ua2 act: ask_about
+  "And how did that go? Did anybody else get involved?"
+  "Wait, what happened next? I need the full version."
+@rule core.answer.ua1 act: backchannel
+  "Ah, that makes sense. Thanks for explaining it to me."
+  "Oh, I see. I'd been guessing the wrong way round."
+  "Good answer. Clear and short, my favorite kind."
+@rule core.answer.ua2 act: tell
+  "That reminds me of something from last week, actually."
+  "Funny you say that. I had a similar thing happen yesterday."

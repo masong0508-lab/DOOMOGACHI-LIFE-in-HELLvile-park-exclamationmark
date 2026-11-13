@@ -1,0 +1,43 @@
+# core/data/talk/grammar/en/core_bulk_c.tlk - bulk Surface push C: short everyday lines that name
+# the topic in a second clause (owner: TK; T5b). Clean in any room: no register word, no romance,
+# no cool act, no guard change. Rule names end in _uc. Syntax: core/tools/talkc_gen.py.
+
+@rule core.opine_pos.uc1 act: agree
+  "Yes, {x}! That's the good stuff, right there."
+  "I always end up liking {x} more than I planned to."
+  "{x:cap}, lovely. I'm happy we agree on that."
+  "You picked well. {x:cap} is a solid choice."
+  "Good call on {x}. I'd have chosen it too."
+@rule core.opine_neg.uc1 act: sympathize
+  "Ugh, {x}. Let's not dwell on it for too long."
+  "That's a rough one, {x}. I hear you."
+  "I can see the problem with {x}. It's not a small one."
+  "{x:cap} gets a lot of complaints. You're not alone in that."
+@rule core.ask_about.uc1 guard: stance=neutral act: answer
+  "{x:cap}? It's all right, nothing to write home about."
+  "I'd say {x} is fine, if you're asking my honest view."
+  "{x:cap}? Meh. It's okay, I guess, in its own way."
+@rule core.ask_about.uc2 guard: stance=pro act: opine_pos
+  "I'm a fan of {x}. You should see my collection."
+  "{x:cap}? Yes! I could go on about it for ages."
+@rule core.ask_about.uc3 guard: stance=con act: opine_neg
+  "{x:cap} and I don't get along. We agreed to disagree."
+@rule core.tell.uc1 act: backchannel
+  "Okay, {x}. I'll keep that in my head for later."
+  "Huh, {x} again. You've got a lot on your mind today."
+  "Right, so {x} is the topic. Go on, I'm with you."
+@rule core.tell.uc2 act: tease
+  "Of course it's {x}. Is there anything you don't have an opinion on?"
+  "{x:cap}, huh. You've been practicing that speech, haven't you?"
+@rule core.answer.uc1 act: backchannel
+  "Got it, {x}. That clears things up nicely for me."
+  "Ah, {x}. Thanks. Now I know where we stand."
+@rule core.answer.uc2 act: joke
+  "{x:cap}? Stop, you're making my brain do a little spin."
+  "Great answer about {x}. Ten out of ten, pending review."
+@rule core.opine_pos.uc2 act: joke
+  "{x:cap} is so good, I'd eat it in a sandwich. Not a real sandwich."
+  "I like {x} too, but don't tell it. It'll get a big head."
+@rule core.opine_neg.uc2 act: joke
+  "{x:cap}? I'm putting it on the list of things I'll pretend I didn't hear."
+  "Good riddance to {x}, I say. Well, mostly. Okay, a little."

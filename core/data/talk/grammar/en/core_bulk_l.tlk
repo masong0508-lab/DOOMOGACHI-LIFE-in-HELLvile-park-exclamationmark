@@ -1,0 +1,84 @@
+# core/data/talk/grammar/en/core_bulk_l.tlk - bulk Surface push L: replies to an answer, a laugh, a
+# yes and a no (owner: TK; T5b). Clean in any room: no register word, no romance, no cool act, no
+# guard change. Rule names end in _ul. Syntax: core/tools/talkc_gen.py.
+
+@rule core.answer.ul1 act: backchannel
+  "Ah, okay. That makes sense, thanks for explaining."
+  "Good to know. I'll keep that in mind next time."
+  "Mm, right. I see what you mean now."
+  "Got it. That clears up a few things for me."
+  "Ah, interesting. Thanks for the straight answer."
+  "Okay, that's helpful. I'd been unsure about it."
+  "Right, makes sense. Thanks for being clear."
+  "Good answer. Short, sweet, and to the point."
+@rule core.answer.ul2 act: agree
+  "Yes, that's exactly what I'd have said."
+  "Right, I think you've got it spot on."
+  "Exactly. I'd have answered the same way, really."
+  "Agreed. That's the most sensible thing I've heard today."
+@rule core.answer.ul3 act: ask_about
+  "And what made you think of that, out of curiosity?"
+  "Okay, and how did that work out in the end?"
+  "Wait, does that mean you've tried it before?"
+  "So what's next, then? What's the plan?"
+@rule core.answer.ul4 act: tell
+  "That reminds me of something from last week, actually."
+  "Funny, I had a similar thing happen just yesterday."
+  "I had a bit of a run-in with that too, a while back."
+@rule core.answer.ul5 act: disagree
+  "Hm, I'd have guessed differently, but it's your call."
+  "I'm not sure about that. I'd want to check first."
+@rule core.answer.ul6 act: joke
+  "Wow, that's a very confident answer. I'm impressed."
+  "Good answer. I'd give it a gold star and a biscuit."
+  "That's the most dramatic answer I've ever been given. Brilliant."
+@rule core.answer.ul7 act: tease
+  "Of course that's your answer. Nobody else would say it."
+  "Well, that's a clever way of putting it. Show-off."
+@rule core.answer.ul8 act: laugh
+  "Ha! That's a surprising answer, but I like it."
+  "Hee, I didn't see that one coming at all."
+@rule core.laugh.ul1 act: laugh
+  "Ha! I can't stop now, that was too good."
+  "Hee hee, you're contagious. I'm still giggling."
+  "Ha, okay, okay. You win. For now."
+  "Hah! I'm laughing at myself, so thanks for that."
+@rule core.laugh.ul2 act: joke
+  "Okay, I'll keep the jokes coming. You're a good audience."
+  "Thanks, I'll be here all week. Bring snacks."
+  "Good, I like a crowd that laughs. Makes it worthwhile."
+@rule core.laugh.ul3 act: tease
+  "Look at you, laughing at my expense. Rude but fair."
+  "You've got a very loud laugh, did you know that?"
+@rule core.laugh.ul4 act: complain
+  "Stop laughing, I'm trying to be serious over here!"
+  "It's not that funny. Okay, it's a little funny."
+@rule core.laugh.ul5 act: backchannel
+  "Glad you're enjoying yourself. It's infectious, that laugh."
+  "Nice to hear. I like it when you're in a good mood."
+@rule core.yes.ul1 act: backchannel
+  "Good, that's settled then. Thanks for saying so."
+  "Okay, yes. I'll take that as a firm answer."
+  "Yes, right. Good to have that cleared up."
+@rule core.yes.ul2 act: thank
+  "Thanks, I'm glad you agreed. That helps a lot."
+  "Thank you. I hoped you'd say yes to that."
+@rule core.yes.ul3 act: joke
+  "Yes! Quick, before you change your mind."
+  "Yes, and I'll hold you to it. Not a joke."
+@rule core.yes.ul4 act: agree
+  "Yes, I'm with you on that. Let's go."
+  "Yes. Definitely. We agree, which is a rare treat."
+@rule core.no.ul1 act: backchannel
+  "Okay, no problem. Maybe another time."
+  "Fair enough. I'll ask again when it's a better day."
+  "No? Alright, I understand. Thanks for telling me."
+@rule core.no.ul2 act: complain
+  "No? Ugh, I was hoping you'd say yes this time."
+  "Aw, no? That's a bit of a letdown, honestly."
+@rule core.no.ul3 act: joke
+  "No? That's a crushing blow. I'll recover, probably."
+  "No, huh? Your loss. More snacks for me."
+@rule core.no.ul4 act: disagree
+  "I see it differently, but I'll respect your no."
+  "Hm, no. I'd have said yes, but it's your choice."

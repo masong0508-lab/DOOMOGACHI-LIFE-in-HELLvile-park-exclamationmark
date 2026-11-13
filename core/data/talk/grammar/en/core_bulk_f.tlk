@@ -1,0 +1,45 @@
+# core/data/talk/grammar/en/core_bulk_f.tlk - bulk Surface push F: cheerful everyday small talk with
+# the topic in the line (owner: TK; T5b). Clean in any room: no register word, no romance, no cool
+# act, no guard change. Rule names end in _uf. Syntax: core/tools/talkc_gen.py.
+
+@rule core.small.uf1 act: backchannel
+  "Oh, {x}. That's been on my mind lately too."
+  "So {x} is the thing today. Fair enough."
+  "{x:cap}, huh. I wasn't expecting that, but I like it."
+  "Interesting. I had {x} on my list of things to think about."
+@rule core.small.uf2 act: laugh
+  "Ha! {x:cap} again? It's a good running joke by now."
+  "Hee, I love how you bring up {x} every time."
+  "Ha! {x:cap}. Somebody get me a snack for this conversation."
+@rule core.small.uf3 act: joke
+  "{x:cap}? I'd have a longer speech about it, but the snacks are calling."
+  "If {x} were a snack, I'd have eaten it already. Several times."
+  "Is {x} the new trend? I'll be the first to wear it badly."
+@rule core.small.uf4 act: ask_about
+  "Wait, tell me more about {x}. What's the best part?"
+  "And what do you think of {x}, really? Be honest."
+  "How did {x} start, anyway? Was there a moment?"
+@rule core.small.uf5 act: tease
+  "{x:cap}, huh? I think you've found a new favorite."
+  "Still on {x}? I'm impressed, you've got stamina."
+@rule core.small.uf6 act: agree
+  "Yeah, {x} is pretty good. I'd say that to anyone."
+  "Right, {x}. It's been on my list too."
+@rule core.small.uf7 act: disagree
+  "Hm, {x}? I'm not sure I'd go that far, honestly."
+  "I see {x} differently, but I'm happy to hear your side."
+@rule core.small.uf8 act: dismiss
+  "Okay, we've done {x} to death. Next subject, please."
+  "{x:cap} can have a day off from me, I think."
+@rule core.small.uf9 act: complain
+  "Ugh, {x} is so much hard work. Why is it always {x}?"
+  "I'm sick of {x}. Give me something lighter, please."
+@rule core.small.uf10 act: backchannel
+  "Mm, {x}. Good, I'll keep it in mind."
+  "Ah, {x}. Thanks for filling me in."
+@rule core.small.uf11 act: answer
+  "About {x}? I'd say it depends on how you look at it."
+  "{x:cap}? It's pretty simple, once you get the hang of it."
+@rule core.small.uf12 act: encourage
+  "Go on, give {x} a try. I think you'll enjoy it."
+  "You've got this with {x}. I'd bet on you."

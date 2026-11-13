@@ -1,0 +1,81 @@
+# core/data/talk/grammar/en/core_bulk_n.tlk - bulk Surface push N: replies to a question about a fact,
+# a favor, advice, a feeling and a repeat (owner: TK; T5b). Clean in any room: no register word, no
+# romance, no cool act, no guard change. Rule names end in _un. Syntax: core/tools/talkc_gen.py.
+
+@rule core.ask_fact.un1 act: yes
+  "Yes, that's right. I'm fairly sure about it."
+  "Yep, that sounds correct to me. I heard it too."
+  "Yes, I believe so. Someone reliable told me."
+@rule core.ask_fact.un2 act: no
+  "No, I don't think that's right, as far as I know."
+  "Nope. I'd have remembered if it were true."
+  "No, not that I'm aware of. I'd check first."
+@rule core.ask_fact.un3 act: answer
+  "Good question. I'd guess the answer has to do with the old records."
+  "I'm not totally sure, but I'd start with the library."
+  "I'd have to look it up. Try the notice board, maybe."
+  "Hm, that one is tricky. My best guess is no, but I'm unsure."
+@rule core.ask_fact.un4 act: joke
+  "I'm a pet, not a library. But I'll guess, very confidently."
+  "Fact: I know a lot of things. Most of them are snacks."
+@rule core.ask_fact.un5 act: dismiss
+  "I don't know that one. Let's pick something easier."
+@rule core.ask_favor.un1 act: yes
+  "Sure, I'd be glad to help. What do you need?"
+  "Of course! Point me in the right direction."
+  "Yes. I'll do my best and not drop anything."
+  "Happy to help. You'd do the same for me, I think."
+@rule core.ask_favor.un2 act: no
+  "Sorry, I can't right now. Maybe later on?"
+  "Not today, I'm afraid. I'm properly swamped."
+  "I'd love to, but I really can't manage it this time."
+@rule core.ask_favor.un3 act: offer
+  "I can't do that bit, but I can help with the rest."
+  "How about I take half, and you take the other half?"
+@rule core.ask_favor.un4 act: complain
+  "A favor? Again? You're wearing me out, friend."
+  "Ugh, sure, but you owe me one after this."
+@rule core.ask_favor.un5 act: joke
+  "A favor? That'll cost you at least one snack."
+  "Depends. Is it heavy, scary, or both? Tell me first."
+@rule core.ask_advice.un1 act: answer
+  "I'd sleep on it. Not literally. Well, maybe literally."
+  "Trust your gut. Mine's usually hungry, but still."
+  "Do the thing that scares you a little. It's usually fine."
+  "Take it slow. Most things look better after a break."
+@rule core.ask_advice.un2 act: encourage
+  "You'll figure it out. You always do, somehow."
+  "Whatever you choose, I've got your back. Promise."
+  "You're more capable than you think. Go for it."
+@rule core.ask_advice.un3 act: dismiss
+  "I'm not the one to ask about that. Find a wiser friend."
+@rule core.ask_advice.un4 act: joke
+  "My advice? Never trust a staircase you can't see."
+  "Ask me later. I'm out of wisdom until lunch time."
+@rule core.ask_feeling.un1 act: answer
+  "I'm okay. A bit tired, a bit hopeful, mostly hungry."
+  "Pretty good, thanks for asking. Nobody usually does."
+  "Not bad at all. Today's been oddly fine, for once."
+  "A little wobbly, but I'm working on it, thanks."
+@rule core.ask_feeling.un2 act: tell
+  "Honestly? I've been thinking a lot lately. It's been a lot."
+  "I'll tell you the truth. Some things have been on my mind."
+@rule core.ask_feeling.un3 act: complain
+  "Not great. The whole week's been sideways, honestly."
+  "Ugh, don't ask. Okay, ask. I'll tell you everything."
+@rule core.ask_feeling.un4 act: joke
+  "Fine, thanks. Ask me again after lunch. I'll be sharper."
+  "I feel like a pie that's been left out in the sun."
+@rule core.ask_feeling.un5 act: dismiss
+  "I'm good. Let's talk about something that isn't me."
+  "Oh, you know. Same as ever, nothing dramatic."
+@rule core.ask_repeat.un1 act: answer
+  "I said it was a bit of a long story. Sorry, I mumbled."
+  "Let me say that again, but slower this time."
+  "I'll repeat it. It was worth a second go, I think."
+@rule core.ask_repeat.un2 act: complain
+  "I'd rather not say it twice. Once was plenty."
+  "Ugh, you didn't hear it? I'm not repeating myself."
+@rule core.ask_repeat.un3 act: joke
+  "I said nothing. I'm a mime today, sorry."
+  "Same thing, but louder this time. Ready?"

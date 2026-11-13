@@ -1,0 +1,57 @@
+# core/data/talk/grammar/en/core_bulk_e.tlk - bulk Surface push E: warm replies that answer a
+# compliment, a thanks or a sympathy, with the topic in the line (owner: TK; T5b). Clean in any
+# room: no register word, no romance, no cool act, no guard change. Rule names end in _ue.
+# Syntax: core/tools/talkc_gen.py.
+
+@rule core.compliment.ue1 act: thank
+  "Thanks for the kind words about {x}. They made me smile."
+  "Aw, thanks. {x:cap} is one of my favorite things to share."
+  "You're kind. I think {x} might be rubbing off on me."
+  "Thanks! I'll tell {x} you said so. It'll be thrilled."
+  "That's sweet. You clearly know how to make {x} sound good."
+  "Thank you. I hope you keep finding good things like {x}."
+@rule core.compliment.ue2 act: joke
+  "Careful, you'll make me think {x} is my fault. It isn't, mostly."
+  "Nice! Now I have to live up to {x}. No pressure."
+  "You say that to everyone who likes {x}, don't you?"
+@rule core.compliment.ue3 act: tease
+  "Good taste in {x}, I'll grant you. The rest is still up for debate."
+  "Compliments about {x}? You're softening me up for something."
+@rule core.comfort.ue1 act: thank
+  "Thanks, {x} is a lot right now, but you helped with that."
+  "It helps that you get how {x} weighs on a person."
+  "Okay. Thank you. We'll sort out {x} together, one bit at a time."
+  "Thanks. I'm a bit calmer now that {x} is out in the open."
+@rule core.comfort.ue2 act: answer
+  "The worst part about {x} is that it doesn't go away quickly."
+  "I'm managing {x}. Some days better, some days, not so much."
+  "{x:cap} has been a heavy thing to carry around this week."
+@rule core.encourage.ue1 act: thank
+  "Thanks for believing I can handle {x}. I'll give it a go."
+  "You're right, {x} is manageable. One step at a time, promise."
+  "Okay, {x} and me, we're going to have a talk. A good one."
+@rule core.encourage.ue2 act: yes
+  "Yes, let's take on {x}. You can be my partner in it."
+  "Sure, {x} is my next project. Wish me luck."
+@rule core.sympathize.ue1 act: thank
+  "Thanks for listening about {x}. It really does help."
+  "It's a relief that someone else sees {x} the way I do."
+  "You're right about {x}. I'm glad we agree on that."
+@rule core.sympathize.ue2 act: complain
+  "{x:cap} is so draining, and nobody seems to notice."
+  "I'm tired of {x}, if I'm honest. It keeps coming back."
+@rule core.thank.ue1 act: backchannel
+  "You're welcome. {x:cap} was a good thing to talk about."
+  "No problem at all. Anytime you want to chat about {x}."
+  "Glad I could help with {x}. Come back anytime."
+@rule core.thank.ue2 act: joke
+  "Ha, you're welcome. Don't get used to me being this helpful."
+  "Hee, you're very welcome. {x:cap} is lucky to have you."
+@rule core.yes.ue1 act: backchannel
+  "Yes, good. Then we're set on {x}."
+  "Okay, yes. {x:cap} it is, then."
+@rule core.no.ue1 act: backchannel
+  "No worries. {x:cap} can wait until another time."
+  "Fair enough. We'll leave {x} for later."
+@rule core.no.ue2 act: disagree
+  "No? Really? I thought you'd say yes to {x}."

@@ -1,0 +1,71 @@
+# core/data/talk/grammar/en/core_bulk_b.tlk - bulk Surface push B: opinions and questions about a
+# topic, with the topic in every line (owner: TK; T5b). Clean in any room: no register word, no
+# romance, no cool act, no guard change. Rule names end in _ub. Syntax: core/tools/talkc_gen.py.
+
+@rule core.opine_pos.ub1 act: agree
+  "I'm with you on {x}. Good taste, you've got."
+  "Yes, {x} is a good one. I'd say so to anybody."
+  "Right? {x:cap} is one of the better things around here."
+  "Oh, I like {x} a lot. It's a comfy kind of fun."
+  "Count me in for {x}. I always come back to it."
+  "{x:cap} is nice, and it's nice to share it with someone."
+  "I like {x} more every time you bring it up."
+  "You know, {x} has grown on me. In a good way."
+@rule core.opine_neg.ub1 act: sympathize
+  "I can see why {x} gets on your nerves. It gets on mine too."
+  "Ugh, {x}. I'd rather talk about almost anything else."
+  "{x:cap} is not my favorite either. We can be grumpy together."
+  "Okay, {x} is a fair thing to complain about. Vent away."
+  "I'd call {x} a bit much, honestly. Too loud, too often."
+  "{x:cap} has a way of ruining a nice afternoon. That's fair."
+@rule core.ask_about.ub1 guard: stance=neutral act: answer
+  "{x:cap}? I haven't thought about it much. Fine, I suppose."
+  "Hm, {x}. It's there, it does its job, and that's about it."
+  "{x:cap}? It's okay. Not one I'd rush out for."
+  "{x:cap}? A bit of everything, depending on the day."
+@rule core.ask_about.ub2 guard: stance=pro act: opine_pos
+  "{x:cap}? Oh, I'd talk about that all day if you let me."
+  "I really like {x}. You picked a good one to ask about."
+  "{x:cap} is wonderful. I'm glad you asked, honestly."
+@rule core.ask_about.ub3 guard: stance=con act: opine_neg
+  "{x:cap}? Not my favorite, I'll admit. Can we talk about something else?"
+  "I'd skip {x}, if I'm honest. It's not really my scene."
+@rule core.ask_opinion.ub1 act: answer
+  "My opinion on {x}? It's mixed, if I'm being fair."
+  "I think {x} is fine. Not special, not terrible, just fine."
+  "On {x}? I'd say it's worth a look, but not a long one."
+@rule core.ask_fact.ub1 act: answer
+  "Is {x} true? I'd guess so, but I'd check before quoting me."
+  "About {x}? I heard something about it, but I might be mixing it up."
+@rule core.ask_feeling.ub1 act: answer
+  "Honestly, {x} is on my mind more than I'd like right now."
+  "I'm fine. A little bit distracted by {x}, if I'm honest."
+@rule core.ask_advice.ub1 act: answer
+  "For {x}? Take a short break, then come back and try again."
+  "If it's about {x}, I'd start with the easy part and go from there."
+@rule core.ask_favor.ub1 act: yes
+  "Sure, I'll help with {x}. Tell me what to bring."
+  "Yes, I can do {x} with you. Just give me a moment."
+@rule core.ask_repeat.ub1 act: answer
+  "Sorry, I was thinking about {x}. Say it again?"
+  "I'll say it again. It was about {x}, more or less."
+@rule core.change_topic.ub1 act: answer
+  "New topic? Fine, but I might come back to {x} later."
+  "Okay, we'll leave {x} alone for now. What's next?"
+@rule core.tell.ub1 act: backchannel
+  "Oh, {x}! I'd like to hear more about that, please."
+  "Really? About {x}? Keep talking, I'm listening."
+  "Hm, {x}. That's something I hadn't thought of yet."
+@rule core.tell.ub2 act: laugh
+  "Ha! {x:cap}, of all things. I didn't see that coming."
+  "Hee, {x} again. You're really committed to it."
+@rule core.answer.ub1 act: agree
+  "Yeah, that's about {x}, I think. I'd say the same."
+  "Right, {x} works that way. I'd have guessed it too."
+@rule core.agree.ub1 act: laugh
+  "Ha, {x}, yes. We're in full agreement, somehow."
+  "Hee! {x:cap}. We're the only two who think so."
+@rule core.disagree.ub1 act: disagree
+  "Hmm, I don't see {x} that way. But I'm willing to hear more."
+  "I'm not sure {x} is as good as you say. Convince me, maybe."
+  "I'd push back a little on {x}. It's not that simple."

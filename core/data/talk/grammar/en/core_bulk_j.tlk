@@ -1,0 +1,47 @@
+# core/data/talk/grammar/en/core_bulk_j.tlk - bulk Surface push J: reflective lines about a topic and
+# a memory, PG-21 and kid-safe (owner: TK; T5b). Clean in any room: no register word, no romance, no
+# cool act, no guard change. Rule names end in _uj. Syntax: core/tools/talkc_gen.py.
+
+@rule core.memory.uj1 act: tell
+  "I remember when {x} first came up. I was much younger, I think."
+  "Back when {x} was new, nobody knew what to do with it."
+  "There was a time I thought {x} was the answer to everything."
+@rule core.memory.uj2 act: backchannel
+  "That takes me back to {x}. Those were some good days."
+  "Mm, {x}. I can still picture the old way of doing it."
+@rule core.memory.uj3 act: laugh
+  "Ha! I haven't thought about {x} in ages. What a day that was."
+  "Hee, remember the mess with {x}? I still giggle about it."
+@rule core.memory.uj4 act: sympathize
+  "{x:cap} was hard back then. I'm glad it's behind us."
+  "I know {x} hurt a bit. It's okay to remember it that way."
+@rule core.memory.uj5 act: ask_about
+  "What do you remember about {x}? I'm curious."
+  "Was {x} the first thing you learned here, or did it come later?"
+@rule core.hope.uj1 act: encourage
+  "I hope {x} goes well for you. You deserve a good run at it."
+  "Here's to {x}. May it give you something nice to show for it."
+@rule core.hope.uj2 act: backchannel
+  "I hope {x} works out. It'll be good to see it go right."
+  "Fingers crossed for {x}. I'll be cheering from the side."
+@rule core.hope.uj3 act: thank
+  "Thanks for hoping about {x} with me. It means a lot."
+  "Thanks. Here's to {x}, and to both of us getting through it."
+@rule core.worry.uj1 act: sympathize
+  "I worry about {x} too, sometimes. It's normal, I think."
+  "You're not alone in worrying about {x}. We can sort it out."
+@rule core.worry.uj2 act: answer
+  "I'm trying not to overthink {x}. It's a work in progress."
+  "{x:cap} keeps me up a bit. I'll handle it in the morning."
+@rule core.pride.uj1 act: compliment
+  "I'm proud of how you handled {x}. Really, you did well."
+  "You did great with {x}. I wanted to say that out loud."
+@rule core.pride.uj2 act: thank
+  "Thanks for being proud of me about {x}. It helps."
+  "That's kind. I'm glad {x} went the way it did."
+@rule core.regret.uj1 act: sympathize
+  "I wish I'd handled {x} differently. Lesson learned, I hope."
+  "Some things about {x} I'd do over. Most I'd keep."
+@rule core.regret.uj2 act: complain
+  "{x:cap} was a mistake, and I'm still annoyed about it."
+  "Why did I agree to {x}? Ugh. Lesson learned, I hope."
