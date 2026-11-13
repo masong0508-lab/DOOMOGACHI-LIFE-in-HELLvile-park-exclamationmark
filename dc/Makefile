@@ -33,6 +33,10 @@
 #                         3D view against the host software PVR's (compare3d.py),
 #                         no polygon dropped, no tick over 33.3 ms; results in
 #                         build/shots/ow; part of `test` when Flycast is there
+#   make -C dc family-test  DC9A on Flycast: every story_*, fp_* and side_* script of
+#                         core/tests/scripts twice in dcrun (SCRIPTS="a b" for some),
+#                         each must pass and repeat byte for byte (dc/tests/families;
+#                         results in build/shots/families)
 #   make -C dc v3d-test   DC6 part 1 on the host: the first-person view's polygons
 #                         (software PVR) against the reference raycaster
 #   make -C dc room-test  DC8 on Flycast: the house. The 58 room_ref golden
@@ -122,7 +126,7 @@ DC_OBJS   := $(call dc_obj,$(DC_SRCS))
 CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 ALL_OBJS  := $(DC_OBJS) $(CORE_OBJS)
 
-.PHONY: all elf disc all-disc test check-elf check-packdisc host-test harness-test ui-compare vmu-test audio-test ow-test room-test v3d-test sizes clean
+.PHONY: all elf disc all-disc test check-elf check-packdisc host-test harness-test ui-compare vmu-test audio-test ow-test room-test v3d-test family-test sizes clean
 .DEFAULT_GOAL := all
 
 all: elf
@@ -235,6 +239,12 @@ ow-test: $(CDI) $(BUILD)/doomogachi.nm
 	@$(MAKE) --no-print-directory -C $(ROOT)/core runner
 	@$(MAKE) --no-print-directory -C $(DC)/tests/gfx2d $(HOSTRUN)
 	sh $(DC)/tests/overworld/run_flycast.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(RUNNER) $(HOSTRUN) $(SHOTS)/ow
+
+# DC9A: the story, free-play and side-mission scripts on Flycast, each twice, identical
+family-test: $(CDI) $(BUILD)/doomogachi.nm
+	@if [ -z "$(FLYCAST)" ]; then echo "family-test: no Flycast core (make -C dc/harness flycast)" >&2; exit 1; fi
+	@$(MAKE) --no-print-directory -C $(HARNESS) all
+	sh $(DC)/tests/families/run_flycast.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(SHOTS)/families $(SCRIPTS)
 
 # DC8: the house on Flycast: room_ref's golden frames and the house scripts
 ROOMTEST := $(BUILD)/host/dcroom_test
