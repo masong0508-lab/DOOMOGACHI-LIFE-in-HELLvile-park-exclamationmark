@@ -1,0 +1,101 @@
+From 724d9935e757d50f4af0207fc5b705dceeca910b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 12 Nov 2026 23:41:59 +0000
+Subject: [PATCH 04/14] PS1-RAM step 3: the busy banner keeps its pixels in
+ VRAM (+8,640 B)
+
+gfx_busy_banner() saved the 252 x 16 pixels under the "Checking MEMORY
+CARD..." / "Saving settings..." banner with StoreImage into 8,064 B of
+.bss and put them back with LoadImage. They are now copied VRAM to VRAM
+(MoveImage) into the same rows of the other framebuffer and back: that
+buffer holds the frame before the newest, which is never shown again once
+the banner's frame is up, and the next game frame clears and redraws it.
+The frame the game drew is restored exactly as before.
+
+The banner's glyphs and the loading screen's lines share one array of 40
+sprites (each line is drawn and finished before the next): -800 B.
+
+Game disc with the boot FMV: 117,120 -> 125,760 B below the stack top.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ ps1/src/gfx.c | 30 ++++++++++++++++++++++--------
+ 1 file changed, 22 insertions(+), 8 deletions(-)
+
+diff --git a/ps1/src/gfx.c b/ps1/src/gfx.c
+index d6ca8043..b5ef5785 100644
+--- a/ps1/src/gfx.c
++++ b/ps1/src/gfx.c
+@@ -337,18 +337,27 @@ void gfx_upload_now(int x, int y, int w, int h, const void *data)
+  * a second per 8 KB block), so a long save does not look like a hang.
+  * Drawn straight into the newest finished frame, which is then shown;
+  * gfx_busy_end() puts the pixels under it back (so that frame stays what
+- * the game drew, e.g. for harness screenshots). */
++ * the game drew, e.g. for harness screenshots).
++ * (RAM headroom 2026-11-12) The pixels under it are kept in VRAM, in the
++ * same rows of the OTHER framebuffer, not in 8 KB of .bss: that buffer
++ * holds the frame before the newest, which is never shown again once the
++ * banner's frame is up (the next game frame is drawn into it, cleared
++ * first). For the few hundred microseconds until the banner's frame is
++ * shown, the picture on screen has the newest frame's pixels in that
++ * strip: the pixels that are shown next anyway. */
+ #define BANNER_MAX 40
+-#define BANNER_W (BANNER_MAX * 6 + 12)
+ #define BANNER_H 16
+-static uint16_t s_banner_save[BANNER_W * BANNER_H];
+-static RECT s_banner_rect;
++static RECT s_banner_rect;              /* in the framebuffer shown; w 0 = no banner up */
++static int16_t s_banner_keep_y;         /* its rows in the other framebuffer             */
++/* the glyphs of the banner and of the loading screen's lines (LS_TEXT_MAX):
++ * one line at a time, each drawn and finished (DrawSync) before the next */
++static SPRT s_glyph[BANNER_MAX];
+ 
+ void gfx_busy_banner(const char *msg)
+ {
+     static TILE box[2];
+-    static SPRT glyph[BANNER_MAX];
+     static DR_TPAGE tp;
++    SPRT *glyph = s_glyph;
+     DRAWENV env;
+     int fb = g_cur ^ 1, n = 0, x, y, w, i;
+     uint16_t clut = vram_font_clut(PAL_UI_CREAM);
+@@ -361,7 +370,8 @@ void gfx_busy_banner(const char *msg)
+     x = SCR_W - w - 10;
+     y = SCR_H - 26;
+     setRECT(&s_banner_rect, x - 1, fb * SCR_H + y - 1, w + 2, BANNER_H);
+-    StoreImage(&s_banner_rect, (uint32_t *)s_banner_save);
++    s_banner_keep_y = (int16_t)((fb ^ 1) * SCR_H + y - 1);
++    MoveImage(&s_banner_rect, s_banner_rect.x, s_banner_keep_y);
+     DrawSync(0);
+     env = s_fb[fb].draw;
+     env.isbg = 0;
+@@ -399,9 +409,11 @@ void gfx_busy_banner(const char *msg)
+ 
+ void gfx_busy_end(void)
+ {
++    RECT keep = s_banner_rect;
+     if (!s_banner_rect.w)
+         return;
+-    LoadImage(&s_banner_rect, (const uint32_t *)s_banner_save);
++    keep.y = s_banner_keep_y;
++    MoveImage(&keep, s_banner_rect.x, s_banner_rect.y);
+     DrawSync(0);
+     s_banner_rect.w = 0;
+ }
+@@ -481,9 +493,11 @@ static void busy_box(TILE *t, int x, int y, int w, int h, int r, int g, int b)
+     DrawPrim(t);
+ }
+ 
++typedef char ls_text_fits[LS_TEXT_MAX <= BANNER_MAX ? 1 : -1];
++
+ static void busy_puts(int y, const char *msg, uint8_t pal)
+ {
+-    static SPRT glyph[LS_TEXT_MAX];
++    SPRT *glyph = s_glyph;
+     static DR_TPAGE tp;
+     uint16_t clut = vram_font_clut(pal);
+     int n = 0, x, i;
+-- 
+2.43.0
+

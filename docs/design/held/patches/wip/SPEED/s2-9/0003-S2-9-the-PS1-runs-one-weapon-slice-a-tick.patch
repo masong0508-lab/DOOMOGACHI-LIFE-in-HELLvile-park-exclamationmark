@@ -1,0 +1,91 @@
+From f9375be167a7e3831803c6e91d5f7f9653c94dba Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 11:36:37 +0000
+Subject: [PATCH 3/4] S2-9: the PS1 runs one weapon slice a tick
+
+The platform's slice gate counts the frame's drawing, not the logic tick
+before it (11 ms in the workshop on the PS1), so with room for "one more"
+three slices of 2-5 ms ran in one frame and it took 3 vsyncs. One slice a
+tick (350 units, at most ~5 ms) keeps every frame of the workshop window at
+2 vsyncs. test_weld_slice: one slice a tick, asking twice runs one.
+
+PS1 (Redux, speed2 action windows): workshop 28.78 fps with three 100 ms
+frames -> 30.12, all frames 33 ms.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ core/src/weld_slice.c        |  7 ++++++-
+ core/tests/test_weld_slice.c | 23 ++++++++++++++++++-----
+ 2 files changed, 24 insertions(+), 6 deletions(-)
+
+diff --git a/core/src/weld_slice.c b/core/src/weld_slice.c
+index a92310e2..d41bb84b 100644
+--- a/core/src/weld_slice.c
++++ b/core/src/weld_slice.c
+@@ -628,6 +628,7 @@ typedef struct Ws {
+     uint8_t  asked_mask;                /* slots asked for in tick asked_tick: a prefetch leaves them alone */
+     uint32_t asked_tick;
+     uint32_t gfx_gen;                   /* weld_gfx_gen when all this was made */
++    uint32_t ran;                       /* the tick of the last slice run inside a frame (WS_FRAME: one a tick) */
+ #if !defined(DOOMO_PLATFORM_PS1)
+     uint32_t far_key[WELD_VIEW_FAR], far_used[WELD_VIEW_FAR];
+     const DoomoImage *far_img[WELD_VIEW_FAR];   /* its picture in the pool as found by the last far_sync(), or NULL */
+@@ -842,9 +843,13 @@ static void job_want(Ws *s, const DoomoWeapon *w, int frame, uint32_t key, int n
+ static void job_pump(Ws *s)
+ {
+     if (ws_mode == WS_FRAME) {
+-        while (s->on && plat_portrait_slice_ok(SLICE_CLASS, (int)(now() - s->last))) {
++        /* One slice a tick: the platform's gate (plat_portrait_slice_ok) counts the frame's drawing, not the
++         * logic tick before it (11 ms in the workshop on the PS1), and with several slices in a frame (3 x 2-5 ms)
++         * the frame took 3 vsyncs. */
++        if (s->on && s->ran != now() && plat_portrait_slice_ok(SLICE_CLASS, (int)(now() - s->last))) {
+             job_slice(s, ws_units, 0);
+             plat_portrait_slice_done(SLICE_CLASS);
++            s->ran = now();
+         }
+     } else if (s->on && (int32_t)(now() - s->last) >= PATIENCE) {
+         /* the frames leave no idle time: one slice all the same, so the picture always comes (the platform
+diff --git a/core/tests/test_weld_slice.c b/core/tests/test_weld_slice.c
+index 9b5e43c2..ca41018f 100644
+--- a/core/tests/test_weld_slice.c
++++ b/core/tests/test_weld_slice.c
+@@ -323,17 +323,30 @@ TEST(weld_slice_without_slices_is_weld_view_image)
+     CHECK(weld_view_prefetch(&tw[0], 0) == 1);
+ }
+ 
+-/* The PS1's way (mode 2): slices in the asking call while the platform has room for one more. The native
+- * platform always has: a picture is whole in the call that asks for it, and the same picture. */
+-TEST(weld_slice_in_frame_slices_finish_in_the_call)
++/* The PS1's way (mode 2): a slice in the asking call while the platform has room for one more, and one a tick at
++ * most (a frame with three slices took 3 vsyncs: the platform's gate counts the frame's drawing, not its logic).
++ * The native platform always has room: the picture comes after as many ticks as it has slices, and is the same
++ * picture; asking twice in a tick runs one slice. */
++TEST(weld_slice_in_frame_runs_one_slice_a_tick)
+ {
+     const DoomoImage *img;
+-    int ready = 0;
++    int ready = 0, t, slices;
+     job_setup(0);
+     weld_slice_test(2, 350, 0);
+     img = weld_view_image_sliced(&tw[1], 0, &ready);
++    CHECK(ready == 0 && img == NULL);                           /* a slice ran; the picture is not whole yet */
++    img = weld_view_image_sliced(&tw[1], 0, &ready);
++    CHECK(ready == 0 && img == NULL);                           /* ... and asking again in this tick ran none */
++    CHECK(weld_view_prefetch(&tw[2], 0) == 0);
++    for (t = 0; t < 200 && !ready; t++) {
++        tick();
++        img = weld_view_image_sliced(&tw[1], 0, &ready);
++    }
++    slices = t + 1;
+     CHECK(ready == 1 && is_ref(img, 1));
+-    CHECK(weld_view_prefetch(&tw[2], 0) == 1);
++    CHECK(slices > 3 && slices < 100);                          /* a picture is several slices, not one tick */
++    for (t = 0; t < 200 && !weld_view_prefetch(&tw[2], 0); t++) tick();
++    CHECK(t < 200);
+     img = weld_view_image_sliced(&tw[2], 0, &ready);
+     CHECK(ready == 1 && is_ref(img, 2));
+     weld_slice_test(0, 0, 0);
+-- 
+2.43.0
+

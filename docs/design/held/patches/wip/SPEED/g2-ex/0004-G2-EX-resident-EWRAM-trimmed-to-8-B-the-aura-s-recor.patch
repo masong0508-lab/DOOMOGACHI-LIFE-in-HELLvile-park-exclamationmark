@@ -1,0 +1,234 @@
+From e431bbdbc9cb5ae8c4ecf28580ac1cf336329564 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 14:04:50 +0000
+Subject: [PATCH 4/7] G2-EX: resident EWRAM trimmed to +8 B (the aura's
+ recorder and the clip mask live in the scene scratch)
+
+The aura's list set (with the pointer to the list being recorded) and the stage's clip mask moved into memory the
+scene binds (the exorcism's scene scratch / the stage's own block); the saved gba_nodraw of a clip is the clip
+box's fifth halfword; the stage's static state is reordered so it keeps its 12 bytes. GBA EWRAM .bss+.data
+246,700 -> 246,708 B (15,436 B free), IWRAM resident +16 B (plat_rect's clip dispatch), the room group's overlay
+slot +152 B (stage_clip_rect; 6,612 B of it free).
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ core/src/backdrop.c     | 16 ++++++++--------
+ core/src/exorcism_gfx.c | 34 ++++++++++++++++++++--------------
+ gba/src/canvas_int.h    |  2 +-
+ gba/src/stage.c         |  8 ++++----
+ 4 files changed, 33 insertions(+), 27 deletions(-)
+
+diff --git a/core/src/backdrop.c b/core/src/backdrop.c
+index 80efc651..51f24988 100644
+--- a/core/src/backdrop.c
++++ b/core/src/backdrop.c
+@@ -74,15 +74,15 @@ typedef struct {
+     PlatStageInfo info;
+     int16_t d[DIRTY_MAX][4];      /* boxes put back                             */
+     int16_t pc[PIECE_MAX][4];     /* the disjoint pieces the dirty set is cut into (what was restored) */
++    uint32_t clip_mask;           /* the layers to draw that are drawn through pieces (in the bound memory: no .bss) */
+     int nd, npc;
+ } SMem;
+ /* the bound memory (the caller's: the exorcism's scene scratch) and the per-frame state */
+ static SMem *M;
+ static struct {
+-    int8_t on;                    /* plat_stage_begin said yes                  */
+     uint32_t draw_mask;           /* layers to draw this frame                  */
+-    uint32_t clip_mask;           /* ... of them, the ones drawn through pieces  */
+     StageStats st;
++    int8_t on;                    /* plat_stage_begin said yes                  */
+ } S;
+ #define SS (*M)
+ 
+@@ -107,13 +107,13 @@ int stage_begin(int id, uint32_t key, void (*draw)(uint32_t key))
+ {
+     S.on = 0;
+     S.draw_mask = 0xFFFFFFFFu;
+-    S.clip_mask = 0;
+     S.st.drawn = S.st.restored = S.st.clipped = 0;
+     S.st.full = 1;
+     S.st.retained = 0;
+     if (!M) return 0;
+     SS.cur.n = 0;
+     SS.cur.clip = 0;
++    SS.clip_mask = 0;
+     SS.npc = 0;
+     SS.cur.bid = (int16_t)id;
+     SS.cur.bkey = key;
+@@ -254,7 +254,7 @@ static void resolve_full(void)
+ {
+     plat_stage_restore(0, 0, plat_screen_w(), plat_screen_h());
+     S.draw_mask = 0xFFFFFFFFu;
+-    S.clip_mask = 0;
++    SS.clip_mask = 0;
+     SS.npc = 0;
+     S.st.full = 1;
+     S.st.restored = 1;
+@@ -279,7 +279,7 @@ void stage_resolve(void)
+     S.st.full = 0;
+     n = DOOMO_MAX(SS.cur.n, old->n);
+     S.draw_mask = 0;
+-    S.clip_mask = 0;
++    SS.clip_mask = 0;
+     add_dirty(SS.info.dx0, SS.info.dy0, SS.info.dx1, SS.info.dy1);
+     for (i = 0; i < n; i++) {
+         static const SLayer none = { 0, 0, 0, 0, 0 };
+@@ -316,7 +316,7 @@ void stage_resolve(void)
+         if (((S.draw_mask >> i) & 1u) || empty(b) || !((SS.cur.clip >> i) & 1u)) continue;
+         if (!hits_dirty(b->x0, b->y0, b->x1, b->y1)) continue;
+         S.draw_mask |= 1u << i;
+-        S.clip_mask |= 1u << i;
++        SS.clip_mask |= 1u << i;
+     }
+     SS.npc = np;
+     for (i = 0; i < np; i++)
+@@ -324,7 +324,7 @@ void stage_resolve(void)
+     S.st.restored = (uint8_t)DOOMO_MIN(np, 255);
+     for (i = 0; i < SS.cur.n; i++) {
+         S.st.drawn = (uint8_t)(S.st.drawn + ((S.draw_mask >> i) & 1u));
+-        S.st.clipped = (uint8_t)(S.st.clipped + ((S.clip_mask >> i) & 1u));
++        S.st.clipped = (uint8_t)(S.st.clipped + ((SS.clip_mask >> i) & 1u));
+     }
+ }
+ 
+@@ -340,7 +340,7 @@ int stage_clip_n(int i)
+ {
+     const SLayer *b;
+     int k, n = 0;
+-    if (!S.on || i < 0 || i >= SS.cur.n || !((S.clip_mask >> i) & 1u)) return 0;
++    if (!S.on || i < 0 || i >= SS.cur.n || !((SS.clip_mask >> i) & 1u)) return 0;
+     b = &SS.cur.l[i];
+     for (k = 0; k < SS.npc; k++) {
+         const int16_t *p = SS.pc[k];
+diff --git a/core/src/exorcism_gfx.c b/core/src/exorcism_gfx.c
+index 5669052e..47fa3365 100644
+--- a/core/src/exorcism_gfx.c
++++ b/core/src/exorcism_gfx.c
+@@ -539,7 +539,7 @@ void exo_fuzz(int cx, int foot_y, uint32_t t, int expr)
+ #endif
+ #if HOST_HOLES
+ static int16_t hole[4];                      /* [x0, x1) x [y0, y1) */
+-static void (*hole_emit)(int, int, int, int, uint8_t) = plat_rect;   /* where the rects that are left go */
++static void hole_emit(int x, int y, int w, int h, uint8_t c);   /* the rects that are left: drawn, or kept (the aura) */
+ static void hole_tap(int x, int y, int w, int h, uint8_t c)
+ {
+     int x1 = x + w, y1 = y + h, a, b;
+@@ -561,24 +561,32 @@ static void hole_tap(int x, int y, int w, int h, uint8_t c)
+ #define AURA_MAX 96
+ typedef struct { int16_t x, y; uint8_t w, h, c, pad; } AuraRect;
+ typedef struct { int16_t fw, fh, ox, oy; int8_t cls, valid, pad[2]; uint16_t n, pad2; AuraRect r[AURA_MAX]; } Aura;
+-static Aura *aura;                           /* [5], one per pulse */
++typedef struct { Aura *rec; Aura a[5]; } AuraSet;   /* one list per pulse; rec: the one being recorded, else NULL */
++static AuraSet *aura;
+ extern void plat_rect_run(const void *list, int n) __attribute__((weak));   /* the GBA's ARM run (video_loops.s) */
+ extern int gba_nodraw __attribute__((weak));        /* 0: drawing to Mode 4, the only case the run handles */
+-uint32_t exo_aura_bytes(void) { return 5u * (uint32_t)sizeof(Aura); }
++uint32_t exo_aura_bytes(void) { return (uint32_t)sizeof(AuraSet); }
+ void exo_aura_bind(void *mem)
+ {
+     int i;
+-    aura = (Aura *)mem;
+-    for (i = 0; aura && i < 5; i++) aura[i].valid = 0;
++    aura = (AuraSet *)mem;
++    if (!aura) return;
++    aura->rec = NULL;
++    for (i = 0; i < 5; i++) aura->a[i].valid = 0;
+ }
+-static Aura *aura_cur;                       /* the list being recorded */
+ static void aura_rec(int x, int y, int w, int h, uint8_t c)
+ {
+-    if (aura_cur->n < AURA_MAX && w < 256 && h < 256) {
+-        AuraRect *r = &aura_cur->r[aura_cur->n];
++    Aura *a = aura->rec;
++    if (a->n < AURA_MAX && w < 256 && h < 256) {
++        AuraRect *r = &a->r[a->n];
+         r->x = (int16_t)x; r->y = (int16_t)y; r->w = (uint8_t)w; r->h = (uint8_t)h; r->c = c; r->pad = 0;
+     }
+-    aura_cur->n++;                           /* (more than AURA_MAX: not valid) */
++    a->n++;                                  /* (more than AURA_MAX: not valid) */
++}
++static void hole_emit(int x, int y, int w, int h, uint8_t c)
++{
++    if (aura && aura->rec) aura_rec(x, y, w, h, c);
++    else plat_rect(x, y, w, h, c);
+ }
+ 
+ /* draw the list with its origin at (x, y) */
+@@ -654,19 +662,17 @@ void exo_host_frame(int cx, int cy, const DoomoImage *img, int scale, int shake,
+          * rows clear of the screen's top and bottom, else its rows would be cut: not kept) */
+         if (aura && pulse >= -2 && pulse <= 2 && y >= 8 && y + h + 8 <= plat_screen_h() && !plat_draw_skipped()) {
+             int cls = dread > 10;
+-            Aura *a = &aura[pulse + 2];
++            Aura *a = &aura->a[pulse + 2];
+             if (a->valid >= 0 && (!a->valid || a->fw != w || a->fh != h || a->cls != cls)) {
+-                void (*saved)(int, int, int, int, uint8_t) = hole_emit;
+                 a->n = 0;
+-                aura_cur = a;
+-                hole_emit = aura_rec;
++                aura->rec = a;
+                 HOLE(x, y + 4, x + w, y + h - 4);
+                 ui_fill_ellipse(x + w / 2, y + h / 2, w / 2 + 5 + pulse, h / 2 + 4 + pulse,
+                                 cls ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_RAMP(RAMP_VAPE, 2));
+                 ui_fill_ellipse(x + w / 2, y + h / 2, w / 2 + 2 + pulse / 2, h / 2 + 2 + pulse / 2,
+                                 cls ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_RAMP(RAMP_VAPE, 3));
+                 NO_HOLE();
+-                hole_emit = saved;
++                aura->rec = NULL;
+                 a->fw = (int16_t)w; a->fh = (int16_t)h; a->cls = (int8_t)cls;
+                 a->ox = (int16_t)x; a->oy = (int16_t)y;
+                 a->valid = a->n <= AURA_MAX ? 1 : -1;       /* (-1: too many rects, drawn as before) */
+diff --git a/gba/src/canvas_int.h b/gba/src/canvas_int.h
+index 7f16b0ea..40a00692 100644
+--- a/gba/src/canvas_int.h
++++ b/gba/src/canvas_int.h
+@@ -176,7 +176,7 @@ void hold_flipped(int page);              /* video_flip: page shown, -1 tiles */
+ /* ---- stage.c (SP7): the kept backdrop's pages ----------------------------- */
+ void stage_flipped(int page);             /* video_flip: page shown, -1 tiles / not flipped */
+ void stage_note(int x0, int y0, int x1, int y1);   /* drawn after plat_stage_end */
+-extern int16_t stage_box[4];                       /* (G2-EX) the clip box inside plat_clip (stage.c) */
++extern int16_t stage_box[5];                       /* (G2-EX) the clip box inside plat_clip (stage.c) */
+ int  hold_page(void);                     /* page held as the backdrop, -1 none */
+ void hold_band_release(void);            /* SP5: a world frame: the band's borrowed cache bytes go back (hold.c) */
+ void view_hold_drop(void);                /* S2-2 (viewhold.c): the held 3D view copy is gone */
+diff --git a/gba/src/stage.c b/gba/src/stage.c
+index 630d0625..de260277 100644
+--- a/gba/src/stage.c
++++ b/gba/src/stage.c
+@@ -29,7 +29,8 @@ static const uint8_t *cur_img;                 /* this frame's backdrop (ROM)
+ static uint32_t serial;                        /* Mode 4 frames presented           */
+ static uint32_t page_serial[2];                /* stage frame each page holds, 0    */
+ static int16_t page_dirt[2][4];                /* drawn over it after plat_stage_end */
+-int16_t stage_box[4];                          /* the box 2D calls cover after plat_stage_end; before it (plat_clip) the clip box */
++int16_t stage_box[5];                          /* the box 2D calls cover after plat_stage_end; before it (plat_clip) the clip box and,
++                                                  in [4], the gba_nodraw the clip replaced */
+ static uint8_t frame_stage, tracking;
+ 
+ static uint32_t rd32(const uint8_t *p)
+@@ -130,7 +131,6 @@ void plat_stage_restore(int x, int y, int w, int h)
+  * plat_clip_end every plat_rect, plat_shade_rect and plat_image takes its slow path (GBA_NODRAW_CLIP:
+  * canvas.c, video.c) and is cut to this box, which lives in stage_box (nothing is tracked before
+  * plat_stage_end). The box is already inside the screen. */
+-static uint8_t clip_prev;                      /* the gba_nodraw the clip replaced */
+ void plat_rect_m4(int x, int y, int w, int h, uint8_t color) IWRAM_CALL;
+ /* plat_rect inside plat_clip: plat_rect's gba_nodraw != 0 path (video_loops.s) jumps here with the call's
+  * own arguments. ARM in the room group, which plat_clip loads (so it is in the slot for the whole clip) */
+@@ -152,13 +152,13 @@ void plat_clip(int x0, int y0, int x1, int y1)
+     stage_box[1] = (int16_t)(y0 < 0 ? 0 : y0);
+     stage_box[2] = (int16_t)(x1 > SCREEN_W ? SCREEN_W : x1);
+     stage_box[3] = (int16_t)(y1 > SCREEN_H ? SCREEN_H : y1);
+-    if (gba_nodraw != GBA_NODRAW_CLIP) clip_prev = (uint8_t)gba_nodraw;    /* (a layer's next piece resets the box) */
++    if (gba_nodraw != GBA_NODRAW_CLIP) stage_box[4] = (int16_t)gba_nodraw;    /* (a layer's next piece resets the box) */
+     gba_nodraw = GBA_NODRAW_CLIP;
+ }
+ 
+ void plat_clip_end(void)
+ {
+-    if (gba_nodraw == GBA_NODRAW_CLIP) gba_nodraw = clip_prev;
++    if (gba_nodraw == GBA_NODRAW_CLIP) gba_nodraw = stage_box[4];
+ }
+ 
+ void plat_stage_end(void)
+-- 
+2.43.0
+

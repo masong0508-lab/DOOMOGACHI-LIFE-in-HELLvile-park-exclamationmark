@@ -1,0 +1,594 @@
+From 6bf2d9143f21dfc5294619378979addf66a0f9ee Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 11:59:29 +0000
+Subject: [PATCH 03/15] S2-4b step 3: Shooting Gallery at 30 on the GBA (tent
+ and counter bands, the water as strip stamps, cards, wraith, Tix, weapons,
+ bulbs and the weapon's name as stamps)
+
+BACKDROP_STRIP (a stamp that may touch the side edges), the blob header checked once.
+Gallery GBA drawn fps 11.0 / 10.5 (logic 19.4) -> 30 / 30 (logic 30), work 85 -> 29.7 ms.
+Frames identical to the plain draw but for a shaken frame (the display offset, GBA only).
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ core/include/doomo/backdrop.h |   3 +-
+ core/native/stage_native.c    |  14 +--
+ core/src/mg.c                 |   5 +-
+ core/src/mg.h                 |   2 +
+ core/src/mg_catch.c           |   2 +-
+ core/src/mg_derby.c           |   2 +-
+ core/src/mg_dodge.c           |   2 +-
+ core/src/mg_draw.c            |  37 ++++++--
+ core/src/mg_gallery.c         | 174 ++++++++++++++++++++++++++++------
+ core/src/mg_memory.c          |   2 +-
+ core/src/mg_whack.c           |   2 +-
+ core/tests/test_stage.c       |   6 +-
+ gba/src/stage.c               |  16 +++-
+ 13 files changed, 206 insertions(+), 61 deletions(-)
+
+diff --git a/core/include/doomo/backdrop.h b/core/include/doomo/backdrop.h
+index 4fe1eeea..db360e48 100644
+--- a/core/include/doomo/backdrop.h
++++ b/core/include/doomo/backdrop.h
+@@ -28,7 +28,8 @@ enum { DOOMO_BACKDROP_EXO_CHURCH = 1,
+  *   BACKDROP_STAMP  a small picture with holes: draw(key) paints an actor around the anchor
+  *                   (out[0], out[1]) on a screen cleared to index 0 (which no drawing call writes); the
+  *                   baker keeps the box of what was painted, and plat_stage_stamp() puts it anywhere */
+-enum { BACKDROP_WHOLE, BACKDROP_ROWS, BACKDROP_STAMP };
++enum { BACKDROP_WHOLE, BACKDROP_ROWS, BACKDROP_STAMP,
++       BACKDROP_STRIP };      /* a stamp that may reach the left and right screen edges (a strip: the water) */
+ 
+ typedef struct DoomoBackdrop {
+     int id;                                    /* DOOMO_BACKDROP_*                     */
+diff --git a/core/native/stage_native.c b/core/native/stage_native.c
+index 52caa2c8..62b27ab6 100644
+--- a/core/native/stage_native.c
++++ b/core/native/stage_native.c
+@@ -87,7 +87,7 @@ static const NPic *pic_get(int id, uint32_t key, void (*draw)(uint32_t))
+     tracking = 0;
+     memcpy(save[depth], nat_fb, n);
+     depth++;
+-    if (p->kind == BACKDROP_STAMP) {
++    if (p->kind == BACKDROP_STAMP || p->kind == BACKDROP_STRIP) {
+         int x, y, x0 = nat_w, y0 = nat_h, x1 = -1, y1 = -1;
+         memset(nat_fb, 0, n);
+         draw(key);
+@@ -130,7 +130,7 @@ int plat_stage_begin(int id, uint32_t key, void (*draw)(uint32_t key), PlatStage
+     const NPic *p;
+     if (!nat_stage_on || !draw || !info) return 0;
+     p = pic_get(id, key, draw);
+-    if (!p || p->kind == BACKDROP_STAMP) return 0;
++    if (!p || p->kind == BACKDROP_STAMP || p->kind == BACKDROP_STRIP) return 0;
+     cur_pic = p;
+     info->held = buf_serial[cur_buf];
+     info->serial = serial + 1;
+@@ -159,7 +159,7 @@ int plat_stage_stamp(int id, uint32_t key, int x, int y)
+     const NPic *p;
+     if (!nat_stage_on || !f) return 0;
+     p = pic_get(id, key, f->draw);
+-    if (!p || p->kind != BACKDROP_STAMP) return 0;
++    if (!p || (p->kind != BACKDROP_STAMP && p->kind != BACKDROP_STRIP)) return 0;
+     if (p->pix) plat_image(x + p->bx, y + p->by, &p->img, 1, 0, 0);
+     stamps_drawn++;
+     return 1;
+@@ -282,7 +282,7 @@ int nat_bake_backdrops(const char *path)
+         if (kind == BACKDROP_ROWS) {
+             y0 = DOOMO_CLAMP(part[0], 0, nat_h);
+             y1 = DOOMO_CLAMP(part[1], y0, nat_h);
+-        } else if (kind == BACKDROP_STAMP) {
++        } else if (kind == BACKDROP_STAMP || kind == BACKDROP_STRIP) {
+             x0 = nat_w; y0 = nat_h; x1 = y1 = 0;
+             for (y = 0; y < nat_h; y++)
+                 for (x = 0; x < nat_w; x++)
+@@ -293,15 +293,15 @@ int nat_bake_backdrops(const char *path)
+                         if (y + 1 > y1) y1 = y + 1;
+                     }
+             if (x1 <= x0) x0 = y0 = x1 = y1 = 0;
+-            if (x1 > x0 && (x0 == 0 || y0 == 0 || x1 == nat_w || y1 == nat_h)) {
++            if (x1 > x0 && (y0 == 0 || y1 == nat_h || (kind == BACKDROP_STAMP && (x0 == 0 || x1 == nat_w)))) {
+                 fprintf(stderr, "bake: stamp 0x%x touches the screen edge (clipped?)\n", (unsigned)ids[i]);
+                 return 0;
+             }
+         }
+         pic[i].w = (uint16_t)(x1 - x0);
+         pic[i].h = (uint16_t)(y1 - y0);
+-        pic[i].bx = (int16_t)(kind == BACKDROP_STAMP ? x0 - part[0] : x0);
+-        pic[i].by = (int16_t)(kind == BACKDROP_STAMP ? y0 - part[1] : y0);
++        pic[i].bx = (int16_t)(kind >= BACKDROP_STAMP ? x0 - part[0] : x0);
++        pic[i].by = (int16_t)(kind >= BACKDROP_STAMP ? y0 - part[1] : y0);
+         pic[i].pix = (uint8_t *)malloc((size_t)pic[i].w * pic[i].h + 4);
+         if (!pic[i].pix) return 0;
+         for (y = y0; y < y1; y++)
+diff --git a/core/src/mg.c b/core/src/mg.c
+index bac6cf2f..02abbffe 100644
+--- a/core/src/mg.c
++++ b/core/src/mg.c
+@@ -676,10 +676,11 @@ static int mg_stamp_keys(uint32_t *out, int cap)
+ }
+ static int mg_stamp_part(uint32_t key, int16_t out[2])
+ {
+-    (void)key;
++    const MgGame *g = mg_key_game(key);
+     out[0] = (int16_t)(mg_w() / 2);
+     out[1] = (int16_t)(mg_h() / 2);
+-    return BACKDROP_STAMP;
++    return (int)(key >> MG_BK_GAME_SHIFT) != MG_COMMON_ID && g && g->stamp_strip && g->stamp_strip(key & 0xFFFFu)
++           ? BACKDROP_STRIP : BACKDROP_STAMP;
+ }
+ const DoomoBackdrop mg_stamp_family = { DOOMO_BACKDROP_MG_STAMP, mg_stamp_draw, mg_stamp_keys, mg_stamp_part };
+ 
+diff --git a/core/src/mg.h b/core/src/mg.h
+index 2e39b9ca..5ca853e0 100644
+--- a/core/src/mg.h
++++ b/core/src/mg.h
+@@ -107,6 +107,8 @@ typedef struct MgGame {
+     /* (S2-4b) the game's stamps (mg.h "stamps"): the actor of a key drawn around (cx, cy); every key */
+     void (*stamp)(uint32_t key, int cx, int cy);
+     int (*stamp_keys)(uint32_t *out, int cap);
++    /* (S2-4b) 1 for a key whose stamp is a wide strip that reaches the screen's side edges (backdrop.h BACKDROP_STRIP) */
++    int (*stamp_strip)(uint32_t key);
+ } MgGame;
+ 
+ enum { MGP_TITLE, MGP_READY, MGP_PLAY, MGP_PAUSE, MGP_END, MGP_RESULTS };
+diff --git a/core/src/mg_catch.c b/core/src/mg_catch.c
+index afd23c0b..a3e71b56 100644
+--- a/core/src/mg_catch.c
++++ b/core/src/mg_catch.c
+@@ -389,7 +389,7 @@ const MgGame mg_game_catch = {
+     { MG_CATCH_B, MG_CATCH_S, MG_CATCH_G }, 14, 60 * 30,
+     { PAL_PAINT(PAINT_BUBBLEGUM, 1), PAL_WHITE, PAL_PAINT(PAINT_CHERRY, 1) },
+     ct_start, ct_update, ct_draw, ct_art, ct_bot,
+-    NULL, NULL, NULL, NULL, NULL
++    NULL, NULL, NULL, NULL, NULL, NULL
+ };
+ 
+ MG_DEFINE_SCENE(SCENE_MG_CATCH, "MG_CATCH", mg_game_catch);
+diff --git a/core/src/mg_derby.c b/core/src/mg_derby.c
+index a2d68175..8db2a764 100644
+--- a/core/src/mg_derby.c
++++ b/core/src/mg_derby.c
+@@ -499,7 +499,7 @@ const MgGame mg_game_derby = {
+     { MG_DERBY_B, MG_DERBY_S, MG_DERBY_G }, 20, 0,
+     { PAL_PAINT(PAINT_LIME, 1), PAL_WHITE, PAL_PAINT(PAINT_FOREST, 1) },
+     dy_start, dy_update, dy_draw, dy_art, dy_bot,
+-    NULL, NULL, NULL, NULL, NULL
++    NULL, NULL, NULL, NULL, NULL, NULL
+ };
+ 
+ MG_DEFINE_SCENE(SCENE_MG_DERBY, "MG_DERBY", mg_game_derby);
+diff --git a/core/src/mg_dodge.c b/core/src/mg_dodge.c
+index 63e13b54..5dbceb5e 100644
+--- a/core/src/mg_dodge.c
++++ b/core/src/mg_dodge.c
+@@ -513,7 +513,7 @@ const MgGame mg_game_dodge = {
+     { MG_DODGE_B, MG_DODGE_S, MG_DODGE_G }, 10, 60 * 30,
+     { PAL_PAINT(PAINT_VAPE_PURPLE, 1), PAL_PAINT(PAINT_LAVENDER, 2), PAL_PAINT(PAINT_GRAPE, 1) },
+     dg_start, dg_update, dg_draw, dg_art, dg_bot,
+-    NULL, NULL, NULL, dg_stamp, dg_stamp_keys
++    NULL, NULL, NULL, dg_stamp, dg_stamp_keys, NULL
+ };
+ 
+ MG_DEFINE_SCENE(SCENE_MG_DODGE, "MG_DODGE", mg_game_dodge);
+diff --git a/core/src/mg_draw.c b/core/src/mg_draw.c
+index 77565636..9449cbed 100644
+--- a/core/src/mg_draw.c
++++ b/core/src/mg_draw.c
+@@ -438,9 +438,11 @@ static void hud_part(int part, int v, int x, int y);
+  * imp:  size 0..7 | mood << 3 (2 bits) | gold << 5 | (flap + 2) << 6 | eyes << 9 (look + 1, 3: blink)
+  * fuzz: size 0..3 | ouch << 3 | blink << 4       (without his sparkle)
+  * Sizes are the ones the 240x160 games draw; another size is drawn, not stamped. */
+-enum { MCS_IMP = 0 << 12, MCS_FUZZ = 1 << 12, MCS_HUD = 2 << 12, MCS_SPARK = 3 << 12, MCS_KIND = 3 << 12 };
++enum { MCS_IMP = 0 << 12, MCS_FUZZ = 1 << 12, MCS_HUD = 2 << 12, MCS_SPARK = 3 << 12, MCS_MASCOT = 4 << 12, MCS_KIND = 7 << 12 };
+ /* hud:  HUDP_* | value (| MG_BK_HELL for the pill): hud_part's pieces
+- * spark: size 1..3 | colour << 2 (spark_cols): ui_sparkle at a phase of that size */
++ * spark: size 1..3 | colour << 2 (spark_cols): ui_sparkle at a phase of that size
++ * mascot: Tix at radius 6: hop (-2..2) + 2 | ear twitch << 3 | eyes (look + 1) << 4 | blink << 6 */
++static void mascot_body(int cx, int cy, int r, int hop, int twitch, int look, int blink);
+ static const uint8_t spark_cols[4] = { PAL_WHITE, PAL_RAMP(RAMP_LAVA, 5), PAL_PAINT(PAINT_LEMON, 2), PAL_UI_GOLD };
+ 
+ static const struct { uint8_t rx, ry, moods, golds; } imp_sizes[] = {   /* moods / golds: bit masks of what is baked */
+@@ -474,6 +476,8 @@ void mg_common_stamp(uint32_t key, int cx, int cy)
+         hud_part((int)(key & HUDP_PART), (int)(key & 255), cx, cy);
+     } else if ((key & MCS_KIND) == MCS_SPARK) {
+         ui_sparkle(cx, cy, (int)(key & 3), spark_cols[key >> 2 & 3]);
++    } else if ((key & MCS_KIND) == MCS_MASCOT) {
++        mascot_body(cx, cy, 6, (int)(key & 7) - 2, (int)(key >> 3 & 1), (int)(key >> 4 & 3) - 1, (int)(key >> 6 & 1));
+     }
+ }
+ 
+@@ -509,6 +513,11 @@ int mg_common_stamp_keys(uint32_t *out, int cap)
+             if (n < cap) out[n] = (uint32_t)(MCS_SPARK | i | m << 2);
+             n++;
+         }
++    for (i = 0; i < 5; i++)                         /* Tix: hop, twitch, eyes, blink */
++        for (m = 0; m < 12; m++) {
++            if (n < cap) out[n] = (uint32_t)(MCS_MASCOT | i | (m & 1) << 3 | (m >> 1) % 3 << 4 | (m >= 6) << 6);
++            n++;
++        }
+     if (n < cap) out[n] = (uint32_t)(MCS_HUD | HUDP_TIME | (mg_big() ? 70 : 50));
+     return n + 1;
+ }
+@@ -528,7 +537,7 @@ void mg_imp(int cx, int cy, int rx, int ry, int t, int mood)
+ #else
+     imp_body(cx, cy, rx, ry, mood, gold, flap, look, blink, t);
+ #endif
+-    if (gold) ui_sparkle(cx + rx, cy - ry, (t / 2) & 15, PAL_WHITE);
++    if (gold) mg_sparkle(cx + rx, cy - ry, (t / 2) & 15, PAL_WHITE);
+ }
+ 
+ /* ui_sparkle, as a stamp where stamps are kept and the colour is one of spark_cols' */
+@@ -635,14 +644,15 @@ void mg_fuzz(int cx, int cy, int r, int t, int ouch)
+     ui_sparkle(cx + r + 2, cy - r, (t / 3) & 15, PAL_UI_GOLD);
+ }
+ 
+-void mg_mascot(int cx, int cy, int r, int t)
++/* Tix at one hop (-2..2), twitch, look (-1..1) and blink; mg_mascot picks them from t */
++static void mascot_body(int cx, int cy, int r, int hop, int twitch, int look, int blink)
+ {
+-    int hop = ui_wave(t, 30, 2), sq = hop < 0 ? 1 : 0, k;
++    int sq = hop < 0 ? 1 : 0, k;
+     uint8_t p = PAL_PAINT(PAINT_BUBBLEGUM, 1), pd = PAL_PAINT(PAINT_ROSE, 0);
+     cy += hop;
+     /* bunny ears with a twitch */
+     for (k = -1; k <= 1; k += 2) {
+-        int tw = k > 0 && (t % 90) < 6 ? 2 : 0;
++        int tw = k > 0 && twitch ? 2 : 0;
+         ui_fill_ellipse(cx + k * r / 2 + tw, cy - r - r / 2, r / 4 + 1, r / 2 + 1, pd);
+         ui_fill_ellipse(cx + k * r / 2 + tw, cy - r - r / 2, r / 4, r / 2, p);
+         ui_fill_ellipse(cx + k * r / 2 + tw, cy - r - r / 2 + 1, r / 8 + 1, r / 3, PAL_PAINT(PAINT_BUBBLEGUM, 2));
+@@ -654,13 +664,24 @@ void mg_mascot(int cx, int cy, int r, int t)
+     ui_fill_circle(cx - r - 1, cy + 2, 2, pd);
+     ui_fill_circle(cx + r + 1, cy + 2, 2, pd);
+     for (k = -r + 3; k < r - 2; k += 3) plat_rect(cx + k, cy + r / 2 + 3, 1, 1, pd);
+-    eye(cx - r / 3, cy - 1, 2, ui_wave(t, 100, 1), (t % 75) < 3, PAL_RAMP(RAMP_STONE, 0));
+-    eye(cx + r / 3, cy - 1, 2, ui_wave(t, 100, 1), (t % 75) < 3, PAL_RAMP(RAMP_STONE, 0));
++    eye(cx - r / 3, cy - 1, 2, look, blink, PAL_RAMP(RAMP_STONE, 0));
++    eye(cx + r / 3, cy - 1, 2, look, blink, PAL_RAMP(RAMP_STONE, 0));
+     plat_rect(cx - 1, cy + 3, 3, 1, OUTLINE_DARK);
+     plat_rect(cx - r / 2 - 2, cy + 2, 3, 1, PAL_PAINT(PAINT_CHERRY, 2));
+     plat_rect(cx + r / 2, cy + 2, 3, 1, PAL_PAINT(PAINT_CHERRY, 2));
+ }
+ 
++void mg_mascot(int cx, int cy, int r, int t)
++{
++    int hop = ui_wave(t, 30, 2), twitch = (t % 90) < 6, look = ui_wave(t, 100, 1), blink = (t % 75) < 3;
++#if !defined(DOOMO_PLATFORM_PS1)
++    if (r == 6 && !mg_big() && hop >= -2 && hop <= 2 && look >= -1 && look <= 1 &&
++        mg_stamp_common((uint32_t)(MCS_MASCOT | (hop + 2) | twitch << 3 | (look + 1) << 4 | blink << 6), cx, cy))
++        return;
++#endif
++    mascot_body(cx, cy, r, hop, twitch, look, blink);
++}
++
+ /* ---- hosts --------------------------------------------------------------------- */
+ int mg_host_alive(int id)
+ {
+diff --git a/core/src/mg_gallery.c b/core/src/mg_gallery.c
+index 089f306b..01bb052b 100644
+--- a/core/src/mg_gallery.c
++++ b/core/src/mg_gallery.c
+@@ -246,6 +246,119 @@ static void gl_update(void)
+ }
+ 
+ /* ---- drawing ------------------------------------------------------------------ */
++/* ---- (S2-4b) the kept playfield and the stamps (mg.h): the tent with its sway (rows above the rails) and
++ * the counter are bands of the ROM; the cardboard card, the wraith (t % 240), the weapons, a wavelet of
++ * the water and the marquee bulbs are stamps. Still drawn in full where nothing is kept (PS1, the 320x240
++ * screen, native without the stage, a shaken native frame). */
++#define GK_COUNTER 8                    /* band key: the counter; 0..4: the tent at sway - 2 */
++
++enum { GS_CARD = 0 << 12, GS_WRAITH = 1 << 12, GS_WEAPON = 2 << 12, GS_WATER = 3 << 12, GS_BULBS = 4 << 12,
++       GS_NAME = 5 << 12, GS_KIND = 7 << 12 };
++static int counter_y(void) { return mg_h() - (mg_big() ? 30 : 22); }
++
++static uint32_t gl_kept_key(void) { return (uint32_t)(ui_wave(mg.play_t + mg.t, 150, 2) + 2); }
++static int gl_kept_keys(uint32_t *out, int cap, int hell)
++{
++    int i;
++    (void)hell;
++    for (i = 0; i < 5; i++) if (i < cap) out[i] = (uint32_t)i;
++    if (5 < cap) out[5] = GK_COUNTER;
++    return 6;
++}
++static int gl_kept_part(uint32_t key, int16_t rows[2])
++{
++    rows[0] = (int16_t)(key == GK_COUNTER ? counter_y() : 0);
++    rows[1] = (int16_t)(key == GK_COUNTER ? mg_h() : rail_top() - 4);
++    return 1;
++}
++
++static void tent_draw(int sway)
++{
++    mg_tent_sway(0, rail_top() - 4, mg.hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_PAINT(PAINT_SKY, 1),
++                 mg.hell ? PAL_RAMP(RAMP_STONE, 1) : PAL_WHITE, mg.hell ? PAL_RAMP(RAMP_LAVA, 4) : PAL_PAINT(PAINT_COBALT, 1), sway);
++}
++
++/* the counter's boards and its "L/R swap" sign (the weapon and its name live) */
++static void counter_still(void)
++{
++    int W = mg_w(), H = mg_h(), i, cy = counter_y();
++    plat_rect(0, cy, W, H - cy, PAL_RAMP(RAMP_WOOD, 3));
++    plat_rect(0, cy, W, 3, PAL_RAMP(RAMP_WOOD, 5));
++    plat_rect(0, cy + 3, W, 1, PAL_RAMP(RAMP_WOOD, 1));
++    for (i = 0; i < W; i += 20) plat_rect(i, cy + 6, 10, H - cy - 8, PAL_RAMP(RAMP_WOOD, 4));
++    mg_text(W - 6 - ui_text_width("L/R swap"), cy + 7, "L/R swap", PAL_RAMP(RAMP_WOOD, 7));
++}
++
++/* a cardboard card standing up (its stick, outline and board), its base at (x, base) */
++static void card_up(int x, int base)
++{
++    int s = tsize(), ch = s * 2 + 6, cy = base - ch, cw = s * 2 + 4;
++    plat_rect(x - 1, base - 4, 3, 6, PAL_RAMP(RAMP_WOOD, 2));
++    ui_round_rect(x - cw / 2 - 1, cy - 1, cw + 2, ch + 2, 4, PAL_RAMP(RAMP_WOOD, 2));
++    ui_round_rect(x - cw / 2, cy, cw, ch, 3, PAL_PAINT(PAINT_BONE, 1));
++}
++
++/* a wavelet of the water: its two circles and the foam, the crest at (cx, y) */
++static void wavelet(int cx, int y, int r)
++{
++    int wl = 16;
++    uint8_t c = mg.hell ? PAL_RAMP(RAMP_LAVA, 3 + (r & 1)) : (r & 1 ? PAL_PAINT(PAINT_SKY, 1) : PAL_PAINT(PAINT_COBALT, 2));
++    uint8_t d = mg.hell ? PAL_RAMP(RAMP_LAVA, 1) : PAL_PAINT(PAINT_COBALT, 0);
++    ui_fill_circle(cx, y + 4, wl / 2, d);
++    ui_fill_circle(cx, y + 5, wl / 2 - 1, c);
++    plat_rect(cx - 3, y, 4, 1, mg.hell ? PAL_RAMP(RAMP_LAVA, 6) : PAL_WHITE);
++}
++
++static int stamped(uint32_t key, int x, int y);
++
++/* the water of rail r at scroll `off` (0..15 mod 16): two bands of colour and a wavelet every 16 px */
++static void waves_draw(int y, int r, int off)
++{
++    int W = mg_w(), x, wl = 16;
++    uint8_t c = mg.hell ? PAL_RAMP(RAMP_LAVA, 3 + (r & 1)) : (r & 1 ? PAL_PAINT(PAINT_SKY, 1) : PAL_PAINT(PAINT_COBALT, 2));
++    uint8_t d = mg.hell ? PAL_RAMP(RAMP_LAVA, 1) : PAL_PAINT(PAINT_COBALT, 0);
++    plat_rect(0, y + 3, W, 8, d);
++    plat_rect(0, y + 4, W, 7, c);
++    for (x = -wl + off; x < W + wl; x += wl) wavelet(x + wl / 2, y, r);
++}
++
++static void weapon_draw(int x, int y, int w, int t, int recoil);
++static void gl_stamp(uint32_t key, int cx, int cy)
++{
++    int v = (int)(key & 0xFFF);
++    switch (key & GS_KIND) {
++    case GS_CARD: card_up(cx, cy); break;
++    case GS_WRAITH: mg_wraith(cx, cy, 6, v + 240, 0); break;
++    case GS_WEAPON: weapon_draw(cx, cy, v & 3, (v >> 4 & 3) * 3, v >> 2 & 3); break;
++    case GS_WATER: waves_draw(cy, v & 1, v >> 1 & 15); break;
++    case GS_BULBS: mg_bulbs(cx - mg_w() / 2 + 2, cy - mg_h() / 2 + rail_top() - 6, mg_w() - 4, 4, v * 4); break;
++    case GS_NAME: mg_text(6 + cx - mg_w() / 2, counter_y() + 7 + cy - mg_h() / 2, wnames[v & 3], v & 4 ? PAL_UI_GOLD : PAL_WHITE); break;
++    default: break;
++    }
++}
++static int gl_stamp_strip(uint32_t key) { return (key & GS_KIND) == GS_WATER; }
++static int gl_stamp_keys(uint32_t *out, int cap)
++{
++    int n = 0, h, i, w, rc, ph;
++#define ADD(k) do { if (n < cap) out[n] = (uint32_t)(k); n++; } while (0)
++    ADD(GS_CARD);
++    for (i = 0; i < 240; i++) ADD(GS_WRAITH | (uint32_t)i);
++    for (i = 0; i < 3; i++) ADD(GS_BULBS | (uint32_t)i);
++    for (w = 0; w < W_COUNT; w++)
++        for (rc = 0; rc < 4; rc++)
++            for (ph = 0; ph < (w == W_CONFETTI ? 4 : 1); ph++) ADD(GS_WEAPON | (uint32_t)(w | rc << 2 | ph << 4));
++    for (w = 0; w < W_COUNT; w++) { ADD(GS_NAME | (uint32_t)w); ADD(GS_NAME | (uint32_t)(w | 4)); }   /* the weapon's name */
++    for (h = 0; h < 2; h++)                            /* the water: its parity, its 16 scrolls */
++        for (i = 0; i < 32; i++) ADD(GS_WATER | (h ? MG_BK_HELL : 0u) | (uint32_t)i);
++#undef ADD
++    return n;
++}
++/* a stamp at (x, y) where stamps are kept (240x160 only); 0: the caller draws it */
++static int stamped(uint32_t key, int x, int y)
++{
++    return !mg_big() && mg_stamp(key, x, y);
++}
++
+ static void cutout(const GTarget *g, int x, int base, int t)
+ {
+     int s = tsize(), h = 256, back = 0;
+@@ -255,9 +368,13 @@ static void cutout(const GTarget *g, int x, int base, int t)
+     if (h < 32) h = 32;
+     {
+         int ch = (s * 2 + 6) * h / 256, cy = base - ch, cw = s * 2 + 4;
+-        plat_rect(x - 1, base - 4, 3, 6, PAL_RAMP(RAMP_WOOD, 2));         /* the stick */
+-        ui_round_rect(x - cw / 2 - 1, cy - 1, cw + 2, ch + 2, 4, PAL_RAMP(RAMP_WOOD, 2));
+-        ui_round_rect(x - cw / 2, cy, cw, ch, 3, back ? PAL_PAINT(PAINT_CARAMEL, 1) : PAL_PAINT(PAINT_BONE, 1));
++        if (h == 256 && !back) {
++            if (!stamped(GS_CARD, x, base)) card_up(x, base);
++        } else {
++            plat_rect(x - 1, base - 4, 3, 6, PAL_RAMP(RAMP_WOOD, 2));         /* the stick */
++            ui_round_rect(x - cw / 2 - 1, cy - 1, cw + 2, ch + 2, 4, PAL_RAMP(RAMP_WOOD, 2));
++            ui_round_rect(x - cw / 2, cy, cw, ch, 3, back ? PAL_PAINT(PAINT_CARAMEL, 1) : PAL_PAINT(PAINT_BONE, 1));
++        }
+         if (back) {
+             plat_rect(x - cw / 2 + 3, cy + ch / 2, cw - 6, 1, PAL_PAINT(PAINT_CARAMEL, 0));
+             return;
+@@ -274,7 +391,7 @@ static void cutout(const GTarget *g, int x, int base, int t)
+             plat_rect(x - cw / 2 + 2, cy + 2, cw - 4, 1, PAL_WHITE);
+             break;
+         case T_WRAITH:
+-            mg_wraith(x - 1, cy + ch / 2 - 2, s - 3, t, 0);
++            if (!stamped(GS_WRAITH | (uint32_t)(t % 240), x - 1, cy + ch / 2 - 2)) mg_wraith(x - 1, cy + ch / 2 - 2, s - 3, t, 0);
+             break;
+         default:
+             mg_imp(x, cy + ch / 2 + 1, s - 2, s - 3, t, IMP_GRIN | (g->kind == T_GOLD ? IMP_GOLD : 0));
+@@ -283,18 +400,11 @@ static void cutout(const GTarget *g, int x, int base, int t)
+     }
+ }
+ 
++/* the water of rail r: one strip stamp (rows y - 4 .. y + 12 across the whole screen) per scroll */
+ static void waves(int y, int r, int t)
+ {
+-    int W = mg_w(), x, wl = 16, off = ((r & 1 ? t : -t) / 2) % wl;
+-    uint8_t c = mg.hell ? PAL_RAMP(RAMP_LAVA, 3 + (r & 1)) : (r & 1 ? PAL_PAINT(PAINT_SKY, 1) : PAL_PAINT(PAINT_COBALT, 2));
+-    uint8_t d = mg.hell ? PAL_RAMP(RAMP_LAVA, 1) : PAL_PAINT(PAINT_COBALT, 0);
+-    plat_rect(0, y + 3, W, 8, d);
+-    plat_rect(0, y + 4, W, 7, c);
+-    for (x = -wl + off; x < W + wl; x += wl) {
+-        ui_fill_circle(x + wl / 2, y + 4, wl / 2, d);
+-        ui_fill_circle(x + wl / 2, y + 5, wl / 2 - 1, c);
+-        plat_rect(x + wl / 2 - 3, y, 4, 1, mg.hell ? PAL_RAMP(RAMP_LAVA, 6) : PAL_WHITE);
+-    }
++    int off = ((r & 1 ? t : -t) / 2) % 16;
++    if (!stamped(GS_WATER | (mg.hell ? MG_BK_HELL : 0u) | (uint32_t)((r & 1) | ((off + 16) & 15) << 1), mg_w() / 2, y)) waves_draw(y, r, off);
+ }
+ 
+ static void weapon_draw(int x, int y, int w, int t, int recoil)
+@@ -339,19 +449,23 @@ static void weapon_draw(int x, int y, int w, int t, int recoil)
+ static void gl_draw(void)
+ {
+     int W = mg_w(), H = mg_h(), t = mg.play_t + mg.t, r, i, ox = mg.ox, oy = mg.oy;
+-    int rt = rail_top();
+-    /* booth: back wall and a striped awning */
++    int rt = rail_top(), kept = mg_kept();
++    if (mg_kept_mode == MGK_BAKE) {                    /* a band of the ROM */
++        if (mg_bake_key == GK_COUNTER) counter_still(); else tent_draw((int)mg_bake_key - 2);
++        return;
++    }
++    /* booth: back wall and a striped awning (the tent band is in place already when kept) */
+     plat_rect(0, rt - 4, W, H - rt, mg.hell ? PAL_RAMP(RAMP_BLOOD, 1) : PAL_PAINT(PAINT_NAVY, 2));
+     for (i = 0; i < 16; i++) {
+         uint32_t h = doomo_hash32((uint32_t)i * 9973u);
+         int ph = (int)((t / 2 + (h >> 20)) & 31);
+-        ui_sparkle((int)(h % (uint32_t)W), rt + (int)((h >> 8) % (uint32_t)(H - rt)), ph < 16 ? ph : 0,
++        mg_sparkle((int)(h % (uint32_t)W), rt + (int)((h >> 8) % (uint32_t)(H - rt)), ph < 16 ? ph : 0,
+                    mg.hell ? PAL_RAMP(RAMP_LAVA, 5) : PAL_PAINT(PAINT_LEMON, 2));
+     }
+-    mg_tent(0, rt - 4, mg.hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_PAINT(PAINT_SKY, 1),
+-            mg.hell ? PAL_RAMP(RAMP_STONE, 1) : PAL_WHITE,
+-            mg.hell ? PAL_RAMP(RAMP_LAVA, 4) : PAL_PAINT(PAINT_COBALT, 1), t);
+-    mg_bulbs(2, rt - 6, W - 4, 4, t);
++    if (!kept) mg_tent(0, rt - 4, mg.hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_PAINT(PAINT_SKY, 1),
++                       mg.hell ? PAL_RAMP(RAMP_STONE, 1) : PAL_WHITE,
++                       mg.hell ? PAL_RAMP(RAMP_LAVA, 4) : PAL_PAINT(PAINT_COBALT, 1), t);
++    if (!stamped(GS_BULBS | (uint32_t)((t / 4) % 3), W / 2, H / 2)) mg_bulbs(2, rt - 6, W - 4, 4, t);
+     for (r = 0; r < RAILS; r++) {
+         int y = rail_y(r) + oy;
+         plat_rect(0, y - 3, W, 3, PAL_RAMP(RAMP_WOOD, 1));
+@@ -368,19 +482,19 @@ static void gl_draw(void)
+     }
+     /* counter + weapon */
+     {
+-        int cy = H - (mg_big() ? 30 : 22);
+-        plat_rect(0, cy + oy, W, H - cy, PAL_RAMP(RAMP_WOOD, 3));
+-        plat_rect(0, cy + oy, W, 3, PAL_RAMP(RAMP_WOOD, 5));
+-        plat_rect(0, cy + 3 + oy, W, 1, PAL_RAMP(RAMP_WOOD, 1));
+-        for (i = 0; i < W; i += 20) plat_rect(i, cy + 6 + oy, 10, H - cy - 8, PAL_RAMP(RAMP_WOOD, 4));
+-        weapon_draw(W / 2 + ox, H - 8 + oy, S->weapon, t, S->recoil);
++        int cy = counter_y(), rc = S->recoil > 3 ? 3 : S->recoil;
++        if (kept) (void)mg_kept_band(GK_COUNTER);
++        else counter_still();
++        if (!stamped(GS_WEAPON | (uint32_t)(S->weapon | rc << 2 | (S->weapon == W_CONFETTI ? ((t / 3) & 3) << 4 : 0)),
++                     W / 2 + ox, H - 8 + oy))
++            weapon_draw(W / 2 + ox, H - 8 + oy, S->weapon, t, S->recoil);
+         for (i = 0; i < W_COUNT; i++) {
+             int dx = W / 2 + (i - 1) * 12 + (i == 0 ? -26 : i == 2 ? 26 : 0);
+             if (i == 1) continue;
+             ui_fill_circle(dx, H - 8, 3, i == S->weapon ? PAL_UI_GOLD : PAL_GRAY);
+         }
+-        mg_text(6, cy + 7, wnames[S->weapon], S->wswitch ? PAL_UI_GOLD : PAL_WHITE);
+-        mg_text(W - 6 - ui_text_width("L/R swap"), cy + 7, "L/R swap", PAL_RAMP(RAMP_WOOD, 7));
++        if (!stamped(GS_NAME | (uint32_t)(S->weapon | (S->wswitch ? 4 : 0)), W / 2, H / 2))
++            mg_text(6, cy + 7, wnames[S->weapon], S->wswitch ? PAL_UI_GOLD : PAL_WHITE);
+     }
+     /* shots in flight */
+     for (i = 0; i < SHOTS; i++) {
+@@ -457,7 +571,7 @@ const MgGame mg_game_gallery = {
+     { MG_GALLERY_B, MG_GALLERY_S, MG_GALLERY_G }, 32, 45 * 30,
+     { PAL_PAINT(PAINT_SKY, 1), PAL_WHITE, PAL_PAINT(PAINT_COBALT, 1) },
+     gl_start, gl_update, gl_draw, gl_art, gl_bot,
+-    NULL, NULL, NULL, NULL, NULL
++    gl_kept_key, gl_kept_keys, gl_kept_part, gl_stamp, gl_stamp_keys, gl_stamp_strip
+ };
+ 
+ MG_DEFINE_SCENE(SCENE_MG_GALLERY, "MG_GALLERY", mg_game_gallery);
+diff --git a/core/src/mg_memory.c b/core/src/mg_memory.c
+index 6d434707..bc1100d0 100644
+--- a/core/src/mg_memory.c
++++ b/core/src/mg_memory.c
+@@ -384,7 +384,7 @@ const MgGame mg_game_memory = {
+     { MG_MEMORY_B, MG_MEMORY_S, MG_MEMORY_G }, 12, 90 * 30,
+     { PAL_PAINT(PAINT_LAVENDER, 1), PAL_PAINT(PAINT_NAVY, 2), PAL_PAINT(PAINT_GRAPE, 1) },
+     mm_start, mm_update, mm_draw, mm_art, mm_bot,
+-    NULL, NULL, NULL, NULL, NULL
++    NULL, NULL, NULL, NULL, NULL, NULL
+ };
+ 
+ MG_DEFINE_SCENE(SCENE_MG_MEMORY, "MG_MEMORY", mg_game_memory);
+diff --git a/core/src/mg_whack.c b/core/src/mg_whack.c
+index fc077b58..6a39a7bc 100644
+--- a/core/src/mg_whack.c
++++ b/core/src/mg_whack.c
+@@ -559,7 +559,7 @@ const MgGame mg_game_whack = {
+     { MG_WHACK_B, MG_WHACK_S, MG_WHACK_G }, 24, 45 * 30,
+     { PAL_PAINT(PAINT_LEMON, 1), PAL_WHITE, PAL_PAINT(PAINT_TANGERINE, 1) },
+     wh_start, wh_update, wh_draw, wh_art, wh_bot,
+-    wh_kept_key, wh_kept_keys, wh_kept_part, NULL, NULL
++    wh_kept_key, wh_kept_keys, wh_kept_part, NULL, NULL, NULL
+ };
+ 
+ MG_DEFINE_SCENE(SCENE_MG_WHACK, "MG_WHACK", mg_game_whack);
+diff --git a/core/tests/test_stage.c b/core/tests/test_stage.c
+index d16cf915..7a0b8e99 100644
+--- a/core/tests/test_stage.c
++++ b/core/tests/test_stage.c
+@@ -245,7 +245,7 @@ static int mg_compare(int id, int arg, int w, int h, int n)
+     return 1;
+ }
+ 
+-static const uint8_t kept_games[] = { MG_WHACK, MG_DODGE };
++static const uint8_t kept_games[] = { MG_WHACK, MG_DODGE, MG_GALLERY };
+ 
+ TEST(stage_kept_minigames_are_pixel_identical)
+ {
+@@ -332,9 +332,9 @@ TEST(stage_bake_file_has_bands_and_stamps)
+         kind = fam->part ? fam->part(idkey & 0xFFFFFFu, part) : BACKDROP_WHOLE;
+         if (kind == BACKDROP_WHOLE) { wholes++; CHECK(bx == 0 && by == 0 && w == 240 && h == 160); }
+         if (kind == BACKDROP_ROWS) { bands++; CHECK(bx == 0 && w == 240 && by == part[0] && h == part[1] - part[0] && h > 0 && h < 160); }
+-        if (kind == BACKDROP_STAMP) {
++        if (kind == BACKDROP_STAMP || kind == BACKDROP_STRIP) {
+             stamps++;
+-            CHECK(w > 0 && h > 0 && w < 240 && h < 160);
++            CHECK(w > 0 && h > 0 && (w < 240 || kind == BACKDROP_STRIP) && h < 160);
+             if ((stamps % 37) == 1) {             /* a sample of them, against the drawing */
+                 int x, y, bad = 0;
+                 memset(nat_fb, 0, 240 * 160);
+diff --git a/gba/src/stage.c b/gba/src/stage.c
+index e17fa865..598c66fb 100644
+--- a/gba/src/stage.c
++++ b/gba/src/stage.c
+@@ -37,18 +37,24 @@ static int16_t page_dirt[2][4];                /* drawn over it after plat_stage
+ static int16_t trk[4];
+ static uint8_t frame_stage, tracking;
+ 
+-/* the baked picture of (id, key), NULL if it is not in the ROM (binary search) */
++/* the baked picture of (id, key), NULL if it is not in the ROM (binary search). The blob's header is
++ * checked once (a game asks for a hundred stamps a frame); `bk_n` is the entry count, 0 until then, -1
++ * for a blob that is not this build's */
++static int16_t bk_n;
+ static const BkEnt *find(int id, uint32_t key)
+ {
+     const uint8_t *b = gba_backdrops;
+     const BkEnt *t = (const BkEnt *)(const void *)(b + 12);
+     uint32_t want = (uint32_t)id << 24 | (key & 0xFFFFFFu);
+     int lo = 0, hi;
+-    if (b[0] != 'B' || b[1] != 'K' || b[2] != 'D' || b[3] != '2') return NULL;
+-    if ((b[4] | b[5] << 8) != SCREEN_W || (b[6] | b[7] << 8) != SCREEN_H) return NULL;
+-    hi = (int)*(const uint32_t *)(const void *)(b + 8) - 1;
++    if (bk_n <= 0) {
++        if (bk_n < 0 || b[0] != 'B' || b[1] != 'K' || b[2] != 'D' || b[3] != '2' ||
++            (b[4] | b[5] << 8) != SCREEN_W || (b[6] | b[7] << 8) != SCREEN_H) { bk_n = -1; return NULL; }
++        bk_n = (int16_t)*(const uint32_t *)(const void *)(b + 8);
++    }
++    hi = bk_n - 1;
+     while (lo <= hi) {
+-        int mid = (lo + hi) / 2;
++        int mid = (lo + hi) >> 1;
+         uint32_t k = t[mid].idkey;
+         if (k == want) return &t[mid];
+         if (k < want) lo = mid + 1;
+-- 
+2.43.0
+

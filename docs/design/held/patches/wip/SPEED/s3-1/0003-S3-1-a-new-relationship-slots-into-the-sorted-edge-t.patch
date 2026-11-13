@@ -1,0 +1,150 @@
+From 332d1ff9e8ca93b80498d32882b9f69e1bfcf289 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 12:41:31 +0000
+Subject: [PATCH 03/12] S3-1: a new relationship slots into the sorted edge
+ table with a halfword move on the GBA
+
+With the pass spread, the heaviest resident updates are the ones that create a bond: rel_get_or_add
+moved ~4.6 KB (1,500 of the 2,048 edges, 6-byte records on 2-byte boundaries) with libc memmove, which
+copies such a block byte by byte: 3-7 ms inside one tick, a 50 ms frame on a screen already near its
+budget (2.4% of the ticks of a default-clock town gain an edge). edges_open_gap moves halfwords, four
+a round, from the top down: the hub's worst resident tick 6.8 -> 3.2 ms (GBA, hub light ticks), the shop
+window's 15 frames over 33 ms -> 0. GBA only (DOOMO_PLATFORM_GBA) and in the host tests
+(DOOMO_EDGE_GAP_LOOP in core/Makefile, so the loop is what test_town checks); PS1, Dreamcast and the
+other builds keep memmove: no change there. test_town: random pairs in random order against a plain
+sorted reference table (fails if one halfword is wrong).
+
+cross-stream: core/Makefile (one define for the host build).
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ core/Makefile          |  2 +-
+ core/src/town.c        | 27 ++++++++++++++++++++++++-
+ core/tests/test_town.c | 46 ++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 73 insertions(+), 2 deletions(-)
+
+diff --git a/core/Makefile b/core/Makefile
+index 909a0ed2..d22c1976 100644
+--- a/core/Makefile
++++ b/core/Makefile
+@@ -55,7 +55,7 @@ LDFLAGS_SAN := -fsanitize=address,undefined
+ endif
+ # T6: the native host has Talk, so it registers the 'TALK' save chunk (core/src/talk_save.c);
+ # a console build defines DOOMO_HAS_TALK when it gets Talk (docs/TALK.md 6e).
+-CORE_CFLAGS   := $(CFLAGS_COMMON) -DDOOMO_HITCHECK -DDOOMO_PARTS_LZ_TEST -DDOOMO_PART_AGE_TEST -DDOOMO_HAS_TALK=1 -I$(CORE_INC)
++CORE_CFLAGS   := $(CFLAGS_COMMON) -DDOOMO_HITCHECK -DDOOMO_PARTS_LZ_TEST -DDOOMO_PART_AGE_TEST -DDOOMO_HAS_TALK=1 -DDOOMO_EDGE_GAP_LOOP -I$(CORE_INC)
+ # Native platform + tests may use the host libc.
+ HOST_CFLAGS   := $(CFLAGS_COMMON) -DDOOMO_PARTS_LZ_TEST -DDOOMO_PART_AGE_TEST -D_POSIX_C_SOURCE=200809L -I$(CORE_INC) -I$(CORE)/native \
+                  -DNAT_TALK_DIR='"$(BUILD)/talk"'
+diff --git a/core/src/town.c b/core/src/town.c
+index e8ba6470..5cc7f779 100644
+--- a/core/src/town.c
++++ b/core/src/town.c
+@@ -189,6 +189,31 @@ static int edge_strength(const DoomoEdge *e)
+     return v;
+ }
+ 
++/* S3-1: open a gap at edge i of n edges (the edges i..n-1 move up by one). The GBA's libc memmove copies a block
++ * that is only 2-byte aligned byte by byte (about 11 cycles a byte): a new bond among 1,500 edges moved ~4.6 KB,
++ * 3-7 ms inside one tick, a 50 ms frame on a screen already near its budget. The edges are 6-byte records on
++ * 2-byte boundaries: three halfwords each, four halfwords a round, from the top down. (A struct copy becomes a
++ * memcpy call per edge, and a plain copy loop becomes the memmove call again: hence the halfword type that may
++ * alias the records and the attribute.) The host tests build it too (core/Makefile). */
++#if defined(DOOMO_PLATFORM_GBA) || defined(DOOMO_EDGE_GAP_LOOP)
++typedef uint16_t __attribute__((may_alias)) EdgeHalf;
++__attribute__((optimize("no-tree-loop-distribute-patterns")))
++static void edges_open_gap(int i, int n)
++{
++    const EdgeHalf *s = (const EdgeHalf *)&doomo_town.edges[n];
++    EdgeHalf *d = (EdgeHalf *)&doomo_town.edges[n + 1];
++    int h = (n - i) * 3;
++    for (; h >= 4; h -= 4) {
++        s -= 4; d -= 4;
++        d[3] = s[3]; d[2] = s[2]; d[1] = s[1]; d[0] = s[0];
++    }
++    while (h-- > 0) *--d = *--s;
++}
++#else
++#define edges_open_gap(i, n) \
++    memmove(&doomo_town.edges[(i) + 1], &doomo_town.edges[(i)], (size_t)((n) - (i)) * sizeof(DoomoEdge))
++#endif
++
+ static void remove_edge(int i)
+ {
+     int n = doomo_town.edge_count;
+@@ -217,7 +242,7 @@ DoomoEdge *rel_get_or_add(int a, int b)
+     k = ((uint32_t)a << 16) | (uint32_t)b;
+     i = lower_bound(k);
+     n = doomo_town.edge_count;
+-    memmove(&doomo_town.edges[i + 1], &doomo_town.edges[i], (size_t)(n - i) * sizeof(DoomoEdge));
++    edges_open_gap(i, n);
+     e = &doomo_town.edges[i];
+     e->a = (uint16_t)a;
+     e->b = (uint16_t)b;
+diff --git a/core/tests/test_town.c b/core/tests/test_town.c
+index f04ef662..88129d40 100644
+--- a/core/tests/test_town.c
++++ b/core/tests/test_town.c
+@@ -1,5 +1,6 @@
+ /* test_town.c - town lifecycle, relationship graph, inventory, graves,
+  * clock, options and unlocks (owner: foundation). */
++#include <stdlib.h>
+ #include "test.h"
+ 
+ static int edges_sorted_valid(void)
+@@ -151,6 +152,51 @@ TEST(relationships_basic)
+     CHECK(edges_sorted_valid());
+ }
+ 
++/* S3-1: a new bond is slotted in by edges_open_gap (a halfword loop on the GBA, built by the host tests too).
++ * Random pairs in random order, bonds before the first, between and after the last edge, against a plain
++ * reference table kept sorted by insertion: every record (ids, value, kind) in the same place. */
++typedef struct { uint16_t a, b; int8_t value; uint8_t kind; } RefEdge;
++static int ref_cmp(const void *x, const void *y)
++{
++    const RefEdge *p = (const RefEdge *)x, *q = (const RefEdge *)y;
++    return p->a != q->a ? (int)p->a - (int)q->a : (int)p->b - (int)q->b;
++}
++
++TEST(relationships_insert_matches_a_reference_table)
++{
++    static RefEdge ref[DOOMO_MAX_EDGES];
++    int n = 0, i, k, bad = 0;
++    DoomoRng r;
++    rng_seed(&r, 17);
++    for (i = 0; i < 1500; i++) {
++        int a, b, lo, hi;
++        DoomoEdge *e;
++        RefEdge key;
++        if (i < 4) { a = i < 2 ? 900 : 1; b = i % 2 ? 901 : 902; }       /* first, then below and above it */
++        else { a = rng_range(&r, 1000); b = rng_range(&r, 1000); }
++        if (a == b) continue;
++        lo = a < b ? a : b; hi = a < b ? b : a;
++        key.a = (uint16_t)lo; key.b = (uint16_t)hi;
++        if (bsearch(&key, ref, (size_t)n, sizeof(RefEdge), ref_cmp)) continue;     /* already a bond */
++        e = rel_get_or_add(a, b);
++        CHECK(e != NULL);
++        e->value = (int8_t)rng_between(&r, -90, 90);
++        e->kind = (uint8_t)rng_range(&r, REL_KIND_COUNT);
++        key.value = e->value; key.kind = e->kind;
++        for (k = n; k > 0 && ref_cmp(&ref[k - 1], &key) > 0; k--) ref[k] = ref[k - 1];
++        ref[k] = key;
++        n++;
++        CHECK_EQ(doomo_town.edge_count, n);
++    }
++    CHECK(n > 1000);
++    for (i = 0; i < n; i++) {
++        const DoomoEdge *e = &doomo_town.edges[i];
++        if (e->a != ref[i].a || e->b != ref[i].b || e->value != ref[i].value || e->kind != ref[i].kind) bad++;
++    }
++    CHECK_MSG(bad == 0, "%d of %d edges differ from the reference table", bad, n);
++    CHECK(edges_sorted_valid());
++}
++
+ TEST(relationships_evict_weakest_when_full)
+ {
+     int i;
+-- 
+2.43.0
+

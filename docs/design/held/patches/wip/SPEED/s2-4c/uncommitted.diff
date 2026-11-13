@@ -1,4 +1,3 @@
-=== UNCOMMITTED ===
 diff --git a/core/src/cook_gfx.c b/core/src/cook_gfx.c
 index 4779178a..2287f4b4 100644
 --- a/core/src/cook_gfx.c

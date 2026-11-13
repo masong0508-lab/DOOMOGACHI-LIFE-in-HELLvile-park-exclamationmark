@@ -1,0 +1,176 @@
+From 0be8f5bd3f92eb9e4e2f7f6f2a387d233823bb58 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 13:41:57 +0000
+Subject: [PATCH 03/10] S2-10: GBA power-cut test (make -C gba test-cutsave),
+ part of make -C gba test
+
+A valid save of one island sits in slot 1; a save of another (the 58 KB worst case) is stopped K video frames
+after it starts, with the harness keeping the flash file in sync as the ROM programs it, so the file is what a
+power cut leaves. A fresh boot then reads the slot. Result on the flash design (trailer written last, the trailer
+sector erased first, one copy per slot): K=100 (first encode pass, nothing written yet): the previous save is
+intact and loads; K=350/450/560/650 (flash writes under way): the slot reads as empty, never torn; K=800
+(finished): the new save verifies and loads with the right town. The rule is unchanged from before S2-10 (the
+streamed save was already built this way); this makes it a test. On the GBA the previous save is only kept
+through the first half of a save: there is one copy per slot.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ gba/Makefile                             |  9 +++++-
+ gba/harness/cutsave.sh                   | 41 ++++++++++++++++++++++++
+ gba/harness/scripts/cutsave_check.txt.in | 12 +++++++
+ gba/harness/scripts/cutsave_cut.txt.in   |  9 ++++++
+ gba/harness/scripts/cutsave_exists.txt   |  4 +++
+ gba/harness/scripts/cutsave_prev.txt     | 12 +++++++
+ 6 files changed, 86 insertions(+), 1 deletion(-)
+ create mode 100755 gba/harness/cutsave.sh
+ create mode 100644 gba/harness/scripts/cutsave_check.txt.in
+ create mode 100644 gba/harness/scripts/cutsave_cut.txt.in
+ create mode 100644 gba/harness/scripts/cutsave_exists.txt
+ create mode 100644 gba/harness/scripts/cutsave_prev.txt
+
+diff --git a/gba/Makefile b/gba/Makefile
+index fbe151a7..4f03d218 100644
+--- a/gba/Makefile
++++ b/gba/Makefile
+@@ -141,7 +141,7 @@ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
+ # over the core's weak stubs, and the core's strong definitions win over both.
+ ALL_OBJS  := $(GBA_OBJS) $(CORE_OBJS)
+ 
+-.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-optvol test-speed test-life profile-title profile-pause profile-invaded profile-all profile-sung profile-creator test-creator test-speed2 profile-speed2 profile-concert profile-exorcism clean sizes
++.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-cutsave test-home test-ow test-lang test-optvol test-speed test-life profile-title profile-pause profile-invaded profile-all profile-sung profile-creator test-creator test-speed2 profile-speed2 profile-concert profile-exorcism clean sizes
+ .DEFAULT_GOAL := all
+ 
+ # Cartridge size (user decision 2026-11-01): the game ROM is a full 256 Mbit
+@@ -239,6 +239,7 @@ test:
+ 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-save
+ 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-game
+ 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-coresave
++	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-cutsave
+ 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-story
+ 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-home
+ 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-ow
+@@ -276,6 +277,12 @@ test-coresave: harness
+ 	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/coresave2.txt \
+ 	    --save $(BUILD)/coresave.sav --quiet
+ 
++# S2-10: a save cut off at several points (a power cut or a reset mid-write) leaves a complete save or an empty slot
++# (gba/harness/cutsave.sh); CUTS="100 450" picks the cut points (video frames into the save)
++test-cutsave: harness
++	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
++	@$(GBA)/harness/cutsave.sh $(BUILD)/doomogachi.gba $(HARNESS) $(BUILD)/cutsave
++
+ # --- S2 (for H2, SPEC sec.12): the story's scripts, every
+ # harness/scripts/story_*.txt (Ch1: P0, Ep 1.1, Ep 1.6, cutscene fps) ---
+ test-story: harness
+diff --git a/gba/harness/cutsave.sh b/gba/harness/cutsave.sh
+new file mode 100755
+index 00000000..381468b2
+--- /dev/null
++++ b/gba/harness/cutsave.sh
+@@ -0,0 +1,41 @@
++#!/bin/sh
++# cutsave.sh ROM HARNESS WORKDIR - S2-10: the GBA flash save is cut at several points, like a power cut or a reset.
++#
++# A valid save of island A (a lived-in Classic island) sits in slot 1. A second save, of island B (the 58 KB worst
++# case), is stopped K video frames after it started (K from the list below: during the first encode pass, which
++# writes nothing; just after the trailer sector is erased; mid-stream; at the end of it; after it). Then the flash
++# file is read back by a fresh boot. The rule (save_flash.c: the trailer is written last): the slot either holds a
++# complete save, A or B, that verifies and loads with the right town, or it reads as empty. Never a torn one.
++# K = 100: A is untouched (the first pass writes nothing); K >= 350: the trailer sector is erased, so
++# the slot is empty until B's trailer lands (the GBA keeps one copy: unchanged from before S2-10).
++rom=$1; harness=$2; work=$3
++[ -n "$work" ] || { echo "usage: $0 ROM HARNESS WORKDIR" >&2; exit 2; }
++scripts=$(dirname "$0")/scripts
++mkdir -p "$work"
++rm -f "$work"/prev.sav
++"$harness" "$rom" --script "$scripts/cutsave_prev.txt" --save "$work/prev.sav" --quiet > "$work/prev.log" 2>&1 || { echo "cutsave: the previous save failed"; tail -5 "$work/prev.log"; exit 1; }
++fail=0
++for k in ${CUTS:-100 350 450 560 650 800}; do
++    sed "s/@K@/$k/" "$scripts/cutsave_cut.txt.in" > "$work/cut_$k.txt"
++    cp "$work/prev.sav" "$work/cut_$k.sav"
++    "$harness" "$rom" --script "$work/cut_$k.txt" --save "$work/cut_$k.sav" --quiet > "$work/cut_$k.log" 2>&1
++    # what does the slot hold now? A: 4242's predecessor (seed 0x80000001), B: 4242
++    if "$harness" "$rom" --script "$scripts/cutsave_exists.txt" --save "$work/cut_$k.sav" --quiet > /dev/null 2>&1; then
++        state=""
++        for seed in 4242 0x80000001; do
++            sed "s/@SEED@/$seed/" "$scripts/cutsave_check.txt.in" > "$work/check_${k}_$seed.txt"
++            if "$harness" "$rom" --script "$work/check_${k}_$seed.txt" --save "$work/cut_$k.sav" --quiet > "$work/check_${k}_$seed.log" 2>&1; then
++                state="complete save of island $seed"
++                break
++            fi
++        done
++        if [ -z "$state" ]; then
++            echo "cutsave: K=$k: the slot reads as a save but is NOT a complete A or B (torn)"; fail=1
++        else
++            echo "cutsave: K=$k: $state"
++        fi
++    else
++        echo "cutsave: K=$k: the slot reads as empty (never torn)"
++    fi
++done
++exit $fail
+diff --git a/gba/harness/scripts/cutsave_check.txt.in b/gba/harness/scripts/cutsave_check.txt.in
+new file mode 100644
+index 00000000..a660c336
+--- /dev/null
++++ b/gba/harness/scripts/cutsave_check.txt.in
+@@ -0,0 +1,12 @@
++# cutsave_check.txt.in - S2-10 power-cut test, step 3 (cutsave.sh fills in @SEED@): boot on the flash file the cut
++# left, load slot 1, remember the town's CRC, rebuild the island @SEED@ and require the same CRC: the slot holds
++# exactly that island (verify first: the whole slot's CRC).
++wait 40
++expect-log doomo: init
++seed 4242
++verify 1
++load 1
++town-crc
++town-fill @SEED@
++expect-town-crc
++wait 2
+diff --git a/gba/harness/scripts/cutsave_cut.txt.in b/gba/harness/scripts/cutsave_cut.txt.in
+new file mode 100644
+index 00000000..db3252e9
+--- /dev/null
++++ b/gba/harness/scripts/cutsave_cut.txt.in
+@@ -0,0 +1,9 @@
++# cutsave_cut.txt.in - S2-10 power-cut test, step 2 (cutsave.sh fills in @K@): a different island, saved with
++# save_game on the GBA; the emulator is stopped @K@ video frames into it, mid-write (the harness keeps the flash
++# file in sync while the ROM programs it, so the file is what a power cut would leave).
++wait 40
++expect-log doomo: init
++seed 4242
++town-fill 4242
++post 1 1
++frames @K@
+diff --git a/gba/harness/scripts/cutsave_exists.txt b/gba/harness/scripts/cutsave_exists.txt
+new file mode 100644
+index 00000000..98572fc0
+--- /dev/null
++++ b/gba/harness/scripts/cutsave_exists.txt
+@@ -0,0 +1,4 @@
++# cutsave_exists.txt - S2-10 power-cut test: succeeds when slot 1 reads as a save, fails when it reads as empty
++wait 40
++expect-log doomo: init
++expect-save 1
+diff --git a/gba/harness/scripts/cutsave_prev.txt b/gba/harness/scripts/cutsave_prev.txt
+new file mode 100644
+index 00000000..db177ab9
+--- /dev/null
++++ b/gba/harness/scripts/cutsave_prev.txt
+@@ -0,0 +1,12 @@
++# cutsave_prev.txt - S2-10 power-cut test, step 1: a valid free-play save (the "previous save", a lived-in Classic
++# island) in slot 1 of a fresh flash file. gba/harness/cutsave.sh then cuts a second save of another island at
++# several points and looks at the slot.
++wait 40
++expect-log doomo: init
++seed 4242
++town-fill 0x80000001
++town-crc
++save 1
++expect-save 1
++verify 1
++wait 5
+-- 
+2.43.0
+

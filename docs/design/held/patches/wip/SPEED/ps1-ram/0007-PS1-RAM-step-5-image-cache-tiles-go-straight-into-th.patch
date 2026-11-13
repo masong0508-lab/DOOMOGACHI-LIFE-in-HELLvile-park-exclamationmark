@@ -1,0 +1,191 @@
+From 91d0c6c7485d7d363d4757e840ea845db23b8c00 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 12 Nov 2026 23:43:42 +0000
+Subject: [PATCH 07/14] PS1-RAM step 5: image cache tiles go straight into the
+ upload packets (+8,656 B)
+
+vram_image() built every tile with its transparent border in a 130 x 130
+staging buffer (16.9 KB of .bss) and gfx_upload_strided() then copied it
+into the frame's upload packets. gfx_upload_tile() writes the bordered rows
+straight into the packets: one transparent texel, the tile's texels (read
+backwards for a mirrored image), transparent up to the even width, and one
+transparent row below. The same packets with the same bytes, one copy less
+per cache miss.
+
+The staging union is now only the hash table's rebuild copy (8,192 B),
+which the boot-time font / CLUT uploads also stage in (their biggest is
+exactly 8,192 B: a compile-time check).
+
+Game disc with the boot FMV: 134,256 -> 142,912 B below the stack top.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ ps1/src/gfx.c  | 44 ++++++++++++++++++++++++++++++++++++++++----
+ ps1/src/ps1.h  |  2 ++
+ ps1/src/vram.c | 35 ++++++++++++++---------------------
+ 3 files changed, 56 insertions(+), 25 deletions(-)
+
+diff --git a/ps1/src/gfx.c b/ps1/src/gfx.c
+index b5ef5785..c96dc51a 100644
+--- a/ps1/src/gfx.c
++++ b/ps1/src/gfx.c
+@@ -258,7 +258,13 @@ void gfx_ot_end(void)
+     s_view_ot = NULL;
+ }
+ 
+-static int upload_rows(int x, int y, int w, int h, const uint8_t *src, int stride)
++/* Rows of w halfwords from src (stride bytes apart) into GP0(A0h) packets.
++ * tw < 0: the rows as they are. tw >= 0: an image-cache tile with its
++ * border (gfx_upload_tile below): every row but the last is one transparent
++ * texel, tw texels read from src in steps of `step` (+1, or -1 for a
++ * mirrored image), then transparent texels up to w * 2; the last row is
++ * transparent. */
++static int upload_rows(int x, int y, int w, int h, const uint8_t *src, int stride, int tw, int step)
+ {
+     /* GP0(A0h) packets of at most 252 data words */
+     int rows_per = (252 * 2) / w;
+@@ -279,7 +285,24 @@ static int upload_rows(int x, int y, int w, int h, const uint8_t *src, int strid
+         p[3] = ((uint32_t)rows << 16) | (uint32_t)w;
+         d = (uint16_t *)&p[4];
+         for (r = 0; r < rows; r++) {
+-            memcpy(d, src, (size_t)w * 2);
++            if (tw < 0) {
++                memcpy(d, src, (size_t)w * 2);
++            } else {
++                uint8_t *b = (uint8_t *)d;
++                int k = 0;
++                if (h - r > 1) {            /* not the tile's last row */
++                    b[k++] = 0;
++                    if (step > 0) {
++                        memcpy(b + 1, src, (size_t)tw);
++                        k += tw;
++                    } else {
++                        for (; k <= tw; k++)
++                            b[k] = src[1 - k];
++                    }
++                }
++                while (k < w * 2)
++                    b[k++] = 0;
++            }
+             d += w;
+             src += stride;
+         }
+@@ -295,13 +318,26 @@ static int upload_rows(int x, int y, int w, int h, const uint8_t *src, int strid
+ 
+ int gfx_upload(int x, int y, int w, int h, const uint16_t *data)
+ {
+-    return upload_rows(x, y, w, h, (const uint8_t *)data, w * 2);
++    return upload_rows(x, y, w, h, (const uint8_t *)data, w * 2, -1, 0);
+ }
+ 
+ /* strided variant used by vram.c (rows of `stride` bytes) */
+ int gfx_upload_strided(int x, int y, int w, int h, const uint8_t *src, int stride)
+ {
+-    return upload_rows(x, y, w, h, src, stride);
++    return upload_rows(x, y, w, h, src, stride, -1, 0);
++}
++
++/* (RAM headroom 2026-11-12) An image-cache tile of tw x th texels, uploaded
++ * to (x, y) as sw x (th + 1) texels with the transparent border vram.c
++ * gives every tile: one column on the left, the columns from tw + 1 to sw
++ * on the right, one row below. src is the first texel of the tile's first
++ * row (stride bytes a row); step -1 reads every row backwards from there
++ * (a mirrored image). The rows are written straight into the upload
++ * packets: the same bytes, without the 16.9 KB buffer vram.c staged them
++ * in first. sw is even and at least tw + 2. */
++int gfx_upload_tile(int x, int y, int sw, int th, const uint8_t *src, int stride, int tw, int step)
++{
++    return upload_rows(x, y, sw >> 1, th + 1, src, stride, tw, step);
+ }
+ 
+ void gfx_upload_now(int x, int y, int w, int h, const void *data)
+diff --git a/ps1/src/ps1.h b/ps1/src/ps1.h
+index 3e363fc0..b84263b3 100644
+--- a/ps1/src/ps1.h
++++ b/ps1/src/ps1.h
+@@ -135,6 +135,8 @@ void  gfx_ofs_follow(uint32_t *e5);
+ int   gfx_upload(int x, int y, int w, int h, const uint16_t *data);
+ /* Synchronous upload (boot time / when no frame is in flight). */
+ int   gfx_upload_strided(int x, int y, int w, int h, const uint8_t *src, int stride);
++/* an image-cache tile with its transparent border, straight into the upload packets (gfx.c) */
++int   gfx_upload_tile(int x, int y, int sw, int th, const uint8_t *src, int stride, int tw, int step);
+ void  gfx_upload_now(int x, int y, int w, int h, const void *data);
+ /* Set the GPU texpage / semi-transparency mode for following 2D prims. */
+ void  gfx_tpage(uint16_t tpage);
+diff --git a/ps1/src/vram.c b/ps1/src/vram.c
+index b7e1b26c..96c12a7d 100644
+--- a/ps1/src/vram.c
++++ b/ps1/src/vram.c
+@@ -132,12 +132,13 @@ typedef struct Entry {
+ static Page   s_page[IMG_PAGES];
+ static Entry  s_hash[HASH_SIZE];
+ static int    s_hash_used;
+-/* tile staging buffer; also the scratch copy for hash_rebuild() */
++/* the scratch copy for hash_rebuild() (and the boot uploads' staging, below).
++ * (RAM headroom 2026-11-12) A tile is no longer staged here with its border
++ * before it is uploaded (a 130 x 130 buffer, 16.9 KB): gfx_upload_tile()
++ * writes the bordered rows straight into the upload packets. */
+ static union {
+-    uint8_t stage[(IMG_TILE + 2) * (IMG_TILE + 2)];
+     Entry   tmp[HASH_SIZE];
+ } s_scr;
+-#define s_stage s_scr.stage
+ 
+ static uint32_t hash2(uint32_t a, uint32_t b)
+ {
+@@ -253,7 +254,7 @@ int vram_image(const DoomoImage *img, int tx, int ty, TexRef *out)
+ {
+     uint32_t k1, k2, h;
+     int flip = (tx >> 8) & 1;
+-    int tw, th, x0, y0, u, v, pg, row, col;
++    int tw, th, x0, y0, u, v, pg;
+     Entry *e, *free_e = NULL;
+     out->ok = 0;
+     tx &= 0xff;
+@@ -308,24 +309,14 @@ probe:
+     e->u = (uint8_t)(u + 1);     /* 1 transparent column on the left  */
+     e->v = (uint8_t)v;
+     {
+-        /* stage: (tw+2) x (th+1), transparent border right/bottom/left */
++        /* (tw+2) x (th+1) texels: transparent border right/bottom/left */
+         int sw = (tw + 2 + 1) & ~1;
+         const uint8_t *pix = packart_resolve(img->pix);   /* a texture image? */
+-        memset(s_stage, 0, (size_t)sw * (th + 1));
+-        for (row = 0; row < th; row++) {
+-            const uint8_t *src = pix + (size_t)(y0 + row) * img->w;
+-            uint8_t *d = s_stage + row * sw + 1;
+-            if (!flip) {
+-                memcpy(d, src + x0, (size_t)tw);
+-            } else {
+-                /* flipped image: tile tx counts from the right edge */
+-                int sx = img->w - 1 - x0;
+-                for (col = 0; col < tw; col++)
+-                    d[col] = src[sx - col];
+-            }
+-        }
+-        if (!gfx_upload_strided(s_page[pg].vx + (u >> 1), VR_IMG_Y + v,
+-                                sw >> 1, th + 1, s_stage, sw)) {
++        /* the tile's first row; a flipped image's tile tx counts from the
++         * right edge and is read backwards */
++        const uint8_t *src = pix + (size_t)y0 * img->w + (flip ? img->w - 1 - x0 : x0);
++        if (!gfx_upload_tile(s_page[pg].vx + (u >> 1), VR_IMG_Y + v, sw, th, src, img->w,
++                             tw, flip ? -1 : 1)) {
+             e->state = 2;          /* tombstone: retry next time */
+             return 0;
+         }
+@@ -432,8 +423,10 @@ void vram_frame(void)
+ 
+ /* ---- init -------------------------------------------------------------------- */
+ /* Boot-time staging for the font / CLUT uploads: the image cache's
+- * staging union (16.9 KB) is idle until the first frame, so these need
++ * rebuild scratch (8 KB) is idle until the first frame, so these need
+  * no RAM of their own (they were 12 KB of static buffers used once). */
++typedef char init_scratch_fits[sizeof(s_scr) >= 16 * 256 * 2 ? 1 : -1];   /* the biggest: the font CLUTs */
++
+ static uint16_t *init_scratch(size_t bytes)
+ {
+     memset(&s_scr, 0, sizeof(s_scr));
+-- 
+2.43.0
+

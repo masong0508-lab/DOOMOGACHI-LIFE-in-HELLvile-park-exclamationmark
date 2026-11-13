@@ -1,0 +1,584 @@
+From ee38b8703e11e0fa1d4158272ea5614dcc4bb96f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 13:30:27 +0000
+Subject: [PATCH 2/7] G2-EX step 2: held dims, clipped text, the aura as a kept
+ rect list (exact)
+
+- Verdict and result in layers. The verdict's whole-screen dim (15.8 ms of the GBA frame) and the failure's
+  fade to black are clippable layers with keys that do not change: when something under them changes only
+  that part is dimmed again, the rest of the screen keeps the dim it had. The holy heart + sparkles, the
+  percentage and the caption (verdict) and the cloud / confetti, demon, title, line, figures strip and hint
+  (result) are layers of their own in the order the one layer drew them; the title, line and strip are
+  clippable too. (A failure's fade starts at shade level 0, which is black: kept, `fade_on`.)
+- plat_clip honours plat_text and plat_text_outline (GBA: the glyph pixels inside the box; native already).
+- The host's aura (two ellipses with the frame's hole left out: 5 ms of shape code and hole splitting on
+  every pulse change, every third tick) is kept as the 40-76 rects it draws, one list per pulse (-2..2),
+  and drawn again at the frame's place (plat_rect_run on the GBA's plain Mode 4 path, plat_rect otherwise).
+  Lists live in the scene scratch (+3.8 KB there, none resident); a frame with rows off the screen is
+  drawn as before. PS1 / Dreamcast (no holes) are unchanged.
+- Tests: the ritual to the end of the result's fade for a failure and for a cast out (seeds are searched),
+  stage on / off; the aura's list against the shape code; the clipped text primitives.
+GBA full-ritual frames (1,382, deterministic portraits) identical to the base ROM.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ core/include/doomo/backdrop.h |   4 +-
+ core/include/doomo/plat_ext.h |  12 ++--
+ core/native/plat_native.c     |   1 -
+ core/src/exorcism_gfx.c       |  87 +++++++++++++++++++++++++--
+ core/src/exorcism_int.h       |   2 +
+ core/src/exorcism_scene.c     | 108 +++++++++++++++++++++------------
+ core/tests/test_stage_clip.c  | 110 +++++++++++++++++++++++++++++++++-
+ gba/src/video.c               |  35 +++++++++++
+ 8 files changed, 307 insertions(+), 52 deletions(-)
+
+diff --git a/core/include/doomo/backdrop.h b/core/include/doomo/backdrop.h
+index 922970f9..9b156070 100644
+--- a/core/include/doomo/backdrop.h
++++ b/core/include/doomo/backdrop.h
+@@ -47,8 +47,8 @@ void stage_resolve(void);
+ int  stage_draw(int i);
+ void stage_end(void);
+ /* (G2-EX) Clipped redraw. A layer declared with stage_layer_clip draws only through plat_rect,
+- * plat_shade_rect and plat_image at scale 1 without a flip (the calls a platform's plat_clip honours
+- * exactly: plat_ext.h), and its draw is the same whatever the screen under it holds. When such a
++ * plat_shade_rect, plat_text and plat_image at scale 1 without a flip (the calls a platform's plat_clip
++ * honours exactly: plat_ext.h; UI shapes and text go through them), and its draw is the same whatever the screen under it holds. When such a
+  * layer did not change but lies on a dirty box, the stage does not put its whole box back and draw
+  * it again (which would drag every layer that lies on that box into the redraw, and so on): it
+  * draws the layer only through the pieces of the dirty set that lie in its box, clipped to each.
+diff --git a/core/include/doomo/plat_ext.h b/core/include/doomo/plat_ext.h
+index c3570a82..d91b5a3d 100644
+--- a/core/include/doomo/plat_ext.h
++++ b/core/include/doomo/plat_ext.h
+@@ -234,12 +234,12 @@ typedef struct PlatStageInfo {
+ int  plat_stage_begin(int id, uint32_t key, void (*draw)(uint32_t key), PlatStageInfo *info);
+ void plat_stage_restore(int x, int y, int w, int h);
+ void plat_stage_end(void);
+-/* (G2-EX) plat_clip(x0, y0, x1, y1)  until plat_clip_end() every plat_rect, plat_shade_rect and plat_image
+- *       (scale 1, no flip) draws exactly the pixels of the unclipped call that lie in [x0, x1) x [y0, y1)
+- *       and nothing outside it (backdrop.h: the stage draws a layer that did not change only through the
+- *       pieces of the dirty set). Only valid between plat_stage_begin and plat_stage_end; it does not nest.
+- *       Text, lines, checkers, clears and scaled images are not clipped (a clipped layer does not use
+- *       them). Defaults (core/src/backdrop.c): nothing, for a platform whose plat_stage_begin says 0. */
++/* (G2-EX) plat_clip(x0, y0, x1, y1)  until plat_clip_end() every plat_rect, plat_shade_rect, plat_text,
++ *       plat_text_outline and plat_image (scale 1, no flip) draws exactly the pixels of the unclipped call
++ *       that lie in [x0, x1) x [y0, y1) and nothing outside it (backdrop.h: the stage draws a layer that did
++ *       not change only through the pieces of the dirty set). Only valid between plat_stage_begin and
++ *       plat_stage_end; a new plat_clip replaces the box. Lines, checkers, clears and scaled or flipped
++ *       images are not clipped (a clipped layer does not use them). Defaults (core/src/backdrop.c): nothing, for a platform whose plat_stage_begin says 0. */
+ void plat_clip(int x0, int y0, int x1, int y1);
+ void plat_clip_end(void);
+ 
+diff --git a/core/native/plat_native.c b/core/native/plat_native.c
+index 6a752c05..975f74e8 100644
+--- a/core/native/plat_native.c
++++ b/core/native/plat_native.c
+@@ -246,7 +246,6 @@ void plat_text(int x, int y, const char *s, uint8_t color)
+ {
+     nat_calls[NC_TEXT]++;
+     int cx = x;
+-    nat_clip_viol += nat_clip_on;
+     if (!s) return;                       /* bytes as given: ui.c translated them (L2a) */
+     {
+         /* the box the glyphs can touch (G7 panels) */
+diff --git a/core/src/exorcism_gfx.c b/core/src/exorcism_gfx.c
+index 1ed5ce18..d20cca4b 100644
+--- a/core/src/exorcism_gfx.c
++++ b/core/src/exorcism_gfx.c
+@@ -540,17 +540,63 @@ void exo_fuzz(int cx, int foot_y, uint32_t t, int expr)
+ #endif
+ #if HOST_HOLES
+ static int16_t hole[4];                      /* [x0, x1) x [y0, y1) */
++static void (*hole_emit)(int, int, int, int, uint8_t) = plat_rect;   /* where the rects that are left go */
+ static void hole_tap(int x, int y, int w, int h, uint8_t c)
+ {
+     int x1 = x + w, y1 = y + h, a, b;
+-    if (x >= hole[2] || x1 <= hole[0] || y >= hole[3] || y1 <= hole[1]) { plat_rect(x, y, w, h, c); return; }
+-    if (y < hole[1]) plat_rect(x, y, w, hole[1] - y, c);                     /* above */
+-    if (y1 > hole[3]) plat_rect(x, hole[3], w, y1 - hole[3], c);             /* below */
++    if (x >= hole[2] || x1 <= hole[0] || y >= hole[3] || y1 <= hole[1]) { hole_emit(x, y, w, h, c); return; }
++    if (y < hole[1]) hole_emit(x, y, w, hole[1] - y, c);                     /* above */
++    if (y1 > hole[3]) hole_emit(x, hole[3], w, y1 - hole[3], c);             /* below */
+     a = DOOMO_MAX(y, hole[1]);
+     b = DOOMO_MIN(y1, hole[3]);
+-    if (x < hole[0]) plat_rect(x, a, hole[0] - x, b - a, c);                 /* left  */
+-    if (x1 > hole[2]) plat_rect(hole[2], a, x1 - hole[2], b - a, c);         /* right */
++    if (x < hole[0]) hole_emit(x, a, hole[0] - x, b - a, c);                 /* left  */
++    if (x1 > hole[2]) hole_emit(hole[2], a, x1 - hole[2], b - a, c);         /* right */
+ }
++
++/* (G2-EX) The aura's rects, the frame's hole already left out, kept for each pulse (-2..2) of the frame size and
++ * colour that made them, and drawn again at the frame's place (the shape code and the hole's split cost ~5 ms a
++ * frame on the GBA, and the pulse changes every third tick; the rects are the same, so are the pixels). The
++ * entries are plat_rect_run's, in screen coordinates for the frame origin (ox, oy) they were last drawn at, and
++ * move with it. Lives in the scene scratch (exo_aura_bind); a frame with rows off the screen, or a shape with
++ * more rects than a list holds, is drawn as before. */
++#define AURA_MAX 96
++typedef struct { int16_t x, y; uint8_t w, h, c, pad; } AuraRect;
++typedef struct { int16_t fw, fh, ox, oy; int8_t cls, valid, pad[2]; uint16_t n, pad2; AuraRect r[AURA_MAX]; } Aura;
++static Aura *aura;                           /* [5], one per pulse */
++extern void plat_rect_run(const void *list, int n) __attribute__((weak));   /* the GBA's ARM run (video_loops.s) */
++extern int gba_nodraw __attribute__((weak));        /* 0: drawing to Mode 4, the only case the run handles */
++uint32_t exo_aura_bytes(void) { return 5u * (uint32_t)sizeof(Aura); }
++void exo_aura_bind(void *mem)
++{
++    int i;
++    aura = (Aura *)mem;
++    for (i = 0; aura && i < 5; i++) aura[i].valid = 0;
++}
++static Aura *aura_cur;                       /* the list being recorded */
++static void aura_rec(int x, int y, int w, int h, uint8_t c)
++{
++    if (aura_cur->n < AURA_MAX && w < 256 && h < 256) {
++        AuraRect *r = &aura_cur->r[aura_cur->n];
++        r->x = (int16_t)x; r->y = (int16_t)y; r->w = (uint8_t)w; r->h = (uint8_t)h; r->c = c; r->pad = 0;
++    }
++    aura_cur->n++;                           /* (more than AURA_MAX: not valid) */
++}
++
++/* draw the list with its origin at (x, y) */
++static void aura_draw(Aura *a, int x, int y)
++{
++    int i, dx = x - a->ox, dy = y - a->oy;
++    if (dx || dy)
++        for (i = 0; i < a->n; i++) {
++            a->r[i].x = (int16_t)(a->r[i].x + dx);
++            a->r[i].y = (int16_t)(a->r[i].y + dy);
++        }
++    a->ox = (int16_t)x; a->oy = (int16_t)y;
++    if (plat_rect_run && !gba_nodraw) plat_rect_run(a->r, a->n);
++    else
++        for (i = 0; i < a->n; i++) plat_rect(a->r[i].x, a->r[i].y, a->r[i].w, a->r[i].h, a->r[i].c);
++}
++
+ static void with_hole(int x0, int y0, int x1, int y1)
+ {
+     hole[0] = (int16_t)x0; hole[1] = (int16_t)y0; hole[2] = (int16_t)x1; hole[3] = (int16_t)y1;
+@@ -561,6 +607,8 @@ static void with_hole(int x0, int y0, int x1, int y1)
+ #else
+ #define HOLE(x0, y0, x1, y1) ((void)0)
+ #define NO_HOLE() ((void)0)
++uint32_t exo_aura_bytes(void) { return 0; }       /* (a GPU platform draws the aura's shapes whole) */
++void exo_aura_bind(void *mem) { (void)mem; }
+ #endif
+ 
+ /* exorcism_int.h: the same holes for the scene's own shapes (the prayer lane) */
+@@ -602,6 +650,34 @@ void exo_host_frame(int cx, int cy, const DoomoImage *img, int scale, int shake,
+      * frame's, whose outer round rect fills every row of [y + 4, y + h - 4) edge to edge) */
+     if (dread > 3) {
+         int pulse = ui_wave((int)t, 24, 2);
++#if HOST_HOLES
++        /* (G2-EX) the list of rects it draws, made once for a frame size, pulse and colour (the aura is 8 or so
++         * rows clear of the screen's top and bottom, else its rows would be cut: not kept) */
++        if (aura && pulse >= -2 && pulse <= 2 && y >= 8 && y + h + 8 <= plat_screen_h() && !plat_draw_skipped()) {
++            int cls = dread > 10;
++            Aura *a = &aura[pulse + 2];
++            if (a->valid >= 0 && (!a->valid || a->fw != w || a->fh != h || a->cls != cls)) {
++                void (*saved)(int, int, int, int, uint8_t) = hole_emit;
++                a->n = 0;
++                aura_cur = a;
++                hole_emit = aura_rec;
++                HOLE(x, y + 4, x + w, y + h - 4);
++                ui_fill_ellipse(x + w / 2, y + h / 2, w / 2 + 5 + pulse, h / 2 + 4 + pulse,
++                                cls ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_RAMP(RAMP_VAPE, 2));
++                ui_fill_ellipse(x + w / 2, y + h / 2, w / 2 + 2 + pulse / 2, h / 2 + 2 + pulse / 2,
++                                cls ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_RAMP(RAMP_VAPE, 3));
++                NO_HOLE();
++                hole_emit = saved;
++                a->fw = (int16_t)w; a->fh = (int16_t)h; a->cls = (int8_t)cls;
++                a->ox = (int16_t)x; a->oy = (int16_t)y;
++                a->valid = a->n <= AURA_MAX ? 1 : -1;       /* (-1: too many rects, drawn as before) */
++            }
++            if (a->valid > 0) {
++                aura_draw(a, x, y);
++                goto aura_done;
++            }
++        }
++#endif
+         HOLE(x, y + 4, x + w, y + h - 4);
+         ui_fill_ellipse(cx + dx, cy + dy, w / 2 + 5 + pulse, h / 2 + 4 + pulse,
+                         dread > 10 ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_RAMP(RAMP_VAPE, 2));
+@@ -609,6 +685,7 @@ void exo_host_frame(int cx, int cy, const DoomoImage *img, int scale, int shake,
+                         dread > 10 ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_RAMP(RAMP_VAPE, 3));
+         NO_HOLE();
+     }
++aura_done:
+ #if HOST_HOLES
+     /* the drop shadow (x + 3, y + 3, w, h): only the band the frame does not paint over (the
+      * right 7 columns and the bottom 7 rows of it hold every pixel its round corners leave) */
+diff --git a/core/src/exorcism_int.h b/core/src/exorcism_int.h
+index d4ea0c4a..35e893f8 100644
+--- a/core/src/exorcism_int.h
++++ b/core/src/exorcism_int.h
+@@ -24,6 +24,8 @@ enum { EXO_PART_HEART, EXO_PART_CURTAIN_L, EXO_PART_CURTAIN_R, EXO_PART_MOTE0, E
+        EXO_PARTS = EXO_PART_MOTE0 + EXO_MOTES };
+ int  exo_church_part(int part, int dread, uint32_t t, int16_t box[4], uint32_t *key);
+ void exo_church_part_draw(int part, int dread, uint32_t t);
++uint32_t exo_aura_bytes(void);          /* (G2-EX) the aura's rect list (exorcism_gfx.c), kept in the scene scratch */
++void exo_aura_bind(void *mem);
+ extern const struct DoomoBackdrop exo_church_family;
+ /* SP7: on a fill-bound screen (GBA, native) a shape drawn between exo_hole() and exo_hole_off()
+  * leaves out the hole [x0, x1) x [y0, y1), and exo_shade_hole() shades its rect less the hole:
+diff --git a/core/src/exorcism_scene.c b/core/src/exorcism_scene.c
+index 46c4c652..c5d5c2c1 100644
+--- a/core/src/exorcism_scene.c
++++ b/core/src/exorcism_scene.c
+@@ -252,10 +252,11 @@ typedef struct {
+ static NameCache *exo_nc;
+ static void *exo_scratch_claim(void)
+ {
+-    uint32_t off = (stage_mem_bytes() + 3u) & ~3u;
+-    uint8_t *p = (uint8_t *)scene_scratch(EXO_SCRATCH_TAG, off + (uint32_t)sizeof(NameCache));
++    uint32_t off = (stage_mem_bytes() + 3u) & ~3u, off2 = (off + (uint32_t)sizeof(NameCache) + 3u) & ~3u;
++    uint8_t *p = (uint8_t *)scene_scratch(EXO_SCRATCH_TAG, off2 + exo_aura_bytes());
+     exo_nc = p ? (NameCache *)(void *)(p + off) : NULL;
+     if (exo_nc) exo_nc->ok = 0;
++    exo_aura_bind(p ? p + off2 : NULL);           /* (G2-EX) after the name cache */
+     return p;
+ }
+ static void stage_mem(void)
+@@ -1133,13 +1134,13 @@ static void draw_name_ui(uint32_t t)
+     }
+ }
+ 
+-static void draw_verdict(uint32_t t)
++/* The verdict screen in four layers (G2-EX), in the order the one layer drew them: the dim of the whole
++ * screen, the holy heart with its sparkles, the swelling percentage, the caption. The dim is a clippable
++ * layer with a key that never changes: when something under it changes only that part is dimmed again, the
++ * rest of the screen keeps the dim it had. */
++static void verdict_heart(int cx, int cy, int size, int gold, uint32_t t)
+ {
+-    int cx = W() / 2, cy = H() / 2 + 4, size = BIG() ? 30 : 22;
+-    int shown = X.st_t < 45 ? X.chance * X.st_t / 45 : X.chance;
+-    int gold = DOOMO_MAX(2, size * shown / 100), i;
+-    char b[32];
+-    plat_shade_rect(0, 0, W(), H(), 8);
++    int i;
+     /* the holy heart swells with the power you gathered */
+     ui_heart(cx, cy, size + 3, PAL_RAMP(RAMP_VAPE, 0));
+     ui_heart(cx, cy, size + 1, PAL_RAMP(RAMP_VAPE, 2));
+@@ -1149,8 +1150,15 @@ static void draw_verdict(uint32_t t)
+         ui_sparkle(cx + ((fx_cos(a) * rr) >> 16), cy + ((fx_sin(a) * rr) >> 16),
+                    (int)((t / 2 + (uint32_t)i * 3) & 15), PAL_UI_GOLD);
+     }
+-    doomo_snprintf(b, sizeof(b), "%d%%", shown);
++}
++
++static void verdict_pct(int cx, int cy, const char *b)
++{
+     ui_text_big(cx - ui_text_big_width(b, 2) / 2, cy - 8, b, 2, PAL_WHITE, PAL_RAMP(RAMP_CANDY, 1));
++}
++
++static void verdict_caption(int cx, int cy, int size)
++{
+     ui_text_outline(cx - ui_text_width("Holy power...") / 2, cy + size + 10, "Holy power...",
+                     PAL_WHITE, PAL_RAMP(RAMP_VAPE, 0));
+ }
+@@ -1358,54 +1366,76 @@ static void exo_layers(uint32_t t)
+         break;
+     }
+     case ST_VERDICT: {
+-        int hy = fy - (big ? 48 : 34);
++        int hy = fy - (big ? 48 : 34), cx = w / 2, cy = h / 2 + 4, size = big ? 30 : 22, tw, rr = size + 14;
++        int shown = X.st_t < 45 ? X.chance * X.st_t / 45 : X.chance;
++        int gold = DOOMO_MAX(2, size * shown / 100);
+         host_layer(w / 2, hy, 1, EXPR_POSSESSED, t, &hw, &hh);
+-        if (L(LY_U0, 0, 0, w, h, t)) draw_verdict(t);          /* the whole screen dims */
++        if (LC(LY_U0, 0, 0, w, h, 0xD1u)) CLIPPED(LY_U0, plat_shade_rect(0, 0, w, h, 8));   /* the whole screen dims */
++        /* the heart (its extent is its size) and the sparkles on their ring (up to 3 px arms) lie in rr */
++        if (LC(LY_U0 + 1, cx - rr, cy - rr, 2 * rr + 1, 2 * rr + 1, hk(hk(0x4EA7u, (uint32_t)gold), t)))
++            CLIPPED(LY_U0 + 1, verdict_heart(cx, cy, size, gold, t));
++        doomo_snprintf(b, sizeof(b), "%d%%", shown);
++        tw = ui_text_big_width(b, 2);
++        if (LC(LY_U0 + 2, cx - tw / 2 - 3, cy - 11, tw + 6, 28, hk(0xB16u, (uint32_t)shown)))
++            CLIPPED(LY_U0 + 2, verdict_pct(cx, cy, b));
++        tw = ui_text_width("Holy power...");
++        if (LC(LY_U0 + 3, cx - tw / 2 - 3, cy + size + 7, tw + 6, 17, 0xCA97u))
++            CLIPPED(LY_U0 + 3, verdict_caption(cx, cy, size));
+         break;
+     }
+     case ST_RESULT: {
+-        int hy = fy - (big ? 40 : 30);
++        /* (G2-EX) in layers, in the order the one layer drew them: the cloud and the confetti (a cast out) or
++         * the demon (a failure), the title, the line under it, the strip with the figures, the hint and, last,
++         * the failure's slow fade to black (a clippable layer: only what changed under it is dimmed again) */
++        int hy = fy - (big ? 40 : 30), ty = big ? 8 : 4, ly2 = big ? 30 : 22, sy = h - (big ? 34 : 26), tw, lw;
+         int expr = X.success ? EXPR_HAPPY : EXPR_POSSESSED;
+         int tries = X.practice ? 3 : exorcism_tries_left(X.host);
++        int fade_on = !X.success && X.st_t > 110, fade = fade_on ? DOOMO_MIN(14, (X.st_t - 110) / 4) : 0;   /* (level 0 is black) */
++        int hint = X.st_t > 30 && !(!X.success && !X.practice && town_res(X.host)->status == RES_SOUL_LOST);
++        char s[64];
+         host_layer(w / 2, hy, 1, expr, t, &hw, &hh);
+         candles_layer(w / 2, hy + hh / 2 + 4, tries, 3, t, big);
+         if (X.success) fuzz_layer(fuzz_x, fuzz_foot, t, EXPR_HAPPY);
+-        if (!L(LY_U0, 0, 0, w, h, t)) break;                   /* confetti, texts, the dim: everything */
+         if (X.success) {
+-            if (X.st_t < 24) {
+-                const DoomoImage *p = sprite_image(SPR_PUFF, X.st_t / 6);
+-                if (p) plat_image(w / 2 + hw / 2 - p->w / 2, hy - hh / 2 - p->h / 2, p, 2, 0, 0);
++            if (L(LY_U0, 0, 0, w, h, t)) {                      /* the cloud and the confetti: everything moves */
++                if (X.st_t < 24) {
++                    const DoomoImage *p = sprite_image(SPR_PUFF, X.st_t / 6);
++                    if (p) plat_image(w / 2 + hw / 2 - p->w / 2, hy - hh / 2 - p->h / 2, p, 2, 0, 0);
++                }
++                draw_confetti(t);
+             }
+-            draw_confetti(t);
+-            ui_text_big(w / 2 - ui_text_big_width("CAST OUT!", 2) / 2, big ? 8 : 4, "CAST OUT!", 2,
+-                        PAL_UI_GOLD, PAL_RAMP(RAMP_PASTEL_PINK, 1));
+             doomo_snprintf(b, sizeof(b), "%s fled from %s!", demon_name(), host_name());
+-            ui_text_outline(w / 2 - ui_text_width(b) / 2, big ? 30 : 22, b, PAL_WHITE, PAL_RAMP(RAMP_PASTEL_PINK, 1));
+         } else {
+-            exo_demon(w / 2 + hw / 2 + 6, hy - hh / 2 + ui_wave((int)t, 20, 3), t, 0, 1);
+-            ui_text_big(w / 2 - ui_text_big_width("IT HOLDS ON...", 2) / 2, big ? 8 : 4, "IT HOLDS ON...", 2,
+-                        PAL_UI_RED, PAL_BLACK);
++            demon_layer(w / 2 + hw / 2 + 6, hy - hh / 2 + ui_wave((int)t, 20, 3), t, 0, 1);
+             if (X.practice) doomo_snprintf(b, sizeof(b), "Just practice! Try again anytime.");
+             else if (tries > 0) doomo_snprintf(b, sizeof(b), "%d %s left before the soul is lost.",
+                                                tries, tries == 1 ? "try" : "tries");
+             else doomo_snprintf(b, sizeof(b), "The last candle goes out...");
+-            ui_text_outline(w / 2 - ui_text_width(b) / 2, big ? 30 : 22, b, PAL_WHITE, PAL_BLACK);
+         }
+-        {
+-            char s[64];
+-            doomo_snprintf(s, sizeof(s), "Prayer %d%%  Water %d%%  Name %s  Chance %d%%",
+-                           X.rhythm, X.water, X.name_ok ? STR_ICON_CHECK : STR_ICON_X, X.chance);
+-            if (!big) doomo_snprintf(s, sizeof(s), "Pray %d%% Water %d%% Name %s",
+-                                     X.rhythm, X.water, X.name_ok ? STR_ICON_CHECK : STR_ICON_X);
+-            plat_shade_rect(0, h - (big ? 34 : 26), w, 11, 9);
+-            ui_text_center(w / 2, h - (big ? 32 : 24), s, PAL_WHITE);
++        tw = ui_text_big_width(X.success ? "CAST OUT!" : "IT HOLDS ON...", 2);
++        if (LC(LY_U0 + 1, w / 2 - tw / 2 - 3, ty - 3, tw + 6, 25, hk(0x7171u, (uint32_t)X.success))) {
++            if (X.success)
++                CLIPPED(LY_U0 + 1, ui_text_big(w / 2 - tw / 2, ty, "CAST OUT!", 2, PAL_UI_GOLD, PAL_RAMP(RAMP_PASTEL_PINK, 1)));
++            else
++                CLIPPED(LY_U0 + 1, ui_text_big(w / 2 - tw / 2, ty, "IT HOLDS ON...", 2, PAL_UI_RED, PAL_BLACK));
+         }
+-        if (X.st_t > 30 && !(!X.success && !X.practice && town_res(X.host)->status == RES_SOUL_LOST))
+-            ui_hint(STR_ICON_A " Done", X.success ? WIN_CUTE : WIN_HELL);
+-        if (!X.success && X.st_t > 110) {
+-            int lv = DOOMO_MIN(14, (X.st_t - 110) / 4);
+-            plat_shade_rect(0, 0, w, h, lv);
++        lw = ui_text_width(b);
++        if (LC(LY_U0 + 2, w / 2 - lw / 2 - 3, ly2 - 3, lw + 6, 16, hk_str(hk(0x11E5u, (uint32_t)X.success), b)))
++            CLIPPED(LY_U0 + 2, ui_text_outline(w / 2 - lw / 2, ly2, b, PAL_WHITE,
++                                               X.success ? PAL_RAMP(RAMP_PASTEL_PINK, 1) : PAL_BLACK));
++        doomo_snprintf(s, sizeof(s), "Prayer %d%%  Water %d%%  Name %s  Chance %d%%",
++                       X.rhythm, X.water, X.name_ok ? STR_ICON_CHECK : STR_ICON_X, X.chance);
++        if (!big) doomo_snprintf(s, sizeof(s), "Pray %d%% Water %d%% Name %s",
++                                 X.rhythm, X.water, X.name_ok ? STR_ICON_CHECK : STR_ICON_X);
++        if (LC(LY_U0 + 3, 0, sy, w, 11, hk_str(0x57A1u, s))) {
++            CLIPPED(LY_U0 + 3, (plat_shade_rect(0, sy, w, 11, 9), ui_text_center(w / 2, h - (big ? 32 : 24), s, PAL_WHITE)));
+         }
++        /* the hint is a pill over the middle of the bottom row */
++        /* (a layer with no box draws nothing, but a platform without the stage asks every layer) */
++        if (L(LY_U0 + 4, w / 2 - 90, h - 14, hint ? 180 : 0, hint ? 14 : 0, hk(0x417u, (uint32_t)X.success)) && hint)
++            ui_hint(STR_ICON_A " Done", X.success ? WIN_CUTE : WIN_HELL);
++        if (LC(LY_U0 + 5, 0, 0, fade_on ? w : 0, fade_on ? h : 0, hk(0xFADEu, (uint32_t)fade)) && fade_on)
++            CLIPPED(LY_U0 + 5, plat_shade_rect(0, 0, w, h, fade));
+         break;
+     }
+     case ST_LOST: {
+@@ -1474,3 +1504,7 @@ static void exo_draw(void)
+ }
+ 
+ const DoomoScene SCENE_EXORCISM = { "EXORCISM", exo_enter, exo_leave, exo_update, exo_draw, 0 };
++#ifdef DOOMO_HITCHECK
++/* tests (the native build): the ritual ended in a cast out / the figure count of the result screen */
++int exo_probe_result(void) { return X.state == ST_RESULT ? 1 + X.success : 0; }
++#endif
+diff --git a/core/tests/test_stage_clip.c b/core/tests/test_stage_clip.c
+index 845cf37a..8c038a1e 100644
+--- a/core/tests/test_stage_clip.c
++++ b/core/tests/test_stage_clip.c
+@@ -40,6 +40,8 @@ static void call(int kind, int x, int y, int w, int h, const DoomoImage *img, in
+     case 1: plat_shade_rect(x, y, w, h, c & 15); break;
+     case 2: plat_image(x, y, img, 1, 0, 0); break;
+     case 3: plat_image(x, y, img, 1, IMG_SHADOW, 0); break;
++    case 5: plat_text(x, y, "Holy water\nPray 90%", (uint8_t)c); break;
++    case 6: plat_text_outline(x, y, "Name: Nox", (uint8_t)c, (uint8_t)(c ^ 0x55)); break;
+     default: plat_image(x, y, img, 1, IMG_SILHOUETTE, (uint8_t)c); break;
+     }
+ }
+@@ -55,7 +57,7 @@ TEST(clip_draws_exactly_the_unclipped_pixels_inside_the_box)
+     for (i = 0; i < (int)sizeof(pix); i++) pix[i] = (uint8_t)(rnd(3) ? 1 + rnd(200) : 0);   /* holes */
+     img.w = 20; img.h = 14; img.pix = pix; img.uid = doomo_image_new_uid();
+     for (n = 0; n < 400 && !bad; n++) {
+-        int kind = rnd(5), x = rnd(260) - 20, y = rnd(180) - 20, w = 1 + rnd(50), h = 1 + rnd(40);
++        int kind = rnd(7), x = rnd(260) - 20, y = rnd(180) - 20, w = 1 + rnd(50), h = 1 + rnd(40);
+         int bx = rnd(240), by = rnd(160), bw = 1 + rnd(120), bh = 1 + rnd(90), c = 1 + rnd(200);
+         int x0 = bx, y0 = by, x1 = DOOMO_MIN(bx + bw, nat_w), y1 = DOOMO_MIN(by + bh, nat_h);
+         noise();
+@@ -181,3 +183,109 @@ TEST(stage_clip_pieces_are_disjoint_and_cover_the_dirty_part_of_the_layer)
+     for (k = 0; k < f.n[A] && k < 8; k++) CHECK(f.piece[A][k][2] > f.piece[A][k][0] && f.piece[A][k][3] > f.piece[A][k][1]);
+     nat_stage_on = 0;
+ }
++
++/* ---- the ritual to its end, against a full redraw ------------------------------------------------ */
++#include "../src/exorcism_int.h"          /* exo_aura_bind */
++int exo_probe_result(void);          /* exorcism_scene.c (DOOMO_HITCHECK): 0 not at the result, 1 a failure, 2 a cast out */
++
++#define RITUAL_FRAMES 1700                 /* the result screen to its fade to black */
++
++static void rframe(uint32_t b) { plat_begin_frame(); doomo_frame(b); plat_end_frame(); }
++
++static uint32_t fb_hash(void)
++{
++    uint32_t h = 2166136261u;
++    int i, n = nat_w * nat_h;
++    for (i = 0; i < n; i++) h = (h ^ nat_fb[i]) * 16777619u;
++    return h;
++}
++
++/* core/tests/scripts/life_exorcism.txt as a pad (test_stage.c: the same presses) */
++static uint32_t pad(int f)
++{
++    static const struct { int16_t at; uint16_t b; } p[] = {
++        { 40, BTN_A }, { 46, BTN_A }, { 52, BTN_A }, { 58, BTN_A }, { 64, BTN_A }, { 70, BTN_A },
++        { 92, BTN_DOWN }, { 94, BTN_A }, { 96, BTN_DOWN }, { 98, BTN_DOWN }, { 100, BTN_DOWN }, { 102, BTN_A },
++        { 114, BTN_START }, { 126, BTN_A }, { 134, BTN_A },
++        { 206, BTN_A }, { 213, BTN_LEFT }, { 222, BTN_B }, { 233, BTN_RIGHT },
++        { 505, BTN_A }, { 513, BTN_A }, { 521, BTN_A }, { 529, BTN_A },
++        { 575, BTN_A }, { 590, BTN_A }, { 605, BTN_A }, { 620, BTN_A }, { 635, BTN_A }, { 650, BTN_A },
++        { 1180, BTN_A }, { 1188, BTN_A }, { 1196, BTN_A }, { 1204, BTN_A },
++        { 1230, BTN_RIGHT }, { 1240, BTN_A },
++    };
++    unsigned i;
++    if (f >= 550 && f < 570) return BTN_UP;
++    for (i = 0; i < sizeof(p) / sizeof(p[0]); i++)
++        if (p[i].at == f) return p[i].b;
++    return 0;
++}
++
++/* plays the ritual with `seed` into out[]; returns the result screen's kind (exo_probe_result) and counts
++ * the frames drawn over the kept backdrop with a clipped layer */
++static int ritual_noaura;                  /* 1: the aura without its rect list, as the shape code draws it */
++static int ritual(uint32_t seed, int stage, uint32_t *out, int *clipped)
++{
++    NatOptions o;
++    StageStats st;
++    int f;
++    memset(&o, 0, sizeof(o));
++    o.w = 240; o.h = 160; o.seed = seed; o.quiet = 1; o.save_dir = test_tmp_dir;
++    nat_init(&o);
++    nat_stage_on = stage;
++    nat_stage_buffers = 2;
++    nat_stage_reset();
++    test_reset();
++    doomo_init();
++    scene_set(&SCENE_TITLE, 0);
++    rframe(0);
++    scene_set(&SCENE_EXORCISM, -1);
++    if (ritual_noaura) exo_aura_bind(NULL);
++    *clipped = 0;
++    nat_clip_viol = 0;
++    for (f = 0; f < RITUAL_FRAMES; f++) {
++        rframe(pad(f));
++        out[f] = fb_hash();
++        stage_stats(&st);
++        if (st.retained && st.clipped) (*clipped)++;
++    }
++    nat_stage_on = 0;
++    return exo_probe_result();
++}
++
++/* a failure to the end of its fade, and a cast out (a seed whose roll succeeds is found, not assumed) */
++TEST(stage_exorcism_result_screens_are_pixel_identical)
++{
++    static uint32_t off[RITUAL_FRAMES], off2[RITUAL_FRAMES], on[RITUAL_FRAMES];
++    uint32_t seed;
++    int kinds = 0, f, clipped, got;
++    for (seed = 0x5EED1234u; seed < 0x5EED1234u + 80u && kinds != 3; seed++) {
++        got = ritual(seed, 0, off2, &clipped);             /* (the first run of a seed warms the portrait caches) */
++        if (got < 1 || (kinds & got)) continue;            /* not at the result, or this kind is done */
++        ritual(seed, 0, off, &clipped);
++        ritual(seed, 1, on, &clipped);
++        for (f = 0; f < RITUAL_FRAMES; f++)
++            CHECK_MSG(on[f] == off[f], "seed %u (%s): frame %d differs with the stage on", (unsigned)seed,
++                      got == 2 ? "cast out" : "failure", f);
++        CHECK_MSG(clipped > RITUAL_FRAMES / 4 && !nat_clip_viol, "seed %u: %d frames with a clipped layer, %d unhonoured calls",
++                  (unsigned)seed, clipped, nat_clip_viol);
++        kinds |= got;
++    }
++    CHECK_MSG(kinds == 3, "no seed gave both a failure and a cast out (got %d)", kinds);
++    set_res(240, 160);
++}
++
++/* the aura's kept rect list draws the pixels the shape code draws (prayer to the result: dread 5 to 12) */
++TEST(exorcism_aura_rect_list_equals_the_shape_code)
++{
++    static uint32_t a[RITUAL_FRAMES], b[RITUAL_FRAMES];
++    int f, clipped, i, diff = 0;
++    ritual_noaura = 0;
++    ritual(0x5EED1234u, 0, a, &clipped);                   /* (the first run warms the portrait caches) */
++    ritual(0x5EED1234u, 0, a, &clipped);
++    ritual_noaura = 1;
++    ritual(0x5EED1234u, 0, b, &clipped);
++    ritual_noaura = 0;
++    for (f = 0, i = 0; f < RITUAL_FRAMES; f++) diff += a[f] != b[f], i = f;
++    CHECK_MSG(diff == 0, "%d of %d frames differ without the rect list (last %d)", diff, RITUAL_FRAMES, i);
++    set_res(240, 160);
++}
+diff --git a/gba/src/video.c b/gba/src/video.c
+index 413e7838..3e3fdb47 100644
+--- a/gba/src/video.c
++++ b/gba/src/video.c
+@@ -310,11 +310,41 @@ static int text_route(int x, int y, const char *s, int pad)
+     return k;
+ }
+ 
++/* (G2-EX) text inside the plat_clip box, the pixels vid_text / vid_text_dil draw (the same glyph rows, plus
++ * the dilated outline's 7 x 11 for ol != 0) that lie in the box, one by one; a glyph clear of the box
++ * draws nothing */
++static void clip_text(int x, int y, const char *s, uint32_t color, int ol)
++{
++    int cx = x, cy = y, bx0 = stage_box[0], by0 = stage_box[1], bx1 = stage_box[2], by1 = stage_box[3];
++    for (; *s; s++) {
++        unsigned ch = (unsigned char)*s;
++        if (ch == '\n') { cx = x; cy += FONT_LINE; continue; }
++        if (ch >= FONT_FIRST && ch <= FONT_LAST && ch != ' ' && cx + 8 > bx0 && cx - 1 < bx1 && cy + 11 > by0 && cy - 1 < by1) {
++            uint16_t g[11];
++            const uint8_t *rows = vid_glyph_rows(ch);
++            int ox = cx, oy = cy, nr = 8, nc = 5, r, c;
++            if (ol) {
++                vid_glyph_dilate(rows, g);
++                ox = cx - 1; oy = cy - 1; nr = 11; nc = 7;
++            }
++            for (r = 0; r < nr; r++) {
++                int py = oy + r;
++                uint32_t bits = ol ? g[r] : rows[r];
++                if (py < by0 || py >= by1 || !bits) continue;
++                for (c = 0; c < nc; c++)
++                    if ((bits >> c) & 1 && ox + c >= bx0 && ox + c < bx1) vid_pixel(ox + c, py, color);
++            }
++        }
++        cx += FONT_ADVANCE;
++    }
++}
++
+ void plat_text(int x, int y, const char *s, uint8_t color)
+ {
+     if (gba_text_armed && s) gba_text_probe(s);   /* harness expect-text */
+     if (gba_nodraw == 1 || !s) return;
+     if (!color) color = PAL_BLACK;
++    if (gba_nodraw == GBA_NODRAW_CLIP) { clip_text(x, y, s, color, 0); return; }
+     if (gba_nodraw && !pn_clear_rows(y, SCREEN_H)) {    /* (G7: text runs down from y) */
+         int k = text_route(x, y, s, 0);
+         if (k == 2) cv_text(x, y, s, color, 0);
+@@ -331,6 +361,11 @@ void plat_text_outline(int x, int y, const char *s, uint8_t color, uint8_t outli
+     if (gba_nodraw == 1 || !s) return;
+     if (!color) color = PAL_BLACK;
+     if (!outline) outline = PAL_BLACK;
++    if (gba_nodraw == GBA_NODRAW_CLIP) {        /* (G2-EX) the outline, then the text, inside the box */
++        clip_text(x, y, s, outline, 1);
++        clip_text(x, y, s, color, 0);
++        return;
++    }
+     if (gba_nodraw && !pn_clear_rows(y - 2, SCREEN_H)) {
+         int k = text_route(x, y, s, 2);
+         if (k == 2) { cv_text(x, y, s, outline, 1); cv_text(x, y, s, color, 0); }
+-- 
+2.43.0
+

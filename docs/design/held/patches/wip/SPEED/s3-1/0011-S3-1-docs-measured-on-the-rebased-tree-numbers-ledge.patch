@@ -1,0 +1,195 @@
+From b88979f28aacde95d62a58cefaeb039227f287d9 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 16:38:15 +0000
+Subject: [PATCH 11/12] S3-1: docs measured on the rebased tree (numbers,
+ ledger row 45, the not-met goal named)
+
+GBA before / after on origin f91bd3e4 (libmgba): the four tours 574 -> 476 frames over 33 ms, the sim group 92 -> 22
+(hub 0, shop 3, picker 6, pet 13 against a floor ROM with the resident updates off: 0 / 0 / 1 / 5). The sim now costs
+0.3-1.2 ms of work in every tick (+0.4 ms mean over 50 windows), not the "~0.4 ms" the first notes said: corrected in
+GBA.md, ROADMAP and SPEED_AUDIT3, with the windows that lost frames (Black Market 2 -> 7, news third tab 1 -> 2,
+invaded 2 -> 3). The goal "no frame over 33 ms from the sim" is not met on the near-budget screens: said so, with
+the two ways not taken (a cheaper update_resident_ex; skipping the pass on a long tick would tie the sim to frame
+timing). PS1: code -12 B, the EXE ends where it did; sim group hub 29.96 -> 30.00. Dreamcast: no long tick before or
+after (the stripped ELF and the nm file rebuilt first: the Flycast run needs them). Ledger row 41 -> 45.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ ROADMAP.md                  |  2 +-
+ docs/DREAMCAST.md           |  9 ++++----
+ docs/GBA.md                 | 44 +++++++++++++++++++++++--------------
+ docs/PS1.md                 | 20 ++++++++++-------
+ docs/design/SPEED_AUDIT3.md | 15 ++++++++-----
+ 5 files changed, 54 insertions(+), 36 deletions(-)
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index 29b70a15..0293b635 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -31,7 +31,7 @@ before redoing any of them; a zip without `.git` cannot tell.
+ - **LV2, level script VM (2026-11-13, LEVELS round 2; docs/LEVELS.md "The level script VM"):** `core/src/lv_script.c` + `core/include/doomo/lv_script.h`: a deterministic bytecode interpreter (8 events, 20 actions, 32 byte variables, 16 actions a tick, 64 handlers / 2 KB, a queue of 16) with one host function for everything outside the VM; `tools/mapc.py` compiles `on EVENT [repeat] do ACTION ; ...` into `DoomoMapExt.script` and refuses what the VM would. Host tests per action and event, budgets, the checker, and a mapc-compiled script run twice with equal hashes. Nothing in the game calls it yet, so no byte on any platform (GBA sizes identical, PS1 EXE identical).
+ - **Speed S3-3 (2026-11-13, the creator, speed audit 3; measured on libmgba and PCSX-Redux; docs/CREATOR.md "S3-3", docs/GBA.md "Speed wave 3: S3-3", docs/PS1.md "S3-3"):** the held creator frame (the saved G2-CR work) and creator panels drawn on the fast path before their capture (S2-6's recipe, `plat_ui_loops` before the pane). GBA: grid scrolled 17.2 -> 26.8 fps, rows 29.4 -> 30.0, a value held 22.2 -> 29.4, the picker 22.7 -> 29.1, hat grid 27.2 -> 29.8, try-on 15.2 -> 26.9, filter chip 21.7 -> 30.5; four tab changes still have two 50 ms frames, the held grid and the try-on stay under 30 (each step is a whole new bust: S3-2). PS1: the grid keeps its unpacked icons in the overlay scratch, grid scrolled 29.39 -> 30.00, try-on 28.57 -> 29.03; no resident byte (64 KB below the stack top with the FMV). Settled screens byte-identical; the pane's in-between frames come a tick later.
+ - **No 3D character models inside houses (PS1-FLAT, 2026-11-13; the owner: "disabled the 3d models of your player character and vice versa when you are inside their houses - save up some ram there", `OWNER_DECISIONS.md` "HOUSE CHARACTERS FLAT"; measured on PCSX-Redux; docs/PS1.md "No 3D models in houses", section 7):** only the PS1 drew a 3D figure in the house, the player's chibi (`model.c`). `ps1/src/room.c` now draws the player with the same `billboard()` as every resident, visitor, guest and demon, from the body sprite the core hands over (direction, walk frame, sit squash; the picture the GBA and the Dreamcast show, and the avatar being played), in Build, Live, Photo, Score, Hold the Door and a visit; it keeps its contact shadow and still rests in the kept backdrop while it stands still. With the house out, `model.c` (4,132 B) left resident RAM for the combat overlay group: `ovl_plan.py` `PLAT_GROUPS` / `GUARDED`, and `plat_view3d()` asks `ovl_code_in()` before it draws the model (the plan fails if house code, or anything else, would call it; `ps1/tools/test_ovl_guard.py`, 6 tests, in CI). The house's hooks in the 3D code are gone (`g_model_hold`, `g_r3_area`). **PS1 game disc with the boot FMV: 65,952 -> 70,480 B below the stack top (+4,528 B); on the tip it landed on (`19d01fe`) 68,224 -> 72,736 B (+4,512 B), 992 B under the 72 KB gate**; the slot keeps its 131,072 B (combat group 124,056 -> 128,188 B, home 130,856 -> 129,420 B). `prims.c` (3,612 B) stays resident: with it the combat group would pass the slot. House fps (`home.txt`, on the landing tip): plain 30.17 -> 30.17, steady 29.39 -> 30.00, orbit 27.17 -> 30.00, cellar (stress layout) 27.80 -> 27.80, defend stress (stress layout) 19.10 -> 22.78, modal 29.19 -> 30.00, Hold the Door wave 3 30.13 -> 30.13 (15.1 -> 6.5 ms of CPU), visit 30.17 -> 30.17; the speed tour's 19 house windows all hold 30 (the busy Live layout 28.78 -> 30.00). Third-person combat is unchanged: `perf_combat`'s shots are byte-identical, fps 29.5-30.0 as before. The core, the GBA and the Dreamcast are untouched (no file of theirs changed).
+-- **Speed S3-1 (2026-11-13, the sim's 15-minute pass, speed audit 3 miss 5; measured on libmgba, PCSX-Redux and Flycast; docs/GBA.md "Speed wave 3: S3-1"):** the resident pass moves with the clock: the cursor earns slots at a steady 1,000 per 15 game minutes whatever the day length and speed (`SIM_PASS_NUM` / `SIM_PASS_DEN`, a `uint16_t` credit in the padding of `SimState`; `SIM_BATCH` 32 -> 16 is the hard cap), so a resident is updated once per interval and a tick does one update at the default clock (15 at the fastest) instead of 32 residents in 32 ticks every 15 minutes; a visit that would live under 8 game minutes (the first passes after `sim_init`, a load, a fast-forward) leaves the stamp alone, so no minute is lost or counted twice; the stamps and the cursor are not saved, a load runs `sim_init`: no migration. A new bond in the sorted edge table is made room for with a halfword move on the GBA (libc `memmove` copied the 4.6 KB byte by byte: 3-7 ms in one tick). GBA drawn fps: shop gifts tab 21.5 -> **30.0**, apartments 25.7 -> **30.0**, Options Accessibility 23.7 / 28.2 -> **30.0**, pet-care boss 28.6 -> **30.0**, citizen picker 22.9 -> 29.7, pet 28.5 -> 29.8; frames over 33 ms in the four tours 575 -> 489. Not the same sim on purpose (another update order, the same rates): `test_sim_x4` and the news-stream golden of `test_sim` are recorded again. EWRAM / IWRAM unchanged (ledger row 48). New speed2 group `sim` (four 1,200-tick windows with the pass inside; GBA gates `expect-fps 29.8`, `expect-gap 51`). **Still short:** windows within ~3 ms of the budget (pet, picker, Black Market, news tab) lose a frame now and then to the sim's steady ~0.4 ms a tick: S3-13.
++- **Speed S3-1 (2026-11-13, the sim's 15-minute pass, speed audit 3 miss 5; measured on libmgba, PCSX-Redux and Flycast; docs/GBA.md "Speed wave 3: S3-1"):** the resident pass moves with the clock: the cursor earns slots at a steady 1,000 per 15 game minutes whatever the day length and speed (`SIM_PASS_NUM` / `SIM_PASS_DEN`, a `uint16_t` credit in the padding of `SimState`; `SIM_BATCH` 32 -> 16 is the hard cap), so a resident is updated once per interval and a tick does one update at the default clock (15 at the fastest) instead of 32 residents in 32 ticks every 15 minutes; a visit that would live under 8 game minutes (the first passes after `sim_init`, a load, a fast-forward) leaves the stamp alone, so no minute is lost or counted twice; the stamps and the cursor are not saved, a load runs `sim_init`: no migration. A new bond in the sorted edge table is made room for with a halfword move on the GBA (libc `memmove` copied the 4.6 KB byte by byte: 3-7 ms in one tick). GBA drawn fps (origin `f91bd3e4` before and after): shop gifts tab 21.5 -> **30.0**, apartments 25.2 -> **30.0**, Options Accessibility 23.7 / 28.2 -> **30.0**, pet-care boss 28.6 -> **30.0**, citizen picker 22.9 -> 29.5, pet 28.5 -> 29.8; frames over 33 ms in the four tours 574 -> 476. PS1: the island hub window 4 frames of 50 ms -> 0; Dreamcast: no long tick before or after. Not the same sim on purpose (another update order, the same rates): `test_sim_x4` and the news-stream golden of `test_sim` are recorded again. EWRAM / IWRAM unchanged (ledger row 48); PS1 resident -12 B, the EXE ends where it did (0x801ef580). New speed2 group `sim` (four 1,200-tick windows with the pass inside; GBA gates `expect-gap 51` and fps floors 29.8 / 29.5). **Not met:** "no frame over 33 ms from the sim" on the near-budget GBA screens: the work now arrives as 0.3-1.2 ms in every tick (+0.4 ms mean over 50 windows against a floor ROM with the resident updates off), so the sim group still has 0 / 3 / 6 / 13 single 50 ms frames (hub / shop / picker / pet; floor 0 / 0 / 1 / 5) and Black Market 2 -> 7: S3-13 (menu headroom), or a cheaper `update_resident_ex`.
+ - **Real stick support (ST1, 2026-11-08; the owner: "actual dualshock/stick support so I don't have to move the camera controls with wacky controlling"; measured on PCSX-Redux and Flycast; docs/PS1.md "Sticks", docs/DREAMCAST.md 5):** PS1: a DualShock no longer needs its ANALOG button: when a pad shows up (boot or hot-plug) and reads digital, `ps1/src/pad.c` sends the config sequence (43h / 44h 01 03 analog + lock / 43h) over SIO0 between two BIOS polls (three tries, a digital pad is left alone); L3 / R3 read (`BTN_L3` / `BTN_R3`). Options > Controls gains **Auto** (the new default; Classic / Auto / Dual stick / Modern): Dual stick while an analog pad is plugged in, Modern otherwise, live; explicit Classic / Modern win; saves' old default Modern (stored 1) reads as Auto, an explicit Modern is stored as 3 (`controls_scheme()`). The sticks drive: the shooter (left walk / strafe, right turn / look, R3 lock-on), the overworld (analog walk in any direction: creep, walk, run at the rim), the house view (a right-stick flick = one 90-degree step, repeat on hold; build, live, photo), the creator (the right stick spins the citizen: the turntable opens as a peek). Dreamcast (Auto): the stick's X turns, Y walks, the analog triggers strafe by pressure, both triggers lock on; the overworld walks off the stick. Shared dead zone / curve in `input.c` (`stick_dz`, `stick_curve`, `input_rflick`). Prompts, the control card and the shooter tip follow the scheme in effect; Dual stick on a digital pad says "Analog sticks: use a DualShock". Tests: `core/tests/test_sticks.c` (scheme resolution, dead zone / curve, flick repeat, trigger strafe, each consumer), `dc/tests/vmu` (caps / triggers), harness `stick LX LY RX RY` on the PS1 (`ps1/harness/scripts/sticks.txt`; `sticks_auto.txt` with `run.py --analog-pad`: Redux's DualShock powering up digital is switched by the game, "pad: analog", the card still saves, the D-pad still drives), the native runner and dcrun (`dc/tests/sticks/sticks.txt`). PS1 fps with the sticks moving: combat turn 30.17, house turn 30.17, creator spin 30.34, overworld walk 30.00. PS1 resident +1.6 KB (65,952 B below the stack top with the FMV, was 67,568). GBA unchanged (the stick code compiles out; the Controls row reads Auto = Modern). (STKOPT, 2026-11-13: the Dreamcast Options row "Stick: Turn / Strafe" is done, `OPT_STICK_MODE` in OPT2, docs/DREAMCAST.md 5.) Not done: stick use in the remaining cameras (fishing cast aim, minigame cursors, the 3D level select, exorcism), a right-stick tilt / zoom in the creator (its preview has none).
+ - **Speed S2-4, first family (2026-11-08, the Fun Fair's kept playfield, speed audit 2 cause C3; measured on libmgba and PCSX-Redux; docs/GBA.md "Speed wave 2: S2-4", docs/PS1.md "Speed tour 2"):** a fair game may split its playfield into still parts, baked into the GBA ROM per key with its own drawing code (`DOOMO_BACKDROP_MG`, SP7's baker), and live parts drawn over a whole-picture copy each frame; still parts the usual order draws over live ones (a hole's front over the rising critter, the sign board over the peeking imps) are put back from the ROM in their own spans. Exact (`test_stage`: Whack's bot rounds with the kept picture on / off, every frame identical; every key baked). Whack-an-Imp: GBA 15.1 -> 20.9 fps Sweet, 15.0 -> 20.0 Hellfire (57.5 -> 40.3 / 61.5 -> 44.9 ms); ROM +1.15 MB, EWRAM -8 B (ledger row 40), PS1 compiled out (65 KB below the stack top with the FMV, unchanged by S2-4). **Still short of 30 / not done:** Whack's live part (imps, critters, HUD text; next: OBJ sprites, partial copies), the other fair games (Gallery 11, Derby 22, Dodge 21-27, Memory Hellfire 21.5 fps), the kitchen (17-22), dreams (11-13), cutscenes (10-23), library lobby / jukebox (20) and studio STAGE (23): S2-4 stays open for them.
+ - **Speed S2-5 (2026-11-08, scaled art, speed audit 2 cause C4; measured on libmgba and PCSX-Redux; docs/GBA.md "Speed wave 2: S2-5", docs/PS1.md "Speed tour 2"):** instead of pre-scaled ROM copies (the weapon plans and the welding icon are composed at run time, and the scale-1 blit reading ROM is no faster), the GBA draws every scale-2..4 image through `vid_blitn`, an ARM loop of the IWRAM UI group (a source row expanded once, then word copies of its opaque runs on each covered row; exact, `blit2test`), asked for by the cutscenes, the weapons wing and the welding game (`plat_ui_loops`); the Derby's racers become 8bpp pictures in the scene scratch drawn with the scale-1 blit instead of a `plat_rect` per colour run; the welding seam and bead are drawn as runs of same-y columns. All exact (`vhash-seq` against `c0dc4ba`). GBA drawn fps: weapons frames 24.9 -> **30**, weld intro 22.2 -> **30**, welding 21.5 -> **29.9** (every frame 2 vblanks), Derby races 15.0 -> 22.1-22.6, Vapula vignette 12.0 -> 16.1; PS1 unchanged at 30 (welding 30.12); no Dreamcast run (these scenes already held 30 there). GBA EWRAM / IWRAM unchanged (ledger row 39), PS1 resident unchanged (65 KB below the stack top with the FMV). `expect-fps` floors 28 / 20 / 14. Still short: the Derby (38 ms: sky, grandstand and bunting) and the Vapula and home vignettes (sky bands, puffs, the full-screen wallpaper): S2-4's held backdrops.
+diff --git a/docs/DREAMCAST.md b/docs/DREAMCAST.md
+index 1af6e2d9..4797b8e9 100644
+--- a/docs/DREAMCAST.md
++++ b/docs/DREAMCAST.md
+@@ -355,10 +355,11 @@ nothing, so `plat_room` (DC8) is untouched and a house frame is one weak call he
+ **S3-1 (the sim's 15-minute pass).** The core change (docs/GBA.md "Speed wave 3: S3-1": one resident a tick over the 15 game
+ minutes instead of 32 residents in 32 ticks every 15 minutes) is shared. The SH4 never had a long frame from the pass: the new
+ `sim` group (`speed2_sim.txt`: the island hub, the shop's gifts tab, the citizen picker and the pet, 1,200 ticks each, a pass
+-inside every window) reads 30.1 ticks/s with no tick over 33.3 ms of work in all four windows both before (`698f4eee`) and
+-after; the work mean over the run went 10,255 -> 10,278 us a tick (the steady cost of the update, ~20 us) and the worst tick of
+-the group is the same 97.7 ms dialog entry in both (tick 54). `.text` +96 B, `.bss` unchanged (4,555,892 B). The
+-halfword edge move is GBA-only. `make dc-host-test` passes.
++inside every window) reads 30.1 ticks/s with no tick over 33.3 ms of work in all four windows both before (origin
++`f91bd3e4`) and after (Flycast, `sh dc/harness/speed2.sh OUT sim`, the stripped ELF and `doomogachi.nm` rebuilt first); the
++work mean over the run went 10,054 -> 10,077 us a tick (the steady cost of the update, ~20 us) and the worst tick of the group
++is the same 125 ms dialog entry in both (tick 53). `.text` +32 B, `.bss` unchanged (4,580,884 B). The halfword edge move is
++GBA-only. `make dc-host-test` passes.
+ 
+ ### The harness mailbox (`dc_mailbox`, `dc/harness/dc_mailbox.h`)
+ 
+diff --git a/docs/GBA.md b/docs/GBA.md
+index fe9c4b6d..5ca733f9 100644
+--- a/docs/GBA.md
++++ b/docs/GBA.md
+@@ -438,7 +438,7 @@ against the LAST row, not against a figure from an older base.
+ | 45 | CR4 A2: 32 hair styles and 8 beards (docs/CREATOR.md "CR4 batch A2") | after S3-3 (`b63abec`) | 15,444 B | **15,444 B** | 0 B | 6,308 B | measured on `b63abec` and `b63abec` + A2 (`make -C gba sizes`): `.bss` 245,804 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B before and after, `.text` 1,401,336 B before and after; the part scripts, the catalog rows and the 40 part icons are `const` ROM: `.rodata` 6,587,868 -> 6,608,008 B (+20,140). PS1: no resident byte (`_end` 0x801ef4e0 before and after, 68,368 B below the stack top with the boot FMV; the overlay slot ends 0x801ef3b4 both times) |
+ | 46 | CR4 A3: 60 spooky parts (docs/CREATOR.md "CR4 batch A3") | after A2 (`224b192`) | 15,444 B | **15,444 B** | 0 B | 6,308 B | measured on `0c1fc51` and `0c1fc51` + A3 (clean `make -C gba` builds, `make -C gba sizes`): `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B, `.data` 816 B, `.text` 1,403,440 B all identical before and after; the part scripts (5.8 KB), the catalog rows and the 60 part icons are `const` ROM: `.rodata` 6,591,380 -> 6,623,356 B (+31,976, measured on the pre-rebase tree; on the rebased tree the whole `.rodata` is 6,643,580 B and `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B, `.data` 816 B, unchanged). `make -C gba test` and `test-creator` pass on the rebased tree (creator rows 29.9 fps, value step 30.0) |
+ | 47 | S2-11: the house's view turn built over several ticks, the room group's row loops, checksum pass and cursor, HomeMart's UI loops (docs: "Speed wave 2: S2-11" below) | after CR4 A3 and PS1-FLAT (`ee4e053`) | 15,460 B | **15,460 B** | 0 B | 6,308 B | measured on `ee4e053` and that tree + S2-11, both built clean (`make -C gba sizes`; ROM 8,087,036 -> 8,091,916 B): `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B and `.data` 816 B all unchanged, no resident EWRAM or IWRAM. `RBig` (the house's region, in the scene scratch arena) loses `match` (56 B, now on the stack in `incremental()`) and gains 32 B of turn-build state (`tkey[5]`, `bkey`, `bsub`, `bstep`, `brow`, `bld`, `bturns`, `k_last`); the overlay's room group grows 3,588 -> 9,512 B inside the 3D group's 10,352 B slot (840 B free in the slot); `hold.c` one flag bit. PS1: the EXE and the overlays are byte for byte the tip's (the hooks are not built there), `_end` 0x801ee3e0 before and after, 72,736 B below the stack top with the boot FMV (the margin delta is 0 B) |
+-| 48 | S3-1: the sim's resident pass spread over 15 game minutes, the halfword edge move (docs: "Speed wave 3: S3-1" below) | after LV0 (`c8274104`) | 15,460 B | **15,460 B** | 0 B | 6,308 B | measured on `698f4eee` + S3-1: `make -C gba sizes` .bss 259,460 B, .iwram 11,256 B, .iwram_bss 4,084 B before and after (the resident pass's credit is a `uint16_t` in the padding of `SimState` before `edge_credit`; the halfword move `edges_open_gap` is ROM code, 120 B, no IWRAM); ROM code +304 B (.text 1,397,256 -> 1,397,560 B). PS1: code +4 B, the EXE ends where it did (0x801efe60, 65,952 B below the stack top with the FMV). Dreamcast: see docs/DREAMCAST.md. |
++| 48 | S3-1: the sim's resident pass spread over 15 game minutes, the halfword edge move (docs: "Speed wave 3: S3-1" below) | `f91bd3e4` | 15,460 B | **15,460 B** | 0 B | 6,308 B | measured on `f91bd3e4` (origin) and that tree + S3-1 (`make -C gba sizes`, both built clean): .bss 245,788 B, .iwram 11,256 B, .iwram_bss 4,084 B before and after (the resident pass's credit is a `uint16_t` in the padding of `SimState` before `edge_credit`; the halfword move `edges_open_gap` is ROM code, no IWRAM); ROM code +136 B (.text 1,403,584 -> 1,403,720 B). PS1: code -12 B, the EXE ends at 0x801ef580 before and after (68,224 B below the stack top with the FMV). Dreamcast: see docs/DREAMCAST.md. |
+ 
+ Known claimants still to land (their own packages measure and add rows):
+ 
+@@ -1693,8 +1693,7 @@ of the ticks of a default-clock Classic island, a 50 ms frame on any screen abov
+ halfwords, four a round, from the top down; `rel_remove_at` (one function now: `sim_social.c` had a copy of `town.c`'s
+ `remove_edge`) closes a gap the same way from the bottom up (GBA and the host tests only; the PS1 and the Dreamcast keep
+ `memmove`). The
+-hub's worst resident tick went 6.8 -> 3.2 ms (mean 0.4 ms) and the shop window's 15 frames over 33 ms (first try of the
+-script) -> 0.
++hub's worst resident tick went 6.8 -> 3.2 ms and the shop window's 15 frames over 33 ms (first try of the script) -> 0.
+ 
+ **Not the same sim, on purpose.** The updates come in another order (one resident after another over the interval instead
+ of all of them in id order inside 32 ticks), so the seeded random path of the sim is another one, with the same rates.
+@@ -1716,28 +1715,39 @@ load and after a fast-forward, every day length and speed, determinism: 5 of the
+ (`relationships_insert_and_remove_match_a_reference_table`: fails if one halfword of the move is wrong; a static assert
+ pins the edge to 6 bytes, three halfwords). New speed2 group `sim`
+ (`speed2_sim.txt`: the hub, the shop's gifts tab, the citizen picker and the pet, 1,200 ticks each, so one pass is inside
+-every window; `expect-fps 29.8` + `expect-gap 51` gates, which fail on the tree before S3-1).
++every window; `expect-gap 51` (no frame of 4 vblanks or more: the check that sees the pass burst) and `expect-fps` floors of
++29.8 (hub) and 29.5 (shop, picker, pet), which fail on the tree before S3-1).
+ 
+-| window (libmgba, seed 1, before = `698f4eee`) | before: drawn fps, frames over 33 / 50 ms, worst | after |
++| window (libmgba, seed 1, before = origin `f91bd3e4`) | before: drawn fps, frames over 33 / 50 ms, worst | after |
+ |---|---:|---:|
+ | `speed2_life`: shop gifts tab | 21.5, 17 / 14, 100 ms | **30.0**, 0 / 0, 34 ms |
+-| `speed2_life`: citizen picker | 22.9, 21 / 14, 100 ms | 29.7, 2 / 0, 50 ms |
++| `speed2_life`: citizen picker | 22.9, 21 / 14, 100 ms | 29.5, 3 / 0, 50 ms |
+ | `speed2_life`: options page turn to Accessibility / Accessibility | 23.7 (5 / 2, 67 ms) / 28.2 (9 / 0) | **30.0** / **30.0**, 0, 34 ms |
+-| `life_speed`: apartments | 25.7, 18 / 15, 84 ms | **30.0**, 0 / 0, 34 ms |
++| `life_speed`: apartments | 25.2, 22 / 15, 84 ms | **30.0**, 0 / 0, 34 ms |
+ | `sp4_tour`: pet boss | 28.6, 7 / 5, 67 ms | **30.0**, 0 / 0, 34 ms |
+ | `speed_tour`: pet | 28.5, 5 / 5, 84 ms | 29.8, 2 / 0, 50 ms |
+-| `sp4_tour`: roster cursor | 19.8, 20 / 15, 117 ms | 23.8, 15 / 8, 100 ms (the move's own portrait render) |
+-| frames over 33 ms in the four tours (`speed2_life`, `life_speed`, `sp4_tour`, `speed_tour`) | 181 + 30 + 40 + 324 | 137 + 12 + 27 + 313 |
+-| `sim` group: hub / shop gifts / picker / pet, one interval each | 12 / 17 / 21 / 41 frames over 33 ms (worst 67 / 84 / 84 / 100 ms) | **0** / 1 / 5 / 14 (worst 34 / 50 / 50 / 50 ms) |
+-| `sim`, graph full (the harness's turbo play for 4,500 ticks, then default clock), hub | 21 frames over 33 ms (worst 67 ms) | 1 frame (50 ms) |
++| `sp4_tour`: roster cursor | 19.4, 22 / 15, 117 ms | 24.1, 15 / 7, 100 ms (the move's own portrait render) |
++| frames over 33 ms in the four tours (`speed2_life`, `life_speed`, `sp4_tour`, `speed_tour`) | 182 + 34 + 43 + 315 = 574 | 137 + 10 + 27 + 302 = 476 |
++| frames over 50 ms in the four tours | 268 | 203 |
++| `sim` group: hub / shop gifts / picker / pet, one interval each | 12 / 17 / 22 / 41 frames over 33 ms (worst 84 / 84 / 84 / 100 ms; 4 / 15 / 14 / 22 over 50 ms) | **0** / 3 / 6 / 13 (worst 34 / 50 / 50 / 50 ms; none over 50 ms) |
++| `sim`, the same ROMs with the resident updates switched off (the floor) | | 0 / 0 / 1 / 5 frames over 33 ms; mean work 14.2 / 28.9 / 29.8 / 28.1 ms |
++| `sim`, graph full (the harness's turbo play for 4,500 ticks, then default clock), hub (measured on `698f4eee`) | 21 frames over 33 ms (worst 67 ms) | 1 frame (50 ms) |
++
++Windows that lost frames (single 50 ms frames, all within ~3 ms of the budget; frames over 33 ms before -> after, work
++average before -> after): Black Market 2 -> 7 (29.7 -> 28.8 fps; 32.5 -> 33.0 ms), the news third tab 1 -> 2, "invaded"
++2 -> 3 (29.9 -> 29.5 fps), the overworld pause 1 -> 2, add-member role 12 -> 13, the cafe counter 2 -> 2 (29.7 -> 29.5 fps).
++Their own work is 32-33 ms; the sim's work used to arrive in 32 ticks and now arrives in every tick.
+ 
+ **Still short of "no frame over 33 ms from the sim":** the pass no longer produces a run of long frames anywhere (no
+-4-vblank frame in the group, the worst is a single 50 ms frame), but the work it does is now spread evenly, ~0.4 ms in
+-every tick (the same ~400 ms of resident work an interval used to arrive as 11-15 ms in 32 ticks). A window whose own
+-frames are within ~3 ms of the budget still loses a frame now and then: the pet's busy phases (31-36 ms of their own),
+-the picker (30.3 ms average), and the Black Market (32.4 -> 32.9 ms average, frames over 33 ms 2 -> 7), the news third tab
+-(0 -> 2): S3-13's "menu headroom" list, not the pass. A further cut wants a cheaper `update_resident_ex` (a venue meeting or a
+-problem check is 2-3 ms) or letting the pass skip ticks that ran long.
++4-vblank frame in the group, the worst is a single 50 ms frame), but its work now arrives as a steady 0.3-1.2 ms in every
++tick instead of 11-15 ms in 32 of them (the same ~1 s of work over a 1,125-tick interval: the hub window's mean is 15.1 ms
++before, 15.0 after, 14.2 with the pass off). Against the floor ROM the average work of a tick is +0.8 ms in the hub window,
+++0.4 shop, +0.6 picker, +1.2 pet, and +0.4 ms (median +0.3) over the 50 windows of `speed2_life` and `life_speed`. A window
++within ~3 ms of the budget still loses a frame now and then. Frames over 33 ms, floor -> after: shop 0 -> 3, picker 1 -> 6,
++pet 5 -> 13 (the pass's own share: 3, 5 and 8 frames), Black Market 3 -> 7, the news third tab 0 -> 2: S3-13's "menu
++headroom" list. Two ways to close the rest were not taken. A cheaper `update_resident_ex` (a venue meeting or a problem
++check is 2-3 ms) is a package of its own. Skipping the pass on a tick that ran long would tie the sim's results to frame
++timing: a seed would no longer give the same town on every platform, and the tests and harness scripts depend on that.
+ 
+ ## 4b. Retained panels (G7, `src/panel.c`)
+ 
+diff --git a/docs/PS1.md b/docs/PS1.md
+index ce5ad58e..316193c1 100644
+--- a/docs/PS1.md
++++ b/docs/PS1.md
+@@ -1590,14 +1590,18 @@ ellipses 10%, `lock_compose` 8%, `out_rect` 7% (`part_icon_unpack` is gone). The
+ before and after (64 KB below the stack top with the boot FMV; the 72 KB gate is the SPEED stream's PS1-RAM package).
+ **S3-1 (the sim's 15-minute pass).** The core change (docs/GBA.md "Speed wave 3: S3-1": the resident pass is one resident a
+ tick over the 15 game minutes, not 32 residents in 32 ticks every 15 minutes) is shared by the PS1. The R3000 hid most of
+-the old pass: in the new `sim` group (`speed2_sim.txt`, four 1,200-tick windows with a pass inside each) the shop gifts
+-tab, the citizen picker and the pet already held 30.0 with no frame over 33 ms; the island hub had 4 frames of 50 ms
+-(29.96 fps), now **30.00 with none**. The `life` group after the change: every window 30.0 but the new island load, the
+-save freeze (S2-10) and the care reaction (2 frames of 50 ms). `game_smoke` passes. **PS1 resident: unchanged**: the
+-package's code in `sim.c` is +4 B of text (2,818,396 -> 2,818,400 B; `minute_step` reads the event-rate option once, the
+-activity is stored without the compare, `sim_edge_remove` was a copy of `town.c`'s `remove_edge` and is `rel_remove_at`
+-now), the EXE still ends at `0x801efe60`: 65,952 B below the stack top with the boot FMV, as on `698f4eee`. The halfword edge
+-move is GBA-only (`DOOMO_PLATFORM_GBA`); the PS1 keeps `memmove`.
++the old pass: in the new `sim` group (`speed2_sim.txt`, four 1,200-tick windows with a pass inside each; PCSX-Redux, the
++disc before and after on `f91bd3e4`) the shop gifts tab, the citizen picker and the pet already held 30.0 with no frame over
++33 ms; the island hub had 4 frames of 50 ms (29.96 fps), now **30.00 with none over 33 ms**. The `life` group on the first cut
++of the package: every window 30.0 but the new island load, the save freeze (S2-10) and the care reaction (2 frames of
++50 ms). `game_smoke` passes. **PS1 resident: 12 B less.** The base's text ended exactly on the 16-byte boundary where
++`.rodata` starts, so the first cut's +4 B of text cost 16 B of image. The package's code is now -12 B (`.text` 0xaea80 ->
++0xaea74, the disc's `size` text 2,829,360 -> 2,829,348 B): `minute_step` reads the event-rate option once, the activity is
++stored without the compare, `sim_edge_remove` was a copy of `town.c`'s `remove_edge` and is `rel_remove_at` now, and
++`update_resident_ex` takes the fewest game minutes an update may cover (`SIM_PASS_MIN` for the pass, `SIM_MIN_ELAPSED` for a
++fast-forward chunk, which also chooses the routine again) instead of a flag and a conditional line (-16 B). The EXE with the
++boot FMV ends at `0x801ef580` before and after: 68,224 B below the stack top (the 72 KB gate is the PS1-RAM package's; this
++package adds nothing to the shortfall). The halfword edge move is GBA-only (`DOOMO_PLATFORM_GBA`); the PS1 keeps `memmove`.
+ 
+ ## 13. Notes for the core
+ 
+diff --git a/docs/design/SPEED_AUDIT3.md b/docs/design/SPEED_AUDIT3.md
+index 5b04ae11..c7fb8c70 100644
+--- a/docs/design/SPEED_AUDIT3.md
++++ b/docs/design/SPEED_AUDIT3.md
+@@ -1215,12 +1215,15 @@ entries of 100-330 ms (3.4).
+ **Landed:** **S3-1** (2026-11-13, `docs/GBA.md` "Speed wave 3: S3-1"). The resident pass is one resident a tick over the whole
+ 15 game minutes (a credit-driven cursor, not staggered stamps: `sim_init`, a load and a fast-forward may still set every
+ stamp to "now", the pass cannot burst), and a new bond in the sorted edge table is made room for with a halfword move on
+-the GBA (the byte-wise libc `memmove` was the 3-7 ms tail). GBA: shop gifts tab 21.5 -> 30.0, apartments 25.7 -> 30.0,
+-Options Accessibility 23.7 / 28.2 -> 30.0, pet-care boss 28.6 -> 30.0, citizen picker 22.9 -> 29.7, pet 28.5 -> 29.8; no run
+-of long frames anywhere any more. What the package did not do: the sim now costs ~0.4 ms in every tick, so windows within
+-~3 ms of the budget (Black Market 32.4 -> 32.9 ms average, the news third tab, the pet's busy phases) lose a frame now and
+-then: that is S3-13's list. PS1: the island hub window had 4 frames of 50 ms, now none (resident bytes unchanged);
+-Dreamcast: no long tick from the pass before or after. New group `speed2_sim.txt` (four 1,200-tick windows, GBA gates).
++the GBA (the byte-wise libc `memmove` was the 3-7 ms tail). GBA (origin `f91bd3e4` before and after): shop gifts tab 21.5 ->
++30.0, apartments 25.2 -> 30.0, Options Accessibility 23.7 / 28.2 -> 30.0, pet-care boss 28.6 -> 30.0, citizen picker 22.9 ->
++29.5, pet 28.5 -> 29.8; frames over 33 ms in the four tours 574 -> 476, over 50 ms 268 -> 203; no run of long frames anywhere
++any more. **Not met:** "no frame over 33 ms from the sim". The work now arrives as 0.3-1.2 ms in every tick (+0.4 ms mean over
++50 windows, against a floor ROM with the resident updates off), so windows within ~3 ms of the budget still lose a frame now
++and then: sim group frames over 33 ms 0 / 3 / 6 / 13 (hub / shop / picker / pet; floor 0 / 0 / 1 / 5), Black Market 2 -> 7,
++the news third tab 1 -> 2: S3-13's list. PS1: the island hub window had 4 frames of 50 ms, now none (resident code -12 B, the
++EXE ends where it did); Dreamcast: no long tick from the pass before or after. New group `speed2_sim.txt` (four 1,200-tick
++windows, GBA gates).
+ 
+ ## 5. Suggested order
+ 
+-- 
+2.43.0
+

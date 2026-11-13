@@ -1,0 +1,264 @@
+From e95dc2d781fa1e908b50db3346aa87d4639e22e2 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 05:36:07 +0000
+Subject: [PATCH 11/14] PS1-RAM step 7: the groups on the hub's path take
+ nothing new (HOLD)
+
+What a group takes out of resident RAM is read with it from then on: about
+2 ms of its load per KB at the drive's 2x speed. Measured on PCSX-Redux
+with everything moved (161,312 B below the stack top): free play loaded in
+340 ms instead of 314, the island in 226 instead of 206, the cutscenes in
+355 instead of 348, and the two load windows of the speed tour that hold
+those reads were 0.4-0.9% slower (new island: 16.52 -> 16.45 fps, title to
+New story: 8.54 -> 8.46). Every other window was unchanged.
+
+ovl_plan.py HOLD names those three groups: the title and the free-play
+screens, the island hub (the player crosses both all the time) and the
+cutscenes. A held group takes nothing new: its callbacks of steps 1
+(HELD_CALLBACKS; they stay in their reviewed tables) are resident, its
+objects' table strings stay together, it takes no shared code. The three
+groups are byte for byte as big as on 89a28b56 (106,248 / 58,324 /
+118,768 B), so their loads are as long as before. Taking a group off HOLD
+releases it: free play 13.5 KB, the island 13.1 KB, the cutscenes 3.7 KB.
+
+Game disc with the boot FMV: 131,312 B below the stack top (the 128 KiB of
+the old goal is 131,072 B).
+
+test_tools.py: a held group, a released one, a hold on the group next to
+it, and that every held callback is in a reviewed table.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ ps1/tools/ovl_plan.py   | 39 ++++++++++++++++--
+ ps1/tools/test_tools.py | 90 ++++++++++++++++++++++++++++++++++++++---
+ 2 files changed, 119 insertions(+), 10 deletions(-)
+
+diff --git a/ps1/tools/ovl_plan.py b/ps1/tools/ovl_plan.py
+index 15fa13b7..bf0d2f10 100644
+--- a/ps1/tools/ovl_plan.py
++++ b/ps1/tools/ovl_plan.py
+@@ -32,6 +32,9 @@ hand:
+     not followed either: its target belongs to its own group.
+   * a shared core file named in SHARED is no root: each of its sections
+     is resident or joins the one group that reaches it, by the same rules;
++  * a group named in HOLD takes nothing new (its loads stay as long as
++    they were): its held callbacks, table strings and shared code stay
++    resident;
+   * the string literals of a file's tables arrive one per section
+     (tools/strsec.py), so only the strings resident code or data can
+     reach stay resident (STR_WHOLE below: the groups that set the slot's
+@@ -302,7 +305,7 @@ PICK_CALLBACKS = {
+ # size must not grow by its strings (the slot grows in 2 KB steps, and every step is resident RAM
+ # lost): for the groups named here an object's table strings stay together, all resident as soon as
+ # one of them is (what the linker did before the split). Take a group off the list when it has
+-# room under the slot again.
++# room under the slot again. The HOLD groups below keep theirs together too.
+ STR_WHOLE = ("story", "home")
+ RX_STR = re.compile(r"\.rodata\.str1\.\d+\.LC\d+$")
+ 
+@@ -315,13 +318,39 @@ RX_STR = re.compile(r"\.rodata\.str1\.\d+\.LC\d+$")
+ # slot: the argument that holds for the group's own files); reached by two groups it stays resident.
+ # The file's .data / .bss stay resident, and a scene defined in such a file is a resident scene.
+ # SHARED_NOT: groups that take none: they set the slot's size or are within a few KB of it, where a
+-# KB more is a KB of slot, not of room found (free play keeps its 10 KB for its own screens).
++# KB more is a KB of slot, not of room found (free play keeps its 10 KB for its own screens). The
++# HOLD groups below take none either.
+ # To add a file: OVL_WHY=1 lists the resident core objects; a file is worth listing when part of it
+ # is reached by one group only AND not through another resident file (its accessors must be listed
+ # too: the sprite name table is read by the library alone, but through sprites.c).
+ SHARED = r"fishcook$|catalog$|ui$|song_player$|fp_common$|audio$"
+ SHARED_NOT = ("story", "home", "combat", "freeplay")
+ SHARED_TAG = "+"                # what grp() says for a candidate section of a shared file
++
++# --- RAM headroom 2026-11-12: HOLD. What a group takes out of resident RAM is read with it from
++# then on: about 2 ms of its load per KB at the drive's 2x speed (docs/PS1.md "RAM headroom
++# 2026-11-12", the cost table). The groups named here are the ones the player crosses all the
++# time (the title and the free-play screens, the island hub), or their reads are inside a measured
++# load window (the cutscenes after "New story"). They take NOTHING new, so their loads are as long
++# as before:
++#   * their callbacks in HELD_CALLBACKS stay resident. Each is also listed in LOCAL_CALLBACKS /
++#     MODAL_CALLBACKS / PICK_CALLBACKS above, reviewed against its call sites, so the hold is the
++#     only thing that keeps it resident;
++#   * their objects' table strings stay together, like STR_WHOLE's;
++#   * they take no part of a shared file, like SHARED_NOT's.
++# Taking a group off HOLD is all it needs to release it. Measured on the 2026-11-12 tree: free
++# play gives 13.5 KB of resident RAM for +26 ms on each of its loads (314 -> 340 ms on PCSX-Redux),
++# the island 13.1 KB for +20 ms (206 -> 226), the cutscenes 3.7 KB for +7 ms (348 -> 355).
++HOLD = ("freeplay", "island", "cutscene")
++#   object base -> function names
++HELD_CALLBACKS = {
++    "fp_island_gfx": ("draw_glints_body", "draw_land_body", "draw_patches_body", "draw_roads_body",
++                      "draw_walkers_body", "draw_weather_body", "lr_tap"),
++    "fp_title": ("pc_pill", "pc_in", "pc_vile", "finished_pick", "fresh_world_go"),
++    "fp_family": ("mem_flowers", "wz_neighbour"),
++    "fp_resident": ("cb_manage", "cb_introduce"),
++    "playas_scene": ("pf_leave", "pf_renamed", "pf_join"),
++}
+ # --- end RAM headroom ---
+ 
+ # --- S4: registries read only by their own group (object base -> symbol).
+@@ -521,6 +550,8 @@ def main(argv):
+         if f[1] not in tuple(".text." + n for n in names + picks):
+             continue
+         g = group_of(o.path)
++        if g in HOLD and f[1] in tuple(".text." + n for n in HELD_CALLBACKS.get(base(o.path), ())):
++            continue                # reviewed, but its group takes nothing new (HOLD): resident
+         if f[1] in tuple(".text." + n for n in picks) and picker_group != {g}:
+             print("ovl_plan: %s:%s is not in the picker's group; it stays resident" % (base(o.path), f[1]))
+             continue
+@@ -616,7 +647,7 @@ def main(argv):
+     # RAM headroom 2026-11-12 (STR_WHOLE above): the table strings of each object of those groups
+     str_whole = collections.defaultdict(set)
+     for n in live:
+-        if grp(n) in STR_WHOLE and RX_STR.search(n[1]):
++        if grp(n) in STR_WHOLE + HOLD and RX_STR.search(n[1]):
+             str_whole[n[0]].add(n)
+     while True:
+         owner = {}
+@@ -633,7 +664,7 @@ def main(argv):
+                     if r in resident:
+                         continue
+                     gr = grp(r)
+-                    mine = gr == g or (gr == SHARED_TAG and g not in SHARED_NOT)
++                    mine = gr == g or (gr == SHARED_TAG and g not in SHARED_NOT + HOLD)
+                     if not mine or owner.get(r, g) != g:
+                         clash.add(r)
+                     else:
+diff --git a/ps1/tools/test_tools.py b/ps1/tools/test_tools.py
+index 50fb36e8..fb5fc6ef 100644
+--- a/ps1/tools/test_tools.py
++++ b/ps1/tools/test_tools.py
+@@ -412,13 +412,15 @@ def plan(root, objs):
+ class Planner(unittest.TestCase):
+     def setUp(self):
+         self.dir = tempfile.TemporaryDirectory()
+-        self.saved = (dict(ovl_plan.PICK_CALLBACKS), dict(ovl_plan.MODAL_CALLBACKS))
++        self.saved = (dict(ovl_plan.PICK_CALLBACKS), dict(ovl_plan.MODAL_CALLBACKS), ovl_plan.HOLD)
++        ovl_plan.HOLD = ()          # the tables themselves; HOLD has its own tests (PlannerHold)
+ 
+     def tearDown(self):
+         ovl_plan.PICK_CALLBACKS.clear()
+         ovl_plan.PICK_CALLBACKS.update(self.saved[0])
+         ovl_plan.MODAL_CALLBACKS.clear()
+         ovl_plan.MODAL_CALLBACKS.update(self.saved[1])
++        ovl_plan.HOLD = self.saved[2]
+         self.dir.cleanup()
+ 
+     def test_callbacks_that_may_leave_resident_ram(self):
+@@ -476,12 +478,13 @@ def strsec_compiler(cmd):
+ class PlannerStrings(unittest.TestCase):
+     def setUp(self):
+         self.dir = tempfile.TemporaryDirectory()
+-        self.whole = ovl_plan.STR_WHOLE
++        self.whole = (ovl_plan.STR_WHOLE, ovl_plan.HOLD)
++        ovl_plan.HOLD = ()
+         self.fake = dict(FAKE)
+         self.fake["core/src/fp_family.c"] = FAMILY_TABLES
+ 
+     def tearDown(self):
+-        ovl_plan.STR_WHOLE = self.whole
++        ovl_plan.STR_WHOLE, ovl_plan.HOLD = self.whole
+         self.dir.cleanup()
+ 
+     def strings(self, where, key):
+@@ -534,11 +537,11 @@ SHARED_FAKE["core/src/fp_island.c"] = FAKE["core/src/fp_island.c"].replace(
+ class PlannerShared(unittest.TestCase):
+     def setUp(self):
+         self.dir = tempfile.TemporaryDirectory()
+-        self.saved = (ovl_plan.SHARED, ovl_plan.SHARED_NOT)
+-        ovl_plan.SHARED, ovl_plan.SHARED_NOT = r"ui$", ()
++        self.saved = (ovl_plan.SHARED, ovl_plan.SHARED_NOT, ovl_plan.HOLD)
++        ovl_plan.SHARED, ovl_plan.SHARED_NOT, ovl_plan.HOLD = r"ui$", (), ()
+ 
+     def tearDown(self):
+-        ovl_plan.SHARED, ovl_plan.SHARED_NOT = self.saved
++        ovl_plan.SHARED, ovl_plan.SHARED_NOT, ovl_plan.HOLD = self.saved
+         self.dir.cleanup()
+ 
+     def plan(self):
+@@ -571,6 +574,81 @@ class PlannerShared(unittest.TestCase):
+         self.assertIn(("ui", ".text.ui_island_only"), where["island"])
+ 
+ 
++# HOLD: a group whose loads must not get longer takes nothing new. The made-up FAMILY screen with
++# its tables (strings), its callbacks and the shared UI kit; the island next to it is not held.
++HOLD_FAKE = dict(SHARED_FAKE)
++HOLD_FAKE["core/src/fp_family.c"] = SHARED_FAKE["core/src/fp_family.c"].replace(
++    "static void fam_update(void) {",
++    'static const char *const tabs[2] = { "Tab one", "Tab two" };\n'
++    'static const char *const rows[4] = { "row alpha", "row beta", "row gamma", "row delta" };\n'
++    "static void fam_update(void) { sink += tabs[sink & 1][0] + rows[sink & 3][0];")
++
++
++@unittest.skipUnless(CROSS, "no MIPS compiler (mipsel-linux-gnu-gcc / mipsel-none-elf-gcc)")
++class PlannerHold(unittest.TestCase):
++    def setUp(self):
++        self.dir = tempfile.TemporaryDirectory()
++        self.saved = (ovl_plan.SHARED, ovl_plan.SHARED_NOT, ovl_plan.STR_WHOLE, ovl_plan.HOLD,
++                      dict(ovl_plan.HELD_CALLBACKS))
++        ovl_plan.SHARED, ovl_plan.SHARED_NOT, ovl_plan.STR_WHOLE = r"ui$", (), ()
++        ovl_plan.HELD_CALLBACKS.clear()
++        ovl_plan.HELD_CALLBACKS.update({"fp_family": ("mem_flowers", "wz_neighbour")})
++
++    def tearDown(self):
++        ovl_plan.SHARED, ovl_plan.SHARED_NOT, ovl_plan.STR_WHOLE, ovl_plan.HOLD = self.saved[:4]
++        ovl_plan.HELD_CALLBACKS.clear()
++        ovl_plan.HELD_CALLBACKS.update(self.saved[4])
++        self.dir.cleanup()
++
++    def plan(self):
++        return plan(self.dir.name, compile_fake(self.dir.name, HOLD_FAKE, strsec_compiler))[0]
++
++    def strings(self, where, key):
++        return [sec for obj, sec in where.get(key, ()) if obj == "fp_family" and ".str1." in sec]
++
++    def test_a_held_group_takes_nothing_new(self):
++        ovl_plan.HOLD = ("freeplay",)
++        where = self.plan()
++        fp = where["freeplay"]
++        # its own scene code is in the group as ever
++        self.assertIn(("fp_family", ".text.fam_update"), fp)
++        # its reviewed callbacks, its table strings and the shared code only it calls stay resident
++        for sec in (".text.mem_flowers", ".text.wz_neighbour"):
++            self.assertIn(("fp_family", sec), where["resident"])
++            self.assertNotIn(("fp_family", sec), fp)
++        self.assertEqual(self.strings(where, "freeplay"), [])
++        self.assertEqual(len(self.strings(where, "resident")), 7)
++        self.assertIn(("ui", ".text.ui_family_only"), where["resident"])
++        self.assertFalse([x for x in fp if x[0] == "ui"])
++        # the group next to it is not held and still takes its part of the shared file
++        self.assertIn(("ui", ".text.ui_island_only"), where["island"])
++
++    def test_released_it_takes_all_of_it(self):
++        ovl_plan.HOLD = ()
++        where = self.plan()
++        fp = where["freeplay"]
++        for sec in (".text.mem_flowers", ".text.wz_neighbour"):
++            self.assertIn(("fp_family", sec), fp)
++        self.assertEqual(len(self.strings(where, "freeplay")), 4)
++        self.assertIn(("ui", ".text.ui_family_only"), fp)
++
++    def test_a_hold_on_another_group_changes_nothing_here(self):
++        ovl_plan.HOLD = ("island",)
++        where = self.plan()
++        self.assertIn(("fp_family", ".text.mem_flowers"), where["freeplay"])
++        self.assertIn(("ui", ".text.ui_family_only"), where["freeplay"])
++        self.assertIn(("ui", ".text.ui_island_only"), where["resident"])
++
++    def test_every_held_callback_is_in_a_reviewed_table(self):
++        # HELD_CALLBACKS only holds back entries of the three callback tables
++        held = self.saved[4]
++        for obj, names in held.items():
++            listed = (ovl_plan.LOCAL_CALLBACKS.get(obj, ()) + ovl_plan.MODAL_CALLBACKS.get(obj, ())
++                      + ovl_plan.PICK_CALLBACKS.get(obj, ()))
++            for n in names:
++                self.assertIn(n, listed, "%s:%s is held but in no callback table" % (obj, n))
++
++
+ if __name__ == "__main__":
+     import warnings
+     warnings.simplefilter("ignore", ResourceWarning)    # the tools read files in one expression
+-- 
+2.43.0
+

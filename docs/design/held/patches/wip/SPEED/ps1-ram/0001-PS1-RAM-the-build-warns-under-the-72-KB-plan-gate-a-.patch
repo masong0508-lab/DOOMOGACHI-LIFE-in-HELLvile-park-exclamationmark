@@ -1,0 +1,593 @@
+From 6ec2e79e7df631044dc8f326f40aea6875a22f7c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 12 Nov 2026 23:33:31 +0000
+Subject: [PATCH 01/14] PS1-RAM: the build warns under the 72 KB plan gate; a
+ RAM ledger tool and the CI summary
+
+ps1/tools/elf2exe.py prints the exact bytes left below the stack top and a
+WARNING (a GitHub annotation on CI) when they are under the 72 KB plan gate,
+long before the hard failure at 64 KB. The line the show engine reads keeps
+its shape.
+
+ps1/tools/ram_ledger.py reads the linker map: the layout (resident .text,
+.rodata, .data, .bss, the borrowed .bss, the overlay slot, the margin), the
+biggest resident objects with code / const data / strings / .bss apart, the
+overlay groups by name and, with readelf, the biggest resident symbols. The
+PS1 job writes it to the job summary.
+
+ps1/tools/test_tools.py: unit tests of both (made-up ELF and map), run by CI.
+
+Baseline on this machine (89a28b56, boot FMV linked): 65,936 B below the
+stack top.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ .github/workflows/ci.yml |  15 +++
+ ps1/tools/elf2exe.py     |  31 ++++-
+ ps1/tools/ram_ledger.py  | 250 +++++++++++++++++++++++++++++++++++++++
+ ps1/tools/test_tools.py  | 190 +++++++++++++++++++++++++++++
+ 4 files changed, 482 insertions(+), 4 deletions(-)
+ create mode 100644 ps1/tools/ram_ledger.py
+ create mode 100644 ps1/tools/test_tools.py
+
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index fc88d222..0837a484 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -307,12 +307,27 @@ jobs:
+         with:
+           commit: ${{ env.PSXAVENC_COMMIT }}
+ 
++      - name: PS1 build tool tests (elf2exe gate, RAM ledger, string sections, overlay planner)
++        run: python3 ps1/tools/test_tools.py
++
+       - name: Build the game disc (preset ps1)
+         working-directory: ps1
+         run: |
+           cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON
+           cmake --build --preset ps1
+ 
++      # The margin below the stack top and where the 2 MB go, in the job summary (docs/PS1.md "RAM
++      # headroom 2026-11-12"). elf2exe.py already printed a WARNING annotation under the 72 KB plan
++      # gate and failed the build under 64 KB; this table says what to shrink.
++      - name: PS1 RAM ledger (margin below the stack top, biggest resident objects and symbols)
++        if: always()
++        working-directory: ps1
++        run: |
++          if [ ! -f build/doomogachi.ldmap ]; then echo "(no doomogachi.ldmap: the link did not run)"; exit 0; fi
++          python3 tools/ram_ledger.py build/doomogachi.ldmap --ld build/ovl.ld \
++            --readelf mipsel-linux-gnu-readelf --elf build/doomogachi.elf \
++            --objs 30 --syms 30 --gate 73728 --md | tee -a "$GITHUB_STEP_SUMMARY" || true
++
+       - name: Biggest PS1 statics (names the culprits when the disc overflows its RAM)
+         if: always()
+         working-directory: ps1
+diff --git a/ps1/tools/elf2exe.py b/ps1/tools/elf2exe.py
+index ff15875b..244acf23 100644
+--- a/ps1/tools/elf2exe.py
++++ b/ps1/tools/elf2exe.py
+@@ -11,13 +11,23 @@ Segments whose load address differs from their run address are the scene
+ overlays (ovl_plan.py / ovl_pack.py): they are left out of the EXE, but
+ the RAM slot they run in counts towards the 2 MB.
+ 
+-usage: elf2exe.py input.elf output.exe [--region NA|EU|JP]
++The image, its BSS and the overlay slot must end at least 64 KB below
++0x80200000 (the stack reserve): under that the conversion fails. Under the
++72 KB PLAN GATE (docs/PS1.md "RAM headroom 2026-11-12") it still passes but
++prints a WARNING (and a GitHub Actions annotation), so a CI log shows the
++disc running out of RAM long before the hard failure.
++
++usage: elf2exe.py input.elf output.exe [--region NA|EU|JP] [--gate BYTES]
+ Stdlib only, deterministic output.
+ """
++import os
+ import struct
+ import sys
+ 
+ PT_LOAD = 1
++STACK_TOP = 0x1FFFF0            # system.cnf: STACK = 801FFFF0
++RESERVE_END = 0x200000 - 0x10000   # the image must end here or lower (64 KB of stack)
++PLAN_GATE = 72 * 1024           # bytes below the stack top the plan asks for
+ 
+ 
+ def main(argv):
+@@ -28,6 +38,9 @@ def main(argv):
+     region = "NA"
+     if "--region" in argv:
+         region = argv[argv.index("--region") + 1].upper()
++    gate = PLAN_GATE
++    if "--gate" in argv:
++        gate = int(argv[argv.index("--gate") + 1], 0)
+     data = open(src, "rb").read()
+     if data[:4] != b"\x7fELF" or data[4] != 1 or data[5] != 1:
+         print("elf2exe: not a 32-bit little-endian ELF: %s" % src)
+@@ -87,12 +100,22 @@ def main(argv):
+     print("elf2exe: layout: image 0x%x-0x%x (%d B), bss 0x%x-0x%x (%d B), overlay slot ends 0x%x, _end 0x%x" % (
+         lo, hi, hi - lo, bss_lo or 0, bss_hi or 0, (bss_hi - bss_lo) if bss_lo is not None else 0,
+         ovl_hi or 0, sym_end))
+-    if end > 0x200000 - 0x10000:
++    left = STACK_TOP - end
++    print("elf2exe: %d B left below the stack top 0x%x (fails under %d B, plan gate %d B)" % (
++        left, 0x80000000 + STACK_TOP, STACK_TOP - RESERVE_END, gate))
++    if end > RESERVE_END:
+         print("elf2exe: image + bss end at 0x%x, leaves no room for the stack "
+               "in 2 MB RAM" % (end + 0x80000000))
+         print("elf2exe: %d B over the limit 0x%x (the stack reserve is 64 KB); "
+-              "shrink at least that much" % (end - (0x200000 - 0x10000), 0x80000000 + 0x200000 - 0x10000))
++              "shrink at least that much" % (end - RESERVE_END, 0x80000000 + RESERVE_END))
+         return 1
++    if left < gate:
++        msg = ("only %d B left below the stack top: %d B under the %d KB plan gate "
++               "(the build fails %d B from here; docs/PS1.md \"RAM headroom\", tools/ram_ledger.py)" % (
++                   left, gate - left, gate // 1024, RESERVE_END - end))
++        print("elf2exe: WARNING: " + msg)
++        if os.environ.get("GITHUB_ACTIONS"):
++            print("::warning title=PS1 RAM under the plan gate::" + msg)
+     hdr = bytearray(2048)
+     hdr[0:8] = b"PS-X EXE"
+     struct.pack_into("<IIIIIIIIII", hdr, 0x10,
+@@ -112,7 +135,7 @@ def main(argv):
+           "below the stack top), entry 0x%08x" % (
+               dst, lo, size // 1024,
+               ((bss_hi - bss_lo) if bss_lo is not None else 0) // 1024,
+-              end + 0x80000000, (0x1FFFF0 - end) // 1024, e_entry))
++              end + 0x80000000, left // 1024, e_entry))
+     return 0
+ 
+ 
+diff --git a/ps1/tools/ram_ledger.py b/ps1/tools/ram_ledger.py
+new file mode 100644
+index 00000000..2a6441b1
+--- /dev/null
++++ b/ps1/tools/ram_ledger.py
+@@ -0,0 +1,250 @@
++#!/usr/bin/env python3
++"""ram_ledger.py - where the PS1 game's 2 MB of RAM go (owner: ps1).
++Stdlib only, deterministic.
++
++    ram_ledger.py build/doomogachi.ldmap [--ld build/ovl.ld]
++                  [--readelf READELF --elf build/doomogachi.elf]
++                  [--objs N] [--syms N] [--md] [--gate BYTES]
++
++Reads the linker map of the game disc (ld -Map: every build writes
++build/doomogachi.ldmap) and prints the resident ledger of docs/PS1.md
++"RAM headroom 2026-11-12":
++
++  * the layout: resident .text / .rodata / .data / .bss, the borrowed
++    .bss, the overlay slot, and what is left below the stack top;
++  * the N biggest resident objects with .text, .rodata, string literals,
++    .data and .bss apart. The linker merges the string literals of all
++    resident objects into one block: an object's "strings" are its share
++    before the merge, the block's real size is in the layout;
++  * the overlay groups, named from ovl.ld with --ld (not resident: one
++    group at a time is read from OVL.BIN into the slot, so only the
++    biggest sets the slot's size);
++  * with --readelf and --elf: the N biggest resident symbols, each with
++    its kind and object.
++
++--md prints GitHub markdown (the CI job summary). --gate BYTES adds a
++WARNING line when less than BYTES are left below the stack top (the
++exit code stays 0: tools/elf2exe.py is what fails a build).
++"""
++import argparse
++import bisect
++import collections
++import re
++import subprocess
++import sys
++
++STACK_TOP = 0x801FFFF0
++RESIDENT = (".text", ".rodata", ".ctors", ".dtors", ".data", ".sdata", ".sbss", ".bss", ".borrow")
++KIND = {".text": "text", ".rodata": "rodata", ".ctors": "data", ".dtors": "data",
++        ".data": "data", ".sdata": "data", ".sbss": "bss", ".bss": "bss", ".borrow": "borrow"}
++
++
++def obj_name(path):
++    """the object as the docs name it: core/src/ui, ps1/src/gfx, sdk/libpsxgpu(image.c)"""
++    m = re.search(r"/(lib\w+?)(?:_exe_gprel)?\.a\((.+?)\.o(?:bj)?\)$", path)
++    if m:
++        return "sdk/%s(%s)" % (m.group(1), m.group(2))
++    p = path
++    for ext in (".c.obj", ".s.obj", ".obj", ".o"):
++        if p.endswith(ext):
++            p = p[: -len(ext)]
++            break
++    k = p.find("/core/")
++    if k >= 0:
++        return p[k + 1:]
++    k = p.find("doomo_objs.dir/")
++    if k >= 0:
++        rest = p[k + len("doomo_objs.dir/"):]
++        return ("ps1/" + rest) if rest.startswith("src/") else ("build/" + rest)
++    return p.rsplit("/", 1)[-1]
++
++
++def parse_map(path):
++    """-> (outs, syms). outs: output section -> [addr, size, [(input section, addr, size, object)]];
++    syms: the layout symbols the map prints (_end, __ovl_slot, ...)"""
++    outs = collections.OrderedDict()
++    syms = {}
++    cur = pend = None
++    started = False
++    rx_out = re.compile(r"^(\.[\w.]+)\s+0x([0-9a-f]+)\s+0x([0-9a-f]+)")
++    rx_in1 = re.compile(r"^ (\.[^\s]+|COMMON)\s+0x([0-9a-f]+)\s+0x([0-9a-f]+)\s+(\S.*)$")
++    rx_in0 = re.compile(r"^ (\.[^\s]+|COMMON)\s*$")
++    rx_in2 = re.compile(r"^\s+0x([0-9a-f]+)\s+0x([0-9a-f]+)\s+(\S.*)$")
++    rx_sym = re.compile(r"^\s+0x([0-9a-f]+)\s+(\w+) = ")
++    with open(path, errors="replace") as f:
++        lines = f.read().split("\n")
++    for line in lines:
++        if not started:
++            started = line.startswith("Linker script and memory map")
++            continue
++        m = rx_out.match(line)
++        if m:
++            cur = m.group(1)
++            outs[cur] = [int(m.group(2), 16), int(m.group(3), 16), []]
++            pend = None
++            continue
++        if line and not line.startswith(" "):
++            cur = pend = None           # the next statement of the script, or the map's tail
++            continue
++        m = rx_sym.match(line)
++        if m:
++            syms[m.group(2)] = int(m.group(1), 16)
++            continue
++        if cur is None:
++            continue
++        m = rx_in1.match(line)
++        if m:
++            outs[cur][2].append((m.group(1), int(m.group(2), 16), int(m.group(3), 16), m.group(4).strip()))
++            pend = None
++            continue
++        m = rx_in0.match(line)
++        if m:
++            pend = m.group(1)           # a long section name: its address is on the next line
++            continue
++        m = rx_in2.match(line)
++        if m and pend:
++            outs[cur][2].append((pend, int(m.group(1), 16), int(m.group(2), 16), m.group(3).strip()))
++        pend = None
++    return outs, syms
++
++
++def is_str(name):
++    return ".str1." in name
++
++
++def group_names(ld_path):
++    """.ovl_NN -> group name, from the comments ovl_plan.py writes into ovl.ld"""
++    names = {}
++    try:
++        with open(ld_path) as f:
++            for line in f:
++                m = re.match(r"\s*(\.ovl_\d+)\s.*/\*\s*(\S+)\s*\*/", line)
++                if m:
++                    names[m.group(1)] = m.group(2)
++    except OSError:
++        pass
++    return names
++
++
++def main(argv):
++    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
++    ap.add_argument("map")
++    ap.add_argument("--ld")
++    ap.add_argument("--readelf")
++    ap.add_argument("--elf")
++    ap.add_argument("--objs", type=int, default=40)
++    ap.add_argument("--syms", type=int, default=40)
++    ap.add_argument("--md", action="store_true")
++    ap.add_argument("--gate", type=int, default=0)
++    a = ap.parse_args(argv[1:])
++
++    outs, syms = parse_map(a.map)
++    if ".text" not in outs:
++        print("ram_ledger: no .text in %s (not a linker map?)" % a.map)
++        return 2
++    ovl = [(n, o[0], o[1]) for n, o in outs.items() if n.startswith(".ovl_")]
++    end = syms.get("_end") or max(o[0] + o[1] for n, o in outs.items() if n in RESIDENT or n.startswith(".ovl_"))
++    slot = syms.get("__ovl_slot", 0)
++    slot_end = syms.get("__ovl_slot_end", end)
++    left = STACK_TOP - end
++    size = {n: outs[n][1] for n in RESIDENT if n in outs}
++    # the merged string block: the map prints it at its first input, with the block's real size
++    merged, merged_at = 0, None
++    for i, (name, _, sz, _) in enumerate(outs.get(".rodata", [0, 0, []])[2]):
++        if is_str(name) and sz > merged:
++            merged, merged_at = sz, i
++
++    def row(*cells):
++        if a.md:
++            print("| " + " | ".join(str(c) for c in cells) + " |")
++        else:
++            print("  " + "  ".join(str(c) for c in cells))
++
++    def head(title, cols):
++        print()
++        if a.md:
++            print("### " + title)
++            print()
++            print("| " + " | ".join(cols) + " |")
++            print("|" + "|".join("---" if i == 0 else "---:" for i in range(len(cols))) + "|")
++        else:
++            print(title + "  (" + ", ".join(cols) + ")")
++
++    head("PS1 game disc: the 2 MB", ["what", "bytes"])
++    row("resident .text (code)", size.get(".text", 0))
++    row("resident .rodata (const data; %d B of it the merged string literals)" % merged, size.get(".rodata", 0))
++    row(".data + .sdata + ctors / dtors", sum(size.get(n, 0) for n in (".ctors", ".dtors", ".data", ".sdata")))
++    row(".sbss + .bss", size.get(".sbss", 0) + size.get(".bss", 0))
++    row(".borrow (the .bss the house and creator groups load over)", size.get(".borrow", 0))
++    if slot:
++        row("overlay slot (after the .bss; the biggest group sets it)", slot_end - slot)
++    row("the EXE ends at", "0x%08x" % end)
++    row("left below the stack top (0x801FFFF0)", left)
++
++    # --- resident objects ---
++    per = collections.defaultdict(collections.Counter)
++    for n in RESIDENT:
++        for i, (name, _, sz, obj) in enumerate(outs.get(n, [0, 0, []])[2]):
++            if name == "*fill*":
++                continue
++            k = KIND[n]
++            if n == ".rodata" and is_str(name):
++                k = "str"
++                if i == merged_at:
++                    continue            # the block's size, not this object's share
++            per[obj_name(obj)][k] += sz
++    rows = sorted(per.items(), key=lambda kv: (-sum(kv[1].values()), kv[0]))
++    cols = ["object", "total", ".text", ".rodata", "strings", ".data", ".bss", "borrowed .bss"]
++    head("The %d biggest resident objects" % min(a.objs, len(rows)), cols)
++    for obj, c in rows[: a.objs]:
++        row(obj, sum(c.values()), c["text"], c["rodata"], c["str"], c["data"], c["bss"], c["borrow"])
++    if rows[a.objs:]:
++        c = collections.Counter()
++        for _, x in rows[a.objs:]:
++            c.update(x)
++        row("(%d more)" % len(rows[a.objs:]), sum(c.values()), c["text"], c["rodata"], c["str"], c["data"],
++            c["bss"], c["borrow"])
++
++    # --- overlay groups ---
++    if ovl:
++        names = group_names(a.ld) if a.ld else {}
++        head("Overlay groups (one at a time in the slot)", ["group", "bytes", "loads at"])
++        for n, addr, sz in sorted(ovl, key=lambda x: (-x[2], x[0])):
++            row(names.get(n, n), sz, "0x%08x%s" % (addr, "" if addr >= slot or not slot else " (over .borrow)"))
++
++    # --- resident symbols ---
++    if a.readelf and a.elf:
++        out = subprocess.run([a.readelf, "-S", "-s", "-W", a.elf], check=True, capture_output=True, text=True).stdout
++        secname = {}
++        symrows = []
++        for line in out.splitlines():
++            m = re.match(r"\s*\[\s*(\d+)\]\s+(\S+)\s+\S+\s+[0-9a-f]+", line)
++            if m:
++                secname[int(m.group(1))] = m.group(2)
++                continue
++            # (readelf prints a size over 99999 in hex)
++            m = re.match(r"\s*\d+:\s+([0-9a-f]+)\s+(\d+|0x[0-9a-f]+)\s+(\w+)\s+\w+\s+\w+\s+(\d+)\s+(\S+)", line)
++            if m and m.group(3) in ("OBJECT", "FUNC") and int(m.group(2), 0):
++                sec = secname.get(int(m.group(4)))
++                if sec in RESIDENT:
++                    symrows.append((int(m.group(2), 0), m.group(5), int(m.group(1), 16), sec))
++        spans = {}
++        for n in RESIDENT:
++            s = sorted((addr, addr + sz, obj_name(obj)) for name, addr, sz, obj in outs.get(n, [0, 0, []])[2] if sz)
++            spans[n] = (s, [x[0] for x in s])
++        head("The %d biggest resident symbols" % a.syms, ["symbol", "bytes", "kind", "object"])
++        for sz, name, addr, sec in sorted(symrows, key=lambda r: (-r[0], r[1]))[: a.syms]:
++            s, starts = spans[sec]
++            i = bisect.bisect_right(starts, addr) - 1
++            obj = s[i][2] if i >= 0 and s[i][0] <= addr < s[i][1] else "?"
++            row(name, sz, KIND[sec], obj)
++
++    if a.gate and left < a.gate:
++        print()
++        print("ram_ledger: WARNING: %d B left below the stack top, %d B under the %d B gate" % (
++            left, a.gate - left, a.gate))
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main(sys.argv))
+diff --git a/ps1/tools/test_tools.py b/ps1/tools/test_tools.py
+new file mode 100644
+index 00000000..df0ed072
+--- /dev/null
++++ b/ps1/tools/test_tools.py
+@@ -0,0 +1,190 @@
++#!/usr/bin/env python3
++"""test_tools.py - unit tests of the PS1 build tools (owner: ps1).
++
++    python3 ps1/tools/test_tools.py            (CI: the PS1 job runs it)
++
++elf2exe.py (the stack reserve and the plan gate's WARNING) and
++ram_ledger.py (the linker map reader) are tested on files made here. Stdlib
++only; the tests that need the MIPS compiler are skipped without one.
++"""
++import contextlib
++import io
++import os
++import struct
++import sys
++import tempfile
++import unittest
++
++HERE = os.path.dirname(os.path.abspath(__file__))
++sys.path.insert(0, HERE)
++import elf2exe          # noqa: E402
++import ram_ledger       # noqa: E402
++
++
++def tiny_elf(end):
++    """a 32-bit little-endian ELF with one loadable segment at 0x80010000
++    whose image + BSS end at `end` (an address in RAM)"""
++    ph = struct.pack("<IIIIIIII", 1, 0x1000, 0x80010000, 0x80010000, 16, end - 0x80010000, 7, 0x1000)
++    eh = b"\x7fELF\x01\x01\x01" + bytes(9) + struct.pack(
++        "<HHIIIIIHHHHHH", 2, 8, 1, 0x80010000, 52, 0, 0, 52, 32, 1, 40, 0, 0)
++    blob = eh + ph
++    return blob + bytes(0x1000 - len(blob)) + bytes(16)
++
++
++def run_elf2exe(end, *extra, env=None):
++    with tempfile.TemporaryDirectory() as d:
++        src, dst = os.path.join(d, "a.elf"), os.path.join(d, "a.exe")
++        with open(src, "wb") as f:
++            f.write(tiny_elf(end))
++        out = io.StringIO()
++        old = dict(os.environ)
++        os.environ.pop("GITHUB_ACTIONS", None)
++        os.environ.update(env or {})
++        try:
++            with contextlib.redirect_stdout(out):
++                rc = elf2exe.main(["elf2exe.py", src, dst] + list(extra))
++        finally:
++            os.environ.clear()
++            os.environ.update(old)
++        return rc, out.getvalue(), os.path.exists(dst)
++
++
++class Elf2Exe(unittest.TestCase):
++    TOP = 0x801FFFF0
++
++    def test_room_above_the_gate_is_quiet(self):
++        rc, out, made = run_elf2exe(self.TOP - 73728)
++        self.assertEqual(rc, 0)
++        self.assertTrue(made)
++        self.assertNotIn("WARNING", out)
++        self.assertIn("73728 B left below the stack top", out)
++        # the line the show engine's ram_report.py reads keeps its shape
++        self.assertRegex(out, r"size \d+ KB \(\+bss \d+ KB, ends 0x[0-9a-f]+, 72 KB left")
++
++    def test_under_the_plan_gate_warns_but_passes(self):
++        rc, out, made = run_elf2exe(self.TOP - 73724)
++        self.assertEqual(rc, 0)
++        self.assertTrue(made)
++        self.assertIn("elf2exe: WARNING: only 73724 B left below the stack top: 4 B under the 72 KB plan gate", out)
++        self.assertNotIn("::warning", out)
++
++    def test_the_warning_is_an_annotation_on_github(self):
++        rc, out, _ = run_elf2exe(self.TOP - 70000, env={"GITHUB_ACTIONS": "true"})
++        self.assertEqual(rc, 0)
++        self.assertIn("::warning title=PS1 RAM under the plan gate::only 70000 B left", out)
++
++    def test_the_gate_is_an_option(self):
++        rc, out, _ = run_elf2exe(self.TOP - 70000, "--gate", "69000")
++        self.assertEqual(rc, 0)
++        self.assertNotIn("WARNING", out)
++
++    def test_into_the_stack_reserve_fails(self):
++        rc, out, made = run_elf2exe(0x801F0000 + 16)
++        self.assertEqual(rc, 1)
++        self.assertFalse(made)
++        self.assertIn("16 B over the limit 0x801f0000", out)
++        rc, _, made = run_elf2exe(0x801F0000)
++        self.assertEqual(rc, 0)             # exactly at the limit still links
++        self.assertTrue(made)
++
++
++MAP = """\
++Discarded input sections
++
++ .text.dead     0x00000000       0x40 CMakeFiles/doomo_objs.dir/src/gfx.c.obj
++
++Linker script and memory map
++
++.text           0x80010000      0x300
++                0x80010000                        __text_start = .
++ .text.a        0x80010000      0x100 CMakeFiles/doomo_objs.dir/src/gfx.c.obj
++                0x80010000                a
++ .text.a_very_long_function_name_here
++                0x80010100      0x200 CMakeFiles/doomo_objs.dir/x/core/src/ui.c.obj
++
++.rodata         0x80010300      0x130
++ .rodata.a.str1.4
++                0x80010300       0x30 CMakeFiles/doomo_objs.dir/src/gfx.c.obj
++                                 0x14 (size before relaxing)
++ .rodata.str1.4.LC0
++                0x80010330       0x20 CMakeFiles/doomo_objs.dir/x/core/src/ui.c.obj
++ .rodata.tab    0x80010330      0x100 CMakeFiles/doomo_objs.dir/x/core/src/ui.c.obj
++ *fill*         0x80010430        0x0
++
++.data           0x80010430        0x8
++ .data.d        0x80010430        0x8 /opt/psn00bsdk/lib/libpsn00b/release/libpsxgpu_exe_gprel.a(image.c.obj)
++
++.bss            0x80010438     0x1000
++ .bss.big       0x80010438     0x1000 CMakeFiles/doomo_objs.dir/src/gfx.c.obj
++
++.borrow         0x80011438      0x800
++                0x80011438                        __ovl_borrow = .
++ .bss.lent      0x80011438      0x800 CMakeFiles/doomo_objs.dir/src/world.c.obj
++                0x80011c38                        __ovl_slot = .
++
++.ovl_01         0x80011c38     0x2000 load address 0x10000000
++ .text.s        0x80011c38     0x2000 CMakeFiles/doomo_objs.dir/x/core/src/combat.c.obj
++
++.ovl_02         0x80011438     0x2400 load address 0x10002000
++ .text.h        0x80011438     0x2400 CMakeFiles/doomo_objs.dir/x/core/src/home.c.obj
++                0x80014000                        __ovl_slot_end = .
++                0x80014000                        _end = .
++"""
++
++
++class Ledger(unittest.TestCase):
++    def setUp(self):
++        self.dir = tempfile.TemporaryDirectory()
++        self.map = os.path.join(self.dir.name, "x.ldmap")
++        with open(self.map, "w") as f:
++            f.write(MAP)
++        self.ld = os.path.join(self.dir.name, "ovl.ld")
++        with open(self.ld, "w") as f:
++            f.write("\t\t.ovl_01 {\t/* combat */\n\t.ovl_02 __ovl_borrow : AT (0) {\t/* home */\n")
++
++    def tearDown(self):
++        self.dir.cleanup()
++
++    def run_ledger(self, *extra):
++        out = io.StringIO()
++        with contextlib.redirect_stdout(out):
++            rc = ram_ledger.main(["ram_ledger.py", self.map, "--ld", self.ld] + list(extra))
++        return rc, out.getvalue()
++
++    def test_map_reader(self):
++        outs, syms = ram_ledger.parse_map(self.map)
++        self.assertEqual(outs[".text"][:2], [0x80010000, 0x300])
++        self.assertEqual([s[0] for s in outs[".text"][2]], [".text.a", ".text.a_very_long_function_name_here"])
++        self.assertEqual(outs[".text"][2][1][2], 0x200)
++        self.assertEqual(syms["_end"], 0x80014000)
++        self.assertNotIn(".text.dead", [s[0] for o in outs.values() for s in o[2]])   # discarded: not in RAM
++
++    def test_layout_and_objects(self):
++        rc, out = self.run_ledger()
++        self.assertEqual(rc, 0)
++        self.assertIn("resident .text (code)  768", out)
++        self.assertIn("48 B of it the merged string literals)  304", out)
++        self.assertIn("overlay slot (after the .bss; the biggest group sets it)  9160", out)
++        self.assertIn("left below the stack top (0x801FFFF0)  %d" % (0x801FFFF0 - 0x80014000), out)
++        # gfx: 256 text + 4096 bss; the merged block's size is not its strings
++        self.assertIn("  ps1/src/gfx  4352  256  0  0  0  4096  0", out)
++        self.assertIn("  core/src/ui  800  512  256  32  0  0  0", out)
++        self.assertIn("  ps1/src/world  2048  0  0  0  0  0  2048", out)
++        self.assertIn("  sdk/libpsxgpu(image.c)  8  0  0  0  8  0  0", out)
++        self.assertIn("  home  9216  0x80011438 (over .borrow)", out)
++        self.assertIn("  combat  8192  0x80011c38", out)
++
++    def test_gate_line_and_markdown(self):
++        left = 0x801FFFF0 - 0x80014000
++        rc, out = self.run_ledger("--gate", str(left + 100), "--md")
++        self.assertEqual(rc, 0)
++        self.assertIn("ram_ledger: WARNING: %d B left below the stack top, 100 B under" % left, out)
++        self.assertIn("| ps1/src/gfx | 4352 | 256 | 0 | 0 | 0 | 4096 | 0 |", out)
++        rc, out = self.run_ledger("--gate", str(left))
++        self.assertNotIn("WARNING", out)
++
++
++if __name__ == "__main__":
++    import warnings
++    warnings.simplefilter("ignore", ResourceWarning)    # the tools read files in one expression
++    unittest.main(warnings="ignore")
+-- 
+2.43.0
+

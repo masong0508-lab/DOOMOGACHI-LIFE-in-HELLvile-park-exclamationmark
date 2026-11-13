@@ -1,0 +1,687 @@
+From 29dde5d42652b061c0ef5fe26aa8bffad4074efc Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 12:30:24 +0000
+Subject: [PATCH 04/15] S2-4b step 4: Derby and Memory at 30 on the GBA (the
+ bunting strip, clouds and wheel gondolas as stamps, the crowd without
+ divisions, racer shadows; Memory's table and card backs kept per tier)
+
+The crowd's x % 6 by folding (mg_mod6, tested), its hops from a table made once, pads and hurdles
+culled before hashing; stamps are looked up by an ARM search in the room group and blitted directly.
+Derby GBA drawn fps 22 -> 30 (work 36.7 -> 28.6 ms), Memory Hellfire 21.5 -> 30 (39.2 -> 24.2 ms),
+Memory Sweet 29.7 -> 30 (31.6 -> 21.2 ms), Catch Hellfire holds 30 (30.8 -> 26.0 ms).
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ core/src/mg.h               |   2 +
+ core/src/mg_derby.c         |  75 +++++++++++++++----
+ core/src/mg_draw.c          |  70 +++++++++++++++---
+ core/src/mg_memory.c        | 142 ++++++++++++++++++++++++++++++------
+ core/tests/test_minigames.c |  13 ++++
+ core/tests/test_stage.c     |   4 +-
+ gba/src/stage.c             |  41 +++++++----
+ 7 files changed, 285 insertions(+), 62 deletions(-)
+
+diff --git a/core/src/mg.h b/core/src/mg.h
+index 5ca853e0..7b98bd6c 100644
+--- a/core/src/mg.h
++++ b/core/src/mg.h
+@@ -336,6 +336,8 @@ void mg_sparkle(int cx, int cy, int phase, uint8_t c);   /* ui_sparkle, stamped
+ #define mg_stamp_common(key, x, y) 0
+ #define mg_sparkle ui_sparkle
+ #endif
++/* x % 6 without a division (mg_derby.c: the crowd) */
++unsigned mg_mod6(uint32_t x);
+ /* HUD pieces */
+ void mg_hud(void);
+ void mg_draw_hearts(int x, int y, int n, int max);
+diff --git a/core/src/mg_derby.c b/core/src/mg_derby.c
+index 8db2a764..692fcc41 100644
+--- a/core/src/mg_derby.c
++++ b/core/src/mg_derby.c
+@@ -36,6 +36,7 @@ typedef struct Derby {
+     uint8_t imgs_ok;                /* (S2-5, GBA) the racers' 8bpp pictures are in the scratch */
+     uint16_t race_t, end_t;
+     int32_t cam16;
++    int8_t hop[40];                 /* (S2-4b) the crowd's hops: ui_wave(i, 40, 1), made at the start */
+ } Derby;
+ MG_ARENA_FITS(Derby);
+ #define S (MG_ARENA(Derby))
+@@ -156,6 +157,7 @@ static void dy_start(void)
+ {
+     int i, used = 0, me = your_form();
+     static const uint8_t skill[MG_TIERS] = { 65, 82, 94 };
++    for (i = 0; i < 40; i++) S->hop[i] = (int8_t)ui_wave(i, 40, 1);       /* the crowd's hops, one period */
+     used |= 1 << me;
+     for (i = 0; i < RACERS; i++) {
+         Racer *r = &S->r[i];
+@@ -325,18 +327,62 @@ static void dy_update(void)
+ }
+ 
+ /* ---- drawing ------------------------------------------------------------------ */
++/* ---- (S2-4b) stamps (mg.h "stamps"): the bunting (t % 50, a strip across the screen) and a racer's shadow (its
++ * half width) ------------------------------------------------------------------------------------------------ */
++enum { DY_SHADOW = 0 << 12, DY_BUNT = 1 << 12, DY_KIND = 7 << 12 };
++static const uint8_t head_paint[6] = { PAINT_PEACH, PAINT_BUBBLEGUM, PAINT_SKY, PAINT_LEMON, PAINT_MINT, PAINT_LAVENDER };
++
++static void dy_stamp(uint32_t key, int cx, int cy)
++{
++    int v = (int)(key & 0xFFF);
++    if ((key & DY_KIND) == DY_SHADOW) mg_shadow(cx, cy, v);
++    else mg_bunting(0, mg_w(), cy, 3, v);
++}
++static int dy_stamp_strip(uint32_t key) { return (key & DY_KIND) == DY_BUNT; }
++static int dy_stamp_keys(uint32_t *out, int cap)
++{
++    int n = 0, h, i;
++#define ADD(k) do { if (n < cap) out[n] = (uint32_t)(k); n++; } while (0)
++    for (i = 3; i <= 10; i++) ADD(DY_SHADOW | (uint32_t)i);
++    for (h = 0; h < 2; h++)
++        for (i = 0; i < 50; i++) ADD(DY_BUNT | (h ? MG_BK_HELL : 0u) | (uint32_t)i);
++#undef ADD
++    return n;
++}
++/* a stamp at (x, y) where stamps are kept (240x160 only); 0: the caller draws it */
++static int stamped(uint32_t key, int x, int y)
++{
++    return !mg_big() && mg_stamp(key, x, y);
++}
++
++/* x % 6 without a division (the crowd asks for it 63 times a frame): the remainder mod 3 by folding the
++ * bits (2^2 = 1 mod 3), the parity from bit 0, the two put together as the Chinese remainders say */
++unsigned mg_mod6(uint32_t x)
++{
++    static const uint8_t crt[6] = { 0, 3, 4, 1, 2, 5 };       /* [x % 3 * 2 + x % 2] */
++    uint32_t r = (x >> 16) + (x & 0xFFFFu);
++    r = (r >> 8) + (r & 0xFFu);
++    r = (r >> 4) + (r & 0xFu);
++    r = (r >> 2) + (r & 3u);
++    r = (r >> 2) + (r & 3u);
++    if (r >= 3) r -= 3;                                       /* (r <= 6 here) */
++    if (r >= 3) r -= 3;
++    return crt[r * 2 + (x & 1u)];
++}
++
+ static void grandstand(int y0, int h, int cam, int t)
+ {
+-    int W = mg_w(), row, x, rh = h / 3;
+-    static const uint8_t heads[6] = { PAINT_PEACH, PAINT_BUBBLEGUM, PAINT_SKY, PAINT_LEMON, PAINT_MINT, PAINT_LAVENDER };
++    int W = mg_w(), row, x, rh = h / 3, tm = t % 40;
+     plat_rect(0, y0, W, h, mg.hell ? PAL_RAMP(RAMP_STONE, 1) : PAL_RAMP(RAMP_WOOD, 4));
+     for (row = 0; row < 3; row++) {
+-        int y = y0 + row * rh, off = (cam / (3 - row + 1)) % 12;
++        int y = y0 + row * rh, cd = cam / (4 - row), off = cd % 12, n = cd / 12;   /* n: the first head's number */
+         plat_rect(0, y + rh - 2, W, 2, mg.hell ? PAL_RAMP(RAMP_STONE, 0) : PAL_RAMP(RAMP_WOOD, 2));
+-        for (x = -off; x < W; x += 12) {
+-            uint32_t hs = doomo_hash32((uint32_t)((x + cam / (3 - row + 1)) / 12 * 31 + row));
+-            int jump = S->cheer && ((hs >> 4) & 1) ? ui_wave(t * 3 + (int)(hs & 63), 12, 2) : ui_wave(t + (int)(hs & 63), 40, 1);
+-            uint8_t c = mg.hell ? PAL_RAMP(RAMP_BLOOD, 3 + (hs & 1)) : PAL_PAINT(heads[hs % 6], 1);
++        for (x = -off; x < W; x += 12, n++) {
++            uint32_t hs = doomo_hash32((uint32_t)(n * 31 + row));
++            int hi = tm + (int)(hs & 63), jump;
++            while (hi >= 40) hi -= 40;
++            jump = S->cheer && ((hs >> 4) & 1) ? ui_wave(t * 3 + (int)(hs & 63), 12, 2) : S->hop[hi];
++            uint8_t c = mg.hell ? PAL_RAMP(RAMP_BLOOD, 3 + (hs & 1)) : PAL_PAINT(head_paint[mg_mod6(hs)], 1);
+             int hx = x + 6, hy = y + rh - 6 + (jump < 0 ? jump : 0);
+             plat_rect(hx - 2, hy - 2, 5, 5, c);
+             plat_rect(hx - 1, hy - 1, 1, 1, PAL_RAMP(RAMP_STONE, 0));
+@@ -344,7 +390,7 @@ static void grandstand(int y0, int h, int cam, int t)
+             if ((hs >> 8) & 1) { plat_rect(hx - 3, hy - 4, 1, 2, c); plat_rect(hx + 3, hy - 4, 1, 2, c); }
+         }
+     }
+-    mg_bunting(0, W, y0 - 2, 3, t);
++    if (!stamped(DY_BUNT | (uint32_t)(t % 50) | (mg.hell ? MG_BK_HELL : 0u), W / 2, y0 - 2)) mg_bunting(0, W, y0 - 2, 3, t);
+ }
+ 
+ static void racer_pal(const Racer *r, uint8_t pal[3])
+@@ -363,7 +409,7 @@ static void racer_draw(int i, int x, int t)
+     if (r->air) hop = (18 - r->air) * r->air / 4;
+     else if (r->stun) sy = 180 + (r->stun & 3) * 10;
+     else { int ph = ((int)(r->x16 / 16) / 6 + i) & 3; hop = ph == 1 || ph == 2 ? 2 : 0; sy = ph == 0 ? 236 : 262; }
+-    mg_shadow(x, y, 9 - hop / 4);
++    if (!stamped(DY_SHADOW | (uint32_t)(9 - hop / 4), x, y)) mg_shadow(x, y, 9 - hop / 4);
+ #if defined(DOOMO_PLATFORM_GBA)
+     if (S->imgs_ok) dy_blit(x - PET_SPR / 2, y - PET_SPR - hop + 2, i, sy);
+     else
+@@ -383,7 +429,7 @@ static void racer_draw(int i, int x, int t)
+ 
+ static void dy_draw(void)
+ {
+-    int W = mg_w(), H = mg_h(), t = mg.play_t + mg.t, i, l, k, ox = mg.ox, oy = mg.oy;
++    int W = mg_w(), H = mg_h(), t = mg.play_t + mg.t, i, l, k, ox = mg.ox, oy = mg.oy, h0;
+     int cam = (int)(S->cam16 / 16), tt = track_top(), lh = lane_h();
+     mg_fair_sky(0, sky_h() + oy, t);
+     grandstand(sky_h() + oy, stand_h(), cam, t);
+@@ -414,15 +460,18 @@ static void dy_draw(void)
+             }
+     }
+     /* boost pads + hurdles, then racers, lane by lane (back to front) */
++    h0 = next_hurdle(cam - 40);
+     for (l = 0; l < RACERS; l++) {
+         int y = lane_y(l) + oy;
+         for (k = 0; k < 6; k++) {
+-            int px = pad_at(l, k) - cam + ox;
++            int px, base = 250 + k * 520 - cam + ox;         /* pad_at lies 0..199 beyond it: no hash for a pad out of view */
++            if (base > W + 20 || base + 199 < -20) continue;
++            px = pad_at(l, k) - cam + ox;
+             if (px < -20 || px > W + 20) continue;
+             plat_rect(px, y - lh / 2 - 1, 12, 4, mg.hell ? PAL_RAMP(RAMP_LAVA, 4) : PAL_PAINT(PAINT_MINT, 2));
+             plat_rect(px + 2 + (t / 2) % 4, y - lh / 2, 3, 2, PAL_WHITE);
+         }
+-        for (k = next_hurdle(cam - 40); k < cam + W + 40 && k < TRACK_LEN; k += HURDLE_EVERY) {
++        for (k = h0; k < cam + W + 40 && k < TRACK_LEN; k += HURDLE_EVERY) {
+             int hx = k - cam + ox + (RACERS - 1 - l), hh = lh * 2 / 3 + 2, s;
+             plat_rect(hx - 6, y - hh, 2, hh, PAL_RAMP(RAMP_STONE, 5));
+             plat_rect(hx + 5, y - hh, 2, hh, PAL_RAMP(RAMP_STONE, 5));
+@@ -499,7 +548,7 @@ const MgGame mg_game_derby = {
+     { MG_DERBY_B, MG_DERBY_S, MG_DERBY_G }, 20, 0,
+     { PAL_PAINT(PAINT_LIME, 1), PAL_WHITE, PAL_PAINT(PAINT_FOREST, 1) },
+     dy_start, dy_update, dy_draw, dy_art, dy_bot,
+-    NULL, NULL, NULL, NULL, NULL, NULL
++    NULL, NULL, NULL, dy_stamp, dy_stamp_keys, dy_stamp_strip
+ };
+ 
+ MG_DEFINE_SCENE(SCENE_MG_DERBY, "MG_DERBY", mg_game_derby);
+diff --git a/core/src/mg_draw.c b/core/src/mg_draw.c
+index 9449cbed..2c96f360 100644
+--- a/core/src/mg_draw.c
++++ b/core/src/mg_draw.c
+@@ -15,6 +15,20 @@ static const uint8_t flag_cols[6] = {
+     PAL_PAINT(PAINT_SKY, 1), PAL_PAINT(PAINT_LAVENDER, 1), PAL_PAINT(PAINT_TANGERINE, 1)
+ };
+ 
++/* (S2-4b) the kinds of the stamps every game shares (mg.h "stamps"; key bits 12..14, bit 15 the Hellfire look) */
++enum { MCS_IMP = 0 << 12, MCS_FUZZ = 1 << 12, MCS_HUD = 2 << 12, MCS_SPARK = 3 << 12, MCS_MASCOT = 4 << 12,
++       MCS_CLOUD = 5 << 12, MCS_GOND = 7 << 12, MCS_KIND = 7 << 12 };
++/* a shared stamp at (x, y) when stamps are kept (the 240x160 screen); 0: the caller draws it */
++static int cstamp(uint32_t key, int x, int y)
++{
++#if !defined(DOOMO_PLATFORM_PS1)
++    return !mg_big() && mg_stamp_common(key | (mg.hell ? MG_BK_HELL : 0u), x, y);
++#else
++    (void)key; (void)x; (void)y;
++    return 0;
++#endif
++}
++
+ /* ---- text ------------------------------------------------------------------ */
+ void mg_text(int x, int y, const char *s, uint8_t c)
+ {
+@@ -144,6 +158,15 @@ void mg_shadow(int cx, int cy, int rx)
+     }
+ }
+ 
++/* a gondola of the wheel hanging at (gx, gy2), swung sw (-1..1) to the side */
++static void gondola(int gx, int gy2, uint8_t c, int sw, uint8_t spoke)
++{
++    plat_rect(gx + sw, gy2 + 1, 1, 2, spoke);
++    ui_round_rect(gx - 3 + sw, gy2 + 3, 7, 6, 2, ui_darker(c));
++    plat_rect(gx - 2 + sw, gy2 + 4, 5, 2, c);
++    plat_rect(gx - 2 + sw, gy2 + 4, 5, 1, ui_lighter(c));
++}
++
+ static void ferris_wheel(int cx, int cy, int r, int t)
+ {
+     int k, base = (t * 3) & DOOMO_ANG_MASK, gy = cy + r + r / 3;
+@@ -174,10 +197,7 @@ static void ferris_wheel(int cx, int cy, int r, int t)
+         int gx = cx + FIX2INT(fx_cos(a) * r), gy2 = cy + FIX2INT(fx_sin(a) * r);
+         uint8_t c = mg.hell ? PAL_RAMP(RAMP_BLOOD, 2 + (k & 1)) : flag_cols[k % 6];
+         int sw = ui_wave(t + k * 20, 70, 1);
+-        plat_rect(gx + sw, gy2 + 1, 1, 2, spoke);
+-        ui_round_rect(gx - 3 + sw, gy2 + 3, 7, 6, 2, ui_darker(c));
+-        plat_rect(gx - 2 + sw, gy2 + 4, 5, 2, c);
+-        plat_rect(gx - 2 + sw, gy2 + 4, 5, 1, ui_lighter(c));
++        if (!cstamp(MCS_GOND | (mg.hell ? k & 1 : k % 6) | (sw + 1) << 3, gx, gy2)) gondola(gx, gy2, c, sw, spoke);
+     }
+     ui_fill_circle(cx, cy, 3, mg.hell ? PAL_RAMP(RAMP_STONE, 0) : PAL_RAMP(RAMP_PASTEL_PINK, 4));
+     ui_fill_circle(cx, cy, 2, mg.hell ? PAL_RAMP(RAMP_LAVA, 4) : PAL_UI_GOLD);
+@@ -193,7 +213,7 @@ static void cloud(int cx, int cy, int s)
+     ui_fill_ellipse(cx + s, cy, s, s - 3, c);
+ }
+ 
+-static void far_tent(int x, int ground, int w, uint8_t c, int t)
++static void far_tent_flag(int x, int ground, int w, uint8_t c, int flag)
+ {
+     int h = w * 3 / 4, r;
+     uint8_t c2 = mg.hell ? PAL_RAMP(RAMP_STONE, 0) : PAL_WHITE;
+@@ -206,9 +226,19 @@ static void far_tent(int x, int ground, int w, uint8_t c, int t)
+     plat_rect(x + w / 8, ground - h / 2, w / 4, h / 2, c);
+     plat_rect(x - 2, ground - h / 3, 4, h / 3, PAL_RAMP(RAMP_STONE, mg.hell ? 0 : 2));
+     plat_rect(x, ground - h - 4, 1, 4, PAL_RAMP(RAMP_WOOD, 2));
+-    plat_rect(x + 1, ground - h - 4 + (ui_wave(t, 30, 1) & 1), 3, 2, mg.hell ? PAL_RAMP(RAMP_LAVA, 4) : PAL_PAINT(PAINT_CHERRY, 1));
++    plat_rect(x + 1, ground - h - 4 + flag, 3, 2, mg.hell ? PAL_RAMP(RAMP_LAVA, 4) : PAL_PAINT(PAINT_CHERRY, 1));
+ }
+ 
++/* the three far tents of the sky (not the 320x240 sizes): number, width, colour */
++static int far_w(int i) { return i == 0 ? 30 : i == 1 ? 22 : 26; }
++static uint8_t far_c(int i)
++{
++    return i == 0 ? (mg.hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_PAINT(PAINT_CHERRY, 1))
++         : i == 1 ? (mg.hell ? PAL_RAMP(RAMP_STONE, 2) : PAL_PAINT(PAINT_SKY, 1))
++                  : (mg.hell ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_PAINT(PAINT_LAVENDER, 1));
++}
++
++
+ void mg_fair_sky(int y0, int y1, int t)
+ {
+     int W = mg_w(), h = y1 - y0, b = h / 4, i;
+@@ -234,15 +264,16 @@ void mg_fair_sky(int y0, int y1, int t)
+     for (i = 0; i < 3; i++) {
+         int s = 5 + i * 2 + (mg_big() ? 2 : 0);
+         int span = W + 60, cx = (int)((uint32_t)(t / (3 + i) + i * 97) % (uint32_t)span) - 30;
+-        cloud(cx, y0 + 10 + i * (h / 6), s);
++        if (!cstamp(MCS_CLOUD | i, cx, y0 + 10 + i * (h / 6))) cloud(cx, y0 + 10 + i * (h / 6), s);
+     }
+     {
+         int r = DOOMO_MIN(h * 3 / 10, mg_big() ? 52 : 40);
+         ferris_wheel(W * 3 / 4, y1 - r - r / 3 - 1, r, t);
+     }
+-    far_tent(W / 3, y1, mg_big() ? 40 : 30, mg.hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_PAINT(PAINT_CHERRY, 1), t);
+-    far_tent(W / 2 + 10, y1, mg_big() ? 30 : 22, mg.hell ? PAL_RAMP(RAMP_STONE, 2) : PAL_PAINT(PAINT_SKY, 1), t + 15);
+-    far_tent(W - 14, y1, mg_big() ? 34 : 26, mg.hell ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_PAINT(PAINT_LAVENDER, 1), t + 30);
++    for (i = 0; i < 3; i++) {
++        int x = i == 0 ? W / 3 : i == 1 ? W / 2 + 10 : W - 14, flag = ui_wave(t + i * 15, 30, 1) & 1;
++        far_tent_flag(x, y1, mg_big() ? (i == 0 ? 40 : i == 1 ? 30 : 34) : far_w(i), far_c(i), flag);   /* (a stamp costs more than its rows) */
++    }
+     if (mg.hell)
+         for (i = 0; i < 8; i++) {
+             uint32_t s = doomo_hash32((uint32_t)i * 7177u + 3u);
+@@ -438,7 +469,6 @@ static void hud_part(int part, int v, int x, int y);
+  * imp:  size 0..7 | mood << 3 (2 bits) | gold << 5 | (flap + 2) << 6 | eyes << 9 (look + 1, 3: blink)
+  * fuzz: size 0..3 | ouch << 3 | blink << 4       (without his sparkle)
+  * Sizes are the ones the 240x160 games draw; another size is drawn, not stamped. */
+-enum { MCS_IMP = 0 << 12, MCS_FUZZ = 1 << 12, MCS_HUD = 2 << 12, MCS_SPARK = 3 << 12, MCS_MASCOT = 4 << 12, MCS_KIND = 7 << 12 };
+ /* hud:  HUDP_* | value (| MG_BK_HELL for the pill): hud_part's pieces
+  * spark: size 1..3 | colour << 2 (spark_cols): ui_sparkle at a phase of that size
+  * mascot: Tix at radius 6: hop (-2..2) + 2 | ear twitch << 3 | eyes (look + 1) << 4 | blink << 6 */
+@@ -476,6 +506,12 @@ void mg_common_stamp(uint32_t key, int cx, int cy)
+         hud_part((int)(key & HUDP_PART), (int)(key & 255), cx, cy);
+     } else if ((key & MCS_KIND) == MCS_SPARK) {
+         ui_sparkle(cx, cy, (int)(key & 3), spark_cols[key >> 2 & 3]);
++    } else if ((key & MCS_KIND) == MCS_CLOUD) {
++        cloud(cx, cy, 5 + 2 * (int)(key & 3));
++    } else if ((key & MCS_KIND) == MCS_GOND) {
++        int idx = (int)(key & 7);
++        gondola(cx, cy, mg.hell ? PAL_RAMP(RAMP_BLOOD, 2 + idx) : flag_cols[idx], (int)(key >> 3 & 3) - 1,
++                mg.hell ? PAL_RAMP(RAMP_STONE, 0) : PAL_RAMP(RAMP_PASTEL_PINK, 5));
+     } else if ((key & MCS_KIND) == MCS_MASCOT) {
+         mascot_body(cx, cy, 6, (int)(key & 7) - 2, (int)(key >> 3 & 1), (int)(key >> 4 & 3) - 1, (int)(key >> 6 & 1));
+     }
+@@ -513,6 +549,18 @@ int mg_common_stamp_keys(uint32_t *out, int cap)
+             if (n < cap) out[n] = (uint32_t)(MCS_SPARK | i | m << 2);
+             n++;
+         }
++    for (m = 0; m < 2; m++) {                       /* the sky's clouds and the wheel's gondolas */
++        uint32_t hb = m ? MG_BK_HELL : 0u;
++        for (i = 0; i < 3; i++) {
++            if (n < cap) out[n] = (uint32_t)(MCS_CLOUD | i) | hb;
++            n++;
++        }
++        for (i = 0; i < (m ? 2 : 6); i++)
++            for (g = 0; g < 3; g++) {
++                if (n < cap) out[n] = (uint32_t)(MCS_GOND | i | g << 3) | hb;
++                n++;
++            }
++    }
+     for (i = 0; i < 5; i++)                         /* Tix: hop, twitch, eyes, blink */
+         for (m = 0; m < 12; m++) {
+             if (n < cap) out[n] = (uint32_t)(MCS_MASCOT | i | (m & 1) << 3 | (m >> 1) % 3 << 4 | (m >= 6) << 6);
+diff --git a/core/src/mg_memory.c b/core/src/mg_memory.c
+index bc1100d0..7c0aafe3 100644
+--- a/core/src/mg_memory.c
++++ b/core/src/mg_memory.c
+@@ -30,6 +30,7 @@ typedef struct Memory {
+     MCard c[MAXC];
+     uint8_t n, cols, rows, cur, first, second, wait, misses, pairs_left, bite_t, bite_card;
+     uint8_t shuffle_a, shuffle_b, shuffle_t;
++    int16_t px[MAXC], py[MAXC];     /* (S2-4b) the cards' centres, made once (card_x / card_y divide) */
+ } Memory;
+ MG_ARENA_FITS(Memory);
+ #define S (MG_ARENA(Memory))
+@@ -73,6 +74,8 @@ int mg_memory_pick_faces(int pairs, int16_t *out, uint32_t seed)
+     return n;
+ }
+ 
++static void geo_fill(void);
++
+ static void mm_start(void)
+ {
+     int16_t faces[MAXC / 2];
+@@ -95,12 +98,21 @@ static void mm_start(void)
+     S->pairs_left = (uint8_t)pairs;
+     S->first = S->second = 0xFF;
+     S->cur = 0;
++    geo_fill();
+ }
+ 
+ static int cell_w(void) { return DOOMO_MIN((mg_w() - 12) / S->cols, mg_big() ? 72 : 54); }
+ static int cell_h(void) { return DOOMO_MIN((mg_h() - 24) / S->rows, mg_big() ? 64 : 46); }
+-static int card_x(int i) { return mg_w() / 2 - S->cols * cell_w() / 2 + (i % S->cols) * cell_w() + cell_w() / 2; }
+-static int card_y(int i) { return 21 + (mg_h() - 22 - S->rows * cell_h()) / 2 + (i / S->cols) * cell_h() + cell_h() / 2; }
++static int card_x_calc(int i) { return mg_w() / 2 - S->cols * cell_w() / 2 + (i % S->cols) * cell_w() + cell_w() / 2; }
++static int card_y_calc(int i) { return 21 + (mg_h() - 22 - S->rows * cell_h()) / 2 + (i / S->cols) * cell_h() + cell_h() / 2; }
++/* the cards' centres, made once a round (the divisions above cost a frame's worth on the GBA) */
++static void geo_fill(void)
++{
++    int i;
++    for (i = 0; i < S->n; i++) { S->px[i] = (int16_t)card_x_calc(i); S->py[i] = (int16_t)card_y_calc(i); }
++}
++static int card_x(int i) { return S->px[i]; }
++static int card_y(int i) { return S->py[i]; }
+ 
+ static void flip_up(int i)
+ {
+@@ -203,7 +215,8 @@ static void fallback_face(int face, int x, int y, int r, int t)
+     }
+ }
+ 
+-static void card_back(int x, int y, int w, int h, int t, int i)
++/* the back of a card; `heart` 0 leaves the cute tiers' bobbing heart off (the kept table has the rest) */
++static void card_back_draw(int x, int y, int w, int h, int t, int i, int heart)
+ {
+     uint8_t a = mg.hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_PAINT(PAINT_LAVENDER, 1);
+     uint8_t b = mg.hell ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_PAINT(PAINT_GRAPE, 1);
+@@ -212,10 +225,11 @@ static void card_back(int x, int y, int w, int h, int t, int i)
+     if (w > 10) {
+         ui_frame(x - w / 2 + 3, y - h / 2 + 3, w - 6, h - 6, mg.hell ? PAL_RAMP(RAMP_LAVA, 4) : PAL_PAINT(PAINT_LAVENDER, 2));
+         if (mg.hell) ui_star(x, y, 5, PAL_RAMP(RAMP_LAVA, 4));
+-        else ui_heart(x, y + ui_wave(t + i * 7, 60, 1), 4, PAL_PAINT(PAINT_BUBBLEGUM, 1));
++        else if (heart) ui_heart(x, y + ui_wave(t + i * 7, 60, 1), 4, PAL_PAINT(PAINT_BUBBLEGUM, 1));
+         plat_rect(x - w / 2 + 3, y - h / 2 + 2, w / 3, 1, PAL_WHITE);
+     }
+ }
++static void card_back(int x, int y, int w, int h, int t, int i) { card_back_draw(x, y, w, h, t, i, 1); }
+ 
+ static void card_face_bg(int x, int y, int w, int h, int biter)
+ {
+@@ -271,28 +285,102 @@ static void matched(int i, int x, int y, int w, int h, int t)
+     if (((t + i * 13) % 50) < 16) ui_sparkle(x + w / 2 - 4, y - h / 2 + 4, ((t + i * 13) % 50), PAL_WHITE);
+ }
+ 
++/* ---- (S2-4b) the kept playfield (mg.h): the room, the velvet table with its fringe and every card face down
++ * (the cute tiers' hearts and the Hellfire stars: the stars are in it, the hearts bob and are stamps), one
++ * picture a tier. A card that is not face down at home is covered by the velvet again first; a sparkle that
++ * floats over a face-down card is covered by the card again (its round rect's own spans, inside the sparkle's
++ * box); the rest of the frame is drawn as ever. */
++enum { MS_HEART = 0 << 12 };
++static uint32_t mm_kept_key(void) { return mg.tier; }
++static int mm_kept_keys(uint32_t *out, int cap, int hell)
++{
++    int i, n = 0;
++    for (i = 0; i < MG_TIERS; i++)
++        if ((i == MG_TIER_HELLFIRE) == (hell != 0)) { if (n < cap) out[n] = (uint32_t)i; n++; }
++    return n;
++}
++static int mm_kept_part(uint32_t key, int16_t rows[2]) { (void)key; (void)rows; return 0; }
++
++static void mm_stamp(uint32_t key, int cx, int cy)
++{
++    (void)key;
++    ui_heart(cx, cy, 4, PAL_PAINT(PAINT_BUBBLEGUM, 1));
++}
++static int mm_stamp_keys(uint32_t *out, int cap)
++{
++    if (cap > 0) out[0] = MS_HEART;
++    return 1;
++}
++
++/* a card face down at its place (not being shuffled) */
++static int home_down(int i)
++{
++    return S->c[i].st == CS_DOWN && !(S->shuffle_t && (i == S->shuffle_a || i == S->shuffle_b));
++}
++
++/* the back of face-down card k put back from the kept picture inside the box [bx0, bx1) x [by0, by1): the
++ * round rects' own spans, so only the back's pixels come back */
++static void back_again(int k, int w, int h, int bx0, int by0, int bx1, int by1)
++{
++    int x = card_x(k) - w / 2, y = card_y(k) - h / 2;          /* the card's corner */
++    if (bx1 <= x || bx0 >= x + w || by1 <= y || by0 >= y + h) return;
++    mg_undo(bx0, by0, bx1, by1);
++    ui_round_rect_rows(x, y, w, h, 4, PAL_PAINT(PAINT_GRAPE, 1), DOOMO_MAX(by0 - y, 0), DOOMO_MIN(by1 - y, h));
++    ui_round_rect_rows(x + 1, y + 1, w - 2, h - 2, 3, PAL_PAINT(PAINT_LAVENDER, 1), DOOMO_MAX(by0 - y - 1, 0), DOOMO_MIN(by1 - y - 1, h - 2));
++    mg_undo_end();
++}
++
++/* the room and the velvet table with its fringe, offset by (ox, oy) */
++static void table_draw(int ox, int oy)
++{
++    int W = mg_w(), H = mg_h(), i, cw = cell_w(), ch = cell_h();
++    int tx = W / 2 - S->cols * cw / 2 - 5, ty = card_y(0) - ch / 2 - 5, tw = S->cols * cw + 10, th = S->rows * ch + 10;
++    uint8_t bg = mg.hell ? PAL_RAMP(RAMP_BLOOD, 0) : PAL_PAINT(PAINT_NAVY, 1);
++    /* the room only around the table (no overdraw under it) */
++    plat_rect(0, 0, W, ty + oy + 8, bg);
++    plat_rect(0, ty + th + oy - 8, W, H - (ty + th + oy - 8), bg);
++    plat_rect(0, ty + oy + 8, tx + ox + 8, th - 16, bg);
++    plat_rect(tx + tw + ox - 8, ty + oy + 8, W - (tx + tw + ox - 8), th - 16, bg);
++    plat_rect(tx + 8 + ox, ty + th + oy, tw - 16, 2, PAL_RAMP(RAMP_STONE, 0));
++    ui_round_rect(tx + ox, ty + oy, tw, th, 8, mg.hell ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_PAINT(PAINT_GRAPE, 0));
++    ui_round_rect(tx + 2 + ox, ty + 2 + oy, tw - 4, th - 4, 7, mg.hell ? PAL_RAMP(RAMP_BLOOD, 1) : PAL_PAINT(PAINT_VAPE_PURPLE, 0));
++    for (i = tx + 4; i < tx + tw - 4; i += 4) plat_rect(i + ox, ty + th + oy + 2, 2, 3 + ((i / 4) & 1), PAL_UI_GOLD);
++}
++
+ static void mm_draw(void)
+ {
+-    int W = mg_w(), H = mg_h(), t = mg.play_t + mg.t, i, cw = cell_w(), ch = cell_h();
+-    int w = cw - 4, h = ch - 4, ox = mg.ox, oy = mg.oy;
+-    /* Madame Moth's velvet table with a fringe */
+-    {
+-        int tx = W / 2 - S->cols * cw / 2 - 5, ty = card_y(0) - ch / 2 - 5, tw = S->cols * cw + 10, th = S->rows * ch + 10;
+-        uint8_t bg = mg.hell ? PAL_RAMP(RAMP_BLOOD, 0) : PAL_PAINT(PAINT_NAVY, 1);
+-        /* the room only around the table (no overdraw under it) */
+-        plat_rect(0, 0, W, ty + oy + 8, bg);
+-        plat_rect(0, ty + th + oy - 8, W, H - (ty + th + oy - 8), bg);
+-        plat_rect(0, ty + oy + 8, tx + ox + 8, th - 16, bg);
+-        plat_rect(tx + tw + ox - 8, ty + oy + 8, W - (tx + tw + ox - 8), th - 16, bg);
+-        plat_rect(tx + 8 + ox, ty + th + oy, tw - 16, 2, PAL_RAMP(RAMP_STONE, 0));
+-        ui_round_rect(tx + ox, ty + oy, tw, th, 8, mg.hell ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_PAINT(PAINT_GRAPE, 0));
+-        ui_round_rect(tx + 2 + ox, ty + 2 + oy, tw - 4, th - 4, 7, mg.hell ? PAL_RAMP(RAMP_BLOOD, 1) : PAL_PAINT(PAINT_VAPE_PURPLE, 0));
+-        for (i = tx + 4; i < tx + tw - 4; i += 4) plat_rect(i + ox, ty + th + oy + 2, 2, 3 + ((i / 4) & 1), PAL_UI_GOLD);
++    int W = mg_w(), H = mg_h(), t = mg.play_t + mg.t, i, cw, ch, w, h, ox = mg.ox, oy = mg.oy, kept = mg_kept();
++    if (mg_kept_mode == MGK_BAKE) {                   /* the table of tier mg_bake_key, every card down */
++        uint8_t n0 = S->n, c0 = S->cols, r0 = S->rows;
++        S->cols = tier_cols[mg_bake_key];
++        S->rows = tier_rows[mg_bake_key];
++        S->n = (uint8_t)(S->cols * S->rows);
++        cw = cell_w(); ch = cell_h();
++        geo_fill();
++        table_draw(0, 0);
++        for (i = 0; i < S->n; i++) card_back_draw(card_x(i), card_y(i), cw - 4, ch - 4, 0, i, 0);
++        S->n = n0; S->cols = c0; S->rows = r0;
++        return;
++    }
++    cw = cell_w(); ch = cell_h();
++    w = cw - 4; h = ch - 4;
++    /* Madame Moth's velvet table with a fringe (kept: it is in place, and so is every card face down) */
++    if (!kept) table_draw(ox, oy);
++    else {
++        uint8_t velvet = mg.hell ? PAL_RAMP(RAMP_BLOOD, 1) : PAL_PAINT(PAINT_VAPE_PURPLE, 0);
++        for (i = 0; i < S->n; i++)
++            if (!home_down(i)) plat_rect(card_x(i) - w / 2, card_y(i) - h / 2, w, h, velvet);
+     }
+     for (i = 0; i < 10; i++) {                   /* floating moth-dust and stars */
+         uint32_t hs = doomo_hash32((uint32_t)i * 6151u + 1u);
+         int ph = (int)((t / 2 + (hs >> 20)) & 31);
+-        if (ph < 16) ui_sparkle((int)(hs % (uint32_t)W), (int)((hs >> 8) % (uint32_t)H), ph, PAL_PAINT(PAINT_LEMON, 2));
++        if (ph < 16) {
++            int sx = (int)(hs % (uint32_t)W), sy = (int)((hs >> 8) % (uint32_t)H);
++            mg_sparkle(sx, sy, ph, PAL_PAINT(PAINT_LEMON, 2));
++            if (kept && ui_sparkle_size(ph))             /* over a face-down card it is under the card */
++                for (int k = 0; k < S->n; k++)
++                    if (home_down(k)) back_again(k, w, h, sx - 3, sy - 3, sx + 4, sy + 4);
++        }
+     }
+     if (S->shuffle_t) {
+         int k;
+@@ -307,7 +395,12 @@ static void mm_draw(void)
+         if (S->shuffle_t && (i == S->shuffle_a || i == S->shuffle_b)) y -= ui_wave(S->shuffle_t * 4, 32, 4);
+         switch (m->st) {
+         case CS_DOWN:
+-            card_back(x, y, w, h, t, i);
++            if (kept && home_down(i)) {              /* the back is in the picture: the cute tiers' heart bobs over it */
++                if (!mg.hell && w > 10) {
++                    int wob = ui_wave(t + i * 7, 60, 1);
++                    if (wob < -1 || wob > 1 || mg_big() || !mg_stamp(MS_HEART, x, y + wob)) ui_heart(x, y + wob, 4, PAL_PAINT(PAINT_BUBBLEGUM, 1));
++                }
++            } else card_back(x, y, w, h, t, i);
+             break;
+         case CS_FLIP_UP:
+             sq = m->t < 4 ? w * (4 - m->t) / 4 : w * (m->t - 4) / 4;
+@@ -325,6 +418,11 @@ static void mm_draw(void)
+         default:
+             break;
+         }
++        if (kept && !home_down(i)) {                 /* the cards after it are drawn over what it spilled (a wraith's tail) */
++            int k;
++            for (k = i + 1; k < S->n; k++)
++                if (home_down(k)) back_again(k, w, h, x - w / 2 - 8, y - h / 2 - 8, x - w / 2 + w + 8, y - h / 2 + h + 8);
++        }
+     }
+     /* lifted face-up cards go on top */
+     for (i = 0; i < S->n; i++) if (S->c[i].st == CS_UP) lifted(i, t);
+@@ -384,7 +482,7 @@ const MgGame mg_game_memory = {
+     { MG_MEMORY_B, MG_MEMORY_S, MG_MEMORY_G }, 12, 90 * 30,
+     { PAL_PAINT(PAINT_LAVENDER, 1), PAL_PAINT(PAINT_NAVY, 2), PAL_PAINT(PAINT_GRAPE, 1) },
+     mm_start, mm_update, mm_draw, mm_art, mm_bot,
+-    NULL, NULL, NULL, NULL, NULL, NULL
++    mm_kept_key, mm_kept_keys, mm_kept_part, mm_stamp, mm_stamp_keys, NULL
+ };
+ 
+ MG_DEFINE_SCENE(SCENE_MG_MEMORY, "MG_MEMORY", mg_game_memory);
+diff --git a/core/tests/test_minigames.c b/core/tests/test_minigames.c
+index 94ca5f04..6d512b9f 100644
+--- a/core/tests/test_minigames.c
++++ b/core/tests/test_minigames.c
+@@ -400,3 +400,16 @@ TEST(mg_draws_at_both_sizes)
+     o.w = 240; o.h = 160;
+     nat_init(&o);
+ }
++
++/* (S2-4b) the Derby's crowd takes x % 6 with no division: it must be the remainder for every value */
++TEST(mg_mod6_is_the_remainder)
++{
++    uint32_t x = 0x9E3779B9u, v;
++    int i;
++    for (v = 0; v < 70000; v++) CHECK_MSG(mg_mod6(v) == v % 6, "mg_mod6(%u) = %u", (unsigned)v, mg_mod6(v));
++    for (v = 0xFFFF0000u; v != 0xFFFF0000u + 70000u; v++) CHECK_MSG(mg_mod6(v) == v % 6, "mg_mod6(%u)", (unsigned)v);
++    for (i = 0; i < 2000000; i++) {                 /* xorshift32: the whole range */
++        x ^= x << 13; x ^= x >> 17; x ^= x << 5;
++        CHECK_MSG(mg_mod6(x) == x % 6, "mg_mod6(%u) = %u", (unsigned)x, mg_mod6(x));
++    }
++}
+diff --git a/core/tests/test_stage.c b/core/tests/test_stage.c
+index 7a0b8e99..af262bfe 100644
+--- a/core/tests/test_stage.c
++++ b/core/tests/test_stage.c
+@@ -235,7 +235,7 @@ static int mg_compare(int id, int arg, int w, int h, int n)
+         test_fail(__FILE__, __LINE__, "kept minigame: stamps were not used");
+         return 0;
+     }
+-    if (has_kept_picture(id) && retained_n < n / 2) {          /* (a game of stamps only has none) */
++    if (has_kept_picture(id) && retained_n < n / 3) {          /* (a game of stamps only has none) */
+         char m[200];
+         snprintf(m, sizeof(m), "minigame %d %dx%d: too few frames over the kept picture (%d of %d)",
+                  id, w, h, retained_n, n);
+@@ -245,7 +245,7 @@ static int mg_compare(int id, int arg, int w, int h, int n)
+     return 1;
+ }
+ 
+-static const uint8_t kept_games[] = { MG_WHACK, MG_DODGE, MG_GALLERY };
++static const uint8_t kept_games[] = { MG_WHACK, MG_DODGE, MG_GALLERY, MG_DERBY, MG_MEMORY };
+ 
+ TEST(stage_kept_minigames_are_pixel_identical)
+ {
+diff --git a/gba/src/stage.c b/gba/src/stage.c
+index 598c66fb..82710571 100644
+--- a/gba/src/stage.c
++++ b/gba/src/stage.c
+@@ -24,6 +24,7 @@
+ #include "canvas_int.h"
+ #include "doomo/plat_ext.h"
+ #include "iwram_ovl.h"
++#include "video_int.h"                               /* vid_blit */
+ 
+ extern const uint8_t gba_backdrops[];          /* backdrop_blob.s */
+ 
+@@ -37,6 +38,24 @@ static int16_t page_dirt[2][4];                /* drawn over it after plat_stage
+ static int16_t trk[4];
+ static uint8_t frame_stage, tracking;
+ 
++/* ARM in the room group of the IWRAM overlay (iwram_ovl.h; the group no stage scene uses): the per-row work and
++ * the table search run from IWRAM instead of the cartridge */
++#define STAGE_ARM IWRAM_ROOM_CODE __attribute__((optimize("O2", "no-tree-loop-distribute-patterns")))
++
++/* the entry of `want` in the sorted table t[0..n) (a stamp is asked for a hundred times a frame) */
++STAGE_ARM const BkEnt *stage_find(const BkEnt *t, int n, uint32_t want)
++{
++    int lo = 0, hi = n - 1;
++    while (lo <= hi) {
++        int mid = (lo + hi) >> 1;
++        uint32_t k = t[mid].idkey;
++        if (k == want) return &t[mid];
++        if (k < want) lo = mid + 1;
++        else hi = mid - 1;
++    }
++    return NULL;
++}
++
+ /* the baked picture of (id, key), NULL if it is not in the ROM (binary search). The blob's header is
+  * checked once (a game asks for a hundred stamps a frame); `bk_n` is the entry count, 0 until then, -1
+  * for a blob that is not this build's */
+@@ -46,21 +65,13 @@ static const BkEnt *find(int id, uint32_t key)
+     const uint8_t *b = gba_backdrops;
+     const BkEnt *t = (const BkEnt *)(const void *)(b + 12);
+     uint32_t want = (uint32_t)id << 24 | (key & 0xFFFFFFu);
+-    int lo = 0, hi;
+     if (bk_n <= 0) {
+         if (bk_n < 0 || b[0] != 'B' || b[1] != 'K' || b[2] != 'D' || b[3] != '2' ||
+             (b[4] | b[5] << 8) != SCREEN_W || (b[6] | b[7] << 8) != SCREEN_H) { bk_n = -1; return NULL; }
+         bk_n = (int16_t)*(const uint32_t *)(const void *)(b + 8);
+     }
+-    hi = bk_n - 1;
+-    while (lo <= hi) {
+-        int mid = (lo + hi) >> 1;
+-        uint32_t k = t[mid].idkey;
+-        if (k == want) return &t[mid];
+-        if (k < want) lo = mid + 1;
+-        else hi = mid - 1;
+-    }
+-    return NULL;
++    iwram_ovl_use(OVL_ROOM);
++    return stage_find(t, bk_n, want);
+ }
+ 
+ int plat_stage_begin(int id, uint32_t key, void (*draw)(uint32_t key), PlatStageInfo *info)
+@@ -87,7 +98,6 @@ int plat_stage_begin(int id, uint32_t key, void (*draw)(uint32_t key), PlatStage
+  * read-modify-write for an odd edge (VRAM takes no byte writes); a short span by the CPU, a long
+  * one by DMA. ARM in the room group of the IWRAM overlay (iwram_ovl.h: the house's group, which
+  * no stage scene uses; loaded by plat_stage_restore), so the per-row work runs from IWRAM. */
+-#define STAGE_ARM IWRAM_ROOM_CODE __attribute__((optimize("O2", "no-tree-loop-distribute-patterns")))
+ STAGE_ARM void stage_rows(volatile uint16_t *page, const uint8_t *img, int x0, int x1, int y0, int y1)
+ {
+     int yy;
+@@ -164,15 +174,18 @@ void plat_stage_restore(int x, int y, int w, int h)
+ /* (S2-4b) the stamp of (id, key) with its anchor at (x, y): an image in the ROM (index 0 a hole) */
+ int plat_stage_stamp(int id, uint32_t key, int x, int y)
+ {
+-    const BkEnt *e = find(id, key);
++    const BkEnt *e;
+     DoomoImage im;
++    if (gba_nodraw == 1) return 1;                       /* a skipped tick draws nothing */
++    e = find(id, key);
+     if (!e) return 0;
+-    if (!e->w || gba_nodraw == 1) return 1;
++    if (!e->w) return 1;
+     im.w = e->w;
+     im.h = e->h;
+     im.pix = gba_backdrops + e->off;
+     im.uid = 0x80000000u | e->off;
+-    plat_image(x + e->bx, y + e->by, &im, 1, 0, 0);
++    if (!gba_nodraw) vid_blit(x + e->bx, y + e->by, &im, 1, 0, 0);     /* a plain Mode 4 frame: the ARM blit */
++    else plat_image(x + e->bx, y + e->by, &im, 1, 0, 0);               /* tracked frames: the routed path */
+     return 1;
+ }
+ 
+-- 
+2.43.0
+

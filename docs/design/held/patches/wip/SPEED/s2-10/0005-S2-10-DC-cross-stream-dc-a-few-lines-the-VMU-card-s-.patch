@@ -1,0 +1,158 @@
+From 0c407f9b1070547790eb8eb0421892b31befc576 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 14:21:29 +0000
+Subject: [PATCH 05/10] S2-10 DC (cross-stream: dc/, a few lines): the VMU
+ card's pictures count as presented frames; speed2 shows the longest picture
+ gap
+
+The VMU save and load already redraw their card for every block (a picture a vblank): the screen was live, but the
+harness saw one 3-4 s tick. card_draw now counts into the mailbox's `drawn`, so dcrun's gaps (gaps-reset /
+expect-gap) report the longest time between two presented pictures; tools/speed2.py puts gaps-reset and a
+(never failing) expect-gap round every Dreamcast window and the table gets a "worst picture gap ms" column.
+speed2_busy.txt: expect-gap 100 on the GBA windows that now hold it, a header that says what PS1 and DC drop.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ dc/src/vmusave.c                    |  1 +
+ gba/harness/scripts/speed2_busy.txt | 11 +++++++++--
+ tools/speed2.py                     | 19 +++++++++++++------
+ 3 files changed, 23 insertions(+), 8 deletions(-)
+
+diff --git a/dc/src/vmusave.c b/dc/src/vmusave.c
+index f21d68e6..318a9f15 100644
+--- a/dc/src/vmusave.c
++++ b/dc/src/vmusave.c
+@@ -95,6 +95,7 @@ static void card_draw(int done, int total)
+     if (card_line) card_text(158, card_line, PAL_UI_PINK_D);
+     dc2d_side_end();
+     card_vbl = dc_vblanks;
++    dc_mailbox.drawn++;                 /* S2-10: a card is a presented picture (the harness's gaps see the tick's stall) */
+ }
+ 
+ static void card_progress(void *ctx, int done, int total)
+diff --git a/gba/harness/scripts/speed2_busy.txt b/gba/harness/scripts/speed2_busy.txt
+index 0d1436f0..e69cd4cc 100644
+--- a/gba/harness/scripts/speed2_busy.txt
++++ b/gba/harness/scripts/speed2_busy.txt
+@@ -5,8 +5,9 @@
+ # spinner, 30 pictures a second. `make -C gba test-speed2 SPEED2=busy` prints the table (the "worst frame" column is
+ # the longest gap between two presented pictures; the logic column stays low by design: the sim holds while the
+ # work runs). `expect-gap` fails a run when a presented frame of the window took over the given ms.
+-# tools/speed2.py turns this file into the PS1 and Dreamcast scripts too (expect-gap is dropped there: the PS1 harness
+-# counts the pictures the game shows outside its loop, the Dreamcast one the card's pictures).
++# tools/speed2.py turns this file into the PS1 and Dreamcast scripts too (expect-gap and town-fill are dropped there, so
++# their "worst-case" windows repeat the Classic island; the PS1 harness counts the pictures the game shows outside its
++# loop, the Dreamcast one the memory card's; both print the longest gap between two pictures).
+ # Window rules: speed2_fair.txt.
+ wait 40
+ expect-log doomo: init
+@@ -24,6 +25,7 @@ fps start
+ press A
+ wait 40
+ fps busy: title -> new story (the build)
++expect-gap 100
+ shot busy_new_story
+ wait 30
+ 
+@@ -41,6 +43,7 @@ wait 10
+ expect-scene ISLAND
+ wait 30
+ fps busy: new island -> hub (the build)
++# (no expect-gap: the hub's own first 39 frames of 67-117 ms after the build are S3-14's, audit 3)
+ shot busy_hub
+ 
+ # ---- a save and a load of the Classic island (slot 2) ---------------------------------------
+@@ -50,6 +53,7 @@ fps start
+ press A
+ wait 40
+ fps busy: save (Classic island)
++expect-gap 100
+ shot busy_saved
+ press RIGHT
+ wait 2
+@@ -61,6 +65,7 @@ fps start
+ press A
+ wait 60
+ fps busy: load (Classic island)
++expect-gap 100
+ shot busy_loaded
+ wait 30
+ 
+@@ -76,6 +81,7 @@ fps start
+ press A
+ wait 40
+ fps busy: save (worst-case island)
++expect-gap 100
+ shot busy_saved_worst
+ press RIGHT
+ wait 2
+@@ -87,5 +93,6 @@ fps start
+ press A
+ wait 60
+ fps busy: load (worst-case island)
++expect-gap 100
+ shot busy_loaded_worst
+ wait 10
+diff --git a/tools/speed2.py b/tools/speed2.py
+index a8cad620..792fe14b 100644
+--- a/tools/speed2.py
++++ b/tools/speed2.py
+@@ -36,7 +36,7 @@ import re
+ import statistics as st
+ import sys
+ 
+-GBA_ONLY = ("sync", "profile", "vhash", "vhash-seq", "latency", "expect-fps", "room-parity", "audio",
++GBA_ONLY = ("sync", "profile", "vhash", "vhash-seq", "latency", "expect-fps", "expect-gap", "room-parity", "audio",
+             "audio-reset", "expect-audio", "frames", "post", "town-fill", "town-crc", "expect-town-crc",
+             "story-fp")
+ 
+@@ -99,10 +99,12 @@ def conv(path, target, prof=False):
+             n += 3 * sum(1 for b in body if b.strip().startswith("press "))
+             out.append("log speed2: begin %d %s" % (n, label))
+             out.append("mark-ticks")
++            out.append("gaps-reset")          # S2-10: the presented pictures' gaps (a save's card counts)
+             for b in body:
+                 m = re.match(r"\s*wait\s+(\d+)", b)
+                 out.append("frames %d" % (2 * int(m.group(1))) if m else b)
+             out.append("expect-ticks 0 99999")
++            out.append("expect-gap 99999 " + tag)
+             out.append("log speed2: end " + label)
+     print("\n".join(out))
+ 
+@@ -187,13 +189,17 @@ def table_ps1(path):
+ 
+ 
+ def table_dc(path):
+-    print("| window | logic t/s | ticks >33.3 ms | >50 ms | worst ms | verdict |")
+-    print("|---|---:|---:|---:|---:|---|")
+-    win, want, works, ticks = None, 1, [], None
++    print("| window | logic t/s | ticks >33.3 ms | >50 ms | worst ms | worst picture gap ms | verdict |")
++    print("|---|---:|---:|---:|---:|---:|---|")
++    win, want, works, ticks, gap = None, 1, [], None, None
+     for line in open(path, errors="replace"):
+         m = re.match(r"speed2: begin (\d+) (.*)", line.strip())
+         if m:
+-            want, win, works, ticks = max(1, int(m.group(1))), m.group(2), [], None
++            want, win, works, ticks, gap = max(1, int(m.group(1))), m.group(2), [], None, None
++            continue
++        m = re.match(r"gaps \S+: video-frames-per-frame histogram.* max \d+ \(([\d.]+) ms\)", line)
++        if m and win:
++            gap = float(m.group(1))        # S2-10: the longest time between two presented pictures
+             continue
+         m = re.match(r"work: tick \d+ took (\d+) us", line)
+         if m and win:
+@@ -207,8 +213,9 @@ def table_dc(path):
+         if m and win:
+             logic = 30.0 * ticks / want if ticks is not None else 0.0
+             o33, o50 = len(works), sum(w > 50.0 for w in works)
+-            print("| %s | %.1f | %d | %d | %s | %s |" % (win, logic, o33, o50,
++            print("| %s | %.1f | %d | %d | %s | %s | %s |" % (win, logic, o33, o50,
+                                                        "%.1f" % max(works) if works else "<33.3",
++                                                       "%.0f" % gap if gap is not None else "-",
+                                                        # a tenth of the ticks over budget: the PVR frame
+                                                        # is skipped that often (dcrun "game drew")
+                                                        "MISS" if o33 * 10 >= want else verdict(logic, logic, o33)))
+-- 
+2.43.0
+

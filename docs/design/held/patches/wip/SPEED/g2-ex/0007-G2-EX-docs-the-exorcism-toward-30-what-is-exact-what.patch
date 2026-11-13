@@ -1,0 +1,274 @@
+From dcc2d49ed9df9b6dfc31c4927b969b3fe4ec85c1 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 15:03:54 +0000
+Subject: [PATCH 7/7] G2-EX docs: the exorcism toward 30 (what is exact, what
+ is pixel-changing, the numbers, what is still short)
+
+docs/EXORCISM_SPEED.md "G2-EX" (profile, exact steps and their proof, SPEED DEFAULTS, what was tried and dropped, the
+before / after table on one harness, the prayer's and the true name's gap and what each would take), docs/GBA.md
+(plat_clip, ledger row 42: EWRAM +8 B), docs/PS1.md (30.00 in all phases, resident +0 B and why the first build was
++912 B), docs/DREAMCAST.md (Flycast, base against G2-EX), ROADMAP.md Done line.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ ROADMAP.md             |   1 +
+ docs/DREAMCAST.md      |   9 +++
+ docs/EXORCISM_SPEED.md | 138 ++++++++++++++++++++++++++++++++++++++++-
+ docs/GBA.md            |  24 +++++++
+ docs/PS1.md            |  12 ++++
+ 5 files changed, 183 insertions(+), 1 deletion(-)
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index 2a9ad37a..75ca0c8c 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -26,6 +26,7 @@ before redoing any of them; a zip without `.git` cannot tell.
+ - **LV10, level test harness (2026-11-13, `docs/LEVELS.md` "Level test harness"):** `tools/breach_scripts.py` (a `gen` generator) writes the runner, GBA, PS1 and Dreamcast scripts of every level from one list (the 7 existing levels first); `make -C gba test-breach2` plays the 7 on the GBA harness (autopilot, three fps windows, `vhash-seq` printed (equal across two manual runs, not gated), floors at 85% of the first measurement); `tools/breach_fps.py` builds the platform x level x window fps table; `core/tests/test_levels2.c` asserts the autopilot finishes every level at Plushie in Hell Breach and Time Trial mode and sweeps the whole mode x difficulty matrix on request. The GBA autopilot runs at 4-17 drawn fps (combat, the speed stream's). PS1 / Dreamcast scripts generated and syntax-checked, not run (toolchains were still installing). Partial: the autopilot finishes 44 of 84 mode x difficulty cells (14 asserted); the rest is LV6's. Core 1135 passed (SAN=1 the same, the 4 known UBSan reports), GBA tests and `test-breach2` (floors on) green, no resident byte on any platform.
+ - **Creator CR4 batch A2, hair (2026-11-13; docs/CREATOR.md "CR4 batch A2", GBA ledger row 45):** 40 new parts live: 32 hair styles (gene `hair_style` 32..63) and 8 beards (`facial_hair` 8..15), hand-written part scripts (`core/data/parts/hair`, `beard`), shape gate, cost weights, frozen ids, review line A2, contact sheets incl. the new `portrait_sheet --interplay` (hats x big hair, buns, horns), runner walk-through `creator_parts_hair.txt`, `test_cr4_a2.c`. Old saves, premades and Classic islands unchanged. GBA: EWRAM / IWRAM net zero, ROM +20,140 B; PS1: `_end` unchanged (68,368 B below the stack top). Not in A2 (needs CR5 saved deep parts and new `DF_` ids with painter hooks): hair page 2 (24), bangs (12), ahoge (12), hair accessories (52), facial hair page 2 (8) = 108 of the batch's 148.
+ - **Speed S2-11 (2026-11-13, the house's view turn and the busy Live layout, speed audit 2 causes C7 / C5, audit 3 ranks 26 and 29; measured on libmgba, PCSX-Redux and Flycast; docs/GBA.md "Speed wave 2: S2-11", docs/PS1.md "Speed tour 2", docs/DREAMCAST.md "Speed tour 2"):** (1) turning the house's view recomposed the room in one tick (106 ms of work, one 117 ms frame): the GBA now builds the new view over 2-3 ticks in the hidden page while the shown page keeps the old one (the shell's tables one at a time with a key each, so a turn of a square room rebuilds almost none; then the page a band of block rows at a time; then the ordinary incremental pass), the slice ticks say "no flip" and the core draws nothing over the room on them (new `PLAT_BUILD_BUSY` op of `plat_build_frame`, asked after `plat_room()` in `home_draw`; the PS1 is not asked, the host and Dreamcast get the weak 0); repeated turns drop and restart the build, and after two restarts in a row draw in one go (a turn every 4-5 ticks on the busy layout still draws one frame of up to 84 ms). Pixel-changing: the old view stays 2 ticks longer (4 on the busy layout; before / after in the package's evidence). (2) The busy Live layout already restored one rect per walker; its time was the per-row control code running as THUMB from ROM, so the shell's row loops, the pieces' runs, the block checksum pass (`scan_row` / `store_row`: 59,600 -> about 40,000 cycles a tick), the cursor diamond (a 96-pixel ROM table instead of six Bresenham walks per dirty rect) and the roof's pixel functions are ARM in the IWRAM room group (exact: frame hashes of every tick, the room-parity lines). The review found the busy layout at 2 frames of 50 ms on the rebased tip (only 0.1-0.3 ms under the miss line), so the checksum pass and the cursor were added: work max 36.0 -> 33.8 ms. (3) HomeMart and the Black Market ask for the UI group's loops (their preview picture came from the C blit; exact). GBA speed2 house: rotate view 27.5 -> **30.0** fps (work max 106 -> 22.9 ms, no frame over 34 ms), live 4 chibis 26.8 -> **30.0** (32.4 -> 24.4 ms, work max 47.7 -> 33.8, the 27 frames of 50 ms gone), siege wave 3 29.5 -> **30.0**, Black Market 33.2 -> 28.7 ms, HomeMart cursor move 31.6 -> 29.1 ms; every one of the 19 house windows 30.0 with no frame over two vblanks (`expect-fps 29.5` + `expect-gap 34` on the turn, the busy layout and Hold the Door); test-home `home_steady` 29.2 -> 30.0, `home_rotate` 24.5 -> 30.0 (their floors are 29.5 now; `expect-gap` no longer stops report-only runs). Tests: `room-parity` path 3 (every golden line 0..57 as a sliced turn, hashed against the one-go golden; a mutant that never slices fails), `home_turn.txt`, two core tests. GBA ROM +4,880 B, EWRAM and resident IWRAM unchanged (ledger row 47; the room group 3,588 -> 9,512 B inside the 3D group's slot, 840 B free). PS1: nothing changes (the EXE and the overlays are byte for byte the tip's, 72,736 B below the stack top with the boot FMV, delta 0 B), every house window 30.0-30.5 (the busy layout, 28.8 fps on the base, is 30.00 since PS1-FLAT landed); Dreamcast: all 19 windows under 33.3 ms, as before (work mean 3.4 ms, max 20.6 ms). **Still short:** the house entry (a 152 ms first frame and a 129 ms recompose the tick after, under the load fade: S3-10), the stress layouts `home_cellar_full` (26.0), `home_modal_busy` (25.0) and `home_defend_w3` (14.7), and the creator hat try-on named in the roadmap row (not touched).
++- **Speed G2-EX, partly (2026-11-13, the exorcism toward 30 fps; measured on libmgba, PCSX-Redux and Flycast; docs/EXORCISM_SPEED.md "G2-EX", docs/GBA.md "Speed wave 2: G2-EX", ledger row 48, docs/PS1.md "Speed tour 2", docs/DREAMCAST.md):** the retained stage draws a layer that did not change but lies on the dirty set only through the pieces of it (`stage_layer_clip`, `plat_clip`; GBA `GBA_NODRAW_CLIP`, ARM `stage_clip_rect`; native honours it and counts what it cannot), idle lane parts declare no box, the verdict and the result are layers (their dims held), and the host's aura is a kept rect list per pulse. Exact: the whole ritual (1,382 GBA frames, `vhash-seq` against the base ROM with deterministic portrait slices) and the native stage on / off tests (`test_stage`, new `test_stage_clip`) are identical. Pixel-changing (SPEED DEFAULTS): the church wall's drips hold a length (19 church pictures baked instead of 59: ROM -1.53 MB; removes the 39-60 ms frames every 8 ticks), the possessed host and Father Fuzz hold one pose (`portrait_hold(1)`); both on every platform. GBA drawn fps, base -> now: intro 23.0 -> **29.8**, tools 27.8 -> **29.7**, prayer 19.0 -> 27.9, holy water 23.4 -> **30.0**, true name 20.0 -> 24.0, verdict 19.5 -> **30.0**, result 19.2 -> **29.7** (logic 30 everywhere; frames over 33 ms 42 / 13 / 76 / 40 / 40 / 38 / 57 -> 1 / 2 / 17 / 0 / 24 / 0 / 3; none over 50 ms, was up to 11). PS1 30.00 in all seven phases (as before); resident RAM +0 B (`_end` 0x801efe60 as the base: 64 KB below the stack top with the FMV); Dreamcast not slower (ticks over 33.3 ms 723 -> 592 of ~1,310, texture uploads 659 -> 183). GBA EWRAM +8 B, IWRAM +16 B, ROM -1.53 MB. **Still short of 30:** the prayer (27.9: the lane is redrawn every tick; 17 frames of 50 ms) and the true name (24.0: the window layer costs 13 ms to generate and its box is touched every tick, so clipping it costs more than it saves), and the success path's confetti (a whole-screen layer); `docs/EXORCISM_SPEED.md` says what each would take.
+ - **Speed audit 3 (2026-11-13, measure and plan, no game code; `docs/design/SPEED_AUDIT3.md`):** every scene measured again after S2-1..S2-8, S2-12 and the sticks, on the tree at `89a28b56`. GBA (libmgba): 311 windows, 11 of them combat reference, 155 hold a steady 30 with no frame over 33 ms, 145 miss (25 in slow motion, 57 at a steady low rate, 31 with hitches, 32 with one or two long frames). Worst: Shooting Gallery 11 fps, dreams 11-13, the fog vignette 10, the concert band 13, and the sim's 15-minute pass (17 frames of 50-67 ms every 37.7 s on every free-play screen). The file has every window, the cause of each miss from a profile of the window's own ticks, the packages S3-1..S3-14 (what is left of S2-4 and S2-11 and the exorcism / concert / creator / pet gaps folded in), a suggested order, and what cannot reach 30 without an owner call. PS1 (PCSX-Redux): 247 windows, 8 combat, 221 OK, 18 miss (6 of them the in-flight save, loads and workshop; the rest: the busy house layout 28.9 fps, the creator's hat try-on 28.6, single 50-67 ms frames, overlay reads at scene changes); 64 KB below the stack top with the FMV. Dreamcast (Flycast): 218 windows, 211 OK; only the save and two load frames miss (S2-10), the house holds 30 since DC8.
+ - **LV1, map format v2 and levelcheck (2026-11-13, LEVELS round 1; `core/data/maps/README.md` "Format v2", docs/LEVELS.md):** `tools/mapc.py` learns `format 2`, header keys (`fog view gravity dark note gba detail hero`), `zone`, `path`, `swap` blocks, `texbank` and `tflags2`, and refuses what the plan lists; a v2 map gets a ROM `DoomoMapExt` (map.h), accessors in `core/src/levels_mapx.c`. The 12 existing maps are v1 and byte-identical (`check-gen`). New `tools/levelcheck.py` + `core/tools/map_bfs.h` / `mapreach.c` (the one reachability search `test_maps` also runs: walk, zip, arc, tube, ride, raft, bounce, gravity, swap sets by trigger / kill event / lever, hooks, soft locks) with one test map per edge kind; `make -C core test` now also runs `mapc-check` (75 + 9 Python tests) and `levelcheck`. No resident byte on any platform; the script VM (`on EVENT do ACTION`) is LV2.
+ - **LV2, level script VM (2026-11-13, LEVELS round 2; docs/LEVELS.md "The level script VM"):** `core/src/lv_script.c` + `core/include/doomo/lv_script.h`: a deterministic bytecode interpreter (8 events, 20 actions, 32 byte variables, 16 actions a tick, 64 handlers / 2 KB, a queue of 16) with one host function for everything outside the VM; `tools/mapc.py` compiles `on EVENT [repeat] do ACTION ; ...` into `DoomoMapExt.script` and refuses what the VM would. Host tests per action and event, budgets, the checker, and a mapc-compiled script run twice with equal hashes. Nothing in the game calls it yet, so no byte on any platform (GBA sizes identical, PS1 EXE identical).
+diff --git a/docs/DREAMCAST.md b/docs/DREAMCAST.md
+index c9b48037..0c38e2ea 100644
+--- a/docs/DREAMCAST.md
++++ b/docs/DREAMCAST.md
+@@ -351,6 +351,15 @@ per window, with the run's `game drew` and `work over` lines. Flycast is not cyc
+ windows 30.0, 0 of 2,461 ticks over 33.3 ms, work mean 3.4 ms and worst 20.6 ms at the house's entry, the same as before. The Dreamcast takes
+ the new core hooks with their weak defaults: `plat_build_frame(PLAT_BUILD_BUSY)` returns 0 and `plat_ui_loops()` does
+ nothing, so `plat_room` (DC8) is untouched and a house frame is one weak call heavier.)
++**G2-EX (the exorcism).** No retained stage here (`plat_clip` and the stage hooks are the weak no-ops, the aura's list is not
++built: `HOST_HOLES` 0), so the Dreamcast gets the wall drips' hold and the host's and Fuzz's held pose (fewer texture
++uploads); `backdrop.c` is built and `plat_stage_begin` is the weak 0 (every frame is drawn whole). `make -C dc` builds (image
+++4.6 KB, 6.93 MB free above `_end`). The exorcism's seven phases (`perf_exorcism_phases.txt`'s steps turned into a `speed2` script, Flycast, base
++`9877a45e` against G2-EX, the same script): ticks over 33.3 ms 723 -> 592 of ~1,310 drawn (intro 24 -> 3, tools 14 -> 0, prayer
++55 -> 45, holy water 79 -> 80, true name 43 -> 44, verdict 10 -> 2, result 71 -> 72), work mean 34.5 -> 33.9 ms, worst tick
++51.8 -> 48.8 ms, texture uploads 659 -> 183 with evictions 510 -> 0. Flycast is not cycle-accurate and the base is
++already over 33 ms on 55% of these ticks (723 of 1,307): the numbers say G2-EX is not slower here, not that the phases hold
++30 on a console.
+ 
+ ### The harness mailbox (`dc_mailbox`, `dc/harness/dc_mailbox.h`)
+ 
+diff --git a/docs/EXORCISM_SPEED.md b/docs/EXORCISM_SPEED.md
+index 6735b2b2..abd2fdd1 100644
+--- a/docs/EXORCISM_SPEED.md
++++ b/docs/EXORCISM_SPEED.md
+@@ -139,7 +139,7 @@ PS1 (PCSX-Redux; the PS1 has no kept backdrop yet, so it gets E1 and the name ca
+ are CPU-bound here and probably hold 30 on hardware; the last `perf:` line, in the result phase, reads cpu 19.8 ms a
+ frame, was 27.3 ms.)
+ 
+-## What is still missing for 30 on the GBA (the gap, measured)
++## What was still missing for 30 on the GBA after SP7 (the gap, measured; G2-EX below closed most of it)
+ 
+ **GBA: 15-21 fps against 30.** What a drawn tick still pays (profiles of the final ROM, `make -C gba
+ profile-exorcism`):
+@@ -183,3 +183,139 @@ CPU-bound in Redux.
+   `exo_church_keys` as its modal callbacks), which grew 34 -> 46 KB (the split church, the layer code; the slot is 128 KB).
+   No backdrop on the disc. The PS1's seven phase shots are identical to the base disc's; `game_smoke` and the core's
+   `life_exorcism` pass on the harness with no `ovl: ERROR`.
++
++## G2-EX (speed wave 2, 2026-11-13): clipped redraw, held dims, the aura as a list, two held poses
++
++Owner target: a steady 30 fps, logic 30, no frame over 33 ms, in every phase of the ritual. The work started from
++audit 3 (`docs/design/SPEED_AUDIT3.md`, S3-11) and a fresh profile of each phase. The profile now names the
++layer: the harness build marks which layer is drawing (a temporary `exo_mark` byte that a local copy of the
++harness reads; not in the tree), so the cost of every layer and of the stage itself is a number per phase.
++
++**What the profile said (SP7 tree, ms of a drawn GBA frame):** the stage's own work (restoring the backdrop, its
++bookkeeping) 10.8 in the intro, 12.7 in the prayer; the host frame 4.6-9.5 (its aura alone 4.5-8.4 where the
++dread is over 3); the portraits' re-renders 2.6-9 (the two animated figures need more than the 18 KB cache
++holds); Fuzz, the demon, the candles and the curtains 1-3 each; the lane 6-7; the verdict's whole-screen dim
++15.8; the result screen's single whole-screen layer 15+. The reason the stage kept so little: a layer that did
++not change but lay on a changed box was put back and drawn whole, and that widened the dirty set, which
++dragged in the next layer, and so on. A dialogue box over the bottom rows redrew Fuzz, the candles, the curtains
++and the host on every frame; the demon's bob redrew the host frame. In the intro 10 layers of 14 were drawn a
++frame, one of them a changed one in three.
++
++### Exact steps (frames identical to the base ROM)
++
++1. **Clipped redraw** (`core/include/doomo/backdrop.h`, `core/src/backdrop.c`). A layer declared with
++   `stage_layer_clip` (it draws only with `plat_rect`, `plat_shade_rect`, `plat_text`, `plat_text_outline` and
++   `plat_image` at scale 1: the UI shapes and text go through those) that did not change but lies on the
++   dirty set is no longer put back whole. The dirty set is cut once into disjoint pieces (`build_pieces`: a band
++   per row range, adjacent equal spans joined; it replaces `restore_dirty`, which cut it twice), and the layer
++   is drawn through the pieces that lie in its box, clipped to each (`stage_clip_n`, `stage_clip_get`,
++   `plat_clip`). It does not widen the dirty set, so nothing is dragged in. Pieces are disjoint, so a layer's
++   shading lands once on every pixel. Layers with text, lines or scaled images stay as before (a changed box is
++   still drawn whole). The exorcism's clippable layers: the host frame (scale 1 with a picture), the candles,
++   Fuzz, the demon (scale 1), the faith meter, every church part (heart, curtains, motes) and, on the verdict and
++   result screens, the dim, the heart with its sparkles, the percentage, the caption, the title, the line and the
++   figures strip.
++   GBA: `gba_nodraw` mode 7 (`GBA_NODRAW_CLIP`); `plat_rect` jumps to `stage_clip_rect` (ARM, the overlay's room
++   group, which `plat_clip` loads); `plat_shade_rect`, `plat_image` (a cropped image per piece: whole rows as one
++   call, else one call per row) and `plat_text` / `plat_text_outline` (`clip_text`: the glyph pixels inside the box)
++   cut themselves. Native: `plat_clip` is honoured by the same calls, and counts every call it cannot honour
++   (lines, checkers, clears, scaled or flipped images) so a clipped layer that uses one is a test failure.
++2. **Idle lane parts have no box.** The lane's feedback pop (full width, over the host, Fuzz and the curtains) and
++   the count-in declared a box on every tick while drawing nothing most of the time; they declare an empty one.
++3. **Held dims** (the verdict and the result). The verdict's whole-screen dim (15.8 ms) is a clippable layer whose
++   key never changes: when something under it changes only that part is dimmed again, the rest of the screen keeps
++   the dim it had. The heart and sparkles, the percentage and the caption are layers of their own, in the order the
++   one layer drew them. The result screen is the same: the cloud and confetti (a cast out, still one layer that
++   moves everywhere), the demon (a failure), the title, the line, the figures strip, the hint and the failure's
++   slow fade (a clippable layer; its first level is 0, which is black, and that is kept).
++4. **The aura as a kept list.** The host's aura is two ellipses with the frame's hole left out: 5 ms of shape
++   code and hole splitting each time the pulse changes, every third tick. The 40-76 rects it draws are kept, one
++   list per pulse (-2..2), and drawn again at the frame's place (`plat_rect_run` on the GBA's plain Mode 4 path,
++   `plat_rect` otherwise; the list moves with the frame). The lists live in the scene scratch (+3.9 KB there). A
++   frame with rows off the screen, and the PS1 / Dreamcast (no holes, they draw the shapes whole), draw it as before.
++
++**Proof of exactness.** (a) Native: `core/tests/test_stage.c` and `test_stage_clip.c` play the whole ritual (240x160
++and 320x240; a failure to the end of the result's fade and a cast out, found by seed) with the stage on and off:
++every frame identical, and at least a quarter of the frames use a clipped layer with no call the clip cannot
++honour; the clip primitives are checked against the unclipped call (rects, shades, images with and without a shadow
++or a silhouette, text and outlined text, 400 random cases); the aura's list is checked against the shape code; the
++stage's decisions (a clipped layer lying on a dirty box does not widen it, an unclipped one does, the pieces are
++disjoint and cover the dirty part) have their own tests. (b) GBA: every frame of the whole ritual (1,382 frames,
++the harness's `vhash-seq` on every tick of the profile script, longer at the end to cover the fade) is identical
++to the base ROM's. The portraits' slice budget depends on how fast the frame ran, so two ROMs of different speed
++animate the faces differently; the comparison builds both ROMs with `plat_portrait_slice_ok` always yes and no
++idle slices (a local patch of `gba/src/pslice.c`, never committed) and runs the script without its `profile`
++lines (they run instructions and move the ticks).
++
++### Pixel-changing steps (SPEED DEFAULTS; before / after shots in the session's evidence `G2-EX/before_after_all.png`)
++
++- **The wall's drips hold a length.** The church backdrop's key carried the drips' step (dread >= 9: their length
++  cycled every 8 ticks over 5 steps). Each change put a new picture under the stage and redrew the whole screen on
++  two frames in a row (one per GBA page): 39-60 ms frames every 8 ticks from the true name on. They stay as the
++  first step of the old cycle (2 px wide marks, 3-7 px long, on the wall's stripes). The key is the dread level and
++  the failing beams: the GBA bakes 19 church pictures, not 59 (the ROM is 1.53 MB smaller). The change is in the
++  shared backdrop code, so the PS1 and Dreamcast drips hold too.
++- **The possessed host and Father Fuzz hold one pose** (`portrait_hold(1)`, as the combat HUD's portrait and the
++  title's figures do): no blink, breath, aura-frame or mouth frames; a new expression is a stand-in for a few ticks
++  while it renders. Their re-renders were 6-8 ms of a GBA frame in the prayer, water, name, verdict and result.
++  The aura around the frame, the shake, the bobs and the candles still move. Shared code: the PS1 and Dreamcast
++  figures hold too.
++
++### What was tried and not kept (the numbers are why)
++
++- The true-name window and its four names as clippable layers (and split, with the cursor on its own): slower
++  (name 43.4 -> 44-46 ms). The layer's cost is its generation, not its pixels (text, checker bands, round rects:
++  ~11 ms of calls whichever pixels they reach), and a clipped draw repeats the calls for every piece (the seven
++  dust motes make several small pieces). Clipping pays for layers that are cheap to generate and big to fill.
++- Drawing a clipped layer through at most two pieces, and a backdrop "diff" (only the drips' boxes dirty when the
++  key moves): both made the frames after a key change slower than the full redraw they replaced (60 ms against
++  45); the drips' hold removed the cause.
++- A clippable speech bubble (worse in the name phase), the aura and the demons' bobs at 15 Hz, the dust motes at
++  15 Hz, the verdict's counter at 15 Hz: no change in the measured windows, so not applied.
++
++### Results (2026-11-13, libmgba, the same `exo_perf` script and `harness --worklog` on the base ROM and on the final ROM)
++
++| phase | base fps | now fps | base work avg / max ms | now work avg / max ms | frames over 33 / over 50 ms (base -> now) |
++|---|---:|---:|---|---|---|
++| intro (dialogue) | 23.0 | **29.8** | 37.1 / 44.7 | 28.2 / 39.0 | 42 / 0 -> 1 / 0 |
++| tools menu | 27.8 | **29.7** | 33.9 / 42.5 | 28.8 / 38.0 | 13 / 0 -> 2 / 0 |
++| prayer rhythm | 19.0 | 27.9 | 46.6 / 57.2 | 32.8 / 42.2 | 76 / 11 -> 17 / 0 |
++| holy water | 23.4 | **30.0** | 36.0 / 47.6 | 22.1 / 36.3 | 40 / 10 -> 0 / 0 |
++| true name | 20.0 | 24.0 | 41.7 / 47.3 | 36.2 / 37.9 | 40 / 0 -> 24 / 0 |
++| verdict | 19.5 | **30.0** | 45.3 / 55.7 | 26.5 / 34.7 | 38 / 3 -> 0 / 0 |
++| result | 19.2 | **29.7** | 43.5 / 47.8 | 31.2 / 42.3 | 57 / 8 -> 3 / 0 |
++
++Logic is 30 ticks a second in every phase. Holy water and the verdict hold a steady 30 with no frame over 33 ms. The
++intro, tools and result windows each have one to three single 50 ms frames (a portrait slice or a state change).
++No window has a frame over 50 ms any more. The prayer (28 fps) and the true name (24) do not reach 30: below.
++The exact steps alone (before the two held poses and the drips) measure: intro 28.4, tools 29.0, prayer 37.2, water
++27.8, name 43.1, verdict 34.8, result 35.3 ms of work.
++
++### What is still missing, and what it would take
++
++- **Prayer, 27.9 fps (32.8 ms; 17 of 112 frames at 50 ms).** The lane is redrawn on every tick by design (the
++  prompts move): 6 ms, plus the stage's work 4 ms and the aura's rebuild on pulse changes. 30 would take the lane
++  split into a kept ribbon and a few moving prompts, each with its own boxes (the stage keeps one box per layer, so
++  eight prompts would need eight layers or layers with several boxes).
++- **True name, 24.0 fps (36.2 ms, steady).** The clue window and the four names are one layer of text and shapes
++  (13 ms to draw); the host's aura, the demon's bob, the cursor and the seven motes touch its box on nearly every
++  tick, and clipping it costs more than it saves (above). 30 would take the window and the buttons as retained
++  panels in the stage (the G7 body copy from the front page, which the stage does not use yet), or text drawn
++  cheaply enough that a redraw of the pieces costs less than the whole.
++- **The success path of the result** (not in the measured script, a failure): the confetti is one layer that moves
++  over the whole screen, so a cast out is drawn in full every tick as before. It would take confetti pieces as
++  separate small boxes (more layers than the stage has) or confetti at 15 Hz.
++
++### RAM, ROM (GBA)
++
++- EWRAM `.bss` + `.data` 246,700 -> 246,708 B (**+8 B**; 15,436 B free): the aura's pointer, the clip box's
++  fifth halfword (the `gba_nodraw` it replaced), padding. The aura's lists (3.8 KB) and the stage's clip mask live
++  in the exorcism's scene scratch (a cache, re-bound when another scene took it).
++- IWRAM resident 11,256 -> 11,272 B (**+16 B**, `plat_rect`'s clip dispatch); the main stack's room is 6,292 B
++  (gate 6,144). The overlay's room group 3,588 -> 3,740 B (`stage_clip_rect`; the slot is the 3D group's 10,352 B,
++  6,612 B of it free).
++- ROM 8,004,984 -> 6,475,500 B (-1.53 MB: the drips' hold).
++- PS1: see `docs/PS1.md` "Speed tour 2" (G2-EX): 30.00 fps in all seven phases, the resident image ends at the base's
++  address (+0 B). The aura's list is not built there (no holes).
++- Dreamcast: see `docs/DREAMCAST.md` (G2-EX).
++
+diff --git a/docs/GBA.md b/docs/GBA.md
+index 6263ec08..f83ec235 100644
+--- a/docs/GBA.md
++++ b/docs/GBA.md
+@@ -438,6 +438,7 @@ against the LAST row, not against a figure from an older base.
+ | 45 | CR4 A2: 32 hair styles and 8 beards (docs/CREATOR.md "CR4 batch A2") | after S3-3 (`b63abec`) | 15,444 B | **15,444 B** | 0 B | 6,308 B | measured on `b63abec` and `b63abec` + A2 (`make -C gba sizes`): `.bss` 245,804 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B before and after, `.text` 1,401,336 B before and after; the part scripts, the catalog rows and the 40 part icons are `const` ROM: `.rodata` 6,587,868 -> 6,608,008 B (+20,140). PS1: no resident byte (`_end` 0x801ef4e0 before and after, 68,368 B below the stack top with the boot FMV; the overlay slot ends 0x801ef3b4 both times) |
+ | 46 | CR4 A3: 60 spooky parts (docs/CREATOR.md "CR4 batch A3") | after A2 (`224b192`) | 15,444 B | **15,444 B** | 0 B | 6,308 B | measured on `0c1fc51` and `0c1fc51` + A3 (clean `make -C gba` builds, `make -C gba sizes`): `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B, `.data` 816 B, `.text` 1,403,440 B all identical before and after; the part scripts (5.8 KB), the catalog rows and the 60 part icons are `const` ROM: `.rodata` 6,591,380 -> 6,623,356 B (+31,976, measured on the pre-rebase tree; on the rebased tree the whole `.rodata` is 6,643,580 B and `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B, `.data` 816 B, unchanged). `make -C gba test` and `test-creator` pass on the rebased tree (creator rows 29.9 fps, value step 30.0) |
+ | 47 | S2-11: the house's view turn built over several ticks, the room group's row loops, checksum pass and cursor, HomeMart's UI loops (docs: "Speed wave 2: S2-11" below) | after CR4 A3 and PS1-FLAT (`ee4e053`) | 15,460 B | **15,460 B** | 0 B | 6,308 B | measured on `ee4e053` and that tree + S2-11, both built clean (`make -C gba sizes`; ROM 8,087,036 -> 8,091,916 B): `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B and `.data` 816 B all unchanged, no resident EWRAM or IWRAM. `RBig` (the house's region, in the scene scratch arena) loses `match` (56 B, now on the stack in `incremental()`) and gains 32 B of turn-build state (`tkey[5]`, `bkey`, `bsub`, `bstep`, `brow`, `bld`, `bturns`, `k_last`); the overlay's room group grows 3,588 -> 9,512 B inside the 3D group's 10,352 B slot (840 B free in the slot); `hold.c` one flag bit. PS1: the EXE and the overlays are byte for byte the tip's (the hooks are not built there), `_end` 0x801ee3e0 before and after, 72,736 B below the stack top with the boot FMV (the margin delta is 0 B) |
++| 48 | G2-EX: clipped redraw in the retained stage, the exorcism's aura list (docs: "Speed wave 2: G2-EX" below, `docs/EXORCISM_SPEED.md`) | after S2-11 (`ee4e053`) | 15,460 B | **15,452 B** | +8 B | 6,292 B | measured on `0cb159e` (ROM 6,475,500 B): the aura's pointer (4 B) and the clip box's fifth halfword (`stage_box[5]`, the old `trk[4]` plus the saved `gba_nodraw`; padding); the aura's five lists (3.9 KB) and the stage's clip mask are in the exorcism's scene scratch and the stage's bound memory. IWRAM resident +16 B (`plat_rect`'s mode-7 dispatch, 11,256 -> 11,272 B; the main stack's room 6,308 -> 6,292 B, gate 6,144 B); the overlay's room group +152 B (`stage_clip_rect`, 3,588 -> 3,740 B; 6,612 B of the slot free). ROM -1.53 MB (the wall drips' hold: 19 church pictures baked, not 59). PS1: no aura list (no holes), `exorcism_gfx.c` and `backdrop.c` stay in the exorcism overlay group |
+ 
+ Known claimants still to land (their own packages measure and add rows):
+ 
+@@ -1144,6 +1145,29 @@ ROM +~11 KB (the tables). Dreamcast (Flycast, no hold there): intro, spin, resul
+ 14.7 ms. Floors:
+ `expect-fps 28` on both wheel windows of `speed2_fair.txt`. Still short of 30: the result card (S2-4's kept backdrop
+ with restored rects under the confetti would cover it) and the done state's first second.
++
++### Speed wave 2: G2-EX, the exorcism at 30 (2026-11-13)
++
++Full story, numbers and what is still short: `docs/EXORCISM_SPEED.md` "G2-EX". The GBA parts:
++
++- **`plat_clip` (stage.c, canvas.c, video.c, video_loops.s).** `GBA_NODRAW_CLIP` (mode 7) is set between `plat_clip` and
++  `plat_clip_end`; the box is in `stage_box[]` (the array that tracks the 2D calls after `plat_stage_end`; nothing is
++  tracked before it), its fifth halfword holds the mode the clip replaced. Every 2D call takes its slow path in this mode
++  (`vid_route` says "draw" for the calls that do not cut themselves): `plat_rect`'s resident ARM code jumps to
++  `stage_clip_rect` (ARM in the room group, loaded by `plat_clip`, which clips to the box and calls `plat_rect_m4`);
++  `plat_shade_rect`, `plat_image` (scale 1, no flip: `clip_blit` crops whole rows as one `vid_blit`, else one call per
++  row) and `plat_text` / `plat_text_outline` (`clip_text`: the glyph rows' pixels inside the box through `vid_pixel`)
++  cut themselves. A line, a checker, a clear or a scaled image inside a clip draws whole; the clippable layers use none
++  (native counts them: `nat_clip_viol`, checked by `test_stage_clip.c`). The cost of a rect call inside a clip is the
++  resident dispatch plus ~50 cycles (the first version, in ROM C, was 250 and made the clipped host frame slower than
++  the whole one).
++- **The kept aura** (`exorcism_gfx.c`): `plat_rect_run` (island I3's ARM run) draws the list on the plain Mode 4 path.
++- **Where the time was** (per drawn frame, `exo_mark` build, SP7 tree): the stage's own work 10.8 ms in the intro, 12.7 in
++  the prayer; the host frame 4.6-9.5; the portraits' re-renders 2.6-9; the verdict's dim 15.8.
++- **Measuring.** `make -C gba profile-exorcism` as before. Hashing every tick of it for an exactness check needs
++  deterministic portrait slices (docs file); the per-layer costs came from a local copy of the harness that charges
++  each sampled cycle to a layer mark the ROM keeps in a byte (not in the tree).
++
+ ### Speed wave 2: S2-6, the Unlocks gallery (2026-11-08)
+ 
+ The speed audit 2's cause C6: the Unlocks gallery (`fp_unlocks.c`) took 66 ms a tick (11 fps; the Paints tab 40 ms,
+diff --git a/docs/PS1.md b/docs/PS1.md
+index f4236d2e..95b7c96f 100644
+--- a/docs/PS1.md
++++ b/docs/PS1.md
+@@ -1588,6 +1588,18 @@ are not built here (`UI_PANELS` 0). Measured (PCSX-Redux, `creator_speed.txt`, `
+ shorter), idle 30.13, rows 30.13, a value held 29.88 as before. The try-on's profile after: `rect_slow` 13%, the pane's
+ ellipses 10%, `lock_compose` 8%, `out_rect` 7% (`part_icon_unpack` is gone). The disc ends at 0x801efe60 both
+ before and after (64 KB below the stack top with the boot FMV; the 72 KB gate is the SPEED stream's PS1-RAM package).
++**G2-EX (the exorcism toward 30).** The PS1 held 30 before and holds it after: `perf_exorcism_phases.txt` reads 30.00
++fps in the intro, tools, prayer, holy water, true name, verdict and result phases (every frame 2 vsyncs but one 3-vsync
++frame per window, the lockstep resume), `perf_exorcism.txt` 30.00, `game_smoke` PASS. The shared changes (clipped redraw in `backdrop.c`, the verdict and result in layers, the wall
++drips' hold, the host's and Fuzz's held pose) cost nothing here: the platform hooks `plat_clip` / `plat_clip_end` and
++`plat_stage_*` are the weak no-ops (no retained stage on the disc), the aura's list is not built (`HOST_HOLES` 0:
++the shapes are drawn whole), and the exorcism overlay group is 50 KB (was 46; the slot is 168 KB). **Resident +0 B.** The
++first build was +912 B: the host and demon layers chose between two static declarer functions by a pointer, which made
++their addresses escape and the planner (`ovl_plan.py`: "a section whose address escapes is resident") kept both,
++`stage_layer`, `stage_draw`, `stage_layer_clip` and `layer_set` (792 B of code) resident. `LX(clip, ...)` is one function
++that every caller calls directly (`OVL_WHY_OBJ=exorcism_scene` shows the chain if it comes back). bss start 0x8014a4c0 and
++`_end` 0x801efe60 are the base's: 64 KB (65,952 B) below the stack top with the boot FMV (build with
++`-DDOOMO_INTRO_REQUIRED=ON`), as before; PS1-RAM's 72 KB gate is not G2-EX's to move.
+ 
+ ## 13. Notes for the core
+ 
+-- 
+2.43.0
+

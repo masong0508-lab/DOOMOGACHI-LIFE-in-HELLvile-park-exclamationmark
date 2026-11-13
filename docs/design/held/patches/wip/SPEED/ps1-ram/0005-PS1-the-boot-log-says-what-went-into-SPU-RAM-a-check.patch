@@ -1,0 +1,59 @@
+From ed1593499eba71c5ba17deaf7d1ef060784b4f63 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 12 Nov 2026 23:42:35 +0000
+Subject: [PATCH 05/14] PS1: the boot log says what went into SPU RAM (a
+ checksum line)
+
+spu_upload() keeps an FNV-1a sum of every byte it sends to SPU RAM, and
+audio_hw_sfx_preload() logs it once: "spu: N of 62 effects, top XXXXX, sum
+XXXXXXXX". Two builds with the same line have the same sound data: the
+check for the next step, which moves the conversion buffers. 144 B resident.
+
+Game disc with the boot FMV: 125,616 B below the stack top.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ ps1/src/spu.c | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/ps1/src/spu.c b/ps1/src/spu.c
+index e14f2d2e..4692f273 100644
+--- a/ps1/src/spu.c
++++ b/ps1/src/spu.c
+@@ -65,11 +65,14 @@ static int      s_bg_next = 1;
+ static int      s_ready;
+ 
+ /* ---- upload ------------------------------------------------------------- */
++static uint32_t s_up_sum = 2166136261u;    /* FNV-1a of every byte sent to SPU RAM (the boot log) */
++
+ static void spu_upload(uint32_t addr, const void *data, size_t bytes)
+ {
+     /* DMA wants 64-byte chunks of word-aligned data */
+     static uint32_t tmp[1024];
+     const uint8_t *src = (const uint8_t *)data;
++    s_up_sum = sum_bytes(s_up_sum, src, bytes);
+     while (bytes) {
+         size_t n = bytes > sizeof(tmp) ? sizeof(tmp) : bytes;
+         size_t padded = (n + 63) & ~(size_t)63;
+@@ -330,12 +333,15 @@ void audio_hw_init(void)
+ void audio_hw_sfx_preload(void)
+ {
+ #ifdef DOOMO_SFX_ON_DISC
+-    int id;
++    int id, ok = 0;
+     if (!s_ready)
+         return;
+     for (id = 1; id < SFX_COUNT; id++)
+-        convert_sfx(id);
++        ok += convert_sfx(id);
+     s_bg_next = SFX_COUNT;
++    /* what is in SPU RAM now: the same line from two builds = the same sound data */
++    dbg("spu: %d of %d effects, top %05x, sum %08x\n", ok, SFX_COUNT - 1, (unsigned)s_sfx_top,
++        (unsigned)s_up_sum);
+ #endif
+ }
+ 
+-- 
+2.43.0
+

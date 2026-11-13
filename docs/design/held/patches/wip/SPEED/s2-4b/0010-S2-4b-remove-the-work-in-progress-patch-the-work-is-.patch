@@ -1,0 +1,1909 @@
+From a039081f11245fd6307b8e8320144caeaa2b4810 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 14:04:50 +0000
+Subject: [PATCH 10/15] S2-4b: remove the work-in-progress patch (the work is
+ committed on this branch)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ .../held/patches/wip/SPEED/fut-s2-4b.patch    | 1887 -----------------
+ 1 file changed, 1887 deletions(-)
+ delete mode 100644 docs/design/held/patches/wip/SPEED/fut-s2-4b.patch
+
+diff --git a/docs/design/held/patches/wip/SPEED/fut-s2-4b.patch b/docs/design/held/patches/wip/SPEED/fut-s2-4b.patch
+deleted file mode 100644
+index 2c89d2eb..00000000
+--- a/docs/design/held/patches/wip/SPEED/fut-s2-4b.patch
++++ /dev/null
+@@ -1,1887 +0,0 @@
+-=== UNCOMMITTED ===
+-diff --git a/core/include/doomo/backdrop.h b/core/include/doomo/backdrop.h
+-index 350af255..4fe1eeea 100644
+---- a/core/include/doomo/backdrop.h
+-+++ b/core/include/doomo/backdrop.h
+-@@ -18,12 +18,23 @@
+- #include "types.h"
+- 
+- enum { DOOMO_BACKDROP_EXO_CHURCH = 1,
+--       DOOMO_BACKDROP_MG = 2 };            /* (S2-4) the Fun Fair booths' still playfields (mg.c) */
+-+       DOOMO_BACKDROP_MG = 2,              /* (S2-4) the Fun Fair booths' still playfields (mg.c) */
+-+       DOOMO_BACKDROP_MG_STAMP = 3 };      /* (S2-4b) the Fun Fair's stamps: small pictures of its actors */
+-+
+-+/* (S2-4b) what a key's picture holds (DoomoBackdrop.part; NULL: every key is BACKDROP_WHOLE):
+-+ *   BACKDROP_WHOLE  the whole screen
+-+ *   BACKDROP_ROWS   only the screen rows [out[0], out[1]) (a band: the baker keeps those rows, and
+-+ *                   plat_stage_restore copies only inside them)
+-+ *   BACKDROP_STAMP  a small picture with holes: draw(key) paints an actor around the anchor
+-+ *                   (out[0], out[1]) on a screen cleared to index 0 (which no drawing call writes); the
+-+ *                   baker keeps the box of what was painted, and plat_stage_stamp() puts it anywhere */
+-+enum { BACKDROP_WHOLE, BACKDROP_ROWS, BACKDROP_STAMP };
+- 
+- typedef struct DoomoBackdrop {
+-     int id;                                    /* DOOMO_BACKDROP_*                     */
+-     void (*draw)(uint32_t key);                /* paints every pixel of the screen      */
+-     int (*keys)(uint32_t *out, int cap);       /* every key; returns the count          */
+-+    int (*part)(uint32_t key, int16_t out[2]); /* (S2-4b) BACKDROP_*; NULL: whole       */
+- } DoomoBackdrop;
+- 
+- /* The families, 0..count-1 (the baker walks them). */
+-diff --git a/core/include/doomo/plat_ext.h b/core/include/doomo/plat_ext.h
+-index 7ef26947..8bb01f12 100644
+---- a/core/include/doomo/plat_ext.h
+-+++ b/core/include/doomo/plat_ext.h
+-@@ -222,7 +222,18 @@ void plat_loading(void);
+-  *       frame is presented the platform records the box of every 2D call (the next frame
+-  *       drawn into this buffer gets it as info.dirt).
+-  * Serials count the frames a platform presents; a skipped tick has none. Weak defaults
+-- * (core/src/backdrop.c): begin returns 0, restore and end do nothing. */
+-+ * (core/src/backdrop.c): begin returns 0, restore and end do nothing.
+-+ * (S2-4b) A key's picture may be a band of screen rows (backdrop.h BACKDROP_ROWS): then
+-+ * plat_stage_restore copies only inside those rows. A frame may call plat_stage_begin more than
+-+ * once: each call makes its key the source of the restores that follow (a frame built from
+-+ * several bands; a box put back from another picture).
+-+ *   plat_stage_stamp(id, key, x, y)  draw the stamp (backdrop.h BACKDROP_STAMP) of a key with its
+-+ *       anchor at (x, y), like plat_image (index 0 is a hole). Returns 1 when the platform holds
+-+ *       it (the GBA ROM; native when nat_stage_on), 0 when not: the caller draws the actor. Not
+-+ *       on the PS1 (no weak default there: the callers are compiled out).
+-+ *   plat_stage_restore_list(xywh, n, dx, dy)  plat_stage_restore of n boxes (x, y, w, h: four
+-+ *       int16 each), every one moved by (dx, dy): one call for the many small boxes a frame puts
+-+ *       back (the GBA walks the list in IWRAM). Not on the PS1 either. */
+- typedef struct PlatStageInfo {
+-     uint32_t held, serial;
+-     int16_t  dx0, dy0, dx1, dy1;
+-@@ -230,6 +241,8 @@ typedef struct PlatStageInfo {
+- int  plat_stage_begin(int id, uint32_t key, void (*draw)(uint32_t key), PlatStageInfo *info);
+- void plat_stage_restore(int x, int y, int w, int h);
+- void plat_stage_end(void);
+-+int  plat_stage_stamp(int id, uint32_t key, int x, int y);
+-+void plat_stage_restore_list(const int16_t *xywh, int n, int dx, int dy);
+- 
+- /* ---- content packs (E0 pack.h, E2, E7-E10) -----------------------------------
+-  * blob: a pack that is directly addressable (the GBA mature ROM variant's
+-diff --git a/core/native/native.h b/core/native/native.h
+-index 6324766c..82de71b8 100644
+---- a/core/native/native.h
+-+++ b/core/native/native.h
+-@@ -82,6 +82,8 @@ void nat_stage_frame_begin(void);
+- void nat_stage_frame_end(void);
+- void nat_stage_reset(void);
+- int  nat_stage_kept(void);          /* (S2-4) the last frame was drawn over a kept backdrop */
+-+int  nat_stage_pics(uint32_t *out, int cap);   /* (S2-4b) the pictures asked for since nat_stage_reset: id << 24 | key */
+-+int  nat_stage_stamps(void);        /* (S2-4b) stamps drawn since nat_stage_reset */
+- int  nat_bake_backdrops(const char *path);
+- 
+- /* PNG writer: 8bpp indexed image -> indexed PNG with the master palette,
+-diff --git a/core/native/stage_native.c b/core/native/stage_native.c
+-index 3cb82e23..181ff1e1 100644
+---- a/core/native/stage_native.c
+-+++ b/core/native/stage_native.c
+-@@ -15,14 +15,28 @@
+- #include "doomo/plat_ext.h"
+- #include "doomo/backdrop.h"
+- #include <stdio.h>
+-+#include <stdlib.h>
+- #include <string.h>
+- 
+- int nat_stage_on;
+- int nat_stage_buffers = 2;
+- 
+--static uint8_t bd_pix[NAT_MAX_W * NAT_MAX_H];
+--static int bd_id = -1, bd_w, bd_h;
+--static uint32_t bd_key;
+-+/* the pictures drawn so far ((S2-4b) several: a frame may be built from bands, and stamps are
+-+ * pictures too): whole screens and bands are a full-screen copy, a stamp is the box of what its
+-+ * draw painted on a screen cleared to 0, as an image (index 0 a hole) */
+-+typedef struct {
+-+    int id, kind;                 /* family, BACKDROP_* */
+-+    uint32_t key;
+-+    int16_t y0, y1;               /* BACKDROP_ROWS: its rows */
+-+    int16_t bx, by;               /* BACKDROP_STAMP: the box's corner from the anchor */
+-+    uint8_t *pix;
+-+    DoomoImage img;
+-+} NPic;
+-+#define NPIC_CAP 16384            /* open-addressed (id, key) table */
+-+static NPic *pics[NPIC_CAP];
+-+static int npics, pic_w, pic_h;
+-+static const NPic *cur_pic;
+-+static int stamps_drawn;
+- /* the emulated buffers: their pictures, the serial of the stage frame each holds (0 none),
+-  * the box drawn over each after its plat_stage_end */
+- static uint8_t buf_pix[2][NAT_MAX_W * NAT_MAX_H];
+-@@ -31,28 +45,93 @@ static int16_t buf_dirt[2][4];
+- static int cur_buf, frame_stage, tracking, frames, last_kept;
+- static int16_t trk[4];
+- 
+--/* the backdrop (id, key) drawn with `draw` into bd_pix: the screen is saved around it */
+--static void render(int id, uint32_t key, void (*draw)(uint32_t))
+-+static void pics_flush(void)
+- {
+--    static uint8_t save[NAT_MAX_W * NAT_MAX_H];
+-+    int i;
+-+    for (i = 0; i < NPIC_CAP; i++)
+-+        if (pics[i]) { free(pics[i]->pix); free(pics[i]); pics[i] = NULL; }
+-+    npics = 0;
+-+    cur_pic = NULL;
+-+}
+-+
+-+static const DoomoBackdrop *family_of(int id)
+-+{
+-+    int i, n = backdrop_family_count();
+-+    for (i = 0; i < n; i++)
+-+        if (backdrop_family(i) && backdrop_family(i)->id == id) return backdrop_family(i);
+-+    return NULL;
+-+}
+-+
+-+/* the picture of (id, key), drawn with `draw` on first use: the screen is saved around it */
+-+static const NPic *pic_get(int id, uint32_t key, void (*draw)(uint32_t))
+-+{
+-+    static uint8_t save[2][NAT_MAX_W * NAT_MAX_H];
+-+    static int depth;
+-+    const DoomoBackdrop *f = family_of(id);
+-     size_t n = (size_t)nat_w * (size_t)nat_h;
+-+    unsigned h = (unsigned)(((uint32_t)id * 2654435761u) ^ (key * 40503u)) % NPIC_CAP;
+-+    int16_t part[2] = { 0, 0 };
+-     int on = tracking;
+-+    NPic *p;
+-+    if (pic_w != nat_w || pic_h != nat_h) { pics_flush(); pic_w = nat_w; pic_h = nat_h; }
+-+    while (pics[h]) {
+-+        if (pics[h]->id == id && pics[h]->key == key) return pics[h];
+-+        h = (h + 1) % NPIC_CAP;
+-+    }
+-+    if (!draw || depth >= 2 || npics >= NPIC_CAP / 2) return NULL;
+-+    p = (NPic *)calloc(1, sizeof(*p));
+-+    if (!p) return NULL;
+-+    p->id = id;
+-+    p->key = key;
+-+    p->kind = f && f->part ? f->part(key, part) : BACKDROP_WHOLE;
+-     tracking = 0;
+--    memcpy(save, nat_fb, n);
+--    draw(key);
+--    memcpy(bd_pix, nat_fb, n);
+--    memcpy(nat_fb, save, n);
+-+    memcpy(save[depth], nat_fb, n);
+-+    depth++;
+-+    if (p->kind == BACKDROP_STAMP) {
+-+        int x, y, x0 = nat_w, y0 = nat_h, x1 = -1, y1 = -1;
+-+        memset(nat_fb, 0, n);
+-+        draw(key);
+-+        for (y = 0; y < nat_h; y++)
+-+            for (x = 0; x < nat_w; x++)
+-+                if (nat_fb[y * nat_w + x]) {
+-+                    if (x < x0) x0 = x;
+-+                    if (x > x1) x1 = x;
+-+                    if (y < y0) y0 = y;
+-+                    if (y > y1) y1 = y;
+-+                }
+-+        if (x1 >= x0) {
+-+            p->img.w = (uint16_t)(x1 - x0 + 1);
+-+            p->img.h = (uint16_t)(y1 - y0 + 1);
+-+            p->pix = (uint8_t *)malloc((size_t)p->img.w * p->img.h);
+-+            for (y = 0; y < p->img.h; y++)
+-+                memcpy(p->pix + (size_t)y * p->img.w, nat_fb + (y0 + y) * nat_w + x0, p->img.w);
+-+            p->img.pix = p->pix;
+-+            p->img.uid = doomo_image_new_uid();
+-+            p->bx = (int16_t)(x0 - part[0]);
+-+            p->by = (int16_t)(y0 - part[1]);
+-+        }
+-+    } else {
+-+        draw(key);
+-+        p->pix = (uint8_t *)malloc(n);
+-+        memcpy(p->pix, nat_fb, n);
+-+        p->y0 = p->kind == BACKDROP_ROWS ? part[0] : 0;
+-+        p->y1 = p->kind == BACKDROP_ROWS ? part[1] : (int16_t)nat_h;
+-+    }
+-+    depth--;
+-+    memcpy(nat_fb, save[depth], n);
+-     tracking = on;
+--    bd_id = id;
+--    bd_key = key;
+--    bd_w = nat_w;
+--    bd_h = nat_h;
+-+    pics[h] = p;
+-+    npics++;
+-+    return p;
+- }
+- 
+- int plat_stage_begin(int id, uint32_t key, void (*draw)(uint32_t key), PlatStageInfo *info)
+- {
+-+    const NPic *p;
+-     if (!nat_stage_on || !draw || !info) return 0;
+--    if (bd_id != id || bd_key != key || bd_w != nat_w || bd_h != nat_h) render(id, key, draw);
+-+    p = pic_get(id, key, draw);
+-+    if (!p || p->kind == BACKDROP_STAMP) return 0;
+-+    cur_pic = p;
+-     info->held = buf_serial[cur_buf];
+-     info->serial = serial + 1;
+-     info->dx0 = buf_dirt[cur_buf][0]; info->dy0 = buf_dirt[cur_buf][1];
+-@@ -65,9 +144,25 @@ void plat_stage_restore(int x, int y, int w, int h)
+- {
+-     int j, x0 = DOOMO_MAX(x, 0), y0 = DOOMO_MAX(y, 0);
+-     int x1 = DOOMO_MIN(x + w, nat_w), y1 = DOOMO_MIN(y + h, nat_h);
+--    if (bd_id < 0 || x0 >= x1 || y0 >= y1) return;
+-+    if (!cur_pic) return;
+-+    y0 = DOOMO_MAX(y0, cur_pic->y0);
+-+    y1 = DOOMO_MIN(y1, cur_pic->y1);
+-+    if (x0 >= x1 || y0 >= y1) return;
+-     for (j = y0; j < y1; j++)
+--        memcpy(&nat_fb[j * nat_w + x0], &bd_pix[j * nat_w + x0], (size_t)(x1 - x0));
+-+        memcpy(&nat_fb[j * nat_w + x0], &cur_pic->pix[j * nat_w + x0], (size_t)(x1 - x0));
+-+}
+-+
+-+/* (S2-4b) the stamp of a key at (x, y): drawn once with its family's draw, then an image */
+-+int plat_stage_stamp(int id, uint32_t key, int x, int y)
+-+{
+-+    const DoomoBackdrop *f = family_of(id);
+-+    const NPic *p;
+-+    if (!nat_stage_on || !f) return 0;
+-+    p = pic_get(id, key, f->draw);
+-+    if (!p || p->kind != BACKDROP_STAMP) return 0;
+-+    if (p->pix) plat_image(x + p->bx, y + p->by, &p->img, 1, 0, 0);
+-+    stamps_drawn++;
+-+    return 1;
+- }
+- 
+- void plat_stage_end(void)
+-@@ -121,17 +216,35 @@ void nat_stage_frame_end(void)
+- /* (S2-4) 1 when the frame last presented was drawn over a kept backdrop (tests) */
+- int nat_stage_kept(void) { return last_kept; }
+- 
+-+/* (S2-4b) every picture asked for since the last reset, as id << 24 | key (tests: all of them must be
+-+ * in the baked lists), and how many stamps were drawn */
+-+int nat_stage_pics(uint32_t *out, int cap)
+-+{
+-+    int i, n = 0;
+-+    for (i = 0; i < NPIC_CAP; i++)
+-+        if (pics[i]) {
+-+            if (n < cap) out[n] = (uint32_t)pics[i]->id << 24 | (pics[i]->key & 0xFFFFFFu);
+-+            n++;
+-+        }
+-+    return n;
+-+}
+-+int nat_stage_stamps(void) { return stamps_drawn; }
+-+
+- void nat_stage_reset(void)
+- {
+-     memset(buf_serial, 0, sizeof(buf_serial));
+-     memset(buf_dirt, 0, sizeof(buf_dirt));
+--    bd_id = -1;
+-+    pics_flush();
+-+    stamps_drawn = 0;
+-     cur_buf = frame_stage = tracking = frames = 0;
+- }
+- 
+- /* ---- the baker: every key of every family at the runner's screen size --------------------
+-- * File: "BKD1", u16 w, u16 h, u32 n, n x { u32 id << 24 | key, u32 offset }, sorted, then the
+-- * pictures (w * h bytes each, 4-aligned). Little endian. */
+-+ * File: "BKD2", u16 w, u16 h, u32 n, n x { u32 id << 24 | key, u32 offset, i16 bx, i16 by,
+-+ * u16 w, u16 h }, sorted by the first word, then the pictures (w * h bytes each, 4-aligned).
+-+ * A whole screen: box (0, 0, W, H); a band (BACKDROP_ROWS): (0, y0, W, y1 - y0); a stamp
+-+ * (BACKDROP_STAMP): the box of what was painted, its corner counted from the anchor (w = 0:
+-+ * nothing painted). Little endian. */
+- static void put32(FILE *f, uint32_t v)
+- {
+-     uint8_t b[4] = { (uint8_t)v, (uint8_t)(v >> 8), (uint8_t)(v >> 16), (uint8_t)(v >> 24) };
+-@@ -140,11 +253,11 @@ static void put32(FILE *f, uint32_t v)
+- 
+- int nat_bake_backdrops(const char *path)
+- {
+--    enum { MAXK = 512 };
+--    static uint32_t ids[MAXK];
+--    uint32_t keys[MAXK];
+-+    enum { MAXK = 8192 };
+-+    static uint32_t ids[MAXK], keys[MAXK];
+-+    static struct { int16_t bx, by; uint16_t w, h; uint8_t *pix; } pic[MAXK];
+-     int nf = backdrop_family_count(), i, k, n = 0, j;
+--    size_t img = (size_t)nat_w * (size_t)nat_h, pad = (4 - img % 4) % 4;
+-+    size_t img = (size_t)nat_w * (size_t)nat_h;
+-     uint32_t off;
+-     FILE *f;
+-     for (i = 0; i < nf; i++) {
+-@@ -153,30 +266,67 @@ int nat_bake_backdrops(const char *path)
+-         if (c > MAXK || n + c > MAXK) { fprintf(stderr, "bake: too many keys\n"); return 0; }
+-         for (k = 0; k < c; k++) ids[n++] = (uint32_t)b->id << 24 | (keys[k] & 0xFFFFFFu);
+-     }
+--    /* sorted (insertion sort: a few hundred keys) */
+-+    /* sorted (insertion sort: a few thousand keys) */
+-     for (i = 1; i < n; i++)
+-         for (j = i; j > 0 && ids[j - 1] > ids[j]; j--) { uint32_t t = ids[j]; ids[j] = ids[j - 1]; ids[j - 1] = t; }
+-+    for (i = 1; i < n; i++)
+-+        if (ids[i] == ids[i - 1]) { fprintf(stderr, "bake: key 0x%x listed twice\n", (unsigned)ids[i]); return 0; }
+-+    for (i = 0; i < n; i++) {
+-+        const DoomoBackdrop *b = family_of((int)(ids[i] >> 24));
+-+        uint32_t key = ids[i] & 0xFFFFFFu;
+-+        int16_t part[2] = { 0, 0 };
+-+        int kind = b && b->part ? b->part(key, part) : BACKDROP_WHOLE;
+-+        int x, y, x0 = 0, y0 = 0, x1 = nat_w, y1 = nat_h;
+-+        memset(nat_fb, 0, img);
+-+        if (b) b->draw(key);
+-+        if (kind == BACKDROP_ROWS) {
+-+            y0 = DOOMO_CLAMP(part[0], 0, nat_h);
+-+            y1 = DOOMO_CLAMP(part[1], y0, nat_h);
+-+        } else if (kind == BACKDROP_STAMP) {
+-+            x0 = nat_w; y0 = nat_h; x1 = y1 = 0;
+-+            for (y = 0; y < nat_h; y++)
+-+                for (x = 0; x < nat_w; x++)
+-+                    if (nat_fb[y * nat_w + x]) {
+-+                        if (x < x0) x0 = x;
+-+                        if (x + 1 > x1) x1 = x + 1;
+-+                        if (y < y0) y0 = y;
+-+                        if (y + 1 > y1) y1 = y + 1;
+-+                    }
+-+            if (x1 <= x0) x0 = y0 = x1 = y1 = 0;
+-+            if (x1 > x0 && (x0 == 0 || y0 == 0 || x1 == nat_w || y1 == nat_h)) {
+-+                fprintf(stderr, "bake: stamp 0x%x touches the screen edge (clipped?)\n", (unsigned)ids[i]);
+-+                return 0;
+-+            }
+-+        }
+-+        pic[i].w = (uint16_t)(x1 - x0);
+-+        pic[i].h = (uint16_t)(y1 - y0);
+-+        pic[i].bx = (int16_t)(kind == BACKDROP_STAMP ? x0 - part[0] : x0);
+-+        pic[i].by = (int16_t)(kind == BACKDROP_STAMP ? y0 - part[1] : y0);
+-+        pic[i].pix = (uint8_t *)malloc((size_t)pic[i].w * pic[i].h + 4);
+-+        if (!pic[i].pix) return 0;
+-+        for (y = y0; y < y1; y++)
+-+            memcpy(pic[i].pix + (size_t)(y - y0) * pic[i].w, nat_fb + y * nat_w + x0, pic[i].w);
+-+    }
+-     f = fopen(path, "wb");
+-     if (!f) { fprintf(stderr, "bake: cannot write %s\n", path); return 0; }
+--    fwrite("BKD1", 1, 4, f);
+-+    fwrite("BKD2", 1, 4, f);
+-     fputc(nat_w & 255, f); fputc(nat_w >> 8, f);
+-     fputc(nat_h & 255, f); fputc(nat_h >> 8, f);
+-     put32(f, (uint32_t)n);
+--    off = 12u + 8u * (uint32_t)n;
+-+    off = 12u + 16u * (uint32_t)n;
+-     for (i = 0; i < n; i++) {
+-+        uint32_t sz = (uint32_t)pic[i].w * pic[i].h;
+-         put32(f, ids[i]);
+-         put32(f, off);
+--        off += (uint32_t)(img + pad);
+-+        put32(f, (uint32_t)(uint16_t)pic[i].bx | (uint32_t)(uint16_t)pic[i].by << 16);
+-+        put32(f, (uint32_t)pic[i].w | (uint32_t)pic[i].h << 16);
+-+        off += (sz + 3u) & ~3u;
+-     }
+-     for (i = 0; i < n; i++) {
+--        int id = (int)(ids[i] >> 24);
+--        const DoomoBackdrop *b = NULL;
+--        for (k = 0; k < nf; k++)
+--            if (backdrop_family(k) && backdrop_family(k)->id == id) b = backdrop_family(k);
+--        memset(nat_fb, 0, img);
+--        if (b) b->draw(ids[i] & 0xFFFFFFu);
+--        fwrite(nat_fb, 1, img, f);
+--        for (k = 0; k < (int)pad; k++) fputc(0, f);
+-+        uint32_t sz = (uint32_t)pic[i].w * pic[i].h;
+-+        fwrite(pic[i].pix, 1, sz, f);
+-+        for (k = 0; k < (int)((4 - sz % 4) % 4); k++) fputc(0, f);
+-+        free(pic[i].pix);
+-     }
+-     if (fclose(f) != 0) return 0;
+-     return n;
+-diff --git a/core/src/backdrop.c b/core/src/backdrop.c
+-index 763896e3..eb68a335 100644
+---- a/core/src/backdrop.c
+-+++ b/core/src/backdrop.c
+-@@ -28,7 +28,8 @@ extern const DoomoBackdrop exo_church_family;            /* exorcism_gfx.c */
+- 
+- #if !defined(DOOMO_PLATFORM_PS1)
+- extern const DoomoBackdrop mg_backdrop_family;           /* (S2-4) mg.c: the fair booths */
+--int backdrop_family_count(void) { return 2; }
+-+extern const DoomoBackdrop mg_stamp_family;              /* (S2-4b) mg.c: the fair's stamps */
+-+int backdrop_family_count(void) { return 3; }
+- #else
+- int backdrop_family_count(void) { return 1; }            /* (the PS1 never bakes) */
+- #endif
+-@@ -37,6 +38,7 @@ const DoomoBackdrop *backdrop_family(int i)
+- {
+- #if !defined(DOOMO_PLATFORM_PS1)
+-     if (i == 1) return &mg_backdrop_family;
+-+    if (i == 2) return &mg_stamp_family;
+- #endif
+-     return i == 0 ? &exo_church_family : NULL;
+- }
+-@@ -49,6 +51,13 @@ WEAK int plat_stage_begin(int id, uint32_t key, void (*draw)(uint32_t key), Plat
+- }
+- WEAK void plat_stage_restore(int x, int y, int w, int h) { (void)x; (void)y; (void)w; (void)h; }
+- WEAK void plat_stage_end(void) {}
+-+#if !defined(DOOMO_PLATFORM_PS1)
+-+WEAK int plat_stage_stamp(int id, uint32_t key, int x, int y) { (void)id; (void)key; (void)x; (void)y; return 0; }
+-+WEAK void plat_stage_restore_list(const int16_t *xywh, int n, int dx, int dy)
+-+{
+-+    for (; n > 0; n--, xywh += 4) plat_stage_restore(xywh[0] + dx, xywh[1] + dy, xywh[2], xywh[3]);
+-+}
+-+#endif
+- 
+- /* ---- the stage ------------------------------------------------------------------------ */
+- typedef struct { int16_t x0, y0, x1, y1; uint32_t key; } SLayer;     /* box: [x0, x1) x [y0, y1) */
+-diff --git a/core/src/exorcism_gfx.c b/core/src/exorcism_gfx.c
+-index 1ed5ce18..0ab58e5d 100644
+---- a/core/src/exorcism_gfx.c
+-+++ b/core/src/exorcism_gfx.c
+-@@ -491,7 +491,7 @@ void exo_church(int dread, uint32_t t, int floor_y)
+-     for (p = 0; p < EXO_PARTS; p++) exo_church_part_draw(p, dread, t);
+- }
+- 
+--const DoomoBackdrop exo_church_family = { DOOMO_BACKDROP_EXO_CHURCH, exo_church_backdrop, exo_church_keys };
+-+const DoomoBackdrop exo_church_family = { DOOMO_BACKDROP_EXO_CHURCH, exo_church_backdrop, exo_church_keys, 0 };
+- 
+- /* ---------------------------------------------------------------------- */
+- /* Father Fuzz                                                              */
+-diff --git a/core/src/mg.c b/core/src/mg.c
+-index 7c0f75bb..bac6cf2f 100644
+---- a/core/src/mg.c
+-+++ b/core/src/mg.c
+-@@ -225,6 +225,9 @@ void mg_scene_enter(const MgGame *g, int arg)
+-     if (mg.tier >= MG_TIERS) mg.tier = 0;
+-     mg.autoplay = (arg & MG_ARG_AUTOPLAY) != 0;
+-     mg.autostart = (arg & MG_ARG_AUTOSTART) != 0;
+-+#if !defined(DOOMO_PLATFORM_PS1)
+-+    mg.plain = (arg & MG_ARG_PLAIN) != 0;
+-+#endif
+-     mg.hell = mg.tier == MG_TIER_HELLFIRE;
+-     prev_song = (uint8_t)audio_music_current();
+-     mg_scratch_claim();
+-@@ -580,76 +583,234 @@ static void draw_flash(void)
+-     }
+- }
+- 
+--/* ---- (S2-4) the kept playfield (mg.h "the kept playfield"; docs/GBA.md "Speed wave 2: S2-4") ---- */
+-+/* ---- (S2-4) the kept playfield (mg.h "the kept playfield"; docs/GBA.md "Speed wave 2: S2-4", "S2-4b") ---- */
+- #if !defined(DOOMO_PLATFORM_PS1)
+- uint8_t mg_kept_mode;
+-+#if !defined(DOOMO_PLATFORM_GBA)
+- uint32_t mg_bake_key;
+-+#define MG_SET_BAKE_KEY(k) (mg_bake_key = (k))
+-+#else
+-+#define MG_SET_BAKE_KEY(k) ((void)0)
+-+#endif
+-+extern void (*ur_tap)(int, int, int, int, uint8_t);   /* ui_raster.c: every rect of a UI shape */
+- 
+- #define MG_BK_GAME_SHIFT 16
+--static const MgGame *mg_kept_game(int id)
+-+static const MgGame *mg_key_game(uint32_t key)
+- {
+--    int i;
+-+    int i, id = (int)(key >> MG_BK_GAME_SHIFT);
+-     for (i = 0; i < MG_GAME_COUNT; i++)
+--        if (mg_games[i]->id == id && mg_games[i]->kept_key) return mg_games[i];
+-+        if (mg_games[i]->id == id) return mg_games[i];
+-     return NULL;
+- }
+- 
+--/* the backdrop of a key: the game's still parts as its playing frames show them (the baker and the
+-- * native platform draw it with this; the GBA ROM holds every key) */
+--static void mg_backdrop_draw(uint32_t key)
+-+/* the still parts (a kept picture) or the stamp of a key, drawn by the game's own code (the baker and
+-+ * the native platform draw with these; the GBA ROM holds every key and never calls them) */
+-+static void mg_key_draw(uint32_t key, int stamp)
+- {
+-     MgState save = mg;
+-     uint8_t mode = mg_kept_mode;
+-+#if !defined(DOOMO_PLATFORM_GBA)
+-     uint32_t bk = mg_bake_key;
+--    const MgGame *g = mg_kept_game((int)(key >> MG_BK_GAME_SHIFT));
+--    if (!g) { plat_clear(PAL_BLACK); return; }
+--    mg.g = g;
+-+#endif
+-+    const MgGame *g = mg_key_game(key);
+-+    int common = stamp && (int)(key >> MG_BK_GAME_SHIFT) == MG_COMMON_ID;
+-+    if (!common && (!g || (stamp ? !g->stamp : !g->kept_key))) { if (!stamp) plat_clear(PAL_BLACK); return; }
+-+    if (g) mg.g = g;
+-     mg.hell = (key & MG_BK_HELL) != 0;
+-     mg.ox = mg.oy = 0;
+-     mg.t = mg.play_t = 0;
+-     mg.phase = MGP_PLAY;
+-     mg_kept_mode = MGK_BAKE;
+--    mg_bake_key = key & (MG_BK_HELL - 1u);
+--    g->draw();
+-+    MG_SET_BAKE_KEY(key & (MG_BK_HELL - 1u));
+-+    if (common) mg_common_stamp(key & 0xFFFFu, mg_w() / 2, mg_h() / 2);
+-+    else if (stamp) g->stamp(key & 0xFFFFu, mg_w() / 2, mg_h() / 2);
+-+    else g->draw();
+-     mg_kept_mode = mode;
+--    mg_bake_key = bk;
+-+    MG_SET_BAKE_KEY(bk);
+-     mg = save;
+- }
+-+static void mg_backdrop_draw(uint32_t key) { mg_key_draw(key, 0); }
+-+static void mg_stamp_draw(uint32_t key) { mg_key_draw(key, 1); }
+- 
+- static int mg_backdrop_keys(uint32_t *out, int cap)
+- {
+--    uint32_t k[32];                                /* (the baker's: on the stack, no .bss) */
+-     int i, j, h, n = 0;
+-     for (i = 0; i < MG_GAME_COUNT; i++) {
+-         const MgGame *g = mg_games[i];
+--        int m;
+-         if (!g->kept_key || !g->kept_keys) continue;
+--        m = DOOMO_MIN(g->kept_keys(k, 32), 32);
+--        for (h = 0; h < 2; h++)
+--            for (j = 0; j < m; j++) {
+--                if (n < cap) out[n] = (uint32_t)g->id << MG_BK_GAME_SHIFT | (h ? MG_BK_HELL : 0u) | (k[j] & (MG_BK_HELL - 1u));
+--                n++;
+--            }
+-+        for (h = 0; h < 2; h++) {
+-+            int m = g->kept_keys(n < cap ? out + n : out, n < cap ? cap - n : 0, h);
+-+            for (j = 0; j < m && n + j < cap; j++)
+-+                out[n + j] = (uint32_t)g->id << MG_BK_GAME_SHIFT | (h ? MG_BK_HELL : 0u) | (out[n + j] & (MG_BK_HELL - 1u));
+-+            n += m;
+-+        }
+-     }
+-     return n;
+- }
+--const DoomoBackdrop mg_backdrop_family = { DOOMO_BACKDROP_MG, mg_backdrop_draw, mg_backdrop_keys };
+-+static int mg_backdrop_part(uint32_t key, int16_t out[2])
+-+{
+-+    const MgGame *g = mg_key_game(key);
+-+    return g && g->kept_part && g->kept_part(key & (MG_BK_HELL - 1u), out) ? BACKDROP_ROWS : BACKDROP_WHOLE;
+-+}
+-+const DoomoBackdrop mg_backdrop_family = { DOOMO_BACKDROP_MG, mg_backdrop_draw, mg_backdrop_keys, mg_backdrop_part };
+-+
+-+static int mg_stamp_keys(uint32_t *out, int cap)
+-+{
+-+    int i, j, n = 0;
+-+    for (i = 0; i < MG_GAME_COUNT; i++) {
+-+        const MgGame *g = mg_games[i];
+-+        int m;
+-+        if (!g->stamp || !g->stamp_keys) continue;
+-+        m = g->stamp_keys(n < cap ? out + n : out, n < cap ? cap - n : 0);
+-+        for (j = 0; j < m && n + j < cap; j++)
+-+            out[n + j] = (uint32_t)g->id << MG_BK_GAME_SHIFT | (out[n + j] & 0xFFFFu);
+-+        n += m;
+-+    }
+-+    {
+-+        int m = mg_common_stamp_keys(n < cap ? out + n : out, n < cap ? cap - n : 0);
+-+        for (j = 0; j < m && n + j < cap; j++)
+-+            out[n + j] = (uint32_t)MG_COMMON_ID << MG_BK_GAME_SHIFT | (out[n + j] & 0xFFFFu);
+-+        n += m;
+-+    }
+-+    return n;
+-+}
+-+static int mg_stamp_part(uint32_t key, int16_t out[2])
+-+{
+-+    (void)key;
+-+    out[0] = (int16_t)(mg_w() / 2);
+-+    out[1] = (int16_t)(mg_h() / 2);
+-+    return BACKDROP_STAMP;
+-+}
+-+const DoomoBackdrop mg_stamp_family = { DOOMO_BACKDROP_MG_STAMP, mg_stamp_draw, mg_stamp_keys, mg_stamp_part };
+-+
+-+static uint32_t mg_key_full(uint32_t key)
+-+{
+-+    return (uint32_t)mg.g->id << MG_BK_GAME_SHIFT | (mg.hell ? MG_BK_HELL : 0u) | (key & (MG_BK_HELL - 1u));
+-+}
+-+
+-+int mg_kept_band(uint32_t key)
+-+{
+-+    PlatStageInfo info;
+-+    if (!plat_stage_begin(DOOMO_BACKDROP_MG, mg_key_full(key), mg_backdrop_draw, &info)) return 0;
+-+    plat_stage_restore(0, 0, mg_w(), mg_h());      /* the picture's whole box (GBA: DMA, ~3.5 ms a screen) */
+-+    return 1;
+-+}
+-+
+-+void mg_kept_src(uint32_t key)
+-+{
+-+    PlatStageInfo info;
+-+    (void)plat_stage_begin(DOOMO_BACKDROP_MG, mg_key_full(key), mg_backdrop_draw, &info);
+-+}
+-+
+-+void mg_kept_put(int x, int y, int w, int h)
+-+{
+-+    if (mg_kept_mode == MGK_LIVE) plat_stage_restore(x, y, w, h);
+-+}
+-+
+-+/* undo (mg.h): the box of the section and, while a game lists its restores, the list. Both sit at the
+-+ * end of the game's arena in the scene scratch (MG_UNDO_AT, zeroed with it): no .bss */
+-+typedef struct { MgBox *list; uint8_t n, cap, over, on; int16_t box[4]; } MgRec;
+-+DOOMO_STATIC_ASSERT(sizeof(MgRec) <= MG_UNDO_BYTES, mg_undo_state_fits);
+-+#define UNDO_REC ((MgRec *)(void *)((uint8_t *)mg_state() + MG_UNDO_AT))
+-+static void mg_undo_tap(int x, int y, int w, int h, uint8_t c)
+-+{
+-+    MgRec *r = UNDO_REC;
+-+    int x0 = DOOMO_MAX(x, r->box[0]), y0 = DOOMO_MAX(y, r->box[1]);
+-+    int x1 = DOOMO_MIN(x + w, r->box[2]), y1 = DOOMO_MIN(y + h, r->box[3]);
+-+    (void)c;
+-+    if (x0 >= x1 || y0 >= y1) return;
+-+    if (mg_kept_mode == MGK_REC) {
+-+        int i;
+-+        for (i = 0; i < r->n; i++) {              /* inside a box of the list already (a nested shape) */
+-+            const MgBox *q = &r->list[i];
+-+            if (x0 >= q->x && y0 >= q->y && x1 <= q->x + q->w && y1 <= q->y + q->h) return;
+-+        }
+-+        if (r->n >= r->cap) { r->over = 1; return; }
+-+        r->list[r->n].x = (int16_t)x0; r->list[r->n].y = (int16_t)y0;
+-+        r->list[r->n].w = (int16_t)(x1 - x0); r->list[r->n].h = (int16_t)(y1 - y0);
+-+        r->n++;
+-+    } else {
+-+        plat_stage_restore(x0, y0, x1 - x0, y1 - y0);
+-+    }
+-+}
+-+
+-+void mg_undo(int x0, int y0, int x1, int y1)
+-+{
+-+    MgRec *r = UNDO_REC;
+-+    if (mg_kept_mode != MGK_LIVE) return;
+-+    r->box[0] = (int16_t)x0; r->box[1] = (int16_t)y0; r->box[2] = (int16_t)x1; r->box[3] = (int16_t)y1;
+-+    mg_kept_mode = r->on ? MGK_REC : MGK_UNDO;
+-+    ur_tap = mg_undo_tap;
+-+}
+-+
+-+void mg_undo_end(void)
+-+{
+-+    if (mg_kept_mode < MGK_UNDO) return;
+-+    mg_kept_mode = MGK_LIVE;
+-+    ur_tap = 0;
+-+}
+-+
+-+void mg_undo_rec(MgBox *list, int cap)
+-+{
+-+    MgRec *r = UNDO_REC;
+-+    r->list = list;
+-+    r->cap = (uint8_t)DOOMO_MIN(cap, 255);
+-+    r->n = r->over = 0;
+-+    r->on = 1;
+-+}
+-+
+-+int mg_undo_rec_end(void)
+-+{
+-+    MgRec *r = UNDO_REC;
+-+    r->on = 0;
+-+    return r->over ? -1 : r->n;
+-+}
+-+
+-+void mg_kept_puts(const MgBox *list, int n, int dx, int dy)
+-+{
+-+    if (mg_kept_mode == MGK_LIVE && n > 0) plat_stage_restore_list(&list[0].x, n, dx, dy);
+-+}
+-+
+-+void mg_rect(int x, int y, int w, int h, uint8_t c)
+-+{
+-+    if (mg_kept_mode >= MGK_UNDO) mg_undo_tap(x, y, w, h, c);
+-+    else plat_rect(x, y, w, h, c);
+-+}
+-+
+-+int mg_stamp_common(uint32_t key, int x, int y)
+-+{
+-+    if (mg_kept_mode == MGK_BAKE || mg.plain) return 0;
+-+    return plat_stage_stamp(DOOMO_BACKDROP_MG_STAMP, (uint32_t)MG_COMMON_ID << MG_BK_GAME_SHIFT | (key & 0xFFFFu), x, y);
+-+}
+-+
+-+int mg_stamp(uint32_t key, int x, int y)
+-+{
+-+    if (mg_kept_mode == MGK_BAKE || mg.plain || !mg.g->stamp) return 0;
+-+    return plat_stage_stamp(DOOMO_BACKDROP_MG_STAMP, (uint32_t)mg.g->id << MG_BK_GAME_SHIFT | (key & 0xFFFFu), x, y);
+-+}
+- 
+- /* the playfield over its kept picture: 1 when drawn that way (fx and HUD included) */
+- static int mg_kept_draw(void)
+- {
+-     const MgGame *g = mg.g;
+--    PlatStageInfo info;
+--    uint32_t key;
+--    if (!g->kept_key || mg.phase == MGP_RESULTS || mg.ox || mg.oy) return 0;
+--    key = (uint32_t)g->id << MG_BK_GAME_SHIFT | (mg.hell ? MG_BK_HELL : 0u) | (g->kept_key() & (MG_BK_HELL - 1u));
+--    if (!plat_stage_begin(DOOMO_BACKDROP_MG, key, mg_backdrop_draw, &info)) return 0;
+--    plat_stage_restore(0, 0, mg_w(), mg_h());      /* the still parts, whole (GBA: a ~3.5 ms DMA) */
+-+    int sx = mg.ox, sy = mg.oy;
+-+    if (!g->kept_key || mg.phase == MGP_RESULTS || mg.plain) return 0;
+-+#if !defined(DOOMO_PLATFORM_GBA)
+-+    if (sx || sy) return 0;                        /* a shake: the full frame, every part offset */
+-+#endif
+-+    if (!mg_kept_band(g->kept_key())) return 0;
+-+#if defined(DOOMO_PLATFORM_GBA)
+-+    /* (S2-4b, pixel-changing) a shake is the kept frame, moved as a whole by the display */
+-+    if (sx || sy) { plat_post_offset(sx, sy); mg.ox = mg.oy = 0; }
+-+#endif
+-     mg_kept_mode = MGK_LIVE;
+-     g->draw();
+-+    mg_undo_end();
+-     mg_kept_mode = MGK_OFF;
+-     mg_fx_draw();
+-     mg_hud();
+-+    mg.ox = (int8_t)sx;
+-+    mg.oy = (int8_t)sy;
+-     return 1;
+- }
+- #endif
+-diff --git a/core/src/mg.h b/core/src/mg.h
+-index 241da590..93e10eac 100644
+---- a/core/src/mg.h
+-+++ b/core/src/mg.h
+-@@ -39,6 +39,7 @@ enum { MG_MEDAL_NONE, MG_MEDAL_BRONZE, MG_MEDAL_SILVER, MG_MEDAL_GOLD };
+- #define MG_ARG_AUTOSTART 0x10
+- #define MG_ARG_AUTOPLAY  0x20
+- #define MG_ARG_DEMO      0x40   /* debug: an empty island gets the premade cast */
+-+#define MG_ARG_PLAIN     0x80   /* (S2-4b) tests: every frame drawn in full (no kept playfield, no stamps) */
+- 
+- /* Unlock ids (bit indices; the minigames own 832..863, the unused part of
+-  * art's range - the concert hall took 864..895). */
+-@@ -98,9 +99,14 @@ typedef struct MgGame {
+-     void (*draw)(void);         /* the playfield, offset by mg.ox/oy     */
+-     void (*art)(int cx, int cy, int t);   /* title card mascot          */
+-     uint32_t (*bot)(void);      /* autoplay: buttons held this tick      */
+--    /* (S2-4) the playfield's still parts as a kept backdrop (mg.h "kept playfield"); NULL: none */
+--    uint32_t (*kept_key)(void);   /* this frame's backdrop key bits 0..14 (game id, tier added) */
+--    int (*kept_keys)(uint32_t *out, int cap);    /* every key kept_key can return          */
+-+    /* (S2-4) the playfield's still parts as kept pictures (mg.h "kept playfield"); NULL: none */
+-+    uint32_t (*kept_key)(void);   /* this frame's first kept picture: key bits 0..14 (game id, tier added) */
+-+    int (*kept_keys)(uint32_t *out, int cap, int hell);   /* every key the game asks for on a Hellfire (1) or another (0) tier */
+-+    /* (S2-4b) a key whose picture is a band of screen rows: 1 and rows[0..1]; 0 (or NULL): a whole screen */
+-+    int (*kept_part)(uint32_t key, int16_t rows[2]);
+-+    /* (S2-4b) the game's stamps (mg.h "stamps"): the actor of a key drawn around (cx, cy); every key */
+-+    void (*stamp)(uint32_t key, int cx, int cy);
+-+    int (*stamp_keys)(uint32_t *out, int cap);
+- } MgGame;
+- 
+- enum { MGP_TITLE, MGP_READY, MGP_PLAY, MGP_PAUSE, MGP_END, MGP_RESULTS };
+-@@ -121,6 +127,7 @@ typedef struct MgState {
+-     const char *end_text;
+-     uint32_t bot_now, bot_prev;
+-     uint8_t  stat_a, stat_b;    /* per-game flags for trophies            */
+-+    uint8_t  plain;             /* MG_ARG_PLAIN                           */
+- } MgState;
+- extern MgState mg;
+- 
+-@@ -131,6 +138,8 @@ extern MgState mg;
+-  * minigames only open modals over themselves). */
+- #define MG_ARENA_BYTES 2048
+- #define MG_FX_BYTES 512
+-+#define MG_UNDO_BYTES 24           /* (S2-4b) mg.c's undo state: the end of the arena */
+-+#define MG_UNDO_AT (MG_ARENA_BYTES - MG_UNDO_BYTES)
+- #define MG_SCRATCH_TAG SAVE_EXT_TAG('M', 'G', 'A', 'M')
+- void mg_scratch_claim(void);
+- /* The arena as an opaque pointer (keeps the type punning out of sight of
+-@@ -138,7 +147,7 @@ void mg_scratch_claim(void);
+- void *mg_state(void) __attribute__((const));
+- #define MG_ARENA(type) ((type *)mg_state())
+- #define MG_ARENA_FITS(type) \
+--    DOOMO_STATIC_ASSERT(sizeof(type) <= MG_ARENA_BYTES, type##_fits_arena)
+-+    DOOMO_STATIC_ASSERT(sizeof(type) <= MG_ARENA_BYTES - MG_UNDO_BYTES, type##_fits_arena)
+- 
+- /* ---- scene plumbing --------------------------------------------------- */
+- void mg_scene_enter(const MgGame *g, int arg);
+-@@ -257,11 +266,15 @@ const char *mg_host_name(int id);
+-  *   MGK_LIVE  the live parts only, over the kept picture
+-  * A still part drawn AFTER a live one in the usual order (a hole's front over the critter rising from
+-  * it) is put back from the kept picture with plat_stage_restore, in the same spans, when mg_kept(). */
+--enum { MGK_OFF, MGK_BAKE, MGK_LIVE };
+-+enum { MGK_OFF, MGK_BAKE, MGK_LIVE, MGK_UNDO, MGK_REC };
+- #define MG_BK_HELL   0x8000u        /* key bit: the Hellfire tier (mg.hell); bits 0..14 are the game's */
+- #if !defined(DOOMO_PLATFORM_PS1)
+- extern uint8_t mg_kept_mode;
+-+#if defined(DOOMO_PLATFORM_GBA)     /* (the GBA never bakes: its ROM holds the pictures; no RAM) */
+-+#define mg_bake_key 0u
+-+#else
+- extern uint32_t mg_bake_key;        /* MGK_BAKE: the key being baked (bits 0..14) */
+-+#endif
+- #else                               /* (the PS1 draws every frame whole: no code, no RAM) */
+- #define mg_kept_mode ((uint8_t)MGK_OFF)
+- #define mg_bake_key 0u
+-@@ -269,6 +282,56 @@ extern uint32_t mg_bake_key;        /* MGK_BAKE: the key being baked (bits 0..14
+- static inline int mg_still(void) { return mg_kept_mode != MGK_LIVE; }  /* draw the still parts  */
+- static inline int mg_live(void) { return mg_kept_mode != MGK_BAKE; }   /* draw the live parts   */
+- static inline int mg_kept(void) { return mg_kept_mode == MGK_LIVE; }   /* over the kept picture */
+-+/* ---- (S2-4b) bands, undo, stamps, the shake (docs/GBA.md "Speed wave 2: S2-4b") ----------------
+-+ * BANDS. A kept picture may hold only a band of screen rows (kept_part): the tent with its sway is one
+-+ * band, the field under it another, so the ROM holds 15 small tents and one field instead of 15 whole
+-+ * screens. kept_key() names the frame's first picture (the flow copies it in); the game's draw copies
+-+ * the others with mg_kept_band() while mg_kept().
+-+ * UNDO. A still part that the usual order draws AFTER a live one hides it. Over the kept picture the
+-+ * game draws the live part, then runs the still part's own drawing code between mg_undo() and
+-+ * mg_undo_end(): every mg_rect and every UI shape (circles, round rects: ui_raster.c's tap) then puts
+-+ * its rows back from the kept picture instead of painting, clipped to the box given (the live part's),
+-+ * so the still part comes back in exactly the spans it was drawn with. mg_kept_src() picks the picture
+-+ * the rows come from (the frame's last band by default). Where the live part's box and the still part
+-+ * never move (a flower on a hole), the game lists those restores once (mg_undo_rec .. mg_undo_rec_end
+-+ * around the undo sections: they fill a list instead of copying) and repeats the list every frame
+-+ * with mg_kept_puts().
+-+ * STAMPS. An actor that is a pure function of a small key (an imp at one wing beat, a ring of one
+-+ * size and colour, the cloud couch at one tick of its sway) is a stamp: the GBA build bakes
+-+ * stamp(key, cx, cy) of every key in stamp_keys into the ROM as a small picture with holes, and
+-+ * mg_stamp() draws it as one image. It returns 0 where no stamps are kept (PS1, Dreamcast, native,
+-+ * while baking): the caller then draws the actor with the same code the baker ran.
+-+ * SHAKE (GBA only, pixel-changing): a shaken frame is the kept frame drawn unshaken and moved as a
+-+ * whole by the display (plat_post_offset: the HUD moves with it, the edge shows the border colour)
+-+ * instead of a full frame with every part offset. */
+-+#if !defined(DOOMO_PLATFORM_PS1)
+-+int  mg_kept_band(uint32_t key);             /* copy the band of `key` in (and make it the source); 0: not kept */
+-+void mg_kept_src(uint32_t key);              /* make the picture of `key` the source of the restores */
+-+void mg_kept_put(int x, int y, int w, int h);/* put that box back from the source picture */
+-+void mg_undo(int x0, int y0, int x1, int y1);/* box [x0, x1) x [y0, y1) */
+-+void mg_undo_end(void);
+-+typedef struct MgBox { int16_t x, y, w, h; } MgBox;
+-+void mg_undo_rec(MgBox *list, int cap);      /* the undo sections that follow list their restores */
+-+int  mg_undo_rec_end(void);                  /* how many; -1: the list was too short */
+-+void mg_kept_puts(const MgBox *list, int n, int dx, int dy);   /* put those boxes, moved by (dx, dy), back */
+-+void mg_rect(int x, int y, int w, int h, uint8_t c);   /* plat_rect, or a restore between mg_undo and mg_undo_end */
+-+int  mg_stamp(uint32_t key, int x, int y);   /* key: bits 0..14 the game's, MG_BK_HELL if the picture depends on it */
+-+/* the stamps every game shares (mg_draw.c: imps, Father Fuzz); mg_imp / mg_fuzz use them themselves */
+-+#define MG_COMMON_ID 15
+-+int  mg_stamp_common(uint32_t key, int x, int y);
+-+void mg_common_stamp(uint32_t key, int cx, int cy);
+-+int  mg_common_stamp_keys(uint32_t *out, int cap);
+-+#else
+-+#define mg_kept_band(key) 0
+-+#define mg_kept_src(key) ((void)0)
+-+#define mg_kept_put(x, y, w, h) ((void)0)
+-+#define mg_undo(x0, y0, x1, y1) ((void)0)
+-+#define mg_undo_end() ((void)0)
+-+#define mg_kept_puts(list, n, dx, dy) ((void)0)
+-+#define mg_rect plat_rect
+-+#define mg_stamp(key, x, y) 0
+-+#define mg_stamp_common(key, x, y) 0
+-+#endif
+- /* HUD pieces */
+- void mg_hud(void);
+- void mg_draw_hearts(int x, int y, int n, int max);
+-diff --git a/core/src/mg_catch.c b/core/src/mg_catch.c
+-index 4e3ac281..afd23c0b 100644
+---- a/core/src/mg_catch.c
+-+++ b/core/src/mg_catch.c
+-@@ -389,7 +389,7 @@ const MgGame mg_game_catch = {
+-     { MG_CATCH_B, MG_CATCH_S, MG_CATCH_G }, 14, 60 * 30,
+-     { PAL_PAINT(PAINT_BUBBLEGUM, 1), PAL_WHITE, PAL_PAINT(PAINT_CHERRY, 1) },
+-     ct_start, ct_update, ct_draw, ct_art, ct_bot,
+--    NULL, NULL
+-+    NULL, NULL, NULL, NULL, NULL
+- };
+- 
+- MG_DEFINE_SCENE(SCENE_MG_CATCH, "MG_CATCH", mg_game_catch);
+-diff --git a/core/src/mg_derby.c b/core/src/mg_derby.c
+-index f61d6e56..a2d68175 100644
+---- a/core/src/mg_derby.c
+-+++ b/core/src/mg_derby.c
+-@@ -499,7 +499,7 @@ const MgGame mg_game_derby = {
+-     { MG_DERBY_B, MG_DERBY_S, MG_DERBY_G }, 20, 0,
+-     { PAL_PAINT(PAINT_LIME, 1), PAL_WHITE, PAL_PAINT(PAINT_FOREST, 1) },
+-     dy_start, dy_update, dy_draw, dy_art, dy_bot,
+--    NULL, NULL
+-+    NULL, NULL, NULL, NULL, NULL
+- };
+- 
+- MG_DEFINE_SCENE(SCENE_MG_DERBY, "MG_DERBY", mg_game_derby);
+-diff --git a/core/src/mg_dodge.c b/core/src/mg_dodge.c
+-index 7898908f..de8ab95a 100644
+---- a/core/src/mg_dodge.c
+-+++ b/core/src/mg_dodge.c
+-@@ -445,7 +445,7 @@ const MgGame mg_game_dodge = {
+-     { MG_DODGE_B, MG_DODGE_S, MG_DODGE_G }, 10, 60 * 30,
+-     { PAL_PAINT(PAINT_VAPE_PURPLE, 1), PAL_PAINT(PAINT_LAVENDER, 2), PAL_PAINT(PAINT_GRAPE, 1) },
+-     dg_start, dg_update, dg_draw, dg_art, dg_bot,
+--    NULL, NULL
+-+    NULL, NULL, NULL, NULL, NULL
+- };
+- 
+- MG_DEFINE_SCENE(SCENE_MG_DODGE, "MG_DODGE", mg_game_dodge);
+-diff --git a/core/src/mg_draw.c b/core/src/mg_draw.c
+-index 02ec1eb5..b3f8446e 100644
+---- a/core/src/mg_draw.c
+-+++ b/core/src/mg_draw.c
+-@@ -129,9 +129,9 @@ void mg_bulbs(int x, int y, int w, int h, int t)
+-         else if (d < w + h) { bx = x + w - 1; by = y + d - w; }
+-         else if (d < 2 * w + h) { bx = x + w - 1 - (d - w - h); by = y + h - 1; }
+-         else { bx = x; by = y + h - 1 - (d - 2 * w - h); }
+--        plat_rect(bx - 1, by, 3, 1, lit ? PAL_UI_GOLD : PAL_RAMP(RAMP_CANDY, 2));
+--        plat_rect(bx, by - 1, 1, 3, lit ? PAL_UI_GOLD : PAL_RAMP(RAMP_CANDY, 2));
+--        if (lit) plat_rect(bx, by, 1, 1, PAL_WHITE);
+-+        mg_rect(bx - 1, by, 3, 1, lit ? PAL_UI_GOLD : PAL_RAMP(RAMP_CANDY, 2));    /* (mg_rect: mg.h "undo") */
+-+        mg_rect(bx, by - 1, 1, 3, lit ? PAL_UI_GOLD : PAL_RAMP(RAMP_CANDY, 2));
+-+        if (lit) mg_rect(bx, by, 1, 1, PAL_WHITE);
+-     }
+- }
+- 
+-@@ -369,16 +369,14 @@ static void eye(int x, int y, int r, int look, int blink, uint8_t iris)
+-     plat_rect(x + look - 1, y - 1, 1, 1, PAL_WHITE);
+- }
+- 
+--void mg_imp(int cx, int cy, int rx, int ry, int t, int mood)
+-+/* the imp at one wing beat (flap -2..2), eye position (look -1..1) or blink; t only turns a bonked
+-+ * imp's stars. Everything but the golden imp's sparkle, which mg_imp adds. */
+-+static void imp_body(int cx, int cy, int rx, int ry, int mood, int gold, int flap, int look, int blink, int t)
+- {
+--    int gold = (mood & IMP_GOLD) != 0;
+-     uint8_t base = gold ? PAL_PAINT(PAINT_HONEY, 1) : PAL_PAINT(PAINT_CHERRY, 1);
+-     uint8_t dark = gold ? PAL_PAINT(PAINT_RUST, 1) : PAL_PAINT(PAINT_BLOOD, 1);
+-     uint8_t lite = gold ? PAL_PAINT(PAINT_LEMON, 2) : PAL_PAINT(PAINT_CHERRY, 2);
+--    int flap = ui_wave(t * 2, 16, 2), k, er = rx > 9 ? 3 : 2;
+--    int blink;
+--    mood &= 7;
+--    blink = mood != IMP_BONK && (t % 70) < 3;
+-+    int k, er = rx > 9 ? 3 : 2;
+-     /* bat wings */
+-     for (k = 0; k < 4; k++) {
+-         int wy = cy - ry / 2 + k * 2 - flap * (3 - k) / 3, wl = rx / 2 + 3 - k;
+-@@ -411,7 +409,6 @@ void mg_imp(int cx, int cy, int rx, int ry, int t, int mood)
+-             ui_sparkle(cx + FIX2INT(fx_cos(a) * (rx + 2)), cy - ry - 2 + FIX2INT(fx_sin(a) * 3), 6, PAL_UI_GOLD);
+-         }
+-     } else {
+--        int look = ui_wave(t, 90, 1);
+-         uint8_t iris = gold ? PAL_PAINT(PAINT_RUST, 0) : PAL_RAMP(RAMP_STONE, 0);
+-         eye(cx - rx / 3, cy - ry / 5, er, look, blink, iris);
+-         eye(cx + rx / 3, cy - ry / 5, er, look, blink, iris);
+-@@ -429,6 +426,99 @@ void mg_imp(int cx, int cy, int rx, int ry, int t, int mood)
+-         plat_rect(cx - rx / 2 - 1, cy + 1, 2, 1, PAL_PAINT(PAINT_ROSE, 2));
+-         plat_rect(cx + rx / 2, cy + 1, 2, 1, PAL_PAINT(PAINT_ROSE, 2));
+-     }
+-+}
+-+
+-+/* the HUD's still pieces (hud_part): a heart (value: held), the score pill with its label (value: its
+-+ * width), the time bar's frame (value: the bar's width) */
+-+enum { HUDP_HEART = 0 << 8, HUDP_PILL = 1 << 8, HUDP_TIME = 2 << 8, HUDP_PART = 3 << 8 };
+-+static void hud_part(int part, int v, int x, int y);
+-+
+-+#if !defined(DOOMO_PLATFORM_PS1)
+-+/* ---- (S2-4b) the stamps every game shares (mg.h "stamps"; key bits 12..13: the kind) ----------
+-+ * imp:  size 0..7 | mood << 3 (2 bits) | gold << 5 | (flap + 2) << 6 | eyes << 9 (look + 1, 3: blink)
+-+ * fuzz: size 0..3 | ouch << 3 | blink << 4       (without his sparkle)
+-+ * Sizes are the ones the 240x160 games draw; another size is drawn, not stamped. */
+-+enum { MCS_IMP = 0 << 12, MCS_FUZZ = 1 << 12, MCS_HUD = 2 << 12, MCS_KIND = 3 << 12 };
+-+/* hud:  HUDP_* | value (| MG_BK_HELL for the pill): hud_part's pieces */
+-+
+-+static const struct { uint8_t rx, ry, moods, golds; } imp_sizes[] = {   /* moods / golds: bit masks of what is baked */
+-+    { 10, 10, 1 << IMP_GRIN | 1 << IMP_SNEAKY, 3 },      /* Whack's critters                 */
+-+    { 7, 6, 1 << IMP_GRIN | 1 << IMP_SNEAKY, 3 },        /* Whack's sign, the Gallery's cards */
+-+};
+-+#define IMP_SIZES ((int)(sizeof(imp_sizes) / sizeof(imp_sizes[0])))
+-+static const uint8_t fuzz_sizes[] = { 8 };               /* Whack's Father Fuzz */
+-+#define FUZZ_SIZES ((int)sizeof(fuzz_sizes))
+-+static void fuzz_body(int cx, int cy, int r, int ouch, int blink);
+-+
+-+static int imp_key(int rx, int ry, int mood, int gold, int flap, int eyes)
+-+{
+-+    int i;
+-+    for (i = 0; i < IMP_SIZES; i++)
+-+        if (imp_sizes[i].rx == rx && imp_sizes[i].ry == ry) break;
+-+    if (i == IMP_SIZES || mood > 3 || !(imp_sizes[i].moods >> mood & 1) || !(imp_sizes[i].golds >> gold & 1)) return -1;
+-+    return MCS_IMP | i | mood << 3 | gold << 5 | (flap + 2) << 6 | eyes << 9;
+-+}
+-+
+-+void mg_common_stamp(uint32_t key, int cx, int cy)
+-+{
+-+    int i = (int)(key & 7);
+-+    if ((key & MCS_KIND) == MCS_IMP && i < IMP_SIZES) {
+-+        int eyes = (int)(key >> 9 & 3);
+-+        imp_body(cx, cy, imp_sizes[i].rx, imp_sizes[i].ry, (int)(key >> 3 & 3), (int)(key >> 5 & 1),
+-+                 (int)(key >> 6 & 7) - 2, eyes == 3 ? 0 : eyes - 1, eyes == 3, 0);
+-+    } else if ((key & MCS_KIND) == MCS_FUZZ && i < FUZZ_SIZES) {
+-+        fuzz_body(cx, cy, fuzz_sizes[i], (int)(key >> 3 & 1), (int)(key >> 4 & 1));
+-+    } else if ((key & MCS_KIND) == MCS_HUD) {
+-+        hud_part((int)(key & HUDP_PART), (int)(key & 255), cx, cy);
+-+    }
+-+}
+-+
+-+int mg_common_stamp_keys(uint32_t *out, int cap)
+-+{
+-+    int i, m, g, f, e, n = 0;
+-+    for (i = 0; i < IMP_SIZES; i++)
+-+        for (m = 0; m < 4; m++)
+-+            for (g = 0; g < 2; g++)
+-+                for (f = -2; f <= 2; f++)
+-+                    for (e = 0; e < 4; e++) {
+-+                        int k = imp_key(imp_sizes[i].rx, imp_sizes[i].ry, m, g, f, e);
+-+                        if (k < 0) continue;
+-+                        if (n < cap) out[n] = (uint32_t)k;
+-+                        n++;
+-+                    }
+-+    for (i = 0; i < FUZZ_SIZES; i++)
+-+        for (m = 0; m < 3; m++) {                   /* looking, blinking, ouch */
+-+            if (n < cap) out[n] = (uint32_t)(MCS_FUZZ | i | (m == 2) << 3 | (m == 1) << 4);
+-+            n++;
+-+        }
+-+    for (m = 0; m < 2; m++) {                       /* a heart, lost or held */
+-+        if (n < cap) out[n] = (uint32_t)(MCS_HUD | HUDP_HEART | m);
+-+        n++;
+-+    }
+-+    for (i = 1; i <= 7; i++)                        /* the score pill, 1 to 7 digits, both looks */
+-+        for (m = 0; m < 2; m++) {
+-+            if (n < cap) out[n] = (uint32_t)(MCS_HUD | HUDP_PILL | (ui_text_width("0000000" + 7 - i) + 44)) | (m ? MG_BK_HELL : 0u);
+-+            n++;
+-+        }
+-+    if (n < cap) out[n] = (uint32_t)(MCS_HUD | HUDP_TIME | (mg_big() ? 70 : 50));
+-+    return n + 1;
+-+}
+-+#endif
+-+
+-+void mg_imp(int cx, int cy, int rx, int ry, int t, int mood)
+-+{
+-+    int gold = (mood & IMP_GOLD) != 0, flap = ui_wave(t * 2, 16, 2), blink, look = ui_wave(t, 90, 1);
+-+    mood &= 7;
+-+    blink = mood != IMP_BONK && (t % 70) < 3;
+-+#if !defined(DOOMO_PLATFORM_PS1)
+-+    {
+-+        int key = mood != IMP_BONK ? imp_key(rx, ry, mood, gold, flap, blink ? 3 : look + 1) : -1;
+-+        if (key < 0 || !mg_stamp_common((uint32_t)key, cx, cy))
+-+            imp_body(cx, cy, rx, ry, mood, gold, flap, look, blink, t);
+-+    }
+-+#else
+-+    imp_body(cx, cy, rx, ry, mood, gold, flap, look, blink, t);
+-+#endif
+-     if (gold) ui_sparkle(cx + rx, cy - ry, (t / 2) & 15, PAL_WHITE);
+- }
+- 
+-@@ -469,7 +559,8 @@ void mg_wraith(int cx, int cy, int r, int t, int hurt)
+-     if ((t / 8) & 1) ui_fill_circle(cx + r / 2 + 11, cy + r / 3 - 3 - (t & 7) / 2, 2, PAL_RAMP(RAMP_VAPE, 6));
+- }
+- 
+--void mg_fuzz(int cx, int cy, int r, int t, int ouch)
+-+/* Father Fuzz looking, blinking or bonked; mg_fuzz adds his sparkle */
+-+static void fuzz_body(int cx, int cy, int r, int ouch, int blink)
+- {
+-     uint8_t fur = PAL_PAINT(PAINT_CARAMEL, 1), fur_d = PAL_PAINT(PAINT_CHOCOLATE, 1);
+-     uint8_t fur_l = PAL_PAINT(PAINT_CARAMEL, 2);
+-@@ -502,7 +593,6 @@ void mg_fuzz(int cx, int cy, int r, int t, int ouch)
+-         plat_line(cx + r / 2 + 2, cy, cx + r / 2 - 1, cy - 2, OUTLINE_DARK);
+-         plat_rect(cx - 2, cy + r / 2, 5, 2, PAL_PAINT(PAINT_BLOOD, 1));
+-     } else {
+--        int blink = (t % 80) < 3;
+-         eye(cx - r / 2, cy - 2, 2, 0, blink, PAL_RAMP(RAMP_STONE, 0));
+-         eye(cx + r / 2, cy - 2, 2, 0, blink, PAL_RAMP(RAMP_STONE, 0));
+-         plat_rect(cx - 2, cy + r / 2, 1, 1, OUTLINE_DARK);
+-@@ -511,6 +601,17 @@ void mg_fuzz(int cx, int cy, int r, int t, int ouch)
+-         plat_rect(cx - r / 2 - 2, cy + 2, 3, 1, PAL_PAINT(PAINT_ROSE, 2));
+-         plat_rect(cx + r / 2, cy + 2, 3, 1, PAL_PAINT(PAINT_ROSE, 2));
+-     }
+-+}
+-+
+-+void mg_fuzz(int cx, int cy, int r, int t, int ouch)
+-+{
+-+    int blink = !ouch && (t % 80) < 3;
+-+#if !defined(DOOMO_PLATFORM_PS1)
+-+    int i;
+-+    for (i = 0; i < FUZZ_SIZES && fuzz_sizes[i] != r; i++) {}
+-+    if (i == FUZZ_SIZES || !mg_stamp_common((uint32_t)(MCS_FUZZ | i | (ouch != 0) << 3 | blink << 4), cx, cy))
+-+#endif
+-+    fuzz_body(cx, cy, r, ouch, blink);
+-     ui_sparkle(cx + r + 2, cy - r, (t / 3) & 15, PAL_UI_GOLD);
+- }
+- 
+-@@ -584,11 +685,33 @@ void mg_host_frame(int x, int y, int id, int expr, int t)
+- }
+- 
+- /* ---- HUD -------------------------------------------------------------------------- */
+-+/* the HUD's still pieces at (x, y) (a stamp where stamps are kept: mg.h) */
+-+static void hud_part(int part, int v, int x, int y)
+-+{
+-+    if (part == HUDP_HEART) {
+-+        ui_heart(x, y, 4, v ? PAL_PAINT(PAINT_ROSE, 1) : PAL_GRAY);
+-+    } else if (part == HUDP_PILL) {                /* (x, y) = (2, 2) on the screen; v: its width */
+-+        ui_round_rect(x + 1, y + 1, v, 15, 7, PAL_RAMP(RAMP_STONE, 0));
+-+        ui_round_rect(x, y, v, 14, 7, mg.hell ? PAL_RAMP(RAMP_BLOOD, 1) : PAL_RAMP(RAMP_PASTEL_PINK, 2));
+-+        ui_round_rect(x + 1, y + 1, v - 2, 12, 6, mg.hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_RAMP(RAMP_PASTEL_PINK, 5));
+-+        ui_text(x + 5, y + 3, "SCORE", PAL_WHITE);
+-+    } else {                                       /* the time bar's frame; v: the bar's width */
+-+        ui_round_rect(x - 1, y, v + 2, 8, 4, PAL_RAMP(RAMP_STONE, 0));
+-+    }
+-+}
+-+static void hud_draw(int part, int v, int x, int y)
+-+{
+-+#if !defined(DOOMO_PLATFORM_PS1)
+-+    if (v >= 0 && v < 256 && mg_stamp_common((uint32_t)(MCS_HUD | part | v) | (part == HUDP_PILL && mg.hell ? MG_BK_HELL : 0u), x, y))
+-+        return;
+-+#endif
+-+    hud_part(part, v, x, y);
+-+}
+-+
+- void mg_draw_hearts(int x, int y, int n, int max)
+- {
+-     int i;
+--    for (i = 0; i < max; i++)
+--        ui_heart(x + i * 11, y, 4, i < n ? PAL_PAINT(PAINT_ROSE, 1) : PAL_GRAY);
+-+    for (i = 0; i < max; i++) hud_draw(HUDP_HEART, i < n, x + i * 11, y);
+- }
+- 
+- void mg_medal_icon(int cx, int cy, int medal, int t)
+-@@ -617,10 +740,7 @@ void mg_hud(void)
+-     /* score pill */
+-     doomo_snprintf(buf, sizeof(buf), "%d", (int)mg.score);
+-     x = ui_text_width(buf) + 44;
+--    ui_round_rect(3, 3, x, 15, 7, PAL_RAMP(RAMP_STONE, 0));
+--    ui_round_rect(2, 2, x, 14, 7, mg.hell ? PAL_RAMP(RAMP_BLOOD, 1) : PAL_RAMP(RAMP_PASTEL_PINK, 2));
+--    ui_round_rect(3, 3, x - 2, 12, 6, mg.hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_RAMP(RAMP_PASTEL_PINK, 5));
+--    ui_text(7, 5, "SCORE", PAL_WHITE);
+-+    hud_draw(HUDP_PILL, x, 2, 2);
+-     mg_text(40, 5 - bump, buf, bump ? PAL_UI_GOLD : PAL_WHITE);
+-     /* combo */
+-     if (mg.combo >= 2) {
+-@@ -637,7 +757,7 @@ void mg_hud(void)
+-         uint8_t c = secs <= 5 ? ((mg.play_t / 4) & 1 ? PAL_UI_RED : PAL_PAINT(PAINT_CHERRY, 2)) : PAL_PAINT(PAINT_MINT, 1);
+-         doomo_snprintf(buf, sizeof(buf), "%d", secs);
+-         x -= bw + 2;
+--        ui_round_rect(x - 1, 4, bw + 2, 8, 4, PAL_RAMP(RAMP_STONE, 0));
+-+        hud_draw(HUDP_TIME, bw, x, 4);
+-         ui_bar(x, 5, bw, 6, mg.time_left, g->time, c);
+-         mg_text(x - ui_text_width(buf) - 4, 4, buf, PAL_WHITE);
+-         x -= ui_text_width(buf) + 8;
+-diff --git a/core/src/mg_gallery.c b/core/src/mg_gallery.c
+-index e6dba0b8..089f306b 100644
+---- a/core/src/mg_gallery.c
+-+++ b/core/src/mg_gallery.c
+-@@ -457,7 +457,7 @@ const MgGame mg_game_gallery = {
+-     { MG_GALLERY_B, MG_GALLERY_S, MG_GALLERY_G }, 32, 45 * 30,
+-     { PAL_PAINT(PAINT_SKY, 1), PAL_WHITE, PAL_PAINT(PAINT_COBALT, 1) },
+-     gl_start, gl_update, gl_draw, gl_art, gl_bot,
+--    NULL, NULL
+-+    NULL, NULL, NULL, NULL, NULL
+- };
+- 
+- MG_DEFINE_SCENE(SCENE_MG_GALLERY, "MG_GALLERY", mg_game_gallery);
+-diff --git a/core/src/mg_memory.c b/core/src/mg_memory.c
+-index cc753132..6d434707 100644
+---- a/core/src/mg_memory.c
+-+++ b/core/src/mg_memory.c
+-@@ -384,7 +384,7 @@ const MgGame mg_game_memory = {
+-     { MG_MEMORY_B, MG_MEMORY_S, MG_MEMORY_G }, 12, 90 * 30,
+-     { PAL_PAINT(PAINT_LAVENDER, 1), PAL_PAINT(PAINT_NAVY, 2), PAL_PAINT(PAINT_GRAPE, 1) },
+-     mm_start, mm_update, mm_draw, mm_art, mm_bot,
+--    NULL, NULL
+-+    NULL, NULL, NULL, NULL, NULL
+- };
+- 
+- MG_DEFINE_SCENE(SCENE_MG_MEMORY, "MG_MEMORY", mg_game_memory);
+-diff --git a/core/src/mg_whack.c b/core/src/mg_whack.c
+-index 88e16803..fc077b58 100644
+---- a/core/src/mg_whack.c
+-+++ b/core/src/mg_whack.c
+-@@ -17,11 +17,21 @@ typedef struct WHole {
+-     uint8_t kind, st, t, hits, stay, dazed;
+- } WHole;
+- 
+-+#define WK_FL_PUTS 80
+-+#define WK_SIGN_PUTS 32
+-+#define WK_RING_PUTS 24
+- typedef struct Whack {
+-     WHole hole[9];
+-     uint8_t aim, swing, cool, hit_hole, fuzz_bonks, misses;
+-     int16_t mx16, my16;         /* mallet position (smoothed) */
+-     uint16_t spawn_t;
+-+    /* (S2-4b) made once a round: the rows of a hole's front ring (outer and inner half widths), and,
+-+     * for the frames over the kept picture, the boxes to put back (mg.h "undo"): where a hole lies on
+-+     * a flower, and where the sign board lies on each of its two imps */
+-+    uint8_t front[2][12];
+-+    int8_t puts_ok, n_fl, n_sign[2], n_ring;
+-+    MgBox fl_put[WK_FL_PUTS], sign_put[2][WK_SIGN_PUTS], ring_put[WK_RING_PUTS];   /* (ring_put: hole 0's front ring) */
+-+    struct { int16_t x, y; uint8_t pink; } flower[14];      /* where the flowers stand (flower_at) */
+- } Whack;
+- MG_ARENA_FITS(Whack);
+- #define S (MG_ARENA(Whack))
+-@@ -35,8 +45,19 @@ static int hole_y(int i) { return field_top() + 6 + (i / 3) * row_dy() + row_dy(
+- static int hole_rx(void) { return crit_r() + 5; }
+- static int hole_ry(void) { return hole_rx() / 3 + 1; }
+- 
+-+static void front_rows(int rx, int ry, uint8_t *o, uint8_t *in);
+-+static uint32_t flower_at(int k, int *fx2, int *fy);
+-+
+- static void wh_start(void)
+- {
+-+    int k;
+-+    front_rows(hole_rx(), hole_ry(), S->front[0], S->front[1]);
+-+    for (k = 0; k < 14; k++) {
+-+        int fx2, fy;
+-+        S->flower[k].pink = (uint8_t)(flower_at(k, &fx2, &fy) >> 20 & 1);
+-+        S->flower[k].x = (int16_t)fx2;
+-+        S->flower[k].y = (int16_t)fy;
+-+    }
+-     S->aim = 4;
+-     S->mx16 = (int16_t)(hole_x(4) * 16);
+-     S->my16 = (int16_t)(hole_y(4) * 16);
+-@@ -232,46 +253,33 @@ static void critter(const WHole *h, int x, int y, int r, int t)
+-     }
+- }
+- 
+--/* the front half of the hole's dirt ring + the ground in front of it */
+--static void hole_front(int cx, int hy, int rx, int ry, int row, int cover)
+-+/* the rows of a hole's front ring: per row y (0..ry + 3) the outer and the inner half width */
+-+static void front_rows(int rx, int ry, uint8_t *o, uint8_t *in)
+- {
+-     int y, orx = rx + 4, ory = ry + 3;
+--    uint8_t dirt = mg.hell ? PAL_RAMP(RAMP_WOOD, 1) : PAL_PAINT(PAINT_CARAMEL, 1);
+--    uint8_t dirt_l = mg.hell ? PAL_RAMP(RAMP_WOOD, 2) : PAL_PAINT(PAINT_CARAMEL, 2);
+--    for (y = 0; y <= ory; y++) {
+--        int o = orx * fx_isqrt((uint32_t)((ory * ory - y * y) * 256 / (ory * ory))) / 16;
+--        int in = y < ry ? rx * fx_isqrt((uint32_t)((ry * ry - y * y) * 256 / (ry * ry))) / 16 : 0;
+--        if (in > 0) {
+--            plat_rect(cx - o, hy + y, o - in, 1, y < 2 ? dirt_l : dirt);
+--            plat_rect(cx + in, hy + y, o - in, 1, y < 2 ? dirt_l : dirt);
+--        } else {
+--            plat_rect(cx - o, hy + y, o * 2, 1, y == ory ? ui_darker(dirt) : dirt);
+--        }
+-+    for (y = 0; y <= ory && y < 12; y++) {
+-+        o[y] = (uint8_t)(orx * fx_isqrt((uint32_t)((ory * ory - y * y) * 256 / (ory * ory))) / 16);
+-+        in[y] = (uint8_t)(y < ry ? rx * fx_isqrt((uint32_t)((ry * ry - y * y) * 256 / (ry * ry))) / 16 : 0);
+-     }
+--    plat_rect(cx - orx - 2, hy + ory + 1, (orx + 2) * 2, cover, band_col(row));
+- }
+- 
+--/* (S2-4) the same pixels put back from the kept backdrop, which holds every hole's front as
+-- * hole_front drew it (the same spans, so the critter sinks behind it exactly as drawn); the
+-- * ground in front only down to `cover` rows (below them the critter drew nothing) */
+--static void hole_front_kept(int cx, int hy, int rx, int ry, int cover)
+-+/* the front half of the hole's dirt ring + the ground in front of it (mg_rect: over the kept picture
+-+ * the same spans are put back, mg.h "undo"). tab: front_rows' rows. */
+-+static void hole_front(int cx, int hy, int rx, int ry, int row, int cover, uint8_t tab[2][12])
+- {
+--#if !defined(DOOMO_PLATFORM_PS1)
+-     int y, orx = rx + 4, ory = ry + 3;
+-+    uint8_t dirt = mg.hell ? PAL_RAMP(RAMP_WOOD, 1) : PAL_PAINT(PAINT_CARAMEL, 1);
+-+    uint8_t dirt_l = mg.hell ? PAL_RAMP(RAMP_WOOD, 2) : PAL_PAINT(PAINT_CARAMEL, 2);
+-     for (y = 0; y <= ory; y++) {
+--        int o = orx * fx_isqrt((uint32_t)((ory * ory - y * y) * 256 / (ory * ory))) / 16;
+--        int in = y < ry ? rx * fx_isqrt((uint32_t)((ry * ry - y * y) * 256 / (ry * ry))) / 16 : 0;
+-+        int o = tab[0][y], in = tab[1][y];
+-         if (in > 0) {
+--            plat_stage_restore(cx - o, hy + y, o - in, 1);
+--            plat_stage_restore(cx + in, hy + y, o - in, 1);
+-+            mg_rect(cx - o, hy + y, o - in, 1, y < 2 ? dirt_l : dirt);
+-+            mg_rect(cx + in, hy + y, o - in, 1, y < 2 ? dirt_l : dirt);
+-         } else {
+--            plat_stage_restore(cx - o, hy + y, o * 2, 1);
+-+            mg_rect(cx - o, hy + y, o * 2, 1, y == ory ? ui_darker(dirt) : dirt);
+-         }
+-     }
+--    plat_stage_restore(cx - orx - 2, hy + ory + 1, (orx + 2) * 2, cover);
+--#else
+--    (void)cx; (void)hy; (void)rx; (void)ry; (void)cover;
+--#endif
+-+    mg_rect(cx - orx - 2, hy + ory + 1, (orx + 2) * 2, cover, band_col(row));
+- }
+- 
+- static void hole_back(int x, int hy, int rx, int ry)
+-@@ -282,107 +290,143 @@ static void hole_back(int x, int hy, int rx, int ry)
+-     ui_fill_ellipse(x, hy + 1, rx - 2, ry - 1, mg.hell ? PAL_RAMP(RAMP_LAVA, 1) : PAL_PAINT(PAINT_CHOCOLATE, 0));
+- }
+- 
+--/* (S2-4) the holes a flower lies on (its dirt ring or the ground in front): their live part paints
+-- * the ring and the front over the flower again, as the full frame does; elsewhere the kept picture
+-- * is the ring already. The flowers' spots are wh_draw's (the same hash). */
+--static unsigned holes_flowered(void)
+-+/* flower k (or its bones): where it stands, and the box of every pixel it can paint */
+-+static uint32_t flower_at(int k, int *fx2, int *fy)
+- {
+--    int k, i, r = crit_r(), rx = hole_rx(), ry = hole_ry(), W = mg_w(), H = mg_h(), ft = field_top();
+--    int hx[3], hy[3];
+--    unsigned m = 0;
+--    for (i = 0; i < 3; i++) { hx[i] = hole_x(i); hy[i] = hole_y(i * 3); }
+--    for (k = 0; k < 14; k++) {
+--        uint32_t h = doomo_hash32((uint32_t)k * 2654435761u + 7u);
+--        int fx2 = (int)(h % (uint32_t)W), fy = ft + 8 + (int)((h >> 10) % (uint32_t)(H - ft - 12));
+--        for (i = 0; i < 9; i++) {
+--            int x = hx[i % 3], y = hy[i / 3];
+--            if (fx2 + 5 > x - rx - 6 && fx2 - 2 < x + rx + 6 && fy + 3 > y - ry - 4 && fy - 3 < y + ry + r * 2 + 13)
+--                m |= 1u << i;
+--        }
+--    }
+--    return m;
+-+    uint32_t h = doomo_hash32((uint32_t)k * 2654435761u + 7u);
+-+    int ft = field_top();
+-+    *fx2 = (int)(h % (uint32_t)mg_w());
+-+    *fy = ft + 8 + (int)((h >> 10) % (uint32_t)(mg_h() - ft - 12));
+-+    return h;
+-+}
+-+static void flower_box(int k, int *x0, int *y0, int *x1, int *y1)
+-+{
+-+    int fx2, fy;
+-+    flower_at(k, &fx2, &fy);
+-+    if (mg.hell) { *x0 = fx2 - 1; *x1 = fx2 + 5; *y0 = fy - 1; *y1 = fy + 2; }
+-+    else { *x0 = fx2 - 2; *x1 = fx2 + 3; *y0 = fy - 3; *y1 = fy + 3; }
+- }
+- 
+--/* (S2-4) the kept playfield (mg.h): the tent at one of its five sways (the key), the grass bands
+-- * and every empty hole are still; the sign with its imps, the flowers, the critters, the mallet live */
+--#define WK_BULBS 8       /* key: sway + 2 (0..4) | the sign's bulb phase (0..2) << 3 */
+-+/* (S2-4, S2-4b) the kept playfield (mg.h): two bands. The tent at one of its five sways with the sign
+-+ * board at one of its three bulb phases (rows above the field: 15 keys a tier), and the field with its
+-+ * grass bands and nine empty holes (one key). Live: the sign's imps, the flowers, the critters, the
+-+ * mallet. */
+-+#define WK_BULBS 8       /* tent key: sway + 2 (0..4) | the sign's bulb phase (0..2) << 3 */
+-+#define WK_FIELD 0x40    /* the field's key */
+- static uint32_t wh_kept_key(void)
+- {
+-     int t = mg.play_t + mg.t;
+-     return (uint32_t)(ui_wave(t, 150, 2) + 2) | (uint32_t)((t / 4) % 3) * WK_BULBS;
+- }
+--static int wh_kept_keys(uint32_t *out, int cap)
+-+static int wh_kept_keys(uint32_t *out, int cap, int hell)
+- {
+-     int i, b, n = 0;
+-+    (void)hell;
+-     for (b = 0; b < 3; b++)
+-         for (i = 0; i < 5; i++) {
+-             if (n < cap) out[n] = (uint32_t)i | (uint32_t)b * WK_BULBS;
+-             n++;
+-         }
+--    return n;
+-+    if (n < cap) out[n] = WK_FIELD;
+-+    return n + 1;
+-+}
+-+static int wh_kept_part(uint32_t key, int16_t rows[2])
+-+{
+-+    int ft = field_top();
+-+    rows[0] = (int16_t)(key == WK_FIELD ? ft : 0);
+-+    rows[1] = (int16_t)(key == WK_FIELD ? mg_h() : ft);
+-+    return 1;
+- }
+- 
+--/* (S2-4) the sign board (its shadow, the board, the panel; ui_round_rect's rows) put back from the
+-- * kept picture over the imps behind it, rows [sy, sy + rows) */
+--static void sign_kept(int sx, int sy, int sw, int sh, int rows)
+-+/* the painted sign board with its marquee bulbs (and its words, which no imp reaches: left out when
+-+ * the board is put back over the imps behind it) */
+-+static void sign_board(int sx, int sy, int sw, int sh, int tb, int cx)
+- {
+--#if !defined(DOOMO_PLATFORM_PS1)
+--    int j;
+--    for (j = 0; j < rows && j < sh + 2; j++) {
+--        int a = ui_round_rect_inset(sw, sh, 5, j), b = ui_round_rect_inset(sw, sh, 5, j - 2);
+--        int x0 = a >= 0 ? sx + a : sx + 2 + b, x1 = b >= 0 ? sx + 2 + sw - b : sx + sw - a;
+--        if (a < 0 && b < 0) continue;
+--        plat_stage_restore(x0, sy + j, x1 - x0, 1);
+--    }
+--    {   /* the marquee bulbs' crosses stick out of the board's corners (mg_bulbs' spots) */
+--        int x = sx + 1, y = sy + 1, w = sw - 2, h = sh - 2, per = 2 * (w + h) / 8, i;
+--        for (i = 0; i < per; i++) {
+--            int d = i * 8, bx, by;
+--            if (d < w) { bx = x + d; by = y; }
+--            else if (d < w + h) { bx = x + w - 1; by = y + d - w; }
+--            else if (d < 2 * w + h) { bx = x + w - 1 - (d - w - h); by = y + h - 1; }
+--            else { bx = x; by = y + h - 1 - (d - 2 * w - h); }
+--            if (by - 1 >= sy + rows) continue;
+--            plat_stage_restore(bx - 1, by, 3, 1);
+--            plat_stage_restore(bx, by - 1, 1, 3);
+-+    ui_round_rect(sx + 2, sy + 2, sw, sh, 5, PAL_RAMP(RAMP_STONE, 1));
+-+    ui_round_rect(sx, sy, sw, sh, 5, PAL_RAMP(RAMP_WOOD, 1));
+-+    ui_round_rect(sx + 2, sy + 2, sw - 4, sh - 4, 4, mg.hell ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_RAMP(RAMP_WOOD, 5));
+-+    mg_bulbs(sx + 1, sy + 1, sw - 2, sh - 2, tb);
+-+    if (mg_kept_mode < MGK_UNDO)
+-+        mg_textc(cx, sy + sh / 2 - 3, "BONK 'EM!", mg.hell ? PAL_RAMP(RAMP_LAVA, 6) : PAL_WHITE);
+-+}
+-+
+-+/* (S2-4b) the first frame of a round over the kept picture lists what it must put back every frame:
+-+ * each hole's ring, front and ground inside the box of every flower they are painted over (the full
+-+ * frame paints the flowers first), and the sign board inside the box its imp peeks in. Nothing here
+-+ * moves during a round, so the lists hold. -1: a list was too short (the frame then replays them). */
+-+static void holes_over_flowers(uint8_t tab[2][12])
+-+{
+-+    int i, k, r = crit_r(), rx = hole_rx(), ry = hole_ry();
+-+    for (i = 0; i < 9; i++) {
+-+        int x = hole_x(i), y = hole_y(i);
+-+        for (k = 0; k < 14; k++) {
+-+            int x0, y0, x1, y1;
+-+            flower_box(k, &x0, &y0, &x1, &y1);
+-+            if (x1 <= x - rx - 6 || x0 >= x + rx + 6 || y1 <= y - ry - 4 || y0 >= y + ry + r * 2 + 13) continue;
+-+            mg_undo(x0, y0, x1, y1);
+-+            hole_back(x, y, rx, ry);
+-+            hole_front(x, y, rx, ry, i / 3, r * 2 + 8, tab);
+-+            mg_undo_end();
+-         }
+-     }
+--#else
+--    (void)sx; (void)sy; (void)sw; (void)sh; (void)rows;
+--#endif
+-+}
+-+static void sign_over_imp(int k, int sx, int sy, int sw, int sh)
+-+{
+-+    int ix = k ? sx + sw - 12 : sx + 12;
+-+    mg_undo(ix - 14, sy - 12, ix + 14, sy + 14);          /* (the imp: 11 px to each side, 3 rows of peek) */
+-+    sign_board(sx, sy, sw, sh, 0, 0);
+-+    mg_undo_end();
+-+}
+-+static void wh_puts(int sx, int sy, int sw, int sh, uint8_t tab[2][12])
+-+{
+-+    int k;
+-+    mg_undo_rec(S->fl_put, WK_FL_PUTS);
+-+    holes_over_flowers(tab);
+-+    S->n_fl = (int8_t)mg_undo_rec_end();
+-+    for (k = 0; k < 2; k++) {
+-+        mg_undo_rec(S->sign_put[k], WK_SIGN_PUTS);
+-+        sign_over_imp(k, sx, sy, sw, sh);
+-+        S->n_sign[k] = (int8_t)mg_undo_rec_end();
+-+    }
+-+    mg_undo_rec(S->ring_put, WK_RING_PUTS);        /* hole 0's front ring (no ground rows) */
+-+    mg_undo(0, 0, mg_w(), mg_h());
+-+    hole_front(hole_x(0), hole_y(0), hole_rx(), hole_ry(), 0, 0, tab);
+-+    mg_undo_end();
+-+    S->n_ring = (int8_t)mg_undo_rec_end();
+-+    S->puts_ok = 1;
+- }
+- 
+- static void wh_draw(void)
+- {
+-     int W = mg_w(), H = mg_h(), t = mg.play_t + mg.t, i, r = crit_r(), rx = hole_rx(), ry = hole_ry();
+-     int ft = field_top(), ox = mg.ox, oy = mg.oy, dy = row_dy();
+--    unsigned flw;
+-+    int bake = mg_kept_mode == MGK_BAKE;
+-+    uint8_t tab_[2][12], (*tab)[12] = bake ? tab_ : S->front;
+-+    if (bake) front_rows(rx, ry, tab_[0], tab_[1]);
+-     /* booth backdrop: tent wall + a painted sign board */
+-     if (mg_still()) {
+-         uint8_t a = mg.hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_PAINT(PAINT_LEMON, 1);
+-         uint8_t b = mg.hell ? PAL_RAMP(RAMP_BLOOD, 1) : PAL_WHITE;
+-         uint8_t trim = mg.hell ? PAL_RAMP(RAMP_LAVA, 4) : PAL_PAINT(PAINT_TANGERINE, 1);
+--        if (mg_kept_mode == MGK_BAKE) mg_tent_sway(0, ft + oy, a, b, trim, (int)(mg_bake_key % WK_BULBS) - 2);
+-+        if (bake) mg_tent_sway(0, ft + oy, a, b, trim, (int)(mg_bake_key % WK_BULBS) - 2);
+-         else mg_tent(0, ft + oy, a, b, trim, t);
+-     }
+-     {
+-         int sw = mg_big() ? 150 : 112, sh = mg_big() ? 24 : 18, sx = W / 2 - sw / 2 + ox, sy = ft - sh - 6 + oy;
+-+        int tb = bake ? (int)(mg_bake_key / WK_BULBS % 3) * 4 : t;
+-         if (mg_live()) {
+--            /* two cheeky imps peeking over the sign's corners */
+--            int pk = ui_wave(t, 90, 3);
+--            mg_imp(sx + 12, sy - 1 + (pk > 0 ? pk : 0), 7, 6, t, IMP_SNEAKY);
+--            mg_imp(sx + sw - 12, sy - 1 + (pk < 0 ? -pk : 0), 7, 6, t + 33, IMP_GRIN);
+--        }
+--        if (mg_kept()) {
+--            sign_kept(sx, sy, sw, sh, 14);            /* (the imps reach 10 rows down; the bulbs ride on top) */
+--        } else if (mg_still()) {
+--            int tb = mg_kept_mode == MGK_BAKE ? (int)(mg_bake_key / WK_BULBS) * 4 : t;
+--            ui_round_rect(sx + 2, sy + 2, sw, sh, 5, PAL_RAMP(RAMP_STONE, 1));
+--            ui_round_rect(sx, sy, sw, sh, 5, PAL_RAMP(RAMP_WOOD, 1));
+--            ui_round_rect(sx + 2, sy + 2, sw - 4, sh - 4, 4, mg.hell ? PAL_RAMP(RAMP_BLOOD, 2) : PAL_RAMP(RAMP_WOOD, 5));
+--            mg_bulbs(sx + 1, sy + 1, sw - 2, sh - 2, tb);
+--            mg_textc(W / 2 + ox, sy + sh / 2 - 3, "BONK 'EM!", mg.hell ? PAL_RAMP(RAMP_LAVA, 6) : PAL_WHITE);
+-+            /* two cheeky imps peeking over the sign's corners; over the kept picture the board is put
+-+             * back over each (its round rects and bulbs in the imp's box) */
+-+            int pk = ui_wave(t, 90, 3), k;
+-+            for (k = 0; k < 2; k++) {
+-+                int ix = k ? sx + sw - 12 : sx + 12, iy = sy - 1 + (k ? (pk < 0 ? -pk : 0) : (pk > 0 ? pk : 0));
+-+                if (mg_kept() && !S->puts_ok) wh_puts(sx, sy, sw, sh, tab);
+-+                mg_imp(ix, iy, 7, 6, k ? t + 33 : t, k ? IMP_GRIN : IMP_SNEAKY);
+-+                if (S->n_sign[k] >= 0) mg_kept_puts(S->sign_put[k], S->n_sign[k], 0, 0);
+-+                else if (mg_kept()) sign_over_imp(k, sx, sy, sw, sh);
+-+            }
+-         }
+-+        if (mg_still()) sign_board(sx, sy, sw, sh, tb, W / 2 + ox);
+-     }
+-     /* mowed grass bands, one per row of holes */
+-     if (mg_still()) {
+-@@ -393,16 +437,16 @@ static void wh_draw(void)
+-         }
+-         plat_rect(0, ft + oy, W, 2, mg.hell ? PAL_RAMP(RAMP_LAVA, 3) : PAL_RAMP(RAMP_GRASS, 7));
+-     }
+-+    if (mg_kept()) mg_kept_band(WK_FIELD);         /* the field's band; the holes' restores come from it */
+-     /* flowers (or bones and embers) between the holes */
+-     for (i = 0; i < 14 && mg_live(); i++) {
+--        uint32_t h = doomo_hash32((uint32_t)i * 2654435761u + 7u);
+--        int fx2 = (int)(h % (uint32_t)W) + ox, fy = ft + 8 + (int)((h >> 10) % (uint32_t)(H - ft - 12)) + oy;
+-+        int fx2 = S->flower[i].x + ox, fy = S->flower[i].y + oy;
+-         if (mg.hell) {
+-             plat_rect(fx2, fy, 4, 1, PAL_RAMP(RAMP_BONE, 5));
+-             plat_rect(fx2 - 1, fy - 1, 1, 3, PAL_RAMP(RAMP_BONE, 6));
+-             plat_rect(fx2 + 4, fy - 1, 1, 3, PAL_RAMP(RAMP_BONE, 6));
+-         } else {
+--            uint8_t c = (h >> 20) & 1 ? PAL_PAINT(PAINT_BUBBLEGUM, 2) : PAL_WHITE;
+-+            uint8_t c = S->flower[i].pink ? PAL_PAINT(PAINT_BUBBLEGUM, 2) : PAL_WHITE;
+-             int sway = ui_wave(t + i * 11, 70, 1);
+-             plat_rect(fx2, fy, 1, 3, PAL_RAMP(RAMP_GRASS, 3));
+-             plat_rect(fx2 - 1 + sway, fy - 2, 3, 1, c);
+-@@ -410,20 +454,22 @@ static void wh_draw(void)
+-             plat_rect(fx2 + sway, fy - 2, 1, 1, PAL_UI_GOLD);
+-         }
+-     }
+--    flw = mg_kept() ? holes_flowered() : 0u;
+-+    if (!mg_kept()) {}                             /* the holes over the flowers (wh_puts) */
+-+    else if (S->n_fl >= 0) mg_kept_puts(S->fl_put, S->n_fl, 0, 0);
+-+    else holes_over_flowers(tab);
+-     for (i = 0; i < 9; i++) {
+-         const WHole *h = &S->hole[i];
+-         int x = hole_x(i) + ox, hy = hole_y(i) + oy, rise;
+--        int row = i / 3, up, fl = (flw >> i) & 1;
+--        if (mg_kept_mode == MGK_BAKE) {           /* the still hole: its dirt ring and front */
+-+        int row = i / 3, up;
+-+        if (bake) {                               /* the still hole: its dirt ring and front */
+-             hole_back(x, hy, rx, ry);
+--            hole_front(x, hy, rx, ry, row, r * 2 + 8);
+-+            hole_front(x, hy, rx, ry, row, r * 2 + 8, tab);
+-             continue;
+-         }
+-         rise = rise_of(h);
+-         up = h->st != H_DOWN && rise > 0;
+--        /* back of the dirt ring + the hole (the kept picture has it, unless a flower lies on it) */
+--        if (!mg_kept() || fl) hole_back(x, hy, rx, ry);
+-+        /* back of the dirt ring + the hole (over the kept picture it is there already) */
+-+        if (!mg_kept()) hole_back(x, hy, rx, ry);
+-         if (up) critter(h, x, hy + r + 3 - rise, r, t + i * 17);
+-         else if (((t / 40 + i * 5) % 9) == 0 && (t % 40) > 6) {   /* glowing eyes in the dark */
+-             uint8_t ec = mg.hell ? PAL_RAMP(RAMP_LAVA, 6) : PAL_PAINT(PAINT_LEMON, 2);
+-@@ -432,11 +478,20 @@ static void wh_draw(void)
+-                 plat_rect(x + 3, hy, 2, 2, ec);
+-             }
+-         }
+--        if (!mg_kept()) hole_front(x, hy, rx, ry, row, r * 2 + 8);
+--        else if (fl) hole_front_kept(x, hy, rx, ry, r * 2 + 8);
+--        /* (the ground in front hides the critter's body only as low as it reaches: a wraith's
+--         * tail, 3r + 12 below the rim at rise 0) */
+--        else if (up) hole_front_kept(x, hy, rx, ry, DOOMO_MIN(r * 2 + 8, r * 3 + 12 - rise - (ry + 4)));
+-+        if (!mg_kept()) hole_front(x, hy, rx, ry, row, r * 2 + 8, tab);
+-+        else if (up) {
+-+            /* (the ground in front hides the critter's body only as low as it reaches: a wraith's
+-+             * tail, 3r + 12 below the rim at rise 0) */
+-+            int cover = DOOMO_MIN(r * 2 + 8, r * 3 + 12 - rise - (ry + 4));
+-+            if (S->n_ring >= 0) {
+-+                mg_kept_puts(S->ring_put, S->n_ring, x - hole_x(0), hy - hole_y(0));
+-+                mg_kept_put(x - rx - 6, hy + ry + 4, (rx + 6) * 2, cover);
+-+            } else {
+-+                mg_undo(0, hy, W, hy + ry + 4 + cover);
+-+                hole_front(x, hy, rx, ry, row, r * 2 + 8, tab);
+-+                mg_undo_end();
+-+            }
+-+        }
+-         if (i == S->aim) {                     /* aim marker under the hole */
+-             int b = ui_wave(t, 20, 1);
+-             ui_heart(x, hy + ry + 8 + b, 3, PAL_PAINT(PAINT_BUBBLEGUM, 1));
+-@@ -504,7 +559,7 @@ const MgGame mg_game_whack = {
+-     { MG_WHACK_B, MG_WHACK_S, MG_WHACK_G }, 24, 45 * 30,
+-     { PAL_PAINT(PAINT_LEMON, 1), PAL_WHITE, PAL_PAINT(PAINT_TANGERINE, 1) },
+-     wh_start, wh_update, wh_draw, wh_art, wh_bot,
+--    wh_kept_key, wh_kept_keys
+-+    wh_kept_key, wh_kept_keys, wh_kept_part, NULL, NULL
+- };
+- 
+- MG_DEFINE_SCENE(SCENE_MG_WHACK, "MG_WHACK", mg_game_whack);
+-diff --git a/core/tests/test_stage.c b/core/tests/test_stage.c
+-index 7d87fe0d..b24e89e8 100644
+---- a/core/tests/test_stage.c
+-+++ b/core/tests/test_stage.c
+-@@ -169,6 +169,7 @@ static uint32_t mg_pad(int f)
+-     return 0;
+- }
+- 
+-+static int stamps_n;
+- static void mg_run(const DoomoScene *sc, int arg, int n, uint32_t *out, int stage)
+- {
+-     int f;
+-@@ -186,6 +187,7 @@ static void mg_run(const DoomoScene *sc, int arg, int n, uint32_t *out, int stag
+-         out[f] = fb_hash();
+-         if (nat_stage_kept()) retained_n++;
+-     }
+-+    stamps_n = nat_stage_stamps();
+-     nat_stage_on = 0;
+- }
+- 
+-@@ -220,7 +222,11 @@ static int mg_compare(int id, int arg, int w, int h, int n)
+-             test_fail(__FILE__, __LINE__, m);
+-             return 0;
+-         }
+--    printf("      kept minigame %d arg %d %dx%d: %d frames, %d over the kept picture\n", id, arg, w, h, n, retained_n);
+-+    printf("      kept minigame %d arg %d %dx%d: %d frames, %d over the kept picture, %d stamps\n", id, arg, w, h, n, retained_n, stamps_n);
+-+    if (stamps_n < n) {                          /* (S2-4b) the HUD alone is a few stamps a frame */
+-+        test_fail(__FILE__, __LINE__, "kept minigame: stamps were not used");
+-+        return 0;
+-+    }
+-     if (retained_n < n / 2) {
+-         char m[200];
+-         snprintf(m, sizeof(m), "minigame %d %dx%d: too few frames over the kept picture (%d of %d)",
+-@@ -246,28 +252,155 @@ TEST(stage_kept_minigames_are_pixel_identical)
+-     CHECK(ok);
+- }
+- 
+--/* every key a staged game asks for is in the baked list */
+-+/* (S2-4b) every picture a kept game asks for (bands and stamps: what the native stage was asked to
+-+ * draw while the bot played) is in the lists the GBA build bakes into the ROM */
+- TEST(stage_kept_minigame_keys_are_baked)
+- {
+--    static uint32_t keys[512];
+--    const DoomoBackdrop *f = backdrop_family(1);
+-+    static uint32_t baked[8192], asked[8192], off[900];
+-     unsigned i;
+--    int n, j, t;
+--    CHECK(f && f->id == DOOMO_BACKDROP_MG);
+--    n = f->keys(keys, 512);
+--    CHECK(n > 0 && n <= 512);
+--    for (i = 0; i < sizeof(kept_games); i++) {
+--        const MgGame *g = mg_games[kept_games[i]];
+--        CHECK(g->kept_key != NULL);
+--        for (t = 0; t < 3000; t++) {
+--            uint32_t k;
+--            mg.g = g; mg.t = 0; mg.play_t = (uint16_t)t;
+--            k = (uint32_t)g->id << 16 | (g->kept_key() & 0x7FFFu);
+--            for (j = 0; j < n && keys[j] != k; j++) {}
+--            CHECK_MSG(j < n, "game %d tick %d: key 0x%x is not baked", g->id, t, (unsigned)k);
+--            for (j = 0; j < n && keys[j] != (k | MG_BK_HELL); j++) {}
+--            CHECK_MSG(j < n, "game %d tick %d: hell key 0x%x is not baked", g->id, t, (unsigned)k);
+--        }
+-+    int nb = 0, na, j, k, fam, arg, bands = 0, stamps = 0;
+-+    for (fam = 0; fam < backdrop_family_count(); fam++) {
+-+        const DoomoBackdrop *f = backdrop_family(fam);
+-+        int n = f->keys(asked, 8192);
+-+        CHECK(n >= 0 && nb + n <= 8192);
+-+        for (j = 0; j < n; j++) baked[nb++] = (uint32_t)f->id << 24 | (asked[j] & 0xFFFFFFu);
+-     }
+-+    for (j = 1; j < nb; j++)
+-+        for (k = 0; k < j; k++) CHECK_MSG(baked[j] != baked[k], "key 0x%x is listed twice", (unsigned)baked[j]);
+-+    set_res(240, 160);
+-+    for (i = 0; i < sizeof(kept_games); i++)
+-+        for (arg = 49; arg <= 51; arg++) {
+-+            mg_run(mg_scene_of(kept_games[i]), arg, 900, off, 1);
+-+            na = nat_stage_pics(asked, 8192);
+-+            CHECK(na > 0 && na <= 8192);
+-+            for (j = 0; j < na; j++) {
+-+                for (k = 0; k < nb && baked[k] != asked[j]; k++) {}
+-+                CHECK_MSG(k < nb, "game %d arg %d: picture 0x%x is not baked", kept_games[i], arg, (unsigned)asked[j]);
+-+                if ((asked[j] >> 24) == DOOMO_BACKDROP_MG) bands++;
+-+                if ((asked[j] >> 24) == DOOMO_BACKDROP_MG_STAMP) stamps++;
+-+            }
+-+        }
+-+    CHECK(bands > 0 && stamps > 0);
+-+    nat_stage_reset();
+-     memset(&mg, 0, sizeof(mg));
+- }
+-+
+-+/* (S2-4b) the file the GBA build links (runner --bake-backdrops): sorted keys, a band holds its rows
+-+ * only, a stamp is the box of what its draw painted, and its pixels are that drawing */
+-+TEST(stage_bake_file_has_bands_and_stamps)
+-+{
+-+    static uint8_t file[16 * 1024 * 1024];
+-+    char path[600];
+-+    FILE *f;
+-+    long len;
+-+    uint32_t n, i, prev = 0;
+-+    int bands = 0, stamps = 0, wholes = 0, checked = 0;
+-+    set_res(240, 160);
+-+    nat_stage_reset();
+-+    snprintf(path, sizeof(path), "%s/bake_test.bin", test_tmp_dir);
+-+    CHECK(nat_bake_backdrops(path) > 0);
+-+    f = fopen(path, "rb");
+-+    CHECK(f != NULL);
+-+    len = (long)fread(file, 1, sizeof(file), f);
+-+    fclose(f);
+-+    CHECK(len > 12 && len < (long)sizeof(file));
+-+    CHECK(memcmp(file, "BKD2", 4) == 0 && (file[4] | file[5] << 8) == 240 && (file[6] | file[7] << 8) == 160);
+-+    n = (uint32_t)file[8] | (uint32_t)file[9] << 8 | (uint32_t)file[10] << 16 | (uint32_t)file[11] << 24;
+-+    for (i = 0; i < n; i++) {
+-+        const uint8_t *e = file + 12 + 16 * i;
+-+        uint32_t idkey = (uint32_t)e[0] | (uint32_t)e[1] << 8 | (uint32_t)e[2] << 16 | (uint32_t)e[3] << 24;
+-+        uint32_t off = (uint32_t)e[4] | (uint32_t)e[5] << 8 | (uint32_t)e[6] << 16 | (uint32_t)e[7] << 24;
+-+        int bx = (int16_t)(e[8] | e[9] << 8), by = (int16_t)(e[10] | e[11] << 8);
+-+        int w = e[12] | e[13] << 8, h = e[14] | e[15] << 8;
+-+        const DoomoBackdrop *fam = NULL;
+-+        int16_t part[2] = { 0, 0 };
+-+        int k, kind;
+-+        CHECK(i == 0 || idkey > prev);
+-+        prev = idkey;
+-+        CHECK((off & 3) == 0 && off + (uint32_t)(w * h) <= (uint32_t)len);
+-+        for (k = 0; k < backdrop_family_count(); k++)
+-+            if (backdrop_family(k)->id == (int)(idkey >> 24)) fam = backdrop_family(k);
+-+        CHECK(fam != NULL);
+-+        kind = fam->part ? fam->part(idkey & 0xFFFFFFu, part) : BACKDROP_WHOLE;
+-+        if (kind == BACKDROP_WHOLE) { wholes++; CHECK(bx == 0 && by == 0 && w == 240 && h == 160); }
+-+        if (kind == BACKDROP_ROWS) { bands++; CHECK(bx == 0 && w == 240 && by == part[0] && h == part[1] - part[0] && h > 0 && h < 160); }
+-+        if (kind == BACKDROP_STAMP) {
+-+            stamps++;
+-+            CHECK(w > 0 && h > 0 && w < 240 && h < 160);
+-+            if ((stamps % 37) == 1) {             /* a sample of them, against the drawing */
+-+                int x, y, bad = 0;
+-+                memset(nat_fb, 0, 240 * 160);
+-+                fam->draw(idkey & 0xFFFFFFu);
+-+                for (y = 0; y < 160; y++)
+-+                    for (x = 0; x < 240; x++) {
+-+                        int sx = x - part[0] - bx, sy = y - part[1] - by;
+-+                        uint8_t want = sx >= 0 && sy >= 0 && sx < w && sy < h ? file[off + (uint32_t)(sy * w + sx)] : 0;
+-+                        if (nat_fb[y * 240 + x] != want) bad++;
+-+                    }
+-+                CHECK_MSG(bad == 0, "stamp 0x%x: %d pixels differ from its drawing", (unsigned)idkey, bad);
+-+                checked++;
+-+            }
+-+        }
+-+    }
+-+    CHECK(wholes > 0 && bands > 0 && stamps > 0 && checked > 0);
+-+    printf("      baked: %u pictures (%d whole screens, %d bands, %d stamps), %ld bytes\n", (unsigned)n, wholes, bands, stamps, len);
+-+    remove(path);
+-+}
+-+
+-+/* (S2-4b) mg_undo: a still part drawn again between mg_undo and mg_undo_end puts the kept picture
+-+ * back in its own spans, inside the box only; listed once (mg_undo_rec) and repeated (mg_kept_puts) it
+-+ * is the same pixels */
+-+static void undo_bd(uint32_t key) { (void)key; plat_clear(PAL_UI_PINK); ui_fill_circle(60, 60, 20, PAL_WHITE); }
+-+static int undo_part(uint32_t key, int16_t out[2]) { (void)key; (void)out; return BACKDROP_WHOLE; }
+-+TEST(stage_undo_puts_a_shape_back_in_its_spans)
+-+{
+-+    static uint8_t want[240 * 160], got[240 * 160];
+-+    static MgBox list[64];
+-+    PlatStageInfo info;
+-+    int x, y, n, pass;
+-+    (void)undo_part;
+-+    set_res(240, 160);
+-+    doomo_init();
+-+    for (pass = 0; pass < 2; pass++) {
+-+        nat_stage_on = 1;
+-+        nat_stage_reset();
+-+        mg_scratch_claim();
+-+        memset(mg_state(), 0, MG_ARENA_BYTES);
+-+        plat_begin_frame();
+-+        /* the full frame: pink, a live bar, then the white disc over it */
+-+        plat_clear(PAL_UI_PINK);
+-+        plat_rect(40, 55, 60, 10, PAL_UI_RED);
+-+        ui_fill_circle(60, 60, 20, PAL_WHITE);
+-+        memcpy(want, nat_fb, sizeof(want));
+-+        /* over the kept picture (which holds the disc): the bar, then the disc put back over the
+-+         * bar's left half only: the right half of the bar stays on the disc */
+-+        CHECK(plat_stage_begin(77, 1, undo_bd, &info));
+-+        plat_stage_restore(0, 0, 240, 160);
+-+        plat_rect(40, 55, 60, 10, PAL_UI_RED);
+-+        mg_kept_mode = MGK_LIVE;
+-+        if (pass) mg_undo_rec(list, 64);
+-+        mg_undo(40, 55, 60, 65);
+-+        ui_fill_circle(60, 60, 20, PAL_WHITE);
+-+        mg_rect(0, 0, 240, 160, PAL_BLACK);        /* (a rect is a still part too: the box clips it) */
+-+        mg_undo_end();
+-+        n = pass ? mg_undo_rec_end() : 0;
+-+        if (pass) {
+-+            CHECK(n > 0 && n < 64);
+-+            for (y = 55; y < 65; y++) for (x = 40; x < 60; x++) CHECK(nat_fb[y * 240 + x] == PAL_UI_RED);   /* only listed */
+-+            mg_kept_puts(list, n, 0, 0);
+-+        }
+-+        mg_kept_mode = MGK_OFF;
+-+        memcpy(got, nat_fb, sizeof(got));
+-+        plat_end_frame();
+-+        for (y = 0; y < 160; y++)
+-+            for (x = 0; x < 240; x++) {
+-+                int in_box = x >= 40 && x < 60 && y >= 55 && y < 65;
+-+                uint8_t w = in_box ? (want[y * 240 + x] == PAL_UI_RED ? PAL_UI_PINK : want[y * 240 + x])
+-+                                   : (x >= 60 && x < 100 && y >= 55 && y < 65 ? PAL_UI_RED : want[y * 240 + x]);
+-+                if (in_box) w = (x - 60) * (x - 60) + (y - 60) * (y - 60) <= 21 * 21 && want[y * 240 + x] == PAL_WHITE ? PAL_WHITE : PAL_UI_PINK;
+-+                if (got[y * 240 + x] != w) { CHECK_MSG(0, "pass %d: pixel %d,%d is %d, not %d", pass, x, y, got[y * 240 + x], w); y = 160; break; }
+-+            }
+-+    }
+-+    nat_stage_on = 0;
+-+    nat_stage_reset();
+-+}
+-diff --git a/gba/src/stage.c b/gba/src/stage.c
+-index 940964f1..e17fa865 100644
+---- a/gba/src/stage.c
+-+++ b/gba/src/stage.c
+-@@ -3,8 +3,10 @@
+-  *
+-  * The backdrops are baked at build time: the native runner draws every key of every family
+-  * (core/include/doomo/backdrop.h) with the core's own drawing code at 240x160 and the ROM
+-- * links the file (backdrop_blob.s, build/gen/backdrops.bin: "BKD1", w, h, n, a sorted table of
+-- * id << 24 | key -> offset, then raw 8bpp pictures). A frame that asks for a baked key gets
+-+ * links the file (backdrop_blob.s, build/gen/backdrops.bin: "BKD2", w, h, n, a sorted table of
+-+ * { id << 24 | key, offset, box }, then raw 8bpp pictures; (S2-4b) a picture is a whole screen, a
+-+ * band of screen rows, or a stamp: a small picture with holes that plat_stage_stamp draws anywhere
+-+ * as an image, straight from the ROM). A frame that asks for a baked key gets
+-  * plat_stage_begin = 1 and restores boxes of the picture with DMA from the ROM: the church the
+-  * exorcism drew in ~70 ms of rects, lines and circles is a ~3.5 ms copy, and only where a
+-  * layer changed.
+-@@ -25,32 +27,30 @@
+- 
+- extern const uint8_t gba_backdrops[];          /* backdrop_blob.s */
+- 
+--static const uint8_t *cur_img;                 /* this frame's backdrop (ROM)       */
+-+/* a table entry (4-aligned in the ROM): a whole screen or a band has w = SCREEN_W and its rows
+-+ * [by, by + h); a stamp has its box's corner (bx, by) from the anchor */
+-+typedef struct { uint32_t idkey, off; int16_t bx, by; uint16_t w, h; } BkEnt;
+-+static const BkEnt *cur;                       /* the restores' source picture (ROM) */
+- static uint32_t serial;                        /* Mode 4 frames presented           */
+- static uint32_t page_serial[2];                /* stage frame each page holds, 0    */
+- static int16_t page_dirt[2][4];                /* drawn over it after plat_stage_end */
+- static int16_t trk[4];
+- static uint8_t frame_stage, tracking;
+- 
+--static uint32_t rd32(const uint8_t *p)
+--{
+--    return (uint32_t)p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24;
+--}
+--
+- /* the baked picture of (id, key), NULL if it is not in the ROM (binary search) */
+--static const uint8_t *find(int id, uint32_t key)
+-+static const BkEnt *find(int id, uint32_t key)
+- {
+-     const uint8_t *b = gba_backdrops;
+--    uint32_t want = (uint32_t)id << 24 | (key & 0xFFFFFFu), n;
+-+    const BkEnt *t = (const BkEnt *)(const void *)(b + 12);
+-+    uint32_t want = (uint32_t)id << 24 | (key & 0xFFFFFFu);
+-     int lo = 0, hi;
+--    if (b[0] != 'B' || b[1] != 'K' || b[2] != 'D' || b[3] != '1') return NULL;
+-+    if (b[0] != 'B' || b[1] != 'K' || b[2] != 'D' || b[3] != '2') return NULL;
+-     if ((b[4] | b[5] << 8) != SCREEN_W || (b[6] | b[7] << 8) != SCREEN_H) return NULL;
+--    n = rd32(b + 8);
+--    hi = (int)n - 1;
+-+    hi = (int)*(const uint32_t *)(const void *)(b + 8) - 1;
+-     while (lo <= hi) {
+-         int mid = (lo + hi) / 2;
+--        uint32_t k = rd32(b + 12 + 8 * mid);
+--        if (k == want) return b + rd32(b + 16 + 8 * mid);
+-+        uint32_t k = t[mid].idkey;
+-+        if (k == want) return &t[mid];
+-         if (k < want) lo = mid + 1;
+-         else hi = mid - 1;
+-     }
+-@@ -66,8 +66,8 @@ int plat_stage_begin(int id, uint32_t key, void (*draw)(uint32_t key), PlatStage
+-     if (gba_nodraw == GBA_NODRAW_FIRST) gba_nodraw = 0;  /* (G5) the first call: Mode 4 */
+-     if (gba_nodraw != 0 && gba_nodraw != GBA_NODRAW_PANEL) return 0;   /* a tile frame */
+-     if (hold_building() || hold_page() >= 0) return 0;   /* held / built frames: not ours */
+--    cur_img = find(id, key);
+--    if (!cur_img) return 0;
+-+    cur = find(id, key);
+-+    if (!cur || cur->w != SCREEN_W) { cur = NULL; return 0; }   /* (a stamp is not a backdrop) */
+-     back = gba_back == (uint16_t *)VRAM_PAGE1;
+-     info->held = page_serial[back];
+-     info->serial = serial + 1;
+-@@ -108,13 +108,42 @@ STAGE_ARM void stage_rows(volatile uint16_t *page, const uint8_t *img, int x0, i
+-     }
+- }
+- 
+-+/* (S2-4b) n boxes (x, y, w, h), each moved by (dx, dy) and clipped to the screen's columns and the
+-+ * picture's rows [ylo, yhi): the many small restores of a frame without a ROM (THUMB) call each */
+-+STAGE_ARM void stage_list(volatile uint16_t *page, const uint8_t *img, const int16_t *b, int n, int dx, int dy, int ylo, int yhi)
+-+{
+-+    for (; n > 0; n--, b += 4) {
+-+        int x0 = b[0] + dx, y0 = b[1] + dy, x1 = x0 + b[2], y1 = y0 + b[3];
+-+        if (x0 < 0) x0 = 0;
+-+        if (x1 > SCREEN_W) x1 = SCREEN_W;
+-+        if (y0 < ylo) y0 = ylo;
+-+        if (y1 > yhi) y1 = yhi;
+-+        if (x0 < x1 && y0 < y1) stage_rows(page, img, x0, x1, y0, y1);
+-+    }
+-+}
+-+
+-+void plat_stage_restore_list(const int16_t *xywh, int n, int dx, int dy)
+-+{
+-+    int ylo, yhi;
+-+    if (!frame_stage || !cur || gba_nodraw == 1 || n <= 0) return;
+-+    ylo = cur->by < 0 ? 0 : cur->by;
+-+    yhi = cur->by + cur->h > SCREEN_H ? SCREEN_H : cur->by + cur->h;
+-+    iwram_ovl_use(OVL_ROOM);
+-+    stage_list(gba_back, gba_backdrops + cur->off - cur->by * SCREEN_W, xywh, n, dx, dy, ylo, yhi);
+-+}
+-+
+- /* rows [y0, y1) of the picture, columns [x0, x1), into the back page. Full rows go 16 at a time
+-  * in one 32-bit DMA, so the VBlank IRQ (the mixer) waits at most ~0.4 ms. */
+- void plat_stage_restore(int x, int y, int w, int h)
+- {
+-     int x0 = x < 0 ? 0 : x, y0 = y < 0 ? 0 : y;
+-     int x1 = x + w > SCREEN_W ? SCREEN_W : x + w, y1 = y + h > SCREEN_H ? SCREEN_H : y + h, yy;
+--    if (!frame_stage || !cur_img || gba_nodraw == 1 || x0 >= x1 || y0 >= y1) return;
+-+    const uint8_t *cur_img;
+-+    if (!frame_stage || !cur || gba_nodraw == 1) return;
+-+    if (y0 < cur->by) y0 = cur->by;                      /* (S2-4b) a band holds only its rows */
+-+    if (y1 > cur->by + cur->h) y1 = cur->by + cur->h;
+-+    if (x0 >= x1 || y0 >= y1) return;
+-+    cur_img = gba_backdrops + cur->off - cur->by * SCREEN_W;     /* row yy of the screen at yy * SCREEN_W */
+-     if (x0 == 0 && x1 == SCREEN_W) {
+-         for (yy = y0; yy < y1; yy += 16) {
+-             int n = y1 - yy < 16 ? y1 - yy : 16;
+-@@ -126,6 +155,21 @@ void plat_stage_restore(int x, int y, int w, int h)
+-     stage_rows(gba_back, cur_img, x0, x1, y0, y1);
+- }
+- 
+-+/* (S2-4b) the stamp of (id, key) with its anchor at (x, y): an image in the ROM (index 0 a hole) */
+-+int plat_stage_stamp(int id, uint32_t key, int x, int y)
+-+{
+-+    const BkEnt *e = find(id, key);
+-+    DoomoImage im;
+-+    if (!e) return 0;
+-+    if (!e->w || gba_nodraw == 1) return 1;
+-+    im.w = e->w;
+-+    im.h = e->h;
+-+    im.pix = gba_backdrops + e->off;
+-+    im.uid = 0x80000000u | e->off;
+-+    plat_image(x + e->bx, y + e->by, &im, 1, 0, 0);
+-+    return 1;
+-+}
+-+
+- void plat_stage_end(void)
+- {
+-     if (!frame_stage || gba_nodraw == 1) return;
+-- 
+2.43.0
+

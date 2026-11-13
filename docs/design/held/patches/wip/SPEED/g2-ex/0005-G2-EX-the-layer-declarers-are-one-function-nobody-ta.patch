@@ -1,0 +1,81 @@
+From a4803a9c073632501a218a65b7b3168632044994 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 14:20:29 +0000
+Subject: [PATCH 5/7] G2-EX: the layer declarers are one function nobody takes
+ the address of (PS1 resident +0 B)
+
+L and LC were two static functions and the host and demon layers picked one by a function pointer, which made
+both addresses escape: the PS1 overlay planner then kept them, stage_layer, stage_draw, stage_layer_clip and
+layer_set (792 B) resident, 912 B over the base's image end. LX(clip, ...) is one function, L and LC are macros
+over it, and every call is direct. The PS1 EXE's bss start and end are the base's (0x8014a4c0, _end 0x801efe60).
+The layer key is the same, so every frame is the same.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ core/src/exorcism_scene.c | 29 ++++++++++++-----------------
+ 1 file changed, 12 insertions(+), 17 deletions(-)
+
+diff --git a/core/src/exorcism_scene.c b/core/src/exorcism_scene.c
+index 7d86653d..5dad755d 100644
+--- a/core/src/exorcism_scene.c
++++ b/core/src/exorcism_scene.c
+@@ -773,27 +773,22 @@ static uint32_t hk_img(uint32_t h, const DoomoImage *img)
+                : hk(h, 0x5EEDu);
+ }
+ 
+-/* pass 1: declare layer id and return 0; pass 2: 1 when it is to be drawn */
+-static int L(int id, int x, int y, int w, int h, uint32_t key)
++/* pass 1: declare layer id and return 0; pass 2: 1 when it is to be drawn. (G2-EX) clip = 1 for a layer that
++ * draws only with plat_rect, plat_shade_rect and plat_image at scale 1 (no text, lines or scaled images): the
++ * stage may draw it clipped to the part of the dirty set in its box, which is what CLIPPED does (backdrop.h).
++ * One function, and callers never take its address (a taken address would make it resident on the PS1). */
++static int LX(int clip, int id, int x, int y, int w, int h, uint32_t key)
+ {
+     if (lpass == 1) {
+-        stage_layer(id, x, y, w, h, hk(key, (uint32_t)X.state * 131u + (uint32_t)id));
+-        return 0;
+-    }
+-    return stage_draw(id);
+-}
+-
+-/* (G2-EX) L for a layer that draws only with plat_rect, plat_shade_rect and plat_image at scale 1 (no text,
+- * lines or scaled images): the stage may draw it clipped to the part of the dirty set in its box, which is
+- * what CLIPPED does (backdrop.h) */
+-static int LC(int id, int x, int y, int w, int h, uint32_t key)
+-{
+-    if (lpass == 1) {
+-        stage_layer_clip(id, x, y, w, h, hk(key, (uint32_t)X.state * 131u + (uint32_t)id));
++        key = hk(key, (uint32_t)X.state * 131u + (uint32_t)id);
++        if (clip) stage_layer_clip(id, x, y, w, h, key);
++        else stage_layer(id, x, y, w, h, key);
+         return 0;
+     }
+     return stage_draw(id);
+ }
++#define L(...)  LX(0, __VA_ARGS__)
++#define LC(...) LX(1, __VA_ARGS__)
+ #define CLIPPED(id, call)                                                   \
+     do {                                                                    \
+         int cn_ = stage_clip_n(id), ck_;                                    \
+@@ -834,7 +829,7 @@ static void host_layer(int cx, int cy, int scale, int expr, uint32_t t, int *w,
+                   (uint32_t)(dx + 64) | (uint32_t)(dy + 64) << 8 | (uint32_t)pulse << 16 |
+                   (uint32_t)((X.dread > 10) | (X.dread < 6) << 1 | (X.dread < 11) << 2) << 20), img);
+     /* aura radii up to w / 2 + 7, h / 2 + 6; the shadow 3 px down-right */
+-    if ((img && scale == 1 ? LC : L)(LY_HOST, cx + dx - fw / 2 - 8, cy + dy - fh / 2 - 7, fw + 17, fh + 15, k))
++    if (LX(img && scale == 1, LY_HOST, cx + dx - fw / 2 - 8, cy + dy - fh / 2 - 7, fw + 17, fh + 15, k))
+         CLIPPED(LY_HOST, exo_host_frame(cx, cy, img, scale, sh, X.dread, t, w, h));
+     *w = fw;
+     *h = fh;
+@@ -876,7 +871,7 @@ static void demon_layer(int x, int y, uint32_t t, int flash, int scale)
+     if (!img) { L(LY_DEMON, 0, 0, 0, 0, 0); return; }
+     w = img->w * scale;
+     h = img->h * scale;
+-    if ((scale == 1 ? LC : L)(LY_DEMON, x - w / 2 - 1, y - h / 2 - 2, w + scale + 3, h + scale + 4,
++    if (LX(scale == 1, LY_DEMON, x - w / 2 - 1, y - h / 2 - 2, w + scale + 3, h + scale + 4,
+           hk_img(hk(0xDE30u, (uint32_t)(x & 1023) | (uint32_t)(y & 1023) << 10 | (uint32_t)scale << 20 |
+                              (uint32_t)sil << 24 | (uint32_t)(sil ? 0 : ui_wave((int)t, 20, 1) + 2) << 26), img)))
+         CLIPPED(LY_DEMON, exo_demon(x, y, t, flash, scale));
+-- 
+2.43.0
+

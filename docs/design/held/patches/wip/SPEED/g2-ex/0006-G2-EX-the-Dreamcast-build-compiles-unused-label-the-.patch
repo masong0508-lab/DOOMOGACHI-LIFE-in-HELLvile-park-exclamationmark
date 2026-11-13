@@ -1,0 +1,48 @@
+From 30f5670a24eaacd0ebd2f43d555c64ff7ab8abb4 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 15:03:54 +0000
+Subject: [PATCH 6/7] G2-EX: the Dreamcast build compiles (unused label), the
+ aura block is aligned on a 64-bit host
+
+aura_done is only used where HOST_HOLES is 1 (the DC's -Werror found it). The aura's block lives in the scene scratch,
+which is 4-byte aligned; AuraSet holds a pointer, so a 64-bit host aligns it to 8 (SAN: misaligned member access).
+exo_aura_bytes keeps 4 B of slack there and none on the 32-bit targets: the GBA ROM and the PS1 EXE are byte-identical
+to the build before this change.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ core/src/exorcism_gfx.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/core/src/exorcism_gfx.c b/core/src/exorcism_gfx.c
+index 47fa3365..9fa9eb15 100644
+--- a/core/src/exorcism_gfx.c
++++ b/core/src/exorcism_gfx.c
+@@ -565,10 +565,12 @@ typedef struct { Aura *rec; Aura a[5]; } AuraSet;   /* one list per pulse; rec:
+ static AuraSet *aura;
+ extern void plat_rect_run(const void *list, int n) __attribute__((weak));   /* the GBA's ARM run (video_loops.s) */
+ extern int gba_nodraw __attribute__((weak));        /* 0: drawing to Mode 4, the only case the run handles */
+-uint32_t exo_aura_bytes(void) { return (uint32_t)sizeof(AuraSet); }
++/* (a 64-bit host's AuraSet wants 8-byte alignment, the scratch gives 4: 4 B of slack there, none on the 32-bit targets) */
++uint32_t exo_aura_bytes(void) { return (uint32_t)sizeof(AuraSet) + (sizeof(void *) > 4 ? 4u : 0u); }
+ void exo_aura_bind(void *mem)
+ {
+     int i;
++    if (mem && sizeof(void *) > 4) mem = (void *)(((uintptr_t)mem + 7u) & ~(uintptr_t)7u);
+     aura = (AuraSet *)mem;
+     if (!aura) return;
+     aura->rec = NULL;
+@@ -690,8 +692,8 @@ void exo_host_frame(int cx, int cy, const DoomoImage *img, int scale, int shake,
+                         dread > 10 ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_RAMP(RAMP_VAPE, 3));
+         NO_HOLE();
+     }
+-aura_done:
+ #if HOST_HOLES
++aura_done:
+     /* the drop shadow (x + 3, y + 3, w, h): only the band the frame does not paint over (the
+      * right 7 columns and the bottom 7 rows of it hold every pixel its round corners leave) */
+     plat_shade_rect(x + w - 4, y + 3, 7, h, 10);
+-- 
+2.43.0
+

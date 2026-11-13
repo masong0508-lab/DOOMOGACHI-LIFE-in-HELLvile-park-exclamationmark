@@ -1,0 +1,1144 @@
+From 8f72706118a087438fb09e6b28b097ee1af391bc Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 13:07:01 +0000
+Subject: [PATCH 1/7] G2-EX step 1: clipped redraw in the retained stage
+ (exact), idle lane parts without boxes
+
+A layer that did not change but lies on a dirty box used to be put back and drawn over its whole box,
+which dragged every layer on that box into the redraw (the demon's bob redrew the whole host frame, a
+dialogue box redrew Fuzz, the candles, the curtains and the host...). The stage now draws such a layer
+(stage_layer_clip: only plat_rect, plat_shade_rect and plat_image at scale 1) through the pieces of the
+dirty set that lie in its box, clipped to each (stage_clip_n / stage_clip_get, plat_clip); the dirty set
+no longer grows through them. The dirty set is cut once into disjoint pieces (build_pieces, adjacent
+equal spans joined) instead of twice by restore_dirty.
+GBA: gba_nodraw mode 7 (GBA_NODRAW_CLIP); plat_rect jumps to stage_clip_rect (ARM, room group, +16 B of
+resident IWRAM in plat_rect), plat_shade_rect and plat_image cut themselves (images by cropped rows).
+Native: plat_clip honoured by rects, shades, images, and a counter for the calls it cannot honour.
+Exorcism: the host frame (scale 1 with a picture), candles, Fuzz, the demon (scale 1), the faith meter
+and the church parts are clippable layers; the lane's feedback pop and count-in parts have an empty box
+while they draw nothing.
+Tests: test_stage_clip.c (the primitives under a clip against the unclipped call; the stage keeps a
+clipped layer from widening the dirty set; pieces disjoint and covering), test_stage.c (the ritual,
+stage on / off, uses the clip on >= 1/4 of its frames and makes no call a clip does not honour).
+GBA full-ritual frames (1,252, deterministic portraits) identical to the base ROM.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ core/include/doomo/backdrop.h |  18 +++-
+ core/include/doomo/plat_ext.h |   8 ++
+ core/native/native.h          |   3 +
+ core/native/plat_native.c     |  37 +++++--
+ core/native/stage_native.c    |  10 ++
+ core/src/backdrop.c           | 153 ++++++++++++++++++++--------
+ core/src/exorcism_int.h       |   1 +
+ core/src/exorcism_scene.c     |  78 +++++++++++----
+ core/tests/test_stage.c       |  18 +++-
+ core/tests/test_stage_clip.c  | 183 ++++++++++++++++++++++++++++++++++
+ gba/src/canvas.c              |   1 +
+ gba/src/canvas_int.h          |   1 +
+ gba/src/gba_plat.h            |   2 +
+ gba/src/stage.c               |  55 ++++++++--
+ gba/src/video.c               |  39 +++++++-
+ gba/src/video_loops.s         |   4 +
+ 16 files changed, 525 insertions(+), 86 deletions(-)
+ create mode 100644 core/tests/test_stage_clip.c
+
+diff --git a/core/include/doomo/backdrop.h b/core/include/doomo/backdrop.h
+index 350af255..922970f9 100644
+--- a/core/include/doomo/backdrop.h
++++ b/core/include/doomo/backdrop.h
+@@ -46,6 +46,22 @@ void stage_layer(int i, int x, int y, int w, int h, uint32_t key);
+ void stage_resolve(void);
+ int  stage_draw(int i);
+ void stage_end(void);
++/* (G2-EX) Clipped redraw. A layer declared with stage_layer_clip draws only through plat_rect,
++ * plat_shade_rect and plat_image at scale 1 without a flip (the calls a platform's plat_clip honours
++ * exactly: plat_ext.h), and its draw is the same whatever the screen under it holds. When such a
++ * layer did not change but lies on a dirty box, the stage does not put its whole box back and draw
++ * it again (which would drag every layer that lies on that box into the redraw, and so on): it
++ * draws the layer only through the pieces of the dirty set that lie in its box, clipped to each.
++ * After stage_draw(i) says 1:
++ *     n = stage_clip_n(i);                       0: draw it once, as usual (a changed layer, a
++ *     if (n == 0) draw(); else for (k < n) {       full frame, a clean box)
++ *         stage_clip_get(i, k, r);               piece k, [r[0], r[2]) x [r[1], r[3])
++ *         plat_clip(r[0], r[1], r[2], r[3]); draw(); }
++ *     plat_clip_end();                           (always, after the layer)
++ * The pieces are disjoint, so a layer's shading lands once on every pixel. */
++void stage_layer_clip(int i, int x, int y, int w, int h, uint32_t key);
++int  stage_clip_n(int i);
++void stage_clip_get(int i, int k, int16_t r[4]);
+ /* The stage's memory, stage_mem_bytes() long (~1.1 KB): the caller binds a block it owns (the
+  * exorcism binds its scene scratch, and binds it again when another scene took the scratch);
+  * binding forgets every record. Unbound (NULL), stage_begin always returns 0. */
+@@ -55,7 +71,7 @@ void stage_bind(void *mem);
+ void stage_reset(void);
+ /* Statistics of the last resolved frame (tests, harness logs): layers drawn, boxes put back,
+  * and whether the frame was drawn in full. */
+-typedef struct StageStats { uint8_t drawn, restored, full, retained; } StageStats;
++typedef struct StageStats { uint8_t drawn, restored, full, retained, clipped; } StageStats;
+ void stage_stats(StageStats *s);
+ 
+ #endif
+diff --git a/core/include/doomo/plat_ext.h b/core/include/doomo/plat_ext.h
+index d2d94c3d..c3570a82 100644
+--- a/core/include/doomo/plat_ext.h
++++ b/core/include/doomo/plat_ext.h
+@@ -234,6 +234,14 @@ typedef struct PlatStageInfo {
+ int  plat_stage_begin(int id, uint32_t key, void (*draw)(uint32_t key), PlatStageInfo *info);
+ void plat_stage_restore(int x, int y, int w, int h);
+ void plat_stage_end(void);
++/* (G2-EX) plat_clip(x0, y0, x1, y1)  until plat_clip_end() every plat_rect, plat_shade_rect and plat_image
++ *       (scale 1, no flip) draws exactly the pixels of the unclipped call that lie in [x0, x1) x [y0, y1)
++ *       and nothing outside it (backdrop.h: the stage draws a layer that did not change only through the
++ *       pieces of the dirty set). Only valid between plat_stage_begin and plat_stage_end; it does not nest.
++ *       Text, lines, checkers, clears and scaled images are not clipped (a clipped layer does not use
++ *       them). Defaults (core/src/backdrop.c): nothing, for a platform whose plat_stage_begin says 0. */
++void plat_clip(int x0, int y0, int x1, int y1);
++void plat_clip_end(void);
+ 
+ /* ---- content packs (E0 pack.h, E2, E7-E10) -----------------------------------
+  * blob: a pack that is directly addressable (the GBA mature ROM variant's
+diff --git a/core/native/native.h b/core/native/native.h
+index af9e3f1e..cfe8dba5 100644
+--- a/core/native/native.h
++++ b/core/native/native.h
+@@ -85,6 +85,9 @@ void nat_stage_frame_end(void);
+ void nat_stage_reset(void);
+ int  nat_stage_kept(void);          /* (S2-4) the last frame was drawn over a kept backdrop */
+ int  nat_bake_backdrops(const char *path);
++/* (G2-EX) plat_clip: the box in force, and the 2D calls made inside it that a platform's clip does not
++ * honour (text, lines, checkers, clears, scaled or flipped images; tests check it stays 0) */
++extern int nat_clip_on, nat_clipbox[4], nat_clip_viol;
+ 
+ /* PNG writer: 8bpp indexed image -> indexed PNG with the master palette,
+  * optionally zoomed by an integer factor. Returns 1 on success. */
+diff --git a/core/native/plat_native.c b/core/native/plat_native.c
+index 777624f8..6a752c05 100644
+--- a/core/native/plat_native.c
++++ b/core/native/plat_native.c
+@@ -152,6 +152,7 @@ uint32_t nat_calls[NC_N];
+ void plat_clear(uint8_t color)
+ {
+     nat_calls[NC_CLEAR]++;
++    nat_clip_viol += nat_clip_on;
+     nat_panel_op(NP_CLEAR, 0, 0, nat_w, nat_h);
+     memset(nat_fb, color, (size_t)(nat_w * nat_h));
+     nat_panel_op_end();
+@@ -159,13 +160,25 @@ void plat_clear(uint8_t color)
+ 
+ static int clip(int *x, int *y, int *w, int *h)
+ {
+-    if (*x < 0) { *w += *x; *x = 0; }
+-    if (*y < 0) { *h += *y; *y = 0; }
+-    if (*x + *w > nat_w) *w = nat_w - *x;
+-    if (*y + *h > nat_h) *h = nat_h - *y;
++    int x0 = 0, y0 = 0, x1 = nat_w, y1 = nat_h;
++    if (nat_clip_on) {                              /* (G2-EX) plat_clip */
++        x0 = DOOMO_MAX(x0, nat_clipbox[0]); y0 = DOOMO_MAX(y0, nat_clipbox[1]);
++        x1 = DOOMO_MIN(x1, nat_clipbox[2]); y1 = DOOMO_MIN(y1, nat_clipbox[3]);
++    }
++    if (*x < x0) { *w -= x0 - *x; *x = x0; }
++    if (*y < y0) { *h -= y0 - *y; *y = y0; }
++    if (*x + *w > x1) *w = x1 - *x;
++    if (*y + *h > y1) *h = y1 - *y;
+     return *w > 0 && *h > 0;
+ }
+ 
++/* nat_px inside the plat_clip box (the lines, text, checkers and images below) */
++static void nat_cpx(int x, int y, uint8_t c)
++{
++    if (nat_clip_on && (x < nat_clipbox[0] || x >= nat_clipbox[2] || y < nat_clipbox[1] || y >= nat_clipbox[3])) return;
++    nat_px(x, y, c);
++}
++
+ void plat_rect(int x, int y, int w, int h, uint8_t color)
+ {
+     nat_calls[NC_RECT]++;
+@@ -201,9 +214,10 @@ void plat_checker(int x, int y, int w, int h, uint8_t color)
+ {
+     nat_calls[NC_CHECKER]++;
+     int i, j;
++    nat_clip_viol += nat_clip_on;
+     nat_panel_op(NP_OTHER, x, y, x + w, y + h);
+     for (j = 0; j < h; j++)
+-        for (i = j & 1; i < w; i += 2) nat_px(x + i, y + j, color);
++        for (i = j & 1; i < w; i += 2) nat_cpx(x + i, y + j, color);
+     nat_panel_op_end();
+ }
+ 
+@@ -213,10 +227,11 @@ void plat_line(int x0, int y0, int x1, int y1, uint8_t color)
+     int dx = x1 > x0 ? x1 - x0 : x0 - x1, sx = x0 < x1 ? 1 : -1;
+     int dy = y1 > y0 ? y0 - y1 : y1 - y0, sy = y0 < y1 ? 1 : -1;
+     int err = dx + dy, n = 0;
++    nat_clip_viol += nat_clip_on;
+     nat_panel_op((x0 == x1 || y0 == y1) ? NP_RECT : NP_OTHER, DOOMO_MIN(x0, x1), DOOMO_MIN(y0, y1),
+                  DOOMO_MAX(x0, x1) + 1, DOOMO_MAX(y0, y1) + 1);
+     for (;;) {
+-        nat_px(x0, y0, color);
++        nat_cpx(x0, y0, color);
+         if ((x0 == x1 && y0 == y1) || ++n > 4096) break;
+         {
+             int e2 = 2 * err;
+@@ -231,6 +246,7 @@ void plat_text(int x, int y, const char *s, uint8_t color)
+ {
+     nat_calls[NC_TEXT]++;
+     int cx = x;
++    nat_clip_viol += nat_clip_on;
+     if (!s) return;                       /* bytes as given: ui.c translated them (L2a) */
+     {
+         /* the box the glyphs can touch (G7 panels) */
+@@ -251,7 +267,7 @@ void plat_text(int x, int y, const char *s, uint8_t color)
+             for (col = 0; col < 5; col++) {
+                 uint8_t bits = doomo_font[ch - FONT_FIRST][col];
+                 for (row = 0; row < 8; row++)
+-                    if (bits & (1 << row)) nat_px(cx + col, y + row, color);
++                    if (bits & (1 << row)) nat_cpx(cx + col, y + row, color);
+             }
+         }
+         cx += FONT_ADVANCE;
+@@ -266,6 +282,7 @@ void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
+     int ix, iy, w, h;
+     if (!img || !img->pix || !img->w || !img->h) return;
+     scale = DOOMO_CLAMP(scale, 1, 4);
++    nat_clip_viol += nat_clip_on && (scale != 1 || (flags & IMG_FLIPX));
+     w = img->w; h = img->h;
+     if (ur_shape_image(img) && !(flags & (IMG_SHADOW | IMG_SILHOUETTE))) {
+         nat_panel_op(NP_SHAPE, x, y, x + w * scale, y + h * scale);
+@@ -285,7 +302,9 @@ void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
+                     for (b = 0; b < scale; b++)
+                         for (a = 0; a < scale; a++) {
+                             int qx = px + a, qy = py + b;
+-                            if ((unsigned)qx < (unsigned)nat_w && (unsigned)qy < (unsigned)nat_h)
++                            if ((unsigned)qx < (unsigned)nat_w && (unsigned)qy < (unsigned)nat_h &&
++                                (!nat_clip_on || (qx >= nat_clipbox[0] && qx < nat_clipbox[2] &&
++                                                  qy >= nat_clipbox[1] && qy < nat_clipbox[3])))
+                                 nat_fb[qy * nat_w + qx] = doomo_colormap[5][nat_fb[qy * nat_w + qx]];
+                         }
+                 }
+@@ -297,7 +316,7 @@ void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
+             uint8_t c = img->pix[iy * w + sx];
+             if (!c) continue;
+             if (flags & IMG_SILHOUETTE) c = color;
+-            if (scale == 1) nat_px(x + ix, y + iy, c);
++            if (scale == 1) nat_cpx(x + ix, y + iy, c);
+             else plat_rect(x + ix * scale, y + iy * scale, scale, scale, c);
+         }
+     }
+diff --git a/core/native/stage_native.c b/core/native/stage_native.c
+index 3cb82e23..3d6025cf 100644
+--- a/core/native/stage_native.c
++++ b/core/native/stage_native.c
+@@ -31,6 +31,15 @@ static int16_t buf_dirt[2][4];
+ static int cur_buf, frame_stage, tracking, frames, last_kept;
+ static int16_t trk[4];
+ 
++/* (G2-EX) plat_clip: every rect, shade and (scale 1, unflipped) image in plat_native.c honours the box */
++int nat_clip_on, nat_clipbox[4], nat_clip_viol;
++void plat_clip(int x0, int y0, int x1, int y1)
++{
++    nat_clipbox[0] = x0; nat_clipbox[1] = y0; nat_clipbox[2] = x1; nat_clipbox[3] = y1;
++    nat_clip_on = 1;
++}
++void plat_clip_end(void) { nat_clip_on = 0; }
++
+ /* the backdrop (id, key) drawn with `draw` into bd_pix: the screen is saved around it */
+ static void render(int id, uint32_t key, void (*draw)(uint32_t))
+ {
+@@ -127,6 +136,7 @@ void nat_stage_reset(void)
+     memset(buf_dirt, 0, sizeof(buf_dirt));
+     bd_id = -1;
+     cur_buf = frame_stage = tracking = frames = 0;
++    nat_clip_on = 0;
+ }
+ 
+ /* ---- the baker: every key of every family at the runner's screen size --------------------
+diff --git a/core/src/backdrop.c b/core/src/backdrop.c
+index 763896e3..80efc651 100644
+--- a/core/src/backdrop.c
++++ b/core/src/backdrop.c
+@@ -11,9 +11,13 @@
+  * layers in the same places, nothing drawn over them since. A buffer that holds nothing the
+  * stage knows, or another backdrop key, is drawn in full (the whole backdrop put back).
+  *
+- * RAM: two records of STAGE_MAX_LAYERS layers (12 B each), the frame being built and the dirty
+- * boxes, ~1.1 KB, in memory the caller binds (stage_bind: the exorcism's scene scratch, a cache
+- * it re-binds when another scene took the scratch); 16 B of .bss here.
++ * (G2-EX) A layer declared with stage_layer_clip that did not change but lies on a dirty box is not
++ * redrawn whole over its whole box put back (which dragged in every layer that lies on that box):
++ * it is drawn only through the pieces of the dirty set in its box, clipped to each (backdrop.h).
++ *
++ * RAM: two records of STAGE_MAX_LAYERS layers (12 B each), the frame being built, the dirty
++ * boxes and the pieces put back, ~1.5 KB, in memory the caller binds (stage_bind: the exorcism's
++ * scene scratch, a cache it re-binds when another scene took the scratch); 16 B of .bss here.
+  */
+ #include "doomo/backdrop.h"
+ #include "doomo/plat_ext.h"
+@@ -49,6 +53,8 @@ WEAK int plat_stage_begin(int id, uint32_t key, void (*draw)(uint32_t key), Plat
+ }
+ WEAK void plat_stage_restore(int x, int y, int w, int h) { (void)x; (void)y; (void)w; (void)h; }
+ WEAK void plat_stage_end(void) {}
++WEAK void plat_clip(int x0, int y0, int x1, int y1) { (void)x0; (void)y0; (void)x1; (void)y1; }
++WEAK void plat_clip_end(void) {}
+ 
+ /* ---- the stage ------------------------------------------------------------------------ */
+ typedef struct { int16_t x0, y0, x1, y1; uint32_t key; } SLayer;     /* box: [x0, x1) x [y0, y1) */
+@@ -56,22 +62,26 @@ typedef struct {
+     uint32_t serial, bkey;
+     int16_t  bid;
+     uint8_t  n, pad;
++    uint32_t clip;                /* bit i: layer i may be drawn clipped (stage_layer_clip) */
+     SLayer   l[STAGE_MAX_LAYERS];
+ } SRec;
+ 
+ #define DIRTY_MAX 40
++#define PIECE_MAX 48
+ typedef struct {
+     SRec rec[2];                  /* the last two frames drawn with the stage   */
+     SRec cur;                     /* this frame                                 */
+     PlatStageInfo info;
+     int16_t d[DIRTY_MAX][4];      /* boxes put back                             */
+-    int nd;
++    int16_t pc[PIECE_MAX][4];     /* the disjoint pieces the dirty set is cut into (what was restored) */
++    int nd, npc;
+ } SMem;
+ /* the bound memory (the caller's: the exorcism's scene scratch) and the per-frame state */
+ static SMem *M;
+ static struct {
+     int8_t on;                    /* plat_stage_begin said yes                  */
+     uint32_t draw_mask;           /* layers to draw this frame                  */
++    uint32_t clip_mask;           /* ... of them, the ones drawn through pieces  */
+     StageStats st;
+ } S;
+ #define SS (*M)
+@@ -97,11 +107,14 @@ int stage_begin(int id, uint32_t key, void (*draw)(uint32_t key))
+ {
+     S.on = 0;
+     S.draw_mask = 0xFFFFFFFFu;
+-    S.st.drawn = S.st.restored = 0;
++    S.clip_mask = 0;
++    S.st.drawn = S.st.restored = S.st.clipped = 0;
+     S.st.full = 1;
+     S.st.retained = 0;
+     if (!M) return 0;
+     SS.cur.n = 0;
++    SS.cur.clip = 0;
++    SS.npc = 0;
+     SS.cur.bid = (int16_t)id;
+     SS.cur.bkey = key;
+     SS.cur.serial = 0;
+@@ -114,7 +127,7 @@ int stage_begin(int id, uint32_t key, void (*draw)(uint32_t key))
+     return 1;
+ }
+ 
+-void stage_layer(int i, int x, int y, int w, int h, uint32_t key)
++static void layer_set(int i, int x, int y, int w, int h, uint32_t key, int clip)
+ {
+     SLayer *l;
+     int W = plat_screen_w(), H = plat_screen_h();
+@@ -126,6 +139,8 @@ void stage_layer(int i, int x, int y, int w, int h, uint32_t key)
+     }
+     l = &SS.cur.l[i];
+     l->key = key;
++    if (clip) SS.cur.clip |= 1u << i;
++    else SS.cur.clip &= ~(1u << i);
+     if (w <= 0 || h <= 0) { l->x0 = l->y0 = l->x1 = l->y1 = 0; return; }
+     l->x0 = (int16_t)DOOMO_CLAMP(x, 0, W);
+     l->y0 = (int16_t)DOOMO_CLAMP(y, 0, H);
+@@ -134,6 +149,9 @@ void stage_layer(int i, int x, int y, int w, int h, uint32_t key)
+     if (l->x0 >= l->x1 || l->y0 >= l->y1) l->x0 = l->y0 = l->x1 = l->y1 = 0;
+ }
+ 
++void stage_layer(int i, int x, int y, int w, int h, uint32_t key) { layer_set(i, x, y, w, h, key, 0); }
++void stage_layer_clip(int i, int x, int y, int w, int h, uint32_t key) { layer_set(i, x, y, w, h, key, 1); }
++
+ static int empty(const SLayer *l) { return l->x0 >= l->x1 || l->y0 >= l->y1; }
+ 
+ static int hits(int x0, int y0, int x1, int y1, const int16_t b[4])
+@@ -181,13 +199,14 @@ static void add_dirty(int x0, int y0, int x1, int y1)
+     SS.nd++;
+ }
+ 
+-/* Put the backdrop back on the union of the dirty boxes, every pixel once: the rows are cut
+- * into bands at every box edge, and in each band the spans of the boxes that cover it are
+- * merged. Returns the number of restores. */
+-static int restore_dirty(int dry, int32_t *area)
++/* Cut the dirty set into disjoint pieces whose union it is, every pixel in one piece (SS.pc): the
++ * rows are cut into bands at every box edge, in each band the spans of the boxes that cover it are
++ * merged, and a span that has the same columns as a piece ending where its band starts continues that
++ * piece. Returns the number of pieces, -1 when there are more than PIECE_MAX; *area is their area. */
++static int build_pieces(int32_t *area)
+ {
+     int16_t ys[2 * DIRTY_MAX], sp[DIRTY_MAX][2];
+-    int ny = 0, i, j, k, n, calls = 0;
++    int ny = 0, i, j, k, n, np = 0;
+     *area = 0;
+     for (i = 0; i < SS.nd; i++) {
+         ys[ny++] = SS.d[i][1];
+@@ -208,12 +227,17 @@ static int restore_dirty(int dry, int32_t *area)
+         for (i = 0; i < n;) {                        /* merged spans */
+             int x0 = sp[i][0], x1 = sp[i][1];
+             for (i++; i < n && sp[i][0] <= x1; i++) x1 = DOOMO_MAX(x1, sp[i][1]);
+-            if (!dry) plat_stage_restore(x0, y0, x1 - x0, y1 - y0);
+-            *area += (int32_t)(x1 - x0) * (y1 - y0);
+-            calls++;
++            for (j = np - 1; j >= 0; j--)            /* the piece above, same columns, ends here */
++                if (SS.pc[j][3] == y0 && SS.pc[j][0] == x0 && SS.pc[j][2] == x1) break;
++            if (j >= 0) { SS.pc[j][3] = (int16_t)y1; continue; }
++            if (np >= PIECE_MAX) return -1;
++            SS.pc[np][0] = (int16_t)x0; SS.pc[np][1] = (int16_t)y0;
++            SS.pc[np][2] = (int16_t)x1; SS.pc[np][3] = (int16_t)y1;
++            np++;
+         }
+     }
+-    return calls;
++    for (j = 0; j < np; j++) *area += (int32_t)(SS.pc[j][2] - SS.pc[j][0]) * (SS.pc[j][3] - SS.pc[j][1]);
++    return np;
+ }
+ 
+ static const SRec *held_record(void)
+@@ -225,26 +249,37 @@ static const SRec *held_record(void)
+     return NULL;
+ }
+ 
++/* the whole screen is put back and every layer is drawn in full */
++static void resolve_full(void)
++{
++    plat_stage_restore(0, 0, plat_screen_w(), plat_screen_h());
++    S.draw_mask = 0xFFFFFFFFu;
++    S.clip_mask = 0;
++    SS.npc = 0;
++    S.st.full = 1;
++    S.st.restored = 1;
++    S.st.drawn = SS.cur.n;
++}
++
+ void stage_resolve(void)
+ {
+     const SRec *old;
+-    int i, n, changed;
++    int i, n, changed, np;
++    int32_t area;
+     int W = plat_screen_w(), H = plat_screen_h();
+     if (!S.on) return;
+     SS.nd = 0;
++    SS.npc = 0;
+     old = held_record();
+     if (!old || old->bkey != SS.cur.bkey) {
+         /* nothing known about this buffer, or another backdrop: all of it */
+-        plat_stage_restore(0, 0, W, H);
+-        S.draw_mask = 0xFFFFFFFFu;
+-        S.st.full = 1;
+-        S.st.restored = 1;
+-        S.st.drawn = SS.cur.n;
++        resolve_full();
+         return;
+     }
+     S.st.full = 0;
+     n = DOOMO_MAX(SS.cur.n, old->n);
+     S.draw_mask = 0;
++    S.clip_mask = 0;
+     add_dirty(SS.info.dx0, SS.info.dy0, SS.info.dx1, SS.info.dy1);
+     for (i = 0; i < n; i++) {
+         static const SLayer none = { 0, 0, 0, 0, 0 };
+@@ -255,35 +290,42 @@ void stage_resolve(void)
+         if (!empty(a)) add_dirty(a->x0, a->y0, a->x1, a->y1);
+         if (!empty(b)) add_dirty(b->x0, b->y0, b->x1, b->y1);
+     }
+-    /* close over: a layer on a dirty box is drawn again, over a clean backdrop under its
+-     * whole box (its shading must not land twice) */
++    /* close over: a layer on a dirty box is drawn again, over a clean backdrop under its whole box
++     * (its shading must not land twice), so its box is dirty too. A layer that may be clipped
++     * (stage_layer_clip) does not widen the dirty set: it is drawn only inside it, below. */
+     do {
+         changed = 0;
+         for (i = 0; i < SS.cur.n; i++) {
+             const SLayer *b = &SS.cur.l[i];
+-            if ((S.draw_mask >> i) & 1u || empty(b)) continue;
++            if (((S.draw_mask >> i) & 1u) || empty(b) || ((SS.cur.clip >> i) & 1u)) continue;
+             if (!hits_dirty(b->x0, b->y0, b->x1, b->y1)) continue;
+             S.draw_mask |= 1u << i;
+             add_dirty(b->x0, b->y0, b->x1, b->y1);
+             changed = 1;
+         }
+     } while (changed);
+-    {
+-        /* when most of the screen is dirty anyway, one full restore (whole rows: the fastest
+-         * copy) and every layer beat many partial ones */
+-        int32_t area;
+-        restore_dirty(1, &area);
+-        if (area * 20 >= (int32_t)W * H * 17) {
+-            plat_stage_restore(0, 0, W, H);
+-            S.draw_mask = 0xFFFFFFFFu;
+-            S.st.full = 1;
+-            S.st.restored = 1;
+-            S.st.drawn = SS.cur.n;
+-            return;
+-        }
+-        S.st.restored = (uint8_t)DOOMO_MIN(restore_dirty(0, &area), 255);
++    /* when most of the screen is dirty anyway, one full restore (whole rows: the fastest copy) and
++     * every layer beat many partial ones */
++    np = build_pieces(&area);
++    if (np < 0 || area * 20 >= (int32_t)W * H * 17) {
++        resolve_full();
++        return;
++    }
++    for (i = 0; i < SS.cur.n; i++) {
++        const SLayer *b = &SS.cur.l[i];
++        if (((S.draw_mask >> i) & 1u) || empty(b) || !((SS.cur.clip >> i) & 1u)) continue;
++        if (!hits_dirty(b->x0, b->y0, b->x1, b->y1)) continue;
++        S.draw_mask |= 1u << i;
++        S.clip_mask |= 1u << i;
++    }
++    SS.npc = np;
++    for (i = 0; i < np; i++)
++        plat_stage_restore(SS.pc[i][0], SS.pc[i][1], SS.pc[i][2] - SS.pc[i][0], SS.pc[i][3] - SS.pc[i][1]);
++    S.st.restored = (uint8_t)DOOMO_MIN(np, 255);
++    for (i = 0; i < SS.cur.n; i++) {
++        S.st.drawn = (uint8_t)(S.st.drawn + ((S.draw_mask >> i) & 1u));
++        S.st.clipped = (uint8_t)(S.st.clipped + ((S.clip_mask >> i) & 1u));
+     }
+-    for (i = 0; i < SS.cur.n; i++) S.st.drawn = (uint8_t)(S.st.drawn + ((S.draw_mask >> i) & 1u));
+ }
+ 
+ int stage_draw(int i)
+@@ -292,6 +334,39 @@ int stage_draw(int i)
+     return (int)((S.draw_mask >> i) & 1u);
+ }
+ 
++/* the pieces a layer is drawn through: those of the dirty set that lie in its box, cut to it. 0 when
++ * the layer is drawn once as usual (not drawn clipped, or one piece holds its whole box) */
++int stage_clip_n(int i)
++{
++    const SLayer *b;
++    int k, n = 0;
++    if (!S.on || i < 0 || i >= SS.cur.n || !((S.clip_mask >> i) & 1u)) return 0;
++    b = &SS.cur.l[i];
++    for (k = 0; k < SS.npc; k++) {
++        const int16_t *p = SS.pc[k];
++        if (!hits(b->x0, b->y0, b->x1, b->y1, p)) continue;
++        if (p[0] <= b->x0 && p[1] <= b->y0 && p[2] >= b->x1 && p[3] >= b->y1) return 0;
++        n++;
++    }
++    return n;
++}
++
++void stage_clip_get(int i, int k, int16_t r[4])
++{
++    const SLayer *b;
++    int j;
++    r[0] = r[1] = r[2] = r[3] = 0;
++    if (!S.on || i < 0 || i >= SS.cur.n) return;
++    b = &SS.cur.l[i];
++    for (j = 0; j < SS.npc; j++) {
++        const int16_t *p = SS.pc[j];
++        if (!hits(b->x0, b->y0, b->x1, b->y1, p) || k-- > 0) continue;
++        r[0] = (int16_t)DOOMO_MAX(p[0], b->x0); r[1] = (int16_t)DOOMO_MAX(p[1], b->y0);
++        r[2] = (int16_t)DOOMO_MIN(p[2], b->x1); r[3] = (int16_t)DOOMO_MIN(p[3], b->y1);
++        return;
++    }
++}
++
+ void stage_end(void)
+ {
+     int slot;
+diff --git a/core/src/exorcism_int.h b/core/src/exorcism_int.h
+index 31a22e2e..d4ea0c4a 100644
+--- a/core/src/exorcism_int.h
++++ b/core/src/exorcism_int.h
+@@ -6,6 +6,7 @@
+ 
+ #include "doomo/doomo.h"
+ #include "doomo/backdrop.h"
++#include "doomo/plat_ext.h"             /* plat_clip */
+ 
+ /* "dread" 0..15: 0 = sugary pastel church, 15 = blood-red nightmare.
+  * exo_church draws it all: the backdrop for (dread, t), then every live part. */
+diff --git a/core/src/exorcism_scene.c b/core/src/exorcism_scene.c
+index f3dea129..46c4c652 100644
+--- a/core/src/exorcism_scene.c
++++ b/core/src/exorcism_scene.c
+@@ -782,6 +782,33 @@ static int L(int id, int x, int y, int w, int h, uint32_t key)
+     return stage_draw(id);
+ }
+ 
++/* (G2-EX) L for a layer that draws only with plat_rect, plat_shade_rect and plat_image at scale 1 (no text,
++ * lines or scaled images): the stage may draw it clipped to the part of the dirty set in its box, which is
++ * what CLIPPED does (backdrop.h) */
++static int LC(int id, int x, int y, int w, int h, uint32_t key)
++{
++    if (lpass == 1) {
++        stage_layer_clip(id, x, y, w, h, hk(key, (uint32_t)X.state * 131u + (uint32_t)id));
++        return 0;
++    }
++    return stage_draw(id);
++}
++#define CLIPPED(id, call)                                                   \
++    do {                                                                    \
++        int cn_ = stage_clip_n(id), ck_;                                    \
++        if (cn_ <= 0) {                                                     \
++            call;                                                           \
++        } else {                                                            \
++            for (ck_ = 0; ck_ < cn_; ck_++) {                               \
++                int16_t cr_[4];                                             \
++                stage_clip_get(id, ck_, cr_);                               \
++                plat_clip(cr_[0], cr_[1], cr_[2], cr_[3]);                  \
++                call;                                                       \
++            }                                                               \
++            plat_clip_end();                                                \
++        }                                                                   \
++    } while (0)
++
+ /* the host's frame at (cx, cy) (exo_host_frame), its outer w / h in *w, *h */
+ static void host_layer(int cx, int cy, int scale, int expr, uint32_t t, int *w, int *h)
+ {
+@@ -802,8 +829,8 @@ static void host_layer(int cx, int cy, int scale, int expr, uint32_t t, int *w,
+                   (uint32_t)(dx + 64) | (uint32_t)(dy + 64) << 8 | (uint32_t)pulse << 16 |
+                   (uint32_t)((X.dread > 10) | (X.dread < 6) << 1 | (X.dread < 11) << 2) << 20), img);
+     /* aura radii up to w / 2 + 7, h / 2 + 6; the shadow 3 px down-right */
+-    if (L(LY_HOST, cx + dx - fw / 2 - 8, cy + dy - fh / 2 - 7, fw + 17, fh + 15, k))
+-        exo_host_frame(cx, cy, img, scale, sh, X.dread, t, w, h);
++    if ((img && scale == 1 ? LC : L)(LY_HOST, cx + dx - fw / 2 - 8, cy + dy - fh / 2 - 7, fw + 17, fh + 15, k))
++        CLIPPED(LY_HOST, exo_host_frame(cx, cy, img, scale, sh, X.dread, t, w, h));
+     *w = fw;
+     *h = fh;
+ }
+@@ -815,7 +842,8 @@ static void candles_layer(int cx, int y, int lit, int total, uint32_t t, int big
+     uint32_t k = hk(hk(0xCA9Du, (uint32_t)(cx & 1023) | (uint32_t)(y & 1023) << 10 | (uint32_t)lit << 20 |
+                                 (uint32_t)total << 24 | (uint32_t)big << 28),
+                     lit < total ? t : t / 3);
+-    if (L(LY_CANDLES, x0 - 5, y - 15, (total - 1) * sp + 11, ch + 18, k)) exo_candles(cx, y, lit, total, t, big);
++    if (LC(LY_CANDLES, x0 - 5, y - 15, (total - 1) * sp + 11, ch + 18, k))
++        CLIPPED(LY_CANDLES, exo_candles(cx, y, lit, total, t, big));
+ }
+ 
+ static void fuzz_layer(int cx, int foot, uint32_t t, int expr)
+@@ -826,10 +854,10 @@ static void fuzz_layer(int cx, int foot, uint32_t t, int expr)
+     img = ly_fuzz_img;
+     if (!img) { L(LY_FUZZ, 0, 0, 0, 0, 0); return; }
+     hw = DOOMO_MAX(14, img->w / 2 + 1) + 1;
+-    if (L(LY_FUZZ, cx - hw, foot - img->h - 2, 2 * hw + 1, img->h + 5,
+-          hk_img(hk(0xF022u, (uint32_t)(cx & 1023) | (uint32_t)(foot & 1023) << 10 |
+-                             (uint32_t)(ui_wave((int)t, 48, 1) + 2) << 20), img)))
+-        exo_fuzz_draw(cx, foot, t, img);
++    if (LC(LY_FUZZ, cx - hw, foot - img->h - 2, 2 * hw + 1, img->h + 5,
++           hk_img(hk(0xF022u, (uint32_t)(cx & 1023) | (uint32_t)(foot & 1023) << 10 |
++                              (uint32_t)(ui_wave((int)t, 48, 1) + 2) << 20), img)))
++        CLIPPED(LY_FUZZ, exo_fuzz_draw(cx, foot, t, img));
+ }
+ 
+ static void demon_layer(int x, int y, uint32_t t, int flash, int scale)
+@@ -839,10 +867,10 @@ static void demon_layer(int x, int y, uint32_t t, int flash, int scale)
+     if (!img) { L(LY_DEMON, 0, 0, 0, 0, 0); return; }
+     w = img->w * scale;
+     h = img->h * scale;
+-    if (L(LY_DEMON, x - w / 2 - 1, y - h / 2 - 2, w + scale + 3, h + scale + 4,
++    if ((scale == 1 ? LC : L)(LY_DEMON, x - w / 2 - 1, y - h / 2 - 2, w + scale + 3, h + scale + 4,
+           hk_img(hk(0xDE30u, (uint32_t)(x & 1023) | (uint32_t)(y & 1023) << 10 | (uint32_t)scale << 20 |
+                              (uint32_t)sil << 24 | (uint32_t)(sil ? 0 : ui_wave((int)t, 20, 1) + 2) << 26), img)))
+-        exo_demon(x, y, t, flash, scale);
++        CLIPPED(LY_DEMON, exo_demon(x, y, t, flash, scale));
+ }
+ 
+ /* exo_bubble's box: the bubble, its outline and the tail from (tx, ty) */
+@@ -1222,19 +1250,25 @@ static void exo_layers(uint32_t t)
+         candles_layer(w / 2, hy + hh / 2 + 3, X.practice ? 3 : exorcism_tries_left(X.host), 3, t, big);
+         fuzz_layer(fuzz_x, fuzz_foot, t, EXPR_TALK);
+         demon_layer(w / 2 + hw / 2 + 10, hy - hh / 2 + ui_wave((int)t, 40, 4), t, X.shake > 3 ? X.shake : 0, 1);
+-        if (L(LY_U0, fx - 2, fyy - 10, 12, fh + 12, hk(0xFA17u, (uint32_t)faith | (uint32_t)(X.dread < 8) << 16)))
+-            draw_faith_meter(fx, fyy, fh, faith);
++        if (LC(LY_U0, fx - 2, fyy - 10, 12, fh + 12, hk(0xFA17u, (uint32_t)faith | (uint32_t)(X.dread < 8) << 16)))
++            CLIPPED(LY_U0, draw_faith_meter(fx, fyy, fh, faith));
+         lane_geom(&ly, &lane_h, &lhx);
+         /* the ribbon and its prompts (a missed prompt sinks 10 px; sparkles, outlines) */
+         if (L(LY_U0 + 1, 0, ly - 4, w, lane_h + 32, hk(0x1A9Eu, (uint32_t)X.pt ^ (uint32_t)(X.dread < 8) << 20)))
+             draw_lane(t, LANE_RIBBON);
+-        if (L(LY_U0 + 2, 0, ly - 24, w, 21,
+-              hk(0x90Bu, (X.fb && X.fb_t < 24 ? (uint32_t)X.fb | (uint32_t)X.fb_t << 4 : 0u) |
+-                         (uint32_t)(X.combo >= 3 ? X.combo : 0) << 12)))
+-            draw_lane(t, LANE_POP);
+-        if (L(LY_U0 + 3, w / 2 - 10, ly - 36, 34, 22,
+-              hk(0xC0u, X.pt < 4 * EXORCISM_TICKS_PER_BEAT && X.pt >= 0 ? (uint32_t)(X.pt / EXORCISM_TICKS_PER_BEAT) + 1 : 0u)))
+-            draw_lane(t, LANE_COUNT);
++        /* (G2-EX) a part that draws nothing has no box: a box that lies on the dirty ones of every
++         * tick (the full-width pop strip over the host, Fuzz and the curtains) would drag the whole
++         * stage into the redraw */
++        {
++            int pop = (X.fb && X.fb_t < 24) || X.combo >= 3, cnt = X.pt < 4 * EXORCISM_TICKS_PER_BEAT && X.pt >= 0;
++            if (L(LY_U0 + 2, 0, ly - 24, pop ? w : 0, pop ? 21 : 0,
++                  hk(0x90Bu, (X.fb && X.fb_t < 24 ? (uint32_t)X.fb | (uint32_t)X.fb_t << 4 : 0u) |
++                             (uint32_t)(X.combo >= 3 ? X.combo : 0) << 12)))
++                draw_lane(t, LANE_POP);
++            if (L(LY_U0 + 3, w / 2 - 10, ly - 36, cnt ? 34 : 0, cnt ? 22 : 0,
++                  hk(0xC0u, cnt ? (uint32_t)(X.pt / EXORCISM_TICKS_PER_BEAT) + 1 : 0u)))
++                draw_lane(t, LANE_COUNT);
++        }
+         if (X.taunt_t > 0)
+             bubble_layer(LY_U0 + 4, w / 2 + hw / 2 - (big ? 10 : 30), big ? 6 : 2, big ? 120 : 96, X.taunt,
+                          w / 2 + hw / 2 + 10, hy - hh / 2 - 6, 1);
+@@ -1425,14 +1459,16 @@ static void exo_draw(void)
+         int16_t box[4];
+         uint32_t key;
+         exo_church_part(p, X.dread, t, box, &key);
+-        stage_layer(p, box[0], box[1], box[2], box[3], hk(key, (uint32_t)p));
++        stage_layer_clip(p, box[0], box[1], box[2], box[3], hk(key, (uint32_t)p));
+     }
+     exo_layers(t);
+     stage_resolve();
+     lpass = 2;
+     ly_fetch = 0;
+-    for (p = 0; p < EXO_PARTS; p++)
+-        if (stage_draw(p)) exo_church_part_draw(p, X.dread, t);
++    for (p = 0; p < EXO_PARTS; p++) {
++        if (!stage_draw(p)) continue;
++        CLIPPED(p, exo_church_part_draw(p, X.dread, t));
++    }
+     exo_layers(t);
+     stage_end();
+ }
+diff --git a/core/tests/test_stage.c b/core/tests/test_stage.c
+index 7d87fe0d..aa2ec31d 100644
+--- a/core/tests/test_stage.c
++++ b/core/tests/test_stage.c
+@@ -52,7 +52,7 @@ static uint32_t pad(int f)
+     return 0;
+ }
+ 
+-static int retained_n, full_n;
++static int retained_n, full_n, clipped_n;
+ 
+ static void run(int n, uint32_t *out, int stage)
+ {
+@@ -66,12 +66,13 @@ static void run(int n, uint32_t *out, int stage)
+     scene_set(&SCENE_TITLE, 0);
+     frame(0);
+     scene_set(&SCENE_EXORCISM, -1);
+-    retained_n = full_n = 0;
++    retained_n = full_n = clipped_n = 0;
++    nat_clip_viol = 0;
+     for (f = 0; f < n; f++) {
+         frame(pad(f));
+         out[f] = fb_hash();
+         stage_stats(&st);
+-        if (st.retained) { retained_n++; if (st.full) full_n++; }
++        if (st.retained) { retained_n++; if (st.full) full_n++; if (st.clipped) clipped_n++; }
+     }
+     nat_stage_on = 0;
+ }
+@@ -106,8 +107,15 @@ static int compare(int w, int h, int n)
+             test_fail(__FILE__, __LINE__, m);
+             return 0;
+         }
+-    printf("      stage exorcism %dx%d: %d frames, %d retained, %d of them drawn in full\n", w, h, n,
+-           retained_n, full_n);
++    printf("      stage exorcism %dx%d: %d frames, %d retained, %d of them drawn in full, %d with a clipped layer\n", w, h, n,
++           retained_n, full_n, clipped_n);
++    if (clipped_n < n / 4 || nat_clip_viol) {          /* (G2-EX) the clipped redraw is really used, with calls it honours */
++        char m[200];
++        snprintf(m, sizeof(m), "exorcism %dx%d: %d frames with a clipped layer of %d, %d calls the clip does not honour",
++                 w, h, clipped_n, n, nat_clip_viol);
++        test_fail(__FILE__, __LINE__, m);
++        return 0;
++    }
+     if (retained_n < n * 9 / 10 || full_n * 4 > retained_n) {
+         char m[200];
+         snprintf(m, sizeof(m), "exorcism %dx%d: the stage kept too little (%d retained, %d full of %d)",
+diff --git a/core/tests/test_stage_clip.c b/core/tests/test_stage_clip.c
+new file mode 100644
+index 00000000..845cf37a
+--- /dev/null
++++ b/core/tests/test_stage_clip.c
+@@ -0,0 +1,183 @@
++/* test_stage_clip.c - clipped redraw (G2-EX, backdrop.h stage_layer_clip, plat_ext.h plat_clip,
++ * docs/EXORCISM_SPEED.md): a layer that did not change but lies on a dirty box is drawn only inside
++ * the dirty set, so it does not widen the set and drag every layer that lies on its box into the
++ * redraw; and the platform's clip draws exactly the pixels of the unclipped call that lie in the box.
++ * The whole ritual against a full redraw is test_stage.c. */
++#include "test.h"
++#include "doomo/backdrop.h"
++#include "doomo/plat_ext.h"
++#include <stdlib.h>
++
++static void set_res(int w, int h)
++{
++    NatOptions o;
++    memset(&o, 0, sizeof(o));
++    o.w = w; o.h = h; o.seed = 0x5EED1234u; o.quiet = 1;
++    o.save_dir = test_tmp_dir;
++    nat_init(&o);
++}
++
++static void fill_backdrop(uint32_t key)
++{
++    plat_clear((uint8_t)(1 + (key & 7)));
++}
++
++/* ---- the primitives under plat_clip ------------------------------------------------------ */
++static uint32_t rnd_s;
++static int rnd(int n) { rnd_s = rnd_s * 1664525u + 1013904223u; return (int)((rnd_s >> 8) % (uint32_t)n); }
++
++static void noise(void)
++{
++    int i;
++    for (i = 0; i < nat_w * nat_h; i++) nat_fb[i] = (uint8_t)(1 + rnd(120));
++}
++
++/* one random 2D call of the kinds a clip honours */
++static void call(int kind, int x, int y, int w, int h, const DoomoImage *img, int c)
++{
++    switch (kind) {
++    case 0: plat_rect(x, y, w, h, (uint8_t)c); break;
++    case 1: plat_shade_rect(x, y, w, h, c & 15); break;
++    case 2: plat_image(x, y, img, 1, 0, 0); break;
++    case 3: plat_image(x, y, img, 1, IMG_SHADOW, 0); break;
++    default: plat_image(x, y, img, 1, IMG_SILHOUETTE, (uint8_t)c); break;
++    }
++}
++
++TEST(clip_draws_exactly_the_unclipped_pixels_inside_the_box)
++{
++    static uint8_t pix[20 * 14], ref[NAT_MAX_W * NAT_MAX_H], start[NAT_MAX_W * NAT_MAX_H];
++    DoomoImage img;
++    int n, i, bad = 0;
++    set_res(240, 160);
++    nat_stage_reset();
++    rnd_s = 12345u;
++    for (i = 0; i < (int)sizeof(pix); i++) pix[i] = (uint8_t)(rnd(3) ? 1 + rnd(200) : 0);   /* holes */
++    img.w = 20; img.h = 14; img.pix = pix; img.uid = doomo_image_new_uid();
++    for (n = 0; n < 400 && !bad; n++) {
++        int kind = rnd(5), x = rnd(260) - 20, y = rnd(180) - 20, w = 1 + rnd(50), h = 1 + rnd(40);
++        int bx = rnd(240), by = rnd(160), bw = 1 + rnd(120), bh = 1 + rnd(90), c = 1 + rnd(200);
++        int x0 = bx, y0 = by, x1 = DOOMO_MIN(bx + bw, nat_w), y1 = DOOMO_MIN(by + bh, nat_h);
++        noise();
++        memcpy(start, nat_fb, (size_t)(nat_w * nat_h));
++        call(kind, x, y, w, h, &img, c);
++        memcpy(ref, nat_fb, (size_t)(nat_w * nat_h));
++        memcpy(nat_fb, start, (size_t)(nat_w * nat_h));
++        plat_clip(x0, y0, x1, y1);
++        call(kind, x, y, w, h, &img, c);
++        plat_clip_end();
++        for (i = 0; i < nat_w * nat_h; i++) {
++            int px = i % nat_w, py = i / nat_w, in = px >= x0 && px < x1 && py >= y0 && py < y1;
++            if (nat_fb[i] != (in ? ref[i] : start[i])) { bad = n + 1; break; }
++        }
++        CHECK_MSG(!bad, "call %d kind %d at %d,%d %dx%d clipped to %d,%d..%d,%d: pixel %d differs", n, kind, x, y, w, h,
++                  x0, y0, x1, y1, i);
++    }
++    CHECK_EQ(nat_clip_viol, 0);
++    CHECK(!nat_clip_on);
++}
++
++/* ---- the stage's decisions ------------------------------------------------------------------ */
++enum { A = 0, B = 1, C = 2, D = 3 };
++typedef struct { int drawn[4], n[4]; int16_t piece[4][8][4]; int full; } Frame;
++
++/* one frame: A (clippable, still), B (a box that moves with `bx`), C (clippable, lies on A only),
++ * D (not clippable, lies on B's old place) */
++static void stage_frame(int f, int bx, Frame *out)
++{
++    StageStats st;
++    int i, k;
++    plat_begin_frame();
++    memset(out, 0, sizeof(*out));
++    if (stage_begin(DOOMO_BACKDROP_EXO_CHURCH, 0, fill_backdrop)) {
++        stage_layer_clip(A, 10, 10, 60, 60, 1);
++        stage_layer(B, bx, 50, 40, 40, (uint32_t)f);
++        stage_layer_clip(C, 5, 5, 20, 20, 1);
++        stage_layer(D, 120, 52, 30, 30, 1);
++        stage_resolve();
++        for (i = 0; i < 4; i++) {
++            out->drawn[i] = stage_draw(i);
++            out->n[i] = out->drawn[i] ? stage_clip_n(i) : 0;
++            for (k = 0; k < out->n[i] && k < 8; k++) stage_clip_get(i, k, out->piece[i][k]);
++        }
++        stage_stats(&st);
++        out->full = st.full;
++        stage_end();
++    }
++    plat_end_frame();
++}
++
++TEST(stage_clipped_layer_lies_on_a_dirty_box_without_widening_it)
++{
++    static uint8_t mem[8192];
++    Frame f;
++    int i;
++    CHECK(stage_mem_bytes() <= sizeof(mem));
++    set_res(240, 160);
++    nat_stage_on = 1;
++    nat_stage_buffers = 2;
++    nat_stage_reset();
++    stage_bind(mem);
++    for (i = 0; i < 4; i++) stage_frame(i, 50, &f);          /* B changes its key only: its box stays */
++    CHECK(!f.full);
++    CHECK(f.drawn[B]);                                       /* changed */
++    CHECK(f.drawn[A] && f.n[A] == 1);                        /* lies on B: through one piece */
++    CHECK_EQ(f.piece[A][0][0], 50); CHECK_EQ(f.piece[A][0][1], 50);
++    CHECK_EQ(f.piece[A][0][2], 70); CHECK_EQ(f.piece[A][0][3], 70);   /* A's box cut to B's */
++    CHECK(!f.drawn[C]);       /* C lies on A's box, which is not put back: nothing of it is dirty */
++    CHECK(!f.drawn[D]);       /* D is clear of B's box */
++    nat_stage_on = 0;
++}
++
++TEST(stage_unclipped_layer_still_widens_the_dirty_set)
++{
++    static uint8_t mem[8192];
++    Frame f;
++    int i;
++    set_res(240, 160);
++    nat_stage_on = 1;
++    nat_stage_buffers = 2;
++    nat_stage_reset();
++    stage_bind(mem);
++    for (i = 0; i < 4; i++) stage_frame(i, 100, &f);         /* B's box [100,140): D [120,150) lies on it */
++    CHECK(!f.full);
++    CHECK(f.drawn[B] && f.drawn[D]);
++    CHECK_EQ(f.n[D], 0);                                     /* not clippable: drawn whole */
++    CHECK(!f.drawn[A] && !f.drawn[C]);
++    nat_stage_on = 0;
++}
++
++TEST(stage_clip_pieces_are_disjoint_and_cover_the_dirty_part_of_the_layer)
++{
++    static uint8_t mem[8192], seen[240 * 160];
++    Frame f;
++    int i, k, x, y, n_in = 0, n_exp = 0;
++    set_res(240, 160);
++    nat_stage_on = 1;
++    nat_stage_buffers = 2;
++    nat_stage_reset();
++    stage_bind(mem);
++    /* B moves: the dirty set is its old box and its new one (an L of two boxes that overlap A) */
++    stage_frame(0, 40, &f);
++    stage_frame(1, 40, &f);
++    stage_frame(2, 40, &f);
++    stage_frame(3, 20, &f);                                  /* old [40,80) x [50,90), new [20,60) x [50,90) */
++    CHECK(!f.full && f.drawn[A]);
++    memset(seen, 0, sizeof(seen));
++    CHECK(f.n[A] >= 1 || f.piece[A][0][2] == 0);
++    for (i = 0; i < f.n[A] && i < 8; i++)
++        for (y = f.piece[A][i][1]; y < f.piece[A][i][3]; y++)
++            for (x = f.piece[A][i][0]; x < f.piece[A][i][2]; x++) {
++                CHECK_MSG(!seen[y * 240 + x], "pixel %d,%d is in two pieces", x, y);
++                seen[y * 240 + x] = 1;
++                n_in++;
++            }
++    for (y = 10; y < 70; y++)
++        for (x = 10; x < 70; x++) {
++            int dirty = (x >= 40 && x < 80 && y >= 50 && y < 90) || (x >= 20 && x < 60 && y >= 50 && y < 90);
++            if (dirty) { n_exp++; CHECK_MSG(f.n[A] == 0 || seen[y * 240 + x], "pixel %d,%d of A's dirty part is in no piece", x, y); }
++        }
++    if (f.n[A] > 0) CHECK_EQ(n_in, n_exp);
++    for (k = 0; k < f.n[A] && k < 8; k++) CHECK(f.piece[A][k][2] > f.piece[A][k][0] && f.piece[A][k][3] > f.piece[A][k][1]);
++    nat_stage_on = 0;
++}
+diff --git a/gba/src/canvas.c b/gba/src/canvas.c
+index 44948a1b..c63bcfbc 100644
+--- a/gba/src/canvas.c
++++ b/gba/src/canvas.c
+@@ -344,6 +344,7 @@ int vid_route(int x0, int y0, int x1, int y1)
+         stage_note(x0, y0, x1, y1);
+         if (pn_active()) pn_route(x0, y0, x1, y1);
+         return 1;
++    case GBA_NODRAW_CLIP: return 1;              /* (G2-EX) inside plat_clip: the calls that honour it cut themselves */
+     case GBA_NODRAW_CANVAS:
+         if (cv_op(x0, y0, x1, y1)) return 2;
+         return gba_nodraw ? 0 : 1;              /* dropped / converted   */
+diff --git a/gba/src/canvas_int.h b/gba/src/canvas_int.h
+index a98f5a0d..7f16b0ea 100644
+--- a/gba/src/canvas_int.h
++++ b/gba/src/canvas_int.h
+@@ -176,6 +176,7 @@ void hold_flipped(int page);              /* video_flip: page shown, -1 tiles */
+ /* ---- stage.c (SP7): the kept backdrop's pages ----------------------------- */
+ void stage_flipped(int page);             /* video_flip: page shown, -1 tiles / not flipped */
+ void stage_note(int x0, int y0, int x1, int y1);   /* drawn after plat_stage_end */
++extern int16_t stage_box[4];                       /* (G2-EX) the clip box inside plat_clip (stage.c) */
+ int  hold_page(void);                     /* page held as the backdrop, -1 none */
+ void hold_band_release(void);            /* SP5: a world frame: the band's borrowed cache bytes go back (hold.c) */
+ void view_hold_drop(void);                /* S2-2 (viewhold.c): the held 3D view copy is gone */
+diff --git a/gba/src/gba_plat.h b/gba/src/gba_plat.h
+index c3941c31..fdec3312 100644
+--- a/gba/src/gba_plat.h
++++ b/gba/src/gba_plat.h
+@@ -32,6 +32,8 @@ extern int gba_nodraw;
+ #define GBA_NODRAW_PANEL   5     /* Mode 4, panels up (G7, panel.c): 2D calls are checked */
+ #define GBA_NODRAW_TRACK   6     /* Mode 4 after plat_stage_end (SP7, stage.c): 2D calls widen
+                                     the page's overlay box (and panels are checked as with 5) */
++#define GBA_NODRAW_CLIP    7     /* Mode 4 inside plat_clip .. plat_clip_end (G2-EX, stage.c): plat_rect,
++                                    plat_shade_rect and plat_image draw only inside the clip box */
+ uint32_t gba_read_pad(void);             /* BTN_* mask incl. SYNTH_XY flag */
+ void cutview_enter(void);                 /* debug cutscene viewer (cutview.c) */
+ void gba_pacing_reset(void);             /* forget frame debt (after loads) */
+diff --git a/gba/src/stage.c b/gba/src/stage.c
+index 940964f1..630d0625 100644
+--- a/gba/src/stage.c
++++ b/gba/src/stage.c
+@@ -29,7 +29,7 @@ static const uint8_t *cur_img;                 /* this frame's backdrop (ROM)
+ static uint32_t serial;                        /* Mode 4 frames presented           */
+ static uint32_t page_serial[2];                /* stage frame each page holds, 0    */
+ static int16_t page_dirt[2][4];                /* drawn over it after plat_stage_end */
+-static int16_t trk[4];
++int16_t stage_box[4];                          /* the box 2D calls cover after plat_stage_end; before it (plat_clip) the clip box */
+ static uint8_t frame_stage, tracking;
+ 
+ static uint32_t rd32(const uint8_t *p)
+@@ -126,12 +126,47 @@ void plat_stage_restore(int x, int y, int w, int h)
+     stage_rows(gba_back, cur_img, x0, x1, y0, y1);
+ }
+ 
++/* (G2-EX) the stage draws a layer that did not change only inside the pieces of the dirty set: until
++ * plat_clip_end every plat_rect, plat_shade_rect and plat_image takes its slow path (GBA_NODRAW_CLIP:
++ * canvas.c, video.c) and is cut to this box, which lives in stage_box (nothing is tracked before
++ * plat_stage_end). The box is already inside the screen. */
++static uint8_t clip_prev;                      /* the gba_nodraw the clip replaced */
++void plat_rect_m4(int x, int y, int w, int h, uint8_t color) IWRAM_CALL;
++/* plat_rect inside plat_clip: plat_rect's gba_nodraw != 0 path (video_loops.s) jumps here with the call's
++ * own arguments. ARM in the room group, which plat_clip loads (so it is in the slot for the whole clip) */
++STAGE_ARM void stage_clip_rect(int x, int y, int w, int h, uint8_t color)
++{
++    int x1 = x + w, y1 = y + h;
++    if (x < stage_box[0]) x = stage_box[0];
++    if (y < stage_box[1]) y = stage_box[1];
++    if (x1 > stage_box[2]) x1 = stage_box[2];
++    if (y1 > stage_box[3]) y1 = stage_box[3];
++    if (x < x1 && y < y1) plat_rect_m4(x, y, x1 - x, y1 - y, color);
++}
++
++void plat_clip(int x0, int y0, int x1, int y1)
++{
++    if (!frame_stage || gba_nodraw == 1) return;
++    iwram_ovl_use(OVL_ROOM);
++    stage_box[0] = (int16_t)(x0 < 0 ? 0 : x0);
++    stage_box[1] = (int16_t)(y0 < 0 ? 0 : y0);
++    stage_box[2] = (int16_t)(x1 > SCREEN_W ? SCREEN_W : x1);
++    stage_box[3] = (int16_t)(y1 > SCREEN_H ? SCREEN_H : y1);
++    if (gba_nodraw != GBA_NODRAW_CLIP) clip_prev = (uint8_t)gba_nodraw;    /* (a layer's next piece resets the box) */
++    gba_nodraw = GBA_NODRAW_CLIP;
++}
++
++void plat_clip_end(void)
++{
++    if (gba_nodraw == GBA_NODRAW_CLIP) gba_nodraw = clip_prev;
++}
++
+ void plat_stage_end(void)
+ {
+     if (!frame_stage || gba_nodraw == 1) return;
+     tracking = 1;
+-    trk[0] = trk[1] = 0x7FFF;
+-    trk[2] = trk[3] = -0x7FFF;
++    stage_box[0] = stage_box[1] = 0x7FFF;
++    stage_box[2] = stage_box[3] = -0x7FFF;
+     if (gba_nodraw == 0 || gba_nodraw == GBA_NODRAW_PANEL) gba_nodraw = GBA_NODRAW_TRACK;
+ }
+ 
+@@ -139,10 +174,10 @@ void plat_stage_end(void)
+ void stage_note(int x0, int y0, int x1, int y1)
+ {
+     if (!tracking) return;
+-    if (x0 < trk[0]) trk[0] = (int16_t)x0;
+-    if (y0 < trk[1]) trk[1] = (int16_t)y0;
+-    if (x1 > trk[2]) trk[2] = (int16_t)x1;
+-    if (y1 > trk[3]) trk[3] = (int16_t)y1;
++    if (x0 < stage_box[0]) stage_box[0] = (int16_t)x0;
++    if (y0 < stage_box[1]) stage_box[1] = (int16_t)y0;
++    if (x1 > stage_box[2]) stage_box[2] = (int16_t)x1;
++    if (y1 > stage_box[3]) stage_box[3] = (int16_t)y1;
+ }
+ 
+ /* video_flip: the page now shown (0 / 1), -1 for a tile frame or a frame presented again */
+@@ -153,9 +188,9 @@ void stage_flipped(int page)
+         page_serial[0] = page_serial[1] = 0;
+     } else {
+         page_serial[page] = frame_stage ? serial : 0;
+-        if (frame_stage && tracking && trk[0] < trk[2] && trk[1] < trk[3]) {
+-            page_dirt[page][0] = trk[0]; page_dirt[page][1] = trk[1];
+-            page_dirt[page][2] = trk[2]; page_dirt[page][3] = trk[3];
++        if (frame_stage && tracking && stage_box[0] < stage_box[2] && stage_box[1] < stage_box[3]) {
++            page_dirt[page][0] = stage_box[0]; page_dirt[page][1] = stage_box[1];
++            page_dirt[page][2] = stage_box[2]; page_dirt[page][3] = stage_box[3];
+         } else {
+             page_dirt[page][0] = page_dirt[page][1] = page_dirt[page][2] = page_dirt[page][3] = 0;
+         }
+diff --git a/gba/src/video.c b/gba/src/video.c
+index 2fb6c798..413e7838 100644
+--- a/gba/src/video.c
++++ b/gba/src/video.c
+@@ -277,7 +277,13 @@ void plat_shade_rect(int x, int y, int w, int h, int level)
+     if (x1 > SCREEN_W) x1 = SCREEN_W;
+     if (y1 > SCREEN_H) y1 = SCREEN_H;
+     if (x >= x1 || y >= y1) return;
+-    if (gba_nodraw) {
++    if (gba_nodraw == GBA_NODRAW_CLIP) {        /* (G2-EX) inside plat_clip: only the box's part of it */
++        if (x < stage_box[0]) x = stage_box[0];
++        if (y < stage_box[1]) y = stage_box[1];
++        if (x1 > stage_box[2]) x1 = stage_box[2];
++        if (y1 > stage_box[3]) y1 = stage_box[3];
++        if (x >= x1 || y >= y1) return;
++    } else if (gba_nodraw) {
+         int k;
+         pn_op = PN_OP_SHADE;                    /* G7: not a panel's body */
+         k = vid_route(x, y, x1, y1);
+@@ -356,6 +362,32 @@ void plat_line(int x0, int y0, int x1, int y1, uint8_t color)
+     else if (gba_nodraw != 1) plat_line_slow(x0, y0, x1, y1, color);
+ }
+ 
++/* (G2-EX) vid_blit of the part of an image (scale 1, no flip) inside the plat_clip box: the whole rows
++ * that show as one cropped image when the box covers the image's columns, else each row's visible
++ * columns as a one-row image */
++static void clip_blit(int x, int y, const DoomoImage *img, int flags, uint32_t color)
++{
++    int w = img->w, h = img->h, rx0 = stage_box[0] > x ? stage_box[0] - x : 0;
++    int rx1 = stage_box[2] < x + w ? stage_box[2] - x : w, ry0 = stage_box[1] > y ? stage_box[1] - y : 0;
++    int ry1 = stage_box[3] < y + h ? stage_box[3] - y : h;
++    DoomoImage sub;
++    if (rx0 >= rx1 || ry0 >= ry1) return;
++    sub.uid = 0;
++    if (rx0 == 0 && rx1 == w) {
++        sub.w = (uint16_t)w;
++        sub.h = (uint16_t)(ry1 - ry0);
++        sub.pix = img->pix + ry0 * w;
++        vid_blit(x, y + ry0, &sub, 1, flags, color);
++        return;
++    }
++    sub.w = (uint16_t)(rx1 - rx0);
++    sub.h = 1;
++    for (; ry0 < ry1; ry0++) {
++        sub.pix = img->pix + ry0 * w + rx0;
++        vid_blit(x + rx0, y + ry0, &sub, 1, flags, color);
++    }
++}
++
+ /* 8bpp image, index 0 transparent, integer scale 1..4 */
+ void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
+                 uint8_t color)
+@@ -364,6 +396,11 @@ void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
+     if (scale < 1) scale = 1;
+     if (scale > 4) scale = 4;
+     if (!color) color = PAL_BLACK;
++    if (gba_nodraw == GBA_NODRAW_CLIP) {        /* (G2-EX) inside plat_clip (scale 1, no flip) */
++        if (flags & IMG_SHADOW) clip_blit(x + 1, y + 1, img, IMG_SILHOUETTE, PAL_BLACK);
++        clip_blit(x, y, img, flags & IMG_SILHOUETTE, color);
++        return;
++    }
+     if (gba_nodraw && !pn_clear_rows(y, y + img->h * scale + 1)) {
+         int sh = (flags & IMG_SHADOW) ? 1 : 0, k;
+         int x0 = DOOMO_MAX(x, 0), y0 = DOOMO_MAX(y, 0);
+diff --git a/gba/src/video_loops.s b/gba/src/video_loops.s
+index 7e0c4c1b..af4174b5 100644
+--- a/gba/src/video_loops.s
++++ b/gba/src/video_loops.s
+@@ -48,6 +48,10 @@ plat_rect_nz:
+     cmp     r12, #2
+     ldreq   r12, =cv_rect_fast
+     bxeq    r12
++    @ G2-EX: inside plat_clip (stage.c): the room group's clipped fill (plat_clip loaded the group)
++    cmp     r12, #7
++    ldreq   r12, =stage_clip_rect
++    bxeq    r12
+     @ G7: panels up (GBA_NODRAW_PANEL, panel.c): a rect that cannot touch
+     @ them (pn_box, their bounding box; the whole screen while one is drawn)
+     @ takes the Mode 4 path as if nothing were up
+-- 
+2.43.0
+

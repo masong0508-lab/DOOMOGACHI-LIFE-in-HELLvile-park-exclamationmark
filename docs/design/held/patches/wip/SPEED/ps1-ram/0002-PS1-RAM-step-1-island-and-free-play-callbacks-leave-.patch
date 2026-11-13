@@ -1,0 +1,345 @@
+From 69bf8c1e7361f40a7f485be909c5bb5897475569 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 12 Nov 2026 23:35:11 +0000
+Subject: [PATCH 02/14] PS1-RAM step 1: island and free-play callbacks leave
+ resident RAM (+21,808 B)
+
+ovl_plan.py kept a function resident as soon as its address was taken. 22 KB
+of code were resident for addresses that never leave their own group:
+
+- fp_island_gfx.c: the six draw_*_body functions go to its own lr_run(),
+  which runs them at once; lr_tap sits in ui_raster's ur_tap only around one
+  ui_fill_circle / ui_fill_ellipse call (LOCAL_CALLBACKS). 10.6 KB of the
+  island's drawing move into the island group (58 -> 69 KB of the 131 KB
+  slot, plus its 20 KB of scene scratch).
+- fp_title.c: pc_pill / pc_in / pc_vile go to its own logo_snap().
+- modal callbacks that were not listed yet (MODAL_CALLBACKS): the citizen
+  page's cb_manage (with do_action and everything it opens, 6 KB), the
+  memorial's mem_flowers, the title's finished_pick / fresh_world_go, the
+  profile row's pf_leave / pf_renamed / pf_join.
+- new PICK_CALLBACKS: a callback a free-play screen gives to the citizen
+  picker is called by the picker's own update, with the free-play group in
+  the slot (wz_neighbour, cb_introduce). The planner checks that the
+  function's group is the picker's; the island's picker callbacks are not
+  listed and stay resident.
+
+The free-play group grows from 106 to 117 KB; the slot (131,072 B, set by
+the house and the story) is unchanged. No source file changes: the same
+code runs from the slot instead of from resident RAM.
+
+Game disc with the boot FMV: 65,936 -> 87,744 B below the stack top.
+
+test_tools.py: the planner on a made-up game of four scenes (which callbacks
+may leave, which must stay).
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ ps1/tools/ovl_plan.py   |  52 +++++++++++--
+ ps1/tools/test_tools.py | 165 +++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 209 insertions(+), 8 deletions(-)
+
+diff --git a/ps1/tools/ovl_plan.py b/ps1/tools/ovl_plan.py
+index ae802a80..0131b387 100644
+--- a/ps1/tools/ovl_plan.py
++++ b/ps1/tools/ovl_plan.py
+@@ -172,6 +172,18 @@ LOCAL_CALLBACKS = {
+     # which draws the visible rows with them and returns (home group).
+     "home_draw": ("label_main", "label_catalog", "label_theme", "label_bp",
+                   "label_room", "label_group"),
++    # RAM headroom 2026-11-12. fp_island_gfx.c: the draw_*_body functions go to
++    # its own lr_run(), which runs the body at once (or replays its recorded
++    # rects) and returns. lr_tap is put into ui_raster.c's ur_tap by C() / E()
++    # around ONE ui_fill_circle / ui_fill_ellipse call and taken out again
++    # before they return: the resident rasteriser calls it only inside that
++    # call, with the island group in the slot. 10.6 KB of the island's drawing
++    # were resident for these seven addresses.
++    "fp_island_gfx": ("draw_glints_body", "draw_land_body", "draw_patches_body", "draw_roads_body",
++                      "draw_walkers_body", "draw_weather_body", "lr_tap"),
++    # fp_title.c: pc_* go to its own logo_snap(), which paints the piece
++    # with them twice (measure, then into the logo's image) and returns.
++    "fp_title": ("pc_pill", "pc_in", "pc_vile"),
+ }
+ 
+ # --- G0 (task #79): callbacks of a scene's modals. A function whose address
+@@ -205,11 +217,12 @@ MODAL_CALLBACKS = {
+     # native runner call them, never the PS1
+     "exorcism_gfx": ("exo_church_backdrop", "exo_church_keys"),
+     # F-phase family wizard + member screens: every callback goes to ui_choice / ui_confirm /
+-    # ui_text_entry only (wz_neighbour goes to fp_pick and stays resident, so it is not listed)
++    # ui_text_entry only (wz_neighbour goes to fp_pick: PICK_CALLBACKS below)
+     "fp_apartments": ("house_pick",),
++    # (RAM headroom 2026-11-12) mem_flowers: the memorial's ui_choice
+     "fp_family": ("care_all", "care_top_pick", "do_remove", "do_renamed", "do_uplift", "member_act",
+                   "role_done", "role_more", "will_pick", "wz_kind", "wz_named", "wz_pron",
+-                  "wz_stage"),
++                  "wz_stage", "mem_flowers"),
+     "fp_graveyard": ("cb_grave",),
+     "fp_island": ("cb_name_island", "cb_pet_name", "cb_title"),
+     "fp_newisland": ("cb_ask_name", "cb_name", "cb_seed"),
+@@ -218,14 +231,20 @@ MODAL_CALLBACKS = {
+     # CL4: cb_tips_reset is "Show all tips again?" (ui_confirm only)
+     "fp_options": ("cb_adult", "cb_defaults", "cb_monster_final", "cb_monster_typed", "cb_preset",
+                    "cb_tips_reset"),
++    # (RAM headroom 2026-11-12) cb_manage is the citizen page's "What would you like to do?"
++    # (ui_choice only): with it resident, do_action and everything it opens were too (6 KB)
+     "fp_resident": ("cb_advice", "cb_help_choice", "cb_monster_typed", "cb_rest_final",
+-                    "cb_rest_first"),
++                    "cb_rest_first", "cb_manage"),
+     "fp_roster": ("cb_search",),
+     "fp_saveload": ("cb_erase1", "cb_erase2", "cb_load", "cb_overwrite"),
++    # (RAM headroom 2026-11-12) the finished-story menu (ui_choice) and its "A new world as a
++    # villager?" (ui_confirm; finished_pick also calls it directly)
++    "fp_title": ("finished_pick", "fresh_world_go"),
+     "overworld": ("title_yes",),
+     "pet_scene": ("on_named",),
+-    # new-life confirms (ui_confirm only)
+-    "playas_scene": ("nl_done", "nl_start"),
++    # new-life confirms (ui_confirm only); (RAM headroom 2026-11-12) the profile row's leave
++    # confirm and its two name entries (ui_text_entry)
++    "playas_scene": ("nl_done", "nl_start", "pf_leave", "pf_renamed", "pf_join"),
+     "story_mg": ("te_cb",),
+     "studio": ("leave_choice",),
+     "studio_edit": ("notes_tools", "order_tools", "song_tools", "title_done"),
+@@ -257,6 +276,22 @@ PLAT_GROUPS = {"model": "combat"}
+ GUARDED = (("view3d", "model", "model_player_draw"),)
+ # --- end HOUSE CHARACTERS FLAT ---
+ 
++# --- RAM headroom 2026-11-12: callbacks given to the citizen picker by its own group. fp_pick() /
++# fp_pick_act() (fp_roster.c) keep the function in the picker's state, and the picker's finish_pick()
++# calls it from the picker's own update, i.e. with the picker's group (free play) in the slot. So a
++# callback of a free-play screen is called with its code loaded and need not be resident; one of
++# another group (the island's cb_treat / cb_exorcise / cb_open) is not listed and stays resident.
++# The planner checks that every taker is code of the function's group AND that this group is the
++# picker's (PICKER below); anything else stays resident.
++#   object base -> function names
++PICKER = "fp_roster"
++PICK_CALLBACKS = {
++    "fp_family": ("wz_neighbour",),     # the family wizard's "Who moves in?"
++    "fp_resident": ("cb_introduce",),   # the citizen page's "Introduce to..."
++}
++
++# --- end RAM headroom ---
++
+ # --- S4: registries read only by their own group (object base -> symbol).
+ # doomo_story_mg_a / _b point at the S4 / S5 story minigames; their only
+ # reader is story_mg.c's story_mg_find (the storymg scene, group loaded).
+@@ -435,12 +470,17 @@ def main(argv):
+                 takers[tgt].add(src)
+     # LOCAL_CALLBACKS / MODAL_CALLBACKS (above): not escaped when every taker
+     # is in their group
++    picker_group = {group_of(o.path) for o in objs if base(o.path) == PICKER}
+     for f in sorted(escaped):
+         o = objs[f[0]]
+         names = LOCAL_CALLBACKS.get(base(o.path), ()) + MODAL_CALLBACKS.get(base(o.path), ())
+-        if not names or f[1] not in tuple(".text." + n for n in names):
++        picks = PICK_CALLBACKS.get(base(o.path), ())
++        if f[1] not in tuple(".text." + n for n in names + picks):
+             continue
+         g = group_of(o.path)
++        if f[1] in tuple(".text." + n for n in picks) and picker_group != {g}:
++            print("ovl_plan: %s:%s is not in the picker's group; it stays resident" % (base(o.path), f[1]))
++            continue
+         if g and all(group_of(objs[t[0]].path) == g and t[1].startswith(OVL_KINDS) for t in takers[f]):
+             escaped.discard(f)
+         else:
+diff --git a/ps1/tools/test_tools.py b/ps1/tools/test_tools.py
+index df0ed072..eae1597c 100644
+--- a/ps1/tools/test_tools.py
++++ b/ps1/tools/test_tools.py
+@@ -4,13 +4,18 @@
+     python3 ps1/tools/test_tools.py            (CI: the PS1 job runs it)
+ 
+ elf2exe.py (the stack reserve and the plan gate's WARNING) and
+-ram_ledger.py (the linker map reader) are tested on files made here. Stdlib
+-only; the tests that need the MIPS compiler are skipped without one.
++ram_ledger.py (the linker map reader) are tested on files made here;
++ovl_plan.py on a made-up game of four scenes compiled with the MIPS
++compiler (which callbacks may leave resident RAM). Stdlib only; the
++tests that need the MIPS compiler are skipped without one.
+ """
+ import contextlib
+ import io
+ import os
++import re
++import shutil
+ import struct
++import subprocess
+ import sys
+ import tempfile
+ import unittest
+@@ -18,8 +23,13 @@ import unittest
+ HERE = os.path.dirname(os.path.abspath(__file__))
+ sys.path.insert(0, HERE)
+ import elf2exe          # noqa: E402
++import ovl_plan         # noqa: E402
+ import ram_ledger       # noqa: E402
+ 
++CROSS = next((p for p in ("mipsel-linux-gnu-", "mipsel-none-elf-") if shutil.which(p + "gcc")), None)
++CFLAGS = ["-O1", "-G8", "-march=r3000", "-mabi=32", "-msoft-float", "-mno-abicalls", "-fno-pic",
++          "-ffreestanding", "-fno-builtin", "-nostdlib", "-ffunction-sections", "-fdata-sections"]
++
+ 
+ def tiny_elf(end):
+     """a 32-bit little-endian ELF with one loadable segment at 0x80010000
+@@ -184,6 +194,157 @@ class Ledger(unittest.TestCase):
+         self.assertNotIn("WARNING", out)
+ 
+ 
++# ---- ovl_plan.py on a made-up game -------------------------------------------
++# Four scenes: FAMILY and the citizen PICKER (free play), ISLAND (island), all
++# listed by the resident scene.c. main.c stands for the platform and the
++# resident modals (ui_choice keeps the callback and calls it later).
++SCENE_H = """
++typedef struct DoomoScene { const char *name; void (*enter)(int); void (*leave)(void);
++                            void (*update)(void); void (*draw)(void); unsigned char overlay; } DoomoScene;
++void fp_pick(void (*done)(int));
++void ui_choice(void (*done)(int));
++extern int sink;
++"""
++FAKE = {
++    "src/main.c": """#include "scene.h"
++extern const DoomoScene *const doomo_all_scenes[];
++int sink;
++static void (*modal_done)(int);
++void ui_choice(void (*done)(int)) { modal_done = done; }
++int main(void)
++{
++    int i;
++    for (i = 0; doomo_all_scenes[i]; i++) { doomo_all_scenes[i]->update(); if (modal_done) modal_done(i); }
++    return sink;
++}
++""",
++    # the lenders ovl_plan.py BORROW names
++    "src/world.c": "unsigned char g_world_wtop[64], g_world_corner[64];\n",
++    "src/view3d.c": "unsigned char s_vis[64], s_vlist[64];\n",
++    "src/memcard.c": "unsigned char s_blk[64];\n",
++    "core/src/combat_bot.c": "unsigned char first_dir[64], queue[64], target_bits[64];\n",
++    "core/src/scene.c": """#include "scene.h"
++extern const DoomoScene SCENE_FAMILY, SCENE_PICKER, SCENE_ISLAND;
++const DoomoScene *const doomo_all_scenes[] = { &SCENE_FAMILY, &SCENE_PICKER, &SCENE_ISLAND, 0 };
++""",
++    "core/src/fp_roster.c": """#include "scene.h"
++static void (*pick_done)(int);
++void fp_pick(void (*done)(int)) { pick_done = done; }
++static void picker_update(void) { if (pick_done) pick_done(7); }
++const DoomoScene SCENE_PICKER = { "PICKER", 0, 0, picker_update, 0, 0 };
++""",
++    "core/src/fp_family.c": """#include "scene.h"
++static void wz_neighbour(int id) { sink += id * 3; }    /* to fp_pick: PICK_CALLBACKS */
++static void mem_flowers(int c) { sink += c * 5; }       /* to ui_choice: MODAL_CALLBACKS */
++static void not_listed(int c) { sink += c * 7; }        /* to ui_choice, in no table */
++static void fam_update(void) { fp_pick(wz_neighbour); ui_choice(mem_flowers); ui_choice(not_listed); }
++const DoomoScene SCENE_FAMILY = { "FAMILY", 0, 0, fam_update, 0, 0 };
++""",
++    "core/src/fp_island.c": """#include "scene.h"
++static void cb_treat(int id) { sink += id * 11; }       /* to fp_pick from ANOTHER group */
++static void isl_update(void) { fp_pick(cb_treat); }
++const DoomoScene SCENE_ISLAND = { "ISLAND", 0, 0, isl_update, 0, 0 };
++""",
++}
++
++
++def compile_fake(root, sources, compiler=None):
++    """the made-up game's objects, named as the PS1 build names them"""
++    with open(os.path.join(root, "scene.h"), "w") as f:
++        f.write(SCENE_H)
++    objs = []
++    for rel, text in sorted(sources.items()):
++        src = os.path.join(root, rel)
++        os.makedirs(os.path.dirname(src), exist_ok=True)
++        with open(src, "w") as f:
++            f.write(text)
++        obj = src + ".obj"
++        cmd = [CROSS + "gcc"] + CFLAGS + ["-I", root, "-o", obj, "-c", src]
++        rc = compiler(cmd) if compiler else subprocess.run(cmd).returncode
++        if rc:
++            raise RuntimeError("cannot compile " + rel)
++        objs.append(obj)
++    return objs
++
++
++def plan(root, objs):
++    """run the planner; ({group or 'resident': {(object base, section)}}, its report)"""
++    ld = os.path.join(root, "ovl.ld")
++    out = io.StringIO()
++    with contextlib.redirect_stdout(out):
++        rc = ovl_plan.main(["ovl_plan.py", "--readelf", CROSS + "readelf", "--out-ld", ld,
++                            "--out-c", os.path.join(root, "ovl_table.c"), "--report"] + objs)
++    if rc:
++        raise RuntimeError("ovl_plan failed:\n" + out.getvalue())
++    where = {}
++    cur = None
++    with open(ld) as f:
++        for line in f:
++            m = re.match(r"\s*\.ovl_\d+\s.*/\*\s*(\S+)\s*\*/", line)
++            if m:
++                cur = m.group(1)
++            elif re.match(r"\s*\.(text|rodata) : \{", line):
++                cur = "resident"
++            elif re.match(r"\s*\}", line):
++                cur = None
++            m = re.match(r"\s*\*(\S+)\(([^)]*)\)\s*$", line)
++            if m and cur and not m.group(1).startswith("("):
++                for sec in m.group(2).split():
++                    where.setdefault(cur, set()).add((ovl_plan.base(m.group(1)), sec))
++    return where, out.getvalue()
++
++
++@unittest.skipUnless(CROSS, "no MIPS compiler (mipsel-linux-gnu-gcc / mipsel-none-elf-gcc)")
++class Planner(unittest.TestCase):
++    def setUp(self):
++        self.dir = tempfile.TemporaryDirectory()
++        self.saved = (dict(ovl_plan.PICK_CALLBACKS), dict(ovl_plan.MODAL_CALLBACKS))
++
++    def tearDown(self):
++        ovl_plan.PICK_CALLBACKS.clear()
++        ovl_plan.PICK_CALLBACKS.update(self.saved[0])
++        ovl_plan.MODAL_CALLBACKS.clear()
++        ovl_plan.MODAL_CALLBACKS.update(self.saved[1])
++        self.dir.cleanup()
++
++    def test_callbacks_that_may_leave_resident_ram(self):
++        where, _ = plan(self.dir.name, compile_fake(self.dir.name, FAKE))
++        fp = where["freeplay"]
++        # the scenes' own code is in their groups
++        self.assertIn(("fp_family", ".text.fam_update"), fp)
++        self.assertIn(("fp_roster", ".text.picker_update"), fp)
++        self.assertIn(("fp_island", ".text.isl_update"), where["island"])
++        # a modal's callback and a picker callback of the picker's own group go with the group
++        self.assertIn(("fp_family", ".text.mem_flowers"), fp)
++        self.assertIn(("fp_family", ".text.wz_neighbour"), fp)
++        # a callback in no table is resident, and so is the island's picker callback
++        self.assertIn(("fp_family", ".text.not_listed"), where["resident"])
++        self.assertIn(("fp_island", ".text.cb_treat"), where["resident"])
++
++    def test_a_picker_callback_of_another_group_stays_resident_even_if_listed(self):
++        ovl_plan.PICK_CALLBACKS["fp_island"] = ("cb_treat",)
++        where, report = plan(self.dir.name, compile_fake(self.dir.name, FAKE))
++        self.assertIn("fp_island:.text.cb_treat is not in the picker's group; it stays resident", report)
++        self.assertIn(("fp_island", ".text.cb_treat"), where["resident"])
++        self.assertNotIn(("fp_island", ".text.cb_treat"), where["island"])
++
++    def test_without_its_table_entry_a_picker_callback_is_resident(self):
++        del ovl_plan.PICK_CALLBACKS["fp_family"]
++        where, _ = plan(self.dir.name, compile_fake(self.dir.name, FAKE))
++        self.assertIn(("fp_family", ".text.wz_neighbour"), where["resident"])
++        self.assertNotIn(("fp_family", ".text.wz_neighbour"), where["freeplay"])
++
++    def test_a_listed_callback_taken_by_another_group_stays_resident(self):
++        fake = dict(FAKE)
++        fake["core/src/fp_island.c"] = fake["core/src/fp_island.c"].replace(
++            "static void isl_update(void) { fp_pick(cb_treat); }",
++            "void wz_neighbour(int);\nstatic void isl_update(void) { fp_pick(cb_treat); fp_pick(wz_neighbour); }")
++        fake["core/src/fp_family.c"] = fake["core/src/fp_family.c"].replace("static void wz_neighbour", "void wz_neighbour")
++        where, report = plan(self.dir.name, compile_fake(self.dir.name, fake))
++        self.assertIn("fp_family:.text.wz_neighbour is taken outside its group; it stays resident", report)
++        self.assertIn(("fp_family", ".text.wz_neighbour"), where["resident"])
++
++
+ if __name__ == "__main__":
+     import warnings
+     warnings.simplefilter("ignore", ResourceWarning)    # the tools read files in one expression
+-- 
+2.43.0
+

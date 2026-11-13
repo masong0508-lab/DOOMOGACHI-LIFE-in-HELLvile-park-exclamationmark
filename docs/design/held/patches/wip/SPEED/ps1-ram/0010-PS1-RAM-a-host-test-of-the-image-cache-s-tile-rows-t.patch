@@ -1,0 +1,279 @@
+From 53fc19584103edb9ee90440db8bf9c01d16486a0 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 05:04:16 +0000
+Subject: [PATCH 10/14] PS1-RAM: a host test of the image cache's tile rows;
+ the smoke run checks the boot-time SPU load
+
+Step 5 writes a cached tile's bordered rows straight into the upload packets.
+The row writer is now ps1/src/tilerow.h (tile_row, inlined into upload_rows:
+the same code), and ps1/harness/tilerow_test.c compares it on the host with
+the staging code it replaced, for full, narrow and short tiles, plain and
+mirrored. The `harness` targets and the CI PS1 job run it.
+
+Step 4 converts every effect at boot with buffers taken from the idle display
+lists. The boot line now reads "spu: N of N effects (all), top ..., sum ..."
+and game_smoke.txt expects "effects (all)": a conversion that found no
+buffer would fail the smoke run instead of leaving the game silent.
+
+Game disc with the boot FMV: 161,312 B below the stack top (48 B of text for
+the log line).
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ .github/workflows/ci.yml           |  3 +
+ ps1/CMakeLists.txt                 |  7 ++-
+ ps1/harness/scripts/game_smoke.txt |  3 +
+ ps1/harness/tilerow_test.c         | 92 ++++++++++++++++++++++++++++++
+ ps1/src/gfx.c                      | 17 +-----
+ ps1/src/spu.c                      |  8 ++-
+ ps1/src/tilerow.h                  | 38 ++++++++++++
+ 7 files changed, 150 insertions(+), 18 deletions(-)
+ create mode 100644 ps1/harness/tilerow_test.c
+ create mode 100644 ps1/src/tilerow.h
+
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 0837a484..12f109f1 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -310,6 +310,9 @@ jobs:
+       - name: PS1 build tool tests (elf2exe gate, RAM ledger, string sections, overlay planner)
+         run: python3 ps1/tools/test_tools.py
+ 
++      - name: PS1 host test (the image cache's bordered tile rows, ps1/src/tilerow.h)
++        run: cc -O2 -Wall -I ps1/src ps1/harness/tilerow_test.c -o /tmp/tilerow_test && /tmp/tilerow_test
++
+       - name: Build the game disc (preset ps1)
+         working-directory: ps1
+         run: |
+diff --git a/ps1/CMakeLists.txt b/ps1/CMakeLists.txt
+index e0b51d2b..91e445f5 100644
+--- a/ps1/CMakeLists.txt
++++ b/ps1/CMakeLists.txt
+@@ -401,7 +401,12 @@ if(DOOMO_HOST_CC)
+ 		        ${CMAKE_CURRENT_SOURCE_DIR}/harness/adpcm_test.c
+ 		        ${CMAKE_CURRENT_SOURCE_DIR}/src/adpcm.c -lm
+ 		        -o ${CMAKE_CURRENT_BINARY_DIR}/adpcm_test
+-		COMMAND ${CMAKE_CURRENT_BINARY_DIR}/adpcm_test)
++		COMMAND ${CMAKE_CURRENT_BINARY_DIR}/adpcm_test
++		# RAM headroom 2026-11-12: the image cache's bordered tile rows (src/tilerow.h)
++		COMMAND ${DOOMO_HOST_CC} -O2 -I${CMAKE_CURRENT_SOURCE_DIR}/src
++		        ${CMAKE_CURRENT_SOURCE_DIR}/harness/tilerow_test.c
++		        -o ${CMAKE_CURRENT_BINARY_DIR}/tilerow_test
++		COMMAND ${CMAKE_CURRENT_BINARY_DIR}/tilerow_test)
+ else()
+ 	set(_adpcm "")
+ endif()
+diff --git a/ps1/harness/scripts/game_smoke.txt b/ps1/harness/scripts/game_smoke.txt
+index be205217..c719e28e 100644
+--- a/ps1/harness/scripts/game_smoke.txt
++++ b/ps1/harness/scripts/game_smoke.txt
+@@ -7,6 +7,9 @@
+ #       --script harness/scripts/game_smoke.txt --out OUT --expect "memcard: wrote"
+ wait 30
+ shot smoke_01_boot
++# every sound effect of SFX.BIN went into SPU RAM at boot (spu.c audio_hw_sfx_preload: its staging
++# buffers are the idle display lists; an effect that was not converted there stays silent)
++expect-log effects (all)
+ wait 120
+ expect-scene TITLE
+ shot smoke_02_title
+diff --git a/ps1/harness/tilerow_test.c b/ps1/harness/tilerow_test.c
+new file mode 100644
+index 00000000..5e6202c9
+--- /dev/null
++++ b/ps1/harness/tilerow_test.c
+@@ -0,0 +1,92 @@
++/* tilerow_test.c - host test of the image-cache tile rows (ps1/src/tilerow.h).
++ *
++ *   cc -O2 -I ps1/src ps1/harness/tilerow_test.c -o tilerow_test
++ *   ./tilerow_test
++ *
++ * RAM headroom 2026-11-12: gfx.c writes a tile's bordered rows straight into
++ * the GPU upload packets (tile_row) instead of copying them from the 130 x
++ * 130 staging buffer vram.c used to fill. The reference here IS that old
++ * staging code; every tile shape the cache can ask for (up to 128 x 128, plain and
++ * mirrored, at the image's left edge, right edge and in the middle, a full
++ * tile and the narrow / short ones at the image's end) must give the same bytes.
++ * Exit code 0 = pass.
++ */
++#include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include "tilerow.h"
++
++#define IMG_TILE 128
++
++/* vram.c vram_image() before the change: the tile with its border, staged */
++static void stage_ref(uint8_t *stage, int sw, const uint8_t *pix, int img_w, int x0, int y0,
++                      int tw, int th, int flip)
++{
++    int row, col;
++    memset(stage, 0, (size_t)sw * (th + 1));
++    for (row = 0; row < th; row++) {
++        const uint8_t *src = pix + (size_t)(y0 + row) * img_w;
++        uint8_t *d = stage + row * sw + 1;
++        if (!flip) {
++            memcpy(d, src + x0, (size_t)tw);
++        } else {
++            int sx = img_w - 1 - x0;
++            for (col = 0; col < tw; col++)
++                d[col] = src[sx - col];
++        }
++    }
++}
++
++/* vram.c + gfx.c now: the rows as upload_rows() writes them into the packets */
++static void rows_now(uint8_t *out, int sw, const uint8_t *pix, int img_w, int x0, int y0,
++                     int tw, int th, int flip)
++{
++    const uint8_t *src = pix + (size_t)y0 * img_w + (flip ? img_w - 1 - x0 : x0);
++    int h = th + 1, r;
++    for (r = 0; r < h; r++) {
++        tile_row(out + r * sw, sw, src, tw, flip ? -1 : 1, h - r <= 1);
++        src += img_w;
++    }
++}
++
++int main(void)
++{
++    static uint8_t ref[(IMG_TILE + 2) * (IMG_TILE + 2)], now[(IMG_TILE + 2) * (IMG_TILE + 2)];
++    static const int widths[] = { 1, 2, 3, 7, 64, 127, 128, 129, 200, 300 };
++    unsigned wi;
++    long tiles = 0;
++    for (wi = 0; wi < sizeof(widths) / sizeof(widths[0]); wi++) {
++        int img_w = widths[wi], img_h = 150, i, flip, x0, y0;
++        /* exactly the image: a read outside it is a fault under a sanitizer */
++        uint8_t *pix = (uint8_t *)malloc((size_t)img_w * img_h);
++        if (!pix) return 2;
++        for (i = 0; i < img_w * img_h; i++)
++            pix[i] = (uint8_t)(1 + (i * 7 + i / img_w * 13) % 255);     /* never 0: a border byte shows */
++        for (flip = 0; flip < 2; flip++)
++            for (x0 = 0; x0 < img_w; x0 += IMG_TILE)
++                for (y0 = 0; y0 < img_h; y0 += IMG_TILE) {
++                    int tw = img_w - x0 < IMG_TILE ? img_w - x0 : IMG_TILE;
++                    int th = img_h - y0 < IMG_TILE ? img_h - y0 : IMG_TILE;
++                    int sw = (tw + 2 + 1) & ~1;
++                    memset(ref, 0xaa, sizeof(ref));
++                    memset(now, 0x55, sizeof(now));
++                    stage_ref(ref, sw, pix, img_w, x0, y0, tw, th, flip);
++                    rows_now(now, sw, pix, img_w, x0, y0, tw, th, flip);
++                    if (memcmp(ref, now, (size_t)sw * (th + 1))) {
++                        printf("tilerow: FAIL image %dx%d tile at (%d,%d) %dx%d flip %d\n",
++                               img_w, img_h, x0, y0, tw, th, flip);
++                        return 1;
++                    }
++                    /* nothing written past the tile's rows */
++                    if ((size_t)sw * (th + 1) < sizeof(now) && now[(size_t)sw * (th + 1)] != 0x55) {
++                        printf("tilerow: FAIL wrote past the rows (image %d wide, tile %dx%d)\n", img_w, tw, th);
++                        return 1;
++                    }
++                    tiles++;
++                }
++        free(pix);
++    }
++    printf("tilerow: PASS (%ld tiles, plain and mirrored, the same bytes as the staging buffer)\n", tiles);
++    return 0;
++}
+diff --git a/ps1/src/gfx.c b/ps1/src/gfx.c
+index c96dc51a..fcc82e0a 100644
+--- a/ps1/src/gfx.c
++++ b/ps1/src/gfx.c
+@@ -25,6 +25,7 @@
+ #include <psxetc.h>
+ #include "ps1.h"
+ #include "postfx.h"
++#include "tilerow.h"
+ 
+ typedef struct FrameBuf {
+     DISPENV  disp;
+@@ -288,20 +289,8 @@ static int upload_rows(int x, int y, int w, int h, const uint8_t *src, int strid
+             if (tw < 0) {
+                 memcpy(d, src, (size_t)w * 2);
+             } else {
+-                uint8_t *b = (uint8_t *)d;
+-                int k = 0;
+-                if (h - r > 1) {            /* not the tile's last row */
+-                    b[k++] = 0;
+-                    if (step > 0) {
+-                        memcpy(b + 1, src, (size_t)tw);
+-                        k += tw;
+-                    } else {
+-                        for (; k <= tw; k++)
+-                            b[k] = src[1 - k];
+-                    }
+-                }
+-                while (k < w * 2)
+-                    b[k++] = 0;
++                /* the tile's last row is the transparent one below it */
++                tile_row((uint8_t *)d, w * 2, src, tw, step, h - r <= 1);
+             }
+             d += w;
+             src += stride;
+diff --git a/ps1/src/spu.c b/ps1/src/spu.c
+index 44331d8a..f9899ac7 100644
+--- a/ps1/src/spu.c
++++ b/ps1/src/spu.c
+@@ -383,9 +383,11 @@ void audio_hw_sfx_preload(void)
+         ok += convert_sfx(id);
+     stage_close();
+     s_bg_next = SFX_COUNT;
+-    /* what is in SPU RAM now: the same line from two builds = the same sound data */
+-    dbg("spu: %d of %d effects, top %05x, sum %08x\n", ok, SFX_COUNT - 1, (unsigned)s_sfx_top,
+-        (unsigned)s_up_sum);
++    /* what is in SPU RAM now: the same line from two builds = the same sound data.
++     * "(all)" is what harness/scripts/game_smoke.txt expects: an effect that was not
++     * converted here stays silent (nothing converts after boot, see "staging" above) */
++    dbg("spu: %d of %d effects (%s), top %05x, sum %08x\n", ok, SFX_COUNT - 1,
++        ok == SFX_COUNT - 1 ? "all" : "SOME MISSING", (unsigned)s_sfx_top, (unsigned)s_up_sum);
+ #endif
+ }
+ 
+diff --git a/ps1/src/tilerow.h b/ps1/src/tilerow.h
+new file mode 100644
+index 00000000..f1e93889
+--- /dev/null
++++ b/ps1/src/tilerow.h
+@@ -0,0 +1,38 @@
++/* tilerow.h - one row of an image-cache tile with its transparent border
++ * (owner: ps1; RAM headroom 2026-11-12, docs/PS1.md).
++ *
++ * vram.c gives every cached tile a transparent border: one texel on the
++ * left, the texels from tw + 1 up to the (even) upload width on the right,
++ * and one row below. gfx.c writes the bordered rows straight into the GPU
++ * upload packets with this (it used to copy them from a 16.9 KB staging
++ * buffer). Host test: harness/tilerow_test.c (the old staging buffer is its
++ * reference).
++ */
++#ifndef PS1_TILEROW_H
++#define PS1_TILEROW_H
++#include <stdint.h>
++#include <string.h>
++
++/* Writes n bytes (the upload width in texels, even, >= tw + 2) to b: one
++ * transparent texel, tw texels read from src in steps of `step` (+1, or -1
++ * for a mirrored image: src is then the row's LAST texel of the tile in the
++ * image), then transparent texels; `blank` = the row below the tile, all
++ * transparent (src is not read). */
++static inline void tile_row(uint8_t *b, int n, const uint8_t *src, int tw, int step, int blank)
++{
++    int k = 0;
++    if (!blank) {
++        b[k++] = 0;
++        if (step > 0) {
++            memcpy(b + 1, src, (size_t)tw);
++            k += tw;
++        } else {
++            for (; k <= tw; k++)
++                b[k] = src[1 - k];
++        }
++    }
++    while (k < n)
++        b[k++] = 0;
++}
++
++#endif
+-- 
+2.43.0
+

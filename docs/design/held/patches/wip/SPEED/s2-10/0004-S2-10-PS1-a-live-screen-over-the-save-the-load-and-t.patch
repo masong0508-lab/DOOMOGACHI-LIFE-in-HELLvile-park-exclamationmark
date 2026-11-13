@@ -1,0 +1,542 @@
+From f85895dfa2abcd19fced3b6de41e6f78e755e5b0 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 14:21:29 +0000
+Subject: [PATCH 04/10] S2-10 PS1: a live screen over the save, the load and
+ the build (loading screen per citizen, card calls two sectors at a time, a
+ spinner over the overlay reads)
+
+- plat_busy / plat_busy_step (gfx.c): the full-screen loading screen is redrawn with its bar at done / total, at most
+  every other vblank and only once the work has run three vblanks (a quick job shows nothing), over save_game's
+  encode, load_game's decode, town_new, rel_normalize's passes and sim_init.
+- memcard.c: card writes and reads (the loading screen is up) go two 128-byte sectors per BIOS call with a picture
+  after each call instead of one 8 KB block per call (the bar moved once a second): about the old total time
+  (two sectors a call keeps the BIOS's per-call cost; one sector a call was 34% slower), pictures every 70-100 ms
+  in PCSX-Redux. A peek (the 48-byte header a menu asks for, the config record) reads the 6-7 frames it needs, not
+  the 64 of a whole block: the 2.3 s the Save/Load screen's refresh took after a save is about 10x less. The line
+  under the title says "Writing..." / "Reading..." (the "block N of M" text went: 400 B of resident code).
+- gfx_load_fade: once the three darkening passes are done and the drive is still reading (a scene change loads up to
+  three groups: a New story reads seven, 2.4 s), a ring of eight dots turns on the dark picture every other vblank.
+- The harness counts the pictures the game shows outside its loop (g_busy_pics: fade passes, spinner steps, loading
+  screens) with the loop's frames (run.py HARNESS_PICS), so the gaps line sees a live screen.
+- Resident RAM: the banner's and the loading screen's glyph arrays are one (800 B of BSS back); the cold busy code is
+  compiled -Os by attribute. `_end` 0x801efe60 -> 0x801efd20: 320 B LESS resident than before S2-10, 64 KB below the
+  stack top (the margin unchanged at the page).
+- rel_normalize steps once per pass (not per 64 edges: the inner loop's step cost 108 B of code).
+
+Same bytes: the 128 KB memory card image of a deterministic island save (seed 1, tick-exact script) is
+sha256-identical between the old and new disc; memcard_check reads it.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ core/src/town.c         |  2 +-
+ core/tests/test_busy.c  |  4 +-
+ ps1/harness/harness.lua | 31 +++++++++----
+ ps1/harness/run.py      |  2 +
+ ps1/src/gfx.c           | 96 ++++++++++++++++++++++++++++++++++-------
+ ps1/src/memcard.c       | 86 ++++++++++++++++++------------------
+ ps1/src/ps1.h           |  4 +-
+ 7 files changed, 153 insertions(+), 72 deletions(-)
+
+diff --git a/core/src/town.c b/core/src/town.c
+index a124e9b7..3102f2ef 100644
+--- a/core/src/town.c
++++ b/core/src/town.c
+@@ -377,11 +377,11 @@ void rel_normalize(void)
+     /* shell sort by key */
+     for (g = 0; g < DOOMO_COUNTOF(gaps); g++) {
+         int gap = gaps[g];
++        plat_busy_step(0, DOOMO_MAX_RESIDENTS);   /* S2-10: the sort of ~2,000 edges is 0.17 s on the GBA: a step a pass */
+         for (i = gap; i < n; i++) {
+             DoomoEdge t = E[i];
+             uint32_t k = ekey(&t);
+             int j = i;
+-            if (!(i & 63)) plat_busy_step(0, DOOMO_MAX_RESIDENTS);   /* S2-10: the sort of ~2,000 edges is 0.17 s on the GBA */
+             while (j >= gap && ekey(&E[j - gap]) > k) {
+                 E[j] = E[j - gap];
+                 j -= gap;
+diff --git a/core/tests/test_busy.c b/core/tests/test_busy.c
+index f9864820..e5f4e6a3 100644
+--- a/core/tests/test_busy.c
++++ b/core/tests/test_busy.c
+@@ -112,8 +112,8 @@ TEST(busy_steps_cover_the_relationship_graph)
+     CHECK(load_game(1));
+     CHECK(b_steps >= DOOMO_MAX_RESIDENTS + edges / 32);
+     busy_reset();
+-    rel_normalize();                                 /* the sort alone: ~8 passes over the edges */
+-    CHECK(b_steps >= edges / 64);
++    rel_normalize();                                 /* the sort alone: a step before each of its 8 passes */
++    CHECK(b_steps >= 8);
+ }
+ 
+ TEST(busy_a_missing_save_does_not_start_a_busy_card)
+diff --git a/ps1/harness/harness.lua b/ps1/harness/harness.lua
+index 89cdce3f..24f6fe16 100644
+--- a/ps1/harness/harness.lua
++++ b/ps1/harness/harness.lua
+@@ -43,6 +43,9 @@ local frame_addr = tonumber(os.getenv('HARNESS_FRAME') or '0', 16) or 0
+ local hcmd_addr = tonumber(os.getenv('HARNESS_HCMD') or '0', 16) or 0
+ local beat_addr = tonumber(os.getenv('HARNESS_BEAT') or '0', 16) or 0
+ local stick_addr = tonumber(os.getenv('HARNESS_STICK') or '0', 16) or 0   -- ST1: g_pad_force
++-- S2-10: g_busy_pics, pictures the game showed outside its loop (load fades, the loading screen over a save, a load
++-- or a town build): fps / fpsend and the gaps count them with the loop's frames
++local pics_addr = tonumber(os.getenv('HARNESS_PICS') or '0', 16) or 0
+ local hang_limit = tonumber(os.getenv('HARNESS_HANG') or '900')
+ 
+ local cmds = {}
+@@ -79,6 +82,13 @@ local function read_frame()
+   return ffi.cast('uint32_t*', ram(frame_addr))[0]
+ end
+ 
++-- frames + pictures shown outside the loop (S2-10): what fps / fpsend / gaps count
++local function read_shown()
++  local p = 0
++  if pics_addr ~= 0 then p = ffi.cast('uint32_t*', ram(pics_addr))[0] end
++  return read_frame() + p
++end
++
+ -- g_hcmd layout (src/hcmd.c): 0 magic, 4 req, 8 ack, 12 status, 16 iarg,
+ -- 20 lock, 24 stop_at, 28 paused, 32 shot_y, 36 cmd[16], 52 arg[64],
+ -- 116 reply[64]
+@@ -203,14 +213,14 @@ local function step()
+       save_slice(out .. '/' .. c.arg .. '.vram', PCSX.GPU.getVRAM())
+       log('vram ' .. c.arg)
+     elseif c.op == 'fps' then
+-      fps_start[c.arg] = { v = vsyncs, f = read_frame(), s = stopped }
+-      gapt = { lf = read_frame(), lv = vsyncs, h = {}, mx = 0, at = 0 }
++      fps_start[c.arg] = { v = vsyncs, f = read_shown(), s = stopped }
++      gapt = { lf = read_shown(), lv = vsyncs, h = {}, mx = 0, at = 0 }
+     elseif c.op == 'fpsend' then
+       -- vsyncs while the harness held the game (screenshots, commands)
+       -- do not count
+       local s = fps_start[c.arg]
+       if s then
+-        local dv, df = vsyncs - s.v - (stopped - s.s), read_frame() - s.f
++        local dv, df = vsyncs - s.v - (stopped - s.s), read_shown() - s.f
+         log(string.format('fps %s %.2f (%d frames / %d vsyncs)', c.arg,
+                           dv > 0 and df * 60.0 / dv or 0, df, dv))
+         if gapt then
+@@ -314,12 +324,15 @@ local function on_vsync()
+   if gapt then
+     if lock and hu32(H_PAUSED)[0] ~= 0 then
+       gapt.lv = gapt.lv + 1          -- stopped vsyncs do not count
+-    elseif f ~= gapt.lf then
+-      local g = (vsyncs - gapt.lv) / math.max(1, f - gapt.lf)
+-      g = math.floor(g + 0.5)
+-      for _ = 1, f - gapt.lf do gapt.h[g] = (gapt.h[g] or 0) + 1 end
+-      if g > gapt.mx then gapt.mx = g; gapt.at = f end
+-      gapt.lf = f; gapt.lv = vsyncs
++    else
++      local fs = read_shown()        -- S2-10: pictures outside the loop count as frames
++      if fs ~= gapt.lf then
++        local g = (vsyncs - gapt.lv) / math.max(1, fs - gapt.lf)
++        g = math.floor(g + 0.5)
++        for _ = 1, fs - gapt.lf do gapt.h[g] = (gapt.h[g] or 0) + 1 end
++        if g > gapt.mx then gapt.mx = g; gapt.at = fs end
++        gapt.lf = fs; gapt.lv = vsyncs
++      end
+     end
+   end
+   if prof and not (lock and hu32(H_PAUSED)[0] ~= 0) then
+diff --git a/ps1/harness/run.py b/ps1/harness/run.py
+index 852f400b..54fbb737 100644
+--- a/ps1/harness/run.py
++++ b/ps1/harness/run.py
+@@ -412,6 +412,7 @@ def main():
+     hcmd_addr = find_symbol(map_path, "g_hcmd")
+     beat_addr = find_symbol(map_path, "g_io_beat")
+     stick_addr = find_symbol(map_path, "g_pad_force")
++    pics_addr = find_symbol(map_path, "g_busy_pics")      # S2-10: pictures outside the loop (gfx.c)
+     cmds, warnings, script_expect = compile_script(open(a.script).read().splitlines(),
+                                                    lockstep=hcmd_addr != 0)
+     for w in warnings:
+@@ -428,6 +429,7 @@ def main():
+     env.update(HARNESS_CMDS=cmd_path, HARNESS_OUT=out, HARNESS_FRAME="%x" % frame_addr,
+                HARNESS_HCMD="%x" % hcmd_addr, HARNESS_BEAT="%x" % beat_addr,
+                HARNESS_STICK="%x" % stick_addr,
++               HARNESS_PICS="%x" % (pics_addr or 0),
+                HARNESS_PAD="analog" if a.analog_pad else "",
+                HARNESS_HANG=str(a.hang))
+     argv = ["xvfb-run", "-a", a.emu, "-cli", "-stdout", "-run", "-bios", a.bios,
+diff --git a/ps1/src/gfx.c b/ps1/src/gfx.c
+index d6ca8043..113360a3 100644
+--- a/ps1/src/gfx.c
++++ b/ps1/src/gfx.c
+@@ -25,6 +25,11 @@
+ #include <psxetc.h>
+ #include "ps1.h"
+ #include "postfx.h"
++#include "doomo/plat_ext.h"
++
++/* S2-10: the loading screens, the banner and the load fade run a few times per scene change, never per frame: they
++ * are compiled for size whatever the file's flags (the resident image has no room for them at -O2) */
++#define COLD __attribute__((optimize("Os")))
+ 
+ typedef struct FrameBuf {
+     DISPENV  disp;
+@@ -343,11 +348,14 @@ void gfx_upload_now(int x, int y, int w, int h, const void *data)
+ #define BANNER_H 16
+ static uint16_t s_banner_save[BANNER_W * BANNER_H];
+ static RECT s_banner_rect;
++/* the glyphs of the banner and of the loading screen below (never drawn at the same time; each draw ends with a
++ * DrawSync): one array (S2-10: 800 B of BSS back for the loading screen's steps) */
++static SPRT s_busy_glyph[BANNER_MAX];
+ 
+-void gfx_busy_banner(const char *msg)
++COLD void gfx_busy_banner(const char *msg)
+ {
+     static TILE box[2];
+-    static SPRT glyph[BANNER_MAX];
++    SPRT *const glyph = s_busy_glyph;
+     static DR_TPAGE tp;
+     DRAWENV env;
+     int fb = g_cur ^ 1, n = 0, x, y, w, i;
+@@ -397,7 +405,7 @@ void gfx_busy_banner(const char *msg)
+     PutDispEnv(&s_fb[fb].disp);
+ }
+ 
+-void gfx_busy_end(void)
++COLD void gfx_busy_end(void)
+ {
+     if (!s_banner_rect.w)
+         return;
+@@ -417,11 +425,14 @@ void gfx_busy_end(void)
+ #define LD_EVERY 3
+ static uint8_t s_ld_passes, s_ld_armed;  /* passes drawn over the frame on screen; a load has started this frame */
+ static uint32_t s_ld_v0;                 /* VSync(-1) when this frame's first load started */
+-uint32_t g_ld_passes;                   /* passes drawn since boot (the harness / evidence) */
++/* S2-10: pictures shown outside the game loop since boot (fade passes, loading screens): the harness adds them to
++ * the loop's frames when it measures a window (run.py HARNESS_PICS), so a save behind a moving card counts its
++ * pictures instead of one frozen frame */
++uint32_t g_busy_pics;
+ 
+ /* the first load of a frame starts the clock (a scene that starts another loads up to three groups in a row:
+  * their waits add up, and the picture on screen is darkened at most three times in all) */
+-void gfx_load_fade_begin(void)
++COLD void gfx_load_fade_begin(void)
+ {
+     if (s_ld_armed) return;
+     s_ld_armed = 1;
+@@ -429,23 +440,45 @@ void gfx_load_fade_begin(void)
+     s_ld_v0 = (uint32_t)VSync(-1);
+ }
+ 
+-void gfx_load_fade(void)
++COLD void gfx_load_fade(void)
+ {
+     static TILE t;
+     static DR_TPAGE tp;
+     DRAWENV env;
+     uint32_t waited_vbl = (uint32_t)VSync(-1) - s_ld_v0;
+-    int fb = g_cur ^ 1, due;
++    int fb = g_cur ^ 1, due, dark = 0;
+     if (!s_ld_armed || waited_vbl < LD_LATE || s_first) return;
+     due = (int)((waited_vbl - LD_LATE) / LD_EVERY) + 1;
+     if (due > 3) due = 3;
+-    if (s_ld_passes >= due) return;
++    if (s_ld_passes >= due) {
++        /* S2-10: fully dark and the drive is still busy (a scene change loads up to three groups: 0.3-1 s): a ring
++         * of dots turns on it every other vblank, so the screen never sits still for more than ~50 ms */
++        if (s_ld_passes < 3 || (int32_t)((uint32_t)VSync(-1) - g_busy_v) < 2) return;
++        dark = 1;
++    }
+     DrawSync(0);                        /* the newest frame is complete */
+     g_tpage_cur = 0xffff;               /* immediate draws below: state unknown */
+     env = s_fb[fb].draw;
+     env.isbg = 0;
+     env.dtd = 0;
+     PutDrawEnv(&env);
++    if (dark) {
++        static const int8_t ring[8][2] = { {0, -14}, {10, -10}, {14, 0}, {10, 10}, {0, 14}, {-10, 10}, {-14, 0}, {-10, -10} };
++        int i;
++        for (i = 0; i < 8; i++) {
++            int c = 40 + 30 * (int)((g_busy_pics + (uint32_t)i) & 7);   /* a bright head and a fading tail */
++            setTile(&t);
++            setXY0(&t, SCR_W / 2 + ring[i][0] - 2, SCR_H / 2 + ring[i][1] - 2);
++            setWH(&t, 4, 4);
++            setRGB0(&t, c, c, c);
++            DrawPrim(&t);
++            DrawSync(0);
++        }
++        g_busy_pics++;
++        PutDispEnv(&s_fb[fb].disp);
++        g_busy_v = (uint32_t)VSync(-1);
++        return;
++    }
+     setDrawTPage(&tp, 1, 0, getTPage(0, 0, 0, 0));      /* semi-transparency 0: B/2 + F/2 */
+     DrawPrim(&tp);
+     while (s_ld_passes < due) {
+@@ -457,9 +490,10 @@ void gfx_load_fade(void)
+         DrawPrim(&t);
+         DrawSync(0);
+         s_ld_passes++;
+-        g_ld_passes++;
++        g_busy_pics++;
+     }
+     PutDispEnv(&s_fb[fb].disp);
++    g_busy_v = (uint32_t)VSync(-1);
+     dbg("ovl: load fade %d/3 after %u vblanks\n", s_ld_passes, (unsigned)waited_vbl);
+ }
+ 
+@@ -471,8 +505,9 @@ void gfx_load_fade(void)
+  * that is on screen (like the small banner above). Nothing has to be put
+  * back afterwards: every game frame is cleared (isbg) and redrawn in full. */
+ #define LS_TEXT_MAX 40
++uint32_t g_busy_v;                      /* S2-10: VSync(-1) at the last loading-screen picture */
+ 
+-static void busy_box(TILE *t, int x, int y, int w, int h, int r, int g, int b)
++static COLD void busy_box(TILE *t, int x, int y, int w, int h, int r, int g, int b)
+ {
+     setTile(t);
+     setXY0(t, x, y);
+@@ -481,9 +516,10 @@ static void busy_box(TILE *t, int x, int y, int w, int h, int r, int g, int b)
+     DrawPrim(t);
+ }
+ 
+-static void busy_puts(int y, const char *msg, uint8_t pal)
++typedef char ls_text_fits[LS_TEXT_MAX <= BANNER_MAX ? 1 : -1];
++static COLD void busy_puts(int y, const char *msg, uint8_t pal)
+ {
+-    static SPRT glyph[LS_TEXT_MAX];
++    SPRT *const glyph = s_busy_glyph;
+     static DR_TPAGE tp;
+     uint16_t clut = vram_font_clut(pal);
+     int n = 0, x, i;
+@@ -512,7 +548,7 @@ static void busy_puts(int y, const char *msg, uint8_t pal)
+     DrawSync(0);
+ }
+ 
+-void gfx_loading_screen(const char *title, const char *detail, int done, int total)
++COLD void gfx_loading_screen(const char *title, const char *detail, int done, int total)
+ {
+     static TILE tl[8];
+     DRAWENV env;
+@@ -540,10 +576,37 @@ void gfx_loading_screen(const char *title, const char *detail, int done, int tot
+     busy_puts(70, "BOREagotchi LIFE!", PAL_UI_PURPLE);
+     busy_puts(82, "in HELLvile PARK...", PAL_UI_PINK_D);
+     busy_puts(104, title, PAL_UI_PURPLE);
+-    busy_puts(152, detail, PAL_UI_PURPLE);
+-    busy_puts(194, "Do not remove the MEMORY CARD", PAL_UI_RED_D);
+-    busy_puts(206, "or switch the power off!", PAL_UI_RED_D);
++    if (detail) {                       /* NULL (S2-10: a town being built): no card I/O, no warning */
++        busy_puts(152, detail, PAL_UI_PURPLE);
++        busy_puts(194, "Do not remove the MEMORY CARD", PAL_UI_RED_D);
++        busy_puts(206, "or switch the power off!", PAL_UI_RED_D);
++    }
+     PutDispEnv(&s_fb[fb].disp);
++    g_busy_v = (uint32_t)VSync(-1);
++    g_busy_pics++;
++}
++
++/* ---- S2-10: the loading screen over a long tick (plat_ext.h plat_busy / plat_busy_step) --------------------
++ * save_game, load_game and town_new call plat_busy(kind) before work that runs in this one tick for seconds
++ * (a save's encode, 1,000 citizens built), then plat_busy_step(done, total) per citizen. Once the work has run
++ * BUSY_LATE vblanks (so a quick one shows nothing) and two vblanks after the last picture, the loading screen
++ * above is drawn again with the bar at done / total: 30 pictures a second over the work. The next game frame
++ * (gfx_end) ends it. The memory card's own steps (memcard.c) then take over the same screen. 4 B of BSS. */
++#define BUSY_LATE 3
++static uint8_t s_busy_kind;             /* plat_busy's kind until the next frame; 0: none */
++
++COLD void plat_busy(int kind)
++{
++    if (s_first) return;                /* nothing on screen yet (boot) */
++    s_busy_kind = (uint8_t)kind;
++    g_busy_v = (uint32_t)VSync(-1) + BUSY_LATE - 2;   /* the first picture BUSY_LATE vblanks from now */
++}
++
++COLD void plat_busy_step(int done, int total)
++{
++    static const char *const title[] = { "", "Saving your game...", "Loading your game...", "Getting everything ready..." };
++    if (!s_busy_kind || (int32_t)((uint32_t)VSync(-1) - g_busy_v) < 2) return;
++    gfx_loading_screen(title[s_busy_kind], s_busy_kind == PLAT_BUSY_BUILD ? NULL : "Getting ready...", done, total);
+ }
+ 
+ /* platform.h: the save/load scratch buffer is the display-list memory of
+@@ -625,6 +688,7 @@ void gfx_end(void)
+     /* show what the GPU just finished, draw the new list into the other */
+     PutDispEnv(&s_fb[g_cur ^ 1].disp);
+     s_ld_armed = 0;                     /* SP5 G-LD: a new picture is up */
++    s_busy_kind = 0;                    /* S2-10: ... and a busy tick is over */
+     DrawOTagEnv(f->up_head, &f->draw);
+     g_last_draw_y = (uint16_t)f->draw.clip.y;
+     if (s_first) {
+diff --git a/ps1/src/memcard.c b/ps1/src/memcard.c
+index e33e1d70..bf338cc3 100644
+--- a/ps1/src/memcard.c
++++ b/ps1/src/memcard.c
+@@ -36,6 +36,7 @@
+ #define O_CREAT_   0x0200
+ #define FRAME      128
+ #define BLOCK      8192
++#define FRAMES_PER_BLOCK (BLOCK / FRAME)
+ #define HDR_FRAMES 5
+ #define HDR_BYTES  (HDR_FRAMES * FRAME)
+ #define INFO_MAGIC 0x53504d44u   /* "DMPS" */
+@@ -79,41 +80,17 @@ static void bios_io_end(void) { audio_hw_hush(0); g_io_beat++; }
+ static const char *s_ls_title;      /* NULL: no loading screen (small banner) */
+ static const char *s_ls_verb;
+ 
+-static char *put_str(char *d, const char *t)
+-{
+-    while (*t)
+-        *d++ = *t++;
+-    return d;
+-}
+-
+-static char *put_int(char *d, int v)
+-{
+-    char t[12];
+-    int n = 0;
+-    if (v < 0) v = 0;
+-    do { t[n++] = (char)('0' + v % 10); v /= 10; } while (v && n < 11);
+-    while (n)
+-        *d++ = t[--n];
+-    return d;
+-}
+-
+-/* done of total blocks finished (total 0: still preparing) */
++/* done of total 128-byte frames finished (total 0: still preparing). S2-10: a transfer steps the screen after
++ * every BIOS call (CALL_FRAMES sectors), at most every other vblank; a block's last frame always shows. The line
++ * under the title is the verb ("Writing..."): the bar says how far (the text "block N of M" went: 400 B of
++ * resident code on a disc that has none to spare) */
+ static void ls_progress(int done, int total)
+ {
+-    char buf[48], *d = buf;
+     if (!s_ls_title)
+         return;
+-    if (total <= 0) {
+-        d = put_str(d, "Getting ready...");
+-    } else {
+-        d = put_str(d, s_ls_verb);
+-        d = put_str(d, " block ");
+-        d = put_int(d, done < total ? done + 1 : total);
+-        d = put_str(d, " of ");
+-        d = put_int(d, total);
+-    }
+-    *d = 0;
+-    gfx_loading_screen(s_ls_title, buf, done, total);
++    if ((total <= 0 || (done < total && done % FRAMES_PER_BLOCK)) && (int32_t)((uint32_t)VSync(-1) - g_busy_v) < 2)
++        return;
++    gfx_loading_screen(s_ls_title, total <= 0 ? "Getting ready..." : s_ls_verb, done, total);
+ }
+ 
+ /* ---- Shift-JIS title ------------------------------------------------------- */
+@@ -313,9 +290,14 @@ static void stage_block(int k, const uint8_t *data, uint32_t size)
+  * of the block keeps what it held, nothing reads past the payload. A config
+  * write took about 0.4 s instead of over 2 s (PCSX-Redux). */
+ typedef char config_fits_one_frame[PLAT_CONFIG_MAX <= FRAME ? 1 : -1];
++/* S2-10: the frames a BIOS call moves while a screen is shown (two sectors: about 70 ms in PCSX-Redux, so a picture
++ * every call or two, and half the per-call cost of the BIOS against one sector a call); whole blocks when there
++ * is none (the config record, a menu's header peek). */
++#define CALL_FRAMES 2
++
+ static int write_file(const char *path, const uint8_t *data, uint32_t size, int blocks)
+ {
+-    int fd = open(path, O_WRONLY_), k, ok = 1, n = BLOCK;
++    int fd = open(path, O_WRONLY_), k, ok = 1, n = BLOCK, chunk = s_ls_title ? CALL_FRAMES : FRAMES_PER_BLOCK;
+     if (fd < 0)
+         return 0;
+     if (!blocks) {
+@@ -323,13 +305,20 @@ static int write_file(const char *path, const uint8_t *data, uint32_t size, int
+         n = HDR_BYTES + FRAME;
+     }
+     blk_take();
+-    ls_progress(0, blocks);
++    ls_progress(0, blocks * FRAMES_PER_BLOCK);
+     for (k = 0; ok && k < blocks; k++) {
++        int f = 0, nf = n / FRAME;
+         stage_block(k, data, size);
+-        if (write(fd, s_blk, n) != n)
+-            ok = 0;
+-        g_io_beat++;
+-        ls_progress(k + 1, blocks);
++        /* S2-10: a few frames at a time (each one is a card sector), the screen moves between the calls.
++         * A transfer never crosses a block (s_blk) */
++        while (ok && f < nf) {
++            int c = nf - f < chunk ? nf - f : chunk;
++            if (write(fd, s_blk + f * FRAME, c * FRAME) != c * FRAME)
++                ok = 0;
++            g_io_beat++;
++            f += c;
++            ls_progress(k * FRAMES_PER_BLOCK + f, blocks * FRAMES_PER_BLOCK);
++        }
+     }
+     close(fd);
+     return ok;
+@@ -435,16 +424,27 @@ static int read_file(const char *path, void *data, uint32_t cap, uint32_t *out_s
+ {
+     int fd = open(path, O_RDONLY_), k;
+     uint32_t v[4], size = 0, want = 0, o = 0;
+-    int ok = 0, total_blocks = 0;
++    int ok = 0, total_blocks = 0, chunk = s_ls_title ? CALL_FRAMES : FRAMES_PER_BLOCK;
+     if (fd < 0)
+         return 0;
+     blk_take();
+     ls_progress(0, 0);
+     for (k = 0; ; k++) {
+         uint32_t o0 = (uint32_t)k * BLOCK, from, n;
++        int f = 0, nf = FRAMES_PER_BLOCK;
+         g_io_beat++;
+-        if (read(fd, s_blk, BLOCK) != BLOCK)
+-            goto done;
++        /* S2-10: a peek (the core's 48-byte save header for a menu, the config record) needs the header frames and
++         * `cap` bytes, not the whole block: 6-7 frames instead of 64 (2.3 s in PCSX-Redux, ~1 s on a console) */
++        if (!s_ls_title && k == 0 && HDR_BYTES + cap < BLOCK)
++            nf = (int)((HDR_BYTES + cap + FRAME - 1) / FRAME);
++        while (f < nf) {                    /* a few frames a call, a picture between */
++            int c = nf - f < chunk ? nf - f : chunk;
++            if (read(fd, s_blk + f * FRAME, c * FRAME) != c * FRAME)
++                goto done;
++            f += c;
++            if (f < nf)
++                ls_progress(k * FRAMES_PER_BLOCK + f, total_blocks * FRAMES_PER_BLOCK);
++        }
+         if (k == 0 && s_ls_title) {
+             /* the info frame says how many blocks this load will take */
+             uint32_t sz;
+@@ -454,7 +454,7 @@ static int read_file(const char *path, void *data, uint32_t cap, uint32_t *out_s
+                 total_blocks = (int)((HDR_BYTES + w + BLOCK - 1) / BLOCK);
+             }
+         }
+-        ls_progress(k + 1, total_blocks);
++        ls_progress((k + 1) * FRAMES_PER_BLOCK, total_blocks * FRAMES_PER_BLOCK);
+         if (k == 0) {
+             memcpy(s_hdr, s_blk, HDR_BYTES);
+             memcpy(v, s_hdr + FRAME * 4, sizeof(v));
+@@ -530,7 +530,7 @@ int plat_save_write(int slot, const void *data, uint32_t size)
+     int r;
+     bios_io_begin();
+     s_ls_title = "Saving your game...";
+-    s_ls_verb = "Writing";
++    s_ls_verb = "Writing...";
+     ls_progress(0, 0);
+     r = save_write(slot, data, size);
+     if (!r) {
+@@ -552,7 +552,7 @@ int plat_save_read(int slot, void *data, uint32_t cap, uint32_t *size)
+     bios_io_begin();
+     if (big) {
+         s_ls_title = "Loading your game...";
+-        s_ls_verb = "Reading";
++        s_ls_verb = "Reading...";
+     }
+     r = save_read(slot, data, cap, size);    /* no re-scan: a missing save is normal */
+     s_ls_title = 0;
+diff --git a/ps1/src/ps1.h b/ps1/src/ps1.h
+index 2ffe89cb..53220a92 100644
+--- a/ps1/src/ps1.h
++++ b/ps1/src/ps1.h
+@@ -104,8 +104,10 @@ void gfx_busy_end(void);                /* ... and remove it again */
+ void gfx_load_fade_begin(void);         /* SP5 G-LD: a scene group load starts (overlay.c) */
+ void gfx_load_fade(void);               /* ... and waits for the drive: darken the frame on screen when late */
+ /* full-screen "Saving... / Loading..." screen with a progress bar (done of
+- * total blocks); call again after every block, total 0 = empty bar */
++ * total steps); call again after every step, total 0 = empty bar; detail
++ * NULL: no detail line and no memory card warning */
+ void gfx_loading_screen(const char *title, const char *detail, int done, int total);
++extern uint32_t g_busy_v;               /* S2-10: VSync(-1) at its last picture (memcard.c paces its steps) */
+ extern uint32_t g_rgb[256];       /* palette -> 0x00BBGGRR for prims      */
+ extern uint16_t g_pal15[256];     /* palette -> VRAM 15-bit (STP set)     */
+ 
+-- 
+2.43.0
+

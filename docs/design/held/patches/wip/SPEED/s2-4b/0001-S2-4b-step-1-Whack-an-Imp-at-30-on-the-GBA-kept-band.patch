@@ -1,4 +1,37 @@
-=== UNCOMMITTED ===
+From 3a2a563ab41e0bd9ef38b37f101803e59db5f8c6 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 11:21:43 +0000
+Subject: [PATCH 01/15] S2-4b step 1: Whack-an-Imp at 30 on the GBA (kept
+ bands, stamps, undo lists, the shake as a display offset)
+
+The kept playfield of S2-4 gets: bands (a picture holds only some screen rows: the tent per sway,
+the field once), stamps (the imps, Father Fuzz and the HUD pieces as small ROM pictures with holes),
+undo lists (a still part drawn over a live one is put back from the kept picture in its own spans,
+listed once a round), plat_stage_restore_list, and a shake as a display offset. Whack GBA
+drawn fps 20.9 / 20.0 -> 29.9 / 29.9 (work 40.3 / 44.9 -> 17.1 / 21.3 ms). Core tests pass.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ core/include/doomo/backdrop.h |  13 +-
+ core/include/doomo/plat_ext.h |  15 +-
+ core/native/native.h          |   2 +
+ core/native/stage_native.c    | 222 +++++++++++++++++++++++-----
+ core/src/backdrop.c           |  11 +-
+ core/src/exorcism_gfx.c       |   2 +-
+ core/src/mg.c                 | 217 +++++++++++++++++++++++----
+ core/src/mg.h                 |  73 ++++++++-
+ core/src/mg_catch.c           |   2 +-
+ core/src/mg_derby.c           |   2 +-
+ core/src/mg_dodge.c           |   2 +-
+ core/src/mg_draw.c            | 158 +++++++++++++++++---
+ core/src/mg_gallery.c         |   2 +-
+ core/src/mg_memory.c          |   2 +-
+ core/src/mg_whack.c           | 269 ++++++++++++++++++++--------------
+ core/tests/test_stage.c       | 173 +++++++++++++++++++---
+ gba/src/stage.c               |  80 +++++++---
+ 17 files changed, 1003 insertions(+), 242 deletions(-)
+
 diff --git a/core/include/doomo/backdrop.h b/core/include/doomo/backdrop.h
 index 350af255..4fe1eeea 100644
 --- a/core/include/doomo/backdrop.h
@@ -29,10 +62,10 @@ index 350af255..4fe1eeea 100644
  
  /* The families, 0..count-1 (the baker walks them). */
 diff --git a/core/include/doomo/plat_ext.h b/core/include/doomo/plat_ext.h
-index 7ef26947..8bb01f12 100644
+index d2d94c3d..8823b555 100644
 --- a/core/include/doomo/plat_ext.h
 +++ b/core/include/doomo/plat_ext.h
-@@ -222,7 +222,18 @@ void plat_loading(void);
+@@ -226,7 +226,18 @@ void plat_loading(void);
   *       frame is presented the platform records the box of every 2D call (the next frame
   *       drawn into this buffer gets it as info.dirt).
   * Serials count the frames a platform presents; a skipped tick has none. Weak defaults
@@ -52,7 +85,7 @@ index 7ef26947..8bb01f12 100644
  typedef struct PlatStageInfo {
      uint32_t held, serial;
      int16_t  dx0, dy0, dx1, dy1;
-@@ -230,6 +241,8 @@ typedef struct PlatStageInfo {
+@@ -234,6 +245,8 @@ typedef struct PlatStageInfo {
  int  plat_stage_begin(int id, uint32_t key, void (*draw)(uint32_t key), PlatStageInfo *info);
  void plat_stage_restore(int x, int y, int w, int h);
  void plat_stage_end(void);
@@ -62,10 +95,10 @@ index 7ef26947..8bb01f12 100644
  /* ---- content packs (E0 pack.h, E2, E7-E10) -----------------------------------
   * blob: a pack that is directly addressable (the GBA mature ROM variant's
 diff --git a/core/native/native.h b/core/native/native.h
-index 6324766c..82de71b8 100644
+index af9e3f1e..157511f1 100644
 --- a/core/native/native.h
 +++ b/core/native/native.h
-@@ -82,6 +82,8 @@ void nat_stage_frame_begin(void);
+@@ -84,6 +84,8 @@ void nat_stage_frame_begin(void);
  void nat_stage_frame_end(void);
  void nat_stage_reset(void);
  int  nat_stage_kept(void);          /* (S2-4) the last frame was drawn over a kept backdrop */
@@ -1885,3 +1918,6 @@ index 940964f1..e17fa865 100644
  void plat_stage_end(void)
  {
      if (!frame_stage || gba_nodraw == 1) return;
+-- 
+2.43.0
+

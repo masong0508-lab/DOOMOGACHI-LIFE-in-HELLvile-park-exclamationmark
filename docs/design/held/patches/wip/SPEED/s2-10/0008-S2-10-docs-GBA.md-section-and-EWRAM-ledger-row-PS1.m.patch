@@ -1,0 +1,229 @@
+From d731f1e0df2119a051291467410ad6f96c3b779d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 14:50:48 +0000
+Subject: [PATCH 08/10] S2-10: docs (GBA.md section and EWRAM ledger row,
+ PS1.md, DREAMCAST.md, ROADMAP Done line); delete the saved wip patch
+
+The package's sections with the measurements, the pixel changes (the dim, the card, the spinner; the PS1's loading
+screen follows the work and its detail line, the spinner over overlay reads), the same-bytes evidence on all three
+ports, the power-cut results, the RAM numbers (GBA EWRAM +16 B, PS1 resident -320 B, DC none), and what is left.
+docs/design/held/patches/wip/fut-s2-10.patch is deleted: its design was reviewed and reworked (the GBA card is painted
+by the main thread and only turned by the IRQ; the first version painted from the IRQ, which the IWRAM overlay
+rules forbid).
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ ROADMAP.md        |  1 +
+ docs/DREAMCAST.md | 29 ++++++++++++++++++
+ docs/GBA.md       | 77 +++++++++++++++++++++++++++++++++++++++++++++++
+ docs/PS1.md       | 46 ++++++++++++++++++++++++++++
+ 4 files changed, 153 insertions(+)
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index 47ad8e0e..296a3fb5 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -21,6 +21,7 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
+ before redoing any of them; a zip without `.git` cannot tell.
+ 
+ ### Done
++- **Speed S2-10 (2026-11-13, saves, loads and town builds with a live screen, speed audit 2 cause C7; measured on libmgba, PCSX-Redux and Flycast; docs/GBA.md "Speed wave 2: S2-10", docs/PS1.md "Speed tour 2", docs/DREAMCAST.md "Speed tour 2"):** the free-play save was one 11.4 s tick on the GBA (95% of it the codec rebuilding every citizen's base record twice, not the flash), 11.6 s on the PS1 (the memory card), title -> New story 2.07 s, a new island 1.99 s. The work still runs in one tick (the sim must not move meanwhile), but `plat_busy` / `plat_busy_step` (`plat_ext.h`) now tell the platform per citizen, per relationship batch, per flash sector, and the screen is never still. GBA: the SP5 fade starts after 50 ms (a save dims to half, a load or build fades to black), a "Saving..." / "Loading..." card is painted once and the VBlank hook turns its spinner at 30 pictures a second with raw pixel writes; save 10.7 s -> 30.0 fps with a worst picture gap of 50 ms, load 6.0 s -> 67 ms, New story 2,076 -> 50 ms, the worst-case 58 KB island's save and load 50 / 67 ms (new island 117 ms: the hub's own 39 slow frames, S3-14). PS1: the loading screen follows the work, card calls move two sectors, a peek reads 6-7 frames not 64, a spinner turns over the overlay reads; save 11,600 -> 450 ms worst gap, New story 2,417 -> 383 ms, new island 1,867 -> 200 ms; resident RAM 320 B less (`_end` 0x801efd20, 64 KB below the stack top). DC: the VMU card's pictures count as presented frames and its mount and read-back report progress. Same bytes: the GBA flash image and the PS1 memory card image are sha256-identical to the old build's, `core/tests/test_save_golden.c` fixes the town section's CRC of three hand-built islands, and the new `make -C gba test-cutsave` and `core/tests/test_busy.c` cut a save at several points (the GBA keeps one copy per slot: the old save survives the first half of a save only). Pixel-changing: the dim, the card, the spinner; owner call per the speed defaults. Left: the PS1's single blocking BIOS calls (config write, directory scan), the codec's per-citizen rebuild (a separate package), the hub's slow first frames (S3-14).
+ - **Speed audit 3 (2026-11-13, measure and plan, no game code; `docs/design/SPEED_AUDIT3.md`):** every scene measured again after S2-1..S2-8, S2-12 and the sticks, on the tree at `89a28b56`. GBA (libmgba): 311 windows, 11 of them combat reference, 155 hold a steady 30 with no frame over 33 ms, 145 miss (25 in slow motion, 57 at a steady low rate, 31 with hitches, 32 with one or two long frames). Worst: Shooting Gallery 11 fps, dreams 11-13, the fog vignette 10, the concert band 13, and the sim's 15-minute pass (17 frames of 50-67 ms every 37.7 s on every free-play screen). The file has every window, the cause of each miss from a profile of the window's own ticks, the packages S3-1..S3-14 (what is left of S2-4 and S2-11 and the exorcism / concert / creator / pet gaps folded in), a suggested order, and what cannot reach 30 without an owner call. PS1 (PCSX-Redux): 247 windows, 8 combat, 221 OK, 18 miss (6 of them the in-flight save, loads and workshop; the rest: the busy house layout 28.9 fps, the creator's hat try-on 28.6, single 50-67 ms frames, overlay reads at scene changes); 64 KB below the stack top with the FMV. Dreamcast (Flycast): 218 windows, 211 OK; only the save and two load frames miss (S2-10), the house holds 30 since DC8.
+ - **LV1, map format v2 and levelcheck (2026-11-13, LEVELS round 1; `core/data/maps/README.md` "Format v2", docs/LEVELS.md):** `tools/mapc.py` learns `format 2`, header keys (`fog view gravity dark note gba detail hero`), `zone`, `path`, `swap` blocks, `texbank` and `tflags2`, and refuses what the plan lists; a v2 map gets a ROM `DoomoMapExt` (map.h), accessors in `core/src/levels_mapx.c`. The 12 existing maps are v1 and byte-identical (`check-gen`). New `tools/levelcheck.py` + `core/tools/map_bfs.h` / `mapreach.c` (the one reachability search `test_maps` also runs: walk, zip, arc, tube, ride, raft, bounce, gravity, swap sets by trigger / kill event / lever, hooks, soft locks) with one test map per edge kind; `make -C core test` now also runs `mapc-check` (75 + 9 Python tests) and `levelcheck`. No resident byte on any platform; the script VM (`on EVENT do ACTION`) is LV2.
+ - **Real stick support (ST1, 2026-11-08; the owner: "actual dualshock/stick support so I don't have to move the camera controls with wacky controlling"; measured on PCSX-Redux and Flycast; docs/PS1.md "Sticks", docs/DREAMCAST.md 5):** PS1: a DualShock no longer needs its ANALOG button: when a pad shows up (boot or hot-plug) and reads digital, `ps1/src/pad.c` sends the config sequence (43h / 44h 01 03 analog + lock / 43h) over SIO0 between two BIOS polls (three tries, a digital pad is left alone); L3 / R3 read (`BTN_L3` / `BTN_R3`). Options > Controls gains **Auto** (the new default; Classic / Auto / Dual stick / Modern): Dual stick while an analog pad is plugged in, Modern otherwise, live; explicit Classic / Modern win; saves' old default Modern (stored 1) reads as Auto, an explicit Modern is stored as 3 (`controls_scheme()`). The sticks drive: the shooter (left walk / strafe, right turn / look, R3 lock-on), the overworld (analog walk in any direction: creep, walk, run at the rim), the house view (a right-stick flick = one 90-degree step, repeat on hold; build, live, photo), the creator (the right stick spins the citizen: the turntable opens as a peek). Dreamcast (Auto): the stick's X turns, Y walks, the analog triggers strafe by pressure, both triggers lock on; the overworld walks off the stick. Shared dead zone / curve in `input.c` (`stick_dz`, `stick_curve`, `input_rflick`). Prompts, the control card and the shooter tip follow the scheme in effect; Dual stick on a digital pad says "Analog sticks: use a DualShock". Tests: `core/tests/test_sticks.c` (scheme resolution, dead zone / curve, flick repeat, trigger strafe, each consumer), `dc/tests/vmu` (caps / triggers), harness `stick LX LY RX RY` on the PS1 (`ps1/harness/scripts/sticks.txt`; `sticks_auto.txt` with `run.py --analog-pad`: Redux's DualShock powering up digital is switched by the game, "pad: analog", the card still saves, the D-pad still drives), the native runner and dcrun (`dc/tests/sticks/sticks.txt`). PS1 fps with the sticks moving: combat turn 30.17, house turn 30.17, creator spin 30.34, overworld walk 30.00. PS1 resident +1.6 KB (65,952 B below the stack top with the FMV, was 67,568). GBA unchanged (the stick code compiles out; the Controls row reads Auto = Modern). Not done: a Dreamcast Options row "Stick: turn / strafe" (needs an OPT2 id), stick use in the remaining cameras (fishing cast aim, minigame cursors, the 3D level select, exorcism), a right-stick tilt / zoom in the creator (its preview has none).
+diff --git a/docs/DREAMCAST.md b/docs/DREAMCAST.md
+index e9132672..1a43de31 100644
+--- a/docs/DREAMCAST.md
++++ b/docs/DREAMCAST.md
+@@ -347,6 +347,35 @@ GBA's speed tour 2 scripts (docs/GBA.md "Speed tour 2") in Flycast: `tools/speed
+ `tools/speed2.py table` prints the logic ticks/s and the ticks over 33.3 / 50 ms of work (dcrun's `work:` lines)
+ per window, with the run's `game drew` and `work over` lines. Flycast is not cycle-accurate: a guide, not a promise.
+ 
++**S2-10 (the card over every phase of a save, a load and a build).** The VMU save, load and erase already redraw their
++card for every block (`vmusave.c`: a picture a vblank at most), so the screen was live while the VMU worked; the
++harness saw one 3-4 s tick, and the gaps it could not see were real:
++
++* `card_draw` counts into the mailbox's `drawn`, so `gaps-reset` / `expect-gap` see the card's pictures;
++  `tools/speed2.py dc` puts `gaps-reset` and a never-failing `expect-gap` round every window and the table has a
++  "worst picture gap ms" column.
++* The VMU's silent phases: `vmu_mount` sends a keep-alive (`progress(0, 0)`) per directory block, and the save's
++  read-back verification reports its blocks like the write did (it was `quiet`: 0.3-0.7 s). `card_progress` makes the
++  two passes one bar (`card_open(..., 2)`).
++* The core's own work: a save encodes the whole island before the VMU is touched (0.2 s), a load decodes it after.
++  `plat_busy` / `plat_busy_step` (`vmusave.c`, `plat_ext.h` "S2-10") draw the same card with a bar at done / total once
++  the work has run 8 vblanks (a ~100 ms New story build shows nothing); `dc_busy_end()` in `plat_end_frame` ends it.
++
++Flycast, `speed2_busy` (the "worst-case" windows repeat the Classic island here: `town-fill` is GBA-only):
++
++| window | worst tick of work | worst picture gap before (the card not counted) | after |
++|---|---:|---:|---:|
++| save (Classic island) | 3,170 ms | 3,203 ms | **184 ms** |
++| save again | 3,500 ms | 3,470 ms | **250 ms** |
++| load | 913 ms | 901 ms | **134 ms** |
++| load again | 757 ms | 734 ms | **150 ms** |
++| title -> New story / new island | 101 / 99 ms | 134 ms | 134 ms (the build is one ~100 ms tick) |
++
++Between the 100 ms the owner asked for and these numbers: the build is one ~100 ms tick below the card's fuse, and a
++save's last 0.2 s is the directory and FAT writes of the atomic replace plus the config record's own write. The saved
++bytes are the VMU file system's, untouched (`vms.c` writes the same blocks in the same order; the read-back only
++reports). `dc/tests/vmu` (`make -C dc vmu-test`) checks the images.
++
+ ### The harness mailbox (`dc_mailbox`, `dc/harness/dc_mailbox.h`)
+ 
+ The layout is one header shared by the game and the Flycast harness (DC1):
+diff --git a/docs/GBA.md b/docs/GBA.md
+index c986ae6e..e9c0e8d4 100644
+--- a/docs/GBA.md
++++ b/docs/GBA.md
+@@ -432,6 +432,7 @@ against the LAST row, not against a figure from an older base.
+ 
+ | 40 | S2-4: the Fun Fair's kept playfield (docs: "Speed wave 2: S2-4" below) | `183f2e8` | 1,796 B | **1,788 B** | -8 B | 6,308 B | measured on `183f2e8` + S2-4: the kept-playfield mode and the key being baked in `mg.c` (5 B, padded to 8); IWRAM unchanged (no new ARM code: the restores use SP7's `stage_rows` in the room group); ROM 6.85 -> 8.00 MB (Whack's 30 baked pictures, 38,400 B each, in `backdrops.bin`). PS1: compiled out (`mg.h` macros, `ui_round_rect_inset` not built), 65 KB below the stack top with the boot FMV (`_end` unchanged by S2-4) |
+ | 41 | CR5a: the island hub's recorded lists in the arena (docs: "CR5a" below) | `4c0f369` | 1,788 B | **15,444 B** | +13,656 B | 6,308 B | `.bss` 259,460 -> 245,804 B: the 13 recorded rect lists of `fp_island_gfx.c` (land 640, patches 320, roads 160, glints 40, walkers 60, weather 48, deco variants 400 rects, `dv_tmp` 40; 1,715 rects, 13,720 B) now live at the top of the arena (`plat_scene_scratch` in `bigbuf.c`, owner `GBA_BIG_BY_ISL`), over the other owners' regions and the billboards that the 2D hub does not use; IWRAM and the main stack unchanged; ROM +~0.2 KB. Frames identical (below) |
++| 42 | S2-10: the live screen over a save, a load and a build (docs: "Speed wave 2: S2-10" above) | `S2-10` | 15,444 B | **15,428 B** | -16 B | 6,308 B | measured on S2-10 + the tree at `ee686c7`: `.bss` 245,804 -> 245,820 B (`loadfade.c`'s card state: the fuse, the lit dot, the dirty flag, the last counted picture and level; 12 -> 20 B plus padding); IWRAM unchanged (the hook and the card are THUMB code in ROM; `.iwram` 11,256 B, `.iwram_bss` 4,084 B, the four overlay groups the same sizes); main stack high-water 2,780 B before and after a save and a load; ROM `.text` +1,296 B, `.rodata` +40 B. PS1: 320 B less resident than before (`_end` 0x801efe60 -> 0x801efd20) |
+ 
+ Known claimants still to land (their own packages measure and add rows):
+ 
+@@ -1479,6 +1480,82 @@ Memory Hellfire 21.5) can take the same `kept_key` split; Derby scrolls (its bac
+ kitchen, dreams, cutscenes, library lobby / jukebox and the studio STAGE are not done by this landing (S2-4 remains open
+ for them).
+ 
++### Speed wave 2: S2-10, saves, loads and town builds with a live screen (2026-11-13)
++
++The speed audit 2's cause C7 for the biggest freezes: a free-play save was one 11.4 s tick, a New story 2.07 s, a new
++island 1.99 s. Measured on this branch with the harness's profiler (`post 1 1`, `profile`): **95% of a save is not the
++flash**. The codec encodes the island twice (the GBA streams: pass 1 counts, pass 2 writes) and for every citizen it
++rebuilds the premade or random base record to compare against (`gene_get` 21%, `gene_set` 20%, `write_town` 14%,
++`res_get_look` 9%, `resident_sanitize` 6%), 5-6 ms a citizen. A load decodes once (6.0 s), a New story builds every
++record once and then runs `sim_init` (2 s). mGBA's flash is near instant; on a cartridge the 4 KB sector erase and
++program add tens of milliseconds a sector.
++
++**What changed (pixel-changing).** The work still runs in one tick: the sim must not move while the island is
++encoded, and the codec is a straight-line encoder, so resuming it across ticks would mean rewriting it. The screen no
++longer sits still. `plat_busy(kind)` and `plat_busy_step(done, total)` (`plat_ext.h`) are called by `save_game`,
++`load_game` and `town_new`, then once per citizen in both save passes and the applying decode, every 32 relationships,
++once per pass of `rel_normalize`'s sort, once per citizen in `sim_init` and once per flash sector. `loadfade.c` (SP5's
++fade) does the rest:
++
++* 50 ms into the job (a quick one shows nothing) the VBlank hook starts the hardware fade, as `plat_loading` does:
++  **a save dims to half, a load or a build fades to black** (BLDY 8 and 16, two steps a vblank).
++* The first `plat_busy_step` after that paints a small card into the Mode 4 page on screen: a pink 112 x 22 box with
++  **"Saving..."** or **"Loading..."** and a ring of eight dots (`vid_rect`, `vid_text`, the resident IWRAM primitives;
++  WIN0 keeps the card out of the fade and the OBJs off it).
++* From then on the **VBlank hook turns the ring one dot every second vblank** with eight halfword stores (no call, no
++  DMA, no overlay code: it runs inside whatever the main thread is doing, a flash sector or a scene's enter) and counts
++  each step as a presented frame in the harness mailbox (`drawn`): 30 pictures a second to the end of the wait.
++* The flip that ends the wait lifts the fade as before (two flips for a save, four for a load) and, when a card was
++  painted, tells the page trackers (`pn` / `hold` / `stage`) that neither page keeps a picture, because the page that
++  had the card is drawn into next. A frame built over several ticks (`hold_building`, I10) or a tile frame on screen
++  gets the fade only. Nothing happens in a run that hashes every frame (`draw_all`).
++
++Why the main thread paints the card and the IRQ only moves it: an IRQ must not run the drawing primitives (the
++interrupted thread may be inside them, and the overlay slot must not be loaded from an IRQ: `iwram_ovl.h`), but a
++dozen raw halfword stores to the page on screen are safe. The first design tried (the saved 2026-11-08 patch) painted
++the card from the IRQ.
++
++| window (`speed2_busy.txt`, libmgba, same commands before and after) | before | after |
++|---|---|---|
++| title -> New story (the build) | 12.2 drawn fps, one 2,076 ms frame | **29.6 fps**, worst picture gap **50 ms** |
++| new island -> hub (the build) | 7.9 fps, one 1,992 ms frame | 18.3 fps, worst gap 117 ms (see below) |
++| save, a Classic island (10 KB) | 3.4 fps, one 10,731 ms frame | **30.0 fps**, worst gap **50 ms** |
++| load, a Classic island | one 6,030 ms command | **29.9 fps**, worst gap **67 ms** |
++| save, the worst case (1,000 custom citizens, 58 KB) | one 11,152 ms command | **30.0 fps**, worst gap **50 ms** |
++| load, the worst case | one 7,355 ms command | **29.9 fps**, worst gap **67 ms** |
++
++`expect-gap 100` holds all but the new island. The table's logic ticks a second stay low by design (3-12): the sim
++holds while the work runs. The new island's remaining 117 ms is not the build: after the card the hub's own first 39
++frames take 67-117 ms (map parts, `fp_island_gfx.c`): S3-14 in the speed audit 3, the same frames as before.
++
++**Same bytes.** `core/tests/test_save_golden.c` fixes the length and CRC-32 of the decoded town section of three
++hand-built islands (no roster, no generator, cut where the first extension chunk starts, so content and chunk changes
++do not move it), taken on `ee686c74` before S2-10. On the GBA the 128 KB flash image `coresave1.txt` leaves (a 58 KB island in slot 1, a
++story island in slot 0) is sha256-identical (`b843ff94...`) between the old ROM and this one, and `make -C gba
++test-coresave` still compares the town CRC across a save and a load in two runs.
++
++**Same pixels everywhere else.** With busy arming switched off, the frame hashes of `entry_parity.txt` and
++`speed_tour.txt` (98 `vhash-seq` windows) are identical to the old ROM's. With it on, only the frames after a new
++island's build differ: the card, the dim, and the hub's held-frame state restarting after the trackers reset.
++
++**Power cut.** `make -C gba test-cutsave` (in `make -C gba test`) stops a save of the worst-case island K video
++frames in (`gba/harness/cutsave.sh`; the harness keeps the flash file in sync as the ROM programs it, so it is what a
++power cut leaves) after a good save of another island, then boots on the file. K = 100 (the first pass writes
++nothing): the old save is intact and loads. K = 350 to 650 (the trailer sector is erased, the sectors are going in):
++the slot reads as empty, never torn. K = 800: the new save verifies and loads with the right town. This is what the
++streamed save always did (the trailer is written last); the GBA keeps one copy per slot, so the old save survives
++only the first half of a save. `core/tests/test_busy.c` cuts the host platform's streamed save at the first, second,
++third, a quarter, half, last-but-one and last write: the previous slot is byte for byte what it was.
++
++**RAM.** EWRAM +16 B resident (`loadfade.c`: the card state, 12 -> 20 B plus padding); IWRAM 0 B (the hook and the card
++are THUMB code in ROM); the main stack's high-water mark is the same 2,780 B through a save and a load; ROM +1,296 B
++of code, +40 B of data.
++
++**Left.** The work is still one tick: a pause or a button press during a save is not seen. The 95% is the base-record
++rebuild per citizen: caching one record per citizen between the two passes (or comparing the stored record to the
++premade one without rebuilding it) would halve a save, and a premade citizen's flags could skip the build entirely.
++That is a separate package.
++
+ ## 4b. Retained panels (G7, `src/panel.c`)
+ 
+ The core draws its HUD pills, dialogue box, toasts and island HUD as
+diff --git a/docs/PS1.md b/docs/PS1.md
+index 07937735..62e0e1b3 100644
+--- a/docs/PS1.md
++++ b/docs/PS1.md
+@@ -1443,6 +1443,52 @@ unchanged, 65 KB below the stack top with the boot FMV.
+ 
+ **S2-4 (the fair's kept playfield).** Nothing is built here: `mg.h` turns the kept-playfield mode into constants (`MGK_OFF`), so Whack draws its whole booth as before (the restore helpers and `ui_round_rect_inset` compile out); only the drawing order was regrouped (`mg_tent_sway`, `hole_back`), same pixels. 65 KB below the stack top with the boot FMV on the rebased tree (`_end` the same as without S2-4); the minigame overlay group grows by a few hundred bytes of code, the slot is unchanged (168 KB, the house's). PCSX-Redux `speed2_fair`: the Whack title, Sweet and Hellfire windows 30.17 / 30.12 / 30.12 fps (all 2-vsync frames), as before.
+ 
++**S2-10 (saves, loads and town builds with a live screen).** The PS1's free-play save was one 11.6 s frame: the memory
++card write (PCSX-Redux's OpenBIOS: about 40 ms a 128-byte sector) plus a header peek of a whole 8 KB block after it.
++Title -> New story was frames of 2.4 s and 1.2 s (the town build, seven overlay reads of 314-370 ms), a new island one
++1.9 s frame. The work still runs in one tick; the screen no longer sits still (`plat_ext.h` "S2-10"):
++
++* **The loading screen follows the work.** `plat_busy(kind)` / `plat_busy_step(done, total)` (`gfx.c`) redraw the
++  full-screen loading screen with its bar at done / total, at most every other vblank and only after the work has run
++  three vblanks (a quick job shows nothing). The core calls them per citizen in `save_game`'s encode, `load_game`'s
++  decode, `town_new`, `sim_init`, and per pass of `rel_normalize`. A town build says "Getting everything ready..."
++  without the memory card warning.
++* **Card calls two sectors at a time** (`memcard.c`, `CALL_FRAMES`): a write or read with the loading screen up moves
++  two 128-byte frames per BIOS call and shows a picture after each (the bar used to move once per 8 KB block, once a
++  second). One sector a call was 34% slower overall (the BIOS's per-call cost); two keeps the old total time (the
++  save window 883 vsyncs against 775 with a longer tail of 40 ticks) with pictures 70-100 ms apart. A **peek** (the
++  48-byte save header a menu asks for, the config record) reads the 6-7 frames it needs, not the 64 of a block: the
++  2.3 s the Save/Load screen's refresh took after a save is about 10x less (and every title and menu peek with it).
++  The line under the title says "Writing..." / "Reading..." now ("block N of M" went: 400 B of code).
++* **A spinner over the overlay reads** (`gfx_load_fade`): once the SP5 fade's three darkening passes are done and the
++  drive is still reading (a scene change loads up to three groups; a New story reads seven, 2.4 s), a ring of eight
++  dots turns on the dark picture every other vblank.
++* The harness counts the pictures the game shows outside its loop (`g_busy_pics`: fade passes, spinner steps, loading
++  screens) with the loop's frames (`run.py` `HARNESS_PICS`, `harness.lua` `read_shown`), so `fps` and `gaps` see a live
++  screen. Numbers before this change count loop frames only.
++
++| window (`speed2.sh`, PCSX-Redux) | before | after |
++|---|---|---|
++| title -> New story | 8.5 fps, frames of 2,417 and 1,183 ms | 23.6 fps, worst picture gap **383 ms** |
++| new island -> hub | 16.5 fps, one 1,867 ms frame | 26.2 fps, worst gap **200 ms** |
++| free-play save (16 KB, 3 blocks) | one 11,600 ms frame | 15.4 fps, worst gap **450 ms**, 96 pictures 100 ms apart through the write |
++| load (a Classic island, `speed2_busy`) | not measured | pictures 67 ms apart, worst gap 683 ms |
++
++What is left are single blocking BIOS calls the game cannot slice: the config record's write after a save (380-450 ms),
++the directory scan of an `open` at the start of a load (683 ms), and the scene-enter work after a build (183-383 ms).
++They are one call each in OpenBIOS; on a console the BIOS is faster but not measured. A VSync-callback spinner
++(drawing from the vblank IRQ while the BIOS call blocks) would cover them; it is not built (the card driver is touchy
++about its interrupts, `memcard.c` top).
++
++**Same bytes.** The 128 KB memory card image of a deterministic island save (seed 1, a tick-exact script, `run.py`) is
++sha256-identical (`5b89b9d2...`) between the old and the new disc; `memcard_check.py` reads it (`BASLUS-DOOMO1B`, 2
++blocks, payload 9,718 B, CRC `1fc29482`). The card writes the same bytes in the same order; only the call sizes differ.
++
++**Resident RAM: 320 B less than before.** The banner's and the loading screen's glyph arrays are one (800 B of BSS
++back), the cold busy code is compiled `-Os` by attribute, `rel_normalize` steps once per pass. `_end` 0x801efe60 ->
++0x801efd20, **64 KB below the stack top** with the boot FMV (the margin did not move at the page; the hard 64 KB
++reserve is 416 B higher than the old `_end`).
++
+ ## 13. Notes for the core
+ 
+ * The 2D layer is fastest with few, large rectangles: one `plat_rect` per
+-- 
+2.43.0
+

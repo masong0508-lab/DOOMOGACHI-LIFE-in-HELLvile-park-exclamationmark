@@ -1,0 +1,36 @@
+From b22385ca723a3c47b00f62606da7195fdee6ace8 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 14:06:57 +0000
+Subject: [PATCH 11/15] S2-4b: Dreamcast note (speed2 fair unchanged: 23
+ windows at 30.0, no tick over 33.3 ms)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ docs/DREAMCAST.md | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/docs/DREAMCAST.md b/docs/DREAMCAST.md
+index c9b48037..b52ab8c4 100644
+--- a/docs/DREAMCAST.md
++++ b/docs/DREAMCAST.md
+@@ -347,10 +347,16 @@ GBA's speed tour 2 scripts (docs/GBA.md "Speed tour 2") in Flycast: `tools/speed
+ `tools/speed2.py table` prints the logic ticks/s and the ticks over 33.3 / 50 ms of work (dcrun's `work:` lines)
+ per window, with the run's `game drew` and `work over` lines. Flycast is not cycle-accurate: a guide, not a promise.
+ 
++<<<<<<< HEAD
+ (S2-11, 2026-11-13, a measurement note: the house group after the GBA's house work, on the tip `ee4e053` + S2-11: all 19
+ windows 30.0, 0 of 2,461 ticks over 33.3 ms, work mean 3.4 ms and worst 20.6 ms at the house's entry, the same as before. The Dreamcast takes
+ the new core hooks with their weak defaults: `plat_build_frame(PLAT_BUILD_BUSY)` returns 0 and `plat_ui_loops()` does
+ nothing, so `plat_room` (DC8) is untouched and a house frame is one weak call heavier.)
++=======
++**S2-4b (the Fun Fair, 2026-11-13).** Nothing changes here: stamps, bands and undo lists are GBA-only (`plat_stage_stamp` and
++`plat_stage_restore_list` are the weak no-ops, `mg_stamp` returns 0 and the games draw as before). Flycast `speed2_fair` after the
++package: all 23 windows 30.0 logic ticks/s, 0 of 6,040 ticks over 33.3 ms of work (worst 15.7 ms, the Derby), as before.
++>>>>>>> ef340107 (S2-4b: Dreamcast note (speed2 fair unchanged: 23 windows at 30.0, no tick over 33.3 ms))
+ 
+ ### The harness mailbox (`dc_mailbox`, `dc/harness/dc_mailbox.h`)
+ 
+-- 
+2.43.0
+

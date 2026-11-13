@@ -1,0 +1,303 @@
+From 4a721997b054e47d1aa78437c563b2368c8b9751 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 12 Nov 2026 23:57:50 +0000
+Subject: [PATCH 08/14] PS1-RAM step 6: shared core files give their one-group
+ parts to that group (+18,448 B)
+
+A core file outside the planner's GROUPS was resident as a whole, the parts
+only one screen family calls included. For the files named in SHARED
+(fishcook, catalog, ui, song_player, fp_common, audio, art_data_ps1,
+mus_core) every .text / .rodata section is now a candidate like a group's
+own: resident when resident code or data reach it or its address escapes;
+when the scenes of exactly one group reach it, it joins that group; reached
+by two groups it stays resident. A scene defined in such a file is a
+resident scene. SHARED_NOT (story, home, combat, free play) take none: they
+set the slot's size or are within a few KB of it.
+
+Moved: the fishing / cooking effects and unlock checks (fishcook.c, 5.6 KB,
+which also frees the fish and recipe tables it alone read: the fishcook
+group 93 -> 101 KB), the creator's option names (catalog.c, 4.0 KB), the
+paint picker and slider only the UI gallery draws (ui.c, 2.5 KB), the
+island's ticker and HUD (fp_common.c, 2.0 KB), the studio's song helpers
+(song_player.c, 1.6 KB). The linker script lists a shared file's sections
+per group (one file can feed several groups). No source file changes.
+
+Game disc with the boot FMV: 142,912 -> 161,360 B below the stack top.
+
+test_tools.py: a shared file in the made-up game (one group, two groups,
+the platform, its own scene, a group that takes none).
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ ps1/tools/ovl_plan.py   | 71 +++++++++++++++++++++++++++++++++--------
+ ps1/tools/test_tools.py | 70 ++++++++++++++++++++++++++++++++++++++--
+ 2 files changed, 126 insertions(+), 15 deletions(-)
+
+diff --git a/ps1/tools/ovl_plan.py b/ps1/tools/ovl_plan.py
+index 2bf9c58d..29de0b57 100644
+--- a/ps1/tools/ovl_plan.py
++++ b/ps1/tools/ovl_plan.py
+@@ -30,6 +30,8 @@ hand:
+   * a call listed in GUARDED (resident platform code calling a group's
+     function only after ovl_code_in() said the group is in the slot) is
+     not followed either: its target belongs to its own group.
++  * a shared core file named in SHARED is no root: each of its sections
++    is resident or joins the one group that reaches it, by the same rules;
+   * the string literals of a file's tables arrive one per section
+     (tools/strsec.py), so only the strings resident code or data can
+     reach stay resident (STR_WHOLE below: the groups that set the slot's
+@@ -303,6 +305,22 @@ PICK_CALLBACKS = {
+ # room under the slot again.
+ STR_WHOLE = ("story", "home")
+ RX_STR = re.compile(r"\.rodata\.str1\.\d+\.LC\d+$")
++
++# --- RAM headroom 2026-11-12: shared modules. A core file outside the GROUPS (the UI kit, the item
++# catalog, the fishing / cooking effects, free play's helpers) was resident as a whole, the parts
++# only one screen family calls included. For the files named here (object base; core/src, core/gen
++# and the build's packed tables) every .text / .rodata section is a candidate like a group's own:
++# resident when resident code or data can reach it or its address escapes; else, when the scenes of
++# exactly ONE group reach it, it joins that group (it only runs, or is read, with that group in the
++# slot: the argument that holds for the group's own files); reached by two groups it stays resident.
++# The file's .data / .bss stay resident, and a scene defined in such a file is a resident scene.
++# SHARED_NOT: groups that take none: they set the slot's size or are within a few KB of it, where a
++# KB more is a KB of slot, not of room found (free play keeps its 10 KB for its own screens).
++# To add a file: OVL_WHY=1 lists the resident core objects; a file is worth listing when part of it
++# is reached by one group only.
++SHARED = r"fishcook$|catalog$|ui$|song_player$|art_data_ps1$|fp_common$|audio$|mus_core$"
++SHARED_NOT = ("story", "home", "combat", "freeplay")
++SHARED_TAG = "+"                # what grp() says for a candidate section of a shared file
+ # --- end RAM headroom ---
+ 
+ # --- S4: registries read only by their own group (object base -> symbol).
+@@ -357,6 +375,12 @@ def group_of(path):
+     return None
+ 
+ 
++def is_shared(path):
++    """a core file of no group whose sections may join the one group that reaches them (SHARED)"""
++    return (group_of(path) is None and ("/core/src/" in path or "/core/gen/" in path or "/packed/" in path)
++            and re.fullmatch(SHARED, base(path)) is not None)
++
++
+ class Obj:
+     def __init__(self, path, readelf):
+         self.path = path
+@@ -456,12 +480,17 @@ def main(argv):
+                 if tgt != src:
+                     edges[src].append((tgt, typ))
+ 
++    shared_objs = {oi for oi, o in enumerate(objs) if is_shared(o.path)}
++
+     def grp(n):
++        # the group a section may live in: its file's group, SHARED_TAG (the one group that reaches
++        # it, SHARED above), or None (always resident)
+         o = objs[n[0]]
+-        g = group_of(o.path)
+-        if g is None or not n[1].startswith(OVL_KINDS):
++        if not n[1].startswith(OVL_KINDS):
+             return None
+-        return g
++        if n[0] in shared_objs:
++            return SHARED_TAG
++        return group_of(o.path)
+ 
+     # scene structs: sections named .rodata.SCENE_* (their function
+     # pointers are the cut edges); they stay resident themselves
+@@ -596,13 +625,15 @@ def main(argv):
+             for t, _ in edges.get(s, ()):
+                 if t in resident or not is_code(t):
+                     continue
+-                if g is None:
++                if g is None or g == SHARED_TAG:        # a resident scene (one in a shared file too)
+                     clash.add(t)
+                     continue
+                 for r in closure({t}, False):
+                     if r in resident:
+                         continue
+-                    if grp(r) != g or owner.get(r, g) != g:
++                    gr = grp(r)
++                    mine = gr == g or (gr == SHARED_TAG and g not in SHARED_NOT)
++                    if not mine or owner.get(r, g) != g:
+                         clash.add(r)
+                     else:
+                         owner[r] = g
+@@ -734,7 +765,10 @@ def main(argv):
+     for g in names:
+         for n in groups[g]:
+             in_ovl[n] = g
+-    grp_objs = [oi for oi, o in enumerate(objs) if group_of(o.path)]
++    # the objects the linker script names section by section: the groups' files, and the shared
++    # files that have a section in a group
++    grp_objs = [oi for oi, o in enumerate(objs)
++                if group_of(o.path) or (oi in shared_objs and any(n[0] == oi for n in in_ovl))]
+ 
+     def pat(oi):
+         # the object as the link command names it: a unique path suffix
+@@ -744,12 +778,14 @@ def main(argv):
+             k = p.rfind("/")
+         return "*" + p[k:]
+ 
+-    def secs_of(oi, kinds, want_ovl):
++    def secs_of(oi, kinds, want):
++        # the object's sections that stay resident (want None) or are in group `want` (a shared
++        # file's sections can be in several groups)
+         out = []
+         for name, size, al in objs[oi].secs.values():
+             if not al or not name.startswith(kinds):
+                 continue
+-            if ((oi, name) in in_ovl) == want_ovl:
++            if in_ovl.get((oi, name)) == want:
+                 out.append(name)
+         return sorted(set(out))
+ 
+@@ -788,7 +824,7 @@ def main(argv):
+             L.append("\t\tEXCLUDE_FILE(%s) *(%s %s.* .gnu.linkonce.%s.*)" % (
+                 excl, out, out, "t" if out == ".text" else "r"))
+             for oi in grp_objs:
+-                ss = secs_of(oi, kinds, False)
++                ss = secs_of(oi, kinds, None)
+                 if ss:
+                     L.append("\t\t%s(%s)" % (pat(oi), " ".join(ss)))
+             if extra:
+@@ -860,7 +896,7 @@ def main(argv):
+                 continue
+             L.append("\t\t.ovl_%02d {\t/* %s */" % (gid[g], g))
+             for oi in sorted({n[0] for n in groups[g]}):
+-                ss = secs_of(oi, (".text", ".rodata"), True)
++                ss = secs_of(oi, (".text", ".rodata"), g)
+                 if ss:
+                     L.append("\t\t\t%s(%s)" % (pat(oi), " ".join(ss)))
+             L.append("\t\t\t. = ALIGN(4);")
+@@ -883,7 +919,7 @@ def main(argv):
+                 sec = ".ovl_%02d" % gid[g]
+                 L.append("\t%s __ovl_borrow : AT (LOADADDR(%s) + SIZEOF(%s)) {\t/* %s */" % (sec, last, last, g))
+                 for oi in sorted({n[0] for n in groups[g]}):
+-                    ss = [s for s in secs_of(oi, (".text", ".rodata"), True) if (oi, s) not in part_of]
++                    ss = [s for s in secs_of(oi, (".text", ".rodata"), g) if (oi, s) not in part_of]
+                     if ss:
+                         L.append("\t\t%s(%s)" % (pat(oi), " ".join(ss)))
+                 L.append("\t\t. = ALIGN(4);")
+@@ -992,6 +1028,15 @@ def main(argv):
+             tot += sz
+             print("ovl_plan:   %-10s %4d KB  %d sections" % (g, sz // 1024, len(groups[g])))
+         print("ovl_plan: overlays total %d KB" % (tot // 1024))
++        # RAM headroom 2026-11-12: what the shared files (SHARED) gave to the groups
++        for g in sorted(groups):
++            c = collections.Counter()
++            for n in groups[g]:
++                if n[0] in shared_objs:
++                    c[base(objs[n[0]].path)] += node_size(n)
++            if c:
++                print("ovl_plan: shared code and data in %s: %d B (%s)" % (
++                    g, sum(c.values()), ", ".join("%s %d" % kv for kv in c.most_common())))
+         if borrow:
+             print("ovl_plan: %s load%s %d B lower, over borrowed .bss (BORROW)" % (
+                 ", ".join(g for g in sorted(groups) if g in BORROW_GROUPS),
+@@ -1045,13 +1090,13 @@ def main(argv):
+         if os.environ.get("OVL_WHY"):
+             c = collections.Counter()
+             for n in resident:
+-                if n in live and grp(n) is not None:
++                if n in live and n[1].startswith(OVL_KINDS) and group_of(objs[n[0]].path):
+                     c[base(objs[n[0]].path)] += node_size(n)
+             for k, v in c.most_common(40):
+                 print("ovl_plan:   resident from group objs: %6d %s" % (v, k))
+             c = collections.Counter()
+             for n in resident:
+-                if n in live and n[1].startswith(OVL_KINDS) and grp(n) is None:
++                if n in live and n[1].startswith(OVL_KINDS) and not group_of(objs[n[0]].path):
+                     c[base(objs[n[0]].path)] += node_size(n)
+             for k, v in c.most_common(60):
+                 print("ovl_plan:   resident core: %6d %s" % (v, k))
+diff --git a/ps1/tools/test_tools.py b/ps1/tools/test_tools.py
+index 02d9230e..50fb36e8 100644
+--- a/ps1/tools/test_tools.py
++++ b/ps1/tools/test_tools.py
+@@ -8,8 +8,9 @@ ram_ledger.py (the linker map reader) are tested on files made here;
+ strsec.py (the assembly rewrite that gives every table string a section
+ of its own) on assembly text and on real compiles; ovl_plan.py on a
+ made-up game of four scenes compiled with the MIPS compiler (which
+-callbacks and which strings may leave resident RAM). Stdlib only; the
+-tests that need the MIPS compiler are skipped without one.
++callbacks, strings and parts of shared files may leave resident RAM).
++Stdlib only; the tests that need the MIPS compiler are skipped without
++one.
+ """
+ import contextlib
+ import io
+@@ -505,6 +506,71 @@ class PlannerStrings(unittest.TestCase):
+         self.assertEqual(len(self.strings(where, "resident")), 7)
+ 
+ 
++# a shared file (ovl_plan.py SHARED): the UI kit of the made-up game, used by both screen families,
++# by the platform, and with a scene of its own
++SHARED_FAKE = dict(FAKE)
++SHARED_FAKE["core/src/ui.c"] = """#include "scene.h"
++static const short island_tab[8] = { 3, 1, 4, 1, 5, 9, 2, 6 };
++void ui_family_only(void) { sink += 2; }
++void ui_island_only(void) { sink += island_tab[sink & 7]; }
++void ui_both(void) { sink += 5; }
++void ui_resident(void) { sink += 7; }
++static void uix_update(void) { sink += 9; }
++const DoomoScene SCENE_UIX = { "UIX", 0, 0, uix_update, 0, 0 };
++"""
++SHARED_FAKE["src/main.c"] = FAKE["src/main.c"].replace(
++    "int main(void)\n{", "void ui_resident(void);\nint main(void)\n{\n    ui_resident();")
++SHARED_FAKE["core/src/scene.c"] = FAKE["core/src/scene.c"].replace(
++    "SCENE_ISLAND;", "SCENE_ISLAND, SCENE_UIX;").replace("&SCENE_ISLAND, 0", "&SCENE_ISLAND, &SCENE_UIX, 0")
++SHARED_FAKE["core/src/fp_family.c"] = FAKE["core/src/fp_family.c"].replace(
++    "static void fam_update(void) {",
++    "void ui_family_only(void); void ui_both(void);\nstatic void fam_update(void) { ui_family_only(); ui_both();")
++SHARED_FAKE["core/src/fp_island.c"] = FAKE["core/src/fp_island.c"].replace(
++    "static void isl_update(void) {",
++    "void ui_island_only(void); void ui_both(void);\nstatic void isl_update(void) { ui_island_only(); ui_both();")
++
++
++@unittest.skipUnless(CROSS, "no MIPS compiler (mipsel-linux-gnu-gcc / mipsel-none-elf-gcc)")
++class PlannerShared(unittest.TestCase):
++    def setUp(self):
++        self.dir = tempfile.TemporaryDirectory()
++        self.saved = (ovl_plan.SHARED, ovl_plan.SHARED_NOT)
++        ovl_plan.SHARED, ovl_plan.SHARED_NOT = r"ui$", ()
++
++    def tearDown(self):
++        ovl_plan.SHARED, ovl_plan.SHARED_NOT = self.saved
++        self.dir.cleanup()
++
++    def plan(self):
++        return plan(self.dir.name, compile_fake(self.dir.name, SHARED_FAKE))
++
++    def test_a_shared_files_sections_join_the_one_group_that_reaches_them(self):
++        where, report = self.plan()
++        self.assertIn(("ui", ".text.ui_family_only"), where["freeplay"])
++        self.assertIn(("ui", ".text.ui_island_only"), where["island"])
++        self.assertIn(("ui", ".rodata.island_tab"), where["island"])        # its table goes with it
++        self.assertNotIn(("ui", ".text.ui_island_only"), where["freeplay"])  # one file, two groups
++        self.assertNotIn(("ui", ".text.ui_family_only"), where["island"])
++        # two groups, the platform, or a scene of the shared file itself: resident
++        for sec in (".text.ui_both", ".text.ui_resident", ".text.uix_update"):
++            self.assertIn(("ui", sec), where["resident"])
++            self.assertNotIn(("ui", sec), where["freeplay"] | where["island"])
++        self.assertIn("ovl_plan: shared code and data in island:", report)
++
++    def test_a_file_that_is_not_listed_stays_resident(self):
++        ovl_plan.SHARED = r"nothing$"
++        where, report = self.plan()
++        self.assertFalse([x for g in ("freeplay", "island") for x in where[g] if x[0] == "ui"])
++        self.assertNotIn("shared code and data", report)
++
++    def test_a_group_that_takes_none(self):
++        ovl_plan.SHARED_NOT = ("freeplay",)
++        where, _ = self.plan()
++        self.assertIn(("ui", ".text.ui_family_only"), where["resident"])
++        self.assertNotIn(("ui", ".text.ui_family_only"), where["freeplay"])
++        self.assertIn(("ui", ".text.ui_island_only"), where["island"])
++
++
+ if __name__ == "__main__":
+     import warnings
+     warnings.simplefilter("ignore", ResourceWarning)    # the tools read files in one expression
+-- 
+2.43.0
+

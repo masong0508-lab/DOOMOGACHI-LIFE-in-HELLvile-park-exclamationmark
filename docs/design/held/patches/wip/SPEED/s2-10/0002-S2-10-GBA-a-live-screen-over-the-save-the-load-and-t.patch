@@ -1,0 +1,514 @@
+From 2e5a8637caba942ffdb1e0c3d537e470b37390d7 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 13:40:39 +0000
+Subject: [PATCH 02/10] S2-10 GBA: a live screen over the save, the load and
+ the town build (dim / fade + card + spinner at 30 pictures a second)
+
+plat_busy arms the SP5 load-fade watch with a 50 ms fuse (a save dims to half, a load or a build fades to black);
+the first plat_busy_step after the fuse paints a small "Saving..." / "Loading..." card into the Mode 4 page on
+screen from the main thread (vid_rect / vid_text), and from then on the VBlank hook turns its spinner every two
+vblanks with a few raw halfword stores (no call, no DMA, no overlay code: it runs inside whatever the main thread
+is doing: a flash sector, a scene's enter) and counts each step as a presented frame. The flip that ends the wait
+lifts the fade as before and, when a card was painted, tells the page trackers (pn / hold / stage) that neither
+page keeps a picture. Nothing happens in a run that hashes every frame (draw_all). EWRAM +16 B, IWRAM +0.
+
+Steps added where the main thread otherwise holds the tick for tens of ms: the relationship graph's encode and
+decode (every 32 edges), rel_normalize's sort, sim_init's per-citizen loop (cross-stream: one line in sim.c),
+and every flash sector in save_flash.c.
+
+New group gba/harness/scripts/speed2_busy.txt (title -> New story, new island, a Classic save and load, the
+worst-case 58 KB island's save and load). GBA, mGBA, same commands before / after:
+  save (Classic):    10,731 ms one frame -> 30.0 fps, worst picture gap 50 ms
+  load (Classic):     6,513 ms -> 29.9 fps, worst gap 67 ms
+  save (worst case): 11,245 ms -> 30.0 fps, worst gap 50 ms
+  load (worst case):  7,803 ms -> 29.9 fps, worst gap 67 ms
+  title -> New story: 2,076 ms -> 29.6 fps, worst gap 50 ms
+  new island:         1,992 ms -> worst gap 117 ms (the hub's own 39 frames of 67-117 ms after it: S3-14)
+Saved bytes identical: the 128 KB flash image of coresave1.txt (58 KB island in slot 1, a story island in slot 0)
+is sha256-identical between the old and new ROM. Frame hashes (entry_parity + speed_tour, 98 windows): identical
+with busy arming disabled; with it, only the frames after a new island's build differ (card, dim, trackers reset).
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ core/src/save.c                     |   2 +
+ core/src/sim.c                      |   2 +
+ core/src/town.c                     |   1 +
+ core/tests/test_busy.c              |  27 ++++-
+ gba/harness/scripts/speed2_busy.txt |  91 ++++++++++++++++
+ gba/src/loadfade.c                  | 156 ++++++++++++++++++++++++++--
+ gba/src/main.c                      |  10 +-
+ gba/src/postfx.h                    |   1 +
+ gba/src/save_flash.c                |   3 +
+ 9 files changed, 282 insertions(+), 11 deletions(-)
+ create mode 100644 gba/harness/scripts/speed2_busy.txt
+
+diff --git a/core/src/save.c b/core/src/save.c
+index f2d995cf..886ce3b0 100644
+--- a/core/src/save.c
++++ b/core/src/save.c
+@@ -830,6 +830,7 @@ static void write_town(void)
+             w8((uint8_t)e->value);
+             w8(e->kind);
+             pa = a; pb = b;
++            if (!(i & 31)) plat_busy_step(0, DOOMO_MAX_RESIDENTS);   /* S2-10: 2,000 edges are 0.2 s on the GBA */
+         }
+     }
+     walign();
+@@ -964,6 +965,7 @@ static int read_town(int apply)
+                 t->edges[i].kind = (uint8_t)k;
+             }
+             pa = a; pb = b;
++            if (!(i & 31)) plat_busy_step(0, DOOMO_MAX_RESIDENTS);   /* S2-10 */
+         }
+     }
+     if (apply) t->edge_count = (uint16_t)n;
+diff --git a/core/src/sim.c b/core/src/sim.c
+index 332ff9d0..095dde4a 100644
+--- a/core/src/sim.c
++++ b/core/src/sim.c
+@@ -19,6 +19,7 @@
+ #include "doomo/family.h"
+ #include "doomo/ending.h"
+ #include "doomo/life_events.h"
++#include "doomo/plat_ext.h"             /* plat_busy_step (S2-10) */
+ 
+ SimState sim_s;
+ 
+@@ -823,6 +824,7 @@ void sim_init(void)
+         res_in(r, &in);
+         r->activity = (uint8_t)decide_activity(i, r, &in);
+         sim_mood_of(i);
++        plat_busy_step(i, DOOMO_MAX_RESIDENTS);   /* S2-10: a picture when one is due (plat_ext.h) */
+     }
+     sim_events_reset();
+     sim_news_welcome(town_count(-1));     /* LS1: once per town or load */
+diff --git a/core/src/town.c b/core/src/town.c
+index 57c5a5e1..a124e9b7 100644
+--- a/core/src/town.c
++++ b/core/src/town.c
+@@ -381,6 +381,7 @@ void rel_normalize(void)
+             DoomoEdge t = E[i];
+             uint32_t k = ekey(&t);
+             int j = i;
++            if (!(i & 63)) plat_busy_step(0, DOOMO_MAX_RESIDENTS);   /* S2-10: the sort of ~2,000 edges is 0.17 s on the GBA */
+             while (j >= gap && ekey(&E[j - gap]) > k) {
+                 E[j] = E[j - gap];
+                 j -= gap;
+diff --git a/core/tests/test_busy.c b/core/tests/test_busy.c
+index d3634520..f9864820 100644
+--- a/core/tests/test_busy.c
++++ b/core/tests/test_busy.c
+@@ -40,7 +40,8 @@ TEST(busy_town_new_steps_every_citizen)
+     town_new(TOWN_STORY, 1, TOWN_POP_PREMADE);
+     CHECK_EQ(b_calls, 1);
+     CHECK_EQ(b_kind, PLAT_BUSY_BUILD);
+-    CHECK_EQ(b_steps, DOOMO_MAX_RESIDENTS);          /* one step per citizen built: never a long run without one */
++    /* one step per citizen built (never a long run without one), and a few more while the relationships sort */
++    CHECK(b_steps >= DOOMO_MAX_RESIDENTS && b_steps <= 2 * DOOMO_MAX_RESIDENTS);
+     CHECK_EQ(b_bad, 0);
+     CHECK_EQ(b_max_done, DOOMO_MAX_RESIDENTS - 1);
+     CHECK_EQ(b_steps_before_busy, 0);
+@@ -48,7 +49,7 @@ TEST(busy_town_new_steps_every_citizen)
+     busy_reset();
+     town_new(TOWN_FREEPLAY, 31337, TOWN_POP_RANDOM);
+     CHECK_EQ(b_calls, 1);
+-    CHECK_EQ(b_steps, DOOMO_MAX_RESIDENTS);
++    CHECK(b_steps >= DOOMO_MAX_RESIDENTS && b_steps <= 2 * DOOMO_MAX_RESIDENTS);
+     CHECK_EQ(b_bad, 0);
+ 
+     busy_reset();
+@@ -93,6 +94,28 @@ TEST(busy_save_and_load_step_every_citizen)
+     nat_save_stream = 0;
+ }
+ 
++/* the relationship graph is 0.2 s of encoding on the GBA before the first citizen: it steps too, every 32 edges */
++TEST(busy_steps_cover_the_relationship_graph)
++{
++    DoomoRng r;
++    int i, edges;
++    town_new(TOWN_FREEPLAY, 3, TOWN_POP_PREMADE);
++    rng_seed(&r, 5);
++    for (i = 0; i < 1500; i++) rel_adjust(rng_range(&r, 1000), rng_range(&r, 1000), rng_between(&r, -40, 40));
++    edges = doomo_town.edge_count;
++    CHECK(edges > 1200);
++    nat_save_stream = 0;
++    busy_reset();
++    CHECK(save_game(1));
++    CHECK(b_steps >= DOOMO_MAX_RESIDENTS + edges / 32);
++    busy_reset();
++    CHECK(load_game(1));
++    CHECK(b_steps >= DOOMO_MAX_RESIDENTS + edges / 32);
++    busy_reset();
++    rel_normalize();                                 /* the sort alone: ~8 passes over the edges */
++    CHECK(b_steps >= edges / 64);
++}
++
+ TEST(busy_a_missing_save_does_not_start_a_busy_card)
+ {
+     nat_save_stream = 0;
+diff --git a/gba/harness/scripts/speed2_busy.txt b/gba/harness/scripts/speed2_busy.txt
+new file mode 100644
+index 00000000..0d1436f0
+--- /dev/null
++++ b/gba/harness/scripts/speed2_busy.txt
+@@ -0,0 +1,91 @@
++# speed2_busy.txt - speed wave 2, S2-10 (docs/GBA.md "Speed wave 2: S2-10"): the long jobs that run inside one tick
++# and used to freeze the screen: the title -> New story build, a new island, a free-play save and load of a Classic
++# island, and the same for the worst-case island (1,000 custom citizens, 2,048 relationships: ~58 KB). The core tells
++# the platform (plat_busy / plat_busy_step) and the platform keeps the screen moving: a dim or fade, a card with a
++# spinner, 30 pictures a second. `make -C gba test-speed2 SPEED2=busy` prints the table (the "worst frame" column is
++# the longest gap between two presented pictures; the logic column stays low by design: the sim holds while the
++# work runs). `expect-gap` fails a run when a presented frame of the window took over the given ms.
++# tools/speed2.py turns this file into the PS1 and Dreamcast scripts too (expect-gap is dropped there: the PS1 harness
++# counts the pictures the game shows outside its loop, the Dreamcast one the card's pictures).
++# Window rules: speed2_fair.txt.
++wait 40
++expect-log doomo: init
++sync on 61
++
++# ---- the title -> New story build ---------------------------------------------------------
++seed 1
++scene TITLE
++wait 150
++press START
++wait 24
++press A
++wait 16
++fps start
++press A
++wait 40
++fps busy: title -> new story (the build)
++shot busy_new_story
++wait 30
++
++# ---- a new island (Hellvile Park Classic) --------------------------------------------------
++seed 1
++scene NEW_ISLAND
++wait 10
++fps start
++press A
++wait 20
++press A
++wait 2
++press A
++wait 10
++expect-scene ISLAND
++wait 30
++fps busy: new island -> hub (the build)
++shot busy_hub
++
++# ---- a save and a load of the Classic island (slot 2) ---------------------------------------
++push SAVELOAD 0
++wait 30
++fps start
++press A
++wait 40
++fps busy: save (Classic island)
++shot busy_saved
++press RIGHT
++wait 2
++press A
++wait 4
++press LEFT
++wait 2
++fps start
++press A
++wait 60
++fps busy: load (Classic island)
++shot busy_loaded
++wait 30
++
++# ---- the worst case: 1,000 custom citizens (~58 KB) ----------------------------------------
++town-fill 7
++push SAVELOAD 0
++wait 30
++press A
++wait 4
++press LEFT
++wait 2
++fps start
++press A
++wait 40
++fps busy: save (worst-case island)
++shot busy_saved_worst
++press RIGHT
++wait 2
++press A
++wait 4
++press LEFT
++wait 2
++fps start
++press A
++wait 60
++fps busy: load (worst-case island)
++shot busy_loaded_worst
++wait 10
+diff --git a/gba/src/loadfade.c b/gba/src/loadfade.c
+index e29d1d54..ced43fb2 100644
+--- a/gba/src/loadfade.c
++++ b/gba/src/loadfade.c
+@@ -1,5 +1,6 @@
+ /* loadfade.c - a short fade over a loading freeze (SP5, G-LD; plat_ext.h plat_loading; owner: gba;
+- * docs/GBA.md "LD: loading fades").
++ * docs/GBA.md "LD: loading fades"), and (S2-10) a live screen over a save, a load and a town build (plat_ext.h
++ * plat_busy / plat_busy_step; docs/GBA.md "Speed wave 2: S2-10").
+  *
+  * A scene change (scene.c) or a story map load calls plat_loading(): the next frame may take long (a scene's
+  * enter builds its caches, a map is unpacked, the island's sim starts; 0.2-2 s on the GBA). Until then the last
+@@ -10,40 +11,183 @@
+  * shorter than LD_LATE shows nothing at all. Registers only: no pixel of any page changes, logic and timing are
+  * the same (the core does not know), and a frame with its own blend (postfx.c) keeps the darker of the two.
+  *
++ * S2-10: a save (10.7 s for a Classic island), a load (6 s) and a New story / new island build (2 s) run inside one
++ * tick: the codec and the build rebuild every citizen's base record, 5-6 ms each. The core calls plat_busy(kind)
++ * first and plat_busy_step(done, total) once per citizen (save.c, town.c, sim.c), every 32 relationships and
++ * (save_flash.c) every flash sector, so the main thread gets control every few ms. plat_busy arms the same IRQ watch
++ * with a shorter fuse (BUSY_LATE vblanks) and a target: a save dims the picture to half (BLDY 8), a load or a build
++ * fades it to black. The first plat_busy_step after the fuse paints a small card ("Saving..." / "Loading...") into
++ * the Mode 4 page on screen (vid_rect / vid_text, the resident IWRAM primitives that draw into gba_back, which points
++ * at that page for the calls); WIN0 keeps the card out of the fade and OBJs off it. From then on the IRQ turns the
++ * card's spinner one step every BUSY_EVERY vblanks with a few raw pixel writes (no call, no DMA, no overlay code: it
++ * runs inside whatever the main thread was doing) and counts each step as a presented frame in the harness mailbox
++ * (`drawn`), so the screen shows 30 pictures a second to the end of the wait, whatever code runs meanwhile (a flash
++ * sector, a scene's enter). The flip that ends the wait lifts the fade as before and, when a card was painted, tells
++ * the page trackers that neither page holds a kept picture (pn / hold / stage, as a tile frame does), because the
++ * page that had the card is drawn into next. A frame being built over several ticks (I10: hold_building) or a tile
++ * frame on screen (Mode 0) gets the fade only. Nothing happens while the harness hashes every frame (`draw_all`):
++ * those runs see the same frames as before S2-10.
++ *
+  * The VBlank IRQ (irq.iwram.c) calls gba_vbl_hook while it is set: this file's THUMB code in ROM, set only from
+- * plat_loading() to the end of the fade-out wait, so the IRQ costs one load and test otherwise. RAM: 12 bytes. */
++ * plat_loading() / plat_busy() to the end of the wait, so the IRQ costs one load and test otherwise.
++ * RAM: 20 bytes (S2-10: +8). */
+ #include "gba_plat.h"
++#include "canvas_int.h"
++#include "video_int.h"
+ #include "doomo/plat_ext.h"
++#include "doomo/palette.h"
+ 
+ #define LD_LATE 9           /* vblanks (150 ms) without a flip before the fade starts: past any normal slow frame */
+ #define LD_STEP 2           /* BLDY per vblank while it fades out (0..16) */
+ #define LD_IN   4           /* BLDY per flip while the new picture fades in */
+ #define LD_BLDCNT 0x00FFu   /* brightness decrease, first target BG0-3 + OBJ + backdrop */
++#define BUSY_LATE 3         /* S2-10: vblanks (50 ms) into a save / load / build before its picture changes: a
++                               fast one (an empty island, a story save) shows nothing */
++#define BUSY_DIM  8         /* a save dims the screen to half (a load or a build: black) */
++#define BUSY_EVERY 2        /* vblanks per picture: 30 a second */
++#define CARD_W 112
++#define CARD_H 22
++#define CARD_X ((SCREEN_W - CARD_W) / 2)
++#define CARD_Y ((SCREEN_H - CARD_H) / 2)
++#define SPIN_N 8            /* spinner dots */
+ 
+ void (*volatile gba_vbl_hook)(void);
+-static volatile uint32_t ld_v0;      /* gba_vblanks at plat_loading() */
++static volatile uint32_t ld_v0;      /* gba_vblanks at plat_loading() / plat_busy() */
+ static volatile uint8_t ld_level;    /* darkness on screen now, 0..16 */
++static volatile uint8_t ld_kind;     /* S2-10: PLAT_BUSY_* (0: a scene change) */
++static volatile uint8_t ld_card;     /* 1 once the card is painted on the page on screen: the IRQ turns its spinner */
++static volatile uint8_t ld_spin;     /* the lit spinner dot */
++static uint8_t ld_dirty;             /* a card was painted since the last flip: the pages lost their kept pictures */
++static volatile uint8_t ld_seen;     /* the fade level at the last counted picture */
++static volatile uint32_t ld_pic;     /* gba_vblanks at the last counted picture */
++
++/* the spinner's dots: a ring of 8 around (SPIN_CX, SPIN_CY), 2x2 each (x stays even: one halfword a row) */
++static const int8_t spin_dx[SPIN_N] = { 0, 4, 6, 4, 0, -4, -6, -4 };
++static const int8_t spin_dy[SPIN_N] = { -6, -4, 0, 4, 6, 4, 0, -4 };
++#define SPIN_CX (CARD_X + CARD_W - 12)
++#define SPIN_CY (CARD_Y + CARD_H / 2 - 1)
++
++/* a dot with two halfword stores a row, straight into the Mode 4 page on screen (IRQ-safe: no call) */
++static void spin_put(int i, uint32_t color)
++{
++    volatile uint16_t *p = (volatile uint16_t *)((REG_DISPCNT & DCNT_PAGE) ? VRAM_PAGE1 : VRAM_PAGE0) +
++                           ((SPIN_CY + spin_dy[i]) * SCREEN_W + SPIN_CX + spin_dx[i]) / 2;
++    uint16_t v = (uint16_t)(color | color << 8);
++    p[0] = v;
++    p[SCREEN_W / 2] = v;
++}
+ 
+ static void ld_vblank(void)
+ {
+-    if (gba_vblanks - ld_v0 < LD_LATE) return;
+-    if (ld_level < 16) ld_level = (uint8_t)DOOMO_MIN(16, ld_level + LD_STEP);
++    uint32_t late = ld_kind ? BUSY_LATE : LD_LATE;
++    int target = ld_kind == PLAT_BUSY_SAVE ? BUSY_DIM : 16;
++    if (gba_vblanks - ld_v0 < late) return;
++    if (ld_level < target) ld_level = (uint8_t)DOOMO_MIN(target, ld_level + LD_STEP);
+     REG_BLDCNT = LD_BLDCNT;
+     REG_BLDY = ld_level;
++    if (ld_kind && gba_vblanks - ld_pic >= BUSY_EVERY) {         /* S2-10: a picture every BUSY_EVERY vblanks */
++        int changed = ld_level != ld_seen;
++        ld_seen = ld_level;
++        if (ld_card) {
++            int i = ld_spin;
++            spin_put(i, PAL_UI_PINK_D);
++            i = (i + 1) & (SPIN_N - 1);
++            spin_put(i, PAL_WHITE);
++            ld_spin = (uint8_t)i;
++            changed = 1;
++        }
++        if (changed) { ld_pic = gba_vblanks; gba_mailbox.drawn++; }
++    }
+ }
+ 
+-void plat_loading(void)
++static void arm(int kind)
+ {
+     if (gba_mailbox.draw_all) return;            /* the harness hashes every frame (vhash-seq): never touch them */
++    if (gba_vbl_hook == ld_vblank && ld_kind && !kind) return;   /* a scene change inside a save keeps its card */
++    gba_vbl_hook = 0;
++    ld_kind = (uint8_t)kind;
++    ld_card = 0;
++    ld_spin = 0;
++    ld_seen = 0;
+     ld_v0 = gba_vblanks;
++    ld_pic = gba_vblanks;
+     gba_vbl_hook = ld_vblank;
+ }
+ 
++void plat_loading(void) { arm(0); }
++
++/* S2-10 (plat_ext.h): a save, a load or a town build runs in this tick */
++void plat_busy(int kind) { arm(kind); }
++
++/* ---- the card (painted once by the main thread, from plat_busy_step) ------------------------------------- */
++static void spin_dot(int i, uint32_t color)
++{
++    int x = SPIN_CX + spin_dx[i], y = SPIN_CY + spin_dy[i];
++    vid_rect(x, y, x + 2, y + 2, color);
++}
++
++/* the page on screen as the target of vid_*: 0 when it is not a Mode 4 page (a tile frame is up) */
++static int on_shown_page(uint16_t **was)
++{
++    uint16_t dc = REG_DISPCNT;
++    if ((dc & 7u) != 4u) return 0;
++    *was = gba_back;
++    gba_back = (uint16_t *)((dc & DCNT_PAGE) ? VRAM_PAGE1 : VRAM_PAGE0);
++    return 1;
++}
++
++static void card_paint(void)
++{
++    uint16_t *was;
++    int i;
++    if (!on_shown_page(&was)) return;
++    vid_rect(CARD_X, CARD_Y, CARD_X + CARD_W, CARD_Y + CARD_H, PAL_UI_PINK_D);
++    vid_rect(CARD_X + 1, CARD_Y + 1, CARD_X + CARD_W - 1, CARD_Y + CARD_H - 1, PAL_UI_PINK);
++    vid_rect(CARD_X + 2, CARD_Y + CARD_H - 3, CARD_X + CARD_W - 2, CARD_Y + CARD_H - 2, PAL_UI_PINK_D);
++    vid_text(CARD_X + 8, CARD_Y + 7, ld_kind == PLAT_BUSY_SAVE ? "Saving..." : "Loading...", PAL_WHITE);
++    for (i = 0; i < SPIN_N; i++) spin_dot(i, i == ld_spin ? PAL_WHITE : PAL_UI_PINK_D);
++    gba_back = was;
++    /* WIN0 = the card: no fade and no OBJ inside it, everything (faded) outside */
++    REG_WIN0H = (uint16_t)(CARD_X << 8 | (CARD_X + CARD_W));
++    REG_WIN0V = (uint16_t)(CARD_Y << 8 | (CARD_Y + CARD_H));
++    REG_WININ = 0x0004;                          /* BG2 only */
++    REG_WINOUT = 0x003F;                         /* every layer + the fade */
++    REG_BG2PA = 0x100; REG_BG2PB = 0; REG_BG2PC = 0; REG_BG2PD = 0x100;   /* no squash under the card */
++    REG_BG2X = 0; REG_BG2Y = 0;
++    REG_DISPCNT = (uint16_t)(REG_DISPCNT | DCNT_WIN0);
++    ld_dirty = 1;
++    ld_card = 1;                                 /* last: from here the IRQ turns the spinner */
++}
++
++/* plat_ext.h: called by the codec, the build and the flash code every few ms. Once the watch is late, the first
++ * call paints the card; the IRQ does the rest (see the top). */
++void plat_busy_step(int done, int total)
++{
++    (void)done; (void)total;
++    if (!ld_kind || ld_card || gba_vbl_hook != ld_vblank) return;
++    if (gba_vblanks - ld_v0 < BUSY_LATE || hold_building()) return;   /* I10 draws into the shown page: fade only */
++    card_paint();
++}
++
++/* video_flip, before the page trackers hear of the flip: 1 when a card was painted since the last flip (the
++ * page it is on lost its kept picture); clears it */
++int ld_take_dirty(void)
++{
++    int d = ld_dirty;
++    ld_dirty = 0;
++    return d;
++}
++
+ /* postfx_vblank, in the vblank of a flip, with the frame's own BLDCNT / BLDY about to be written: the wait is
+  * over; the new picture comes in from the darkness reached, keeping a darker blend of its own */
+ void ld_flip(int *bldcnt, int *bldy)
+ {
+     gba_vbl_hook = 0;
++    if (ld_card) {
++        REG_DISPCNT = (uint16_t)(REG_DISPCNT & ~DCNT_WIN0);
++        ld_card = 0;
++    }
++    ld_kind = 0;
+     if (!ld_level) return;
+     if ((*bldcnt & 0x00C0) != 0x00C0 || *bldy < ld_level) {   /* none, white, or lighter than ours: ours */
+         *bldcnt = (int)LD_BLDCNT;
+diff --git a/gba/src/main.c b/gba/src/main.c
+index b7c7cd87..9fd2576d 100644
+--- a/gba/src/main.c
++++ b/gba/src/main.c
+@@ -315,12 +315,16 @@ void video_flip(void)
+         int page = gba_back == (uint16_t *)VRAM_PAGE1;
+         REG_BG2CNT = 0;
+         REG_DISPCNT = (uint16_t)(DCNT_MODE4 | DCNT_BG2 | DCNT_OBJ | DCNT_OBJ_1D | (page ? DCNT_PAGE : 0));
++        /* S2-10: a busy card was painted on the page that was shown (loadfade.c): the page the next frame is drawn
++         * into has lost whatever kept picture the trackers think it holds, so neither page keeps one */
++        int kept = ld_take_dirty() ? -1 : page;
+         cv_shown_m4(page);
+-        pn_flipped(page);                       /* G7: kept panels are in it */
+-        hold_flipped(page);                     /* U4 */
+-        stage_flipped(page);                    /* SP7 */
++        pn_flipped(kept);                       /* G7: kept panels are in it */
++        hold_flipped(kept);                     /* U4 */
++        stage_flipped(kept);                    /* SP7 */
+         gba_back = page ? (uint16_t *)VRAM_PAGE0 : (uint16_t *)VRAM_PAGE1;
+     } else {
++        (void)ld_take_dirty();                  /* S2-10 */
+         pn_flipped(-1);
+         hold_flipped(-1);
+         stage_flipped(-1);
+diff --git a/gba/src/postfx.h b/gba/src/postfx.h
+index ef9457a5..ca49bb09 100644
+--- a/gba/src/postfx.h
++++ b/gba/src/postfx.h
+@@ -27,6 +27,7 @@
+ void postfx_pre_flip(void);
+ void postfx_vblank(int tiles);       /* tiles: Mode 0 (G5): blend BG0 too */
+ void ld_flip(int *bldcnt, int *bldy);  /* SP5 G-LD (loadfade.c): a loading fade's level on a flip */
++int  ld_take_dirty(void);                /* S2-10 (loadfade.c): a busy card was painted on the shown page since the last flip */
+ 
+ /* The frame's post transform, for the OBJ composition: screen p of bitmap
+  * point q is c + s * (q - c) + d. Returns 0 when there is none. */
+diff --git a/gba/src/save_flash.c b/gba/src/save_flash.c
+index 31d24a21..8c1011dc 100644
+--- a/gba/src/save_flash.c
++++ b/gba/src/save_flash.c
+@@ -26,6 +26,7 @@
+ #include "gba_plat.h"
+ #include "flash_int.h"
+ #include "doomo/save.h"
++#include "doomo/plat_ext.h"        /* plat_busy_step (S2-10) */
+ 
+ /* ---- the chip routines' RAM copy (flash_int.h) ---------------------------
+  * The ARM block __flash_ram_start .. __flash_ram_end (flash_ram.c) must run
+@@ -207,6 +208,7 @@ static int save_write_body(int slot, const void *data, uint32_t size)
+         if (s != last && !erase_sector(s)) { gba_log("save: erase failed"); return 0; }
+         if (!program(s, src + done, k)) { gba_logf("save: program/verify failed at 0x%x", s); return 0; }
+         done += k;
++        plat_busy_step((int)done, (int)size);       /* S2-10: a picture when one is due, once per sector */
+     }
+     /* 3. commit: the trailer */
+     t[0] = 'D'; t[1] = 'M'; t[2] = 'S'; t[3] = 'V';
+@@ -267,6 +269,7 @@ static int stream_write_body(const void *data, uint32_t n)
+             return 0;
+         }
+         ws.pos += k; src += k; n -= k;
++        plat_busy_step((int)ws.pos, (int)ws.size);  /* S2-10 (plat_ext.h): a picture when one is due, per sector */
+     }
+     return 1;
+ }
+-- 
+2.43.0
+

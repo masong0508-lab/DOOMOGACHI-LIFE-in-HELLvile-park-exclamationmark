@@ -1,0 +1,75 @@
+From deac075d226a49b774c7fa3b52663d3ea239ee93 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 12:56:46 +0000
+Subject: [PATCH 05/15] S2-4b step 5: the hit flash through the UI group's word
+ checker (13 -> ~5 ms), Candy Catch in the stage tests
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ core/src/mg.c           |  6 ++++--
+ core/src/mg_wheel.c     |  2 +-
+ core/tests/test_stage.c | 10 +++++++---
+ 3 files changed, 12 insertions(+), 6 deletions(-)
+
+diff --git a/core/src/mg.c b/core/src/mg.c
+index 02abbffe..3e696aeb 100644
+--- a/core/src/mg.c
++++ b/core/src/mg.c
+@@ -576,8 +576,10 @@ static void draw_results(void)
+ static void draw_flash(void)
+ {
+     if (!mg.flash_t || opt_get(OPT_REDUCE_FLASH)) return;
+-    if (mg.flash_t > 2) plat_checker(0, 0, mg_w(), mg_h(), mg.flash_c);
+-    else {
++    if (mg.flash_t > 2) {
++        plat_ui_loops();                    /* (S2-4b) the GBA's word-at-a-time checker: the full-screen flash 13 -> ~5 ms */
++        plat_checker(0, 0, mg_w(), mg_h(), mg.flash_c);
++    } else {
+         plat_rect(0, 0, mg_w(), 3, mg.flash_c);
+         plat_rect(0, mg_h() - 3, mg_w(), 3, mg.flash_c);
+     }
+diff --git a/core/src/mg_wheel.c b/core/src/mg_wheel.c
+index aa299d7a..edf6bad9 100644
+--- a/core/src/mg_wheel.c
++++ b/core/src/mg_wheel.c
+@@ -503,7 +503,7 @@ static void wh_draw_body(void)
+             }
+         }
+     }
+-    if (!opt_get(OPT_REDUCE_FLASH) && mg.flash_t) { plat_checker(0, 0, W, H, mg.flash_c); mg.flash_t--; }
++    if (!opt_get(OPT_REDUCE_FLASH) && mg.flash_t) { plat_ui_loops(); plat_checker(0, 0, W, H, mg.flash_c); mg.flash_t--; }
+     ui_hint(S->st == WH_DONE || S->st == WH_RESULT ? STR_ICON_A " OK" :
+             STR_ICON_A " Spin  " STR_ICON_B " Leave", WIN_CUTE);
+     ui_modal_no_band();                             /* the band copy is the POWER bar's (plat_strip has one) */
+diff --git a/core/tests/test_stage.c b/core/tests/test_stage.c
+index af262bfe..b2705b17 100644
+--- a/core/tests/test_stage.c
++++ b/core/tests/test_stage.c
+@@ -245,7 +245,7 @@ static int mg_compare(int id, int arg, int w, int h, int n)
+     return 1;
+ }
+ 
+-static const uint8_t kept_games[] = { MG_WHACK, MG_DODGE, MG_GALLERY, MG_DERBY, MG_MEMORY };
++static const uint8_t kept_games[] = { MG_CATCH, MG_WHACK, MG_DODGE, MG_GALLERY, MG_DERBY, MG_MEMORY };
+ 
+ TEST(stage_kept_minigames_are_pixel_identical)
+ {
+@@ -253,8 +253,12 @@ TEST(stage_kept_minigames_are_pixel_identical)
+     int ok = 1;
+     for (i = 0; i < sizeof(kept_games) && ok; i++) {
+         int id = kept_games[i];
+-        ok = mg_compare(id, 49, 240, 160, MAXF) && mg_compare(id, 51, 240, 160, MAXF) &&
+-             mg_compare(id, 50, 320, 240, 900);
++        /* Candy Catch: only up to its first Sugar Rush (frame ~426): the rainbow's stripes stop short of the right edge
++         * in some phases, and what the gap shows is the buffer's old frame, which the stage emulation's two buffers
++         * and the one buffer of a plain run hold differently (a gap in the game's own drawing, not the stamps') */
++        int n = id == MG_CATCH ? 420 : MAXF;
++        ok = mg_compare(id, 49, 240, 160, n) && mg_compare(id, 51, 240, 160, n) &&
++             mg_compare(id, 50, 320, 240, id == MG_CATCH ? 420 : 900);
+     }
+     set_res(240, 160);
+     CHECK(ok);
+-- 
+2.43.0
+

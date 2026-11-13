@@ -1,0 +1,482 @@
+From 6767c237a27f0fc5d38e504ba71b0aecb5b0757c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 13:25:30 +0000
+Subject: [PATCH 06/15] S2-4b: the Fun Fair games compile for the PS1 again,
+ with no resident byte added
+
+The PS1 build (minigames are an overlay group there, the baked paths are compiled
+out) broke on MgBox, unused names and implicit declarations after the stamp and band
+work. MgBox is declared everywhere, the PS1 macros have void-cast stubs, MG_BAKED(f)
+is NULL on the PS1, and the baked-only functions sit under #if !PS1.
+
+mg_mod6 no longer keeps a 6-byte table (a static const in a minigame file lands in
+the resident .data on the PS1): the Chinese remainder is r + 3 * ((x - r) & 1).
+PS1 _end 0x801efe60 = the base, 64 KB left below the stack top with the boot FMV.
+
+speed2_fair.txt: expect-fps 28 on every play window (Whack, Dodge, Gallery, Derby,
+Memory, Catch). Core tests: 1115 passed, 0 failed.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ core/src/mg.h                       | 24 +++++++++++++++--------
+ core/src/mg_derby.c                 | 14 ++++++++++----
+ core/src/mg_dodge.c                 |  6 +++++-
+ core/src/mg_gallery.c               | 14 +++++++++++++-
+ core/src/mg_memory.c                | 12 +++++++++++-
+ core/src/mg_whack.c                 |  8 +++++++-
+ gba/harness/scripts/speed2_fair.txt | 30 ++++++++++++++---------------
+ 7 files changed, 77 insertions(+), 31 deletions(-)
+
+diff --git a/core/src/mg.h b/core/src/mg.h
+index 7b98bd6c..3c171eeb 100644
+--- a/core/src/mg.h
++++ b/core/src/mg.h
+@@ -306,13 +306,13 @@ static inline int mg_kept(void) { return mg_kept_mode == MGK_LIVE; }   /* over t
+  * SHAKE (GBA only, pixel-changing): a shaken frame is the kept frame drawn unshaken and moved as a
+  * whole by the display (plat_post_offset: the HUD moves with it, the edge shows the border colour)
+  * instead of a full frame with every part offset. */
++typedef struct MgBox { int16_t x, y, w, h; } MgBox;     /* (a box of the restores a game lists: x, y, w, h) */
+ #if !defined(DOOMO_PLATFORM_PS1)
+ int  mg_kept_band(uint32_t key);             /* copy the band of `key` in (and make it the source); 0: not kept */
+ void mg_kept_src(uint32_t key);              /* make the picture of `key` the source of the restores */
+ void mg_kept_put(int x, int y, int w, int h);/* put that box back from the source picture */
+ void mg_undo(int x0, int y0, int x1, int y1);/* box [x0, x1) x [y0, y1) */
+ void mg_undo_end(void);
+-typedef struct MgBox { int16_t x, y, w, h; } MgBox;
+ void mg_undo_rec(MgBox *list, int cap);      /* the undo sections that follow list their restores */
+ int  mg_undo_rec_end(void);                  /* how many; -1: the list was too short */
+ void mg_kept_puts(const MgBox *list, int n, int dx, int dy);   /* put those boxes, moved by (dx, dy), back */
+@@ -325,17 +325,25 @@ void mg_common_stamp(uint32_t key, int cx, int cy);
+ int  mg_common_stamp_keys(uint32_t *out, int cap);
+ void mg_sparkle(int cx, int cy, int phase, uint8_t c);   /* ui_sparkle, stamped for the colours a game uses */
+ #else
+-#define mg_kept_band(key) 0
+-#define mg_kept_src(key) ((void)0)
+-#define mg_kept_put(x, y, w, h) ((void)0)
+-#define mg_undo(x0, y0, x1, y1) ((void)0)
++#define mg_kept_band(key) ((void)(key), 0)
++#define mg_kept_src(key) ((void)(key))
++#define mg_kept_put(x, y, w, h) ((void)(x), (void)(y), (void)(w), (void)(h))
++#define mg_undo(x0, y0, x1, y1) ((void)(x0), (void)(y0), (void)(x1), (void)(y1))
+ #define mg_undo_end() ((void)0)
+-#define mg_kept_puts(list, n, dx, dy) ((void)0)
++#define mg_undo_rec(list, cap) ((void)(list), (void)(cap))
++#define mg_undo_rec_end() 0
++#define mg_kept_puts(list, n, dx, dy) ((void)(list), (void)(n), (void)(dx), (void)(dy))
+ #define mg_rect plat_rect
+-#define mg_stamp(key, x, y) 0
+-#define mg_stamp_common(key, x, y) 0
++#define mg_stamp(key, x, y) ((void)(key), (void)(x), (void)(y), 0)
++#define mg_stamp_common(key, x, y) ((void)(key), (void)(x), (void)(y), 0)
+ #define mg_sparkle ui_sparkle
+ #endif
++/* a table entry that works on the pictures baked into the GBA ROM (the PS1 draws every frame whole: NULL) */
++#if !defined(DOOMO_PLATFORM_PS1)
++#define MG_BAKED(f) f
++#else
++#define MG_BAKED(f) NULL
++#endif
+ /* x % 6 without a division (mg_derby.c: the crowd) */
+ unsigned mg_mod6(uint32_t x);
+ /* HUD pieces */
+diff --git a/core/src/mg_derby.c b/core/src/mg_derby.c
+index 692fcc41..407daa05 100644
+--- a/core/src/mg_derby.c
++++ b/core/src/mg_derby.c
+@@ -332,13 +332,18 @@ static void dy_update(void)
+ enum { DY_SHADOW = 0 << 12, DY_BUNT = 1 << 12, DY_KIND = 7 << 12 };
+ static const uint8_t head_paint[6] = { PAINT_PEACH, PAINT_BUBBLEGUM, PAINT_SKY, PAINT_LEMON, PAINT_MINT, PAINT_LAVENDER };
+ 
++#if !defined(DOOMO_PLATFORM_PS1)
+ static void dy_stamp(uint32_t key, int cx, int cy)
+ {
+     int v = (int)(key & 0xFFF);
+     if ((key & DY_KIND) == DY_SHADOW) mg_shadow(cx, cy, v);
+     else mg_bunting(0, mg_w(), cy, 3, v);
+ }
++#endif
++#if !defined(DOOMO_PLATFORM_PS1)
+ static int dy_stamp_strip(uint32_t key) { return (key & DY_KIND) == DY_BUNT; }
++#endif
++#if !defined(DOOMO_PLATFORM_PS1)
+ static int dy_stamp_keys(uint32_t *out, int cap)
+ {
+     int n = 0, h, i;
+@@ -349,6 +354,7 @@ static int dy_stamp_keys(uint32_t *out, int cap)
+ #undef ADD
+     return n;
+ }
++#endif
+ /* a stamp at (x, y) where stamps are kept (240x160 only); 0: the caller draws it */
+ static int stamped(uint32_t key, int x, int y)
+ {
+@@ -356,10 +362,10 @@ static int stamped(uint32_t key, int x, int y)
+ }
+ 
+ /* x % 6 without a division (the crowd asks for it 63 times a frame): the remainder mod 3 by folding the
+- * bits (2^2 = 1 mod 3), the parity from bit 0, the two put together as the Chinese remainders say */
++ * bits (2^2 = 1 mod 3), the parity from bit 0; the two go together as the Chinese remainders say:
++ * the answer is r, or r + 3 when r has the wrong parity */
+ unsigned mg_mod6(uint32_t x)
+ {
+-    static const uint8_t crt[6] = { 0, 3, 4, 1, 2, 5 };       /* [x % 3 * 2 + x % 2] */
+     uint32_t r = (x >> 16) + (x & 0xFFFFu);
+     r = (r >> 8) + (r & 0xFFu);
+     r = (r >> 4) + (r & 0xFu);
+@@ -367,7 +373,7 @@ unsigned mg_mod6(uint32_t x)
+     r = (r >> 2) + (r & 3u);
+     if (r >= 3) r -= 3;                                       /* (r <= 6 here) */
+     if (r >= 3) r -= 3;
+-    return crt[r * 2 + (x & 1u)];
++    return r + 3u * ((x - r) & 1u);
+ }
+ 
+ static void grandstand(int y0, int h, int cam, int t)
+@@ -548,7 +554,7 @@ const MgGame mg_game_derby = {
+     { MG_DERBY_B, MG_DERBY_S, MG_DERBY_G }, 20, 0,
+     { PAL_PAINT(PAINT_LIME, 1), PAL_WHITE, PAL_PAINT(PAINT_FOREST, 1) },
+     dy_start, dy_update, dy_draw, dy_art, dy_bot,
+-    NULL, NULL, NULL, dy_stamp, dy_stamp_keys, dy_stamp_strip
++    NULL, NULL, NULL, MG_BAKED(dy_stamp), MG_BAKED(dy_stamp_keys), MG_BAKED(dy_stamp_strip)
+ };
+ 
+ MG_DEFINE_SCENE(SCENE_MG_DERBY, "MG_DERBY", mg_game_derby);
+diff --git a/core/src/mg_dodge.c b/core/src/mg_dodge.c
+index 5dbceb5e..be8fe5e8 100644
+--- a/core/src/mg_dodge.c
++++ b/core/src/mg_dodge.c
+@@ -316,6 +316,7 @@ static void bullet(int x, int y, int r, int col)
+ 
+ static void cherub_body(int x, int y, int f, int focus);
+ 
++#if !defined(DOOMO_PLATFORM_PS1)
+ static void dg_stamp(uint32_t key, int cx, int cy)
+ {
+     int v = (int)(key & 0xFFF);
+@@ -328,7 +329,9 @@ static void dg_stamp(uint32_t key, int cx, int cy)
+     default: break;
+     }
+ }
++#endif
+ 
++#if !defined(DOOMO_PLATFORM_PS1)
+ static int dg_stamp_keys(uint32_t *out, int cap)
+ {
+     int n = 0, h, i, c;
+@@ -345,6 +348,7 @@ static int dg_stamp_keys(uint32_t *out, int cap)
+ #undef ADD
+     return n;
+ }
++#endif
+ 
+ static void lounge_bg(int t)
+ {
+@@ -513,7 +517,7 @@ const MgGame mg_game_dodge = {
+     { MG_DODGE_B, MG_DODGE_S, MG_DODGE_G }, 10, 60 * 30,
+     { PAL_PAINT(PAINT_VAPE_PURPLE, 1), PAL_PAINT(PAINT_LAVENDER, 2), PAL_PAINT(PAINT_GRAPE, 1) },
+     dg_start, dg_update, dg_draw, dg_art, dg_bot,
+-    NULL, NULL, NULL, dg_stamp, dg_stamp_keys, NULL
++    NULL, NULL, NULL, MG_BAKED(dg_stamp), MG_BAKED(dg_stamp_keys), NULL
+ };
+ 
+ MG_DEFINE_SCENE(SCENE_MG_DODGE, "MG_DODGE", mg_game_dodge);
+diff --git a/core/src/mg_gallery.c b/core/src/mg_gallery.c
+index 01bb052b..e1376a40 100644
+--- a/core/src/mg_gallery.c
++++ b/core/src/mg_gallery.c
+@@ -256,7 +256,10 @@ enum { GS_CARD = 0 << 12, GS_WRAITH = 1 << 12, GS_WEAPON = 2 << 12, GS_WATER = 3
+        GS_NAME = 5 << 12, GS_KIND = 7 << 12 };
+ static int counter_y(void) { return mg_h() - (mg_big() ? 30 : 22); }
+ 
++#if !defined(DOOMO_PLATFORM_PS1)
+ static uint32_t gl_kept_key(void) { return (uint32_t)(ui_wave(mg.play_t + mg.t, 150, 2) + 2); }
++#endif
++#if !defined(DOOMO_PLATFORM_PS1)
+ static int gl_kept_keys(uint32_t *out, int cap, int hell)
+ {
+     int i;
+@@ -265,12 +268,15 @@ static int gl_kept_keys(uint32_t *out, int cap, int hell)
+     if (5 < cap) out[5] = GK_COUNTER;
+     return 6;
+ }
++#endif
++#if !defined(DOOMO_PLATFORM_PS1)
+ static int gl_kept_part(uint32_t key, int16_t rows[2])
+ {
+     rows[0] = (int16_t)(key == GK_COUNTER ? counter_y() : 0);
+     rows[1] = (int16_t)(key == GK_COUNTER ? mg_h() : rail_top() - 4);
+     return 1;
+ }
++#endif
+ 
+ static void tent_draw(int sway)
+ {
+@@ -323,6 +329,7 @@ static void waves_draw(int y, int r, int off)
+ }
+ 
+ static void weapon_draw(int x, int y, int w, int t, int recoil);
++#if !defined(DOOMO_PLATFORM_PS1)
+ static void gl_stamp(uint32_t key, int cx, int cy)
+ {
+     int v = (int)(key & 0xFFF);
+@@ -336,7 +343,11 @@ static void gl_stamp(uint32_t key, int cx, int cy)
+     default: break;
+     }
+ }
++#endif
++#if !defined(DOOMO_PLATFORM_PS1)
+ static int gl_stamp_strip(uint32_t key) { return (key & GS_KIND) == GS_WATER; }
++#endif
++#if !defined(DOOMO_PLATFORM_PS1)
+ static int gl_stamp_keys(uint32_t *out, int cap)
+ {
+     int n = 0, h, i, w, rc, ph;
+@@ -353,6 +364,7 @@ static int gl_stamp_keys(uint32_t *out, int cap)
+ #undef ADD
+     return n;
+ }
++#endif
+ /* a stamp at (x, y) where stamps are kept (240x160 only); 0: the caller draws it */
+ static int stamped(uint32_t key, int x, int y)
+ {
+@@ -571,7 +583,7 @@ const MgGame mg_game_gallery = {
+     { MG_GALLERY_B, MG_GALLERY_S, MG_GALLERY_G }, 32, 45 * 30,
+     { PAL_PAINT(PAINT_SKY, 1), PAL_WHITE, PAL_PAINT(PAINT_COBALT, 1) },
+     gl_start, gl_update, gl_draw, gl_art, gl_bot,
+-    gl_kept_key, gl_kept_keys, gl_kept_part, gl_stamp, gl_stamp_keys, gl_stamp_strip
++    MG_BAKED(gl_kept_key), MG_BAKED(gl_kept_keys), MG_BAKED(gl_kept_part), MG_BAKED(gl_stamp), MG_BAKED(gl_stamp_keys), MG_BAKED(gl_stamp_strip)
+ };
+ 
+ MG_DEFINE_SCENE(SCENE_MG_GALLERY, "MG_GALLERY", mg_game_gallery);
+diff --git a/core/src/mg_memory.c b/core/src/mg_memory.c
+index 7c0aafe3..a05ea984 100644
+--- a/core/src/mg_memory.c
++++ b/core/src/mg_memory.c
+@@ -291,7 +291,10 @@ static void matched(int i, int x, int y, int w, int h, int t)
+  * floats over a face-down card is covered by the card again (its round rect's own spans, inside the sparkle's
+  * box); the rest of the frame is drawn as ever. */
+ enum { MS_HEART = 0 << 12 };
++#if !defined(DOOMO_PLATFORM_PS1)
+ static uint32_t mm_kept_key(void) { return mg.tier; }
++#endif
++#if !defined(DOOMO_PLATFORM_PS1)
+ static int mm_kept_keys(uint32_t *out, int cap, int hell)
+ {
+     int i, n = 0;
+@@ -299,18 +302,25 @@ static int mm_kept_keys(uint32_t *out, int cap, int hell)
+         if ((i == MG_TIER_HELLFIRE) == (hell != 0)) { if (n < cap) out[n] = (uint32_t)i; n++; }
+     return n;
+ }
++#endif
++#if !defined(DOOMO_PLATFORM_PS1)
+ static int mm_kept_part(uint32_t key, int16_t rows[2]) { (void)key; (void)rows; return 0; }
++#endif
+ 
++#if !defined(DOOMO_PLATFORM_PS1)
+ static void mm_stamp(uint32_t key, int cx, int cy)
+ {
+     (void)key;
+     ui_heart(cx, cy, 4, PAL_PAINT(PAINT_BUBBLEGUM, 1));
+ }
++#endif
++#if !defined(DOOMO_PLATFORM_PS1)
+ static int mm_stamp_keys(uint32_t *out, int cap)
+ {
+     if (cap > 0) out[0] = MS_HEART;
+     return 1;
+ }
++#endif
+ 
+ /* a card face down at its place (not being shuffled) */
+ static int home_down(int i)
+@@ -482,7 +492,7 @@ const MgGame mg_game_memory = {
+     { MG_MEMORY_B, MG_MEMORY_S, MG_MEMORY_G }, 12, 90 * 30,
+     { PAL_PAINT(PAINT_LAVENDER, 1), PAL_PAINT(PAINT_NAVY, 2), PAL_PAINT(PAINT_GRAPE, 1) },
+     mm_start, mm_update, mm_draw, mm_art, mm_bot,
+-    mm_kept_key, mm_kept_keys, mm_kept_part, mm_stamp, mm_stamp_keys, NULL
++    MG_BAKED(mm_kept_key), MG_BAKED(mm_kept_keys), MG_BAKED(mm_kept_part), MG_BAKED(mm_stamp), MG_BAKED(mm_stamp_keys), NULL
+ };
+ 
+ MG_DEFINE_SCENE(SCENE_MG_MEMORY, "MG_MEMORY", mg_game_memory);
+diff --git a/core/src/mg_whack.c b/core/src/mg_whack.c
+index 6a39a7bc..f487a4f9 100644
+--- a/core/src/mg_whack.c
++++ b/core/src/mg_whack.c
+@@ -313,11 +313,14 @@ static void flower_box(int k, int *x0, int *y0, int *x1, int *y1)
+  * mallet. */
+ #define WK_BULBS 8       /* tent key: sway + 2 (0..4) | the sign's bulb phase (0..2) << 3 */
+ #define WK_FIELD 0x40    /* the field's key */
++#if !defined(DOOMO_PLATFORM_PS1)
+ static uint32_t wh_kept_key(void)
+ {
+     int t = mg.play_t + mg.t;
+     return (uint32_t)(ui_wave(t, 150, 2) + 2) | (uint32_t)((t / 4) % 3) * WK_BULBS;
+ }
++#endif
++#if !defined(DOOMO_PLATFORM_PS1)
+ static int wh_kept_keys(uint32_t *out, int cap, int hell)
+ {
+     int i, b, n = 0;
+@@ -330,6 +333,8 @@ static int wh_kept_keys(uint32_t *out, int cap, int hell)
+     if (n < cap) out[n] = WK_FIELD;
+     return n + 1;
+ }
++#endif
++#if !defined(DOOMO_PLATFORM_PS1)
+ static int wh_kept_part(uint32_t key, int16_t rows[2])
+ {
+     int ft = field_top();
+@@ -337,6 +342,7 @@ static int wh_kept_part(uint32_t key, int16_t rows[2])
+     rows[1] = (int16_t)(key == WK_FIELD ? mg_h() : ft);
+     return 1;
+ }
++#endif
+ 
+ /* the painted sign board with its marquee bulbs (and its words, which no imp reaches: left out when
+  * the board is put back over the imps behind it) */
+@@ -559,7 +565,7 @@ const MgGame mg_game_whack = {
+     { MG_WHACK_B, MG_WHACK_S, MG_WHACK_G }, 24, 45 * 30,
+     { PAL_PAINT(PAINT_LEMON, 1), PAL_WHITE, PAL_PAINT(PAINT_TANGERINE, 1) },
+     wh_start, wh_update, wh_draw, wh_art, wh_bot,
+-    wh_kept_key, wh_kept_keys, wh_kept_part, NULL, NULL, NULL
++    MG_BAKED(wh_kept_key), MG_BAKED(wh_kept_keys), MG_BAKED(wh_kept_part), NULL, NULL, NULL
+ };
+ 
+ MG_DEFINE_SCENE(SCENE_MG_WHACK, "MG_WHACK", mg_game_whack);
+diff --git a/gba/harness/scripts/speed2_fair.txt b/gba/harness/scripts/speed2_fair.txt
+index bb52064e..bd1f0d5f 100644
+--- a/gba/harness/scripts/speed2_fair.txt
++++ b/gba/harness/scripts/speed2_fair.txt
+@@ -9,7 +9,7 @@
+ # frames over 33 / 50 ms from the harness's `gaps` line, and the scene command's own time
+ # ("command 7/8 ... in N ms": the scene's enter, which runs outside the tick's work) plus the
+ # first drawn tick as the load freeze.
+-# Report only: no expect-fps floors yet (the speed wave 2 packages add them).
++# Floors (expect-fps 28): every title card, every game's play windows (S2-4b: all of them hold 30 on the GBA).
+ #
+ # Each game: its title card (arg 1: Sweet preselected), the autoplay bot on Sweet (arg 49 =
+ # Sweet | AUTOSTART | AUTOPLAY) and on Hellfire (arg 51: the hellish night version), and
+@@ -35,7 +35,7 @@ push MG_CATCH 49
+ wait 60
+ fps start
+ wait 130
+-fps fair: catch play sweet
++expect-fps 28 fair: catch play sweet
+ shot fair_catch_play_sweet
+ wait 1500
+ fps start
+@@ -49,7 +49,7 @@ push MG_CATCH 51
+ wait 60
+ fps start
+ wait 130
+-fps fair: catch play hellfire
++expect-fps 28 fair: catch play hellfire
+ shot fair_catch_play_hellfire
+ 
+ # ---- Whack-a-Mole ---------------------------------------------------------------
+@@ -69,7 +69,7 @@ push MG_WHACK 49
+ wait 60
+ fps start
+ wait 130
+-expect-fps 19 fair: whack play sweet
++expect-fps 28 fair: whack play sweet
+ shot fair_whack_play_sweet
+ seed 1
+ scene TITLE
+@@ -78,7 +78,7 @@ push MG_WHACK 51
+ wait 60
+ fps start
+ wait 130
+-expect-fps 18 fair: whack play hellfire
++expect-fps 28 fair: whack play hellfire
+ shot fair_whack_play_hellfire
+ 
+ # ---- Dodge ----------------------------------------------------------------------
+@@ -98,12 +98,12 @@ push MG_DODGE 49
+ wait 60
+ fps start
+ wait 130
+-fps fair: dodge play sweet
++expect-fps 28 fair: dodge play sweet
+ shot fair_dodge_play_sweet
+ wait 400
+ fps start
+ wait 130
+-fps fair: dodge play late
++expect-fps 28 fair: dodge play late
+ shot fair_dodge_play_late
+ seed 1
+ scene TITLE
+@@ -112,7 +112,7 @@ push MG_DODGE 51
+ wait 60
+ fps start
+ wait 130
+-fps fair: dodge play hellfire
++expect-fps 28 fair: dodge play hellfire
+ shot fair_dodge_play_hellfire
+ 
+ # ---- Shooting Gallery -----------------------------------------------------------
+@@ -132,7 +132,7 @@ push MG_GALLERY 49
+ wait 60
+ fps start
+ wait 130
+-fps fair: gallery play sweet
++expect-fps 28 fair: gallery play sweet
+ shot fair_gallery_play_sweet
+ seed 1
+ scene TITLE
+@@ -141,7 +141,7 @@ push MG_GALLERY 51
+ wait 60
+ fps start
+ wait 130
+-fps fair: gallery play hellfire
++expect-fps 28 fair: gallery play hellfire
+ shot fair_gallery_play_hellfire
+ 
+ # ---- Derby ----------------------------------------------------------------------
+@@ -161,12 +161,12 @@ push MG_DERBY 49
+ wait 60
+ fps start
+ wait 130
+-expect-fps 20 fair: derby race sweet
++expect-fps 28 fair: derby race sweet
+ shot fair_derby_race_sweet
+ wait 300
+ fps start
+ wait 130
+-expect-fps 20 fair: derby race mid
++expect-fps 28 fair: derby race mid
+ shot fair_derby_race_mid
+ seed 1
+ scene TITLE
+@@ -175,7 +175,7 @@ push MG_DERBY 51
+ wait 60
+ fps start
+ wait 130
+-expect-fps 20 fair: derby race hellfire
++expect-fps 28 fair: derby race hellfire
+ shot fair_derby_race_hellfire
+ 
+ # ---- Memory ---------------------------------------------------------------------
+@@ -195,7 +195,7 @@ push MG_MEMORY 49
+ wait 60
+ fps start
+ wait 130
+-fps fair: memory play sweet
++expect-fps 28 fair: memory play sweet
+ shot fair_memory_play_sweet
+ seed 1
+ scene TITLE
+@@ -204,7 +204,7 @@ push MG_MEMORY 51
+ wait 60
+ fps start
+ wait 130
+-fps fair: memory play hellfire
++expect-fps 28 fair: memory play hellfire
+ shot fair_memory_play_hellfire
+ 
+ # ---- Prize Wheel (arg 16: spin even if already spun today; 32: the bot spins) ----
+-- 
+2.43.0
+

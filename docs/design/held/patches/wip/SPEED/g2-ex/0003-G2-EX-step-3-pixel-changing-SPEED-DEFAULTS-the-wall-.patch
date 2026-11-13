@@ -1,0 +1,201 @@
+From 56cbfa79b4e0964049f22974fa11bbbd542600de Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 13:55:32 +0000
+Subject: [PATCH 3/7] G2-EX step 3 (pixel-changing, SPEED DEFAULTS): the wall's
+ drips hold a length, the two figures hold a pose
+
+- The church backdrop's key carried the wall drips' step (dread >= 9: their length cycled every 8 ticks over
+  5 steps). Each change put a new picture under the stage, which redrew the whole screen on two frames in a
+  row (one per GBA page): 39-60 ms frames every 8 ticks from the true name on (verdict 15 of 60 frames over
+  33 ms, result 20 of 90). The drips now stay as the first step of the cycle (2 px wide marks, 3-7 px long):
+  the key is the dread level and the failing beams; the GBA bakes 19 church pictures, not 59 (-1.5 MB ROM).
+  Applies to every platform (the backdrop code is shared).
+- The possessed host and Father Fuzz are drawn through portrait_hold(1): one still pose per expression, no
+  blink, breath, aura or mouth frames. Their re-renders were 6-8 ms of a GBA frame in the prayer, water, name,
+  verdict and result (the cache holds ~5 pictures, the two animated figures need more). The aura around the
+  frame, the shake, the bobs and the candles still move. Applies to every platform (shared code).
+- Tests that fail without them: the church key holds no drip step; the host shows at most 3 different
+  pictures over the intro to the true name.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ core/src/exorcism_gfx.c      | 27 ++++++++++-----------
+ core/src/exorcism_scene.c    | 16 +++++++++---
+ core/tests/test_stage_clip.c | 47 ++++++++++++++++++++++++++++++++++++
+ 3 files changed, 73 insertions(+), 17 deletions(-)
+
+diff --git a/core/src/exorcism_gfx.c b/core/src/exorcism_gfx.c
+index d20cca4b..5669052e 100644
+--- a/core/src/exorcism_gfx.c
++++ b/core/src/exorcism_gfx.c
+@@ -225,36 +225,35 @@ static void altar(const ChurchGeo *g, int dread)
+ }
+ 
+ /* ---- the backdrop key (SP7) ----------------------------------------------------------
+- * Everything of the church that does not move every few ticks: the dread level (0..15), the
+- * drips' step (dread >= 9: their length cycles every 8 ticks over 5 steps) and the failing
+- * beams (dread >= 13: off one tick in four of every 12). The heart in the rose window, the
+- * dust motes and the swaying lower curtains are drawn over it (exo_church_live). */
+-#define EXO_KEY_DRIP_SHIFT 4
++ * Everything of the church that does not move every few ticks: the dread level (0..15) and the failing
++ * beams (dread >= 13: off one tick in four of every 12). The heart in the rose window, the dust motes and
++ * the swaying lower curtains are drawn over it (exo_church_live). (G2-EX) The wall's blood drips (dread >= 9)
++ * no longer change their length every 8 ticks: that changed the key, and so redrew the whole screen on two
++ * frames in a row every 8 ticks (the new picture on each of the GBA's two pages): 15-20 ms of hitch on every
++ * screen from the true name on. They stay as the first step of the old cycle. */
+ #define EXO_KEY_BEAMS_OFF  0x80u
+ uint32_t exo_church_key(int dread, uint32_t t)
+ {
+     uint32_t d = (uint32_t)DOOMO_CLAMP(dread, 0, 15), k = d;
+-    if (d >= 9) k |= ((t / 8) % 5) << EXO_KEY_DRIP_SHIFT;
+     if (beams_off((int)d, t)) k |= EXO_KEY_BEAMS_OFF;
+     return k;
+ }
+ 
+ int exo_church_keys(uint32_t *out, int cap)
+ {
+-    int n = 0, d, p, b;
++    int n = 0, d, b;
+     for (d = 0; d < 16; d++)
+-        for (p = 0; p < (d >= 9 ? 5 : 1); p++)
+-            for (b = 0; b < (d >= 13 ? 2 : 1); b++) {
+-                if (n < cap) out[n] = (uint32_t)d | (uint32_t)p << EXO_KEY_DRIP_SHIFT | (b ? EXO_KEY_BEAMS_OFF : 0u);
+-                n++;
+-            }
++        for (b = 0; b < (d >= 13 ? 2 : 1); b++) {
++            if (n < cap) out[n] = (uint32_t)d | (b ? EXO_KEY_BEAMS_OFF : 0u);
++            n++;
++        }
+     return n;
+ }
+ 
+ void exo_church_backdrop(uint32_t key)
+ {
+     ChurchGeo g;
+-    int dread = (int)(key & 15), drip = (int)((key >> EXO_KEY_DRIP_SHIFT) & 7);
++    int dread = (int)(key & 15);
+     int x, y, W, H, floor_y, big;
+     uint8_t whi = exo_col(EC_WALL_HI, dread), wlo = exo_col(EC_WALL_LO, dread);
+     uint8_t stripe = exo_col(EC_STRIPE, dread);
+@@ -270,7 +269,7 @@ void exo_church_backdrop(uint32_t key)
+     for (y = 10; y < floor_y - 16; y += 22)
+         for (x = 11 + ((y / 22) & 1) * 7; x < W; x += 28) {
+             if (dread < 9) ui_heart_flat(x, y, 2, stripe);
+-            else { plat_rect(x, y, 2, 3 + (x * 7 + drip) % 5, PAL_UI_RED_D); }
++            else { plat_rect(x, y, 2, 3 + (x * 7) % 5, PAL_UI_RED_D); }
+         }
+     /* wainscot panel + gold trim */
+     plat_rect(0, floor_y - 12, W, 12, exo_col(EC_WOOD, dread));
+diff --git a/core/src/exorcism_scene.c b/core/src/exorcism_scene.c
+index c5d5c2c1..7d86653d 100644
+--- a/core/src/exorcism_scene.c
++++ b/core/src/exorcism_scene.c
+@@ -816,7 +816,11 @@ static void host_layer(int cx, int cy, int scale, int expr, uint32_t t, int *w,
+     const DoomoImage *img;
+     int sh = X.shake + (X.dread >= 8 && (t & 31) < 3 ? 1 : 0), fw, fh, dx = 0, dy = 0, pulse = 0;
+     uint32_t k;
+-    if (ly_fetch) ly_host_img = host_image(expr);
++    if (ly_fetch) {                                 /* (G2-EX) the host holds one pose (no blink, breath or aura frames) */
++        portrait_hold(1);
++        ly_host_img = host_image(expr);
++        portrait_hold(0);
++    }
+     img = ly_host_img;
+     fw = (img ? img->w : PORTRAIT_W) * scale + 10;
+     fh = (img ? img->h : PORTRAIT_H) * scale + 10;
+@@ -851,7 +855,11 @@ static void fuzz_layer(int cx, int foot, uint32_t t, int expr)
+ {
+     const DoomoImage *img;
+     int hw;
+-    if (ly_fetch) ly_fuzz_img = exo_fuzz_image(expr);
++    if (ly_fetch) {                                 /* (G2-EX) Fuzz holds one pose per expression too */
++        portrait_hold(1);
++        ly_fuzz_img = exo_fuzz_image(expr);
++        portrait_hold(0);
++    }
+     img = ly_fuzz_img;
+     if (!img) { L(LY_FUZZ, 0, 0, 0, 0, 0); return; }
+     hw = DOOMO_MAX(14, img->w / 2 + 1) + 1;
+@@ -1505,6 +1513,8 @@ static void exo_draw(void)
+ 
+ const DoomoScene SCENE_EXORCISM = { "EXORCISM", exo_enter, exo_leave, exo_update, exo_draw, 0 };
+ #ifdef DOOMO_HITCHECK
+-/* tests (the native build): the ritual ended in a cast out / the figure count of the result screen */
++/* tests (the native build): the ritual ended in a cast out / the figure count of the result screen; the host's
++ * picture of the last frame */
+ int exo_probe_result(void) { return X.state == ST_RESULT ? 1 + X.success : 0; }
++uint32_t exo_probe_host_uid(void) { return ly_host_img ? ly_host_img->uid : 0; }
+ #endif
+diff --git a/core/tests/test_stage_clip.c b/core/tests/test_stage_clip.c
+index 8c038a1e..7fbd916f 100644
+--- a/core/tests/test_stage_clip.c
++++ b/core/tests/test_stage_clip.c
+@@ -53,6 +53,7 @@ TEST(clip_draws_exactly_the_unclipped_pixels_inside_the_box)
+     int n, i, bad = 0;
+     set_res(240, 160);
+     nat_stage_reset();
++    nat_clip_viol = 0;
+     rnd_s = 12345u;
+     for (i = 0; i < (int)sizeof(pix); i++) pix[i] = (uint8_t)(rnd(3) ? 1 + rnd(200) : 0);   /* holes */
+     img.w = 20; img.h = 14; img.pix = pix; img.uid = doomo_image_new_uid();
+@@ -186,6 +187,7 @@ TEST(stage_clip_pieces_are_disjoint_and_cover_the_dirty_part_of_the_layer)
+ 
+ /* ---- the ritual to its end, against a full redraw ------------------------------------------------ */
+ #include "../src/exorcism_int.h"          /* exo_aura_bind */
++uint32_t exo_probe_host_uid(void);        /* the host's picture of the last frame */
+ int exo_probe_result(void);          /* exorcism_scene.c (DOOMO_HITCHECK): 0 not at the result, 1 a failure, 2 a cast out */
+ 
+ #define RITUAL_FRAMES 1700                 /* the result screen to its fade to black */
+@@ -289,3 +291,48 @@ TEST(exorcism_aura_rect_list_equals_the_shape_code)
+     CHECK_MSG(diff == 0, "%d of %d frames differ without the rect list (last %d)", diff, RITUAL_FRAMES, i);
+     set_res(240, 160);
+ }
++
++/* (G2-EX, pixel-changing) the wall's drips hold one length: the church's key no longer changes every 8 ticks from
++ * dread 9 on (it redrew the whole screen on two frames in a row each time) */
++TEST(exorcism_church_key_does_not_carry_a_drip_step)
++{
++    int d;
++    uint32_t t;
++    for (d = 0; d <= 15; d++)
++        for (t = 0; t < 240; t++) {
++            uint32_t k = exo_church_key(d, t), k0 = exo_church_key(d, d >= 13 ? 1u : 0u);
++            if (d < 13) CHECK_MSG(k == k0, "dread %d tick %u: key 0x%x moves", d, (unsigned)t, (unsigned)k);
++            CHECK_MSG((k & ~0x80u) == (uint32_t)d, "dread %d tick %u: key 0x%x holds more than the dread and the beams", d, (unsigned)t, (unsigned)k);
++        }
++}
++
++/* (G2-EX, pixel-changing) the host holds one pose: its picture changes with its expression, not with the blink,
++ * breath and aura frames (each re-rendered 6-8 ms of a GBA frame, every few ticks) */
++TEST(exorcism_host_holds_one_pose)
++{
++    static uint32_t out[RITUAL_FRAMES];
++    uint32_t seen[16];
++    int f, clipped, n = 0, i;
++    NatOptions o;
++    StageStats st;
++    (void)out; (void)st; (void)clipped;
++    memset(&o, 0, sizeof(o));
++    o.w = 240; o.h = 160; o.seed = 0x5EED1234u; o.quiet = 1; o.save_dir = test_tmp_dir;
++    nat_init(&o);
++    nat_stage_on = 0;
++    nat_stage_reset();
++    test_reset();
++    doomo_init();
++    scene_set(&SCENE_TITLE, 0);
++    rframe(0);
++    scene_set(&SCENE_EXORCISM, -1);
++    for (f = 0; f < 1300; f++) {                      /* the intro to the true name: the host's expression is the same */
++        uint32_t u;
++        rframe(pad(f));
++        u = exo_probe_host_uid();
++        for (i = 0; i < n && seen[i] != u; i++) {}
++        if (i == n && n < 16) seen[n++] = u;
++    }
++    CHECK_MSG(n <= 3, "the host showed %d different pictures (a held pose is 1, a re-render at most 2 more)", n);
++    set_res(240, 160);
++}
+-- 
+2.43.0
+

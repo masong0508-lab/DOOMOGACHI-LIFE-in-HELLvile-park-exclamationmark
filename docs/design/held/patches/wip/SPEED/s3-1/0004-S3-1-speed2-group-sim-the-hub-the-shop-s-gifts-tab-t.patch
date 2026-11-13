@@ -1,0 +1,119 @@
+From 438524dab63649f8db26c1283622da018c01aa48 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 12:41:31 +0000
+Subject: [PATCH 04/12] S3-1: speed2 group "sim": the hub, the shop's gifts
+ tab, the citizen picker and the pet over one sim interval
+
+Four 1,200-tick windows (one 1,125-tick interval of the default clock plus a little), so the resident pass is
+inside every one. GBA gates after each: expect-fps 29.8 and expect-gap 51 (no frame of 4 vblanks or more;
+tools/speed2.py drops expect-gap for the PS1 and the Dreamcast like expect-fps). Fails on the tree before
+S3-1 (67 ms frame in the hub window), passes after. design_packed.md: the SIM_BATCH sentence.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ docs/design/customization/design_packed.md |  4 +-
+ gba/harness/scripts/speed2_sim.txt         | 75 ++++++++++++++++++++++
+ 2 files changed, 78 insertions(+), 1 deletion(-)
+ create mode 100644 gba/harness/scripts/speed2_sim.txt
+
+diff --git a/docs/design/customization/design_packed.md b/docs/design/customization/design_packed.md
+index be6becc6..43ab0381 100644
+--- a/docs/design/customization/design_packed.md
++++ b/docs/design/customization/design_packed.md
+@@ -176,8 +176,10 @@ DOOMO_STATIC_ASSERT(GENE_LAST_BIT + 1 == DOOMO_GENE_BITS, gene_is_full);
+ - the bits of every catalog `*_COUNT` fit (this replaces the `sv_*` asserts in `save.c:57-88`).
+ 
+ **Hot read cost.** `gene_get` is a table load, 1-2 byte loads, a shift and a mask. That is about
+-15-20 cycles in ARM or THUMB on the GBA. The sim updates `SIM_BATCH` = 32 residents per tick and
++15-20 cycles in ARM or THUMB on the GBA. The sim updated 32 residents per tick and
+ reads about 10 identity fields each, which is about 6-8k cycles per tick, or 1.4% of a tick.
++(S3-1: now one resident a tick at the default clock, `SIM_BATCH` = 16 at most; the pass over the town
++takes the whole 15 game minutes. The reads per resident are the same.)
+ `sim_compat()` (`sim.c:198`) unpacks both citizens' identity once per pair, not per field.
+ 
+ ### 1.3 Full gene bit table (69 B = 552 bits, *calc*)
+diff --git a/gba/harness/scripts/speed2_sim.txt b/gba/harness/scripts/speed2_sim.txt
+new file mode 100644
+index 00000000..fa54d649
+--- /dev/null
++++ b/gba/harness/scripts/speed2_sim.txt
+@@ -0,0 +1,75 @@
++# speed2_sim.txt - speed tour 2 / audit 3 (S3-1, docs/GBA.md "Speed wave 3: S3-1"): the free-play screens held
++# still for longer than one sim interval, so the resident pass falls inside every window. Before S3-1 all 1,000
++# residents came due in the same 32 ticks every 15 game minutes (1,125 ticks at the default clock, 37.5 s): about
++# 17 frames of 50-67 ms in a row on every free-play screen. Now the pass is spread over the whole interval (one
++# resident a tick at the default clock).
++# `make -C gba test-speed2 SPEED2=sim SPEED2_GATES=1`; PS1: `sh ps1/harness/speed2.sh OUT sim`; Dreamcast:
++# `sh dc/harness/speed2.sh OUT sim` (tools/speed2.py turns this file into their scripts).
++#
++# Window rules: speed2_fair.txt. Each window is 1,200 logic ticks: more than one 1,125-tick interval of the default
++# clock (day length 1 hour, speed x1), so one pass is inside it wherever it starts. The hub window waits out the
++# settle after the new island (map parts and portraits, ~250 ticks) and the hub's own 67 ms frame at tick ~670.
++# The scenes are the ones the audit saw hitch: the island hub, the shop's gifts tab, the citizen picker, the pet.
++# Gates (GBA only; tools/speed2.py drops them for the PS1 and the Dreamcast): `expect-fps 29.8` and `expect-gap 51`
++# after each window: no presented frame of 4 vblanks (67 ms) or more. Before S3-1 the pass gave 4-6 vblank frames
++# in every window (worst 67 / 84 / 100 / 100 ms). What is left is a few single 50 ms frames in the picker and pet
++# windows: their ticks are within 3 ms of the budget on their own and the sim now costs ~0.4 ms in every tick.
++wait 40
++expect-log doomo: init
++sync on 61
++seed 1
++scene NEW_ISLAND
++wait 10
++press A
++wait 20
++press A
++wait 2
++press A
++wait 10
++expect-scene ISLAND
++wait 600
++
++# ---- the island hub ---------------------------------------------------------------------------
++fps start
++wait 1200
++expect-fps 29.8 sim: island hub, one interval
++expect-gap 51
++shot sim_hub
++
++# ---- the shop's gifts tab -------------------------------------------------------------------------
++push SHOP 0
++wait 40
++press R
++wait 16
++fps start
++wait 1200
++expect-fps 29.8 sim: shop gifts tab, one interval
++expect-gap 51
++shot sim_shop_gifts
++press B
++wait 10
++
++# ---- the citizen picker -----------------------------------------------------------------------------
++push PICKER 0
++wait 30
++fps start
++wait 1200
++expect-fps 29.8 sim: citizen picker, one interval
++expect-gap 51
++shot sim_picker
++press B
++wait 10
++
++# ---- the pet ------------------------------------------------------------------------------------------
++seed 1
++push PET
++wait 30
++press A
++wait 20
++press START
++wait 100
++fps start
++wait 1200
++expect-fps 29.8 sim: pet main, one interval
++expect-gap 51
++shot sim_pet
+-- 
+2.43.0
+

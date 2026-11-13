@@ -1,0 +1,57 @@
+From da34ba1d540812bc9c621bb1fbddbcb718ab54df Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 00:01:54 +0000
+Subject: [PATCH 09/14] PS1-RAM step 6: SHARED lists only the files whose parts
+ moved
+
+art_data_ps1 and mus_core gave nothing to a group (the sprite name table is
+read by the library alone, but through sprites.c, which is resident), and
+the build's packed tables are not candidates. The list is now the six files
+that moved something; the comment says what makes a file worth listing.
+The disc is byte-identical (EXE and OVL.BIN): 161,360 B below the stack top.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ ps1/tools/ovl_plan.py | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/ps1/tools/ovl_plan.py b/ps1/tools/ovl_plan.py
+index 29de0b57..15fa13b7 100644
+--- a/ps1/tools/ovl_plan.py
++++ b/ps1/tools/ovl_plan.py
+@@ -308,8 +308,8 @@ RX_STR = re.compile(r"\.rodata\.str1\.\d+\.LC\d+$")
+ 
+ # --- RAM headroom 2026-11-12: shared modules. A core file outside the GROUPS (the UI kit, the item
+ # catalog, the fishing / cooking effects, free play's helpers) was resident as a whole, the parts
+-# only one screen family calls included. For the files named here (object base; core/src, core/gen
+-# and the build's packed tables) every .text / .rodata section is a candidate like a group's own:
++# only one screen family calls included. For the files named here (object base; core/src and
++# core/gen) every .text / .rodata section is a candidate like a group's own:
+ # resident when resident code or data can reach it or its address escapes; else, when the scenes of
+ # exactly ONE group reach it, it joins that group (it only runs, or is read, with that group in the
+ # slot: the argument that holds for the group's own files); reached by two groups it stays resident.
+@@ -317,8 +317,9 @@ RX_STR = re.compile(r"\.rodata\.str1\.\d+\.LC\d+$")
+ # SHARED_NOT: groups that take none: they set the slot's size or are within a few KB of it, where a
+ # KB more is a KB of slot, not of room found (free play keeps its 10 KB for its own screens).
+ # To add a file: OVL_WHY=1 lists the resident core objects; a file is worth listing when part of it
+-# is reached by one group only.
+-SHARED = r"fishcook$|catalog$|ui$|song_player$|art_data_ps1$|fp_common$|audio$|mus_core$"
++# is reached by one group only AND not through another resident file (its accessors must be listed
++# too: the sprite name table is read by the library alone, but through sprites.c).
++SHARED = r"fishcook$|catalog$|ui$|song_player$|fp_common$|audio$"
+ SHARED_NOT = ("story", "home", "combat", "freeplay")
+ SHARED_TAG = "+"                # what grp() says for a candidate section of a shared file
+ # --- end RAM headroom ---
+@@ -377,7 +378,7 @@ def group_of(path):
+ 
+ def is_shared(path):
+     """a core file of no group whose sections may join the one group that reaches them (SHARED)"""
+-    return (group_of(path) is None and ("/core/src/" in path or "/core/gen/" in path or "/packed/" in path)
++    return (group_of(path) is None and ("/core/src/" in path or "/core/gen/" in path)
+             and re.fullmatch(SHARED, base(path)) is not None)
+ 
+ 
+-- 
+2.43.0
+

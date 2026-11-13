@@ -1,0 +1,338 @@
+From 49e9cabb7ba37e59d3cb2f28f31c7e12d21a5c7e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 13:03:15 +0000
+Subject: [PATCH 05/12] S3-1: PS1 resident bytes back to 0, an option change
+ cannot burst the pass, one edge removal
+
+The first cut added 64 B to the PS1's resident code (the rule until PS1-RAM lands is none): sim_tick's loop
+ends on its own (the shipped clocks earn at most 15 slots a tick: static assert; the loop count and the
+clamp after it are gone), update_resident_ex keeps its old two arguments (the pass line SIM_PASS_MIN 8 and
+the fast-forward line SIM_MIN_ELAPSED 15 are one compare on force_decide), minute_step reads
+OPT_EVENT_RATE once, the activity is stored without the compare, and sim_edge_remove (a copy of town.c's
+remove_edge) is gone: both are rel_remove_at now. PS1: text 2,818,396 -> 2,818,400 B, the EXE still ends
+0x801efe60 (65,952 B below the stack top with the FMV), as on 698f4eee.
+
+One thing the loop count did: it bounded a tick when the Options page changes the day length (the credit
+left in the old clock's units could be 96 slots in the new one). A tick now pays at most SIM_BATCH slots
+(test_sim_pass: day length change). rel_remove_at closes the gap with a halfword move on the GBA like
+rel_get_or_add opens it (the edge pass's removals and the full graph's evictions); test_town checks both
+against a reference table.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ core/include/doomo/town.h  |  1 +
+ core/src/sim.c             | 34 ++++++++++++++++++++--------------
+ core/src/sim_int.h         | 14 +++++++-------
+ core/src/sim_social.c      | 11 +----------
+ core/src/town.c            | 22 ++++++++++++++++++----
+ core/tests/test_sim_pass.c | 16 ++++++++++++++++
+ core/tests/test_town.c     | 21 +++++++++++++++++++--
+ 7 files changed, 82 insertions(+), 37 deletions(-)
+
+diff --git a/core/include/doomo/town.h b/core/include/doomo/town.h
+index 83173214..66581e29 100644
+--- a/core/include/doomo/town.h
++++ b/core/include/doomo/town.h
+@@ -250,6 +250,7 @@ void rel_adjust(int a, int b, int delta); /* clamps, promotes/demotes kind */
+ void rel_set_kind(int a, int b, int kind);
+ int  rel_list(int a, uint16_t *out_ids, int max); /* sorted by value desc */
+ void rel_remove_all(int a);
++void rel_remove_at(int index);            /* drop edge #index, the table stays sorted */
+ int  rel_has_crush(int from, int to);
+ void rel_set_crush(int from, int to, int on);
+ 
+diff --git a/core/src/sim.c b/core/src/sim.c
+index b3f54ef3..0663f59a 100644
+--- a/core/src/sim.c
++++ b/core/src/sim.c
+@@ -679,9 +679,9 @@ int sim_mood_of(int id)
+ /* force_decide: a fast-forward chunk stands on the last minute of the hour the
+  * elapsed span belongs to, so the routine is chosen again even though the clock
+  * has not crossed an hour boundary since the last update.
+- * min_el: an update that would cover fewer game minutes is skipped (the stamp
+- * stays, so the minutes are applied by the next visit). */
+-static void update_resident_ex(int id, int force_decide, int min_el)
++ * An update that would cover too few game minutes is skipped, the stamp stays and the next visit applies them
++ * all: under SIM_MIN_ELAPSED for a fast-forward chunk, under SIM_PASS_MIN for the pass. */
++static void update_resident_ex(int id, int force_decide)
+ {
+     DoomoResident *r = &doomo_town.res[id];
+     uint16_t now16;
+@@ -691,7 +691,7 @@ static void update_resident_ex(int id, int force_decide, int min_el)
+     sim_s.ops++;
+     now16 = (uint16_t)sim_now();
+     el = (uint16_t)(now16 - sim_s.stamp[id]);
+-    if (el < min_el) return;
++    if (el < (force_decide ? SIM_MIN_ELAPSED : SIM_PASS_MIN)) return;
+     if (el > SIM_MAX_ELAPSED) el = SIM_MAX_ELAPSED;
+     sim_s.stamp[id] = now16;
+     res_in(r, &in);
+@@ -701,7 +701,7 @@ static void update_resident_ex(int id, int force_decide, int min_el)
+         r->stat[STAT_HEALTH] < 25 || r->stat[STAT_HUNGER] < 28 || r->stat[STAT_ENERGY] < 12 ||
+         r->status != RES_ALIVE) {
+         act = decide_activity(id, r, &in);
+-        if (act != r->activity) r->activity = (uint8_t)act;
++        r->activity = (uint8_t)act;
+     }
+     apply_needs(id, r, el, &in);
+     sim_soul_update(id, r, el);
+@@ -712,7 +712,7 @@ static void update_resident_ex(int id, int force_decide, int min_el)
+     sim_mood_of(id);
+ }
+ 
+-static void update_resident(int id) { update_resident_ex(id, 0, SIM_PASS_MIN); }
++static void update_resident(int id) { update_resident_ex(id, 0); }
+ 
+ /* ---------------------------------------------------------------------- */
+ /* the clock                                                                */
+@@ -762,8 +762,9 @@ static void minute_step(void)
+         day_rollover();
+     }
+     if (doomo_town.minute % 60 == 0) {
++        int rate = opt_get(OPT_EVENT_RATE);
+         sim_s.args_hour = 0;
+-        if (sim_chance(opt_get(OPT_EVENT_RATE) == 0 ? 4 : opt_get(OPT_EVENT_RATE) == 1 ? 9 : 18))
++        if (sim_chance(rate == 0 ? 4 : rate == 1 ? 9 : 18))
+             sim_news_fluff();
+     }
+     pet_tick_minute();
+@@ -831,9 +832,13 @@ void sim_init(void)
+     sim_news_welcome(town_count(-1));     /* LS1: once per town or load */
+ }
+ 
++/* the fastest shipped clock (speed_q 16, ticks_per_minute_q 75) earns 14.2 slots a tick: sim_tick's loop ends
++ * on its own and never goes over SIM_BATCH */
++DOOMO_STATIC_ASSERT(SIM_PASS_NUM * 16 <= (SIM_BATCH - 1) * SIM_PASS_DEN * 75, sim_pass_fits_a_tick);
++
+ void sim_tick(void)
+ {
+-    int per, spd, steps = 0, i;
++    int per, spd, steps = 0;
+     uint32_t credit, need;
+     sim_ensure_init();
+     sim_s.ops = 0;
+@@ -848,18 +853,19 @@ void sim_tick(void)
+         steps++;
+     }
+     if (sim_s.acc >= per) sim_s.acc = (uint16_t)(per - 1);
+-    /* S3-1: the pass moves with the clock (sim_int.h), one slot per `need` of credit; SIM_BATCH is the
+-     * hard cap of one tick (the shipped clocks need 15 slots at most: credit over the cap is dropped, the
+-     * pass then simply takes longer than SIM_INTERVAL and every update covers the minutes it really waited) */
++    /* S3-1: the pass moves with the clock (sim_int.h): one slot per `need` of credit. What is left is under
++     * one slot. The shipped clocks earn at most SIM_BATCH - 1 slots a tick (static assert above); only a
++     * change of the day length between two ticks leaves more credit behind (in the old clock's units), and
++     * a tick never pays out more than SIM_BATCH slots. */
+     need = (uint32_t)(SIM_PASS_DEN * per);
+     credit = sim_s.pass_credit + (uint32_t)(SIM_PASS_NUM * spd);
+-    for (i = 0; i < SIM_BATCH && credit >= need; i++) {
++    if (credit > need * SIM_BATCH) credit = need * SIM_BATCH;
++    while (credit >= need) {
+         int id = sim_s.cursor;
+         credit -= need;
+         sim_s.cursor = (uint16_t)(sim_s.cursor + 1 >= DOOMO_MAX_RESIDENTS ? 0 : sim_s.cursor + 1);
+         update_resident(id);
+     }
+-    if (credit > need) credit = need;
+     sim_s.pass_credit = (uint16_t)credit;
+     sim_edges_step(SIM_EDGE_BATCH);
+     if (sim_s.ops > sim_s.max_ops) sim_s.max_ops = sim_s.ops;
+@@ -892,7 +898,7 @@ void sim_advance_minutes(int minutes)
+         if (chunk > left) chunk = left;
+         for (i = 0; i < chunk; i++) minute_step();
+         sim_s.job_budget = 32;
+-        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) update_resident_ex(i, 1, SIM_MIN_ELAPSED);
++        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) update_resident_ex(i, 1);
+     }
+     /* give the graph a proportional share of attention (at most one full pass) */
+     passes = (int)(sim_s.edge_credit / 60u);
+diff --git a/core/src/sim_int.h b/core/src/sim_int.h
+index a97da735..3901f815 100644
+--- a/core/src/sim_int.h
++++ b/core/src/sim_int.h
+@@ -22,17 +22,18 @@
+ #define SIM_MAX_ELAPSED 720        /* minutes one resident update may cover */
+ #define SIM_MIN_ELAPSED 15         /* a fast-forward chunk updates a resident
+                                       only when 15 game minutes have passed */
++#define SIM_INTERVAL    15         /* S3-1: game minutes in which every resident is visited once    */
++#define SIM_PASS_MIN    8          /* ... and a visit of the pass lives at least this many of them  */
+ /* S3-1: the resident pass is spread over the whole interval. The cursor
+  * moves at a steady DOOMO_MAX_RESIDENTS slots per SIM_INTERVAL game minutes
+  * (about 0.9 slots a tick at the default clock, 14.2 at the fastest), so
+  * every resident is updated once per SIM_INTERVAL and no tick does a
+  * town's worth of work. A tick earns SIM_PASS_NUM * speed credit, a slot
+- * costs SIM_PASS_DEN * ticks_per_minute_q (200 / 3 = 1000 / 15). A visit
+- * that would cover less than SIM_PASS_MIN minutes (the first pass after
+- * sim_init, a load or a fast-forward set every stamp to "now") is left to
+- * the next pass: no minute is lost or counted twice. */
+-#define SIM_INTERVAL    15
+-#define SIM_PASS_MIN    ((SIM_INTERVAL + 1) / 2)
++ * costs SIM_PASS_DEN * ticks_per_minute_q (200 / 3 = 1000 / 15). The first
++ * pass after sim_init, a load or a fast-forward finds every stamp at "now":
++ * a visit that would live fewer than SIM_PASS_MIN minutes leaves the stamp
++ * alone and the next one lives them all, so no minute is lost or counted
++ * twice. */
+ #define SIM_PASS_NUM    (DOOMO_MAX_RESIDENTS / 5)
+ #define SIM_PASS_DEN    (SIM_INTERVAL / 5)
+ DOOMO_STATIC_ASSERT(SIM_PASS_NUM * 5 == DOOMO_MAX_RESIDENTS && SIM_PASS_DEN * 5 == SIM_INTERVAL,
+@@ -105,7 +106,6 @@ void sim_social_init(void);              /* rebuild taken / crush bitsets  */
+ void sim_edges_step(int max_visits);
+ void sim_venue_meet(int id, DoomoResident *r, int minutes);
+ void sim_taken_update(int id);
+-void sim_edge_remove(int index);         /* keeps the list sorted          */
+ 
+ /* ---- sim_events.c ---- */
+ void sim_events_reset(void);
+diff --git a/core/src/sim_social.c b/core/src/sim_social.c
+index 1168bfc5..f44a4cff 100644
+--- a/core/src/sim_social.c
++++ b/core/src/sim_social.c
+@@ -44,15 +44,6 @@ void sim_taken_update(int id)
+     bit_set(sim_s.taken, id, sim_partner_of(id) >= 0);
+ }
+ 
+-void sim_edge_remove(int index)
+-{
+-    int n = doomo_town.edge_count;
+-    if (index < 0 || index >= n) return;
+-    memmove(&doomo_town.edges[index], &doomo_town.edges[index + 1],
+-            (size_t)(n - index - 1) * sizeof(DoomoEdge));
+-    doomo_town.edge_count = (uint16_t)(n - 1);
+-}
+-
+ /* taken / crush bitsets from the graph */
+ static void rebuild_bits(void)
+ {
+@@ -721,7 +712,7 @@ static int visit_edge(int index)
+                 e->value = (int8_t)(e->value + (e->value > 0 ? -1 : 1));
+             } else if (!(e->kind & (REL_CRUSH_AB | REL_CRUSH_BA))) {
+                 /* forgotten: make room for new faces */
+-                sim_edge_remove(index);
++                rel_remove_at(index);
+                 sim_s.stats.forgotten++;
+                 return 1;
+             }
+diff --git a/core/src/town.c b/core/src/town.c
+index 5cc7f779..2b096b15 100644
+--- a/core/src/town.c
++++ b/core/src/town.c
+@@ -209,17 +209,31 @@ static void edges_open_gap(int i, int n)
+     }
+     while (h-- > 0) *--d = *--s;
+ }
++/* and the other way: close the gap at edge i of n (the edges i+1..n-1 move down by one), from the bottom up */
++__attribute__((optimize("no-tree-loop-distribute-patterns")))
++static void edges_close_gap(int i, int n)
++{
++    EdgeHalf *d = (EdgeHalf *)&doomo_town.edges[i];
++    const EdgeHalf *s = d + 3;
++    int h = (n - i - 1) * 3;
++    for (; h >= 4; h -= 4) {
++        d[0] = s[0]; d[1] = s[1]; d[2] = s[2]; d[3] = s[3];
++        d += 4; s += 4;
++    }
++    while (h-- > 0) *d++ = *s++;
++}
+ #else
+ #define edges_open_gap(i, n) \
+     memmove(&doomo_town.edges[(i) + 1], &doomo_town.edges[(i)], (size_t)((n) - (i)) * sizeof(DoomoEdge))
++#define edges_close_gap(i, n) \
++    memmove(&doomo_town.edges[(i)], &doomo_town.edges[(i) + 1], (size_t)((n) - (i) - 1) * sizeof(DoomoEdge))
+ #endif
+ 
+-static void remove_edge(int i)
++void rel_remove_at(int i)
+ {
+     int n = doomo_town.edge_count;
+     if (i < 0 || i >= n) return;
+-    memmove(&doomo_town.edges[i], &doomo_town.edges[i + 1],
+-            (size_t)(n - i - 1) * sizeof(DoomoEdge));
++    edges_close_gap(i, n);
+     doomo_town.edge_count = (uint16_t)(n - 1);
+ }
+ 
+@@ -237,7 +251,7 @@ DoomoEdge *rel_get_or_add(int a, int b)
+             int s = edge_strength(&doomo_town.edges[i]);
+             if (s < bs) { bs = s; best = i; }
+         }
+-        remove_edge(best);
++        rel_remove_at(best);
+     }
+     k = ((uint32_t)a << 16) | (uint32_t)b;
+     i = lower_bound(k);
+diff --git a/core/tests/test_sim_pass.c b/core/tests/test_sim_pass.c
+index 882cc5ff..6fa74769 100644
+--- a/core/tests/test_sim_pass.c
++++ b/core/tests/test_sim_pass.c
+@@ -197,6 +197,22 @@ TEST(sim_pass_every_clock_and_speed)
+     }
+ }
+ 
++/* The day length is changed between two ticks (the Options page): the credit the slow clock left is in its units,
++ * and a tick still never visits more than SIM_BATCH residents. */
++TEST(sim_pass_day_length_change_does_not_burst)
++{
++    int i;
++    premade_town(61);
++    set_clock(0, 0);                 /* 7,200 / 2: a slot costs 21,600, a tick earns 400 */
++    for (i = 0; i < 53; i++) sim_tick();                    /* 21,200 of credit, no slot yet */
++    CHECK_EQ(sim_s.pass_credit, 21200);
++    set_clock(4, 3);                 /* 75 / 16: a slot costs 225, a tick earns 3,200 */
++    watch_start();
++    for (i = 0; i < 4; i++) watch_tick();
++    CHECK_MSG(w.max_visits <= SIM_BATCH && w.max_updates <= SIM_BATCH, "%d slots in a tick after the change", w.max_visits);
++    CHECK(w.max_visits > 1);                                /* the credit was paid out, at the cap */
++}
++
+ /* The same seed gives the same town (the order of the updates changed once, S3-1, not their determinism). */
+ TEST(sim_pass_is_deterministic)
+ {
+diff --git a/core/tests/test_town.c b/core/tests/test_town.c
+index 88129d40..e5ad7d25 100644
+--- a/core/tests/test_town.c
++++ b/core/tests/test_town.c
+@@ -152,7 +152,8 @@ TEST(relationships_basic)
+     CHECK(edges_sorted_valid());
+ }
+ 
+-/* S3-1: a new bond is slotted in by edges_open_gap (a halfword loop on the GBA, built by the host tests too).
++/* S3-1: a new bond is slotted in by edges_open_gap and a dropped one closed by edges_close_gap (halfword loops on the GBA,
++ * built by the host tests too).
+  * Random pairs in random order, bonds before the first, between and after the last edge, against a plain
+  * reference table kept sorted by insertion: every record (ids, value, kind) in the same place. */
+ typedef struct { uint16_t a, b; int8_t value; uint8_t kind; } RefEdge;
+@@ -162,7 +163,7 @@ static int ref_cmp(const void *x, const void *y)
+     return p->a != q->a ? (int)p->a - (int)q->a : (int)p->b - (int)q->b;
+ }
+ 
+-TEST(relationships_insert_matches_a_reference_table)
++TEST(relationships_insert_and_remove_match_a_reference_table)
+ {
+     static RefEdge ref[DOOMO_MAX_EDGES];
+     int n = 0, i, k, bad = 0;
+@@ -195,6 +196,22 @@ TEST(relationships_insert_matches_a_reference_table)
+     }
+     CHECK_MSG(bad == 0, "%d of %d edges differ from the reference table", bad, n);
+     CHECK(edges_sorted_valid());
++    /* and out again (rel_remove_at: the first, the last, a few hundred in between, one past the end is refused) */
++    for (i = 0; i < 302 && n > 2; i++) {
++        int at = i == 0 ? 0 : i == 1 ? n - 1 : rng_range(&r, n);
++        rel_remove_at(at);
++        for (k = at; k + 1 < n; k++) ref[k] = ref[k + 1];
++        n--;
++        CHECK_EQ(doomo_town.edge_count, n);
++    }
++    rel_remove_at(n);
++    rel_remove_at(-1);
++    CHECK_EQ(doomo_town.edge_count, n);
++    for (i = 0, bad = 0; i < n; i++) {
++        const DoomoEdge *e = &doomo_town.edges[i];
++        if (e->a != ref[i].a || e->b != ref[i].b || e->value != ref[i].value || e->kind != ref[i].kind) bad++;
++    }
++    CHECK_MSG(bad == 0, "%d of %d edges differ from the reference table after the removals", bad, n);
+ }
+ 
+ TEST(relationships_evict_weakest_when_full)
+-- 
+2.43.0
+

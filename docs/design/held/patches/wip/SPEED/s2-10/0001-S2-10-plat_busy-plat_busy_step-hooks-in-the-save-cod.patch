@@ -1,0 +1,471 @@
+From e0ce59132964392382136eb172b08b337e61ebea Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 13:15:34 +0000
+Subject: [PATCH 01/10] S2-10: plat_busy / plat_busy_step hooks in the save
+ codec, the load and town_new; golden-bytes and cut-off tests
+
+save_game, load_game and town_new run to the end in one tick (GBA: save 10.7 s, load 6 s, a New story's
+town 2 s; the cost is the per-citizen base record the codec and the build rebuild). They now tell the
+platform: plat_busy(kind) first, then plat_busy_step(done, total) once per citizen handled (both save
+passes, the applying decode, the town build), so a platform can keep a card moving at 30 pictures a second.
+Defaults do nothing (plat_weak_ext.c), so the host build and every port that does not use them are unchanged.
+load_game only starts it once the slot has a save (a missing save stays a quick "no save").
+
+Tests (core/tests):
+- test_busy.c: the hooks are called once per save / load / build, before any step, one step per citizen
+  (two passes on the streamed path), done <= total; a missing save starts no card. The streamed save cut
+  at the first, second, third, a quarter, half, last-but-one and last write leaves the previous slot
+  byte for byte and loading (atomicity, host platform).
+- test_save_golden.c: the size and CRC-32 of the image of four deterministic islands, taken on ee686c74
+  (before this change): the saved bytes are identical.
+
+Docs for the platform side follow with the GBA / PS1 work.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ core/include/doomo/plat_ext.h |  16 ++++
+ core/src/plat_weak_ext.c      |   2 +
+ core/src/save.c               |  11 ++-
+ core/src/town.c               |   7 +-
+ core/tests/test_busy.c        | 167 ++++++++++++++++++++++++++++++++++
+ core/tests/test_save_golden.c |  98 ++++++++++++++++++++
+ 6 files changed, 299 insertions(+), 2 deletions(-)
+ create mode 100644 core/tests/test_busy.c
+ create mode 100644 core/tests/test_save_golden.c
+
+diff --git a/core/include/doomo/plat_ext.h b/core/include/doomo/plat_ext.h
+index 7ef26947..1f52f9e1 100644
+--- a/core/include/doomo/plat_ext.h
++++ b/core/include/doomo/plat_ext.h
+@@ -26,6 +26,7 @@
+  *   plat_scene_scratch       SP3 P-I1 (PS1: the overlay slot's unused tail)
+  *   plat_hold_band           SP5 (held dialogue backdrop: GBA, native)
+  *   plat_loading             SP5 (loading fades: GBA, PS1)
++ *   plat_busy / _step        S2-10 (a live screen over a save / load / town build: GBA, PS1)
+  *   plat_stage_*             SP7 (a kept backdrop: the GBA's ROM-baked
+  *                            exorcism church; native for tests)
+  *   plat_pack_blob/read      E0 declares the pack format (pack.h, which
+@@ -201,6 +202,21 @@ int  plat_hold_band(int op, const PlatBand *band);
+  * Default: nothing. */
+ void plat_loading(void);
+ 
++/* ---- (S2-10) a live screen over a save, a load and a town build (docs/GBA.md "Speed wave 2: S2-10") --------
++ * save_game (PLAT_BUSY_SAVE), load_game (PLAT_BUSY_LOAD) and town_new (PLAT_BUSY_BUILD: a New story or a new island
++ * builds 1,000 citizens) run to the end inside the one tick that called them. On the GBA that is 10.7 s for a save,
++ * 6 s for a load and 2 s for a build (the codec and the town rebuild every citizen's base record); on the PS1 the
++ * memory card write is 11 s. The sim must not move meanwhile, so the work stays in one tick; what changes is that
++ * the screen is not frozen. plat_busy(kind) is called first; plat_busy_step(done, total) is called often after
++ * that (every citizen the codec or the build handles, every flash sector or card frame the platform writes: never
++ * more than ~8 ms of work between two calls on the GBA). A platform may then present pictures of its own from
++ * inside the call (a card with a spinner or a bar, at most 30 a second) once the work is clearly late, and the
++ * next real frame ends it. Draw-side only: the saved bytes, the logic and the timing are the same (every call is
++ * a no-op in the host build and in a run that hashes every frame). Default: nothing. */
++enum { PLAT_BUSY_SAVE = 1, PLAT_BUSY_LOAD = 2, PLAT_BUSY_BUILD = 3 };
++void plat_busy(int kind);
++void plat_busy_step(int done, int total);
++
+ /* ---- a kept backdrop and a retained stage (SP7, docs/EXORCISM_SPEED.md) ----------------
+  * A scene whose picture is a full-screen BACKDROP that depends only on a small key (the
+  * exorcism's church: its dread level and its slow animation steps), with LAYERS drawn over
+diff --git a/core/src/plat_weak_ext.c b/core/src/plat_weak_ext.c
+index edb8453d..70f54225 100644
+--- a/core/src/plat_weak_ext.c
++++ b/core/src/plat_weak_ext.c
+@@ -54,6 +54,8 @@ WEAK void *plat_scene_scratch(uint32_t bytes, uint32_t *gen)
+ }
+ 
+ WEAK void plat_loading(void) {}
++WEAK void plat_busy(int kind) { (void)kind; }
++WEAK void plat_busy_step(int done, int total) { (void)done; (void)total; }
+ 
+ WEAK int plat_view_hold(int op, uint32_t key) { (void)op; (void)key; return 0; }
+ 
+diff --git a/core/src/save.c b/core/src/save.c
+index 56d3d76f..f2d995cf 100644
+--- a/core/src/save.c
++++ b/core/src/save.c
+@@ -58,6 +58,7 @@
+ #include "doomo/doomo.h"
+ #include "doomo/playas.h"
+ #include "doomo/options_store.h"
++#include "doomo/plat_ext.h"
+ 
+ /* Every enum must fit the bit width the format gives it. Growing past a
+  * width needs a new DOOMO_SAVE_VERSION. */
+@@ -850,12 +851,14 @@ static void write_town(void)
+             continue;
+         }
+         cur = t->res[i];
++        plat_busy_step(i, DOOMO_MAX_RESIDENTS);   /* S2-10: a picture when one is due (plat_ext.h) */
+         resident_sanitize(&cur);
+         has_base = base_of(t->population, t->seed, i, &base);
+         if (has_base && memcmp(&cur, &base, sizeof(cur)) == 0) {
+             for (run = 1; i + run < DOOMO_MAX_RESIDENTS && run < 1024; run++) {
+                 DoomoResident c2 = t->res[i + run], b2;
+                 if (c2.status == RES_EMPTY) break;
++                plat_busy_step(i + run, DOOMO_MAX_RESIDENTS);
+                 resident_sanitize(&c2);
+                 base_of(t->population, t->seed, i + run, &b2);
+                 if (memcmp(&c2, &b2, sizeof(c2)) != 0) break;
+@@ -971,12 +974,14 @@ static int read_town(int apply)
+     while (i < DOOMO_MAX_RESIDENTS) {
+         uint32_t tag = rbits(2);
+         if (Z.ld_err) return 0;
++        plat_busy_step(i, DOOMO_MAX_RESIDENTS);   /* S2-10 */
+         if (tag == 0 || tag == 1) {
+             int run = (int)rbits(10) + 1, k;
+             if (i + run > DOOMO_MAX_RESIDENTS) return 0;
+             if (tag == 1 && pop == TOWN_POP_EMPTY) return 0;
+             if (apply) {
+                 for (k = 0; k < run; k++) {
++                    plat_busy_step(i + k, DOOMO_MAX_RESIDENTS);
+                     if (tag == 0) memset(&t->res[i + k], 0, sizeof(DoomoResident));
+                     else base_of(pop, seed, i + k, &t->res[i + k]);
+                 }
+@@ -1329,7 +1334,9 @@ static int save_game_body(int slot);
+ /* CL4: a save also writes the machine config record when tips were seen since (options_store.c) */
+ int save_game(int slot)
+ {
+-    int ok = save_game_body(slot);
++    int ok;
++    plat_busy(PLAT_BUSY_SAVE);                /* S2-10: a card while it runs (plat_ext.h) */
++    ok = save_game_body(slot);
+     if (ok) opt_config_flush();
+     return ok;
+ }
+@@ -1447,6 +1454,7 @@ int load_game(int slot)
+     buf = stream_window(slot, &cap);
+     if (buf) {
+         int ok;
++        plat_busy(PLAT_BUSY_LOAD);            /* S2-10: the slot has a save: the CRC pass and the decodes take seconds */
+         if (!stream_check(slot, buf, cap, hdr)) return 0;
+         Z.ld_slot = slot;
+         Z.ld_wbuf = buf;
+@@ -1460,6 +1468,7 @@ int load_game(int slot)
+         doomo_snprintf(last_error, sizeof(last_error), "No save in slot %d", slot);
+         return 0;
+     }
++    plat_busy(PLAT_BUSY_LOAD);                /* S2-10: (the read had its own progress) the decodes take seconds */
+     return deserialize_from(buf, size);
+ }
+ 
+diff --git a/core/src/town.c b/core/src/town.c
+index e8ba6470..57c5a5e1 100644
+--- a/core/src/town.c
++++ b/core/src/town.c
+@@ -11,6 +11,7 @@
+ #include "doomo/portrait.h"
+ #include "doomo/ui.h"
+ #include "doomo/save_ext.h"
++#include "doomo/plat_ext.h"          /* plat_busy (S2-10) */
+ #include "doomo/sim.h"                 /* sim_life_stage (LS0 migration) */
+ 
+ DoomoTown doomo_town;
+@@ -508,6 +509,7 @@ void town_new(int mode, uint32_t seed, int population)
+     int i;
+     DoomoResident *p;
+ 
++    plat_busy(PLAT_BUSY_BUILD); /* S2-10: a new town and the sim's start after it take 2 s on the GBA: a card */
+     memcpy(opt, doomo_town.opt, sizeof(opt));
+     memcpy(unl, doomo_town.unlocks, sizeof(unl));
+     memset(&doomo_town, 0, sizeof(doomo_town));
+@@ -537,14 +539,17 @@ void town_new(int mode, uint32_t seed, int population)
+         for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
+             town_premade_record(i, &doomo_town.res[i]);
+             resident_sanitize(&doomo_town.res[i]);
++            plat_busy_step(i, DOOMO_MAX_RESIDENTS);
+         }
+         for (i = 0; i < doomo_roster_edge_count && n < DOOMO_MAX_EDGES; i++)
+             doomo_town.edges[n++] = doomo_roster_edges[i];
+         doomo_town.edge_count = (uint16_t)n;
+         rel_normalize();
+     } else if (doomo_town.population == TOWN_POP_RANDOM) {
+-        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
++        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
+             town_random_record(seed, i, &doomo_town.res[i]);
++            plat_busy_step(i, DOOMO_MAX_RESIDENTS);
++        }
+         random_edges(seed);
+     }
+     save_ext_reset_all();       /* save_ext.h: module data back to defaults */
+diff --git a/core/tests/test_busy.c b/core/tests/test_busy.c
+new file mode 100644
+index 00000000..d3634520
+--- /dev/null
++++ b/core/tests/test_busy.c
+@@ -0,0 +1,167 @@
++/* test_busy.c - S2-10: plat_busy / plat_busy_step, the hooks that keep the screen alive while a save, a load or a
++ * town build runs in one tick (plat_ext.h; owner: speed). The hooks here are strong and only count, so every
++ * other test in this binary runs with them too: nothing they see may change a result.
++ *
++ * Also the cut-off tests of the streamed save: a write that stops at any point leaves the previous save as it
++ * was (natively: the new file is written aside and renamed on commit, like the GBA's trailer written last
++ * and the Dreamcast's replace). */
++#include "test.h"
++#include "doomo/save.h"
++#include "doomo/plat_ext.h"
++
++static int b_calls, b_kind, b_steps, b_bad, b_max_done, b_steps_before_busy, b_busy_calls_since;
++
++void plat_busy(int kind)
++{
++    b_calls++;
++    b_busy_calls_since++;
++    b_kind = kind;
++    if (b_steps) b_steps_before_busy++;      /* a step that came before its busy call */
++}
++
++void plat_busy_step(int done, int total)
++{
++    b_steps++;
++    if (done < 0 || done > total || total != DOOMO_MAX_RESIDENTS) b_bad++;
++    if (done > b_max_done) b_max_done = done;
++}
++
++static void busy_reset(void)
++{
++    b_calls = b_kind = b_steps = b_bad = b_max_done = b_steps_before_busy = b_busy_calls_since = 0;
++}
++
++extern int nat_save_stream, nat_stream_fail_at;
++extern uint32_t nat_stream_writes;
++
++TEST(busy_town_new_steps_every_citizen)
++{
++    busy_reset();
++    town_new(TOWN_STORY, 1, TOWN_POP_PREMADE);
++    CHECK_EQ(b_calls, 1);
++    CHECK_EQ(b_kind, PLAT_BUSY_BUILD);
++    CHECK_EQ(b_steps, DOOMO_MAX_RESIDENTS);          /* one step per citizen built: never a long run without one */
++    CHECK_EQ(b_bad, 0);
++    CHECK_EQ(b_max_done, DOOMO_MAX_RESIDENTS - 1);
++    CHECK_EQ(b_steps_before_busy, 0);
++
++    busy_reset();
++    town_new(TOWN_FREEPLAY, 31337, TOWN_POP_RANDOM);
++    CHECK_EQ(b_calls, 1);
++    CHECK_EQ(b_steps, DOOMO_MAX_RESIDENTS);
++    CHECK_EQ(b_bad, 0);
++
++    busy_reset();
++    town_new(TOWN_FREEPLAY, 1, TOWN_POP_EMPTY);       /* nothing to build: called (the platform decides if late) */
++    CHECK_EQ(b_calls, 1);
++    CHECK_EQ(b_kind, PLAT_BUSY_BUILD);
++    CHECK_EQ(b_steps, 0);
++}
++
++static uint8_t keep[DOOMO_SAVE_SLOT1_MAX], now[DOOMO_SAVE_SLOT1_MAX];
++
++TEST(busy_save_and_load_step_every_citizen)
++{
++    DoomoTown snap;
++    int pass;
++    for (pass = 0; pass < 2; pass++) {
++        nat_save_stream = pass ? 4096 : 0;           /* 0: the whole image in one pass; else the GBA's two passes */
++        town_new(TOWN_FREEPLAY, 5, TOWN_POP_PREMADE);
++        resident_sanitize(&doomo_town.player);
++        rel_normalize();
++        snap = doomo_town;
++
++        busy_reset();
++        CHECK(save_game(1));
++        CHECK_EQ(b_calls, 1);
++        CHECK_EQ(b_kind, PLAT_BUSY_SAVE);
++        CHECK_EQ(b_steps_before_busy, 0);
++        CHECK(b_steps >= DOOMO_MAX_RESIDENTS * (pass ? 2 : 1));      /* every citizen, once per pass */
++        CHECK(b_steps <= DOOMO_MAX_RESIDENTS * (pass ? 4 : 2));
++        CHECK_EQ(b_bad, 0);
++
++        memset(&doomo_town, 0x5A, sizeof(doomo_town));
++        busy_reset();
++        CHECK(load_game(1));
++        CHECK_EQ(b_calls, 1);
++        CHECK_EQ(b_kind, PLAT_BUSY_LOAD);
++        CHECK_EQ(b_steps_before_busy, 0);
++        CHECK(b_steps >= DOOMO_MAX_RESIDENTS);       /* the applying decode rebuilds every citizen */
++        CHECK_EQ(b_bad, 0);
++        CHECK(memcmp(&snap.res, &doomo_town.res, sizeof(snap.res)) == 0);
++    }
++    nat_save_stream = 0;
++}
++
++TEST(busy_a_missing_save_does_not_start_a_busy_card)
++{
++    nat_save_stream = 0;
++    plat_save_erase(1);
++    busy_reset();
++    CHECK(!load_game(1));
++    CHECK_EQ(b_calls, 0);                            /* nothing to wait for: no card for a quick "no save" */
++    CHECK_EQ(b_steps, 0);
++    nat_save_stream = 4096;
++    busy_reset();
++    CHECK(!load_game(1));
++    CHECK_EQ(b_calls, 0);
++    nat_save_stream = 0;
++}
++
++static uint32_t slot_image(int slot, uint8_t *buf)
++{
++    uint32_t size = 0;
++    if (!plat_save_read(slot, buf, DOOMO_SAVE_SLOT1_MAX, &size)) return 0;
++    return size;
++}
++
++static void island(uint32_t seed)
++{
++    town_new(TOWN_FREEPLAY, seed, TOWN_POP_RANDOM);
++    resident_sanitize(&doomo_town.player);
++    rel_normalize();
++}
++
++/* a save cut off at the first write, in the middle and at the last one: the previous save is untouched,
++ * byte for byte, and loads; the next complete save then replaces it */
++TEST(save_cut_at_any_write_keeps_the_previous_save)
++{
++    uint32_t n0, n;
++    DoomoTown a;
++    int writes, cuts[7], k;
++    nat_save_stream = 512;
++    island(11);
++    a = doomo_town;
++    CHECK(save_game(1));
++    n0 = slot_image(1, keep);
++    CHECK(n0 > 4 * 512);
++    island(12);                                    /* the island that is saved over it */
++    nat_stream_writes = 0;
++    CHECK(save_game(1));                           /* a clean run counts the writes */
++    writes = (int)nat_stream_writes;
++    CHECK(writes > 8);
++    n = slot_image(1, now);
++    CHECK(n != n0 || memcmp(keep, now, n0) != 0);  /* it really replaced the first one */
++    CHECK(plat_save_write(1, keep, n0));           /* the first one back in the slot */
++    cuts[0] = 1; cuts[1] = 2; cuts[2] = 3; cuts[3] = writes / 4; cuts[4] = writes / 2; cuts[5] = writes - 1;
++    cuts[6] = writes;
++    for (k = 0; k < 7; k++) {
++        island(12);
++        nat_stream_fail_at = cuts[k];
++        CHECK_MSG(!save_game(1), "a save cut at write %d of %d reported success", cuts[k], writes);
++        nat_stream_fail_at = 0;
++        n = slot_image(1, now);
++        CHECK_EQ(n, n0);
++        CHECK_MSG(memcmp(keep, now, n0) == 0, "the previous save changed after a cut at write %d", cuts[k]);
++        CHECK(save_verify(1));
++        memset(&doomo_town, 0x5A, sizeof(doomo_town));
++        CHECK(load_game(1));
++        CHECK(memcmp(&a.res, &doomo_town.res, sizeof(a.res)) == 0);
++    }
++    island(12);                                    /* a complete save after all those cuts works */
++    CHECK(save_game(1));
++    CHECK(save_verify(1));
++    n = slot_image(1, now);
++    CHECK(n != n0 || memcmp(keep, now, n0) != 0);
++    nat_save_stream = 0;
++}
+diff --git a/core/tests/test_save_golden.c b/core/tests/test_save_golden.c
+new file mode 100644
+index 00000000..840282bb
+--- /dev/null
++++ b/core/tests/test_save_golden.c
+@@ -0,0 +1,98 @@
++/* test_save_golden.c - the bytes a save puts on the medium never change (S2-10; owner: speed).
++ *
++ * S2-10 made the screen live while a save, a load and a town build run (plat_busy / plat_busy_step); the saved
++ * bytes had to stay exactly what they were, because old saves load and the GBA, PS1 and Dreamcast ports compare
++ * files. The CRC-32 of the whole image of a few deterministic islands was taken on the tree before S2-10 and is
++ * fixed here: a change to the codec, the record rebuild or the section order shows up as a different number.
++ * (A deliberate format change bumps DOOMO_SAVE_VERSION and these numbers with it.) */
++#include "test.h"
++#include "doomo/save.h"
++
++/* taken on the tree before S2-10 (ee686c74): the whole image's size and CRC-32 */
++#define GOLDEN_EMPTY_SIZE   420u
++#define GOLDEN_EMPTY_CRC    0x401C4EB3u
++#define GOLDEN_CLASSIC_SIZE 6890u
++#define GOLDEN_CLASSIC_CRC  0x7653CF70u
++#define GOLDEN_LIVED_SIZE   29894u
++#define GOLDEN_LIVED_CRC    0x81EBCB91u
++#define GOLDEN_RANDOM_SIZE  27691u
++#define GOLDEN_RANDOM_CRC   0xA7A2BF6Fu
++
++static uint8_t image[DOOMO_SAVE_SLOT1_MAX + 64];
++
++/* the image of the current town, as the whole-image path writes it */
++static uint32_t image_crc(uint32_t *size)
++{
++    uint32_t n;
++    resident_sanitize(&doomo_town.player);
++    rel_normalize();
++    n = save_serialize(image, sizeof(image));
++    if (size) *size = n;
++    return n ? save_crc32(image, n) : 0;
++}
++
++/* a lived-in island: every third citizen is custom, the others got older and moodier */
++static void live_in(uint32_t seed)
++{
++    DoomoRng r;
++    int i;
++    rng_seed(&r, seed);
++    doomo_town.day = 77;
++    doomo_town.minute = 600;
++    doomo_town.money = 4321;
++    memcpy(doomo_town.pet.name, "Puffy", 6);
++    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
++        DoomoResident *res = &doomo_town.res[i];
++        if (res->status == RES_EMPTY) continue;
++        if (i % 3 == 0) {
++            resident_generate(res, 70000u + (uint32_t)i);
++            res->flags |= RF_CUSTOM;
++        } else if (i % 3 == 1) {
++            res->mood = (uint8_t)rng_range(&r, MOOD_COUNT);
++            res->level = (uint8_t)rng_range(&r, 100);
++        }
++    }
++    for (i = 0; i < 300; i++) rel_adjust(rng_range(&r, 1000), rng_range(&r, 1000), rng_between(&r, -50, 50));
++}
++
++TEST(save_bytes_golden_empty_island)
++{
++    uint32_t n = 0, c;
++    town_new(TOWN_FREEPLAY, 1, TOWN_POP_EMPTY);
++    c = image_crc(&n);
++    printf("      golden empty island: %u bytes, crc 0x%08X\n", n, c);
++    CHECK_EQ(n, GOLDEN_EMPTY_SIZE);
++    CHECK_EQ_U(c, GOLDEN_EMPTY_CRC);
++}
++
++TEST(save_bytes_golden_classic_untouched)
++{
++    uint32_t n = 0, c;
++    town_new(TOWN_STORY, 5, TOWN_POP_PREMADE);
++    c = image_crc(&n);
++    printf("      golden classic, untouched: %u bytes, crc 0x%08X\n", n, c);
++    CHECK_EQ(n, GOLDEN_CLASSIC_SIZE);
++    CHECK_EQ_U(c, GOLDEN_CLASSIC_CRC);
++}
++
++TEST(save_bytes_golden_classic_lived_in)
++{
++    uint32_t n = 0, c;
++    town_new(TOWN_FREEPLAY, 9, TOWN_POP_PREMADE);
++    live_in(3);
++    c = image_crc(&n);
++    printf("      golden classic, lived in: %u bytes, crc 0x%08X\n", n, c);
++    CHECK_EQ(n, GOLDEN_LIVED_SIZE);
++    CHECK_EQ_U(c, GOLDEN_LIVED_CRC);
++}
++
++TEST(save_bytes_golden_random_island)
++{
++    uint32_t n = 0, c;
++    town_new(TOWN_FREEPLAY, 31337, TOWN_POP_RANDOM);
++    live_in(8);
++    c = image_crc(&n);
++    printf("      golden random island: %u bytes, crc 0x%08X\n", n, c);
++    CHECK_EQ(n, GOLDEN_RANDOM_SIZE);
++    CHECK_EQ_U(c, GOLDEN_RANDOM_CRC);
++}
+-- 
+2.43.0
+

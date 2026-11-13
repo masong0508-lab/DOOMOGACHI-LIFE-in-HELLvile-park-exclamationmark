@@ -1,0 +1,864 @@
+From aefef4ebafd59e1d2d50c5d79752a787dd83da1b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 13 Nov 2026 11:18:11 +0000
+Subject: [PATCH 2/4] S2-9: the workshop as kept panels on the GBA (part list,
+ stat bars, header), flat backdrop
+
+Where panels are kept (the GBA, and the native runner's panel model) the
+workshop draws its part list's rows but the cursor's (the cursor's 12-row
+pill is the panel's hole), the stat bars of both panes and the header strip
+(tabs, title) as solid retained panels, shown last in the frame so the 2D
+calls before them stay on the fast path. ui_window_open() leaves a panel's
+rect out of a window, ui_style_use() sets the style a redrawn row reads,
+ui_bar_still() and ui_backdrop_flat() are the two pixel-changing steps:
+the stat bars lose their shine (it changed the panel every frame) and the
+backdrop under the workshop is its bands without drifting dots, hearts and
+twinkles (they were 2/3 of its 4 ms and show only in slivers around the
+windows). The Dreamcast and the PS1 draw the screen as before.
+
+test_panel: the workshop through the list, part values, the Armory and back
+with the panel cache on and off, at both resolutions: every frame identical.
+weld_slice.c joins the workshop overlay group on the PS1 (ovl_plan.py).
+
+GBA (libmgba, speed2 action windows): workshop 17.9 -> 30.0 fps, part change
+23.4 -> 30.0, armory 26.7 -> 30.0, no frame over 34 ms.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ core/include/doomo/ui.h |  18 ++
+ core/src/ui.c           |  61 +++++-
+ core/src/ui_draw.c      |  19 ++
+ core/src/workshop.c     | 430 +++++++++++++++++++++++++++++++++++-----
+ core/tests/test_panel.c |  37 ++++
+ ps1/tools/ovl_plan.py   |   6 +-
+ 6 files changed, 516 insertions(+), 55 deletions(-)
+
+diff --git a/core/include/doomo/ui.h b/core/include/doomo/ui.h
+index d4857ccf..74f840b9 100644
+--- a/core/include/doomo/ui.h
++++ b/core/include/doomo/ui.h
+@@ -390,6 +390,24 @@ uint32_t ui_panel_key(void);
+ #else
+ #define UI_PANELS 1
+ #endif
++#if UI_PANELS
++/* (S2-9) ui_window() without the rect [x0, x1) x [y0, y1) of its main fill: for a scene that puts that rect
++ * back from the last frame (a solid retained panel on the window's still body: plat_panel_solid). The rect
++ * must lie where the window is plain fill colour: below the gloss band and its seam row, above the rounded
++ * bottom rows of the main fill, clear of the outline and the rim shadow column (ui_window_open_ok() says so;
++ * a rect that does not is ignored and the whole window is drawn). Its colour is ui_style(style)->fill. */
++int  ui_window_open_ok(int x, int y, int w, int h, int x0, int y0, int x1, int y1);
++void ui_window_open(int x, int y, int w, int h, int style, int x0, int y0, int x1, int y1);
++/* (S2-9) ui_bar() without the shine that sweeps across it: a bar on a kept panel (the workshop's stats) would
++ * otherwise change the panel's pixels every frame the shine is on it (pixel-changing: no shine there). */
++void ui_bar_still(int x, int y, int w, int h, int value, int max, uint8_t fill);
++/* (S2-9) The style that ui_value_row() and the other widgets without a style argument read: the one the last
++ * ui_window() set. For a scene that draws a window's rows after another window (a kept panel's redraw). */
++void ui_style_use(int style);
++/* (S2-9, pixel-changing) ui_backdrop_holes() without the drifting dots, hearts and twinkles: the bands and their
++ * seams (for a scene whose windows leave only slivers of backdrop and whose panels stand on a still one) */
++void ui_backdrop_flat(int style, const int *holes, int n);
++#endif
+ uint32_t ui_key_int(uint32_t h, int32_t v);
+ uint32_t ui_key_str(uint32_t h, const char *s);
+ /* Where ui_window(x, y, w, h)'s sliding glint is this frame, -1 = none. */
+diff --git a/core/src/ui.c b/core/src/ui.c
+index 07f9e4b5..29542891 100644
+--- a/core/src/ui.c
++++ b/core/src/ui.c
+@@ -46,7 +46,9 @@ void ui_pill(int x, int y, int w, int h, uint8_t fill, uint8_t outline, uint8_t
+     if (!ur_cache_end()) pill_draw(x, y, w, h, fill, outline, hi);
+ }
+ 
+-void ui_window(int x, int y, int w, int h, int style)
++/* (S2-9) `open` = { x0, y0, x1, y1 }: a rect of the window that only its main fill reaches (ui_window_open)
++ * and that is left out; NULL: the whole window */
++static void window_draw(int x, int y, int w, int h, int style, const int *open)
+ {
+     const UiStyle *st = ui_style(style);
+     int r = (w >= 24 && h >= 20) ? 4 : 2;
+@@ -72,8 +74,16 @@ void ui_window(int x, int y, int w, int h, int style)
+     plat_rect(x, y + r, 1, h - 2 * r, st->outline);
+     plat_rect(x + w - 1, y + r, 1, h - 2 * r, st->outline);
+     ui_round_rect_rows(x + 1, y + 1, w - 2, h - 2, ir, st->fill_lo, h - 2 - lo - ir, h - 2);
+-    ui_round_rect_rows(x + 1, y + 1, w - 2, h - 2 - lo, ir, st->fill,
+-                       DOOMO_MIN(band, h - 2), h - 2 - lo);
++    if (!open) {
++        ui_round_rect_rows(x + 1, y + 1, w - 2, h - 2 - lo, ir, st->fill,
++                           DOOMO_MIN(band, h - 2), h - 2 - lo);
++    } else {
++        /* the main fill around the rect: its rows above and below, the two strips beside it */
++        ui_round_rect_rows(x + 1, y + 1, w - 2, h - 2 - lo, ir, st->fill, DOOMO_MIN(band, h - 2), open[1] - (y + 1));
++        ui_round_rect_rows(x + 1, y + 1, w - 2, h - 2 - lo, ir, st->fill, open[3] - (y + 1), h - 2 - lo);
++        plat_rect(x + 1, open[1], open[0] - (x + 1), open[3] - open[1], st->fill);
++        plat_rect(open[2], open[1], x + w - 1 - open[2], open[3] - open[1], st->fill);
++    }
+     for (i = 0; i < band && i < h - 2;) {
+         int in = i < ir ? ui_corner_inset(ir, i) : 0, j = i + 1;
+         while (j < band && j < h - 2 && (j < ir ? ui_corner_inset(ir, j) : 0) == in) j++;
+@@ -99,6 +109,29 @@ void ui_window(int x, int y, int w, int h, int style)
+     }
+ }
+ 
++void ui_window(int x, int y, int w, int h, int style)
++{
++    window_draw(x, y, w, h, style, NULL);
++}
++
++#if UI_PANELS
++/* (S2-9, ui.h) */
++int ui_window_open_ok(int x, int y, int w, int h, int x0, int y0, int x1, int y1)
++{
++    int band = DOOMO_CLAMP(h / 6, 3, 8), lo = DOOMO_CLAMP(h / 8, 2, 5);
++    int ir = ((w >= 24 && h >= 20) ? 4 : 2) - 1;
++    return w >= 6 && h >= 6 && x0 < x1 && y0 < y1 && x0 >= x + 1 && x1 <= x + w - 2 &&
++           y0 > y + 1 + band && y1 <= y + h - 1 - lo - ir;
++}
++
++void ui_window_open(int x, int y, int w, int h, int style, int x0, int y0, int x1, int y1)
++{
++    int open[4];
++    open[0] = x0; open[1] = y0; open[2] = x1; open[3] = y1;
++    window_draw(x, y, w, h, style, ui_window_open_ok(x, y, w, h, x0, y0, x1, y1) ? open : NULL);
++}
++#endif
++
+ /* ui_window(x, y, w, h, style)'s body pixels in [cx0, cx1) x [ry0, ry1),
+  * a rect clear of its edges, corners, rim and gloss row (cx0 >= x + 4,
+  * cx1 <= x + w - 4, ry0 >= y + 5, ry1 <= y + h - 1): what a retained
+@@ -607,7 +640,8 @@ void ui_text_big(int x, int y, const char *s, int scale, uint8_t color, uint8_t
+ 
+ /* ====================================================================== */
+ /* meters & sliders                                                         */
+-void ui_bar(int x, int y, int w, int h, int value, int max, uint8_t fill)
++/* (shine = 0: ui_bar_still, S2-9) */
++static void bar_draw(int x, int y, int w, int h, int value, int max, uint8_t fill, int shine)
+ {
+     if (plat_draw_skipped()) return;
+     int v, fw, r = h >= 6 ? 2 : 1, t = frame_t();
+@@ -629,7 +663,7 @@ void ui_bar(int x, int y, int w, int h, int value, int max, uint8_t fill)
+             if (h >= 5) plat_rect(x + 2, y + h - 2, fw - 2, 1, ui_darker(f));
+         }
+         /* shine sweeping across every two seconds */
+-        {
++        if (shine) {
+             int sx = (t * 3) % (w + 60) - 10;
+             if (sx >= 0 && sx < fw - 1 && h >= 4)
+                 plat_rect(x + 1 + sx, y + 2, 2, h - 4, PAL_WHITE);
+@@ -637,6 +671,23 @@ void ui_bar(int x, int y, int w, int h, int value, int max, uint8_t fill)
+     }
+ }
+ 
++void ui_bar(int x, int y, int w, int h, int value, int max, uint8_t fill)
++{
++    bar_draw(x, y, w, h, value, max, fill, 1);
++}
++
++#if UI_PANELS
++void ui_style_use(int style)
++{
++    ui_cur_style = style;
++}
++
++void ui_bar_still(int x, int y, int w, int h, int value, int max, uint8_t fill)
++{
++    bar_draw(x, y, w, h, value, max, fill, 0);
++}
++#endif
++
+ void ui_slider(int x, int y, int w, const char *label, int value, int max,
+                int selected)
+ {
+diff --git a/core/src/ui_draw.c b/core/src/ui_draw.c
+index 9ba51a52..9591dad7 100644
+--- a/core/src/ui_draw.c
++++ b/core/src/ui_draw.c
+@@ -398,6 +398,25 @@ void ui_backdrop_hole(int style, uint32_t t, int hx0, int hy0, int hx1, int hy1)
+ }
+ 
+ #if !defined(DOOMO_PLATFORM_PS1)
++/* (S2-9, pixel-changing) ui_backdrop_holes() without what drifts over the bands: the bands and their seams only.
++ * For a scene whose windows leave a few slivers of backdrop (the GBA's workshop: the dots, hearts and twinkles were
++ * 2/3 of the backdrop's 4 ms there) and whose panels stand on a backdrop that does not move. */
++void ui_backdrop_flat(int style, const int *hl, int n)
++{
++    Backdrop b;
++    int w = plat_screen_w(), h = plat_screen_h();
++    int b1 = h / 3, b2 = h * 2 / 3;
++    if (plat_draw_skipped()) return;
++    backdrop_colors(style, &b);
++    RECT_OUTSIDE(0, 0, w, b1, b.top);
++    RECT_OUTSIDE(0, b1, w, b2 - b1, b.mid);
++    RECT_OUTSIDE(0, b2, w, h - b2, b.bot);
++    seam_row(b1 - 1, w, b.mid, 0);
++    seam_row(b1, w, b.top, 1);
++    seam_row(b2 - 1, w, b.bot, 0);
++    seam_row(b2, w, b.mid, 1);
++}
++
+ void ui_backdrop_hole(int style, uint32_t t, int hx0, int hy0, int hx1, int hy1)
+ {
+     int hl[4];
+diff --git a/core/src/workshop.c b/core/src/workshop.c
+index 2f31173a..46d4b61f 100644
+--- a/core/src/workshop.c
++++ b/core/src/workshop.c
+@@ -20,11 +20,24 @@
+  * the pictures that come next (the test fire's two frames, the design one
+  * step further along the row under the cursor, the next weapon of the
+  * Armory list) are composed ahead (weld_view_prefetch).
++ * The backdrop leaves out what the two windows cover (ui_backdrop_holes),
++ * and where the platform keeps panels (the GBA) the part list's rows but
++ * the cursor's and the stat bars are solid retained panels on their
++ * windows' plain fill (ui_window_open): put back from the last frame
++ * while nothing in them changes. The same pixels (core/tests/test_panel.c).
+  */
+ #include "weld_int.h"
+ #include "doomo/tips.h"
+ #include "doomo/plat_ext.h"     /* S2-9: plat_ui_loops */
+ 
++/* S2-9: where panels are kept (the GBA; the native runner's panel model in the tests) the scene draws its list,
++ * stat bars and header as kept panels (below). The Dreamcast keeps none and draws the screen as it always did. */
++#if UI_PANELS && !defined(DOOMO_PLATFORM_DC)
++#define WS_KEPT 1
++#else
++#define WS_KEPT 0
++#endif
++
+ DoomoWeapon weld_pending;
+ int weld_game_result = -1;
+ 
+@@ -40,10 +53,31 @@ static const uint8_t wp_clist[WP_COUNT] = {
+     CLIST_WMAG, CLIST_WUNDER, CLIST_WCHARM, 0, 0, 0, 0
+ };
+ 
+-static int ws_tab, ws_sel, ws_top, ws_t, ws_arm_sel, ws_preview_t, ws_msg_t;
++/* (S2-9: the small ones are bytes, which pays for the new ones: no more .bss than before) */
++static uint8_t ws_tab, ws_sel, ws_arm_sel;
++static int16_t ws_msg_t;
++static int ws_t, ws_preview_t;
+ static const char *ws_msg;
+-static int8_t ws_dir = 1;       /* S2-9: the way the cursor last stepped (a part's value, the Armory list) */
++static int8_t ws_dir;           /* S2-9: the way the cursor last stepped (a part's value, the Armory list) */
+ static uint8_t ws_shown;        /* S2-9: the animation frame of the preview picture on show */
++#if WS_KEPT
++/* S2-9, pixel-changing: the stat bars have no shine (it would change the panel's pixels on every frame it is on a
++ * bar) */
++#define WS_BAR ui_bar_still
++#define WS_SHINE 0
++#else
++#define WS_BAR ui_bar
++#define WS_SHINE 1
++#endif
++#if WS_KEPT
++/* S2-9: the kept panels (ids of the overworld's HUD: never on this screen) and the keys they were last drawn
++ * with: a frame whose key is new draws its panel's content before the panel (fp_unlocks.c has the why) */
++#define PANEL_WS_LIST  PANEL_OW_OBJECTIVE
++#define PANEL_WS_STATS PANEL_OW_CLOCK
++#define PANEL_WS_HEAD  PANEL_OW_PROMPT
++static uint32_t ws_list_key, ws_stat_key, ws_stat_wkey, ws_head_key;
++static uint8_t ws_stat_low;     /* the weapon of ws_stat_wkey has a bar that blinks (ui_bar: under a quarter) */
++#endif
+ static const char *const rivet_lines[] = {
+     "Sparks are just tiny fireworks!",
+     "Cute or brutal, a weld's a weld.",
+@@ -197,7 +231,10 @@ static void workshop_enter(int arg)
+     (void)arg;
+     ws_tab = WT_WELD;
+     ws_sel = 0;
+-    ws_top = 0;
++    ws_dir = 1;
++#if WS_KEPT
++    ws_list_key = ws_stat_key = ws_stat_wkey = ws_head_key = 0;
++#endif
+     ws_t = 0;
+     ws_arm_sel = 0;
+     ws_preview_t = 0;
+@@ -225,7 +262,7 @@ static void collect_weld(void)
+             ws_msg = buf;
+             ws_msg_t = 150;
+             ws_tab = WT_ARMORY;
+-            ws_arm_sel = slot;
++            ws_arm_sel = (uint8_t)slot;
+         }
+         weld_game_result = -1;
+         audio_music(SONG_WORKSHOP);
+@@ -235,6 +272,14 @@ static void collect_weld(void)
+ static void say(const char *m) { ws_msg = m; ws_msg_t = 90; }
+ 
+ /* ---- armory helpers --------------------------------------------------------- */
++/* is there a weapon in the Armory (its pane is drawn) */
++static int armory_any(void)
++{
++    int i;
++    for (i = 0; i < DOOMO_MAX_WEAPONS; i++) if (doomo_town.weapons[i].flags & WF_VALID) return 1;
++    return 0;
++}
++
+ static int armory_list(int *slots)
+ {
+     int i, n = 0;
+@@ -308,8 +353,8 @@ static void workshop_update(void)
+     }
+     /* --- end H4 --- */
+     if (ws_tab == WT_WELD) {
+-        if (btn_repeat(BTN_UP)) { ws_sel = (ws_sel + WP_COUNT - 1) % WP_COUNT; audio_sfx(SFX_CURSOR); }
+-        if (btn_repeat(BTN_DOWN)) { ws_sel = (ws_sel + 1) % WP_COUNT; audio_sfx(SFX_CURSOR); }
++        if (btn_repeat(BTN_UP)) { ws_sel = (uint8_t)((ws_sel + WP_COUNT - 1) % WP_COUNT); audio_sfx(SFX_CURSOR); }
++        if (btn_repeat(BTN_DOWN)) { ws_sel = (uint8_t)((ws_sel + 1) % WP_COUNT); audio_sfx(SFX_CURSOR); }
+         if (ws_sel < WP_WELD && (btn_repeat(BTN_LEFT) || btn_repeat(BTN_RIGHT))) {
+             ws_dir = (int8_t)(btn_down(BTN_LEFT) ? -1 : 1);
+             wp_set(ws_sel, wp_get(ws_sel) + ws_dir);
+@@ -346,7 +391,7 @@ static void workshop_update(void)
+         if (n == 0) return;
+         if (btn_repeat(BTN_UP)) { cur = (cur + n - 1) % n; ws_dir = -1; audio_sfx(SFX_CURSOR); }
+         if (btn_repeat(BTN_DOWN)) { cur = (cur + 1) % n; ws_dir = 1; audio_sfx(SFX_CURSOR); }
+-        ws_arm_sel = slots[cur];
++        ws_arm_sel = (uint8_t)slots[cur];
+         if (btn_pressed(BTN_A)) {
+             doomo_town.story.equipped = (uint8_t)ws_arm_sel;
+             audio_sfx(SFX_SELECT);
+@@ -437,7 +482,7 @@ static void stat_bars(int x, int y, int w, const DoomoWeapon *wp, int compact)
+         } else {
+             plat_text(cx, cy, lang_tr(short_names[i]), PAL_UI_PINK_D);
+         }
+-        ui_bar(cx + lab, cy + 1, col_w - lab - 3, 6, r[i], 100, cols[i]);
++        WS_BAR(cx + lab, cy + 1, col_w - lab - 3, 6, r[i], 100, cols[i]);
+     }
+ }
+ 
+@@ -472,39 +517,254 @@ static void name_lines(int x, int y, int w, const char *name, uint8_t col)
+     ui_text_wrap(x, y, w, two, col, 1);
+ }
+ 
+-static void draw_weld_tab(int sw, int sh)
++/* ---- S2-9: the stat bars as a kept panel ------------------------------------------------------- */
++/* The bars lie on the plain fill of the pane's window. stat_window() draws that window and decides: the bars'
++ * rect is left out of it (ui_window_open) when the panel can put it back; stat_show(), after everything else
++ * of the pane, draws the bars or lets the platform put them back. The key is the weapon, the place, and the
++ * two things ui_bar animates: the shine while it is on a bar, the blink of a bar under a quarter. Where no
++ * panels are kept (the PS1) this is ui_window() and stat_bars(). */
++typedef struct StatKeep {
++    int16_t x, y, w, h;         /* the bars' rect */
++    uint8_t keep, fresh, compact, style;
++    uint32_t key;
++} StatKeep;
++
++static void stat_window(StatKeep *k, int wx, int wy, int ww, int wh, int style, int x, int y, int w,
++                        const DoomoWeapon *wp, int compact, int on)
++{
++    memset(k, 0, sizeof(*k));
++    k->x = (int16_t)x; k->y = (int16_t)y; k->w = (int16_t)w; k->h = (int16_t)((compact ? 4 : WRATE_COUNT) * 8);
++    k->compact = (uint8_t)compact; k->style = (uint8_t)style;
++#if WS_KEPT
++    /* (not under the message box, which slides over the bars at 240x160) */
++    if (on && !(ws_msg_t && ws_msg) && ui_window_open_ok(wx, wy, ww, wh, x, y, x + w, y + k->h)) {
++        uint32_t wkey = ui_panel_key();
++        const uint8_t *b = (const uint8_t *)wp;
++        int t = (int)doomo_frame_count(), shine = 0, i;
++        for (i = 0; i < (int)sizeof(*wp); i++) wkey = (wkey ^ b[i]) * 16777619u;
++        wkey = ui_key_int(wkey, x | y << 10 | w << 20);
++        wkey = ui_key_int(wkey, compact | style << 1 | 0x5700);
++        if (wkey != ws_stat_wkey) {
++            DoomoWeaponStats st;
++            uint8_t r[WRATE_COUNT];
++            weld_stats(wp, &st);
++            weld_ratings(&st, r);
++            ws_stat_low = 0;
++            for (i = 0; i < WRATE_COUNT; i++) if (r[i] * 4 < 100) ws_stat_low = 1;
++            ws_stat_wkey = wkey;
++        }
++#if WS_SHINE
++        {   /* ui_bar's shine: where it is, when it is on a bar */
++            int bw = (compact ? w / 2 : w) - (compact ? 20 : 28) - 3, sx = (t * 3) % (bw + 60) - 10;
++            if (sx >= 0 && sx < bw) shine = sx + 1;
++        }
++#endif
++        k->key = ui_key_int(wkey, shine | (ws_stat_low ? (t / 8) % 2 : 0) << 12);
++        k->keep = 1;
++        k->fresh = k->key != ws_stat_key;
++    }
++    if (k->keep && !k->fresh) {
++        ui_window_open(wx, wy, ww, wh, style, x, y, x + w, y + k->h);
++        return;
++    }
++#else
++    (void)on;
++#endif
++    ui_window(wx, wy, ww, wh, style);
++}
++
++#if WS_KEPT
++/* What the frame's panels need once the rest of the screen is drawn (workshop_draw shows them last: a panel shown
++ * earlier makes every later 2D call over the screen take the GBA's slow, checked path). */
++static StatKeep ws_sk;                  /* the stat bars' panel (keep == 0: none this frame) */
++static const DoomoWeapon *ws_skw;       /* ... and the weapon they show */
++#endif
++
++/* the bars: where a panel keeps them, on a frame whose key is new they are drawn here (the panel itself is
++ * stat_show()'s, last of the frame); else in place */
++static void stat_draw(const StatKeep *k, const DoomoWeapon *wp)
++{
++#if WS_KEPT
++    if (k->keep) {
++        ws_sk = *k;
++        ws_skw = wp;
++        if (k->fresh) stat_bars(k->x, k->y, k->w, wp, k->compact);
++        return;
++    }
++#endif
++    stat_bars(k->x, k->y, k->w, wp, k->compact);
++}
++
++#if WS_KEPT
++static void stat_show(void)
++{
++    const StatKeep *k = &ws_sk;
++    if (!k->keep) {
++        ws_stat_key = 0;                /* (no panel on this frame: the next one draws it whole) */
++        return;
++    }
++    if (plat_panel_begin(PANEL_WS_STATS, k->x, k->y, k->w, k->h, k->key)) {
++        plat_panel_solid();
++        if (!k->fresh) {
++            /* the platform lost it: the window's fill that stat_window() left out, then the bars */
++            plat_rect(k->x, k->y, k->w, k->h, ui_style(k->style)->fill);
++            stat_bars(k->x, k->y, k->w, ws_skw, k->compact);
++        }
++    }
++    plat_panel_end();
++    ws_stat_key = k->key;
++}
++#endif
++
++/* ---- the Weld tab --------------------------------------------------------------------------------- */
++typedef struct WsLay { int sw, sh, big, lx, ly, lw, rows, px, pw, ph; } WsLay;
++
++#if WS_KEPT
++/* the part list's panel (draw_weld_tab fills it in; list_show() shows it) */
++typedef struct ListKeep {
++    uint8_t keep, fresh, hole;
++    uint32_t key;
++    int x0, y0, x1, y1;                 /* the panel's rect */
++    int hy;                             /* the hole's first row (12 rows: the cursor's pill) */
++    int top, seli;
++    WsLay lay;
++} ListKeep;
++static ListKeep ws_lk;
++#endif
++
++static void ws_layout(WsLay *l, int tab)
++{
++    l->sw = plat_screen_w(); l->sh = plat_screen_h();
++    l->big = l->sh >= 200;
++    l->lx = 2; l->ly = 21;
++    if (tab == WT_WELD) { l->lw = l->big ? 164 : 136; l->rows = l->big ? WP_COUNT : 11; }
++    else { l->lw = l->big ? 180 : 136; l->rows = l->big ? 9 : 6; }
++    l->px = l->lx + l->lw + 3;
++    l->pw = l->sw - l->px - 2;
++    l->ph = l->big ? 152 : 126;
++}
++
++/* row i of the part list (part top + i) */
++static void part_row(const WsLay *l, int top, int i)
++{
++    int k = top + i, ry = l->ly + i * 11, lx = l->lx, lw = l->lw;
++    if (k == WP_WELD) {
++        ui_button(lx + 14, ry, lw - 28, wp_labels[k], k == ws_sel, WIN_CUTE);
++    } else {
++        int v = wp_get(k), maxc;
++        char val[24];
++        doomo_snprintf(val, sizeof(val), "%s%s", wp_locked(k, v) ? STR_ICON_X : "", wp_name(k, v));
++        maxc = (lw - 16 - ui_text_width(wp_labels[k]) - 22) / FONT_ADVANCE;
++        if (maxc > 0 && maxc < (int)sizeof(val)) val[maxc] = 0;
++        ui_value_row(lx + 12, ry, lw - 16, wp_labels[k], val, k == ws_sel);
++        if (k == WP_PAINT || k == WP_ACCENT) {
++            ui_round_rect(lx + 12 + ui_text_width(wp_labels[k]) + 6, ry + 1, 6, 6, 2, PAL_PAINT(v, 0));
++            ui_round_rect(lx + 13 + ui_text_width(wp_labels[k]) + 6, ry + 2, 4, 4, 1, PAL_PAINT(v, 1));
++        }
++    }
++}
++
++#if WS_KEPT
++/* the part list's panel, shown after the rest of the screen: draw_weld_tab() drew the window and its rows but the
++ * panel's (on a frame whose key is new: all of them; else the window leaves the rect out, and the cursor's row,
++ * the panel's hole, is drawn) */
++static void list_show(void)
++{
++    const ListKeep *k = &ws_lk;
++    int i;
++    if (!k->keep) {
++        ws_list_key = 0;                /* (no panel on this frame: the next one draws it whole) */
++        return;
++    }
++    if (plat_panel_begin(PANEL_WS_LIST, k->x0, k->y0, k->x1 - k->x0, k->y1 - k->y0, k->key)) {
++        plat_panel_solid();
++        if (k->hole) plat_panel_hole(k->x0, k->hy, k->x1 - k->x0, 12);
++        if (!k->fresh) {
++            /* the platform lost it: the fill ui_window_open() left out, the rows, then the hole again */
++            plat_rect(k->x0, k->y0, k->x1 - k->x0, k->y1 - k->y0, ui_style(WIN_CREAM)->fill);
++            ui_style_use(WIN_CREAM);            /* (the rows read the style of the last window: the pane's by now) */
++            for (i = 1; i <= k->lay.rows - 2; i++) if (i != k->seli) part_row(&k->lay, k->top, i);
++            plat_panel_end();
++            if (k->hole) part_row(&k->lay, k->top, k->seli);
++        } else {
++            plat_panel_end();
++        }
++    } else {
++        plat_panel_end();
++    }
++    ws_list_key = k->key;
++}
++#endif
++
++static void draw_weld_tab(const WsLay *l)
+ {
+-    int big = sh >= 200;
+-    int lx = 2, ly = 21, lw = big ? 164 : 136, rows = big ? WP_COUNT : 11, i, top;
+-    int px = lx + lw + 3, pw = sw - px - 2, ph = big ? 152 : 126;
++    int big = l->big, lx = l->lx, ly = l->ly, lw = l->lw, rows = l->rows, px = l->px, pw = l->pw, ph = l->ph;
++    int lh = rows * 11 + 7, i, top;
+     char name[32];
+     const char *how = NULL;
+     int locked;
+-    ui_window(lx, ly - 4, lw, rows * 11 + 7, WIN_CREAM);
++    StatKeep sk;
++    /* S2-9: rows 1 .. rows - 2 of the list (value rows on the window's plain fill, clear of its gloss, its lower
++     * band and its edges) are a solid kept panel; the cursor's row is its hole, drawn on every frame (its arrows
++     * and cursor bob), so stepping through a part's options keeps the panel. The key: what those rows show.
++     * A cursor pill is 12 rows tall from 2 rows above its row, one more than the 11 between two rows, so it
++     * reaches into its neighbours' rows: the rect is [row 0's pill ends, row rows - 1's pill starts), the hole is
++     * the pill's 12 rows, and with the cursor on row 1 or row rows - 2 (the pill would stick out of the rect) the
++     * list is drawn whole, as before. */
++    int kx0 = lx + 10, kx1 = lx + lw - 2, ky0 = ly + 10, ky1 = ly + (rows - 1) * 11 - 2;
++    int keep = 0, fresh = 1, seli;
++#if WS_KEPT
++    uint32_t key = 0;
++#endif
+     top = ws_sel - rows + 1 > 0 ? ws_sel - rows + 1 : 0;
+     if (top > WP_COUNT - rows) top = WP_COUNT - rows;
+     if (top < 0) top = 0;
++    seli = ws_sel - top;
++#if WS_KEPT
++    if (rows >= 5 && top + rows - 1 <= WP_WELD && seli != 1 && seli != rows - 2 &&
++        ui_window_open_ok(lx, ly - 4, lw, lh, kx0, ky0, kx1, ky1)) {
++        key = ui_key_int(ui_panel_key(), top | seli << 8 | rows << 16);
++        key = ui_key_int(key, lx | ly << 10 | lw << 20);
++        for (i = 1; i <= rows - 2; i++) {
++            int k = top + i, v = wp_get(k);
++            if (i != seli) key = ui_key_int(key, v | wp_locked(k, v) << 16);
++        }
++        keep = 1;
++        fresh = key != ws_list_key;
++    } else {
++        ws_list_key = 0;                /* (the panel is not on this frame: the next one draws it whole) */
++    }
++#endif
++#if WS_KEPT
++    if (!fresh) ui_window_open(lx, ly - 4, lw, lh, WIN_CREAM, kx0, ky0, kx1, ky1);
++    else
++#endif
++        ui_window(lx, ly - 4, lw, lh, WIN_CREAM);
+     for (i = 0; i < rows && top + i < WP_COUNT; i++) {
+-        int k = top + i, ry = ly + i * 11;
+-        if (k == WP_WELD) {
+-            ui_button(lx + 14, ry, lw - 28, wp_labels[k], k == ws_sel, WIN_CUTE);
+-        } else {
+-            int v = wp_get(k), maxc;
+-            char val[24];
+-            doomo_snprintf(val, sizeof(val), "%s%s", wp_locked(k, v) ? STR_ICON_X : "", wp_name(k, v));
+-            maxc = (lw - 16 - ui_text_width(wp_labels[k]) - 22) / FONT_ADVANCE;
+-            if (maxc > 0 && maxc < (int)sizeof(val)) val[maxc] = 0;
+-            ui_value_row(lx + 12, ry, lw - 16, wp_labels[k], val, k == ws_sel);
+-            if (k == WP_PAINT || k == WP_ACCENT) {
+-                ui_round_rect(lx + 12 + ui_text_width(wp_labels[k]) + 6, ry + 1, 6, 6, 2, PAL_PAINT(v, 0));
+-                ui_round_rect(lx + 13 + ui_text_width(wp_labels[k]) + 6, ry + 2, 4, 4, 1, PAL_PAINT(v, 1));
+-            }
++        if (!fresh && i >= 1 && i <= rows - 2) {
++            if (i != seli) continue;                    /* the panel puts it back */
++            plat_rect(kx0, ly + i * 11 - 2, kx1 - kx0, 12, ui_style(WIN_CREAM)->fill);      /* the hole's fill */
+         }
++        part_row(l, top, i);
+     }
+     ui_scroll_arrows(lx + lw - 6, ly - 2, ly + rows * 11 - 4, top > 0, top + rows < WP_COUNT);
++#if WS_KEPT
++    ws_lk.keep = (uint8_t)keep;
++    if (keep) {
++        ws_lk.fresh = (uint8_t)fresh;
++        ws_lk.hole = (uint8_t)(seli >= 2 && seli <= rows - 3);
++        ws_lk.key = key;
++        ws_lk.x0 = kx0; ws_lk.y0 = ky0; ws_lk.x1 = kx1; ws_lk.y1 = ky1;
++        ws_lk.hy = ly + seli * 11 - 2;
++        ws_lk.top = top; ws_lk.seli = seli;
++        ws_lk.lay = *l;
++    }
++#else
++    (void)keep; (void)kx0; (void)kx1; (void)ky0; (void)ky1;
++#endif
+     /* preview + name + stats */
+     locked = design_locked(&how);
+-    ui_window(px, ly - 4, pw, ph, WIN_CUTE);
++    stat_window(&sk, px, ly - 4, pw, ph, WIN_CUTE, px + 4, ly + (big ? 84 : 81), pw - 8, &weld_pending, !big, !locked);
+     preview(px + (pw - WELD_VIEW_W) / 2, ly - 3, &weld_pending, locked);
+     weld_name(&weld_pending, name, sizeof(name));
+     if (locked) {
+@@ -512,20 +772,20 @@ static void draw_weld_tab(int sw, int sh)
+         ui_text_wrap(px + 4, ly + 72, pw - 8, how ? how : "", PAL_UI_PINK_D, 1);
+     } else {
+         name_lines(px + 3, ly + 62, pw - 6, name, PAL_UI_PINK_D);
+-        stat_bars(px + 4, ly + (big ? 84 : 81), pw - 8, &weld_pending, !big);
+     }
++    if (!locked) stat_draw(&sk, &weld_pending);
+     if (big) {
+         ui_window(lx, ly + rows * 11 + 6, lw, 44, WIN_CREAM);
+         cost_box(lx + 6, ly + rows * 11 + 9, lw - 10, 4);
+-        ui_portrait(sw - 52, ly + ph - 2, ROSTER_ID_RIVET, 1, (ws_t / 90) & 1 ? EXPR_HAPPY : EXPR_TALK);
++        ui_portrait(l->sw - 52, ly + ph - 2, ROSTER_ID_RIVET, 1, (ws_t / 90) & 1 ? EXPR_HAPPY : EXPR_TALK);
+     }
+ }
+ 
+-static void draw_armory_tab(int sw, int sh)
++static void draw_armory_tab(const WsLay *l)
+ {
+     int slots[DOOMO_MAX_WEAPONS], n = armory_list(slots), cur = 0, i, top;
+-    int big = sh >= 200, rows = big ? 9 : 6, lw = big ? 180 : 136, lx = 2, ly = 21;
+-    int px = lx + lw + 3, pw = sw - px - 2;
++    int big = l->big, rows = l->rows, lw = l->lw, lx = l->lx, ly = l->ly;
++    int px = l->px, pw = l->pw;
+     char buf[40];
+     for (i = 0; i < n; i++) if (slots[i] == ws_arm_sel) cur = i;
+     ui_window(lx, ly - 4, lw, rows * 20 + 7, WIN_CREAM);
+@@ -551,9 +811,10 @@ static void draw_armory_tab(int sw, int sh)
+         const DoomoWeapon *w = &doomo_town.weapons[ws_arm_sel];
+         const DoomoImage *img;
+         DoomoWeaponStats st;
+-        int ph = big ? 152 : 126, ready = 0;
++        StatKeep sk;
++        int ph = l->ph, ready = 0;
+         weld_stats(w, &st);
+-        ui_window(px, ly - 4, pw, ph, WIN_CUTE);
++        stat_window(&sk, px, ly - 4, pw, ph, WIN_CUTE, px + 4, ly + (big ? 74 : 72), pw - 8, w, !big, 1);
+         /* (S2-9) composed over a few ticks (the picture shown before stays up meanwhile), and the next weapon
+          * down or up the list ahead */
+         img = weld_view_image_sliced(w, 0, &ready);
+@@ -563,21 +824,89 @@ static void draw_armory_tab(int sw, int sh)
+         doomo_snprintf(buf, sizeof(buf), "%s %s", doomo_wclass_names[st.wclass],
+                        st.ammo_type == 0xFF ? "" : doomo_ammo_names[st.ammo_type]);
+         ui_text_center(px + pw / 2, ly + 62, buf, PAL_UI_PINK_D);
+-        stat_bars(px + 4, ly + (big ? 74 : 72), pw - 8, w, !big);
+         if (big) {
+             doomo_snprintf(buf, sizeof(buf), "DPS %d  XP %d", weld_dps(&st), w->xp);
+             ui_text_center(px + pw / 2, ly + 142, buf, PAL_UI_PINK_D);
+         }
++        stat_draw(&sk, w);
+     }
+ }
+ 
+-static void workshop_draw(void)
++/* ---- S2-9: the header strip (tabs, title, the bench hint) as a kept panel -------------------------- */
++#define HDR_H 17                /* the strip's rows: the tabs' bounce reaches row 0, their shadow row 16 (the windows start on 17) */
++static void header_content(int sw, int still)
+ {
+     static const char *const tabs[2] = { "Weld", "Armory" };
+-    int sw = plat_screen_w(), sh = plat_screen_h();
+     const char *title = "Rivet's Workshop";
++#if WS_KEPT
++    if (still) plat_rect(0, 0, sw, HDR_H, PAL_UI_CREAM);         /* the backdrop's top band, left flat here */
++#else
++    (void)still;
++#endif
++    ui_tabs(4, 3, tabs, 2, ws_tab, WIN_CUTE);
++    ui_text_outline(sw - ui_text_width(title) - 6, 4, title, PAL_WHITE, PAL_UI_PINK_D);
++    ui_heart(sw - ui_text_width(title) - 12, 7, 3, PAL_PAINT(PAINT_CHERRY, 1));
++    {   /* H4: SELECT opens the furniture bench (home_mart.c), between the tabs and the title */
++        const char *bench = sw >= 300 ? "SEL: furniture" : "SEL" STR_ICON_HOUSE;
++        ui_text(sw - ui_text_width(title) - 20 - ui_text_width(bench), 4, bench, PAL_UI_PINK_D);
++    }
++}
++
++/* Where panels are kept (the GBA) the strip is a solid panel on a flat band instead of the drifting backdrop
++ * (the backdrop leaves the strip out): put back from the last frame while the selected tab stands where it did
++ * (its bounce is the key). A frame whose key is new draws the strip here, before the panel (head_show()). */
++#if WS_KEPT
++static uint32_t ws_head_next;           /* this frame's key */
++#endif
++static void head_draw(int sw)
++{
++#if WS_KEPT
++    ws_head_next = ui_key_int(ui_panel_key(), ws_tab | (ui_wave((int)doomo_frame_count(), 20, 1) > 0) << 1 | sw << 4);
++    if (ws_head_next != ws_head_key) header_content(sw, 1);
++#else
++    header_content(sw, 0);
++#endif
++}
++
++#if WS_KEPT
++static void head_show(int sw)
++{
++    int fresh = ws_head_next != ws_head_key;
++    if (plat_panel_begin(PANEL_WS_HEAD, 0, 0, sw, HDR_H, ws_head_next)) {
++        plat_panel_solid();
++        if (!fresh) header_content(sw, 1);                       /* the platform lost it */
++    }
++    plat_panel_end();
++    ws_head_key = ws_head_next;
++}
++#endif
++
++static void workshop_draw(void)
++{
++    WsLay l;
++    int sw, sh;
++    ws_layout(&l, ws_tab);
++    sw = l.sw; sh = l.sh;
+     plat_ui_loops();                    /* S2-9: the platform's 2D loops stay in for the whole visit (GBA) */
+-    ui_backdrop(WIN_CREAM, (uint32_t)ws_t);
++    {
++        /* S2-9: no backdrop under the two windows (opaque inside their rounded corners; the Armory's pane is only
++         * there with a weapon to show) and, where the header is a kept panel, none under the header strip */
++        int holes[12], n = 1, lh = l.rows * (ws_tab == WT_WELD ? 11 : 20) + 7;
++        holes[0] = l.lx + 1; holes[1] = l.ly - 4 + 5; holes[2] = l.lx + l.lw - 1; holes[3] = l.ly - 4 + lh - 5;
++        if (ws_tab == WT_WELD || armory_any()) {
++            holes[4] = l.px + 1; holes[5] = l.ly - 4 + 5; holes[6] = l.px + l.pw - 1; holes[7] = l.ly - 4 + l.ph - 5;
++            n = 2;
++        }
++#if WS_KEPT
++        holes[4 * n] = 0; holes[4 * n + 1] = 0; holes[4 * n + 2] = sw; holes[4 * n + 3] = HDR_H;
++        n++;
++#endif
++#if WS_KEPT
++        ui_backdrop_flat(WIN_CREAM, holes, n);          /* (pixel-changing: what is left of it is a few slivers) */
++#else
++        ui_backdrop_holes(WIN_CREAM, (uint32_t)ws_t, holes, n);
++#endif
++    }
+     /* a few welding sparks drifting across the backdrop */
+     {
+         int k;
+@@ -587,15 +916,13 @@ static void workshop_draw(void)
+             ui_sparkle(x, y, (ws_t + k * 4) & 15, k & 1 ? PAL_UI_GOLD : PAL_WHITE);
+         }
+     }
+-    ui_tabs(4, 3, tabs, 2, ws_tab, WIN_CUTE);
+-    ui_text_outline(sw - ui_text_width(title) - 6, 4, title, PAL_WHITE, PAL_UI_PINK_D);
+-    ui_heart(sw - ui_text_width(title) - 12, 7, 3, PAL_PAINT(PAINT_CHERRY, 1));
+-    {   /* H4: SELECT opens the furniture bench (home_mart.c), between the tabs and the title */
+-        const char *bench = sw >= 300 ? "SEL: furniture" : "SEL" STR_ICON_HOUSE;
+-        ui_text(sw - ui_text_width(title) - 20 - ui_text_width(bench), 4, bench, PAL_UI_PINK_D);
+-    }
+-    if (ws_tab == WT_WELD) draw_weld_tab(sw, sh);
+-    else draw_armory_tab(sw, sh);
++    head_draw(sw);
++#if WS_KEPT
++    ws_lk.keep = 0;
++    ws_sk.keep = 0;
++#endif
++    if (ws_tab == WT_WELD) draw_weld_tab(&l);
++    else draw_armory_tab(&l);
+     if (ws_msg_t && ws_msg) {
+         int w = ui_text_width(ws_msg) + 12;
+         int y = sh - 30 + (ws_msg_t > 80 ? (ws_msg_t - 80) : 0);
+@@ -607,6 +934,13 @@ static void workshop_draw(void)
+         ui_window(sw - 58 - w, sh - 46, w, 14, WIN_MINT);
+         ui_text(sw - 52 - w, sh - 43, line, PAL_RAMP(RAMP_MINT, 1));
+     }
++#if WS_KEPT
++    /* the kept panels last: one shown earlier makes the 2D calls after it over its box take the GBA's slow path.
++     * Nothing drawn above (the message box, the speech) lies on a panel's rect */
++    head_show(sw);
++    list_show();
++    stat_show();
++#endif
+     /* C3: the prompt bar; at 240x160 the lower-priority items give way */
+     if (ws_tab == WT_WELD) {
+         static const UiPrompt weld_bar[] = {
+diff --git a/core/tests/test_panel.c b/core/tests/test_panel.c
+index d9ece294..6a393b44 100644
+--- a/core/tests/test_panel.c
++++ b/core/tests/test_panel.c
+@@ -16,6 +16,7 @@
+ #include "../src/creator_int.h"
+ #include "../src/combat_int.h"     /* SP8: combat_hurt_player */
+ #include "doomo/library.h"         /* S2-8 */
++#include "../src/weld_int.h"       /* S2-9: weld_pending */
+ 
+ #define MAXF 420
+ 
+@@ -253,6 +254,37 @@ static uint32_t p_help(int f)
+     return 0;
+ }
+ 
++/* (S2-9) Rivet's workshop (workshop.c): the part list's rows but the cursor's, and the stat bars (of the Weld tab's
++ * pane and the Armory's), are panels. A story town with four weapons in the Armory; the cursor down the whole list
++ * (past the scroll and back to the first row), the options of a few parts (the rows under the cursor change, a
++ * locked option shows its mark, the stat bars change), up again, the Armory (the list and its pane, the cursor
++ * down and up the weapons), and back to the Weld tab (the shine of the bars passes over them in all of it) */
++static void s_workshop(void)
++{
++    int i;
++    story_town();
++    memset(&weld_pending, 0, sizeof(weld_pending));     /* the design on the table outlives a run */
++    for (i = 1; i < 5; i++) {
++        DoomoWeapon *w = &doomo_town.weapons[i];
++        weld_default(w, (i * 3) % WFRAME_COUNT, i & 1);
++        w->flags = WF_VALID;
++        w->quality = 60;
++    }
++    scene_set(&SCENE_WORKSHOP, 0);
++}
++static uint32_t p_workshop(int f)
++{
++    if (f == 12) return BTN_A;                                  /* the tip card, if it is up */
++    if (f >= 20 && f < 120 && f % 6 == 2) return BTN_DOWN;     /* every row, the scroll, the wrap to the top */
++    if (f >= 120 && f < 200 && f % 8 == 4) return (f / 8) % 3 ? BTN_RIGHT : BTN_LEFT;
++    if (f >= 200 && f < 260 && f % 6 == 0) return BTN_UP;
++    if (f == 270) return BTN_L;                                 /* the Armory */
++    if (f >= 280 && f < 340 && f % 10 == 0) return f < 310 ? BTN_DOWN : BTN_UP;
++    if (f == 350) return BTN_R;
++    if (f >= 360 && f < 410 && f % 5 == 0) return BTN_RIGHT;
++    return 0;
++}
++
+ /* the language switch: Spanish from frame 120 on */
+ static uint32_t p_visit_lang(int f)
+ {
+@@ -404,6 +436,11 @@ TEST(panel_field_guide_text_is_pixel_identical)
+     CHECK(both("help", s_help, p_help, 420, 200));
+ }
+ 
++TEST(panel_workshop_list_and_bars_are_pixel_identical)
++{
++    CHECK(both("workshop", s_workshop, p_workshop, 420, 100));
++}
++
+ TEST(panel_language_switch_redraws)
+ {
+     CHECK(both("lang", s_visit, p_visit_lang, 240, 200));
+diff --git a/ps1/tools/ovl_plan.py b/ps1/tools/ovl_plan.py
+index 406f95a4..6166444e 100644
+--- a/ps1/tools/ovl_plan.py
++++ b/ps1/tools/ovl_plan.py
+@@ -51,7 +51,7 @@ GROUPS = [
+     ("minigame", r"mg(_\w+)?$"),
+     ("library",  r"lib_\w+$"),
+     ("combat",   r"levels(_\w+)?$|arena(_modes)?$|combat(_\w+)?$|actor(_\w+)?$|weld_gfx$"),
+-    ("workshop", r"workshop$|weld_game$"),
++    ("workshop", r"workshop$|weld_game$|weld_slice$"),   # S2-9: the sliced weapon picture is the workshop's
+     ("island",   r"fp_island(_gfx)?$"),
+     ("freeplay", r"fp_(apartments|family|graveyard|newisland|news|options|resident|roster|saveload|shop|title|unlocks)$|playas_scene$"),
+     # the story's cutscenes with their Grumbleguts renderer are a group of
+@@ -83,7 +83,9 @@ OVL_KINDS = (".text", ".rodata")
+ # FP_ISLAND_SCRATCH in fp_island.h; keep the two equal). The linker script
+ # grows the slot if a group gets too big to leave it (it never does today:
+ # the slot is set by bigger groups), so the room is there by construction. ---
+-SCRATCH = {"island": 20480}
++# S2-9: the workshop's sliced weapon picture keeps its state there (weld_slice.c
++# struct Ws, ~100 B: no resident BSS).
++SCRATCH = {"island": 20480, "workshop": 256}
+ # --- end SP3 ---
+ 
+ # --- H3 (SPEC C4/C5): the house group borrows the 3D views' tables. Its
+-- 
+2.43.0
+
