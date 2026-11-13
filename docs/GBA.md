@@ -446,7 +446,7 @@ against the LAST row, not against a figure from an older base.
 | 53 | CR5-FIX: the save chunk budget counts the nickname and the gene trailer; a damaged pool section keeps the nicknames (docs/CREATOR.md "CR5-FIX") | after TM2d-DEPTH (row 52) | 6,404 B | **6,404 B** | 0 B | 6,288 B | measured on the rebased tree (`make -C gba sizes`): `.bss` 254,844 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, the same as row 51. The change is code in `deep_commit()` and `nickext_read()` only; no new statics. `make -C gba test` and `test-coresave` pass. |
 | 54 | CR4 A1b: 51 face parts (12 noses, 12 mouths, 16 ears, 11 blush styles; docs/CREATOR.md "CR4 A1b") | after CR5-FIX (row 53) | 6,404 B | **6,404 B** | 0 B | 6,288 B | measured with `make -C gba sizes` (clean `make -C gba`) on the tip before A1b (`5aa25cd1`, rebased tree) and on A1b rebased onto it: `.bss` 254,836 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B identical (an earlier same-base measurement gave `.bss` 249,084 B on both sides); the part scripts, catalog rows and icons are `const` ROM: `.rodata` +23.5 KB; the `mat blush` branch of `pm_of` costs about +112 B `.text`. `make -C gba test` and `test-creator` pass. |
 | 55 | TM2E-ACTIONS: sim actions a reply can carry (docs/TALK.md 6p) | after CR4 A1b (row 54) | 6,412 B | **6,412 B** | 0 B | 6,288 B | measured 2026-11-15 on the origin tip (clean worktree; its own build reads `.bss` 254,836 B) and the same + TM2E-ACTIONS (`make -C gba`, `make -C gba sizes`, `make -C gba test` all clean): `.bss` 254,836 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, all the overlays identical. `TalkState` stays 932 B on the GBA: `TalkLine.action` is 4 bits packed with `stance` (`TalkLine` 104 B), `TalkPart.pad[2]` became `actp` / `actw`, `TalkState.call_to` and the ledger's `invn` / `giftn` sit in padding, and the ledger flags are bits of `LedP.flags`. ROM: `.text` 1,498,704 -> 1,503,560 B (+4,856: `talk_act.o`, `sim_nudge.o`, `DK_ACT`, `talk_gen_action`, the caps), `.rodata` +912 B (the TALK bin 908,412 B). Stack: `TalkOutcome` 22 -> 27 B and `TalkSummary` 76 -> 78 B (locals of `finish`); the DM's `pick_call` scans 1,000 residents once, on the stack 40 B |
-| 56 | S2-4b: the Fun Fair's bands, undo lists and stamps (docs: "Speed wave 2: S2-4b" below) | `ee686c7` | 15,444 B | **15,452 B** | +8 B | 6,308 B | `.bss` 245,804 -> 245,796 B (`mg_bake_key` is gone on the GBA); IWRAM resident unchanged (`.iwram` 11,256 B, `.iwram_bss` 4,084 B); the overlay's room group 3,588 -> 3,872 B (`stage_find`, the binary search of the baked table, and `stage_list`; the slot is sized by the 3D group, 10,352 B). The games' new state lives in the scene scratch and the MG arena (2,048 B, the undo state in its last 24 B): the Whack arena 1,524 B, the Derby's hop table 40 B, Memory's card centres 80 B. ROM +241,448 B (`backdrops.bin` 3,418,324 -> 3,659,772: Whack's 30 whole pictures, 1.15 MB, are now 469 KB of bands; Dodge 161 KB, Gallery 386 KB, Derby 99 KB, Memory 113 KB, the shared stamps 119 KB) plus a few KB of code. PS1: compiled out, `_end` 0x801efe60 = the base, 64 KB below the stack top with the boot FMV (+0 B resident). Frames equal to the base but for the shake and 10 fade frames (below) |
+| 56 | S2-4b: the Fun Fair's bands, undo lists and stamps (docs: "Speed wave 2: S2-4b" below) | `ee686c7` | 15,444 B | **15,452 B** | +8 B | 6,308 B | `.bss` 245,804 -> 245,796 B (`mg_bake_key` is gone on the GBA); IWRAM resident unchanged (`.iwram` 11,256 B, `.iwram_bss` 4,084 B); the overlay's room group 3,588 -> 3,872 B (`stage_find`, the binary search of the baked table, and `stage_list`) and its UI group 4,772 -> 5,152 B (the `ldm` / `stm` checker; the slot is sized by the 3D group, 10,352 B). The games' new state lives in the scene scratch and the MG arena (2,048 B, the undo state in its last 24 B): the Whack arena 1,524 B, the Derby's hop table 40 B, Memory's card centres 80 B. ROM +241,448 B (`backdrops.bin` 3,418,324 -> 3,659,772: Whack's 30 whole pictures, 1.15 MB, are now 469 KB of bands; Dodge 161 KB, Gallery 386 KB, Derby 99 KB, Memory 113 KB, the shared stamps 119 KB) plus a few KB of code. PS1: compiled out, `_end` 0x801efe60 = the base, 64 KB below the stack top with the boot FMV (+0 B resident). Frames equal to the base but for the shake and 10 fade frames (below) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -1911,7 +1911,11 @@ was never the pixels: it was the number of calls (a circle is a rect call per ro
 * **Work taken out of the frame** where it was not drawing: the crowd's `x % 6` by folding (`mg_mod6`, tested for every value),
   its hops from a 40-entry table, boost pads and hurdles culled before they are hashed or divided for (Derby); the cards' centres
   made once (Memory: `card_x`/`card_y` were 5% of the frame); the hit flash's full-screen checker through the UI group's
-  word-at-a-time `vid_checker_ui` (12.7 -> ~4.5 ms, `plat_ui_loops()` before it).
+  word-at-a-time `vid_checker_ui` (12.7 -> 7.9 ms, `plat_ui_loops()` before it), which then takes eight words at a time
+  with `ldm` / `stm` (7.9 -> ~5.1 ms; `et_blittest.c` checks it against `plat_checker_m4` on 3,000 clipped cases); the
+  Dodge's hit hearts (3 colours, 2 sizes: shapes of ui_raster.c's cache, each computed once, ~0.7 ms) drawn once while READY
+  goes by (the backdrop paints over them), so the first hit of a round finds them cached. Together these took the first
+  hit's frame from 39.3 to 30.6 ms: it was the one frame of the late Dodge window over 33 ms.
 * **A shake** on the GBA is the kept frame drawn unshaken and moved as a whole by the display (`plat_post_offset`).
 
 **What the numbers taught** (cycles, libmgba): a plain rect call ~270 (a 5x5 head ~900 with its eyes), `vid_blit` ~7.8 per drawn
@@ -1938,7 +1942,7 @@ ROM and in the base, side by side.
 **Costs.** ROM (`backdrops.bin`, the baked pictures, 3.42 -> 3.66 MB): Whack 469 KB of bands (was 1.15 MB of 30 whole screens),
 Dodge 161 KB, Gallery 386 KB (water 261 KB, tent / counter 77 KB, stamps 54 KB), Derby 99 KB, Memory 113 KB, the stamps the games
 share (imps, Tix, the HUD, sparkles, clouds, gondolas) 119 KB; `backdrops.bin` 3,418,324 -> 3,659,772 B (+241,448: 1,001 entries of 16 B, 608 distinct pictures of 3,643,744 B).
-EWRAM -8 B (`mg_bake_key` is gone on the GBA), IWRAM resident 0 B, the room group of the overlay 3,588 -> 3,872 B (the slot is
+EWRAM -8 B (`mg_bake_key` is gone on the GBA), IWRAM resident 0 B, the room group of the overlay 3,588 -> 3,872 B and the UI group 4,772 -> 5,152 B (the slot is
 sized by the 3D group: 10,352 B). The games' per-scene data stays in the scene scratch: the Whack arena 1,524 of 2,024 B (its
 recorded restore lists), the Derby's hop table 40 B, Memory's card centres 80 B; no new statics.
 
@@ -1952,28 +1956,30 @@ recorded restore lists), the Derby's hop table 40 B, Memory's card centres 80 B;
 | whack play Sweet | 20.9 (40.2 / 61.7, 73) | **29.9** (17.0 / 22.9, 0) |
 | whack play Hellfire | 20.0 (44.9 / 69.8, 79) | **29.9** (21.0 / 28.5, 0) |
 | dodge play Sweet | 22.5 (38.6 / 45.8, 64) | **30.0** (21.9 / 24.9, 0) |
-| dodge play late | 27.2 (33.6 / 59.4, 24) | 29.9 (19.6 / 39.3, **1 frame of 50 ms**) |
+| dodge play late | 27.2 (33.6 / 59.4, 24) | **30.0** (19.5 / 30.6, 0) |
 | dodge play Hellfire | 20.7 (42.1 / 48.2, 82) | **30.0** (22.9 / 28.4, 0) |
 | gallery play Sweet | 11.0 (85.2 / 88.9, 74) | **30.0** (29.2 / 33.1, 0) |
 | gallery play Hellfire | 10.5 (87.3 / 94.3, 74) | **30.0** (29.9 / 36.9, 0) |
-| derby race Sweet | 22.1 (38.0 / 43.5, 69) | **30.0** (28.6 / 33.9, 0) |
-| derby race mid | 22.1 (37.5 / 42.1, 67) | **30.0** (27.8 / 31.7, 0) |
+| derby race Sweet | 22.1 (38.0 / 43.5, 69) | **30.0** (28.6 / 33.8, 0) |
+| derby race mid | 22.1 (37.5 / 42.1, 67) | **30.0** (27.7 / 31.6, 0) |
 | derby race Hellfire | 22.6 (37.6 / 42.8, 66) | **30.0** (28.7 / 33.4, 0) |
 | memory play Sweet | 29.5 (32.0 / 42.9, 4) | **29.9** (21.3 / 26.9, 0) |
 | memory play Hellfire | 21.5 (38.4 / 42.7, 74) | **29.9** (17.8 / 24.1, 0) |
 | the seven title cards | 30.0 | 30.0 |
 
-Logic ticks per second are 29.9-30.0 in every window (the Gallery's were 19.4 / 18.5). A window that reads 29.9 has every
+Logic ticks per second are 29.9-30.0 in every window (the Gallery's were 19.4 / 18.5). A work maximum over 33.3 ms with every frame
+at 2 vblanks (the Gallery, the Derby, the Dodge's first hit) is a tick that borrowed the slack of the one before it. A window that reads 29.9 has every
 frame at 2 vblanks (the vblank histogram has no 3 in it); the 0.1 is the window's tick count.
 
-**Still short.** * **The Dodge's late window (29.9 fps) has one frame of 50 ms**, the first one that shows a hit (work 39.3 ms: the hit flash's
-  full-screen checker, now through the UI group's word-at-a-time loop, plus the overlay load of that group, plus the frame's own
-  work). One frame in 130, but it is over 33 ms: **the goal "no frame over 33 ms" is not reached in that window.**
-* **The Prize Wheel's spin window has one frame of 67 ms** (work 60.7 ms, the same as before this package): the result card
-  after the spin. It is not one of the games of this package and it is not changed by it (`expect-fps 28` still holds: 129 of
-  130 frames are 2 vblanks). The card's own draw (the `plat_checker` flash and the rays) is the next thing to keep.
+**Still short.**
+
+* **The Prize Wheel's spin window has one frame of 67 ms** (work 60.6 ms, the same as before this package): the first frame of
+  the result card, and the wheel's result phase after it is ~60 ms a tick (17 fps: the wheel's disc is drawn live, 40% of it
+  `vid_rect_narrow` and the wheel's own loop; no window of `speed2_fair.txt` stands in it). The Wheel is not one of the games
+  of this package (S2-3 held its spin at 30): its disc as a kept picture is the next package. `expect-fps 28` holds: 129 of 130
+  frames of the window are 2 vblanks.
 * **Margin.** The Gallery (29.2 / 29.9 ms work on average, 33.1 / 36.9 at the worst tick) and the Derby (28.6 / 28.7, worst
-  33.9 / 33.4) run with ~3-4 ms of headroom on average and none at their worst tick, although the harness shows every frame at 2
+  33.8 / 33.4) run with ~3-4 ms of headroom on average and none at their worst tick, although the harness shows every frame at 2
   vblanks. Both are at the limit of what stamps and bands can take out: what is left in each is many small calls (the Derby's
   63 crowd heads, the Gallery's cards and bulbs). The next step there is OBJ sprites (G-K1), not more stamps.
 
