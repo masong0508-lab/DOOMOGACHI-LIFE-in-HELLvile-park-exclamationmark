@@ -104,9 +104,47 @@ reachability search), `core/tools/mapreach.c`, `tools/levelcheck.py`.
   is a deliberate soft lock the search must find.
 * **Tools:** `make -C core levelcheck` and `mapc-check` are part of
   `make -C core test`.
-* **Not yet:** `on EVENT do ACTION` (LV2), the runtime that applies zones and
+* **Not yet:** the runtime that applies zones and
   swaps in play (LV3-LV5: the accessors exist and are unit tested), `texbank`
   art (LV7).
+
+## The level script VM (LV2, 2026-11-13)
+
+`on EVENT [repeat] do ACTION ; ACTION` lines in a map file compile to bytecode in
+a ROM table (`DoomoMapExt.script`, `script_len`); `core/src/lv_script.c` runs it.
+Bytecode, events, actions and limits: `core/include/doomo/lv_script.h`; the map
+syntax: `core/data/maps/README.md`. The state is a caller-owned `LvVm` (about 84
+bytes of data plus 4 pointers; variables 32 bytes), not part of `LvRun`, so no RAM is
+spent until a level starts a VM.
+
+* **Events:** start, tag, kill group cleared, timer (once or every N ticks), zone
+  entered (by zone tag), usable used, variable reached a value, boss phase.
+* **Actions:** open / close a remote tag, apply / revert a swap set (the VM
+  changes the live map itself through `map_swap_apply` / `map_swap_revert`), set a
+  zone parameter, spawn a dormant group, caption, bark, music cue, tint pulse,
+  camera sweep (path, ticks, done tag; `lv_vm_frozen()` says input is frozen, the host
+  gets the progress 0..256 each tick), set / add a variable (0..255, clamped), give /
+  take a weapon, checkpoint, offer a choice (`lv_vm_choose()` answers: sets the variable and
+  fires a tag), set a story flag, end the level, post a tag (chains handlers).
+  Everything that leaves the VM goes out through one host function
+  `void host(void *ctx, int op, int a, int b)`; the game wires it when a level uses a script.
+* **Deterministic:** no clock, no rng, no pointers in the state hash; the same events give
+  the same state and the same host calls (`lv_vm_hash`, tested).
+* **Budgets (asserted):** 64 handlers, 2048 script bytes, 255 bytes per handler, 32 variables,
+  16 actions per tick (a longer handler resumes next tick), 16 queued handlers (the extra is
+  dropped and `err` gets `LVVE_QUEUE`), one open choice. `lv_script_check()` validates a script
+  (structure, opcodes, variables, swap sets, zones, camera paths) before a run; mapc refuses the same.
+* **Tests:** `core/tests/test_lv_script.c` (a test per action, per event, the budgets, the
+  checker, and the compiled `core/tests/maps/t2_script.txt` run twice with equal hashes);
+  `tools/tests/test_mapc.py` (`TestScripts`).
+* **Memory:** nothing in the game calls the VM yet, so `--gc-sections` drops it on the GBA,
+  PS1 and Dreamcast: GBA `make -C gba sizes` is unchanged, the PS1 EXE is identical. `lv_script`
+  is in the PS1 combat overlay group (`ps1/tools/ovl_plan.py`), so a level using it later adds
+  no resident byte there either.
+* **Not yet (follow-up, the first package that needs it):** calling the VM from
+  `lv_runtime_pre` / `lv_runtime_post` and the host function (needs `LvVm` somewhere: the
+  mechanic union of LV3-LV5, or a block of the combat overlay), a `LVE_USE` source (usables:
+  LV3), a `LVE_PHASE` source (boss phases), `levelcheck` counting the script bytes.
 
 ## Files
 

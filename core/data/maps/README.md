@@ -203,6 +203,7 @@ zone X0 Y0 X1 Y1 KIND [arg=N] [tag=N]   up to 32 rectangles (inclusive corners)
 path ID [kind=KIND] x,y x,y ...          up to 8 paths of 2..32 points
 swap NAME [event=N] [toggle] ... end     up to 16 named sets, 256 cell overrides in all
 texbank N TEXNAME                        level-local texture N (0..7) = id 56 + N
+on EVENT [repeat] do ACTION ; ACTION ... a script handler (up to 64, 2048 bytes in all)
 tflags2=a,b                              on a thing, a legend entry or `thing` line
 ```
 
@@ -227,7 +228,19 @@ tflags2=a,b                              on a thing, a legend entry or `thing` l
   not a shared `TEX_*` name; use them as `wall=`, `floor=`, `ceil=` in legend
   entries.
 * `tflags2` flags: `escort collect sleeper splitter frozen usable`.
-* `on EVENT do ACTION` (level scripts) is refused until the script VM (LV2).
+* `on EVENT [repeat] do ACTION [args] ; ACTION [args]` is a level script handler, one line each
+  (the VM: `core/src/lv_script.c`, bytecode and limits in `core/include/doomo/lv_script.h`). It runs
+  once, or every time with `repeat`. Events: `start`, `tag N` (a trigger fired), `kill N` (a
+  kill-event group cleared), `timer N` (N ticks after the start; `repeat`: every N), `enter N` (the
+  player entered a zone with `tag=N`), `use N` (thing N was used), `var V N` (variable V became N),
+  `phase N` (a boss phase). Actions: `open TAG`, `close TAG`, `swap NAME`, `unswap NAME` (a
+  swap set by name), `zone INDEX ARG` (zones are numbered from 0 in file order), `spawn GROUP`,
+  `caption TEXTID`, `bark TEXTID`, `music CUE` (a number or SONG_ name), `tint COLOR LEVEL`,
+  `cam PATHID TICKS [DONETAG]` (camera sweep, input frozen), `set V N`, `add V DELTA`, `give W`,
+  `take W`, `checkpoint`, `choice V TEXTID TAG0 TAG1`, `flag N [on|off]`, `end [RESULT]`,
+  `post TAG`. 32 byte variables (0..31, start at 0). mapc refuses an unknown name, a swap set, zone
+  index, path or zone tag the map does not have, a handler over 255 bytes, a script over 2048 bytes
+  or 64 handlers, and `repeat` on `start`.
 
 mapc also refuses: zones or paths outside the map, overlapping exclusive
 zones, a `dark yes` map without `note`, a `gba yes` map that breaks the

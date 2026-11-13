@@ -91,7 +91,7 @@ def _eval_expr(expr, values):
     return int(eval(" ".join(out), {"__builtins__": {}}, {}))  # trusted headers
 
 
-ENUMS = read_enums("textures.h", "audio.h", "actor.h", "map.h")
+ENUMS = read_enums("textures.h", "audio.h", "actor.h", "map.h", "lv_script.h")
 
 
 def enum_lookup(prefix, name, what):
@@ -140,7 +140,11 @@ SWAP_CELLS_MAX = 256
 TEXBANK_MAX = 8
 TEXBANK_FIRST = 56
 TEXBANK_NAME = 12
-SCRIPT_MSG = "'on EVENT do ACTION' needs the script VM (LV2): mapc does not compile level scripts yet"
+# level scripts (core/include/doomo/lv_script.h, core/src/lv_script.c)
+SCRIPT_BYTES = 2048
+SCRIPT_HANDLERS = 64
+SCRIPT_VARS = 32
+SCRIPT_HDR = 5
 
 
 def _enum_table(prefix, skip=()):
@@ -294,11 +298,149 @@ V2_KEYWORDS = ("format", "fog", "view", "gravity", "dark", "note", "gba", "detai
                "zone", "path", "swap", "texbank", "on")
 
 
+# `on EVENT [repeat] do ACTION [args] ; ACTION [args] ...` -> opcode and operand kinds.
+# A kind is (name, default); a default of None means the operand is required.
+SCRIPT_EVENTS = {   # word -> (LVE name, operand kinds)
+    "start": ("LVE_START", []), "tag": ("LVE_TAG", [("tag", None)]),
+    "kill": ("LVE_CLEAR", [("group", None)]), "timer": ("LVE_TIMER", [("ticks", None)]),
+    "enter": ("LVE_ZONE", [("ztag", None)]), "use": ("LVE_USE", [("thing", None)]),
+    "var": ("LVE_VAR", [("var", None), ("u8", None)]), "phase": ("LVE_PHASE", [("u8", None)]),
+}
+SCRIPT_ACTIONS = {  # word -> (LVO name, operand kinds)
+    "open": ("LVO_OPEN", [("tag", None)]), "close": ("LVO_CLOSE", [("tag", None)]),
+    "swap": ("LVO_SWAP", [("swap", None)]), "unswap": ("LVO_UNSWAP", [("swap", None)]),
+    "zone": ("LVO_ZONE", [("zone", None), ("u8", None)]), "spawn": ("LVO_SPAWN", [("u8", None)]),
+    "caption": ("LVO_CAPTION", [("text", None)]), "bark": ("LVO_BARK", [("text", None)]),
+    "music": ("LVO_MUSIC", [("song", None)]), "tint": ("LVO_TINT", [("u8", None), ("u8", None)]),
+    "cam": ("LVO_CAM", [("path", None), ("ticks", None), ("tag", 0)]),
+    "set": ("LVO_SET", [("var", None), ("u8", None)]), "add": ("LVO_ADD", [("var", None), ("s8", None)]),
+    "give": ("LVO_GIVE", [("u8", None)]), "take": ("LVO_TAKE", [("u8", None)]),
+    "checkpoint": ("LVO_CHECKPOINT", []),
+    "choice": ("LVO_CHOICE", [("var", None), ("text", None), ("tag", None), ("tag", None)]),
+    "flag": ("LVO_FLAG", [("u8", None), ("onoff", 1)]), "end": ("LVO_END", [("u8", 0)]),
+    "post": ("LVO_POST", [("tag", None)]),
+}
+
+
+def parse_script_args(toks, kinds, what):
+    """Operand tokens -> list of (kind, value); names (swap sets) are resolved later."""
+    if len(toks) > len(kinds) or len(toks) < len([k for k in kinds if k[1] is None]):
+        raise MapError("%s: wants %s" % (what, " ".join(k[0] if k[1] is None else "[" + k[0] + "]" for k in kinds)
+                                         or "no operand"))
+    out = []
+    for i, (kind, default) in enumerate(kinds):
+        if i >= len(toks):
+            out.append((kind, default))
+        elif kind == "swap":
+            out.append((kind, toks[i].lower()))
+        elif kind == "song":
+            try:
+                v = int(toks[i], 0)
+            except ValueError:
+                v = enum_lookup("SONG", toks[i], "song")
+            if not 0 <= v <= 255:
+                raise MapError("%s: song %s out of range" % (what, toks[i]))
+            out.append((kind, v))
+        elif kind == "onoff":
+            if toks[i].lower() not in ("on", "off"):
+                raise MapError("%s: on or off" % what)
+            out.append((kind, 1 if toks[i].lower() == "on" else 0))
+        else:
+            lo, hi = {"tag": (1, 255), "group": (1, 255), "ztag": (1, 255), "ticks": (1, 65535),
+                      "text": (1, 65535), "s8": (-128, 127), "var": (0, SCRIPT_VARS - 1)}.get(kind, (0, 255))
+            if kind == "tag" and default == 0 and toks[i] == "0":
+                lo = 0
+            out.append((kind, parse_int(toks[i], lo, hi, "%s %s" % (what, kind))))
+    return out
+
+
+def parse_on(toks, lineno):
+    if "do" not in [t.lower() for t in toks]:
+        raise MapError("on EVENT [repeat] do ACTION [args] ; ACTION ...")
+    k = [t.lower() for t in toks].index("do")
+    ev = [t.lower() for t in toks[1:k]]
+    repeat = "repeat" in ev
+    ev = [t for t in ev if t != "repeat"]
+    if not ev or ev[0] not in SCRIPT_EVENTS:
+        raise MapError("unknown event '%s' (have: %s)" % (ev[0] if ev else "", ", ".join(sorted(SCRIPT_EVENTS))))
+    ename, kinds = SCRIPT_EVENTS[ev[0]]
+    if repeat and ev[0] == "start":
+        raise MapError("'on start' happens once: it cannot repeat")
+    eargs = parse_script_args(ev[1:], kinds, "on " + ev[0])
+    text = " ".join(toks[k + 1:]).replace(";", " ; ")
+    acts = []
+    for part in " ".join(text.split()).split(";"):
+        t = part.split()
+        if not t:
+            continue
+        if t[0].lower() not in SCRIPT_ACTIONS:
+            raise MapError("unknown action '%s' (have: %s)" % (t[0], ", ".join(sorted(SCRIPT_ACTIONS))))
+        oname, okinds = SCRIPT_ACTIONS[t[0].lower()]
+        acts.append((t[0].lower(), oname, parse_script_args(t[1:], okinds, t[0].lower())))
+    if not acts:
+        raise MapError("on ... do: no action")
+    return {"event": ename, "ename": ev[0], "eargs": eargs, "repeat": repeat, "acts": acts, "line": lineno}
+
+
+def compile_scripts(m, things):
+    """The bytecode of every `on` statement (names and indices checked against the map).
+    Returns the bytes and a list of (handler comment, byte count)."""
+    path = m["path"]
+    sc = m["scripts"]
+    if len(sc) > SCRIPT_HANDLERS:
+        raise MapError("%s: %d script handlers, at most %d" % (path, len(sc), SCRIPT_HANDLERS))
+    swaps = {sw["name"]: i for i, sw in enumerate(m["swaps"])}
+    ztags = set(z["tag"] for z in m["zones"])
+    pids = set(p["id"] for p in m["paths"])
+    out = bytearray([len(sc)])
+    for h in sc:
+        where = "%s:%d: on %s" % (path, h["line"], h["ename"])
+        a = [v for _, v in h["eargs"]] + [0, 0]
+        if h["ename"] == "timer":
+            a = [h["eargs"][0][1] & 255, h["eargs"][0][1] >> 8]
+        if h["ename"] == "enter" and a[0] not in ztags:
+            raise MapError("%s %d: no zone has tag=%d" % (where, a[0], a[0]))
+        if h["ename"] == "use" and a[0] >= len(things):
+            raise MapError("%s %d: the map has only %d things" % (where, a[0], len(things)))
+        body = bytearray()
+        for word, oname, args in h["acts"]:
+            op = ENUMS[oname]
+            body.append(op)
+            for kind, v in args:
+                if kind == "swap":
+                    if v not in swaps:
+                        raise MapError("%s: %s: no swap set named '%s'" % (where, word, v))
+                    body.append(swaps[v])
+                elif kind == "zone":
+                    if v >= len(m["zones"]):
+                        raise MapError("%s: %s: the map has only %d zones (numbered from 0 in file order)" % (
+                            where, word, len(m["zones"])))
+                    body.append(v)
+                elif kind == "path":
+                    if v not in pids:
+                        raise MapError("%s: %s: no path %d" % (where, word, v))
+                    body.append(v)
+                elif kind in ("ticks", "text"):
+                    body.extend((v & 255, v >> 8))
+                elif kind == "s8":
+                    body.append(v & 255)
+                else:
+                    body.append(v)
+        if len(body) > 255:
+            raise MapError("%s: %d bytes of actions, at most 255 in one handler" % (where, len(body)))
+        out.extend((ENUMS[h["event"]], a[0] & 255, a[1] & 255, 1 if h["repeat"] else 0, len(body)))
+        out.extend(body)
+    if len(out) > SCRIPT_BYTES:
+        raise MapError("%s: the script is %d bytes, at most %d" % (path, len(out), SCRIPT_BYTES))
+    return bytes(out) if sc else b""
+
+
 def parse_v2(m, kw, toks, lineno):
     """One v2 statement. Returns True if it opens a `swap` block."""
     hdr = m["hdr"]
     if kw == "on":
-        raise MapError(SCRIPT_MSG)
+        m["scripts"].append(parse_on(toks, lineno))
+        return False
     if kw != "zone" and kw != "path" and kw != "swap" and kw != "texbank":
         if kw in hdr:
             raise MapError("'%s' given twice" % kw)
@@ -419,7 +561,7 @@ def parse_map(path):
         "sky": 0, "music": 0, "ambient": 12, "legend": {}, "things_legend": {},
         "grid": None, "overlays": {}, "things": [], "path": path,
         # format v2
-        "v2": False, "hdr": {}, "zones": [], "paths": [], "swaps": [], "texbank": {},
+        "v2": False, "hdr": {}, "zones": [], "paths": [], "swaps": [], "texbank": {}, "scripts": [],
         "texbank_names": {},
     }
     with open(path, "r", encoding="ascii") as f:
@@ -894,7 +1036,7 @@ def build_v2(m, w, h, cells, things):
     for name, n in m["texbank"].items():
         bank[n] = name
     nbank = max([n for n in m["texbank"].values()] + [-1]) + 1
-    return {"swaps": swaps, "bank": bank[:nbank]}
+    return {"swaps": swaps, "bank": bank[:nbank], "script": compile_scripts(m, things)}
 
 
 def emit_v2(m, things):
@@ -947,6 +1089,13 @@ def emit_v2(m, things):
         for i, b in enumerate(bank):
             out.append('    "%s",   /* texture id %d */\n' % (b or "", TEXBANK_FIRST + i))
         out.append("};\n\n")
+    script = ext["script"]
+    if script:
+        out.append("/* level script (lv_script.h): %d handlers, %d bytes */\n" % (script[0], len(script)))
+        out.append("static const uint8_t script_%s[%d] = {\n" % (name, len(script)))
+        for i in range(0, len(script), 16):
+            out.append("    %s,\n" % ",".join(str(v) for v in script[i:i + 16]))
+        out.append("};\n\n")
     has_f2 = any(t.flags2 for t in things)
     if has_f2:
         out.append("static const uint8_t tflags2_%s[%d] = {\n" % (name, len(things)))
@@ -976,8 +1125,9 @@ def emit_v2(m, things):
         ("pathpts_" + name) if paths else "0"))
     out.append("    %s, %s,\n" % (
         ("swaps_" + name) if swaps else "0", ("swapcells_" + name) if swaps else "0"))
-    out.append("    %s, %s\n" % (
+    out.append("    %s, %s,\n" % (
         ("texbank_" + name) if bank else "0", ("tflags2_" + name) if has_f2 else "0"))
+    out.append("    %s, %d   /* script, script bytes */\n" % (("script_" + name) if script else "0", len(script)))
     out.append("};\n")
     return "".join(out)
 

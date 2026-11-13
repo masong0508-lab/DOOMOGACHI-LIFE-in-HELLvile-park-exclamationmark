@@ -27,6 +27,7 @@
 
 #include "combat_int.h"
 #include "doomo/unlock_ids.h"
+#include "doomo/lv_script.h"      /* LV2: the level script VM (lv_script.c; nothing links until a level has a script) */
 
 /* ---- the levels ------------------------------------------------------------ */
 /* Ids 0..6 are the seven built levels (select page 1). LV0 (levels plan

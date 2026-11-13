@@ -53,7 +53,7 @@ GROUPS = [
     ("fishcook", r"fish_\w+$|cook_\w+$"),
     ("minigame", r"mg(_\w+)?$"),
     ("library",  r"lib_\w+$"),
-    ("combat",   r"levels(_\w+)?$|arena(_modes)?$|combat(_\w+)?$|actor(_\w+)?$|weld_gfx$"),
+    ("combat",   r"levels(_\w+)?$|lv_script$|arena(_modes)?$|combat(_\w+)?$|actor(_\w+)?$|weld_gfx$"),
     ("workshop", r"workshop$|weld_game$"),
     ("island",   r"fp_island(_gfx)?$"),
     ("freeplay", r"fp_(apartments|family|graveyard|newisland|news|options|resident|roster|saveload|shop|title|unlocks)$|playas_scene$"),

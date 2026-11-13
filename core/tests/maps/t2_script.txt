@@ -1,0 +1,55 @@
+# Script test map (core/tests/test_lv_script.c, tools/tests): one `on` statement of every event and action.
+# Not shipped: mapc compiles it into the test binary only.
+format 2
+title "T2 Script"
+kind dungeon
+sky PASTEL_DAY
+music HAHALAND_DAY
+ambient 12
+
+cell # wall=PASTEL_BRICK
+cell . floor=WOOD_FLOOR ceil=CLOUD_PUFF ch=14
+cell p like=. thing=PLAYER_START
+cell x like=. flags=exit
+cell o like=. light=9
+cell W wall=CANDY_STRIPE
+
+grid
+############
+#p...#.....#
+#.........x#
+#...o......#
+############
+end
+
+zone 1 1 3 2 safe tag=5
+zone 8 1 10 3 fog arg=5 tag=6
+path 3 1,1 4,1
+
+# script-mode swap sets: only the level script applies them
+swap gate
+.
+.....o
+end
+swap bar
+.
+.
+.......W
+end
+
+thing 9 3 SCRAP tflags2=usable arg=1
+
+# every event
+on start do set 0 1 ; caption 100
+on var 0 1 do bark 101
+on tag 5 do swap gate ; open 9 ; spawn 2 ; music 3
+on tag 7 do unswap gate ; close 9 ; zone 1 4 ; tint 12 3
+on enter 6 repeat do add 1 2 ; post 11
+on tag 11 do give 4 ; take 2 ; checkpoint ; flag 6 on
+on kill 4 do swap bar
+on use 1 do set 2 9
+on phase 2 do set 3 1
+on timer 10 do cam 3 4 8
+on timer 5 repeat do add 4 1
+on tag 8 do choice 5 200 12 13
+on tag 12 do flag 7 off ; end 2

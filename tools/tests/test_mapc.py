@@ -403,8 +403,49 @@ class TestThingFlags2(V2Test):
 
 
 class TestScripts(V2Test):
-    def test_on_is_not_compiled_yet(self):
-        self.refuse(build(extra="on kill 3 do open 4\n"), "script VM")
+    SW = "swap door\n.\n.\n.\n....B\nend\n"
+
+    def test_a_script_is_compiled_and_stored(self):
+        c = self.ok(build(extra="on kill 3 do open 4\n"))
+        self.assertIn("script_mapc_test[", c)
+        self.assertIn("1,3,3,0,0,2,1,4,", c)     # 1 handler: LVE_CLEAR (3) group 3, no flags, 2 bytes: LVO_OPEN 4
+        self.assertIn("script_mapc_test, 8", c)
+
+    def test_a_map_without_on_has_no_script(self):
+        self.assertIn("0, 0   /* script, script bytes */", self.ok(build(extra="zone 1 1 3 3 fog arg=6\n")))
+
+    def test_every_event_and_action_compiles(self):
+        extra = (self.SW + "zone 1 1 3 3 safe tag=5\npath 3 1,1 4,1\nthing 2 2 IMPLING\n"
+                 "on start do set 0 1 ; caption 100\non tag 1 do swap door ; unswap door ; open 2 ; close 2\n"
+                 "on kill 2 do spawn 3 ; bark 7 ; music HAHALAND_DAY ; tint 3 4\n"
+                 "on timer 90 repeat do zone 0 5 ; cam 3 30 9 ; add 1 -2\n"
+                 "on enter 5 do give 1 ; take 1 ; checkpoint ; flag 4\n"
+                 "on use 0 do choice 2 300 5 6 ; end 3\non var 2 7 do post 1 ; end\non phase 2 do flag 1 off\n")
+        c = self.ok(extra and build(extra=extra))
+        self.assertIn("script_mapc_test[", c)
+
+    def test_refusals(self):
+        self.refuse(build(extra="on kill 3\n"), "on EVENT")
+        self.refuse(build(extra="on dance 3 do open 4\n"), "unknown event")
+        self.refuse(build(extra="on kill 3 do dance\n"), "unknown action")
+        self.refuse(build(extra="on kill 3 do open\n"), "wants")
+        self.refuse(build(extra="on kill 3 do open 4 5\n"), "wants")
+        self.refuse(build(extra="on kill 3 do ;\n"), "no action")
+        self.refuse(build(extra="on start repeat do set 0 1\n"), "once")
+        self.refuse(build(extra="on timer 0 do set 0 1\n"), "out of range")
+        self.refuse(build(extra="on kill 3 do set 32 1\n"), "out of range")
+        self.refuse(build(extra="on kill 3 do add 1 200\n"), "out of range")
+        self.refuse(build(extra="on kill 3 do swap nothing\n"), "no swap set named")
+        self.refuse(build(extra="on kill 3 do zone 0 1\n"), "zones")
+        self.refuse(build(extra="on kill 3 do cam 9 10\n"), "no path 9")
+        self.refuse(build(extra="on enter 8 do set 0 1\n"), "no zone has tag")
+        self.refuse(build(extra="on use 40 do set 0 1\n"), "only")
+
+    def test_budgets(self):
+        self.refuse(build(extra="on kill 1 do set 0 1\n" * 65), "at most 64")
+        self.refuse(build(extra="on kill 1 do " + " ; ".join(["set 0 1"] * 86) + "\n"), "at most 255")
+        big = "".join("on kill %d do %s\n" % (i % 250 + 1, " ; ".join(["set 0 1"] * 80)) for i in range(10))
+        self.refuse(build(extra=big), "at most 2048")
 
 
 class TestExport(V2Test):

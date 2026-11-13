@@ -309,6 +309,8 @@ typedef struct DoomoMapExt {
     const DoomoSwapCell *swap_cells;
     const char (*texbank)[DOOMO_TEXBANK_NAME];   /* names of ids 56.. */
     const uint8_t       *tflags2;       /* def->thing_count bytes, or NULL */
+    const uint8_t       *script;        /* level script bytecode (lv_script.h), or NULL */
+    uint16_t             script_len;
 } DoomoMapExt;
 
 /* The registry of v2 maps (levels_mapx.c): NULL-terminated. Empty until
