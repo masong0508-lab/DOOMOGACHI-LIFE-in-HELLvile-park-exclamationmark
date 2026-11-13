@@ -1,0 +1,363 @@
+# core/data/talk/grammar/en/rom_ask.tlk - more replies to ASK_OUT (owner: TK; T5b package
+# T5B-ROM). ADULTS ONLY, same rules as core_romance.tlk: every rule carries
+# adults_only&!kid_present&!pet (lint TK3); a yes carries `consent`, a no carries `!consent`
+# (K-5: the target's answer, decided by T6 and the sim; Talk never sets romance state).
+# A no ends it on the spot, kindly, and the joke is on the one who asked only in the
+# gentlest way, never on the one who said no. No sexual-class word, no register word, no
+# flirt-class word (lint TK4/TK5), no topic echo, at most one exclamation mark a line
+# outside the loud voice. Nobody here is a minor: minors get the safety banks.
+# Syntax: core/tools/talkc_gen.py.
+
+# ---- ASK_OUT: yes -----------------------------------------------------------------------------
+@rule core.ask_out.r_yes guard: adults_only&!kid_present&!pet&consent act: yes
+  "[LOVE]A date? Yes. Somewhere with soup and a back door."
+  "Yes, please. I'll wear my second-best hat."
+  "Sure. Pick the place, I'll pick the mood. It's going to be giddy."
+  "Yes! Wait, I mean, yes. Casual, very casual yes."
+  "I thought you'd never ask. I'd started to ask myself."
+  "[LOVE]I'd love to. I'll bring the nerves, you bring the snacks."
+  "Yes, just promise me no clowns. And no bees. Mostly no clowns."
+  "Okay, yes, don't look at me. I'm happy. It's embarrassing."
+  "A date with you? I'd say yes to worse. That came out wrong, it's a yes."
+  "Yes, I'll even iron something. Anything. A sock."
+  "[LOVE]Count me in. I'll be the one trying not to trip."
+  "Yes. Somewhere quiet, with good lighting and bad music."
+  "I'll go, on one condition. We split the dessert. Or I take it."
+  "Absolutely. I'll tell my mirror to stop laughing."
+  "Yes. Pick me up at seven. I'll be ready at eight, in spirit."
+  "Hm, tempting. Yes. I've got a free evening and a dangerous crush."
+  "Sure, why not. I trust your taste. It's not great, but I trust it."
+  "[LOVE]Yes, and thank you for asking. You were brave. I was busy being cute."
+  "A date, cool, totally cool. I'm fully calm. Look at how calm."
+  "Yes, let's. I'll wear something nice and spill something on it."
+  "Say less. Yes, I'll meet you there. I'll be early and pretend I wasn't."
+  "Okay. Yes. My heart said yes first, and my brain is catching up."
+  "[LOVE]I'd be delighted. I'm going to be so awkward. Delighted, though."
+  "You're asking? You're asking. Yes, let me put down this soup."
+  "Yes, and I'm picking the dessert. Nobody argues with the dessert."
+@rule core.ask_out.r_yes_polite guard: adults_only&!kid_present&!pet&consent&polite act: yes
+  "I'd be delighted. Do say when, and I'll say yes again."
+  "How kind of you to ask. Yes, I'll bring a small gift. A biscuit."
+  "[LOVE]It would be my pleasure. I'll try not to blush through dinner."
+  "That's a lovely idea. Yes, thank you. I'll wear the nice cardigan."
+  "Yes, with pleasure. I do hope you like soup."
+@rule core.ask_out.r_yes_flat guard: adults_only&!kid_present&!pet&consent&flat act: yes
+  "Yes, I'm thrilled. This is thrilled. Look at my face, it's trying."
+  "Sure, A date. Great. I'm cartwheeling internally."
+  "Okay. Yes. I'll be the one in the corner, smiling stiffly."
+  "[LOVE]Yes. Note my enthusiasm. It's the quiet kind."
+@rule core.ask_out.r_yes_loud guard: adults_only&!kid_present&!pet&consent&loud act: yes
+  "YES! A date! Tell everyone, tell the ducks!"
+  "Absolutely! I'll bring snacks and an unreasonable amount of energy!"
+  "[LOVE]YES! I mean, yes. Quietly, nope, still yes!"
+  "Woo! Book it! I'll wear the loud shirt!"
+@rule core.ask_out.r_yes_slow guard: adults_only&!kid_present&!pet&consent&slow act: yes
+  "Mmm, {.}yes. {.}I'll need a minute to get excited about it. Starting now."
+  "Oh, {.}A date. {.}Yes, I'd like that. Slowly."
+  "[LOVE]Well. {.}Yes, {.}that sounds nice. I'll bring the good slippers."
+  "Take me somewhere with chairs. And, yes, I'll go."
+@rule core.ask_out.r_yes_quick guard: adults_only&!kid_present&!pet&consent&quick act: yes
+  "Yes, absolutely, where, when, what do I wear, I'll wear anything."
+  "A date? Yes, yes, perfect, I'll be there, I'm already outside."
+  "[LOVE]Yes, quick, before I overthink it, yes."
+@rule core.ask_out.r_yes_elder guard: adults_only&!kid_present&!pet&consent&elder act: yes
+  "Well, now. I've still got my good shoes. Yes, dear."
+  "[LOVE]At my age a date is a rare treat. I'll say yes before I'm too old."
+  "Yes, if we're back by nine. My knees have a curfew."
+  "A date, how lovely. I've not been asked in a century. A quiet century."
+@rule core.ask_out.r_yes_blunt guard: adults_only&!kid_present&!pet&consent&blunt act: yes
+  "Yes. Don't make it weird. Make it dinner."
+  "Sure, I like you. Say something nice at dinner. I'll listen."
+  "[LOVE]About time. Yes. Pick somewhere with real chairs."
+  "Fine, yes. You've got guts. I'll bring my own fork."
+@rule core.ask_out.r_yes_quirky guard: adults_only&!kid_present&!pet&consent&quirky act: yes
+  "A date! I'll wear my second-best moustache. I mean my best coat."
+  "[LOVE]Yes, my horoscope said something big would happen. It meant this. Or soup."
+  "I'll bring a kazoo for the awkward gaps. Yes."
+  "Yes. I'll practise my small talk on a very patient plant."
+@rule core.ask_out.r_yes_hellborn guard: adults_only&!kid_present&!pet&consent&hellborn&!kid_speaker act: yes
+  "Yes, I'll book us a table somewhere warm. Not that warm. Medium."
+  "[LOVE]A date? Sure, I'll leave the pitchfork at home. Mostly."
+  "Yes. I promise to keep the flames to a gentle simmer."
+  "Dinner and a walk. Yes. I'll even try to keep my horns off the napkins."
+@rule core.ask_out.r_yes_ghost guard: adults_only&!kid_present&!pet&consent&ghost act: yes
+  "Yes. I'll haunt the restaurant politely. Mostly by the window."
+  "[LOVE]A date with the living. How bold. Yes, I'll float over."
+  "I'd love to. I can't eat, but I can nod. Well, bob."
+  "Yes. Dinner for one and a half. Counting me."
+@rule core.ask_out.r_yes_night guard: adults_only&!kid_present&!pet&consent&night act: yes
+  "Yes. A date under these stars would be a fine thing."
+  "[LOVE]A midnight date? Sure. The moon owes me a favour."
+  "Yes. Tomorrow, then. I'll sleep through the nerves."
+@rule core.ask_out.r_yes_friend guard: adults_only&!kid_present&!pet&consent&rel=friend act: yes
+  "Oh! Yes, don't make it weird. Yes, make it a bit weird."
+  "[LOVE]We're friends and now we're dating? Efficient. Yes."
+  "I was hoping you'd ask. I've been practising my surprise."
+  "Yes. If it goes badly we can go back to snacks."
+@rule core.ask_out.r_yes_best guard: adults_only&!kid_present&!pet&consent&rel=best act: yes
+  "Of course, you're my best friend. Now you're also my problem. Yes."
+  "[LOVE]Yes. I think I've known for ages. I was just waiting for snacks."
+  "I thought you'd never ask. I've bought a new shirt twice."
+@rule core.ask_out.r_yes_partner guard: adults_only&!kid_present&!pet&consent&rel=partner act: yes
+  "[LOVE]Of course. A night out with you? I'll find my good shoes."
+  "Still asking. I love that. Yes, always."
+  "Yes. Let's go somewhere with a menu we can't pronounce."
+  "[LOVE]Again? Yes. You're my favourite repeat order."
+@rule core.ask_out.r_yes_happy guard: adults_only&!kid_present&!pet&consent&mood=happy act: yes
+  "[LOVE]I'm in a great mood and you've made it better. Yes."
+  "Yes! My day was going so well, and now it has a date in it."
+  "Of course. I'm smiling too hard to say no."
+@rule core.ask_out.r_yes_nervous guard: adults_only&!kid_present&!pet&consent&mood=scared act: yes
+  "Yes, I'm shaking. That's a yes shake. Probably."
+  "[LOVE]A date. Okay, breathe. Yes, breathe again."
+  "Yes. I'll be nervous. I'll be nervous nicely."
+  "Yes. Please be patient. I'm very bad at this and very glad."
+
+# ---- ASK_OUT: no -------------------------------------------------------------------------------
+@rule core.ask_out.r_no guard: adults_only&!kid_present&!pet&!consent act: no
+  "Oh, no thanks. But that was brave. Gold star."
+  "Thanks, but no. I hope you find a very nice someone."
+  "That's a no from me. But thank you for asking so kindly."
+  "I'll pass, sorry. You seem lovely. I'm just not the one."
+  "No, but I'm flattered. I'll be flattered at home, alone."
+  "A kind no. With a smile. And a small wave."
+  "Sorry, not for me. Try the library. They love a brave soul."
+  "I can't, I'm busy. Forever, unrelated to you. A bit related."
+  "No, thank you. I'm saving that evening for a book and a blanket."
+  "Oh, hm. No, but hats off to you. I'm not wearing a hat."
+  "That's a no. Please enjoy this complimentary biscuit as a consolation."
+  "Sorry, no. I hope you find someone who likes your jokes. I'm too tired."
+  "No thanks, but I admire the nerve. Use it elsewhere."
+  "Not me, friend. I'm told I'm hard to please and harder to date."
+  "I appreciate it. And I'm saying no. Both are true."
+  "Bless you. No. Go ask someone who'll say yes, and bring them a biscuit."
+  "No, sorry. I've got plans. They're boring plans, but they're mine."
+  "Aw, no. But it's a lovely idea. Pass it on to someone free."
+  "A polite no from me. Please accept this firm, friendly handshake."
+  "I'd say maybe, but that'd be unkind. So, no. Kindly."
+@rule core.ask_out.r_no_polite guard: adults_only&!kid_present&!pet&!consent&polite act: no
+  "How kind of you to ask. I'm afraid I must decline, with real thanks."
+  "I'm honoured, truly. And I'm declining. Do have a lovely evening."
+  "Thank you, but no. May I offer you a scone as consolation?"
+  "That's very thoughtful, but I shall have to say no. Warmly."
+  "I'm so sorry, no. You deserve someone enthusiastic. I'm lukewarm tea."
+@rule core.ask_out.r_no_blunt guard: adults_only&!kid_present&!pet&!consent&blunt act: no
+  "No, not into it. Good luck, though. I mean it."
+  "Nope, that's a no. A real no. Please don't turn it into a project."
+  "No. I respect the effort. I don't respect the date."
+  "I'll be honest. No, you're fine. It's just no."
+@rule core.ask_out.r_no_flat guard: adults_only&!kid_present&!pet&!consent&flat act: no
+  "No, thanks, though. This is my sad voice. It's very close to my happy one."
+  "Hm, no. Not personal. I'm just a no kind of person today."
+  "Sorry. No, that was gentle. I practised."
+@rule core.ask_out.r_no_loud guard: adults_only&!kid_present&!pet&!consent&loud act: no
+  "NOPE! But that was brave, so cheer for yourself!"
+  "No thanks! Give me a high five anyway! A kind one!"
+  "Aw, no! But you're a champ! Go get 'em somewhere else!"
+@rule core.ask_out.r_no_slow guard: adults_only&!kid_present&!pet&!consent&slow act: no
+  "Hm, {.}that's sweet. {.}No, sorry. Have a good evening."
+  "Oh. {.}I'm flattered, but no. {.}Thank you, though."
+@rule core.ask_out.r_no_quick guard: adults_only&!kid_present&!pet&!consent&quick act: no
+  "Thanks, no, sorry, lovely, bye, thanks, bye."
+  "No, no, kind, flattered, can't, got to go, bye."
+@rule core.ask_out.r_no_elder guard: adults_only&!kid_present&!pet&!consent&elder act: no
+  "Oh, you're sweet. But I'm too old and too fond of my slippers."
+  "No, dear. I'd only fall asleep in the soup."
+  "Thank you, but I've had my share. Go and try the young ones."
+@rule core.ask_out.r_no_sad guard: adults_only&!kid_present&!pet&!consent&mood=sad act: no
+  "Thank you for asking. I'm not in a place for it. Maybe not for a while."
+  "No, but it's kind. I'm a bit low. Let's just have a cup of tea."
+@rule core.ask_out.r_no_friend guard: adults_only&!kid_present&!pet&!consent&rel=friend act: no
+  "Aw, no, I like you too much as a friend. It's a compliment. Honest."
+  "I'd rather keep you as a friend. Dating you would ruin my snacks."
+  "No. But please stay my friend. I've grown attached to your company."
+@rule core.ask_out.r_no_partner guard: adults_only&!kid_present&!pet&!consent&rel=partner act: no
+  "Not tonight, love. I'm wiped. Let's rain-check, with soup."
+  "Not this time. Tonight I'm a sofa. Come be a sofa too."
+
+# ---- ASK_OUT: deflect, joke ---------------------------------------------------------------------
+@rule core.ask_out.r_deflect guard: adults_only&!kid_present&!pet&!consent act: deflect_romance
+  "That's very kind, but no. Maybe a coffee, as friends."
+  "I'm going to say no, then change the subject. Weather's nice."
+  "Hm, not like that. But you've got good taste in people. Mostly."
+  "Oh dear. Sorry, no. Let's pretend I tripped and fell over."
+  "I'm not ready for that. Can we talk about pie?"
+  "I'd say it's not you, but I'm tired of that line. It's a bit you."
+  "Too fast, friend. Way too fast. I'm still on the greeting."
+  "Hm, no, but the gesture was lovely. Keep the gesture. Lose the date."
+  "I'll politely decline and then look at a tree for a bit."
+  "No. But thank you. I'll tell my cat you asked."
+@rule core.ask_out.r_deflect_polite guard: adults_only&!kid_present&!pet&!consent&polite act: deflect_romance
+  "Forgive me, but I must decline. Do let me offer you tea instead."
+  "You're most kind, but I'm afraid not. Let's leave it there, warmly."
+  "I'm quite flattered. And quite unavailable. May we speak of the weather?"
+@rule core.ask_out.r_deflect_blunt guard: adults_only&!kid_present&!pet&!consent&blunt act: deflect_romance
+  "No, next topic. I'll start. Do you like soup?"
+  "Not happening. But thanks. Seriously, now, snacks."
+@rule core.ask_out.r_joke guard: adults_only&!kid_present&!pet&consent act: joke
+  "A date? I'll check my calendar. It's blank, it's always blank, yes."
+  "Is this a date, or a very elaborate way to avoid doing dishes?"
+  "Sure. I'll even pretend to like your taste in food."
+  "I'd say yes, but I need to consult my other self. He says yes too."
+  "A date with you? Will there be snacks? There'd better be snacks, yes."
+  "I'll go, but I'm not picking the restaurant. Last time I picked the pier."
+  "Dinner? Sure, I can eat dinner. I'm very good at it."
+  "You're asking me? In public? You monster, yes."
+@rule core.ask_out.r_joke_quirky guard: adults_only&!kid_present&!pet&consent&quirky act: joke
+  "A date, yes. I'll bring a map, a spoon and my biggest hat."
+  "Accepted. I shall prepare a speech. It's mostly hums."
+  "I'll go on a date with you. I'll even leave the cactus at home."
+
+# ---- CONFESS: yes (feeling returned) -----------------------------------------------------------
+@rule core.confess.r_yes guard: adults_only&!kid_present&!pet&consent act: answer
+  "[LOVE]Oh. Me too. I've been rehearsing this reply for weeks."
+  "You mean that? Sit down, I need to hug something. You'll do."
+  "[LOVE]I feel the same. It's annoying how much. Come here."
+  "I was hoping you'd say that. I'd rather you said it first, so I did nothing."
+  "Oh, that's lovely. And true, and also terrifying. All three, please."
+  "[LOVE]You've said it. I'm saying it too. Let's be a mess together."
+  "I was going to tell you, but I forgot how words work."
+  "Me too. I've liked you since the soup. I never told you about the soup."
+  "That's the nicest thing anyone's said to me. I'm not exaggerating. Much."
+  "Oh, good. I mean, wow. I mean, me too."
+  "I've been waiting for you to say that. I had snacks prepared and everything."
+  "[LOVE]Same here. I'd say more, but I'm busy grinning."
+  "You've made my entire week, my entire year, and my entire face."
+  "Don't tell me you mean it unless you mean it. Oh good, you do."
+  "Heavens, I feel it too. Pass the fan. And your hand."
+  "Honestly, I thought it was just me. It's both of us. Wild."
+  "[LOVE]I'm glad you said it. I was about to write a very bad poem."
+  "I like you too. A lot, don't ask me how much. I'll cry."
+@rule core.confess.r_yes_polite guard: adults_only&!kid_present&!pet&consent&polite act: answer
+  "[LOVE]That's so lovely to hear. I feel exactly the same, if I may say."
+  "I'm quite overcome. And quite in agreement. Do sit with me."
+  "How wonderful. I share the sentiment entirely, and a little more."
+  "You've honoured me. I feel the same. Shall we have some tea about it?"
+@rule core.confess.r_yes_flat guard: adults_only&!kid_present&!pet&consent&flat act: answer
+  "Oh, huh. Me too, that's my happy voice. It's very quiet."
+  "[LOVE]I feel the same. I'd show it, but my face has a policy."
+  "Good. I like you too. Please accept my restrained joy."
+@rule core.confess.r_yes_loud guard: adults_only&!kid_present&!pet&consent&loud act: answer
+  "ME TOO! I mean it! Come here, you lovely idiot!"
+  "[LOVE]WOW! I feel it too! The whole park should know!"
+  "You're kidding! Me too! Let's tell everyone!"
+@rule core.confess.r_yes_slow guard: adults_only&!kid_present&!pet&consent&slow act: answer
+  "[LOVE]Oh. {.}Me too. {.}I've been trying to say it for ages."
+  "That's lovely. {.}I feel it too. {.}Give me a moment to glow."
+  "Mmm, {.}me too. {.}Slowly, properly. Like good soup."
+@rule core.confess.r_yes_quick guard: adults_only&!kid_present&!pet&consent&quick act: answer
+  "Me too, I love it, yes, me too, hold on, I'm going to faint."
+  "[LOVE]Same, same, so same, I can't say it fast enough."
+@rule core.confess.r_yes_elder guard: adults_only&!kid_present&!pet&consent&elder act: answer
+  "[LOVE]Oh, I never thought I'd hear that again. I feel the same, dear."
+  "Well. A late bloom, but a good one. I feel it too."
+  "My heart's too old for fuss, and yet it's fussing. Me too."
+@rule core.confess.r_yes_blunt guard: adults_only&!kid_present&!pet&consent&blunt act: answer
+  "[LOVE]Good. Same. Don't make a speech about it."
+  "Yeah. Me too. Took you long enough."
+  "I feel it too. There, I said it. Don't tell anyone."
+@rule core.confess.r_yes_quirky guard: adults_only&!kid_present&!pet&consent&quirky act: answer
+  "[LOVE]My heart's a pigeon and you just whistled. Yes, me too."
+  "You like me? I like you back. It's a boomerang, A big, soft one."
+  "Roses are red. I feel the same. I'd rhyme, but I'm overwhelmed."
+@rule core.confess.r_yes_awkward guard: adults_only&!kid_present&!pet&consent&mood=scared act: answer
+  "[LOVE]Me too, I'm sorry. I'm sweating. It's a happy sweat."
+  "Oh no, I mean, oh yes. Me too. I'm going to need to sit."
+  "I feel it too. I'm very bad at this. I'm very glad, too."
+  "Wow, okay. Me too. I'll just stand here and vibrate."
+@rule core.confess.r_yes_friend guard: adults_only&!kid_present&!pet&consent&rel=friend act: answer
+  "[LOVE]Oh no. I mean, oh good. I feel the same, you absolute menace."
+  "I thought it was just me. You're my friend and now you're all of this."
+  "I've liked you for ages. I thought I'd keep it. I can't."
+@rule core.confess.r_yes_partner guard: adults_only&!kid_present&!pet&consent&rel=partner act: answer
+  "[LOVE]And I love you. Still, again. Every day, with extra cheese."
+  "You say it so well. I'm still not used to it. I hope I never am."
+  "I love you too. I've known for ages. I just like hearing it."
+
+# ---- CONFESS: no (a kind refusal), break-up -------------------------------------------------------
+@rule core.confess.r_no guard: adults_only&!kid_present&!pet&!consent act: deflect_romance
+  "That's sweet, but no. Thank you for telling me. It took courage."
+  "I'm touched, and I can't return it. I'm sorry. Let's stay friends."
+  "Oh dear. Thank you, but no. I hope you find your someone."
+  "I appreciate you saying it. I just don't feel it. I'm sorry."
+  "It's lovely to be liked. It's not mutual. I'm sorry, biscuit?"
+  "That's brave of you. I can't match it. I'm going to sit for a bit."
+  "Thank you. I'm flattered, and it's a no. I won't make it weird."
+  "I wish I could say yes. I can't. You deserve better than a maybe."
+  "I'm honoured. And I'm sorry. It's a no, but a warm one."
+  "I can't feel that way. I hope we can keep saying hello."
+@rule core.confess.r_no_polite guard: adults_only&!kid_present&!pet&!consent&polite act: deflect_romance
+  "That's very dear of you. I'm afraid I can't return it. Do forgive me."
+  "I'm truly touched. But no. May I make you a cup of tea instead?"
+@rule core.confess.r_no_blunt guard: adults_only&!kid_present&!pet&!consent&blunt act: deflect_romance
+  "No, I'm sorry, I don't feel that. I won't pretend. You'd hate me."
+  "I appreciate it. It's a no, don't hang around hoping. Go find a snack."
+@rule core.confess.r_no_flat guard: adults_only&!kid_present&!pet&!consent&flat act: deflect_romance
+  "Oh, thank you. I don't feel it back. I'm sorry, it's quiet in here."
+  "Hm, I'm not there. I'm sorry. This is my kind face."
+@rule core.confess.r_no_elder guard: adults_only&!kid_present&!pet&!consent&elder act: deflect_romance
+  "Oh, that's sweet, dear. I'm past all that. Give it to someone with knees."
+  "Bless you. No. But keep that heart open, somewhere it can breathe."
+@rule core.confess.r_no_sad guard: adults_only&!kid_present&!pet&!consent&mood=sad act: deflect_romance
+  "Thank you for saying it. I can't right now. I'm sorry, I'm not well."
+  "I wish I could. I'm just not there. Let's have tea, if that helps."
+@rule core.confess.r_split guard: adults_only&!kid_present&!pet&!consent&rel=partner act: deflect_romance
+  "I think we've run out of road. I'm sorry. It's me, and the road."
+  "I care about you. I can't be what you need. I'm so sorry."
+  "We had a good run. A very good run. I need to stop running."
+  "It's been lovely. It isn't now. Can we be kind about it?"
+  "I don't want to end it with a fight. So, here's a hug. Goodbye."
+  "I think we both know. Let's part before we start to hate the soup."
+  "I'm sorry. I love you, and I can't stay. That's the whole sentence."
+  "We'll always have the park. And the bad fountain. I'll visit it."
+  "I need space. Not far. Just enough for my knees to breathe."
+@rule core.confess.r_split_polite guard: adults_only&!kid_present&!pet&!consent&rel=partner&polite act: deflect_romance
+  "I owe you the truth, and I'm sorry. I think we ought to part. Gently."
+  "Thank you for everything. I believe it's time to say goodbye."
+@rule core.confess.r_split_blunt guard: adults_only&!kid_present&!pet&!consent&rel=partner&blunt act: deflect_romance
+  "It's over, I'm sorry. I'll say why if you want. I'd rather not."
+  "We're done. I mean it kindly. Take the good spoons, I'll take the bad."
+@rule core.confess.r_split_sad guard: adults_only&!kid_present&!pet&!consent&rel=partner&mood=sad act: deflect_romance
+  "I can't do this any more. I'm so sorry. I wish it were different."
+  "I'm not good for you right now. I need to step away. I'm sorry."
+
+# ---- CONFESS: joke, confess back, awkward crush --------------------------------------------------
+@rule core.confess.r_joke guard: adults_only&!kid_present&!pet&consent act: joke
+  "Wow, that's the nicest thing today. The bar was a dead bird. Still nice."
+  "Is this the part where I say something clever? I've got nothing. Hi."
+  "You're good at this. My therapist will be so proud and so confused."
+  "That took guts. I'd clap, but I'm holding a sandwich."
+  "I'll be honest. I've got a speech. It's one word, it's yes."
+  "You said it, so now I have to say something. I'm blank. Wow."
+  "I'd say something deep, but I'm distracted by your face."
+  "That was lovely. Do it again. I'll take notes this time."
+@rule core.confess.r_confess guard: adults_only&!kid_present&!pet&consent act: confess
+  "[LOVE]I like you. A lot, there. I said it, please look away."
+  "You're the best thing in this park. And I've seen the fountain."
+  "I've had a crush on you since the soup. I've never told anyone about the soup."
+  "[LOVE]I think I'm falling. Please catch me. Or at least cushion me."
+  "I like you more than my own jokes. That's the most I can say."
+  "You make my day lighter and my knees weaker. Which is unfair."
+  "I think about you more than is polite. Or healthy. Mostly healthy."
+  "[LOVE]You're my favourite person. Please don't tell the other people."
+  "I'm madly fond of you. Fond, madly. I'm still working on the phrase."
+  "[LOVE]It's you. It's always been you. And I'm still bad at this."
+  "Right, I'm just going to say it. I like you. Nobody move."
+  "I'd tell you how I feel, but the words are busy blushing."
+@rule core.confess.r_confess_shy guard: adults_only&!kid_present&!pet&consent&mood=scared act: confess
+  "I, um, I like you. Quite a lot, sorry, I'm shaking. Sorry."
+  "[LOVE]Can I say something? Okay, I like you, okay, bye, wait, no. Stay."
+  "I wrote you a speech. I lost it. The gist is, I like you."
+  "I've rehearsed this in the mirror. The mirror said no. I'm saying it."
+  "Oh dear, words, I like you. That's the lot. I'm going to sit."
+@rule core.confess.r_confess_quirky guard: adults_only&!kid_present&!pet&consent&quirky act: confess
+  "[LOVE]You're a lighthouse and I'm a very confused boat. I like you."
+  "My heart does a little jig around you. It's embarrassing and wonderful."
+  "I've named a plant after you. It's thriving. So am I, hi."
+@rule core.confess.r_confess_blunt guard: adults_only&!kid_present&!pet&consent&blunt act: confess
+  "I like you. Properly, not a joke. Don't make it one."
+  "I'm into you. Obviously, I thought you knew. Everyone knows."
+@rule core.confess.r_confess_jealous guard: adults_only&!kid_present&!pet&consent&rel=friend act: confess
+  "I'm jealous when you talk to everyone else. There, I said it. Pity me."
+  "I don't like it when you smile at other people. I'm working on it. With cake."
+  "I saw you laughing with the baker. I was jealous of a baker. Of a baker!"

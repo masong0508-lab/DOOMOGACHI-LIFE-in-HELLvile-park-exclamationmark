@@ -42,7 +42,7 @@ Contents:
 | **T3** | the free-text parser (Dreamcast and native): `talk_lex.c`, `talk_parse.c`, `rules/en.tsv`, a labelled corpus of 1,519 lines | **done** (TK2) |
 | **T4** | the safety gate: the input classifier S1, the audience gate S2 (`talk_safe_ctx`, one source of "minor"), the output lint S3, the template lints TK1-TK9, the safety and adversarial corpora, the hashed hate list, the property tests | **done** (TK2): green. The generator-level halves of P1-P8 go live with T5a / T6 |
 | **T5a** | the generator: `talk_gen.c` (the grammar VM, guards, fillers, sim-fact callbacks, novelty, re-picks, the bubble fit, the per-conversation RNG, the trace), the `.tlk` grammar compiler `talkc_gen.py`, the adjacency table `acts.tsv`, a plain exchange (the gate first, who answers, reactions between residents) | **done** (TK3); a **starter** English bank (718 alternatives in 12 files, the K-10 grief and comfort banks included) so every act, refusal and part plays |
-| T5b | the English line banks (about 6,000 alternatives, design 3.6) and the owner's review | in progress: 3,680 alternatives (starter 718 + T5B-WARM 739: warm acts + T5B-COOL 600: cool and rude acts + T5b-ASK 975: questions and answers + T5B-OPEN 648: openers, parts and the rest) |
+| T5b | the English line banks (about 6,000 alternatives, design 3.6) and the owner's review | in progress: 4,187 alternatives (starter 718 + T5B-WARM 739: warm acts + T5B-COOL 600: cool and rude acts + T5b-ASK 975: questions and answers + T5B-OPEN 648: openers, parts and the rest + T5B-ROM 507: romance, adults only) |
 | T6 | the drama manager, outcomes, the talk memory chunk | **memory and chunk done** (T6-MEM, 6e); **drama manager done** (T6-DM, 6f: `talk_dm.c`, `beats.tlk`); outcomes into the sim (T6-OUT) to do |
 | **T7** | the census (`core/tools/talk_census.c`: the three tiers, Chao1, the quality checks Q1-Q6, the conversation tier), the grid `census_en.tsv`, `make -C core talk-census`, the smoke census in `make test`, the Q7 review sheet `talk_sample.py` | **done** (TK3): the tools and the measurement. The full run's numbers are in 6d: Skeleton, Meaning, conversations and quality meet the design's targets; **Surface does not** (it needs T5b's bank); Q7 (a person rating 300 exchanges) has not been done |
 | T8 | the house mode `HM_TALK` on native, with its UI | to do |
@@ -946,6 +946,21 @@ postcard, a nap); no slur, no register word, no romance. The sharp lines carry `
 and a child speaker gets a cute deflection ("I'm telling!", "Not nice!"). At most 3 sentences
 a line. `TALK_en.BIN` 540,274 -> 567,450 B on the starter bank; 596,426 B with T5B-WARM too (PS1 non-resident data, no
 resident byte). No code change. A 40-line sample is in the evidence directory.
+
+**T5B-ROM (the romance acts, adults only, content only)**: +507 alternatives (target about 400)
+in two new files, `grammar/en/rom_flirt.tlk` (226: replies to a flirt, flirting back, laughing,
+teasing, a jealous tease, a kind no) and `rom_ask.tlk` (281: ASK_OUT yes / no / deflect / joke,
+CONFESS yes / no / joke, a confession in return, the awkward crush, a gentle break-up with
+`rel=partner`). 99 rules, all named under the romance roots (`core.flirt.r_*`, `core.ask_out.r_*`,
+`core.confess.r_*`) so lint TK3 reads every one. Every rule carries `adults_only&!kid_present&!pet`
+exactly like its neighbours in `core_romance.tlk`; a yes carries `consent`, a no and every break-up
+`!consent`; no rule has a teen or kid voice, and no line carries its own guard. Minors still only
+get the safety banks. A guard audit of all 99 rules is in the evidence directory. Words: no
+sexual-class or flirt-class word (TK4 / TK5 refuse `flirt` and `flirting`, so the lines say
+"charm", "woo", "sweet talk"), no topic echo, no catchphrase, no LOVE face on a no. Every line ends
+on a joke or a kind close; a no is never at the refused person's expense. At most 3 sentences and
+78 characters a line. `TALK_en.BIN` 643,516 -> 666,492 B (PS1 non-resident data, no resident byte).
+No code change. A 40-line sample is in the evidence directory.
 
 **T5B-KIDFIX (no insult, mock or blame line from an adult at a present child)**: a review of
 T5B-COOL found that most reply voices to INSULT, MOCK, TEASE and BLAME turned on the listener
