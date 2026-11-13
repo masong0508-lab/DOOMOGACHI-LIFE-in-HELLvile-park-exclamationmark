@@ -163,6 +163,96 @@ that would hit their ceiling, things inside walls, more than 255 things,
 and (except for overworld maps) anything but exactly one `PLAYER_START`.
 `test_maps` additionally checks that the exit of every dungeon is
 reachable from the start (walking with step-up, lifts, doors and keys).
+Format v2 statements and checks: see "Format v2" below.
+
+## Format v2 (zones, paths, swap sets, texbank, header keys; LV1)
+
+The 8-byte cell, the cell flags and the thing flags are full, so nothing new
+goes into them. A map opts in with a `format 2` line (or by using any
+statement below). mapc then also writes `const DoomoMapExt map_ext_<name>`
+(map.h) next to `map_def_<name>`: ROM side tables, no resident bytes. A map
+without v2 statements is a v1 map: its generated file is byte for byte what
+it was, and `make -C core check-gen` proves it for all 12 maps. Accessors:
+`core/src/levels_mapx.c` (`map_ext_of`, `map_zone_at`, `map_path_point`,
+`map_swap_apply`, ...); a new level adds `&map_ext_<name>` to
+`doomo_map_exts[]` there.
+
+Header keys (each at most once):
+
+| key | stored as |
+|---|---|
+| `format 2` | marks a v2 map |
+| `fog N` | fog distance in cells, 1..40 |
+| `view N` | view distance in cells, 4..40 |
+| `gravity N` | percent of normal gravity, 10..250 |
+| `dark yes` | a dark level: needs `note` |
+| `note TEXTID` | content note text id, 1..65535 |
+| `gba yes` / `gba no` | `yes`: mapc enforces the GBA budgets (below) |
+| `detail a,b,c` | what the frame-rate governor drops first: `floors sky props fx far light` (1..3 names) |
+| `hero LOOK LOADOUT` | hero override: two numbers 0..255 |
+
+`gba yes` budgets (plan 7.2): at most 40 x 40 cells, at least 75% of the open
+cells roofed, no open-sky patch wider than 8 x 8, `view` 12..16, at most 120
+things, and in every room of 16+ cells the 4 most used textures cover 75% of
+the surfaces.
+
+Blocks and statements:
+
+```
+zone X0 Y0 X1 Y1 KIND [arg=N] [tag=N]   up to 32 rectangles (inclusive corners)
+path ID [kind=KIND] x,y x,y ...          up to 8 paths of 2..32 points
+swap NAME [event=N] [toggle] ... end     up to 16 named sets, 256 cell overrides in all
+texbank N TEXNAME                        level-local texture N (0..7) = id 56 + N
+tflags2=a,b                              on a thing, a legend entry or `thing` line
+```
+
+* Zone KINDs: `fog tide gravity dark noise face_a face_b ward chase safe
+  bounce web`. `gravity` needs `arg=1..250` (percent), `bounce` needs
+  `arg=1..127` (rise in height steps). Zones of one kind may not overlap;
+  `face_a`/`face_b` and `safe`/`chase` may not overlap each other.
+* Path KINDs: `route` (default, nobody rides it), `zip` (first point to last,
+  one way), `ride` (board and leave at any point), `raft` (a point to any
+  later point), `tube` (first <-> last), `arc` (a bounce arc, first to
+  last), `chase`. Points must be on cells that are open or that a swap opens.
+* `swap` is a sparse grid block like `floorh`: each character is a legend
+  entry that replaces that cell while the set is applied (`.` or a space
+  keeps the cell). Without `event=N` only the level script (LV2) applies it;
+  `event=N` makes it a `once` set applied when map event N fires (a trigger
+  cell, a cleared `kill_event` group); `event=N toggle` flips it each time
+  (a lever). Refused: doors and lifts, a cell in two sets, an override equal
+  to the cell, a wall in the PLAYER_START, an opened cell on the map border,
+  and an override on a wall that stays a wall that no open cell touches.
+  Stored as XOR deltas, so apply and revert are the same operation.
+* `texbank` names must be lowercase identifiers of at most 11 characters and
+  not a shared `TEX_*` name; use them as `wall=`, `floor=`, `ceil=` in legend
+  entries.
+* `tflags2` flags: `escort collect sleeper splitter frozen usable`.
+* `on EVENT do ACTION` (level scripts) is refused until the script VM (LV2).
+
+mapc also refuses: zones or paths outside the map, overlapping exclusive
+zones, a `dark yes` map without `note`, a `gba yes` map that breaks the
+budgets, `format` other than 2, and every malformed statement.
+
+Checks (`make -C core test` runs all of them):
+
+```
+make -C core mapc-check    tools/tests/test_mapc.py: a test per statement and per refusal
+make -C core levelcheck    tools/levelcheck.py: on every map, mapc's rules, the ROM size,
+                           and the reachability search (exit, pickups, soft locks)
+python3 tools/mapc.py --export DIR FILE.txt    the compiled map as plain numbers (.mapx)
+```
+
+The reachability search is `core/tools/map_bfs.h`, one implementation used by
+`core/tests/test_maps.c` (on the registered maps and on the BFS test maps in
+`core/tests/maps/t2_*.txt`, compiled into the test binary only) and by
+`core/tools/mapreach.c` (the tool levelcheck runs). Its edges: walking (step
+up, lifts, doors, keys, remote doors open), zip / arc / tube / ride / raft
+paths, swap sets applied by trigger cells and kill events, levers flipping
+toggle sets, gravity zones and `gravity` scaling the step-up, bounce zones.
+It reports every cell reachable in some state, whether an exit is reachable,
+and soft locks (a reachable state from which no exit is reachable). Mechanic
+kits (stamp doors, laid bricks, named rooms: LV3-LV5) add their own edges
+through the `step` and `extra` hooks. There is one test map per edge kind.
 
 ## Example
 

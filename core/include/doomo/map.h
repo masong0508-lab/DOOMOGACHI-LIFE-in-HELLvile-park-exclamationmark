@@ -186,4 +186,155 @@ int  map_mover_moving(const DoomoMap *m, int cx, int cy);
 /* Number of active movers (doors + lifts) in the live map. */
 int  map_mover_count(void);
 
+/* ======================================================================
+ * levels additions (owner: levels, LV1; additive): map format v2
+ * ==================================================================== */
+
+/* Map format v2 (tools/mapc.py, core/data/maps/README.md "Format v2").
+ * DoomoCell, the cell flags and the thing flags are full, so everything
+ * new is a ROM side table in a DoomoMapExt. A v1 map has no DoomoMapExt:
+ * its generated file and its DoomoMapDef are unchanged. A v2 map's
+ * generated file defines `map_ext_<name>` next to `map_def_<name>`; the
+ * ext points back at its def. Nothing here is mutable and nothing is
+ * resident RAM: the accessors live in core/src/levels_mapx.c and take the
+ * caller's state. */
+
+#define DOOMO_ZONE_MAX        32
+#define DOOMO_PATH_MAX        8
+#define DOOMO_PATH_POINTS     32     /* per path */
+#define DOOMO_SWAP_MAX        16     /* named sets per map */
+#define DOOMO_SWAP_CELLS_MAX  256    /* cell overrides, all sets together */
+#define DOOMO_TEXBANK_MAX     8
+#define DOOMO_TEXBANK_FIRST   56     /* level-local texture ids 56..63 */
+#define DOOMO_TEXBANK_NAME    12     /* bytes, with the NUL */
+
+/* DoomoZone.kind. Append only: the values are in generated maps. */
+enum { ZONE_NONE,
+       ZONE_FOG,      /* arg = fog distance in cells                        */
+       ZONE_TIDE,     /* arg = high-water floor height (steps)              */
+       ZONE_GRAVITY,  /* arg = percent of normal gravity (1..250)           */
+       ZONE_DARK,     /* arg = light level the zone is held at              */
+       ZONE_NOISE,    /* arg = noise the zone adds / allows                 */
+       ZONE_FACE_A,   /* the Wall's face A                                  */
+       ZONE_FACE_B,   /* the Wall's face B                                  */
+       ZONE_WARD,     /* a naming ward; arg = ward number                   */
+       ZONE_CHASE,    /* a chase lane                                       */
+       ZONE_SAFE,     /* a safe room                                        */
+       ZONE_BOUNCE,   /* bounce pad; arg = rise in height steps             */
+       ZONE_WEB,      /* slowing floor                                      */
+       ZONE_COUNT };
+
+typedef struct DoomoZone {
+    uint8_t x0, y0, x1, y1;   /* cells, inclusive, x0 <= x1, y0 <= y1 */
+    uint8_t kind;             /* ZONE_* */
+    uint8_t arg;
+    uint8_t tag;              /* event / script tag, 0 = none */
+} DoomoZone;
+
+/* DoomoPath.kind: how the player may travel it (core/tools/map_bfs.h has
+ * the same rules). Append only. */
+enum { MPATH_ROUTE,   /* nobody rides it: an escort's or a patrol's route    */
+       MPATH_ZIP,     /* zipline: one way, first point to last point         */
+       MPATH_RIDE,    /* ride cycle: board and leave at any point            */
+       MPATH_RAFT,    /* current: one way, from a point to any later point   */
+       MPATH_TUBE,    /* tube link: both ways between first and last point   */
+       MPATH_ARC,     /* bounce arc: one way, first point to last point      */
+       MPATH_CHASE,   /* the pursuer's lane: nobody rides it                 */
+       MPATH_COUNT };
+
+typedef struct DoomoPath {
+    uint8_t  id;              /* the number in `path ID ...`, unique per map */
+    uint8_t  kind;            /* MPATH_* */
+    uint8_t  count;           /* points, 2..DOOMO_PATH_POINTS */
+    uint8_t  reserved;
+    uint16_t first;           /* index of the first point (x, y byte pairs)  */
+} DoomoPath;
+
+/* DoomoSwapSet.mode: who applies the set. */
+enum { MSWAP_SCRIPT,  /* only the level script (LV2)                         */
+       MSWAP_ONCE,    /* applied when map event `event` fires; it stays      */
+       MSWAP_TOGGLE,  /* flipped each time map event `event` fires (levers)  */
+       MSWAP_COUNT };
+
+/* One cell override: `x` is (base cell) XOR (swapped cell), byte by byte,
+ * so applying a set and reverting it are the same XOR and exact inverses
+ * whatever else changed the live cell meanwhile. */
+typedef struct DoomoSwapCell {
+    uint16_t cell;            /* index into cells[], y * w + x */
+    uint8_t  x[8];            /* sizeof(DoomoCell) */
+} DoomoSwapCell;
+
+typedef struct DoomoSwapSet {
+    uint16_t first;           /* index into DoomoMapExt.swap_cells */
+    uint16_t count;
+    uint8_t  mode;            /* MSWAP_* */
+    uint8_t  event;           /* map event tag (MSWAP_ONCE / MSWAP_TOGGLE)   */
+} DoomoSwapSet;
+
+/* The parallel byte per thing (`tflags2=` in a map file). */
+enum {
+    THF2_ESCORT   = 0x01,  /* the level's escort                           */
+    THF2_COLLECT  = 0x02,  /* one of the level's collectible set           */
+    THF2_SLEEPER  = 0x04,  /* asleep until noise wakes it                  */
+    THF2_SPLITTER = 0x08,  /* splits when it dies                          */
+    THF2_FROZEN   = 0x10,  /* frozen at the start                          */
+    THF2_USABLE   = 0x20   /* a usable; `arg` is its kind                  */
+};
+
+/* DoomoMapExt.flags */
+enum {
+    MAPX_DARK = 0x01,      /* `dark yes`: a dark level (needs `note`)      */
+    MAPX_GBA  = 0x02,      /* `gba yes`: built to the GBA budgets          */
+    MAPX_HERO = 0x04       /* `hero LOOK LOADOUT`: the hero override       */
+};
+
+/* `detail a,b,c`: what the frame-rate governor drops, first to last.
+ * Append only (LV9 owns the meaning). */
+enum { MDET_NONE, MDET_FLOORS, MDET_SKY, MDET_PROPS, MDET_FX, MDET_FAR, MDET_LIGHT, MDET_COUNT };
+
+typedef struct DoomoMapExt {
+    const DoomoMapDef  *def;
+    uint8_t  flags;           /* MAPX_* */
+    uint8_t  fog;             /* fog distance in cells, 0 = none             */
+    uint8_t  view;            /* view distance in cells, 0 = the default     */
+    uint8_t  gravity;         /* percent of normal, 0 = the default (100)    */
+    uint16_t note;            /* content note text id, 0 = none              */
+    uint8_t  detail[3];       /* MDET_*, the governor's drop order           */
+    uint8_t  hero_look, hero_loadout;   /* valid with MAPX_HERO              */
+    uint8_t  zone_count, path_count, swap_count, texbank_count;
+    const DoomoZone     *zones;
+    const DoomoPath     *paths;
+    const uint8_t       *path_pts;      /* x, y pairs */
+    const DoomoSwapSet  *swaps;
+    const DoomoSwapCell *swap_cells;
+    const char (*texbank)[DOOMO_TEXBANK_NAME];   /* names of ids 56.. */
+    const uint8_t       *tflags2;       /* def->thing_count bytes, or NULL */
+} DoomoMapExt;
+
+/* The registry of v2 maps (levels_mapx.c): NULL-terminated. Empty until
+ * the first new level lands. */
+extern const DoomoMapExt *const doomo_map_exts[];
+/* The ext of a definition, NULL for a v1 map (all 12 maps of today). */
+const DoomoMapExt *map_ext_of(const DoomoMapDef *d);
+/* The first zone of `kind` (ZONE_NONE: any kind) that holds the cell, at
+ * or after index `from`; its index, or -1. Walk all with from = i + 1. */
+int  map_zone_at(const DoomoMapExt *x, int cx, int cy, int kind, int from);
+/* The next zone of `kind` at or after index `from`; its index, or -1. */
+int  map_zone_next(const DoomoMapExt *x, int kind, int from);
+/* The path with that id, NULL if none. */
+const DoomoPath *map_path_by_id(const DoomoMapExt *x, int id);
+/* Point `i` of a path as a cell; 0 if i is out of range. */
+int  map_path_point(const DoomoMapExt *x, const DoomoPath *p, int i, int *cx, int *cy);
+/* The thing's tflags2 byte (0 without a table or out of range). */
+int  map_thing_flags2(const DoomoMapExt *x, int thing);
+/* Swap sets on the live map. `applied` is the caller's state, one bit per
+ * set (it will live in LvRun). Apply does nothing if the set's bit is
+ * set, revert nothing if it is clear; both return the number of cells
+ * changed (at most DOOMO_SWAP_CELLS_MAX). Revert undoes apply exactly. */
+int  map_swap_apply(DoomoMap *m, const DoomoMapExt *x, int set, uint16_t *applied);
+int  map_swap_revert(DoomoMap *m, const DoomoMapExt *x, int set, uint16_t *applied);
+/* Map event `tag` for the swap sets: applies every MSWAP_ONCE set and
+ * flips every MSWAP_TOGGLE set of that event. Returns sets changed. */
+int  map_swap_event(DoomoMap *m, const DoomoMapExt *x, int tag, uint16_t *applied);
+
 #endif

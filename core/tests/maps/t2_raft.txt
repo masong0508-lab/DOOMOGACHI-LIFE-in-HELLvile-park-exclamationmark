@@ -1,0 +1,23 @@
+# BFS test map (core/tests/test_maps.c, tools/tests): a raft current carries one way, to any later point
+# Not shipped: mapc compiles it into the test binary only.
+format 2
+title "T2 Raft"
+kind dungeon
+sky PASTEL_DAY
+music HAHALAND_DAY
+ambient 12
+
+cell # wall=PASTEL_BRICK
+cell . floor=WOOD_FLOOR ceil=CLOUD_PUFF ch=14
+cell p like=. thing=PLAYER_START
+cell x like=. flags=exit
+cell w floor=WOOD_FLOOR ceil=CLOUD_PUFF ch=14 flags=water
+
+grid
+##########
+#pw#w.#wx#
+#..#..#..#
+##########
+end
+
+path 3 kind=raft 2,1 4,1 7,1

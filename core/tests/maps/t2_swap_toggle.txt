@@ -1,0 +1,32 @@
+# BFS test map (core/tests/test_maps.c, tools/tests): a toggle swap set: two levers, two gates that are never open together
+# Not shipped: mapc compiles it into the test binary only.
+format 2
+title "T2 Swap Toggle"
+kind dungeon
+sky PASTEL_DAY
+music HAHALAND_DAY
+ambient 12
+
+cell # wall=PASTEL_BRICK
+cell . floor=WOOD_FLOOR ceil=CLOUD_PUFF ch=14
+cell p like=. thing=PLAYER_START
+cell x like=. flags=exit
+cell l like=. flags=trigger tag=21
+cell A wall=PASTEL_BRICK
+cell g like=.
+cell o like=. light=9
+cell W wall=CANDY_STRIPE
+
+# Gate A (4,2) is shut and gate g (8,1) open. A lever (l) flips both.
+grid
+############
+#p.l#.l.g.x#
+#...A...#..#
+############
+end
+
+swap gates event=21 toggle
+.
+........W
+....o
+end

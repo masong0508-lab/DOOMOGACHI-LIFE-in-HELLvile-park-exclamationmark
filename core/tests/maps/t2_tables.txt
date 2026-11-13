@@ -1,0 +1,50 @@
+# BFS test map (core/tests/test_maps.c, tools/tests): every v2 statement once: the tables test_maps reads back
+# Not shipped: mapc compiles it into the test binary only.
+format 2
+title "T2 Tables"
+kind dungeon
+sky PASTEL_DAY
+music HAHALAND_DAY
+ambient 12
+
+cell # wall=PASTEL_BRICK
+cell . floor=WOOD_FLOOR ceil=CLOUD_PUFF ch=14
+cell p like=. thing=PLAYER_START
+cell x like=. flags=exit
+texbank 0 lv_brick
+texbank 3 lv_floor
+cell B wall=lv_brick
+cell f floor=lv_floor ceil=CLOUD_PUFF ch=14
+cell c like=. thing=CANDY tflags2=collect
+cell o like=.
+
+fog 9
+view 14
+gravity 80
+dark yes
+note 7
+gba yes
+detail far,fx,props
+hero 2 5
+
+grid
+##########
+#p..B....#
+#.c.B.f.x#
+#...o....#
+##########
+end
+
+zone 1 1 3 3 fog arg=6 tag=30
+zone 5 1 8 3 dark arg=4
+zone 2 2 6 2 noise arg=3
+path 7 kind=route 1,1 3,1 3,3
+path 9 kind=tube 1,3 8,3
+swap wallup event=30
+.
+.
+.
+....B
+end
+thing 6 1 IMPLING angle=180 tflags=ambush tflags2=sleeper,splitter
+thing 7 1 SCRAP tflags2=usable,frozen arg=3

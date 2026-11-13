@@ -82,6 +82,32 @@ mode, Hellvile has the Underbelly gate and (at night) Graveyard Shift.
 Unlocks are ids 864..890 (`core/src/unlocks_levels.c`): golds, mode
 gates, feats, mini-boss trophies and three creator-part alternate routes.
 
+## Map format v2 (LV1, 2026-11-13)
+
+Zones, paths, swap sets, level-local textures, `tflags2` and the level header
+keys, for the 24 new levels (plan section 8.1). All of it is ROM side tables
+in a `DoomoMapExt` (`map.h`) that a v2 map's generated file defines next to
+its `DoomoMapDef`; the 12 existing maps are v1 and their generated files are
+unchanged (`make -C core check-gen`). Statements, limits and refusals:
+`core/data/maps/README.md` "Format v2". Code: `tools/mapc.py` (parse, refuse,
+emit, `--export`), `core/src/levels_mapx.c` (accessors; the `doomo_map_exts[]`
+registry, empty until the first new level), `core/tools/map_bfs.h` (the
+reachability search), `core/tools/mapreach.c`, `tools/levelcheck.py`.
+
+* **Memory:** no resident byte on any platform. Nothing in `levels_mapx.c` is
+  referenced by game code yet, so `--gc-sections` drops it; the registry is a
+  4-byte ROM table. GBA `make -C gba sizes` is identical to before the package.
+* **BFS:** `test_maps` (the `bfs_*`, `mapx_*` tests) runs the search on one test
+  map per edge kind (`core/tests/maps/t2_zip, arc, tube, ride, raft, bounce,
+  gravity, swap_once, swap_toggle, swap_stuck, hook, tables`); each proves the
+  exit is reached with the map's tables and not without them. `t2_swap_stuck`
+  is a deliberate soft lock the search must find.
+* **Tools:** `make -C core levelcheck` and `mapc-check` are part of
+  `make -C core test`.
+* **Not yet:** `on EVENT do ACTION` (LV2), the runtime that applies zones and
+  swaps in play (LV3-LV5: the accessors exist and are unit tested), `texbank`
+  art (LV7).
+
 ## Files
 
 `core/src/levels.c` (tables, ranks, runtime, activities),

@@ -13,6 +13,8 @@
 #   make -C core xcheck       compile all core sources with gcc, arm, mipsel and
 #                             sh4 -Werror (core/tools/xcheck.sh)
 #   make -C core sizes        .bss/.data/.text of each core object (arm)
+#   make -C core levelcheck   tools/levelcheck.py on every map (sizes, budgets, reachability)
+#   make -C core mapc-check   the map tools' own tests (tools/tests/)
 #
 #   BUILD=dir   build directory (default core/build)
 #   SAN=1       build with -fsanitize=address,undefined
@@ -69,7 +71,7 @@ PLAT_OBJS   := $(call obj,$(NATIVE_PLAT))
 MAIN_OBJ    := $(call obj,$(NATIVE_MAIN))
 TEST_OBJS   := $(call obj,$(TEST_SRCS))
 
-.PHONY: all lib runner test unit scripts journeys gen check-gen xcheck sizes clean story-check talk talk-check parts-check part-icons-sheet
+.PHONY: all lib runner test unit scripts journeys gen check-gen xcheck sizes clean story-check talk talk-check parts-check part-icons-sheet levelcheck mapc-check
 .DEFAULT_GOAL := runner
 
 all: runner $(BUILD)/tests
@@ -99,11 +101,43 @@ $(BUILD)/obj/tests/%.o: $(CORE)/tests/%.c
 $(BUILD)/runner: $(CORE_OBJS) $(PLAT_OBJS) $(MAIN_OBJ)
 	$(CC) $(LDFLAGS_SAN) -o $@ $^
 
-$(BUILD)/tests: $(CORE_OBJS) $(PLAT_OBJS) $(TEST_OBJS)
+# --- LV1: the BFS test maps (core/tests/maps/*.txt, map format v2). mapc compiles them into the
+# test binary only: they are not in core/data/maps, so no game build ships them. ---
+TESTMAP_TXT  := $(sort $(wildcard $(CORE)/tests/maps/*.txt))
+TESTMAP_OBJS := $(patsubst $(CORE)/tests/maps/%.txt,$(BUILD)/obj/testmaps/map_%.o,$(TESTMAP_TXT))
+MAPC_DEPS    := $(ROOT)/tools/mapc.py $(wildcard $(CORE_INC)/doomo/*.h)
+.PRECIOUS: $(BUILD)/testmaps/core/gen/map_%.c
+$(BUILD)/testmaps/core/gen/map_%.c: $(CORE)/tests/maps/%.txt $(MAPC_DEPS)
+	@mkdir -p $(dir $@)
+	$(PYTHON) $(ROOT)/tools/mapc.py --out-root $(BUILD)/testmaps $<
+$(BUILD)/obj/testmaps/map_%.o: $(BUILD)/testmaps/core/gen/map_%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CORE_CFLAGS) -c $< -o $@
+# --- end LV1 ---
+
+$(BUILD)/tests: $(CORE_OBJS) $(PLAT_OBJS) $(TEST_OBJS) $(TESTMAP_OBJS)
 	$(CC) $(LDFLAGS_SAN) -o $@ $^
 
 # ---- tests ------------------------------------------------------------------
-test: story-check talk-check parts-check unit scripts journeys
+test: story-check talk-check parts-check mapc-check levelcheck unit scripts journeys
+
+# --- LV1: map format v2 tools (docs/LEVELS.md "Map format v2") ---
+# mapreach    the reachability search of core/tools/map_bfs.h (the code test_maps runs) as a tool
+# levelcheck  tools/levelcheck.py on every map of core/data/maps (v1 maps: the old rules only)
+# mapc-check  tools/tests/test_mapc.py (a test per v2 statement and per refusal) and test_levelcheck.py
+$(BUILD)/mapreach: $(CORE)/tools/mapreach.c $(CORE)/tools/map_bfs.h $(CORE)/src/levels_mapx.c $(wildcard $(CORE_INC)/doomo/*.h)
+	@mkdir -p $(dir $@)
+	$(CC) -std=c99 -Wall -Wextra -Werror -O2 -g -D_POSIX_C_SOURCE=200809L $(LDFLAGS_SAN) \
+	    -I$(CORE_INC) -I$(CORE)/tools -o $@ $(CORE)/tools/mapreach.c $(CORE)/src/levels_mapx.c
+levelcheck: $(BUILD)/mapreach
+	@$(PYTHON) $(ROOT)/tools/levelcheck.py --mapreach $(BUILD)/mapreach
+mapc-check: $(BUILD)/mapreach
+	@mkdir -p $(BUILD)
+	@$(PYTHON) $(ROOT)/tools/tests/test_mapc.py > $(BUILD)/mapc-check.log 2>&1 || { cat $(BUILD)/mapc-check.log; exit 1; }
+	@tail -n 1 $(BUILD)/mapc-check.log
+	@MAPREACH=$(BUILD)/mapreach $(PYTHON) $(ROOT)/tools/tests/test_levelcheck.py > $(BUILD)/mapc-check.log 2>&1 || { cat $(BUILD)/mapc-check.log; exit 1; }
+	@tail -n 1 $(BUILD)/mapc-check.log
+# --- end LV1 ---
 
 unit: $(BUILD)/tests talk
 	$(BUILD)/tests --golden $(CORE)/tests/golden --tmp $(BUILD)/testtmp
