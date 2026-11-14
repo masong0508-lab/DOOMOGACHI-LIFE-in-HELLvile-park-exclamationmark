@@ -30,6 +30,7 @@
 #include "doomo/family.h"
 #include "doomo/story.h"
 #include "doomo/resident_acc.h"
+#include "doomo/portrait.h"
 
 /* ---- the plan of an exchange (TalkState.plan[].kind) ----------------------- */
 enum { DK_NONE = 0, DK_ANSWER, DK_REACT, DK_BEAT, DK_IDLE, DK_PROD, DK_JAB, DK_ROW, DK_ULT, DK_EXCUSE,
@@ -325,6 +326,163 @@ static int reward(int id, int act)
     }
 }
 
+/* ---- how a resident takes an act: persona, mood, bond, topic (T6b) --------------------------- */
+static int act_base(int act)
+{
+    switch (act) {
+    case TA_THANK: case TA_APOLOGIZE: case TA_ASK_FEELING: case TA_AGREE: case TA_COMFORT: case TA_ENCOURAGE:
+    case TA_SYMPATHIZE: case TA_OFFER: case TA_INVITE: case TA_PROMISE: case TA_HUG: case TA_HIGH_FIVE:
+    case TA_PRAISE_OTHER: return 2;
+    case TA_COMPLIMENT: case TA_GIVE: return 3;
+    case TA_GREET: case TA_INTRODUCE: case TA_ASK_ABOUT: case TA_ASK_OPINION: case TA_ASK_ADVICE: case TA_TELL:
+    case TA_OPINE_POS: case TA_ANSWER: case TA_YES: case TA_JOKE: case TA_LAUGH: case TA_GOSSIP: case TA_DEFEND:
+    case TA_TAKE_SIDE: case TA_MEDIATE: case TA_CONTINUE: case TA_BACKCHANNEL: case TA_WAVE: case TA_NOD: return 1;
+    case TA_ASK_FAVOR: case TA_ASK_REPEAT: case TA_DISAGREE: case TA_NO: case TA_CHANGE_TOPIC: case TA_UNKNOWN:
+    case TA_SHAKE_HEAD: return -1;
+    case TA_TEASE: case TA_COMPLAIN: return -2;
+    case TA_ACCUSE: case TA_WALK_AWAY: return -3;
+    case TA_CRITICIZE: return -4;
+    case TA_MOCK: case TA_BLAME: case TA_DISMISS: return -5;
+    case TA_INSULT: return -6;
+    case TA_THREATEN: return -8;
+    default: return 0;
+    }
+}
+
+/* how much an act stings: a thick-skinned resident shrugs it off, a thin-skinned one does not */
+static int act_edge(int act)
+{
+    switch (act) {
+    case TA_INSULT: case TA_MOCK: case TA_THREATEN: return 3;
+    case TA_DISMISS: case TA_BLAME: case TA_CRITICIZE: case TA_TEASE: case TA_ACCUSE: return 2;
+    case TA_COMPLAIN: case TA_DISAGREE: case TA_SHAKE_HEAD: case TA_WALK_AWAY: return 1;
+    default: return 0;
+    }
+}
+
+static int act_warmish(int act)
+{
+    switch (act) {
+    case TA_THANK: case TA_APOLOGIZE: case TA_COMPLIMENT: case TA_PRAISE_OTHER: case TA_COMFORT: case TA_ENCOURAGE:
+    case TA_SYMPATHIZE: case TA_OFFER: case TA_INVITE: case TA_PROMISE: case TA_GIVE: case TA_HUG: case TA_HIGH_FIVE:
+        return 1;
+    default: return 0;
+    }
+}
+
+static int act_topical(int act)
+{
+    switch (act) {
+    case TA_ASK_ABOUT: case TA_ASK_OPINION: case TA_TELL: case TA_OPINE_POS: case TA_OPINE_NEG: case TA_CHANGE_TOPIC:
+    case TA_INVITE: case TA_GOSSIP: return 1;
+    default: return 0;
+    }
+}
+
+/* the number: act, tone, the five sliders, mood, bond (-100..100) and a topic term */
+static int take_value(int act, int tone, int speech, int expr, int att, int quirk, int mood, int rv, int topic_d)
+{
+    int v, edge, skin, warm;
+    if (act <= TA_NONE || act >= TA_COUNT || TA_IS_SAFETY(act) || TA_IS_ROMANCE(act)) return 0;
+    v = act_base(act);
+    edge = act_edge(act);
+    warm = act_warmish(act);
+    if (tone == TONE_WARM) v += 1;
+    else if (tone == TONE_CHEEKY) edge += 1;
+    else if (tone == TONE_SNARKY) { v -= 2; edge += 2; }
+    if (edge > 4) edge = 4;
+    skin = (speech >= 10) - (speech <= 5) + (att >= 10) - (att <= 5) + (quirk >= 11);
+    if (edge > 0) v += skin * (edge + 1) / 2;
+    switch (act) {
+    case TA_JOKE:       v += att >= 10 ? 2 : att <= 5 ? -2 : 0; v += quirk >= 11; break;
+    case TA_LAUGH:      v += att >= 10; break;
+    case TA_TEASE:      v += att >= 10 ? 1 : att <= 5 ? -1 : 0; break;
+    case TA_APOLOGIZE:  v += speech <= 5 ? 2 : speech >= 10 ? -1 : 0; v += att <= 5; break;
+    case TA_THANK: case TA_AGREE: v += speech <= 5; break;
+    case TA_HUG:        v += expr >= 10 ? 3 : expr <= 5 ? -2 : 0; break;
+    case TA_HIGH_FIVE:  v += expr >= 10 ? 2 : 0; v -= att <= 5; break;
+    case TA_COMPLIMENT: case TA_PRAISE_OTHER: v += expr >= 10 ? 2 : expr <= 5 ? -1 : 0; break;
+    case TA_COMFORT: case TA_SYMPATHIZE: case TA_ENCOURAGE: case TA_OFFER: v += expr >= 10; break;
+    default: break;
+    }
+    /* the bond: a friend's jab is banter, a rival's is not */
+    if (rv >= 30) { v += edge + warm; if (act == TA_HUG) v += 2; }
+    else if (rv <= -30) { v -= edge + warm; if (act == TA_HUG) v -= 2; }
+    /* the mood */
+    switch (mood) {
+    case MOOD_SAD:
+        if (act == TA_COMFORT || act == TA_SYMPATHIZE || act == TA_ENCOURAGE || act == TA_OFFER || act == TA_HUG ||
+            act == TA_ASK_FEELING) v += 3;
+        else if (act == TA_JOKE || act == TA_TEASE || act == TA_LAUGH || act == TA_MOCK || act == TA_CHANGE_TOPIC) v -= 3;
+        break;
+    case MOOD_ANGRY:
+        if (act == TA_APOLOGIZE) v += 3;
+        else if (act == TA_TEASE) v -= 3;
+        else if (act == TA_JOKE || act == TA_MOCK || act == TA_INSULT || act == TA_THREATEN || act == TA_DISMISS) v -= 2;
+        break;
+    case MOOD_HAPPY: case MOOD_ECSTATIC:
+        if (act == TA_JOKE || act == TA_LAUGH || act == TA_TEASE || act == TA_COMPLIMENT || act == TA_HUG) v += 1;
+        break;
+    case MOOD_SCARED:
+        if (act == TA_COMFORT || act == TA_SYMPATHIZE || act == TA_OFFER) v += 2;
+        else if (edge > 0) v -= 1;
+        break;
+    case MOOD_LONELY:
+        if (warm || act == TA_ASK_FEELING) v += 1;
+        break;
+    case MOOD_HUNGRY: case MOOD_SLEEPY: case MOOD_SICK: case MOOD_FILTHY:
+        if (act == TA_OFFER) v += 2;
+        else if (act == TA_ASK_FAVOR || act == TA_CHANGE_TOPIC || act == TA_ASK_ABOUT) v -= 1;
+        break;
+    default: break;
+    }
+    return clampi(v + topic_d, -10, 8);
+}
+
+static int topic_term(int id, int act, uint16_t topic)
+{
+    int d, st;
+    if (!topic || !act_topical(act)) return 0;
+    d = affinity(id, topic);
+    st = topic_stance(id, topic);
+    if (act == TA_OPINE_POS) d += st == TST_PRO ? 2 : st == TST_CON ? -2 : 0;
+    else if (act == TA_OPINE_NEG) d += st == TST_CON ? 2 : st == TST_PRO ? -2 : 0;
+    return d;
+}
+
+int talk_dm_expect(const TalkState *s, int slot, int act, int tone, uint16_t topic)
+{
+    DoomoResident buf;
+    const DoomoResident *r;
+    int id;
+    if (!s || slot < 0 || slot >= s->nparts || !talker(s, slot)) return 0;
+    if (TA_IS_ROMANCE(act)) return talk_dm_consent(s, slot, act) ? 4 : -3;
+    id = s->part[slot].id;
+    r = res_of(id, &buf);
+    return take_value(act, tone, pers(id, PERS_SPEECH), pers(id, PERS_EXPRESSION), pers(id, PERS_ATTITUDE),
+                      pers(id, PERS_QUIRK), r ? r->mood : MOOD_OK, relv(id, s->conv.avatar), topic_term(id, act, topic));
+}
+
+/* what the persona, the mood and the bond add to (or take from) what a plain resident would feel */
+static int take_shift(const TalkState *s, int slot, int act, int tone, uint16_t topic)
+{
+    if (!talker(s, slot) || TA_IS_ROMANCE(act)) return 0;
+    return talk_dm_expect(s, slot, act, tone, topic) - take_value(act, tone, 6, 6, 6, 6, MOOD_OK, 0, 0);
+}
+
+/* the persona's share of the bond and the mood, over what the act already did (a hostile act never nets a gain) */
+static void persona_react(TalkState *s, int k, int act, int tone, uint16_t topic, int div)
+{
+    int sh, hostile;
+    if (k < 0 || !talker(s, k)) return;
+    sh = take_shift(s, k, act, tone, topic) / div;
+    hostile = act == TA_INSULT || act == TA_MOCK || act == TA_THREATEN || act == TA_DISMISS || act == TA_BLAME;
+    if (hostile && sh > 2) sh = 2;
+    if (!sh) return;
+    bump_rel(s, k, sh / 2 ? sh / 2 : (sh > 0 ? 1 : -1));
+    bump_mood(s, k, sh / 3);
+}
+
 /* ---- engagement (5.3) ---------------------------------------------------------- */
 static const TalkBeatInfo *beat_now(const TalkState *s, TalkBeatInfo *bi)
 {
@@ -343,7 +501,7 @@ static void update_engage(TalkState *s, const TalkUtter *u, int target)
         if (b) involved = b->involves == TBI_ALL || (b->involves == TBI_A && k == s->beat_a) ||
                           (b->involves == TBI_PAIR && (k == s->beat_a || k == s->beat_b));
         d = (target == k ? 6 : 0) + affinity(p->id, u->topic[0]) + reward(p->id, act) + (involved ? 2 : 0) - 2 -
-            (rep ? 4 : 0) - (p->turns_ignored >= 3 ? 3 : 0);
+            (rep ? 4 : 0) + (target == k ? clampi(take_shift(s, k, act, u->tone, u->topic[0]) / 3, -3, 3) : 0) - (p->turns_ignored >= 3 ? 3 : 0);
         if (target == k || (p->flags & TPF_SPOKE)) p->turns_ignored = 0;
         else if (p->turns_ignored < 255) p->turns_ignored++;
         p->flags &= (uint8_t)~TPF_SPOKE;
@@ -685,13 +843,15 @@ static void plan_reactions(TalkState *s, int resp, int budget, int next_who, Doo
  * engaged. Never in an argument, a walk-out, a farewell or a tense room (the drama speaks then). */
 static int follow_wanted(const TalkState *s, int resp, int switched, DoomoRng *rng)
 {
-    int i, cls, chance = 70;
+    int i, cls, chance = 85;
     if ((s->flags & (TDF_FAREWELL | TDF_OVER)) || !talker(s, resp) || (s->part[resp].flags & TPF_LEFT)) return 0;
     if (s->tension >= TALK_TENSION_ARGUE || s->part[resp].engage < 20) return 0;
     for (i = 0; i < s->nplan; i++)
         if (s->plan[i].kind == DK_JAB || s->plan[i].kind == DK_ROW || s->plan[i].kind == DK_ULT ||
             s->plan[i].kind == DK_EXCUSE || s->plan[i].kind == DK_CUT || s->plan[i].kind == DK_GRUMBLE) return 0;
     cls = s->in.act[0] ? talk_gen_act_class(s->in.act[0]) : TAC_FLOW;
+    if (s->part[resp].engage >= 70) chance = 100;              /* steadier: an engaged one keeps it going */
+    else if (s->part[resp].engage < 35) chance = 55;
     if (switched || cls == TAC_COOL) chance = 100;
     return rng_range(rng, 100) < chance;
 }
@@ -821,6 +981,9 @@ int talk_dm_say(TalkState *s, const TalkUtter *u)
         if (target >= 0) { bump_rel(s, target, -2); bump_mood(s, target, -2); }
         s->tension = (uint8_t)clampi((int)s->tension + 1, 0, TALK_TENSION_MAX);
     }
+    /* personality: the same act lands differently on each of them (T6b) */
+    if (target >= 0) persona_react(s, target, act, s->in.tone, s->in.topic[0], 1);
+    else for (k = 0; k < s->nparts; k++) persona_react(s, k, act, s->in.tone, s->in.topic[0], 2);
     update_engage(s, &s->in, target);
 
     /* the beat: finish it when its goals are done, pick the next by the arc */
@@ -988,6 +1151,11 @@ static int make_line(TalkState *s, int kind, int who, int to, int arg, TalkLine 
     case DK_ANSWER:
         *hflags = 0;
         ok = talk_gen_line(c, who, to, s->in.act[0], s->in.topic[0], L, tr);
+        if (ok && !L->face && s->gate == TG_PASS && !(L->flags & TLF_SINCERE) && !TA_IS_ROMANCE(s->in.act[0])) {
+            int e = talk_dm_expect(s, who, s->in.act[0], s->in.tone, s->in.topic[0]);   /* how they took it, on the face */
+            if (e >= 5) L->face = EXPR_HAPPY + 1;
+            else if (e <= -5) L->face = (!adult(s, who) || pers(s->part[who].id, PERS_SPEECH) < 10 ? EXPR_SAD : EXPR_ANGRY) + 1;
+        }
         if (TA_IS_ROMANCE(L->act) && !(TA_IS_ROMANCE(s->in.act[0]) && s->gate == TG_PASS && ((c->consent >> who) & 1))) ok = 0;
         break;
     case DK_REACT:

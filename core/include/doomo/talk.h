@@ -1041,6 +1041,46 @@ int  talk_dm_beat_info(int beat, TalkBeatInfo *out);
 /* The persona type's favoured and dull topic roots (TB_BEATS; TCR_*, 0 none). */
 int  talk_dm_affinity_roots(int type, uint8_t *favours, uint8_t *dull);
 
+/* ---- (T6b) personalities react differently; quick replies ----------------------------------
+ * talk_dm_expect: how slot `slot` is likely to take the player's act `act` in tone `tone` about
+ * `topic` (TC_NONE: none), as the number the drama manager works with: -10 (deeply offended) to
+ * +8 (delighted). It reads the five persona sliders, the mood and the bond of that resident as the
+ * sim says now, plus what they think of the topic. The same act lands differently: a tease is
+ * banter to a blunt, easygoing, quirky one and an insult to a polite, serious one; an apology
+ * matters more to the polite one, a hug to the expressive one; a sad one wants comfort, not a
+ * joke; a friend's jab is banter and a rival's is not. Romance acts: +4 when the sim and the gate
+ * would say yes (talk_dm_consent), else -3. The pet, a slot that is not in the room, a resident
+ * who left and a NULL state give 0. Reads, changes nothing. talk_dm_say() applies the persona's
+ * share of it to the bond and the mood of whoever the act was for. */
+int  talk_dm_expect(const TalkState *s, int slot, int act, int tone, uint16_t topic);
+
+/* One quick reply: an act the drama manager understands, said in a sentence. `text` is a static
+ * string; "%t" in it stands for `topic` (the house puts the concept's name in). `to` is the
+ * participant slot the reply is for, -1 for whoever the player is talking to now (a reply that takes
+ * a side in a row names the one it takes the side of). */
+#define TALK_QUICK_MAX 4
+typedef struct TalkSugg {
+    uint8_t     act;                /* TA_*                                    */
+    uint8_t     tone;               /* TONE_*                                  */
+    uint16_t    topic;              /* the topic it stays on, TC_NONE          */
+    int8_t      to;                 /* slot, -1 as the player is addressing    */
+    const char *text;
+} TalkSugg;
+/* The line the replies answer: the newest line of the current exchange that was said to the player
+ * (or to the room), else the newest line; NULL while nothing has been said. *slot (may be NULL) is
+ * who said it. */
+const TalkLine *talk_quick_thread(const TalkState *s, int *slot);
+/* Up to TALK_QUICK_MAX replies for what was just said, for the resident in slot `slot` (the one the
+ * player is talking to), into out[]; returns how many (0 when the talk is over). `topic` is the topic
+ * the player has in play, `fresh` a different one worth steering to (either may be TC_NONE). The
+ * first reply follows the thread (it answers the question, thanks for the kind word, ...), the second
+ * is the one that suits this resident (a joke for the easygoing, sympathy for a sad one, a thank-you for
+ * the polite), the others change something. After a sincere line, or about a grief topic, only comfort
+ * and kindness; in a room with a child never a snark, a dismissal or a tease; nothing romantic ever;
+ * no act twice. The same salt gives the same replies (a new salt varies them); the texts are static. */
+int  talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fresh, uint32_t salt,
+                        TalkSugg *out);
+
 /* ---- the house hook (T8; weak in core/src/weak_talk.c) ---------------------
  * Start Talk with resident `who` in the room: 1 started, 0 not available
  * (no PLATF_TALK, or not built: the default). The house reaches Talk only

@@ -24,6 +24,9 @@
 #include "doomo/doomo.h"
 #include "doomo/talk.h"
 #include "doomo/playas.h"
+#include "doomo/family.h"
+#include "doomo/resident_acc.h"
+#include "doomo/rng.h"
 
 #ifdef DOOMO_HAS_TALK
 
@@ -34,7 +37,7 @@
 #endif
 
 enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE };
-enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE };
+enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK };
 enum { C_CHAT = 0, C_NICE, C_COOL, C_ASK, C_TELL, C_OTHERS, C_GESTURE, C_ROMANCE, C_COUNT };
 
 typedef struct TRow { uint8_t kind, arg; uint16_t v; } TRow;
@@ -52,6 +55,9 @@ static struct TalkScn {
     int       nrows, nstock;
     TRow      row[TROWS];
     uint16_t  stock[TSTOCK];
+    TalkSugg  quick[TALK_QUICK_MAX];     /* the replies to what was just said (top of the main page) */
+    uint8_t   nquick;
+    uint32_t  qsalt;
     UiList    list;
     char      you[TALK_SHOWN_MAX];
 #ifdef TALK_TYPING
@@ -110,6 +116,307 @@ static const char *const stock_key[] = {
     "family", "the park", "cake"
 };
 
+/* ---- quick replies (T6b): what to say to what was just said ------------------------------------
+ * Every reply is a TA_* act in a sentence. The sentences are static (a pointer is the identity of a
+ * reply: the tests compare them); "%t" in the q_top table stands for the topic. A reply is chosen
+ * from short lists by the act of the line it answers, the resident's persona and mood, and a salt
+ * (the same salt gives the same replies). */
+#define QV 6
+static const char *const q_say[TA_COUNT][QV] = {
+    [TA_GREET]    = { "Hi there!", "Hey, good to see you.", "Hello!", "Oh hey, it's you!", "Hi! What's new?" },
+    [TA_FAREWELL] = { "I have to go. Bye!", "Gotta run. See you!", "Catch you later!", "Take care!" },
+    [TA_THANK]    = { "Thank you!", "Thanks, that's kind.", "Aw, thanks!", "You're too nice.", "That means a lot." },
+    [TA_APOLOGIZE] = { "I'm sorry.", "Sorry, my bad.", "Did I say something wrong?", "Oops. Sorry about that." },
+    [TA_ASK_ABOUT] = { "Tell me more.", "Go on, I'm listening.", "How come?", "What happened?", "Really? Then what?" },
+    [TA_ASK_OPINION] = { "What do you think?", "Where do you stand on it?", "Is that a yes or a no?", "Be honest. Thoughts?" },
+    [TA_ASK_FEELING] = { "How are you feeling?", "You okay?", "How's your day going?", "What's on your mind?" },
+    [TA_ASK_FACT] = { "Do you know why?", "Are you sure about that?", "Is that really true?" },
+    [TA_ASK_ADVICE] = { "Any advice for me?", "What would you do?", "What should I do?" },
+    [TA_TELL]     = { "Guess what happened to me.", "Funny thing, actually.", "I had a strange day.", "Can I tell you something?" },
+    [TA_OPINE_POS] = { "I like it, actually.", "I'm a big fan.", "Honestly? I love it.", "It's growing on me." },
+    [TA_OPINE_NEG] = { "Not my thing, honestly.", "I can't stand it.", "I'm not sold on it.", "It's not for me." },
+    [TA_AGREE]    = { "I agree.", "Yeah, same here.", "Exactly!", "You said it.", "That's what I think too." },
+    [TA_DISAGREE] = { "I don't think so.", "Hmm, not really.", "I see it differently.", "Respectfully, no." },
+    [TA_ANSWER]   = { "Pretty good, thanks.", "Can't complain. Mostly.", "Same old, same old.", "No problem at all!", "Any time!" },
+    [TA_YES]      = { "Yes.", "Sure thing.", "You bet.", "Of course." },
+    [TA_NO]       = { "No.", "Not really.", "I'd rather not.", "Nope." },
+    [TA_COMPLIMENT] = { "You're great.", "You always know what to say.", "I like your style.", "You're good at this.", "You've got a good heart." },
+    [TA_COMFORT]  = { "It'll be okay.", "I'm here for you.", "Take your time.", "It's not as bad as it seems." },
+    [TA_ENCOURAGE] = { "You can do it!", "I believe in you.", "You've got this.", "Don't give up." },
+    [TA_SYMPATHIZE] = { "That sounds hard.", "I'm sorry you're going through that.", "That must hurt.", "I'm listening." },
+    [TA_JOKE]     = { "Here's a good one...", "I'd make a joke, but...", "Funny you say that.", "Stop me if you've heard this.", "Plot twist!" },
+    [TA_LAUGH]    = { "Ha ha ha!", "Heh. Good one.", "Okay, that was funny.", "Hahaha, stop it!" },
+    [TA_OFFER]    = { "Want a hand?", "Can I help?", "Let me help you with that.", "Need anything?" },
+    [TA_INVITE]   = { "Want to hang out?", "Let's do something fun." },
+    [TA_PROMISE]  = { "I promise.", "I'll be there.", "You can count on me." },
+    [TA_TEASE]    = { "Oh, come on.", "Is that the best you've got?", "You're so dramatic.", "Look who's talking." },
+    [TA_BACKCHANNEL] = { "Mm-hm.", "Huh. Okay.", "I see.", "Right, right." },
+    [TA_CONTINUE] = { "And then?", "Keep going." },
+    [TA_WAVE]     = { "*waves*" },
+    [TA_NOD]      = { "*nods*" },
+    [TA_SHAKE_HEAD] = { "*shakes head*" },
+    [TA_HUG]      = { "*hugs*" },
+    [TA_HIGH_FIVE] = { "*high five*" },
+    [TA_MEDIATE]  = { "Let's all calm down.", "Can we just talk this through?", "Come on, you two." },
+    [TA_TAKE_SIDE] = { "I'm with you on this.", "You've got a point." },
+    [TA_DEFEND]   = { "Leave them alone.", "Hey, go easy on them." },
+};
+static const char *const q_top[TA_COUNT][QV] = {
+    [TA_ASK_ABOUT] = { "Tell me about %t.", "What's the deal with %t?", "So, what about %t?", "I want to hear about %t." },
+    [TA_ASK_OPINION] = { "What do you think of %t?", "Are you into %t?", "%t: love it or hate it?" },
+    [TA_TELL]     = { "I've been thinking about %t.", "Guess what: %t!", "I ran into %t today." },
+    [TA_OPINE_POS] = { "I like %t.", "I'm into %t.", "%t is great, honestly." },
+    [TA_OPINE_NEG] = { "I'm not a fan of %t.", "%t? Not for me.", "I can take or leave %t." },
+    [TA_AGREE]    = { "Yeah, %t is like that.", "Right? %t, exactly." },
+    [TA_DISAGREE] = { "I'm not so sure about %t.", "I'd say %t is overrated." },
+    [TA_JOKE]     = { "%t? Don't get me started.", "Say %t one more time..." },
+    [TA_CHANGE_TOPIC] = { "Anyway, about %t...", "Speaking of which: %t?", "Can we talk about %t?", "Random, but... %t?" },
+    [TA_INVITE]   = { "Want to do %t?", "Fancy some %t?" },
+};
+
+typedef struct QCtx {
+    const TalkState *s;
+    uint32_t salt;
+    uint16_t topic, fresh;               /* the topic the replies stay on; one to steer to        */
+    uint8_t  kid, sincere, n;
+    uint8_t  used[(TA_COUNT + 7) / 8];
+} QCtx;
+
+static int q_used(const QCtx *q, int act) { return (q->used[act >> 3] >> (act & 7)) & 1; }
+
+static int q_count(const char *const *v)
+{
+    int n = 0;
+    while (n < QV && v[n]) n++;
+    return n;
+}
+
+static int q_sincere_act(int act)
+{
+    return act == TA_SYMPATHIZE || act == TA_COMFORT || act == TA_OFFER || act == TA_ENCOURAGE;
+}
+
+static uint8_t q_tone(int act)
+{
+    switch (act) {
+    case TA_JOKE: case TA_TEASE: return TONE_CHEEKY;
+    case TA_COMPLIMENT: case TA_COMFORT: case TA_ENCOURAGE: case TA_THANK: case TA_SYMPATHIZE: case TA_OFFER:
+    case TA_HUG: case TA_HIGH_FIVE: return TONE_WARM;
+    default: return TONE_PLAIN;
+    }
+}
+
+/* the topic an act stays on; the steer is its own */
+static uint16_t q_topic_of(const QCtx *q, int act) { return act == TA_CHANGE_TOPIC ? q->fresh : q->topic; }
+
+/* may this act be offered here, and which sentence (NULL: it cannot) */
+static const char *q_text(const QCtx *q, int act, uint32_t h)
+{
+    int ng, nt, i;
+    uint16_t tp;
+    if (act <= TA_NONE || act >= TA_COUNT || TA_IS_ROMANCE(act) || TA_IS_SAFETY(act) || q_used(q, act)) return NULL;
+    if (q->sincere && !q_sincere_act(act)) return NULL;
+    if (q->kid && (act == TA_TEASE || act == TA_DISMISS || act == TA_COMPLAIN)) return NULL;
+    tp = q_topic_of(q, act);
+    if (act == TA_CHANGE_TOPIC && !tp) return NULL;
+    ng = q_count(q_say[act]);
+    nt = tp ? q_count(q_top[act]) : 0;
+    if (ng + nt == 0) return NULL;
+    i = (int)((h >> 8) % (uint32_t)(ng + nt));
+    return i < ng ? q_say[act][i] : q_top[act][i - ng];
+}
+
+static int q_add(QCtx *q, const int8_t *act_to, int act, uint32_t h, TalkSugg *out)
+{
+    const char *t;
+    if (q->n >= TALK_QUICK_MAX || !(t = q_text(q, act, h))) return 0;
+    out[q->n].act = (uint8_t)act;
+    out[q->n].tone = q_tone(act);
+    out[q->n].topic = q_topic_of(q, act);
+    out[q->n].to = act_to ? *act_to : -1;
+    out[q->n].text = t;
+    q->used[act >> 3] |= (uint8_t)(1u << (act & 7));
+    q->n++;
+    return 1;
+}
+
+/* the first of a list (from a salted start) that can be offered */
+static int q_from(QCtx *q, const uint8_t *list, int n, uint32_t h, TalkSugg *out)
+{
+    int i;
+    for (i = 0; i < n; i++)
+        if (q_add(q, NULL, list[(h % (uint32_t)n + (uint32_t)i) % (uint32_t)n], h, out)) return 1;
+    return 0;
+}
+
+static const uint8_t ql_hello[] = { TA_GREET, TA_ASK_FEELING, TA_WAVE, TA_ASK_ABOUT };
+static const uint8_t ql_bye[]   = { TA_FAREWELL, TA_THANK, TA_PROMISE, TA_WAVE };
+static const uint8_t ql_opin[]  = { TA_OPINE_POS, TA_OPINE_NEG, TA_ANSWER, TA_ASK_OPINION };
+static const uint8_t ql_feel[]  = { TA_ANSWER, TA_TELL, TA_ASK_FEELING };
+static const uint8_t ql_fact[]  = { TA_YES, TA_NO, TA_ANSWER, TA_ASK_ABOUT };
+static const uint8_t ql_tell[]  = { TA_AGREE, TA_ASK_ABOUT, TA_OPINE_POS, TA_OPINE_NEG, TA_LAUGH, TA_DISAGREE };
+static const uint8_t ql_kind[]  = { TA_THANK, TA_COMPLIMENT };
+static const uint8_t ql_thx[]   = { TA_ANSWER, TA_JOKE, TA_ASK_FEELING };
+static const uint8_t ql_sorry[] = { TA_COMFORT, TA_ANSWER, TA_THANK, TA_JOKE };
+static const uint8_t ql_warm[]  = { TA_THANK, TA_YES, TA_ANSWER, TA_JOKE };
+static const uint8_t ql_fun[]   = { TA_LAUGH, TA_JOKE, TA_AGREE, TA_ASK_ABOUT };
+static const uint8_t ql_cool[]  = { TA_APOLOGIZE, TA_DISAGREE, TA_JOKE, TA_SYMPATHIZE };
+static const uint8_t ql_moan[]  = { TA_SYMPATHIZE, TA_AGREE, TA_COMFORT, TA_JOKE };
+static const uint8_t ql_third[] = { TA_AGREE, TA_DISAGREE, TA_ASK_ABOUT, TA_JOKE };
+static const uint8_t ql_hug[]   = { TA_HUG, TA_THANK, TA_LAUGH };
+static const uint8_t ql_five[]  = { TA_HIGH_FIVE, TA_LAUGH, TA_JOKE };
+static const uint8_t ql_nod[]   = { TA_ASK_ABOUT, TA_NOD, TA_TELL, TA_BACKCHANNEL };
+static const uint8_t ql_start[] = { TA_GREET, TA_ASK_FEELING, TA_ASK_ABOUT, TA_JOKE, TA_COMPLIMENT, TA_TELL, TA_WAVE };
+static const uint8_t ql_sinc[]  = { TA_SYMPATHIZE, TA_COMFORT, TA_OFFER, TA_ENCOURAGE };
+static const uint8_t ql_chg[]   = { TA_CHANGE_TOPIC, TA_ASK_OPINION, TA_DISAGREE, TA_TEASE, TA_ASK_ABOUT, TA_TELL, TA_ASK_FEELING };
+static const uint8_t ql_wild[]  = { TA_COMPLIMENT, TA_ENCOURAGE, TA_HIGH_FIVE, TA_ASK_FEELING, TA_NOD, TA_BACKCHANNEL,
+                                    TA_ANSWER, TA_ASK_ABOUT, TA_THANK };
+
+#define QSET(a) (*list = (a), (int)sizeof(a))
+/* the list that answers a line of this act */
+static int q_follow(int act, const uint8_t **list)
+{
+    switch (act) {
+    case TA_GREET: case TA_WAVE: case TA_INTRODUCE: return QSET(ql_hello);
+    case TA_FAREWELL: case TA_WALK_AWAY: return QSET(ql_bye);
+    case TA_ASK_ABOUT: case TA_ASK_OPINION: case TA_ASK_ADVICE: case TA_ASK_WHO: return QSET(ql_opin);
+    case TA_ASK_FEELING: case TA_ASK_REPEAT: return QSET(ql_feel);
+    case TA_ASK_FACT: case TA_ASK_FAVOR: return QSET(ql_fact);
+    case TA_COMPLIMENT: case TA_PRAISE_OTHER: case TA_GIVE: return QSET(ql_kind);
+    case TA_THANK: return QSET(ql_thx);
+    case TA_APOLOGIZE: return QSET(ql_sorry);
+    case TA_COMFORT: case TA_ENCOURAGE: case TA_SYMPATHIZE: case TA_OFFER: case TA_INVITE: case TA_PROMISE:
+        return QSET(ql_warm);
+    case TA_JOKE: case TA_LAUGH: return QSET(ql_fun);
+    case TA_COMPLAIN: return QSET(ql_moan);
+    case TA_INSULT: case TA_CRITICIZE: case TA_TEASE: case TA_MOCK: case TA_BLAME: case TA_DISMISS: case TA_THREATEN:
+        return QSET(ql_cool);
+    case TA_GOSSIP: case TA_DEFEND: case TA_ACCUSE: case TA_TAKE_SIDE: case TA_MEDIATE: return QSET(ql_third);
+    case TA_HUG: return QSET(ql_hug);
+    case TA_HIGH_FIVE: return QSET(ql_five);
+    case TA_NOD: case TA_SHAKE_HEAD: return QSET(ql_nod);
+    default: return QSET(ql_tell);
+    }
+}
+
+/* what a resident's persona, mood and the second slot say: the reply that suits them */
+static int q_suit(const TalkState *s, int slot, int sincere, const uint8_t **list)
+{
+    static const uint8_t sad[] = { TA_SYMPATHIZE, TA_COMFORT, TA_OFFER };
+    static const uint8_t angry[] = { TA_APOLOGIZE, TA_ASK_FEELING };
+    static const uint8_t easy[] = { TA_JOKE, TA_LAUGH };
+    static const uint8_t serious[] = { TA_ASK_ABOUT, TA_ASK_ADVICE, TA_ANSWER };
+    static const uint8_t expr[] = { TA_COMPLIMENT, TA_HUG, TA_HIGH_FIVE };
+    static const uint8_t blunt[] = { TA_DISAGREE, TA_OPINE_NEG, TA_TELL };
+    static const uint8_t polite[] = { TA_THANK, TA_APOLOGIZE, TA_ASK_FEELING };
+    static const uint8_t mid[] = { TA_ASK_OPINION, TA_TELL, TA_ENCOURAGE };
+    DoomoResident buf;
+    const DoomoResident *r = NULL;
+    int id, sp = 6, ex = 6, at = 6, qk = 6, mood = MOOD_OK;
+    if (slot >= 0 && slot < s->nparts) {
+        id = s->part[slot].id;
+        if (id >= 0 && id <= DOOMO_PLAYER_ID) r = town_res(id);
+        else if (id != TALK_PET_ID && family_resident(id, &buf)) r = &buf;
+    }
+    if (r) {
+        sp = RES_PERSONA(r, PERS_SPEECH); ex = RES_PERSONA(r, PERS_EXPRESSION);
+        at = RES_PERSONA(r, PERS_ATTITUDE); qk = RES_PERSONA(r, PERS_QUIRK);
+        mood = r->mood;
+    }
+    if (sincere) {
+        if (mood == MOOD_SAD) return QSET(sad);
+        return QSET(ql_sinc);
+    }
+    if (mood == MOOD_SAD) return QSET(sad);
+    if (mood == MOOD_ANGRY) return QSET(angry);
+    if (at >= 10 || qk >= 12) return QSET(easy);
+    if (at <= 5) return QSET(serious);
+    if (ex >= 10) return QSET(expr);
+    if (sp >= 10) return QSET(blunt);
+    if (sp <= 5) return QSET(polite);
+    return QSET(mid);
+}
+
+const TalkLine *talk_quick_thread(const TalkState *s, int *slot)
+{
+    int i;
+    if (!s || s->nlines == 0) return NULL;
+    for (i = s->nlines - 1; i >= 0; i--)
+        if (s->line[i].to < 0 && s->line[i].who >= 0) { if (slot) *slot = s->line[i].who; return &s->line[i]; }
+    if (slot) *slot = s->line[s->nlines - 1].who;
+    return &s->line[s->nlines - 1];
+}
+
+static int q_grief(uint16_t topic)
+{
+    TalkConcept tc;
+    return topic && talk_db_concept(topic, &tc) && (tc.flags & TCF_GRIEF);
+}
+
+int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fresh, uint32_t salt, TalkSugg *out)
+{
+    QCtx q;
+    TalkSugg tmp[TALK_QUICK_MAX];
+    const TalkLine *th;
+    const uint8_t *fl = NULL, *sl = NULL;
+    int tslot = -1, act = TA_NONE, b = -1, i, fn, sn, argue;
+    uint32_t h;
+    if (!s || !out || (s->flags & TDF_OVER)) return 0;
+    memset(&q, 0, sizeof q);
+    memset(tmp, 0, sizeof tmp);
+    q.s = s;
+    q.salt = salt;
+    th = talk_quick_thread(s, &tslot);
+    if (slot < 0 || slot >= s->nparts || (s->part[slot].flags & (TPF_LEFT | TPF_PET)))
+        slot = tslot >= 0 && tslot < s->nparts ? tslot : 0;
+    if (th) act = th->act;
+    q.kid = s->conv.aud.any_minor || (s->flags & TDF_KIDSAFE) ? 1 : 0;
+    /* grief and sincerity: only comfort, and the topic is not picked up */
+    q.sincere = (th && (th->flags & TLF_SINCERE)) || TA_IS_SAFETY(act) || q_grief(th ? th->topic : TC_NONE) ||
+                q_grief(topic) || q_grief(s->topic_stack[0]);
+    /* the topic: what the line is about, else what the player has in play, else the last one said */
+    q.topic = th && th->topic ? th->topic : topic ? topic : s->topic_stack[0];
+    if (q.topic && (!talk_gen_concept_ok(q.topic, &s->conv.aud) || q_grief(q.topic))) q.topic = TC_NONE;
+    q.fresh = fresh && !q.sincere && fresh != q.topic && talk_gen_concept_ok(fresh, &s->conv.aud) && !q_grief(fresh)
+              ? fresh : TC_NONE;
+    h = doomo_hash32(salt * 0x9E3779B1u + (uint32_t)act * 0x85EBCA6Bu + 0x7A1Bu);
+
+    /* the reply that suits them is reserved first (the first of its list that can be said), so the thread's
+     * reply never takes its act; it goes in the second place */
+    sn = q_suit(s, slot, q.sincere, &sl);
+    for (i = 0; i < sn && b < 0; i++) if (q_text(&q, sl[i], h >> 4)) b = sl[i];
+    if (b >= 0) q.used[b >> 3] |= (uint8_t)(1u << (b & 7));
+
+    /* a row between two residents is running: the player can step in */
+    argue = !q.sincere && s->arg_step > 0 && th && s->arg_a >= 0 && s->arg_b >= 0 &&
+            (th->who == s->arg_a || th->who == s->arg_b);
+    if (argue) {
+        int8_t sp = th->who, other = th->who == s->arg_a ? s->arg_b : s->arg_a;
+        q_add(&q, NULL, TA_MEDIATE, h, tmp);
+        q_add(&q, &sp, TA_TAKE_SIDE, h >> 3, tmp);
+        q_add(&q, &other, TA_DEFEND, h >> 5, tmp);
+    } else {
+        if (!th) { fl = ql_start; fn = (int)sizeof ql_start; }
+        else if (q.sincere) { fl = ql_sinc; fn = (int)sizeof ql_sinc; }
+        else fn = q_follow(act, &fl);
+        q_from(&q, fl, fn, h >> 2, tmp);                           /* 1: the thread */
+    }
+    if (b >= 0) {                                                  /* 2: the one that suits them */
+        q.used[b >> 3] &= (uint8_t)~(1u << (b & 7));
+        q_add(&q, NULL, b, h >> 4, tmp);
+    }
+    if (q.sincere) {                                               /* more of the same kindness */
+        q_from(&q, ql_sinc, (int)sizeof ql_sinc, h >> 9, tmp);
+        q_from(&q, ql_sinc, (int)sizeof ql_sinc, h >> 11, tmp);
+    } else {
+        q_from(&q, ql_chg, (int)sizeof ql_chg, h >> 9, tmp);       /* 3: change something */
+        q_from(&q, ql_wild, (int)sizeof ql_wild, h >> 11, tmp);    /* 4: a wildcard */
+        q_from(&q, ql_wild, (int)sizeof ql_wild, h >> 13, tmp);
+    }
+    for (i = 0; i < q.n; i++) out[i] = tmp[i];
+    return q.n;
+}
+
 /* ---- helpers ------------------------------------------------------------------------------ */
 static const char *res_name(int id)
 {
@@ -123,15 +430,14 @@ static void topic_name(uint16_t c, char *out, int cap)
     if (c == TC_NONE || talk_db_form(c, TF_LEMMA, out, cap) < 0) { doomo_snprintf(out, (size_t)cap, "that"); }
 }
 
-static void phrase(int act, char *out, int cap)
+static void expand(const char *src, uint16_t topic, char *out, int cap)
 {
-    const char *src = act > 0 && act < TA_COUNT && act_text[act] ? act_text[act] : "...";
     int n = 0;
     while (*src && n < cap - 1) {
         if (src[0] == '%' && src[1] == 't') {
             char tn[20];
             int k;
-            topic_name(T.topic, tn, (int)sizeof tn);
+            topic_name(topic, tn, (int)sizeof tn);
             for (k = 0; tn[k] && n < cap - 1; k++) out[n++] = tn[k];
             src += 2;
         } else {
@@ -139,6 +445,11 @@ static void phrase(int act, char *out, int cap)
         }
     }
     out[n] = 0;
+}
+
+static void phrase(int act, char *out, int cap)
+{
+    expand(act > 0 && act < TA_COUNT && act_text[act] ? act_text[act] : "...", T.topic, out, cap);
 }
 
 static int wants_topic(int act)
@@ -192,11 +503,27 @@ static void list_reset(void)
     T.list.top = 0;
 }
 
+/* the replies to what was just said: for the one you are talking to, staying on the topic; a stock topic
+ * the talk is not on is offered to steer to */
+static void quick_refresh(void)
+{
+    uint16_t fresh = TC_NONE;
+    int i, slot = T.to >= 0 ? T.to : 0;
+    uint32_t h = doomo_hash32(T.qsalt * 2654435761u + 0x51u);
+    for (i = 0; i < T.nstock && !fresh; i++) {
+        uint16_t c = T.stock[(h + (uint32_t)i) % (uint32_t)T.nstock];
+        if (c != T.topic && c != T.s.topic_stack[0]) fresh = c;
+    }
+    T.nquick = (uint8_t)talk_quick_replies(&T.s, slot, T.topic, fresh, T.qsalt++, T.quick);
+}
+
 static void build_main(void)
 {
     int c;
     T.page = PG_MAIN;
     T.nrows = 0;
+    quick_refresh();
+    for (c = 0; c < T.nquick; c++) add_row(K_QUICK, c, 0);
     for (c = 0; c < C_COUNT; c++) {
         if (c == C_ROMANCE && !romance_open()) continue;
         add_row(K_CAT, c, 0);
@@ -301,6 +628,7 @@ static const char *row_text(int index, char *buf)
         else if (T.topic != TC_NONE) doomo_snprintf(buf, 48, "Options (%s) >", tn);
         else doomo_snprintf(buf, 48, "Options >");
         break;
+    case K_QUICK: expand(T.quick[r->arg].text, T.quick[r->arg].topic, buf, 48); break;
     case K_BYE: doomo_snprintf(buf, 48, "Say goodbye"); break;
     case K_NOTOPIC: doomo_snprintf(buf, 48, "Any topic"); break;
     case K_PICK:
@@ -379,6 +707,24 @@ static void say_act(int act)
            : (act == TA_MOCK || act == TA_CRITICIZE || act == TA_DISMISS) ? TONE_SNARKY : TONE_PLAIN;
     phrase(act, buf, (int)sizeof buf);
     doomo_snprintf(u.shown, sizeof u.shown, "%s", buf);
+    say_utter(&u);
+    build_main();
+}
+
+static void say_quick(int i)
+{
+    TalkUtter u;
+    const TalkSugg *g;
+    if (i < 0 || i >= T.nquick) return;
+    g = &T.quick[i];
+    memset(&u, 0, sizeof u);
+    u.act[0] = g->act;
+    u.topic[0] = g->topic;
+    u.target = g->to >= 0 ? g->to : T.to;
+    u.tone = g->tone;
+    u.conf = 15;
+    expand(g->text, g->topic, u.shown, (int)sizeof u.shown);
+    if (g->topic) T.topic = g->topic;                 /* the talk stays on it */
     say_utter(&u);
     build_main();
 }
@@ -468,6 +814,7 @@ static void activate(int i)
         if (wants_topic(r->arg) && T.topic == TC_NONE && r->arg != TA_INVITE) { T.pending = r->arg; build_topics(); }
         else say_act(r->arg);
         break;
+    case K_QUICK: say_quick(r->arg); break;
     case K_MORE: build_more(); break;
     case K_TOPIC: T.pending = 0; build_topics(); break;
     case K_NOTOPIC: pick_topic(TC_NONE); break;
@@ -556,6 +903,7 @@ static void talk_update(void)
     if (T.after) {
         T.after = 0;
         if (T.leaving || talk_dm_over(&T.s)) { finish(); return; }
+        if (T.page == PG_MAIN) build_main();          /* new replies for what was just said */
     }
     if (T.page == PG_MAIN && ++T.idle % 8 == 0 && talk_dm_tick(&T.s, 8)) {
         while (talk_dm_step(&T.s, NULL)) {}
