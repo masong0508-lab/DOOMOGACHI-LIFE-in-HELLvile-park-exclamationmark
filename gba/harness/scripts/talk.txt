@@ -1,0 +1,90 @@
+# talk.txt - Talk on the GBA game ROM (make -C gba test-talk).
+# The live Talk screen (core/src/talk_scene.c) reading its word network out of the ROM
+# (src/talk_blob.s, plat_talk_gba.c). Two entries: the house visit's host (home_talk_enter:
+# walk up to Nana Puddin and press A, the way a player does) and `push TALK`. Then a
+# conversation (quick replies, the topic list, bye), the 'TALK' save chunk through a
+# save / verify / load, and the main-stack high-water mark (Talk's generator is the deepest
+# call chain in the game; the log prints it). Screenshots go to gba/build/shots/talk.
+wait 30
+expect-log doomo: init
+sync on
+sync on
+scene TITLE
+wait 10
+# the first knock moves the premade island in (an empty runner town)
+push HOME 3
+wait 20
+press B
+wait 20
+expect-scene TITLE
+# 1. the house visit: walk up to the host and press A
+push HOME 3
+wait 60
+shot visit_house
+hold DOWN 24
+hold LEFT 14
+press A
+wait 30
+expect-scene DIALOG
+shot visit_greeting
+press A
+wait 30
+expect-scene TALK
+shot visit_talk
+press B
+wait 40
+press A
+wait 40
+press A
+wait 40
+press A
+wait 40
+press A
+wait 40
+expect-scene HOME
+press B
+wait 20
+expect-scene TITLE
+# 2. a conversation: Chat > "Hi there!", then a topic, then bye
+push TALK 1
+wait 40
+expect-scene DIALOG
+press A
+wait 30
+expect-scene TALK
+shot talk_menu
+fps talk menu
+press A
+wait 20
+shot talk_chat_acts
+press A
+wait 60
+expect-scene DIALOG
+shot talk_said_hi
+press A
+wait 40
+press A
+wait 40
+press A
+wait 40
+expect-scene TALK
+fps talk converse
+shot talk_after_reply
+# bye: the goodbye box, then the Talk screen pops back to the title
+press B
+wait 40
+press A
+wait 40
+press A
+wait 40
+press A
+wait 40
+press A
+wait 40
+expect-scene TITLE
+# 3. the save carries the 'TALK' chunk (core/src/talk_save.c)
+save 1
+expect-save 1
+verify 1
+load 1
+log talk: ok

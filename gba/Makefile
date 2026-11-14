@@ -104,6 +104,14 @@ TILES ?= 1
 ifeq ($(TILES),0)
 DEFS    += -DGBA_TILES=0
 endif
+# Talk (docs/TALK.md): the game ROM carries the word network and the live Talk screen.
+# `make TALK=0` builds without it (the engine-test ROM never has it).
+TALK ?= 1
+ifneq ($(ENGINE_TEST),1)
+ifeq ($(TALK),1)
+DEFS    += -DDOOMO_HAS_TALK=1
+endif
+endif
 GBA_CFLAGS  := $(ARCH) $(COMMON) $(DEFS) -Werror
 # Core code must also be warning-free (ARCHITECTURE.md), but a warning in
 # a module that is still landing must not stop the ROM from building.
@@ -117,6 +125,9 @@ LIBS    := -lc -lgcc
 # ---- sources -----------------------------------------------------------------
 GBA_SRCS  := $(sort $(wildcard $(GBA)/src/*.c))
 GBA_ASMS  := $(sort $(wildcard $(GBA)/src/*.s))
+ifeq ($(filter -DDOOMO_HAS_TALK=1,$(DEFS)),)
+GBA_ASMS  := $(filter-out $(GBA)/src/talk_blob.s,$(GBA_ASMS))
+endif
 ET_SRCS   :=
 ifeq ($(ENGINE_TEST),1)
 ET_SRCS   := $(sort $(wildcard $(GBA)/enginetest/*.c))
@@ -141,7 +152,7 @@ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 # over the core's weak stubs, and the core's strong definitions win over both.
 ALL_OBJS  := $(GBA_OBJS) $(CORE_OBJS)
 
-.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-optvol test-speed test-life profile-title profile-pause profile-invaded profile-all profile-sung profile-creator test-creator test-speed2 test-breach2 profile-speed2 profile-concert profile-exorcism clean sizes
+.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-home test-ow test-lang test-optvol test-speed test-life profile-title profile-pause profile-invaded profile-all test-talk profile-sung profile-creator test-creator test-speed2 test-breach2 profile-speed2 profile-concert profile-exorcism clean sizes
 .DEFAULT_GOAL := all
 
 # Cartridge size (user decision 2026-11-01): the game ROM is a full 256 Mbit
@@ -210,6 +221,19 @@ $(BACKDROPS): backdrops-runner
 	@mkdir -p $(dir $@)
 	@$(NATIVE_BUILD)/runner --quiet --w 240 --h 160 --bake-backdrops $@.tmp
 	@if cmp -s $@.tmp $@; then rm -f $@.tmp; else mv $@.tmp $@; echo "backdrops: $@"; fi
+# Talk: the compiled word network + grammar (core/tools/talkc.py, the file the native runner
+# reads) linked into the ROM by src/talk_blob.s; plat_talk_gba.c reads it in place.
+TALKBIN := $(BUILD)/gen/TALK_en.BIN
+TALK_DEPS := $(DOOMO_CORE)/tools/talkc.py $(DOOMO_CORE)/tools/talkc_parse.py $(DOOMO_CORE)/tools/talkc_safe.py \
+             $(DOOMO_CORE)/tools/talkc_gen.py $(DOOMO_CORE)/include/doomo/talk.h $(DOOMO_CORE)/gen/txt_dict.c \
+             $(DOOMO_CORE)/data/story/register.tsv $(shell find $(DOOMO_CORE)/data/talk -type f 2>/dev/null)
+$(TALKBIN): $(TALK_DEPS)
+	@mkdir -p $(dir $@)
+	$(PYTHON) $(DOOMO_CORE)/tools/talkc.py --bin --lang en --out $@
+$(OBJ)/gba/src/talk_blob.o: $(GBA)/src/talk_blob.s $(TALKBIN)
+	@mkdir -p $(dir $@)
+	$(CC) $(ASFLAGS) '-DGBA_TALK_BIN="$(TALKBIN)"' -c $< -o $@
+
 $(OBJ)/gba/src/backdrop_blob.o: $(GBA)/src/backdrop_blob.s $(BACKDROPS)
 	@mkdir -p $(dir $@)
 	$(CC) $(ASFLAGS) '-DGBA_BACKDROPS_BIN="$(BACKDROPS)"' -c $< -o $@
@@ -238,6 +262,7 @@ test:
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-et
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-save
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-game
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-talk
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-coresave
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-story
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-home
@@ -266,6 +291,13 @@ test-game: harness
 	@mkdir -p $(SHOTS)/game
 	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/smoke.txt \
 	    --shots $(SHOTS)/game
+
+# Talk on the GBA: the house host, the conversation, the TALK save chunk, the stack high-water
+test-talk: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@mkdir -p $(SHOTS)/talk && rm -f $(BUILD)/talktest.sav
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/talk.txt \
+	    --shots $(SHOTS)/talk --save $(BUILD)/talktest.sav
 
 # the core's streamed save_game / load_game on flash, across two runs
 test-coresave: harness

@@ -1,7 +1,7 @@
 /* talk_scene.c - SCENE_TALK: the playable Talk screen (owner: TK; docs/TALK.md 6h).
  *
- * Native host only (DOOMO_HAS_TALK, the link-time twin of PLATF_TALK): the GBA and the
- * PS1 build none of it, so no resident byte moves on a console. It puts the whole of
+ * Native host and the GBA game ROM (DOOMO_HAS_TALK, the link-time twin of PLATF_TALK; the
+ * PS1 builds none of it yet). The GBA reads the bank out of the ROM and has no typed line. It puts the whole of
  * Talk in the player's hands:
  *   - quick replies in eight groups (Chat, Be nice, Be cool, Ask, Tell, Others,
  *     Gestures, Romance), every one a TA_* act the drama manager understands;
@@ -27,8 +27,14 @@
 
 #ifdef DOOMO_HAS_TALK
 
-enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE };
-enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC };
+/* The typed line needs a keyboard and the free-text parser (talk_lex / talk_parse: native and
+ * the Dreamcast). The GBA has neither: it plays Talk from the quick replies and the topic list. */
+#ifndef DOOMO_PLATFORM_GBA
+#define TALK_TYPING 1
+#endif
+
+enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE };
+enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE };
 enum { C_CHAT = 0, C_NICE, C_COOL, C_ASK, C_TELL, C_OTHERS, C_GESTURE, C_ROMANCE, C_COUNT };
 
 typedef struct TRow { uint8_t kind, arg; uint16_t v; } TRow;
@@ -48,7 +54,9 @@ static struct TalkScn {
     uint16_t  stock[TSTOCK];
     UiList    list;
     char      you[TALK_SHOWN_MAX];
+#ifdef TALK_TYPING
     char      typed[TALK_INPUT_MAX + 1];
+#endif
     char      note[40];
 } T;
 
@@ -193,11 +201,22 @@ static void build_main(void)
         if (c == C_ROMANCE && !romance_open()) continue;
         add_row(K_CAT, c, 0);
     }
-    add_row(K_TOPIC, 0, 0);
+#ifdef TALK_TYPING
     add_row(K_TYPE, 0, 0);
+#endif
+    add_row(K_MORE, 0, 0);
+    add_row(K_BYE, 0, 0);
+    list_reset();
+}
+
+/* The three setup rows live one page down, so the main page is just the replies, Options and Bye. */
+static void build_more(void)
+{
+    T.page = PG_MORE;
+    T.nrows = 0;
+    add_row(K_TOPIC, 0, 0);
     if (T.n > 1) add_row(K_TO, 0, 0);
     if (T.n < TALK_PARTS_MAX && T.s.nparts < TALK_PARTS_MAX) add_row(K_INVITE, 0, 0);
-    add_row(K_BYE, 0, 0);
     list_reset();
 }
 
@@ -267,15 +286,23 @@ static const char *row_text(int index, char *buf)
     case K_ACT: phrase(r->arg, buf, 48); break;
     case K_TOPIC:
         topic_name(T.topic, tn, (int)sizeof tn);
-        doomo_snprintf(buf, 48, "Topic: %s >", T.topic == TC_NONE ? "(none)" : tn);
+        doomo_snprintf(buf, 48, "Topic: %s >", T.topic == TC_NONE ? "any" : tn);
         break;
     case K_TYPE: doomo_snprintf(buf, 48, "Type your own line..."); break;
     case K_TO:
-        doomo_snprintf(buf, 48, "To: %s (A: change)", T.to < 0 ? "everyone" : res_name(T.ids[T.to]));
+        doomo_snprintf(buf, 48, "To: %s <>", T.to < 0 ? "everyone" : res_name(T.ids[T.to]));
         break;
-    case K_INVITE: doomo_snprintf(buf, 48, "Invite someone in >"); break;
-    case K_BYE: doomo_snprintf(buf, 48, "Say goodbye and leave"); break;
-    case K_NOTOPIC: doomo_snprintf(buf, 48, "(no topic)"); break;
+    case K_INVITE: doomo_snprintf(buf, 48, "Invite someone >"); break;
+    case K_MORE:                         /* the live settings ride on the row: "Options (Nana, pie) >" */
+        topic_name(T.topic, tn, (int)sizeof tn);
+        if (T.n > 1 && T.topic != TC_NONE)
+            doomo_snprintf(buf, 48, "Options (%s, %s) >", T.to < 0 ? "all" : res_name(T.ids[T.to]), tn);
+        else if (T.n > 1) doomo_snprintf(buf, 48, "Options (%s) >", T.to < 0 ? "all" : res_name(T.ids[T.to]));
+        else if (T.topic != TC_NONE) doomo_snprintf(buf, 48, "Options (%s) >", tn);
+        else doomo_snprintf(buf, 48, "Options >");
+        break;
+    case K_BYE: doomo_snprintf(buf, 48, "Say goodbye"); break;
+    case K_NOTOPIC: doomo_snprintf(buf, 48, "Any topic"); break;
     case K_PICK:
         if (r->arg) doomo_snprintf(buf, 48, "%s", res_name(r->v));
         else topic_name(r->v, buf, 48);
@@ -356,6 +383,7 @@ static void say_act(int act)
     build_main();
 }
 
+#ifdef TALK_TYPING
 static int person_lookup(const char *canon)
 {
     int i;
@@ -392,6 +420,7 @@ static void say_typed(void)
     say_utter(&u);
     build_main();
 }
+#endif /* TALK_TYPING */
 
 static void bye(void)
 {
@@ -439,16 +468,19 @@ static void activate(int i)
         if (wants_topic(r->arg) && T.topic == TC_NONE && r->arg != TA_INVITE) { T.pending = r->arg; build_topics(); }
         else say_act(r->arg);
         break;
+    case K_MORE: build_more(); break;
     case K_TOPIC: T.pending = 0; build_topics(); break;
     case K_NOTOPIC: pick_topic(TC_NONE); break;
+#ifdef TALK_TYPING
     case K_TYPE:
         T.typed[0] = 0;
         T.typed_ok = 0;
         ui_text_entry("Say something:", T.typed, (int)sizeof T.typed, cb_typed);
         break;
+#endif
     case K_TO:
         T.to = (int8_t)(T.to + 1 >= T.n ? -1 : T.to + 1);
-        build_main();
+        build_more();
         T.list.sel = i;
         break;
     case K_INVITE: build_invite(); break;
@@ -484,7 +516,7 @@ static void talk_enter(int arg)
     extra_n = 0;
     T.to = 0;
     T.topic = TC_NONE;
-    T.list.visible = 5;
+    T.list.visible = 6;
     T.list.item_fn = row_text;
     resolve_stock();
     T.active = 1;
@@ -509,11 +541,13 @@ static void talk_update(void)
     int r;
     if (!T.active) { scene_pop(); return; }
     if (T.busy) return;                  /* the dialogue box is up (we are not on top then) */
+#ifdef TALK_TYPING
     if (T.typed_ok) {
         int ok = T.typed_ok == 1;
         T.typed_ok = 0;
         if (ok && T.typed[0]) { say_typed(); return; }
     }
+#endif
     if (T.after) {
         T.after = 0;
         if (T.leaving || talk_dm_over(&T.s)) { finish(); return; }
@@ -525,7 +559,8 @@ static void talk_update(void)
     }
     if (btn_pressed(BTN_SELECT) && T.n > 1) {
         T.to = (int8_t)(T.to + 1 >= T.n ? -1 : T.to + 1);
-        build_main();
+        if (T.page == PG_MORE) { int sel = T.list.sel; build_more(); T.list.sel = sel; }
+        else if (T.page == PG_MAIN) build_main();
         return;
     }
     r = ui_list_update(&T.list);
@@ -544,36 +579,50 @@ static const char *mood_word(void)
     return "calm";
 }
 
+/* One calm panel: a single header line (what you are choosing; the mood of the room on the right),
+ * then the list. The A/B hints are gone (the last row says what B does) and the old third line too.
+ * The people strip marks who you are speaking to with a '>' and keeps the engage bar. */
+static const char *panel_title(char *buf, int cap)
+{
+    switch (T.page) {
+    case PG_TOPIC:  return "Talk about...";
+    case PG_INVITE: return "Who joins in?";
+    case PG_MORE:   return "Options";
+    case PG_ACTS:   return cats[T.cat].name;
+    default: break;
+    }
+    if (T.you[0]) { doomo_snprintf(buf, (size_t)cap, "You: %s", T.you); return buf; }
+    return "Say something";
+}
+
 static void talk_draw(void)
 {
     const UiStyle *st = ui_style(WIN_CUTE);
-    int sw = plat_screen_w(), sh = plat_screen_h(), i, ph, py, colw, rows;
-    char buf[48];
+    int sw = plat_screen_w(), sh = plat_screen_h(), i, ph, py, colw, rows, mw;
+    char ttl[48];
+    const char *mood = mood_word();
     /* the people: a name and how much they are into it */
-    ui_window(0, 0, sw, 26, WIN_CUTE);
+    ui_window(0, 0, sw, 24, WIN_CUTE);
     colw = sw / (T.s.nparts > 0 ? T.s.nparts : 1);
     for (i = 0; i < T.s.nparts; i++) {
         const TalkPart *p = &T.s.part[i];
         int x = i * colw + 6;
+        if (i == T.to) ui_text_clip(x - 5, 4, ">", st->text, x - 5, x);
         ui_text_clip(x, 4, p->id == TALK_PET_ID ? "Pet" : res_name(p->id), st->text, x, x + colw - 8);
         if (p->flags & TPF_LEFT) ui_text_clip(x, 14, "(left)", st->text_dim, x, x + colw - 8);
         else ui_bar(x, 15, colw - 14, 5, p->engage, 100, i == T.to ? st->accent : st->accent_d);
     }
-    /* the panel */
-    rows = T.list.visible > 0 ? T.list.visible : 5;
-    ph = 38 + rows * UI_LIST_ROW_H;
-    if (ph > sh - 28) { ph = sh - 28; rows = (ph - 38) / UI_LIST_ROW_H; T.list.visible = rows < 1 ? 1 : rows; }
+    /* the panel: header 16 px + 6 list rows */
+    rows = 6;
+    ph = 18 + rows * UI_LIST_ROW_H;
+    if (ph > sh - 26) { ph = sh - 26; rows = (ph - 18) / UI_LIST_ROW_H; }
+    T.list.visible = rows < 1 ? 1 : rows;
     py = sh - ph;
     ui_window(0, py, sw, ph, WIN_CUTE);
-    doomo_snprintf(buf, sizeof buf, "You: %s", T.you[0] ? T.you : "...");
-    ui_text_clip(8, py + 5, buf, st->text, 8, sw - 8);
-    doomo_snprintf(buf, sizeof buf, "The room is %s.  %s", mood_word(), T.page == PG_MAIN ? "A: pick  B: leave" : "A: pick  B: back");
-    ui_text_clip(8, py + 15, buf, st->text_dim, 8, sw - 8);
-    if (T.page == PG_TOPIC) ui_text_clip(8, py + 25, "Pick what to talk about", st->text_dim, 8, sw - 8);
-    else if (T.page == PG_INVITE) ui_text_clip(8, py + 25, "Who joins the chat?", st->text_dim, 8, sw - 8);
-    else if (T.page == PG_ACTS) ui_text_clip(8, py + 25, cats[T.cat].name, st->text_dim, 8, sw - 8);
-    else ui_text_clip(8, py + 25, T.n > 1 ? "SELECT: who you talk to" : "Say something to them", st->text_dim, 8, sw - 8);
-    ui_list_draw(&T.list, 6, py + 36, sw - 12, WIN_CUTE);
+    mw = ui_text_width(mood);
+    ui_text_clip(sw - 8 - mw, py + 5, mood, st->text_dim, sw - 8 - mw, sw - 8);
+    ui_text_clip(8, py + 5, panel_title(ttl, (int)sizeof ttl), st->text, 8, sw - 12 - mw);
+    ui_list_draw(&T.list, 6, py + 17, sw - 12, WIN_CUTE);
 }
 
 const DoomoScene SCENE_TALK = { "TALK", talk_enter, talk_leave, talk_update, talk_draw, 1 };

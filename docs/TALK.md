@@ -5,7 +5,8 @@ Talk is the Facade-style conversation mode of the house in
 three residents and talk with them, and they talk with each other, in their
 own voices, while the room keeps rendering in pseudo-3D. It is for the
 **PS1 and the Dreamcast** (the `PLATF_TALK` feature bit). The native runner
-runs it for tests. The GBA never has it.
+runs it for tests. The GBA game ROM has it too (quick replies and topics from the ROM-resident bank; no keyboard, so no typed line; `make -C gba test-talk`).
+The Talk screen is decluttered: one header line (what you are choosing, the room's mood on the right), no A/B hint lines, six list rows, short row labels, and a `>` marks who you are speaking to. Topic, To and Invite sit on an Options page (the Options row shows the current person and topic), so the main page is just the replies, Options and Bye.
 
 The full design, with the parser, the drama manager, the generator, the
 census and the PS1 and Dreamcast budgets, is
