@@ -116,7 +116,9 @@ CB_FACTS = {"fact.job", "fact.partner", "fact.pet", "fact.news", "fact.problem",
 FIXED = ["open", "cb", "tag", "handoff", "safe", "end.k7", "pet", "idle", "grief", "comfort",
          # T6 (talk_dm.c): beat.<name> goal lines, the prod, the walk-out excuse, the grumble of one
          # cut off, the three steps of an argument, making up, a child asking "are you fighting?"
-         "beat", "prod", "excuse", "grumble", "jab", "row", "ultimatum", "makeup", "kidask"]
+         "beat", "prod", "excuse", "grumble", "jab", "row", "ultimatum", "makeup", "kidask",
+         # keeping the talk going (talk_dm.c DK_FOLLOW): a resident hands the talk back to the player
+         "follow"]
 # K-10: the sincere banks (talk.h TGE_GRIEF, TGE_COMFORT); a comfort line is a reaction
 GRIEF_BANKS = ("grief", "comfort")
 COMFORT_ACTS = ("AGREE", "BACKCHANNEL")

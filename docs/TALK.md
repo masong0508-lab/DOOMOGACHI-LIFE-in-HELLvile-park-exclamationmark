@@ -1440,3 +1440,5 @@ The Walten Files.
 
 T10, the other languages, comes **after** the script rewrite (DECISIONS:
 translate after the rewrite).
+
+**Keeping the talk going.** The resident opens the talk (`talk_dm_open`: the ARRIVE line, then a follow-up) instead of a fixed greeting. After every answer the same resident hands the talk back with a follow-up line (`TGE_FOLLOW`, `core/data/talk/grammar/en/follow.tlk`, planned as `DK_FOLLOW` in `talk_dm.c`): always after a change of subject (`follow.switch*` react to the new topic) and after a snarky line (`follow.cool*`: push on or let it go, so the player can heat the room up or cool it down), and about 7 turns in 10 otherwise. Never in an argument, a walk-out, a farewell or at `TALK_TENSION_ARGUE`; the drama manager speaks then. It shares the exchange's 4-line budget (a reaction is dropped before the follow-up is). Test: `talk_dm_keep_going`.

@@ -1,0 +1,71 @@
+# core/data/talk/grammar/en/follow.tlk - keep the talk going (owner: TK; talk_dm.c DK_FOLLOW,
+# TGE_FOLLOW; docs/TALK.md "Keeping the talk going").
+#
+# After a resident answers the player, and when the talk opens, the same resident hands the talk
+# back: a question about the topic, a remark that goes with it, or a way out of a spat. Which rule
+# fits comes from what the player just did: a change of subject (act=change_topic), a kind line
+# (pact=warm), a snarky one (pact=cool: push on or let it go, so the player can heat the room up
+# or cool it down), or plain talk. Said to the player. Kid-safe everywhere: no register word here.
+
+# ---- the subject changed ---------------------------------------------------------------------
+@rule follow.switch guard: topic&act=change_topic act: ask_about
+  "Oh, {x}? Okay. What got you onto {x}?"
+  "Sudden {x}. I respect it. What's the story, {you}?"
+  "Sure, let's do {x}. You go first."
+  "Hm, {x}. Fine by me. Where do you want to start?"
+@rule follow.switch.fear guard: fears_topic&act=change_topic act: tell
+  "{x:cap}? Can we go slow on that one? It gives me the shivers."
+  "Okay, {x}. But I'm sitting closer to the door."
+@rule follow.switch.love guard: likes_topic&act=change_topic act: ask_about
+  "{x:cap}! Finally. Ask me anything."
+  "Now you're talking. I have so many thoughts on {x}."
+
+# ---- the player was kind ----------------------------------------------------------------------
+@rule follow.warm guard: topic&pact=warm&!act=change_topic act: ask_about
+  "That's kind of you. Now, what do you think of {x}?"
+  "Aw. Okay, now I'm in a good mood. Tell me more about {x}."
+@rule follow.warm.open guard: !topic&pact=warm&!act=change_topic act: ask_feeling
+  "That helps, {you}. How are you doing, really?"
+  "You're nice to talk to. What's been going on with you?"
+
+# ---- the player was snarky: push on, or let it go ----------------------------------------------------
+@rule follow.cool guard: pact=cool&!act=change_topic act: ask_feeling
+  "Is that how we're doing this? Because I can do that too."
+  "Okay, ouch. Do we keep going, or take a breath?"
+  "You want to push on this, or shake on it?"
+  "Careful, {you}. I'm only a little bit fragile."
+@rule follow.cool.blunt guard: blunt&pact=cool&!act=change_topic act: ask_feeling
+  "Say that again and see what happens. Or don't. Your pick."
+@rule follow.cool.polite guard: polite&pact=cool&!act=change_topic act: ask_feeling
+  "I'd like us to stay friends. Can we do that, {you}?"
+
+# ---- plain talk: hand it back --------------------------------------------------------------------
+@rule follow.ask guard: topic&!pact=cool&!pact=warm&!act=change_topic act: ask_opinion
+  "What's your take on {x}, {you}?"
+  "Anything about {x} bug you? Or delight you?"
+  "Have you ever tried {x}? Be honest."
+  "Does {x} come up a lot for you?"
+@rule follow.ask.love guard: likes_topic&!pact=cool&!act=change_topic act: ask_opinion
+  "I could talk about {x} all day. What's your angle?"
+  "{x:cap} is my favourite. Is it yours?"
+@rule follow.ask.fear guard: fears_topic&!pact=cool&!act=change_topic act: tell
+  "Can we talk about something else after this? {x:cap} makes my ears ring."
+@rule follow.open guard: !topic&!pact=cool&!pact=warm&!act=change_topic act: ask_about
+  "So what else is going on with you?"
+  "Anything else on your mind, {you}?"
+  "Keep going. I'm listening. Mostly."
+  "Pick anything. I'll pretend I picked it too."
+@rule follow.blunt guard: blunt&topic&!pact=cool&!act=change_topic act: ask_opinion
+  "Opinion on {x}. Go."
+  "{x:cap}. Yes or no?"
+@rule follow.polite guard: polite&topic&!pact=cool&!act=change_topic act: ask_opinion
+  "If it's not too much to ask, what do you make of {x}?"
+  "I'd love to hear what you think about {x}."
+@rule follow.quirky guard: quirky&topic&!pact=cool&!act=change_topic act: ask_opinion
+  "Quick: {x}. First word that pops out."
+  "Tell me one weird fact about {x}. Weird is better."
+@rule follow.kid guard: kid_speaker&topic&!pact=cool&!act=change_topic tags: kid act: ask_opinion
+  "Do you like {x}? I like {x}! Do you?"
+  "Can we talk about {x} more? Please?"
+@rule follow.elder guard: elder&topic&!pact=cool&!act=change_topic act: tell
+  "{x:cap}. Now there's a word I haven't heard in a while. Go on."

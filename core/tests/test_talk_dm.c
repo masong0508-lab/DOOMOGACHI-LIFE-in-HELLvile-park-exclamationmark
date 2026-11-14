@@ -766,3 +766,53 @@ TEST(talk_dm_gate_answers_stand_alone)
     CHECK_EQ(talk_safe_lint_hits(), h0);
     talk_db_close();
 }
+
+/* ---- keeping the talk going (DK_FOLLOW, TGE_FOLLOW, talk_dm_open) -------------------- */
+TEST(talk_dm_keep_going)
+{
+    TalkState s, s2;
+    uint32_t h0 = talk_safe_lint_hits();
+    uint16_t pie, music;
+    int i, n, switches = 0, cools = 0, long_runs = 0, runs = 0;
+    char first[TALK_LINE_MAX];
+    premade_town();
+    CHECK(open_db());
+    pie = concept("pie");
+    music = concept("music");
+    CHECK(pie && music);
+    /* the talk opens by itself, said by the resident to the player, the same on a replay */
+    begin(&s, DOOMO_PLAYER_ID, ID_NANA, -1, -1, 777u);
+    CHECK(talk_dm_open(&s));
+    n = 0;
+    while (talk_dm_step(&s, NULL)) n++;
+    CHECK(n >= 1 && n <= TALK_EXCHANGE_MAX);
+    CHECK_EQ(s.line[n - 1].who, 0);
+    CHECK(s.line[n - 1].text[0]);
+    snprintf(first, sizeof first, "%s", s.line[n - 1].text);
+    begin(&s2, DOOMO_PLAYER_ID, ID_NANA, -1, -1, 777u);
+    CHECK(talk_dm_open(&s2));
+    while (talk_dm_step(&s2, NULL)) {}
+    CHECK(strcmp(first, s2.line[s2.nlines - 1].text) == 0);
+    for (i = 0; i < 24; i++) {
+        begin(&s, DOOMO_PLAYER_ID, ID_NANA, -1, -1, 900u + (uint32_t)i);
+        turn(&s, TA_GREET, TC_NONE, 0, NULL);
+        n = turn(&s, TA_CHANGE_TOPIC, pie, 0, NULL);
+        if (n >= 2 && s.line[n - 1].who == 0 && s.line[n - 1].to == -1 && s.line[n - 1].text[0]) switches++;
+        begin(&s, DOOMO_PLAYER_ID, ID_NANA, -1, -1, 1900u + (uint32_t)i);
+        n = turn(&s, TA_TEASE, TC_NONE, 0, NULL);
+        if (n >= 2 && s.line[n - 1].who == 0 && s.line[n - 1].text[0]) cools++;
+        begin(&s, DOOMO_PLAYER_ID, ID_NANA, -1, -1, 2900u + (uint32_t)i);
+        n = turn(&s, TA_ASK_OPINION, music, 0, NULL);
+        runs++;
+        if (n >= 2) long_runs++;
+        CHECK(s.tension <= TALK_TENSION_MAX);
+    }
+    CHECK_EQ(switches, 24);
+    CHECK_EQ(cools, 24);
+    CHECK(long_runs * 10 >= runs * 5);
+    begin(&s, DOOMO_PLAYER_ID, ID_NANA, -1, -1, 31u);
+    turn(&s, TA_FAREWELL, TC_NONE, 0, NULL);
+    CHECK(talk_dm_over(&s));
+    CHECK_EQ(talk_safe_lint_hits(), h0);
+    talk_db_close();
+}

@@ -560,6 +560,7 @@ enum { TGE_OPEN = 0, TGE_CB, TGE_TAG, TGE_HANDOFF, TGE_SAFE, TGE_END_K7, TGE_PET
        TGE_ULTIMATUM,/* step 3: the player is told to take a side             */
        TGE_MAKEUP,   /* after a mediation that worked                         */
        TGE_KIDASK,   /* a child: "Are you guys fighting?" (the room cools)    */
+       TGE_FOLLOW,   /* the one who answered hands the talk back to the player */
        TGE_COUNT };
 
 /* Guard predicates (talkc_gen.py reads this enum: a guard term "kid_present"
@@ -963,6 +964,10 @@ void talk_dm_begin(TalkState *s, int avatar, const int *ids, int n, uint32_t see
  * engagement of everyone, the beat, consent, and the plan of the exchange.
  * Returns the gate's TG_*. Then call talk_dm_step() until it returns 0. */
 int  talk_dm_say(TalkState *s, const TalkUtter *u);
+/* The talk opens (right after talk_dm_begin): the resident says the beat's opening line, then hands
+ * the talk to the player with a follow-up. Plans the exchange; then talk_dm_step() until it returns
+ * 0. Returns 1 when something was planned. */
+int  talk_dm_open(TalkState *s);
 /* Time without the player: `frames` at 30 fps. After TALK_IDLE_FRAMES a
  * resident talks to another (TALK_IDLE_CHATS times), then someone prods the
  * player, then nothing more until the player speaks. Returns 1 when an

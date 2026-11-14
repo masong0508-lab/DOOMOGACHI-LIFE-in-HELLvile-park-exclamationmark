@@ -522,9 +522,14 @@ static void talk_enter(int arg)
     T.active = 1;
     begin_talk();
     build_main();
-    ui_say(arg, "Oh! Hi. What's up?");
-    T.busy = 1;
-    ui_say_done(cb_after);
+    if (talk_dm_open(&T.s)) {            /* the resident opens the talk and hands it to the player */
+        while (talk_dm_step(&T.s, NULL)) {}
+        show_lines();
+    } else {
+        ui_say(arg, "Oh! Hi. What's up?");
+        T.busy = 1;
+        ui_say_done(cb_after);
+    }
 }
 
 static void talk_leave(void)

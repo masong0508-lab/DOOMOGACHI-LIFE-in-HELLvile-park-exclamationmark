@@ -33,7 +33,7 @@
 
 /* ---- the plan of an exchange (TalkState.plan[].kind) ----------------------- */
 enum { DK_NONE = 0, DK_ANSWER, DK_REACT, DK_BEAT, DK_IDLE, DK_PROD, DK_JAB, DK_ROW, DK_ULT, DK_EXCUSE,
-       DK_KIDASK, DK_MAKEUP, DK_GRUMBLE, DK_CUT, DK_K7 };
+       DK_KIDASK, DK_MAKEUP, DK_GRUMBLE, DK_CUT, DK_K7, DK_FOLLOW };
 
 #define BEATS_MAGIC 0x31544254u          /* "TBT1" (talkc_beats.py) */
 #define BEATS_HDR   12
@@ -679,6 +679,23 @@ static void plan_reactions(TalkState *s, int resp, int budget, int next_who, Doo
     }
 }
 
+/* Keeping the talk going: the one who answered hands it back to the player with a follow-up (a
+ * question about the topic, a remark, a way out of a spat). Always after a change of subject or a
+ * snarky line (so the player can push on or let it go); else most of the time while they are
+ * engaged. Never in an argument, a walk-out, a farewell or a tense room (the drama speaks then). */
+static int follow_wanted(const TalkState *s, int resp, int switched, DoomoRng *rng)
+{
+    int i, cls, chance = 70;
+    if ((s->flags & (TDF_FAREWELL | TDF_OVER)) || !talker(s, resp) || (s->part[resp].flags & TPF_LEFT)) return 0;
+    if (s->tension >= TALK_TENSION_ARGUE || s->part[resp].engage < 20) return 0;
+    for (i = 0; i < s->nplan; i++)
+        if (s->plan[i].kind == DK_JAB || s->plan[i].kind == DK_ROW || s->plan[i].kind == DK_ULT ||
+            s->plan[i].kind == DK_EXCUSE || s->plan[i].kind == DK_CUT || s->plan[i].kind == DK_GRUMBLE) return 0;
+    cls = s->in.act[0] ? talk_gen_act_class(s->in.act[0]) : TAC_FLOW;
+    if (switched || cls == TAC_COOL) chance = 100;
+    return rng_range(rng, 100) < chance;
+}
+
 /* the one who ran out of patience walks out (5.3: under 15 for 2 turns) */
 static void plan_walkout(TalkState *s, int *budget)
 {
@@ -722,7 +739,7 @@ int talk_dm_say(TalkState *s, const TalkUtter *u)
 {
     TalkAudience aud;
     DoomoRng rng;
-    int k, g, target, target_id, resp, budget, act, cls, romance;
+    int k, g, target, target_id, resp, budget, act, cls, romance, switched, want = 0;
     if (!s || !u) return TG_PASS;
     s->nlines = s->nplan = s->plan_at = 0;
     s->gate = TG_PASS;
@@ -780,6 +797,7 @@ int talk_dm_say(TalkState *s, const TalkUtter *u)
 
     /* ---- the utterance stood ---- */
     cls = act ? talk_gen_act_class(act) : TAC_FLOW;
+    switched = s->in.act[0] == TA_CHANGE_TOPIC || (s->in.topic[0] != TC_NONE && s->in.topic[0] != s->topic_stack[0]);
     push_topic(s, s->in.topic[0]);
     for (k = 0; k < s->nparts; k++) s->part[k].stance = (uint8_t)topic_stance(s->part[k].id, s->in.topic[0]);
     if (act == TA_FAREWELL) s->flags |= TDF_FAREWELL;
@@ -858,17 +876,38 @@ int talk_dm_say(TalkState *s, const TalkUtter *u)
         plan_beat_line(s, resp, &budget);
         plan_walkout(s, &budget);
         n1 = s->nplan;
-        plan_reactions(s, resp, TALK_EXCHANGE_MAX - s->nplan, n0 < n1 ? s->plan[n0].who : -1, &rng);
+        want = follow_wanted(s, resp, switched, &rng);
+        plan_reactions(s, resp, TALK_EXCHANGE_MAX - s->nplan - want, n0 < n1 ? s->plan[n0].who : -1, &rng);
         if (s->nplan > n1) {                               /* move the reactions to just after the answer */
             int nr = s->nplan - n1;
             memcpy(tmp, &s->plan[n1], sizeof tmp[0] * (size_t)nr);
             for (j = n1 - 1; j >= n0; j--) s->plan[j + nr] = s->plan[j];
             memcpy(&s->plan[n0], tmp, sizeof tmp[0] * (size_t)nr);
         }
+        if (want) plan_add(s, DK_FOLLOW, resp, -1, switched);       /* the talk goes back to the player */
     }
     s->last_act = (uint8_t)act;
     if (s->flags & TDF_FAREWELL) s->flags |= TDF_OVER;
     return g;
+}
+
+/* The talk opens: the beat's opening line, then a follow-up that hands it to the player. */
+int talk_dm_open(TalkState *s)
+{
+    int k, who = -1;
+    if (!s || (s->flags & TDF_OVER)) return 0;
+    s->nlines = s->nplan = s->plan_at = 0;
+    for (k = 0; k < s->nparts && who < 0; k++) if (talker(s, k)) who = k;
+    if (who < 0) return 0;
+    s->exchange++;
+    s->idle_n = 0;
+    s->idle_frames = 0;
+    if (!(s->flags & TDF_NO_BEATS) && s->beat == TBEAT_ARRIVE && s->beat_step == 0) {
+        plan_add(s, DK_BEAT, who, -1, 0);
+        s->beat_step++;
+    }
+    plan_add(s, DK_FOLLOW, who, -1, 0);
+    return 1;
 }
 
 /* ---- idle chatter (5.4) ------------------------------------------------------------- */
@@ -985,6 +1024,11 @@ static int make_line(TalkState *s, int kind, int who, int to, int arg, TalkLine 
         *hflags = THF_IDLE;
         break;
     }
+    case DK_FOLLOW:
+        ok = talk_gen_entry(c, who, -1, TGE_FOLLOW, arg ? TA_CHANGE_TOPIC : s->in.act[0], topic, L, tr);
+        if (!ok || (L->flags & TLF_FALLBACK)) return 0;
+        *hflags = 0;
+        break;
     case DK_PROD:   ok = talk_gen_entry(c, who, -1, TGE_PROD, TA_NONE, TC_NONE, L, tr); *hflags = THF_IDLE; break;
     case DK_JAB:    ok = talk_gen_entry(c, who, to, TGE_JAB, TA_NONE, topic, L, tr); *hflags = THF_ARGUE; break;
     case DK_ROW:    ok = talk_gen_entry(c, who, to, TGE_ROW, TA_NONE, topic, L, tr); *hflags = THF_ARGUE; break;
