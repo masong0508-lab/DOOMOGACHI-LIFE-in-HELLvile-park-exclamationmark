@@ -18,6 +18,8 @@
 #include "gba_plat.h"
 #include "audio_int.h"
 #include "doomo/audio.h"
+#include "doomo/platform.h"
+#include <string.h>
 
 /* ---- PSG ------------------------------------------------------------------ */
 typedef struct ToneState { uint16_t freq; uint8_t vol, wave; } ToneState;
@@ -84,7 +86,7 @@ static uint16_t noise_freq(uint16_t hz, int periodic)
     return (uint16_t)(r | (s << 4) | (periodic ? 0x08 : 0));
 }
 
-void plat_tone(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave)
+static void tone_set(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave)
 {
     ToneState *t;
     int restart;
@@ -132,6 +134,54 @@ void plat_tone(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave)
     }
 }
 
+/* plat_tone is called from the main thread and from the music IRQ: one call at a time */
+void plat_tone(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave)
+{
+    uint16_t ime = REG_IME;
+    REG_IME = 0;
+    tone_set(channel, freq_hz, vol, wave);
+    REG_IME = ime;
+}
+
+/* ---- the music clock ------------------------------------------------------------------------
+ * Timer 1 fires 240 times a second (16777216 / 64 / 1092 = 240.07 Hz) and runs the core's music
+ * driver (mus_drv_tick, one mt) whatever the frame loop is doing: a 100 ms hub frame or a 3D frame
+ * no longer stalls the notes, and a catch-up tick no longer makes them rush. Every 8th mt (a 30 Hz
+ * control frame) the tones go to the PSG at once (audio_seq_irq_flush). The core sees
+ * CAP_DRV_IRQ on the legacy bridge tier (mus_core.c: drv_irq): same sound, steady clock. */
+static volatile uint8_t music_ready;
+static uint8_t music_n;
+
+void plat_audio_caps(DoomoAudioCaps *out)
+{
+    if (!out) return;
+    memset(out, 0, sizeof(*out));
+    out->tier = AT_BRIDGE;
+    out->flags = CAP_DRV_IRQ;
+    music_ready = 1;
+}
+
+uint32_t plat_irq_save(void)
+{
+    uint32_t ime = REG_IME;
+    REG_IME = 0;
+    return ime;
+}
+
+void plat_irq_restore(uint32_t saved) { REG_IME = (uint16_t)saved; }
+
+static void music_irq(void)
+{
+    if (!music_ready) return;
+    mus_drv_tick();
+    if (mus_drv_take_frame() || ++music_n >= 8) {
+        music_n = 0;
+        audio_seq_irq_flush();
+    }
+}
+
+extern void (*volatile gba_music_hook)(void);
+
 /* ---- samples ---------------------------------------------------------------- */
 void plat_sample(int sfx_id, uint8_t vol)
 {
@@ -178,4 +228,9 @@ void audio_hw_init(void)
     for (i = 0; i < 4; i++) plat_tone(i, 0, 0, WAVE_PULSE50);
     wave_load(WAVE_TRIANGLE);
     mixer_init();
+    music_n = 0;
+    REG_TM1CNT = 0;
+    REG_TM1D = (uint16_t)(65536u - 1092u);
+    gba_music_hook = music_irq;
+    REG_TM1CNT = TM_ENABLE | TM_IRQ | TM_FREQ_64;
 }

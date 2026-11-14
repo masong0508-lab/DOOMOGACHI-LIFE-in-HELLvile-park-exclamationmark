@@ -655,6 +655,13 @@ static void bridge_flush(void)
     }
 }
 
+/* The platform IRQ (CAP_DRV_IRQ on the bridge, GBA): the tones of the control frame that just ran,
+ * sent right on the beat instead of at the next logic tick. */
+void audio_seq_irq_flush(void)
+{
+    if (E.song != SONG_NONE && mus_core_bridge()) bridge_flush();
+}
+
 /* audio_tick() (audio.c), after the voice babble: the music part */
 void audio_seq_tick(void)
 {
@@ -669,7 +676,7 @@ void audio_seq_tick(void)
     music_update();
     if (E.song == SONG_NONE) return;
     E.ticks++;
-    if (mus_core_bridge()) bridge_flush();
+    if (mus_core_bridge() && !mus_core_drv_irq()) bridge_flush();
     if (mus_core_take_end() && E.once) {
         int back = E.prev;
         E.once = 0;

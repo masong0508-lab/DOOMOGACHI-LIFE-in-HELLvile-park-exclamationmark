@@ -239,6 +239,10 @@ void     plat_tape_play(int16_t speed_q8, uint16_t pos, uint8_t gain);
 void     plat_tape_end(void);
 void     plat_sample_ex(int sfx, uint8_t vol, int8_t pan, uint8_t prio, int8_t semis);
 void     mus_drv_tick(void);                                /* core; the platform calls it per mt  */
+uint32_t plat_irq_save(void);                               /* mask the music IRQ (weak: no-op); restore with the value */
+void     plat_irq_restore(uint32_t saved);
+int      mus_drv_take_frame(void);                          /* 1 once after a control frame ran    */
+void     audio_seq_irq_flush(void);                         /* bridge + CAP_DRV_IRQ: send the frame's tones */
 /* --- end music --- */
 
 /* ---- save ----------------------------------------------------------------- */

@@ -203,6 +203,7 @@ void mus_core_init(void);
 void mus_core_start(int cue, int once);           /* MQ_NOW; MC_NONE stops */
 void mus_core_dual(int cue_a, int cue_b);
 int  mus_core_take_end(void);                     /* 1 once: a once cue ended */
+int  mus_core_drv_irq(void);                      /* 1 = the platform IRQ runs the driver (bridge tones) */
 int  mus_core_bridge(void);                       /* 1 = the legacy bridge renders */
 /* tests (T4): run as if an IRQ drove the driver - music_update() only
  * generates (>= 1 bar ahead) and the caller ticks mus_drv_tick() */

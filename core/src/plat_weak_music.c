@@ -48,6 +48,10 @@ WEAK const DoomoToneState *mus_bridge_voice(int ch)
     return (ch >= 0 && ch < 4) ? &mus_bridge_tones[ch] : NULL;
 }
 
+/* the main thread masks the platform IRQ around the driver's rings (CAP_DRV_IRQ); the bridge has no IRQ */
+WEAK uint32_t plat_irq_save(void) { return 0; }
+WEAK void plat_irq_restore(uint32_t saved) { (void)saved; }
+
 WEAK void plat_audio_bus(int bus, uint8_t gain_q8) { (void)bus; (void)gain_q8; }
 WEAK void plat_audio_fx(int fx, int a, int b) { (void)fx; (void)a; (void)b; }
 WEAK void plat_music_stall(int kind) { (void)kind; }

@@ -115,6 +115,7 @@ static int32_t pdiff(uint32_t a, uint32_t b)
 void mus_drv_reset(void)
 {
     int i;
+    uint32_t sv = plat_irq_save();
     memset(&D, 0, sizeof(D));
     D.ctl_mt = MUS_MT_PER_TICK;
     D.upm = (uint32_t)mus_rate256(120) * 32u;
@@ -128,6 +129,7 @@ void mus_drv_reset(void)
         D.v[i].flags = DV_DIRTY;          /* every voice owes the platform a silent record */
     }
     D.live = (uint8_t)((1u << MUS_DRV_VOICES) - 1u);
+    plat_irq_restore(sv);
 }
 
 int mus_drv_ring_used(int r)
@@ -140,7 +142,7 @@ int mus_drv_room(int r) { return (r ? MUS_RING_B : MUS_RING_A) - 1 - mus_drv_rin
 
 void mus_drv_set_bridge(int on) { D.bridge = (uint8_t)(on != 0); }
 
-void mus_drv_push(int r, uint32_t pos_kind, uint32_t arg)
+static void mus_drv_push_nolock(int r, uint32_t pos_kind, uint32_t arg)
 {
     if ((pos_kind >> 28) == MEV_TEMPO) D.tempo_pending++;
     if (r) {
@@ -163,12 +165,26 @@ void mus_drv_push(int r, uint32_t pos_kind, uint32_t arg)
     }
 }
 
+void mus_drv_push(int r, uint32_t pos_kind, uint32_t arg)
+{
+    uint32_t sv = plat_irq_save();      /* the platform IRQ runs mus_drv_tick() (CAP_DRV_IRQ) */
+    mus_drv_push_nolock(r, pos_kind, arg);
+    plat_irq_restore(sv);
+}
+
 /* CUT: drop every event not dispatched yet (IRQ-safe on the consoles once
  * MU2/MU3 mask around it; on the bridge it is the same thread). */
-void mus_drv_truncate(int r)
+static void mus_drv_truncate_nolock(int r)
 {
     if (r) D.b_tail = D.b_head; else D.a_tail = D.a_head;
     if (D.a_head == D.a_tail && D.b_head == D.b_tail) D.tempo_pending = 0;
+}
+
+void mus_drv_truncate(int r)
+{
+    uint32_t sv = plat_irq_save();      /* the platform IRQ runs mus_drv_tick() (CAP_DRV_IRQ) */
+    mus_drv_truncate_nolock(r);
+    plat_irq_restore(sv);
 }
 
 static void recount_tempo(void)
@@ -182,7 +198,7 @@ static void recount_tempo(void)
 }
 
 /* drop the undispatched events at or after pos (a CUT at a grid point) */
-void mus_drv_truncate_at(int r, uint32_t pos)
+static void mus_drv_truncate_at_nolock(int r, uint32_t pos)
 {
     if (r) {
         while (D.b_tail != D.b_head) {
@@ -200,7 +216,14 @@ void mus_drv_truncate_at(int r, uint32_t pos)
     recount_tempo();
 }
 
-void mus_drv_cut(uint32_t mask)
+void mus_drv_truncate_at(int r, uint32_t pos)
+{
+    uint32_t sv = plat_irq_save();      /* the platform IRQ runs mus_drv_tick() (CAP_DRV_IRQ) */
+    mus_drv_truncate_at_nolock(r, pos);
+    plat_irq_restore(sv);
+}
+
+static void mus_drv_cut_nolock(uint32_t mask)
 {
     int i;
     for (i = 0; i < MUS_DRV_VOICES; i++)
@@ -212,6 +235,13 @@ void mus_drv_cut(uint32_t mask)
             v->flags = (uint8_t)((v->flags & ~DV_KEYON) | DV_DIRTY);
             D.live |= (uint8_t)(1u << i);
         }
+}
+
+void mus_drv_cut(uint32_t mask)
+{
+    uint32_t sv = plat_irq_save();      /* the platform IRQ runs mus_drv_tick() (CAP_DRV_IRQ) */
+    mus_drv_cut_nolock(mask);
+    plat_irq_restore(sv);
 }
 
 void mus_drv_set_tempo(uint32_t upm_q16) { D.upm = upm_q16; }
@@ -594,9 +624,14 @@ static void control(int i)
     }
 }
 
+/* a control frame ran since the last mus_drv_take_frame() (the platform IRQ flushes the bridge tones then) */
+static volatile uint8_t drv_framed;
+int mus_drv_take_frame(void) { int f = drv_framed; drv_framed = 0; return f; }
+
 static void frame(void)
 {
     int i;
+    drv_framed = 1;
     if (D.vy_on) {
         int sp, t = (int)pdiff(D.clk_u, D.vy_start), fd;
         if (t < 0) t = 0;

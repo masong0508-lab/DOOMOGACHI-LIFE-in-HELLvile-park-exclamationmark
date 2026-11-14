@@ -163,9 +163,14 @@ void mus_core_b_claim(int mode)
     C.b_mode = (uint8_t)mode;
 }
 
+/* 1 = the platform runs mus_drv_tick() from its own clock (CAP_DRV_IRQ) while the legacy bridge still
+ * renders the tones (GBA): the main thread then neither runs the driver nor flushes the tones */
+static uint8_t drv_irq;
+int mus_core_drv_irq(void) { if (!C.inited) mus_core_init(); return drv_irq; }
+
 uint32_t mus_core_lookahead(void)
 {
-    return C.bridge ? (uint32_t)(C.a.rate256 >> 7) + 2u : MUS_LOOKAHEAD_U;
+    return C.bridge && !drv_irq ? (uint32_t)(C.a.rate256 >> 7) + 2u : MUS_LOOKAHEAD_U;
 }
 
 /* the master position `ticks` 30 Hz ticks from now at the current tempo */
@@ -446,7 +451,8 @@ void mus_core_init(void)
     C.bridge = (uint8_t)(caps.tier == AT_BRIDGE);
     C.lat = caps.latency_mt;
     mus_drv_set_bridge(C.bridge);
-    mus_drv_set_ctl(caps.flags & CAP_DRV_IRQ ? 4 : MUS_MT_PER_TICK);
+    drv_irq = (uint8_t)(C.bridge && (caps.flags & CAP_DRV_IRQ) != 0);
+    mus_drv_set_ctl((caps.flags & CAP_DRV_IRQ) && !C.bridge ? 4 : MUS_MT_PER_TICK);
     params_reset();
     C.st_bar = C.vy_bar = C.q_bar = C.q_mbar = 0xFFFF;
     C.none = 1;
@@ -582,6 +588,7 @@ void mus_core_test_irq(int on)
 {
     if (!C.inited) mus_core_init();
     C.bridge = (uint8_t)!on;
+    drv_irq = 0;
     mus_drv_set_bridge(!on);
 }
 
@@ -1259,7 +1266,7 @@ void music_update(void)
     if (C.b_mode == BM_DUAL || C.b_mode == BM_STING) fill(&C.b, 1, until);
     if (C.cu_mask) catchup_run();
     if (mus_vy.on) mus_vinyl_update();
-    if (C.bridge) mus_drv_run(MUS_MT_PER_TICK);
+    if (C.bridge && !drv_irq) mus_drv_run(MUS_MT_PER_TICK);
     C.now++;
     marks = mus_drv_take_marks();
     if (marks & MMK_END) C.ended = 1;
@@ -1290,7 +1297,7 @@ void music_profile(int scene_class)
     if (!C.inited) mus_core_init();
     C.profile = (uint8_t)scene_class;
     plat_audio_caps(&caps);
-    if (caps.flags & CAP_DRV_IRQ) mus_drv_set_ctl(scene_class == AP_UI_EDGE ? 8 : 4);
+    if ((caps.flags & CAP_DRV_IRQ) && !C.bridge) mus_drv_set_ctl(scene_class == AP_UI_EDGE ? 8 : 4);
     plat_audio_fx(MFX_STEMS, scene_class, 0);
 }
 

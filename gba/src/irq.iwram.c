@@ -12,6 +12,9 @@
 
 void gba_irq_dispatch(uint32_t flags);
 
+/* the music clock (audio.c): timer 1 at 240 Hz runs the core's music driver, off the frame loop */
+void (*volatile gba_music_hook)(void);
+
 /* LS-IN, the press latch: the pad used to be read once per 30 Hz tick, so on the slow hub frames
  * (about 100 ms of drawing) a tap that began and ended between two reads was lost. Every VBlank now
  * ORs the held keys in here; read_pad() takes them with the live reading and clears the latch. */
@@ -81,6 +84,7 @@ static void audio_vblank_mix(void)
 
 void gba_irq_dispatch(uint32_t flags)
 {
+    if ((flags & IRQ_TIMER1) && gba_music_hook) gba_music_hook();
     if (flags & IRQ_VBLANK) {
         gba_vblanks++;
         gba_key_latch |= (~(uint32_t)REG_KEYINPUT) & KEY_MASK;
@@ -109,7 +113,7 @@ ROM_COLD void gba_irq_init(void)
 {
     REG_IME = 0;
     REG_DISPSTAT = DSTAT_VBL_IRQ;
-    REG_IE = IRQ_VBLANK;
+    REG_IE = IRQ_VBLANK | IRQ_TIMER1;
     REG_IF = 0xFFFF;
     BIOS_IF = 0;
     REG_IME = 1;
