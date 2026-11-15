@@ -954,8 +954,9 @@ same pass rule: both runs end with "0 failures" and repeat byte for byte) for th
 from `core/tests/scripts` (`FAMILY_GLOBS` in `dc/Makefile` names them): minigames (`mg_*`), the house
 (`home_defend`, `_editor`, `_flats`, `_gallery`, `_haunt`, `_mart`, `_rooms`, `_tutorial`), the creator
 (`creator*`), the studio, fishing and cooking, the library (`library_*`), dreams (`dream*`), the concert
-(`concert_*`) and the exorcism (`life_exorcism`), plus one script of our own,
-`dc/tests/families/scripts/home_visit_dc.txt`. Measured 2026-11-15 on Flycast (emulated time):
+(`concert_*`) and the exorcism (`life_exorcism`); `home_visit` was a script of our own
+(`home_visit_dc.txt`, without the Talk screen) until TD1, which brought Talk: the core's `home_visit.txt` now passes on dcrun,
+twice identical, 0 of 1,141 ticks over 33.3 ms, worst 26.0 ms. Measured 2026-11-15 on Flycast (emulated time):
 **44 of 44 pass, 44 of 44 identical**, 586 shots, 43,046 ticks, 25 over 33.3 ms (23 concert, 2 exorcism); the numbers are from the full run on the rebased tip (the builder's first run had 42 scripts, `creator_sliders` and a creator script came with later landings).
 
 | family | scripts | shots | ticks | ticks over 33.3 ms | worst tick |
@@ -976,9 +977,9 @@ Not in the list, and why:
   `expect-talk-*`). Talk is built on the Dreamcast since TD1 (the bank is read from the disc, section "Talk
   on the Dreamcast (TD1)" below), but dcrun has no `talk-*` commands yet (TD3): they fail on the first
   `talk-enter`.
-* `home_visit` expects the live Talk screen after A at the host. `home_visit_dc.txt` is the same visit
-  with that step cut (A at the host gets the old "I wish I had ..." line); it passes, no tick over
-  33.3 ms. Put the core script back in the list when dcrun has the `talk-*` commands (TD3).
+* `home_visit` expects the live Talk screen after A at the host (greeting box, the Talk list, B, the goodbye box). Until
+  TD1 the Dreamcast had a copy without that step (`home_visit_dc.txt`); since TD1 the core script runs as it is (it only
+  uses `press` and `expect-scene`), the copy is gone and `home_visit` is in `family-test2`'s list.
 
 What the first run (before any change) found, on the same machine: the two Talk scripts' failures above and
 two real frame-time misses:
@@ -2383,26 +2384,42 @@ reader.
 * **The file.** `core/tools/talkc.py --bin --lang en` writes `TALK_en.BIN` (902,268 B on this tree, the full bank, not the
   PS1's subset). `mkcdi.sh` puts it on the disc root as `TALK_EN.BIN` (ISO 9660 names are capitals).
 * **`plat_talk_load(code)`** opens `/cd/TALK_<CODE>.BIN` through KallistiOS's CD file system, `malloc`s the file size and
-  reads the whole file in one `fs_read`. Asking for the language that is already loaded is free. Another language frees
-  the first. A missing or short file leaves nothing loaded and returns 0 (Talk then says "not here": the same as a boot
-  from the ELF, which has no disc; `talk-bank open` fails there, as the test expects).
-* **`plat_talk_read(off, dst, len)`** is a bounds-checked `memcpy` out of that block (no disc read per call; `off + len`
-  cannot wrap). Talk reads a row or a string at a time, so a disc read per call would stall a frame.
-* **Memory.** The bank is heap, not BSS: with the code Talk adds (`.text` +96,800 B, `.rodata` +11,660 B, `.bss`
-  +5,600 B, `make -C dc sizes` before 10,492,376 B in the image, after 10,606,436 B) the heap above `_end` is 5.82 MB
-  before the bank is loaded and about 4.9 MB after (the floor is 4 MB). The load is one read of about 0.9 MB, once, at the
-  first Talk (inside `talk_ready()`, the house's A press on a housemate); it is a disc read, not a draw, and the tick that
-  does it is the only one with extra work.
+  answers `PLAT_TALK_LOADING` while the file is read; asking for the language that is already loaded is free, another
+  language frees the first. A missing or short file leaves nothing loaded and returns 0 (Talk then says "not here": the
+  same as a boot from the ELF, which has no disc).
+* **The disc never holds a tick.** The first version read the whole 0.9 MB in one `fs_read` inside the tick of the first A
+  press on a housemate: on Flycast that tick took 7.4 s (a sector takes about 17 ms there). So the file is read in
+  one-sector slices (`TALK_CHUNK` 2,048 B) by `dc_talk_pump(us_left)`, which `plat_end_frame` (`main.c`) calls in the idle
+  time at the end of each tick: it runs as many slices as the slot has time for and none when the last slice would not
+  fit (the longest slice measured on Flycast is 19.3 ms, so a tick with 20 ms or more free takes one; on a faster
+  disc, several). Ticks over 33.3 ms because of the disc: 0. The pump starts the English bank by itself 90 ticks (3 s)
+  after boot, so it is in about 15 s later on Flycast (a slice a tick) and in about a second on a fast disc, long before
+  a player reaches a housemate. A press before that finds Talk "not ready" (`talk_db_open` answers `TALK_DB_LOADING`,
+  `home_talk_enter` returns 0) and works a moment later; the house shows no "loading" note for it (a TD2 item if the
+  owner wants one).
+* **`plat_talk_read(off, dst, len)`** is a bounds-checked `memcpy` out of that block (it answers 0 while the load is
+  not finished; `off + len` cannot wrap). Talk reads a row or a string at a time, so a disc read per call would stall a
+  frame.
+* **Memory.** The bank is heap, not BSS: with the code Talk adds (measured on the tree before DC9C landed: `.text`
+  +96,800 B, `.rodata` +11,660 B, `.bss` +5,600 B, `make -C dc sizes` 10,492,376 B in the image before, 10,606,436 B
+  after; on the rebased tree 10,614,212 B) the heap above `_end` is 5.81 MB before the bank is loaded and about 4.9 MB
+  after (the floor is 4 MB).
+* **dcrun and the native start.** `dcrun --native-seed` (the start the native runner gets) reads the bank at once, in
+  the harness command, so a script that walks to a housemate within seconds finds Talk as the native runner does
+  (`home_visit` does). A script without `--native-seed` gets the console's own behaviour.
 * **Tests.** `make -C dc check-talkdisc` (host cc only, in `make -C dc test`): the real `talkdisc.c` and `talk_db.c` over a
-  mock of `fs_*` (`dc/tests/talkdisc_host.sh`): the file loads in one read, a second load is free, the capital name is
-  the only one that opens, reads past the end and wrapping offsets return 0, another language replaces the first, and the
+  mock of `fs_*` (`dc/tests/talkdisc_host.sh`): opening reads nothing, a read answers 0 while loading, one slice per tick
+  and never a read over 2,048 B, a short slot gets no slice and a long one several, the bank is readable after exactly
+  `ceil(size / 2048)` slices, a second load is free, the capital name is the only one that opens, reads past the end and
+  wrapping offsets return 0, another language replaces the first, the prefetch starts by itself after 90 pumps, and the
   database opens and every bank's CRC verifies over the copy. `make -C dc talk-test` (Flycast, in `make -C dc test` when
-  the core is there): `dc/tests/talk/talk_disc.txt` on the CDI with the new dcrun command `talk-bank open | line |
-  enter` (mailbox command `DC_HC_TALK_BANK`): the bank opens from the disc and verifies (4,010 concepts), one
-  greeting is generated from it ("Rise and shine, You! Or just rise. Shining is optional."), the real Talk screen opens
-  and the opener is drawn; two runs, byte-identical shots, no tick over 33.3 ms (152 ticks, worst 16.7 ms: the Talk
-  opener's dialogue tick). On the ELF (no disc) the same script fails at `talk-bank open`, which is how the test is
-  known to look at the disc.
+  the core is there, `dc/tests/talk/run_flycast.sh`): `talk_disc.txt` on the CDI with the new dcrun command
+  `talk-bank open | line | enter | ready` (mailbox command `DC_HC_TALK_BANK`): the bank opens from the disc and verifies
+  (4,010 concepts), one greeting is generated from it ("Rise and shine, You! Or just rise. Shining is optional."), the
+  real Talk screen opens and the opener is drawn; two runs, byte-identical shots, 152 ticks, 0 over 33.3 ms (worst
+  16.7 ms, the dialogue tick). `talk_prefetch.txt`, no `--native-seed`: 900 ticks on the title, the bank arrives by itself
+  (slice max 19.2 ms), `talk-bank ready` finds it, 0 of 901 ticks over 33.3 ms (worst 11.7 ms). On the ELF (no disc) the
+  first script fails at `talk-bank open`, which is how the test is known to look at the disc.
 * **Not yet (TD2, TD3).** The typed line from the keyboard queue, the pad fallback, HD-text bubbles (40 columns) and
   the `home_talk_*` scripts on dcrun with frame-time gates. The Talk screen's list and the opener's dialogue box overlap
   at 640x480 in the TD1 shots (`talk_disc_opener.png`: the dialogue box sits over the list; the native 320x240 screen

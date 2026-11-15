@@ -64,6 +64,8 @@ extern uint8_t  dc_text_armed;
 void dc_text_probe(const char *s);
 
 void dc_log(const char *msg);            /* misc.c: dbgio + the mailbox ring    */
+/* TD1 (talkdisc.c): one slice of the Talk bank's disc read per call, when us_left of the tick's slot is free */
+void dc_talk_pump(uint32_t us_left);
 void dc_logf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 
 /* ---- boot easter egg (egg.c, X8) ------------------------------------------

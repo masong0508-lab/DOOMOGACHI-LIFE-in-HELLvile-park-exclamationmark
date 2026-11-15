@@ -144,6 +144,10 @@ void plat_end_frame(void)
     }
     /* wait for the next tick's slot; the vblank wait keeps the CPU idle */
     next = logic_base_us + (uint64_t)dc_frames * DC_TICK_US;
+    {   /* TD1: one slice of the Talk bank's disc read, if the slot has the time (talkdisc.c) */
+        uint64_t now = timer_us_gettime64();
+        dc_talk_pump(now + 2000u < next ? (uint32_t)(next - now - 2000u) : 0u);
+    }
     while (timer_us_gettime64() + 2000u < next)
         vid_waitvbl();
     while (timer_us_gettime64() < next) {}

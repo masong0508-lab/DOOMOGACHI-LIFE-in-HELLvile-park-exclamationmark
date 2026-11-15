@@ -44,7 +44,7 @@
  *                          `lang` / `expect-lang`, `expect-hero`,
  *                          `ending-seen`, `story-done`
  *   DC_HC_OPT id<<8|v      (DC6C) `opt ID VALUE`: opt_set, result opt_get
- *   DC_HC_TALK_BANK n      (TD1) `talk-bank open|line|enter`: Talk's bank from the disc (TALK_EN.BIN) opened and
+ *   DC_HC_TALK_BANK n      (TD1) `talk-bank open|line|enter|ready`: Talk's bank from the disc (TALK_EN.BIN) opened and
  *                          verified, one greeting generated from it (logged), the Talk screen entered
  * and the tick hold of the harness's "sync on" (dc_harness_hold).
  */
@@ -287,6 +287,9 @@ void dc_harness_cmd(void)
         rng_seed(&doomo_rng, plat_entropy());
         town_new(TOWN_FREEPLAY, rng_next(&doomo_rng), TOWN_POP_EMPTY);
         r = 1;
+        /* TD1: the native runner has Talk's bank from the start; the console reads it behind the title, slice by
+         * slice (talkdisc.c), which a script that walks to a housemate within seconds would not wait for */
+        while (plat_talk_load("en") == PLAT_TALK_LOADING) dc_talk_pump(0xFFFFFFFFu);
         dc_logf("hcmd: native seed %x", (unsigned)arg);
         break;
     /* --- DC7: the side-mission commands (side_sample_a.txt) --- */
@@ -379,10 +382,13 @@ void dc_harness_cmd(void)
             if (town_alive(i) && i != playas_avatar()) { who = i; break; }
         r = 1;
         if (arg == 0) {
-            int o = talk_db_open(lang_find("en"));
+            int o;
+            while ((o = talk_db_open(lang_find("en"))) == TALK_DB_LOADING) dc_talk_pump(0xFFFFFFFFu);   /* the slices a tick would read */
             int v = o == TALK_DB_OK ? talk_db_verify() : o;
             dc_logf("hcmd: talk-bank open %d verify %d concepts %d", o, v, o == TALK_DB_OK ? talk_db_nconcepts() : 0);
             if (o == TALK_DB_OK && v == TALK_DB_OK) r = 2;
+        } else if (arg == 3) {              /* ready: the bank is there, no waiting for the slices */
+            if (talk_db_open(lang_find("en")) == TALK_DB_OK) r = 2;
         } else if (arg == 1 && who >= 0 && talk_db_is_open() && talk_gen_ready()) {
             static TalkConv conv;
             static TalkLine line;

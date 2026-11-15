@@ -141,7 +141,7 @@ enum {
     DC_HC_OPT = 31,                      /* arg id << 8 | value: opt_set; result opt_get(id) */
     /* TD1: Talk's database on the disc (dc/src/talkdisc.c): arg 0 opens TALK_EN.BIN and verifies every bank's
      * CRC, 1 makes one greeting line of the first resident (logged), 2 opens the Talk screen with that
-     * resident (home_talk_enter); result 2 on success, 1 on failure (0 before the command ran) */
+     * resident (home_talk_enter), 3 only asks whether the bank is there (no waiting for the slices); result 2 on success, 1 on failure (0 before the command ran) */
     DC_HC_TALK_BANK = 32
 };
 

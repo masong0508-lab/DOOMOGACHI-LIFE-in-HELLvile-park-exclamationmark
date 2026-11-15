@@ -22,7 +22,7 @@ if [ $# -gt 0 ]; then SCRIPTS=$*
 else
     SCRIPTS=$(cd "$root/core/tests/scripts" && ls ${FAMILY_GLOBS:-story_*.txt fp_*.txt side_*.txt} | sed 's/\.txt$//')
     # DC9B: scripts of our own (a core script that needs something the Dreamcast does not have yet, written for it)
-    [ -n "${FAMILY_GLOBS:-}" ] && SCRIPTS="$SCRIPTS $(cd "$here/scripts" && ls *.txt | sed 's/\.txt$//')"
+    [ -n "${FAMILY_GLOBS:-}" ] && SCRIPTS="$SCRIPTS $(cd "$here/scripts" 2>/dev/null && ls *.txt 2>/dev/null | sed 's/\.txt$//')"
 fi
 mkdir -p "$OUT"
 sum=$OUT/summary.txt

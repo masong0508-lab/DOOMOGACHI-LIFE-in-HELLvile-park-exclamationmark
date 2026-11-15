@@ -1,0 +1,8 @@
+# TD1: the console's own way of getting Talk's bank: dc/src/talkdisc.c reads TALK_EN.BIN behind the title, one
+# CD sector at a time in the idle part of a tick (about 17 ms a sector on Flycast), starting 90 ticks after
+# boot. No --native-seed (that would read the whole file at once) and no talk-bank open (it would wait for the
+# file): the script only waits, then asks whether the bank is there. run_flycast.sh also gates the run on no
+# tick over 33.3 ms, which is the point: the disc never holds a tick.
+scene TITLE
+wait 900
+talk-bank ready
