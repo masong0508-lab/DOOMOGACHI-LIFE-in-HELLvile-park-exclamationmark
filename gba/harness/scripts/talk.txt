@@ -7,7 +7,7 @@
 # call chain in the game; the log prints it). Screenshots go to gba/build/shots/talk.
 wait 30
 expect-log doomo: init
-seed 3                  # pinned: the resident's opening lines (and so the A presses below) follow the town seed; unpinned, the boot timing picked it
+seed 18                  # pinned: the resident's opening lines (and so the A presses below) follow the town seed; unpinned, the boot timing picked it
 sync on
 sync on
 scene TITLE
