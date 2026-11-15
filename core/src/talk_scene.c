@@ -991,16 +991,18 @@ static void talk_update(void)
     }
 }
 
+/* "calm" is the usual state and says nothing; only a tense or heated room is named (less on screen) */
 static const char *mood_word(void)
 {
     if (T.s.tension >= TALK_TENSION_ARGUE + 2) return "heated";
     if (T.s.tension >= TALK_TENSION_ARGUE - 2) return "tense";
-    return "calm";
+    return NULL;
 }
 
-/* One calm panel: a single header line (what you are choosing; the mood of the room on the right),
- * then the list. The A/B hints are gone (the last row says what B does) and the old third line too.
- * The people strip marks who you are speaking to with a '>' and keeps the engage bar. */
+/* One calm panel: a single instruction line (what you are choosing; the room's mood on the right only when it is
+ * not calm), then the list. The people strip marks who you are speaking to with a '>' and shows the engage bar of
+ * that person only (everyone's when you speak to the room). The pad's buttons are one small card above the panel
+ * (TUI-TALK): A picks, B goes back (on the replies page B says goodbye). No window glint moves here. */
 static const char *panel_title(char *buf, int cap)
 {
     const char *t = NULL;
@@ -1021,13 +1023,22 @@ static const char *panel_title(char *buf, int cap)
     return "Say something";
 }
 
+static void talk_card(int y)
+{
+    UiPrompt p[2];
+    p[0].btn = BTN_A; p[0].prio = 0; p[0].verb = "Pick";
+    p[1].btn = BTN_B; p[1].prio = 1; p[1].verb = T.page == PG_MAIN ? "Goodbye" : "Back";
+    ui_prompts_at(p, 2, WIN_CUTE, y, ui_prompts_maxw());
+}
+
 static void talk_draw(void)
 {
     const UiStyle *st = ui_style(WIN_CUTE);
-    int sw = plat_screen_w(), sh = plat_screen_h(), i, ph, py, colw, rows, mw;
+    int sw = plat_screen_w(), sh = plat_screen_h(), i, ph, py, colw, rows, mw = 0;
     char ttl[48];
     const char *mood = mood_word();
-    /* the people: a name and how much they are into it */
+    ui_glint_hold(1);
+    /* the people: a name and (for who you speak to) how much they are into it */
     ui_window(0, 0, sw, 24, WIN_CUTE);
     colw = sw / (T.s.nparts > 0 ? T.s.nparts : 1);
     for (i = 0; i < T.s.nparts; i++) {
@@ -1036,15 +1047,19 @@ static void talk_draw(void)
         if (i == T.to) ui_text_clip(x - 5, 4, ">", st->text, x - 5, x);
         ui_text_clip(x, 4, p->id == TALK_PET_ID ? "Pet" : res_name(p->id), st->text, x, x + colw - 8);
         if (p->flags & TPF_LEFT) ui_text_clip(x, 14, "(left)", st->text_dim, x, x + colw - 8);
-        else ui_bar(x, 15, colw - 14, 5, p->engage, 100, i == T.to ? st->accent : st->accent_d);
+        else if (T.to < 0 || i == T.to) ui_bar_still(x, 15, colw - 14, 5, p->engage, 100, st->accent);
     }
     py = layout(&rows);
     ph = sh - py;
     ui_window(0, py, sw, ph, WIN_CUTE);
-    mw = ui_text_width(mood);
-    ui_text_clip(sw - 8 - mw, py + 5, mood, st->text_dim, sw - 8 - mw, sw - 8);
+    ui_glint_hold(0);
+    if (mood) {
+        mw = ui_text_width(mood);
+        ui_text_clip(sw - 8 - mw, py + 5, mood, st->text_dim, sw - 8 - mw, sw - 8);
+    }
     ui_text_clip(8, py + 5, panel_title(ttl, (int)sizeof ttl), st->text, 8, sw - 12 - mw);
     ui_list_draw(&T.list, 6, py + 17, sw - 12, WIN_CUTE);
+    if (py - 14 >= 26) talk_card(py - 14);
 #if DOOMO_POINTER
     pointer_draw();
 #endif

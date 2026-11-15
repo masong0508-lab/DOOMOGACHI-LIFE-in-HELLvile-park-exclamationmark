@@ -13,6 +13,7 @@
 #include "doomo/lang.h"
 #include "doomo/roster.h"
 #include "doomo/town.h"
+#include "doomo/ui.h"
 
 #define ID_NANA 1
 #define ID_PIP  42            /* kid cast */
@@ -227,4 +228,29 @@ TEST(talk_scene_a_typed_romance_line_to_a_child_is_refused)
     for (k = 0; k < 40 && talk_scene_debug(&d) && d.busy; k++) { frames(0, 90); press(BTN_A); }
     CHECK(talk_scene_debug(&d));                           /* the talk is still up */
 }
+/* TUI-TALK: the screen shows one small control card (A Pick, B Goodbye on the replies page, B Back below it),
+ * and no mood word while the room is calm */
+TEST(talk_scene_has_a_control_card_on_every_page)
+{
+    UiPromptStats st;
+    TalkSceneDebug d;
+    town();
+    CHECK(open_talk(ID_NANA));
+    ui_prompt_stats(NULL, 1);
+    frames(0, 2);
+    ui_prompt_stats(&st, 0);
+    CHECK(st.bars >= 1);
+    CHECK(strstr(st.last, "Pick") != NULL);
+    CHECK(strstr(st.last, "Goodbye") != NULL);
+    CHECK_EQ(st.too_wide, 0);
+    go_to(find_row("cat", -1, -1));                 /* a category page: B goes back, not goodbye */
+    press(BTN_A);
+    CHECK(talk_scene_debug(&d) && strcmp(d.page, "acts") == 0);
+    ui_prompt_stats(NULL, 1);
+    frames(0, 2);
+    ui_prompt_stats(&st, 0);
+    CHECK(strstr(st.last, "Back") != NULL);
+    CHECK(strstr(st.last, "Goodbye") == NULL);
+}
+
 #endif /* !DOOMO_PLATFORM_GBA */

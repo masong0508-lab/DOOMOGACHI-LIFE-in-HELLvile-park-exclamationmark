@@ -1021,8 +1021,8 @@ greeting, a quick reply and the goodbye boxes with the seeded counts, and prints
 in-room mode (gathering and seats, camera shots, bubbles at the speakers' heads, the portrait inset on the room); emotes and
 postures; catch-the-word (L1) and the tinted words; the composer (act row, topic chips from caught words and likes, tone
 ring, live preview); the addressee ring on L2/R2 (SELECT cycles instead); hold-B to leave; pointer input (T9); the control
-card (the owner took the A/B hints off the screen; the last row says what B does; a card with the pad's buttons is still
-wanted by the comprehensibility rule). Four quick replies where the design says three.
+card (the owner took the A/B hints off the screen; the last row says what B does; TUI-TALK 2026-11-15 added one small card back,
+see "The Talk screen's look" below). Four quick replies where the design says three.
 
 **The care window (K-11, TK-CARE, 2026-11-15).** The gate's distress answer used to be one line: the turn after it was
 ordinary, so a kind line ("I'm here for you", an offer, a compliment) could be answered with a joke. Now `talk_dm_say` keeps a
@@ -2025,3 +2025,20 @@ T10, the other languages, comes **after** the script rewrite (DECISIONS:
 translate after the rewrite).
 
 **Keeping the talk going.** The resident opens the talk (`talk_dm_open`: the ARRIVE line, then a follow-up) instead of a fixed greeting. After every answer the same resident hands the talk back with a follow-up line (`TGE_FOLLOW`, `core/data/talk/grammar/en/follow.tlk`, planned as `DK_FOLLOW` in `talk_dm.c`): always after a change of subject (`follow.switch*` react to the new topic) and after a snarky line (`follow.cool*`: push on or let it go, so the player can heat the room up or cool it down), and about 7 turns in 10 otherwise. Never in an argument, a walk-out, a farewell or at `TALK_TENSION_ARGUE`; the drama manager speaks then. It shares the exchange's 4-line budget (a reaction is dropped before the follow-up is). Test: `talk_dm_keep_going`.
+
+## 6n. The Talk screen's look (TUI-TALK, 2026-11-15)
+
+A restyle of `talk_draw` in `core/src/talk_scene.c`; every control, row and script stays. The hierarchy is now: the
+people strip, one instruction line, the replies, and one control card. Changes (all pixel-changing, native shots in the
+package evidence, before / after at 240x160 and 320x240):
+- The mood word ("calm") is gone from the panel header; only "tense" and "heated" are named.
+- The people strip shows the engage bar of the person you speak to (everyone's when you speak to the room), not all.
+- No sliding glint on the two windows and no bar shine (`ui_glint_hold`, `ui_bar_still`): calm motion.
+- A control card (`ui_prompts_at`, the shared prompt bar): "A Pick  B Goodbye" on the replies page, "A Pick  B Back"
+  below it, centred just above the panel. It is a retained panel, so it costs almost nothing to redraw.
+- The panel is the same 90 px, so the pointer map (T9) and `talk_pointer.txt` are unchanged.
+Test that fails without it: `talk_scene_has_a_control_card_on_every_page`. Measured on the GBA (`make -C gba test-talk`,
+emulated time): list 15.7 -> 15.4 drawn fps, answer 18.1 -> 17.3 (work avg 47.7 -> 48.2 ms, 45.8 -> 45.1 ms): no gain,
+within run noise; the 30 fps target is NOT met (about 48 ms of work per tick: the cost is the list and window
+drawing and the portrait box, not the strip). EWRAM / IWRAM / ROM data unchanged. A cheaper portrait box and a retained list panel are the
+next steps (SPEED stream).
