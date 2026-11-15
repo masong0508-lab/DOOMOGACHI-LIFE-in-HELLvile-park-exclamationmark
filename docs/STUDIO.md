@@ -391,7 +391,7 @@ The cursor line costs about 0.4 ms on NOTES; it is paid back (and 0.3 ms more) b
 every frame: the tab strip's "110 bpm" text and its two widths (every tab), NOTES' "in Order 2,3,5" list and the
 step numbers (a table instead of `%2d`); the inactive tab pills of the narrow strip draw one glyph instead of an icon.
 (A first version switched the help line back to the prompt bar on a timer: that cost one 37 ms frame in an idle tab, so
-it now switches on the first button press.) PS1 and Dreamcast were not measured in this package: see the commit.
+it now switches on the first button press.) PS1 (PCSX-Redux): every editor tab and every new screen 30.13 fps before and after, resident share 0 B, studio overlay load +27 ms (docs/PS1.md "Studio ST-EASY"). Dreamcast: not run (KallistiOS was still installing; docs/DREAMCAST.md "Studio ST-EASY").
 
 ## INTEGRATION NOTE for the Concert Hall (concert*.c)
 

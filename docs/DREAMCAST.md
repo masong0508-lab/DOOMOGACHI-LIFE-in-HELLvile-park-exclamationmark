@@ -2706,3 +2706,10 @@ blocking card by design). No resident PS1 byte and no GBA byte changed (the PS1 
 machine; the help string is one line of text in `core/src/fp_options.c`, compiled out where `DOOMO_TRIGGERS` is 0).
 Open: the Controls page has eight rows on a one-stick pad; folding Turn buttons and Stick into one row would
 change what the options record means, so it is left to the core's UI polish package (UI1).
+
+## Studio ST-EASY (2026-11-15)
+
+Not built or run on KallistiOS / Flycast in this package (the KOS install on the machine was not finished: no `environ.sh`). What was run: the SH4
+compile of every core source with `sh-elf-gcc -Werror` (`core/tools/xcheck.sh`: 429 files OK, the studio sources included) and `make
+dc-host-test` (rc 0). The studio's pad names come from `btn_name` (Dreamcast: SELECT is START+Y; the control card says so itself); no `dc/` file
+changed. To check on a machine with KOS: `make -C dc -j2`, `make -C dc/harness`, and `sh dc/harness/speed2.sh OUT studio` against the base.

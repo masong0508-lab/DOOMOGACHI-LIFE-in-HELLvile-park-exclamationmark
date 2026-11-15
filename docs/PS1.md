@@ -2470,3 +2470,18 @@ Measured 2026-11-15 on `fe410024` and the same + LV7a (clean builds, boot FMV, `
 (`DOOMO_TEXBANK_ACTIVE` 0). The new art and the bank blobs reach the PS1 as pack data on the disc with the level packs (LV8). The LEVELS
 share of 8 KB resident: 0 B used by LV7a. `game_smoke` PASS.
 
+## Studio ST-EASY (2026-11-15): Easy mode, resident delta 0 B
+
+Measured on `d979c93` and the same + ST-EASY (clean builds, boot FMV, `cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON`,
+`PSN00BSDK_LIBS=/opt/psn00bsdk/lib/libpsn00b`): `elf2exe` says **110,608 B below the stack top both times** (plan gate 73,728 B). The new code
+(`studio_start.c`, `studio_play.c`, `studio_help.c` and the redo / card hooks in `studio*.c`) is in the `studio` overlay group, whose load
+grows by 27 ms (the second part of the group: 283 -> 310 ms, once per scene entry; the first part, 313 ms, is the same). `Studio` did not grow
+(`nm`: 0x738 B before and after) and the state `StEasy` (448 B) is in the scene scratch (`EZ_TAG`, claimed through `scene_scratch()`, no
+static pointer). A first version had four small `static const uint8_t` tables (5, 5, 8 and 3 bytes) and cost 16 B of resident `.sdata` (the
+compiler's small-data threshold is 8 B: anything that small goes to `.sdata`, which is resident, even in an overlay group's file); the tables
+are now one 10-byte and one 36-byte array (overlay `.rodata`). Rule for the next package: a `static const` table of 8 bytes or less is resident.
+Speed (PCSX-Redux, the demo song, `-107`; the same script on both builds): SONG idle / playing, NOTES idle / playing, ORDER, LYRICS and CHOIR
+all 30.13 fps (120 frames in 239 vsyncs); the screens ST-EASY added (the Start card, the control card, the made song playing, FILE at both
+ends) 30.13 - 30.17; `sh ps1/harness/speed2.sh OUT studio`: all nine windows identical to the base. `harness/run.py`: `game_smoke` PASS,
+`core/tests/scripts/studio.txt` and `studio_easy.txt` PASS (the control card names the pad's buttons: "Triangle Undo a step", "Square Redo a
+step", "SEL+L1/R1 Switch tab").
