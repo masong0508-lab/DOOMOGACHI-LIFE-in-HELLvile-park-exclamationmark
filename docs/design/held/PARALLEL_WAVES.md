@@ -82,6 +82,13 @@ Shared files that every stream touches (keep changes small, expect to rebase): `
 * **GBA EWRAM / IWRAM.** About 2 KB of EWRAM free and IWRAM nearly full (`make -C gba sizes`). Net
   zero for every package unless its plan frees room first (CR5a frees EWRAM for the creator).
   Scene data lives in the scene scratch arena, not in new statics.
+* **GBA EWRAM after GBA-500 (2026-11-15 18:39):** the GBA runs 500 residents; EWRAM free went from 6,420 B
+  to **50,740 B** (+44,320 B). Shares of the freed room (coordinator): TALK **6 KB** (the trait fields, quests,
+  the Talk screen), CREATOR **6 KB** (body types, sliders, the personality page), STUDIO **8 KB** (full songs,
+  the helper tools), LEVELS **6 KB**, COMBAT **8 KB** (the 3D view, after speed audit 4), SPEED **4 KB**; about
+  **5 KB stays in reserve**, and the old 6,420 B stay free as the floor. Scene data still belongs in the
+  scene scratch arena; a share is for resident data only. Each stream keeps its running total in its status
+  file (`GBA EWRAM used of share: N B`); IWRAM is unchanged and still nearly full.
 * **GBA ROM.** 32 MB cartridge, about 5 MB used: not a limit now. Say what a package adds.
 * **Options.** The 64 option bytes are full. The first stream that needs a new option builds the
   second option chunk (OPT2, its own save tag, old saves load); the others rebase onto it.
