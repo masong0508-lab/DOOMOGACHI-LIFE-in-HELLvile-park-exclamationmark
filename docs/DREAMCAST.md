@@ -796,16 +796,16 @@ from `core/tests/scripts` (`FAMILY_GLOBS` in `dc/Makefile` names them): minigame
 (`creator*`), the studio, fishing and cooking, the library (`library_*`), dreams (`dream*`), the concert
 (`concert_*`) and the exorcism (`life_exorcism`), plus one script of our own,
 `dc/tests/families/scripts/home_visit_dc.txt`. Measured 2026-11-15 on Flycast (emulated time):
-**42 of 42 pass, 42 of 42 identical**, 504 shots, 39,832 ticks.
+**44 of 44 pass, 44 of 44 identical**, 586 shots, 43,046 ticks, 25 over 33.3 ms (23 concert, 2 exorcism); the numbers are from the full run on the rebased tip (the builder's first run had 42 scripts, `creator_sliders` and a creator script came with later landings).
 
 | family | scripts | shots | ticks | ticks over 33.3 ms | worst tick |
 |---|---:|---:|---:|---:|---|
 | minigames | 7 | 44 | 14,069 | 0 | 21.8 ms |
 | house | 9 | 126 | 5,884 | 0 | 21.4 ms |
-| creator | 8 | 125 | 4,024 | 0 | 21.8 ms |
+| creator | 10 | 207 | 7,238 | 0 | 22.7 ms |
 | studio | 1 | 19 | 1,495 | 0 | 19.4 ms |
 | fishing and cooking | 2 | 26 | 2,989 | 0 | 17.2 ms |
-| library | 9 | 108 | 2,579 | 0 | 29.3 ms |
+| library | 9 | 108 | 2,579 | 0 | 28.1 ms |
 | dreams | 2 | 17 | 1,612 | 0 | 16.8 ms |
 | concert | 3 | 28 | 5,759 | **23** | 37.5 ms |
 | exorcism | 1 | 11 | 1,421 | **2** | 33.9 ms (the game's own largest tick: 35.1 ms) |
