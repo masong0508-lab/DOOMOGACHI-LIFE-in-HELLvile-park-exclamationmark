@@ -907,7 +907,8 @@ static int      sv_avatar = -1;        /* the scan: the play-as avatar's id ('PL
 /* the scan's scores live in the record array: the scan writes nothing else into the
  * town, and the apply pass that always follows overwrites all of it */
 #define SV_SCORE ((uint16_t *)(void *)doomo_town.res)
-DOOMO_STATIC_ASSERT(sizeof(doomo_town.res) >= DOOMO_MAX_RESIDENTS * 2, sv_score_fits);
+DOOMO_STATIC_ASSERT(sizeof(doomo_town.res) >= DOOMO_MAX_RESIDENTS * 2 && offsetof(DoomoTown, res) % 2 == 0,
+                    sv_score_fits);
 
 static void sv_count(int id) { sv_dn[RES_DISTRICT(id)]++; }
 

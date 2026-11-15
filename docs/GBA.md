@@ -566,7 +566,7 @@ so 1,024 keeps the edges per resident of the 1,000-resident town), the sim's per
 (`sim_int.h` `SIM_IX`, by slot: stamps, feelings, jobs, the taken / crush bits), the Almanac's list
 (`lib_int.h`), the apartments' "seen" bits. The sim's round robin walks the slots and updates half
 the batch per tick (16), so a resident is updated as often as before. A district is full at 250:
-Town Hall's locked row says "Full: 250 of 250 neighbours. Someone must move out.", an empty apartment
+Town Hall's locked row says "Full: 250 of 250 homes. Someone must move out.", an empty apartment
 says "This side is full: 250 neighbours." when no slot is left, the apartments' header counts n/250 and
 the No Vacancy achievements need 250. The new-island cards, the Almanac's line, the first-citizen
 hint, the credits card ("250 from Hillvile / 250 from Hellvile") and the trophies "Door to Door" (250
@@ -643,8 +643,13 @@ tick):
 | story: credits | 28.5, 32.9 / 48.7 | 28.5, 31.3 / 48.9 |
 | story: credits parade | 24.1, 37.6 / 52.3 | **24.9**, 35.8 / 51.0 |
 
-Every other window of the three groups is within 0.3 ms of the base (the whole tables:
-`speed2_*.log` of both builds). The sim itself: natively 2.25 -> 1.42 us and at most 88 -> 46 resident /
+Of the 95 windows of the three groups 10 draw more frames and one fewer (the chapter card 4
+vignette, 22.3 -> 22.0 fps, 37.5 -> 37.8 ms: which ticks are drawn shifts); no window's work grows by
+more than 0.3 ms, and the news' third tab drops 32.9 -> 28.1 ms. On the tip it was rebased onto
+(`1297e93`) EWRAM is 56,484 B free with GBA-500 (12,164 B without: the commits between take 160 B),
+ROM +8,460 B again, `make -C gba test` and the three groups with their gates pass; there the Almanac
+list shows one frame of three vblanks (29.8 fps; 30.0 on `1297e93`): its ticks take the same
+32.7-33.2 ms on both builds, right at two vblanks, and the faster load (79 -> 71 ms) shifts their phase. The sim itself: natively 2.25 -> 1.42 us and at most 88 -> 46 resident /
 edge visits a tick (`sim_per_tick_budget`); on the GBA the hub's work 14.5 -> 14.0 ms a drawn tick. The
 credits parade marches the 250 ranks of the GBA's two districts (half as long), its ticker counts to 500.
 

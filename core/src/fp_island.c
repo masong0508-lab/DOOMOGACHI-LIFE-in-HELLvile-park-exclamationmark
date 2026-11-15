@@ -204,7 +204,7 @@ static const char *full_reason(int d)
 {
     (void)d;
 #if DOOMO_RES_SLOTS
-    return "Full: 250 of 250 neighbours. Someone must move out.";   /* GBA-500 (asserted above) */
+    return "Full: 250 of 250 homes. Someone must move out.";   /* GBA-500 (asserted above) */
 #else
     return "Full: 500 of 500 homes. Someone must move out.";
 #endif
