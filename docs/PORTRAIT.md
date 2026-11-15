@@ -241,8 +241,8 @@ Where the slices run (X1, P-D1 of the speed audit):
   `fp_common.c`, the studio's picker and choir row, the quest log's friends, the library, the cafe counter. A caller
   that holds already (hold 1 / 2) keeps its mode. With stand-ins off (native, Dreamcast) the picture is there at once.
   List cursors ask for their neighbours with `portrait_prefetch` once they rest (roster card, studio picker).
-  `gba/src/pslice.c` and `ps1/src/pslice.c` share `doomo/pslice_policy.h`: a forced slice runs only when it ends before
-  the next vblank (tests: `test_pslice_policy.c`, `test_portrait_s32.c`).
+  `gba/src/pslice.c` and `ps1/src/pslice.c` share `doomo/pslice_policy.h`: a forced slice runs only when it costs at most one
+  more vblank (tests: `test_pslice_policy.c`, `test_portrait_s32.c`).
 
 Pixels: every picture shown is a whole render (`test_portrait_sp2.c`);
 what changes is *when*: a phase or a new expression can show up a few ticks

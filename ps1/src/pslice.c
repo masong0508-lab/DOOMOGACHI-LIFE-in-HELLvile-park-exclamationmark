@@ -61,8 +61,8 @@ int plat_portrait_slice_ok(int cls, int waited)
     if (in_idle) return 1;
     if (spent_frame != g_frame) { spent_frame = g_frame; spent = 0; }
     if (waited < 0) return 1;
-    /* S3-2: a forced slice runs only when it ends before the next vblank (doomo/pslice_policy.h) */
-    if (est(cls) == UNKNOWN_US)                             /* never timed: nothing to compare (as before) */
+    /* S3-2: a forced slice costs at most one more vblank (doomo/pslice_policy.h) */
+    if (est(cls) == UNKNOWN_US)                             /* never timed: nothing to compare, so it waits its patience (S3-2; the old rule used a guessed cost) */
         return spent ? 0 : waited >= PATIENCE_BIG;
     return pslice_ok(base_last, spent, est(cls), FRAME_US, MARGIN_US, MARGIN_WIDE_US, waited, PATIENCE,
                      PATIENCE_BIG, CHEAP_US);

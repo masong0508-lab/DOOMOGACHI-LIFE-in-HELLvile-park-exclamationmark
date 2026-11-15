@@ -2223,10 +2223,10 @@ scroll 29.39, rows 30.13, value 29.88: nothing resident changed).
 UI previews (`portrait_image_ui`, `figure_image_ui`, `figure_image_res_ui`, `bodyspr_image_ui`; docs/PORTRAIT.md "UI
 previews") are patient jobs: a face or chibi with nothing to stand in is drawn in idle time and the frame's room and the
 call returns NULL meanwhile. `ps1/src/pslice.c` shares the forced-slice rule with the GBA (`doomo/pslice_policy.h`: a forced
-slice only when it ends before the next vblank). **Resident cost: +304 B** (`_end` 0x801ee550 -> 0x801ee680; the one
+slice only when it costs at most one more vblank). **Resident cost: +304 B** (`_end` 0x801ee550 -> 0x801ee680; the one
 wrapper `portrait_ui_image` is 180 B, the rest is the call sites and the rule): **72,368 -> 72,064 B below the stack top**
-with the FMV (`cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON`), inside the CREATOR share but only 64 B above the 72,000 B
-gate: any other landing that adds resident bytes must take it back first. `game_smoke` PASS. `sh ps1/harness/speed2.sh OUT
+with the FMV on the tree it was built on; after the rebase onto the PS1-RAM landing (132,608 B) it measures **132,320 B**
+(`_end` 0x801dfb10, `cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON`), so the thin margin is gone. `game_smoke` PASS. `sh ps1/harness/speed2.sh OUT
 life studio fishcook library` (PCSX-Redux, not run before the change on this machine; the audit listed these windows at
 65-325 ms single frames): every window of the shop, Black Market, cafe, picker, picker move, choir, cook counter, lobby and
 Almanac list reads 30.0-30.5 fps with no frame over 50 ms (a single 50 ms frame in several of the studio, cook and library windows); the known misses are the

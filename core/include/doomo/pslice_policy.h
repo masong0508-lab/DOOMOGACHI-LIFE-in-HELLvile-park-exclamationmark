@@ -5,8 +5,8 @@
  *   - it runs when the frame's own work (base) + the slices already run this frame (spent) + this one end inside
  *     the vblanks the frame needs anyway (at least two; a frame over two vblanks keeps a wider margin);
  *   - else, after the job has waited `patience` ticks (`patience_big` for a slice over `cheap`), ONE slice runs a
- *     frame even over the room, but only when it still ends before the next vblank (S3-2: a forced slice that would
- *     cost two more vblanks waits for idle time); a job that has waited four times the big patience runs anyway,
+ *     frame even over the room, but only when it costs at most one more vblank than the frame already needs (S3-2: a
+ *     forced slice that would cost two more vblanks waits for idle time); a job that has waited four times the big patience runs anyway,
  *     so nothing starves. */
 #ifndef DOOMO_PSLICE_POLICY_H
 #define DOOMO_PSLICE_POLICY_H
@@ -21,7 +21,7 @@ static inline int pslice_ok(uint32_t base, uint32_t spent, uint32_t est, uint32_
     if (base + spent + est <= limit) return 1;
     if (spent) return 0;                                    /* one forced slice a frame at most */
     if (waited < (est <= cheap ? patience : patience_big)) return 0;
-    if (base + est <= (vb + 1) * frame - margin) return 1;  /* forced, and it ends before the next vblank */
+    if (base + est <= (vb + 1) * frame - margin) return 1;  /* forced, one more vblank at most */
     return waited >= 4 * patience_big;
 }
 
