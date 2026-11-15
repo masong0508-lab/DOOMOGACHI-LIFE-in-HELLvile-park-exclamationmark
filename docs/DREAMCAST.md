@@ -2405,7 +2405,7 @@ reader.
   frame.
 * **Memory.** The bank is heap, not BSS: with the code Talk adds (measured on the tree before DC9C landed: `.text`
   +96,800 B, `.rodata` +11,660 B, `.bss` +5,600 B, `make -C dc sizes` 10,492,376 B in the image before, 10,606,436 B
-  after; on the rebased tree 10,614,912 B) the heap above `_end` is 5.81 MB before the bank is loaded and about 4.9 MB
+  after; on the rebased tree 10,628,688 B) the heap above `_end` is 5.80 MB before the bank is loaded and about 4.9 MB
   after (the floor is 4 MB).
 * **dcrun and the native start.** `dcrun --native-seed` (the start the native runner gets) reads the bank at once, in
   the harness command, so a script that walks to a housemate within seconds finds Talk as the native runner does
