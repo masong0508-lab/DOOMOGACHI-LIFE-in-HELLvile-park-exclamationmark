@@ -1,0 +1,764 @@
+From 6e5acbff8cf422ed46d199c667b5410653b6c1f0 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:34:10 +0000
+Subject: [PATCH 1/3] LV9: combat detail inside levels (lv_detail.h,
+ levels_detail.c), mapc awake key and new MDET kinds, test map and tests,
+ hooks behind the existing option
+
+Pure module: drop steps per mode and held pressure with hysteresis, awake caps per mode and platform,
+Smooth loot and prop thinning that never drops a key, a secret, a collectible or a quest thing.
+Hooks (combat.c spawn, combat_scene.c view detail) are compiled out on the PS1 and see no ext on v1 maps.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cxE5CiE8LkNQXc6Au3
+---
+ core/include/doomo/lv_detail.h |  76 ++++++++++
+ core/include/doomo/map.h       |   9 +-
+ core/src/combat.c              |  10 ++
+ core/src/combat_scene.c        |  23 ++-
+ core/src/levels_detail.c       | 105 +++++++++++++
+ core/tests/maps/t9_detail.txt  |  45 ++++++
+ core/tests/test_lv_detail.c    | 270 +++++++++++++++++++++++++++++++++
+ tools/mapc.py                  |  18 ++-
+ tools/tests/test_mapc.py       |  31 +++-
+ 9 files changed, 581 insertions(+), 6 deletions(-)
+ create mode 100644 core/include/doomo/lv_detail.h
+ create mode 100644 core/src/levels_detail.c
+ create mode 100644 core/tests/maps/t9_detail.txt
+ create mode 100644 core/tests/test_lv_detail.c
+
+diff --git a/core/include/doomo/lv_detail.h b/core/include/doomo/lv_detail.h
+new file mode 100644
+index 0000000..d56abc6
+--- /dev/null
++++ b/core/include/doomo/lv_detail.h
+@@ -0,0 +1,76 @@
++/* lv_detail.h - the combat detail option inside a level (owner: levels, LV9; plan 8.7 and 7.2).
++ *
++ * Three inputs: the option (OPT3D_SMOOTH / BALANCED / MAX, town.h), the level's header (`detail a,b,c`
++ * = what may be dropped, first to last; `awake S B M` = the awake demon caps) and the governor's
++ * pressure (how far the last frames ran over their budget, a small int 0..LVD_PRESSURE_MAX).
++ * Output: which MDET_* effects are dropped this frame and the awake cap.
++ *
++ *   dropped steps = Smooth ? LVD_SMOOTH_STEPS : 0, plus the held pressure level, at most the list's
++ *   length. Step n drops the n-th named effect. Balanced and Max start at 0 and only lose effects
++ *   under pressure (the governor lowers Max first: its cap falls toward Smooth's).
++ *
++ * Pure functions on a caller-owned 4-byte LvDetail. No statics, no clock, no rng, no allocation.
++ * Hysteresis: the held level rises ONE step per update while the pressure is above it (detail is
++ * dropped at once, one step at a time) and falls one step only after LVD_RAISE_GOOD updates in a
++ * row with the pressure below it (detail comes back slowly), so detail does not flicker.
++ *
++ * Loot: Smooth thins the loot a level lists (`detail ... loot`) and the props (`... props`) at
++ * spawn time, keyed to the thing's index, never to the pressure (so the level plays the same
++ * whatever the frame cost). lvd_thing_kept() never drops a key, a secret, a collectible, an
++ * escort, a usable, an NPC, a boss, an event thing, the machine heart, scrap or a soul orb.
++ *
++ * Code for every platform (levels overlay group on the PS1: nothing links until a level calls it).
++ * Wiring: combat_scene.c's combat_view_detail() (the existing option's hook) for the drawing side.
++ */
++#ifndef DOOMO_LV_DETAIL_H
++#define DOOMO_LV_DETAIL_H
++
++#include "map.h"
++
++#define LVD_PRESSURE_MAX  3      /* pressure 0 = in budget .. 3 = far over                        */
++#define LVD_SMOOTH_STEPS  2      /* effects Smooth drops before any pressure                       */
++#define LVD_RAISE_GOOD    45     /* good updates (1.5 s at 30 fps) before one step comes back     */
++#define LVD_MAX_STEPS     3      /* DoomoMapExt.detail has 3 slots                                 */
++
++/* platforms (the awake cap multiplies the header's GBA numbers) */
++enum { LVD_GBA, LVD_PS1, LVD_DC, LVD_PLATFORMS };
++
++#if defined(DOOMO_PLATFORM_PS1)
++#define LVD_HERE LVD_PS1
++#elif defined(DOOMO_PLATFORM_DC)
++#define LVD_HERE LVD_DC
++#else
++#define LVD_HERE LVD_GBA            /* the GBA and the host build (the tests set the platform by hand) */
++#endif
++
++/* the caller's state: 4 bytes (it lives in the level's runtime) */
++typedef struct LvDetail {
++    uint8_t level;               /* held pressure level 0..LVD_PRESSURE_MAX                       */
++    uint8_t good;                /* consecutive updates below `level`                              */
++    uint8_t mode;                /* OPT3D_* last seen (a change of mode restarts the state)        */
++    uint8_t pad;
++} LvDetail;
++
++typedef struct LvDetailOut {
++    uint16_t drop;               /* bit (1 << MDET_*) per dropped effect                           */
++    uint8_t  awake;              /* awake demons the level may have                                */
++    uint8_t  steps;              /* effects dropped (0..LVD_MAX_STEPS)                             */
++} LvDetailOut;
++
++/* a frame's cost in percent of its budget (100 = exactly on budget) -> pressure 0..3:
++ * <= 100 is 0, <= 115 is 1, <= 140 is 2, above is 3 */
++int  lvd_pressure(int cost_pct);
++void lvd_begin(LvDetail *s, int mode);
++/* once per frame (or every few): feed the pressure; hysteresis as above */
++void lvd_update(LvDetail *s, int mode, int pressure);
++/* the effects dropped and the cap for the level `x` (NULL = a v1 map: nothing dropped, the defaults) */
++void lvd_get(const LvDetail *s, const DoomoMapExt *x, int mode, int platform, LvDetailOut *o);
++/* the awake cap alone: the header's numbers (or the defaults) x the platform, lowered by the held level */
++int  lvd_awake_cap(const DoomoMapExt *x, int mode, int platform, int level);
++/* 1 if effect `kind` (MDET_*) is in the level's drop list at all */
++int  lvd_listed(const DoomoMapExt *x, int kind);
++/* spawn time: 0 = leave thing `index` out (Smooth thinning), 1 = keep it. `flags` is DoomoThing.flags,
++ * `flags2` its tflags2 byte (0 without a table). Every other mode keeps everything. */
++int  lvd_thing_kept(const DoomoMapExt *x, int mode, int index, int type, int flags, int flags2);
++
++#endif
+diff --git a/core/include/doomo/map.h b/core/include/doomo/map.h
+index a49b665..c1cba7d 100644
+--- a/core/include/doomo/map.h
++++ b/core/include/doomo/map.h
+@@ -293,7 +293,13 @@ enum {
+ 
+ /* `detail a,b,c`: what the frame-rate governor drops, first to last.
+  * Append only (LV9 owns the meaning). */
+-enum { MDET_NONE, MDET_FLOORS, MDET_SKY, MDET_PROPS, MDET_FX, MDET_FAR, MDET_LIGHT, MDET_COUNT };
++enum { MDET_NONE, MDET_FLOORS, MDET_SKY, MDET_PROPS, MDET_FX, MDET_FAR, MDET_LIGHT,
++       MDET_STEAM,    /* (LV9) steam / jet puff billboards                  */
++       MDET_RAIN,     /* (LV9) rain and drip billboards                     */
++       MDET_CROWD,    /* (LV9) crowd / audience billboards                  */
++       MDET_DECALS,   /* (LV9) extra decals and blood                       */
++       MDET_LOOT,     /* (LV9) Smooth thins the loot (lv_detail.h: never a key or a quest item) */
++       MDET_COUNT };
+ 
+ typedef struct DoomoMapExt {
+     const DoomoMapDef  *def;
+@@ -314,6 +320,7 @@ typedef struct DoomoMapExt {
+     const uint8_t       *tflags2;       /* def->thing_count bytes, or NULL */
+     const uint8_t       *script;        /* level script bytecode (lv_script.h), or NULL */
+     uint16_t             script_len;
++    uint8_t              awake[3];      /* (LV9) `awake S B M`: awake demon caps (GBA numbers), 0 = defaults */
+ } DoomoMapExt;
+ 
+ /* The registry of v2 maps (levels_mapx.c): NULL-terminated. Empty until
+diff --git a/core/src/combat.c b/core/src/combat.c
+index ad2ee8d..290f268 100644
+--- a/core/src/combat.c
++++ b/core/src/combat.c
+@@ -11,6 +11,9 @@
+ #include "combat_int.h"
+ #include "doomo/family.h"
+ #include "doomo/ending.h"
++#if !defined(DOOMO_PLATFORM_PS1)
++#include "doomo/lv_detail.h"
++#endif
+ 
+ DoomoPlayerState  doomo_player;
+ CombatSession     combat_s;
+@@ -298,9 +301,16 @@ void combat_start_at(int map_id, int goal, int cx, int cy, int angle)
+     d = doomo_map.def;
+     density = opt_get(OPT_DEMON_DENSITY);
+     if (d && d->things) {
++#if !defined(DOOMO_PLATFORM_PS1)
++        const DoomoMapExt *lvx = map_ext_of(d);          /* (LV9) a v2 level's loot thinning under Smooth */
++        int lvmode = opt_get(OPT_3D_FAST);
++#endif
+         for (i = 0; i < d->thing_count; i++) {
+             const DoomoThing *t = &d->things[i];
+             int a;
++#if !defined(DOOMO_PLATFORM_PS1)
++            if (lvx && !lvd_thing_kept(lvx, lvmode, i, t->type, t->flags, map_thing_flags2(lvx, i))) continue;
++#endif
+             if (t->type == THING_PLAYER_START) {
+                 if (!have_start) {
+                     doomo_player.x = INT2FIX(t->x * CELLU + CELLU / 2);
+diff --git a/core/src/combat_scene.c b/core/src/combat_scene.c
+index ae92189..3aab7db 100644
+--- a/core/src/combat_scene.c
++++ b/core/src/combat_scene.c
+@@ -10,6 +10,9 @@
+  */
+ #include "combat_int.h"
+ #include "doomo/tips.h"
++#if !defined(DOOMO_PLATFORM_PS1)
++#include "doomo/lv_detail.h"
++#endif
+ 
+ enum { CS_PLAY, CS_PAUSE, CS_WEAPONS, CS_DONE, CS_DEAD, CS_CARD };
+ 
+@@ -305,8 +308,24 @@ static void intro_card(int shaded)
+ static void combat_view_detail(DoomoView3D *v)
+ {
+     DoomoBillboard *bb = (DoomoBillboard *)(uintptr_t)v->sprites;
+-    int i;
+-    if (!bb || opt_get(OPT_3D_FAST) != OPT3D_SMOOTH) return;
++    int i, mode = opt_get(OPT_3D_FAST), shadows = mode == OPT3D_SMOOTH;
++    if (!bb) return;
++#if !defined(DOOMO_PLATFORM_PS1)
++    /* (LV9) a v2 level's own drop list (lv_detail.h): its `fx` also drops the shadows, in any mode, once the
++     * list reaches it. Stateless here (no frame-cost pressure is fed yet), so only Smooth gets there; a v1
++     * map has no ext and costs one empty registry walk. Compiled out on the PS1 (resident bytes, LV_HAS_NEW). */
++    if (!shadows) {
++        const DoomoMapExt *x = map_ext_of(doomo_map.def);
++        if (x) {
++            LvDetail s;
++            LvDetailOut o;
++            lvd_begin(&s, mode);
++            lvd_get(&s, x, mode, LVD_HERE, &o);
++            shadows = (o.drop >> MDET_FX) & 1;
++        }
++    }
++#endif
++    if (!shadows) return;
+     for (i = 0; i < v->sprite_count; i++)
+         if (i != v->player_sprite) bb[i].flags = (uint8_t)(bb[i].flags & ~BB_SHADOW);
+ }
+diff --git a/core/src/levels_detail.c b/core/src/levels_detail.c
+new file mode 100644
+index 0000000..0143d1d
+--- /dev/null
++++ b/core/src/levels_detail.c
+@@ -0,0 +1,105 @@
++/* levels_detail.c - the combat detail option inside a level (owner: levels, LV9). See lv_detail.h.
++ * Pure functions: no statics. On the PS1 this is in the combat + levels overlay group
++ * (ps1/tools/ovl_plan.py matches levels_*) and links only when a level calls it. */
++#include "doomo/lv_detail.h"
++#include "doomo/town.h"
++#include "doomo/actor.h"
++
++/* defaults (the Vape Cellar numbers, plan 7.2: GBA awake demons 6 / 8 / 10) */
++static const uint8_t k_awake_def[3] = { 6, 8, 10 };
++/* the header's numbers are GBA numbers; the other platforms multiply (x2 / 2: x1.5 and x2) */
++static const uint8_t k_plat_mul2[LVD_PLATFORMS] = { 2, 3, 4 };
++
++static int mode_index(int mode)
++{
++    return mode == OPT3D_SMOOTH ? 0 : mode == OPT3D_MAX ? 2 : 1;
++}
++
++int lvd_pressure(int cost_pct)
++{
++    if (cost_pct <= 100) return 0;
++    if (cost_pct <= 115) return 1;
++    if (cost_pct <= 140) return 2;
++    return LVD_PRESSURE_MAX;
++}
++
++void lvd_begin(LvDetail *s, int mode)
++{
++    s->level = 0; s->good = 0; s->mode = (uint8_t)mode; s->pad = 0;
++}
++
++void lvd_update(LvDetail *s, int mode, int pressure)
++{
++    if (s->mode != (uint8_t)mode) lvd_begin(s, mode);
++    if (pressure < 0) pressure = 0;
++    if (pressure > LVD_PRESSURE_MAX) pressure = LVD_PRESSURE_MAX;
++    if (pressure > s->level) {
++        s->level++;                     /* one step down at a time */
++        s->good = 0;
++    } else if (pressure < s->level) {
++        if (++s->good >= LVD_RAISE_GOOD) { s->level--; s->good = 0; }
++    } else {
++        s->good = 0;                    /* at the level: the run of good frames starts over */
++    }
++}
++
++int lvd_listed(const DoomoMapExt *x, int kind)
++{
++    int i;
++    if (!x) return 0;
++    for (i = 0; i < LVD_MAX_STEPS; i++)
++        if (x->detail[i] == kind) return 1;
++    return 0;
++}
++
++static int listed_count(const DoomoMapExt *x)
++{
++    int n = 0;
++    if (!x) return 0;
++    while (n < LVD_MAX_STEPS && x->detail[n] != MDET_NONE) n++;
++    return n;
++}
++
++int lvd_awake_cap(const DoomoMapExt *x, int mode, int platform, int level)
++{
++    int mi = mode_index(mode), cap, low;
++    const uint8_t *t = (x && x->awake[0]) ? x->awake : k_awake_def;
++    if (platform < 0 || platform >= LVD_PLATFORMS) platform = LVD_GBA;
++    cap = t[mi] * k_plat_mul2[platform] / 2;
++    low = t[0] * k_plat_mul2[platform] / 2;
++    if (level > 0 && cap > low) {       /* the governor lowers Balanced and Max toward Smooth's cap */
++        cap -= level;
++        if (cap < low) cap = low;
++    }
++    return cap < 1 ? 1 : cap;
++}
++
++void lvd_get(const LvDetail *s, const DoomoMapExt *x, int mode, int platform, LvDetailOut *o)
++{
++    int n = listed_count(x), steps = (mode == OPT3D_SMOOTH ? LVD_SMOOTH_STEPS : 0) + s->level, i;
++    if (s->mode != (uint8_t)mode) steps = mode == OPT3D_SMOOTH ? LVD_SMOOTH_STEPS : 0;   /* stale state */
++    if (steps > n) steps = n;
++    o->drop = 0;
++    for (i = 0; i < steps; i++) o->drop = (uint16_t)(o->drop | (1u << x->detail[i]));
++    o->steps = (uint8_t)steps;
++    o->awake = (uint8_t)lvd_awake_cap(x, mode, platform, s->mode == (uint8_t)mode ? s->level : 0);
++}
++
++int lvd_thing_kept(const DoomoMapExt *x, int mode, int index, int type, int flags, int flags2)
++{
++    int loot, prop;
++    if (!x || mode != OPT3D_SMOOTH) return 1;
++    /* never: anything that carries the level's progress or story */
++    if (flags & (THF_SECRET | THF_BOSS | THF_DORMANT | THF_KILL_EVENT | THF_MACHINE_HEART)) return 1;
++    if (flags2 & (THF2_COLLECT | THF2_ESCORT | THF2_USABLE)) return 1;
++    prop = type >= THING_PROP_TREE && type <= THING_PROP_MAILBOX;
++    switch (type) {
++    case THING_HEALTH_SMALL: case THING_AMMO_BULLETS: case THING_AMMO_SHELLS:
++    case THING_AMMO_CELLS: case THING_AMMO_ROCKETS: case THING_CANDY:
++        loot = 1; break;
++    default: loot = 0; break;           /* keys, armor, big health, scrap, soul orbs, NPCs, demons: kept */
++    }
++    if (loot && lvd_listed(x, MDET_LOOT)) return (index & 1) ? 0 : 1;
++    if (prop && lvd_listed(x, MDET_PROPS)) return (index & 1) ? 0 : 1;
++    return 1;
++}
+diff --git a/core/tests/maps/t9_detail.txt b/core/tests/maps/t9_detail.txt
+new file mode 100644
+index 0000000..63f56d5
+--- /dev/null
++++ b/core/tests/maps/t9_detail.txt
+@@ -0,0 +1,45 @@
++# LV9 test map (core/tests/test_lv_detail.c): a drop list, awake caps and the things the thinning
++# may and may not touch. Not shipped: mapc compiles it into the test binary only.
++format 2
++title "T9 Detail"
++kind dungeon
++sky PASTEL_DAY
++music HAHALAND_DAY
++ambient 8
++view 12
++detail steam,loot,props
++awake 4 6 9
++
++cell # wall=PASTEL_BRICK
++cell . floor=WOOD_FLOOR ceil=CLOUD_PUFF ch=14
++cell p like=. thing=PLAYER_START
++cell x like=. flags=exit
++
++grid
++##############
++#p...........#
++#............#
++#...........x#
++##############
++end
++
++# loot (every second one is thinned under Smooth)
++thing 1 1 AMMO_BULLETS
++thing 2 1 AMMO_SHELLS
++thing 3 1 CANDY
++thing 4 1 HEALTH_SMALL
++thing 5 1 AMMO_CELLS
++# never thinned
++thing 6 1 KEY_RED
++thing 7 1 KEY_BLUE
++thing 8 1 CANDY tflags2=collect
++thing 9 1 AMMO_ROCKETS tflags=secret
++thing 10 1 SCRAP tflags2=usable arg=1
++thing 11 1 ARMOR
++thing 12 1 SOUL_ORB
++# props (every second one is thinned)
++thing 1 2 PROP_TREE
++thing 2 2 PROP_LAMP
++thing 3 2 PROP_BENCH
++thing 4 2 PROP_BARREL
++thing 5 2 IMPLING
+diff --git a/core/tests/test_lv_detail.c b/core/tests/test_lv_detail.c
+new file mode 100644
+index 0000000..ca3c968
+--- /dev/null
++++ b/core/tests/test_lv_detail.c
+@@ -0,0 +1,270 @@
++/* test_lv_detail.c - LV9 (owner: levels): the combat detail option inside a level (core/src/levels_detail.c)
++ * on the test map core/tests/maps/t9_detail.txt (`detail steam,loot,props`, `awake 4 6 9`): every mode at
++ * every pressure, the hysteresis, the awake caps per platform, the loot thinning that never touches a key
++ * or a quest item, determinism, and the v1 map (no ext) staying untouched. */
++#include "test.h"
++#include "doomo/lv_detail.h"
++#include "doomo/actor.h"
++
++#define IS_DEMON(t) ((t) >= THING_IMPLING && (t) <= THING_LORD_VAPULA)
++extern const DoomoMapExt map_ext_t9_detail;
++#define X (&map_ext_t9_detail)
++#define BIT(k) (1u << (k))
++
++static const int k_mode[3] = { OPT3D_SMOOTH, OPT3D_BALANCED, OPT3D_MAX };
++
++TEST(lvd_mapc_emits_the_header)
++{
++    CHECK_EQ(X->detail[0], MDET_STEAM);
++    CHECK_EQ(X->detail[1], MDET_LOOT);
++    CHECK_EQ(X->detail[2], MDET_PROPS);
++    CHECK_EQ(X->awake[0], 4);
++    CHECK_EQ(X->awake[1], 6);
++    CHECK_EQ(X->awake[2], 9);
++    CHECK_EQ(sizeof(LvDetail), 4);
++}
++
++TEST(lvd_pressure_from_cost)
++{
++    CHECK_EQ(lvd_pressure(0), 0);
++    CHECK_EQ(lvd_pressure(100), 0);
++    CHECK_EQ(lvd_pressure(101), 1);
++    CHECK_EQ(lvd_pressure(115), 1);
++    CHECK_EQ(lvd_pressure(116), 2);
++    CHECK_EQ(lvd_pressure(140), 2);
++    CHECK_EQ(lvd_pressure(141), 3);
++    CHECK_EQ(lvd_pressure(9999), LVD_PRESSURE_MAX);
++}
++
++/* the held level goes up one step an update and comes down only after LVD_RAISE_GOOD good updates */
++TEST(lvd_hysteresis)
++{
++    LvDetail s;
++    int i, k;
++    lvd_begin(&s, OPT3D_BALANCED);
++    lvd_update(&s, OPT3D_BALANCED, 3);
++    CHECK_EQ(s.level, 1);                       /* one step at a time */
++    lvd_update(&s, OPT3D_BALANCED, 3);
++    CHECK_EQ(s.level, 2);
++    lvd_update(&s, OPT3D_BALANCED, 3);
++    CHECK_EQ(s.level, 3);
++    lvd_update(&s, OPT3D_BALANCED, 3);
++    CHECK_EQ(s.level, 3);                       /* the top */
++    for (i = 0; i < LVD_RAISE_GOOD - 1; i++) lvd_update(&s, OPT3D_BALANCED, 0);
++    CHECK_EQ(s.level, 3);                       /* not yet */
++    lvd_update(&s, OPT3D_BALANCED, 0);
++    CHECK_EQ(s.level, 2);                       /* one step back, not all */
++    /* a bad frame in the run of good ones starts the run over */
++    for (i = 0; i < LVD_RAISE_GOOD - 1; i++) lvd_update(&s, OPT3D_BALANCED, 0);
++    lvd_update(&s, OPT3D_BALANCED, 2);          /* at the level: resets the run */
++    for (i = 0; i < LVD_RAISE_GOOD - 1; i++) lvd_update(&s, OPT3D_BALANCED, 0);
++    CHECK_EQ(s.level, 2);
++    lvd_update(&s, OPT3D_BALANCED, 0);
++    CHECK_EQ(s.level, 1);
++    /* an alternating signal never flickers: over / under every other frame holds the level */
++    lvd_begin(&s, OPT3D_MAX);
++    lvd_update(&s, OPT3D_MAX, 2); lvd_update(&s, OPT3D_MAX, 2);
++    CHECK_EQ(s.level, 2);
++    for (k = 0; k < 200; k++) {
++        lvd_update(&s, OPT3D_MAX, (k & 1) ? 0 : 2);
++        CHECK_EQ(s.level, 2);
++    }
++    /* out-of-range pressure is clamped */
++    lvd_begin(&s, OPT3D_MAX);
++    for (k = 0; k < 10; k++) lvd_update(&s, OPT3D_MAX, 99);
++    CHECK_EQ(s.level, LVD_PRESSURE_MAX);
++    lvd_update(&s, OPT3D_MAX, -5);
++    CHECK(s.level <= LVD_PRESSURE_MAX);
++}
++
++TEST(lvd_mode_change_restarts)
++{
++    LvDetail s;
++    lvd_begin(&s, OPT3D_MAX);
++    lvd_update(&s, OPT3D_MAX, 3); lvd_update(&s, OPT3D_MAX, 3);
++    CHECK_EQ(s.level, 2);
++    lvd_update(&s, OPT3D_SMOOTH, 0);
++    CHECK_EQ(s.level, 0);
++    CHECK_EQ(s.mode, OPT3D_SMOOTH);
++}
++
++/* every mode x every held level: the dropped effects are a prefix of the list, in order */
++TEST(lvd_every_mode_every_pressure)
++{
++    int m, lvl, p;
++    for (m = 0; m < 3; m++) {
++        int prev_steps = -1, prev_cap = 1000;
++        for (lvl = 0; lvl <= LVD_PRESSURE_MAX; lvl++) {
++            LvDetail s;
++            LvDetailOut o;
++            int want = (k_mode[m] == OPT3D_SMOOTH ? LVD_SMOOTH_STEPS : 0) + lvl, i;
++            unsigned mask = 0;
++            lvd_begin(&s, k_mode[m]);
++            for (i = 0; i < lvl; i++) lvd_update(&s, k_mode[m], lvl);
++            CHECK_EQ(s.level, lvl);
++            lvd_get(&s, X, k_mode[m], LVD_GBA, &o);
++            if (want > 3) want = 3;
++            CHECK_EQ(o.steps, want);
++            for (i = 0; i < want; i++) mask |= BIT(X->detail[i]);
++            CHECK_EQ(o.drop, mask);
++            CHECK(o.steps >= prev_steps);             /* more pressure never gives detail back */
++            CHECK(o.awake <= prev_cap);               /* nor demons */
++            CHECK(o.awake >= X->awake[0]);            /* never below Smooth's own cap */
++            CHECK(o.awake <= X->awake[m]);            /* never above the mode's */
++            prev_steps = o.steps; prev_cap = o.awake;
++        }
++        /* the pressure helper feeds the same table */
++        for (p = 0; p <= LVD_PRESSURE_MAX; p++) CHECK(lvd_pressure(100 + p * 20) <= LVD_PRESSURE_MAX);
++    }
++    /* Balanced and Max with no pressure drop nothing; Smooth drops the first two named */
++    {
++        LvDetail s;
++        LvDetailOut o;
++        lvd_begin(&s, OPT3D_BALANCED);
++        lvd_get(&s, X, OPT3D_BALANCED, LVD_GBA, &o);
++        CHECK_EQ(o.drop, 0);
++        CHECK_EQ(o.awake, 6);
++        lvd_begin(&s, OPT3D_MAX);
++        lvd_get(&s, X, OPT3D_MAX, LVD_GBA, &o);
++        CHECK_EQ(o.drop, 0);
++        CHECK_EQ(o.awake, 9);
++        lvd_begin(&s, OPT3D_SMOOTH);
++        lvd_get(&s, X, OPT3D_SMOOTH, LVD_GBA, &o);
++        CHECK_EQ(o.drop, BIT(MDET_STEAM) | BIT(MDET_LOOT));
++        CHECK_EQ(o.awake, 4);
++    }
++}
++
++TEST(lvd_defaults_and_platforms)
++{
++    DoomoMapExt plain = *X;
++    LvDetail s;
++    LvDetailOut o;
++    memset(plain.awake, 0, sizeof(plain.awake));
++    memset(plain.detail, 0, sizeof(plain.detail));
++    CHECK_EQ(lvd_awake_cap(&plain, OPT3D_SMOOTH, LVD_GBA, 0), 6);       /* the Vape Cellar numbers */
++    CHECK_EQ(lvd_awake_cap(&plain, OPT3D_BALANCED, LVD_GBA, 0), 8);
++    CHECK_EQ(lvd_awake_cap(&plain, OPT3D_MAX, LVD_GBA, 0), 10);
++    CHECK_EQ(lvd_awake_cap(&plain, OPT3D_BALANCED, LVD_PS1, 0), 12);
++    CHECK_EQ(lvd_awake_cap(&plain, OPT3D_BALANCED, LVD_DC, 0), 16);
++    CHECK_EQ(lvd_awake_cap(X, OPT3D_MAX, LVD_PS1, 0), 13);              /* 9 x 3 / 2 */
++    CHECK_EQ(lvd_awake_cap(NULL, OPT3D_MAX, LVD_GBA, 0), 10);           /* a v1 map: the defaults */
++    CHECK_EQ(lvd_awake_cap(X, OPT3D_MAX, 99, 0), 9);                    /* unknown platform: the GBA's */
++    /* the governor lowers Max toward Smooth's cap and stops there */
++    CHECK_EQ(lvd_awake_cap(X, OPT3D_MAX, LVD_GBA, 1), 8);
++    CHECK_EQ(lvd_awake_cap(X, OPT3D_MAX, LVD_GBA, 3), 6);
++    CHECK_EQ(lvd_awake_cap(&plain, OPT3D_MAX, LVD_GBA, 3), 7);
++    CHECK_EQ(lvd_awake_cap(&plain, OPT3D_MAX, LVD_GBA, 9), 6);
++    CHECK_EQ(lvd_awake_cap(&plain, OPT3D_SMOOTH, LVD_GBA, 3), 6);       /* Smooth is already the floor */
++    /* no drop list: nothing is ever dropped, in any mode or pressure */
++    lvd_begin(&s, OPT3D_SMOOTH);
++    lvd_update(&s, OPT3D_SMOOTH, 3); lvd_update(&s, OPT3D_SMOOTH, 3); lvd_update(&s, OPT3D_SMOOTH, 3);
++    lvd_get(&s, &plain, OPT3D_SMOOTH, LVD_GBA, &o);
++    CHECK_EQ(o.drop, 0);
++    CHECK_EQ(o.steps, 0);
++    /* a v1 map (no ext) */
++    lvd_get(&s, NULL, OPT3D_SMOOTH, LVD_GBA, &o);
++    CHECK_EQ(o.drop, 0);
++    CHECK_EQ(o.awake, 6);
++    CHECK_EQ(lvd_listed(NULL, MDET_LOOT), 0);
++    CHECK_EQ(lvd_listed(X, MDET_LOOT), 1);
++    CHECK_EQ(lvd_listed(X, MDET_RAIN), 0);
++}
++
++/* a stale state (the option changed since the last update) reads as the new mode's start */
++TEST(lvd_stale_state)
++{
++    LvDetail s;
++    LvDetailOut o;
++    lvd_begin(&s, OPT3D_MAX);
++    lvd_update(&s, OPT3D_MAX, 3); lvd_update(&s, OPT3D_MAX, 3); lvd_update(&s, OPT3D_MAX, 3);
++    lvd_get(&s, X, OPT3D_BALANCED, LVD_GBA, &o);
++    CHECK_EQ(o.drop, 0);
++    CHECK_EQ(o.awake, 6);
++}
++
++static int kept(int mode, int i)
++{
++    const DoomoThing *t = &X->def->things[i];
++    return lvd_thing_kept(X, mode, i, t->type, t->flags, map_thing_flags2(X, i));
++}
++
++/* the loot rule: Smooth thins ammo, candy, small health and props; nothing else, in no other mode */
++TEST(lvd_loot_never_drops_a_key_or_a_quest_item)
++{
++    const DoomoMapDef *d = X->def;
++    int i, thinned = 0, m, props_thinned = 0;
++    for (m = 0; m < 3; m++)
++        if (k_mode[m] != OPT3D_SMOOTH)
++            for (i = 0; i < d->thing_count; i++) CHECK_EQ(kept(k_mode[m], i), 1);
++    for (i = 0; i < d->thing_count; i++) {
++        const DoomoThing *t = &d->things[i];
++        int f2 = map_thing_flags2(X, i), k = kept(OPT3D_SMOOTH, i);
++        if (!k) {
++            thinned++;
++            if (t->type >= THING_PROP_TREE && t->type <= THING_PROP_MAILBOX) props_thinned++;
++            CHECK(t->type != THING_KEY_RED && t->type != THING_KEY_BLUE);
++            CHECK(t->type != THING_SCRAP && t->type != THING_SOUL_ORB && t->type != THING_ARMOR);
++            CHECK(!(t->flags & THF_SECRET));
++            CHECK(!(f2 & (THF2_COLLECT | THF2_ESCORT | THF2_USABLE)));
++            CHECK(!IS_DEMON(t->type));
++        }
++        if (t->type == THING_KEY_RED || t->type == THING_KEY_BLUE) CHECK_EQ(k, 1);
++        if (f2 & THF2_COLLECT) CHECK_EQ(k, 1);
++        if (f2 & THF2_USABLE) CHECK_EQ(k, 1);
++        if (t->flags & THF_SECRET) CHECK_EQ(k, 1);
++        if (t->type == THING_PLAYER_START) CHECK_EQ(k, 1);
++    }
++    CHECK(thinned >= 4);                  /* it does thin something (loot and props) */
++    CHECK(props_thinned >= 1);
++    /* the rule alone, for every type and every flag: never a key, never a flagged thing, whatever the index */
++    for (m = 0; m < 2; m++) {
++        int type, idx;
++        for (type = 0; type < THING_COUNT; type++)
++            for (idx = 0; idx < 4; idx++) {
++                if (type == THING_KEY_RED || type == THING_KEY_BLUE)
++                    CHECK_EQ(lvd_thing_kept(X, OPT3D_SMOOTH, idx, type, 0, 0), 1);
++                CHECK_EQ(lvd_thing_kept(X, OPT3D_SMOOTH, idx, type, THF_SECRET, 0), 1);
++                CHECK_EQ(lvd_thing_kept(X, OPT3D_SMOOTH, idx, type, THF_BOSS, 0), 1);
++                CHECK_EQ(lvd_thing_kept(X, OPT3D_SMOOTH, idx, type, THF_DORMANT, 0), 1);
++                CHECK_EQ(lvd_thing_kept(X, OPT3D_SMOOTH, idx, type, THF_KILL_EVENT, 0), 1);
++                CHECK_EQ(lvd_thing_kept(X, OPT3D_SMOOTH, idx, type, THF_MACHINE_HEART, 0), 1);
++                CHECK_EQ(lvd_thing_kept(X, OPT3D_SMOOTH, idx, type, 0, THF2_COLLECT), 1);
++                CHECK_EQ(lvd_thing_kept(X, OPT3D_SMOOTH, idx, type, 0, THF2_ESCORT), 1);
++                CHECK_EQ(lvd_thing_kept(X, OPT3D_SMOOTH, idx, type, 0, THF2_USABLE), 1);
++                if (IS_DEMON(type) || type == THING_NPC)
++                    CHECK_EQ(lvd_thing_kept(X, OPT3D_SMOOTH, idx, type, 0, 0), 1);
++            }
++    }
++    /* a v1 map: nothing is thinned even in Smooth */
++    CHECK_EQ(lvd_thing_kept(NULL, OPT3D_SMOOTH, 1, THING_CANDY, 0, 0), 1);
++    {   /* a level that lists neither loot nor props keeps everything */
++        DoomoMapExt none = *X;
++        memset(none.detail, 0, sizeof(none.detail));
++        none.detail[0] = MDET_STEAM;
++        CHECK_EQ(lvd_thing_kept(&none, OPT3D_SMOOTH, 1, THING_CANDY, 0, 0), 1);
++        CHECK_EQ(lvd_thing_kept(&none, OPT3D_SMOOTH, 1, THING_PROP_TREE, 0, 0), 1);
++    }
++}
++
++TEST(lvd_is_deterministic)
++{
++    int run, i, m;
++    unsigned h[2] = { 0, 0 };
++    for (run = 0; run < 2; run++) {
++        LvDetail s;
++        LvDetailOut o;
++        unsigned x = 2166136261u;
++        for (m = 0; m < 3; m++) {
++            lvd_begin(&s, k_mode[m]);
++            for (i = 0; i < 400; i++) {
++                lvd_update(&s, k_mode[m], lvd_pressure(80 + (i * 7) % 90));
++                lvd_get(&s, X, k_mode[m], LVD_PS1, &o);
++                x = (x ^ o.drop) * 16777619u; x = (x ^ o.awake) * 16777619u; x = (x ^ o.steps) * 16777619u;
++            }
++        }
++        for (i = 0; i < X->def->thing_count; i++) x = (x ^ (unsigned)kept(OPT3D_SMOOTH, i)) * 16777619u;
++        h[run] = x;
++    }
++    CHECK_EQ(h[0], h[1]);
++}
+diff --git a/tools/mapc.py b/tools/mapc.py
+index 2e965ce..ca260b9 100644
+--- a/tools/mapc.py
++++ b/tools/mapc.py
+@@ -168,6 +168,8 @@ GBA_MAX_H = 40
+ GBA_ROOFED_PCT = 75
+ GBA_SKY_SPAN = 8
+ GBA_VIEW = (12, 16)
++GBA_AWAKE = (6, 8, 10)      # 7.2: awake demons Smooth / Balanced / Max detail
++AWAKE_RANGE = (1, 48)
+ GBA_THINGS = 120
+ GBA_ROOM_TEX = 4            # dominant textures per room
+ GBA_ROOM_TEX_PCT = 75       # ... must cover this share of the room's surfaces
+@@ -294,7 +296,7 @@ def parse_yes_no(toks, kw):
+ 
+ # ---------------------------------------------------------------------------
+ # format v2 statements
+-V2_KEYWORDS = ("format", "fog", "view", "gravity", "dark", "note", "gba", "detail", "hero",
++V2_KEYWORDS = ("format", "fog", "view", "gravity", "dark", "note", "gba", "detail", "awake", "hero",
+                "zone", "path", "swap", "texbank", "on")
+ 
+ 
+@@ -478,6 +480,13 @@ def parse_v2(m, kw, toks, lineno):
+         if len(set(names)) != len(names):
+             raise MapError("detail names something twice")
+         hdr["detail"] = [DETAILS[n] for n in names]
++    elif kw == "awake":
++        if len(toks) != 4:
++            raise MapError("awake SMOOTH BALANCED MAX (awake demon caps, %d..%d, not falling)" % AWAKE_RANGE)
++        caps = tuple(parse_int(t, AWAKE_RANGE[0], AWAKE_RANGE[1], "awake") for t in toks[1:])
++        if not caps[0] <= caps[1] <= caps[2]:
++            raise MapError("awake SMOOTH BALANCED MAX must not fall (Smooth <= Balanced <= Max)")
++        hdr["awake"] = caps
+     elif kw == "hero":
+         if len(toks) != 3:
+             raise MapError("hero LOOK LOADOUT (two numbers 0..255)")
+@@ -874,6 +883,9 @@ def gba_rules(m, w, h, cells, things):
+         out.append("has no 'view N': a GBA level sets its view distance (%d..%d cells)" % GBA_VIEW)
+     elif not GBA_VIEW[0] <= hdr["view"] <= GBA_VIEW[1]:
+         out.append("has view %d, the GBA needs %d..%d" % (hdr["view"], GBA_VIEW[0], GBA_VIEW[1]))
++    if "awake" in hdr and any(c > g for c, g in zip(hdr["awake"], GBA_AWAKE)):
++        out.append("has awake %s, the GBA takes at most %s" % (
++            " ".join(map(str, hdr["awake"])), " ".join(map(str, GBA_AWAKE))))
+     if len(things) > GBA_THINGS:
+         out.append("has %d things, the GBA takes at most %d" % (len(things), GBA_THINGS))
+     for room in rooms_of(w, h, cells):
+@@ -1127,7 +1139,9 @@ def emit_v2(m, things):
+         ("swaps_" + name) if swaps else "0", ("swapcells_" + name) if swaps else "0"))
+     out.append("    %s, %s,\n" % (
+         ("texbank_" + name) if bank else "0", ("tflags2_" + name) if has_f2 else "0"))
+-    out.append("    %s, %d   /* script, script bytes */\n" % (("script_" + name) if script else "0", len(script)))
++    awk = hdr.get("awake", (0, 0, 0))
++    out.append("    %s, %d,   /* script, script bytes */\n" % (("script_" + name) if script else "0", len(script)))
++    out.append("    {%d, %d, %d}   /* awake caps: Smooth, Balanced, Max (0 = the defaults) */\n" % awk)
+     out.append("};\n")
+     return "".join(out)
+ 
+diff --git a/tools/tests/test_mapc.py b/tools/tests/test_mapc.py
+index 03b38bb..eab3e4f 100644
+--- a/tools/tests/test_mapc.py
++++ b/tools/tests/test_mapc.py
+@@ -142,6 +142,28 @@ class TestHeaderKeys(V2Test):
+         self.refuse(build(head="detail bogus\n"), "unknown detail")
+         self.refuse(build(head="detail far,far\n"), "twice")
+ 
++    def test_new_detail_kinds(self):
++        c = self.ok(build(head="detail steam,rain,loot\n"))
++        self.assertIn("/* detail, hero look, hero loadout */", c)
++        self.ok(build(head="detail crowd,decals,props\n"))
++
++    def test_awake(self):
++        c = self.ok(build(head="awake 4 6 9\n"))
++        self.assertIn("{4, 6, 9}", c)
++        self.assertIn("awake caps", c)
++        self.ok(build(head="awake 6 6 6\n"))
++        self.refuse(build(head="awake 4 6\n"), "awake SMOOTH BALANCED MAX")
++        self.refuse(build(head="awake 4 6 9 9\n"), "awake SMOOTH BALANCED MAX")
++        self.refuse(build(head="awake 0 6 9\n"), "awake")
++        self.refuse(build(head="awake 4 6 49\n"), "awake")
++        self.refuse(build(head="awake x 6 9\n"), "not a number")
++        self.refuse(build(head="awake 8 6 9\n"), "must not fall")
++        self.refuse(build(head="awake 4 6 9\nawake 5 6 9\n"), "given twice")
++
++    def test_no_awake_key_emits_zeros(self):
++        c = self.ok(build(head="detail far\n"))
++        self.assertIn("{0, 0, 0}", c)
++
+     def test_hero(self):
+         self.refuse(build(head="hero 1\n"), "hero LOOK LOADOUT")
+         self.refuse(build(head="hero 1 300\n"), "out of range")
+@@ -163,6 +185,13 @@ class TestGbaBudgets(V2Test):
+     def test_needs_a_view_distance(self):
+         self.refuse(build(head="gba yes\n"), "no 'view N'")
+ 
++    def test_awake_caps_on_the_gba(self):
++        self.ok(build(head=self.GOOD + "awake 6 8 10\n"))
++        self.refuse(build(head=self.GOOD + "awake 7 8 10\n"), "has awake 7 8 10")
++        self.refuse(build(head=self.GOOD + "awake 6 9 10\n"), "the GBA takes at most 6 8 10")
++        self.refuse(build(head=self.GOOD + "awake 6 8 11\n"), "the GBA takes at most")
++        self.ok(build(head="view 14\nawake 12 16 24\n"))      # not a GBA map: the numbers are free
++
+     def test_view_distance_range(self):
+         self.refuse(build(head="view 20\ngba yes\n"), "view 20")
+         self.refuse(build(head="view 8\ngba yes\n"), "view 8")
+@@ -412,7 +441,7 @@ class TestScripts(V2Test):
+         self.assertIn("script_mapc_test, 8", c)
+ 
+     def test_a_map_without_on_has_no_script(self):
+-        self.assertIn("0, 0   /* script, script bytes */", self.ok(build(extra="zone 1 1 3 3 fog arg=6\n")))
++        self.assertIn("0, 0,   /* script, script bytes */", self.ok(build(extra="zone 1 1 3 3 fog arg=6\n")))
+ 
+     def test_every_event_and_action_compiles(self):
+         extra = (self.SW + "zone 1 1 3 3 safe tag=5\npath 3 1,1 4,1\nthing 2 2 IMPLING\n"
+-- 
+2.43.0
+

@@ -1,0 +1,507 @@
+diff --git a/Makefile b/Makefile
+index ec111e5..4b0ba28 100644
+--- a/Makefile
++++ b/Makefile
+@@ -231,6 +231,7 @@ dc-host-test: need-host
+ 	$(MAKE) -C dc/tests/vmu $(J) test
+ 	$(MAKE) -C dc/tests/audio $(J) test
+ 	$(MAKE) -C dc/tests/fmv test
++	$(MAKE) -C dc check-breachdisc
+ 
+ need-dc:
+ ifneq ($(DC_WHY),)
+diff --git a/core/data/maps/README.md b/core/data/maps/README.md
+index e8e17fa..26db4b2 100644
+--- a/core/data/maps/README.md
++++ b/core/data/maps/README.md
+@@ -269,6 +269,17 @@ and soft locks (a reachable state from which no exit is reachable). Mechanic
+ kits (stamp doors, laid bricks, named rooms: LV3-LV5) add their own edges
+ through the `step` and `extra` hooks. There is one test map per edge kind.
+ 
++## Level packs (LV8)
++
++`tools/packbreach.py` turns a compiled map into a **pack** (`BRPK` v1) and the packs into `BREACH.BIN`; `core/src/breachpack.c` reads them
++(on the host, the PS1 and the Dreamcast). Layout in `core/include/doomo/breachpack.h`, explained in docs/LEVELS.md "Level packs".
++
++* `core/data/maps/platforms.txt` is the platform manifest: `level ID [map=NAME] [gba yes|no] [ps1 yes|no] [dc yes|no]`. It is not a map
++  (mapc and levelcheck skip it). Its 24 lines are the new levels; the 12 shipped maps are not in it.
++* A `texbank N NAME` map takes its textures from `core/data/texbanks/MAPNAME.bank` (slot k of the bank is texture id 56 + k).
++* Optional `MAPNAME.strings` next to the map: the level's strings, one per line (`#` comments), at most 64, 4 KB.
++* `python3 tools/packbreach.py --check` builds every pack in memory and reads each one back against the compiled map.
++
+ ## Example
+ 
+ ```
+diff --git a/docs/LEVELS.md b/docs/LEVELS.md
+index b2938f7..295db25 100644
+--- a/docs/LEVELS.md
++++ b/docs/LEVELS.md
+@@ -492,3 +492,56 @@ sample. No level uses a bank yet.
+   banks (they need the same pack format with sprites), the 6 songs and the SFX (47,793 of 49,152 B used:
+   an owner decision), and the GBA and PS1 readers of the texture bank.
+ 
++
++## Level packs (LV8, plan 8.8)
++
++A level that `mapc` compiled can be delivered as one **pack**. The PS1 and the Dreamcast read the 24 new levels from `BREACH.BIN` on
++the disc; the GBA keeps its 7 as const ROM data. Source of truth: `core/include/doomo/breachpack.h` (byte layout and API), the writer
++`tools/packbreach.py`, the reader `core/src/breachpack.c`.
++
++* **Format `BRPK` v1**, little endian, every field written and read one by one (no struct copy: pointer sizes differ between the host,
++  the MIPS and the SH4). Header 80 B (magic, version 1, 12 sections, total length, crc32 of bytes 16..end, then w, h, kind, sky, music,
++  ambient, the `MAPX_*` flags, fog, view, gravity, note, `detail[3]`, hero look / loadout, the counts, the title as the name), then a
++  table of 12 sections of 16 B (id, encoding raw / LZ, offset, stored length, raw length). Sections, each 4-aligned: cells (8 B each; LZ
++  with the save / PS1 codec of `ps1/tools/packart.py` when that is smaller), things (6), tflags2 (1 per thing or none), zones (7), paths
++  (6), path points (2), swap sets (6), swap cells (10), script bytes, text, texture bank, sprite bank. The **text** section is `u16`
++  count, `u16` offsets, then NUL-terminated strings (the level's strings, from an optional `NAME.strings` next to the map, at most 64,
++  4 KB). The **texture bank** section is the 12-byte names of the ids 56.. (`texbank N NAME`; empty = unused id), then the `LVTB` blob of
++  `tools/texbank.py` unchanged (`core/data/texbanks/NAME.bank` for the map NAME; id 56 + k answers from slot k, so a named id must be
++  that slot: the writer and `bp_open` refuse anything else). The **sprite bank** section is reserved for LV7b and empty in v1.
++* **Limits.** A pack is at most 96 KB; what the reader keeps resident (tables + text, `bp_tables_bytes`) at most 12 KB; things at most
++  256; the other counts are the `DOOMO_*` limits of `map.h`. `packbreach.py` and the reader both refuse a pack over them.
++* **Reader** (`breachpack.h`; no allocation, no static state, state lives in the caller's `BpLevel` and arena): `bp_head` validates the
++  header and the section table (magic, version, section count, every section inside the pack, no overlap, every length equal to its
++  count, counts over their limits, fields in range); `bp_crc_check` / `bp_open` check the crc; `bp_load` (memory, host and Dreamcast) and
++  `bp_load_mode` (any `BpRead` callback: CD sectors on the PS1) fill a `DoomoMapDef` + `DoomoMapExt` whose pointers lie in the arena
++  (cells decoded into the arena, into a caller's buffer, or left packed as `LZMC` for the PS1); `bp_bin_load` does the directory, the
++  header, the crc and the load for a level id of a `BREACH.BIN`. Contents are checked while they are copied (a thing, zone, path point
++  or swap cell outside the map, an unknown zone / path / swap kind, a bad text table are refused). Every refusal has a test
++  (`core/tests/test_breachpack.c`: short, magic, version, section out of range, overlap, counts over the limits, bad crc and a flipped
++  byte anywhere, wrong sizes, bad encodings, a corrupt LZ stream, small or misaligned arena, failing reads, bad directory).
++* **`BREACH.BIN`**: sector 0 is the directory (`BRBN`, version, count, total length, then up to 24 entries of level id, platform mask,
++  offset, length, crc; the crc is the pack's own), then every pack on a 2048-byte sector. `python3 tools/packbreach.py [--platform
++  ps1|dc] --out-dir DIR | --bin FILE [--check] [MAP.txt ...]`: with no map it packs the levels of the manifest whose map file exists;
++  `--check` rebuilds everything in memory, reads each pack back with the independent Python reader and compares it to the mapc model.
++* **Manifest** `core/data/maps/platforms.txt`: `level ID [map=NAME] [gba yes|no] [ps1 yes|no] [dc yes|no]` (defaults gba no, ps1 yes,
++  dc yes). The 24 lines are the plan's HB8-HB16 and N1-N15; the 7 of plan 7.1 (HB8, HB9, HB13, HB15, N1, N7, N14) are `gba yes`. The
++  line's index is the **level id** in `BREACH.BIN` (default chosen by Claude (LEVELS-2), owner may override; the LV0 registry maps its own ids
++  to it). `map=NAME` names the map file once a level has a real name; a line without a map file is skipped. `gba yes` here and in the
++  map's header must agree (`packbreach.py --check`). `mapc` wraps the generated file of a manifest level in `#if
++  !defined(DOOMO_PLATFORM_PS1) [&& !defined(DOOMO_PLATFORM_GBA)]`: the PS1 never links the const data (it uses the pack) and the GBA links
++  it only with `gba yes`. The 12 shipped maps are not in the manifest and their generated files are byte for byte what they were
++  (`make -C core check-gen`).
++* **PS1** (`ps1/src/breachdisc.c`, docs/PS1.md "LV8"): reader and loader are code of the combat + levels overlay group
++  (`ovl_plan.py`: `breach(pack|disc)`), never resident; the level lives in the core's 12 KB scene scratch block; the cells stay packed
++  as `LZMC` and `map_def_cells()` decodes them into the live map; the texture bank's frame 0 is uploaded to the pinned slots 72..79.
++  Option `-DDOOMO_BREACH_BIN=ON` (default OFF until a first new level exists).
++* **Dreamcast** (`dc/src/breachdisc.c`): `plat_breach_level(id, &def, &ext)` reads `/cd/BREACH.BIN` through the KOS file calls and the
++  core reader (`make -C dc BREACH=1`); the bank is activated with `texbank_activate`. Host test: `make -C dc check-breachdisc` (part of
++  `make dc-host-test`). The on-hardware step (a pack from a real GD-ROM on Flycast or a console) waits for the first new level: there is
++  nothing to load yet.
++* **GBA** (`gba/tools/memreport.py`): the manifest decides what the GBA build compiles; `make -C gba` prints `levels ROM` (map tables of
++  the maps the build carries, from `tools/levelcheck.py`) and `levels EWRAM / IWRAM` (the levels objects in the linker map; the pack
++  reader is linked out of the ROM).
++* **Not here:** the sprite bank content, songs, any new level, animated bank frames on the PS1 (frame 0 only), the level select calling
++  `plat_breach_level` (LV0 / the first level package).
+diff --git a/docs/design/held/OWNER_DECISIONS.md b/docs/design/held/OWNER_DECISIONS.md
+index e446525..5199d82 100644
+--- a/docs/design/held/OWNER_DECISIONS.md
++++ b/docs/design/held/OWNER_DECISIONS.md
+@@ -154,3 +154,4 @@
+   Owner, same day: "like being able to edit relations as well, like in the Create a Sim of the original games". The household view gets a relationship editor like The Sims 2 / 3 Create a Sim: pick two members and set how they are related (spouse / partner, fiance, parent / child, step-parent, sibling, step-sibling, grandparent / grandchild, aunt-uncle / niece-nephew, cousin, roommate, pet owner / pet), with the reverse side filled in automatically (set A as B's mother and B becomes A's child) and a family tree preview; also starting feelings toward other citizens (friend, best friend, rival, crush for adults only, enemy) where the sim has those relationships. The kid rules bind it: spouse, partner, fiance and crush only between adults, never with or between minors; an age gap check like The Sims (a parent older than the child).
+ - HOUSEHOLDS defaults (2026-11-15, default chosen by Claude (HOUSEHOLDS), owner may override; plan: `docs/design/HOUSEHOLDS_PLAN.md`): the player's household has room for 20 from the start on every platform (the 3 / 10 / 20 tiers stop limiting it); other households hold residents only (pool ids 1001..1020 stay the player's); up to 24 residents' households and 32 relation rows each, saved in a new `HOUS` chunk (the `LIFE` chunk is full); a new person takes a free resident place, else a low-friendship adult who is in no household moves away (never a minor, a story citizen or the avatar); a minor is never a parent, partner, spouse, fiance or crush and never an adult's roommate; feelings are town-graph edges. Memory: about 3.9 KB GBA EWRAM (of CREATOR's 6 KB), 3.5 KB PS1 resident from the reserve (asked of the coordinator; if refused, 12 households on the PS1).
+ - BOREAGOTCHI FAMILIES (user 2026-11-15): "make sure to find a way to include their / your own Boreagotchis having their own family members, with eight as their cap". Every Boreagotchi (the player's and each resident's) can have a family of up to 8 pets (parents, siblings, offspring, partner; pet-only relations), made and edited in the creator's household view next to the people, shown in the household, using the pet look and care that exist (pet*.c). Defaults chosen by Claude (owner may override): a pet family member is a small pet record (look seed, name, relation, a few care stats), not a resident; the cost is reported per platform and fits the shares (if the PS1 cannot hold 8 per pet for every household at once, the plan says how many pet families can exist at once and the creator says so clearly at the cap); kid and content rules apply as for pets today. Owner: the HOUSEHOLDS stream (cross-stream into pet code, small and marked).
++- LV8 defaults (2026-11-15, default chosen by Claude (LEVELS-2), owner may override; plan: `docs/design/levels/LEVELS_EXPANSION_PLAN.md` 7.1, 8.8, 9): (1) the **level id** in `BREACH.BIN` is the 0-based line of the level in `core/data/maps/platforms.txt` (the 24 lines are HB8-HB16 then N1-N15; the LV0 registry maps its own ids to it); (2) a level's pack and the manifest decide the platforms: the 7 of plan 7.1 are `gba yes`, every level is on the PS1 and the Dreamcast; (3) a pack's text section holds the level's own strings (at most 64, 4 KB); the other texts stay in the story / talk packs; (4) the PS1 pins at most 8 bank textures (frame 0 of each; animated bank frames are not shown on the PS1 yet); (5) the PS1 level arena is the core's 12 KB scene scratch (no resident byte), so tables + text + the packed cells must fit about 9 KB there; (6) `DOOMO_BREACH_BIN` (PS1 CMake option, Dreamcast `make BREACH=1`) is OFF until a first new level exists, so the shipped discs do not change.
+diff --git a/ps1/CMakeLists.txt b/ps1/CMakeLists.txt
+index ded9a58..7a480c4 100644
+--- a/ps1/CMakeLists.txt
++++ b/ps1/CMakeLists.txt
+@@ -113,6 +113,37 @@ if(DOOMO_CORE AND DOOMO_PACK_FILE)
+ 	message(STATUS "doomogachi: content pack ${DOOMO_PACK_FILE} -> PACK.DMP")
+ endif()
+ 
++# LV8: the level packs on the disc. OFF until a first new level exists, so the shipped disc does not change:
++#   cmake -DDOOMO_BREACH_BIN=ON ...   builds BREACH.BIN with tools/packbreach.py (--platform ps1: the levels of
++#   core/data/maps/platforms.txt whose map file exists; with no new level it is just the empty directory sector),
++#   puts it on the disc and links src/breachdisc.c (code of the combat + levels overlay group, ovl_plan.py; the
++#   level arena is the core's scene scratch block, no resident byte of its own; vram.c gains the pinned bank slots).
++option(DOOMO_BREACH_BIN "LV8: level packs (BREACH.BIN) on the disc and their loader (src/breachdisc.c)" OFF)
++set(DOOMO_ISO_BREACH "")
++set(DOOMO_BREACH_DEP "")
++set(DOOMO_BREACH_FILE "" CACHE FILEPATH "LV8: a ready BREACH.BIN to put on the disc instead of building one (the Redux pack-load test)")
++if(DOOMO_CORE AND DOOMO_BREACH_BIN AND DOOMO_BREACH_FILE)
++	if(NOT EXISTS "${DOOMO_BREACH_FILE}")
++		message(FATAL_ERROR "DOOMO_BREACH_FILE ${DOOMO_BREACH_FILE} does not exist")
++	endif()
++	set(DOOMO_ISO_BREACH "<file name=\"BREACH.BIN\" type=\"data\" source=\"${DOOMO_BREACH_FILE}\" />")
++	set(DOOMO_BREACH_DEP ${DOOMO_BREACH_FILE})
++	message(STATUS "doomogachi: level packs ${DOOMO_BREACH_FILE} -> BREACH.BIN")
++elseif(DOOMO_CORE AND DOOMO_BREACH_BIN)
++	file(GLOB DOOMO_BREACH_SRC CONFIGURE_DEPENDS ${CORE_DIR}/data/maps/*.txt ${CORE_DIR}/data/texbanks/*.bank)
++	add_custom_command(
++		OUTPUT  ${CMAKE_CURRENT_BINARY_DIR}/BREACH.BIN
++		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/../tools/packbreach.py
++		        --platform ps1 --bin ${CMAKE_CURRENT_BINARY_DIR}/BREACH.BIN
++		DEPENDS ${DOOMO_BREACH_SRC} ${CMAKE_CURRENT_SOURCE_DIR}/../tools/packbreach.py
++		        ${CMAKE_CURRENT_SOURCE_DIR}/../tools/mapc.py ${CMAKE_CURRENT_SOURCE_DIR}/../tools/texbank.py
++		COMMENT "Packing the levels (tools/packbreach.py -> BREACH.BIN)"
++		VERBATIM)
++	set(DOOMO_ISO_BREACH "<file name=\"BREACH.BIN\" type=\"data\" source=\"BREACH.BIN\" />")
++	set(DOOMO_BREACH_DEP ${CMAKE_CURRENT_BINARY_DIR}/BREACH.BIN)
++	message(STATUS "doomogachi: level packs -> BREACH.BIN")
++endif()
++
+ # Boot FMV: INTRO.STR = the ident video as MDEC .STR + XA audio (psxavenc, 320x176,
+ # 15 fps, 2x). Without psxavenc and without DOOMO_INTRO_STR the intro is left out.
+ # The size is the 16:9 source fit to 320 wide, rounded to the MDEC's 16-pixel macroblocks
+@@ -288,6 +319,9 @@ foreach(_t doomo_objs ${DOOMO_EXE_NAME})
+ 	if(DOOMO_PACK_ON_DISC)
+ 		target_compile_definitions(${_t} PRIVATE DOOMO_PACK_ON_DISC=1)
+ 	endif()
++	if(DOOMO_CORE AND DOOMO_BREACH_BIN)
++		target_compile_definitions(${_t} PRIVATE DOOMO_BREACH_BIN=1)
++	endif()
+ 	if(DOOMO_PAL)
+ 		target_compile_definitions(${_t} PRIVATE DOOMO_PAL=1)
+ 	endif()
+@@ -380,7 +414,7 @@ add_custom_command(
+ 	        -c ${CMAKE_CURRENT_BINARY_DIR}/${DOOMO_EXE_NAME}.cue
+ 	        ${DOOMO_ISO_XML}
+ 	DEPENDS ${DOOMO_EXE_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/system.cnf
+-	        ${CMAKE_CURRENT_BINARY_DIR}/TEXT.BIN ${DOOMO_SFX_DEP} ${DOOMO_PACK_FILE} ${DOOMO_INTRO_DEP}
++	        ${CMAKE_CURRENT_BINARY_DIR}/TEXT.BIN ${DOOMO_SFX_DEP} ${DOOMO_PACK_FILE} ${DOOMO_INTRO_DEP} ${DOOMO_BREACH_DEP}
+ 	        ${CMAKE_CURRENT_SOURCE_DIR}/iso.xml
+ 	        ${CMAKE_CURRENT_SOURCE_DIR}/README.md
+ 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+diff --git a/ps1/harness/run.py b/ps1/harness/run.py
+index 54fbb73..7a83db9 100644
+--- a/ps1/harness/run.py
++++ b/ps1/harness/run.py
+@@ -39,6 +39,7 @@ when a scene renders below 30 fps:
+     expect-text "T"    fail unless the dialogue box's line contains T
+     story-fp [HEX]     print story_fingerprint(); with HEX, fail unless equal
+     room-test N        SCENE_HOME draws house test layout N (room.c)
++    breach-load N      LV8: read level N of BREACH.BIN (src/breachdisc.c, DOOMO_BREACH_BIN=ON) into the live map
+     expect-fps MIN NAME  fail if the last `fpsend NAME` measured below MIN
+     expect-gap MS NAME   fail if the last `fpsend NAME` had a frame over MS ms
+     expect-count N TEXT  fail unless TEXT appears exactly N times in the TTY log
+@@ -342,6 +343,8 @@ def compile_script(lines, lockstep=True):
+             cmds.append(hcmd(op, 0, arg[2:] if arg.lower().startswith("0x") else arg))
+         elif op == "room-test":
+             cmds.append(hcmd(op, int(arg, 0) if arg else 0, arg))
++        elif op == "breach-load":       # LV8: needs a disc built with DOOMO_BREACH_BIN=ON
++            cmds.append(hcmd(op, int(arg, 0) if arg else 0, arg))
+         # H4: the house scripts (core/tests/scripts/home_*.txt)
+         elif op == "clock":
+             cmds.append(hcmd(op, num(1, 8) * 60 + num(2, 0), " ".join(parts[1:])))
+diff --git a/ps1/harness/scripts/breach_pack_load.txt b/ps1/harness/scripts/breach_pack_load.txt
+new file mode 100644
+index 0000000..fa2acf9
+--- /dev/null
++++ b/ps1/harness/scripts/breach_pack_load.txt
+@@ -0,0 +1,14 @@
++# LV8: a level pack is read from BREACH.BIN on the disc and becomes the live map.
++# Needs a disc built with -DDOOMO_BREACH_BIN=ON -DDOOMO_BREACH_FILE=<BREACH.BIN of core/tests/maps/t3_kit.txt, t8_bank.txt>
++# (tools/packbreach.py --platform ps1 --bin F --bank-dir core/tests/banks MAPS: level 0 = T3 Kit, level 1 = T8 Bank).
++wait 40
++seed 1
++scene TITLE
++wait 2
++breach-load 0
++expect-log breach: level 0 'T3 Kit' loaded
++wait 4
++breach-load 1
++expect-log breach: level 1 'T8 Bank' loaded
++wait 4
++shot breach_pack_load
+diff --git a/ps1/iso.xml b/ps1/iso.xml
+index e36cb5e..d0d0c4c 100644
+--- a/ps1/iso.xml
++++ b/ps1/iso.xml
+@@ -22,6 +22,7 @@
+ 			${DOOMO_ISO_OVL}
+ 			${DOOMO_ISO_SFX}
+ 			${DOOMO_ISO_PACK}
++			${DOOMO_ISO_BREACH}
+ 			<file name="TEXT.BIN"   type="data" source="TEXT.BIN" />
+ 			<file name="README.TXT" type="data" source="${PROJECT_SOURCE_DIR}/README.md" />
+ 			<dummy sectors="1024"/>
+diff --git a/ps1/src/breachdisc.c b/ps1/src/breachdisc.c
+new file mode 100644
+index 0000000..3045ad8
+--- /dev/null
++++ b/ps1/src/breachdisc.c
+@@ -0,0 +1,153 @@
++/* breachdisc.c - level packs read from BREACH.BIN on the disc (owner: levels; LV8).
++ *
++ * BREACH.BIN (tools/packbreach.py --platform ps1) is a directory sector, then the level packs on sector boundaries
++ * (core/include/doomo/breachpack.h; docs/LEVELS.md "Level packs"). Nothing of it is resident: this file and the core
++ * reader (core/src/breachpack.c) are code of the combat + levels overlay group (ovl_plan.py: `breach(pack|disc)`), and
++ * the loaded level lives in the core's 12 KB scene scratch block (scene_scratch(), tag 'LVLP'), which no combat level
++ * uses:
++ *
++ *     [ BpLevel | arena the reader fills (tables + text + the packed cells) | 2 KB sector window ]
++ *
++ * The cells stay LZ-packed ("LZMC": BP_CELLS_LZMC) and def.cells points at them, so map_def_cells() in packart.c
++ * decodes them straight into the live map as for the 12 shipped maps. The level's texture bank is not kept: its
++ * frame 0 of each slot is read from the disc and uploaded to the pinned world-texture slots 72..79 (vram.c,
++ * vram_wtex_pin), ids 56 + k, at most 8 of the 80. Animated bank frames are not shown on the PS1 yet (frame 0 stays).
++ *
++ * Load cost: the CRC pass reads the pack once, the load reads it again, the bank another 4 KB a slot: at most
++ * 2 x 96 KB + 32 KB = 224 KB, 0.75 s at 2x speed (300 KB/s): inside the 1 s of the plan (behind the intro card).
++ * Built only with cmake -DDOOMO_BREACH_BIN=ON: the shipped disc links none of it.
++ */
++#include <string.h>
++#include <psxapi.h>
++#include <psxcd.h>
++#include "ps1.h"
++
++#if defined(DOOMO_HAVE_CORE) && defined(DOOMO_BREACH_BIN)
++#include "doomo/scene.h"
++#include "doomo/breachpack.h"
++#include "doomo/texbank.h"
++
++#define SECTOR      2048
++#define LVLP_TAG    0x504C564Cu                 /* 'LVLP' */
++#define BLOCK       DOOMO_SCENE_SCRATCH
++#define HEAD_ROOM   ((sizeof(BpLevel) + 3u) & ~3u)
++
++static int       s_lba = -1;                    /* BREACH.BIN: -1 not looked up, -2 missing */
++static uint32_t  s_size;
++static uint32_t *s_win;                         /* the sector window (in the scratch block) */
++static int       s_have = -1;                   /* sector of the file in the window */
++static int       s_level = -1;                  /* the level in the block, -1 none */
++
++static int read_sector(int lba, void *dst)
++{
++    CdlLOC loc;
++    int tries;
++    for (tries = 0; tries < 4; tries++) {
++        CdIntToPos(lba, &loc);
++        if (!CdControl(CdlSetloc, &loc, 0))
++            continue;
++        if (!CdRead(1, (uint32_t *)dst, CdlModeSpeed))
++            continue;
++        if (CdReadSync(0, 0) >= 0)
++            return 1;
++    }
++    return 0;
++}
++
++/* BpRead: any byte range of the file through the one-sector window */
++static int rd_disc(void *ctx, uint32_t off, void *dst, uint32_t n)
++{
++    uint8_t *d = (uint8_t *)dst;
++    (void)ctx;
++    if (off > s_size || n > s_size - off) return 0;
++    while (n) {
++        uint32_t sec = off / SECTOR, in = off % SECTOR, k = SECTOR - in;
++        if (k > n) k = n;
++        if (s_have != (int)sec) {
++            s_have = -1;
++            if (!read_sector(s_lba + (int)sec, s_win)) return 0;
++            s_have = (int)sec;
++        }
++        memcpy(d, (const uint8_t *)s_win + in, k);
++        d += k; off += k; n -= k;
++    }
++    return 1;
++}
++
++static int find_bin(void)
++{
++    CdlFILE f;
++    if (s_lba >= 0) return 1;
++    if (s_lba == -2) return 0;
++    if (!CdSearchFile(&f, "\\BREACH.BIN;1")) {
++        dbg("breach: BREACH.BIN missing\n");
++        s_lba = -2;
++        return 0;
++    }
++    s_lba = CdPosToInt(&f.pos);
++    s_size = f.size;
++    return 1;
++}
++
++/* the pinned textures: frame 0 of each bank slot, 2 KB at a time */
++static int pin_bank(const BpLevel *l, uint32_t bank_in_file)
++{
++    uint8_t hd[DOOMO_TEXBANK_HDR + DOOMO_TEXBANK_ENT * DOOMO_TEXBANK_MAX];
++    uint32_t rows[SECTOR / 4];                   /* 2 KB of stack, for the duration of the load only */
++    uint32_t k, count, pix = 0, bank = bank_in_file;
++    if (!rd_disc(NULL, bank, hd, DOOMO_TEXBANK_HDR)) return 0;
++    count = hd[5];
++    if (count > DOOMO_TEXBANK_MAX) return 0;
++    if (!rd_disc(NULL, bank + DOOMO_TEXBANK_HDR, hd + DOOMO_TEXBANK_HDR, count * DOOMO_TEXBANK_ENT)) return 0;
++    pix = bank + DOOMO_TEXBANK_HDR + count * DOOMO_TEXBANK_ENT;
++    for (k = 0; k < count; k++) {
++        uint32_t frames = hd[DOOMO_TEXBANK_HDR + k * DOOMO_TEXBANK_ENT + 12];
++        int half;
++        if (k < l->ext.texbank_count && l->ext.texbank[k][0]) {
++            for (half = 0; half < 2; half++) {
++                if (!rd_disc(NULL, pix + half * SECTOR, rows, SECTOR)) return 0;
++                vram_wtex_pin((int)k, half, rows);
++            }
++        }
++        pix += frames * 4096u;
++    }
++    return 1;
++}
++
++int plat_breach_level(int level, const DoomoMapDef **def, const DoomoMapExt **ext)
++{
++    uint8_t *blk;
++    BpLevel *l;
++    uint32_t room, need = 0, t0 = timer_us();
++    int r;
++    if (def) *def = NULL;
++    if (ext) *ext = NULL;
++    if (!find_bin()) return BP_ERR_READ;
++    blk = (uint8_t *)scene_scratch(LVLP_TAG, BLOCK);
++    if (!blk) return BP_ERR_ARENA;
++    s_level = -1;
++    vram_wtex_unpin();
++    l = (BpLevel *)(void *)blk;
++    s_win = (uint32_t *)(void *)(blk + BLOCK - SECTOR);
++    s_have = -1;
++    room = BLOCK - SECTOR - HEAD_ROOM;
++    r = bp_bin_load(rd_disc, NULL, s_size, level, BP_CELLS_LZMC, blk + HEAD_ROOM, room, NULL, &need, l);
++    if (r != BP_OK) {
++        dbg("breach: level %d: %s (arena %u of %u)\n", level, bp_strerror(r), (unsigned)need, (unsigned)room);
++        return r;
++    }
++    if (l->tb_len && !pin_bank(l, l->tb_off)) {
++        dbg("breach: level %d: texture bank read failed\n", level);
++        vram_wtex_unpin();
++        return BP_ERR_READ;
++    }
++    s_level = level;
++    dbg("breach: level %d '%s' loaded in %u ms (arena %u of %u B)\n", level, l->def.name,
++        (unsigned)((timer_us() - t0) / 1000), (unsigned)need, (unsigned)room);
++    if (def) *def = &l->def;
++    if (ext) *ext = &l->ext;
++    return BP_OK;
++}
++
++int ps1_breach_current(void) { return s_level >= 0 && scene_scratch_mine(LVLP_TAG) ? s_level : -1; }
++#endif /* DOOMO_HAVE_CORE && DOOMO_BREACH_BIN */
+diff --git a/ps1/src/hcmd.c b/ps1/src/hcmd.c
+index 942909b..7bb7987 100644
+--- a/ps1/src/hcmd.c
++++ b/ps1/src/hcmd.c
+@@ -25,6 +25,9 @@
+ #include <psxgpu.h>
+ #include "ps1.h"
+ #include "doomo/plat_ext.h"
++#if defined(DOOMO_BREACH_BIN) && defined(DOOMO_HAVE_CORE)
++#include "doomo/breachpack.h"
++#endif
+ 
+ #define WEAKFN __attribute__((weak, long_call))
+ 
+@@ -351,6 +354,14 @@ static void run(void)
+     } else if (!strcmp(c, "room-test")) {
+         g_room_test = (uint8_t)n;
+         reply(1, "room-test", a);
++#if defined(DOOMO_BREACH_BIN) && defined(DOOMO_HAVE_CORE)
++    /* LV8: `breach-load N` reads level N of BREACH.BIN (src/breachdisc.c) and makes it the live map */
++    } else if (!strcmp(c, "breach-load")) {
++        const DoomoMapDef *bd = NULL;
++        const DoomoMapExt *bx = NULL;
++        int br = plat_breach_level(n, &bd, &bx);
++        if (br == BP_OK) map_load_def(bd);
++        reply(br == BP_OK, "breach-load", br == BP_OK ? bd->name : bp_strerror(br));
+     /* H4: the house scripts' clock and purse (core/native/runner_main.c);
+      * `home-room` stays native-only: it would pull home.c resident */
+     } else if (!strcmp(c, "clock")) {
+diff --git a/ps1/src/ps1.h b/ps1/src/ps1.h
+index cb6a7ae..002e29d 100644
+--- a/ps1/src/ps1.h
++++ b/ps1/src/ps1.h
+@@ -176,6 +176,11 @@ uint32_t vram_uploads(void);             /* bytes uploaded this frame  */
+ void vram_wtex_lend(int pages);
+ uint32_t vram_wtex_lent_uploads(void);
+ /* --- end H3 --- */
++#ifdef DOOMO_BREACH_BIN
++/* --- LV8: a level pack's texture bank pinned in the last 8 world-texture slots (vram.c, breachdisc.c) --- */
++void vram_wtex_pin(int k, int half, const void *rows);   /* 2 KB: rows 0..31 (half 0) or 32..63 of id 56 + k */
++void vram_wtex_unpin(void);
++#endif
+ 
+ /* ---- 2D layer (gfx2d.c) ---------------------------------------------------- */
+ void gfx2d_init(void);
+diff --git a/ps1/src/vram.c b/ps1/src/vram.c
+index 96c12a7..f4d7f22 100644
+--- a/ps1/src/vram.c
++++ b/ps1/src/vram.c
+@@ -23,6 +23,16 @@ static uint32_t s_vframe = 1;
+ static uint8_t  s_lent;           /* H3: pages lent to the house backdrop */
+ static uint32_t s_lent_up;        /* H3: uploads into them since         */
+ 
++#ifdef DOOMO_BREACH_BIN
++/* LV8: a level pack's texture bank is PINNED in the last slots (at most 8 of the 80): ids 56 + k answer from slot
++ * VR_WTEX_SLOTS - 8 + k, never evicted, uploaded once by ps1/src/breachdisc.c. Only built with the BREACH.BIN option. */
++#define PIN_FIRST  (VR_WTEX_SLOTS - 8)
++static uint8_t s_pinmask;         /* bit k: id 56 + k is pinned */
++#define WSLOTS     (s_pinmask ? PIN_FIRST : VR_WTEX_SLOTS)
++#else
++#define WSLOTS     VR_WTEX_SLOTS
++#endif
++
+ static void wslot_ref(int s)
+ {
+     int page = s >> 4, cell = s & 15;
+@@ -47,6 +57,25 @@ static int wslot_upload(int s, const uint8_t *pix)
+     return 1;
+ }
+ 
++#ifdef DOOMO_BREACH_BIN
++/* 32 rows (2 KB, rows of 64 pixels) of the pinned texture k, `half` 0 = rows 0..31, 1 = rows 32..63. The first half
++ * of a texture claims the slot (and the LRU forgets what it held). Synchronous: the level loads behind its card. */
++void vram_wtex_pin(int k, int half, const void *rows)
++{
++    int s = PIN_FIRST + k, page = s >> 4, cell = s & 15;
++    if (k < 0 || k > 7) return;
++    if (!half) {
++        int i;
++        s_pinmask |= (uint8_t)(1u << k);
++        for (i = 0; i < VR_WTEX_SLOTS; i++)
++            if (s_wslot[i].key && i >= PIN_FIRST) s_wslot[i].key = NULL;
++        memset(s_wmemo, 0, sizeof(s_wmemo));
++    }
++    gfx_upload_now(VR_WTEX_X + page * 128 + (cell & 3) * 32, (cell >> 2) * 64 + half * 32, 32, 32, rows);
++}
++void vram_wtex_unpin(void) { s_pinmask = 0; memset(s_wmemo, 0, sizeof(s_wmemo)); }
++#endif
++
+ /* --- H3: the house backdrop (ps1.h) --- */
+ void vram_wtex_lend(int pages)
+ {
+@@ -68,18 +97,22 @@ const TexRef *vram_wtex(int tex_id, uint16_t time)
+     uint32_t oldest;
+     if (tex_id <= 0 || tex_id >= 64)
+         tex_id = 1;
++#ifdef DOOMO_BREACH_BIN
++    if (tex_id >= 56 && ((s_pinmask >> (tex_id - 56)) & 1))
++        return &s_wref[PIN_FIRST + tex_id - 56];
++#endif
+     pix = core_texture_pixels(tex_id, time);
+     if (!pix)
+         return NULL;
+     if (s_wmemo[tex_id].frame == s_vframe && s_wmemo[tex_id].key == pix)
+         return &s_wref[s_wmemo[tex_id].slot];
+     s = -1;
+-    for (i = 0; i < VR_WTEX_SLOTS; i++)
++    for (i = 0; i < WSLOTS; i++)
+         if (s_wslot[i].key == pix) { s = i; break; }
+     if (s < 0) {
+         best = -1;
+         oldest = 0xffffffffu;
+-        for (i = 0; i < VR_WTEX_SLOTS; i++) {
++        for (i = 0; i < WSLOTS; i++) {
+             if (!s_wslot[i].key) { best = i; break; }
+             if (s_wslot[i].used < oldest && s_wslot[i].used != s_vframe) {
+                 oldest = s_wslot[i].used;
+diff --git a/ps1/tools/ovl_plan.py b/ps1/tools/ovl_plan.py
+index 438f796..dbfee24 100644
+--- a/ps1/tools/ovl_plan.py
++++ b/ps1/tools/ovl_plan.py
+@@ -62,7 +62,7 @@ GROUPS = [
+     ("fishcook", r"fish_\w+$|cook_\w+$"),
+     ("minigame", r"mg(_\w+)?$"),
+     ("library",  r"lib_\w+$"),
+-    ("combat",   r"levels(_\w+)?$|lv_script$|arena(_modes)?$|combat(_\w+)?$|actor(_\w+)?$|weld_gfx$"),
++    ("combat",   r"levels(_\w+)?$|lv_script$|arena(_modes)?$|combat(_\w+)?$|actor(_\w+)?$|weld_gfx$|breach(pack|disc)$"),   # LV8: level packs (reader + disc loader)
+     ("workshop", r"workshop$|weld_game$|weld_slice$"),   # S2-9: the sliced weapon picture is the workshop's
+     ("island",   r"fp_island(_gfx)?$"),
+     ("freeplay", r"fp_(apartments|family|graveyard|newisland|news|options|resident|roster|saveload|shop|title|unlocks)$|playas_scene$"),

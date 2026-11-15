@@ -1,0 +1,114 @@
+From db83571489e403570878ae89d127b83fc229efae Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:44:24 +0000
+Subject: [PATCH 2/3] LV9: docs (LEVELS.md section, map README, OWNER_DECISIONS
+ defaults, ROADMAP Done line, status block LEVELS-2)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cxE5CiE8LkNQXc6Au3
+---
+ ROADMAP.md                          |  1 +
+ core/data/maps/README.md            |  3 ++-
+ docs/LEVELS.md                      | 39 +++++++++++++++++++++++++++++
+ docs/design/held/OWNER_DECISIONS.md |  2 ++
+ docs/design/held/status/LEVELS.md   |  1 +
+ 5 files changed, 45 insertions(+), 1 deletion(-)
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index 798d448..56c1657 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -48,6 +48,7 @@ before redoing any of them; a zip without `.git` cannot tell.
+ - **LV2, level script VM (2026-11-13, LEVELS round 2; docs/LEVELS.md "The level script VM"):** `core/src/lv_script.c` + `core/include/doomo/lv_script.h`: a deterministic bytecode interpreter (8 events, 20 actions, 32 byte variables, 16 actions a tick, 64 handlers / 2 KB, a queue of 16) with one host function for everything outside the VM; `tools/mapc.py` compiles `on EVENT [repeat] do ACTION ; ...` into `DoomoMapExt.script` and refuses what the VM would. Host tests per action and event, budgets, the checker, and a mapc-compiled script run twice with equal hashes. Nothing in the game calls it yet, so no byte on any platform (GBA sizes identical, PS1 EXE identical).
+ - **Speed S3-2 (built 2026-11-15, partial; the CREATOR stream, speed audit 3; measured on libmgba and PCSX-Redux; docs/GBA.md "Speed wave 3: S3-2", docs/PORTRAIT.md "UI previews", docs/PS1.md "S3-2"):** a UI preview never draws a whole portrait, figure or chibi inside a frame (`portrait_image_ui` and friends: a patient job and NULL meanwhile, no 4-tick deadline; native and Dreamcast unchanged), the roster card and the studio picker prefetch the next and previous face, and a forced portrait slice runs only when it costs at most one more vblank (`pslice_policy.h`, GBA and PS1). GBA drawn fps before -> after: studio picker move 28.5 -> 30.0, shop cursor move 28.0 -> 30.0, shop gifts tab 29.5 -> 30.0, add-member pick move 25.4 -> 29.5, cook counter 18.3 -> 26.5, library lobby 19.6 -> 24.0; the quest log's Friends tab load 238 -> 41 ms, shop / cafe / Black Market / picker entries 118-136 -> 52-70 ms. GBA EWRAM / IWRAM unchanged (net zero against the tip: `.bss` 254,828 B, 6,420 B free); PS1 +304 B resident (132,608 -> 132,320 B below the stack top on the PS1-RAM tree). **Left:** entries still 41-70 ms (not under 34), creator entry / swatch / try-on windows unchanged, the title (S2-10's file), "dear slices cut finer", scene-start prefetch under the loading fade, a few more 50 ms frames in picker / Black Market windows. **Done:** UI previews as patient jobs, neighbour prefetch, the forced-slice rule.
+ - **LV3 part 1, mechanic kit A: movement rules (2026-11-13, LEVELS round 3a; docs/LEVELS.md "Mechanic kit A, movement"):** `core/src/levels_mech_move.c`: ride cycles, ziplines, bounce pads + low gravity, carry, tubes and the raft as pure rules on a 16-byte `MmMove`, plus `mm_edges` (the same edges as the BFS) for the autopilot; kit test map `core/tests/maps/t3_kit.txt` and 17 host tests, among them a bot that plans over the BFS walk rule + `mm_edges` and plays the plan through the real state machine across the six mechanics (five edge kinds plus the low-gravity step). Nothing calls it yet (no resident byte on any platform). **Not yet (LV3 part 2):** the ride state in `combat.c`, the zone triggers in the runtime and the edges inside `combat_bot.c`, each with its Vape Cellar fps before / after.
++- **LV9, combat detail option in levels (2026-11-15, LEVELS-2; docs/LEVELS.md "The combat detail option in levels", plan 8.7 / 7.2):** `core/src/levels_detail.c` + `lv_detail.h`: dropped effects per mode and held pressure (a prefix of the level's `detail` list, one step at a time, 1.5 s of good frames to get one back), awake caps per mode and platform from the new `awake S B M` header key (defaults 6 / 8 / 10, PS1 x1.5, DC x2; mapc validates, GBA maps at most 6 8 10), five new append-only `MDET_*` kinds (steam, rain, crowd, decals, loot), Smooth loot / prop thinning that never drops a key, secret, collectible or quest thing. Hooks only in the existing option's places (`combat.c` spawn, `combat_scene.c` view detail), compiled out on the PS1; nothing feeds frame-cost pressure yet and no v2 level exists to use it. 13 core tests + 3 mapc tests. GBA: .iwram / .iwram_bss / .bss identical, ROM +584 B `.text`; Vape Cellar vhash-seq identical in all three modes, drawn fps equal (8.8 / 8.5 / 16.6, the speed stream's gap), start-room work +0.4..1.0 ms of 76.
+ - **LV4, mechanic kit B: environment and light (2026-11-13, LEVELS round 3a; docs/LEVELS.md "Mechanic kit B"):** `core/src/levels_mech_env.c` + `lv_env.h`: fog zones with valves, the glum tide, lantern (25 cells) and candles, the Wall's two faces, the showtime light swap, collapsing floors and dissolving rooms, each rebuilt exactly from the definition (new zone kinds `candle`, `show`, `collapse`); per-level view distance (`DoomoView3D.view_dist`, header key `view`) in the native raycaster and the GBA `r3d.c`, PS1 compiled out until PS1-RAM (no resident byte), DC ignores it for now. 15 host tests incl. the renderer at both sizes. GBA RAM identical, speed tour frame-exact, PS1 EXE unchanged. Nothing calls it yet; the first level that needs a piece wires it (follow-up LV4b in `docs/design/held/status/LEVELS.md`).
+ - **Speed S3-3 (2026-11-13, the creator, speed audit 3; measured on libmgba and PCSX-Redux; docs/CREATOR.md "S3-3", docs/GBA.md "Speed wave 3: S3-3", docs/PS1.md "S3-3"):** the held creator frame (the saved G2-CR work) and creator panels drawn on the fast path before their capture (S2-6's recipe, `plat_ui_loops` before the pane). GBA: grid scrolled 17.2 -> 26.8 fps, rows 29.4 -> 30.0, a value held 22.2 -> 29.4, the picker 22.7 -> 29.1, hat grid 27.2 -> 29.8, try-on 15.2 -> 26.9, filter chip 21.7 -> 30.5; four tab changes still have two 50 ms frames, the held grid and the try-on stay under 30 (each step is a whole new bust: S3-2). PS1: the grid keeps its unpacked icons in the overlay scratch, grid scrolled 29.39 -> 30.00, try-on 28.57 -> 29.03; no resident byte (64 KB below the stack top with the FMV). Settled screens byte-identical; the pane's in-between frames come a tick later.
+ - **No 3D character models inside houses (PS1-FLAT, 2026-11-13; the owner: "disabled the 3d models of your player character and vice versa when you are inside their houses - save up some ram there", `OWNER_DECISIONS.md` "HOUSE CHARACTERS FLAT"; measured on PCSX-Redux; docs/PS1.md "No 3D models in houses", section 7):** only the PS1 drew a 3D figure in the house, the player's chibi (`model.c`). `ps1/src/room.c` now draws the player with the same `billboard()` as every resident, visitor, guest and demon, from the body sprite the core hands over (direction, walk frame, sit squash; the picture the GBA and the Dreamcast show, and the avatar being played), in Build, Live, Photo, Score, Hold the Door and a visit; it keeps its contact shadow and still rests in the kept backdrop while it stands still. With the house out, `model.c` (4,132 B) left resident RAM for the combat overlay group: `ovl_plan.py` `PLAT_GROUPS` / `GUARDED`, and `plat_view3d()` asks `ovl_code_in()` before it draws the model (the plan fails if house code, or anything else, would call it; `ps1/tools/test_ovl_guard.py`, 6 tests, in CI). The house's hooks in the 3D code are gone (`g_model_hold`, `g_r3_area`). **PS1 game disc with the boot FMV: 65,952 -> 70,480 B below the stack top (+4,528 B); on the tip it landed on (`19d01fe`) 68,224 -> 72,736 B (+4,512 B), 992 B under the 72 KB gate**; the slot keeps its 131,072 B (combat group 124,056 -> 128,188 B, home 130,856 -> 129,420 B). `prims.c` (3,612 B) stays resident: with it the combat group would pass the slot. House fps (`home.txt`, on the landing tip): plain 30.17 -> 30.17, steady 29.39 -> 30.00, orbit 27.17 -> 30.00, cellar (stress layout) 27.80 -> 27.80, defend stress (stress layout) 19.10 -> 22.78, modal 29.19 -> 30.00, Hold the Door wave 3 30.13 -> 30.13 (15.1 -> 6.5 ms of CPU), visit 30.17 -> 30.17; the speed tour's 19 house windows all hold 30 (the busy Live layout 28.78 -> 30.00). Third-person combat is unchanged: `perf_combat`'s shots are byte-identical, fps 29.5-30.0 as before. The core, the GBA and the Dreamcast are untouched (no file of theirs changed).
+diff --git a/core/data/maps/README.md b/core/data/maps/README.md
+index e8e17fa..02c1cb5 100644
+--- a/core/data/maps/README.md
++++ b/core/data/maps/README.md
+@@ -188,7 +188,8 @@ Header keys (each at most once):
+ | `dark yes` | a dark level: needs `note` |
+ | `note TEXTID` | content note text id, 1..65535 |
+ | `gba yes` / `gba no` | `yes`: mapc enforces the GBA budgets (below) |
+-| `detail a,b,c` | what the frame-rate governor drops first: `floors sky props fx far light` (1..3 names) |
++| `detail a,b,c` | what the frame-rate governor drops first: `floors sky props fx far light steam rain crowd decals loot` (1..3 names; `loot` and `props` also thin the Smooth spawns, LV9) |
++| `awake S B M` | awake demon caps for Smooth, Balanced and Max detail, `1..48`, not falling; GBA numbers (PS1 x1.5, Dreamcast x2); no key = 6 8 10; on a `gba yes` map at most 6 8 10 (LV9) |
+ | `hero LOOK LOADOUT` | hero override: two numbers 0..255 |
+ 
+ `gba yes` budgets (plan 7.2): at most 40 x 40 cells, at least 75% of the open
+diff --git a/docs/LEVELS.md b/docs/LEVELS.md
+index b2938f7..b482c8a 100644
+--- a/docs/LEVELS.md
++++ b/docs/LEVELS.md
+@@ -236,6 +236,45 @@ so no byte of it links on any platform.
+   checks for the new zones (a candle needs a tag, a tide needs a valve tag); `levelcheck` BFS over the
+   swap-set faces by lever (the test map's swap is script-mode).
+ 
++## The combat detail option in levels (LV9, 2026-11-15; plan 8.7 and 7.2)
++
++`core/src/levels_detail.c`, `core/include/doomo/lv_detail.h`. What a level gives up in each mode of
++Options > Performance > Combat detail (`OPT_3D_FAST`: Balanced, Smooth, Max detail), and how many awake
++demons it may have. Pure functions on a caller-owned 4-byte `LvDetail`: no statics, no clock, no rng.
++
++* **Header keys.** `detail a,b,c` (up to 3 of `floors sky props fx far light steam rain crowd decals loot`,
++  first dropped first; the five new kinds are append-only in `MDET_*`) and `awake S B M` (new, stored in
++  `DoomoMapExt.awake[3]`, 0 0 0 = not given). mapc checks `1..48`, not falling, and on a `gba yes` map at most
++  6 8 10 (plan 7.2). A map without the key emits `{0, 0, 0}`; the 12 shipped maps are v1 and unchanged.
++* **Dropped effects.** Steps = (Smooth ? 2 : 0) + the held pressure level (0..3), at most the list's length;
++  step n drops the n-th named effect. So Balanced and Max drop nothing in budget and lose the list one effect
++  at a time under pressure; Smooth starts with two gone. `lvd_get` returns the mask (`1 << MDET_*`).
++* **Pressure and hysteresis.** `lvd_pressure(cost_pct)` turns a frame's cost in percent of its budget into
++  0..3 (<= 100, <= 115, <= 140, above). `lvd_update` goes one step down per update while the pressure is
++  above the held level and one step back only after 45 good updates (1.5 s at 30 fps); an alternating
++  over / under signal holds the level; a change of mode restarts the state. Nobody feeds pressure yet (the
++  GBA / PS1 / DC governors are platform code that does not talk to the core): the hook below runs with
++  pressure 0 until a platform does.
++* **Awake cap.** `awake S B M` x the platform (GBA 1, PS1 1.5, Dreamcast 2); defaults 6 / 8 / 10 (the Vape
++  Cellar numbers of plan 7.2). The governor lowers Balanced and Max one demon per level toward Smooth's cap
++  and no lower. The cap is not enforced by the spawner yet: there is no level with a v2 header to enforce
++  it on, and the AI hot path stays untouched (LV6 owns the awake logic).
++* **Loot and props under Smooth.** `detail ... loot` (small health, ammo, candy) and `... props` thin the
++  spawns: every second one by thing index, in Smooth only, whatever the pressure (a level plays the same
++  at any frame cost). `lvd_thing_kept` never drops a key, armor, big health, scrap, a soul orb, an NPC or a
++  demon, a `secret` / boss / dormant / kill-event / machine-heart thing, or one flagged `collect`, `escort` or
++  `usable` (test: every thing type x every flag x several indices).
++* **Hooks (behind the same option).** `combat.c` (spawn loop: `lvd_thing_kept`) and `combat_scene.c`
++  (`combat_view_detail`: a level whose list names `fx` also drops the non-player shadows), both through
++  `map_ext_of(doomo_map.def)`, which is NULL for every v1 map today (an empty registry walk). Compiled out on
++  the PS1 (`#if !defined(DOOMO_PLATFORM_PS1)`: no resident byte, no overlay growth). The renderers' own
++  steam, rain, crowd and decal billboards do not exist yet; a level that adds them reads
++  `LvDetailOut.drop` the same way. Persistent state (`LvDetail`, 4 B) is not stored anywhere yet: it needs a
++  home when a platform feeds pressure (the `LvRun` has no spare bytes: net-zero EWRAM rules out +4).
++* **Tests.** `core/tests/test_lv_detail.c` (every mode x every held level, hysteresis, platforms, defaults,
++  stale state, the never-drop rules, determinism) on `core/tests/maps/t9_detail.txt`; `tools/tests/test_mapc.py`
++  (the `awake` key, the new kinds, the GBA limit).
++
+ ## Files
+ 
+ `core/src/levels.c` (tables, ranks, runtime, activities),
+diff --git a/docs/design/held/OWNER_DECISIONS.md b/docs/design/held/OWNER_DECISIONS.md
+index e446525..ab3d4d0 100644
+--- a/docs/design/held/OWNER_DECISIONS.md
++++ b/docs/design/held/OWNER_DECISIONS.md
+@@ -154,3 +154,5 @@
+   Owner, same day: "like being able to edit relations as well, like in the Create a Sim of the original games". The household view gets a relationship editor like The Sims 2 / 3 Create a Sim: pick two members and set how they are related (spouse / partner, fiance, parent / child, step-parent, sibling, step-sibling, grandparent / grandchild, aunt-uncle / niece-nephew, cousin, roommate, pet owner / pet), with the reverse side filled in automatically (set A as B's mother and B becomes A's child) and a family tree preview; also starting feelings toward other citizens (friend, best friend, rival, crush for adults only, enemy) where the sim has those relationships. The kid rules bind it: spouse, partner, fiance and crush only between adults, never with or between minors; an age gap check like The Sims (a parent older than the child).
+ - HOUSEHOLDS defaults (2026-11-15, default chosen by Claude (HOUSEHOLDS), owner may override; plan: `docs/design/HOUSEHOLDS_PLAN.md`): the player's household has room for 20 from the start on every platform (the 3 / 10 / 20 tiers stop limiting it); other households hold residents only (pool ids 1001..1020 stay the player's); up to 24 residents' households and 32 relation rows each, saved in a new `HOUS` chunk (the `LIFE` chunk is full); a new person takes a free resident place, else a low-friendship adult who is in no household moves away (never a minor, a story citizen or the avatar); a minor is never a parent, partner, spouse, fiance or crush and never an adult's roommate; feelings are town-graph edges. Memory: about 3.9 KB GBA EWRAM (of CREATOR's 6 KB), 3.5 KB PS1 resident from the reserve (asked of the coordinator; if refused, 12 households on the PS1).
+ - BOREAGOTCHI FAMILIES (user 2026-11-15): "make sure to find a way to include their / your own Boreagotchis having their own family members, with eight as their cap". Every Boreagotchi (the player's and each resident's) can have a family of up to 8 pets (parents, siblings, offspring, partner; pet-only relations), made and edited in the creator's household view next to the people, shown in the household, using the pet look and care that exist (pet*.c). Defaults chosen by Claude (owner may override): a pet family member is a small pet record (look seed, name, relation, a few care stats), not a resident; the cost is reported per platform and fits the shares (if the PS1 cannot hold 8 per pet for every household at once, the plan says how many pet families can exist at once and the creator says so clearly at the cap); kid and content rules apply as for pets today. Owner: the HOUSEHOLDS stream (cross-stream into pet code, small and marked).
++
++- LV9 defaults (2026-11-15, default chosen by Claude (LEVELS-2), owner may override; plan 8.7 and 7.2): the `awake S B M` header numbers are GBA numbers and the PS1 takes x1.5, Dreamcast x2; no key means 6 / 8 / 10 (the Vape Cellar numbers); Smooth drops the first two effects of a level's `detail` list at once, Balanced and Max drop one more per pressure step (0..3, from 100% / 115% / 140% of the frame budget), and detail comes back one step after 1.5 s of good frames; Smooth thins loot and props at spawn (every second one, never a key, secret, collectible, escort, usable, NPC, boss or event thing) only when the level's list names `loot` or `props`; the `detail` list stays at 3 names (the plan's 4-name example is cut to the header's 3 slots).
+diff --git a/docs/design/held/status/LEVELS.md b/docs/design/held/status/LEVELS.md
+index f01f002..61b13c5 100644
+--- a/docs/design/held/status/LEVELS.md
++++ b/docs/design/held/status/LEVELS.md
+@@ -33,3 +33,4 @@ delta, GBA sizes), in flight (package and stage), next up, blockers, needs from
+ - **Shared files I touch (agree here, lead: add your objection under this line):** `ps1/tools/ovl_plan.py` (one regex line for the pack reader, same as LV2 did), `ps1/CMakeLists.txt` (the pack build step), `gba/Makefile` (a `memreport` row), `core/include/doomo/map.h` is NOT touched: the pack reader fills the existing `DoomoMapDef` / `DoomoMapExt` in a caller-owned arena.
+ - **Budgets:** PS1 resident used of share: 0 B (of 8 KB). GBA EWRAM used of share: 0 B (of 6 KB).
+ - **In flight:** LV8 stage 1 (format, writer, host reader and tests).
++- **LV9 (combat detail option in levels) built 2026-11-15 (LEVELS-2; branch fut-lv9, the lander lands it):** `core/src/levels_detail.c`, `core/include/doomo/lv_detail.h`, mapc key `awake S B M` (`DoomoMapExt.awake[3]`, appended; v1 maps and the 12 shipped maps byte-identical), `MDET_STEAM / RAIN / CROWD / DECALS / LOOT` appended, test map `t9_detail`, `core/tests/test_lv_detail.c`, 3 mapc tests. Hooks: `combat.c` spawn (loot thinning, Smooth only) and `combat_scene.c` (`fx` also drops shadows), both through `map_ext_of` (NULL for every v1 map), compiled out on the PS1. Measured on the base `7b653d9` and the branch (same commands, `opt 63 0/1/2` + the Vape Cellar breach script): GBA `.iwram` / `.iwram_bss` / `.bss` identical (IWRAM 0, EWRAM net 0), `.text` +584 B, `.rodata` +8 B; vhash-seq identical in Balanced, Smooth and Max; drawn fps 8.8 / 8.5 / 16.6 before and after in every mode, work avg start room 75.6 -> 76.6 ms (Balanced; ROM layout shift, nothing runs differently), middle and late unchanged. PS1: not built (no PS1 SDK on this machine; hooks are `#if !defined(DOOMO_PLATFORM_PS1)`, so the EXE is unchanged by construction: the lander runs the build and the margin). PS1 resident used of share: 0 B; GBA EWRAM used of share: 0 B. **Not done:** (1) nothing feeds pressure (needs the GBA / PS1 / DC governors to call `lvd_update`; the 4-byte `LvDetail` has no home: `LvRun` has no spare bytes), (2) the awake cap is not enforced by the spawner / AI (LV6 owns it), (3) the hooks are dead code until the first v2 level registers an ext (no test reaches `map_ext_of` != NULL through combat), (4) per-mode PS1 / DC fps windows, (5) steam / rain / crowd / decal billboards do not exist. **Needs from LEVELS lead:** the first level's header lists its `detail` and `awake`; LV6 reads `lvd_awake_cap`.
+-- 
+2.43.0
+

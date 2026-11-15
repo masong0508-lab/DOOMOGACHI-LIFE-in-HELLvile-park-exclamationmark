@@ -1,0 +1,369 @@
+From f82bac808e2c9f367d42f2068889f23035912393 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:40:19 +0000
+Subject: [PATCH 2/2] LV8: Dreamcast pack reader (dc/src/breachdisc.c, host
+ test) and the GBA memreport levels rows
+
+dc/src/breachdisc.c reads a pack from /cd/BREACH.BIN through the KOS file calls and the core reader (behind
+DOOMO_BREACH_BIN, make -C dc BREACH=1); dc/tests/breachdisc_host.sh is the host test (check-breachdisc).
+gba/tools/memreport.py prints the levels' ROM (map tables) and EWRAM / IWRAM rows.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cxE5CiE8LkNQXc6Au3
+---
+ dc/Makefile                 | 29 +++++++++++++---
+ dc/src/breachdisc.c         | 67 +++++++++++++++++++++++++++++++++++++
+ dc/tests/breachdisc_host.c  | 47 ++++++++++++++++++++++++++
+ dc/tests/breachdisc_host.sh | 22 ++++++++++++
+ dc/tests/packdisc_mock.c    |  2 ++
+ dc/tools/mkcdi.sh           |  4 +++
+ gba/tools/memreport.py      | 58 ++++++++++++++++++++++++++++++++
+ 7 files changed, 225 insertions(+), 4 deletions(-)
+ create mode 100644 dc/src/breachdisc.c
+ create mode 100644 dc/tests/breachdisc_host.c
+ create mode 100644 dc/tests/breachdisc_host.sh
+
+diff --git a/dc/Makefile b/dc/Makefile
+index 9807eec..5be396d 100644
+--- a/dc/Makefile
++++ b/dc/Makefile
+@@ -60,6 +60,11 @@
+ #   make -C dc PACK=/path/pack.dmpk disc
+ #                         the mature disc: the pack (built with `mpack.py build`, port dc) goes on
+ #                         the disc as PACK.DMP and dc/src/packdisc.c is linked (E10)
++#   make -C dc BREACH=1 disc
++#                         LV8: tools/packbreach.py --platform dc writes build/BREACH.BIN (the level packs), it goes
++#                         on the disc and dc/src/breachdisc.c is linked (no level has a map yet: an empty BIN)
++#   make -C dc check-breachdisc
++#                         LV8 on the host: dc/src/breachdisc.c and core/src/breachpack.c over a real BREACH.BIN
+ #   make -C dc check-talkdisc
+ #                         TD1 on the host: dc/src/talkdisc.c and core/src/talk_db.c over a real TALK_en.BIN
+ #   make -C dc talk-test  TD1 on Flycast: the CDI's TALK_EN.BIN opens and verifies, a greeting is generated
+@@ -132,6 +137,12 @@ PACK   ?=
+ ifneq ($(strip $(PACK)),)
+ DEFS   += -DDOOMO_PACK_ON_DISC=1
+ endif
++# LV8: the level packs on the disc: make -C dc BREACH=1 disc builds tools/packbreach.py --platform dc into
++# BREACH.BIN, puts it on the disc and links dc/src/breachdisc.c (off: the stock disc is unchanged)
++BREACH ?=
++ifneq ($(strip $(BREACH)),)
++DEFS   += -DDOOMO_BREACH_BIN=1
++endif
+ CFLAGS := -std=gnu99 -Wall -Wextra -Werror -fno-strict-aliasing -MMD -MP \
+           -I$(CORE_INC) -I$(DC)/src -I$(DC)/harness $(DEFS)
+ LDFLAGS := -Wl,-Map,$(MAP)
+@@ -143,7 +154,7 @@ DC_OBJS   := $(call dc_obj,$(DC_SRCS))
+ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
+ ALL_OBJS  := $(DC_OBJS) $(CORE_OBJS)
+ 
+-.PHONY: all elf disc all-disc test check-elf check-packdisc check-talkdisc talk-test talk-speed host-test harness-test ui-compare vmu-test disc-test audio-test ow-test room-test v3d-test family-test family-test2 sizes clean
++.PHONY: all elf disc all-disc test check-elf check-packdisc check-breachdisc check-talkdisc talk-test talk-speed host-test harness-test ui-compare vmu-test disc-test audio-test ow-test room-test v3d-test family-test family-test2 sizes clean
+ .DEFAULT_GOAL := all
+ 
+ all: elf
+@@ -210,9 +221,15 @@ $(INTRO_DMV): $(INTRO_SRC) $(DC)/tools/mkfmv.py
+ 	@mkdir -p $(BUILD)
+ 	$(PYTHON) -I $(DC)/tools/mkfmv.py $(INTRO_SRC) $@
+ 
+-$(CDI): $(ELF) $(DC)/ip.txt $(DC)/tools/mkcdi.sh $(PACKSTAMP) $(INTRO_FILE) $(TALK_BIN)
++BREACH_BIN := $(BUILD)/BREACH.BIN
++.PHONY: BREACH_FORCE
++BREACH_FORCE:
++$(BREACH_BIN): BREACH_FORCE
++	@mkdir -p $(BUILD)
++	$(PYTHON) -I $(ROOT)/tools/packbreach.py --platform dc --bin $@.new > /dev/null && { cmp -s $@.new $@ && rm $@.new || mv $@.new $@; }
++$(CDI): $(ELF) $(DC)/ip.txt $(DC)/tools/mkcdi.sh $(PACKSTAMP) $(INTRO_FILE) $(TALK_BIN) $(if $(strip $(BREACH)),$(BREACH_BIN))
+ 	@if [ -n "$(strip $(PACK))" ]; then $(PYTHON) -I $(ROOT)/tools/mpack/mpack.py validate "$(strip $(PACK))" --port dc || exit 1; fi
+-	sh $(DC)/tools/mkcdi.sh $(ELF) $(DC)/ip.txt $(BUILD)/disc $(CDI) "$(strip $(PACK))" "$(INTRO_FILE)" $(TALK_DIR)
++	BREACH_FILE="$(if $(strip $(BREACH)),$(BREACH_BIN))" sh $(DC)/tools/mkcdi.sh $(ELF) $(DC)/ip.txt $(BUILD)/disc $(CDI) "$(strip $(PACK))" "$(INTRO_FILE)" $(TALK_DIR)
+ 
+ # ---- checks ------------------------------------------------------------------------
+ sizes: $(ELF)
+@@ -335,6 +352,10 @@ harness-test: $(BUILD)/doomogachi.nm
+ check-packdisc:
+ 	@sh $(DC)/tests/packdisc_host.sh
+ 
++# LV8: the disc level-pack reader against a real BREACH.BIN, host cc only (KOS file calls mocked)
++check-breachdisc:
++	@sh $(DC)/tests/breachdisc_host.sh
++
+ # TD1: the disc Talk reader against a real TALK_en.BIN (talk_db.c on top), host cc only
+ check-talkdisc:
+ 	@sh $(DC)/tests/talkdisc_host.sh
+@@ -359,7 +380,7 @@ host-test:
+ 	@$(MAKE) --no-print-directory -C $(DC)/tests/vmu test
+ 	@$(MAKE) --no-print-directory -C $(DC)/tests/audio test
+ 
+-test: all-disc check-elf check-packdisc check-talkdisc host-test harness-test talk-test
++test: all-disc check-elf check-packdisc check-breachdisc check-talkdisc host-test harness-test talk-test
+ 
+ clean:
+ 	rm -rf $(BUILD)
+diff --git a/dc/src/breachdisc.c b/dc/src/breachdisc.c
+new file mode 100644
+index 0000000..0e13fa7
+--- /dev/null
++++ b/dc/src/breachdisc.c
+@@ -0,0 +1,67 @@
++/* breachdisc.c - the level packs, read from the GD-ROM data track (owner: levels / dreamcast; LV8).
++ *
++ * BREACH.BIN (tools/packbreach.py --platform dc) sits on the disc root next to PACK.DMP and TALK_EN.BIN; a level
++ * is a pack inside it (core/include/doomo/breachpack.h). This file only reads: it opens /cd/BREACH.BIN through
++ * KallistiOS's CD file system, hands the core reader (core/src/breachpack.c) a read callback, and keeps the
++ * loaded level in BSS (the Dreamcast has 16 MB: a 12 KB table arena, the cells decoded, a 96 KB bank buffer).
++ * plat_breach_level(id) is what the level select calls once a level exists; the texture bank is made the
++ * level's with texbank_activate() (ids 56..63 then answer from it).
++ *
++ * Built only when the disc has a BREACH.BIN (make -C dc BREACH=1, which defines DOOMO_BREACH_BIN): the stock disc
++ * links none of this. The host test is dc/tests/breachdisc_host.sh (the KOS file calls mocked).
++ */
++#if defined(DOOMO_BREACH_BIN)
++#include <fcntl.h>
++#include <string.h>
++#include <kos/fs.h>
++#include "dc_plat.h"
++#include "doomo/breachpack.h"
++#include "doomo/texbank.h"
++
++#define BREACH_PATH "/cd/BREACH.BIN"
++
++static uint32_t s_arena[(BP_ARENA_MAX + 2 * BP_PACK_MAX) / 4] __attribute__((aligned(32)));
++static uint8_t  s_bank[BP_PACK_MAX] __attribute__((aligned(32)));
++static BpLevel  s_level;
++static DoomoTexBank s_tb;
++static int      s_loaded = -1;            /* the level in s_level, -1 none */
++
++typedef struct File { file_t fd; } File;
++
++static int rd_file(void *ctx, uint32_t off, void *dst, uint32_t n)
++{
++    file_t fd = ((File *)ctx)->fd;
++    return fs_seek(fd, (off_t)off, SEEK_SET) == (off_t)off && fs_read(fd, dst, n) == (ssize_t)n;
++}
++
++int plat_breach_level(int level, const DoomoMapDef **def, const DoomoMapExt **ext)
++{
++    File f;
++    ssize_t total;
++    int r;
++    uint32_t need = 0;
++    if (def) *def = NULL;
++    if (ext) *ext = NULL;
++    f.fd = fs_open(BREACH_PATH, O_RDONLY);
++    if (f.fd < 0) return BP_ERR_READ;
++    total = fs_total(f.fd);
++    texbank_activate(NULL);
++    s_loaded = -1;
++    if (total <= 0) { fs_close(f.fd); return BP_ERR_READ; }
++    r = bp_bin_load(rd_file, &f, (uint32_t)total, level, BP_CELLS_ARENA, s_arena, sizeof s_arena, NULL, &need, &s_level);
++    if (r == BP_OK && s_level.tb_len) {
++        /* the level's texture bank: the 'LVTB' blob, read whole, made the active bank */
++        if (s_level.tb_len > sizeof s_bank || !rd_file(&f, s_level.tb_off, s_bank, s_level.tb_len) ||
++            texbank_open(&s_tb, s_bank, s_level.tb_len) != TB_OK)
++            r = BP_ERR_READ;
++        else
++            texbank_activate(&s_tb);
++    }
++    fs_close(f.fd);
++    if (r != BP_OK) return r;
++    s_loaded = level;
++    if (def) *def = &s_level.def;
++    if (ext) *ext = &s_level.ext;
++    return BP_OK;
++}
++#endif
+diff --git a/dc/tests/breachdisc_host.c b/dc/tests/breachdisc_host.c
+new file mode 100644
+index 0000000..f5d189e
+--- /dev/null
++++ b/dc/tests/breachdisc_host.c
+@@ -0,0 +1,47 @@
++/* breachdisc_host.c - LV8 host test: the real dc/src/breachdisc.c and core/src/breachpack.c over a mock of the KOS
++ * file calls (packdisc_mock.c), reading a BREACH.BIN that tools/packbreach.py wrote (ids 0..2 = t3_kit, t8_bank,
++ * hellvile). */
++#include <stdio.h>
++#include <string.h>
++#include "doomo/breachpack.h"
++#include "doomo/texbank.h"
++extern long mock_reads;
++extern const DoomoMapDef map_def_t3_kit, map_def_t8_bank, map_def_hellvile;
++extern const DoomoMapExt map_ext_t3_kit, map_ext_t8_bank;
++static int fails;
++#define CHECK(c) do { if (!(c)) { printf("FAIL %s:%d %s\n", __FILE__, __LINE__, #c); fails++; } } while (0)
++int main(void)
++{
++    const DoomoMapDef *d = NULL;
++    const DoomoMapExt *x = NULL;
++    int r;
++    r = plat_breach_level(0, &d, &x);
++    CHECK(r == BP_OK && d && x);
++    if (d) {
++        CHECK(!strcmp(d->name, map_def_t3_kit.name) && d->w == map_def_t3_kit.w && d->h == map_def_t3_kit.h);
++        CHECK(memcmp(d->cells, map_def_t3_kit.cells, (size_t)d->w * d->h * sizeof(DoomoCell)) == 0);
++        CHECK(d->thing_count == map_def_t3_kit.thing_count);
++        CHECK(x->def == d && x->zone_count == map_ext_t3_kit.zone_count && x->path_count == map_ext_t3_kit.path_count);
++        CHECK(texbank_active() == NULL);
++    }
++    CHECK(mock_reads > 0 && mock_reads < 40);
++    /* a level with a bank: ids 56.. answer from it */
++    r = plat_breach_level(1, &d, &x);
++    if (r != BP_OK) printf("level 1: %s\n", bp_strerror(r));
++    CHECK(r == BP_OK && d && x);
++    if (d) {
++        const DoomoTexBank *tb = texbank_active();
++        CHECK(!strcmp(d->name, map_def_t8_bank.name));
++        CHECK(tb && tb->count == 3 && !strcmp(texbank_name(tb, 0), "vat_brick"));
++        CHECK(texbank_id_pixels(DOOMO_TEXBANK_FIRST, 0) != NULL);
++        CHECK(!strcmp(x->texbank[0], "vat_brick") && x->texbank[1][0] == 0 && !strcmp(x->texbank[2], "dust"));
++    }
++    /* the next level clears the bank, a missing level is an error and leaves nothing active */
++    r = plat_breach_level(2, &d, &x);
++    CHECK(r == BP_OK && d && !strcmp(d->name, map_def_hellvile.name) && x->texbank_count == 0);
++    CHECK(texbank_active() == NULL);
++    r = plat_breach_level(77, &d, &x);
++    CHECK(r == BP_ERR_NOLEVEL && d == NULL && x == NULL);
++    printf("breachdisc host: %s\n", fails ? "FAILED" : "all checks passed");
++    return fails != 0;
++}
+diff --git a/dc/tests/breachdisc_host.sh b/dc/tests/breachdisc_host.sh
+new file mode 100644
+index 0000000..9e208a7
+--- /dev/null
++++ b/dc/tests/breachdisc_host.sh
+@@ -0,0 +1,22 @@
++#!/bin/sh
++# LV8: build a BREACH.BIN of three test maps and read levels from it through dc/src/breachdisc.c (KOS file calls
++# mocked), over the real core reader. Host cc only: `sh dc/tests/breachdisc_host.sh`. Part of `make -C dc
++# check-breachdisc` and `make dc-host-test`.
++set -eu
++here=$(cd "$(dirname "$0")" && pwd); root=$(cd "$here/../.." && pwd)
++t=$(mktemp -d); trap 'rm -rf "$t"' EXIT
++maps="$root/core/tests/maps"
++python3 -I "$root/tools/packbreach.py" --platform dc --bin "$t/BREACH.BIN" --bank-dir "$root/core/tests/banks" \
++    "$maps/t3_kit.txt" "$maps/t8_bank.txt" "$root/core/data/maps/hellvile.txt" >/dev/null
++mkdir -p "$t/gen"
++for m in t3_kit t8_bank; do
++    python3 -I "$root/tools/mapc.py" --out-root "$t/gen" "$maps/$m.txt"
++done
++python3 -I "$root/tools/mapc.py" --out-root "$t/gen" "$root/core/data/maps/hellvile.txt"
++${CC:-cc} -std=gnu99 -Wall -Wextra -Werror -DDOOMO_PLATFORM_DC=1 -DDOOMO_BREACH_BIN=1 \
++    -I"$root/core/include" -I"$root/dc/src" -I"$root/dc/harness" -I"$here/mock" \
++    "$here/breachdisc_host.c" "$here/packdisc_mock.c" "$root/dc/src/breachdisc.c" \
++    "$root/core/src/breachpack.c" "$root/core/src/texbank.c" \
++    "$t/gen/core/gen/map_t3_kit.c" "$t/gen/core/gen/map_t8_bank.c" "$t/gen/core/gen/map_hellvile.c" \
++    -o "$t/t" 2>&1 | head -40
++BREACH_FILE="$t/BREACH.BIN" "$t/t"
+diff --git a/dc/tests/packdisc_mock.c b/dc/tests/packdisc_mock.c
+index 70e0bf7..26d88de 100644
+--- a/dc/tests/packdisc_mock.c
++++ b/dc/tests/packdisc_mock.c
+@@ -14,6 +14,8 @@ file_t fs_open(const char *fn, int mode)
+     if (!strcmp(fn, "/cd/PACK.DMP") && getenv("PACK_FILE")) { fd = open(getenv("PACK_FILE"), O_RDONLY); return fd; }
+     /* TD1: the Talk bank, and only under the capitals the disc has (ISO 9660 names) */
+     if (!strcmp(fn, "/cd/TALK_EN.BIN") && getenv("TALK_FILE")) { mock_opens++; fd = open(getenv("TALK_FILE"), O_RDONLY); return fd; }
++    /* LV8: the level packs */
++    if (!strcmp(fn, "/cd/BREACH.BIN") && getenv("BREACH_FILE")) { mock_opens++; fd = open(getenv("BREACH_FILE"), O_RDONLY); return fd; }
+     return -1;
+ }
+ int fs_close(file_t f) { return close(f); }
+diff --git a/dc/tools/mkcdi.sh b/dc/tools/mkcdi.sh
+index 5a6f01c..562e8c0 100755
+--- a/dc/tools/mkcdi.sh
++++ b/dc/tools/mkcdi.sh
+@@ -47,6 +47,10 @@ if [ -n "$pack" ]; then
+     [ -f "$pack" ] || die "pack $pack does not exist"
+     cp "$pack" "$work/cd/PACK.DMP"
+ fi
++if [ -n "${BREACH_FILE:-}" ]; then      # LV8: the level packs (tools/packbreach.py --platform dc)
++    [ -f "$BREACH_FILE" ] || die "level packs $BREACH_FILE do not exist"
++    cp "$BREACH_FILE" "$work/cd/BREACH.BIN"
++fi
+ if [ -n "$intro" ]; then
+     [ -f "$intro" ] || die "intro $intro does not exist"
+     cp "$intro" "$work/cd/INTRO.DMV"
+diff --git a/gba/tools/memreport.py b/gba/tools/memreport.py
+index 40f230c..961e139 100644
+--- a/gba/tools/memreport.py
++++ b/gba/tools/memreport.py
+@@ -14,6 +14,7 @@ G0), plus the biggest EWRAM / IWRAM objects. Exit status 1 if the main
+ stack is under 6 KB with the largest overlay group loaded (gba.ld ASSERTs
+ the same at link time), else 0.
+ """
++import os
+ import re
+ import sys
+ 
+@@ -26,6 +27,61 @@ SYMS = ("__iwram_start", "__iwram_end", "__iwram_bss_start", "__iwram_bss_end",
+ STACK_MIN = 6144        # gba.ld GBA_STACK_SIZE
+ 
+ 
++LEVEL_OBJS = re.compile(r"(^|/)(levels\w*|lv_\w+|breachpack|texbank|map|maps)\.c?\.?o(bj)?$")
++
++
++def levels_rows(text):
++    """LV8: what the level expansion costs this ROM. ROM: the map tables (tools/levelcheck.py rom_estimate) of the
++    maps the GBA build compiles: the shipped maps, plus the levels core/data/maps/platforms.txt gives `gba yes`
++    whose map file exists. EWRAM / IWRAM: the .data / .bss / .iwram input sections of the levels objects
++    (levels*, lv_*, map, maps, texbank, breachpack) in the linker map; the pack reader (breachpack.o) is linked
++    out of the GBA ROM (nothing references it: the 7 levels are const data), so it adds nothing."""
++    out = []
++    here = os.path.dirname(os.path.abspath(__file__))
++    tools = os.path.join(os.path.dirname(os.path.dirname(here)), "tools")
++    try:
++        sys.path.insert(0, tools)
++        import mapc
++        import levelcheck
++        man = {e["map"]: e for _, e in mapc.load_manifest()}
++        rom, names = 0, []
++        for f in sorted(os.listdir(mapc.MAPS_DIR)):
++            if not f.endswith(".txt") or f == "platforms.txt":
++                continue
++            name = f[:-4]
++            if name in man and not man[name]["gba"]:
++                continue                     # a new level the GBA does not carry (compiled out)
++            m = mapc.parse_map(os.path.join(mapc.MAPS_DIR, f))
++            w, h, cells, things = mapc.build(m)
++            rom += levelcheck.rom_estimate(m, cells, things)
++            names.append(name)
++        new = [n for n in names if n in man]
++        out.append("memreport: levels ROM %7d bytes of map tables (%d maps: %d shipped + %d new `gba yes` of the 7)" % (
++            rom, len(names), len(names) - len(new), len(new)))
++        absent = sum(1 for e in man.values() if e["gba"] and not os.path.exists(os.path.join(mapc.MAPS_DIR, e["map"] + ".txt")))
++        if absent:
++            out.append("memreport:   %d of the 7 GBA levels have no map file yet" % absent)
++    except Exception as e:                   # the report must never fail a build
++        out.append("memreport: levels ROM not computed (%s)" % e)
++    ew = iw = 0
++    parts = {}
++    for m in re.finditer(r"^ (\.(?:bss|data|iwram|iwram_bss|iwram_data|ewram_bss|noinit)[^\s]*)\s*\n?\s+0x([0-9a-f]+)"
++                         r"\s+0x([0-9a-f]+)\s+(\S+)", text, re.M):
++        addr, size, obj = int(m.group(2), 16), int(m.group(3), 16), m.group(4)
++        base = obj.split("/")[-1]
++        if not size or not LEVEL_OBJS.search(base):
++            continue
++        key = re.sub(r"\.c?\.?o(bj)?$", "", base)
++        if 0x02000000 <= addr < 0x03000000:
++            ew += size
++            parts[key] = parts.get(key, 0) + size
++        elif 0x03000000 <= addr < 0x04000000:
++            iw += size
++    out.append("memreport: levels EWRAM %5d bytes, IWRAM %d bytes in the levels objects (%s); breachpack %d" % (
++        ew, iw, ", ".join("%s %d" % kv for kv in sorted(parts.items())) or "none", parts.get("breachpack", 0)))
++    return out
++
++
+ def main():
+     if len(sys.argv) < 2:
+         sys.exit("usage: memreport.py ROM.map")
+@@ -85,6 +141,8 @@ def main():
+     objs.sort(reverse=True)
+     for size, addr, sec, obj in objs[:12]:
+         print("memreport:   %6d  0x%08x  %-28s %s" % (size, addr, sec[:28], obj))
++    for row in levels_rows(text):
++        print(row)
+     if stack < STACK_MIN:
+         print("memreport: FAIL: main stack %d < %d bytes" % (stack, STACK_MIN))
+         return 1
+-- 
+2.43.0
+
