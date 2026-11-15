@@ -196,6 +196,14 @@ int ld_flipped(int page)
     return 1;
 }
 
+/* (S2-4d landing, cross-stream; hold.c hold_settle) 1 when a busy card was painted on `page` since the last flip. A
+ * hold that settles now would copy the card into the other page too, and both pages then showed it until the hub's
+ * next full frame (12-13 ticks after an autosave, at some phases of the hold: test-cardgone): the hold waits a frame */
+int ld_card_on(int page)
+{
+    return ld_card_page && ld_card_page - 1 == page;
+}
+
 /* postfx_vblank, in the vblank of a flip, with the frame's own BLDCNT / BLDY about to be written: the wait is
  * over; the new picture comes in from the darkness reached, keeping a darker blend of its own */
 void ld_flip(int *bldcnt, int *bldy)

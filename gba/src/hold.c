@@ -27,6 +27,7 @@
 #include "r3d_int.h"            /* SP3: the raycaster's colormap rows share the VRAM gaps */
 #include "doomo/plat_ext.h"
 #include "hcmd.h"
+#include "postfx.h"            /* (S2-4d landing) ld_card_on */
 
 void ow_invalidate(void);
 
@@ -113,6 +114,7 @@ static int hold_settle(void)
 {
     volatile uint16_t *src, *dst;
     if (gba_nodraw == 1 || last_page < 0) return 0;
+    if (ld_card_on(last_page)) return 0;               /* (S2-4d landing) a save's card is on it: settle next frame */
     src = last_page ? VRAM_PAGE1 : VRAM_PAGE0;
     dst = last_page ? VRAM_PAGE0 : VRAM_PAGE1;
     dma3_copy32((void *)dst, (const void *)src, (uint32_t)(SCREEN_W * SCREEN_H / 4));
