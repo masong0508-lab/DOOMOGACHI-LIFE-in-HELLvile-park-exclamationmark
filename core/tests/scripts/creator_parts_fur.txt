@@ -44,8 +44,7 @@ wait 4
 press R
 wait 12
 shot 07_supernatural_tab
-press DOWN
-wait 2
+# the Horn size row shows only while horns are worn (CR-BODY), so one DOWN less to the Marking row
 press DOWN
 wait 2
 press DOWN

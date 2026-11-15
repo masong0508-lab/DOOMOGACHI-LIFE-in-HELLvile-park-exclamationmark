@@ -457,3 +457,35 @@ TEST(crbody_the_body_row_cycles_all_sixteen)
         CHECK_MSG(seen[k] > 0 || cr_value_locked(&cr_tabs[CR_TAB_BODY].rows[row], k), "body %d never reached", k);
     for (k = BODY_ATHLETIC; k < BODY_TYPES; k++) CHECK_MSG(seen[k] == 1, "new body %d seen %d times", k, seen[k]);
 }
+
+/* The head size slider on every body type (review finding): a body with a head step adds it to the slider,
+ * so the last `step` steps of the 16 pass the top of the 4-bit range and draw the same picture. That is the
+ * only place a step may repeat, and never more steps than the body's step (Bobble: 4 of 16, the slider's
+ * default 11 already reads "Big"). The classic bodies and every other step must all differ. */
+TEST(crbody_head_size_steps_repeat_only_at_the_big_end_by_the_body_step)
+{
+    int s, bo, v, head = -1;
+    collect_build_sliders();
+    for (s = 0; s < n_build_sliders; s++) if (build_sliders[s]->field == GF_HEAD_SIZE) head = s;
+    CHECK(head >= 0);
+    for (bo = 0; bo < BODY_TYPES; bo++) {
+        const CrRow *row = build_sliders[head];
+        int step = pb_head_adj(bo), dead = 0, last_live = 0;
+        DoomoResident lo, r;
+        bench(&lo, SPECIES_CATFOLK, bo);
+        cr_row_set(&lo, row, 0);
+        render(&lo, &PB);
+        for (v = 1; v < cr_row_count(row); v++) {
+            r = lo;
+            cr_row_set(&r, row, v);
+            render(&r, &PC);
+            if (pic_diff(&PB, &PC) == 0) dead++;
+            else last_live = v;
+            PB = PC;
+        }
+        CHECK_MSG(dead <= step, "body %d: %d repeated steps, step %d", bo, dead, step);
+        CHECK_MSG(step > 0 || dead == 0, "body %d has no head step but %d repeated steps", bo, dead);
+        CHECK_MSG(step == 0 || last_live >= 15 - step, "body %d: a repeated step below the top", bo);
+    }
+    CHECK_EQ(g_overflow, 0);
+}
