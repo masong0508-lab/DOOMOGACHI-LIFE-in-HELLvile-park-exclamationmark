@@ -1,0 +1,57 @@
+diff --git a/docs/CREATOR.md b/docs/CREATOR.md
+index 7d3e78d..105a902 100644
+--- a/docs/CREATOR.md
++++ b/docs/CREATOR.md
+@@ -1085,3 +1085,17 @@ about 40 deep runs loads on the PS1 with an empty pool (nicknames and gene bits
+ Hair try-on measures 27.52 fps on the PS1 (floor 26), below the 30 target until S3-2. The tail and outer windows of
+ `creator_parts.txt` do not reach their grids yet (outer was measured by hand: 30.00). PS1 resident use is 21,024 B
+ against the 4 KB share: not landed until the coordinator releases about 17 KB of the reserve.
++
++
++## HH-DATA: the household data the creator will use (2026-11-15)
++
++No screen yet: this is the data and the rules under the household view (HH-CREATOR) and the relationship editor (HH-REL). Full
++text: `docs/PLAYAS.md` "HH-DATA", plan `docs/design/HOUSEHOLDS_PLAN.md`.
++
++* `household.h`: `household_count / head / size / member / of`, `household_create / add / move / remove / set_head / reorder`,
++  `household_rel / rel_set / rel_check` (every refusal has a reason code and `household_reason_text` gives one short line),
++  `household_new_person(h, rel)` (makes or finds the resident place, then the creator edits it in place; if the player cancels,
++  call `household_remove(id)` and `town_free(id)`), `household_crush_check` for the Feelings page.
++* The player's household takes 20 people on every platform. Others take 20 residents each, 24 households at most.
++* New texts the creator shows: `household_reason_text(code)`, `household_rel_name(rel, pronoun)` ("mother", "father", "parent").
++* Memory: GBA EWRAM +3,856 B (of the 6 KB share); the creator pages draw from the scene scratch arena.
+diff --git a/docs/GAME_DESIGN.md b/docs/GAME_DESIGN.md
+index 60e0919..c4f187d 100644
+--- a/docs/GAME_DESIGN.md
++++ b/docs/GAME_DESIGN.md
+@@ -274,6 +274,8 @@ before it begins.
+ | add a household member | reserved | | 6 (F2) |
+ | care for the whole household | reserved | | 1 (F2) |
+ 
++Household size (HH-DATA, 2026-11-15): the player's household holds up to 20 people besides the player on every platform from the start (it was 3, then 10 and 20 by tier; the GBA 3, 6, 10). Residents can head their own households of up to 20 as well: `docs/design/HOUSEHOLDS_PLAN.md`, `docs/PLAYAS.md` "HH-DATA".
++
+ Frame rates and the latency of each life-sim screen's opening press are
+ measured on the consoles by `make -C gba test-life` (docs/GBA.md "Life
+ tour") and `ps1/harness/scripts/perf_life.txt` (docs/PS1.md).
+diff --git a/docs/PLAYAS.md b/docs/PLAYAS.md
+index 82ca988..68681d4 100644
+--- a/docs/PLAYAS.md
++++ b/docs/PLAYAS.md
+@@ -381,3 +381,17 @@ MP0's profiles (`profiles.c`) had no screen. `SCENE_PLAYAS` now has a players mo
+ * The played bit is the guest's saved PROF flag `PROF_FLAG_COOP_QUEST(q)` (bit 8+q): no save change. New accessor `prof_hero(profile)`.
+ * **Test**: `mp1_a_guest_playing_ember_gets_her_first_quest_once`. `make -C core test`: unit 860, scripts 160 OK, journeys 19 OK, story-check and check-gen clean.
+ * **Not built**: the reward, quests 2-4 on later days, Rook's and Wick's quests, a family portrait for the speaker.
++
++
++### HH-DATA: households for everyone (2026-11-15)
++
++Plan: `docs/design/HOUSEHOLDS_PLAN.md`. Code: `core/include/doomo/household.h`, `core/src/household.c`. Tests: `core/tests/test_household.c` (50).
++
++* **The player's household (household 0)** holds up to **20 people besides the player on every platform, from the start** (`family_cap()` is 20, `FAMILY_MAX` is 20 on the GBA too, pool ids 1001..1020 everywhere). The three tiers (3, 10, 20; GBA 3, 6, 10) no longer limit it. The tier unlocks stay: their toast and the pet uplift are unchanged.
++* **Other households (1..)** hold residents only: a head and up to 20 people (the head counts), at most `HH_MAX_RECS` = 24 of them. A resident is in **one household at a time**: `household_of(id)` is 0, 1.. or -1 (alone; a lone resident costs nothing). Calls: `household_create / add / move / remove / set_head / reorder`. A head who leaves passes the head to the next member; a household left with one person is dissolved (the later numbers move up).
++* **Relations** (`HREL_*`, "a is b's ..."): spouse, partner, fiance, parent / child, step-parent / step-child, sibling, step-sibling, grandparent / grandchild, aunt-uncle / niece-nephew, cousin, roommate, pet owner / pet. One row per pair; the other side is filled in by a table (`household_rel_reverse`). Household 0 uses the old `FamilyMember.role` for the pair with the player when no row exists, so old saves and old callers keep working. Setting a relation with the player also updates the old role when one says it.
++* **The rules** (`household_rel_check`, one plain reason per refusal, `household_reason_text`): a couple (spouse, partner, fiance) and a crush need **two adults**, never kin (stated, shared parent or ancestor), the sim's romance rule both ways round, and one at a time. A parent (also step, grand, aunt-uncle) must be a grown-up and older in stage (baby < toddler < child < teen < adult < elder; the stage is all the age the game has, so an adult cannot be the parent of another adult: an elder can). No loops (nobody is their own ancestor), and a parent's parent is a grandparent, not a second parent. A minor is never a grown-up's roommate. A pet has only its owner and the owner is a person. The rulebook only reads the sim's rules, the kid-cast list and the life stages: `mature_adult_ok` and the kid-cast list are never written.
++* **New people** (`household_new_person`): the first free resident place; if the island is full, the adult with the lowest friendship level who is in no household, is no story or premade citizen, no partner and not the hero or avatar moves away ("X moved away to make room"); never a minor. If nobody qualifies: "The island is full." The new person is a fresh citizen of the stage the relation suggests, and the creator edits that place in place.
++* **Saving**: the new chunk `HOUS` (version 1, the 15th registry slot, worst case `SAVE_EXT_MAX_HOUS` = 3,584 B). Nothing is written while there are no households of two people and no relation rows (the chunk's header is skipped too: `save.c`), so an island without them saves **byte for byte as before**. An old save has no `HOUS` and loads with no households. On load every id is checked: a person who is dead, missing, in the player's household or in an earlier record is dropped; a record left with fewer than two people dissolves; rows that name dropped people, repeat a pair or break a rule (a minor spouse, a loop) are dropped. Any damaged chunk is refused whole and leaves no households (a fuzz test feeds it 4,000 damaged chunks).
++* **Memory**: GBA EWRAM +3,856 B, PS1 resident see `docs/PS1.md` "HH-DATA", Dreamcast and native: plain `.bss` (24 records x 140 B + 192 B).
++* **Not built here** (the next packages): the creator pages (HH-CREATOR, HH-REL), the sim, Talk, houses and news (HH-USE).

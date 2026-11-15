@@ -46,7 +46,7 @@ Round 4 (CR5, CR-BODY, A5, A4) resumed from the paused worktrees. Plan additions
 
 ## HOUSEHOLDS (second CREATOR machine; lead: the session of 2026-11-15 started by the coordinator)
 - **Last update:** 2026-11-15. Plan: `docs/design/HOUSEHOLDS_PLAN.md` (HH-0 landed with this block). Packages: HH-DATA, HH-CREATOR, HH-REL, HH-USE.
-- **In flight:** HH-DATA (building).
+- **PAUSED 2026-11-15 (coordinator, allowance 98%).** Lead session: session_01Xd63cyoVQMX8CCuWDX8Db9. In flight: nothing. HH-DATA built but not reviewed or gated: saved as patches in `patches/wip/HOUSEHOLDS/` (see its README). Next: finish HH-DATA, then HH-CREATOR, HH-REL, HH-USE, HH-PETS. PS1 3,584 B + 1,152 B approved; GBA 3.9 KB from CREATOR's share + 1,152 B GBA reserve.
 - **Memory asked:** GBA EWRAM about 3.9 KB of the 6 KB share (the HOUSEHOLDS stream takes it; the CREATOR lead keeps the other 2.1 KB, `GBA EWRAM used of share` for HOUSEHOLDS is counted here); PS1 resident 3,554 B from the reserve (CREATOR's own 21 KB has 224 B left): asked of the coordinator.
 - **Files:** HOUSEHOLDS owns `core/include/doomo/household.h`, `core/src/household*.c`, `core/src/creator_house*.c`, the wizard removal in `fp_family.c`, the `HOUS` chunk. Shared with CREATOR (small hook): `creator.c` (`creator_house_open`), `creator_int.h`, the START menu in `creator_draw.c`. The CREATOR lead keeps body types, sliders, personality, parts.
 - **PS1 resident used of share:** 0 B. **GBA EWRAM used of share:** 0 B.

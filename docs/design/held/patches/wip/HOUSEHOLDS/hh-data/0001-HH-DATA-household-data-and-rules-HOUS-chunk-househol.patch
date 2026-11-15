@@ -1,0 +1,2694 @@
+From 0321df696b8107f87f174fb2caebc06a0710c76d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:28:52 +0000
+Subject: [PATCH] HH-DATA: household data and rules, HOUS chunk, household cap
+ 20 everywhere
+
+household.h/.c: residents' households (up to 24 records of 20), household 0's relation rows,
+HREL_* with the pure reverse table, the section 3 rulebook with reason codes, join / leave / move /
+head / reorder, household_new_person, the 'HOUS' save chunk (15th registry slot, nothing written
+while empty). family_cap() is 20 on every platform and FAMILY_MAX 20 on the GBA too.
+core/tests/test_household.c: 50 tests incl. a fuzz of the chunk. cross-stream: save.c skips the
+empty HOUS header; family.c gets family_slot_move and one household_forget call.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cyoVQMX8CCuWDX8Db9
+---
+ core/include/doomo/family.h        |   21 +-
+ core/include/doomo/household.h     |  161 ++++
+ core/include/doomo/life_contract.h |   25 +-
+ core/include/doomo/save_budget.h   |    8 +
+ core/include/doomo/save_ext.h      |    9 +-
+ core/src/family.c                  |   29 +-
+ core/src/household.c               |  872 ++++++++++++++++++++
+ core/src/save.c                    |    2 +
+ core/src/save_budget.c             |    8 +-
+ core/src/save_ext.c                |    5 +-
+ core/tests/test_contracts.c        |    4 +-
+ core/tests/test_contracts_k0.c     |   12 +-
+ core/tests/test_family.c           |   32 +-
+ core/tests/test_household.c        | 1191 ++++++++++++++++++++++++++++
+ core/tests/test_levels_rec.c       |    4 +-
+ core/tests/test_save_budget.c      |    2 +-
+ 16 files changed, 2322 insertions(+), 63 deletions(-)
+ create mode 100644 core/include/doomo/household.h
+ create mode 100644 core/src/household.c
+ create mode 100644 core/tests/test_household.c
+
+diff --git a/core/include/doomo/family.h b/core/include/doomo/family.h
+index 37e89ad..ce4085d 100644
+--- a/core/include/doomo/family.h
++++ b/core/include/doomo/family.h
+@@ -20,10 +20,10 @@
+  * must pass the life stage gate of LS0 (adults only, both ways, never
+  * kin; a minor is never a partner) and there is at most one.
+  *
+- * The cap counts members, not the player, and pets count: 3 at first, then
+- * 10 (GBA 6) after the game is completed and 20 (GBA 10) after New Game+
+- * (life_contract.h HOUSEHOLD_CAP, unlock ids UL_LIFE_HOUSEHOLD_T1 / T2).
+- * The GBA table is sized for its own cap (10), the others for 20.
++ * The cap counts members, not the player, and pets count: 20 on every platform
++ * (HH-DATA, 2026-11-15; it was 3, then 10 / GBA 6, then 20 / GBA 10 by tier). The
++ * tiers (unlock ids UL_LIFE_HOUSEHOLD_T1 / T2) stay: their toast and the pet uplift.
++ * household.h adds the residents' households and the relation editor's data.
+  *
+  * Nothing is written to the save while the household is empty, so an
+  * island without a family loads and saves byte for byte as before.
+@@ -83,17 +83,13 @@ typedef struct FamilyIdentity {
+ #define FAMILY_SZ_WORST (FAMILY_SEC_HEAD + 8u * HOUSEHOLD_CAP_MAX)
+ #define FAMILY_POOL_REC (2u + 20u)  /* pool section: id u16 + an identity      */
+ #define FAMILY_POOL_SZ_WORST (FAMILY_SEC_HEAD + FAMILY_POOL_REC * HOUSEHOLD_CAP_MAX)
+-#ifdef DOOMO_PLATFORM_GBA
+-#define FAMILY_MAX HOUSEHOLD_CAP_SMALL_T2
+-#else
+-#define FAMILY_MAX HOUSEHOLD_CAP_FULL_T2
+-#endif
++#define FAMILY_MAX HOUSEHOLD_CAP_MAX      /* 20 on every platform, the GBA too (HH-DATA) */
+ /* The pool ids this platform has: FIRST .. FIRST + FAMILY_MAX - 1. */
+ #define FAMILY_POOL_FIRST (DOOMO_PLAYER_ID + 1)
+ #define FAMILY_POOL_LAST  (DOOMO_PLAYER_ID + FAMILY_MAX)
+ 
+-/* The cap of the household now (tier from the unlocks; the GBA's smaller
+- * numbers on the GBA). */
++/* The cap of the household: 20 members on every platform from the start (HH-DATA; the tiers
++ * below no longer limit it). */
+ int  family_cap(void);
+ /* The household tiers (S-HOUSE): 0 at the start, 1 once the story is
+  * finished (UL_LIFE_HOUSEHOLD_T1), 2 once it is finished again in New Game+
+@@ -138,6 +134,9 @@ int  family_set_name(int id, const char *name);
+ int  family_resident(int id, DoomoResident *out);
+ /* The first free pool id (1001..), or -1 when every pool id in range is used. */
+ int  family_pool_alloc(void);
++/* HH-DATA: move the member at table slot `from` to slot `to` (the others close up; the bond / mood
++ * byte follows). 1 on success, 0 for a bad slot. The creator's Reorder uses it through household_reorder(). */
++int  family_slot_move(int from, int to);
+ /* Forget the household (a new town does this through the LIFE chunk). */
+ void family_clear(void);
+ 
+diff --git a/core/include/doomo/household.h b/core/include/doomo/household.h
+new file mode 100644
+index 0000000..b4487fd
+--- /dev/null
++++ b/core/include/doomo/household.h
+@@ -0,0 +1,161 @@
++/* household.h - households for everyone (owner: HOUSEHOLDS; HH-DATA; docs/design/HOUSEHOLDS_PLAN.md).
++ *
++ * Household 0 is the player's: its members stay in family.h's table (up to FAMILY_MAX = 20 besides the
++ * player, every platform), and this file only adds its pairwise relation list. Households 1.. are
++ * residents' households: a head and up to HH_MEMBERS_MAX = 20 residents (the head counts, ids 0..999,
++ * never pool ids), at most HH_MAX_RECS of them. A resident is in one household at a time:
++ * household_of(id) is 0 (the player's), 1.., or -1 (alone; a lone resident costs nothing).
++ * Household numbers are positions: 1..household_count()-1. A household that is dissolved or created
++ * shifts the later ones, so keep the head's id, not the number, between calls.
++ *
++ * Relations (HREL_*) read "a is b's X". One row per pair; the reverse is a pure table. Household 0's
++ * pairs with the player fall back to the old FamilyMember.role when no row exists. household_rel_check()
++ * is the rulebook (plan section 3): it reads life stages, sim_romance_ok (through playas_romance_ok) and
++ * the kid-cast list through the sim, and NEVER writes mature_adult_ok or the kid-cast list.
++ *
++ * Saved in the 'HOUS' chunk (own tag, version 1, SAVE_EXT_MAX_HOUS). Nothing is written while there are
++ * no residents' households and no relation rows, so an island without them saves byte for byte as before.
++ *
++ * Calls return 0 / a count / an index on success and a negative HH_ERR_* on failure (-HHR_*; the creator
++ * shows household_reason_text() as one plain line). Nothing changes on an error.
++ */
++#ifndef DOOMO_HOUSEHOLD_H
++#define DOOMO_HOUSEHOLD_H
++
++#include "types.h"
++
++#define HH_MEMBERS_MAX 20            /* a household's size, the head included (the player's: besides the player) */
++#ifndef HH_MAX_RECS
++#define HH_MAX_RECS    24            /* residents' households; -DHH_MAX_RECS=12 is the PS1 fallback */
++#endif
++#define HH_RELS_MAX    32            /* relation rows per household */
++
++/* Relations: "a is b's ...". Saved as numbers: add at the end only. */
++enum {
++    HREL_NONE = 0,
++    HREL_SPOUSE, HREL_PARTNER, HREL_FIANCE,          /* symmetric; adults only */
++    HREL_PARENT, HREL_CHILD,                         /* a is b's parent / child */
++    HREL_STEPPARENT, HREL_STEPCHILD,
++    HREL_SIBLING, HREL_STEPSIBLING,                  /* symmetric */
++    HREL_GRANDPARENT, HREL_GRANDCHILD,
++    HREL_AUNT_UNCLE, HREL_NIECE_NEPHEW,
++    HREL_COUSIN,                                     /* symmetric */
++    HREL_ROOMMATE,                                   /* symmetric */
++    HREL_PET_OWNER, HREL_PET,                        /* a owns b / a is b's pet */
++    HREL_COUNT
++};
++/* The other side: reverse(PARENT) = CHILD, reverse(SPOUSE) = SPOUSE, ... HREL_NONE for a bad value. */
++int household_rel_reverse(int rel);
++int household_rel_symmetric(int rel);
++/* "mother", "father", "parent", ... for rel as someone of this PRONOUN_* ("" for HREL_NONE / bad). Static text. */
++const char *household_rel_name(int rel, int pronoun);
++
++/* Why something was refused (HHR_*); the calls return -HHR_*. */
++enum {
++    HHR_OK = 0,
++    HHR_BAD_ID,          /* not a resident who lives here                       */
++    HHR_BAD_HOUSEHOLD,   /* no such household                                   */
++    HHR_DUP,             /* already in a household                              */
++    HHR_FULL,            /* the household has its 20                            */
++    HHR_NO_ROOM,         /* no room in the town's households or the save file   */
++    HHR_NOT_MEMBER,      /* one of the two is not in this household             */
++    HHR_SELF,            /* a person and themselves                             */
++    HHR_BAD_REL,         /* not a relation (or one this call cannot make)       */
++    HHR_ADULTS_ONLY,     /* a partner, spouse, fiance or crush must be an adult */
++    HHR_ROMANCE,         /* the romance rules say no (sim_romance_ok)           */
++    HHR_KIN,             /* family never pairs up                               */
++    HHR_ONE_AT_A_TIME,   /* one spouse, partner or fiance at a time             */
++    HHR_PARENT_ADULT,    /* the older side must be a grown-up                   */
++    HHR_PARENT_OLDER,    /* and older than the younger side                     */
++    HHR_CYCLE,           /* nobody is their own ancestor                        */
++    HHR_GENERATION,      /* a parent's parent is a grandparent                  */
++    HHR_MINOR_ROOMMATE,  /* a minor is never a grown-up's roommate              */
++    HHR_PET_OTHER,       /* a pet has just its owner                            */
++    HHR_PET_OWNER,       /* the owner must be a person                          */
++    HHR_HEAD,            /* the player always heads their own household         */
++    HHR_POOL,            /* pool people live only in the player's household     */
++    HHR_NO_SPOT,         /* the island is full and nobody can move away         */
++    HHR_FAMILY,          /* the old household table refused the role            */
++    HHR_COUNT
++};
++#define HH_ERR(code) (-(code))
++/* One plain sentence for a reason code (positive or negative; "" for OK). Static text. */
++const char *household_reason_text(int code);
++
++/* ---- households ------------------------------------------------------------ */
++int  household_count(void);                    /* 1 + the residents' households: valid numbers are 0..count-1 */
++int  household_head(int h);                    /* the player (DOOMO_PLAYER_ID) for 0, else the head; -1 if none */
++int  household_size(int h);                    /* people in it, head included (0: the player + family_count()) */
++int  household_member(int h, int i);           /* the i-th person, 0 = the head; -1 if out of range */
++int  household_of(int id);                     /* 0 (the player or a family member), 1.., or -1 */
++int  household_cap(int h);                     /* most people it holds (0: the player + family_cap(); else 20); 0 if no such household */
++
++/* A new household with `head` (a resident in no household) alone in it: returns its number. A lone
++ * household is not saved: add someone (a household of one person is dissolved by a save and a load). */
++int  household_create(int head);
++/* Add resident `id` (a live resident in no household; for household 0 also a free pool id) as `rel_to_head`:
++ * "id is the head's ..." (HREL_NONE = no stated relation). The relation passes household_rel_check.
++ * Returns the person's position. For household 0 the old family table does the adding (family_add):
++ * the role comes from the relation (a partner, child, parent, sibling, grandparent, pet; otherwise a housemate). */
++int  household_add(int h, int id, int rel_to_head);
++/* Move a resident to household `to` (0 = the player's). It leaves the old household first (a head who
++ * leaves passes the head on; a household left with one person is dissolved). */
++int  household_move(int id, int to);
++/* Take a person out of their household: 0, or 1 when that dissolved the household (its number is gone).
++ * A head who leaves passes the head to the next member. For household 0 it is family_remove(); the player
++ * cannot be removed. Relation rows with the person go. */
++int  household_remove(int id);
++/* The new head of a residents' household (the person swaps places with the head). */
++int  household_set_head(int h, int id);
++/* Move the person at position `from` to position `to` (1..size-1; the head stays first). For household 0 it
++ * reorders the family table (the bond bytes follow). */
++int  household_reorder(int h, int from, int to);
++
++/* ---- relations -------------------------------------------------------------- */
++/* a is b's ... : the stored row (either way round), else for household 0 the old FamilyMember.role against
++ * the player, else HREL_NONE. -1 if a household or person is bad. */
++int  household_rel(int h, int a, int b);
++/* The rulebook: 0 or a HHR_* reason. Checks only; writes nothing. */
++int  household_rel_check(int h, int a, int b, int rel);
++/* Set "a is b's rel" (the reverse side is implied): replaces the pair's row; HREL_NONE clears it.
++ * 0, or HH_ERR(reason). In household 0 a relation with the player also updates the old role when
++ * it maps to one (partner, child, parent, sibling, grandparent, housemate, pet). */
++int  household_rel_set(int h, int a, int b, int rel);
++/* Rows stored in household h. */
++int  household_rel_count(int h);
++/* Crush feelings (a town-graph edge, set by the creator's Feelings page): 0 or a reason. Adults only,
++ * both ways, sim_romance_ok. Not stored here. */
++int  household_crush_check(int a, int b);
++
++/* ---- a new person for a household ------------------------------------------ */
++/* Make room for and create a new person: the first free resident place of the household's district (else
++ * the other), else the resident with the lowest friendship level who is in no household, is an adult and
++ * is not a story or premade citizen, the avatar or the hero moves away (news "X moved away to make room",
++ * town_free). The new person is a fresh generated resident of the stage the relation suggests (a child
++ * for HREL_CHILD / STEPCHILD / GRANDCHILD / NIECE_NEPHEW, else an adult) and joins household h as
++ * `rel_to_head` ("is the head's ..."). The creator then edits that slot in place; if it is cancelled, it
++ * calls household_remove(id) and town_free(id). Returns the new resident's id, or HH_ERR(reason). */
++int  household_new_person(int h, int rel_to_head);
++
++/* ---- upkeep ------------------------------------------------------------------ */
++/* A person who is no longer a household member (family_remove calls this): their rows go. */
++void household_forget(int id);
++/* Drop everyone who is dead or gone, dissolve households left with fewer than two. Returns how many left. */
++int  household_sweep(void);
++/* No households (a new town; the HOUS chunk's reset). */
++void household_clear(void);
++
++/* ---- the 'HOUS' chunk (version 1) --------------------------------------------
++ * count u8, then per record: head u16, n u8, flags u8, n x member u16, nrel u8, then nrel x row.
++ * A residents' record: head = member[0], rows are (slot a u8, slot b u8, rel u8). Household 0's
++ * relation list, when it has rows, is the FIRST record with head 0xFFFF and n 0; its rows are
++ * (id a u16, id b u16, rel u8) because its members live in the family table. */
++#define HH_REC_HEAD     4u                 /* head u16, n u8, flags u8 */
++#define HH_REC_WORST    (HH_REC_HEAD + 2u * HH_MEMBERS_MAX + 1u + 3u * HH_RELS_MAX)   /* 141 */
++#define HH_REC0_WORST   (HH_REC_HEAD + 1u + 5u * HH_RELS_MAX)                         /* 165 */
++#define HH_SAVE_WORST   (1u + HH_REC0_WORST + (uint32_t)HH_MAX_RECS * HH_REC_WORST)   /* 3,550 with 24 */
++uint32_t household_save_size(void);
++uint32_t household_save(uint8_t *dst, uint32_t cap);
++int      household_load(const uint8_t *src, uint32_t len);
++
++#endif
+diff --git a/core/include/doomo/life_contract.h b/core/include/doomo/life_contract.h
+index 85b9fb4..cb30e40 100644
+--- a/core/include/doomo/life_contract.h
++++ b/core/include/doomo/life_contract.h
+@@ -12,24 +12,21 @@
+ #ifndef DOOMO_LIFE_CONTRACT_H
+ #define DOOMO_LIFE_CONTRACT_H
+ 
+-/* ---- household cap tiers (F1-F4; user answer 4, 6) ---------------------
+- * The household grows in three tiers: at first, after the game is
+- * completed, after New Game+ is completed. Pets count toward the cap.
+- * FULL is PS1 / native / Dreamcast, SMALL the GBA (its RAM). */
++/* ---- household cap (F1-F4; user answer 4, 6; HOUSEHOLDS 2026-11-15) -----
++ * The household had three tiers (3 at first, 10 after the game, 20 after New Game+; the GBA 3 / 6 /
++ * 10). Owner 2026-11-15 ("a max of twenty members ... for the Game Boy"): the player's household has
++ * room for 20 on every platform from the start. The tier names and the macro stay (the unlock ids,
++ * the toast and the pet uplift still follow them), but every tier is 20. Pets count toward the cap. */
+ enum { HOUSEHOLD_TIER_START = 0, HOUSEHOLD_TIER_GAME_DONE, HOUSEHOLD_TIER_NGPLUS_DONE,
+        HOUSEHOLD_TIER_COUNT };
+-#define HOUSEHOLD_CAP_FULL_T0   3
+-#define HOUSEHOLD_CAP_FULL_T1  10
++#define HOUSEHOLD_CAP_FULL_T0  20
++#define HOUSEHOLD_CAP_FULL_T1  20
+ #define HOUSEHOLD_CAP_FULL_T2  20
+-#define HOUSEHOLD_CAP_SMALL_T0  3
+-#define HOUSEHOLD_CAP_SMALL_T1  6
+-#define HOUSEHOLD_CAP_SMALL_T2 10
++#define HOUSEHOLD_CAP_SMALL_T0 20
++#define HOUSEHOLD_CAP_SMALL_T1 20
++#define HOUSEHOLD_CAP_SMALL_T2 20
+ #define HOUSEHOLD_CAP_MAX      HOUSEHOLD_CAP_FULL_T2     /* sizes the LIFE chunk */
+-#define HOUSEHOLD_CAP(small, tier) \
+-    ((small) ? ((tier) <= 0 ? HOUSEHOLD_CAP_SMALL_T0 : (tier) == 1 ? HOUSEHOLD_CAP_SMALL_T1 \
+-                                                                   : HOUSEHOLD_CAP_SMALL_T2) \
+-             : ((tier) <= 0 ? HOUSEHOLD_CAP_FULL_T0 : (tier) == 1 ? HOUSEHOLD_CAP_FULL_T1 \
+-                                                                  : HOUSEHOLD_CAP_FULL_T2))
++#define HOUSEHOLD_CAP(small, tier) ((void)(small), (void)(tier), HOUSEHOLD_CAP_MAX)
+ 
+ /* ---- the 'LIFE' chunk's sections (max SAVE_EXT_MAX_LIFE = 2,688 B) --------
+  * LS1's plan (2,432 B: news ring, life events, the family of 20, the
+diff --git a/core/include/doomo/save_budget.h b/core/include/doomo/save_budget.h
+index 4fb9729..e4a70f9 100644
+--- a/core/include/doomo/save_budget.h
++++ b/core/include/doomo/save_budget.h
+@@ -115,4 +115,12 @@ uint32_t save_budget_declared_max(uint32_t tag);
+ #define SAVE_BUDGET_BRCH_WORST (SAVE_BUDGET_LZ_WORST(SAVE_EXT_MAX_BRCH) + SAVE_BUDGET_CHUNK_HDR)
+ /* --- end LV0 --- */
+ 
++/* --- HH-DATA: 'HOUS', the residents' households (household.h): 1 B count + household 0's rows
++ * (4 + 1 + 32 x 5 = 165 B) + 24 records of 4 + 2 x 20 + 1 + 3 x 32 = 141 B (3,384 B) = 3,550 B worst;
++ * declared 3,584 (3.5 KiB). Nothing is written while there are no households of two or more residents
++ * and no relation rows. The joint worst case with it is held in both slots by test_household.c. --- */
++#define SAVE_EXT_MAX_HOUS     3584u
++#define SAVE_BUDGET_HOUS_WORST (SAVE_BUDGET_LZ_WORST(SAVE_EXT_MAX_HOUS) + SAVE_BUDGET_CHUNK_HDR)
++/* --- end HH-DATA --- */
++
+ #endif
+diff --git a/core/include/doomo/save_ext.h b/core/include/doomo/save_ext.h
+index d5f6a62..0e4d0be 100644
+--- a/core/include/doomo/save_ext.h
++++ b/core/include/doomo/save_ext.h
+@@ -97,7 +97,14 @@ extern const DoomoSaveExt *const doomo_save_ext_talk;
+ #define SAVE_EXT_TAG_BRCH SAVE_EXT_TAG('B', 'R', 'C', 'H')
+ extern const DoomoSaveExt *const doomo_save_ext_breach;
+ /* --- end LV0 --- */
+-#define SAVE_EXT_SLOTS 14
++/* --- HH-DATA (docs/design/HOUSEHOLDS_PLAN.md): 'HOUS', the residents' households and the household
++ * relation rows (core/src/household.c). A 15th slot: LIFE is full. Worst case SAVE_EXT_MAX_HOUS
++ * (save_budget.h); empty (nothing written) while there are no households of two or more residents
++ * and no relation rows. --- */
++#define SAVE_EXT_TAG_HOUS SAVE_EXT_TAG('H', 'O', 'U', 'S')
++extern const DoomoSaveExt *const doomo_save_ext_households;
++/* --- end HH-DATA --- */
++#define SAVE_EXT_SLOTS 15
+ int save_ext_count(void);
+ const DoomoSaveExt *save_ext_at(int i);
+ void save_ext_reset_all(void);   /* called by town_new() */
+diff --git a/core/src/family.c b/core/src/family.c
+index 7d39fa8..92e343b 100644
+--- a/core/src/family.c
++++ b/core/src/family.c
+@@ -7,6 +7,7 @@
+ #include <string.h>
+ #include "doomo/doomo.h"
+ #include "doomo/family.h"
++#include "doomo/household.h"
+ #include "doomo/playas.h"
+ #include "doomo/font.h"
+ #include "doomo/ui.h"
+@@ -40,12 +41,7 @@ static uint32_t ident_mask_;
+ /* ---- ids and the cap ------------------------------------------------------ */
+ int family_cap(void)
+ {
+-    int tier = family_tier();
+-#ifdef DOOMO_PLATFORM_GBA
+-    return HOUSEHOLD_CAP(1, tier);
+-#else
+-    return HOUSEHOLD_CAP(0, tier);
+-#endif
++    return HOUSEHOLD_CAP_MAX;       /* HH-DATA: room for 20 on every platform from the start */
+ }
+ 
+ int family_tier(void)
+@@ -299,6 +295,7 @@ int family_remove(int id)
+     int i = find_slot(id);
+     if (i < 0) return 0;
+     ident_drop(id);
++    household_forget(id);                  /* HH-DATA: its relation rows go with it */
+     memmove(&fam_[i], &fam_[i + 1], (size_t)(fam_n_ - i - 1) * sizeof(fam_[0]));
+     memmove(&bond_[i], &bond_[i + 1], (size_t)(fam_n_ - i - 1));
+     bond_[fam_n_ - 1] = BOND_DEFAULT;
+@@ -307,6 +304,26 @@ int family_remove(int id)
+     return 1;
+ }
+ 
++int family_slot_move(int from, int to)
++{
++    FamilyMember keep;
++    uint8_t bond;
++    if (from < 0 || to < 0 || from >= fam_n_ || to >= fam_n_) return 0;
++    if (from == to) return 1;
++    keep = fam_[from];
++    bond = bond_[from];
++    if (from < to) {
++        memmove(&fam_[from], &fam_[from + 1], (size_t)(to - from) * sizeof(fam_[0]));
++        memmove(&bond_[from], &bond_[from + 1], (size_t)(to - from));
++    } else {
++        memmove(&fam_[to + 1], &fam_[to], (size_t)(from - to) * sizeof(fam_[0]));
++        memmove(&bond_[to + 1], &bond_[to], (size_t)(from - to));
++    }
++    fam_[to] = keep;
++    bond_[to] = bond;
++    return 1;
++}
++
+ void family_clear(void)
+ {
+     neglect_grace_ = 0;
+diff --git a/core/src/household.c b/core/src/household.c
+new file mode 100644
+index 0000000..a08c8ac
+--- /dev/null
++++ b/core/src/household.c
+@@ -0,0 +1,872 @@
++/* household.c - households for everyone (owner: HOUSEHOLDS; HH-DATA; household.h, docs/design/HOUSEHOLDS_PLAN.md).
++ *
++ * The data and the rulebook. Residents' households are records of up to 20 residents with a list of
++ * relation rows (slot a, slot b, rel: "a is b's rel"). Household 0 (the player's) keeps its members in
++ * family.c and owns just a list of rows by id. Nothing here draws or runs per frame: the sim (HH-USE)
++ * and the creator (HH-CREATOR, HH-REL) call it.
++ *
++ * Memory: HH_MAX_RECS x 140 B + 192 B, plain .bss (no allocation).
++ */
++#include <string.h>
++#include "doomo/doomo.h"
++#include "doomo/household.h"
++#include "doomo/family.h"
++#include "doomo/playas.h"
++#include "doomo/sim.h"
++#include "doomo/town.h"
++#include "doomo/roster.h"
++#include "doomo/ending.h"
++#include "doomo/part_meta.h"
++#include "doomo/portrait.h"
++#include "doomo/save_ext.h"
++#include "doomo/save_budget.h"
++
++#define PLAYER DOOMO_PLAYER_ID
++
++typedef struct HouseRel { uint8_t a, b, rel; } HouseRel;          /* slots in the record */
++typedef struct HouseRec {
++    uint8_t  n, flags, nrel, spare;
++    uint16_t member[HH_MEMBERS_MAX];                             /* [0] is the head */
++    HouseRel rel[HH_RELS_MAX];
++} HouseRec;                                                      /* 140 B */
++DOOMO_STATIC_ASSERT(sizeof(HouseRec) == 140, house_rec_is_140_bytes);
++
++static HouseRec rec_[HH_MAX_RECS];                               /* household number h = rec_[h - 1] */
++static uint8_t  nrec_;
++static uint16_t h0a_[HH_RELS_MAX], h0b_[HH_RELS_MAX];            /* household 0's rows, by id */
++static uint8_t  h0r_[HH_RELS_MAX], nh0_;
++
++/* ---- the plain tables ---------------------------------------------------------- */
++static const uint8_t rev_[HREL_COUNT] = {
++    HREL_NONE, HREL_SPOUSE, HREL_PARTNER, HREL_FIANCE, HREL_CHILD, HREL_PARENT,
++    HREL_STEPCHILD, HREL_STEPPARENT, HREL_SIBLING, HREL_STEPSIBLING, HREL_GRANDCHILD,
++    HREL_GRANDPARENT, HREL_NIECE_NEPHEW, HREL_AUNT_UNCLE, HREL_COUSIN, HREL_ROOMMATE,
++    HREL_PET, HREL_PET_OWNER
++};
++
++int household_rel_reverse(int rel) { return rel > 0 && rel < HREL_COUNT ? rev_[rel] : HREL_NONE; }
++int household_rel_symmetric(int rel) { return rel > 0 && rel < HREL_COUNT && rev_[rel] == rel; }
++
++/* she / he / they words; the other pronouns use the neutral one */
++static const char *const relname_[HREL_COUNT][3] = {
++    { "", "", "" },
++    { "wife", "husband", "spouse" }, { "partner", "partner", "partner" },
++    { "fiancee", "fiance", "fiance" },
++    { "mother", "father", "parent" }, { "daughter", "son", "child" },
++    { "stepmother", "stepfather", "stepparent" }, { "stepdaughter", "stepson", "stepchild" },
++    { "sister", "brother", "sibling" }, { "stepsister", "stepbrother", "stepsibling" },
++    { "grandmother", "grandfather", "grandparent" }, { "granddaughter", "grandson", "grandchild" },
++    { "aunt", "uncle", "aunt or uncle" }, { "niece", "nephew", "niece or nephew" },
++    { "cousin", "cousin", "cousin" }, { "roommate", "roommate", "roommate" },
++    { "owner", "owner", "owner" }, { "pet", "pet", "pet" }
++};
++
++const char *household_rel_name(int rel, int pronoun)
++{
++    if (rel <= 0 || rel >= HREL_COUNT) return "";
++    return relname_[rel][pronoun == PRONOUN_SHE ? 0 : pronoun == PRONOUN_HE ? 1 : 2];
++}
++
++static const char *const reason_[HHR_COUNT] = {
++    "", "That person is not here.", "There is no such household.", "They already live in a household.",
++    "A household holds 20 people at most.", "No room in town for more households.",
++    "Both must live in this household.", "That is the same person.", "That is not a relation.",
++    "Only grown-ups can be a couple.", "They would not be a couple.", "Family cannot be a couple.",
++    "One partner at a time.", "A parent must be a grown-up.", "A parent must be older.",
++    "Nobody can be their own ancestor.", "A parent's parent is a grandparent.",
++    "A child cannot be a grown-up's roommate.", "A pet only has its owner.",
++    "A pet needs a person as its owner.", "The player always leads their own household.",
++    "Only the player's household takes pool people.", "The island is full.",
++    "The household cannot take that role."
++};
++
++const char *household_reason_text(int code)
++{
++    if (code < 0) code = -code;
++    return code >= 0 && code < HHR_COUNT ? reason_[code] : "";
++}
++
++/* ---- people ---------------------------------------------------------------------- */
++static int res_ok_(int id)
++{
++    const DoomoResident *r;
++    if (id < 0 || id >= DOOMO_MAX_RESIDENTS) return 0;
++    r = town_res(id);
++    return r && (r->status == RES_ALIVE || r->status == RES_GHOST);
++}
++
++static int is_pool_(int id) { return id >= FAMILY_POOL_FIRST && id <= FAMILY_POOL_LAST; }
++
++static int stage_(int id)
++{
++    if (id >= 0 && id <= PLAYER) return sim_life_stage(id);
++    { const FamilyMember *m = family_find(id); return m ? m->stage : LIFE_ADULT; }
++}
++static int adult_(int id) { return LIFE_IS_ADULT(stage_(id)); }
++/* BABY < TODDLER < CHILD < TEEN < ADULT < ELDER */
++static int rank_(int stage)
++{
++    static const uint8_t r[LIFE_COUNT] = { 4, 0, 1, 2, 3, 5 };
++    return stage >= 0 && stage < LIFE_COUNT ? r[stage] : 4;
++}
++
++static int hh_valid_(int h) { return h >= 0 && h <= nrec_; }
++
++int household_count(void) { return 1 + nrec_; }
++
++int household_size(int h)
++{
++    if (h == 0) return 1 + family_count();
++    return hh_valid_(h) ? rec_[h - 1].n : 0;
++}
++
++int household_cap(int h)
++{
++    if (h == 0) return 1 + family_cap();
++    return hh_valid_(h) ? HH_MEMBERS_MAX : 0;
++}
++
++int household_member(int h, int i)
++{
++    if (!hh_valid_(h) || i < 0 || i >= household_size(h)) return -1;
++    if (h == 0) return i == 0 ? PLAYER : family_member(i - 1);
++    return rec_[h - 1].member[i];
++}
++
++int household_head(int h) { return household_member(h, 0); }
++
++/* position of id in household h, -1 if not a member */
++static int pos_(int h, int id)
++{
++    int i, n;
++    if (h == 0) {
++        if (id == PLAYER) return 0;
++        n = family_count();
++        for (i = 0; i < n; i++) if (family_member(i) == id) return i + 1;
++        return -1;
++    }
++    if (!hh_valid_(h)) return -1;
++    for (i = 0; i < rec_[h - 1].n; i++) if (rec_[h - 1].member[i] == id) return i;
++    return -1;
++}
++
++int household_of(int id)
++{
++    int i;
++    if (id < 0) return -1;
++    if (id == PLAYER || family_find(id)) return 0;
++    for (i = 0; i < nrec_; i++) if (pos_(i + 1, id) >= 0) return i + 1;
++    return -1;
++}
++
++/* ---- relation rows (by id) ---------------------------------------------------------- */
++static int row_n_(int h) { return h == 0 ? nh0_ : rec_[h - 1].nrel; }
++
++static void row_get_(int h, int i, int *a, int *b, int *rel)
++{
++    if (h == 0) { *a = h0a_[i]; *b = h0b_[i]; *rel = h0r_[i]; return; }
++    { const HouseRec *r = &rec_[h - 1];
++      *a = r->member[r->rel[i].a]; *b = r->member[r->rel[i].b]; *rel = r->rel[i].rel; }
++}
++
++static void row_del_(int h, int i)
++{
++    if (h == 0) {
++        memmove(&h0a_[i], &h0a_[i + 1], (size_t)(nh0_ - i - 1) * sizeof(h0a_[0]));
++        memmove(&h0b_[i], &h0b_[i + 1], (size_t)(nh0_ - i - 1) * sizeof(h0b_[0]));
++        memmove(&h0r_[i], &h0r_[i + 1], (size_t)(nh0_ - i - 1));
++        nh0_--;
++    } else {
++        HouseRec *r = &rec_[h - 1];
++        memmove(&r->rel[i], &r->rel[i + 1], (size_t)(r->nrel - i - 1) * sizeof(r->rel[0]));
++        r->nrel--;
++    }
++}
++
++/* the row of the pair (either order): its index, *flip = 1 when stored as (b, a); -1 if none */
++static int row_find_(int h, int a, int b, int *flip)
++{
++    int i, x, y, rel;
++    for (i = 0; i < row_n_(h); i++) {
++        row_get_(h, i, &x, &y, &rel);
++        if (x == a && y == b) { *flip = 0; return i; }
++        if (x == b && y == a) { *flip = 1; return i; }
++    }
++    return -1;
++}
++
++/* store "a is b's rel" (replacing the pair's row); both must be members. 0, or -1 when the list is full */
++static int row_put_(int h, int a, int b, int rel)
++{
++    int i, flip;
++    if ((i = row_find_(h, a, b, &flip)) >= 0) row_del_(h, i);
++    if (row_n_(h) >= HH_RELS_MAX) return -1;
++    if (h == 0) {
++        h0a_[nh0_] = (uint16_t)a; h0b_[nh0_] = (uint16_t)b; h0r_[nh0_] = (uint8_t)rel; nh0_++;
++    } else {
++        HouseRec *r = &rec_[h - 1];
++        r->rel[r->nrel].a = (uint8_t)pos_(h, a);
++        r->rel[r->nrel].b = (uint8_t)pos_(h, b);
++        r->rel[r->nrel].rel = (uint8_t)rel;
++        r->nrel++;
++    }
++    return 0;
++}
++
++/* household 0 only: what the old FamilyMember.role says about a pair that includes the player */
++static int derive_(int a, int b)
++{
++    int m, r;
++    if (a == PLAYER) m = b; else if (b == PLAYER) m = a; else return HREL_NONE;
++    switch (family_role(m)) {          /* "m is the player's ..." */
++    case FAMROLE_PARTNER: r = HREL_PARTNER; break;
++    case FAMROLE_CHILD: r = HREL_CHILD; break;
++    case FAMROLE_PARENT: r = HREL_PARENT; break;
++    case FAMROLE_SIBLING: r = HREL_SIBLING; break;
++    case FAMROLE_GRANDPARENT: r = HREL_GRANDPARENT; break;
++    case FAMROLE_HOUSEMATE: r = HREL_ROOMMATE; break;
++    case FAMROLE_PET: r = HREL_PET; break;
++    default: return HREL_NONE;
++    }
++    return a == m ? r : household_rel_reverse(r);
++}
++
++/* the relation of a to b: the stored row, else (household 0) the derived one */
++static int direct_(int h, int a, int b)
++{
++    int i, flip, x, y, rel;
++    if ((i = row_find_(h, a, b, &flip)) >= 0) {
++        row_get_(h, i, &x, &y, &rel);
++        return flip ? household_rel_reverse(rel) : rel;
++    }
++    return h == 0 ? derive_(a, b) : HREL_NONE;
++}
++
++int household_rel(int h, int a, int b)
++{
++    if (!hh_valid_(h) || a == b || pos_(h, a) < 0 || pos_(h, b) < 0) return -1;
++    return direct_(h, a, b);
++}
++
++int household_rel_count(int h) { return hh_valid_(h) ? row_n_(h) : 0; }
++
++/* ---- the rulebook ------------------------------------------------------------------- */
++#define IS_KIN_REL(r)  ((r) >= HREL_PARENT && (r) <= HREL_COUSIN)
++#define IS_COUPLE(r)   ((r) == HREL_SPOUSE || (r) == HREL_PARTNER || (r) == HREL_FIANCE)
++#define IS_PARENTISH(r) ((r) == HREL_PARENT || (r) == HREL_STEPPARENT)
++
++/* the explicit rows of a pet: it has one: its owner's */
++static int is_pet_(int h, int id)
++{
++    int i, x, y, rel;
++    if (h == 0 && id != PLAYER && family_role(id) == FAMROLE_PET) return 1;
++    for (i = 0; i < row_n_(h); i++) {
++        row_get_(h, i, &x, &y, &rel);
++        if ((y == id && rel == HREL_PET_OWNER) || (x == id && rel == HREL_PET)) return 1;
++    }
++    return 0;
++}
++
++/* how many relations id has with anyone but `skip` (rows and the old roles) */
++static int other_rels_(int h, int id, int skip)
++{
++    int i, n = household_size(h), c = 0, m;
++    for (i = 0; i < n; i++) {
++        m = household_member(h, i);
++        if (m != id && m != skip && direct_(h, id, m) != HREL_NONE) c++;
++    }
++    return c;
++}
++
++/* does `id` have a spouse / partner / fiance other than `other`? */
++static int couple_tie_(int h, int id, int other)
++{
++    int i, n = household_size(h), m;
++    for (i = 0; i < n; i++) {
++        m = household_member(h, i);
++        if (m != id && m != other && IS_COUPLE(direct_(h, id, m))) return 1;
++    }
++    return 0;
++}
++
++/* Is `anc` an ancestor of `desc` through parent / step-parent links (the link between skip_a and
++ * skip_b not counted)? A closure over the members: at most 21 of them, never recursion. */
++static int ancestor_(int h, int anc, int desc, int skip_a, int skip_b)
++{
++    uint32_t reach;
++    int n = household_size(h), i, j, round, pd = pos_(h, desc), pa = pos_(h, anc);
++    if (pd < 0 || pa < 0 || anc == desc) return 0;
++    reach = 1u << pd;
++    for (round = 0; round < HH_MEMBERS_MAX; round++) {
++        uint32_t add = 0;
++        for (i = 0; i < n; i++) {
++            int x;
++            if ((reach >> i) & 1u) continue;
++            x = household_member(h, i);
++            for (j = 0; j < n; j++) {
++                int y;
++                if (!((reach >> j) & 1u)) continue;
++                y = household_member(h, j);
++                if ((x == skip_a && y == skip_b) || (x == skip_b && y == skip_a)) continue;
++                if (IS_PARENTISH(direct_(h, x, y))) { add |= 1u << i; break; }
++            }
++        }
++        if (!add) break;
++        reach |= add;
++    }
++    return (int)((reach >> pa) & 1u);
++}
++
++/* kin: a stated family relation, an ancestor either way, or a shared parent */
++static int kin_(int h, int a, int b)
++{
++    int i, n = household_size(h), x;
++    if (IS_KIN_REL(direct_(h, a, b))) return 1;
++    if (ancestor_(h, a, b, -1, -1) || ancestor_(h, b, a, -1, -1)) return 1;
++    for (i = 0; i < n; i++) {
++        x = household_member(h, i);
++        if (x != a && x != b && IS_PARENTISH(direct_(h, x, a)) && IS_PARENTISH(direct_(h, x, b))) return 1;
++    }
++    return 0;
++}
++
++/* a premade citizen on the kid-coded cast (a custom citizen in that slot is somebody else) */
++static int kid_coded_(int id)
++{
++    const DoomoResident *r;
++    if (id < 0 || id >= DOOMO_MAX_RESIDENTS || !ending_kid_cast(id)) return 0;
++    r = town_res(id);
++    return r && !(r->flags & RF_CUSTOM) && strncmp(roster_name(id), r->name, DOOMO_NAME_LEN) == 0;
++}
++
++/* may a and b be a couple at all as people: stages, the kid-cast list and (when asked) the sim's rule.
++ * Reads only: mature_adult_ok and the kid-cast list stay the ending module's. */
++static int couple_people_(int a, int b, int orient)
++{
++    if (!adult_(a) || !adult_(b)) return HHR_ADULTS_ONLY;
++    if (kid_coded_(a) || kid_coded_(b)) return HHR_ADULTS_ONLY;
++    if (orient && !is_pool_(a) && !is_pool_(b) &&
++        !(playas_romance_ok(a, b) && playas_romance_ok(b, a)))
++        return HHR_ROMANCE;
++    return 0;
++}
++
++/* orient = 0 skips the sim's orientation rule (a saved pair was legal when chosen) */
++static int check_(int h, int a, int b, int rel, int orient)
++{
++    int c;
++    if (!hh_valid_(h)) return HHR_BAD_HOUSEHOLD;
++    if (rel < 0 || rel >= HREL_COUNT) return HHR_BAD_REL;
++    if (a == b) return HHR_SELF;
++    if (pos_(h, a) < 0 || pos_(h, b) < 0) return HHR_NOT_MEMBER;
++    if (rel == HREL_NONE) return 0;
++    if (rel == HREL_PET) { c = a; a = b; b = c; rel = HREL_PET_OWNER; }     /* a owns b */
++    if (rel == HREL_PET_OWNER) {
++        if (is_pet_(h, a)) return HHR_PET_OWNER;
++        if (b == PLAYER || other_rels_(h, b, a) > 0) return HHR_PET_OTHER;
++        return 0;
++    }
++    if (is_pet_(h, a) || is_pet_(h, b)) return HHR_PET_OTHER;
++    if (rel == HREL_CHILD || rel == HREL_STEPCHILD || rel == HREL_GRANDCHILD || rel == HREL_NIECE_NEPHEW) {
++        c = a; a = b; b = c; rel = household_rel_reverse(rel);            /* now a is the older side */
++    }
++    switch (rel) {
++    case HREL_PARENT: case HREL_STEPPARENT: case HREL_GRANDPARENT: case HREL_AUNT_UNCLE:
++        if (!adult_(a)) return HHR_PARENT_ADULT;
++        if (rank_(stage_(a)) <= rank_(stage_(b))) return HHR_PARENT_OLDER;
++        if (rel != HREL_AUNT_UNCLE) {
++            if (ancestor_(h, b, a, a, b)) return HHR_CYCLE;
++            if (IS_PARENTISH(rel) && ancestor_(h, a, b, a, b)) return HHR_GENERATION;
++        }
++        return 0;
++    case HREL_SPOUSE: case HREL_PARTNER: case HREL_FIANCE:
++        if ((c = couple_people_(a, b, orient)) != 0) return c;
++        if (kin_(h, a, b)) return HHR_KIN;
++        if (couple_tie_(h, a, b) || couple_tie_(h, b, a)) return HHR_ONE_AT_A_TIME;
++        return 0;
++    case HREL_ROOMMATE:
++        return adult_(a) != adult_(b) ? HHR_MINOR_ROOMMATE : 0;
++    default:                                    /* sibling, step-sibling, cousin: no age rule */
++        return 0;
++    }
++}
++
++int household_rel_check(int h, int a, int b, int rel) { return check_(h, a, b, rel, 1); }
++
++int household_crush_check(int a, int b)
++{
++    if (a == b) return HHR_SELF;
++    if (!(a == PLAYER || res_ok_(a)) || !(b == PLAYER || res_ok_(b))) return HHR_BAD_ID;
++    return couple_people_(a, b, 1);
++}
++
++/* ---- room in the save file ------------------------------------------------------------- */
++static int room_(uint32_t extra)
++{
++    return save_budget_fits(doomo_town.mode == TOWN_STORY ? 0 : 1, extra);
++}
++
++/* ---- household 0's old role for a relation to the player ------------------------------------ */
++/* the old role for "the member is the player's rel", FAMROLE_NONE when none says it */
++static int role_of_rel_(int rel)
++{
++    switch (rel) {
++    case HREL_SPOUSE: case HREL_PARTNER: case HREL_FIANCE: return FAMROLE_PARTNER;
++    case HREL_CHILD: return FAMROLE_CHILD;
++    case HREL_PARENT: return FAMROLE_PARENT;
++    case HREL_SIBLING: return FAMROLE_SIBLING;
++    case HREL_GRANDPARENT: return FAMROLE_GRANDPARENT;
++    case HREL_ROOMMATE: return FAMROLE_HOUSEMATE;
++    case HREL_PET: return FAMROLE_PET;
++    default: return FAMROLE_NONE;               /* no old role says it: the row does */
++    }
++}
++
++static int famerr_(int e, int role, int stage)
++{
++    switch (e) {
++    case FAM_ERR_FULL: return HHR_FULL;
++    case FAM_ERR_DUP: return HHR_DUP;
++    case FAM_ERR_ID: return HHR_BAD_ID;
++    case FAM_ERR_ROLE: return role == FAMROLE_PARTNER ? HHR_ONE_AT_A_TIME : HHR_FAMILY;
++    case FAM_ERR_GATE: return LIFE_IS_ADULT(stage) ? HHR_ROMANCE : HHR_ADULTS_ONLY;
++    default: return HHR_FAMILY;
++    }
++}
++
++static int stage_for_rel_(int rel)
++{
++    return rel == HREL_CHILD || rel == HREL_STEPCHILD || rel == HREL_GRANDCHILD ||
++           rel == HREL_NIECE_NEPHEW ? LIFE_CHILD : LIFE_ADULT;
++}
++
++/* ---- households ---------------------------------------------------------------------------- */
++int household_create(int head)
++{
++    HouseRec *r;
++    if (!res_ok_(head)) return HH_ERR(is_pool_(head) ? HHR_POOL : HHR_BAD_ID);
++    if (household_of(head) >= 0) return HH_ERR(HHR_DUP);
++    if (nrec_ >= HH_MAX_RECS || !room_(HH_REC_HEAD + 3u)) return HH_ERR(HHR_NO_ROOM);
++    r = &rec_[nrec_];
++    memset(r, 0, sizeof(*r));
++    r->n = 1;
++    r->member[0] = (uint16_t)head;
++    return ++nrec_;
++}
++
++static int add0_(int id, int rel)
++{
++    int role = role_of_rel_(rel), stage = stage_for_rel_(rel), slot, c;
++    if (role == FAMROLE_NONE) role = FAMROLE_HOUSEMATE;
++    if (id < DOOMO_MAX_RESIDENTS ? !res_ok_(id) : !is_pool_(id)) return HH_ERR(HHR_BAD_ID);
++    if (household_of(id) >= 0) return HH_ERR(HHR_DUP);
++    if (household_size(0) >= household_cap(0)) return HH_ERR(HHR_FULL);
++    if (id < DOOMO_MAX_RESIDENTS) stage = sim_life_stage(id);
++    if (IS_COUPLE(rel)) {                          /* say "adults only" before "one at a time" */
++        c = id < DOOMO_MAX_RESIDENTS ? couple_people_(id, PLAYER, 1) : !LIFE_IS_ADULT(stage) ? HHR_ADULTS_ONLY : 0;
++        if (c) return HH_ERR(c);
++    }
++    if ((slot = family_add(id, role, stage)) < 0) return HH_ERR(famerr_(slot, role, stage));
++    if (rel != HREL_NONE) {
++        if ((c = check_(0, id, PLAYER, rel, 1)) != 0) { family_remove(id); return HH_ERR(c); }
++        if (direct_(0, id, PLAYER) != rel && (!room_(5u) || row_put_(0, id, PLAYER, rel) < 0)) {
++            family_remove(id);
++            return HH_ERR(HHR_NO_ROOM);
++        }
++    }
++    return slot + 1;
++}
++
++int household_add(int h, int id, int rel)
++{
++    HouseRec *r;
++    int p, c;
++    if (!hh_valid_(h)) return HH_ERR(HHR_BAD_HOUSEHOLD);
++    if (rel < 0 || rel >= HREL_COUNT) return HH_ERR(HHR_BAD_REL);
++    if (id == PLAYER) return HH_ERR(HHR_HEAD);
++    if (h == 0) return add0_(id, rel);
++    if (is_pool_(id)) return HH_ERR(HHR_POOL);
++    if (!res_ok_(id)) return HH_ERR(HHR_BAD_ID);
++    if (household_of(id) >= 0) return HH_ERR(HHR_DUP);
++    r = &rec_[h - 1];
++    if (r->n >= HH_MEMBERS_MAX) return HH_ERR(HHR_FULL);
++    if (!room_(2u + 3u)) return HH_ERR(HHR_NO_ROOM);
++    p = r->n;
++    r->member[p] = (uint16_t)id;
++    r->n++;
++    if (rel != HREL_NONE) {
++        if ((c = check_(h, id, r->member[0], rel, 1)) != 0) { r->n--; return HH_ERR(c); }
++        if (row_put_(h, id, r->member[0], rel) < 0) { r->n--; return HH_ERR(HHR_NO_ROOM); }
++    }
++    return p;
++}
++
++/* take position p out of record h (rows with them go, later slots close up); 1 if that dissolved it */
++static int rec_drop_(int h, int p)
++{
++    HouseRec *r = &rec_[h - 1];
++    int i, k = 0;
++    for (i = 0; i < r->nrel; i++) {
++        HouseRel x = r->rel[i];
++        if (x.a == p || x.b == p) continue;
++        if (x.a > p) x.a--;
++        if (x.b > p) x.b--;
++        r->rel[k++] = x;
++    }
++    r->nrel = (uint8_t)k;
++    memmove(&r->member[p], &r->member[p + 1], (size_t)(r->n - p - 1) * sizeof(r->member[0]));
++    r->n--;
++    if (r->n >= 2) return 0;
++    memmove(r, r + 1, (size_t)(nrec_ - h) * sizeof(*r));
++    nrec_--;
++    memset(&rec_[nrec_], 0, sizeof(rec_[0]));
++    return 1;
++}
++
++int household_remove(int id)
++{
++    int h = household_of(id), p;
++    if (id == PLAYER) return HH_ERR(HHR_HEAD);
++    if (h < 0) return HH_ERR(HHR_NOT_MEMBER);
++    if (h == 0) return family_remove(id) ? 0 : HH_ERR(HHR_NOT_MEMBER);
++    p = pos_(h, id);
++    return rec_drop_(h, p);
++}
++
++int household_move(int id, int to)
++{
++    int from, head_to = -1, c;
++    if (!hh_valid_(to)) return HH_ERR(HHR_BAD_HOUSEHOLD);
++    if (id == PLAYER) return HH_ERR(HHR_HEAD);
++    if (is_pool_(id)) return HH_ERR(HHR_POOL);
++    if (!res_ok_(id)) return HH_ERR(HHR_BAD_ID);
++    from = household_of(id);
++    if (from == to) return 0;
++    if (household_size(to) >= household_cap(to)) return HH_ERR(HHR_FULL);
++    if (to > 0) head_to = rec_[to - 1].member[0];
++    if (from >= 0 && (c = household_remove(id)) < 0) return c;
++    if (to > 0) to = household_of(head_to);                  /* the old household may have been dissolved */
++    return household_add(to, id, HREL_NONE) < 0 ? HH_ERR(HHR_NO_ROOM) : 0;
++}
++
++int household_set_head(int h, int id)
++{
++    HouseRec *r;
++    int p, i, t;
++    if (h == 0) return HH_ERR(HHR_HEAD);
++    if (!hh_valid_(h)) return HH_ERR(HHR_BAD_HOUSEHOLD);
++    if ((p = pos_(h, id)) < 0) return HH_ERR(HHR_NOT_MEMBER);
++    if (p == 0) return 0;
++    r = &rec_[h - 1];
++    t = r->member[0]; r->member[0] = r->member[p]; r->member[p] = (uint16_t)t;
++    for (i = 0; i < r->nrel; i++) {
++        if (r->rel[i].a == 0) r->rel[i].a = (uint8_t)p; else if (r->rel[i].a == p) r->rel[i].a = 0;
++        if (r->rel[i].b == 0) r->rel[i].b = (uint8_t)p; else if (r->rel[i].b == p) r->rel[i].b = 0;
++    }
++    return 0;
++}
++
++int household_reorder(int h, int from, int to)
++{
++    HouseRec *r;
++    uint8_t perm[HH_MEMBERS_MAX];
++    uint16_t keep;
++    int i, n;
++    if (!hh_valid_(h)) return HH_ERR(HHR_BAD_HOUSEHOLD);
++    n = household_size(h);
++    if (from < 1 || to < 1 || from >= n || to >= n) return HH_ERR(HHR_BAD_ID);
++    if (from == to) return 0;
++    if (h == 0) return family_slot_move(from - 1, to - 1) ? 0 : HH_ERR(HHR_BAD_ID);
++    r = &rec_[h - 1];
++    for (i = 0; i < n; i++) perm[i] = (uint8_t)i;                      /* old slot -> new slot */
++    keep = r->member[from];
++    if (from < to) {
++        for (i = from; i < to; i++) { r->member[i] = r->member[i + 1]; perm[i + 1] = (uint8_t)i; }
++    } else {
++        for (i = from; i > to; i--) { r->member[i] = r->member[i - 1]; perm[i - 1] = (uint8_t)i; }
++    }
++    r->member[to] = keep;
++    perm[from] = (uint8_t)to;
++    for (i = 0; i < r->nrel; i++) { r->rel[i].a = perm[r->rel[i].a]; r->rel[i].b = perm[r->rel[i].b]; }
++    return 0;
++}
++
++int household_rel_set(int h, int a, int b, int rel)
++{
++    int c, i, flip;
++    if ((c = check_(h, a, b, rel, 1)) != 0) return HH_ERR(c);
++    if (rel == HREL_NONE) {
++        if ((i = row_find_(h, a, b, &flip)) >= 0) row_del_(h, i);
++        return 0;
++    }
++    if (h == 0 && (a == PLAYER || b == PLAYER)) {            /* the old role follows the player's pair */
++        int m = a == PLAYER ? b : a, role = role_of_rel_(a == m ? rel : household_rel_reverse(rel));
++        if (role != FAMROLE_NONE && family_role(m) != role && family_role(m) != FAMROLE_PET && role != FAMROLE_PET &&
++            (c = family_set_role(m, role)) < 0)
++            return HH_ERR(famerr_(c, role, stage_(m)));
++        if (derive_(a, b) == rel) {                           /* what the role already says: no row */
++            if ((i = row_find_(h, a, b, &flip)) >= 0) row_del_(h, i);
++            return 0;
++        }
++    }
++    if (row_find_(h, a, b, &flip) < 0 && !room_(h == 0 ? 5u : 3u)) return HH_ERR(HHR_NO_ROOM);
++    return row_put_(h, a, b, rel) < 0 ? HH_ERR(HHR_NO_ROOM) : 0;
++}
++
++/* ---- upkeep ---------------------------------------------------------------------------------- */
++void household_forget(int id)
++{
++    int i;
++    for (i = nh0_ - 1; i >= 0; i--)
++        if (h0a_[i] == id || h0b_[i] == id) row_del_(0, i);
++}
++
++int household_sweep(void)
++{
++    int h, p, i, gone = 0;
++    for (h = nrec_; h >= 1; h--) {
++        if (h > nrec_) continue;
++        for (p = rec_[h - 1].n - 1; p >= 0; p--)
++            if (!res_ok_(rec_[h - 1].member[p])) { gone++; if (rec_drop_(h, p)) break; }
++    }
++    for (i = nh0_ - 1; i >= 0; i--)
++        if (pos_(0, h0a_[i]) < 0 || pos_(0, h0b_[i]) < 0) row_del_(0, i);
++    return gone;
++}
++
++void household_clear(void)
++{
++    memset(rec_, 0, sizeof(rec_));
++    nrec_ = 0;
++    memset(h0a_, 0, sizeof(h0a_));
++    memset(h0b_, 0, sizeof(h0b_));
++    memset(h0r_, 0, sizeof(h0r_));
++    nh0_ = 0;
++}
++
++/* ---- a new person --------------------------------------------------------------------------------- */
++/* is this a story, hero or premade-roster citizen (never asked to leave)? */
++static int protected_(int id)
++{
++    const DoomoResident *r = town_res(id);
++    DoomoResident p;
++    int i;
++    if (!r || (r->flags & (RF_PLAYER | RF_STORY_NPC)) || id == playas_avatar()) return 1;
++    for (i = 0; i < NPC_COUNT; i++) if (doomo_story_npc[i] == id) return 1;
++    if (!(r->flags & RF_CUSTOM) && roster_premade_record(id, &p) &&
++        memcmp(p.name, r->name, DOOMO_NAME_LEN) == 0)
++        return 1;
++    return 0;
++}
++
++/* the adult in no household with the lowest friendship level who may move away, or -1 */
++static int leaver_(void)
++{
++    int id, best = -1, lv = 256;
++    for (id = 0; id < DOOMO_MAX_RESIDENTS; id++) {
++        const DoomoResident *r = town_res(id);
++        if (!r || r->status != RES_ALIVE || r->level >= lv) continue;
++        if (household_of(id) >= 0 || !adult_(id) || protected_(id) || sim_partner_of(id) >= 0) continue;
++        best = id;
++        lv = r->level;
++    }
++    return best;
++}
++
++int household_new_person(int h, int rel)
++{
++    DoomoResident r;
++    int id, d, head, stage, c;
++    if (!hh_valid_(h)) return HH_ERR(HHR_BAD_HOUSEHOLD);
++    if (rel < 0 || rel >= HREL_COUNT || rel == HREL_PET) return HH_ERR(HHR_BAD_REL);
++    if (household_size(h) >= household_cap(h)) return HH_ERR(HHR_FULL);
++    if (!room_(8u)) return HH_ERR(HHR_NO_ROOM);
++    head = household_head(h);
++    /* the stage the relation suggests, and a first look at the rules before anybody has to leave */
++    stage = stage_for_rel_(rel);
++    if (rel == HREL_PARENT || rel == HREL_STEPPARENT || rel == HREL_GRANDPARENT || rel == HREL_AUNT_UNCLE)
++        stage = LIFE_ELDER;
++    else if (rel == HREL_ROOMMATE && !adult_(head)) stage = stage_(head);
++    else if (!adult_(head) && !IS_COUPLE(rel) && stage == LIFE_ADULT) stage = stage_(head);
++    if ((rel == HREL_PARENT || rel == HREL_STEPPARENT || rel == HREL_GRANDPARENT || rel == HREL_AUNT_UNCLE) &&
++        rank_(stage_(head)) >= rank_(LIFE_ELDER))
++        return HH_ERR(HHR_PARENT_OLDER);                   /* nobody is older than an elder */
++    if (stage_for_rel_(rel) != LIFE_ADULT && !adult_(head)) return HH_ERR(HHR_PARENT_ADULT);   /* a minor has no children */
++    if (IS_COUPLE(rel)) {
++        if (!adult_(head)) return HH_ERR(HHR_ADULTS_ONLY);
++        if (household_size(h) > 1 && couple_tie_(h, head, -1)) return HH_ERR(HHR_ONE_AT_A_TIME);
++    }
++    d = head < DOOMO_MAX_RESIDENTS ? RES_DISTRICT(head) : 0;
++    id = town_alloc(d);
++    if (id < 0) id = town_alloc(!d);
++    if (id < 0) {
++        char msg[48];
++        if ((id = leaver_()) < 0) return HH_ERR(HHR_NO_SPOT);
++        d = RES_DISTRICT(id);
++        doomo_snprintf(msg, sizeof(msg), "%s moved away to make room", town_res(id)->name);
++        town_free(id);
++        sim_news_push(msg);
++        if ((id = town_alloc(d)) < 0) return HH_ERR(HHR_NO_SPOT);
++    }
++    {
++        uint32_t seed = doomo_hash32(doomo_town.seed ^ ((uint32_t)id * 0x9E3779B1u) ^ (doomo_town.day * 7919u) ^
++                                     ((uint32_t)h << 20) ^ 0x4B1D5EEDu);
++        if (RES_DISTRICT(id)) resident_generate_hellborn(&r, seed); else resident_generate(&r, seed);
++    }
++    resident_set_stage(&r, stage);
++    resident_set_romance(&r, !LIFE_IS_ADULT(stage) ? ROMANCE_NONE : IS_COUPLE(rel) ? ROMANCE_ANY : (int)RES_ROMANCE(&r));
++    part_age_filter_resident(&r, -1);
++    r.status = RES_ALIVE;
++    r.flags = (uint8_t)((r.flags & (RF_HELLBORN | RF_FAVORITE)) | RF_CUSTOM);
++    r.exorcism = 0;
++    r.level = 0;
++    resident_sanitize(&r);
++    *TOWN_RES(id) = r;
++    portrait_invalidate(id);
++    if ((c = household_add(h, id, rel)) < 0) { town_free(id); return c; }
++    return id;
++}
++
++/* ---- the 'HOUS' chunk -------------------------------------------------------------------------------- */
++static void put16_(uint8_t *d, uint32_t v) { d[0] = (uint8_t)v; d[1] = (uint8_t)(v >> 8); }
++static uint32_t get16_(const uint8_t *s) { return (uint32_t)(s[0] | (s[1] << 8)); }
++
++static int saved_(const HouseRec *r) { return r->n >= 2; }          /* a lone household is not saved */
++
++uint32_t household_save_size(void)
++{
++    uint32_t sz = 0;
++    int i, recs = 0;
++    for (i = 0; i < nrec_; i++)
++        if (saved_(&rec_[i])) { recs++; sz += HH_REC_HEAD + 2u * rec_[i].n + 1u + 3u * rec_[i].nrel; }
++    if (nh0_) { recs++; sz += HH_REC_HEAD + 1u + 5u * nh0_; }
++    return recs ? 1u + sz : 0;
++}
++
++uint32_t household_save(uint8_t *dst, uint32_t cap)
++{
++    uint32_t o = 1;
++    int i, j, recs = 0;
++    if (!household_save_size() || cap < household_save_size()) return 0;
++    if (nh0_) {
++        put16_(dst + o, 0xFFFFu); dst[o + 2] = 0; dst[o + 3] = 0; dst[o + 4] = nh0_; o += 5;
++        for (i = 0; i < nh0_; i++) {
++            put16_(dst + o, h0a_[i]); put16_(dst + o + 2, h0b_[i]); dst[o + 4] = h0r_[i]; o += 5;
++        }
++        recs++;
++    }
++    for (i = 0; i < nrec_; i++) {
++        const HouseRec *r = &rec_[i];
++        if (!saved_(r)) continue;
++        put16_(dst + o, r->member[0]); dst[o + 2] = r->n; dst[o + 3] = r->flags; o += HH_REC_HEAD;
++        for (j = 0; j < r->n; j++) { put16_(dst + o, r->member[j]); o += 2; }
++        dst[o++] = r->nrel;
++        for (j = 0; j < r->nrel; j++) {
++            dst[o] = r->rel[j].a; dst[o + 1] = r->rel[j].b; dst[o + 2] = r->rel[j].rel; o += 3;
++        }
++        recs++;
++    }
++    dst[0] = (uint8_t)recs;
++    return o;
++}
++
++/* is id already somebody's (household 0's table or a record built so far)? */
++static int taken_(int id) { return household_of(id) >= 0; }
++
++/* One record from the file. Whatever cannot be right is dropped, never trusted: a person who does not
++ * exist (or is dead), is in the player's household or an earlier record, or is named twice stays only in the
++ * first place; a row whose people are gone, that names itself, repeats a pair or breaks a rule is dropped;
++ * a record left with fewer than two people dissolves. Returns the bytes used, 0 on a framing error. */
++static uint32_t read_rec_(const uint8_t *s, uint32_t len)
++{
++    uint32_t o = HH_REC_HEAD;
++    uint8_t map[HH_MEMBERS_MAX];
++    HouseRec *r;
++    int n, i, nr, kept = 0, h;
++    if (len < HH_REC_HEAD) return 0;
++    n = s[2];
++    if (n < 1 || n > HH_MEMBERS_MAX || len < o + 2u * (uint32_t)n + 1u) return 0;
++    nr = s[o + 2u * (uint32_t)n];
++    if (nr > HH_RELS_MAX || len < o + 2u * (uint32_t)n + 1u + 3u * (uint32_t)nr) return 0;
++    if (nrec_ >= HH_MAX_RECS) return o + 2u * (uint32_t)n + 1u + 3u * (uint32_t)nr;      /* more than this build keeps */
++    r = &rec_[nrec_];
++    memset(r, 0, sizeof(*r));
++    r->flags = s[3];
++    nrec_++;                                       /* installed while it is built, so taken_() sees it */
++    for (i = 0; i < n; i++) {
++        int id = (int)get16_(s + o + 2u * (uint32_t)i);
++        map[i] = 0xFF;
++        if (!res_ok_(id) || taken_(id)) continue;
++        map[i] = (uint8_t)kept;
++        r->member[kept++] = (uint16_t)id;
++        r->n = (uint8_t)kept;
++    }
++    h = nrec_;
++    o += 2u * (uint32_t)n + 1u;
++    if (kept < 2) {
++        nrec_--;
++        memset(r, 0, sizeof(*r));
++        return o + 3u * (uint32_t)nr;
++    }
++    for (i = 0; i < nr; i++, o += 3) {
++        int sa = s[o], sb = s[o + 1], rel = s[o + 2];
++        if (sa >= n || sb >= n || map[sa] == 0xFF || map[sb] == 0xFF || rel <= HREL_NONE || rel >= HREL_COUNT)
++            continue;
++        if (check_(h, r->member[map[sa]], r->member[map[sb]], rel, 0) != 0) continue;
++        row_put_(h, r->member[map[sa]], r->member[map[sb]], rel);
++    }
++    return o;
++}
++
++int household_load(const uint8_t *src, uint32_t len)
++{
++    uint32_t o = 1;
++    int cnt, k;
++    household_clear();
++    if (len < 1) return 0;
++    cnt = src[0];
++    if (cnt < 1 || cnt > 1 + HH_MAX_RECS) return 0;
++    for (k = 0; k < cnt; k++) {
++        uint32_t used;
++        if (len - o >= HH_REC_HEAD && get16_(src + o) == 0xFFFFu) {         /* household 0's rows: first only */
++            uint16_t ra[HH_RELS_MAX], rb[HH_RELS_MAX];
++            uint8_t rr[HH_RELS_MAX];
++            int nr, i;
++            if (k != 0 || src[o + 2] != 0 || len - o < HH_REC_HEAD + 1u) goto bad;
++            nr = src[o + HH_REC_HEAD];
++            if (nr > HH_RELS_MAX || len - o < HH_REC_HEAD + 1u + 5u * (uint32_t)nr) goto bad;
++            for (i = 0; i < nr; i++) {
++                const uint8_t *p = src + o + HH_REC_HEAD + 1u + 5u * (uint32_t)i;
++                ra[i] = (uint16_t)get16_(p); rb[i] = (uint16_t)get16_(p + 2); rr[i] = p[4];
++            }
++            for (i = 0; i < nr; i++) {
++                if (rr[i] <= HREL_NONE || rr[i] >= HREL_COUNT) continue;
++                if (check_(0, ra[i], rb[i], rr[i], 0) != 0) continue;
++                row_put_(0, ra[i], rb[i], rr[i]);
++            }
++            o += HH_REC_HEAD + 1u + 5u * (uint32_t)nr;
++            continue;
++        }
++        if ((used = read_rec_(src + o, len - o)) == 0) goto bad;
++        o += used;
++    }
++    if (o != len) goto bad;
++    return 1;
++bad:
++    household_clear();
++    return 0;
++}
++
++/* ---- the registry entry (save_ext.h; the 15th slot) --------------------------------------------------- */
++static int hous_read_(const uint8_t *s, uint32_t len, uint16_t ver)
++{
++    if (ver != 1) { household_clear(); return 0; }
++    return household_load(s, len);
++}
++
++static const DoomoSaveExt hous_ext = {
++    SAVE_EXT_TAG_HOUS, 1, household_save_size, household_save, hous_read_, household_clear, SAVE_EXT_MAX_HOUS
++};
++const DoomoSaveExt *const doomo_save_ext_households = &hous_ext;
++
++DOOMO_STATIC_ASSERT(HH_SAVE_WORST <= SAVE_EXT_MAX_HOUS, hous_worst_case_fits_the_declared_maximum);
+diff --git a/core/src/save.c b/core/src/save.c
+index b085bf7..2157c71 100644
+--- a/core/src/save.c
++++ b/core/src/save.c
+@@ -1432,6 +1432,8 @@ static void write_exts(void)
+         if (len > DOOMO_SAVE_EXT_MAX) { Z.ext_err = 1; continue; }
+         len = e->write(Z.stage, len);
+         if (len > DOOMO_SAVE_EXT_MAX) { Z.ext_err = 1; continue; }
++        if (!len && e->tag == SAVE_EXT_TAG_HOUS) continue;   /* HH-DATA: an empty 'HOUS' writes no header either, so a
++                                                              save without households is byte for byte what it was */
+         w32(e->tag);
+         w16(e->version);
+         w32(len);
+diff --git a/core/src/save_budget.c b/core/src/save_budget.c
+index d958306..759a6b1 100644
+--- a/core/src/save_budget.c
++++ b/core/src/save_budget.c
+@@ -8,9 +8,10 @@
+ #include "doomo/doomo.h"
+ #include "doomo/save_budget.h"
+ 
+-/* 2 x 36 B of .bss (only linked once something asks for a budget; 2 x 24 B
++/* 2 x 40 B of .bss (only linked once something asks for a budget; 2 x 24 B
+  * before K0 raised SAVE_EXT_SLOTS 7 -> 12; T0's 13th slot filled the pad;
+- * LV0's 14th ('BRCH') takes the two bytes of `valid` and `n`, still 36 B:
++ * LV0's 14th ('BRCH') takes the two bytes of `valid` and `n`, still 36 B; HH-DATA's 15th ('HOUS')
++ * is the first to need padding: 40 B each:
+  * "valid" is now the top bit of `total` (a file is far below 2 GB) and the
+  * count is not kept, since the sizes after it are 0 anyway): chunk sizes
+  * are kept by registry position (stable in a build) and fit 16 bits (each
+@@ -21,7 +22,7 @@ typedef struct BudgetSnap {
+     uint32_t seed;                               /* doomo_town.seed at the I/O */
+     uint16_t size[SAVE_EXT_SLOTS];
+ } BudgetSnap;
+-DOOMO_STATIC_ASSERT(sizeof(BudgetSnap) == 36, the_budget_snapshot_stays_36_bytes);
++DOOMO_STATIC_ASSERT(sizeof(BudgetSnap) == 40, the_budget_snapshot_is_40_bytes);
+ 
+ static BudgetSnap snap[2];
+ static uint32_t seen_last_size;
+@@ -141,6 +142,7 @@ uint32_t save_budget_declared_max(uint32_t tag)
+     case SAVE_EXT_TAG_PROF: return SAVE_EXT_MAX_PROF;
+     case SAVE_EXT_TAG_TALK: return SAVE_EXT_MAX_TALK;      /* T0 */
+     case SAVE_EXT_TAG_BRCH: return SAVE_EXT_MAX_BRCH;      /* LV0 */
++    case SAVE_EXT_TAG_HOUS: return SAVE_EXT_MAX_HOUS;      /* HH-DATA */
+     default: return 0;
+     }
+ }
+diff --git a/core/src/save_ext.c b/core/src/save_ext.c
+index 431e3cd..2fb0e9a 100644
+--- a/core/src/save_ext.c
++++ b/core/src/save_ext.c
+@@ -22,6 +22,8 @@ __attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_profiles = 0;
+ __attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_talk = 0;
+ /* --- LV0: 'BRCH' (levels plan 8.5); owner levels_rec.c --- */
+ __attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_breach = 0;
++/* --- HH-DATA: 'HOUS' (household.c) --- */
++__attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_households = 0;
+ 
+ /* The registry order (a chunk's position is its bit in save.c's "seen"
+  * mask and its place in the budget snapshot; add at the end only). A
+@@ -34,7 +36,8 @@ static const DoomoSaveExt *const *const slots[SAVE_EXT_SLOTS] = {
+     &doomo_save_ext_life, &doomo_save_ext_playas, &doomo_save_ext_endings,
+     &doomo_save_ext_opt2, &doomo_save_ext_profiles,                     /* K0 */
+     &doomo_save_ext_talk,                                               /* T0 */
+-    &doomo_save_ext_breach                                              /* LV0 */
++    &doomo_save_ext_breach,                                             /* LV0 */
++    &doomo_save_ext_households                                          /* HH-DATA */
+ };
+ 
+ /* The defaults above are weak CONSTANTS: without the volatile read GCC
+diff --git a/core/tests/test_contracts.c b/core/tests/test_contracts.c
+index 3429aa5..c6b6866 100644
+--- a/core/tests/test_contracts.c
++++ b/core/tests/test_contracts.c
+@@ -190,7 +190,9 @@ TEST(contracts_registries_read_through_volatile)
+         /* T0 */
+         doomo_save_ext_talk,
+         /* LV0 */
+-        doomo_save_ext_breach };
++        doomo_save_ext_breach,
++        /* HH-DATA */
++        doomo_save_ext_households };
+     const DoomoActivity *const acts[] = {
+         doomo_activities_minigames, doomo_activities_concert, doomo_activities_collections,
+         doomo_activities_combat, doomo_activities_extra, doomo_activities_studio,
+diff --git a/core/tests/test_contracts_k0.c b/core/tests/test_contracts_k0.c
+index ac05ce3..c227c1b 100644
+--- a/core/tests/test_contracts_k0.c
++++ b/core/tests/test_contracts_k0.c
+@@ -130,7 +130,7 @@ TEST(k0_reserved_scenes_pop_themselves)
+ 
+ /* The shared numbers (life_contract.h, LIFESIM_PLAN section 6): the
+  * chunk sections add up to the budget save_budget.h declares, and the
+- * household tiers are the user's 3 -> 10 -> 20 (GBA 3 -> 6 -> 10). */
++ * household tiers were the user's 3 -> 10 -> 20 (GBA 3 -> 6 -> 10); HH-DATA made every tier 20. */
+ TEST(k0_life_contract_sizes)
+ {
+     CHECK_EQ(LIFE_SZ_TOTAL, SAVE_EXT_MAX_LIFE);
+@@ -140,12 +140,12 @@ TEST(k0_life_contract_sizes)
+     CHECK_EQ(PROF_SZ_TOTAL, SAVE_EXT_MAX_PROF);
+     CHECK_EQ(PROF_PROFILES_MAX, PROF_GUESTS + 1);
+     CHECK_EQ(HOUSEHOLD_TIER_COUNT, 3);
+-    CHECK_EQ(HOUSEHOLD_CAP(0, HOUSEHOLD_TIER_START), 3);
+-    CHECK_EQ(HOUSEHOLD_CAP(0, HOUSEHOLD_TIER_GAME_DONE), 10);
++    CHECK_EQ(HOUSEHOLD_CAP(0, HOUSEHOLD_TIER_START), 20);
++    CHECK_EQ(HOUSEHOLD_CAP(0, HOUSEHOLD_TIER_GAME_DONE), 20);
+     CHECK_EQ(HOUSEHOLD_CAP(0, HOUSEHOLD_TIER_NGPLUS_DONE), 20);
+-    CHECK_EQ(HOUSEHOLD_CAP(1, HOUSEHOLD_TIER_START), 3);
+-    CHECK_EQ(HOUSEHOLD_CAP(1, HOUSEHOLD_TIER_GAME_DONE), 6);
+-    CHECK_EQ(HOUSEHOLD_CAP(1, HOUSEHOLD_TIER_NGPLUS_DONE), 10);
++    CHECK_EQ(HOUSEHOLD_CAP(1, HOUSEHOLD_TIER_START), 20);
++    CHECK_EQ(HOUSEHOLD_CAP(1, HOUSEHOLD_TIER_GAME_DONE), 20);
++    CHECK_EQ(HOUSEHOLD_CAP(1, HOUSEHOLD_TIER_NGPLUS_DONE), 20);
+     CHECK_EQ(HOUSEHOLD_CAP_MAX, 20);
+     /* 8 B memorial per member of the largest household */
+     CHECK_EQ(LIFE_SZ_F6_LOSS, HOUSEHOLD_CAP_MAX * 8);
+diff --git a/core/tests/test_family.c b/core/tests/test_family.c
+index d5a178c..a30c9bb 100644
+--- a/core/tests/test_family.c
++++ b/core/tests/test_family.c
+@@ -50,14 +50,14 @@ TEST(family_tiers_follow_the_story_finishes)
+     clear_tiers();
+     CHECK_EQ(family_tier(), HOUSEHOLD_TIER_START);
+     CHECK_EQ(family_cap(), HOUSEHOLD_CAP_FULL_T0);
+-    /* the first finish: 3 -> 10, with one toast and no table entry */
++    /* the first finish: tier 1 (the cap is 20 from the start), with one toast and no table entry */
+     ui_toast_clear();
+     CHECK_EQ(family_tier_story_done(), HOUSEHOLD_TIER_GAME_DONE);
+     CHECK(unlock_has(UL_LIFE_HOUSEHOLD_T1) && !unlock_has(UL_LIFE_HOUSEHOLD_T2));
+     CHECK_EQ(family_cap(), HOUSEHOLD_CAP_FULL_T1);
+     CHECK(ui_toast_pending());
+     ui_toast_clear();
+-    /* a new story keeps the unlocks; finishing it again: 10 -> 20 */
++    /* a new story keeps the unlocks; finishing it again: tier 2 */
+     town_new(TOWN_STORY, 77, TOWN_POP_PREMADE);
+     CHECK_EQ(family_tier(), HOUSEHOLD_TIER_GAME_DONE);
+     CHECK_EQ(family_tier_story_done(), HOUSEHOLD_TIER_NGPLUS_DONE);
+@@ -103,23 +103,20 @@ TEST(family_empty_household_is_silent)
+     CHECK(family_find(5) == NULL);
+ }
+ 
+-TEST(family_cap_follows_the_tier_unlocks)
++TEST(family_cap_is_twenty_from_the_start_and_the_tiers_do_not_limit_it)
+ {
+     int i, id;
+     fresh();
+-    CHECK_EQ(family_cap(), HOUSEHOLD_CAP_FULL_T0);
+-    for (i = 0; i < 3; i++)
++    clear_tiers();
++    CHECK_EQ(family_cap(), 20);                  /* HH-DATA: no tier limits the household any more */
++    CHECK_EQ(FAMILY_MAX, 20);
++    for (i = 0; i < 20; i++)                     /* all 20 fit before any unlock */
+         CHECK_EQ(family_add(PLAYAS_ID_FAMILY_FIRST + i, FAMROLE_HOUSEMATE, LIFE_ADULT), i);
+-    CHECK_EQ(family_add(PLAYAS_ID_FAMILY_FIRST + 3, FAMROLE_HOUSEMATE, LIFE_ADULT), FAM_ERR_FULL);
+-    unlock_grant(UL_LIFE_HOUSEHOLD_T1);
+-    CHECK_EQ(family_cap(), HOUSEHOLD_CAP_FULL_T1);
+-    for (; i < HOUSEHOLD_CAP_FULL_T1; i++)
+-        CHECK(family_add(PLAYAS_ID_FAMILY_FIRST + i, FAMROLE_HOUSEMATE, LIFE_ADULT) >= 0);
+-    CHECK_EQ(family_add(PLAYAS_ID_FAMILY_FIRST + i, FAMROLE_HOUSEMATE, LIFE_ADULT), FAM_ERR_FULL);
++    CHECK_EQ(family_add(PLAYAS_ID_FAMILY_FIRST + 19, FAMROLE_HOUSEMATE, LIFE_ADULT), FAM_ERR_DUP);
++    unlock_grant(UL_LIFE_HOUSEHOLD_T1);          /* the unlocks still exist but change nothing */
++    CHECK_EQ(family_cap(), 20);
+     unlock_grant(UL_LIFE_HOUSEHOLD_T2);
+-    CHECK_EQ(family_cap(), HOUSEHOLD_CAP_FULL_T2);
+-    for (; i < HOUSEHOLD_CAP_FULL_T2; i++)
+-        CHECK(family_add(PLAYAS_ID_FAMILY_FIRST + i, FAMROLE_HOUSEMATE, LIFE_ADULT) >= 0);
++    CHECK_EQ(family_cap(), 20);
+     CHECK_EQ(family_count(), 20);
+     CHECK_EQ(family_pool_alloc(), -1);           /* all 20 pool ids are used */
+     CHECK_EQ(life_family_count(), 21);           /* the player counts here */
+@@ -347,14 +344,15 @@ TEST(family_pool_add_sets_identity_and_changes_nothing_on_error)
+     CHECK_EQ(family_pool_add(FAMROLE_PARTNER, LIFE_TEEN, 5u, "Kit", -1), FAM_ERR_GATE);
+     CHECK_EQ(family_count(), 2);
+     CHECK_EQ(family_pool_alloc(), PLAYAS_ID_FAMILY_FIRST + 2);
+-    /* full: three members at the start (cap 3) */
++    /* full: twenty members from the start (HH-DATA: the cap is 20 on every platform) */
+     CHECK(family_pool_add(FAMROLE_HOUSEMATE, LIFE_ADULT, 6u, "Moe", -1) >= 0);
++    while (family_count() < 20) CHECK(family_pool_add(FAMROLE_HOUSEMATE, LIFE_ADULT, 7u, NULL, -1) >= 0);
+     CHECK_EQ(family_pool_add(FAMROLE_HOUSEMATE, LIFE_ADULT, 7u, "Joe", -1), FAM_ERR_FULL);
+-    CHECK_EQ(family_count(), 3);
++    CHECK_EQ(family_count(), 20);
+     /* removing and re-adding the same id never shows the old person */
+     id = PLAYAS_ID_FAMILY_FIRST;
+     CHECK(family_remove(id));
+-    CHECK_EQ(family_add(id, FAMROLE_CHILD, LIFE_CHILD), 2);          /* appended */
++    CHECK_EQ(family_add(id, FAMROLE_CHILD, LIFE_CHILD), 19);         /* appended */
+     CHECK(family_identity(id)->seed != 0xC0FFEEu);
+     for (i = 0; i < family_count(); i++) CHECK(family_identity(family_member(i)) != NULL);
+ }
+diff --git a/core/tests/test_household.c b/core/tests/test_household.c
+new file mode 100644
+index 0000000..aa86f82
+--- /dev/null
++++ b/core/tests/test_household.c
+@@ -0,0 +1,1191 @@
++/* test_household.c - HH-DATA: households for everyone (household.h; docs/design/HOUSEHOLDS_PLAN.md).
++ * The data model, the rulebook of section 3, the 'HOUS' chunk and the new-person placement of section 4.
++ * Owner: HOUSEHOLDS. Every test builds its own people in an empty free play island (no roster edges,
++ * so only the stages and the preferences decide the romance rules). */
++#include "test.h"
++#include "doomo/doomo.h"
++#include "doomo/household.h"
++#include "doomo/family.h"
++#include "doomo/playas.h"
++#include "doomo/roster.h"
++#include "doomo/save.h"
++#include "doomo/save_ext.h"
++#include "doomo/save_budget.h"
++#include "doomo/ending.h"
++#include "doomo/home.h"
++#include "doomo/sim.h"
++
++#define PL DOOMO_PLAYER_ID
++
++static void fresh(void)
++{
++    town_new(TOWN_FREEPLAY, 41, TOWN_POP_EMPTY);
++    sim_init();
++    resident_set_stage(&doomo_town.player, LIFE_ADULT);            /* the player is a grown-up open to romance */
++    resident_set_romance(&doomo_town.player, ROMANCE_ANY);
++}
++
++/* a new live custom citizen of this stage, open to romance (stages decide the rules); -1 if the island is full */
++static int mk(int stage)
++{
++    int id = town_alloc(0);
++    DoomoResident *r;
++    if (id < 0) id = town_alloc(1);
++    if (id < 0) return -1;
++    r = TOWN_RES(id);
++    resident_generate(r, 7000u + (uint32_t)id);
++    resident_set_stage(r, stage);
++    resident_set_romance(r, ROMANCE_ANY);
++    r->status = RES_ALIVE;
++    r->flags = RF_CUSTOM;
++    r->level = 20;
++    resident_sanitize(r);
++    return id;
++}
++
++/* a household of n adults with the first as head (rel NONE); returns its number, fills ids */
++static int hh_of(int n, int *ids)
++{
++    int i, h;
++    for (i = 0; i < n; i++) ids[i] = mk(LIFE_ADULT);
++    h = household_create(ids[0]);
++    for (i = 1; i < n; i++) household_add(h, ids[i], HREL_NONE);
++    return h;
++}
++
++static uint8_t image[256 * 1024];
++
++/* ---- the tables ------------------------------------------------------------------- */
++TEST(hh_reverse_table_is_pure_and_symmetric_ones_map_to_themselves)
++{
++    int r;
++    for (r = 1; r < HREL_COUNT; r++) {
++        CHECK_EQ(household_rel_reverse(household_rel_reverse(r)), r);
++        CHECK(household_rel_reverse(r) > 0);
++    }
++    CHECK_EQ(household_rel_reverse(HREL_PARENT), HREL_CHILD);
++    CHECK_EQ(household_rel_reverse(HREL_STEPPARENT), HREL_STEPCHILD);
++    CHECK_EQ(household_rel_reverse(HREL_GRANDPARENT), HREL_GRANDCHILD);
++    CHECK_EQ(household_rel_reverse(HREL_AUNT_UNCLE), HREL_NIECE_NEPHEW);
++    CHECK_EQ(household_rel_reverse(HREL_PET_OWNER), HREL_PET);
++    CHECK_EQ(household_rel_reverse(HREL_NONE), HREL_NONE);
++    CHECK_EQ(household_rel_reverse(HREL_COUNT), HREL_NONE);
++    CHECK(household_rel_symmetric(HREL_SPOUSE) && household_rel_symmetric(HREL_PARTNER) &&
++          household_rel_symmetric(HREL_FIANCE) && household_rel_symmetric(HREL_SIBLING) &&
++          household_rel_symmetric(HREL_STEPSIBLING) && household_rel_symmetric(HREL_COUSIN) &&
++          household_rel_symmetric(HREL_ROOMMATE));
++    CHECK(!household_rel_symmetric(HREL_PARENT) && !household_rel_symmetric(HREL_PET_OWNER));
++}
++
++TEST(hh_relation_names_follow_the_pronoun_and_every_reason_has_a_plain_line)
++{
++    int c;
++    CHECK_STR(household_rel_name(HREL_PARENT, PRONOUN_SHE), "mother");
++    CHECK_STR(household_rel_name(HREL_PARENT, PRONOUN_HE), "father");
++    CHECK_STR(household_rel_name(HREL_PARENT, PRONOUN_THEY), "parent");
++    CHECK_STR(household_rel_name(HREL_CHILD, PRONOUN_XE), "child");
++    CHECK_STR(household_rel_name(HREL_NONE, PRONOUN_SHE), "");
++    for (c = 1; c < HHR_COUNT; c++) {
++        CHECK(household_reason_text(c)[0] != 0);
++        CHECK_STR(household_reason_text(-c), household_reason_text(c));
++        CHECK(strlen(household_reason_text(c)) <= 48);          /* one line on the GBA */
++    }
++    CHECK_STR(household_reason_text(0), "");
++}
++
++/* ---- households: create, add, the 20, one at a time -------------------------------------- */
++TEST(hh_create_and_add_keep_the_order_and_find_everyone)
++{
++    int ids[4], h;
++    fresh();
++    CHECK_EQ(household_count(), 1);
++    h = hh_of(4, ids);
++    CHECK_EQ(h, 1);
++    CHECK_EQ(household_count(), 2);
++    CHECK_EQ(household_size(h), 4);
++    CHECK_EQ(household_head(h), ids[0]);
++    CHECK_EQ(household_member(h, 3), ids[3]);
++    CHECK_EQ(household_member(h, 4), -1);
++    CHECK_EQ(household_of(ids[2]), 1);
++    CHECK_EQ(household_of(PL), 0);
++    CHECK_EQ(household_of(mk(LIFE_ADULT)), -1);                 /* alone: no record, no cost */
++    CHECK_EQ(household_head(0), PL);
++    CHECK_EQ(household_size(0), 1);
++}
++
++TEST(hh_a_resident_is_in_one_household_at_a_time)
++{
++    int a[2], b[2], h1, h2, fam;
++    fresh();
++    h1 = hh_of(2, a);
++    h2 = hh_of(2, b);
++    CHECK_EQ(household_add(h2, a[1], HREL_NONE), HH_ERR(HHR_DUP));
++    CHECK_EQ(household_create(a[0]), HH_ERR(HHR_DUP));
++    CHECK_EQ(household_add(h1, a[1], HREL_NONE), HH_ERR(HHR_DUP));      /* even the same one twice */
++    fam = mk(LIFE_ADULT);
++    CHECK(household_add(0, fam, HREL_NONE) >= 0);                        /* the player's own table */
++    CHECK_EQ(household_of(fam), 0);
++    CHECK_EQ(household_add(h1, fam, HREL_NONE), HH_ERR(HHR_DUP));
++    CHECK_EQ(household_create(fam), HH_ERR(HHR_DUP));
++    CHECK_EQ(household_add(0, b[0], HREL_NONE), HH_ERR(HHR_DUP));        /* in a record: not in 0 too */
++    CHECK_EQ(household_add(h1, PL, HREL_NONE), HH_ERR(HHR_HEAD));
++}
++
++TEST(hh_a_household_holds_twenty_and_refuses_the_21st)
++{
++    int ids[HH_MEMBERS_MAX], extra, h;
++    fresh();
++    h = hh_of(HH_MEMBERS_MAX, ids);
++    CHECK_EQ(household_size(h), 20);
++    extra = mk(LIFE_ADULT);
++    CHECK_EQ(household_add(h, extra, HREL_NONE), HH_ERR(HHR_FULL));
++    CHECK_EQ(household_size(h), 20);
++    CHECK_EQ(household_of(extra), -1);
++    CHECK_EQ(household_move(extra, h), HH_ERR(HHR_FULL));
++    CHECK_EQ(household_new_person(h, HREL_NONE), HH_ERR(HHR_FULL));
++}
++
++TEST(hh_the_players_household_takes_twenty_besides_the_player)
++{
++    int i, extra;
++    fresh();
++    CHECK_EQ(household_cap(0), 21);
++    CHECK_EQ(household_cap(1), 0);                              /* no such household yet */
++    for (i = 0; i < 20; i++) CHECK(household_add(0, mk(LIFE_ADULT), HREL_NONE) >= 0);
++    CHECK_EQ(household_size(0), 21);
++    CHECK_EQ(family_count(), 20);
++    extra = mk(LIFE_ADULT);
++    CHECK_EQ(household_add(0, extra, HREL_NONE), HH_ERR(HHR_FULL));
++    CHECK_EQ(household_member(0, 0), PL);
++    CHECK_EQ(household_member(0, 1), family_member(0));
++    CHECK_EQ(household_member(0, 20), family_member(19));
++}
++
++TEST(hh_only_residents_join_a_residents_household_and_pool_people_stay_with_the_player)
++{
++    int ids[2], h, pool;
++    fresh();
++    h = hh_of(2, ids);
++    pool = family_pool_add(FAMROLE_HOUSEMATE, LIFE_ADULT, 5u, "Zed", -1);
++    CHECK(pool >= 0);
++    CHECK_EQ(household_of(pool), 0);
++    CHECK_EQ(household_add(h, pool, HREL_NONE), HH_ERR(HHR_POOL));
++    CHECK_EQ(household_move(pool, h), HH_ERR(HHR_POOL));
++    CHECK_EQ(household_create(pool), HH_ERR(HHR_POOL));
++    CHECK_EQ(household_add(h, 999, HREL_NONE), HH_ERR(HHR_BAD_ID));     /* nobody lives there */
++    CHECK_EQ(household_add(7, ids[0], HREL_NONE), HH_ERR(HHR_BAD_HOUSEHOLD));
++}
++
++TEST(hh_at_most_hh_max_recs_households_and_a_clear_reason)
++{
++    int i, id, h = 0;
++    fresh();
++    for (i = 0; i < HH_MAX_RECS; i++) {
++        int a = mk(LIFE_ADULT), b = mk(LIFE_ADULT);
++        if (a < 0 || b < 0) return;                             /* a small island cannot test it */
++        h = household_create(a);
++        CHECK(h > 0 && household_add(h, b, HREL_NONE) >= 0);
++    }
++    CHECK_EQ(household_count(), 1 + HH_MAX_RECS);
++    id = mk(LIFE_ADULT);
++    CHECK_EQ(household_create(id), HH_ERR(HHR_NO_ROOM));
++    CHECK_STR(household_reason_text(HH_ERR(HHR_NO_ROOM)), "No room in town for more households.");
++}
++
++/* ---- leaving, moving, head, order ---------------------------------------------------------- */
++TEST(hh_the_head_who_leaves_passes_the_head_on_and_the_rows_close_up)
++{
++    int ids[4], h;
++    fresh();
++    h = hh_of(4, ids);
++    CHECK_EQ(household_rel_set(h, ids[2], ids[3], HREL_SIBLING), 0);
++    CHECK_EQ(household_rel_set(h, ids[0], ids[1], HREL_ROOMMATE), 0);
++    CHECK_EQ(household_remove(ids[0]), 0);                       /* the head moves out */
++    CHECK_EQ(household_head(h), ids[1]);
++    CHECK_EQ(household_size(h), 3);
++    CHECK_EQ(household_of(ids[0]), -1);
++    CHECK_EQ(household_rel(h, ids[2], ids[3]), HREL_SIBLING);    /* slots shifted, the row still right */
++    CHECK_EQ(household_rel_count(h), 1);                         /* the row with the one who left is gone */
++    CHECK_EQ(household_remove(ids[0]), HH_ERR(HHR_NOT_MEMBER));
++}
++
++TEST(hh_a_household_left_with_one_person_is_dissolved_and_later_ones_move_up)
++{
++    int a[2], b[2], c[2], h1, h2, h3;
++    fresh();
++    h1 = hh_of(2, a); h2 = hh_of(2, b); h3 = hh_of(2, c);
++    CHECK_EQ((h1 << 8) | (h2 << 4) | h3, 0x123);
++    CHECK_EQ(household_remove(a[1]), 1);                         /* 1 = dissolved */
++    CHECK_EQ(household_count(), 3);
++    CHECK_EQ(household_of(a[0]), -1);
++    CHECK_EQ(household_of(b[0]), 1);                             /* the later ones moved up */
++    CHECK_EQ(household_of(c[1]), 2);
++    CHECK_EQ(household_head(2), c[0]);
++    CHECK_EQ(household_remove(c[0]), 1);
++    CHECK_EQ(household_count(), 2);
++}
++
++TEST(hh_move_leaves_the_old_household_first_and_follows_a_dissolving_one)
++{
++    int a[3], b[2], h1, h2;
++    fresh();
++    h1 = hh_of(3, a);
++    h2 = hh_of(2, b);
++    CHECK_EQ(household_move(a[2], h2), 0);
++    CHECK_EQ(household_size(h1), 2);
++    CHECK_EQ(household_size(h2), 3);
++    CHECK_EQ(household_of(a[2]), 2);
++    CHECK_EQ(household_move(a[1], h2), 0);                       /* h1 drops to one: dissolved ... */
++    CHECK_EQ(household_count(), 2);                              /* ... and h2 is now number 1 */
++    CHECK_EQ(household_of(a[1]), 1);
++    CHECK_EQ(household_size(1), 4);
++    CHECK_EQ(household_of(a[0]), -1);
++    CHECK_EQ(household_move(a[1], 1), 0);                        /* already there: nothing */
++    CHECK_EQ(household_move(PL, 1), HH_ERR(HHR_HEAD));
++    CHECK_EQ(household_move(a[1], 5), HH_ERR(HHR_BAD_HOUSEHOLD));
++}
++
++TEST(hh_move_in_and_out_of_the_players_household)
++{
++    int ids[2], h, n;
++    fresh();
++    h = hh_of(2, ids);
++    CHECK_EQ(household_move(ids[1], 0), 0);                      /* moves in with the player */
++    CHECK_EQ(household_of(ids[1]), 0);
++    CHECK_EQ(family_role(ids[1]), FAMROLE_HOUSEMATE);
++    CHECK_EQ(household_count(), 1);                              /* h dissolved: one left */
++    CHECK_EQ(household_of(ids[0]), -1);
++    (void)h;
++    n = mk(LIFE_ADULT);
++    h = household_create(ids[0]);
++    CHECK(h > 0 && household_add(h, n, HREL_NONE) >= 0);
++    CHECK_EQ(household_move(ids[1], h), 0);                      /* ... and out again */
++    CHECK_EQ(household_of(ids[1]), h);
++    CHECK_EQ(family_count(), 0);
++    CHECK_EQ(household_remove(PL), HH_ERR(HHR_HEAD));
++}
++
++TEST(hh_set_head_swaps_with_the_head_and_the_rows_follow)
++{
++    int ids[3], h;
++    fresh();
++    h = hh_of(3, ids);
++    CHECK_EQ(household_rel_set(h, ids[1], ids[2], HREL_SIBLING), 0);
++    CHECK_EQ(household_rel_set(h, ids[0], ids[2], HREL_ROOMMATE), 0);
++    CHECK_EQ(household_set_head(h, ids[2]), 0);
++    CHECK_EQ(household_head(h), ids[2]);
++    CHECK_EQ(household_member(h, 2), ids[0]);
++    CHECK_EQ(household_rel(h, ids[1], ids[2]), HREL_SIBLING);
++    CHECK_EQ(household_rel(h, ids[0], ids[2]), HREL_ROOMMATE);
++    CHECK_EQ(household_set_head(h, ids[2]), 0);                  /* already the head */
++    CHECK_EQ(household_set_head(h, mk(LIFE_ADULT)), HH_ERR(HHR_NOT_MEMBER));
++    CHECK_EQ(household_set_head(0, ids[0]), HH_ERR(HHR_HEAD));
++}
++
++TEST(hh_reorder_moves_a_member_along_the_strip_and_keeps_the_head_first)
++{
++    int ids[4], h;
++    fresh();
++    h = hh_of(4, ids);
++    CHECK_EQ(household_rel_set(h, ids[1], ids[3], HREL_SIBLING), 0);
++    CHECK_EQ(household_reorder(h, 3, 1), 0);                     /* the last to second place */
++    CHECK_EQ(household_member(h, 0), ids[0]);
++    CHECK_EQ(household_member(h, 1), ids[3]);
++    CHECK_EQ(household_member(h, 2), ids[1]);
++    CHECK_EQ(household_member(h, 3), ids[2]);
++    CHECK_EQ(household_rel(h, ids[1], ids[3]), HREL_SIBLING);    /* the pair is still the pair */
++    CHECK_EQ(household_reorder(h, 1, 3), 0);
++    CHECK_EQ(household_member(h, 3), ids[3]);
++    CHECK_EQ(household_rel(h, ids[3], ids[1]), HREL_SIBLING);
++    CHECK_EQ(household_reorder(h, 0, 2), HH_ERR(HHR_BAD_ID));     /* the head does not move this way */
++    CHECK_EQ(household_reorder(h, 1, 4), HH_ERR(HHR_BAD_ID));
++}
++
++TEST(hh_reorder_in_the_players_household_swaps_the_family_table_and_keeps_the_bond)
++{
++    int a, b, c;
++    fresh();
++    a = mk(LIFE_ADULT); b = mk(LIFE_ADULT); c = mk(LIFE_ADULT);
++    CHECK(household_add(0, a, HREL_NONE) >= 0 && household_add(0, b, HREL_NONE) >= 0 &&
++          household_add(0, c, HREL_NONE) >= 0);
++    family_bond_add(c, 5);
++    family_bond_add(a, 1);
++    CHECK_EQ(household_reorder(0, 3, 1), 0);
++    CHECK_EQ(household_member(0, 1), c);
++    CHECK_EQ(household_member(0, 2), a);
++    CHECK_EQ(household_member(0, 3), b);
++    CHECK_EQ(family_bond(c), 3 + 5);                             /* the bond byte moved with them */
++    CHECK_EQ(family_bond(a), 3 + 1);
++    CHECK_EQ(family_bond(b), 3);
++    CHECK_EQ(household_reorder(0, 1, 9), HH_ERR(HHR_BAD_ID));
++}
++
++/* ---- relations: reverse, rows ------------------------------------------------------------------ */
++/* two people for a relation: older (ELDER) a, younger (ADULT) b, in one household */
++static int pair_(int *a, int *b)
++{
++    int h;
++    *a = mk(LIFE_ELDER);
++    *b = mk(LIFE_ADULT);
++    h = household_create(*a);
++    household_add(h, *b, HREL_NONE);
++    return h;
++}
++
++TEST(hh_setting_a_relation_fills_the_other_side_for_every_relation)
++{
++    int rel, a, b, h;
++    fresh();
++    for (rel = HREL_SPOUSE; rel < HREL_COUNT; rel++) {
++        town_new(TOWN_FREEPLAY, 41, TOWN_POP_EMPTY);
++        sim_init();
++        h = pair_(&a, &b);
++        if (rel == HREL_CHILD || rel == HREL_STEPCHILD || rel == HREL_GRANDCHILD || rel == HREL_NIECE_NEPHEW) {
++            int t = a; a = b; b = t;                              /* the younger one says it */
++        }
++        CHECK_MSG(household_rel_set(h, a, b, rel) == 0, "set %d: %s", rel,
++                  household_reason_text(household_rel_check(h, a, b, rel)));
++        CHECK_EQ(household_rel(h, a, b), rel);
++        CHECK_EQ(household_rel(h, b, a), household_rel_reverse(rel));
++        CHECK_EQ(household_rel_count(h), 1);                     /* one row per pair */
++    }
++}
++
++TEST(hh_one_row_per_pair_a_new_relation_replaces_and_none_clears)
++{
++    int a, b, h;
++    fresh();
++    h = pair_(&a, &b);
++    CHECK_EQ(household_rel_set(h, a, b, HREL_PARTNER), 0);
++    CHECK_EQ(household_rel_set(h, b, a, HREL_SPOUSE), 0);        /* the other way round, same pair */
++    CHECK_EQ(household_rel_count(h), 1);
++    CHECK_EQ(household_rel(h, a, b), HREL_SPOUSE);
++    CHECK_EQ(household_rel_set(h, b, a, HREL_CHILD), 0);                  /* "b is a's child": replaces the couple */
++    CHECK_EQ(household_rel_count(h), 1);
++    CHECK_EQ(household_rel(h, a, b), HREL_PARENT);               /* b is a's child */
++    CHECK_EQ(household_rel_set(h, a, b, HREL_NONE), 0);
++    CHECK_EQ(household_rel_count(h), 0);
++    CHECK_EQ(household_rel(h, a, b), HREL_NONE);
++    CHECK_EQ(household_rel(h, a, a), -1);
++    CHECK_EQ(household_rel(h, a, mk(LIFE_ADULT)), -1);           /* not in this household */
++}
++
++TEST(hh_a_household_keeps_at_most_32_rows)
++{
++    int ids[HH_MEMBERS_MAX], h, i, j, n = 0;
++    fresh();
++    h = hh_of(HH_MEMBERS_MAX, ids);
++    for (i = 0; i < HH_MEMBERS_MAX && n < HH_RELS_MAX; i++)
++        for (j = i + 1; j < HH_MEMBERS_MAX && n < HH_RELS_MAX; j++, n++)
++            CHECK_EQ(household_rel_set(h, ids[i], ids[j], HREL_ROOMMATE), 0);
++    CHECK_EQ(household_rel_count(h), HH_RELS_MAX);
++    CHECK_EQ(household_rel_set(h, ids[19], ids[18], HREL_ROOMMATE), HH_ERR(HHR_NO_ROOM));
++    CHECK_EQ(household_rel_set(h, ids[0], ids[1], HREL_COUSIN), 0);       /* replacing needs no room */
++    CHECK_EQ(household_rel_count(h), HH_RELS_MAX);
++}
++
++/* ---- the rules: couples ------------------------------------------------------------------------- */
++TEST(hh_a_couple_must_be_two_adults_never_with_or_between_minors)
++{
++    static const int kinds[3] = { HREL_SPOUSE, HREL_PARTNER, HREL_FIANCE };
++    static const int minors[4] = { LIFE_BABY, LIFE_TODDLER, LIFE_CHILD, LIFE_TEEN };
++    int k, m, ad, mn, mn2, h;
++    fresh();
++    ad = mk(LIFE_ADULT);
++    h = household_create(ad);
++    for (m = 0; m < 4; m++) {
++        mn = mk(minors[m]);
++        mn2 = mk(minors[m]);
++        CHECK(household_add(h, mn, HREL_NONE) >= 0 && household_add(h, mn2, HREL_NONE) >= 0);
++        for (k = 0; k < 3; k++) {
++            CHECK_EQ(household_rel_check(h, ad, mn, kinds[k]), HHR_ADULTS_ONLY);     /* adult and minor */
++            CHECK_EQ(household_rel_check(h, mn, ad, kinds[k]), HHR_ADULTS_ONLY);     /* both ways round */
++            CHECK_EQ(household_rel_check(h, mn, mn2, kinds[k]), HHR_ADULTS_ONLY);    /* minor and minor */
++            CHECK_EQ(household_rel_set(h, ad, mn, kinds[k]), HH_ERR(HHR_ADULTS_ONLY));
++        }
++    }
++    CHECK_EQ(household_rel_count(h), 0);
++}
++
++TEST(hh_a_crush_is_for_adults_only_both_ways)
++{
++    int ad, ad2, teen, kid;
++    fresh();
++    ad = mk(LIFE_ADULT); ad2 = mk(LIFE_ELDER); teen = mk(LIFE_TEEN); kid = mk(LIFE_CHILD);
++    CHECK_EQ(household_crush_check(ad, ad2), 0);
++    CHECK_EQ(household_crush_check(ad2, ad), 0);
++    CHECK_EQ(household_crush_check(ad, teen), HHR_ADULTS_ONLY);
++    CHECK_EQ(household_crush_check(teen, ad), HHR_ADULTS_ONLY);
++    CHECK_EQ(household_crush_check(teen, kid), HHR_ADULTS_ONLY);
++    CHECK_EQ(household_crush_check(kid, kid), HHR_SELF);
++    CHECK_EQ(household_crush_check(ad, 999), HHR_BAD_ID);
++    resident_set_romance(TOWN_RES(ad2), ROMANCE_NONE);                       /* the sim's rule too */
++    CHECK_EQ(household_crush_check(ad, ad2), HHR_ROMANCE);
++    CHECK_EQ(household_crush_check(ad2, ad), HHR_ROMANCE);
++}
++
++TEST(hh_a_couple_needs_the_sims_romance_rule_both_ways_round)
++{
++    int a, b, h;
++    fresh();
++    h = pair_(&a, &b);
++    CHECK_EQ(household_rel_check(h, a, b, HREL_PARTNER), 0);
++    resident_set_romance(TOWN_RES(b), ROMANCE_NONE);                         /* b does not accept a ... */
++    CHECK_EQ(household_rel_check(h, a, b, HREL_PARTNER), HHR_ROMANCE);
++    CHECK_EQ(household_rel_check(h, b, a, HREL_SPOUSE), HHR_ROMANCE);
++    resident_set_romance(TOWN_RES(b), ROMANCE_ANY);
++    resident_set_romance(TOWN_RES(a), ROMANCE_NONE);                         /* ... or a does not accept b */
++    CHECK_EQ(household_rel_check(h, a, b, HREL_FIANCE), HHR_ROMANCE);
++    CHECK_EQ(household_rel_check(h, b, a, HREL_FIANCE), HHR_ROMANCE);
++}
++
++TEST(hh_family_never_becomes_a_couple_not_even_by_a_shared_parent_or_ancestor)
++{
++    int g, p, c1, c2, h, c3;
++    fresh();
++    g = mk(LIFE_ELDER); p = mk(LIFE_ADULT); c1 = mk(LIFE_ADULT); c2 = mk(LIFE_ADULT);
++    h = household_create(g);
++    CHECK(household_add(h, p, HREL_NONE) >= 0 && household_add(h, c1, HREL_NONE) >= 0 &&
++          household_add(h, c2, HREL_NONE) >= 0);
++    /* a direct parent: refused */
++    CHECK_EQ(household_rel_set(h, g, p, HREL_PARENT), 0);
++    CHECK_EQ(household_rel_check(h, g, p, HREL_SPOUSE), HHR_KIN);
++    CHECK_EQ(household_rel_check(h, p, g, HREL_PARTNER), HHR_KIN);
++    /* a grandparent by the tree (never stated): the parent chain makes them kin */
++    c3 = mk(LIFE_CHILD);
++    CHECK(household_add(h, c3, HREL_NONE) >= 0);
++    CHECK_EQ(household_rel_set(h, p, c3, HREL_PARENT), 0);
++    CHECK_EQ(household_rel_check(h, g, c3, HREL_FIANCE), HHR_ADULTS_ONLY);   /* minors go first */
++    resident_set_stage(TOWN_RES(c3), LIFE_ADULT);
++    CHECK_EQ(household_rel_check(h, g, c3, HREL_FIANCE), HHR_KIN);
++    /* siblings by a shared parent, never stated */
++    CHECK_EQ(household_rel_set(h, p, c1, HREL_PARENT), HH_ERR(HHR_PARENT_OLDER));   /* adult / adult: not older */
++    resident_set_stage(TOWN_RES(p), LIFE_ELDER);
++    resident_set_stage(TOWN_RES(c3), LIFE_ADULT);
++    CHECK_EQ(household_rel_set(h, p, c1, HREL_PARENT), 0);
++    CHECK_EQ(household_rel_check(h, c1, c3, HREL_PARTNER), HHR_KIN);
++    CHECK_EQ(household_rel_check(h, c3, c1, HREL_SPOUSE), HHR_KIN);
++    /* a stated cousin, sibling, step-sibling */
++    CHECK_EQ(household_rel_set(h, c1, c2, HREL_COUSIN), 0);
++    CHECK_EQ(household_rel_check(h, c1, c2, HREL_SPOUSE), HHR_KIN);
++    CHECK_EQ(household_rel_set(h, c1, c2, HREL_STEPSIBLING), 0);
++    CHECK_EQ(household_rel_check(h, c2, c1, HREL_PARTNER), HHR_KIN);
++    /* a stranger to all of them is fine */
++    CHECK_EQ(household_rel_check(h, g, c2, HREL_PARTNER), 0);
++}
++
++TEST(hh_one_spouse_partner_or_fiance_at_a_time)
++{
++    int ids[3], h;
++    fresh();
++    h = hh_of(3, ids);
++    CHECK_EQ(household_rel_set(h, ids[0], ids[1], HREL_SPOUSE), 0);
++    CHECK_EQ(household_rel_check(h, ids[0], ids[2], HREL_PARTNER), HHR_ONE_AT_A_TIME);
++    CHECK_EQ(household_rel_check(h, ids[2], ids[1], HREL_FIANCE), HHR_ONE_AT_A_TIME);
++    CHECK_EQ(household_rel_check(h, ids[2], ids[0], HREL_SPOUSE), HHR_ONE_AT_A_TIME);
++    CHECK_EQ(household_rel_set(h, ids[0], ids[1], HREL_PARTNER), 0);         /* the same pair may change */
++    CHECK_EQ(household_rel_set(h, ids[0], ids[1], HREL_NONE), 0);            /* and end */
++    CHECK_EQ(household_rel_set(h, ids[0], ids[2], HREL_PARTNER), 0);         /* then another may start */
++}
++
++/* ---- the rules: parents, roommates, pets ------------------------------------------------------------ */
++TEST(hh_a_parent_is_an_adult_and_older_in_stage_for_every_parent_kind)
++{
++    static const int kinds[4] = { HREL_PARENT, HREL_STEPPARENT, HREL_GRANDPARENT, HREL_AUNT_UNCLE };
++    int k, ad, ad2, eld, teen, kid, h;
++    fresh();
++    ad = mk(LIFE_ADULT); ad2 = mk(LIFE_ADULT); eld = mk(LIFE_ELDER); teen = mk(LIFE_TEEN); kid = mk(LIFE_CHILD);
++    h = household_create(ad);
++    household_add(h, ad2, HREL_NONE); household_add(h, eld, HREL_NONE);
++    household_add(h, teen, HREL_NONE); household_add(h, kid, HREL_NONE);
++    for (k = 0; k < 4; k++) {
++        int r = kinds[k], rv = household_rel_reverse(r);
++        CHECK_EQ(household_rel_check(h, ad, kid, r), 0);                      /* an adult over a child */
++        CHECK_EQ(household_rel_check(h, kid, ad, rv), 0);                     /* the same said from the child */
++        CHECK_EQ(household_rel_check(h, teen, kid, r), HHR_PARENT_ADULT);     /* a teen is no parent */
++        CHECK_EQ(household_rel_check(h, ad, teen, rv), HHR_PARENT_ADULT);     /* "ad is the teen's child" */
++        CHECK_EQ(household_rel_check(h, kid, teen, r), HHR_PARENT_ADULT);
++        CHECK_EQ(household_rel_check(h, ad, ad2, r), HHR_PARENT_OLDER);       /* equal stages */
++        CHECK_EQ(household_rel_check(h, ad2, eld, r), HHR_PARENT_OLDER);      /* the elder is older */
++        CHECK_EQ(household_rel_check(h, eld, ad2, r), 0);
++    }
++}
++
++TEST(hh_nobody_is_their_own_ancestor_even_after_someone_changes_age)
++{
++    int a, b, c, h;
++    fresh();
++    a = mk(LIFE_ELDER); b = mk(LIFE_ADULT); c = mk(LIFE_CHILD);
++    h = household_create(a);
++    household_add(h, b, HREL_NONE); household_add(h, c, HREL_NONE);
++    CHECK_EQ(household_rel_set(h, a, b, HREL_PARENT), 0);
++    CHECK_EQ(household_rel_set(h, b, c, HREL_PARENT), 0);
++    resident_set_stage(TOWN_RES(a), LIFE_ADULT);                /* the creator ages them differently ... */
++    resident_set_stage(TOWN_RES(c), LIFE_ELDER);
++    CHECK_EQ(household_rel_check(h, c, a, HREL_PARENT), HHR_CYCLE);      /* c over a would close a loop a - b - c - a */
++    CHECK_EQ(household_rel_check(h, a, c, HREL_CHILD), HHR_CYCLE);       /* the same in the other words */
++    CHECK_EQ(household_rel_check(h, c, a, HREL_GRANDPARENT), HHR_CYCLE);
++    CHECK_EQ(household_rel_check(h, c, a, HREL_AUNT_UNCLE), 0);          /* not an ancestor link */
++    CHECK_EQ(household_rel_set(h, c, a, HREL_PARENT), HH_ERR(HHR_CYCLE));
++}
++
++TEST(hh_a_parents_parent_is_a_grandparent_not_a_second_parent)
++{
++    int g, p, c, h;
++    fresh();
++    g = mk(LIFE_ELDER); p = mk(LIFE_ADULT); c = mk(LIFE_CHILD);
++    h = household_create(g);
++    household_add(h, p, HREL_NONE); household_add(h, c, HREL_NONE);
++    CHECK_EQ(household_rel_set(h, g, p, HREL_PARENT), 0);
++    CHECK_EQ(household_rel_set(h, p, c, HREL_PARENT), 0);
++    CHECK_EQ(household_rel_check(h, g, c, HREL_PARENT), HHR_GENERATION);
++    CHECK_EQ(household_rel_check(h, c, g, HREL_CHILD), HHR_GENERATION);
++    CHECK_EQ(household_rel_check(h, g, c, HREL_STEPPARENT), HHR_GENERATION);
++    CHECK_EQ(household_rel_set(h, g, c, HREL_GRANDPARENT), 0);
++    CHECK_EQ(household_rel(h, c, g), HREL_GRANDCHILD);
++    CHECK_EQ(household_rel_count(h), 3);
++}
++
++TEST(hh_a_minor_is_never_a_grown_ups_roommate_but_minors_share_with_minors)
++{
++    int ad, ad2, teen, kid, kid2, h;
++    fresh();
++    ad = mk(LIFE_ADULT); ad2 = mk(LIFE_ELDER); teen = mk(LIFE_TEEN); kid = mk(LIFE_CHILD); kid2 = mk(LIFE_BABY);
++    h = household_create(ad);
++    household_add(h, ad2, HREL_NONE); household_add(h, teen, HREL_NONE);
++    household_add(h, kid, HREL_NONE); household_add(h, kid2, HREL_NONE);
++    CHECK_EQ(household_rel_check(h, ad, ad2, HREL_ROOMMATE), 0);
++    CHECK_EQ(household_rel_check(h, ad, kid, HREL_ROOMMATE), HHR_MINOR_ROOMMATE);
++    CHECK_EQ(household_rel_check(h, kid, ad2, HREL_ROOMMATE), HHR_MINOR_ROOMMATE);
++    CHECK_EQ(household_rel_check(h, teen, ad, HREL_ROOMMATE), HHR_MINOR_ROOMMATE);
++    CHECK_EQ(household_rel_check(h, teen, kid, HREL_ROOMMATE), 0);
++    CHECK_EQ(household_rel_check(h, kid, kid2, HREL_ROOMMATE), 0);
++    CHECK_EQ(household_rel_set(h, ad, kid2, HREL_ROOMMATE), HH_ERR(HHR_MINOR_ROOMMATE));
++    CHECK_EQ(household_rel_check(h, ad, kid, HREL_CHILD), HHR_PARENT_ADULT);   /* "the adult is the child's child" */
++    CHECK_EQ(household_rel_check(h, kid, ad, HREL_CHILD), 0);             /* the household names them a child */
++}
++
++TEST(hh_pet_rules_the_pet_has_only_its_owner_and_the_owner_is_a_person)
++{
++    int o, o2, pet, pet2, h;
++    fresh();
++    o = mk(LIFE_ADULT); o2 = mk(LIFE_ADULT); pet = mk(LIFE_ADULT); pet2 = mk(LIFE_ADULT);
++    h = household_create(o);
++    household_add(h, o2, HREL_NONE); household_add(h, pet, HREL_NONE); household_add(h, pet2, HREL_NONE);
++    CHECK_EQ(household_rel_set(h, o, pet, HREL_PET_OWNER), 0);
++    CHECK_EQ(household_rel(h, pet, o), HREL_PET);
++    CHECK_EQ(household_rel_check(h, pet, o2, HREL_PET), HHR_PET_OTHER);     /* a second owner: no, only one */
++    CHECK_EQ(household_rel_check(h, pet, o2, HREL_SIBLING), HHR_PET_OTHER);
++    CHECK_EQ(household_rel_check(h, o2, pet, HREL_ROOMMATE), HHR_PET_OTHER);
++    CHECK_EQ(household_rel_check(h, pet, o2, HREL_PARTNER), HHR_PET_OTHER);
++    CHECK_EQ(household_rel_check(h, pet, pet2, HREL_PET_OWNER), HHR_PET_OWNER);   /* a pet cannot own */
++    CHECK_EQ(household_rel_check(h, o2, pet2, HREL_PET_OWNER), 0);
++    CHECK_EQ(household_rel_set(h, o2, o, HREL_SIBLING), 0);                 /* people keep their other ties */
++    CHECK_EQ(household_rel_check(h, o2, o, HREL_PET_OWNER), HHR_PET_OTHER);  /* o has its own pet: it is no pet */
++    CHECK_EQ(household_rel_check(h, o, o2, HREL_PET), HHR_PET_OTHER);       /* o2 has a sibling: not a pet */
++}
++
++TEST(hh_the_rulebook_only_reads_and_never_touches_the_adult_gate_or_the_kid_cast)
++{
++    int ids[3], h, i, before[DOOMO_MAX_RESIDENTS], k, rows;
++    town_new(TOWN_STORY, 3, TOWN_POP_PREMADE);                   /* the premade cast: the gates have something to say */
++    sim_init();
++    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) before[i] = mature_adult_ok(i) | (ending_kid_cast(i) << 1);
++    ids[0] = ROSTER_ID_MAYOR; ids[1] = ROSTER_ID_NANA_PUDDING; ids[2] = ROSTER_ID_PIP;   /* Pip is on the kid-coded cast */
++    h = household_create(ids[0]);
++    CHECK(h > 0);
++    for (i = 1; i < 3; i++) household_add(h, ids[i], HREL_NONE);
++    rows = household_rel_count(h);
++    for (k = HREL_SPOUSE; k < HREL_COUNT; k++) {
++        household_rel_check(h, ids[0], ids[1], k);
++        household_rel_check(h, ids[0], ids[2], k);
++    }
++    CHECK_EQ(household_rel_count(h), rows);                      /* a check writes nothing */
++    CHECK(household_rel_check(h, ids[0], ids[2], HREL_PARTNER) != 0);     /* the kid-coded cast is never a partner */
++    CHECK_EQ(household_crush_check(ids[0], ROSTER_ID_PIP), HHR_ADULTS_ONLY);
++    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
++        CHECK_EQ(before[i], mature_adult_ok(i) | (ending_kid_cast(i) << 1));
++}
++
++/* ---- household 0: the old roles ------------------------------------------------------------------- */
++TEST(hh_the_players_pairs_come_from_the_old_roles_when_no_row_exists)
++{
++    int p, c, par, sib, gp, hm, pet, x;
++    fresh();
++    p = mk(LIFE_ADULT); c = mk(LIFE_CHILD); par = mk(LIFE_ELDER); sib = mk(LIFE_ADULT); gp = mk(LIFE_ELDER);
++    hm = mk(LIFE_ADULT);
++    pet = family_pool_add(FAMROLE_PET, LIFE_ADULT, 9u, "Biscuit", -1);
++    CHECK(family_add(p, FAMROLE_PARTNER, 0) >= 0 && family_add(c, FAMROLE_CHILD, 0) >= 0 &&
++          family_add(par, FAMROLE_PARENT, 0) >= 0 && family_add(sib, FAMROLE_SIBLING, 0) >= 0 &&
++          family_add(gp, FAMROLE_GRANDPARENT, 0) >= 0 && family_add(hm, FAMROLE_HOUSEMATE, 0) >= 0);
++    CHECK(pet >= 0);
++    CHECK_EQ(household_rel(0, p, PL), HREL_PARTNER);
++    CHECK_EQ(household_rel(0, PL, p), HREL_PARTNER);
++    CHECK_EQ(household_rel(0, c, PL), HREL_CHILD);                 /* the child is the player's child ... */
++    CHECK_EQ(household_rel(0, PL, c), HREL_PARENT);                /* ... so the player is their parent */
++    CHECK_EQ(household_rel(0, par, PL), HREL_PARENT);
++    CHECK_EQ(household_rel(0, sib, PL), HREL_SIBLING);
++    CHECK_EQ(household_rel(0, gp, PL), HREL_GRANDPARENT);
++    CHECK_EQ(household_rel(0, PL, gp), HREL_GRANDCHILD);
++    CHECK_EQ(household_rel(0, hm, PL), HREL_ROOMMATE);
++    CHECK_EQ(household_rel(0, pet, PL), HREL_PET);
++    CHECK_EQ(household_rel(0, PL, pet), HREL_PET_OWNER);
++    CHECK_EQ(household_rel(0, p, c), HREL_NONE);                   /* nothing stated between two members */
++    x = mk(LIFE_ADULT);
++    CHECK_EQ(household_rel(0, x, PL), -1);                         /* not a member */
++    CHECK_EQ(household_save_size(), 0u);                           /* old roles cost nothing in the save */
++    CHECK_EQ(household_rel_count(0), 0);
++}
++
++TEST(hh_setting_a_relation_with_the_player_updates_the_old_role_and_only_stores_what_it_cannot_say)
++{
++    int m;
++    fresh();
++    m = mk(LIFE_ADULT);
++    CHECK(household_add(0, m, HREL_NONE) >= 0);
++    CHECK_EQ(family_role(m), FAMROLE_HOUSEMATE);
++    CHECK_EQ(household_rel(0, m, PL), HREL_ROOMMATE);
++    CHECK_EQ(household_rel_set(0, m, PL, HREL_PARTNER), 0);        /* the role follows ... */
++    CHECK_EQ(family_role(m), FAMROLE_PARTNER);
++    CHECK_EQ(household_rel_count(0), 0);                           /* ... and the old role already says it */
++    CHECK_EQ(household_rel_set(0, PL, m, HREL_SPOUSE), 0);         /* a spouse is more: one stored row */
++    CHECK_EQ(family_role(m), FAMROLE_PARTNER);
++    CHECK_EQ(household_rel(0, m, PL), HREL_SPOUSE);
++    CHECK_EQ(household_rel_count(0), 1);
++    CHECK_EQ(household_save_size() > 0, 1);
++    CHECK_EQ(household_rel_set(0, PL, m, HREL_PARTNER), 0);        /* back to what the role says: the row goes */
++    CHECK_EQ(household_rel_count(0), 0);
++    CHECK_EQ(household_rel_set(0, m, PL, HREL_STEPCHILD), HH_ERR(HHR_PARENT_OLDER));   /* adult / adult */
++    CHECK_EQ(household_rel_set(0, m, PL, HREL_GRANDCHILD), HH_ERR(HHR_PARENT_OLDER));
++    CHECK_EQ(household_rel_set(0, m, PL, HREL_COUSIN), 0);
++    CHECK_EQ(family_role(m), FAMROLE_PARTNER);                     /* a cousin: no old role says it: the role stays */
++    CHECK_EQ(household_rel(0, m, PL), HREL_COUSIN);
++}
++
++TEST(hh_adding_to_the_players_household_maps_the_relation_to_the_old_role)
++{
++    int p, c, pet, x;
++    fresh();
++    p = mk(LIFE_ADULT); c = mk(LIFE_CHILD);
++    CHECK(household_add(0, p, HREL_FIANCE) >= 0);
++    CHECK_EQ(family_role(p), FAMROLE_PARTNER);
++    CHECK_EQ(household_rel(0, p, PL), HREL_FIANCE);                /* the row says fiance */
++    CHECK(household_add(0, c, HREL_CHILD) >= 0);
++    CHECK_EQ(family_role(c), FAMROLE_CHILD);
++    pet = household_new_person(0, HREL_PET);
++    CHECK_EQ(pet, HH_ERR(HHR_BAD_REL));                           /* a new person is never a pet */
++    x = mk(LIFE_ADULT);
++    CHECK_EQ(household_add(0, x, HREL_PARTNER), HH_ERR(HHR_ONE_AT_A_TIME));   /* a second partner */
++    CHECK_EQ(household_of(x), -1);                                 /* nothing changed */
++    x = mk(LIFE_TEEN);
++    CHECK_EQ(household_add(0, x, HREL_SPOUSE), HH_ERR(HHR_ADULTS_ONLY));
++    CHECK_EQ(household_of(x), -1);
++    CHECK_EQ(family_count(), 2);
++}
++
++TEST(hh_losing_a_family_member_drops_their_relation_rows)
++{
++    int a, b;
++    fresh();
++    a = mk(LIFE_ADULT); b = mk(LIFE_ADULT);
++    CHECK(household_add(0, a, HREL_FIANCE) >= 0 && household_add(0, b, HREL_NONE) >= 0);
++    CHECK_EQ(household_rel_set(0, a, b, HREL_COUSIN), 0);
++    CHECK_EQ(household_rel_count(0), 2);                           /* the fiance row and the cousin row */
++    CHECK(family_remove(a));
++    CHECK_EQ(household_rel_count(0), 0);                           /* both mentioned a */
++    CHECK_EQ(household_save_size(), 0u);
++}
++
++/* ---- the 'HOUS' chunk -------------------------------------------------------------------------------- */
++TEST(hh_the_chunk_is_registered_with_its_tag_budget_and_an_empty_set_writes_nothing)
++{
++    const DoomoSaveExt *e = doomo_save_ext_households;
++    uint32_t base, n;
++    fresh();
++    CHECK(e != NULL);
++    CHECK_EQ_U(e->tag, SAVE_EXT_TAG('H', 'O', 'U', 'S'));
++    CHECK_EQ(e->version, 1);
++    CHECK_EQ(SAVE_EXT_SLOTS, 15);
++    CHECK(save_ext_at(save_ext_count() - 1) == e);                 /* appended at the end */
++    CHECK_EQ(e->max_size, SAVE_EXT_MAX_HOUS);
++    CHECK_EQ(save_budget_declared_max(SAVE_EXT_TAG_HOUS), SAVE_EXT_MAX_HOUS);
++    CHECK(HH_SAVE_WORST <= SAVE_EXT_MAX_HOUS && SAVE_EXT_MAX_HOUS <= DOOMO_SAVE_EXT_MAX);
++    CHECK_EQ(e->size(), 0u);
++    CHECK_EQ(e->write(image, sizeof(image)), 0u);
++    {   /* households made and dissolved again: the very same save, byte for byte */
++        int ids[2];
++        uint32_t with, again;
++        static uint8_t first[sizeof(image)];
++        int h;
++        ids[0] = mk(LIFE_ADULT); ids[1] = mk(LIFE_ADULT);
++        base = save_serialize(image, sizeof(image));
++        CHECK(base > 0);
++        memcpy(first, image, base);
++        h = household_create(ids[0]);
++        CHECK(h > 0 && household_add(h, ids[1], HREL_NONE) >= 0);
++        with = save_serialize(image, sizeof(image));
++        CHECK(with > base);                                         /* a real household costs bytes ... */
++        CHECK_EQ(household_remove(ids[1]), 1);
++        CHECK_EQ(household_count(), 1);
++        again = save_serialize(image, sizeof(image));
++        CHECK_EQ(again, base);                                      /* ... and none once dissolved: no header */
++        CHECK(memcmp(first, image, base) == 0);
++        (void)n;
++    }
++}
++
++/* fill the three kinds of data: records, their rows, and household 0's rows */
++static void build_world(int *ids, int *nids)
++{
++    int h1, h2, i, n = 0, a, b, c;
++    a = mk(LIFE_ELDER); b = mk(LIFE_ADULT); c = mk(LIFE_CHILD);
++    h1 = household_create(a);
++    household_add(h1, b, HREL_NONE);
++    household_add(h1, c, HREL_NONE);
++    household_rel_set(h1, a, b, HREL_PARENT);
++    household_rel_set(h1, b, c, HREL_PARENT);
++    household_rel_set(h1, a, c, HREL_GRANDPARENT);
++    ids[n++] = a; ids[n++] = b; ids[n++] = c;
++    a = mk(LIFE_ADULT); b = mk(LIFE_ADULT);
++    h2 = household_create(a);
++    household_add(h2, b, HREL_SPOUSE);
++    ids[n++] = a; ids[n++] = b;
++    a = mk(LIFE_ADULT); b = mk(LIFE_ADULT);
++    household_add(0, a, HREL_FIANCE);
++    household_add(0, b, HREL_NONE);
++    household_rel_set(0, a, b, HREL_COUSIN);
++    ids[n++] = a; ids[n++] = b;
++    for (i = 0; i < n; i++) CHECK(ids[i] >= 0);
++    *nids = n;
++}
++
++TEST(hh_the_chunk_round_trips_records_rows_and_household_zeros_rows_through_a_real_save)
++{
++    int ids[8], n, i, j, h;
++    int rel_before[8][8];
++    uint32_t sz, len;
++    fresh();
++    build_world(ids, &n);
++    CHECK_EQ(household_count(), 3);
++    sz = household_save_size();
++    CHECK(sz > 0 && sz <= SAVE_EXT_MAX_HOUS);
++    for (i = 0; i < n; i++)
++        for (j = 0; j < n; j++) {
++            h = household_of(ids[i]);
++            rel_before[i][j] = h >= 0 && household_of(ids[j]) == h && i != j ? household_rel(h, ids[i], ids[j]) : -9;
++        }
++    len = save_serialize(image, sizeof(image));
++    CHECK(len > 0);
++    household_clear();                                              /* a clobbered state: load must put it back */
++    family_clear();
++    CHECK(save_deserialize(image, len));
++    CHECK_EQ(household_count(), 3);
++    CHECK_EQ(household_save_size(), sz);
++    for (i = 0; i < n; i++)
++        for (j = 0; j < n; j++) {
++            h = household_of(ids[i]);
++            CHECK_EQ(h >= 0 && household_of(ids[j]) == h && i != j ? household_rel(h, ids[i], ids[j]) : -9,
++                     rel_before[i][j]);
++        }
++    CHECK_EQ(household_rel(0, ids[3 + 2], PL), HREL_FIANCE);
++    CHECK_EQ(household_rel(0, ids[3 + 2], ids[3 + 3]), HREL_COUSIN);
++    CHECK_EQ(household_head(1), ids[0]);
++    CHECK_EQ(household_size(1), 3);
++}
++
++TEST(hh_an_old_save_without_the_chunk_loads_with_no_households)
++{
++    int ids[8], n, len;
++    fresh();
++    len = (int)save_serialize(image, sizeof(image));                /* a save from before: no households */
++    CHECK(len > 0);
++    build_world(ids, &n);
++    CHECK(household_count() > 1);
++    CHECK(save_deserialize(image, (uint32_t)len));                  /* the missing chunk resets */
++    CHECK_EQ(household_count(), 1);
++    CHECK_EQ(household_rel_count(0), 0);
++    CHECK_EQ(household_save_size(), 0u);
++}
++
++/* build a chunk by hand: records are (head, n, flags, members, nrel, rows) */
++static uint32_t put16(uint8_t *d, uint32_t o, int v) { d[o] = (uint8_t)v; d[o + 1] = (uint8_t)(v >> 8); return o + 2; }
++static uint32_t put_rec(uint8_t *d, uint32_t o, const int *mem, int n, const uint8_t *rows, int nr)
++{
++    int i;
++    o = put16(d, o, mem[0]);
++    d[o++] = (uint8_t)n; d[o++] = 0;
++    for (i = 0; i < n; i++) o = put16(d, o, mem[i]);
++    d[o++] = (uint8_t)nr;
++    for (i = 0; i < 3 * nr; i++) d[o++] = rows[i];
++    return o;
++}
++
++TEST(hh_load_drops_the_dead_the_missing_and_duplicates_and_dissolves_a_record_left_under_two)
++{
++    static uint8_t buf[512];
++    int a, b, c, d, e, f, g, m1[4], m2[3], m3[2], m4[3];
++    uint32_t o = 1;
++    uint8_t rows[6] = { 0, 1, HREL_ROOMMATE, 1, 2, HREL_ROOMMATE };
++    fresh();
++    a = mk(LIFE_ADULT); b = mk(LIFE_ADULT); c = mk(LIFE_ADULT); d = mk(LIFE_ADULT);
++    e = mk(LIFE_ADULT); f = mk(LIFE_ADULT); g = mk(LIFE_ADULT);
++    town_res(c)->status = RES_DEAD;                                  /* c died since the save */
++    household_add(0, g, HREL_NONE);                                  /* g lives with the player now */
++    m1[0] = a; m1[1] = b; m1[2] = c; m1[3] = 980;                    /* a, b, dead c, nobody at 980 */
++    buf[0] = 4;
++    o = put_rec(buf, o, m1, 4, rows, 2);
++    m2[0] = b; m2[1] = d; m2[2] = e;                                 /* b again: stays in the first record only */
++    o = put_rec(buf, o, m2, 3, NULL, 0);
++    m3[0] = f; m3[1] = g;                                            /* g is the player's now: f is left alone */
++    o = put_rec(buf, o, m3, 2, NULL, 0);
++    m4[0] = e; m4[1] = e; m4[2] = f;                                 /* named twice in one record */
++    o = put_rec(buf, o, m4, 3, NULL, 0);
++    CHECK(household_load(buf, o));
++    CHECK_EQ(household_count(), 3);                                  /* two households survive */
++    CHECK_EQ(household_of(a), 1);
++    CHECK_EQ(household_of(b), 1);
++    CHECK_EQ(household_size(1), 2);                                  /* dead c and nobody at 980 dropped */
++    CHECK_EQ(household_rel(1, a, b), HREL_ROOMMATE);                 /* the row between the survivors stays ... */
++    CHECK_EQ(household_rel_count(1), 1);                             /* ... the one with dead c is gone */
++    CHECK_EQ(household_of(d), 2);                                    /* the second record lost b: d and e remain */
++    CHECK_EQ(household_of(e), 2);
++    CHECK_EQ(household_size(2), 2);
++    CHECK_EQ(household_of(g), 0);                                    /* the player's, not in a record as well */
++    CHECK_EQ(household_of(f), -1);                                   /* the third record (f, g) and the fourth (e, e, f) fell to one */
++}
++
++TEST(hh_a_record_left_with_one_person_dissolves_on_load)
++{
++    static uint8_t buf[64];
++    int a = 0, b, m[2];
++    uint32_t o = 1;
++    fresh();
++    a = mk(LIFE_ADULT); b = mk(LIFE_ADULT);
++    town_res(b)->status = RES_DEAD;
++    m[0] = a; m[1] = b;
++    buf[0] = 1;
++    o = put_rec(buf, o, m, 2, NULL, 0);
++    CHECK(household_load(buf, o));
++    CHECK_EQ(household_count(), 1);
++    CHECK_EQ(household_of(a), -1);
++}
++
++TEST(hh_load_drops_rows_that_break_the_rules_a_minor_spouse_is_never_loaded)
++{
++    static uint8_t buf[64];
++    int a, k, m[2];
++    uint32_t o = 1;
++    uint8_t row[3];
++    fresh();
++    a = mk(LIFE_ADULT); k = mk(LIFE_CHILD);
++    m[0] = a; m[1] = k;
++    row[0] = 0; row[1] = 1; row[2] = HREL_SPOUSE;                    /* a hand-made save: an adult and a child as spouses */
++    buf[0] = 1;
++    o = put_rec(buf, o, m, 2, row, 1);
++    CHECK(household_load(buf, o));
++    CHECK_EQ(household_size(1), 2);                                  /* they still live together ... */
++    CHECK_EQ(household_rel_count(1), 0);                             /* ... but the couple row is dropped */
++    CHECK_EQ(household_rel(1, a, k), HREL_NONE);
++    row[2] = HREL_ROOMMATE;                                          /* roommates adult / child: no */
++    o = 1; buf[0] = 1;
++    o = put_rec(buf, o, m, 2, row, 1);
++    CHECK(household_load(buf, o));
++    CHECK_EQ(household_rel_count(1), 0);
++    row[2] = HREL_PARENT;                                            /* a parent and a child: fine */
++    o = 1; buf[0] = 1;
++    o = put_rec(buf, o, m, 2, row, 1);
++    CHECK(household_load(buf, o));
++    CHECK_EQ(household_rel(1, a, k), HREL_PARENT);
++}
++
++TEST(hh_load_rejects_framing_errors_and_leaves_nothing_behind)
++{
++    static uint8_t buf[256];
++    int a, b, m[2];
++    uint32_t o = 1, good;
++    fresh();
++    a = mk(LIFE_ADULT); b = mk(LIFE_ADULT);
++    m[0] = a; m[1] = b;
++    buf[0] = 1;
++    good = put_rec(buf, o, m, 2, NULL, 0);
++    CHECK(household_load(buf, good));
++    CHECK(!household_load(buf, good - 1));                           /* cut short */
++    CHECK_EQ(household_count(), 1);
++    CHECK(!household_load(buf, good + 1));                           /* trailing byte */
++    CHECK(!household_load(buf, 0));
++    buf[0] = 0;
++    CHECK(!household_load(buf, good));                               /* a count of nothing */
++    buf[0] = 1 + HH_MAX_RECS + 1;
++    CHECK(!household_load(buf, good));                               /* too many records */
++    buf[0] = 1;
++    buf[3] = 21;                                                     /* a record of 21 */
++    CHECK(!household_load(buf, good));
++    CHECK_EQ(household_count(), 1);
++}
++
++/* ---- fuzz ------------------------------------------------------------------------------------------------ */
++static uint32_t fz_;
++static uint32_t rnd(void) { fz_ ^= fz_ << 13; fz_ ^= fz_ >> 17; fz_ ^= fz_ << 5; return fz_; }
++
++/* what must hold after any load: a household is 2..20 live residents, each in one place, rows sane */
++static int sane(void)
++{
++    int h, i, j, n = household_count();
++    if (n < 1 || n > 1 + HH_MAX_RECS) return 0;
++    for (h = 1; h < n; h++) {
++        int sz = household_size(h);
++        if (sz < 2 || sz > HH_MEMBERS_MAX) return 0;
++        for (i = 0; i < sz; i++) {
++            int id = household_member(h, i);
++            if (id < 0 || id >= DOOMO_MAX_RESIDENTS || town_res(id)->status != RES_ALIVE) return 0;
++            if (household_of(id) != h) return 0;
++            for (j = 0; j < i; j++) if (household_member(h, j) == id) return 0;
++        }
++        if (household_rel_count(h) > HH_RELS_MAX) return 0;
++    }
++    if (household_rel_count(0) > HH_RELS_MAX) return 0;
++    {   /* the chunk it would write is exactly as big as it says and loads back to the same size */
++        static uint8_t out[SAVE_EXT_MAX_HOUS + 8];
++        uint32_t s = household_save_size();
++        if (s > SAVE_EXT_MAX_HOUS) return 0;
++        if (household_save(out, sizeof(out)) != s) return 0;
++    }
++    return 1;
++}
++
++TEST(hh_fuzzed_chunk_bytes_never_crash_and_always_leave_a_sane_state)
++{
++    static uint8_t good[SAVE_EXT_MAX_HOUS + 8], buf[SAVE_EXT_MAX_HOUS + 8];
++    int ids[8], n, i, k, iter, ok = 0;
++    uint32_t len, cut;
++    fresh();
++    for (i = 0; i < 20; i++) mk(LIFE_ADULT);                          /* a pool of ids to hit */
++    build_world(ids, &n);
++    len = household_save(good, sizeof(good));
++    CHECK(len > 0);
++    fz_ = 0x2545F491u;
++    for (iter = 0; iter < 4000; iter++) {
++        if (iter % 3 == 0) {                                          /* pure noise */
++            cut = rnd() % 200 + 1;
++            for (i = 0; i < (int)cut; i++) buf[i] = (uint8_t)rnd();
++            if (rnd() & 1) buf[0] = (uint8_t)(rnd() % 4);
++        } else {                                                      /* a valid chunk, damaged */
++            memcpy(buf, good, len);
++            cut = len;
++            for (k = (int)(rnd() % 4) + 1; k > 0; k--) buf[rnd() % len] ^= (uint8_t)(1u << (rnd() % 8));
++            if (iter % 3 == 2) cut = rnd() % (len + 1);
++        }
++        if (household_load(buf, cut)) ok++;
++        CHECK_MSG(sane(), "iter %d", iter);
++    }
++    CHECK(ok > 100);                                                  /* the fuzz did reach the parser's insides */
++    CHECK(household_load(good, len));                                 /* and the good one still loads */
++    CHECK_EQ(household_save_size(), len);
++    for (cut = 0; cut < len; cut++) {                                 /* every truncation is refused, never trusted */
++        CHECK(!household_load(good, cut));
++        CHECK_EQ(household_count(), 1);
++    }
++}
++
++TEST(hh_the_chunk_in_a_full_save_fits_both_slots_at_its_worst)
++{
++    uint32_t home = SAVE_BUDGET_LZ_WORST(HOME_CHUNK_WORST) + SAVE_BUDGET_CHUNK_HDR;
++    uint32_t base = 19342u + home + SAVE_BUDGET_K0_WORST + SAVE_BUDGET_TALK_WORST + SAVE_BUDGET_BRCH_WORST;
++    uint32_t story = base + SAVE_BUDGET_HOUS_WORST;
++    uint32_t fp = SAVE_BUDGET_TOWN_BOUND_FP + home + SAVE_BUDGET_K0_WORST + SAVE_BUDGET_TALK_WORST +
++                  SAVE_BUDGET_BRCH_WORST + SAVE_BUDGET_HOUS_WORST;
++    CHECK_EQ(SAVE_EXT_MAX_HOUS, 3584);
++    CHECK_EQ(HH_REC_WORST, 141u);
++    CHECK_EQ(HH_REC0_WORST, 165u);
++    CHECK(HH_SAVE_WORST == 1u + 165u + HH_MAX_RECS * 141u);
++    CHECK_EQ(SAVE_BUDGET_HOUS_WORST, SAVE_BUDGET_LZ_WORST(3584u) + SAVE_BUDGET_CHUNK_HDR);
++    printf("      joint worst with HOUS: story %u B, free play %u B\n", (unsigned)story, (unsigned)fp);
++    /* the story slot: under its real 36 KB cap with the margin (the 4 KB stress gate of PA10 is held
++     * by the chunks before HOUS; the live budget, save_budget_fits, is what stops a household that
++     * would not fit) */
++    CHECK(story + SAVE_BUDGET_MARGIN <= SAVE_SLOT_STORY_CAP_CFG);
++    CHECK(fp + SAVE_BUDGET_MARGIN <= SAVE_SLOT_FP_CAP);
++}
++
++TEST(hh_a_save_that_is_nearly_full_refuses_a_household_with_the_no_room_reason)
++{
++    int a, b, h;
++    fresh();
++    a = mk(LIFE_ADULT); b = mk(LIFE_ADULT);
++    save_budget_note_io(1, SAVE_SLOT_FP_CAP - SAVE_BUDGET_MARGIN - 2u);     /* 2 B left of the free play slot */
++    CHECK_EQ(household_create(a), HH_ERR(HHR_NO_ROOM));
++    CHECK_EQ(household_count(), 1);
++    save_budget_reset();
++    h = household_create(a);
++    CHECK(h > 0);
++    save_budget_note_io(1, SAVE_SLOT_FP_CAP - SAVE_BUDGET_MARGIN - 2u);
++    CHECK_EQ(household_add(h, b, HREL_NONE), HH_ERR(HHR_NO_ROOM));
++    save_budget_reset();
++    CHECK(household_add(h, b, HREL_NONE) >= 0);
++    save_budget_note_io(1, SAVE_SLOT_FP_CAP - SAVE_BUDGET_MARGIN - 2u);
++    CHECK_EQ(household_rel_set(h, a, b, HREL_ROOMMATE), HH_ERR(HHR_NO_ROOM));
++    save_budget_reset();
++}
++
++/* ---- upkeep ---------------------------------------------------------------------------------------------- */
++TEST(hh_sweep_drops_the_dead_and_the_gone_and_dissolves_what_is_left_alone)
++{
++    int ids[3], p[2], h1, h2, gone;
++    fresh();
++    h1 = hh_of(3, ids);
++    h2 = hh_of(2, p);
++    household_rel_set(h1, ids[1], ids[2], HREL_SIBLING);
++    CHECK_EQ(household_sweep(), 0);
++    town_res(ids[0])->status = RES_DEAD;                              /* the head died */
++    town_free(p[1]);                                                  /* and someone moved away */
++    gone = household_sweep();
++    CHECK_EQ(gone, 2);
++    CHECK_EQ(household_count(), 2);                                   /* h2 dissolved */
++    CHECK_EQ(household_head(1), ids[1]);
++    CHECK_EQ(household_rel(1, ids[1], ids[2]), HREL_SIBLING);
++    CHECK_EQ(household_of(p[0]), -1);
++    (void)h2;
++}
++
++/* ---- a new person for a household ------------------------------------------------------------------------- */
++TEST(hh_a_new_person_takes_a_free_place_joins_with_the_relation_and_is_never_a_pet)
++{
++    int h, head, kid, par, n;
++    fresh();
++    head = mk(LIFE_ADULT);
++    h = household_create(head);
++    kid = household_new_person(h, HREL_CHILD);
++    CHECK(kid >= 0);
++    CHECK_EQ(TOWN_RES(kid)->status, RES_ALIVE);
++    CHECK(LIFE_IS_MINOR(sim_life_stage(kid)));
++    CHECK_EQ(RES_ROMANCE(TOWN_RES(kid)), ROMANCE_NONE);               /* a child is not open to romance */
++    CHECK_EQ(household_of(kid), h);
++    CHECK_EQ(household_rel(h, kid, head), HREL_CHILD);
++    CHECK_EQ(household_rel(h, head, kid), HREL_PARENT);
++    par = household_new_person(h, HREL_PARENT);
++    CHECK(par >= 0);
++    CHECK_EQ(sim_life_stage(par), LIFE_ELDER);                        /* older than the head */
++    CHECK_EQ(household_rel(h, par, head), HREL_PARENT);
++    n = household_new_person(h, HREL_PARTNER);
++    CHECK(n >= 0);
++    CHECK(LIFE_IS_ADULT(sim_life_stage(n)) && RES_ROMANCE(TOWN_RES(n)) == ROMANCE_ANY);
++    CHECK_EQ(household_new_person(h, HREL_PARTNER), HH_ERR(HHR_ONE_AT_A_TIME));
++    CHECK_EQ(household_new_person(h, HREL_PET), HH_ERR(HHR_BAD_REL));
++    CHECK_EQ(household_new_person(5, HREL_NONE), HH_ERR(HHR_BAD_HOUSEHOLD));
++    CHECK_EQ(household_size(h), 4);
++}
++
++TEST(hh_a_new_person_in_the_players_household_joins_the_family_table)
++{
++    int id;
++    fresh();
++    id = household_new_person(0, HREL_CHILD);
++    CHECK(id >= 0);
++    CHECK_EQ(household_of(id), 0);
++    CHECK_EQ(family_role(id), FAMROLE_CHILD);
++    CHECK(LIFE_IS_MINOR(sim_life_stage(id)));
++    CHECK_EQ(household_rel(0, PL, id), HREL_PARENT);
++}
++
++/* fill every free place with a custom adult of level 50 */
++static void fill_town(int stage)
++{
++    int id;
++    while ((id = mk(stage)) >= 0) TOWN_RES(id)->level = 50;
++}
++
++TEST(hh_in_a_full_town_the_lowest_friendship_adult_in_no_household_moves_away_with_a_news_line)
++{
++    int head, h, id, leaver, n0, nid;
++    fresh();
++    head = mk(LIFE_ADULT);
++    h = household_create(head);
++    fill_town(LIFE_ADULT);
++    CHECK_EQ(town_alloc(0) < 0 && town_alloc(1) < 0, 1);
++    leaver = 80;                                                       /* (77 is Father Fuzz: a story citizen) */
++    TOWN_RES(leaver)->level = 3;
++    TOWN_RES(5)->level = 9;
++    n0 = sim_news_count();
++    id = household_new_person(h, HREL_NONE);
++    CHECK_EQ(id, leaver);                                              /* the new person took the place ... */
++    CHECK(TOWN_RES(id)->status == RES_ALIVE && (TOWN_RES(id)->flags & RF_CUSTOM));
++    CHECK(TOWN_RES(id)->level == 0);                                   /* ... and is new, not the one who left */
++    CHECK_EQ(household_of(id), h);
++    CHECK_EQ(sim_news_count(), n0 + 1);
++    {   int k, found = 0;
++        for (k = 0; k < sim_news_count(); k++) if (strstr(sim_news(k), "moved away to make room")) found = 1;
++        CHECK(found);
++    }
++    nid = household_new_person(h, HREL_NONE);                          /* the next lowest */
++    CHECK_EQ(nid, 5);
++    CHECK_EQ(household_size(h), 3);
++}
++
++TEST(hh_nobody_who_is_a_minor_a_story_citizen_a_premade_the_avatar_or_housed_is_asked_to_leave)
++{
++    int head, h, id, got;
++    DoomoResident p;
++    fresh();
++    head = mk(LIFE_ADULT);
++    h = household_create(head);
++    fill_town(LIFE_CHILD);                                             /* every other place holds a minor */
++    CHECK_EQ(household_new_person(h, HREL_NONE), HH_ERR(HHR_NO_SPOT));
++    CHECK_STR(household_reason_text(HH_ERR(HHR_NO_SPOT)), "The island is full.");
++    CHECK_EQ(household_size(h), 1);                                    /* nothing was changed */
++    for (id = 6; id < 200 && !(roster_stage(id) == LIFE_ADULT && !ending_kid_cast(id)); id++) {}
++    CHECK(id < 200);
++    resident_set_stage(TOWN_RES(id), LIFE_ADULT);                      /* the one adult, the lowest friendship */
++    TOWN_RES(id)->level = 1;
++    CHECK_EQ(TOWN_RES(id)->status, RES_ALIVE);
++    TOWN_RES(id)->flags |= RF_STORY_NPC;
++    CHECK_EQ(household_new_person(h, HREL_NONE), HH_ERR(HHR_NO_SPOT));           /* a story citizen */
++    TOWN_RES(id)->flags &= (uint8_t)~RF_STORY_NPC;
++    TOWN_RES(id)->flags |= RF_PLAYER;
++    CHECK_EQ(household_new_person(h, HREL_NONE), HH_ERR(HHR_NO_SPOT));           /* the hero */
++    TOWN_RES(id)->flags &= (uint8_t)~RF_PLAYER;
++    CHECK(roster_premade_record(id, &p));
++    *TOWN_RES(id) = p;                                                 /* the premade citizen again, untouched */
++    resident_set_stage(TOWN_RES(id), LIFE_ADULT);
++    TOWN_RES(id)->level = 1;
++    CHECK_EQ(household_new_person(h, HREL_NONE), HH_ERR(HHR_NO_SPOT));           /* a premade citizen */
++    TOWN_RES(id)->flags |= RF_CUSTOM;                                  /* made over by the player: theirs now ... */
++    {   /* ... but a housemate of someone else is skipped */
++        int h2, mate = 0;
++        while (mate == id || mate == head) mate++;
++        h2 = household_create(id);
++        CHECK(h2 > 0 && household_add(h2, mate, HREL_NONE) >= 0);
++        CHECK_EQ(household_new_person(h, HREL_NONE), HH_ERR(HHR_NO_SPOT));
++        household_remove(mate);                                        /* the household dissolves: id is alone */
++    }
++    got = household_new_person(h, HREL_NONE);                          /* a custom adult in no household: yes */
++    CHECK_EQ(got, id);
++}
++
++TEST(hh_a_new_person_never_leaves_a_household_member_behind_when_it_fails_the_rules)
++{
++    int head, h, n0, id;
++    fresh();
++    head = mk(LIFE_ELDER);
++    h = household_create(head);
++    n0 = household_size(h);
++    id = household_new_person(h, HREL_PARENT);                        /* nobody older than an elder */
++    CHECK(id < 0);
++    CHECK_EQ(household_size(h), n0);
++    CHECK_EQ(household_new_person(h, HREL_STEPPARENT) < 0, 1);
++    CHECK_EQ(town_alloc(0) >= 0, 1);                                  /* the slot was given back */
++}
++
++TEST(hh_the_whole_thing_works_when_the_island_holds_500_where_the_ids_only_live_in_slots)
++{
++    /* the same calls on the GBA's 500 (make -C core LIVE=500 test runs the file): ids come from the town */
++    int ids[2], h, id;
++    fresh();
++    h = hh_of(2, ids);
++    id = household_new_person(h, HREL_ROOMMATE);
++    CHECK(id >= 0 && TOWN_RES(id)->status == RES_ALIVE);
++    CHECK_EQ(household_rel(h, id, ids[0]), HREL_ROOMMATE);
++    household_remove(id);
++    town_free(id);
++    CHECK_EQ(household_size(h), 2);
++    CHECK(save_serialize(image, sizeof(image)) > 0);
++}
+diff --git a/core/tests/test_levels_rec.c b/core/tests/test_levels_rec.c
+index dc125ad..2b63ca6 100644
+--- a/core/tests/test_levels_rec.c
++++ b/core/tests/test_levels_rec.c
+@@ -347,7 +347,7 @@ TEST(levels_brch_budget_holds_in_both_slots)
+     uint32_t home = (HOME_CHUNK_WORST * 129u + 127u) / 128u + SAVE_BUDGET_CHUNK_HDR;
+     uint32_t story = 19342u + home + SAVE_BUDGET_K0_WORST + SAVE_BUDGET_TALK_WORST + SAVE_BUDGET_BRCH_WORST;
+     uint32_t fp = SAVE_BUDGET_TOWN_BOUND_FP + home + SAVE_BUDGET_K0_WORST + SAVE_BUDGET_TALK_WORST + SAVE_BUDGET_BRCH_WORST;
+-    CHECK_EQ(SAVE_EXT_SLOTS, 14);
++    CHECK_EQ(SAVE_EXT_SLOTS, 15);                        /* HH-DATA's 'HOUS' came after 'BRCH' */
+     CHECK_EQ(SAVE_EXT_MAX_BRCH, 160);
+     CHECK(LV_BRCH_MAX <= SAVE_EXT_MAX_BRCH);
+     CHECK_EQ(SAVE_BUDGET_BRCH_WORST, SAVE_BUDGET_LZ_WORST(160u) + SAVE_BUDGET_CHUNK_HDR);
+@@ -355,7 +355,7 @@ TEST(levels_brch_budget_holds_in_both_slots)
+     CHECK(story + SAVE_BUDGET_MARGIN <= SAVE_SLOT_STORY_CAP_CFG - 4096u);
+     CHECK(fp + SAVE_BUDGET_MARGIN <= SAVE_SLOT_FP_CAP);
+     /* a registered chunk is counted: its worst case lands in the live budget's bound */
+-    CHECK_EQ(save_ext_at(save_ext_count() - 1) == doomo_save_ext_breach, 1);
++    CHECK_EQ(save_ext_at(save_ext_count() - 2) == doomo_save_ext_breach, 1);      /* 'HOUS' is last */
+ }
+ 
+ /* ---- the unlock rules ------------------------------------------------------------------ */
+diff --git a/core/tests/test_save_budget.c b/core/tests/test_save_budget.c
+index 7bd79ee..089a4ae 100644
+--- a/core/tests/test_save_budget.c
++++ b/core/tests/test_save_budget.c
+@@ -29,7 +29,7 @@ TEST(save_registry_k0_slots)
+         SAVE_EXT_TAG_LIFE, SAVE_EXT_TAG_PLAY, SAVE_EXT_TAG_ENDS, SAVE_EXT_TAG_OPT2,
+         SAVE_EXT_TAG_PROF };
+     int i, j;
+-    CHECK_EQ(SAVE_EXT_SLOTS, 14);                  /* K0's 12 + T0's 'TALK' + LV0's 'BRCH' */
++    CHECK_EQ(SAVE_EXT_SLOTS, 15);                  /* K0's 12 + T0's 'TALK' + LV0's 'BRCH' + HH-DATA's 'HOUS' */
+     CHECK_EQ(SAVE_BUDGET_K0_CHUNKS, 5);
+     CHECK_EQ(SAVE_EXT_TAG_LIFE, SAVE_EXT_TAG('L', 'I', 'F', 'E'));
+     CHECK_EQ(SAVE_EXT_TAG_PLAY, SAVE_EXT_TAG('P', 'L', 'A', 'Y'));
+-- 
+2.43.0
+
