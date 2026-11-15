@@ -948,6 +948,9 @@ def main(argv):
         # addresses after the others'; the slot ends past the larger end ---
         if borrow:
             L.append("\t__ovl_main_end = .;")
+            # (the running end of the slot: the next borrowing group's sections move "." back, so a
+            # larger end of an earlier group is kept in a symbol, not in ".")
+            L.append("\t__ovl_hi = .;")
             for g in names:
                 if g not in BORROW_GROUPS:
                     continue
@@ -977,11 +980,13 @@ def main(argv):
                         last = ".ovl_%02d" % pid[(g, k)]
                     L.append("\t} > APP_RAM")
                     # each part's raw read is whole sectors from __ovl_part_*
-                    L.append("\t. = MAX(__ovl_main_end, MAX(__ovl_borrow + ((SIZEOF(%s) + 2047) & ~2047),"
+                    L.append("\t__ovl_hi = MAX(__ovl_hi, MAX(__ovl_borrow + ((SIZEOF(%s) + 2047) & ~2047),"
                              " __ovl_part_%s + ((. - __ovl_part_%s + 2047) & ~2047)));" % (sec, g, g))
+                    L.append("\t. = __ovl_hi;")
                 else:
                     # a raw (unpacked) read of it is whole sectors from __ovl_borrow
-                    L.append("\t. = MAX(__ovl_main_end, __ovl_borrow + ((. - __ovl_borrow + 2047) & ~2047));")
+                    L.append("\t__ovl_hi = MAX(__ovl_hi, __ovl_borrow + ((. - __ovl_borrow + 2047) & ~2047));")
+                    L.append("\t. = __ovl_hi;")
                 # --- end H4 ---
         # --- end H3 ---
         L.append("""\t/* whole sectors: the CD reads 2048-byte units into the slot */
