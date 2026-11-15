@@ -1632,8 +1632,9 @@ choice and Cloud Concert 30.00 on both, with one 50 ms frame at the window's sta
 S2-9 above); the choice's first ticks 28.24 on both (two 50 ms frames). No frame over 50 ms in any window. Earlier, on
 `ad06012` with the old windows: the two choice windows 29.85 / 29.75 (a 67 ms frame each) -> 30.00, the last
 vignette's start one 67 ms frame on both builds (the red nightmare is 29-31 ms of CPU a frame here, `perf:` lines).
-`game_smoke` passes. Memory: no resident data; the EXE's code 32 B smaller (`_end` 0x801dfb10 -> 0x801dfaf0,
-132,320 -> 132,352 B below `elf2exe`'s stack top with the boot FMV, on `e597703e`; the same 32 B on `5aa25cd1`); the dream overlay group 39 -> 42 KB (its load 182
+`game_smoke` passes. Memory: no resident data; the EXE's code 32 B smaller (`_end` 0x801e0420 -> 0x801e0400,
+130,000 -> 130,032 B below `elf2exe`'s stack top with the boot FMV, on the landing tip `fe410024`; the same 32 B on
+`5aa25cd1` and `e597703e`); the dream overlay group 39 -> 42 KB (its load 182
 -> 186 ms, measured on `ad06012`; 181 -> 195 ms before the bedroom window in this run).
 
 **S2-4 (the fair's kept playfield).** Nothing is built here: `mg.h` turns the kept-playfield mode into constants (`MGK_OFF`), so Whack draws its whole booth as before (the restore helpers and `ui_round_rect_inset` compile out); only the drawing order was regrouped (`mg_tent_sway`, `hole_back`), same pixels. 65 KB below the stack top with the boot FMV on the rebased tree (`_end` the same as without S2-4); the minigame overlay group grows by a few hundred bytes of code, the slot is unchanged (168 KB, the house's). PCSX-Redux `speed2_fair`: the Whack title, Sweet and Hellfire windows 30.17 / 30.12 / 30.12 fps (all 2-vsync frames), as before.
