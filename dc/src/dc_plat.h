@@ -33,6 +33,7 @@ void dc_vmu_init(void);                  /* vmusave.c: at boot, before doomo_ini
 void dc_vmu_poll(void);                  /* vmusave.c: after each tick (config write-behind) */
 void dc_pacing_reset(void);              /* forget frame debt (after loads)     */
 void dc_audio_init(void);                /* audio.c: the stream, before doomo_init */
+void dc_fmv_play(void);                  /* fmv.c: the boot FMV, after dc_audio_init */
 void dc_audio_frame(void);               /* audio.c: end of every logic tick    */
 void dc_audio_stall(int on);             /* audio.c: a pause on purpose (no underrun) */
 uint32_t dc_us(void);                    /* microseconds since boot (wraps)     */

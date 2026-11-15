@@ -173,6 +173,7 @@ int main(int argc, char **argv)
     dc_boot_egg();                      /* X8: hold A+B+X+Y+START at power-on */
     dc_vmu_init();                      /* DC4: learn the VMU once (vmusave.c) */
     dc_audio_init();                    /* DC5: the AICA stream (audio.c) */
+    dc_fmv_play();                      /* DC9C: the boot FMV, START skips (fmv.c) */
     doomo_init();
     dc_pad_init();                      /* DC4: analog feel on (pad.c) */
     dc_pacing_reset();

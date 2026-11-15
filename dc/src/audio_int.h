@@ -76,6 +76,12 @@ void dcsnd_trigger(int sfx, uint8_t vol, int8_t pan, uint8_t prio, int8_t semis)
  * state and the triggers wait for the next push, nothing is rendered) */
 int  dcsnd_push(void);
 
+/* DC9C, the boot FMV (fmv.c): one slot of ready-made PCM (DCSND_PER_TICK stereo
+ * frames, L R interleaved) instead of the synth's. The synth, its state, the
+ * triggers and the content hash are not touched (the FMV runs before the game
+ * makes a sound); the slot counts as pushed. 0: the ring is full. */
+int  dcsnd_push_pcm(const int16_t *lr);
+
 /* ---- the music engine's IRQ tier (DC5b; musvoice.c makes these calls) ---------
  * With a driver set, dcsnd_push() calls it DCSND_MT times per slot, each
  * time right before it renders the frames of that mt (mt k of a slot starts

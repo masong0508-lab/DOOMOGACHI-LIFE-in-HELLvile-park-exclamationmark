@@ -57,6 +57,10 @@ typedef struct DcMailbox {
      * leaves 0, a real console's value), so the first boot of an empty VMU
      * skips the language picker in scripted runs, as the native runner does */
     uint32_t test_flags;
+    /* DC9C: bit 31 of test_flags (not a core PLAT_TEST_* bit): do not play the
+     * boot FMV (fmv.c). dcrun sets it in every run except with --fmv, so the
+     * tick counts and sound hashes of the scripts do not include the movie */
+#define DC_TEST_NO_FMV 0x80000000u
     /* DC5: the sound (dc/src/audio_int.h DcSndStats, audio.c) after each
      * tick: tick slots rendered / begun playing, underruns (the ring empty
      * while playing, not during a known pause), overruns (a tick pushed into

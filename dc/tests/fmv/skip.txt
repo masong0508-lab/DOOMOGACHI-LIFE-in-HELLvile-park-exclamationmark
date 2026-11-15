@@ -1,0 +1,13 @@
+# skip.txt - DC9C on Flycast: START skips the boot FMV. dcrun ... --fmv --fresh
+# --script dc/tests/fmv/skip.txt. No game tick runs during the movie, so the
+# button is held for video frames (`down` / `frames` / `up`), not for ticks.
+frames 400
+shot skip_before
+down START
+frames 8
+up START
+wait-log 120 DC: fmv: skipped by the pad
+wait-log 60 doomo: init
+wait 160
+expect-scene TITLE
+shot skip_title

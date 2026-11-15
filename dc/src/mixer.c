@@ -540,6 +540,23 @@ int dcsnd_push(void)
     return 1;
 }
 
+int dcsnd_push_pcm(const int16_t *lr)
+{
+    uint32_t used = q_wr - q_rd;
+    if (used >= DCSND_QUEUE) {
+        dcsnd_stats.overruns++;
+        return 0;
+    }
+    memcpy(ring[q_wr & (DCSND_QUEUE - 1)], lr, (size_t)DCSND_PER_TICK * 2 * sizeof(int16_t));
+    DCSND_BARRIER();
+    q_wr = q_wr + 1;
+    stalled = 0;
+    dcsnd_stats.pushed++;
+    used++;
+    if (used > dcsnd_stats.queue_max) dcsnd_stats.queue_max = used;
+    return 1;
+}
+
 /* ---- consumer (the stream thread): copy slots out ------------------------------------------ */
 /* the head slot is ready to play (1), or 0 for a gap */
 static int head_ready(void)

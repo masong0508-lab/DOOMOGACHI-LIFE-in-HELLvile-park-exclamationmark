@@ -509,6 +509,31 @@ static void test_loud(void)
      * (test_pitch's levels check sees the same 6,293 as before the knee) */
 }
 
+/* DC9C: ready-made PCM slots (the boot FMV's sound) come out unchanged and
+ * leave the synth, its hash and the triggers alone */
+static void test_pcm(void)
+{
+    static int16_t pcm[DCSND_PER_TICK * 2], out[DCSND_PER_TICK * 6];
+    uint32_t h0;
+    int i;
+    for (i = 0; i < DCSND_PER_TICK * 2; i++) pcm[i] = (int16_t)((i * 37) % 20001 - 10000);
+    dcsnd_reset();
+    dcsnd_trigger(SFX_EXPLODE, 15, 0, 0, 0);
+    h0 = dcsnd_stats.hash;
+    CHECK(dcsnd_push_pcm(pcm) == 1 && dcsnd_push_pcm(pcm) == 1 && dcsnd_push_pcm(pcm) == 1, "pcm push");
+    CHECK(dcsnd_stats.pushed == 3 && dcsnd_stats.hash == h0 && dcsnd_stats.started == 0,
+          "pcm slots do not touch the synth or the hash");
+    dcsnd_render(out, DCSND_PER_TICK * 3);
+    for (i = 0; i < DCSND_PER_TICK * 2; i++) if (out[i] != pcm[i]) break;
+    CHECK(i == DCSND_PER_TICK * 2, "pcm slot 0 comes out unchanged (sample %d)", i);
+    for (i = 0; i < DCSND_PER_TICK * 2; i++) if (out[DCSND_PER_TICK * 4 + i] != pcm[i]) break;
+    CHECK(i == DCSND_PER_TICK * 2, "pcm slot 2 comes out unchanged (sample %d)", i);
+    CHECK(dcsnd_push() == 1 && dcsnd_stats.started == 1, "the trigger kept for the synth still plays");
+    dcsnd_reset();
+    for (i = 0; i < DCSND_QUEUE; i++) CHECK(dcsnd_push_pcm(pcm) == 1, "pcm push %d", i);
+    CHECK(dcsnd_push_pcm(pcm) == 0 && dcsnd_stats.overruns == 1, "a full ring refuses a pcm slot");
+}
+
 int main(void)
 {
     audio_init();
@@ -519,6 +544,7 @@ int main(void)
     test_smooth();
     test_voices();
     test_queue();
+    test_pcm();
     test_loud();
     printf("test_audio: %d checks, %d failed\n", checks, fails);
     return fails ? 1 : 0;

@@ -162,9 +162,35 @@ $(PACKSTAMP): FORCE
 	echo "$$p $$c" | cmp -s - $@ || echo "$$p $$c" > $@
 $(OBJ)/dc/src/packdisc.o: $(PACKSTAMP)
 
-$(CDI): $(ELF) $(DC)/ip.txt $(DC)/tools/mkcdi.sh $(PACKSTAMP)
+# DC9C: the boot FMV, INTRO.DMV on the disc root (dc/tools/mkfmv.py encodes
+# trailer/assets/dippinn_logo.mp4; needs ffmpeg and numpy). Without them the
+# disc is built without an intro, with a warning; INTRO_REQUIRED=1 fails instead.
+# INTRO=/path/x.dmv uses a ready-made file, INTRO=none builds no intro.
+INTRO          ?=
+INTRO_REQUIRED ?= 0
+INTRO_SRC      := $(ROOT)/trailer/assets/dippinn_logo.mp4
+INTRO_DMV      := $(BUILD)/INTRO.DMV
+FMV_TOOLS      := $(shell command -v ffmpeg >/dev/null 2>&1 && $(PYTHON) -I -c "import numpy" >/dev/null 2>&1 && echo yes)
+ifeq ($(strip $(INTRO)),none)
+INTRO_FILE :=
+else ifneq ($(strip $(INTRO)),)
+INTRO_FILE := $(strip $(INTRO))
+else ifeq ($(FMV_TOOLS),yes)
+INTRO_FILE := $(INTRO_DMV)
+else ifeq ($(INTRO_REQUIRED),1)
+$(error INTRO_REQUIRED=1 but ffmpeg or python3 numpy is missing (apt install ffmpeg python3-numpy), or pass INTRO=file.dmv)
+else
+$(warning no ffmpeg or numpy: the disc is built without the boot FMV (INTRO.DMV))
+INTRO_FILE :=
+endif
+
+$(INTRO_DMV): $(INTRO_SRC) $(DC)/tools/mkfmv.py
+	@mkdir -p $(BUILD)
+	$(PYTHON) -I $(DC)/tools/mkfmv.py $(INTRO_SRC) $@
+
+$(CDI): $(ELF) $(DC)/ip.txt $(DC)/tools/mkcdi.sh $(PACKSTAMP) $(INTRO_FILE)
 	@if [ -n "$(strip $(PACK))" ]; then $(PYTHON) -I $(ROOT)/tools/mpack/mpack.py validate "$(strip $(PACK))" --port dc || exit 1; fi
-	sh $(DC)/tools/mkcdi.sh $(ELF) $(DC)/ip.txt $(BUILD)/disc $(CDI) $(strip $(PACK))
+	sh $(DC)/tools/mkcdi.sh $(ELF) $(DC)/ip.txt $(BUILD)/disc $(CDI) "$(strip $(PACK))" "$(INTRO_FILE)"
 
 # ---- checks ------------------------------------------------------------------------
 sizes: $(ELF)

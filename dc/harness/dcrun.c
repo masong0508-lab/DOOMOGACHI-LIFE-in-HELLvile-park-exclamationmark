@@ -28,6 +28,9 @@
  *                               up 1, exactly the native runner's)
  *   shot NAME                   SHOTS/NAME.png (640x480, or 320x240 --half)
  *   log TEXT | expect-log TEXT | expect-scene NAME
+ *   wait-log FRAMES TEXT        DC9C: video frames until the log has TEXT (fail
+ *                               after FRAMES); the boot FMV runs before tick 1
+ *   --fmv                       DC9C: play the boot FMV (off in scripted runs)
  *   tips on | off               CL4: the first-time tip cards show in this
  *                               run / stay off (the default; test_flags)
  *   mark-ticks | expect-ticks LO HI   ticks since mark-ticks in [LO, HI]
@@ -591,7 +594,8 @@ static int mb_up;
  * the GBA harness, unless the script says "tips on" */
 #define TEST_NO_PICKER 1u
 #define TEST_NO_TIPS   2u
-static uint32_t test_flags = TEST_NO_PICKER | TEST_NO_TIPS;
+#define TEST_NO_FMV    0x80000000u      /* DC9C: dc_mailbox.h DC_TEST_NO_FMV */
+static uint32_t test_flags = TEST_NO_PICKER | TEST_NO_TIPS | TEST_NO_FMV;
 
 static void RETRO_CALLCONV core_log(enum retro_log_level lvl, const char *fmt, ...)
 {
@@ -1240,6 +1244,13 @@ static int run_script(FILE *f)
         } else if (!strcmp(c, "expect-log") && n >= 2) {
             const char *t = rest_of(raw, "expect-log");
             if (!glog || !strstr(glog, t)) fail("line %d: expect-log '%s' not in the log", lineno, t);
+        } else if (!strcmp(c, "wait-log") && n >= 3) {
+            /* DC9C: run video frames until the game's log has TEXT (the boot FMV
+             * ends with a log line, and no tick runs before it) */
+            unsigned long i = strtoul(v[1], NULL, 0);
+            const char *t = rest_of(raw, v[1]);
+            while (i && (!glog || !strstr(glog, t))) { run_frame(); i--; }
+            if (!glog || !strstr(glog, t)) fail("line %d: wait-log: '%s' not in the log after %s frames", lineno, t, v[1]);
         } else if (!strcmp(c, "expect-scene") && n >= 2) {
             if (!scene_is(v[1])) fail("line %d: expect-scene %s", lineno, v[1]);
         } else if ((!strcmp(c, "save") || !strcmp(c, "load") || !strcmp(c, "expect-save") ||
@@ -1483,7 +1494,7 @@ static void usage(void)
         "usage: dcrun CORE.so CONTENT [--script FILE] [--shots DIR] [--run-dir DIR]\n"
         "             [--fresh] [--frames N] [--timeout SEC] [--mailbox ADDR | --nm FILE]\n"
         "             [--wav FILE] [--rtc EPOCH|now] [--opt KEY=VALUE]... [--half] [--sync]\n"
-        "             [--native-seed N] [--console] [--quiet]\n"
+        "             [--native-seed N] [--console] [--fmv] [--quiet]\n"
         "             [--device PORT pad|keyboard|mouse|none]... [--verbose]\n");
     exit(2);
 }
@@ -1523,7 +1534,8 @@ int main(int argc, char **argv)
             native_seed = (uint32_t)strtoul(NEXT(), NULL, 0);
             native_seed_on = sync_start = 1;
         }
-        else if (!strcmp(a, "--console")) test_flags = 0;
+        else if (!strcmp(a, "--console")) test_flags &= TEST_NO_FMV;   /* the FMV has --fmv */
+        else if (!strcmp(a, "--fmv")) test_flags &= ~TEST_NO_FMV;
         else if (!strcmp(a, "--quiet")) quiet = 1;
         else if (!strcmp(a, "--verbose")) quiet = -1;
         else if (!strcmp(a, "--rtc")) {

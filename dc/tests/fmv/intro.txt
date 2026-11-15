@@ -1,0 +1,20 @@
+# intro.txt - DC9C on Flycast: the boot FMV (INTRO.DMV on the disc) plays, then the
+# game boots to the title. Run with --fmv (the harness leaves the movie off
+# otherwise): dcrun ... --fmv --fresh --script dc/tests/fmv/intro.txt
+# `frames` counts 60 Hz video frames and works while the game's own tick counter
+# is still 0. The movie starts about 3 s in (the BIOS' own screen, the disc,
+# the VMU) and runs 10.1 s (152 frames at 15 fps); the shots land in its blue
+# opening, its dark middle and on the ident's name.
+frames 330
+shot fmv_a
+frames 240
+shot fmv_b
+frames 210
+shot fmv_c
+wait-log 600 DC: fmv: done
+expect-log DC: fmv: /cd/INTRO.DMV, 152 frames
+expect-log 152 frames shown, 0 skipped
+wait-log 60 doomo: init
+wait 160
+expect-scene TITLE
+shot fmv_title
