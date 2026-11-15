@@ -1,0 +1,206 @@
+# exorcism_fps.txt - the exorcism's drawn fps on the GBA, phase by phase, with floors (G2-EX,
+# docs/EXORCISM_SPEED.md "G2-EX"): `make -C gba test-exorcism` (part of `make -C gba test`).
+# The same ritual and the same windows as exorcism_profile.txt without its `profile` lines (which
+# stop the emulated clock and so move what follows): Father Fuzz's practice ritual on the plush
+# dummy (arg -1), seed 1 (it ends in a failure), then the same ritual with seed 2 (a cast out).
+# `sync on 61` and the seeds make the ticks and the game state the same in any ROM, so the
+# `vhash-seq` frames of two ROMs built with `make PSLICE_DET=1` compare frame for frame
+# (gba/tools/speedtable.py --compare A B: the exact check of a package that claims "no pixel changes").
+# The floors sit about 2-3 fps under what G2-EX measured on 2026-11-15 (intro 29.8, tools 29.7, prayer
+# 27.5, holy water 30.0, true name 24.0, verdict 30.0, result 29.7) and above the tip before it (23.7,
+# 27.0, 19.5, 23.6, 20.0, 18.8, 20.6): a fall back fails. A cast out's result is drawn in full every tick
+# (19.8; 19.7 before): its floor only catches a regression. Numbers belong to this script.
+wait 40
+expect-log doomo: init
+sync on 61
+seed 1
+scene TITLE
+wait 2
+scene EXORCISM -1
+wait 40
+fps start
+wait 90
+expect-fps 27 exorcism intro (dialogue)
+shot exo_intro
+vhash-seq 20 exorcism intro
+press A
+wait 6
+press A
+wait 6
+press A
+wait 6
+press A
+wait 6
+press A
+wait 6
+press A
+wait 20
+fps start
+wait 90
+expect-fps 28 exorcism tools
+shot exo_tools
+vhash-seq 20 exorcism tools
+press START
+wait 10
+press A
+wait 6
+press A
+wait 50
+fps start
+wait 120
+expect-fps 25 exorcism prayer
+shot exo_prayer
+vhash-seq 20 exorcism prayer
+wait 220
+press A
+wait 6
+press A
+wait 6
+press A
+wait 6
+press A
+wait 20
+fps start
+hold LEFT 40
+press A
+wait 14
+press A
+wait 14
+press A
+wait 14
+press A
+wait 14
+expect-fps 27 exorcism holy water
+shot exo_water
+vhash-seq 20 exorcism holy water
+press A
+wait 14
+press A
+wait 14
+press A
+wait 14
+press A
+wait 14
+press A
+wait 80
+press B
+wait 8
+press B
+wait 8
+press B
+wait 8
+press B
+wait 20
+fps start
+wait 60
+expect-fps 22 exorcism true name
+shot exo_name
+vhash-seq 10 exorcism true name
+press A
+wait 52
+fps start
+wait 60
+expect-fps 27 exorcism verdict
+shot exo_verdict
+wait 20
+fps start
+wait 90
+expect-fps 27 exorcism result
+shot exo_result
+vhash-seq 20 exorcism result
+press A
+wait 20
+# ---- the same ritual with seed 2 (seeds 2, 10 and 12 end in a cast out here). Only the result
+# screen is gated (the cloud and the confetti: one whole-screen layer that moves every tick); the other
+# windows report (with this seed the verdict window holds a frame of the verdict's entry)
+seed 2
+scene TITLE
+wait 2
+scene EXORCISM -1
+wait 40
+fps start
+wait 90
+fps exorcism intro (dialogue) (seed 2)
+vhash-seq 20 exorcism intro (seed 2)
+press A
+wait 6
+press A
+wait 6
+press A
+wait 6
+press A
+wait 6
+press A
+wait 6
+press A
+wait 20
+fps start
+wait 90
+fps exorcism tools (seed 2)
+vhash-seq 20 exorcism tools (seed 2)
+press START
+wait 10
+press A
+wait 6
+press A
+wait 50
+fps start
+wait 120
+fps exorcism prayer (seed 2)
+vhash-seq 20 exorcism prayer (seed 2)
+wait 220
+press A
+wait 6
+press A
+wait 6
+press A
+wait 6
+press A
+wait 20
+fps start
+hold LEFT 40
+press A
+wait 14
+press A
+wait 14
+press A
+wait 14
+press A
+wait 14
+fps exorcism holy water (seed 2)
+vhash-seq 20 exorcism holy water (seed 2)
+press A
+wait 14
+press A
+wait 14
+press A
+wait 14
+press A
+wait 14
+press A
+wait 80
+press B
+wait 8
+press B
+wait 8
+press B
+wait 8
+press B
+wait 20
+fps start
+wait 60
+fps exorcism true name (seed 2)
+vhash-seq 10 exorcism true name (seed 2)
+press A
+wait 52
+fps start
+wait 60
+fps exorcism verdict (seed 2)
+wait 20
+fps start
+wait 90
+expect-fps 17 exorcism result (cast out)
+shot exo_result_cast_out
+vhash-seq 20 exorcism result (cast out)
+press A
+wait 20

@@ -68,6 +68,9 @@ ifneq ($(MATURE_PACK),)
 VARIANT := mature
 ROM     := $(GBA)/build/doomogachi_mature.gba
 PACK_ABS := $(abspath $(MATURE_PACK))
+else ifeq ($(PSLICE_DET),1)
+VARIANT := game-det
+ROM     := $(GBA)/build/doomogachi_det.gba
 else
 VARIANT := game
 ROM     := $(GBA)/build/doomogachi.gba
@@ -92,6 +95,13 @@ ifeq ($(ENGINE_TEST),1)
 $(error MATURE_PACK is for the game ROM, not the engine test)
 endif
 DEFS    += -DDOOMO_PACK_ROM=1 '-DDOOMO_PACK_INCBIN="$(PACK_ABS)"'
+endif
+# G2-EX: `make PSLICE_DET=1 rom` builds build/doomogachi_det.gba, whose portrait slices never wait for time and
+# never run in idle time (gba/src/pslice.c): its frames depend on the ticks only, so two such ROMs compare frame
+# for frame (`vhash-seq`, gba/tools/speedtable.py --compare; docs/EXORCISM_SPEED.md "G2-EX", the exact check)
+PSLICE_DET ?= 0
+ifeq ($(PSLICE_DET),1)
+DEFS    += -DGBA_PSLICE_DET=1
 endif
 # debug cutscene viewer (hold SELECT at power-on); `make CUTVIEW=0` compiles it out
 CUTVIEW ?= 1
@@ -152,7 +162,7 @@ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 # over the core's weak stubs, and the core's strong definitions win over both.
 ALL_OBJS  := $(GBA_OBJS) $(CORE_OBJS)
 
-.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-cutsave test-cardgone test-home test-ow test-lang test-optvol test-speed test-life profile-title profile-pause profile-invaded profile-all test-talk profile-sung profile-creator test-creator test-creator-sliders test-speed2 test-breach2 profile-speed2 profile-concert profile-exorcism clean sizes
+.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-cutsave test-cardgone test-home test-ow test-lang test-optvol test-exorcism test-speed test-life profile-title profile-pause profile-invaded profile-all test-talk profile-sung profile-creator test-creator test-creator-sliders test-speed2 test-breach2 profile-speed2 profile-concert profile-exorcism clean sizes
 .DEFAULT_GOAL := all
 
 # Cartridge size (user decision 2026-11-01): the game ROM is a full 256 Mbit
@@ -284,6 +294,7 @@ test:
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-tips
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-3d
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-optvol
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-exorcism
 
 test-et: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile engine-test
@@ -405,6 +416,14 @@ test-optvol: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
 	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/options_volume.txt --quiet
 # --- end Refresh ---
+# --- G2-EX: the exorcism's phases with fps floors (harness/scripts/exorcism_fps.txt, docs/EXORCISM_SPEED.md "G2-EX"):
+# the practice ritual's seven windows and a cast out's result screen ---
+test-exorcism: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@mkdir -p $(SHOTS)/exorcism_fps
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/exorcism_fps.txt \
+	    --shots $(SHOTS)/exorcism_fps --quiet
+# --- end G2-EX ---
 
 # --- G1: the speed tour (docs/GBA.md "Speed pass 4"): every target scene's
 # fps (expect-fps floors), screenshots and output-frame hashes, printed as a

@@ -73,10 +73,16 @@ static void learn(int cls, uint32_t c)
     cost64[cls] = (uint16_t)(v > 0xFFFFu ? 0xFFFFu : v ? v : 1);
 }
 
+/* (G2-EX) `make PSLICE_DET=1`: every slice goes at once and none runs in idle time, so a ROM's frames depend on
+ * its ticks only (frame-for-frame checks between two ROMs; never a game build) */
+#ifndef GBA_PSLICE_DET
+#define GBA_PSLICE_DET 0
+#endif
+
 int plat_portrait_slice_ok(int cls, int waited)
 {
     c0 = gba_cycles();
-    if (in_idle) return 1;
+    if (in_idle || GBA_PSLICE_DET) return 1;
     if (spent_tick != gba_frames) { spent_tick = gba_frames; spent = 0; }
     if (waited < 0) return 1;                               /* forced by the core: just timed */
     /* (a frame that is over 2 vblanks anyway varies more from tick to tick: a wider margin keeps its slices off the
@@ -121,6 +127,7 @@ static uint32_t cycles_until(uint32_t target)
 void gba_pslice_idle(uint32_t target)
 {
     int n;
+    if (GBA_PSLICE_DET) return;
     in_idle = 1;
     if (portrait_idle_next && portrait_idle_run)
         for (n = 0; n < 24; n++) {
