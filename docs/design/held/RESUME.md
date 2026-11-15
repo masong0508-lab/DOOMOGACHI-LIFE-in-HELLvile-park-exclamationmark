@@ -57,6 +57,15 @@ tip, then `git apply -3` any `uncommitted.diff`; a README there says more where 
   `docs/design/COMBAT_3D_PLAN.md`, then the GBA 3D renderer work after SA4.
 * **Show** (queued, not started): the main title redo, `docs/show/INTRO_REDO.md`.
 
+## First thing after the reset (owner, 2026-11-15)
+"Make sure all of the concert and music creator screens are a hundred percent full speed 30 frames."
+Every studio tab (SONG incl. a made song playing: 28.8 fps on the GBA; STAGE 22.6; NOTES, ORDER, LYRICS,
+CHOIR, PERFORM, FILE, the Start card, jam mode and drum pads) and every concert window (the band 20.5, the
+Dreamland stage 25-27.5, solos, choirs, setup, the notes show) must hold a steady 30 fps with no frame
+over 33 ms on GBA, PS1 and Dreamcast. Owners: STUDIO for the studio tabs (its next package before ST-TOOLS),
+SPEED-3 for the concert (its saved `s4-c`). Exact steps first, the approved trade-offs last; measured with
+the studio and concert speed2 windows before and after.
+
 ## Owner questions still open
 The levels plan section 10 (NG+ Chapter 5 and endings, W15 Bonejangles' origin, memorial names default,
 the NG+ cold open); "huggle" meaning (INTRO_REDO.md default); the GBA rent default from GBA-500; whether
