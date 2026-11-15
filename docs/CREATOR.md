@@ -875,7 +875,7 @@ package (the cheat "Slider range x1..x4" is CR-SLIDERX, below; the slider table 
   `part_icons_without_the_store_unpack_nothing` (core); PS1 harness `creator_parts.txt` (the cursor held on scripted parts
   of six grids with fps floors), `creator_parts_face_a|hair|spooky|fur|outfit`, `creator_deep`, `creator_deep_save`
   (Lashes through Move in / save / load / reopen on the card), `game_smoke` (`parts: loaded`), `creator_speed`.
-* **Measured (PCSX-Redux):** `creator_speed` 30.13 / 29.39 / 30.13 / 29.88 (the base's); scripted-part grids held 29.85 to
+* **Measured (PCSX-Redux):** `creator_speed` 30.13 / 30.00 / 30.13 / 29.88 (the base's: 30.13 / 29.39 / 30.13 / 29.88); scripted-part grids held 29.85 to
   30.00, the hair grid 27.52 (painted hair on the base: 21.9); the speed tour's creator group all the same fps; resident
   RAM **+21,024 B** (132,608 -> 111,584 B below the stack top; the creator group has 63,024 B of room now, was 600 B).
   That is 16,928 B over CREATOR's 4 KB PS1 share: the VM and the painters' hooks are 12.7 KB of it and cannot leave the

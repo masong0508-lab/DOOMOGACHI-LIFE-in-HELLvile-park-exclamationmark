@@ -1892,8 +1892,7 @@ SPU RAM holds 180 KB (0x50000 to the reverb area), 140 KB used, so **only about 
 (a part is about 55 B of script and 155 B of packed icon): the icons, 86 % of the file, need their own disc file read
 per section (`ICONS.BIN`, CREATOR_PLAN CR7) before the next big batches; that is the next PS1 creator package).
 
-**Speed** (PCSX-Redux, 30 Hz): `creator_speed` idle 30.13, grid scroll 29.39, rows 30.13, value 29.88 (the same as the
-base); the speed tour's `creator` group (25 windows) all the same fps as the base (creator load 314+475 -> 312+363 ms on the tree before the rebase);
+**Speed** (PCSX-Redux, 30 Hz): `creator_speed` idle 30.13, grid scroll 30.00, rows 30.13, value 29.88 (the base's: 30.13 / 29.39 / 30.13 / 29.88); the speed tour's `creator` group (25 windows) all the same fps as the base (the creator's load 314+685 -> 313+362 ms: its group is 62 KB smaller);
 `game_smoke` 7 of 7 shots byte-identical. The new `creator_parts.txt` holds the cursor on scripted parts of six grids
 (100 frames each): head shapes 29.85, eyes 29.85, horns 30.00, tail 30.00, outer layer 30.00, **hair 27.52** (14 frames
 at 50 ms; the same moves on the base disc, painted hair only, were 21.9 with 70 frames at 50 ms). A hair is the
