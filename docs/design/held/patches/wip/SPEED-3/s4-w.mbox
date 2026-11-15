@@ -1,0 +1,2005 @@
+From 9e059e36229d144c3cab9ee601f5ac576dfe0922 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 17:08:43 +0000
+Subject: [PATCH 1/7] S4-W step 1: the Prize Wheel's result card holds once its
+ window has popped and the confetti is gone
+
+A held tick repaints only the bulbs, the winning icon's light (the clean pie under it is
+kept with the new plat_under) and the hub; 60 ms -> 3.5 ms a tick on the GBA, 15 -> 30 fps.
+The disc outside the window is the same picture as the full frame's on all 220 ticks.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvDzgwv9nxsL8r6tWV
+---
+ core/include/doomo/plat_ext.h |  11 +++
+ core/native/plat_native.c     |  14 ++++
+ core/src/mg.h                 |   1 +
+ core/src/mg_wheel.c           | 141 +++++++++++++++++++++++++++-------
+ core/src/plat_weak_ext.c      |   6 ++
+ core/tests/test_modal_hold.c  |  60 +++++++++++++++
+ gba/src/hold.c                |  20 +++++
+ 7 files changed, 225 insertions(+), 28 deletions(-)
+
+diff --git a/core/include/doomo/plat_ext.h b/core/include/doomo/plat_ext.h
+index e85f3b1..5d37258 100644
+--- a/core/include/doomo/plat_ext.h
++++ b/core/include/doomo/plat_ext.h
+@@ -170,6 +170,17 @@ enum { PLAT_STRIP_SAVE = 1, PLAT_STRIP_RESTORE = 2 };
+ #define PLAT_STRIP_MAX_H 20
+ int  plat_strip(int op, int y, int h);
+ 
++/* ---- a small box of the frame being drawn, kept and put back (S4-W, docs/GBA.md "Speed wave 3: S4-W") -----------
++ * A held frame (plat_hold_frame) whose scene has a few small things come and go over it (the Prize Wheel's winning
++ * icon lights up and goes out over the pie) keeps the clean pixels under them and puts them back, instead of
++ * drawing the picture under them again.
++ *   PLAT_UNDER_GET   copy the box (x, y, w, h) of the frame being drawn, as drawn so far, into buf (w * h bytes)
++ *   PLAT_UNDER_PUT   copy buf back into that box
++ * x and w are even and the box lies inside the screen (the GBA writes whole halfwords; the caller rounds the box
++ * out); buf is 2-aligned. Returns 1 when done, 0 when the platform cannot (the default; a skipped tick; a tile frame). */
++enum { PLAT_UNDER_GET = 1, PLAT_UNDER_PUT = 2 };
++int  plat_under(int op, int x, int y, int w, int h, void *buf);
++
+ /* ---- scene scratch (SP3 / P-I1, docs/ISLAND_SPEED.md I12) ---------------------------------------------------------
+  * RAM that belongs to the running scene's code only: on the PS1, the part of the scene overlay slot after the
+  * group that is loaded (the island group leaves ~70 KB of it unused). plat_scene_scratch(bytes, &gen) returns
+diff --git a/core/native/plat_native.c b/core/native/plat_native.c
+index e59fa84..8b3fc8e 100644
+--- a/core/native/plat_native.c
++++ b/core/native/plat_native.c
+@@ -100,6 +100,20 @@ int plat_strip(int op, int y, int h)
+     if (held && held_n == nat_w * nat_h) memcpy(&held_fb[y * nat_w], strip_fb, (size_t)(h * nat_w));
+     return 1;
+ }
++/* S4-W (plat_ext.h plat_under): a box of the frame, kept and put back */
++int plat_under(int op, int x, int y, int w, int h, void *buf)
++{
++    int r;
++    if (!buf || ((uintptr_t)buf & 1) || (x & 1) || (w & 1) || w <= 0 || h <= 0 || x < 0 || y < 0 || x + w > nat_w || y + h > nat_h)
++        return 0;
++    if (op != PLAT_UNDER_GET && op != PLAT_UNDER_PUT) return 0;
++    for (r = 0; r < h; r++) {
++        uint8_t *row = &nat_fb[(y + r) * nat_w + x];
++        if (op == PLAT_UNDER_GET) memcpy((uint8_t *)buf + r * w, row, (size_t)w);
++        else memcpy(row, (const uint8_t *)buf + r * w, (size_t)w);
++    }
++    return 1;
++}
+ int nat_strip_band(int *y, int *h)
+ {
+     *y = strip_y; *h = strip_h;
+diff --git a/core/src/mg.h b/core/src/mg.h
+index de77624..0ff826d 100644
+--- a/core/src/mg.h
++++ b/core/src/mg.h
+@@ -368,6 +368,7 @@ extern const MgGame *const mg_games[MG_GAME_COUNT];
+ #define MG_WHEEL_WEDGES 10
+ #define MG_WHEEL_HOST 506                  /* Wagerine, Cacoblob Bookie  */
+ int  mg_wheel_ready(void);                 /* not spun yet today          */
++int  mg_wheel_phase(void);                 /* (S4-W, tests) 0 intro 1 ready 2 charge 3 spin 4 result 5 done */
+ /* Grant wedge's prize / curse; returns the H$ change. */
+ int  mg_wheel_apply(int wedge);
+ extern const char *const mg_wheel_names[MG_WHEEL_WEDGES];
+diff --git a/core/src/mg_wheel.c b/core/src/mg_wheel.c
+index edf6bad..47b29c5 100644
+--- a/core/src/mg_wheel.c
++++ b/core/src/mg_wheel.c
+@@ -20,6 +20,7 @@
+ #include "doomo/plat_ext.h"                 /* plat_strip (S2-3: the POWER bar rows of a held frame) */
+ 
+ enum { WH_INTRO, WH_READY, WH_CHARGE, WH_SPIN, WH_RESULT, WH_DONE };
++#define WH_UNDER_MAX 400                    /* the winner's light box (2 * 9 + 1 = 19 wide, rounded out to 20) */
+ 
+ typedef struct Wheel {
+     int32_t ang16, vel16;          /* angle in 1/16 of DOOMO_ANG units */
+@@ -32,6 +33,12 @@ typedef struct Wheel {
+     const char *held_line;
+     uint8_t held_expr, bar_up, bar_saved;
+     uint8_t bub_n, face_n, bar_n;  /* held ticks still to repaint it: 2 (both pages) after a change */
++    /* S4-W (the held result card, wh_blink): the state the last full frame drew (a hold must not outlive it), and
++     * the clean pixels under the winning icon's light (plat_under): the box, and 1 when they were kept */
++    uint8_t full_st, under_ok;
++    int16_t ux, uy;
++    uint8_t uw, uh;
++    uint16_t under[WH_UNDER_MAX / 2];
+ } Wheel;
+ MG_ARENA_FITS(Wheel);
+ #define S (MG_ARENA(Wheel))
+@@ -71,6 +78,11 @@ int mg_wheel_ready(void)
+     return progress_get(PROG_FAIR_WHEEL_DAY) != doomo_town.day + 1;
+ }
+ 
++int mg_wheel_phase(void)
++{
++    return scene_scratch_mine(MG_SCRATCH_TAG) ? S->st : -1;
++}
++
+ int mg_wheel_apply(int w)
+ {
+     int before = (int)doomo_town.money, delta;
+@@ -301,6 +313,78 @@ static void pie(int cx, int cy, int R, int rot)
+     }
+ }
+ 
++/* the result window's rect (and what ui_title and the drop shadow add around it is within 9 px above, 4 px beside) */
++static void wh_card_box(int *x, int *y, int *w, int *h)
++{
++    int big = mg_big();
++    *w = big ? 200 : 160;
++    *h = 44;
++    *x = (mg_w() - *w) / 2;
++    *y = mg_h() - *h - (big ? 16 : 6);
++}
++
++/* the wheel's 20 bulbs (S4-W: a function of its own; the held result card repaints just these) */
++static void wh_bulbs(int t, int cx, int cy, int R, int rot, int clip)
++{
++    int k, cxl = 0, cyl = 0, cxr = 0;
++    if (clip) { int bx, bw, by, bh; wh_card_box(&bx, &by, &bw, &bh); cxl = bx - 2; cxr = bx + bw + 4; cyl = by - 9; }
++    for (k = 0; k < 20; k++) {
++        int a = (rot / 2 + k * 4096 / 20) & DOOMO_ANG_MASK;
++        int lit = ((k + t / 4) % 4) == 0 || S->st == WH_RESULT;
++        int x = cx + FIX2INT(fx_cos(a) * (R + 3)) - 1, y = cy + FIX2INT(fx_sin(a) * (R + 3)) - 1;
++        if (clip && x + 2 > cxl && x < cxr && y + 2 > cyl) continue;      /* under the result window */
++        plat_rect(x, y, 2, 2, lit && ((t / 3) & 1 || S->st != WH_RESULT) ? PAL_WHITE : PAL_RAMP(RAMP_CANDY, 4));
++    }
++}
++
++/* the hub: Wagerine's watchful eyeball */
++static void wh_hub(int t, int cx, int cy)
++{
++    int er = mg_big() ? 5 : 4, look = S->st == WH_SPIN ? ui_wave(t * 4, 20, 2) : 0;
++    ui_fill_circle(cx, cy, mg_big() ? 12 : 9, PAL_RAMP(RAMP_STONE, 0));
++    ui_fill_circle(cx, cy, mg_big() ? 11 : 8, PAL_WHITE);
++    ui_fill_circle(cx + look, cy - 2, er, PAL_PAINT(PAINT_LIME, 1));
++    ui_fill_circle(cx + look, cy - 2, er / 2, PAL_RAMP(RAMP_STONE, 0));
++    plat_rect(cx + look - 1, cy - 4, 1, 1, PAL_WHITE);
++    if ((t % 90) < 4) ui_fill_circle(cx, cy, mg_big() ? 10 : 7, PAL_PAINT(PAINT_LIME, 0));
++}
++
++/* the pointer + flapper at the top */
++static void wh_pointer(int cx, int cy, int R)
++{
++    int px = cx, py = cy - R - 8, bend = S->flap ? (S->flap > 2 ? 3 : 1) : 0;
++    ui_heart(px, py, 6, PAL_PAINT(PAINT_CHERRY, 1));
++    plat_line(px, py + 4, px - bend, py + 13, PAL_RAMP(RAMP_STONE, 0));
++    plat_line(px + 1, py + 4, px + 1 - bend, py + 13, PAL_PAINT(PAINT_CHERRY, 0));
++}
++
++/* On the result card the winning wedge's icon blinks: a white disc under it every other 4 ticks (the icon itself
++ * always). S4-W: it is drawn after the other wedges (nothing of theirs lies within 7 px of it), so a full frame
++ * can keep the clean pie under it (plat_under) and a held tick can put that back before the disc, or without it.
++ * mode 0: a full frame (keep the box), 1: a held tick (put it back) */
++static void wh_winner(int cx, int cy, int R, int rot, int t, int mode)
++{
++    int k = S->wedge, a = (rot + k * DOOMO_ANG_FULL / MG_WHEEL_WEDGES) & DOOMO_ANG_MASK;
++    int ac = (a + DOOMO_ANG_FULL / MG_WHEEL_WEDGES / 2) & DOOMO_ANG_MASK;
++    char ic[2] = { (char)wedge_icon[k], 0 };
++    int ix = cx + FIX2INT(fx_cos(ac) * (R * 2 / 3)), iy = cy + FIX2INT(fx_sin(ac) * (R * 2 / 3));
++    int r = mg_big() ? 9 : 7, lit = (t / 4) & 1;
++    if (mode == 0) {
++        int x0 = (ix - r) & ~1, x1 = (ix + r + 2) & ~1, y0 = iy - r, y1 = iy + r + 1;
++        S->under_ok = 0;
++        if (x0 >= 0 && y0 >= 0 && x1 <= mg_w() && y1 <= mg_h() && (x1 - x0) * (y1 - y0) <= WH_UNDER_MAX && !mg.ox && !mg.oy &&
++            plat_under(PLAT_UNDER_GET, x0, y0, x1 - x0, y1 - y0, S->under)) {
++            S->ux = (int16_t)x0; S->uy = (int16_t)y0; S->uw = (uint8_t)(x1 - x0); S->uh = (uint8_t)(y1 - y0);
++            S->under_ok = 1;
++        }
++    } else if (!plat_under(PLAT_UNDER_PUT, S->ux, S->uy, S->uw, S->uh, S->under)) {
++        return;
++    }
++    if (lit) ui_fill_circle(ix, iy, r, PAL_WHITE);
++    ui_text_outline(ix - 2, iy - 3, ic, mg_wheel_is_curse(k) ? PAL_PAINT(PAINT_LIME, 2) : PAL_WHITE,
++                    PAL_RAMP(RAMP_STONE, 0));
++}
++
+ static void wheel(int t, int held)
+ {
+     int cx = wcx() + mg.ox, cy = wcy() + mg.oy, R = radius(), k;
+@@ -314,12 +398,7 @@ static void wheel(int t, int held)
+     /* rim + bulbs */
+     rim(cx, cy, R, held);
+     pie(cx, cy, R + 1, rot);
+-    for (k = 0; k < 20; k++) {
+-        int a = (rot / 2 + k * 4096 / 20) & DOOMO_ANG_MASK;
+-        int lit = ((k + t / 4) % 4) == 0 || S->st == WH_RESULT;
+-        plat_rect(cx + FIX2INT(fx_cos(a) * (R + 3)) - 1, cy + FIX2INT(fx_sin(a) * (R + 3)) - 1, 2, 2,
+-                  lit && ((t / 3) & 1 || S->st != WH_RESULT) ? PAL_WHITE : PAL_RAMP(RAMP_CANDY, 4));
+-    }
++    wh_bulbs(t, cx, cy, R, rot, 0);
+     /* pegs, icons */
+     for (k = 0; k < MG_WHEEL_WEDGES; k++) {
+         int a = (rot + k * DOOMO_ANG_FULL / MG_WHEEL_WEDGES) & DOOMO_ANG_MASK;
+@@ -329,28 +408,25 @@ static void wheel(int t, int held)
+         plat_rect(cx + FIX2INT(fx_cos(a) * (R - 1)) - 1, cy + FIX2INT(fx_sin(a) * (R - 1)) - 1, 3, 3, PAL_WHITE);
+         plat_line(cx + FIX2INT(fx_cos(a) * 8), cy + FIX2INT(fx_sin(a) * 8),
+                   cx + FIX2INT(fx_cos(a) * (R - 1)), cy + FIX2INT(fx_sin(a) * (R - 1)), PAL_RAMP(RAMP_STONE, 0));
+-        if (S->st == WH_RESULT && k == S->wedge && (t / 4) & 1)
+-            ui_fill_circle(ix, iy, mg_big() ? 9 : 7, PAL_WHITE);
++        if (S->st == WH_RESULT && k == S->wedge) continue;          /* (wh_winner, below) */
+         ui_text_outline(ix - 2, iy - 3, ic, mg_wheel_is_curse(k) ? PAL_PAINT(PAINT_LIME, 2) : PAL_WHITE,
+                         PAL_RAMP(RAMP_STONE, 0));
+     }
+-    /* the hub: Wagerine's watchful eyeball */
+-    ui_fill_circle(cx, cy, mg_big() ? 12 : 9, PAL_RAMP(RAMP_STONE, 0));
+-    ui_fill_circle(cx, cy, mg_big() ? 11 : 8, PAL_WHITE);
+-    {
+-        int er = mg_big() ? 5 : 4, look = S->st == WH_SPIN ? ui_wave(t * 4, 20, 2) : 0;
+-        ui_fill_circle(cx + look, cy - 2, er, PAL_PAINT(PAINT_LIME, 1));
+-        ui_fill_circle(cx + look, cy - 2, er / 2, PAL_RAMP(RAMP_STONE, 0));
+-        plat_rect(cx + look - 1, cy - 4, 1, 1, PAL_WHITE);
+-        if ((t % 90) < 4) ui_fill_circle(cx, cy, mg_big() ? 10 : 7, PAL_PAINT(PAINT_LIME, 0));
+-    }
+-    /* the pointer + flapper at the top */
+-    {
+-        int px = cx, py = cy - R - 8, bend = S->flap ? (S->flap > 2 ? 3 : 1) : 0;
+-        ui_heart(px, py, 6, PAL_PAINT(PAINT_CHERRY, 1));
+-        plat_line(px, py + 4, px - bend, py + 13, PAL_RAMP(RAMP_STONE, 0));
+-        plat_line(px + 1, py + 4, px + 1 - bend, py + 13, PAL_PAINT(PAINT_CHERRY, 0));
+-    }
++    if (S->st == WH_RESULT) wh_winner(cx, cy, R, rot, t, 0);
++    wh_hub(t, cx, cy);
++    wh_pointer(cx, cy, R);
++}
++
++/* S4-W: a held tick of the result card (the window is up, nothing else moves): what the card changes from tick to tick
++ * is the bulbs, the winning icon's light and the hub's blink; the disc itself, still, is on both pages, and the
++ * window is not touched (the disc's rim runs under it) */
++static void wh_blink(int t)
++{
++    int cx = wcx(), cy = wcy(), R = radius(), rot = (int)((S->ang16 >> 4) & DOOMO_ANG_MASK);
++    wh_bulbs(t, cx, cy, R, rot, 1);
++    wh_winner(cx, cy, R, rot, t, 1);
++    wh_hub(t, cx, cy);
++    wh_pointer(cx, cy, R);
+ }
+ 
+ static void tent_bg(int t)
+@@ -418,7 +494,13 @@ static const uint8_t wh_hold_key;
+ 
+ static int wh_hold_ok(void)
+ {
+-    if (S->st == WH_RESULT || mg.shake || mg.ox || mg.oy || mg.flash_t || mg_fx_live()) return 0;
++    if (mg.shake || mg.ox || mg.oy || mg.flash_t || mg_fx_live()) return 0;
++    /* S4-W: the result card holds once its window has popped and the confetti is gone, from a full frame of the card;
++     * and the card going away (done) is a full frame again */
++    if (S->st == WH_RESULT) {
++        if (S->t <= 8 || ui_pop_scale(S->t - 8) != 256 || !S->under_ok) return 0;
++    }
++    if ((S->st == WH_RESULT || S->full_st == WH_RESULT) && S->st != S->full_st) return 0;
+ #if !defined(DOOMO_PLATFORM_PS1)
+     if (portrait_job_on()) return 0;                /* a stand-in face may still change */
+ #endif
+@@ -451,7 +533,8 @@ static int wh_draw_held(int t)
+         mg_host_frame(mg_big() ? 12 : 6, mg_big() ? 40 : 26, MG_WHEEL_HOST, wh_face(), S->full_t);
+         S->face_n--;
+     }
+-    wheel(t, 1);
++    if (S->st == WH_RESULT) wh_blink(t);
++    else wheel(t, 1);
+     if (S->st == WH_CHARGE) {
+         if (!S->bar_saved) {                        /* no clean copy of its rows: draw it, hold no longer */
+             ui_modal_hold_end();
+@@ -488,10 +571,12 @@ static void wh_draw_body(void)
+     S->bar_saved = (uint8_t)plat_strip(PLAT_STRIP_SAVE, WH_BAR_Y(H), WH_BAR_H);
+     S->bar_up = S->st == WH_CHARGE;
+     S->bub_n = S->face_n = S->bar_n = 0;
++    S->full_st = S->st;
+     if (S->st == WH_CHARGE) wh_power_bar();
+     mg_fx_draw();
+     if (S->st == WH_RESULT && S->t > 8) {
+-        int w = big ? 200 : 160, h = 44, x = (W - w) / 2, y = H - h - (big ? 16 : 6);
++        int x, y, w, h;
++        wh_card_box(&x, &y, &w, &h);
+         if (ui_window_pop(x, y, w, h, S->curse ? WIN_HELL : WIN_CREAM, S->t - 8)) {
+             ui_title(W / 2, y - 6, S->curse ? "CURSED!" : "PRIZE!", S->curse ? WIN_HELL : WIN_CUTE);
+             mg_textc(W / 2, y + 12, mg_wheel_names[S->wedge], S->curse ? PAL_PAINT(PAINT_LIME, 2) : PAL_UI_GOLD);
+diff --git a/core/src/plat_weak_ext.c b/core/src/plat_weak_ext.c
+index d916119..f423275 100644
+--- a/core/src/plat_weak_ext.c
++++ b/core/src/plat_weak_ext.c
+@@ -46,6 +46,12 @@ WEAK int plat_hshapes(const DoomoHShape *s, int n) { (void)s; (void)n; return 0;
+ 
+ WEAK int plat_strip(int op, int y, int h) { (void)op; (void)y; (void)h; return 0; }
+ 
++WEAK int plat_under(int op, int x, int y, int w, int h, void *buf)
++{
++    (void)op; (void)x; (void)y; (void)w; (void)h; (void)buf;
++    return 0;
++}
++
+ WEAK void *plat_scene_scratch(uint32_t bytes, uint32_t *gen)
+ {
+     (void)bytes;
+diff --git a/core/tests/test_modal_hold.c b/core/tests/test_modal_hold.c
+index 7f855c7..c03b225 100644
+--- a/core/tests/test_modal_hold.c
++++ b/core/tests/test_modal_hold.c
+@@ -186,6 +186,66 @@ TEST(modal_hold_fair_results_card)
+     compare("results", results_setup, results_pad, r, 30);
+ }
+ 
++/* ---- (S4-W) the Prize Wheel's result card: once its window has popped and the confetti is gone it holds, and a held
++ * tick repaints only the bulbs, the winning icon's light and the hub. The disc (the rim and its shadow, outside the
++ * window) is the same picture as the full frame's on every tick, and when the card goes away (done) the window does
++ * too; the window itself (its glint) and the tent (its sway) stand still while held: the pixel-changing part ------- */
++typedef struct { uint32_t disc[900], win[900]; uint8_t held[900], phase[900]; } WheelRun;
++
++static int wh_in_disc(int x, int y)
++{
++    int big = mg_big(), R = (big ? MG_WHEEL_R_BIG : MG_WHEEL_R_SMALL) + 6;
++    int cx = mg_w() - (R - 6) - (big ? 34 : 14), cy = mg_h() / 2 + (big ? 10 : 8);
++    return (x - cx) * (x - cx) + (y - cy) * (y - cy) <= R * R || (x - cx - 2) * (x - cx - 2) + (y - cy - 3) * (y - cy - 3) <= R * R;
++}
++
++static void wheel_run(int hold, WheelRun *r, int nf)
++{
++    int f, big = mg_big(), ww = big ? 200 : 160, wx = (mg_w() - ww) / 2, wy = mg_h() - 44 - (big ? 16 : 6), res = 0;
++    doomo_init();
++    test_reset();
++    ui_modal_hold_enable(hold);
++    fp_new_island(TOWN_POP_PREMADE, 4242);
++    scene_set(&SCENE_MG_WHEEL, MG_ARG_AUTOSTART | MG_ARG_AUTOPLAY);
++    for (f = 0; f < nf; f++) {
++        int before = ui_modal_hold_enable(-1), x, y, ph = mg_wheel_phase();
++        uint32_t hd = 2166136261u, hw = 2166136261u;
++        res = ph == 4 ? res + 1 : 0;
++        plat_begin_frame();
++        doomo_frame(res == 200 ? BTN_A : 0);                /* leave the card 200 ticks after it appears */
++        plat_end_frame();
++        r->held[f] = (uint8_t)(ui_modal_hold_enable(-1) > before);
++        r->phase[f] = (uint8_t)mg_wheel_phase();            /* the phase the frame was drawn in */
++        for (y = 0; y < nat_h; y++)
++            for (x = 0; x < nat_w; x++) {
++                int win = x >= wx - 2 && x < wx + ww + 4 && y >= wy - 9;
++                if (win) hw = (hw ^ nat_fb[y * nat_w + x]) * 16777619u;
++                else if (wh_in_disc(x, y)) hd = (hd ^ nat_fb[y * nat_w + x]) * 16777619u;
++            }
++        r->disc[f] = hd;
++        r->win[f] = hw;
++    }
++    ui_modal_hold_enable(0);
++}
++
++TEST(modal_hold_fair_wheel_result_card)
++{
++    static WheelRun a, b;
++    int f, nf = 900, held_result = 0, done_from = -1;
++    wheel_run(1, &a, nf);
++    wheel_run(0, &b, nf);
++    for (f = 0; f < nf; f++) {
++        CHECK_MSG(!b.held[f], "wheel: the hold-off run held tick %d", f);
++        CHECK_MSG(a.disc[f] == b.disc[f], "wheel: tick %d (phase %d, held %d): the disc differs from the full frame", f, a.phase[f], a.held[f]);
++        if (a.held[f] && a.phase[f] == 4) held_result++;
++        if (done_from < 0 && a.phase[f] == 5) done_from = f;
++    }
++    CHECK_MSG(done_from > 0, "wheel: the card was never left");
++    CHECK_MSG(held_result > 100, "wheel: only %d held ticks on the result card", held_result);
++    /* the card going away is drawn in full (the window leaves the held frame): the same picture as the hold-off run's */
++    CHECK_MSG(!a.held[done_from] && a.win[done_from] == b.win[done_from], "wheel: the first tick of done was not drawn in full");
++}
++
+ /* ---- the house: the Catalog over the room (the HUD bands repaint, the room is the held frame) ----------------------- */
+ static void house_setup(void)
+ {
+diff --git a/gba/src/hold.c b/gba/src/hold.c
+index 7c1a67f..e09d958 100644
+--- a/gba/src/hold.c
++++ b/gba/src/hold.c
+@@ -174,6 +174,26 @@ int plat_strip(int op, int y, int h)
+     return 1;
+ }
+ 
++/* S4-W (plat_ext.h plat_under): a small box of the Mode 4 page being drawn, read and written by halfwords (VRAM
++ * takes no byte writes). The caller keeps x and w even. No RAM: the box lives in the caller's buffer. */
++int plat_under(int op, int x, int y, int w, int h, void *buf)
++{
++    uint16_t *b = (uint16_t *)buf;
++    int r, c, hw = w / 2;
++    if (!buf || ((uintptr_t)buf & 1) || (x & 1) || (w & 1) || w <= 0 || h <= 0 || x < 0 || y < 0 ||
++        x + w > SCREEN_W || y + h > SCREEN_H || (op != PLAT_UNDER_GET && op != PLAT_UNDER_PUT)) return 0;
++    if (gba_nodraw == 1) return 0;
++    if (gba_nodraw == GBA_NODRAW_FIRST) vid_route(0, y, SCREEN_W, y + h);   /* G5: the first 2D call decides */
++    if (gba_nodraw != 0 && gba_nodraw != GBA_NODRAW_MEASURE && gba_nodraw != GBA_NODRAW_PANEL) return 0;  /* tiles */
++    for (r = 0; r < h; r++) {
++        volatile uint16_t *row = (volatile uint16_t *)(void *)((uint8_t *)gba_back + (y + r) * SCREEN_W + x);
++        if (op == PLAT_UNDER_GET) for (c = 0; c < hw; c++) b[c] = row[c];
++        else                      for (c = 0; c < hw; c++) row[c] = b[c];
++        b += hw;
++    }
++    return 1;
++}
++
+ /* ---- SP5 (G-D1): the band under the dialogue box (plat_ext.h plat_hold_band; docs/GBA.md "D") ---------------
+  * The story overworld's held dialogue backdrop: both Mode 4 pages carry the last full frame (plat_hold_frame(2)
+  * above), and this keeps a clean copy of the picture under the box's band, taken before the box was drawn, so a
+-- 
+2.43.0
+
+
+From c6afe4586bf25860e62555d62babf803639223f0 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 18:17:51 +0000
+Subject: [PATCH 2/7] S4-W step 2: the Prize Wheel's spin goes straight into a
+ held result card (pop, confetti, stars, hint on held ticks)
+
+Particles keep the pixels under them per page (plat_under, PLAT_UNDER_PAGE), the window's
+pop is painted over a clean ring, the hint pill over the clean rows under it; stars stop at
+the window's edge. Native hold emulates the GBA's two pages (nat_hold_pages) for the test.
+GBA: result card 15 -> 30 fps, no frame over 33 ms from the spin into the card (a prize).
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvDzgwv9nxsL8r6tWV
+---
+ core/include/doomo/plat_ext.h |   5 +-
+ core/native/native.h          |   1 +
+ core/native/plat_native.c     |  20 +-
+ core/src/mg.h                 |   2 +
+ core/src/mg_fx.c              | 186 +++++++++++++-----
+ core/src/mg_wheel.c           | 355 ++++++++++++++++++++++++++++------
+ core/tests/test_modal_hold.c  |  48 +++--
+ gba/src/hold.c                |   1 +
+ 8 files changed, 498 insertions(+), 120 deletions(-)
+
+diff --git a/core/include/doomo/plat_ext.h b/core/include/doomo/plat_ext.h
+index 5d37258..5e020ff 100644
+--- a/core/include/doomo/plat_ext.h
++++ b/core/include/doomo/plat_ext.h
+@@ -176,9 +176,12 @@ int  plat_strip(int op, int y, int h);
+  * drawing the picture under them again.
+  *   PLAT_UNDER_GET   copy the box (x, y, w, h) of the frame being drawn, as drawn so far, into buf (w * h bytes)
+  *   PLAT_UNDER_PUT   copy buf back into that box
++ *   PLAT_UNDER_PAGE  which of the two held pages the frame being drawn is: 0 or 1 (a platform with one picture: 0);
++ *                    the other arguments are ignored. A scene that keeps what is under moving things on each page
++ *                    keeps one list a page (the page two ticks ago is what a held tick draws on)
+  * x and w are even and the box lies inside the screen (the GBA writes whole halfwords; the caller rounds the box
+  * out); buf is 2-aligned. Returns 1 when done, 0 when the platform cannot (the default; a skipped tick; a tile frame). */
+-enum { PLAT_UNDER_GET = 1, PLAT_UNDER_PUT = 2 };
++enum { PLAT_UNDER_GET = 1, PLAT_UNDER_PUT = 2, PLAT_UNDER_PAGE = 3 };
+ int  plat_under(int op, int x, int y, int w, int h, void *buf);
+ 
+ /* ---- scene scratch (SP3 / P-I1, docs/ISLAND_SPEED.md I12) ---------------------------------------------------------
+diff --git a/core/native/native.h b/core/native/native.h
+index 913cae4..2fd9c46 100644
+--- a/core/native/native.h
++++ b/core/native/native.h
+@@ -11,6 +11,7 @@
+ /* the 8bpp framebuffer (row-major, nat_w * nat_h) */
+ extern uint8_t nat_fb[NAT_MAX_W * NAT_MAX_H];
+ extern int nat_w, nat_h;
++void nat_hold_pages(int on);              /* S4-W: hold on two pages like the GBA (a test turns it on); default one picture */
+ extern int nat_band_off;                /* SP5: plat_hold_band says "cannot" (tests: the full redraw) */
+ extern int nat_fast2d;                  /* S2-4d: plat_tile_rows / plat_hshapes draw (tests); 0: the core's rects */
+ extern uint32_t nat_band_saves, nat_band_restores;
+diff --git a/core/native/plat_native.c b/core/native/plat_native.c
+index 8b3fc8e..9c8abeb 100644
+--- a/core/native/plat_native.c
++++ b/core/native/plat_native.c
+@@ -48,6 +48,12 @@ int plat_screen_h(void) { return nat_h; }
+  * plat_begin_frame then restores it, so the core repaints only its own rects. */
+ static uint8_t held_fb[NAT_MAX_W * NAT_MAX_H];
+ static int held, held_n;
++/* S4-W: nat_hold_pages(1) holds the way the GBA does: two pages, each frame is drawn on the page of two frames ago
++ * (what the frame before it drew stays on its own page), instead of on the one picture put back every frame. A scene
++ * that repaints a change on two held ticks, or keeps what is under things per page, is only right on this one. */
++static uint8_t held_pg[2][NAT_MAX_W * NAT_MAX_H];
++static int held_two, held_cur;
++void nat_hold_pages(int on) { held_two = on != 0; }
+ int plat_hold_frame(int on)
+ {
+     if (on == 4) return held;           /* 4 = "still held?" (the GBA's settled hold; never re-holds) */
+@@ -56,6 +62,10 @@ int plat_hold_frame(int on)
+     held_n = nat_w * nat_h;
+     memcpy(held_fb, nat_fb, (size_t)held_n);
+     held = 1;
++    if (held_two) {                     /* this frame is drawn on the page that shows what was just shown; the other has it too */
++        memcpy(held_pg[1], nat_fb, (size_t)held_n);
++        held_cur = 0;
++    }
+     return 1;
+ }
+ 
+@@ -97,13 +107,14 @@ int plat_strip(int op, int y, int h)
+     if (op != PLAT_STRIP_RESTORE || y != strip_y || h != strip_h || nat_w != strip_w) return 0;
+     memcpy(&nat_fb[y * nat_w], strip_fb, (size_t)(h * nat_w));
+     /* the held picture's band is clean from now on, as the GBA's two pages are once each was put back */
+-    if (held && held_n == nat_w * nat_h) memcpy(&held_fb[y * nat_w], strip_fb, (size_t)(h * nat_w));
++    if (held && !held_two && held_n == nat_w * nat_h) memcpy(&held_fb[y * nat_w], strip_fb, (size_t)(h * nat_w));
+     return 1;
+ }
+ /* S4-W (plat_ext.h plat_under): a box of the frame, kept and put back */
+ int plat_under(int op, int x, int y, int w, int h, void *buf)
+ {
+     int r;
++    if (op == PLAT_UNDER_PAGE) return held && held_two ? held_cur : 0;   /* (one picture: 0) */
+     if (!buf || ((uintptr_t)buf & 1) || (x & 1) || (w & 1) || w <= 0 || h <= 0 || x < 0 || y < 0 || x + w > nat_w || y + h > nat_h)
+         return 0;
+     if (op != PLAT_UNDER_GET && op != PLAT_UNDER_PUT) return 0;
+@@ -151,7 +162,12 @@ int plat_hold_band(int op, const PlatBand *b)
+ 
+ void plat_begin_frame(void)
+ {
+-    if (held) memcpy(nat_fb, held_fb, (size_t)held_n);
++    if (held && held_two) {               /* the frame just drawn stays on its page; this one goes on the other */
++        memcpy(held_pg[held_cur], nat_fb, (size_t)held_n);
++        held_cur ^= 1;
++        memcpy(nat_fb, held_pg[held_cur], (size_t)held_n);
++    }
++    else if (held) memcpy(nat_fb, held_fb, (size_t)held_n);
+     else nat_stage_frame_begin();         /* (SP7) off unless a test turns it on */
+ }
+ void plat_end_frame(void)
+diff --git a/core/src/mg.h b/core/src/mg.h
+index 0ff826d..1606701 100644
+--- a/core/src/mg.h
++++ b/core/src/mg.h
+@@ -207,6 +207,8 @@ void mg_flash(uint8_t color, int ticks);
+ void mg_hitstop(int ticks);
+ void mg_fx_update(void);
+ void mg_fx_draw(void);
++int  mg_fx_walk(int draw, int (*keep)(int kind, int x, int y, int w, int h));   /* (S4-W) each particle's box, then draws it */
++void mg_fx_exclude(int i, int x, int y, int w, int h);   /* (S4-W) no star is drawn inside box i (0, 1; w <= 0: none) */
+ void mg_fx_clear(void);
+ int  mg_fx_live(void);                      /* live particles (tests, the results hold) */
+ /* A cute splat (GORE_CUTE: confetti + hearts; brutal: red drops). */
+diff --git a/core/src/mg_fx.c b/core/src/mg_fx.c
+index 2668e93..3870b87 100644
+--- a/core/src/mg_fx.c
++++ b/core/src/mg_fx.c
+@@ -183,57 +183,97 @@ void mg_fx_update(void)
+         }
+ }
+ 
+-void mg_fx_draw(void)
++/* S4-W: two boxes that stars are not drawn into (the Prize Wheel's result window, and its title pill above it: on a full
++ * frame they are drawn over the stars, a held tick draws them once and the stars after, so the stars stop at their edge) */
++static int fx_ex[2][4];                          /* x0, y0, x1, y1 */
++void mg_fx_exclude(int i, int x, int y, int w, int h)
+ {
+-    int i, ox = mg.ox, oy = mg.oy;
+-    if (plat_draw_skipped()) return;
+-    for (i = 0; i < FX_MAX; i++) {
+-        const MgFx *f = &fx[i];
+-        int x, y, age;
+-        if (!f->life) continue;
+-        x = (f->x >> 4) + ox;
+-        y = (f->y >> 4) + oy;
+-        age = f->max - f->life;
+-        switch (f->kind) {
+-        case MGFX_SPARK:
+-            plat_rect(x, y, f->life > 6 ? 2 : 1, f->life > 6 ? 2 : 1,
+-                      f->life > 4 ? f->color : ui_darker(f->color));
+-            break;
+-        case MGFX_CONFETTI:
+-            if ((f->life >> 1) & 1) plat_rect(x, y, 3, 1, f->color);
+-            else plat_rect(x + 1, y - 1, 1, 3, f->color);
+-            break;
+-        case MGFX_HEART:
+-            ui_heart(x, y, f->life > 8 ? 3 : 2, f->color);
+-            break;
+-        case MGFX_STAR:
+-            ui_sparkle(x, y, (age * 2) & 15, f->color);
+-            break;
+-        case MGFX_PUFF:
+-            ui_fill_circle(x, y, 2 + age / 3, f->life > 6 ? f->color : PAL_GRAY_L);
+-            break;
+-        case MGFX_CRUMB:
+-            plat_rect(x, y, 2, 2, f->color);
+-            break;
+-        case MGFX_RING: {
+-            int r = 3 + age * 2, k;
+-            for (k = 0; k < 8; k++) {
+-                int a = k * 512 + age * 40;
+-                plat_rect(x + FIX2INT(fx_cos(a) * r), y + FIX2INT(fx_sin(a) * r), 2, 2, f->color);
+-            }
+-            break;
+-        }
+-        case MGFX_DROP:
+-            plat_rect(x, y, 2, 3, f->color);
+-            plat_rect(x, y, 1, 1, ui_lighter(f->color));
+-            break;
+-        case MGFX_EMBER:
+-            plat_rect(x, y, f->life & 2 ? 2 : 1, f->life & 2 ? 2 : 1, f->color);
+-            break;
+-        default:
+-            break;
++    fx_ex[i][0] = x; fx_ex[i][1] = y; fx_ex[i][2] = w > 0 ? x + w : x; fx_ex[i][3] = y + h;
++}
++#define FX_EXCLUDING (fx_ex[0][2] > fx_ex[0][0] || fx_ex[1][2] > fx_ex[1][0])
++
++static void fx_crect(int x, int y, int w, int h, uint8_t c, int bi)
++{
++    int x1 = x + w, y1 = y + h, ya, yb;
++    const int *e;
++    if (bi == 2) { plat_rect(x, y, w, h, c); return; }
++    e = fx_ex[bi];
++    if (x >= e[2] || x1 <= e[0] || y >= e[3] || y1 <= e[1]) { fx_crect(x, y, w, h, c, bi + 1); return; }
++    if (y < e[1]) fx_crect(x, y, w, e[1] - y, c, bi + 1);
++    if (y1 > e[3]) fx_crect(x, e[3], w, y1 - e[3], c, bi + 1);
++    ya = DOOMO_MAX(y, e[1]);
++    yb = DOOMO_MIN(y1, e[3]);
++    if (x < e[0]) fx_crect(x, ya, e[0] - x, yb - ya, c, bi + 1);
++    if (x1 > e[2]) fx_crect(e[2], ya, x1 - e[2], yb - ya, c, bi + 1);
++}
++
++/* ui_sparkle's shape (ui_draw.c), with its rects cut by the excluded box */
++static void fx_sparkle(int cx, int cy, int phase, uint8_t c)
++{
++    int s = ui_sparkle_size(phase);
++    if (s == 0) return;
++    fx_crect(cx - s, cy, 2 * s + 1, 1, c, 0);
++    fx_crect(cx, cy - s, 1, 2 * s + 1, c, 0);
++    if (s >= 2) {
++        fx_crect(cx - 1, cy - 1, 3, 3, c, 0);
++        fx_crect(cx, cy, 1, 1, PAL_WHITE, 0);
++    }
++    if (s >= 3) {
++        fx_crect(cx - 2, cy - 2, 1, 1, c, 0);
++        fx_crect(cx + 2, cy + 2, 1, 1, c, 0);
++        fx_crect(cx - 2, cy + 2, 1, 1, c, 0);
++        fx_crect(cx + 2, cy - 2, 1, 1, c, 0);
++    }
++}
++
++static void fx_draw_one(const MgFx *f, int ox, int oy)
++{
++    int x = (f->x >> 4) + ox, y = (f->y >> 4) + oy, age = f->max - f->life;
++    switch (f->kind) {
++    case MGFX_SPARK:
++        plat_rect(x, y, f->life > 6 ? 2 : 1, f->life > 6 ? 2 : 1,
++                  f->life > 4 ? f->color : ui_darker(f->color));
++        break;
++    case MGFX_CONFETTI:
++        if ((f->life >> 1) & 1) plat_rect(x, y, 3, 1, f->color);
++        else plat_rect(x + 1, y - 1, 1, 3, f->color);
++        break;
++    case MGFX_HEART:
++        ui_heart(x, y, f->life > 8 ? 3 : 2, f->color);
++        break;
++    case MGFX_STAR:
++        if (FX_EXCLUDING) fx_sparkle(x, y, (age * 2) & 15, f->color);
++        else ui_sparkle(x, y, (age * 2) & 15, f->color);
++        break;
++    case MGFX_PUFF:
++        ui_fill_circle(x, y, 2 + age / 3, f->life > 6 ? f->color : PAL_GRAY_L);
++        break;
++    case MGFX_CRUMB:
++        plat_rect(x, y, 2, 2, f->color);
++        break;
++    case MGFX_RING: {
++        int r = 3 + age * 2, k;
++        for (k = 0; k < 8; k++) {
++            int a = k * 512 + age * 40;
++            plat_rect(x + FIX2INT(fx_cos(a) * r), y + FIX2INT(fx_sin(a) * r), 2, 2, f->color);
+         }
++        break;
++    }
++    case MGFX_DROP:
++        plat_rect(x, y, 2, 3, f->color);
++        plat_rect(x, y, 1, 1, ui_lighter(f->color));
++        break;
++    case MGFX_EMBER:
++        plat_rect(x, y, f->life & 2 ? 2 : 1, f->life & 2 ? 2 : 1, f->color);
++        break;
++    default:
++        break;
+     }
++}
++
++static void fx_draw_pops(int ox, int oy)
++{
++    int i;
+     for (i = 0; i < POP_MAX; i++) {
+         const MgPop *p = &pops[i];
+         char buf[24];
+@@ -246,3 +286,53 @@ void mg_fx_draw(void)
+         ui_text_outline(p->x - w / 2 + ox, p->y + oy, s, p->color, PAL_RAMP(RAMP_STONE, 0));
+     }
+ }
++
++void mg_fx_draw(void)
++{
++    int i;
++    if (plat_draw_skipped()) return;
++    for (i = 0; i < FX_MAX; i++)
++        if (fx[i].life) fx_draw_one(&fx[i], mg.ox, mg.oy);
++    fx_draw_pops(mg.ox, mg.oy);
++}
++
++/* S4-W: the box a particle draws in, rounded out to even x and width and clipped to the screen (the platform keeps and
++ * puts back whole halfwords, plat_under). Only the kinds the Prize Wheel makes: -1 for any other, 0 for none on screen */
++static int fx_box(const MgFx *f, int ox, int oy, int b[4])
++{
++    int x = (f->x >> 4) + ox, y = (f->y >> 4) + oy, age = f->max - f->life, r, x0, y0, x1, y1;
++    switch (f->kind) {
++    case MGFX_CONFETTI: x0 = x; y0 = y - 1; x1 = x + 3; y1 = y + 2; break;
++    case MGFX_STAR:     x0 = x - 3; y0 = y - 3; x1 = x + 4; y1 = y + 4; break;
++    case MGFX_PUFF:     r = 2 + age / 3; x0 = x - r - 1; y0 = y - r - 1; x1 = x + r + 2; y1 = y + r + 2; break;
++    default: return -1;
++    }
++    x0 = DOOMO_MAX(x0, 0) & ~1;
++    y0 = DOOMO_MAX(y0, 0);
++    x1 = (DOOMO_MIN(x1, mg_w()) + 1) & ~1;
++    y1 = DOOMO_MIN(y1, mg_h());
++    if (x1 <= x0 || y1 <= y0) return 0;
++    b[0] = x0; b[1] = y0; b[2] = x1 - x0; b[3] = y1 - y0;
++    return 1;
++}
++
++/* S4-W: walk the live particles (a held frame keeps what is under each before it draws it: the Prize Wheel's card).
++ * Each one's kind and box go to keep(); it returns 0 to say no (then nothing more is drawn and the walk says -1). draw = 0 only
++ * asks. Returns the number of particles on screen, or -1: a kind with no box here, a popup alive, or keep() said no */
++int mg_fx_walk(int draw, int (*keep)(int kind, int x, int y, int w, int h))
++{
++    int i, n = 0, b[4];
++    for (i = 0; i < POP_MAX; i++)
++        if (pops[i].life) return -1;
++    for (i = 0; i < FX_MAX; i++) {
++        int r;
++        if (!fx[i].life) continue;
++        r = fx_box(&fx[i], mg.ox, mg.oy, b);
++        if (r < 0) return -1;
++        if (!r) continue;
++        if (keep && !keep(fx[i].kind, b[0], b[1], b[2], b[3])) return -1;
++        if (draw) fx_draw_one(&fx[i], mg.ox, mg.oy);
++        n++;
++    }
++    return n;
++}
+diff --git a/core/src/mg_wheel.c b/core/src/mg_wheel.c
+index 47b29c5..43602dc 100644
+--- a/core/src/mg_wheel.c
++++ b/core/src/mg_wheel.c
+@@ -21,6 +21,25 @@
+ 
+ enum { WH_INTRO, WH_READY, WH_CHARGE, WH_SPIN, WH_RESULT, WH_DONE };
+ #define WH_UNDER_MAX 400                    /* the winner's light box (2 * 9 + 1 = 19 wide, rounded out to 20) */
++#define WH_PUNDER_MAX 480                   /* the pointer's box: heart and flapper, 20 x 23 */
++#define WH_KEEP_MAX 40                      /* particles kept under per page */
++#define WH_KEEP_BYTES 1024                  /* ... and the pixels under them */
++#define WH_RING_BYTES 4096                  /* the ring round the result window (3,936 B at 240x160) */
++#define WH_HINT_BYTES 2048                  /* the clean rows under the hint pill */
++/* S4-W: the held result card's own scratch, behind the arena and the particle pool (mg.h): what is under the live
++ * particles, a list a page (a held tick draws on the page of two ticks ago), the clean ring round the window and the
++ * clean rows under the hint pill (the card changes its text) */
++typedef struct WhKeep {
++    struct { int16_t x, y; uint8_t w, h; uint16_t off; } ent[2][WH_KEEP_MAX];
++    uint16_t used[2];
++    uint8_t n[2];
++    int16_t hx, hy;
++    uint8_t hw, hh;
++    uint16_t hint[WH_HINT_BYTES / 2];
++    uint16_t ring[WH_RING_BYTES / 2];
++    uint16_t data[2][WH_KEEP_BYTES / 2];
++} WhKeep;
++DOOMO_STATIC_ASSERT(MG_ARENA_BYTES + MG_FX_BYTES + sizeof(WhKeep) <= DOOMO_SCENE_SCRATCH, wheel_keep_fits_scratch);
+ 
+ typedef struct Wheel {
+     int32_t ang16, vel16;          /* angle in 1/16 of DOOMO_ANG units */
+@@ -30,18 +49,22 @@ typedef struct Wheel {
+     /* S2-3 (the held frame, wh_draw_body): what the last full frame drew, so a held tick repaints only what
+      * changed since: its tick count (t), the speech line and host face, and whether the POWER bar is up */
+     int32_t full_t;
+-    const char *held_line;
++    const char *held_line, *held_hint;
+     uint8_t held_expr, bar_up, bar_saved;
+     uint8_t bub_n, face_n, bar_n;  /* held ticks still to repaint it: 2 (both pages) after a change */
+-    /* S4-W (the held result card, wh_blink): the state the last full frame drew (a hold must not outlive it), and
+-     * the clean pixels under the winning icon's light (plat_under): the box, and 1 when they were kept */
+-    uint8_t full_st, under_ok;
+-    int16_t ux, uy;
+-    uint8_t uw, uh;
+-    uint16_t under[WH_UNDER_MAX / 2];
++    /* S4-W (the held result card, wh_blink): the clean pixels under the winning icon's light and under the pointer
++     * (plat_under): their boxes, and under_ok = 1 when both were kept; disc_n = held ticks still to draw the whole
++     * disc (2: both pages); win_up = the card's window is on the held pages; card_n = held ticks still to paint the
++     * finished card (2); ring_ok / hint_ok = the ring round the window / the rows under the hint pill have a clean copy
++     * (WhKeep); hint_n = held ticks still to repaint the hint (2); keep_ok = the full frame kept what is under its particles */
++    uint8_t under_ok, disc_n, win_up, card_n, ring_ok, hint_ok, hint_n, keep_ok;
++    int16_t ux, uy, px, py;
++    uint8_t uw, uh, pw, ph;
++    uint16_t under[WH_UNDER_MAX / 2], punder[WH_PUNDER_MAX / 2];
+ } Wheel;
+ MG_ARENA_FITS(Wheel);
+ #define S (MG_ARENA(Wheel))
++#define KEEP ((WhKeep *)((uint8_t *)mg_state() + MG_ARENA_BYTES + MG_FX_BYTES))
+ 
+ const char *const mg_wheel_names[MG_WHEEL_WEDGES] = {
+     "50 H$", "3 Cupcakes", "CURSE: Tax Imp", "Plushie", "200 H$",
+@@ -136,9 +159,10 @@ static void wh_enter(int arg)
+     memset(&mg, 0, sizeof(mg));
+     if ((arg & MG_ARG_DEMO) && town_count(-1) == 0)
+         town_new(doomo_town.mode, doomo_town.seed ? doomo_town.seed : 1234u, TOWN_POP_PREMADE);
+-    mg_scratch_claim();
++    scene_scratch(MG_SCRATCH_TAG, MG_ARENA_BYTES + MG_FX_BYTES + sizeof(WhKeep));     /* (mg_scratch_claim + S4-W's WhKeep) */
+     memset(mg_state(), 0, MG_ARENA_BYTES);
+     mg_fx_clear();
++    memset(KEEP, 0, sizeof(WhKeep));
+     S->force = (arg & MG_ARG_AUTOSTART) != 0;
+     S->autoplay = (arg & MG_ARG_AUTOPLAY) != 0;
+     S->st = (mg_wheel_ready() || S->force) ? WH_INTRO : WH_DONE;
+@@ -204,6 +228,8 @@ static void wh_update(void)
+             S->curse = (uint8_t)mg_wheel_is_curse(S->wedge);
+             S->st = WH_RESULT;
+             S->t = 0;
++            S->disc_n = 2;                  /* (S4-W) the held card draws the whole disc on both pages first */
++            S->under_ok = 0;
+             if (S->curse) {
+                 mg_burst(MGFX_PUFF, wcx(), wcy(), 10, 40, PAL_RAMP(RAMP_VAPE, 3));
+                 mg_shake_add(8);
+@@ -349,10 +375,21 @@ static void wh_hub(int t, int cx, int cy)
+     if ((t % 90) < 4) ui_fill_circle(cx, cy, mg_big() ? 10 : 7, PAL_PAINT(PAINT_LIME, 0));
+ }
+ 
+-/* the pointer + flapper at the top */
+-static void wh_pointer(int cx, int cy, int R)
++/* the pointer + flapper at the top. S4-W: its box (heart and flapper) is kept clean in a full frame (mode 0) and
++ * put back before the flapper is drawn on a held tick (mode 1), so the flapper's bend can change on a held tick */
++static void wh_pointer(int cx, int cy, int R, int mode)
+ {
+     int px = cx, py = cy - R - 8, bend = S->flap ? (S->flap > 2 ? 3 : 1) : 0;
++    if (mode == 0) {
++        int x0 = (px - 9) & ~1, x1 = (px + 11) & ~1, y0 = py - 8, y1 = py + 15;
++        S->under_ok &= 1;                           /* (bit 0: the winner's box; bit 1: this one's) */
++        S->pw = 0;
++        if (x0 >= 0 && y0 >= 0 && x1 <= mg_w() && y1 <= mg_h() && (x1 - x0) * (y1 - y0) <= WH_PUNDER_MAX && !mg.ox && !mg.oy &&
++            plat_under(PLAT_UNDER_GET, x0, y0, x1 - x0, y1 - y0, S->punder)) {
++            S->px = (int16_t)x0; S->py = (int16_t)y0; S->pw = (uint8_t)(x1 - x0); S->ph = (uint8_t)(y1 - y0);
++            S->under_ok |= 2;
++        }
++    }
+     ui_heart(px, py, 6, PAL_PAINT(PAINT_CHERRY, 1));
+     plat_line(px, py + 4, px - bend, py + 13, PAL_RAMP(RAMP_STONE, 0));
+     plat_line(px + 1, py + 4, px + 1 - bend, py + 13, PAL_PAINT(PAINT_CHERRY, 0));
+@@ -371,11 +408,12 @@ static void wh_winner(int cx, int cy, int R, int rot, int t, int mode)
+     int r = mg_big() ? 9 : 7, lit = (t / 4) & 1;
+     if (mode == 0) {
+         int x0 = (ix - r) & ~1, x1 = (ix + r + 2) & ~1, y0 = iy - r, y1 = iy + r + 1;
+-        S->under_ok = 0;
++        S->under_ok &= 2;
++        S->uw = 0;
+         if (x0 >= 0 && y0 >= 0 && x1 <= mg_w() && y1 <= mg_h() && (x1 - x0) * (y1 - y0) <= WH_UNDER_MAX && !mg.ox && !mg.oy &&
+             plat_under(PLAT_UNDER_GET, x0, y0, x1 - x0, y1 - y0, S->under)) {
+             S->ux = (int16_t)x0; S->uy = (int16_t)y0; S->uw = (uint8_t)(x1 - x0); S->uh = (uint8_t)(y1 - y0);
+-            S->under_ok = 1;
++            S->under_ok |= 1;
+         }
+     } else if (!plat_under(PLAT_UNDER_PUT, S->ux, S->uy, S->uw, S->uh, S->under)) {
+         return;
+@@ -414,19 +452,20 @@ static void wheel(int t, int held)
+     }
+     if (S->st == WH_RESULT) wh_winner(cx, cy, R, rot, t, 0);
+     wh_hub(t, cx, cy);
+-    wh_pointer(cx, cy, R);
++    wh_pointer(cx, cy, R, S->st == WH_RESULT ? 0 : 2);
+ }
+ 
+-/* S4-W: a held tick of the result card (the window is up, nothing else moves): what the card changes from tick to tick
+- * is the bulbs, the winning icon's light and the hub's blink; the disc itself, still, is on both pages, and the
+- * window is not touched (the disc's rim runs under it) */
+-static void wh_blink(int t)
++/* S4-W: a held tick of the result card, the disc still (it is on both pages): put back what is under the winner's
++ * light and the pointer, then the bulbs, the light, the hub and the pointer, as the full frame draws them. clip: the
++ * window is up, so the bulbs under it are left alone (the disc's rim runs under the window) */
++static void wh_blink(int t, int clip)
+ {
+     int cx = wcx(), cy = wcy(), R = radius(), rot = (int)((S->ang16 >> 4) & DOOMO_ANG_MASK);
+-    wh_bulbs(t, cx, cy, R, rot, 1);
++    plat_under(PLAT_UNDER_PUT, S->px, S->py, S->pw, S->ph, S->punder);
++    wh_bulbs(t, cx, cy, R, rot, clip);
+     wh_winner(cx, cy, R, rot, t, 1);
+     wh_hub(t, cx, cy);
+-    wh_pointer(cx, cy, R);
++    wh_pointer(cx, cy, R, 1);
+ }
+ 
+ static void tent_bg(int t)
+@@ -483,27 +522,212 @@ static void wh_power_bar(void)
+ 
+ static int wh_face(void) { return S->st == WH_SPIN ? EXPR_TALK : EXPR_HAPPY; }
+ 
+-/* S2-3: the held frame (ui_modal_hold, GBA; docs/GBA.md "Speed wave 2: S2-3"). Outside the result card (its
+- * confetti, window, flash and shake), what changes from tick to tick is the wheel: everything it draws lies inside
+- * its rim's disc (the bulbs, pegs, icons, the eyeball, the flapper), which the rim and the pie repaint opaquely.
+- * So after one full frame the platform keeps it in both pages and a tick draws the wheel only (~27 ms instead of
+- * ~55), plus what changed with the state: the speech line, Wagerine's face (drawn at the held frame's tick, so her
+- * frame sits where it is) and the POWER bar (a clean copy of its rows is kept, plat_strip, to take it away).
+- * Pixel-changing while held: the tent's sway, the sparkles' twinkle and the host frame's bob stand still. */
+-static const uint8_t wh_hold_key;
++static const char *wh_hint(void)
++{
++    return S->st == WH_DONE || S->st == WH_RESULT ? STR_ICON_A " OK" : STR_ICON_A " Spin  " STR_ICON_B " Leave";
++}
+ 
+-static int wh_hold_ok(void)
++/* the rows either hint pill can take (x and w even, with a margin), for the clean copy under it */
++static int wh_hint_box(int *x, int *y, int *w, int *h)
+ {
+-    if (mg.shake || mg.ox || mg.oy || mg.flash_t || mg_fx_live()) return 0;
+-    /* S4-W: the result card holds once its window has popped and the confetti is gone, from a full frame of the card;
+-     * and the card going away (done) is a full frame again */
+-    if (S->st == WH_RESULT) {
+-        if (S->t <= 8 || ui_pop_scale(S->t - 8) != 256 || !S->under_ok) return 0;
++    int sw = mg_w(), a = ui_text_width(lang_tr(STR_ICON_A " OK")), b = ui_text_width(lang_tr(STR_ICON_A " Spin  " STR_ICON_B " Leave"));
++    int pw = (DOOMO_MAX(a, b) + 12 + 16 + 1) & ~1;
++    *x = ((sw - pw) / 2) & ~1;
++    *w = pw;
++    *y = mg_h() - 14;
++    *h = 14;
++    return *x >= 0 && *x + *w <= sw && *w * *h <= WH_HINT_BYTES;
++}
++
++/* the result window and what is on it, popping in (S4-W: one function for the full frame and the held tick; clamp: the
++ * overshoot's way back is drawn at the full size, so a held tick never uncovers what a bigger window painted) */
++static void wh_card(int clamp)
++{
++    int W = mg_w(), x, y, w, h, ticks = S->t - 8, style = S->curse ? WIN_HELL : WIN_CREAM;
++    char buf[64];
++    wh_card_box(&x, &y, &w, &h);
++    if (clamp && ticks > 5 && ui_pop_scale(ticks) < 256) {
++        ui_window(x, y, w, h, style);
++        return;
++    }
++    if (ui_window_pop(x, y, w, h, style, ticks)) {
++        ui_title(W / 2, y - 6, S->curse ? "CURSED!" : "PRIZE!", S->curse ? WIN_HELL : WIN_CUTE);
++        mg_textc(W / 2, y + 12, mg_wheel_names[S->wedge], S->curse ? PAL_PAINT(PAINT_LIME, 2) : PAL_UI_GOLD);
++        if (S->money_delta) {
++            doomo_snprintf(buf, sizeof(buf), STR_ICON_COIN " %s%d H$", S->money_delta > 0 ? "+" : "", S->money_delta);
++            ui_text_center(W / 2, y + 26, buf, ui_style_text(style));
++        } else {
++            ui_text_center(W / 2, y + 26, "Added to your bag", ui_style_text(style));
++        }
++    }
++}
++
++/* ---- S4-W: what the held result card keeps and puts back ---------------------------------------------------- */
++/* the pixels under the live particles, a list a page, put back newest first before the page is drawn on again */
++static void wh_keep_put(int pg)
++{
++    int i;
++    for (i = KEEP->n[pg] - 1; i >= 0; i--)
++        plat_under(PLAT_UNDER_PUT, KEEP->ent[pg][i].x, KEEP->ent[pg][i].y, KEEP->ent[pg][i].w, KEEP->ent[pg][i].h,
++                   (uint8_t *)KEEP->data[pg] + KEEP->ent[pg][i].off);
++    KEEP->n[pg] = 0;
++    KEEP->used[pg] = 0;
++}
++
++static int wh_keep_pg;
++static int wh_keep_save(int kind, int x, int y, int w, int h)
++{
++    (void)kind;
++    int pg = wh_keep_pg, i = KEEP->n[pg];
++    if (i >= WH_KEEP_MAX || KEEP->used[pg] + w * h > WH_KEEP_BYTES) return 0;
++    if (!plat_under(PLAT_UNDER_GET, x, y, w, h, (uint8_t *)KEEP->data[pg] + KEEP->used[pg])) return 0;
++    KEEP->ent[pg][i].x = (int16_t)x; KEEP->ent[pg][i].y = (int16_t)y;
++    KEEP->ent[pg][i].w = (uint8_t)w; KEEP->ent[pg][i].h = (uint8_t)h;
++    KEEP->ent[pg][i].off = KEEP->used[pg];
++    KEEP->used[pg] = (uint16_t)(KEEP->used[pg] + w * h);
++    KEEP->n[pg]++;
++    return 1;
++}
++
++/* a full frame that kept what is under its particles (page pg): the other page gets the same picture at the next tick
++ * (plat_hold_frame), so it gets the same list */
++static void wh_keep_mirror(int pg)
++{
++    int o = 1 - pg;
++    KEEP->n[o] = KEEP->n[pg];
++    KEEP->used[o] = KEEP->used[pg];
++    memcpy(KEEP->ent[o], KEEP->ent[pg], KEEP->n[pg] * sizeof(KEEP->ent[0][0]));
++    memcpy(KEEP->data[o], KEEP->data[pg], KEEP->used[pg]);
++}
++
++/* can a held tick keep what is under every live particle (the room, and none near the result window)? */
++static int wh_chk_n, wh_chk_bytes, wh_chk_x0, wh_chk_x1, wh_chk_y, wh_chk_stars;
++static int wh_chk(int kind, int x, int y, int w, int h)
++{
++    wh_chk_n++;
++    wh_chk_bytes += w * h;
++    if (wh_chk_n > WH_KEEP_MAX || wh_chk_bytes > WH_KEEP_BYTES) return 0;
++    if (x < wh_chk_x1 && x + w > wh_chk_x0 && y + h > wh_chk_y)         /* on the window's zone: only a star may be */
++        return kind == MGFX_STAR && wh_chk_stars;                       /* (a held tick cuts it at the window's edge) */
++    return 1;
++}
++
++/* stars: a held tick may have stars over the window's zone (wh_exclude cuts them); a full frame that starts a hold may not */
++static int wh_keep_ok(int stars)
++{
++    int x, y, w, h;
++    wh_card_box(&x, &y, &w, &h);
++    wh_chk_n = wh_chk_bytes = 0;
++    wh_chk_stars = stars;
++    wh_chk_x0 = x - 16;
++    wh_chk_x1 = x + w + 20;
++    wh_chk_y = y - 9;
++    return mg_fx_walk(0, wh_chk) >= 0;
++}
++
++/* the ring round the result window the bigger pop frames paint on (the window's own rows are not kept: every pop frame
++ * from the third on covers them): four boxes, op = PLAT_UNDER_GET / PUT; 0 when it does not fit */
++static int wh_ring(int op)
++{
++    int x, y, w, h, X0, X1, Y0, i, off = 0, b[4][4];
++    wh_card_box(&x, &y, &w, &h);
++    if ((x | w) & 1) return 0;
++    X0 = DOOMO_MAX(x - 16, 0) & ~1;
++    X1 = DOOMO_MIN(x + w + 20, mg_w()) & ~1;
++    Y0 = y - 6;
++    b[0][0] = X0;    b[0][1] = Y0;    b[0][2] = X1 - X0;     b[0][3] = y - Y0;
++    b[1][0] = X0;    b[1][1] = y;     b[1][2] = x - X0;      b[1][3] = h;
++    b[2][0] = x + w; b[2][1] = y;     b[2][2] = X1 - x - w;  b[2][3] = h;
++    b[3][0] = X0;    b[3][1] = y + h; b[3][2] = X1 - X0;     b[3][3] = mg_h() - y - h;
++    for (i = 0; i < 4; i++) {
++        if (b[i][2] <= 0 || b[i][3] <= 0) continue;
++        if (off + b[i][2] * b[i][3] > WH_RING_BYTES) return 0;
++        if (!plat_under(op, b[i][0], b[i][1], b[i][2], b[i][3], (uint8_t *)KEEP->ring + off)) return 0;
++        off += b[i][2] * b[i][3];
+     }
+-    if ((S->st == WH_RESULT || S->full_st == WH_RESULT) && S->st != S->full_st) return 0;
++    return 1;
++}
++
++/* S2-3: the held frame (ui_modal_hold, GBA; docs/GBA.md "Speed wave 2: S2-3"). What changes from tick to tick is the
++ * wheel: everything it draws lies inside its rim's disc (the bulbs, pegs, icons, the eyeball, the flapper), which the rim and
++ * the pie repaint opaquely. So after one full frame the platform keeps it in both pages and a tick draws the wheel only
++ * (~27 ms instead of ~55), plus what changed with the state: the speech line, Wagerine's face (drawn at the held frame's
++ * tick, so her frame sits where it is) and the POWER bar (a clean copy of its rows is kept, plat_strip, to take it away).
++ * S4-W: the result card holds too (wh_result_tick). Pixel-changing while held: the tent's sway, the sparkles' twinkle, the
++ * window's glint and the host frame's bob stand still. */
++static const uint8_t wh_hold_key;
++
++/* start: a full frame marks itself to be held from the next tick; otherwise: may a held frame go on (the card's window and
++ * confetti are on the held pages, so it may go on with them, and the full frame that would start one may not) */
++static int wh_hold_ok(int start)
++{
++    if (mg.shake || mg.ox || mg.oy || mg.flash_t) return 0;
+ #if !defined(DOOMO_PLATFORM_PS1)
+     if (portrait_job_on()) return 0;                /* a stand-in face may still change */
+ #endif
++    if (S->st != WH_RESULT) return !(S->win_up || mg_fx_live());       /* (the card going away: a full frame) */
++    if (start) return S->keep_ok && S->t > 8 && ui_pop_scale(S->t - 8) == 256 && S->under_ok == 3;
++    if (!S->disc_n && S->under_ok != 3) return 0;
++    if (S->t > 8 && !S->win_up && !S->ring_ok) return 0;              /* the pop has no clean ring to be put back on */
++    if (!S->win_up && wh_hint() != S->held_hint && !S->hint_ok) return 0;
++    if (mg_fx_live() && !wh_keep_ok(1)) return 0;
++    return 1;
++}
++
++/* the result card, one held tick (see wh_blink, wh_card). 0: a full frame instead */
++static int wh_result_tick(int t, const char *line)
++{
++    int pg = plat_under(PLAT_UNDER_PAGE, 0, 0, 0, 0, 0) & 1, pop = 0, hint = 0, disc = S->disc_n != 0;
++    wh_keep_put(pg);                                /* the particles of two ticks ago */
++    if (S->disc_n) {                                /* the whole disc, once for each page */
++        wheel(t, 1);
++        S->disc_n--;
++    } else {
++        if (S->under_ok != 3) return 0;
++        if (!S->ring_ok && S->t <= 8 && !S->bub_n && !S->face_n && !S->hint_n)   /* all repainted: the ring is clean */
++            S->ring_ok = (uint8_t)wh_ring(PLAT_UNDER_GET);
++        pop = S->t > 8 && (ui_pop_scale(S->t - 8) != 256 || S->card_n < 2);
++        if (pop && !S->ring_ok) return 0;
++        /* a new line first, then the new face (one of them a tick, so the tick stays under 33 ms) */
++        if (S->bub_n) {
++            wh_bubble(line);
++            S->bub_n--;
++        } else if (S->face_n) {
++            mg_host_frame(mg_big() ? 12 : 6, mg_big() ? 40 : 26, MG_WHEEL_HOST, wh_face(), S->full_t);
++            S->face_n--;
++        }
++        if (pop && !wh_ring(PLAT_UNDER_PUT)) return 0;
++        wh_blink(t, S->win_up && !pop);
++    }
++    wh_keep_pg = pg;
++    if (disc) {                                     /* (the two ticks that draw the whole disc stay under 33 ms: the */
++        ui_modal_hold_end();                        /* particles, still at the pointer or above the screen, wait) */
++        return 1;
++    }
++    if (S->t > 8) {                                 /* the window (or its pop) is over them: stars stop at its edge */
++        int x, y, w, h;
++        wh_card_box(&x, &y, &w, &h);
++        mg_fx_exclude(0, x - 1, y - 1, w + 5, mg_h() - y + 1);      /* the window and its shadow */
++        mg_fx_exclude(1, mg_w() / 2 - 40, y - 12, 80, 11);          /* the title pill over it */
++    }
++    if (mg_fx_walk(1, wh_keep_save) < 0) { mg_fx_exclude(0, 0, 0, 0, 0); mg_fx_exclude(1, 0, 0, 0, 0); return 0; }
++    mg_fx_exclude(0, 0, 0, 0, 0);
++    mg_fx_exclude(1, 0, 0, 0, 0);
++    ui_modal_hold_end();
++    if (!S->disc_n && S->hint_n) {                  /* the hint changes with the card: the clean rows first */
++        hint = 1;
++        S->hint_n--;
++    }
++    if (pop) {
++        wh_card(1);
++        S->win_up = 1;
++        if (ui_pop_scale(S->t - 8) == 256) S->card_n++;
++        hint = 1;
++    }
++    if (hint) {
++        if (!pop) plat_under(PLAT_UNDER_PUT, KEEP->hx, KEEP->hy, KEEP->hw, KEEP->hh, KEEP->hint);
++        ui_hint(wh_hint(), WIN_CUTE);
++    }
+     return 1;
+ }
+ 
+@@ -511,12 +735,22 @@ static int wh_draw_held(int t)
+ {
+     int R = radius(), H = mg_h();
+     const char *line = wh_line();
+-    if (!ui_modal_hold(&wh_hold_key, wh_hold_ok(), wcx() - R - 8, wcy() - R - 14, 2 * R + 17, 2 * R + 24))
++    if (!ui_modal_hold(&wh_hold_key, wh_hold_ok(0), wcx() - R - 8, wcy() - R - 14, 2 * R + 17, 2 * R + 24))
+         return 0;
+     /* a change is painted on two held ticks: the two pages flip, each needs it */
+     if (S->bar_up && S->st != WH_CHARGE) { S->bar_up = 0; S->bar_n = 2; }
+     if (line != S->held_line) { S->held_line = line; S->bub_n = 2; }
+     if (wh_face() != S->held_expr) { S->held_expr = (uint8_t)wh_face(); S->face_n = 2; }
++    if (wh_hint() != S->held_hint) { S->held_hint = wh_hint(); S->hint_n = 2; }
++    if (S->st == WH_RESULT) {
++        if (!wh_result_tick(t, line)) {
++            ui_modal_hold_end();
++            ui_modal_drop();
++            return 0;
++        }
++        ui_modal_hold_end();
++        return 1;
++    }
+     if (S->bar_n) {                                 /* the POWER bar goes: its rows' clean copy back */
+         if (!plat_strip(PLAT_STRIP_RESTORE, WH_BAR_Y(H), WH_BAR_H)) {
+             ui_modal_hold_end();                    /* the copy is gone: a full frame */
+@@ -533,8 +767,7 @@ static int wh_draw_held(int t)
+         mg_host_frame(mg_big() ? 12 : 6, mg_big() ? 40 : 26, MG_WHEEL_HOST, wh_face(), S->full_t);
+         S->face_n--;
+     }
+-    if (S->st == WH_RESULT) wh_blink(t);
+-    else wheel(t, 1);
++    wheel(t, 1);
+     if (S->st == WH_CHARGE) {
+         if (!S->bar_saved) {                        /* no clean copy of its rows: draw it, hold no longer */
+             ui_modal_hold_end();
+@@ -551,14 +784,15 @@ static int wh_draw_held(int t)
+ static void wh_draw_body(void)
+ {
+     int W = mg_w(), H = mg_h(), t = S->t + (int)doomo_frame_count(), big = mg_big();
+-    int hx = big ? 12 : 6, hy = big ? 40 : 26;
++    int hx = big ? 12 : 6, hy = big ? 40 : 26, card = 0, x, y, w, h;
+     const char *line = wh_line();
+-    char buf[64];
+     if (plat_draw_skipped()) return;
+     /* S2-3: Wagerine talks while the wheel spins: her talking face is drawn ahead, in the idle time of the frames
+      * before (a 45 ms render in the first spin tick otherwise; the same picture) */
+     if (S->st < WH_SPIN && mg_host_alive(MG_WHEEL_HOST)) portrait_prefetch(MG_WHEEL_HOST, EXPR_TALK);
+     if (wh_draw_held(t)) return;
++    KEEP->n[0] = KEEP->n[1] = 0;                    /* (a full frame covers whatever the held pages kept under) */
++    KEEP->used[0] = KEEP->used[1] = 0;
+     tent_bg(t);
+     mg_textc(hx + 28 + (big ? 38 : 30), big ? 22 : 16, "WHEEL OF FATE", PAL_UI_GOLD);
+     mg_host_frame(hx, hy, MG_WHEEL_HOST, wh_face(), t);
+@@ -568,31 +802,38 @@ static void wh_draw_body(void)
+     S->full_t = t;
+     S->held_line = line;
+     S->held_expr = (uint8_t)wh_face();
++    S->held_hint = wh_hint();
+     S->bar_saved = (uint8_t)plat_strip(PLAT_STRIP_SAVE, WH_BAR_Y(H), WH_BAR_H);
+     S->bar_up = S->st == WH_CHARGE;
+-    S->bub_n = S->face_n = S->bar_n = 0;
+-    S->full_st = S->st;
++    S->bub_n = S->face_n = S->bar_n = S->hint_n = 0;
++    S->disc_n = 0;
+     if (S->st == WH_CHARGE) wh_power_bar();
+-    mg_fx_draw();
++    S->keep_ok = 0;
++    if (S->st == WH_RESULT && (!mg_fx_live() || wh_keep_ok(0))) {      /* (S4-W) a hold may start with the particles up */
++        int pg = plat_under(PLAT_UNDER_PAGE, 0, 0, 0, 0, 0) & 1;
++        wh_keep_pg = pg;
++        if (mg_fx_walk(1, wh_keep_save) >= 0) { wh_keep_mirror(pg); S->keep_ok = 1; }
++        else { KEEP->n[0] = KEEP->n[1] = 0; KEEP->used[0] = KEEP->used[1] = 0; mg_fx_draw(); }   /* (all of them again) */
++    } else {
++        mg_fx_draw();
++    }
++    S->win_up = S->card_n = 0;
+     if (S->st == WH_RESULT && S->t > 8) {
+-        int x, y, w, h;
+-        wh_card_box(&x, &y, &w, &h);
+-        if (ui_window_pop(x, y, w, h, S->curse ? WIN_HELL : WIN_CREAM, S->t - 8)) {
+-            ui_title(W / 2, y - 6, S->curse ? "CURSED!" : "PRIZE!", S->curse ? WIN_HELL : WIN_CUTE);
+-            mg_textc(W / 2, y + 12, mg_wheel_names[S->wedge], S->curse ? PAL_PAINT(PAINT_LIME, 2) : PAL_UI_GOLD);
+-            if (S->money_delta) {
+-                doomo_snprintf(buf, sizeof(buf), STR_ICON_COIN " %s%d H$", S->money_delta > 0 ? "+" : "", S->money_delta);
+-                ui_text_center(W / 2, y + 26, buf, ui_style_text(S->curse ? WIN_HELL : WIN_CREAM));
+-            } else {
+-                ui_text_center(W / 2, y + 26, "Added to your bag", ui_style_text(S->curse ? WIN_HELL : WIN_CREAM));
+-            }
+-        }
++        wh_card(0);
++        S->win_up = 1;
++        S->card_n = ui_pop_scale(S->t - 8) == 256 ? 2 : 0;
++        card = 1;
+     }
+     if (!opt_get(OPT_REDUCE_FLASH) && mg.flash_t) { plat_ui_loops(); plat_checker(0, 0, W, H, mg.flash_c); mg.flash_t--; }
+-    ui_hint(S->st == WH_DONE || S->st == WH_RESULT ? STR_ICON_A " OK" :
+-            STR_ICON_A " Spin  " STR_ICON_B " Leave", WIN_CUTE);
++    /* S4-W: the clean rows under the hint pill (the hint changes with the card), when no window is under it */
++    S->hint_ok = 0;
++    if (!card && wh_hint_box(&x, &y, &w, &h) && plat_under(PLAT_UNDER_GET, x, y, w, h, KEEP->hint)) {
++        KEEP->hx = (int16_t)x; KEEP->hy = (int16_t)y; KEEP->hw = (uint8_t)w; KEEP->hh = (uint8_t)h;
++        S->hint_ok = 1;
++    }
++    ui_hint(wh_hint(), WIN_CUTE);
+     ui_modal_no_band();                             /* the band copy is the POWER bar's (plat_strip has one) */
+-    ui_modal_full(&wh_hold_key, wh_hold_ok());
++    ui_modal_full(&wh_hold_key, wh_hold_ok(1));
+ }
+ 
+ static void wh_draw(void)
+diff --git a/core/tests/test_modal_hold.c b/core/tests/test_modal_hold.c
+index c03b225..9c993b7 100644
+--- a/core/tests/test_modal_hold.c
++++ b/core/tests/test_modal_hold.c
+@@ -187,10 +187,11 @@ TEST(modal_hold_fair_results_card)
+ }
+ 
+ /* ---- (S4-W) the Prize Wheel's result card: once its window has popped and the confetti is gone it holds, and a held
+- * tick repaints only the bulbs, the winning icon's light and the hub. The disc (the rim and its shadow, outside the
++ * tick repaints only the bulbs, the winning icon's light and the hub (and the particles, the window's pop and the hint
++ * are painted on held ticks too: the native platform holds on two pages here, like the GBA, nat_hold_pages). The disc (the rim and its shadow, outside the
+  * window) is the same picture as the full frame's on every tick, and when the card goes away (done) the window does
+  * too; the window itself (its glint) and the tent (its sway) stand still while held: the pixel-changing part ------- */
+-typedef struct { uint32_t disc[900], win[900]; uint8_t held[900], phase[900]; } WheelRun;
++typedef struct { uint32_t disc[900], win[900]; uint8_t held[900], phase[900], fx[900]; } WheelRun;
+ 
+ static int wh_in_disc(int x, int y)
+ {
+@@ -199,13 +200,15 @@ static int wh_in_disc(int x, int y)
+     return (x - cx) * (x - cx) + (y - cy) * (y - cy) <= R * R || (x - cx - 2) * (x - cx - 2) + (y - cy - 3) * (y - cy - 3) <= R * R;
+ }
+ 
+-static void wheel_run(int hold, WheelRun *r, int nf)
++static void wheel_run(int hold, WheelRun *r, int nf, uint32_t seed)
+ {
+     int f, big = mg_big(), ww = big ? 200 : 160, wx = (mg_w() - ww) / 2, wy = mg_h() - 44 - (big ? 16 : 6), res = 0;
+     doomo_init();
+     test_reset();
+     ui_modal_hold_enable(hold);
++    nat_hold_pages(hold);
+     fp_new_island(TOWN_POP_PREMADE, 4242);
++    rng_seed(&doomo_rng, seed);
+     scene_set(&SCENE_MG_WHEEL, MG_ARG_AUTOSTART | MG_ARG_AUTOPLAY);
+     for (f = 0; f < nf; f++) {
+         int before = ui_modal_hold_enable(-1), x, y, ph = mg_wheel_phase();
+@@ -216,6 +219,7 @@ static void wheel_run(int hold, WheelRun *r, int nf)
+         plat_end_frame();
+         r->held[f] = (uint8_t)(ui_modal_hold_enable(-1) > before);
+         r->phase[f] = (uint8_t)mg_wheel_phase();            /* the phase the frame was drawn in */
++        r->fx[f] = (uint8_t)mg_fx_live();
+         for (y = 0; y < nat_h; y++)
+             for (x = 0; x < nat_w; x++) {
+                 int win = x >= wx - 2 && x < wx + ww + 4 && y >= wy - 9;
+@@ -226,24 +230,44 @@ static void wheel_run(int hold, WheelRun *r, int nf)
+         r->win[f] = hw;
+     }
+     ui_modal_hold_enable(0);
++    nat_hold_pages(0);
+ }
+ 
+-TEST(modal_hold_fair_wheel_result_card)
++/* one spin (a seed), hold on and off: the disc, tick for tick. Returns the ticks held with confetti up when the first tick
++ * of the result card was held, else -1 (a curse shakes and flashes: those are full frames) */
++static void wheel_compare(uint32_t seed, int *out)
+ {
+     static WheelRun a, b;
+-    int f, nf = 900, held_result = 0, done_from = -1;
+-    wheel_run(1, &a, nf);
+-    wheel_run(0, &b, nf);
++    int f, nf = 900, held_result = 0, held_fx = 0, done_from = -1, first_result = -1;
++    *out = -1;
++    wheel_run(1, &a, nf, seed);
++    wheel_run(0, &b, nf, seed);
+     for (f = 0; f < nf; f++) {
+-        CHECK_MSG(!b.held[f], "wheel: the hold-off run held tick %d", f);
+-        CHECK_MSG(a.disc[f] == b.disc[f], "wheel: tick %d (phase %d, held %d): the disc differs from the full frame", f, a.phase[f], a.held[f]);
++        if (first_result < 0 && a.phase[f] == 4) first_result = f;
++        CHECK_MSG(!b.held[f], "wheel %u: the hold-off run held tick %d", (unsigned)seed, f);
++        /* (the two ticks that draw the whole disc on both pages leave the particles out: they show 2 ticks late) */
++        CHECK_MSG(a.disc[f] == b.disc[f] || (first_result >= 0 && f < first_result + 2),
++                  "wheel %u: tick %d (phase %d, held %d): the disc differs from the full frame", (unsigned)seed, f, a.phase[f], a.held[f]);
+         if (a.held[f] && a.phase[f] == 4) held_result++;
++        if (a.held[f] && a.fx[f]) held_fx++;
+         if (done_from < 0 && a.phase[f] == 5) done_from = f;
+     }
+-    CHECK_MSG(done_from > 0, "wheel: the card was never left");
+-    CHECK_MSG(held_result > 100, "wheel: only %d held ticks on the result card", held_result);
++    CHECK_MSG(done_from > 0, "wheel %u: the card was never left", (unsigned)seed);
+     /* the card going away is drawn in full (the window leaves the held frame): the same picture as the hold-off run's */
+-    CHECK_MSG(!a.held[done_from] && a.win[done_from] == b.win[done_from], "wheel: the first tick of done was not drawn in full");
++    CHECK_MSG(!a.held[done_from] && a.win[done_from] == b.win[done_from], "wheel %u: the first tick of done was not drawn in full", (unsigned)seed);
++    CHECK_MSG(held_result > 100, "wheel %u: only %d held ticks on the result card", (unsigned)seed, held_result);
++    *out = first_result > 0 && a.held[first_result] ? held_fx : -1;
++}
++
++TEST(modal_hold_fair_wheel_result_card)
++{
++    uint32_t seed;
++    int n, prize_runs = 0;
++    for (seed = 1; seed <= 6; seed++) {
++        wheel_compare(seed, &n);
++        if (n > 30) prize_runs++;        /* the spin went straight into the held card, with confetti on the held pages */
++    }
++    CHECK_MSG(prize_runs >= 2, "wheel: only %d of 6 spins went into the held card with confetti on it", prize_runs);
+ }
+ 
+ /* ---- the house: the Catalog over the room (the HUD bands repaint, the room is the held frame) ----------------------- */
+diff --git a/gba/src/hold.c b/gba/src/hold.c
+index e09d958..5a0030f 100644
+--- a/gba/src/hold.c
++++ b/gba/src/hold.c
+@@ -180,6 +180,7 @@ int plat_under(int op, int x, int y, int w, int h, void *buf)
+ {
+     uint16_t *b = (uint16_t *)buf;
+     int r, c, hw = w / 2;
++    if (op == PLAT_UNDER_PAGE) return (volatile uint16_t *)gba_back == VRAM_PAGE1;
+     if (!buf || ((uintptr_t)buf & 1) || (x & 1) || (w & 1) || w <= 0 || h <= 0 || x < 0 || y < 0 ||
+         x + w > SCREEN_W || y + h > SCREEN_H || (op != PLAT_UNDER_GET && op != PLAT_UNDER_PUT)) return 0;
+     if (gba_nodraw == 1) return 0;
+-- 
+2.43.0
+
+
+From 48a424c8ee4c7e63a482af848fc11d325d76d6a6 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 18:38:43 +0000
+Subject: [PATCH 3/7] S4-W: PS1 compiles the held card out (no resident byte),
+ exclusion/keep state out of static RAM, wheel result windows in speed2_fair,
+ docs, ledger row 60
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvDzgwv9nxsL8r6tWV
+---
+ ROADMAP.md                          |  1 +
+ core/src/mg.h                       |  7 ++-
+ core/src/mg_fx.c                    | 17 +++++--
+ core/src/mg_wheel.c                 | 59 +++++++++++++---------
+ docs/GBA.md                         | 77 ++++++++++++++++++++++++++++-
+ gba/harness/scripts/speed2_fair.txt | 16 ++++++
+ 6 files changed, 145 insertions(+), 32 deletions(-)
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index 798d448..d676b17 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -21,6 +21,7 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
+ before redoing any of them; a zip without `.git` cannot tell.
+ 
+ ### Done
++- **Speed S4-W (2026-11-15, SPEED-3, the Prize Wheel's result card on the GBA, speed audit 2 / S2-4b follow-up; docs/GBA.md "Speed wave 3: S4-W", ledger row S4-W):** the spin goes straight into a held result card (S2-1's modal hold): a held tick draws only the bulbs, the winning icon's light, the hub and the pointer; the confetti, stars and puffs keep what is under them per page (`plat_under`, `mg_fx_walk`), the window's pop is painted over a clean ring, the hint over its clean rows, stars stop at the window's edge. GBA drawn fps (libmgba, `speed2_fair.txt`, before -> after): spin window 29.9 (one 67 ms frame) -> **30.0 (2:130)**, result card (60 ticks: pop, confetti, stars) 15.0 -> **30.5 (2:60)**, card held 15.0 -> **30.1 (4.2 ms a tick)**, done 30.0 -> 30.0. A curse (shake, flash, puffs) keeps 13 frames over 33 ms (was 26): result 16.7 -> 23.7 fps, its held card 15.1 -> 30.1. The disc outside the window is the full frame's pixel for pixel on every tick; the trades (the held card's sway, twinkle, glint and bob stand still; stars, line and hint 2-5 ticks late at the result; the pop's way back at full size; stars cut at the window) are in the docs. No static RAM (`.bss` 254,828 B, the scene scratch claim +8,858 B while the wheel runs); PS1 compiled out (`_end` 0x801e0420, 130,000 B below the stack top, the base's); Dreamcast has no hold (full frame, 30). New `modal_hold_fair_wheel_result_card` (six seeds, hold on and off, native two-page hold `nat_hold_pages`). **Still short:** a curse's first ~0.9 s (shake and flash are full frames).
+ - **Speed S2-4c (2026-11-15, the kitchen on the GBA, speed audit 2 causes C3 / C1, audit 3 rank 12, partial; measured on libmgba, PCSX-Redux and Flycast on `5aa25cd1` and again on `366ee6c1`, `9dc5e39a`, `e587f9c1`, `167c08ba` (with S2-4b), `262bf2b7` (with S3-2) and the tip it landed on, `fe410024`; docs/GBA.md "Speed wave 2: S2-4c", ledger row 59, docs/PS1.md "Speed tour 2"):** the kitchen's wall, jars and counter (and, for the recipe book, the window, the book and the doily) are kept pictures baked into the GBA ROM (`DOOMO_BACKDROP_KITCHEN`), and every screen (the book, the cooking steps, the result card, the counter) is drawn as layers of SP7's retained stage, each redrawn only when its key or box changes or a changed box lies on it; Granny's 164 poses are baked too (`runner --bake-poses`, `plat_cook_pose`, the file read by `cook_pose_find`: one image instead of ~45 ellipses), cut off where the counter covers her; faces are blitted above the counter only, bubbles are two layers, boxes and keys are measured and follow the translated text; `stage_rows` copies short spans by DMA (the fair's S2-4b windows hash the same, tick for tick). All exact (`test_cook_kept`: the kitchen with the stage on / off, 5,140 frames at each of two sizes, day and night, and in Spanish, identical; the baked pose file read back and checked pose by pose; GBA `vhash-seq` against the tip: 13 windows identical, Spanish 2,479 of 2,480 frames (the tip's one differing frame is the same picture one pixel lower), the counter's windows differ only inside the faces). GBA drawn fps: recipe book 20.0 -> **30.0**, chop 21.9 -> **30.0**, fry 19.8 -> **30.0** (every frame two vblanks); stir 20.0 -> 30.0, bake 20.8 -> 29.9, simmer 21.8 -> 29.7 (one or two 50-67 ms frames at a step change); result card 15.0 -> 20.8 (21.1 before S2-4b's stage changes); with S3-2's portrait jobs counter 26.3 -> 29.2 and serving 24.3 -> 29.3 (3-6 frames of 50 ms a window); `expect-fps` floors. The approved 15 Hz trades were measured on the result card and save nothing over a kept picture (21.1 fps either way: each Mode 4 page is two ticks old), so none is taken. GBA EWRAM and IWRAM unchanged, ROM +320 KB (three pictures, the poses). PS1: compiled out, `_end` unchanged (130,000 B below the stack top with the FMV on `fe410024`, the tip's; delta 0 measured on every earlier tip), the kitchen's table the tip's. Dreamcast: all 16 windows 30.0. **Still short (open):** the result card (needs G2-EX's clipped redraw), the counter / serving's three-vblank frames (animated faces, bobbing bubbles), the step-change frames of stir, bake and simmer; on the PS1 the result card's, counter's and serving's single 50 ms frames (unlock grants, faces: S3-2).
+ - **Talk TKP0-MEASURE (2026-11-15, TALK round 13; docs/design/talk/TKP_PLAN.md, docs/TALK.md 6q):** the PS1 re-measure and a buildable plan, no resident byte. Talk linked on the PS1: 146 KB of files (92 KB as one new overlay group, 0 B of slot growth; resident +19,520 B with the group alone, +15,616 B with the typed line off, about 2 to 4 KB after the planned clean-ups, inside the 12 KB share). PS1 subset of TALK_en.BIN 577,786 B against the 319,488 B budget (9,062 alternatives); lossless levers (word-token strings, packed rows) reach about 437 KB, which does not fit: CR10's part store holds SPU RAM 0x50000-0x7DFFF, leaving Talk 278,528 B at most (decision D1 for the owner: a PS1 content tier, or drop Talk on the PS1). Measured: 2,075 database reads and 43.4 KB a line (74 KB an exchange), 661,000 instructions a line (48 % the lint probes); estimated R3000 step 12 to 30 ms typical, so the generator must be sliced. First load estimated 1.4 to 1.6 s against the 1.5 s gate. Packages TKP1 to TKP6 with acceptance tests. New tools `ps1/tools/talk_size.sh`, `core/tools/talk_reads.sh`, `core/tools/talk_steps.sh`. PS1 margin 110,560 B on the rebased tree (unchanged), GBA sizes unchanged.
+ - **Talk T9, pointer input on the Talk screen (2026-11-15, docs/TALK.md 6k):** add-only `input_set_pointer` / `input_pointer` / `input_pointer_click` (`input.h`, `DOOMO_POINTER` 0 on GBA, PS1 and Dreamcast so they link none of it); on the Talk screen a click is exactly the matching pad press (quick reply, category, act, topic, typed line, Options, invite row, goodbye, a name in the people strip, the header = B, the scroll bar = L / R); a small arrow is drawn only while a pointer is present. Runner `mouse X Y [click]`, `expect-ptr-page`, `expect-ptr-row`; script `talk_pointer.txt`, `test_talk_pointer.c`. Not done: clicking the dialogue box, a wheel.
+diff --git a/core/src/mg.h b/core/src/mg.h
+index 1606701..006bee0 100644
+--- a/core/src/mg.h
++++ b/core/src/mg.h
+@@ -207,8 +207,9 @@ void mg_flash(uint8_t color, int ticks);
+ void mg_hitstop(int ticks);
+ void mg_fx_update(void);
+ void mg_fx_draw(void);
+-int  mg_fx_walk(int draw, int (*keep)(int kind, int x, int y, int w, int h));   /* (S4-W) each particle's box, then draws it */
+-void mg_fx_exclude(int i, int x, int y, int w, int h);   /* (S4-W) no star is drawn inside box i (0, 1; w <= 0: none) */
++/* (S4-W; not on the PS1: it holds no frame) */
++int  mg_fx_walk(int draw, int (*keep)(int kind, int x, int y, int w, int h));   /* each particle's box, then draws it */
++void mg_fx_exclude(int i, int x, int y, int w, int h);   /* no star is drawn inside box i (0, 1; w <= 0: none) */
+ void mg_fx_clear(void);
+ int  mg_fx_live(void);                      /* live particles (tests, the results hold) */
+ /* A cute splat (GORE_CUTE: confetti + hearts; brutal: red drops). */
+@@ -370,7 +371,9 @@ extern const MgGame *const mg_games[MG_GAME_COUNT];
+ #define MG_WHEEL_WEDGES 10
+ #define MG_WHEEL_HOST 506                  /* Wagerine, Cacoblob Bookie  */
+ int  mg_wheel_ready(void);                 /* not spun yet today          */
++#if !defined(DOOMO_PLATFORM_PS1)
+ int  mg_wheel_phase(void);                 /* (S4-W, tests) 0 intro 1 ready 2 charge 3 spin 4 result 5 done */
++#endif
+ /* Grant wedge's prize / curse; returns the H$ change. */
+ int  mg_wheel_apply(int wedge);
+ extern const char *const mg_wheel_names[MG_WHEEL_WEDGES];
+diff --git a/core/src/mg_fx.c b/core/src/mg_fx.c
+index 3870b87..96de403 100644
+--- a/core/src/mg_fx.c
++++ b/core/src/mg_fx.c
+@@ -24,6 +24,7 @@ typedef struct MgPop {
+ typedef struct MgFxPool {
+     MgFx fx[FX_MAX];
+     MgPop pops[POP_MAX];
++    int16_t ex[2][4];        /* (S4-W) boxes stars are not drawn into: x0, y0, x1, y1 (mg_fx_exclude) */
+ } MgFxPool;
+ DOOMO_STATIC_ASSERT(sizeof(MgFxPool) <= MG_FX_BYTES, mg_fx_pool_fits);
+ #define FXP ((MgFxPool *)((uint8_t *)mg_state() + MG_ARENA_BYTES))
+@@ -183,19 +184,20 @@ void mg_fx_update(void)
+         }
+ }
+ 
++#if !defined(DOOMO_PLATFORM_PS1)       /* (S4-W: the held result card of the Prize Wheel; the PS1 holds no frame) */
+ /* S4-W: two boxes that stars are not drawn into (the Prize Wheel's result window, and its title pill above it: on a full
+  * frame they are drawn over the stars, a held tick draws them once and the stars after, so the stars stop at their edge) */
+-static int fx_ex[2][4];                          /* x0, y0, x1, y1 */
++#define fx_ex (FXP->ex)
+ void mg_fx_exclude(int i, int x, int y, int w, int h)
+ {
+-    fx_ex[i][0] = x; fx_ex[i][1] = y; fx_ex[i][2] = w > 0 ? x + w : x; fx_ex[i][3] = y + h;
++    fx_ex[i][0] = (int16_t)x; fx_ex[i][1] = (int16_t)y; fx_ex[i][2] = (int16_t)(w > 0 ? x + w : x); fx_ex[i][3] = (int16_t)(y + h);
+ }
+ #define FX_EXCLUDING (fx_ex[0][2] > fx_ex[0][0] || fx_ex[1][2] > fx_ex[1][0])
+ 
+ static void fx_crect(int x, int y, int w, int h, uint8_t c, int bi)
+ {
+     int x1 = x + w, y1 = y + h, ya, yb;
+-    const int *e;
++    const int16_t *e;
+     if (bi == 2) { plat_rect(x, y, w, h, c); return; }
+     e = fx_ex[bi];
+     if (x >= e[2] || x1 <= e[0] || y >= e[3] || y1 <= e[1]) { fx_crect(x, y, w, h, c, bi + 1); return; }
+@@ -226,6 +228,11 @@ static void fx_sparkle(int cx, int cy, int phase, uint8_t c)
+     }
+ }
+ 
++#define FX_EXCLUDING_NOW FX_EXCLUDING
++#else
++#define FX_EXCLUDING_NOW 0
++#endif
++
+ static void fx_draw_one(const MgFx *f, int ox, int oy)
+ {
+     int x = (f->x >> 4) + ox, y = (f->y >> 4) + oy, age = f->max - f->life;
+@@ -242,7 +249,7 @@ static void fx_draw_one(const MgFx *f, int ox, int oy)
+         ui_heart(x, y, f->life > 8 ? 3 : 2, f->color);
+         break;
+     case MGFX_STAR:
+-        if (FX_EXCLUDING) fx_sparkle(x, y, (age * 2) & 15, f->color);
++        if (FX_EXCLUDING_NOW) fx_sparkle(x, y, (age * 2) & 15, f->color);
+         else ui_sparkle(x, y, (age * 2) & 15, f->color);
+         break;
+     case MGFX_PUFF:
+@@ -296,6 +303,7 @@ void mg_fx_draw(void)
+     fx_draw_pops(mg.ox, mg.oy);
+ }
+ 
++#if !defined(DOOMO_PLATFORM_PS1)
+ /* S4-W: the box a particle draws in, rounded out to even x and width and clipped to the screen (the platform keeps and
+  * puts back whole halfwords, plat_under). Only the kinds the Prize Wheel makes: -1 for any other, 0 for none on screen */
+ static int fx_box(const MgFx *f, int ox, int oy, int b[4])
+@@ -336,3 +344,4 @@ int mg_fx_walk(int draw, int (*keep)(int kind, int x, int y, int w, int h))
+     }
+     return n;
+ }
++#endif
+diff --git a/core/src/mg_wheel.c b/core/src/mg_wheel.c
+index 43602dc..76f6873 100644
+--- a/core/src/mg_wheel.c
++++ b/core/src/mg_wheel.c
+@@ -20,6 +20,13 @@
+ #include "doomo/plat_ext.h"                 /* plat_strip (S2-3: the POWER bar rows of a held frame) */
+ 
+ enum { WH_INTRO, WH_READY, WH_CHARGE, WH_SPIN, WH_RESULT, WH_DONE };
++/* (S4-W) the held result card's keeping and putting back (plat_under) exist where there is a held frame: not on the PS1,
++ * which compiles all of it out (no resident byte, no overlay byte) */
++#if defined(DOOMO_PLATFORM_PS1)
++#define WH_KEEPS 0
++#else
++#define WH_KEEPS 1
++#endif
+ #define WH_UNDER_MAX 400                    /* the winner's light box (2 * 9 + 1 = 19 wide, rounded out to 20) */
+ #define WH_PUNDER_MAX 480                   /* the pointer's box: heart and flapper, 20 x 23 */
+ #define WH_KEEP_MAX 40                      /* particles kept under per page */
+@@ -33,6 +40,7 @@ typedef struct WhKeep {
+     struct { int16_t x, y; uint8_t w, h; uint16_t off; } ent[2][WH_KEEP_MAX];
+     uint16_t used[2];
+     uint8_t n[2];
++    int16_t pg, chk_n, chk_bytes, chk_x0, chk_x1, chk_y, chk_stars;       /* the walk's state (no static RAM) */
+     int16_t hx, hy;
+     uint8_t hw, hh;
+     uint16_t hint[WH_HINT_BYTES / 2];
+@@ -101,10 +109,12 @@ int mg_wheel_ready(void)
+     return progress_get(PROG_FAIR_WHEEL_DAY) != doomo_town.day + 1;
+ }
+ 
++#if WH_KEEPS
+ int mg_wheel_phase(void)
+ {
+     return scene_scratch_mine(MG_SCRATCH_TAG) ? S->st : -1;
+ }
++#endif
+ 
+ int mg_wheel_apply(int w)
+ {
+@@ -159,10 +169,10 @@ static void wh_enter(int arg)
+     memset(&mg, 0, sizeof(mg));
+     if ((arg & MG_ARG_DEMO) && town_count(-1) == 0)
+         town_new(doomo_town.mode, doomo_town.seed ? doomo_town.seed : 1234u, TOWN_POP_PREMADE);
+-    scene_scratch(MG_SCRATCH_TAG, MG_ARENA_BYTES + MG_FX_BYTES + sizeof(WhKeep));     /* (mg_scratch_claim + S4-W's WhKeep) */
++    scene_scratch(MG_SCRATCH_TAG, MG_ARENA_BYTES + MG_FX_BYTES + (WH_KEEPS ? sizeof(WhKeep) : 0));   /* (mg_scratch_claim + S4-W's WhKeep) */
+     memset(mg_state(), 0, MG_ARENA_BYTES);
+     mg_fx_clear();
+-    memset(KEEP, 0, sizeof(WhKeep));
++    if (WH_KEEPS) memset(KEEP, 0, sizeof(WhKeep));
+     S->force = (arg & MG_ARG_AUTOSTART) != 0;
+     S->autoplay = (arg & MG_ARG_AUTOPLAY) != 0;
+     S->st = (mg_wheel_ready() || S->force) ? WH_INTRO : WH_DONE;
+@@ -380,7 +390,7 @@ static void wh_hub(int t, int cx, int cy)
+ static void wh_pointer(int cx, int cy, int R, int mode)
+ {
+     int px = cx, py = cy - R - 8, bend = S->flap ? (S->flap > 2 ? 3 : 1) : 0;
+-    if (mode == 0) {
++    if (mode == 0 && WH_KEEPS) {
+         int x0 = (px - 9) & ~1, x1 = (px + 11) & ~1, y0 = py - 8, y1 = py + 15;
+         S->under_ok &= 1;                           /* (bit 0: the winner's box; bit 1: this one's) */
+         S->pw = 0;
+@@ -406,7 +416,7 @@ static void wh_winner(int cx, int cy, int R, int rot, int t, int mode)
+     char ic[2] = { (char)wedge_icon[k], 0 };
+     int ix = cx + FIX2INT(fx_cos(ac) * (R * 2 / 3)), iy = cy + FIX2INT(fx_sin(ac) * (R * 2 / 3));
+     int r = mg_big() ? 9 : 7, lit = (t / 4) & 1;
+-    if (mode == 0) {
++    if (mode == 0 && WH_KEEPS) {
+         int x0 = (ix - r) & ~1, x1 = (ix + r + 2) & ~1, y0 = iy - r, y1 = iy + r + 1;
+         S->under_ok &= 2;
+         S->uw = 0;
+@@ -415,7 +425,7 @@ static void wh_winner(int cx, int cy, int R, int rot, int t, int mode)
+             S->ux = (int16_t)x0; S->uy = (int16_t)y0; S->uw = (uint8_t)(x1 - x0); S->uh = (uint8_t)(y1 - y0);
+             S->under_ok |= 1;
+         }
+-    } else if (!plat_under(PLAT_UNDER_PUT, S->ux, S->uy, S->uw, S->uh, S->under)) {
++    } else if (mode == 1 && !plat_under(PLAT_UNDER_PUT, S->ux, S->uy, S->uw, S->uh, S->under)) {
+         return;
+     }
+     if (lit) ui_fill_circle(ix, iy, r, PAL_WHITE);
+@@ -574,11 +584,10 @@ static void wh_keep_put(int pg)
+     KEEP->used[pg] = 0;
+ }
+ 
+-static int wh_keep_pg;
+ static int wh_keep_save(int kind, int x, int y, int w, int h)
+ {
+     (void)kind;
+-    int pg = wh_keep_pg, i = KEEP->n[pg];
++    int pg = KEEP->pg, i = KEEP->n[pg];
+     if (i >= WH_KEEP_MAX || KEEP->used[pg] + w * h > WH_KEEP_BYTES) return 0;
+     if (!plat_under(PLAT_UNDER_GET, x, y, w, h, (uint8_t *)KEEP->data[pg] + KEEP->used[pg])) return 0;
+     KEEP->ent[pg][i].x = (int16_t)x; KEEP->ent[pg][i].y = (int16_t)y;
+@@ -601,14 +610,13 @@ static void wh_keep_mirror(int pg)
+ }
+ 
+ /* can a held tick keep what is under every live particle (the room, and none near the result window)? */
+-static int wh_chk_n, wh_chk_bytes, wh_chk_x0, wh_chk_x1, wh_chk_y, wh_chk_stars;
+ static int wh_chk(int kind, int x, int y, int w, int h)
+ {
+-    wh_chk_n++;
+-    wh_chk_bytes += w * h;
+-    if (wh_chk_n > WH_KEEP_MAX || wh_chk_bytes > WH_KEEP_BYTES) return 0;
+-    if (x < wh_chk_x1 && x + w > wh_chk_x0 && y + h > wh_chk_y)         /* on the window's zone: only a star may be */
+-        return kind == MGFX_STAR && wh_chk_stars;                       /* (a held tick cuts it at the window's edge) */
++    KEEP->chk_n++;
++    KEEP->chk_bytes += w * h;
++    if (KEEP->chk_n > WH_KEEP_MAX || KEEP->chk_bytes > WH_KEEP_BYTES) return 0;
++    if (x < KEEP->chk_x1 && x + w > KEEP->chk_x0 && y + h > KEEP->chk_y)         /* on the window's zone: only a star may be */
++        return kind == MGFX_STAR && KEEP->chk_stars;                       /* (a held tick cuts it at the window's edge) */
+     return 1;
+ }
+ 
+@@ -617,11 +625,11 @@ static int wh_keep_ok(int stars)
+ {
+     int x, y, w, h;
+     wh_card_box(&x, &y, &w, &h);
+-    wh_chk_n = wh_chk_bytes = 0;
+-    wh_chk_stars = stars;
+-    wh_chk_x0 = x - 16;
+-    wh_chk_x1 = x + w + 20;
+-    wh_chk_y = y - 9;
++    KEEP->chk_n = KEEP->chk_bytes = 0;
++    KEEP->chk_stars = stars;
++    KEEP->chk_x0 = x - 16;
++    KEEP->chk_x1 = x + w + 20;
++    KEEP->chk_y = y - 9;
+     return mg_fx_walk(0, wh_chk) >= 0;
+ }
+ 
+@@ -661,6 +669,7 @@ static const uint8_t wh_hold_key;
+  * confetti are on the held pages, so it may go on with them, and the full frame that would start one may not) */
+ static int wh_hold_ok(int start)
+ {
++    if (!WH_KEEPS) return 0;                        /* (the PS1 holds no frame: the macros of ui.h) */
+     if (mg.shake || mg.ox || mg.oy || mg.flash_t) return 0;
+ #if !defined(DOOMO_PLATFORM_PS1)
+     if (portrait_job_on()) return 0;                /* a stand-in face may still change */
+@@ -699,7 +708,7 @@ static int wh_result_tick(int t, const char *line)
+         if (pop && !wh_ring(PLAT_UNDER_PUT)) return 0;
+         wh_blink(t, S->win_up && !pop);
+     }
+-    wh_keep_pg = pg;
++    KEEP->pg = (int16_t)pg;
+     if (disc) {                                     /* (the two ticks that draw the whole disc stay under 33 ms: the */
+         ui_modal_hold_end();                        /* particles, still at the pointer or above the screen, wait) */
+         return 1;
+@@ -791,8 +800,10 @@ static void wh_draw_body(void)
+      * before (a 45 ms render in the first spin tick otherwise; the same picture) */
+     if (S->st < WH_SPIN && mg_host_alive(MG_WHEEL_HOST)) portrait_prefetch(MG_WHEEL_HOST, EXPR_TALK);
+     if (wh_draw_held(t)) return;
+-    KEEP->n[0] = KEEP->n[1] = 0;                    /* (a full frame covers whatever the held pages kept under) */
+-    KEEP->used[0] = KEEP->used[1] = 0;
++    if (WH_KEEPS) {
++        KEEP->n[0] = KEEP->n[1] = 0;                /* (a full frame covers whatever the held pages kept under) */
++        KEEP->used[0] = KEEP->used[1] = 0;
++    }
+     tent_bg(t);
+     mg_textc(hx + 28 + (big ? 38 : 30), big ? 22 : 16, "WHEEL OF FATE", PAL_UI_GOLD);
+     mg_host_frame(hx, hy, MG_WHEEL_HOST, wh_face(), t);
+@@ -809,9 +820,9 @@ static void wh_draw_body(void)
+     S->disc_n = 0;
+     if (S->st == WH_CHARGE) wh_power_bar();
+     S->keep_ok = 0;
+-    if (S->st == WH_RESULT && (!mg_fx_live() || wh_keep_ok(0))) {      /* (S4-W) a hold may start with the particles up */
++    if (WH_KEEPS && S->st == WH_RESULT && (!mg_fx_live() || wh_keep_ok(0))) {      /* (S4-W) a hold may start with the particles up */
+         int pg = plat_under(PLAT_UNDER_PAGE, 0, 0, 0, 0, 0) & 1;
+-        wh_keep_pg = pg;
++        KEEP->pg = (int16_t)pg;
+         if (mg_fx_walk(1, wh_keep_save) >= 0) { wh_keep_mirror(pg); S->keep_ok = 1; }
+         else { KEEP->n[0] = KEEP->n[1] = 0; KEEP->used[0] = KEEP->used[1] = 0; mg_fx_draw(); }   /* (all of them again) */
+     } else {
+@@ -827,7 +838,7 @@ static void wh_draw_body(void)
+     if (!opt_get(OPT_REDUCE_FLASH) && mg.flash_t) { plat_ui_loops(); plat_checker(0, 0, W, H, mg.flash_c); mg.flash_t--; }
+     /* S4-W: the clean rows under the hint pill (the hint changes with the card), when no window is under it */
+     S->hint_ok = 0;
+-    if (!card && wh_hint_box(&x, &y, &w, &h) && plat_under(PLAT_UNDER_GET, x, y, w, h, KEEP->hint)) {
++    if (WH_KEEPS && !card && wh_hint_box(&x, &y, &w, &h) && plat_under(PLAT_UNDER_GET, x, y, w, h, KEEP->hint)) {
+         KEEP->hx = (int16_t)x; KEEP->hy = (int16_t)y; KEEP->hw = (uint8_t)w; KEEP->hh = (uint8_t)h;
+         S->hint_ok = 1;
+     }
+diff --git a/docs/GBA.md b/docs/GBA.md
+index 80be809..b5349ec 100644
+--- a/docs/GBA.md
++++ b/docs/GBA.md
+@@ -459,6 +459,7 @@ against the LAST row, not against a figure from an older base.
+ | GBA-500 | GBA-500: the GBA keeps 500 residents (an id -> slot table; docs: "500 residents (GBA-500)" below) | after G2-EX | 6,420 B | **50,740 B** | +44,320 B | 6,288 B | measured 2026-11-15 on the tree without and with GBA-500, both built clean (`make -C gba sizes`, `nm`; the same EWRAM delta on every tree it was rebased onto): `doomo_town` 89,504 -> 47,360 B (the records 76,000 -> 38,000 B, the edges 12,288 -> 6,144 B, + the id / slot tables 2,000 B), `sim_s` 5,032 -> 2,784 B (its per-resident arrays by slot), the apartments' "seen" bits 125 -> 63 B, the old-save rule's state +134 B (`save.c` `sv_keep` and four counters; the scan's scores, households and the save's graph live in the record array). The 44,320 B are not spent here: the coordinator says what they are for (OWNER_DECISIONS GBA 500 RESIDENTS: first candidates the Talk trait fields and the creator). IWRAM unchanged (resident 11,288 B, `.iwram_bss` 4,088 B, main stack 6,288 B, the overlay slots); the empty record `doomo_res_none` (76 B) is in ROM. ROM +11,832 B, measured before G2-EX (`TOWN_RES` looks the slot up where code read the array, and the old-save scan). PS1: `doomogachi.exe`, `OVL.BIN`, `TEXT.BIN`, `SFX.BIN` byte for byte the tree's without GBA-500 (sha256, boot FMV linked), `_end` 0x801e4fe0, 110,608 B below the stack top, delta 0 B |
+ | G2-CO | G2-CO: the concert at 30 (baked stage, setup hold, flame / 15 Hz trades, the choir's size, the held curtain; docs: "G2-CO: the concert at 30" below) | after GBA-500 (row GBA-500) | 50,740 B | **50,740 B** | 0 B | 6,272 B | measured at the landing on the tree without and with G2-CO, both built clean (`make -C gba sizes`): `.bss` 254,828 B before GBA-500 landed (210,508 B with it, 50,740 B free), `.data` 816 B, `.iwram` 11,288 B and `.iwram_bss` 4,088 B before and after (no resident EWRAM or IWRAM; `keep.c`'s 2 B of state sit in padding). The IWRAM overlay's UI group 10,100 -> 10,220 B (+120 B: `plat_beam_rows`, the beam loop's cut bands; 132 B left in the 10,352 B slot), the other groups unchanged. The choir's smaller singers (16 x 392 B), the half-rate state, the setup's signature and the intro's prefetch slot live in the concert's scene scratch (`ConcertState` 1,016 -> 7,324 B of its 12 KB); the 15 Hz rows are kept in the OBJ VRAM (16,320 B, owner `OBJV_KEEP`). ROM `.text` +5,960 B, `.rodata` +845,296 B (the 31 baked concert stages in `backdrops.bin`). (First built on `1297e931` as row 51, which CR5 holds on origin.) PS1: no resident byte (the new paths are compiled out; 110,608 B below the stack top with the boot FMV, the same as without G2-CO; docs/PS1.md "The concert (SP6, P-K1)") |
+ | 64 | LV4: mechanic kit B (`levels_mech_env.c`, `DoomoView3D.view_dist`, `r3f.maxd` from the per-level view distance) | after G2-EX (`da2d3e9a`) | unchanged | **unchanged** | 0 B | 6,308 B | measured 2026-11-15 on `33d760af` and the same + LV4 (both clean `make -C gba`, `make -C gba sizes`): .iwram 11,272, .iwram_bss 4,088, .bss 254,820 and every overlay slot identical; on the landing tree (after G2-EX) the full sizes are .iwram 11,288, .iwram_bss 4,088, .bss 254,828, which is 33d760af plus G2-EX's +16 B / +8 B and nothing from LV4; ROM .text +40 B (r3d.c: the range check, the hoisted sprite-cull limit); `lv_env_*` is not linked (nothing calls it). The new `view_dist` byte sits in the padding of `DoomoView3D` (stack, and the one static copy in combat_hud.c). Speed tour: every `vhash-seq` identical |
++| S4-W | S4-W: the Prize Wheel's result card as a held picture (docs: "Speed wave 3: S4-W" above) | after S2-4c (`91479d4`) | 6,420 B | **6,420 B** | 0 B | 6,288 B | measured on the tip `91479d4` and that tree + S4-W (`make -C gba sizes`): `.bss` 254,828 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, the room group 9,800 B and the UI group 10,124 B unchanged: no static RAM (the walk's state and the lists are in the wheel's scene scratch, 8,858 B more of the 12 KB claim, only while the wheel runs; the exclusion boxes are 16 B of the particle pool's 512 B). ROM: `.text` 1,524,016 -> 1,529,288 B (+5,272), `.rodata` unchanged (8,246,748 B), no new data file. PS1: compiled out, `_end` 0x801e0420 and 130,000 B below the stack top with the boot FMV before and after (both built), the minigame group the same size |
+ 
+ Known claimants still to land (their own packages measure and add rows):
+ 
+@@ -1361,7 +1362,7 @@ directly in the same order (GBA, native, DC; the PS1 keeps the shorter walk so i
+ RAM: 0 B EWRAM / IWRAM (the held tick's state is in the minigame arena; 2,276 B EWRAM free, main stack 6,308 B);
+ ROM +~11 KB (the tables). Dreamcast (Flycast, no hold there): intro, spin, result card and done all 30.0, worst tick
+ 14.7 ms. Floors:
+-`expect-fps 28` on both wheel windows of `speed2_fair.txt`. Still short of 30: the result card (S2-4's kept backdrop
++`expect-fps 28` on both wheel windows of `speed2_fair.txt`. Still short of 30: the result card (S2-4's kept backdrop **Done in "Speed wave 3: S4-W": the card is a held frame too.**
+ with restored rects under the confetti would cover it) and the done state's first second.
+ 
+ ### Speed wave 2: G2-EX, the exorcism toward 30 (built 2026-11-13, landed 2026-11-15, partial)
+@@ -2361,7 +2362,7 @@ windows and the Wheel's spin, "MISS" for `memory play sweet late`.
+ * **The Prize Wheel's spin window has one frame of 67 ms** (work 60.6 ms, the same as before this package; 60.0 ms on the landing tree): the first frame of
+   the result card, and the wheel's result phase after it is ~60 ms a tick (17 fps: the wheel's disc is drawn live, 40% of it
+   `vid_rect_narrow` and the wheel's own loop; no window of `speed2_fair.txt` stands in it). The Wheel is not one of the games
+-  of this package (S2-3 held its spin at 30): its disc as a kept picture is the next package. `expect-fps 28` holds: 129 of 130
++  of this package (S2-3 held its spin at 30): its disc as a kept picture is the next package (**done as S4-W, "Speed wave 3: S4-W" below: the card is a held frame**). `expect-fps 28` holds: 129 of 130
+   frames of the window are 2 vblanks.
+ * **Margin.** The Gallery (29.2 / 29.9 ms work on average, 33.1 / 36.9 at the worst tick; 29.7-30.5 and 36.4-40.9 on the landing
+   tree) and the Derby (28.6 / 28.7, worst 33.8 / 33.4; 28.8-30.2, worst 32.2-34.3 on the landing tree) run with ~3-4 ms of headroom
+@@ -3117,6 +3118,78 @@ the first window includes the harness's town setup):
+   the native panel tests) saved only 0.5 ms (25.8 fps) and was not kept. The banner wants a cheaper call path for
+   narrow rects and shading, or a plate of OBJs (a G-area pass).
+ 
++### Speed wave 3: S4-W, the Prize Wheel's result card as a held picture (2026-11-15)
++
++The Wheel of Fate's spin was held at 30 by S2-3, but its result card ran at 15 fps for as long as it stood (60 ms a tick:
++the whole tent, host, disc and speech bubble drawn again under the confetti), and the first tick of the card was one
++67 ms frame in the spin window. S2-4b's Done line said "its disc as a kept picture is next". The disc cannot be baked
++into the ROM like the kitchen (its angle is the spin's, any of 4,096), and while the card stands the disc is still: so
++the card is a **held frame** (S2-1's `ui_modal_hold`, the two Mode 4 pages both carry the picture) and a held tick
++draws only what changes.
++
++**What a held tick of the card draws** (`core/src/mg_wheel.c`, `wh_result_tick`): the 20 bulbs (one colour for all,
++every third tick), the winning icon's white disc (every fourth tick), the hub's eyelid and the pointer's flapper. For
++the last three a full frame keeps the clean pixels under them (new `plat_under` in `plat_ext.h`: `PLAT_UNDER_GET` /
++`PUT` of a small box, `PLAT_UNDER_PAGE` which of the two pages is drawn on; the GBA copies halfwords, `gba/src/hold.c`,
++no RAM) and a held tick puts them back before it draws. Everything else the card has comes and goes **over** the held
++pages and is put back the same way:
++
++* the **confetti, stars and puffs** keep what is under each particle, a list for each page (a held tick draws on the
++  page of two ticks ago): `mg_fx_walk` (mg_fx.c) gives each live particle's box (rounded out to even x and width) to
++  `wh_keep_save`, which keeps it before the particle is drawn; the next tick on that page puts the lists back, newest
++  first. A full frame that starts a hold with particles up copies its list to the other page (the platform copies the
++  picture). 40 particles, 1,024 B a page; more, or a kind with no box (hearts, drops ...), is a full frame.
++* the **window's pop** (12 ticks, overshooting to 300/256) is painted over a clean copy of the ring round the window
++  (four boxes, 3,936 B at 240x160), taken once the card's other parts are on both pages; the overshoot's way back is
++  drawn at the full size (see the trades). The finished card (window, title, texts, hint) is painted on two ticks,
++  one for each page, then not again.
++* the **speech line, Wagerine's face and the hint** change at the result: two held ticks each (one for each page) as in
++  S2-3, after the two ticks that draw the whole disc on both pages (the disc is new: the spin's last tick moved it).
++  The hint's pill changes width, so the clean rows under both pills (up to 2,048 B) are kept in a full frame.
++* the **stars** stop at the window's edge (they pass behind it on a full frame: `mg_fx_exclude`, two boxes, the
++  window and the title pill; `fx_sparkle` is `ui_sparkle`'s shape cut by them), so a star falling over the window does
++  not end the hold.
++
++Where the memory is: the wheel claims 8,858 B more of the **scene scratch** (the 12 KB claim, `WhKeep`: 2,560 + 8,858 = 11,418 B; the same
++block the Derby's racers use), no static RAM: `.bss` 254,828 B and the IWRAM groups (room 9,800 B, UI 10,124 B) are
++what they were, ledger row S4-W. The PS1 compiles all of it out (`WH_KEEPS`, no held frame there): `_end`
++0x801e0420, 130,000 B below the stack top with the boot FMV, the base's, and the minigame group the same size. The native
++platform's hold gained `nat_hold_pages(1)` (two pages like the GBA; default one picture as before) for the test.
++
++**Trades (GBA only, pixel-changing; before / after shots: `evidence/S4-W/before_after_result_ticks_*.png` in the
++builder's scratchpad, the diff in the third column):**
++1. A held card stands still, as the held spin does (S2-3): the tent's sway, the sparkles' twinkle, the host frame's
++   bob and the window's glint (a few hundred pixels a tick, a few pixels in the window).
++2. The result's first two ticks draw the whole disc on both pages and nothing else: the stars show 2 ticks (66 ms)
++   late, the speech line and the hint 2-3 ticks late, the face 4-5 (it was 1 tick of 60 ms before).
++3. The window's way back from its overshoot (ticks 8-11 of the pop, 250/244/249/254 of 256) is drawn at 256: up to 6 px
++   wider than the bounce, for 4 ticks; its way up (ticks 1-5) is the same pixels.
++4. A star over the window is cut at the window's edge: its pixels in the 2-3 px of the window's drop shadow are not
++   shaded as on a full frame.
++5. Not changed: the disc, the bulbs, the winner's light, the hub and the pointer, the rim and its shadow are the full
++   frame's, pixel for pixel, on all 220 ticks of the probe (`vhash-seq` frames of the spin's end, the pop, the confetti
++   and the held card against the base's ROM, the disc and rim outside the window compared by script: 0 pixels differ on
++   219 ticks, 32 on the tick that shows the star 2 ticks late) and in `modal_hold_fair_wheel_result_card` (six seeds,
++   hold on and off, 900 ticks each, on the native platform holding on two pages).
++
++**Measured** (libmgba, `speed2_fair.txt`, windows added; before = the tip `91479d4`):
++
++| window | before | after |
++|---|---|---|
++| wheel intro | 30.0 fps, 27.2 / 28.8 ms | 30.0, 27.1 / 28.7 ms |
++| wheel spin (130 ticks) | 29.9, 27.3 / 64.1 ms, one 67 ms frame (the card's first) | **30.0**, 27.1 / 34.2 ms, 2:130 |
++| wheel result (60 ticks: pop, confetti, stars) | 15.0, 60.1 / 62.3 ms, 30 frames over 33 ms | **30.5**, 9.1 / 16.7 ms, 2:60 |
++| wheel card held (120 ticks) | 15.0, 60.5 / 62.0 ms | **30.1**, 4.2 / 6.3 ms, 2:120 |
++| wheel done (60 ticks) | 30.0, 27.1 / 27.6 ms | 30.0, 27.1 / 27.5 ms |
++
++A **curse** (`seed 3`: the spin lands on "Spooked") shakes, flashes and puffs: those ticks stay full frames (the shake
++moves every pixel, the flash is a full-screen checker, the puffs are bigger than the 1,024 B a page): result window
++16.7 -> 23.7 fps, frames over 33 ms 26 -> 13 (12 of 67 ms, one of 84), the held card 15.1 -> 30.1. So **the card is not
++steady for a curse for its first ~0.9 s** (open: the shake as a display offset, S2-4b's `plat_post_offset`, and a
++bigger particle budget need scratch the 12 KB claim does not have). The first tick of the card is 34.2 ms of work (the
++disc drawn for the first page), inside two vblanks in this run. Dreamcast and PS1 have no hold: their card is a full
++frame at 30 (below). `expect-fps 28` on the result, card held and done windows of `speed2_fair.txt`.
++
+ ### Combat detail (SP8; G7's "3D: Faster / Better")
+ 
+ `OPT_3D_FAST` (`town.h`, option 63) is the Options row **"Combat
+diff --git a/gba/harness/scripts/speed2_fair.txt b/gba/harness/scripts/speed2_fair.txt
+index 87ffc74..8d9e0b5 100644
+--- a/gba/harness/scripts/speed2_fair.txt
++++ b/gba/harness/scripts/speed2_fair.txt
+@@ -260,3 +260,19 @@ fps start
+ wait 130
+ expect-fps 28 fair: wheel spin
+ shot fair_wheel_spin
++# (S4-W) the result card, straight after the spin: the pop, the confetti and the stars (60 ticks), then the held card
++# (120 ticks), then the card going away (done). The spin lands on 50 H$ with seed 1 (a prize: a curse shakes and flashes,
++# its first ~13 frames are full frames: docs/GBA.md "Speed wave 3: S4-W").
++fps start
++wait 60
++expect-fps 28 fair: wheel result
++shot fair_wheel_result
++fps start
++wait 120
++expect-fps 28 fair: wheel card held
++press A
++wait 10
++fps start
++wait 60
++expect-fps 28 fair: wheel done
++shot fair_wheel_done
+-- 
+2.43.0
+
+
+From 9b0dd1f0aa28672215a711fa6ee8c3c14ec48876 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 18:42:25 +0000
+Subject: [PATCH 4/7] S4-W: SPEED-3 block in the SPEED status, owner-decision
+ defaults
+
+cross-stream note for the earlier S4-W commits: plat_under (plat_ext.h, plat_weak_ext.c, core/native/plat_native.c: shared platform files), nat_hold_pages (native), mg.h.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvDzgwv9nxsL8r6tWV
+---
+ docs/design/held/OWNER_DECISIONS.md | 1 +
+ docs/design/held/status/SPEED.md    | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/docs/design/held/OWNER_DECISIONS.md b/docs/design/held/OWNER_DECISIONS.md
+index e446525..0a32019 100644
+--- a/docs/design/held/OWNER_DECISIONS.md
++++ b/docs/design/held/OWNER_DECISIONS.md
+@@ -154,3 +154,4 @@
+   Owner, same day: "like being able to edit relations as well, like in the Create a Sim of the original games". The household view gets a relationship editor like The Sims 2 / 3 Create a Sim: pick two members and set how they are related (spouse / partner, fiance, parent / child, step-parent, sibling, step-sibling, grandparent / grandchild, aunt-uncle / niece-nephew, cousin, roommate, pet owner / pet), with the reverse side filled in automatically (set A as B's mother and B becomes A's child) and a family tree preview; also starting feelings toward other citizens (friend, best friend, rival, crush for adults only, enemy) where the sim has those relationships. The kid rules bind it: spouse, partner, fiance and crush only between adults, never with or between minors; an age gap check like The Sims (a parent older than the child).
+ - HOUSEHOLDS defaults (2026-11-15, default chosen by Claude (HOUSEHOLDS), owner may override; plan: `docs/design/HOUSEHOLDS_PLAN.md`): the player's household has room for 20 from the start on every platform (the 3 / 10 / 20 tiers stop limiting it); other households hold residents only (pool ids 1001..1020 stay the player's); up to 24 residents' households and 32 relation rows each, saved in a new `HOUS` chunk (the `LIFE` chunk is full); a new person takes a free resident place, else a low-friendship adult who is in no household moves away (never a minor, a story citizen or the avatar); a minor is never a parent, partner, spouse, fiance or crush and never an adult's roommate; feelings are town-graph edges. Memory: about 3.9 KB GBA EWRAM (of CREATOR's 6 KB), 3.5 KB PS1 resident from the reserve (asked of the coordinator; if refused, 12 households on the PS1).
+ - BOREAGOTCHI FAMILIES (user 2026-11-15): "make sure to find a way to include their / your own Boreagotchis having their own family members, with eight as their cap". Every Boreagotchi (the player's and each resident's) can have a family of up to 8 pets (parents, siblings, offspring, partner; pet-only relations), made and edited in the creator's household view next to the people, shown in the household, using the pet look and care that exist (pet*.c). Defaults chosen by Claude (owner may override): a pet family member is a small pet record (look seed, name, relation, a few care stats), not a resident; the cost is reported per platform and fits the shares (if the PS1 cannot hold 8 per pet for every household at once, the plan says how many pet families can exist at once and the creator says so clearly at the cap); kid and content rules apply as for pets today. Owner: the HOUSEHOLDS stream (cross-stream into pet code, small and marked).
++- SPEED-3 S4-W, the Prize Wheel's held result card (2026-11-15; default chosen by Claude (SPEED-3), owner may override): the owner asked for "the result card and anything else below 30 fps". The card is a held frame on the GBA (docs/GBA.md "Speed wave 3: S4-W"), with these small trades, GBA only, the smallest that reached 30: (1) a held card stands still as the held spin does (tent sway, sparkle twinkle, host bob, window glint); (2) the result's first two ticks show the stars 2 ticks late and the speech line and hint 2-3 ticks late, the face 4-5 ticks late; (3) the window's pop is drawn at the full size on its way back from the overshoot (4 ticks, up to 6 px wider than the bounce); (4) a star falling over the window is cut at the window's edge. Not taken: a curse (shake, flash, puffs) keeps about 13 full frames; the owner can ask for the shake as a display offset (S2-4b's `plat_post_offset`) and a bigger particle budget, which would need scratch beyond the 12 KB claim. The Dreamcast and the PS1 draw the card in full at 30 (no hold there); no content or hard rule is touched.
+diff --git a/docs/design/held/status/SPEED.md b/docs/design/held/status/SPEED.md
+index 1dad526..427b01d 100644
+--- a/docs/design/held/status/SPEED.md
++++ b/docs/design/held/status/SPEED.md
+@@ -22,4 +22,5 @@ delta, GBA sizes), in flight (package and stage), next up, blockers, needs from
+ - **In flight:** nothing running. Saved as patches in patches/wip/SPEED/ (README there): none (G2-CO and G2-EX landed 2026-11-15; S3-1, PS1-RAM, S2-4b, S2-4c, S2-10 and S2-4d before it). Round 3: the kitchen (S2-4c) and the dreams (S2-4d) landed partial; the concert + choir experiment landed partial (G2-CO).
+ - **Next up:** the concert's remainder (G2-CO "Still short": the band needs the lead and the crowd as sprites, the Dreamland ~5 ms, the opening and the setup's song composition spread over ticks; the UI group has 132 B left); the dreams' remainder (S2-4d "Left": The Giant Plush needs ~6 ms, Tea Under the Sea ~1.5 ms; levers: a shadow-and-figure pass in the GBA UI group (252 B left), the caption box as a retained panel, a toast that costs less than 5 ms, `WAITCNT` 3/1 with prefetch for all ROM code, checked on hardware); the exorcism remainder (G2-EX "Not done": prayer lane split into a kept ribbon, the true-name window as retained panels, the confetti, the phase-change frames), then round 3 (concert + choir experiment; the kitchen is S2-4c: its result card, the counter / serving's 50 ms frames and the step-change frames stay open for G2-EX's clipped redraw; a stage that copies a redrawn box to the other Mode 4 page would make the approved 15 Hz trades pay off), the later trade-off packages (exorcism remainder, fog and cutscene skies, level select slide, credits), S3-12/7/8/13/14/15, then speed audit 4, then the COMBAT stream (leads/COMBAT.md).
+ - **Blockers:** (the G2-CO lander) none new; the IWRAM overlay's UI group has 132 B left after G2-CO (later UI-group code must give bytes back or move to ROM). (the G2-EX lander) none new; G2-EX leaves +8 B EWRAM and +16 B IWRAM resident on the GBA (ledger row G2-EX) for the lead to accept. (the S2-10 lander) PS1 margin 129,504 B on the tip with S2-10 (S2-10 -496 B). The S2-10 open items above (PS1 BIOS-call gaps, Dreamcast save gaps, GBA one copy a slot) are a follow-up package, not blockers. (the S2-4c lander) none new; the 15 Hz trades of the owner's 2026-11-13 decision save nothing over the GBA's kept stage as it is (each page compares with the picture two ticks old), so later trade-off packages on kept screens need that page copy first. (the S2-4b lander) none new: S2-4b adds 0 B on the PS1 (132,608 B below the stack top) and -8 B of GBA EWRAM (6,420 B free on the tip with S2-4b). (the PS1-RAM lander) the PS1 margin is no longer one: 132,608 B on the tip with PS1-RAM (gate 73,728 B); the coordinator writes the streams' shares (PARALLEL_WAVES.md section 3). The overlay slot is the tighter PS1 limit now: the creator has 1,320 B (CR5 took 1,932 B of it), story 1,216 B and combat 1,692 B before the slot grows by 2 KB (LEVELS growth in `combat*.c` / `actor.c` / `levels*.c`, CREATOR batches). The two Talk scripts are green since the S2-9 lander's tip repairs. Before that: (2026-11-15, the S3-1 lander) the PS1 margin is 72,368 B on the tip with S3-1 (1,360 B under the 72 KB gate; S3-1 and CR-BODY gave back 16 B each). (2026-11-15, the S2-9 lander) the tip `d530565` failed two gates through the owner's Talk commits: `make -C core test` (the `home_visit` runner script) and `make -C gba test` (`test-talk`): both scripts are repaired in this push (`tip repair:` commits, the scripts now page the resident's two opening lines and reach "Chat >" past the four quick replies). Still red on the tip, with or without S2-9: `make -C gba test-speed2 SPEED2=action SPEED2_GATES=1` stops at the level select's `expect-fps 28` (24.2 fps, 35.9 ms of work: 29.7 fps in speed audit 3; the LEVELS level select pages and S3-8 are the place). The PS1 margin is 72,336 B on the tip with S2-9 (1,392 B under the 72 KB gate). Before that: the PS1 margin is 72,736 B on the tip with PS1-FLAT (the 72 KB plan gate is 73,728 B: 992 B short; hard failure at 65,536 B): every stream's landing eats into it, so PS1-RAM is the critical path. One lever for whoever lands second: `prims.c` (3,612 B) can move into the combat group (one word in `PLAT_GROUPS`), +1.5 KB here but the slot would grow by 2 KB (4 KB on PS1-RAM's tree, net -484 B there): a coordinator decision (`docs/PS1.md` "No 3D models in houses"). The combat group has 2,840 B of room under the slot: LEVELS growth in `combat*.c` / `actor.c` / `levels*.c` beyond that moves the slot. CPU on this machine is the limit.
++- **SPEED-3 (round 1: kitchen leftovers and the Prize Wheel; owner 2026-11-15: "improve the result card and anything else below 30 fps"; lead session_01Xd63cvDzgwv9nxsL8r6tWV):** *Landed:* nothing yet from this round. *In flight:* **S4-W** (the Prize Wheel's result card as a held picture), built on `91479d4`, branch `fut-s4-w`, gates run, waiting for the landing window: GBA wheel spin 29.9 (one 67 ms frame) -> 30.0, result card 15.0 -> 30.5, card held 15.0 -> 30.1 (a curse keeps 13 frames over 33 ms, was 26); PS1 `_end` 0x801e0420 and margin 130,000 B before and after (the held card is compiled out), Dreamcast wheel windows 30.0 (worst tick 13.1 ms); GBA `.bss` 254,828 B and the IWRAM groups unchanged, ROM `.text` +5,272 B; shared change: `plat_under` in `plat_ext.h` (weak default in `plat_weak_ext.c`, native and GBA `hold.c` implementations) and `nat_hold_pages` in the native platform. *Next:* the other round-1 packages, then the curse's shake and flash. *PS1 resident used of the 2 KB share:* 0 B.
+ - **Needs from other streams:** none
+-- 
+2.43.0
+
+
+From 542e1ad4c46743fb6ecd274ee51eaaa460345528 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 18:42:36 +0000
+Subject: [PATCH 5/7] S4-W: PS1 and Dreamcast notes
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvDzgwv9nxsL8r6tWV
+---
+ docs/DREAMCAST.md | 5 +++++
+ docs/PS1.md       | 4 ++++
+ 2 files changed, 9 insertions(+)
+
+diff --git a/docs/DREAMCAST.md b/docs/DREAMCAST.md
+index 5e91d87..2de9bfb 100644
+--- a/docs/DREAMCAST.md
++++ b/docs/DREAMCAST.md
+@@ -2706,3 +2706,8 @@ blocking card by design). No resident PS1 byte and no GBA byte changed (the PS1
+ machine; the help string is one line of text in `core/src/fp_options.c`, compiled out where `DOOMO_TRIGGERS` is 0).
+ Open: the Controls page has eight rows on a one-stick pad; folding Turn buttons and Stick into one row would
+ change what the options record means, so it is left to the core's UI polish package (UI1).
++
++**S4-W (the Prize Wheel's result card on the GBA, 2026-11-15):** no Dreamcast file is touched (the held card needs the GBA's two
++Mode 4 pages; `plat_under` has the weak default). Flycast, the wheel's five windows of `speed2_fair.txt` (intro, spin, result
++card, card held, done): 30.0 / 30.0 / 30.0 / 30.2 / 30.0 ticks a second, work mean 8.7-10.4 ms, worst tick 13.1 ms, 0 of 582
++ticks over 33.3 ms.
+diff --git a/docs/PS1.md b/docs/PS1.md
+index cd167e6..722c52e 100644
+--- a/docs/PS1.md
++++ b/docs/PS1.md
+@@ -1553,6 +1553,10 @@ the generated file in that group, 87 -> 96 KB, the slot is the house's 168 KB) a
+ window holds 30.00 (intro, spin, the result card, done: 2:58-2:128 with the one 3-vsync lockstep frame), exact (the
+ native 320x240 shots are byte-identical). Resident RAM byte-identical, 66 KB below the stack top with the boot FMV
+ (`unlocks.c` keeps its old walk here). The GBA's held frame is not built here (`ui_modal_hold` is compiled out).
++**S4-W (the Prize Wheel's result card, 2026-11-15):** the GBA's held result card is compiled out here (`WH_KEEPS` is 0 on the
++PS1: no `plat_under`, `mg_fx_walk` or `WhKeep`). `_end` 0x801e0420 and 130,000 B below the stack top with the boot FMV, before and
++after (both built on `91479d4`); the minigame group's packed size is the same. PCSX-Redux, the wheel's five windows of
++`speed2_fair.txt` (intro, spin, result card, card held, done): 30.00 each (2:58-2:128 with the one 3-vsync lockstep frame).
+ 
+ **S2-6 (the Unlocks gallery).** The PS1 already held 30 there (30.00 / 30.00 / 30.25: the GPU fills the tiles for
+ next to nothing); after S2-6 the gallery, a cursor move, the new row-moves window and the Paints tab play at 30.00 /
+-- 
+2.43.0
+
+
+From 319f26a73004cbb39776c9c303a1b27d48fd1032 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:15:08 +0000
+Subject: [PATCH 6/7] S4-W: landing on 86b91c3: every-language wheel card test,
+ numbers on the rebased tree
+
+cross-stream: the S4-W commits before this one touch shared platform files
+(plat_ext.h, plat_weak_ext.c, core/native/plat_native.c, mg.h) for plat_under
+and nat_hold_pages; see docs/GBA.md "Speed wave 3: S4-W".
+
+Rebased tree: core tests 1461 passed; GBA wheel windows 30.0/30.0/30.5/30.1/30.0
+(result 17.5 ms worst, was 62); PS1 margin 110,560 B (base 110,608 B);
+PCSX-Redux and Flycast wheel windows 30.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvDzgwv9nxsL8r6tWV
+---
+ core/tests/test_modal_hold.c     | 16 ++++++++++++++++
+ docs/GBA.md                      |  4 +---
+ docs/PS1.md                      |  3 +--
+ docs/design/held/status/SPEED.md |  2 +-
+ 4 files changed, 19 insertions(+), 6 deletions(-)
+
+diff --git a/core/tests/test_modal_hold.c b/core/tests/test_modal_hold.c
+index 9c993b7..045dfb6 100644
+--- a/core/tests/test_modal_hold.c
++++ b/core/tests/test_modal_hold.c
+@@ -200,6 +200,8 @@ static int wh_in_disc(int x, int y)
+     return (x - cx) * (x - cx) + (y - cy) * (y - cy) <= R * R || (x - cx - 2) * (x - cx - 2) + (y - cy - 3) * (y - cy - 3) <= R * R;
+ }
+ 
++static int wheel_lang = LANG_EN;   /* the language of the next wheel_run (every language: the hint pill's width changes) */
++
+ static void wheel_run(int hold, WheelRun *r, int nf, uint32_t seed)
+ {
+     int f, big = mg_big(), ww = big ? 200 : 160, wx = (mg_w() - ww) / 2, wy = mg_h() - 44 - (big ? 16 : 6), res = 0;
+@@ -208,6 +210,7 @@ static void wheel_run(int hold, WheelRun *r, int nf, uint32_t seed)
+     ui_modal_hold_enable(hold);
+     nat_hold_pages(hold);
+     fp_new_island(TOWN_POP_PREMADE, 4242);
++    doomo_town.opt[OPT_LANGUAGE] = (uint8_t)wheel_lang;
+     rng_seed(&doomo_rng, seed);
+     scene_set(&SCENE_MG_WHEEL, MG_ARG_AUTOSTART | MG_ARG_AUTOPLAY);
+     for (f = 0; f < nf; f++) {
+@@ -270,6 +273,19 @@ TEST(modal_hold_fair_wheel_result_card)
+     CHECK_MSG(prize_runs >= 2, "wheel: only %d of 6 spins went into the held card with confetti on it", prize_runs);
+ }
+ 
++/* every language: the hint pill is wider or narrower, the card still matches the full frame tick for tick (a hint too wide
++ * for its clean rows falls back to full frames, which is correct and not held) */
++TEST(modal_hold_fair_wheel_result_card_languages)
++{
++    int lang, n;
++    for (lang = 0; lang < LANG_COUNT; lang++) {
++        wheel_lang = lang;
++        wheel_compare(1, &n);
++    }
++    wheel_lang = LANG_EN;
++    doomo_town.opt[OPT_LANGUAGE] = LANG_EN;
++}
++
+ /* ---- the house: the Catalog over the room (the HUD bands repaint, the room is the held frame) ----------------------- */
+ static void house_setup(void)
+ {
+diff --git a/docs/GBA.md b/docs/GBA.md
+index b5349ec..8e16b62 100644
+--- a/docs/GBA.md
++++ b/docs/GBA.md
+@@ -3151,9 +3151,7 @@ pages and is put back the same way:
+   not end the hold.
+ 
+ Where the memory is: the wheel claims 8,858 B more of the **scene scratch** (the 12 KB claim, `WhKeep`: 2,560 + 8,858 = 11,418 B; the same
+-block the Derby's racers use), no static RAM: `.bss` 254,828 B and the IWRAM groups (room 9,800 B, UI 10,124 B) are
+-what they were, ledger row S4-W. The PS1 compiles all of it out (`WH_KEEPS`, no held frame there): `_end`
+-0x801e0420, 130,000 B below the stack top with the boot FMV, the base's, and the minigame group the same size. The native
++block the Derby's racers use), no static RAM: static RAM is what it was (landing tree: `.bss` 210,508 B, `.iwram` 11,288 B, `.iwram_bss` 4,088 B, `.data` 816 B), ledger row S4-W. The PS1 compiles all of it out (`WH_KEEPS`, no held frame there): on the landing tree (origin `86b91c3`) 110,608 B below the stack top with the boot FMV before and 110,560 B with S4-W (-48 B of layout, not a feature). The native
+ platform's hold gained `nat_hold_pages(1)` (two pages like the GBA; default one picture as before) for the test.
+ 
+ **Trades (GBA only, pixel-changing; before / after shots: `evidence/S4-W/before_after_result_ticks_*.png` in the
+diff --git a/docs/PS1.md b/docs/PS1.md
+index 722c52e..04a278a 100644
+--- a/docs/PS1.md
++++ b/docs/PS1.md
+@@ -1554,8 +1554,7 @@ window holds 30.00 (intro, spin, the result card, done: 2:58-2:128 with the one
+ native 320x240 shots are byte-identical). Resident RAM byte-identical, 66 KB below the stack top with the boot FMV
+ (`unlocks.c` keeps its old walk here). The GBA's held frame is not built here (`ui_modal_hold` is compiled out).
+ **S4-W (the Prize Wheel's result card, 2026-11-15):** the GBA's held result card is compiled out here (`WH_KEEPS` is 0 on the
+-PS1: no `plat_under`, `mg_fx_walk` or `WhKeep`). `_end` 0x801e0420 and 130,000 B below the stack top with the boot FMV, before and
+-after (both built on `91479d4`); the minigame group's packed size is the same. PCSX-Redux, the wheel's five windows of
++PS1: no `plat_under`, `mg_fx_walk` or `WhKeep`). 110,608 B below the stack top with the boot FMV on the landing tree (origin `86b91c3`), 110,560 B with S4-W (-48 B: layout only; on `91479d4` it was 130,000 B before and after); the minigame group's packed size is the same. PCSX-Redux, the wheel's five windows of
+ `speed2_fair.txt` (intro, spin, result card, card held, done): 30.00 each (2:58-2:128 with the one 3-vsync lockstep frame).
+ 
+ **S2-6 (the Unlocks gallery).** The PS1 already held 30 there (30.00 / 30.00 / 30.25: the GPU fills the tiles for
+diff --git a/docs/design/held/status/SPEED.md b/docs/design/held/status/SPEED.md
+index 427b01d..2d3249d 100644
+--- a/docs/design/held/status/SPEED.md
++++ b/docs/design/held/status/SPEED.md
+@@ -22,5 +22,5 @@ delta, GBA sizes), in flight (package and stage), next up, blockers, needs from
+ - **In flight:** nothing running. Saved as patches in patches/wip/SPEED/ (README there): none (G2-CO and G2-EX landed 2026-11-15; S3-1, PS1-RAM, S2-4b, S2-4c, S2-10 and S2-4d before it). Round 3: the kitchen (S2-4c) and the dreams (S2-4d) landed partial; the concert + choir experiment landed partial (G2-CO).
+ - **Next up:** the concert's remainder (G2-CO "Still short": the band needs the lead and the crowd as sprites, the Dreamland ~5 ms, the opening and the setup's song composition spread over ticks; the UI group has 132 B left); the dreams' remainder (S2-4d "Left": The Giant Plush needs ~6 ms, Tea Under the Sea ~1.5 ms; levers: a shadow-and-figure pass in the GBA UI group (252 B left), the caption box as a retained panel, a toast that costs less than 5 ms, `WAITCNT` 3/1 with prefetch for all ROM code, checked on hardware); the exorcism remainder (G2-EX "Not done": prayer lane split into a kept ribbon, the true-name window as retained panels, the confetti, the phase-change frames), then round 3 (concert + choir experiment; the kitchen is S2-4c: its result card, the counter / serving's 50 ms frames and the step-change frames stay open for G2-EX's clipped redraw; a stage that copies a redrawn box to the other Mode 4 page would make the approved 15 Hz trades pay off), the later trade-off packages (exorcism remainder, fog and cutscene skies, level select slide, credits), S3-12/7/8/13/14/15, then speed audit 4, then the COMBAT stream (leads/COMBAT.md).
+ - **Blockers:** (the G2-CO lander) none new; the IWRAM overlay's UI group has 132 B left after G2-CO (later UI-group code must give bytes back or move to ROM). (the G2-EX lander) none new; G2-EX leaves +8 B EWRAM and +16 B IWRAM resident on the GBA (ledger row G2-EX) for the lead to accept. (the S2-10 lander) PS1 margin 129,504 B on the tip with S2-10 (S2-10 -496 B). The S2-10 open items above (PS1 BIOS-call gaps, Dreamcast save gaps, GBA one copy a slot) are a follow-up package, not blockers. (the S2-4c lander) none new; the 15 Hz trades of the owner's 2026-11-13 decision save nothing over the GBA's kept stage as it is (each page compares with the picture two ticks old), so later trade-off packages on kept screens need that page copy first. (the S2-4b lander) none new: S2-4b adds 0 B on the PS1 (132,608 B below the stack top) and -8 B of GBA EWRAM (6,420 B free on the tip with S2-4b). (the PS1-RAM lander) the PS1 margin is no longer one: 132,608 B on the tip with PS1-RAM (gate 73,728 B); the coordinator writes the streams' shares (PARALLEL_WAVES.md section 3). The overlay slot is the tighter PS1 limit now: the creator has 1,320 B (CR5 took 1,932 B of it), story 1,216 B and combat 1,692 B before the slot grows by 2 KB (LEVELS growth in `combat*.c` / `actor.c` / `levels*.c`, CREATOR batches). The two Talk scripts are green since the S2-9 lander's tip repairs. Before that: (2026-11-15, the S3-1 lander) the PS1 margin is 72,368 B on the tip with S3-1 (1,360 B under the 72 KB gate; S3-1 and CR-BODY gave back 16 B each). (2026-11-15, the S2-9 lander) the tip `d530565` failed two gates through the owner's Talk commits: `make -C core test` (the `home_visit` runner script) and `make -C gba test` (`test-talk`): both scripts are repaired in this push (`tip repair:` commits, the scripts now page the resident's two opening lines and reach "Chat >" past the four quick replies). Still red on the tip, with or without S2-9: `make -C gba test-speed2 SPEED2=action SPEED2_GATES=1` stops at the level select's `expect-fps 28` (24.2 fps, 35.9 ms of work: 29.7 fps in speed audit 3; the LEVELS level select pages and S3-8 are the place). The PS1 margin is 72,336 B on the tip with S2-9 (1,392 B under the 72 KB gate). Before that: the PS1 margin is 72,736 B on the tip with PS1-FLAT (the 72 KB plan gate is 73,728 B: 992 B short; hard failure at 65,536 B): every stream's landing eats into it, so PS1-RAM is the critical path. One lever for whoever lands second: `prims.c` (3,612 B) can move into the combat group (one word in `PLAT_GROUPS`), +1.5 KB here but the slot would grow by 2 KB (4 KB on PS1-RAM's tree, net -484 B there): a coordinator decision (`docs/PS1.md` "No 3D models in houses"). The combat group has 2,840 B of room under the slot: LEVELS growth in `combat*.c` / `actor.c` / `levels*.c` beyond that moves the slot. CPU on this machine is the limit.
+-- **SPEED-3 (round 1: kitchen leftovers and the Prize Wheel; owner 2026-11-15: "improve the result card and anything else below 30 fps"; lead session_01Xd63cvDzgwv9nxsL8r6tWV):** *Landed:* nothing yet from this round. *In flight:* **S4-W** (the Prize Wheel's result card as a held picture), built on `91479d4`, branch `fut-s4-w`, gates run, waiting for the landing window: GBA wheel spin 29.9 (one 67 ms frame) -> 30.0, result card 15.0 -> 30.5, card held 15.0 -> 30.1 (a curse keeps 13 frames over 33 ms, was 26); PS1 `_end` 0x801e0420 and margin 130,000 B before and after (the held card is compiled out), Dreamcast wheel windows 30.0 (worst tick 13.1 ms); GBA `.bss` 254,828 B and the IWRAM groups unchanged, ROM `.text` +5,272 B; shared change: `plat_under` in `plat_ext.h` (weak default in `plat_weak_ext.c`, native and GBA `hold.c` implementations) and `nat_hold_pages` in the native platform. *Next:* the other round-1 packages, then the curse's shake and flash. *PS1 resident used of the 2 KB share:* 0 B.
++- **SPEED-3 (round 1: kitchen leftovers and the Prize Wheel; owner 2026-11-15: "improve the result card and anything else below 30 fps"; lead session_01Xd63cvDzgwv9nxsL8r6tWV):** *Landed:* **S4-W** (the Prize Wheel's result card as a held picture; `docs/GBA.md` "Speed wave 3: S4-W", ledger row S4-W; **partial**: a curse is still short), rebased on `86b91c3` and measured there: GBA wheel spin 29.9 (one 67 ms frame) -> 30.0, result card 15.0 -> 30.5, card held 15.0 -> 30.1 (a curse keeps 13 frames over 33 ms, was 26); PS1 margin 110,608 B -> 110,560 B (the held card is compiled out; -48 B layout), PCSX-Redux wheel windows 30.00, Dreamcast wheel windows 30.0 (worst tick 13.1 ms); GBA `.bss` 210,508 B, `.iwram` 11,288 B, `.iwram_bss` 4,088 B unchanged by the package, ROM `.text` +5,272 B; new test `modal_hold_fair_wheel_result_card_languages` (every language, the hint pill's width); shared change: `plat_under` in `plat_ext.h` (weak default in `plat_weak_ext.c`, native and GBA `hold.c` implementations) and `nat_hold_pages` in the native platform. *Next:* the other round-1 packages, then the curse's shake and flash. *PS1 resident used of the 2 KB share:* 0 B.
+ - **Needs from other streams:** none
+-- 
+2.43.0
+
+
+From 32e019dcc259ce65c82e27394cfaa7a332aef53d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:39:52 +0000
+Subject: [PATCH 7/7] S4-W: ledger row re-measured on the landing tree
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvDzgwv9nxsL8r6tWV
+---
+ docs/GBA.md | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/docs/GBA.md b/docs/GBA.md
+index 8e16b62..6dc38e5 100644
+--- a/docs/GBA.md
++++ b/docs/GBA.md
+@@ -459,7 +459,7 @@ against the LAST row, not against a figure from an older base.
+ | GBA-500 | GBA-500: the GBA keeps 500 residents (an id -> slot table; docs: "500 residents (GBA-500)" below) | after G2-EX | 6,420 B | **50,740 B** | +44,320 B | 6,288 B | measured 2026-11-15 on the tree without and with GBA-500, both built clean (`make -C gba sizes`, `nm`; the same EWRAM delta on every tree it was rebased onto): `doomo_town` 89,504 -> 47,360 B (the records 76,000 -> 38,000 B, the edges 12,288 -> 6,144 B, + the id / slot tables 2,000 B), `sim_s` 5,032 -> 2,784 B (its per-resident arrays by slot), the apartments' "seen" bits 125 -> 63 B, the old-save rule's state +134 B (`save.c` `sv_keep` and four counters; the scan's scores, households and the save's graph live in the record array). The 44,320 B are not spent here: the coordinator says what they are for (OWNER_DECISIONS GBA 500 RESIDENTS: first candidates the Talk trait fields and the creator). IWRAM unchanged (resident 11,288 B, `.iwram_bss` 4,088 B, main stack 6,288 B, the overlay slots); the empty record `doomo_res_none` (76 B) is in ROM. ROM +11,832 B, measured before G2-EX (`TOWN_RES` looks the slot up where code read the array, and the old-save scan). PS1: `doomogachi.exe`, `OVL.BIN`, `TEXT.BIN`, `SFX.BIN` byte for byte the tree's without GBA-500 (sha256, boot FMV linked), `_end` 0x801e4fe0, 110,608 B below the stack top, delta 0 B |
+ | G2-CO | G2-CO: the concert at 30 (baked stage, setup hold, flame / 15 Hz trades, the choir's size, the held curtain; docs: "G2-CO: the concert at 30" below) | after GBA-500 (row GBA-500) | 50,740 B | **50,740 B** | 0 B | 6,272 B | measured at the landing on the tree without and with G2-CO, both built clean (`make -C gba sizes`): `.bss` 254,828 B before GBA-500 landed (210,508 B with it, 50,740 B free), `.data` 816 B, `.iwram` 11,288 B and `.iwram_bss` 4,088 B before and after (no resident EWRAM or IWRAM; `keep.c`'s 2 B of state sit in padding). The IWRAM overlay's UI group 10,100 -> 10,220 B (+120 B: `plat_beam_rows`, the beam loop's cut bands; 132 B left in the 10,352 B slot), the other groups unchanged. The choir's smaller singers (16 x 392 B), the half-rate state, the setup's signature and the intro's prefetch slot live in the concert's scene scratch (`ConcertState` 1,016 -> 7,324 B of its 12 KB); the 15 Hz rows are kept in the OBJ VRAM (16,320 B, owner `OBJV_KEEP`). ROM `.text` +5,960 B, `.rodata` +845,296 B (the 31 baked concert stages in `backdrops.bin`). (First built on `1297e931` as row 51, which CR5 holds on origin.) PS1: no resident byte (the new paths are compiled out; 110,608 B below the stack top with the boot FMV, the same as without G2-CO; docs/PS1.md "The concert (SP6, P-K1)") |
+ | 64 | LV4: mechanic kit B (`levels_mech_env.c`, `DoomoView3D.view_dist`, `r3f.maxd` from the per-level view distance) | after G2-EX (`da2d3e9a`) | unchanged | **unchanged** | 0 B | 6,308 B | measured 2026-11-15 on `33d760af` and the same + LV4 (both clean `make -C gba`, `make -C gba sizes`): .iwram 11,272, .iwram_bss 4,088, .bss 254,820 and every overlay slot identical; on the landing tree (after G2-EX) the full sizes are .iwram 11,288, .iwram_bss 4,088, .bss 254,828, which is 33d760af plus G2-EX's +16 B / +8 B and nothing from LV4; ROM .text +40 B (r3d.c: the range check, the hoisted sprite-cull limit); `lv_env_*` is not linked (nothing calls it). The new `view_dist` byte sits in the padding of `DoomoView3D` (stack, and the one static copy in combat_hud.c). Speed tour: every `vhash-seq` identical |
+-| S4-W | S4-W: the Prize Wheel's result card as a held picture (docs: "Speed wave 3: S4-W" above) | after S2-4c (`91479d4`) | 6,420 B | **6,420 B** | 0 B | 6,288 B | measured on the tip `91479d4` and that tree + S4-W (`make -C gba sizes`): `.bss` 254,828 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, the room group 9,800 B and the UI group 10,124 B unchanged: no static RAM (the walk's state and the lists are in the wheel's scene scratch, 8,858 B more of the 12 KB claim, only while the wheel runs; the exclusion boxes are 16 B of the particle pool's 512 B). ROM: `.text` 1,524,016 -> 1,529,288 B (+5,272), `.rodata` unchanged (8,246,748 B), no new data file. PS1: compiled out, `_end` 0x801e0420 and 130,000 B below the stack top with the boot FMV before and after (both built), the minigame group the same size |
++| S4-W | S4-W: the Prize Wheel's result card as a held picture (docs: "Speed wave 3: S4-W" above) | after S2-4c (`91479d4`) | 6,420 B | **6,420 B** | 0 B | 6,288 B | measured on the tip `91479d4` and that tree + S4-W (`make -C gba sizes`): `.bss` 254,828 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, the room group 9,800 B and the UI group 10,124 B unchanged: no static RAM (the walk's state and the lists are in the wheel's scene scratch, 8,858 B more of the 12 KB claim, only while the wheel runs; the exclusion boxes are 16 B of the particle pool's 512 B). ROM: `.text` 1,524,016 -> 1,529,288 B (+5,272), `.rodata` unchanged (8,246,748 B), no new data file. PS1: compiled out, `_end` 0x801e0420 and 130,000 B below the stack top with the boot FMV before and after (both built), the minigame group the same size | Re-measured at the landing on `f40907c` (clean `make -C gba`): `.bss` 210,508 B (EWRAM free 50,740 B), `.iwram` 11,288 B, `.iwram_bss` 4,088 B, `.data` 816 B, UI group 10,220 B: identical to the G2-CO row, 0 B resident from S4-W. PS1 EXE with the boot FMV: 110,560 B below the stack top.
+ 
+ Known claimants still to land (their own packages measure and add rows):
+ 
+-- 
+2.43.0
+

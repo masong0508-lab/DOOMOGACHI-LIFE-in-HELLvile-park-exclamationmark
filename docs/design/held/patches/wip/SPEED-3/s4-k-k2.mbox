@@ -1,0 +1,1038 @@
+From ccdcfa595c78b2de9b2f97adde9d41ed3f385aeb Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 16:51:36 +0000
+Subject: [PATCH 1/7] S4-K: result card: Granny's pose cut under the bubble,
+ the grade stamp in parts (sparkles, star apart), tests
+
+Granny's raised arms reach under the speech bubble's bottom rows, which the bubble covers (it is drawn after her): her baked pose is cut at the body's bottom (plat_cook_pose top, cook_pose_crop), so a new pose no longer redraws the bubble body and the window under it. The grade stamp is four parts (ring and word, two sparkles, star; fc_grade_stamp_part): the sparkles change every second tick and with one layer redrew the title, money pill and the bubble too; the left sparkle is drawn only right of the bubble's edge and the ring's one column on that edge is put right with the bubble's edge colour. Exact: native stage on / off 5,140 frames x 2 sizes x day / night + Spanish identical.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvDzgwv9nxsL8r6tWV
+---
+ core/native/cookpose_native.c | 15 ++++---
+ core/src/cook_gfx.c           |  4 +-
+ core/src/cook_scene.c         | 83 +++++++++++++++++++++++++++--------
+ core/src/fishcook.c           | 69 +++++++++++++++++++++++------
+ core/src/fishcook_int.h       |  9 +++-
+ core/tests/test_cook_kept.c   | 73 +++++++++++++++++++++++++++++-
+ gba/src/cookpose.c            |  5 ++-
+ 7 files changed, 214 insertions(+), 44 deletions(-)
+
+diff --git a/core/native/cookpose_native.c b/core/native/cookpose_native.c
+index 7d1b71b..33c4da6 100644
+--- a/core/native/cookpose_native.c
++++ b/core/native/cookpose_native.c
+@@ -63,9 +63,10 @@ static NPose np[NP_CAP];
+ static uint8_t np_ok[NP_CAP];             /* 1 an image, 2 cannot be one */
+ static int np_n, np_w, np_h;
+ 
+-int plat_cook_pose(uint32_t key, int cx, int cy, int clip, int s, int t, int mood, int box[4])
++int plat_cook_pose(uint32_t key, int cx, int cy, int clip, int top, int s, int t, int mood, int box[4])
+ {
+-    int i;
++    int i, b[4];
++    const uint8_t *pix;
+     DoomoImage img;
+     if (!nat_stage_on) return 0;
+     if (np_w != nat_w || np_h != nat_h) {
+@@ -83,12 +84,16 @@ int plat_cook_pose(uint32_t key, int cx, int cy, int clip, int s, int t, int moo
+         np_n++;
+     }
+     if (np_ok[i] != 1) return 0;
++    b[0] = np[i].x0; b[1] = np[i].y0; b[2] = np[i].w; b[3] = np[i].h;
++    pix = np[i].pix;
++    cook_pose_crop(b, &pix, top);
+     if (box) {
+-        box[0] = np[i].x0; box[1] = np[i].y0; box[2] = np[i].w; box[3] = np[i].h;
++        box[0] = b[0]; box[1] = b[1]; box[2] = b[2]; box[3] = b[3];
+         return 1;
+     }
+-    img.w = np[i].w; img.h = np[i].h; img.pix = np[i].pix; img.uid = 0xC00C0000u + (uint32_t)i;
+-    plat_image(np[i].x0, np[i].y0, &img, 1, 0, 0);
++    if (b[3] <= 0) return 1;
++    img.w = (uint16_t)b[2]; img.h = (uint16_t)b[3]; img.pix = pix; img.uid = 0xC00C0000u + (uint32_t)i;
++    plat_image(b[0], b[1], &img, 1, 0, 0);
+     return 1;
+ }
+ 
+diff --git a/core/src/cook_gfx.c b/core/src/cook_gfx.c
+index 72a0788..660d048 100644
+--- a/core/src/cook_gfx.c
++++ b/core/src/cook_gfx.c
+@@ -401,9 +401,9 @@ uint32_t granny_key(int s, int t, int mood)
+ 
+ /* (S2-4c) a weak default: no baked poses (the GBA keeps them in the ROM, gba/src/cookpose.c;
+  * native tests render them on demand, core/native/cookpose_native.c) */
+-__attribute__((weak)) int plat_cook_pose(uint32_t key, int cx, int cy, int clip, int s, int t, int mood, int box[4])
++__attribute__((weak)) int plat_cook_pose(uint32_t key, int cx, int cy, int clip, int top, int s, int t, int mood, int box[4])
+ {
+-    (void)key; (void)cx; (void)cy; (void)clip; (void)s; (void)t; (void)mood; (void)box;
++    (void)key; (void)cx; (void)cy; (void)clip; (void)top; (void)s; (void)t; (void)mood; (void)box;
+     return 0;
+ }
+ #endif
+diff --git a/core/src/cook_scene.c b/core/src/cook_scene.c
+index b3f71e3..829caef 100644
+--- a/core/src/cook_scene.c
++++ b/core/src/cook_scene.c
+@@ -686,13 +686,13 @@ static void counter_layer(int id, int y, int t)
+ }
+ 
+ /* Granny behind the counter (its top row cy_counter; her chest at cy) */
+-static void granny_layer(int id, int cx, int cy, int s, int t, int mood, int cy_counter)
++static void granny_layer(int id, int cx, int cy, int s, int t, int mood, int cy_counter, int top)
+ {
+     int b[4];
+     if (!K.lpass) { granny_draw(cx, cy, s, t, mood); return; }
+     /* a baked pose where the platform has one (the GBA's ROM): its own box, cut off where the
+      * counter starts, so nothing needs putting back */
+-    if (!plat_cook_pose(granny_key(s, t, mood), cx, cy, cy_counter, s, t, mood, b)) {
++    if (!plat_cook_pose(granny_key(s, t, mood), cx, cy, cy_counter, top, s, t, mood, b)) {
+         granny_box(cx, cy, s, b);
+         if (L(id, b, granny_key(s, t, mood))) {
+             granny_draw(cx, cy, s, t, mood);
+@@ -700,7 +700,7 @@ static void granny_layer(int id, int cx, int cy, int s, int t, int mood, int cy_
+         }
+         return;
+     }
+-    if (L(id, b, granny_key(s, t, mood))) plat_cook_pose(granny_key(s, t, mood), cx, cy, cy_counter, s, t, mood, NULL);
++    if (L(id, b, granny_key(s, t, mood))) plat_cook_pose(granny_key(s, t, mood), cx, cy, cy_counter, top, s, t, mood, NULL);
+ }
+ 
+ void cook_poses(void (*fn)(void *ctx, int cx, int cy, int clip, int s, int t, int mood), void *ctx)
+@@ -745,6 +745,15 @@ int cook_pose_find(const uint8_t *blob, uint32_t key, int cx, int cy, int clip,
+     return -1;
+ }
+ 
++void cook_pose_crop(int box[4], const uint8_t **pix, int top)
++{
++    int cut = top - box[1];
++    if (cut <= 0) return;
++    if (cut > box[3]) cut = box[3];
++    box[1] += cut; box[3] -= cut;
++    if (pix && *pix) *pix += (size_t)cut * (size_t)box[2];
++}
++
+ /* the title pill (its sparkles twinkle every third tick) and the money pill: two layers */
+ static void title_layers(int id, const char *s)
+ {
+@@ -811,9 +820,9 @@ static void bubble_layer(int id, int x, int y, int w, const char *s, int tx, int
+ #define L(id, b, key) 1
+ static void back_layer(int id, int t, int busy) { (void)id; kitchen_draw_back((uint32_t)t, busy); }
+ static void counter_layer(int id, int y, int t) { (void)id; kitchen_draw_counter(y, (uint32_t)t); }
+-static void granny_layer(int id, int cx, int cy, int s, int t, int mood, int cy_counter)
++static void granny_layer(int id, int cx, int cy, int s, int t, int mood, int cy_counter, int top)
+ {
+-    (void)id; (void)cy_counter;
++    (void)id; (void)cy_counter; (void)top;
+     granny_draw(cx, cy, s, t, mood);
+ }
+ static void title_layers(int id, const char *s)
+@@ -1158,7 +1167,7 @@ static void draw_book(void)
+         {
+             int px, py, ps;
+             book_granny(&px, &py, &ps);
+-            granny_layer(LB_GRANNY, px, py, ps, t, GRAN_TALK, h);
++            granny_layer(LB_GRANNY, px, py, ps, t, GRAN_TALK, h, 0);
+         }
+         bubble_layer(LB_BUBBLE, gx + (big ? 22 : 17), by + bh + 5, w - gx - (big ? 28 : 21), say, gx + 6, gy - 12, 999);
+     }
+@@ -1446,7 +1455,7 @@ static void draw_cooking(void)
+     back_layer(LC_WINDOW, t, 1);
+     if (K.st == CS_STEP_DONE) mood = K.score[K.step] >= 65 ? GRAN_CHEER : K.score[K.step] < 40 ? GRAN_DISMAY : GRAN_CALM;
+     else if (K.st != CS_INTRO) mood = GRAN_CALM;
+-    granny_layer(LC_GRANNY, gran_x(), counter_y() + 4, fc_big() ? 18 : 14, t, mood, counter_y());
++    granny_layer(LC_GRANNY, gran_x(), counter_y() + 4, fc_big() ? 18 : 14, t, mood, counter_y(), 0);
+     counter_layer(LC_LOGO, counter_y(), t);
+     doomo_snprintf(buf, sizeof(buf), "%s", RC()->name);
+     title_layers(LC_TITLE, buf);
+@@ -1503,15 +1512,29 @@ static void draw_cooking(void)
+ static void draw_result(void)
+ {
+     enum { LR_WINDOW, LR_GRANNY, LR_LOGO, LR_TITLE, LR_MONEY, LR_PLATE, LR_STAMP, LR_TEXT, LR_BUBBLE, LR_FX = LR_BUBBLE + 2,
+-           LR_BUTTONS, LR_HINT };
++           LR_BUTTONS, LR_HINT, LR_SPARK };
+     int t = K.t, w = W(), h = H(), big = fc_big(), cx = w * 64 / 100, cy = h * 47 / 100;
+     int it = cook_result_item(K.recipe, K.grade), b[4] = { 0, 0, 0, 0 };
+     char buf[48];
+     static const char *const opts[3] = { "Again", "Serve", "Book" };
+     int k;
++    const char *line = grade_lines[K.grade <= GRADE_PERFECT ? K.grade : 0];
++    int bx = 4, by = big ? 28 : 22, bw = cx - (big ? 80 : 62), bh = 0, gtop = 0;
++#if COOK_KEPT
++    /* (S4-K) her raised arms reach under the bubble's bottom rows; the bubble is drawn after her over
++     * them, so her baked pose is cut there: its box then clears the bubble's body, and her pose
++     * changing every tick no longer redraws the body (and the window under it). Only where the
++     * bubble's body covers her whole width. */
++    if (K.lpass) {
++        int body[4], tail[4], gs = big ? 18 : 14;
++        fc_bubble_boxes(bx, by, bw, line, gran_x() + 6, counter_y() - (big ? 44 : 34), body, tail);
++        bh = body[3];
++        if (gran_x() - gs - 6 >= body[0] + 5 && gran_x() + gs + 6 <= body[0] + body[2] - 5) gtop = body[1] + body[3];
++    }
++#endif
+     back_layer(LR_WINDOW, t, 1);
+     granny_layer(LR_GRANNY, gran_x(), counter_y() + 4, big ? 18 : 14, t,
+-                 K.grade == GRADE_BURNT ? GRAN_DISMAY : K.grade >= GRADE_GREAT ? GRAN_CHEER : GRAN_TALK, counter_y());
++                 K.grade == GRADE_BURNT ? GRAN_DISMAY : K.grade >= GRADE_GREAT ? GRAN_CHEER : GRAN_TALK, counter_y(), gtop);
+     counter_layer(LR_LOGO, counter_y(), t);
+     title_layers(LR_TITLE, K.grade == GRADE_BURNT ? "Uh oh..." : "Order up!");
+     /* a spotlight + rays behind the plate (they turn every tick) */
+@@ -1538,15 +1561,38 @@ static void draw_result(void)
+         }
+     }
+     if (t > 14) {
+-        int sy = cy - (big ? 54 : 40), sc = big ? 3 : 2;
++        int sy = cy - (big ? 54 : 40), sc = big ? 3 : 2, tt = t - 14, sc1, rr = fc_grade_stamp_r(K.grade, tt, &sc1);
+         int r = ui_text_big_width(cook_grade_names[DOOMO_CLAMP(K.grade, 0, 4)], sc) / 2 + 8;
+-        uint32_t key = (uint32_t)DOOMO_MIN(t - 14, 12) | (uint32_t)K.grade << 4;
+-        if (K.grade == GRADE_PERFECT)
+-            key |= (uint32_t)ui_sparkle_size(((t - 14) / 2) & 15) << 8 | (uint32_t)ui_sparkle_size(((t - 14) / 2 + 7) & 15) << 12;
+-        /* the ring (r + 2 wide, 9 sc / 2 + 4 tall), PERFECT's star above and sparkles beside it */
+-        b[0] = cx - r - (K.grade == GRADE_PERFECT ? 6 : 3); b[2] = 2 * (cx - b[0]) + 1;
+-        b[1] = sy - 9 * sc / 2 - (K.grade == GRADE_PERFECT ? 11 : 4); b[3] = sy + 9 * sc / 2 + 7 - b[1];
+-        if (L(LR_STAMP, b, key)) fc_grade_stamp(cx, sy, K.grade, t - 14);
++        uint32_t key = (uint32_t)DOOMO_MIN(tt, 12) | (uint32_t)K.grade << 4;
++        /* (S4-K) the ring and the word, and PERFECT's sparkles and star as layers of their own: the
++         * sparkles change every second tick, which with one layer redrew the title, the money pill and
++         * the bubble (and the window under it) as well. The ring: r + 2 wide, 9 sc / 2 + 4 tall. */
++        /* The ring's leftmost column (r + 3 left of the centre: the ellipse's rounding) can lie on the
++         * speech bubble's right edge column, which the bubble (drawn after the stamp) paints over. Then
++         * the ring's box stops one column short and that column is put right with the bubble's edge
++         * colour after the ring, over the rows the ring can reach: the bubble body is not redrawn
++         * every time the plate under the stamp changes (and the window under the bubble with it). */
++        int ex = cx - r - 3, ey0 = sy + 1 - (9 * sc / 2 + 4), ey1 = sy + 2 + 9 * sc / 2 + 4;
++        int fix = bh > 0 && ex == bx + bw - 1 && sy - 3 >= by + 4 && sy + 5 < by + bh - 4;
++        b[0] = fix ? ex + 1 : ex; b[2] = 2 * (cx - ex) + 1 - (b[0] - ex);
++        b[1] = sy - 9 * sc / 2 - 4; b[3] = sy + 9 * sc / 2 + 7 - b[1];
++        if (L(LR_STAMP, b, key | (uint32_t)fix << 3)) {
++            fc_grade_stamp_part(cx, sy, K.grade, tt, 0, 0);
++            if (fix) plat_rect(ex, DOOMO_MAX(ey0, by + 4), 1, DOOMO_MIN(ey1, by + bh - 4) - DOOMO_MAX(ey0, by + 4), PAL_RAMP(RAMP_PASTEL_PINK, 3));
++        }
++        if (K.grade == GRADE_PERFECT) {
++            /* the left sparkle lies on the speech bubble's right edge: the bubble is drawn after it and
++             * covers what is under it, so only the part right of that edge is drawn (and boxed) */
++            int sx = cx - rr - 3, sxmin = 0;
++            if (sx < bx + bw && sx + 7 > bx && sy - 9 >= by + 4 && sy - 3 <= by + bh - 4) sxmin = bx + bw;
++            b[0] = DOOMO_MAX(sx, sxmin); b[1] = sy - 6 - 3; b[2] = sx + 7 - b[0]; b[3] = 7;
++            if (L(LR_SPARK, b, (uint32_t)ui_sparkle_size((tt / 2) & 15) | (uint32_t)rr << 8 | (uint32_t)sxmin << 20))
++                fc_grade_stamp_part(cx, sy, K.grade, tt, 1, sxmin);
++            b[0] = cx + rr - 3; b[1] = sy + 4 - 3; b[2] = 7; b[3] = 7;
++            if (L(LR_SPARK + 1, b, (uint32_t)ui_sparkle_size((tt / 2 + 7) & 15) | (uint32_t)rr << 8)) fc_grade_stamp_part(cx, sy, K.grade, tt, 2, 0);
++            b[0] = cx - 6; b[1] = sy - 9 * sc1 / 2 - 6 - 6; b[2] = 13; b[3] = 13;
++            if (L(LR_SPARK + 2, b, (uint32_t)sc1)) fc_grade_stamp_part(cx, sy, K.grade, tt, 3, 0);
++        }
+     }
+     doomo_snprintf(buf, sizeof(buf), "+%d %s", K.portions, doomo_items[it].name);
+     {
+@@ -1557,8 +1603,7 @@ static void draw_result(void)
+ #endif
+             fc_textc(cx, ty, buf, PAL_WHITE);
+     }
+-    bubble_layer(LR_BUBBLE, 4, big ? 28 : 22, cx - (big ? 80 : 62), grade_lines[K.grade <= GRADE_PERFECT ? K.grade : 0],
+-                 gran_x() + 6, counter_y() - (big ? 44 : 34), t * 2);
++    bubble_layer(LR_BUBBLE, bx, by, bw, line, gran_x() + 6, counter_y() - (big ? 44 : 34), t * 2);
+     fx_layer(LR_FX);
+     if (t >= 20) {
+         int bw = big ? 70 : 56, bx = (w - (bw * 3 + 12)) / 2 + (big ? 20 : 14), by = counter_y() + (big ? 22 : 16);
+diff --git a/core/src/fishcook.c b/core/src/fishcook.c
+index fb0b34c..46bce59 100644
+--- a/core/src/fishcook.c
++++ b/core/src/fishcook.c
+@@ -559,25 +559,68 @@ void fc_bubble(int x, int y, int w, const char *s, int tx, int ty, int chars)
+     ui_text_wrap_n(x + 5, y + 4, w - 10, s, st->text, chars);
+ }
+ 
+-void fc_grade_stamp(int cx, int cy, int grade, int t)
++/* ui_sparkle's pixels at x >= xmin only (the speech bubble drawn after the stamp covers the rest) */
++static void sparkle_from(int cx, int cy, int phase, uint8_t c, int xmin)
++{
++    int s = ui_sparkle_size(phase), x0;
++    if (s == 0) return;
++    x0 = DOOMO_MAX(cx - s, xmin);
++    if (x0 <= cx + s) plat_rect(x0, cy, cx + s + 1 - x0, 1, c);
++    if (cx >= xmin) plat_rect(cx, cy - s, 1, 2 * s + 1, c);
++    if (s >= 2) {
++        x0 = DOOMO_MAX(cx - 1, xmin);
++        if (x0 <= cx + 1) plat_rect(x0, cy - 1, cx + 2 - x0, 3, c);
++        if (cx >= xmin) plat_rect(cx, cy, 1, 1, PAL_WHITE);
++    }
++    if (s >= 3) {
++        if (cx - 2 >= xmin) { plat_rect(cx - 2, cy - 2, 1, 1, c); plat_rect(cx - 2, cy + 2, 1, 1, c); }
++        if (cx + 2 >= xmin) { plat_rect(cx + 2, cy + 2, 1, 1, c); plat_rect(cx + 2, cy - 2, 1, 1, c); }
++    }
++}
++
++/* the stamp's ring half-width (and the text scale it is drawn at, 1 for the first two ticks of its pop) */
++int fc_grade_stamp_r(int grade, int t, int *scale)
++{
++    const char *s = cook_grade_names[DOOMO_CLAMP(grade, 0, 4)];
++    int sc = fc_big() ? 3 : 2;
++    if (ui_pop_scale(t) < 160) sc = 1;
++    if (scale) *scale = sc;
++    return ui_text_big_width(s, sc) / 2 + 8;
++}
++
++/* (S4-K) the stamp in parts, so the kept kitchen can redraw the sparkles (which change every second
++ * tick) without the ring and the word: part 0 the ring and the word, 1 and 2 PERFECT's sparkles at
++ * the ring's ends, 3 its star above */
++void fc_grade_stamp_part(int cx, int cy, int grade, int t, int part, int xmin)
+ {
+     static const uint8_t col[5] = { 0, PAL_RAMP(RAMP_STONE, 1), PAL_PAINT(PAINT_SKY, 1),
+                                     PAL_PAINT(PAINT_MINT, 0), PAL_PAINT(PAINT_CHERRY, 1) };
+     const char *s = cook_grade_names[DOOMO_CLAMP(grade, 0, 4)];
+-    int scale = fc_big() ? 3 : 2, s256 = ui_pop_scale(t), w, r;
++    int scale, w, r = fc_grade_stamp_r(grade, t, &scale);
+     uint8_t c = col[DOOMO_CLAMP(grade, 0, 4)];
+     if (grade <= GRADE_NONE || plat_draw_skipped()) return;
+-    if (s256 < 160) scale = 1;
+     w = ui_text_big_width(s, scale);
+-    r = w / 2 + 8;
+-    /* the stamp: a ring with a ribbon behind the word */
+-    ui_fill_ellipse(cx, cy + 1, r + 2, 9 * scale / 2 + 4, ui_darker(c));
+-    ui_fill_ellipse(cx, cy, r, 9 * scale / 2 + 2, PAL_WHITE);
+-    ui_fill_ellipse(cx, cy, r - 2, 9 * scale / 2, ui_lighter(ui_lighter(c)));
+-    ui_text_big(cx - w / 2, cy - 4 * scale, s, scale, c, PAL_WHITE);
+-    if (grade == GRADE_PERFECT) {
+-        ui_sparkle(cx - r, cy - 6, (t / 2) & 15, PAL_UI_GOLD);
+-        ui_sparkle(cx + r, cy + 4, (t / 2 + 7) & 15, PAL_UI_GOLD);
+-        ui_star(cx, cy - 9 * scale / 2 - 6, 4, PAL_UI_GOLD);
++    switch (part) {
++    case 0:
++        /* the stamp: a ring with a ribbon behind the word */
++        ui_fill_ellipse(cx, cy + 1, r + 2, 9 * scale / 2 + 4, ui_darker(c));
++        ui_fill_ellipse(cx, cy, r, 9 * scale / 2 + 2, PAL_WHITE);
++        ui_fill_ellipse(cx, cy, r - 2, 9 * scale / 2, ui_lighter(ui_lighter(c)));
++        ui_text_big(cx - w / 2, cy - 4 * scale, s, scale, c, PAL_WHITE);
++        break;
++    case 1:
++        if (grade == GRADE_PERFECT) {
++            if (xmin > 0) sparkle_from(cx - r, cy - 6, (t / 2) & 15, PAL_UI_GOLD, xmin);
++            else ui_sparkle(cx - r, cy - 6, (t / 2) & 15, PAL_UI_GOLD);
++        }
++        break;
++    case 2: if (grade == GRADE_PERFECT) ui_sparkle(cx + r, cy + 4, (t / 2 + 7) & 15, PAL_UI_GOLD); break;
++    default: if (grade == GRADE_PERFECT) ui_star(cx, cy - 9 * scale / 2 - 6, 4, PAL_UI_GOLD); break;
+     }
+ }
++
++void fc_grade_stamp(int cx, int cy, int grade, int t)
++{
++    int part;
++    for (part = 0; part < 4; part++) fc_grade_stamp_part(cx, cy, grade, t, part, 0);
++}
+diff --git a/core/src/fishcook_int.h b/core/src/fishcook_int.h
+index 1960f55..7ca02a5 100644
+--- a/core/src/fishcook_int.h
++++ b/core/src/fishcook_int.h
+@@ -281,6 +281,9 @@ void fc_bubble(int x, int y, int w, const char *s, int tx, int ty, int chars);
+ void fc_shadow(int cx, int cy, int rx);
+ /* Grade stamp (PERFECT! ...) centred at cx, cy; t = ticks since shown. */
+ void fc_grade_stamp(int cx, int cy, int grade, int t);
++void fc_grade_stamp_part(int cx, int cy, int grade, int t, int part, int xmin);   /* (S4-K) 0 ring + word, 1-2 sparkles, 3 star;
++                                                                                   * xmin > 0: part 1 only draws x >= xmin */
++int  fc_grade_stamp_r(int grade, int t, int *scale);
+ 
+ /* ---- fish drawing (fish_gfx.c) -------------------------------------------- */
+ enum { FDRAW_FLIP = 1, FDRAW_FIGHT = 2, FDRAW_SILHOUETTE = 4, FDRAW_HAPPY = 8,
+@@ -348,7 +351,11 @@ uint32_t granny_key(int s, int t, int mood);
+  * returns 0 (the weak default) when it holds no such picture: the caller draws her. The GBA
+  * bakes every pose cook_poses() lists at 240x160 into the ROM (runner --bake-poses). */
+ #define GRANNY_POSE_CYCLE 2520                      /* lcm of her animation periods */
+-int plat_cook_pose(uint32_t key, int cx, int cy, int clip, int s, int t, int mood, int box[4]);
++int plat_cook_pose(uint32_t key, int cx, int cy, int clip, int top, int s, int t, int mood, int box[4]);
++/* (S4-K) the same pose cut at row `top` too (what a layer drawn after her covers, the result card's
++ * speech bubble over her raised arms): rows above `top` are neither drawn nor in the box. top <= her
++ * own first row cuts nothing. cook_pose_crop does it to a pose's box and picture. */
++void cook_pose_crop(int box[4], const uint8_t **pix, int top);
+ /* every (cx, cy, clip, s, mood) the kept kitchen draws Granny at on this screen, with every t
+  * of a cycle: fn(ctx, cx, cy, clip, s, t, mood) (cook_scene.c) */
+ void cook_poses(void (*fn)(void *ctx, int cx, int cy, int clip, int s, int t, int mood), void *ctx);
+diff --git a/core/tests/test_cook_kept.c b/core/tests/test_cook_kept.c
+index 2b2e547..707578d 100644
+--- a/core/tests/test_cook_kept.c
++++ b/core/tests/test_cook_kept.c
+@@ -259,6 +259,7 @@ static uint32_t kpad(const KPad *p, int f)
+ }
+ 
+ static int kept_frames, full_frames;
++static int res_since, res_frames, res_drawn;      /* (S4-K) the result card's settled frames: layers drawn */
+ 
+ static int krun(uint32_t *out, int stage, int night, int lang, int upto)
+ {
+@@ -272,6 +273,7 @@ static int krun(uint32_t *out, int stage, int night, int lang, int upto)
+     scene_set(&SCENE_TITLE, 0);
+     kframe(0);
+     kept_frames = full_frames = 0;
++    res_since = res_frames = res_drawn = 0;
+     for (s = 0; s < (int)(sizeof(ksegs) / sizeof(ksegs[0])) && n < upto && n < KF_MAX; s++) {
+         const KSeg *g = &ksegs[s];
+         if (g->unlock) {
+@@ -292,6 +294,9 @@ static int krun(uint32_t *out, int stage, int night, int lang, int upto)
+                 stage_stats(&st);
+                 kept_frames++;
+                 full_frames += st.full;
++                if (cook_scene_state() == 7 /* CS_RESULT */) {
++                    if (++res_since > 60 && !st.full) { res_frames++; res_drawn += st.drawn; }
++                } else res_since = 0;
+             }
+         }
+     }
+@@ -331,12 +336,21 @@ static int kcompare(int w, int h, int night, int lang, int *kept)
+             test_fail(__FILE__, __LINE__, m);
+             return 0;
+         }
+-    printf("      kept kitchen %dx%d night %d lang %d: %d frames, %d over the kept picture, %d of them drawn in full\n", w, h,
+-           night, lang, n, *kept, full_frames);
++    printf("      kept kitchen %dx%d night %d lang %d: %d frames, %d over the kept picture, %d of them drawn in full; result card %d settled frames, %d.%02d layers drawn\n", w, h,
++           night, lang, n, *kept, full_frames, res_frames, res_frames ? res_drawn / res_frames : 0, res_frames ? res_drawn * 100 / res_frames % 100 : 0);
+     if (full_frames * 8 > *kept) {
+         test_fail(__FILE__, __LINE__, "the stage drew too many kitchen frames in full");
+         return 0;
+     }
++    /* (S4-K) the result card's settled frames redraw about seven layers of 16 on the small screen, not
++     * eight and more: her raised arms are cut under the speech bubble's body, so a new pose does not
++     * redraw the body (and the window under it) */
++    if (w == 240 && (res_frames < 100 || res_drawn * 100 > res_frames * 790)) {
++        char m[160];
++        snprintf(m, sizeof(m), "result card: %d settled frames, %d layers drawn in all (want at most 7.9 a frame)", res_frames, res_drawn);
++        test_fail(__FILE__, __LINE__, m);
++        return 0;
++    }
+     return n;
+ }
+ 
+@@ -471,3 +485,58 @@ TEST(cook_kept_baked_pose_file)
+     free(blob);
+     pose_blob = NULL;
+ }
++
++/* (S4-K) a pose cut at row `top`: the box loses the rows above it and the picture advances by them */
++TEST(cook_kept_pose_crop)
++{
++    static const uint8_t pix[5 * 4] = { 0, 1, 2, 3, 4,  5, 6, 7, 8, 9,  10, 11, 12, 13, 14,  15, 16, 17, 18, 19 };
++    int b[4] = { 10, 20, 5, 4 };
++    const uint8_t *p = pix;
++    cook_pose_crop(b, &p, 20);                      /* the pose's own first row: nothing is cut */
++    CHECK(b[1] == 20 && b[3] == 4 && p == pix);
++    cook_pose_crop(b, &p, 12);                      /* above it: nothing */
++    CHECK(b[1] == 20 && b[3] == 4 && p == pix);
++    cook_pose_crop(b, &p, 22);                      /* two rows cut */
++    CHECK(b[0] == 10 && b[1] == 22 && b[2] == 5 && b[3] == 2 && p == pix + 10 && p[0] == 10);
++    cook_pose_crop(b, &p, 99);                      /* all of it */
++    CHECK(b[3] == 0);
++    cook_pose_crop(b, NULL, 99);                    /* (no picture asked for) */
++    CHECK(b[3] == 0);
++}
++
++/* (S4-K) the stamp's four parts, one after the other, are the stamp; the left sparkle with an xmin is the
++ * sparkle's pixels at x >= xmin and no others */
++static void part_stamp_all(int t, int grade, int sc) { (void)sc; fc_grade_stamp(nat_w / 2, 60, grade, t); }
++static void part_stamp_parts(int t, int grade, int sc)
++{
++    int k;
++    (void)sc;
++    for (k = 0; k < 4; k++) fc_grade_stamp_part(nat_w / 2, 60, grade, t, k, 0);
++}
++static void part_spark_all(int t, int grade, int xmin) { (void)xmin; fc_grade_stamp_part(nat_w / 2, 60, grade, t, 1, 0); }
++static void part_spark_from(int t, int grade, int xmin) { fc_grade_stamp_part(nat_w / 2, 60, grade, t, 1, xmin); }
++
++TEST(cook_kept_stamp_parts)
++{
++    int res, grade, t, i, n;
++    for (res = 0; res < 2; res++) {
++        set_res(res ? 320 : 240, res ? 240 : 160);
++        n = nat_w * nat_h;
++        for (grade = GRADE_NONE + 1; grade <= GRADE_PERFECT; grade++)
++            for (t = 0; t < 40; t++) {
++                paint(part_stamp_all, t, grade, 0, PAL_RAMP(RAMP_STONE, 2), pa);
++                paint(part_stamp_parts, t, grade, 0, PAL_RAMP(RAMP_STONE, 2), pb);
++                CHECK_MSG(memcmp(pa, pb, (size_t)n) == 0, "grade %d t %d: the parts are not the stamp", grade, t);
++            }
++        for (t = 0; t < 40; t++) {
++            int xmin = nat_w / 2 - fc_grade_stamp_r(GRADE_PERFECT, t, NULL) - 1;     /* one column into the sparkle */
++            paint(part_spark_all, t, GRADE_PERFECT, 0, PAL_RAMP(RAMP_STONE, 2), pa);
++            paint(part_spark_from, t, GRADE_PERFECT, xmin, PAL_RAMP(RAMP_STONE, 2), pb);
++            for (i = 0; i < n; i++) {
++                int want = i % nat_w >= xmin ? pa[i] : PAL_RAMP(RAMP_STONE, 2);
++                if (pb[i] != want) { CHECK_MSG(0, "t %d xmin %d: pixel %d,%d is %d, want %d", t, xmin, i % nat_w, i / nat_w, pb[i], want); break; }
++            }
++        }
++    }
++    set_res(240, 160);
++}
+diff --git a/gba/src/cookpose.c b/gba/src/cookpose.c
+index 757f0d4..9d69d03 100644
+--- a/gba/src/cookpose.c
++++ b/gba/src/cookpose.c
+@@ -15,7 +15,7 @@
+ 
+ extern const uint8_t gba_poses[];             /* cookpose_blob.s */
+ 
+-int plat_cook_pose(uint32_t key, int cx, int cy, int clip, int s, int t, int mood, int box[4])
++int plat_cook_pose(uint32_t key, int cx, int cy, int clip, int top, int s, int t, int mood, int box[4])
+ {
+     const uint8_t *pix;
+     int b[4], i;
+@@ -23,11 +23,12 @@ int plat_cook_pose(uint32_t key, int cx, int cy, int clip, int s, int t, int moo
+     (void)s; (void)t; (void)mood;
+     i = cook_pose_find(gba_poses, key, cx, cy, clip, b, &pix);   /* (the lookup: cook_scene.c, tested natively) */
+     if (i < 0) return 0;
++    cook_pose_crop(b, &pix, top);
+     if (box) {
+         box[0] = b[0]; box[1] = b[1]; box[2] = b[2]; box[3] = b[3];
+         return 1;
+     }
+-    if (gba_nodraw == 1) return 1;
++    if (gba_nodraw == 1 || b[3] <= 0) return 1;
+     img.w = (uint16_t)b[2];
+     img.h = (uint16_t)b[3];
+     img.pix = pix;
+-- 
+2.43.0
+
+
+From a014635efcde253a5000e10436962dab8108278d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 17:24:47 +0000
+Subject: [PATCH 2/7] S4-K: the stamp's key is unused on the PS1 (no warning)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvDzgwv9nxsL8r6tWV
+---
+ core/src/cook_scene.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/core/src/cook_scene.c b/core/src/cook_scene.c
+index 829caef..0e02e3d 100644
+--- a/core/src/cook_scene.c
++++ b/core/src/cook_scene.c
+@@ -1564,6 +1564,7 @@ static void draw_result(void)
+         int sy = cy - (big ? 54 : 40), sc = big ? 3 : 2, tt = t - 14, sc1, rr = fc_grade_stamp_r(K.grade, tt, &sc1);
+         int r = ui_text_big_width(cook_grade_names[DOOMO_CLAMP(K.grade, 0, 4)], sc) / 2 + 8;
+         uint32_t key = (uint32_t)DOOMO_MIN(tt, 12) | (uint32_t)K.grade << 4;
++        (void)key;                                              /* (the PS1 draws every layer: L ignores it) */
+         /* (S4-K) the ring and the word, and PERFECT's sparkles and star as layers of their own: the
+          * sparkles change every second tick, which with one layer redrew the title, the money pill and
+          * the bubble (and the window under it) as well. The ring: r + 2 wide, 9 sc / 2 + 4 tall. */
+-- 
+2.43.0
+
+
+From 53b41935b2bd487ee1ff02d396218b36bb90b2fd Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 17:26:47 +0000
+Subject: [PATCH 3/7] S4-K: docs (GBA.md section and ledger row 64, ROADMAP
+ Done line, SPEED status block)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvDzgwv9nxsL8r6tWV
+---
+ ROADMAP.md                       |  1 +
+ docs/GBA.md                      | 69 ++++++++++++++++++++++++++++++++
+ docs/design/held/status/SPEED.md |  7 ++++
+ 3 files changed, 77 insertions(+)
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index 798d448..b7f6d1d 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -21,6 +21,7 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
+ before redoing any of them; a zip without `.git` cannot tell.
+ 
+ ### Done
++- **Speed S4-K (2026-11-15, SPEED-3 round 1, the kitchen's result card, partial; docs/GBA.md "Speed wave 3: S4-K", ledger row 64):** Granny's baked pose is cut under the speech bubble (`plat_cook_pose` top, `cook_pose_crop`) and the grade stamp is four layers (ring and word, two sparkles, star; `fc_grade_stamp_part`), both exact (GBA `vhash-seq` 970 frames identical to the tip, native stage on / off 5,140 frames x 2 sizes x day / night + Spanish identical). GBA drawn fps: result card 20.8 -> 21.5 (40.8 ms work; 27.3 fps with PERFECT's star left out, not committed: pixels), counter 29.2 and serving 29.3 unchanged, stir / bake / simmer step-change frames unchanged; **goal (steady 30) not met**: the plate drags the stamp and text every tick, the star drags the title and the stage's box merge then drags the bubble and window; it needs G2-EX's clipped redraw. Measured per-layer costs in the docs. 0 resident bytes (GBA, PS1 129,504 B below the stack top, delta 0 B), PS1 `speed2.sh fishcook` identical (all 30.0). Core 1,398 tests (also SAN: only the 4 old UBSan reports), check-gen, xcheck, GBA test, dc-host-test, PS1 build and `game_smoke` pass.
+ - **Speed S2-4c (2026-11-15, the kitchen on the GBA, speed audit 2 causes C3 / C1, audit 3 rank 12, partial; measured on libmgba, PCSX-Redux and Flycast on `5aa25cd1` and again on `366ee6c1`, `9dc5e39a`, `e587f9c1`, `167c08ba` (with S2-4b), `262bf2b7` (with S3-2) and the tip it landed on, `fe410024`; docs/GBA.md "Speed wave 2: S2-4c", ledger row 59, docs/PS1.md "Speed tour 2"):** the kitchen's wall, jars and counter (and, for the recipe book, the window, the book and the doily) are kept pictures baked into the GBA ROM (`DOOMO_BACKDROP_KITCHEN`), and every screen (the book, the cooking steps, the result card, the counter) is drawn as layers of SP7's retained stage, each redrawn only when its key or box changes or a changed box lies on it; Granny's 164 poses are baked too (`runner --bake-poses`, `plat_cook_pose`, the file read by `cook_pose_find`: one image instead of ~45 ellipses), cut off where the counter covers her; faces are blitted above the counter only, bubbles are two layers, boxes and keys are measured and follow the translated text; `stage_rows` copies short spans by DMA (the fair's S2-4b windows hash the same, tick for tick). All exact (`test_cook_kept`: the kitchen with the stage on / off, 5,140 frames at each of two sizes, day and night, and in Spanish, identical; the baked pose file read back and checked pose by pose; GBA `vhash-seq` against the tip: 13 windows identical, Spanish 2,479 of 2,480 frames (the tip's one differing frame is the same picture one pixel lower), the counter's windows differ only inside the faces). GBA drawn fps: recipe book 20.0 -> **30.0**, chop 21.9 -> **30.0**, fry 19.8 -> **30.0** (every frame two vblanks); stir 20.0 -> 30.0, bake 20.8 -> 29.9, simmer 21.8 -> 29.7 (one or two 50-67 ms frames at a step change); result card 15.0 -> 20.8 (21.1 before S2-4b's stage changes); with S3-2's portrait jobs counter 26.3 -> 29.2 and serving 24.3 -> 29.3 (3-6 frames of 50 ms a window); `expect-fps` floors. The approved 15 Hz trades were measured on the result card and save nothing over a kept picture (21.1 fps either way: each Mode 4 page is two ticks old), so none is taken. GBA EWRAM and IWRAM unchanged, ROM +320 KB (three pictures, the poses). PS1: compiled out, `_end` unchanged (130,000 B below the stack top with the FMV on `fe410024`, the tip's; delta 0 measured on every earlier tip), the kitchen's table the tip's. Dreamcast: all 16 windows 30.0. **Still short (open):** the result card (needs G2-EX's clipped redraw), the counter / serving's three-vblank frames (animated faces, bobbing bubbles), the step-change frames of stir, bake and simmer; on the PS1 the result card's, counter's and serving's single 50 ms frames (unlock grants, faces: S3-2).
+ - **Talk TKP0-MEASURE (2026-11-15, TALK round 13; docs/design/talk/TKP_PLAN.md, docs/TALK.md 6q):** the PS1 re-measure and a buildable plan, no resident byte. Talk linked on the PS1: 146 KB of files (92 KB as one new overlay group, 0 B of slot growth; resident +19,520 B with the group alone, +15,616 B with the typed line off, about 2 to 4 KB after the planned clean-ups, inside the 12 KB share). PS1 subset of TALK_en.BIN 577,786 B against the 319,488 B budget (9,062 alternatives); lossless levers (word-token strings, packed rows) reach about 437 KB, which does not fit: CR10's part store holds SPU RAM 0x50000-0x7DFFF, leaving Talk 278,528 B at most (decision D1 for the owner: a PS1 content tier, or drop Talk on the PS1). Measured: 2,075 database reads and 43.4 KB a line (74 KB an exchange), 661,000 instructions a line (48 % the lint probes); estimated R3000 step 12 to 30 ms typical, so the generator must be sliced. First load estimated 1.4 to 1.6 s against the 1.5 s gate. Packages TKP1 to TKP6 with acceptance tests. New tools `ps1/tools/talk_size.sh`, `core/tools/talk_reads.sh`, `core/tools/talk_steps.sh`. PS1 margin 110,560 B on the rebased tree (unchanged), GBA sizes unchanged.
+ - **Talk T9, pointer input on the Talk screen (2026-11-15, docs/TALK.md 6k):** add-only `input_set_pointer` / `input_pointer` / `input_pointer_click` (`input.h`, `DOOMO_POINTER` 0 on GBA, PS1 and Dreamcast so they link none of it); on the Talk screen a click is exactly the matching pad press (quick reply, category, act, topic, typed line, Options, invite row, goodbye, a name in the people strip, the header = B, the scroll bar = L / R); a small arrow is drawn only while a pointer is present. Runner `mouse X Y [click]`, `expect-ptr-page`, `expect-ptr-row`; script `talk_pointer.txt`, `test_talk_pointer.c`. Not done: clicking the dialogue box, a wheel.
+diff --git a/docs/GBA.md b/docs/GBA.md
+index 80be809..006f5d9 100644
+--- a/docs/GBA.md
++++ b/docs/GBA.md
+@@ -460,6 +460,8 @@ against the LAST row, not against a figure from an older base.
+ | G2-CO | G2-CO: the concert at 30 (baked stage, setup hold, flame / 15 Hz trades, the choir's size, the held curtain; docs: "G2-CO: the concert at 30" below) | after GBA-500 (row GBA-500) | 50,740 B | **50,740 B** | 0 B | 6,272 B | measured at the landing on the tree without and with G2-CO, both built clean (`make -C gba sizes`): `.bss` 254,828 B before GBA-500 landed (210,508 B with it, 50,740 B free), `.data` 816 B, `.iwram` 11,288 B and `.iwram_bss` 4,088 B before and after (no resident EWRAM or IWRAM; `keep.c`'s 2 B of state sit in padding). The IWRAM overlay's UI group 10,100 -> 10,220 B (+120 B: `plat_beam_rows`, the beam loop's cut bands; 132 B left in the 10,352 B slot), the other groups unchanged. The choir's smaller singers (16 x 392 B), the half-rate state, the setup's signature and the intro's prefetch slot live in the concert's scene scratch (`ConcertState` 1,016 -> 7,324 B of its 12 KB); the 15 Hz rows are kept in the OBJ VRAM (16,320 B, owner `OBJV_KEEP`). ROM `.text` +5,960 B, `.rodata` +845,296 B (the 31 baked concert stages in `backdrops.bin`). (First built on `1297e931` as row 51, which CR5 holds on origin.) PS1: no resident byte (the new paths are compiled out; 110,608 B below the stack top with the boot FMV, the same as without G2-CO; docs/PS1.md "The concert (SP6, P-K1)") |
+ | 64 | LV4: mechanic kit B (`levels_mech_env.c`, `DoomoView3D.view_dist`, `r3f.maxd` from the per-level view distance) | after G2-EX (`da2d3e9a`) | unchanged | **unchanged** | 0 B | 6,308 B | measured 2026-11-15 on `33d760af` and the same + LV4 (both clean `make -C gba`, `make -C gba sizes`): .iwram 11,272, .iwram_bss 4,088, .bss 254,820 and every overlay slot identical; on the landing tree (after G2-EX) the full sizes are .iwram 11,288, .iwram_bss 4,088, .bss 254,828, which is 33d760af plus G2-EX's +16 B / +8 B and nothing from LV4; ROM .text +40 B (r3d.c: the range check, the hoisted sprite-cull limit); `lv_env_*` is not linked (nothing calls it). The new `view_dist` byte sits in the padding of `DoomoView3D` (stack, and the one static copy in combat_hud.c). Speed tour: every `vhash-seq` identical |
+ 
++| 64 | S4-K: the result card (Granny cut under the bubble, the grade stamp in parts; docs: "Speed wave 3: S4-K" above) | after CR10 (row 63) | unchanged | **unchanged** | 0 B | 6,288 B | measured on the tip and the tip + S4-K (`make -C gba sizes`, memreport): `.bss` 254,836 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, main stack and overlay groups unchanged: no resident data; ROM +1,384 B code (`.text` 1,526,848 -> 1,528,232 B). PS1: `_end` 0x801e0610 before and after (129,504 B below the stack top) |
++
+ Known claimants still to land (their own packages measure and add rows):
+ 
+ | package | EWRAM | gate it must meet (against the last row) |
+@@ -2878,6 +2880,73 @@ Mirror (31-32 ms) and Wobbly Teeth (31-32 ms).
+ smaller (ledger row S2-4d).
+ 
+ 
++### Speed wave 3: S4-K, the result card's cascade (2026-11-15, SPEED-3 round 1, partial)
++
++Goal: a steady 30 fps in the kitchen's nine windows (`speed2_fishcook.txt`). Measured on libmgba, on the tip `7a3139b`
++(before) and the tip + S4-K (after); the other six windows are untouched code and measure the same.
++
++| window | before (drawn fps, work avg / max ms, frames over 33 ms) | after |
++|---|---:|---:|
++| cook: recipe book | 30.0 (25.3 / 33.0, 0) | same |
++| cook: chop | 30.0 (19.3 / 35.7, 0) | same |
++| cook: stir | 30.0 (24.2 / 42.7, 1) | same (one 50 ms frame at the step change) |
++| cook: fry | 30.0 (17.3 / 23.1, 0) | same |
++| cook: result card | 20.8 (41.1 / 42.7, 57 of 62) | 21.5 (40.8 / 44.3, 51 of 64); in a run of the card alone 21.0 (41.6) -> 22.1 (39.9) |
++| cook: bake | 29.9 (20.4 / 39.2, 1) | same |
++| cook: simmer | 29.7 (18.4 / 61.0, 2) | same |
++| cook: counter | 29.2 (27.4 / 52.2, 6) | 29.2 (27.6 / 50.1, 6) |
++| cook: serving | 29.3 (30.1 / 45.2, 3) | 29.3 (30.1 / 47.8, 4) |
++
++**The goal is not met**: the result card is still 21.5 fps, the counter and serving 29.2 / 29.3, and the stir, bake and
++simmer step-change frames are as they were. What the package did and what it measured:
++
++- **Where the result card's 41 ms go.** `stage_resolve` was logged on the ROM (a debug print of each frame's changed set and
++  drawn set, not committed). Every tick these change by themselves: the plate (the rays turn, the dish steams), Granny, the
++  logo, the buttons' cursor, the stamp's sparkles (every second tick) and the title's twinkle; the stage then draws every
++  layer lying on one of their boxes and, closed over, every layer on those: nearly all 13 layers on 80-90% of the frames.
++  Drawing one layer alone costs (a layer left out of the draw, ROM, work ms): the plate 7.8, the grade stamp 7.9 (its three
++  ellipses 4.0, the big word 3.3, the sparkles 0.4), the text line 2.7, the bubble 2.7, the window 2.6, the buttons 2.4,
++  the logo 1.0, Granny 1.3.
++- **Granny's pose is cut under the bubble (exact).** Her raised arms (the cheer) reach two rows under the bubble body's
++  bottom row, and the bubble is drawn after her, so those rows never show. `plat_cook_pose` takes a `top` row
++  (`cook_pose_crop` cuts the pose's box and picture there); the result card passes the bubble body's bottom
++  (`fc_bubble_boxes`), only where the body covers her whole width. Her box then clears the body: her pose changing every
++  tick no longer redraws the body and the window under it (a pass of the body alone is 5 ms). The settled result card
++  frames draw 8.2 layers on average on the small screen, now 7.3 (`test_cook_kept` fails above 7.9).
++- **The grade stamp is four layers (exact).** The ring and the word, PERFECT's two sparkles and its star
++  (`fc_grade_stamp_part`; `fc_grade_stamp` still draws them in order for the PS1 and the Dreamcast). The sparkles change every
++  second tick, which with one layer redrew the title, the money pill and the bubble too. The ring's left column lies on the
++  bubble's right edge column (the ellipse's rounding gives it a column more than its radius): the ring's box stops one
++  column short and that column is put right with the bubble's edge colour after the ring, and the left sparkle is drawn only
++  right of that edge (the bubble covers the rest). Same pixels with the stage on and off.
++- **What is left (measured, not done).** The star above PERFECT's ring touches the title's box (rows 16-17), so the title is
++  redrawn with the star, and the stage's merge of dirty boxes (`add_dirty`: a box that overlaps another joins it when the
++  union is at most a quarter bigger than the two) then makes one box from the title to the plate that reaches the bubble's
++  column range again: the bubble body and the window under it are redrawn on 60% of the frames (5 ms each time). With the
++  star left out for a test the card ran at 34.4 ms and 27.3 fps (not committed: it changes pixels). The plate drags the
++  stamp, the text line and (through the stamp) the sparkles every tick, because their boxes lie on the plate's box (the
++  steam of the dish and the rays' tips do touch the ring and the word: the overlap is real). It needs the stage to redraw a
++  layer that did not change only inside the changed box (G2-EX's clipped redraw; its clip honours rects, shades and images:
++  the ring's ellipses are rects, the word is text, which G2-EX's step 2 clips) or a stage that copies a redrawn box to the
++  other page. G2-EX was not on origin when this was measured.
++- **Counter, serving, stir / bake / simmer:** measured, not changed. The counter's drawn frames sit at 29-33 ms with the
++  portrait and bubble layers every tick and go over 33 ms when a face animates (35-44 ms); serving likewise. The step-change
++  frames (stir 42.7 ms at tick 1753, bake 39.2, simmer 61.0) draw the banner's and the bubble's removal, the apparatus
++  and Granny's mood at once.
++
++**Same pixels.** `vhash-seq` against the tip's ROM (`7a3139b`), the kitchen's chop, stir, fry, the whole result card (220
++ticks from the fry's end: the stamp's pop, the sparkles, settled), bake and simmer: 6 windows, 970 frames, all identical.
++Native, stage on and off: the kitchen tour's 5,140 frames at 240x160 and 320x240, day and night, and in Spanish at both sizes,
++identical (`test_cook_kept`); new tests `cook_kept_pose_crop`, `cook_kept_stamp_parts` (the four parts are the stamp for every
++grade, tick and size; the clipped sparkle is the sparkle's pixels right of the edge and no others) and the layer count
++above. **No pixel changes.**
++
++GBA memory: no resident data added (`.bss` 254,836 B and EWRAM free 6,412 B are the tip's, S2-10's 8 B; `.iwram` 11,272 B,
++`.iwram_bss` 4,088 B, `.data` 816 B, overlay groups and stack unchanged); ROM +1,384 B of code (`.text` 1,526,848 -> 1,528,232 B, `.rodata` unchanged), measured on `7a3139b` with and without S4-K. PS1: the same code
++without the kept stage, the EXE ends `0x801e0610` before and after (129,504 B below the stack top with the boot FMV, delta 0 B);
++`speed2.sh fishcook` all 16 windows 30.0 fps, before and after identical (the single 3-vsync frame of the result card,
++counter and serving windows is the harness's lockstep resume, 0 frames over 33 ms in its table), `game_smoke` passes.
++
+ ## 4b. Retained panels (G7, `src/panel.c`)
+ 
+ The core draws its HUD pills, dialogue box, toasts and island HUD as
+diff --git a/docs/design/held/status/SPEED.md b/docs/design/held/status/SPEED.md
+index 1dad526..f662ea3 100644
+--- a/docs/design/held/status/SPEED.md
++++ b/docs/design/held/status/SPEED.md
+@@ -23,3 +23,10 @@ delta, GBA sizes), in flight (package and stage), next up, blockers, needs from
+ - **Next up:** the concert's remainder (G2-CO "Still short": the band needs the lead and the crowd as sprites, the Dreamland ~5 ms, the opening and the setup's song composition spread over ticks; the UI group has 132 B left); the dreams' remainder (S2-4d "Left": The Giant Plush needs ~6 ms, Tea Under the Sea ~1.5 ms; levers: a shadow-and-figure pass in the GBA UI group (252 B left), the caption box as a retained panel, a toast that costs less than 5 ms, `WAITCNT` 3/1 with prefetch for all ROM code, checked on hardware); the exorcism remainder (G2-EX "Not done": prayer lane split into a kept ribbon, the true-name window as retained panels, the confetti, the phase-change frames), then round 3 (concert + choir experiment; the kitchen is S2-4c: its result card, the counter / serving's 50 ms frames and the step-change frames stay open for G2-EX's clipped redraw; a stage that copies a redrawn box to the other Mode 4 page would make the approved 15 Hz trades pay off), the later trade-off packages (exorcism remainder, fog and cutscene skies, level select slide, credits), S3-12/7/8/13/14/15, then speed audit 4, then the COMBAT stream (leads/COMBAT.md).
+ - **Blockers:** (the G2-CO lander) none new; the IWRAM overlay's UI group has 132 B left after G2-CO (later UI-group code must give bytes back or move to ROM). (the G2-EX lander) none new; G2-EX leaves +8 B EWRAM and +16 B IWRAM resident on the GBA (ledger row G2-EX) for the lead to accept. (the S2-10 lander) PS1 margin 129,504 B on the tip with S2-10 (S2-10 -496 B). The S2-10 open items above (PS1 BIOS-call gaps, Dreamcast save gaps, GBA one copy a slot) are a follow-up package, not blockers. (the S2-4c lander) none new; the 15 Hz trades of the owner's 2026-11-13 decision save nothing over the GBA's kept stage as it is (each page compares with the picture two ticks old), so later trade-off packages on kept screens need that page copy first. (the S2-4b lander) none new: S2-4b adds 0 B on the PS1 (132,608 B below the stack top) and -8 B of GBA EWRAM (6,420 B free on the tip with S2-4b). (the PS1-RAM lander) the PS1 margin is no longer one: 132,608 B on the tip with PS1-RAM (gate 73,728 B); the coordinator writes the streams' shares (PARALLEL_WAVES.md section 3). The overlay slot is the tighter PS1 limit now: the creator has 1,320 B (CR5 took 1,932 B of it), story 1,216 B and combat 1,692 B before the slot grows by 2 KB (LEVELS growth in `combat*.c` / `actor.c` / `levels*.c`, CREATOR batches). The two Talk scripts are green since the S2-9 lander's tip repairs. Before that: (2026-11-15, the S3-1 lander) the PS1 margin is 72,368 B on the tip with S3-1 (1,360 B under the 72 KB gate; S3-1 and CR-BODY gave back 16 B each). (2026-11-15, the S2-9 lander) the tip `d530565` failed two gates through the owner's Talk commits: `make -C core test` (the `home_visit` runner script) and `make -C gba test` (`test-talk`): both scripts are repaired in this push (`tip repair:` commits, the scripts now page the resident's two opening lines and reach "Chat >" past the four quick replies). Still red on the tip, with or without S2-9: `make -C gba test-speed2 SPEED2=action SPEED2_GATES=1` stops at the level select's `expect-fps 28` (24.2 fps, 35.9 ms of work: 29.7 fps in speed audit 3; the LEVELS level select pages and S3-8 are the place). The PS1 margin is 72,336 B on the tip with S2-9 (1,392 B under the 72 KB gate). Before that: the PS1 margin is 72,736 B on the tip with PS1-FLAT (the 72 KB plan gate is 73,728 B: 992 B short; hard failure at 65,536 B): every stream's landing eats into it, so PS1-RAM is the critical path. One lever for whoever lands second: `prims.c` (3,612 B) can move into the combat group (one word in `PLAT_GROUPS`), +1.5 KB here but the slot would grow by 2 KB (4 KB on PS1-RAM's tree, net -484 B there): a coordinator decision (`docs/PS1.md` "No 3D models in houses"). The combat group has 2,840 B of room under the slot: LEVELS growth in `combat*.c` / `actor.c` / `levels*.c` beyond that moves the slot. CPU on this machine is the limit.
+ - **Needs from other streams:** none
++
++## SPEED-3 (owner 2026-11-15: "improve the result card and anything else below 30 fps")
++
++- **Lead session:** session_01Xd63cvDzgwv9nxsL8r6tWV (SPEED-3 round 1: kitchen leftovers and the Prize Wheel; G2-EX is landed by the coordinator).
++- **Built, not yet landed:** **S4-K** (the kitchen's result card, counter, serving, step-change frames; `docs/GBA.md` "Speed wave 3: S4-K", ledger row 64, **partial**): Granny's pose cut under the bubble and the grade stamp as four layers, exact (GBA `vhash-seq` 970 frames identical, native stage on / off identical, PS1 identical). Result card 20.8 -> 21.5 fps (27.3 with the star left out: a pixel change, not taken); counter 29.2 / serving 29.3 / stir, bake, simmer unchanged. 0 resident bytes, PS1 129,504 B below the stack top (delta 0 B).
++- **In flight:** nothing from this package.
++- **Next:** the result card needs G2-EX's clipped redraw (the plate drags the stamp and text, the star drags the title and the stage's box merge then drags the bubble and window), then the star / title split; the counter and serving need their faces' and bubbles' redraws cut by the same clip; the step-change frames need the banner / bubble removal and the apparatus spread over two ticks (a pixel-timing change, measure first).
+-- 
+2.43.0
+
+
+From 4a57260b69a7350a506ba9d9f4f201d34798d9a7 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 18:18:22 +0000
+Subject: [PATCH 4/7] S4-K land: stamp key's fix bit at bit 20 (no tick-bit
+ overlap), numbers re-measured on the rebased tip (core 1,437, PS1 110,560 B
+ with the boot FMV, delta -48 B)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvDzgwv9nxsL8r6tWV
+---
+ ROADMAP.md                       | 2 +-
+ core/src/cook_scene.c            | 2 +-
+ docs/GBA.md                      | 6 +++---
+ docs/design/held/status/SPEED.md | 2 +-
+ 4 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index b7f6d1d..a769354 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -21,7 +21,7 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
+ before redoing any of them; a zip without `.git` cannot tell.
+ 
+ ### Done
+-- **Speed S4-K (2026-11-15, SPEED-3 round 1, the kitchen's result card, partial; docs/GBA.md "Speed wave 3: S4-K", ledger row 64):** Granny's baked pose is cut under the speech bubble (`plat_cook_pose` top, `cook_pose_crop`) and the grade stamp is four layers (ring and word, two sparkles, star; `fc_grade_stamp_part`), both exact (GBA `vhash-seq` 970 frames identical to the tip, native stage on / off 5,140 frames x 2 sizes x day / night + Spanish identical). GBA drawn fps: result card 20.8 -> 21.5 (40.8 ms work; 27.3 fps with PERFECT's star left out, not committed: pixels), counter 29.2 and serving 29.3 unchanged, stir / bake / simmer step-change frames unchanged; **goal (steady 30) not met**: the plate drags the stamp and text every tick, the star drags the title and the stage's box merge then drags the bubble and window; it needs G2-EX's clipped redraw. Measured per-layer costs in the docs. 0 resident bytes (GBA, PS1 129,504 B below the stack top, delta 0 B), PS1 `speed2.sh fishcook` identical (all 30.0). Core 1,398 tests (also SAN: only the 4 old UBSan reports), check-gen, xcheck, GBA test, dc-host-test, PS1 build and `game_smoke` pass.
++- **Speed S4-K (2026-11-15, SPEED-3 round 1, the kitchen's result card, partial; docs/GBA.md "Speed wave 3: S4-K", ledger row 64):** Granny's baked pose is cut under the speech bubble (`plat_cook_pose` top, `cook_pose_crop`) and the grade stamp is four layers (ring and word, two sparkles, star; `fc_grade_stamp_part`), both exact (GBA `vhash-seq` 970 frames identical to the tip, native stage on / off 5,140 frames x 2 sizes x day / night + Spanish identical). GBA drawn fps: result card 20.8 -> 21.5 (40.8 ms work; 27.3 fps with PERFECT's star left out, not committed: pixels), counter 29.2 and serving 29.3 unchanged, stir / bake / simmer step-change frames unchanged; **goal (steady 30) not met**: the plate drags the stamp and text every tick, the star drags the title and the stage's box merge then drags the bubble and window; it needs G2-EX's clipped redraw. Measured per-layer costs in the docs. 0 resident bytes (GBA, PS1 110,560 B below the stack top with the boot FMV, tip 110,608 B, delta -48 B), PS1 `speed2.sh fishcook` identical (all 30.0). Core 1,437 tests (also SAN: only the 4 old UBSan reports), check-gen, xcheck, GBA test, dc-host-test, PS1 build and `game_smoke` pass.
+ - **Speed S2-4c (2026-11-15, the kitchen on the GBA, speed audit 2 causes C3 / C1, audit 3 rank 12, partial; measured on libmgba, PCSX-Redux and Flycast on `5aa25cd1` and again on `366ee6c1`, `9dc5e39a`, `e587f9c1`, `167c08ba` (with S2-4b), `262bf2b7` (with S3-2) and the tip it landed on, `fe410024`; docs/GBA.md "Speed wave 2: S2-4c", ledger row 59, docs/PS1.md "Speed tour 2"):** the kitchen's wall, jars and counter (and, for the recipe book, the window, the book and the doily) are kept pictures baked into the GBA ROM (`DOOMO_BACKDROP_KITCHEN`), and every screen (the book, the cooking steps, the result card, the counter) is drawn as layers of SP7's retained stage, each redrawn only when its key or box changes or a changed box lies on it; Granny's 164 poses are baked too (`runner --bake-poses`, `plat_cook_pose`, the file read by `cook_pose_find`: one image instead of ~45 ellipses), cut off where the counter covers her; faces are blitted above the counter only, bubbles are two layers, boxes and keys are measured and follow the translated text; `stage_rows` copies short spans by DMA (the fair's S2-4b windows hash the same, tick for tick). All exact (`test_cook_kept`: the kitchen with the stage on / off, 5,140 frames at each of two sizes, day and night, and in Spanish, identical; the baked pose file read back and checked pose by pose; GBA `vhash-seq` against the tip: 13 windows identical, Spanish 2,479 of 2,480 frames (the tip's one differing frame is the same picture one pixel lower), the counter's windows differ only inside the faces). GBA drawn fps: recipe book 20.0 -> **30.0**, chop 21.9 -> **30.0**, fry 19.8 -> **30.0** (every frame two vblanks); stir 20.0 -> 30.0, bake 20.8 -> 29.9, simmer 21.8 -> 29.7 (one or two 50-67 ms frames at a step change); result card 15.0 -> 20.8 (21.1 before S2-4b's stage changes); with S3-2's portrait jobs counter 26.3 -> 29.2 and serving 24.3 -> 29.3 (3-6 frames of 50 ms a window); `expect-fps` floors. The approved 15 Hz trades were measured on the result card and save nothing over a kept picture (21.1 fps either way: each Mode 4 page is two ticks old), so none is taken. GBA EWRAM and IWRAM unchanged, ROM +320 KB (three pictures, the poses). PS1: compiled out, `_end` unchanged (130,000 B below the stack top with the FMV on `fe410024`, the tip's; delta 0 measured on every earlier tip), the kitchen's table the tip's. Dreamcast: all 16 windows 30.0. **Still short (open):** the result card (needs G2-EX's clipped redraw), the counter / serving's three-vblank frames (animated faces, bobbing bubbles), the step-change frames of stir, bake and simmer; on the PS1 the result card's, counter's and serving's single 50 ms frames (unlock grants, faces: S3-2).
+ - **Talk TKP0-MEASURE (2026-11-15, TALK round 13; docs/design/talk/TKP_PLAN.md, docs/TALK.md 6q):** the PS1 re-measure and a buildable plan, no resident byte. Talk linked on the PS1: 146 KB of files (92 KB as one new overlay group, 0 B of slot growth; resident +19,520 B with the group alone, +15,616 B with the typed line off, about 2 to 4 KB after the planned clean-ups, inside the 12 KB share). PS1 subset of TALK_en.BIN 577,786 B against the 319,488 B budget (9,062 alternatives); lossless levers (word-token strings, packed rows) reach about 437 KB, which does not fit: CR10's part store holds SPU RAM 0x50000-0x7DFFF, leaving Talk 278,528 B at most (decision D1 for the owner: a PS1 content tier, or drop Talk on the PS1). Measured: 2,075 database reads and 43.4 KB a line (74 KB an exchange), 661,000 instructions a line (48 % the lint probes); estimated R3000 step 12 to 30 ms typical, so the generator must be sliced. First load estimated 1.4 to 1.6 s against the 1.5 s gate. Packages TKP1 to TKP6 with acceptance tests. New tools `ps1/tools/talk_size.sh`, `core/tools/talk_reads.sh`, `core/tools/talk_steps.sh`. PS1 margin 110,560 B on the rebased tree (unchanged), GBA sizes unchanged.
+ - **Talk T9, pointer input on the Talk screen (2026-11-15, docs/TALK.md 6k):** add-only `input_set_pointer` / `input_pointer` / `input_pointer_click` (`input.h`, `DOOMO_POINTER` 0 on GBA, PS1 and Dreamcast so they link none of it); on the Talk screen a click is exactly the matching pad press (quick reply, category, act, topic, typed line, Options, invite row, goodbye, a name in the people strip, the header = B, the scroll bar = L / R); a small arrow is drawn only while a pointer is present. Runner `mouse X Y [click]`, `expect-ptr-page`, `expect-ptr-row`; script `talk_pointer.txt`, `test_talk_pointer.c`. Not done: clicking the dialogue box, a wheel.
+diff --git a/core/src/cook_scene.c b/core/src/cook_scene.c
+index 0e02e3d..69dbe0e 100644
+--- a/core/src/cook_scene.c
++++ b/core/src/cook_scene.c
+@@ -1577,7 +1577,7 @@ static void draw_result(void)
+         int fix = bh > 0 && ex == bx + bw - 1 && sy - 3 >= by + 4 && sy + 5 < by + bh - 4;
+         b[0] = fix ? ex + 1 : ex; b[2] = 2 * (cx - ex) + 1 - (b[0] - ex);
+         b[1] = sy - 9 * sc / 2 - 4; b[3] = sy + 9 * sc / 2 + 7 - b[1];
+-        if (L(LR_STAMP, b, key | (uint32_t)fix << 3)) {
++        if (L(LR_STAMP, b, key | (uint32_t)fix << 20)) {
+             fc_grade_stamp_part(cx, sy, K.grade, tt, 0, 0);
+             if (fix) plat_rect(ex, DOOMO_MAX(ey0, by + 4), 1, DOOMO_MIN(ey1, by + bh - 4) - DOOMO_MAX(ey0, by + 4), PAL_RAMP(RAMP_PASTEL_PINK, 3));
+         }
+diff --git a/docs/GBA.md b/docs/GBA.md
+index 006f5d9..042a269 100644
+--- a/docs/GBA.md
++++ b/docs/GBA.md
+@@ -460,7 +460,7 @@ against the LAST row, not against a figure from an older base.
+ | G2-CO | G2-CO: the concert at 30 (baked stage, setup hold, flame / 15 Hz trades, the choir's size, the held curtain; docs: "G2-CO: the concert at 30" below) | after GBA-500 (row GBA-500) | 50,740 B | **50,740 B** | 0 B | 6,272 B | measured at the landing on the tree without and with G2-CO, both built clean (`make -C gba sizes`): `.bss` 254,828 B before GBA-500 landed (210,508 B with it, 50,740 B free), `.data` 816 B, `.iwram` 11,288 B and `.iwram_bss` 4,088 B before and after (no resident EWRAM or IWRAM; `keep.c`'s 2 B of state sit in padding). The IWRAM overlay's UI group 10,100 -> 10,220 B (+120 B: `plat_beam_rows`, the beam loop's cut bands; 132 B left in the 10,352 B slot), the other groups unchanged. The choir's smaller singers (16 x 392 B), the half-rate state, the setup's signature and the intro's prefetch slot live in the concert's scene scratch (`ConcertState` 1,016 -> 7,324 B of its 12 KB); the 15 Hz rows are kept in the OBJ VRAM (16,320 B, owner `OBJV_KEEP`). ROM `.text` +5,960 B, `.rodata` +845,296 B (the 31 baked concert stages in `backdrops.bin`). (First built on `1297e931` as row 51, which CR5 holds on origin.) PS1: no resident byte (the new paths are compiled out; 110,608 B below the stack top with the boot FMV, the same as without G2-CO; docs/PS1.md "The concert (SP6, P-K1)") |
+ | 64 | LV4: mechanic kit B (`levels_mech_env.c`, `DoomoView3D.view_dist`, `r3f.maxd` from the per-level view distance) | after G2-EX (`da2d3e9a`) | unchanged | **unchanged** | 0 B | 6,308 B | measured 2026-11-15 on `33d760af` and the same + LV4 (both clean `make -C gba`, `make -C gba sizes`): .iwram 11,272, .iwram_bss 4,088, .bss 254,820 and every overlay slot identical; on the landing tree (after G2-EX) the full sizes are .iwram 11,288, .iwram_bss 4,088, .bss 254,828, which is 33d760af plus G2-EX's +16 B / +8 B and nothing from LV4; ROM .text +40 B (r3d.c: the range check, the hoisted sprite-cull limit); `lv_env_*` is not linked (nothing calls it). The new `view_dist` byte sits in the padding of `DoomoView3D` (stack, and the one static copy in combat_hud.c). Speed tour: every `vhash-seq` identical |
+ 
+-| 64 | S4-K: the result card (Granny cut under the bubble, the grade stamp in parts; docs: "Speed wave 3: S4-K" above) | after CR10 (row 63) | unchanged | **unchanged** | 0 B | 6,288 B | measured on the tip and the tip + S4-K (`make -C gba sizes`, memreport): `.bss` 254,836 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, main stack and overlay groups unchanged: no resident data; ROM +1,384 B code (`.text` 1,526,848 -> 1,528,232 B). PS1: `_end` 0x801e0610 before and after (129,504 B below the stack top) |
++| 64 | S4-K: the result card (Granny cut under the bubble, the grade stamp in parts; docs: "Speed wave 3: S4-K" above) | after CR10 (row 63) | unchanged | **unchanged** | 0 B | 6,288 B | measured on the tip and the tip + S4-K (`make -C gba sizes`, memreport): `.bss` 254,820 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, main stack and overlay groups unchanged: no resident data; ROM +1,384 B code (`.text` 1,526,848 -> 1,528,232 B). PS1: `_end` 0x801e5010 against the tip's 0x801e4fe0 (110,560 B below the stack top with the boot FMV, the tip 110,608 B: -48 B of code, still 38 KB over the 72 KB gate) |
+ 
+ Known claimants still to land (their own packages measure and add rows):
+ 
+@@ -2941,9 +2941,9 @@ identical (`test_cook_kept`); new tests `cook_kept_pose_crop`, `cook_kept_stamp_
+ grade, tick and size; the clipped sparkle is the sparkle's pixels right of the edge and no others) and the layer count
+ above. **No pixel changes.**
+ 
+-GBA memory: no resident data added (`.bss` 254,836 B and EWRAM free 6,412 B are the tip's, S2-10's 8 B; `.iwram` 11,272 B,
++GBA memory: no resident data added (`.bss` 254,820 B and EWRAM free 6,436 B are the tip's; `.iwram` 11,272 B,
+ `.iwram_bss` 4,088 B, `.data` 816 B, overlay groups and stack unchanged); ROM +1,384 B of code (`.text` 1,526,848 -> 1,528,232 B, `.rodata` unchanged), measured on `7a3139b` with and without S4-K. PS1: the same code
+-without the kept stage, the EXE ends `0x801e0610` before and after (129,504 B below the stack top with the boot FMV, delta 0 B);
++without the kept stage, the EXE ends `0x801e5010` against the tip's `0x801e4fe0` (110,560 B below the stack top with the boot FMV, the tip 110,608 B, delta -48 B of resident code, still 38 KB over the 72 KB gate);
+ `speed2.sh fishcook` all 16 windows 30.0 fps, before and after identical (the single 3-vsync frame of the result card,
+ counter and serving windows is the harness's lockstep resume, 0 frames over 33 ms in its table), `game_smoke` passes.
+ 
+diff --git a/docs/design/held/status/SPEED.md b/docs/design/held/status/SPEED.md
+index f662ea3..31b2664 100644
+--- a/docs/design/held/status/SPEED.md
++++ b/docs/design/held/status/SPEED.md
+@@ -27,6 +27,6 @@ delta, GBA sizes), in flight (package and stage), next up, blockers, needs from
+ ## SPEED-3 (owner 2026-11-15: "improve the result card and anything else below 30 fps")
+ 
+ - **Lead session:** session_01Xd63cvDzgwv9nxsL8r6tWV (SPEED-3 round 1: kitchen leftovers and the Prize Wheel; G2-EX is landed by the coordinator).
+-- **Built, not yet landed:** **S4-K** (the kitchen's result card, counter, serving, step-change frames; `docs/GBA.md` "Speed wave 3: S4-K", ledger row 64, **partial**): Granny's pose cut under the bubble and the grade stamp as four layers, exact (GBA `vhash-seq` 970 frames identical, native stage on / off identical, PS1 identical). Result card 20.8 -> 21.5 fps (27.3 with the star left out: a pixel change, not taken); counter 29.2 / serving 29.3 / stir, bake, simmer unchanged. 0 resident bytes, PS1 129,504 B below the stack top (delta 0 B).
++- **Built, not yet landed:** **S4-K** (the kitchen's result card, counter, serving, step-change frames; `docs/GBA.md` "Speed wave 3: S4-K", ledger row 64, **partial**): Granny's pose cut under the bubble and the grade stamp as four layers, exact (GBA `vhash-seq` 970 frames identical, native stage on / off identical, PS1 identical). Result card 20.8 -> 21.5 fps (27.3 with the star left out: a pixel change, not taken); counter 29.2 / serving 29.3 / stir, bake, simmer unchanged. 0 resident bytes; measured on the rebased tip (core 1,437 tests, GBA fishcook: result card 21.3 fps, counter 29.0, serving 29.0): PS1 110,560 B below the stack top with the boot FMV (the tip 110,608 B, delta -48 B), GBA `.bss` 254,820 B, `.iwram` 11,272 B unchanged; PS1 `speed2.sh fishcook` all 16 windows 30.0 to 30.5 fps, none over 33 ms.
+ - **In flight:** nothing from this package.
+ - **Next:** the result card needs G2-EX's clipped redraw (the plate drags the stamp and text, the star drags the title and the stage's box merge then drags the bubble and window), then the star / title split; the counter and serving need their faces' and bubbles' redraws cut by the same clip; the step-change frames need the banner / bubble removal and the apparatus spread over two ticks (a pixel-timing change, measure first).
+-- 
+2.43.0
+
+
+From 09da3513b6cc4747774d1413903d4c33a96ab5b4 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 19:44:53 +0000
+Subject: [PATCH 5/7] S4-K2: result card: the grade stamp and its sparkles
+ drawn through G2-EX's clipped redraw (exact), test_cook_kept checks the clip
+ is used and honoured
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvDzgwv9nxsL8r6tWV
+---
+ core/src/cook_scene.c       | 46 +++++++++++++++++++++++++++++++------
+ core/tests/test_cook_kept.c | 20 ++++++++++++----
+ 2 files changed, 54 insertions(+), 12 deletions(-)
+
+diff --git a/core/src/cook_scene.c b/core/src/cook_scene.c
+index 69dbe0e..b43a434 100644
+--- a/core/src/cook_scene.c
++++ b/core/src/cook_scene.c
+@@ -658,6 +658,33 @@ static int L(int id, const int b[4], uint32_t key)
+     return K.lpass == 2 ? stage_draw(id) : 1;
+ }
+ 
++/* (S4-K2) a layer that may be drawn clipped (backdrop.h stage_layer_clip): it draws only with plat_rect,
++ * plat_shade_rect, plat_text and plat_image at scale 1. KCLIP draws it through the pieces of the dirty set the
++ * stage names, or once when it has none (test_cook_kept: no call a platform's clip does not honour) */
++static int LCL(int id, const int b[4], uint32_t key)
++{
++    if (K.lpass == 1) {
++        stage_layer_clip(id, b[0], b[1], b[2], b[3], kh(kh(key, (uint32_t)K.screen << 8 | (uint32_t)id), 0xC00Cu));
++        return 0;
++    }
++    return K.lpass == 2 ? stage_draw(id) : 1;
++}
++#define KCLIP(id, call)                                                     \
++    do {                                                                    \
++        int cn_ = K.lpass == 2 ? stage_clip_n(id) : 0, ck_;                 \
++        if (cn_ <= 0) {                                                     \
++            call;                                                           \
++        } else {                                                            \
++            for (ck_ = 0; ck_ < cn_; ck_++) {                               \
++                int16_t cr_[4];                                             \
++                stage_clip_get(id, ck_, cr_);                               \
++                plat_clip(cr_[0], cr_[1], cr_[2], cr_[3]);                  \
++                call;                                                       \
++            }                                                               \
++            plat_clip_end();                                                \
++        }                                                                   \
++    } while (0)
++
+ /* put the kept picture back on rows [y0, y1) of box b (a part behind the counter) */
+ static void put_back_rows(const int b[4], int y0, int y1)
+ {
+@@ -818,6 +845,8 @@ static void bubble_layer(int id, int x, int y, int w, const char *s, int tx, int
+ #else
+ /* (the PS1: one pass, everything drawn, as before S2-4c) */
+ #define L(id, b, key) 1
++#define LCL(id, b, key) 1
++#define KCLIP(id, call) call
+ static void back_layer(int id, int t, int busy) { (void)id; kitchen_draw_back((uint32_t)t, busy); }
+ static void counter_layer(int id, int y, int t) { (void)id; kitchen_draw_counter(y, (uint32_t)t); }
+ static void granny_layer(int id, int cx, int cy, int s, int t, int mood, int cy_counter, int top)
+@@ -1577,9 +1606,11 @@ static void draw_result(void)
+         int fix = bh > 0 && ex == bx + bw - 1 && sy - 3 >= by + 4 && sy + 5 < by + bh - 4;
+         b[0] = fix ? ex + 1 : ex; b[2] = 2 * (cx - ex) + 1 - (b[0] - ex);
+         b[1] = sy - 9 * sc / 2 - 4; b[3] = sy + 9 * sc / 2 + 7 - b[1];
+-        if (L(LR_STAMP, b, key | (uint32_t)fix << 20)) {
+-            fc_grade_stamp_part(cx, sy, K.grade, tt, 0, 0);
+-            if (fix) plat_rect(ex, DOOMO_MAX(ey0, by + 4), 1, DOOMO_MIN(ey1, by + bh - 4) - DOOMO_MAX(ey0, by + 4), PAL_RAMP(RAMP_PASTEL_PINK, 3));
++        if (LCL(LR_STAMP, b, key | (uint32_t)fix << 20)) {
++            KCLIP(LR_STAMP, {
++                fc_grade_stamp_part(cx, sy, K.grade, tt, 0, 0);
++                if (fix) plat_rect(ex, DOOMO_MAX(ey0, by + 4), 1, DOOMO_MIN(ey1, by + bh - 4) - DOOMO_MAX(ey0, by + 4), PAL_RAMP(RAMP_PASTEL_PINK, 3));
++            });
+         }
+         if (K.grade == GRADE_PERFECT) {
+             /* the left sparkle lies on the speech bubble's right edge: the bubble is drawn after it and
+@@ -1587,12 +1618,13 @@ static void draw_result(void)
+             int sx = cx - rr - 3, sxmin = 0;
+             if (sx < bx + bw && sx + 7 > bx && sy - 9 >= by + 4 && sy - 3 <= by + bh - 4) sxmin = bx + bw;
+             b[0] = DOOMO_MAX(sx, sxmin); b[1] = sy - 6 - 3; b[2] = sx + 7 - b[0]; b[3] = 7;
+-            if (L(LR_SPARK, b, (uint32_t)ui_sparkle_size((tt / 2) & 15) | (uint32_t)rr << 8 | (uint32_t)sxmin << 20))
+-                fc_grade_stamp_part(cx, sy, K.grade, tt, 1, sxmin);
++            if (LCL(LR_SPARK, b, (uint32_t)ui_sparkle_size((tt / 2) & 15) | (uint32_t)rr << 8 | (uint32_t)sxmin << 20))
++                KCLIP(LR_SPARK, fc_grade_stamp_part(cx, sy, K.grade, tt, 1, sxmin));
+             b[0] = cx + rr - 3; b[1] = sy + 4 - 3; b[2] = 7; b[3] = 7;
+-            if (L(LR_SPARK + 1, b, (uint32_t)ui_sparkle_size((tt / 2 + 7) & 15) | (uint32_t)rr << 8)) fc_grade_stamp_part(cx, sy, K.grade, tt, 2, 0);
++            if (LCL(LR_SPARK + 1, b, (uint32_t)ui_sparkle_size((tt / 2 + 7) & 15) | (uint32_t)rr << 8))
++                KCLIP(LR_SPARK + 1, fc_grade_stamp_part(cx, sy, K.grade, tt, 2, 0));
+             b[0] = cx - 6; b[1] = sy - 9 * sc1 / 2 - 6 - 6; b[2] = 13; b[3] = 13;
+-            if (L(LR_SPARK + 2, b, (uint32_t)sc1)) fc_grade_stamp_part(cx, sy, K.grade, tt, 3, 0);
++            if (LCL(LR_SPARK + 2, b, (uint32_t)sc1)) KCLIP(LR_SPARK + 2, fc_grade_stamp_part(cx, sy, K.grade, tt, 3, 0));
+         }
+     }
+     doomo_snprintf(buf, sizeof(buf), "+%d %s", K.portions, doomo_items[it].name);
+diff --git a/core/tests/test_cook_kept.c b/core/tests/test_cook_kept.c
+index 707578d..9221044 100644
+--- a/core/tests/test_cook_kept.c
++++ b/core/tests/test_cook_kept.c
+@@ -258,7 +258,7 @@ static uint32_t kpad(const KPad *p, int f)
+     return 0;
+ }
+ 
+-static int kept_frames, full_frames;
++static int kept_frames, full_frames, clipped_layers, res_clipped;
+ static int res_since, res_frames, res_drawn;      /* (S4-K) the result card's settled frames: layers drawn */
+ 
+ static int krun(uint32_t *out, int stage, int night, int lang, int upto)
+@@ -267,12 +267,13 @@ static int krun(uint32_t *out, int stage, int night, int lang, int upto)
+     nat_stage_on = stage;
+     nat_stage_buffers = 2;
+     nat_stage_reset();
++    nat_clip_viol = 0;
+     test_reset();
+     doomo_init();
+     portrait_cache_reset();             /* (the counter's faces: both runs start with none) */
+     scene_set(&SCENE_TITLE, 0);
+     kframe(0);
+-    kept_frames = full_frames = 0;
++    kept_frames = full_frames = clipped_layers = res_clipped = 0;
+     res_since = res_frames = res_drawn = 0;
+     for (s = 0; s < (int)(sizeof(ksegs) / sizeof(ksegs[0])) && n < upto && n < KF_MAX; s++) {
+         const KSeg *g = &ksegs[s];
+@@ -294,8 +295,9 @@ static int krun(uint32_t *out, int stage, int night, int lang, int upto)
+                 stage_stats(&st);
+                 kept_frames++;
+                 full_frames += st.full;
++                clipped_layers += st.clipped;
+                 if (cook_scene_state() == 7 /* CS_RESULT */) {
+-                    if (++res_since > 60 && !st.full) { res_frames++; res_drawn += st.drawn; }
++                    if (++res_since > 60 && !st.full) { res_frames++; res_drawn += st.drawn; res_clipped += st.clipped; }
+                 } else res_since = 0;
+             }
+         }
+@@ -313,6 +315,14 @@ static int kcompare(int w, int h, int night, int lang, int *kept)
+     n = krun(off, 0, night, lang, KF_MAX);
+     krun(on, 1, night, lang, KF_MAX);
+     *kept = kept_frames;
++    /* (S4-K2) the clipped redraw is used, and only with calls a platform's clip honours */
++    if (nat_clip_viol || res_clipped < 100) {
++        char m[160];
++        snprintf(m, sizeof(m), "kitchen %dx%d: %d unhonoured calls inside a clip, %d clipped layers on the result card (want 100 and more)",
++                 w, h, nat_clip_viol, res_clipped);
++        test_fail(__FILE__, __LINE__, m);
++        return 0;
++    }
+     for (f = 0; f < n; f++)
+         if (off[f] != on[f]) {
+             static uint8_t a[NAT_MAX_W * NAT_MAX_H];
+@@ -345,9 +355,9 @@ static int kcompare(int w, int h, int night, int lang, int *kept)
+     /* (S4-K) the result card's settled frames redraw about seven layers of 16 on the small screen, not
+      * eight and more: her raised arms are cut under the speech bubble's body, so a new pose does not
+      * redraw the body (and the window under it) */
+-    if (w == 240 && (res_frames < 100 || res_drawn * 100 > res_frames * 790)) {
++    if (w == 240 && (res_frames < 100 || res_drawn * 100 > res_frames * 730)) {
+         char m[160];
+-        snprintf(m, sizeof(m), "result card: %d settled frames, %d layers drawn in all (want at most 7.9 a frame)", res_frames, res_drawn);
++        snprintf(m, sizeof(m), "result card: %d settled frames, %d layers drawn in all (want at most 7.3 a frame)", res_frames, res_drawn);
+         test_fail(__FILE__, __LINE__, m);
+         return 0;
+     }
+-- 
+2.43.0
+
+
+From cec185fe2ab0d6d57a0774d26b17b1cd2fa733da Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 19:48:01 +0000
+Subject: [PATCH 6/7] S4-K2: docs (GBA.md section, ledger row 65, ROADMAP Done
+ line, SPEED status)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvDzgwv9nxsL8r6tWV
+---
+ ROADMAP.md                       |  1 +
+ docs/GBA.md                      | 53 ++++++++++++++++++++++++++++++++
+ docs/design/held/status/SPEED.md |  1 +
+ 3 files changed, 55 insertions(+)
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index a769354..400fac7 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -22,6 +22,7 @@ before redoing any of them; a zip without `.git` cannot tell.
+ 
+ ### Done
+ - **Speed S4-K (2026-11-15, SPEED-3 round 1, the kitchen's result card, partial; docs/GBA.md "Speed wave 3: S4-K", ledger row 64):** Granny's baked pose is cut under the speech bubble (`plat_cook_pose` top, `cook_pose_crop`) and the grade stamp is four layers (ring and word, two sparkles, star; `fc_grade_stamp_part`), both exact (GBA `vhash-seq` 970 frames identical to the tip, native stage on / off 5,140 frames x 2 sizes x day / night + Spanish identical). GBA drawn fps: result card 20.8 -> 21.5 (40.8 ms work; 27.3 fps with PERFECT's star left out, not committed: pixels), counter 29.2 and serving 29.3 unchanged, stir / bake / simmer step-change frames unchanged; **goal (steady 30) not met**: the plate drags the stamp and text every tick, the star drags the title and the stage's box merge then drags the bubble and window; it needs G2-EX's clipped redraw. Measured per-layer costs in the docs. 0 resident bytes (GBA, PS1 110,560 B below the stack top with the boot FMV, tip 110,608 B, delta -48 B), PS1 `speed2.sh fishcook` identical (all 30.0). Core 1,437 tests (also SAN: only the 4 old UBSan reports), check-gen, xcheck, GBA test, dc-host-test, PS1 build and `game_smoke` pass.
++- **Speed S4-K2 (2026-11-15, SPEED-3 round 2, the kitchen's result card through G2-EX's clipped redraw, partial; docs/GBA.md "Speed wave 3: S4-K2", ledger row 65):** the grade stamp and PERFECT's sparkles are drawn through `stage_layer_clip` (`LCL` / `KCLIP` in `cook_scene.c`), exact (GBA `vhash-seq` of the whole card, 220 frames, digest identical to the S4-K ROM; native stage on / off 5,140 frames x 2 sizes x day / night + Spanish identical, no unhonoured clip call). GBA drawn fps on the rebased tree: result card 23.0 -> 26.9 (work 37.8 -> 33.5 ms, frames over 33 ms 44 of 69 -> 19 of 81), the other eight windows unchanged; **goal (steady 30) not met**: the dish alone is 5.4 ms of the plate's 7.8 and is redrawn every tick; clipped text on the GBA (pixel by pixel) costs more than redrawing the line (+8 ms), so the text line and the bubble stay whole. Measured per-layer costs and what would close the gap (baked dish, fast `clip_text`, 15 Hz rays with a page copy) are in the docs. 0 resident bytes.
+ - **Speed S2-4c (2026-11-15, the kitchen on the GBA, speed audit 2 causes C3 / C1, audit 3 rank 12, partial; measured on libmgba, PCSX-Redux and Flycast on `5aa25cd1` and again on `366ee6c1`, `9dc5e39a`, `e587f9c1`, `167c08ba` (with S2-4b), `262bf2b7` (with S3-2) and the tip it landed on, `fe410024`; docs/GBA.md "Speed wave 2: S2-4c", ledger row 59, docs/PS1.md "Speed tour 2"):** the kitchen's wall, jars and counter (and, for the recipe book, the window, the book and the doily) are kept pictures baked into the GBA ROM (`DOOMO_BACKDROP_KITCHEN`), and every screen (the book, the cooking steps, the result card, the counter) is drawn as layers of SP7's retained stage, each redrawn only when its key or box changes or a changed box lies on it; Granny's 164 poses are baked too (`runner --bake-poses`, `plat_cook_pose`, the file read by `cook_pose_find`: one image instead of ~45 ellipses), cut off where the counter covers her; faces are blitted above the counter only, bubbles are two layers, boxes and keys are measured and follow the translated text; `stage_rows` copies short spans by DMA (the fair's S2-4b windows hash the same, tick for tick). All exact (`test_cook_kept`: the kitchen with the stage on / off, 5,140 frames at each of two sizes, day and night, and in Spanish, identical; the baked pose file read back and checked pose by pose; GBA `vhash-seq` against the tip: 13 windows identical, Spanish 2,479 of 2,480 frames (the tip's one differing frame is the same picture one pixel lower), the counter's windows differ only inside the faces). GBA drawn fps: recipe book 20.0 -> **30.0**, chop 21.9 -> **30.0**, fry 19.8 -> **30.0** (every frame two vblanks); stir 20.0 -> 30.0, bake 20.8 -> 29.9, simmer 21.8 -> 29.7 (one or two 50-67 ms frames at a step change); result card 15.0 -> 20.8 (21.1 before S2-4b's stage changes); with S3-2's portrait jobs counter 26.3 -> 29.2 and serving 24.3 -> 29.3 (3-6 frames of 50 ms a window); `expect-fps` floors. The approved 15 Hz trades were measured on the result card and save nothing over a kept picture (21.1 fps either way: each Mode 4 page is two ticks old), so none is taken. GBA EWRAM and IWRAM unchanged, ROM +320 KB (three pictures, the poses). PS1: compiled out, `_end` unchanged (130,000 B below the stack top with the FMV on `fe410024`, the tip's; delta 0 measured on every earlier tip), the kitchen's table the tip's. Dreamcast: all 16 windows 30.0. **Still short (open):** the result card (needs G2-EX's clipped redraw), the counter / serving's three-vblank frames (animated faces, bobbing bubbles), the step-change frames of stir, bake and simmer; on the PS1 the result card's, counter's and serving's single 50 ms frames (unlock grants, faces: S3-2).
+ - **Talk TKP0-MEASURE (2026-11-15, TALK round 13; docs/design/talk/TKP_PLAN.md, docs/TALK.md 6q):** the PS1 re-measure and a buildable plan, no resident byte. Talk linked on the PS1: 146 KB of files (92 KB as one new overlay group, 0 B of slot growth; resident +19,520 B with the group alone, +15,616 B with the typed line off, about 2 to 4 KB after the planned clean-ups, inside the 12 KB share). PS1 subset of TALK_en.BIN 577,786 B against the 319,488 B budget (9,062 alternatives); lossless levers (word-token strings, packed rows) reach about 437 KB, which does not fit: CR10's part store holds SPU RAM 0x50000-0x7DFFF, leaving Talk 278,528 B at most (decision D1 for the owner: a PS1 content tier, or drop Talk on the PS1). Measured: 2,075 database reads and 43.4 KB a line (74 KB an exchange), 661,000 instructions a line (48 % the lint probes); estimated R3000 step 12 to 30 ms typical, so the generator must be sliced. First load estimated 1.4 to 1.6 s against the 1.5 s gate. Packages TKP1 to TKP6 with acceptance tests. New tools `ps1/tools/talk_size.sh`, `core/tools/talk_reads.sh`, `core/tools/talk_steps.sh`. PS1 margin 110,560 B on the rebased tree (unchanged), GBA sizes unchanged.
+ - **Talk T9, pointer input on the Talk screen (2026-11-15, docs/TALK.md 6k):** add-only `input_set_pointer` / `input_pointer` / `input_pointer_click` (`input.h`, `DOOMO_POINTER` 0 on GBA, PS1 and Dreamcast so they link none of it); on the Talk screen a click is exactly the matching pad press (quick reply, category, act, topic, typed line, Options, invite row, goodbye, a name in the people strip, the header = B, the scroll bar = L / R); a small arrow is drawn only while a pointer is present. Runner `mouse X Y [click]`, `expect-ptr-page`, `expect-ptr-row`; script `talk_pointer.txt`, `test_talk_pointer.c`. Not done: clicking the dialogue box, a wheel.
+diff --git a/docs/GBA.md b/docs/GBA.md
+index 042a269..e91edcc 100644
+--- a/docs/GBA.md
++++ b/docs/GBA.md
+@@ -461,6 +461,7 @@ against the LAST row, not against a figure from an older base.
+ | 64 | LV4: mechanic kit B (`levels_mech_env.c`, `DoomoView3D.view_dist`, `r3f.maxd` from the per-level view distance) | after G2-EX (`da2d3e9a`) | unchanged | **unchanged** | 0 B | 6,308 B | measured 2026-11-15 on `33d760af` and the same + LV4 (both clean `make -C gba`, `make -C gba sizes`): .iwram 11,272, .iwram_bss 4,088, .bss 254,820 and every overlay slot identical; on the landing tree (after G2-EX) the full sizes are .iwram 11,288, .iwram_bss 4,088, .bss 254,828, which is 33d760af plus G2-EX's +16 B / +8 B and nothing from LV4; ROM .text +40 B (r3d.c: the range check, the hoisted sprite-cull limit); `lv_env_*` is not linked (nothing calls it). The new `view_dist` byte sits in the padding of `DoomoView3D` (stack, and the one static copy in combat_hud.c). Speed tour: every `vhash-seq` identical |
+ 
+ | 64 | S4-K: the result card (Granny cut under the bubble, the grade stamp in parts; docs: "Speed wave 3: S4-K" above) | after CR10 (row 63) | unchanged | **unchanged** | 0 B | 6,288 B | measured on the tip and the tip + S4-K (`make -C gba sizes`, memreport): `.bss` 254,820 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, main stack and overlay groups unchanged: no resident data; ROM +1,384 B code (`.text` 1,526,848 -> 1,528,232 B). PS1: `_end` 0x801e5010 against the tip's 0x801e4fe0 (110,560 B below the stack top with the boot FMV, the tip 110,608 B: -48 B of code, still 38 KB over the 72 KB gate) |
++| 65 | S4-K2: the result card's stamp and sparkles through the clipped redraw (docs: "Speed wave 3: S4-K2" above) | after S4-K (row 64) and G2-EX | unchanged | **unchanged** | 0 B | 6,288 B | code only: no new static, `make -C gba sizes` on the tree: `.bss` 210,508 B, `.iwram` 11,288 B, `.iwram_bss` 4,088 B, `.data` 816 B, overlay groups unchanged (`.text` 1,552,784 B). PS1: compiled out (see the section) |
+ 
+ Known claimants still to land (their own packages measure and add rows):
+ 
+@@ -2947,6 +2948,58 @@ without the kept stage, the EXE ends `0x801e5010` against the tip's `0x801e4fe0`
+ `speed2.sh fishcook` all 16 windows 30.0 fps, before and after identical (the single 3-vsync frame of the result card,
+ counter and serving windows is the harness's lockstep resume, 0 frames over 33 ms in its table), `game_smoke` passes.
+ 
++### Speed wave 3: S4-K2, the result card through the clipped redraw (2026-11-15, SPEED-3 round 2, partial)
++
++Goal: a steady 30 on the kitchen's result card (`speed2_fishcook.txt`), then the counter, serving and step-change frames if the
++numbers need it. Measured on libmgba on the rebased tree (S4-K and G2-EX in) before and after; the other windows are untouched code.
++
++| window | before (drawn fps, work avg / max ms, frames over 33 ms) | after |
++|---|---:|---:|
++| cook: recipe book | 30.0 (22.8 / 29.4, 0) | same |
++| cook: chop | 30.0 (17.2 / 33.7, 0) | same |
++| cook: stir | 30.0 (21.8 / 40.7, 1) | same |
++| cook: fry | 30.0 (15.5 / 20.4, 0) | same |
++| cook: result card | 23.0 (37.8 / 41.2, 44 of 69) | **26.9** (33.5 / 42.4, 19 of 81) |
++| cook: bake | 29.9 (18.4 / 36.4, 1) | same |
++| cook: simmer | 29.8 (16.4 / 58.7, 2) | same |
++| cook: counter | 29.3 (26.6 / 40.7, 4) | same (29.3 to 29.8 between runs: the portrait jobs) |
++| cook: serving | 30.0 (28.6 / 36.8, 0) | same |
++
++**The goal is not met**: the result card is 26.9 fps, not 30, and 19 of its 81 frames still take three vblanks. The counter and
++serving were not changed (serving already holds 30.0 and the counter's 4 slow frames are the faces); the step-change frames were not
++touched (their cause is the same banner / bubble / apparatus change as in S4-K).
++
++- **What was done (exact).** The grade stamp (ring and word) and PERFECT's three sparkles are declared with `stage_layer_clip` and drawn
++  through the pieces of the dirty set (`LCL` / `KCLIP` in `cook_scene.c`, the same shape as the exorcism's `CLIPPED`). The plate
++  (rays, spotlight, dish) changes every tick and its box lies on the stamp; with whole-box redraws that dragged the stamp (7.9 ms) and,
++  through the box merge, more layers. Now the stamp is drawn only where the plate's box touches it. 23.0 -> 26.9 fps, work 37.8 -> 33.5 ms.
++- **What was tried and not taken (measured, libmgba, work avg ms).** Clipping the "+N dish" text line as well: 41.7 ms (+8 ms, the
++  GBA's `clip_text` writes pixel by pixel, which costs more than redrawing the line whole, 2.9 ms). Clipping the speech bubble as well:
++  42.9 ms on the card and serving fell to 24.0 fps (the bubble is used on every kitchen screen; the book screen did draw 34 instead of
++  238 frames in full, but it holds 30 either way). The buttons clipped: 33.5 (no change; the cursor bounce changes their key every few
++  frames, so they are redrawn by themselves, not dragged). The buttons as three layers (only the chosen one changes): 34.1 (worse).
++- **Where the rest goes (a layer left out of the draw, work avg ms; nothing drawn at all: 16.6).** The plate 7.8 (the dish 5.4, the
++  ellipse 1.2, the rays 1.1), the text line 2.9, the buttons 2.3, Granny 0.9, the title 0.9, the window 0.8, the logo and the bubble 0.4
++  each. So 17 ms of drawing over a 16.6 ms floor (the tick, the restores, the page flip). The dish is the one big piece: its ~30 rects and
++  ellipses are redrawn every tick because the plate is one layer and the rays turn under it; it lies inside the rays' box, so a layer of
++  its own would still be dragged. What would close the gap: the dish as a baked image like Granny's poses (about 1.3 ms instead of 5.4;
++  steam stays live), a faster `clip_text` (glyphs that lie whole inside the clip box through the fast glyph path, so the text line and the
++  bubble can be clipped), or the approved 15 Hz trade on the rays with a stage that copies a redrawn box to the other page (not built).
++  Even all three leave the frames in which Granny, the title, the logo and the buttons change together near 33 ms.
++- **Spanish.** Clipping the stamp changed which boxes the stage merges, which showed an old box fault in the recipe book: the right
++  page's ingredient name is cut to the box as English text and then translated (longer), so in Spanish it can reach x = 238 outside its
++  box. It is only seen (a stale pixel after a page turn) when the dirty set no longer covers that spot; it stayed hidden in the
++  committed layout (the Spanish tour passes) and is not changed here.
++
++**Same pixels.** `vhash-seq` of the whole result card (220 ticks from the fry's end, `sync on`), this ROM against the S4-K ROM: 220 of
++220 frames, sequence digest `0b3bd97d` on both. Native stage on / off (`test_cook_kept`): 5,140 frames at 240x160 and 320x240, day and
++night, and in Spanish at both sizes, identical, with no unhonoured call inside a clip (`nat_clip_viol` 0) and at least 100 result-card
++frames drawing a clipped layer (the test fails without the clip); the result card's settled frames draw 6.7 layers on the small screen
++(7.3 is the new limit, was 7.9). **No pixel changes.**
++
++GBA memory: no resident data (no new static; `.bss` 210,508 B, `.iwram` 11,288 B, `.iwram_bss` 4,088 B, `.data` 816 B, overlay groups
++the tree's), ROM code only. PS1 and Dreamcast: the kept kitchen is compiled out there (`COOK_KEPT` 0; `LCL` is 1 and `KCLIP` the call).
++
+ ## 4b. Retained panels (G7, `src/panel.c`)
+ 
+ The core draws its HUD pills, dialogue box, toasts and island HUD as
+diff --git a/docs/design/held/status/SPEED.md b/docs/design/held/status/SPEED.md
+index 31b2664..dfd59c3 100644
+--- a/docs/design/held/status/SPEED.md
++++ b/docs/design/held/status/SPEED.md
+@@ -28,5 +28,6 @@ delta, GBA sizes), in flight (package and stage), next up, blockers, needs from
+ 
+ - **Lead session:** session_01Xd63cvDzgwv9nxsL8r6tWV (SPEED-3 round 1: kitchen leftovers and the Prize Wheel; G2-EX is landed by the coordinator).
+ - **Built, not yet landed:** **S4-K** (the kitchen's result card, counter, serving, step-change frames; `docs/GBA.md` "Speed wave 3: S4-K", ledger row 64, **partial**): Granny's pose cut under the bubble and the grade stamp as four layers, exact (GBA `vhash-seq` 970 frames identical, native stage on / off identical, PS1 identical). Result card 20.8 -> 21.5 fps (27.3 with the star left out: a pixel change, not taken); counter 29.2 / serving 29.3 / stir, bake, simmer unchanged. 0 resident bytes; measured on the rebased tip (core 1,437 tests, GBA fishcook: result card 21.3 fps, counter 29.0, serving 29.0): PS1 110,560 B below the stack top with the boot FMV (the tip 110,608 B, delta -48 B), GBA `.bss` 254,820 B, `.iwram` 11,272 B unchanged; PS1 `speed2.sh fishcook` all 16 windows 30.0 to 30.5 fps, none over 33 ms.
++- **Built, not yet landed (round 2):** **S4-K2** (the result card through G2-EX's clipped redraw; `docs/GBA.md` "Speed wave 3: S4-K2", ledger row 65, **partial**, branch `fut-s4-k2` = S4-K's four commits + this): the grade stamp and sparkles drawn through `stage_layer_clip`, exact (GBA `vhash-seq` 220 frames identical to S4-K's ROM, native stage on / off identical). GBA result card 23.0 -> 26.9 fps (work 37.8 -> 33.5 ms, 19 of 81 frames still over 33 ms); the other eight kitchen windows unchanged. Not 30: the dish costs 5.4 ms of the plate's 7.8 ms, the text line 2.9, the buttons 2.3, over a 16.6 ms floor; clipped text and a clipped bubble were slower on the GBA (pixel-by-pixel `clip_text`) and were not taken. Left: a baked dish, a fast `clip_text`, the 15 Hz rays with a page copy. 0 resident bytes.
+ - **In flight:** nothing from this package.
+ - **Next:** the result card needs G2-EX's clipped redraw (the plate drags the stamp and text, the star drags the title and the stage's box merge then drags the bubble and window), then the star / title split; the counter and serving need their faces' and bubbles' redraws cut by the same clip; the step-change frames need the banner / bubble removal and the apparatus spread over two ticks (a pixel-timing change, measure first).
+-- 
+2.43.0
+
+
+From 399cf3f07d0133b28b8dd19a90f2c158d2c921d4 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:16:00 +0000
+Subject: [PATCH 7/7] S4-K2: docs: PS1 and Dreamcast numbers
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvDzgwv9nxsL8r6tWV
+---
+ docs/GBA.md | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/docs/GBA.md b/docs/GBA.md
+index e91edcc..e47f25d 100644
+--- a/docs/GBA.md
++++ b/docs/GBA.md
+@@ -2999,6 +2999,7 @@ frames drawing a clipped layer (the test fails without the clip); the result car
+ 
+ GBA memory: no resident data (no new static; `.bss` 210,508 B, `.iwram` 11,288 B, `.iwram_bss` 4,088 B, `.data` 816 B, overlay groups
+ the tree's), ROM code only. PS1 and Dreamcast: the kept kitchen is compiled out there (`COOK_KEPT` 0; `LCL` is 1 and `KCLIP` the call).
++Measured: PS1 `elf2exe` 110,608 B below the stack top with the boot FMV (`_end` 0x801e4fe0, the tree's number before the package: delta 0 B), `speed2.sh fishcook` all 16 windows 30.0 to 30.5 fps, none over 33 ms, `game_smoke` passes; Dreamcast (Flycast, `speed2.sh fishcook`) 0 of 3,335 ticks over 33.3 ms, worst 18.2 ms; `make dc-host-test`, `make -C dc` pass.
+ 
+ ## 4b. Retained panels (G7, `src/panel.c`)
+ 
+-- 
+2.43.0
+

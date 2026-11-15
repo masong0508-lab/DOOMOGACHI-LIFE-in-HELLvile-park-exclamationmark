@@ -32,3 +32,9 @@ delta, GBA sizes), in flight (package and stage), next up, blockers, needs from 
 - **Saved as patches** in docs/design/held/patches/wip/SPEED-2/ (README there): S3-TALK, S3-7, S3-CREDITS (built, reviewed minor, landing unfinished), S3-8 (built partial: lobby, jukebox, Almanac list, level select; the studio STAGE tab left to the STUDIO stream), S3-15 (unfinished). S3-12 went to the coordinator's machine; S3-13 went to the UI stream.
 - **Next up on RESUME:** land S3-7, S3-TALK, S3-CREDITS (rebase, all gates, docs), review and finish S3-8, build S3-15 for real (prefetch, measurements), then the exorcism prayer (27.4 fps) and true name to 30 (docs/EXORCISM_SPEED.md), S3-14 (island hub), and follow-ups for the 'everything at 30' gaps of the packages above.
 - **Blockers:** none. **Needs from other streams:** none
+## SPEED-3 (lead session_01Xd63cvDzgwv9nxsL8r6tWV), paused 2026-11-15 ~20:55 UTC
+
+- **Landed:** nothing (hold windows; then PAUSE at 98% of the weekly allowance).
+- **Saved, not landed:** `patches/wip/SPEED-3/` (README there): S4-K and S4-K2 (kitchen result card, counter / serving / step-change frames), S4-W (Prize Wheel result card), S4-C (concert band 20.5 fps and Dreamland stage 25-27.5 fps).
+- **Open under 30 (owner decision EVERYTHING AT 30):** kitchen result card (21.5 with S4-K alone), counter 29.2, serving 29.3, stir / bake / simmer step-change frames, the Prize Wheel curse wedges 23.7, the concert band and the Dreamland stage.
+- **Next:** on RESUME land S4-W, S4-K/K2, S4-C from the patches, then the open windows above and those speed audit 4 lists.
