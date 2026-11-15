@@ -7,13 +7,19 @@
  *   SELECT + L / R   previous / next tab from anywhere            [L2 / R2]
  *   SELECT (tap)     the tab's tools menu (copy / paste, quick fills ...)
  *   SELECT + B       undo                                          [Triangle]
- *   START            play / stop
+ *   SELECT + A       redo                                          [Square]
+ *   SELECT + UP      the control card ("?") of the tab
+ *   START            play / stop (the prompt bar names what: "Play from here" / "Play song")
  *   B                back (leave the studio; in NOTES: erase / tie)
  *
  * UNDO keeps a byte journal of the working song: before an edit the
  * changed bytes are run-length coded into a STUDIO_UNDO_BYTES ring
  * (oldest steps fall out first), so 16+ ordinary edits (a note, a lyric
  * line, a setting) always fit and even whole-song changes usually do.
+ * REDO (ST-EASY): an undo saves the bytes it overwrites, in the same record
+ * format, into a second journal in the scene scratch (st_easy()); a redo
+ * replays it and puts the step back on the undo journal. Any new edit
+ * empties the redo journal.
  */
 #include "studio_int.h"
 #include <stdarg.h>
@@ -35,9 +41,6 @@ __attribute__((weak)) int concert_stage_song(const DoomoSong *s)
     return 0;
 }
 
-static const char *const tab_names[STAB_COUNT] = {
-    "Song", "Notes", "Order", "Lyrics", "Choir", "Stage", "File"
-};
 
 /* ====================================================================== */
 /* small services                                                           */
@@ -93,6 +96,7 @@ void st_set_tab(int tab)
     studio.tab = (uint8_t)tab;
     studio.tab_t = 0;
     studio.a_edit = 0;
+    st_help_arm();
     audio_sfx(SFX_CURSOR);
 }
 
@@ -186,18 +190,28 @@ static int evict_oldest(void)
     return 1;
 }
 
+static void redo_clear(void)
+{
+    StEasy *ez = st_easy();
+    if (ez) { ez->redo_used = 0; ez->redo_steps = 0; ez->redo_lost = 0; }
+}
+
 void ed_reset(void)
 {
     studio.undo_used = 0;
     studio.undo_open = 0;
     studio.undo_steps = 0;
+    redo_clear();
 }
 
-void ed_touch(const void *field, int len)
+/* the journal's record writer. keep_redo = 1 from ed_redo (it is consuming the redo journal), else a step's first
+ * record (a fresh edit) empties it. */
+static void touch_rec(const void *field, int len, int keep_redo)
 {
     const uint8_t *base = (const uint8_t *)&studio.song, *p = (const uint8_t *)field;
     int off, enc;
     if (p < base || len <= 0 || p + len > base + sizeof(DoomoSong)) return;
+    if (!keep_redo && !studio.undo_open) redo_clear();
     off = (int)(p - base);
     enc = rle_encode(p, len, NULL, 0);
     if (enc + 6 > STUDIO_UNDO_BYTES) {
@@ -219,11 +233,16 @@ void ed_touch(const void *field, int len)
     studio.undo_open = 1;
 }
 
+void ed_touch(const void *field, int len) { touch_rec(field, len, 0); }
+
 void ed_commit(void)
 {
+    StEasy *ez;
     if (studio.undo_open == 1) recount();
     studio.undo_open = 0;
     studio.dirty = 1;
+    ez = st_easy();
+    if (ez) ez->edited = 1;                /* the one-line help has done its job */
 }
 
 int ed_undo_steps(void) { return studio.undo_steps; }
@@ -247,22 +266,84 @@ void ed_commit_key(int key)
     coal_used = studio.undo_used;
 }
 
+/* ST-EASY: save the bytes [off, off + len) of the working song as one redo record (join: it belongs to the step the
+ * previous record started). 0 = no room. */
+static int redo_push(StEasy *ez, int off, int len, int join)
+{
+    const uint8_t *src = (const uint8_t *)&studio.song + off;
+    int enc = rle_encode(src, len, NULL, 0);
+    uint8_t *tr;
+    if (ez->redo_used + enc + 6 > STUDIO_REDO_BYTES) return 0;
+    rle_encode(src, len, ez->redo + ez->redo_used, STUDIO_REDO_BYTES - ez->redo_used);
+    tr = ez->redo + ez->redo_used + enc;
+    wr16(tr, (uint32_t)off);
+    wr16(tr + 2, (uint32_t)len | (join ? JOIN : 0));
+    wr16(tr + 4, (uint32_t)enc);
+    ez->redo_used = (uint16_t)(ez->redo_used + enc + 6);
+    return 1;
+}
+
 int ed_undo(void)
 {
+    StEasy *ez;
+    int first = 1, keep;
     if (studio.undo_open) ed_commit();
     if (studio.undo_used < 6) return 0;
+    ez = st_easy();
+    keep = ez != NULL;
+    coal_key = -1;
     for (;;) {
         uint8_t *tr = studio.undo + studio.undo_used - 6;
         uint32_t off = rd16(tr), ln = rd16(tr + 2), enc = rd16(tr + 4);
         int join = (ln & JOIN) != 0;
         ln &= ~JOIN;
-        if (off + ln <= sizeof(DoomoSong) && enc + 6 <= studio.undo_used)
+        if (off + ln <= sizeof(DoomoSong) && enc + 6 <= studio.undo_used) {
+            /* the first record pushed is the last one a redo pops: it carries no JOIN, the rest do */
+            if (keep && !redo_push(ez, (int)off, (int)ln, !first)) keep = 0;
+            first = 0;
             rle_decode(tr - enc, (int)enc, (uint8_t *)&studio.song + off, (int)ln);
+        }
         studio.undo_used = (uint16_t)(studio.undo_used - 6 - enc);
         if (!join || studio.undo_used < 6) break;
     }
+    if (ez) {
+        if (keep && !first) { if (ez->redo_steps < 255) ez->redo_steps++; ez->redo_lost = 0; }
+        else { ez->redo_used = 0; ez->redo_steps = 0; ez->redo_lost = 1; }   /* it did not fit: no redo (never half a step) */
+    }
     recount();
     studio.dirty = 1;
+    return 1;
+}
+
+int ed_redo_steps(void)
+{
+    StEasy *ez = st_easy();
+    return ez ? ez->redo_steps : 0;
+}
+
+/* The step the last undo took back. Each redo record is the "after" image of a range; replaying it first puts the
+ * range's current bytes on the undo journal as one step (touch_rec, keep_redo). */
+int ed_redo(void)
+{
+    StEasy *ez = st_easy();
+    if (!ez || ez->redo_used < 6) return 0;
+    if (studio.undo_open) ed_commit();
+    coal_key = -1;
+    for (;;) {
+        uint8_t *tr = ez->redo + ez->redo_used - 6;
+        uint32_t off = rd16(tr), ln = rd16(tr + 2), enc = rd16(tr + 4);
+        int join = (ln & JOIN) != 0;
+        ln &= ~JOIN;
+        if (off + ln <= sizeof(DoomoSong) && enc + 6 <= ez->redo_used) {
+            touch_rec((const uint8_t *)&studio.song + off, (int)ln, 1);
+            rle_decode(tr - enc, (int)enc, (uint8_t *)&studio.song + off, (int)ln);
+        }
+        ez->redo_used = (uint16_t)(ez->redo_used - 6 - (int)enc);
+        if (!join || ez->redo_used < 6) break;
+    }
+    if (ez->redo_steps) ez->redo_steps--;
+    ez->redo_lost = 0;
+    ed_commit();
     return 1;
 }
 
@@ -602,10 +683,15 @@ static void tab_icon(int tab, int cx, int cy, uint8_t c)
 
 #if ST_BAKE
 #define BAKE_TAG   0x53424B45u          /* 'SBKE' */
+static void ez_init(StEasy *e)
+{
+    memset(e, 0, sizeof(*e));
+    e->level = (studio_stats.lines & STUDIO_LINES_LEVEL) ? 1 : 0;
+}
 #define BAKE_ENTS  40
 #define BAKE_POOL  10752                /* BakeSt is the whole 12 KB scene scratch (CHOIR's tiles are ~750 B each) */
 typedef struct { uint32_t k0, k1; DoomoImage img; int16_t bx, by; } BakeEnt;
-typedef struct { uint16_t top, n; BakeEnt e[BAKE_ENTS]; uint8_t pix[BAKE_POOL]; } BakeSt;
+typedef struct { uint16_t top, n; BakeEnt e[BAKE_ENTS]; uint8_t pix[BAKE_POOL]; StEasy ez; } BakeSt;   /* ez: ST-EASY (+448 B) */
 DOOMO_STATIC_ASSERT(sizeof(BakeSt) <= DOOMO_SCENE_SCRATCH, studio_bake_fits_scratch);
 static BakeSt *bake_st;
 
@@ -613,8 +699,14 @@ static BakeSt *bake_get(void)
 {
     if (bake_st && scene_scratch_mine(BAKE_TAG)) return bake_st;
     bake_st = (BakeSt *)scene_scratch(BAKE_TAG, (uint32_t)sizeof(BakeSt));
-    if (bake_st) { bake_st->top = 0; bake_st->n = 0; }
+    if (bake_st) { bake_st->top = 0; bake_st->n = 0; ez_init(&bake_st->ez); }
     return bake_st;
+}
+
+StEasy *st_easy(void)
+{
+    BakeSt *b = bake_get();
+    return b ? &b->ez : NULL;
 }
 
 typedef StBakeFn BakeFn;
@@ -664,6 +756,20 @@ int st_bake(uint32_t k0, uint32_t k1, int x, int y, StBakeFn fn, const int *a, i
     (void)k0; (void)k1; (void)x; (void)y; (void)fn; (void)a; (void)maxpix;
     return 0;
 }
+
+/* no baked images here: ST-EASY's state has the scratch to itself (no static pointer: scene_scratch_block()) */
+#define EZ_TAG 0x53455A59u              /* 'SEZY' */
+StEasy *st_easy(void)
+{
+    StEasy *e;
+    if (scene_scratch_mine(EZ_TAG)) return (StEasy *)scene_scratch_block();
+    e = (StEasy *)scene_scratch(EZ_TAG, (uint32_t)sizeof(StEasy));
+    if (e) {
+        memset(e, 0, sizeof(*e));
+        e->level = (studio_stats.lines & STUDIO_LINES_LEVEL) ? 1 : 0;
+    }
+    return e;
+}
 #endif
 
 
@@ -712,11 +818,11 @@ static void draw_tabs(void)
 {
     const UiStyle *st = ui_style(WIN_CUTE);
     int i, x = 4, y = 3, wide = 1, b = ui_wave((int)studio.t, 20, 1) > 0, total = 0;
-    for (i = 0; i < STAB_COUNT; i++) total += ui_text_width(tab_names[i]) + 22;
+    for (i = 0; i < STAB_COUNT; i++) total += ui_text_width(st_tab_label(i)) + 22;
     if (total > plat_screen_w() - 40) wide = 0;     /* names only on the current tab */
     for (i = 0; i < STAB_COUNT; i++) {
         int sel = i == studio.tab, w;
-        const char *nm = tab_names[i];
+        const char *nm = st_tab_label(i);
         w = (sel || wide) ? ui_text_width(nm) + 20 : 17;
         if (sel) {
             tab_pill_sel(x, y - 1 - b, w, st);
@@ -724,8 +830,17 @@ static void draw_tabs(void)
             ui_text_shadow(x + 15, y + 2 - b, nm, PAL_WHITE, ui_darker(st->accent));
         } else {
             tab_pill(x, y + 1, w, st);
-            tab_icon(i, x + 8, y + 7, st->text_dim);
-            if (wide) ui_text(x + 15, y + 3, nm, st->text_dim);
+            if (wide) {
+                tab_icon(i, x + 8, y + 7, st->text_dim);
+                ui_text(x + 15, y + 3, nm, st->text_dim);
+            } else {
+                /* ST-EASY: a short pill says where it is: L / R beside the current tab, else its number (one glyph:
+                 * cheaper than the icon, and it names the order) */
+                char hint[2] = { 0, 0 };
+                int d = (i - studio.tab + STAB_COUNT) % STAB_COUNT;
+                hint[0] = d == STAB_COUNT - 1 ? 'L' : d == 1 ? 'R' : (char)('1' + i);
+                ui_text(x + 6, y + 3, hint, st->text_dim);
+            }
         }
         x += w + 2;
     }
@@ -837,7 +952,7 @@ void studio_check_unlocks(void)
     if (s->performed >= 3) unlock_grant(UL_STUDIO_TPL_DISCO);
     if (s->inspired >= 1) unlock_grant(UL_STUDIO_KIT_BONES);
     if (s->inspired >= 3) unlock_grant(UL_STUDIO_TPL_JAZZ);
-    if (s->lines >= 20) unlock_grant(UL_STUDIO_WAVE_STATIC);
+    if (STUDIO_LINES(s) >= 20) unlock_grant(UL_STUDIO_WAVE_STATIC);
     if (s->encores >= 1) unlock_grant(UL_STUDIO_TPL_SYNTH);
     if (popcount16(s->genres) >= 4) unlock_grant(UL_STUDIO_KIT_FORGE);
     if (s->best_choir >= 10) unlock_grant(UL_STUDIO_LAYOUT_PYRAMID);
@@ -873,6 +988,8 @@ static void studio_enter(int arg)
     studio.pop_n = 0;
     studio.picking = 0;
     studio.show = 0;
+    studio.help = 0;
+    if (arg != -1) studio.card = 0;        /* (-1: back from a pushed scene: the card stays as it was) */
     studio.sel_held = studio.sel_used = 0;
     studio.prev_music = (int16_t)audio_music_current();
     audio_music(SONG_NONE);
@@ -897,7 +1014,8 @@ static void studio_enter(int arg)
         studio.tab = STAB_SONG;
     } else if (arg == -2 || !(studio.song.flags & SONGF_VALID)) {
         new_song();
-        studio.tab = STAB_FILE;
+        studio.tab = STAB_SONG;
+        st_card_open();                    /* ST-EASY: an empty song opens on "Start a song" */
     }
     song_sanitize(SS);
     if (arg != -1) {
@@ -917,6 +1035,7 @@ static void studio_enter(int arg)
     studio.muse = -1;
     studio.sing_pos = -1;
     studio.fmode = 0;
+    st_help_arm();
 }
 
 static void studio_leave(void)
@@ -959,6 +1078,13 @@ static void global_input(void)
         if (ed_undo()) { st_msg("Undo! (%d left)", ed_undo_steps()); audio_sfx(SFX_CANCEL); }
         else { st_msg("Nothing to undo"); audio_sfx(SFX_ERROR); }
     }
+    /* ST-EASY: redo (SELECT+A reads as X on a GBA), the "?" control card, START = play */
+    if (btn_pressed(BTN_X) || (studio.sel_held && btn_pressed(BTN_A))) {
+        if (ed_redo()) { st_msg("Redo! (%d more)", ed_redo_steps()); audio_sfx(SFX_SELECT); }
+        else { st_msg(st_easy() && st_easy()->redo_lost ? "Too big to redo" : "Nothing to redo"); audio_sfx(SFX_ERROR); }
+    }
+    if (studio.sel_held && btn_pressed(BTN_UP)) { st_help_open(); return; }
+    if (btn_pressed(BTN_START)) st_start();
     if (btn_pressed(BTN_L2)) st_set_tab(studio.tab - 1);
     if (btn_pressed(BTN_R2)) st_set_tab(studio.tab + 1);
 }
@@ -970,10 +1096,12 @@ static void studio_update(void)
     studio.t++;
     if (studio.tab_t < 60000) studio.tab_t++;
     if (studio.msg_t) studio.msg_t--;
+    { StEasy *ez = st_easy(); if (ez && ez->help_t) ez->help_t--; }
     song_tick();
     studio_sel_tap = 0;
     if (studio.picking) { st_picker_update(); return; }
     if (studio.pop_n) { popup_update(); return; }
+    if (studio.help) { st_help_update(); return; }
     if (studio.tab == STAB_STAGE && stage_fullscreen()) { tab_stage_update(); return; }
     if (studio.t > 8 && tip_once(TIP_STUDIO)) return;               /* CL4: the tabs, once */
     global_input();
@@ -988,7 +1116,7 @@ static void studio_update(void)
         if (btn_pressed(BTN_R)) { st_set_tab(studio.tab + 1); return; }
     }
     switch (studio.tab) {
-    case STAB_SONG: tab_song_update(); break;
+    case STAB_SONG: if (studio.card) st_card_update(); else tab_song_update(); break;
     case STAB_NOTES: tab_notes_update(); break;
     case STAB_ORDER: tab_order_update(); break;
     case STAB_LYRICS: tab_lyrics_update(); break;
@@ -1009,8 +1137,16 @@ static int modal_rect(int *x, int *y, int *w, int *h)
     *x = *y = *w = *h = 0;
     if ((studio.tab == STAB_STAGE && stage_fullscreen()) || studio.msg_t || (studio.pop_n && studio.picking)) return 0;
     if (studio.pop_n && studio.pop_t >= 12) { popup_rect(x, y, w, h); return 1; }
+    if (studio.help && studio.pop_t >= 12) return st_help_rect(x, y, w, h);
     if (studio.picking && pk.t >= 12) { picker_rect(x, y, w, h); return 1; }
     return 0;
+}
+
+/* ST-EASY: the control card, dimmed over the tab like a popup (not again over a held frame) */
+static void help_draw(void)
+{
+    if (!ST_HELD) plat_shade_rect(0, 0, plat_screen_w(), plat_screen_h(), 9);
+    st_help_draw();
 }
 
 static void studio_draw(void)
@@ -1021,6 +1157,7 @@ static void studio_draw(void)
     if (ui_modal_hold(&studio, hold_ok, hx, hy, hw, hh)) {
         st_held = 1;
         if (studio.pop_n) popup_draw();
+        else if (studio.help) help_draw();
         else st_picker_draw();
         st_held = 0;
         ui_modal_hold_end();
@@ -1037,7 +1174,7 @@ static void studio_draw(void)
     draw_backdrop(r);
     draw_tabs();
     switch (studio.tab) {
-    case STAB_SONG: tab_song_draw(r); break;
+    case STAB_SONG: if (studio.card) st_card_draw(r); else tab_song_draw(r); break;
     case STAB_NOTES: tab_notes_draw(r); break;
     case STAB_ORDER: tab_order_draw(r); break;
     case STAB_LYRICS: tab_lyrics_draw(r); break;
@@ -1045,12 +1182,10 @@ static void studio_draw(void)
     case STAB_STAGE: tab_stage_draw(r); break;
     default: tab_file_draw(r); break;
     }
-    {
-        UiPrompt pr[UI_PROMPTS_MAX];
-        ui_prompts(pr, tab_prompts(studio.tab, pr), WIN_CUTE);
-    }
+    st_bar_draw();
     draw_msg();
     if (studio.pop_n) popup_draw();
+    if (studio.help) help_draw();
     if (studio.picking) st_picker_draw();
     ui_modal_full(&studio, hold_ok);
 }

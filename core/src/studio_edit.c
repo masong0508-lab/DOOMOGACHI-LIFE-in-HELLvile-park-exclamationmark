@@ -31,47 +31,51 @@ int tab_prompts(int tab, UiPrompt *p)
 #define PR(b, pr, v) do { p[n].btn = (uint16_t)(b); p[n].prio = (uint8_t)(pr); p[n].verb = (v); n++; } while (0)
     switch (tab) {
     case STAB_SONG:
+        if (studio.card) return st_card_prompts(p);              /* ST-EASY: "Start a song" */
         if (studio.srow == 0) PR(BTN_A, 0, "Rename");
         else PR(BTN_LEFT | BTN_RIGHT, 0, song_row_verb[studio.srow % DOOMO_COUNTOF(song_row_verb)]);
-        PR(BTN_START, 1, "Play");
+        PR(BTN_START, 1, st_play_verb());
         PR(BTN_SELECT, 3, "Tools");
         PR(BTN_B, 2, "Exit");
         break;
     case STAB_NOTES:
         if (studio.a_edit) { PR(BTN_UP | BTN_DOWN, 0, "Pitch"); PR(BTN_L | BTN_R, 1, "Octave"); break; }
         PR(BTN_A, 0, "Note");
-        PR(BTN_B, 1, "Erase / tie");
-        PR(BTN_L | BTN_R, 2, "Pattern");
-        PR(BTN_START, 3, "Play");
+        PR(BTN_START, 1, st_play_verb());
+        PR(BTN_B, 2, "Erase / tie");
+        PR(BTN_L | BTN_R, 3, "Pattern");
         PR(BTN_Y, 4, "Undo");
+        PR(BTN_X, 5, "Redo");
         break;
     case STAB_ORDER:
         PR(BTN_LEFT | BTN_RIGHT, 1, "Pattern");
         PR(BTN_A, 0, "Insert");
-        PR(BTN_START, 2, "Play");
+        PR(BTN_START, 2, st_play_verb());
         PR(BTN_SELECT, 3, "Tools");
         PR(BTN_B, 4, "Exit");
         break;
     case STAB_LYRICS:
         PR(BTN_A, 0, "Write");
         PR(BTN_LEFT | BTN_RIGHT, 1, "Who sings");
-        PR(BTN_START, 2, "Fit");
-        PR(BTN_SELECT, 3, "Sing");
+        PR(BTN_START, 2, st_play_verb());
+        PR(BTN_SELECT, 3, "Tools");
         break;
     case STAB_CHOIR:
         PR(BTN_A, 0, "Pick");
-        PR(BTN_START, 2, "Section");
+        PR(BTN_START, 2, st_play_verb());
         PR(BTN_SELECT, 3, "Quick fill");
         PR(BTN_B, 1, "Back");
         break;
     case STAB_STAGE:
         if (stage_fullscreen()) { PR(BTN_B, 0, "Stop the show"); break; }
         PR(BTN_A, 0, "Perform!");
+        PR(BTN_START, 3, st_play_verb());
         PR(BTN_SELECT, 2, "Concert Hall");
         PR(BTN_B, 1, "Back");
         break;
     default:
         PR(BTN_A, 0, "Choose");
+        PR(BTN_START, 2, st_play_verb());
         PR(BTN_L | BTN_R, 2, "Tabs");
         PR(BTN_Y, 3, "Undo");
         PR(BTN_B, 1, "Back");
@@ -221,7 +225,6 @@ void tab_song_update(void)
             song_value(studio.srow, 1);
         }
     }
-    if (btn_pressed(BTN_START)) st_play_from(0);
     if (studio_sel_tap) {
         static const char *const items[4] = { "Re-compose music", "Key up", "Key down",
                                               "Snap notes to scale" };
@@ -492,10 +495,6 @@ void tab_notes_update(void)
             ed_commit();
             audio_sfx(SFX_BLIP);
         }
-        if (btn_pressed(BTN_START)) {
-            if (song_playing()) song_stop();
-            else song_play_pattern(s, studio.pat, studio.stp);
-        }
         if (studio_sel_tap) {
             static const char *const items[7] = { "Copy pattern", "Paste pattern", "Copy track",
                                                   "Paste track", "Clear track", "Track up a step",
@@ -636,6 +635,11 @@ void tab_notes_draw(StRect r)
                      3, PAL_PAINT(PAINT_ROSE, 1));
     }
     ui_scroll_arrows(r.x + 10, gy, gy + vis * 9 - 4, studio.ntop > 0, studio.ntop + vis < SONG_STEPS);
+    /* ST-EASY: the cursor's cell on one line, under the grid (studio_play.c; the text is cached, rebuilt when the cell moves) */
+    {
+        int ly = gy + vis * 9;
+        if (ly + 9 <= r.y + r.h - 18) ui_text(r.x + 6, ly, st_describe_cell(studio.pat, studio.trk, studio.stp), st->text_dim);
+    }
     /* mini keyboard */
     {
         int v = s->notes[studio.pat][studio.trk][studio.stp];
@@ -738,7 +742,6 @@ void tab_order_update(void)
         ed_commit_key(KEY(2, studio.osel));
         audio_sfx(SFX_CURSOR);
     }
-    if (btn_pressed(BTN_START)) st_play_from(studio.osel);
     if (studio_sel_tap) {
         static const char *const items[5] = { "Insert a copy", "Delete", "Move up", "Move down",
                                               "Repeat on/off" };

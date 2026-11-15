@@ -11,6 +11,9 @@
  *   studio_words.c  LYRICS + CHOIR tabs, the citizen picker
  *   studio_stage.c  PERFORM: the choir show
  *   studio_file.c   FILE tab: song book, templates, Inspire me
+ *   studio_start.c  ST-EASY: the "Start a song" card + studio_make_song
+ *   studio_play.c   ST-EASY: START = play (target named), the cursor's one-line description
+ *   studio_help.c   ST-EASY: one-line help, the control card, tab labels, Studio level
  *   studio_gen.c    the composer, lyric writer, templates, choir fills
  *   unlocks_studio.c unlock ids 240..255 + the activities table
  *
@@ -36,13 +39,18 @@ typedef struct StudioStats {
     uint16_t saved;          /* songs saved to the song book              */
     uint16_t performed;      /* stage shows finished                       */
     uint16_t inspired;       /* "Inspire me!" songs                        */
-    uint16_t lines;          /* lyric lines written                        */
+    uint16_t lines;          /* lyric lines written (bits 0..14); bit 15 = Studio level Advanced (ST-EASY) */
     uint16_t genres;         /* bit per genre ever saved                   */
     uint8_t  best_choir;     /* biggest choir that performed               */
     uint8_t  encores;        /* standing ovations                          */
 } StudioStats;
 extern StudioStats studio_stats;
 void studio_stats_reset(void);
+/* ST-EASY: the Studio level (Easy 0 / Advanced 1) lives in the spare top bit of `lines` (no new save tag: old
+ * saves read 0 = Easy). Count users mask it with STUDIO_LINES(). */
+#define STUDIO_LINES_LEVEL 0x8000u
+#define STUDIO_LINES_MASK  0x7FFFu
+#define STUDIO_LINES(s) ((s)->lines & STUDIO_LINES_MASK)
 
 /* ---- unlocks (UL_CAT_MISC, list = STUL_*, index = the value) ------------------ */
 enum { STUL_WAVE = 40, STUL_KIT, STUL_TEMPLATE, STUL_LAYOUT };
@@ -73,6 +81,7 @@ void studio_check_unlocks(void);
 
 /* ---- the scene state ---------------------------------------------------------- */
 #define STUDIO_UNDO_BYTES 768
+#define STUDIO_REDO_BYTES 384        /* ST-EASY: the redo journal (scene scratch, not .bss) */
 #define STUDIO_CROWD 11            /* the dark crowd: one short row of 5 behind a row of 6 */
 
 typedef void (*StudioPopDone)(int choice);   /* -1 = cancelled */
@@ -86,6 +95,7 @@ typedef struct Studio {
     int8_t   slot;              /* book slot the song belongs to, -1 none   */
     uint8_t  dirty, active;
     uint8_t  sel_held, sel_used;
+    uint8_t  card, help;        /* ST-EASY: the Start card is open on SONG / the control card is open */
     /* SONG */
     uint8_t  srow, stop;
     /* NOTES */
@@ -135,6 +145,25 @@ typedef struct Studio {
 extern Studio studio;
 #define SS (&studio.song)
 
+/* ---- ST-EASY state: lives in the shared scene scratch (on the GBA the tail of studio.c's BakeSt), not in .bss.
+ * st_easy() returns it, claiming + zeroing it when another scene took the scratch (the redo history is simply
+ * gone then; the level comes back from studio_stats). */
+#define STUDIO_DESC_LEN 44
+typedef struct StEasy {
+    uint16_t redo_used;
+    uint8_t  redo_steps;
+    uint8_t  level;             /* 0 Easy, 1 Advanced (mirrors studio_stats.lines bit 15) */
+    uint8_t  edited;            /* an edit was made this session: the one-line help stops */
+    uint8_t  redo_lost;         /* the last undo was too big to keep for a redo (say so) */
+    uint8_t  csel, style, mood, tempo, length;   /* the Start card */
+    uint16_t help_t;            /* ticks of the one-line help left on the bar */
+    uint32_t seed;              /* the Start card's seed */
+    uint32_t desc_key;          /* NOTES cursor line cache */
+    char     desc[STUDIO_DESC_LEN];
+    uint8_t  redo[STUDIO_REDO_BYTES];
+} StEasy;
+StEasy *st_easy(void);
+
 /* ---- studio.c: shared services ------------------------------------------------ */
 void st_msg(const char *fmt, ...);
 void st_popup(const char *title, const char *const *items, int n, uint32_t lock,
@@ -153,6 +182,8 @@ int  ed_undo(void);
 void ed_touch_key(int key, const void *field, int len);
 void ed_commit_key(int key);
 int  ed_undo_steps(void);
+int  ed_redo(void);                     /* ST-EASY: 1 = redone; the step the last undo took back */
+int  ed_redo_steps(void);
 void ed_reset(void);
 /* look */
 uint8_t st_track_color(int t, int shade);    /* shade 0 dark, 1 base, 2 light */
@@ -205,9 +236,51 @@ void stage_draw_full(void);
 void stage_start(void);
 void stage_leave(void);
 
+/* ---- studio_start.c / studio_play.c / studio_help.c (ST-EASY) --------------------- */
+enum { SMOOD_HAPPY, SMOOD_SWEET, SMOOD_SAD, SMOOD_SPOOKY, SMOOD_FIERCE, SMOOD_COUNT };
+enum { STEMPO_SLOW, STEMPO_MEDIUM, STEMPO_FAST, STEMPO_FRANTIC, STEMPO_COUNT };
+enum { SLEN_SHORT, SLEN_SONG, SLEN_LONG, SLEN_COUNT };
+typedef struct StartPick { uint8_t style, mood, tempo, length; uint32_t seed; } StartPick;
+/* A whole working song from four picks and a seed: a pure function of (picks, the song's choir and words). */
+void studio_make_song(DoomoSong *s, const StartPick *p);
+int  studio_pick_bpm(int style, int tempo);
+int  studio_pick_passes(int length);            /* order passes (2 bars each) */
+const char *studio_style_name(int style);        /* the friendly short name */
+const char *studio_mood_name(int mood);
+const char *studio_tempo_name(int tempo);
+const char *studio_length_name(int length);
+void st_card_open(void);                         /* the Start card (on SONG) */
+void st_card_close(void);
+void st_card_update(void);
+void st_card_draw(StRect r);
+int  st_card_prompts(UiPrompt *p);
+void st_file_inspire(void);                      /* studio_file.c: the Inspire me! picker */
+void st_file_templates(void);
+/* START: play, with the target named ("Play song" / "Play from here", "Stop" while playing) */
+const char *st_play_verb(void);
+void st_start(void);
+/* the cursor's cell on NOTES as one line (text is cached in st_easy) */
+const char *st_describe_cell(int pat, int trk, int stp);
+int  st_describe_text(char *out, int cap, int maxw, int pat, int trk, int stp);
+/* help: one line per tab, the control card, labels, level */
+const char *st_tab_help(int tab);
+const char *st_tab_label(int tab);
+void st_help_arm(void);                          /* show the one-line help on the bar (until the first edit) */
+void st_bar_draw(void);                          /* the bottom bar: help line or the tab's prompts */
+void st_help_open(void);
+int  st_help_is_open(void);
+void st_help_update(void);
+void st_help_draw(void);
+int  st_help_rect(int *x, int *y, int *w, int *h);
+int  st_level(void);
+void st_level_set(int level);
+
 /* ---- studio_gen.c --------------------------------------------------------------- */
 /* Compose music only (patterns, order, instruments) for a genre. */
 void studio_compose(DoomoSong *s, int genre, uint32_t seed);
+/* The same with the key mode forced (a SONG_SCALE_*, or -1 = the genre's own): the Start card's mood. */
+void studio_compose_scale(DoomoSong *s, int genre, uint32_t seed, int scale);
+void studio_style_bpm(int genre, int *lo, int *hi);
 /* Lyrics + title about a citizen (their likes, fears, catchphrase, friends). */
 void studio_write_lyrics(DoomoSong *s, int muse, uint32_t seed);
 /* Music + lyrics + a small choir around the muse. */

@@ -793,10 +793,14 @@ TEST(studio_editor_writes_saves_and_reloads_a_song)
     scene_set(&base_scene, 0);
     scene_push(&SCENE_STUDIO, -2);
     CHECK(scene_top() == &SCENE_STUDIO);
-    CHECK_EQ(studio.tab, STAB_FILE);
-    /* SONG: the title */
-    press(BTN_R);
+    /* ST-EASY: an empty song opens on the Start card (SONG); B skips it, leaving the blank song */
     CHECK_EQ(studio.tab, STAB_SONG);
+    CHECK(studio.card);
+    press(BTN_B);
+    CHECK(!studio.card);
+    CHECK(scene_top() == &SCENE_STUDIO);
+    CHECK_EQ(studio.tab, STAB_SONG);
+    /* SONG: the title */
     press(BTN_A);
     CHECK(scene_top() == &SCENE_TEXT_ENTRY);
     for (i = 0; i < 12; i++) ui_text_entry_feed('\b');
@@ -894,6 +898,7 @@ TEST(studio_editor_templates_inspire_and_stage)
     town_new(TOWN_FREEPLAY, 1, TOWN_POP_PREMADE);
     scene_set(&base_scene, 0);
     scene_push(&SCENE_STUDIO, -2);
+    st_set_tab(STAB_FILE);
     /* FILE: a template */
     studio.fsel = SONG_BOOK_SIZE + 1;
     press(BTN_A);
@@ -940,6 +945,461 @@ TEST(studio_editor_templates_inspire_and_stage)
     press(BTN_DOWN); press(BTN_DOWN); press(BTN_DOWN);
     press(BTN_A);
     CHECK_EQ(song_singer_count(&studio.song), SONG_SINGERS);
+    test_reset();
+}
+
+/* ====================================================================== */
+/* ST-EASY (docs/design/STUDIO_PLAN.md 2.1, 2.2, 2.3)                       */
+static void open_blank_studio(void)
+{
+    test_reset();
+    town_new(TOWN_FREEPLAY, 1, TOWN_POP_PREMADE);
+    scene_set(&base_scene, 0);
+    scene_push(&SCENE_STUDIO, -2);
+}
+
+TEST(studio_make_song_is_deterministic_and_obeys_the_picks)
+{
+    static const uint8_t mood_scale[SMOOD_COUNT] = { SONG_SCALE_MAJOR, SONG_SCALE_PENTATONIC, SONG_SCALE_MINOR,
+                                                    SONG_SCALE_HARMONIC_MINOR, SONG_SCALE_BLUES };
+    int st, mo;
+    for (st = 0; st < MUSIC_COUNT; st++) {
+        int tp, prev = 0;
+        for (tp = 0; tp < STEMPO_COUNT; tp++) {          /* four tempos, rising, in range */
+            int b = studio_pick_bpm(st, tp);
+            CHECK(b >= 60 && b <= 220);
+            CHECK(b >= prev);
+            prev = b;
+        }
+        CHECK(studio_pick_bpm(st, STEMPO_SLOW) < studio_pick_bpm(st, STEMPO_FRANTIC));
+        for (mo = 0; mo < SMOOD_COUNT; mo++) {
+            static DoomoSong a, b, c;
+            StartPick p;
+            int len, differs = 0, i, k;
+            p.style = (uint8_t)st; p.mood = (uint8_t)mo; p.tempo = STEMPO_FAST; p.length = SLEN_SONG; p.seed = 4242u + (uint32_t)st;
+            song_clear(&a); song_clear(&b); song_clear(&c);
+            studio_make_song(&a, &p);
+            studio_make_song(&b, &p);
+            CHECK(!memcmp(&a, &b, sizeof(a)));                /* a pure function of the picks and the seed */
+            CHECK_EQ(a.genre, st);
+            CHECK_EQ(a.scale, mood_scale[mo]);
+            CHECK_EQ(a.bpm, studio_pick_bpm(st, STEMPO_FAST));
+            CHECK_EQ(a.order_len, studio_pick_passes(SLEN_SONG));
+            CHECK(strlen(a.title) > 0 && strlen(a.title) < SONG_TITLE_LEN);
+            CHECK_EQ(song_sanitize(&a), 0);                   /* nothing out of range */
+            p.seed += 1;
+            studio_make_song(&c, &p);
+            for (k = 0; k < SONG_PATTERNS && !differs; k++)
+                for (i = 0; i < SONG_STEPS; i++)
+                    if (memcmp(a.notes[k][0], c.notes[k][0], SONG_STEPS)) { differs = 1; break; }
+            CHECK(differs);                                   /* another seed, another tune */
+            for (len = 0; len < SLEN_COUNT; len++) {
+                p.length = (uint8_t)len;
+                song_clear(&c);
+                studio_make_song(&c, &p);
+                CHECK_EQ(c.order_len, studio_pick_passes(len));
+                CHECK(c.order[c.order_len - 1] < SONG_PATTERNS);
+                CHECK(song_length_ticks(&c) > 0);
+            }
+        }
+    }
+    /* the order lists get longer: 16, 24 and 32 bars */
+    CHECK(studio_pick_passes(SLEN_SHORT) < studio_pick_passes(SLEN_SONG));
+    CHECK(studio_pick_passes(SLEN_SONG) < studio_pick_passes(SLEN_LONG));
+    CHECK_EQ(studio_pick_passes(SLEN_LONG), SONG_ORDER_MAX);
+}
+
+TEST(studio_start_card_opens_on_an_empty_song_and_makes_a_playing_song)
+{
+    int i;
+    open_blank_studio();
+    CHECK_EQ(studio.tab, STAB_SONG);
+    CHECK(studio.card);
+    CHECK_EQ(studio_stats.lines & STUDIO_LINES_LEVEL, 0);
+    /* a song that is already open does not show it again */
+    {
+        UiPrompt pr[UI_PROMPTS_MAX];
+        CHECK(tab_prompts(STAB_SONG, pr) >= 2);               /* the card's own bar */
+    }
+    /* it opens on Make it! (one press to a song); change the style (Right on row 0), the mood, the tempo, the length */
+    CHECK_EQ(st_easy()->csel, 5);
+    st_easy()->csel = 0;
+    press(BTN_RIGHT);
+    CHECK_EQ(st_easy()->style, 1);
+    press(BTN_DOWN); press(BTN_RIGHT);
+    CHECK_EQ(st_easy()->mood, SMOOD_SWEET);
+    press(BTN_DOWN); press(BTN_RIGHT);
+    CHECK_EQ(st_easy()->tempo, STEMPO_FAST);
+    press(BTN_DOWN); press(BTN_RIGHT);
+    CHECK_EQ(st_easy()->length, SLEN_LONG);
+    for (i = 0; i < 40 && st_easy()->csel != 4; i++) press(BTN_DOWN);
+    /* Shuffle: a new seed, the same picks, the song plays and the card stays */
+    {
+        uint32_t seed0 = st_easy()->seed;
+        press(BTN_A);
+        CHECK(studio.card);
+        CHECK(st_easy()->seed != seed0);
+        CHECK(song_playing());
+        CHECK_EQ(studio.song.genre, 1);
+        CHECK_EQ(studio.song.scale, SONG_SCALE_PENTATONIC);
+    }
+    /* Make it!: what Shuffle played is what is kept (same seed), the card closes, undo gives the blank back */
+    {
+        DoomoSong shuffled = studio.song;
+        press(BTN_DOWN);
+        press(BTN_A);
+        CHECK(!studio.card);
+        CHECK(song_playing());
+        CHECK_EQ(studio.song.order_len, SONG_ORDER_MAX);
+        CHECK_EQ(studio.song.bpm, studio_pick_bpm(1, STEMPO_FAST));
+        CHECK(!memcmp(shuffled.notes, studio.song.notes, sizeof(shuffled.notes)));
+        CHECK(ed_undo());                                   /* Make it! again: the same song (same seed) */
+        CHECK(!memcmp(shuffled.notes, studio.song.notes, sizeof(shuffled.notes)));
+        CHECK(ed_redo_steps() == 1 || st_easy()->redo_lost);
+        CHECK(ed_undo());                                   /* the shuffle: the blank page */
+        CHECK_STR(studio.song.title, "New Song");
+    }
+    /* START stops it (second press) */
+    CHECK(!strcmp(st_play_verb(), "Stop"));
+    press(BTN_START);
+    CHECK(!song_playing());
+    test_reset();
+}
+
+TEST(studio_start_card_inspire_templates_and_skip_have_no_dead_end)
+{
+    open_blank_studio();
+    CHECK(studio.card);
+    /* Inspire me!: the same citizen picker as FILE, and the card goes away with the new song */
+    while (st_easy()->csel != 6) press(BTN_DOWN);
+    press(BTN_A);
+    CHECK(st_picker_open());
+    press(BTN_B);                                           /* cancelled: the card is still there */
+    CHECK(!st_picker_open());
+    CHECK(studio.card);
+    press(BTN_A);
+    press(BTN_DOWN);
+    press(BTN_A);
+    CHECK(!studio.card);
+    CHECK_EQ(studio_stats.inspired, 1);
+    CHECK(ed_undo());                                       /* and it can be undone */
+    /* New song on FILE opens the card again; templates sit on it too */
+    st_set_tab(STAB_FILE);
+    studio.fsel = SONG_BOOK_SIZE;                           /* New song... */
+    press(BTN_A);
+    if (st_popup_open()) press(BTN_DOWN), press(BTN_A);
+    CHECK(studio.card);
+    CHECK_EQ(studio.tab, STAB_SONG);
+    while (st_easy()->csel != 7) press(BTN_DOWN);
+    press(BTN_A);
+    CHECK_EQ(studio.tab, STAB_FILE);
+    CHECK_EQ(studio.fmode, 1);
+    press(BTN_B);                                           /* back to the file list: not stuck */
+    CHECK_EQ(studio.fmode, 0);
+    press(BTN_L);                                           /* to the card's tab */
+    press(BTN_R);
+    st_set_tab(STAB_SONG);
+    CHECK(studio.card);
+    press(BTN_B);                                           /* Skip: a blank song, the old SONG tab */
+    CHECK(!studio.card);
+    CHECK_EQ(studio.tab, STAB_SONG);
+    test_reset();
+}
+
+/* an edit through the journal, the way the tabs do it */
+static void set_bpm(int v)
+{
+    ed_touch(&studio.song.bpm, 1);
+    studio.song.bpm = (uint8_t)v;
+    ed_commit();
+}
+
+TEST(studio_undo_redo_round_trip)
+{
+    DoomoSong snap[4];
+    int i;
+    open_blank_studio();
+    press(BTN_B);                                           /* skip the card */
+    ed_reset();
+    snap[0] = studio.song;
+    for (i = 1; i < 4; i++) {
+        set_bpm(100 + i * 10);
+        snap[i] = studio.song;
+    }
+    /* a two-record step (one commit): bpm and key together */
+    ed_touch(&studio.song.bpm, 1);
+    ed_touch(&studio.song.key, 1);
+    studio.song.bpm = 77; studio.song.key = 5;
+    ed_commit();
+    CHECK_EQ(ed_undo_steps(), 4);
+    CHECK_EQ(ed_redo_steps(), 0);
+    CHECK(!ed_redo());                                      /* nothing undone yet */
+    CHECK(ed_undo());
+    CHECK(!memcmp(&studio.song, &snap[3], sizeof(DoomoSong)));
+    CHECK_EQ(ed_redo_steps(), 1);
+    CHECK(ed_redo());                                       /* the joined step comes back whole */
+    CHECK_EQ(studio.song.bpm, 77);
+    CHECK_EQ(studio.song.key, 5);
+    CHECK_EQ(ed_undo_steps(), 4);
+    CHECK_EQ(ed_redo_steps(), 0);
+    /* undo everything, redo everything: every state comes back byte for byte */
+    for (i = 0; i < 4; i++) CHECK(ed_undo());
+    CHECK(!ed_undo());
+    CHECK(!memcmp(&studio.song, &snap[0], sizeof(DoomoSong)));
+    CHECK_EQ(ed_redo_steps(), 4);
+    for (i = 1; i < 4; i++) {
+        CHECK(ed_redo());
+        CHECK(!memcmp(&studio.song, &snap[i], sizeof(DoomoSong)));
+    }
+    CHECK(ed_redo());
+    CHECK_EQ(studio.song.bpm, 77);
+    CHECK(!ed_redo());
+    /* undo twice, then a new edit empties the redo history */
+    CHECK(ed_undo()); CHECK(ed_undo());
+    CHECK_EQ(ed_redo_steps(), 2);
+    set_bpm(150);
+    CHECK_EQ(ed_redo_steps(), 0);
+    CHECK(!ed_redo());
+    CHECK_EQ(studio.song.bpm, 150);
+    /* the keys: SELECT+B undoes, SELECT+A (X on a GBA) redoes, and each says so */
+    CHECK(ed_undo());
+    frames(1, BTN_SELECT);
+    frames(1, BTN_SELECT | BTN_X);                          /* the GBA synthesises A as X while SELECT is held */
+    frames(1, 0);
+    CHECK_EQ(studio.song.bpm, 150);
+    frames(1, BTN_SELECT);
+    frames(1, BTN_SELECT | BTN_B);
+    frames(1, 0);
+    CHECK(studio.song.bpm != 150);
+    frames(1, BTN_X);                                       /* Square on a PS1 */
+    frames(1, 0);
+    CHECK_EQ(studio.song.bpm, 150);
+    /* a whole-song step too big for the redo journal says so instead of redoing half */
+    ed_touch(&studio.song, (int)sizeof(DoomoSong));
+    studio_compose(&studio.song, 5, 99);
+    ed_commit();
+    if (ed_undo()) {
+        if (ed_redo_steps() == 0) { CHECK(st_easy()->redo_lost); CHECK(!ed_redo()); }
+        else CHECK(ed_redo());
+    }
+    test_reset();
+}
+
+TEST(studio_redo_clears_when_the_scratch_is_taken)
+{
+    open_blank_studio();
+    press(BTN_B);
+    ed_reset();
+    set_bpm(111);
+    CHECK(ed_undo());
+    CHECK_EQ(ed_redo_steps(), 1);
+    ed_reset();                                             /* a new song loads: no stale redo */
+    CHECK_EQ(ed_redo_steps(), 0);
+    CHECK(!ed_redo());
+    test_reset();
+}
+
+TEST(studio_start_plays_from_the_cursor_and_names_its_target)
+{
+    int t;
+    open_blank_studio();
+    press(BTN_B);
+    beat_song(&studio.song, 120, 0, 3);
+    studio.song.lyrics[1][0] = 0;
+    /* the prompt bar names START's target on every tab; a second press stops */
+    for (t = 0; t < STAB_COUNT; t++) {
+        UiPrompt pr[UI_PROMPTS_MAX];
+        int n, k, found = 0;
+        if (t == STAB_STAGE) continue;                      /* the show has its own curtain */
+        st_set_tab(t);
+        n = tab_prompts(t, pr);
+        for (k = 0; k < n; k++)
+            if (pr[k].btn == BTN_START) {
+                found = 1;
+                CHECK(!strcmp(pr[k].verb, "Play song") || !strcmp(pr[k].verb, "Play from here"));
+            }
+        CHECK_MSG(found, "tab %d has no START item in its bar", t);
+        CHECK(!song_playing());
+        press(BTN_START);
+        CHECK_MSG(song_playing(), "tab %d: START did not play", t);
+        CHECK(!strcmp(st_play_verb(), "Stop"));
+        press(BTN_START);
+        CHECK_MSG(!song_playing(), "tab %d: the second START did not stop", t);
+    }
+    /* targets: the song, the pattern at the cursor (NOTES), the selected pass (ORDER) */
+    st_set_tab(STAB_SONG);
+    CHECK(!strcmp(st_play_verb(), "Play song"));
+    press(BTN_START);
+    CHECK_EQ(song_pos_order(), 0);
+    press(BTN_START);
+    st_set_tab(STAB_ORDER);
+    CHECK(!strcmp(st_play_verb(), "Play from here"));
+    studio.osel = 2;
+    press(BTN_START);
+    CHECK_EQ(song_pos_order(), 2);
+    press(BTN_START);
+    st_set_tab(STAB_NOTES);
+    CHECK(!strcmp(st_play_verb(), "Play from here"));
+    studio.pat = 1; studio.stp = 8;
+    press(BTN_START);
+    CHECK(song_playing());
+    press(BTN_START);
+    /* LYRICS: a line some pass sings plays from that pass, a line no pass sings plays the song */
+    st_set_tab(STAB_LYRICS);
+    studio.lsel = 1;
+    CHECK(!strcmp(st_play_verb(), "Play from here"));
+    studio.lsel = 5;
+    CHECK(!strcmp(st_play_verb(), "Play song"));
+    test_reset();
+}
+
+TEST(studio_fit_one_line_moved_to_the_lyric_tools)
+{
+    open_blank_studio();
+    press(BTN_B);
+    beat_song(&studio.song, 120, 0, 2);
+    st_set_tab(STAB_LYRICS);
+    memset(studio.song.lyrics, 0, sizeof(studio.song.lyrics));
+    memcpy(studio.song.lyrics[0], "la la la la la la la la la", 26);
+    studio.lsel = 0;
+    frames(1, BTN_SELECT);
+    frames(1, 0);                                           /* SELECT tap: the tools */
+    CHECK(st_popup_open());
+    {
+        int i;
+        for (i = 0; i < 5; i++) press(BTN_DOWN);            /* "Fit this line" is the last of six */
+    }
+    press(BTN_A);
+    CHECK(!st_popup_open());
+    CHECK_EQ(song_syllables(studio.song.lyrics[0], NULL, 0), song_lead_onsets(&studio.song, 0));
+    CHECK(ed_undo());                                       /* undoable */
+    CHECK_STR(studio.song.lyrics[0], "la la la la la la la la la");
+    test_reset();
+}
+
+TEST(studio_tab_help_and_control_cards_fit_the_screen)
+{
+    UiPrompt pr[UI_PROMPTS_MAX];
+    int t, maxw = ui_prompts_maxw(), n;
+    open_blank_studio();
+    for (t = 0; t < STAB_COUNT; t++) {
+        const char *h = st_tab_help(t);
+        CHECK(h && h[0]);
+        CHECK_MSG(ui_text_width(h) <= maxw, "tab %d help \"%s\" is %d px, the bar takes %d", t, h, ui_text_width(h), maxw);
+        CHECK(st_tab_label(t)[0]);
+    }
+    CHECK(ui_text_width(st_tab_help(STAB_SONG)) <= maxw);   /* the card variant */
+    press(BTN_B);
+    CHECK(ui_text_width(st_tab_help(STAB_SONG)) <= maxw);   /* the settings variant */
+    /* the card: opens with SELECT + UP, shows the tab's buttons, closes with B, and never covers the way out */
+    for (t = 0; t < STAB_COUNT; t++) {
+        int x, y, w, h;
+        st_set_tab(t);
+        frames(1, BTN_SELECT);
+        frames(1, BTN_SELECT | BTN_UP);
+        frames(1, 0);
+        CHECK_MSG(st_help_is_open(), "tab %d: SELECT+UP did not open the card", t);
+        frames(14, 0);
+        CHECK(st_help_rect(&x, &y, &w, &h));
+        CHECK(x >= 0 && y >= 0 && x + w <= plat_screen_w() && y + h <= plat_screen_h());
+        frames(1, 0);
+        press(BTN_B);
+        CHECK_MSG(!st_help_is_open(), "tab %d: B did not close the card", t);
+        CHECK(scene_top() == &SCENE_STUDIO);
+    }
+    /* every bar item still fits and no tab's bar is empty */
+    for (t = 0; t < STAB_COUNT; t++) {
+        n = tab_prompts(t, pr);
+        CHECK(n >= 2 && n <= UI_PROMPTS_MAX);
+    }
+    test_reset();
+}
+
+TEST(studio_cursor_cell_is_described_in_one_line_that_fits)
+{
+    char buf[STUDIO_DESC_LEN];
+    int trk, stp, w, wide;
+    open_blank_studio();
+    press(BTN_B);
+    beat_song(&studio.song, 120, 0, 2);
+    studio.song.key = 0;
+    studio.song.scale = SONG_SCALE_MAJOR;
+    studio.song.notes[0][0][0] = 64;                        /* E4: the 3rd of C */
+    studio.song.notes[0][1][5] = 61;                        /* C#4: off the scale */
+    studio.song.notes[0][2][3] = SONG_HOLD;
+    studio.song.key = 0;
+    (void)st_describe_text(buf, sizeof(buf), 400, 0, 0, 0);
+    CHECK_STR(buf, "Bar 1, beat 1, Lead: E4 (3rd of C)");
+    (void)st_describe_text(buf, sizeof(buf), 400, 0, 1, 5);
+    CHECK(strstr(buf, "off the scale") && strstr(buf, "C#4") && strstr(buf, "Harmony") && strstr(buf, "beat 2"));
+    (void)st_describe_text(buf, sizeof(buf), 400, 0, 2, 3);
+    CHECK(strstr(buf, "hold"));
+    (void)st_describe_text(buf, sizeof(buf), 400, 0, 3, 4);
+    CHECK(strstr(buf, "Kick") || strstr(buf, "kick") || strstr(buf, "Drums"));
+    (void)st_describe_text(buf, sizeof(buf), 400, 1, 0, 17);
+    CHECK(strstr(buf, "Bar 2, beat 1") && strstr(buf, "rest"));
+    /* every cell of every key / scale fits the narrow bar, whatever the note */
+    wide = 0;
+    for (w = 0; w < 2; w++) {
+        int maxw = (w ? 320 : 240) - 8 - 12, key, sc;
+        for (sc = 0; sc < SONG_SCALE_COUNT; sc++)
+            for (key = 0; key < 12; key += 5) {
+                studio.song.scale = (uint8_t)sc;
+                studio.song.key = (uint8_t)key;
+                for (trk = 0; trk < 4; trk++)
+                    for (stp = 0; stp < SONG_STEPS; stp += 3) {
+                        int note;
+                        for (note = 0; note < 3; note++) {
+                            studio.song.notes[2][trk][stp] = (uint8_t)(trk == 3 ? note : note == 0 ? 0 : note == 1 ? SONG_HOLD : 70 + (key + stp) % 12);
+                            (void)st_describe_text(buf, sizeof(buf), maxw, 2, trk, stp);
+                            if (ui_text_width(buf) > maxw) wide++;
+                        }
+                    }
+            }
+    }
+    CHECK_EQ(wide, 0);
+    /* the cached form follows the cell */
+    studio.pat = 0; studio.trk = 0; studio.stp = 0;
+    studio.song.scale = SONG_SCALE_MAJOR;
+    studio.song.key = 0;
+    CHECK_STR(st_describe_cell(0, 0, 0), "Bar 1, beat 1, Lead: E4 (3rd of C)");
+    studio.song.notes[0][0][0] = 67;
+    CHECK(strstr(st_describe_cell(0, 0, 0), "G4") != NULL);
+    test_reset();
+}
+
+TEST(studio_level_switch_is_kept_in_the_stats_and_the_save)
+{
+    uint32_t n;
+    open_blank_studio();
+    CHECK_EQ(st_level(), 0);
+    CHECK_EQ(studio_stats.lines, 0);
+    st_level_set(1);
+    CHECK_EQ(st_level(), 1);
+    CHECK(studio_stats.lines & STUDIO_LINES_LEVEL);
+    studio_check_unlocks();
+    CHECK(!unlock_has(UL_STUDIO_WAVE_STATIC));              /* the flag is not twenty lines of lyrics */
+    /* it survives the save, and an old save (no bit) reads as Easy */
+    n = save_serialize(image, sizeof(image));
+    CHECK(n > 0);
+    studio_stats_reset();
+    CHECK_EQ(st_level(), 1);                                /* (the scratch copy) */
+    CHECK(save_deserialize(image, n));
+    CHECK(studio_stats.lines & STUDIO_LINES_LEVEL);
+    CHECK_EQ(STUDIO_LINES(&studio_stats), 0);
+    /* the FILE row flips it back, both ways, with a message */
+    st_set_tab(STAB_FILE);
+    studio.fsel = (SONG_BOOK_SIZE + 5);
+    press(BTN_A);
+    CHECK_EQ(st_level(), 0);
+    CHECK(!(studio_stats.lines & STUDIO_LINES_LEVEL));
+    press(BTN_RIGHT);
+    CHECK_EQ(st_level(), 1);
+    st_level_set(0);
+    /* lyric lines keep counting without touching the flag */
+    st_level_set(1);
+    studio_stats.lines = (uint16_t)(STUDIO_LINES_LEVEL | STUDIO_LINES_MASK);
+    CHECK_EQ(STUDIO_LINES(&studio_stats), STUDIO_LINES_MASK);
     test_reset();
 }
 

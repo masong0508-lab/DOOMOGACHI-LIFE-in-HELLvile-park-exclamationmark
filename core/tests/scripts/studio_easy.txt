@@ -1,0 +1,110 @@
+# SCENE_STUDIO, ST-EASY (docs/design/STUDIO_PLAN.md 2.1 - 2.3): the "Start a song" card on an empty song
+# (style / mood / tempo / length, Shuffle, Make it!), the one-line help on the bar, START naming its target,
+# the NOTES cursor line, undo and redo, the "?" control card (SELECT + UP), the FILE list with Redo and the
+# Studio level row. Shots at both sizes; --check-prompts runs on every bar and help line.
+scene TITLE
+wait 2
+push STUDIO -2
+wait 20
+expect-scene STUDIO
+shot start_card
+press UP
+press UP
+press UP
+press UP
+press UP
+press RIGHT
+press DOWN
+press RIGHT
+press DOWN
+press RIGHT
+press DOWN
+press RIGHT
+wait 6
+shot start_card_picks
+press DOWN
+press A
+wait 40
+shot start_shuffle
+press DOWN
+press A
+wait 40
+shot start_made
+press START
+wait 6
+shot start_stopped
+press R
+wait 140
+shot edit_cursor_line
+press DOWN
+press DOWN
+press A
+wait 8
+shot edit_after_note
+down SELECT
+press B
+release
+wait 8
+shot undo_note
+down SELECT
+press A
+release
+wait 8
+shot redo_note
+down SELECT
+press UP
+release
+wait 20
+shot control_card_edit
+press B
+wait 6
+down SELECT
+press L
+release
+wait 4
+down SELECT
+press UP
+release
+wait 20
+shot control_card_start
+press B
+wait 6
+press R
+down SELECT
+press R
+release
+wait 4
+down SELECT
+press R
+release
+wait 4
+down SELECT
+press R
+release
+wait 4
+down SELECT
+press R
+release
+wait 4
+down SELECT
+press R
+release
+wait 4
+wait 10
+shot file_top
+press UP
+wait 14
+shot file_leave
+press UP
+wait 14
+shot file_level
+press A
+wait 14
+shot file_advanced
+press A
+wait 14
+shot file_easy
+press UP
+press A
+wait 14
+shot file_redo

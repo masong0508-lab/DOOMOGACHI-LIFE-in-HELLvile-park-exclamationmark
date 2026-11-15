@@ -56,7 +56,7 @@ static void lyric_done(int ok)
     memcpy(line, studio.edit, strlen(studio.edit) < SONG_LYRIC_LEN ? strlen(studio.edit)
                                                                    : SONG_LYRIC_LEN - 1);
     ed_commit();
-    if (line[0] && studio_stats.lines < 0xFFFF) studio_stats.lines++;
+    if (line[0] && STUDIO_LINES(&studio_stats) < STUDIO_LINES_MASK) studio_stats.lines++;
     studio_check_unlocks();
     audio_sfx(SFX_HAPPY);
 }
@@ -141,6 +141,13 @@ static void lyric_tools(int c)
         memset(SS->lyrics[studio.lsel], 0, SONG_LYRIC_LEN);
         ed_commit();
         break;
+    case 5:                                   /* was START (START plays now): fit one line to its notes */
+        ed_touch(SS->notes, (int)sizeof(SS->notes));
+        ed_touch(SS->lyrics[studio.lsel], SONG_LYRIC_LEN);
+        if (studio_autofit(SS, studio.lsel)) { st_msg("Line %d fits now!", studio.lsel + 1); audio_sfx(SFX_SPARKLE); }
+        else st_msg(SS->lyrics[studio.lsel][0] ? "Already a perfect fit" : "Write some words first");
+        ed_commit();
+        break;
     default: break;
     }
 }
@@ -161,18 +168,11 @@ void tab_lyrics_update(void)
         memcpy(studio.edit, SS->lyrics[studio.lsel], SONG_LYRIC_LEN);
         ui_text_entry(prompt, studio.edit, SONG_LYRIC_LEN, lyric_done);
     }
-    if (btn_pressed(BTN_START)) {
-        ed_touch(SS->notes, (int)sizeof(SS->notes));
-        ed_touch(SS->lyrics[studio.lsel], SONG_LYRIC_LEN);
-        if (studio_autofit(SS, studio.lsel)) { st_msg("Line %d fits now!", studio.lsel + 1); audio_sfx(SFX_SPARKLE); }
-        else st_msg(SS->lyrics[studio.lsel][0] ? "Already a perfect fit" : "Write some words first");
-        ed_commit();
-    }
     if (studio_sel_tap) {
-        static const char *const items[5] = { "Sing this line", "Auto-fit all lines",
+        static const char *const items[6] = { "Sing this line", "Auto-fit all lines",
                                               "Share out parts", "Write lyrics for me",
-                                              "Clear this line" };
-        st_popup("Lyric tools", items, 5, 0, lyric_tools);
+                                              "Clear this line", "Fit this line" };
+        st_popup("Lyric tools", items, 6, 0, lyric_tools);
     }
 }
 
@@ -529,7 +529,6 @@ void tab_choir_update(void)
                 st_pick_citizen("Who sings here?", DOOMO_PLAYER_ID, pick_done);
             }
         }
-        if (btn_pressed(BTN_START) && song_singer_id(SS, studio.csel) >= 0) cycle_section(studio.csel);
     }
     if (studio_sel_tap) {
         static const char *const items[8] = { "Friends of this singer", "Hillvile choir",

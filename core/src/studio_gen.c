@@ -398,6 +398,20 @@ static void write_drums(DoomoSong *s, int pat, int groove, int role)
 /* compose                                                                  */
 void studio_compose(DoomoSong *s, int genre, uint32_t seed)
 {
+    studio_compose_scale(s, genre, seed, -1);
+}
+
+/* the genre's own tempo range (studio_start.c: the Start card's Slow / Medium / Fast / Frantic) */
+void studio_style_bpm(int genre, int *lo, int *hi)
+{
+    const GenreStyle *st = &styles[DOOMO_CLAMP(genre, 0, MUSIC_COUNT - 1)];
+    *lo = st->bpm_lo;
+    *hi = st->bpm_hi;
+}
+
+/* scale: a SONG_SCALE_* to write in (the Start card's mood: it also picks the chord family), -1 = the genre's own */
+void studio_compose_scale(DoomoSong *s, int genre, uint32_t seed, int scale)
+{
     const GenreStyle *st;
     DoomoRng r;
     const uint8_t *pa, *pb, *pc;
@@ -409,7 +423,8 @@ void studio_compose(DoomoSong *s, int genre, uint32_t seed)
     s->genre = (uint8_t)genre;
     if (!s->bpm || !(s->flags & SONGF_CUSTOM) || !keep_order)
         s->bpm = (uint8_t)rng_between(&r, st->bpm_lo, st->bpm_hi);
-    s->scale = st->scale;
+    if (scale < 0 || scale >= SONG_SCALE_COUNT) scale = st->scale;
+    s->scale = (uint8_t)scale;
     s->swing = st->swing;
     memcpy(s->wave, st->wave, sizeof(s->wave));
     memcpy(s->vol, st->vol, sizeof(s->vol));
@@ -421,7 +436,7 @@ void studio_compose(DoomoSong *s, int genre, uint32_t seed)
     }
     /* chords: three different progressions */
     {
-        int minor = is_minorish(st->scale);
+        int minor = is_minorish(scale);
         int n = minor ? DOOMO_COUNTOF(prog_minor) : DOOMO_COUNTOF(prog_major);
         int ia = rng_range(&r, n), ib = (ia + 1 + rng_range(&r, n - 1)) % n, ic = rng_range(&r, n);
         pa = minor ? prog_minor[ia] : prog_major[ia];
