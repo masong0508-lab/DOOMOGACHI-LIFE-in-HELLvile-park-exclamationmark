@@ -1551,6 +1551,9 @@ static int make_line(TalkState *s, int kind, int who, int to, int arg, TalkLine 
         int phase = arg & 15, qkind = (arg >> 4) & 15, id = res_id(s, who), target = -1, item = 0, ids[TALK_PARTS_MAX], n;
         TalkQuest q;
         if (id < 0 || qkind <= TQK_NONE || qkind >= TQK_COUNT) return 0;
+        if (phase != TQP_ASK && phase != TQP_HAGGLE_YES && phase != TQP_HAGGLE_NO && phase != TQP_MORE && phase != TQP_LATE &&
+            s->nev >= TALK_EVENTS_MAX) return 0;                /* the thank-you needs its event: no event room, no line (nothing is promised and then lost) */
+        if (phase == TQP_ACCEPT && talk_quest_open_count() >= TALK_QUEST_OPEN_MAX) return 0;   /* the table is full: the add would fail */
         n = room_ids(s, ids);
         if (phase == TQP_ASK) {
             if (s->q_kind || !talk_quest_derive(id, qkind, ids, n, minor_room(s), &q)) return 0;

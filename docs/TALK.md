@@ -1279,7 +1279,7 @@ lines and, since TM2c (6m), the effective voice and the reaction kind: a refusal
 
 ### Tests and measurements
 
-`test_talk_traits.c` (13 tests): the table, edit / validate / pack, the default (pure,
+`test_talk_traits.c` (15 tests): the table, edit / validate / pack, the default (pure,
 valid, spread over 20+ traits, steered by the sliders, no romance trait or "mean" for a
 minor), explicit sets, the chunk (old v1 chunk loads unchanged, v2 round trip and byte
 identical rewrite, bad tail, gone person, forget, reset), the one-line read, the bias
@@ -1511,7 +1511,7 @@ the stance; two different trait sets give a different line in 44 of 90 previews.
 
 ### Tests and measurements
 
-`test_talk_plan.c` (13 tests): the pure function (hard rules, the reason rule, the order),
+`test_talk_plan.c` (15 tests): the pure function (hard rules, the reason rule, the order),
 stance (lean +: 1,871 of 1,871 accept or agree; lean -: 1,163 of 1,219 deny or refuse),
 trait bias (kind accepts an invitation 100% against mean 53%; lazy refuses 91% against ambitious
 36%), relationship (plan: rival accepts 3%, best friend 100%; produced lines for invitations and favours: rival says yes 8%, best friend 100%), sincere bypass (grief, safety, unknown,
@@ -1637,7 +1637,7 @@ unknown-word fields out of `TalkConv` there and `.bss` is 249,084 -> 249,076 B; 
 
 ### Tests and measurements
 
-`core/tests/test_talk_depth.c` (13 tests): the pure gates and steps, a best friend 0-1-2-3 with exactly one real
+`core/tests/test_talk_depth.c` (15 tests): the pure gates and steps, a best friend 0-1-2-3 with exactly one real
 secret, friend 39 against 40, engagement 69 against 70, a stranger never 2, a rival never past 1, the resets, the
 memory after a save and a load, 2,000 sessions with children (7,660 deep turns, 1,277 secrets, no lint hit, no
 register word), every stage x problem kind, the drama manager's second line and `TEV_LEARNED` applied to the sim,
@@ -1790,7 +1790,7 @@ the multilevel reply. An accepted request is a row in the quest log and Talk rem
 (`talk_gen_quest`, the slots `{target}` and `{item}`, the guards `qkind=` and `qphase=`, the entry `TGE_QUEST`),
 `talk_outcome.c` (applies the events), `talk_save.c` (the memory bits), `talk_scene.c` (the four quick replies),
 `story_questlog.c` (the log rows, through weak hooks), `core/data/talk/grammar/en/quests.tlk` (91 alternatives in 27 rules),
-`core/tests/test_talk_quests.c` (12 tests), the script `core/tests/scripts/home_talk_quest.txt`.
+`core/tests/test_talk_quests.c` (15 tests), the script `core/tests/scripts/home_talk_quest.txt`.
 
 ### Sources and kinds
 
@@ -1872,7 +1872,7 @@ child is never sent anywhere and never asked for anything an adult must not ask 
 kind in any room. Nothing weakens `mature_adult_ok` or the kid-cast list (neither is read or changed here). Grief, the care
 window and hostile or sad exchanges never raise a request. The hug rule is untouched.
 
-### Tests (`core/tests/test_talk_quests.c`, 12 tests, each fails without its code)
+### Tests (`core/tests/test_talk_quests.c`, 15 tests, each fails without its code)
 
 `quest_kind_tables_kid_safe` (kind x giver x room x target, every item), `quest_reply_classes`,
 `quest_pick_every_resident` (every resident, both room kinds, 8 salts: the rules hold, the derive agrees),
@@ -1884,7 +1884,7 @@ topic sessions: 0 requests; the control talk raises some), `quest_accept_and_han
 four quick replies, the table, the log row, "Go back", the thanks line, the item taken, H$ paid, the bond, the headline,
 the cooldown, a second hand-in does nothing), `quest_decline_haggle_more`, `quest_ready_by_kind`,
 `quest_memory_and_save` (every value through the chunk, an old chunk, a bad field, the days, eviction, 0 B more),
-`quest_kid_sessions` (600 sessions with a child as the giver or in the room: only kid kinds, no unsafe line). The script
+`quest_kid_sessions` (600 sessions with a child as the giver or in the room: only kid kinds, no unsafe line), `quest_cheer_not_for_grief` (nobody is asked to cheer up a person who lost someone lately), `quest_accept_needs_event_room` (a full event list or a full table gives no thank-you: no request is promised and then lost). The script
 `home_talk_quest` plays one accepted request through SCENE_TALK with the pad (arm, two compliments, the four replies,
 "tell me more", accept, leave, the quest log's Side tab, the next talk's thanks) at 240x160 and 320x240; the runner gained
 `talk-quest-arm`, `talk-quest-give`, `expect-talk-quest` and `expect-talk-quest-goal`.
@@ -1893,9 +1893,9 @@ the cooldown, a second hand-in does nothing), `quest_decline_haggle_more`, `ques
 
 `TalkState` unchanged (964 B native; `q_kind` and `q_st` sit in two padding holes of the struct). Talk memory: 0 B more
 (the request is in `spare`, the pace in the table header's spare byte). GBA: EWRAM and IWRAM identical to the base
-(`make -C gba sizes`: `.bss` 254,836 B, `.iwram` 11,272 B before and after; the quest log's list buffer is shared), ROM
-`.text` +8,992 B and `.rodata` +4,824 B (the quest code lives where Talk does). Dreamcast: Talk is linked there, so the
-quest code is too (it builds; `story_engine` and `side_chains` pass in dcrun). PS1: 132,608 B below the stack top before and
+(`make -C gba sizes`: `.bss` 254,820 B, `.iwram` 11,272 B before and after; the quest log's list buffer is shared), ROM
+`.text` +9,144 B and `.rodata` +4,824 B (the quest code lives where Talk does). Dreamcast: Talk is linked there, so the
+quest code is too (`make -C dc` builds; dcrun was not run for this package). PS1: 132,608 B below the stack top before and
 after (the EXE is the same size: `talk_quest.c` is compiled only where `DOOMO_HAS_TALK` is, the quest log rows and
 `NT_TALK_QUEST` compile out), so 0 B of the 12 KB TALK share. `TALK_en.BIN` 909,052 -> 913,148 B.
 

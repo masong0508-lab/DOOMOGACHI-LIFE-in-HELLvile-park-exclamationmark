@@ -30,6 +30,7 @@
 #include "doomo/talk_traits.h"
 #include "doomo/lang.h"
 #include "doomo/sim.h"
+#include "doomo/family.h"
 #include "doomo/items.h"
 #include "doomo/resident_acc.h"
 #include "doomo/save_ext.h"
@@ -882,4 +883,39 @@ TEST(quest_stray_yes_no_ignored)
         CHECK_EQ(out.quests_declined, 0);
         talk_mem_quest_set(giver, 0, 0, 0, 0);
     }
+}
+
+/* review fixes: nobody is asked to cheer up someone who is grieving, and a thank-you needs room for its event */
+TEST(quest_cheer_not_for_grief)
+{
+    int g, t, x, s, n = 0, n2 = 0;
+    TalkQuest q;
+    premade_town();
+    people();
+    g = adults[0]; t = adults[7]; x = adults[9];
+    set_rel(g, t, REL_FRIEND, 60);
+    town_res(t)->mood = MOOD_SAD;
+    for (s = 0; s < 80; s++) if (talk_quest_pick(g, &g, 1, 0, 900u + (uint32_t)s, &q) && q.kind == TQK_CHEER && q.target == t) n++;
+    CHECK_MSG(n > 0, "setup: a sad friend is asked about %d times", n);
+    CHECK(family_add(t, FAMROLE_HOUSEMATE, 0) >= 0);
+    CHECK(family_add(x, FAMROLE_HOUSEMATE, 0) >= 0);
+    CHECK(family_lose(x, FAMLOSS_ILLNESS));
+    for (s = 0; s < 80; s++) if (talk_quest_pick(g, &g, 1, 0, 900u + (uint32_t)s, &q) && q.kind == TQK_CHEER && q.target == t) n2++;
+    CHECK_EQ(n2, 0);
+}
+
+TEST(quest_accept_needs_event_room)
+{
+    TalkState s;
+    int giver, k;
+    premade_town();
+    CHECK(open_en());
+    people();
+    giver = adults[2];
+    set_rel(giver, DOOMO_PLAYER_ID, REL_FRIEND, 50);
+    CHECK(raise(&s, giver, TQK_FETCH, 0x4000u));
+    while (s.nev < TALK_EVENTS_MAX) { k = s.nev++; memset(&s.ev[k], 0, sizeof s.ev[k]); s.ev[k].kind = TEV_LEARNED; s.ev[k].a = -1; }
+    say(&s, TA_YES);
+    CHECK_EQ(st_ev(&s, TEV_QUEST_ACCEPT), 0);
+    CHECK(!(s.q_st & TQ_ST_CLOSED));                        /* no thank-you was said for a request nobody will log */
 }

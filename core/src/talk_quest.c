@@ -229,7 +229,8 @@ int talk_quest_derive(int giver, int kind, const int *room, int n, int minor_roo
 static int needs_cheer(int id)
 {
     const DoomoResident *r = alive_slot(id) ? town_res(id) : NULL;
-    return r && (r->mood == MOOD_SAD || r->mood == MOOD_ANGRY);
+    uint16_t v;
+    return r && (r->mood == MOOD_SAD || r->mood == MOOD_ANGRY) && !talk_gen_fact(id, TCB_LOSS, &v);   /* never about a loss: grief is not a chore */
 }
 
 int talk_quest_pick(int giver, const int *room, int n, int minor_room, uint32_t salt, TalkQuest *out)

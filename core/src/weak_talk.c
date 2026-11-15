@@ -30,8 +30,7 @@ WEAK int talk_text_hd(void)
     return 0;
 }
 
-/* TQ-QUESTS: the quest log's rows of Talk requests; none where Talk is not linked (the GBA, the PS1 and the Dreamcast
- * today). The strong definitions are in talk_quest.c. */
+/* TQ-QUESTS: the quest log's rows of Talk requests; none where Talk is not linked (the PS1 today). The strong definitions are in talk_quest.c. */
 WEAK int talk_quest_log_count(void)
 {
     return 0;
