@@ -330,7 +330,8 @@ void plat_text_outline(int x, int y, const char *s, uint8_t color, uint8_t outli
         if (k == 2) { cv_text(x, y, s, outline, 1); cv_text(x, y, s, color, 0); }
         if (k != 1) return;
     }
-    vid_text_dil(x, y, s, outline);
+    if (iwram_ovl_current() == OVL_UI) vid_text_dil_ui(x, y, s, outline);   /* (S2-4d) the group's ARM copy */
+    else vid_text_dil(x, y, s, outline);
     vid_text(x, y, s, color);
 }
 

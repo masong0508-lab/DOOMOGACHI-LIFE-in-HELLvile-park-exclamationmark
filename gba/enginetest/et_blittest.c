@@ -189,7 +189,7 @@ void et_blit_test(void)
  * pixels per halfword), clipping on all four sides, silhouette on and off, over a random background; then the
  * group's word-at-a-time checker (vid_checker_ui) against plat_checker_m4, and its whole-beam loop (plat_beam)
  * against the concert's old per-band beam; (S2-4d) the dream sky's bands (plat_sky_bands) and plat_hshapes' span
- * fill against their documented pixels. Logs
+ * fill against their documented pixels, the group's outline-text pass against video.c's. Logs
  * "ET blit2test ok (N cases)" or "ET blit2test FAIL ...". */
 void et_blit2_test(void)
 {
@@ -371,6 +371,48 @@ void et_blit2_test(void)
                 if (PAGE_A[r * LINE + y] != PAGE_B[r * LINE + y]) {
                     gba_logf("ET blit2test FAIL hshapes case %d row %d hw %d: %x vs %x", i, r, y, PAGE_A[r * LINE + y],
                              PAGE_B[r * LINE + y]);
+                    bad = 1;
+                    break;
+                }
+        n++;
+    }
+    /* (S2-4d) plat_tile_rows against its plat_rect per tile: rows off the top and bottom, widths 1..70, colour 0 */
+    for (i = 0; i < 80 && !bad; i++) {
+        int y = (int)(next() % 200) - 20, h = 1 + (int)(next() % 14), tw = 1 + (int)(next() % 70);
+        int x0 = -(int)(next() % 90), j, r, xx;
+        uint8_t ca = (uint8_t)(next() % 5 == 0 ? 0 : next() % 256), cb = (uint8_t)(next() % 256);
+        gba_back = PAGE_A;
+        if (!plat_tile_rows(y, h, x0, tw, ca, cb)) { gba_logf("ET blit2test FAIL tile rows not drawn"); bad = 1; break; }
+        gba_back = PAGE_B;
+        for (xx = x0, j = 0; xx < SCREEN_W; xx += tw, j++) plat_rect(xx, y, tw, h, (j & 1) ? cb : ca);
+        for (r = 0; r < 160 && !bad; r++)
+            for (j = 0; j < LINE; j++)
+                if (PAGE_A[r * LINE + j] != PAGE_B[r * LINE + j]) {
+                    gba_logf("ET blit2test FAIL tile rows case %d y %d h %d tw %d x0 %d row %d hw %d: %x vs %x", i, y, h,
+                             tw, x0, r, j, PAGE_A[r * LINE + j], PAGE_B[r * LINE + j]);
+                    bad = 1;
+                    break;
+                }
+        n++;
+    }
+    /* (S2-4d) the UI group's outline pass (vid_text_dil_ui) against video.c's vid_text_dil: random strings (newlines,
+     * spaces, characters outside the font) placed off every side */
+    for (i = 0; i < 60 && !bad; i++) {               /* (a whole page each: few, for the 60 s boot watchdog) */
+        char str[12];
+        int len = 1 + (int)(next() % 11), j, r, x = (int)(next() % 270) - 20, y = (int)(next() % 190) - 15;
+        uint32_t color = next() % 256;
+        for (j = 0; j < len; j++) {
+            uint32_t v = next() % 40;
+            str[j] = (char)(v == 0 ? '\n' : v == 1 ? ' ' : v == 2 ? 1 : 33 + (int)(next() % 94));
+        }
+        str[len] = 0;
+        gba_back = PAGE_A; vid_text_dil_ui(x, y, str, color);
+        gba_back = PAGE_B; vid_text_dil(x, y, str, color);
+        for (r = 0; r < 160 && !bad; r++)
+            for (j = 0; j < LINE; j++)
+                if (PAGE_A[r * LINE + j] != PAGE_B[r * LINE + j]) {
+                    gba_logf("ET blit2test FAIL outline case %d x %d y %d row %d hw %d: %x vs %x", i, x, y, r, j,
+                             PAGE_A[r * LINE + j], PAGE_B[r * LINE + j]);
                     bad = 1;
                     break;
                 }

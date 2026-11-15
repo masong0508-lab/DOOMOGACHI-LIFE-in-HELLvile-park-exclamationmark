@@ -539,6 +539,32 @@ static int choice_held(void)
     return 1;
 }
 
+/* S2-4d (GBA): the dreamer's next face in the vignettes, asked for ahead (portrait_prefetch, drawn in the idle time
+ * after frames) in the still pose the vignettes hold, so a new expression does not stall a frame */
+static void face_ahead(int expr)
+{
+#if defined(DOOMO_PLATFORM_GBA)
+    portrait_hold(1);
+    portrait_prefetch(D.cast.dreamer, expr);
+    portrait_hold(0);
+#else
+    (void)expr;
+#endif
+}
+
+/* S2-4d (GBA): the chibis of vignette i (dream_warm) started ahead, in slices, while the screen shows something else */
+static void bodies_ahead(int i)
+{
+#if defined(DOOMO_PLATFORM_GBA)
+    if (i < 0 || i >= DREAM_SHOW) return;
+    bodyspr_lazy(1);
+    dream_warm(D.plan[i], &D.cast);
+    bodyspr_lazy(0);
+#else
+    (void)i;
+#endif
+}
+
 static void bedroom(int expr, int shake)
 {
     dream_draw_bedroom(D.id, &D.cast, expr, D.t, shake);
@@ -566,18 +592,42 @@ static void dream_draw(void)
     case DS_ENTER:
         if (!dream_bubble_covers(D.st_t, ENTER_TICKS)) bedroom(EXPR_SLEEPY, 0);   /* S2-4d: hidden under the bubble */
         dream_draw_bubble_in(D.id, D.st_t, ENTER_TICKS, D.t);
+        face_ahead(EXPR_HAPPY);                    /* S2-4d: the first vignette's face and chibis */
+        bodies_ahead(0);
         break;
     case DS_DREAM: case DS_WIPE: case DS_CHOICE: {
         int last = D.vi == DREAM_SHOW - 1, nm = D.nightmare && last;
         int t = D.state == DS_DREAM ? D.st_t : VIG_TICKS, creep = creep_of(t, nm);
         if (D.state == DS_CHOICE) creep = 16;
+        if (D.state == DS_WIPE) face_ahead(EXPR_HAPPY);          /* S2-4d: the next vignette's first face */
+        else if (D.state == DS_DREAM && creep < 10) face_ahead(EXPR_SHOCK);   /* S2-4d: the face once it turns */
+        if (D.state == DS_WIPE || (D.state == DS_DREAM && D.st_t >= VIG_TICKS / 2))
+            bodies_ahead(D.vi + 1);                                 /* S2-4d: the next vignette's chibis */
         dream_draw_sky_rows(creep, nm, D.t, dream_sky_rows(D.plan[D.vi]));   /* S2-4d: not what the vignette covers */
+#if defined(DOOMO_PLATFORM_GBA)
+        /* S2-4d (pixel-changing, GBA only): the vignette's portraits and figures hold one still pose (no blink,
+         * breathing or sparkle phases to draw in slices inside the frames), a new expression comes in slices while
+         * the old one stays up (portrait.h portrait_hold(1), as the title and the combat face do), and a chibi the
+         * cache lacks is drawn in slices too (bodyspr_lazy(1); they are asked for ahead: bodies_ahead) */
+        portrait_hold(1);
+        bodyspr_lazy(1);                           /* (a chibi not ready yet comes a few ticks late, in slices) */
         dream_draw_vignette(D.plan[D.vi], &D.cast, t, creep, nm);
+        bodyspr_lazy(0);
+        portrait_hold(0);
+#else
+        dream_draw_vignette(D.plan[D.vi], &D.cast, t, creep, nm);
+#endif
         dream_draw_frame(creep, nm, D.t);
         if (D.state == DS_WIPE) {
             /* a swirl of sparkles closes over the dream */
-            int r = (sw + sh) * D.st_t / (WIPE_TICKS * 2), k;
-            plat_shade_rect(0, 0, sw, sh, 15 - D.st_t * 15 / WIPE_TICKS);
+            int r = (sw + sh) * D.st_t / (WIPE_TICKS * 2), k, lvl = 15 - D.st_t * 15 / WIPE_TICKS;
+#if defined(DOOMO_PLATFORM_GBA)
+            /* S2-4d (pixel-changing, GBA only): the dream darkens with the hardware fade (BLDY on the frame's flip)
+             * instead of a full-screen shade, 14 ms of a frame; the sparkles darken with it */
+            if (lvl < 15) plat_post_blend(PAL_BLACK, (15 - lvl) * 16 / 15);
+#else
+            plat_shade_rect(0, 0, sw, sh, lvl);
+#endif
             for (k = 0; k < 8; k++)
                 ui_sparkle(sw / 2 + (int)((fx_cos(k * 512 + D.st_t * 90) * r) >> 16),
                            sh / 2 + (int)((fx_sin(k * 512 + D.st_t * 90) * r) >> 17), (D.st_t + k) & 15,

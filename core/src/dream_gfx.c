@@ -50,12 +50,15 @@ static void circle_rows(int r, int n, uint8_t *dx)
  * row spans above), in one plat_hshapes call per 16 where the platform has it (the GBA: an ARM loop of row fills
  * instead of a THUMB call per band or row), else ui_fill_circle each. Only the rows on the screen are tabled; a
  * half-width over 255 is cut to 255, which still covers every column when the centre is on the screen (else the
- * circles are drawn one by one). */
+ * circles are drawn one by one). dream_circles_rows draws only rows [y0, y1) of them on that path: for a caller
+ * that has just filled the other rows of every one of them with the same colour (else every row is drawn). */
 #define DC_ROWS 256
-void dream_circles(const int16_t *xy, int n, int r, uint8_t c)
+void dream_circles_rows(const int16_t *xy, int n, int r, uint8_t c, int y0, int y1)
 {
     int k = 0, i, sh = SH(), sw = SW(), rows = 0;
     if (n <= 0 || r < 0 || plat_draw_skipped()) return;
+    if (y0 < 0) y0 = 0;
+    if (y1 > sh) y1 = sh;
     for (i = 0; i < n; i++) {                        /* the table's length: the on-screen rows of the farthest */
         int cy = xy[2 * i + 1], top = DOOMO_CLAMP(cy, 0, r), bot = DOOMO_CLAMP(sh - 1 - cy, 0, r);
         rows = DOOMO_MAX(rows, DOOMO_MAX(top, bot) + 1);
@@ -65,21 +68,37 @@ void dream_circles(const int16_t *xy, int n, int r, uint8_t c)
         DoomoHShape hs[16];
         uint8_t dx[DC_ROWS];
         circle_rows(r, rows, dx);
-        for (; k < n; k += i) {
-            int m = DOOMO_MIN(16, n - k);
-            for (i = 0; i < m; i++) {
-                int cy = xy[2 * (k + i) + 1];
-                hs[i].cx = xy[2 * (k + i)];
-                hs[i].cy = (int16_t)cy;
-                hs[i].top = (int16_t)DOOMO_CLAMP(cy, 0, r);
-                hs[i].bot = (int16_t)DOOMO_CLAMP(sh - 1 - cy, 0, r);
-                hs[i].ht = hs[i].hb = dx;
-                hs[i].c = c;
+        while (k < n) {
+            int m = 0;
+            for (; k < n && m < 16; k++) {
+                int cx = xy[2 * k], cy = xy[2 * k + 1];
+                int a = DOOMO_MAX(cy - r, y0), b = DOOMO_MIN(cy + r, y1 - 1);   /* the rows drawn */
+                if (a > b) continue;
+                hs[m].cx = (int16_t)cx;
+                hs[m].c = c;
+                if (cy < a) {                        /* all below the centre: start the table further in */
+                    hs[m].cy = (int16_t)a; hs[m].top = 0; hs[m].bot = (int16_t)(b - a);
+                    hs[m].ht = hs[m].hb = dx + (a - cy);
+                } else if (cy > b) {                 /* all above it */
+                    hs[m].cy = (int16_t)b; hs[m].top = (int16_t)(b - a); hs[m].bot = 0;
+                    hs[m].ht = hs[m].hb = dx + (cy - b);
+                } else {
+                    hs[m].cy = (int16_t)cy; hs[m].top = (int16_t)(cy - a); hs[m].bot = (int16_t)(b - cy);
+                    hs[m].ht = hs[m].hb = dx;
+                }
+                m++;
             }
-            if (!plat_hshapes(hs, m)) break;
+            if (m && !plat_hshapes(hs, m)) { k = 0; break; }   /* (the first call answers for all) */
+            if (k >= n) return;
         }
+        if (k >= n) return;
     }
-    for (; k < n; k++) ui_fill_circle(xy[2 * k], xy[2 * k + 1], r, c);
+    for (k = 0; k < n; k++) ui_fill_circle(xy[2 * k], xy[2 * k + 1], r, c);
+}
+
+void dream_circles(const int16_t *xy, int n, int r, uint8_t c)
+{
+    dream_circles_rows(xy, n, r, c, 0, SH());
 }
 
 /* one circle / ellipse through the helpers above (the same pixels as ui_fill_circle / ui_fill_ellipse) */
@@ -721,9 +740,11 @@ static void dream_floor(int y0, int creep, int nightmare, uint32_t t, uint8_t c0
     else if (creep >= 6) { c0 = PAL_RAMP(RAMP_VAPE, 4); c1 = PAL_RAMP(RAMP_VAPE, 2); }
     for (y = y0; y < sh; row++) {
         int h = 2 + row, tw = 10 + row * 6, x, k = 0;
-        int off = (scroll * (row + 1) / 3) % (2 * tw);
-        for (x = sw / 2 - off - tw * ((sw / 2) / tw + 2); x < sw; x += tw, k++)
-            plat_rect(x, y, tw, h, ((k + row) & 1) ? c0 : c1);
+        int off = (scroll * (row + 1) / 3) % (2 * tw), x0 = sw / 2 - off - tw * ((sw / 2) / tw + 2);
+        /* S2-4d: a row of tiles in one call where the platform has it (the same rects) */
+        if (!plat_tile_rows(y, h, x0, tw, (row & 1) ? c0 : c1, (row & 1) ? c1 : c0))
+            for (x = x0; x < sw; x += tw, k++)
+                plat_rect(x, y, tw, h, ((k + row) & 1) ? c0 : c1);
         y += h;
     }
     plat_rect(0, y0, sw, 1, ui_lighter(c0));
@@ -740,20 +761,20 @@ void dream_draw_frame(int creep, int nightmare, uint32_t t)
      * pass then fill pass (~70 circles). S2-4d: the bumps' centres are
      * made once for both passes, and a pass's bumps (one colour, so their
      * order does not matter) go to dream_circles together */
-    int pass, n = 0, over;
-    int16_t xy[2 * 64];
-    for (x = step / 2 - r; x < sw + r && n <= 62; x += step) {
+    int pass, nt = 0, ns = 0, over;
+    int16_t top[2 * 32], bot[2 * 32], side[2 * 32];  /* the bumps on the top, bottom and side bands */
+    for (x = step / 2 - r; x < sw + r && nt < 32; x += step, nt++) {
         int w1 = ui_wave((int)t + x, 50, 2);
-        xy[2 * n] = (int16_t)x; xy[2 * n + 1] = (int16_t)(band - 2 + w1); n++;
-        xy[2 * n] = (int16_t)(x + step / 2); xy[2 * n + 1] = (int16_t)(sh - band + 1 - w1); n++;
+        top[2 * nt] = (int16_t)x; top[2 * nt + 1] = (int16_t)(band - 2 + w1);
+        bot[2 * nt] = (int16_t)(x + step / 2); bot[2 * nt + 1] = (int16_t)(sh - band + 1 - w1);
     }
     over = x < sw + r;
-    for (x = step; x < sh - step / 2 && n <= 62; x += step) {
+    for (x = step; x < sh - step / 2 && ns < 31; x += step, ns += 2) {
         int w1 = ui_wave((int)t + x * 2, 60, 2);
-        xy[2 * n] = (int16_t)(band - 2 + w1); xy[2 * n + 1] = (int16_t)x; n++;
-        xy[2 * n] = (int16_t)(sw - band + 1 - w1); xy[2 * n + 1] = (int16_t)(x + step / 2); n++;
+        side[2 * ns] = (int16_t)(band - 2 + w1); side[2 * ns + 1] = (int16_t)x;
+        side[2 * ns + 2] = (int16_t)(sw - band + 1 - w1); side[2 * ns + 3] = (int16_t)(x + step / 2);
     }
-    if (over || x < sh - step / 2) n = -1;           /* a screen too big for the list: the bumps one by one */
+    over |= x < sh - step / 2;                       /* a screen too big for the lists: the bumps one by one */
     for (pass = 0; pass < 2; pass++) {
         uint8_t col = pass ? c : ol;
         int g = pass ? 0 : 1;
@@ -761,8 +782,12 @@ void dream_draw_frame(int creep, int nightmare, uint32_t t)
         plat_rect(0, sh - band - g, sw, band + g, col);
         plat_rect(0, 0, band + g, sh, col);
         plat_rect(sw - band - g, 0, band + g, sh, col);
-        if (n >= 0) {
-            dream_circles(xy, n, r / 2 + 2 + g, col);
+        if (!over) {
+            /* one colour a pass: the bumps in any order; the rows of the top and bottom bumps inside their band
+             * are that band's rect again (the same colour, just drawn), so only the rows outside it */
+            dream_circles_rows(top, nt, r / 2 + 2 + g, col, band + g, sh);
+            dream_circles_rows(bot, nt, r / 2 + 2 + g, col, 0, sh - band - g);
+            dream_circles(side, ns, r / 2 + 2 + g, col);
             continue;
         }
         for (x = step / 2 - r; x < sw + r; x += step) {
@@ -935,6 +960,21 @@ void dream_draw_bubble_in(int id, int t, int total, uint32_t clock)
             ui_sparkle(cx + (int)((fx_cos(k * 682 + t * 40) * r) >> 17), cy + (int)((fx_sin(k * 682 + t * 40) * r) >> 17),
                        (int)(clock / 2 + (uint32_t)k * 3) & 15, PAL_WHITE);
     }
+}
+
+/* (S2-4d) Ask for the chibis vignette v shows (the dreamer's, the friend's, the rival's), in the facings and steps it
+ * draws them: under bodyspr_lazy(1) (the GBA) a missing one starts its sliced job, so it is ready when the vignette
+ * comes (the caller asks during the one before it and the wipe); nothing is drawn. */
+void dream_warm(int v, const DreamCast *c)
+{
+    static const uint8_t dir_of[DREAM_VIGNETTES] = { 9, 1, 9, 0, 2, 9, 0, 9, 1, 2, 9, 9, 9, 1, 3, 2 };   /* 9: none */
+    int d = dir_of[(unsigned)v % DREAM_VIGNETTES], f, steps = (v == 9 || v == 15) ? 4 : 1;
+    if (d == 9) return;
+    for (f = 0; f < steps; f++) {
+        bodyspr_image(c->dreamer, d, f);
+        if (v == 9 && c->rival >= 0) bodyspr_image(c->rival, 2, f);
+    }
+    if (v == 4 && c->friend_id >= 0) bodyspr_image(c->friend_id, 1, 0);
 }
 
 /* ====================================================================== */

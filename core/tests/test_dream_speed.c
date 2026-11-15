@@ -230,6 +230,44 @@ TEST(dream_vignettes_hide_the_skipped_sky)
     res(240, 160);
 }
 
+/* every vignette, its sky and rim, with the one-call paths (the native platform drawing them as plat_ext.h says)
+ * and without (the core's rects): the same frame */
+TEST(dream_vignettes_with_the_one_call_paths)
+{
+    int r, v, lvl;
+    uint32_t t;
+    island();
+    for (r = 0; r < 2; r++) {
+        res(r ? 320 : 240, r ? 240 : 160);
+        for (lvl = 0; lvl < 3; lvl++)
+            for (v = 0; v < DREAM_VIGNETTES; v++)
+                for (t = 37; t < 180; t += 71) {
+                    DreamCast c;
+                    int creep = lvl * 8, k, d;
+                    dream_cast(lvl == 2 ? 666 : 42, &c);
+                    for (k = 0; k < 2; k++) {
+                        nat_fast2d = 0;
+                        memset(nat_fb, 0, sizeof(nat_fb));
+                        portrait_cache_clock(t, 0);
+                        dream_draw_sky_rows(creep, lvl == 2, t, dream_sky_rows(v));
+                        dream_draw_vignette(v, &c, (int)t, creep, lvl == 2);
+                        dream_draw_frame(creep, lvl == 2, t);
+                    }
+                    keep();
+                    nat_fast2d = 1;
+                    memset(nat_fb, 0, sizeof(nat_fb));
+                    dream_draw_sky_rows(creep, lvl == 2, t, dream_sky_rows(v));
+                    dream_draw_vignette(v, &c, (int)t, creep, lvl == 2);
+                    dream_draw_frame(creep, lvl == 2, t);
+                    nat_fast2d = 0;
+                    d = differs(nat_h);
+                    CHECK_MSG(d < 0, "%dx%d vignette %d creep %d t %u: pixel (%d, %d)", nat_w, nat_h, v, creep,
+                              (unsigned)t, d % nat_w, d / nat_w);
+                }
+    }
+    res(240, 160);
+}
+
 TEST(dream_frame_is_the_old_rim)
 {
     int r, creep, nm, fast;

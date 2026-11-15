@@ -34,7 +34,7 @@
  *                            E9 (PS1 disc file), E2 (native loader)
  *   plat_dots, plat_hshapes  SP4 (GBA: the pet's LCD and egg in ARM passes)
  *   plat_view_hold           S2-2 (GBA: the 3D view held under a card)
- *   plat_sky_bands           S2-4d (GBA: the dream sky's bands in one ARM pass)
+ *   plat_sky_bands, plat_tile_rows  S2-4d (GBA: the dream sky's bands, its floor's rows in ARM passes)
  */
 #ifndef DOOMO_PLAT_EXT_H
 #define DOOMO_PLAT_EXT_H
@@ -341,6 +341,11 @@ int plat_beam(int ax, int ay, int tx, int ty, int hw0, int hw1, uint8_t color);
  * 0 is PAL_BLACK as in plat_rect. Returns 1 when the platform drew every pixel (or the tick draws nothing), 0 to have the core draw its
  * rects and seams. Weak default: 0. GBA: one ARM call of the UI group, columns of word stores. */
 int plat_sky_bands(const int16_t *ys, int ncol, int nb, const uint8_t *col, int y1);
+/* (S2-4d) Rows [y, y + h) of tiles tw (>= 1) pixels wide in two alternating colours, from x0 (<= 0) across the
+ * screen: exactly plat_rect(x0 + k * tw, y, tw, h, k is even ? ca : cb) for k = 0, 1, ... while x0 + k * tw < the
+ * screen width (the dream floor's rows). Returns 1 when the platform drew them (or the tick draws nothing), 0 to
+ * have the core draw the rects. Weak default: 0. GBA: one row made in IWRAM, copied to every row (the UI group). */
+int plat_tile_rows(int y, int h, int x0, int tw, uint8_t ca, uint8_t cb);
 
 /* ---- (S2-2) the 3D view held under a card -----------------------------------
  * A scene whose 3D view stands still (an intro card, a pause menu, a results or death screen: the world does not

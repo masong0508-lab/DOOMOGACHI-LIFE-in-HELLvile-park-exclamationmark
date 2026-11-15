@@ -197,7 +197,7 @@ void plat_shade_rect(int x, int y, int w, int h, int level)
     nat_panel_op_end();
 }
 
-/* (S2-4d) the GBA's one-call 2D paths (plat_ext.h plat_sky_bands, plat_hshapes) as the header documents them, for
+/* (S2-4d) the GBA's one-call 2D paths (plat_ext.h plat_sky_bands, plat_tile_rows, plat_hshapes) as the header documents them, for
  * the tests that compare them with the core's own rects: off unless a test sets nat_fast2d (the core then draws its
  * rects, as on the PS1 and the Dreamcast) */
 int nat_fast2d;
@@ -221,6 +221,14 @@ int plat_sky_bands(const int16_t *ys, int ncol, int nb, const uint8_t *col, int 
         }
     }
     nat_panel_op_end();
+    return 1;
+}
+
+int plat_tile_rows(int y, int h, int x0, int tw, uint8_t ca, uint8_t cb)
+{
+    int x, k;
+    if (!nat_fast2d || x0 > 0 || tw < 1) return 0;
+    for (x = x0, k = 0; x < nat_w; x += tw, k++) plat_rect(x, y, tw, h, (k & 1) ? cb : ca);
     return 1;
 }
 

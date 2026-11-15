@@ -272,6 +272,9 @@ void dream_cast(int id, DreamCast *c);
  * bytes; returns split). */
 int  dream_caption(int vignette, const DreamCast *c, int nightmare, char *buf, int cap);
 extern const char *const dream_vignette_names[DREAM_VIGNETTES];
+/* (S2-4d) Ask for the chibis vignette v will draw (nothing is drawn: under bodyspr_lazy(1) a missing one starts
+ * being drawn in slices). */
+void dream_warm(int v, const DreamCast *c);
 /* Draw a vignette; t = ticks into it, creep 0..16 (cute -> creepy). */
 void dream_draw_vignette(int vignette, const DreamCast *c, int t, int creep,
                          int nightmare);
@@ -283,6 +286,9 @@ int  dream_sky_rows(int vignette);
 /* (S2-4d) n circles of radius r, centres (xy[2k], xy[2k + 1]), in order: ui_fill_circle's pixels, through
  * plat_hshapes where the platform has it. */
 void dream_circles(const int16_t *xy, int n, int r, uint8_t c);
+/* (S2-4d) the same, only rows [y0, y1) where the platform draws them in one call: for a caller that has just filled
+ * the circles' other rows with the same colour (the rim's bands); elsewhere every row is drawn (the same pixels). */
+void dream_circles_rows(const int16_t *xy, int n, int r, uint8_t c, int y0, int y1);
 /* (S2-4d) n filled ellipses of one colour, (cx, cy, rx, ry) in e[4k .. 4k + 3]: ui_fill_ellipse's pixels. */
 void dream_ellipses(const int16_t *e, int n, uint8_t c);
 void dream_draw_frame(int creep, int nightmare, uint32_t t);
