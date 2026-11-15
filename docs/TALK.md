@@ -1530,7 +1530,7 @@ very first line of a fresh town can differ from the next identical call.
 | stack: `talk_gen_line` + `gen_line` (MIPS) | 456 + 1,472 B | 592 + 1,536 B |
 | GBA `.text` / `.rodata` (ROM) | 1,486,136 / 7,604,336 | 1,489,944 / 7,604,484 |
 | GBA `.iwram` / `.iwram_bss` / `.bss` / `.data` | 11,272 / 4,088 / 249,084 / 816 | unchanged |
-| PS1 EXE with the boot FMV, below the stack top | 72,336 B (`_end` 0x801ee570) | 72,336 B (`_end` 0x801ee570), identical |
+| PS1 EXE with the boot FMV, below the stack top | 72,336 B (`_end` 0x801ee570) | 72,336 B (`_end` 0x801ee570); on the final rebased tree 72,352 B (`_end` 0x801ee560), the same as origin |
 
 The stack of one line grows by 200 B (`Gen` carries the plan and the trait set); the generator's
 budget is about 5 KB. Talk is not linked on the PS1 yet, so the PS1 cost is 0 B.
