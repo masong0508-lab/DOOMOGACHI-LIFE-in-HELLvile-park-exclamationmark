@@ -12,8 +12,12 @@ wait 20
 push STUDIO -107
 wait 100
 expect-scene STUDIO
-# SONG -> NOTES -> ORDER -> LYRICS -> CHOIR (profile-studio's keys)
+# SONG -> NOTES -> PLAY -> ORDER -> LYRICS -> CHOIR (profile-studio's keys)
 press R
+wait 20
+down SELECT
+press R
+release
 wait 20
 down SELECT
 press R

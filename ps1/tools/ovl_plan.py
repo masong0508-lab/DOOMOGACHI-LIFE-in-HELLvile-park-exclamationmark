@@ -262,6 +262,7 @@ MODAL_CALLBACKS = {
     "studio_edit": ("notes_tools", "order_tools", "song_tools", "title_done"),
     "studio_file": ("confirm_delete", "confirm_load", "confirm_overwrite", "do_new",
                     "do_template", "slot_menu", "muse_done"),
+    "studio_play": ("play_menu_done",),
     "studio_words": ("fill_menu", "lyric_tools", "member_menu", "lyric_done", "pick_done"),
     "ui_gallery": ("on_choice", "on_confirm", "on_hell_done", "on_name"),
     "workshop": ("scrap_done", "weld_go"),

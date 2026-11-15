@@ -31,7 +31,7 @@
 #define STUDIO_ARG_DEMO(t) (-100 - (t))
 
 /* ---- tabs ------------------------------------------------------------------ */
-enum { STAB_SONG, STAB_NOTES, STAB_ORDER, STAB_LYRICS, STAB_CHOIR, STAB_STAGE,
+enum { STAB_SONG, STAB_NOTES, STAB_PLAY, STAB_ORDER, STAB_LYRICS, STAB_CHOIR, STAB_STAGE,
        STAB_FILE, STAB_COUNT };
 
 /* ---- stats kept in the SONG chunk -------------------------------------------- */
@@ -216,6 +216,12 @@ int  st_bake(uint32_t k0, uint32_t k1, int x, int y, StBakeFn fn, const int *a, 
 void st_drum_icon(int d, int cx, int cy, int t);
 void st_note_glyph(int x, int y, uint8_t c);  /* a little eighth note */
 int  st_wide(void);                           /* 1 at 320 px and wider */
+/* The open tab's own small state (ST-PLAY: the pads): STUDIO_TABSTATE bytes of the shared scene scratch (never a static:
+ * the GBA's EWRAM is full), zero-filled when claimed anew (*fresh = 1: set your defaults); gone when another scene takes
+ * the scratch, so keep nothing in it that cannot be rebuilt. NULL when the scratch is not available. */
+#define STUDIO_TABSTATE 64
+void *st_tab_state(int *fresh);
+void st_tab_state_drop(void);                  /* forget it (studio_enter): the next st_tab_state is fresh */
 /* the content rectangle of a tab */
 typedef struct { int x, y, w, h; } StRect;
 StRect st_content(void);
@@ -231,6 +237,10 @@ int  st_alive(int id);
 /* ---- tabs ------------------------------------------------------------------- */
 void tab_song_update(void);    void tab_song_draw(StRect r);
 void tab_notes_update(void);   void tab_notes_draw(StRect r);
+void tab_play_update(void);    void tab_play_draw(StRect r);   /* studio_play.c (ST-PLAY) */
+void tab_play_shift(void);     /* the PLAY tab while SELECT is held: octave, chord set, record */
+void tab_play_leave(void);     /* a take ends, the jam lets go, the loop stops (tab change, leaving the studio) */
+int  play_prompts(UiPrompt *p);
 void tab_order_update(void);   void tab_order_draw(StRect r);
 void tab_lyrics_update(void);  void tab_lyrics_draw(StRect r);
 void tab_choir_update(void);   void tab_choir_draw(StRect r);

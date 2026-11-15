@@ -1,0 +1,92 @@
+# speed2_studio_play.txt - speed tour 2 (SA2) for the PLAY tab of the Music Studio (ST-PLAY): the pads at rest, a held
+# pad (the jam note), the loop playing, a recording take (count-in, the loop, pads pressed) and the drum pads.
+# STUDIO -107: the premade citizens and the "Park United!" template (core/tests/scripts/studio.txt). Window rules:
+# speed2_fair.txt. The PLAY tab must hold what the NOTES tab holds (profile-studio: NOTES idle 27.8 ms).
+wait 40
+expect-log doomo: init
+sync on 61
+seed 1
+scene TITLE
+wait 20
+push STUDIO -107
+wait 100
+expect-scene STUDIO
+press R
+wait 20
+down SELECT
+press R
+release
+wait 30
+
+fps start
+wait 120
+expect-fps 29 studio play: pads at rest
+shot play_idle
+down A
+wait 10
+fps start
+wait 90
+expect-fps 29 studio play: a held pad
+shot play_held
+release
+wait 4
+press START
+wait 20
+fps start
+wait 120
+expect-fps 29 studio play: the loop
+shot play_loop
+press START
+wait 10
+
+# a take: SELECT + START, the count-in (four beats), then the loop with pads pressed
+down SELECT
+wait 2
+press START
+release
+wait 30
+fps start
+wait 60
+expect-fps 29 studio play: count-in
+wait 30
+fps start
+press A
+wait 20
+press B
+wait 20
+press R
+wait 20
+press L
+wait 20
+press A
+wait 20
+press B
+wait 20
+press R
+wait 20
+expect-fps 29 studio play: recording
+shot play_recording
+press START
+wait 10
+
+# the drum pads
+press SELECT
+wait 16
+press A
+wait 8
+fps start
+wait 60
+expect-fps 29 studio play: tools menu closed, drum pads
+press A
+wait 4
+press B
+wait 4
+press LEFT
+wait 4
+shot play_drums
+press START
+wait 20
+fps start
+wait 90
+expect-fps 29 studio play: drum loop
+press START

@@ -47,6 +47,9 @@ int tab_prompts(int tab, UiPrompt *p)
         PR(BTN_Y, 4, "Undo");
         PR(BTN_X, 5, "Redo");
         break;
+    case STAB_PLAY:
+        n = play_prompts(p);
+        break;
     case STAB_ORDER:
         PR(BTN_LEFT | BTN_RIGHT, 1, "Pattern");
         PR(BTN_A, 0, "Insert");
@@ -428,6 +431,11 @@ static void notes_tools(int c)
                 s->notes[p][t][i] = (uint8_t)song_scale_shift(s, s->notes[p][t][i], c == 5 ? 1 : -1);
         ed_commit();
         break;
+    case 7: {                                   /* ST-PLAY: hear what you change: the bar under the cursor loops */
+        int from = studio.stp >= 16 ? 16 : 0;
+        song_play_range(s, p, from, from + 16);
+        st_msg("Looping bar %d of %c", from / 16 + 1, 'A' + p);
+        break; }
     default: break;
     }
 }
@@ -496,10 +504,10 @@ void tab_notes_update(void)
             audio_sfx(SFX_BLIP);
         }
         if (studio_sel_tap) {
-            static const char *const items[7] = { "Copy pattern", "Paste pattern", "Copy track",
+            static const char *const items[8] = { "Copy pattern", "Paste pattern", "Copy track",
                                                   "Paste track", "Clear track", "Track up a step",
-                                                  "Track down a step" };
-            st_popup("Pattern tools", items, 7, 0, notes_tools);
+                                                  "Track down a step", "Loop this bar" };
+            st_popup("Pattern tools", items, 8, 0, notes_tools);
         }
     }
     if (studio.stp < studio.ntop) studio.ntop = studio.stp;

@@ -508,25 +508,28 @@ static const DrumDef kits[SONG_KIT_COUNT][SONG_DRUM_COUNT] = {
 /* player state                                                             */
 typedef struct { uint16_t freq; uint8_t vol, wave, valid; } Sent;
 
+/* (field order packs the struct: the GBA's EWRAM is full, ST-PLAY added the range and jam fields at no cost) */
 static struct {
     const DoomoSong *s;
     int16_t  over;            /* singer override (resident id) or -1        */
     int16_t  prev_music;      /* background song to restore                  */
-    uint8_t  on, solo, solo_pat, paused_music;
+    uint8_t  on, solo, solo_pat;
     uint8_t  ord, step;
+    uint8_t  rfrom, rto;      /* range loop (song_play_range): steps rfrom..rto-1 of the solo pattern */
+    uint8_t  beat_age;
     uint32_t acc;             /* units into the current step                 */
     uint32_t ticks;
-    uint8_t  beat_age;
     /* tone channels 0..2: sounding note (0 = off), age, onset volume */
     uint8_t  note[3], age[3], base[3], wave[3];
     /* drum channel */
-    uint8_t  drum, dkit, dage;
     int16_t  dlevel;
+    uint8_t  drum, dkit, dage;
     /* lyrics */
     int8_t   line;            /* lyric line of this pass, -1 = none          */
     int8_t   syl;             /* syllable sounding (index), -1 = none yet    */
     uint8_t  nsyl, next;
     uint8_t  starts[SONG_LYRIC_LEN];
+    uint8_t  jam[3];          /* song_jam_on / off: a held note per tone channel 0..2 over the song */
     uint32_t mask;            /* singers of the line                         */
     uint8_t  rot;
     int8_t   lead;            /* choir slot of the lead voice                */
@@ -825,13 +828,29 @@ static void do_step(void)
     if (v > 0 && v < SONG_DRUM_COUNT) drum_on(v);
 }
 
+/* a loop (or a start) in the middle of a pass: the lyric line of the pass, and its syllables skipped for the onsets
+ * before P.step */
+static void seek_lyrics(void)
+{
+    begin_line();
+    if (P.line >= 0) {
+        int i, p = cur_pattern();
+        for (i = 0; i < P.step; i++) if (P.s->notes[p][0][i] >= 2 && P.next < P.nsyl) P.next++;
+    }
+}
+
 /* advance to the next step; 0 = the song ended */
 static int advance(void)
 {
     P.step++;
+    if (P.solo) {
+        if (P.step < P.rto) return 1;
+        P.step = P.rfrom;
+        if (P.rfrom) seek_lyrics();
+        return 1;
+    }
     if (P.step < SONG_STEPS) return 1;
     P.step = 0;
-    if (P.solo) return 1;
     P.ord++;
     if (P.ord < order_len()) return 1;
     if (!(P.s->flags & SONGF_LOOP)) return 0;
@@ -852,7 +871,11 @@ static void render_tones(void)
     int t;
     for (t = 0; t < 3; t++) {
         int f = 0, v = 0, w = P.wave[t];
-        if (t == 1 && P.harm && P.singing) {
+        if (P.jam[t]) {
+            f = song_note_hz(P.jam[t]);
+            v = DOOMO_MAX(P.s->vol[t], 6);                       /* held at full level */
+            w = P.s->wave[t] < SONG_WAVES ? P.s->wave[t] : WAVE_PULSE50;
+        } else if (t == 1 && P.harm && P.singing) {
             int n = popcount32(P.mask);
             f = song_note_hz(P.harm);
             /* chorus: a wobble that widens with the number of singers */
@@ -924,12 +947,9 @@ static void start(const DoomoSong *s, int over, int solo, int pat, int ord, int 
     P.ord = (uint8_t)DOOMO_CLAMP(ord, 0, order_len() - 1);
     P.step = (uint8_t)DOOMO_CLAMP(step, 0, SONG_STEPS - 1);
     silence_all();
-    if (P.step) begin_line();             /* do_step only does it at step 0 */
-    if (P.step && P.line >= 0) {
-        /* skip the syllables of the onsets before the start step */
-        int i, p = cur_pattern();
-        for (i = 0; i < P.step; i++) if (s->notes[p][0][i] >= 2 && P.next < P.nsyl) P.next++;
-    }
+    P.rfrom = 0;
+    P.rto = SONG_STEPS;
+    if (P.step) seek_lyrics();            /* do_step only does begin_line at step 0 */
     do_step();
     render_tones();
 }
@@ -949,9 +969,19 @@ void song_play_pattern(const DoomoSong *s, int pattern, int step)
     start(s, -1, 1, pattern, 0, step);
 }
 
+void song_play_range(const DoomoSong *s, int pattern, int from, int to)
+{
+    from = DOOMO_CLAMP(from, 0, SONG_STEPS - 1);
+    to = DOOMO_CLAMP(to, from + 1, SONG_STEPS);
+    start(s, -1, 1, pattern, 0, from);
+    P.rfrom = (uint8_t)from;
+    P.rto = (uint8_t)to;
+}
+
 void song_stop(void)
 {
-    int was = P.on || P.pv_ticks;
+    int was = P.on || P.pv_ticks || (P.jam[0] | P.jam[1] | P.jam[2]);
+    P.jam[0] = P.jam[1] = P.jam[2] = 0;
     P.on = 0;
     P.pv_ticks = 0;
     P.singing = 0;
@@ -972,13 +1002,15 @@ void song_tick(void)
 {
     int guard = 0;
     if (!P.on) {
-        if (P.pv_ticks) {
+        int jam = P.jam[0] | P.jam[1] | P.jam[2];
+        if (P.pv_ticks || jam) {
             P.ticks++;
-            if (--P.pv_ticks == 0) {
+            if (P.pv_ticks && --P.pv_ticks == 0) {
                 P.note[0] = P.note[1] = P.note[2] = 0;
                 P.drum = 0;
                 P.sent[P.pv_ch].valid = 0;
                 send(P.pv_ch, 0, 0, P.pv_ch == 3 ? WAVE_NOISE : WAVE_PULSE50);
+                if (jam) render_tones();
             } else {
                 render_tones();
             }
@@ -1023,6 +1055,42 @@ void song_preview(const DoomoSong *s, int track, int cell)
     if (P.pv_ticks) render_tones();
 }
 
+/* Jam: channel ch 0..2 holds MIDI note `cell` over whatever else plays (the song, a preview) until song_jam_off;
+ * ch 3 hits drum `cell` (SONG_DRUM_*). Needs song_tick() calls; with no song playing the held notes sound by
+ * themselves. The tone channel and the instrument are the track's own (lead = channel 0 with the lead wave). */
+void song_jam_on(const DoomoSong *s, int ch, int cell)
+{
+    if (!s || ch < 0 || ch >= SONG_TRACKS) return;
+    if (!P.on) {
+        P.s = s;
+        P.over = -1;
+        P.singing = 0;
+        P.harm = 0;
+    }
+    if (ch == 3) {
+        if (cell <= 0 || cell >= SONG_DRUM_COUNT) return;
+        drum_on(cell);
+        if (!P.on) { P.pv_ch = 3; P.pv_ticks = 10; render_tones(); }
+        return;
+    }
+    if (cell < 2 || cell > 127) return;
+    P.jam[ch] = (uint8_t)cell;
+    retrigger(ch, song_note_hz(cell), DOOMO_MAX(s->vol[ch], 6), s->wave[ch] < SONG_WAVES ? s->wave[ch] : WAVE_PULSE50);
+    if (!P.on) render_tones();
+}
+
+/* Release the jam note of channel ch (0..2); -1 = all of them. */
+void song_jam_off(int ch)
+{
+    int t, was = 0;
+    for (t = 0; t < 3; t++)
+        if (ch < 0 || ch == t) { was |= P.jam[t]; P.jam[t] = 0; }
+    if (was && !P.on) render_tones();
+}
+
+int song_jam_note(int ch) { return (ch >= 0 && ch < 3) ? P.jam[ch] : 0; }
+
+int song_pos_note(int ch) { return (P.on && ch >= 0 && ch < 3) ? P.note[ch] : 0; }
 int song_pos_order(void) { return P.on ? P.ord : -1; }
 int song_pos_step(void) { return P.on ? P.step : -1; }
 int song_pos_line(void) { return P.on ? P.line : -1; }

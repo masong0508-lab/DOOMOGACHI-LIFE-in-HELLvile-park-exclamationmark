@@ -10,7 +10,7 @@
 #
 # The studio opens on the 25-voice "Park United!" choir (demo arg -107), the
 # same as core/tests/scripts/studio.txt. Windows: SONG idle and playing, NOTES
-# idle and playing, ORDER, LYRICS, CHOIR, then the PERFORM show (two windows:
+# idle and playing, PLAY idle and looping, ORDER, LYRICS, CHOIR, then the PERFORM show (two windows:
 # the lead alone, then the full choir). Numbers belong to this script.
 wait 40
 expect-log doomo: init
@@ -48,6 +48,24 @@ wait 40
 fps settle (ignore)
 wait 130
 fps notes playing
+profile 8000000
+press START
+wait 10
+
+# ---- PLAY (ST-PLAY: the jam pads) ------------------------------------------
+down SELECT
+press R
+release
+wait 20
+fps settle (ignore)
+wait 130
+fps play idle
+profile 8000000
+press START
+wait 40
+fps settle (ignore)
+wait 130
+fps play looping
 profile 8000000
 press START
 wait 10

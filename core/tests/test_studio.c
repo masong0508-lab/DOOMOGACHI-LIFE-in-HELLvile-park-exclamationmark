@@ -838,7 +838,9 @@ TEST(studio_editor_writes_saves_and_reloads_a_song)
     CHECK_EQ(studio.pat, 1);
     press(BTN_L);
     CHECK_EQ(studio.pat, 0);
-    /* LYRICS (NOTES -> ORDER -> LYRICS with SELECT + R) */
+    /* LYRICS (NOTES -> PLAY -> ORDER -> LYRICS with SELECT + R) */
+    chord_tab();
+    CHECK_EQ(studio.tab, STAB_PLAY);
     chord_tab();
     CHECK_EQ(studio.tab, STAB_ORDER);
     chord_tab();

@@ -33,6 +33,11 @@ down SELECT
 press R
 release
 wait 12
+shot play
+down SELECT
+press R
+release
+wait 12
 shot order
 down SELECT
 press R

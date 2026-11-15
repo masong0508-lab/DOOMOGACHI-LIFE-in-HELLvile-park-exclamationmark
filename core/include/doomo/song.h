@@ -157,6 +157,17 @@ void song_play_pattern(const DoomoSong *s, int pattern, int step);
  * (keyboard feedback). Needs song_tick() calls to end; ignored while a
  * song plays. */
 void song_preview(const DoomoSong *s, int track, int cell);
+/* Editor (ST-PLAY): loop steps `from`..`to`-1 of one pattern (a bar, a selection); song_play_pattern is the
+ * whole pattern, 0..32. The loop reads the song live, so edits are heard on the next pass. */
+void song_play_range(const DoomoSong *s, int pattern, int from, int to);
+/* Editor (ST-PLAY) jam: hold MIDI note `cell` on tone channel `ch` 0..2 (the track's own instrument), or hit drum
+ * `cell` on ch 3, over the song if one plays; song_jam_off(ch) lets go (-1 = all). song_jam_note(ch) is the held
+ * note (0 = none). Needs song_tick() calls. */
+void song_jam_on(const DoomoSong *s, int ch, int cell);
+void song_jam_off(int ch);
+int  song_jam_note(int ch);
+/* The note the song itself sounds on tone channel ch 0..2 now (0 = none or not playing): what the pads and the tests see. */
+int  song_pos_note(int ch);
 /* Choir index (0..24) of the rotating lead voice of the syllable sounding
  * now, -1 if none. */
 int  song_pos_lead(void);

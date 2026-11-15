@@ -93,6 +93,7 @@ void st_set_tab(int tab)
     tab = (tab + STAB_COUNT) % STAB_COUNT;
     if (tab == studio.tab) return;
     if (studio.tab == STAB_STAGE) stage_leave();
+    if (studio.tab == STAB_PLAY) tab_play_leave();
     studio.tab = (uint8_t)tab;
     studio.tab_t = 0;
     studio.a_edit = 0;
@@ -701,6 +702,10 @@ static void tab_icon(int tab, int cx, int cy, uint8_t c)
         plat_rect(cx - 3, cy - 3, 2, 2, c); plat_rect(cx + 1, cy - 3, 2, 2, c);
         plat_rect(cx - 3, cy + 1, 2, 2, c); plat_rect(cx + 1, cy + 1, 2, 2, c);
         break;
+    case STAB_PLAY:
+        ui_fill_circle(cx, cy, 4, c);                                   /* the record dot */
+        plat_rect(cx - 1, cy - 1, 3, 3, PAL_WHITE);
+        break;
     case STAB_ORDER:
         plat_rect(cx - 3, cy - 3, 7, 2, c); plat_rect(cx - 3, cy, 5, 2, c);
         plat_rect(cx - 3, cy + 3, 6, 1, c);
@@ -739,9 +744,10 @@ static void ez_init(StEasy *e)
     e->level = (studio_stats.lines & STUDIO_LINES_LEVEL) ? 1 : 0;
 }
 #define BAKE_ENTS  40
-#define BAKE_POOL  10752                /* BakeSt is the whole 12 KB scene scratch (CHOIR's tiles are ~750 B each) */
+#define BAKE_POOL  (10752 - STUDIO_TABSTATE)  /* BakeSt is the whole 12 KB scene scratch (CHOIR's tiles are ~750 B each) */
 typedef struct { uint32_t k0, k1; DoomoImage img; int16_t bx, by; } BakeEnt;
-typedef struct { uint16_t top, n; BakeEnt e[BAKE_ENTS]; uint8_t pix[BAKE_POOL]; StEasy ez; } BakeSt;   /* ez: ST-EASY (+448 B) */
+/* xs: the open tab's own small state (st_tab_state, the PLAY tab's pads); xs[0] is 0 on a fresh claim */
+typedef struct { uint16_t top, n; BakeEnt e[BAKE_ENTS]; uint8_t xs[STUDIO_TABSTATE]; uint8_t pix[BAKE_POOL]; StEasy ez; } BakeSt;   /* ez: ST-EASY (+448 B) */
 DOOMO_STATIC_ASSERT(sizeof(BakeSt) <= DOOMO_SCENE_SCRATCH, studio_bake_fits_scratch);
 static BakeSt *bake_st;
 
@@ -749,7 +755,7 @@ static BakeSt *bake_get(void)
 {
     if (bake_st && scene_scratch_mine(BAKE_TAG)) return bake_st;
     bake_st = (BakeSt *)scene_scratch(BAKE_TAG, (uint32_t)sizeof(BakeSt));
-    if (bake_st) { bake_st->top = 0; bake_st->n = 0; ez_init(&bake_st->ez); }
+    if (bake_st) { bake_st->top = 0; bake_st->n = 0; bake_st->xs[0] = 0; ez_init(&bake_st->ez); }
     return bake_st;
 }
 
@@ -757,6 +763,20 @@ StEasy *st_easy(void)
 {
     BakeSt *b = bake_get();
     return b ? &b->ez : NULL;
+}
+
+void st_tab_state_drop(void)
+{
+    if (bake_st && scene_scratch_mine(BAKE_TAG)) bake_st->xs[0] = 0;
+}
+
+void *st_tab_state(int *fresh)
+{
+    BakeSt *b = bake_get();
+    if (!b) return NULL;
+    *fresh = b->xs[0] == 0;
+    if (*fresh) { memset(b->xs, 0, sizeof(b->xs)); b->xs[0] = 1; }
+    return b->xs;
 }
 
 typedef StBakeFn BakeFn;
@@ -807,18 +827,40 @@ int st_bake(uint32_t k0, uint32_t k1, int x, int y, StBakeFn fn, const int *a, i
     return 0;
 }
 
-/* no baked images here: ST-EASY's state has the scratch to itself (no static pointer: scene_scratch_block()) */
+/* no baked images here: one claim of the scene scratch holds the tab state (ST-PLAY, xs[0] is 0 when fresh) and
+ * ST-EASY's state (no static pointer: scene_scratch_block()) */
 #define EZ_TAG 0x53455A59u              /* 'SEZY' */
-StEasy *st_easy(void)
+typedef struct { uint8_t xs[STUDIO_TABSTATE]; StEasy ez; } NoBakeSt;
+static NoBakeSt *nb_get(void)
 {
-    StEasy *e;
-    if (scene_scratch_mine(EZ_TAG)) return (StEasy *)scene_scratch_block();
-    e = (StEasy *)scene_scratch(EZ_TAG, (uint32_t)sizeof(StEasy));
+    NoBakeSt *e;
+    if (scene_scratch_mine(EZ_TAG)) return (NoBakeSt *)scene_scratch_block();
+    e = (NoBakeSt *)scene_scratch(EZ_TAG, (uint32_t)sizeof(NoBakeSt));
     if (e) {
         memset(e, 0, sizeof(*e));
-        e->level = (studio_stats.lines & STUDIO_LINES_LEVEL) ? 1 : 0;
+        e->ez.level = (studio_stats.lines & STUDIO_LINES_LEVEL) ? 1 : 0;
     }
     return e;
+}
+
+StEasy *st_easy(void)
+{
+    NoBakeSt *e = nb_get();
+    return e ? &e->ez : NULL;
+}
+
+void st_tab_state_drop(void)
+{
+    if (scene_scratch_mine(EZ_TAG)) ((NoBakeSt *)scene_scratch_block())->xs[0] = 0;
+}
+
+void *st_tab_state(int *fresh)
+{
+    NoBakeSt *e = nb_get();
+    if (!e) return NULL;
+    *fresh = e->xs[0] == 0;
+    if (*fresh) { memset(e->xs, 0, sizeof(e->xs)); e->xs[0] = 1; }
+    return e->xs;
 }
 #endif
 
@@ -943,7 +985,7 @@ static void backdrop_hole(StRect r, int *x0, int *y0, int *x1, int *y1)
     case STAB_SONG: ww = st_wide() ? 182 : 146; break;
     case STAB_LYRICS: wh = 8 * (st_wide() ? 13 : 10) + 8; break;
     case STAB_FILE: if (studio.fmode == 1) return; break;
-    case STAB_NOTES: case STAB_ORDER: case STAB_CHOIR: case STAB_STAGE: break;
+    case STAB_NOTES: case STAB_PLAY: case STAB_ORDER: case STAB_CHOIR: case STAB_STAGE: break;
     default: return;
     }
     *x0 = wx + 4; *y0 = wy + 4; *x1 = wx + ww - 4; *y1 = wy + wh - 4;
@@ -1050,6 +1092,7 @@ static void new_song(void)
 
 static void studio_enter(int arg)
 {
+    st_tab_state_drop();                    /* a new visit: the PLAY tab's pads start from their defaults */
     studio_part_memo_reset();
     studio.active = 1;
     studio.t = 0;
@@ -1115,6 +1158,7 @@ static void studio_enter(int arg)
 
 static void studio_leave(void)
 {
+    if (studio.tab == STAB_PLAY) tab_play_leave();
     song_stop();
     stage_leave();
     studio.active = 0;
@@ -1150,19 +1194,22 @@ static void global_input(void)
         if (btn_pressed(BTN_B | BTN_Y | BTN_A | BTN_X | BTN_UP | BTN_DOWN | BTN_LEFT | BTN_RIGHT))
             studio.sel_used = 1;
     }
-    if (btn_pressed(BTN_Y) || (studio.sel_held && btn_pressed(BTN_B))) {
+    if ((btn_pressed(BTN_Y) && studio.tab != STAB_PLAY) || (studio.sel_held && btn_pressed(BTN_B))) {
         if (ed_undo()) { st_msg("Undo! (%d left)", ed_undo_steps()); audio_sfx(SFX_CANCEL); }
         else { st_msg("Nothing to undo"); audio_sfx(SFX_ERROR); }
     }
-    /* ST-EASY: redo (SELECT+A reads as X on a GBA), the "?" control card, START = play */
-    if (btn_pressed(BTN_X) || (studio.sel_held && btn_pressed(BTN_A))) {
-        if (ed_redo()) { st_msg("Redo! (%d more)", ed_redo_steps()); audio_sfx(SFX_SELECT); }
-        else { st_msg(st_easy() && st_easy()->redo_lost ? "Too big to redo" : "Nothing to redo"); audio_sfx(SFX_ERROR); }
+    /* ST-EASY: redo (SELECT+A reads as X on a GBA), the "?" control card, START = play. PLAY keeps those buttons
+     * (X, SELECT+A, SELECT+UP, START, L2 / R2) for its pads and its own prompts. */
+    if (studio.tab != STAB_PLAY) {
+        if (btn_pressed(BTN_X) || (studio.sel_held && btn_pressed(BTN_A))) {
+            if (ed_redo()) { st_msg("Redo! (%d more)", ed_redo_steps()); audio_sfx(SFX_SELECT); }
+            else { st_msg(st_easy() && st_easy()->redo_lost ? "Too big to redo" : "Nothing to redo"); audio_sfx(SFX_ERROR); }
+        }
+        if (studio.sel_held && btn_pressed(BTN_UP)) { st_help_open(); return; }
+        if (btn_pressed(BTN_START)) st_start();
+        if (btn_pressed(BTN_L2)) st_set_tab(studio.tab - 1);
+        if (btn_pressed(BTN_R2)) st_set_tab(studio.tab + 1);
     }
-    if (studio.sel_held && btn_pressed(BTN_UP)) { st_help_open(); return; }
-    if (btn_pressed(BTN_START)) st_start();
-    if (btn_pressed(BTN_L2)) st_set_tab(studio.tab - 1);
-    if (btn_pressed(BTN_R2)) st_set_tab(studio.tab + 1);
 }
 
 int studio_sel_tap;
@@ -1195,21 +1242,25 @@ static void studio_update(void)
         if (!studio.sel_used) studio_sel_tap = 1;
     }
     if (!btn_down(BTN_SELECT)) studio.sel_held = 0;
-    if (studio.sel_held) return;                /* chords only while SELECT is down */
-    if (studio.tab != STAB_NOTES) {
+    if (studio.sel_held) {                      /* chords only while SELECT is down */
+        if (studio.tab == STAB_PLAY) tab_play_shift();
+        return;
+    }
+    if (studio.tab != STAB_NOTES && studio.tab != STAB_PLAY) {
         if (btn_pressed(BTN_L)) { st_set_tab(studio.tab - 1); return; }
         if (btn_pressed(BTN_R)) { st_set_tab(studio.tab + 1); return; }
     }
     switch (studio.tab) {
     case STAB_SONG: if (studio.card) st_card_update(); else tab_song_update(); break;
     case STAB_NOTES: tab_notes_update(); break;
+    case STAB_PLAY: tab_play_update(); break;
     case STAB_ORDER: tab_order_update(); break;
     case STAB_LYRICS: tab_lyrics_update(); break;
     case STAB_CHOIR: tab_choir_update(); break;
     case STAB_STAGE: tab_stage_update(); break;
     default: tab_file_update(); break;
     }
-    if (studio.tab != STAB_NOTES && !studio.pop_n && !studio.picking && btn_pressed(BTN_B) &&
+    if (studio.tab != STAB_NOTES && studio.tab != STAB_PLAY && !studio.pop_n && !studio.picking && btn_pressed(BTN_B) &&
         !(studio.tab == STAB_STAGE && stage_fullscreen()) && scene_top() == &SCENE_STUDIO)
         studio_try_leave();
 }
@@ -1261,6 +1312,7 @@ static void studio_draw(void)
     switch (studio.tab) {
     case STAB_SONG: if (studio.card) st_card_draw(r); else tab_song_draw(r); break;
     case STAB_NOTES: tab_notes_draw(r); break;
+    case STAB_PLAY: tab_play_draw(r); break;
     case STAB_ORDER: tab_order_draw(r); break;
     case STAB_LYRICS: tab_lyrics_draw(r); break;
     case STAB_CHOIR: tab_choir_draw(r); break;

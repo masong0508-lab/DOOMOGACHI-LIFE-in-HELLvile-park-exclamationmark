@@ -1,0 +1,71 @@
+# SCENE_STUDIO, the PLAY tab (ST-PLAY): jam pads (notes of the song's scale, chords on the d-pad), the tools menu,
+# live recording with the count-in, the take on the step ruler, the drum pads. STUDIO -107: the "Park United!" template.
+scene TITLE
+wait 2
+push STUDIO -107
+wait 20
+expect-scene STUDIO
+press R
+wait 4
+down SELECT
+press R
+release
+wait 12
+shot play
+down A
+wait 4
+shot play_jam
+release
+wait 2
+down LEFT
+wait 4
+shot play_chord
+release
+wait 2
+press SELECT
+wait 16
+shot play_menu
+press B
+wait 4
+# SELECT + START: record. The count-in is four beats; the loop starts; two notes
+down SELECT
+wait 2
+press START
+release
+wait 20
+shot play_countin
+wait 70
+down A
+wait 6
+shot play_rec
+release
+wait 20
+down R
+wait 4
+release
+wait 20
+shot play_rec2
+press START
+wait 10
+shot play_taken
+# the drum pads
+press SELECT
+wait 16
+press A
+wait 6
+down A
+wait 4
+shot play_drums
+release
+wait 2
+down SELECT
+press START
+release
+wait 90
+down B
+wait 4
+release
+wait 20
+press START
+wait 10
+shot play_drums_taken

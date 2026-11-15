@@ -176,6 +176,10 @@ down SELECT
 press R
 release
 wait 20
+down SELECT
+press R
+release
+wait 20
 press DOWN
 wait 10
 fps start
