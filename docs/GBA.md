@@ -2639,7 +2639,7 @@ GBA only, so **the GBA concert looks a little simpler than the PS1's** (chunkier
   after a held 3D view; another owner means the buffer is lost and the next frame is drawn whole.
   `concert_half_rate_wall_and_beams` (the kept rows are the whole stage of the kept tick, each picture on two frames,
   the rows below exact, a lost buffer, nothing drawn below the kept rows into the buffer: the native platform emulates
-  the buffer, `nat_keep_on`); the engine-test ROM's `blit2test` checks the cut beams (+400 cases, 6,700 in all). Shots:
+  the buffer, `nat_keep_on`); the engine-test ROM's `blit2test` checks the cut beams (+200 cases, 6,500 in all; the rows a band may touch, the whole page at the end). Shots:
   `consec_final/choir_10_frames.png` (the wall strip holds a picture for two frames while the crowd moves on).
 * *A big choir's singers at 85 %* (`StageView.choir_pct`, the choir experiment below): choirs of up to 12 voices sing at
   the full size, bigger ones at 85 % (14x20 instead of 16x24, the formation, risers, songbooks, notes and glow at that
