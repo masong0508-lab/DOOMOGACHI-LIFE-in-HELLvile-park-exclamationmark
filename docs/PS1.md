@@ -1623,8 +1623,9 @@ ended on the 16-byte boundary where `.rodata` starts). The package's code is now
 was a copy of `town.c`'s `remove_edge` and is `rel_remove_at` now, and `update_resident_ex` takes the fewest game minutes an
 update may cover (`SIM_PASS_MIN` for the pass, `SIM_MIN_ELAPSED` for a fast-forward chunk, which also chooses the routine
 again) instead of a flag and a conditional line (-16 B). The EXE with the boot FMV ends at `0x801ee560` instead of
-`0x801ee570`: 72,336 -> **72,352 B** below the stack top (the 72 KB gate, 73,728 B, is the PS1-RAM package's; this package
-takes 16 B off the shortfall). The halfword edge move is GBA-only (`DOOMO_PLATFORM_GBA`); the PS1 keeps `memmove`.
+`0x801ee570` on `cb7d48d9`: 72,336 -> 72,352 B below the stack top; on the tip it landed on (`ad060127`, after CR-BODY's own
+-16 B) the same 16 B: `_end` 0x801ee560 -> 0x801ee550, 72,352 -> **72,368 B** (the 72 KB gate, 73,728 B, is the PS1-RAM
+package's; this package takes 16 B off the shortfall). The halfword edge move is GBA-only (`DOOMO_PLATFORM_GBA`); the PS1 keeps `memmove`.
 
 ## 13. Notes for the core
 
