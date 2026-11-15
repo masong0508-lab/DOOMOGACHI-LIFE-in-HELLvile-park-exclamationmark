@@ -1,6 +1,7 @@
 # CR5: deep parts in the creator (docs/CREATOR.md "CR5"). A new citizen, the Face tab, the Eye makeup rows
 # (the last three of the tab: Lashes, Eyelids, Eyeliner; Up from the top wraps to the last row), a value on
-# each, a name, shots of each row. (The Move in, save, load and reopen round trip is covered by test_creator.c and test_cr5.c.)
+# each, a shot of each row. This script does NOT move the citizen in or reopen them: that round trip (Move in,
+# save, load, reopen, the values still there) is covered by test_creator.c and test_cr5.c.
 scene CREATOR -1
 expect-scene CREATOR
 wait 30

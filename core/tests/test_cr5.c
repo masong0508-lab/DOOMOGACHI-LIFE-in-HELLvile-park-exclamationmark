@@ -226,12 +226,13 @@ TEST(cr5_a_damaged_look_section_never_fails_the_load)
     CHECK_EQ(chunk_of(chunk, sizeof(chunk)), 1u + 2u + 2u + 8u);   /* no nick, empty gene trailer, the section */
     CHECK(look_ext()->read(chunk, 1 + 2 + 2 + 8, 2));
     CHECK(look_pool_find(3, RUN_DEEP, &len) != NULL);
-    /* a section whose length runs past the chunk: refused, no run applied */
+    /* a section whose length runs past the chunk: the pool is dropped, the chunk still reads */
     chunk[3] = 0x40;
-    CHECK(!look_ext()->read(chunk, 1 + 2 + 2 + 8, 2));
+    CHECK(look_ext()->read(chunk, 1 + 2 + 2 + 8, 2));
     CHECK(look_pool_find(3, RUN_DEEP, &len) == NULL);
     /* half a length */
-    CHECK(!look_ext()->read(chunk, 1 + 2 + 1, 2));
+    CHECK(look_ext()->read(chunk, 1 + 2 + 1, 2));
+    CHECK(look_pool_find(3, RUN_DEEP, &len) == NULL);
     look_pool_reset();
 }
 
@@ -308,5 +309,43 @@ TEST(cr5_the_chunk_never_goes_over_its_limit)
     CHECK(look_ext()->size() <= DOOMO_SAVE_EXT_MAX);
     CHECK_EQ(chunk_of(chunk, sizeof(chunk)), look_ext()->size());
     CHECK_EQ(look_ext()->size(), 1u + look_gene_ext_size());          /* the nick count and the gene trailer only */
+    look_pool_reset();
+}
+
+/* CR5-FIX: a damaged pool section rejects only the pool; the nicknames and the gene bits stay (save.c
+ * resets a chunk whose read() returns 0, which would drop them too) */
+TEST(cr5_a_damaged_pool_keeps_nicknames_and_gene_bits)
+{
+    static uint8_t chunk[DOOMO_SAVE_EXT_MAX];
+    uint32_t n;
+    int len;
+    DoomoResident *r;
+    town_new(TOWN_FREEPLAY, 31u, TOWN_POP_PREMADE);
+    look_pool_reset();
+    r = town_res(12);
+    res_gset(r, GF_GLASSES, 3);
+    resident_sanitize(r);
+    /* a nickname for citizen 12 through the chunk itself: [1][id][hash][nick] */
+    memset(chunk, 0, sizeof(chunk));
+    n = chunk_of(chunk, sizeof(chunk));              /* the gene trailer only (no nick yet) */
+    CHECK(n > 0);
+    {
+        uint8_t c2[1 + 16 + 2 + 8 + 2 + 8];
+        uint32_t o = 0;
+        c2[o++] = 1;
+        c2[o++] = 12; c2[o++] = 0; c2[o++] = 0; c2[o++] = 0;       /* hash 0 never matches: the table keeps the entry */
+        memset(c2 + o, 0, 12); memcpy(c2 + o, "Nicky", 5); o += 12;
+        c2[o++] = 1; c2[o++] = 0;                                  /* one gene entry (id 12, its 6 bytes) */
+        memcpy(c2 + o, chunk + (n - 8), 8); o += 8;
+        c2[o++] = 40; c2[o++] = 0;                                 /* a pool length that is wrong */
+        c2[o++] = 1; c2[o++] = 2; c2[o++] = 3; c2[o++] = 4; c2[o++] = 5; c2[o++] = 6; c2[o++] = 7; c2[o++] = 8;
+        res_gset(r, GF_GLASSES, 0);                                /* the gene bits come back from the chunk */
+        CHECK(look_pool_put(3, RUN_DEEP, RUN_A, 4));
+        CHECK(look_ext()->read(c2, o, 2));                         /* not rejected */
+        CHECK_EQ(res_gget(town_res(12), GF_GLASSES), 3u);          /* the gene bits stayed */
+        CHECK(look_pool_find(3, RUN_DEEP, &len) == NULL);          /* the pool is empty */
+        /* and the nickname table still has its entry (written back, the nick count is 1) */
+        CHECK_EQ(look_ext()->write(chunk, sizeof(chunk)) > 0 ? chunk[0] : 255, 1);
+    }
     look_pool_reset();
 }

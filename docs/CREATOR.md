@@ -590,10 +590,16 @@ held; on the GBA the bust's effect frames change every 16 ticks).
   `LOOK_POOL_SAVED` to 1 there (about 1 KB resident: put 328 B, load 144 B, raw 24 B, save glue 232 B, the rest) and run the memcard
   round trip. The PS1 pool stays the old 384 B shim. Dreamcast: no change in RAM terms (`make -C dc` builds, `dc-host-test` ok;
   the Dreamcast harness and Flycast were not run).
-* **Known limits (review):** the pool section is dropped from the save when the chunk would pass 8 KB (the creator checks growth of the
-  pool alone, not later gene-trailer growth or a new nickname); a damaged pool section resets the nicknames and gene bits of that
-  chunk as well (not a load failure); the footer under an Eye makeup row can lose its first letter on the PS1 layout. Only 9 of
+* **Known limits (review):** the footer under an Eye makeup row can lose its first letter on the PS1 layout. Only 9 of
   A1a's 31 values are live.
+* **CR5-FIX (2026-11-15):** the save chunk budget now counts what a commit can add besides the pool: 8 B of gene trailer for the citizen
+  (over-counted: always) and 16 B for a nickname the citizen does not have yet. A commit that would push the pool out of the 8 KB
+  chunk is refused ("Wardrobe full! Take a part off.", the town, the nickname table and the pool stay as they were); a commit that
+  takes bytes out of the pool is never refused. A damaged pool section in a chunk now costs only the pool (it loads empty); the
+  nicknames and gene bits of that chunk are kept (`nickext_read` no longer returns 0 for it, so `save.c` does not reset them). The
+  `creator_deep.txt` header says what the script covers (no move in / reopen: that is in `test_creator.c` and `test_cr5.c`).
+  Tests: `cr5_fix_a_new_nickname_that_would_overflow_the_chunk_is_refused`, `cr5_a_damaged_pool_keeps_nicknames_and_gene_bits`.
+  PS1 resident bytes 0 (the code is under `LOOK_POOL_SAVED`); GBA: see ledger row 52.
 
 ## CR4 batch A2: hair (2026-11-13)
 

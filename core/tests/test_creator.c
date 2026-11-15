@@ -1338,3 +1338,51 @@ TEST(cr5_a_full_pool_refuses_the_commit_and_leaves_the_town)
     CHECK_EQ(cr.phase, CRP_MOVEIN);
     look_pool_reset();
 }
+
+/* CR5-FIX: the save chunk budget counts a new nickname and the gene trailer, not only the pool. A town
+ * whose chunk is 12 B under the limit (a big gene trailer, a pool nearly full): a commit that changes a
+ * run without growing it but adds a 16 B nickname would push the pool out of the chunk, so it is refused. */
+TEST(cr5_fix_a_new_nickname_that_would_overflow_the_chunk_is_refused)
+{
+    static uint8_t keep[LOOK_POOL_CAP], now[LOOK_POOL_CAP];
+    static const uint8_t lash1[2] = { DF_LASH, 1 };
+    uint8_t big[200];
+    uint32_t n0, n1, used, want;
+    int i, id = 5, rem;
+    town_new(TOWN_FREEPLAY, 5, TOWN_POP_PREMADE);
+    look_pool_reset();
+    for (i = 0; i < 254; i++) res_gset(town_res(i), GF_GLASSES, 3);       /* a trailer of 2 + 8 * 254 B */
+    CHECK_EQ(look_gene_ext_size(), 2u + 8u * 254u);
+    CHECK(look_pool_put(id, RUN_DEEP, lash1, 2));
+    want = DOOMO_SAVE_EXT_MAX - 12u - 1u - look_gene_ext_size() - 2u;    /* pool bytes for a chunk 12 B short */
+    memset(big, 1, sizeof(big));
+    look_pool_raw(&used);
+    for (i = 600; (rem = (int)(want - used)) > 208; i++) { CHECK(look_pool_put(i, RUN_NICK, big, 200)); look_pool_raw(&used); }
+    CHECK(look_pool_put(i, RUN_NICK, big, rem - 4));
+    look_pool_raw(&used);
+    CHECK_EQ(used, want);
+    CHECK_EQ(doomo_save_ext_extra->size(), DOOMO_SAVE_EXT_MAX - 12u);       /* the pool is in the chunk */
+    { const uint8_t *q = look_pool_raw(&n0); memcpy(keep, q, n0); }
+    scene_set(&base_scene, 0);
+    open_creator(id);
+    go_row(CR_TAB_FACE, row_index(CR_TAB_FACE, CR_DEEP0 + DF_LASH, RK_DEEP));
+    press(BTN_RIGHT);                                   /* lashes 1 -> 2: the run keeps its length */
+    CHECK_EQ(cr.dd[DF_LASH - DF_POOL_FIRST], 2);
+    memcpy(cr.nick, "Fluffy", 7);                       /* a nickname: +16 B in the chunk */
+    press(BTN_START);
+    press(BTN_A);
+    CHECK(cr.phase != CRP_MOVEIN);
+    CHECK(ui_toast_pending() > 0);
+    CHECK_STR(creator_nickname(id), "");
+    { const uint8_t *q = look_pool_raw(&n1); memcpy(now, q, n1); }
+    CHECK(n0 == n1 && memcmp(keep, now, n0) == 0);       /* the pool is as it was */
+    CHECK(doomo_save_ext_extra->size() <= DOOMO_SAVE_EXT_MAX);
+    frames(200, 0);
+    memset(cr.nick, 0, sizeof(cr.nick));                /* without the nickname the same commit fits */
+    press(BTN_START);
+    press(BTN_A);
+    CHECK_EQ(cr.phase, CRP_MOVEIN);
+    CHECK_EQ(pool_deep(id, DF_LASH), 2);
+    CHECK(doomo_save_ext_extra->size() <= DOOMO_SAVE_EXT_MAX);
+    look_pool_reset();
+}

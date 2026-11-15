@@ -203,8 +203,10 @@ static int nickext_read(const uint8_t *src, uint32_t len, uint16_t version)
         uint32_t gl = 2u + 8u * (uint32_t)(src[1 + n * NICK_REC] | (src[2 + n * NICK_REC] << 8));
         if (gl < rest) {
             const uint8_t *q = src + 1 + n * NICK_REC + gl;
-            uint32_t pl = (uint32_t)(q[0] | (q[1] << 8));      /* (a one-byte tail reads the next byte: it then differs) */
-            if (pl + 2u != rest - gl || !look_pool_load(q + 2, pl)) ok = 0;
+            uint32_t pl = rest - gl >= 2u ? (uint32_t)(q[0] | (q[1] << 8)) : 0xFFFFu;
+            /* CR5-FIX: a damaged pool section costs only the pool (empty then): the nicknames and the gene
+             * bits are kept and the chunk still reads as good, so save.c does not nicks_reset() them */
+            if (pl + 2u != rest - gl || !look_pool_load(q + 2, pl)) look_pool_reset();
             rest = gl;
         }
     }
@@ -1410,20 +1412,22 @@ static int deep_commit(int id)
     return 1;                           /* the PS1 keeps no pool on the card (its rows are not offered) */
 }
 #else
-    uint8_t run[2 * DF_POOL_N], old[2 * DF_POOL_N];
-    const uint8_t *o;
-    int rl = deep_run(cr.dd, run), ol = 0, ok;
-    uint32_t n, g = look_gene_ext_size();
-    o = look_pool_find(id, RUN_DEEP, &ol);
-    if (o) memcpy(old, o, (size_t)ol);
-    ok = look_pool_put(id, RUN_DEEP, run, rl);
-    /* only growth is refused: the whole pool must still fit the chunk beside the nicknames and the gene
-     * bits (8 B more for this record) */
+    uint8_t run[2 * DF_POOL_N];
+    int rl = deep_run(cr.dd, run), ol = 0;
+    uint32_t n, g = look_gene_ext_size(), extra = 8u;
+    look_pool_find(id, RUN_DEEP, &ol);
+    /* CR5-FIX: the whole chunk must still hold the pool beside what this commit can add: 8 B of gene
+     * trailer for this citizen (counted always: a safe over-count) and 16 B for a nickname that is new.
+     * Checked before the pool is touched (a put moves a run to the end), so a refusal leaves the pool
+     * byte for byte as it was. A commit that takes bytes out of the pool is never refused (the town may
+     * already be near the limit). */
     look_pool_raw(&n);
-    if (ok && rl > ol && 1u + (uint32_t)nick_count_used() * NICK_REC + (g ? g : 2u) + 8u + 2u + n > DOOMO_SAVE_EXT_MAX)
-        ok = 0;
-    if (!ok) look_pool_put(id, RUN_DEEP, ol ? old : NULL, ol);       /* back to what it was */
-    return ok;
+    n = n - (ol ? 4u + (uint32_t)ol : 0u) + (rl ? 4u + (uint32_t)rl : 0u);       /* the pool after the put */
+    if (cr.nick[0] && !creator_nickname(id)[0]) extra += NICK_REC;
+    if (n && rl >= ol &&
+        1u + (uint32_t)nick_count_used() * NICK_REC + (g ? g : 2u) + extra + 2u + n > DOOMO_SAVE_EXT_MAX)
+        return 0;
+    return look_pool_put(id, RUN_DEEP, run, rl);       /* 0 = the pool is full: it is left as it was */
 }
 #endif
 
