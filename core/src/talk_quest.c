@@ -23,8 +23,12 @@
  * romance, a date, an adult item or a danger. The care window, grief and a hostile or sad exchange never raise one
  * (talk_dm.c asks before it plans the line).
  *
+ * Compiled only where the build has Talk (DOOMO_HAS_TALK: the native host and the GBA today), like talk_dm.c and
+ * talk_scene.c: the PS1 and the Dreamcast link none of it (0 B resident; weak_talk.c holds the log hooks' defaults).
+ *
  * No stdio, no malloc, no floats.
  */
+#ifdef DOOMO_HAS_TALK
 #include <string.h>
 #include "doomo/doomo.h"
 #include "doomo/talk.h"
@@ -287,11 +291,18 @@ int talk_quest_haggle(int giver, uint32_t salt)
 }
 
 /* ---- pacing ------------------------------------------------------------------------------------ */
-static struct { uint8_t since, raised; uint32_t day; uint8_t has_day; } pace;
+/* The pace is one byte, the spare byte of the memory table's header (talk_mem_pace; no new .bss: the GBA's EWRAM stays as it
+ * was): bits 0-2 the conversations since the last raise (saturating at 7), bit 3 "a request was raised in the conversation
+ * that is running", bits 4-7 the town day of the last raise as (day mod 15) + 1 (0 none). A clash of two days 15 apart only
+ * ever delays a request by a day. */
+#define PACE_SINCE(p)  ((p) & 7u)
+#define PACE_RAISED    0x08u
+#define PACE_DAY(p)    (((p) >> 4) & 15u)
+#define PACE_TODAY()   ((unsigned)(doomo_town.day % 15u) + 1u)
 
 void talk_quest_reset(void)
 {
-    memset(&pace, 0, sizeof pace);
+    talk_mem_set_pace(0);
 #ifdef DOOMO_TALK_DEBUG
     memset(&dbg, 0, sizeof dbg);
 #endif
@@ -308,9 +319,7 @@ int talk_quest_raise_chance(void)
 #ifdef DOOMO_TALK_DEBUG
 void talk_quest_debug_arm(int kind)
 {
-    pace.since = 1;
-    pace.raised = 0;
-    pace.has_day = 0;
+    talk_mem_set_pace(1);                                      /* one conversation since, no raise today */
     dbg.armed = 1;
     dbg.kind = (uint8_t)kind;
 }
@@ -318,8 +327,9 @@ void talk_quest_debug_arm(int kind)
 
 int talk_quest_pace_ok(void)
 {
-    if (pace.since < 1 || pace.raised) return 0;
-    if (pace.has_day && pace.day == doomo_town.day) return 0;
+    unsigned p = talk_mem_pace();
+    if (PACE_SINCE(p) < 1 || (p & PACE_RAISED)) return 0;
+    if (PACE_DAY(p) && PACE_DAY(p) == PACE_TODAY()) return 0;
     return talk_quest_open_count() < TALK_QUEST_OPEN_MAX;
 }
 
@@ -328,16 +338,14 @@ void talk_quest_note_raise(void)
 #ifdef DOOMO_TALK_DEBUG
     dbg.armed = 0;
 #endif
-    pace.since = 0;
-    pace.raised = 1;
-    pace.day = doomo_town.day;
-    pace.has_day = 1;
+    talk_mem_set_pace((uint8_t)(PACE_RAISED | (PACE_TODAY() << 4)));
 }
 
 void talk_quest_note_end(void)
 {
-    if (!pace.raised && pace.since < 255) pace.since++;
-    pace.raised = 0;
+    unsigned p = talk_mem_pace();
+    if (!(p & PACE_RAISED) && PACE_SINCE(p) < 7) p++;
+    talk_mem_set_pace((uint8_t)(p & ~PACE_RAISED));
 }
 
 /* ---- the table ------------------------------------------------------------------------------------ */
@@ -384,7 +392,10 @@ int talk_quest_complete(int giver)
     int kind, st, bonus, pi, reward;
     const DoomoProblem *p;
     if (!talk_quest_state(giver, &kind, &st, NULL, &bonus) || !talk_quest_ready(giver)) return -1;
-    if (!talk_quest_derive(giver, kind, NULL, 0, 0, &q) && kind != TQK_COMPANY) return -1;
+    if (!talk_quest_derive(giver, kind, NULL, 0, 0, &q)) {          /* the one it was about is gone: only an item is still needed */
+        memset(&q, 0, sizeof q);
+        if (kind == TQK_FETCH || kind == TQK_TOY) return -1;
+    }
     p = problem_of(giver, &pi);
     if (kind == TQK_FETCH || kind == TQK_TOY) {
         if (kind == TQK_FETCH && p && p->kind == PROB_WANTS_ITEM && p->item == q.item) {
@@ -557,3 +568,5 @@ int talk_quest_quick(const TalkState *s, TalkSugg *out)
     }
     return n;
 }
+
+#endif /* DOOMO_HAS_TALK */

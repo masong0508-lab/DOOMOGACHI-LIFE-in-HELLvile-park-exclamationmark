@@ -395,7 +395,9 @@ static const NewsTmpl news_tmpl[NT_COUNT] = {
     [NT_TALK_MADE_UP]    = { "%s and %s made up at your place. Aww.", "ab" },
     [NT_TALK_GREAT_NIGHT] = { "Big night at yours! %s and %s still giggle.", "ab" },
     [NT_TALK_WALKOUT]    = { "%s walked out of a chat at yours. Bold.", "a" },
+#ifdef DOOMO_HAS_TALK
     [NT_TALK_QUEST]      = { "%s says you are a lifesaver. Small favours, big town.", "a" },
+#endif
 };
 
 /* The feed lives outside sim_s: sim_init (a population change, a load)

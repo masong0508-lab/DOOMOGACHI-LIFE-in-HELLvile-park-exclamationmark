@@ -290,6 +290,10 @@ void talk_mem_forget(int id)
     talk_trait_forget(id);                    /* TM1: an explicit trait set goes with the person */
 }
 
+/* TQ: the pace of requests lives in the spare byte of the table's header (no .bss of its own); not saved */
+unsigned talk_mem_pace(void) { return mem.pad; }
+void talk_mem_set_pace(unsigned v) { mem.pad = (uint8_t)v; }
+
 void talk_mem_reset(void) { memset(&mem, 0, sizeof mem); talk_trait_reset(); talk_quest_reset(); }   /* TQ: the pace too */
 
 /* ---- the chunk (only where the build has Talk) ----------------------------- */

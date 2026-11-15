@@ -752,6 +752,8 @@ int  talk_mem_like_known(int id, int which);
 /* TQ-QUESTS: the request id has put to the player, kept in the high bits of the memory entry (talk_save.c; no byte
  * more in the chunk). get: 1 when there is one (kind TQK_*, state TQS_*, days left 0..TQ_DAYS, bonus 0/1; a pointer
  * may be NULL). set: touches id and writes it, kind 0 clears it; 0 for nobody. talk_quest.c is the one caller. */
+unsigned talk_mem_pace(void);                       /* TQ: the spare header byte of the table: the pace of requests (talk_quest.c; not saved) */
+void talk_mem_set_pace(unsigned v);
 int  talk_mem_quest_get(int id, int *kind, int *state, int *days, int *bonus);
 int  talk_mem_quest_set(int id, int kind, int state, int days, int bonus);
 /* 1 if id said no to a romance act today (K-5): the gate's refused_today. */
@@ -1144,6 +1146,7 @@ typedef struct TalkState {          /* <= TALK_STATE_MAX, in the house's scene s
     int8_t    arg_a, arg_b;
     uint8_t   lull;                 /* turns in a row at low tension                  */
     uint8_t   idle_n;               /* idle chats since the player last spoke (3: prodded) */
+    uint8_t   q_kind;               /* TQ: the request on the table (TQK_*, 0 none); this byte and q_st fill the struct's two padding holes: no growth */
     uint16_t  idle_frames;
     uint8_t   exchange;             /* exchanges so far (the interruption gap)        */
     uint8_t   last_cut;             /* the exchange of the last interruption          */
@@ -1152,11 +1155,11 @@ typedef struct TalkState {          /* <= TALK_STATE_MAX, in the house's scene s
     uint8_t   nhist, nev;
     uint8_t   nlines;               /* lines of the current exchange so far           */
     uint8_t   nplan, plan_at;       /* the exchange's plan and the next entry         */
+    uint8_t   q_st;                 /* TQ: the request's state (TQ_ST_*: the giver's slot, haggled, asked more, closed) */
     uint16_t  beats_used;           /* a bit per TBEAT_* entered this session         */
     uint16_t  beats_recent;         /* a bit per TBEAT_* of the last 2 talks with these people
                                        (novelty; the house sets it from talk memory, 0 = none) */
     uint16_t  call_to;              /* TM2e: resident id + 1 of the one called over (TEV_ACT_CALL), 0 none; the scene lets them in */
-    uint8_t   q_kind, q_st;         /* TQ: the request on the table (TQK_*, 0 none) and its state (TQ_ST_*: the slot, haggled, asked more) */
     struct { uint8_t kind; int8_t who, to; uint8_t arg; } plan[6];
     uint16_t  topic_stack[TALK_STACK_MAX];   /* newest first                          */
     TalkHist  hist[TALK_HIST];      /* newest first                                   */

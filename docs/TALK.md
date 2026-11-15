@@ -1781,6 +1781,120 @@ Review fixes also: the 8:00 to 18:00 limit with a minor holds for the park, cafe
 nudge is best effort and lasts to the next re-decision; the call-over is refused by the plan when the room is full, but no
 scripted scene test plays one end to end.
 
+## 6q. Residents raise requests (TQ-QUESTS)
+
+Owner decision 2026-11-15 ("TALK QUESTS AND A CLEANER, PRETTIER UI", part 1). Now and then, not every conversation,
+a resident raises a request while you talk. You can accept, decline, haggle (what is in it for me) or ask more, through
+the multilevel reply. An accepted request is a row in the quest log and Talk remembers it. Files: `core/src/talk_quest.c`
+(new: the rules, the table, the pace), `talk_dm.c` (raises it, answers the four replies), `talk_gen.c`
+(`talk_gen_quest`, the slots `{target}` and `{item}`, the guards `qkind=` and `qphase=`, the entry `TGE_QUEST`),
+`talk_outcome.c` (applies the events), `talk_save.c` (the memory bits), `talk_scene.c` (the four quick replies),
+`story_questlog.c` (the log rows, through weak hooks), `core/data/talk/grammar/en/quests.tlk` (91 alternatives in 27 rules),
+`core/tests/test_talk_quests.c` (12 tests), the script `core/tests/scripts/home_talk_quest.txt`.
+
+### Sources and kinds
+
+| Source (`TQSRC_*`) | Kind (`TQK_*`) | What it asks | Ready when |
+|---|---|---|---|
+| the sim's problems queue | `FETCH` (`PROB_HUNGRY`; `PROB_WANTS_ITEM` asks for that item) | bring them a snack | the item is in the bag |
+| the sim's problems queue | `COMPANY` (`PROB_BORED`, `PROB_WANTS_FRIEND`, `PROB_LONELY`) | keep them company | a later talk of 3 player turns with them |
+| the sim's problems queue | `PEACE` (`PROB_FIGHT`, adults only) | make up with the other one | a mediation, or the two are no longer on bad terms |
+| a favour | `FETCH` (their liked food, else a cupcake), `TOY` (a child's), `MESSAGE` (say hi to a friend of theirs), `COMPANY` | | the item; a talk with the one named; a talk of 3 turns |
+| Talk-born | `CHEER` (cheer up a friend who is sad or angry now), `SECRET` (keep it a day; adults, best friends only), `PEACE` (a rival) | | the friend's mood went up in a talk; a day has passed |
+
+The pick is weighted (a problem the sim already has counts 3 times as much; traits lean it: a lazy or glutton giver
+asks for a fetch, an outgoing one for company or a message, a shy one to carry a hello, a kind or cheerful one to cheer
+someone up). What a request is ABOUT (the item, the person) is not stored: `talk_quest_derive` finds it again the same
+way every time (the food they like, the friend or rival with the smallest hash), so the line, the log and the hand-in
+always agree. A request is never about someone standing in the room.
+
+### Pacing (the drama manager's part)
+
+`talk_dm.c quest_after` plans the request as a second line right after an ordinary answer, and only when all of this
+holds: a calm warm exchange (turn 2 on, tension at most 2, engagement 50 or more, no argument, no problem, rivalry,
+romance or wind-down beat); the player's act is not hostile, vulnerable (comfort, sympathy, distress) or an accusation;
+the care window is shut and the speaker lost nobody lately and no grief topic is in the thread (K-10, K-11); the answer
+was not a no; and the pace allows it. **The pace** is one byte (the spare byte of the talk memory header, not saved):
+at least one conversation since the last raise (so never twice in a row, and a fresh load never raises in its first
+conversation), none yet this town day, fewer than 4 open requests, then 14% of the calm answers. A resident holds one
+request at a time; after a hand-in or a no there is a 3 day cooldown. Measured in `quest_pacing`: 300 conversations,
+see the numbers below.
+
+### The four replies
+
+While a request is on the table the quick replies are its four: "Sure, I'll do it." (`TA_YES`), "Sorry, I can't."
+(`TA_NO`), "What's in it for me?" (`TA_ASK_FAVOR`), "Tell me more." (`TA_ASK_ABOUT`). Typed or picked acts map through
+`talk_quest_reply_class` (yes, agree, promise, offer, nod accept; no, disagree, shake head, dismiss decline; ask-favour
+haggles; the questions ask more). The giver answers in their own voice (`quests.tlk`, phases `accept`, `decline`,
+`haggle_yes`, `haggle_no`, `more`):
+
+* **Accept**: event `TEV_QUEST_ACCEPT` (slot, kind, bit 4 = the haggle won); the apply adds it to the table.
+* **Decline**: no guilt (the lines say so); `TEV_QUEST_DECLINE`, a little bond lost (-1), a 3 day cooldown. Never a mark on a child.
+* **Haggle**: once a request. The giver gives in by their nature (`talk_quest_haggle`: the bond band, kind, loyal or
+  cheerful +, mean, snobbish, gloomy or ambitious -, strangers and rivals never; one tie-breaking coin). A yes pays half
+  again (`reward x 3 / 2`, bit stored in the table); a no leaves the request standing ("take it or leave it").
+* **Ask more**: an explanation per kind (`more.<kind>`); the request stays and the four replies come back.
+
+Anything else the player says lets the request lapse with the conversation (nothing is lost: it was only raised; the
+pace counts it). The talk after an accepted request opens with a hand-in line when the request is ready (`done`, the
+reward, +3 bond, a headline), a reminder when it is still open (`late`, 60%) or a "never mind" when it ran out of days
+(`expired`, -1 bond).
+
+### Memory, the quest log, outcomes
+
+* **Memory: 0 B more.** The request is in the 10 high bits of the giver's `TalkMem.spare`: kind (4), state (2: active,
+  ready, settled), bonus (1), days left (3). The chunk keeps its 12 B an entry (`TALK_SAVE_WORST` unchanged, `SAVE_EXT_MAX_TALK`
+  448 untouched); an old chunk has 0 there and reads as no request; a bad field is dropped at load. An open request waits
+  7 town days (`TQ_DAYS`), then it is "settled with 0 days" (a "never mind" waiting to be said); cooldowns count down
+  to nothing; a save from long ago has every wait run out. `talk_mem_end` keeps the bits and an entry that holds a
+  request is never the one a 25th person evicts. The pace byte is the unused byte of the table's header (`talk_mem_pace`).
+* **Quest log.** `story_questlog.c` has no add function (its rows come from the story's tables), so the log reads
+  `talk_quest_log_count` / `talk_quest_log_row` (weak defaults in `weak_talk.c`: none where Talk is not linked). The
+  Side tab lists open requests first ("Bring Nana a cupcake.", "Go back to Nana.") with the giver, "Request", the reward
+  and the days left. The list buffer is shared (`LIST_MAX` unchanged; the story rows leave room for 6 requests): GBA EWRAM
+  unchanged. This is the only line of the story stream's file Talk touched, say so to STORY.
+* **Outcomes** (`talk_outcome_apply`): `TEV_QUEST_ACCEPT` -> `talk_quest_add` (the rules again, 4 open at most);
+  `TEV_QUEST_DONE` -> `talk_quest_complete` (the item taken or the sim's own problem relieved through
+  `sim_problem_resolve`, H$ paid: 20 fetch, 12 toy or message, 10 company or secret, 15 cheer, 30 peace, half again with the
+  bonus), the bond (through the daily caps like every bond change), and one headline `NT_TALK_QUEST` for an adult giver
+  (never a child); `TEV_QUEST_LAPSED` -> `talk_quest_lapse_ack`. `TalkOutcome` has `quests_new / declined / done / lapsed`
+  and `reward`. After the summary `talk_quest_end` marks what the talk met: a message told, someone cheered up, time
+  spent, a fight made up, a secret kept a day.
+
+### Kid rules (tables in `talk_quest.c`, exhaustive tests)
+
+A minor giver, or a minor in the room or at the controls, gets only a snack, a toy, a message, company or cheering up,
+and a message or a cheer-up is always about someone of the giver's own stage (never across). `TOY` is a child's
+request. `PEACE` and `SECRET` are for adults in adult rooms only. No kind is a place, a romance, a date, an adult item
+or a danger (an item must be a food or a plushie or board game, never `talk_act_item_adult`, never a key item), so a
+child is never sent anywhere and never asked for anything an adult must not ask a child. There is no romance or date
+kind in any room. Nothing weakens `mature_adult_ok` or the kid-cast list (neither is read or changed here). Grief, the care
+window and hostile or sad exchanges never raise a request. The hug rule is untouched.
+
+### Tests (`core/tests/test_talk_quests.c`, 12 tests, each fails without its code)
+
+`quest_kind_tables_kid_safe` (kind x giver x room x target, every item), `quest_reply_classes`,
+`quest_pick_every_resident` (every resident, both room kinds, 8 salts: the rules hold, the derive agrees),
+`quest_sources` (hungry, wants an item, bored, wants a friend, lonely and a fight become their requests; a problem
+leans the pick; a cheer-up only for someone who is down), `quest_lines_every_phase` (every phase x kind, adult and a child
+in a kids' room: a line, lint clean, no swear, no hole, the article right), `quest_pacing` (the counters; 300
+conversations, never two in a row, one a town day), `quest_never_when_hurting` (hostile, distress, comfort and grief
+topic sessions: 0 requests; the control talk raises some), `quest_accept_and_hand_in` (the session end to end: the
+four quick replies, the table, the log row, "Go back", the thanks line, the item taken, H$ paid, the bond, the headline,
+the cooldown, a second hand-in does nothing), `quest_decline_haggle_more`, `quest_ready_by_kind`,
+`quest_memory_and_save` (every value through the chunk, an old chunk, a bad field, the days, eviction, 0 B more),
+`quest_kid_sessions` (600 sessions with a child as the giver or in the room: only kid kinds, no unsafe line). The script
+`home_talk_quest` plays one accepted request through SCENE_TALK with the pad (arm, two compliments, the four replies,
+"tell me more", accept, leave, the quest log's Side tab, the next talk's thanks) at 240x160 and 320x240; the runner gained
+`talk-quest-arm`, `talk-quest-give`, `expect-talk-quest` and `expect-talk-quest-goal`.
+
+### Costs
+
+`TalkState` unchanged (964 B native; the two new bytes use the struct's padding holes). GBA: `.bss` 254,836 B before and
+after (`make -C gba sizes`: EWRAM and IWRAM identical, `.text` +8,920 B and `.rodata` +4,824 B in ROM; the Talk quest code
+is linked on the GBA because the quest log references it). PS1: Talk is not linked, so 0 B resident of the 12 KB share (the
+EXE is untouched). `TALK_en.BIN` 909,052 -> 913,148 B.
+
 ---------------------------------------------------------------------------
 
 ## 6q. Talk on the PS1: the re-measure and the plan (TKP0-MEASURE)

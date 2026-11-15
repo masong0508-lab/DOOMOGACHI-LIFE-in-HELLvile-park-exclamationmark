@@ -28,6 +28,12 @@ DOOMO_STATIC_ASSERT(SIDE2_ROW >= STORY_SIDE_MAX && SIDE2_ROW + STORY_SIDE2_ROWS 
 /* TQ-QUESTS: the Side tab also lists the requests residents put to you in Talk (rows TQ_ROW + i, read through
  * talk_quest_log_row; none where Talk is not linked). They share the same list: the story rows leave them room. */
 #define TQ_ROW 200
+#ifdef DOOMO_HAS_TALK
+#define TQ_LOG 1
+#else
+#define TQ_LOG 0                       /* the PS1 has no Talk: the request code below compiles out (0 B resident) */
+#endif
+#define TQ_IS(q) (TQ_LOG && (q) >= TQ_ROW)
 DOOMO_STATIC_ASSERT(TQ_ROW + TALK_QUEST_LOG_MAX <= 255 && LIST_MAX > TALK_QUEST_LOG_MAX + STORY_SIDE_MAX, questlog_talk_rows_fit);
 static uint8_t list[LIST_MAX];
 static int nlist;
@@ -42,7 +48,7 @@ static int nlist;
 static int side_class(int e)
 {
     int st;
-    if (e >= TQ_ROW) return 0;
+    if (TQ_IS(e)) return 0;
     if (e >= SIDE2_ROW) {
         st = story_side2_state(e - SIDE2_ROW);
         return st == 2 ? 0 : st == 3 ? 2 : 1;
@@ -57,15 +63,15 @@ static void collect(void)
     nlist = 0;
     if (tab == QT_SIDE) {
         uint8_t all[LIST_MAX];
-        int n = 0, nreq = talk_quest_log_count();
+        int n = 0, nreq = TQ_LOG ? talk_quest_log_count() : 0;
         if (nreq > TALK_QUEST_LOG_MAX) nreq = TALK_QUEST_LOG_MAX;
         for (q = 0; q < nreq; q++) list[nlist++] = (uint8_t)(TQ_ROW + q);        /* under way, newest talk first */
         for (q = 0; q < story_side_count() && q < STORY_SIDE_MAX; q++)
             if (story_side_state(q) != SIDE_LOCKED) all[n++] = (uint8_t)q;
-        for (q = 0; q < STORY_SIDE2_ROWS && n < LIST_MAX - TALK_QUEST_LOG_MAX; q++)
+        for (q = 0; q < STORY_SIDE2_ROWS && n < LIST_MAX - (TQ_LOG ? TALK_QUEST_LOG_MAX : 0); q++)
             if (story_side2_visible(q)) all[n++] = (uint8_t)(SIDE2_ROW + q);
         for (c = 0; c < 3; c++)
-            for (i = 0; i < n; i++) if (side_class(all[i]) == c && nlist < LIST_MAX) list[nlist++] = all[i];
+            for (i = 0; i < n; i++) if (side_class(all[i]) == c && (!TQ_LOG || nlist < LIST_MAX)) list[nlist++] = all[i];
     } else if (tab == QT_ITEMS) {
         for (i = 1; i < ITEM_COUNT; i++) if (inv_count(i) > 0) item_ids[nitems++] = (uint8_t)i;
     } else if (tab == QT_TROPHIES) {
@@ -160,7 +166,7 @@ static void draw_story(int x, int y, int w, int h, int style)
 static int side_state_of(int e)
 {
     int st;
-    if (e >= TQ_ROW) {                                   /* a Talk request: under way, or ready to hand in */
+    if (TQ_IS(e)) {                                      /* a Talk request: under way, or ready to hand in */
         TalkQuestRow r;
         return talk_quest_log_row(e - TQ_ROW, &r) && r.state == TQS_READY ? SIDE_READY : SIDE_ACTIVE;
     }
@@ -202,7 +208,7 @@ static void draw_side(int x, int y, int w, int h, int style)
             ui_cursor(x - 6, yy + 3);
         }
         plat_text(x, yy, icon, s == SIDE_DONE ? PAL_UI_MINT_D : s == SIDE_READY ? PAL_UI_RED : PAL_UI_GOLD);
-        if (q >= TQ_ROW) {
+        if (TQ_IS(q)) {
             TalkQuestRow r;
             doomo_snprintf(buf, sizeof(buf), "%s", talk_quest_log_row(q - TQ_ROW, &r) ? r.goal : "?");
         } else
@@ -214,11 +220,11 @@ static void draw_side(int x, int y, int w, int h, int style)
     if (sel < nside) {
         int q = side_ids[sel], s = side_state_of(q), dy = y + list_h + 4;
         TalkQuestRow tr;
-        int g, tq = q >= TQ_ROW && talk_quest_log_row(q - TQ_ROW, &tr);
+        int g, tq = TQ_IS(q) && talk_quest_log_row(q - TQ_ROW, &tr);
         const DoomoResident *gr;
         const char *kind;
         char tq_hint[40];
-        if (q >= TQ_ROW && !tq) return;
+        if (TQ_IS(q) && !tq) return;
         g = tq ? tr.giver : q >= SIDE2_ROW ? (int)doomo_side_rows[q - SIDE2_ROW].giver : story_side_giver(q);
         gr = town_res(g);
         kind = tq ? "Request" : q >= SIDE2_ROW ? side2_kind_name(q - SIDE2_ROW) : story_side_kind_name(story_side_kind(q));

@@ -135,9 +135,14 @@ enum {
     /* (T0, docs/TALK.md 5.5) what a Talk conversation can post, one per
      * conversation at most (T6); kid-safe wording, none for a minor-only row */
     NT_TALK_ROW, NT_TALK_MADE_UP, NT_TALK_GREAT_NIGHT, NT_TALK_WALKOUT,
+#ifdef DOOMO_HAS_TALK
     NT_TALK_QUEST,                  /* TQ-QUESTS: a request handed in (an adult giver; never a child) */
+#endif
     NT_COUNT
 };
+#ifndef DOOMO_HAS_TALK
+#define NT_TALK_QUEST NT_COUNT      /* a build without Talk has no such headline (no table slot, no text: 0 B on the PS1) */
+#endif
 /* Post a headline: template, table index, NEWS_IDS(...) or a number. */
 void sim_news_rec(int tmpl, int arg8, uint32_t v);
 /* The record behind sim_news(index), or NULL. */
