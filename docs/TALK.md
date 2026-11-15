@@ -28,6 +28,7 @@ Contents:
 [6h The multilevel composer (design, TM0)](#6h-the-multilevel-composer-design-tm0-design-2026-11-15) ·
 [6i Traits and the personality API (TM1)](#6i-traits-and-the-personality-api-tm1-traits) ·
 [6k The pointer (T9)](#6k-the-pointer-t9) ·
+[6l The coherence lint and the Q8 census check (TM2b)](#6l-the-coherence-lint-and-the-q8-census-check-tm2b) ·
 [7 Sizes](#7-sizes-measured) ·
 [8 Tests](#8-tests) ·
 [9 Differences from the design](#9-differences-from-the-design) ·
@@ -1280,6 +1281,96 @@ The 168 B of GBA EWRAM are the whole cost of explicit trait sets (the record its
 grow): where a build has no creator that sets traits, shrink `TALK_TRAIT_CUSTOM_MAX`.
 `make -C gba test-talk` and the native script `home_visit` fail on the base the same way
 ("expected scene TALK, got DIALOG"); they are not caused by this package.
+
+---------------------------------------------------------------------------
+
+## 6l. The coherence lint and the Q8 census check (TM2b)
+
+Spec: `docs/design/talk/TALK_MULTILEVEL.md` sections 7 and 9. No engine change and no line deleted:
+the bank is 8,891 alternatives before and after (`talkc --stats`).
+
+### The lint (`core/tools/talkc_lint.py`, family TK13)
+
+talkc derives the layer (a reaction, b content, c colour, d hook, x kept as is) and the reply kind
+(accept agree deny refuse deflect askback say) of every rule from its name, its `act:` and its
+guards, and reports ten rules. `make -C core talk-check` and every strict `talkc` build run it.
+
+| Rule | Fails when | Policy | Findings now |
+|---|---|---|---:|
+| L1 | a core rule's `act:` is not a legal reply to its entry act | fails at once | 0 |
+| L2 | the reply kind and a `stance=` guard disagree (an agree reads the entry act's side) | ratchet | 0 |
+| L3 | a question about a topic (ask_about, ask_opinion, change_topic, gossip) answered with a line that names no topic and has no topic guard | ratchet | 0 (was 57) |
+| L4 | "it", "that", "this", "them" with no `topic` guard and no slot (the asked acts and opine_pos / opine_neg) | ratchet | 0 (was 90) |
+| L5 | a request (ask_favor, invite) turned down, or a question dismissed, with no reason, counter or question | ratchet | 31 |
+| L6 | a filler word or under 12 visible characters as the whole reply, outside backchannel, wave, nod, high_five, laugh, greet, farewell, hug, give, thank | ratchet | 3 |
+| L7 | a `follow.*` rule that cannot follow its acts (acts.tsv), repeats the question just asked, or asks about "it" with no topic | ratchet | 5 |
+| L8 | `depth>=2` with no `rel=` or `fact.*`; `depth>=3` without best, partner or family | fails at once | 0 (no rule uses depth yet) |
+| L9 | a `trait=` guard on an edgy trait (hot-headed, romantic, snob, jealous, mean) without `adults_only&!kid_present`; any trait guard in a refusal, grief, distress, pet, kid or K-7 bank | fails at once | 0 (no rule uses trait yet) |
+| L10 | "anyway", "by the way", "speaking of" with no topic slot in a core rule | ratchet | 35 |
+
+The ratchet is `core/data/talk/lint_baseline.tsv` (code, rule, text; 74 lines). A finding that is not
+in it fails the build. A baseline line with no finding fails the build too: delete it. So the count only
+goes down. `python3 core/tools/talkc.py --lint` prints the table; `--lint-update` rewrites the file
+(use it only to remove lines). A fix is a guard (`topic`, `!topic`) or a tag (`tags: generic` with a
+reason, `tags: closes` for a door that is meant to close), never a deletion.
+
+Fixes in TM2b: 108 lines got a line guard (86 `guard: topic` where the line says "it" or "that",
+22 `guard: !topic` where it says nothing of a topic) and the three `*.notopic` rules got
+`tags: generic` ("it" there is not the topic). The same text still exists; it speaks only when it is
+coherent.
+
+Seeded bad grammars: `core/tests/talk_bad/gen_lint_l1.tlk` to `gen_lint_l10.tlk`, one per rule
+(`talkc --selftest` now refuses 74 seeded inputs, 10 more than before). The selftest also checks the
+ratchet: the real bank passes its baseline, the bank plus one new L3 rule fails, and a baseline line
+with no finding fails.
+
+### Q8 in the census (report mode)
+
+`core/tools/talk_census.c`: `talk_census_q8()` and the codes `QF_Q8_KIND`, `QF_Q8_CONTENT`,
+`QF_Q8_VOICE`, `QF_Q8_HOOK`, `QF_Q8_FILLER`, `QF_Q8_UNKNOWN`. Report mode: the counts are in
+`CensusResult.q8[]` (failed) and `q8_n[]` (applied), printed after the S3 line; an exchange that fails
+Q8 is **not** a quality failure and `talk_census_check()` never returns these codes. `--q8-fails FILE`
+writes each failing exchange (the sample row with the core alternative ids; `talk_sample.py` maps them
+to file and line). The old engine has no plan, so each check reads what the trace has:
+
+* Q8a: the line's own stance (pro / con) against the side the reply takes (an opine, an agree or a
+  disagree read against the player's opinion), for ask_opinion, ask_about, opine_pos, opine_neg.
+* Q8b: the player gave a topic in a topic act; the reply must say the topic or an association, or its
+  core alternative's guard must need the topic (a slot, `topic`, likes / fears / hates, stance, root).
+* Q8c: voice guards against the sliders as the speaker has them (effective equals stored until TM2c adds
+  the effective sliders), and `talk_trait_bias_id(..., minor_room=1)` must give deny 0 and mood >= 0.
+* Q8d: a no or a deflection of a request (ask_favor, invite) leaves a question or a hand-off; a resident
+  does not hand the player's own question straight back. The follow-up and adjacency checks wait for the
+  drama manager in the census (TM2c).
+* Q8e: the answering speaker's lines total 20 visible characters or more, unless the player's act is a
+  gesture, greeting, farewell, thank you or laugh; never a filler word alone.
+* Q8f: an unknown line (TA_UNKNOWN is in the grid) is not answered with a joke, a backchannel or a topic
+  change unless a question is asked.
+
+Smoke baseline (20,000 contexts, seed 20261108, this machine):
+
+| | origin (no guards) | after the guards |
+|---|---:|---:|
+| exchanges with a Q8 failure | 2,165 (10.82%) | 1,543 (7.71%) |
+| Q8a reaction | 137 of 509 (26.9%) | 140 of 489 (28.6%) |
+| Q8b content | 1,748 of 3,992 (43.8%) | 1,084 of 3,992 (27.2%) |
+| Q8c colour | 0 of 20,000 | 0 of 20,000 |
+| Q8d hook | 130 of 2,954 (4.4%) | 130 of 2,954 (4.4%) |
+| Q8e filler | 104 of 20,000 (0.52%) | 104 of 20,000 (0.52%) |
+| Q8f unknown word | 93 of 395 (23.5%) | 93 of 395 (23.5%) |
+
+The weighted share of topic-blind replies (Q8b) fell by a third with the guards. What is left is the 296
+generic listener lines of the topic acts (tell, answer, agree, disagree, continue: spec section 9, N1b):
+they are left for TM2c and TM2d, which compose the reply from layers. TM2e turns the Q8 budget (Q8a, Q8e,
+Q8f at 0; Q8b, Q8c, Q8d at most 0.5% each) into a test.
+
+Measured: GBA `.bss` / `.iwram` / `.iwram_bss` identical to the base, ROM `.rodata` +256 B (108 guard terms); PS1 EXE unchanged (72,336 B below the stack top); core tests 1,244 to 1,246.
+
+Tests: `talk_census_q8_report` (the smoke run prints the table, every check applied, none fails an
+exchange, the quality numbers are unchanged) and `talk_census_q8_checks` (each check fails on a built
+exchange that breaks its rule and passes on the repaired one). Smoke census with the guards, against
+origin: Surface 17,078 against 17,067 distinct, Skeleton 17,016 against 17,008, Meaning 5,130 against
+5,126, conversations 1,000 of 1,000 in both, quality 20,000 passed in both, Q5 repeats 1 against 3.
 
 ---------------------------------------------------------------------------
 
