@@ -1710,7 +1710,7 @@ painted choices (`part_live_drawable`: Tail 1/16, Aura 1/8), as for every script
 
 Measured on `ee4e053` (clean worktree) and `ee4e053` + CR-BODY (clean builds, `cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON`,
 `PSN00BSDK_LIBS=/opt/psn00bsdk/lib/libpsn00b`): `_end` 0x801ee3e0 before, 0x801ee3d0 after, so 16 B less resident
-(72,720 B -> 72,736 B = 71.0 KB below the stack top with the boot FMV, the elf2exe line prints "71 KB left" both times: still 992 B under the 72 KB plan gate, as before this package, until SPEED PS1-RAM). The first
+(72,720 B -> 72,736 B = 71.0 KB below the stack top with the boot FMV, the elf2exe line prints "71 KB left" both times: still 992 B under the 72 KB plan gate, as before this package, until SPEED PS1-RAM). Re-measured 2026-11-15 after the rebase onto `d5305653` (clean builds of the tip and tip + CR-BODY): `_end` 0x801ee580 -> 0x801ee570, 72,304 B -> 72,320 B below the stack top (the tip itself moved by 432 B since the numbers above, from other streams; CR-BODY is -16 B on either). The first
 version of the step (a function plus a seven column table) was +96 B; the head size step is now a 16 byte array read inline
 in `sanitize` before its existing clamp, and the body table is back to six one-byte columns (96 B, was 120 B as int16).
 The 6 new body types are table rows (method P, age class ALL: no new age row); their catalog rows and icons are overlay

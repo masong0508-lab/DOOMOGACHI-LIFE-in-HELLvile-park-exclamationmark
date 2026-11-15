@@ -796,7 +796,7 @@ plugs in).
   the Dreamcast on Flycast (`make -C dc ui-compare`, the script is in the default list and the checker runs on its shots).
   The checker has a self-test (`parts-check`: a slider that moves nothing fails, an animation does not count).
 * **Memory.** PS1: the resident table is 96 B + a 16 B step array (was 120 B) and `sanitize` gained one load and add:
-  `_end` 0x801ee3e0 -> 0x801ee3d0 (16 B less: 72,720 -> 72,736 B below the stack top = 71.0 KB, so the tree is still 992 B under the 72 KB plan gate until SPEED PS1-RAM, docs/PS1.md "CR-BODY");
+  `_end` 0x801ee3e0 -> 0x801ee3d0 (16 B less: 72,720 -> 72,736 B below the stack top = 71.0 KB, so the tree is still under the 72 KB plan gate until SPEED PS1-RAM; on the rebased tip 72,304 -> 72,320 B, docs/PS1.md "CR-BODY");
   the catalog rows, the six part icons and the slider table are overlay / disc data. GBA: `.bss`, `.iwram`, `.iwram_bss`,
   `.data` identical, `.text` +328 B and `.rodata` +2,624 B in ROM (docs/GBA.md ledger row 48).
 * **Not done here / next.** The language packs do not carry the slider and body names yet: the labels are in English
