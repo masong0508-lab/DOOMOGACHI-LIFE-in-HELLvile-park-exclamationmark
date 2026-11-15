@@ -206,16 +206,19 @@ static int concert_lite(void)
 #endif
 }
 
-/* (G2-CO) the choir's singers' size on this port, in % (docs/GBA.md "G2-CO", the choir experiment): the full size
- * everywhere but where a measured smaller size buys the choir its 30 fps */
+/* (G2-CO) the choir's singers' size on the GBA, in % (docs/GBA.md "G2-CO", the choir experiment): with the flame and
+ * 15 Hz trades a 12-voice choir holds 30 fps at the full size, a 16-voice one at 85 % (100 %: 3 frames of 50 ms in
+ * 130). So up to CONCERT_CHOIR_FULL_N voices sing at the full size, bigger choirs at CONCERT_CHOIR_PCT. Elsewhere
+ * the full size. */
 #if !defined(CONCERT_CHOIR_PCT)
-#define CONCERT_CHOIR_PCT 100
+#define CONCERT_CHOIR_PCT 85
 #endif
+#define CONCERT_CHOIR_FULL_N 12
 static void view_trades(void)
 {
     C.v.lite = concert_lite();
 #if !defined(DOOMO_PLATFORM_PS1) && defined(DOOMO_PLATFORM_GBA)
-    C.v.choir_pct = CONCERT_CHOIR_PCT;
+    C.v.choir_pct = C.cast.n > CONCERT_CHOIR_FULL_N ? CONCERT_CHOIR_PCT : 100;
     C.v.minis = C.minis;
 #endif
 }
