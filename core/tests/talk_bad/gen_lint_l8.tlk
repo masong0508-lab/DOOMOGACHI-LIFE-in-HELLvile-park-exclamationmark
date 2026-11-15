@@ -1,0 +1,4 @@
+# expect: TK13 L8
+# TK13 l8: seeded bad grammar (TM2b). depth 2 with no rel= or fact.* guard.
+@rule core.tell.bad guard: depth=2 act: backchannel
+  "I have a story, {you}. It is long."

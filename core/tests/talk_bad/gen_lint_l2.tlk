@@ -1,0 +1,4 @@
+# expect: TK13 L2
+# TK13 l2: seeded bad grammar (TM2b). stance=pro with a reply act that says no.
+@rule core.ask_opinion.bad guard: stance=pro act: opine_neg
+  "I dislike {x:pl}."

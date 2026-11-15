@@ -1,0 +1,80 @@
+# core/data/talk/lint_baseline.tsv - the coherence lint's frozen findings (owner: TK; TM2b;
+# docs/design/talk/TALK_MULTILEVEL.md 7.1, docs/TALK.md "The coherence lint").
+# CODE<TAB>RULE<TAB>TEXT: a finding talkc.py --lint reports today. A finding that is not here fails the
+# build; a line here that no longer matches a finding fails it too (delete the line): the count only
+# goes down. Fix with a guard (topic / !topic) or a tag (generic / closes), never by deleting a line of
+# the bank. Rewrite with: python3 core/tools/talkc.py --lint-update
+L5	core.ask_about.change_tx	Talking about {x} reminds me of something else entirely.
+L5	core.ask_about.pass	No {x} talk before lunch. House rule.
+L5	core.ask_about.pass	That's a question for somebody smarter. Or taller.
+L5	core.ask_about.swerve	Good question. Better question: {like:pl}. Go.
+L5	core.ask_about.swerve	I'll answer that right after we cover {like:pl}. So, never.
+L5	core.ask_about.swerve	Never mind that. Let's do {like:pl}. I've got a whole speech.
+L5	core.ask_about.swerve	That reminds me of {like:pl}. Everything reminds me of {like:pl}.
+L5	core.ask_about.uo4	Let's move on, I'm not sure I've got a good answer for that.
+L5	core.ask_advice.dismiss	If I had advice I'd keep it. It's lonely out there.
+L5	core.ask_fact.dismiss	I don't do facts before noon. It's a policy.
+L5	core.ask_fact.dismiss	Next question. That one's got a wrong smell.
+L5	core.ask_fact.un5	I don't know that one. Let's pick something easier.
+L5	core.ask_favor.kid2	No, sorry. I have to be somewhere. Over there.
+L5	core.ask_favor.kid2	Nope! My mum says no strangers. Or favours, or soup.
+L5	core.ask_favor.no2	Mmm, no. I'd do it badly. You'd be sad.
+L5	core.ask_favor.no2	No can do. I've a standing appointment with a chair.
+L5	core.ask_favor.no2	No, sorry. It's not you. It's the thing you asked.
+L5	core.ask_favor.no2	No, thank you. It's a polite no, with a bow on.
+L5	core.ask_favor.no_tx	Not today, I'm afraid. I'm swamped.
+L5	core.ask_favor.un2	Not today, I'm afraid. I'm properly swamped.
+L5	core.ask_opinion.pass	I keep my opinions on {x:pl} to myself. And one duck.
+L5	core.ask_opinion.uo6	No opinion, really. Next subject, please.
+L5	core.ask_who.dismiss	I don't gossip. On weekdays.
+L5	core.ask_who.dismiss2	Names are rude. I'm politely not doing them.
+L5	core.ask_who.dismiss2	That's not for me to say. Or for me to hear.
+L5	core.invite.no	Rain check. Fog check. Some kind of check.
+L5	core.invite.no_wx	Sorry, I'm wiped. Next time, I promise.
+L5	core.invite.um2	Not this time, I'm afraid. I've got a lot on.
+L5	core.invite.um2	Sorry, I'll have to pass. Another time, I hope.
+L5	core.invite.w_no	Ah, I wish I could. I'm already booked. By my sofa.
+L5	core.invite.w_no_blunt	Nah. Crowds. Pass.
+L6	core.ask_feeling.nox	Fine. Eat.
+L6	core.joke.lord_vapula_v1	hmph.
+L6	core.tell.r_back	Oh? Go on.
+L7	follow.cool	follow.cool
+L7	follow.cool.blunt	follow.cool.blunt
+L7	follow.cool.polite	follow.cool.polite
+L7	follow.open	Pick anything. I'll pretend I picked it too.
+L7	follow.warm.open	follow.warm.open
+L10	core.apologize.bonejangles_v1	Clack. It's fine. I reset every night anyway.
+L10	core.apologize.sb_t_bookworm	Oh, of course. I was just rereading anyway.
+L10	core.apologize.sb_t_gremlin	Hmph. It's fine. I'll stay annoyed anyway, for the principle.
+L10	core.apologize.sb_t_poet	All is forgiven! A grudge is a poor rhyme, anyway!
+L10	core.ask_advice.type	Complain a bit. Then do it anyway. That's how I get by.
+L10	core.ask_advice.type	Pick one at random! Don't second-guess! Spin!
+L10	core.ask_fact.joke	Is it true? Does it matter? Anyway, yes.
+L10	core.ask_fact.type	True. I wouldn't tell you a story. Not that kind, anyway.
+L10	core.ask_out.r_no	I can't, I'm busy. Forever, unrelated to you. A bit related.
+L10	core.ask_out.r_no_loud	No thanks! Give me a high five anyway! A kind one!
+L10	core.change_topic.r_blunt	Sure. That topic was boring anyway.
+L10	core.comfort.w_thank_teen	Thanks. I'm fine. Better, anyway, mostly.
+L10	core.compliment.w_thank_quick	Ooh, nice, thank you, you're lovely, anyway, hi.
+L10	core.continue.tell	So anyway, the duck came back. With friends.
+L10	core.criticize.c_agree	Okay, fair, it's pretty bad. I like it anyway.
+L10	core.criticize.c_disagree	I'm sorry, did I ask for notes? I did not. Thanks anyway.
+L10	core.dismiss.c_night	Fine, ignore me. The moon's up. It's a better listener anyway.
+L10	core.encourage.w_thank_scared	I'm scared, but I'll try anyway. That counts, right?
+L10	core.give.r_joke	Is it a trap? It's a nice trap. I'll take it anyway.
+L10	core.give.sa_neg_con	Oh, dear, you've picked the one thing I can't stand. Thank you, anyway
+L10	core.give.sa_thank	Aw, it's perfect. How did you know? Have you been watching me?
+L10	core.greet.o_night	Oh! A night visitor! Come in, I'm up anyway.
+L10	core.greet.o_sad	Hello. Sorry, I'm not much company today. Sit anyway?
+L10	core.insult.c_dismiss_flat	Okay. Anyway.
+L10	core.laugh.ul3	You've got a very loud laugh, did you know that?
+L10	core.mediate.sa_joke	Right, I'll put my fists away. They're not that big anyway.
+L10	core.offer.sb_t_poet	How generous! History will remember this moment! I will, anyway.
+L10	core.offer.w_thank	Thank you. I don't deserve this. I'm taking it anyway.
+L10	core.take_side.sa_agree	Good call. It's the side with the better hats, anyway.
+L10	core.tease.c_dismiss	Sure. Anyway, you were saying something less boring?
+L10	core.thank.w_answer_friend	You don't have to thank me. But I'll take it anyway.
+L10	core.unknown.joke	Bees? ...Anyway.
+L10	core.walk_away.r_dismiss	Fine. Go. I didn't need that conversation anyway.
+L10	core.walk_away.sa_dismiss	Whatever. Leaving's fine. I wasn't enjoying it anyway.
+L10	core.walk_away.sa_kid_dismiss	Fine, fine. I'm busy anyway. I'm very busy playing.

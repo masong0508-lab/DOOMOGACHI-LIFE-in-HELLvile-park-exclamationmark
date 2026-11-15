@@ -5,10 +5,10 @@
 
 # ---- CHANGE_TOPIC ---------------------------------------------------------------------------------
 @rule core.change_topic.r_plain act: answer
-  "Okay, new subject! I love a fresh start. What's next?"
-  "Sure, let's switch. The old topic was getting tired."
-  "Changing the subject? Smooth. I'll allow it."
-  "Fine by me. That one was running out of steam."
+  "Okay, new subject! I love a fresh start. What's next?" guard: !topic
+  "Sure, let's switch. The old topic was getting tired." guard: !topic
+  "Changing the subject? Smooth. I'll allow it." guard: topic
+  "Fine by me. That one was running out of steam." guard: topic
 @rule core.change_topic.r_topic guard: topic act: tell
   "Ooh, {x}! Now that's one I could talk about all night."
   "{x:cap}? Fine, but I have so many opinions. Buckle up."
@@ -23,14 +23,14 @@
   "Funny, I was about to bring up {like}. Great minds."
   "Let's talk about {like}, then. My favourite, no offence."
 @rule core.change_topic.r_joke act: joke
-  "Subject changed! The old one will be in the corner, sulking."
-  "Wow, topic whiplash. My neck. My dignity."
+  "Subject changed! The old one will be in the corner, sulking." guard: !topic
+  "Wow, topic whiplash. My neck. My dignity." guard: !topic
 @rule core.change_topic.r_polite guard: polite act: answer
-  "Of course. By all means, let us turn to something else."
+  "Of course. By all means, let us turn to something else." guard: !topic
 @rule core.change_topic.r_kid guard: kid_speaker tags: kid act: answer
-  "Okay! Can we talk about snacks, or dragons, or snack dragons?"
+  "Okay! Can we talk about snacks, or dragons, or snack dragons?" guard: !topic
 @rule core.change_topic.r_blunt guard: blunt act: answer
-  "Sure. That topic was boring anyway."
+  "Sure. That topic was boring anyway." guard: topic
 
 # ---- CONTINUE and BACKCHANNEL --------------------------------------------------------------------
 @rule core.continue.r_tell act: tell
@@ -99,29 +99,29 @@
 
 # ---- GOSSIP and the people who are not here -----------------------------------------------------------------
 @rule core.gossip.r_more act: gossip
-  "No! Tell me more, and don't skimp on details."
-  "Ooh, juicy. I'd heard something close. Lean closer."
-  "Really? I always had a feeling. A mild feeling."
-  "Shh! Let me close the window. Okay, go."
+  "No! Tell me more, and don't skimp on details." guard: !topic
+  "Ooh, juicy. I'd heard something close. Lean closer." guard: !topic
+  "Really? I always had a feeling. A mild feeling." guard: !topic
+  "Shh! Let me close the window. Okay, go." guard: !topic
 @rule core.gossip.r_ask act: ask_about
-  "Wait, who told you that? Was it the goose?"
-  "Hmm, is that true? You'd better be sure."
+  "Wait, who told you that? Was it the goose?" guard: topic
+  "Hmm, is that true? You'd better be sure." guard: topic
 @rule core.gossip.r_agree act: agree
-  "I know! They do that all the time. It's their thing."
+  "I know! They do that all the time. It's their thing." guard: topic
 @rule core.gossip.r_disagree act: disagree
-  "Hmm, I don't think so. They've always been nice to me."
-  "Oh, I wouldn't say that. They're not as bad as all that."
+  "Hmm, I don't think so. They've always been nice to me." guard: !topic
+  "Oh, I wouldn't say that. They're not as bad as all that." guard: topic
 @rule core.gossip.r_defend act: defend
-  "Be fair, they've had a hard week. We all do."
+  "Be fair, they've had a hard week. We all do." guard: !topic
 @rule core.gossip.r_joke act: joke
-  "My lips are sealed. {.}Okay, they're loose. Spill."
-  "I'm not a gossip, I'm a collector. Of facts. And rumours."
+  "My lips are sealed. {.}Okay, they're loose. Spill." guard: !topic
+  "I'm not a gossip, I'm a collector. Of facts. And rumours." guard: !topic
 @rule core.gossip.r_laugh act: laugh
-  "Ha! No way, that's wild. Tell me everything."
+  "Ha! No way, that's wild. Tell me everything." guard: topic
 @rule core.gossip.r_back act: backchannel
-  "Mm-hm. Go on. I'm listening, but I'm not telling anyone."
+  "Mm-hm. Go on. I'm listening, but I'm not telling anyone." guard: !topic
 @rule core.gossip.r_kid guard: kid_speaker tags: kid act: gossip
-  "Ooh, a secret! I won't tell. I'll only tell my rock."
+  "Ooh, a secret! I won't tell. I'll only tell my rock." guard: !topic
 @rule core.defend.r_thank act: thank
   "Thanks for sticking up for me. I owe you a pie."
   "That means a lot. Everyone needs a defender."

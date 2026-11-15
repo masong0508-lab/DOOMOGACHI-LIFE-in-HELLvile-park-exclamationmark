@@ -38,7 +38,7 @@
   "Oh, nice. I'm neutral on {x}. Like a cozy Switzerland."
 @rule core.opine_pos.tease guard: blunt act: tease
   "Of course you do. You would."
-@rule core.opine_pos.notopic guard: !topic act: backchannel
+@rule core.opine_pos.notopic guard: !topic act: backchannel tags: generic
   "Good for you! Love that for you."
   "Nice. I'm happy you're happy."
   "Big feelings! I respect it."
@@ -57,7 +57,7 @@
   "Fair. Not everyone can love everything. I can't love Tuesdays."
 @rule core.opine_neg.laugh act: laugh
   "Ha! Say that to {x:s} face. I'll sell tickets."
-@rule core.opine_neg.notopic guard: !topic act: sympathize
+@rule core.opine_neg.notopic guard: !topic act: sympathize tags: generic
   "Fair enough. Not everything's for everyone."
   "Noted. I'll keep it away from you."
 @rule core.opine_neg.kid guard: kid_speaker tags: kid act: agree

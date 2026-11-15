@@ -166,42 +166,42 @@
   "I couldn't agree more. And I've tried."
 @rule core.opine_pos.r_disagree act: disagree
   "Hmm, I'm not so sure. I've seen some things."
-  "Really? I thought it was a bit meh. Don't hate me."
+  "Really? I thought it was a bit meh. Don't hate me." guard: topic
 @rule core.opine_pos.r_opine act: opine_pos
-  "I like it too, honestly. It's grown on me."
-  "I'd say it's a little bit great. More than a bit."
+  "I like it too, honestly. It's grown on me." guard: topic
+  "I'd say it's a little bit great. More than a bit." guard: topic
 @rule core.opine_pos.r_joke act: joke
-  "It's wonderful, it's marvellous, and it's also slightly on fire."
-  "A good opinion. I'd frame it, but I don't own a frame."
+  "It's wonderful, it's marvellous, and it's also slightly on fire." guard: topic
+  "A good opinion. I'd frame it, but I don't own a frame." guard: topic
 @rule core.opine_pos.r_topic guard: topic act: opine_pos
   "{x:cap}? Yes, it's good. It's really, really good."
   "You and I and {x}, forever. Or until lunch."
 @rule core.opine_pos.r_tease act: tease
-  "You like everything. Is that why you're so sunny?"
+  "You like everything. Is that why you're so sunny?" guard: topic
 @rule core.opine_pos.r_laugh act: laugh
-  "Ha! You're so cheerful. It's catching."
+  "Ha! You're so cheerful. It's catching." guard: topic
 @rule core.opine_pos.r_back act: backchannel
-  "Mm-hm. Sure. I can see that."
+  "Mm-hm. Sure. I can see that." guard: topic
 @rule core.opine_neg.r_agree act: agree
   "Ugh, yes. Don't get me started."
   "Totally. I was about to say the same, only meaner."
 @rule core.opine_neg.r_disagree act: disagree
-  "Oh, come on. It's not that bad. It's a little bad."
-  "Hmm, I'm going to defend it. A bit. Somebody has to."
+  "Oh, come on. It's not that bad. It's a little bad." guard: topic
+  "Hmm, I'm going to defend it. A bit. Somebody has to." guard: topic
 @rule core.opine_neg.r_sympathize act: sympathize
-  "Aw, that does sound awful. I'm sorry you went through it."
-  "Ugh, I feel that. Take a deep breath. And a snack."
+  "Aw, that does sound awful. I'm sorry you went through it." guard: topic
+  "Ugh, I feel that. Take a deep breath. And a snack." guard: topic
 @rule core.opine_neg.r_joke act: joke
-  "That's a harsh review. Two stars, and one is for effort."
+  "That's a harsh review. Two stars, and one is for effort." guard: topic
   "Tell us how you really feel. We have time."
 @rule core.opine_neg.r_opine act: opine_neg
-  "Honestly? I agree. It's pretty rubbish, lovely rubbish."
+  "Honestly? I agree. It's pretty rubbish, lovely rubbish." guard: topic
 @rule core.opine_neg.r_topic guard: topic act: opine_neg
   "{x:cap}? Don't, I can't. Next topic, please."
   "Ugh, {x}. My least favourite. Well, my second."
 @rule core.opine_neg.r_tease act: tease
   "Someone woke up on the wrong side of the rug."
 @rule core.opine_neg.r_back act: backchannel
-  "Mm. I hear you. It's a lot."
+  "Mm. I hear you. It's a lot." guard: topic
 @rule core.opine_neg.r_laugh act: laugh
-  "Ha! Okay, that was harsh. And fair."
+  "Ha! Okay, that was harsh. And fair." guard: topic

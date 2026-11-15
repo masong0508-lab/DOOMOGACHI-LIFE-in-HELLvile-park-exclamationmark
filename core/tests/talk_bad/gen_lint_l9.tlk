@@ -1,0 +1,4 @@
+# expect: TK13 L9
+# TK13 l9: seeded bad grammar (TM2b). an edgy trait without adults_only&!kid_present.
+@rule core.tell.bad guard: trait=mean act: agree
+  "Obviously you are right, {you}."

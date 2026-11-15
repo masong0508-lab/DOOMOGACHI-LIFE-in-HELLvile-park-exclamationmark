@@ -49,7 +49,7 @@
 @rule core.ask_about.likes guard: likes_topic act: opine_pos
   "{x:cap}?! You found my favourite. Are you a spy?"
   "{x:cap} is basically my whole personality. Ask anyone."
-@rule core.ask_about.notopic guard: !topic act: answer
+@rule core.ask_about.notopic guard: !topic act: answer tags: generic
   "About what? Use your words, sweet pea."
   "Ask me about what? I lost the thread. It was purple."
   "Huh? Say the noun again. Slower."

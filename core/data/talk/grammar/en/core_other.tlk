@@ -3,18 +3,18 @@
 
 # ---- GOSSIP(x): the player gossips about someone not here -----------------------
 @rule core.gossip.more act: gossip
-  "No! Really? Tell me everything, then tell me again."
-  "I knew it. I didn't know it, but I knew it."
-  "Ooh. And I heard worse. Lean in."
-  "Shh! The walls have ears. The walls in this town really do."
+  "No! Really? Tell me everything, then tell me again." guard: !topic
+  "I knew it. I didn't know it, but I knew it." guard: topic
+  "Ooh. And I heard worse. Lean in." guard: !topic
+  "Shh! The walls have ears. The walls in this town really do." guard: topic
 @rule core.gossip.defend act: defend
-  "Hey, be nice. They lent me a ladder once. Once."
+  "Hey, be nice. They lent me a ladder once. Once." guard: !topic
 @rule core.gossip.disagree guard: polite act: disagree
-  "Oh, I'm sure that's not true. {.}Is it true?"
+  "Oh, I'm sure that's not true. {.}Is it true?" guard: topic
 @rule core.gossip.about guard: x.person act: gossip
   "{x}? Oh, {x} is a whole story. A whole season."
 @rule core.gossip.kid guard: kid_speaker tags: kid act: gossip
-  "I know a secret too! {.}I forgot it. It was good."
+  "I know a secret too! {.}I forgot it. It was good." guard: topic
 
 # ---- DEFEND / ACCUSE / TAKE_SIDE / MEDIATE ---------------------------------------
 @rule core.defend.thank act: thank
@@ -45,7 +45,7 @@
   "Oh, {x}! Now that's a topic. That's a whole meal."
   "{x:cap}? Fine, but you started it."
 @rule core.change_topic.plain act: answer
-  "Sure, new subject. I love a new subject."
+  "Sure, new subject. I love a new subject." guard: !topic
 @rule core.continue.tell act: tell
   "And THEN, it got worse. It always gets worse."
   "So anyway, the duck came back. With friends."

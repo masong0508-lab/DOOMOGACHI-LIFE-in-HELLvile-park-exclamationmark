@@ -1,0 +1,4 @@
+# expect: TK13 L4
+# TK13 l4: seeded bad grammar (TM2b). it, with no topic guard and no slot.
+@rule core.opine_pos.bad act: agree
+  "I like it a lot."

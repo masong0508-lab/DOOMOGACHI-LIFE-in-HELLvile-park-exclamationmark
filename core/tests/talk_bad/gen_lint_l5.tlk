@@ -1,0 +1,4 @@
+# expect: TK13 L5
+# TK13 l5: seeded bad grammar (TM2b). a request turned down with no reason, counter or question.
+@rule core.ask_favor.bad act: no
+  "No. Not today."

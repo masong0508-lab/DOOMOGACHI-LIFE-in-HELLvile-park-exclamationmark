@@ -462,6 +462,12 @@ def build_grammar(b, files, die, rel, strict=True):
     tlks = [ts_.read_tlk(f, die, rel) for f in files]
     rules = [r for t in tlks for r in t.rules]
     names = [r["name"] for r in rules]
+    # TK13: the coherence lint (talkc_lint.py). The whole bank is held to the baseline file; a test grammar
+    # (strict=False) is not linted (talkc.py --selftest lints the seeded gen_lint_*.tlk itself)
+    import talkc_lint as tl_
+    lint_found = tl_.lint(rules, acts) if strict else []
+    lint_base = tl_.load_baseline(os.path.join(T.DATA, "lint_baseline.tsv")) if strict else []
+    tl_.check(lint_found, lint_base, strict, die)
     for r in rules:
         first = r["name"].split(".")[0]
         if first in CONCEPT_SLOTS or first in NAME_SLOTS or first in TEXT_SLOTS:
@@ -772,7 +778,8 @@ def build_grammar(b, files, die, rel, strict=True):
                                    cast_off, jobs_off)) + _u16(env.tge_count) + _u16(0)
     assert len(hdr) == HDR, len(hdr)
     body[0:HDR] = hdr
-    info = {"alt_where": alt_where,
+    info = {"alt_where": alt_where, "lint": tl_.table(lint_found, lint_base), "lint_found": lint_found,
+            "lint_base": lint_base,
             "files": len(files), "rules": len(rule_rows), "alts": len(alt_rows), "terms": len(term_rows),
             "syms": len(syms), "strings": len(strings), "jobs": job_info, "map": map_info,
             "entries": sum(1 for v in entries_core if v != 0xFFFF)}

@@ -1,0 +1,4 @@
+# expect: TK13 L1
+# TK13 l1: seeded bad grammar (TM2b). core.ask_opinion answered with a laugh act (acts.tsv).
+@rule core.ask_opinion.bad act: laugh
+  "Ha. Good one."

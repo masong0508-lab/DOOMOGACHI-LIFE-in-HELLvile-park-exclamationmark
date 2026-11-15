@@ -1,0 +1,4 @@
+# expect: TK13 L6
+# TK13 l6: seeded bad grammar (TM2b). a filler word as the whole reply.
+@rule core.tell.bad act: backchannel
+  "Hm."

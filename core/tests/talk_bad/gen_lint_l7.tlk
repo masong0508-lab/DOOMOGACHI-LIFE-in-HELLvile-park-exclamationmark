@@ -1,0 +1,4 @@
+# expect: TK13 L7
+# TK13 l7: seeded bad grammar (TM2b). a follow-up whose question act cannot follow.
+@rule follow.bad guard: act=insult act: ask_favor
+  "Could you lend me a hand, {you}?"

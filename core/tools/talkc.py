@@ -1467,6 +1467,12 @@ def stats(b, blob):
         print("talkc: GRAMMAR: %(files)d files, %(rules)d rules, %(alts)d alternatives, %(terms)d guard terms, "
               "%(syms)d symbols, %(strings)d template strings, %(entries)d act entries, %(jobs)d roster jobs "
               "mapped" % b.gen_info)
+        if "lint_found" in b.gen_info:
+            cnt = {}
+            for c, k, w, m in b.gen_info["lint_found"]:
+                cnt[c] = cnt.get(c, 0) + 1
+            print("talkc: LINT (TK13): %s; baseline %d" % (", ".join("%s %d" % (c, cnt[c]) for c in sorted(
+                cnt, key=lambda x: int(x[1:]))) or "no findings", len(b.gen_info["lint_base"])))
     if b.beats_info:
         print("talkc: BEATS: %(beats)d beats, %(bytes)d B" % b.beats_info)
     if b.safety_info:
@@ -1491,6 +1497,39 @@ def gen_mode(out_root):
     os.makedirs(os.path.dirname(fx), exist_ok=True)
     with open(fx, "w", encoding="utf-8", newline="\n") as f:
         f.write(c_fixture(blob, keys, b.codec))
+
+
+def lint_seed(path, b):
+    """TM2b: the lint's message for a seeded bad grammar ('' when it finds nothing); and the ratchet: the real
+    bank with that one rule added fails against the real baseline, which on its own passes"""
+    import talkc_gen as tg_
+    import talkc_safe as ts_
+    import talkc_lint as tl_
+    env = tg_.Env(b, die, rel)
+    acts = tg_.load_acts(os.path.join(DATA, "acts.tsv"), env, die, rel)
+    seed = ts_.read_tlk(path, die, rel).rules
+    tl_.check(tl_.lint(seed, acts), [], False, die)
+    return ""
+
+
+def lint_ratchet(b):
+    """the bank as it is passes its baseline; one new rule that breaks L3 (or a stale baseline line) fails"""
+    import talkc_gen as tg_
+    import talkc_safe as ts_
+    import talkc_lint as tl_
+    env = tg_.Env(b, die, rel)
+    acts = tg_.load_acts(os.path.join(DATA, "acts.tsv"), env, die, rel)
+    rules = [r for f in tg_.grammar_files("en") for r in ts_.read_tlk(f, die, rel).rules]
+    base = tl_.load_baseline(os.path.join(DATA, "lint_baseline.tsv"))
+    tl_.check(tl_.lint(rules, acts), base, True, die)
+    bad = ts_.read_tlk(os.path.join(CORE, "tests", "talk_bad", "gen_lint_l3.tlk"), die, rel).rules
+    for what, rs, bs in (("a new L3 rule", rules + bad, base),
+                         ("a baseline line with no finding", rules, base + ["L5\tcore.nothing.here\tgone"])):
+        try:
+            tl_.check(tl_.lint(rs, acts), bs, True, die)
+        except Fail:
+            continue
+        raise Fail("the lint ratchet let %s through" % what)
 
 
 def selftest():
@@ -1531,7 +1570,10 @@ def selftest():
         if not m:
             raise Fail("%s: the first line is # expect: TEXT" % rel(path))
         try:
-            if f.startswith("gen_") and f.endswith(".tlk"):
+            if f.startswith("gen_lint_") and f.endswith(".tlk"):
+                # TM2b: the coherence lint (talkc_lint.py) on the seeded grammar, with no baseline
+                got = lint_seed(path, b)
+            elif f.startswith("gen_") and f.endswith(".tlk"):
                 # T5a: the grammar compiler's refusals (talkc_gen.py)
                 import talkc_gen as tg_
                 tg_.build_grammar(b, [path], die, rel, strict=False)
@@ -1546,6 +1588,7 @@ def selftest():
         if m.group(1) not in got:
             raise Fail("%s: expected a failure with %r, got %r" % (rel(path), m.group(1), (got or "success")[:300]))
         n += 1
+    lint_ratchet(b)
     # the good template must lint clean
     good = os.path.join(CORE, "tests", "talk_good.tlk")
     got = ts_.lint_tlk(ts_.read_tlk(good, die, rel), b, b.suggestive, die)
@@ -1584,6 +1627,26 @@ def selftest():
     print("talkc: selftest OK (%d seeded bad inputs refused, codec and morphology)" % n)
 
 
+def lint_mode(update):
+    """--lint: the coherence lint's table; --lint-update: rewrite core/data/talk/lint_baseline.tsv"""
+    import talkc_gen as tg_
+    import talkc_safe as ts_
+    import talkc_lint as tl_
+    b = Build("en")
+    env = tg_.Env(b, die, rel)
+    acts = tg_.load_acts(os.path.join(DATA, "acts.tsv"), env, die, rel)
+    rules = [r for f in tg_.grammar_files("en") for r in ts_.read_tlk(f, die, rel).rules]
+    found = tl_.lint(rules, acts)
+    path = os.path.join(DATA, "lint_baseline.tsv")
+    hard = [m for c, k, w, m in found if c in tl_.HARD]
+    if hard:
+        raise Fail("%d lint finding(s) that cannot be baselined: %s" % (len(hard), hard[0]))
+    if update:
+        print("talkc: %s: %d findings written" % (rel(path), tl_.write_baseline(path, found)))
+    else:
+        print(tl_.table(found, tl_.load_baseline(path)))
+
+
 def main(argv):
     args = argv[1:]
     out_root = None
@@ -1607,7 +1670,7 @@ def main(argv):
             grammar_dir = args[i + 1]; i += 2; continue
         if a == "--hate-hash":
             mode = "hate-hash"; out = args[i + 1]; i += 2; continue
-        if a in ("--bin", "--check", "--selftest", "--stats", "--seed-from-game"):
+        if a in ("--bin", "--check", "--selftest", "--stats", "--seed-from-game", "--lint", "--lint-update"):
             mode = a[2:]; i += 1; continue
         print(__doc__)
         return 2
@@ -1619,6 +1682,8 @@ def main(argv):
                                                 "gen_game.tsv"))
         elif mode == "selftest":
             selftest()
+        elif mode in ("lint", "lint-update"):
+            lint_mode(mode == "lint-update")
         elif mode == "hate-hash":
             import talkc_safe as ts_
             dst = os.path.join(DATA, "safety", "hate.hash")

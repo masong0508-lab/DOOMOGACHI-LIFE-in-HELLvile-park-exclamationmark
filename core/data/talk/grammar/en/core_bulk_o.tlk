@@ -3,39 +3,39 @@
 # act, no guard change. Rule names end in _uo. Syntax: core/tools/talkc_gen.py.
 
 @rule core.ask_opinion.uo1 act: opine_pos
-  "I think it's great. I'd say so without hesitation."
-  "My honest view? It's a good one, and I like it a lot."
-  "I'm a fan, if I'm honest. Good call on that."
-  "I'd vote yes on it. It's a good kind of thing."
+  "I think it's great. I'd say so without hesitation." guard: topic
+  "My honest view? It's a good one, and I like it a lot." guard: topic
+  "I'm a fan, if I'm honest. Good call on that." guard: topic
+  "I'd vote yes on it. It's a good kind of thing." guard: topic
 @rule core.ask_opinion.uo2 act: opine_neg
-  "Honest view? Not great, and I'd change it if I could."
-  "I'd skip it. It's a bit much for my taste, sorry."
-  "My view is not kind, but I'd rather be honest than nice."
+  "Honest view? Not great, and I'd change it if I could." guard: topic
+  "I'd skip it. It's a bit much for my taste, sorry." guard: topic
+  "My view is not kind, but I'd rather be honest than nice." guard: !topic
 @rule core.ask_opinion.uo3 act: answer
-  "I think it's okay. Could be better, could be worse."
-  "Mixed, honestly. It has its moments, and some dull ones."
-  "I'd say it's fine. Not the best, not the worst either."
+  "I think it's okay. Could be better, could be worse." guard: topic
+  "Mixed, honestly. It has its moments, and some dull ones." guard: topic
+  "I'd say it's fine. Not the best, not the worst either." guard: topic
 @rule core.ask_opinion.uo4 act: joke
-  "My opinion? It's a strong one, and it's mostly about snacks."
-  "I'd give it a three out of ten, and a hug for effort."
+  "My opinion? It's a strong one, and it's mostly about snacks." guard: topic
+  "I'd give it a three out of ten, and a hug for effort." guard: topic
 @rule core.ask_opinion.uo5 act: change_topic
-  "I'd rather not have an opinion on that. Let's chat about something else."
-  "Oof, that one's hard. Can we move on to something lighter?"
+  "I'd rather not have an opinion on that. Let's chat about something else." guard: topic
+  "Oof, that one's hard. Can we move on to something lighter?" guard: topic
 @rule core.ask_opinion.uo6 act: dismiss
-  "No opinion, really. Next subject, please."
+  "No opinion, really. Next subject, please." guard: !topic
 @rule core.opine_pos.uo1 act: opine_pos
-  "I agree, it's a good one, and it's a joy to see."
-  "Yes, and the best part is how easy it is to like."
-  "Exactly, and I'd add that it's a bit of a treat too."
+  "I agree, it's a good one, and it's a joy to see." guard: topic
+  "Yes, and the best part is how easy it is to like." guard: topic
+  "Exactly, and I'd add that it's a bit of a treat too." guard: topic
 @rule core.opine_neg.uo1 act: opine_neg
-  "I don't like it either, and I'd add a few more complaints."
-  "Right, and the rest of it is worse, if I'm honest."
+  "I don't like it either, and I'd add a few more complaints." guard: topic
+  "Right, and the rest of it is worse, if I'm honest." guard: topic
 @rule core.opine_pos.uo2 act: laugh
-  "Ha, you really like it, don't you? It's all over your face."
-  "Hee, that's a big thumbs up. I'm impressed."
+  "Ha, you really like it, don't you? It's all over your face." guard: topic
+  "Hee, that's a big thumbs up. I'm impressed." guard: topic
 @rule core.opine_neg.uo2 act: sympathize
-  "Oh, I'm sorry. That sounds like a rough one to deal with."
-  "I know that feeling. It's not fun when things go sideways."
+  "Oh, I'm sorry. That sounds like a rough one to deal with." guard: topic
+  "I know that feeling. It's not fun when things go sideways." guard: topic
 @rule core.tell.uo1 act: opine_pos
   "That's a nice way to see it. I like that about you."
   "Good for you, that sounds like a fine plan, honestly."
@@ -51,17 +51,17 @@
 @rule core.answer.uo2 act: disagree
   "Hm, that's a bit of a downer. Still, I see the point."
 @rule core.ask_about.uo1 act: opine_pos
-  "I really like that one. You picked a good topic."
-  "That's a favorite of mine. I could talk about it all day."
+  "I really like that one. You picked a good topic." guard: topic
+  "That's a favorite of mine. I could talk about it all day." guard: topic
 @rule core.ask_about.uo2 act: opine_neg
-  "Not my favorite, sorry. It's a bit of a sore spot for me."
-  "I'd rather skip that one, if you don't mind too much."
+  "Not my favorite, sorry. It's a bit of a sore spot for me." guard: topic
+  "I'd rather skip that one, if you don't mind too much." guard: topic
 @rule core.ask_about.uo3 act: answer
-  "It's all right. Not one I think about much, to be honest."
-  "I'd say it's fine. It does what it's meant to, I suppose."
+  "It's all right. Not one I think about much, to be honest." guard: topic
+  "I'd say it's fine. It does what it's meant to, I suppose." guard: topic
 @rule core.ask_about.uo4 act: change_topic
-  "Hm, that's a big question. Can we talk about something lighter?"
-  "Let's move on, I'm not sure I've got a good answer for that."
+  "Hm, that's a big question. Can we talk about something lighter?" guard: topic
+  "Let's move on, I'm not sure I've got a good answer for that." guard: topic
 @rule core.ask_about.uo5 act: tell
-  "Ah, that's a good one. Let me tell you what I remember."
-  "Funny you ask. I've got a story about that, actually."
+  "Ah, that's a good one. Let me tell you what I remember." guard: topic
+  "Funny you ask. I've got a story about that, actually." guard: topic

@@ -1,0 +1,4 @@
+# expect: TK13 L10
+# TK13 l10: seeded bad grammar (TM2b). a topic-change phrase with no topic slot.
+@rule core.tell.bad act: backchannel
+  "Anyway, enough about weather and things."

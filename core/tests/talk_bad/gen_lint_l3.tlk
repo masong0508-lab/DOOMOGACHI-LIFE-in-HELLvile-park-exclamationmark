@@ -1,0 +1,4 @@
+# expect: TK13 L3
+# TK13 l3: seeded bad grammar (TM2b). a question about a topic, an answer that names none.
+@rule core.ask_about.bad act: answer
+  "Everything is wonderful and nothing hurts."
