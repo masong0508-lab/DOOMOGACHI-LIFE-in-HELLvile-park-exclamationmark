@@ -20,6 +20,9 @@ const waveContext = A.context || ''
 const packages = A.packages || []
 // The two lines every commit message ends with: the lead passes the ones its own session was given.
 const ATTRIBUTION = A.attribution || 'Co-Authored-By: Claude <noreply@anthropic.com>'
+// Optional: the model every agent of the round runs on ("sonnet", "opus", ...). Omitted: the lead's own model.
+// A lead on an expensive model passes "sonnet" so the heavy build / review / land work runs on Sonnet.
+const MODEL_OPT = A.model ? { model: A.model } : {}
 // What is installed on this machine right now (the lead knows; agents never install toolchains).
 const MACHINE = A.machine || `Toolchains and emulators are installed by the lead of this machine with \`sh tools/dev_setup.sh\` (stages apt, psn00bsdk, psxavenc, redux, kos, flycast). Check what is there with ls: /opt/psn00bsdk (PS1 SDK: export PSN00BSDK_LIBS=/opt/psn00bsdk/lib/libpsn00b and put /opt/psn00bsdk/bin on PATH), psxavenc on PATH (the PS1 disc then links the boot FMV: configure with -DDOOMO_INTRO_REQUIRED=ON), /opt/ps1emu/pcsx-redux + /opt/ps1emu/openbios.bin (PS1 harness), /opt/toolchains/dc/kos/environ.sh (Dreamcast build), /opt/toolchains/dc/flycast_libretro.so (Dreamcast harness). If one is missing it may still be installing: do everything that does not need it first, then wait with a bounded poll, for example: timeout 3600 sh -c 'until [ -x /opt/ps1emu/pcsx-redux ] && [ -f /opt/ps1emu/openbios.bin ]; do sleep 30; done'. Never install or build a toolchain or an emulator yourself. If a tool is still missing after an hour of waiting, say so plainly in your report: do not skip its checks silently and never invent numbers.`
 
@@ -190,10 +193,10 @@ function runPackage(p) {
   const prom = (async () => {
     // A package resumed after a pause may carry the reports of its finished steps (p.build, p.review):
     // those steps are not run again.
-    const b = p.build || await agent(buildPrompt(p), { label: `build:${p.id}`, phase: 'Build', schema: BUILD_SCHEMA })
+    const b = p.build || await agent(buildPrompt(p), { label: `build:${p.id}`, phase: 'Build', schema: BUILD_SCHEMA , ...MODEL_OPT })
     if (!b) { log(`${p.id}: the build agent returned nothing`); return { id: p.id, status: 'build-missing' } }
     if (b.status === 'blocked') { log(`${p.id}: build blocked: ${b.open_items}`); return { id: p.id, status: 'build-blocked', build: b } }
-    const r = p.review || await agent(reviewPrompt(p, b), { label: `review:${p.id}`, phase: 'Review', schema: REVIEW_SCHEMA })
+    const r = p.review || await agent(reviewPrompt(p, b), { label: `review:${p.id}`, phase: 'Review', schema: REVIEW_SCHEMA , ...MODEL_OPT })
     let depNotes = ''
     for (const dep of (p.after || [])) {
       if (!landed[dep]) continue
@@ -201,7 +204,7 @@ function runPackage(p) {
       const l = d && d.land
       depNotes += `${dep}: ${l ? l.status + '; PS1 margin ' + l.ps1_margin_bytes + '; ' + l.commits : 'did not land (' + (d && d.status) + ')'}\n`
     }
-    const l = await agent(landPrompt(p, b, r, depNotes), { label: `land:${p.id}`, phase: 'Land', schema: LAND_SCHEMA })
+    const l = await agent(landPrompt(p, b, r, depNotes), { label: `land:${p.id}`, phase: 'Land', schema: LAND_SCHEMA , ...MODEL_OPT })
     log(`${p.id}: ${l ? l.status : 'the land agent returned nothing'}`)
     return { id: p.id, status: l ? l.status : 'land-missing', build: b, review: r, land: l }
   })()
