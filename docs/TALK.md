@@ -25,6 +25,7 @@ Contents:
 [6b The safety gate (T4)](#6b-the-safety-gate-t4) ·
 [6c The generator (T5a)](#6c-the-generator-t5a) ·
 [6d The census and the review sheet (T7)](#6d-the-census-and-the-review-sheet-t7) ·
+[6h The multilevel composer (design, TM0)](#6h-the-multilevel-composer-design-tm0-design-2026-11-15) ·
 [7 Sizes](#7-sizes-measured) ·
 [8 Tests](#8-tests) ·
 [9 Differences from the design](#9-differences-from-the-design) ·
@@ -951,6 +952,52 @@ reused and forgets its caps (known, accepted; T8 may save the ledger in the TALK
   P7 over 1,500 random sessions with romance acts (the romance sweep finds nothing).
 * **Memory.** Native only (like talk_save.c): 0 B on GBA / PS1 / Dreamcast, GBA
   EWRAM / IWRAM net zero, PS1 margin unchanged.
+
+---------------------------------------------------------------------------
+
+## 6h. The multilevel composer (design, TM0-DESIGN, 2026-11-15)
+
+Owner decision 2026-11-15 (`OWNER_DECISIONS.md`, "TALK DYNAMIC, MULTILEVEL, PERSONALITY SCREEN"): the
+line bank is **frozen** (8,891 alternatives in 3,189 rules); replies are composed in layers instead of
+authored. **Not built yet**: the spec is [docs/design/talk/TALK_MULTILEVEL.md](design/talk/TALK_MULTILEVEL.md),
+cut into five one-day packages TM2a to TM2e.
+
+* **Four layers, one plan.** A `TalkPlan` (12 B, on the stack) is made after the gate says pass:
+  (a) the reaction kind (accept, agree, deny, refuse, deflect, counter, ask back), chosen from the act,
+  the stance, the relationship, the mood, the effective voice, the traits and the liked and disliked
+  topic roots, and mapped onto the reply acts the rules already carry (no new lines); (b) the content:
+  the topic, a reason from the word network (2.4 attributes and 7 associations a concept), a fact of
+  the speaker's (`TCB_*`), a secret; (c) the colour: the existing voice, type, cast and tic banks, read
+  through **effective sliders** (stored sliders plus the trait deltas); (d) the hook: `follow.tlk`,
+  the callbacks, the hand-offs, an offer.
+* **Topic depth.** surface, opinion + reason, story or memory, secret; gated by relationship band,
+  turns on the thread, engagement and traits; the state lives in `TalkPart.pad`, `TalkMem.spare`
+  (depth reached, secrets told) and `topic_stack`: 0 new bytes.
+* **Unknown typed word.** Guess from the network, name it (quoted, only if the token passes E1 to E7:
+  masked text only, no hate, register, minor or person word, S3 clean), or ask what kind of thing it is;
+  never a joke. PS1 never runs it (no typed input).
+* **Traits.** The 5 Tomodachi sliders plus up to 3 of 24 Sims-like traits plus a liked and a disliked
+  root. Derived for everyone (0 bits), pinned for up to 24 residents in a 146 B side table and a new
+  'TRAI' chunk (the 76 B record and the gene are not widened: 3 KB of resident RAM would not fit the
+  GBA's 2 KB or the PS1's 992 B margin). Edgy traits (hot-headed, romantic, snob, jealous, mean) are
+  zero around any non-adult, in C. API for the creator's personality page: `talk_traits_get/set`,
+  `talk_trait_allowed`, `talk_persona_judge`, `talk_persona_preview` (the real engine, `plain` mode).
+* **Doing as well as saying.** A reply can carry one action (start an activity, accept or refuse an
+  invitation, a gift, ask for an item, call someone over) through new `TEV_ACT_*` events under
+  `talk_outcome`'s caps; a line says it only if the caps allow it and the sim does it only if it was said.
+* **Coherence.** talkc lint L1 to L10 (topic present but unused, a pronoun with no topic, a dead-end
+  refusal, a filler as the whole reply, a hook out of place, depth without a gate, a trait outside its
+  lane) with a ratcheting baseline, and census checks Q8a to Q8f (kind, content, colour, hook, filler,
+  unknown word) with a budget (0 for kind, filler, unknown; 0.5% for the rest).
+* **Scan** (`python3 core/tools/talk_layers.py all`): 22 whole-line filler alternatives (F1 5, F2 17),
+  117 questions or opinions answered without naming the topic, 296 topic-blind listener lines, 35
+  "anyway" lines, and the 25-rule `core.unknown` bank: fixed by guards and tags, not by deletion.
+* **About 108 connective lines** (1.2% of the bank: reasons, story bridges, secrets, unknown-word
+  lines, action lines, hooks) are all the new text.
+* **The 1,000,000.** The conversation tier (1,999,886 of 2,000,000 distinct) is met. The Surface tier
+  misses because the draw is concentrated (this tree at 400,000 contexts: Surface 254,159 distinct, 63.5%
+  unique, Chao1 1.59 M; a uniform draw would need a support of 1.26 M at 2,000,000 contexts), not because
+  the bank is small: four independent weighted layers flatten it. TM2e accepts only a full census at 1,000,000 distinct or reports the gap.
 
 ---------------------------------------------------------------------------
 
