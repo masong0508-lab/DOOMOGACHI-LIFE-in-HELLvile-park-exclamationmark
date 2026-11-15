@@ -44,6 +44,8 @@
  *                          `lang` / `expect-lang`, `expect-hero`,
  *                          `ending-seen`, `story-done`
  *   DC_HC_OPT id<<8|v      (DC6C) `opt ID VALUE`: opt_set, result opt_get
+ *   DC_HC_TALK_BANK n      (TD1) `talk-bank open|line|enter`: Talk's bank from the disc (TALK_EN.BIN) opened and
+ *                          verified, one greeting generated from it (logged), the Talk screen entered
  * and the tick hold of the harness's "sync on" (dc_harness_hold).
  */
 #include <string.h>
@@ -53,6 +55,9 @@
 #include "doomo/story_vm.h"
 #include "doomo/plat_ext.h"
 #include "doomo/options_store.h"            /* DC9A: opt_set (lang) */
+#include "doomo/talk.h"                      /* TD1: talk-bank */
+#include "doomo/lang.h"
+#include "doomo/playas.h"
 #include "doomo/unlocks.h"                  /* DC9A: ending-seen */
 #include "../../core/src/ui_internal.h"     /* UiDialogDebug (expect-text) */
 #include "../../core/src/home_int.h"        /* DC8: home_move_in, the parity rooms */
@@ -368,6 +373,29 @@ void dc_harness_cmd(void)
         opt_set((int)((arg >> 8) & 0xFF), (int)(arg & 0xFF));
         r = (uint32_t)opt_get((int)((arg >> 8) & 0xFF));
         break;
+    case DC_HC_TALK_BANK: {             /* TD1: see dc_mailbox.h */
+        int who = -1, i;
+        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
+            if (town_alive(i) && i != playas_avatar()) { who = i; break; }
+        r = 1;
+        if (arg == 0) {
+            int o = talk_db_open(lang_find("en"));
+            int v = o == TALK_DB_OK ? talk_db_verify() : o;
+            dc_logf("hcmd: talk-bank open %d verify %d concepts %d", o, v, o == TALK_DB_OK ? talk_db_nconcepts() : 0);
+            if (o == TALK_DB_OK && v == TALK_DB_OK) r = 2;
+        } else if (arg == 1 && who >= 0 && talk_db_is_open() && talk_gen_ready()) {
+            static TalkConv conv;
+            static TalkLine line;
+            int ids[1];
+            ids[0] = who;
+            talk_gen_begin(&conv, playas_avatar(), ids, 1, 12345u);
+            talk_gen_line(&conv, 0, -1, TA_GREET, TC_NONE, &line, NULL);
+            dc_logf("hcmd: talk-bank line from %s: %s", doomo_town.res[who].name, line.text);
+            if (line.text[0]) r = 2;
+        } else if (arg == 2 && who >= 0) {
+            if (home_talk_enter(who)) r = 2;
+        }
+        break; }
     default:
         break;
     }

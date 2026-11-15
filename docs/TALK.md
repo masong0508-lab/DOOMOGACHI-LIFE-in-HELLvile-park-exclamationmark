@@ -54,7 +54,7 @@ Contents:
 | **T7** | the census (`core/tools/talk_census.c`: the three tiers, Chao1, the quality checks Q1-Q6, the conversation tier), the grid `census_en.tsv`, `make -C core talk-census`, the smoke census in `make test`, the Q7 review sheet `talk_sample.py` | **done** (TK3): the tools and the measurement. The full run's numbers are in 6d: Skeleton, Meaning, conversations and quality meet the design's targets; **Surface does not** (it needs T5b's bank); Q7 (a person rating 300 exchanges) has not been done |
 | T8 | the house mode `HM_TALK` on native, with its UI | the owner's SCENE_TALK is the UI (reached from the Talk action and a house visit's A); **T8-SCRIPTS done**: runner `talk-*` commands, four scripts, press-budget journeys, frame time, the gap list (6j). The in-room `HM_TALK` is not landed |
 | T9, T10 | pointer input; other languages (after the script rewrite) | to do |
-| TP0-TP4, TD0-TD3 | the PS1 and Dreamcast ports | to do (TD0's prerequisites are in: DC3, DC4, DC8 with zoom 2 and `plat_room_project`, and the Flycast core, approved and built) |
+| TP0-TP4, TD0-TD3 | the PS1 and Dreamcast ports | TD1 done (the bank is read from the disc, docs/DREAMCAST.md "Talk on the Dreamcast (TD1)"); the rest to do (TD0's prerequisites are in: DC3, DC4, DC8 with zoom 2 and `plat_room_project`, and the Flycast core, approved and built) |
 
 Nothing in the game can reach Talk yet. `home_talk_enter()` is a weak
 default that answers "not available", and no platform sets `PLATF_TALK`.
@@ -1014,7 +1014,7 @@ four boxes with the portrait) **17.6 drawn frames/s** (work avg 47 ms) with a **
 (the drama manager and the generator run in that one frame; the first box after the opener reached 511 ms). **This is
 below the steady-30 target on the GBA**; the list alone is 24 fps, the boxes with the portrait lower it, and the hitch is
 the one-frame generation (not profiled further here). It is listed for the SPEED stream and the Talk owner (draw the portrait box cheaper; spread the generation over a few
-frames behind the typing animation). PS1 and Dreamcast: Talk is not built there yet (`DOOMO_HAS_TALK` is native and GBA).
+frames behind the typing animation). PS1: Talk is not built there yet. Dreamcast: built since TD1 (`DOOMO_HAS_TALK`, the bank from the disc); the typed line and the pad scripts are TD2 / TD3. `DOOMO_HAS_TALK` is native, GBA and Dreamcast.
 `gba/harness/scripts/talk.txt` was stale (it failed on origin since the owner's opener and quick replies): it now plays the
 greeting, a quick reply and the goodbye boxes with the seeded counts, and prints the windows above.
 

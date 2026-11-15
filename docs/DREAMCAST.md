@@ -463,6 +463,10 @@ dc/ip.txt --makeip--> IP.BIN
 doomogachi.iso --cdi4dc--> doomogachi.cdi   (audio/data, self-booting)
 ```
 
+The disc root also holds Talk's database, `TALK_EN.BIN` (TD1, section "Talk on the Dreamcast (TD1)"): `make -C dc` builds
+`core/build/talk/TALK_en.BIN` with `core/tools/talkc.py` and `mkcdi.sh ... PACK TALKDIR` copies every `TALK_<code>.BIN`
+of that directory to the disc root in capitals (the test bank `TALK_gentest.BIN` stays off the disc).
+
 `dc/ip.txt` holds our own title ("BOREAGOTCHI LIFE! IN HELLVILE PARK..."),
 maker ("BOREAGOTCHI TEAM"), product number T-DOOMO and version. makeip adds the
 hardware and maker identifiers the boot ROM requires in every bootstrap
@@ -969,11 +973,12 @@ from `core/tests/scripts` (`FAMILY_GLOBS` in `dc/Makefile` names them): minigame
 Not in the list, and why:
 
 * `home_talk_basic`, `_group`, `_safety`, `_visit` play the Talk screen (`talk-enter`, `talk-read`,
-  `expect-talk-*`). Talk is not built on the Dreamcast yet (TD1-TD3 wait for TK5): `home_talk_enter` is
-  the core's weak "no" and dcrun has no `talk-*` commands. They fail on the first `talk-enter`, 26 ticks in.
+  `expect-talk-*`). Talk is built on the Dreamcast since TD1 (the bank is read from the disc, section "Talk
+  on the Dreamcast (TD1)" below), but dcrun has no `talk-*` commands yet (TD3): they fail on the first
+  `talk-enter`.
 * `home_visit` expects the live Talk screen after A at the host. `home_visit_dc.txt` is the same visit
   with that step cut (A at the host gets the old "I wish I had ..." line); it passes, no tick over
-  33.3 ms. Put the core script back in the list when Talk lands.
+  33.3 ms. Put the core script back in the list when dcrun has the `talk-*` commands (TD3).
 
 What the first run (before any change) found, on the same machine: the two Talk scripts' failures above and
 two real frame-time misses:
@@ -2367,3 +2372,38 @@ stock one and links none of it. `plat_pack_read` reads `/cd/PACK.DMP` with a 32 
 slot's script into a 32 KB buffer (`PACK_SCRIPT_CAP_DC`; mpack.py refuses a bigger one) and a still into a
 320x240 buffer (not drawn until the 2D layer, DC3, lands). Cost with a pack: about 140 KB BSS. Test without
 KallistiOS: `sh dc/tests/packdisc_host.sh` (the real reader over a mocked `fs_*`).
+
+## Talk on the Dreamcast (TD1)
+
+Talk (the word network, the generator, the Talk screen: docs/TALK.md) is built into the Dreamcast game since TD1:
+`dc/Makefile` defines `DOOMO_HAS_TALK=1` (so `SCENE_TALK`, the house's `home_talk_enter` and the `TALK` save chunk are
+linked), `plat_features()` (`dc/src/pad.c`) reports `PLATF_TALK`, and `dc/src/talkdisc.c` is the platform's database
+reader.
+
+* **The file.** `core/tools/talkc.py --bin --lang en` writes `TALK_en.BIN` (902,268 B on this tree, the full bank, not the
+  PS1's subset). `mkcdi.sh` puts it on the disc root as `TALK_EN.BIN` (ISO 9660 names are capitals).
+* **`plat_talk_load(code)`** opens `/cd/TALK_<CODE>.BIN` through KallistiOS's CD file system, `malloc`s the file size and
+  reads the whole file in one `fs_read`. Asking for the language that is already loaded is free. Another language frees
+  the first. A missing or short file leaves nothing loaded and returns 0 (Talk then says "not here": the same as a boot
+  from the ELF, which has no disc; `talk-bank open` fails there, as the test expects).
+* **`plat_talk_read(off, dst, len)`** is a bounds-checked `memcpy` out of that block (no disc read per call; `off + len`
+  cannot wrap). Talk reads a row or a string at a time, so a disc read per call would stall a frame.
+* **Memory.** The bank is heap, not BSS: with the code Talk adds (`.text` +96,800 B, `.rodata` +11,660 B, `.bss`
+  +5,600 B, `make -C dc sizes` before 10,492,376 B in the image, after 10,606,436 B) the heap above `_end` is 5.82 MB
+  before the bank is loaded and about 4.9 MB after (the floor is 4 MB). The load is one read of about 0.9 MB, once, at the
+  first Talk (inside `talk_ready()`, the house's A press on a housemate); it is a disc read, not a draw, and the tick that
+  does it is the only one with extra work.
+* **Tests.** `make -C dc check-talkdisc` (host cc only, in `make -C dc test`): the real `talkdisc.c` and `talk_db.c` over a
+  mock of `fs_*` (`dc/tests/talkdisc_host.sh`): the file loads in one read, a second load is free, the capital name is
+  the only one that opens, reads past the end and wrapping offsets return 0, another language replaces the first, and the
+  database opens and every bank's CRC verifies over the copy. `make -C dc talk-test` (Flycast, in `make -C dc test` when
+  the core is there): `dc/tests/talk/talk_disc.txt` on the CDI with the new dcrun command `talk-bank open | line |
+  enter` (mailbox command `DC_HC_TALK_BANK`): the bank opens from the disc and verifies (4,010 concepts), one
+  greeting is generated from it ("Rise and shine, You! Or just rise. Shining is optional."), the real Talk screen opens
+  and the opener is drawn; two runs, byte-identical shots, no tick over 33.3 ms (152 ticks, worst 16.7 ms: the Talk
+  opener's dialogue tick). On the ELF (no disc) the same script fails at `talk-bank open`, which is how the test is
+  known to look at the disc.
+* **Not yet (TD2, TD3).** The typed line from the keyboard queue, the pad fallback, HD-text bubbles (40 columns) and
+  the `home_talk_*` scripts on dcrun with frame-time gates. The Talk screen's list and the opener's dialogue box overlap
+  at 640x480 in the TD1 shots (`talk_disc_opener.png`: the dialogue box sits over the list; the native 320x240 screen
+  has the same layout): TD2 owns that layout.

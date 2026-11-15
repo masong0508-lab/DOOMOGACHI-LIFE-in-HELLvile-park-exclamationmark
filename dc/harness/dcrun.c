@@ -1375,6 +1375,11 @@ static int run_script(FILE *f)
             uint32_t mm = (uint32_t)strtoul(v[1], NULL, 0), st = n > 2 ? (uint32_t)strtoul(v[2], NULL, 0) : 3;
             if (!mb_cmd(DC_HC_SIDE, mm | st << 16, NULL, &r)) return 0;
             if (!r) fail("line %d: side needs a mission 100..217, got %s", lineno, v[1]);
+        } else if (!strcmp(c, "talk-bank") && n >= 2) {      /* TD1: open | line | enter */
+            int m = !strcmp(v[1], "open") ? 0 : !strcmp(v[1], "line") ? 1 : !strcmp(v[1], "enter") ? 2 : -1;
+            if (m < 0) fail("line %d: talk-bank wants open, line or enter", lineno);
+            if (!mb_cmd(DC_HC_TALK_BANK, (uint32_t)m, NULL, &r)) return 0;
+            if (r != 2) fail("line %d: talk-bank %s failed (Talk's bank is not on the disc, or does not verify)", lineno, v[1]);
         } else if (!strcmp(c, "talk") && n >= 2) {
             if (!mb_cmd(DC_HC_TALK, (uint32_t)strtol(v[1], NULL, 0), NULL, &r)) return 0;
         } else if (!strcmp(c, "cell") && n >= 3) {

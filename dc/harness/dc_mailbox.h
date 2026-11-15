@@ -138,7 +138,11 @@ enum {
     DC_HC_ENDING_SEEN = 29,              /* ending-seen: unlock UL_STORY_END(0) quietly */
     DC_HC_STORY_DONE = 30,              /* story-done: the town is a finished story */
     /* DC6C: the native runner's `opt ID VALUE` (GBA_HC_OPT) */
-    DC_HC_OPT = 31                       /* arg id << 8 | value: opt_set; result opt_get(id) */
+    DC_HC_OPT = 31,                      /* arg id << 8 | value: opt_set; result opt_get(id) */
+    /* TD1: Talk's database on the disc (dc/src/talkdisc.c): arg 0 opens TALK_EN.BIN and verifies every bank's
+     * CRC, 1 makes one greeting line of the first resident (logged), 2 opens the Talk screen with that
+     * resident (home_talk_enter); result 2 on success, 1 on failure (0 before the command ran) */
+    DC_HC_TALK_BANK = 32
 };
 
 #endif

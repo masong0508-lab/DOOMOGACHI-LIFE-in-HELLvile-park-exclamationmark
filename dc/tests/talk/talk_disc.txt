@@ -1,0 +1,30 @@
+# TD1 (Talk on the Dreamcast): Talk's database comes from the disc image.
+# assert-no-stubs
+# The CDI carries TALK_EN.BIN (dc/tools/mkcdi.sh); talk-bank open reads it whole through /cd (dc/src/talkdisc.c),
+# opens it with talk_db_open and verifies every bank's CRC over the heap copy; line makes one greeting with the
+# generator from the first resident (it goes to the log); enter opens the real Talk screen the way the house
+# does (home_talk_enter), which draws the resident's opener. Run on the CDI (an ELF boot has no disc: the bank
+# is "not here" and Talk stays off, as before TD1):
+#   dc/harness/build/dcrun /opt/toolchains/dc/flycast_libretro.so dc/build/doomogachi.cdi --nm dc/build/doomogachi.nm \
+#       --fresh --native-seed 0x5EED1234 --script dc/tests/talk/talk_disc.txt --shots OUT
+scene TITLE
+wait 10
+# the first knock moves the premade island in (an empty runner town), as home_visit does
+push HOME 3
+wait 4
+press B
+wait 10
+talk-bank open
+talk-bank line
+talk-bank enter
+wait 30
+# the resident's opener is a dialogue box over the Talk screen: the top scene is DIALOG until it is read
+expect-scene DIALOG
+shot talk_disc_opener
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+shot talk_disc_ready

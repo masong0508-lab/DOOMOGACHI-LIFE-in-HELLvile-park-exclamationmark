@@ -62,6 +62,8 @@
 #                         the disc as PACK.DMP and dc/src/packdisc.c is linked (E10)
 #   make -C dc check-talkdisc
 #                         TD1 on the host: dc/src/talkdisc.c and core/src/talk_db.c over a real TALK_en.BIN
+#   make -C dc talk-test  TD1 on Flycast: the CDI's TALK_EN.BIN opens and verifies, a greeting is generated
+#                         and the Talk screen opens (dc/tests/talk, twice, byte-identical shots)
 #   make -C dc clean
 #
 # Toolchain: KallistiOS and its sh-elf gcc (dc/tools/setup_kos.sh, see
@@ -139,7 +141,7 @@ DC_OBJS   := $(call dc_obj,$(DC_SRCS))
 CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 ALL_OBJS  := $(DC_OBJS) $(CORE_OBJS)
 
-.PHONY: all elf disc all-disc test check-elf check-packdisc check-talkdisc host-test harness-test ui-compare vmu-test disc-test audio-test ow-test room-test v3d-test family-test family-test2 sizes clean
+.PHONY: all elf disc all-disc test check-elf check-packdisc check-talkdisc talk-test host-test harness-test ui-compare vmu-test disc-test audio-test ow-test room-test v3d-test family-test family-test2 sizes clean
 .DEFAULT_GOAL := all
 
 all: elf
@@ -330,6 +332,11 @@ check-packdisc:
 check-talkdisc:
 	@sh $(DC)/tests/talkdisc_host.sh
 
+# TD1 on Flycast: the CDI's Talk bank opens and verifies, one greeting is generated, the Talk screen opens
+talk-test: $(CDI) $(BUILD)/doomogachi.nm
+	@if [ -z "$(FLYCAST)" ] || [ ! -x $(DCRUN) ]; then echo "note: no Flycast core or dcrun: talk-test skipped"; exit 0; fi; \
+	sh $(DC)/tests/talk/run_flycast.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(SHOTS)/talk
+
 # DC3: the portable 2D layer against the native runner, on the host
 # (dc/tests/gfx2d: unit tests + the UI scripts through the software PVR);
 # DC4: the VMU file system, the icons and the controls (dc/tests/vmu);
@@ -342,7 +349,7 @@ host-test:
 	@$(MAKE) --no-print-directory -C $(DC)/tests/vmu test
 	@$(MAKE) --no-print-directory -C $(DC)/tests/audio test
 
-test: all-disc check-elf check-packdisc check-talkdisc host-test harness-test
+test: all-disc check-elf check-packdisc check-talkdisc host-test harness-test talk-test
 
 clean:
 	rm -rf $(BUILD)
