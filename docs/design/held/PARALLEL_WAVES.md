@@ -65,6 +65,11 @@ Shared files that every stream touches (keep changes small, expect to rebase): `
   reserve** (never spent without the coordinator). Each stream keeps its running total in its status file
   (`PS1 resident used of share: N B`) and every landing still reports its delta; a stream that needs more asks
   the coordinator first. The margin on origin never drops below the 72 KB gate.
+  **Changed 2026-11-15 15:00 (CREATOR asked for CR10: the part VM, scripts and icon paths on the PS1, so the PS1
+  shows every new part; +21,024 B resident):** CREATOR **21 KB** (21,504 B), SPEED **2 KB**, the others as
+  above (TALK 12 KB, LEVELS 8 KB, COMBAT 8 KB); **reserve about 6.5 KB** (6,656 B). With CR10 on origin the
+  margin is about 111.6 KB below the stack top. Whatever CREATOR later moves into an overlay group goes
+  back to the reserve.
 * **PS1 overlay slot.** An overlay group must fit the slot (docs/PS1.md). Growing the slot costs
   resident memory: ask the coordinator first. The slot is 131,072 B. With PS1-RAM (2026-11-15) the
   combat group is 129,380 B in the link map (1,692 B of room; the planner's estimate says 129,956 B),
