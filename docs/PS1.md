@@ -1881,10 +1881,19 @@ paths in `portrait_head` / `portrait_hair` / `portrait_body` / `portrait_fx` 3,5
 stamps, the registry) 2,150 B, `part_lru.c` 3,088 B (the 2 KB arena, the 256 B window, 20 entry slots, 400 B of code),
 `partstore.c` 1,836 B (a 320 B read buffer, the set bases, the boot loader), the look pool's put / load / raw glue
 (`look_pool.c` 596 B and the resident part of `creator.c`, together about 970 B), the rest (`cutview.c`, `part_icons.c`)
-130 B. **CREATOR's PS1 share is 4 KB (PARALLEL_WAVES.md section 3):
-this package uses 21,024 B, 16,928 B over it**, taken from the reserve; the margin is still 37,856 B above the 72 KB gate
-(73,728 B). The share could not hold the VM: its code and the painters' hooks alone are 12.7 KB and no group can take them
-(every scene draws portraits, the slot is one group at a time). What this package did to keep the rest small: the scripts
+130 B. **CREATOR's PS1 share was 4 KB; the coordinator approved 21 KB (21,504 B) for CR10
+(PARALLEL_WAVES.md section 3): this package uses 21,024 B**, 480 B of the share left; the margin is 111,584 B below the stack
+top, 37,856 B above the 72 KB gate (73,728 B).
+**Why none of it is in an overlay group.** The part VM, the painters' scripted paths and the PartRef tables are used by the
+portrait renderer, and `ps1/tools/ovl_plan.py` leaves `portrait*.c` and `part_lru.c` outside every group (so they are resident),
+for two reasons checked in the code: (1) portraits are drawn in almost every scene, not in one: callers are in `combat_hud.c`,
+`concert_scene.c`, `cook_scene.c`, `dream_gfx.c`, `exorcism_scene.c`, `mg_draw.c`, `studio.c`, `story_feast.c`, `cutscene_ch12.c`
+and in resident code (`ui.c`, `ui_dialog.c`, `fp_common.c`, `fp_resident.c`), so the code would have to be in every group or
+in the slot all the time; (2) the slot (131,072 B) holds one group at a time and a scene entry reads the group from the disc,
+so a renderer that sits in a group would be swapped out by every scene change and reloaded just to draw a face in the HUD
+or a dialog. The VM's code and the painters' hooks alone are 12.7 KB. **What could move later:** only the creator-only pieces (the resident part of `creator.c` and the look pool glue, about
+970 B, and any PartRef table that only the creator's lists read, to be checked first); the VM, the painters and the arena
+stay resident. Anything moved goes back to CREATOR's reserve in PARALLEL_WAVES section 3. What this package did to keep the rest small: the scripts
 and icons are raw bytes in SPU RAM, not in the EXE (linking only the LZ blocks of the scripts was +14.7 KB, the
 LRU 9.5 KB: the first, naive build with the VM on was 37,088 B); the arena is 2 KB, not the LZ design's 8 KB.
 **Every later part batch adds 4 B of PartRef to the resident tables per part** (the scripts and the icons cost no RAM:
