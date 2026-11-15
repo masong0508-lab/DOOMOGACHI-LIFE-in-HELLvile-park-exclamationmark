@@ -463,8 +463,8 @@ static int tk_who(const char *nm)
         size_t n = strlen(nm);
         int i;
         for (i = 0; i < DOOMO_MAX_RESIDENTS && who < 0; i++)
-            if (doomo_town.res[i].status != RES_EMPTY && strncmp(doomo_town.res[i].name, nm, n) == 0 &&
-                (doomo_town.res[i].name[n] == ' ' || !doomo_town.res[i].name[n])) who = i;
+            if (TOWN_RES(i)->status != RES_EMPTY && strncmp(TOWN_RES(i)->name, nm, n) == 0 &&
+                (TOWN_RES(i)->name[n] == ' ' || !TOWN_RES(i)->name[n])) who = i;
     }
     return who < 0 ? -2 : who;
 }
