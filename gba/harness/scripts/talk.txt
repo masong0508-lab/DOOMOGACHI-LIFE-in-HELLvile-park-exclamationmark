@@ -47,13 +47,15 @@ press A
 wait 40
 press A
 wait 40
+press A
+wait 40
 expect-scene HOME
 press B
 wait 20
 expect-scene TITLE
 # 2. a conversation: Chat > "Hi there!", then a topic, then bye. The resident's two opening
 # lines (four A's); since 9628c52 the four quick replies are the list's first rows, so four
-# DOWNs reach "Chat >"; the answer to "Hi there!" is three lines (six A's)
+# DOWNs reach "Chat >"; the answer to "Hi there!" is three lines (four A's since TM1: the trait lean changes which lines come)
 push TALK 1
 wait 40
 expect-scene DIALOG
@@ -83,10 +85,6 @@ press A
 wait 60
 expect-scene DIALOG
 shot talk_said_hi
-press A
-wait 40
-press A
-wait 40
 press A
 wait 40
 press A

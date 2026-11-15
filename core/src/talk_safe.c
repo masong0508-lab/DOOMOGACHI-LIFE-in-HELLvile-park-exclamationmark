@@ -34,6 +34,7 @@
  */
 #include "doomo/doomo.h"
 #include "doomo/talk.h"
+#include "doomo/talk_traits.h"
 #include "doomo/sim.h"
 #include "doomo/roster.h"
 #include "doomo/ending.h"
@@ -69,6 +70,7 @@ int talk_safe_minor(int id)
         return LIFE_IS_MINOR(sim_life_stage(id)) || (roster_traits(id) & (ROSTER_T_KID | ROSTER_T_TEEN)) ||
                ending_kid_cast(id);
     if (id == DOOMO_PLAYER_ID) return LIFE_IS_MINOR(sim_life_stage(id));
+    if (id == TALK_PREVIEW_ID) return LIFE_IS_MINOR(talk_preview_stage()) || !talk_preview_resident();   /* TM1 */
     if (id == TALK_PET_ID) return 0;                   /* the pet: K-3, and never a romance target */
     if (id > DOOMO_PLAYER_ID && id <= PLAYAS_ID_FAMILY_LAST) {
         const FamilyMember *fm = family_find(id);

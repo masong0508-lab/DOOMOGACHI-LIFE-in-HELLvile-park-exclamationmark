@@ -636,7 +636,9 @@ typedef struct TalkConv {
  * registered only where the build defines DOOMO_HAS_TALK (the link-time
  * twin of PLATF_TALK: the native host today); without it this is a plain
  * table nobody saves, and --gc-sections drops it where nobody calls it. */
-#define TALK_MEM_VERSION 1
+#define TALK_MEM_VERSION 1            /* the registry's chunk version, and payload byte 0 of a memory-only chunk */
+#define TALK_MEM_VERSION_TRAITS 2     /* payload byte 0 when a tail of explicit trait sets follows (TM1) */
+#define TALK_SAVE_WORST (TALK_MEM_WORST + 1 + 6 * 24)   /* + the trait tail: 1 + 6 x TALK_TRAIT_CUSTOM_MAX */
 typedef struct TalkMem {
     uint16_t id;                  /* a resident, the hero or a pool id            */
     uint16_t day;                 /* the town day (low 16 bits) of the last talk  */

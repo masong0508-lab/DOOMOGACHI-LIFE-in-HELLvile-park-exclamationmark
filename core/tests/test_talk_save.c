@@ -98,7 +98,7 @@ TEST(talk_mem_registered_here)
     CHECK(ext() != NULL);
     CHECK_EQ_U(ext()->tag, SAVE_EXT_TAG_TALK);
     CHECK_EQ(ext()->version, TALK_MEM_VERSION);
-    CHECK_EQ(ext()->max_size, TALK_MEM_WORST);
+    CHECK_EQ(ext()->max_size, TALK_SAVE_WORST);
     CHECK(ext()->max_size <= save_budget_declared_max(SAVE_EXT_TAG_TALK));
     for (i = 0; i < save_ext_count(); i++) n += save_ext_at(i) == ext();
     CHECK_EQ(n, 1);

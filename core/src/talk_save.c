@@ -37,6 +37,7 @@
  */
 #include "doomo/doomo.h"
 #include "doomo/talk.h"
+#include "doomo/talk_traits.h"
 #include "doomo/family.h"
 #include "doomo/save_ext.h"
 #include "doomo/save_budget.h"
@@ -225,9 +226,10 @@ void talk_mem_forget(int id)
 {
     int i = index_of(id);
     if (i >= 0) drop(i);
+    talk_trait_forget(id);                    /* TM1: an explicit trait set goes with the person */
 }
 
-void talk_mem_reset(void) { memset(&mem, 0, sizeof mem); }
+void talk_mem_reset(void) { memset(&mem, 0, sizeof mem); talk_trait_reset(); }
 
 /* ---- the chunk (only where the build has Talk) ----------------------------- */
 #ifdef DOOMO_HAS_TALK
@@ -238,15 +240,16 @@ static unsigned get16(const uint8_t *p) { return (unsigned)p[0] | ((unsigned)p[1
  * a chunk of 0 bytes */
 static uint32_t talk_size(void)
 {
-    return mem.count ? (uint32_t)(TALK_MEM_HDR + mem.count * TALK_MEM_ENTRY) : 0u;
+    uint32_t tr = talk_trait_save_size();
+    return mem.count || tr ? (uint32_t)(TALK_MEM_HDR + mem.count * TALK_MEM_ENTRY) + tr : 0u;
 }
 
 static uint32_t talk_write(uint8_t *dst, uint32_t cap)
 {
-    uint32_t n = talk_size();
+    uint32_t n = talk_size(), tr = talk_trait_save_size();
     int i;
     if (!n || cap < n) return 0;
-    dst[0] = TALK_MEM_VERSION;
+    dst[0] = tr ? TALK_MEM_VERSION_TRAITS : TALK_MEM_VERSION;     /* 1: memory only (as before), 2: + traits tail */
     dst[1] = mem.count;
     put16(dst + 2, mem.day);
     for (i = 0; i < mem.count; i++) {
@@ -260,6 +263,7 @@ static uint32_t talk_write(uint8_t *dst, uint32_t cap)
         p[9] = e->likes_known;
         put16(p + 10, 0);
     }
+    if (tr) talk_trait_save_write(dst + TALK_MEM_HDR + mem.count * TALK_MEM_ENTRY, tr);
     return n;
 }
 
@@ -269,9 +273,12 @@ static int talk_read(const uint8_t *src, uint32_t len, uint16_t version)
     talk_mem_reset();
     if (version != TALK_MEM_VERSION) return 0;               /* a later format: ignored */
     if (len == 0) return 1;                                   /* the empty chunk */
-    if (len < TALK_MEM_HDR || src[0] != TALK_MEM_VERSION) return 0;
+    if (len < TALK_MEM_HDR || (src[0] != TALK_MEM_VERSION && src[0] != TALK_MEM_VERSION_TRAITS)) return 0;
     n = src[1];
-    if (n > TALK_MEM_MAX || len != (uint32_t)(TALK_MEM_HDR + n * TALK_MEM_ENTRY)) return 0;
+    if (n > TALK_MEM_MAX || len < (uint32_t)(TALK_MEM_HDR + n * TALK_MEM_ENTRY)) return 0;
+    if (src[0] == TALK_MEM_VERSION && len != (uint32_t)(TALK_MEM_HDR + n * TALK_MEM_ENTRY)) return 0;
+    if (src[0] == TALK_MEM_VERSION_TRAITS &&
+        len == (uint32_t)(TALK_MEM_HDR + n * TALK_MEM_ENTRY)) return 0;      /* a v2 chunk carries a tail */
     mem.day = (uint16_t)get16(src + 2);
     for (i = 0; i < n; i++) {
         const uint8_t *p = src + TALK_MEM_HDR + i * TALK_MEM_ENTRY;
@@ -286,11 +293,15 @@ static int talk_read(const uint8_t *src, uint32_t len, uint16_t version)
         e->flags = (uint8_t)(p[8] & TMF_SAVED);
         e->likes_known = (uint8_t)(p[9] & LIKES_MASK);
     }
+    if (src[0] == TALK_MEM_VERSION_TRAITS) {                   /* TM1: the explicit trait sets */
+        uint32_t at = (uint32_t)(TALK_MEM_HDR + n * TALK_MEM_ENTRY);
+        if (!talk_trait_save_read(src + at, len - at)) { talk_mem_reset(); return 0; }
+    }
     return 1;
 }
 
 static const DoomoSaveExt talk_ext = {
-    SAVE_EXT_TAG_TALK, TALK_MEM_VERSION, talk_size, talk_write, talk_read, talk_mem_reset, TALK_MEM_WORST
+    SAVE_EXT_TAG_TALK, TALK_MEM_VERSION, talk_size, talk_write, talk_read, talk_mem_reset, TALK_SAVE_WORST
 };
 const DoomoSaveExt *const doomo_save_ext_talk = &talk_ext;
 #endif /* DOOMO_HAS_TALK */

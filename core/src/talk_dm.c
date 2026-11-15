@@ -24,6 +24,7 @@
 
 #include "doomo/doomo.h"
 #include "doomo/talk.h"
+#include "doomo/talk_traits.h"
 #include "doomo/sim.h"
 #include "doomo/town.h"
 #include "doomo/rng.h"
@@ -454,13 +455,18 @@ int talk_dm_expect(const TalkState *s, int slot, int act, int tone, uint16_t top
 {
     DoomoResident buf;
     const DoomoResident *r;
-    int id;
+    int id, v;
     if (!s || slot < 0 || slot >= s->nparts || !talker(s, slot)) return 0;
     if (TA_IS_ROMANCE(act)) return talk_dm_consent(s, slot, act) ? 4 : -3;
     id = s->part[slot].id;
     r = res_of(id, &buf);
-    return take_value(act, tone, pers(id, PERS_SPEECH), pers(id, PERS_EXPRESSION), pers(id, PERS_ATTITUDE),
-                      pers(id, PERS_QUIRK), r ? r->mood : MOOD_OK, relv(id, s->conv.avatar), topic_term(id, act, topic));
+    v = take_value(act, tone, pers(id, PERS_SPEECH), pers(id, PERS_EXPRESSION), pers(id, PERS_ATTITUDE),
+                   pers(id, PERS_QUIRK), r ? r->mood : MOOD_OK, relv(id, s->conv.avatar), topic_term(id, act, topic));
+    if (id != TALK_PET_ID && act > TA_NONE && act < TA_COUNT && !TA_IS_SAFETY(act)) {     /* TM1: the traits' lean */
+        TalkTraitBias b = talk_trait_bias_id(id, act, topic_root(topic), s->conv.aud.any_minor);
+        v = clampi(v + talk_trait_take(&b), -10, 8);
+    }
+    return v;
 }
 
 /* what the persona, the mood and the bond add to (or take from) what a plain resident would feel */

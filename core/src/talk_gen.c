@@ -35,6 +35,7 @@
  */
 #include "doomo/doomo.h"
 #include "doomo/talk.h"
+#include "doomo/talk_traits.h"
 #include "doomo/sim.h"
 #include "doomo/roster.h"
 #include "doomo/family.h"
@@ -163,6 +164,7 @@ int talk_gen_nalts(void)
 /* the resident record of an id: a town slot, the hero, or a pool member */
 static const DoomoResident *res_of(int id, DoomoResident *buf)
 {
+    if (id == TALK_PREVIEW_ID) return talk_preview_resident();      /* the creator's live preview (TM1) */
     if (id >= 0 && id <= DOOMO_PLAYER_ID) {
         const DoomoResident *r = town_res(id);
         return r && r->status != RES_EMPTY ? r : NULL;
@@ -175,6 +177,7 @@ static const char *name_of(int id, DoomoResident *buf)
 {
     const DoomoResident *r;
     if (id == TALK_PET_ID) return doomo_town.pet.name[0] ? doomo_town.pet.name : "Boreagotchi";
+    if (id == TALK_PREVIEW_ID) return talk_preview_resident() ? talk_preview_resident()->name : "";
     if (id > DOOMO_PLAYER_ID) return family_name(id);
     r = res_of(id, buf);
     return r ? r->name : "";
@@ -232,6 +235,12 @@ int talk_gen_stance(int id, uint16_t topic)
     if (r && ((r->flags & RF_HELLBORN) || (id < DOOMO_MAX_RESIDENTS && RES_DISTRICT(id) == DISTRICT_HELLVILE))) {
         if (cat_is(c.cat, "lore.church")) s = -s;            /* holy things */
         else if (talk_db_cat_root(c.cat) == TCR_HELLVILE) s += 1;
+    }
+    if (id != TALK_PET_ID) {                                  /* TM1: what their traits and liked topics lean to */
+        TalkTraitSet ts;
+        if (talk_trait_get(id, &ts) && r)
+            s += talk_trait_topic_lean(&ts, id == TALK_PREVIEW_ID ? talk_preview_stage() : RES_STAGE(r),
+                                       talk_db_cat_root(c.cat));
     }
     s += (int)(doomo_hash32((uint32_t)id * 7919u + topic * 104729u) % 7u) - 3;   /* a fixed personal lean */
     return s >= 2 ? TST_PRO : s <= -2 ? TST_CON : TST_NEUTRAL;
@@ -1159,7 +1168,8 @@ static int setup(Gen *g, TalkConv *c, int who, int to, int act, uint16_t topic)
     g->to_id = to >= 0 && to < c->n ? c->id[to] : to == -1 ? c->avatar : -1;
     g->r = res_of(g->sid, &g->rbuf);
     g->minor = (uint8_t)talk_safe_minor(g->sid);
-    g->stage = (uint8_t)(g->sid <= DOOMO_PLAYER_ID ? sim_life_stage(g->sid) :
+    g->stage = (uint8_t)(g->sid == TALK_PREVIEW_ID ? talk_preview_stage() :
+                         g->sid <= DOOMO_PLAYER_ID ? sim_life_stage(g->sid) :
                          family_find(g->sid) ? family_find(g->sid)->stage : LIFE_ADULT);
     memset(g->pc, 0xFF, sizeof g->pc);
     g->cast = 0xFF;

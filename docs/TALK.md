@@ -26,6 +26,7 @@ Contents:
 [6c The generator (T5a)](#6c-the-generator-t5a) ·
 [6d The census and the review sheet (T7)](#6d-the-census-and-the-review-sheet-t7) ·
 [6h The multilevel composer (design, TM0)](#6h-the-multilevel-composer-design-tm0-design-2026-11-15) ·
+[6i Traits and the personality API (TM1)](#6i-traits-and-the-personality-api-tm1-traits) ·
 [7 Sizes](#7-sizes-measured) ·
 [8 Tests](#8-tests) ·
 [9 Differences from the design](#9-differences-from-the-design) ·
@@ -134,7 +135,7 @@ What T5a adds (section 6c), each with its test:
 | `core/include/doomo/talk.h` | `TA_*` discourse acts. Their ids are fixed (they are saved in talk memory), and `test_contracts_talk.c` locks them. There are 59 acts plus 5 gate classes, including the gesture `TA_HIGH_FIVE` and the gate rewrite `TA_DEFLECT_ROMANCE`. Also: `TONE_*`; the `TS_*` input safety bits; `TalkUtter` (106 B: the one record every input path produces); `TalkAudience`; the talk memory sizes; the `TALK_<lang>.BIN` format; the `talk_db_*` reader API; `home_talk_enter()` |
 | `plat_ext.h` | `PLATF_TALK` (bit 9). `plat_talk_load(code)` returns the file size, 0, or `PLAT_TALK_LOADING` while the PS1 is still staging it. `plat_talk_read(off, dst, len)`. `plat_room_project(view, x, y, z, &sx, &sy)` |
 | `platform.h` | `DoomoRoomView.zoom == 2` is "talk framing", with `focus_x`, `focus_y` and `focus_r` (tile space, 16.16). Renderers that do not know zoom 2 treat it as the close-up (the PS1 already does, and `room_ref` ignores zoom) |
-| `save_ext.h`, `save_budget.h` | The `'TALK'` chunk: slot 13, registered by `talk_save.c` where the build defines `DOOMO_HAS_TALK` (the native host), weak NULL elsewhere, `SAVE_EXT_MAX_TALK` 320 B (292 B worst case). The joint worst case with it fits both slots: a post-game story save at its worst is 29,139 B, plus the 2,048 B margin is 31,187 B, under the 32,768 B gate (36 KB minus PA10's 4 KB); free play 68,945 B of 90,112 B |
+| `save_ext.h`, `save_budget.h` | The `'TALK'` chunk: slot 13, registered by `talk_save.c` where the build defines `DOOMO_HAS_TALK` (the native host), weak NULL elsewhere, `SAVE_EXT_MAX_TALK` 448 B (437 B worst case: 292 B memory + 145 B of explicit trait sets, TM1; was 320 B). The joint worst case with it fits both slots: a post-game story save at its worst is 29,139 B (figures measured before TM1 raised the cap by 128 B; `test_contracts_talk` still passes, so the slots hold, but they were not recomputed), plus the 2,048 B margin is 31,187 B, under the 32,768 B gate (36 KB minus PA10's 4 KB); free play 68,945 B of 90,112 B |
 | `sim.h`, `sim_events.c` | `NT_TALK_ROW`, `NT_TALK_MADE_UP`, `NT_TALK_GREAT_NIGHT`, `NT_TALK_WALKOUT` ("Big night at yours! %s and %s still giggle."). They fit the 64 B feed line with two 11-letter names |
 | `core/src/weak_talk.c` | The weak `plat_talk_*` hooks and `home_talk_enter` (all "no Talk here") |
 | `core/src/room_ref.c` | `room_ref_project()`. It shares `room_ref_draw()`'s origin, and it is the weak `plat_room_project()`. It is the anchor `draw_actor()` puts a resident's feet on |
@@ -1076,6 +1077,167 @@ cut into five one-day packages TM2a to TM2e.
   misses because the draw is concentrated (this tree at 400,000 contexts: Surface 254,159 distinct, 63.5%
   unique, Chao1 1.59 M; a uniform draw would need a support of 1.26 M at 2,000,000 contexts), not because
   the bank is small: four independent weighted layers are expected to flatten it (an estimate, not yet measured). TM2e accepts only a full census at 1,000,000 distinct or reports the gap.
+
+---------------------------------------------------------------------------
+
+## 6i. Traits and the personality API (TM1-TRAITS)
+
+Owner decision 2026-11-15 ("TALK DYNAMIC, MULTILEVEL, PERSONALITY SCREEN"). A person's
+Talk personality is the five Tomodachi sliders (the persona gene, 16 types), up to
+three traits of 24 Sims-like ones, and a few liked and disliked topics. Files:
+`core/include/doomo/talk_traits.h`, `core/src/talk_traits.c`,
+`core/tests/test_talk_traits.c`. It is linked wherever Talk is (the native host and the
+GBA game ROM, `DOOMO_HAS_TALK`); the PS1 and the Dreamcast do not call any of it yet, so
+`--gc-sections` drops it there (the PS1 EXE is byte-identical to the base).
+
+### The traits
+
+Ids are saved: add at the end, never reorder. `TT_NONE` = 0, then Hot-headed,
+Romantic, Goofball, Snob, Neat, Slob, Bookworm, Cheerful, Gloomy, Jealous, Loyal,
+Mean, Kind, Lazy, Ambitious, Paranoid, Self-assured, Shy, Outgoing, Creative,
+Glutton, Morbid, Curious, Honest (`TT_COUNT` = 25, so an id is 5 bits). A person has
+at most `TALK_TRAIT_MAX` = 3. Impossible pairs (`talk_trait_conflict`): kind +
+mean, kind + hot-headed, cheerful + gloomy, neat + slob, shy + outgoing, shy +
+self-assured, lazy + ambitious, self-assured + paranoid, loyal + jealous, goofball +
+snob. Liked and disliked topics are roots of the word network (`TCR_PEOPLE` ..
+`TCR_ROMANCE`, 1..15; two of each, never the same root in both lists); the romance
+root is for adults only.
+
+### Where it is stored (the memory answer)
+
+The 384-bit gene is full (3 spare bits) and every bit of the record costs about 125 B
+over 1,000 residents, so the traits are **not a new gene field** and the resident
+record does not grow: 0 B on the GBA, PS1 and Dreamcast, the PS1 margin and the GBA
+EWRAM / IWRAM are exactly as before. A person's effective set (`talk_trait_get`) is:
+
+* the **default**, a pure function of the record (the five sliders, the look seed and
+  the life stage; `talk_trait_default`): two traits that the sliders pull toward, one
+  liked and one disliked topic. Premade residents, the family pool, generated residents
+  and every old save get theirs from this, the same on every platform, no saved byte.
+  A minor's default never has a romance trait or "mean".
+* an **explicit set** the creator (or a story) chose (`talk_trait_set`): a table of at
+  most `TALK_TRAIT_CUSTOM_MAX` = 24 people (148 B of `.bss`), saved in the
+  `'TALK'` chunk as a tail (below). `talk_mem_forget` drops a person's set with them.
+
+### The 'TALK' chunk, version 2 payload
+
+The registry version stays 1. Payload byte 0 is 1 for a memory-only chunk (the bytes
+are exactly the old ones: an old save loads, and a save with no explicit set writes the
+same bytes as before) and 2 when a tail follows: after the memory entries,
+`[u8 n] n x {u16 id, u32 packed}` (31 bits: three 5-bit traits, two 4-bit likes, two
+4-bit dislikes), 6 B a set. The worst case is 437 B, so `SAVE_EXT_MAX_TALK` is 448
+(was 320); the joint worst-case save budget still holds (test_contracts_talk). A
+malformed tail refuses the whole chunk (the table stays empty); an entry for somebody
+who is gone, twice, or invalid is dropped or normalised.
+
+### Effects (the hooks; the composer is TM2's)
+
+`talk_trait_bias(set, stage, act, topic_root, minor_room)` returns
+`TalkTraitBias { accept 0..4, deny 0..4, stance -3..3, mood -3..3 }`. Used now by:
+
+* `talk_gen_stance`: the topic lean (a trait's own favoured or avoided root +-1 each,
+  a liked root +2, a disliked root -2, total -3..3) is added to the stance score.
+* `talk_dm_expect`: `accept - deny` is added to the take value (clamped to -10..8).
+
+**Safety in code** (a sweep over every trait x every life stage x every act x every
+topic root x both room kinds, 318,240 cases, is in `traits_bias_safety_every_trait_stage_act`):
+
+* a romance trait (romantic, jealous) is inert for a minor: the bias is the empty set's;
+  a minor's romance topic lean is 0; the default never gives one to a minor; when the
+  child grows up the trait becomes active;
+* with a minor as the speaker or anywhere in the room (`minor_room`) no trait turns a
+  request down harder or stings: `deny` is 0 and `mood` never below 0 (a mean adult is
+  gruff to adults only); no romance act gets any lean there;
+* the safety acts are never biased; the gate, `mature_adult_ok` and the kid-cast list
+  are untouched; grief topics stay sincere (the preview skips them).
+
+### The API the creator calls (exact list)
+
+```c
+#include "doomo/talk_traits.h"
+/* lists */
+const char *talk_trait_name(int t);  const char *talk_trait_desc(int t);   /* "Hot-headed", one sentence */
+const char *talk_trait_adj(int t);   const char *talk_trait_topic_name(int root);
+int  talk_trait_is_romance(int t);   int talk_trait_conflict(int a, int b);
+int  talk_trait_inert(int t, int stage);        /* grey it out: no effect at this age */
+int  talk_trait_topic_ok(int root, int stage);  /* romance topic: adults only */
+/* the creator's working set */
+void talk_traitset_clear(TalkTraitSet *); int talk_traitset_count(const TalkTraitSet *);
+int  talk_traitset_has(const TalkTraitSet *, int t);
+int  talk_traitset_add(TalkTraitSet *, int t);          /* TTE_OK / TTE_FULL / TTE_DUP / TTE_CONFLICT / TTE_RANGE */
+void talk_traitset_remove(TalkTraitSet *, int t);
+int  talk_traitset_like(TalkTraitSet *, int root);      /* TTE_OK / TTE_FULL / TTE_DUP / TTE_TOPIC_BOTH / TTE_RANGE */
+int  talk_traitset_dislike(TalkTraitSet *, int root);
+void talk_traitset_forget_topic(TalkTraitSet *, int root);
+int  talk_trait_validate(const TalkTraitSet *, int stage);   int talk_trait_normalize(TalkTraitSet *, int stage);
+/* a person's set */
+void talk_trait_default(const DoomoResident *r, TalkTraitSet *out);   /* what a record gets by itself */
+int  talk_trait_get(int id, TalkTraitSet *out);  int talk_trait_set(int id, const TalkTraitSet *);
+int  talk_trait_is_custom(int id);  void talk_trait_clear(int id);
+/* the screen: the verdict and the live preview */
+const char *talk_trait_title(const DoomoResident *r);       /* the persona type: "Quiet Bookworm" */
+int  talk_trait_read(const DoomoResident *r, const TalkTraitSet *ts /*NULL: default*/, char *out, int cap);
+int  talk_preview(const DoomoResident *r, const TalkTraitSet *ts /*NULL: default*/, int kind /*TP_GREETING,
+                  TP_ANSWER, TP_REFUSAL*/, uint32_t seed, char *out, int cap);
+```
+
+How the creator uses it: keep a `DoomoResident` (the sliders, the life stage and the look
+seed are in it) and a `TalkTraitSet`. On every change call `talk_trait_read(&r, &ts, buf, cap)`
+for the one-line read ("Quiet Bookworm: shy and kind. Loves food; avoids work.") and
+`talk_preview(&r, &ts, TP_GREETING / TP_ANSWER / TP_REFUSAL, seed, buf, cap)` for the three
+sample lines (fix `seed` per session so the lines do not flicker; change it for a "again"
+button). `talk_preview` works on a character that is not in the town: it runs the real
+`talk_gen_line` for the temporary id `TALK_PREVIEW_ID` with the player as the other
+speaker, and returns 0 when the Talk database is not open (the creator then shows its own
+text; check `talk_gen_ready()` first). It is deterministic, allocates nothing, scans at
+most 512 concepts, leaves no state behind, and obeys the room's rules (a child preview is
+a kid room: the S3 lint replaced none of 1,728 lines over every trait and life stage).
+On save, `talk_trait_set(id, &ts)` stores the choice for the new resident; the TALK chunk
+carries it. Limits the creator lead must know (TM1 review):
+
+* `TP_REFUSAL` is "an invite reply", not "how they turn you down": before TM2 the preview
+  picks the act, so a reply may be an acceptance (a probe: about 20 of 30 for a mean,
+  hot-headed adult). Do not label it a refusal in the UI. The trait lean on accept and
+  deny is in `talk_trait_bias` / `talk_dm_expect`.
+* Determinism is per town state: the line also reads the hero, the relationship and the
+  day. The greeting may name the player "You" (the preview has no avatar name).
+* Explicit trait sets persist only where the `'TALK'` chunk does (the native host). On the
+  GBA, PS1 and Dreamcast saves a creator's pick is lost on reload and the person falls
+  back to the derived set. The GBA ROM still carries the 24-entry table (168 B of EWRAM
+  with the preview state: the GBA ledger row).
+* An explicit set outlives its person: `talk_mem_forget` (which clears it) has no caller
+  in the sim yet. The creator lead or the town move-out path must call
+  `talk_mem_forget(id)` when a resident leaves, or the 24 slots fill (`TTE_FULL`).
+
+The preview traits show through the topic they talk about (their liked root)
+and the stance lines; the full multilevel composer (TM2) will make them colour the whole
+line.
+
+### Tests and measurements
+
+`test_talk_traits.c` (13 tests): the table, edit / validate / pack, the default (pure,
+valid, spread over 20+ traits, steered by the sliders, no romance trait or "mean" for a
+minor), explicit sets, the chunk (old v1 chunk loads unchanged, v2 round trip and byte
+identical rewrite, bad tail, gone person, forget, reset), the one-line read, the bias
+safety sweep, the leanings, the stance hook, the drama manager hook, the preview (real
+engine, deterministic, stateless, steered by the liked topic, safe for every trait and
+life stage).
+
+Measured (clean builds, base = origin `382a5fdc`, this branch on top):
+
+| | base | with TM1 | delta |
+|---|---|---|---|
+| core tests | 1,211 passed | 1,224 passed | +13 tests |
+| GBA `.bss` (EWRAM) | 248,748 | 248,916 | +168 B (the 148 B trait table and 20 B of preview state) |
+| GBA EWRAM free (memreport) | 12,500 | 12,332 | -168 B |
+| GBA `.iwram` / `.iwram_bss` | 11,272 / 4,088 | 11,272 / 4,088 | 0 |
+| GBA `.text` / `.rodata` (ROM) | 1,456,360 / 7,600,780 | 1,460,688 / 7,603,316 | +4,328 / +2,536 B |
+| PS1 EXE with the boot FMV | ends 0x801ee580 | ends 0x801ee580 | 0 (the EXE md5 is identical) |
+
+The 168 B of GBA EWRAM are the whole cost of explicit trait sets (the record itself did not
+grow): where a build has no creator that sets traits, shrink `TALK_TRAIT_CUSTOM_MAX`.
+`make -C gba test-talk` and the native script `home_visit` fail on the base the same way
+("expected scene TALK, got DIALOG"); they are not caused by this package.
 
 ---------------------------------------------------------------------------
 
