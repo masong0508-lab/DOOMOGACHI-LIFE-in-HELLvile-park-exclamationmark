@@ -569,7 +569,7 @@ through `part_lz_src()`.
 **The PS1 (CR10, done 2026-11-15)** builds the VM in (`DOOMO_PARTS_VM` 1) and does not use the LZ form: the raw scripts
 are in SPU RAM (`PARTS.BIN`, `ps1/src/partstore.c`) and `part_store_ops()` (`part_lru.c`, `DOOMO_PARTS_SPU`) reads a worn
 entry into a 2 KB per-render arena by SPU DMA, so the VM, the painters' scripted paths, the PartRef tables and the arena
-are 20.6 KB resident and the scripts themselves 0 (docs/PS1.md "CR10"). `DOOMO_PARTS_SPU_TEST` builds the same store on
+are 21 KB resident and the scripts themselves 0 (docs/PS1.md "CR10"). `DOOMO_PARTS_SPU_TEST` builds the same store on
 the host, so every portrait test draws through it. The LZ blocks stay for the host tests and as the reference form.
 
 **Shape gate.** `portrait_shape_mode(1)` forces every material onto one grey ramp (direct renders only;

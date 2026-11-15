@@ -299,7 +299,7 @@ compares; `make -C core part-icons-sheet` writes the contact sheet `build/sheets
   bald mannequin;
 * at most 15 colours an icon. `core/gen/part_icons_data.c` holds the raw icons (140 KB of ROM,
   GBA and native blit them from ROM); `core/gen/part_icons_rle.c` the same packed at 4 bits a pixel
-  (113 KB for all 718 icons, `part_icon_unpack`): the PS1 links only the tables of these in the creator
+  (122 KB for all 786 icons, `part_icon_unpack`): the PS1 links only the tables of these in the creator
   overlay group (`DOOMO_ICONS_RLE`), keeps the packed bytes in SPU RAM (CR10, `PARTS.BIN`), and unpacks one
   icon into `cr.icon_buf` before `plat_image` uploads it to the VRAM image cache (each icon has its own uid). Tests (`test_part_icons.c`): one icon per live
   part, packed == raw, at most 15 colours, stable uids.
@@ -864,7 +864,7 @@ package (the cheat "Slider range x1..x4" is CR-SLIDERX, below; the slider table 
   (`part_live_drawable` is the live count), the picture grids show every part's icon, the preview and every scene wear
   them, and the deep look pool is on (`LOOK_POOL_SAVED` 1, 384 B: the Eye makeup rows, saved on the memory card).
   A look made on the GBA shows the same on the PS1, and the other way round (same gene, same scripts).
-* **How:** the part scripts (17,888 B) and the packed icons (112,910 B) are not in the EXE: `ps1/tools/partsbin.py` writes
+* **How:** the part scripts (19,639 B) and the packed icons (121,577 B) are not in the EXE: `ps1/tools/partsbin.py` writes
   them to `PARTS.BIN`, `ps1/src/partstore.c` uploads them to SPU RAM at boot, and a script entry is read back by SPU
   DMA into a 2 KB per-render arena (`core/src/part_lru.c` `part_store_ops`; an icon onto the stack in
   `part_icon_unpack`). The host tests draw through the same code (`DOOMO_PARTS_SPU_TEST`).
@@ -877,11 +877,12 @@ package (the cheat "Slider range x1..x4" is CR-SLIDERX, below; the slider table 
   (Lashes through Move in / save / load / reopen on the card), `game_smoke` (`parts: loaded`), `creator_speed`.
 * **Measured (PCSX-Redux):** `creator_speed` 30.13 / 29.39 / 30.13 / 29.88 (the base's); scripted-part grids held 29.85 to
   30.00, the hair grid 27.52 (painted hair on the base: 21.9); the speed tour's creator group all the same fps; resident
-  RAM **+20,576 B** (132,608 -> 112,032 B below the stack top; the creator group has 64,584 B of room now, was 1,852 B).
-  That is 16,480 B over CREATOR's 4 KB PS1 share: the VM and the painters' hooks are 12.7 KB of it and cannot leave the
+  RAM **+21,024 B** (132,608 -> 111,584 B below the stack top; the creator group has 63,024 B of room now, was 600 B).
+  That is 16,928 B over CREATOR's 4 KB PS1 share: the VM and the painters' hooks are 12.7 KB of it and cannot leave the
   resident image. GBA and Dreamcast: no RAM change (the packed icon set is bigger: +48 KB of ROM there).
 * **Left:** a save with a bigger pool than the PS1's 384 B loads there with an empty pool; the hair try-on is 27.5 (S3-2);
-  every later batch adds 4 B of resident `PartRef` per part and needs `PARTS.BIN` room (184 KB of SPU RAM, 132 KB used).
+  every later batch adds 4 B of resident `PartRef` per part and needs `PARTS.BIN` room: SPU RAM holds 180 KB, 140 KB used,
+  so about 190 more parts fit; the next PS1 creator package puts the icons on the disc (`ICONS.BIN`, one section's page per entry).
 
 ## CR4 batch A5: outfit (2026-11-13)
 

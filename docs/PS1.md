@@ -691,7 +691,7 @@ comes on with CR10 (done 2026-11-15, see "CR10" below: the part data is in SPU R
 0x00000-0x00fff  capture buffers (hardware)
 0x01000-0x01fff  silent loop block + the chiptune waveforms (1.8 KB)
 0x02000-0x4ffff  sound effects (ADPCM; all converted at boot, about 35 KB used)
-0x50000-0x7dfff  PARTS.BIN (CR10): the part scripts and the packed part icons, 132 KB of the 184 KB
+0x50000-0x7dfff  PARTS.BIN (CR10): the part scripts and the packed part icons, 140 KB of the 180 KB
 0x7e000-0x7ffff  reverb work area (unused)
 ```
 
@@ -1839,14 +1839,14 @@ is 1 (it was 0 since CR2), `part_live_drawable` is the live count, and the deep 
 A look made on the GBA shows the same on the PS1 (same gene, same scripts, the same renderer).
 
 **Where the data lives.** Nothing of the scripts or the icons is linked into the EXE (`DOOMO_PARTS_SPU`):
-* `ps1/tools/partsbin.py` writes **`PARTS.BIN`** (66 sectors, 135,168 B): sector 0 is a header (`"PRTS"`, the number of
+* `ps1/tools/partsbin.py` writes **`PARTS.BIN`** (71 sectors, 145,408 B): sector 0 is a header (`"PRTS"`, the number of
   sets, the data size, then an offset and a length per set and for the icons), then every set's raw scripts
-  (`core/gen/parts_<dir>.c` `ops[]`, 17,888 B) and the packed part icons (`doomo_part_icon_rle[]`, 112,910 B), each
+  (`core/gen/parts_<dir>.c` `ops[]`, 19,639 B) and the packed part icons (`doomo_part_icon_rle[]`, 121,577 B), each
   starting on a 64-byte boundary. No LZ: the PS1 keeps no decoder and no block slots.
 * `src/partstore.c` (`partstore_boot()`, called after `audio_hw_sfx_preload()`) reads it in 32 KB chunks through the
   display lists' scratch (idle until the game loop, like the effects' staging) and uploads it to SPU RAM at **0x50000**
   (`SPU_PARTS_BASE`; the effects stop below it, `SPU_SFX_END`). It reads the first bytes back at an odd offset and logs
-  `parts: loaded, 9 sets + icons, 133120 bytes at spu 50000` (`game_smoke` expects `parts: loaded`; a missing or damaged
+  `parts: loaded, 9 sets + icons, 143360 bytes at spu 50000` (`game_smoke` expects `parts: loaded`; a missing or damaged
   PARTS.BIN logs `parts: MISSING` and every scripted part draws nothing, the grid shows "?").
 * **The audio lock.** After boot nothing writes SPU RAM (every effect is converted before the first game frame, spu.c
   "staging"), so a part read never races an upload; the engine-test build does not load the store.
@@ -1857,7 +1857,7 @@ A look made on the GBA shows the same on the PS1 (same gene, same scripts, the s
   test) and falls back to a 256 B window, valid until the next read, when the arena is full.
 * `plat_part_icon_read(ofs, dst, n)`: `part_icon_unpack()` reads one packed icon (at most 256 B, `PART_ICON_PACK_MAX`,
   the icon tool refuses a longer one) onto the stack and unpacks it into the grid's cell buffer as before. The
-  creator group keeps only the icon tables (`doomo_part_icon_rle_rows` / `_ofs`, 718 icons). **The packed set is now
+  creator group keeps only the icon tables (`doomo_part_icon_rle_rows` / `_ofs`, 786 icons). **The packed set is now
   every icon** (it was the 404 painted parts' icons): the grid shows every part's picture, no "?".
 * The host tests build the same code (`DOOMO_PARTS_SPU_TEST`): `PART_OPS` and the icon read go through the store (its
   "SPU RAM" is the linked raw array), so the whole portrait and icon suite of `make -C core test` is the proof that
@@ -1865,34 +1865,35 @@ A look made on the GBA shows the same on the PS1 (same gene, same scripts, the s
   the arena keeps an entry once per render and spills when full, a missing store draws nothing).
 
 **Memory** (clean builds with the boot FMV, `cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON`; base = the tip
-`366ee6c1`):
+`e587f9c1`):
 
 | | base `366ee6c1` | with CR10 | change |
 |---|---:|---:|---:|
-| EXE ends (`_end`) | 0x801df9f0 | 0x801e4a80 | +20,624 B |
-| **below the stack top** (elf2exe) | **132,608 B** | **112,032 B** | **-20,576 B** |
+| EXE ends (`_end`) | 0x801df9f0 | 0x801e4c10 | +21,024 B |
+| **below the stack top** (elf2exe) | **132,608 B** | **111,584 B** | **-21,024 B** |
 | overlay slot | 131,072 B | 131,072 B | 0 |
-| creator group (`.ovl_03`) | 183,000 B, 1,852 B under the slot's end | 120,264 B, **64,584 B** under it | -62,736 B |
-| `OVL.BIN` | 1,171,456 B | 1,136,640 B | -34,816 B |
-| `PARTS.BIN` (new, on the disc) | - | 135,168 B | +135,168 B |
+| creator group (`.ovl_03`) | 184,248 B, 600 B under the slot's end | 121,824 B, **63,024 B** under it | -62,424 B |
+| `OVL.BIN` | 1,234,944 B | 1,134,592 B | -100,352 B |
+| `PARTS.BIN` (new, on the disc) | - | 145,408 B | +145,408 B |
 
-The resident +20,576 B, by object (map diff): the part VM `portrait_script.c` 9,192 B (code, `-Os`), the painters' scripted
+The resident +21,024 B, by object (map diff): the part VM `portrait_script.c` 9,380 B (code, `-Os`), the painters' scripted
 paths in `portrait_head` / `portrait_hair` / `portrait_body` / `portrait_fx` 3,560 B, the PartRef tables (refs, lists,
-stamps, the registry) 1,900 B, `part_lru.c` 3,088 B (the 2 KB arena, the 256 B window, 20 entry slots, 400 B of code),
-`partstore.c` 1,804 B (a 320 B read buffer, the set bases, the boot loader), the look pool's put / load / raw glue
-(`look_pool.c` 596 B and the resident part of `creator.c`, together about 970 B), the rest (`cutview.c`, `part_icons.c`,
-the generated registry) 160 B. **CREATOR's PS1 share is 4 KB (PARALLEL_WAVES.md section 3):
-this package uses 20,576 B, 16,480 B over it**, taken from the reserve; the margin is still 38,304 B above the 72 KB gate
+stamps, the registry) 2,150 B, `part_lru.c` 3,088 B (the 2 KB arena, the 256 B window, 20 entry slots, 400 B of code),
+`partstore.c` 1,836 B (a 320 B read buffer, the set bases, the boot loader), the look pool's put / load / raw glue
+(`look_pool.c` 596 B and the resident part of `creator.c`, together about 970 B), the rest (`cutview.c`, `part_icons.c`)
+130 B. **CREATOR's PS1 share is 4 KB (PARALLEL_WAVES.md section 3):
+this package uses 21,024 B, 16,928 B over it**, taken from the reserve; the margin is still 37,856 B above the 72 KB gate
 (73,728 B). The share could not hold the VM: its code and the painters' hooks alone are 12.7 KB and no group can take them
 (every scene draws portraits, the slot is one group at a time). What this package did to keep the rest small: the scripts
 and icons are raw bytes in SPU RAM, not in the EXE (linking only the LZ blocks of the scripts was +14.7 KB, the
 LRU 9.5 KB: the first, naive build with the VM on was 37,088 B); the arena is 2 KB, not the LZ design's 8 KB.
 **Every later part batch adds 4 B of PartRef to the resident tables per part** (the scripts and the icons cost no RAM:
-SPU RAM holds 184 KB, 132 KB used, so about 600 more parts of script and icon fit before the icons need their own disc
-file read per section, as CREATOR_PLAN CR7 describes).
+SPU RAM holds 180 KB (0x50000 to the reverb area), 140 KB used, so **only about 190 more parts of script and icon fit**
+(a part is about 55 B of script and 155 B of packed icon): the icons, 86 % of the file, need their own disc file read
+per section (`ICONS.BIN`, CREATOR_PLAN CR7) before the next big batches; that is the next PS1 creator package).
 
 **Speed** (PCSX-Redux, 30 Hz): `creator_speed` idle 30.13, grid scroll 29.39, rows 30.13, value 29.88 (the same as the
-base); the speed tour's `creator` group (25 windows) all the same fps as the base (creator load 314+475 -> 312+363 ms);
+base); the speed tour's `creator` group (25 windows) all the same fps as the base (creator load 314+475 -> 312+363 ms on the tree before the rebase);
 `game_smoke` 7 of 7 shots byte-identical. The new `creator_parts.txt` holds the cursor on scripted parts of six grids
 (100 frames each): head shapes 29.85, eyes 29.85, horns 30.00, tail 30.00, outer layer 30.00, **hair 27.52** (14 frames
 at 50 ms; the same moves on the base disc, painted hair only, were 21.9 with 70 frames at 50 ms). A hair is the
@@ -1909,7 +1910,7 @@ Move in, a save and a load on the memory card, the citizen reopened: it still we
 
 **Left:** the deep batches (hair page 2, spooky accessories, outfit page 2, A6-A9) are scripts plus a `DF_` id and a
 painter hook each; the PS1 pool is 384 B (about 40 short runs): a save written by a console with a bigger pool loads here
-with an empty pool (the nicknames and gene bits stay); the 20,576 B against the 4 KB share (the coordinator releases the
+with an empty pool (the nicknames and gene bits stay); SPU RAM has room for about 190 more parts (above); the 21,024 B against the 4 KB share (the coordinator releases the
 rest of the reserve or CR-UI / SPEED find it elsewhere); hair try-on 27.5.
 
 ## RAM headroom 2026-11-12 (PS1-RAM)
@@ -2350,7 +2351,7 @@ emulator at a time; the fps numbers are the game's own frame counts, so a busy h
   resident RAM. Room on the landed tree (`b9e74a51` with this package, from `build/doomogachi.ldmap`): the story
   group ends 1,216 B below the slot's end, combat 1,692 B (PS1-FLAT put `model.c` in it), the house's common part
   1,816 B (its parts follow it in whole 2 KB sectors: HomeMart, the biggest at 12,144 B, has 144 B before it
-  takes one more), the creator **1,320 B** (CR10 moved the packed icons out of it: 64,584 B now; it loads over borrowed `.bss` and ends in the slot, in whole 2 KB
+  takes one more), the creator **600 B** on the rebased tree (CR10 moved the packed icons out of it: 63,024 B now; it loads over borrowed `.bss` and ends in the slot, in whole 2 KB
   sectors; 183,000 B with this package, which gives it about 3.8 KB of catalog parts and table strings; every
   creator batch adds to it: CR5 took 1,932 B of the room), the cutscenes 12,344 B, free play 24,752 B. A group that reaches the slot can keep its table
   strings resident instead (`STR_WHOLE`) or take no shared code (`SHARED_NOT`).
