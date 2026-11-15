@@ -623,8 +623,11 @@ static void dream_draw(void)
             int r = (sw + sh) * D.st_t / (WIPE_TICKS * 2), k, lvl = 15 - D.st_t * 15 / WIPE_TICKS;
 #if defined(DOOMO_PLATFORM_GBA)
             /* S2-4d (pixel-changing, GBA only): the dream darkens with the hardware fade (BLDY on the frame's flip)
-             * instead of a full-screen shade, 14 ms of a frame; the sparkles darken with it */
-            if (lvl < 15) plat_post_blend(PAL_BLACK, (15 - lvl) * 16 / 15);
+             * instead of a full-screen shade, 14 ms of a frame; the sparkles darken with it. The fade's step for
+             * each shade level gives the picture the shade's mean brightness (measured on the wipe's frames: the
+             * colormap darkens faster than a straight line) */
+            static const uint8_t bldy[16] = { 16, 15, 14, 13, 12, 11, 11, 10, 9, 7, 7, 6, 5, 2, 0, 0 };
+            if (bldy[lvl]) plat_post_blend(PAL_BLACK, bldy[lvl]);
 #else
             plat_shade_rect(0, 0, sw, sh, lvl);
 #endif
