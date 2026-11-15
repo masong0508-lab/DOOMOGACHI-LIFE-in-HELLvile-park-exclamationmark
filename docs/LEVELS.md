@@ -343,11 +343,11 @@ numbers in the status file); the GBA is a 32 MB cartridge. The overworld's per-f
 gone (a NULL pointer means "not looked up yet this frame"), which pays for them: net RAM change is
 negative. Existing levels use no new id, so every shot is unchanged.
 
-**Measured (2026-11-15, base `6e8363ab`, same commands before and after, both trees built clean).** GBA
-(`make -C gba sizes`): `.rodata` 7,936,840 -> 8,039,776 B (**+102,936 B ROM**: 7 x 4,096 + 3 x 24,576 of pixels
-+ 512 of tables and text; the cartridge is 32 MB), `.text` +72 B, `.bss` 254,828 -> 254,812 B (**-16 B
+**Measured (2026-11-15, base `fe410024`, same commands before and after, both trees built clean).** GBA
+(`make -C gba sizes`): `.rodata` 8,246,748 -> 8,349,684 B (**+102,936 B ROM**: 7 x 4,096 + 3 x 24,576 of pixels
++ 512 of tables and text; the cartridge is 32 MB), `.text` +64 B, `.bss` 254,828 -> 254,812 B (**-16 B
 EWRAM**), `.iwram` 11,272, `.iwram_bss` 4,088, `.data` 816 and the four overlay slots unchanged (GBA ledger
-row 59). PS1 (`cmake --build --preset ps1`, boot FMV): `doomogachi.exe` and `OVL.BIN` are **byte-identical**
+row 60). PS1 (`cmake --build --preset ps1`, boot FMV): `doomogachi.exe` and `OVL.BIN` are **byte-identical**
 to the base's (`cmp`), 130,000 B below the stack top before and after (**delta 0 B**; none of the 8 KB LEVELS
 share used). Core tests 1,377 passed, 0 failed.
 

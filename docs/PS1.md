@@ -2318,7 +2318,7 @@ and the Options page are overlay code. **Linker fix on the landing tree (origin 
 
 ## LV7a (level art kit part A): resident delta 0 B
 
-Measured 2026-11-15 on `6e8363ab` and the same + LV7a (clean builds, boot FMV, `-DDOOMO_INTRO_REQUIRED=ON`): `doomogachi.exe` and
+Measured 2026-11-15 on `fe410024` and the same + LV7a (clean builds, boot FMV, `-DDOOMO_INTRO_REQUIRED=ON`): `doomogachi.exe` and
 `OVL.BIN` are byte-identical (`cmp`), `elf2exe` says 130,000 B below the stack top both times. The 7 new textures and 3 skies sit behind
 `#ifndef DOOMO_PLATFORM_PS1` in `art_data.c` (`TEX_COUNT` / `SKY_COUNT` stay 48 and 5 there; `packart.py` stops at that line, tested by
 `tools/tests/test_packart.py`); the texture bank reader, its hook in `textures.c` and the sample bank are compiled out
