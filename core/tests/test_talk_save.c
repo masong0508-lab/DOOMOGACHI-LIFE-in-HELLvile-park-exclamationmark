@@ -88,7 +88,7 @@ static void entry(uint8_t *b, int i, int id, unsigned day, unsigned ta, unsigned
     uint8_t *p = b + TALK_MEM_HDR + i * TALK_MEM_ENTRY;
     put16(p, (unsigned)id); put16(p + 2, day); put16(p + 4, ta); put16(p + 6, tb);
     p[8] = (uint8_t)flags; p[9] = (uint8_t)likes;
-    put16(p + 10, 0xBEEF);                               /* spare: ignored */
+    put16(p + 10, 0xBEC0);                               /* spare: only bits 0-5 are read (TM2d: depth reached, secrets told today) */
 }
 
 TEST(talk_mem_registered_here)

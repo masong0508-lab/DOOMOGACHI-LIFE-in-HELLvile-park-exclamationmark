@@ -1,0 +1,28 @@
+# core/data/talk/grammar/en/depth_story.tlk - TM2d: the bridge into a depth 2 story (owner: TK; docs/TALK.md 6n;
+# design TALK_MULTILEVEL 2.3 and 10). A second short line by the same resident, said right after the answer,
+# once the player has stayed on a topic for a few turns with someone who is at least an acquaintance. It tells
+# only a fact the sim holds (the guard is that fact: the job, the family, this week's news, a problem, the last
+# topic they talked about, a thing they like), never an invented backstory. Kid-safe: no register word, no
+# romance; the problem bridge never names a crush, a break-up, a proposal, possession, corruption, a nightmare
+# or a fight.
+
+@rule story.job guard: depth=2&fact.job act: tell
+  "That takes me back. Being {job:indef} taught me patience."
+  "Funny. At work, as {job:indef}, I hear that a lot."
+  "I'm {job:indef}, you know. Long days, short breaks, good stories."
+@rule story.family guard: depth=2&fact.family act: tell
+  "My household is loud. Nobody is surprised anymore."
+  "Family is a lot. We share one bathroom and many opinions."
+@rule story.news guard: depth=2&fact.news act: tell
+  "I was in the paper this week, you know. Still glowing."
+  "Did you read the news? I'm in it. Briefly."
+@rule story.problem guard: depth=2&fact.problem&!prob=crush&!prob=confess_help&!prob=breakup&!prob=proposal&!prob=possessed&!prob=corruption&!prob=nightmare&!prob=fight act: tell
+  "It's been a rough week, honestly. I'm sorting it out."
+  "Thanks for sticking around. This week has been a lot."
+@rule story.mem guard: depth=2&fact.memory act: tell
+  "We talked about {mem} once. I keep thinking about it."
+  "That reminds me of {mem}, from last time. I liked that talk."
+@rule story.like guard: depth=2&!rel=stranger act: tell
+  "Speaking of which, {like} is my thing. I could go all day."
+  "I get like this about {like}. Ask anyone. Please don't."
+  "You know what I never get tired of? {like:cap}. Never."

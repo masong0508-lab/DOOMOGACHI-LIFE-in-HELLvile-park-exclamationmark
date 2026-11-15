@@ -350,7 +350,21 @@ int talk_parse(const char *text, const TalkParseCtx *ctx, TalkUtter *out, TalkPa
             if (out->shown[p] != ' ' && out->shown[p] != '\t') out->shown[p] = '#';
         out->safety |= TS_MASKED;
     }
+    /* TM2d (design 4, E1 to E3): the first unknown word the reply may name: a word token the lexicon does not know,
+     * not masked, not found by the leet fold, not a typo of a known word, 3 to 16 bytes of the bubble text. The
+     * generator re-checks every fence (E2 to E7) on the bubble text itself */
+    for (i = 0; i < n; i++) {
+        const TalkTok *t = &info->tok[i];
+        if (t->kind != TTK_WORD || !(t->flags & TTF_UNK) || (t->flags & (TTF_MASK | TTF_LEET | TTF_FUZZY | TTF_ABSENT)) ||
+            t->src1 <= t->src0 || t->src1 - t->src0 < 3 || t->src1 - t->src0 > 16 || t->src1 > TALK_SHOWN_MAX - 1 ||
+            t->person >= 0)
+            continue;
+        out->unk_off = t->src0;
+        out->unk_len = (uint8_t)(t->src1 - t->src0);
+        break;
+    }
     if (out->safety & (TS_HATE | TS_DISTRESS) || explicit_) {
+        out->unk_off = out->unk_len = 0;
         /* explicit first (K-7 reads it), then distress before hate: someone in
          * trouble gets the kind answer even if the line is ugly */
         out->act[0] = (uint8_t)(explicit_ ? TA_REFUSE_SEXUAL :

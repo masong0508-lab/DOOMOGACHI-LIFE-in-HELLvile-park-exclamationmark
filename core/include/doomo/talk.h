@@ -99,7 +99,10 @@ typedef struct TalkUtter {
     uint8_t  safety;                  /* TS_* bits                              */
     uint8_t  conf;                    /* parser confidence 0..15 (composer: 15) */
     char     shown[TALK_SHOWN_MAX];   /* the player's bubble text (masked)      */
-} TalkUtter;                           /* 106 B */
+    uint8_t  unk_off, unk_len;        /* TM2d: the first unknown word of `shown` (byte offset, length) that the
+                                         parser lets the reply name (E1, E3); 0, 0 none. talk_parse sets it; the
+                                         generator re-checks every fence on the text itself (E2 to E7)        */
+} TalkUtter;                           /* 108 B */
 
 /* The room's audience for the gate (T4 talk_safe_ctx). */
 typedef struct TalkAudience {
@@ -393,6 +396,12 @@ void talk_lex_topics(const TalkTok *tok, int n, const TalkParseCtx *ctx, uint16_
 int  talk_lex_known(const char *word, uint16_t *wflags);
 /* Look a canonical key up: its word index, or -1. */
 int  talk_lex_find(const char *key, uint16_t *concept, uint16_t *wflags, uint32_t tags[4]);
+/* TM2d (design 4, step 1): the nearest known concept to an unknown word, by edit distance 2 (distance 1 for a
+ * word of 4 letters or less) or by a shared stem of 4 letters. Returns the distance (1, 2; 3 for a stem) and
+ * *concept, or 0 when none is near. *unsafe = 1 when any word of the lexicon within edit distance 1 is a
+ * register, hate, sexual, minor, distress or real-world word (E4: such a word is never echoed); a guess is
+ * only ever a concept that carries no such flag. Native and Dreamcast only (a few thousand records). */
+int  talk_lex_near(const char *word, uint16_t *concept, int *unsafe);
 /* Parse one typed line into out (acts, topic, target, tone, safety, conf,
  * the masked bubble text). The S1 safety classifier runs first and wins.
  * info may be NULL. Returns 1, or 0 when TB_PARSE is missing (no parser:
@@ -561,6 +570,12 @@ enum { TGE_OPEN = 0, TGE_CB, TGE_TAG, TGE_HANDOFF, TGE_SAFE, TGE_END_K7, TGE_PET
        TGE_MAKEUP,   /* after a mediation that worked                         */
        TGE_KIDASK,   /* a child: "Are you guys fighting?" (the room cools)    */
        TGE_FOLLOW,   /* the one who answered hands the talk back to the player */
+       /* TM2d: the connective lines (grammar/<lang>/depth_*.tlk, hooks_*.tlk, unk_*.tlk) */
+       TGE_REASON,   /* depth 1: a clause that gives the reason for a stance (a part of the answer line) */
+       TGE_STORY,    /* depth 2: the bridge into a story, then the fact (a second line)                  */
+       TGE_SECRET,   /* depth 3: the reveal of a like, a fear, the hated food or a small problem          */
+       TGE_UNK,      /* the reply to a line the parser did not understand: guess, name or ask             */
+       TGE_HOOK,     /* layer d: the question, the offer, the call or the acknowledgement after a reply   */
        TGE_COUNT };
 
 /* Guard predicates (talkc_gen.py reads this enum: a guard term "kid_present"
@@ -603,6 +618,11 @@ enum {
     TGP_KIND,                        /* TM2c: the plan's reply kind, TK_* (kind=refuse) */
     TGP_TRAIT,                       /* TM2c: the speaker has trait TT_* in this room (trait=shy); edgy
                                         traits never hold with a non-adult speaker or in a kid room */
+    TGP_DEPTH,                       /* TM2d: the plan's topic depth, 0 to 3 (depth=2): the line is the
+                                        reason (1), the story (2) or the secret (3) of the thread */
+    TGP_HOOK,                        /* TM2d: the plan's hook, TH_* (hook=offer) */
+    TGP_SECRET,                      /* TM2d: which secret a depth 3 line tells, TSEC_* (secret=fear) */
+    TGP_UNK,                         /* TM2d: how an unknown line is answered, TU_* (unk=name) */
     TGP_COUNT
 };
 
@@ -630,7 +650,26 @@ typedef struct TalkConv {
     uint16_t room_recent[TALK_ROOM_NOVELTY];     /* the room's last core alternatives, any speaker (no line twice) */
     uint16_t mem_topic[TALK_PARTS_MAX];          /* talk memory (T6): last topic      */
     uint8_t  mem_flags[TALK_PARTS_MAX];          /* talk memory (T6): TMF_*           */
+    /* TM2d: topic depth, hooks, the unknown word (23 + 12 B; the house scratch, nothing saved but mem_dep) */
+    uint8_t  dep[TALK_PARTS_MAX];                /* the depth state of each participant (TDEP_*)                    */
+    uint16_t dep_tw[TALK_PARTS_MAX];             /* ... the thread's topic and the last reply kind                  */
+    uint8_t  mem_dep[TALK_PARTS_MAX];            /* talk memory: bits 0-1 the level reached last time, 2-5 the secrets told (TalkMem.spare) */
+    uint8_t  engage;                             /* the answering resident's engagement (the drama manager sets it before the answer; 55 when unset) */
+    uint16_t more;                               /* a second line the last answer asks for: bits 0-1 TMORE_*, 2-3 the slot, 8-15 the player's act; 0 none */
+    uint8_t  unk_st;                             /* the unknown word's state, packed (TC_UNK_MODE, TC_TAUGHT, TC_UNK_SAID below)        */
+    uint16_t unk_guess;                          /* the nearest known concept to the unknown word (a real concept), 0 none */
+    char     unk[18];                            /* the word to name, lower case (E1 to E6 held), else empty      */
+    uint16_t taught_hash[4];                     /* the ring of words the player has named a kind for: hash16 (never saved)  */
+    uint8_t  taught_root[4];                     /* ... and the category root they were said to be                */
 } TalkConv;
+/* TalkConv.unk_st: bits 0-2 how the next answer to an unknown line goes (TU_*; set by talk_gen_unk_prepare), bits 3-5 the
+ * ring index + 1 of the unknown word the player has been asked the kind of (0 none), bit 6 a word was named this talk (E7: once) */
+#define TC_UNK_MODE(c)        ((unsigned)((c)->unk_st & 7u))
+#define TC_SET_UNK_MODE(c, m) ((c)->unk_st = (uint8_t)(((c)->unk_st & ~7u) | ((unsigned)(m) & 7u)))
+#define TC_TAUGHT(c)          ((unsigned)(((c)->unk_st >> 3) & 7u))
+#define TC_SET_TAUGHT(c, v)   ((c)->unk_st = (uint8_t)(((c)->unk_st & ~0x38u) | (((unsigned)(v) & 7u) << 3)))
+#define TC_UNK_SAID(c)        ((unsigned)(((c)->unk_st >> 6) & 1u))
+#define TC_SET_UNK_SAID(c)    ((c)->unk_st = (uint8_t)((c)->unk_st | 0x40u))
 
 /* ---- T9: the Talk screen's pointer (core/src/talk_scene.c; docs/TALK.md "The pointer") ------------
  * Only where DOOMO_POINTER (input.h): a console build declares and links none of it. The view is for the
@@ -708,6 +747,7 @@ void talk_mem_reset(void);
 #define TLF_END      0x08u          /* the conversation ends (K-7)                        */
 #define TLF_HANDOFF  0x10u          /* it hands the talk to another participant           */
 #define TLF_FALLBACK 0x20u          /* nothing fitted the bubble: a safe line (a Q1 failure) */
+#define TLF_MORE     0x80u          /* TM2d: the second line of one answer (a story or a secret) by the same speaker */
 typedef struct TalkLine {
     char     text[TALK_LINE_MAX];   /* the bubble text (ui_dialog line codes kept)      */
     int8_t   who;                   /* participant slot                                 */
@@ -739,7 +779,10 @@ typedef struct TalkPlan {
     uint8_t eff[5];                        /* the effective sliders (stored + trait deltas), PERS_* order      */
     uint8_t next[2];                       /* the next best kinds (kind | 0x80 when it goes against the lean for a
                                               reason), tried when no rule of `kind` passes the guards; 0 none   */
-} TalkPlan;                                /* 11 B, on the stack; also in TalkTrace (tools only) */
+    uint8_t depth;                         /* TM2d: topic depth of the reply, 0 surface .. 3 secret (TDEP_*)   */
+    uint8_t content;                       /* TM2d: TCN_*, what the b part says                                */
+    uint8_t hook;                          /* TM2d: TH_*, the layer d hook                                     */
+} TalkPlan;                                /* 14 B, on the stack; also in TalkTrace (tools only) */
 
 /* What the plan reads (talk_plan_kind is a pure function of this: a test can drive it without a database). */
 typedef struct TalkPlanIn {
@@ -769,6 +812,55 @@ int  talk_gen_kinds_after(int act);
 /* The speaker's effective sliders in the room `aud` describes (stored + trait deltas, the edgy traits
  * dropped for a minor speaker or a minor in the room), PERS_COUNT bytes; 0 if nobody has that id. */
 int  talk_gen_eff_persona(int id, int minor_room, uint8_t out[5]);
+/* ---- TM2d: topic depth, hooks and the unknown word (docs/TALK.md 6n; design TALK_MULTILEVEL 2.3 to 2.5, 3, 4) ----
+ * Depth: 0 surface (a one-line answer), 1 opinion plus its reason, 2 a story of the speaker's, 3 a secret.
+ * The state of one participant is a byte and a word (TalkConv.dep[who], dep_tw[who]):
+ *   dep:    bits 0-1 level now, bits 2-4 thread turns so far (saturates at 7), bit 5 the hook was used on this thread
+ *   dep_tw: bits 0-11 the thread's topic (a concept id), bits 12-14 the last reply kind (TK_*)
+ * talk_depth_step() is a pure function of a TalkDepthIn: tests drive it without a database. */
+enum { TCN_NONE = 0, TCN_STANCE, TCN_REASON, TCN_STORY, TCN_SECRET, TCN_NAME, TCN_COUNT };
+enum { TMORE_NONE = 0, TMORE_STORY, TMORE_SECRET };
+/* how an unknown line is answered (unk.* rules, TGP_UNK): a guess from the word network, the word named back,
+ * a plain ask, an ask that echoes nothing, the answer to "what kind of thing is it" */
+enum { TU_NONE = 0, TU_GUESS, TU_NAME, TU_ASK, TU_NOECHO, TU_TAUGHT, TU_COUNT };
+enum { TH_NONE = 0, TH_ASK, TH_OFFER, TH_CALL, TH_ACK, TH_COUNT };
+#define TDEP_LEVEL(b)    ((b) & 3u)
+#define TDEP_TURNS(b)    (((b) >> 2) & 7u)
+#define TDEP_HOOKED      0x20u
+#define TDEP_TOPIC(w)    ((w) & 0xFFFu)
+#define TDEP_LAST(w)     (((w) >> 12) & 7u)
+/* the secrets a participant has told (TalkMem.spare bits 2-5 and TalkConv.mem_dep bits 2-5), one per kind */
+enum { TSEC_LIKE = 0, TSEC_FEAR, TSEC_HATE, TSEC_PROBLEM, TSEC_COUNT };
+#define TDEP_MEM_LEVEL(m)   ((m) & 3u)
+#define TDEP_MEM_SECRET(k)  (1u << (2 + (k)))
+typedef struct TalkDepthIn {
+    uint8_t act;                           /* the player's act                                                */
+    uint8_t rel;                           /* TRB_*                                                           */
+    uint8_t stage;                         /* the speaker's life stage                                        */
+    uint8_t kid_room;                      /* a minor speaks, is addressed or listens                         */
+    uint8_t engage;                        /* 0..100                                                          */
+    uint8_t level;                         /* the bond with the player, rel_value clamped to 0..100           */
+    uint8_t root;                          /* the topic's root now (TCR_*), 0 none (no topic given)           */
+    uint8_t thread_root;                   /* the root of the thread's topic (TCR_*), 0 no thread yet          */
+    uint8_t same;                          /* the topic is the thread's or one hop from it                    */
+    uint8_t grief;                         /* the topic is a grief topic                                      */
+    uint8_t shy, paranoid, outgoing, loyal, gloomy;   /* trait flags (effective: inert edgy ones already dropped) */
+} TalkDepthIn;
+/* The deepest level the relationship, the thread, the engagement and the traits allow (design 3.1): 0..3.
+ * `turns` is the number of thread turns before this one. */
+int  talk_depth_gate(const TalkDepthIn *in, int turns);
+/* One answer line's step: rise by one at most when the act is a thread act on the thread's topic and the gate
+ * holds; hold on a change of topic inside the root; fall by one after an insult, a mock, a dismissal or a
+ * threat; reset on another root. Writes the new state (*b the byte, *tw the topic word, topic = the topic now,
+ * 0 none) and returns the level of this reply. */
+int  talk_depth_step(const TalkDepthIn *in, uint8_t *b, uint16_t *tw, uint16_t topic);
+/* A walk-out or a K-5 refusal: back to the surface (the thread's topic is kept). */
+void talk_depth_reset(uint8_t *b);
+/* 1 if the act keeps a thread going (ask_about, ask_opinion, ask_feeling, tell, opine, continue, agree,
+ * sympathize, compliment, comfort). */
+int  talk_depth_thread_act(int act);
+/* The hook a reply wants (TH_*): required after a counter and after the refusal of a request, else 0. Pure. */
+int  talk_hook_wanted(int act, int kind, int romance, int kid_room, int sincere);
 /* The cool reply acts a kid room never gets from the plan: tease, mock, insult, threaten. */
 #define TALK_COOL_REPLY(a) ((a) == TA_TEASE || (a) == TA_MOCK || (a) == TA_INSULT || (a) == TA_THREATEN)
 
@@ -779,6 +871,8 @@ enum { TFK_NONE = 0, TFK_NAME, TFK_CONCEPT, TFK_TEXT };
 #define TPART_CB      0x04u
 #define TPART_TAG     0x08u
 #define TPART_HANDOFF 0x10u
+#define TPART_REASON  0x20u         /* TM2d: the reason clause of a depth 1 answer */
+#define TPART_HOOK    0x40u         /* TM2d: the hook of layer d (a question, an offer, a call, an acknowledgement) */
 typedef struct TalkFill { uint8_t off, len, kind, cat; } TalkFill;   /* cat: a concept's category */
 typedef struct TalkTrace {
     uint16_t alt[TALK_TRACE_ALTS];  /* every alternative used, in order              */
@@ -831,6 +925,17 @@ int  talk_gen_line(TalkConv *c, int who, int to, int act, uint16_t topic, TalkLi
  * tr: NULL or TALK_EXCHANGE_MAX traces. Returns the number of lines.
  * (The plain turn-taking here stands in until T6's drama manager.) */
 int  talk_gen_exchange(TalkConv *c, TalkUtter *u, TalkExchange *x, TalkTrace *tr);
+/* TM2d: the second line of the last answer (a story at depth 2, a secret at depth 3), by the same speaker, when
+ * the answer asked for one (TalkConv.more); 1 and `out` filled, or 0 (nothing fits, no fact, no secret left).
+ * Tells at most one secret a talk and marks it (TalkConv.mem_dep); the drama manager turns that into TEV_LEARNED. */
+int  talk_gen_more(TalkConv *c, TalkLine *out, TalkTrace *tr);
+/* TM2d: what the answer to the unknown line u will do (design 4): the guess from the word network, the word
+ * named back (only when every fence E1 to E7 holds) or a plain ask. Run once per player turn, after the gate,
+ * before the answer is made; it only sets TalkConv.unk_st (the mode) / unk / unk_guess. */
+void talk_gen_unk_prepare(TalkConv *c, const TalkUtter *u);
+/* The word the generator may name back from u (E1 to E6 and the kid-room length, not E7), lower case, into
+ * out[18]: its length, or 0 when it must not be echoed. The adversarial-corpus test and the scene use it. */
+int  talk_gen_unk_word(const TalkConv *c, const TalkUtter *u, char out[18]);
 /* The speaker's stance on a concept: their likes +3, their hated food and
  * fear -3, Hellvile-born flips holy things, plus a fixed personal lean. */
 int  talk_gen_stance(int id, uint16_t topic);
@@ -949,6 +1054,8 @@ enum { TEV_NONE = 0,
        TEV_ROMANCE_NO,    /* a said no: refused for the day (K-5; talk memory)       */
        TEV_K7,            /* the conversation ended on K-7: locked for the day       */
        TEV_HATE,          /* the player was refused for hate (K-8): a bond penalty   */
+       TEV_LEARNED,       /* TM2d: a told a secret the player did not know: b = the like (0 food, 1 hobby, 2 music,
+                             3 fear, 4 hated food; 5 a small problem). T6-OUT: talk_mem_know_like               */
        TEV_COUNT };
 typedef struct TalkEvent { uint8_t kind, a, b, turn; } TalkEvent;
 
@@ -1085,6 +1192,7 @@ typedef struct TalkOutcome {
     uint8_t  confessed;            /* sim_confess calls                                     */
     uint8_t  dating;               /* ... and how many of them the sim said yes to          */
     uint8_t  news;                 /* NT_TALK_* posted, 0 none (one headline a conversation) */
+    uint8_t  learned;              /* TM2d: likes, fears or hated foods the player learned (talk_mem_know_like) */
 } TalkOutcome;
 /* talk_dm_begin, then the talk memory of the participants (talk_mem_begin:
  * last topic, last-time flags, "refused today" as TPF_REFUSED). */

@@ -1,0 +1,48 @@
+# core/data/talk/grammar/en/unk.tlk - TM2d: the reply to a line the parser did not understand (owner: TK;
+# docs/TALK.md 6n; design TALK_MULTILEVEL 4). Three steps, each of which ASKS what kind of thing it is (never
+# for the word to be repeated): unk.guess names a real concept near the unknown word ("Did you mean {x}?":
+# closed vocabulary, always safe); unk.name says the typed word back in quotes ({u}), only when every fence
+# E1 to E7 holds (talk_gen_unk_word; TK13: {u} lives in unk.name rules only); unk.askmeaning and unk.noecho
+# ask without an echo. unk.taught answers "it's a food" (the next turn names a category). All kid-safe, all
+# lines end in a question or an invitation. The guard `unk=` is set by the generator.
+
+@rule unk.guess guard: unk=guess act: ask_repeat
+  "Did you mean {x}? That's the closest thing I know."
+  "Hm, is that like {x}? I'm only guessing."
+  "Wait, do you mean {x}? What kind of thing is it?"
+  "That sounds a bit like {x}. Am I close?"
+  "Is that something like {x}? Tell me more."
+  "I don't know that word. Is it like {x}?"
+  "Ooh, a new one. Is it a kind of {x}?"
+  "Hold on. {x:cap}, or something else? What is it?"
+@rule unk.name guard: unk=name&!kid_speaker act: ask_repeat
+  "I don't know {u}. What kind of thing is it?"
+  "{u}, huh. That's new to me. Is it a thing, a place, a creature?"
+  "Hm, {u}. What is that, exactly? A food or a place?"
+  "Sorry, {u} is not in my head yet. What kind of thing is it?"
+  "{u}? Say more. Is it something you eat, or something you do?"
+  "I've never met {u}. What's it like?"
+  "You lost me at {u}. Teach me: what kind of thing is it?"
+  "{u}? Okay. And what is that, in human?"
+@rule unk.name.kid guard: unk=name&kid_speaker tags: kid act: ask_repeat
+  "{u}? I don't know that one! What is it?"
+  "Ooh, {u}! What's that? Can you tell me?"
+  "I never heard {u}. Is it a thing you eat?"
+  "{u}? Is that a game, a food, or an animal?"
+@rule unk.askmeaning guard: unk=ask act: ask_repeat
+  "That's a word I don't know. What kind of thing is it?"
+  "Hm, I didn't catch that. What kind of thing do you mean?"
+  "New word! Is it a food, a place, or a creature?"
+  "I'm lost. Is that a thing you can eat, or a thing you do?"
+  "Say that in a way my head knows. What sort of thing is it?"
+  "You've got me. What kind of thing are we talking about?"
+@rule unk.noecho guard: unk=noecho act: ask_repeat
+  "I don't know that word. What kind of thing is it?"
+  "Hm, that one's new to me. Can you describe it another way?"
+  "Not sure I follow. What kind of thing do you mean?"
+  "Let's try that again with other words. What is it about?"
+@rule unk.taught guard: unk=taught act: ask_about
+  "Okay, {x}! That helps. Now I know where to put it."
+  "Got it, {x:indef}. Tell me more about it."
+  "So something in the {x} family. Thanks for teaching me."
+  "Ah, {x}. Okay. Does it come with a story?"

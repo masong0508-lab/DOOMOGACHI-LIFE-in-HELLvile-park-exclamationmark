@@ -86,12 +86,12 @@ LINE_CODES = {".", "..", "...", "d", "!", "big", "/", "w", "r", "punch"}
 CONCEPT_SLOTS = {"x": "X", "food": "F", "hobby": "H", "music": "U", "fear": "E", "hate": "Z", "like": "L",
                  "mem": "K", "job": "J"}
 NAME_SLOTS = {"you": "Y", "me": "M", "them": "T", "other": "O", "partner": "P", "petname": "Q", "lost": "G"}
-TEXT_SLOTS = {"catch": "C"}
+TEXT_SLOTS = {"catch": "C", "u": "W"}      # {u}: the unknown word the player typed, quoted (TM2d, unk.name rules only: TK13)
 FIELDS = {"adj": "a", "good": "g", "bad": "b", "assoc": "s", "it": "i", "is": "v", "has": "h", "does": "d",
           "was": "w"}
 MODS = {"pl": "p", "indef": "n", "def": "t", "lemma": "l", "cap": "c", "up": "u", "s": "s"}
 NAME_MODS = {"cap", "up", "s"}
-IMPLICIT = {"x": "topic", "them": "to_res", "other": "other", "job": "fact.job", "partner": "fact.partner",
+IMPLICIT = {"u": "unk=name", "x": "topic", "them": "to_res", "other": "other", "job": "fact.job", "partner": "fact.partner",
             "mem": "fact.memory", "catch": "catch", "lost": "fact.loss"}
 FIELD_NEED = {"adj": "x.adj", "good": "x.good", "bad": "x.bad", "assoc": "x.assoc"}
 ABBREV = ("Mr", "Mrs", "Ms", "Dr", "St", "Mme", "Jr", "Sr", "Mt", "Prof", "Rev")   # talk_gen.c abbrev_at
@@ -120,7 +120,9 @@ FIXED = ["open", "cb", "tag", "handoff", "safe", "end.k7", "pet", "idle", "grief
          # cut off, the three steps of an argument, making up, a child asking "are you fighting?"
          "beat", "prod", "excuse", "grumble", "jab", "row", "ultimatum", "makeup", "kidask",
          # keeping the talk going (talk_dm.c DK_FOLLOW): a resident hands the talk back to the player
-         "follow"]
+         "follow",
+         # TM2d (talk_gen.c): the reason of a stance, the story, the secret, the unknown word, the hook
+         "reason", "story", "secret", "unk", "hook"]
 # K-10: the sincere banks (talk.h TGE_GRIEF, TGE_COMFORT); a comfort line is a reaction
 GRIEF_BANKS = ("grief", "comfort")
 COMFORT_ACTS = ("AGREE", "BACKCHANNEL")
@@ -217,6 +219,9 @@ class Env:
             "trait": {k: v for k, v in c_enum(os.path.join(inc, "talk_traits.h"), "TT_", "TT_NONE").items()
                       if k not in ("count", "none")},
             "chapter": {k: v for k, v in c_enum(os.path.join(inc, "story.h"), "STORY_CH").items()},
+            "hook": {k: v for k, v in c_enum(th, "TH_", "TH_NONE").items() if k not in ("count", "none")},
+            "secret": {k: v for k, v in c_enum(th, "TSEC_", "TSEC_LIKE").items() if k != "count"},
+            "unk": {k: v for k, v in c_enum(th, "TU_", "TU_NONE").items() if k not in ("count", "none")},
         }
         self.values["chapter"] = {re.sub(r"^_", "", k): v for k, v in self.values["chapter"].items()}
         self.tge = c_enum(th, "TGE_")
@@ -295,10 +300,10 @@ class Compiler:
             pred = self.env.tgp.get(key)
             if pred is None or pred < self.env.first_valued:
                 self.die(where, "guard %r: %s is not a valued predicate (talk.h TGP_*)" % (t, key))
-            table = self.env.values.get(key)
+            table = self.env.values.get(key, {} if key == "depth" else None)
             if table is None:
                 self.die(where, "guard %r: no value table for %s" % (t, key))
-            if key == "chapter" and re.match(r"^\d+$", val):
+            if key in ("chapter", "depth") and re.match(r"^\d+$", val):
                 v = int(val)
             elif val in table:
                 v = table[val]
@@ -368,6 +373,8 @@ class Compiler:
                 m = re.match(r"^([a-z]+)(?:\.([a-z]+))?((?::[a-z]+)*)$", inner)
                 if m and (m.group(1) in CONCEPT_SLOTS or m.group(1) in NAME_SLOTS or m.group(1) in TEXT_SLOTS):
                     slot, field, mods = m.group(1), m.group(2), [x for x in m.group(3).split(":") if x]
+                    if slot == "u" and not (rule and str(rule.get("name", "")).startswith("unk.name")):
+                        self.die(where, "TK13 {u}: the unknown word is said back in unk.name rules only (design 4, E7)")
                     code = self.slot_code(slot, field, mods, where)
                     # a hand-made article before a concept slot
                     before = "".join(lit)[-4:]

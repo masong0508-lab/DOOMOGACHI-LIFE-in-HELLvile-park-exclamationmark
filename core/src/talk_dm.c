@@ -35,7 +35,8 @@
 
 /* ---- the plan of an exchange (TalkState.plan[].kind) ----------------------- */
 enum { DK_NONE = 0, DK_ANSWER, DK_REACT, DK_BEAT, DK_IDLE, DK_PROD, DK_JAB, DK_ROW, DK_ULT, DK_EXCUSE,
-       DK_KIDASK, DK_MAKEUP, DK_GRUMBLE, DK_CUT, DK_K7, DK_FOLLOW };
+       DK_KIDASK, DK_MAKEUP, DK_GRUMBLE, DK_CUT, DK_K7, DK_FOLLOW,
+       DK_MORE };          /* TM2d: the story or the secret after the answer (talk_gen_more); inserted by talk_dm_step */
 
 #define BEATS_MAGIC 0x31544254u          /* "TBT1" (talkc_beats.py) */
 #define BEATS_HDR   12
@@ -961,7 +962,12 @@ int talk_dm_say(TalkState *s, const TalkUtter *u)
     if (resp < 0) { s->flags |= TDF_OVER; return g; }
     plan_add(s, DK_ANSWER, resp, -1, 0);
 
-    if (g == TG_DEFLECT && target >= 0) { s->conv.refused |= (uint8_t)(1u << target); s->part[target].flags |= TPF_REFUSED; }
+    if (g == TG_DEFLECT && target >= 0) {
+        s->conv.refused |= (uint8_t)(1u << target);
+        s->part[target].flags |= TPF_REFUSED;
+        talk_depth_reset(&s->conv.dep[target]);                 /* a K-5 refusal: back to the surface */
+    }
+    if (g == TG_PASS) talk_gen_unk_prepare(&s->conv, &s->in);     /* TM2d: the unknown word: guess, name or ask */
     if (g == TG_HATE) {                                     /* a bond penalty (K-8) */
         add_event(s, TEV_HATE, resp, -1);
         bump_rel(s, resp, -4);
@@ -986,6 +992,7 @@ int talk_dm_say(TalkState *s, const TalkUtter *u)
         } else {
             s->conv.refused |= (uint8_t)(1u << resp);
             s->part[resp].flags |= TPF_REFUSED;
+            talk_depth_reset(&s->conv.dep[resp]);                 /* a K-5 refusal: back to the surface */
             add_event(s, TEV_ROMANCE_NO, resp, act);
         }
     }
@@ -1174,6 +1181,7 @@ static int make_line(TalkState *s, int kind, int who, int to, int arg, TalkLine 
     switch (kind) {
     case DK_ANSWER:
         *hflags = 0;
+        c->engage = s->part[who].engage;                         /* TM2d: the depth gate reads the engagement */
         ok = talk_gen_line(c, who, to, s->in.act[0], s->in.topic[0], L, tr);
         if (ok && !L->face && s->gate == TG_PASS && !(L->flags & TLF_SINCERE) && !TA_IS_ROMANCE(s->in.act[0])) {
             int e = talk_dm_expect(s, who, s->in.act[0], s->in.tone, s->in.topic[0]);   /* how they took it, on the face */
@@ -1220,7 +1228,22 @@ static int make_line(TalkState *s, int kind, int who, int to, int arg, TalkLine 
         *hflags = THF_IDLE;
         break;
     }
+    case DK_MORE: {
+        uint8_t before = c->mem_dep[who];
+        int w;
+        ok = talk_gen_more(c, L, tr);
+        if (!ok) return 0;
+        *hflags = 0;
+        for (w = 0; w < TSEC_COUNT; w++)                          /* a secret told: the player learned it (TEV_LEARNED) */
+            if (!(before & TDEP_MEM_SECRET(w)) && (c->mem_dep[who] & TDEP_MEM_SECRET(w))) {
+                int which = 5, i;
+                for (i = 0; i < 5; i++) if (L->topic && talk_gen_like(s->part[who].id, i) == L->topic) which = i;
+                add_event(s, TEV_LEARNED, who, which);
+            }
+        break;
+    }
     case DK_FOLLOW:
+        if (s->nlines > 0 && strchr(s->line[0].text, '?')) return 0;     /* the answer already asks something back */
         ok = talk_gen_entry(c, who, -1, TGE_FOLLOW, arg ? TA_CHANGE_TOPIC : s->in.act[0], topic, L, tr);
         if (!ok || (L->flags & TLF_FALLBACK)) return 0;
         *hflags = 0;
@@ -1262,10 +1285,19 @@ int talk_dm_step(TalkState *s, TalkTrace *tr)
         if (kind == DK_NONE || !make_line(s, kind, who, to, arg, L, tr, &hf)) continue;
         if (tr && kind != DK_ANSWER) { /* the trace is the caller's one slot: only the line just made */ }
         s->nlines++;
+        if (kind == DK_ANSWER && s->conv.more && !(L->flags & (TLF_SAFE | TLF_FALLBACK | TLF_SINCERE)) && s->nplan < 6) {
+            int at = s->plan_at, j;                              /* TM2d: the story or the secret comes right after the answer */
+            for (j = s->nplan; j > at; j--) s->plan[j] = s->plan[j - 1];
+            s->plan[at].kind = DK_MORE; s->plan[at].who = (int8_t)who; s->plan[at].to = -1; s->plan[at].arg = 0;
+            s->nplan++;
+        } else if (kind == DK_ANSWER) {
+            s->conv.more = 0;
+        }
         if (who >= 0 && who < s->nparts) { s->part[who].flags |= TPF_SPOKE; s->conv.spoke |= (uint8_t)(1u << who); }
         hist_push(s, who, L->act, hf, to, L->topic, 0);
         if (kind == DK_EXCUSE) {                            /* walks out */
             s->part[who].flags |= TPF_LEFT;
+            talk_depth_reset(&s->conv.dep[who]);                 /* a walk-out: the thread is over */
             add_event(s, TEV_WALKOUT, who, -1);
             if (s->arg_step && (who == s->arg_a || who == s->arg_b)) end_argument(s);
             if (active_residents(s) == 0) s->flags |= TDF_OVER;

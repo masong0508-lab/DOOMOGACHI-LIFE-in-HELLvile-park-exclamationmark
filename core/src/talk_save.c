@@ -59,6 +59,9 @@ static struct {
 
 DOOMO_STATIC_ASSERT(sizeof(mem) == TALK_MEM_WORST, talk_mem_table_is_the_worst_case);
 
+#define TMEM_SECRETS 0x3Cu                  /* TalkMem.spare bits 2-5: the secrets told today (TDEP_MEM_SECRET) */
+#define TMEM_SPARE   0x3Fu                  /* bits 0-1 the level reached in the last talk, 2-5 the secrets told today */
+
 static uint16_t today(void) { return (uint16_t)doomo_town.day; }
 
 /* somebody talk memory may be about: a resident or the hero who is on the
@@ -77,7 +80,10 @@ static void roll(void)
 {
     int i;
     if (mem.day == today()) return;
-    for (i = 0; i < mem.count; i++) mem.e[i].flags = (uint8_t)(mem.e[i].flags & ~TMF_REFUSED_TODAY);
+    for (i = 0; i < mem.count; i++) {
+        mem.e[i].flags = (uint8_t)(mem.e[i].flags & ~TMF_REFUSED_TODAY);
+        mem.e[i].spare = (uint16_t)(mem.e[i].spare & ~TMEM_SECRETS);          /* TM2d: a new day, a new secret may be told */
+    }
     mem.day = today();
 }
 
@@ -202,6 +208,11 @@ void talk_mem_begin(TalkConv *c)
         c->mem_topic[k] = live_topic(e->topic_a);
         if (!c->mem_topic[k]) c->mem_topic[k] = live_topic(e->topic_b);
         c->mem_flags[k] = (uint8_t)(e->flags & TMF_LAST);
+        c->mem_dep[k] = (uint8_t)(e->spare & TMEM_SECRETS);                /* TM2d: the secrets told today; the level is this talk's own */
+        if (TDEP_MEM_LEVEL(e->spare) > 1u) {                                 /* the next talk starts one level lower on the last topic */
+            c->dep[k] = (uint8_t)(TDEP_MEM_LEVEL(e->spare) - 1u);
+            c->dep_tw[k] = c->mem_topic[k];
+        }
         if (e->flags & TMF_REFUSED_TODAY) c->refused = (uint8_t)(c->refused | (1u << k));
     }
 }
@@ -219,6 +230,7 @@ void talk_mem_end(const TalkConv *c)
         if (!pend && !no && !((c->spoke >> k) & 1)) continue;   /* took no part */
         if (!(e = touch(id))) continue;
         e->flags = (uint8_t)((e->flags & (TMF_PROMISED | TMF_REFUSED_TODAY)) | pend | (no ? TMF_REFUSED_TODAY : 0u));
+        e->spare = (uint16_t)(TDEP_MEM_LEVEL(c->mem_dep[k]) | (c->mem_dep[k] & TMEM_SECRETS) | (e->spare & TMEM_SECRETS));   /* TM2d */
     }
 }
 
@@ -261,7 +273,7 @@ static uint32_t talk_write(uint8_t *dst, uint32_t cap)
         put16(p + 6, e->topic_b);
         p[8] = (uint8_t)(e->flags & TMF_SAVED);
         p[9] = e->likes_known;
-        put16(p + 10, 0);
+        put16(p + 10, e->spare & TMEM_SPARE);                  /* TM2d: depth reached, secrets told today (an old chunk read 0) */
     }
     if (tr) talk_trait_save_write(dst + TALK_MEM_HDR + mem.count * TALK_MEM_ENTRY, tr);
     return n;
@@ -292,6 +304,7 @@ static int talk_read(const uint8_t *src, uint32_t len, uint16_t version)
         e->topic_b = (uint16_t)(get16(p + 6) & TOPIC_MASK);
         e->flags = (uint8_t)(p[8] & TMF_SAVED);
         e->likes_known = (uint8_t)(p[9] & LIKES_MASK);
+        e->spare = (uint16_t)(get16(p + 10) & TMEM_SPARE);
     }
     if (src[0] == TALK_MEM_VERSION_TRAITS) {                   /* TM1: the explicit trait sets */
         uint32_t at = (uint32_t)(TALK_MEM_HDR + n * TALK_MEM_ENTRY);

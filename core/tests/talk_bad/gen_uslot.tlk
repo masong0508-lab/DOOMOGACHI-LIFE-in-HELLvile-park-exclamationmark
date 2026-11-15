@@ -1,0 +1,4 @@
+# expect: TK13 {u}
+# TK13 {u}: seeded bad grammar (TM2d). The unknown word the player typed is said back in unk.name rules only (design 4, E7).
+@rule core.tell.bad act: backchannel
+  "Hm, {u}. Interesting."

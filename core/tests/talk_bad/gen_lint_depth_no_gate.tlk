@@ -1,0 +1,4 @@
+# expect: TK13 L8
+# TK13 L8: seeded bad grammar (TM2d). A depth 2 rule needs a relationship or a fact guard.
+@rule story.bad guard: depth=2 act: tell
+  "That takes me back to {like}."

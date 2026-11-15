@@ -251,6 +251,12 @@ void talk_outcome_apply(const TalkSummary *sum, TalkOutcome *out)
         case TEV_WALKOUT:
             if (ia >= 0 && news_walk < 0) news_walk = ev;
             break;
+        case TEV_LEARNED:                                    /* TM2d: a secret told: the player now knows that like, fear or hated food */
+            if (ia >= 0 && resident_id(ia) && e->b < 5) {
+                talk_mem_know_like(ia, e->b);
+                out->learned++;
+            }
+            break;
         case TEV_GREAT_NIGHT: {
             int j;
             for (j = 0; j < sum->n && j < TALK_PARTS_MAX; j++) {

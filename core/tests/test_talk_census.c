@@ -60,6 +60,15 @@ TEST(talk_census_smoke)
      * finds a rule for the kind in 99% of the answer lines or more (docs/TALK.md 6m) */
     CHECK_EQ(r.fail[QF_Q8_KIND], 0);
     CHECK_EQ(r.fail[QF_Q8_VOICE], 0);
+    /* TM2d, the Q8 budget (design 7.2) on the smoke census: the unknown-word check (Q8f) has no failure at all; a dead end
+     * after a refused request or a question handed back (Q8d) is under 0.5%; a filler or a short reply (Q8e) under 0.1%
+     * (every one left is a three-sentence line that cannot take a fourth, or a lower-case voice); a topic act answered
+     * without the topic (Q8b) under 5% (it was 27% on the engine before the layers; the rest are bank lines that fill no
+     * bubble). Q8a stays what the bank's own act labels make it (docs/TALK.md 6n). */
+    CHECK_EQ(r.q8[Q8_UNKNOWN], 0);
+    CHECK_MSG(r.q8[Q8_HOOK] * 200 <= r.q8_n[Q8_HOOK], "Q8d %llu of %llu", (unsigned long long)r.q8[Q8_HOOK], (unsigned long long)r.q8_n[Q8_HOOK]);
+    CHECK_MSG(r.q8[Q8_FILLER] * 1000 <= r.contexts, "Q8e %llu of %llu", (unsigned long long)r.q8[Q8_FILLER], (unsigned long long)r.contexts);
+    CHECK_MSG(r.q8[Q8_CONTENT] * 20 <= r.q8_n[Q8_CONTENT], "Q8b %llu of %llu", (unsigned long long)r.q8[Q8_CONTENT], (unsigned long long)r.q8_n[Q8_CONTENT]);
     CHECK_MSG(r.plan_lines * 10 >= r.contexts * 8, "only %llu answer lines have a plan", (unsigned long long)r.plan_lines);
     CHECK_MSG(r.plan_miss * 100 <= r.plan_lines, "soft-filter misses %llu of %llu (over 1%%)", (unsigned long long)r.plan_miss,
               (unsigned long long)r.plan_lines);
@@ -226,8 +235,9 @@ TEST(talk_gen_property_vocabulary_and_swears)
 {
     static const char *const junk[] = { "zorp", "fuck", "shit", "asdf", "qwerty", "blorp", "naked", "glorp",
                                         "xyzzy", "wank", "nude", "hitler", "pie", "ghost", "kid", "sexy" };
-    static const char *const never_out[] = { "zorp", "fuck", "shit", "asdf", "qwerty", "blorp", "naked", "glorp",
-                                             "xyzzy", "wank", "nude", "hitler", "sexy" };
+    static const char *const never_out[] = { "fuck", "shit", "naked", "wank", "nude", "hitler", "sexy" };
+    /* TM2d (design 4): a harmless word the lexicon does not know may be named back, quoted and lower case; the others never */
+    static const char *const quoted_only[] = { "zorp", "asdf", "qwerty", "blorp", "glorp", "xyzzy" };
     int it, convs = 0, i, k, blunt[64], nb = 0, id;
     uint32_t h0;
     TalkParseCtx pc;
@@ -255,6 +265,12 @@ TEST(talk_gen_property_vocabulary_and_swears)
             low[i] = 0;
             for (i = 0; i < (int)(sizeof never_out / sizeof never_out[0]); i++)
                 CHECK_MSG(!strstr(low, never_out[i]), "'%s' came back out: %s", never_out[i], x.line[k].text);
+            for (i = 0; i < (int)(sizeof quoted_only / sizeof quoted_only[0]); i++) {
+                const char *at = strstr(low, quoted_only[i]);
+                size_t n = strlen(quoted_only[i]);
+                CHECK_MSG(!at || (at > low && at[-1] == '"' && at[n] == '"' && strncmp(x.line[k].text + (at - low), quoted_only[i], n) == 0),
+                          "'%s' came back out unquoted or not lower case: %s", quoted_only[i], x.line[k].text);
+            }
         }
     }
     /* P8: blunt adults trading insults: at most one everyday swear a conversation, no capped word ever */

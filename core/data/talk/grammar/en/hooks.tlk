@@ -1,0 +1,58 @@
+# core/data/talk/grammar/en/hooks.tlk - TM2d: layer d, the hook after an answer (owner: TK; docs/TALK.md 6n;
+# design TALK_MULTILEVEL 2.5 and 10). A short second part of the answer line that leaves something to do next:
+# a question (after a counter), an offer (after the refusal of an invitation or a favour: "I'd rather not, but
+# how about..."), a call (naming another resident), or a small acknowledgement for a line that would stay too
+# short (thanks, an apology, a compliment, a feeling). Kid-safe everywhere: no register word, no romance. The
+# guard `hook=` is set by the generator.
+
+@rule hook.ask guard: hook=ask&topic act: ask_opinion
+  "And you? What's your take on {x}?"
+  "Where do you stand on {x}, {you}?"
+  "Your turn. Thoughts on {x}?"
+  "So what do you think of {x}?"
+  "What's your best {x} story?"
+  "Do you think about {x} much?"
+  "What about you, {you}?"
+  "And you, {you}?"
+@rule hook.ask.open guard: hook=ask&!topic act: ask_about
+  "So what's on your mind, {you}?"
+  "And you? What's your deal?"
+  "Your turn. What's going on with you?"
+@rule hook.offer guard: hook=offer act: ask_about
+  "Rather not. How about {like} instead?"
+  "Not today. Talk about {like}?"
+  "Can't now. Ever tried {like}?"
+  "Later, maybe? Do you like {like}?"
+  "No, but how about {like}? Please?"
+  "That's a no. Does {like} count as a yes?"
+  "Pass, but ask me about {like}?"
+  "Another day. Know anyone who likes {like}?"
+  "Another time?"
+  "Maybe later?"
+  "How about {like}?"
+@rule hook.call guard: hook=call act: ask_about
+  "{other}, got a minute? You need to hear this."
+  "Hey {other}, what do you think? Come here?"
+  "Let me get {other}. {other} has opinions, ready?"
+  "{other}, tell them what you'd do, would you?"
+  "{other}, can you help me out here?"
+  "I'll ask {other}. {other}, any thoughts?"
+@rule hook.thank guard: hook=ack&act=thank act: ask_about
+  "Anything else on your mind, {you}?"
+  "You're welcome, so how's your day going?"
+@rule hook.apologize guard: hook=ack&act=apologize act: ask_about
+  "It's okay, really, are we good now?"
+  "Apology accepted, so what's next, {you}?"
+@rule hook.compliment guard: hook=ack&act=compliment act: ask_about
+  "That means a lot, what made you say it?"
+  "I'm blushing, so can you do it again?"
+  "You're kind, so what are you up to today?"
+@rule hook.feeling guard: hook=ack&act=ask_feeling act: ask_about
+  "And how about you, {you}, how are you?"
+  "That's me, so what's going on with you?"
+  "Enough about me, how are you, really?"
+@rule hook.ack guard: hook=ack act: ask_about
+  "Anyway, what else is on your mind?"
+  "Go on, what's next, {you}?"
+  "Tell me something I don't know, {you}."
+  "So what are we talking about now?"

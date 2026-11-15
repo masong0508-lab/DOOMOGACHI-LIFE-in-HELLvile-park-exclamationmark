@@ -409,6 +409,11 @@ typedef struct Gen {
     uint8_t pers[PERS_COUNT];     /* the EFFECTIVE sliders (TM2c: stored + trait deltas); the voice guards read these */
     uint8_t kf;                   /* TM2c: while the core is picked, KF_KIND filters by the plan's kind, KF_COOL drops the cool acts */
     uint8_t has_ts, kid_room;
+    uint8_t dlvl;                 /* TM2d: the depth guard (depth=): the level of the line being made */
+    uint8_t hook_now;             /* TM2d: the hook guard (hook=), TH_* */
+    uint8_t secret;               /* TM2d: the secret guard (secret=), TSEC_* + 1, 0 none */
+    uint8_t unk;                  /* TM2d: the unknown-line guard (unk=), TU_* */
+    uint8_t unk_fail;             /* TM2d: the named line failed the S3 probe: ask without the echo */
     int8_t  lean;                 /* the stance as the plan sees it, -2..2 */
     TalkPlan plan;
     TalkTraitSet ts;              /* the speaker's traits as they count in this room (edgy ones dropped for a minor / in a kid room) */
@@ -657,6 +662,10 @@ static int pred_raw(Gen *g, int p, int v)
     case TGP_PROB: return g->prob == v;
     case TGP_KIND: return g->plan.kind == v;
     case TGP_TRAIT: return g->has_ts && talk_traitset_has(&g->ts, v);
+    case TGP_DEPTH: return g->dlvl == v;
+    case TGP_HOOK: return g->hook_now == v;
+    case TGP_SECRET: return g->secret == v + 1;
+    case TGP_UNK: return g->unk == v;
     default: return 0;
     }
 }
@@ -707,7 +716,7 @@ static int recent(const Gen *g, int alt)
 
 /* pick an alternative of symbol sym (weighted, one pass); novelty: skip the
  * speaker's recently used ones while any other is possible. -1 none. */
-#define AVOID_MAX 6
+#define AVOID_MAX 10
 static int avoided(const int *avoid, int navoid, int a)
 {
     int i;
@@ -928,6 +937,15 @@ static void expand_str(Gen *g, int str)
             case 'P': fill_name(g, g->partner, mods, NULL); break;
             case 'Q': fill_name(g, TALK_PET_ID, mods, "Boreagotchi"); break;
             case 'G': fill_lost(g, mods); break;
+            case 'W': {                                        /* TM2d: {u}, the unknown word, quoted (E7: unk.name rules only) */
+                int start = g->len, n = (int)strlen(g->c->unk);
+                if (g->unk != TU_NAME || n < 3 || n > 16 || !g->c->unk[0]) { g->fail = 1; break; }
+                emit(g, "\"", 1);
+                emit(g, g->c->unk, n);
+                emit(g, "\"", 1);
+                push_fill(g, start, g->len - start, TFK_TEXT, 0);
+                break;
+            }
             case 'C': {
                 char s[40];
                 int start = g->len;
@@ -1080,7 +1098,7 @@ static void cap_first(char *s)
     for (i = 0; s[i]; i++) {
         if (s[i] == '{') { while (s[i] && s[i] != '}') i++; if (!s[i]) return; continue; }
         if (s[i] >= 'a' && s[i] <= 'z') { s[i] = (char)(s[i] - 'a' + 'A'); return; }
-        if ((s[i] >= 'A' && s[i] <= 'Z') || (s[i] >= '0' && s[i] <= '9')) return;
+        if ((s[i] >= 'A' && s[i] <= 'Z') || (s[i] >= '0' && s[i] <= '9') || s[i] == '"') return;   /* a quoted word stays as typed: lower case (design 4, E7) */
     }
 }
 
@@ -1100,6 +1118,9 @@ static void excl_budget(char *s, int expr)
     s[o] = 0;
 }
 
+/* the order the parts are said in: opener, core, reason, callback, tag, hook, hand-off */
+static const uint8_t PART_ORDER[7] = { 0, 1, 5, 2, 3, 6, 4 };
+
 /* lower: a lower-case voice, no capital letters added */
 static void join(char *out, int cap, const Part *parts, const int *use, int np, TalkTrace *tr, int lower)
 {
@@ -1107,10 +1128,10 @@ static void join(char *out, int cap, const Part *parts, const int *use, int np, 
     out[0] = 0;
     if (tr) memset(tr, 0, sizeof *tr);
     for (k = 0; k < np; k++) {
-        int n, f, base;
+        int n, f, base, pi = np == 7 ? PART_ORDER[k] : k;
         char tmp[PART_MAX];
-        if (!use[k] || !parts[k].text[0]) continue;
-        strcpy(tmp, parts[k].text);
+        if (!use[pi] || !parts[pi].text[0]) continue;
+        strcpy(tmp, parts[pi].text);
         if (!lower && (len == 0 || ends_sentence(out))) cap_first(tmp);
         n = (int)strlen(tmp);
         if (len + (len ? 1 : 0) + n >= cap) continue;
@@ -1119,17 +1140,17 @@ static void join(char *out, int cap, const Part *parts, const int *use, int np, 
         memcpy(out + len, tmp, (size_t)n + 1);
         len += n;
         if (!tr) continue;
-        tr->parts |= (uint8_t)(1u << k);
-        for (f = 0; f < parts[k].tr.nalt && tr->nalt < TALK_TRACE_ALTS; f++) tr->alt[tr->nalt++] = parts[k].tr.alt[f];
-        for (f = 0; f < parts[k].tr.nfill && tr->nfill < TALK_TRACE_FILLS; f++) {
-            tr->fill[tr->nfill] = parts[k].tr.fill[f];
+        tr->parts |= (uint8_t)(1u << pi);
+        for (f = 0; f < parts[pi].tr.nalt && tr->nalt < TALK_TRACE_ALTS; f++) tr->alt[tr->nalt++] = parts[pi].tr.alt[f];
+        for (f = 0; f < parts[pi].tr.nfill && tr->nfill < TALK_TRACE_FILLS; f++) {
+            tr->fill[tr->nfill] = parts[pi].tr.fill[f];
             tr->fill[tr->nfill].off = (uint8_t)(tr->fill[tr->nfill].off + base);
             tr->nfill++;
         }
-        for (f = 0; f < parts[k].tr.nsaid; f++) {
+        for (f = 0; f < parts[pi].tr.nsaid; f++) {
             int j, dup = 0;
-            for (j = 0; j < tr->nsaid; j++) dup |= tr->said[j] == parts[k].tr.said[f];
-            if (!dup && tr->nsaid < 4) tr->said[tr->nsaid++] = parts[k].tr.said[f];
+            for (j = 0; j < tr->nsaid; j++) dup |= tr->said[j] == parts[pi].tr.said[f];
+            if (!dup && tr->nsaid < 4) tr->said[tr->nsaid++] = parts[pi].tr.said[f];
         }
     }
 }
@@ -1332,19 +1353,77 @@ static void trace_plan(const Gen *g, TalkTrace *tr)
     if (tr) tr->plan = g->plan;
 }
 
+/* TM2d: the visible length of a line (codes and *stage directions* out) */
+static int vis_len(const char *s)
+{
+    char v[TALK_LINE_MAX * 2];
+    int n = 0, i;
+    visible(s, v, (int)sizeof v);
+    for (i = 0; v[i]; i++) {
+        if (v[i] == '*') { i++; while (v[i] && v[i] != '*') i++; if (!v[i]) break; continue; }
+        n++;
+    }
+    return n;
+}
+
+/* TM2d: a core reply act that gives a stance (a reason can follow it) */
+static int stance_act(int a)
+{
+    return a == TA_AGREE || a == TA_DISAGREE || a == TA_OPINE_POS || a == TA_OPINE_NEG || a == TA_YES || a == TA_NO ||
+           a == TA_ANSWER;
+}
+
+/* a lower-case voice (Wisp, Vapula) says every part in lower case; the line codes stay */
+static void lower_codes(char *s)
+{
+    int i;
+    for (i = 0; s[i]; i++) {
+        if (s[i] == '{') { while (s[i] && s[i] != '}') i++; if (!s[i]) return; continue; }
+        if (s[i] >= 'A' && s[i] <= 'Z') s[i] = (char)(s[i] - 'A' + 'a');
+    }
+}
+
+static int same_thread(uint16_t a, uint16_t b);
+
+/* TM2d: the player's act is a topic act: a question or a statement about the topic (the census' Q8b set) */
+static int topic_act(int a)
+{
+    switch (a) {
+    case TA_ASK_ABOUT: case TA_ASK_OPINION: case TA_TELL: case TA_OPINE_POS: case TA_OPINE_NEG: case TA_CHANGE_TOPIC:
+    case TA_CONTINUE: case TA_AGREE: case TA_DISAGREE: case TA_ANSWER: case TA_GOSSIP:
+        return 1;
+    }
+    return 0;
+}
+
+/* the core alternative stands on the topic: a guard that needs it (a pronoun line: "it", "that") */
+static int alt_topicy(const TalkAltInfo *ai)
+{
+    int j;
+    for (j = 0; j < ai->nterm; j++) {
+        int p = ai->term[2 * j], v = ai->term[2 * j + 1];
+        if (p & 0x80) continue;
+        if (p == TGP_TOPIC || p == TGP_LIKES_TOPIC || p == TGP_FEARS_TOPIC || p == TGP_HATES_TOPIC ||
+            (p >= TGP_X_COUNTABLE && p <= TGP_X_GRIEF) || p == TGP_ROOT || (p == TGP_STANCE && v != TST_NEUTRAL))
+            return 1;
+    }
+    return 0;
+}
+
 static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr)
 {
     TalkConv *c = g->c;
-    Part parts[5];               /* opener, core, callback, tag, hand-off */
-    int use[5], try_, k, ok = 0, swears, lower = 0, too_long[AVOID_MAX], ntoo = 0;
+    Part parts[7];               /* opener, core, callback, tag, hand-off, reason, hook */
+    int use[7], try_, k, ok = 0, swears, lower = 0, too_long[AVOID_MAX], ntoo = 0;
     char line[TALK_LINE_MAX + PART_MAX];
     TalkAltInfo ai;
+    int relaxed = 0;             /* every core was set aside for a hook or a bridge: they are no longer required */
     memset(out, 0, sizeof *out);
     out->who = (int8_t)g->who;
     out->to = (int8_t)g->to;
     out->stance = g->stance;
     for (try_ = 0; try_ < TRIES && !ok; try_++) {
-        int r = rng_range(&g->rng, 100), loud = g->pers[PERS_EXPRESSION], got;
+        int r = rng_range(&g->rng, 100), loud = g->pers[PERS_EXPRESSION], got, hook_req = 0, bridge_req = 0;
         memset(use, 0, sizeof use);
         g->kf = g->plan.kind ? (uint8_t)((g->plan.flags & (TPL_MISS | TPL_OPEN) ? 0 : KF_KIND) | (g->kid_room ? KF_COOL : 0)) : 0;
         got = make_part_avoid(g, core, 1, &parts[1], too_long, ntoo);
@@ -1356,6 +1435,7 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
             got = make_part_avoid(g, core, 1, &parts[1], too_long, ntoo);
         }
         g->kf = 0;                                        /* the filter is for the core part only */
+        if (!got && ntoo && !relaxed) { ntoo = 0; relaxed = 1; try_--; continue; }    /* the shorter cores ran out: any core, nothing required */
         if (!got) continue;
         use[1] = 1;
         lower = talk_gen_alt_info(parts[1].alt, &ai) && (ai.rflags & RF_LOWER);
@@ -1367,8 +1447,88 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
             if (g->other >= 0 && g->to == -1 && rng_range(&g->rng, 100) < 25)
                 use[4] = make_part(g, entry_sym(g, ENT_FIXED, TGE_HANDOFF), 0, &parts[4]);
         }
-        join(line, (int)sizeof line, parts, use, 5, NULL, lower);
+        /* TM2d: a topic act answered by a line that names nothing: the line names the topic (Q8b; reason.name) */
+        if (optional && !lower && g->topic && !g->grief && topic_act(g->act) && !(ai.rflags & (RF_SINCERE | RF_ROMANCE | RF_REFUSAL))) {
+            int named = (parts[1].flags & AF_TOPIC) != 0 || alt_topicy(&ai), q;
+            for (q = 0; q < parts[1].tr.nsaid && !named; q++) named = same_thread(g->topic, parts[1].tr.said[q]);
+            if (!named && !(g->plan.kind && g->plan.depth >= 1 && stance_act(ai.act) && !strchr(parts[1].text, '?'))) {
+                uint8_t d = g->dlvl;
+                g->dlvl = 0;
+                use[5] = make_part(g, entry_sym(g, ENT_FIXED, TGE_REASON), 0, &parts[5]);
+                g->dlvl = d;
+                bridge_req = use[5];
+            }
+        }
+        /* TM2d: layer b depth 1 (the reason) and layer d (the hook) */
+        if (optional && !lower && g->plan.kind && !(ai.rflags & (RF_SINCERE | RF_ROMANCE | RF_REFUSAL))) {
+            int hk = talk_hook_wanted(g->act, g->plan.kind, TA_IS_ROMANCE(g->act), g->kid_room, 0);
+            if (!hk && (g->act == TA_INVITE || g->act == TA_ASK_FAVOR) && (ai.act == TA_NO || ai.act == TA_DISMISS || ai.act == TA_CHANGE_TOPIC))
+                hk = TH_OFFER;                                /* whatever the plan said, a line that turns a request down leaves something to do */
+            if (hk == TH_ASK && g->other >= 0 && g->to == -1 && rng_range(&g->rng, 100) < 30) hk = TH_CALL;
+            if (g->plan.depth >= 1 && g->topic && stance_act(ai.act) && !strchr(parts[1].text, '?')) {
+                uint8_t d = g->dlvl;
+                g->dlvl = 1;
+                use[5] = make_part(g, entry_sym(g, ENT_FIXED, TGE_REASON), 0, &parts[5]);
+                g->dlvl = d;
+            }
+            if (hk && !strchr(parts[1].text, '?')) {
+                g->hook_now = (uint8_t)hk;
+                use[6] = make_part(g, entry_sym(g, ENT_FIXED, TGE_HOOK), 0, &parts[6]);
+                if (!use[6] && hk == TH_OFFER) {              /* no offer fits (no topic, no other): a question will do */
+                    g->hook_now = TH_ASK;
+                    use[6] = make_part(g, entry_sym(g, ENT_FIXED, TGE_HOOK), 0, &parts[6]);
+                }
+                g->hook_now = 0;
+                hook_req = use[6];
+                if (use[6]) g->plan.hook = (uint8_t)hk;
+            }
+        }
+        join(line, (int)sizeof line, parts, use, 7, NULL, lower);
         if (fits(line)) { ok = 1; break; }
+        if ((use[5] || use[6]) && fits(parts[1].text)) {        /* the reason, the bridge or the hook does not fit with the rest */
+            static const uint8_t shed[] = { 3, 4, 0, 2 };         /* tag, hand-off, opener, callback: the optional parts go first */
+            for (k = 0; k < 4 && !ok; k++) {
+                if (!use[shed[k]]) continue;
+                use[shed[k]] = 0;
+                join(line, (int)sizeof line, parts, use, 7, NULL, lower);
+                ok = fits(line);
+            }
+            if (!ok && use[6] && hook_req) {                     /* a shorter hook of the same kind before another core */
+                int av[AVOID_MAX], nav = 0, i;
+                for (i = 0; i < AVOID_MAX && !ok; i++) {
+                    av[nav++] = parts[6].alt;
+                    g->hook_now = g->plan.hook;
+                    use[6] = make_part_avoid(g, entry_sym(g, ENT_FIXED, TGE_HOOK), 0, &parts[6], av, nav);
+                    g->hook_now = 0;
+                    if (!use[6]) break;
+                    join(line, (int)sizeof line, parts, use, 7, NULL, lower);
+                    ok = fits(line);
+                }
+                if (!ok && !use[6]) {                            /* no hook of that kind is short enough: the line without it */
+                    join(line, (int)sizeof line, parts, use, 7, NULL, lower);
+                    ok = fits(line);
+                    if (ok) g->plan.hook = 0;
+                }
+                if (ok) break;
+            }
+            if (!ok && ((use[6] && hook_req) || (use[5] && bridge_req)) && ntoo < 6 && !relaxed) {
+                too_long[ntoo++] = parts[1].alt;                 /* a required hook or bridge does not fit this core: try a shorter one */
+                try_--;
+                continue;
+            }
+            if (!ok && use[5]) {                                 /* the reason, then the hook, last */
+                use[5] = 0;
+                join(line, (int)sizeof line, parts, use, 7, NULL, lower);
+                ok = fits(line);
+            }
+            if (!ok && use[6]) {
+                use[6] = 0;
+                join(line, (int)sizeof line, parts, use, 7, NULL, lower);
+                ok = fits(line);
+                if (ok && hook_req) g->plan.hook = 0;
+            }
+            if (ok) break;
+        }
         if (!fits(parts[1].text) && ntoo < AVOID_MAX) {     /* the core alone is too long: set it aside */
             too_long[ntoo++] = parts[1].alt;
             try_--;
@@ -1376,10 +1536,10 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
             continue;
         }
         if (try_ == TRIES - 1) {
-            static const uint8_t drop[] = { 3, 2, 0, 4 };      /* tag, callback, opener, hand-off */
-            for (k = 0; k < 4 && !ok; k++) {
+            static const uint8_t drop[] = { 3, 2, 0, 4, 5, 6 };      /* tag, callback, opener, hand-off, reason, hook */
+            for (k = 0; k < 6 && !ok; k++) {
                 use[drop[k]] = 0;
-                join(line, (int)sizeof line, parts, use, 5, NULL, lower);
+                join(line, (int)sizeof line, parts, use, 7, NULL, lower);
                 ok = fits(line);
             }
         }
@@ -1390,7 +1550,34 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
         out->flags |= TLF_FALLBACK;
         return 0;
     }
-    join(line, (int)sizeof line, parts, use, 5, tr, lower);
+    /* a reply that stays under 20 visible characters (a bare "Hm.") or answers a thanks, an apology, a compliment or a
+     * feeling gets a small acknowledgement that asks something back (Q8e; hook.ack): decided on the line as it fits */
+    if (optional && !use[6] && !g->grief && !(ai.rflags & (RF_SINCERE | RF_ROMANCE | RF_REFUSAL)) &&
+        !TA_IS_ROMANCE(g->act) && !TA_IS_SAFETY(g->act) && g->act != TA_UNKNOWN) {
+        int a = g->act, n, want;
+        int calm = talk_gen_act_class(a) != TAC_GESTURE && a != TA_GREET && a != TA_FAREWELL && a != TA_LAUGH;
+        int kindly = a == TA_THANK || a == TA_APOLOGIZE || a == TA_COMPLIMENT || a == TA_ASK_FEELING;
+        join(line, (int)sizeof line, parts, use, 7, NULL, lower);
+        n = vis_len(line);
+        want = n < 8 || (calm && n < 20) || (calm && kindly && !strchr(line, '?') && rng_range(&g->rng, 100) < 30);
+        if (want) {
+            g->hook_now = TH_ACK;
+            use[6] = make_part(g, entry_sym(g, ENT_FIXED, TGE_HOOK), 0, &parts[6]);
+            g->hook_now = 0;
+            if (use[6]) {
+                static const uint8_t shed2[] = { 3, 2, 0, 4, 5 };
+                if (lower) lower_codes(parts[6].text);
+                join(line, (int)sizeof line, parts, use, 7, NULL, lower);
+                for (k = 0; k < 5 && !fits(line); k++) {
+                    if (!use[shed2[k]]) continue;
+                    use[shed2[k]] = 0;
+                    join(line, (int)sizeof line, parts, use, 7, NULL, lower);
+                }
+                if (fits(line)) g->plan.hook = TH_ACK; else use[6] = 0;
+            }
+        }
+    }
+    join(line, (int)sizeof line, parts, use, 7, tr, lower);
     excl_budget(line, g->pers[PERS_EXPRESSION]);
     if (!lower) cap_first(line);
     copy_cap(out->text, line, TALK_LINE_MAX);
@@ -1399,10 +1586,11 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
         out->act = ai.act;
         if (ai.rflags & RF_SINCERE) out->flags |= TLF_SINCERE;
     }
-    for (k = 0; k < 5; k++) if (use[k] && parts[k].face && !out->face) out->face = parts[k].face;
+    for (k = 0; k < 7; k++) if (use[k] && parts[k].face && !out->face) out->face = parts[k].face;
     if (parts[1].flags & AF_TOPIC) out->topic = g->topic;
     else if (parts[1].flags & AF_LIKE) out->topic = g->like_pick;
     if (use[4]) out->flags |= TLF_HANDOFF;
+    if (!use[6]) g->plan.hook = 0;
     if (tr) {
         tr->picks = (uint8_t)try_;
         tr->tic = 0xFF;
@@ -1422,7 +1610,11 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
     for (k = TALK_ROOM_NOVELTY - 1; k > 0; k--) c->room_recent[k] = c->room_recent[k - 1];
     c->room_recent[0] = (uint16_t)(parts[1].alt + 1);
     c->spoke |= (uint8_t)(1u << g->who);
-    for (k = 0; k < 5; k++) if (use[k] && (parts[k].flags & AF_CATCH)) c->catch_used |= (uint8_t)(1u << g->who);
+    for (k = 0; k < 7; k++) if (use[k] && (parts[k].flags & AF_CATCH)) c->catch_used |= (uint8_t)(1u << g->who);
+    if (g->unk == TU_NAME && talk_safe_lint_probe(out->text, &c->aud, 1) != TL_OK) {   /* E6: the named line must pass S3 */
+        g->unk_fail = 1;
+        return 0;
+    }
     /* S3: the output lint, every line */
     swears = c->swears;
     if ((k = talk_safe_lint(out->text, &c->aud, &swears)) != TL_OK) {
@@ -1516,6 +1708,283 @@ static void make_plan(Gen *g, int act)
     }
 }
 
+/* ---- TM2d: topic depth (design 3.1), the second line, the unknown word (design 4) ----------------------- */
+static int root_of_topic(uint16_t topic)
+{
+    TalkConcept tc;
+    return topic && talk_db_concept(topic, &tc) ? talk_db_cat_root(tc.cat) : 0;
+}
+
+/* the same topic, or one hop from it (the word network is symmetric enough: either side counts) */
+static int same_thread(uint16_t a, uint16_t b)
+{
+    uint16_t ids[TALK_ASSOC_TOP];
+    int n, i;
+    if (!a || !b) return 0;
+    if (a == b) return 1;
+    n = talk_db_assoc(a, ids, NULL);
+    for (i = 0; i < n; i++) if (ids[i] == b) return 1;
+    n = talk_db_assoc(b, ids, NULL);
+    for (i = 0; i < n; i++) if (ids[i] == a) return 1;
+    return 0;
+}
+
+/* The depth of this answer line: the state of the speaker's thread moves by one step (rise, hold, fall, reset), the
+ * plan gets the level and the content, and a story or a secret asks for a second line (TalkConv.more). Never for a
+ * line without a plan kind (a safety act, the pet, grief, an unknown act). */
+static void depth_plan(Gen *g, int act)
+{
+    TalkConv *c = g->c;
+    TalkDepthIn in;
+    uint16_t th = (uint16_t)TDEP_TOPIC(c->dep_tw[g->who]);
+    int lvl, who = g->who, rv;
+    c->more = 0;
+    if (!g->r || c->id[who] == TALK_PET_ID || act <= 0 || act >= TA_COUNT || TA_IS_SAFETY(act) || TA_IS_ROMANCE(act) ||
+        act == TA_UNKNOWN)
+        return;
+    memset(&in, 0, sizeof in);
+    in.act = (uint8_t)act;
+    in.rel = g->rel;
+    in.stage = g->stage;
+    in.kid_room = g->kid_room;
+    in.engage = c->engage ? c->engage : TALK_ENGAGE_START;
+    rv = g->to_id >= 0 ? rel_value(g->sid, g->to_id) : 0;
+    in.level = (uint8_t)(rv < 0 ? 0 : rv > 100 ? 100 : rv);
+    in.root = (uint8_t)(g->topic ? talk_db_cat_root(g->tc.cat) : 0);
+    in.thread_root = (uint8_t)root_of_topic(th);
+    in.same = (uint8_t)(g->topic && same_thread(g->topic, th));
+    in.grief = (uint8_t)grief_topic(g);
+    if (g->has_ts) {
+        in.shy = (uint8_t)talk_traitset_has(&g->ts, TT_SHY);
+        in.paranoid = (uint8_t)talk_traitset_has(&g->ts, TT_PARANOID);
+        in.outgoing = (uint8_t)talk_traitset_has(&g->ts, TT_OUTGOING);
+        in.loyal = (uint8_t)talk_traitset_has(&g->ts, TT_LOYAL);
+        in.gloomy = (uint8_t)talk_traitset_has(&g->ts, TT_GLOOMY);
+    }
+    lvl = talk_depth_step(&in, &c->dep[who], &c->dep_tw[who], g->topic);
+    if ((unsigned)lvl > TDEP_MEM_LEVEL(c->mem_dep[who])) c->mem_dep[who] = (uint8_t)((c->mem_dep[who] & ~3u) | (unsigned)lvl);
+    if (!g->plan.kind) return;
+    c->dep_tw[who] = (uint16_t)(TDEP_TOPIC(c->dep_tw[who]) | ((unsigned)g->plan.kind << 12));
+    g->plan.depth = (uint8_t)lvl;
+    g->plan.content = (uint8_t)(!g->topic ? TCN_NONE : lvl == 0 ? TCN_STANCE : lvl == 1 ? TCN_REASON : lvl == 2 ? TCN_STORY : TCN_SECRET);
+    if (lvl >= 2 && TDEP_TOPIC(c->dep_tw[who]))
+        c->more = (uint16_t)((lvl == 2 ? TMORE_STORY : TMORE_SECRET) | ((unsigned)who << 2) | ((unsigned)act << 8));
+}
+
+/* The reply act a second line carries: the first of a few that may answer the player's act (acts.tsv), so Q2 holds
+ * for the line as it did for the first. 0 when none (a compliment, a thanks: nothing to tell). */
+static int more_act(int act)
+{
+    static const uint8_t cand[] = { TA_ANSWER, TA_TELL, TA_OPINE_POS, TA_AGREE, TA_BACKCHANNEL };
+    int k;
+    for (k = 0; k < (int)sizeof cand; k++) if (talk_gen_adjacent(act, cand[k])) return cand[k];
+    return 0;
+}
+
+/* the secrets a speaker may tell: a like, the fear or the hated food the player has not learned (and none told this
+ * talk or today), or a small problem from the safe set. Kid-safe by construction (design 3.3): never a crush, a
+ * break-up, a proposal, possession, corruption, a nightmare or a fight. Returns TSEC_* + 1 and sets *which (the
+ * like index, 5 for a problem), 0 when there is nothing to tell. */
+static int pick_secret(Gen *g, int *which)
+{
+    int cand[6], kind[6], n = 0, w;
+    TalkConv *c = g->c;
+    if (c->mem_dep[g->who] & (TDEP_MEM_SECRET(0) | TDEP_MEM_SECRET(1) | TDEP_MEM_SECRET(2) | TDEP_MEM_SECRET(3))) return 0;
+    for (w = 0; w < 5; w++) {
+        if (!g->like[w] || talk_mem_like_known(g->sid, w) || !talk_gen_concept_ok(g->like[w], &c->aud)) continue;
+        cand[n] = w;
+        kind[n++] = w < 3 ? TSEC_LIKE : w == 3 ? TSEC_FEAR : TSEC_HATE;
+    }
+    if (g->prob == PROB_HUNGRY || g->prob == PROB_DIRTY || g->prob == PROB_BORED || g->prob == PROB_SICK ||
+        g->prob == PROB_WANTS_ITEM || g->prob == PROB_WANTS_FRIEND) {
+        cand[n] = 5;
+        kind[n++] = TSEC_PROBLEM;
+    }
+    if (!n) return 0;
+    w = rng_range(&g->rng, n);
+    *which = cand[w];
+    return kind[w] + 1;
+}
+
+int talk_gen_more(TalkConv *c, TalkLine *out, TalkTrace *tr)
+{
+    Gen g;
+    unsigned m;
+    int who, kind, act, sym, r, which = 0, rv;
+    if (!out) return 0;
+    memset(out, 0, sizeof *out);
+    if (!c || !c->more) return 0;
+    m = c->more;
+    c->more = 0;
+    kind = (int)(m & 3u);
+    who = (int)((m >> 2) & 3u);
+    act = (int)(m >> 8);
+    if (who >= c->n || c->id[who] == TALK_PET_ID || c->care || c->ended || !(act = more_act(act))) return 0;
+    if (!setup(&g, c, who, -1, TA_TELL, TDEP_TOPIC(c->dep_tw[who]))) return 0;
+    if (!g.r || grief_topic(&g)) return 0;
+    g.dlvl = (uint8_t)(kind == TMORE_SECRET ? 3 : 2);
+    if (kind == TMORE_SECRET) {
+        /* a friend whose bond is 40 or more, or a loyal one, counts as a best friend for the secret rules (the gate said so) */
+        if (g.rel == TRB_FRIEND) {
+            rv = g.to_id >= 0 ? rel_value(g.sid, g.to_id) : 0;
+            if (rv >= 40 || (g.has_ts && talk_traitset_has(&g.ts, TT_LOYAL))) g.rel = TRB_BEST;
+        }
+        g.secret = (uint8_t)pick_secret(&g, &which);
+        if (!g.secret) return 0;
+        if (which < 3) g.like_pick = g.like[which];
+        sym = entry_sym(&g, ENT_FIXED, TGE_SECRET);
+    } else {
+        sym = entry_sym(&g, ENT_FIXED, TGE_STORY);
+    }
+    if (sym < 0) return 0;
+    g.plan.kind = 0;
+    r = gen_line(&g, sym, 0, out, tr);
+    if (!r || (out->flags & (TLF_SAFE | TLF_FALLBACK))) {
+        if (!(out->flags & TLF_SAFE)) memset(out, 0, sizeof *out);
+        return 0;
+    }
+    out->who = (int8_t)who;
+    out->to = -1;
+    out->act = (uint8_t)act;
+    out->flags |= TLF_MORE;
+    if (kind == TMORE_SECRET) {
+        c->mem_dep[who] |= (uint8_t)TDEP_MEM_SECRET(g.secret - 1);
+        if (tr) tr->plan.depth = 3;
+    }
+    if (tr) { tr->plan.content = (uint8_t)(kind == TMORE_SECRET ? TCN_SECRET : TCN_STORY); tr->plan.depth = g.dlvl; }
+    return 1;
+}
+
+/* ---- the unknown word (design 4) -------------------------------------------------------------------------- */
+/* E1 to E6 on the word the parser pointed at, from the bubble text only (E2); the kid-room length rule. 0: do not echo */
+int talk_gen_unk_word(const TalkConv *c, const TalkUtter *u, char out[18])
+{
+    int off = u->unk_off, len = u->unk_len, i, n = 0, sep = 0, unsafe = 0;
+    char w[20];
+    uint16_t cid;
+    int kid = c->aud.any_minor || c->aud.avatar_minor || c->aud.target_minor;
+    out[0] = 0;
+    if (len < 3 || len > 16 || off + len > (int)strlen(u->shown)) return 0;
+    if (u->safety) return 0;                                              /* E5: the player's safety bits are 0 (a masked word is a bit too) */
+    if (c->ended || c->care) return 0;                                    /* E5: not a K-7 room, not in the care window */
+    for (i = 0; i < len; i++) {                                           /* E3: ASCII letters and one apostrophe or hyphen, no digits, no shout */
+        char ch = u->shown[off + i];
+        if (ch >= 'A' && ch <= 'Z') ch = (char)(ch - 'A' + 'a');
+        if (ch >= 'a' && ch <= 'z') { w[n++] = ch; continue; }
+        if ((ch == '\'' || ch == '-') && !sep && i > 0 && i < len - 1) { sep = 1; w[n++] = ch; continue; }
+        return 0;
+    }
+    {
+        int upper = 0;
+        for (i = 0; i < len; i++) if (u->shown[off + i] >= 'A' && u->shown[off + i] <= 'Z') upper++;
+        if (upper == len && len >= 3) return 0;                           /* a shout */
+    }
+    w[n] = 0;
+    if (kid && n > 12) return 0;                                          /* a kid room echoes nothing long */
+    if (talk_safe_hate_word(w, 1)) return 0;                              /* E4 */
+    if (talk_lex_known(w, NULL)) return 0;                                /* E1: it is not a word the lexicon knows */
+    (void)talk_lex_near(w, &cid, &unsafe);
+    if (unsafe) return 0;                                                 /* E4: within one edit of a register, minor, hate word */
+    {                                                                      /* ... and no such word inside it ("hitlerish"): every part of 3 letters or more */
+        int a, l;
+        for (a = 0; a < n; a++)
+            for (l = 3; a + l <= n; l++) {
+                char sub[20];
+                uint16_t wf = 0;
+                memcpy(sub, w + a, (size_t)l);
+                sub[l] = 0;
+                if (talk_lex_known(sub, &wf) && (wf & (TW_SUGGEST | TW_SEXUAL | TW_HATE | TW_DISTRESS | TW_MINOR | TW_REALWORLD |
+                                                       TW_STRONG | TW_CRUDE | TW_CAPPED | TW_GROUP | TW_MINORX)))
+                    return 0;
+                if (l >= 4 && talk_safe_hate_word(sub, 0)) return 0;
+            }
+    }
+    if (talk_safe_lint_probe(w, &c->aud, 1) != TL_OK) return 0;           /* E6 (the word alone; the line is probed again) */
+    memcpy(out, w, (size_t)n + 1);
+    return n;
+}
+
+void talk_gen_unk_prepare(TalkConv *c, const TalkUtter *u)
+{
+    char w[18], raw[20];
+    int unsafe = 0, k, n = 0, valid = 1;
+    uint16_t cid = 0;
+    if (!c) return;
+    TC_SET_UNK_MODE(c, 0);
+    c->unk[0] = 0;
+    c->unk_guess = 0;
+    if (!u || u->act[0] != TA_UNKNOWN) return;
+    TC_SET_UNK_MODE(c, TU_ASK);                                                 /* no word to speak of: a plain ask */
+    if (u->safety) { TC_SET_UNK_MODE(c, TU_NOECHO); return; }                    /* a masked or flagged line: nothing is echoed or guessed */
+    if (u->unk_len < 3) return;
+    if (u->unk_off + u->unk_len > (int)strlen(u->shown) || u->unk_len > 16) { TC_SET_UNK_MODE(c, TU_NOECHO); return; }
+    for (k = 0; k < u->unk_len; k++) {
+        char ch = u->shown[u->unk_off + k];
+        if (ch >= 'A' && ch <= 'Z') ch = (char)(ch - 'A' + 'a');
+        if (!((ch >= 'a' && ch <= 'z') || ch == '\'' || ch == '-')) valid = 0;
+        raw[n++] = ch;
+    }
+    raw[n] = 0;
+    TC_SET_UNK_MODE(c, TU_NOECHO);
+    /* step 1: a guess is a real concept, so only for a word that is itself harmless (E4) in a room that may say it */
+    if (valid && !talk_safe_hate_word(raw, 1) && talk_lex_near(raw, &cid, &unsafe) && !unsafe && talk_gen_concept_ok(cid, &c->aud)) {
+        TalkConcept tc;
+        if (talk_db_concept(cid, &tc) && !(tc.flags & TCF_GRIEF)) { c->unk_guess = cid; TC_SET_UNK_MODE(c, TU_GUESS); }
+    }
+    /* step 2: the word named back, only when every fence holds, once a talk */
+    if (!TC_UNK_SAID(c) && talk_gen_unk_word(c, u, w)) {
+        memcpy(c->unk, w, strlen(w) + 1);
+        if (TC_UNK_MODE(c) != TU_GUESS) TC_SET_UNK_MODE(c, TU_NAME);               /* with a guess too, the line draws one of the two */
+    }
+}
+
+/* The answer to an unknown line: unk.guess, unk.name, unk.askmeaning or unk.noecho, all of which ask what kind of
+ * thing it is. 0 when nothing fits (the old core.unknown bank answers then). */
+static int unk_line(Gen *g, TalkLine *out, TalkTrace *tr)
+{
+    TalkConv *c = g->c;
+    int sym = entry_sym(g, ENT_FIXED, TGE_UNK), mode = (int)TC_UNK_MODE(c), r = 0, i;
+    if (sym < 0 || !g->r) return 0;
+    if (mode == TU_GUESS && c->unk[0] && !TC_UNK_SAID(c) && rng_range(&g->rng, 2)) mode = TU_NAME;
+    if (mode == TU_NAME && (TC_UNK_SAID(c) || !c->unk[0])) mode = TU_ASK;
+    for (i = 0; i < 3; i++) {
+        g->unk = (uint8_t)(mode ? mode : TU_ASK);
+        g->unk_fail = 0;
+        if (g->unk == TU_GUESS) {
+            g->topic = c->unk_guess;
+            if (!g->topic || !talk_db_concept(g->topic, &g->tc)) { mode = c->unk[0] && !TC_UNK_SAID(c) ? TU_NAME : TU_ASK; continue; }
+        } else {
+            g->topic = 0;
+        }
+        g->plan.kind = 0;
+        g->plan.content = TCN_NAME;
+        g->plan.hook = TH_ASK;
+        r = gen_line(g, sym, g->unk != TU_NAME, out, tr);
+        if (r && !(out->flags & (TLF_SAFE | TLF_FALLBACK))) {
+            if (g->unk == TU_NAME) TC_SET_UNK_SAID(c);
+            if (g->unk == TU_NAME || g->unk == TU_ASK || g->unk == TU_NOECHO) {      /* the player may say what kind of thing it is */
+                int h = 0, k, at = -1;
+                for (k = 0; c->unk[k]; k++) h = (h * 31 + c->unk[k]) & 0xFFFF;
+                if (h) for (k = 0; k < 4; k++) if (c->taught_hash[k] == h) at = k;
+                if (at < 0) {                                                       /* a new word: the front of the ring of 4 */
+                    for (k = 3; k > 0; k--) { c->taught_hash[k] = c->taught_hash[k - 1]; c->taught_root[k] = c->taught_root[k - 1]; }
+                    c->taught_hash[0] = (uint16_t)h;
+                    c->taught_root[0] = 0;
+                    at = 0;
+                }
+                TC_SET_TAUGHT(c, at + 1);
+            }
+            out->topic = TC_NONE;                                                   /* a guess is no topic of the player's (Q2) */
+            return 1;
+        }
+        if (g->unk_fail || g->unk == TU_NAME) { mode = TU_NOECHO; continue; }
+        if (g->unk == TU_GUESS) { mode = TU_ASK; continue; }
+        break;
+    }
+    memset(out, 0, sizeof *out);
+    return 0;
+}
+
 int talk_gen_line(TalkConv *c, int who, int to, int act, uint16_t topic, TalkLine *out, TalkTrace *tr)
 {
     Gen g;
@@ -1535,9 +2004,32 @@ int talk_gen_line(TalkConv *c, int who, int to, int act, uint16_t topic, TalkLin
         out->to = (int8_t)to;
         return r;
     }
+    c->more = 0;
+    if (act == TA_UNKNOWN && TC_UNK_MODE(c) && !(c->plain & 1)) {                /* TM2d: guess, name or ask (design 4) */
+        r = unk_line(&g, out, tr);
+        if (r) { out->who = (int8_t)who; out->to = (int8_t)to; return r; }
+        setup(&g, c, who, to, act, topic);                                      /* nothing fitted: the old bank answers */
+        c->lines--;
+    }
+    if (TC_TAUGHT(c) && act != TA_UNKNOWN && !TA_IS_SAFETY(act) && g.topic && !(c->plain & 1)) {   /* "it's a food": the kind it was asked */
+        int root = root_of_topic(g.topic), at = (int)TC_TAUGHT(c) - 1;
+        TC_SET_TAUGHT(c, 0);
+        if (root && at < 4 && entry_sym(&g, ENT_FIXED, TGE_UNK) >= 0) {
+            c->taught_root[at] = (uint8_t)root;
+            g.unk = TU_TAUGHT;
+            g.plan.kind = 0;
+            g.plan.content = TCN_NAME;
+            r = gen_line(&g, entry_sym(&g, ENT_FIXED, TGE_UNK), 0, out, tr);
+            if (r && !(out->flags & (TLF_SAFE | TLF_FALLBACK))) { out->who = (int8_t)who; out->to = (int8_t)to; return r; }
+            setup(&g, c, who, to, act, topic);
+            c->lines--;
+        }
+    }
+    TC_SET_TAUGHT(c, 0);
     sym = act > 0 && act < TA_COUNT ? entry_sym(&g, ENT_CORE, act) : -1;
     if (sym < 0) sym = entry_sym(&g, ENT_CORE, TA_UNKNOWN);
     make_plan(&g, act);
+    if (!(c->plain & 1)) depth_plan(&g, act);
     r = gen_line(&g, sym, !TA_IS_SAFETY(act) && !(c->plain & 1), out, tr);
     out->who = (int8_t)who;
     out->to = (int8_t)to;
@@ -1715,12 +2207,17 @@ static int exchange(TalkConv *c, TalkUtter *u, TalkExchange *x, TalkTrace *tr)
         if (c->id[resp] == TALK_PET_ID) return 0;
     }
     x->first = (int8_t)resp;
+    if (g == TG_PASS) talk_gen_unk_prepare(c, u);                                    /* TM2d: the unknown word */
     talk_gen_line(c, resp, -1, u->act[0], u->topic[0], &x->line[0], tr ? &tr[0] : NULL);
     x->n = 1;
     if (g == TG_DEFLECT && target >= 0) c->refused |= (uint8_t)(1u << target);      /* K-5: no more today */
     if (g == TG_PASS && TA_IS_ROMANCE(u->act[0]) && !((c->consent >> resp) & 1))
         c->refused |= (uint8_t)(1u << resp);                                         /* a no ends it (K-5) */
-    if (g != TG_PASS || TA_IS_ROMANCE(u->act[0]) || c->id[resp] == TALK_PET_ID) return x->n;
+    if (g != TG_PASS || TA_IS_ROMANCE(u->act[0]) || c->id[resp] == TALK_PET_ID) { c->more = 0; return x->n; }
+    if (c->more && !(x->line[0].flags & (TLF_SAFE | TLF_FALLBACK | TLF_SINCERE)) &&      /* TM2d: the story or the secret, right after the answer */
+        talk_gen_more(c, &x->line[1], tr ? &tr[1] : NULL))
+        x->n = 2;
+    c->more = 0;
     /* reactions between the residents: each other one may chime in, two at most
      * (one after a sincere grief line, K-10: a comfort line, no pile-on) */
     maxre = (x->line[0].flags & TLF_SINCERE) ? 1 : 2;

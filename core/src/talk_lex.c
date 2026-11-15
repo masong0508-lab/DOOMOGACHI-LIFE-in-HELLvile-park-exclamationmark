@@ -1152,3 +1152,67 @@ void talk_lex_topics(const TalkTok *tok, int n, const TalkParseCtx *ctx, uint16_
     }
     if (second >= 0 && a[second].score * 10 >= a[best].score * 6 && a[second].mentioned) topic[1] = a[second].id;
 }
+
+/* ---- TM2d: the nearest known concept to an unknown word (design 4, step 1) ---------------------------------
+ * Edit distance (insert, delete, change, swap of two) up to 3 between two short words, by a small table. */
+static int lev(const char *a, const char *b)
+{
+    int la = (int)strlen(a), lb = (int)strlen(b), i, j;
+    int d0[TALK_TOK_LEN + 1], d1[TALK_TOK_LEN + 1], d2[TALK_TOK_LEN + 1], *p2 = d0, *p1 = d1, *cur = d2;
+    if (la > TALK_TOK_LEN - 1 || lb > TALK_TOK_LEN - 1) return 9;
+    for (j = 0; j <= lb; j++) p1[j] = j;
+    for (i = 1; i <= la; i++) {
+        cur[0] = i;
+        for (j = 1; j <= lb; j++) {
+            int c = a[i - 1] == b[j - 1] ? 0 : 1, v = p1[j - 1] + c, t;
+            if (p1[j] + 1 < v) v = p1[j] + 1;
+            if (cur[j - 1] + 1 < v) v = cur[j - 1] + 1;
+            if (i > 1 && j > 1 && a[i - 1] == b[j - 2] && a[i - 2] == b[j - 1]) {      /* two letters swapped */
+                t = p2[j - 2] + 1;
+                if (t < v) v = t;
+            }
+            cur[j] = v;
+        }
+        { int *t = p2; p2 = p1; p1 = cur; cur = t; }
+    }
+    return p1[lb];
+}
+
+#define NEAR_BAD (TW_SUGGEST | TW_SEXUAL | TW_HATE | TW_DISTRESS | TW_MINOR | TW_REALWORLD | TW_STRONG | TW_CRUDE | \
+                  TW_CAPPED | TW_GROUP | TW_MINORX)
+
+int talk_lex_near(const char *word, uint16_t *concept, int *unsafe)
+{
+    PrsHdr h;
+    uint32_t i;
+    int n = word ? (int)strlen(word) : 0, best = 9, bu = 0;
+    uint16_t bc = 0;
+    if (concept) *concept = 0;
+    if (unsafe) *unsafe = 0;
+    if (n < 3 || n >= TALK_TOK_LEN || !prs_hdr(&h)) return 0;
+    for (i = 0; i < h.nwords; i++) {
+        uint8_t r[WORD_REC];
+        PrsWord w;
+        char key[TALK_TOK_LEN + 4];
+        int len, d;
+        if (!talk_db_read(TB_PARSE, h.words_off + WORD_REC * i, r, WORD_REC)) break;
+        len = r[11];
+        if (len < 3 || len >= TALK_TOK_LEN || len - n > 3 || n - len > 3) continue;
+        w.key = le32(r); w.concept = le16(r + 4); w.wflags = le16(r + 6); w.tagset = le16(r + 8); w.nw = r[10]; w.len = r[11];
+        if (!talk_db_read(TB_PARSE, h.str_off + w.key, key, (uint32_t)len + 1u)) continue;
+        key[len] = 0;
+        d = lev(word, key);
+        if (d <= 1 && (w.wflags & NEAR_BAD)) bu = 1;
+        if (w.nw != 1 || !w.concept || (w.wflags & (NEAR_BAD | TW_NAME | TW_FUNC))) continue;
+        if (d > 2 && n >= 4 && len >= 4) {                                  /* a shared stem: one is the start of the other */
+            int s = n < len ? n : len;
+            if (strncmp(word, key, (size_t)s) == 0 && (n < len ? len - n : n - len) <= 4 && s >= 4) d = 3;
+        }
+        if (n <= 4 && d > 1) continue;                                      /* a short word: one edit at most */
+        if (d <= 3 && d < best) { best = d; bc = w.concept; }
+    }
+    if (unsafe) *unsafe = bu;
+    if (best > 3) return 0;
+    if (concept) *concept = bc;
+    return best;
+}

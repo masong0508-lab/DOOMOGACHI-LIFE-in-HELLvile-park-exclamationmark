@@ -56,7 +56,8 @@ TEST(talk_contract_acts_and_utter)
         }
         CHECK_EQ_U(all, 0xFFu);
     }
-    CHECK_EQ((int)sizeof(TalkUtter), 106);
+    CHECK_EQ((int)sizeof(TalkUtter), 108);                 /* TM2d: + unk_off, unk_len after shown */
+    CHECK_EQ((int)offsetof(TalkUtter, unk_off), 106);
     CHECK_EQ((int)offsetof(TalkUtter, topic), 2);
     CHECK_EQ((int)offsetof(TalkUtter, shown), 10);
     CHECK_EQ(TALK_PARTS_PS1, 3);                    /* = home_draw.c HOME_HOUSEMATES (F3) */

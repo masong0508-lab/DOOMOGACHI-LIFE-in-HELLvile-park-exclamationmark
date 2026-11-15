@@ -478,7 +478,7 @@ int talk_census_check(const TalkConv *c, const TalkUtter *u, const TalkExchange 
         if (id == TALK_PET_ID) continue;
         if (!k10_ok(u, l, t)) return QF_K10_GRIEF;
         /* Q2: the act, then the topic */
-        prev_act = k == 0 ? u->act[0] : x->line[k - 1].act;
+        prev_act = k == 0 || (l->flags & TLF_MORE) ? u->act[0] : x->line[k - 1].act;     /* TM2d: a story or a secret goes on from the answer's own act */
         if (!(l->flags & TLF_END) && !talk_gen_adjacent(prev_act, l->act)) return QF_Q2_ACT;
         if (!topic_ok(c, u, l)) return QF_Q2_TOPIC;
         /* Q8c / Q3: the effective sliders, re-derived from the room, and the plan's own record of them */
@@ -640,7 +640,10 @@ unsigned talk_census_q8(const TalkConv *c, const TalkUtter *u, const TalkExchang
         int v = q8_valence(l0->act, pa);
         if (v && l0->stance != TST_NEUTRAL) {
             app |= 1u << Q8_KIND;
-            if ((l0->stance == TST_PRO && v < 0) || (l0->stance == TST_CON && v > 0)) bad |= 1u << Q8_KIND;
+            /* design 7.2: against the stance is a failure unless the plan recorded a reason (the relationship, the mood, the voice, a trait) */
+            if (((l0->stance == TST_PRO && v < 0) || (l0->stance == TST_CON && v > 0)) &&
+                !(tr[0].plan.kind && (tr[0].plan.flags & TPL_REASON)))
+                bad |= 1u << Q8_KIND;
         }
     }
     /* Q8b: the player gave a topic, the reply is a topic act reply: it names the topic (or one of its
@@ -699,7 +702,7 @@ unsigned talk_census_q8(const TalkConv *c, const TalkUtter *u, const TalkExchang
     if (want & (1u << Q8_FILLER)) {
         char all[TALK_LINE_MAX * 2], v[TALK_LINE_MAX];
         int total = 0, exempt = talk_gen_act_class(pa) == TAC_GESTURE || pa == TA_GREET || pa == TA_FAREWELL ||
-                                pa == TA_THANK || pa == TA_LAUGH;
+                                pa == TA_THANK || pa == TA_LAUGH || (l0->flags & TLF_SINCERE);    /* a short sincere line (grief, care) is never padded */
         all[0] = 0;
         for (k = 0; k < x->n; k++) {
             if (x->line[k].who != l0->who || (x->line[k].flags & TLF_REACTION)) continue;
@@ -712,7 +715,7 @@ unsigned talk_census_q8(const TalkConv *c, const TalkUtter *u, const TalkExchang
     }
     /* Q8f: a line the parser did not understand is named, guessed at or asked about; a joke, a backchannel
      * or a change of topic with no question is a failure */
-    if ((want & (1u << Q8_UNKNOWN)) && pa == TA_UNKNOWN) {
+    if ((want & (1u << Q8_UNKNOWN)) && pa == TA_UNKNOWN && !(l0->flags & TLF_SINCERE)) {    /* K-10: a grief topic is answered sincerely, never asked about */
         app |= 1u << Q8_UNKNOWN;
         if ((l0->act == TA_JOKE || l0->act == TA_BACKCHANNEL || l0->act == TA_CHANGE_TOPIC) && !q8_has_q(x))
             bad |= 1u << Q8_UNKNOWN;
@@ -883,6 +886,12 @@ static void write_sample(FILE *f, uint32_t i, const TalkConv *c, const TalkUtter
     /* the core alternatives (talk_sample.py maps them to file:line for the bank's writer) */
     fprintf(f, "\t#alts");
     for (k = 0; tr && k < x->n; k++) fprintf(f, " %d", tr[k].core_alt == 0xFFFF ? -1 : (int)tr[k].core_alt);
+    if (tr && getenv("CENSUS_PLAN")) {                                       /* the plan of each line: kind, flags, lean, depth, content, hook, parts */
+        fprintf(f, "\t#plan");
+        for (k = 0; k < x->n; k++)
+            fprintf(f, " k%d/f%d/l%d/d%d/c%d/h%d/p%x", tr[k].plan.kind, tr[k].plan.flags, tr[k].plan.lean, tr[k].plan.depth,
+                    tr[k].plan.content, tr[k].plan.hook, tr[k].parts);
+    }
     fputc('\n', f);
 }
 

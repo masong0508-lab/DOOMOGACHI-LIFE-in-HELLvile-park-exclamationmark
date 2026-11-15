@@ -264,7 +264,9 @@ def lint(rules, acts):
                 if m:
                     d = int(m.group(1))
                     rel = [x.split("=")[1] for x in g if x.startswith("rel=")]
-                    if d >= 2 and not (rel or any(x.startswith("fact.") for x in g)):
+                    # TM2d: a negated relationship (!rel=stranger) names the bands left out: it is a gate for depth 2
+                    relneg = [x for x in g if x.startswith("!rel=")]
+                    if d >= 2 and not (rel or relneg or any(x.startswith("fact.") for x in g)):
                         out.append(("L8", "L8\t%s\tdepth=%d" % (name, d), where,
                                     "TK13 L8 %s: rule %s: depth>=2 needs a rel= or fact.* guard"
                                     % (TITLES["L8"], name)))

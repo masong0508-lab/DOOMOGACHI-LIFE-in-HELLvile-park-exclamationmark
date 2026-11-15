@@ -181,3 +181,95 @@ int talk_plan_next(TalkPlan *p)
     p->next[1] = 0;
     return 1;
 }
+
+/* ---- TM2d: topic depth (design 3.1) and the hook rule (design 2.5) -------------------------------------
+ * Pure functions: the generator reads the room and the sim, fills a TalkDepthIn and calls these; the tests drive
+ * them directly. Hard rules in code: a stranger never reaches 2, a rival never goes past 1, a secret needs a
+ * close bond (best friend, partner, family, or a friend whose bond is 40 or more), 3 thread turns and
+ * engagement 70, and a grief topic never goes deeper than the surface (grief is sincere, never mined). */
+int talk_depth_thread_act(int act)
+{
+    switch (act) {
+    case TA_ASK_ABOUT: case TA_ASK_OPINION: case TA_ASK_FEELING: case TA_TELL: case TA_OPINE_POS: case TA_OPINE_NEG:
+    case TA_CONTINUE: case TA_AGREE: case TA_SYMPATHIZE: case TA_COMPLIMENT: case TA_COMFORT:
+        return 1;
+    }
+    return 0;
+}
+
+static int cool_act(int a)
+{
+    return a == TA_INSULT || a == TA_MOCK || a == TA_DISMISS || a == TA_THREATEN;
+}
+
+int talk_depth_gate(const TalkDepthIn *in, int turns)
+{
+    int rank, close, need2, max = 0;
+    if (in->grief) return 0;
+    rank = in->rel == TRB_STRANGER ? 0 : in->rel == TRB_ACQUAINTANCE ? 1 : in->rel == TRB_FRIEND ? 2 :
+           in->rel == TRB_RIVAL ? -1 : 3;                                   /* best, partner, family */
+    /* 1: a stance and its reason. A shy or paranoid speaker wants to know you a little first */
+    if (!((in->shy || in->paranoid) && rank < 1)) max = 1;
+    else return 0;
+    if (rank < 0) return 1;                                                  /* a rival: a jab, never deeper */
+    /* 2: a story. Acquaintance or better (a stranger never), a shy, paranoid or gloomy speaker one band more,
+     * an outgoing one one band less (but never below acquaintance); 2 turns on the thread; engagement 50 */
+    need2 = 1 + ((in->shy || in->paranoid || in->gloomy) ? 1 : 0) - (in->outgoing ? 1 : 0);
+    if (need2 < 1) need2 = 1;
+    if (rank >= need2 && turns >= 2 && in->engage >= 50) max = 2;
+    else return max;
+    /* 3: a secret. Best friend, partner or family; a friend with a bond of 40 (a loyal one needs no bond);
+     * 3 turns; engagement 70. No trait lowers this. */
+    close = rank >= 3 || (rank == 2 && (in->level >= 40 || in->loyal));
+    if (close && turns >= 3 && in->engage >= 70) max = 3;
+    return max;
+}
+
+void talk_depth_reset(uint8_t *b)
+{
+    *b = (uint8_t)(*b & ~3u & ~TDEP_HOOKED);
+}
+
+int talk_depth_step(const TalkDepthIn *in, uint8_t *b, uint16_t *tw, uint16_t topic)
+{
+    int lvl = (int)TDEP_LEVEL(*b), turns = (int)TDEP_TURNS(*b), act = in->act, gate;
+    if (cool_act(act)) {                                                      /* down one, the thread stays */
+        if (lvl > 0) lvl--;
+        *b = (uint8_t)((*b & ~3u) | (unsigned)lvl);
+        return 0;
+    }
+    if (in->grief) { talk_depth_reset(b); return 0; }
+    if (!talk_depth_thread_act(act) && act != TA_CHANGE_TOPIC) return 0;        /* a greeting, a thanks: nothing moves */
+    if (topic && !in->same && !(act == TA_CHANGE_TOPIC && in->root && in->root == in->thread_root)) {
+        /* another topic: another root starts a new thread; the same root with a thread act holds */
+        if (!in->thread_root || in->root != in->thread_root) {
+            *b = (uint8_t)(1u << 2);                                          /* level 0, 1 turn, hook unused */
+            *tw = (uint16_t)((*tw & 0x7000u) | (topic & 0xFFFu));
+            return 0;
+        }
+        *tw = (uint16_t)((*tw & 0x7000u) | (topic & 0xFFFu));                 /* the same root: the new topic, the level held */
+        return 0;
+    }
+    if (act == TA_CHANGE_TOPIC) {                                             /* within the root: hold, the reply bridges */
+        if (topic) *tw = (uint16_t)((*tw & 0x7000u) | (topic & 0xFFFu));
+        return 0;
+    }
+    if (!topic && !TDEP_TOPIC(*tw)) return 0;                                  /* nothing to dig into */
+    if (!in->same && TDEP_TOPIC(*tw) && topic) return 0;
+    gate = talk_depth_gate(in, turns);
+    if (lvl < gate) lvl++;
+    else if (lvl > gate) lvl = gate;
+    if (turns < 7) turns++;
+    *b = (uint8_t)((*b & TDEP_HOOKED) | ((unsigned)turns << 2) | (unsigned)lvl);
+    if (topic && !TDEP_TOPIC(*tw)) *tw = (uint16_t)((*tw & 0x7000u) | (topic & 0xFFFu));
+    return lvl;
+}
+
+int talk_hook_wanted(int act, int kind, int romance, int kid_room, int sincere)
+{
+    (void)kid_room;
+    if (romance || sincere || TA_IS_SAFETY(act)) return TH_NONE;              /* a romance answer is the target's alone; a sincere line takes no hook */
+    if (kind == TK_COUNTER) return TH_ASK;
+    if ((kind == TK_DENY || kind == TK_REFUSE) && (act == TA_INVITE || act == TA_ASK_FAVOR)) return TH_OFFER;
+    return TH_NONE;
+}

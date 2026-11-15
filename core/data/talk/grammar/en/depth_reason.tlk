@@ -1,0 +1,37 @@
+# core/data/talk/grammar/en/depth_reason.tlk - TM2d: the reason clause of a depth 1 answer (owner: TK;
+# docs/TALK.md 6n; design TALK_MULTILEVEL 2.3 and 10). After a stance answer about the topic the same resident
+# gives one reason, drawn from the topic's own attributes ({x.adj}, {x.good}, {x.bad}) or an association
+# ({x.assoc}). It is a part of the answer line (the generator drops it when the bubble is full). Short, kid-safe
+# everywhere: no register word, no romance. The guards say which stance it backs; {x.*} adds its own needs.
+
+@rule reason.pro guard: depth=1&stance=pro act: opine_pos
+  "{x.it:cap} {x.is} just so {x.adj}."
+  "Honestly, {x.it} {x.is} {x.good}."
+  "{x.assoc:cap} comes to mind, and I grin."
+  "Because {x.it} {x.is} {x.adj}. Case closed."
+  "Plus {x.assoc} is involved. Instant win."
+  "{x.good:cap}, that's the thing about it."
+@rule reason.con guard: depth=1&stance=con act: opine_neg
+  "{x.it:cap} {x.is} so {x.bad}. I tried."
+  "Honestly, {x.it} {x.is} {x.bad}."
+  "{x.assoc:cap} will do that to a person."
+  "Too {x.bad} for me. Sorry, not sorry."
+  "I blame {x.assoc}. Mostly."
+@rule reason.neutral guard: depth=1&stance=neutral act: tell
+  "I like that {x.it} {x.is} {x.adj}. Mostly."
+  "{x.it:cap} {x.is} {x.adj}, I guess. That's my whole take."
+  "Some days {x.assoc} wins me over. Some days not."
+  "Half of me says {x.good}. Half says {x.bad}."
+  "{x.assoc:cap} makes it better. Sometimes."
+
+# depth 0: a topic act answered by a line that names nothing (a listener line, "Interesting.") gets the topic back,
+# in a few neutral words: the content layer never answers a topic act with a line that names nothing (design 2.3)
+@rule reason.name guard: depth=0&topic act: tell
+  "{x:cap}, huh? Noted."
+  "As for {x}, I have thoughts."
+  "On the subject of {x}: hm."
+  "About {x}? Fair question."
+  "{x:cap}. Right. Yes."
+  "Ah, {x}. Of course."
+  "{x:cap} is a whole topic."
+  "Re: {x}. Duly noted."

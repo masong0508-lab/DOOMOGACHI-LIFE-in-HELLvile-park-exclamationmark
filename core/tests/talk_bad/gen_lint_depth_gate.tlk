@@ -1,0 +1,4 @@
+# expect: TK13 L8
+# TK13 L8: seeded bad grammar (TM2d). A depth 3 rule needs rel=best, partner or family (design 3.1, 7.1).
+@rule secret.bad guard: depth=3&rel=friend act: tell
+  "Okay, a secret. I like {like}."
