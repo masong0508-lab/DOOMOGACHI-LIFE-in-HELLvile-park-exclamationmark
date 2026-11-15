@@ -65,6 +65,19 @@ keep this cheap: no text wrap in the draw (wrap once when the row changes), no `
 Memory: no new resident bytes (GBA EWRAM and PS1 resident share is 0 until the coordinator gives one); the
 panel and any scratch live in the scene scratch arena.
 
+## 3b. Text fits everywhere (a gate for every UI package)
+
+Owner, 2026-11-15 (TEXT FITS EVERYWHERE): "make sure all texts are formatted and fitted right into place without
+clipping or blocking UI". Package **UI-FIT** (first after this file, before UI-OPTIONS lands its rows) builds a
+text-fit test tool: it draws every UI string of the shared screens into its real box, on each platform size
+(240x160, 320x240) and in every language pack, and fails on (a) overflow past the box, (b) a cut word (wrap only
+at word boundaries; a single word wider than the box is a failure), (c) text covering a button, cursor,
+portrait or other text (rectangle overlap of the drawn text runs against the screen's other rects). It extends
+`fp_options_help_overflow` and the existing text-width helpers (`ui_text_width`, `ui_text_wrap`), runs in
+`make -C core test`, and takes a list of screens so Talk, creator, studio, level select and Dreamcast can add
+theirs. The UI status file says when it is on the branch. Every UI package must pass it and fixes every hit on
+the shared screens.
+
 ## 4. The Options redesign
 
 ### 4.1 Pages (7, down from 10)
@@ -117,7 +130,7 @@ indices: the page is never saved).
 
 ## 5. Package order and gates
 
-1. **UI-0** this file (landed first), status and wave-table lines.
+1. **UI-0** this file (landed first), status and wave-table lines. **UI-FIT** the text-fit test (section 3b).
 2. **UI-OPTIONS** the Options rebuild of section 4, tests (`core/tests` option-page census: every option has
    exactly one page, every page has at most 12 rows, every help string one line, every default loadable),
    screenshots, speed2 windows, GBA / PS1 / DC builds.
