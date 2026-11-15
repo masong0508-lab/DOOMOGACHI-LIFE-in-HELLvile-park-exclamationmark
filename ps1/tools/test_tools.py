@@ -27,6 +27,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import elf2exe          # noqa: E402
 import ovl_plan         # noqa: E402
+import partsbin         # noqa: E402
 import ram_ledger       # noqa: E402
 import strsec           # noqa: E402
 
@@ -654,6 +655,84 @@ class PlannerHold(unittest.TestCase):
             for n in names:
                 self.assertIn(n, listed, "%s:%s is held but in no callback table" % (obj, n))
 
+
+
+class PartsBin(unittest.TestCase):
+    """partsbin.py (CR10): PARTS.BIN, the part scripts and packed icons the PS1 uploads to SPU RAM"""
+
+    def make(self, sets, icons):
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d)
+        index = "const PartSet *const doomo_part_scripts[%d] = {\n%s};\n" % (
+            len(sets), "".join("    &doomo_parts_%s,\n" % n for n, _ in sets))
+        open(os.path.join(d, "parts_index.c"), "w").write(index)
+        for n, raw in sets:
+            body = ",\n".join("0x%02x" % b for b in raw)
+            open(os.path.join(d, "parts_%s.c" % n), "w").write(
+                "static const uint8_t ops[] = {\n%s,\n};\n" % body)
+        ofs = [0]
+        for i in icons:
+            ofs.append(ofs[-1] + len(i))
+        flat = b"".join(icons)
+        open(os.path.join(d, "part_icons_rle.c"), "w").write(
+            "const uint32_t doomo_part_icon_rle_ofs[%d] = {%s};\nconst uint8_t doomo_part_icon_rle[%d] = {%s};\n"
+            % (len(ofs), ",".join(map(str, ofs)), len(flat), ",".join(str(b) for b in flat)))
+        out = os.path.join(d, "PARTS.BIN")
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(partsbin.main(["partsbin", d, out]), 0)
+        return open(out, "rb").read()
+
+    def test_layout_sets_then_icons_each_on_64_bytes_in_whole_sectors(self):
+        a, b = bytes(range(1, 71)), bytes([0xFF, 0, 0, 0])
+        icons = [bytes([3, 1, 2, 3]) + bytes(40), bytes([2, 9, 8]) + bytes(77)]
+        data = self.make([("hat", a), ("hair", b)], icons)
+        self.assertEqual(data[:4], b"PRTS")
+        n, _, total, _ = struct.unpack("<HHII", data[4:16])
+        self.assertEqual(n, 2)
+        self.assertEqual(len(data), 2048 + total)
+        self.assertEqual(total % 2048, 0)
+        recs = [struct.unpack("<II", data[16 + 8 * i:24 + 8 * i]) for i in range(3)]
+        for ofs, _ in recs:
+            self.assertEqual(ofs % 64, 0)
+        body = data[2048:]
+        self.assertEqual(body[recs[0][0]:recs[0][0] + recs[0][1]], a)
+        self.assertEqual(body[recs[1][0]:recs[1][0] + recs[1][1]], b)
+        self.assertEqual(body[recs[2][0]:recs[2][0] + recs[2][1]], b"".join(icons))
+        self.assertTrue(recs[0][0] < recs[1][0] < recs[2][0])
+        self.assertEqual(recs[0][0], 0)
+
+    def test_a_set_order_follows_the_registry_not_the_file_names(self):
+        data = self.make([("zeta", b"\x01\xFF\x00\x00"), ("alpha", b"\x02\xFF\x00\x00")], [bytes([1, 5, 0])])
+        recs = [struct.unpack("<II", data[16 + 8 * i:24 + 8 * i]) for i in range(3)]
+        self.assertEqual(data[2048 + recs[0][0]], 1)             # the registry's first set is zeta
+        self.assertEqual(data[2048 + recs[1][0]], 2)
+
+    def test_icon_offsets_that_disagree_with_the_bytes_are_refused(self):
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d)
+        open(os.path.join(d, "parts_index.c"), "w").write(
+            "const PartSet *const doomo_part_scripts[1] = {\n    &doomo_parts_a,\n};\n")
+        open(os.path.join(d, "parts_a.c"), "w").write("static const uint8_t ops[] = {\n0xff,0,0,0,\n};\n")
+        open(os.path.join(d, "part_icons_rle.c"), "w").write(
+            "const uint32_t doomo_part_icon_rle_ofs[2] = {0,9};\nconst uint8_t doomo_part_icon_rle[3] = {1,2,3};\n")
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            self.assertNotEqual(partsbin.main(["partsbin", d, os.path.join(d, "P.BIN")]), 0)
+        self.assertIn("offsets", err.getvalue())
+
+    def test_the_real_generated_files_pack(self):
+        gen = os.path.join(HERE, "..", "..", "core", "gen")
+        if not os.path.exists(os.path.join(gen, "parts_index.c")):
+            self.skipTest("no generated files")
+        out = os.path.join(tempfile.mkdtemp(), "PARTS.BIN")
+        self.addCleanup(shutil.rmtree, os.path.dirname(out))
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(partsbin.main(["partsbin", gen, out]), 0)
+        data = open(out, "rb").read()
+        n = struct.unpack("<H", data[4:6])[0]
+        idx = open(os.path.join(gen, "parts_index.c")).read()
+        self.assertEqual(n, int(re.search(r"doomo_part_script_count = (\d+)", idx).group(1)))
+        self.assertLessEqual(2048 + struct.unpack("<I", data[8:12])[0], 0x2E000)   # fits SPU RAM above the effects
 
 if __name__ == "__main__":
     import warnings
