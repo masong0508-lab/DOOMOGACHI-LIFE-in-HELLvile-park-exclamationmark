@@ -1857,7 +1857,7 @@ A look made on the GBA shows the same on the PS1 (same gene, same scripts, the s
   test) and falls back to a 256 B window, valid until the next read, when the arena is full.
 * `plat_part_icon_read(ofs, dst, n)`: `part_icon_unpack()` reads one packed icon (at most 256 B, `PART_ICON_PACK_MAX`,
   the icon tool refuses a longer one) onto the stack and unpacks it into the grid's cell buffer as before. The
-  creator group keeps only the icon tables (`doomo_part_icon_rle_rows` / `_ofs`, 786 icons). **The packed set is now
+  creator group keeps only the icon tables (`doomo_part_icon_rle_rows` / `_ofs`, 769 icons). **The packed set is now
   every icon** (it was the 404 painted parts' icons): the grid shows every part's picture, no "?".
 * The host tests build the same code (`DOOMO_PARTS_SPU_TEST`): `PART_OPS` and the icon read go through the store (its
   "SPU RAM" is the linked raw array), so the whole portrait and icon suite of `make -C core test` is the proof that

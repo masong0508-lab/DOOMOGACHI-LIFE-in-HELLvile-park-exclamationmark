@@ -299,7 +299,7 @@ compares; `make -C core part-icons-sheet` writes the contact sheet `build/sheets
   bald mannequin;
 * at most 15 colours an icon. `core/gen/part_icons_data.c` holds the raw icons (140 KB of ROM,
   GBA and native blit them from ROM); `core/gen/part_icons_rle.c` the same packed at 4 bits a pixel
-  (122 KB for all 786 icons, `part_icon_unpack`): the PS1 links only the tables of these in the creator
+  (122 KB for all 769 icons, `part_icon_unpack`): the PS1 links only the tables of these in the creator
   overlay group (`DOOMO_ICONS_RLE`), keeps the packed bytes in SPU RAM (CR10, `PARTS.BIN`), and unpacks one
   icon into `cr.icon_buf` before `plat_image` uploads it to the VRAM image cache (each icon has its own uid). Tests (`test_part_icons.c`): one icon per live
   part, packed == raw, at most 15 colours, stable uids.
