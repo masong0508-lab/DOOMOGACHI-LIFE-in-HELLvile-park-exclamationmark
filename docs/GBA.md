@@ -461,6 +461,7 @@ against the LAST row, not against a figure from an older base.
 | G2-CO | G2-CO: the concert at 30 (baked stage, setup hold, flame / 15 Hz trades, the choir's size, the held curtain; docs: "G2-CO: the concert at 30" below) | after GBA-500 (row GBA-500) | 50,740 B | **50,740 B** | 0 B | 6,272 B | measured at the landing on the tree without and with G2-CO, both built clean (`make -C gba sizes`): `.bss` 254,828 B before GBA-500 landed (210,508 B with it, 50,740 B free), `.data` 816 B, `.iwram` 11,288 B and `.iwram_bss` 4,088 B before and after (no resident EWRAM or IWRAM; `keep.c`'s 2 B of state sit in padding). The IWRAM overlay's UI group 10,100 -> 10,220 B (+120 B: `plat_beam_rows`, the beam loop's cut bands; 132 B left in the 10,352 B slot), the other groups unchanged. The choir's smaller singers (16 x 392 B), the half-rate state, the setup's signature and the intro's prefetch slot live in the concert's scene scratch (`ConcertState` 1,016 -> 7,324 B of its 12 KB); the 15 Hz rows are kept in the OBJ VRAM (16,320 B, owner `OBJV_KEEP`). ROM `.text` +5,960 B, `.rodata` +845,296 B (the 31 baked concert stages in `backdrops.bin`). (First built on `1297e931` as row 51, which CR5 holds on origin.) PS1: no resident byte (the new paths are compiled out; 110,608 B below the stack top with the boot FMV, the same as without G2-CO; docs/PS1.md "The concert (SP6, P-K1)") |
 | 64 | LV4: mechanic kit B (`levels_mech_env.c`, `DoomoView3D.view_dist`, `r3f.maxd` from the per-level view distance) | after G2-EX (`da2d3e9a`) | unchanged | **unchanged** | 0 B | 6,308 B | measured 2026-11-15 on `33d760af` and the same + LV4 (both clean `make -C gba`, `make -C gba sizes`): .iwram 11,272, .iwram_bss 4,088, .bss 254,820 and every overlay slot identical; on the landing tree (after G2-EX) the full sizes are .iwram 11,288, .iwram_bss 4,088, .bss 254,828, which is 33d760af plus G2-EX's +16 B / +8 B and nothing from LV4; ROM .text +40 B (r3d.c: the range check, the hoisted sprite-cull limit); `lv_env_*` is not linked (nothing calls it). The new `view_dist` byte sits in the padding of `DoomoView3D` (stack, and the one static copy in combat_hud.c). Speed tour: every `vhash-seq` identical |
 | ST-EASY | STUDIO round 1: Easy mode (the Start card, one-line help and control card, redo, START plays, cursor line; docs/STUDIO.md "Easy mode", "Function ledger") | after row 63 (`d979c93`) | 6,436 B | **6,436 B** | 0 B | 6,288 B | measured on `d979c93` and on the package (`make -C gba sizes`): `.bss` 254,820 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, all unchanged. The new state (`StEasy`, 448 B: redo journal 384 B, Start card picks, the NOTES cursor-line and slot-list caches, the tab strip's bpm text) is the tail of `BakeSt` in the 12,288 B scene scratch (11,716 -> 12,164 B, asserted `<= DOOMO_SCENE_SCRATCH`); the two flags added to `Studio` (`card`, `help`) fit its padding; the Studio level is bit 15 of `studio_stats.lines` (a saved stat). ROM `.text` +6,776 B, `.rodata` +2,208 B. `make -C gba profile-studio`: SONG, NOTES, ORDER, LYRICS, CHOIR and PERFORM windows equal or 0.0-0.4 ms faster (average and worst), docs/STUDIO.md "GBA speed, ST-EASY" |
+| S4-C | S4-C: the concert's silhouette loops (docs: "S4-C: the band and the Dreamland stage") | after G2-CO | 50,740 B | **50,740 B** | 0 B | 6,168 B | no EWRAM. IWRAM resident +104 B (`.iwram` 11,288 -> 11,392 B, `video_loops.s` `SIL_TAIL`; the stack margin 6,272 -> 6,168 B, 24 B over the 6 KB rule). ROM only the loop. PS1 and Dreamcast: not built there |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -2732,6 +2733,52 @@ and the intro's prefetch slot (1 B) live in the concert's 12 KB scene scratch (`
 GBA). The kept rows use the OBJ VRAM (no RAM). ROM `.text` +5,960 B, `.rodata` +845,296 B (the 31 baked stages). PS1: docs/PS1.md "The concert
 (SP6, P-K1)". Dreamcast (Flycast, the windows of `concert_profile.txt` through `tools/speed2.py dc`): 1,174 ticks, none
 over 33.3 ms of work (worst 30.0 ms, mean 9.8 ms), 0 failures.
+
+### S4-C: the band and the Dreamland stage, partial (2026-11-15)
+
+SPEED-3 round 3, owner decision EVERYTHING AT 30. **Not at 30 yet: one exact step is in, the band is 20.8 fps.**
+Measured on the G2-CO tip (`e101a85`) and the tip + S4-C, both built clean, mGBA; every stage is unlocked for the
+measuring only (a temporary patch of `concert_stage_unlocked`, not committed); scripts: one per mode and stage
+(setup keys: Stage row LEFT/RIGHT), the same ticks in both runs. drawn fps / work avg ms / max ms:
+
+| window | before | after S4-C |
+|---|---|---|
+| solo, Sugar Bowl | 30.1 / 29.7 / 37.9 | 30.0 / 28.6 / 36.2 |
+| solo, Dreamland | 22.9 / 35.9 / 46.3 | 26.8 / 33.4 / 43.4 |
+| solo, Disco Inferno | 27.6 / 33.6 / 44.0 | 29.1 / 31.9 / 45.7 |
+| choir 12, Dreamland | 26.3 / 34.2 / 38.3 | 27.6 / 33.5 / 37.6 |
+| choir 12, Disco Inferno | 26.3 / 34.2 / 38.9 | 27.7 / 33.5 / 38.9 |
+| band, Sugar Bowl (the profile's band) | 20.2 / 39.3 / 43.4 | **20.8 / 38.2 / 41.9** |
+| band, Dreamland / Disco / Graveyard / Hellfire | 19.9 / 20.0 / 19.2 / 19.8 | 19.3 / 20.0 / 18.9 / 19.5 |
+
+(Graveyard, Hellfire and Sugar Bowl solos and choirs were already 30 and stay 30. Run to run the portrait cache's
+timing moves a window by 1-2 ms, so the Dreamland / Disco / band rows beyond the first are read as "no change".)
+
+**Exact step built:** `vid_blit`'s silhouette loops (`video_loops.s`, `SIL_TAIL`) read a halfword a pair and test
+the pair's pixels in place (22 -> about 13 cycles a pair). Every shadow (`IMG_SHADOW`, the lead's figure: 4.8 ms of
+her blits was ~3.2 ms of shadow) and every silhouette (the crowd's back rows) takes it: -1.1 to -1.4 ms on the solo
+and the band. Proof: the engine test's blit cases (`et_blittest.c`, 6,000 random cases against the old C loop) now
+spend a third of them on silhouettes at scale 1; ET passes. (The DET ROM's `vhash-seq` cannot prove it here: the
+two ROMs of different speed show different ticks at the same script step, so only same-speed builds compare.)
+IWRAM resident +104 B (`.iwram` 11,288 -> 11,392 B; stack margin 6,272 -> 6,168 B, 24 B over the 6 KB rule).
+
+**Where the band's 38 ms goes** (Sugar Bowl; marks with `gba_work_now()`, drawn tick): stage 10-12.5, band members
+6.4 (drums 2.2, keys 1.2, guitar 1.5, bass 1.5), the lead 5-6 (her portrait lookup 1.3, the shadowed blit 3.4,
+ellipse 0.25), crowd 9 (back silhouettes 3.6, front chibis 3.4, glow sticks 0.4, the rest 1.8), karaoke + HUD 2.
+`bodyspr_image` lookups 19 a frame: 1.4 ms. Blits are 13 ms of the frame.
+
+**Found, not fixed (next):**
+* *The lead's figure is re-rendered every tick.* The cache (48 blocks) holds 22 chibis, two stale setup portraits
+  (14 blocks) and one 10-block figure; her talk (4 ticks), wag (8) and breath (32) phases make 8 pictures, so every
+  tick one new figure job starts (`cache_alloc` 10 blocks each tick, seen with a temporary log). That is the 1.3 ms
+  in `figure_image_res`, the `face` / `cache_alloc` / `bodyspr_image` rows (~12 %) of the band's profile and the
+  1-2 ms spread between runs. Drop the setup's portraits at Start, or keep her two talk pictures outside the pool.
+* The lead's shadow could be baked into a (w+1)x(h+1) copy per phase (3.9 KB; the concert scratch has 4.9 KB left):
+  about -2 ms more, exact.
+* The band needs about 7 ms more: the lead as OBJ is blocked because the 15 Hz buffer takes 16,320 of the 16,384 B
+  of OBJ VRAM; instruments as kept pictures (-3 ms); the Dreamland and Disco stages cost ~3-5 ms more than Sugar
+  Bowl (clouds and the tile floor), not profiled yet.
+* No approved trade was used (none fits without OBJ VRAM).
 
 ### Speed wave 2: S2-4d, the dreams (2026-11-15)
 
