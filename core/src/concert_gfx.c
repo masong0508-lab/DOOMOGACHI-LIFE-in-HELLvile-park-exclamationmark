@@ -1340,6 +1340,7 @@ static void draw_risers(const StageView *v, const StageLayout *L, const ChoirDim
 /* (CONCERT-30, CLITE_LEAD) the figure with its shadow in one image: the shadow's pixels (the figure's opaque pixels
  * moved one right and one down, PAL_BLACK) under the figure, the same pixels the two blits leave. NULL: draw the
  * two blits (no buffer, or a figure of another size). */
+#if !defined(DOOMO_PLATFORM_PS1)          /* (the PS1 holds 30 as it is: no code resident there) */
 DOOMO_STATIC_ASSERT(sizeof(LeadBake) <= CHOIR_MINI_N * sizeof(ChoirMini), lead_bake_fits_the_minis);
 static const DoomoImage *lead_baked(const StageView *v, const DoomoImage *img, DoomoImage *out)
 {
@@ -1369,6 +1370,7 @@ static const DoomoImage *lead_baked(const StageView *v, const DoomoImage *img, D
     out->uid = 0;
     return out;
 }
+#endif
 
 void concert_draw_performers(const StageView *v, const StageLayout *L)
 {
@@ -1455,13 +1457,16 @@ void concert_draw_performers(const StageView *v, const StageLayout *L)
             if (v->lights > 4)
                 ui_fill_ellipse(sx, feet, L->big ? 26 : 20, L->big ? 4 : 3, PAL_PAINT(g->c1, 2));
             if (img) {
+#if !defined(DOOMO_PLATFORM_PS1)
                 DoomoImage lb;
                 const DoomoImage *bk = lead_baked(v, img, &lb);
                 if (bk) plat_image(sx - img->w / 2, feet - img->h + b, bk, 1, 0, 0);
                 else if (v->lite & CLITE_LEAD) {      /* the GBA's shadow, spelled out: a black silhouette one down-right */
                     plat_image(sx - img->w / 2 + 1, feet - img->h + b + 1, img, 1, IMG_SILHOUETTE, PAL_BLACK);
                     plat_image(sx - img->w / 2, feet - img->h + b, img, 1, 0, 0);
-                } else plat_image(sx - img->w / 2, feet - img->h + b, img, 1, IMG_SHADOW, 0);
+                } else
+#endif
+                plat_image(sx - img->w / 2, feet - img->h + b, img, 1, IMG_SHADOW, 0);
                 mic_stand(sx + 15, feet + 1, feet - img->h * 50 / 100 + b, steel);
             }
         }

@@ -2767,6 +2767,18 @@ IWRAM resident +104 B (`.iwram` 11,288 -> 11,392 B; stack margin 6,272 -> 6,168 
 ellipse 0.25), crowd 9 (back silhouettes 3.6, front chibis 3.4, glow sticks 0.4, the rest 1.8), karaoke + HUD 2.
 `bodyspr_image` lookups 19 a frame: 1.4 ms. Blits are 13 ms of the frame.
 
+**CONCERT-30 step 1 (2026-11-15, exact): the lead's figure and her shadow as one image** (`CLITE_LEAD`,
+`lead_baked` in `concert_gfx.c`). The figure's black shadow (a silhouette one pixel down-right) and the figure are
+baked into one 49 x 81 picture, made again only when her image uid changes, kept in the choir's mini buffers
+(`LeadBake`, a solo and a band never use them). One blit instead of two; the same pixels (test
+`concert_lead_baked_with_shadow_equals_the_two_blits`; the GBA's shadow is a black silhouette, so under `CLITE_LEAD`
+the fallback spells that out). GBA only (the PS1 compiles none of it, the Dreamcast holds 30 without it). No new
+resident RAM (the scratch's mini buffers; EWRAM unchanged, IWRAM and ROM `.text` +0 / small). mGBA, drawn fps / work avg / max:
+solo 30.0 / 29.1 / 32.3 -> 30.0 / **27.0 / 30.2**, band 20.8 / 38.1 / 41.8 -> **23.2 / 36.0 / 39.5**, choir and
+setup unchanged. An experiment, not kept: holding her figure to one still pose saves only 1.3 ms, so her phase
+re-render is a small part of the band. **The band is still not at 30**: ~3-6 ms to go (max 39.5 ms); see
+`docs/design/held/patches/wip/STUDIO/CONCERT-30-findings.md`.
+
 **Found, not fixed (next):**
 * *The lead's figure is re-rendered every tick.* The cache (48 blocks) holds 22 chibis, two stale setup portraits
   (14 blocks) and one 10-block figure; her talk (4 ticks), wag (8) and breath (32) phases make 8 pictures, so every
