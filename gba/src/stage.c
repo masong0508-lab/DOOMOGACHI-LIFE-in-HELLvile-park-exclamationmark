@@ -95,9 +95,11 @@ int plat_stage_begin(int id, uint32_t key, void (*draw)(uint32_t key), PlatStage
 }
 
 /* columns [x0, x1) of rows [y0, y1) of the picture into the page: halfwords, with a
- * read-modify-write for an odd edge (VRAM takes no byte writes); a short span by the CPU, a long
- * one by DMA. ARM in the room group of the IWRAM overlay (iwram_ovl.h: the house's group, which
- * no stage scene uses; loaded by plat_stage_restore), so the per-row work runs from IWRAM. */
+ * read-modify-write for an odd edge (VRAM takes no byte writes); a span of 4 halfwords or more by
+ * DMA (S2-4c: ~3 cycles a halfword from the ROM after a short setup, where the CPU loop takes ~10:
+ * the kitchen's narrow boxes, Granny's 42 px, were ~2 ms a frame), shorter ones by the CPU. ARM
+ * in the room group of the IWRAM overlay (iwram_ovl.h: the house's group, which no stage scene
+ * uses; loaded by plat_stage_restore), so the per-row work runs from IWRAM (STAGE_ARM above). */
 STAGE_ARM void stage_rows(volatile uint16_t *page, const uint8_t *img, int x0, int x1, int y0, int y1)
 {
     int yy;
@@ -114,7 +116,7 @@ STAGE_ARM void stage_rows(volatile uint16_t *page, const uint8_t *img, int x0, i
             d[b >> 1] = (uint16_t)((d[b >> 1] & 0xFF00) | s[b]);
         }
         n = (b - a) >> 1;
-        if (n >= 24) {
+        if (n >= 4) {
             dma3_copy16((void *)(d + (a >> 1)), s + a, (uint32_t)n);
         } else {
             const uint16_t *q = (const uint16_t *)(const void *)(s + a);
