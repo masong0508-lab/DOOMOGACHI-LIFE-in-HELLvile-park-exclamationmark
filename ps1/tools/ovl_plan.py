@@ -87,7 +87,8 @@ OVL_KINDS = (".text", ".rodata")
 # grows the slot if a group gets too big to leave it (it never does today:
 # the slot is set by bigger groups), so the room is there by construction. ---
 # S2-9: the workshop's sliced weapon picture keeps its state there (weld_slice.c
-# struct Ws, ~100 B: no resident BSS).
+# struct Ws, ~100 B: no resident BSS; WS_SCRATCH there asserts that it fits:
+# keep the two equal).
 SCRATCH = {"island": 20480, "workshop": 256}
 # --- end SP3 ---
 

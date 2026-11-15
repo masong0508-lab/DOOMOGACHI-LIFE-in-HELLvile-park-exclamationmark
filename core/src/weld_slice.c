@@ -634,6 +634,10 @@ typedef struct Ws {
     const DoomoImage *far_img[WELD_VIEW_FAR];   /* its picture in the pool as found by the last far_sync(), or NULL */
 #endif
 } Ws;
+/* The PS1 reserves WS_SCRATCH bytes of the workshop group's scratch for it (ps1/tools/ovl_plan.py SCRATCH
+ * "workshop": keep the two equal). A bigger Ws would get NULL there and quietly compose in the call again. */
+#define WS_SCRATCH 256
+DOOMO_STATIC_ASSERT(sizeof(Ws) <= WS_SCRATCH, ws_fits_the_ps1_scratch);
 
 #if defined(DOOMO_PLATFORM_PS1)
 #define WS_MAGIC 0x57534C31u

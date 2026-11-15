@@ -1580,15 +1580,22 @@ unchanged, 65 KB below the stack top with the boot FMV.
 ahead. The gate is the core's one slice a tick, not `plat_portrait_slice_ok` alone: its base is the frame's drawing
 (`g_perf.cpu_us`), which leaves out the logic tick before it (11 ms in the workshop), so with room for "one more" three
 slices ran in one frame and it took 3 vsyncs (cpu 21-25 ms, 32-36 ms from the vsync). A picture takes ~14 ticks. Measured
-after (PCSX-Redux, the workshop windows of `speed2_action`): workshop **30.12** (2:129, every frame 33 ms), part change
+on the tip it landed on (`d530565`) and that tree + S2-9 (PCSX-Redux, the workshop windows of `speed2_action`): workshop
+28.78 (2:126 6:3) -> **30.12** (2:129, every frame 33 ms), part change
 30.00 (2:28 3:1: the one 50 ms frame has 18.6 ms of update and draw and exactly 33,433 us (two vblanks) between the
 previous vsync and `gfx_begin`: `hcmd_poll`'s lockstep stop (`hcmd.c`: `DrawSync`, serve the harness, one more vblank),
 not the game's code; it follows the press when the script moves it, and with the window opened 12 ticks after the press
-all 30 frames are 33 ms), armory 30.17, weld intro 30.17,
-welding 30.12. The PS1 has no panels (`UI_PANELS` 0) and draws the screen as before: no kept panels, the stat bars keep
+all 30 frames are 33 ms; on `d530565` most windows of the group have one such frame, with and without this package),
+armory 30.17, weld intro 30.17, welding 30.12, as before. The PS1 has no panels (`UI_PANELS` 0) and draws the screen as before: no kept panels, the stat bars keep
 their shine, the backdrop its dots. Memory: `weld_slice.c` is in the workshop overlay group (`ovl_plan.py`), the job's
-state (~100 B) in the overlay slot's scene scratch (`SCRATCH` 256 B for the group); the resident layout is
-byte-identical (`_end` 0x801efe60, 65,952 B below the stack top with the boot FMV, as before).
+state (~100 B) in the overlay slot's scene scratch (`SCRATCH` 256 B for the group, `WS_SCRATCH` in `weld_slice.c`
+asserts that it fits: a bigger state would get no scratch and quietly compose in the call again). No resident byte:
+`_end` 0x801ee580 -> 0x801ee570 (-16 B of `.bss`; 72,320 -> 72,336 B below the stack top with the boot FMV; the tip is
+1,408 B under the 72 KB gate until PS1-RAM lands). **Cost:** `weld_slice.c` builds `weld_gfx.c`'s recipes a second
+time, so the workshop group grows 16 -> 50 KB (85 sections; `OVL.BIN` 1,090 -> 1,114 KB packed) and the workshop's
+entry reads its overlay 78 ms longer (`action_workshop` overlay load 315+127 -> 315+205 ms). That read is part of the
+scene change, before the windows: left for S2-10's fade over the loads; a smaller copy (only the sliced primitives, or
+the plain row code on the PS1) would win most of it back.
 
 **S2-4 (the fair's kept playfield).** Nothing is built here: `mg.h` turns the kept-playfield mode into constants (`MGK_OFF`), so Whack draws its whole booth as before (the restore helpers and `ui_round_rect_inset` compile out); only the drawing order was regrouped (`mg_tent_sway`, `hole_back`), same pixels. 65 KB below the stack top with the boot FMV on the rebased tree (`_end` the same as without S2-4); the minigame overlay group grows by a few hundred bytes of code, the slot is unchanged (168 KB, the house's). PCSX-Redux `speed2_fair`: the Whack title, Sweet and Hellfire windows 30.17 / 30.12 / 30.12 fps (all 2-vsync frames), as before.
 

@@ -355,7 +355,9 @@ nothing, so `plat_room` (DC8) is untouched and a house frame is one weak call he
 (`weld_view_image_sliced` is `weld_view_image` here: no slices, nothing composed ahead), the workshop keeps no panels
 (`WS_KEPT` is 0 where `DOOMO_PLATFORM_DC` is set: the screen is drawn as it always was, the stat bars with their shine and
 the backdrop with its dots). `speed2.sh action` after the package: every window 30.0, no tick over 33.3 ms, the worst
-tick of the group 22.7 ms (the workshop's entry; 23.9 ms in speed audit 3).
+tick of the group 22.7 ms (the workshop's entry; 23.9 ms in speed audit 3). Again on the tip it landed on (`d530565` +
+S2-9): every window 30.0, 0 of 3,254 ticks over 33.3 ms, work mean 13.0 ms, the group's worst tick 27.5 ms (the arena
+modes, not the workshop).
 
 ### The harness mailbox (`dc_mailbox`, `dc/harness/dc_mailbox.h`)
 

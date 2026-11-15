@@ -438,7 +438,7 @@ against the LAST row, not against a figure from an older base.
 | 45 | CR4 A2: 32 hair styles and 8 beards (docs/CREATOR.md "CR4 batch A2") | after S3-3 (`b63abec`) | 15,444 B | **15,444 B** | 0 B | 6,308 B | measured on `b63abec` and `b63abec` + A2 (`make -C gba sizes`): `.bss` 245,804 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B before and after, `.text` 1,401,336 B before and after; the part scripts, the catalog rows and the 40 part icons are `const` ROM: `.rodata` 6,587,868 -> 6,608,008 B (+20,140). PS1: no resident byte (`_end` 0x801ef4e0 before and after, 68,368 B below the stack top with the boot FMV; the overlay slot ends 0x801ef3b4 both times) |
 | 46 | CR4 A3: 60 spooky parts (docs/CREATOR.md "CR4 batch A3") | after A2 (`224b192`) | 15,444 B | **15,444 B** | 0 B | 6,308 B | measured on `0c1fc51` and `0c1fc51` + A3 (clean `make -C gba` builds, `make -C gba sizes`): `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B, `.data` 816 B, `.text` 1,403,440 B all identical before and after; the part scripts (5.8 KB), the catalog rows and the 60 part icons are `const` ROM: `.rodata` 6,591,380 -> 6,623,356 B (+31,976, measured on the pre-rebase tree; on the rebased tree the whole `.rodata` is 6,643,580 B and `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B, `.data` 816 B, unchanged). `make -C gba test` and `test-creator` pass on the rebased tree (creator rows 29.9 fps, value step 30.0) |
 | 47 | S2-11: the house's view turn built over several ticks, the room group's row loops, checksum pass and cursor, HomeMart's UI loops (docs: "Speed wave 2: S2-11" below) | after CR4 A3 and PS1-FLAT (`ee4e053`) | 15,460 B | **15,460 B** | 0 B | 6,308 B | measured on `ee4e053` and that tree + S2-11, both built clean (`make -C gba sizes`; ROM 8,087,036 -> 8,091,916 B): `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B and `.data` 816 B all unchanged, no resident EWRAM or IWRAM. `RBig` (the house's region, in the scene scratch arena) loses `match` (56 B, now on the stack in `incremental()`) and gains 32 B of turn-build state (`tkey[5]`, `bkey`, `bsub`, `bstep`, `brow`, `bld`, `bturns`, `k_last`); the overlay's room group grows 3,588 -> 9,512 B inside the 3D group's 10,352 B slot (840 B free in the slot); `hold.c` one flag bit. PS1: the EXE and the overlays are byte for byte the tip's (the hooks are not built there), `_end` 0x801ee3e0 before and after, 72,736 B below the stack top with the boot FMV (the margin delta is 0 B) |
-| 42 | S2-9: the workshop (weapon picture in slices, kept panels, docs: "Speed wave 2: S2-9" below) | `9877a45` | 15,444 B | **15,276 B** | -168 B | 6,308 B | measured on `9877a45` + S2-9 (`.bss` 245,804 -> 245,972 B; on `4c0f369`, before CR5a, 259,460 -> 259,628 B): the slicer's state (`weld_slice.c` `Ws`: the job, the weapon it composes, the far slots' keys and picture pointers: 100 B), the workshop's panel keys and plans (list, stats, header: ~60 B) and four bytes of its old ints made bytes (-12 B). No IWRAM resident: the slicer's row loops are ARM in the **UI group** of the IWRAM overlay (4,772 -> 9,740 B of the slot's 10,352 B, 612 B left), the two far weapon pictures (2 x 6,144 B) are blocks of the portrait cache's pool (no new buffer). PS1: resident layout byte-identical to `4c0f369` (`_end` 0x801efe60, 65,952 B below the stack top with the boot FMV); `weld_slice.c` is in the workshop overlay group, its state in the overlay slot's scene scratch (256 B reserved) |
+| 48 | S2-9: the workshop (weapon picture in slices, kept panels, docs: "Speed wave 2: S2-9" below) | `d530565` | 12,500 B | **12,324 B** | -176 B | 6,288 B | measured on `d530565` and that tree + S2-9, both built clean (`make -C gba sizes`): `.bss` 248,748 -> 248,924 B. The tip itself is 2,960 B under row 47 (`.bss` 245,788 -> 248,748 B, and `.iwram` 11,256 -> 11,272 B, `.iwram_bss` 4,084 -> 4,088 B, so the main stack 6,308 -> 6,288 B: the commits since row 47, the Talk screen on the GBA ROM and the music IRQ among them, have no row of their own). This package: the slicer's state (`weld_slice.c` `Ws`: the job, the weapon it composes, the far slots' keys and picture pointers: 100 B), the workshop's panel keys and plans (list, stats, header: 76 B), less three of its ints made bytes; +168 B on `9877a45` and `4c0f369` where it was built, +176 B here (padding). The room it takes is part of what CR5a (row 41) freed; moving `Ws` and the plans into the arena (`plat_scene_scratch`, as on the PS1) is left (docs: "Speed wave 2: S2-9", Left). No IWRAM resident: the slicer's row loops are ARM in the **UI group** of the IWRAM overlay (4,772 -> 9,740 B of the slot's 10,352 B, 612 B left), the two far weapon pictures (2 x 6,144 B) are blocks of the portrait cache's pool (no new buffer); ROM 25,376 B of `.text` and 1,012 B of `.rodata` more. PS1: `_end` 0x801ee580 -> 0x801ee570 (-16 B: 72,320 -> 72,336 B below the stack top with the boot FMV, the tip being 1,408 B under the 72 KB gate); `weld_slice.c` is in the workshop overlay group (16 -> 50 KB), its state in the overlay slot's scene scratch (256 B reserved, `WS_SCRATCH` asserts that it fits) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -1665,7 +1665,9 @@ frame of up to 84 ms. The creator's hat try-on, which the roadmap row names, was
 Speed audit 2's cause C7 and C4: Rivet's workshop ran at 17.9-26.7 fps (the Weld tab, a part change, the Armory) and
 froze for 260 ms three times a visit: `weld_gfx` composes a 96x64 weapon picture in one tick (`outline` + `seg` 36%
 of it), and the workshop asks for a new picture with every part tried and for three a test-fire cycle. S2-5 had
-already sped up the welding minigame (30.0 fps); this package is the workshop. Measured and built on `4c0f369`.
+already sped up the welding minigame (30.0 fps); this package is the workshop. Built on `4c0f369`; the numbers below
+are measured again on the tip it landed on (`d530565`: with the owner's Talk screen on the GBA ROM and the 240 Hz music
+IRQ), that tip being the "before".
 
 **The picture in slices (`core/src/weld_slice.c`, `weld_view_image_sliced` / `weld_view_prefetch`, `weld.h`).**
 `weld_slice.c` includes `weld_gfx.c` a second time (`WELD_SLICED`) and builds its recipes on primitives that can stop
@@ -1728,35 +1730,57 @@ ticks of 3. are the PS1's too); before / after screenshots of the three windows 
    the previous design for about 7 ticks on the GBA (measured: a picture takes 6-8 ticks of idle time at the Weld
    tab's 22 ms frames; longer while the cursor moves faster than pictures are made, and on the PS1, one slice a tick,
    ~14 ticks); the very first picture of a visit appears ~7 ticks after the scene's first drawn frame, the pane
-   empty until then; the muzzle star waits for the real fire frame. (The windows' sliding glint and the selected
-   tab's bounce are unchanged: the creator stills them, this screen does not need to.)
+   empty until then; the muzzle star waits for the real fire frame. Stepping onto a locked design (drawn as a
+   silhouette) shows the old weapon's silhouette for those ticks (the review's shots: the Pistol's outline for a tick
+   or two before the locked frame's). (The windows' sliding glint and the selected tab's bounce are unchanged: the
+   creator stills them, this screen does not need to.)
 
-| window (`speed2_action.txt`, libmgba) | before (`4c0f369`; drawn fps, work avg / max, frames by vblanks) | after |
+| window (`speed2_action.txt`, libmgba) | before (the tip `d530565`; drawn fps, work avg / max, frames by vblanks) | after (`d530565` + S2-9) |
 |---|---|---|
-| workshop | 18.7 (42.8 / 260.4 ms; 3:75 15:2 16+:1) | **30.0** (22.1 / 27.6 ms; 2:130) |
-| workshop part change | 23.4 (37.9 / 39.4 ms; 2:8 3:15) | **30.0** (22.0 / 27.0 ms; 2:30) |
-| workshop armory | 26.7 (34.2 / 35.1 ms; 2:60 3:20) | **30.0** (21.0 / 25.5 ms; 2:90) |
-| weld intro card / welding (S2-5's, untouched) | 30.0 (28.7 ms) / 29.9 (28.8 ms) | 30.0 (28.7) / 29.9 (28.9), every frame 2 vblanks |
+| workshop | 17.5 (43.5 / 264.1 ms; 2:1 3:86 15:2 16+:1) | **30.0** (22.3 / 27.9 ms; 2:130) |
+| workshop part change | 20.7 (38.3 / 39.5 ms; 2:4 3:17) | **30.0** (22.2 / 27.3 ms; 2:30) |
+| workshop armory | 26.0 (34.5 / 35.4 ms; 2:52 3:26) | **30.0** (21.2 / 25.5 ms; 2:90) |
+| weld intro card / welding (S2-5's, untouched) | 30.0 (28.9 ms) / 29.9 (29.1 / 35.2 ms) | 30.0 (28.8) / 29.9 (29.1 / 35.4), every frame 2 vblanks |
 
-Floors: `expect-fps 28` on the three workshop windows of `speed2_action.txt` (`SPEED2_GATES=1`). Steady frames (700
+(On `4c0f369`, where the package was built: 18.7 -> 30.0, 23.4 -> 30.0 and 26.7 -> 30.0, the same picture.)
+
+Floors: `expect-fps 28` on the three workshop windows of `speed2_action.txt` (`SPEED2_GATES=1`; on `d530565` the gated run
+stops earlier, at the level select's own floor: 24.2 fps with and without this package, a LEVELS / S3-8 matter; with the
+level select's floors read as plain `fps` every other floor of the group holds). Steady frames on `4c0f369` (700
 ticks after the entry, 150 ticks): Weld tab 17.3 fps (47.5 ms avg, a 260 ms frame: the test fire recomposed pictures
 the cache had thrown out) -> **30.0** (22.2 / 26.9 ms, every frame 2 vblanks), Armory 26.7 (34.1 ms) -> **30.0**
-(21.1 / 25.8 ms). **PS1** (Redux, `ps1/harness/speed2.sh`): workshop 28.78 fps with three 100 ms
+(21.1 / 25.8 ms). **PS1** (Redux, `ps1/harness/speed2.sh`, `d530565` and `d530565` + S2-9): workshop 28.78 fps with three 100 ms
 frames -> **30.12**, every frame 33 ms; part change 30.51 -> 30.00 with one 50 ms frame at the window's start (2 ticks after the press): its update and draw took
 18.6 ms, and exactly 33,433 us (two vblanks, the same figure as the 4-vsync frames at a scene push) pass between the
 previous vsync and `gfx_begin`: that is `hcmd_poll`'s lockstep stop (`ps1/src/hcmd.c`: `DrawSync`, the harness serves its
 commands, then one more vblank so the pad is read again), not the game's code; the stop falls on the window's first frame
 (the baseline's 100 ms composition frame at the press probably moves where its stops fall; the 50 ms frame follows the
-press when the script moves it, and a window opened 12 ticks after the press has all 30 frames at 33 ms), armory 30.17, welding
-30.12 as before. **Dreamcast** (Flycast,
-`dc/harness/speed2.sh action`): every window 30.0 and no tick over 33.3 ms, worst 22.7 ms (the entry's composition; 23.9
-ms before); the Dreamcast composes in the call as before and keeps no panels (`WS_KEPT` 0), so its screen is
-unchanged.
+press when the script moves it, and a window opened 12 ticks after the press has all 30 frames at 33 ms; on `d530565` most
+windows of the group, the level select's and the arena's included, have one such frame, with and without this package),
+armory 30.17, weld intro 30.17, welding 30.12 as before. **Dreamcast** (Flycast, `dc/harness/speed2.sh action`): every
+window 30.0 and no tick over 33.3 ms (on `d530565` + S2-9 the group's worst tick is 27.5 ms, in the arena modes; the
+workshop's entry 22.7 ms on `4c0f369`, 23.9 ms before); the Dreamcast composes in the call as before and keeps no panels
+(`WS_KEPT` 0), so its screen is unchanged.
 
-**Left.** The frames around the scene change: the overlay load (180 ms) and the first drawn frame (76 ms: the caches
-of the window and pill shapes are cold) at the workshop's entry, in the settle before the windows (S2-10's loads and
-fades). The first weapon picture of a visit waits for the first draw's idle time. The title text outline
-(`vid_glyph_dilate` + `glyph_dil`, 16% of the welding frames) is the next thing in the welding windows.
+**Left** (measured on `d530565` + S2-9 with a probe script outside the speed2 windows; the review found the same):
+
+* **the scene change:** the overlay load (180 ms) and the first drawn frame (76 ms: the caches of the window and pill
+  shapes are cold) at the workshop's entry, in the settle before the windows (S2-10's loads and fades). The first weapon
+  picture of a visit waits for the first draw's idle time;
+* **a tab switch (L / R): one frame of 38-45 ms of work** (3 vblanks, 50 ms) every time: both tabs' panels get new keys,
+  so the frame draws everything and captures the panels (28 of 28 switches in the review's random soak: 37.8-46.1 ms).
+  The **first Armory open of a visit is one 100 ms frame** (93 ms of work, 6 vblanks; 335 ms on `4c0f369` before
+  this package). Next step: capture
+  one panel a frame after a switch, the others drawn plain;
+* **a message box over the stat bars** (the starter kit, 120 ticks of a first visit; 150 after a weld; 90 after Equip,
+  Copy and Scrap): the stat bars are not kept while it is up (the box slides over them at 240x160), the frame is
+  28-31 ms instead of 22, and with the cursor moving one frame in 60 takes 50 ms (DOWN held: 2:60 3:1, work max
+  39.2 ms; "Copy to the table", a tab switch with the message, one 46 ms frame). Next step: the box's rect as a hole
+  of the stat panel, in its key;
+* the title text outline (`vid_glyph_dilate` + `glyph_dil`, 16% of the welding frames) is the next thing in the welding
+  windows (29.1 ms of work on `d530565`, 4 ms under the miss line);
+* the 176 B of new statics (`Ws` 100 B, the panel keys and plans) could move into the arena (`plat_scene_scratch`, as on
+  the PS1); they take room CR5a freed (ledger row 48).
 
 ## 4b. Retained panels (G7, `src/panel.c`)
 
