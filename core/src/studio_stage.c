@@ -827,16 +827,41 @@ void stage_draw_full(void)
     }
 }
 
+/* ---- the marquee bulbs (S3-8's studio part) ------------------------------------------------------------------
+ * 28 bulbs a row, two rows, each a radius-2 circle (a 5x5 square less its corners): 112 rect calls, 4 ms on the GBA.
+ * Four bulbs are one 32x5 picture (two phases, the bulbs alternate), so a row is 7 plat_image calls. The pictures are
+ * what ui_fill_circle(.., 2, ..) paints (test_studio.c studio_bulbs_equal_the_circles). Returns how many bulbs it drew
+ * (a multiple of 4; the rest are drawn as circles). */
+#define BL_ON PAL_PAINT(PAINT_LEMON, 2)
+#define BL_OFF PAL_PAINT(PAINT_HONEY, 0)
+#define BL_E(c) 0, c, c, c, 0, 0, 0, 0
+#define BL_M(c) c, c, c, c, c, 0, 0, 0
+#define BL_ROW(f, a, b) f(a), f(b), f(a), f(b)
+#define BL_TILE(a, b) { BL_ROW(BL_E, a, b), BL_ROW(BL_M, a, b), BL_ROW(BL_M, a, b), BL_ROW(BL_M, a, b), BL_ROW(BL_E, a, b) }
+static const uint8_t bulb_pix[2][5 * 32] = { BL_TILE(BL_OFF, BL_ON), BL_TILE(BL_ON, BL_OFF) };
+static const DoomoImage bulb_img[2] = { { 32, 5, bulb_pix[0], 0 }, { 32, 5, bulb_pix[1], 0 } };
+
+int st_bulbs(int rx, int ry, int rw, int rh, int phase)
+{
+    int n = ((rw - 8) / 8) & ~3, i;
+    for (i = 0; i < n; i += 4) {
+        plat_image(rx + 4 + i * 8, ry + 2, &bulb_img[phase & 1], 1, 0, 0);
+        plat_image(rx + 4 + i * 8, ry + rh - 7, &bulb_img[(phase & 1) ^ 1], 1, 0, 0);
+    }
+    return n;
+}
+
 /* ---- the poster ----------------------------------------------------------- */
 void tab_stage_draw(StRect r)
 {
-    int t = (int)studio.t, i, n = 0, k, wide = st_wide();
+    int t = (int)studio.t, i, n = 0, k, wide = st_wide(), x, y;
     uint8_t slots[SONG_SINGERS], secs[SONG_SINGERS];
     StageBox b;
     char buf[48];
     st_panel(r.x, r.y, r.w, r.h, WIN_DARK);
     /* marquee bulbs */
-    for (i = 0; i < (r.w - 8) / 8; i++) {
+    i = st_bulbs(r.x, r.y, r.w, r.h, t / 6);
+    for (; i < (r.w - 8) / 8; i++) {
         int on = ((i + t / 6) & 1);
         ui_fill_circle(r.x + 6 + i * 8, r.y + 4, 2, on ? PAL_PAINT(PAINT_LEMON, 2) : PAL_PAINT(PAINT_HONEY, 0));
         ui_fill_circle(r.x + 6 + i * 8, r.y + r.h - 5, 2, !on ? PAL_PAINT(PAINT_LEMON, 2) : PAL_PAINT(PAINT_HONEY, 0));
@@ -862,11 +887,40 @@ void tab_stage_draw(StRect r)
         plat_rect(r.x + r.w - 12 - i * 4, r.y + 9, 4, b.floor - r.y - 9, PAL_PAINT(PAINT_BLOOD, (i & 1) ? 0 : 1));
     }
     spot(r.x + r.w / 2 + ui_wave(t, 120, r.w / 5), r.x + r.w / 2, r.y + 36, b.floor, PAL_PAINT(PAINT_LEMON, 2));
-    for (k = 0; k < n; k++) {
-        int x, y;
-        place(SS->choir_layout, k, n, &b, secs, &x, &y);
-        st_chibi(song_singer_id(SS, slots[k]), x - BODYSPR_W / 2,
-                 y - BODYSPR_H - (((t / 10) + k) % 8 == 0), 0, 0, 0, 0);
+    {
+        /* The poster's choir as hardware sprites (the show's option C, above): a singer whose 16x24 box nothing drawn
+         * later in the frame touches (a later chibi that stays in the bitmap, the button, the show count) is a
+         * sprite; the rest are drawn as before. Decided backwards from the front. Not while a popup, the card, the
+         * picker, a message or a toast is over the tab. Platforms without sprites: plat_stage_obj_begin says 0. */
+        int bx[SONG_SINGERS], by[SONG_SINGERS];
+        uint8_t spr[SONG_SINGERS];
+        int bt = r.y + r.h - 25;                              /* the button's rows (it bobs one row) and the stats line */
+        int sx1 = studio_stats.performed && wide ? r.x + 8 + 6 * 30 : 0;
+        memset(spr, 0, sizeof(spr));
+        for (k = 0; k < n; k++) {
+            place(SS->choir_layout, k, n, &b, secs, &x, &y);
+            bx[k] = x - BODYSPR_W / 2;
+            by[k] = y - BODYSPR_H - (((t / 10) + k) % 8 == 0);
+        }
+        if (n > 0 && !studio.pop_n && !studio.msg_t && !studio.picking && !studio.help && !ui_toast_pending() &&
+            !tip_active() && plat_stage_obj_begin()) {
+            for (k = n - 1; k >= 0; k--) {
+                int hit = (by[k] + BODYSPR_H > bt && bx[k] < r.x + r.w / 2 + 62 && bx[k] + BODYSPR_W > r.x + r.w / 2 - 62) ||
+                          (sx1 && by[k] + BODYSPR_H > r.y + r.h - 20 && bx[k] < sx1), j;
+                for (j = k + 1; j < n && !hit; j++)            /* a later chibi that stays in the bitmap */
+                    if (!spr[j] && bx[k] < bx[j] + BODYSPR_W && bx[j] < bx[k] + BODYSPR_W && by[k] < by[j] + BODYSPR_H &&
+                        by[j] < by[k] + BODYSPR_H) hit = 1;
+                spr[k] = (uint8_t)!hit;
+            }
+        }
+        for (k = 0; k < n; k++) {
+            int id = song_singer_id(SS, slots[k]);
+            if (spr[k]) {
+                const DoomoImage *img = bodyspr_image(id, 0, 0);
+                if (img && plat_stage_obj(slots[k], bx[k], by[k], img, 0, NULL, 0)) continue;
+            }
+            st_chibi(id, bx[k], by[k], 0, 0, 0, 0);
+        }
     }
     if (!n) ui_text_center(r.x + r.w / 2, b.floor - 20, "No singers yet: an instrumental!", PAL_GRAY_L);
     {

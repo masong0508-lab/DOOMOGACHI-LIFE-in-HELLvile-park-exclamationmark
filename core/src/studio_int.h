@@ -197,6 +197,7 @@ void ed_reset(void);
 uint8_t st_track_color(int t, int shade);    /* shade 0 dark, 1 base, 2 light */
 uint8_t st_pattern_color(int p, int shade);
 void st_panel(int x, int y, int w, int h, int style);
+int st_bulbs(int rx, int ry, int rw, int rh, int phase);   /* the stage poster's marquee (studio_stage.c) */
 void st_chibi(int id, int x, int y, int dir, int frame, int flags, uint8_t col);
 void st_chibi_ui(int id, int x, int y, int dir, int frame, int flags, uint8_t col);   /* S3-2 */
 /* Baked shapes (GBA, or any build with DOOMO_STUDIO_BAKE): a shape drawn from many rects is painted once into an image

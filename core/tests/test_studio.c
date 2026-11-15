@@ -1642,6 +1642,93 @@ TEST(studio_stage_sprites_equal_the_bitmap)
     CHECK(tot > 0);                                         /* the planner really does choose sprites */
 }
 
+/* the poster tab's choir (tab_stage_draw): sprites painted over the bitmap equal the all-bitmap picture, at every
+ * layout, a few singer counts, both screen sizes, with and without the show count; and sprites really are used */
+static int tp_run(int w, int h, int layout, int nsing, long *sprites, int over)
+{
+    int i, t, bad = 0, resid[SONG_SINGERS], n = 0;
+    nat_w = w; nat_h = h;
+    test_reset();
+    town_new(TOWN_FREEPLAY, 1, TOWN_POP_PREMADE);
+    scene_set(&base_scene, 0);
+    scene_push(&SCENE_STUDIO, -2);
+    for (i = 0; i < DOOMO_MAX_RESIDENTS && n < SONG_SINGERS; i++) if (st_alive(i)) resid[n++] = i;
+    for (i = 0; i < SONG_SINGERS; i++) SS->singer[i] = (uint16_t)(i < n && i < nsing ? resid[i] : SONG_NO_SINGER);
+    SS->choir_layout = (uint8_t)layout;
+    st_set_tab(STAB_STAGE);
+    studio_stats.performed = (uint16_t)(w > 240 ? 3 : 0);
+    studio.pop_n = (uint8_t)over;
+    *sprites = 0;
+    for (t = 0; t < 90; t += 3) {
+        int d;
+        studio.t = (uint32_t)t;
+        memset(nat_fb, 0, sizeof(nat_fb)); ts_on = 0; ts_n = 0;
+        tab_stage_draw(st_content());
+        memcpy(ts_a, nat_fb, (size_t)(nat_w * nat_h));
+        memset(nat_fb, 0, sizeof(nat_fb)); ts_on = 1; ts_n = 0; ts_chibis = 0;
+        tab_stage_draw(st_content());
+        *sprites += ts_chibis;
+        ts_paint_sprites();
+        ts_on = 0;
+        d = memcmp(ts_a, nat_fb, (size_t)(nat_w * nat_h)) != 0;
+        if (d && bad == 0)
+            for (i = 0; i < nat_w * nat_h; i++)
+                if (ts_a[i] != nat_fb[i]) { fprintf(stderr, "  poster first diff t=%d at %d,%d (%d vs %d)\n", t, i % nat_w, i / nat_w, ts_a[i], nat_fb[i]); break; }
+        bad += d;
+    }
+    studio_stats.performed = 0;
+    scene_pop();
+    test_reset();
+    nat_w = 240; nat_h = 160;
+    return bad;
+}
+
+TEST(studio_poster_sprites_equal_the_bitmap)
+{
+    static const int counts[] = { 1, 5, 9, 16, 25 };
+    long sp, tot = 0;
+    int layout, c;
+    for (layout = 0; layout < CHOIR_LAYOUT_COUNT; layout++)
+        for (c = 0; c < 5; c++) {
+            int bad = tp_run(240, 160, layout, counts[c], &sp, 0);
+            CHECK_MSG(bad == 0, "240x160 layout %d, %d singers: %d frames differ", layout, counts[c], bad);
+            tot += sp;
+            bad = tp_run(320, 240, layout, counts[c], &sp, 0);
+            CHECK_MSG(bad == 0, "320x240 layout %d, %d singers: %d frames differ", layout, counts[c], bad);
+            tot += sp;
+        }
+    CHECK(tot > 0);                                             /* the planner really chooses sprites */
+}
+
+TEST(studio_poster_sprites_stay_out_when_a_popup_is_over)
+{
+    long sp;
+    tp_run(240, 160, CHOIR_RISERS, 9, &sp, 0);
+    CHECK(sp > 0);
+    tp_run(240, 160, CHOIR_RISERS, 9, &sp, 1);                  /* a popup over the tab: every singer stays in the bitmap */
+    CHECK(sp == 0);
+}
+
+/* the marquee: st_bulbs paints exactly what the circles painted */
+TEST(studio_bulbs_equal_the_circles)
+{
+    int phase, w, i;
+    for (w = 232; w <= 320; w += 29)
+        for (phase = 0; phase < 2; phase++) {
+            int rx = 4, ry = 6, rh = 120, n = ((w - 8) / 8) & ~3;
+            memset(nat_fb, 0, sizeof(nat_fb));
+            for (i = 0; i < n; i++) {
+                int on = ((i + phase) & 1);
+                ui_fill_circle(rx + 6 + i * 8, ry + 4, 2, on ? PAL_PAINT(PAINT_LEMON, 2) : PAL_PAINT(PAINT_HONEY, 0));
+                ui_fill_circle(rx + 6 + i * 8, ry + rh - 5, 2, !on ? PAL_PAINT(PAINT_LEMON, 2) : PAL_PAINT(PAINT_HONEY, 0));
+            }
+            memcpy(ts_a, nat_fb, sizeof(ts_a));
+            memset(nat_fb, 0, sizeof(nat_fb));
+            CHECK(st_bulbs(rx, ry, w, rh, phase) == n);
+            CHECK_MSG(memcmp(ts_a, nat_fb, sizeof(ts_a)) == 0, "bulbs differ, width %d phase %d", w, phase);
+        }
+}
+
 TEST(studio_stage_sprites_wrong_planner_is_caught)
 {
     static const int faults[] = { 1 | 64, 2, 8, 32 | 64 };
