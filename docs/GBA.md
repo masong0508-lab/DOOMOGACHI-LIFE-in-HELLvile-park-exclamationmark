@@ -457,6 +457,7 @@ against the LAST row, not against a figure from an older base.
 | S2-4d | S2-4d: the dreams (sky, shapes, floor and outlined text on faster paths, the held wake-up choice; docs: "Speed wave 2: S2-4d" below) | `1297e93` | 12,164 B | **12,164 B** | 0 B | 6,288 B | measured on `1297e93` and that tree + S2-4d, both built clean (`make -C gba sizes`): `.bss` 249,084 B, `.data` 816 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, all identical (the tip is 160 B under row 48: TM1-TRAITS' explicit trait sets, no row of their own). The dream's state `D` stays 184 B (the held choice's top row is a padding byte). No resident IWRAM: the overlay's **UI group** grows 9,740 -> 10,260 B of the 3D group's 10,352 B slot (92 B left; `hshapes_fill`'s inline span fill +172 B, the outline pass `vid_text_dil_ui` 344 B, compiled `Os`), so a later package that needs UI-group code must make room first; `plat_tile_rows` is ROM code (a 240 B row on the stack, DMA copies). ROM: `.text` +6,040 B, `.rodata` +32 B, the overlay's copy +520 B (+6,592 B). PS1: `_end` 0x801ee570 -> 0x801ee550 (-32 B of code; 72,320 -> 72,352 B below `elf2exe`'s stack top 0x801FFFF0 with the boot FMV; the tip is 1,408 B under the 72 KB gate until PS1-RAM lands, this tree 1,376 B) |
 | S2-4d | S2-4d: the dreams (sky, shapes, floor and outlined text on faster paths, the held wake-up choice; docs: "Speed wave 2: S2-4d" below) | after CR-BODY (`ad06012`) | 12,164 B | **12,164 B** | 0 B | 6,288 B | measured on `ad06012` and that tree + S2-4d, both built clean (`make -C gba sizes`): `.bss` 249,084 B, `.data` 816 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, all identical (and the same as row 49). The dream's state `D` stays 184 B (the held choice's top row is a padding byte). No resident IWRAM: the overlay's **UI group** grows 9,740 -> 10,260 B of the 3D group's 10,352 B slot (92 B left; `hshapes_fill`'s inline span fill +172 B, the outline pass `vid_text_dil_ui` 344 B, compiled `Os`), so a later package that needs UI-group code must make room first; `plat_tile_rows` is ROM code (a 240 B row on the stack, DMA copies). ROM: `.text` +6,048 B, `.rodata` +32 B, the overlay's copy +520 B (+6,600 B). PS1: `_end` 0x801ee560 -> 0x801ee540 (-32 B of code; 72,336 -> 72,368 B below `elf2exe`'s stack top 0x801FFFF0 with the boot FMV; the tip is 1,392 B under the 72 KB gate until PS1-RAM lands, this tree 1,360 B) |
 | S2-4d | S2-4d: the dreams (sky, shapes, floor and outlined text on faster paths, the held wake-up choice; docs: "Speed wave 2: S2-4d" below) | after CR-BODY (`ad06012`) | 12,164 B | **12,164 B** | 0 B | 6,288 B | measured on `ad06012` and that tree + S2-4d, both built clean (`make -C gba sizes`): `.bss` 249,084 B, `.data` 816 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, all identical (and the same as row 49). The dream's state `D` stays 184 B (the held choice's top row is a padding byte). No resident IWRAM: the overlay's **UI group** grows 9,740 -> 10,260 B of the 3D group's 10,352 B slot (92 B left; `hshapes_fill`'s inline span fill +172 B, the outline pass `vid_text_dil_ui` 344 B, compiled `Os`), so a later package that needs UI-group code must make room first; `plat_tile_rows` is ROM code (a 240 B row on the stack, DMA copies). ROM: `.text` +6,048 B, `.rodata` +32 B, the overlay's copy +520 B (+6,600 B). PS1: `_end` 0x801ee560 -> 0x801ee540 (-32 B of code; 72,336 -> 72,368 B below `elf2exe`'s stack top 0x801FFFF0 with the boot FMV; the tip is 1,392 B under the 72 KB gate until PS1-RAM lands, this tree 1,360 B). Checked again after the rebase onto `5879aa3` (S3-1, CR4 A5, TM2c-PLAN): the same deltas (`.bss` 249,084 B both, `.text` 1,490,584 -> 1,496,632 B, the UI group 9,740 -> 10,260 B; PS1 `_end` 0x801ee550 -> 0x801ee530, 72,352 -> 72,384 B) and the same dream table |
+| S2-4d | S2-4d: the dreams (sky, shapes, floor and outlined text on faster paths, the mirror's flipped face in ARM, the caption's cloud trimmed, the held wake-up choice; docs: "Speed wave 2: S2-4d" below) | after CR5-FIX (`366ee6c1`) | 6,412 B | **6,412 B** | 0 B | 6,288 B | measured 2026-11-15 on `366ee6c1` and that tree + S2-4d, both built clean (`make -C gba sizes`, memreport): `.bss` 254,836 B, `.data` 816 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, all identical; 6,412 B of EWRAM free on both. The dream's state `D` stays 184 B (the held choice's top row is a padding byte). No resident IWRAM: the overlay's **UI group** grows 9,740 -> 10,332 B of the 3D group's 10,352 B slot (**20 B left**: `hshapes_fill`'s inline span fill +172 B, the outline pass `vid_text_dil_ui` 344 B compiled `Os`, `vid_blitn`'s scale-1 line +72 B), so a later package that needs UI-group code must make room first; `plat_tile_rows` is ROM code (a 240 B row on the stack, DMA copies). ROM 9,218,972 -> 9,225,888 B (+6,916: `.text` +6,280, `.rodata` +44, the overlay's copy +592). PS1: `_end` 0x801df9f0 -> 0x801df9d0 (32 B less code; 132,608 -> 132,640 B below `elf2exe`'s stack top with the boot FMV) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -2366,6 +2367,12 @@ caption 10.5, vignette 9-34, badge 3.
 * Outlined text: the outline pass runs as ARM code of the UI group for a line that is on the screen whole
   (`vid_text_dil_ui`, 344 B, `plat_text_outline`): the badge, the vignette name and the Zzz, and the welding title.
 * The thought bubble: once its disc covers the screen, the bedroom, the little bubbles and the ring are not drawn.
+* (Landing, after the review) The mirror's reflection, a flipped scale-1 portrait, took 8 ms a frame in
+  `vid_blit_c`'s `Os` loop: The Mirror ran at 24 fps. `plat_image` now sends a flip at scale 1 to the UI group's
+  `vid_blitn` (it gains a scale-1 line, +72 B), as it does every other scale: 31-32 ms frames, 30 fps.
+* (Landing) The caption's cloud box (`dream_caption_cloud`): each rounded rect comes right after its bumps in the same
+  colour, so a bump at least 7 pixels clear of the rect's corners draws only its rows above the rect (two thirds of
+  the box's bump rows; ~1 ms of every frame).
 
 **Pixel-changing, GBA only** (owner's speed defaults and the trades of 2026-11-13; before / after screenshots in the
 package's evidence, `pixel_changes/`):
@@ -2381,7 +2388,9 @@ package's evidence, `pixel_changes/`):
 * **The wipe between vignettes** darkens with the hardware fade (BLDY, `plat_post_blend`) instead of a 14 ms shade;
   each shade level maps to the fade step that gives the same mean brightness (the colormap darkens faster than a
   straight line; measured on the wipe's frames, within 0.03). The fade keeps more detail than the colormap, and the
-  wipe's sparkles darken with the picture.
+  wipe's sparkles darken with the picture. So do the vignette's name, the journal badge and any sprite on screen
+  (a toast): the old shade came before them, the fade darkens the whole picture (the review measured the name strip
+  falling to 0.017 mean brightness at the wipe's darkest tick, where the old frames kept it at 0.13-0.26).
 * **The vignettes' faces and chibis**: the dreamer's portrait holds one still pose (`portrait_hold(1)`: no blink,
   breathing or sparkle phases, which were drawn in slices inside the frames and forced 40-60 ms frames), a new
   expression comes in slices while the old one stays, and a chibi the cache lacks is drawn in slices
@@ -2397,43 +2406,75 @@ only the wave maths (~0.2 ms a frame).
 tier, the platform's paths on and off (the native platform draws `plat_hshapes` / `plat_tile_rows` as `plat_ext.h`
 says while `nat_fast2d` is set); the sky's skipped rows against every vignette; the rim against the old rim (verbatim);
 `dream_circles` / `dream_ellipses` against `ui_fill_circle` / `ui_fill_ellipse` (1,500 random sets, off every side,
-radii to 300); every vignette with the paths on and off; the bubble against the old one (and the bedroom left out only
-while the disc covers it); the held choice (holds happen, nothing outside its band changes, the buttons are the full
-frame's, a cursor moved away and back leaves the band as it was). Engine test `blit2test`: `plat_hshapes`' span fill,
-`plat_tile_rows` and the outline pass against their reference fills. GBA frames: with portrait slices made eager in
+radii to 300; and on a 320-wide screen, circles wider than 256, which the one-call path leaves to `ui_fill_circle`);
+every vignette with the paths on and off; the bubble against the old one (and the bedroom left out only while the disc
+covers it); the caption's cloud box against the old box (verbatim, every width, on and off the screen); the held choice
+(holds happen, nothing outside its band changes, the buttons are the full frame's, a cursor moved away and back leaves
+the band as it was). Engine test `blit2test`: `plat_hshapes`' span fill, `plat_tile_rows` and the outline pass against
+their reference fills, and `vid_blitn` at scales 1 to 4 (flips, silhouettes, every clip). GBA frames: with portrait slices made eager in
 both builds (a proof build) and the GBA-only pixel changes off, 1,498 of the 1,500 frames of both dreams (every tick,
 `vhash-seq`) were identical to the base; two differ in the portrait's sparkle phase only. That proof ran on
 `d530565` + S2-4d, before the rebase onto S2-9; the ROM floor rows and the compact outline pass came after it, and `blit2test`
 and the host tests above check them.
 
+`speed2_dream.txt` has a window over every vignette of three dreams since the landing (the review found the old
+windows one vignette off: they never saw The Mirror): Nana Puddin's dream (-2: the bedroom, the bubble, Endless Doors cute
+then its twist, Wobbly Teeth, The Mirror), Vex's forced nightmare (-3666: Falling Up, Endless Doors, Snack Rain, the
+choice's first frame, the choice) and Stitchwick's dream (-3: Endless Doors, The Giant Plush, Cloud Concert). A window that holds 30 closes with
+`expect-fps 29.5` and `expect-gap 34`; the two open ones have floors at their measured level (`expect-fps 20`,
+`expect-gap 120`), so they cannot get worse unseen.
+
 | window (`speed2_dream.txt`, libmgba) | before: logic / drawn fps, work avg / max, frames over 33 ms | after |
 |---|---|---|
-| dream: bedroom | 30.0 / 30.0, 24.7 / 31.0 ms, 0 | 30.0 / **30.0**, 19.8 / 26.0 ms, 0 |
-| dream: thought bubble | 27.9 / 22.3, 32.6 / 80.3 ms, 14 | 29.8 / **29.8**, 18.7 / 27.9 ms, 0 |
-| dream: vignette 1 cute | 22.8 / 12.4, 62.1 / 64.3 ms, 60 | 30.0 / **30.0**, 23.6 / 24.8 ms, 0 |
-| dream: vignette 1 twist | 24.2 / 12.8, 63.5 / 69.7 ms, 53 | 30.2 / **30.2**, 24.2 / 27.6 ms, 0 |
-| dream: vignette 2 | 22.9 / 12.5, 63.9 / 67.4 ms, 71 | 30.1 / **30.1**, 28.7 / 31.5 ms, 0 |
-| dream: nightmare vignette 1 | 20.0 / 11.5, 71.8 / 90.8 ms, 75 | 30.0 / **30.0**, 27.7 / 33.4 ms, 0 |
-| dream: nightmare vignette 2 | 22.5 / 12.3, 64.8 / 80.1 ms, 71 | 30.0 / **30.0**, 28.1 / 32.6 ms, 0 |
-| dream: nightmare vignette 3 (cute, then red) | 17.6 / 10.6, 82.0 / 88.8 ms, 60 | 30.0 / **30.0**, 6.1 / 6.5 ms, 0 |
-| dream: wake-up choice | 17.6 / 10.6, 82.2 / 86.8 ms, 36 | 30.0 / **30.0**, 6.3 / 6.9 ms, 0 |
+| dream: bedroom | 30.0 / 30.0, 24.7 / 31.2 ms, 0 | 30.0 / **30.0**, 18.8 / 25.2 ms, 0 |
+| dream: thought bubble | 29.6 / 27.4, 23.8 / 48.0 ms, 3 | 30.0 / **30.0**, 17.1 / 27.9 ms, 0 |
+| dream: vignette 1 cute (Endless Doors) | 22.9 / 12.5, 61.5 / 63.0 ms, 46 | 30.0 / **30.0**, 22.2 / 23.8 ms, 0 |
+| dream: vignette 1 twist | 22.8 / 12.5, 63.4 / 65.3 ms, 47 | 30.2 / **30.2**, 23.3 / 24.9 ms, 0 |
+| dream: vignette 2 (Wobbly Teeth) | 23.3 / 12.6, 63.6 / 67.4 ms, 91 | 30.0 / **30.0**, 27.3 / 30.4 ms, 0 |
+| dream: vignette 3 (the mirror) | 20.0 / 11.4, 74.0 / 95.5 ms, 80 | 30.0 / **30.0**, 31.0 / 32.1 ms, 0 |
+| dream: nightmare vignette 1 | 22.1 / 12.2, 66.7 / 88.0 ms, 95 | 30.0 / **30.0**, 25.9 / 36.2 ms, 0 |
+| dream: nightmare vignette 2 | 23.2 / 12.6, 62.3 / 65.0 ms, 93 | 30.0 / **30.0**, 22.7 / 24.4 ms, 0 |
+| dream: nightmare vignette 3 (cute, then red) | 20.3 / 11.4, 69.6 / 80.8 ms, 97 | 30.0 / **30.0**, 28.0 / 30.8 ms, 0 |
+| dream: wake-up choice entry (open) | 14.5 / 10.9, 102.0 / 146.8 ms, 6 (worst frame 151 ms) | 36.9 / 23.1, 32.8 / 110.6 ms, 1 (**one 117 ms frame**) |
+| dream: wake-up choice | 17.6 / 10.6, 82.1 / 87.0 ms, 36 | 30.0 / **30.0**, 6.2 / 6.6 ms, 0 |
+| dream: plush dream vignette 1 (Endless Doors) | 22.8 / 12.3, 62.9 / 65.6 ms, 93 | 30.0 / **30.0**, 23.4 / 29.9 ms, 0 |
+| dream: the giant plush (open) | 15.6 / 8.7, 102.6 / 122.7 ms, 106 (worst 201 ms) | 29.9 / **23.3**, 36.3 / 113.7 ms, 78 (worst 117 ms) |
+| dream: plush dream vignette 3 (Cloud Concert) | 23.2 / 12.6, 63.8 / 67.7 ms, 93 | 30.0 / **30.0**, 26.0 / 30.2 ms, 0 |
 
-Before: the tip `ad06012` (within 0.4 ms of `d530565`, where the work started); after: that tree + S2-4d. The
-windows keep the script's names: on today's timing "nightmare vignette 2" is already the last vignette (cute, then
-red, with the roar and its unlock) and "vignette 3" already shows the choice. Every frame of every window is two
-vblanks; each window closes with `expect-fps 29.5` and `expect-gap 34`. The margins are thin in the nightmare (a work
-maximum of 33.4 ms still flips on its second vblank).
+Before: the tip `366ee6c1`; after: that tree + S2-4d (the same table on `5aa25cd1`). Every frame of the twelve windows
+that hold 30 is two vblanks. Thirty more vignettes of twelve other dreams (scratch scripts, 30-tick windows, not in
+the tree; demo residents -8 to -19) hold 30 too, but for the two below. The margins are thin in The Mirror (31-32 ms)
+and Wobbly Teeth (31-32 ms).
 
-**Left.** The choice's first frame, between two windows, is one frame of 110 ms (before: two frames, 138 and 111 ms):
-the vignette under it, the full-screen dim (15 ms), the band copy, and the first draw of the big title and the buttons
-into the text cache (~35 ms of text; profiled with `profile`). An unlock toast over the nightmare (three unlocks at
-once when a run starts in the nightmare) adds 3-5 ms: frames of 34-36 ms while it shows. A chibi that was not asked for
-in time shows a few ticks late.
+**Left (open; measured on the landed tree).**
+
+* **The Giant Plush** (vignette 1) runs at 19-25 drawn fps (logic 30): 35-39 ms frames, and its first frame is 115-139
+  ms (the figure drawn whole; nothing stands in for it). The giant figure is drawn twice at scale 2 (its drop shadow
+  and itself, ~11 ms) over a frame whose sky, rim, caption and badge cost 26 ms. Tried and dropped: drawing only the
+  shadow pixels the figure leaves showing, from ROM (its run scan cost more than the blit it saved: ROM code runs
+  with the cartridge's default wait states, and the UI group has 20 B left). What would close it: room in the UI
+  group for a shadow-and-figure pass, the caption box kept as a retained panel (section 4b; ~2 ms), or the figure's
+  rows under the caption box left out (~2 ms).
+* **Tea Under the Sea** (vignette 11): 28.5-29 drawn fps, 33.6-33.8 ms frames: its sea is a 50 % checker over the
+  whole screen (~4.6 ms) on top of the full sky.
+* **An unlock toast** sliding in over a vignette adds ~5 ms (its drop shadow and the panel paths): The Mirror's last
+  ticks under the "2 new unlocks" toast are 37 ms frames; the nightmare under three unlocks, 34-36 ms. The Mirror's
+  window ends before the toast on this run.
+* **The choice's first frame** is one frame of 117 ms on screen (7 vblanks; 109-111 ms of work; before: 147-167 ms):
+  the vignette under it, the full-screen dim (15 ms), the band copy, and the first draw of the big title and the
+  buttons into the text cache (~35 ms of text). The wake-up bedroom after the choice has one 47.5 ms frame.
+* `dream_warm`'s table of the chibis each vignette shows repeats the facings of `dream_draw_vignette`'s `chibi_at`
+  calls by hand (checked by hand; no test yet): if they drift apart, a chibi comes a few ticks late on the GBA.
+* A chibi that was not asked for in time shows a few ticks late.
+* A note for the speed stream, not done here: the GBA never sets `WAITCNT`, so all ROM code runs with the cartridge's
+  power-on wait states (4/2, no prefetch). Most carts take 3/1 with prefetch, which speeds up every THUMB function in
+  ROM; it would need its own check on hardware.
 
 **Memory.** EWRAM and resident IWRAM unchanged (the dream's state gains the held choice's row in a padding byte:
-`D` 184 B before and after; the main stack 6,288 B). The IWRAM overlay's UI group 9,740 -> 10,260 B of the 3D group's
-10,352 B slot (92 B left: `hshapes_fill` +172 B, the outline pass 344 B). PS1: the hooks are not built there (weak),
-the exact steps are; the EXE 32 B smaller (ledger row 51).
+`D` 184 B before and after; 6,412 B of EWRAM free; the main stack 6,288 B). The IWRAM overlay's UI group 9,740 ->
+10,332 B of the 3D group's 10,352 B slot (20 B left: `hshapes_fill` +172 B, the outline pass 344 B, `vid_blitn`'s
+scale-1 line +72 B). ROM +6,916 B. PS1: the hooks are not built there (weak), the exact steps are; the EXE 32 B
+smaller (ledger row 54).
 
 
 ## 4b. Retained panels (G7, `src/panel.c`)

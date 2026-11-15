@@ -363,11 +363,13 @@ tick of the group 22.7 ms (the workshop's entry; 23.9 ms in speed audit 3). Agai
 S2-9): every window 30.0, 0 of 3,254 ticks over 33.3 ms, work mean 13.0 ms, the group's worst tick 27.5 ms (the arena
 modes, not the workshop).
 **S2-4d (the dreams).** Nothing changes on the screen: the core's exact steps (no drawing on a catch-up tick, 20
-border waves a frame, the sky's covered rows skipped, the rim's band rows not filled twice, the bedroom left out under
-the bubble's full disc) run here too, `plat_hshapes` and `plat_tile_rows` are the weak defaults (the core's own fills),
-and the GBA-only changes are not built. `speed2.sh dream` on the tip `ad06012` and that tree + S2-4d: every window
-30.0, 0 of 1,482 ticks over 33.3 ms on both; work mean 8,318 -> 7,973 us, worst tick 16.3 -> 16.0 ms (the nightmare),
-2D prims max 1,455 -> 1,415, texture uploads 411 -> 409; the nine shots are byte for byte the tip's.
+border waves a frame, the sky's covered rows skipped, the rim's band rows not filled twice, the caption's cloud box
+drawing only the bump rows its rects leave showing, the bedroom left out under the bubble's full disc) run here too,
+`plat_hshapes` and `plat_tile_rows` are the weak defaults (the core's own fills), and the GBA-only changes are not
+built. `speed2.sh dream` (its windows now over every vignette of three dreams, 2,102 ticks) on the landing tip
+`366ee6c1` + S2-4d against the tip `5aa25cd1` (the commits between touch no dream drawing): every window 30.0, 0 ticks
+over 33.3 ms on both; work mean 6,558 -> 6,207 us, worst tick 14.4 -> 13.9 ms (the nightmare), 2D prims max 1,455 ->
+1,415, texture uploads 493 -> 491; the 13 shots are byte for byte the tip's.
 
 **S3-1 (the sim's 15-minute pass).** The core change (docs/GBA.md "Speed wave 3: S3-1": one resident a tick over the 15 game
 minutes instead of 32 residents in 32 ticks every 15 minutes) is shared. The SH4 never had a long frame from the pass: the new
