@@ -1785,7 +1785,7 @@ workshop's entry 22.7 ms on `4c0f369`, 23.9 ms before); the Dreamcast composes i
 * the title text outline (`vid_glyph_dilate` + `glyph_dil`, 16% of the welding frames) is the next thing in the welding
   windows (29.1 ms of work on `d530565`, 4 ms under the miss line);
 * the 176 B of new statics (`Ws` 100 B, the panel keys and plans) could move into the arena (`plat_scene_scratch`, as on
-  the PS1); they take room CR5a freed (ledger row 48).
+  the PS1); they take room CR5a freed (ledger row 49).
 
 ### Speed wave 3: S3-1, the sim's 15-minute pass (built 2026-11-13, landed 2026-11-15)
 
