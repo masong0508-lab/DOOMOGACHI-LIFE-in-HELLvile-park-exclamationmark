@@ -446,7 +446,7 @@ against the LAST row, not against a figure from an older base.
 | 53 | CR5-FIX: the save chunk budget counts the nickname and the gene trailer; a damaged pool section keeps the nicknames (docs/CREATOR.md "CR5-FIX") | after TM2d-DEPTH (row 52) | 6,404 B | **6,404 B** | 0 B | 6,288 B | measured on the rebased tree (`make -C gba sizes`): `.bss` 254,844 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, the same as row 51. The change is code in `deep_commit()` and `nickext_read()` only; no new statics. `make -C gba test` and `test-coresave` pass. |
 | 54 | CR4 A1b: 51 face parts (12 noses, 12 mouths, 16 ears, 11 blush styles; docs/CREATOR.md "CR4 A1b") | after CR5-FIX (row 53) | 6,404 B | **6,404 B** | 0 B | 6,288 B | measured with `make -C gba sizes` (clean `make -C gba`) on the tip before A1b (`5aa25cd1`, rebased tree) and on A1b rebased onto it: `.bss` 254,836 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B identical (an earlier same-base measurement gave `.bss` 249,084 B on both sides); the part scripts, catalog rows and icons are `const` ROM: `.rodata` +23.5 KB; the `mat blush` branch of `pm_of` costs about +112 B `.text`. `make -C gba test` and `test-creator` pass. |
 | 55 | TM2E-ACTIONS: sim actions a reply can carry (docs/TALK.md 6p) | after CR4 A1b (row 54) | 6,412 B | **6,412 B** | 0 B | 6,288 B | measured 2026-11-15 on the origin tip (clean worktree; its own build reads `.bss` 254,836 B) and the same + TM2E-ACTIONS (`make -C gba`, `make -C gba sizes`, `make -C gba test` all clean): `.bss` 254,836 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, all the overlays identical. `TalkState` stays 932 B on the GBA: `TalkLine.action` is 4 bits packed with `stance` (`TalkLine` 104 B), `TalkPart.pad[2]` became `actp` / `actw`, `TalkState.call_to` and the ledger's `invn` / `giftn` sit in padding, and the ledger flags are bits of `LedP.flags`. ROM: `.text` 1,498,704 -> 1,503,560 B (+4,856: `talk_act.o`, `sim_nudge.o`, `DK_ACT`, `talk_gen_action`, the caps), `.rodata` +912 B (the TALK bin 908,412 B). Stack: `TalkOutcome` 22 -> 27 B and `TalkSummary` 76 -> 78 B (locals of `finish`); the DM's `pick_call` scans 1,000 residents once, on the stack 40 B |
-| 56 | S2-4b: the Fun Fair's bands, undo lists and stamps, the results card held (docs: "Speed wave 2: S2-4b" below) | after S3-1, TM2c-PLAN, CR4 A5, DC9B (`0cce022`) | 12,164 B | **12,172 B** | +8 B | 6,288 B | measured 2026-11-15 on `0cce022` (origin, built clean) and that tree + S2-4b (built clean, `make -C gba sizes`): `.bss` 249,084 -> 249,076 B (`mg_bake_key` is gone on the GBA), `.data` 816 B, `.iwram` 11,272 B and `.iwram_bss` 4,088 B unchanged (no resident IWRAM); the overlay's room group 9,512 -> 9,796 B (+284: `stage_find`, the binary search of the baked table, and `stage_list`) and its UI group 9,740 -> 10,124 B (+384: the `ldm` / `stm` checker), both inside the slot the 3D group sizes (10,352 B; 228 B left beside the UI group). The games' new state lives in the scene scratch and the MG arena (2,048 B, the undo state in its last 24 B): the Whack arena 1,524 B, the Derby's hop table 40 B, Memory's card centres 80 B; the results hold is code only. ROM `.text` 1,490,584 -> 1,498,384 B (+7,800), `.rodata` 7,658,932 -> 7,900,488 B (+241,556; `backdrops.bin` 3,418,324 -> 3,659,772 B: Whack's 30 whole pictures, 1.15 MB, are now 469 KB of bands; Dodge 161 KB, Gallery 386 KB, Derby 99 KB, Memory 113 KB, the shared stamps 119 KB). PS1: compiled out, `_end` 0x801ee550 = the base's, 72,368 B below the stack top with the boot FMV (+0 B resident). The same EWRAM / IWRAM numbers on `2bc6130`; first measured on `ee686c7` (15,444 -> 15,452 B). Frames equal to the base but for the shake, 10 fade frames and the held results card (below) |
+| 56 | S2-4b: the Fun Fair's bands, undo lists and stamps, the results card held (docs: "Speed wave 2: S2-4b" below) | after CR5 (`b9e74a5`) | 6,404 B | **6,412 B** | +8 B | 6,288 B | measured 2026-11-15 on `b9e74a5` (origin, built clean) and that tree + S2-4b (built clean, `make -C gba sizes`): `.bss` 254,844 -> 254,836 B (`mg_bake_key` is gone on the GBA), `.data` 816 B, `.iwram` 11,272 B and `.iwram_bss` 4,088 B unchanged (no resident IWRAM); the overlay's room group 9,512 -> 9,796 B (+284: `stage_find`, the binary search of the baked table, and `stage_list`) and its UI group 9,740 -> 10,124 B (+384: the `ldm` / `stm` checker), both inside the slot the 3D group sizes (10,352 B; 228 B left beside the UI group). The games' new state lives in the scene scratch and the MG arena (2,048 B, the undo state in its last 24 B): the Whack arena 1,524 B, the Derby's hop table 40 B, Memory's card centres 80 B; the results hold is code only. ROM `.text` 1,493,136 -> 1,500,936 B (+7,800), `.rodata` 7,663,940 -> 7,905,496 B (+241,556; `backdrops.bin` 3,418,324 -> 3,659,772 B: Whack's 30 whole pictures, 1.15 MB, are now 469 KB of bands; Dodge 161 KB, Gallery 386 KB, Derby 99 KB, Memory 113 KB, the shared stamps 119 KB). PS1: compiled out, `_end` 0x801ee550 = the base's, 72,368 B below the stack top with the boot FMV (+0 B resident). The same deltas on `2bc6130` and `0cce022` (`.bss` 249,084 -> 249,076 B there, before CR5's look pool); first measured on `ee686c7` (15,444 -> 15,452 B). Frames equal to the base but for the shake, 10 fade frames and the held results card (below) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -1972,9 +1972,10 @@ at 2 vblanks (the Gallery, the Derby, the Dodge's first hit) is a tick that borr
 frame at 2 vblanks (the vblank histogram has no 3 in it); the 0.1 is the window's tick count. (The table's "catch results" window stood
 in the last 100 ticks of the round, not on the card: see the landing below.)
 
-**Landing (2026-11-15): the results card held, and the numbers on the tree it landed on.** The package was rebased onto `0cce022`
-(S2-9, S3-1, CR-BODY, CR4 A5, TM2c-PLAN, DC9B, the owner's Talk screen on the ROM and the music driver on a 240 Hz timer IRQ among the
-commits since; the fair windows below read the same on `2bc6130`). Two changes came with the landing:
+**Landing (2026-11-15): the results card held, and the numbers on the tree it landed on.** The package was rebased onto `b9e74a5`
+(S2-9, S3-1, CR-BODY, CR4 A5, CR5, TM2c-PLAN, TUI-TALK, DC9B, DC6D, the owner's Talk screen on the ROM and the music driver on a 240 Hz
+timer IRQ among the commits since; on `2bc6130` and `0cce022` every window read within 0.2 fps of the table below, the Derby's Sweet
+window with no 50 ms frame). Two changes came with the landing:
 
 1. **The results card is held** (`mg.c`: `results_rows`, `results_still`, `draw_results(held)`; S2-1's `ui_modal_hold` with the key
    `&mg.shown`). The card was a full redraw of the booth every tick (`mg_kept_draw()` is off on `MGP_RESULTS`: the dim lies over
@@ -1994,44 +1995,45 @@ commits since; the fair windows below read the same on `2bc6130`). Two changes c
 Measured on libmgba, `make -C gba test-speed2 SPEED2=fair` (the same script on both ROMs, both built clean; drawn fps, work avg / max
 ms, frames over 33 ms):
 
-| window (`speed2_fair.txt`) | the tip `0cce022` | after |
+| window (`speed2_fair.txt`) | the tip `b9e74a5` | after |
 |---|---:|---:|
 | catch title | 30.0 (0.7 / 2.4, 0) | 30.0 (0.7 / 2.4, 0) |
 | catch play sweet | 30.0 (28.0 / 29.7, 0) | 30.0 (23.6 / 25.3, 0) |
-| catch results | 15.0 (59.5 / 60.0, 45) | 30.0 (11.4 / 12.7, 0) |
-| catch play hellfire | 29.4 (30.6 / 37.4, 4) | 30.0 (26.4 / 32.8, 0) |
+| catch results | 15.0 (59.5 / 59.9, 45) | 30.0 (11.4 / 12.7, 0) |
+| catch play hellfire | 29.5 (30.7 / 37.5, 5) | 30.0 (26.4 / 32.4, 0) |
 | whack title | 30.0 (3.0 / 6.9, 0) | 30.0 (3.0 / 6.7, 0) |
-| whack play sweet | 20.9 (39.7 / 61.4, 76) | 30.0 (16.0 / 20.4, 0) |
-| whack results | 10.9 (86.8 / 87.5, 49) | 30.0 (12.6 / 14.1, 0) |
-| whack play hellfire | 20.3 (43.1 / 70.4, 78) | 29.9 (18.2 / 28.4, 0) |
-| dodge title | 30.0 (0.7 / 1.2, 0) | 30.0 (0.7 / 1.3, 0) |
-| dodge play sweet | 23.9 (35.7 / 40.3, 52) | 30.0 (20.2 / 24.6, 0) |
+| whack play sweet | 21.1 (39.8 / 61.1, 76) | 30.0 (15.9 / 20.4, 0) |
+| whack results | 10.7 (86.8 / 88.0, 48) | 30.0 (12.6 / 14.1, 0) |
+| whack play hellfire | 20.3 (43.0 / 70.4, 78) | 29.9 (18.2 / 28.4, 0) |
+| dodge title | 30.0 (0.7 / 1.2, 0) | 30.0 (0.7 / 1.2, 0) |
+| dodge play sweet | 24.1 (35.7 / 40.3, 50) | 30.0 (20.2 / 24.6, 0) |
 | dodge play late | 23.5 (37.2 / 45.7, 57) | 30.0 (21.3 / 25.4, 0) |
-| dodge results | 14.0 (67.9 / 69.0, 47) | 30.0 (12.0 / 13.2, 0) |
-| dodge play hellfire | 20.2 (43.1 / 49.9, 84) | 30.0 (23.5 / 29.1, 0) |
+| dodge results | 14.1 (67.9 / 68.9, 46) | 30.0 (12.0 / 13.2, 0) |
+| dodge play hellfire | 20.5 (43.0 / 48.5, 83) | 30.0 (23.5 / 29.1, 0) |
 | gallery title | 30.0 (0.7 / 2.4, 0) | 30.0 (0.7 / 2.1, 0) |
-| gallery play sweet | 10.3 (88.3 / 96.7, 73) | 29.5 (30.5 / 40.9, 3) |
-| gallery results | 9.8 (100.3 / 101.2, 49) | 30.0 (12.1 / 13.5, 0) |
-| gallery play hellfire | 10.5 (87.9 / 98.9, 74) | 30.0 (30.5 / 37.8, 0) |
+| gallery play sweet | 10.3 (88.3 / 97.1, 73) | 29.5 (30.6 / 40.9, 3) |
+| gallery results | 10.0 (100.3 / 101.9, 50) | 30.0 (12.4 / 13.8, 0) |
+| gallery play hellfire | 10.4 (88.0 / 98.9, 74) | 30.0 (30.5 / 37.8, 0) |
 | derby title | 30.0 (0.7 / 2.1, 0) | 30.0 (0.7 / 2.1, 0) |
-| derby race sweet | 21.6 (38.4 / 43.8, 71) | 30.0 (29.0 / 34.3, 0) |
-| derby race mid | 21.5 (38.4 / 41.8, 74) | 30.0 (28.8 / 32.2, 0) |
-| derby results | 15.0 (65.7 / 67.4, 45) | 30.0 (12.2 / 13.9, 0) |
-| derby race hellfire | 22.4 (38.1 / 43.2, 68) | 30.0 (29.1 / 34.2, 0) |
+| derby race sweet | 21.8 (38.4 / 44.0, 71) | 29.9 (28.8 / 34.3, 1) |
+| derby race mid | 21.4 (38.3 / 42.7, 73) | 30.0 (28.7 / 32.2, 0) |
+| derby results | 15.0 (65.7 / 65.9, 45) | 30.0 (12.5 / 14.2, 0) |
+| derby race hellfire | 22.1 (38.1 / 43.4, 69) | 30.0 (29.1 / 34.2, 0) |
 | memory title | 30.0 (0.7 / 2.1, 0) | 30.0 (0.7 / 2.1, 0) |
-| memory play sweet | 29.4 (30.6 / 43.0, 5) | 30.0 (18.1 / 28.1, 0) |
-| memory play sweet late | 20.0 (44.2 / 48.2, 67) | 20.5 (41.9 / 47.9, 65) |
-| memory results | 12.0 (75.3 / 76.8, 50) | 30.0 (12.2 / 13.6, 0) |
-| memory play hellfire | 22.2 (38.2 / 40.9, 70) | 29.9 (18.0 / 23.2, 0) |
-| memory play hellfire late | 21.5 (39.1 / 43.3, 55) | 30.0 (23.3 / 29.8, 0) |
+| memory play sweet | 29.5 (30.5 / 43.1, 4) | 30.0 (18.3 / 28.4, 0) |
+| memory play sweet late | 20.0 (44.2 / 47.7, 67) | 20.5 (42.0 / 47.8, 65) |
+| memory results | 12.0 (75.4 / 76.4, 50) | 30.0 (12.2 / 13.6, 0) |
+| memory play hellfire | 22.0 (38.3 / 41.0, 71) | 29.9 (18.0 / 23.2, 0) |
+| memory play hellfire late | 21.5 (39.1 / 43.3, 55) | 30.0 (23.3 / 29.9, 0) |
 | wheel intro | 30.0 (27.2 / 28.9, 0) | 30.0 (27.1 / 28.8, 0) |
 | wheel spin | 29.9 (27.2 / 60.0, 1) | 29.9 (27.2 / 60.0, 1) |
 
-The Gallery is the window that varies between runs: in the first run of the same ROM (the Dodge results window 250 ticks earlier, so
-every later game starts at another moment of the island's clock and the music) its Sweet window was 30.0 (29.7 / 36.4, 0) and its
-Hellfire window 29.7 (30.4 / 40.2, 3 frames of 50 ms); the builder measured 29.2 / 29.9 ms of work on the tree before the music IRQ.
-`SPEED2_GATES=1` passes (every `expect-fps 28` holds); the table's own verdict is "hitch" for the Gallery window with 50 ms frames and
-the Wheel's spin, "MISS" for `memory play sweet late`.
+The Gallery and the Derby are the windows that vary between runs and trees: in a run of the same package on `2bc6130` with the Dodge
+results window 250 ticks earlier (every later game starts at another moment of the island's clock and the music) the Gallery's Sweet
+window was 30.0 (29.7 / 36.4, 0) and its Hellfire window 29.7 (30.4 / 40.2, 3 frames of 50 ms); the Derby's Sweet window has one 50 ms
+frame on `b9e74a5` and none on `2bc6130`. The builder measured 29.2 / 29.9 ms of work in the Gallery on the tree before the music IRQ.
+`SPEED2_GATES=1` passes (every `expect-fps 28` holds); the table's own verdict is "hitch" for the Gallery's and the Derby's Sweet
+windows and the Wheel's spin, "MISS" for `memory play sweet late`.
 
 **Still short.**
 
@@ -2039,7 +2041,7 @@ the Wheel's spin, "MISS" for `memory play sweet late`.
   1, 2, 3, 5, 8): once cards flip, match and lift, Sweet runs 17-27 fps (the base 16-22; frames of 3-8 vblanks) and Hellfire seed 3
   22-23. Only the opening window (ticks 60-190, every card face down) is at 30. The cost is `back_again()` per face-down card for
   every non-home card and every sparkle. Two windows now follow it in `speed2_fair.txt` (`memory play sweet late`, `... hellfire
-  late`, not gated; measured on the landing tree `0cce022` + S2-4b: Sweet 20.5 fps, work 41.9 / 47.9 ms, 65 frames over 33 ms (14.3 fps,
+  late`, not gated; measured on the landing tree `b9e74a5` + S2-4b: Sweet 20.5 fps, work 42.0 / 47.8 ms, 65 frames over 33 ms (14.3 fps,
   66 / 107 ms in another run); Hellfire 30.0, none over). Memory is NOT at 30 in a whole round.
 * **The first second or three of a results card** (the card itself is held at 30 since the landing, above): its pop (12 ticks)
   and, after a medal or a new best, the confetti (40-80 ticks, falling over the whole screen) are still full redraws of the booth:
@@ -2048,7 +2050,7 @@ the Wheel's spin, "MISS" for `memory play sweet late`.
   the popping window as well, and let the confetti fall inside the card or over the held frame's own rows.
 * **Gallery hitches in normal play**: 3-15 frames of 3 vblanks (~50 ms) per 800 ticks in the autoplay bot (0.3-1.7% of the
   frames), and Candy Catch Hellfire 1-16 (base 83-173). "No frame over 33 ms" does not hold for the Gallery even in its 130-tick
-  windows on the landing tree: 0-3 frames of 50 ms per window depending on the run (table above). Whack, Derby and Dodge Sweet held
+  windows on the landing tree: 0-3 frames of 50 ms per window depending on the run (table above); the Derby's Sweet window 0-1. Whack, Derby and Dodge Sweet held
   30.0 in every probed window.
 * **Text is never baked** (review finding, fixed): the HUD pill's "SCORE" is drawn live over its stamp (it followed neither
   Language nor Font style when it was in the stamp; `stage_stamps_do_not_depend_on_language_or_font`). Still baked, with no
