@@ -10,6 +10,7 @@
  */
 #include "doomo/textures.h"
 #include "doomo/palette.h"
+#include "doomo/texbank.h"
 
 static int frame_of(const DoomoArtAnim *a, uint16_t time)
 {
@@ -45,6 +46,12 @@ void textures_init(void)
 const uint8_t *texture_pixels(int tex_id, uint16_t time)
 {
     const DoomoArtAnim *a;
+#if DOOMO_TEXBANK_ACTIVE
+    if (tex_id >= DOOMO_TEXBANK_FIRST) {            /* a level-local texture (LV7a) */
+        const uint8_t *bp = texbank_id_pixels(tex_id, time);
+        if (bp) return bp;
+    }
+#endif
     if (!valid_tex(tex_id)) tex_id = TEX_GRASS;     /* matches map_cell_safe's wall 1 */
     a = &doomo_art_tex[tex_id];
     return doomo_art_tex_pix[a->first + frame_of(a, time)];
@@ -53,6 +60,12 @@ const uint8_t *texture_pixels(int tex_id, uint16_t time)
 const DoomoImage *texture_image(int tex_id, uint16_t time)
 {
     const DoomoArtAnim *a;
+#if DOOMO_TEXBANK_ACTIVE
+    if (tex_id >= DOOMO_TEXBANK_FIRST) {
+        const DoomoImage *bi = texbank_id_image(tex_id, time);
+        if (bi) return bi;
+    }
+#endif
     if (!valid_tex(tex_id)) tex_id = TEX_GRASS;
     a = &doomo_art_tex[tex_id];
     return &doomo_art_tex_img[a->first + frame_of(a, time)];
@@ -60,22 +73,38 @@ const DoomoImage *texture_image(int tex_id, uint16_t time)
 
 int texture_is_animated(int tex_id)
 {
+#if DOOMO_TEXBANK_ACTIVE
+    if (tex_id >= DOOMO_TEXBANK_FIRST && texbank_id_slot(tex_id) >= 0)
+        return texbank_frames(texbank_active(), texbank_id_slot(tex_id)) > 1;
+#endif
     return valid_tex(tex_id) && doomo_art_tex[tex_id].frames > 1;
 }
 
 int texture_frames(int tex_id)
 {
+#if DOOMO_TEXBANK_ACTIVE
+    if (tex_id >= DOOMO_TEXBANK_FIRST && texbank_id_slot(tex_id) >= 0)
+        return texbank_frames(texbank_active(), texbank_id_slot(tex_id));
+#endif
     return valid_tex(tex_id) ? doomo_art_tex[tex_id].frames : 0;
 }
 
 uint8_t texture_avg(int tex_id)
 {
+#if DOOMO_TEXBANK_ACTIVE
+    if (tex_id >= DOOMO_TEXBANK_FIRST && texbank_id_slot(tex_id) >= 0)
+        return texbank_avg(texbank_active(), texbank_id_slot(tex_id));
+#endif
     if (!valid_tex(tex_id)) return PAL_BLACK;
     return doomo_art_tex[tex_id].avg;
 }
 
 const char *texture_name(int tex_id)
 {
+#if DOOMO_TEXBANK_ACTIVE
+    if (tex_id >= DOOMO_TEXBANK_FIRST && texbank_id_slot(tex_id) >= 0)
+        return texbank_name(texbank_active(), texbank_id_slot(tex_id));
+#endif
     if (tex_id < 0 || tex_id >= TEX_COUNT) return "";
     return doomo_art_tex_names[tex_id];
 }

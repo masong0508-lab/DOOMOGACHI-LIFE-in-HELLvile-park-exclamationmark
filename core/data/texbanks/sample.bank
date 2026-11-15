@@ -1,0 +1,6 @@
+# The sample texture bank (LV7a): three level-local textures, the test of the bank format.
+# Format: core/include/doomo/texbank.h; spec: tools/texbank.py (colours are RAMP.shade, PAL.index).
+bank sample
+tex vat_brick bricks STEEL.2 STEEL.3 STONE.0
+tex ink_stripe frames=2 speed=12 mode=pingpong stripes VAPE.2 VAPE.5 8
+tex dust noise STONE.2 STONE.4 7

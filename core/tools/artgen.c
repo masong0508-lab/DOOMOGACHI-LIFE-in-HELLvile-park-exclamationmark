@@ -5,6 +5,7 @@
  *   artgen --sheet DIR        write PNG contact sheets (palette, colormap,
  *                             tints, textures + light levels, tiling
  *                             previews, skies, sprites) for review
+ *   artgen --review DIR       review pages of exactly 240x160 and 320x240 (1:1), new art first
  *   artgen --zoom N           integer zoom of the sheets (default 2)
  *   artgen --check            run the generators and validations only
  *
@@ -701,9 +702,66 @@ static void stats(void)
     }
 }
 
+/* ---- review pages at the two screen sizes ---------------------------------------------------
+ * artgen --review DIR: pages of exactly 240x160 (GBA) and 320x240 (PS1, Dreamcast) at 1:1, per
+ * group (textures, skies); the LV7 art comes first, the old art it sits next to follows. */
+static void review_pages(const char *dir, int W, int H)
+{
+    static const int tex_ids[] = {
+        TEX_STEAM_TILE, TEX_PIPE_STEEL, TEX_OFFICE_CARPET, TEX_CUBICLE_FABRIC, TEX_FELT,
+        TEX_LEDGER_PAGE, TEX_VAULT_METAL,
+        TEX_METAL_FLOOR, TEX_TECH_PANEL, TEX_CARPET, TEX_TILE_FLOOR, TEX_WOOD_FLOOR, TEX_RUST_METAL,
+        TEX_WALLPAPER_HEARTS, TEX_GRASS};
+    static const int sky_ids[] = {SKY_OVERCAST, SKY_INK, SKY_DUSK_LANTERNS, SKY_NIGHT_STARS, SKY_HELL,
+                                  SKY_VAPE_STORM, SKY_SUNSET};
+    int ntex = (int)(sizeof tex_ids / sizeof tex_ids[0]), nsky = (int)(sizeof sky_ids / sizeof sky_ids[0]);
+    int cols = W / 72, rows = H / 74, per = cols * rows, pages = (ntex + per - 1) / per, pg, i;
+    int bgc = PAL_RAMP(RAMP_STONE, 1), fgc = PAL_RAMP(RAMP_STONE, 14);
+    char name[64], buf[64];
+    Sheet s;
+    for (pg = 0; pg < pages; pg++) {
+        sheet_new(&s, W, H, (uint8_t)bgc);
+        for (i = 0; i < per && pg * per + i < ntex; i++) {
+            int id = tex_ids[pg * per + i], cx = 4 + (i % cols) * 72 + (W - cols * 72) / 2,
+                cy = 2 + (i / cols) * 74;
+            sheet_blit(&s, cx, cy + 9, tex_pix[tex_out[id].first], 64, 64, 1, NULL, 0);
+            snprintf(buf, sizeof buf, "%s%.10s", pg * per + i < 7 ? "+" : "", tex_out[id].name);
+            sheet_text(&s, cx, cy + 1, buf, (uint8_t)fgc);
+        }
+        sprintf(name, "review_tex_%dx%d_%d.png", W, H, pg + 1);
+        sheet_save(&s, dir, name);
+        sheet_free(&s);
+    }
+    {
+        int band = (H - 8) / 2 - 9, per2 = 2, sp = (nsky + per2 - 1) / per2, vw = W < SKY_W ? W : SKY_W;
+        int vh = band < SKY_H ? band : SKY_H, x, y;
+        for (pg = 0; pg < sp; pg++) {
+            sheet_new(&s, W, H, (uint8_t)bgc);
+            for (i = 0; i < per2 && pg * per2 + i < nsky; i++) {
+                int id = sky_ids[pg * per2 + i], cy = 2 + i * (vh + 11);
+                const uint8_t *p = sky_pix[sky_out[id].first];
+                /* the band that shows at that size: the lower rows of the sky (the horizon stays in) */
+                for (y = 0; y < vh; y++)
+                    for (x = 0; x < vw; x++) sheet_put(&s, x, cy + 9 + y, p[((SKY_H - vh) * 3 / 4 + y) * SKY_W + x]);
+                sprintf(buf, "%s%s", pg * per2 + i < 3 ? "+" : "", sky_out[id].name);
+                sheet_text(&s, 2, cy + 1, buf, (uint8_t)fgc);
+            }
+            sprintf(name, "review_sky_%dx%d_%d.png", W, H, pg + 1);
+            sheet_save(&s, dir, name);
+            sheet_free(&s);
+        }
+    }
+}
+
+static void review(const char *dir)
+{
+    review_pages(dir, 240, 160);
+    review_pages(dir, 320, 240);
+}
+
 int main(int argc, char **argv)
 {
-    const char *out = NULL, *sheet = NULL;
+    const char *out = NULL, *sheet = NULL, *rev = NULL;
     char outbuf[1024];
     int i, zoom = 2, check = 0;
     for (i = 1; i < argc; i++) {
@@ -712,19 +770,20 @@ int main(int argc, char **argv)
             out = outbuf;
         } else if (!strcmp(argv[i], "--out") && i + 1 < argc) out = argv[++i];
         else if (!strcmp(argv[i], "--sheet") && i + 1 < argc) sheet = argv[++i];
+        else if (!strcmp(argv[i], "--review") && i + 1 < argc) rev = argv[++i];
         else if (!strcmp(argv[i], "--zoom") && i + 1 < argc) zoom = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--check")) check = 1;
         else if (!strcmp(argv[i], "--quiet")) quiet = 1;
         else if (!strcmp(argv[i], "--stats")) verbose = 1;
         else if (!strcmp(argv[i], "--partial")) partial = 1;
         else {
-            fprintf(stderr, "usage: artgen [--out-root DIR | --out FILE] [--sheet DIR [--zoom N]] [--check] [--stats]\n");
+            fprintf(stderr, "usage: artgen [--out-root DIR | --out FILE] [--sheet DIR [--zoom N]] [--review DIR] [--check] [--stats]\n");
             return 2;
         }
     }
     if (zoom < 1) zoom = 1;
     if (zoom > 6) zoom = 6;
-    if (!out && !sheet && !check) {
+    if (!out && !sheet && !rev && !check) {
         fprintf(stderr, "artgen: nothing to do (use --out-root DIR, --out FILE, --sheet DIR or --check)\n");
         return 2;
     }
@@ -741,5 +800,6 @@ int main(int argc, char **argv)
     }
     if (out) write_c(out);
     if (sheet) sheets(sheet, zoom);
+    if (rev) review(rev);
     return 0;
 }
