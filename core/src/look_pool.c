@@ -118,10 +118,14 @@ void look_resolve(const DoomoResident *r, int id, DoomoDeep *out)
     look_resolve_mask(r, id, LV_ALL, out);
 }
 
-/* the run's own part of a cache key: deep_hash of what the run resolves to (the PS1's resident bytes) */
+/* the run's own part of a cache key: deep_hash of what the run resolves to (the PS1's resident bytes).
+ * (G2-CO) No run for the id resolves to the zero set, whose deep_hash is 0: every chibi a frame asks for
+ * (the concert, 27-30 a frame) skips the resolve and the hash then. */
 uint32_t look_run_hash(int id, int chibi)
 {
     DoomoDeep d;
+    int at;
+    if (id < 0 || id > 1023 || !rec_find(id, RUN_DEEP, &at)) return 0;
     look_resolve_mask(NULL, id, chibi ? LV_CHIBI : LV_ALL, &d);
     return deep_hash(&d, chibi);
 }

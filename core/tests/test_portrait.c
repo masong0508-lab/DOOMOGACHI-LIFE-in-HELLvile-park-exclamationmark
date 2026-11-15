@@ -847,3 +847,25 @@ TEST(bodyspr_hint_follows_every_input)
     for (i = 0; i < NID; i++) look_pool_drop(ids[i]);
     portrait_cache_reset();
 }
+
+/* (G2-CO) look_run_hash skips the resolve for an id with no run: the value is still the hash of what the id
+ * resolves to, with and without runs (its own and other ids'), for chibis and full looks */
+TEST(look_run_hash_is_the_hash_of_the_resolved_run)
+{
+    static const uint8_t run_a[2] = { DF_BLUSH2, 3 }, run_b[2] = { DF_LASH, 2 };
+    int id, c, ok = 1;
+    CHECK(look_pool_put(7, RUN_DEEP, run_a, 2));
+    CHECK(look_pool_put(9, RUN_DEEP, run_b, 2));
+    for (id = -2; id < 40; id++)
+        for (c = 0; c < 2; c++) {
+            DoomoDeep d;
+            look_resolve_mask(NULL, id, c ? LV_CHIBI : LV_ALL, &d);
+            if (look_run_hash(id, c) != deep_hash(&d, c)) ok = 0;
+        }
+    CHECK(ok);
+    CHECK(look_run_hash(7, 1) != 0 && look_run_hash(9, 0) != 0);    /* the runs are seen */
+    CHECK(look_run_hash(8, 1) == 0);
+    look_pool_drop(7);
+    look_pool_drop(9);
+    CHECK(look_run_hash(7, 1) == 0);
+}
