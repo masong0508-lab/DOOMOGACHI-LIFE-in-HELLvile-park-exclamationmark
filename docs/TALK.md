@@ -552,8 +552,8 @@ talk_gen_exchange(&c, &u, &x, NULL);    /* the gate, then 1-4 lines: x.line[k].w
   and the sim decide; a no marks the target refused today).
 * **What it costs**: no static RAM; `TalkConv` 128 B (the conversation,
   T6 keeps it), `TalkLine` 104 B, `TalkExchange` 420 B. Stack, measured
-  with `-fstack-usage` on MIPS (`-Os -march=r3000`): `gen_line` 1,480 B
-  (the five part buffers), `talk_gen_line` 456 B (the per-line context),
+  with `-fstack-usage` on MIPS (`-Os -march=r3000`): `gen_line` 1,536 B
+  (the five part buffers; 1,472 B before TM2c, 6m), `talk_gen_line` 592 B (456 B before TM2c) (the per-line context),
   `exchange` 632 B, 264 B per template nesting level (at most 5) and the
   S3 lint's 440 + 304 B: about 5 KB in the worst case. Everything is read
   through `talk_db_read` (SPU RAM on the PS1; section 7 has the count).
@@ -1101,10 +1101,10 @@ the people strip, and that a quick reply by pointer and by pad say the same line
 
 Owner decision 2026-11-15 (`OWNER_DECISIONS.md`, "TALK DYNAMIC, MULTILEVEL, PERSONALITY SCREEN"): the
 line bank is **frozen** (8,891 alternatives in 3,189 rules); replies are composed in layers instead of
-authored. **Not built yet**: the spec is [docs/design/talk/TALK_MULTILEVEL.md](design/talk/TALK_MULTILEVEL.md),
+authored. **Layers a and c are built (TM2c, 6m)**; the rest is not: the spec is [docs/design/talk/TALK_MULTILEVEL.md](design/talk/TALK_MULTILEVEL.md),
 cut into five one-day packages TM2a to TM2e.
 
-* **Four layers, one plan.** A `TalkPlan` (13 B, on the stack) is made after the gate says pass:
+* **Four layers, one plan.** A `TalkPlan` (11 B, on the stack) is made after the gate says pass:
   (a) the reaction kind (accept, agree, deny, refuse, deflect, counter, ask back), chosen from the act,
   the stance, the relationship, the mood, the effective voice, the traits and the liked and disliked
   topic roots, and mapped onto the reply acts the rules already carry (no new lines); (b) the content:
@@ -1452,14 +1452,23 @@ and refuse, `AGREE` serves accept and agree.
 core part only. No rule left: next best kind; none left: the filter drops, the line is made as
 before and `TPL_MISS` is set. The census counts misses: 3 of 19,305 answer lines (0.02%).
 
-A filter on every line costs variety: Surface uniqueness in the smoke census fell from 85.7% to
-81.7% (restricting the pool of alternatives makes repeats likelier). So a kind **binds** only when
-it wins by a margin: 2 points for questions and requests (the `ASK` class: an opinion, a favour, a
-fact; free in the census) and 8 points for every other act (only a decided stance, a
-relationship or a trait gets there). Below the margin the plan is **open** (`TPL_OPEN`): the kind
-is named and recorded but the generator does not filter by it. 4,178 of 19,305 answer lines bind
-(22%). The two constants are `PLAN_MARGIN_ASK` and `PLAN_MARGIN` in `talk_gen.c`; each point of
-margin you lower buys more coherence for about 0.1 point of Surface. A line can also use the
+A filter on every line costs variety: Surface uniqueness in the smoke census falls from 85.7% to
+about 82% (restricting the pool of alternatives makes repeats likelier). So a kind **binds** only
+where it matters. (1) By margin: 2 points for questions (the `ASK` class: an opinion, a fact; free
+in the census) and 8 points for every other act. (2) The **request acts** (invite, favour, ask out,
+give) bind whenever the plan overrides the natural reply (a rival says no) or the lean, the
+relationship or a trait pushes the kind by 2 points or more (`PUSH_BIND` in `talk_plan.c`):
+a yes or a no is the whole answer there. Below that the plan is **open** (`TPL_OPEN`): the kind is
+named and recorded but the generator does not filter by it. About 25% of answer lines bind.
+Review finding fixed (TM2c land): the first version bound only 22% and the request acts were
+mostly open, so a rival said yes to an invitation in 47% of the lines while the plan said no. Line
+level now (`plan_relationship_line`, 600 lines each, a bare invitation or favour): rival says yes in
+8%, best friend in 100%. The other acts stay advisory by design: the plan colours them through
+the bound cases and the preview, and the bank needs more alternatives per kind (bank work, outside this
+frozen-bank wave) before a filter on every line is free. Constants: `PLAN_MARGIN_ASK`, `PLAN_MARGIN`
+(`talk_gen.c`), `PUSH_BIND` (`talk_plan.c`). Note: when the soft filter walks to the next kind,
+`TalkTrace.plan.kind` is the kind that was served (the first choice is lost), and a `kind=` guard
+later in the same line sees the served kind. A line can also use the
 kind itself: the new guard `kind=accept|agree|deny|refuse|deflect|counter|askback` holds when the
 plan has that kind (a rule that must say "no" only when the plan says no).
 
@@ -1500,10 +1509,10 @@ the stance; two different trait sets give a different line in 44 of 90 previews.
 
 ### Tests and measurements
 
-`test_talk_plan.c` (12 tests): the pure function (hard rules, the reason rule, the order),
+`test_talk_plan.c` (13 tests): the pure function (hard rules, the reason rule, the order),
 stance (lean +: 1,871 of 1,871 accept or agree; lean -: 1,163 of 1,219 deny or refuse),
 trait bias (kind accepts an invitation 100% against mean 53%; lazy refuses 91% against ambitious
-36%), relationship (rival accepts 3%, best friend 100%), sincere bypass (grief, safety, unknown,
+36%), relationship (plan: rival accepts 3%, best friend 100%; produced lines for invitations and favours: rival says yes 8%, best friend 100%), sincere bypass (grief, safety, unknown,
 pet, gate refusal: no plan), kid room (no cool reply act in 1,500 lines; 5 edgy traits x 4 stages
 x 13 acts change neither plan, voice nor text), determinism, the guards `kind=` and `trait=` in the
 probe grammar `core/tests/talk_gen/plan.tlk`, the soft filter counting a miss, the effective voice,
@@ -1512,8 +1521,8 @@ very first line of a fresh town can differ from the next identical call.
 
 | | base `04f41ef5` | with TM2c |
 |---|---|---|
-| smoke census Surface / Skeleton / Meaning (distinct of 20,000) | 17,067 / 17,008 / 5,126 | 17,101 / 17,034 / 5,051 |
-| conversations distinct / Q5 repeats | 1,000 / 3 | 1,000 / 1 |
+| smoke census Surface / Skeleton / Meaning (distinct of 20,000) | 17,067 / 17,008 / 5,126 | 17,094 / 17,033 / 5,057 |
+| conversations distinct / Q5 repeats | 1,000 / 3 | 1,000 / 2 |
 | quality failures, S3 hits | 0, 0 | 0, 0 (Q8a 0, Q8c 0) |
 | soft-filter misses | | 3 of 19,305 answer lines |
 | MIPS `talk_gen.o` `.text` (gcc -O2, r3000) | 26,664 B | 29,704 B |
@@ -1521,7 +1530,7 @@ very first line of a fresh town can differ from the next identical call.
 | stack: `talk_gen_line` + `gen_line` (MIPS) | 456 + 1,472 B | 592 + 1,536 B |
 | GBA `.text` / `.rodata` (ROM) | 1,486,136 / 7,604,336 | 1,489,944 / 7,604,484 |
 | GBA `.iwram` / `.iwram_bss` / `.bss` / `.data` | 11,272 / 4,088 / 249,084 / 816 | unchanged |
-| PS1 EXE with the boot FMV, below the stack top | PS1_BASE | PS1_MINE |
+| PS1 EXE with the boot FMV, below the stack top | 72,336 B (`_end` 0x801ee570) | 72,336 B (`_end` 0x801ee570), identical |
 
 The stack of one line grows by 200 B (`Gen` carries the plan and the trait set); the generator's
 budget is about 5 KB. Talk is not linked on the PS1 yet, so the PS1 cost is 0 B.

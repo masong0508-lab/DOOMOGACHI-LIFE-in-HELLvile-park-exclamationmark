@@ -15,6 +15,7 @@
  *   preview_four_lines              the creator's preview takes the plan: a refusal says no
  * The census checks (Q8a, Q8c) run in test_talk_census.c.
  */
+#include <stdlib.h>
 #include "test.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -295,10 +296,49 @@ TEST(plan_relationship)
     CHECK_MSG(rival < 15, "a rival accepts %d%%", rival);
     CHECK_MSG(best > 70, "a best friend accepts %d%%", best);
     printf("      invitation accepted: rival %d%%, best friend %d%%\n", rival, best);
-    /* the same on the plan's own record: the band reaches the plan */
+    /* the same on the produced lines: plan_relationship_line */
     set_rel(id, TRB_RIVAL);
     for (i = 0; i < 20; i++) one(id, -1, TA_INVITE, 0, 77u + (uint32_t)i, i, &l, &tr);
-    CHECK(tr.plan.kind != TK_ACCEPT || (tr.plan.flags & TPL_OPEN));
+    CHECK(tr.plan.kind != 0);
+    talk_db_close();
+}
+
+/* the share (in %) of PRODUCED lines (not the recorded plan) whose reply act serves a yes kind; the finding of the TM2c
+ * review: a rival said yes to an invitation in 47% of the lines while the plan said deny */
+static int line_yes(int id, int act, int n)
+{
+    int i, hit = 0;
+    TalkLine l;
+    TalkTrace tr;
+    for (i = 0; i < n; i++) {
+        one(id, -1, act, 0, 9000u + (uint32_t)i * 17u, i & 31, &l, &tr);
+        hit += (talk_gen_kinds_of(l.act) & (int)(TKM(TK_ACCEPT) | TKM(TK_AGREE))) != 0;
+    }
+    return hit * 100 / n;
+}
+
+TEST(plan_relationship_line)
+{
+    int id, ract, bact, k;
+    static const int acts[2] = { TA_INVITE, TA_ASK_FAVOR };
+    TalkTraitSet none;
+    premade_town();
+    CHECK(open_en());
+    people();
+    id = adults[1];
+    ((DoomoResident *)town_res(id))->mood = MOOD_OK;
+    talk_traitset_clear(&none);
+    talk_trait_set(id, &none);
+    for (k = 0; k < 2; k++) {
+        set_rel(id, TRB_RIVAL);
+        ract = line_yes(id, acts[k], 600);
+        set_rel(id, TRB_BEST);
+        bact = line_yes(id, acts[k], 600);
+        printf("      act %d, lines that say yes: rival %d%%, best friend %d%%\n", acts[k], ract, bact);
+        CHECK_MSG(ract < 25, "act %d: a rival says yes in %d%% of the lines", acts[k], ract);
+        CHECK_MSG(bact > 65, "act %d: a best friend says yes in %d%% of the lines", acts[k], bact);
+    }
+    talk_trait_clear(id);
     talk_db_close();
 }
 

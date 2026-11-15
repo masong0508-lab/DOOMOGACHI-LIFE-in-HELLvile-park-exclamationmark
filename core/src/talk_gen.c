@@ -389,8 +389,9 @@ int talk_gen_fact(int id, int cb, uint16_t *val)
 /* ---- the per-line context --------------------------------------------- */
 /* TM2c: a kind binds (filters the core) when it wins by this many points. Questions and requests (the ASK acts: an
  * opinion, a favour, a fact) bind from 2: it costs nothing measurable; every other act binds from 8, so only a
- * stance, a relationship or a trait that really decides binds. A filter on every line costs 4 points of Surface
- * uniqueness in the smoke census (docs/TALK.md 6m has the table). */
+ * stance, a relationship or a trait that really decides binds. The request acts (invite, favour, ask out, give) bind
+ * whenever the plan overrides the natural reply or something pushes it (talk_plan.c). A filter on every line costs
+ * 3 to 4 points of Surface uniqueness in the smoke census (docs/TALK.md 6m has the table). */
 #define PLAN_MARGIN_ASK 2
 #define PLAN_MARGIN 8
 #define KF_KIND 1
