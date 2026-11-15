@@ -208,7 +208,7 @@ void mg_hitstop(int ticks);
 void mg_fx_update(void);
 void mg_fx_draw(void);
 void mg_fx_clear(void);
-int  mg_fx_live(void);                      /* live particles (tests)     */
+int  mg_fx_live(void);                      /* live particles (tests, the results hold) */
 /* A cute splat (GORE_CUTE: confetti + hearts; brutal: red drops). */
 void mg_splat(int x, int y, int n);
 

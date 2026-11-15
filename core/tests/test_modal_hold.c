@@ -13,6 +13,7 @@
 #include "test.h"
 #include "../src/fp_int.h"
 #include "../src/lib_int.h"
+#include "../src/mg.h"
 
 #define NF 150
 
@@ -154,6 +155,35 @@ TEST(modal_hold_fair_title_card)
     }
     CHECK_MSG(!a.held[40] && a.held[41], "fair: the tier change was not drawn in full, then held");
     CHECK_MSG(held > 70, "fair: only %d of %d ticks held", held, NF);
+}
+
+/* ---- (S2-4b) a fair game's results card: popped, with no confetti left, it holds the dimmed playfield and repaints only
+ * its rows from the score down (the score's count, the medal, the reward, the buttons); a press moves the selection ------- */
+static void results_setup(void)
+{
+    int f;
+    fp_new_island(TOWN_POP_PREMADE, 4242);
+    scene_set(&SCENE_MG_WHACK, 1 | MG_ARG_AUTOSTART | MG_ARG_AUTOPLAY);
+    for (f = 0; f < 4000 && mg.phase != MGP_RESULTS; f++) {
+        plat_begin_frame();
+        doomo_frame(0);
+        plat_end_frame();
+    }
+    CHECK_MSG(mg.phase == MGP_RESULTS, "results: the round did not end in %d ticks", f);
+}
+
+static uint32_t results_pad(int f)
+{
+    return f == 120 ? BTN_RIGHT : 0;                   /* Retry -> Leave */
+}
+
+TEST(modal_hold_fair_results_card)
+{
+    Rect r;
+    int big = mg_big(), w = big ? 240 : 200, h = big ? 180 : 140;
+    /* the window's rect without its top 17 rows (compare() looks 4 px inside it: the rows results_rows() repaints) */
+    r.w = w; r.h = h - 10; r.x = (mg_w() - w) / 2; r.y = (mg_h() - h) / 2 + 5 + 13;
+    compare("results", results_setup, results_pad, r, 30);
 }
 
 /* ---- the house: the Catalog over the room (the HUD bands repaint, the room is the held frame) ----------------------- */

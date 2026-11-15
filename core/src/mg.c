@@ -520,19 +520,66 @@ static void draw_end(void)
     if (t > 10 && t < 40 && (t & 3) == 0) mg_fx(MGFX_STAR, mg_between(10, W - 10), y + mg_between(-8, 26), 0, -8, PAL_WHITE, 10);
 }
 
-static void draw_results(void)
+/* the results card's window */
+static void results_box(int *x, int *y, int *w, int *h)
+{
+    int big = mg_big();
+    *w = big ? 240 : 200;
+    *h = big ? 180 : 140;
+    *x = (mg_w() - *w) / 2;
+    *y = (mg_h() - *h) / 2 + 5;
+}
+
+#if !defined(DOOMO_PLATFORM_PS1)
+/* (S2-4b) the rows of the card that change from tick to tick: the window's body from the big score down (the title
+ * pill, the game's name and the gloss band with its glint above them stay as they are on a held frame); x 4 px in
+ * from the window's sides (ui_window_rows' rule) */
+#define MG_RES_ROW0   17
+/* ui_pop_scale()'s bounce takes 12 ticks (ui_draw.c): from then on the window is its final rect */
+#define MG_RES_POPPED 12
+static void results_rows(int *x, int *y, int *w, int *h)
+{
+    results_box(x, y, w, h);
+    *x += 4;
+    *w -= 8;
+    *y += MG_RES_ROW0;
+    *h -= MG_RES_ROW0 + 1;
+}
+
+/* the card is fully popped and nothing outside it moves: no particle (the confetti, the END stars), no shake, no flash
+ * (the score pops live 34 ticks and are only made in play: END's 56 ticks see them out) */
+static int results_still(void)
+{
+    return mg.phase == MGP_RESULTS && mg.t >= MG_RES_POPPED && !mg_fx_live() && !mg.shake && !mg.ox && !mg.oy &&
+           !mg.flash_t;
+}
+#endif
+
+/* held = 1 (S2-4b, GBA): a held tick (ui_modal_hold), only the rows results_rows() covers are drawn */
+static void draw_results(int held)
 {
     const MgGame *g = mg.g;
-    int W = mg_w(), H = mg_h(), big = mg_big(), t = mg.t;
-    int w = big ? 240 : 200, h = big ? 180 : 140, x = (W - w) / 2, y = (H - h) / 2 + 5;
+    int W = mg_w(), H = mg_h(), big = mg_big(), t = mg.t, w, h, x, y;
     int st = mg.hell ? WIN_HELL : WIN_CREAM, ly, m;
     uint8_t tc = ui_style_text(st);
     char buf[40];
     static const char *const mname[4] = { "No medal yet", "BRONZE MEDAL!", "SILVER MEDAL!", "GOLD MEDAL!" };
-    plat_shade_rect(0, 0, W, H, 9);
-    if (!ui_window_pop(x, y, w, h, st, t)) return;
-    ui_title(W / 2, y - 7, "RESULTS", mg.hell ? WIN_HELL : WIN_CUTE);
-    ui_text_center(W / 2, y + 9, g->title, tc);
+    results_box(&x, &y, &w, &h);
+#if !defined(DOOMO_PLATFORM_PS1)
+    if (held) {
+        int rx, ry, rw, rh;
+        results_rows(&rx, &ry, &rw, &rh);
+        ui_window_rows(x, y, w, h, st, rx, rx + rw, ry, ry + rh);
+    } else
+#else
+    (void)held;
+#endif
+    {
+        plat_shade_rect(0, 0, W, H, 9);
+        if (!ui_window_pop(x, y, w, h, st, t)) return;
+        ui_title(W / 2, y - 7, "RESULTS", mg.hell ? WIN_HELL : WIN_CUTE);
+        ui_text_center(W / 2, y + 9, g->title, tc);
+    }
     doomo_snprintf(buf, sizeof(buf), "%d", (int)mg.shown);
     {
         int sc = big ? 4 : 3;
@@ -840,7 +887,23 @@ void mg_scene_draw(void)
 #endif
         return;
     }
+#if !defined(DOOMO_PLATFORM_PS1)
+    /* (S2-4b, pixel-changing; GBA only, as S2-1's title card) the results card, fully popped with nothing moving
+     * outside it, holds the dimmed playfield under it: only the card's rows from the score down repaint (the booth's
+     * idle motion under the dim, the title pill's sparkles and the window's glint stand still). Any other phase
+     * releases the title card's hold (another key). */
+    {
+        int rx, ry, rw, rh;
+        results_rows(&rx, &ry, &rw, &rh);
+        if (ui_modal_hold(&mg.shown, results_still(), rx, ry, rw, rh)) {
+            draw_results(1);
+            ui_modal_hold_end();
+            return;
+        }
+    }
+#else
     ui_modal_hold(&mg, 0, 0, 0, 0, 0);     /* the card is gone: release its hold */
+#endif
 #if !defined(DOOMO_PLATFORM_PS1)
     if (!mg_kept_draw())
 #endif
@@ -854,9 +917,12 @@ void mg_scene_draw(void)
     case MGP_READY: draw_ready(); break;
     case MGP_PAUSE: draw_pause(); break;
     case MGP_END: draw_end(); break;
-    case MGP_RESULTS: draw_results(); mg_fx_draw(); break;
+    case MGP_RESULTS: draw_results(0); mg_fx_draw(); break;
     default: break;
     }
+#if !defined(DOOMO_PLATFORM_PS1)
+    ui_modal_full(&mg.shown, results_still());
+#endif
 }
 
 /* ---- the booths on the island ------------------------------------------------ */
