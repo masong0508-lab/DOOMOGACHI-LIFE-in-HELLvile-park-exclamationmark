@@ -890,6 +890,69 @@ static void talk_leave(void)
     }
 }
 
+/* who you speak to (SELECT, or a click on a name): the page that shows it is built again */
+static void change_to(int to)
+{
+    T.to = (int8_t)to;
+    if (T.page == PG_MORE) { int sel = T.list.sel; build_more(); T.list.sel = sel; }
+    else if (T.page == PG_MAIN) {
+        int c;
+        build_main();
+        /* You turned to someone else: the quick replies answer what was said before, so the cursor
+         * waits on the first category instead. A kind word to them is then 4 presses (SELECT, down to
+         * "Be nice", A, A): the budget of docs/design/talk/TALK_DESIGN.md 2.3 (T8). */
+        for (c = 0; c < T.nrows; c++)
+            if (T.row[c].kind == K_CAT) { T.list.sel = c; break; }
+    }
+}
+
+/* the panel: header 16 px + the list rows (the draw and the pointer share it) */
+static int layout(int *rows_out)
+{
+    int sh = plat_screen_h(), rows = 6, ph = 18 + rows * UI_LIST_ROW_H;
+    if (ph > sh - 26) { ph = sh - 26; rows = (ph - 18) / UI_LIST_ROW_H; }
+    T.list.visible = rows < 1 ? 1 : rows;
+    if (rows_out) *rows_out = rows;
+    return sh - ph;
+}
+
+#if DOOMO_POINTER
+/* T9: a click is exactly the pad press it stands for (docs/TALK.md "The pointer"):
+ *   a name in the people strip   SELECT until you speak to them (only with more than one in the room)
+ *   a row of the panel           the row is selected and A is pressed (quick reply, category, act,
+ *                                typed line, topic, invite, Options, Say goodbye)
+ *   the panel's header           B on a lower page (back to the replies); nothing on the main page, so a stray
+ *                                click never says goodbye
+ * Returns 1 when the click was used. Never needed: the pad does all of it. */
+static int pointer_click(int x, int y)
+{
+    int py = layout(NULL), sw = plat_screen_w(), n = T.s.nparts > 0 ? T.s.nparts : 1;
+    if (y < 24) {
+        int i = x / (sw / n);
+        if (i >= n) i = n - 1;
+        if (T.n > 1 && i < T.n && i != T.to && !(T.s.part[i].flags & TPF_LEFT)) change_to(i);
+        return 1;
+    }
+    if (y < py) return 0;
+    if (y < py + 17) {
+        if (T.page != PG_MAIN) { T.idle = 0; T.pending = 0; build_main(); }
+        return 1;
+    }
+    if (ui_list_click(&T.list, 6, py + 17, sw - 12, x, y) == UI_SELECT) { T.idle = 0; activate(T.list.sel); }
+    return 1;
+}
+
+/* a small arrow where the pointer is (only while a pointer is present) */
+static void pointer_draw(void)
+{
+    const UiStyle *st = ui_style(WIN_CUTE);
+    int x, y, i;
+    if (!input_pointer(&x, &y)) return;
+    for (i = 0; i < 7; i++) plat_rect(x + 1, y + 1 + i, i + 1, 1, st->fill);
+    for (i = 0; i < 7; i++) plat_rect(x, y + i, i + 1, 1, st->text);
+}
+#endif
+
 static void talk_update(void)
 {
     int r;
@@ -913,19 +976,12 @@ static void talk_update(void)
         return;
     }
     if (btn_pressed(BTN_SELECT) && T.n > 1) {
-        T.to = (int8_t)(T.to + 1 >= T.n ? -1 : T.to + 1);
-        if (T.page == PG_MORE) { int sel = T.list.sel; build_more(); T.list.sel = sel; }
-        else if (T.page == PG_MAIN) {
-            int c;
-            build_main();
-            /* You turned to someone else: the quick replies answer what was said before, so the cursor
-             * waits on the first category instead. A kind word to them is then 4 presses (SELECT, down to
-             * "Be nice", A, A): the budget of docs/design/talk/TALK_DESIGN.md 2.3 (T8). */
-            for (c = 0; c < T.nrows; c++)
-                if (T.row[c].kind == K_CAT) { T.list.sel = c; break; }
-        }
+        change_to(T.to + 1 >= T.n ? -1 : T.to + 1);
         return;
     }
+#if DOOMO_POINTER
+    { int cx, cy; if (input_pointer_click(&cx, &cy) && pointer_click(cx, cy)) return; }
+#endif
     r = ui_list_update(&T.list);
     if (r == UI_SELECT) { T.idle = 0; activate(T.list.sel); }
     else if (r == UI_CANCEL) {
@@ -975,18 +1031,53 @@ static void talk_draw(void)
         if (p->flags & TPF_LEFT) ui_text_clip(x, 14, "(left)", st->text_dim, x, x + colw - 8);
         else ui_bar(x, 15, colw - 14, 5, p->engage, 100, i == T.to ? st->accent : st->accent_d);
     }
-    /* the panel: header 16 px + 6 list rows */
-    rows = 6;
-    ph = 18 + rows * UI_LIST_ROW_H;
-    if (ph > sh - 26) { ph = sh - 26; rows = (ph - 18) / UI_LIST_ROW_H; }
-    T.list.visible = rows < 1 ? 1 : rows;
-    py = sh - ph;
+    py = layout(&rows);
+    ph = sh - py;
     ui_window(0, py, sw, ph, WIN_CUTE);
     mw = ui_text_width(mood);
     ui_text_clip(sw - 8 - mw, py + 5, mood, st->text_dim, sw - 8 - mw, sw - 8);
     ui_text_clip(8, py + 5, panel_title(ttl, (int)sizeof ttl), st->text, 8, sw - 12 - mw);
     ui_list_draw(&T.list, 6, py + 17, sw - 12, WIN_CUTE);
+#if DOOMO_POINTER
+    pointer_draw();
+#endif
 }
+
+#if DOOMO_POINTER
+/* T9: what the screen shows, for the runner's expect-talk and the pointer test (native only) */
+int talk_scene_view(int *page, int *sel, int *top, int *to, int *nrows, int *busy, char *you)
+{
+    if (!T.active) return 0;
+    if (page) *page = T.page;
+    if (sel) *sel = T.list.sel;
+    if (top) *top = T.list.top;
+    if (to) *to = T.to;
+    if (nrows) *nrows = T.nrows;
+    if (busy) *busy = T.busy;
+    if (you) doomo_snprintf(you, TALK_SHOWN_MAX, "%s", T.you);
+    return 1;
+}
+
+/* the text of row i (what the list draws), "" past the end */
+const char *talk_scene_row(int i, char *buf48) { return row_text(i, buf48); }
+
+/* the row whose text starts with `prefix`, or -1 */
+int talk_scene_find(const char *prefix)
+{
+    char buf[48];
+    int i, n = (int)strlen(prefix);
+    for (i = 0; i < T.nrows; i++)
+        if (strncmp(row_text(i, buf), prefix, (size_t)n) == 0) return i;
+    return -1;
+}
+
+/* the player's name of the people strip is drawn at the column x of person i: where to click */
+int talk_scene_person_x(int i)
+{
+    int sw = plat_screen_w(), n = T.s.nparts > 0 ? T.s.nparts : 1;
+    return (sw / n) * i + 6 + 4;
+}
+#endif
 
 const DoomoScene SCENE_TALK = { "TALK", talk_enter, talk_leave, talk_update, talk_draw, 1 };
 

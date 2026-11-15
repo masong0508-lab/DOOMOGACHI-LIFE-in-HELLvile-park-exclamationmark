@@ -7,6 +7,7 @@
 #define DOOMO_UI_H
 
 #include "types.h"
+#include "input.h"                      /* (T9) DOOMO_POINTER */
 #include "platform.h"                   /* (S2-2) plat_screen_w/h for pause_menu_rect */
 
 enum { UI_NONE = 0, UI_SELECT, UI_CANCEL, UI_CHANGED, UI_LEFT, UI_RIGHT };
@@ -41,6 +42,10 @@ typedef struct UiList {
 } UiList;
 int  ui_list_update(UiList *l);         /* UI_NONE/SELECT/CANCEL/CHANGED */
 void ui_list_draw(const UiList *l, int x, int y, int w, int style);
+#if DOOMO_POINTER       /* T9: pointer hit tests (input.h); a console build has none of it */
+int  ui_list_hit(const UiList *l, int x, int y, int w, int px, int py);     /* row under the point, or -1 */
+int  ui_list_click(UiList *l, int x, int y, int w, int px, int py);         /* UI_SELECT for a row, as A does */
+#endif
 
 /* Modal scenes (push themselves; callbacks run after they pop). */
 void ui_confirm(const char *question, void (*done)(int yes));

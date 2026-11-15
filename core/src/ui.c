@@ -829,6 +829,49 @@ int ui_list_update(UiList *l)
     return UI_NONE;
 }
 
+#if DOOMO_POINTER
+/* T9: a list with more rows than fit has a scroll bar on its right edge (ui_list_draw); a click there is
+ * the pad's L (the upper half) or R (the lower half): one page up or down */
+#define LIST_BAR_HIT 8
+static int list_has_bar(const UiList *l) { return l->count > (l->visible > 0 ? l->visible : 1); }
+
+/* T9: the row of the list drawn at (x, y, w) that the point (px, py) is on, or -1 */
+int ui_list_hit(const UiList *l, int x, int y, int w, int px, int py)
+{
+    int vis = l->visible > 0 ? l->visible : 1;
+    int rows = DOOMO_MIN(vis, l->count - l->top);
+    if (rows <= 0 || px < x || px >= x + w - (list_has_bar(l) ? LIST_BAR_HIT : 0) ||
+        py < y || py >= y + rows * UI_LIST_ROW_H) return -1;
+    return l->top + (py - y) / UI_LIST_ROW_H;
+}
+
+/* T9: a click at (px, py) on the list drawn at (x, y, w), answered like the pad: on a row, that row becomes the
+ * selection and A is pressed (UI_SELECT, or the locked row's error sound and UI_NONE); on the scroll bar, L or
+ * R (UI_CHANGED); anywhere else UI_NONE. */
+int ui_list_click(UiList *l, int x, int y, int w, int px, int py)
+{
+    int vis = l->visible > 0 ? l->visible : 1;
+    int idx = ui_list_hit(l, x, y, w, px, py);
+    if (l->count > 0 && list_has_bar(l) && px >= x + w - LIST_BAR_HIT && px < x + w &&
+        py >= y && py < y + vis * UI_LIST_ROW_H) {
+        int old = l->sel;
+        if (py < y + vis * UI_LIST_ROW_H / 2) l->sel = DOOMO_MAX(0, l->sel - vis);
+        else l->sel = DOOMO_MIN(l->count - 1, l->sel + vis);
+        if (l->sel < l->top) l->top = l->sel;
+        if (l->sel >= l->top + vis) l->top = l->sel - vis + 1;
+        l->top = DOOMO_CLAMP(l->top, 0, DOOMO_MAX(0, l->count - vis));
+        if (l->sel == old) return UI_NONE;
+        audio_sfx(SFX_CURSOR);
+        return UI_CHANGED;
+    }
+    if (idx < 0) return UI_NONE;
+    l->sel = idx;
+    if (ui_list_locked_fn && ui_list_locked_fn(idx)) { audio_sfx(SFX_ERROR); return UI_NONE; }
+    audio_sfx(SFX_SELECT);
+    return UI_SELECT;
+}
+#endif
+
 void ui_list_draw(const UiList *l, int x, int y, int w, int style)
 {
     const UiStyle *st = ui_style(style);

@@ -627,6 +627,18 @@ typedef struct TalkConv {
     uint8_t  mem_flags[TALK_PARTS_MAX];          /* talk memory (T6): TMF_*           */
 } TalkConv;
 
+/* ---- T9: the Talk screen's pointer (core/src/talk_scene.c; docs/TALK.md "The pointer") ------------
+ * Only where DOOMO_POINTER (input.h): a console build declares and links none of it. The view is for the
+ * runner's expect-talk and the pointer test. talk_scene_view: 0 when no Talk screen is open; page 0 replies,
+ * 1 acts of a category, 2 topics, 3 who joins in, 4 options. talk_scene_find: the row starting with a text, -1. */
+#include "input.h"
+#if DOOMO_POINTER
+int talk_scene_view(int *page, int *sel, int *top, int *to, int *nrows, int *busy, char *you);
+int talk_scene_find(const char *prefix);
+const char *talk_scene_row(int i, char *buf48);
+int talk_scene_person_x(int i);
+#endif
+
 /* ---- T6: talk memory (core/src/talk_save.c; docs/TALK.md 6e) ------------------
  * What a resident remembers of the player's talks: the 'TALK' chunk's table
  * (TALK_MEM_MAX entries, the most recently used first; a 25th person evicts

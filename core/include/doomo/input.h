@@ -83,6 +83,29 @@ uint32_t input_stick_dpad(int lx, int ly);
 void input_set_feel(int on);
 int  input_feel(void);
 
+/* ---- T9: a pointer (mouse, touch), add-only ------------------------------------
+ * A platform with a pointer (PLATF_POINTER, plat_ext.h) calls input_set_pointer() before doomo_frame(),
+ * every tick: present 0/1, the position in SCREEN pixels (0..plat_screen_w/h), down = the primary button.
+ * A platform that has none never calls it, and nothing changes: no tick is ever a click. A click is the
+ * tick the button went down (input_pointer_click); input_eat() swallows it like a button press.
+ * The pointer is never required: every screen that reads it does exactly what the matching pad press does.
+ * DOOMO_POINTER 0 (GBA, PS1, Dreamcast: no source yet) compiles all of it out: the calls below are
+ * constants and the screens' pointer code is #if'd away, so a console build links not one byte of it. */
+#if defined(DOOMO_PLATFORM_GBA) || defined(DOOMO_PLATFORM_PS1) || defined(DOOMO_PLATFORM_DC)
+#define DOOMO_POINTER 0
+#else
+#define DOOMO_POINTER 1
+#endif
+#if DOOMO_POINTER
+void input_set_pointer(int present, int x, int y, int down);
+int  input_pointer(int *x, int *y);          /* 1 = a pointer is present (and where) */
+int  input_pointer_click(int *x, int *y);    /* 1 = the primary button went down this tick (and where) */
+#else
+#define input_set_pointer(p, x, y, d) ((void)0)
+#define input_pointer(x, y)           0
+#define input_pointer_click(x, y)     0
+#endif
+
 /* ---- foundation additions ---- */
 void input_reset(void);              /* forget all state (tests, boot)   */
 

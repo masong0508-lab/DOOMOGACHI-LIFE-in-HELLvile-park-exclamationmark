@@ -31,6 +31,11 @@ static int rep_tick(uint32_t h)
 }      /* C3: the last raw mask had DOOMO_INPUT_SYNTH_XY */
 static int8_t   pad_forced = -1; /* C3: input_set_pad() */
 
+#if DOOMO_POINTER                /* T9: the pointer (input.h) */
+static uint8_t p_present, p_down, p_prev_down, p_click;
+static int16_t p_x, p_y;
+#endif
+
 void input_update(uint32_t raw)
 {
     uint32_t b = raw & ((1u << NBTN) - 1);
@@ -53,6 +58,10 @@ void input_update(uint32_t raw)
         else held[i] = 0;
     }
     if (DOOMO_STICKS) flick_update();
+#if DOOMO_POINTER
+    p_click = p_present && p_down && !p_prev_down;     /* T9: the edge */
+    p_prev_down = p_down;
+#endif
 }
 
 int btn_down(uint32_t b) { return !eaten && (cur & b) != 0; }
@@ -186,6 +195,10 @@ void input_reset(void)
     eaten = 0;
     if (DOOMO_STICKS) { fl_held = 0; fl_dir = fl_wait = 0; }
     memset(held, 0, sizeof(held));
+#if DOOMO_POINTER
+    p_present = p_down = p_prev_down = p_click = 0;
+    p_x = p_y = 0;
+#endif
 }
 
 /* ---- C3: button names per pad (input.h btn_name) ------------------------ */
@@ -223,3 +236,28 @@ const char *btn_name(uint32_t b)
         if (b & (1u << i)) return pad_names[input_pad()][i];
     return 0;
 }
+
+#if DOOMO_POINTER
+void input_set_pointer(int present, int x, int y, int down)
+{
+    p_present = present != 0;
+    p_x = (int16_t)DOOMO_CLAMP(x, -32000, 32000);
+    p_y = (int16_t)DOOMO_CLAMP(y, -32000, 32000);
+    p_down = p_present && down != 0;
+}
+
+int input_pointer(int *x, int *y)
+{
+    if (x) *x = p_x;
+    if (y) *y = p_y;
+    return p_present;
+}
+
+int input_pointer_click(int *x, int *y)
+{
+    if (!p_click || eaten) return 0;
+    if (x) *x = p_x;
+    if (y) *y = p_y;
+    return 1;
+}
+#endif

@@ -139,6 +139,7 @@
 #include "../src/ui_internal.h"       /* S2: ui_dialog_debug (expect-text) */
 #include "doomo/lang.h"               /* P0: lang CODE */
 #include "doomo/tips.h"               /* CL4: tips on, expect-tip */
+#include "doomo/talk.h"               /* T9: talk_scene_view (expect-talk) */
 #include "doomo/items.h"              /* M0: item, problem (journey setups) */
 #include "doomo/sim.h"
 #include "doomo/talk.h"             /* T8: talk-* (SCENE_TALK) */
@@ -157,7 +158,10 @@ static int cfg_on;
 static uint8_t cfg_rec[PLAT_CONFIG_MAX];
 static uint32_t cfg_len;
 
-uint32_t plat_features(void) { return cfg_on ? PLATF_CONFIG : 0u; }
+/* T9: the pointer, off until a script says "mouse X Y" (then plat_features() has PLATF_POINTER) */
+static int mouse_on, mouse_x, mouse_y, mouse_down;
+
+uint32_t plat_features(void) { return (cfg_on ? PLATF_CONFIG : 0u) | (mouse_on ? PLATF_POINTER : 0u); }
 
 int plat_config_read(uint8_t *dst, uint32_t cap)
 {
@@ -336,6 +340,7 @@ static void step(int n)
 {
     while (n-- > 0) {
         plat_begin_frame();
+        input_set_pointer(mouse_on, mouse_x, mouse_y, mouse_down);
         doomo_frame(held | input_stick_mask() | (gba_input ? DOOMO_INPUT_SYNTH_XY : 0));
         plat_end_frame();
         if (jr.on) jr_frame();   /* M0 */
@@ -753,6 +758,26 @@ static void run_line(char *line)
         step(1);
         held &= ~b;
         step(1);
+    } else if (strcmp(cmd, "mouse") == 0) {
+        /* T9: "mouse X Y" moves the pointer (screen pixels, one tick; a negative number counts from the right / bottom edge, so one script fits every screen size), "mouse X Y click" also presses the
+         * primary button for one tick and lets go, "mouse off" takes the pointer away */
+        if (argc == 2 && strcmp(argv[1], "off") == 0) {
+            mouse_on = mouse_down = 0;
+            step(1);
+        } else if (argc == 3 || (argc == 4 && strcmp(argv[3], "click") == 0)) {
+            mouse_on = 1;
+            mouse_x = atoi(argv[1]);
+            mouse_y = atoi(argv[2]);
+            if (mouse_x < 0) mouse_x += plat_screen_w();     /* negative: from the right / bottom edge */
+            if (mouse_y < 0) mouse_y += plat_screen_h();
+            mouse_down = argc == 4;
+            jr_press();
+            step(1);
+            mouse_down = 0;
+            step(1);
+        } else {
+            fail("mouse needs X Y [click] or off, got", argc > 1 ? argv[1] : "");
+        }
     } else if (strcmp(cmd, "hold") == 0) {
         uint32_t b = argc > 1 ? button(argv[1]) : 0;
         if (!b) { fail("unknown button", argc > 1 ? argv[1] : ""); return; }
@@ -917,6 +942,26 @@ static void run_line(char *line)
             snprintf(msg, sizeof(msg), "expected the dialogue to say \"%s\" but it says", want);
             fail(msg, d.text && d.text[0] ? d.text : "(nothing)");
         }
+    } else if (strcmp(cmd, "expect-talk") == 0) {
+        /* T9: "expect-talk PAGE [TO]": the Talk screen is on page replies / acts / topics / invite / options
+         * (and speaks to slot TO, -1 everyone); "expect-talk-row TEXT": the selected row starts with TEXT */
+        static const char *const pages[] = { "replies", "acts", "topics", "invite", "options" };
+        int page = -1, sel = 0, top = 0, to = 0, n = 0, busy = 0, k;
+        char you[64];
+        if (!talk_scene_view(&page, &sel, &top, &to, &n, &busy, you)) fail("no Talk screen is open", "");
+        else {
+            const char *want = argc > 1 ? argv[1] : "";
+            for (k = 0; k < 5 && strcmp(want, pages[k]) != 0; k++) {}
+            if (k == 5) fail("expect-talk needs replies, acts, topics, invite or options, got", want);
+            else if (k != page) fail("expected the Talk page", want);
+            if (argc > 2 && atoi(argv[2]) != to) fail("expected to speak to another slot than", argv[2]);
+        }
+    } else if (strcmp(cmd, "expect-talk-row") == 0) {
+        int sel = 0, k;
+        char you[64];
+        const char *want = argc > 1 ? argv[1] : "";
+        if (!talk_scene_view(NULL, &sel, NULL, NULL, NULL, NULL, you)) fail("no Talk screen is open", "");
+        else if ((k = talk_scene_find(want)) < 0 || k != sel) fail("expected the selected Talk row to start with", want);
     } else if (strcmp(cmd, "expect-flag") == 0) {
         int f = argc > 1 ? atoi(argv[1]) : -1, want = argc > 2 ? atoi(argv[2]) : 1;
         if (f < 0 || f > 255) fail("expect-flag needs a flag 0..255, got", argc > 1 ? argv[1] : "");
