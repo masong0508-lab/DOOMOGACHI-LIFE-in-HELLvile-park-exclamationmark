@@ -148,7 +148,7 @@ void et_blit_test(void)
         uint16_t v = (uint16_t)next();
         PAGE_A[k] = v; PAGE_B[k] = v;
     }
-    for (i = 0; i < 6000 && !bad; i++) {
+    for (i = 0; i < 9000 && !bad; i++) {
         DoomoImage im;
         int w = 1 + (int)(next() % (i & 1 ? 40 : 17)), h = 1 + (int)(next() % 14), off = (int)(next() & 3);
         int dens = (int)(next() % 4), scale = (next() % 5) ? 1 : 1 + (int)(next() % 3);
@@ -156,6 +156,7 @@ void et_blit_test(void)
         int x = (int)(next() % 300) - 40, y = (int)(next() % 200) - 25;
         uint32_t color = 1 + next() % 255;
         int j, y0, y1, r;
+        if (i % 3 == 2) { flags = IMG_SILHOUETTE; scale = 1; }   /* (S4-C) a third of the cases: the ARM silhouette loops */
         if (i % 7 == 0) { x = (int)(next() % 8) - 4; } else if (i % 7 == 1) { x = 240 - (int)(next() % 12); }
         for (j = 0; j < w * h; j++) {
             uint32_t v = next();

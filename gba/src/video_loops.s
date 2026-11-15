@@ -461,6 +461,32 @@ r3d_up2:
     b       .Lbl_mdone
     .endm
 
+@ SIL_TAIL loop: BLIT_TAIL with the colour: the pair v (r3) says which pixels are opaque, the pixels written are
+@ the colour (r10; both: one halfword store of colour * 0x101, one: the read-modify-write).
+    .macro SIL_TAIL L
+    cmp     r3, #0
+    beq     8f
+    tst     r3, #0xFF00
+    tstne   r3, #0xFF
+    orrne   r4, r10, r10, lsl #8
+    strneh  r4, [r1], #2
+    cmpne   r1, r2
+    bne     \L
+    cmp     r1, r2
+    beq     .Lbl_mdone
+    tst     r3, #0xFF
+    ldrh    r4, [r1]
+    andne   r4, r4, #0xFF00
+    andeq   r4, r4, #0xFF
+    orrne   r4, r4, r10
+    orreq   r4, r4, r10, lsl #8
+    strh    r4, [r1]
+8:  add     r1, r1, #2
+    cmp     r1, r2
+    bne     \L
+    b       .Lbl_mdone
+    .endm
+
 @ ---------------------------------------------------------------------------
 @ void vid_blit(int x, int y, const DoomoImage *img, int scale, int flags, uint32_t color)
 @ The common case (scale 1, no flip: cached chibis, building sprites, shape
@@ -554,15 +580,22 @@ vid_blit:
     orr     r3, r5, r3, lsl #8
     mov     r5, r4, lsr #8
     BLIT_TAIL .Lbl_od
-.Lbl_sil:                               @ silhouette: opaque pixels become the colour
-    ldrb    r3, [r0], #1
-    ldrb    r4, [r0], #1
-    cmp     r3, #0
-    movne   r3, r10
-    cmp     r4, #0
-    movne   r4, r10, lsl #8
-    orr     r3, r3, r4
-    BLIT_TAIL .Lbl_sil
+.Lbl_sil:                               @ silhouette: opaque pixels become the colour (S4-C: a halfword a pair,
+    tst     r0, #1                      @ the pair's two pixels tested in place; the old loop read two bytes and
+    bne     .Lbl_siodd                  @ built the pair first: 22 cycles a pair, now ~13)
+.Lbl_sial:                              @ aligned source
+    ldrh    r3, [r0], #2
+    SIL_TAIL .Lbl_sial
+.Lbl_siodd:                             @ odd source: as .Lbl_odd
+    sub     r0, r0, #1
+    ldrh    r5, [r0], #2
+    mov     r5, r5, lsr #8
+.Lbl_sio:
+    ldrh    r4, [r0], #2
+    and     r3, r4, #0xFF
+    orr     r3, r5, r3, lsl #8
+    mov     r5, r4, lsr #8
+    SIL_TAIL .Lbl_sio
 .Lbl_mdone:
     tst     r12, #1                     @ odd x1: only the left pixel of its pair
     beq     .Lbl_nodrow
