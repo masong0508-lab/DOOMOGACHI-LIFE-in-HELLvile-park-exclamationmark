@@ -29,6 +29,10 @@ project plan). This document grows with it. Right now it covers:
    translucent ghosts, a pulsing selection and the zoom; the house at about
    3 ms a tick instead of 28-50 ms.
 
+9. The disc image, the boot FMV and the VMU saves end to end (DC9C): the CDI
+   with `INTRO.DMV`, the movie that plays before the game, and `make -C dc
+   disc-test`.
+
 The SH4 compile check that runs today, with no KallistiOS at all, is the
 `sh-elf-gcc` leg of `core/tools/xcheck.sh` (docs/BUILDING.md, "Tests").
 
@@ -455,7 +459,7 @@ The ELF file is 17 MB because of debug info; the scrambled `1ST_READ.BIN` is 4.4
 ```
 doomogachi.elf --objcopy -O binary--> doomogachi.bin --scramble--> 1ST_READ.BIN
 dc/ip.txt --makeip--> IP.BIN
-1ST_READ.BIN + IP.BIN --genisoimage -C 0,11702 -G IP.BIN--> doomogachi.iso
+1ST_READ.BIN + INTRO.DMV (+ PACK.DMP) + IP.BIN --genisoimage -C 0,11702 -G IP.BIN--> doomogachi.iso
 doomogachi.iso --cdi4dc--> doomogachi.cdi   (audio/data, self-booting)
 ```
 
@@ -469,9 +473,12 @@ draws when a disc starts: it is part of what makes a disc self-boot, not
 something the game draws, but it does mean the boot shows Sega's name.
 Whether that is acceptable for a release (trademark question) is open for
 the user to decide; the game itself draws no logo or jingle of anyone's.
-The image is 6.9 MB. A GDI
+The disc root holds `1ST_READ.BIN` (the game), `INTRO.DMV` (the boot movie,
+DC9C, "Boot FMV" below) and, when built with `PACK=`, `PACK.DMP`. The image is
+8.7 MB (7.6 MB before the movie). A GDI
 or CHD release (DECISIONS.md) can be made from the same 1ST_READ.BIN and
-IP.BIN, which the build copies next to the CDI.
+IP.BIN, which the build copies next to the CDI (the movie goes on the disc
+as a file: copy `dc/build/disc/cd/INTRO.DMV` into the GDI's data track).
 
 ### Verification so far
 
@@ -484,6 +491,146 @@ video frames. The ELF with its debug info is about 17 MB and Flycast
 cannot open an ELF over 16 MiB, so the harness boots
 `dc/build/doomogachi-nodebug.elf` (`strip --strip-debug`, about 4.5 MB);
 the symbols come from `doomogachi.nm`. The 2D layer (DC3): section 4.
+
+
+### The disc, the boot FMV and the VMU saves end to end (DC9C)
+
+**Build and run, exact steps** (from the repo root, KallistiOS installed by
+`dc/tools/setup_kos.sh`; docs/BUILDING.md has the host packages):
+
+```sh
+make -C dc -j2 all-disc          # dc/build/doomogachi.elf + doomogachi.cdi (+ INTRO.DMV, 1ST_READ.BIN, IP.BIN)
+make -C dc/harness               # dcrun, once (the Flycast core: make -C dc/harness flycast, or the toolchain prefix's)
+make -C dc disc-test             # the CDI on Flycast: boot, movie, skip, a saved game over a restart, an old VMU image
+make -C dc vmu-test              # DC4's VMU checks (vmu_check.py on the image after each run)
+dc/harness/build/dcrun /opt/toolchains/dc/flycast_libretro.so dc/build/doomogachi.cdi \
+    --nm dc/build/doomogachi.nm --fmv --console --fresh --run-dir /tmp/dc --shots /tmp/dc/shots   # watch it boot
+```
+
+`make -C dc disc` needs `ffmpeg` and python3 `numpy` for the movie; without
+them the disc is built without `INTRO.DMV` and the game boots as before (a
+warning; `INTRO_REQUIRED=1` makes it an error; `INTRO=file.dmv` uses a
+ready-made file, `INTRO=none` builds none). `make -C dc/harness` must be run
+again when `dcrun.c` changes, and `dc/build/doomogachi.nm` must be the one of
+the ELF just built (`make -C dc vmu-test` and the other targets rebuild it;
+a stale one makes dcrun report "the game never wrote the mailbox magic").
+
+**The boot FMV** (`dc/src/fmv.c`, `dmv.c`, `dmv.h`; `dc/tools/mkfmv.py`).
+The Dreamcast has no video decoder in hardware and KallistiOS has none in
+the tree, so the Dippinn Productions ident (`trailer/assets/dippinn_logo.mp4`,
+the movie the PS1 plays too) is encoded into a small codec of our own:
+320x176, 15 fps, 152 frames, YCbCr 4:2:0, 8x8 DCT per block with a
+quantiser table, every frame stands alone (no motion; the ident is slow),
+byte tokens for the coefficients, and 22,050 Hz mono 16-bit sound
+interleaved per frame. The format is written in `dmv.h`. `dmv.c` decodes it
+in integer arithmetic (the IJG's islow IDCT), so the host and the SH4 make
+the same pixels; `fmv.c` plays it:
+
+- `main()` calls `dc_fmv_play()` after the sound stream is up and before
+  `doomo_init()`. START or A skips it (once the pad has been seen without
+  them, so a button held from power-on does not); no `/cd/INTRO.DMV` (the ELF
+  run from a cable, a disc built without ffmpeg), a short or damaged file,
+  or a read error ends it at once and the game boots as before.
+- The whole file (960 KB) is read into the heap 16 KB a vblank while it plays,
+  with the decode buffers (365 KB); all of it is freed after the movie, so the
+  `.bss` is as it was (+800 B of the DC9C code's own variables). Each frame
+  is decoded to RGB565 (20 ms mean, 30 ms worst on Flycast, under the 66.7 ms
+  a 15 fps frame has), uploaded to one of two 512x256 PVR textures and drawn as
+  one bilinear quad at 2x (640x352, black bars). A frame that is late is
+  skipped before it is decoded.
+- The sound is made into the mixer's PCM slots (1,470 stereo frames, one a
+  tick; `dcsnd_push_pcm`, which leaves the synth and the content hash
+  alone), at most 3 ahead; the picture waits 3 ticks for the AICA's buffer.
+- It is off in every scripted run (`DC_TEST_NO_FMV`, bit 31 of the mailbox's
+  `test_flags`, which dcrun sets unless `--fmv` is given; `--console` alone
+  leaves it off too). The frame counts and sound hashes of all other scripts
+  stay as they were. During the movie no game tick runs: scripts use
+  `frames N`, `wait-log FRAMES TEXT` and `print-frames` (new in dcrun, with
+  `expect-town-crc 0xCRC`).
+
+Quality of the encode (`make -C dc/tests/fmv test` checks the decoder, the
+numbers below are from the real file): 4.9 KB per frame at most (3.4 KB mean),
+mean PSNR against the source frames 34.8 dB (worst 32.8 dB) after the RGB565
+rounding. On Flycast the movie plays 152 frames, skips none, and its sound
+follows the source's loudness over time with an envelope correlation of 0.98.
+Before / after pictures: a new screen, so no "before"; the three shots of
+`dc/tests/fmv/intro.txt` (`dc/build/shots/disc/intro/1/shots/`) show it.
+
+**Host test** (`make -C dc/tests/fmv test`, in `make dc-host-test`; ASan and
+UBSan: `SAN=1 BUILD=../../build/host-fmv-san`; needs numpy): `gen.py` encodes
+a synthetic clip with `mkfmv.py` (gradient, colour bars, black, hard stripes
+that need the escape code, noise) and `test_dmv` checks that every frame
+decodes to within 2 levels of an ideal float IDCT of the same coefficients
+(the first version, a plain matrix IDCT, took 74 ms a frame on Flycast; this
+one, with the colour conversion done once per 2x2 pixels, 20 ms),
+within 28 dB of the source after the colour conversion, that the records walk
+exactly to the end of the file with the audio intact, that a frame cut short
+is refused, and that 3,000 mutated and truncated frames do no out-of-bounds
+read or write and no signed overflow (the decoder clamps what a corrupt
+stream could grow). `test_audio` has 22 more checks for `dcsnd_push_pcm`
+(the PCM slot comes out unchanged, the synth and the hash are untouched, a
+full ring refuses it).
+
+**On Flycast** (`make -C dc disc-test`, `dc/tests/disc/run_flycast.sh`; every
+check is played twice and the two runs must be identical: the same log
+numbers and the same bytes in every shot):
+
+| check | what | 2026-11-15 |
+|---|---|---|
+| boot | the CDI boots to the title without the movie | title 7.12 s after power-on (426 video frames: the game's mailbox is up after 2.7 s, then the boot scene's 123 ticks) |
+| intro | `tests/fmv/intro.txt --fmv`: the movie from the disc, then the title | starts 3.0 s after power-on, 152 frames shown, 0 skipped, ends 13.3 s after power-on (10,269 ms), the title follows 4.1 s later (17.4 s); 304 sound slots |
+| skip | `tests/fmv/skip.txt`: START during the movie | skipped after 3.7 s, the game boots to the title |
+| e2e | `tests/disc/e2e1.txt` then `e2e2.txt` on one VMU image: title, Free Play, a new island, the island's menu, Save / Load, A; `vmu_check.py` on the image; a restart; the title's Continue loads it; `load 1` gives the crc `e2e1` printed | the save writes 27 blocks in 2.96-3.00 s, the title's load reads 9,734 bytes in 0.55-0.66 s |
+| old | `tests/disc/old_saves_vmu.bin`, the VMU image the build before DC9C made (story and free-play saves of DC4's format), loaded by `tests/vmu/saves2.txt` | both saves found and loaded, the same islands |
+
+The VMU format did not change in DC9C. `old_saves_vmu.bin` is the proof that
+an old save loads: `vmu-test`'s `saves1.txt` made it on the base build
+(ad060127).
+
+**Disc size, boot time, save time** (Flycast's emulated time, 2026-11-15):
+
+| | before DC9C | now |
+|---|---|---|
+| `doomogachi.cdi` | 7,637,587 B | 8,744,851 B (`INTRO.DMV` 959,692 B, `1ST_READ.BIN` 5,080,652 -> 5,089,572 B) |
+| ELF image (`make -C dc sizes`) | 9,657,580 B, 7,049,996 B free above `_end` | 9,664,376 B, 7,040,428 B free (the 365 KB of decode buffers are heap, for the movie only) |
+| power-on to the title | 7.12 s | 7.12 s scripted; 17.4 s with the movie |
+| save a new free-play island (27 blocks) | 2.96 s | 2.96-3.00 s |
+| save a story island (33 blocks) | 3.67 s | 3.67 s |
+| save the 1000-citizen worst case (128 blocks) | 13.4 s | 13.4 s |
+| load: new island / story island / worst case | 0.55 / 0.74 / 2.6 s | the same |
+| settings record (2 blocks) | 0.46 s | 0.46 s |
+| learn the card at boot | 245-315 ms | the same |
+
+**What can the Dreamcast side cut from the VMU save?** Measured: nothing that
+is safe, so nothing was changed, and the save is still a pause of 3 s (the
+screen shows the card with its bar; no tick over 33.3 ms is hidden by it, the
+tick is one long one). Where the 2.96 s of the new island go (27 blocks):
+every block write is 5 Maple round trips in KallistiOS (`vmu_block_write`:
+four 128-byte phases and a sync), and a Maple frame leaves only in the vblank
+handler (`maple_vbl_irq_hnd` -> `maple_queue_flush`), one per device per
+vblank: 5 x 16.7 = 83.4 ms a block, 27 blocks 2.25 s; the read-back that
+makes the swap safe is 27 reads at one round trip each (16.7 ms): 0.45 s;
+the FAT and the two directory writes of the replace: 3 more blocks, 0.25 s.
+The levers, with what they would give and why they are not taken:
+
+| lever | gain on the 27-block save | why not |
+|---|---|---|
+| compress the payload again | none: the core's own LZ codec has already compressed it (the new island's 9,734 B re-compressed with zlib -9 are 8,661 B, 2 blocks of the 27; a synthetic story island of 13,123 B, 10,723 B) | a second coder on the save path for 0.3 s |
+| no eyecatch (4 blocks) and one icon frame (2 blocks) | 0.5 s | it is what the BIOS file manager shows: the art DC4 chose |
+| skip the read-back | 0.45 s | it is what makes a bad write visible before the old save goes |
+| queue the 5 frames of a block (or the reads of 8 blocks) in one vblank | 4-5 x on the writes, 8 x on the read-back and on every load (the load of the worst case 2.6 s -> 0.3 s) | not provable here: Flycast would accept it, a real VMU may answer `RESPONSE_AGAIN` while it is busy writing flash, and KallistiOS resends such a frame after the later ones, so the phases and the sync could arrive out of order. Needs a real console. Loads (reads only, any order) are the safe half of it. |
+| write behind the game (a thread) | the tick would not block at all | the core's `plat_save_write` must answer "saved" after the read-back; a late failure would be a lie. It is S2-10's design (the core), not a platform change |
+
+So the rest is S2-10 (`save.c` streaming and a different write contract) and a real
+console. **Owed on hardware:** the per-block write time of a real VMU, and
+whether a batched read of the card is accepted by it (the half that would cut
+the loads).
+
+**Owed on hardware (DC9C):** the disc read of `INTRO.DMV` from a real GD-ROM /
+CD-R (the 16 KB steps are about 100 KB/s of the drive's 1.2 MB/s, the first
+read must come before the first frame), the AICA's latency against the 3-tick
+picture lag, and the colours of the bilinear quad on a CRT (the PVR's RGB565
+texture is shown without dithering).
 
 
 ## 4. The 2D layer (DC3)

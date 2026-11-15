@@ -31,7 +31,7 @@ Contents:
 | build the **PS1 disc** (`make ps1`) | `mipsel-linux-gnu-gcc` (or `mipsel-none-elf-gcc`), **PSn00bSDK** built from source, CMake ≥ 3.21, Ninja, `python3` |
 | run the PS1 harness (`make test`) | the above plus PCSX-Redux, OpenBIOS and `xvfb-run` |
 | run the Dreamcast (SH4) leg of `xcheck` (`make test`) | `sh-elf-gcc` + newlib headers (apt `gcc-sh-elf binutils-sh-elf libnewlib-sh-elf-dev`), or a KallistiOS toolchain on `PATH`. Compile only: no KallistiOS needed |
-| build for the **Dreamcast** (`make dc`, port in progress) | the KallistiOS toolchain + KallistiOS, installed at pinned versions by `dc/tools/setup_kos.sh` (about 3.4 GB of disk while it builds, 278 MB after; see [KallistiOS](#kallistios-dreamcast) and docs/DREAMCAST.md), plus `genisoimage` (or `mkisofs` / `xorriso`) for the disc image |
+| build for the **Dreamcast** (`make dc`, port in progress) | the KallistiOS toolchain + KallistiOS, installed at pinned versions by `dc/tools/setup_kos.sh` (about 3.4 GB of disk while it builds, 278 MB after; see [KallistiOS](#kallistios-dreamcast) and docs/DREAMCAST.md), plus `genisoimage` (or `mkisofs` / `xorriso`) for the disc image, and `ffmpeg` with `python3-numpy` for its boot movie (`INTRO.DMV`; without them the disc is built without a movie, with a warning) |
 | run the **Dreamcast harness** (`dc/harness`, `make -C dc/harness test`) | host `cc` + EGL/GL headers and Mesa (apt `libegl-dev libgl-dev libegl-mesa0 libgl1-mesa-dri`); the Flycast core itself needs `g++` and `git` (`dc/harness/build_flycast.sh`). See dc/harness/README.md |
 | render the **trailer** (`make trailer`) | `gcc`, `python3`, `ffmpeg` (with libx264) |
 
@@ -162,11 +162,19 @@ comparison, DC4's VMU saves and controls: `make -C dc vmu-test`, DC5's
 sound against the native runner's `--wav`: `make -C dc audio-test`, DC7's
 overworld against the host's software PVR: `make -C dc ow-test`, DC8's
 house against room_ref's golden frames and the host: `make -C dc room-test`).
+`make -C dc disc-test` (DC9C) plays the disc on Flycast: it boots, the boot
+movie plays and ends in the title, START skips it, a game saved through the
+menus loads after a restart, an old VMU image loads; each twice, identical
+(docs/DREAMCAST.md, "The disc, the boot FMV and the VMU saves end to end").
+`make -C dc disc INTRO=none` builds the disc without the movie,
+`INTRO_REQUIRED=1` fails when ffmpeg or numpy are missing.
 `make dc-host-test` needs no KallistiOS: the 2D layer, the 3D batches and
 the overworld (DC7), the house against room_ref (DC8), the VMU file system,
 icons and controls, and the sound mixer on the host
 (`dc/tests/gfx2d`, `dc/tests/vmu`, `dc/tests/audio`; `python3` for
-`dc/harness/vmu_check.py`, `python3-numpy` for `dc/tests/audio/compare.py`).
+`dc/harness/vmu_check.py`, `python3-numpy` for `dc/tests/audio/compare.py`),
+and the boot movie's decoder (`dc/tests/fmv`, `python3-numpy`; skipped with a
+note without it).
 `dc/Makefile` sources `<prefix>/kos/environ.sh` itself, so no shell setup
 is needed; `DC_PREFIX=<dir>` picks another install. `make all` and
 `make test` leave the Dreamcast out for now. Details: docs/DREAMCAST.md
