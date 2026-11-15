@@ -106,6 +106,7 @@ typedef struct DcStats {
     uint32_t sprites, quads, headers;     /* last frame                         */
     uint32_t shades, shade_prims, shade_fallbacks, shade_tests;  /* totals: exact shades,
                                     prims they re-drew, shades left as a multiply, prims tested */
+    uint32_t stage_hits, stage_misses;   /* DC9B: kept backdrops put back / drawn and kept (totals) */
 } DcStats;
 extern DcStats dc2d_stats;
 
@@ -159,6 +160,16 @@ void DC2D_FN(post_blend)(uint8_t color, int level16);
 void DC2D_FN(post_iris)(int cx, int cy, int r, int heart, uint8_t rim);
 void DC2D_FN(pal_lerp)(int pal_id, int level16);
 int  DC2D_FN(hold_frame)(int on);
+/* DC9B: the kept backdrop (plat_ext.h "a kept backdrop and a retained stage"). The Dreamcast builds the
+ * picture again every tick, so it never says a buffer holds the last one (held 0): the core asks for
+ * the whole backdrop with plat_stage_restore and draws every layer. What is kept is the backdrop as
+ * a 320x240 canvas of palette indices per (family, key), one texture: the first restore of a key lets
+ * draw(key) paint the canvas (gfx2d.c "the kept backdrop"), every later one is two prims. Only the
+ * exorcism's church uses it. */
+struct PlatStageInfo;
+int  DC2D_FN(stage_begin)(int id, uint32_t key, void (*draw)(uint32_t key), struct PlatStageInfo *info);
+void DC2D_FN(stage_restore)(int x, int y, int w, int h);
+void DC2D_FN(stage_end)(void);
 
 /* ---- encoding rules shared by both backends ------------------------------- */
 /* 1 when f survives the sprite's 16-bit UV (the upper half of the float). */

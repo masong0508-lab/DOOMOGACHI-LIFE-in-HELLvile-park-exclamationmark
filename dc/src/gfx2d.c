@@ -66,6 +66,8 @@
 #include "doomo/doomo.h"
 #include "doomo/camfx.h"
 #include "doomo/font.h"
+#include "doomo/plat_ext.h"
+#include "doomo/backdrop.h"
 
 DcStats dc2d_stats;
 
@@ -107,10 +109,17 @@ static int ngroups, group_wr;
 static int n3d_cur, n3d_held;
 static Box m3d_cur, m3d_held;
 
+/* DC9B: the kept backdrop's bake (below): while it runs the 2D calls paint a 320x240 canvas */
+static struct { int on, fail; uint8_t *px; } bake;
+static void bake_fill(int x, int y, int w, int h, uint8_t c);
+static void bake_shade(int x, int y, int w, int h, int level);
+static void bake_image(int x, int y, const DoomoImage *img, int scale, int flags);
+
 /* ---- the list ---------------------------------------------------------------------- */
 static DcPrim *emit(int mode)
 {
     DcPrim *p;
+    if (bake.on) { bake.fail = 1; return NULL; }     /* (DC9B) a call the bake cannot do */
     if (ncur >= ncap) { dc2d_stats.dropped++; return NULL; }
     p = &cur[ncur++];
     p->mode = (uint8_t)mode;
@@ -173,6 +182,7 @@ static void solid(int x, int y, int w, int h, uint8_t c)
     DcPrim *p;
     float X0, Y0, X1, Y1;
     if (!clip(&x, &y, &w, &h)) return;
+    if (bake.on) { bake_fill(x, y, w, h, c); return; }
     if (x == 0 && y == 0 && w == DC2D_LW && h == DC2D_LH) covered();
     X0 = (float)(x * DC2D_SCALE); Y0 = (float)(y * DC2D_SCALE);
     X1 = (float)((x + w) * DC2D_SCALE); Y1 = (float)((y + h) * DC2D_SCALE);
@@ -412,9 +422,232 @@ int DC2D_FN(hold_frame)(int on)
     return 1;
 }
 
+
+/* ---- DC9B: the kept backdrop ---------------------------------------------------------------
+ * The exorcism's church is 3,100 to 4,900 prims that change only when its key does (about every
+ * 15 ticks at most). Drawing and sending them was 31 ms of a 38 ms tick on Flycast. The first
+ * restore of a key lets the core's draw(key) paint a 320x240 canvas of palette indices instead of
+ * the prim list (the 2D calls rect / line / shade_rect / image do it in software; any other call
+ * ends the bake and the backdrop is drawn the old way); the canvas is one PAL8 texture and the
+ * backdrop is two prims, a black underlay (index 0 is transparent) and the texture. The picture
+ * is the same as the prim list's (every pixel a palette index, shades the colormap remap).
+ * An exact shade over the picture (reemit) re-emits the canvas under its rect as solid runs, as it
+ * would the prims, instead of remapping the whole texture. */
+#define STAGE_SLOTS 6                    /* backdrops kept                                   */
+#define STAGE_VARS  4                    /* + shaded copies of a canvas (full-screen shades) */
+#define STAGE_POOL  (STAGE_SLOTS + STAGE_VARS)
+#define STAGE_MARK  0x5Au
+typedef struct StageEnt {
+    uint32_t key, used;          /* used: frame of the last use (0: free)           */
+    uint32_t uid;                /* the canvas texture's image uid                  */
+    uint32_t src;                /* a shaded copy: the uid of the canvas it is of   */
+    int      id, tex;            /* tex: its slot when last asked for               */
+    int      level;              /* a shaded copy: the colormap level               */
+    uint8_t  bad;                /* this key cannot be baked: draw it the old way   */
+} StageEnt;
+static StageEnt stg[STAGE_POOL];
+static uint8_t  stg_canvas[STAGE_POOL][DC2D_LW * DC2D_LH];
+static struct { int on, id; uint32_t key; void (*draw)(uint32_t); } stg_now;
+
+static void bake_fill(int x, int y, int w, int h, uint8_t c)
+{
+    int r;
+    for (r = y; r < y + h; r++) memset(&bake.px[r * DC2D_LW + x], c, (size_t)w);
+}
+
+static void bake_shade(int x, int y, int w, int h, int level)
+{
+    const uint8_t *map = doomo_colormap[level];
+    int r, k;
+    for (r = y; r < y + h; r++) {
+        uint8_t *row = &bake.px[r * DC2D_LW + x];
+        for (k = 0; k < w; k++) row[k] = map[row[k]];
+    }
+}
+
+/* plat_image as the native runner draws it: pixel 0 is clear, rows flipped by IMG_FLIPX; shadow and
+ * silhouette are not part of a bake */
+static void bake_image(int x, int y, const DoomoImage *img, int scale, int flags)
+{
+    int iy, ix, a, b;
+    if (flags & ~IMG_FLIPX) { bake.fail = 1; return; }
+    for (iy = 0; iy < img->h; iy++)
+        for (ix = 0; ix < img->w; ix++) {
+            uint8_t c = img->pix[iy * img->w + ((flags & IMG_FLIPX) ? img->w - 1 - ix : ix)];
+            if (!c) continue;
+            for (b = 0; b < scale; b++)
+                for (a = 0; a < scale; a++) {
+                    int px = x + ix * scale + a, py = y + iy * scale + b;
+                    if ((unsigned)px < DC2D_LW && (unsigned)py < DC2D_LH) bake.px[py * DC2D_LW + px] = c;
+                }
+        }
+}
+
+/* the canvas of entry i as a texture: its slot, uploaded when it is not there (-1 when it cannot be) */
+static int stage_tex(int i)
+{
+    DoomoImage img;
+    img.w = DC2D_LW; img.h = DC2D_LH; img.pix = stg_canvas[i]; img.uid = stg[i].uid;
+    stg[i].tex = dc2d_tex_image(&img);
+    return stg[i].tex;
+}
+
+/* the backdrop as two prims: black underlay (colour 0 sent through colormap `level`), the canvas */
+static void stage_emit(int i, uint8_t under)
+{
+    DcPrim *p = emit(DC2D_SOLID);
+    if (p) { p->color = under; p->x0 = p->y0 = 0.0f; p->x1 = (float)DC2D_W; p->y1 = (float)DC2D_H; }
+    p = textured(DC2D_IMAGE, stg[i].tex, 0, 0, DC2D_LW, DC2D_LH, DC2D_LW, DC2D_LH, 0);
+    if (p) { p->pad[0] = STAGE_MARK; p->pad[1] = (uint8_t)i; }
+    seal = ncur;
+}
+
+/* the canvas under stage prim `sp` sent through colormap `level`, as a canvas of its own (a shade over
+ * the backdrop is then the same prim over it, not one run per colour change); its pool index, -1 when
+ * sp is not a live stage prim or there is no room */
+static int stage_variant(const DcPrim *sp, int level)
+{
+    int i = sp->pad[1], v, pick = -1;
+    const uint8_t *map = doomo_colormap[level], *src = stg_canvas[i < STAGE_POOL ? i : 0];
+    uint8_t *dst;
+    int k;
+    if (i >= STAGE_POOL || !stg[i].used || stg[i].tex != (int)sp->tex) return -1;   /* not a live one */
+    for (v = STAGE_SLOTS; v < STAGE_POOL; v++)
+        if (stg[v].used && stg[v].src == stg[i].uid && stg[v].level == level) {
+            stg[v].used = frame_no;
+            return stage_tex(v) >= 0 ? v : -1;
+        }
+    for (v = STAGE_SLOTS; v < STAGE_POOL; v++)
+        if (!stg[v].used) { pick = v; break; }
+        else if (stg[v].used != frame_no && (pick < 0 || stg[v].used < stg[pick].used)) pick = v;
+    if (pick < 0) return -1;
+    dst = stg_canvas[pick];
+    for (k = 0; k < DC2D_LW * DC2D_LH; k++) dst[k] = map[src[k]];
+    stg[pick].used = frame_no;
+    stg[pick].src = stg[i].uid;
+    stg[pick].level = level;
+    stg[pick].id = -1;
+    stg[pick].bad = 0;
+    stg[pick].uid = doomo_image_new_uid();
+    if (stage_tex(pick) < 0) { stg[pick].used = 0; return -1; }
+    return pick;
+}
+
+/* an exact shade over a stage prim: the canvas under [X0, X1) x [Y0, Y1) (frame pixels) through the
+ * colormap, as solid runs joined down the rows. -1: not a live stage prim, 0: the list is full, 1 ok */
+static int stage_reemit(const DcPrim *p, float X0, float Y0, float X1, float Y1, int level)
+{
+    static int16_t rows[2][DC2D_LW];
+    int i = p->pad[1], x0, y0, x1, y1, y, x, nprev = 0, ncurr, cur_row = 0;
+    const uint8_t *cv, *map = doomo_colormap[level];
+    if (i >= STAGE_POOL || !stg[i].used || stg[i].tex != (int)p->tex) return -1;
+    cv = stg_canvas[i];
+    /* (the part of the prim, which a shaded copy may only cover in part, inside the shade) */
+    if (p->x0 > X0) X0 = p->x0;
+    if (p->y0 > Y0) Y0 = p->y0;
+    if (p->x1 < X1) X1 = p->x1;
+    if (p->y1 < Y1) Y1 = p->y1;
+    x0 = DOOMO_MAX((int)(X0 / DC2D_SCALE), 0); y0 = DOOMO_MAX((int)(Y0 / DC2D_SCALE), 0);
+    x1 = DOOMO_MIN((int)(X1 / DC2D_SCALE), DC2D_LW); y1 = DOOMO_MIN((int)(Y1 / DC2D_SCALE), DC2D_LH);
+    for (y = y0; y < y1; y++) {
+        int16_t *pr = rows[cur_row ^ 1], *cr = rows[cur_row];
+        ncurr = 0;
+        for (x = x0; x < x1;) {
+            uint8_t c = map[cv[y * DC2D_LW + x]];
+            int xe = x + 1, k, found = -1;
+            while (xe < x1 && map[cv[y * DC2D_LW + xe]] == c) xe++;
+            for (k = 0; k < nprev; k++) {
+                DcPrim *q = &cur[pr[k]];
+                if (q->color == c && q->x0 == (float)(x * DC2D_SCALE) && q->x1 == (float)(xe * DC2D_SCALE) &&
+                    q->y1 == (float)(y * DC2D_SCALE)) { found = pr[k]; break; }
+            }
+            if (found >= 0) cur[found].y1 = (float)((y + 1) * DC2D_SCALE);
+            else {
+                DcPrim *q = emit(DC2D_SOLID);
+                if (!q) return 0;
+                q->color = c;
+                q->x0 = (float)(x * DC2D_SCALE); q->x1 = (float)(xe * DC2D_SCALE);
+                q->y0 = (float)(y * DC2D_SCALE); q->y1 = (float)((y + 1) * DC2D_SCALE);
+                found = ncur - 1;
+            }
+            cr[ncurr++] = (int16_t)found;
+            x = xe;
+        }
+        nprev = ncurr;
+        cur_row ^= 1;
+    }
+    return 1;
+}
+
+int DC2D_FN(stage_begin)(int id, uint32_t key, void (*draw)(uint32_t key), PlatStageInfo *info)
+{
+    stg_now.on = 0;
+    if (!drawing || id != DOOMO_BACKDROP_EXO_CHURCH || !draw) return 0;
+    stg_now.on = 1;
+    stg_now.id = id;
+    stg_now.key = key;
+    stg_now.draw = draw;
+    info->held = 0;                     /* the buffer is never the last picture */
+    info->serial = frame_no;
+    info->dx0 = info->dy0 = info->dx1 = info->dy1 = 0;
+    return 1;
+}
+
+void DC2D_FN(stage_restore)(int x, int y, int w, int h)
+{
+    int i, slot = -1, lru = 0;
+    if (!drawing || !stg_now.on) return;
+    /* (stage_begin said held 0: the core only asks for the whole picture) */
+    if (!(x == 0 && y == 0 && w == DC2D_LW && h == DC2D_LH)) return;
+    for (i = 0; i < STAGE_SLOTS; i++)
+        if (stg[i].used && stg[i].id == stg_now.id && stg[i].key == stg_now.key) slot = i;
+    if (ncur != 0 || ngroups != 0 || n3d_cur || cur_cleared) {     /* not on an empty list: the old way */
+        stg_now.draw(stg_now.key);
+        return;
+    }
+    if (slot >= 0 && !stg[slot].bad && stage_tex(slot) >= 0) {      /* kept */
+        stg[slot].used = frame_no;
+        stage_emit(slot, 0);
+        dc2d_stats.stage_hits++;
+        return;
+    }
+    if (slot >= 0 && stg[slot].bad) {                               /* known not to bake */
+        stg[slot].used = frame_no;
+        stg_now.draw(stg_now.key);
+        return;
+    }
+    if (slot < 0) {
+        for (i = 0; i < STAGE_SLOTS; i++)
+            if (!stg[i].used) { slot = i; break; }
+            else if (stg[i].used < stg[lru].used) lru = i;
+        if (slot < 0) slot = lru;
+    }
+    stg[slot].used = 0;
+    stg[slot].id = stg_now.id;
+    stg[slot].key = stg_now.key;
+    stg[slot].bad = 0;
+    bake.px = stg_canvas[slot];
+    memset(bake.px, bg_cur, sizeof(stg_canvas[slot]));
+    bake.fail = 0;
+    bake.on = 1;
+    stg_now.draw(stg_now.key);
+    bake.on = 0;
+    stg[slot].used = frame_no;
+    stg[slot].uid = doomo_image_new_uid();
+    if (!bake.fail && stage_tex(slot) >= 0) {
+        stage_emit(slot, 0);
+        dc2d_stats.stage_misses++;
+        return;
+    }
+    stg[slot].bad = 1;                                              /* (nothing was emitted) */
+    stg_now.draw(stg_now.key);
+}
+
+void DC2D_FN(stage_end)(void) { stg_now.on = 0; }
 /* ---- 2D ---------------------------------------------------------------------------------- */
 void DC2D_FN(clear)(uint8_t color)
 {
+    if (bake.on) { bake.fail = 1; return; }       /* (DC9B) not part of a bake */
     if (!drawing) return;
     covered();
     bg_cur = color;
@@ -441,8 +674,22 @@ static uint32_t argb_mul(uint32_t a, uint32_t b)
 static int reemit(const DcPrim *p, float X0, float Y0, float X1, float Y1, int level)
 {
     DcPrim *q;
+    int vi = -1;
     if (p->x1 <= X0 || p->x0 >= X1 || p->y1 <= Y0 || p->y0 >= Y1) return 1;
     dc2d_stats.shade_prims++;
+    if (p->mode == DC2D_IMAGE && p->pad[0] == STAGE_MARK) {     /* DC9B: the kept backdrop's canvas */
+        vi = stage_variant(p, level);                  /* its shaded copy: the same prim over it */
+        if (vi >= 0) {
+            DcPrim *u = emit(DC2D_SOLID);              /* (index 0 of a canvas is clear) */
+            if (!u) return 0;
+            u->color = 0;
+            u->x0 = p->x0 > X0 ? p->x0 : X0; u->y0 = p->y0 > Y0 ? p->y0 : Y0;
+            u->x1 = p->x1 < X1 ? p->x1 : X1; u->y1 = p->y1 < Y1 ? p->y1 : Y1;
+        } else {                                       /* no room for one: the runs of the canvas */
+            int r = stage_reemit(p, X0, Y0, X1, Y1, level);
+            if (r >= 0) return r;
+        }
+    }
     if (p->mode == DC2D_VIEW3D) {       /* only full-screen shades get here: the */
         q = emit(DC2D_VIEW3D);          /* view again, its colours times the factor */
         if (!q) return 0;
@@ -464,7 +711,8 @@ static int reemit(const DcPrim *p, float X0, float Y0, float X1, float Y1, int l
         break;
     case DC2D_GLASS:                    /* DC8: a translucent image: its texels remapped, */
     case DC2D_IMAGE: {                  /* blended as before                              */
-        int t = dc2d_tex_remap(p->tex, level, doomo_colormap[level]);
+        int t = vi >= 0 ? stg[vi].tex : dc2d_tex_remap(p->tex, level, doomo_colormap[level]);
+        if (vi >= 0) q->pad[1] = (uint8_t)vi;
         if (t >= 0) {
             q->tex = (uint16_t)t;
         } else if (p->mode == DC2D_GLASS) {   /* no texture: its colour times the factor */
@@ -567,6 +815,7 @@ void DC2D_FN(shade_rect)(int x, int y, int w, int h, int level)
     if (!drawing || !clip(&x, &y, &w, &h)) return;
     level = DOOMO_CLAMP(level, 0, DOOMO_LIGHT_LEVELS - 1);
     if (level == DOOMO_LIGHT_LEVELS - 1) return;    /* colormap 15 = unchanged */
+    if (bake.on) { bake_shade(x, y, w, h, level); return; }
     X0 = (float)(x * DC2D_SCALE); Y0 = (float)(y * DC2D_SCALE);
     X1 = (float)((x + w) * DC2D_SCALE); Y1 = (float)((y + h) * DC2D_SCALE);
     full = x == 0 && y == 0 && w == DC2D_LW && h == DC2D_LH;
@@ -776,6 +1025,7 @@ void DC2D_FN(image)(int x, int y, const DoomoImage *img, int scale, int flags, u
     h = img->h * scale;
     sh = (flags & IMG_SHADOW) ? scale : 0;
     if (offscreen(x, y, w + sh, h + sh)) return;
+    if (bake.on) { bake_image(x, y, img, scale, flags); return; }
     slot = dc2d_tex_image(img);
     if (slot < 0) return;
     flip = (flags & IMG_FLIPX) != 0;
@@ -868,6 +1118,7 @@ void dc2d_frect(float x0, float y0, float x1, float y1, uint8_t c)
 /* ---- post effects ---------------------------------------------------------------------- */
 void DC2D_FN(post_offset)(int dx, int dy)
 {
+    if (bake.on) { bake.fail = 1; return; }       /* (DC9B) not part of a bake */
     float fx = (float)(dx * DC2D_SCALE), fy = (float)(dy * DC2D_SCALE);
     int i;
     if (!drawing || (!dx && !dy)) return;
@@ -883,6 +1134,7 @@ void DC2D_FN(post_offset)(int dx, int dy)
 
 void DC2D_FN(post_scale)(int sx_q8, int sy_q8, int cx, int cy)
 {
+    if (bake.on) { bake.fail = 1; return; }       /* (DC9B) not part of a bake */
     float sx = (float)sx_q8 / 256.0f, sy = (float)sy_q8 / 256.0f;
     float c_x = (float)(cx * DC2D_SCALE), c_y = (float)(cy * DC2D_SCALE);
     int i;
@@ -901,6 +1153,7 @@ void DC2D_FN(post_scale)(int sx_q8, int sy_q8, int cx, int cy)
 
 void DC2D_FN(post_blend)(uint8_t color, int level16)
 {
+    if (bake.on) { bake.fail = 1; return; }       /* (DC9B) not part of a bake */
     DcPrim *p;
     if (!drawing || level16 <= 0) return;
     if (level16 >= 16) { solid(0, 0, DC2D_LW, DC2D_LH, color); return; }
@@ -914,6 +1167,7 @@ void DC2D_FN(post_blend)(uint8_t color, int level16)
  * runs of equal rows merge into one rect), then the rim pixels */
 void DC2D_FN(post_iris)(int cx, int cy, int r, int heart, uint8_t rim)
 {
+    if (bake.on) { bake.fail = 1; return; }       /* (DC9B) not part of a bake */
     int y, k, pass;
     if (!drawing || r < 0) return;
     for (pass = 0; pass < 4; pass++) {
@@ -938,6 +1192,7 @@ void DC2D_FN(post_iris)(int cx, int cy, int r, int heart, uint8_t rim)
 
 void DC2D_FN(pal_lerp)(int pal_id, int level16)
 {
+    if (bake.on) { bake.fail = 1; return; }       /* (DC9B) not part of a bake */
     int i;
     if (!drawing || pal_id <= PAL_LERP_NONE || pal_id >= PAL_LERP_COUNT || level16 <= 0) return;
     dc2d_pal_lerp_build(lerp_bank, pal_id, level16);

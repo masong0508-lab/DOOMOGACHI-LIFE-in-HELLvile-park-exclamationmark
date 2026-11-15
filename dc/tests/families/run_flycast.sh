@@ -3,7 +3,7 @@
 #
 #   sh dc/tests/families/run_flycast.sh FLYCAST.so DCRUN IMAGE NMFILE OUTDIR [script ...]
 #
-# Every core/tests/scripts/{story,fp,side}_*.txt (or the named scripts) is played twice in dcrun on the CDI,
+# Every core/tests/scripts/{story,fp,side}_*.txt (FAMILY_GLOBS overrides the patterns: DC9B's family-test2; or the named scripts) is played twice in dcrun on the CDI,
 # tick-exact from the native runner's start (--native-seed). A script passes when
 #   - both runs end with dcrun's "0 failures" (the pinned Flycast core can crash while it unloads, after the
 #     script has passed: SIGILL, exit 132; the script's own verdict then counts),
@@ -11,6 +11,7 @@
 #     same bytes in every shot (md5 of each PNG).
 # The ticks over 33.3 ms are listed, not gated: the known ones are loading ticks (a new island or story, the
 # VMU save: docs/DREAMCAST.md "Frame time of the story, free play and side missions").
+# dc/tests/families/scripts/NAME.txt is played in place of (or in addition to) the core script of that name.
 # OUTDIR/<script>/{1,2}/ the logs and shots, OUTDIR/summary.txt one line per script. Exit status 1 when one fails.
 set -u
 [ $# -ge 5 ] || { echo "usage: run_flycast.sh FLYCAST DCRUN IMAGE NMFILE OUTDIR [script ...]" >&2; exit 2; }
@@ -18,16 +19,21 @@ FLY=$1 DCRUN=$2 IMG=$3 NM=$4 OUT=$5; shift 5
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../../.." && pwd)
 if [ $# -gt 0 ]; then SCRIPTS=$*
-else SCRIPTS=$(cd "$root/core/tests/scripts" && ls story_*.txt fp_*.txt side_*.txt | sed 's/\.txt$//'); fi
+else
+    SCRIPTS=$(cd "$root/core/tests/scripts" && ls ${FAMILY_GLOBS:-story_*.txt fp_*.txt side_*.txt} | sed 's/\.txt$//')
+    # DC9B: scripts of our own (a core script that needs something the Dreamcast does not have yet, written for it)
+    [ -n "${FAMILY_GLOBS:-}" ] && SCRIPTS="$SCRIPTS $(cd "$here/scripts" && ls *.txt | sed 's/\.txt$//')"
+fi
 mkdir -p "$OUT"
 sum=$OUT/summary.txt
 : > "$sum"
 bad=0
+script_path() { if [ -f "$here/scripts/$1.txt" ]; then echo "$here/scripts/$1.txt"; else echo "$root/core/tests/scripts/$1.txt"; fi; }
 play() {                                   # play SCRIPT N: runs it into OUT/SCRIPT/N, prints the exit status
     d=$OUT/$1/$2
     rm -rf "$d"; mkdir -p "$d/dc"
     "$DCRUN" "$FLY" "$IMG" --nm "$NM" --fresh --native-seed 0x5EED1234 --run-dir "$d/run" \
-        --script "$root/core/tests/scripts/$1.txt" --shots "$d/dc" --timeout 2400 > "$d/dcrun.log" 2>&1
+        --script "$(script_path "$1")" --shots "$d/dc" --timeout 2400 > "$d/dcrun.log" 2>&1
     rc=$?
     rm -rf "$d/run"
     if [ $rc -eq 132 ] && grep -q '^dcrun: .* 0 failures$' "$d/dcrun.log"; then rc=0; fi

@@ -37,6 +37,9 @@
 #                         core/tests/scripts twice in dcrun (SCRIPTS="a b" for some),
 #                         each must pass and repeat byte for byte (dc/tests/families;
 #                         results in build/shots/families)
+#   make -C dc family-test2  DC9B: the same for the minigame, house, creator, studio, fishing,
+#                         cooking, library, dream, concert and exorcism scripts (results in
+#                         build/shots/families2)
 #   make -C dc v3d-test   DC6 part 1 on the host: the first-person view's polygons
 #                         (software PVR) against the reference raycaster
 #   make -C dc room-test  DC8 on Flycast: the house. The 58 room_ref golden
@@ -126,7 +129,7 @@ DC_OBJS   := $(call dc_obj,$(DC_SRCS))
 CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 ALL_OBJS  := $(DC_OBJS) $(CORE_OBJS)
 
-.PHONY: all elf disc all-disc test check-elf check-packdisc host-test harness-test ui-compare vmu-test audio-test ow-test room-test v3d-test family-test sizes clean
+.PHONY: all elf disc all-disc test check-elf check-packdisc host-test harness-test ui-compare vmu-test audio-test ow-test room-test v3d-test family-test family-test2 sizes clean
 .DEFAULT_GOAL := all
 
 all: elf
@@ -245,6 +248,14 @@ family-test: $(CDI) $(BUILD)/doomogachi.nm
 	@if [ -z "$(FLYCAST)" ]; then echo "family-test: no Flycast core (make -C dc/harness flycast)" >&2; exit 1; fi
 	@$(MAKE) --no-print-directory -C $(HARNESS) all
 	sh $(DC)/tests/families/run_flycast.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(SHOTS)/families $(SCRIPTS)
+
+# DC9B: the minigames, house (home_talk_* need the Talk screen, TD1-TD3; home_visit has a Dreamcast copy in
+# dc/tests/families/scripts), creator, studio, fishing and cooking, library, dream, concert and exorcism scripts, each twice, identical
+FAMILY2 := mg_*.txt home_defend.txt home_editor.txt home_flats.txt home_gallery.txt home_haunt.txt home_mart.txt home_rooms.txt home_tutorial.txt creator*.txt studio*.txt fishing.txt cooking.txt library_*.txt dream*.txt concert_*.txt life_exorcism.txt
+family-test2: $(CDI) $(BUILD)/doomogachi.nm
+	@if [ -z "$(FLYCAST)" ]; then echo "family-test2: no Flycast core (make -C dc/harness flycast)" >&2; exit 1; fi
+	@$(MAKE) --no-print-directory -C $(HARNESS) all
+	FAMILY_GLOBS="$(FAMILY2)" sh $(DC)/tests/families/run_flycast.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(SHOTS)/families2 $(SCRIPTS)
 
 # DC8: the house on Flycast: room_ref's golden frames and the house scripts
 ROOMTEST := $(BUILD)/host/dcroom_test

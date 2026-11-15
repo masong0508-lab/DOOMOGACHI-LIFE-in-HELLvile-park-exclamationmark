@@ -15,6 +15,8 @@
  *   texcache       uid hits, in-place changes of uid-less images, eviction
  *                  under video-RAM pressure never loses a frame's texture
  *   hold           plat_hold_frame keeps the picture under new frames
+ *   stage          DC9B: a kept backdrop (canvas texture): the first frame of a key bakes it, later frames
+ *                  copy it; with and without shades over it, frame equal to the native one
  *   budget         a frame over the vertex budget drops prims, counted
  *   post           offset / scale move only the earlier prims; pal_lerp
  */
@@ -26,6 +28,7 @@
 #include "swpvr.h"
 #include "doomo/camfx.h"
 #include "doomo/plat_ext.h"
+#include "doomo/backdrop.h"
 
 static int fails, checks;
 #define CHECK(c, ...) do { checks++; if (!(c)) { fails++; printf("FAIL %s:%d: ", __FILE__, __LINE__); \
@@ -429,6 +432,100 @@ static void test_hold(void)
     CHECK(dc2d_last()->nheld == 0 && frame_diff(NULL) == 0, "hold released: backdrop still drawn");
 }
 
+
+/* ---- kept backdrop (DC9B) ------------------------------------------------------------------------ */
+extern int tee_ref_only;
+static int stage_draws;
+static const uint8_t stage_heart[6 * 5] = { 0, 9, 0, 0, 9, 0,  9, 4, 9, 9, 4, 9,  9, 4, 4, 4, 4, 9,
+                                            0, 9, 4, 4, 9, 0,  0, 0, 9, 9, 0, 0 };
+static const DoomoImage stage_img = { 6, 5, stage_heart, 0 };
+
+/* a stand-in for the church: stripes, lines, a circle of rects, hearts (one flipped, one at scale 2),
+ * and a shaded band at the end */
+static void stg_test_draw(uint32_t key)
+{
+    int x, y;
+    if (!tee_ref_only) stage_draws++;
+    plat_rect(0, 0, 320, 240, (uint8_t)(20 + key));
+    for (x = 4; x < 320; x += 14) plat_rect(x, 0, 6, 200, (uint8_t)(30 + key));
+    for (y = 6; y < 190; y += 22) plat_rect(0, y, 320, 1, 5);
+    for (x = -3; x <= 3; x++) plat_line(160 + x * 6, 150, 160 + x * 50, 260, 7);
+    for (y = -8; y <= 8; y++) plat_rect(250 - (y * y) / 8 - 4, 60 + y, (y * y) / 4 + 8, 1, 11);
+    plat_image(40, 30, &stage_img, 1, 0, 0);
+    plat_image(60, 80, &stage_img, 2, IMG_FLIPX, 0);
+    plat_image(300, 20, &stage_img, 3, 0, 0);                   /* off the right edge */
+    plat_rect(0, 200, 320, 40, 3);
+    plat_shade_rect(0, 0, 320, 4 + (int)key, 12);
+    plat_shade_rect(0, 236 - (int)key, 320, 4 + (int)key, 12);
+}
+
+/* a backdrop the bake cannot do (a checker is a textured prim): drawn the old way, every tick */
+static void stg_test_draw_bad(uint32_t key)
+{
+    (void)key;
+    if (!tee_ref_only) stage_draws++;
+    plat_rect(0, 0, 320, 240, 12);
+    plat_checker(10, 10, 100, 80, 3);
+    plat_shade_rect(0, 0, 320, 8, 12);
+}
+
+/* one tick: the native frame gets the backdrop drawn straight, the Dreamcast one through the stage */
+static void stage_frame(uint32_t key, int shades)
+{
+    PlatStageInfo info;
+    void (*draw)(uint32_t) = key >= 9 ? stg_test_draw_bad : stg_test_draw;
+    memset(&info, 0, sizeof(info));
+    plat_begin_frame();
+    CHECK(dc2d_stage_begin(DOOMO_BACKDROP_EXO_CHURCH, key, draw, &info) == 1, "stage: begin refused");
+    tee_ref_only = 1; draw(key); tee_ref_only = 0;
+    dc2d_stage_restore(0, 0, 320, 240);
+    plat_rect(100, 100, 30, 20, 40);
+    if (shades & 1) plat_shade_rect(20, 20, 100, 60, 10);               /* partial, then overlapping ones, then all */
+    if (shades & 2) plat_shade_rect(60, 40, 100, 80, 9);
+    if (shades & 4) plat_image(70, 50, &stage_img, 2, IMG_SHADOW, 0);
+    if (shades & 8) plat_rect(200, 150, 40, 30, 44);
+    if (shades & 16) plat_shade_rect(0, 0, 320, 240, 8);
+    if (shades & 32) plat_shade_rect(100, 120, 90, 50, 12);
+    if (shades & 64) plat_image(190, 90, &stage_img, 2, IMG_SHADOW | IMG_FLIPX, 0);
+    dc2d_stage_end();
+    plat_end_frame();
+}
+
+static void test_stage(void)
+{
+    uint32_t h0, m0;
+    int d0, f;
+    memset(&dc2d_stats, 0, sizeof(dc2d_stats));
+    h0 = dc2d_stats.stage_hits; m0 = dc2d_stats.stage_misses;
+    stage_draws = 0;
+    stage_frame(1, 0);
+    CHECK(frame_diff(NULL) == 0, "stage: the first (baked) frame differs from the native one");
+    CHECK(dc2d_stats.stage_misses == m0 + 1, "stage: the first frame was not a bake");
+    d0 = stage_draws;
+    for (f = 0; f < 3; f++) {
+        stage_frame(1, 0);
+        CHECK(frame_diff(NULL) == 0, "stage: a kept frame differs from the native one");
+    }
+    CHECK(dc2d_stats.stage_hits == h0 + 3, "stage: kept frames were not hits (%u)", (unsigned)(dc2d_stats.stage_hits - h0));
+    CHECK(stage_draws == d0, "stage: draw(key) ran again for a kept key");
+    CHECK(dc2d_last()->n <= 4, "stage: a kept backdrop is %d prims", dc2d_last()->n);
+    for (f = 1; f < 128; f++) {                              /* shades over it, in every mix: every one exact */
+        stage_frame(1, f);
+        { int me, bad = frame_diff(&me); CHECK(bad == 0, "stage: shades %d over a kept backdrop differ (%d px, max error %d)", f, bad, me); }
+    }
+    stage_frame(2, 127);                                     /* another key, then back */
+    CHECK(frame_diff(NULL) == 0, "stage: another key differs");
+    stage_frame(1, 127);
+    CHECK(frame_diff(NULL) == 0, "stage: the first key again differs");
+    m0 = dc2d_stats.stage_misses; h0 = dc2d_stats.stage_hits; d0 = stage_draws;
+    for (f = 0; f < 3; f++) {                               /* a backdrop that cannot be baked: drawn each tick, exact */
+        stage_frame(9, f ? 63 : 0);
+        CHECK(frame_diff(NULL) == 0, "stage: an unbakeable backdrop differs (frame %d)", f);
+    }
+    CHECK(dc2d_stats.stage_misses == m0 && dc2d_stats.stage_hits == h0, "stage: an unbakeable backdrop was counted as kept");
+    CHECK(stage_draws == d0 + 4, "stage: an unbakeable backdrop drew %d times in 3 ticks (a try, then each tick)", stage_draws - d0);
+}
+
 /* ---- vertex budget ----------------------------------------------------------------------------------- */
 static void test_budget(void)
 {
@@ -496,6 +593,7 @@ int main(void)
     test_shade_exact();
     test_texcache();
     test_hold();
+    test_stage();
     test_budget();
     test_post();
     printf("dc2d tests: %d checks, %d failed\n", checks, fails);

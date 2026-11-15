@@ -96,9 +96,9 @@ void plat_end_frame(void)
 
 void plat_clear(uint8_t c) { ref_clear(c); dc2d_clear(c); }
 void plat_rect(int x, int y, int w, int h, uint8_t c) { ref_rect(x, y, w, h, c); if (!tee_ref_only) dc2d_rect(x, y, w, h, c); }
-void plat_shade_rect(int x, int y, int w, int h, int l) { ref_shade_rect(x, y, w, h, l); dc2d_shade_rect(x, y, w, h, l); }
+void plat_shade_rect(int x, int y, int w, int h, int l) { ref_shade_rect(x, y, w, h, l); if (!tee_ref_only) dc2d_shade_rect(x, y, w, h, l); }
 void plat_line(int x0, int y0, int x1, int y1, uint8_t c) { ref_line(x0, y0, x1, y1, c); if (!tee_ref_only) dc2d_line(x0, y0, x1, y1, c); }
-void plat_checker(int x, int y, int w, int h, uint8_t c) { ref_checker(x, y, w, h, c); dc2d_checker(x, y, w, h, c); }
+void plat_checker(int x, int y, int w, int h, uint8_t c) { ref_checker(x, y, w, h, c); if (!tee_ref_only) dc2d_checker(x, y, w, h, c); }
 void plat_text(int x, int y, const char *s, uint8_t c) { ref_text(x, y, s, c); dc2d_text(x, y, s, c); }
 
 /* the reference of plat_text_outline is the core's weak default (ui.c): ten passes */

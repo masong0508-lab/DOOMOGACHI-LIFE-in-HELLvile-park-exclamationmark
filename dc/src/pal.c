@@ -29,6 +29,9 @@
 #include "doomo/camfx.h"
 
 static uint16_t bank0[256], bank1[256], lerpb[2][256];
+/* DC9B: dc2d_pal_argb is asked twice a prim by the budget loop and the backend, so each bank's colours are
+ * kept as the ARGB they send (every prim of a 3,000 prim tick cost 4 us of it; filled with the banks) */
+static uint32_t argb_tab[4][256];
 static uint32_t shade_argb[DOOMO_LIGHT_LEVELS];
 static uint32_t shadow_argb;
 
@@ -74,6 +77,12 @@ static uint32_t fit(int level, int c)
     return (uint32_t)(k < 0 ? 0 : k > 255 ? 255 : k);
 }
 
+static void argb_fill(int bank, const uint16_t *t)
+{
+    int i;
+    for (i = 0; i < 256; i++) argb_tab[bank][i] = 0xFF000000u | argb_of_1555(t[i]);
+}
+
 void dc2d_pal_init(void)
 {
     int i, l;
@@ -85,6 +94,7 @@ void dc2d_pal_init(void)
     for (l = 0; l < DOOMO_LIGHT_LEVELS; l++)
         shade_argb[l] = 0xFF000000u | (fit(l, 0) << 16) | (fit(l, 1) << 8) | fit(l, 2);
     shadow_argb = (255u - fit(5, -1)) << 24;
+    argb_fill(0, bank0); argb_fill(1, bank1); argb_fill(2, lerpb[0]); argb_fill(3, lerpb[1]);
     dc2d_be_pal(0, bank0);
     dc2d_be_pal(1, bank1);
     dc2d_be_pal(2, lerpb[0]);
@@ -102,7 +112,7 @@ uint32_t dc2d_pal_argb(int bank, uint8_t index)
 {
     /* a palette colour drawn as a rect is opaque, index 0 included
      * (PAL_CLEAR draws black, as on every port) */
-    return 0xFF000000u | argb_of_1555(bank_tab(bank)[index]);
+    return argb_tab[bank & 3][index];
 }
 
 void dc2d_pal_lerp_build(int bank, int pal_id, int level16)
@@ -112,6 +122,7 @@ void dc2d_pal_lerp_build(int bank, int pal_id, int level16)
     t[0] = 0;
     for (i = 1; i < 256; i++)
         t[i] = bgr555_to_1555(camfx_pal_entry(i, pal_id, level16, 0, 0));
+    argb_fill(bank == 3 ? 3 : 2, t);
     dc2d_be_pal(bank == 3 ? 3 : 2, t);
 }
 
