@@ -988,8 +988,8 @@ twice identical, 0 of 1,141 ticks over 33.3 ms, worst 26.0 ms. Measured 2026-11-
 Not in the list, and why:
 
 * `home_talk_basic`, `_group`, `_safety`, `_visit` play the Talk screen (`talk-enter`, `talk-read`,
-* `home_talk_basic`, `_group`, `_safety`, `_visit` play the Talk screen (`talk-enter`, `talk-read`,
-  `expect-talk-*`). Talk is built on the Dreamcast (TD1: the bank is read from the disc; TD2: dcrun has the `talk-*` commands, see "Talk on the Dreamcast"). `home_talk_basic` runs unchanged except `expect-toast`; TD3 puts these four on the list (it needs `expect-talk-act`, `expect-toast`, `talk-rows`).
+  `expect-talk-*`). Their Dreamcast copies are in `dc/tests/talk` and run in `make -C dc talk-test` (TD3, section
+  "Talk scripts and frame times (TD3)").
 * `home_visit` expects the live Talk screen after A at the host (greeting box, the Talk list, B, the goodbye box). Until
   TD1 the Dreamcast had a copy without that step (`home_visit_dc.txt`); since TD1 the core script runs as it is (it only
   uses `press` and `expect-scene`), the copy is gone and `home_visit` is in `family-test2`'s list.
@@ -2379,10 +2379,71 @@ testable on the console. The Talk screen itself is the core's (`core/src/talk_sc
   about the screen; `dcrun` has the native runner's T8 commands (`talk-enter`, `talk-party`, `talk-read`,
   `talk-quick`, `talk-quick-act`, `talk-say`, `talk-type`, `talk-key`, `talk-page`, `talk-to`, `talk-invite`,
   `talk-leave`, `expect-talk`, `-page`, `-to`, `-row`, `-you`, `-quick`, `-gate`, `-reply-romance`, `-care`,
-  `-reply-sincere`) built on real button presses and ticks. Not done: `talk-rows`, `expect-talk-act`, `expect-toast`.
+  `-reply-sincere`) built on real button presses and ticks. TD3 added `talk-ready`, `expect-talk-act`,
+  `expect-toast` / `expect-no-toast`; not done: `talk-rows`.
 * **On Flycast** (`make -C dc talk-test`: `dc/tests/talk/run_screens.sh`, after TD1's `run_flycast.sh`): each script twice in `dcrun` (a keyboard on
   port 2), every shot identical in both runs, then against the native runner's 320x240 shots by `compare.py`
   (exact >= 98 %, the gate in the script), and no tick over 33.3 ms. Results are in the commit message and the status file.
+
+## Talk scripts and frame times (TD3)
+
+`dc/tests/talk` now holds six scripts, each played twice in `dcrun` on the CDI and against the native runner:
+`talk_pad`, `talk_typed` (TD2) and `home_talk_basic`, `_group`, `_safety`, `_visit`, copied from
+`core/tests/scripts` (T8-SCRIPTS) and changed in three ways only:
+
+* `talk-ready` right after `scene TITLE`. The bank (`TALK_EN.BIN`, 0.9 MB) is read off the disc a sector a tick
+  by `dc_talk_pump` (TD1), so on Flycast it is in 250 ticks after the pump starts (tick 90): the command polls
+  until `talk_db_open` stops answering "loading". The native twin gets `wait N` with the same N (the title
+  art moves with the tick, so the pictures only match when both have run as long).
+* Longer waits (`wait 90`) before a shot that follows a said line. The Dreamcast makes an answer one generator
+  step a tick (TD2), the native runner in one go; the shot must show the answer typed out.
+* Nothing else: the `expect-*` lines, the presses and the order are the native script's.
+
+The four need three commands dcrun lacked, all built on real presses and the read-only views of `talkhc.c`:
+`expect-talk-act` (open the category page, look, press B), `expect-toast` / `expect-no-toast` (`DC_TQ_TOAST`
+reads the core's toast queue) and `talk-ready` (`DC_TQ_READY`). After a said line (`talk-quick`, `talk-say`,
+`talk-type`) dcrun now steps until the answer's dialogue box is up, so the next `expect-talk-reply-*` reads the
+finished answer. Found on the way: `expect-talk-reply-sincere` read the romance bit (both names start with
+"r"), so it could only pass on a romance reply; it reads its own bit now.
+
+**Result** (`make -C dc talk-test`, Flycast, 2026-11-15): 6 of 6 pass, both runs byte for byte equal, every
+shot at least 98.2 % exact against the native 320x240 picture, no tick over 33.3 ms.
+
+| script | shots | ticks | over 33.3 ms | worst tick | lowest exact |
+|---|---:|---:|---:|---:|---:|
+| home_talk_basic | 8 | 1,211 | 0 | 17.2 ms | 98.3 % |
+| home_talk_group | 6 | 872 | 0 | 27.9 ms | 99.9 % |
+| home_talk_safety | 4 | 1,255 | 0 | 14.6 ms | 99.4 % |
+| home_talk_visit | 5 | 774 | 0 | 16.7 ms | 98.4 % |
+| talk_pad | 8 | 1,259 | 0 | 22.6 ms | 98.9 % |
+| talk_typed | 5 | 960 | 0 | 16.9 ms | 98.9 % |
+
+**The one miss found** (not Talk's own): with TD2's tree alone, `home_talk_visit` had a tick of 7,416 ms. The first
+`home_talk_enter` read the whole bank in one call (`fs_read` of 0.9 MB, about 17 ms a sector on Flycast). The fix
+is TD1's sliced read (commit 7b9723db on `fut-td1`: `talkdisc.c`, the `dc_talk_pump` call in `plat_end_frame`,
+the host test), applied here as the part TD3's scripts cannot do without; when TD1 lands first the rebase drops it.
+A player who reaches a housemate in the first seconds after boot finds Talk "not ready" until the last slice is in
+(about 8 s after the pump starts on Flycast; the GD-ROM's real rate is the open hardware check of TD1).
+
+**Frame times of the Talk screens** (`make -C dc talk-speed` = `sh dc/harness/speed2.sh OUT talk`, the group in
+`dc/tests/talk/speed2_talk.txt`, the CDI on Flycast; every window holds only waits and presses, so what a press
+causes is inside it). The table now has the window's own work: `expect-ticks` prints `window work: N ticks,
+mean X us, worst Y us` (mean and worst of the game's per-tick work over the window).
+
+| window | logic t/s | work mean ms | worst ms | ticks >33.3 ms | verdict |
+|---|---:|---:|---:|---:|---|
+| opener, greeting box typing | 30.0 | 7.5 | 9.6 | 0 | ok |
+| list at rest | 30.0 | 3.6 | 4.1 | 0 | ok |
+| list cursor move | 30.0 | 3.6 | 4.1 | 0 | ok |
+| quick reply made and typed | 30.0 | 6.8 | 9.5 | 0 | ok |
+| category page open | 30.0 | 7.3 | 11.7 | 0 | ok |
+| act said, answer made and typed | 30.0 | 6.6 | 9.7 | 0 | ok |
+| Options page | 30.0 | 3.2 | 5.4 | 0 | ok |
+| back in the house after goodbye | 30.0 | 2.5 | 3.0 | 0 | ok |
+
+The worst tick of the whole run is 21.1 ms (tick 421, in the Talk screen but between windows, on a `talk-enter` /
+`talk-read` step). 30 fps holds in every Talk screen. No picture changed in this package (scripts and harness
+only): nothing to compare before and after.
 
 ## Rumble (X2)
 
