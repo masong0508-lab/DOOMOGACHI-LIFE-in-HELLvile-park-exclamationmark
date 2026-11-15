@@ -3,6 +3,8 @@
 # day, the bot's cast and wait, a forced bite reeled in (FISH_ARG_FORCE), the catch card, the
 # tackle box's Fishdex (FISH_ARG_DEMO fills it), the night pier. Cooking: the recipe book, the
 # chop / stir / fry steps (the bot cooks recipe 2), bake, simmer, the counter (serve customers).
+# S2-4c: the kitchen windows close with expect-fps floors (the kept kitchen, docs/GBA.md
+# "Speed wave 2: S2-4c"); expect-gap 34 where no frame takes three vblanks.
 wait 40
 expect-log doomo: init
 sync on 61
@@ -72,50 +74,53 @@ push COOKING 64
 wait 30
 fps start
 wait 90
-fps cook: recipe book
+expect-fps 28 cook: recipe book
+expect-gap 34
 shot cook_book
 seed 1
 scene COOKING 864
 wait 92
 fps start
 wait 130
-fps cook: chop
+expect-fps 28 cook: chop
+expect-gap 34
 shot cook_chop
 wait 50
 fps start
 wait 130
-fps cook: stir
+expect-fps 28 cook: stir
 shot cook_stir
 wait 90
 fps start
 wait 130
-fps cook: fry
+expect-fps 28 cook: fry
+expect-gap 34
 shot cook_fry
 wait 100
 fps start
 wait 90
-fps cook: result card
+expect-fps 19 cook: result card
 shot cook_result
 seed 1
 scene COOKING 352
 wait 340
 fps start
 wait 130
-fps cook: bake
+expect-fps 28 cook: bake
 shot cook_bake
 seed 1
 scene COOKING 608
 wait 350
 fps start
 wait 130
-fps cook: simmer
+expect-fps 28 cook: simmer
 shot cook_simmer
 seed 1
 scene COOKING 129
 wait 30
 fps start
 wait 90
-fps cook: counter
+expect-fps 24 cook: counter
 shot cook_counter
 press A
 wait 16
@@ -123,5 +128,5 @@ press A
 wait 10
 fps start
 wait 60
-fps cook: serving
+expect-fps 25 cook: serving
 shot cook_serving
