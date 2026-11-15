@@ -126,6 +126,24 @@ menu ("Sound"). Nothing is deleted.
 * **Drum pattern editor**: eight lanes by 16 steps with one button per cell, plus the 15 composer grooves and fills as a
   starting point and per-lane mute.
 
+### 2.5b Helper tools (owner, 2026-11-15: all seven, on every platform; a lighter version where tight, never dropped)
+All are menu items on the tab they help, deterministic (seed + inputs), one undo step each, and suggest rather than force.
+| Tool | Where | What it does | Lighter on a tight platform |
+|---|---|---|---|
+| Chord suggester | EDIT (chord lane) / ARRANGE | offers 4 next chords for the section from the key, mood and the previous chord (diatonic table, no search) | 3 suggestions, no preview loop |
+| Melody helper | EDIT (lead) | "Suggest a phrase": 4 candidate one-bar motifs on the current chords, from the composer's motif code | 2 candidates |
+| Groove picker | EDIT (drums) | the 15 composer grooves + fills by name, auditioned on the current bar | names only, no audition loop |
+| Lyric syllable fitter | WORDS | today's auto-fit plus "show the stress": which notes get which syllable, fix by one press | fit badge only |
+| Auto-harmony for the choir | CHOIR | writes harmony lines for sections (thirds / fifths / octaves per section) from the lead, into the harmony track or `choir_double` | thirds only |
+| Section copier | ARRANGE | copy a section (with its words and singers) to a new slot, optionally transposed or with the drums swapped | copy only |
+| Mix helper | EDIT (Sound) | balances track volumes by role (lead over harmony over bass), flags tracks that hide each other, one-press "balance" | balance only |
+
+### 2.5c The detail gate (owner, same day)
+"Detail to functionability": every function does exactly what its name says, gives feedback (a sound, a toast or a changed
+card), can be undone, and has no dead end or half-working option. A package does not land until its **function ledger**
+(`docs/STUDIO.md` section "Function ledger", one row per control: what it says, what it does, feedback, undo, tested by)
+has no empty cell. Options that cannot work on a platform are hidden there, never greyed with no reason.
+
 ### 2.6 Advanced (ST-ADV)
 Advanced is a level switch that unlocks: more of everything, automation and expert views. Off by default; the
 old four-tab song opens in it unchanged.
@@ -204,7 +222,7 @@ studio's backdrop cost (about 14 ms per tab) is cut by the retained panel, not b
 | ST-0 | this plan; machine setup; the current numbers | landed with this file |
 | ST-EASY | START card, Tweak, `tab_help`, control cards, undo / redo, play-from-anywhere, cursor description, renamed tabs | tests: composer determinism, undo / redo round trip; speed2 before / after |
 | ST-PLAY | `song_jam_*`, REC with quantize, range loop, drum pads | tests: quantize unit tests, jam stays in scale, 1 undo per take |
-| ST-TOOLS | note grid, selection, transpose / repeat, per-track mix, chord track, drum editor | tests per operation, old songs load |
+| ST-TOOLS | note grid, selection, transpose / repeat, per-track mix, chord track, drum editor, the seven helper tools (2.5b) | tests per operation, old songs load |
 | ST-ADV | `SongExt`, sections, key / tempo change, automation, 8 tracks, lyrics across the song, `'SNG2'` | save round trip, old-save test, folding test, GBA sizes |
 | ST-USE | user songs in the Concert Hall, PERFORM and the show; the declutter pass | the show tests; shots before / after |
 
