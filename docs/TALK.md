@@ -1007,8 +1007,8 @@ samples, two residents). All far below 33.3 ms: a steady 30 fps on native.
 idle runs 30.4 logic ticks/s but draws **24.3 frames/s** (work avg 35 ms, worst 38 ms); an answer (the quick reply and its
 four boxes with the portrait) **17.6 drawn frames/s** (work avg 47 ms) with a **408 ms hitch** on the frame that says a line
 (the drama manager and the generator run in that one frame; the first box after the opener reached 511 ms). **This is
-below the steady-30 target on the GBA**; the cost is the box and portrait drawing and the one-frame generation, not the
-list. It is listed for the SPEED stream and the Talk owner (draw the portrait box cheaper; spread the generation over a few
+below the steady-30 target on the GBA**; the list alone is 24 fps, the boxes with the portrait lower it, and the hitch is
+the one-frame generation (not profiled further here). It is listed for the SPEED stream and the Talk owner (draw the portrait box cheaper; spread the generation over a few
 frames behind the typing animation). PS1 and Dreamcast: Talk is not built there yet (`DOOMO_HAS_TALK` is native and GBA).
 `gba/harness/scripts/talk.txt` was stale (it failed on origin since the owner's opener and quick replies): it now plays the
 greeting, a quick reply and the goodbye boxes with the seeded counts, and prints the windows above.
