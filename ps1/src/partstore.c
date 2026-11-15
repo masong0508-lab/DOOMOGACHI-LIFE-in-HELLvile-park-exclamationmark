@@ -25,7 +25,7 @@
 #include "doomo/part_icons.h"
 
 #define SECTOR   2048
-#define MAXSETS  16
+#define MAXSETS  24
 #define CHUNK    16                     /* sectors read and uploaded at a time (32 KB) */
 #define SPU_TOP  0x7e000u               /* the reverb work area starts here */
 #define RB_BYTES 320                    /* PART_ENTRY_WIN + 7 rounded up to 64-byte DMA blocks */
