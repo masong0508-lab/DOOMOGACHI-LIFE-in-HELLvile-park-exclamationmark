@@ -683,8 +683,29 @@ static void granny_layer(int id, int cx, int cy, int s, int t, int mood, int cy_
     if (!K.lpass) { granny_draw(cx, cy, s, t, mood); return; }
     granny_box(cx, cy, s, b);
     if (L(id, b, granny_key(s, t, mood))) {
-        granny_draw(cx, cy, s, t, mood);
+        /* (a baked pose where the platform has one: the GBA's ROM) */
+        if (!plat_cook_pose(granny_key(s, t, mood), cx, cy, s, t, mood)) granny_draw(cx, cy, s, t, mood);
         put_back_rows(b, cy_counter, fc_h());
+    }
+}
+
+/* the book's Granny: where and how big */
+static void book_granny(int *gx, int *gy, int *s)
+{
+    int big = fc_big();
+    *gx = big ? 24 : 17;
+    *gy = H() - (big ? 12 : 8) + 6;
+    *s = big ? 12 : 9;
+}
+
+void cook_poses(void (*fn)(void *ctx, int cx, int cy, int s, int t, int mood), void *ctx)
+{
+    int t, mood, gx, gy, gs;
+    book_granny(&gx, &gy, &gs);
+    for (t = 0; t < GRANNY_POSE_CYCLE; t++) {
+        for (mood = GRAN_CALM; mood <= GRAN_DISMAY; mood++)      /* the cooking steps, the result */
+            fn(ctx, gran_x(), counter_y() + 4, fc_big() ? 18 : 14, t, mood);
+        fn(ctx, gx, gy, gs, t, GRAN_TALK);                     /* the recipe book */
     }
 }
 
@@ -1054,7 +1075,11 @@ static void draw_book(void)
             doomo_snprintf(K.line, sizeof(K.line), "Short a bit? I'll sell you the rest for %d H$.", cost);
             say = K.line;
         } else say = "This one needs fish, dear. Off to the Lake of Fire!";
-        granny_layer(LB_GRANNY, gx, gy + 6, big ? 12 : 9, t, GRAN_TALK, h);
+        {
+            int px, py, ps;
+            book_granny(&px, &py, &ps);
+            granny_layer(LB_GRANNY, px, py, ps, t, GRAN_TALK, h);
+        }
         bubble_layer(LB_BUBBLE, gx + (big ? 22 : 17), by + bh + 5, w - gx - (big ? 28 : 21), say, gx + 6, gy - 12, 999);
     }
     hint_layer(LB_HINT, STR_ICON_ARROW_L STR_ICON_ARROW_R "Page " STR_ICON_A "Cook START Serve " STR_ICON_B "Exit", WIN_CUTE);

@@ -337,13 +337,25 @@ static int kcompare(int w, int h, int night, int *kept)
 
 TEST(cook_kept_kitchen_is_pixel_identical)
 {
-    int kept, n;
+    int kept, n, asked;
     CHECK(stage_mem_bytes() <= 2048u);
     n = kcompare(240, 160, 0, &kept);
     CHECK(n > 0);
+    /* every pose of Granny the tour drew from an image is one the GBA bakes (and some were) */
+    CHECK_MSG(nat_cook_pose_unlisted(&asked) == 0, "%d of %d poses are not in cook_poses()", nat_cook_pose_unlisted(&asked), asked);
+    CHECK_MSG(asked >= 40, "only %d poses drawn from images", asked);
     CHECK_MSG(kept > n / 3, "only %d of %d frames over the kept picture", kept, n);
     CHECK(kcompare(240, 160, 1, &kept) > 0);
     CHECK(kcompare(320, 240, 0, &kept) > 0);
     CHECK(kcompare(320, 240, 1, &kept) > 0);
     set_res(240, 160);
+}
+
+/* Granny's pose is periodic: every t >= 0 shows a pose of the first cycle (the baker's range) */
+TEST(cook_kept_granny_poses_cycle)
+{
+    int mood, t;
+    for (mood = GRAN_CALM; mood <= GRAN_DISMAY; mood++)
+        for (t = 0; t < 3 * GRANNY_POSE_CYCLE; t++)
+            CHECK_MSG(granny_key(14, t, mood) == granny_key(14, t % GRANNY_POSE_CYCLE, mood), "mood %d t %d", mood, t);
 }

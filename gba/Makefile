@@ -238,6 +238,17 @@ $(OBJ)/gba/src/backdrop_blob.o: $(GBA)/src/backdrop_blob.s $(BACKDROPS)
 	@mkdir -p $(dir $@)
 	$(CC) $(ASFLAGS) '-DGBA_BACKDROPS_BIN="$(BACKDROPS)"' -c $< -o $@
 
+# (S2-4c) Granny's baked poses (core/src/fishcook_int.h plat_cook_pose, src/cookpose.c): the native
+# runner draws every pose the kept kitchen asks for at 240x160 into build/gen/poses.bin
+POSES := $(BUILD)/gen/poses.bin
+$(POSES): backdrops-runner
+	@mkdir -p $(dir $@)
+	@$(NATIVE_BUILD)/runner --quiet --w 240 --h 160 --bake-poses $@.tmp
+	@if cmp -s $@.tmp $@; then rm -f $@.tmp; else mv $@.tmp $@; echo "poses: $@"; fi
+$(OBJ)/gba/src/cookpose_blob.o: $(GBA)/src/cookpose_blob.s $(POSES)
+	@mkdir -p $(dir $@)
+	$(CC) $(ASFLAGS) '-DGBA_POSES_BIN="$(POSES)"' -c $< -o $@
+
 $(GEN_TABLES): $(GBA)/tools/mktables.py
 	@mkdir -p $(dir $@)
 	$(PYTHON) $< $@

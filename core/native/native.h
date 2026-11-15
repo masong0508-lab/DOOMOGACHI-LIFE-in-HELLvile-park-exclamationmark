@@ -87,6 +87,8 @@ int  nat_stage_kept(void);          /* (S2-4) the last frame was drawn over a ke
 int  nat_stage_pics(uint32_t *out, int cap);   /* (S2-4b) the pictures asked for since nat_stage_reset: id << 24 | key */
 int  nat_stage_stamps(void);        /* (S2-4b) stamps drawn since nat_stage_reset */
 int  nat_bake_backdrops(const char *path);
+int  nat_bake_poses(const char *path);    /* (S2-4c) Granny's poses, cookpose_native.c */
+int  nat_cook_pose_unlisted(int *asked);  /* (S2-4c, tests) poses drawn that the baker would not bake */
 
 /* PNG writer: 8bpp indexed image -> indexed PNG with the master palette,
  * optionally zoomed by an integer factor. Returns 1 on success. */

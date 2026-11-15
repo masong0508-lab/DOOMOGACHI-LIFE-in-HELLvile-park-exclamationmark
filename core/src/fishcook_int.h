@@ -337,6 +337,15 @@ void fc_fx_box(int b[4], uint32_t *key);            /* fishcook.c: the particles
 void fc_bubble_box(int x, int y, int w, const char *s, int tx, int ty, int b[4]);
 void granny_box(int cx, int cy, int s, int b[4]);
 uint32_t granny_key(int s, int t, int mood);
+/* (S2-4c) Granny's poses baked ahead of time: plat_cook_pose draws the pose granny_key(s, t,
+ * mood) of granny_draw(cx, cy, s, t, mood) from a picture the platform holds and returns 1, or
+ * returns 0 (the weak default) and the caller draws her. The GBA bakes every pose cook_poses()
+ * lists at 240x160 into the ROM (runner --bake-poses). */
+#define GRANNY_POSE_CYCLE 2520                      /* lcm of her animation periods */
+int plat_cook_pose(uint32_t key, int cx, int cy, int s, int t, int mood);
+/* every (cx, cy, s, mood) the kept kitchen draws Granny at on this screen, with every t of a
+ * cycle: fn(ctx, cx, cy, s, t, mood) (cook_scene.c) */
+void cook_poses(void (*fn)(void *ctx, int cx, int cy, int s, int t, int mood), void *ctx);
 void dish_box(int r, int cx, int cy, int rw, int burnt, int b[4]);
 void ingredient_box(const CookIng *g, int cx, int cy, int rw, int b[4]);
 uint32_t ingredient_key(const CookIng *g, int t);

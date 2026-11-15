@@ -1155,13 +1155,13 @@ static void usage(void)
             "              [--saves DIR] [--seed N] [--zoom N] [--gba-input] [--save-stream N]\n"
             "              [--assert-no-stubs] [--check-prompts] [--pad host|gba|ps1|dc] [--quiet]\n"
             "              [--verbose] [--wav FILE] [--budgets FILE] [--frame-hash FILE]\n"
-            "              [--bake-backdrops FILE]\n");
+            "              [--bake-backdrops FILE] [--bake-poses FILE]\n");
 }
 
 int main(int argc, char **argv)
 {
     NatOptions o;
-    const char *script = NULL, *bake = NULL;
+    const char *script = NULL, *bake = NULL, *bake_poses = NULL;
     int frames = -1, assert_no_stubs = 0, check_prompts = 0, pad = -1, i;
     memset(&o, 0, sizeof(o));
     o.w = 240; o.h = 160; o.seed = 0x5EED1234u; o.save_dir = ".";
@@ -1206,6 +1206,7 @@ int main(int argc, char **argv)
         }
         /* --- SP7: every backdrop at --w x --h, for the GBA ROM (stage_native.c) --- */
         else if (strcmp(a, "--bake-backdrops") == 0 && val) { bake = val; i++; }
+        else if (strcmp(a, "--bake-poses") == 0 && val) { bake_poses = val; i++; }    /* S2-4c */
         else if (strcmp(a, "--help") == 0 || strcmp(a, "-h") == 0) { usage(); return 0; }
         else { fprintf(stderr, "runner: unknown option %s\n", a); usage(); return 1; }
     }
@@ -1222,6 +1223,12 @@ int main(int argc, char **argv)
         int n = nat_bake_backdrops(bake);
         if (!n) return 1;
         if (!o.quiet) printf("runner: %d backdrops (%dx%d) -> %s\n", n, o.w, o.h, bake);
+        return 0;
+    }
+    if (bake_poses) {                                            /* S2-4c: Granny's poses */
+        int n = nat_bake_poses(bake_poses);
+        if (!n) return 1;
+        if (!o.quiet) printf("runner: %d poses (%dx%d) -> %s\n", n, o.w, o.h, bake_poses);
         return 0;
     }
     if (script) {

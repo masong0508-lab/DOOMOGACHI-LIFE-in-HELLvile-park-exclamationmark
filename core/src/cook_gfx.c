@@ -365,16 +365,27 @@ void granny_box(int cx, int cy, int s, int b[4])
     b[2] = u * 5 / 2 + 7;      b[3] = 4 * u + 9;
 }
 
-/* (S2-4c) what granny_draw's picture depends on besides where she is: her breath and ear
- * sway, the blink, the talking mouth, the spoon's wave, the dismayed tear */
+/* (S2-4c) what granny_draw's picture depends on besides where she is (her pose): the mood, her
+ * breath, the ears' sway (only half of it moves them), the blink (calm and talking eyes), the
+ * talking mouth, the spoon's wave, the dismayed tear; and her size. Bits: mood 0-1, breath 2-3,
+ * ears 4-5, blink 6, mouth 7, wave 8-11, tear 12-13, size 14-19. Periodic in t: every pose of
+ * t >= 0 shows up in t < GRANNY_POSE_CYCLE (the baker's range). */
 uint32_t granny_key(int s, int t, int mood)
 {
-    uint32_t k = (uint32_t)(ui_wave(t, 70, 1) + 2) | (uint32_t)(ui_wave(t + 20, 90, 2) + 3) << 2;
-    k |= (uint32_t)((t % 120) < 5) << 5 | (uint32_t)(mood & 3) << 6 | (uint32_t)(s & 63) << 8;
-    if (mood == GRAN_TALK) k |= (uint32_t)((t / 4) & 1) << 14 | (uint32_t)(ui_wave(t * 2, 40, 2) + 3) << 16;
-    else if (mood == GRAN_CHEER) k |= (uint32_t)(ui_wave(t * 4, 30, 5) + 6) << 16;
-    else if (mood == GRAN_DISMAY) k |= (uint32_t)((t / 5) % 4) << 16;
-    return k;
+    uint32_t k = (uint32_t)(mood & 3) | (uint32_t)(ui_wave(t, 70, 1) + 1) << 2 | (uint32_t)(ui_wave(t + 20, 90, 2) / 2 + 1) << 4;
+    if (mood == GRAN_CALM || mood == GRAN_TALK) k |= (uint32_t)((t % 120) < 5) << 6;
+    if (mood == GRAN_TALK) k |= (uint32_t)((t / 4) & 1) << 7 | (uint32_t)(ui_wave(t * 2, 40, 2) + 5) << 8;
+    else if (mood == GRAN_CHEER) k |= (uint32_t)(ui_wave(t * 4, 30, 5) + 5) << 8;
+    else if (mood == GRAN_DISMAY) k |= (uint32_t)((t / 5) % 4) << 12;
+    return k | (uint32_t)(DOOMO_MAX(6, s) & 63) << 14;
+}
+
+/* (S2-4c) a weak default: no baked poses (the GBA keeps them in the ROM, gba/src/cookpose.c;
+ * native tests render them on demand, core/native/cookpose_native.c) */
+__attribute__((weak)) int plat_cook_pose(uint32_t key, int cx, int cy, int s, int t, int mood)
+{
+    (void)key; (void)cx; (void)cy; (void)s; (void)t; (void)mood;
+    return 0;
 }
 #endif
 
