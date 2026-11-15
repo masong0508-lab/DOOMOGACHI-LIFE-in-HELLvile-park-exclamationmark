@@ -2195,7 +2195,7 @@ emulator at a time; the fps numbers are the game's own frame counts, so a busy h
 ## CR4 A1b (2026-11-15): noses, mouths, ears, blush styles
 
 Measured with clean `cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON` builds on origin `5879aa3` and on A1b rebased onto `abc4f66`: `_end` 0x801ee550
-both times, 72,368 B below the stack top (the elf2exe line prints "70 KB left"): 0 B resident added. The 51 new parts (12 noses, 12 mouths,
+both times (72,368 B below the stack top): 0 B resident added. On the final landing tip (after PS1-RAM, CR5-FIX, TD1) the A1b tree ends at 0x801df9f0, 132,624 B (129 KB) below the stack top, above the 72 KB rule; the parts are still not read by the PS1. The 51 new parts (12 noses, 12 mouths,
 16 ears, 11 blush styles) are part scripts the PS1 does not read yet (the part VM is off until CR10), age class ALL; the creator offers the PS1
 only the painted choices (`part_live_drawable`), as for every scripted part since CR3. `mat blush` is in the VM only (`portrait_script.c`,
 compiled out here). Harness (PCSX-Redux): `game_smoke`, `creator_grid`, `creator_parts_face_b` and `creator_speed` PASS (idle 30.13, grid
