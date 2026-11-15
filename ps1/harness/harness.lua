@@ -125,6 +125,7 @@ local prof_n = 0
 local done = false
 local quit_at = nil
 local lock = false        -- lockstep established
+local lock_held = false   -- the game has stopped once (its EXE is fully loaded)
 local base = 0            -- lockstep: loop counter the script stands at
 local pending = nil       -- outstanding mailbox request
 local stopped = 0         -- vsyncs the game spent stopped by lockstep
@@ -337,6 +338,13 @@ local function on_vsync()
     hu32(H_LOCK)[0] = 1
     lock = true
     log('lockstep on')
+  end
+  if lock and not lock_held then
+    -- the magic shows as soon as its 2 KB sector of the EXE is in RAM; when
+    -- `lock` sits in the next sector, loading that one writes it back to 0
+    -- (g_hcmd at 0x8013f7fc did: no stop, no shot, the language picker), so
+    -- set it again on every vsync until the game has stopped once
+    if hu32(H_PAUSED)[0] ~= 0 then lock_held = true else hu32(H_LOCK)[0] = 1 end
   end
 
   if pending then
