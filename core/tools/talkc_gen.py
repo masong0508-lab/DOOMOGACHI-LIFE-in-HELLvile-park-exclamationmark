@@ -85,8 +85,9 @@ CLASSES = ["open", "ask", "tell", "warm", "cool", "third", "flow", "romance", "g
 LINE_CODES = {".", "..", "...", "d", "!", "big", "/", "w", "r", "punch"}
 CONCEPT_SLOTS = {"x": "X", "food": "F", "hobby": "H", "music": "U", "fear": "E", "hate": "Z", "like": "L",
                  "mem": "K", "job": "J"}
-NAME_SLOTS = {"you": "Y", "me": "M", "them": "T", "other": "O", "partner": "P", "petname": "Q", "lost": "G"}
-TEXT_SLOTS = {"catch": "C", "u": "W"}      # {u}: the unknown word the player typed, quoted (TM2d, unk.name rules only: TK13)
+NAME_SLOTS = {"you": "Y", "me": "M", "them": "T", "other": "O", "partner": "P", "petname": "Q", "lost": "G",
+              "target": "R"}     # {target}: the one a request is about (TQ, quest.* rules)
+TEXT_SLOTS = {"catch": "C", "u": "W", "item": "I"}      # {item}: the item a request is about (TQ)      # {u}: the unknown word the player typed, quoted (TM2d, unk.name rules only: TK13)
 FIELDS = {"adj": "a", "good": "g", "bad": "b", "assoc": "s", "it": "i", "is": "v", "has": "h", "does": "d",
           "was": "w"}
 MODS = {"pl": "p", "indef": "n", "def": "t", "lemma": "l", "cap": "c", "up": "u", "s": "s"}
@@ -124,7 +125,9 @@ FIXED = ["open", "cb", "tag", "handoff", "safe", "end.k7", "pet", "idle", "grief
          # TM2d (talk_gen.c): the reason of a stance, the story, the secret, the unknown word, the hook
          "reason", "story", "secret", "unk", "hook",
          # TM2e (talk_gen.c talk_gen_action): the line that says a sim action is being done
-         "act"]
+         "act",
+         # TQ (talk_gen.c talk_gen_quest): a request and its answers
+         "quest"]
 # K-10: the sincere banks (talk.h TGE_GRIEF, TGE_COMFORT); a comfort line is a reaction
 GRIEF_BANKS = ("grief", "comfort")
 COMFORT_ACTS = ("AGREE", "BACKCHANNEL")
@@ -224,6 +227,8 @@ class Env:
             "hook": {k: v for k, v in c_enum(th, "TH_", "TH_NONE").items() if k not in ("count", "none")},
             "secret": {k: v for k, v in c_enum(th, "TSEC_", "TSEC_LIKE").items() if k != "count"},
             "unk": {k: v for k, v in c_enum(th, "TU_", "TU_NONE").items() if k not in ("count", "none")},
+            "qkind": {k: v for k, v in c_enum(th, "TQK_", "TQK_NONE").items() if k not in ("count", "none")},
+            "qphase": {k: v for k, v in c_enum(th, "TQP_", "TQP_NONE").items() if k not in ("count", "none")},
         }
         self.values["chapter"] = {re.sub(r"^_", "", k): v for k, v in self.values["chapter"].items()}
         self.tge = c_enum(th, "TGE_")
@@ -455,8 +460,8 @@ class Compiler:
                 self.die(where, "{%s}: a name takes only cap / up / s" % slot)
             letter = NAME_SLOTS[slot]
         else:
-            if field is not None or set(mods) - {"cap", "up"}:
-                self.die(where, "{%s}: only cap / up" % slot)
+            if field is not None or set(mods) - ({"cap", "up", "indef"} if slot == "item" else {"cap", "up"}):
+                self.die(where, "{%s}: only cap / up%s" % (slot, " / indef" if slot == "item" else ""))
             letter = TEXT_SLOTS[slot]
         code = letter + (FIELDS[field] if field else "")
         if mods:

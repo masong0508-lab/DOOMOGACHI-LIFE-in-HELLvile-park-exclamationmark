@@ -42,6 +42,7 @@
 #include "doomo/story.h"
 #include "doomo/resident_acc.h"
 #include "doomo/portrait.h"
+#include "doomo/items.h"
 
 #define GR_MAGIC   0x31524754u               /* "TGR1" */
 #define GR_HDR     64u
@@ -312,7 +313,7 @@ static int news_about(const DoomoNewsRec *n, int id)
     case NT_GHOST: case NT_DATING_GRUMBLE: case NT_DATING_CROSS: case NT_DATING: case NT_WED_GRUMBLE:
     case NT_WED_CROSS: case NT_WED: case NT_BIG_FIGHT: case NT_REKINDLED: case NT_NEMESES: case NT_RIVALS:
     case NT_BFF_CROSS: case NT_BFF: case NT_FRIENDS_CROSS: case NT_TALK_ROW: case NT_TALK_MADE_UP:
-    case NT_TALK_GREAT_NIGHT:
+    case NT_TALK_GREAT_NIGHT: case NT_TALK_QUEST:
         return (int)(n->v & 0x3FFu) == id || (int)((n->v >> 10) & 0x3FFu) == id || (int)((n->v >> 20) & 0x3FFu) == id;
     default:
         return 0;
@@ -441,6 +442,8 @@ typedef struct Gen {
     uint8_t secret;               /* TM2d: the secret guard (secret=), TSEC_* + 1, 0 none */
     uint8_t unk;                  /* TM2d: the unknown-line guard (unk=), TU_* */
     uint8_t unk_fail;             /* TM2d: the named line failed the S3 probe: ask without the echo */
+    uint8_t qkind, qphase, qitem; /* TQ: the request's kind (qkind=), phase (qphase=) and item ({item}) */
+    int16_t qtarget;              /* TQ: the resident a request is about ({target}), -1 none */
     int8_t  lean;                 /* the stance as the plan sees it, -2..2 */
     TalkPlan plan;
     TalkTraitSet ts;              /* the speaker's traits as they count in this room (edgy ones dropped for a minor / in a kid room) */
@@ -693,6 +696,8 @@ static int pred_raw(Gen *g, int p, int v)
     case TGP_HOOK: return g->hook_now == v;
     case TGP_SECRET: return g->secret == v + 1;
     case TGP_UNK: return g->unk == v;
+    case TGP_QKIND: return g->qkind == v;
+    case TGP_QPHASE: return g->qphase == v;
     default: return 0;
     }
 }
@@ -971,6 +976,32 @@ static void expand_str(Gen *g, int str)
             case 'P': fill_name(g, g->partner, mods, NULL); break;
             case 'Q': fill_name(g, TALK_PET_ID, mods, "Boreagotchi"); break;
             case 'G': fill_lost(g, mods); break;
+            case 'R': {                                        /* TQ: {target}, the one a request is about */
+                if (g->qtarget < 0) { g->fail = 1; break; }
+                fill_name(g, g->qtarget, mods, NULL);
+                break;
+            }
+            case 'I': {                                        /* TQ: {item}, the item a request is about, lower case */
+                char it[28], an[28];
+                int start = g->len, j;
+                if (!g->qitem || g->qitem >= ITEM_COUNT) { g->fail = 1; break; }
+                copy_cap(it, doomo_items[g->qitem].name, (int)sizeof it - 3);
+                for (j = 0; it[j]; j++) if (it[j] >= 'A' && it[j] <= 'Z') it[j] = (char)(it[j] + 32);
+                if (has_mod(mods, 'n')) {                      /* {item:indef}: "a cupcake", "an onigiri" */
+                    {
+                        int pre = strchr("aeiou", it[0]) ? 3 : 2, q = 0;
+                        memcpy(an, pre == 3 ? "an " : "a ", (size_t)pre);
+                        while (it[q] && pre + q < (int)sizeof an - 1) { an[pre + q] = it[q]; q++; }
+                        an[pre + q] = 0;
+                        memcpy(it, an, (size_t)(pre + q + 1) <= sizeof it ? (size_t)(pre + q + 1) : sizeof it);
+                        it[sizeof it - 1] = 0;
+                    }
+                }
+                apply_mods(it, mods);
+                emit(g, it, -1);
+                push_fill(g, start, g->len - start, TFK_TEXT, 0);
+                break;
+            }
 #ifndef TALK_NO_UNK
             case 'W': {                                        /* TM2d: {u}, the unknown word, quoted (E7: unk.name rules only) */
                 int start = g->len, n = (int)strlen(g->c->unk);
@@ -1312,6 +1343,7 @@ static int setup(Gen *g, TalkConv *c, int who, int to, int act, uint16_t topic)
     g->cast = 0xFF;
     g->partner = -1;
     g->other = -1;
+    g->qtarget = -1;
     rng_seed(&g->rng, c->seed ^ doomo_hash32(0x9E3779B9u * (uint32_t)(c->lines + 1u) + (uint32_t)who));
     c->lines++;
     if (g->r) {
@@ -2304,6 +2336,27 @@ int talk_gen_action(TalkConv *c, int who, int to, int tact, uint16_t topic, Talk
     r = gen_line(&g, sym, 0, out, tr);
     out->who = (int8_t)who;
     out->to = (int8_t)to;
+    return r;
+}
+
+/* TQ: the line of a request's phase (quest.<phase>.<kind> rules, guards qphase= and qkind=). Only the core part: no opener,
+ * tag or hook, and no plan (the drama manager decided before it asked). {target} and {item} fill from the arguments. */
+int talk_gen_quest(TalkConv *c, int who, int phase, int kind, int target, int item, TalkLine *out, TalkTrace *tr)
+{
+    Gen g;
+    int sym, r;
+    if (!out) return 0;
+    memset(out, 0, sizeof *out);
+    if (!setup(&g, c, who, -1, TA_NONE, TC_NONE) || c->id[who] == TALK_PET_ID) return 0;
+    sym = entry_sym(&g, ENT_FIXED, TGE_QUEST);
+    if (sym < 0) return 0;
+    g.qphase = (uint8_t)phase;
+    g.qkind = (uint8_t)kind;
+    g.qtarget = (int16_t)target;
+    g.qitem = (uint8_t)item;
+    r = gen_line(&g, sym, 0, out, tr);
+    out->who = (int8_t)who;
+    out->to = -1;
     return r;
 }
 

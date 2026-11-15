@@ -1,0 +1,151 @@
+# core/data/talk/grammar/en/quests.tlk - TQ-QUESTS: a resident raises a request and answers what you say to it (owner: TK;
+# docs/TALK.md 6q; owner decision 2026-11-15 "TALK QUESTS"). The entry is `quest` (talk_gen_quest); the drama manager
+# (talk_dm.c DK_QUEST) picks the phase and the kind, the rules below are guarded by them:
+#   qphase=ask          the request, said by the resident after an answer (a question: the talk goes to the player)
+#   qphase=accept       the player said yes
+#   qphase=decline      the player said no (no guilt: a request is a favour, never a duty)
+#   qphase=haggle_yes   "what's in it for me?" and the resident gives in
+#   qphase=haggle_no    ... and does not (the request stands)
+#   qphase=more         "tell me more" (qkind says what the request is)
+#   qphase=done         the player hands it in (qkind says what it was)
+#   qphase=late         a reminder when you meet again with it still open
+#   qphase=expired      it ran out of days: "never mind"
+#   qkind=fetch toy message company cheer peace secret
+# Slots: {item} the item a fetch or toy is about, {target} the one a message, a cheer-up or a making-up is about.
+# Kid-safe everywhere (a child says these too): a snack, a toy, a hello, company, a friend who is down. peace and secret
+# are raised only for adults in adult rooms (talk_quest.c); their lines are clean as well. No register word, no romance,
+# no place to go, no danger, no guilt for saying no.
+
+# ---- ask --------------------------------------------------------------------------------------------------
+@rule quest.ask.fetch guard: qphase=ask&qkind=fetch act: ask_about
+  "Could you bring me {item:indef}? I would owe you one."
+  "I'm dreaming of {item:indef}. Any chance you could fetch me one?"
+  "Quick favour: find me {item:indef}? My legs have filed a complaint."
+  "Would you grab me {item:indef} sometime? I'd remember it. Fondly."
+@rule quest.ask.toy guard: qphase=ask&qkind=toy act: ask_about
+  "I lost my toy. Could you find me {item:indef}? Please?"
+  "Can you help me? I need {item:indef} to play with. Do you have one?"
+  "Do you have {item:indef}? I would trade you a really good secret handshake."
+  "My toy went on holiday without me. Could you bring me {item:indef}?"
+@rule quest.ask.message guard: qphase=ask&qkind=message act: ask_about
+  "Could you say hi to {target} for me? I'm too shy to wave."
+  "Will you tell {target} I said hello? I keep forgetting to."
+  "Do me a favour? Find {target} and say I was asking after them."
+  "Pass a hello to {target} for me? You're so much better at hellos."
+@rule quest.ask.company guard: qphase=ask&qkind=company act: ask_about
+  "Would you come back and chat a while? A few minutes. No agenda."
+  "Could you keep me company properly sometime? I miss a good long chat."
+  "Say, would you stay and talk with me for a bit? Not just a wave."
+  "I'd love some company. Would you sit with me and talk a while?"
+@rule quest.ask.cheer guard: qphase=ask&qkind=cheer act: ask_about
+  "{target:cap} seems a bit down. Could you cheer {target} up for me?"
+  "I'm worried about {target}. Would you go and cheer them up?"
+  "{target:cap} could use a friendly face. Would you find {target} and chat?"
+  "Could you lift {target}'s spirits? Nothing big. A kind word works."
+@rule quest.ask.peace guard: qphase=ask&qkind=peace act: ask_about
+  "{target:cap} and I aren't speaking. Could you help us make up?"
+  "Could you smooth things over with {target} for me? It got silly."
+  "I hate this feud with {target}. Would you talk us back together?"
+  "Would you play peacemaker between {target} and me? I'll owe you."
+@rule quest.ask.secret guard: qphase=ask&qkind=secret act: ask_about
+  "Can you keep a secret? Don't ask what. Just hold it for me a day."
+  "I need someone trustworthy. Could you keep something quiet for a day?"
+  "Would you keep a little secret for me? Just till tomorrow. Please?"
+  "You seem like a vault. Could you keep my secret for a day?"
+
+# ---- accept -----------------------------------------------------------------------------------------------
+@rule quest.accept guard: qphase=accept act: tell
+  "Thank you! I'll be right here. Not going anywhere, mostly."
+  "You're a star. Take your time, but not too much."
+  "Deal! You've made my whole day. Possibly my week."
+  "Oh, bless you. I won't forget this."
+  "Wonderful. I'll tell the fog how helpful you are."
+  "You're the best. Come find me when it's done."
+
+# ---- decline ----------------------------------------------------------------------------------------------
+@rule quest.decline guard: qphase=decline act: tell
+  "No worries. I'll sort it out myself."
+  "Fair enough. Maybe another day."
+  "That's okay. Thanks for hearing me out."
+  "All right. I'll ask the fog. It never says no."
+  "No problem. It was only a thought."
+  "Understood. Let's just chat, then."
+
+# ---- haggle: what is in it for me ----------------------------------------------------------------------------
+@rule quest.haggle_yes guard: qphase=haggle_yes act: ask_about
+  "Ha, fair. I'll make it worth your while. So, deal?"
+  "You drive a hard bargain. Fine, there's a bonus. Deal?"
+  "Okay, okay, I'll add a little extra. Do we have a deal?"
+  "Smart. All right, you'll get more than you'd expect. Deal?"
+@rule quest.haggle_no guard: qphase=haggle_no act: ask_about
+  "Oh, you want a deal? Take it or leave it. So, are you in?"
+  "My thanks is the deal. A very good thanks. Are you in?"
+  "That's all I've got, I'm afraid. Still in?"
+  "No more bargaining, I'm out of bargain. Will you help?"
+
+# ---- more: tell me more ---------------------------------------------------------------------------------------
+@rule quest.more.fetch guard: qphase=more&qkind=fetch act: tell
+  "It's only {item:indef}. Nothing fancy. Just bring it when you have one."
+  "Any {item} works. Fresh, stale, I'm not fussy. Okay, slightly fussy."
+  "Look in the shop or your bag. If you have {item:indef}, just say."
+@rule quest.more.toy guard: qphase=more&qkind=toy act: tell
+  "It's {item:indef}. I only need one. I'll take very good care of it."
+  "Mine's gone missing. A new one is fine, if you have {item:indef}."
+  "I like playing with it before bed. Just bring {item:indef}, okay?"
+@rule quest.more.message guard: qphase=more&qkind=message act: tell
+  "Just say I was asking after them. That's all. You can't get it wrong."
+  "Find {target} and say hello from me. Then come back. Easy!"
+  "{target:cap} is easy to talk to, once you start. A hello is plenty."
+@rule quest.more.company guard: qphase=more&qkind=company act: tell
+  "Come back and talk a few minutes. About anything. The fog is fine."
+  "I'm not asking for much. Just a good, long chat. A few minutes."
+  "Sit, talk, laugh a bit. That's the whole favour."
+@rule quest.more.cheer guard: qphase=more&qkind=cheer act: tell
+  "{target:cap} had a rough day. A kind chat will do wonders."
+  "No big plan. Just find {target} and be nice. You're good at nice."
+  "Make {target} smile. Even a small one counts. I'm not picky."
+@rule quest.more.peace guard: qphase=more&qkind=peace act: tell
+  "It was a silly argument, honestly. A friendly word from you should do it."
+  "We both said things. Mostly me. Help us talk it through?"
+  "Nobody's winning this one. Just get {target} and me talking again."
+@rule quest.more.secret guard: qphase=more&qkind=secret act: tell
+  "I can't say what it is. Just don't tell anyone. A whole day."
+  "It's only a little secret. But it matters to me. Just don't tell."
+  "You don't have to do anything. Just don't blab. Then say hello tomorrow."
+
+# ---- done: handing it in --------------------------------------------------------------------------------------
+@rule quest.done.fetch guard: qphase=done&qkind=fetch act: tell
+  "Is that {item:indef}? You legend. Thank you so much!"
+  "You brought {item:indef}! I could hug you. Is that allowed?"
+@rule quest.done.toy guard: qphase=done&qkind=toy act: tell
+  "You found one! Thank you, thank you, thank you!"
+  "Yay! {item:indef}! You're the best friend ever!"
+@rule quest.done.message guard: qphase=done&qkind=message act: tell
+  "You told {target}? Perfect. I can finally breathe again."
+  "Thank you for saying hi to {target}. That was brave of you. And me."
+@rule quest.done.company guard: qphase=done&qkind=company act: tell
+  "Thanks for staying and talking. I needed that."
+  "That was a lovely chat. I feel lighter already."
+@rule quest.done.cheer guard: qphase=done&qkind=cheer act: tell
+  "I heard you cheered {target} up. You're good at this."
+  "Thank you for being kind to {target}. It really mattered."
+@rule quest.done.peace guard: qphase=done&qkind=peace act: tell
+  "{target:cap} and I are talking again. Because of you. Wow."
+  "You got {target} and me to make up. I owe you big."
+@rule quest.done.secret guard: qphase=done&qkind=secret act: tell
+  "A whole day and not a peep. I trust you now."
+  "You kept it. Honestly, I'm impressed. Thank you."
+
+# ---- late: a reminder when you meet again ------------------------------------------------------------------------
+@rule quest.late guard: qphase=late act: ask_about
+  "Any luck with that favour? No pressure. Some pressure."
+  "Remember that little favour? No rush. Little rush."
+  "I've been thinking about my favour. Have you had a minute?"
+  "How's my favour coming along? I'm not counting. Much."
+
+# ---- expired: it ran out of days -------------------------------------------------------------------------------------
+@rule quest.expired guard: qphase=expired act: tell
+  "Never mind about that favour. I managed. Really."
+  "Oh, the favour? Forget it. It's totally fine."
+  "I sorted my little favour out. No hard feelings. Mostly."
+  "Don't worry about that favour any more. Life goes on."

@@ -250,7 +250,7 @@ void talk_outcome_apply(const TalkSummary *sum, TalkOutcome *out)
 {
     TalkOutcome local;
     int k, av, ev, great_a = -1, great_b = -1;
-    int news_made = -1, news_row = -1, news_walk = -1;
+    int news_made = -1, news_row = -1, news_walk = -1, news_quest = -1;
     if (!out) out = &local;
     memset(out, 0, sizeof *out);
     if (!sum) return;
@@ -367,6 +367,24 @@ void talk_outcome_apply(const TalkSummary *sum, TalkOutcome *out)
         case TEV_ACT_INVITE: case TEV_ACT_GIFT: case TEV_ACT_ASK:
             apply_action(sum, e, ia, out);
             break;
+        case TEV_QUEST_ACCEPT:                               /* TQ: the table (the quest log reads it) */
+            if (ia >= 0 && alive_resident(ia) && talk_quest_add(ia, e->b & 15, (e->b >> 4) & 1)) out->quests_new++;
+            else out->skipped++;
+            break;
+        case TEV_QUEST_DECLINE:
+            if (ia >= 0 && alive_resident(ia)) { talk_quest_decline(ia); out->quests_declined++; }
+            break;
+        case TEV_QUEST_DONE: {
+            int pay = ia >= 0 && alive_resident(ia) ? talk_quest_complete(ia) : -1;
+            if (pay < 0) { out->skipped++; break; }
+            out->quests_done++;
+            out->reward = (uint16_t)(out->reward + pay);
+            if (news_quest < 0 && !minor_id(ia)) news_quest = ia;
+            break;
+        }
+        case TEV_QUEST_LAPSED:
+            if (ia >= 0) { talk_quest_lapse_ack(ia); out->quests_lapsed++; }
+            break;
         case TEV_ACT_CALL: {                                 /* the scene lets them in; strangers of the same kind meet (sim_introduce) */
             int called = (int)sum->call_to - 1;
             if (ia >= 0 && alive_resident(ia) && alive_resident(called) && called != ia) {
@@ -397,6 +415,7 @@ void talk_outcome_apply(const TalkSummary *sum, TalkOutcome *out)
         post_news(out, NT_TALK_ROW, sum->id[e->a], sum->id[e->b]);
     }
     if (!out->news && news_walk >= 0) post_news(out, NT_TALK_WALKOUT, sum->id[sum->ev[news_walk].a], -1);
+    if (!out->news && news_quest >= 0) post_news(out, NT_TALK_QUEST, news_quest, -1);
     if (!out->news && great_a >= 0 && great_b >= 0) post_news(out, NT_TALK_GREAT_NIGHT, great_a, great_b);
 }
 
@@ -426,4 +445,5 @@ void talk_outcome_end(TalkState *s, TalkOutcome *out, TalkSummary *sum)
     talk_mem_end(&s->conv);
     talk_dm_end(s, sum);
     talk_outcome_apply(sum, out);
+    talk_quest_end(sum);                                     /* TQ: what the talk did to the open requests, and the pace */
 }

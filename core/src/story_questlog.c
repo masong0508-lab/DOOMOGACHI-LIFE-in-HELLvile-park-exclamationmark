@@ -8,6 +8,7 @@
  * LEFT/RIGHT switch tabs, B closes.
  */
 #include "overworld_int.h"
+#include "doomo/talk.h"
 
 enum { QT_STORY, QT_SIDE, QT_ITEMS, QT_MAP, QT_FRIENDS, QT_TROPHIES, QT_COUNT };
 static const char *const tab_names[QT_COUNT] = { "Story", "Side", "Items", "Map", "Friends", "Trophies" };
@@ -24,6 +25,10 @@ static uint32_t qt;
 #define LIST_MAX (STORY_SIDE_MAX + STORY_SIDE2_ROWS)
 DOOMO_STATIC_ASSERT(SIDE2_ROW >= STORY_SIDE_MAX && SIDE2_ROW + STORY_SIDE2_ROWS <= 255 &&
                     LIST_MAX >= ITEM_COUNT, questlog_list_fits);
+/* TQ-QUESTS: the Side tab also lists the requests residents put to you in Talk (rows TQ_ROW + i, read through
+ * talk_quest_log_row; none where Talk is not linked). They share the same list: the story rows leave them room. */
+#define TQ_ROW 200
+DOOMO_STATIC_ASSERT(TQ_ROW + TALK_QUEST_LOG_MAX <= 255 && LIST_MAX > TALK_QUEST_LOG_MAX + STORY_SIDE_MAX, questlog_talk_rows_fit);
 static uint8_t list[LIST_MAX];
 static int nlist;
 #define side_ids list
@@ -37,6 +42,7 @@ static int nlist;
 static int side_class(int e)
 {
     int st;
+    if (e >= TQ_ROW) return 0;
     if (e >= SIDE2_ROW) {
         st = story_side2_state(e - SIDE2_ROW);
         return st == 2 ? 0 : st == 3 ? 2 : 1;
@@ -51,13 +57,15 @@ static void collect(void)
     nlist = 0;
     if (tab == QT_SIDE) {
         uint8_t all[LIST_MAX];
-        int n = 0;
+        int n = 0, nreq = talk_quest_log_count();
+        if (nreq > TALK_QUEST_LOG_MAX) nreq = TALK_QUEST_LOG_MAX;
+        for (q = 0; q < nreq; q++) list[nlist++] = (uint8_t)(TQ_ROW + q);        /* under way, newest talk first */
         for (q = 0; q < story_side_count() && q < STORY_SIDE_MAX; q++)
             if (story_side_state(q) != SIDE_LOCKED) all[n++] = (uint8_t)q;
-        for (q = 0; q < STORY_SIDE2_ROWS; q++)
+        for (q = 0; q < STORY_SIDE2_ROWS && n < LIST_MAX - TALK_QUEST_LOG_MAX; q++)
             if (story_side2_visible(q)) all[n++] = (uint8_t)(SIDE2_ROW + q);
         for (c = 0; c < 3; c++)
-            for (i = 0; i < n; i++) if (side_class(all[i]) == c) list[nlist++] = all[i];
+            for (i = 0; i < n; i++) if (side_class(all[i]) == c && nlist < LIST_MAX) list[nlist++] = all[i];
     } else if (tab == QT_ITEMS) {
         for (i = 1; i < ITEM_COUNT; i++) if (inv_count(i) > 0) item_ids[nitems++] = (uint8_t)i;
     } else if (tab == QT_TROPHIES) {
@@ -152,6 +160,10 @@ static void draw_story(int x, int y, int w, int h, int style)
 static int side_state_of(int e)
 {
     int st;
+    if (e >= TQ_ROW) {                                   /* a Talk request: under way, or ready to hand in */
+        TalkQuestRow r;
+        return talk_quest_log_row(e - TQ_ROW, &r) && r.state == TQS_READY ? SIDE_READY : SIDE_ACTIVE;
+    }
     if (e < SIDE2_ROW) return story_side_state(e);
     st = story_side2_state(e - SIDE2_ROW);
     return st == 2 ? SIDE_ACTIVE : st == 3 ? SIDE_DONE : SIDE_OFFERED;
@@ -190,6 +202,10 @@ static void draw_side(int x, int y, int w, int h, int style)
             ui_cursor(x - 6, yy + 3);
         }
         plat_text(x, yy, icon, s == SIDE_DONE ? PAL_UI_MINT_D : s == SIDE_READY ? PAL_UI_RED : PAL_UI_GOLD);
+        if (q >= TQ_ROW) {
+            TalkQuestRow r;
+            doomo_snprintf(buf, sizeof(buf), "%s", talk_quest_log_row(q - TQ_ROW, &r) ? r.goal : "?");
+        } else
         doomo_snprintf(buf, sizeof(buf), "%s", q >= SIDE2_ROW ? story_side2_title(q - SIDE2_ROW) : story_side_title(q));
         ui_text(x + 9, yy, buf, s == SIDE_DONE ? st->text_dim : st->text);
     }
@@ -197,16 +213,23 @@ static void draw_side(int x, int y, int w, int h, int style)
     /* details */
     if (sel < nside) {
         int q = side_ids[sel], s = side_state_of(q), dy = y + list_h + 4;
-        int g = q >= SIDE2_ROW ? (int)doomo_side_rows[q - SIDE2_ROW].giver : story_side_giver(q);
-        const DoomoResident *gr = town_res(g);
-        const char *kind = q >= SIDE2_ROW ? side2_kind_name(q - SIDE2_ROW) : story_side_kind_name(story_side_kind(q));
+        TalkQuestRow tr;
+        int g, tq = q >= TQ_ROW && talk_quest_log_row(q - TQ_ROW, &tr);
+        const DoomoResident *gr;
+        const char *kind;
+        char tq_hint[40];
+        if (q >= TQ_ROW && !tq) return;
+        g = tq ? tr.giver : q >= SIDE2_ROW ? (int)doomo_side_rows[q - SIDE2_ROW].giver : story_side_giver(q);
+        gr = town_res(g);
+        kind = tq ? "Request" : q >= SIDE2_ROW ? side2_kind_name(q - SIDE2_ROW) : story_side_kind_name(story_side_kind(q));
+        if (tq) doomo_snprintf(tq_hint, sizeof(tq_hint), "Reward H$%d. %d day%s left.", tr.reward, tr.days, tr.days == 1 ? "" : "s");
         plat_rect(x, dy - 2, w - 4, 1, st->outline);
         ui_portrait(x, dy + 1, g, 1, s == SIDE_DONE ? EXPR_HAPPY : EXPR_NEUTRAL);
         doomo_snprintf(buf, sizeof(buf), "%s (%s)", gr ? gr->name : "?", kind);
         ui_text(x + PORTRAIT_W + 4, dy + 2, buf, st->title);
         ui_text_wrap(x + PORTRAIT_W + 4, dy + 12, w - PORTRAIT_W - 8,
                      s == SIDE_DONE ? "All done! Thank you!" : s == SIDE_READY ? "Done! Go back and tell them." :
-                     q >= SIDE2_ROW ? story_side2_hint(q - SIDE2_ROW) : story_side_hint(q), st->text, 1);
+                     tq ? tq_hint : q >= SIDE2_ROW ? story_side2_hint(q - SIDE2_ROW) : story_side_hint(q), st->text, 1);
         (void)h;
     }
 }

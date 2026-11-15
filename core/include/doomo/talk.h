@@ -581,6 +581,7 @@ enum { TGE_OPEN = 0, TGE_CB, TGE_TAG, TGE_HANDOFF, TGE_SAFE, TGE_END_K7, TGE_PET
        TGE_UNK,      /* the reply to a line the parser did not understand: guess, name or ask             */
        TGE_HOOK,     /* layer d: the question, the offer, the call or the acknowledgement after a reply   */
        TGE_ACT,      /* TM2e: the line that says a sim action is being done (act.start, act.ask_item, act.call) */
+       TGE_QUEST,    /* TQ: a request and its answers (quest.<phase>.<kind>; talk_gen_quest) */
        TGE_COUNT };
 
 /* Guard predicates (talkc_gen.py reads this enum: a guard term "kid_present"
@@ -628,6 +629,8 @@ enum {
     TGP_HOOK,                        /* TM2d: the plan's hook, TH_* (hook=offer) */
     TGP_SECRET,                      /* TM2d: which secret a depth 3 line tells, TSEC_* (secret=fear) */
     TGP_UNK,                         /* TM2d: how an unknown line is answered, TU_* (unk=name) */
+    TGP_QKIND,                       /* TQ: the request's kind, TQK_* (qkind=fetch) */
+    TGP_QPHASE,                      /* TQ: the phase of the request, TQP_* (qphase=ask) */
     TGP_COUNT
 };
 
@@ -746,6 +749,11 @@ void talk_mem_clear_flags(int id, unsigned flags);
  * and the query (1 known). */
 void talk_mem_know_like(int id, int which);
 int  talk_mem_like_known(int id, int which);
+/* TQ-QUESTS: the request id has put to the player, kept in the high bits of the memory entry (talk_save.c; no byte
+ * more in the chunk). get: 1 when there is one (kind TQK_*, state TQS_*, days left 0..TQ_DAYS, bonus 0/1; a pointer
+ * may be NULL). set: touches id and writes it, kind 0 clears it; 0 for nobody. talk_quest.c is the one caller. */
+int  talk_mem_quest_get(int id, int *kind, int *state, int *days, int *bonus);
+int  talk_mem_quest_set(int id, int kind, int state, int days, int bonus);
 /* 1 if id said no to a romance act today (K-5): the gate's refused_today. */
 int  talk_mem_refused_today(int id);
 /* A conversation begins (after talk_gen_begin): fill c->mem_topic and
@@ -1094,6 +1102,10 @@ enum { TEV_NONE = 0,
        TEV_ACT_GIFT,      /* TM2e: a gives the player the item b (ITEM_*): inv_add                                     */
        TEV_ACT_ASK,       /* TM2e: a asks the player for the item b: sim_problem_raise(PROB_WANTS_ITEM)               */
        TEV_ACT_CALL,      /* TM2e: a calls someone over (TalkSummary.call_to is who): the scene's invite              */
+       TEV_QUEST_ACCEPT,  /* TQ: the player took a's request of kind b (TQK_*): talk_quest_add, the quest log         */
+       TEV_QUEST_DECLINE, /* TQ: the player turned a's request of kind b down                                         */
+       TEV_QUEST_DONE,    /* TQ: the player handed in a's request of kind b: the reward, the bond, the news          */
+       TEV_QUEST_LAPSED,  /* TQ: a's request of kind b ran out of days unanswered: a small disappointment              */
        TEV_COUNT };
 typedef struct TalkEvent { uint8_t kind, a, b, turn; } TalkEvent;
 
@@ -1144,6 +1156,7 @@ typedef struct TalkState {          /* <= TALK_STATE_MAX, in the house's scene s
     uint16_t  beats_recent;         /* a bit per TBEAT_* of the last 2 talks with these people
                                        (novelty; the house sets it from talk memory, 0 = none) */
     uint16_t  call_to;              /* TM2e: resident id + 1 of the one called over (TEV_ACT_CALL), 0 none; the scene lets them in */
+    uint8_t   q_kind, q_st;         /* TQ: the request on the table (TQK_*, 0 none) and its state (TQ_ST_*: the slot, haggled, asked more) */
     struct { uint8_t kind; int8_t who, to; uint8_t arg; } plan[6];
     uint16_t  topic_stack[TALK_STACK_MAX];   /* newest first                          */
     TalkHist  hist[TALK_HIST];      /* newest first                                   */
@@ -1241,6 +1254,8 @@ typedef struct TalkOutcome {
     uint8_t  asked;                /* TM2e: PROB_WANTS_ITEM raised                           */
     uint8_t  called;               /* TM2e: call-overs (the scene lets the resident in)      */
     uint8_t  skipped;              /* TM2e: action events a rule or a cap refused at apply (a test fails on it) */
+    uint8_t  quests_new, quests_declined, quests_done, quests_lapsed;   /* TQ: requests taken, turned down, handed in, run out */
+    uint16_t reward;               /* TQ: H$ paid for the hand-ins */
 } TalkOutcome;
 /* talk_dm_begin, then the talk memory of the participants (talk_mem_begin:
  * last topic, last-time flags, "refused today" as TPF_REFUSED). */
@@ -1385,5 +1400,82 @@ void talk_scene_slice(int on);
 
 /* Others to bring into the next talk (up to TALK_PARTS_MAX - 1; consumed by it): talk_scene.c, DOOMO_HAS_TALK. */
 void talk_scene_party(const int *ids, int n);
+
+
+/* ---- TQ-QUESTS: residents raise requests (core/src/talk_quest.c; docs/TALK.md 6q; owner decision 2026-11-15) ----
+ * Now and then (never in two conversations in a row, at most one a town day) a resident raises a request while you
+ * talk: from the sim's problems queue (PROB_HUNGRY, PROB_WANTS_ITEM, PROB_BORED, PROB_WANTS_FRIEND, PROB_LONELY,
+ * PROB_FIGHT), a small favour (bring a snack, say hi to someone, keep them company) or a Talk-born one (cheer
+ * someone up, keep a secret). You answer with the multilevel reply: accept, decline, haggle (what is in it for me)
+ * or ask more. An accepted request is one row of the quest log (talk_quest_log_*, read by story_questlog.c) and is
+ * remembered in the talk memory (a few bits per resident: no byte more in the save chunk). It ends in a thank-you
+ * (reward, bond, a headline) when handed in, or a "never mind" after TQ_DAYS days.
+ * Kid rules (tables in talk_quest.c, exhaustive tests): in a room with a minor, or from a minor, only a snack, a toy,
+ * a message, company or cheering up someone of the same stage; nothing for adults only (secrets, fights, adult items,
+ * places); never a romance or date request in any room (there is no such kind). Grief, the care window and a sad
+ * or hostile exchange never raise one. */
+enum { TQK_NONE = 0, TQK_FETCH, TQK_TOY, TQK_MESSAGE, TQK_COMPANY, TQK_CHEER, TQK_PEACE, TQK_SECRET, TQK_COUNT };
+enum { TQS_NONE = 0, TQS_ACTIVE, TQS_READY, TQS_SETTLED };            /* settled with days 0: ran out unanswered */
+enum { TQP_NONE = 0, TQP_ASK, TQP_ACCEPT, TQP_DECLINE, TQP_HAGGLE_YES, TQP_HAGGLE_NO, TQP_MORE, TQP_DONE, TQP_LATE,
+       TQP_EXPIRED, TQP_COUNT };
+enum { TQR_NONE = 0, TQR_ACCEPT, TQR_DECLINE, TQR_HAGGLE, TQR_MORE, TQR_COUNT };   /* what the player's act means to an open request */
+enum { TQSRC_PROBLEM = 0, TQSRC_FAVOUR, TQSRC_TALK };
+#define TQ_DAYS        7           /* town days an accepted request waits (3 bits)                       */
+#define TQ_COOLDOWN    3           /* days before the same resident asks again after a hand-in or a no   */
+#define TALK_QUEST_OPEN_MAX 4      /* accepted requests at once                                           */
+#define TQ_ST_SLOT     0x03u       /* TalkState.q_st: the giver's slot                                    */
+#define TQ_ST_HAGGLED  0x04u       /* the player has haggled once                                         */
+#define TQ_ST_WON      0x08u       /* ... and the giver gave in (the reward is half again)                */
+#define TQ_ST_MORE_SH  4           /* bits 4-5: how many times the player asked for more                  */
+#define TQ_ST_CLOSED   0x40u       /* accepted or declined: nothing is open on the table                  */
+#define TQ_ST_ASKED    0x80u       /* the last line on the table was the request (or its answer to a question): the quick replies are its four */
+typedef struct TalkQuest {
+    uint8_t  kind, src;            /* TQK_*, TQSRC_*                                                      */
+    uint8_t  item, reward;         /* the item wanted (0 none); H$ on a hand-in                          */
+    int16_t  target;               /* the resident it is about (-1 none)                                  */
+} TalkQuest;
+/* The pure rules (tables; no state). minor_giver / minor_room: the giver is a minor / a minor is in the room or is the
+ * player; minor_target: the target is a minor (-1 when the kind has no target). */
+int  talk_quest_kind_ok(int kind, int minor_giver, int minor_room, int minor_target);
+int  talk_quest_item_ok(int item, int minor_giver, int minor_room);   /* a snack or a toy a minor may be asked for; no adult item */
+int  talk_quest_reply_class(int act);                                  /* TA_* -> TQR_* (yes / no / what is in it for me / tell me more) */
+int  talk_quest_reward(int kind, int bonus);                           /* H$ on a hand-in */
+/* What a request of `kind` from `giver` is about (its target and item), the same every time for the same town: 1 when
+ * the kind can be raised by the giver now in this room (ids[0..n) are the residents present; a target is never one of them). */
+int  talk_quest_derive(int giver, int kind, const int *room, int n, int minor_room, TalkQuest *out);
+/* The request `giver` would raise now (a problem, a favour or a Talk-born one), chosen with `salt`; 1 and *out filled. */
+int  talk_quest_pick(int giver, const int *room, int n, int minor_room, uint32_t salt, TalkQuest *out);
+/* haggle: 1 if the giver gives in (traits and the bond decide; salt only breaks a tie). */
+int  talk_quest_haggle(int giver, uint32_t salt);
+/* Pacing (not saved: after a load the first conversation never raises). pace_ok: at least one conversation since the last
+ * raise, none yet today, fewer than TALK_QUEST_OPEN_MAX open. note_raise when a request is said; note_end when a conversation
+ * ends (talk_outcome_end does it); reset with a new town. */
+int  talk_quest_pace_ok(void);
+void talk_quest_note_raise(void);
+void talk_quest_note_end(void);
+void talk_quest_reset(void);
+/* The table. state(giver): 1 when giver holds a request (kind, TQS_*, days, bonus). add: accept (checks the rules and
+ * TALK_QUEST_OPEN_MAX); ready: a hand-in would work now; complete: hand it in (item taken, problem relieved, H$ paid)
+ * and return the reward, -1 when it cannot be; decline / lapse_ack settle with the cooldown. */
+int  talk_quest_state(int giver, int *kind, int *state, int *days, int *bonus);
+int  talk_quest_open_count(void);
+int  talk_quest_add(int giver, int kind, int bonus);
+int  talk_quest_ready(int giver);
+int  talk_quest_complete(int giver);
+void talk_quest_decline(int giver);
+void talk_quest_lapse_ack(int giver);
+/* A conversation is over: open requests whose condition was met in it become ready (a message told, someone cheered up,
+ * time spent, a fight made up, a secret kept a day). `accepted_now`: givers accepted in this very conversation are skipped. */
+void talk_quest_end(const TalkSummary *sum);
+/* The quest log (story_questlog.c, Side tab): rows 0..count-1, open ones first. goal: "Bring Nana a cupcake." */
+#define TALK_QUEST_LOG_MAX 6
+typedef struct TalkQuestRow { int16_t giver; uint8_t kind, state, days, reward; char goal[48]; } TalkQuestRow;
+int  talk_quest_log_count(void);
+int  talk_quest_log_row(int i, TalkQuestRow *out);
+const char *talk_quest_kind_name(int kind);
+/* The generator's line for a phase (talk_gen.c): the guards qphase= and qkind=; {target} and {item} fill from `target` and `item`. */
+int  talk_gen_quest(TalkConv *c, int who, int phase, int kind, int target, int item, TalkLine *out, TalkTrace *tr);
+/* The four quick replies while a request is on the table (accept, decline, haggle, ask more): count, into out[]. */
+int  talk_quest_quick(const TalkState *s, TalkSugg *out);
 
 #endif

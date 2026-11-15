@@ -38,7 +38,9 @@
 enum { DK_NONE = 0, DK_ANSWER, DK_REACT, DK_BEAT, DK_IDLE, DK_PROD, DK_JAB, DK_ROW, DK_ULT, DK_EXCUSE,
        DK_KIDASK, DK_MAKEUP, DK_GRUMBLE, DK_CUT, DK_K7, DK_FOLLOW,
        DK_MORE,            /* TM2d: the story or the secret after the answer (talk_gen_more); inserted by talk_dm_step */
-       DK_ACT };           /* TM2e: the line that says a sim action is being done (talk_gen_action); its event is added with it */
+       DK_ACT,             /* TM2e: the line that says a sim action is being done (talk_gen_action); its event is added with it */
+       DK_QUEST };         /* TQ: a request, or what is said to the player's answer (talk_gen_quest); plan arg = phase | kind << 4 */
+#define QUEST_ARG(phase, kind) ((uint8_t)(((kind) << 4) | ((phase) & 15)))
 #define ACT_ARG(tact, b) ((uint8_t)((((tact) - TACT_START) << 6) | ((b) & 63)))   /* plan arg: which action (TACT_START..TACT_CALL), its item or venue */
 
 #define BEATS_MAGIC 0x31544254u          /* "TBT1" (talkc_beats.py) */
@@ -382,6 +384,94 @@ static void action_after(TalkState *s, int who, const TalkLine *L)
     for (j = s->nplan; j > at; j--) s->plan[j] = s->plan[j - 1];
     s->plan[at].kind = DK_ACT; s->plan[at].who = (int8_t)who; s->plan[at].to = -1; s->plan[at].arg = ACT_ARG(tact, b);
     s->nplan++;
+}
+
+/* ---- TQ-QUESTS: a resident raises a request (docs/TALK.md 6q) ------------------------------------------
+ * quest_after plans the request right after an answer, only in a calm, warm exchange; the line and its state are made
+ * with it (make_line DK_QUEST). The player's accept / decline / haggle / ask more is answered by the same resident
+ * (talk_dm_say swaps the answer for the request's phase line) and adds one event each; talk_outcome_apply applies them. */
+static void plan_add(TalkState *s, int kind, int who, int to, int arg);
+
+static int grief_here(const TalkState *s, int id)
+{
+    TalkConcept tc;
+    uint16_t v;
+    int k;
+    if (talk_gen_fact(id, TCB_LOSS, &v)) return 1;                          /* K-10: the speaker lost someone lately */
+    for (k = 0; k < 2; k++)
+        if (s->topic_stack[k] && talk_db_concept(s->topic_stack[k], &tc) && (tc.flags & TCF_GRIEF)) return 1;
+    return 0;
+}
+
+static int room_ids(const TalkState *s, int *ids)
+{
+    int k, n = 0;
+    for (k = 0; k < s->nparts; k++) if (talker(s, k)) ids[n++] = s->part[k].id;
+    return n;
+}
+
+static void quest_after(TalkState *s, int who, const TalkLine *L)
+{
+    int act = s->in.act[0], id = res_id(s, who), ids[TALK_PARTS_MAX], n, kinds, at, j;
+    TalkQuest q;
+    DoomoRng rng;
+    if (id < 0 || s->q_kind || s->gate != TG_PASS || !talker(s, who) || s->conv.care || TA_IS_ROMANCE(act) || TA_IS_SAFETY(act) ||
+        (L->flags & (TLF_SAFE | TLF_FALLBACK | TLF_SINCERE | TLF_END | TLF_MORE)) || s->nplan >= 5 || (s->flags & TDF_OVER) ||
+        act == TA_FAREWELL || s->turn < 2 || s->tension > 2 || s->arg_step || s->part[who].engage < 50)
+        return;
+    if (s->beat == TBEAT_PROBLEM || s->beat == TBEAT_RIVALRY || s->beat == TBEAT_ROMANCE_ADULT || s->beat == TBEAT_WIND_DOWN) return;
+    if (talk_gen_act_class(act) == TAC_COOL || (act >= TA_INSULT && act <= TA_THREATEN) || act == TA_ACCUSE || act == TA_COMFORT ||
+        act == TA_SYMPATHIZE) return;                          /* a hostile or a vulnerable turn: no favour is asked */
+    kinds = talk_gen_kinds_of(L->act);
+    if (kinds & (int)(TKM(TK_DENY) | TKM(TK_REFUSE) | TKM(TK_DEFLECT))) return;
+    if (grief_here(s, id) || !talk_quest_pace_ok()) return;
+    rng_for(s, &rng, 0x0E57u + (uint32_t)who);
+    if (rng_range(&rng, 100) >= 14) return;
+    n = room_ids(s, ids);
+    if (!talk_quest_pick(id, ids, n, minor_room(s), doomo_hash32(s->conv.seed ^ (uint32_t)s->turn * 7919u), &q)) return;
+    at = s->plan_at;
+    for (j = s->nplan; j > at; j--) s->plan[j] = s->plan[j - 1];
+    s->plan[at].kind = DK_QUEST; s->plan[at].who = (int8_t)who; s->plan[at].to = -1; s->plan[at].arg = QUEST_ARG(TQP_ASK, q.kind);
+    s->nplan++;
+}
+
+/* the player answered a request on the table: the phase the giver's line has (accept, decline, haggle, ask more), or 0 */
+static int quest_phase_for(TalkState *s, int act, DoomoRng *rng, int *kind, int *slot)
+{
+    int qr, ph;
+    if (!s->q_kind || (s->q_st & TQ_ST_CLOSED)) return 0;
+    qr = talk_quest_reply_class(act);
+    if (!qr) return 0;
+    *kind = s->q_kind;
+    *slot = (int)(s->q_st & TQ_ST_SLOT);
+    if (!talker(s, *slot)) return 0;
+    switch (qr) {
+    case TQR_ACCEPT: ph = TQP_ACCEPT; break;
+    case TQR_DECLINE: ph = TQP_DECLINE; break;
+    case TQR_MORE: ph = TQP_MORE; break;
+    default:
+        if (s->q_st & TQ_ST_HAGGLED) ph = TQP_HAGGLE_NO;                    /* one haggle a request */
+        else ph = talk_quest_haggle(res_id(s, *slot), rng_range(rng, 1000)) ? TQP_HAGGLE_YES : TQP_HAGGLE_NO;
+        break;
+    }
+    return ph;
+}
+
+/* the hand-in, the reminder or the "never mind" the talk opens with: one a conversation, the first resident who has one */
+static int quest_open_plan(TalkState *s, DoomoRng *rng)
+{
+    int k;
+    for (k = 0; k < s->nparts; k++) {
+        int id = res_id(s, k), kind = 0, st = 0, days = 0, ph;
+        if (id < 0 || !talker(s, k) || !talk_quest_state(id, &kind, &st, &days, NULL)) continue;
+        if (talk_quest_ready(id)) ph = TQP_DONE;
+        else if (st == TQS_SETTLED && days == 0) ph = TQP_EXPIRED;
+        else if (st == TQS_ACTIVE && rng_range(rng, 100) < 60) ph = TQP_LATE;
+        else continue;
+        plan_add(s, DK_QUEST, k, -1, QUEST_ARG(ph, kind));
+        return 1;
+    }
+    return 0;
 }
 
 /* ---- begin ------------------------------------------------------------------- */
@@ -1071,6 +1161,7 @@ int talk_dm_say(TalkState *s, const TalkUtter *u)
     s->nlines = s->nplan = s->plan_at = 0;
     s->gate = TG_PASS;
     if (s->flags & TDF_OVER) return TG_PASS;
+    s->q_st &= (uint8_t)~TQ_ST_ASKED;                       /* TQ: the request's quick replies last one turn */
     s->in = *u;
     for (k = 0; k < s->nparts; k++)
         if (s->part[k].flags & TPF_REFUSED) s->conv.refused |= (uint8_t)(1u << k);
@@ -1132,6 +1223,16 @@ int talk_dm_say(TalkState *s, const TalkUtter *u)
     if (g != TG_PASS) { s->last_act = (uint8_t)act; return g; }  /* a refusal, a deflection, distress, hate: the answer only */
 
     /* ---- the utterance stood ---- */
+    {                                                       /* TQ: an answer to the request on the table: the giver answers it */
+        int qk = 0, qs = 0, ph = quest_phase_for(s, act, &rng, &qk, &qs);
+        if (ph) {
+            s->plan[0].kind = DK_QUEST;
+            s->plan[0].who = (int8_t)qs;
+            s->plan[0].arg = QUEST_ARG(ph, qk);
+            resp = qs;
+            if (ph == TQP_HAGGLE_YES || ph == TQP_HAGGLE_NO) s->q_st |= TQ_ST_HAGGLED;
+        }
+    }
     cls = act ? talk_gen_act_class(act) : TAC_FLOW;
     switched = s->in.act[0] == TA_CHANGE_TOPIC || (s->in.topic[0] != TC_NONE && s->in.topic[0] != s->topic_stack[0]);
     push_topic(s, s->in.topic[0]);
@@ -1251,6 +1352,11 @@ int talk_dm_open(TalkState *s)
     if (!(s->flags & TDF_NO_BEATS) && s->beat == TBEAT_ARRIVE && s->beat_step == 0) {
         plan_add(s, DK_BEAT, who, -1, 0);
         s->beat_step++;
+    }
+    if (s->nparts && !s->q_kind) {                           /* TQ: a hand-in, a reminder or a "never mind" first */
+        DoomoRng qr;
+        rng_for(s, &qr, 0x0DE1u);
+        if (quest_open_plan(s, &qr)) s->q_st = 0;
     }
     plan_add(s, DK_FOLLOW, who, -1, 0);
     return 1;
@@ -1405,6 +1511,7 @@ static int make_line(TalkState *s, int kind, int who, int to, int arg, TalkLine 
         break;
     }
     case DK_FOLLOW:
+        if (s->q_kind && !(s->q_st & TQ_ST_CLOSED) && (s->q_st & TQ_ST_ASKED)) return 0;   /* TQ: the request is the question */
         if (s->nlines > 0 && strchr(s->line[0].text, '?')) return 0;     /* the answer already asks something back */
         ok = talk_gen_entry(c, who, -1, TGE_FOLLOW, arg ? TA_CHANGE_TOPIC : s->in.act[0], topic, L, tr);
         if (!ok || (L->flags & TLF_FALLBACK)) return 0;
@@ -1437,6 +1544,65 @@ static int make_line(TalkState *s, int kind, int who, int to, int arg, TalkLine 
         if (cid >= 0) s->call_to = (uint16_t)(cid + 1);
         L->action = (uint8_t)tact;
         *hflags = 0;
+        break;
+    }
+    case DK_QUEST: {                                        /* TQ: the request, or the giver's answer to the player's reply */
+        int phase = arg & 15, qkind = (arg >> 4) & 15, id = res_id(s, who), target = -1, item = 0, ids[TALK_PARTS_MAX], n;
+        TalkQuest q;
+        if (id < 0 || qkind <= TQK_NONE || qkind >= TQK_COUNT) return 0;
+        n = room_ids(s, ids);
+        if (phase == TQP_ASK) {
+            if (s->q_kind || !talk_quest_derive(id, qkind, ids, n, minor_room(s), &q)) return 0;
+        } else if (!talk_quest_derive(id, qkind, NULL, 0, 0, &q)) {
+            memset(&q, 0, sizeof q);
+            q.target = -1;
+            if (qkind != TQK_COMPANY && qkind != TQK_SECRET) return 0;      /* a line about a target or an item needs one */
+        }
+        target = q.target;
+        item = q.item;
+        ok = talk_gen_quest(c, who, phase, qkind, target, item, L, tr);
+        if (!ok || (L->flags & (TLF_SAFE | TLF_FALLBACK))) { memset(L, 0, sizeof *L); return 0; }
+        *hflags = 0;
+        switch (phase) {
+        case TQP_ASK:
+            s->q_kind = (uint8_t)qkind;
+            s->q_st = (uint8_t)((who & TQ_ST_SLOT) | TQ_ST_ASKED);
+            talk_quest_note_raise();
+            break;
+        case TQP_ACCEPT:
+            add_event(s, TEV_QUEST_ACCEPT, who, qkind | ((s->q_st & TQ_ST_WON) ? 0x10 : 0));
+            s->q_st = (uint8_t)((s->q_st | TQ_ST_CLOSED) & ~TQ_ST_ASKED);
+            bump_rel(s, who, 1);
+            bump_mood(s, who, 1);
+            break;
+        case TQP_DECLINE:
+            add_event(s, TEV_QUEST_DECLINE, who, qkind);
+            s->q_st = (uint8_t)((s->q_st | TQ_ST_CLOSED) & ~TQ_ST_ASKED);
+            bump_rel(s, who, -1);
+            break;
+        case TQP_HAGGLE_YES:
+            s->q_st |= (uint8_t)(TQ_ST_HAGGLED | TQ_ST_WON | TQ_ST_ASKED);
+            break;
+        case TQP_HAGGLE_NO:
+            s->q_st |= (uint8_t)(TQ_ST_HAGGLED | TQ_ST_ASKED);
+            break;
+        case TQP_MORE: {
+            int m = (s->q_st >> TQ_ST_MORE_SH) & 3;
+            if (m < 3) m++;
+            s->q_st = (uint8_t)((s->q_st & ~(3u << TQ_ST_MORE_SH)) | ((unsigned)m << TQ_ST_MORE_SH) | TQ_ST_ASKED);
+            break;
+        }
+        case TQP_DONE:
+            add_event(s, TEV_QUEST_DONE, who, qkind);
+            bump_rel(s, who, 3);
+            bump_mood(s, who, 3);
+            break;
+        case TQP_EXPIRED:
+            add_event(s, TEV_QUEST_LAPSED, who, qkind);
+            bump_rel(s, who, -1);
+            break;
+        default: break;                                      /* TQP_LATE: a reminder, nothing changes */
+        }
         break;
     }
     case DK_K7:
@@ -1476,7 +1642,11 @@ int talk_dm_step(TalkState *s, TalkTrace *tr)
         } else if (kind == DK_ANSWER) {
             s->conv.more = 0;
         }
-        if (kind == DK_ANSWER && !s->conv.more) action_after(s, who, L);     /* TM2e: the action this reply carries, a line right after it */
+        if (kind == DK_ANSWER && !s->conv.more) {
+            int n0 = s->nplan;
+            action_after(s, who, L);                         /* TM2e: the action this reply carries, a line right after it */
+            if (s->nplan == n0) quest_after(s, who, L);      /* TQ: or, in a calm exchange, a request (one extra line a reply at most) */
+        }
         if (who >= 0 && who < s->nparts) { s->part[who].flags |= TPF_SPOKE; s->conv.spoke |= (uint8_t)(1u << who); }
         hist_push(s, who, L->act, hf, to, L->topic);
         if (kind == DK_EXCUSE) {                            /* walks out */

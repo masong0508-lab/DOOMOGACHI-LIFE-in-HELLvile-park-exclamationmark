@@ -362,6 +362,7 @@ int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fr
     int tslot = -1, act = TA_NONE, b = -1, i, fn, sn, argue;
     uint32_t h;
     if (!s || !out || (s->flags & TDF_OVER)) return 0;
+    if (s->q_kind && (s->q_st & TQ_ST_ASKED)) return talk_quest_quick(s, out);   /* TQ: a request is on the table: accept, decline, haggle, ask more */
     memset(&q, 0, sizeof q);
     memset(tmp, 0, sizeof tmp);
     q.s = s;

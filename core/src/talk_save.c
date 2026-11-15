@@ -60,7 +60,18 @@ static struct {
 DOOMO_STATIC_ASSERT(sizeof(mem) == TALK_MEM_WORST, talk_mem_table_is_the_worst_case);
 
 #define TMEM_SECRETS 0x3Cu                  /* TalkMem.spare bits 2-5: the secrets told today (TDEP_MEM_SECRET) */
-#define TMEM_SPARE   0x3Fu                  /* bits 0-1 the level reached in the last talk, 2-5 the secrets told today */
+#define TMEM_DEPTH   0x3Fu                  /* bits 0-1 the level reached in the last talk, 2-5 the secrets told today */
+/* TQ-QUESTS: the request this person has put to the player, in the 10 high bits of `spare` (no byte more in the chunk):
+ * bits 6-9 the kind (TQK_*), 10-11 the state (TQS_*), 12 the bonus (a haggle that won), 13-15 the days left (an open
+ * request: TQ_DAYS at most; a settled one: the cooldown, 0 = ran out unanswered). An old chunk has 0 there: none. */
+#define TMEM_QUEST   0xFFC0u
+#define TMEM_SPARE   0xFFFFu
+#define TQB_KIND(sp)  (((sp) >> 6) & 15u)
+#define TQB_STATE(sp) (((sp) >> 10) & 3u)
+#define TQB_BONUS(sp) (((sp) >> 12) & 1u)
+#define TQB_DAYS(sp)  (((sp) >> 13) & 7u)
+#define TQB_PACK(k, st, bo, d) ((uint16_t)((((unsigned)(k) & 15u) << 6) | (((unsigned)(st) & 3u) << 10) | \
+                                           (((unsigned)(bo) & 1u) << 12) | (((unsigned)(d) & 7u) << 13)))
 
 static uint16_t today(void) { return (uint16_t)doomo_town.day; }
 
@@ -79,10 +90,19 @@ static int person_ok(int id)
 static void roll(void)
 {
     int i;
+    unsigned gone;
     if (mem.day == today()) return;
+    gone = (uint16_t)(today() - mem.day);
+    if (gone > 7u || gone == 0u) gone = 7u;                                      /* a save from long ago: every wait has run out */
     for (i = 0; i < mem.count; i++) {
+        unsigned sp = mem.e[i].spare, k = TQB_KIND(sp), st = TQB_STATE(sp), d = TQB_DAYS(sp), bo = TQB_BONUS(sp);
         mem.e[i].flags = (uint8_t)(mem.e[i].flags & ~TMF_REFUSED_TODAY);
-        mem.e[i].spare = (uint16_t)(mem.e[i].spare & ~TMEM_SECRETS);          /* TM2d: a new day, a new secret may be told */
+        sp &= ~(unsigned)TMEM_SECRETS;                                              /* TM2d: a new day, a new secret may be told */
+        if (k && st == TQS_SETTLED && d > 0)                                        /* TQ: the cooldown after a hand-in or a no */
+            sp = d > gone ? (sp & ~(unsigned)TMEM_QUEST) | TQB_PACK(k, st, bo, d - gone) : (sp & ~(unsigned)TMEM_QUEST);
+        else if (k && (st == TQS_ACTIVE || st == TQS_READY))                        /* TQ: an open request waits TQ_DAYS days */
+            sp = (sp & ~(unsigned)TMEM_QUEST) | (d > gone ? TQB_PACK(k, st, bo, d - gone) : TQB_PACK(k, TQS_SETTLED, 0, 0));
+        mem.e[i].spare = (uint16_t)sp;                                              /* ran out: settled with 0 days = "never mind" */
     }
     mem.day = today();
 }
@@ -119,7 +139,11 @@ static TalkMem *touch(int id)
     roll();
     i = index_of(id);
     if (i < 0) {
-        if (mem.count == TALK_MEM_MAX) mem.count--;          /* LRU: the last one goes */
+        if (mem.count == TALK_MEM_MAX) {                     /* LRU: the last one goes, unless it holds a request (TQ) */
+            int v = mem.count - 1;
+            while (v > 0 && TQB_KIND(mem.e[v].spare) && TQB_STATE(mem.e[v].spare) != TQS_SETTLED) v--;
+            drop(v);
+        }
         i = mem.count++;
         memset(&mem.e[i], 0, sizeof(TalkMem));
         mem.e[i].id = (uint16_t)id;
@@ -180,6 +204,30 @@ int talk_mem_like_known(int id, int which)
     return e && which >= 0 && which <= 4 && ((e->likes_known >> which) & 1);
 }
 
+/* TQ-QUESTS: the request id put to the player. get: 1 when there is one (kind, TQS_*, days, bonus; any pointer may be
+ * NULL); set: touches id and writes it (kind 0 clears it); 0 for nobody. */
+int talk_mem_quest_get(int id, int *kind, int *state, int *days, int *bonus)
+{
+    const TalkMem *e = talk_mem_find(id);
+    unsigned sp;
+    if (!e || !TQB_KIND(e->spare)) return 0;
+    sp = e->spare;
+    if (kind) *kind = (int)TQB_KIND(sp);
+    if (state) *state = (int)TQB_STATE(sp);
+    if (days) *days = (int)TQB_DAYS(sp);
+    if (bonus) *bonus = (int)TQB_BONUS(sp);
+    return 1;
+}
+
+int talk_mem_quest_set(int id, int kind, int state, int days, int bonus)
+{
+    TalkMem *e;
+    if (kind < 0 || kind >= TQK_COUNT || state < 0 || state > TQS_SETTLED || days < 0 || days > 7) return 0;
+    if (!(e = touch(id))) return 0;
+    e->spare = (uint16_t)((e->spare & TMEM_DEPTH) | (kind ? TQB_PACK(kind, state, bonus, days) : 0u));
+    return 1;
+}
+
 int talk_mem_refused_today(int id)
 {
     const TalkMem *e = talk_mem_find(id);
@@ -230,7 +278,8 @@ void talk_mem_end(const TalkConv *c)
         if (!pend && !no && !((c->spoke >> k) & 1)) continue;   /* took no part */
         if (!(e = touch(id))) continue;
         e->flags = (uint8_t)((e->flags & (TMF_PROMISED | TMF_REFUSED_TODAY)) | pend | (no ? TMF_REFUSED_TODAY : 0u));
-        e->spare = (uint16_t)(TDEP_MEM_LEVEL(c->mem_dep[k]) | (c->mem_dep[k] & TMEM_SECRETS) | (e->spare & TMEM_SECRETS));   /* TM2d */
+        e->spare = (uint16_t)((e->spare & TMEM_QUEST) | TDEP_MEM_LEVEL(c->mem_dep[k]) | (c->mem_dep[k] & TMEM_SECRETS) |
+                              (e->spare & TMEM_SECRETS));   /* TM2d; the request bits stay (TQ) */
     }
 }
 
@@ -241,7 +290,7 @@ void talk_mem_forget(int id)
     talk_trait_forget(id);                    /* TM1: an explicit trait set goes with the person */
 }
 
-void talk_mem_reset(void) { memset(&mem, 0, sizeof mem); talk_trait_reset(); }
+void talk_mem_reset(void) { memset(&mem, 0, sizeof mem); talk_trait_reset(); talk_quest_reset(); }   /* TQ: the pace too */
 
 /* ---- the chunk (only where the build has Talk) ----------------------------- */
 #ifdef DOOMO_HAS_TALK
@@ -305,6 +354,9 @@ static int talk_read(const uint8_t *src, uint32_t len, uint16_t version)
         e->flags = (uint8_t)(p[8] & TMF_SAVED);
         e->likes_known = (uint8_t)(p[9] & LIKES_MASK);
         e->spare = (uint16_t)(get16(p + 10) & TMEM_SPARE);
+        if (TQB_KIND(e->spare) >= TQK_COUNT || (TQB_KIND(e->spare) == 0 && (e->spare & TMEM_QUEST)) ||
+            (TQB_KIND(e->spare) && TQB_STATE(e->spare) == TQS_NONE))
+            e->spare = (uint16_t)(e->spare & TMEM_DEPTH);                     /* a bad request field: none */
     }
     if (src[0] == TALK_MEM_VERSION_TRAITS) {                   /* TM1: the explicit trait sets */
         uint32_t at = (uint32_t)(TALK_MEM_HDR + n * TALK_MEM_ENTRY);
