@@ -40,7 +40,7 @@ int street_extent(int district)
     if (district < 0 || district >= STREET_DISTRICTS) return 0;
     base = district * DOOMO_DISTRICT_SIZE;
     for (i = DOOMO_DISTRICT_SIZE - 1; i >= 0; i--)
-        if (doomo_town.res[base + i].status != RES_EMPTY) return i + 1;
+        if (TOWN_RES(base + i)->status != RES_EMPTY) return i + 1;
     return 0;
 }
 
@@ -54,8 +54,15 @@ int street_free_lots(int district)
     base = district * DOOMO_DISTRICT_SIZE;
     lots = street_lots(district);
     for (i = 0; i < lots; i++)
-        if (doomo_town.res[base + i].status == RES_EMPTY) n++;
+        if (TOWN_RES(base + i)->status == RES_EMPTY) n++;
     return n;
 }
 
-int street_is_full(int district) { return street_extent(district) == DOOMO_DISTRICT_SIZE && street_free_lots(district) == 0; }
+int street_is_full(int district)
+{
+#if DOOMO_RES_SLOTS
+    /* GBA-500: nobody else can move in once the district's slots are in use */
+    if (district >= 0 && district < STREET_DISTRICTS && !town_district_free(district)) return 1;
+#endif
+    return street_extent(district) == DOOMO_DISTRICT_SIZE && street_free_lots(district) == 0;
+}

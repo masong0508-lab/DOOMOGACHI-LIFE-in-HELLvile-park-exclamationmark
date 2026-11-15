@@ -1270,7 +1270,7 @@ static int copy_count(void)
     int i, n = 0;
     if (cr.copy_src) return ROSTER_COUNT;
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
-        if (doomo_town.res[i].status != RES_EMPTY) n++;
+        if (TOWN_RES(i)->status != RES_EMPTY) n++;
     return n;
 }
 
@@ -1285,7 +1285,7 @@ int cr_copy_id_at(int k)
     while (n < k) {
         id++;
         if (id >= DOOMO_MAX_RESIDENTS) return -1;
-        if (doomo_town.res[id].status != RES_EMPTY) n++;
+        if (TOWN_RES(id)->status != RES_EMPTY) n++;
     }
     cr.copy_memo_k = (int16_t)k;
     cr.copy_memo_id = (int16_t)id;
@@ -1453,6 +1453,10 @@ static int write_town(void)
             if (id < 0) return -1;
         }
         dst = town_res(id);
+#if DOOMO_RES_SLOTS
+        TOWN_CLAIM(dst, id);                    /* GBA-500: a chosen empty home needs a slot */
+        if (!dst) return -1;
+#endif
         rec.status = RES_ALIVE;
         rec.flags = (uint8_t)((rec.flags & (RF_HELLBORN | RF_FAVORITE)) | RF_CUSTOM);
         rec.exorcism = 0;

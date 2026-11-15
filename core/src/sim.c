@@ -148,11 +148,19 @@ void sim_stat_add(DoomoResident *r, int stat, int delta)
 
 int bit_get(const uint8_t *b, int i)
 {
+#if DOOMO_RES_SLOTS
+    i = (i >= 0 && i < DOOMO_MAX_RESIDENTS) ? SIM_IX(i) : -1;    /* GBA-500: bits by slot */
+    return i >= 0 ? (b[i >> 3] >> (i & 7)) & 1 : 0;
+#else
     return (i >= 0 && i < DOOMO_MAX_RESIDENTS) ? (b[i >> 3] >> (i & 7)) & 1 : 0;
+#endif
 }
 void bit_set(uint8_t *b, int i, int on)
 {
     if (i < 0 || i >= DOOMO_MAX_RESIDENTS) return;
+#if DOOMO_RES_SLOTS
+    if ((i = SIM_IX(i)) < 0) return;
+#endif
     if (on) b[i >> 3] |= (uint8_t)(1 << (i & 7));
     else b[i >> 3] &= (uint8_t)~(1 << (i & 7));
 }
@@ -165,12 +173,12 @@ static int roster_named(int id)
     if (id < 0 || id >= DOOMO_MAX_RESIDENTS) return 0;
     if (doomo_town.population != TOWN_POP_PREMADE) return 0;
     n = roster_name(id);
-    return n[0] && strncmp(n, doomo_town.res[id].name, DOOMO_NAME_LEN) == 0;
+    return n[0] && strncmp(n, TOWN_RES(id)->name, DOOMO_NAME_LEN) == 0;
 }
 
 int sim_traits(int id)
 {
-    if (!roster_named(id) || (doomo_town.res[id].flags & RF_CUSTOM)) return 0;
+    if (!roster_named(id) || (TOWN_RES(id)->flags & RF_CUSTOM)) return 0;
     return roster_traits(id);
 }
 int sim_life_stage(int id)
@@ -199,15 +207,17 @@ int sim_alive_ok(const DoomoResident *r)
 
 void sim_set_transient(int id, int kind, int hours)
 {
-    if (id < 0 || id >= DOOMO_MAX_RESIDENTS) return;
+    int ix;
+    if (id < 0 || id >= DOOMO_MAX_RESIDENTS || (ix = SIM_IX(id)) < 0) return;
     hours = DOOMO_CLAMP(hours, 0, 15);
-    sim_s.transient[id] = (uint8_t)(kind ? (kind << 4) | hours : 0);
+    sim_s.transient[ix] = (uint8_t)(kind ? (kind << 4) | hours : 0);
 }
 
 int sim_transient(int id)
 {
-    if (id < 0 || id >= DOOMO_MAX_RESIDENTS) return TR_NONE;
-    return (sim_s.transient[id] & 15) ? sim_s.transient[id] >> 4 : TR_NONE;
+    int ix;
+    if (id < 0 || id >= DOOMO_MAX_RESIDENTS || (ix = SIM_IX(id)) < 0) return TR_NONE;
+    return (sim_s.transient[ix] & 15) ? sim_s.transient[ix] >> 4 : TR_NONE;
 }
 
 int sim_is_venue(int act)
@@ -365,7 +375,7 @@ static int job_venue_scan(int id)
     const char *job;
     int i;
     if (!sim_traits(id) && doomo_town.population != TOWN_POP_PREMADE) return 0xFF;
-    if (doomo_town.res[id].flags & RF_CUSTOM) return 0xFF;
+    if (TOWN_RES(id)->flags & RF_CUSTOM) return 0xFF;
     job = roster_job(id);
     if (!job || !job[0]) return 0xFF;
     for (i = 0; i < DOOMO_COUNTOF(words); i++)
@@ -377,13 +387,18 @@ static int job_venue_scan(int id)
  * times per tick, the rest of the time an unknown job means "no venue". */
 static int job_venue(int id)
 {
-    uint8_t j = sim_s.job[id];
+    int ix = SIM_IX(id);
+    uint8_t j;
+#if DOOMO_RES_SLOTS
+    if (ix < 0) return 0xFF;
+#endif
+    j = sim_s.job[ix];
     if (!j) {
         if (!sim_s.job_budget) return 0xFF;
         sim_s.job_budget--;
         j = (uint8_t)job_venue_scan(id);
         j = j == 0xFF ? 0xFF : (uint8_t)(j + 1);
-        sim_s.job[id] = j;
+        sim_s.job[ix] = j;
     }
     return j == 0xFF ? 0xFF : j - 1;
 }
@@ -635,13 +650,13 @@ static void apply_needs(int id, DoomoResident *r, int m, const ResIn *in)
 
 static void tick_transient(int id, int m)
 {
-    uint8_t t = sim_s.transient[id];
+    uint8_t t = sim_s.transient[SIM_IX(id)];   /* id has a slot: update_resident_ex's */
     int hours, left;
-    if (!(t & 15)) { sim_s.transient[id] = 0; return; }
+    if (!(t & 15)) { sim_s.transient[SIM_IX(id)] = 0; return; }
     hours = m / 60;
     if (sim_rand(60) < m - hours * 60) hours++;
     left = (t & 15) - hours;
-    sim_s.transient[id] = left > 0 ? (uint8_t)((t & 0xF0) | left) : 0;
+    sim_s.transient[SIM_IX(id)] = left > 0 ? (uint8_t)((t & 0xF0) | left) : 0;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -684,17 +699,17 @@ int sim_mood_of(int id)
  * since the last update. (One argument for both jobs: 16 B less PS1 resident code than a flag and a conditional line.) */
 static void update_resident_ex(int id, int min_el)
 {
-    DoomoResident *r = &doomo_town.res[id];
+    DoomoResident *r = TOWN_RES(id);
     uint16_t now16;
     int el, act;
     ResIn in;
     if (r->status == RES_EMPTY || r->status == RES_DEAD) return;
     sim_s.ops++;
     now16 = (uint16_t)sim_now();
-    el = (uint16_t)(now16 - sim_s.stamp[id]);
+    el = (uint16_t)(now16 - sim_s.stamp[SIM_IX(id)]);   /* not EMPTY: id has a slot */
     if (el < min_el) return;
     if (el > SIM_MAX_ELAPSED) el = SIM_MAX_ELAPSED;
-    sim_s.stamp[id] = now16;
+    sim_s.stamp[SIM_IX(id)] = now16;
     res_in(r, &in);
 
     /* routines change on the hour (or when a need gets urgent) */
@@ -726,7 +741,7 @@ static void day_rollover(void)
     sim_date(&month, &dom);
     /* birthdays! */
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        DoomoResident *r = &doomo_town.res[i];
+        DoomoResident *r = TOWN_RES(i);
         if (r->status != RES_ALIVE && r->status != RES_GHOST) continue;
         if (RES_BDAY_MONTH(r) == month && RES_BDAY_DAY(r) == dom) {
             sim_stat_add(r, STAT_HAPPY, 25);
@@ -772,7 +787,7 @@ static void minute_step(void)
     sim_problems_minute();
     /* about one visit per edge per game hour */
     sim_s.edge_credit += doomo_town.edge_count;
-    if (sim_s.edge_credit > 60u * DOOMO_MAX_EDGES) sim_s.edge_credit = 60u * DOOMO_MAX_EDGES;
+    if (sim_s.edge_credit > 60u * DOOMO_LIVE_EDGES) sim_s.edge_credit = 60u * DOOMO_LIVE_EDGES;
 }
 
 static int ticks_per_minute_q(void)
@@ -815,7 +830,7 @@ void sim_init(void)
     rng_seed(&sim_s.rng, doomo_town.seed ^ 0x5113A11Eu ^ (doomo_town.day * 2654435761u) ^
                              doomo_town.minute);
     now16 = (uint16_t)sim_now();
-    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) sim_s.stamp[i] = now16;
+    for (i = 0; i < DOOMO_LIVE_RESIDENTS; i++) sim_s.stamp[i] = now16;
     for (i = 0; i < ACT_COUNT; i++) {
         int j;
         for (j = 0; j < SIM_RING; j++) sim_s.ring[i][j] = 0xFFFF;
@@ -823,7 +838,7 @@ void sim_init(void)
     sim_social_init();
     sim_recount_possessed();
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        DoomoResident *r = &doomo_town.res[i];
+        DoomoResident *r = TOWN_RES(i);
         if (r->status == RES_EMPTY || r->status == RES_DEAD) continue;
         res_in(r, &in);
         r->activity = (uint8_t)decide_activity(i, r, &in);
@@ -832,6 +847,9 @@ void sim_init(void)
     }
     sim_events_reset();
     sim_news_welcome(town_count(-1));     /* LS1: once per town or load */
+#if DOOMO_RES_SLOTS
+    save_moved_away_news();               /* GBA-500: an old save's people who moved away */
+#endif
 }
 
 /* the fastest shipped clock (speed_q 16, ticks_per_minute_q 75) earns 14.2 slots a tick: sim_tick's loop ends
@@ -863,10 +881,19 @@ void sim_tick(void)
     credit = sim_s.pass_credit + (uint32_t)(SIM_PASS_NUM * spd);
     if (credit > need * SIM_BATCH) credit = need * SIM_BATCH;
     while (credit >= need) {
+#if DOOMO_RES_SLOTS
+        /* GBA-500: the round robin walks the slots (SIM_PASS_NUM is a fifth of the live count: every
+         * resident is still visited once per SIM_INTERVAL) */
+        int id = town_slot_id(sim_s.cursor);
+        credit -= need;
+        sim_s.cursor = (uint16_t)(sim_s.cursor + 1 >= DOOMO_LIVE_RESIDENTS ? 0 : sim_s.cursor + 1);
+        if (id >= 0) update_resident(id);
+#else
         int id = sim_s.cursor;
         credit -= need;
         sim_s.cursor = (uint16_t)(sim_s.cursor + 1 >= DOOMO_MAX_RESIDENTS ? 0 : sim_s.cursor + 1);
         update_resident(id);
+#endif
     }
     sim_s.pass_credit = (uint16_t)credit;
     sim_edges_step(SIM_EDGE_BATCH);
@@ -891,7 +918,7 @@ void sim_advance_minutes(int minutes)
     for (i = minutes - window; i > 0; i--) minute_step();
     if (minutes > window) {
         uint16_t now16 = (uint16_t)sim_now();
-        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) sim_s.stamp[i] = now16;
+        for (i = 0; i < DOOMO_LIVE_RESIDENTS; i++) sim_s.stamp[i] = now16;
     }
     sim_s.new_edges = 0;
     for (left = window; left > 0; left -= chunk) {
@@ -900,7 +927,12 @@ void sim_advance_minutes(int minutes)
         if (chunk > left) chunk = left;
         for (i = 0; i < chunk; i++) minute_step();
         sim_s.job_budget = 32;
+#if DOOMO_RES_SLOTS
+        for (i = 0; i < DOOMO_LIVE_RESIDENTS; i++)          /* GBA-500: by slot */
+            if (town_slot_id(i) >= 0) update_resident_ex(town_slot_id(i), SIM_MIN_ELAPSED);
+#else
         for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) update_resident_ex(i, SIM_MIN_ELAPSED);
+#endif
     }
     /* give the graph a proportional share of attention (at most one full pass) */
     passes = (int)(sim_s.edge_credit / 60u);

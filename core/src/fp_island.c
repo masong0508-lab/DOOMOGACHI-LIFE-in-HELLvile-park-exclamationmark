@@ -468,7 +468,7 @@ static void town_records(void)
     char buf[160];
     const DoomoSimStats *s = sim_stats();
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        int st = doomo_town.res[i].status;
+        int st = TOWN_RES(i)->status;
         if (st == RES_EMPTY || st == RES_DEAD) continue;
         if (RES_DISTRICT(i)) hell++; else hill++;
         if (st == RES_POSSESSED) poss++;
@@ -506,7 +506,7 @@ static void fuzz_talk(void)
     char buf[160];
     (void)fuzz;
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        const DoomoResident *r = &doomo_town.res[i];
+        const DoomoResident *r = TOWN_RES(i);
         if (r->status == RES_POSSESSED) poss++;
         else if (r->status == RES_SOUL_LOST) lost++;
         else if (r->status == RES_ALIVE && r->stat[STAT_CORRUPTION] >= 70) dark++;
@@ -527,7 +527,7 @@ static void peek_wall(void)
     int i, hell = 0, poss = 0, cross = 0;
     char buf[160];
     for (i = DOOMO_DISTRICT_SIZE; i < DOOMO_MAX_RESIDENTS; i++) {
-        int st = doomo_town.res[i].status;
+        int st = TOWN_RES(i)->status;
         if (fp_living_status(st)) hell++;
         if (st == RES_POSSESSED) poss++;
     }
@@ -555,7 +555,7 @@ static void picnic(void)
     if (doomo_town.money < 120) { audio_sfx(SFX_ERROR); ui_toast("A picnic costs H$120."); return; }
     doomo_town.money -= 120;
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        DoomoResident *r = &doomo_town.res[i];
+        DoomoResident *r = TOWN_RES(i);
         if (r->status != RES_ALIVE && r->status != RES_GHOST) continue;
         if (r->activity != ACT_PARK && r->activity != ACT_WANDERING) continue;
         r->stat[STAT_HUNGER] = (uint8_t)DOOMO_MIN(100, r->stat[STAT_HUNGER] + 30);
@@ -581,7 +581,7 @@ static void collect_rent_now(void)
     int i, n = 0, amount;
     char buf[64];
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
-        if (doomo_town.res[i].status == RES_ALIVE || doomo_town.res[i].status == RES_GHOST) n++;
+        if (TOWN_RES(i)->status == RES_ALIVE || TOWN_RES(i)->status == RES_GHOST) n++;
     amount = 50 + n * 2;
     doomo_town.money += (uint32_t)amount;
     progress_add(PROG_MONEY_EARNED, amount);
@@ -775,7 +775,7 @@ static void scan_crowds(void)
 {
     int k;
     for (k = 0; k < 125; k++) {
-        const DoomoResident *r = &doomo_town.res[I.scan];
+        const DoomoResident *r = TOWN_RES(I.scan);
         if (fp_living_status(r->status) && r->activity < ACT_COUNT) I.here_acc[r->activity]++;
         if (++I.scan >= DOOMO_MAX_RESIDENTS) {
             I.scan = 0;
@@ -855,7 +855,8 @@ static void island_enter(int arg)
         if (town_count(-1) == 0) {
             doomo_snprintf(fp_tmp, sizeof(fp_tmp), "Welcome to %s! It's very quiet... nobody lives here yet.", nm);
             ui_say(-1, fp_tmp);
-            ui_say(-1, "Let's create your very first citizen! You can make up to 500 on each side.");
+            ui_say(-1, DOOMO_RES_SLOTS ? "Let's create your very first citizen! You can make up to 250 on each side."
+                                       : "Let's create your very first citizen! You can make up to 500 on each side.");
             I.wait = FP_WAIT_CREATOR;
             I.wait_arg = 1;
         } else {
@@ -889,7 +890,7 @@ static void after_wait(void)
             return;
         }
         if (id >= 0 && id < DOOMO_MAX_RESIDENTS) {
-            doomo_snprintf(fp_tmp, sizeof(fp_tmp), STR_ICON_HEART " %s moved in!", doomo_town.res[id].name);
+            doomo_snprintf(fp_tmp, sizeof(fp_tmp), STR_ICON_HEART " %s moved in!", TOWN_RES(id)->name);
             ui_toast(fp_tmp);
             fp_fx_burst(fp_sw() / 2, fp_sh() / 2, FX_CONFETTI, 24);
             audio_sfx(SFX_HAPPY);

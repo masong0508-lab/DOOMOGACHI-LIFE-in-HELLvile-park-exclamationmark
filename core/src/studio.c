@@ -51,7 +51,7 @@ const char *st_name(int id)
         return r->name[0] ? r->name : "You";
     }
     if (id < 0 || id >= DOOMO_MAX_RESIDENTS) return "";
-    r = &doomo_town.res[id];
+    r = TOWN_RES(id);
     return r->status == RES_EMPTY ? "" : r->name;
 }
 

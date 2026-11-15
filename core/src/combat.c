@@ -265,7 +265,7 @@ static int pick_resident(void)
     int i;
     if (doomo_town.player.status != RES_EMPTY) return DOOMO_PLAYER_ID;
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
-        if (doomo_town.res[i].status == RES_ALIVE) return i;
+        if (TOWN_RES(i)->status == RES_ALIVE) return i;
     return DOOMO_PLAYER_ID;
 }
 

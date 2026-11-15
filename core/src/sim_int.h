@@ -18,7 +18,10 @@
 
 #define SIM_MAX_PROBLEMS 24
 #define SIM_RING 8                 /* recent visitors remembered per venue */
-#define SIM_BITS ((DOOMO_MAX_RESIDENTS + 7) / 8)
+#define SIM_BITS ((DOOMO_LIVE_RESIDENTS + 7) / 8)
+/* (GBA-500) the per-resident arrays below are by slot (town.h): SIM_IX(id) is the
+ * index of id's entries, -1 for an id with no slot (only where not all 1000 live) */
+#define SIM_IX(id) town_slot(id)
 #define SIM_MAX_ELAPSED 720        /* minutes one resident update may cover */
 #define SIM_MIN_ELAPSED 15         /* a fast-forward chunk updates a resident
                                       only when 15 game minutes have passed */
@@ -33,10 +36,12 @@
  * pass after sim_init, a load or a fast-forward finds every stamp at "now":
  * a visit that would live fewer than SIM_PASS_MIN minutes leaves the stamp
  * alone and the next one lives them all, so no minute is lost or counted
- * twice. */
-#define SIM_PASS_NUM    (DOOMO_MAX_RESIDENTS / 5)
+ * twice. (GBA-500: the cursor walks the DOOMO_LIVE_RESIDENTS slots, so the
+ * GBA's pass moves 500 slots per SIM_INTERVAL, about 0.45 a tick: every
+ * resident is still visited once per interval.) */
+#define SIM_PASS_NUM    (DOOMO_LIVE_RESIDENTS / 5)
 #define SIM_PASS_DEN    (SIM_INTERVAL / 5)
-DOOMO_STATIC_ASSERT(SIM_PASS_NUM * 5 == DOOMO_MAX_RESIDENTS && SIM_PASS_DEN * 5 == SIM_INTERVAL,
+DOOMO_STATIC_ASSERT(SIM_PASS_NUM * 5 == DOOMO_LIVE_RESIDENTS && SIM_PASS_DEN * 5 == SIM_INTERVAL,
                     sim_pass_rate_is_exact);
 
 /* Short-lived feelings stored per resident (hi nibble = TR_*, lo nibble =
@@ -56,9 +61,9 @@ typedef struct SimState {
                                             ticks_per_minute_q (in the padding
                                             before edge_credit: no new RAM) */
     uint32_t  edge_credit;               /* owed edge visits x 60          */
-    uint16_t  stamp[DOOMO_MAX_RESIDENTS];/* last update, absolute minute   */
-    uint8_t   transient[DOOMO_MAX_RESIDENTS];
-    uint8_t   job[DOOMO_MAX_RESIDENTS];  /* 0 unknown, 0xFF none, else venue+1 */
+    uint16_t  stamp[DOOMO_LIVE_RESIDENTS];/* last update, absolute minute  */
+    uint8_t   transient[DOOMO_LIVE_RESIDENTS];
+    uint8_t   job[DOOMO_LIVE_RESIDENTS]; /* 0 unknown, 0xFF none, else venue+1 */
     uint8_t   job_budget;                /* job lookups left this tick     */
     uint8_t   taken[SIM_BITS], crush[SIM_BITS];       /* current pass     */
     uint8_t   taken_nx[SIM_BITS], crush_nx[SIM_BITS]; /* being rebuilt    */

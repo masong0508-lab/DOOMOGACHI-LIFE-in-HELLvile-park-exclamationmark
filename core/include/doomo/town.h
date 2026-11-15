@@ -220,12 +220,19 @@ typedef struct DoomoTown {
     uint8_t         unlocks[DOOMO_UNLOCK_BITS / 8];     /* unlocks.h    */
     uint32_t        progress[32];                       /* PROG_* counters (unlocks.h) */
     DoomoGrave      graves[DOOMO_MAX_GRAVES];
-    DoomoEdge       edges[DOOMO_MAX_EDGES];
-    DoomoResident   res[DOOMO_MAX_RESIDENTS];
+    DoomoEdge       edges[DOOMO_LIVE_EDGES];   /* (GBA-500: 1024 on the GBA) */
+    DoomoResident   res[DOOMO_LIVE_RESIDENTS];  /* by slot (GBA-500; == id where all 1000 live) */
     DoomoResident   player;          /* YOU: story protagonist / free play
                                         caretaker avatar (third-person body) */
     /* ---- foundation additions ---- */
     uint8_t         population;      /* TOWN_POP_* this island started as */
+#if DOOMO_RES_SLOTS
+    /* (GBA-500) id -> slot + 1 inside the id's district half (0: no slot, the id is not
+     * in town), and slot -> id + 1 (0: free). All zero = nobody; not saved (a load binds
+     * every resident it reads). A slot that holds a record always has an id. */
+    uint8_t         res_slot[DOOMO_MAX_RESIDENTS];
+    uint16_t        res_id[DOOMO_LIVE_RESIDENTS];
+#endif
 } DoomoTown;
 
 /* town_res(DOOMO_PLAYER_ID) returns &doomo_town.player. The player can be
@@ -234,6 +241,61 @@ typedef struct DoomoTown {
 
 /* The one live town (~110 KB). Lives in EWRAM on GBA (default .bss). */
 extern DoomoTown doomo_town;
+
+/* ---- (GBA-500) the record of a resident id ---------------------------------------------
+ * Every id 0..999 is a valid resident id on every platform; doomo_town.res[] holds
+ * DOOMO_LIVE_RESIDENTS records (res_live.h). Where all 1000 live (PS1, Dreamcast, native)
+ * the slot is the id and these are the plain array access of before. On the GBA:
+ *   TOWN_RES(id)    the id's record; an id with no slot reads as an empty slot (a shared
+ *                   all-zero record in ROM: never write through it; town_alloc / town_bind
+ *                   give the id a slot first)
+ *   town_slot(id)   its slot 0..DOOMO_LIVE_RESIDENTS-1, or -1
+ *   town_slot_id(s) the id in slot s, or -1 for a free slot
+ * id must be 0..DOOMO_MAX_RESIDENTS-1 (as for the array). A loop over every resident may
+ * walk the slots (doomo_town.res[s], town_slot_id(s)) instead of the 1000 ids: same set,
+ * slot order instead of id order. */
+#if DOOMO_RES_SLOTS
+/* the GBA keeps it in ROM (a stray write is lost, never seen as another id); the native
+ * LIVE=500 build keeps it writable so the tests can catch a stray write (test_main.c) */
+#ifdef DOOMO_PLATFORM_GBA
+#define DOOMO_RES_NONE_CONST const
+#else
+#define DOOMO_RES_NONE_CONST
+#endif
+extern DOOMO_RES_NONE_CONST DoomoResident doomo_res_none;
+static inline int town_slot(int id)
+{
+    int s = doomo_town.res_slot[id];
+    return s ? (id >= DOOMO_DISTRICT_SIZE ? DOOMO_LIVE_PER_DISTRICT : 0) + s - 1 : -1;
+}
+static inline DoomoResident *town_rec_(int id)
+{
+    int s = town_slot(id);
+    return s >= 0 ? &doomo_town.res[s] : (DoomoResident *)&doomo_res_none;
+}
+static inline int town_slot_id(int s) { return (int)doomo_town.res_id[s] - 1; }
+#define TOWN_RES(id) town_rec_(id)
+#else
+#define town_slot(id)    (id)
+#define town_slot_id(s)  (s)
+#define TOWN_RES(id)     (&doomo_town.res[id])
+#endif
+/* TOWN_CLAIM(r, id): before code fills the record of an EMPTY id (a demo citizen, a test
+ * cast), give id a slot and point r at its record; r becomes NULL when the district has no
+ * free slot. Where every id lives it does nothing (r already is the record). */
+#if DOOMO_RES_SLOTS
+#define TOWN_CLAIM(r, id) ((r) = town_bind(id) >= 0 ? TOWN_RES(id) : NULL)
+#else
+#define TOWN_CLAIM(r, id) ((void)0)
+#endif
+/* Give id a slot in its district (GBA-500; where every id lives it is the id itself):
+ * its own if it has one, else a free one (a slot whose record is empty). Returns the slot
+ * or -1 when the district's slots are all in use. town_unbind() frees id's slot (its
+ * record is cleared). */
+int  town_bind(int id);
+void town_unbind(int id);
+/* Slots in use (records not RES_EMPTY) and free in a district. */
+int  town_district_free(int district);
 
 /* Lifecycle.
  *   TOWN_POP_EMPTY    - empty island, like the original games: the player
@@ -261,6 +323,9 @@ void rel_set_kind(int a, int b, int kind);
 int  rel_list(int a, uint16_t *out_ids, int max); /* sorted by value desc */
 void rel_remove_all(int a);
 void rel_remove_at(int index);            /* drop edge #index, the table stays sorted */
+/* (GBA-500) how much an edge is worth keeping when the graph is full (the weakest goes:
+ * married / family, dating, best friends and nemeses, the avatar's ties first). */
+int  rel_edge_strength(const DoomoEdge *e);
 int  rel_has_crush(int from, int to);
 void rel_set_crush(int from, int to, int on);
 

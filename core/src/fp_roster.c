@@ -99,7 +99,7 @@ int fp_pick_match(int kind, int id)
 
 static int match(const RosterState *s, int id)
 {
-    const DoomoResident *r = &doomo_town.res[id];
+    const DoomoResident *r = TOWN_RES(id);
     if (r->status == RES_EMPTY) return 0;
     if (s->picking) {
         if (!fp_pick_match(s->pick_kind, id) || id == s->exclude) return 0;
@@ -125,7 +125,7 @@ static int match(const RosterState *s, int id)
 static int sort_mode;
 static int cmp_res(int a, int b)
 {
-    const DoomoResident *ra = &doomo_town.res[a], *rb = &doomo_town.res[b];
+    const DoomoResident *ra = TOWN_RES(a), *rb = TOWN_RES(b);
     int d = 0;
     switch (sort_mode) {
     case SORT_NAME: {
@@ -385,7 +385,7 @@ static void roster_update(void)
 static void draw_row(int x, int y, int w, int id, int selected, int style)
 {
     const UiStyle *st = ui_style(style);
-    const DoomoResident *r = &doomo_town.res[id];
+    const DoomoResident *r = TOWN_RES(id);
     int t = fp_t(), rx = x + w - 8;
     uint8_t tc = st->text;
     char name[DOOMO_NAME_LEN + 1];

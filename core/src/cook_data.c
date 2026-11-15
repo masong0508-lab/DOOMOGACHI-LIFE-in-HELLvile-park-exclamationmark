@@ -280,7 +280,7 @@ int cook_customers(void)
         start = rng_range(&r, DOOMO_MAX_RESIDENTS);
         for (k = 0; k < DOOMO_MAX_RESIDENTS && n < FC_CUSTOMERS; k++) {
             int id = (start + k * 7) % DOOMO_MAX_RESIDENTS;
-            if (can_dine(id) && doomo_town.res[id].activity == ACT_CAFE && rng_chance(&r, 50))
+            if (can_dine(id) && TOWN_RES(id)->activity == ACT_CAFE && rng_chance(&r, 50))
                 fc.cust[n++] = (int16_t)id;
         }
         for (k = 0; k < 400 && n < FC_CUSTOMERS; k++) {

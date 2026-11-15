@@ -91,5 +91,11 @@ int  save_info_from(const uint8_t *buf, uint32_t size, DoomoSaveInfo *out);
  * "Island too big: 93 KB > 88 KB". */
 uint32_t    save_last_size(void);
 const char *save_last_error(void);
+/* (GBA-500) how many residents the last load left out because the save had more people
+ * than the town's slots (an old GBA save; res_live.h); 0 where all 1000 live. */
+int         save_moved_away(void);
+/* (GBA-500) posts "N neighbours moved away" once after such a load (sim_init calls it;
+ * only where not all 1000 live). */
+void        save_moved_away_news(void);
 
 #endif

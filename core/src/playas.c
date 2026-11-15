@@ -475,6 +475,12 @@ static void pockets_read(const uint8_t *s, uint32_t len, int avatar)
     }
 }
 
+int playas_chunk_avatar(const uint8_t *s, uint32_t len, uint16_t ver)
+{
+    if (ver != 1 || len < PLAY_SZ_HEADER) return -1;
+    return s[2] | (s[3] << 8);
+}
+
 static int play_read(const uint8_t *s, uint32_t len, uint16_t ver)
 {
     int i, a;

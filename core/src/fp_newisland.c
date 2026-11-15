@@ -20,9 +20,15 @@ static const char *const card_titles[C_COUNT] = {
     "Empty Island", "Hellvile Park Classic", "Random Island"
 };
 static const char *const card_desc[C_COUNT] = {
+#if DOOMO_RES_SLOTS     /* GBA-500: the GBA's island holds 500 (res_live.h) */
+    "Nobody lives here yet. Create every citizen yourself, up to 250 on each side - just like the original games!",
+    "500 premade citizens move in: 250 sweethearts in Hillvile and 250 rascals in Hellvile.",
+    "500 brand-new random citizens, cooked up from a seed. Same seed, same island!"
+#else
     "Nobody lives here yet. Create every citizen yourself, up to 500 on each side - just like the original games!",
     "All 1000 premade citizens move in: 500 sweethearts in Hillvile and 500 rascals in Hellvile.",
     "1000 brand-new random citizens, cooked up from a seed. Same seed, same island!"
+#endif
 };
 
 static struct {
@@ -205,7 +211,7 @@ static void ni_draw(void)
         else mini_island(x + cw / 2, y + ch / 2 - 6, cw - 16, big ? 52 : 38, i, t);
         ui_text_center(x + cw / 2, y + ch - (big ? 26 : 22), card_names[i], sel ? cs->accent : cs->text);
         if (i == C_EMPTY) ui_text_center(x + cw / 2, y + ch - 12, "0 citizens", cs->text_dim);
-        else if (i == C_CLASSIC) ui_text_center(x + cw / 2, y + ch - 12, "1000 premade", cs->text_dim);
+        else if (i == C_CLASSIC) ui_text_center(x + cw / 2, y + ch - 12, DOOMO_RES_SLOTS ? "500 premade" : "1000 premade", cs->text_dim);
         else {
             char sb[20];
             doomo_snprintf(sb, sizeof(sb), "Seed %u", (unsigned)N.seed);

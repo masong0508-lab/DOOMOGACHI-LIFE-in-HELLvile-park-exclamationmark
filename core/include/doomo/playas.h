@@ -107,6 +107,9 @@ typedef struct PlayasPos {
 
 /* ---- queries (quiet) ------------------------------------------------------ */
 int  playas_avatar(void);          /* the id you control (PLAYAS_ID_HERO by default) */
+/* (GBA-500) the avatar id a 'PLAY' chunk holds, read from its bytes alone (no state is
+ * touched; save.c's old-save scan), or -1 if the chunk is not one this build reads. */
+int  playas_chunk_avatar(const uint8_t *s, uint32_t len, uint16_t ver);
 int  playas_is_hero(void);         /* 1 while you play the hero                       */
 /* PA8: the town slot of the avatar's needs and ties. A family pool id has no
  * town slot, so it borrows the hero's. */

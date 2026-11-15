@@ -115,7 +115,7 @@ void fp_check_island_achievements(void)
         if (town_count_district(1, -1) >= DOOMO_DISTRICT_SIZE) fp_achieve(UL_FP_FULL_HOUSE_HELL);
     }
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        const DoomoResident *r = &doomo_town.res[i];
+        const DoomoResident *r = TOWN_RES(i);
         if (r->status == RES_EMPTY) continue;
         if (r->flags & RF_FAVORITE) fav++;
         if (r->level >= 99) fp_achieve(UL_FP_HELPER_BIG);

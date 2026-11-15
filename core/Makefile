@@ -18,6 +18,7 @@
 #
 #   BUILD=dir   build directory (default core/build)
 #   SAN=1       build with -fsanitize=address,undefined
+#   LIVE=500    the GBA's 500 live residents (GBA-500; types.h), e.g. with BUILD=build-500
 #
 # GENERATOR CONVENTION (make gen / check-gen):
 #   * tools/*.py containing the line "# doomo-generator" are run as
@@ -49,6 +50,11 @@ endif
 PYTHON  ?= python3
 OPT     ?= -O2
 CFLAGS_COMMON := -std=c99 -Wall -Wextra -Werror $(OPT) -g -MMD -MP
+# GBA-500: LIVE=500 builds the native core and tests with the GBA's 500 live residents
+# (types.h DOOMO_LIVE_RESIDENTS; use its own BUILD=dir)
+ifneq ($(LIVE),)
+CFLAGS_COMMON += -DDOOMO_LIVE_RESIDENTS=$(LIVE)
+endif
 ifeq ($(SAN),1)
 CFLAGS_COMMON += -fsanitize=address,undefined -fno-omit-frame-pointer
 LDFLAGS_SAN := -fsanitize=address,undefined

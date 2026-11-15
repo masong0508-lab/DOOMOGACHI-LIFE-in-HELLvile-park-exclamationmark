@@ -51,8 +51,11 @@ static void gallery_enter(int arg)
     g_modals.visible = DOOMO_COUNTOF(modal_items);
     /* a demo citizen to talk to */
     if (r && r->status == RES_EMPTY) {
-        resident_generate(r, 7);
-        memcpy(r->name, "Mochi", 6);
+        TOWN_CLAIM(r, 0);                       /* GBA-500: id 0 needs a slot first */
+        if (r) {
+            resident_generate(r, 7);
+            memcpy(r->name, "Mochi", 6);
+        }
     }
 }
 

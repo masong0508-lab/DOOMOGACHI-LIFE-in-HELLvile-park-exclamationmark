@@ -275,7 +275,7 @@ int story_friend_count(int district)
         int i;
         friends_cache[0] = friends_cache[1] = 0;
         for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-            const DoomoResident *r = &doomo_town.res[i];
+            const DoomoResident *r = TOWN_RES(i);
             if (r->status != RES_EMPTY && r->level >= STORY_FRIEND_LEVEL)
                 friends_cache[RES_DISTRICT(i)]++;
         }

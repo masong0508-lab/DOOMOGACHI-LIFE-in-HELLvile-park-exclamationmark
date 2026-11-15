@@ -21,8 +21,31 @@
 #define DOOMO_MAX_RESIDENTS   1000  /* ids 0..499 Hillvile (good side of
                                        Hellvile Park), 500..999 Hellvile
                                        (bad side)                         */
+/* (GBA-500, owner 2026-11-15) the residents a build keeps alive at once. The ids stay
+ * 0..999 on every platform; the town keeps DOOMO_LIVE_RESIDENTS records, half per
+ * district, found through an id -> slot table (town.h). The GBA keeps 500; the PS1,
+ * the Dreamcast and the native build keep all 1000 (slot == id, no table: their code
+ * is the same as before). `make -C core LIVE=500` builds the native tests at 500. */
+#ifndef DOOMO_LIVE_RESIDENTS
+#ifdef DOOMO_PLATFORM_GBA
+#define DOOMO_LIVE_RESIDENTS  500
+#else
+#define DOOMO_LIVE_RESIDENTS  DOOMO_MAX_RESIDENTS
+#endif
+#endif
+#define DOOMO_LIVE_PER_DISTRICT (DOOMO_LIVE_RESIDENTS / 2)
+#define DOOMO_RES_SLOTS       (DOOMO_LIVE_RESIDENTS < DOOMO_MAX_RESIDENTS)
 #define DOOMO_NAME_LEN        12    /* 11 chars + NUL                     */
-#define DOOMO_MAX_EDGES       2048  /* relationship edges (sparse graph)  */
+#define DOOMO_MAX_EDGES       2048  /* relationship edges (sparse graph); a
+                                       save holds at most this many       */
+/* (GBA-500) the edges a build keeps: as many per resident as with 1000 (the sim fills
+ * whatever room the graph has: 2000 in 10 game days at either size), so 1024 on the
+ * GBA. A load keeps the strongest that fit (save.c). */
+#if DOOMO_RES_SLOTS
+#define DOOMO_LIVE_EDGES      1024
+#else
+#define DOOMO_LIVE_EDGES      DOOMO_MAX_EDGES
+#endif
 #define DOOMO_MAX_WEAPONS     24    /* welded weapons in the armory       */
 #define DOOMO_MAX_ITEMS       64    /* inventory item kinds               */
 #define DOOMO_MAX_GRAVES      64    /* graveyard plots                    */
@@ -54,6 +77,10 @@ typedef int32_t fix16;              /* 16.16 */
 /* Compile-time assert usable in C99. */
 #define DOOMO_STATIC_ASSERT(cond, name) \
     typedef char doomo_static_assert_##name[(cond) ? 1 : -1]
+
+/* GBA-500: two equal halves of at most 255 slots each (town.h keeps a slot + 1 in a byte) */
+DOOMO_STATIC_ASSERT(DOOMO_LIVE_RESIDENTS % 2 == 0 && DOOMO_LIVE_RESIDENTS <= DOOMO_MAX_RESIDENTS &&
+                    (!DOOMO_RES_SLOTS || DOOMO_LIVE_PER_DISTRICT <= 255), live_residents);
 
 /* An 8bpp indexed image. Index 0 is always transparent.
  * Pixels are row-major, w*h bytes, indices into the master palette

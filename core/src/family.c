@@ -494,7 +494,7 @@ void life_ending_facts(LifeEndingFacts *out)
     {   /* island happiness: the mean HAPPY of everyone alive */
         int n = 0, sum = 0, k;
         for (k = 0; k < DOOMO_MAX_RESIDENTS; k++) {
-            const DoomoResident *r = &doomo_town.res[k];
+            const DoomoResident *r = TOWN_RES(k);
             if (r->status == RES_ALIVE) { sum += r->stat[STAT_HAPPY]; n++; }
         }
         out->happiness = (uint8_t)(n ? DOOMO_CLAMP(sum / n, 0, 100) : 0);

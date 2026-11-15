@@ -196,7 +196,7 @@ static int pick_citizen(int k, int district)
     int start = (int)(h % DOOMO_DISTRICT_SIZE);
     for (i = 0; i < DOOMO_DISTRICT_SIZE; i++) {
         int id = base + (start + i * 37) % DOOMO_DISTRICT_SIZE;
-        const DoomoResident *r = &doomo_town.res[id];
+        const DoomoResident *r = TOWN_RES(id);
         if (r->status != RES_ALIVE && r->status != RES_POSSESSED && r->status != RES_GHOST) continue;
         if (r->flags & RF_STORY_NPC) continue;
         if (r->activity == ACT_SLEEPING && town_is_night() && (h & 1)) continue;

@@ -89,7 +89,7 @@ static void ap_enter(int arg)
         A.room = 1;
         /* start at the first occupied home */
         for (i = 0; i < DOOMO_DISTRICT_SIZE; i++)
-            if (doomo_town.res[A.district * DOOMO_DISTRICT_SIZE + i].status != RES_EMPTY) {
+            if (TOWN_RES(A.district * DOOMO_DISTRICT_SIZE + i)->status != RES_EMPTY) {
                 A.floor = i / ROOMS + 1;
                 A.room = i % ROOMS + 1;
                 break;
@@ -110,7 +110,7 @@ static const char *jump_item(int index, char *buf)
     int fl = FLOORS - index, k, n = 0, pr = 0;
     for (k = 1; k <= ROOMS; k++) {
         int id = slot_of(fl, k);
-        if (doomo_town.res[id].status != RES_EMPTY) n++;
+        if (TOWN_RES(id)->status != RES_EMPTY) n++;
         if (sim_problem_for(id) >= 0) pr++;
     }
     if (pr) doomo_snprintf(buf, 48, "Floor %2d  %2d home  " STR_ICON_HEART "%d", fl, n, pr);
@@ -150,8 +150,15 @@ static void house_pick(int c)
 static void open_room(void)
 {
     int id = slot_of(A.floor, A.room);
-    const DoomoResident *r = &doomo_town.res[id];
+    const DoomoResident *r = TOWN_RES(id);
     if (r->status == RES_EMPTY) {
+#if DOOMO_RES_SLOTS
+        if (!town_district_free(RES_DISTRICT(id))) {    /* GBA-500: 250 neighbours a side */
+            audio_sfx(SFX_SELECT);
+            ui_toast("This side is full: 250 neighbours.");
+            return;
+        }
+#endif
         audio_sfx(SFX_SELECT);
         A.house = id;
         ui_choice(-1, "This house is empty", house_opts, 3, house_pick);
@@ -230,7 +237,7 @@ static void ap_update(void)
 /* drawing                                                                  */
 static void draw_window(const ALayout *L, int x, int y, int id, int sel)
 {
-    const DoomoResident *r = &doomo_town.res[id];
+    const DoomoResident *r = TOWN_RES(id);
     int hell = A.district, w = L->ww, h = L->wh, t = A.t, night = town_is_night();
     int st = r->status, act = r->activity, home = st != RES_EMPTY && st != RES_DEAD &&
         (act == ACT_HOME || act == ACT_SLEEPING || st == RES_SOUL_LOST);
@@ -357,7 +364,7 @@ static void ap_draw(void)
     int style = hell ? WIN_DARK : WIN_CUTE;
     const UiStyle *st = ui_style(style);
     int cur_id = slot_of(A.floor, A.room);
-    const DoomoResident *cr = &doomo_town.res[cur_id];
+    const DoomoResident *cr = TOWN_RES(cur_id);
     char buf[64];
     alayout(&L);
     draw_facade(&L);

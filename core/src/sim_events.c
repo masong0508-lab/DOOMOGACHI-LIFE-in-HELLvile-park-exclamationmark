@@ -31,7 +31,7 @@ void sim_events_reset(void)
     int i;
     sim_s.nprob = 0;                     /* (the news feed persists: LS1) */
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
-        if (doomo_town.res[i].status == RES_POSSESSED)
+        if (TOWN_RES(i)->status == RES_POSSESSED)
             sim_problem_raise(i, PROB_POSSESSED, sim_possessor_of(i), 0);
 }
 
@@ -82,7 +82,7 @@ int sim_problem_raise(int resident, int kind, int other, int item)
     int i;
     if (resident < 0 || resident >= DOOMO_MAX_RESIDENTS || kind <= PROB_NONE || kind >= PROB_COUNT)
         return -1;
-    if (doomo_town.res[resident].status == RES_EMPTY || doomo_town.res[resident].status == RES_DEAD)
+    if (TOWN_RES(resident)->status == RES_EMPTY || TOWN_RES(resident)->status == RES_DEAD)
         return -1;
     i = sim_problem_find(resident, -1);
     if (i >= 0) {
@@ -155,7 +155,7 @@ static int find_new_friend(int id)
     int tries, best = -1, best_c = -100;
     for (tries = 0; tries < 24; tries++) {
         int o = sim_rand(DOOMO_MAX_RESIDENTS), c;
-        if (o == id || !sim_alive_ok(&doomo_town.res[o])) continue;
+        if (o == id || !sim_alive_ok(TOWN_RES(o))) continue;
         if (rel_find(id, o)) continue;
         c = sim_compat(id, o) + (RES_DISTRICT(o) == RES_DISTRICT(id) ? 1 : 0);
         if (c > best_c) { best_c = c; best = o; }
@@ -179,7 +179,7 @@ void sim_problem_resolve(int index)
     if (index < 0 || index >= sim_s.nprob) return;
     p = sim_s.prob[index];
     id = p.resident;
-    r = &doomo_town.res[id];
+    r = TOWN_RES(id);
     set_reaction("Thank you!");
     switch (p.kind) {
     case PROB_HUNGRY:
@@ -256,7 +256,7 @@ void sim_problems_minute(void)
     int i;
     for (i = sim_s.nprob - 1; i >= 0; i--) {
         DoomoProblem *p = &sim_s.prob[i];
-        DoomoResident *r = &doomo_town.res[p->resident];
+        DoomoResident *r = TOWN_RES(p->resident);
         int limit;
         if (p->age < 0xFFFF) p->age++;
         if (r->status == RES_EMPTY || r->status == RES_DEAD) { sim_problem_remove(i); continue; }
@@ -602,7 +602,7 @@ static int random_citizen(int district)
     int tries;
     for (tries = 0; tries < 16; tries++) {
         int id = sim_rand(DOOMO_DISTRICT_SIZE) + (district < 0 ? sim_rand(2) : district) * DOOMO_DISTRICT_SIZE;
-        if (sim_alive_ok(&doomo_town.res[id])) return id;
+        if (sim_alive_ok(TOWN_RES(id))) return id;
     }
     return -1;
 }
@@ -622,7 +622,7 @@ void sim_news_fluff(void)
     a = random_citizen(-1);
     b = random_citizen(-1);
     if (a < 0 || b < 0 || a == b) k = sim_chance(50) ? 0 : 1;
-    ra = a >= 0 ? &doomo_town.res[a] : NULL;
+    ra = a >= 0 ? TOWN_RES(a) : NULL;
     switch (k) {
     case 0: sim_news_rec(NT_WEATHER0 + sim_rand(5), 0, 0); break;
     case 1: sim_news_rec(NT_ODD0 + sim_rand(8), 0, 0); break;

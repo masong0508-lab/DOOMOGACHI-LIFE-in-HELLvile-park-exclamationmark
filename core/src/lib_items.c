@@ -154,12 +154,12 @@ static void tally(void)
     memset(I.hate, 0, sizeof(I.hate));
     for (id = 0; id < FOOD_COUNT; id++) I.fan[id] = -1;
     for (id = 0; id < DOOMO_MAX_RESIDENTS; id++) {
-        const DoomoResident *r = &doomo_town.res[id];
+        const DoomoResident *r = TOWN_RES(id);
         int f;
         if (r->status == RES_EMPTY || r->status == RES_DEAD) continue;
         f = RES_LIKE_FOOD(r) % FOOD_COUNT;
         I.love[f]++;
-        if (I.fan[f] < 0 || r->level > doomo_town.res[I.fan[f]].level) I.fan[f] = (int16_t)id;
+        if (I.fan[f] < 0 || r->level > TOWN_RES(I.fan[f])->level) I.fan[f] = (int16_t)id;
         I.hate[RES_HATE_FOOD(r) % FOOD_COUNT]++;
     }
 }
@@ -299,7 +299,7 @@ static void fan_club(int f)
     I.club_for = (int16_t)(f + 1);
     I.club_n = 0;
     for (id = 0; id < DOOMO_MAX_RESIDENTS && I.club_n < 4; id++) {
-        const DoomoResident *r = &doomo_town.res[id];
+        const DoomoResident *r = TOWN_RES(id);
         if (r->status != RES_EMPTY && r->status != RES_DEAD && RES_LIKE_FOOD(r) % FOOD_COUNT == f)
             I.club[I.club_n++] = (int16_t)id;
     }
@@ -313,7 +313,7 @@ static int club_lines(int x, int y, int w, int bottom, int f, const UiStyle *st)
     if (!I.club_n || y + 2 * FONT_LINE > bottom) return y;
     n = doomo_snprintf(buf, sizeof(buf), "Fan club: ");
     for (i = 0; i < I.club_n && n < (int)sizeof(buf) - 16; i++)
-        n += doomo_snprintf(buf + n, (int)sizeof(buf) - n, "%s%s", i ? ", " : "", doomo_town.res[I.club[i]].name);
+        n += doomo_snprintf(buf + n, (int)sizeof(buf) - n, "%s%s", i ? ", " : "", TOWN_RES(I.club[i])->name);
     if (I.love[f] > I.club_n) doomo_snprintf(buf + n, (int)sizeof(buf) - n, " +%d", I.love[f] - I.club_n);
     return y + FONT_LINE * ui_text_wrap(x, y, w, buf, st->text_dim, 1);
 }
@@ -337,7 +337,7 @@ static void taste_panel(int x, int y, int w, int h, int f, int detail)
     ui_bar(x, ly, w, 6, I.hate[f], maxv, PAL_PAINT(PAINT_GRAPE, 1));
     ly += 10;
     if (I.fan[f] >= 0) {
-        doomo_snprintf(buf, sizeof(buf), "Biggest fan: %s", doomo_town.res[I.fan[f]].name);
+        doomo_snprintf(buf, sizeof(buf), "Biggest fan: %s", TOWN_RES(I.fan[f])->name);
         ly += FONT_LINE * ui_text_wrap(x, ly, w, buf, st->text, 1);
     }
     if (detail) ly = club_lines(x, ly, w, y + h - FONT_LINE, f, st);
@@ -428,7 +428,7 @@ static void detail(int sw, int sh)
             ty += FONT_LINE;
             if (big) ty = club_lines(rx, ty, rw, y + h - 3 * FONT_LINE, f, st);
             else if (I.fan[f] >= 0) {
-                doomo_snprintf(buf, sizeof(buf), "Biggest fan: %s", doomo_town.res[I.fan[f]].name);
+                doomo_snprintf(buf, sizeof(buf), "Biggest fan: %s", TOWN_RES(I.fan[f])->name);
                 ui_text(rx, ty, buf, st->text_dim);
                 ty += FONT_LINE;
             }

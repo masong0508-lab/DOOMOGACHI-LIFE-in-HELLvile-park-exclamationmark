@@ -45,7 +45,7 @@ extern LibBrowse lib_b;
 #define LIB_WAVE_COLS  80
 typedef union LibWingData {
     struct {                                  /* Citizen Almanac            */
-        uint16_t idx[DOOMO_MAX_RESIDENTS];    /* filtered + sorted ids      */
+        uint16_t idx[DOOMO_LIVE_RESIDENTS];   /* filtered + sorted ids      */
         uint16_t rel_id[6];                   /* relationship summary       */
         int8_t   rel_val[6];
         uint8_t  rel_kind[6];

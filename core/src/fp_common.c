@@ -52,7 +52,7 @@ int fp_island_song(void)
 DoomoResident *fp_res(int id)
 {
     if (id < 0 || id >= DOOMO_MAX_RESIDENTS) return NULL;
-    return &doomo_town.res[id];
+    return TOWN_RES(id);
 }
 
 int fp_living_status(int s)
@@ -248,7 +248,7 @@ const DoomoLook *fp_host_look(int roster_id)
 {
     static DoomoLook buf;            /* one slot: callers use the look before asking for another */
     const DoomoResident *p;
-    if (fp_host_in_town(roster_id)) p = &doomo_town.res[roster_id];
+    if (fp_host_in_town(roster_id)) p = TOWN_RES(roster_id);
     else if (!(p = roster_premade(roster_id))) p = &doomo_town.player;
     res_get_look(p, &buf);
     return &buf;

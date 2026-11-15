@@ -270,6 +270,9 @@ int sim_make_baby(int pa, int pb)
     slot = town_alloc(district);
     if (slot < 0) { district = !district; slot = town_alloc(district); }
     if (slot < 0) return -1;
+#if DOOMO_RES_SLOTS
+    if (SIM_IX(slot) < 0) return -1;                /* (town_alloc gave it a slot) */
+#endif
     hellish = district == DISTRICT_HELLVILE;
     seed = doomo_hash32(doomo_town.seed ^ ((uint32_t)pa << 16) ^ (uint32_t)pb ^
                         (doomo_town.day * 7919u) ^ (uint32_t)sim_rand(65536));
@@ -323,11 +326,17 @@ int sim_make_baby(int pa, int pb)
     baby.level = 0;
     baby.death_cause = DEATH_NONE;
     resident_sanitize(&baby);
-    doomo_town.res[slot] = baby;
-    sim_s.stamp[slot] = (uint16_t)sim_now();
-    sim_s.transient[slot] = 0;
-    sim_s.job[slot] = 0xFF;                         /* babies don't work */
-    doomo_town.res[slot].activity = ACT_HOME;
+    *TOWN_RES(slot) = baby;                         /* town_alloc gave it a slot */
+    {
+        int ix = SIM_IX(slot);
+#if DOOMO_RES_SLOTS
+        if (ix < 0) return -1;
+#endif
+        sim_s.stamp[ix] = (uint16_t)sim_now();
+        sim_s.transient[ix] = 0;
+        sim_s.job[ix] = 0xFF;                       /* babies don't work */
+    }
+    TOWN_RES(slot)->activity = ACT_HOME;
     rel_set_kind(pa, slot, REL_FAMILY);
     rel_adjust(pa, slot, 85);
     rel_set_kind(pb, slot, REL_FAMILY);
@@ -477,7 +486,7 @@ void sim_venue_meet(int id, DoomoResident *r, int minutes)
     if (sim_chance(chance)) {
         slot = sim_rand(SIM_RING);
         other = sim_s.ring[act][slot];
-        o = other < DOOMO_MAX_RESIDENTS ? &doomo_town.res[other] : NULL;
+        o = other < DOOMO_MAX_RESIDENTS ? TOWN_RES(other) : NULL;
         if (o && other != id && o->activity == act && sim_alive_ok(o) &&
             (!cross(id, other) || sim_chance(cross_border_pct()))) {
             DoomoEdge *e = rel_find(id, other);
@@ -488,7 +497,7 @@ void sim_venue_meet(int id, DoomoResident *r, int minutes)
                 int d = 1 + (c > 0 ? c / 2 : 0);
                 if (c < -2 && sim_chance(30)) d = -2;
                 rel_adjust(id, other, d);
-            } else if (sim_s.new_edges == 0 && doomo_town.edge_count < DOOMO_MAX_EDGES - 48 &&
+            } else if (sim_s.new_edges == 0 && doomo_town.edge_count < DOOMO_LIVE_EDGES - 48 &&
                        sim_chance(c >= 3 ? 22 : c >= 0 ? 10 : 4)) {
                 /* small talk turned into an actual acquaintance; the graph
                  * is kept below its cap (forgotten acquaintances are
@@ -632,8 +641,8 @@ static int visit_edge(int index)
     if (e->kind & REL_CRUSH_AB) bit_set(sim_s.crush_nx, a, 1);
     if (e->kind & REL_CRUSH_BA) bit_set(sim_s.crush_nx, b, 1);
     if (a >= DOOMO_MAX_RESIDENTS || b >= DOOMO_MAX_RESIDENTS) return 0;   /* the player */
-    ra = &doomo_town.res[a];
-    rb = &doomo_town.res[b];
+    ra = TOWN_RES(a);
+    rb = TOWN_RES(b);
     if (ra->status == RES_EMPTY || rb->status == RES_EMPTY) return 0;
     if (ra->status == RES_DEAD || rb->status == RES_DEAD) return 0;
     night = sim_s.night;

@@ -650,7 +650,7 @@ int st_alive(int id)
     const DoomoResident *r;
     if (id == DOOMO_PLAYER_ID) return 1;
     if (id < 0 || id >= DOOMO_MAX_RESIDENTS) return 0;
-    r = &doomo_town.res[id];
+    r = TOWN_RES(id);
     return r->status != RES_EMPTY && r->status != RES_DEAD;
 }
 
@@ -1157,7 +1157,7 @@ static void church_choir(DoomoSong *s, DoomoRng *r)
     if (st_alive(ROSTER_ID_FATHER_FUZZ)) add_singer(s, ROSTER_ID_FATHER_FUZZ);
     for (i = 0; i < DOOMO_DISTRICT_SIZE && song_singer_count(s) < 16; i++) {
         id = i;
-        if (!(doomo_town.res[id].flags & RF_CUSTOM) && (roster_traits(id) & ROSTER_T_HOLY))
+        if (!(TOWN_RES(id)->flags & RF_CUSTOM) && (roster_traits(id) & ROSTER_T_HOLY))
             add_singer(s, id);
     }
     fill_district(s, 0, DOOMO_DISTRICT_SIZE - 1, 20 - song_singer_count(s), r);

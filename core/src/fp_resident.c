@@ -261,23 +261,23 @@ static int advice_options(void)
     }
     if (crush >= 0) {
         adv_kind[adv_n] = ADV_CONFESS; adv_target[adv_n] = (int16_t)crush;
-        doomo_snprintf(adv_txt[adv_n], 28, "Confess to %s", doomo_town.res[crush].name);
+        doomo_snprintf(adv_txt[adv_n], 28, "Confess to %s", TOWN_RES(crush)->name);
         adv_n++;
     }
     if (partner >= 0 && partner < DOOMO_MAX_RESIDENTS && rel_kind(R.id, partner) == REL_DATING &&
         sim_marriage_ok(R.id, partner)) {                    /* LS0: teens never */
         adv_kind[adv_n] = ADV_PROPOSE; adv_target[adv_n] = (int16_t)partner;
-        doomo_snprintf(adv_txt[adv_n], 28, "Propose to %s", doomo_town.res[partner].name);
+        doomo_snprintf(adv_txt[adv_n], 28, "Propose to %s", TOWN_RES(partner)->name);
         adv_n++;
     }
     if (partner >= 0 && partner < DOOMO_MAX_RESIDENTS) {
         adv_kind[adv_n] = ADV_BREAKUP; adv_target[adv_n] = (int16_t)partner;
-        doomo_snprintf(adv_txt[adv_n], 28, "Break up with %s", doomo_town.res[partner].name);
+        doomo_snprintf(adv_txt[adv_n], 28, "Break up with %s", TOWN_RES(partner)->name);
         adv_n++;
     }
     if (foe >= 0) {
         adv_kind[adv_n] = ADV_MAKEUP; adv_target[adv_n] = (int16_t)foe;
-        doomo_snprintf(adv_txt[adv_n], 28, "Make up with %s", doomo_town.res[foe].name);
+        doomo_snprintf(adv_txt[adv_n], 28, "Make up with %s", TOWN_RES(foe)->name);
         adv_n++;
     }
     return adv_n;
@@ -385,7 +385,7 @@ static void do_help(void)
 /* lay to rest (gated, double confirmed)                                     */
 static void begin_farewell(void)
 {
-    int monster = doomo_town.res[R.id].status != RES_SOUL_LOST;
+    int monster = TOWN_RES(R.id)->status != RES_SOUL_LOST;
     sim_lay_to_rest(R.id, monster ? DEATH_MONSTER : DEATH_LAID_TO_REST);
     R.phase = PH_FAREWELL;
     R.farewell_t = 0;
@@ -407,7 +407,7 @@ static void cb_rest_first(int yes)
     if (!yes) return;
     doomo_snprintf(fp_tmp, sizeof(fp_tmp),
                    "Really? %s will be gone forever, and their friends will grieve.",
-                   doomo_town.res[R.id].name);
+                   TOWN_RES(R.id)->name);
     ui_confirm(fp_tmp, cb_rest_final);
 }
 
@@ -436,7 +436,7 @@ static void cb_monster_typed(int ok)
     audio_sfx(SFX_DEMON_ROAR);
     doomo_snprintf(fp_tmp, sizeof(fp_tmp),
                    "%s has done nothing wrong. Kill them off anyway? Everyone will remember.",
-                   doomo_town.res[R.id].name);
+                   TOWN_RES(R.id)->name);
     ui_confirm(fp_tmp, cb_rest_final);
 }
 
@@ -554,8 +554,8 @@ static void do_action(int a)
         scene_push(&SCENE_CREATOR, R.id);
         break;
     case FPA_FAV:
-        doomo_town.res[R.id].flags ^= RF_FAVORITE;
-        if (doomo_town.res[R.id].flags & RF_FAVORITE) {
+        TOWN_RES(R.id)->flags ^= RF_FAVORITE;
+        if (TOWN_RES(R.id)->flags & RF_FAVORITE) {
             audio_sfx(SFX_SPARKLE);
             react(EXPR_LOVE, FX_STAR, 8);
             ui_toast(STR_ICON_STAR " Added to favourites!");
@@ -660,7 +660,7 @@ static void friends_update(void)
     if (R.rel_sel >= R.rel_top + vis) R.rel_top = (int16_t)(R.rel_sel - vis + 1);
     if (btn_pressed(BTN_A)) {
         int o = R.rel[R.rel_sel];
-        if (o < DOOMO_MAX_RESIDENTS && doomo_town.res[o].status != RES_EMPTY) {
+        if (o < DOOMO_MAX_RESIDENTS && TOWN_RES(o)->status != RES_EMPTY) {
             audio_sfx(SFX_SELECT);
             set_resident(o);
             R.tab = TAB_CARE;
@@ -1408,7 +1408,7 @@ int fp_resident_text_overflow(char *why, int cap)
     CareGeom g;
     char help[96];
     uint8_t keep[STAT_COUNT];
-    DoomoResident *r = R.id >= 0 && R.id < DOOMO_MAX_RESIDENTS ? &doomo_town.res[R.id] : NULL;
+    DoomoResident *r = R.id >= 0 && R.id < DOOMO_MAX_RESIDENTS ? TOWN_RES(R.id) : NULL;
     int a, s, bad = 0, prob, i, k;
     if (why && cap) why[0] = 0;
     if (!me() || !r) return 0;

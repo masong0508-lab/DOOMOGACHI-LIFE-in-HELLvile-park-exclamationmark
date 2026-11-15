@@ -46,7 +46,8 @@ const DoomoUnlock doomo_unlocks_library[] = {
     TROPHY(LIB_UL_FIELD, "Field Researcher", "Defeat every kind of demon at least once. Field notes optional"),
     SKIN(LIB_UL_HISTORIAN, OPT_CURSOR, 1, "Town Historian: Paw Cursor",
          "Get to know 100 citizens (Citizen Almanac). Gossip counts"),
-    TROPHY(LIB_UL_KNOW_IT_ALL, "Know-It-All", "Get to know 500 citizens. Yes, you are insufferable"),
+    TROPHY(LIB_UL_KNOW_IT_ALL, "Know-It-All", DOOMO_RES_SLOTS ? "Get to know 250 citizens. Yes, you are insufferable"
+                                                              : "Get to know 500 citizens. Yes, you are insufferable"),
     TROPHY(LIB_UL_GUN_NERD, "Gun Nerd", "Unlock every part in the Weapon Catalog. Rivet is proud and scared"),
     TROPHY(LIB_UL_GOURMET, "Gourmet", "Have every kind of food in your bag at once. Needs salt"),
     TROPHY(LIB_UL_POLISHER, "Trophy Polisher", "Own 100 unlockables. Hoarding, but make it a trophy"),

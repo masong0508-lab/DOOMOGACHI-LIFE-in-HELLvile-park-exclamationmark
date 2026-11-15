@@ -276,7 +276,7 @@ static int res_named(const char *nm)
 {
     int i;
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
-        if (doomo_town.res[i].status != RES_EMPTY && strcmp(doomo_town.res[i].name, nm) == 0) return i;
+        if (TOWN_RES(i)->status != RES_EMPTY && strcmp(TOWN_RES(i)->name, nm) == 0) return i;
     return -1;
 }
 

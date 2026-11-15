@@ -36,7 +36,7 @@ static DoomoResident *household_res(int id)
 {
     DoomoResident *r;
     if (id < 0 || id >= DOOMO_MAX_RESIDENTS || !family_find(id)) return NULL;
-    r = &doomo_town.res[id];
+    r = TOWN_RES(id);
     return r->status == RES_ALIVE ? r : NULL;
 }
 
@@ -50,7 +50,7 @@ int story_coop_passive(int kind, int night)
         DoomoResident *r;
         if (id == me) continue;
         if (kind == HERO_COOP_FIRST) r = household_res(id);
-        else if (kind == HERO_COOP_FIRST + 1) { r = &doomo_town.res[id]; if (r->status != RES_ALIVE || !near_player(id)) r = NULL; }
+        else if (kind == HERO_COOP_FIRST + 1) { r = TOWN_RES(id); if (r->status != RES_ALIVE || !near_player(id)) r = NULL; }
         else { r = household_res(id); if (r && !near_player(id)) r = NULL; }
         if (!r) continue;
         sim_stat_add(r, h->stat[0], h->amount[0]);
@@ -71,7 +71,7 @@ int story_coop_active(int p, int kind)
         if (id == me) continue;
         if (kind == HERO_COOP_FIRST) r = household_res(id);
         else if (kind == HERO_COOP_FIRST + 1) { r = household_res(id); if (r && !near_player(id)) r = NULL; }
-        else { r = &doomo_town.res[id]; if (r->status != RES_ALIVE || r->level < STORY_FRIEND_LEVEL || !near_player(id)) r = NULL; }
+        else { r = TOWN_RES(id); if (r->status != RES_ALIVE || r->level < STORY_FRIEND_LEVEL || !near_player(id)) r = NULL; }
         if (!r) continue;
         sim_stat_add(r, h->stat[1], h->amount[1]);
         n++;

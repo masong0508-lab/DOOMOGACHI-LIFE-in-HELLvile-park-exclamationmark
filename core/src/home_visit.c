@@ -654,8 +654,9 @@ void home_visit_log(int id)
         while (b) { n += b & 1; b >>= 1; }
     }
     if (n >= 50) unlock_grant(HUL_VISIT_50);
-    if (n >= 500) unlock_grant(HUL_VISIT_500);
-    if (n >= 1000) unlock_grant(HUL_VISIT_1000);
+    /* GBA-500: the GBA's island has 500 homes lived in (250 and 500 there) */
+    if (n >= 500 * DOOMO_LIVE_RESIDENTS / DOOMO_MAX_RESIDENTS) unlock_grant(HUL_VISIT_500);
+    if (n >= DOOMO_LIVE_RESIDENTS) unlock_grant(HUL_VISIT_1000);
     s->ver_flags |= HVF_TOUCHED;
 }
 

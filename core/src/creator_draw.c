@@ -1161,7 +1161,7 @@ static void draw_home_panel(int x, int y, int w, int h)
                 int wx = bx + 3 + i * cw, wy = by + 3 + j * chh;
                 int here = cr.home_id >= 0 && fl == floor && i + 1 == room;
                 int slot = cr.district * DOOMO_DISTRICT_SIZE + (fl - 1) * 10 + i;
-                int taken = slot < DOOMO_MAX_RESIDENTS && doomo_town.res[slot].status != RES_EMPTY;
+                int taken = slot < DOOMO_MAX_RESIDENTS && TOWN_RES(slot)->status != RES_EMPTY;
                 uint8_t c = here ? (((t / 8) & 1) ? lit : PAL_WHITE) : taken ? lit : win;
                 plat_rect(wx, wy, cw - 3, chh - 3, c);
                 plat_rect(wx, wy, cw - 3, 1, here ? PAL_WHITE : ui_lighter(c));

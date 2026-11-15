@@ -73,7 +73,7 @@ int lib_almanac_known(void)
 {
     int i, n = 0;
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        const DoomoResident *r = &doomo_town.res[i];
+        const DoomoResident *r = TOWN_RES(i);
         if (r->status != RES_EMPTY && (r->level > 0 || (r->flags & (RF_FAVORITE | RF_PLAYER)))) n++;
     }
     /* plus everyone with a relationship to the player that the loop above
@@ -83,7 +83,7 @@ int lib_almanac_known(void)
         int o = e->b == playas_slot() ? e->a : e->a == playas_slot() ? e->b : -1;
         const DoomoResident *r;
         if (o < 0 || o >= DOOMO_MAX_RESIDENTS) continue;
-        r = &doomo_town.res[o];
+        r = TOWN_RES(o);
         if (r->status != RES_EMPTY && !(r->level > 0 || (r->flags & (RF_FAVORITE | RF_PLAYER)))) n++;
     }
     return n;
@@ -93,7 +93,7 @@ int lib_almanac_pct(void)
 {
     int pop = town_count(-1), known = lib_almanac_known();
     if (known >= 100) unlock_grant(LIB_UL_HISTORIAN);
-    if (known >= 500) unlock_grant(LIB_UL_KNOW_IT_ALL);
+    if (known >= 500 * DOOMO_LIVE_RESIDENTS / DOOMO_MAX_RESIDENTS) unlock_grant(LIB_UL_KNOW_IT_ALL);   /* GBA: 250 */
     lib_have = (int16_t)known;
     lib_total = (int16_t)pop;
     return lib_pct(known, pop);

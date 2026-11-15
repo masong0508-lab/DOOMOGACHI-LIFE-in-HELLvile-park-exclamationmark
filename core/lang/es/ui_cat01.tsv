@@ -131,6 +131,7 @@ Grand Library	Gran Biblioteca	# lib_common.c
 Quillby's books: demons, folks & more	Libros de Quillby: demonios, gente y más	# lib_common.c
 Every demon, pressed like a flower	Cada demonio, prensado como una flor	# lib_common.c
 All 1000 neighbours, alphabetised	Los 1000 vecinos, en orden alfabético	# lib_common.c
+All 500 neighbours, alphabetised	Los 500 vecinos, en orden alfabético	# lib_common.c (GBA)
 Every weld part, with blueprints	Cada pieza de soldadura, con planos	# lib_common.c
 Snacks, gifts and who loves them	Snacks, regalos y quién los ama	# lib_common.c
 Every unlock and how to earn it	Cada logro y cómo conseguirlo	# lib_common.c
@@ -325,6 +326,7 @@ Back to the title screen? Unsaved changes will be lost!	¿Volver al título? ¡L
 Tonight is %s night! Fans are lining up.	¡Hoy es noche de %s! Los fans hacen fila.	# fp_island.c
 Welcome to %s! It's very quiet... nobody lives here yet.	¡Bienvenido a %s! Hay mucha calma... aún no vive nadie aquí.	# fp_island.c
 Let's create your very first citizen! You can make up to 500 on each side.	¡Creemos a tu primer ciudadano! Puedes hacer hasta 500 de cada lado.	# fp_island.c
+Let's create your very first citizen! You can make up to 250 on each side.	¡Creemos a tu primer ciudadano! Puedes hacer hasta 250 de cada lado.	# fp_island.c (GBA)
 Welcome to %s! %d citizens live here. Visit them, feed them, love them!	¡Bienvenido a %s! Aquí viven %d ciudadanos. ¡Visítalos, aliméntalos, quiérelos!	# fp_island.c
 A visits a place, START opens the menu.	A visita un lugar, START abre el menú.	# fp_island.c
 \x80 %s moved in!	\x80 ¡%s se mudó!	# fp_island.c
@@ -502,8 +504,11 @@ Empty Island	Isla vacía	# fp_newisland.c
 Hellvile Park Classic	Parque Hellvile clásico	# fp_newisland.c
 Random Island	Isla aleatoria	# fp_newisland.c
 Nobody lives here yet. Create every citizen yourself, up to 500 on each side - just like the original games!	Aún no vive nadie. Crea a cada ciudadano tú mismo, hasta 500 de cada lado, ¡como en los juegos originales!	# fp_newisland.c
+Nobody lives here yet. Create every citizen yourself, up to 250 on each side - just like the original games!	Aún no vive nadie. Crea a cada ciudadano tú mismo, hasta 250 de cada lado, ¡como en los juegos originales!	# fp_newisland.c (GBA)
 All 1000 premade citizens move in: 500 sweethearts in Hillvile and 500 rascals in Hellvile.	Se mudan los 1000 ciudadanos de fábrica: 500 encantos en Hillvile y 500 bribones en Hellvile.	# fp_newisland.c
+500 premade citizens move in: 250 sweethearts in Hillvile and 250 rascals in Hellvile.	Se mudan 500 ciudadanos de fábrica: 250 encantos en Hillvile y 250 bribones en Hellvile.	# fp_newisland.c (GBA)
 1000 brand-new random citizens, cooked up from a seed. Same seed, same island!	1000 ciudadanos aleatorios nuevos, cocinados desde una semilla. ¡Misma semilla, misma isla!	# fp_newisland.c
+500 brand-new random citizens, cooked up from a seed. Same seed, same island!	500 ciudadanos aleatorios nuevos, cocinados desde una semilla. ¡Misma semilla, misma isla!	# fp_newisland.c (GBA)
 Island seed (number or word)	Semilla de isla (número o palabra)	# fp_newisland.c
 Yes, name it!	¡Sí, ponle nombre!	# fp_newisland.c
 Maybe later	Quizá luego	# fp_newisland.c
@@ -511,6 +516,7 @@ Would you like to give your island a name?	¿Quieres ponerle nombre a tu isla?	#
 A brand-new island!	¡Una isla nueva!	# fp_newisland.c
 0 citizens	0 ciudadanos	# fp_newisland.c
 1000 premade	1000 de fábrica	# fp_newisland.c
+500 premade	500 de fábrica	# fp_newisland.c (GBA)
 Seed %u	Semilla %u	# fp_newisland.c
 \x88\x87 Pick  \x89 Reroll  SEL Seed  \x8B Go!	\x88\x87 Elegir  \x89 Otra vez  SEL Semilla  \x8B ¡Vamos!	# fp_newisland.c
 \x88\x87 Pick  \x8B Let's go!  \x8C Back	\x88\x87 Elegir  \x8B ¡Vamos!  \x8C Atrás	# fp_newisland.c

@@ -14,6 +14,7 @@
 #include "doomo/save_ext.h"
 #include "doomo/plat_ext.h"          /* plat_busy (S2-10) */
 #include "doomo/sim.h"                 /* sim_life_stage (LS0 migration) */
+#include "doomo/res_live.h"            /* GBA-500: the 500 a new island moves in */
 
 DoomoTown doomo_town;
 
@@ -33,7 +34,7 @@ DoomoResident *town_res(int id)
 {
     if (id == DOOMO_PLAYER_ID) return &doomo_town.player;
     if (id < 0 || id >= DOOMO_MAX_RESIDENTS) return NULL;
-    return &doomo_town.res[id];
+    return TOWN_RES(id);
 }
 
 int town_alive(int id)
@@ -41,6 +42,103 @@ int town_alive(int id)
     DoomoResident *r = town_res(id);
     return r && r->status != RES_EMPTY && r->status != RES_DEAD;
 }
+
+#if DOOMO_RES_SLOTS
+/* (GBA-500) the id -> slot table (town.h). A slot is free when its record is empty: an
+ * id may hold an empty slot for a while (town_alloc gives one before the record is
+ * written); the next town_bind of another id takes it over. */
+DOOMO_RES_NONE_CONST DoomoResident doomo_res_none;
+
+int town_bind(int id)
+{
+    int s, d, base, prev;
+    if (id < 0 || id >= DOOMO_MAX_RESIDENTS) return -1;
+    s = town_slot(id);
+    if (s >= 0) return s;
+    d = RES_DISTRICT(id);
+    base = d ? DOOMO_LIVE_PER_DISTRICT : 0;
+    /* a slot nobody holds first, then an empty one another id holds */
+    for (s = base; s < base + DOOMO_LIVE_PER_DISTRICT; s++)
+        if (!doomo_town.res_id[s]) break;
+    if (s >= base + DOOMO_LIVE_PER_DISTRICT)
+        for (s = base; s < base + DOOMO_LIVE_PER_DISTRICT; s++)
+            if (doomo_town.res[s].status == RES_EMPTY) break;
+    if (s >= base + DOOMO_LIVE_PER_DISTRICT) return -1;
+    prev = town_slot_id(s);
+    if (prev >= 0) doomo_town.res_slot[prev] = 0;
+    memset(&doomo_town.res[s], 0, sizeof(DoomoResident));
+    doomo_town.res_slot[id] = (uint8_t)(s - base + 1);
+    doomo_town.res_id[s] = (uint16_t)(id + 1);
+    return s;
+}
+
+void town_unbind(int id)
+{
+    int s;
+    if (id < 0 || id >= DOOMO_MAX_RESIDENTS || (s = town_slot(id)) < 0) return;
+    memset(&doomo_town.res[s], 0, sizeof(DoomoResident));
+    doomo_town.res_slot[id] = 0;
+    doomo_town.res_id[s] = 0;
+}
+
+int town_district_free(int district)
+{
+    int s, n = 0, base = district ? DOOMO_LIVE_PER_DISTRICT : 0;
+    for (s = base; s < base + DOOMO_LIVE_PER_DISTRICT; s++)
+        if (doomo_town.res[s].status == RES_EMPTY) n++;
+    return n;
+}
+
+int town_alloc(int district)
+{
+    int i, base = district ? DOOMO_DISTRICT_SIZE : 0;
+    if (!town_district_free(district ? 1 : 0)) return -1;
+    for (i = 0; i < DOOMO_DISTRICT_SIZE; i++)
+        if (TOWN_RES(base + i)->status == RES_EMPTY) return town_bind(base + i) >= 0 ? base + i : -1;
+    return -1;
+}
+
+void town_free(int id)
+{
+    int i, n;
+    if (id < 0 || id >= DOOMO_MAX_RESIDENTS) return;
+    town_unbind(id);
+    rel_remove_all(id);
+    /* forget its graves too, so a new citizen in the slot is not mourned */
+    for (i = 0, n = 0; i < doomo_town.grave_count; i++)
+        if (doomo_town.graves[i].resident != id) doomo_town.graves[n++] = doomo_town.graves[i];
+    doomo_town.grave_count = (uint16_t)n;
+    portrait_invalidate(id);
+}
+
+int town_count(int status)
+{
+    int s, n = 0;
+    for (s = 0; s < DOOMO_LIVE_RESIDENTS; s++) {
+        int st = doomo_town.res[s].status;
+        if (status < 0 ? st != RES_EMPTY : st == status) n++;
+    }
+    return n;
+}
+
+int town_count_district(int district, int status)
+{
+    int s, n = 0, base = district ? DOOMO_LIVE_PER_DISTRICT : 0;
+    for (s = base; s < base + DOOMO_LIVE_PER_DISTRICT; s++) {
+        int st = doomo_town.res[s].status;
+        if (status < 0 ? st != RES_EMPTY : st == status) n++;
+    }
+    return n;
+}
+#else
+int town_bind(int id) { return id >= 0 && id < DOOMO_MAX_RESIDENTS ? id : -1; }
+
+void town_unbind(int id)
+{
+    if (id >= 0 && id < DOOMO_MAX_RESIDENTS) memset(&doomo_town.res[id], 0, sizeof(DoomoResident));
+}
+
+int town_district_free(int district) { return DOOMO_DISTRICT_SIZE - town_count_district(district, -1); }
 
 int town_alloc(int district)
 {
@@ -85,6 +183,7 @@ int town_count_district(int district, int status)
     }
     return n;
 }
+#endif
 
 static int lower(int c) { return (c >= 'A' && c <= 'Z') ? c + 32 : c; }
 
@@ -94,7 +193,7 @@ int town_find_by_name(const char *name)
     if (!name || !*name) return -1;
     for (pass = 0; pass < 2; pass++) {
         for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-            const DoomoResident *r = &doomo_town.res[i];
+            const DoomoResident *r = TOWN_RES(i);
             if (r->status == RES_EMPTY) continue;
             for (j = 0; j < DOOMO_NAME_LEN; j++) {
                 int a = (unsigned char)r->name[j], b = (unsigned char)name[j];
@@ -139,7 +238,7 @@ int town_life_migrate_v1(void)
 {
     int i, n = 0;
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        DoomoResident *r = &doomo_town.res[i];
+        DoomoResident *r = TOWN_RES(i);
         int stage;
         if (r->status == RES_EMPTY || RES_STAGE(r) != LIFE_ADULT) continue;
         stage = sim_life_stage(i);          /* the roster's, while they keep its name */
@@ -153,7 +252,12 @@ int town_life_migrate_v1(void)
 /* relationship graph                                                       */
 static uint32_t ekey(const DoomoEdge *e) { return ((uint32_t)e->a << 16) | e->b; }
 
+#if DOOMO_RES_SLOTS
+/* (GBA-500) an edge needs both ends in town: an id with no slot has none */
+static int valid_id(int id) { return id == DOOMO_PLAYER_ID || (id >= 0 && id < DOOMO_MAX_RESIDENTS && town_slot(id) >= 0); }
+#else
 static int valid_id(int id) { return id >= 0 && id <= DOOMO_PLAYER_ID; }
+#endif
 
 /* index of the first edge with key >= k */
 static int lower_bound(uint32_t k)
@@ -234,6 +338,10 @@ static void edges_close_gap(int i, int n)
     memmove(&doomo_town.edges[(i)], &doomo_town.edges[(i) + 1], (size_t)((n) - (i) - 1) * sizeof(DoomoEdge))
 #endif
 
+#if DOOMO_RES_SLOTS
+int rel_edge_strength(const DoomoEdge *e) { return edge_strength(e); }   /* GBA-500: save.c */
+#endif
+
 void rel_remove_at(int i)
 {
     int n = doomo_town.edge_count;
@@ -250,7 +358,7 @@ DoomoEdge *rel_get_or_add(int a, int b)
     if (e) return e;
     if (a == b || !valid_id(a) || !valid_id(b)) return NULL;
     if (a > b) { int t = a; a = b; b = t; }
-    if (doomo_town.edge_count >= DOOMO_MAX_EDGES) {
+    if (doomo_town.edge_count >= DOOMO_LIVE_EDGES) {
         int best = 0, bs = 0x7FFF;
         for (i = 0; i < doomo_town.edge_count; i++) {
             int s = edge_strength(&doomo_town.edges[i]);
@@ -399,7 +507,7 @@ void rel_normalize(void)
     int i, n = 0, g;
     DoomoEdge *E = doomo_town.edges;
     int count = doomo_town.edge_count;
-    if (count > DOOMO_MAX_EDGES) count = DOOMO_MAX_EDGES;
+    if (count > DOOMO_LIVE_EDGES) count = DOOMO_LIVE_EDGES;
     /* fix up and drop junk */
     for (i = 0; i < count; i++) {
         DoomoEdge e = E[i];
@@ -513,17 +621,30 @@ static void random_edges(uint32_t seed)
     DoomoRng r;
     int i, j, n = 0;
     rng_seed(&r, seed ^ 0xED6E5EEDu);
-    for (i = 0; i < DOOMO_MAX_RESIDENTS && n < DOOMO_MAX_EDGES - 4; i++) {
-        int links = rng_range(&r, 3);
-        for (j = 0; j < links && n < DOOMO_MAX_EDGES - 4; j++) {
+    for (i = 0; i < DOOMO_MAX_RESIDENTS && n < DOOMO_LIVE_EDGES - 4; i++) {
+        int links;
+        if (DOOMO_RES_SLOTS && town_slot(i) < 0) continue;     /* GBA-500: not in town */
+        links = rng_range(&r, 3);
+        for (j = 0; j < links && n < DOOMO_LIVE_EDGES - 4; j++) {
             DoomoEdge *e = &doomo_town.edges[n];
             int other, roll = rng_range(&r, 100), kind, v;
+#if DOOMO_RES_SLOTS
+            /* GBA-500: someone who lives here (a slot, then its id) */
+            if (rng_chance(&r, 75)) {
+                int base = i < DOOMO_DISTRICT_SIZE ? 0 : DOOMO_LIVE_PER_DISTRICT;
+                other = town_slot_id(base + rng_range(&r, DOOMO_LIVE_PER_DISTRICT));
+            } else {
+                other = town_slot_id(rng_range(&r, DOOMO_LIVE_RESIDENTS));
+            }
+            if (other < 0) continue;
+#else
             if (rng_chance(&r, 75)) {
                 int base = i < DOOMO_DISTRICT_SIZE ? 0 : DOOMO_DISTRICT_SIZE;
                 other = base + rng_range(&r, DOOMO_DISTRICT_SIZE);
             } else {
                 other = rng_range(&r, DOOMO_MAX_RESIDENTS);
             }
+#endif
             if (other == i) continue;
             if (roll < 40)      { kind = REL_FRIEND; v = rng_between(&r, 25, 65); }
             else if (roll < 60) { kind = REL_ACQUAINTANCE; v = rng_between(&r, -10, 20); }
@@ -578,20 +699,31 @@ void town_new(int mode, uint32_t seed, int population)
     memcpy(p->name, "You", 4);
     p->flags = RF_PLAYER | RF_CUSTOM;
 
+#if DOOMO_RES_SLOTS
+    /* (GBA-500) the island's 500: the default set (res_live.h), bound in id order */
+    if (doomo_town.population != TOWN_POP_EMPTY)
+        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
+            if (res_live_default(i)) town_bind(i);
+#endif
     if (doomo_town.population == TOWN_POP_PREMADE) {
         int n = 0;
         for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-            town_premade_record(i, &doomo_town.res[i]);
-            resident_sanitize(&doomo_town.res[i]);
+            if (DOOMO_RES_SLOTS && town_slot(i) < 0) continue;
+            town_premade_record(i, TOWN_RES(i));
+            resident_sanitize(TOWN_RES(i));
             plat_busy_step(i, DOOMO_MAX_RESIDENTS);
         }
-        for (i = 0; i < doomo_roster_edge_count && n < DOOMO_MAX_EDGES; i++)
+        for (i = 0; i < doomo_roster_edge_count && n < DOOMO_LIVE_EDGES; i++) {
+            if (DOOMO_RES_SLOTS && (!valid_id(doomo_roster_edges[i].a) || !valid_id(doomo_roster_edges[i].b)))
+                continue;                   /* GBA-500: both ends must have moved in */
             doomo_town.edges[n++] = doomo_roster_edges[i];
+        }
         doomo_town.edge_count = (uint16_t)n;
         rel_normalize();
     } else if (doomo_town.population == TOWN_POP_RANDOM) {
         for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-            town_random_record(seed, i, &doomo_town.res[i]);
+            if (DOOMO_RES_SLOTS && town_slot(i) < 0) continue;
+            town_random_record(seed, i, TOWN_RES(i));
             plat_busy_step(i, DOOMO_MAX_RESIDENTS);
         }
         random_edges(seed);

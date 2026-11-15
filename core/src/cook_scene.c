@@ -1664,7 +1664,7 @@ static void draw_counter(void)
         {
             /* the first name, shortened to fit the seat ("Slurpin.") */
             char nm[DOOMO_NAME_LEN];
-            const char *src = doomo_town.res[id].name;
+            const char *src = TOWN_RES(id)->name;
             int k, n = 0, tw, sel = i == K.cust_sel && K.st == CS_COUNTER, served = cook_customer_served(i);
             int maxc = DOOMO_MIN((w / FC_CUSTOMERS - 10) / FONT_ADVANCE, DOOMO_NAME_LEN - 1);
             while (n < DOOMO_NAME_LEN - 1 && src[n] && (src[n] != ' ' || n < 3)) n++;

@@ -78,7 +78,7 @@ int sim_possessor_of(int id)
     start = (int)(h % DOOMO_DISTRICT_SIZE);
     for (i = 0; i < DOOMO_DISTRICT_SIZE; i++) {
         int c = DOOMO_DISTRICT_SIZE + (start + i * 7) % DOOMO_DISTRICT_SIZE;
-        int s = doomo_town.res[c].status;
+        int s = TOWN_RES(c)->status;
         if (c == id) continue;
         if (s == RES_ALIVE || s == RES_POSSESSED || s == RES_GHOST) return c;
     }
@@ -228,7 +228,7 @@ void sim_soul_daily(void)
                                                DOOMO_NAME_LEN) == 0)
         fuzz = ROSTER_ID_FATHER_FUZZ;
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        DoomoResident *r = &doomo_town.res[i];
+        DoomoResident *r = TOWN_RES(i);
         if (r->status != RES_POSSESSED) continue;
         if (!sim_chance(fuzz >= 0 ? 7 : 3)) continue;
         sim_news_rec(fuzz >= 0 ? NT_FUZZ_CHASED : NT_STRANGER_CHASED, 0,
@@ -288,7 +288,7 @@ static void grieve(int id, int monster)
         else if (e->b == id) other = e->a;
         else continue;
         if (other >= DOOMO_MAX_RESIDENTS) continue;
-        o = &doomo_town.res[other];
+        o = TOWN_RES(other);
         if (o->status != RES_ALIVE && o->status != RES_GHOST) continue;
         if (k == REL_FAMILY || k == REL_MARRIED || k == REL_DATING) v += 40;
         if (v < 15) continue;
@@ -325,7 +325,7 @@ void sim_lay_to_rest(int id, int cause)
     r->mood = MOOD_OK;
     bit_set(sim_s.taken, id, 0);
     bit_set(sim_s.crush, id, 0);
-    sim_s.transient[id] = 0;
+    sim_s.transient[SIM_IX(id)] = 0;
     if (was == RES_POSSESSED) sim_s.possessed--;
     grave_add(id);
     sim_problem_drop_for(id);
@@ -361,7 +361,7 @@ int sim_raise_ghost(int id)
     r->stat[STAT_SOCIAL] = 40;
     r->activity = ACT_HAUNTING;
     r->exorcism = (uint8_t)(r->exorcism & 0xF0);
-    sim_s.stamp[id] = (uint16_t)sim_now();
+    sim_s.stamp[SIM_IX(id)] = (uint16_t)sim_now();
     progress_add(PROG_GHOSTS_RAISED, 1);
     sim_news_rec(NT_GHOST, 0, NEWS_IDS(id, NEWS_NONE, NEWS_NONE));
     portrait_invalidate(id);
