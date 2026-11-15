@@ -652,7 +652,10 @@ more than 0.3 ms, and the news' third tab drops 32.9 -> 28.1 ms. On the tip it w
 (`1297e93`) EWRAM is 56,484 B free with GBA-500 (12,164 B without: the commits between take 160 B),
 ROM +8,452 B (with the rent line; `.rodata` 4 B shorter), `make -C gba test` and the three groups with their gates pass; there the Almanac
 list shows one frame of three vblanks (29.8 fps; 30.0 on `1297e93`): its ticks take the same
-32.7-33.2 ms on both builds, right at two vblanks, and the faster load (79 -> 71 ms) shifts their phase. The sim itself: natively 2.25 -> 1.42 us and at most 88 -> 46 resident /
+32.7-33.2 ms on both builds, right at two vblanks, and the faster load (79 -> 71 ms) shifts their phase.
+With the rent line the life group's shops, purse and Unlocks count are the base's again (the shots
+match `1297e93`); its windows against `1297e93`: black market 29.3 -> 29.8 fps, unlocks row moves
+28.9 -> 28.8 (one more three-vblank frame, work 32.4 -> 32.3 ms), the rest as in the table. The sim itself: natively 2.25 -> 1.42 us and at most 88 -> 46 resident /
 edge visits a tick (`sim_per_tick_budget`); on the GBA the hub's work 14.5 -> 14.0 ms a drawn tick. The
 credits parade marches the 250 ranks of the GBA's two districts (half as long), its ticker counts to 500.
 
