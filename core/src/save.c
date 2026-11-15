@@ -62,6 +62,8 @@
 #include "doomo/res_live.h"            /* GBA-500: the must set, the default set */
 #include "doomo/family.h"              /* GBA-500: who the household is (sv_select) */
 #include "doomo/home.h"                /* GBA-500: the 'HOME' chunk's tag */
+#include "doomo/profiles.h"            /* GBA-500: the guests' villagers ('PROF', the scan) */
+#include "doomo/resident_acc.h"        /* GBA-500: RES_STAGE (a child's family, the scan) */
 int home_visited(int id);              /* home_int.h (home_visit.c): GBA-500's sv_select */
 
 /* Every enum must fit the bit width the format gives it. Growing past a
@@ -894,37 +896,54 @@ static void write_town(void)
  * district than its DOOMO_LIVE_PER_DISTRICT slots. The dry run counts them; then a SCAN
  * pass scores everyone the player is close to and the APPLY pass keeps the best of each
  * district (res_live.h; the rule is sv_select's). The others move away: their records,
- * edges and graves go, and the news says so. A save the GBA makes now never has more. */
+ * edges and graves go, and the news says so. A save the GBA makes now never has more.
+ * "The player" here is everyone who plays on this save: the hero (DOOMO_PLAYER_ID), the
+ * villager the hero plays as ('PLAY') and the villagers the guests play ('PROF'). */
 enum { SV_CHECK = 0, SV_APPLY = 1, SV_SCAN = 2 };
 #define SV_PRESENT  0x8000u            /* score bits: the save holds a record for the id  */
-#define SV_TIER(n)  ((uint16_t)((n) << 12))   /* 7 must, 6 household, 5 made / favourite */
+/* 7 must; 6 the players and their household, family, partners and memorials; 5 made over /
+ * favourite; 4 a must citizen's household (FAMILY / MARRIED / DATING: gba_live.py's step 2) */
+#define SV_TIER(n)  ((uint16_t)((n) << 12))
+#define SV_TIER_OF(s) (((s) >> 12) & 7)
 #define SV_POINTS   0x0FFFu
 static uint16_t sv_dn[2];              /* the dry run: records per district              */
 static uint8_t  sv_migrate;            /* the apply pass keeps only sv_keep               */
 static uint8_t  sv_keep[DOOMO_MAX_RESIDENTS / 8];
 static uint16_t sv_moved;              /* who moved away in the last load (save_moved_away) */
-static int      sv_avatar = -1;        /* the scan: the play-as avatar's id ('PLAY')        */
-/* the scan's scores live in the record array: the scan writes nothing else into the
- * town, and the apply pass that always follows overwrites all of it */
-#define SV_SCORE ((uint16_t *)(void *)doomo_town.res)
-DOOMO_STATIC_ASSERT(sizeof(doomo_town.res) >= DOOMO_MAX_RESIDENTS * 2 && offsetof(DoomoTown, res) % 2 == 0,
-                    sv_score_fits);
+/* the scan's state lives in the record array: the scan writes nothing else into the town,
+ * and the apply pass that always follows overwrites all of it (no resident RAM) */
+typedef struct {
+    uint16_t  score[DOOMO_MAX_RESIDENTS];       /* SV_PRESENT | tier | points, by id         */
+    uint8_t   minor[DOOMO_MAX_RESIDENTS / 8];   /* a baby, a child or a teen                 */
+    uint8_t   nguest;
+    uint16_t  nedge;
+    int16_t   avatar;                           /* the play-as avatar ('PLAY'), -1 none      */
+    int16_t   guest[PROF_GUESTS];               /* the villagers the guests play ('PROF')    */
+    DoomoEdge edge[DOOMO_MAX_EDGES];            /* the save's graph, as it was read          */
+} SvScan;
+#define SV ((SvScan *)(void *)doomo_town.res)
+DOOMO_STATIC_ASSERT(sizeof(SvScan) <= sizeof(doomo_town.res) && offsetof(DoomoTown, res) % 2 == 0,
+                    sv_scan_fits);
 
 static void sv_count(int id) { sv_dn[RES_DISTRICT(id)]++; }
 
 static int sv_kept(int id) { return (sv_keep[id >> 3] >> (id & 7)) & 1; }
 
+static int sv_minor(int id) { return id < DOOMO_MAX_RESIDENTS && ((SV->minor[id >> 3] >> (id & 7)) & 1); }
+
 static void sv_points(int id, int pts)
 {
-    uint16_t *s = &SV_SCORE[id];
+    uint16_t *s = &SV->score[id];
     int p = (int)(*s & SV_POINTS) + pts;
     *s = (uint16_t)((*s & ~SV_POINTS) | (uint16_t)DOOMO_CLAMP(p, 0, (int)SV_POINTS));
 }
 
 static void sv_tier(int id, int tier)
 {
-    uint16_t *s = &SV_SCORE[id];
-    if (((*s >> 12) & 7) < tier) *s = (uint16_t)((*s & ~SV_TIER(7)) | SV_TIER(tier));
+    uint16_t *s;
+    if (id < 0 || id >= DOOMO_MAX_RESIDENTS) return;
+    s = &SV->score[id];
+    if (SV_TIER_OF(*s) < tier) *s = (uint16_t)((*s & ~SV_TIER(7)) | SV_TIER(tier));
 }
 
 /* the record a decoded resident goes into (NULL: none) */
@@ -938,15 +957,42 @@ static DoomoResident *sv_slot(int mode, int id, DoomoResident *tmp)
     return s >= 0 ? &doomo_town.res[s] : NULL;
 }
 
-/* a resident's own closeness to the player (the scan) */
-static void sv_score_rec(int id, const DoomoResident *r)
+/* a resident's own closeness to the player, and whether they are a minor (the scan) */
+static void sv_score_rec(int id, const DoomoResident *r, int pop)
 {
+    int st;
     if (!r || r->status == RES_EMPTY) return;
-    SV_SCORE[id] |= SV_PRESENT;
+    SV->score[id] |= SV_PRESENT;
     if (res_live_must(id)) sv_tier(id, 7);
     if (r->flags & RF_PLAYER) sv_tier(id, 6);
     if (r->flags & (RF_CUSTOM | RF_FAVORITE)) sv_tier(id, 5);
     sv_points(id, r->level * 10 + (r->status != RES_DEAD ? 2 : 0) + res_live_default(id));
+    /* the record's stage, or the roster's for a premade citizen who still has the name (sim_life_stage) */
+    st = RES_STAGE(r);
+    if (st >= LIFE_COUNT || LIFE_IS_MINOR(st) ||
+        (pop == TOWN_POP_PREMADE && strncmp(r->name, roster_name(id), DOOMO_NAME_LEN) == 0 &&
+         LIFE_IS_MINOR(roster_stage(id))))
+        SV->minor[id >> 3] |= (uint8_t)(1 << (id & 7));
+}
+
+/* an edge (the scan): kept as it was read; sv_select scores it once the players are known
+ * (their chunks come after the town) */
+static void sv_scan_edge(uint32_t a, uint32_t b, int v, int kind)
+{
+    DoomoEdge *e;
+    if (SV->nedge >= DOOMO_MAX_EDGES) return;
+    e = &SV->edge[SV->nedge++];
+    e->a = (uint16_t)a; e->b = (uint16_t)b; e->value = (int8_t)v; e->kind = (uint8_t)kind;
+}
+
+/* a guest's villager (value -1) or one of the guest's own ties (1..255): 'PROF', the scan */
+static void sv_scan_guest(int id, int value)
+{
+    if (value < 0) {
+        if (SV->nguest < PROF_GUESTS) SV->guest[SV->nguest++] = (int16_t)id;
+    } else {
+        sv_points(id, value * 3);
+    }
 }
 
 /* an edge (the apply pass): both ends stay (when people move away) and it fits; a full
@@ -975,45 +1021,108 @@ static void sv_edge(uint32_t a, uint32_t b, int v, uint8_t kind)
     doomo_town.edge_count = (uint16_t)(n + 1);
 }
 
-/* an edge (the scan): the player's ties */
-static void sv_score_edge(uint32_t a, uint32_t b, int v, int kind)
+/* the hero, the avatar or a guest's villager: whose ties are the player's */
+static int sv_is_player(int id)
 {
-    int k = kind & REL_KIND_MASK;
-    if (b != DOOMO_PLAYER_ID || a >= DOOMO_MAX_RESIDENTS) return;
-    if (k == REL_FAMILY || k == REL_DATING || k == REL_MARRIED) sv_tier((int)a, 6);
-    sv_points((int)a, (v > 0 ? v * 8 : 0) + (k == REL_BEST_FRIEND ? 300 : k == REL_FRIEND ? 150 : 0) +
-                      ((kind & (REL_CRUSH_AB | REL_CRUSH_BA)) ? 200 : 0) +
-                      ((k == REL_RIVAL || k == REL_NEMESIS || k == REL_EX) ? 100 : 0));
+    int g;
+    if (id == DOOMO_PLAYER_ID || (SV->avatar >= 0 && id == SV->avatar)) return 1;
+    for (g = 0; g < SV->nguest; g++)
+        if (SV->guest[g] == id) return 1;
+    return 0;
 }
 
-/* after the scan: the household, the house visits and the avatar (their chunks were read
- * into their modules by the scan), then the best DOOMO_LIVE_PER_DISTRICT of each district:
- * the highest score, the lower id on a tie */
-static void sv_select(int avatar)
+/* resident id is tied to one of the players by edge e */
+static void sv_player_tie(int id, const DoomoEdge *e)
 {
-    int id, d;
+    int k = e->kind & REL_KIND_MASK, v = e->value;
+    if (id >= DOOMO_MAX_RESIDENTS) return;
+    if (k == REL_FAMILY || k == REL_DATING || k == REL_MARRIED) sv_tier(id, 6);
+    sv_points(id, (v > 0 ? v * 8 : 0) + (k == REL_BEST_FRIEND ? 300 : k == REL_FRIEND ? 150 : 0) +
+                  ((e->kind & (REL_CRUSH_AB | REL_CRUSH_BA)) ? 200 : 0) +
+                  ((k == REL_RIVAL || k == REL_NEMESIS || k == REL_EX) ? 100 : 0));
+}
+
+/* a FAMILY edge between two residents in the save, one of them a minor: a child's family */
+static int sv_child_family(const DoomoEdge *e)
+{
+    return e->b < DOOMO_MAX_RESIDENTS && (e->kind & REL_KIND_MASK) == REL_FAMILY &&
+           (sv_minor(e->a) || sv_minor(e->b)) && (SV->score[e->a] & SV_PRESENT) && (SV->score[e->b] & SV_PRESENT);
+}
+
+/* after the scan: the players, their household and memorials, the house visits, the graph
+ * (the players' ties, the must citizens' households), a child's family kept together; then
+ * the best DOOMO_LIVE_PER_DISTRICT of each district: the highest score, the lower id on a
+ * tie. The chunks the scan read (LIFE, HOME, PLAY, PROF) came after the town. */
+static void sv_select(void)
+{
+    int id, d, i, pass, changed;
+    sv_tier(SV->avatar, 6);
+    for (i = 0; i < SV->nguest; i++) sv_tier(SV->guest[i], 6);
     for (id = 0; id < DOOMO_MAX_RESIDENTS; id++) {
-        if (!(SV_SCORE[id] & SV_PRESENT)) continue;
-        if (family_find(id) || id == avatar) sv_tier(id, 6);
+        if (!(SV->score[id] & SV_PRESENT)) continue;
+        if (family_find(id)) sv_tier(id, 6);
         if (home_visited(id)) sv_points(id, 400);
     }
+    for (i = 0; i < family_memorial_count(); i++) {
+        const FamilyMemorial *m = family_memorial(i);
+        if (m) sv_tier(m->id, 6);                  /* (a family pool id is no resident: ignored) */
+    }
+    for (i = 0; i < SV->nedge; i++) {
+        const DoomoEdge *e = &SV->edge[i];
+        int k = e->kind & REL_KIND_MASK;
+        if (sv_is_player(e->b)) sv_player_tie(e->a, e);
+        if (sv_is_player(e->a)) sv_player_tie(e->b, e);
+        if (e->b < DOOMO_MAX_RESIDENTS && (k == REL_FAMILY || k == REL_MARRIED || k == REL_DATING)) {
+            if (res_live_must(e->a)) sv_tier(e->b, 4);
+            if (res_live_must(e->b)) sv_tier(e->a, 4);
+        }
+    }
+    /* a child's family moves as one: along every FAMILY edge with a minor end both get the
+     * higher score (a must citizen's family tier 6, so a must kid's parents always stay);
+     * three passes reach siblings through a parent */
+    for (pass = 0; pass < 3; pass++)
+        for (i = 0; i < SV->nedge; i++) {
+            const DoomoEdge *e = &SV->edge[i];
+            uint16_t sa, sb, m;
+            if (!sv_child_family(e)) continue;
+            sa = SV->score[e->a];
+            sb = SV->score[e->b];
+            m = sa > sb ? sa : sb;
+            if (SV_TIER_OF(m) == 7) m = (uint16_t)(SV_PRESENT | SV_TIER(6) | SV_POINTS);
+            if (sa < m) SV->score[e->a] = m;
+            if (sb < m) SV->score[e->b] = m;
+        }
     memset(sv_keep, 0, sizeof(sv_keep));
     for (d = 0; d < 2; d++) {
         int base = d * DOOMO_DISTRICT_SIZE, lo = SV_PRESENT, hi = 0xFFFF, room = DOOMO_LIVE_PER_DISTRICT;
         /* the lowest score t with count(score > t) < room: bisect over the 16-bit scores */
         while (lo < hi) {
             int mid = (lo + hi) >> 1, n = 0;
-            for (id = base; id < base + DOOMO_DISTRICT_SIZE; id++) n += SV_SCORE[id] > mid;
+            for (id = base; id < base + DOOMO_DISTRICT_SIZE; id++) n += SV->score[id] > mid;
             if (n < room) hi = mid; else lo = mid + 1;
         }
         for (id = base; id < base + DOOMO_DISTRICT_SIZE; id++)
-            if (SV_SCORE[id] > lo) { sv_keep[id >> 3] |= (uint8_t)(1 << (id & 7)); room--; }
+            if (SV->score[id] > lo) { sv_keep[id >> 3] |= (uint8_t)(1 << (id & 7)); room--; }
         for (id = base; id < base + DOOMO_DISTRICT_SIZE && room > 0; id++)
-            if (SV_SCORE[id] == lo && (SV_SCORE[id] & SV_PRESENT)) {
+            if (SV->score[id] == lo && (SV->score[id] & SV_PRESENT)) {
                 sv_keep[id >> 3] |= (uint8_t)(1 << (id & 7));
                 room--;
             }
     }
+    /* a child's family that the cut split (equal scores, the district full) moves away
+     * together: the district keeps a free slot. Never a must citizen (their families are
+     * tier 6 and stay); the kept set only shrinks, so this ends. */
+    do {
+        changed = 0;
+        for (i = 0; i < SV->nedge; i++) {
+            const DoomoEdge *e = &SV->edge[i];
+            if (!sv_child_family(e) || sv_kept(e->a) == sv_kept(e->b)) continue;
+            id = sv_kept(e->a) ? e->a : e->b;
+            if (SV_TIER_OF(SV->score[id]) == 7) continue;
+            sv_keep[id >> 3] &= (uint8_t)~(1 << (id & 7));
+            changed = 1;
+        }
+    } while (changed);
 }
 
 /* after the apply pass: the graves of people who moved away go; the news waits for the
@@ -1034,10 +1143,13 @@ void save_moved_away_news(void)
 {
     char msg[64];
     if (!sv_news) return;
-    doomo_snprintf(msg, sizeof(msg), "%d neighbours moved away. The park feels cosier.", (int)sv_news);
+    if (sv_news == 1) doomo_snprintf(msg, sizeof(msg), "A neighbour moved away. The park feels cosier.");
+    else doomo_snprintf(msg, sizeof(msg), "%d neighbours moved away. The park feels cosier.", (int)sv_news);
     sv_news = 0;
     sim_news_push(msg);
 }
+
+void save_moved_away_forget(void) { sv_news = 0; }
 #endif
 
 int save_moved_away(void)
@@ -1062,7 +1174,10 @@ static int read_town(int apply)
     int mode = apply;                      /* SV_CHECK / SV_APPLY / SV_SCAN */
     apply = mode == SV_APPLY;
     if (mode == SV_CHECK) sv_dn[0] = sv_dn[1] = 0;
-    if (mode == SV_SCAN) memset(SV_SCORE, 0, DOOMO_MAX_RESIDENTS * sizeof(uint16_t));
+    if (mode == SV_SCAN) {
+        memset(SV, 0, offsetof(SvScan, edge));
+        SV->avatar = -1;
+    }
 #endif
 
     if (r8() != SEC_MAGIC) return 0;
@@ -1130,7 +1245,7 @@ static int read_town(int apply)
             k = r8();
             if (a > DOOMO_PLAYER_ID || b > DOOMO_PLAYER_ID) return 0;
 #if DOOMO_RES_SLOTS
-            if (mode == SV_SCAN) sv_score_edge(a, b, (int8_t)(uint8_t)v, (int)k);
+            if (mode == SV_SCAN) sv_scan_edge(a, b, (int8_t)(uint8_t)v, (int)k);
             if (apply) sv_edge(a, b, (int8_t)(uint8_t)v, (uint8_t)k);
 #else
             if (apply) {
@@ -1165,7 +1280,7 @@ static int read_town(int apply)
                     DoomoResident *r = sv_slot(mode, i + k, &base);
                     plat_busy_step(i + k, DOOMO_MAX_RESIDENTS);   /* S2-10 */
                     if (r) base_of(pop, seed, i + k, r);
-                    if (mode == SV_SCAN) sv_score_rec(i + k, r);
+                    if (mode == SV_SCAN) sv_score_rec(i + k, r, pop);
                 }
 #else
             if (apply) {
@@ -1186,7 +1301,7 @@ static int read_town(int apply)
                 sv_from_res(&base, &wbase);
                 read_delta(&wr, &wbase);
                 if (r) sv_to_res(&wr, r);
-                if (mode == SV_SCAN) sv_score_rec(i, r);
+                if (mode == SV_SCAN) sv_score_rec(i, r, pop);
             } else {
                 memset(&wbase, 0, sizeof(wbase));
                 read_delta(&wr, &wbase);
@@ -1210,7 +1325,7 @@ static int read_town(int apply)
             {
                 DoomoResident *r = sv_slot(mode, i, &base);
                 if (r) sv_to_res(&wr, r);
-                if (mode == SV_SCAN) sv_score_rec(i, r);
+                if (mode == SV_SCAN) sv_score_rec(i, r, pop);
             }
 #else
             if (apply) sv_to_res(&wr, &t->res[i]);
@@ -1278,14 +1393,17 @@ static int read_exts(uint32_t raw, int apply)
         if (Z.ld_err || len > raw - Z.ld_out) return 0;
         e = ext_by_tag(tag, &idx);
 #if DOOMO_RES_SLOTS
-        /* (GBA-500) the scan reads the household, the house and the avatar's chunks into
-         * their modules (none of them looks at the town); the apply pass reads them again */
+        /* (GBA-500) the scan reads the household and the house chunks into their modules
+         * (none of them looks at the town; the apply pass reads them again), and the avatar
+         * and the guests' villagers from their chunks' bytes */
         if (apply == SV_SCAN) {
             if (e && len <= DOOMO_SAVE_EXT_MAX &&
-                (tag == SAVE_EXT_TAG_LIFE || tag == HOME_CHUNK_TAG || tag == SAVE_EXT_TAG_PLAY)) {
+                (tag == SAVE_EXT_TAG_LIFE || tag == HOME_CHUNK_TAG || tag == SAVE_EXT_TAG_PLAY ||
+                 tag == SAVE_EXT_TAG_PROF)) {
                 rraw(Z.stage, (int)len);
                 if (Z.ld_err) return 0;
-                if (tag == SAVE_EXT_TAG_PLAY) sv_avatar = playas_chunk_avatar(Z.stage, len, (uint16_t)ver);
+                if (tag == SAVE_EXT_TAG_PLAY) SV->avatar = (int16_t)playas_chunk_avatar(Z.stage, len, (uint16_t)ver);
+                else if (tag == SAVE_EXT_TAG_PROF) prof_chunk_scan(Z.stage, len, (uint16_t)ver, sv_scan_guest);
                 else if (e->read && !e->read(Z.stage, len, (uint16_t)ver) && e->reset) e->reset();
             } else {
                 rraw_or_skip(NULL, (int)len);
@@ -1521,9 +1639,8 @@ static int load_decoded(const uint8_t *h, const uint8_t *body)
             const DoomoSaveExt *e = save_ext_at(k);
             if (e && e->reset && (e->tag == SAVE_EXT_TAG_LIFE || e->tag == HOME_CHUNK_TAG)) e->reset();
         }
-        sv_avatar = -1;
         decode(h, body, SV_SCAN);
-        sv_select(sv_avatar);
+        sv_select();
     }
 #endif
     decode(h, body, 1);

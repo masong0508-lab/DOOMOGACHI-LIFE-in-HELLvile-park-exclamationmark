@@ -52,6 +52,13 @@ int  prof_active(void);                      /* the profile you are playing (= p
 /* Take the pad as this profile: profile 0 switches to the hero, a guest to their
  * villager (playas_switch). 1 on success (or already them), 0 when refused. */
 int  prof_switch(int profile);
+#if DOOMO_RES_SLOTS
+/* (GBA-500) save.c's scan of an old save with more residents than the slots: for each
+ * villager guest of a 'PROF' chunk, tie(villager, -1), then tie(id, value 1..255) for each
+ * of the guest's own ties. Reads the bytes alone (no state is touched); a co-op hero guest
+ * (no villager) and a chunk this build does not read are skipped. */
+void prof_chunk_scan(const uint8_t *s, uint32_t len, uint16_t ver, void (*tie)(int id, int value));
+#endif
 /* The day's check (sim day_rollover, after playas_check): a guest whose villager
  * is gone moves out, with a toast. Returns guests removed. */
 int  prof_check_daily(void);

@@ -8,6 +8,8 @@
 #include "doomo/family.h"
 #include "doomo/story_vm.h"
 #include "doomo/exorcism.h"
+#include "doomo/profiles.h"
+#include "doomo/playas.h"
 
 int home_visited(int id);              /* home_int.h */
 
@@ -74,6 +76,27 @@ TEST(res_live_lists_the_500)
     CHECK_EQ(n, 500);
 }
 
+/* a premade kid or teen who lives here lives with their roster family (FAMILY edges): both
+ * in town, the bond kept. Returns how many such bonds are broken (and prints the first). */
+static int kids_without_their_family(void)
+{
+    int i, bad = 0;
+    for (i = 0; i < doomo_roster_edge_count; i++) {
+        const DoomoEdge *e = &doomo_roster_edges[i];
+        int kid, other;
+        if ((e->kind & REL_KIND_MASK) != REL_FAMILY || e->b >= DOOMO_MAX_RESIDENTS) continue;
+        if (LIFE_IS_MINOR(roster_stage(e->a))) { kid = e->a; other = e->b; }
+        else if (LIFE_IS_MINOR(roster_stage(e->b))) { kid = e->b; other = e->a; }
+        else continue;
+        if (TOWN_RES(kid)->status == RES_EMPTY) continue;
+        if (TOWN_RES(other)->status == RES_EMPTY || rel_kind(kid, other) != REL_FAMILY) {
+            if (!bad) printf("    kid %d %s without %d %s\n", kid, roster_name(kid), other, roster_name(other));
+            bad++;
+        }
+    }
+    return bad;
+}
+
 TEST(town_slots_a_classic_island_moves_in_the_live_set)
 {
     int i, n = 0;
@@ -102,6 +125,7 @@ TEST(town_slots_a_classic_island_moves_in_the_live_set)
         CHECK(e->b == DOOMO_PLAYER_ID || TOWN_RES(e->b)->status != RES_EMPTY);
     }
     CHECK(doomo_town.edge_count > 0);
+    CHECK_EQ(kids_without_their_family(), 0);
     /* a Random Island takes the same ids */
     town_new(TOWN_FREEPLAY, 99, TOWN_POP_RANDOM);
     CHECK_EQ(town_count(-1), DOOMO_LIVE_RESIDENTS);
@@ -159,13 +183,13 @@ TEST(town_slots_alloc_fills_a_district_and_free_gives_the_slot_back)
 
 /* ---- an old save with all 1000 (fixtures/gba500_old_save.c made it with the build before
  * GBA-500) ----------------------------------------------------------------------------- */
-static uint8_t *read_fixture(uint32_t *size)
+static uint8_t *read_fixture_named(const char *name, uint32_t *size)
 {
     char path[512];
     FILE *f;
     uint8_t *buf;
     long n;
-    snprintf(path, sizeof path, "%s/../fixtures/gba500_old_1000.dmoo", test_golden_dir);
+    snprintf(path, sizeof path, "%s/../fixtures/%s", test_golden_dir, name);
     f = fopen(path, "rb");
     if (!f) return NULL;
     fseek(f, 0, SEEK_END);
@@ -176,6 +200,27 @@ static uint8_t *read_fixture(uint32_t *size)
     fclose(f);
     *size = (uint32_t)n;
     return buf;
+}
+static uint8_t *read_fixture(uint32_t *size) { return read_fixture_named("gba500_old_1000.dmoo", size); }
+
+/* load an old save fixture (all 1000 residents, or more than one district's slots) */
+static int load_fixture(const char *name)
+{
+    uint32_t size = 0;
+    uint8_t *buf = read_fixture_named(name, &size);
+    int ok = buf && save_deserialize(buf, size);
+    free(buf);
+    return ok;
+}
+
+static int in_town(int id) { return TOWN_RES(id)->status != RES_EMPTY; }
+
+static int news_has(const char *what)
+{
+    int i;
+    for (i = 0; i < sim_news_count(); i++)
+        if (strstr(sim_news(i), what)) return 1;
+    return 0;
 }
 
 /* the ids the fixture made close to the player (all outside the default 500) */
@@ -209,6 +254,8 @@ TEST(save_old_1000_island_keeps_the_500_closest)
     CHECK(strcmp(TOWN_RES(310)->name, "Zed Custom") == 0);
     CHECK(TOWN_RES(312)->flags & RF_FAVORITE);
     CHECK(home_visited(313) && home_visited(314));
+    /* a kid who stays keeps their family (review: the kid cast stayed, both parents left) */
+    CHECK_EQ(kids_without_their_family(), 0);
     CHECK(TOWN_RES(316)->status == RES_DEAD);
     for (i = 0; i < doomo_town.grave_count; i++) {
         CHECK(TOWN_RES(doomo_town.graves[i].resident)->status != RES_EMPTY);
@@ -266,4 +313,89 @@ TEST(save_a_live_island_round_trips_by_id)
     CHECK_EQ(town_res(id)->level, 42);
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
         CHECK((TOWN_RES(i)->status != RES_EMPTY) == (DOOMO_RES_SLOTS ? res_live_default(i) : 1));
+}
+
+/* An old save played by more than the hero (review findings): the villager the hero plays
+ * as, with their spouse and best friend; two guests and the villagers they play (with a
+ * guest's own tie); two sim-born babies, one family close to the hero, one nobody knows.
+ * fixtures/gba500_old_save.c "players" made it with the 1000-resident build. */
+static const int16_t players_ids[] = { 320, 321, 330, 331, 332, 334, 335, 336, 337, 338, 339, 720 };
+
+static int load_players(void)
+{
+    int i;
+    for (i = 0; i < DOOMO_COUNTOF(players_ids); i++)
+        if (res_live_default(players_ids[i]) || res_live_must(players_ids[i])) return 0;   /* the rule keeps them anyway */
+    if (!load_fixture("gba500_old_players.dmoo")) return 0;
+    return town_count_district(0, -1) == DOOMO_LIVE_PER_DISTRICT &&
+           save_moved_away() == DOOMO_MAX_RESIDENTS - DOOMO_LIVE_RESIDENTS;
+}
+
+/* the villager the hero plays as keeps their spouse and best friend */
+TEST(save_old_players_island_keeps_the_avatar_and_their_ties)
+{
+    CHECK(load_players());
+    CHECK_EQ(playas_avatar(), 330);
+    CHECK(town_alive(330) && in_town(331) && in_town(332));
+    CHECK_EQ(rel_kind(330, 331), REL_MARRIED);
+    CHECK_EQ(rel_kind(330, 332), REL_BEST_FRIEND);
+}
+
+/* both guests stay, with the villagers they play and Ann's own tie */
+TEST(save_old_players_island_keeps_the_guests)
+{
+    CHECK(load_players());
+    CHECK_EQ(prof_guest_count(), 2);
+    CHECK_EQ(prof_resident(1), 320);
+    CHECK_EQ(prof_resident(2), 720);
+    CHECK(town_alive(320) && town_alive(720));
+    CHECK_EQ(prof_rel(1, 321), 200);
+    CHECK(in_town(321));
+}
+
+/* a child's family moves as one: the hero's best friend's baby and its other parent stay with
+ * them; the family nobody knows all stays or all goes */
+TEST(save_old_players_island_keeps_a_childs_family_together)
+{
+    int i;
+    CHECK(load_players());
+    CHECK(in_town(334) && in_town(335) && in_town(336));
+    CHECK_EQ(rel_kind(334, 336), REL_FAMILY);
+    CHECK_EQ(rel_kind(335, 336), REL_FAMILY);
+    CHECK(LIFE_IS_MINOR(sim_life_stage(336)));
+    CHECK_MSG(in_town(337) == in_town(339) && in_town(338) == in_town(339), "337 %d, 338 %d, baby 339 %d",
+              in_town(337), in_town(338), in_town(339));
+    CHECK_EQ(kids_without_their_family(), 0);
+    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
+        if (res_live_must(i)) CHECK_MSG(in_town(i), "must citizen %d moved away", i);
+}
+
+/* One citizen over (an Empty island with 251 made citizens in Hillvile): one moves away, the
+ * news says it in the singular, and only once. */
+TEST(save_old_one_over_island_news_is_once_and_its_own)
+{
+    CHECK(load_fixture("gba500_old_251.dmoo"));
+    CHECK_EQ(town_count_district(0, -1), DOOMO_RES_SLOTS ? DOOMO_LIVE_PER_DISTRICT : 251);
+    CHECK_EQ(town_count_district(1, -1), 3);
+    CHECK_EQ(save_moved_away(), DOOMO_RES_SLOTS ? 1 : 0);
+    sim_init();
+    CHECK_EQ(news_has("A neighbour moved away. The park feels cosier."), DOOMO_RES_SLOTS);
+    CHECK(!news_has("1 neighbours"));
+    sim_init();                                         /* once */
+    {
+        int i, n = 0;
+        for (i = 0; i < sim_news_count(); i++) n += strstr(sim_news(i), "moved away") != NULL;
+        CHECK(n <= 1);
+    }
+}
+
+/* a load, then a brand-new island (a failed New Game+ or Continue does that): no news of
+ * people moving away from an island nobody loaded (review finding) */
+TEST(save_old_moved_away_news_never_reaches_a_new_island)
+{
+    CHECK(load_fixture("gba500_old_1000.dmoo"));
+    CHECK_EQ(save_moved_away(), DOOMO_MAX_RESIDENTS - DOOMO_LIVE_RESIDENTS);
+    town_new(TOWN_FREEPLAY, 5, TOWN_POP_EMPTY);
+    sim_init();
+    CHECK(!news_has("moved away"));
 }

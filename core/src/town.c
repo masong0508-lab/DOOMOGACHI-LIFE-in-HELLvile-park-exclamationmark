@@ -15,6 +15,7 @@
 #include "doomo/plat_ext.h"          /* plat_busy (S2-10) */
 #include "doomo/sim.h"                 /* sim_life_stage (LS0 migration) */
 #include "doomo/res_live.h"            /* GBA-500: the 500 a new island moves in */
+#include "doomo/save.h"                /* GBA-500: save_moved_away_forget */
 
 DoomoTown doomo_town;
 
@@ -700,6 +701,7 @@ void town_new(int mode, uint32_t seed, int population)
     p->flags = RF_PLAYER | RF_CUSTOM;
 
 #if DOOMO_RES_SLOTS
+    save_moved_away_forget();   /* (GBA-500) an old save's "moved away" news is not this island's */
     /* (GBA-500) the island's 500: the default set (res_live.h), bound in id order */
     if (doomo_town.population != TOWN_POP_EMPTY)
         for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)

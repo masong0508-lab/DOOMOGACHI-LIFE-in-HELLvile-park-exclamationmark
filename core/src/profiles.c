@@ -335,6 +335,26 @@ static int prof_read(const uint8_t *s, uint32_t len, uint16_t ver)
     return 1;
 }
 
+#if DOOMO_RES_SLOTS
+void prof_chunk_scan(const uint8_t *s, uint32_t len, uint16_t ver, void (*tie)(int id, int value))
+{
+    int i, k, n;
+    if (ver != 1 || len < PROF_SZ_HEADER || s[0] != 1) return;
+    n = s[1] < PROF_GUESTS ? s[1] : PROF_GUESTS;
+    if (len < PROF_SZ_HEADER + (uint32_t)n * PROF_SZ_REC) return;
+    for (i = 0; i < n; i++) {
+        const uint8_t *r = s + PROF_SZ_HEADER + i * PROF_SZ_REC;
+        int res = r[12] | (r[13] << 8);
+        if ((HERO_IS_COOP(r[14]) && hero_preset(r[14]) != NULL) || res >= DOOMO_MAX_RESIDENTS) continue;   /* as prof_read */
+        tie(res, -1);
+        for (k = 0; k < PROF_REL_MAX && k < r[17]; k++) {
+            int rid = r[58 + 2 * k] | (r[59 + 2 * k] << 8);
+            if (rid < DOOMO_MAX_RESIDENTS && r[82 + k]) tie(rid, r[82 + k]);
+        }
+    }
+}
+#endif
+
 static const DoomoSaveExt prof_ext = {
     SAVE_EXT_TAG_PROF, 1, prof_size, prof_write, prof_read, prof_reset, SAVE_EXT_MAX_PROF
 };

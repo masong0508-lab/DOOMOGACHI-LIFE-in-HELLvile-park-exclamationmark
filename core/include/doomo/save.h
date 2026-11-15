@@ -95,7 +95,9 @@ const char *save_last_error(void);
  * than the town's slots (an old GBA save; res_live.h); 0 where all 1000 live. */
 int         save_moved_away(void);
 /* (GBA-500) posts "N neighbours moved away" once after such a load (sim_init calls it;
- * only where not all 1000 live). */
+ * only where not all 1000 live). town_new forgets a news item still waiting: a new island
+ * is not the one that was loaded. */
 void        save_moved_away_news(void);
+void        save_moved_away_forget(void);
 
 #endif
