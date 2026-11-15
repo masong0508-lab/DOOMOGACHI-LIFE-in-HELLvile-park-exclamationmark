@@ -15,7 +15,8 @@
 #           saved through the title, island menu and Save / Load screen, vmu_check.py happy with the
 #           image, the title's Continue loads it, and `load 1` gives the crc e2e1 printed
 #   old     the VMU image of the build before DC9C (tests/disc/old_saves_vmu.bin: a story and a
-#           free-play save made by DC4's code) loads: tests/vmu/saves2.txt on it
+#           free-play save made by DC4's code on commit ad060127) loads: old.txt on it (the core
+#           accepts both, and each survives being written back and loaded again)
 # OUTDIR/<check>/{1,2}/ the logs and shots, OUTDIR/summary.txt one line per check with the numbers
 # (disc size, boot and movie times, save and load times). Exit status 1 when one fails.
 set -u
@@ -95,7 +96,7 @@ for n in 1 2; do
     d=$OUT/old/$n
     mkdir -p "$d/run/system/dc"
     cp "$here/old_saves_vmu.bin" "$d/run/system/dc/vmu_save_A1.bin"
-    dc "$d" "$root/dc/tests/vmu/saves2.txt"; eval "r$n=\$?"
+    dc "$d" "$here/old.txt"; eval "r$n=\$?"
     result "$d"
 done
 st=ok; [ $r1 -eq 0 ] && [ $r2 -eq 0 ] && same old || st=FAIL

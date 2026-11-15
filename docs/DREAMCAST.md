@@ -581,11 +581,13 @@ numbers and the same bytes in every shot):
 | intro | `tests/fmv/intro.txt --fmv`: the movie from the disc, then the title | starts 3.0 s after power-on, 152 frames shown, 0 skipped, ends 13.3 s after power-on (10,269 ms), the title follows 4.1 s later (17.4 s); 304 sound slots |
 | skip | `tests/fmv/skip.txt`: START during the movie | skipped after 3.7 s, the game boots to the title |
 | e2e | `tests/disc/e2e1.txt` then `e2e2.txt` on one VMU image: title, Free Play, a new island, the island's menu, Save / Load, A; `vmu_check.py` on the image; a restart; the title's Continue loads it; `load 1` gives the crc `e2e1` printed | the save writes 27 blocks in 2.96-3.00 s, the title's load reads 9,734 bytes in 0.55-0.66 s |
-| old | `tests/disc/old_saves_vmu.bin`, the VMU image the build before DC9C made (story and free-play saves of DC4's format), loaded by `tests/vmu/saves2.txt` | both saves found and loaded, the same islands |
+| old | `tests/disc/old_saves_vmu.bin`, the VMU image the build before DC9C made (story and free-play saves of DC4's format), loaded by `tests/disc/old.txt` | both saves found, verified and loaded by the core (its own version and CRC checks); each written back by the current build and loaded again with the same town crc |
 
 The VMU format did not change in DC9C. `old_saves_vmu.bin` is the proof that
 an old save loads: `vmu-test`'s `saves1.txt` made it on the base build
-(ad060127).
+(ad060127). The islands in it are not compared with a fresh `town-fill` (the
+core's town moves from commit to commit: after a rebase the same fill gave
+another crc), only with themselves after a round trip.
 
 **Disc size, boot time, save time** (Flycast's emulated time, 2026-11-15):
 
@@ -596,7 +598,7 @@ an old save loads: `vmu-test`'s `saves1.txt` made it on the base build
 | power-on to the title | 7.12 s | 7.12 s scripted; 17.4 s with the movie |
 | save a new free-play island (27 blocks) | 2.96 s | 2.96-3.00 s |
 | save a story island (33 blocks) | 3.67 s | 3.67 s |
-| save the 1000-citizen worst case (128 blocks) | 13.4 s | 13.4 s |
+| save the 1000-citizen worst case (128 blocks; 129 after the rebase onto the other streams' core changes) | 13.4 s | 13.4 s (13.5 s, 129 blocks) |
 | load: new island / story island / worst case | 0.55 / 0.74 / 2.6 s | the same |
 | settings record (2 blocks) | 0.46 s | 0.46 s |
 | learn the card at boot | 245-315 ms | the same |

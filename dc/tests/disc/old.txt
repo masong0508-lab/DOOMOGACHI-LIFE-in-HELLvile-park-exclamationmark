@@ -1,0 +1,25 @@
+# old.txt - DC9C on Flycast: the VMU image the build before DC9C made (tests/disc/
+# old_saves_vmu.bin: a story and a free-play save of DC4's format, made on the
+# base build ad060127) loads in the current build. The islands cannot be compared
+# with a fresh town-fill (the core's town changes under it from commit to commit),
+# so: the core accepts both saves (its own version and CRC checks), and each one
+# survives being written back by this build and loaded again unchanged.
+wait 40
+expect-log story saved, free play saved
+expect-save 0
+expect-save 1
+verify 0
+verify 1
+load 0
+town-crc
+save 0
+expect-log write DOOMO0.SYS
+load 0
+expect-town-crc
+load 1
+town-crc
+save 1
+expect-log write DOOMO1.SYS
+load 1
+expect-town-crc
+wait 10
