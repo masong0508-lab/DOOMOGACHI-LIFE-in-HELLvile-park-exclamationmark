@@ -962,7 +962,7 @@ line bank is **frozen** (8,891 alternatives in 3,189 rules); replies are compose
 authored. **Not built yet**: the spec is [docs/design/talk/TALK_MULTILEVEL.md](design/talk/TALK_MULTILEVEL.md),
 cut into five one-day packages TM2a to TM2e.
 
-* **Four layers, one plan.** A `TalkPlan` (12 B, on the stack) is made after the gate says pass:
+* **Four layers, one plan.** A `TalkPlan` (13 B, on the stack) is made after the gate says pass:
   (a) the reaction kind (accept, agree, deny, refuse, deflect, counter, ask back), chosen from the act,
   the stance, the relationship, the mood, the effective voice, the traits and the liked and disliked
   topic roots, and mapped onto the reply acts the rules already carry (no new lines); (b) the content:
@@ -972,7 +972,7 @@ cut into five one-day packages TM2a to TM2e.
   the callbacks, the hand-offs, an offer.
 * **Topic depth.** surface, opinion + reason, story or memory, secret; gated by relationship band,
   turns on the thread, engagement and traits; the state lives in `TalkPart.pad`, `TalkMem.spare`
-  (depth reached, secrets told) and `topic_stack`: 0 new bytes.
+  (depth reached, secrets told) and `topic_stack`: 0 new bytes. Depth and secrets persist on native only (talk memory is native-only); the traits are recomputed, not stored.
 * **Unknown typed word.** Guess from the network, name it (quoted, only if the token passes E1 to E7:
   masked text only, no hate, register, minor or person word, S3 clean), or ask what kind of thing it is;
   never a joke. PS1 never runs it (no typed input).
@@ -991,13 +991,13 @@ cut into five one-day packages TM2a to TM2e.
   unknown word) with a budget (0 for kind, filler, unknown; 0.5% for the rest).
 * **Scan** (`python3 core/tools/talk_layers.py all`): 22 whole-line filler alternatives (F1 5, F2 17),
   117 questions or opinions answered without naming the topic, 296 topic-blind listener lines, 35
-  "anyway" lines, and the 25-rule `core.unknown` bank: fixed by guards and tags, not by deletion.
+  "anyway" lines, and the 12-rule `core.unknown` bank: fixed by guards and tags, not by deletion.
 * **About 108 connective lines** (1.2% of the bank: reasons, story bridges, secrets, unknown-word
   lines, action lines, hooks) are all the new text.
 * **The 1,000,000.** The conversation tier (1,999,886 of 2,000,000 distinct) is met. The Surface tier
   misses because the draw is concentrated (this tree at 400,000 contexts: Surface 254,159 distinct, 63.5%
   unique, Chao1 1.59 M; a uniform draw would need a support of 1.26 M at 2,000,000 contexts), not because
-  the bank is small: four independent weighted layers flatten it. TM2e accepts only a full census at 1,000,000 distinct or reports the gap.
+  the bank is small: four independent weighted layers are expected to flatten it (an estimate, not yet measured). TM2e accepts only a full census at 1,000,000 distinct or reports the gap.
 
 ---------------------------------------------------------------------------
 

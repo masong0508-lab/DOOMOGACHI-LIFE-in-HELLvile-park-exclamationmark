@@ -21,7 +21,7 @@ personality (the Tomodachi sliders plus Sims-like traits) that decides how a res
 * **The line bank is frozen.** 8,891 alternatives in 3,189 rules in 105 files
   (`talkc --stats`; the "5,500+" of the decision counted the core lines only). No new content
   packages. What may still be added: fixes, safety guards and a small set of **connective lines**
-  (section 10: about 120 lines, 1.3% of the bank).
+  (section 10: 108 lines, 1.2% of the bank).
 * **Composition replaces authoring.** A reply is a plan (what to do), then four parts chosen from
   existing data, then a coherence check. The plan is the new thing. Most parts already exist as
   rules; the plan only chooses *which existing rules may speak*.
@@ -98,7 +98,7 @@ Baseline on this machine, on this tree (8,891 alternatives), seed 20261108, the 
   Skeleton 243,043 (Chao1 1,256,514); Meaning 28,196 (Chao1 52,369); conversations 20,000 of 20,000
   distinct; Q5 repeats in 23 conversations; S3 hits 0.
 * The last **full** census (2,000,000 contexts, 5,536 alternatives, before GRIEF and SURF): Surface
-  775,604 distinct (**missed**), Skeleton 727,337, Meaning 41,760, conversations 1,999,886 of
+  775,601 distinct (**missed**), Skeleton 727,337, Meaning 41,760, conversations 1,999,886 of
   2,000,000 distinct.
 * A full 2,000,000-context run of the current tree was started and stopped after its contexts phase
   (the report prints only at the end and the conversation phase takes about an hour on the shared
@@ -123,7 +123,7 @@ typedef struct TalkPlan {
     uint8_t arg;       /* the action's argument: activity, item, slot                            */
     int8_t  lean;      /* -2..+2 the stance as the reply sees it (trait and relation applied)    */
     uint8_t flags;     /* TPL_SINCERE (grief, refusal: layers a and c only), TPL_KIDSAFE, TPL_NOECHO */
-    uint8_t eff[5];    /* the effective persona sliders after the traits (layer c)               */
+    uint8_t eff[5];    /* (13 B in all) the effective persona sliders after the traits (layer c)               */
 } TalkPlan;
 ```
 
@@ -303,13 +303,13 @@ Rises and falls (per participant, one level per exchange at most):
 | the level reached on the last topic (2 bits), the secrets told (4 bits: like, fear, hate, problem) | `TalkMem.spare` (16 bits, today 0): bits 0-1 depth of `topic_a`, bits 2-5 secrets told | **0** new (the entry is 12 B and stays 12 B) | yes, in the 'TALK' chunk; an old chunk reads spare = 0: depth 0, no secrets told; no version bump |
 | "the player knows this like" | `TalkMem.likes_known` (exists) | 0 | yes |
 
-`TalkState` is 940 B of the 1,536 B budget; the plan adds about 12 B on the stack and 18 B in the
+`TalkState` is 940 B of the 1,536 B budget; the plan adds about 13 B on the stack and 18 B in the
 state: **under 1,000 B**, inside the house's scene scratch, **0 resident bytes** on every platform.
 The talk memory table (24 entries) keeps its 292 B `.bss` and its native-only status.
 
 ### 3.3 Secrets are kid-safe by construction
 
-A secret is always one of: a like, a fear, the hated food, a problem. It reuses `{like}`, `{fear}`,
+A secret is always one of: a like, a fear, the hated food, a problem. **`secret.problem` fires only for the safe `cb.problem.*` set** (hungry, dirty, bored, sick, wants_item, wants_friend; lonely only as a sincere line, never a joke). It never fires for PROB_CRUSH, PROB_BREAKUP, PROB_CONFESS_HELP, PROB_PROPOSAL, PROB_POSSESSED, PROB_CORRUPTION or nightmare; TM2d's `depth_never_adult_for_kids` test covers every stage x PROB_* pair. It reuses `{like}`, `{fear}`,
 `{hate}` and the `prob=` guard. **No secret is a romance, a body or a harm.** A child's secret is a
 child's fear, favourite or worry ("I'm scared of the dark"): the reply is the same plain sincere
 sentence with a kid voice, and the player's next act can only comfort (the quick replies already
@@ -320,7 +320,7 @@ restrict to comfort after a sincere line). A grief or distress topic never count
 ## 4. An unknown typed word is named and asked about
 
 Today: `talk_parse` marks the token `TTF_UNK`, the line may fall to `TA_UNKNOWN`, and the reply is
-one of 25 generic alternatives ("Hm? Say that again in human." / "Bees? ...Anyway."). The word never
+one of 24 generic alternatives (12 rules) ("Hm? Say that again in human." / "Bees? ...Anyway."). The word never
 comes back out (design principle: *output uses only the closed vocabulary*).
 
 **New rule.** The reply names the word, or guesses, or asks, and says what it understood. Three
@@ -482,8 +482,9 @@ residents on every port: **more than the GBA's 2 KB of free EWRAM and 2.5 times 
    all derived). A 25th pin refuses with "pinned personalities are full: release one" (the creator
    shows the count). The 3 spare gene bits are **not** used (the gene is shipped, SPEC 1.3).
 3. **The talk state.** The effective set for a conversation is computed when it begins and kept in
-   `TalkPart.pad` (1 trait id plus its slider deltas are recomputed on demand: 3 `uint8_t`, 0 new
-   bytes).
+   not stored: the traits are recomputed on demand from `talk_traits_get()` (a ROM table lookup plus the
+   derivation), so no per-participant byte is used. `TalkPart.pad[2]` (16 bits) holds only the depth, thread, hook and kind
+   bits of section 3.2 (9 bits).
 
 **Budget (what must be reported by TM2a):**
 
@@ -663,7 +664,7 @@ only: `TalkTrace` is a tool struct, not resident):
 
 | Tier | Target | Last full run, 2M draws (5,536 alt.) | This tree, 400,000 draws (8,891 alt.) |
 |---|---|---|---|
-| **Surface** (distinct exchanges after normalising names and numbers) | 1,000,000 | 775,604: **missed** | 254,159 (63.5% unique), Chao1 1,588,804 |
+| **Surface** (distinct exchanges after normalising names and numbers) | 1,000,000 | 775,601: **missed** | 254,159 (63.5% unique), Chao1 1,588,804 |
 | Skeleton (fillers replaced by their category) | 100,000 | 727,337: met | 243,043: met |
 | Meaning (act, stance, topic root, callback, beat) | 5,000 | 41,760: met | 28,196: met |
 | **Conversations** (6 turns, differ in at least 2 turns) | 1,000,000 | 1,999,886 of 2,000,000: met | 20,000 of 20,000 |
@@ -676,7 +677,7 @@ tier is the open one and the design's headline.
 The census draws 2,000,000 contexts; the distinct count of D draws from a support of N equally
 likely replies is `N (1 - e^(-D/N))`. For **1,000,000 distinct out of 2,000,000 draws** a uniform
 draw needs N of about **1.26 M** (solve `(1-e^-x)/x = 0.5`, x = 1.59). Two measurements say how far
-the bank is: the old 2M run (775,604 distinct) is an **effective uniform support of about 0.86 M**
+the bank is: the old 2M run (775,601 distinct) is an **effective uniform support of about 0.86 M**
 (x = 2.33); the current tree at 400,000 draws (254,159 distinct, 63.5%) is about **0.41 M** at that
 draw count (x = 0.97; the effective support of a lopsided draw grows with the number of draws, so
 the 2M figure is higher, which is why the lead's full run is the real gate). The Chao1 estimate of
@@ -747,7 +748,7 @@ Classes, all counted over the 8,891 alternatives:
 | N1a | a **question about a topic** (ask_about, ask_opinion, change_topic, gossip) or an opinion (opine_pos, opine_neg) answered by a line that names no topic and whose guards do not need one | **117** | `core.opine_neg` 31, `core.opine_pos` 29, `core.gossip` 22, `core.ask_opinion` 15, `core.ask_about` 10, `core.change_topic` 10 |
 | N1b | a topic act (tell, answer, agree, disagree, continue) answered topic-blind: a generic listener line ("Interesting. I'm picturing it now...") | **296** | `core.tell` 139, `core.answer` 65, `core.disagree` 45, `core.agree` 34, `core.continue` 13 |
 | N2 | a topic-change phrase ("anyway", "by the way", "speaking of") with no topic slot | **35** | `core.apologize` 4, `core.give` 3, `core.walk_away` 3, `core.ask_fact`, `core.ask_advice`, `core.criticize`... |
-| (unknown) | the `core.unknown.*` bank answers a line it did not understand with a joke or a backchannel ("Bees? ...Anyway.", "Whatever that was.", "I'm going to take that as a compliment.") | **25** rules' worth, about 9 that fail Q8f | `core_other.tlk:66-75`, `rest_talk.tlk:73-98` |
+| (unknown) | the `core.unknown.*` bank answers a line it did not understand with a joke or a backchannel ("Bees? ...Anyway.", "Whatever that was.", "I'm going to take that as a compliment.") | 12 rules, 24 alternatives, to be scanned for Q8f by TM2b (no count yet) | `core_other.tlk:66-75`, `rest_talk.tlk:73-98` |
 | (fused wrong-kind risk) | `core.*.pro/.con/.neutral` where the stance guard and the reply act could disagree | 346 | checked by L2 (0 known failures; the guard is `stance=` already) |
 
 Reading the numbers:
@@ -764,7 +765,7 @@ Reading the numbers:
   the player **told** something with no topic and wrong when a topic is on the table.
 * **Fixing without deleting** (the bank is frozen): a topic guard (`topic`) on the pronoun lines;
   `!topic` on the generic listeners, so a topic act with a topic falls to the topic banks; and for
-  the 35 N2 and the 9 unknown-bank lines a `generic` tag with the baseline. The expected result is
+  the 35 N2 and the unknown-bank lines a `generic` tag with the baseline. The expected result is
   that the **same text still exists** and speaks only when it is coherent.
 * The weighted share (how often the generator actually *says* one of these) is the first number TM2b
   produces (`QF_Q8_CONTENT` and `QF_Q8_FILLER` in report mode on the old engine).
@@ -774,7 +775,7 @@ Reading the numbers:
 ## 10. The minimal connective lines still needed
 
 The bank is frozen, so the new data is only what the composer cannot do with an existing line.
-**About 120 alternatives in about 40 rules** (1.3% of 8,891; about 5.4 KB in the Talk bank at the
+**About 108 alternatives in about 40 rules** (1.2% of 8,891; about 5.4 KB in the Talk bank at the
 bank's 45 B an alternative, **non-resident** on the PS1, which loads a subset). Every line follows the
 house register (PG-21 for adults, kid-safe wherever a child may be in the room: the guards say which),
 at most 3 sentences, fits the bubble, no register word in a kid-safe rule, no romance, no `jmat`.
@@ -804,10 +805,10 @@ edit for them: talkc derives `kind` from `act:`.
 
 | Item | Where | Bytes | Resident on |
 |---|---|---:|---|
-| `TalkPlan` | stack | 12 | transient |
+| `TalkPlan` | stack | 13 | transient |
 | depth, kind, hook state | `TalkPart.pad[2]` | 0 new | in `TalkState`, house scratch |
 | unknown word echo + taught ring | `TalkState` | 18 + 12 = 30 | house scratch (TalkState stays under 1,000 B of 1,536 B) |
-| depth and secrets told | `TalkMem.spare` | 0 new | native only today (talk memory is native-only) |
+| depth and secrets told | `TalkMem.spare` | 0 new | native only today (talk memory is native-only): on the Dreamcast depth and secrets are not kept between sessions, so the persistence test is native-only |
 | trait pins | `.bss`, new chunk 'TRAI' | 146 | **all** platforms |
 | trait ROM table + names + reads | ROM | about 1 KB | Talk bank / creator data |
 | action events and the ledger | native `talk_outcome` | about 190 | native |
