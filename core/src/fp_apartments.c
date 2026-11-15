@@ -25,7 +25,7 @@ static struct {
     int house;                        /* the empty room picked for "Make a family here" (-1 none) */
     int family;                       /* 1: the creator is making this house's first person */
     UiList jump;
-    uint8_t seen[DOOMO_DISTRICT_SIZE * 2 / 8];
+    uint8_t seen[(DOOMO_LIVE_RESIDENTS + 7) / 8];  /* by slot (GBA-500; the id where all 1000 live) */
     int seen_n;
 } A;
 
@@ -164,9 +164,12 @@ static void open_room(void)
         ui_choice(-1, "This house is empty", house_opts, 3, house_pick);
         return;
     }
-    if (!(A.seen[id >> 3] & (1 << (id & 7)))) {
-        A.seen[id >> 3] |= (uint8_t)(1 << (id & 7));
-        if (++A.seen_n >= 25) fp_achieve(UL_FP_HOUSEWARMING);
+    {
+        int s = town_slot(id);                  /* (lived in: it has a slot) */
+        if (!(A.seen[s >> 3] & (1 << (s & 7)))) {
+            A.seen[s >> 3] |= (uint8_t)(1 << (s & 7));
+            if (++A.seen_n >= 25) fp_achieve(UL_FP_HOUSEWARMING);
+        }
     }
     audio_sfx(SFX_DOOR);
     fp_open_resident(id);
@@ -410,7 +413,11 @@ static void ap_draw(void)
     /* header */
     {
         int occ = ap_occupied(hell);
+#if DOOMO_RES_SLOTS
+        doomo_snprintf(buf, sizeof(buf), "%s  %d/250", fp_home_name(hell), occ);    /* GBA-500: its slots */
+#else
         doomo_snprintf(buf, sizeof(buf), "%s  %d/500", fp_home_name(hell), occ);
+#endif
         ui_title(sw / 2, 3, buf, style);
     }
     /* info card */

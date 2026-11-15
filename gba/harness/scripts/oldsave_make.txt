@@ -1,0 +1,16 @@
+# oldsave_make.txt - GBA-500: makes harness/fixtures/gba500_old.flash, a flash file the GBA wrote
+# before GBA-500 (1000 residents). Run it on a ROM built from a tree before GBA-500 (the fixture
+# was made on origin b232be8, the parent of GBA-500's first commit):
+#   cp /dev/null old.sav; harness doomogachi.gba --script harness/scripts/oldsave_make.txt --save old.sav
+# Slot 0: a lived-in story island of the 1000 premade citizens; slot 1: the codec's old worst
+# case, 1000 random custom citizens and 2048 edges. make -C gba test-oldsave loads both.
+wait 40
+expect-log doomo: init
+seed 4242
+town-fill 0x80000001
+save 0
+expect-save 0
+town-fill 4242
+save 1
+expect-save 1
+wait 10

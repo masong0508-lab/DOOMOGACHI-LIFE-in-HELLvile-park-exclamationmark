@@ -44,7 +44,8 @@ static const CreditCard cards[] = {
     { "Game Design & Story", "The Boreagotchi Team" },
     { "Music & Sound", "30 Hz chiptunes:\ncute, then METAL, then cute" },
     { "Shooter & Welding", "Every gun you could weld\nand a bubble wand" },
-    { "Citizens", "500 from Hillvile\n500 from Hellvile\nall of them marching" },
+    { "Citizens", DOOMO_RES_SLOTS ? "250 from Hillvile\n250 from Hellvile\nall of them marching"     /* GBA-500 */
+                                  : "500 from Hillvile\n500 from Hellvile\nall of them marching" },
     { "Real hardware", "Game Boy Advance cartridge\nPlayStation disc" },
     { "Special thanks", "Everyone who ever\ntore down a wall" },
     { "And you", "Thank you for playing!" },

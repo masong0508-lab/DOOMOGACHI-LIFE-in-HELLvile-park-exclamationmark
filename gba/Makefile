@@ -162,7 +162,7 @@ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 # over the core's weak stubs, and the core's strong definitions win over both.
 ALL_OBJS  := $(GBA_OBJS) $(CORE_OBJS)
 
-.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-cutsave test-cardgone test-home test-ow test-lang test-optvol test-exorcism test-speed test-life profile-title profile-pause profile-invaded profile-all test-talk profile-sung profile-creator test-creator test-creator-sliders test-speed2 test-breach2 profile-speed2 profile-concert profile-exorcism clean sizes
+.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-oldsave test-cutsave test-cardgone test-home test-ow test-lang test-optvol test-exorcism test-speed test-life profile-title profile-pause profile-invaded profile-all test-talk profile-sung profile-creator test-creator test-creator-sliders test-speed2 test-breach2 profile-speed2 profile-concert profile-exorcism clean sizes
 .DEFAULT_GOAL := all
 
 # Cartridge size (user decision 2026-11-01): the game ROM is a full 256 Mbit
@@ -287,6 +287,7 @@ test:
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-coresave
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-cutsave
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-cardgone
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-oldsave
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-story
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-home
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile test-ow
@@ -342,6 +343,15 @@ test-cutsave: harness
 test-cardgone: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
 	@$(GBA)/harness/cardgone.sh $(BUILD)/doomogachi.gba $(HARNESS) $(BUILD)/cardgone
+
+# --- GBA-500: a flash file the GBA wrote with 1000 residents (harness/fixtures/gba500_old.flash,
+# made by scripts/oldsave_make.txt on the ROM before GBA-500) loads: 250 a side stay ---
+test-oldsave: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@cp $(GBA)/harness/fixtures/gba500_old.flash $(BUILD)/oldsave.sav
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/oldsave.txt \
+	    --save $(BUILD)/oldsave.sav --quiet
+# --- end GBA-500 ---
 
 # --- S2 (for H2, SPEC sec.12): the story's scripts, every
 # harness/scripts/story_*.txt (Ch1: P0, Ep 1.1, Ep 1.6, cutscene fps) ---

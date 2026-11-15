@@ -1,0 +1,25 @@
+# oldsave.txt - GBA-500 (make -C gba test-oldsave): a flash file the GBA wrote before GBA-500
+# (harness/fixtures/gba500_old.flash, oldsave_make.txt; 1000 residents in each slot) loads on this
+# ROM. The 250 of each district the player is closest to stay and the others move away; saved
+# again, the island loads as it is and nobody else leaves.
+wait 40
+expect-log doomo: init
+expect-save 0
+verify 0
+load 0
+expect-log hcmd: load 0 -> 1 (500 residents, 500 moved away)
+town-crc
+save 0
+load 0
+expect-log hcmd: load 0 -> 1 (500 residents, 0 moved away)
+expect-town-crc
+expect-save 1
+verify 1
+load 1
+expect-log hcmd: load 1 -> 1 (500 residents, 500 moved away)
+town-crc
+save 1
+load 1
+expect-log hcmd: load 1 -> 1 (500 residents, 0 moved away)
+expect-town-crc
+wait 10

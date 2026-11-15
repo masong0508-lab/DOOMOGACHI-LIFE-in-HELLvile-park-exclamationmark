@@ -36,8 +36,13 @@ const DoomoUnlock doomo_unlocks_freeplay[] = {
     ACH(UL_FP_FAV_FOOD, 9, "Way to the Heart", "Feed a citizen their favourite food"),
     ACH(UL_FP_HEALER, 10, "House Call", "Pay for a check-up at the hospital"),
     ACH(UL_FP_MATCHMAKER, 11, "Matchmaker", "Cheer on a confession that works out"),
+#if DOOMO_RES_SLOTS     /* GBA-500: 250 neighbours a side */
+    ACH(UL_FP_FULL_HOUSE_HILL, 12, "No Vacancy: Towers", "Move 250 neighbours into Hillvile on an empty island"),
+    ACH(UL_FP_FULL_HOUSE_HELL, 13, "No Vacancy: Pits", "Move 250 neighbours into Hellvile on an empty island"),
+#else
     ACH(UL_FP_FULL_HOUSE_HILL, 12, "No Vacancy: Towers", "Fill all 500 Hillvile homes on an empty island"),
     ACH(UL_FP_FULL_HOUSE_HELL, 13, "No Vacancy: Pits", "Fill all 500 Hellvile homes on an empty island"),
+#endif
     ACH(UL_FP_GHOST_RITE, 14, "Seance", "Raise a ghost with the graveyard rite"),
     ACH(UL_FP_HELPER, 15, "Helping Paw", "Solve a citizen's problem"),
     ACH(UL_FP_HELPER_BIG, 16, "Soulmates", "Reach friendship 99 with a citizen"),
@@ -111,8 +116,9 @@ void fp_check_island_achievements(void)
     int i, fav = 0;
     /* a full district only counts on an island you populated yourself */
     if (doomo_town.mode == TOWN_FREEPLAY && doomo_town.population == TOWN_POP_EMPTY) {
-        if (town_count_district(0, -1) >= DOOMO_DISTRICT_SIZE) fp_achieve(UL_FP_FULL_HOUSE_HILL);
-        if (town_count_district(1, -1) >= DOOMO_DISTRICT_SIZE) fp_achieve(UL_FP_FULL_HOUSE_HELL);
+        /* (GBA-500: a side is full at its 250 slots there) */
+        if (town_count_district(0, -1) >= DOOMO_LIVE_PER_DISTRICT) fp_achieve(UL_FP_FULL_HOUSE_HILL);
+        if (town_count_district(1, -1) >= DOOMO_LIVE_PER_DISTRICT) fp_achieve(UL_FP_FULL_HOUSE_HELL);
     }
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
         const DoomoResident *r = TOWN_RES(i);

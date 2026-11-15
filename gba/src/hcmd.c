@@ -5,12 +5,11 @@
  * result and the cycles it took, and clears .cmd. This drives the core's
  * save / load from harness scripts (save N, load N, expect-save N), like
  * the native runner and the PS1 harness do, and builds test towns:
- *   GBA_HC_TOWN_FILL seed  a free-play island of 1000 fully random custom
- *                          citizens + 2048 relationships: the codec's
- *                          worst case (~58 KB, slot 1 only, crosses the
- *                          flash bank boundary); seed | 0x80000000: a
- *                          typical story island (1000 premade citizens,
- *                          lived in: ~14 KB)
+ *   GBA_HC_TOWN_FILL seed  a free-play island of fully random custom
+ *                          citizens + relationships: the codec's worst case
+ *                          (GBA-500: 500 + 1024, ~31 KB; it was 1000 + 2048,
+ *                          ~58 KB); seed | 0x80000000: a typical story island
+ *                          (the premade citizens, lived in)
  *   GBA_HC_TOWN_CRC        CRC-32 of everything a save stores
  * and the story / house runner commands (SPEC R20, hcmd.h):
  *   GBA_HC_SEED seed       doomo_town.seed = seed, doomo_rng reseeded and
@@ -186,7 +185,9 @@ void gba_harness_cmd(void)
         break;
     case GBA_HC_LOAD:
         r = (uint32_t)load_game((int)arg);
-        gba_logf("hcmd: load %u -> %u %s", arg, r, save_last_error());
+        /* GBA-500: how many live here now, and how many an old save's load sent away */
+        gba_logf("hcmd: load %u -> %u (%d residents, %d moved away) %s", arg, r, town_count(-1),
+                 save_moved_away(), save_last_error());
         break;
     case GBA_HC_EXISTS:
         r = (uint32_t)save_exists((int)arg);

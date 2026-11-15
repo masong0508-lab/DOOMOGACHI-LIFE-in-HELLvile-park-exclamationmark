@@ -199,10 +199,15 @@ static Entry *add(int code, int icon, const char *label, const char *desc)
 
 /* (CL5, C9) why a "make a citizen" row is locked: that side has no free home (a constant string: no RAM) */
 DOOMO_STATIC_ASSERT(DOOMO_DISTRICT_SIZE == 500, full_reason_counts_500_homes);
+DOOMO_STATIC_ASSERT(!DOOMO_RES_SLOTS || DOOMO_LIVE_PER_DISTRICT == 250, full_reason_counts_250_homes);
 static const char *full_reason(int d)
 {
     (void)d;
+#if DOOMO_RES_SLOTS
+    return "Full: 250 of 250 neighbours. Someone must move out.";   /* GBA-500 (asserted above) */
+#else
     return "Full: 500 of 500 homes. Someone must move out.";
+#endif
 }
 
 /* (CL5) a row that cannot be used now: greyed, and its help line says why */
