@@ -593,8 +593,8 @@ another crc), only with themselves after a round trip.
 
 | | before DC9C | now |
 |---|---|---|
-| `doomogachi.cdi` | 7,637,587 B | 8,744,851 B (`INTRO.DMV` 959,692 B, `1ST_READ.BIN` 5,080,652 -> 5,089,572 B) |
-| ELF image (`make -C dc sizes`) | 9,657,580 B, 7,049,996 B free above `_end` | 9,664,376 B, 7,040,428 B free (the 365 KB of decode buffers are heap, for the movie only) |
+| `doomogachi.cdi` | 7,637,587 B | 8,744,851 B (`INTRO.DMV` 959,692 B, `1ST_READ.BIN` 5,080,652 -> 5,089,572 B); 8,784,563 B on the tree rebased onto the other streams' core changes |
+| ELF image (`make -C dc sizes`) | 9,657,580 B, 7,049,996 B free above `_end` | 9,664,376 B, 7,040,428 B free: +6,796 B (code 6 KB, `.bss` +800 B; the 365 KB of decode buffers are heap, for the movie only). After the rebase 9,699,624 B, 7,005,228 B free |
 | power-on to the title | 7.12 s | 7.12 s scripted; 17.4 s with the movie |
 | save a new free-play island (27 blocks) | 2.96 s | 2.96-3.00 s |
 | save a story island (33 blocks) | 3.67 s | 3.67 s |
@@ -627,6 +627,13 @@ So the rest is S2-10 (`save.c` streaming and a different write contract) and a r
 console. **Owed on hardware:** the per-block write time of a real VMU, and
 whether a batched read of the card is accepted by it (the half that would cut
 the loads).
+
+**Gates on the rebased tree** (2026-11-15): `make -C dc test` is green except `ow-test`'s
+`side_sample_a` (known, fails on the base too) and `room-test`'s `home_visit` (dcrun and the host
+runner both fail its `expect-scene DIALOG` / `TALK` / `HOME` lines while the native runner passes:
+a core change of another stream, not seen by anything of DC9C: the host runner links none of it).
+`check-elf` expected a `dc_mailbox` of 4,364 B and the ELF's is 4,372 B since DC6B/6C: the check says
+4,372 B now (`make -C dc test` stopped at it before).
 
 **Owed on hardware (DC9C):** the disc read of `INTRO.DMV` from a real GD-ROM /
 CD-R (the 16 KB steps are about 100 KB/s of the drive's 1.2 MB/s, the first
