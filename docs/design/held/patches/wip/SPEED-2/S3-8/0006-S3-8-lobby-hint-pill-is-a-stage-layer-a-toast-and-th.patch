@@ -1,0 +1,89 @@
+From 716d87719bbd9b06337fe08a00cce52ead0b7aee Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 18:44:41 +0000
+Subject: [PATCH 06/11] S3-8: lobby hint pill is a stage layer (a toast and the
+ hint no longer make one dirt box over the screen); full redraws 15% -> 4.5%,
+ gate one in eight
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ core/src/lib_common.c      | 18 ++++++++++++------
+ core/tests/test_lib_kept.c |  2 +-
+ 2 files changed, 13 insertions(+), 7 deletions(-)
+
+diff --git a/core/src/lib_common.c b/core/src/lib_common.c
+index b7d93fe..ae448ad 100644
+--- a/core/src/lib_common.c
++++ b/core/src/lib_common.c
+@@ -1155,9 +1155,10 @@ static void p_mote(const LobGeo *g, int i)
+     ui_sparkle(mx, my, ph, PAL_RAMP(RAMP_CANDY, 7));
+ }
+ 
++#define LOB_HINT STR_ICON_ARROW_L STR_ICON_ARROW_R " Browse  " STR_ICON_A " Read  " STR_ICON_B " Leave"
+ static void p_hint(void)
+ {
+-    lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " Browse  " STR_ICON_A " Read  " STR_ICON_B " Leave", WIN_CREAM);
++    lib_hint(LOB_HINT, WIN_CREAM);
+ }
+ 
+ #if !defined(DOOMO_PLATFORM_PS1)
+@@ -1173,7 +1174,7 @@ static void p_hint(void)
+  * the layers whose key or box changed or that lie on one that did. test_lib_kept plays the lobby with the stage on
+  * and off and compares every frame. */
+ enum { LL_WINDOW, LL_TITLE, LL_BADGE, LL_BOOK0, LL_SKULL = LL_BOOK0 + LIB_BOOKS, LL_CANDLE,
+-       LL_QUILLBY, LL_HEAD, LL_BODY, LL_BAR, LL_MOTE0, LL_COUNT = LL_MOTE0 + 5 };
++       LL_QUILLBY, LL_HEAD, LL_BODY, LL_BAR, LL_MOTE0, LL_HINT = LL_MOTE0 + 5, LL_COUNT };
+ DOOMO_STATIC_ASSERT(LL_COUNT <= STAGE_MAX_LAYERS, lobby_layers_fit_the_stage);
+ 
+ static void lobby_pic(uint32_t key)
+@@ -1330,6 +1331,12 @@ static void lob_layer(const LobGeo *g, int i, int status, const DoomoImage *qimg
+             k = lk(k, sel < LIB_WING_COUNT ? lob.pct[sel] : 0);
+             *key = ui_key_str(k, lobby_quip(status));
+         }
++    } else if (i == LL_HINT) {
++        /* (the hint pill is a layer, not what the frame draws after the stage: that would make its box, and a
++         * toast's at the top, one dirt box over the whole screen) */
++        int w = DOOMO_MIN(ui_text_width(LOB_HINT), ui_prompts_maxw()) + 12;
++        lob_box(b, (g->sw - w) / 2, g->sh - 13, w, 12);
++        *key = lk(ui_panel_key(), g->sw);
+     } else {
+         int mx, my, ph;
+         mote_xy(g, i - LL_MOTE0, &mx, &my, &ph);
+@@ -1385,6 +1392,8 @@ static void lob_layer_draw(const LobGeo *g, int i, int status, const DoomoImage
+         p_info_body(g, status);
+     } else if (i == LL_BAR) {
+         p_info_bar(g);
++    } else if (i == LL_HINT) {
++        p_hint();
+     } else {
+         p_mote(g, i - LL_MOTE0);
+     }
+@@ -1430,10 +1439,7 @@ static void lobby_draw(void)
+     const DoomoResident *q = quillby(&status);
+     if (plat_draw_skipped()) return;
+ #if !defined(DOOMO_PLATFORM_PS1)
+-    if (lobby_kept_draw(status, q)) {
+-        p_hint();
+-        return;
+-    }
++    if (lobby_kept_draw(status, q)) return;
+ #endif
+     lob_geo(&g);
+     draw_wall(g.sw, g.sh, g.floor_y);
+diff --git a/core/tests/test_lib_kept.c b/core/tests/test_lib_kept.c
+index be71230..88eb972 100644
+--- a/core/tests/test_lib_kept.c
++++ b/core/tests/test_lib_kept.c
+@@ -119,7 +119,7 @@ static int kcompare(const KTour *k, int w, int h, int *kept)
+         }
+     printf("      kept %s %dx%d night %d lang %d: %d frames, %d over the kept picture, %d of them drawn in full\n", k->name, w, h,
+            k->night, k->lang, n, *kept, full_frames);
+-    if (full_frames * 5 > *kept) {
++    if (full_frames * 8 > *kept) {
+         test_fail(__FILE__, __LINE__, "the stage drew too many frames in full");
+         return 0;
+     }
+-- 
+2.43.0
+

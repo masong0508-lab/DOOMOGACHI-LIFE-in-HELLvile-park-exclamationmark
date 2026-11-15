@@ -1,0 +1,674 @@
+From 01660d25ba890861acbda26e450f9238f5db87fa Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 16:47:39 +0000
+Subject: [PATCH 03/11] cross-stream: TALK: the Talk screen keeps its picture
+ (GBA): scenes below are not redrawn, panel / strip redrawn only on change,
+ the line box on a kept band; sliced generation on the GBA; S3-TALK
+
+talk_scene.c is the TALK stream's. Talk is an overlay scene, so the scene below it (24 ms for the
+title) was drawn every tick. scene_keep_below (scene.c, SPEED's) lets Talk ask to be the only
+scene drawn: plat_hold_frame keeps the page, hk_* redraws the panel and the people strip on
+top of themselves (ui_shadow_kept: no second drop shadow) and the dialogue box draws on a kept
+band (plat_hold_band, ui_dialog_reach). GBA only; native tests switch it on
+(talk_scene_hold). test_talk_hold.c: the same Talk run kept and full over a still backdrop is
+the same picture on every frame at 240x160 and 320x240. The talk_dm steps run one a tick on
+the GBA (talk_scene_slice was DC only).
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ core/include/doomo/scene.h  |   7 ++
+ core/include/doomo/talk.h   |   6 +
+ core/include/doomo/ui.h     |  10 ++
+ core/src/scene.c            |  16 +++
+ core/src/talk_scene.c       | 238 ++++++++++++++++++++++++++++++++++--
+ core/src/ui.c               |  22 +++-
+ core/src/ui_dialog.c        |  20 +++
+ core/tests/test_talk_hold.c | 145 ++++++++++++++++++++++
+ 8 files changed, 452 insertions(+), 12 deletions(-)
+ create mode 100644 core/tests/test_talk_hold.c
+
+diff --git a/core/include/doomo/scene.h b/core/include/doomo/scene.h
+index 88bf6ba..d94ca80 100644
+--- a/core/include/doomo/scene.h
++++ b/core/include/doomo/scene.h
+@@ -24,6 +24,13 @@ void scene_update(void);                        /* called by doomo_frame  */
+ void scene_draw(void);
+ /* Ticks since the top scene was entered. */
+ uint32_t scene_ticks(void);
++/* S3-TALK: a scene that holds the picture below it. While `owner` is in the stack, scene_draw() asks
++ * `ask(top, above)` before it draws anything: top is the scene on top of the stack and above the number of
++ * scenes above the owner. A 1 means the owner keeps the whole picture itself this frame (a held page and a
++ * kept band, see core/src/talk_scene.c): the scenes below it are not drawn, and the owner and what is above it
++ * are. A 0 draws as always. scene_keep_below(NULL, NULL) ends it (the owner's leave does). The ask is made every
++ * frame the stack is drawn, also on skipped ticks. */
++void scene_keep_below(const DoomoScene *owner, int (*ask)(const DoomoScene *top, int above));
+ /* SP5: inside scene_draw(), the scene right above the one drawing (an overlay that draws after it), NULL when it
+  * is the top or outside a draw */
+ const DoomoScene *scene_drawn_above(void);
+diff --git a/core/include/doomo/talk.h b/core/include/doomo/talk.h
+index 2d6d2af..6a44afc 100644
+--- a/core/include/doomo/talk.h
++++ b/core/include/doomo/talk.h
+@@ -1370,6 +1370,12 @@ const TalkLine *talk_quick_thread(const TalkState *s, int *slot);
+ int  talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fresh, uint32_t salt,
+                         TalkSugg *out);
+ 
++/* (S3-TALK) Talk keeps its picture on the GBA (see talk_scene.c hk_*); the native tests switch it on to compare
++ * the kept and the full frames. Off by default natively. */
++#ifdef DOOMO_TALK_DEBUG
++void talk_scene_hold(int on);
++#endif
++
+ /* ---- the runner's eyes on SCENE_TALK (talk_scene.c; only where DOOMO_TALK_DEBUG is defined: the native
+  * host and the unit tests, never a console) -------------------------------------------------------
+  * talk_scene_debug fills `o` and returns 1 while a talk is running (the dialogue box can be the top scene), else 0. A row is
+diff --git a/core/include/doomo/ui.h b/core/include/doomo/ui.h
+index fb7e33f..048fc5d 100644
+--- a/core/include/doomo/ui.h
++++ b/core/include/doomo/ui.h
+@@ -156,6 +156,15 @@ void ui_dim_under_window_pop(int x, int y, int w, int h, int ticks, int level);
+ void ui_shade_clip(int x, int y, int w, int h);
+ void ui_shade_clip_off(void);
+ 
++/* ---- S3-TALK: windows drawn again over a kept page. ui_shadow_kept(x, y, w, h) (up to two rects, then they
++ * start over; w <= 0 clears them): a ui_window of exactly that rect draws no drop shadow, it is on the page the
++ * platform kept (core/src/talk_scene.c). The PS1 keeps no page: nothing there. */
++#if defined(DOOMO_PLATFORM_PS1)
++#define ui_shadow_kept(x, y, w, h) ((void)(x), (void)(y), (void)(w), (void)(h))
++#else
++void ui_shadow_kept(int x, int y, int w, int h);
++#endif
++
+ /* ---- S2-1 modal hold (docs/GBA.md "Speed wave 2: S2-1") ---------------------
+  * A dimmed modal (a card, a popup, a menu) over a scene whose picture does
+  * not change while the modal is up. In the scene's draw:
+@@ -346,6 +355,7 @@ extern int (*ui_list_locked_fn)(int index);
+  * keyboard ('\b' = delete, '\n' = OK). Used by the native runner's
+  * `type` command and by platforms with a keyboard. 0 if none active. */
+ int  ui_text_entry_feed(int c);
++int  ui_dialog_reach(int *cx0, int *cy0, int *cx1, int *cy1);   /* S3-TALK: the first row a plain line can reach, and the box's opaque core (ui_dialog.c) */
+ int  ui_dialog_active(void);          /* SCENE_DIALOG is open            */
+ /* ---- S1 additions (comic-timing dialogue; SPEC sec.7 S1 M3, SF sec.15.6) --
+  * ui_say_ex: a story line with an expression (EXPR_*), DL_* flags (txt.h)
+diff --git a/core/src/scene.c b/core/src/scene.c
+index 8773c83..d1da16a 100644
+--- a/core/src/scene.c
++++ b/core/src/scene.c
+@@ -209,6 +209,15 @@ const DoomoScene *scene_drawn_above(void)
+     return (draw_real && depth < draw_real) ? stack[depth].s : NULL;
+ }
+ 
++/* S3-TALK (scene.h): a scene that holds the picture below it */
++static const DoomoScene *keep_owner;
++static int (*keep_ask)(const DoomoScene *top, int above);
++void scene_keep_below(const DoomoScene *owner, int (*ask)(const DoomoScene *top, int above))
++{
++    keep_owner = owner;
++    keep_ask = ask;
++}
++
+ /* While a lower scene of the stack is drawn, the stack is temporarily
+  * cut above it, so scene_top()/scene_ticks() describe the scene drawing. */
+ void scene_draw(void)
+@@ -218,6 +227,13 @@ void scene_draw(void)
+     draw_real = real;
+     first = depth - 1;
+     while (first > 0 && stack[first].s->overlay) first--;
++    if (keep_ask) {                           /* S3-TALK: the owner keeps the picture below it */
++        for (i = real - 1; i > first; i--)
++            if (stack[i].s == keep_owner) {
++                if (keep_ask(stack[real - 1].s, real - 1 - i)) first = i;
++                break;
++            }
++    }
+     for (i = first; i < real; i++) {
+         if (!stack[i].s->draw) continue;
+         depth = i + 1;
+diff --git a/core/src/talk_scene.c b/core/src/talk_scene.c
+index 2381483..36505a4 100644
+--- a/core/src/talk_scene.c
++++ b/core/src/talk_scene.c
+@@ -27,6 +27,8 @@
+ #include "doomo/family.h"
+ #include "doomo/resident_acc.h"
+ #include "doomo/rng.h"
++#include "doomo/plat_ext.h"
++#include "doomo/tips.h"
+ 
+ #ifdef DOOMO_HAS_TALK
+ 
+@@ -40,6 +42,19 @@ enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE };
+ enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK };
+ enum { C_CHAT = 0, C_NICE, C_COOL, C_ASK, C_TELL, C_OTHERS, C_GESTURE, C_ROMANCE, C_COUNT };
+ 
++/* S3-TALK: the kept Talk picture is on the GBA (always) and in the native tests (talk_scene_hold); nowhere else */
++#if defined(DOOMO_PLATFORM_GBA)
++#define HK_CODE 1
++#define HK_ON 1
++#elif defined(DOOMO_TALK_DEBUG)
++#define HK_CODE 1
++static uint8_t hk_on;
++#define HK_ON hk_on
++#else
++#define HK_CODE 0
++#define HK_ON 0
++#endif
++
+ typedef struct TRow { uint8_t kind, arg; uint16_t v; } TRow;
+ #define TROWS 40
+ #define TSTOCK 24
+@@ -64,8 +79,19 @@ static struct TalkScn {
+     char      typed[TALK_INPUT_MAX + 1];
+ #endif
+     char      note[40];
++#if HK_CODE
++    struct {                            /* S3-TALK: the kept picture (below) */
++        uint8_t  st, band, resettle, core_dirty, above, keep;
++        uint32_t ssig, pkey, csig, frame;
++        PlatBand b;
++    } hk;
++#endif
+ } T;
+ 
++#if HK_CODE
++static int hk_ask(const DoomoScene *top, int above);
++static void hk_drop(void);
++#endif
+ static int extra_ids[TALK_PARTS_MAX], extra_n;       /* the others the caller wants in the room */
+ static uint32_t sessions;                            /* a new seed for every talk of a day      */
+ 
+@@ -690,10 +716,13 @@ static void begin_talk(void)
+  * the Dreamcast's SH4 (the first one of "Ask about pie" 17 ms, the three of an answer 26 ms in all, on top of the
+  * 8 ms the screen costs), which is a tick over 33.3 ms: with talk_scene_slice(1) (TD2: the Dreamcast, and the unit
+  * test) the steps run one a tick from talk_update, the input is dead meanwhile, and the lines are the very same.
+- * T.gen: 1 an answer to the player (a farewell sets leaving), 2 the opener or the idle chatter. Not on the GBA. */
++ * T.gen: 1 an answer to the player (a farewell sets leaving), 2 the opener or the idle chatter. On the GBA since
++ * S3-TALK (the steps cost 20 to 60 ms each there). */
+ #ifndef DOOMO_PLATFORM_GBA
+ static uint8_t slice_on;
+ void talk_scene_slice(int on) { slice_on = (uint8_t)(on != 0); }
++#else
++#define slice_on 1                       /* S3-TALK: always sliced on the GBA (a whole answer was a 150 to 400 ms frame) */
+ #endif
+ 
+ static void gen_done(void)
+@@ -706,9 +735,7 @@ static void gen_done(void)
+ static void gen_run(int kind)
+ {
+     T.gen = (uint8_t)kind;
+-#ifndef DOOMO_PLATFORM_GBA
+     if (slice_on) return;                /* talk_update takes the steps, one a tick */
+-#endif
+     while (talk_dm_step(&T.s, NULL)) {}
+     gen_done();
+ }
+@@ -895,6 +922,9 @@ static void talk_enter(int arg)
+     T.list.item_fn = row_text;
+     resolve_stock();
+     T.active = 1;
++#if HK_CODE
++    scene_keep_below(&SCENE_TALK, hk_ask);
++#endif
+     begin_talk();
+     build_main();
+     if (talk_dm_open(&T.s)) {            /* the resident opens the talk and hands it to the player */
+@@ -906,8 +936,21 @@ static void talk_enter(int arg)
+     }
+ }
+ 
++#if HK_CODE && !defined(DOOMO_PLATFORM_GBA)
++void talk_scene_hold(int on)
++{
++    hk_on = (uint8_t)(on != 0);
++    if (!hk_on) hk_drop();
++    sessions = 0;                        /* two runs of a test say the same lines */
++}
++#endif
++
+ static void talk_leave(void)
+ {
++#if HK_CODE
++    hk_drop();
++    scene_keep_below(NULL, NULL);
++#endif
+     if (T.active) {                      /* popped from outside: still close the session */
+         TalkOutcome o;
+         talk_outcome_end(&T.s, &o, NULL);
+@@ -1063,14 +1106,11 @@ static void talk_card(int y)
+     ui_prompts_at(p, 2, WIN_CUTE, y, ui_prompts_maxw());
+ }
+ 
+-static void talk_draw(void)
++/* the people: a name and (for who you speak to) how much they are into it */
++static void draw_strip(void)
+ {
+     const UiStyle *st = ui_style(WIN_CUTE);
+-    int sw = plat_screen_w(), sh = plat_screen_h(), i, ph, py, colw, rows, mw = 0;
+-    char ttl[48];
+-    const char *mood = mood_word();
+-    ui_glint_hold(1);
+-    /* the people: a name and (for who you speak to) how much they are into it */
++    int sw = plat_screen_w(), i, colw;
+     ui_window(0, 0, sw, 24, WIN_CUTE);
+     colw = sw / (T.s.nparts > 0 ? T.s.nparts : 1);
+     for (i = 0; i < T.s.nparts; i++) {
+@@ -1081,8 +1121,15 @@ static void talk_draw(void)
+         if (p->flags & TPF_LEFT) ui_text_clip(x, 14, "(left)", st->text_dim, x, x + colw - 8);
+         else if (T.to < 0 || i == T.to) ui_bar_still(x, 15, colw - 14, 5, p->engage, 100, st->accent);
+     }
+-    py = layout(&rows);
+-    ph = sh - py;
++}
++
++/* the panel: window, the instruction line (and the mood), the list */
++static void draw_panel(int py)
++{
++    const UiStyle *st = ui_style(WIN_CUTE);
++    int sw = plat_screen_w(), ph = plat_screen_h() - py, mw = 0;
++    char ttl[48];
++    const char *mood = mood_word();
+     ui_window(0, py, sw, ph, WIN_CUTE);
+     ui_glint_hold(0);
+     if (mood) {
+@@ -1091,6 +1138,175 @@ static void talk_draw(void)
+     }
+     ui_text_clip(8, py + 5, panel_title(ttl, (int)sizeof ttl), st->text, 8, sw - 12 - mw);
+     ui_list_draw(&T.list, 6, py + 17, sw - 12, WIN_CUTE);
++}
++
++#if HK_CODE
++/* ---- S3-TALK: the kept Talk picture (GBA; docs/GBA.md "Speed wave 3: S3-TALK") --------------------------------
++ * Talk is a still picture: the scene below it (the title, the house) does not move under it any more than the people
++ * strip does, and the panel changes only when the cursor moves. But Talk is an overlay scene, so every tick the
++ * scene below was drawn in full (24 ms for the title, more for the house), then the strip, the panel and the box of a
++ * line. Now, once a full frame has been drawn, the platform keeps both Mode 4 pages as that picture
++ * (plat_hold_frame) and scene_draw does not draw the scenes below Talk (scene_keep_below, hk_ask asks every frame):
++ *   - the panel is drawn again only when its pixels change (hk_pkey: page, cursor, rows, title, mood, the cursor
++ *     heart's bob), on top of itself with its drop shadow left out (ui_shadow_kept: it is on the page already);
++ *   - the people strip likewise (hk_ssig: names, who is spoken to, the engage bars);
++ *   - a line's box (SCENE_DIALOG, drawn above Talk) draws on a kept band, as the story overworld's does (SP5,
++ *     plat_hold_band): the rows [ui_dialog_reach, screen) without the box's opaque body, with the card's rows;
++ *     when the band does not fit the arena (a scene below with a big scratch) the dialogue frames are full frames;
++ *   - a toast, a tip card, another scene over Talk, a language change or a skipped tick's gap end it: the next frame is
++ *     full, and the picture is kept again after it.
++ * The pixel change (SPEED DEFAULTS, held frames, GBA only): what moves in the scene below Talk stands still while
++ * the screen is kept (the title's drifting dots, the house's idle animations). Everything Talk draws is the same
++ * pixels as a full frame: test_talk_hold.c plays the screens kept and full over a still backdrop and compares. */
++static uint32_t hk_ssig(void)
++{
++    uint32_t h = ui_panel_key();
++    int i;
++    h = ui_key_int(h, plat_screen_w() | plat_screen_h() << 12);
++    h = ui_key_int(h, T.s.nparts | (T.to + 1) << 8);
++    for (i = 0; i < T.s.nparts; i++) {
++        const TalkPart *p = &T.s.part[i];
++        h = ui_key_int(h, p->id | ((p->flags & TPF_LEFT) ? 1 << 14 : 0) | p->engage << 16);
++    }
++    return h ? h : 1;
++}
++
++static uint32_t hk_pkey(int py)
++{
++    char ttl[48], buf[48];
++    const char *mood = mood_word();
++    uint32_t h = ui_panel_key();
++    int i, rows = T.list.count - T.list.top;
++    if (rows > T.list.visible) rows = T.list.visible;
++    h = ui_key_int(h, T.page | T.list.sel << 4 | T.list.top << 12 | T.list.count << 20);
++    h = ui_key_int(h, (mood ? (mood[0] == 'h') + 1 : 0) | (ui_wave((int)doomo_frame_count(), 20, 2) + 2) << 4 |
++                      opt_get(OPT_CURSOR) << 8 | (ui_wave((int)doomo_frame_count(), 24, 1) + 1) << 12 | py << 16);   /* the cursor heart and the scroll arrows bob */
++    h = ui_key_str(h, panel_title(ttl, (int)sizeof ttl));
++    for (i = 0; i < rows; i++) h = ui_key_str(h, row_text(T.list.top + i, buf));
++    return h ? h : 1;
++}
++
++static int hk_card_on(int py) { return !T.busy && py - 14 >= 26; }
++static uint32_t hk_csig(int py) { return (uint32_t)(hk_card_on(py) | (T.page == PG_MAIN) << 1 | 1 << 2); }
++
++static void hk_drop(void)
++{
++    if (T.hk.st) {
++        plat_hold_frame(0);
++        if (T.hk.band) plat_hold_band(PLAT_BAND_DROP, NULL);
++    }
++    memset(&T.hk, 0, sizeof T.hk);
++}
++
++/* scene_draw asks before it draws the scenes below Talk: 1 = Talk keeps the picture this frame (the band is back,
++ * Talk draws what changed), 0 = the full frame */
++static int hk_ask(const DoomoScene *top, int above)
++{
++    uint32_t f = doomo_frame_count();
++    int py;
++    T.hk.keep = 0;
++    if (!T.hk.st) return 0;
++    if (T.hk.frame + 1 != f || !T.active || above > 1 || (above == 1 && top != &SCENE_DIALOG)) { hk_drop(); return 0; }
++    T.hk.frame = f;
++    T.hk.above = (uint8_t)above;
++    if (above) T.hk.core_dirty = 1;                       /* the box draws on the panel's rows */
++    if (plat_draw_skipped()) { T.hk.keep = 1; return 1; }   /* nothing is drawn on a skipped tick */
++    if (ui_toast_pending() || tip_active() || !HK_ON) { hk_drop(); return 0; }
++#if DOOMO_POINTER
++    if (input_pointer(NULL, NULL)) { hk_drop(); return 0; }      /* the arrow moves over the picture */
++#endif
++    py = layout(NULL);
++    if ((above && !T.hk.band) || (!T.hk.band && hk_csig(py) != T.hk.csig)) { hk_drop(); return 0; }
++    if (T.hk.resettle || !plat_hold_frame(4)) {           /* a push or pop of the box released the hold: hold the picture just shown again */
++        if (!plat_hold_frame(2)) { hk_drop(); return 0; }
++        T.hk.resettle = 0;
++    }
++    if (T.hk.band && !plat_hold_band(PLAT_BAND_RESTORE, &T.hk.b)) { hk_drop(); return 0; }
++    T.hk.keep = 1;
++    return 1;
++}
++
++/* a full frame has been drawn (strip, panel): keep it */
++static void hk_save(int py)
++{
++    int cx0, cy0, cx1, cy1, reach, top, card = hk_card_on(py);
++    PlatBand b;
++    const DoomoScene *above = scene_drawn_above();
++    memset(&T.hk, 0, sizeof T.hk);
++    if (!HK_ON || plat_draw_skipped() || ui_toast_pending() || tip_active() ||
++        (above && above != &SCENE_DIALOG)) return;
++    reach = ui_dialog_reach(&cx0, &cy0, &cx1, &cy1);
++    b.y_need = (int16_t)DOOMO_MIN(reach, py);
++    b.y_want = (int16_t)DOOMO_MAX(py - 14, 0);            /* the card's rows too when the arena has room */
++    if (b.y_want > b.y_need) b.y_want = b.y_need;
++    b.cx0 = (int16_t)cx0; b.cy0 = (int16_t)cy0; b.cx1 = (int16_t)cx1; b.cy1 = (int16_t)cy1;
++    top = plat_hold_band(PLAT_BAND_SAVE, &b);
++    if (top >= 0 && (top <= py - 14 || py - 14 < 26)) {   /* the band covers the card's rows: the box and the card come and go on it */
++        T.hk.band = 1;
++        T.hk.b = b;
++    } else if (top >= 0) {
++        plat_hold_band(PLAT_BAND_DROP, NULL);             /* it does not reach the card: no band, the card's state is in the signature */
++    }
++    T.hk.st = 1;
++    T.hk.ssig = hk_ssig();
++    T.hk.pkey = hk_pkey(py);
++    T.hk.csig = hk_csig(py);
++    T.hk.frame = doomo_frame_count();
++    T.hk.above = (uint8_t)(above != NULL);
++    T.hk.core_dirty = 0;
++    (void)card;
++}
++
++/* the frame is kept: only what changed is drawn, on top of itself */
++static void hk_draw(int py)
++{
++    int changed = 0;
++    uint32_t k;
++    T.hk.keep = 0;
++    if (plat_draw_skipped()) return;
++    ui_glint_hold(1);
++    k = hk_ssig();
++    if (k != T.hk.ssig) {
++        ui_shadow_kept(0, 0, plat_screen_w(), 24);
++        draw_strip();
++        T.hk.ssig = k;
++        changed = 1;
++    }
++    k = hk_pkey(py);
++    if (k != T.hk.pkey || (!T.hk.above && T.hk.core_dirty)) {   /* the cursor moved, or the box that drew in the panel is gone */
++        ui_shadow_kept(0, py, plat_screen_w(), plat_screen_h() - py);
++        draw_panel(py);
++        if (T.hk.band) plat_hold_band(PLAT_BAND_SAVE, &T.hk.b);   /* the band is the new panel */
++        T.hk.pkey = k;
++        T.hk.core_dirty = 0;
++        changed = 1;
++    }
++    ui_glint_hold(0);
++    ui_shadow_kept(0, 0, 0, 0);
++    if (changed) {
++#ifdef DOOMO_PLATFORM_GBA
++        T.hk.resettle = 1;                                    /* the other page gets the picture on the next tick */
++#else
++        plat_hold_frame(2);                                   /* native: the held copy is taken now */
++#endif
++    }
++    if (hk_card_on(py)) talk_card(py - 14);
++}
++#endif /* HK_CODE */
++
++static void talk_draw(void)
++{
++    int py;
++#if HK_CODE
++    if (T.hk.keep) { hk_draw(layout(NULL)); return; }
++#endif
++    ui_glint_hold(1);
++    draw_strip();
++    py = layout(NULL);
++    draw_panel(py);
++#if HK_CODE
++    hk_save(py);                                          /* before the card: the band's copy has none */
++#endif
+     if (!T.busy && py - 14 >= 26) talk_card(py - 14);   /* not under an open dialogue box (A advances the line) */
+ #if DOOMO_POINTER
+     pointer_draw();
+diff --git a/core/src/ui.c b/core/src/ui.c
+index 22315d9..f9d5a4c 100644
+--- a/core/src/ui.c
++++ b/core/src/ui.c
+@@ -163,6 +163,26 @@ void ui_window_rows(int x, int y, int w, int h, int style, int cx0, int cx1, int
+     }
+ }
+ 
++/* ---- S3-TALK (ui.h): windows whose drop shadow is on the kept page already ------------------------------------ */
++#if !defined(DOOMO_PLATFORM_PS1)
++static int16_t ks_r[2][4];
++static uint8_t ks_n;
++void ui_shadow_kept(int x, int y, int w, int h)
++{
++    if (w <= 0) { ks_n = 0; return; }                  /* off */
++    if (ks_n >= 2) ks_n = 0;
++    ks_r[ks_n][0] = (int16_t)x; ks_r[ks_n][1] = (int16_t)y; ks_r[ks_n][2] = (int16_t)w; ks_r[ks_n][3] = (int16_t)h;
++    ks_n++;
++}
++static int ks_match(int x, int y, int w, int h)
++{
++    int i;
++    for (i = 0; i < ks_n; i++)
++        if (ks_r[i][0] == x && ks_r[i][1] == y && ks_r[i][2] == w && ks_r[i][3] == h) return 1;
++    return 0;
++}
++#endif
++
+ /* ---- S2-1 modal hold (ui.h) ---------------------------------------------- */
+ #if !defined(DOOMO_PLATFORM_PS1)
+ static const void *mh_key;           /* the modal the state belongs to */
+@@ -268,7 +288,7 @@ void ui_modal_full(const void *key, int ok)
+     }
+     if (mh_steady()) mh_st = 1;
+ }
+-#define MH_NO_SHADOW(x, y, w, h) (mh_in && (x) == mh_x && (y) == mh_y && (w) == mh_w && (h) == mh_h)
++#define MH_NO_SHADOW(x, y, w, h) ((mh_in && (x) == mh_x && (y) == mh_y && (w) == mh_w && (h) == mh_h) || ks_match(x, y, w, h))
+ #else
+ #define MH_NO_SHADOW(x, y, w, h) 0
+ #endif
+diff --git a/core/src/ui_dialog.c b/core/src/ui_dialog.c
+index 38169db..0835bcb 100644
+--- a/core/src/ui_dialog.c
++++ b/core/src/ui_dialog.c
+@@ -851,6 +851,26 @@ int ui_dialog_band(int *y_need, int *cx0, int *cy0, int *cx1, int *cy1)
+     return *cy1 > *cy0;
+ }
+ 
++/* S3-TALK: where a plain line's box and portrait can draw on this screen, wherever the box is in its slide-in
++ * (ui_dialog_band's rules, for the box in its final place): the first row any of it can reach (the portrait and
++ * the name pill stand 48 rows above the box; the '!' hop and a 2-row margin), and the rect [cx0, cx1) x [cy0, cy1)
++ * that is opaque box body on every frame, the slide-in included (the box only moves up, so the rows of that rect
++ * above the box are rows no earlier frame drew in). A host that keeps the picture under the box (talk_scene.c)
++ * keeps rows [reach, screen height) without that rect. A choice window reaches higher: not for those. */
++int ui_dialog_reach(int *cx0, int *cy0, int *cx1, int *cy1)
++{
++    DlgEntry e;
++    DlgBox b;
++    memset(&e, 0, sizeof e);
++    e.speaker = -1;
++    dlg_box(&e, &b);
++    if (cx0) *cx0 = b.x;
++    if (cx1) *cx1 = b.x + b.w;
++    if (cy0) *cy0 = b.y + 1 + 5;
++    if (cy1) *cy1 = b.y - 2 + b.h - 5;
++    return DOOMO_MAX(b.y - 48 - 2, 0);
++}
++
+ /* ---- S1 hooks for hosts and tests ------------------------------------------- */
+ int ui_dialog_insert(int *age)
+ {
+diff --git a/core/tests/test_talk_hold.c b/core/tests/test_talk_hold.c
+new file mode 100644
+index 0000000..3398508
+--- /dev/null
++++ b/core/tests/test_talk_hold.c
+@@ -0,0 +1,145 @@
++/* test_talk_hold.c - S3-TALK: the kept Talk picture (core/src/talk_scene.c hk_*, scene.h scene_keep_below).
++ *
++ * Talk keeps its picture once a full frame has been drawn: the scenes below it are not drawn again, the panel and
++ * the people strip are drawn again on top of themselves only when they change, and the box of a line draws on a
++ * kept band (plat_hold_band) like the story overworld's. The same long Talk run (opener, a cursor that moves, pages,
++ * quick replies, the boxes of every answer, the goodbye and its toast) is played twice over a STILL backdrop, with the
++ * kept picture off (every frame full, as before) and on, and the screens are compared:
++ *   - every frame of the run is the same picture, pixel for pixel (the backdrop does not move, so a kept frame has
++ *     nothing to differ in: the one pixel change of the feature, a moving backdrop standing still, is not in this test);
++ *   - with it on, the backdrop is drawn on a small part of the frames (the keep works), and the band is put back on
++ *     many of them (the box of a line draws on a kept picture too);
++ *   - the same run twice with it off is the same picture (the control: the comparison says something).
++ * At 240x160 and 320x240. S3DBGF=N dumps frame N of both runs to /tmp/s3_dbg_{on,off}.raw (a debugging aid). */
++#define DOOMO_TALK_DEBUG 1
++#include <stdlib.h>
++#include "test.h"
++#include "doomo/doomo.h"
++#include "doomo/talk.h"
++#include "doomo/lang.h"
++#include "doomo/town.h"
++#include "doomo/ui.h"
++#include "doomo/scenes.h"
++#include "doomo/plat_ext.h"
++#include "doomo/portrait.h"
++
++#define ID_NANA 1
++#define MAXF 2600
++
++static uint8_t dbgfb[2][NAT_MAX_W * NAT_MAX_H];
++static int dbgf = -1, dbgn;
++static uint32_t still_draws;
++static void still_draw(void)
++{
++    int w = plat_screen_w(), h = plat_screen_h(), i;
++    still_draws++;
++    plat_clear(PAL_UI_PINK);
++    for (i = 0; i < 12; i++) plat_rect(i * 21 % w, i * 13 % h, 30, 14, (uint8_t)(40 + i * 7));
++    plat_checker(0, h / 2, w, 6, PAL_WHITE);
++}
++static const DoomoScene STILL = { "STILL", NULL, NULL, NULL, still_draw, 0 };
++
++static void frame(uint32_t b) { plat_begin_frame(); doomo_frame(b); plat_end_frame(); }
++
++static void set_res(int w, int h)
++{
++    NatOptions o;
++    memset(&o, 0, sizeof(o));
++    o.w = w; o.h = h; o.seed = 0x5EED1234u; o.quiet = 1;
++    o.save_dir = test_tmp_dir;
++    nat_init(&o);
++}
++
++static uint32_t hash_fb(void)
++{
++    int n = plat_screen_w() * plat_screen_h(), i;
++    uint32_t h = 2166136261u;
++    for (i = 0; i < n; i++) { h ^= nat_fb[i]; h *= 16777619u; }
++    return h;
++}
++
++/* the pad: a few presses a second, by what the screen shows (the same for both runs: it reads the same state) */
++static uint32_t pad(int f, int bye)
++{
++    TalkSceneDebug d;
++    if (!talk_scene_debug(&d)) return 0;
++    if (bye) return (f % 12 == 0) ? (d.busy ? BTN_A : BTN_B) : 0;
++    if (d.busy) return f % 37 == 0 ? BTN_A : 0;
++    if (strcmp(d.page, "main") != 0) return f % 23 == 5 ? BTN_B : (f % 7 == 3 ? BTN_DOWN : 0);
++    if (f % 61 == 40) return BTN_A;                  /* a quick reply, a category, Options... */
++    if (f % 29 == 5) return BTN_DOWN;
++    if (f % 83 == 20) return BTN_UP;
++    return 0;
++}
++
++static int run(int hold, int w, int h, uint32_t *hs, uint32_t *draws, uint32_t *restores)
++{
++    int f, n = 0;
++    uint32_t r0;
++    set_res(w, h);
++    doomo_init();                                        /* the frame clock starts at 0: the bobs, blinks and idle chatter follow it */
++    test_reset();
++    town_new(TOWN_FREEPLAY, 7, TOWN_POP_PREMADE);
++    talk_mem_reset();
++    talk_outcome_reset();
++    portrait_cache_reset();
++    talk_scene_hold(hold);
++    still_draws = 0;
++    r0 = nat_band_restores;
++    scene_set(&STILL, 0);
++    frame(0); frame(0);
++    if (!home_talk_enter(ID_NANA)) return -1;
++    for (f = 0; f < MAXF; f++) {
++        frame(pad(f, f > MAXF - 900));
++        hs[n++] = hash_fb();
++        if (f == dbgf) memcpy(dbgfb[dbgn & 1], nat_fb, (size_t)(w * h));
++        if (f > MAXF - 120 && scene_top() == &STILL) break;
++    }
++    if (dbgf >= 0) dbgn++;
++    *draws = still_draws;
++    *restores = nat_band_restores - r0;
++    talk_scene_hold(0);
++    return n;
++}
++
++static void dump(int w, int h)
++{
++    int x, y, n0 = 0, x0 = 9999, x1 = 0, y0 = 9999, y1 = 0;
++    FILE *fp;
++    for (y = 0; y < h; y++)
++        for (x = 0; x < w; x++)
++            if (dbgfb[0][y * w + x] != dbgfb[1][y * w + x]) { n0++; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
++    fprintf(stderr, "frame %d: %d pixels differ, box %d,%d..%d,%d\n", dbgf, n0, x0, y0, x1, y1);
++    fp = fopen("/tmp/s3_dbg_on.raw", "wb");
++    if (fp) { fwrite(dbgfb[0], 1, (size_t)(w * h), fp); fclose(fp); }
++    fp = fopen("/tmp/s3_dbg_off.raw", "wb");
++    if (fp) { fwrite(dbgfb[1], 1, (size_t)(w * h), fp); fclose(fp); }
++}
++
++static void same_run(int w, int h)
++{
++    static uint32_t a[MAXF], b[MAXF], c[MAXF];
++    uint32_t da, db, dc, ra, rb, rc;
++    int na, nb, nc, i, first = -1, bad = 0;
++    if (getenv("S3DBGF")) dbgf = atoi(getenv("S3DBGF"));
++    (void)run(0, w, h, c, &dc, &rc);                     /* a warm-up: the first run of a process starts from other statics */
++    dbgn = 0;
++    na = run(0, w, h, a, &da, &ra);
++    nb = run(0, w, h, b, &db, &rb);                      /* the control: the same run twice is the same picture */
++    CHECK(na > 600 && na == nb);
++    for (i = 0; i < na && i < nb; i++) if (a[i] != b[i]) { if (first < 0) first = i; bad++; }
++    CHECK_MSG(bad == 0, "%dx%d: the run is not repeatable (%d frames differ, the first is %d): the test says nothing", w, h, bad, first);
++    first = -1; bad = 0;
++    nc = run(1, w, h, c, &dc, &rc);
++    if (dbgf >= 0) dump(w, h);
++    CHECK_EQ(na, nc);
++    for (i = 0; i < na && i < nc; i++)
++        if (a[i] != c[i]) { if (first < 0) first = i; bad++; }
++    CHECK_MSG(bad == 0, "%dx%d: %d of %d frames differ from the full run, the first is frame %d", w, h, bad, na, first);
++    CHECK_MSG(dc * 3 < da, "%dx%d: the backdrop was drawn %u times kept, %u full: the keep did not engage", w, h, (unsigned)dc, (unsigned)da);
++    CHECK_MSG(rc > 40 && ra == 0, "%dx%d: the band was put back %u times (full run %u)", w, h, (unsigned)rc, (unsigned)ra);
++    (void)db; (void)rb;
++}
++
++TEST(talk_kept_picture_is_the_full_picture_240x160) { same_run(240, 160); }
++TEST(talk_kept_picture_is_the_full_picture_320x240) { same_run(320, 240); }
+-- 
+2.43.0
+

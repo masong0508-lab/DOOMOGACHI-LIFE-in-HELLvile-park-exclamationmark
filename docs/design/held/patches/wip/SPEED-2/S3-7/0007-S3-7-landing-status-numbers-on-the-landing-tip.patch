@@ -1,0 +1,33 @@
+From 390decc34655c17e3e89310235150ad82ca61190 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:48:36 +0000
+Subject: [PATCH 7/7] S3-7 landing: status numbers on the landing tip
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ docs/design/held/status/SPEED.md | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/docs/design/held/status/SPEED.md b/docs/design/held/status/SPEED.md
+index 6cafbd3..10a9c81 100644
+--- a/docs/design/held/status/SPEED.md
++++ b/docs/design/held/status/SPEED.md
+@@ -29,7 +29,7 @@ delta, GBA sizes), in flight (package and stage), next up, blockers, needs from
+ The second SPEED machine (lead `session_01Xd63cvyt9PpfrF57wBDFeR`, wave "SPEED-2 round 1", started 2026-11-15; the first machine's coordinator is
+ `session_01RLcGbHBa2kju7ynbaJLHT6`). One line per package, newest last.
+ 
+-- **S3-7, the cutscene backdrops (2026-11-15, built on `fe41002`; the lander adds the landing tip and gate results; `docs/GBA.md` "Speed wave 3: S3-7", ledger row S3-7):**
++- **S3-7, the cutscene backdrops (2026-11-15, built on `fe41002`, landed on the tip `0d7e0d6` (2026-11-15); `docs/GBA.md` "Speed wave 3: S3-7", ledger row S3-7):**
+   the home, fog, eruption and Vapula vignettes keep their still sky / wall / room (and Vapula's demon, the eruption's swelling cloud) as baked
+   pictures (backdrop ids 6 and 7, `core/src/cutscene.c`) and draw every puff cloud as a stamp. **GBA speed2 group `cutscene`, drawn fps (work ms), before ->
+   after:** card 2 15.0 (59.6) -> 30.0 (20.8); home 24.0 / 22.0 (37.6 / 38.3) -> 30.0 (18.3 / 19.0); fog 10.0 / 9.4 / 10.0 (94-103) -> 30.0 (27.7-28.5), logic
+@@ -38,4 +38,4 @@ The second SPEED machine (lead `session_01Xd63cvyt9PpfrF57wBDFeR`, wave "SPEED-2
+   title is rasterised again); single 50 ms frames at the first tick of eruption shot 2, Vapula shot 3 and the bridge (the caption window and the first ask of a
+   picture). Exact (`test_cutbk`, ROM `vhash-seq`) but three GBA-only pixel changes: the sky's seam row is a clean dither (it was the page's old content), the
+   eruption's cloud past 50 px does not breathe, crowd bodies the cache lacks show a few ticks late (`bodyspr_lazy(3)`). Cost: ROM +4.24 MB
+-  (`backdrops.bin` 3.66 -> 7.90 MB), EWRAM / IWRAM resident 0 B. **PS1: resident 0 B** (base and S3-7 both `_end` 0x801e0420, 130,000 B below the stack top on `fe41002`; the story overlay +16 B; `game_smoke` passes; the 16 `cutscene` windows give the same numbers and byte-identical shots). **Found, not mine:** on the PS1 (base and S3-7 alike) eruption shots 2-4 run 29.4 / 23.0 / 19.2 fps and Vapula shot 3 27.0 fps (the audit's windows were the first shot of each vignette); the Dreamcast was not measured (KallistiOS not installed when this was built).
++  (`backdrops.bin` 3.66 -> 7.90 MB), EWRAM / IWRAM resident 0 B. **PS1: resident 0 B** (base and S3-7 both `_end` 0x801e0420, 130,000 B below the stack top on `fe41002`; the story overlay +16 B; `game_smoke` passes; the 16 `cutscene` windows give the same numbers and byte-identical shots). **On the landing tip `0d7e0d6` (clean builds, both against the same tip without S3-7):** GBA `.bss` 210,508 B, `.data` 816 B, `.iwram` 11,288 B, `.iwram_bss` 4,088 B and the four overlay groups identical (EWRAM / IWRAM delta 0); ROM `.text` +1,488 B, `.rodata` +4,237,480 B; PS1 with the boot FMV 110,608 B below the stack top, the same as the tip (delta 0 B); core 1,500 passed 0 failed (SAN run on the previous rebase: 1,462 passed, no new report), check-gen, xcheck (all compilers), `gba test`, `dc-host-test` green; speed2 `cutscene` on the landing tree: every window 30.0 fps except chapter card 4 (22.0, S3-12) and two single 50 ms frames (eruption shot 2, Vapula shot 3, work 28.7 ms); `story` and `fishcook` groups unchanged. Backdrop ids are 6 and 7 (the concert took 5). Not run: `make -C dc` and the Flycast windows (the Dreamcast draws the old way: the stage hooks are weak defaults). **Found, not mine:** on the PS1 (base and S3-7 alike) eruption shots 2-4 run 29.4 / 23.0 / 19.2 fps and Vapula shot 3 27.0 fps (the audit's windows were the first shot of each vignette); the Dreamcast was not measured (KallistiOS not installed when this was built).
+-- 
+2.43.0
+

@@ -1,0 +1,307 @@
+From 0e2ea64f1cc1c3f474cf84de1a22746fb360a043 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 18:40:29 +0000
+Subject: [PATCH 04/11] cross-stream: S3-8 level select: the preview's backdrop
+ holes, title and blurb+card as solid panels, the old preview stays during the
+ slide (GBA idle 35.8 -> 27.6 ms; core/src/levels_select.c is LEVELS' file)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ core/include/doomo/ui.h    |   3 +
+ core/src/levels_select.c   | 132 ++++++++++++++++++++++++++++---------
+ core/src/ui_draw.c         |  24 +++++++
+ core/tests/test_lib_kept.c |   1 +
+ core/tests/test_panel.c    |  22 +++++++
+ 5 files changed, 150 insertions(+), 32 deletions(-)
+
+diff --git a/core/include/doomo/ui.h b/core/include/doomo/ui.h
+index 0699c93..045e453 100644
+--- a/core/include/doomo/ui.h
++++ b/core/include/doomo/ui.h
+@@ -412,6 +412,9 @@ void ui_style_use(int style);
+ /* (S2-9, pixel-changing) ui_backdrop_holes() without the drifting dots, hearts and twinkles: the bands and their
+  * seams (for a scene whose windows leave only slivers of backdrop and whose panels stand on a still one) */
+ void ui_backdrop_flat(int style, const int *holes, int n);
++/* (S3-8, pixel-changing) the bands and seams of ui_backdrop() inside the rect (x, y, w, h) only: the body of a retained
++ * panel that stands on the backdrop (its dots, hearts and twinkles do not show in the rect) */
++void ui_backdrop_rows(int style, int x, int y, int w, int h);
+ #endif
+ uint32_t ui_key_int(uint32_t h, int32_t v);
+ uint32_t ui_key_str(uint32_t h, const char *s);
+diff --git a/core/src/levels_select.c b/core/src/levels_select.c
+index fddaf96..6917dca 100644
+--- a/core/src/levels_select.c
++++ b/core/src/levels_select.c
+@@ -26,6 +26,7 @@ static struct {
+     uint32_t unlocked_mask;
+ #if !defined(DOOMO_PLATFORM_PS1)
+     uint8_t  pv_held;                /* S2-2: the platform holds the preview: it stands still between level changes */
++    uint32_t pv_key;                 /* S3-8: the key it holds the picture under (the old one stays up during a slide) */
+ #endif
+     uint16_t t, pv_t, flash_t, msg_t;
+     int16_t  slide;
+@@ -251,7 +252,8 @@ static int thing_image(int type, const DoomoImage **img, int *scale, int *flags)
+     return *img != NULL;
+ }
+ 
+-static void preview(int x, int y, int w, int h)
++/* returns 1 when it put back the old level's held picture (a slide: GBA, S3-8) and so drew nothing at x, y */
++static int preview(int x, int y, int w, int h)
+ {
+     const LevelInfo *L = &lv_info[ls.sel];
+     const DoomoMapDef *d = doomo_map.def;
+@@ -293,13 +295,17 @@ static void preview(int x, int y, int w, int h)
+ #if !defined(DOOMO_PLATFORM_PS1)
+     {
+         uint32_t key = combat_view_key(&v, (uint32_t)ls.sel << 8 | ls.mode);
+-        if (plat_view_hold(PLAT_VIEW_PUT, key)) return;
++        /* S3-8 (pixel-changing, GBA): while the slide runs the old level's picture stays where it was (no render per
++         * step of the slide: 10 ms of view and 8 ms of copy each); one render when the slide has ended */
++        if (ls.slide && ls.pv_held && plat_view_hold(PLAT_VIEW_PUT, ls.pv_key)) return 1;
++        if (plat_view_hold(PLAT_VIEW_PUT, key)) { ls.pv_key = key; return 0; }
+         plat_view3d(&v);
+-        if (plat_view_hold(PLAT_VIEW_KEEP, key)) ls.pv_held = 1;
++        if (plat_view_hold(PLAT_VIEW_KEEP, key)) { ls.pv_held = 1; ls.pv_key = key; }
+     }
+ #else
+     plat_view3d(&v);                 /* (the PS1 holds 30 here: no copy, no resident RAM for it) */
+ #endif
++    return 0;
+ }
+ 
+ /* ---- drawing ------------------------------------------------------------------ */
+@@ -343,14 +349,94 @@ static void draw_pips(int cy, int big)
+     }
+ }
+ 
++/* S3-8 (pixel-changing, GBA): the title and the blurb are solid retained panels (platform.h plat_panel_begin; outlined
++ * text was 6.4 + 3.3 ms of every frame): they stand where the level's text stands, drawn inside the panel when the
++ * level, mode, language or style change, put back from the shown page on every other frame. The backdrop under them
++ * stands still with them (its dots and hearts drift on round the rects), and the pips, which lie over the title's top
++ * rows for a moment at the lowest of their bob, are drawn after it (a pixel or two of the selected pip's shadow lies
++ * over the title's outline instead of under it). The PS1 and the Dreamcast draw as before. */
++static int text_keep(int id, int x, int y, int w, int h, uint32_t key, int style)
++{
++#if UI_PANELS
++    if (!plat_panel_begin(id, x, y, w, h, key)) {
++        plat_panel_end();
++        return 0;
++    }
++    plat_panel_solid();
++    ui_backdrop_rows(style, x, y, w, h);          /* its body: the backdrop's bands under the text */
++#else
++    (void)id; (void)x; (void)y; (void)w; (void)h; (void)key; (void)style;
++#endif
++    return 1;
++}
++
++static void text_title(int sw, int ty, int big, int style, const LevelInfo *L)
++{
++    int wide = big && ui_text_big_width(L->title, 2) < sw - 20;
++    int tw = wide ? ui_text_big_width(L->title, 2) : ui_text_width(L->title);
++    int x = sw / 2 - tw / 2;
++#if UI_PANELS
++    uint32_t key = ui_key_str(ui_panel_key(), L->title);
++    key = ui_key_int(ui_key_int(key, style | wide << 8), sw);
++    if (!text_keep(PANEL_OW_OBJECTIVE, x - 3, ty - 1, tw + 6, wide ? 20 : 11, key, style)) return;
++#endif
++    if (wide) ui_text_big(x, ty, L->title, 2, PAL_WHITE, ui_style(style)->outline);
++    else ui_text_outline(x, ty, L->title, PAL_WHITE, ui_style(style)->outline);
++#if UI_PANELS
++    plat_panel_end();
++#endif
++}
++
++/* the blurb, the numbers' card and the boss line under it, one panel (the card lies over a third line of the blurb) */
++static void text_card(int sw, int ty, int big, int style, const LevelInfo *L, int unl)
++{
++    char buf[64], tb[12], boss[40];
++    int ch = L->boss != LB_NONE ? 22 : 12;
++    if (ls.mode == LVM_TIME_TRIAL) {
++        lvd_time(tb, sizeof(tb), L->dev);
++        doomo_snprintf(buf, sizeof(buf), STR_ICON_BOLT " Gold time %s   %s", tb, lv_gold(ls.sel) ? STR_ICON_STAR " GOLD!" : "no medal yet");
++    } else {
++        lvd_time(tb, sizeof(tb), L->par);
++        doomo_snprintf(buf, sizeof(buf), STR_ICON_STAR " Par %s   Best %s   %s", tb, lv_rank_names[lv_rank(ls.sel)],
++                       ls.mode == LVM_CUTE_ONLY ? STR_ICON_HEART "cute only" :
++                       ls.mode == LVM_BRUTAL_ONLY ? STR_ICON_SKULL "brutal only" : "");
++    }
++    boss[0] = 0;
++    if (L->boss != LB_NONE)
++        doomo_snprintf(boss, sizeof(boss), STR_ICON_SKULL " %s", unl ? lv_boss[L->boss].name : "???");
++#if UI_PANELS
++    {
++        uint32_t key = ui_key_str(ui_key_str(ui_panel_key(), L->blurb), buf);
++        key = ui_key_int(ui_key_int(ui_key_str(key, boss), style | big << 8 | ch << 9), sw);
++        if (!text_keep(PANEL_OW_CLOCK, 4, ty - 1, sw - 8, 21 + ch, key, style)) goto card_done;
++    }
++#endif
++    ui_text_wrap(8, ty, sw - 16, L->blurb, ui_style(style)->text, 1);
++    ty += 21;
++    /* the numbers on a dark card in the theme's own outline colour */
++    ui_round_rect(4, ty - 2, sw - 8, ch, 4, ui_style(style)->outline);
++    plat_rect(8, ty - 2, sw - 16, 1, ui_lighter(ui_style(style)->outline));
++    ui_text_outline(8, ty, buf, PAL_UI_GOLD, PAL_BLACK);
++    if (L->boss != LB_NONE) ui_text_outline(8, ty + 10, boss, PAL_RAMP(RAMP_LAVA, 7), PAL_BLACK);
++#if UI_PANELS
++    plat_panel_end();
++card_done:
++#endif
++    (void)ty;
++}
++
+ static void ls_draw(void)
+ {
+     const LevelInfo *L = &lv_info[ls.sel];
+     int sw = plat_screen_w(), sh = plat_screen_h(), big = lvd_big(), style = theme_style();
+     int px = big ? 12 : 10, py = big ? 22 : 19, pw = sw - px * 2, ph = big ? 108 : 54;
+     int unl = lv_unlocked(ls.sel), ty, k;
+-    char buf[64], tb[12];
+-    ui_backdrop(style, ls.t);
++    char buf[64];
++    {
++        int hole[4];                 /* S3-8: the preview covers its rect: the backdrop under it is never seen */
++        hole[0] = px; hole[1] = py; hole[2] = px + pw; hole[3] = py + ph;
++        ui_backdrop_holes(style, ls.t, hole, 1);
++    }
+     if (plat_draw_skipped()) return;
+     ui_title(sw / 2, 3, ls.mode != LVM_NORMAL ? lv_mode_names[ls.mode] : page_title(), style);
+     if (mode_open(LVM_TIME_TRIAL)) {
+@@ -360,8 +446,7 @@ static void ls_draw(void)
+     /* the preview window */
+     ui_round_rect(px - 3, py - 3, pw + 6, ph + 6, 5, ui_style(style)->outline);
+     ui_round_rect(px - 2, py - 2, pw + 4, ph + 4, 4, ui_style(style)->fill_hi);
+-    preview(px + ls.slide, py, pw, ph);
+-    if (ls.slide) plat_rect(ls.slide > 0 ? px : px + pw + ls.slide, py, ls.slide > 0 ? ls.slide : -ls.slide, ph,
++    if (!preview(px + ls.slide, py, pw, ph) && ls.slide) plat_rect(ls.slide > 0 ? px : px + pw + ls.slide, py, ls.slide > 0 ? ls.slide : -ls.slide, ph,
+                             ui_style(style)->fill_hi);
+     if (!unl) {
+         plat_shade_rect(px, py, pw, ph, 9);
+@@ -405,35 +490,18 @@ static void ls_draw(void)
+             ui_text(nx + 5, ny + 2, "NEW!", PAL_UI_RED_D);
+         }
+     }
++#if !UI_PANELS
+     draw_pips(py + ph + (big ? 15 : 10), big);
++#endif
+     /* title + blurb + numbers */
+     ty = py + ph + (big ? 30 : 20);
+-    if (big && ui_text_big_width(L->title, 2) < sw - 20)
+-        ui_text_big(sw / 2 - ui_text_big_width(L->title, 2) / 2, ty, L->title, 2, PAL_WHITE, ui_style(style)->outline);
+-    else
+-        ui_text_outline(sw / 2 - ui_text_width(L->title) / 2, ty, L->title, PAL_WHITE, ui_style(style)->outline);
++    text_title(sw, ty, big, style, L);
+     ty += big ? 20 : 11;
+-    ui_text_wrap(8, ty, sw - 16, L->blurb, ui_style(style)->text, 1);
+-    ty += 21;
+-    if (ls.mode == LVM_TIME_TRIAL) {
+-        lvd_time(tb, sizeof(tb), L->dev);
+-        doomo_snprintf(buf, sizeof(buf), STR_ICON_BOLT " Gold time %s   %s", tb, lv_gold(ls.sel) ? STR_ICON_STAR " GOLD!" : "no medal yet");
+-    } else {
+-        lvd_time(tb, sizeof(tb), L->par);
+-        doomo_snprintf(buf, sizeof(buf), STR_ICON_STAR " Par %s   Best %s   %s", tb, lv_rank_names[lv_rank(ls.sel)],
+-                       ls.mode == LVM_CUTE_ONLY ? STR_ICON_HEART "cute only" :
+-                       ls.mode == LVM_BRUTAL_ONLY ? STR_ICON_SKULL "brutal only" : "");
+-    }
+-    /* the numbers on a dark card in the theme's own outline colour */
+-    ui_round_rect(4, ty - 2, sw - 8, L->boss != LB_NONE ? 22 : 12, 4, ui_style(style)->outline);
+-    plat_rect(8, ty - 2, sw - 16, 1, ui_lighter(ui_style(style)->outline));
+-    ui_text_outline(8, ty, buf, PAL_UI_GOLD, PAL_BLACK);
+-    if (L->boss != LB_NONE) {
+-        const LevelBoss *b = &lv_boss[L->boss];
+-        doomo_snprintf(buf, sizeof(buf), STR_ICON_SKULL " %s", unl ? b->name : "???");
+-        ui_text_outline(8, ty + 10, buf, PAL_RAMP(RAMP_LAVA, 7), PAL_BLACK);
+-        if (big && unl) lvd_boss_figure(L->boss, sw - 34, sh - 18, ls.t, 1, 1);
+-    }
++    text_card(sw, ty, big, style, L, unl);
++#if UI_PANELS
++    draw_pips(py + ph + (big ? 15 : 10), big);     /* (after the title: see text_title) */
++#endif
++    if (L->boss != LB_NONE && big && unl) lvd_boss_figure(L->boss, sw - 34, sh - 18, ls.t, 1, 1);
+     if (ls.msg_t) {
+         int w = ui_text_width(ls.msg) + 14, x = sw / 2 - w / 2, y = py + ph / 2 - 6;
+         ui_round_rect(x, y + ui_wave(ls.msg_t, 20, 1), w, 13, 6, PAL_UI_GOLD);
+diff --git a/core/src/ui_draw.c b/core/src/ui_draw.c
+index 9591dad..23599e1 100644
+--- a/core/src/ui_draw.c
++++ b/core/src/ui_draw.c
+@@ -417,6 +417,30 @@ void ui_backdrop_flat(int style, const int *hl, int n)
+     seam_row(b2, w, b.mid, 1);
+ }
+ 
++/* a seam row of seam_row() inside [x, x + w): the same dots (the checker's phase is the call's corner) */
++static void seam_part(int x, int w, int y, uint8_t c, int phase)
++{
++    int s0 = x + ((x - (phase & 1)) & 1);
++    if (s0 < x + w) plat_checker(s0, y, x + w - s0, 1, c);
++}
++
++void ui_backdrop_rows(int style, int x, int y, int w, int h)
++{
++    Backdrop b;
++    int H = plat_screen_h(), b1 = H / 3, b2 = H * 2 / 3, y1 = y + h, a;
++    if (plat_draw_skipped() || w <= 0 || h <= 0) return;
++    backdrop_colors(style, &b);
++    a = DOOMO_MIN(y1, b1);
++    if (y < a) plat_rect(x, y, w, a - y, b.top);
++    if (DOOMO_MAX(y, b1) < DOOMO_MIN(y1, b2)) plat_rect(x, DOOMO_MAX(y, b1), w, DOOMO_MIN(y1, b2) - DOOMO_MAX(y, b1), b.mid);
++    a = DOOMO_MAX(y, b2);
++    if (a < y1) plat_rect(x, a, w, y1 - a, b.bot);
++    if (b1 - 1 >= y && b1 - 1 < y1) seam_part(x, w, b1 - 1, b.mid, 0);
++    if (b1 >= y && b1 < y1) seam_part(x, w, b1, b.top, 1);
++    if (b2 - 1 >= y && b2 - 1 < y1) seam_part(x, w, b2 - 1, b.bot, 0);
++    if (b2 >= y && b2 < y1) seam_part(x, w, b2, b.mid, 1);
++}
++
+ void ui_backdrop_hole(int style, uint32_t t, int hx0, int hy0, int hx1, int hy1)
+ {
+     int hl[4];
+diff --git a/core/tests/test_lib_kept.c b/core/tests/test_lib_kept.c
+index 0e3cab5..be71230 100644
+--- a/core/tests/test_lib_kept.c
++++ b/core/tests/test_lib_kept.c
+@@ -5,6 +5,7 @@
+  * fails to redraw or a key that misses a change shows up as a differing frame. One tour a screen, played twice
+  * (stage off, stage on); every frame must hash the same. Day and night, 240x160 and 320x240, English and Spanish. */
+ #include "test.h"
++#include <stdlib.h>
+ #include "../src/lib_int.h"
+ #include "../src/studio_int.h"
+ #include "doomo/backdrop.h"
+diff --git a/core/tests/test_panel.c b/core/tests/test_panel.c
+index dec6e3e..6729c93 100644
+--- a/core/tests/test_panel.c
++++ b/core/tests/test_panel.c
+@@ -483,6 +483,28 @@ TEST(panel_studio_stage_poster_is_pixel_identical)
+     CHECK(both("stage_tab", s_studio_stage, p_studio_stage, 300, 150));
+ }
+ 
++/* (S3-8) the level select's title and blurb (levels_select.c): solid panels. The cursor along the levels (the slide), a
++ * page turn if there is one, a mode change, the Spanish translation */
++static void s_level_select(void)
++{
++    story_town();
++    scene_set(&SCENE_LEVEL_SELECT, 0);
++}
++static uint32_t p_level_select(int f)
++{
++    if (f == 60 || f == 100) return BTN_RIGHT;
++    if (f == 140) return BTN_LEFT;
++    if (f == 180) return BTN_R;
++    if (f == 210) return BTN_DOWN;
++    if (f == 240 && lang_find("es") >= 0) opt_set(OPT_LANGUAGE, lang_find("es"));
++    if (f == 270) return BTN_RIGHT;
++    return 0;
++}
++TEST(panel_level_select_text_is_pixel_identical)
++{
++    CHECK(both("level_select", s_level_select, p_level_select, 330, 200));
++}
++
+ TEST(panel_workshop_list_and_bars_are_pixel_identical)
+ {
+     CHECK(both("workshop", s_workshop, p_workshop, 420, 100));
+-- 
+2.43.0
+

@@ -1,0 +1,34 @@
+From 7ec6f43ffc4962b74dc429eba9821bc56ae7758a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 18:32:14 +0000
+Subject: [PATCH 5/5] S3-CREDITS: docs: the Dreamcast section (screenshots
+ identical, no tick over 33 ms)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ docs/DREAMCAST.md | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/docs/DREAMCAST.md b/docs/DREAMCAST.md
+index 828f5d0..d4c6b50 100644
+--- a/docs/DREAMCAST.md
++++ b/docs/DREAMCAST.md
+@@ -2500,6 +2500,14 @@ The worst tick of the whole run is 21.1 ms (tick 421, in the Talk screen but bet
+ `talk-read` step). 30 fps holds in every Talk screen. No picture changed in this package (scripts and harness
+ only): nothing to compare before and after.
+ 
++## S3-CREDITS (2026-11-15): the credits parade, unchanged here
++
++The GBA credits package (docs/GBA.md "Speed wave 3: S3-CREDITS") changes shared core code (`credits.c`, `look_pool.c`, `portrait.c`,
++`ui.c`) and nothing in `dc/`. The Dreamcast keeps its own 3D view and ignores `DoomoOverworldView.lite`; `PC_BODY_SPAN` is GBA only.
++Checked in Flycast on the tree before (`cf5e9f2`) and after (`make -C dc`, `make -C dc/harness`, `dcrun` with the credits windows of
++`speed2_story.txt` made by `tools/speed2.py dc`): the three screenshots are byte-identical, no tick over 33.3 ms (worst 32.8 ms at tick 42,
++both), 605 of 602 ticks drawn, 131 texture uploads, 0 evictions, 0 failures; `make dc-host-test JOBS=2` passes.
++
+ ## Rumble (X2)
+ 
+ `plat_rumble(strength 0..255, ticks)` (plat_ext.h) is the core's rumble hook.
+-- 
+2.43.0
+

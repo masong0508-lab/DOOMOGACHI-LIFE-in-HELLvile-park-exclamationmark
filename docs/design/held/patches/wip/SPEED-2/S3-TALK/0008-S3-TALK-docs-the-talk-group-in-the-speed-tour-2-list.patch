@@ -1,0 +1,27 @@
+From c2ab05cfd4da44b7b44a8cf56a4970e2d2d4586b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 17:27:09 +0000
+Subject: [PATCH 08/11] S3-TALK docs: the talk group in the speed tour 2 list
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ docs/GBA.md | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/docs/GBA.md b/docs/GBA.md
+index 52dfa78..1cf20bf 100644
+--- a/docs/GBA.md
++++ b/docs/GBA.md
+@@ -1174,7 +1174,7 @@ level select, intro cards, pause menus, the arena and arena-mode cards and resul
+ the grids, swatches, the START menu), `life` (the new-island load, family dashboard and add-member wizard, play-as,
+ every Options page, Save / Load and a save, care popups, the shops, news tabs, graveyard, Unlocks, the picker) and
+ `story` (first-boot questions, title -> New story, the quest log's six tabs, the cutscenes, the credits) and `sim` (S3-1: the
+-hub, the shop's gifts tab, the citizen picker and the pet, 1,200 ticks each so a whole sim interval is inside every window). Each window
++hub, the shop's gifts tab, the citizen picker and the pet, 1,200 ticks each so a whole sim interval is inside every window), and `talk` (S3-TALK: the Talk screen over the house and the title: the list idle and with the cursor moving, the opener's boxes, a quick reply and an answer's boxes). Each window
+ is `fps start` / `wait N` / `fps GROUP: NAME` after `seed 1` and a scene command, with `sync on`, so the numbers
+ repeat exactly. `make -C gba test-speed2 [SPEED2="fair house"]` runs them with `--worklog` and prints one table per
+ group (`tools/speed2.py table`); `make -C gba profile-speed2` adds a PC profile after every window
+-- 
+2.43.0
+

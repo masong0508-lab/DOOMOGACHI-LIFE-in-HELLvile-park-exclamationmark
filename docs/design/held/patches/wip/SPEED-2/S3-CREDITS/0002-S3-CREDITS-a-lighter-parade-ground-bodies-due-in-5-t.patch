@@ -1,0 +1,230 @@
+From 631198d730ba98e99aaf238e6e1b8852cd0c638e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 17:46:49 +0000
+Subject: [PATCH 2/5] S3-CREDITS: a lighter parade ground, bodies due in 5
+ ticks, a cheaper ground scan (GBA; credits 29.8 fps, parade 24.1 -> 29.5)
+
+Exact: the ground pass compares one word of the cell (wall, floor texture, light, floor height) with the last ground
+cell's instead of byte loads and three compares (overworld.c ow_cell_key); bodyspr_image's hint slot no longer
+collides for Hillvile n and Hellvile 500 + n (cross-stream: portrait.c).
+
+Pixel-changing, GBA only (OWNER_DECISIONS VISUAL TRADE-OFFS APPROVED, "a lighter parade ground"):
+- DoomoOverworldView.lite (set by credits.c, read only by the GBA's plat_overworld): each open ground cell is a flat fill
+  of its texture's average colour at its light level, equal neighbours in one vid_rect (no tile cache lookups, no block
+  copies). ~5 ms a frame, which the sprite governor spends on marchers: 6-8 on screen where the tip showed the lead alone.
+- a parade body (bodyspr_lazy(3)) is due in PC_BODY_SPAN = 5 ticks instead of PC_STANDIN = 4 on the GBA: a rank (2 bodies)
+  is asked 11 ticks before it walks in, and the shorter deadline made 6 of 11 ticks 8-15 ms heavier (cross-stream: portrait.c;
+  the PS1 keeps 4).
+speed2_story.txt: floors 29 (credits) and 28 (parade), expect-2x2 on a patch of flat grass (20 mixed blocks, textured
+ground 127: fails without the flat ground).
+Credits 28.6 -> 29.8 fps; parade 24.1 -> 29.4-29.5 fps (51 -> 4-5 frames of 50 ms). Not a steady 30: the remaining 50 ms frames are
+the first frame of a body job. Evidence and the gap: docs/GBA.md "Speed wave 3: S3-CREDITS".
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ core/include/doomo/platform.h        |  3 ++
+ core/src/credits.c                   |  1 +
+ core/src/portrait.c                  | 20 +++++++++--
+ gba/harness/scripts/speed2_story.txt |  7 ++--
+ gba/src/overworld.c                  | 51 ++++++++++++++++++++++------
+ 5 files changed, 67 insertions(+), 15 deletions(-)
+
+diff --git a/core/include/doomo/platform.h b/core/include/doomo/platform.h
+index ac3d570..815dd17 100644
+--- a/core/include/doomo/platform.h
++++ b/core/include/doomo/platform.h
+@@ -191,6 +191,9 @@ typedef struct DoomoOverworldView {
+     uint8_t daylight;           /* 0 = midnight .. 15 = noon               */
+     uint8_t tint, tint_level;   /* e.g. vape haze over the invaded town     */
+     uint16_t time;
++    uint8_t lite;               /* S3-CREDITS, GBA only: draw the open ground as flat runs of each texture's average colour
++                                   (a lighter ground for a scene that wants its frame for sprites); 0 elsewhere. Every
++                                   other platform ignores it (their pixels do not change).                        */
+ } DoomoOverworldView;
+ 
+ /* Cutesy overworld. GBA: top-down 2D, each cell a 16x16 tile derived from
+diff --git a/core/src/credits.c b/core/src/credits.c
+index 390ed2f..e263352 100644
+--- a/core/src/credits.c
++++ b/core/src/credits.c
+@@ -382,6 +382,7 @@ static void cr_draw(void)
+     v.sprite_count = nbb;
+     v.daylight = (uint8_t)(ct < total_ticks() / 2 ? 13 : 9);
+     v.time = (uint16_t)draw_t;
++    v.lite = 1;                               /* S3-CREDITS: the GBA draws the open ground as flat runs */
+     plat_overworld(&v);
+     /* confetti */
+     {
+diff --git a/core/src/portrait.c b/core/src/portrait.c
+index 578053e..42dc008 100644
+--- a/core/src/portrait.c
++++ b/core/src/portrait.c
+@@ -1142,11 +1142,23 @@ static void job_slice(void)
+  * it always completes. A job behind a stand-in (urgent) runs
+  * at least its share of what is left so that it is done PC_STANDIN ticks after it started, whatever the platform
+  * says; the rest of the budget asks the platform. */
++#if defined(DOOMO_PLATFORM_GBA)
++/* S3-CREDITS: a parade body's deadline on the GBA. Done in PC_STANDIN (4) ticks, a body's ~25 ms of slices made
++ * 6-12 ms frame extras for 6 of every 11 ticks (a rank = 2 bodies comes on every 11 ticks): frames of 34-45 ms, so 3 vblanks
++ * and a sprite governor that dropped every marcher. A rank is asked 11 ticks before it walks in, so each body can
++ * take 5 (the second one starts when the first is done): ~5 ms every tick but one. */
++#define PC_BODY_SPAN 5
++#endif
++static uint8_t body_lazy;                     /* bodyspr_lazy()'s mode (below) */
+ static void job_pump(void)
+ {
+     if (job.on && job.urgent && job.fq_tick != now()) {
+         /* its share of this tick, once a tick however often it is asked for (idle-time slices shrink it) */
+-        int left = SL_N - job.step, ticks = (int)(job.t0 + (si_ticks ? si_ticks : PC_STANDIN_HOLD) - now());
++        int left = SL_N - job.step, span = si_ticks ? si_ticks : PC_STANDIN_HOLD, ticks;
++#if defined(DOOMO_PLATFORM_GBA)
++        if (job.kind == CK_BODY && body_lazy == 3) span = PC_BODY_SPAN;
++#endif
++        ticks = (int)(job.t0 + span - now());
+         job.fq_tick = now();
+         job.fq = (uint8_t)(ticks <= 0 ? left : (left + ticks - 1) / ticks);
+     }
+@@ -1568,7 +1580,6 @@ void look_slider_range_changed(void)              /* CR-SLIDERX: the memoised ha
+  * none). Pixels are the same once drawn, nothing but the picture is delayed; logic never sees it. GBA only.
+  * S2-7: mode 3 is mode 1 on every platform (the credits parade: a marcher the cache lacks is drawn over ticks and
+  * is not shown until it is ready; where a tick has room for the whole job, as on the Dreamcast, it is ready at once). */
+-static uint8_t body_lazy;
+ void bodyspr_lazy(int on)                     /* 1: a citizen may be skipped, 2: never skip, 3: S2-7 */
+ {
+ #if !defined(DOOMO_PLATFORM_GBA)
+@@ -1625,7 +1636,10 @@ const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
+     {
+         static uint8_t blh_next, blh_hint[64];
+         uint8_t tk = (uint8_t)now();
+-        int bi, hi = resident_id & 63, k;
++        /* S3-CREDITS: the hint slot of an id. `id & 63` made ranks a and a + 52 of the parade (Hillvile n and Hellvile 500 + n
++         * are in the same 16 ranks on screen) share a slot, so every marcher in the clash scanned all BLH_N slots (~13
++         * cycles each: 0.8 ms a frame); Hellvile's ids now start 32 slots on, so 16 ranks of both never meet */
++        int bi, hi = (resident_id >= DOOMO_DISTRICT_SIZE ? resident_id - DOOMO_DISTRICT_SIZE + 32 : resident_id) & 63, k;
+         m = NULL;
+         /* MS-P2: the slot this id used last is tried first (a choir asks for the same 25 every frame) */
+         bi = blh_hint[hi];
+diff --git a/gba/harness/scripts/speed2_story.txt b/gba/harness/scripts/speed2_story.txt
+index cdebe32..4f8f681 100644
+--- a/gba/harness/scripts/speed2_story.txt
++++ b/gba/harness/scripts/speed2_story.txt
+@@ -196,10 +196,13 @@ push CREDITS
+ wait 120
+ fps start
+ wait 130
+-expect-fps 28 story: credits
++expect-fps 29 story: credits
++# S3-CREDITS: the parade's ground is flat runs of each texture's average colour (DoomoOverworldView.lite): a 40x24 patch of
++# the left grass has 20 mixed 2x2 blocks (the confetti), the textured ground it replaced 127 of 240
++expect-2x2 8 64 40 24 0 60 story: credits flat ground
+ shot story_credits
+ wait 170
+ fps start
+ wait 130
+-expect-fps 24 story: credits parade
++expect-fps 28 story: credits parade
+ shot story_credits_parade
+diff --git a/gba/src/overworld.c b/gba/src/overworld.c
+index 142f9cb..8b299b4 100644
+--- a/gba/src/overworld.c
++++ b/gba/src/overworld.c
+@@ -27,6 +27,7 @@
+  */
+ #include "gba_plat.h"
+ #include "ow_int.h"
++#include "video_int.h"
+ #include "canvas_int.h"
+ #include "r3d_int.h"                 /* r3d_cmrow: its colormap rows share the VRAM gaps */
+ #include "doomo/textures.h"
+@@ -340,6 +341,17 @@ static int cell_level(const DoomoCell *c)
+     return DOOMO_CLAMP(l, 2, 15);
+ }
+ 
++/* S3-CREDITS: what the ground pass compares between neighbouring cells: the wall, the floor texture, the light and the
++ * floor height in one word (the ceiling is not read), from the cell's two words when its address is aligned (`al`) */
++static inline uint32_t ow_cell_key(const DoomoCell *c, int al)
++{
++    if (al) {
++        const uint32_t *w = (const uint32_t *)(const void *)c;
++        return (w[0] & 0xFF00FFFFu) | ((w[1] & 0xFF00u) << 8);
++    }
++    return (uint32_t)c->wall | (uint32_t)c->floor_tex << 8 | (uint32_t)c->light << 16 | (uint32_t)(uint8_t)c->floor_h << 24;
++}
++
+ /* tile at screen (px, py) lifted by `lift` pixels, clipped to the view */
+ static void draw_tile(int px, int py, int tex, int lvl, int lift, OwMemo *mo)
+ {
+@@ -648,40 +660,59 @@ void plat_overworld(const DoomoOverworldView *v)
+     {
+         OwMemo gm;
+         const uint8_t *gt = 0;                    /* V11: the tile of the last ground cell, reused for an equal one */
+-        int g_tex = -1, g_light = -1, g_fh = 0;
++        uint32_t gkey = 0xFFFFFFFFu;              /* its cell's ground key (ow_cell_key); no ground cell has this one */
++        const int cal = !((uintptr_t)m->cells & 3);   /* S3-CREDITS: cells read as two words */
++        const int lite = v->lite;                 /* S3-CREDITS: flat ground, see DoomoOverworldView.lite */
++        uint32_t gcol = 0;                        /* lite: the colour of the last ground cell, as gkey's */
+         gm.t = 0;
+         for (ty = ty0; ty <= ty1; ty++) {
+             const int py = owf.oy + ty * TILE - owf.scrolly;
+             const int ya = DOOMO_MAX(py, owf.oy), yb = DOOMO_MIN(py + TILE, owf.oy + owf.oh);
+             const DoomoCell *row = (unsigned)ty < (unsigned)m->h ? m->cells + ty * m->w : 0;
+             uint32_t mask = 0;
+-            int k, px;
++            int k, px, rx0 = 0, rx1 = 0;              /* lite: the run of equal flat cells being filled */
++            uint32_t rcol = 0;
+             rmask[ty - ty0] = 0;
+             if (py - 16 >= owf.oy + owf.oh || py + TILE <= owf.oy) continue;
+             for (k = 0, px = pxa; k < nt; k++, px += TILE) {
+                 const int tx = txa + k;
+-                const DoomoCell *c = row && (unsigned)tx < (unsigned)m->w ? row + tx
+-                                                                         : map_cell_safe(m, tx, ty);
++                const int in = row && (unsigned)tx < (unsigned)m->w;
++                const DoomoCell *c = in ? row + tx : map_cell_safe(m, tx, ty);
++                const uint32_t key = ow_cell_key(c, cal && in);
+                 const uint8_t *t;
+                 int lvl, x0, x1;
+-                if (c->wall || c->floor_h > 0) { mask |= 1u << k; continue; }
+-                if (ya >= yb) continue;
+-                if (gt && c->floor_tex == g_tex && c->light == g_light && c->floor_h == g_fh) {
+-                    t = gt;                       /* same texture, light and height: the same lit tile */
++                if (key == gkey) {
++                    t = gt;                       /* the same texture, light and height, and open ground: the same lit tile */
+                 } else {
++                    if (c->wall || c->floor_h > 0) { mask |= 1u << k; continue; }
++                    if (ya >= yb) continue;
+                     lvl = cell_level(c);
+                     if (c->floor_h < 0) lvl -= 3;
+-                    t = tile_src(lit_memo(&gm, c->floor_tex, lvl, 0));
+-                    gt = t; g_tex = c->floor_tex; g_light = c->light; g_fh = c->floor_h;
++                    if (lite) {
++                        gcol = doomo_colormap[DOOMO_CLAMP(lvl, 0, 15)][texture_avg(c->floor_tex)];
++                        t = gt = (const uint8_t *)&gcol;      /* (never read: only non-null) */
++                    } else {
++                        t = tile_src(lit_memo(&gm, c->floor_tex, lvl, 0));
++                        gt = t;
++                    }
++                    gkey = key;
+                 }
++                if (ya >= yb) continue;
+                 x0 = DOOMO_MAX(px, owf.ox);
+                 x1 = DOOMO_MIN(px + TILE, owf.ox + owf.ow);
++                if (lite) {
++                    if (rx1 == x0 && rcol == gcol) { rx1 = x1; continue; }
++                    if (rx0 < rx1) vid_rect(rx0, ya, rx1, yb, rcol);
++                    rx0 = x0; rx1 = x1; rcol = gcol;
++                    continue;
++                }
+                 if (x0 == px && x1 == px + TILE)
+                     ow_tile16(gba_back + ya * (SCREEN_W / 2) + (px >> 1), t + (ya - py) * TILE,
+                               yb - ya);
+                 else
+                     ow_blit(x0, x1, ya, yb, t + (ya - py) * TILE + (x0 - px), TILE);
+             }
++            if (rx0 < rx1) vid_rect(rx0, ya, rx1, yb, rcol);
+             rmask[ty - ty0] = mask;
+         }
+     }
+-- 
+2.43.0
+

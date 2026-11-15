@@ -1,0 +1,291 @@
+From e0e2deea20dbf6766300dc6470e539d5c6064dae Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 18:14:32 +0000
+Subject: [PATCH 02/11] S3-8: the jukebox record as baked stamps and the
+ backdrop without what its windows cover (GBA 41.3 -> 30.3 ms), test
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ core/src/lib_common.c      | 30 ++++++++++++---
+ core/src/lib_int.h         | 15 ++++++++
+ core/src/lib_jukebox.c     | 75 +++++++++++++++++++++++++++++++-------
+ core/tests/test_lib_kept.c | 31 +++++++++++++++-
+ 4 files changed, 130 insertions(+), 21 deletions(-)
+
+diff --git a/core/src/lib_common.c b/core/src/lib_common.c
+index 9a92cc4..4fc2c68 100644
+--- a/core/src/lib_common.c
++++ b/core/src/lib_common.c
+@@ -399,17 +399,23 @@ void lib_badge(int x, int y, int pct, int style)
+     if (pct >= 100) ui_sparkle(x + 38, y + 1, (t / 3) & 15, PAL_WHITE);
+ }
+ 
+-int lib_chrome(int wing, int pct)
++int lib_chrome_holes(int wing, int pct, const int *holes, int n)
+ {
+     const LibWingInfo *wi = &lib_wings[wing];
+     int sw = lib_sw();
+-    ui_backdrop(wi->backdrop, doomo_frame_count());
++    if (n > 0) ui_backdrop_holes(wi->backdrop, doomo_frame_count(), holes, n);
++    else ui_backdrop(wi->backdrop, doomo_frame_count());
+     if (plat_draw_skipped()) return 18;
+     ui_title(sw / 2, 2, wi->title, wi->style);
+     lib_badge(sw - 44, 2, pct, wi->style);
+     return 18;
+ }
+ 
++int lib_chrome(int wing, int pct)
++{
++    return lib_chrome_holes(wing, pct, NULL, 0);
++}
++
+ int lib_tab_pill(int cx, int y, const char *name, int n, int tab, int tabs, int style)
+ {
+     const UiStyle *st = ui_style(style);
+@@ -1173,7 +1179,10 @@ static void lobby_pic(uint32_t key)
+ {
+     LobGeo g;
+     int cx, y, w, h;
+-    (void)key;
++    if (key != LIB_PIC_LOBBY) {                  /* the jukebox's stamps */
++        juke_stamp_draw(key, LIB_ANCHOR_X, LIB_ANCHOR_Y);
++        return;
++    }
+     lob_geo(&g);
+     draw_wall(g.sw, g.sh, g.floor_y);
+     window_geo(&g, &cx, &y, &w, &h);
+@@ -1189,10 +1198,19 @@ static void lobby_pic(uint32_t key)
+ 
+ static int lobby_pic_keys(uint32_t *out, int cap)
+ {
+-    if (cap >= 1) out[0] = 0;
+-    return 1;
++    int n = 1;
++    if (cap >= 1) out[0] = LIB_PIC_LOBBY;
++    n += juke_stamp_keys(cap > 1 ? out + 1 : out, cap > 1 ? cap - 1 : 0);
++    return n;
++}
++
++static int lobby_pic_part(uint32_t key, int16_t out[2])
++{
++    out[0] = LIB_ANCHOR_X;
++    out[1] = LIB_ANCHOR_Y;
++    return key == LIB_PIC_LOBBY ? BACKDROP_WHOLE : BACKDROP_STAMP;
+ }
+-const DoomoBackdrop lib_backdrop_family = { .id = DOOMO_BACKDROP_LIBRARY, .draw = lobby_pic, .keys = lobby_pic_keys };
++const DoomoBackdrop lib_backdrop_family = { DOOMO_BACKDROP_LIBRARY, lobby_pic, lobby_pic_keys, lobby_pic_part };
+ 
+ static uint32_t lk(uint32_t h, int32_t v) { return ui_key_int(h, v); }
+ 
+diff --git a/core/src/lib_int.h b/core/src/lib_int.h
+index e9c843e..8d4eb92 100644
+--- a/core/src/lib_int.h
++++ b/core/src/lib_int.h
+@@ -166,6 +166,9 @@ void lib_clamp(void);
+ /* Backdrop + header (title pill with the wing icon, completion badge at the
+  * top right). Returns the y below the header. */
+ int  lib_chrome(int wing, int pct);
++/* (S3-8) lib_chrome with opaque windows drawn after it: holes = n rects (x0, y0, x1, y1) of the backdrop they cover
++ * (ui_backdrop_holes: the same pixels, without what lies wholly under a window) */
++int  lib_chrome_holes(int wing, int pct, const int *holes, int n);
+ /* "< Category (n) >" pill centred at cx (L/R tabs), returns its height. */
+ int  lib_tab_pill(int cx, int y, const char *name, int n, int tab, int tabs, int style);
+ /* Hint pill at the bottom. */
+@@ -213,6 +216,18 @@ static inline int lib_keep_begin(int x, int y, int w, int h, uint32_t key, int w
+ }
+ static inline void lib_keep_end(void) { plat_panel_end(); }
+ #endif
++/* (S3-8) the pictures of the family DOOMO_BACKDROP_LIBRARY (backdrop.h; the GBA bakes them into the ROM): key 0 is the
++ * lobby's (lib_common.c), the others are stamps around an anchor (LIB_ANCHOR_X, LIB_ANCHOR_Y): the jukebox record's
++ * disc and tonearm (lib_jukebox.c: juke_stamp_draw, juke_stamp_keys) */
++#if !defined(DOOMO_PLATFORM_PS1)
++#define LIB_PIC_LOBBY  0u
++#define LIB_PIC_DISC   0x100u       /* + the label's paint (0..PAL_PAINT_COUNT - 1): the disc with its label */
++#define LIB_PIC_ARM    0x200u       /* + 1 while a song plays: the tonearm */
++#define LIB_ANCHOR_X   60
++#define LIB_ANCHOR_Y   60
++void juke_stamp_draw(uint32_t key, int ax, int ay);
++int  juke_stamp_keys(uint32_t *out, int cap);
++#endif
+ /* Text block clipped to `lines` lines starting at lib_b.scroll (sets
+  * lib_b.scroll_max); draws scroll arrows at the right edge. */
+ void lib_text_block(int x, int y, int w, int lines, const char *s, uint8_t color, int style);
+diff --git a/core/src/lib_jukebox.c b/core/src/lib_jukebox.c
+index 16acdfa..4a8b8da 100644
+--- a/core/src/lib_jukebox.c
++++ b/core/src/lib_jukebox.c
+@@ -9,6 +9,10 @@
+  * music that was playing comes back when you leave.
+  */
+ #include "lib_int.h"
++#if !defined(DOOMO_PLATFORM_PS1)
++#include "doomo/backdrop.h"
++#include "doomo/plat_ext.h"
++#endif
+ 
+ #define J (lib_w.juke)
+ enum { TAB_SONGS, TAB_SFX, N_TABS };
+@@ -196,10 +200,10 @@ static void row(int i, int x, int y, int w, int sel)
+         plat_text(x + w - 6, y + 2 - ((lib_b.t / 8) & 1), STR_ICON_NOTE, PAL_UI_GOLD);
+ }
+ 
+-static void record(int cx, int cy, int r, int song, int playing)
++/* the record's still parts: the disc (its shadow, rim, grooves, label and spindle) and the tonearm */
++static void disc_body(int cx, int cy, int r, uint8_t lab)
+ {
+-    uint8_t lab = PAL_PAINT((song * 7 + 4) % PAL_PAINT_COUNT, 1);
+-    int a = J.spin * 6, k;
++    int k;
+     ui_fill_circle(cx + 1, cy + 2, r, PAL_RAMP(RAMP_STONE, 0));
+     ui_fill_circle(cx, cy, r, PAL_GRAY_D);
+     ui_fill_circle(cx, cy, r - 1, PAL_BLACK);
+@@ -210,6 +214,47 @@ static void record(int cx, int cy, int r, int song, int playing)
+     ui_fill_circle(cx, cy, r / 2 - 2, ui_darker(lab));
+     ui_fill_circle(cx, cy, r / 2 - 3, lab);
+     ui_fill_circle(cx, cy, 2, PAL_WHITE);
++}
++
++static void tonearm(int cx, int cy, int r, int playing)
++{
++    int px = cx + r + 4, py = cy - r + 2;
++    int nx = playing ? cx + r / 2 + 2 : cx + r + 2, ny = playing ? cy + 2 : cy - r / 2 + 6;
++    ui_fill_circle(px, py, 4, PAL_RAMP(RAMP_STEEL, 3));
++    ui_fill_circle(px, py, 2, PAL_RAMP(RAMP_STEEL, 6));
++    plat_line(px, py, nx, ny, PAL_RAMP(RAMP_STEEL, 6));
++    plat_line(px + 1, py, nx + 1, ny, PAL_RAMP(RAMP_STEEL, 4));
++    plat_rect(nx - 1, ny - 1, 4, 3, PAL_RAMP(RAMP_STEEL, 5));
++}
++
++#if !defined(DOOMO_PLATFORM_PS1)
++/* (S3-8) the stamps of the library family (lib_int.h LIB_PIC_*): a disc for each label colour and the two tonearms,
++ * each painted by the code above around the anchor (the GBA bakes them; ~3 ms of circles become a 1 ms blit) */
++void juke_stamp_draw(uint32_t key, int ax, int ay)
++{
++    int r = lib_big() ? 34 : 24;
++    if (key >= LIB_PIC_ARM) tonearm(ax, ay, r, (int)(key & 1u));
++    else disc_body(ax, ay, r, PAL_PAINT((int)(key - LIB_PIC_DISC) % PAL_PAINT_COUNT, 1));
++}
++
++int juke_stamp_keys(uint32_t *out, int cap)
++{
++    int i, n = 0;
++    for (i = 0; i < PAL_PAINT_COUNT; i++, n++)
++        if (n < cap) out[n] = LIB_PIC_DISC + (uint32_t)i;
++    for (i = 0; i < 2; i++, n++)
++        if (n < cap) out[n] = LIB_PIC_ARM + (uint32_t)i;
++    return n;
++}
++#endif
++
++static void record(int cx, int cy, int r, int song, int playing)
++{
++    int p = (song * 7 + 4) % PAL_PAINT_COUNT, a = J.spin * 6;
++#if !defined(DOOMO_PLATFORM_PS1)
++    if (!plat_stage_stamp(DOOMO_BACKDROP_LIBRARY, LIB_PIC_DISC + (uint32_t)p, cx, cy))
++#endif
++        disc_body(cx, cy, r, PAL_PAINT(p, 1));
+     /* a glint sweeping round as it spins */
+     {
+         int gx = ui_wave(a, 256, r - 4), gy = ui_wave(a + 64, 256, r - 4);
+@@ -220,15 +265,10 @@ static void record(int cx, int cy, int r, int song, int playing)
+         plat_rect(cx + gx, cy + gy, 2, 2, PAL_WHITE);
+     }
+     /* the tonearm */
+-    {
+-        int px = cx + r + 4, py = cy - r + 2;
+-        int nx = playing ? cx + r / 2 + 2 : cx + r + 2, ny = playing ? cy + 2 : cy - r / 2 + 6;
+-        ui_fill_circle(px, py, 4, PAL_RAMP(RAMP_STEEL, 3));
+-        ui_fill_circle(px, py, 2, PAL_RAMP(RAMP_STEEL, 6));
+-        plat_line(px, py, nx, ny, PAL_RAMP(RAMP_STEEL, 6));
+-        plat_line(px + 1, py, nx + 1, ny, PAL_RAMP(RAMP_STEEL, 4));
+-        plat_rect(nx - 1, ny - 1, 4, 3, PAL_RAMP(RAMP_STEEL, 5));
+-    }
++#if !defined(DOOMO_PLATFORM_PS1)
++    if (!plat_stage_stamp(DOOMO_BACKDROP_LIBRARY, LIB_PIC_ARM + (uint32_t)(playing != 0), cx, cy))
++#endif
++        tonearm(cx, cy, r, playing);
+ }
+ 
+ static void meters(int x, int y, int w, int h)
+@@ -349,7 +389,15 @@ static void juke_draw(void)
+ {
+     int sw = lib_sw(), sh = lib_sh(), y, lw;
+     if (lib_w_lost(0)) return;
+-    lib_chrome(LIB_WING_JUKEBOX, juke_pct);
++    lw = lib_big() ? 150 : 112;
++    {
++        /* the two windows are opaque: the backdrop under them (all but their 4-pixel corners) is never seen (the tab
++         * pill under the title is 16 high) */
++        int hl[8], wy = 18 + 16 + 1, wh = sh - (18 + 16) - 16;
++        hl[0] = 4 + 4; hl[1] = wy + 4; hl[2] = 4 + lw - 4; hl[3] = wy + wh - 4;
++        hl[4] = lw + 8 + 4; hl[5] = wy + 4; hl[6] = sw - 4 - 4; hl[7] = wy + wh - 4;
++        lib_chrome_holes(LIB_WING_JUKEBOX, juke_pct, hl, 2);
++    }
+     if (plat_draw_skipped()) return;
+     y = 18;
+     y += lib_tab_pill(sw / 2, y, tab_names[lib_b.tab], lib_b.count, lib_b.tab, N_TABS, WIN_DARK);
+@@ -358,7 +406,6 @@ static void juke_draw(void)
+         doomo_snprintf(b, sizeof(b), STR_ICON_NOTE " %d played", bits_count(J.played));
+         ui_text_outline(6, 5, b, PAL_WHITE, PAL_RAMP(RAMP_VAPE, 1));
+     }
+-    lw = lib_big() ? 150 : 112;
+     lib_list(4, y + 1, lw, sh - y - 16, 12, WIN_DARK, row);
+     ui_window(lw + 8, y + 1, sw - lw - 12, sh - y - 16, WIN_DARK);
+     if (lib_b.count > 0) {
+diff --git a/core/tests/test_lib_kept.c b/core/tests/test_lib_kept.c
+index 6c77402..0bdc9ab 100644
+--- a/core/tests/test_lib_kept.c
++++ b/core/tests/test_lib_kept.c
+@@ -47,7 +47,7 @@ typedef struct {
+     void (*setup)(void);
+ } KTour;
+ 
+-static int kept_frames, full_frames;
++static int kept_frames, full_frames, stamps_drawn;
+ 
+ static int krun(const KTour *k, int stage, uint32_t *out, int upto)
+ {
+@@ -75,6 +75,7 @@ static int krun(const KTour *k, int stage, uint32_t *out, int upto)
+             full_frames += st.full;
+         }
+     }
++    stamps_drawn = nat_stage_stamps();
+     nat_stage_on = 0;
+     doomo_town.opt[OPT_LANGUAGE] = LANG_EN;
+     return n;
+@@ -160,3 +161,31 @@ TEST(lib_kept_lobby_spanish_is_pixel_identical)
+     CHECK(kcompare(&k, 240, 160, &kept) > 0);
+     set_res(240, 160);
+ }
++
++/* ---- the jukebox: the record's stamps (the disc for each label colour, the two tonearms) and the backdrop that
++ * leaves out what its windows cover; songs along the list, one played, stopped, the sound FX shelf ---- */
++static const KPad pad_juke[] = {
++    { 20, BTN_DOWN }, { 28, BTN_DOWN }, { 36, BTN_DOWN }, { 50, BTN_A }, { 120, BTN_DOWN }, { 125, BTN_DOWN },
++    { 130, BTN_DOWN }, { 140, BTN_A }, { 200, BTN_DOWN }, { 205, BTN_DOWN }, { 210, BTN_DOWN }, { 215, BTN_DOWN },
++    { 220, BTN_DOWN }, { 225, BTN_DOWN }, { 260, BTN_SELECT }, { 300, BTN_R }, { 330, BTN_DOWN }, { 335, BTN_DOWN },
++    { 360, BTN_A }, { 420, BTN_L }, { 450, BTN_UP }, { 480, BTN_B }, { -1, 0 }
++};
++
++static void juke_setup(void)
++{
++    town_new(TOWN_FREEPLAY, 4242, TOWN_POP_PREMADE);
++    sim_init();
++}
++
++TEST(lib_kept_jukebox_is_pixel_identical)
++{
++    KTour k = { "jukebox", &SCENE_LIB_JUKEBOX, LIB_ARG_DEMO, 500, 0, LANG_EN, pad_juke, juke_setup };
++    int kept;
++    CHECK(kcompare(&k, 240, 160, &kept) > 0);
++    CHECK_MSG(stamps_drawn > 200, "only %d stamps drawn (the disc and the tonearm, a frame each)", stamps_drawn);
++    CHECK(kcompare(&k, 320, 240, &kept) > 0);
++    CHECK(stamps_drawn > 200);
++    k.lang = LANG_ES;
++    CHECK(kcompare(&k, 240, 160, &kept) > 0);
++    set_res(240, 160);
++}
+-- 
+2.43.0
+

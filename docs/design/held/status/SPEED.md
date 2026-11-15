@@ -26,8 +26,9 @@ delta, GBA sizes), in flight (package and stage), next up, blockers, needs from 
 
 ## SPEED-2 (second SPEED machine)
 
-- **Lead session:** session_01Xd63cvyt9PpfrF57wBDFeR (started 2026-11-15 15:50 UTC; the coordinator's own packages are S2-10, GBA-500, S2-4c, S2-4d, G2-EX, G2-CO: not touched here)
-- **Landed:** nothing yet (pushes held until the coordinator's 'LANDING WINDOW CLOSED')
-- **In flight (round 1, 2026-11-15 16:00 UTC, building):** S3-TALK (Talk screen to 30 fps on the GBA), S3-7 (fog vignette and the other cutscene skies), S3-CREDITS (a lighter parade ground)
-- **Next:** S3-12 (big text made once), S3-8 (lobby, jukebox, STAGE, level select), S3-13 (menu headroom), S3-14 (island hub), S3-15 (PS1 scene-change reads), the exorcism remainder after G2-EX is on origin
-- **Blockers:** none
+- **Last update:** 2026-11-15 ~20:55 UTC, PAUSED by the coordinator (weekly allowance at 98%)
+- **Lead session:** session_01Xd63cvyt9PpfrF57wBDFeR
+- **Landed:** nothing (every package was held by the landing windows of the coordinator, CREATOR and LEVELS)
+- **Saved as patches** in docs/design/held/patches/wip/SPEED-2/ (README there): S3-TALK, S3-7, S3-CREDITS (built, reviewed minor, landing unfinished), S3-8 (built partial: lobby, jukebox, Almanac list, level select; the studio STAGE tab left to the STUDIO stream), S3-15 (unfinished). S3-12 went to the coordinator's machine; S3-13 went to the UI stream.
+- **Next up on RESUME:** land S3-7, S3-TALK, S3-CREDITS (rebase, all gates, docs), review and finish S3-8, build S3-15 for real (prefetch, measurements), then the exorcism prayer (27.4 fps) and true name to 30 (docs/EXORCISM_SPEED.md), S3-14 (island hub), and follow-ups for the 'everything at 30' gaps of the packages above.
+- **Blockers:** none. **Needs from other streams:** none

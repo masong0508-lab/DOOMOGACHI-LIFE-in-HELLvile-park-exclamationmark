@@ -1,0 +1,515 @@
+From a8c3f8fae01f5c0596e9e21b8feee7c47cfaf73d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:50:13 +0000
+Subject: [PATCH 5/5] S3-15: prefetch: the end of the next scene's group is
+ read into the slot's free tail while a menu cursor rests (scene_hint,
+ overlay.c); speed2_scenes window
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ core/include/doomo/scene.h            |  10 +++
+ core/src/fp_island.c                  |  28 +++++++
+ core/src/scene.c                      |   9 +++
+ core/tests/test_scene_defer.c         |  31 ++++++++
+ gba/harness/scripts/speed2_scenes.txt |  97 +++++++++++++++++++++++
+ ps1/src/overlay.c                     | 106 +++++++++++++++++++++++---
+ ps1/src/packdisc.c                    |   1 +
+ ps1/src/partstore.c                   |   1 +
+ ps1/src/ps1.h                         |   3 +
+ ps1/src/sfxdisc.c                     |   1 +
+ ps1/src/txtload.c                     |   1 +
+ 11 files changed, 278 insertions(+), 10 deletions(-)
+ create mode 100644 gba/harness/scripts/speed2_scenes.txt
+
+diff --git a/core/include/doomo/scene.h b/core/include/doomo/scene.h
+index c74ce0b..65fc192 100644
+--- a/core/include/doomo/scene.h
++++ b/core/include/doomo/scene.h
+@@ -49,6 +49,16 @@ void plat_scene_code_end(int token);
+ #ifndef __arm__
+ extern int (*scene_enter_loads)(const DoomoScene *s);   /* (not built on the GBA: no overlays) */
+ #endif
++/* --- S3-15 (additive): scene_hint(s): "s is the scene most likely to be entered next" (a menu's cursor rests on
++ * its entry; the scene below the one just pushed). The PS1 reads the end of s's code group into the free tail of its
++ * overlay slot meanwhile (plat_scene_prefetch, overlay.c), so entering s then waits for the drive less. It changes
++ * nothing visible, and is cheap to call every frame. Other platforms: nothing (the GBA: not even a call). --- */
++#ifdef __arm__
++#define scene_hint(s) ((void)0)
++#else
++void scene_hint(const DoomoScene *s);
++void plat_scene_prefetch(const DoomoScene *s);
++#endif
+ /* --- H4 (additive): a scene's code may also come in PARTS that share one
+  * address range (ps1/tools/ovl_plan.py PARTS): the code of one mode of a
+  * scene. Before the scene's own code calls into a part it asks for it;
+diff --git a/core/src/fp_island.c b/core/src/fp_island.c
+index f09d52b..f6c7cc9 100644
+--- a/core/src/fp_island.c
++++ b/core/src/fp_island.c
+@@ -912,6 +912,32 @@ static void after_wait(void)
+     }
+ }
+ 
++#ifndef __arm__
++/* S3-15: the scene an entry opens (scene_hint: the PS1 reads its code while the cursor rests on the entry) */
++static const DoomoScene *entry_scene(const Entry *e)
++{
++    if (!e->enabled) return NULL;
++    switch (e->code) {
++    case E_APTS: return &SCENE_APARTMENTS;
++    case E_MOVE_IN: case E_CREATE_HILL: case E_CREATE_HELL: case E_AVATAR: return &SCENE_CREATOR;
++    case E_SHOP: case E_CAFE_SHOP: case E_BLACK_MARKET: return &SCENE_SHOP;
++    case E_PRACTICE: return &SCENE_EXORCISM;
++    case E_WORKSHOP: return &SCENE_WORKSHOP;
++    case E_ARENA: return &SCENE_ARENA;
++    case E_GRAVES: return &SCENE_GRAVEYARD;
++    case E_STROLL: case E_VISIT_HELL: return &SCENE_STORY;
++    case E_SAVELOAD: return &SCENE_SAVELOAD;
++    case E_OPTIONS: return &SCENE_OPTIONS;
++    case E_UNLOCKS: return &SCENE_UNLOCKS;
++    case E_HELP: return &SCENE_LIB_HELP;
++    case E_NEWS: return &SCENE_NEWS;
++    case E_ROSTER: return &SCENE_ROSTER;
++    case E_FAMILY: return &SCENE_FAMILY;
++    default: return NULL;
++    }
++}
++#endif
++
+ static void menu_update(void)
+ {
+     int vis = fp_big() ? 11 : 7;
+@@ -925,6 +951,7 @@ static void menu_update(void)
+     if (btn_repeat(BTN_DOWN)) { I.esel = (I.esel + 1) % I.nent; audio_sfx(SFX_CURSOR); }
+     if (I.esel < I.etop) I.etop = I.esel;
+     if (I.esel >= I.etop + vis) I.etop = I.esel - vis + 1;
++    scene_hint(entry_scene(&isl()->ent[I.esel]));     /* S3-15: the cursor rests on it */
+     if (btn_pressed(BTN_A)) { run_entry(&isl()->ent[I.esel]); return; }
+     if (btn_pressed(BTN_START) && I.mloc == &menu_loc && fp_is_freeplay()) { quick_save(); return; }
+     if (btn_pressed(BTN_B)) { I.menu_open = 0; audio_sfx(SFX_CANCEL); }
+@@ -987,6 +1014,7 @@ static void island_update(void)
+     if (fp_is_freeplay() && tip_once(TIP_ISLAND)) return;        /* CL4: the button map, once (the press waits) */
+     I.idle++;
+     if (I.idle == RENT_AUTO_IDLE && fp_rent_day() != doomo_town.day + 1) collect_rent_now();   /* LS-QA */
++    if (I.idle == 12) scene_hint(&SCENE_ROSTER);       /* S3-15: the cursor rests: most places open the free play group */
+     if (btn_repeat(BTN_LEFT)) I.sel = move_dir(I.sel, -1, 0);
+     if (btn_repeat(BTN_RIGHT)) I.sel = move_dir(I.sel, 1, 0);
+     if (btn_repeat(BTN_UP)) I.sel = move_dir(I.sel, 0, -1);
+diff --git a/core/src/scene.c b/core/src/scene.c
+index 34bb6bd..fa0c3ba 100644
+--- a/core/src/scene.c
++++ b/core/src/scene.c
+@@ -25,6 +25,14 @@ static int depth;
+ __attribute__((weak)) int plat_scene_code(const DoomoScene *s) { (void)s; return 0; }
+ __attribute__((weak)) void plat_scene_code_end(int token) { (void)token; }
+ __attribute__((weak)) void plat_code_part(int part) { (void)part; }   /* H4: scene.h */
++#ifndef __arm__
++__attribute__((weak)) void plat_scene_prefetch(const DoomoScene *s) { (void)s; }   /* S3-15: scene.h */
++void scene_hint(const DoomoScene *s) { if (s) plat_scene_prefetch(s); }
++/* a scene was just pushed: the one below it is where the way back leads (a pop loads its code) */
++#define HINT_BELOW() do { if (depth >= 2) scene_hint(stack[depth - 2].s); } while (0)
++#else
++#define HINT_BELOW() ((void)0)
++#endif
+ 
+ /* S3-15 (scene.h scene_push_late): a scene change that its caller marks "late", made from inside a scene's update,
+  * whose new scene's enter() lives in a code group that is not loaded: on the PS1 that enter() would read the new
+@@ -50,6 +58,7 @@ static void run_enter(const DoomoScene *s, int arg)
+     int t = plat_scene_code(s);
+     s->enter(arg);
+     plat_scene_code_end(t);
++    HINT_BELOW();
+ }
+ 
+ #if SCENE_LATE
+diff --git a/core/tests/test_scene_defer.c b/core/tests/test_scene_defer.c
+index 3766e8d..04c72be 100644
+--- a/core/tests/test_scene_defer.c
++++ b/core/tests/test_scene_defer.c
+@@ -122,3 +122,34 @@ TEST(scene_late_enter_runs_before_the_next_draw)
+     CHECK_STR(log_s, "v");
+     end();
+ }
++
++/* S3-15 prefetch: scene_hint reaches the platform; a push hints the scene below (where a pop leads), a set does not */
++static const DoomoScene *pf_last;
++static int pf_n;
++void plat_scene_prefetch(const DoomoScene *s) { pf_last = s; pf_n++; }
++
++TEST(scene_hint_reaches_the_platform)
++{
++    test_reset();
++    pf_n = 0; pf_last = NULL;
++    scene_hint(&SB);
++    CHECK(pf_n == 1 && pf_last == &SB);
++    scene_hint(NULL);
++    CHECK(pf_n == 1);
++    scene_set(&SA_IDLE, 0);
++    CHECK(pf_n == 1);                       /* a set has nothing below */
++    scene_push(&SB, 1);
++    CHECK(pf_n == 2 && pf_last == &SA_IDLE);   /* the way back */
++    test_reset();
++}
++
++TEST(scene_late_push_hints_after_its_enter)
++{
++    scene_enter_loads = s_hook;
++    begin(&SA_LATE);
++    pf_n = 0; pf_last = NULL;
++    scene_update();
++    CHECK_STR(log_s, "uxb7");
++    CHECK(pf_n == 1 && pf_last == &SA_LATE);
++    end();
++}
+diff --git a/gba/harness/scripts/speed2_scenes.txt b/gba/harness/scripts/speed2_scenes.txt
+new file mode 100644
+index 0000000..c28d006
+--- /dev/null
++++ b/gba/harness/scripts/speed2_scenes.txt
+@@ -0,0 +1,97 @@
++# speed2_scenes.txt - S3-15: what a scene change costs. The island hub, its menu and the screens one press away
++# (citizens, news, family, options), there and back. Each window is one change: the PS1 reads the code of
++# the new scene's overlay group in ONE frame (the worst frame of the window, and the "ovl:" lines of its tty log),
++# the GBA has no overlays. Pairs: the cursor rests on the entry for 40 frames before A (the PS1 reads the group
++# ahead meanwhile, ovl_prefetch) and the same without a rest (a shortcut key); the way back (B). A Hellvile Park
++# Classic island (life_speed.txt's keys). Window rules: speed2_fair.txt.
++wait 40
++expect-log doomo: init
++sync on 61
++seed 1
++scene NEW_ISLAND
++wait 10
++press A
++wait 20
++press A
++wait 2
++press A
++wait 10
++expect-scene ISLAND
++wait 60
++
++# ---- menu: Citizens (the cursor rests), and the way back ----
++press START
++wait 40
++fps start
++press A
++wait 45
++expect-scene ROSTER
++fps scenes: island menu -> citizens (cursor rested)
++shot sc_roster
++fps start
++press B
++wait 45
++expect-scene ISLAND
++fps scenes: citizens -> island (B)
++shot sc_island_back
++press B
++wait 20
++
++# ---- the same without a rest: L opens the news at once ----
++wait 20
++fps start
++press L
++wait 45
++expect-scene NEWS
++fps scenes: island -> news (L, no rest)
++shot sc_news
++fps start
++press B
++wait 45
++expect-scene ISLAND
++fps scenes: news -> island (B)
++
++# ---- menu: Family (five rows down), rest, A ----
++press START
++wait 10
++press DOWN
++press DOWN
++press DOWN
++press DOWN
++press DOWN
++wait 40
++fps start
++press A
++wait 45
++expect-scene FAMILY
++fps scenes: island menu -> family (cursor rested)
++shot sc_family
++fps start
++press B
++wait 45
++expect-scene ISLAND
++fps scenes: family -> island (B)
++press B
++wait 20
++
++# ---- menu: Options (four rows down), rest, A ----
++press START
++wait 10
++press DOWN
++press DOWN
++press DOWN
++press DOWN
++wait 40
++fps start
++press A
++wait 45
++expect-scene OPTIONS
++fps scenes: island menu -> options (cursor rested)
++shot sc_options
++fps start
++press B
++wait 45
++expect-scene ISLAND
++fps scenes: options -> island (B)
++press B
++wait 20
+diff --git a/ps1/src/overlay.c b/ps1/src/overlay.c
+index ead342e..8865c9b 100644
+--- a/ps1/src/overlay.c
++++ b/ps1/src/overlay.c
+@@ -61,6 +61,32 @@ static int      s_depth;                 /* nesting of scene calls       */
+ static uint8_t  s_run[OVL_NEST];         /* the group of each scene call */
+ static uint32_t s_loads;
+ 
++/* --- S3-15 PREFETCH (scene.h scene_hint): while a scene waits (a menu's cursor rests on an entry), the END of the
++ * packed group it is about to open is read into the tail of the slot, which is free: after the running group (and its
++ * part, and the scratch it asked for, plat_scene_scratch). The new group's own read then takes the sectors in front
++ * of it only: s_pf.k sectors, the last ones of the stream, are already in place. The read is asynchronous and never
++ * touches what runs: pf_floor() is the end of everything the running scene can use. Any other use of the drive or of
++ * the slot's tail first finishes or drops it (pf_stop). state 0 = none, 1 = reading, 2 = in. --- */
++static struct { uint8_t g, state; uint16_t k; } s_pf;
++static uint8_t *s_scr_hi;                /* end of the highest scratch handed out for the group in the slot */
++
++static void pf_stop(void)
++{
++    if (s_pf.state == 1)
++        CdReadSync(0, 0);                /* finish the read: the drive is busy until then */
++    s_pf.state = 0;
++    s_pf.g = 0;
++    s_pf.k = 0;
++}
++
++/* the drive and the slot's tail are about to be used by someone else (any other reader of the disc) */
++void ovl_cd_claim(void)
++{
++    if (s_pf.state)
++        pf_stop();
++}
++/* --- end S3-15 --- */
++
+ /* --- H3 (SPEC C4/C5): a group linked below the slot (the house, ovl_plan.py
+  * BORROW) also covers the .bss of world.c and view3d.c. Its loads count
+  * here; world_sync() and plat_view3d() call ovl_borrow_take() before they
+@@ -152,26 +178,29 @@ static const uint8_t *unlz_token(const uint8_t *src, uint8_t **dp, uint8_t *dst,
+ /* read n packed sectors into the slot's tail and decode them to the group's
+  * start (dst) as they arrive (a token is at most 129 bytes, so a token is
+  * only decoded once the sectors holding it are in) */
+-static int read_unpack(int lba, int n, uint32_t bytes, uint8_t *dst, uint32_t *t_wait)
++static int read_unpack(int lba, int n, uint32_t bytes, uint8_t *dst, uint32_t *t_wait, int pre)
+ {
+     CdlLOC loc;
+     int tries;
+     uint8_t *tmp = __ovl_slot_end - (uint32_t)n * 2048;
+     for (tries = 0; tries < 4; tries++) {
++        int n1 = n - (tries ? 0 : pre);       /* S3-15: the last pre sectors of the stream are in place already */
+         uint8_t *d = dst, *end = dst + bytes;
+         const uint8_t *src = tmp;
+         int left;
+-        CdIntToPos(lba, &loc);
+-        if (!CdControl(CdlSetloc, &loc, 0))
+-            continue;
+-        if (!CdRead(n, (uint32_t *)tmp, CdlModeSpeed))
+-            continue;
++        if (n1 > 0) {
++            CdIntToPos(lba, &loc);
++            if (!CdControl(CdlSetloc, &loc, 0))
++                continue;
++            if (!CdRead(n1, (uint32_t *)tmp, CdlModeSpeed))
++                continue;
++        }
+         while (d < end && src) {
+             const uint8_t *avail;
+-            left = CdReadSync(1, 0);
++            left = n1 > 0 ? CdReadSync(1, 0) : 0;
+             if (left < 0)
+                 break;
+-            avail = left ? tmp + (uint32_t)(n - left) * 2048 - 130 : tmp + (uint32_t)n * 2048;
++            avail = left ? tmp + (uint32_t)(n1 - left) * 2048 - 130 : tmp + (uint32_t)n * 2048;
+             if (src >= avail) {
+                 uint32_t t = timer_us();
+                 while (CdReadSync(1, 0) == left)
+@@ -182,7 +211,7 @@ static int read_unpack(int lba, int n, uint32_t bytes, uint8_t *dst, uint32_t *t
+             while (d < end && src && src < avail)
+                 src = unlz_token(src, &d, dst, end);
+         }
+-        if (CdReadSync(0, 0) < 0 || !src || d != end)
++        if ((n1 > 0 && CdReadSync(0, 0) < 0) || !src || d != end)
+             continue;
+         return 1;
+     }
+@@ -203,12 +232,24 @@ static void load(int g)
+          * place to its start WHILE the drive delivers the sectors, so the
+          * load takes as long as reading ~30% fewer sectors (ovl_pack.py
+          * only packs a group whose output never overtakes its input) */
++        int pre = 0;
+         n = (s_grp[g].packed + 2047) / 2048;
+-        while (!read_unpack(s_lba + (int)s_grp[g].sector, (int)n, s_grp[g].bytes, s_grp[g].dst, &t1)) {
++        if (s_pf.g == g && s_pf.k && s_pf.k <= n) {          /* S3-15: the end of it was read ahead */
++            if (s_pf.state == 1 && CdReadSync(0, 0) < 0)
++                s_pf.k = 0;
++            pre = s_pf.k;
++            s_pf.state = 0;
++            s_pf.g = 0;
++            s_pf.k = 0;
++        }
++        pf_stop();
++        while (!read_unpack(s_lba + (int)s_grp[g].sector, (int)n, s_grp[g].bytes, s_grp[g].dst, &t1, pre)) {
++            pre = 0;
+             dbg("ovl: read error, group %d (%s), retrying\n", g, ps1_ovl_name[g]);
+             VSync(30);
+         }
+     } else {
++        pf_stop();
+         n = (s_grp[g].bytes + 2047) / 2048;
+         while (!read_sectors(s_lba + (int)s_grp[g].sector, (int)n, s_grp[g].dst)) {
+             dbg("ovl: read error, group %d (%s), retrying\n", g, ps1_ovl_name[g]);
+@@ -221,6 +262,7 @@ static void load(int g)
+     } else {
+         s_cur = g;
+         s_part = 0;
++        s_scr_hi = NULL;                  /* S3-15: a new group asks for its scratch again */
+     }
+     s_loads++;
+     if (borrows(g))
+@@ -243,6 +285,44 @@ int plat_scene_code(const DoomoScene *s)
+     return prev;
+ }
+ 
++/* --- S3-15 PREFETCH (scene.h scene_hint): the scene s is about to be entered (a menu's cursor rests on its entry, or
++ * it is the one below that was pushed over). Read the end of its group into the free tail of the slot (see s_pf). --- */
++void plat_scene_prefetch(const DoomoScene *s)
++{
++    int p, g, n, k;
++    uint8_t *lo, *dst;
++    CdlLOC loc;
++    if (s_lba < 0 || !(g = group_of(s, &p)) || g == s_cur || s_pf.g == g || s_pf.state == 1)
++        return;                          /* nothing to read, asked for already, or busy with another guess */
++    pf_stop();
++    s_pf.g = (uint8_t)g;                 /* (kept when nothing fits: it is not asked again on every frame) */
++    if (!s_grp[g].packed)
++        return;
++    lo = s_cur ? s_grp[s_cur].dst + s_grp[s_cur].bytes : __ovl_slot;
++    if (s_cur && s_part && s_grp[s_part].dst + s_grp[s_part].bytes > lo)
++        lo = s_grp[s_part].dst + s_grp[s_part].bytes;
++    if (s_scr_hi > lo)
++        lo = s_scr_hi;
++    if (lo < __ovl_slot)
++        lo = __ovl_slot;
++    if (lo >= __ovl_slot_end)
++        return;
++    n = (int)((s_grp[g].packed + 2047) / 2048);
++    k = (int)((uint32_t)(__ovl_slot_end - lo) / 2048);
++    if (k > n)
++        k = n;
++    if (k < 1)
++        return;
++    dst = __ovl_slot_end - (uint32_t)k * 2048;
++    CdIntToPos(s_lba + (int)s_grp[g].sector + n - k, &loc);
++    if (!CdControl(CdlSetloc, &loc, 0) || !CdRead(k, (uint32_t *)dst, CdlModeSpeed))
++        return;
++    s_pf.k = (uint16_t)k;
++    s_pf.state = 1;
++    dbg("ovl: prefetch %s, the last %d of %d sectors\n", ps1_ovl_name[g], k, n);
++}
++/* --- end S3-15 --- */
++
+ /* --- S3-15 (scene.h scene_enter_loads): would calling s's entry points load a group or a part? A scene change
+  * made from inside a scene's own code then runs s's enter() after that call has returned (scene.c), instead of
+  * reading s's group, the caller's group back and s's group again on the next frame. --- */
+@@ -312,6 +392,10 @@ void *plat_scene_scratch(uint32_t bytes, uint32_t *gen)
+     lo = (uint8_t *)(((uint32_t)lo + 3u) & ~3u);
+     if (lo < __ovl_slot || bytes > (uint32_t)(__ovl_slot_end - lo))
+         return NULL;
++    if (lo + bytes > s_scr_hi)
++        s_scr_hi = lo + bytes;           /* S3-15: the prefetch stays above it */
++    if (s_pf.k && lo + bytes > __ovl_slot_end - (uint32_t)s_pf.k * 2048)
++        pf_stop();                       /* S3-15: the scene wants more than it asked for before */
+     return lo;
+ }
+ /* --- end SP3 --- */
+@@ -361,6 +445,8 @@ void overlay_init(void)
+ #else  /* engine test: everything is resident */
+ 
+ void overlay_init(void) {}
++void ovl_cd_claim(void) {}
++void plat_scene_prefetch(const DoomoScene *s) { (void)s; }
+ uint32_t overlay_loads(void) { return 0; }
+ int ovl_borrow_take(uint32_t *seen) { (void)seen; return 0; }   /* H3: nothing borrows */
+ void plat_code_part(int part) { (void)part; }                     /* H4: no parts */
+diff --git a/ps1/src/packdisc.c b/ps1/src/packdisc.c
+index 85b9d36..0945982 100644
+--- a/ps1/src/packdisc.c
++++ b/ps1/src/packdisc.c
+@@ -33,6 +33,7 @@ static int read_sector(int lba, void *dst)
+ {
+     CdlLOC loc;
+     int tries;
++    ovl_cd_claim();                     /* S3-15: a prefetch in flight finishes first */
+     for (tries = 0; tries < 4; tries++) {
+         CdIntToPos(lba, &loc);
+         if (!CdControl(CdlSetloc, &loc, 0))
+diff --git a/ps1/src/partstore.c b/ps1/src/partstore.c
+index 0220be2..661fd46 100644
+--- a/ps1/src/partstore.c
++++ b/ps1/src/partstore.c
+@@ -66,6 +66,7 @@ static int read_sectors(int lba, int n, void *dst)
+ {
+     CdlLOC loc;
+     int tries;
++    ovl_cd_claim();                     /* S3-15: a prefetch in flight finishes first */
+     for (tries = 0; tries < 4; tries++) {
+         CdIntToPos(lba, &loc);
+         if (CdControl(CdlSetloc, &loc, 0) && CdRead(n, (uint32_t *)dst, CdlModeSpeed) && CdReadSync(0, 0) >= 0)
+diff --git a/ps1/src/ps1.h b/ps1/src/ps1.h
+index cb6a7ae..c08ec66 100644
+--- a/ps1/src/ps1.h
++++ b/ps1/src/ps1.h
+@@ -254,6 +254,9 @@ int  packart_sky_edges(const uint8_t *p, uint8_t *top, uint8_t *bottom);
+  * the OVL.BIN header (boot). The engine test links everything resident. */
+ void     overlay_init(void);
+ uint32_t overlay_loads(void);
++/* S3-15: every other reader of the disc calls this first: a prefetch of the next scene's code (scene.h scene_hint)
++ * may be reading into the slot's tail, and the drive is busy until it has finished */
++void     ovl_cd_claim(void);
+ /* H3: the house group is linked over world.c's and view3d.c's tables
+  * (ovl_plan.py BORROW). They call this before touching them: it unloads
+  * the house and returns 1 (and updates *seen) when it was loaded since
+diff --git a/ps1/src/sfxdisc.c b/ps1/src/sfxdisc.c
+index 93b6f1e..2211b34 100644
+--- a/ps1/src/sfxdisc.c
++++ b/ps1/src/sfxdisc.c
+@@ -30,6 +30,7 @@ static int read_sectors(int lba, int n, void *dst)
+ {
+     CdlLOC loc;
+     int tries;
++    ovl_cd_claim();                     /* S3-15: a prefetch in flight finishes first */
+     for (tries = 0; tries < 4; tries++) {
+         CdIntToPos(lba, &loc);
+         if (!CdControl(CdlSetloc, &loc, 0))
+diff --git a/ps1/src/txtload.c b/ps1/src/txtload.c
+index 7336901..6c5302b 100644
+--- a/ps1/src/txtload.c
++++ b/ps1/src/txtload.c
+@@ -50,6 +50,7 @@ static int read_sectors(int lba, int n, void *dst)
+ {
+     CdlLOC loc;
+     int tries;
++    ovl_cd_claim();                     /* S3-15: a prefetch in flight finishes first */
+     for (tries = 0; tries < 4; tries++) {
+         CdIntToPos(lba, &loc);
+         if (!CdControl(CdlSetloc, &loc, 0))
+-- 
+2.43.0
+

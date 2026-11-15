@@ -1,0 +1,28 @@
+From 0629724f6bc7298e833168a01f755534b4e0d50f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 18:33:37 +0000
+Subject: [PATCH 5/7] S3-7: comment at erupt_shake: the kept pictures rely on
+ the shake being constant
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ core/src/cutscene.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/core/src/cutscene.c b/core/src/cutscene.c
+index 8953cfa..e4d2168 100644
+--- a/core/src/cutscene.c
++++ b/core/src/cutscene.c
+@@ -372,6 +372,8 @@ static void bk_seam(uint8_t top)
+ 
+ /* the Gate's cough: the cloud's size (it swells for 60 ticks of each shot) and the shake of the last two shots */
+ static int erupt_r(int phase, uint32_t pt) { return 18 + phase * 22 + (int)DOOMO_MIN(pt, 60u) / 2; }
++/* (S3-7) (t * 7) % 7 is always 0, so the shake is a constant -3 in shots 3 and 4 and the kept pictures
++ * (bk_keys) bake only erupt_shake(ph, 0). If this formula ever moves with t, bake every value it can take. */
+ static int erupt_shake(int phase, uint32_t t) { return phase >= 2 ? (int)((t * 7) % 7) - 3 : 0; }
+ /* Vapula's pose: the frame, the scale of the picture and the wheeze's shudder (panel 0) */
+ static void vapula_pose(int panel, uint32_t pt, uint32_t t, int *frame, int *scale, int *sx)
+-- 
+2.43.0
+

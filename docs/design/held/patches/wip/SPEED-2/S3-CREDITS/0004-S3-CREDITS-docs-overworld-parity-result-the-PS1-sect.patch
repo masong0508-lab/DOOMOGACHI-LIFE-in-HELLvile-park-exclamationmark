@@ -1,0 +1,56 @@
+From b482178f8adb97b1768d2b4c25843d8ecc8a057e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 18:10:12 +0000
+Subject: [PATCH 4/5] S3-CREDITS: docs: overworld parity result, the PS1
+ section
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ docs/GBA.md |  6 ++++++
+ docs/PS1.md | 12 ++++++++++++
+ 2 files changed, 18 insertions(+)
+
+diff --git a/docs/GBA.md b/docs/GBA.md
+index 2ffeff9..8927999 100644
+--- a/docs/GBA.md
++++ b/docs/GBA.md
+@@ -1300,6 +1300,12 @@ three windows of 200 / 300 / 200 ticks; the tests below):
+ * `look_run_hash` (`look_pool.c`, cross-stream) returns 0 when the pool has no run for the id (the set is all zeros and
+   `deep_hash` of zeros is 0): `bodyspr_image` resolved and hashed 21 fields for every marcher on every frame (4.9% of the
+   frame). Parade 37.4 -> 34.7 ms on its own.
++* The other overworld scenes (the ground pass and the hint slot are shared): `make -C gba test-speed` on the tip before and after
++  (`speedtable.py --parity`, 17 windows of 30 frames): 14 identical (park, hellvile, the map walk, the invaded map, the
++  pause, the story map, the house, the island hub...). Three differ in time only: hahaland 2 frames of 30 (the sprite governor
++  reads the last frame's work, which moved by 0.1 ms), the exorcism tools' first 17 frames (then identical to the frame) and the
++  concert's singer, whose mouth phase differs in all 30 (a figure's animation phases are drawn in the idle time after a
++  frame, so cheaper frames land a phase earlier, as in S2-8).
+ * The ticker bar is a retained panel (`PANEL_OW_OBJECTIVE`: its pixels change when the middle rank does) and the card's
+   heading plate is `ui_title_kept()` (new in `ui.c`: `ui_title` as a panel keyed by text, style and the sparkles' phase, so one
+   frame in three is drawn; an inline `ui_title` on the PS1). The card's lines lie on the moving parade and cannot be kept.
+diff --git a/docs/PS1.md b/docs/PS1.md
+index 7e1d9f8..a354d0e 100644
+--- a/docs/PS1.md
++++ b/docs/PS1.md
+@@ -2303,6 +2303,18 @@ life studio fishcook library` (PCSX-Redux, not run before the change on this mac
+ 65-325 ms single frames): every window of the shop, Black Market, cafe, picker, picker move, choir, cook counter, lobby and
+ Almanac list reads 30.0-30.5 fps with no frame over 50 ms (a single 50 ms frame in several of the studio, cook and library windows); the known misses are the
+ new island's load, the save freeze and the care reaction (2 frames of 50 ms).
++## S3-CREDITS (2026-11-15): the credits parade, resident delta -48 B, pixels unchanged
++
++The GBA credits package (docs/GBA.md "Speed wave 3: S3-CREDITS") touches shared core code, so the PS1 was built and run on the tree
++before and after (`cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON`, boot FMV, `PSN00BSDK_LIBS=/opt/psn00bsdk/lib/libpsn00b`): **129,504 ->
++129,456 B below the stack top** (-48 B resident: `look_run_hash` returns early when an id has no deep run, `cr_confetti_xy` and
++`cr_fans_xj` replace the closed forms with their divisions, the ticker's panel key and `ui_title_kept` are compiled out because
++`UI_PANELS` is 0; the SPEED share of 2 KB is untouched). The PS1 draws the parade exactly as before: `credits.c` sets
++`DoomoOverworldView.lite` but only the GBA reads it, and `PC_BODY_SPAN` is `#if`'d to the GBA (the PS1 keeps `PC_STANDIN` 4).
++Checked in PCSX-Redux with the credits windows of `speed2_story.txt` (`tools/speed2.py ps1`): the three screenshots (`story_cut_press`,
++`story_credits`, `story_credits_parade`) are byte-identical before and after; fps 29.89 -> 30.00 (credits, the one 67 ms frame
++stays in both) and 30.00 -> 30.00 (parade, one 50 ms frame both times). `game_smoke` PASS.
++
+ ## CR-SLIDERX (2026-11-15): the cheat "Slider range x1..x4"
+ 
+ Measured on the tip `5879aa3f` and the tip + CR-SLIDERX, 2026-11-15 (`cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON`,
+-- 
+2.43.0
+

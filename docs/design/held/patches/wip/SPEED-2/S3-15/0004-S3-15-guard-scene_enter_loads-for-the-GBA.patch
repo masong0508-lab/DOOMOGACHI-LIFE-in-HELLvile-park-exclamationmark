@@ -1,0 +1,28 @@
+From cd21661e38c9fb2f6a1570f27fad68c13a294e76 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:31:41 +0000
+Subject: [PATCH 4/5] S3-15: guard scene_enter_loads for the GBA
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ core/include/doomo/scene.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/core/include/doomo/scene.h b/core/include/doomo/scene.h
+index b2b9aac..c74ce0b 100644
+--- a/core/include/doomo/scene.h
++++ b/core/include/doomo/scene.h
+@@ -46,7 +46,9 @@ void plat_scene_code_end(int token);
+ /* --- S3-15 (additive): set by a platform whose scene code can be out of RAM (the PS1, overlay.c). Returns 1 when
+  * entering s would first have to load its code. A scene_set_late / scene_push_late made from inside a scene's
+  * update() then runs s's enter() when update() has returned, not inside it (scene.c). NULL = always at once. --- */
++#ifndef __arm__
+ extern int (*scene_enter_loads)(const DoomoScene *s);   /* (not built on the GBA: no overlays) */
++#endif
+ /* --- H4 (additive): a scene's code may also come in PARTS that share one
+  * address range (ps1/tools/ovl_plan.py PARTS): the code of one mode of a
+  * scene. Before the scene's own code calls into a part it asks for it;
+-- 
+2.43.0
+

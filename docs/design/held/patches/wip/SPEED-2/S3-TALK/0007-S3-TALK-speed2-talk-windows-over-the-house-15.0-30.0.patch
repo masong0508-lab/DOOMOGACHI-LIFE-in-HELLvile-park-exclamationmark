@@ -1,0 +1,125 @@
+From 1766bbdcacae5738766ef4c2ca0c54cd255ce10c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 17:16:53 +0000
+Subject: [PATCH 07/11] S3-TALK: speed2 talk windows over the house (15.0 ->
+ 30.0 fps), docs with the final numbers
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ ROADMAP.md                          |  1 +
+ docs/GBA.md                         | 18 ++++++++++--------
+ docs/TALK.md                        |  2 +-
+ docs/design/held/status/SPEED.md    |  2 +-
+ gba/harness/scripts/speed2_talk.txt | 18 +++++++++++++++++-
+ 5 files changed, 30 insertions(+), 11 deletions(-)
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index d25df7a..e0e4aa0 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -50,6 +50,7 @@ before redoing any of them; a zip without `.git` cannot tell.
+ - **LV3 part 1, mechanic kit A: movement rules (2026-11-13, LEVELS round 3a; docs/LEVELS.md "Mechanic kit A, movement"):** `core/src/levels_mech_move.c`: ride cycles, ziplines, bounce pads + low gravity, carry, tubes and the raft as pure rules on a 16-byte `MmMove`, plus `mm_edges` (the same edges as the BFS) for the autopilot; kit test map `core/tests/maps/t3_kit.txt` and 17 host tests, among them a bot that plans over the BFS walk rule + `mm_edges` and plays the plan through the real state machine across the six mechanics (five edge kinds plus the low-gravity step). Nothing calls it yet (no resident byte on any platform). **Not yet (LV3 part 2):** the ride state in `combat.c`, the zone triggers in the runtime and the edges inside `combat_bot.c`, each with its Vape Cellar fps before / after.
+ - **LV4, mechanic kit B: environment and light (2026-11-13, LEVELS round 3a; docs/LEVELS.md "Mechanic kit B"):** `core/src/levels_mech_env.c` + `lv_env.h`: fog zones with valves, the glum tide, lantern (25 cells) and candles, the Wall's two faces, the showtime light swap, collapsing floors and dissolving rooms, each rebuilt exactly from the definition (new zone kinds `candle`, `show`, `collapse`); per-level view distance (`DoomoView3D.view_dist`, header key `view`) in the native raycaster and the GBA `r3d.c`, PS1 compiled out until PS1-RAM (no resident byte), DC ignores it for now. 15 host tests incl. the renderer at both sizes. GBA RAM identical, speed tour frame-exact, PS1 EXE unchanged. Nothing calls it yet; the first level that needs a piece wires it (follow-up LV4b in `docs/design/held/status/LEVELS.md`).
+ - **Speed S3-TALK (built 2026-11-15, partial; SPEED-2, the Talk screen on the GBA; measured on libmgba; docs/GBA.md "Speed wave 3: S3-TALK"):** Talk keeps its picture on the GBA: the scene below it is no longer drawn every tick (`scene_keep_below`), the panel and the people strip are drawn again only when they change (drop shadow left out, `ui_shadow_kept`), and a line's box draws on a kept band (`plat_hold_band`). The S3 output lint skips register words whose first character pair is not in the line (`test_talk_lint_speed.c`: same verdicts as the old scan), the Talk bank is read in place from the ROM (`plat_talk_image`), and the generator's steps run one a tick on the GBA. GBA drawn fps before -> after (Talk over the title, new speed2 group `talk`): list idle 23.5 -> **30.3**, list with the cursor moving 23.8 -> **29.8**, opener boxes 18.0 -> 28.1, answer boxes 17.0 -> 28.2, list after an answer 17.9 -> 28.8; the frame that says a line 385 -> 100 ms; `make -C gba test-talk` talk menu 15.7 -> 24.8, converse 18.1 -> 28.3. `test_talk_hold.c`: the same Talk run kept and full is the same picture on every frame at 240x160 and 320x240. GBA `.bss` 254,828 B before and after (net zero), `.text` +2,728 B. **Not met:** the windows with a dialogue box up are 28 fps with 7 to 17 percent of frames at 50 ms (the box's own typewriter and portrait frames), and one generator step is 22 to 130 ms (243 ms for the first Talk of a boot): a frame over 33 ms when a line is said remains. Pixel change (held frames, GBA only): the scene below Talk stands still while the screen is kept.
++- **Speed S3-TALK (built 2026-11-15, partial; SPEED-2, the Talk screen on the GBA; measured on libmgba; docs/GBA.md "Speed wave 3: S3-TALK"):** Talk keeps its picture on the GBA: the scene below it is no longer drawn every tick (`scene_keep_below`), the panel and the people strip are drawn again only when they change (drop shadow left out, `ui_shadow_kept`), and a line's box draws on a kept band (`plat_hold_band`). The S3 output lint skips register words whose first character pair is not in the line (`test_talk_lint_speed.c`: same verdicts as the old scan), the Talk bank is read in place from the ROM (`plat_talk_image`), and the generator's steps run one a tick on the GBA. GBA drawn fps before -> after (Talk over the title, new speed2 group `talk`): list idle 23.5 -> **30.3**, list with the cursor moving 23.8 -> **29.8**, the same two over the house (where Talk opens from) 15.0 -> **30.0**, opener boxes 18.0 -> 28.5, answer boxes 17.0 -> 28.5, list after an answer 17.9 -> 28.9; the frame that says a line 385 -> 84 to 100 ms; `make -C gba test-talk` talk menu 15.7 -> 24.8, converse 18.1 -> 28.3. `test_talk_hold.c`: the same Talk run kept and full is the same picture on every frame at 240x160 and 320x240. GBA `.bss` 254,828 B before and after (net zero), `.text` +2,728 B. **Not met:** the windows with a dialogue box up are 28.5 fps with 5 to 12 percent of frames at 50 ms (the box's own typewriter and portrait frames), and one generator step is 22 to 130 ms (243 ms for the first Talk of a boot): a frame over 33 ms when a line is said remains. Pixel change (held frames, GBA only): the scene below Talk stands still while the screen is kept.
+ - **Speed S3-3 (2026-11-13, the creator, speed audit 3; measured on libmgba and PCSX-Redux; docs/CREATOR.md "S3-3", docs/GBA.md "Speed wave 3: S3-3", docs/PS1.md "S3-3"):** the held creator frame (the saved G2-CR work) and creator panels drawn on the fast path before their capture (S2-6's recipe, `plat_ui_loops` before the pane). GBA: grid scrolled 17.2 -> 26.8 fps, rows 29.4 -> 30.0, a value held 22.2 -> 29.4, the picker 22.7 -> 29.1, hat grid 27.2 -> 29.8, try-on 15.2 -> 26.9, filter chip 21.7 -> 30.5; four tab changes still have two 50 ms frames, the held grid and the try-on stay under 30 (each step is a whole new bust: S3-2). PS1: the grid keeps its unpacked icons in the overlay scratch, grid scrolled 29.39 -> 30.00, try-on 28.57 -> 29.03; no resident byte (64 KB below the stack top with the FMV). Settled screens byte-identical; the pane's in-between frames come a tick later.
+ - **No 3D character models inside houses (PS1-FLAT, 2026-11-13; the owner: "disabled the 3d models of your player character and vice versa when you are inside their houses - save up some ram there", `OWNER_DECISIONS.md` "HOUSE CHARACTERS FLAT"; measured on PCSX-Redux; docs/PS1.md "No 3D models in houses", section 7):** only the PS1 drew a 3D figure in the house, the player's chibi (`model.c`). `ps1/src/room.c` now draws the player with the same `billboard()` as every resident, visitor, guest and demon, from the body sprite the core hands over (direction, walk frame, sit squash; the picture the GBA and the Dreamcast show, and the avatar being played), in Build, Live, Photo, Score, Hold the Door and a visit; it keeps its contact shadow and still rests in the kept backdrop while it stands still. With the house out, `model.c` (4,132 B) left resident RAM for the combat overlay group: `ovl_plan.py` `PLAT_GROUPS` / `GUARDED`, and `plat_view3d()` asks `ovl_code_in()` before it draws the model (the plan fails if house code, or anything else, would call it; `ps1/tools/test_ovl_guard.py`, 6 tests, in CI). The house's hooks in the 3D code are gone (`g_model_hold`, `g_r3_area`). **PS1 game disc with the boot FMV: 65,952 -> 70,480 B below the stack top (+4,528 B); on the tip it landed on (`19d01fe`) 68,224 -> 72,736 B (+4,512 B), 992 B under the 72 KB gate**; the slot keeps its 131,072 B (combat group 124,056 -> 128,188 B, home 130,856 -> 129,420 B). `prims.c` (3,612 B) stays resident: with it the combat group would pass the slot. House fps (`home.txt`, on the landing tip): plain 30.17 -> 30.17, steady 29.39 -> 30.00, orbit 27.17 -> 30.00, cellar (stress layout) 27.80 -> 27.80, defend stress (stress layout) 19.10 -> 22.78, modal 29.19 -> 30.00, Hold the Door wave 3 30.13 -> 30.13 (15.1 -> 6.5 ms of CPU), visit 30.17 -> 30.17; the speed tour's 19 house windows all hold 30 (the busy Live layout 28.78 -> 30.00). Third-person combat is unchanged: `perf_combat`'s shots are byte-identical, fps 29.5-30.0 as before. The core, the GBA and the Dreamcast are untouched (no file of theirs changed).
+ - **Speed S3-1 (built 2026-11-13, landed 2026-11-15; the sim's 15-minute pass, speed audit 3 miss 5; measured on libmgba, PCSX-Redux and Flycast; docs/GBA.md "Speed wave 3: S3-1"):** the resident pass moves with the clock: the cursor earns slots at a steady 1,000 per 15 game minutes whatever the day length and speed (`SIM_PASS_NUM` / `SIM_PASS_DEN`, a `uint16_t` credit in the padding of `SimState`; `SIM_BATCH` 32 -> 16 is the hard cap), so a resident is updated once per interval and a tick does one update at the default clock (15 at the fastest) instead of 32 residents in 32 ticks every 15 minutes; a visit that would live under 8 game minutes (the first passes after `sim_init`, a load, a fast-forward) leaves the stamp alone, so no minute is lost or counted twice; the stamps and the cursor are not saved, a load runs `sim_init`: no migration. A new bond in the sorted edge table is made room for with a halfword move on the GBA (libc `memmove` copied the 4.6 KB byte by byte: 3-7 ms in one tick). GBA drawn fps (origin `cb7d48d9` before and after): apartments 25.2 -> **30.0**, Options Accessibility 23.7 / 28.2 -> **30.0**, pet-care boss 28.6 -> **30.0**, shop gifts tab 21.2 -> 29.5, citizen picker 23.1 -> 29.5, pet 28.5 -> 29.8; frames over 33 ms in the four tours 562 -> 509, over 50 ms 278 -> 213; the new `sim` group 12 / 17 / 27 / 42 -> 0 / 0 / 7 / 16 frames over 33 ms (hub / shop / picker / pet), none over 50 ms. PS1: the island hub window 4 frames of 50 ms -> 0; Dreamcast: no long tick before or after. Not the same sim on purpose (another update order, the same rates): `test_sim_x4` and the news-stream golden of `test_sim` are recorded again. EWRAM / IWRAM unchanged (ledger row 50); PS1 resident -16 B (`_end` 0x801ee560 -> 0x801ee550 on the landing tip `ad060127`: 72,368 B below the stack top). New speed2 group `sim` (four 1,200-tick windows with the pass inside; GBA gates `expect-gap 51` and fps floors 29.8 / 29.5). **Not met:** "no frame over 33 ms from the sim" on the near-budget GBA screens: the work now arrives as 0.4-1.3 ms in every tick (+0.3 ms median over 54 windows against a floor build with the resident updates off), so the picker and pet windows keep 7 and 16 single 50 ms frames (floor 4 and 6) and near-budget menus lose a few: news third tab 0 -> 10, town hall menu 9 -> 19, Black Market 4 -> 9: S3-13 (menu headroom), S3-14, or a cheaper `update_resident_ex`.
+diff --git a/docs/GBA.md b/docs/GBA.md
+index 4a7a84a..52dfa78 100644
+--- a/docs/GBA.md
++++ b/docs/GBA.md
+@@ -1643,21 +1643,23 @@ and for the hitch the S3 output lint (80% of a generated line: every register wo
+ 
+ | window | before | after |
+ |---|---|---|
+-| opener boxes (the dialogue box with the portrait) | 18.0 fps, 45.6 ms, worst 84, 33 frames of 50 ms | **28.1**, 24.6 ms, worst 50, none over 50 |
++| list idle, Talk over the house (a house visit: where Talk opens from) | 15.0 fps, 63.8 ms, every frame 67 ms | **30.0**, 12.2 ms |
++| list, cursor moving, over the house | 15.0, 63.7 ms | **30.0**, 12.3 ms |
++| opener boxes (the dialogue box with the portrait) | 18.0 fps, 45.6 ms, worst 84, 33 frames of 50 ms | **28.5**, 23.9 ms, worst 50, none over 50 |
+ | list idle | 23.5, 35.5 ms | **30.3**, 11.7 ms |
+ | list, cursor moving | 23.8, 35.6 ms | **29.8**, 11.9 ms |
+-| say a line and its first box | 14.1, 58.0 ms, worst **385** | 24.9, 32.6 ms, worst **100** |
+-| answer box | 17.0, 48.8 ms, 30 frames of 50 ms | **28.2**, 28.3 ms, none over 50 |
+-| list after the answer | 17.9, 46.2 ms | **28.8**, 26.2 ms |
++| say a line and its first box | 14.1, 58.0 ms, worst **385** | 26.2, 31.5 ms, worst **84** (85 to 100 in other runs) |
++| answer box | 17.0, 48.8 ms, 30 frames of 50 ms | **28.5**, 28.3 ms, none over 50 |
++| list after the answer | 17.9, 46.2 ms | **28.9**, 24.1 ms |
+ 
+ `make -C gba test-talk`: the talk menu window 15.7 -> 24.8 fps (it includes the first Talk of the boot), the converse window
+-18.1 -> 28.3. Floors in `speed2_talk.txt`: 28 for the list windows, 25 for the boxes, 22 for the line-saying window (`SPEED2_GATES=1`).
++18.1 -> 28.3. Floors in `speed2_talk.txt`: 28 for the list windows (over the title and over the house), 25 for the boxes, 22 for the line-saying window (`SPEED2_GATES=1`).
+ Main stack high-water in the Talk script 5,268 -> 5,148 B.
+ 
+-**Not reached.** The two list windows hold 30 with no frame over 33.4 ms. The windows with a box up are at 28.1 to 28.8 fps:
+-7 to 17 of 100 to 130 frames take 50 ms. Those are the dialogue box's own typewriter and portrait frames (work 40 to 48 ms
++**Not reached.** The two list windows hold 30 with no frame over 33.4 ms. The windows with a box up are at 28.5 to 28.9 fps:
++5 to 14 of 100 to 130 frames take 50 ms. Those are the dialogue box's own typewriter and portrait frames (work 40 to 48 ms
+ against 13 to 35 ms for the others): Talk's part of such a frame is the band restore, about 2 ms. The frame that says a line is
+-still 100 ms and the first line of a boot 250 ms: one step of the drama manager is 22 ms for an opener, 25 to 130 ms for an
++still 84 to 100 ms and the first line of a boot 250 ms: one step of the drama manager is 22 ms for an opener, 25 to 130 ms for an
+ answer (the generator retries a line that does not fit or fails the lint: no one function is hot, `lint_core` 16 ms, the
+ concept reads 10 ms), and the first step of the first Talk of a boot costs 243 ms once (cold). To get every frame under 33 ms the
+ generator itself needs slicing inside `talk_gen_line` (TALK's file), and the dialogue box's text and portrait frames are
+diff --git a/docs/TALK.md b/docs/TALK.md
+index 0a0bb58..27bc6d1 100644
+--- a/docs/TALK.md
++++ b/docs/TALK.md
+@@ -1019,7 +1019,7 @@ frames behind the typing animation). PS1: Talk is not built there yet. Dreamcast
+ `gba/harness/scripts/talk.txt` was stale (it failed on origin since the owner's opener and quick replies): it now plays the
+ greeting, a quick reply and the goodbye boxes with the seeded counts, and prints the windows above.
+ 
+-**GBA speed since S3-TALK (2026-11-15):** the Talk screen keeps its picture, the S3 lint skips words that cannot match, the bank is read in place and the generator is sliced: list 23.5 -> 30.3 drawn fps, answers 17 -> 28, the line-saying frame 385 -> 100 ms. What is left (a generator step is 22 to 130 ms; the dialogue box's own frames) and the numbers are in docs/GBA.md "Speed wave 3: S3-TALK". The figures above are the earlier ones.
++**GBA speed since S3-TALK (2026-11-15):** the Talk screen keeps its picture, the S3 lint skips words that cannot match, the bank is read in place and the generator is sliced: list 23.5 -> 30.3 drawn fps (over the house 15 -> 30), answers 17 -> 28.5, the line-saying frame 385 -> 84 to 100 ms. What is left (a generator step is 22 to 130 ms; the dialogue box's own frames) and the numbers are in docs/GBA.md "Speed wave 3: S3-TALK". The figures above are the earlier ones.
+ 
+ **Gap list against design T8** (what the owner's screen does not have; none of it is a defect of the screen):
+ in-room mode (gathering and seats, camera shots, bubbles at the speakers' heads, the portrait inset on the room); emotes and
+diff --git a/docs/design/held/status/SPEED.md b/docs/design/held/status/SPEED.md
+index 06f5a47..213bba3 100644
+--- a/docs/design/held/status/SPEED.md
++++ b/docs/design/held/status/SPEED.md
+@@ -26,4 +26,4 @@ delta, GBA sizes), in flight (package and stage), next up, blockers, needs from
+ 
+ ## SPEED-2 (the second SPEED machine, round 1; lead session session_01Xd63cvyt9PpfrF57wBDFeR)
+ 
+-- **S3-TALK (built 2026-11-15, partial, branch `fut-s3-talk`; `docs/GBA.md` "Speed wave 3: S3-TALK", ledger row 59):** the Talk screen at 28 to 30 fps on the GBA (was 15.7 in the list, 17 in an answer). What changed in `core/src/talk_scene.c` (TALK's file; commits say `cross-stream:`): `hk_*` keeps the picture (`hk_ask` is called by `scene_draw` through the new `scene_keep_below`; `hk_save` takes the band after the first full frame; `hk_draw` redraws the panel and the people strip only when `hk_pkey` / `hk_ssig` change), `draw_strip` and `draw_panel` split out of `talk_draw` (same pixels), the generator's steps run one a tick on the GBA (`slice_on` is 1 there), `TalkScn.note[40]` (dead) removed, `talk_scene_hold()` for the native tests. Also in TALK's files: `talk_safe.c` (the lint's pair table), `talk_db.c` and `weak_talk.c` (`plat_talk_image`). In SPEED's files: `scene.c` / `scene.h` (`scene_keep_below`), `ui.c` / `ui.h` (`ui_shadow_kept`), `ui_dialog.c` (`ui_dialog_reach`), `gba/src/plat_talk_gba.c`. New group `speed2_talk.txt` (floors 28 / 25 / 22). Core tests 1,376 passed (+4: `test_talk_lint_speed.c` 2, `test_talk_hold.c` 2). **Left:** a dialogue box's own frames (13 of 112 at 50 ms), a generator step is 22 to 130 ms (243 ms for the first Talk of a boot): slicing inside `talk_gen_line` is TALK's.
++- **S3-TALK (built 2026-11-15, partial, branch `fut-s3-talk`; `docs/GBA.md` "Speed wave 3: S3-TALK", ledger row 59):** the Talk screen at 28.5 to 30 fps on the GBA (was 15.7 in the list, 17 in an answer; over the house 15.0 -> 30.0 in the list). What changed in `core/src/talk_scene.c` (TALK's file; commits say `cross-stream:`): `hk_*` keeps the picture (`hk_ask` is called by `scene_draw` through the new `scene_keep_below`; `hk_save` takes the band after the first full frame; `hk_draw` redraws the panel and the people strip only when `hk_pkey` / `hk_ssig` change), `draw_strip` and `draw_panel` split out of `talk_draw` (same pixels), the generator's steps run one a tick on the GBA (`slice_on` is 1 there), `TalkScn.note[40]` (dead) removed, `talk_scene_hold()` for the native tests. Also in TALK's files: `talk_safe.c` (the lint's pair table), `talk_db.c` and `weak_talk.c` (`plat_talk_image`). In SPEED's files: `scene.c` / `scene.h` (`scene_keep_below`), `ui.c` / `ui.h` (`ui_shadow_kept`), `ui_dialog.c` (`ui_dialog_reach`), `gba/src/plat_talk_gba.c`. New group `speed2_talk.txt` (floors 28 / 25 / 22). Core tests 1,376 passed (+4: `test_talk_lint_speed.c` 2, `test_talk_hold.c` 2). **Left:** a dialogue box's own frames (13 of 112 at 50 ms), a generator step is 22 to 130 ms (243 ms for the first Talk of a boot): slicing inside `talk_gen_line` is TALK's.
+diff --git a/gba/harness/scripts/speed2_talk.txt b/gba/harness/scripts/speed2_talk.txt
+index ecd4905..ffbace4 100644
+--- a/gba/harness/scripts/speed2_talk.txt
++++ b/gba/harness/scripts/speed2_talk.txt
+@@ -1,6 +1,6 @@
+ # speed2_talk.txt - speed tour 2, S3-TALK: the Talk screen (core/src/talk_scene.c, SCENE_TALK) on the GBA ROM.
+ # The same prelude as talk.txt (a house visit first: Talk's opener only plays after one), then `push TALK 1`:
+-# windows on the opener's boxes (the dialogue box with the portrait over the screen), the replies list idle and
++# windows on the list over the house (where Talk really opens from; the house is the heavier scene below), on the opener's boxes (the dialogue box with the portrait over the screen), the replies list idle and
+ # with the cursor moving, the line-saying frame (a quick reply: the drama manager and the generator run), and
+ # the answer's boxes. The window rules are in speed2_fair.txt. Seed 18 is pinned: the opener's line count follows it.
+ # The live Talk screen (core/src/talk_scene.c) reading its word network out of the ROM
+@@ -41,6 +41,22 @@ wait 30
+ press A
+ wait 30
+ expect-scene TALK
++# the same screen over the house (the visit's Talk: the scene below is the house, not the title)
++wait 10
++fps start
++wait 90
++expect-fps 28 talk: list idle over the house
++fps start
++press DOWN
++wait 4
++press UP
++wait 4
++press DOWN
++wait 4
++press UP
++wait 4
++wait 60
++expect-fps 28 talk: list cursor moving over the house
+ press B
+ wait 40
+ press A
+-- 
+2.43.0
+

@@ -1,0 +1,804 @@
+From d2b7eeaa8aeadb732c52ebe91d1d39ff717419d3 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 16:20:42 +0000
+Subject: [PATCH 1/7] S3-7: cutscene vignettes over kept stills and puff stamps
+ (GBA ROM), speed2 group cutscene
+
+The home, fog, eruption and Vapula vignettes draw their still sky / wall / room as one kept
+picture (backdrop families 4 and 5, baked by the native runner into backdrops.bin), and a puff
+cloud is a stamp (one image) where it was 20 circles. Same pixels, frame for frame
+(test_cutbk), but the sky's seam row (it was scene-entry garbage on the GBA) and the eruption's
+cloud past 50 px, which is a kept picture that does not breathe. PS1: compiled out.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ core/include/doomo/backdrop.h           |   4 +-
+ core/src/backdrop.c                     |   6 +-
+ core/src/cutscene.c                     | 342 +++++++++++++++++++++---
+ core/tests/test_cutbk.c                 | 158 +++++++++++
+ gba/harness/scripts/speed2_cutscene.txt | 129 +++++++++
+ 5 files changed, 596 insertions(+), 43 deletions(-)
+ create mode 100644 core/tests/test_cutbk.c
+ create mode 100644 gba/harness/scripts/speed2_cutscene.txt
+
+diff --git a/core/include/doomo/backdrop.h b/core/include/doomo/backdrop.h
+index 33f00f6..f84c70e 100644
+--- a/core/include/doomo/backdrop.h
++++ b/core/include/doomo/backdrop.h
+@@ -21,7 +21,9 @@ enum { DOOMO_BACKDROP_EXO_CHURCH = 1,
+        DOOMO_BACKDROP_MG = 2,              /* (S2-4) the Fun Fair booths' still playfields (mg.c) */
+        DOOMO_BACKDROP_MG_STAMP = 3,        /* (S2-4b) the Fun Fair's stamps: small pictures of its actors */
+        DOOMO_BACKDROP_KITCHEN = 4,         /* (S2-4c) the kitchen's wall, jars and counter (cook_scene.c) */
+-       DOOMO_BACKDROP_CONCERT = 5 };       /* (G2-CO) the concert stage's still parts (concert_gfx.c) */
++       DOOMO_BACKDROP_CONCERT = 5,         /* (G2-CO) the concert stage's still parts (concert_gfx.c) */
++       DOOMO_BACKDROP_CUTSCENE = 6,        /* (S3-7) the cutscene vignettes' still skies, walls and rooms (cutscene.c) */
++       DOOMO_BACKDROP_CUTSCENE_PUFF = 7 }; /* (S3-7) the puff clouds of the cutscenes, as stamps */
+ 
+ /* (S2-4b) what a key's picture holds (DoomoBackdrop.part; NULL: every key is BACKDROP_WHOLE):
+  *   BACKDROP_WHOLE  the whole screen
+diff --git a/core/src/backdrop.c b/core/src/backdrop.c
+index 212effb..23f30de 100644
+--- a/core/src/backdrop.c
++++ b/core/src/backdrop.c
+@@ -35,7 +35,9 @@ extern const DoomoBackdrop mg_backdrop_family;           /* (S2-4) mg.c: the fai
+ extern const DoomoBackdrop mg_stamp_family;              /* (S2-4b) mg.c: the fair's stamps */
+ extern const DoomoBackdrop cook_backdrop_family;         /* (S2-4c) cook_scene.c: the kitchen */
+ extern const DoomoBackdrop concert_backdrop_family;      /* (G2-CO) concert_gfx.c: the concert stage */
+-int backdrop_family_count(void) { return 5; }
++extern const DoomoBackdrop cut_backdrop_family;          /* (S3-7) cutscene.c: the vignettes' stills */
++extern const DoomoBackdrop cut_puff_family;              /* (S3-7) cutscene.c: the puff clouds */
++int backdrop_family_count(void) { return 7; }
+ #else
+ int backdrop_family_count(void) { return 1; }            /* (the PS1 never bakes) */
+ #endif
+@@ -47,6 +49,8 @@ const DoomoBackdrop *backdrop_family(int i)
+     if (i == 2) return &mg_stamp_family;
+     if (i == 3) return &cook_backdrop_family;
+     if (i == 4) return &concert_backdrop_family;
++    if (i == 5) return &cut_backdrop_family;
++    if (i == 6) return &cut_puff_family;
+ #endif
+     return i == 0 ? &exo_church_family : NULL;
+ }
+diff --git a/core/src/cutscene.c b/core/src/cutscene.c
+index 48ce5cc..5b79d72 100644
+--- a/core/src/cutscene.c
++++ b/core/src/cutscene.c
+@@ -24,6 +24,7 @@
+ #include "doomo/tween.h"
+ #include "doomo/beat.h"
+ #include "doomo/plat_ext.h"     /* S2-5: plat_ui_loops */
++#include "doomo/backdrop.h"     /* S3-7: the kept stills and puff stamps */
+ 
+ /* ---- captions (one per shot; NULL = none) ---------------------------------------- */
+ static const char *const C_none[] = { NULL };
+@@ -320,8 +321,8 @@ static void cloud(int cx, int cy, int r, uint8_t c, int checker)
+ }
+ 
+ /* A soft cartoon cloud: coloured outline, 3-tone body, glossy top puffs,
+- * gently breathing. r ~ half the width. */
+-static void puff_cloud(int cx, int cy, int r, int ramp, int bright, uint32_t t)
++ * gently breathing. r ~ half the width. w (-1, 0, 1) is the breath: ui_wave(t, 48, 1). */
++static void puff_draw(int cx, int cy, int r, int ramp, int bright, int w)
+ {
+     static const int8_t px[6] = { -10, -5, 1, 7, 11, 0 }, py[6] = { 3, -3, -5, -2, 3, 4 };
+     static const uint8_t pr[6] = { 6, 8, 9, 7, 5, 7 };
+@@ -329,7 +330,7 @@ static void puff_cloud(int cx, int cy, int r, int ramp, int bright, uint32_t t)
+     uint8_t mid = PAL_RAMP(ramp, DOOMO_CLAMP(bright - 1, 0, 7));
+     uint8_t base = PAL_RAMP(ramp, DOOMO_CLAMP(bright, 0, 7));
+     uint8_t light = PAL_RAMP(ramp, DOOMO_CLAMP(bright + 2, 0, 7));
+-    int i, w = ui_wave((int)t, 48, 1);
++    int i;
+     for (i = 0; i < 6; i++)
+         ui_fill_circle(cx + px[i] * r / 10, cy + py[i] * r / 10 + (i & 1 ? w : -w), pr[i] * r / 10 + 1, dark);
+     for (i = 0; i < 6; i++)
+@@ -342,6 +343,179 @@ static void puff_cloud(int cx, int cy, int r, int ramp, int bright, uint32_t t)
+                        DOOMO_MAX(1, pr[i] * r / 30), light);
+ }
+ 
++/* the sky's seam row, for the baker only: sky_bands leaves half of the row h / 3 to what the buffer held (scene-entry
++ * garbage on the GBA); a kept sky has it painted with the top colour first, the dither the band seam is meant to be */
++static void bk_seam(uint8_t top)
++{
++    plat_rect(0, plat_screen_h() / 3, plat_screen_w(), 1, top);
++}
++
++#if !defined(DOOMO_PLATFORM_PS1)
++/* ---- (S3-7) the kept stills and the puff stamps (GBA: baked into the ROM, backdrop.h) ------------------------------
++ * A vignette's still backdrop (sky, wall, ground, wallpaper) is a picture the platform keeps: one DMA copy instead of
++ * ~10-30 ms of rects and tile blits (cs_keep / cs_keep_band; they return 0 where nothing is kept and the scene draws
++ * the same thing itself). A puff cloud is a pure function of (r, ramp, bright, breath), so its picture is kept too:
++ * a stamp, drawn as one image where the cloud's 20 circles were ~4-8 ms (puff_cloud). */
++#define PUFF_STAMP_MAX 50                 /* a bigger cloud does not fit the screen centred: drawn live (or a kept picture) */
++enum { CK_HOME = 1, CK_FOG, CK_ERUPT_SKY, CK_ERUPT_CLOUD, CK_ERUPT_BAND, CK_VAPULA_SKY, CK_VAPULA_BIG };
++#define CK(kind, a, b) ((uint32_t)(kind) << 16 | (uint32_t)(a) << 8 | (uint32_t)(b))
++
++static void draw_wall_row(int y, int h, int sw);
++static void still_fog(int street);
++static void still_vapula(int late);
++static void vapula_big(int frame, int scale, int sx);
++static void still_home(void);
++static void erupt_cloud(int phase, int shake, int r, uint32_t t, int bake);
++static void erupt_sky(int v, int seam);
++static void still_erupt_band(int flesh, int shake);
++
++/* the Gate's cough: the cloud's size (it swells for 60 ticks of each shot) and the shake of the last two shots */
++static int erupt_r(int phase, uint32_t pt) { return 18 + phase * 22 + (int)DOOMO_MIN(pt, 60u) / 2; }
++static int erupt_shake(int phase, uint32_t t) { return phase >= 2 ? (int)((t * 7) % 7) - 3 : 0; }
++/* Vapula's pose: the frame, the scale of the picture and the wheeze's shudder (panel 0) */
++static void vapula_pose(int panel, uint32_t pt, uint32_t t, int *frame, int *scale, int *sx)
++{
++    *scale = plat_screen_h() >= 200 ? 4 : 3;
++    *frame = panel == 0 ? DFRAME_PAIN : panel == 1 ? DFRAME_DEATH0 + (int)DOOMO_MIN(pt / 12, 3u) : DFRAME_DEATH3;
++    if (panel == 1) *scale = DOOMO_MAX(*scale - (int)DOOMO_MIN(pt / 24, 2u), 1);       /* the Duke lets his air out */
++    *sx = panel == 0 ? ((int)(t * 3) % 5) - 2 : 0;
++}
++
++/* what the baker draws for a key: a key is kind << 16 | a << 8 | b */
++static void bk_draw(uint32_t key)
++{
++    int a = (int)(key >> 8 & 0xFF), b = (int)(key & 0xFF);
++    switch (key >> 16) {
++    case CK_HOME: still_home(); break;
++    case CK_FOG: still_fog(1); break;
++    case CK_ERUPT_SKY: erupt_sky(a, 1); break;
++    case CK_ERUPT_CLOUD:                                    /* sky, the cloud and its grin, breathless (a = phase | shake + 3 << 2) */
++        erupt_sky(DOOMO_MIN(a & 3, 2), 1);
++        erupt_cloud(a & 3, (a >> 2) - 3, b, 0, 1);
++        break;
++    case CK_ERUPT_BAND: still_erupt_band(a, b - 3); break;
++    case CK_VAPULA_SKY: bk_seam(PAL_RAMP(RAMP_SKY, 6)); still_vapula(1); break;
++    case CK_VAPULA_BIG: bk_seam(PAL_RAMP(RAMP_VAPE, 1)); still_vapula(0); vapula_big(a, b >> 4, (b & 15) - 2); break;
++    default: break;
++    }
++}
++static int bk_keys(uint32_t *out, int cap)
++{
++    int n = 0, i, ph, last = -1;
++#define BK(k, a, b) do { if (n < cap) out[n] = CK(k, a, b); n++; } while (0)
++    BK(CK_HOME, 0, 0);
++    BK(CK_FOG, 0, 0);
++    BK(CK_ERUPT_SKY, 0, 0);                                   /* shots 1 and 2, while the cloud is small (puff stamps) */
++    BK(CK_ERUPT_SKY, 1, 0);
++    for (ph = 1; ph < 4; ph++)                                /* the swelling cloud over PUFF_STAMP_MAX, one picture a size */
++        for (i = 0; i <= 60; i += 2) {
++            int r = erupt_r(ph, (uint32_t)i);
++            if (r > PUFF_STAMP_MAX) BK(CK_ERUPT_CLOUD, ph | (erupt_shake(ph, 0) + 3) << 2, r);
++        }
++    BK(CK_ERUPT_BAND, 0, erupt_shake(0, 0) + 3);              /* the Wall over the grass */
++    BK(CK_ERUPT_BAND, 1, erupt_shake(2, 0) + 3);              /* over the flesh-coloured ground, shaken */
++    BK(CK_VAPULA_SKY, 0, 0);
++    for (i = 0; i < 5; i++) {                                 /* the wheezing demon, five shudders */
++        int f, sc, sx;
++        vapula_pose(0, 0, 0, &f, &sc, &sx);
++        BK(CK_VAPULA_BIG, f, sc << 4 | i);
++    }
++    for (i = 0; i < 120; i++) {                               /* the Duke lets his air out: a few poses, in order */
++        int f, sc, sx, k;
++        vapula_pose(1, (uint32_t)i, 0, &f, &sc, &sx);
++        k = f << 8 | sc;
++        if (k != last) BK(CK_VAPULA_BIG, f, sc << 4 | (sx + 2));
++        last = k;
++    }
++#undef BK
++    return n;
++}
++static int bk_part(uint32_t key, int16_t out[2])
++{
++    int a = (int)(key >> 8 & 0xFF), b = (int)(key & 0xFF);
++    switch (key >> 16) {
++    case CK_ERUPT_CLOUD:                                    /* the rows above the Wall */
++        out[0] = 0;
++        out[1] = (int16_t)(plat_screen_h() / 2 + (a >> 2) - 3);
++        return BACKDROP_ROWS;
++    case CK_ERUPT_BAND:                                     /* the Wall and the ground below it */
++        out[0] = (int16_t)(plat_screen_h() / 2 + b - 3);
++        out[1] = (int16_t)plat_screen_h();
++        return BACKDROP_ROWS;
++    default: return BACKDROP_WHOLE;
++    }
++}
++const DoomoBackdrop cut_backdrop_family = { DOOMO_BACKDROP_CUTSCENE, bk_draw, bk_keys, bk_part };
++
++/* 1 when the kept picture of `key` is in the page: the whole screen, or (rows) the rows [y0, y1) of a band */
++static int cs_keep_rows(uint32_t key, int y0, int y1)
++{
++    PlatStageInfo info;
++    if (!plat_stage_begin(DOOMO_BACKDROP_CUTSCENE, key, bk_draw, &info)) return 0;
++    plat_stage_restore(0, y0, plat_screen_w(), y1 - y0);
++    return 1;
++}
++static int cs_keep(uint32_t key) { return cs_keep_rows(key, 0, plat_screen_h()); }
++
++/* the puff stamps: key = r | bright << 8 | (breath + 1) << 12 | ramp << 14. Only the clouds of the vignettes below
++ * (puff_wanted) are baked, and only up to PUFF_STAMP_MAX: a bigger cloud does not fit the screen centred (the baker
++ * refuses a stamp that touches an edge) and is drawn live. */
++static int puff_wanted(int ramp, int bright, int r)
++{
++    if (ramp != RAMP_VAPE || r < 6 || r > PUFF_STAMP_MAX) return 0;
++    if (bright == 4 || bright == 5 || bright == 6) {                /* cards, fog, Vapula */
++        if ((r - 14) % 5 == 0 && r >= 14 && r <= 24) return 1;      /* the fog's and card 2's 14 / 19 / 24 */
++    }
++    if (bright == 5 && r >= 6 && r <= 24) return 1;                  /* Vapula's puffs of vapour (6 + pt / 20) */
++    if (bright == 5 && r >= 18) return 1;                            /* the eruption's cloud, phases 0-1 */
++    if (bright == 4 && r >= 20 && r <= 35) return 1;                 /* its side puffs, phase 1 */
++    if (bright == 2 && r >= 31) return 1;                            /* phases 2-3 */
++    if (bright == 3 && r == 16) return 1;                            /* Vapula's wheezing sky */
++    return 0;
++}
++static uint32_t puff_key(int ramp, int bright, int r, int w)
++{
++    return (uint32_t)r | (uint32_t)bright << 8 | (uint32_t)(w + 1) << 12 | (uint32_t)ramp << 14;
++}
++static void puff_stamp_draw(uint32_t key)
++{
++    puff_draw(plat_screen_w() / 2, plat_screen_h() / 2, (int)(key & 0xFF), (int)(key >> 14) & 15,
++              (int)(key >> 8) & 15, (int)((key >> 12) & 3) - 1);
++}
++static int puff_keys(uint32_t *out, int cap)
++{
++    int n = 0, b, r, w;
++    for (b = 0; b < 8; b++)
++        for (r = 6; r <= PUFF_STAMP_MAX; r++) {
++            if (!puff_wanted(RAMP_VAPE, b, r)) continue;
++            for (w = -1; w <= 1; w++) {
++                if (n < cap) out[n] = puff_key(RAMP_VAPE, b, r, w);
++                n++;
++            }
++        }
++    return n;
++}
++static int puff_part(uint32_t key, int16_t out[2])
++{
++    (void)key;
++    out[0] = (int16_t)(plat_screen_w() / 2);
++    out[1] = (int16_t)(plat_screen_h() / 2);
++    return BACKDROP_STAMP;
++}
++const DoomoBackdrop cut_puff_family = { DOOMO_BACKDROP_CUTSCENE_PUFF, puff_stamp_draw, puff_keys, puff_part };
++#endif
++
++static void puff_cloud(int cx, int cy, int r, int ramp, int bright, uint32_t t)
++{
++    int w = ui_wave((int)t, 48, 1);
++#if !defined(DOOMO_PLATFORM_PS1)
++    if (puff_wanted(ramp, bright, r) &&
++        plat_stage_stamp(DOOMO_BACKDROP_CUTSCENE_PUFF, puff_key(ramp, bright, r, w), cx, cy))
++        return;
++#endif
++    puff_draw(cx, cy, r, ramp, bright, w);
++}
++
+ /* top edge of this shot's caption box (the pictures compose above it) */
+ int cutscene_caption_y(void)
+ {
+@@ -481,10 +655,10 @@ static void draw_arrival(void)
+     }
+ }
+ 
+-static void draw_home(void)
++/* the room: wallpaper, floor, window, bed (everything the egg, the sparkles and the player stand in front of) */
++static void still_home(void)
+ {
+-    int sw = plat_screen_w(), sh = plat_screen_h(), i, cx = sw / 2, ey = sh / 2 + 6;
+-    const DoomoImage *egg;
++    int sw = plat_screen_w(), sh = plat_screen_h();
+     tile_tex(TEX_WALLPAPER_HEARTS, 0, 0, sw, sh * 2 / 3, 1);
+     tile_tex(TEX_WOOD_FLOOR, 0, sh * 2 / 3, sw, sh / 3 + 64, 1);
+     plat_rect(0, sh * 2 / 3 - 2, sw, 3, PAL_RAMP(RAMP_WOOD, 2));
+@@ -496,6 +670,17 @@ static void draw_home(void)
+     /* bed */
+     ui_round_rect(sw - 90, sh * 2 / 3 - 20, 80, 26, 5, PAL_RAMP(RAMP_PASTEL_PINK, 4));
+     ui_round_rect(sw - 88, sh * 2 / 3 - 26, 24, 12, 5, PAL_WHITE);
++}
++
++static void draw_home(void)
++{
++    int sw = plat_screen_w(), sh = plat_screen_h(), i, cx = sw / 2, ey = sh / 2 + 6;
++    const DoomoImage *egg;
++#if !defined(DOOMO_PLATFORM_PS1)
++    if (!cs_keep(CK(CK_HOME, 0, 0))) still_home();
++#else
++    still_home();
++#endif
+     /* cushion + egg */
+     ui_fill_ellipse(cx, ey + 26, 26, 8, PAL_RAMP(RAMP_PASTEL_PINK, 5));
+     egg = sprite_image(SPR_EGG, panel >= 1 ? (int)((pt / 4) & 1) : 0);
+@@ -519,11 +704,25 @@ static void draw_wall_row(int y, int h, int sw)
+     plat_rect(0, y, sw, 1, PAL_RAMP(RAMP_STEEL, 1));
+ }
+ 
+-static void draw_fog(void)
++/* the sky and the Wall; street = 1 adds Hillvile Lane's ground, which the clouds never reach (a kept still has it) */
++static void still_fog(int street)
+ {
+-    int sw = plat_screen_w(), sh = plat_screen_h(), i;
++    int sw = plat_screen_w(), sh = plat_screen_h();
+     sky_bands(PAL_RAMP(RAMP_VAPE, 0), PAL_RAMP(RAMP_VAPE, 1), PAL_RAMP(RAMP_VAPE, 2), sh);
+     draw_wall_row(sh / 3, sh / 2, sw);
++    if (street) {
++        plat_rect(0, sh * 5 / 6, sw, sh / 6, PAL_RAMP(RAMP_VAPE, 1));
++        plat_checker(0, sh * 5 / 6, sw, 2, PAL_RAMP(RAMP_VAPE, 2));
++    }
++}
++
++static void draw_fog(void)
++{
++    int sw = plat_screen_w(), sh = plat_screen_h(), i, kept = 0;
++#if !defined(DOOMO_PLATFORM_PS1)
++    kept = cs_keep(CK(CK_FOG, 0, 0));
++#endif
++    if (!kept) still_fog(0);
+     for (i = 0; i < 7; i++) {
+         int x = (int)((i * 71 + ct * (1 + i % 2) / 2) % (uint32_t)(sw + 80)) - 40;
+         puff_cloud(x, sh / 3 - 4 + (i % 4) * 16 + ui_wave((int)ct + i * 9, 60, 3), 14 + (i % 3) * 5,
+@@ -545,8 +744,10 @@ static void draw_fog(void)
+                         PAL_RAMP(RAMP_VAPE, 7), PAL_RAMP(RAMP_VAPE, 0));
+     }
+     /* Hillvile Lane below the Wall: a street lamp, the neighbours, you */
+-    plat_rect(0, sh * 5 / 6, sw, sh / 6, PAL_RAMP(RAMP_VAPE, 1));
+-    plat_checker(0, sh * 5 / 6, sw, 2, PAL_RAMP(RAMP_VAPE, 2));
++    if (!kept) {
++        plat_rect(0, sh * 5 / 6, sw, sh / 6, PAL_RAMP(RAMP_VAPE, 1));
++        plat_checker(0, sh * 5 / 6, sw, 2, PAL_RAMP(RAMP_VAPE, 2));
++    }
+     plat_checker(sw - 40, sh * 5 / 6 - 50, 32, 30, PAL_RAMP(RAMP_CANDY, 2));           /* the lamp's glow */
+     plat_rect(sw - 25, sh * 5 / 6 - 40, 3, 42, PAL_RAMP(RAMP_STEEL, 2));
+     gg_ellipse(sw - 24, sh * 5 / 6 - 42, 5, 4, PAL_RAMP(RAMP_CANDY, 6));
+@@ -557,20 +758,46 @@ static void draw_fog(void)
+     draw_player_figure(sw / 6 - 10, sh * 5 / 6 - FIGURE_H + 14, panel >= 2 ? EXPR_SHOCK : EXPR_NEUTRAL);
+ }
+ 
+-static void draw_eruption(void)
++/* the Wall and the ground in front of it (drawn over the cloud, under the demons) */
++static void still_erupt_band(int flesh, int shake)
++{
++    int sw = plat_screen_w(), sh = plat_screen_h();
++    draw_wall_row(sh / 2 + shake, sh / 4, sw);
++    plat_rect(0, sh * 3 / 4, sw, sh / 4, flesh ? PAL_RAMP(RAMP_FLESH, 2) : PAL_RAMP(RAMP_GRASS, 5));
++}
++
++/* the sky of a phase; seam = 1: the baker's (see bk_seam) */
++static void erupt_sky(int v, int seam)
+ {
+-    int sw = plat_screen_w(), sh = plat_screen_h(), i, r, shake = 0;
+-    int phase = panel;
+-    if (phase >= 2) shake = ((ct * 7) % 7) - 3;
+-    if (phase == 0) sky_bands(PAL_RAMP(RAMP_SKY, 6), PAL_RAMP(RAMP_PASTEL_PINK, 7), PAL_RAMP(RAMP_PASTEL_PINK, 6), sh);
+-    else if (phase == 1) sky_bands(PAL_RAMP(RAMP_VAPE, 4), PAL_RAMP(RAMP_VAPE, 3), PAL_RAMP(RAMP_PASTEL_PINK, 4), sh);
+-    else sky_bands(PAL_RAMP(RAMP_BLOOD, 1), PAL_RAMP(RAMP_BLOOD, 3), PAL_RAMP(RAMP_LAVA, 4), sh);
+-    /* the swelling cloud */
+-    r = 18 + (int)(phase * 22) + (int)DOOMO_MIN(pt, 60u) / 2;
+-    puff_cloud(sw / 2 + shake, sh / 3 + 4, r, RAMP_VAPE, phase >= 2 ? 3 : 5, ct);
++    int sh = plat_screen_h();
++    if (v == 0) {
++        if (seam) bk_seam(PAL_RAMP(RAMP_SKY, 6));
++        sky_bands(PAL_RAMP(RAMP_SKY, 6), PAL_RAMP(RAMP_PASTEL_PINK, 7), PAL_RAMP(RAMP_PASTEL_PINK, 6), sh);
++    } else if (v == 1) {
++        if (seam) bk_seam(PAL_RAMP(RAMP_VAPE, 4));
++        sky_bands(PAL_RAMP(RAMP_VAPE, 4), PAL_RAMP(RAMP_VAPE, 3), PAL_RAMP(RAMP_PASTEL_PINK, 4), sh);
++    } else {
++        if (seam) bk_seam(PAL_RAMP(RAMP_BLOOD, 1));
++        sky_bands(PAL_RAMP(RAMP_BLOOD, 1), PAL_RAMP(RAMP_BLOOD, 3), PAL_RAMP(RAMP_LAVA, 4), sh);
++    }
++}
++
++/* the swelling cloud, its two side puffs and (from the third shot) its grin. bake = 1: the kept picture's, whose
++ * clouds do not breathe (the GBA draws a cloud over PUFF_STAMP_MAX from the ROM: 20 circles of up to 100 px a puff
++ * were 60-150 ms) */
++static void erupt_cloud(int phase, int shake, int r, uint32_t t, int bake)
++{
++    int sw = plat_screen_w(), sh = plat_screen_h();
++    if (bake) puff_draw(sw / 2 + shake, sh / 3 + 4, r, RAMP_VAPE, phase >= 2 ? 3 : 5, 0);
++    else puff_cloud(sw / 2 + shake, sh / 3 + 4, r, RAMP_VAPE, phase >= 2 ? 3 : 5, t);
+     if (phase >= 1) {
+-        puff_cloud(sw / 2 - r + shake, sh / 3 + 16, r / 2, RAMP_VAPE, phase >= 2 ? 2 : 4, ct + 20);
+-        puff_cloud(sw / 2 + r + shake, sh / 3 + 14, r / 2, RAMP_VAPE, phase >= 2 ? 2 : 4, ct + 40);
++        if (bake) {
++            puff_draw(sw / 2 - r + shake, sh / 3 + 16, r / 2, RAMP_VAPE, phase >= 2 ? 2 : 4, 0);
++            puff_draw(sw / 2 + r + shake, sh / 3 + 14, r / 2, RAMP_VAPE, phase >= 2 ? 2 : 4, 0);
++        } else {
++            puff_cloud(sw / 2 - r + shake, sh / 3 + 16, r / 2, RAMP_VAPE, phase >= 2 ? 2 : 4, t + 20);
++            puff_cloud(sw / 2 + r + shake, sh / 3 + 14, r / 2, RAMP_VAPE, phase >= 2 ? 2 : 4, t + 40);
++        }
+     }
+     if (phase >= 2) {
+         /* the cloud's grin */
+@@ -579,6 +806,21 @@ static void draw_eruption(void)
+         ui_fill_circle(sw / 2 + shake - r / 4, sh / 3 - r / 5, 3, PAL_RAMP(RAMP_LAVA, 7));
+         ui_fill_circle(sw / 2 + shake + r / 4, sh / 3 - r / 5, 3, PAL_RAMP(RAMP_LAVA, 7));
+     }
++}
++
++static void draw_eruption(void)
++{
++    int sw = plat_screen_w(), sh = plat_screen_h(), i, r, shake;
++    int phase = panel, kept = 0;
++    shake = erupt_shake(phase, ct);
++    r = erupt_r(phase, pt);
++#if !defined(DOOMO_PLATFORM_PS1)
++    /* a cloud over PUFF_STAMP_MAX with its sky: one kept picture of the rows above the Wall (it is drawn over the rest) */
++    if (r > PUFF_STAMP_MAX) kept = cs_keep_rows(CK(CK_ERUPT_CLOUD, phase | (shake + 3) << 2, r), 0, sh / 2 + shake);
++    if (!kept && phase < 2 && cs_keep(CK(CK_ERUPT_SKY, phase, 0))) kept = 2;
++#endif
++    if (!kept) erupt_sky(DOOMO_MIN(phase, 2), 0);
++    if (kept != 1) erupt_cloud(phase, shake, r, ct, 0);       /* the swelling cloud */
+     if (phase >= 2) {
+         for (i = 0; i < 4; i++) {
+             int lx = (int)((i * 83 + ct * 5) % (uint32_t)sw);
+@@ -586,8 +828,10 @@ static void draw_eruption(void)
+         }
+         if (pt < 6) plat_rect(0, 0, sw, sh, PAL_WHITE);
+     }
+-    draw_wall_row(sh / 2 + shake, sh / 4, sw);
+-    plat_rect(0, sh * 3 / 4, sw, sh / 4, phase >= 2 ? PAL_RAMP(RAMP_FLESH, 2) : PAL_RAMP(RAMP_GRASS, 5));
++#if !defined(DOOMO_PLATFORM_PS1)
++    if (!cs_keep_rows(CK(CK_ERUPT_BAND, phase >= 2, shake + 3), sh / 2 + shake, sh))
++#endif
++        still_erupt_band(phase >= 2, shake);
+     if (phase >= 3) {
+         static const uint8_t dem[5] = { SPR_IMPLING, SPR_PUFF_DEMON, SPR_VAPE_WRAITH, SPR_GARGOYLE, SPR_HELLHOUND_PUP };
+         for (i = 0; i < 5; i++) {
+@@ -605,26 +849,42 @@ static void draw_eruption(void)
+     if (phase < 3) draw_player_figure(sw / 6 - 10, sh * 3 / 4 - FIGURE_H + 14 + shake, phase >= 2 ? EXPR_SHOCK : EXPR_NEUTRAL);
+ }
+ 
++/* the sky and the top of the spire, where it happened */
++static void still_vapula(int late)
++{
++    int sw = plat_screen_w(), sh = plat_screen_h(), i, gy = sh * 3 / 4 + 6;
++    if (!late) sky_bands(PAL_RAMP(RAMP_VAPE, 1), PAL_RAMP(RAMP_VAPE, 2), PAL_RAMP(RAMP_VAPE, 4), sh);
++    else sky_bands(PAL_RAMP(RAMP_SKY, 6), PAL_RAMP(RAMP_PASTEL_PINK, 7), PAL_RAMP(RAMP_CANDY, 7), sh);
++    plat_rect(0, gy, sw, sh - gy, !late ? PAL_RAMP(RAMP_STONE, 2) : PAL_RAMP(RAMP_STONE, 4));
++    plat_checker(0, gy, sw, 2, !late ? PAL_RAMP(RAMP_VAPE, 3) : PAL_RAMP(RAMP_PASTEL_PINK, 6));
++    for (i = 0; i < sw; i += 24) plat_rect(i + 4, gy - 6, 12, 6, !late ? PAL_RAMP(RAMP_STONE, 1) : PAL_RAMP(RAMP_STONE, 3));   /* battlements */
++}
++
++/* the demon's shadow and the demon (panels 0 and 1) */
++static void vapula_big(int frame, int scale, int sx)
++{
++    int sw = plat_screen_w(), gy = plat_screen_h() * 3 / 4 + 6;
++    const DoomoImage *v = sprite_image(SPR_LORD_VAPULA, frame);
++    if (!v) return;
++    gg_ellipse(sw / 2, gy - 1, v->w * scale / 3, 2 + scale, PAL_RAMP(RAMP_STONE, 0));
++    plat_ui_loops();                        /* S2-5: the platform's scaled-image loop (GBA: 28 -> ~6 ms) */
++    plat_image(sw / 2 - v->w * scale / 2 + sx, gy - v->h * scale - 2, v, scale, 0, 0);
++}
++
+ static void draw_vapula(void)
+ {
+     static const int16_t folk[6] = { ID_MAYOR, ID_NANA, ID_PIP, ID_FUZZ, ID_SOOTKIN, ID_RIVET };
+-    int sw = plat_screen_w(), sh = plat_screen_h(), i, scale, frame, big = sh >= 200, gy = sh * 3 / 4 + 6;
+-    const DoomoImage *v;
+-    if (panel < 2) sky_bands(PAL_RAMP(RAMP_VAPE, 1), PAL_RAMP(RAMP_VAPE, 2), PAL_RAMP(RAMP_VAPE, 4), sh);
+-    else sky_bands(PAL_RAMP(RAMP_SKY, 6), PAL_RAMP(RAMP_PASTEL_PINK, 7), PAL_RAMP(RAMP_CANDY, 7), sh);
+-    /* the top of the spire, where it happened */
+-    plat_rect(0, gy, sw, sh - gy, panel < 2 ? PAL_RAMP(RAMP_STONE, 2) : PAL_RAMP(RAMP_STONE, 4));
+-    plat_checker(0, gy, sw, 2, panel < 2 ? PAL_RAMP(RAMP_VAPE, 3) : PAL_RAMP(RAMP_PASTEL_PINK, 6));
+-    for (i = 0; i < sw; i += 24) plat_rect(i + 4, gy - 6, 12, 6, panel < 2 ? PAL_RAMP(RAMP_STONE, 1) : PAL_RAMP(RAMP_STONE, 3));   /* battlements */
+-    scale = big ? 4 : 3;
+-    frame = panel == 0 ? DFRAME_PAIN : panel == 1 ? DFRAME_DEATH0 + (int)DOOMO_MIN(pt / 12, 3u) : DFRAME_DEATH3;
+-    if (panel == 1) scale = DOOMO_MAX(scale - (int)DOOMO_MIN(pt / 24, 2u), 1);          /* the Duke lets his air out */
+-    v = sprite_image(SPR_LORD_VAPULA, frame);
+-    if (v && panel < 2) {
+-        int sx = panel == 0 ? ((int)(ct * 3) % 5) - 2 : 0;
+-        gg_ellipse(sw / 2, gy - 1, v->w * scale / 3, 2 + scale, PAL_RAMP(RAMP_STONE, 0));
+-        plat_ui_loops();                        /* S2-5: the platform's scaled-image loop (GBA: 28 -> ~6 ms) */
+-        plat_image(sw / 2 - v->w * scale / 2 + sx, gy - v->h * scale - 2, v, scale, 0, 0);
++    int sw = plat_screen_w(), sh = plat_screen_h(), i, scale, frame, sx, kept = 0, gy = sh * 3 / 4 + 6;
++    vapula_pose(panel, pt, ct, &frame, &scale, &sx);
++#if !defined(DOOMO_PLATFORM_PS1)
++    /* the sky, the spire, and on the first two shots the demon: one kept picture (the shudder, the sizes and the
++     * four frames are all that varies) */
++    if (panel < 2) kept = sprite_image(SPR_LORD_VAPULA, frame) && cs_keep(CK(CK_VAPULA_BIG, frame, scale << 4 | (sx + 2)));
++    else kept = cs_keep(CK(CK_VAPULA_SKY, 0, 0));
++#endif
++    if (!kept) {
++        still_vapula(panel >= 2);
++        if (panel < 2) vapula_big(frame, scale, sx);
+     }
+     if (panel == 1) {
+         for (i = 0; i < 8; i++) {                                                          /* Pfffffff: the vapour leaves him */
+diff --git a/core/tests/test_cutbk.c b/core/tests/test_cutbk.c
+new file mode 100644
+index 0000000..3a60859
+--- /dev/null
++++ b/core/tests/test_cutbk.c
+@@ -0,0 +1,158 @@
++/* test_cutbk.c - (S3-7) the cutscene vignettes over their kept stills and puff stamps (cutscene.c, backdrop.h). The
++ * native stage (nat_stage_on) keeps the pictures the GBA bakes into its ROM and emulates its two Mode 4 pages: a
++ * vignette drawn with it must be the picture it draws without it, frame for frame (the one row the sky's band seam
++ * leaves to the buffer, h / 3, is not compared: with the stage it is the dither the seam is meant to be, without it
++ * whatever the page held). Every picture a vignette asks for must be in the lists the baker writes. */
++#include "test.h"
++#include "doomo/backdrop.h"
++#include "doomo/textures.h"
++
++#define CUTF 1300
++#define ERUPT_EXACT 170         /* the eruption's cloud passes 50 px at frame ~172 (shot 2 begins at 150, grows 1 px per 2 ticks from 40) */
++
++static void frame(uint32_t b) { plat_begin_frame(); doomo_frame(b); plat_end_frame(); }
++
++static void set_res(int w, int h)
++{
++    NatOptions o;
++    memset(&o, 0, sizeof(o));
++    o.w = w; o.h = h; o.seed = 0x5EED1234u; o.quiet = 1;
++    o.save_dir = test_tmp_dir;
++    nat_init(&o);
++}
++
++/* the frame without the sky's seam row; `low` = only the rows from the middle of the screen down (the Wall's rows: a kept cloud never reaches them) */
++static uint32_t fb_hash(int low)
++{
++    uint32_t h = 2166136261u;
++    int x, y;
++    for (y = low ? nat_h / 2 : 0; y < nat_h; y++) {
++        if (y == nat_h / 3) continue;                         /* the sky's seam row */
++        for (x = 0; x < nat_w; x++) h = (h ^ nat_fb[y * nat_w + x]) * 16777619u;
++    }
++    return h;
++}
++
++static int kept_n, over_n;
++
++/* a cutscene played to its end: a vignette gets A every 150 frames (a shot moves on after 12), a card runs its 260 */
++static int run(int cut, int n, uint32_t *out, uint32_t *low, int stage)
++{
++    int f, live = 0;
++    nat_stage_on = stage;
++    nat_stage_buffers = 2;
++    nat_stage_reset();
++    test_reset();
++    doomo_init();
++    scene_set(&SCENE_TITLE, 0);
++    frame(0);
++    scene_push(&SCENE_CUTSCENE, cut);
++    kept_n = over_n = 0;
++    for (f = 0; f < n; f++) {
++        int on = scene_top() == &SCENE_CUTSCENE;
++        frame(on && cut > CUT_CHAPTER4 && f % 150 == 149 ? BTN_A : 0);
++        out[f] = on ? fb_hash(0) : 0;                         /* (what comes after it is another scene's) */
++        low[f] = on ? fb_hash(1) : 0;
++        if (on) { live++; if (nat_stage_kept()) kept_n++; }
++    }
++    over_n = nat_stage_stamps();
++    nat_stage_on = 0;
++    return live;
++}
++
++/* exact_to: the frames from there on may differ above the Wall (the eruption's cloud past PUFF_STAMP_MAX is a kept
++ * picture that does not breathe), never below it */
++static int compare(int cut, int w, int h, int need_kept, int need_stamps, int exact_to)
++{
++    static uint32_t off[CUTF], on[CUTF], loff[CUTF], lon[CUTF];
++    int f, live;
++    set_res(w, h);
++    live = run(cut, CUTF, off, loff, 0);
++    run(cut, CUTF, on, lon, 1);
++    for (f = 0; f < CUTF; f++)
++        if (f < exact_to ? off[f] != on[f] : loff[f] != lon[f]) {
++            static uint8_t a[NAT_MAX_W * NAT_MAX_H];
++            char m[300], path[600];
++            int i, x0 = w, y0 = h, x1 = -1, y1 = -1, nd = 0;
++            run(cut, f + 1, off, loff, 0);
++            memcpy(a, nat_fb, (size_t)(w * h));
++            snprintf(path, sizeof(path), "%s/cutbk_%d_off.png", test_tmp_dir, cut);
++            nat_png_write(path, nat_fb, w, h, 2);
++            run(cut, f + 1, on, lon, 1);
++            snprintf(path, sizeof(path), "%s/cutbk_%d_on.png", test_tmp_dir, cut);
++            nat_png_write(path, nat_fb, w, h, 2);
++            for (i = 0; i < w * h; i++)
++                if (a[i] != nat_fb[i] && i / w != h / 3) {
++                    nd++;
++                    x0 = DOOMO_MIN(x0, i % w); x1 = DOOMO_MAX(x1, i % w);
++                    y0 = DOOMO_MIN(y0, i / w); y1 = DOOMO_MAX(y1, i / w);
++                }
++            snprintf(m, sizeof(m), "cutscene %d: frame %d differs with the stage on (%d px in %d,%d..%d,%d)",
++                     cut, f, nd, x0, y0, x1, y1);
++            test_fail(__FILE__, __LINE__, m);
++            return 0;
++        }
++    run(cut, CUTF, on, lon, 1);
++    printf("      cutscene %d: %d frames on stage (%d of them over a kept picture, %d stamps)\n", cut, live, kept_n, over_n);
++    if (live < 250 || kept_n < need_kept * live / 100 || over_n < need_stamps) {
++        char m[200];
++        snprintf(m, sizeof(m), "cutscene %d: the stage kept too little (%d of %d frames, %d stamps)", cut, kept_n, live, over_n);
++        test_fail(__FILE__, __LINE__, m);
++        return 0;
++    }
++    return 1;
++}
++
++/* the cutscenes of speed2_cutscene.txt: card 2's clouds, the home, fog, eruption and Vapula vignettes */
++TEST(cutscene_kept_stills_and_puffs_are_pixel_identical)
++{
++    int ok;
++    ok = compare(1, 240, 160, 0, 500, CUTF);          /* chapter card 2: the five clouds are stamps */
++    ok = ok && compare(10, 240, 160, 90, 0, CUTF);    /* home */
++    ok = ok && compare(5, 240, 160, 90, 500, CUTF);   /* fog */
++    ok = ok && compare(6, 240, 160, 90, 100, ERUPT_EXACT);   /* eruption */
++    ok = ok && compare(7, 240, 160, 90, 100, CUTF);   /* Vapula */
++    set_res(240, 160);
++    CHECK(ok);
++}
++
++/* the stage at another screen size (the native runner keeps whatever it is asked for; the GBA bakes 240x160 only) */
++TEST(cutscene_stage_at_320x240_is_pixel_identical)
++{
++    int ok = compare(5, 320, 240, 0, 0, CUTF) && compare(6, 320, 240, 0, 0, ERUPT_EXACT);
++    set_res(240, 160);
++    CHECK(ok);
++}
++
++/* every picture a vignette asks for is in the baker's lists; the stills' textures stand still (the bake draws them
++ * at one tick); the puff stamps fit the screen (the baker refuses one that touches an edge) */
++TEST(cutscene_pictures_asked_for_are_baked)
++{
++    static uint32_t baked[8192], asked[8192], out[CUTF];
++    static const uint8_t cuts[] = { 1, 5, 6, 7, 10 };
++    int nb = 0, na, i, j, k, fam, kept = 0, puffs = 0;
++    CHECK(!texture_is_animated(TEX_WALLPAPER_HEARTS) && !texture_is_animated(TEX_WOOD_FLOOR) &&
++          !texture_is_animated(TEX_RUST_METAL));
++    for (fam = 0; fam < backdrop_family_count(); fam++) {
++        const DoomoBackdrop *f = backdrop_family(fam);
++        int n = f->keys(asked, 8192);
++        CHECK(n >= 0 && nb + n <= 8192);
++        for (j = 0; j < n; j++) baked[nb++] = (uint32_t)f->id << 24 | (asked[j] & 0xFFFFFFu);
++    }
++    for (j = 1; j < nb; j++)
++        for (k = 0; k < j; k++) CHECK_MSG(baked[j] != baked[k], "key 0x%x is listed twice", (unsigned)baked[j]);
++    set_res(240, 160);
++    for (i = 0; i < (int)sizeof(cuts); i++) {
++        run(cuts[i], CUTF, out, out, 1);
++        na = nat_stage_pics(asked, 8192);
++        CHECK(na > 0 && na <= 8192);
++        for (j = 0; j < na; j++) {
++            for (k = 0; k < nb && baked[k] != asked[j]; k++) {}
++            CHECK_MSG(k < nb, "cutscene %d: picture 0x%x is not baked", cuts[i], (unsigned)asked[j]);
++            if ((asked[j] >> 24) == DOOMO_BACKDROP_CUTSCENE) kept++;
++            if ((asked[j] >> 24) == DOOMO_BACKDROP_CUTSCENE_PUFF) puffs++;
++        }
++    }
++    CHECK(kept >= 8 && puffs >= 20);
++    nat_stage_reset();
++}
+diff --git a/gba/harness/scripts/speed2_cutscene.txt b/gba/harness/scripts/speed2_cutscene.txt
+new file mode 100644
+index 0000000..a7b6efd
+--- /dev/null
++++ b/gba/harness/scripts/speed2_cutscene.txt
+@@ -0,0 +1,129 @@
++# speed2_cutscene.txt - speed tour 2 (S3-7): the story's cutscene backdrops, one window each: the chapter cards 2-4,
++# the home, fog, eruption and Vapula vignettes (cutscene.c), the beat after a press, and the P0 bridge panel
++# (cutscene_ch12.c). Window rules: speed2_fair.txt.
++wait 40
++expect-log doomo: init
++sync on 61
++
++seed 1
++scene STORY 101
++wait 5
++push CUTSCENE 1
++wait 40
++fps start
++wait 90
++fps cutscene: chapter card 2
++shot cutscene_card2
++seed 1
++scene STORY 101
++wait 5
++push CUTSCENE 2
++wait 30
++fps start
++wait 90
++fps cutscene: chapter card 3
++shot cutscene_card3
++seed 1
++scene STORY 101
++wait 5
++push CUTSCENE 3
++wait 50
++fps start
++wait 90
++fps cutscene: chapter card 4
++shot cutscene_card4
++seed 1
++scene STORY 101
++wait 5
++push CUTSCENE 10
++wait 40
++fps start
++wait 90
++fps cutscene: home vignette
++shot cutscene_home
++press A
++wait 14
++fps start
++wait 90
++fps cutscene: home vignette, shot 2
++shot cutscene_home2
++seed 1
++scene STORY 101
++wait 5
++push CUTSCENE 5
++wait 40
++fps start
++wait 90
++fps cutscene: fog vignette
++shot cutscene_fog
++press A
++wait 14
++fps start
++wait 90
++fps cutscene: fog vignette, shot 2
++shot cutscene_fog2
++press A
++wait 14
++fps start
++wait 90
++fps cutscene: fog vignette, shot 3
++shot cutscene_fog3
++seed 1
++scene STORY 101
++wait 5
++push CUTSCENE 6
++wait 30
++fps start
++wait 90
++fps cutscene: eruption vignette
++shot cutscene_eruption
++press A
++wait 14
++fps start
++wait 90
++fps cutscene: eruption vignette, shot 2
++shot cutscene_eruption2
++press A
++wait 14
++fps start
++wait 90
++fps cutscene: eruption vignette, shot 3
++shot cutscene_eruption3
++press A
++wait 14
++fps start
++wait 90
++fps cutscene: eruption vignette, shot 4
++shot cutscene_eruption4
++seed 1
++scene STORY 101
++wait 5
++push CUTSCENE 7
++wait 60
++fps start
++wait 90
++fps cutscene: vapula vignette
++shot cutscene_vapula
++press A
++wait 2
++fps start
++wait 60
++fps cutscene: after a press
++shot cutscene_press
++press A
++wait 14
++fps start
++wait 90
++fps cutscene: vapula vignette, shot 3
++shot cutscene_vapula3
++
++# the P0 bridge (the crayon prologue, story_ch1.txt)
++seed 1
++scene STORY 0
++wait 150
++press A
++wait 2
++fps start
++wait 88
++fps cutscene: P0 bridge
++shot cutscene_p0_bridge
+-- 
+2.43.0
+

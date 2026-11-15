@@ -1,0 +1,444 @@
+From bc749466f51c112bc3f64d42db1906e0abab1d50 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 16:10:31 +0000
+Subject: [PATCH 01/11] cross-stream: TALK: the S3 output lint skips register
+ words whose first character pair is not in the line (same verdicts, tested
+ against the original scan); S3-TALK speed
+
+talk_safe.c is the TALK stream's: the lint read and scanned every register word for every
+generated line, 80% of the 100 to 400 ms a line cost on the GBA. A 1,024-bit pair table,
+the records read eight at a time, wordc inline. test_talk_lint_speed.c compares the verdict
+with a copy of the old scan on every register word in ten templates.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ core/include/doomo/talk.h           |   4 +
+ core/src/talk_safe.c                |  57 ++++++++-
+ core/tests/test_talk_lint_speed.c   | 192 ++++++++++++++++++++++++++++
+ gba/harness/scripts/speed2_talk.txt | 104 +++++++++++++++
+ 4 files changed, 351 insertions(+), 6 deletions(-)
+ create mode 100644 core/tests/test_talk_lint_speed.c
+ create mode 100644 gba/harness/scripts/speed2_talk.txt
+
+diff --git a/core/include/doomo/talk.h b/core/include/doomo/talk.h
+index 2c0ad2b..2d6d2af 100644
+--- a/core/include/doomo/talk.h
++++ b/core/include/doomo/talk.h
+@@ -478,6 +478,10 @@ int  talk_safe_bubble_lines(const char *line, int cols);
+ /* The lint's hit counter (a test fails on any count > 0; release builds
+  * log "talk: lint"). */
+ uint32_t talk_safe_lint_hits(void);
++#ifdef DOOMO_TALK_DEBUG
++/* (S3-TALK) register words the lint scanned / skipped by its pair table since the start (tests only) */
++void talk_safe_lint_counts(uint32_t *scans, uint32_t *skips);
++#endif
+ /* (T5a) The same lint on a piece of text that is not a bank line, before
+  * the generator puts it in a line: a name the player typed (a custom
+  * resident's; strict: a register word in it is a problem whatever the
+diff --git a/core/src/talk_safe.c b/core/src/talk_safe.c
+index f902437..a26ebb6 100644
+--- a/core/src/talk_safe.c
++++ b/core/src/talk_safe.c
+@@ -352,8 +352,37 @@ int talk_safe_gate(TalkUtter *u, const TalkAudience *aud, int avatar, int target
+ }
+ 
+ /* ---- S3: the output lint ----------------------------------------------- */
+-static int wordc(char c) { return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '\''; }
+-static int wordch_at(const char *t, int i) { return wordc(t[i]) || (t[i] == '-' && wordc(t[i + 1])); }
++static inline int wordc(char c) { return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '\''; }
++static inline int wordch_at(const char *t, int i) { return wordc(t[i]) || (t[i] == '-' && wordc(t[i + 1])); }
++
++/* S3-TALK (speed): a register word can only be in the line where its first two characters stand side by side
++ * (a space in the word matches a run of spaces, so its pair still occurs in the line). The line's character pairs
++ * go into a 1,024-bit table once (a pair is the low five bits of each character: a collision only keeps a word
++ * that cannot match, never drops one), and a word whose first pair is not in it is skipped without reading
++ * the rest of its string or scanning the line. The result of the lint is the same for every line (tested against the
++ * original scan, test_talk_lint_speed.c). On the GBA the scan was 80% of the 100 to 400 ms a generated line cost. */
++#define LINT_PAIRS 128
++#ifdef DOOMO_TALK_DEBUG
++static uint32_t lint_scans, lint_skips;                  /* test counters: words scanned / skipped by the pair table */
++void talk_safe_lint_counts(uint32_t *scans, uint32_t *skips) { *scans = lint_scans; *skips = lint_skips; }
++#define LINT_COUNT(c) (c)++
++#else
++#define LINT_COUNT(c) ((void)0)
++#endif
++static void pairs_of(const char *v, uint8_t *bg)
++{
++    int i;
++    memset(bg, 0, LINT_PAIRS);
++    for (i = 0; v[i] && v[i + 1]; i++) {
++        unsigned k = (unsigned)(((v[i] & 31) << 5) | (v[i + 1] & 31));
++        bg[k >> 3] |= (uint8_t)(1u << (k & 7));
++    }
++}
++static inline int pair_in(const uint8_t *bg, char a, char b)
++{
++    unsigned k = (unsigned)(((a & 31) << 5) | (b & 31));
++    return (bg[k >> 3] >> (k & 7)) & 1;
++}
+ 
+ /* the register word w ("what the hell", spaces match runs of spaces) at t[j]: its end or -1 */
+ static int match_body(const char *w, const char *t, int j)
+@@ -424,6 +453,7 @@ static int lint_core(const char *line, const TalkAudience *aud, int *swears, int
+ {
+     SafHdr h;
+     char v[TALK_SHOWN_MAX * 3], word[TALK_TOK_LEN * 2];
++    uint8_t bg[LINT_PAIRS], rb[64];
+     int i, o = 0, nsw = 0, k;
+     if (!line || !aud) return TL_NO_DB;
+     if (!saf_hdr(&h)) return TL_NO_DB;
+@@ -437,23 +467,38 @@ static int lint_core(const char *line, const TalkAudience *aud, int *swears, int
+         v[o++] = c;
+     }
+     v[o] = 0;
++    pairs_of(v, bg);
+     for (k = 0; k < (int)h.nreg; k++) {
+-        uint8_t r[8];
++        const uint8_t *r;
+         char w[48];
++        uint8_t pk[2];
+         uint32_t so;
+         int n, len = 0;
+-        if (!talk_db_read(TB_SAFETY, h.reg_off + 8u * (uint32_t)k, r, 8)) return TL_NO_DB;
++        if ((k & 7) == 0) {                      /* the records, eight a read */
++            int left = (int)h.nreg - k;
++            if (!talk_db_read(TB_SAFETY, h.reg_off + 8u * (uint32_t)k, rb, 8u * (uint32_t)(left < 8 ? left : 8))) return TL_NO_DB;
++        }
++        r = rb + 8 * (k & 7);
+         so = le32(r);
+         if (so >= h.str_len) return TL_NO_DB;
++        if (!(r[5] & SR_ALLOW) && h.str_len - so >= 2) {
++            /* the word's first two characters against the line's pairs */
++            if (!talk_db_read(TB_SAFETY, h.str_off + so, pk, 2)) return TL_NO_DB;
++            if (pk[0] && pk[1] && !pair_in(bg, (char)pk[0], (char)pk[1])) { LINT_COUNT(lint_skips); continue; }
++        }
++        LINT_COUNT(lint_scans);
+         len = (int)(h.str_len - so < sizeof w - 1 ? h.str_len - so : sizeof w - 1);
+         if (!talk_db_read(TB_SAFETY, h.str_off + so, w, (uint32_t)len)) return TL_NO_DB;
+         w[len] = 0;
+         if (r[5] & SR_ALLOW) {
+             /* blank the allowed phrase out of the text before the checks */
+-            int p, l = (int)strlen(w);
++            int p, l = (int)strlen(w), blanked = 0;
+             for (p = 0; v[p]; p++)
+-                if ((p == 0 || !wordch_at(v, p - 1)) && strncmp(v + p, w, (size_t)l) == 0 && !wordch_at(v, p + l))
++                if ((p == 0 || !wordch_at(v, p - 1)) && strncmp(v + p, w, (size_t)l) == 0 && !wordch_at(v, p + l)) {
+                     memset(v + p, ' ', (size_t)l);
++                    blanked = 1;
++                }
++            if (blanked) pairs_of(v, bg);       /* blanks made new pairs */
+             continue;
+         }
+         n = count_word(w, r[5] & SR_HEAD, r[5] & SR_TAIL, v);
+diff --git a/core/tests/test_talk_lint_speed.c b/core/tests/test_talk_lint_speed.c
+new file mode 100644
+index 0000000..0e379e6
+--- /dev/null
++++ b/core/tests/test_talk_lint_speed.c
+@@ -0,0 +1,192 @@
++/* test_talk_lint_speed.c - S3-TALK: the S3 output lint (talk_safe.c lint_core) skips a register word whose first
++ * two characters are not a pair of the line, so a generated line costs a few ms on the GBA instead of 100 to 400.
++ * The skip must change no verdict: this file keeps the original scan (every register word read whole and matched
++ * against the line, `ref_lint` below, a copy of lint_core before S3-TALK) and compares it with talk_safe_lint_probe
++ * on a corpus made of every register word (alone, in a sentence, with a trailing / leading letter, a hyphen, upper
++ * case, line codes, a run of spaces), the allowed phrases, and the lines the generator says over many seeds.
++ * Fails without the skip: the "skips most words" check (the counters count words skipped by the pair table). */
++#define DOOMO_TALK_DEBUG 1
++#include "test.h"
++#include "doomo/doomo.h"
++#include "doomo/talk.h"
++#include "doomo/lang.h"
++
++#define SAF_MAGIC 0x31464153u
++#define SR_HEAD    1u
++#define SR_TAIL    2u
++#define SR_FORBID  4u
++#define SR_SUGGEST 8u
++#define SR_ALLOW   16u
++
++static uint32_t rd32(const uint8_t *p)
++{
++    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
++}
++static int rwordc(char c) { return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '\''; }
++static int rwordch_at(const char *t, int i) { return rwordc(t[i]) || (t[i] == '-' && rwordc(t[i + 1])); }
++static int rmatch_body(const char *w, const char *t, int j)
++{
++    while (*w) {
++        if (*w == ' ') {
++            if (t[j] != ' ') return -1;
++            while (t[j] == ' ') j++;
++            w++;
++            continue;
++        }
++        if (t[j] != *w) return -1;
++        j++;
++        w++;
++    }
++    return j;
++}
++static int rcount_word(const char *w, int head, int tail, const char *v)
++{
++    int i, n = 0;
++    for (i = 0; v[i]; i++) {
++        int j, e;
++        if (i > 0 && rwordch_at(v, i - 1)) continue;
++        for (j = i; v[j] && (j == i || rwordch_at(v, j - 1)); j++) {
++            e = rmatch_body(w, v, j);
++            if (e >= 0) {
++                if (tail) while (rwordch_at(v, e)) e++;
++                if (!rwordch_at(v, e)) { n++; break; }
++            }
++            if (!head) break;
++        }
++    }
++    return n;
++}
++
++/* the register part of the original lint_core: the verdict before the hate list, or TL_OK with *nsw_out */
++static int ref_register(const char *line, const TalkAudience *aud, int strict, int *nsw_out)
++{
++    uint8_t b[48];
++    uint32_t nreg, reg_off, str_off, str_len, k;
++    char v[TALK_SHOWN_MAX * 3];
++    int i, o = 0, nsw = 0;
++    if (!talk_db_read(TB_SAFETY, 0, b, 48) || rd32(b) != SAF_MAGIC) return TL_NO_DB;
++    nreg = rd32(b + 4); reg_off = rd32(b + 8); str_off = rd32(b + 36); str_len = rd32(b + 40);
++    for (i = 0; line[i] && o < (int)sizeof v - 1; i++) {
++        char c = line[i];
++        if (c == '[') { while (line[i] && line[i] != ']') i++; if (!line[i]) break; continue; }
++        if (c == '{') { while (line[i] && line[i] != '}') i++; if (!line[i]) break; continue; }
++        if (c == '/') c = ' ';
++        if (c >= 'A' && c <= 'Z') c = (char)(c - 'A' + 'a');
++        v[o++] = c;
++    }
++    v[o] = 0;
++    for (k = 0; k < nreg; k++) {
++        uint8_t r[8];
++        char w[48];
++        uint32_t so;
++        int n, len;
++        if (!talk_db_read(TB_SAFETY, reg_off + 8u * k, r, 8)) return TL_NO_DB;
++        so = rd32(r);
++        if (so >= str_len) return TL_NO_DB;
++        len = (int)(str_len - so < sizeof w - 1 ? str_len - so : sizeof w - 1);
++        if (!talk_db_read(TB_SAFETY, str_off + so, w, (uint32_t)len)) return TL_NO_DB;
++        w[len] = 0;
++        if (r[5] & SR_ALLOW) {
++            int p, l = (int)strlen(w);
++            for (p = 0; v[p]; p++)
++                if ((p == 0 || !rwordch_at(v, p - 1)) && strncmp(v + p, w, (size_t)l) == 0 && !rwordch_at(v, p + l))
++                    memset(v + p, ' ', (size_t)l);
++            continue;
++        }
++        n = rcount_word(w, r[5] & SR_HEAD, r[5] & SR_TAIL, v);
++        if (!n) continue;
++        if (r[5] & SR_FORBID) return TL_FORBIDDEN;
++        if (strict) return TL_REGISTER_KID;
++        if (r[4] == TR_HATE || r[4] == TR_REALWORLD || r[4] == TR_DISTRESS) return TL_FORBIDDEN;
++        if (r[4] == TR_SEXUAL || (r[5] & SR_SUGGEST)) {
++            if (aud->any_minor || aud->target_minor || aud->avatar_minor) return TL_REGISTER_KID;
++            if (aud->pet) return TL_SEXUAL_PET;
++            continue;
++        }
++        if (aud->any_minor || aud->target_minor || aud->avatar_minor) return TL_REGISTER_KID;
++        if (r[4] == TR_STRONG) nsw += n;
++    }
++    *nsw_out = nsw;
++    return TL_OK;
++}
++
++/* the verdict of the original lint: the register part, then the rest through the new code with the register words
++ * out of the way is not possible, so the full verdict is compared only when the register part decides, or says OK
++ * and the new lint agrees on OK / not OK with the hate list and the length (those two did not change) */
++static int same_verdict(const char *line, const TalkAudience *aud, int strict)
++{
++    int nsw = 0, ref = ref_register(line, aud, strict, &nsw);
++    int got = talk_safe_lint_probe(line, aud, strict);
++    if (ref != TL_OK) return got == ref;
++    /* the register part passed: the new lint may still say HATE / LENGTH / SWEAR_CAP (probe: no swears pointer) */
++    if (nsw && !strict) return got == TL_HATE || got == TL_LENGTH || got == TL_SWEAR_CAP;
++    return got == TL_OK || got == TL_HATE || got == TL_LENGTH;
++}
++
++static int fails, cases;
++static void one(const char *line)
++{
++    TalkAudience adults, kids, pet;
++    memset(&adults, 0, sizeof adults);
++    memset(&kids, 0, sizeof kids); kids.any_minor = 1;
++    memset(&pet, 0, sizeof pet); pet.pet = 1;
++    cases++;
++    if (!same_verdict(line, &adults, 0) || !same_verdict(line, &kids, 0) || !same_verdict(line, &pet, 0) ||
++        !same_verdict(line, &adults, 1)) {
++        if (fails++ < 5) fprintf(stderr, "lint verdict differs: \"%s\"\n", line);
++    }
++}
++
++TEST(talk_lint_pair_skip_changes_no_verdict)
++{
++    uint8_t b[48];
++    uint32_t nreg, reg_off, str_off, str_len, k, s0, s1;
++    char line[200];
++    static const char *const tpl[] = {
++        "%s", "Well, %s.", "I said %s to the %s man.", "x%s", "%sx", "%s-pie and tea", "a  %s  b", "[R4]%s{.}", "That is so %s!",
++        "pre%s post",
++    };
++    int t, nw = 0;
++    CHECK(talk_db_open(lang_find("en")) == TALK_DB_OK);
++    CHECK(talk_db_read(TB_SAFETY, 0, b, 48) && rd32(b) == SAF_MAGIC);
++    nreg = rd32(b + 4); reg_off = rd32(b + 8); str_off = rd32(b + 36); str_len = rd32(b + 40);
++    CHECK(nreg > 50);
++    talk_safe_lint_counts(&s0, &s1);
++    fails = cases = 0;
++    for (k = 0; k < nreg; k++) {
++        uint8_t r[8];
++        char w[48], up[48];
++        uint32_t so;
++        int len, i;
++        CHECK(talk_db_read(TB_SAFETY, reg_off + 8u * k, r, 8));
++        so = rd32(r);
++        len = (int)(str_len - so < sizeof w - 1 ? str_len - so : sizeof w - 1);
++        CHECK(talk_db_read(TB_SAFETY, str_off + so, w, (uint32_t)len));
++        w[len] = 0;
++        for (i = 0; w[i]; i++) up[i] = (w[i] >= 'a' && w[i] <= 'z') ? (char)(w[i] - 32) : w[i];
++        up[i] = 0;
++        nw++;
++        for (t = 0; t < (int)(sizeof tpl / sizeof *tpl); t++) {
++            snprintf(line, sizeof line, tpl[t], w, w);
++            one(line);
++            if (t == 1) { snprintf(line, sizeof line, tpl[t], up); one(line); }
++        }
++        snprintf(line, sizeof line, "A tug of war, %s, and a pie.", w);
++        one(line);
++        snprintf(line, sizeof line, "%s", w);
++        if (len > 1) { line[1] = 0; one(line); }                     /* a lone first letter */
++    }
++    one("");
++    one("Tug of war in the park!");
++    one("What the hell, you hell-bent  loon. Damn.");
++    one("it's fine, it's fine, isn't it");
++    CHECK(nw == (int)nreg);
++    CHECK_MSG(fails == 0, "%d of %d lines got another verdict than the original scan", fails, cases);
++    {
++        uint32_t a, bsk;
++        talk_safe_lint_counts(&a, &bsk);
++        a -= s0; bsk -= s1;
++        /* most register words cannot be in a line: the pair table must have skipped most of them */
++        CHECK_MSG(bsk > 4u * a, "the pair table skipped %u words and %u were scanned", (unsigned)bsk, (unsigned)a);
++    }
++}
+diff --git a/gba/harness/scripts/speed2_talk.txt b/gba/harness/scripts/speed2_talk.txt
+new file mode 100644
+index 0000000..d300871
+--- /dev/null
++++ b/gba/harness/scripts/speed2_talk.txt
+@@ -0,0 +1,104 @@
++# speed2_talk.txt - speed tour 2, S3-TALK: the Talk screen (core/src/talk_scene.c, SCENE_TALK) on the GBA ROM.
++# The same prelude as talk.txt (a house visit first: Talk's opener only plays after one), then `push TALK 1`:
++# windows on the opener's boxes (the dialogue box with the portrait over the screen), the replies list idle and
++# with the cursor moving, the line-saying frame (a quick reply: the drama manager and the generator run), and
++# the answer's boxes. The window rules are in speed2_fair.txt. Seed 18 is pinned: the opener's line count follows it.
++# The live Talk screen (core/src/talk_scene.c) reading its word network out of the ROM
++# (src/talk_blob.s, plat_talk_gba.c). Two entries: the house visit's host (home_talk_enter:
++# walk up to Nana Puddin and press A, the way a player does) and `push TALK`. Then a
++# conversation (quick replies, the topic list, bye), the 'TALK' save chunk through a
++# save / verify / load, and the main-stack high-water mark (Talk's generator is the deepest
++# call chain in the game; the log prints it). Screenshots go to gba/build/shots/talk.
++wait 30
++expect-log doomo: init
++seed 18                  # pinned: the resident's opening lines (and so the A presses below) follow the town seed; unpinned, the boot timing picked it
++sync on
++sync on
++scene TITLE
++wait 10
++# the first knock moves the premade island in (an empty runner town)
++push HOME 3
++wait 20
++press B
++wait 20
++expect-scene TITLE
++# 1. the house visit: walk up to the host and press A. Since 2a54b72 the resident opens
++# the talk with two lines (four A's: each line types out, then pages); the goodbye box
++# then takes three A's (a fourth would be a new Talk with the host)
++push HOME 3
++wait 60
++hold DOWN 24
++hold LEFT 14
++press A
++wait 30
++expect-scene DIALOG
++press A
++wait 30
++press A
++wait 30
++press A
++wait 30
++press A
++wait 30
++expect-scene TALK
++press B
++wait 40
++press A
++wait 40
++press A
++wait 40
++press A
++wait 40
++press A
++wait 40
++expect-scene HOME
++press B
++wait 20
++expect-scene TITLE
++push TALK 1
++wait 40
++expect-scene DIALOG
++fps start
++press A
++wait 30
++press A
++wait 30
++press A
++wait 30
++press A
++wait 30
++fps talk: opener boxes
++expect-scene TALK
++wait 10
++shot talk_list
++fps start
++wait 90
++fps talk: list idle
++fps start
++press DOWN
++wait 4
++press UP
++wait 4
++press DOWN
++wait 4
++press UP
++wait 4
++wait 60
++fps talk: list cursor moving
++# the line-saying frame: the top quick reply (the window's worst frame is the generator's)
++fps start
++press A
++wait 90
++fps talk: say a line and its first box
++shot talk_answer_box
++fps start
++wait 120
++fps talk: answer box
++press A
++wait 40
++press A
++wait 40
++fps start
++wait 90
++fps talk: list after the answer
++shot talk_list_after
+-- 
+2.43.0
+

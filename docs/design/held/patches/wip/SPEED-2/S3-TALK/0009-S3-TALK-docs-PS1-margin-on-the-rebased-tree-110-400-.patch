@@ -1,0 +1,45 @@
+From 873106ebde4fc8bad1c7598f7a3ebdfe507fc4dc Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 17:41:50 +0000
+Subject: [PATCH 09/11] S3-TALK docs: PS1 margin on the rebased tree (110,400
+ B, +128 B resident)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ docs/GBA.md | 2 +-
+ docs/PS1.md | 7 ++++---
+ 2 files changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/docs/GBA.md b/docs/GBA.md
+index 1cf20bf..c729685 100644
+--- a/docs/GBA.md
++++ b/docs/GBA.md
+@@ -1673,7 +1673,7 @@ The Dreamcast, the PS1 and the native host draw every frame as before.
+ **Memory.** GBA `.bss` 254,828 B before and after (the kept-picture state is 28 B, paid for by the dead `TalkScn.note[40]`),
+ `.iwram` 11,272 and `.iwram_bss` 4,088 B unchanged, ROM `.text` +2,728 B. The band lives in the arena beside the scene
+ scratch (`plat_hold_band`, SP5), no EWRAM of its own. PS1: Talk is not linked; the lint and `talk_db.c` are
+-(+128 B resident, 129,872 B below the stack top), see docs/PS1.md "S3-TALK".
++(+128 B resident, 110,400 B below the stack top on the rebased tree), see docs/PS1.md "S3-TALK".
+ 
+ ### Where the title's time goes (`make -C gba profile-title`)
+ 
+diff --git a/docs/PS1.md b/docs/PS1.md
+index 4accd85..7bbdd94 100644
+--- a/docs/PS1.md
++++ b/docs/PS1.md
+@@ -2475,7 +2475,8 @@ share of 8 KB resident: 0 B used by LV7a. `game_smoke` PASS.
+ The package is GBA work (docs/GBA.md "Speed wave 3: S3-TALK"); Talk is not linked on the PS1. Shared code it touched and the
+ PS1 links: the S3 output lint (`talk_safe.c`, a pair table and a window: 192 B more stack while a line is linted), `talk_db.c`
+ (`plat_talk_image`, weak NULL here), `scene.c` (`scene_keep_below`, off here), `ui.c` (`ui_shadow_kept` is a macro that does
+-nothing here) and `ui_dialog.c` (`ui_dialog_reach`). With the boot FMV the EXE ends at `_end` 0x801e04a0: **129,872 B below
+-the stack top** against 130,000 B on the tip it was built on (`fe41002`): **+128 B resident**, inside SPEED's 2 KB share, the
+-72 KB plan gate met with 56,144 B to spare. `game_smoke` passes (PCSX-Redux).
++nothing here) and `ui_dialog.c` (`ui_dialog_reach`). With the boot FMV the EXE ends at `_end` 0x801e50b0 on the tree rebased onto `dcecbd0`: **110,400 B below
++the stack top** (110,528 B on that tip before the package, from the CR10 notes; on `fe41002` the same build measured
++130,000 B before and 129,872 B with the package): **+128 B resident**, inside SPEED's 2 KB share, the 72 KB plan gate met with
++36,672 B to spare. `game_smoke` passes (PCSX-Redux).
+ 
+-- 
+2.43.0
+

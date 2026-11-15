@@ -1,0 +1,345 @@
+From 01446f4f6ef578742c74ebdbef654bfc88e4dc60 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 17:43:42 +0000
+Subject: [PATCH 1/5] S3-15: a scene change from inside a scene call enters the
+ new scene after the call (PS1: one overlay read, not three)
+
+scene.c holds back enter() of a scene whose code group is not loaded while a scene's
+update / leave / enter / modal callback is running (scene_enter_loads hook, set by
+ps1/src/overlay.c); it runs when the outermost call has returned. Any other scene
+change flushes it first. Other platforms have no hook: unchanged.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ core/include/doomo/scene.h    |   4 ++
+ core/src/scene.c              |  64 +++++++++++++++--
+ core/tests/test_scene_defer.c | 132 ++++++++++++++++++++++++++++++++++
+ ps1/src/overlay.c             |  11 +++
+ 4 files changed, 205 insertions(+), 6 deletions(-)
+ create mode 100644 core/tests/test_scene_defer.c
+
+diff --git a/core/include/doomo/scene.h b/core/include/doomo/scene.h
+index 88bf6ba..ec2d93d 100644
+--- a/core/include/doomo/scene.h
++++ b/core/include/doomo/scene.h
+@@ -38,6 +38,10 @@ const DoomoScene *scene_drawn_above(void);
+  * scene.c) do nothing. Never call a scene's functions directly. */
+ int  plat_scene_code(const DoomoScene *s);
+ void plat_scene_code_end(int token);
++/* --- S3-15 (additive): set by a platform whose scene code can be out of RAM (the PS1, overlay.c). Returns 1 when
++ * entering s would first have to load its code. A scene change made from inside a scene's update (or a modal's
++ * callback) then runs s's enter() when that call has returned, not inside it (scene.c). NULL = always at once. --- */
++extern int (*scene_enter_loads)(const DoomoScene *s);
+ /* --- H4 (additive): a scene's code may also come in PARTS that share one
+  * address range (ps1/tools/ovl_plan.py PARTS): the code of one mode of a
+  * scene. Before the scene's own code calls into a part it asks for it;
+diff --git a/core/src/scene.c b/core/src/scene.c
+index 8773c83..b834a6c 100644
+--- a/core/src/scene.c
++++ b/core/src/scene.c
+@@ -26,13 +26,47 @@ __attribute__((weak)) int plat_scene_code(const DoomoScene *s) { (void)s; return
+ __attribute__((weak)) void plat_scene_code_end(int token) { (void)token; }
+ __attribute__((weak)) void plat_code_part(int part) { (void)part; }   /* H4: scene.h */
+ 
+-static void call_enter(const DoomoScene *s, int arg)
++/* S3-15 (scene.h scene_enter_loads): a scene change made from inside a scene's own code (its update, or a modal's
++ * callback) whose new scene's enter() lives in a code group that is not loaded would, on the PS1, read that group
++ * for enter(), read the caller's group back (its code runs on when the call returns) and read the new group again
++ * on the next frame: three reads of 0.1-0.5 s. Such an enter() waits until the outermost scene call has returned
++ * (flush_enter, after plat_scene_code_end): one read. Any other change flushes it first, so enter() and leave()
++ * never run out of order; every platform without the hook enters at once, as before. */
++int (*scene_enter_loads)(const DoomoScene *s);
++static int in_call;                          /* depth of the scene calls that may change the stack */
++static const DoomoScene *pend_s;
++static int pend_arg;
++
++static void flush_enter(void);
++static void run_enter(const DoomoScene *s, int arg)
+ {
+-    int t;
+-    if (!s->enter) return;
+-    t = plat_scene_code(s);
++    int t = plat_scene_code(s);
++    in_call++;
+     s->enter(arg);
++    in_call--;
+     plat_scene_code_end(t);
++    if (in_call == 0) flush_enter();
++}
++
++static void flush_enter(void)
++{
++    while (pend_s) {
++        const DoomoScene *s = pend_s;
++        int arg = pend_arg;
++        pend_s = NULL;
++        run_enter(s, arg);
++    }
++}
++
++static void call_enter(const DoomoScene *s, int arg)
++{
++    if (!s->enter) return;
++    if (in_call > 0 && scene_enter_loads && scene_enter_loads(s)) {
++        pend_s = s;
++        pend_arg = arg;
++        return;
++    }
++    run_enter(s, arg);
+ }
+ 
+ static void call_leave(const DoomoScene *s)
+@@ -40,8 +74,11 @@ static void call_leave(const DoomoScene *s)
+     int t;
+     if (!s || !s->leave) return;
+     t = plat_scene_code(s);
++    in_call++;
+     s->leave();
++    in_call--;
+     plat_scene_code_end(t);
++    if (in_call == 0) flush_enter();
+ }
+ 
+ const DoomoScene *const doomo_all_scenes[] = {
+@@ -110,6 +147,7 @@ static void log_scene(const char *what, const DoomoScene *s)
+ 
+ void scene_set(const DoomoScene *s, int arg)
+ {
++    flush_enter();
+     opt_config_flush();                       /* settings changed on the scene being left: written once */
+     plat_hold_frame(0);                       /* U4: any scene_set releases a held frame */
+     plat_loading();                           /* SP5 G-LD: the next frame may be late */
+@@ -131,6 +169,7 @@ void scene_set(const DoomoScene *s, int arg)
+ void scene_push(const DoomoScene *s, int arg)
+ {
+     if (!s) return;
++    flush_enter();
+     plat_hold_frame(0);                       /* a held frame (pause, island menu) ends when the stack changes */
+     plat_loading();                           /* SP5 G-LD */
+     ui_modal_reset();                         /* S2-1 */
+@@ -152,6 +191,7 @@ void scene_pop(void)
+ {
+     const DoomoScene *s;
+     if (depth <= 0) return;
++    flush_enter();
+     s = stack[depth - 1].s;
+     if (!s->overlay)                          /* leaving the Options (or any screen, not a modal over it): */
+         opt_config_flush();                   /* the settings changed there, written once */
+@@ -178,10 +218,16 @@ int scene_callback_begin(void)
+ {
+     int i = depth - 1;
+     while (i > 0 && stack[i].s->overlay) i--;
++    in_call++;
+     return plat_scene_code(i >= 0 ? stack[i].s : NULL);
+ }
+ 
+-void scene_callback_end(int token) { plat_scene_code_end(token); }
++void scene_callback_end(int token)
++{
++    plat_scene_code_end(token);
++    if (in_call > 0) in_call--;
++    if (in_call == 0) flush_enter();
++}
+ 
+ uint32_t scene_ticks(void)
+ {
+@@ -191,13 +237,17 @@ uint32_t scene_ticks(void)
+ void scene_update(void)
+ {
+     const DoomoScene *s;
++    flush_enter();
+     if (depth <= 0) return;
+     s = stack[depth - 1].s;
+     stack[depth - 1].ticks++;
+     if (s->update) {
+         int t = plat_scene_code(s);
++        in_call++;
+         s->update();
++        in_call--;
+         plat_scene_code_end(t);
++        flush_enter();
+     }
+ }
+ 
+@@ -213,7 +263,9 @@ const DoomoScene *scene_drawn_above(void)
+  * cut above it, so scene_top()/scene_ticks() describe the scene drawing. */
+ void scene_draw(void)
+ {
+-    int first, i, real = depth;
++    int first, i, real;
++    flush_enter();
++    real = depth;
+     if (depth <= 0) return;
+     draw_real = real;
+     first = depth - 1;
+diff --git a/core/tests/test_scene_defer.c b/core/tests/test_scene_defer.c
+new file mode 100644
+index 0000000..a35c622
+--- /dev/null
++++ b/core/tests/test_scene_defer.c
+@@ -0,0 +1,132 @@
++/* test_scene_defer.c - S3-15: a scene change made from inside a scene's own code runs the new scene's enter()
++ * after that call has returned when the platform says its code has to be loaded first (scene.h
++ * scene_enter_loads, the PS1's overlays); otherwise, and with no hook, at once. */
++#include "test.h"
++#include "doomo/scene.h"
++
++static int log_n;
++static char log_s[16];
++static int cur_group;                       /* the fake slot: the group of the code that is in */
++
++static void note(char c) { if (log_n < 15) log_s[log_n++] = c; log_s[log_n] = 0; }
++
++static int in_slot(const DoomoScene *s) { return s->name[0] == 'A' ? 1 : 2; }
++static int loads(const DoomoScene *s) { return in_slot(s) != cur_group; }
++
++static void a_enter(int arg) { (void)arg; note('a'); }
++static void a_leave(void) { note('A'); }
++static void b_enter(int arg) { note('b'); note((char)('0' + arg)); }
++static void b_leave(void) { note('B'); }
++static const DoomoScene SB;
++static const DoomoScene SA2;
++static void a_update(void)
++{
++    note('u');
++    scene_push(&SB, 7);
++    note('x');                              /* A's own code goes on after the change */
++}
++static void a_set_update(void)
++{
++    note('u');
++    scene_set(&SB, 3);
++    note('x');
++}
++static void a_two_update(void)
++{
++    scene_push(&SB, 1);
++    scene_pop();                            /* a second change: B's enter() must have run before B's leave() */
++    note('x');
++}
++static void b_update(void) { note('v'); }
++static const DoomoScene SA = { "Atest", a_enter, a_leave, a_update, NULL, 0 };
++static const DoomoScene SAS = { "Aset", a_enter, a_leave, a_set_update, NULL, 0 };
++static const DoomoScene SAT = { "Atwo", a_enter, a_leave, a_two_update, NULL, 0 };
++static const DoomoScene SB = { "Btest", b_enter, b_leave, b_update, NULL, 0 };
++static const DoomoScene SA2 = { "Atest2", NULL, NULL, NULL, NULL, 0 };
++
++static int s_hook(const DoomoScene *s) { return loads(s); }
++
++static void begin(const DoomoScene *s)
++{
++    test_reset();
++    log_n = 0; log_s[0] = 0;
++    cur_group = 1;
++    scene_set(s, 0);
++    log_n = 0; log_s[0] = 0;
++}
++
++TEST(scene_defer_no_hook_enters_at_once)
++{
++    scene_enter_loads = NULL;
++    begin(&SA);
++    scene_update();
++    CHECK_STR(log_s, "ub7x");
++    test_reset();
++}
++
++TEST(scene_defer_waits_for_the_caller_to_return)
++{
++    scene_enter_loads = s_hook;
++    begin(&SA);
++    scene_update();
++    CHECK_STR(log_s, "uxb7");               /* x: A's code ran on first */
++    CHECK(scene_top() == &SB);
++    test_reset();
++    scene_enter_loads = NULL;
++}
++
++TEST(scene_defer_scene_set)
++{
++    scene_enter_loads = s_hook;
++    begin(&SAS);
++    scene_update();
++    CHECK_STR(log_s, "uAxb3");              /* leave runs at once, enter after the call */
++    scene_enter_loads = NULL;
++    test_reset();
++}
++
++TEST(scene_defer_same_group_is_at_once)
++{
++    scene_enter_loads = s_hook;
++    begin(&SA);
++    cur_group = 2;                          /* B's code is already in */
++    scene_update();
++    CHECK_STR(log_s, "ub7x");
++    scene_enter_loads = NULL;
++    test_reset();
++}
++
++TEST(scene_defer_a_second_change_flushes_first)
++{
++    scene_enter_loads = s_hook;
++    begin(&SAT);
++    scene_update();
++    CHECK_STR(log_s, "b1Bx");               /* enter, then leave: never out of order */
++    scene_enter_loads = NULL;
++    test_reset();
++}
++
++TEST(scene_defer_outside_a_scene_call_is_at_once)
++{
++    scene_enter_loads = s_hook;
++    begin(&SA2);
++    scene_push(&SB, 5);                     /* the main loop / harness: no caller whose code must come back */
++    CHECK_STR(log_s, "b5");
++    scene_enter_loads = NULL;
++    test_reset();
++}
++
++static void c_enter(int arg) { (void)arg; note('c'); scene_push(&SB, 9); note('y'); }
++static const DoomoScene SC = { "Ctest", c_enter, NULL, NULL, NULL, 0 };
++
++TEST(scene_defer_an_enter_that_changes_scene_waits_too)
++{
++    scene_enter_loads = s_hook;
++    test_reset();
++    log_n = 0; log_s[0] = 0;
++    cur_group = 1;
++    scene_set(&SC, 0);                      /* C's enter() pushes B: B's enter runs after C's returned */
++    CHECK_STR(log_s, "cyb9");
++    scene_enter_loads = NULL;
++    test_reset();
++}
+diff --git a/ps1/src/overlay.c b/ps1/src/overlay.c
+index 956730a..ead342e 100644
+--- a/ps1/src/overlay.c
++++ b/ps1/src/overlay.c
+@@ -243,6 +243,16 @@ int plat_scene_code(const DoomoScene *s)
+     return prev;
+ }
+ 
++/* --- S3-15 (scene.h scene_enter_loads): would calling s's entry points load a group or a part? A scene change
++ * made from inside a scene's own code then runs s's enter() after that call has returned (scene.c), instead of
++ * reading s's group, the caller's group back and s's group again on the next frame. --- */
++static int enter_loads(const DoomoScene *s)
++{
++    int p, g = group_of(s, &p);
++    return (g && g != s_cur) || (p && p != s_part);
++}
++/* --- end S3-15 --- */
++
+ void plat_scene_code_end(int prev)
+ {
+     int pg = prev & 0xff, pp = prev >> 8;
+@@ -343,6 +353,7 @@ void overlay_init(void)
+     }
+     s_lba = CdPosToInt(&f.pos);
+     s_cur = 0;
++    scene_enter_loads = enter_loads;          /* S3-15 */
+     dbg("ovl: %u groups, slot %u KB at %08x\n", (unsigned)n, (unsigned)(slot / 1024),
+         (unsigned)(uint32_t)__ovl_slot);
+ }
+-- 
+2.43.0
+

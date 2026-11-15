@@ -1,0 +1,223 @@
+From d8615a3ec264a487b4f970edb9e43f924ee1bfdb Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 16:20:46 +0000
+Subject: [PATCH 02/11] cross-stream: TALK: Talk db reads in place when the
+ platform has the bank addressable (GBA ROM), lint reads the string pool in a
+ window; S3-TALK speed
+
+core/src/talk_db.c and talk_safe.c are the TALK stream's. plat_talk_image() (weak NULL; the GBA
+returns the ROM blob) lets rd() copy straight out of memory with a short inline loop instead of
+three nested calls and plat_talk_read; talk_db_read does the bank check itself. The lint reads
+eight register records and 64 bytes of the ascending string pool at a time.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ core/include/doomo/plat_ext.h     |  4 +++
+ core/src/talk_db.c                | 19 ++++++++++---
+ core/src/talk_safe.c              | 25 +++++++++++------
+ core/src/weak_talk.c              |  5 ++++
+ core/tests/test_talk_lint_speed.c | 45 +++++++++++++++++++++++++++++++
+ gba/src/plat_talk_gba.c           |  2 ++
+ 6 files changed, 89 insertions(+), 11 deletions(-)
+
+diff --git a/core/include/doomo/plat_ext.h b/core/include/doomo/plat_ext.h
+index e85f3b1..4eebe7e 100644
+--- a/core/include/doomo/plat_ext.h
++++ b/core/include/doomo/plat_ext.h
+@@ -310,6 +310,10 @@ uint8_t *plat_mslot_script_buf(uint32_t *cap);
+ #define PLAT_TALK_LOADING 0xFFFFFFFFu
+ uint32_t plat_talk_load(const char *code);
+ uint32_t plat_talk_read(uint32_t off, void *dst, uint32_t len);
++/* (S3-TALK) The loaded file as one block of addressable memory, when the platform has it that way (the GBA: the
++ * bank is in the memory-mapped ROM), else NULL (the default). Asked after plat_talk_load succeeded; the reads
++ * then skip plat_talk_read's calls. The bytes must be the same as plat_talk_read gives. */
++const uint8_t *plat_talk_image(void);
+ /* Where a point of the room is on the screen this frame: tile space x, y
+  * (16.16, the DoomoRoomActor convention), height z in px, to screen
+  * pixels. Talk anchors its speech bubbles with it (the core cannot know
+diff --git a/core/src/talk_db.c b/core/src/talk_db.c
+index 53bf1c9..ddb6c5d 100644
+--- a/core/src/talk_db.c
++++ b/core/src/talk_db.c
+@@ -37,11 +37,19 @@ static uint32_t le32(const uint8_t *p)
+ }
+ 
+ /* len bytes at file offset off: 1 ok */
+-static int rd(uint32_t off, void *dst, uint32_t len)
++static inline __attribute__((always_inline)) int rd(uint32_t off, void *dst, uint32_t len)
+ {
+     if (len == 0) return 1;
+     if (off > db.size || len > db.size - off) return 0;
+-    if (db.mem) { memcpy(dst, db.mem + off, len); return 1; }
++    if (db.mem) {
++        /* S3-TALK: most reads are a row or a few bytes: a plain loop beats memcpy's call on the GBA */
++        const uint8_t *s = db.mem + off;
++        if (len <= 16) {
++            uint8_t *d = (uint8_t *)dst;
++            do { *d++ = *s++; } while (--len);
++        } else memcpy(dst, s, len);
++        return 1;
++    }
+     return plat_talk_read(off, dst, len) == len;
+ }
+ 
+@@ -151,6 +159,7 @@ int talk_db_open(int lang)
+     if (size == PLAT_TALK_LOADING) return TALK_DB_LOADING;
+     if (size == 0) return TALK_DB_NONE;
+     db.size = size;
++    db.mem = plat_talk_image();                  /* S3-TALK: memory-mapped on the GBA, NULL elsewhere */
+     return finish(parse());
+ }
+ 
+@@ -185,7 +194,11 @@ int talk_db_bank(int id, uint32_t *offset, uint32_t *packed, uint32_t *raw)
+ 
+ int talk_db_read(int id, uint32_t at, void *dst, uint32_t len)
+ {
+-    return rd_bank(id, at, dst, len);
++    const TalkBank *b;
++    if (!db.open || id <= 0 || id >= TB_COUNT || !db.bank[id].present) return 0;
++    b = &db.bank[id];
++    if (at > b->packed || len > b->packed - at) return 0;
++    return rd(b->off + at, dst, len);
+ }
+ 
+ int talk_db_concept(int id, TalkConcept *out)
+diff --git a/core/src/talk_safe.c b/core/src/talk_safe.c
+index a26ebb6..e9315f0 100644
+--- a/core/src/talk_safe.c
++++ b/core/src/talk_safe.c
+@@ -454,7 +454,9 @@ static int lint_core(const char *line, const TalkAudience *aud, int *swears, int
+     SafHdr h;
+     char v[TALK_SHOWN_MAX * 3], word[TALK_TOK_LEN * 2];
+     uint8_t bg[LINT_PAIRS], rb[64];
+-    int i, o = 0, nsw = 0, k;
++    char win[64];
++    uint32_t wat = 0;
++    int wn = 0, i, o = 0, nsw = 0, k;
+     if (!line || !aud) return TL_NO_DB;
+     if (!saf_hdr(&h)) return TL_NO_DB;
+     /* the visible text: line codes ([R4], {.}) out, '/' a space, lower case */
+@@ -471,8 +473,7 @@ static int lint_core(const char *line, const TalkAudience *aud, int *swears, int
+     for (k = 0; k < (int)h.nreg; k++) {
+         const uint8_t *r;
+         char w[48];
+-        uint8_t pk[2];
+-        uint32_t so;
++        uint32_t so, avail;
+         int n, len = 0;
+         if ((k & 7) == 0) {                      /* the records, eight a read */
+             int left = (int)h.nreg - k;
+@@ -481,14 +482,22 @@ static int lint_core(const char *line, const TalkAudience *aud, int *swears, int
+         r = rb + 8 * (k & 7);
+         so = le32(r);
+         if (so >= h.str_len) return TL_NO_DB;
+-        if (!(r[5] & SR_ALLOW) && h.str_len - so >= 2) {
++        /* the strings in a window of the pool (the records point up it in order: one read serves several words) */
++        avail = h.str_len - so;
++        len = (int)(avail < sizeof w - 1 ? avail : sizeof w - 1);
++        if (so < wat || so + (avail < 2 ? avail : 2u) > wat + (uint32_t)wn) {
++            wat = so;
++            wn = (int)(avail < sizeof win ? avail : sizeof win);
++            if (!talk_db_read(TB_SAFETY, h.str_off + so, win, (uint32_t)wn)) return TL_NO_DB;
++        }
++        if (!(r[5] & SR_ALLOW) && len >= 2) {
+             /* the word's first two characters against the line's pairs */
+-            if (!talk_db_read(TB_SAFETY, h.str_off + so, pk, 2)) return TL_NO_DB;
+-            if (pk[0] && pk[1] && !pair_in(bg, (char)pk[0], (char)pk[1])) { LINT_COUNT(lint_skips); continue; }
++            const char *pk = win + (so - wat);
++            if (pk[0] && pk[1] && !pair_in(bg, pk[0], pk[1])) { LINT_COUNT(lint_skips); continue; }
+         }
+         LINT_COUNT(lint_scans);
+-        len = (int)(h.str_len - so < sizeof w - 1 ? h.str_len - so : sizeof w - 1);
+-        if (!talk_db_read(TB_SAFETY, h.str_off + so, w, (uint32_t)len)) return TL_NO_DB;
++        if (so + (uint32_t)len <= wat + (uint32_t)wn) memcpy(w, win + (so - wat), (size_t)len);
++        else if (!talk_db_read(TB_SAFETY, h.str_off + so, w, (uint32_t)len)) return TL_NO_DB;
+         w[len] = 0;
+         if (r[5] & SR_ALLOW) {
+             /* blank the allowed phrase out of the text before the checks */
+diff --git a/core/src/weak_talk.c b/core/src/weak_talk.c
+index 67c976b..924c29c 100644
+--- a/core/src/weak_talk.c
++++ b/core/src/weak_talk.c
+@@ -25,6 +25,11 @@ WEAK uint32_t plat_talk_read(uint32_t off, void *dst, uint32_t len)
+     return 0;
+ }
+ 
++WEAK const uint8_t *plat_talk_image(void)
++{
++    return NULL;
++}
++
+ WEAK int talk_text_hd(void)
+ {
+     return 0;
+diff --git a/core/tests/test_talk_lint_speed.c b/core/tests/test_talk_lint_speed.c
+index 0e379e6..6d1bc73 100644
+--- a/core/tests/test_talk_lint_speed.c
++++ b/core/tests/test_talk_lint_speed.c
+@@ -190,3 +190,48 @@ TEST(talk_lint_pair_skip_changes_no_verdict)
+         CHECK_MSG(bsk > 4u * a, "the pair table skipped %u words and %u were scanned", (unsigned)bsk, (unsigned)a);
+     }
+ }
++
++/* ---- plat_talk_image: a platform with the bank in addressable memory (the GBA ROM) reads it in place -------------- */
++#include <stdlib.h>
++#include "doomo/plat_ext.h"
++static const uint8_t *g_img;
++const uint8_t *plat_talk_image(void) { return g_img; }
++
++TEST(talk_db_reads_the_platform_image_in_place)
++{
++    uint8_t a[80], c[80];
++    uint32_t size, id, at;
++    uint8_t *img;
++    g_img = NULL;
++    CHECK(talk_db_open(lang_find("en")) == TALK_DB_OK);
++    size = plat_talk_load("en");
++    CHECK(size > 1000u && size != PLAT_TALK_LOADING);
++    img = (uint8_t *)malloc(size);
++    CHECK(img != NULL);
++    CHECK(plat_talk_read(0, img, size) == size);
++    /* the same reads from the image give the same bytes; a changed image byte shows (the image is what is read) */
++    g_img = img;
++    CHECK(talk_db_open(lang_find("en")) == TALK_DB_OK);
++    for (id = 1; id < TB_COUNT; id++) {
++        uint32_t off, packed, raw;
++        if (!talk_db_bank((int)id, &off, &packed, &raw) || packed < 4) continue;
++        for (at = 0; at + 1 < packed; at += packed / 23 + 1) {
++            uint32_t l = 40 < packed - at ? 40 : packed - at;
++            CHECK(talk_db_read((int)id, at, c, l));
++            CHECK(plat_talk_read(off + at, a, l) == l);
++            CHECK(memcmp(a, c, l) == 0);
++        }
++    }
++    {
++        uint32_t off, packed, raw;
++        CHECK(talk_db_bank(TB_SAFETY, &off, &packed, &raw));
++        img[off + 100] ^= 0xFF;
++        CHECK(talk_db_read(TB_SAFETY, 100, c, 1));
++        CHECK(plat_talk_read(off + 100, a, 1) == 1);
++        CHECK_MSG(c[0] != a[0], "the read did not come from the image");
++        img[off + 100] ^= 0xFF;
++    }
++    g_img = NULL;
++    talk_db_close();
++    free(img);
++}
+diff --git a/gba/src/plat_talk_gba.c b/gba/src/plat_talk_gba.c
+index f8054c4..18b301b 100644
+--- a/gba/src/plat_talk_gba.c
++++ b/gba/src/plat_talk_gba.c
+@@ -17,6 +17,8 @@ uint32_t plat_talk_load(const char *code)
+     return (uint32_t)(gba_talk_bin_end - gba_talk_bin);
+ }
+ 
++const uint8_t *plat_talk_image(void) { return gba_talk_bin; }
++
+ uint32_t plat_talk_read(uint32_t off, void *dst, uint32_t len)
+ {
+     uint32_t size = (uint32_t)(gba_talk_bin_end - gba_talk_bin);
+-- 
+2.43.0
+

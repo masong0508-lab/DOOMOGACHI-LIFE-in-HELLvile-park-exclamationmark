@@ -1,0 +1,72 @@
+From cad9f23bff2f6606d62a6248b62b2806239565c4 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:18:07 +0000
+Subject: [PATCH 10/11] S3-TALK docs: rebased numbers, owner decision
+ EVERYTHING AT 30 noted, gates on the landing tip
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ docs/GBA.md                      | 15 ++++++++-------
+ docs/design/held/status/SPEED.md |  2 +-
+ 2 files changed, 9 insertions(+), 8 deletions(-)
+
+diff --git a/docs/GBA.md b/docs/GBA.md
+index c729685..32e00d9 100644
+--- a/docs/GBA.md
++++ b/docs/GBA.md
+@@ -460,6 +460,7 @@ against the LAST row, not against a figure from an older base.
+ | G2-CO | G2-CO: the concert at 30 (baked stage, setup hold, flame / 15 Hz trades, the choir's size, the held curtain; docs: "G2-CO: the concert at 30" below) | after GBA-500 (row GBA-500) | 50,740 B | **50,740 B** | 0 B | 6,272 B | measured at the landing on the tree without and with G2-CO, both built clean (`make -C gba sizes`): `.bss` 254,828 B before GBA-500 landed (210,508 B with it, 50,740 B free), `.data` 816 B, `.iwram` 11,288 B and `.iwram_bss` 4,088 B before and after (no resident EWRAM or IWRAM; `keep.c`'s 2 B of state sit in padding). The IWRAM overlay's UI group 10,100 -> 10,220 B (+120 B: `plat_beam_rows`, the beam loop's cut bands; 132 B left in the 10,352 B slot), the other groups unchanged. The choir's smaller singers (16 x 392 B), the half-rate state, the setup's signature and the intro's prefetch slot live in the concert's scene scratch (`ConcertState` 1,016 -> 7,324 B of its 12 KB); the 15 Hz rows are kept in the OBJ VRAM (16,320 B, owner `OBJV_KEEP`). ROM `.text` +5,960 B, `.rodata` +845,296 B (the 31 baked concert stages in `backdrops.bin`). (First built on `1297e931` as row 51, which CR5 holds on origin.) PS1: no resident byte (the new paths are compiled out; 110,608 B below the stack top with the boot FMV, the same as without G2-CO; docs/PS1.md "The concert (SP6, P-K1)") |
+ | 64 | LV4: mechanic kit B (`levels_mech_env.c`, `DoomoView3D.view_dist`, `r3f.maxd` from the per-level view distance) | after G2-EX (`da2d3e9a`) | unchanged | **unchanged** | 0 B | 6,308 B | measured 2026-11-15 on `33d760af` and the same + LV4 (both clean `make -C gba`, `make -C gba sizes`): .iwram 11,272, .iwram_bss 4,088, .bss 254,820 and every overlay slot identical; on the landing tree (after G2-EX) the full sizes are .iwram 11,288, .iwram_bss 4,088, .bss 254,828, which is 33d760af plus G2-EX's +16 B / +8 B and nothing from LV4; ROM .text +40 B (r3d.c: the range check, the hoisted sprite-cull limit); `lv_env_*` is not linked (nothing calls it). The new `view_dist` byte sits in the padding of `DoomoView3D` (stack, and the one static copy in combat_hud.c). Speed tour: every `vhash-seq` identical |
+ | S3-TALK | S3-TALK: the Talk screen keeps its picture (docs: "Speed wave 3: S3-TALK") | after GBA-500 | 50,740 B | **50,740 B** | 0 B | 6,288 B | measured 2026-11-15 on `fe41002` + S3-TALK: `.bss` 254,828 B before and after, `.iwram` 11,272, `.iwram_bss` 4,088, `.data` 816 unchanged. The kept-picture state (`TalkScn.hk`, 28 B) and the one-rect `ui_shadow_kept` (8 B) are paid for by the dead `TalkScn.note[40]`; the band uses the arena beside the scene scratch (SP5), ROM `.text` +2,728 B |
++| S3-TALK | S3-TALK: the Talk screen keeps its picture (docs: "Speed wave 3: S3-TALK") | after GBA-500 | 50,740 B | **50,740 B** | 0 B | 6,288 B | measured 2026-11-15 on `fe41002` + S3-TALK (before the rebase onto GBA-500; the free-EWRAM columns are the tip's, not re-measured; on the rebased tree `.bss` is 210,508 B): `.bss` 254,828 B before and after, `.iwram` 11,272, `.iwram_bss` 4,088, `.data` 816 unchanged. The kept-picture state (`TalkScn.hk`, 28 B) and the one-rect `ui_shadow_kept` (8 B) are paid for by the dead `TalkScn.note[40]`; the band uses the arena beside the scene scratch (SP5), ROM `.text` +2,728 B |
+ 
+ Known claimants still to land (their own packages measure and add rows):
+ 
+@@ -1645,18 +1646,18 @@ and for the hitch the S3 output lint (80% of a generated line: every register wo
+ |---|---|---|
+ | list idle, Talk over the house (a house visit: where Talk opens from) | 15.0 fps, 63.8 ms, every frame 67 ms | **30.0**, 12.2 ms |
+ | list, cursor moving, over the house | 15.0, 63.7 ms | **30.0**, 12.3 ms |
+-| opener boxes (the dialogue box with the portrait) | 18.0 fps, 45.6 ms, worst 84, 33 frames of 50 ms | **28.5**, 23.9 ms, worst 50, none over 50 |
+-| list idle | 23.5, 35.5 ms | **30.3**, 11.7 ms |
++| opener boxes (the dialogue box with the portrait) | 18.0 fps, 45.6 ms, worst 84, 33 frames of 50 ms | **28.9**, 23.5 ms, worst 50, none over 50 |
++| list idle | 23.5, 35.5 ms | **30.2**, 12.2 ms |
+ | list, cursor moving | 23.8, 35.6 ms | **29.8**, 11.9 ms |
+ | say a line and its first box | 14.1, 58.0 ms, worst **385** | 26.2, 31.5 ms, worst **84** (85 to 100 in other runs) |
+-| answer box | 17.0, 48.8 ms, 30 frames of 50 ms | **28.5**, 28.3 ms, none over 50 |
+-| list after the answer | 17.9, 46.2 ms | **28.9**, 24.1 ms |
++| answer box | 17.0, 48.8 ms, 30 frames of 50 ms | **28.2**, 28.8 ms, 15 frames of 50 ms |
++| list after the answer | 17.9, 46.2 ms | **28.9**, 24.4 ms |
+ 
+-`make -C gba test-talk`: the talk menu window 15.7 -> 24.8 fps (it includes the first Talk of the boot), the converse window
++`make -C gba test-talk`: the talk menu window 15.7 -> 26.8 fps (it includes the first Talk of the boot), the converse window
+ 18.1 -> 28.3. Floors in `speed2_talk.txt`: 28 for the list windows (over the title and over the house), 25 for the boxes, 22 for the line-saying window (`SPEED2_GATES=1`).
+ Main stack high-water in the Talk script 5,268 -> 5,148 B.
+ 
+-**Not reached.** The two list windows hold 30 with no frame over 33.4 ms. The windows with a box up are at 28.5 to 28.9 fps:
++**Not reached.** The two list windows hold 30 with no frame over 33.4 ms. The windows with a box up are at 28.2 to 28.9 fps:
+ 5 to 14 of 100 to 130 frames take 50 ms. Those are the dialogue box's own typewriter and portrait frames (work 40 to 48 ms
+ against 13 to 35 ms for the others): Talk's part of such a frame is the band restore, about 2 ms. The frame that says a line is
+ still 84 to 100 ms and the first line of a boot 250 ms: one step of the drama manager is 22 ms for an opener, 25 to 130 ms for an
+@@ -1667,7 +1668,7 @@ the dialogue's (ui_dialog.c, S3-2's portrait slices). The over-33 ms frames are
+ 
+ **Pixel change (SPEED DEFAULTS, held frames, GBA only).** What moves in the scene below Talk stands still while the screen is
+ kept: the title's drifting dots and hearts, a house's idle animations. Everything Talk and its box draw is the same pixels as a
+-full frame (`test_talk_hold.c`). Before / after screenshots are in the package evidence (`talk_*` shots of `test-talk`).
++full frame (`test_talk_hold.c`). Before / after screenshots are in the package evidence (`talk_*` shots of `test-talk`). Not captured: a pixel pair of the frozen backdrop on the GBA (the stand-in portrait and sprites a full-frame ROM shows over the list are timing, not drawing). The kept band assumes plain-line dialogs over Talk (Talk only uses `ui_say`); a choice dialog would reach higher than the restored rows. **Owner decision 2026-11-15, EVERYTHING AT 30:** the box windows and the line-saying frame stay on the open list for speed audit 4.
+ The Dreamcast, the PS1 and the native host draw every frame as before.
+ 
+ **Memory.** GBA `.bss` 254,828 B before and after (the kept-picture state is 28 B, paid for by the dead `TalkScn.note[40]`),
+diff --git a/docs/design/held/status/SPEED.md b/docs/design/held/status/SPEED.md
+index 213bba3..e7215d5 100644
+--- a/docs/design/held/status/SPEED.md
++++ b/docs/design/held/status/SPEED.md
+@@ -26,4 +26,4 @@ delta, GBA sizes), in flight (package and stage), next up, blockers, needs from
+ 
+ ## SPEED-2 (the second SPEED machine, round 1; lead session session_01Xd63cvyt9PpfrF57wBDFeR)
+ 
+-- **S3-TALK (built 2026-11-15, partial, branch `fut-s3-talk`; `docs/GBA.md` "Speed wave 3: S3-TALK", ledger row 59):** the Talk screen at 28.5 to 30 fps on the GBA (was 15.7 in the list, 17 in an answer; over the house 15.0 -> 30.0 in the list). What changed in `core/src/talk_scene.c` (TALK's file; commits say `cross-stream:`): `hk_*` keeps the picture (`hk_ask` is called by `scene_draw` through the new `scene_keep_below`; `hk_save` takes the band after the first full frame; `hk_draw` redraws the panel and the people strip only when `hk_pkey` / `hk_ssig` change), `draw_strip` and `draw_panel` split out of `talk_draw` (same pixels), the generator's steps run one a tick on the GBA (`slice_on` is 1 there), `TalkScn.note[40]` (dead) removed, `talk_scene_hold()` for the native tests. Also in TALK's files: `talk_safe.c` (the lint's pair table), `talk_db.c` and `weak_talk.c` (`plat_talk_image`). In SPEED's files: `scene.c` / `scene.h` (`scene_keep_below`), `ui.c` / `ui.h` (`ui_shadow_kept`), `ui_dialog.c` (`ui_dialog_reach`), `gba/src/plat_talk_gba.c`. New group `speed2_talk.txt` (floors 28 / 25 / 22). Core tests 1,376 passed (+4: `test_talk_lint_speed.c` 2, `test_talk_hold.c` 2). **Left:** a dialogue box's own frames (13 of 112 at 50 ms), a generator step is 22 to 130 ms (243 ms for the first Talk of a boot): slicing inside `talk_gen_line` is TALK's.
++- **S3-TALK (built 2026-11-15, partial, branch `fut-s3-talk`; `docs/GBA.md` "Speed wave 3: S3-TALK", ledger row S3-TALK):** the Talk screen at 26 to 30 fps on the GBA (was 15.7 in the list, 17 in an answer; over the house 15.0 -> 30.0 in the list). What changed in `core/src/talk_scene.c` (TALK's file; commits say `cross-stream:`): `hk_*` keeps the picture (`hk_ask` is called by `scene_draw` through the new `scene_keep_below`; `hk_save` takes the band after the first full frame; `hk_draw` redraws the panel and the people strip only when `hk_pkey` / `hk_ssig` change), `draw_strip` and `draw_panel` split out of `talk_draw` (same pixels), the generator's steps run one a tick on the GBA (`slice_on` is 1 there), `TalkScn.note[40]` (dead) removed, `talk_scene_hold()` for the native tests. Also in TALK's files: `talk_safe.c` (the lint's pair table), `talk_db.c` and `weak_talk.c` (`plat_talk_image`). In SPEED's files: `scene.c` / `scene.h` (`scene_keep_below`), `ui.c` / `ui.h` (`ui_shadow_kept`), `ui_dialog.c` (`ui_dialog_reach`), `gba/src/plat_talk_gba.c`. New group `speed2_talk.txt` (floors 28 / 25 / 22). Core tests 1,463 passed on the rebased tree (landed on origin tip 1eee0e2: SAN, xcheck 428 files, check-gen, full `make -C gba test`, dc-host-test, DC build, DC talk-test and PS1 game_smoke all green; PS1 110,432 B below the stack top with the boot FMV; GBA `.bss` 210,508 B, `.iwram` 11,272, `.iwram_bss` 4,088) (+4: `test_talk_lint_speed.c` 2, `test_talk_hold.c` 2). **Open under EVERYTHING AT 30 (owner 2026-11-15):** the boxes (28.2 to 28.9 fps) and the line-saying frame (worst 84 ms) are not 30: open work, not results. A dialogue box's own frames (13 of 112 at 50 ms), a generator step is 22 to 130 ms (243 ms for the first Talk of a boot): slicing inside `talk_gen_line` is TALK's.
+-- 
+2.43.0
+

@@ -1,0 +1,135 @@
+From 01203e9a7a49a5e26e784a94fb2568c5f740e087 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:00:32 +0000
+Subject: [PATCH 3/5] S3-15 wip (unfinished, handed to the first SPEED
+ machine): scene.h / scene.c late scene change edits
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ core/include/doomo/scene.h |  2 +-
+ core/src/scene.c           | 36 ++++++++++++++++++++++++++++++------
+ 2 files changed, 31 insertions(+), 7 deletions(-)
+
+diff --git a/core/include/doomo/scene.h b/core/include/doomo/scene.h
+index e2afdf9..b2b9aac 100644
+--- a/core/include/doomo/scene.h
++++ b/core/include/doomo/scene.h
+@@ -46,7 +46,7 @@ void plat_scene_code_end(int token);
+ /* --- S3-15 (additive): set by a platform whose scene code can be out of RAM (the PS1, overlay.c). Returns 1 when
+  * entering s would first have to load its code. A scene_set_late / scene_push_late made from inside a scene's
+  * update() then runs s's enter() when update() has returned, not inside it (scene.c). NULL = always at once. --- */
+-extern int (*scene_enter_loads)(const DoomoScene *s);
++extern int (*scene_enter_loads)(const DoomoScene *s);   /* (not built on the GBA: no overlays) */
+ /* --- H4 (additive): a scene's code may also come in PARTS that share one
+  * address range (ps1/tools/ovl_plan.py PARTS): the code of one mode of a
+  * scene. Before the scene's own code calls into a part it asks for it;
+diff --git a/core/src/scene.c b/core/src/scene.c
+index 88edf12..34bb6bd 100644
+--- a/core/src/scene.c
++++ b/core/src/scene.c
+@@ -32,11 +32,18 @@ __attribute__((weak)) void plat_code_part(int part) { (void)part; }   /* H4: sce
+  * next frame: three reads of 0.1-0.5 s. Its enter() waits until update() has returned (flush_enter): one read. Any
+  * other scene change flushes it first, so enter() and leave() never run out of order; a platform without the
+  * hook (scene_enter_loads) enters at once, as before. */
++#ifdef __arm__                               /* the GBA has no overlays: no EWRAM for it, a late change is a plain one */
++#define SCENE_LATE 0
++#else
++#define SCENE_LATE 1
++#endif
++#if SCENE_LATE
+ int (*scene_enter_loads)(const DoomoScene *s);
+ static int in_update;                        /* inside a scene's update() */
+ static int late_ok;                          /* set by scene_set_late / scene_push_late for the next change */
+ static const DoomoScene *pend_s;
+ static int pend_arg;
++#endif
+ 
+ static void run_enter(const DoomoScene *s, int arg)
+ {
+@@ -45,6 +52,7 @@ static void run_enter(const DoomoScene *s, int arg)
+     plat_scene_code_end(t);
+ }
+ 
++#if SCENE_LATE
+ static void flush_enter(void)
+ {
+     if (pend_s) {
+@@ -54,15 +62,28 @@ static void flush_enter(void)
+         run_enter(s, arg);
+     }
+ }
++#define LATE_TAKE()       (late_ok ? (late_ok = 0, 1) : 0)
++#define IN_UPDATE_BEGIN() in_update++
++#define IN_UPDATE_END()   in_update--
++#else
++#define flush_enter() ((void)0)
++#define LATE_TAKE()       0
++#define IN_UPDATE_BEGIN() ((void)0)
++#define IN_UPDATE_END()   ((void)0)
++#endif
+ 
+ static void call_enter(const DoomoScene *s, int arg, int late)
+ {
+     if (!s->enter) return;
++#if SCENE_LATE
+     if (late && in_update && scene_enter_loads && scene_enter_loads(s)) {
+         pend_s = s;
+         pend_arg = arg;
+         return;
+     }
++#else
++    (void)late;
++#endif
+     run_enter(s, arg);
+ }
+ 
+@@ -141,8 +162,7 @@ static void log_scene(const char *what, const DoomoScene *s)
+ 
+ void scene_set(const DoomoScene *s, int arg)
+ {
+-    int late = late_ok;
+-    late_ok = 0;
++    int late = LATE_TAKE();
+     flush_enter();
+     opt_config_flush();                       /* settings changed on the scene being left: written once */
+     plat_hold_frame(0);                       /* U4: any scene_set releases a held frame */
+@@ -164,8 +184,7 @@ void scene_set(const DoomoScene *s, int arg)
+ 
+ void scene_push(const DoomoScene *s, int arg)
+ {
+-    int late = late_ok;
+-    late_ok = 0;
++    int late = LATE_TAKE();
+     if (!s) return;
+     flush_enter();
+     plat_hold_frame(0);                       /* a held frame (pause, island menu) ends when the stack changes */
+@@ -203,8 +222,13 @@ void scene_pop(void)
+     call_leave(s);
+ }
+ 
++#if SCENE_LATE
+ void scene_set_late(const DoomoScene *s, int arg) { late_ok = 1; scene_set(s, arg); late_ok = 0; }
+ void scene_push_late(const DoomoScene *s, int arg) { late_ok = 1; scene_push(s, arg); late_ok = 0; }
++#else
++void scene_set_late(const DoomoScene *s, int arg) { scene_set(s, arg); }
++void scene_push_late(const DoomoScene *s, int arg) { scene_push(s, arg); }
++#endif
+ 
+ const DoomoScene *scene_top(void)
+ {
+@@ -238,9 +262,9 @@ void scene_update(void)
+     stack[depth - 1].ticks++;
+     if (s->update) {
+         int t = plat_scene_code(s);
+-        in_update++;
++        IN_UPDATE_BEGIN();
+         s->update();
+-        in_update--;
++        IN_UPDATE_END();
+         plat_scene_code_end(t);
+         flush_enter();
+     }
+-- 
+2.43.0
+

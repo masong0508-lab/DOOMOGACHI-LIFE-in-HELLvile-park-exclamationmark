@@ -1,0 +1,998 @@
+From 1ff9fbcef0b439d5f21e39b16c681292c32b594f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 18:09:45 +0000
+Subject: [PATCH 01/11] S3-8: the library lobby over a kept picture and a
+ retained stage (GBA lobby 37.4 -> 21.9 ms), the window glint as a helper,
+ test_lib_kept
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ core/include/doomo/backdrop.h |   3 +-
+ core/include/doomo/ui.h       |   2 +
+ core/src/backdrop.c           |   4 +-
+ core/src/lib_common.c         | 634 +++++++++++++++++++++++++++-------
+ core/src/ui.c                 |  21 +-
+ core/tests/test_lib_kept.c    | 162 +++++++++
+ 6 files changed, 695 insertions(+), 131 deletions(-)
+ create mode 100644 core/tests/test_lib_kept.c
+
+diff --git a/core/include/doomo/backdrop.h b/core/include/doomo/backdrop.h
+index 79933c9..f24c5cf 100644
+--- a/core/include/doomo/backdrop.h
++++ b/core/include/doomo/backdrop.h
+@@ -20,7 +20,8 @@
+ enum { DOOMO_BACKDROP_EXO_CHURCH = 1,
+        DOOMO_BACKDROP_MG = 2,              /* (S2-4) the Fun Fair booths' still playfields (mg.c) */
+        DOOMO_BACKDROP_MG_STAMP = 3,        /* (S2-4b) the Fun Fair's stamps: small pictures of its actors */
+-       DOOMO_BACKDROP_KITCHEN = 4 };       /* (S2-4c) the kitchen's wall, jars and counter (cook_scene.c) */
++       DOOMO_BACKDROP_KITCHEN = 4,         /* (S2-4c) the kitchen's wall, jars and counter (cook_scene.c) */
++       DOOMO_BACKDROP_LIBRARY = 7 };       /* (S3-8) the library lobby's wall, shelves and desk (lib_common.c) */
+ 
+ /* (S2-4b) what a key's picture holds (DoomoBackdrop.part; NULL: every key is BACKDROP_WHOLE):
+  *   BACKDROP_WHOLE  the whole screen
+diff --git a/core/include/doomo/ui.h b/core/include/doomo/ui.h
+index fb7e33f..0699c93 100644
+--- a/core/include/doomo/ui.h
++++ b/core/include/doomo/ui.h
+@@ -417,6 +417,8 @@ uint32_t ui_key_int(uint32_t h, int32_t v);
+ uint32_t ui_key_str(uint32_t h, const char *s);
+ /* Where ui_window(x, y, w, h)'s sliding glint is this frame, -1 = none. */
+ int ui_window_glint(int x, int y, int w, int h);
++/* (S3-8) the pixels of that glint alone, for a window drawn without it (ui_glint_hold) and kept as a picture */
++void ui_window_glint_draw(int x, int y, int w, int h, int style);
+ /* CR9: ui_glint_hold(1): windows drawn until ui_glint_hold(0) have no sliding glint (a screen whose
+  * windows are retained panels: the GBA creator) */
+ void ui_glint_hold(int on);
+diff --git a/core/src/backdrop.c b/core/src/backdrop.c
+index fcf3ece..6809792 100644
+--- a/core/src/backdrop.c
++++ b/core/src/backdrop.c
+@@ -30,7 +30,8 @@ extern const DoomoBackdrop exo_church_family;            /* exorcism_gfx.c */
+ extern const DoomoBackdrop mg_backdrop_family;           /* (S2-4) mg.c: the fair booths */
+ extern const DoomoBackdrop mg_stamp_family;              /* (S2-4b) mg.c: the fair's stamps */
+ extern const DoomoBackdrop cook_backdrop_family;         /* (S2-4c) cook_scene.c: the kitchen */
+-int backdrop_family_count(void) { return 4; }
++extern const DoomoBackdrop lib_backdrop_family;          /* (S3-8) lib_common.c: the library lobby */
++int backdrop_family_count(void) { return 5; }
+ #else
+ int backdrop_family_count(void) { return 1; }            /* (the PS1 never bakes) */
+ #endif
+@@ -41,6 +42,7 @@ const DoomoBackdrop *backdrop_family(int i)
+     if (i == 1) return &mg_backdrop_family;
+     if (i == 2) return &mg_stamp_family;
+     if (i == 3) return &cook_backdrop_family;
++    if (i == 4) return &lib_backdrop_family;
+ #endif
+     return i == 0 ? &exo_church_family : NULL;
+ }
+diff --git a/core/src/lib_common.c b/core/src/lib_common.c
+index 9fc0da1..9a92cc4 100644
+--- a/core/src/lib_common.c
++++ b/core/src/lib_common.c
+@@ -9,6 +9,10 @@
+  * possessed or departed Quillby changes the mood accordingly.
+  */
+ #include "lib_int.h"
++#if !defined(DOOMO_PLATFORM_PS1)
++#include "doomo/backdrop.h"
++#include "doomo/plat_ext.h"
++#endif
+ 
+ DOOMO_STATIC_ASSERT(THING_IMPLING == 3, lib_seen_ids_assume_impling_is_3);
+ DOOMO_STATIC_ASSERT(LIB_UL_SEEN(THING_LORD_VAPULA) == LIB_UL_JUKEBOX - 1, lib_seen_fit);
+@@ -632,6 +636,7 @@ void lib_text_block(int x, int y, int w, int lines, const char *s, uint8_t color
+ 
+ /* ====================================================================== */
+ /* SCENE_LIBRARY: the lobby                                                 */
++#define LOB_TAG SAVE_EXT_TAG('L', 'O', 'B', 'Y')     /* (S3-8) the kept lobby's stage memory */
+ static struct {
+     uint8_t  sel;
+     uint8_t  pct[LIB_WING_COUNT];
+@@ -700,6 +705,9 @@ static void lobby_enter(int arg)
+     if (arg >= 0 && LIB_ARG_TAB(arg) < LIB_BOOKS) lob.sel = (uint8_t)LIB_ARG_TAB(arg);
+     lob.t = 0;
+     lob.away = 0;
++#if !defined(DOOMO_PLATFORM_PS1)
++    stage_bind(scene_scratch(LOB_TAG, stage_mem_bytes()));      /* (S3-8) the kept lobby: no records yet */
++#endif
+     lob.sel_t = 0;
+     lob.nope_t = 999;
+     lob.quip = (uint8_t)(doomo_town.day % 7);
+@@ -777,9 +785,12 @@ static void draw_wall(int sw, int sh, int floor_y)
+     plat_rect(0, floor_y, sw, 1, PAL_RAMP(RAMP_WOOD, 5));
+ }
+ 
+-static void draw_window(int cx, int y, int w, int h)
++/* the window, in two parts (the sill, which no cloud or star reaches, is with the still one): what stands still
++ * (the frame, the sky, the sun or the moon) and what moves over it (the cloud or the twinkling stars, the mullions
++ * and the highlight over them) */
++static void window_still(int cx, int y, int w, int h, int night)
+ {
+-    int x = cx - w / 2, night = town_is_night(), i, t = lob.t;
++    int x = cx - w / 2;
+     uint8_t sky0 = night ? PAL_RAMP(RAMP_SKY, 0) : PAL_RAMP(RAMP_SKY, 6);
+     uint8_t sky1 = night ? PAL_RAMP(RAMP_SKY, 1) : PAL_RAMP(RAMP_SKY, 5);
+     ui_round_rect(x - 3, y - 3, w + 6, h + 5, w / 2 > 12 ? 12 : w / 2, PAL_RAMP(RAMP_WOOD, 2));
+@@ -790,6 +801,18 @@ static void draw_window(int cx, int y, int w, int h)
+     if (night) {
+         ui_fill_circle(x + w * 2 / 3, y + h / 3, 5, PAL_RAMP(RAMP_CANDY, 7));
+         ui_fill_circle(x + w * 2 / 3 + 2, y + h / 3 - 1, 4, sky1);
++    } else {
++        ui_fill_circle(x + 6, y + 6, 4, PAL_RAMP(RAMP_CANDY, 7));
++    }
++    /* the sill */
++    plat_rect(x - 5, y + h, w + 10, 3, PAL_RAMP(RAMP_WOOD, 4));
++    plat_rect(x - 5, y + h, w + 10, 1, PAL_RAMP(RAMP_WOOD, 6));
++}
++
++static void window_moving(int cx, int y, int w, int h, int night, int t)
++{
++    int x = cx - w / 2, i;
++    if (night) {
+         for (i = 0; i < 6; i++) {
+             uint32_t s = doomo_hash32((uint32_t)i * 31u + 7u);
+             int sx = x + 3 + (int)(s % (uint32_t)(w - 6)), sy = y + 3 + (int)((s >> 8) % (uint32_t)(h - 6));
+@@ -797,7 +820,6 @@ static void draw_window(int cx, int y, int w, int h)
+         }
+     } else {
+         int cxl = x + (t / 6) % (w + 20) - 10;
+-        ui_fill_circle(x + 6, y + 6, 4, PAL_RAMP(RAMP_CANDY, 7));
+         ui_fill_ellipse(cxl, y + h / 3, 6, 3, PAL_WHITE);
+         ui_fill_ellipse(cxl + 4, y + h / 3 - 2, 4, 3, PAL_WHITE);
+     }
+@@ -805,9 +827,6 @@ static void draw_window(int cx, int y, int w, int h)
+     plat_rect(cx - 1, y, 2, h, PAL_RAMP(RAMP_WOOD, 5));
+     plat_rect(x, y + h / 2, w, 2, PAL_RAMP(RAMP_WOOD, 5));
+     plat_rect(x + 2, y + 2, 2, h / 3, PAL_WHITE);
+-    /* the sill */
+-    plat_rect(x - 5, y + h, w + 10, 3, PAL_RAMP(RAMP_WOOD, 4));
+-    plat_rect(x - 5, y + h, w + 10, 1, PAL_RAMP(RAMP_WOOD, 6));
+ }
+ 
+ /* A small shelf of tiny book spines (decor). */
+@@ -888,47 +907,84 @@ static void draw_book(int x, int y, int bw, int bh, int w, int selected, int ope
+     }
+ }
+ 
+-static void draw_books(int sw, int shelf_y, int bw, int bh)
++/* the lobby's geometry (the same numbers the drawing, the stage's layers and the picture use) */
++typedef struct {
++    int sw, sh, big, floor_y, bw, bh, shelf_y, gap, total, x0, dy, dw;   /* dy, dw: the desk's top and width */
++} LobGeo;
++
++static void lob_geo(LobGeo *g)
+ {
+-    int gap = lib_big() ? 6 : 4, n = LIB_BOOKS, i;          /* (CL4) eight books: closer together */
+-    int total = n * bw + (n - 1) * gap, x0 = (sw - total) / 2;
+-    /* the display shelf */
++    g->sw = lib_sw(); g->sh = lib_sh(); g->big = lib_big();
++    g->floor_y = g->sh - (g->big ? 34 : 22);
++    g->bw = g->big ? 30 : 22; g->bh = g->big ? 46 : 34;
++    g->shelf_y = g->big ? 104 : 66;
++    g->gap = g->big ? 6 : 4;                                 /* (CL4) eight books: closer together */
++    g->total = LIB_BOOKS * g->bw + (LIB_BOOKS - 1) * g->gap;
++    g->x0 = (g->sw - g->total) / 2;
++    g->dy = g->big ? g->sh - 44 : g->sh - 30;
++    g->dw = g->big ? 66 : 52;
++}
++
++/* the display shelf's plank and its two brackets */
++static void p_plank(const LobGeo *g)
++{
++    int x0 = g->x0, total = g->total, shelf_y = g->shelf_y;
+     plat_rect(x0 - 10, shelf_y, total + 20, 5, PAL_RAMP(RAMP_WOOD, 4));
+     plat_rect(x0 - 10, shelf_y, total + 20, 1, PAL_RAMP(RAMP_WOOD, 6));
+     plat_rect(x0 - 10, shelf_y + 5, total + 20, 1, PAL_RAMP(RAMP_WOOD, 1));
+     plat_rect(x0 - 6, shelf_y + 6, 4, 6, PAL_RAMP(RAMP_WOOD, 2));
+     plat_rect(x0 + total + 2, shelf_y + 6, 4, 6, PAL_RAMP(RAMP_WOOD, 2));
+-    for (i = 0; i < n; i++) {
+-        int x = x0 + i * (bw + gap), y = shelf_y - bh, sel = i == lob.sel;
+-        int open = book_open(i);
+-        if (sel) {
+-            /* pulled out: anticipation dip, overshoot, then a gentle bob */
+-            int k = lob.sel_t, lift;
+-            if (k < 2) lift = -1;
+-            else if (k < 6) lift = 3 + (k - 2) * 2;
+-            else if (k < 9) lift = 11 - (k - 6);
+-            else lift = 8 + ui_wave(lob.t, 30, 1);
+-            if (lob.nope_t < 12) x += (lob.nope_t & 2) ? -2 : 2;   /* rattle */
+-            y -= lift;
+-            ui_sparkle(x - 3, y + 4, (lob.t / 2) & 15, PAL_WHITE);
+-            ui_sparkle(x + bw + 2, y + bh / 2, (lob.t / 2 + 8) & 15, PAL_UI_GOLD);
+-        }
+-        draw_book(x, y, bw, bh, i, sel, open);
++}
++
++/* where book i stands (the selected one is pulled out: anticipation dip, overshoot, then a gentle bob, and
++ * rattles when a locked one was poked); *lift and *rat are what moved it */
++static void book_xy(const LobGeo *g, int i, int *x, int *y, int *lift, int *rat)
++{
++    *x = g->x0 + i * (g->bw + g->gap);
++    *y = g->shelf_y - g->bh;
++    *lift = *rat = 0;
++    if (i == lob.sel) {
++        int k = lob.sel_t, l;
++        if (k < 2) l = -1;
++        else if (k < 6) l = 3 + (k - 2) * 2;
++        else if (k < 9) l = 11 - (k - 6);
++        else l = 8 + ui_wave(lob.t, 30, 1);
++        if (lob.nope_t < 12) *rat = (lob.nope_t & 2) ? -2 : 2;
++        *x += *rat;
++        *y -= l;
++        *lift = l;
+     }
+-    /* a candle at the end of the shelf, a little skull bookend at the other */
+-    {
+-        int cx = x0 + total + 8, fl = (lob.t / 3) & 3;
+-        plat_rect(cx - 2, shelf_y - 9, 4, 9, PAL_UI_CREAM);
+-        plat_rect(cx - 2, shelf_y - 9, 1, 9, PAL_WHITE);
+-        plat_rect(cx, shelf_y - 12, 1, 3, PAL_GRAY_D);
+-        ui_fill_ellipse(cx, shelf_y - 14 - (fl == 1), 2, 3 + (fl == 2), PAL_RAMP(RAMP_LAVA, 6));
+-        plat_rect(cx, shelf_y - 14, 1, 2, PAL_WHITE);
+-        cx = x0 - 9;
+-        ui_fill_circle(cx, shelf_y - 5, 4, PAL_RAMP(RAMP_BONE, 7));
+-        plat_rect(cx - 2, shelf_y - 6, 2, 2, PAL_RAMP(RAMP_BONE, 1));
+-        plat_rect(cx + 1, shelf_y - 6, 2, 2, PAL_RAMP(RAMP_BONE, 1));
+-        plat_rect(cx - 2, shelf_y - 2, 5, 2, PAL_RAMP(RAMP_BONE, 6));
++}
++
++static void p_book(const LobGeo *g, int i)
++{
++    int x, y, lift, rat;
++    book_xy(g, i, &x, &y, &lift, &rat);
++    if (i == lob.sel) {
++        ui_sparkle(x - 3, y + 4, (lob.t / 2) & 15, PAL_WHITE);
++        ui_sparkle(x + g->bw + 2, y + g->bh / 2, (lob.t / 2 + 8) & 15, PAL_UI_GOLD);
+     }
++    draw_book(x, y, g->bw, g->bh, i, i == lob.sel, book_open(i));
++}
++
++/* a candle at the end of the shelf, a little skull bookend at the other */
++static void p_candle(const LobGeo *g)
++{
++    int cx = g->x0 + g->total + 8, fl = (lob.t / 3) & 3, shelf_y = g->shelf_y;
++    plat_rect(cx - 2, shelf_y - 9, 4, 9, PAL_UI_CREAM);
++    plat_rect(cx - 2, shelf_y - 9, 1, 9, PAL_WHITE);
++    plat_rect(cx, shelf_y - 12, 1, 3, PAL_GRAY_D);
++    ui_fill_ellipse(cx, shelf_y - 14 - (fl == 1), 2, 3 + (fl == 2), PAL_RAMP(RAMP_LAVA, 6));
++    plat_rect(cx, shelf_y - 14, 1, 2, PAL_WHITE);
++}
++
++static void p_skull(const LobGeo *g)
++{
++    int cx = g->x0 - 9, shelf_y = g->shelf_y;
++    ui_fill_circle(cx, shelf_y - 5, 4, PAL_RAMP(RAMP_BONE, 7));
++    plat_rect(cx - 2, shelf_y - 6, 2, 2, PAL_RAMP(RAMP_BONE, 1));
++    plat_rect(cx + 1, shelf_y - 6, 2, 2, PAL_RAMP(RAMP_BONE, 1));
++    plat_rect(cx - 2, shelf_y - 2, 5, 2, PAL_RAMP(RAMP_BONE, 6));
+ }
+ 
+ static const char *lobby_quip(int status)
+@@ -947,98 +1003,434 @@ static const char *lobby_quip(int status)
+     return quips_day[(lob.quip + lob.t / 150) % DOOMO_COUNTOF(quips_day)];
+ }
+ 
+-static void lobby_draw(void)
++/* ---- the lobby's parts, in the order the old drawing painted them ---------------------- */
++/* the mini shelves: the left ones (which = 0) or the right ones (1) */
++static void p_mini_shelves(const LobGeo *g, int which)
++{
++    int sw = g->sw, big = g->big;
++    if (which == 0) {
++        draw_mini_shelf(6, big ? 26 : 18, sw / 2 - (big ? 50 : 38), 11u);
++        if (big) draw_mini_shelf(6, 48, sw / 2 - 50, 211u);
++    } else {
++        draw_mini_shelf(sw / 2 + (big ? 44 : 32), big ? 26 : 18, sw / 2 - (big ? 50 : 38), 77u);
++        if (big) draw_mini_shelf(sw / 2 + 44, 48, sw / 2 - 50, 307u);
++    }
++}
++
++static void window_geo(const LobGeo *g, int *cx, int *y, int *w, int *h)
++{
++    *cx = g->sw / 2; *y = g->big ? 26 : 22; *w = g->big ? 64 : 48; *h = g->big ? 44 : 26;
++}
++
++static void p_window(const LobGeo *g)
++{
++    int cx, y, w, h, night = town_is_night();
++    window_geo(g, &cx, &y, &w, &h);
++    window_still(cx, y, w, h, night);
++    window_moving(cx, y, w, h, night, lob.t);
++}
++
++#define LOB_TITLE STR_ICON_STAR " THE GRAND LIBRARY " STR_ICON_STAR
++static void p_title(const LobGeo *g) { ui_title(g->sw / 2, 2, LOB_TITLE, WIN_CREAM); }
++static void p_badge(const LobGeo *g) { lib_badge(g->sw - 44, 2, lob.total, WIN_CREAM); }
++
++/* Quillby's picture (NULL: nobody behind the desk) */
++static const DoomoImage *quillby_img(const LobGeo *g, int status, const DoomoResident *q, int *qx, int *qy)
++{
++    int expr = EXPR_HAPPY;
++    *qx = g->big ? 8 : 3;
++    *qy = g->big ? g->sh - 112 : g->sh - 92;
++    if (status == RES_DEAD || !q) return NULL;
++    if (status == RES_POSSESSED || status == RES_SOUL_LOST) expr = EXPR_POSSESSED;
++    else if (lob.nope_t < 40) expr = EXPR_SHOCK;
++    else if (lob.sel_t < 45) expr = EXPR_TALK;
++    else if (town_is_night() && ((lob.t / 200) & 1)) expr = EXPR_SLEEPY;
++    return figure_image_res_ui(q, status, expr);
++}
++
++/* the desk, a stack of books and a stamp on it */
++static void p_desk(const LobGeo *g)
++{
++    int dy = g->dy, big = g->big;
++    plat_rect(0, dy, g->dw, g->sh - dy, PAL_RAMP(RAMP_WOOD, 3));
++    plat_rect(0, dy, g->dw, 3, PAL_RAMP(RAMP_WOOD, 5));
++    plat_rect(0, dy + 3, g->dw, 1, PAL_RAMP(RAMP_WOOD, 1));
++    plat_rect(4, dy - 5, 14, 5, PAL_PAINT(PAINT_SKY, 1));
++    plat_rect(5, dy - 9, 12, 4, PAL_PAINT(PAINT_ROSE, 1));
++    plat_rect(5, dy - 9, 12, 1, PAL_PAINT(PAINT_ROSE, 2));
++    plat_rect(4, dy - 5, 14, 1, PAL_PAINT(PAINT_SKY, 2));
++    plat_rect(big ? 50 : 38, dy - 6, 6, 6, PAL_PAINT(PAINT_CHERRY, 1));
++    plat_rect(big ? 52 : 40, dy - 9, 2, 3, PAL_RAMP(RAMP_WOOD, 2));
++}
++
++static void p_label(const LobGeo *g) { ui_text(4, g->dy + 6, "Quillby", PAL_RAMP(RAMP_WOOD, 7)); }
++
++/* the info / speech panel: where it stands */
++static void info_geo(const LobGeo *g, int *x, int *y, int *w, int *h)
++{
++    *x = g->big ? 72 : 56;
++    *y = g->shelf_y + (g->big ? 14 : 12);
++    *w = g->sw - *x - 4;
++    *h = g->sh - 16 - *y;
++}
++
++/* the speech bubble's window and its tail towards Quillby (the window's glint is part of the window) */
++static void p_info_window(const LobGeo *g)
+ {
+-    int sw = lib_sw(), sh = lib_sh(), big = lib_big();
+-    int floor_y = sh - (big ? 34 : 22);
+-    int bw = big ? 30 : 22, bh = big ? 46 : 34;
+-    int shelf_y = big ? 104 : 66;
+-    int status;
+-    const DoomoResident *q = quillby(&status);
+     const UiStyle *st = ui_style(WIN_CREAM);
+-    if (plat_draw_skipped()) return;
+-    draw_wall(sw, sh, floor_y);
+-    draw_window(sw / 2, big ? 26 : 22, big ? 64 : 48, big ? 44 : 26);
+-    draw_mini_shelf(6, big ? 26 : 18, sw / 2 - (big ? 50 : 38), 11u);
+-    draw_mini_shelf(sw / 2 + (big ? 44 : 32), big ? 26 : 18, sw / 2 - (big ? 50 : 38), 77u);
+-    if (big) {
+-        draw_mini_shelf(6, 48, sw / 2 - 50, 211u);
+-        draw_mini_shelf(sw / 2 + 44, 48, sw / 2 - 50, 307u);
++    int x, y, w, h;
++    info_geo(g, &x, &y, &w, &h);
++    ui_window(x, y, w, h, WIN_CREAM);
++    plat_rect(x - 3, y + 10, 4, 3, st->outline);
++    plat_rect(x - 1, y + 11, 3, 1, st->fill_hi);
++}
++
++/* its first line: the book's name (a padlock if it is locked) and how much of it is read */
++static void p_info_head(const LobGeo *g)
++{
++    const UiStyle *st = ui_style(WIN_CREAM);
++    int x, y, w, h, w_sel = lob.sel, open = book_open(w_sel), big = g->big;
++    char line[48];
++    info_geo(g, &x, &y, &w, &h);
++    ui_text_shadow(x + 6, y + 4, book(w_sel)->name, st->accent, st->fill_lo);
++    if (!open) lib_padlock(x + 10 + ui_text_width(book(w_sel)->name), y + 4, st->accent);
++    if (w_sel == BOOK_HELP) {
++        doomo_snprintf(line, sizeof(line), "%d pages", lib_help_pages());
++        ui_text(x + w - 8 - ui_text_width(line), y + 4, line, st->text_dim);
++    } else {
++        static const char *const what[LIB_WING_COUNT] = {
++            "seen", "known", "parts", "in bag", "won", "songs", "exhibits"
++        };
++        if (lob.total_n[w_sel] > 0 && big)
++            doomo_snprintf(line, sizeof(line), "%d/%d %s", lob.have_n[w_sel], lob.total_n[w_sel], what[w_sel]);
++        else if (lob.total_n[w_sel] > 0)
++            doomo_snprintf(line, sizeof(line), "%d/%d", lob.have_n[w_sel], lob.total_n[w_sel]);
++        else
++            doomo_snprintf(line, sizeof(line), "%d%%", lob.pct[w_sel]);
++        ui_text(x + w - 8 - ui_text_width(line), y + 4, line, st->text_dim);
+     }
+-    ui_title(sw / 2, 2, STR_ICON_STAR " THE GRAND LIBRARY " STR_ICON_STAR, WIN_CREAM);
+-    lib_badge(sw - 44, 2, lob.total, WIN_CREAM);
+-    draw_books(sw, shelf_y, bw, bh);
+-    /* Quillby behind the desk */
+-    {
+-        int qx = big ? 8 : 3, qy = big ? sh - 112 : sh - 92;
+-        int dy = big ? sh - 44 : sh - 30;
+-        if (status != RES_DEAD && q) {
+-            int expr = EXPR_HAPPY;
+-            const DoomoImage *img;
+-            if (status == RES_POSSESSED || status == RES_SOUL_LOST) expr = EXPR_POSSESSED;
+-            else if (lob.nope_t < 40) expr = EXPR_SHOCK;
+-            else if (lob.sel_t < 45) expr = EXPR_TALK;
+-            else if (town_is_night() && ((lob.t / 200) & 1)) expr = EXPR_SLEEPY;
+-            img = figure_image_res_ui(q, status, expr);
+-            if (img) plat_image(qx, qy, img, 1, 0, 0);
++}
++
++/* what Quillby says and the book's progress bar */
++static void p_info_body(const LobGeo *g, int status)
++{
++    const UiStyle *st = ui_style(WIN_CREAM);
++    int x, y, w, h, w_sel = lob.sel;
++    info_geo(g, &x, &y, &w, &h);
++    (void)w_sel;
++    ui_text_wrap(x + 6, y + 15, w - 12, lobby_quip(status), st->text, 1);
++}
++
++/* its progress bar (it blinks while low and a shine crosses it) */
++static void p_info_bar(const LobGeo *g)
++{
++    int x, y, w, h, w_sel = lob.sel;
++    info_geo(g, &x, &y, &w, &h);
++    if (w_sel < LIB_WING_COUNT)
++        ui_bar(x + 6, y + h - 10, w - 12, 6, lob.pct[w_sel], 100,
++               lob.pct[w_sel] >= 100 ? PAL_UI_GOLD : PAL_PAINT(lib_wings[w_sel].paint, 1));
++}
++
++/* dust motes in the window light: where mote i is and its sparkle phase */
++static void mote_xy(const LobGeo *g, int i, int *mx, int *my, int *ph)
++{
++    uint32_t s = doomo_hash32((uint32_t)i * 977u + 3u);
++    int span = g->shelf_y - 30;
++    *mx = g->sw / 2 - 30 + (int)(s % 60u) + ui_wave(lob.t + i * 40, 120, 5);
++    *my = 20 + (int)((s >> 8) % (uint32_t)span + lob.t / 4) % span;
++    *ph = (int)((lob.t / 3 + s) & 15);
++}
++
++static void p_mote(const LobGeo *g, int i)
++{
++    int mx, my, ph;
++    mote_xy(g, i, &mx, &my, &ph);
++    ui_sparkle(mx, my, ph, PAL_RAMP(RAMP_CANDY, 7));
++}
++
++static void p_hint(void)
++{
++    lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " Browse  " STR_ICON_A " Read  " STR_ICON_B " Leave", WIN_CREAM);
++}
++
++#if !defined(DOOMO_PLATFORM_PS1)
++/* ---- (S3-8) the kept lobby (docs/GBA.md "Speed wave 3: S3-8") --------------------------------
++ * The wall, the mini shelves, the display shelf's plank, the desk, the window's frame and day sky and the speech bubble's window
++ * (without its glint) stand still: one picture of the family DOOMO_BACKDROP_LIBRARY (the GBA bakes it into the
++ * ROM). Everything that moves or changes is a layer of the retained stage (backdrop.h), in the order the old
++ * drawing painted them: the window's cloud, mullions and highlight (at night the whole window, over the day one;
++ * where the cloud reaches a mini shelf, which the old drawing painted over it, the layer draws that shelf again),
++ * the title and the badge, the eight books (the picked
++ * one lifts, bobs and sparkles), the skull and the candle, Quillby (the desk's top is put back over his feet) and the
++ * desk's name, the bubble's first line (with its glint) and its text, and the five dust motes. A frame draws only
++ * the layers whose key or box changed or that lie on one that did. test_lib_kept plays the lobby with the stage on
++ * and off and compares every frame. */
++enum { LL_WINDOW, LL_TITLE, LL_BADGE, LL_BOOK0, LL_SKULL = LL_BOOK0 + LIB_BOOKS, LL_CANDLE,
++       LL_QUILLBY, LL_HEAD, LL_BODY, LL_BAR, LL_MOTE0, LL_COUNT = LL_MOTE0 + 5 };
++DOOMO_STATIC_ASSERT(LL_COUNT <= STAGE_MAX_LAYERS, lobby_layers_fit_the_stage);
++
++static void lobby_pic(uint32_t key)
++{
++    LobGeo g;
++    int cx, y, w, h;
++    (void)key;
++    lob_geo(&g);
++    draw_wall(g.sw, g.sh, g.floor_y);
++    window_geo(&g, &cx, &y, &w, &h);
++    window_still(cx, y, w, h, 0);
++    p_mini_shelves(&g, 0);
++    p_mini_shelves(&g, 1);
++    p_plank(&g);
++    p_desk(&g);
++    ui_glint_hold(1);                 /* the bubble's window, its glint is drawn over it */
++    p_info_window(&g);
++    ui_glint_hold(0);
++}
++
++static int lobby_pic_keys(uint32_t *out, int cap)
++{
++    if (cap >= 1) out[0] = 0;
++    return 1;
++}
++const DoomoBackdrop lib_backdrop_family = { .id = DOOMO_BACKDROP_LIBRARY, .draw = lobby_pic, .keys = lobby_pic_keys };
++
++static uint32_t lk(uint32_t h, int32_t v) { return ui_key_int(h, v); }
++
++static void lob_box(int b[4], int x, int y, int w, int h) { b[0] = x; b[1] = y; b[2] = w; b[3] = h; }
++static int lob_box_hits(const int a[4], const int b[4])
++{
++    return a[0] < b[0] + b[2] && b[0] < a[0] + a[2] && a[1] < b[1] + b[3] && b[1] < a[1] + a[3];
++}
++
++/* the mini shelves' box: the left ones (which 0) or the right ones (1) */
++static void shelf_box(const LobGeo *g, int which, int b[4])
++{
++    int w = g->sw / 2 - (g->big ? 50 : 38), x = which ? g->sw / 2 + (g->big ? 44 : 32) : 6;
++    lob_box(b, x, g->big ? 26 : 18, w, g->big ? 38 : 16);
++}
++
++/* the window layer's box and key: the window's own part, and the mini shelves the cloud reaches (the old drawing
++ * painted them over it, so they are drawn again) */
++static void lob_window(const LobGeo *g, int b[4], uint32_t *key)
++{
++    int cx, y, w, h, night = town_is_night(), t = lob.t, x, sh;
++    uint32_t k;
++    window_geo(g, &cx, &y, &w, &h);
++    x = cx - w / 2;
++    if (night) {                               /* the night window is all of it, over the day one */
++        lob_box(b, x - 5, y - 3, w + 10, h + 8);
++        k = lk(lk(0x61u, w), (t / 8) & 7);
++    } else {
++        int cxl = x + (t / 6) % (w + 20) - 10, x0 = DOOMO_MIN(x, cxl - 6), x1 = DOOMO_MAX(x + w, cxl + 9);
++        int y0 = DOOMO_MIN(y, y + h / 3 - 5);
++        lob_box(b, x0, y0, x1 - x0, y + h - y0);
++        k = lk(lk(0x60u, w), (t / 6) % (w + 20));
++    }
++    for (sh = 0; sh < 2; sh++) {               /* a shelf the cloud reaches is drawn over it again */
++        int sb[4];
++        shelf_box(g, sh, sb);
++        if (b[0] < sb[0] + sb[2] && sb[0] < b[0] + b[2] && b[1] < sb[1] + sb[3] && sb[1] < b[1] + b[3]) {
++            int x0 = DOOMO_MIN(b[0], sb[0]), y0 = DOOMO_MIN(b[1], sb[1]);
++            int x1 = DOOMO_MAX(b[0] + b[2], sb[0] + sb[2]), y1 = DOOMO_MAX(b[1] + b[3], sb[1] + sb[3]);
++            lob_box(b, x0, y0, x1 - x0, y1 - y0);
++            k = lk(k, 1 + sh);
+         }
+-        /* desk */
+-        plat_rect(0, dy, (big ? 66 : 52), sh - dy, PAL_RAMP(RAMP_WOOD, 3));
+-        plat_rect(0, dy, (big ? 66 : 52), 3, PAL_RAMP(RAMP_WOOD, 5));
+-        plat_rect(0, dy + 3, (big ? 66 : 52), 1, PAL_RAMP(RAMP_WOOD, 1));
+-        /* a stack of books and a stamp on the desk */
+-        plat_rect(4, dy - 5, 14, 5, PAL_PAINT(PAINT_SKY, 1));
+-        plat_rect(5, dy - 9, 12, 4, PAL_PAINT(PAINT_ROSE, 1));
+-        plat_rect(5, dy - 9, 12, 1, PAL_PAINT(PAINT_ROSE, 2));
+-        plat_rect(4, dy - 5, 14, 1, PAL_PAINT(PAINT_SKY, 2));
+-        plat_rect(big ? 50 : 38, dy - 6, 6, 6, PAL_PAINT(PAINT_CHERRY, 1));
+-        plat_rect(big ? 52 : 40, dy - 9, 2, 3, PAL_RAMP(RAMP_WOOD, 2));
+-        ui_text(4, dy + 6, "Quillby", PAL_RAMP(RAMP_WOOD, 7));
+     }
+-    /* the info / speech panel */
+-    {
+-        int x = big ? 72 : 56, y = shelf_y + (big ? 14 : 12), w = sw - x - 4;
+-        int h = sh - 16 - y, w_sel = lob.sel, open = book_open(w_sel);
+-        char line[48];
+-        uint8_t ink = st->text;
+-        ui_window(x, y, w, h, WIN_CREAM);
+-        /* the tail of the speech bubble towards Quillby */
+-        plat_rect(x - 3, y + 10, 4, 3, st->outline);
+-        plat_rect(x - 1, y + 11, 3, 1, st->fill_hi);
+-        ui_text_shadow(x + 6, y + 4, book(w_sel)->name, st->accent, st->fill_lo);
+-        if (!open) lib_padlock(x + 10 + ui_text_width(book(w_sel)->name), y + 4, st->accent);
+-        if (w_sel == BOOK_HELP) {
+-            doomo_snprintf(line, sizeof(line), "%d pages", lib_help_pages());
+-            ui_text(x + w - 8 - ui_text_width(line), y + 4, line, st->text_dim);
++    *key = k;
++}
++
++/* the box and key of layer i this frame (a box of w 0 draws nothing) */
++static void lob_layer(const LobGeo *g, int i, int status, const DoomoImage *qimg, int qx, int qy, int b[4], uint32_t *key)
++{
++    uint32_t k = ui_panel_key();
++    lob_box(b, 0, 0, 0, 0);
++    *key = 0;
++    if (i == LL_WINDOW) {
++        lob_window(g, b, key);
++    } else if (i == LL_TITLE) {
++        int w = ui_text_width(LOB_TITLE) + 18, x = g->sw / 2 - w / 2;
++        lob_box(b, x - 2, 0, w + 5, 17);
++        *key = lk(lk(k, g->sw), (int)(doomo_frame_count() / 3) & 15);
++    } else if (i == LL_BADGE) {
++        lob_box(b, g->sw - 46, 0, 46, 17);
++        *key = lk(lk(lk(k, lob.total), 0xBAD6E), (int)(doomo_frame_count() / 3) & 15);
++    } else if (i >= LL_BOOK0 && i < LL_BOOK0 + LIB_BOOKS) {
++        int bi = i - LL_BOOK0, x, y, lift, rat, pct = bi < LIB_WING_COUNT ? lob.pct[bi] : 0, sel = bi == lob.sel;
++        book_xy(g, bi, &x, &y, &lift, &rat);
++        if (sel) lob_box(b, x - 8, y - 6, g->bw + 17, g->bh + 15);
++        else lob_box(b, x - 1, y - 1, g->bw + 3, g->bh + 9);
++        k = lk(lk(lk(lk(k, book_open(bi)), pct >= 100), sel), x * 1024 + y);
++        if (sel) k = lk(lk(k, (lob.t / 2) & 15), ui_wave(lob.t, 24, 1));
++        *key = k;
++    } else if (i == LL_SKULL) {
++        lob_box(b, g->x0 - 14, g->shelf_y - 10, 11, 10);
++        *key = 0x5C011u;
++    } else if (i == LL_CANDLE) {
++        lob_box(b, g->x0 + g->total + 5, g->shelf_y - 20, 7, 20);
++        *key = lk(0xCA17D1Eu, (lob.t / 3) & 3);
++    } else if (i == LL_QUILLBY) {
++        int lx = 4, ly = g->dy + 6, lw = ui_text_width("Quillby") + 1, lh = FONT_LINE + 2;
++        int x0 = lx, y0 = ly, x1 = lx + lw, y1 = ly + lh;
++        if (qimg) {
++            x0 = DOOMO_MIN(x0, qx); y0 = DOOMO_MIN(y0, qy);
++            x1 = DOOMO_MAX(x1, qx + qimg->w); y1 = DOOMO_MAX(y1, qy + qimg->h);
++        }
++        lob_box(b, x0, y0, x1 - x0, y1 - y0);
++        k = lk(lk(k, status), qimg ? 1 : 0);
++        if (qimg) k = lk(lk(lk(k, qimg->w), qimg->h), (int)(intptr_t)qimg);
++        *key = k;
++    } else if (i == LL_BAR) {
++        int x, y, w, h, pct = lob.sel < LIB_WING_COUNT ? lob.pct[lob.sel] : -1, t = (int)doomo_frame_count(), fw, sx;
++        info_geo(g, &x, &y, &w, &h);
++        if (pct < 0) return;                                /* (the Field Guide has no bar) */
++        lob_box(b, x + 6, y + h - 10, w - 12, 6);
++        fw = (w - 14) * pct / 100;
++        sx = (t * 3) % (w - 12 + 60) - 10;
++        k = lk(lk(lk(0xBA4u, lob.sel), pct), pct > 0 && pct * 4 < 100 ? (t / 8) % 2 : 0);
++        *key = lk(k, fw > 0 && sx >= 0 && sx < fw - 1 ? sx : -1);
++    } else if (i == LL_HEAD || i == LL_BODY) {
++        int x, y, w, h, sel = lob.sel, ss = sel < LIB_WING_COUNT ? sel : 0;
++        info_geo(g, &x, &y, &w, &h);
++        k = lk(lk(k, sel), book_open(sel));
++        if (i == LL_HEAD) {
++            lob_box(b, x + 4, y + 1, w - 8, 13);
++            k = lk(lk(lk(k, lob.have_n[ss]), lob.total_n[ss]), lob.pct[ss]);
++            k = lk(lk(k, sel == BOOK_HELP ? lib_help_pages() : 0), ui_window_glint(x, y, w, h));
++            *key = lk(k, 0x4EAD);
+         } else {
+-            static const char *const what[LIB_WING_COUNT] = {
+-                "seen", "known", "parts", "in bag", "won", "songs", "exhibits"
+-            };
+-            if (lob.total_n[w_sel] > 0 && big)
+-                doomo_snprintf(line, sizeof(line), "%d/%d %s", lob.have_n[w_sel], lob.total_n[w_sel], what[w_sel]);
+-            else if (lob.total_n[w_sel] > 0)
+-                doomo_snprintf(line, sizeof(line), "%d/%d", lob.have_n[w_sel], lob.total_n[w_sel]);
+-            else
+-                doomo_snprintf(line, sizeof(line), "%d%%", lob.pct[w_sel]);
+-            ui_text(x + w - 8 - ui_text_width(line), y + 4, line, st->text_dim);
++            lob_box(b, x + 4, y + 15, w - 8, h - 17);
++            k = lk(k, sel < LIB_WING_COUNT ? lob.pct[sel] : 0);
++            *key = ui_key_str(k, lobby_quip(status));
+         }
+-        ui_text_wrap(x + 6, y + 15, w - 12, lobby_quip(status), ink, 1);
+-        if (w_sel < LIB_WING_COUNT)
+-            ui_bar(x + 6, y + h - 10, w - 12, 6, lob.pct[w_sel], 100,
+-                   lob.pct[w_sel] >= 100 ? PAL_UI_GOLD : PAL_PAINT(lib_wings[w_sel].paint, 1));
++    } else {
++        int mx, my, ph;
++        mote_xy(g, i - LL_MOTE0, &mx, &my, &ph);
++        if (ui_sparkle_size(ph) > 0) lob_box(b, mx - 4, my - 4, 9, 9);
++        *key = lk(lk(lk(0x30731u, mx), my), ph);
+     }
+-    /* dust motes in the window light */
+-    {
+-        int i;
+-        for (i = 0; i < 5; i++) {
+-            uint32_t s = doomo_hash32((uint32_t)i * 977u + 3u);
+-            int span = shelf_y - 30;
+-            int mx = sw / 2 - 30 + (int)(s % 60u) + ui_wave(lob.t + i * 40, 120, 5);
+-            int my = 20 + (int)((s >> 8) % (uint32_t)span + lob.t / 4) % span;
+-            ui_sparkle(mx, my, (int)((lob.t / 3 + s) & 15), PAL_RAMP(RAMP_CANDY, 7));
++}
++
++static void lob_layer_draw(const LobGeo *g, int i, int status, const DoomoImage *qimg, int qx, int qy)
++{
++    if (i == LL_WINDOW) {
++        int cx, y, w, h, night = town_is_night(), sh, b[4];
++        uint32_t key;
++        window_geo(g, &cx, &y, &w, &h);
++        lob_window(g, b, &key);                       /* (its box: which shelves it reaches) */
++        if (night) window_still(cx, y, w, h, 1);
++        window_moving(cx, y, w, h, night, lob.t);
++        for (sh = 0; sh < 2; sh++) {
++            int sb[4];
++            shelf_box(g, sh, sb);
++            if (lob_box_hits(b, sb)) p_mini_shelves(g, sh);
++        }
++    } else if (i == LL_TITLE) {
++        p_title(g);
++    } else if (i == LL_BADGE) {
++        p_badge(g);
++    } else if (i >= LL_BOOK0 && i < LL_BOOK0 + LIB_BOOKS) {
++        p_book(g, i - LL_BOOK0);
++    } else if (i == LL_SKULL) {
++        p_skull(g);
++    } else if (i == LL_CANDLE) {
++        p_candle(g);
++    } else if (i == LL_QUILLBY) {
++        if (qimg) {
++            /* the desk and what stands on it were painted after Quillby: put those rects back from the picture */
++            int dy = g->dy, sx = g->big ? 50 : 38, k;
++            int r[5][4] = { { 0, dy, g->dw, g->sh - dy }, { 4, dy - 5, 14, 5 }, { 5, dy - 9, 12, 4 },
++                            { sx, dy - 6, 6, 6 }, { sx + 2, dy - 9, 2, 3 } };
++            plat_image(qx, qy, qimg, 1, 0, 0);
++            for (k = 0; k < 5; k++) {
++                int x0 = DOOMO_MAX(r[k][0], qx), y0 = DOOMO_MAX(r[k][1], qy);
++                int x1 = DOOMO_MIN(r[k][0] + r[k][2], qx + qimg->w), y1 = DOOMO_MIN(r[k][1] + r[k][3], qy + qimg->h);
++                if (x0 < x1 && y0 < y1) plat_stage_restore(x0, y0, x1 - x0, y1 - y0);
++            }
+         }
++        p_label(g);
++    } else if (i == LL_HEAD) {
++        int x, y, w, h;
++        info_geo(g, &x, &y, &w, &h);
++        ui_window_glint_draw(x, y, w, h, WIN_CREAM);
++        p_info_head(g);
++    } else if (i == LL_BODY) {
++        p_info_body(g, status);
++    } else if (i == LL_BAR) {
++        p_info_bar(g);
++    } else {
++        p_mote(g, i - LL_MOTE0);
+     }
+-    lib_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " Browse  " STR_ICON_A " Read  " STR_ICON_B " Leave", WIN_CREAM);
++}
++
++/* the stage's memory: the lobby's scene scratch (a wing opened on top takes the scratch; rebind when back) */
++static int lobby_stage_ready(void)
++{
++    void *p;
++    if (scene_scratch_mine(LOB_TAG)) return 1;
++    p = scene_scratch(LOB_TAG, stage_mem_bytes());
++    stage_bind(p);
++    return p != NULL;
++}
++
++/* 1 when the frame was drawn over the kept picture */
++static int lobby_kept_draw(int status, const DoomoResident *q)
++{
++    LobGeo g;
++    int i, b[4], qx, qy;
++    uint32_t key;
++    const DoomoImage *qimg;
++    if (!lobby_stage_ready()) return 0;
++    lob_geo(&g);
++    if (!stage_begin(DOOMO_BACKDROP_LIBRARY, 0, lobby_pic)) return 0;
++    qimg = quillby_img(&g, status, q, &qx, &qy);
++    for (i = 0; i < LL_COUNT; i++) {
++        lob_layer(&g, i, status, qimg, qx, qy, b, &key);
++        stage_layer(i, b[0], b[1], b[2], b[3], key);
++    }
++    stage_resolve();
++    for (i = 0; i < LL_COUNT; i++)
++        if (stage_draw(i)) lob_layer_draw(&g, i, status, qimg, qx, qy);
++    stage_end();
++    return 1;
++}
++#endif
++
++static void lobby_draw(void)
++{
++    LobGeo g;
++    int status, i;
++    const DoomoResident *q = quillby(&status);
++    if (plat_draw_skipped()) return;
++#if !defined(DOOMO_PLATFORM_PS1)
++    if (lobby_kept_draw(status, q)) {
++        p_hint();
++        return;
++    }
++#endif
++    lob_geo(&g);
++    draw_wall(g.sw, g.sh, g.floor_y);
++    p_window(&g);
++    p_mini_shelves(&g, 0);
++    p_mini_shelves(&g, 1);
++    p_title(&g);
++    p_badge(&g);
++    p_plank(&g);
++    for (i = 0; i < LIB_BOOKS; i++) p_book(&g, i);
++    p_candle(&g);
++    p_skull(&g);
++    {
++        int qx, qy;
++        const DoomoImage *img = quillby_img(&g, status, q, &qx, &qy);    /* Quillby behind the desk */
++        if (img) plat_image(qx, qy, img, 1, 0, 0);
++    }
++    p_desk(&g);
++    p_label(&g);
++    p_info_window(&g);
++    p_info_head(&g);
++    p_info_body(&g, status);
++    p_info_bar(&g);
++    for (i = 0; i < 5; i++) p_mote(&g, i);
++    p_hint();
+ }
+ 
+ const DoomoScene SCENE_LIBRARY = { "LIBRARY", lobby_enter, lobby_leave, lobby_update, lobby_draw, 0 };
+diff --git a/core/src/ui.c b/core/src/ui.c
+index 22315d9..f6bfdc1 100644
+--- a/core/src/ui.c
++++ b/core/src/ui.c
+@@ -99,14 +99,7 @@ static void window_draw(int x, int y, int w, int h, int style, const int *open)
+     /* inner rim shadow on the right edge */
+     plat_rect(x + w - 2, y + r + 1, 1, DOOMO_MAX(h - 2 * r - 2, 0), st->fill_lo);
+     /* a glint that slides along the glossy band every few seconds */
+-    {
+-        int pos = ui_window_glint(x, y, w, h);
+-        if (pos >= 0) {
+-            plat_rect(x + r + 2 + pos, y + 2, 3, 1, PAL_WHITE);
+-            plat_rect(x + r + 1 + pos, y + 3, 2, 1, PAL_WHITE);
+-            plat_rect(x + r + pos, y + 4, 1, 1, st->gloss);
+-        }
+-    }
++    ui_window_glint_draw(x, y, w, h, style);
+ }
+ 
+ void ui_window(int x, int y, int w, int h, int style)
+@@ -114,6 +107,18 @@ void ui_window(int x, int y, int w, int h, int style)
+     window_draw(x, y, w, h, style, NULL);
+ }
+ 
++/* (S3-8) the glint of ui_window(x, y, w, h, style) alone (nothing when it is not on the window this frame) */
++void ui_window_glint_draw(int x, int y, int w, int h, int style)
++{
++    const UiStyle *st = ui_style(style);
++    int r = (w >= 24 && h >= 20) ? 4 : 2, pos = ui_window_glint(x, y, w, h);
++    if (pos >= 0) {
++        plat_rect(x + r + 2 + pos, y + 2, 3, 1, PAL_WHITE);
++        plat_rect(x + r + 1 + pos, y + 3, 2, 1, PAL_WHITE);
++        plat_rect(x + r + pos, y + 4, 1, 1, st->gloss);
++    }
++}
++
+ #if UI_PANELS
+ /* (S2-9, ui.h) */
+ int ui_window_open_ok(int x, int y, int w, int h, int x0, int y0, int x1, int y1)
+diff --git a/core/tests/test_lib_kept.c b/core/tests/test_lib_kept.c
+new file mode 100644
+index 0000000..6c77402
+--- /dev/null
++++ b/core/tests/test_lib_kept.c
+@@ -0,0 +1,162 @@
++/* test_lib_kept.c - (S3-8) the kept library lobby, jukebox and studio STAGE (lib_common.c, lib_jukebox.c,
++ * studio_stage.c; docs/GBA.md "Speed wave 3: S3-8"). Each screen is drawn over the retained stage / as retained
++ * panels where the platform keeps them. The native platform emulates the GBA's two Mode 4 pages when nat_stage_on
++ * is set (a frame starts from the picture of two frames ago), so a box the stage fails to put back, a layer it
++ * fails to redraw or a key that misses a change shows up as a differing frame. One tour a screen, played twice
++ * (stage off, stage on); every frame must hash the same. Day and night, 240x160 and 320x240, English and Spanish. */
++#include "test.h"
++#include "../src/lib_int.h"
++#include "doomo/backdrop.h"
++#include "doomo/lang.h"
++
++#define KF_MAX 3000
++
++typedef struct { int16_t at; uint16_t b; } KPad;
++
++static void set_res(int w, int h)
++{
++    NatOptions o;
++    memset(&o, 0, sizeof(o));
++    o.w = w; o.h = h; o.seed = 0x5EED1234u; o.quiet = 1;
++    o.save_dir = test_tmp_dir;
++    nat_init(&o);
++}
++
++static void kframe(uint32_t b) { plat_begin_frame(); doomo_frame(b); plat_end_frame(); }
++
++static uint32_t kfb_hash(void)
++{
++    uint32_t h = 2166136261u;
++    int i, n = nat_w * nat_h;
++    for (i = 0; i < n; i++) h = (h ^ nat_fb[i]) * 16777619u;
++    return h;
++}
++
++static uint32_t kpad(const KPad *p, int f)
++{
++    for (; p && p->at >= 0; p++)
++        if (p->at == f) return p->b;
++    return 0;
++}
++
++typedef struct {
++    const char *name;
++    const DoomoScene *scene;
++    int arg, frames, night, lang;
++    const KPad *pad;
++    void (*setup)(void);
++} KTour;
++
++static int kept_frames, full_frames;
++
++static int krun(const KTour *k, int stage, uint32_t *out, int upto)
++{
++    int f, n = 0;
++    nat_stage_on = stage;
++    nat_stage_buffers = 2;
++    nat_stage_reset();
++    test_reset();
++    doomo_init();
++    portrait_cache_reset();
++    scene_set(&SCENE_TITLE, 0);
++    kframe(0);
++    kept_frames = full_frames = 0;
++    if (k->setup) k->setup();
++    doomo_town.minute = (uint16_t)(k->night ? 22 * 60 : 12 * 60);
++    doomo_town.opt[OPT_LANGUAGE] = (uint8_t)k->lang;
++    scene_push(k->scene, k->arg);
++    for (f = 0; f < k->frames && n < upto && n < KF_MAX; f++) {
++        kframe(kpad(k->pad, f));
++        out[n++] = kfb_hash();
++        if (nat_stage_kept()) {
++            StageStats st;
++            stage_stats(&st);
++            kept_frames++;
++            full_frames += st.full;
++        }
++    }
++    nat_stage_on = 0;
++    doomo_town.opt[OPT_LANGUAGE] = LANG_EN;
++    return n;
++}
++
++/* plays the tour with the stage off and on at w x h; 0 when a frame differs (a picture of the first one is written) */
++static int kcompare(const KTour *k, int w, int h, int *kept)
++{
++    static uint32_t off[KF_MAX], on[KF_MAX];
++    int n, f;
++    set_res(w, h);
++    n = krun(k, 0, off, KF_MAX);
++    krun(k, 1, on, KF_MAX);
++    *kept = kept_frames;
++    for (f = 0; f < n; f++)
++        if (off[f] != on[f]) {
++            static uint8_t a[NAT_MAX_W * NAT_MAX_H];
++            char m[300], path[600];
++            int i, x0 = w, y0 = h, x1 = -1, y1 = -1, nd = 0;
++            krun(k, 0, off, f + 1);
++            memcpy(a, nat_fb, (size_t)(w * h));
++            snprintf(path, sizeof(path), "%s/lib_kept_%s_%dx%d_off.png", test_tmp_dir, k->name, w, h);
++            nat_png_write(path, nat_fb, w, h, 2);
++            krun(k, 1, on, f + 1);
++            snprintf(path, sizeof(path), "%s/lib_kept_%s_%dx%d_on.png", test_tmp_dir, k->name, w, h);
++            nat_png_write(path, nat_fb, w, h, 2);
++            for (i = 0; i < w * h; i++)
++                if (a[i] != nat_fb[i]) {
++                    nd++;
++                    x0 = DOOMO_MIN(x0, i % w); x1 = DOOMO_MAX(x1, i % w);
++                    y0 = DOOMO_MIN(y0, i / w); y1 = DOOMO_MAX(y1, i / w);
++                }
++            snprintf(m, sizeof(m), "%s %dx%d night %d lang %d: frame %d differs with the stage on (%d px in %d,%d..%d,%d)",
++                     k->name, w, h, k->night, k->lang, f, nd, x0, y0, x1, y1);
++            test_fail(__FILE__, __LINE__, m);
++            return 0;
++        }
++    printf("      kept %s %dx%d night %d lang %d: %d frames, %d over the kept picture, %d of them drawn in full\n", k->name, w, h,
++           k->night, k->lang, n, *kept, full_frames);
++    if (full_frames * 5 > *kept) {
++        test_fail(__FILE__, __LINE__, "the stage drew too many frames in full");
++        return 0;
++    }
++    return n;
++}
++
++/* ---- the lobby: the cursor along the shelf and back, a locked book poked, a book opened and closed ---- */
++static const KPad pad_lobby[] = {
++    { 60, BTN_RIGHT }, { 80, BTN_RIGHT }, { 100, BTN_RIGHT }, { 104, BTN_RIGHT }, { 140, BTN_RIGHT }, { 170, BTN_RIGHT },
++    { 200, BTN_RIGHT }, { 230, BTN_A }, { 270, BTN_A }, { 300, BTN_LEFT }, { 330, BTN_LEFT }, { 360, BTN_LEFT },
++    { 440, BTN_LEFT }, { 470, BTN_LEFT }, { 500, BTN_RIGHT }, { 540, BTN_A }, { 560, BTN_B }, { 640, BTN_RIGHT },
++    { 700, BTN_LEFT }, { 800, BTN_LEFT }, { -1, 0 }
++};
++
++static void lobby_setup(void)
++{
++    town_new(TOWN_FREEPLAY, 4242, TOWN_POP_PREMADE);
++    sim_init();
++}
++
++TEST(lib_kept_lobby_is_pixel_identical)
++{
++    KTour k = { "lobby", &SCENE_LIBRARY, 0, 1000, 0, LANG_EN, pad_lobby, lobby_setup };
++    int kept, n;
++    CHECK(stage_mem_bytes() <= 2048u);
++    n = kcompare(&k, 240, 160, &kept);
++    CHECK(n > 0);
++    CHECK_MSG(kept > n / 3, "only %d of %d frames over the kept picture", kept, n);
++    k.night = 1;
++    CHECK(kcompare(&k, 240, 160, &kept) > 0);
++    k.night = 0;
++    CHECK(kcompare(&k, 320, 240, &kept) > 0);
++    k.night = 1;
++    CHECK(kcompare(&k, 320, 240, &kept) > 0);
++    set_res(240, 160);
++}
++
++TEST(lib_kept_lobby_spanish_is_pixel_identical)
++{
++    KTour k = { "lobby", &SCENE_LIBRARY, 0, 1000, 0, LANG_ES, pad_lobby, lobby_setup };
++    int kept;
++    CHECK(doomo_lang_info[LANG_ES].ready && doomo_lang_tables[LANG_ES]);
++    CHECK(kcompare(&k, 240, 160, &kept) > 0);
++    set_res(240, 160);
++}
+-- 
+2.43.0
+

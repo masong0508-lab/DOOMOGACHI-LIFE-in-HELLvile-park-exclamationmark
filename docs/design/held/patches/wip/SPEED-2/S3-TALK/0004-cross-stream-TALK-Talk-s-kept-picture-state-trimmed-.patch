@@ -1,0 +1,157 @@
+From e6d558bbf26bc010eba3591fdac9c08ea4ffe19e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 16:58:42 +0000
+Subject: [PATCH 04/11] cross-stream: TALK: Talk's kept-picture state trimmed
+ (dead TalkScn.note[40] out, band recomputed, one kept-shadow rect): GBA .bss
+ equal to the base; S3-TALK
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ core/include/doomo/ui.h |  6 +++---
+ core/src/talk_scene.c   | 35 +++++++++++++++++++++++------------
+ core/src/ui.c           | 13 +++----------
+ 3 files changed, 29 insertions(+), 25 deletions(-)
+
+diff --git a/core/include/doomo/ui.h b/core/include/doomo/ui.h
+index 048fc5d..25f9865 100644
+--- a/core/include/doomo/ui.h
++++ b/core/include/doomo/ui.h
+@@ -156,9 +156,9 @@ void ui_dim_under_window_pop(int x, int y, int w, int h, int ticks, int level);
+ void ui_shade_clip(int x, int y, int w, int h);
+ void ui_shade_clip_off(void);
+ 
+-/* ---- S3-TALK: windows drawn again over a kept page. ui_shadow_kept(x, y, w, h) (up to two rects, then they
+- * start over; w <= 0 clears them): a ui_window of exactly that rect draws no drop shadow, it is on the page the
+- * platform kept (core/src/talk_scene.c). The PS1 keeps no page: nothing there. */
++/* ---- S3-TALK: windows drawn again over a kept page. ui_shadow_kept(x, y, w, h) (one rect; w <= 0 clears it):
++ * a ui_window of exactly that rect draws no drop shadow, it is on the page the platform kept
++ * (core/src/talk_scene.c). The PS1 keeps no page: nothing there. */
+ #if defined(DOOMO_PLATFORM_PS1)
+ #define ui_shadow_kept(x, y, w, h) ((void)(x), (void)(y), (void)(w), (void)(h))
+ #else
+diff --git a/core/src/talk_scene.c b/core/src/talk_scene.c
+index 36505a4..a813699 100644
+--- a/core/src/talk_scene.c
++++ b/core/src/talk_scene.c
+@@ -78,12 +78,10 @@ static struct TalkScn {
+ #ifdef TALK_TYPING
+     char      typed[TALK_INPUT_MAX + 1];
+ #endif
+-    char      note[40];
+ #if HK_CODE
+     struct {                            /* S3-TALK: the kept picture (below) */
+         uint8_t  st, band, resettle, core_dirty, above, keep;
+         uint32_t ssig, pkey, csig, frame;
+-        PlatBand b;
+     } hk;
+ #endif
+ } T;
+@@ -1198,6 +1196,17 @@ static void hk_drop(void)
+     memset(&T.hk, 0, sizeof T.hk);
+ }
+ 
++/* the band the box draws on (hk_save keeps it, hk_ask puts it back): from the card's rows (or as high as the arena
++ * allows, down to the first row the box can reach) to the bottom, without the box's opaque body */
++static void hk_band(int py, PlatBand *b)
++{
++    int cx0, cy0, cx1, cy1, reach = ui_dialog_reach(&cx0, &cy0, &cx1, &cy1);
++    b->y_need = (int16_t)DOOMO_MIN(reach, py);
++    b->y_want = (int16_t)DOOMO_MAX(py - 14, 0);            /* the card's rows too when the arena has room */
++    if (b->y_want > b->y_need) b->y_want = b->y_need;
++    b->cx0 = (int16_t)cx0; b->cy0 = (int16_t)cy0; b->cx1 = (int16_t)cx1; b->cy1 = (int16_t)cy1;
++}
++
+ /* scene_draw asks before it draws the scenes below Talk: 1 = Talk keeps the picture this frame (the band is back,
+  * Talk draws what changed), 0 = the full frame */
+ static int hk_ask(const DoomoScene *top, int above)
+@@ -1221,7 +1230,11 @@ static int hk_ask(const DoomoScene *top, int above)
+         if (!plat_hold_frame(2)) { hk_drop(); return 0; }
+         T.hk.resettle = 0;
+     }
+-    if (T.hk.band && !plat_hold_band(PLAT_BAND_RESTORE, &T.hk.b)) { hk_drop(); return 0; }
++    if (T.hk.band) {
++        PlatBand b;
++        hk_band(py, &b);
++        if (!plat_hold_band(PLAT_BAND_RESTORE, &b)) { hk_drop(); return 0; }
++    }
+     T.hk.keep = 1;
+     return 1;
+ }
+@@ -1229,21 +1242,16 @@ static int hk_ask(const DoomoScene *top, int above)
+ /* a full frame has been drawn (strip, panel): keep it */
+ static void hk_save(int py)
+ {
+-    int cx0, cy0, cx1, cy1, reach, top, card = hk_card_on(py);
++    int top;
+     PlatBand b;
+     const DoomoScene *above = scene_drawn_above();
+     memset(&T.hk, 0, sizeof T.hk);
+     if (!HK_ON || plat_draw_skipped() || ui_toast_pending() || tip_active() ||
+         (above && above != &SCENE_DIALOG)) return;
+-    reach = ui_dialog_reach(&cx0, &cy0, &cx1, &cy1);
+-    b.y_need = (int16_t)DOOMO_MIN(reach, py);
+-    b.y_want = (int16_t)DOOMO_MAX(py - 14, 0);            /* the card's rows too when the arena has room */
+-    if (b.y_want > b.y_need) b.y_want = b.y_need;
+-    b.cx0 = (int16_t)cx0; b.cy0 = (int16_t)cy0; b.cx1 = (int16_t)cx1; b.cy1 = (int16_t)cy1;
++    hk_band(py, &b);
+     top = plat_hold_band(PLAT_BAND_SAVE, &b);
+     if (top >= 0 && (top <= py - 14 || py - 14 < 26)) {   /* the band covers the card's rows: the box and the card come and go on it */
+         T.hk.band = 1;
+-        T.hk.b = b;
+     } else if (top >= 0) {
+         plat_hold_band(PLAT_BAND_DROP, NULL);             /* it does not reach the card: no band, the card's state is in the signature */
+     }
+@@ -1254,7 +1262,6 @@ static void hk_save(int py)
+     T.hk.frame = doomo_frame_count();
+     T.hk.above = (uint8_t)(above != NULL);
+     T.hk.core_dirty = 0;
+-    (void)card;
+ }
+ 
+ /* the frame is kept: only what changed is drawn, on top of itself */
+@@ -1276,7 +1283,11 @@ static void hk_draw(int py)
+     if (k != T.hk.pkey || (!T.hk.above && T.hk.core_dirty)) {   /* the cursor moved, or the box that drew in the panel is gone */
+         ui_shadow_kept(0, py, plat_screen_w(), plat_screen_h() - py);
+         draw_panel(py);
+-        if (T.hk.band) plat_hold_band(PLAT_BAND_SAVE, &T.hk.b);   /* the band is the new panel */
++        if (T.hk.band) {                                      /* the band is the new panel */
++            PlatBand b;
++            hk_band(py, &b);
++            plat_hold_band(PLAT_BAND_SAVE, &b);
++        }
+         T.hk.pkey = k;
+         T.hk.core_dirty = 0;
+         changed = 1;
+diff --git a/core/src/ui.c b/core/src/ui.c
+index f9d5a4c..aae8b6b 100644
+--- a/core/src/ui.c
++++ b/core/src/ui.c
+@@ -165,21 +165,14 @@ void ui_window_rows(int x, int y, int w, int h, int style, int cx0, int cx1, int
+ 
+ /* ---- S3-TALK (ui.h): windows whose drop shadow is on the kept page already ------------------------------------ */
+ #if !defined(DOOMO_PLATFORM_PS1)
+-static int16_t ks_r[2][4];
+-static uint8_t ks_n;
++static int16_t ks_r[4];                                /* the rect, ks_r[2] == 0: none */
+ void ui_shadow_kept(int x, int y, int w, int h)
+ {
+-    if (w <= 0) { ks_n = 0; return; }                  /* off */
+-    if (ks_n >= 2) ks_n = 0;
+-    ks_r[ks_n][0] = (int16_t)x; ks_r[ks_n][1] = (int16_t)y; ks_r[ks_n][2] = (int16_t)w; ks_r[ks_n][3] = (int16_t)h;
+-    ks_n++;
++    ks_r[0] = (int16_t)x; ks_r[1] = (int16_t)y; ks_r[2] = (int16_t)(w > 0 ? w : 0); ks_r[3] = (int16_t)h;
+ }
+ static int ks_match(int x, int y, int w, int h)
+ {
+-    int i;
+-    for (i = 0; i < ks_n; i++)
+-        if (ks_r[i][0] == x && ks_r[i][1] == y && ks_r[i][2] == w && ks_r[i][3] == h) return 1;
+-    return 0;
++    return ks_r[2] && ks_r[0] == x && ks_r[1] == y && ks_r[2] == w && ks_r[3] == h;
+ }
+ #endif
+ 
+-- 
+2.43.0
+

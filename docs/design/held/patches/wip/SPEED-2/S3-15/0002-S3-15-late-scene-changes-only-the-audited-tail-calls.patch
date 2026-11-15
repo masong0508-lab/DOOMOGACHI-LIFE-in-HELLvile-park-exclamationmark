@@ -1,0 +1,595 @@
+From b94396f709d5e9fc6e714f822d5a923caa7ce1f6 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 18:43:24 +0000
+Subject: [PATCH 2/5] S3-15: late scene changes: only the audited tail calls
+ wait (scene_push_late / scene_set_late)
+
+The first cut held back every enter() made inside an update; with it on, the native
+home_visit script showed order dependencies. Now only callers that do nothing after
+the call (island menu entries, R/L/SELECT, the apartments, family, graveyard, news and
+shop exits to the island, the new-island build) ask for it. Measured: new island ->
+hub 4 reads -> 2, island -> family 3 -> 1.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ core/include/doomo/scene.h    |   9 ++-
+ core/src/fp_apartments.c      |   4 +-
+ core/src/fp_common.c          |   1 +
+ core/src/fp_family.c          |   2 +-
+ core/src/fp_graveyard.c       |   2 +-
+ core/src/fp_int.h             |   1 +
+ core/src/fp_island.c          |  46 ++++++------
+ core/src/fp_newisland.c       |   2 +-
+ core/src/fp_news.c            |   2 +-
+ core/src/fp_shop.c            |   2 +-
+ core/src/scene.c              |  51 ++++++--------
+ core/tests/test_scene_defer.c | 128 ++++++++++++++++------------------
+ 12 files changed, 122 insertions(+), 128 deletions(-)
+
+diff --git a/core/include/doomo/scene.h b/core/include/doomo/scene.h
+index ec2d93d..e2afdf9 100644
+--- a/core/include/doomo/scene.h
++++ b/core/include/doomo/scene.h
+@@ -18,6 +18,11 @@ typedef struct DoomoScene {
+ void scene_set(const DoomoScene *s, int arg);   /* clear stack, enter s   */
+ void scene_push(const DoomoScene *s, int arg);
+ void scene_pop(void);                           /* resumes the one below  */
++/* S3-15: scene_set / scene_push for a caller that does nothing after the call that needs the new scene's enter()
++ * to have run (the call is the last thing its update() does, bar a return). On the PS1, when the new scene's code
++ * is not loaded, enter() then runs after update() has returned (scene.c): one overlay read instead of three. */
++void scene_set_late(const DoomoScene *s, int arg);
++void scene_push_late(const DoomoScene *s, int arg);
+ const DoomoScene *scene_top(void);
+ int  scene_depth(void);
+ void scene_update(void);                        /* called by doomo_frame  */
+@@ -39,8 +44,8 @@ const DoomoScene *scene_drawn_above(void);
+ int  plat_scene_code(const DoomoScene *s);
+ void plat_scene_code_end(int token);
+ /* --- S3-15 (additive): set by a platform whose scene code can be out of RAM (the PS1, overlay.c). Returns 1 when
+- * entering s would first have to load its code. A scene change made from inside a scene's update (or a modal's
+- * callback) then runs s's enter() when that call has returned, not inside it (scene.c). NULL = always at once. --- */
++ * entering s would first have to load its code. A scene_set_late / scene_push_late made from inside a scene's
++ * update() then runs s's enter() when update() has returned, not inside it (scene.c). NULL = always at once. --- */
+ extern int (*scene_enter_loads)(const DoomoScene *s);
+ /* --- H4 (additive): a scene's code may also come in PARTS that share one
+  * address range (ps1/tools/ovl_plan.py PARTS): the code of one mode of a
+diff --git a/core/src/fp_apartments.c b/core/src/fp_apartments.c
+index 1d90dea..0d1addd 100644
+--- a/core/src/fp_apartments.c
++++ b/core/src/fp_apartments.c
+@@ -189,7 +189,7 @@ static void ap_update(void)
+             audio_sfx(SFX_HAPPY);
+             if (fp_is_freeplay()) fp_achieve(UL_FP_FIRST_CITIZEN);
+             fp_check_island_achievements();
+-            if (A.family) { A.family = 0; scene_push(&SCENE_FAMILY, 1); return; }   /* on to the family menu */
++            if (A.family) { A.family = 0; scene_push_late(&SCENE_FAMILY, 1); return; }   /* on to the family menu */
+         }
+         A.family = 0;
+     }
+@@ -226,7 +226,7 @@ static void ap_update(void)
+     if (btn_pressed(BTN_B)) {
+         audio_sfx(SFX_CANCEL);
+         if (scene_depth() > 1) scene_pop();
+-        else fp_goto_island(FP_ISLAND_ARG_RETURN);
++        else fp_goto_island_late(FP_ISLAND_ARG_RETURN);
+         return;
+     }
+     /* smooth "elevator" scroll toward the cursor floor */
+diff --git a/core/src/fp_common.c b/core/src/fp_common.c
+index 8e50a9b..dc31a0f 100644
+--- a/core/src/fp_common.c
++++ b/core/src/fp_common.c
+@@ -381,6 +381,7 @@ void fp_new_island(int population, uint32_t seed)
+ }
+ 
+ void fp_goto_island(int arg) { scene_set(&SCENE_ISLAND, arg); }
++void fp_goto_island_late(int arg) { scene_set_late(&SCENE_ISLAND, arg); }   /* S3-15: the last thing an update() does */
+ 
+ void fp_open_resident(int id)
+ {
+diff --git a/core/src/fp_family.c b/core/src/fp_family.c
+index 90f88bf..9ccf3f8 100644
+--- a/core/src/fp_family.c
++++ b/core/src/fp_family.c
+@@ -497,7 +497,7 @@ static void fam_update(void)
+     if (btn_pressed(BTN_B)) {
+         audio_sfx(SFX_CANCEL);
+         if (scene_depth() > 1) scene_pop();
+-        else fp_goto_island(FP_ISLAND_ARG_RETURN);
++        else fp_goto_island_late(FP_ISLAND_ARG_RETURN);
+     }
+ }
+ 
+diff --git a/core/src/fp_graveyard.c b/core/src/fp_graveyard.c
+index 5b202e6..57c826b 100644
+--- a/core/src/fp_graveyard.c
++++ b/core/src/fp_graveyard.c
+@@ -100,7 +100,7 @@ static void gy_update(void)
+     if (btn_pressed(BTN_B)) {
+         audio_sfx(SFX_CANCEL);
+         if (scene_depth() > 1) scene_pop();
+-        else fp_goto_island(FP_ISLAND_ARG_RETURN);
++        else fp_goto_island_late(FP_ISLAND_ARG_RETURN);
+     }
+ }
+ 
+diff --git a/core/src/fp_int.h b/core/src/fp_int.h
+index 03b29cc..c34a63a 100644
+--- a/core/src/fp_int.h
++++ b/core/src/fp_int.h
+@@ -192,6 +192,7 @@ void fp_autosave_bind(int on);
+ void fp_new_island(int population, uint32_t seed);
+ /* Go to the hub (scene_set). */
+ void fp_goto_island(int arg);
++void fp_goto_island_late(int arg);   /* S3-15: scene_set_late, for the tail of an update() */
+ /* Open the resident screen. */
+ void fp_open_resident(int id);
+ 
+diff --git a/core/src/fp_island.c b/core/src/fp_island.c
+index f0cc236..f09d52b 100644
+--- a/core/src/fp_island.c
++++ b/core/src/fp_island.c
+@@ -707,43 +707,43 @@ static void run_entry(const Entry *e)
+     if (e->code != E_CLOSE) audio_sfx(SFX_SELECT);
+     switch (e->code) {
+     case E_CLOSE: I.menu_open = 0; audio_sfx(SFX_CANCEL); break;
+-    case E_APTS: scene_push(&SCENE_APARTMENTS, e->arg); break;
++    case E_APTS: scene_push_late(&SCENE_APARTMENTS, e->arg); break;
+     case E_MOVE_IN: case E_CREATE_HILL: case E_CREATE_HELL: {
+         int d = e->code == E_CREATE_HELL || (e->code == E_MOVE_IN && e->arg);
+         I.wait = FP_WAIT_CREATOR;
+-        scene_push(&SCENE_CREATOR, d ? -2 : -1);
++        scene_push_late(&SCENE_CREATOR, d ? -2 : -1);
+         break; }
+-    case E_AVATAR: I.wait = FP_WAIT_OTHER; scene_push(&SCENE_CREATOR, -3); break;
+-    case E_SHOP: scene_push(&SCENE_SHOP, FP_SHOP_ARG_SHOP | (e->arg << 4)); break;
+-    case E_CAFE_SHOP: scene_push(&SCENE_SHOP, FP_SHOP_ARG_CAFE); break;
+-    case E_BLACK_MARKET: scene_push(&SCENE_SHOP, FP_SHOP_ARG_BLACK_MARKET); break;
++    case E_AVATAR: I.wait = FP_WAIT_OTHER; scene_push_late(&SCENE_CREATOR, -3); break;
++    case E_SHOP: scene_push_late(&SCENE_SHOP, FP_SHOP_ARG_SHOP | (e->arg << 4)); break;
++    case E_CAFE_SHOP: scene_push_late(&SCENE_SHOP, FP_SHOP_ARG_CAFE); break;
++    case E_BLACK_MARKET: scene_push_late(&SCENE_SHOP, FP_SHOP_ARG_BLACK_MARKET); break;
+     case E_EXORCISE: fp_pick("Who needs saving?", PICK_POSSESSED, -1, cb_exorcise); break;
+-    case E_PRACTICE: I.wait = FP_WAIT_EXORCISM; scene_push(&SCENE_EXORCISM, -1); break;
++    case E_PRACTICE: I.wait = FP_WAIT_EXORCISM; scene_push_late(&SCENE_EXORCISM, -1); break;
+     case E_FUZZ_TALK: fuzz_talk(); break;
+     case E_TREAT: fp_pick("Who's feeling sick?", PICK_SICK, -1, cb_treat); break;
+-    case E_WORKSHOP: scene_push(&SCENE_WORKSHOP, 0); break;
+-    case E_ARENA: scene_push(&SCENE_ARENA, 0); break;
+-    case E_GRAVES: scene_push(&SCENE_GRAVEYARD, 0); break;
++    case E_WORKSHOP: scene_push_late(&SCENE_WORKSHOP, 0); break;
++    case E_ARENA: scene_push_late(&SCENE_ARENA, 0); break;
++    case E_GRAVES: scene_push_late(&SCENE_GRAVEYARD, 0); break;
+     case E_STROLL:
+-        scene_push(&SCENE_STORY, unlock_mode_ok(MODE_UNITED_PARK) ? STORY_ARG_VISIT_PARK : STORY_ARG_VISIT_HAHALAND);
++        scene_push_late(&SCENE_STORY, unlock_mode_ok(MODE_UNITED_PARK) ? STORY_ARG_VISIT_PARK : STORY_ARG_VISIT_HAHALAND);
+         break;
+     case E_PICNIC: picnic(); break;
+-    case E_VISIT_HELL: scene_push(&SCENE_STORY, STORY_ARG_VISIT_HELLVILE); break;
++    case E_VISIT_HELL: scene_push_late(&SCENE_STORY, STORY_ARG_VISIT_HELLVILE); break;
+     case E_PEEK_WALL: peek_wall(); break;
+     case E_RENT: collect_rent(); break;
+     case E_NAME_ISLAND:
+         fp_strcpy(I.namebuf, fp_island_name(), sizeof(I.namebuf));
+         ui_text_entry("Name your island", I.namebuf, FP_ISLAND_NAME_LEN, cb_name_island);
+         break;
+-    case E_SAVELOAD: scene_push(&SCENE_SAVELOAD, FP_SL_ARG_MANAGE); break;
+-    case E_OPTIONS: scene_push(&SCENE_OPTIONS, 0); break;
+-    case E_UNLOCKS: scene_push(&SCENE_UNLOCKS, 0); break;
++    case E_SAVELOAD: scene_push_late(&SCENE_SAVELOAD, FP_SL_ARG_MANAGE); break;
++    case E_OPTIONS: scene_push_late(&SCENE_OPTIONS, 0); break;
++    case E_UNLOCKS: scene_push_late(&SCENE_UNLOCKS, 0); break;
+     case E_RECORDS: town_records(); break;
+-    case E_HELP: scene_push(&SCENE_LIB_HELP, 0); break;                 /* CL4: the Field Guide */
++    case E_HELP: scene_push_late(&SCENE_LIB_HELP, 0); break;                 /* CL4: the Field Guide */
+     case E_TITLE: ui_confirm("Back to the title screen? Unsaved changes will be lost!", cb_title); break;
+-    case E_NEWS: scene_push(&SCENE_NEWS, 0); break;
+-    case E_ROSTER: scene_push(&SCENE_ROSTER, FP_ROSTER_ARG_BROWSE); break;
+-    case E_FAMILY: scene_push(&SCENE_FAMILY, 0); break;
++    case E_NEWS: scene_push_late(&SCENE_NEWS, 0); break;
++    case E_ROSTER: scene_push_late(&SCENE_ROSTER, FP_ROSTER_ARG_BROWSE); break;
++    case E_FAMILY: scene_push_late(&SCENE_FAMILY, 0); break;
+     case E_PET: open_pet(); break;
+     case E_HERE:
+         doomo_snprintf(fp_tmp, sizeof(fp_tmp), "%s", fp_activity_name(e->arg));
+@@ -996,15 +996,15 @@ static void island_update(void)
+         const Loc *L = &locs[I.sel];
+         I.idle = 0;
+         if (L->kind == LOC_PET) { audio_sfx(SFX_SELECT); open_pet(); return; }
+-        if (L->kind == LOC_ROSTER) { audio_sfx(SFX_SELECT); scene_push(&SCENE_ROSTER, 0); return; }
++        if (L->kind == LOC_ROSTER) { audio_sfx(SFX_SELECT); scene_push_late(&SCENE_ROSTER, 0); return; }
+         open_menu(L);
+         return;
+     }
+     if (btn_pressed(BTN_B) && open_next_problem()) return;     /* LS-QA: B = the next problem */
+     if (btn_pressed(BTN_START | BTN_B)) { open_menu(&menu_loc); return; }
+-    if (btn_pressed(BTN_R)) { audio_sfx(SFX_SELECT); scene_push(&SCENE_ROSTER, 0); return; }
+-    if (btn_pressed(BTN_L)) { audio_sfx(SFX_SELECT); scene_push(&SCENE_NEWS, 0); return; }
+-    if (btn_pressed(BTN_SELECT)) { audio_sfx(SFX_SELECT); scene_push(&SCENE_FAMILY, 0); return; }
++    if (btn_pressed(BTN_R)) { audio_sfx(SFX_SELECT); scene_push_late(&SCENE_ROSTER, 0); return; }
++    if (btn_pressed(BTN_L)) { audio_sfx(SFX_SELECT); scene_push_late(&SCENE_NEWS, 0); return; }
++    if (btn_pressed(BTN_SELECT)) { audio_sfx(SFX_SELECT); scene_push_late(&SCENE_FAMILY, 0); return; }
+ }
+ 
+ /* ====================================================================== */
+diff --git a/core/src/fp_newisland.c b/core/src/fp_newisland.c
+index 30cd9cd..140f85e 100644
+--- a/core/src/fp_newisland.c
++++ b/core/src/fp_newisland.c
+@@ -65,7 +65,7 @@ static void build(void)
+         scene_push(&SCENE_PLAYAS, PLAYAS_ARG_PICK_NEWLIFE);
+         return;
+     }
+-    fp_goto_island(FP_ISLAND_ARG_WELCOME);
++    fp_goto_island_late(FP_ISLAND_ARG_WELCOME);
+ }
+ 
+ /* START: name the island, then build. Cancelling the entry stays on the card. */
+diff --git a/core/src/fp_news.c b/core/src/fp_news.c
+index 94bca29..6cb5ef1 100644
+--- a/core/src/fp_news.c
++++ b/core/src/fp_news.c
+@@ -98,7 +98,7 @@ static void news_update(void)
+     if (btn_pressed(BTN_B)) {
+         audio_sfx(SFX_CANCEL);
+         if (scene_depth() > 1) scene_pop();
+-        else fp_goto_island(FP_ISLAND_ARG_RETURN);
++        else fp_goto_island_late(FP_ISLAND_ARG_RETURN);
+     }
+ }
+ 
+diff --git a/core/src/fp_shop.c b/core/src/fp_shop.c
+index dd33b2a..fb40b12 100644
+--- a/core/src/fp_shop.c
++++ b/core/src/fp_shop.c
+@@ -212,7 +212,7 @@ static void shop_update(void)
+     if (btn_pressed(BTN_B)) {
+         audio_sfx(SFX_CANCEL);
+         if (scene_depth() > 1) scene_pop();
+-        else fp_goto_island(FP_ISLAND_ARG_RETURN);
++        else fp_goto_island_late(FP_ISLAND_ARG_RETURN);
+     }
+ }
+ 
+diff --git a/core/src/scene.c b/core/src/scene.c
+index b834a6c..88edf12 100644
+--- a/core/src/scene.c
++++ b/core/src/scene.c
+@@ -26,31 +26,28 @@ __attribute__((weak)) int plat_scene_code(const DoomoScene *s) { (void)s; return
+ __attribute__((weak)) void plat_scene_code_end(int token) { (void)token; }
+ __attribute__((weak)) void plat_code_part(int part) { (void)part; }   /* H4: scene.h */
+ 
+-/* S3-15 (scene.h scene_enter_loads): a scene change made from inside a scene's own code (its update, or a modal's
+- * callback) whose new scene's enter() lives in a code group that is not loaded would, on the PS1, read that group
+- * for enter(), read the caller's group back (its code runs on when the call returns) and read the new group again
+- * on the next frame: three reads of 0.1-0.5 s. Such an enter() waits until the outermost scene call has returned
+- * (flush_enter, after plat_scene_code_end): one read. Any other change flushes it first, so enter() and leave()
+- * never run out of order; every platform without the hook enters at once, as before. */
++/* S3-15 (scene.h scene_push_late): a scene change that its caller marks "late", made from inside a scene's update,
++ * whose new scene's enter() lives in a code group that is not loaded: on the PS1 that enter() would read the new
++ * group, then the caller's group back (its code runs on when the call returns), then the new group again on the
++ * next frame: three reads of 0.1-0.5 s. Its enter() waits until update() has returned (flush_enter): one read. Any
++ * other scene change flushes it first, so enter() and leave() never run out of order; a platform without the
++ * hook (scene_enter_loads) enters at once, as before. */
+ int (*scene_enter_loads)(const DoomoScene *s);
+-static int in_call;                          /* depth of the scene calls that may change the stack */
++static int in_update;                        /* inside a scene's update() */
++static int late_ok;                          /* set by scene_set_late / scene_push_late for the next change */
+ static const DoomoScene *pend_s;
+ static int pend_arg;
+ 
+-static void flush_enter(void);
+ static void run_enter(const DoomoScene *s, int arg)
+ {
+     int t = plat_scene_code(s);
+-    in_call++;
+     s->enter(arg);
+-    in_call--;
+     plat_scene_code_end(t);
+-    if (in_call == 0) flush_enter();
+ }
+ 
+ static void flush_enter(void)
+ {
+-    while (pend_s) {
++    if (pend_s) {
+         const DoomoScene *s = pend_s;
+         int arg = pend_arg;
+         pend_s = NULL;
+@@ -58,10 +55,10 @@ static void flush_enter(void)
+     }
+ }
+ 
+-static void call_enter(const DoomoScene *s, int arg)
++static void call_enter(const DoomoScene *s, int arg, int late)
+ {
+     if (!s->enter) return;
+-    if (in_call > 0 && scene_enter_loads && scene_enter_loads(s)) {
++    if (late && in_update && scene_enter_loads && scene_enter_loads(s)) {
+         pend_s = s;
+         pend_arg = arg;
+         return;
+@@ -74,11 +71,8 @@ static void call_leave(const DoomoScene *s)
+     int t;
+     if (!s || !s->leave) return;
+     t = plat_scene_code(s);
+-    in_call++;
+     s->leave();
+-    in_call--;
+     plat_scene_code_end(t);
+-    if (in_call == 0) flush_enter();
+ }
+ 
+ const DoomoScene *const doomo_all_scenes[] = {
+@@ -147,6 +141,8 @@ static void log_scene(const char *what, const DoomoScene *s)
+ 
+ void scene_set(const DoomoScene *s, int arg)
+ {
++    int late = late_ok;
++    late_ok = 0;
+     flush_enter();
+     opt_config_flush();                       /* settings changed on the scene being left: written once */
+     plat_hold_frame(0);                       /* U4: any scene_set releases a held frame */
+@@ -163,11 +159,13 @@ void scene_set(const DoomoScene *s, int arg)
+     depth = 1;
+     log_scene("scene: set ", s);
+     input_eat();
+-    call_enter(s, arg);
++    call_enter(s, arg, late);
+ }
+ 
+ void scene_push(const DoomoScene *s, int arg)
+ {
++    int late = late_ok;
++    late_ok = 0;
+     if (!s) return;
+     flush_enter();
+     plat_hold_frame(0);                       /* a held frame (pause, island menu) ends when the stack changes */
+@@ -184,7 +182,7 @@ void scene_push(const DoomoScene *s, int arg)
+     depth++;
+     log_scene("scene: push ", s);
+     input_eat();
+-    call_enter(s, arg);
++    call_enter(s, arg, late);
+ }
+ 
+ void scene_pop(void)
+@@ -205,6 +203,9 @@ void scene_pop(void)
+     call_leave(s);
+ }
+ 
++void scene_set_late(const DoomoScene *s, int arg) { late_ok = 1; scene_set(s, arg); late_ok = 0; }
++void scene_push_late(const DoomoScene *s, int arg) { late_ok = 1; scene_push(s, arg); late_ok = 0; }
++
+ const DoomoScene *scene_top(void)
+ {
+     return depth > 0 ? stack[depth - 1].s : NULL;
+@@ -218,16 +219,10 @@ int scene_callback_begin(void)
+ {
+     int i = depth - 1;
+     while (i > 0 && stack[i].s->overlay) i--;
+-    in_call++;
+     return plat_scene_code(i >= 0 ? stack[i].s : NULL);
+ }
+ 
+-void scene_callback_end(int token)
+-{
+-    plat_scene_code_end(token);
+-    if (in_call > 0) in_call--;
+-    if (in_call == 0) flush_enter();
+-}
++void scene_callback_end(int token) { plat_scene_code_end(token); }
+ 
+ uint32_t scene_ticks(void)
+ {
+@@ -243,9 +238,9 @@ void scene_update(void)
+     stack[depth - 1].ticks++;
+     if (s->update) {
+         int t = plat_scene_code(s);
+-        in_call++;
++        in_update++;
+         s->update();
+-        in_call--;
++        in_update--;
+         plat_scene_code_end(t);
+         flush_enter();
+     }
+diff --git a/core/tests/test_scene_defer.c b/core/tests/test_scene_defer.c
+index a35c622..3766e8d 100644
+--- a/core/tests/test_scene_defer.c
++++ b/core/tests/test_scene_defer.c
+@@ -1,6 +1,6 @@
+-/* test_scene_defer.c - S3-15: a scene change made from inside a scene's own code runs the new scene's enter()
+- * after that call has returned when the platform says its code has to be loaded first (scene.h
+- * scene_enter_loads, the PS1's overlays); otherwise, and with no hook, at once. */
++/* test_scene_defer.c - S3-15: scene_set_late / scene_push_late made from inside a scene's update() run the new
++ * scene's enter() after update() has returned when the platform says its code has to be loaded first (scene.h
++ * scene_enter_loads, the PS1's overlays); otherwise, and for scene_set / scene_push, at once. */
+ #include "test.h"
+ #include "doomo/scene.h"
+ 
+@@ -10,123 +10,115 @@ static int cur_group;                       /* the fake slot: the group of the c
+ 
+ static void note(char c) { if (log_n < 15) log_s[log_n++] = c; log_s[log_n] = 0; }
+ 
+-static int in_slot(const DoomoScene *s) { return s->name[0] == 'A' ? 1 : 2; }
+-static int loads(const DoomoScene *s) { return in_slot(s) != cur_group; }
++static int loads(const DoomoScene *s) { return (s->name[0] == 'A' ? 1 : 2) != cur_group; }
++static int s_hook(const DoomoScene *s) { return loads(s); }
+ 
+ static void a_enter(int arg) { (void)arg; note('a'); }
+ static void a_leave(void) { note('A'); }
+ static void b_enter(int arg) { note('b'); note((char)('0' + arg)); }
+ static void b_leave(void) { note('B'); }
+-static const DoomoScene SB;
+-static const DoomoScene SA2;
+-static void a_update(void)
+-{
+-    note('u');
+-    scene_push(&SB, 7);
+-    note('x');                              /* A's own code goes on after the change */
+-}
+-static void a_set_update(void)
+-{
+-    note('u');
+-    scene_set(&SB, 3);
+-    note('x');
+-}
+-static void a_two_update(void)
+-{
+-    scene_push(&SB, 1);
+-    scene_pop();                            /* a second change: B's enter() must have run before B's leave() */
+-    note('x');
+-}
+ static void b_update(void) { note('v'); }
+-static const DoomoScene SA = { "Atest", a_enter, a_leave, a_update, NULL, 0 };
+-static const DoomoScene SAS = { "Aset", a_enter, a_leave, a_set_update, NULL, 0 };
+-static const DoomoScene SAT = { "Atwo", a_enter, a_leave, a_two_update, NULL, 0 };
+ static const DoomoScene SB = { "Btest", b_enter, b_leave, b_update, NULL, 0 };
+-static const DoomoScene SA2 = { "Atest2", NULL, NULL, NULL, NULL, 0 };
+ 
+-static int s_hook(const DoomoScene *s) { return loads(s); }
++static void a_late(void) { note('u'); scene_push_late(&SB, 7); note('x'); }
++static void a_plain(void) { note('u'); scene_push(&SB, 7); note('x'); }
++static void a_set(void) { note('u'); scene_set_late(&SB, 3); note('x'); }
++static void a_two(void) { scene_push_late(&SB, 1); scene_pop(); note('x'); }
++static void a_twice(void) { scene_push_late(&SB, 1); scene_push(&SB, 2); note('x'); }
++static const DoomoScene SA_LATE = { "Alate", a_enter, a_leave, a_late, NULL, 0 };
++static const DoomoScene SA_PLAIN = { "Aplain", a_enter, a_leave, a_plain, NULL, 0 };
++static const DoomoScene SA_SET = { "Aset", a_enter, a_leave, a_set, NULL, 0 };
++static const DoomoScene SA_TWO = { "Atwo", a_enter, a_leave, a_two, NULL, 0 };
++static const DoomoScene SA_TWICE = { "Atwice", a_enter, a_leave, a_twice, NULL, 0 };
++static const DoomoScene SA_IDLE = { "Aidle", NULL, NULL, NULL, NULL, 0 };
+ 
+ static void begin(const DoomoScene *s)
+ {
+     test_reset();
+-    log_n = 0; log_s[0] = 0;
+     cur_group = 1;
+     scene_set(s, 0);
+     log_n = 0; log_s[0] = 0;
+ }
+ 
+-TEST(scene_defer_no_hook_enters_at_once)
++static void end(void) { scene_enter_loads = NULL; test_reset(); }
++
++TEST(scene_late_waits_for_update_to_return)
++{
++    scene_enter_loads = s_hook;
++    begin(&SA_LATE);
++    scene_update();
++    CHECK_STR(log_s, "uxb7");               /* x: the caller's own code ran on first */
++    CHECK(scene_top() == &SB);
++    end();
++}
++
++TEST(scene_late_without_the_hook_is_at_once)
+ {
+     scene_enter_loads = NULL;
+-    begin(&SA);
++    begin(&SA_LATE);
+     scene_update();
+     CHECK_STR(log_s, "ub7x");
+-    test_reset();
++    end();
+ }
+ 
+-TEST(scene_defer_waits_for_the_caller_to_return)
++TEST(scene_plain_push_is_always_at_once)
+ {
+     scene_enter_loads = s_hook;
+-    begin(&SA);
++    begin(&SA_PLAIN);
+     scene_update();
+-    CHECK_STR(log_s, "uxb7");               /* x: A's code ran on first */
+-    CHECK(scene_top() == &SB);
+-    test_reset();
+-    scene_enter_loads = NULL;
++    CHECK_STR(log_s, "ub7x");
++    end();
+ }
+ 
+-TEST(scene_defer_scene_set)
++TEST(scene_late_set_leaves_at_once_and_enters_after)
+ {
+     scene_enter_loads = s_hook;
+-    begin(&SAS);
++    begin(&SA_SET);
+     scene_update();
+-    CHECK_STR(log_s, "uAxb3");              /* leave runs at once, enter after the call */
+-    scene_enter_loads = NULL;
+-    test_reset();
++    CHECK_STR(log_s, "uAxb3");
++    end();
+ }
+ 
+-TEST(scene_defer_same_group_is_at_once)
++TEST(scene_late_same_group_is_at_once)
+ {
+     scene_enter_loads = s_hook;
+-    begin(&SA);
++    begin(&SA_LATE);
+     cur_group = 2;                          /* B's code is already in */
+     scene_update();
+     CHECK_STR(log_s, "ub7x");
+-    scene_enter_loads = NULL;
+-    test_reset();
++    end();
+ }
+ 
+-TEST(scene_defer_a_second_change_flushes_first)
++TEST(scene_late_a_second_change_flushes_the_first)
+ {
+     scene_enter_loads = s_hook;
+-    begin(&SAT);
++    begin(&SA_TWO);
+     scene_update();
+     CHECK_STR(log_s, "b1Bx");               /* enter, then leave: never out of order */
+-    scene_enter_loads = NULL;
+-    test_reset();
++    end();
++    scene_enter_loads = s_hook;
++    begin(&SA_TWICE);
++    scene_update();
++    CHECK_STR(log_s, "b1b2x");
++    end();
+ }
+ 
+-TEST(scene_defer_outside_a_scene_call_is_at_once)
++TEST(scene_late_outside_an_update_is_at_once)
+ {
+     scene_enter_loads = s_hook;
+-    begin(&SA2);
+-    scene_push(&SB, 5);                     /* the main loop / harness: no caller whose code must come back */
++    begin(&SA_IDLE);
++    scene_push_late(&SB, 5);                /* the main loop / harness: no caller whose code must come back */
+     CHECK_STR(log_s, "b5");
+-    scene_enter_loads = NULL;
+-    test_reset();
++    end();
+ }
+ 
+-static void c_enter(int arg) { (void)arg; note('c'); scene_push(&SB, 9); note('y'); }
+-static const DoomoScene SC = { "Ctest", c_enter, NULL, NULL, NULL, 0 };
+-
+-TEST(scene_defer_an_enter_that_changes_scene_waits_too)
++TEST(scene_late_enter_runs_before_the_next_draw)
+ {
+     scene_enter_loads = s_hook;
+-    test_reset();
++    begin(&SA_LATE);
++    scene_update();
+     log_n = 0; log_s[0] = 0;
+-    cur_group = 1;
+-    scene_set(&SC, 0);                      /* C's enter() pushes B: B's enter runs after C's returned */
+-    CHECK_STR(log_s, "cyb9");
+-    scene_enter_loads = NULL;
+-    test_reset();
++    scene_update();                         /* the next tick is B's */
++    CHECK_STR(log_s, "v");
++    end();
+ }
+-- 
+2.43.0
+

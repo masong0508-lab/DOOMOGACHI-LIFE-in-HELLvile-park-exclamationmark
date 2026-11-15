@@ -1,0 +1,45 @@
+From c007ff608e7d8361f80b71c2e224d1e2f6cf41a1 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 17:00:19 +0000
+Subject: [PATCH 4/7] S3-7 docs: PS1 measurements (resident 0 B, shots
+ identical) and the PS1 later-shot misses found
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ docs/GBA.md                      | 8 +++++++-
+ docs/design/held/status/SPEED.md | 2 +-
+ 2 files changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/docs/GBA.md b/docs/GBA.md
+index a481542..f53e097 100644
+--- a/docs/GBA.md
++++ b/docs/GBA.md
+@@ -2946,7 +2946,13 @@ laid out, a stamp or picture is asked for the first time); the fog's work maximu
+ **Costs.** ROM +4.24 MB: `backdrops.bin` 3,659,772 -> 7,897,220 B (family 4, 99 pictures, 1.98 MB: the 82 cloud pictures 1.57 MB, 10 Vapula
+ poses 384 KB, the room, the fog, two skies, two bands; family 5, 261 stamps, 2.25 MB) and `.text` +1,440 B. EWRAM, IWRAM resident, the overlay groups: 0 B
+ (`make -C gba sizes`: `.bss` 254,828 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, the four overlay groups, the same as the base).
+-PS1: the new code is `#if !defined(DOOMO_PLATFORM_PS1)`; the three functions that serve both (`puff_draw`, the cloud, the demon) are the old code.
++PS1: the kept code is `#if !defined(DOOMO_PLATFORM_PS1)` and the four vignettes' draw functions keep their old text for the PS1 (a first cut that
++shared them grew the PS1 object by 840 B). Measured on `fe41002` (base) and base + S3-7, both built with the boot FMV: `_end` 0x801e0420 and the
++margin 130,000 B below the stack top in both (the image is the same but for 3 bytes of the overlay table: the story group is 16 B bigger, `cutscene.c`'s
++text 29,408 -> 29,424 B, and OVL.BIN is the same size, the slot unchanged), so **resident delta 0 B**; `game_smoke` passes; `speed2.sh cutscene` (16
++windows) gives the same numbers and 16 of 16 byte-identical shots on both discs. The PS1 windows for the later shots, which the audit did not measure, do
++**not** hold 30 on either disc (same code): eruption shot 2 / 3 / 4 29.4 / 23.0 / 19.2 fps (the big cloud's circles), Vapula shot 3 27.0 fps. The
++owner's trade-offs are GBA-only; a PS1 / Dreamcast fix for those windows is a separate package.
+ 
+ ## 4b. Retained panels (G7, `src/panel.c`)
+ 
+diff --git a/docs/design/held/status/SPEED.md b/docs/design/held/status/SPEED.md
+index 2486681..e820ada 100644
+--- a/docs/design/held/status/SPEED.md
++++ b/docs/design/held/status/SPEED.md
+@@ -38,4 +38,4 @@ The second SPEED machine (lead `session_01Xd63cvyt9PpfrF57wBDFeR`, wave "SPEED-2
+   title is rasterised again); single 50 ms frames at the first tick of eruption shot 2, Vapula shot 3 and the bridge (the caption window and the first ask of a
+   picture). Exact (`test_cutbk`, ROM `vhash-seq`) but three GBA-only pixel changes: the sky's seam row is a clean dither (it was the page's old content), the
+   eruption's cloud past 50 px does not breathe, crowd bodies the cache lacks show a few ticks late (`bodyspr_lazy(3)`). Cost: ROM +4.24 MB
+-  (`backdrops.bin` 3.66 -> 7.90 MB), EWRAM / IWRAM resident 0 B, PS1 compiled out (resident bytes: see the lander's margin line).
++  (`backdrops.bin` 3.66 -> 7.90 MB), EWRAM / IWRAM resident 0 B. **PS1: resident 0 B** (base and S3-7 both `_end` 0x801e0420, 130,000 B below the stack top on `fe41002`; the story overlay +16 B; `game_smoke` passes; the 16 `cutscene` windows give the same numbers and byte-identical shots). **Found, not mine:** on the PS1 (base and S3-7 alike) eruption shots 2-4 run 29.4 / 23.0 / 19.2 fps and Vapula shot 3 27.0 fps (the audit's windows were the first shot of each vignette); the Dreamcast was not measured (KallistiOS not installed when this was built).
+-- 
+2.43.0
+

@@ -1,0 +1,280 @@
+From 5b6dd7d2c7b9045acb4f62450597a9ecb2c2a869 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 19:43:32 +0000
+Subject: [PATCH 09/11] S3-8: the studio STAGE tab is back (the title panel and
+ the bulb stamps): studio_stage.c is SPEED's file (PARALLEL_WAVES.md) and
+ S3-8's (SPEED_AUDIT3.md section 4); STAGE 38.0 -> 32.1 ms, 30.0 fps, every
+ frame two vblanks (reverts 07ba63c)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ core/src/lib_common.c      | 10 +++++
+ core/src/lib_int.h         |  1 +
+ core/src/studio_int.h      |  5 +++
+ core/src/studio_stage.c    | 81 ++++++++++++++++++++++++++++++++++----
+ core/tests/test_lib_kept.c | 29 +++++++++++---
+ 5 files changed, 113 insertions(+), 13 deletions(-)
+
+diff --git a/core/src/lib_common.c b/core/src/lib_common.c
+index e5063dd..ae448ad 100644
+--- a/core/src/lib_common.c
++++ b/core/src/lib_common.c
+@@ -10,6 +10,7 @@
+  */
+ #include "lib_int.h"
+ #if !defined(DOOMO_PLATFORM_PS1)
++#include "studio_int.h"
+ #include "doomo/backdrop.h"
+ #include "doomo/plat_ext.h"
+ #endif
+@@ -1180,6 +1181,10 @@ static void lobby_pic(uint32_t key)
+ {
+     LobGeo g;
+     int cx, y, w, h;
++    if (key >= LIB_PIC_BULBS) {                  /* the studio poster's bulbs */
++        stage_stamp_draw(key);
++        return;
++    }
+     if (key != LIB_PIC_LOBBY) {                  /* the jukebox's stamps */
+         juke_stamp_draw(key, LIB_ANCHOR_X, LIB_ANCHOR_Y);
+         return;
+@@ -1202,6 +1207,7 @@ static int lobby_pic_keys(uint32_t *out, int cap)
+     int n = 1;
+     if (cap >= 1) out[0] = LIB_PIC_LOBBY;
+     n += juke_stamp_keys(cap > n ? out + n : out, cap > n ? cap - n : 0);
++    n += stage_stamp_keys(cap > n ? out + n : out, cap > n ? cap - n : 0);
+     return n;
+ }
+ 
+@@ -1209,6 +1215,10 @@ static int lobby_pic_part(uint32_t key, int16_t out[2])
+ {
+     out[0] = LIB_ANCHOR_X;
+     out[1] = LIB_ANCHOR_Y;
++    if (key >= LIB_PIC_BULBS) {                  /* the poster's: the corner of the stage window */
++        out[0] = 4;
++        out[1] = 19;
++    }
+     return key == LIB_PIC_LOBBY ? BACKDROP_WHOLE : BACKDROP_STAMP;
+ }
+ const DoomoBackdrop lib_backdrop_family = { DOOMO_BACKDROP_LIBRARY, lobby_pic, lobby_pic_keys, lobby_pic_part };
+diff --git a/core/src/lib_int.h b/core/src/lib_int.h
+index 8d4eb92..163bb04 100644
+--- a/core/src/lib_int.h
++++ b/core/src/lib_int.h
+@@ -223,6 +223,7 @@ static inline void lib_keep_end(void) { plat_panel_end(); }
+ #define LIB_PIC_LOBBY  0u
+ #define LIB_PIC_DISC   0x100u       /* + the label's paint (0..PAL_PAINT_COUNT - 1): the disc with its label */
+ #define LIB_PIC_ARM    0x200u       /* + 1 while a song plays: the tonearm */
++#define LIB_PIC_BULBS  0x300u       /* + 2 * bottom row + phase: the studio poster's marquee bulbs (studio_stage.c) */
+ #define LIB_ANCHOR_X   60
+ #define LIB_ANCHOR_Y   60
+ void juke_stamp_draw(uint32_t key, int ax, int ay);
+diff --git a/core/src/studio_int.h b/core/src/studio_int.h
+index 941734e..3593389 100644
+--- a/core/src/studio_int.h
++++ b/core/src/studio_int.h
+@@ -202,6 +202,11 @@ extern int studio_sel_tap;          /* SELECT was tapped this tick (tools menu)
+ /* the full-screen show (PERFORM) */
+ int  stage_fullscreen(void);
+ void stage_draw_full(void);
++#if !defined(DOOMO_PLATFORM_PS1)
++/* (S3-8) the poster's bulb rows as stamps of the library family (lib_int.h LIB_PIC_BULBS) */
++void stage_stamp_draw(uint32_t key);
++int  stage_stamp_keys(uint32_t *out, int cap);
++#endif
+ void stage_start(void);
+ void stage_leave(void);
+ 
+diff --git a/core/src/studio_stage.c b/core/src/studio_stage.c
+index d399333..3b56ee7 100644
+--- a/core/src/studio_stage.c
++++ b/core/src/studio_stage.c
+@@ -14,6 +14,11 @@
+  * Hall stage when that module offers it (concert_stage_song, song.h).
+  */
+ #include "studio_int.h"
++#if !defined(DOOMO_PLATFORM_PS1)
++#include "lib_int.h"
++#include "doomo/backdrop.h"
++#include "doomo/plat_ext.h"
++#endif
+ 
+ #define CURTAIN_T 30            /* ticks of curtain before the music     */
+ 
+@@ -828,6 +833,72 @@ void stage_draw_full(void)
+ }
+ 
+ /* ---- the poster ----------------------------------------------------------- */
++/* (S3-8) the title never moves: a retained panel where the platform keeps them (the GBA; platform.h plat_panel_begin,
++ * solid: the whole rect comes back from the shown page), drawn inside it when the platform says draw (the song
++ * changes, rarely). Nothing draws over it afterwards (the curtains start 9 rows down and at the sides, the spot 36
++ * rows down). */
++static void bulb(const StRect *r, int i, int bottom, int on)
++{
++    ui_fill_circle(r->x + 6 + i * 8, bottom ? r->y + r->h - 5 : r->y + 4, 2,
++                   (on ^ bottom) ? PAL_PAINT(PAINT_LEMON, 2) : PAL_PAINT(PAINT_HONEY, 0));
++}
++
++/* a row of bulbs (bottom 0 / 1) at flip phase (0 / 1) */
++static void bulb_row(const StRect *r, int bottom, int phase)
++{
++    int i, n = (r->w - 8) / 8;
++    for (i = 0; i < n; i++) bulb(r, i, bottom, (i + phase) & 1);
++}
++
++#if !defined(DOOMO_PLATFORM_PS1)
++/* (S3-8) the two rows at the two phases are stamps of the library family: baked (the GBA) as the pictures of bulb_row on
++ * the tab's own rect, they come back as one blit each (~0.5 ms instead of ~2: a circle is a handful of rects) */
++void stage_stamp_draw(uint32_t key)
++{
++    StRect r = st_content();
++    bulb_row(&r, (int)((key >> 1) & 1u), (int)(key & 1u));
++}
++
++int stage_stamp_keys(uint32_t *out, int cap)
++{
++    int i;
++    for (i = 0; i < 4; i++)
++        if (i < cap) out[i] = LIB_PIC_BULBS + (uint32_t)i;
++    return 4;
++}
++#endif
++
++static void poster_marquee(const StRect *r, int t)
++{
++    int row;
++    for (row = 0; row < 2; row++) {
++#if !defined(DOOMO_PLATFORM_PS1)
++        StRect c = st_content();
++        if (r->x == c.x && r->y == c.y && r->w == c.w && r->h == c.h &&
++            plat_stage_stamp(DOOMO_BACKDROP_LIBRARY, LIB_PIC_BULBS + (uint32_t)(row * 2 + ((t / 6) & 1)), r->x, r->y))
++            continue;
++#endif
++        bulb_row(r, row, (t / 6) & 1);
++    }
++}
++
++static void poster_title(const StRect *r)
++{
++    int x = r->x + r->w / 2 - ui_text_big_width(SS->title, 2) / 2, y = r->y + 10;
++#if UI_PANELS
++    uint32_t key = ui_key_int(ui_key_str(ui_panel_key(), SS->title), r->w);
++    if (!plat_panel_begin(PANEL_OW_OBJECTIVE, x - 3, y - 2, ui_text_big_width(SS->title, 2) + 6, 20, key)) {
++        plat_panel_end();
++        return;
++    }
++    plat_panel_solid();
++#endif
++    ui_text_big(x, y, SS->title, 2, PAL_PAINT(PAINT_LEMON, 2), PAL_PAINT(PAINT_BLOOD, 0));
++#if UI_PANELS
++    plat_panel_end();
++#endif
++}
++
+ void tab_stage_draw(StRect r)
+ {
+     int t = (int)studio.t, i, n = 0, k, wide = st_wide();
+@@ -835,14 +906,8 @@ void tab_stage_draw(StRect r)
+     StageBox b;
+     char buf[48];
+     st_panel(r.x, r.y, r.w, r.h, WIN_DARK);
+-    /* marquee bulbs */
+-    for (i = 0; i < (r.w - 8) / 8; i++) {
+-        int on = ((i + t / 6) & 1);
+-        ui_fill_circle(r.x + 6 + i * 8, r.y + 4, 2, on ? PAL_PAINT(PAINT_LEMON, 2) : PAL_PAINT(PAINT_HONEY, 0));
+-        ui_fill_circle(r.x + 6 + i * 8, r.y + r.h - 5, 2, !on ? PAL_PAINT(PAINT_LEMON, 2) : PAL_PAINT(PAINT_HONEY, 0));
+-    }
+-    ui_text_big(r.x + r.w / 2 - ui_text_big_width(SS->title, 2) / 2, r.y + 10, SS->title, 2,
+-                PAL_PAINT(PAINT_LEMON, 2), PAL_PAINT(PAINT_BLOOD, 0));
++    poster_marquee(&r, t);
++    poster_title(&r);
+     for (i = 0; i < SONG_SINGERS; i++)
+         if (song_singer_id(SS, i) >= 0) { slots[n] = (uint8_t)i; secs[n] = (uint8_t)song_singer_section(SS, i); n++; }
+     if (wide)
+diff --git a/core/tests/test_lib_kept.c b/core/tests/test_lib_kept.c
+index 23f9e4a..88eb972 100644
+--- a/core/tests/test_lib_kept.c
++++ b/core/tests/test_lib_kept.c
+@@ -1,5 +1,5 @@
+-/* test_lib_kept.c - (S3-8) the kept library lobby, jukebox (lib_common.c, lib_jukebox.c;
+- * the studio STAGE tab is left to the STUDIO stream; docs/GBA.md "Speed wave 3: S3-8"). Each screen is drawn over the retained stage / as retained
++/* test_lib_kept.c - (S3-8) the kept library lobby, jukebox and studio STAGE (lib_common.c, lib_jukebox.c,
++ * studio_stage.c; docs/GBA.md "Speed wave 3: S3-8"). Each screen is drawn over the retained stage / as retained
+  * panels where the platform keeps them. The native platform emulates the GBA's two Mode 4 pages when nat_stage_on
+  * is set (a frame starts from the picture of two frames ago), so a box the stage fails to put back, a layer it
+  * fails to redraw or a key that misses a change shows up as a differing frame. One tour a screen, played twice
+@@ -7,6 +7,7 @@
+ #include "test.h"
+ #include <stdlib.h>
+ #include "../src/lib_int.h"
++#include "../src/studio_int.h"
+ #include "doomo/backdrop.h"
+ #include "doomo/lang.h"
+ 
+@@ -46,6 +47,7 @@ typedef struct {
+     int arg, frames, night, lang;
+     const KPad *pad;
+     void (*setup)(void);
++    void (*post)(void);             /* after the scene is pushed */
+ } KTour;
+ 
+ static int kept_frames, full_frames, stamps_drawn;
+@@ -66,6 +68,7 @@ static int krun(const KTour *k, int stage, uint32_t *out, int upto)
+     doomo_town.minute = (uint16_t)(k->night ? 22 * 60 : 12 * 60);
+     doomo_town.opt[OPT_LANGUAGE] = (uint8_t)k->lang;
+     scene_push(k->scene, k->arg);
++    if (k->post) k->post();
+     for (f = 0; f < k->frames && n < upto && n < KF_MAX; f++) {
+         kframe(kpad(k->pad, f));
+         out[n++] = kfb_hash();
+@@ -139,7 +142,7 @@ static void lobby_setup(void)
+ 
+ TEST(lib_kept_lobby_is_pixel_identical)
+ {
+-    KTour k = { "lobby", &SCENE_LIBRARY, 0, 1000, 0, LANG_EN, pad_lobby, lobby_setup };
++    KTour k = { "lobby", &SCENE_LIBRARY, 0, 1000, 0, LANG_EN, pad_lobby, lobby_setup, NULL };
+     int kept, n;
+     CHECK(stage_mem_bytes() <= 2048u);
+     n = kcompare(&k, 240, 160, &kept);
+@@ -156,7 +159,7 @@ TEST(lib_kept_lobby_is_pixel_identical)
+ 
+ TEST(lib_kept_lobby_spanish_is_pixel_identical)
+ {
+-    KTour k = { "lobby", &SCENE_LIBRARY, 0, 1000, 0, LANG_ES, pad_lobby, lobby_setup };
++    KTour k = { "lobby", &SCENE_LIBRARY, 0, 1000, 0, LANG_ES, pad_lobby, lobby_setup, NULL };
+     int kept;
+     CHECK(doomo_lang_info[LANG_ES].ready && doomo_lang_tables[LANG_ES]);
+     CHECK(kcompare(&k, 240, 160, &kept) > 0);
+@@ -180,7 +183,7 @@ static void juke_setup(void)
+ 
+ TEST(lib_kept_jukebox_is_pixel_identical)
+ {
+-    KTour k = { "jukebox", &SCENE_LIB_JUKEBOX, LIB_ARG_DEMO, 500, 0, LANG_EN, pad_juke, juke_setup };
++    KTour k = { "jukebox", &SCENE_LIB_JUKEBOX, LIB_ARG_DEMO, 500, 0, LANG_EN, pad_juke, juke_setup, NULL };
+     int kept;
+     CHECK(kcompare(&k, 240, 160, &kept) > 0);
+     CHECK_MSG(stamps_drawn > 200, "only %d stamps drawn (the disc and the tonearm, a frame each)", stamps_drawn);
+@@ -190,3 +193,19 @@ TEST(lib_kept_jukebox_is_pixel_identical)
+     CHECK(kcompare(&k, 240, 160, &kept) > 0);
+     set_res(240, 160);
+ }
++
++/* ---- the studio's STAGE tab: the marquee's bulb rows are stamps (bottom row and top row at both phases) ---- */
++static void stage_post(void) { st_set_tab(STAB_STAGE); }
++static const KPad pad_stage[] = { { 150, BTN_R }, { 190, BTN_L }, { -1, 0 } };
++
++TEST(lib_kept_studio_stage_is_pixel_identical)
++{
++    KTour k = { "stage_tab", &SCENE_STUDIO, -107, 300, 0, LANG_EN, pad_stage, NULL, stage_post };
++    int kept;
++    CHECK(kcompare(&k, 240, 160, &kept) > 0);
++    CHECK_MSG(stamps_drawn > 300, "only %d stamps drawn (two rows a frame)", stamps_drawn);
++    CHECK(kcompare(&k, 320, 240, &kept) > 0);
++    k.lang = LANG_ES;
++    CHECK(kcompare(&k, 240, 160, &kept) > 0);
++    set_res(240, 160);
++}
+-- 
+2.43.0
+

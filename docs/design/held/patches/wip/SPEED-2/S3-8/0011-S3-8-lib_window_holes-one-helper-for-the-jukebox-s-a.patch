@@ -1,0 +1,131 @@
+From 2671bd2138b6491ea61a0f140ca28d5f2b630445 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 19:59:15 +0000
+Subject: [PATCH 11/11] S3-8: lib_window_holes (one helper for the jukebox's
+ and the Almanac's backdrop holes) and its test
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ core/src/lib_almanac.c     |  5 ++---
+ core/src/lib_common.c      |  9 +++++++++
+ core/src/lib_int.h         |  1 +
+ core/src/lib_jukebox.c     |  5 ++---
+ core/tests/test_lib_kept.c | 40 ++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 54 insertions(+), 6 deletions(-)
+
+diff --git a/core/src/lib_almanac.c b/core/src/lib_almanac.c
+index 7635105..b4cc262 100644
+--- a/core/src/lib_almanac.c
++++ b/core/src/lib_almanac.c
+@@ -691,9 +691,8 @@ static void alm_draw(void)
+     lw = lib_big() ? 140 : 104;
+     {
+         /* S3-8: the two windows are opaque, the backdrop under them (all but their 4-pixel corners) is never seen */
+-        int hl[8], wy = 18 + 16 + 1, wh = sh - (18 + 16) - 16;
+-        hl[0] = 4 + 4; hl[1] = wy + 4; hl[2] = 4 + lw - 4; hl[3] = wy + wh - 4;
+-        hl[4] = lw + 8 + 4; hl[5] = wy + 4; hl[6] = sw - 4 - 4; hl[7] = wy + wh - 4;
++        int hl[8];
++        lib_window_holes(lw, sw, sh, hl);
+         lib_chrome_holes(LIB_WING_ALMANAC, alm_pct, hl, 2);
+     }
+     if (plat_draw_skipped()) return;
+diff --git a/core/src/lib_common.c b/core/src/lib_common.c
+index ae448ad..442318c 100644
+--- a/core/src/lib_common.c
++++ b/core/src/lib_common.c
+@@ -400,6 +400,15 @@ void lib_badge(int x, int y, int pct, int style)
+     if (pct >= 100) ui_sparkle(x + 38, y + 1, (t / 3) & 15, PAL_WHITE);
+ }
+ 
++/* the two opaque windows of a wing's list + preview layout (lib_list at x 4 and the preview at lw + 8, both y 35 and
++ * sh - 50 high under the title and the tab pill): the backdrop under them, all but their 4-pixel corners, is never seen */
++void lib_window_holes(int lw, int sw, int sh, int hl[8])
++{
++    int wy = 18 + 16 + 1, wh = sh - (18 + 16) - 16;
++    hl[0] = 4 + 4; hl[1] = wy + 4; hl[2] = 4 + lw - 4; hl[3] = wy + wh - 4;
++    hl[4] = lw + 8 + 4; hl[5] = wy + 4; hl[6] = sw - 4 - 4; hl[7] = wy + wh - 4;
++}
++
+ int lib_chrome_holes(int wing, int pct, const int *holes, int n)
+ {
+     const LibWingInfo *wi = &lib_wings[wing];
+diff --git a/core/src/lib_int.h b/core/src/lib_int.h
+index 163bb04..ef51571 100644
+--- a/core/src/lib_int.h
++++ b/core/src/lib_int.h
+@@ -169,6 +169,7 @@ int  lib_chrome(int wing, int pct);
+ /* (S3-8) lib_chrome with opaque windows drawn after it: holes = n rects (x0, y0, x1, y1) of the backdrop they cover
+  * (ui_backdrop_holes: the same pixels, without what lies wholly under a window) */
+ int  lib_chrome_holes(int wing, int pct, const int *holes, int n);
++void lib_window_holes(int lw, int sw, int sh, int hl[8]);   /* the holes of a list + preview layout (lib_jukebox.c, lib_almanac.c) */
+ /* "< Category (n) >" pill centred at cx (L/R tabs), returns its height. */
+ int  lib_tab_pill(int cx, int y, const char *name, int n, int tab, int tabs, int style);
+ /* Hint pill at the bottom. */
+diff --git a/core/src/lib_jukebox.c b/core/src/lib_jukebox.c
+index 4a8b8da..c521db6 100644
+--- a/core/src/lib_jukebox.c
++++ b/core/src/lib_jukebox.c
+@@ -393,9 +393,8 @@ static void juke_draw(void)
+     {
+         /* the two windows are opaque: the backdrop under them (all but their 4-pixel corners) is never seen (the tab
+          * pill under the title is 16 high) */
+-        int hl[8], wy = 18 + 16 + 1, wh = sh - (18 + 16) - 16;
+-        hl[0] = 4 + 4; hl[1] = wy + 4; hl[2] = 4 + lw - 4; hl[3] = wy + wh - 4;
+-        hl[4] = lw + 8 + 4; hl[5] = wy + 4; hl[6] = sw - 4 - 4; hl[7] = wy + wh - 4;
++        int hl[8];
++        lib_window_holes(lw, sw, sh, hl);
+         lib_chrome_holes(LIB_WING_JUKEBOX, juke_pct, hl, 2);
+     }
+     if (plat_draw_skipped()) return;
+diff --git a/core/tests/test_lib_kept.c b/core/tests/test_lib_kept.c
+index 88eb972..9f102cb 100644
+--- a/core/tests/test_lib_kept.c
++++ b/core/tests/test_lib_kept.c
+@@ -209,3 +209,43 @@ TEST(lib_kept_studio_stage_is_pixel_identical)
+     CHECK(kcompare(&k, 240, 160, &kept) > 0);
+     set_res(240, 160);
+ }
++
++/* ---- the backdrop under a wing's two windows (lib_window_holes): drawn with the holes and then the windows, the frame
++ * is the one of the whole backdrop and then the windows, at both sizes, in each wing's list width, over many frames of
++ * the drifting backdrop. The jukebox and the Almanac pass these holes to lib_chrome_holes. ---- */
++TEST(lib_kept_window_holes_leave_the_picture_alone)
++{
++    static uint8_t whole[NAT_MAX_W * NAT_MAX_H];
++    static const int sizes[2][2] = { { 240, 160 }, { 320, 240 } };
++    int s, t, i, style;
++    for (s = 0; s < 2; s++) {
++        int sw = sizes[s][0], sh = sizes[s][1], lws[3];
++        lws[0] = sw >= 300 ? 150 : 112;                      /* the jukebox's list */
++        lws[1] = sw >= 300 ? 140 : 104;                      /* the Almanac's */
++        lws[2] = 60;
++        set_res(sw, sh);
++        nat_panel_cache = 0;
++        test_reset();
++        for (style = 0; style < 3; style++)
++            for (t = 0; t < 120; t += 7) {
++                int hl[8], l = lws[style];
++                int wy = 18 + 16 + 1, wh = sh - (18 + 16) - 16;
++                lib_window_holes(l, sw, sh, hl);
++                plat_clear(PAL_BLACK);
++                ui_backdrop(style == 0 ? WIN_DARK : WIN_MINT, (uint32_t)t);
++                ui_window(4, wy, l, wh, WIN_DARK);
++                ui_window(l + 8, wy, sw - l - 12, wh, WIN_DARK);
++                memcpy(whole, nat_fb, (size_t)(nat_w * nat_h));
++                plat_clear(PAL_BLACK);
++                ui_backdrop_holes(style == 0 ? WIN_DARK : WIN_MINT, (uint32_t)t, hl, 2);
++                ui_window(4, wy, l, wh, WIN_DARK);
++                ui_window(l + 8, wy, sw - l - 12, wh, WIN_DARK);
++                for (i = 0; i < nat_w * nat_h; i++)
++                    if (whole[i] != nat_fb[i]) {
++                        CHECK_MSG(0, "%dx%d list %d t %d: pixel %d,%d differs", sw, sh, l, t, i % nat_w, i / nat_w);
++                        return;
++                    }
++            }
++    }
++    set_res(240, 160);
++}
+-- 
+2.43.0
+

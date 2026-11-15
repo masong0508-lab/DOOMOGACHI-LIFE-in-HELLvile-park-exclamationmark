@@ -1,0 +1,227 @@
+From 4c1800e92c562eaf7dfbaf388b93f659eff155dc Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 16:25:04 +0000
+Subject: [PATCH 2/7] S3-7: the eruption's swelling cloud and Vapula's demon as
+ kept pictures, crowd bodies drawn over ticks (GBA), floors
+
+Eruption shots 2-4 (66 / 89 / 147 ms of work): the sky and the cloud past 50 px are one kept
+picture of the rows above the Wall (it does not breathe), 15-20 ms. Vapula's first two shots keep
+the sky, spire, shadow and demon as one picture per pose; the plush too. cutscene.c draws
+gg_crowd bodies with bodyspr_lazy(3) on the GBA (the credits parade's mode): no 100-170 ms frame
+when a crowd's bodies are not cached. speed2_cutscene.txt: expect-fps 29 on every window but
+card 4 (S3-12).
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ core/src/cutscene.c                     | 21 +++++++++++++---
+ gba/harness/scripts/speed2_cutscene.txt | 33 +++++++++++++------------
+ 2 files changed, 35 insertions(+), 19 deletions(-)
+
+diff --git a/core/src/cutscene.c b/core/src/cutscene.c
+index 5b79d72..e165315 100644
+--- a/core/src/cutscene.c
++++ b/core/src/cutscene.c
+@@ -364,6 +364,7 @@ static void draw_wall_row(int y, int h, int sw);
+ static void still_fog(int street);
+ static void still_vapula(int late);
+ static void vapula_big(int frame, int scale, int sx);
++static void vapula_small(void);
+ static void still_home(void);
+ static void erupt_cloud(int phase, int shake, int r, uint32_t t, int bake);
+ static void erupt_sky(int v, int seam);
+@@ -394,7 +395,7 @@ static void bk_draw(uint32_t key)
+         erupt_cloud(a & 3, (a >> 2) - 3, b, 0, 1);
+         break;
+     case CK_ERUPT_BAND: still_erupt_band(a, b - 3); break;
+-    case CK_VAPULA_SKY: bk_seam(PAL_RAMP(RAMP_SKY, 6)); still_vapula(1); break;
++    case CK_VAPULA_SKY: bk_seam(PAL_RAMP(RAMP_SKY, 6)); still_vapula(1); vapula_small(); break;
+     case CK_VAPULA_BIG: bk_seam(PAL_RAMP(RAMP_VAPE, 1)); still_vapula(0); vapula_big(a, b >> 4, (b & 15) - 2); break;
+     default: break;
+     }
+@@ -871,6 +872,14 @@ static void vapula_big(int frame, int scale, int sx)
+     plat_image(sw / 2 - v->w * scale / 2 + sx, gy - v->h * scale - 2, v, scale, 0, 0);
+ }
+ 
++/* the sad little plush that is left of him (the third shot) */
++static void vapula_small(void)
++{
++    int sw = plat_screen_w(), gy = plat_screen_h() * 3 / 4 + 6;
++    const DoomoImage *small = sprite_image(SPR_LORD_VAPULA, DFRAME_WALK0);
++    if (small) plat_image(sw / 2 - small->w / 2, gy - small->h, small, 1, 0, 0);
++}
++
+ static void draw_vapula(void)
+ {
+     static const int16_t folk[6] = { ID_MAYOR, ID_NANA, ID_PIP, ID_FUZZ, ID_SOOTKIN, ID_RIVET };
+@@ -885,6 +894,7 @@ static void draw_vapula(void)
+     if (!kept) {
+         still_vapula(panel >= 2);
+         if (panel < 2) vapula_big(frame, scale, sx);
++        else vapula_small();
+     }
+     if (panel == 1) {
+         for (i = 0; i < 8; i++) {                                                          /* Pfffffff: the vapour leaves him */
+@@ -900,8 +910,6 @@ static void draw_vapula(void)
+         if ((ct / 20) & 1) ui_text_outline(sw / 2 + 30, sh / 4, "*wheeze*", PAL_RAMP(RAMP_VAPE, 7), PAL_RAMP(RAMP_VAPE, 0));
+     }
+     if (panel == 2) {
+-        const DoomoImage *small = sprite_image(SPR_LORD_VAPULA, DFRAME_WALK0);
+-        if (small) plat_image(sw / 2 - small->w / 2, gy - small->h, small, 1, 0, 0);       /* a sad little plush */
+         gg_crowd(folk, 3, sw / 2 - 90, gy + 4, 26, 2, 1, GG_CROWD_CHEER, ct);
+         gg_crowd(folk + 3, 3, sw / 2 + 40, gy + 4, 26, 1, 1, GG_CROWD_CHEER, ct);
+         for (i = 0; i < 24; i++) {
+@@ -1249,6 +1257,10 @@ static void cs_draw(void)
+         camfx_apply();
+         return;
+     }
++#if defined(DOOMO_PLATFORM_GBA)
++    bodyspr_lazy(3);        /* S3-7 (GBA, pixel-changing): a crowd body the cache lacks (~25 ms each, six at a shot's first tick: 100-170 ms
++                             * frames) is drawn over the next ticks and shows when it is ready, like the credits parade */
++#endif
+     switch (cut) {
+     case CUT_CHAPTER1: case CUT_CHAPTER2: case CUT_CHAPTER3: case CUT_CHAPTER4:
+         draw_card(cut - CUT_CHAPTER1 + 1);
+@@ -1263,6 +1275,9 @@ static void cs_draw(void)
+     case CUT_FEAST_POP: feast_draw(panel, pt, ct); break;
+     default: plat_clear(PAL_BLACK); break;
+     }
++#if defined(DOOMO_PLATFORM_GBA)
++    bodyspr_lazy(0);
++#endif
+     camfx_apply();                               /* the picture shakes, the caption does not (PS1) */
+     caption();
+ }
+diff --git a/gba/harness/scripts/speed2_cutscene.txt b/gba/harness/scripts/speed2_cutscene.txt
+index a7b6efd..852dd72 100644
+--- a/gba/harness/scripts/speed2_cutscene.txt
++++ b/gba/harness/scripts/speed2_cutscene.txt
+@@ -1,6 +1,7 @@
+ # speed2_cutscene.txt - speed tour 2 (S3-7): the story's cutscene backdrops, one window each: the chapter cards 2-4,
+ # the home, fog, eruption and Vapula vignettes (cutscene.c), the beat after a press, and the P0 bridge panel
+-# (cutscene_ch12.c). Window rules: speed2_fair.txt.
++# (cutscene_ch12.c). Window rules: speed2_fair.txt. Every window but chapter card 4 has the floor `expect-fps 29`
++# (S3-7); card 4's wide title is rasterised again (S3-12, 22 fps).
+ wait 40
+ expect-log doomo: init
+ sync on 61
+@@ -12,7 +13,7 @@ push CUTSCENE 1
+ wait 40
+ fps start
+ wait 90
+-fps cutscene: chapter card 2
++expect-fps 29 cutscene: chapter card 2
+ shot cutscene_card2
+ seed 1
+ scene STORY 101
+@@ -21,7 +22,7 @@ push CUTSCENE 2
+ wait 30
+ fps start
+ wait 90
+-fps cutscene: chapter card 3
++expect-fps 29 cutscene: chapter card 3
+ shot cutscene_card3
+ seed 1
+ scene STORY 101
+@@ -39,13 +40,13 @@ push CUTSCENE 10
+ wait 40
+ fps start
+ wait 90
+-fps cutscene: home vignette
++expect-fps 29 cutscene: home vignette
+ shot cutscene_home
+ press A
+ wait 14
+ fps start
+ wait 90
+-fps cutscene: home vignette, shot 2
++expect-fps 29 cutscene: home vignette, shot 2
+ shot cutscene_home2
+ seed 1
+ scene STORY 101
+@@ -54,19 +55,19 @@ push CUTSCENE 5
+ wait 40
+ fps start
+ wait 90
+-fps cutscene: fog vignette
++expect-fps 29 cutscene: fog vignette
+ shot cutscene_fog
+ press A
+ wait 14
+ fps start
+ wait 90
+-fps cutscene: fog vignette, shot 2
++expect-fps 29 cutscene: fog vignette, shot 2
+ shot cutscene_fog2
+ press A
+ wait 14
+ fps start
+ wait 90
+-fps cutscene: fog vignette, shot 3
++expect-fps 29 cutscene: fog vignette, shot 3
+ shot cutscene_fog3
+ seed 1
+ scene STORY 101
+@@ -75,25 +76,25 @@ push CUTSCENE 6
+ wait 30
+ fps start
+ wait 90
+-fps cutscene: eruption vignette
++expect-fps 29 cutscene: eruption vignette
+ shot cutscene_eruption
+ press A
+ wait 14
+ fps start
+ wait 90
+-fps cutscene: eruption vignette, shot 2
++expect-fps 29 cutscene: eruption vignette, shot 2
+ shot cutscene_eruption2
+ press A
+ wait 14
+ fps start
+ wait 90
+-fps cutscene: eruption vignette, shot 3
++expect-fps 29 cutscene: eruption vignette, shot 3
+ shot cutscene_eruption3
+ press A
+ wait 14
+ fps start
+ wait 90
+-fps cutscene: eruption vignette, shot 4
++expect-fps 29 cutscene: eruption vignette, shot 4
+ shot cutscene_eruption4
+ seed 1
+ scene STORY 101
+@@ -102,19 +103,19 @@ push CUTSCENE 7
+ wait 60
+ fps start
+ wait 90
+-fps cutscene: vapula vignette
++expect-fps 29 cutscene: vapula vignette
+ shot cutscene_vapula
+ press A
+ wait 2
+ fps start
+ wait 60
+-fps cutscene: after a press
++expect-fps 29 cutscene: after a press
+ shot cutscene_press
+ press A
+ wait 14
+ fps start
+ wait 90
+-fps cutscene: vapula vignette, shot 3
++expect-fps 29 cutscene: vapula vignette, shot 3
+ shot cutscene_vapula3
+ 
+ # the P0 bridge (the crayon prologue, story_ch1.txt)
+@@ -125,5 +126,5 @@ press A
+ wait 2
+ fps start
+ wait 88
+-fps cutscene: P0 bridge
++expect-fps 29 cutscene: P0 bridge
+ shot cutscene_p0_bridge
+-- 
+2.43.0
+

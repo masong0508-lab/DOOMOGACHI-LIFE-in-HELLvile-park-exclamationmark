@@ -1,0 +1,432 @@
+From 02e073f48abd69bb76f894724480e050657faa09 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 17:36:51 +0000
+Subject: [PATCH 1/5] S3-CREDITS: the parade's per-frame costs (exact): ticker
+ and title plate as retained panels, no divisions, no run hash
+
+The GBA credits parade (speed audit 3: 26.3 fps, 51 ms worst) spent its frame on work that did not change:
+- look_run_hash (cross-stream: look_pool.c, called by bodyspr_image for every marcher every frame) resolved and
+  hashed 21 deep fields to get 0 for every id without a run. It now returns 0 when the pool has no run for the id
+  (deep_hash of an all-zero set is 0). Parade 37.4 -> 34.7 ms of work (24.1 -> 25.4 fps) on its own.
+- the ticker bar is a retained panel (PANEL_OW_OBJECTIVE; its pixels change when the middle rank does), and the card
+  heading is ui_title_kept(): ui_title() as a panel keyed by text, style and the sparkles' phase (new in ui.c;
+  an inline ui_title() on the PS1).
+- the confetti and the roadside fans no longer divide: the ARM7 has no divide, each `%` / `/` by a variable or by a
+  constant in Thumb is a ~100-cycle library call (60 + 24 a frame). cr_confetti_xy() / cr_fans_xj() keep one
+  remainder of the tick and running sums; the tests compare them with the old closed forms.
+Exact: tests (s3_confetti_positions_match_the_formula, s3_fans_match_the_formula, the run hash with and without a run,
+panel_credits_card_and_ticker_are_pixel_identical: 478 of 757 panels kept at both sizes, every frame equal with the
+cache off) and 700 GBA frames of the parade without marchers hash-identical to the tip before.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvyt9PpfrF57wBDFeR
+---
+ core/include/doomo/ui.h        |  14 ++++
+ core/src/credits.c             | 114 +++++++++++++++++++++++++++------
+ core/src/look_pool.c           |   3 +
+ core/src/overworld_int.h       |   3 +
+ core/src/ui.c                  |  27 ++++++++
+ core/tests/test_panel.c        |  16 +++++
+ core/tests/test_portrait_s27.c |  77 ++++++++++++++++++++++
+ 7 files changed, 233 insertions(+), 21 deletions(-)
+
+diff --git a/core/include/doomo/ui.h b/core/include/doomo/ui.h
+index fb7e33f..e9ca85a 100644
+--- a/core/include/doomo/ui.h
++++ b/core/include/doomo/ui.h
+@@ -428,6 +428,20 @@ void ui_window_rows(int x, int y, int w, int h, int style, int cx0, int cx1, int
+ void ui_portrait_shadow(int x, int y, const DoomoImage *img, int scale);
+ void ui_portrait_img(int x, int y, const DoomoImage *img, int scale);
+ int ui_sparkle_size(int phase);          /* ui_sparkle's size, 0 = none */
++/* (S3-CREDITS) ui_title() as a retained panel (`panel`: a PANEL_* id the scene does not use otherwise): a title plate over a
++ * moving picture (the credits card over the parade). The plate, its text and its two sparkles are the panel; its key holds
++ * the text, the style and the sparkles' phase (they twinkle every 3 frames), so it is drawn on one frame in three and
++ * put back on the others; the drop shadow is shading, drawn on every frame. Same pixels as ui_title(). Where no panels
++ * are kept (the PS1) it is ui_title(). */
++#if UI_PANELS
++void ui_title_kept(int panel, int cx, int y, const char *s, int style);
++#else
++static inline void ui_title_kept(int panel, int cx, int y, const char *s, int style)
++{
++    (void)panel;
++    ui_title(cx, y, s, style);
++}
++#endif
+ 
+ /* Shared pause menu (combat, levels, arena, minigames): a "PAUSED" window
+  * of n button rows, the same look, cursor and hints everywhere. Rows in
+diff --git a/core/src/credits.c b/core/src/credits.c
+index 12afec8..390ed2f 100644
+--- a/core/src/credits.c
++++ b/core/src/credits.c
+@@ -19,6 +19,7 @@
+ #define START_X (2 * DOOMO_CELL_UNITS)
+ #define END_X (62 * DOOMO_CELL_UNITS)
+ #define CR_BB OW_BB_MAX
++#define CR_CONFETTI 30
+ 
+ static uint32_t ct;                   /* parade ticks                      */
+ static uint32_t draw_t;
+@@ -154,6 +155,23 @@ static void view_range(int32_t camx, int32_t *x0, int32_t *x1)
+ #endif
+ }
+ 
++/* S3-CREDITS: where the nf (<= 12) roadside fans stand and how high they jump at parade tick ct on a screen sw wide:
++ * x = camx - sw * 2 + 40 + i * (sw * 4 - 80) / (nf - 1) and jump = 3 * (the zig-zag of (ct + 9 i) / 3 % 12). The ARM7
++ * has no divide (~100 cycles a call): two a fan a frame become one for ct and a running quotient and remainder of
++ * i * step. Same numbers (test_portrait_s27.c checks them against the formula). */
++void cr_fans_xj(uint32_t ct, int sw, int nf, int32_t camx, int32_t *xs, int *js)
++{
++    int q12 = (int)((ct / 3) % 12), step = sw * 4 - 80, d = nf - 1;
++    int xq = 0, xr = 0, sq = step / d, sr = step % d, i;
++    for (i = 0; i < nf; i++, xq += sq, xr += sr) {
++        int jump = q12 + 3 * i;
++        if (xr >= d) { xr -= d; xq++; }
++        xs[i] = camx - sw * 2 + 40 + xq;
++        while (jump >= 12) jump -= 12;
++        js[i] = jump < 6 ? jump * 3 : (12 - jump) * 3;
++    }
++}
++
+ static void build(void)
+ {
+     int32_t camx = camera_x(), vx0, vx1;
+@@ -198,10 +216,12 @@ static void build(void)
+                                           ID_ANVIL, ID_PIP, ID_SOOTKIN, ID_VEX, ID_TALLYWORN,
+                                           ID_WISP, ROSTER_ID_GRUMBLEGUTS };
+         int nf = story_grumble_dead() ? 11 : 12;
++        int32_t fx[12];
++        int fj[12];
++        cr_fans_xj(ct, plat_screen_w(), nf, camx, fx, fj);
+         for (i = 0; i < nf; i++) {
+-            int32_t x = camx - plat_screen_w() * 2 + 40 + i * (plat_screen_w() * 4 - 80) / (nf - 1);
+-            int jump = (int)(((ct + (uint32_t)i * 9) / 3) % 12);
+-            jump = jump < 6 ? jump * 3 : (12 - jump) * 3;
++            int32_t x = fx[i];
++            int jump = fj[i];
+             {
+                 const DoomoResident *f = town_res(fans[i]);
+                 if (f && f->status != RES_EMPTY && f->status != RES_DEAD) {
+@@ -229,31 +249,49 @@ static void build(void)
+     bodyspr_lazy(0);
+ }
+ 
++/* S3-CREDITS: the ticker bar is a retained panel (platform.h plat_panel_begin; the overworld's HUD pills are never up
++ * in the parade, so PANEL_OW_OBJECTIVE and PANEL_OW_CLOCK are free): its pixels change only when the rank in the middle
++ * does (every RANK_TICKS ticks), so on the other frames the GBA puts it back from the last picture instead of drawing
++ * two round rects, the star and ~40 glyphs again. The pill's corners are not body: the parade shows there as ever. */
++#define PANEL_CR_TICKER PANEL_OW_OBJECTIVE
++#define PANEL_CR_HEAD PANEL_OW_CLOCK
++
+ static void draw_ticker(int sw, int sh)
+ {
+     int y = sh - 15, r, x;
+-    char buf[48];
++    char buf[48], cnt[12];
+     int32_t mid = camera_x();
+     /* the rank closest to the middle of the screen */
+     r = (int)(((int32_t)ct - (mid - START_X) / MARCH_SPEED) / RANK_TICKS) - 1;
+     if (r >= 0 && r < RANKS) ticker_rank = (int16_t)r;
+-    ui_round_rect(4, y - 2, sw - 8, 14, 4, PAL_RAMP(RAMP_PASTEL_PINK, 1));
+-    ui_round_rect(5, y - 1, sw - 10, 12, 3, PAL_UI_CREAM);
+-    if (ticker_rank < 0) {
+-        ui_text_center(sw / 2, y + 1, "Here comes the parade!", PAL_RAMP(RAMP_PASTEL_PINK, 1));
+-        return;
+-    }
+-    {
++    buf[0] = cnt[0] = 0;
++    if (ticker_rank >= 0) {
+         const DoomoResident *a = town_res(ticker_rank), *b = town_res(DOOMO_DISTRICT_SIZE + ticker_rank);
+         doomo_snprintf(buf, sizeof(buf), "%s " STR_ICON_HEART " %s",
+                        (a && a->status != RES_EMPTY) ? a->name : "...",
+                        (b && b->status != RES_EMPTY) ? b->name : "...");
++        doomo_snprintf(cnt, sizeof(cnt), "%d/1000", DOOMO_MIN(1000, (ticker_rank + 1) * 2));
++    }
++#if UI_PANELS
++    if (!plat_panel_begin(PANEL_CR_TICKER, 4, y - 2, sw - 8, 14,
++                          ui_key_str(ui_key_str(ui_key_int(ui_panel_key(), sw), buf), cnt))) {
++        plat_panel_end();                                   /* kept: a pill has no shadow */
++        return;
+     }
+-    x = 10;
+-    plat_text(x, y + 1, STR_ICON_STAR, PAL_UI_GOLD);
+-    ui_text(x + 10, y + 1, buf, PAL_RAMP(RAMP_PASTEL_PINK, 1));
+-    doomo_snprintf(buf, sizeof(buf), "%d/1000", DOOMO_MIN(1000, (ticker_rank + 1) * 2));
+-    ui_text(sw - 10 - ui_text_width(buf), y + 1, buf, PAL_GRAY_D);
++#endif
++    ui_round_rect(4, y - 2, sw - 8, 14, 4, PAL_RAMP(RAMP_PASTEL_PINK, 1));
++    ui_round_rect(5, y - 1, sw - 10, 12, 3, PAL_UI_CREAM);
++    if (ticker_rank < 0) {
++        ui_text_center(sw / 2, y + 1, "Here comes the parade!", PAL_RAMP(RAMP_PASTEL_PINK, 1));
++    } else {
++        x = 10;
++        plat_text(x, y + 1, STR_ICON_STAR, PAL_UI_GOLD);
++        ui_text(x + 10, y + 1, buf, PAL_RAMP(RAMP_PASTEL_PINK, 1));
++        ui_text(sw - 10 - ui_text_width(cnt), y + 1, cnt, PAL_GRAY_D);
++    }
++#if UI_PANELS
++    plat_panel_end();
++#endif
+ }
+ 
+ static void draw_card(int sw)
+@@ -267,7 +305,7 @@ static void draw_card(int sw)
+     story_fmt(lines, sizeof(lines), cards[k].lines);
+     s = (k == 0 && ui_text_big_width(head, 2) < sw - 8) ? 2 : 1;
+     if (s == 2) ui_text_big((sw - ui_text_big_width(head, 2)) / 2, y, head, 2, PAL_WHITE, PAL_UI_PINK_D);
+-    else ui_title(sw / 2, y + 2, head, WIN_CUTE);
++    else ui_title_kept(PANEL_CR_HEAD, sw / 2, y + 2, head, WIN_CUTE);   /* S3-CREDITS: a retained panel */
+     {
+         const char *p = lines;
+         int ly = y + (s == 2 ? 22 : 18);
+@@ -284,6 +322,38 @@ static void draw_card(int sw)
+     }
+ }
+ 
++/* S3-CREDITS: where the 30 confetti pieces are at drawn frame t on a w x h screen: the x of piece i is
++ * (i * 53 + t * (1 + i % 3)) % w and its y (i * 29 + t * (2 + i % 4)) % h. The ARM7 has no divide (each `%` by a
++ * variable is a library call of ~100 cycles: 60 a frame, ~0.7 ms), so: one remainder of t per axis, its small
++ * multiples by subtraction, and i * 53 % w and i * 29 % h kept running (w >= 53 and h >= 29). Same numbers
++ * (test_portrait_s27.c checks them against the formula). */
++void cr_confetti_xy(uint32_t t, int w, int h, int16_t *xs, int16_t *ys)
++{
++    uint32_t mx[3], my[4], bx = 0, by = 0, k, uw = (uint32_t)w, uh = (uint32_t)h;
++    int i;
++    mx[0] = t % uw;
++    my[0] = t % uh;                       /* my[k] = t * (k + 2) % h: k = 0 holds t % h, the base the others grow from */
++    for (k = 1; k < 3; k++) { mx[k] = mx[k - 1] + mx[0]; if (mx[k] >= uw) mx[k] -= uw; }
++    {
++        uint32_t t1 = my[0], t2, t3, t4, t5;
++        t2 = t1 + t1; if (t2 >= uh) t2 -= uh;
++        t3 = t2 + t1; if (t3 >= uh) t3 -= uh;
++        t4 = t3 + t1; if (t4 >= uh) t4 -= uh;
++        t5 = t4 + t1; if (t5 >= uh) t5 -= uh;
++        my[0] = t2; my[1] = t3; my[2] = t4; my[3] = t5;
++    }
++    for (i = 0, k = 0; i < CR_CONFETTI; i++) {            /* k = i % 3 (a division call each on the ARM7) */
++        uint32_t x = bx + mx[k], y = by + my[i & 3];
++        if (x >= uw) x -= uw;
++        if (y >= uh) y -= uh;
++        xs[i] = (int16_t)x;
++        ys[i] = (int16_t)y;
++        bx += 53; if (bx >= uw) bx -= uw;
++        by += 29; if (by >= uh) by -= uh;
++        if (++k == 3) k = 0;
++    }
++}
++
+ static void cr_draw(void)
+ {
+     DoomoOverworldView v;
+@@ -314,10 +384,12 @@ static void cr_draw(void)
+     v.time = (uint16_t)draw_t;
+     plat_overworld(&v);
+     /* confetti */
+-    for (i = 0; i < 30; i++) {
+-        int x = (int)(((uint32_t)i * 53u + draw_t * (1u + (uint32_t)i % 3u)) % (uint32_t)sw);
+-        int y = (int)(((uint32_t)i * 29u + draw_t * (2u + (uint32_t)i % 4u)) % (uint32_t)sh);
+-        plat_rect(x + ui_wave((int)draw_t + i * 11, 40, 3), y, (draw_t + (uint32_t)i) & 8 ? 2 : 1, 2, PAL_PAINT((i * 7) & 31, 2));
++    {
++        int16_t cx[CR_CONFETTI], cy[CR_CONFETTI];
++        cr_confetti_xy(draw_t, sw, sh, cx, cy);
++        for (i = 0; i < CR_CONFETTI; i++)
++            plat_rect(cx[i] + ui_wave((int)draw_t + i * 11, 40, 3), cy[i], (draw_t + (uint32_t)i) & 8 ? 2 : 1, 2,
++                      PAL_PAINT((i * 7) & 31, 2));
+     }
+     /* fireworks */
+     for (i = 0; i < 2; i++) {
+diff --git a/core/src/look_pool.c b/core/src/look_pool.c
+index d4c5cf2..1dc8ea2 100644
+--- a/core/src/look_pool.c
++++ b/core/src/look_pool.c
+@@ -122,6 +122,9 @@ void look_resolve(const DoomoResident *r, int id, DoomoDeep *out)
+ uint32_t look_run_hash(int id, int chibi)
+ {
+     DoomoDeep d;
++    /* S3-CREDITS: no run for this id (a town nobody customised: every id): the set is all zeros (r is NULL, so the gene
++     * adds nothing) and deep_hash of zeros is 0 ("0 stays 0"), so skip the 21-field walk a body lookup made per marcher */
++    if (!look_pool_find(id, RUN_DEEP, NULL)) return 0;
+     look_resolve_mask(NULL, id, chibi ? LV_CHIBI : LV_ALL, &d);
+     return deep_hash(&d, chibi);
+ }
+diff --git a/core/src/overworld_int.h b/core/src/overworld_int.h
+index d26c73f..f990186 100644
+--- a/core/src/overworld_int.h
++++ b/core/src/overworld_int.h
+@@ -179,6 +179,9 @@ int  ow_scratch_claim(void);
+ #define ow_bb doomo_frame_bb
+ DOOMO_STATIC_ASSERT(OW_BB_MAX <= DOOMO_FRAME_BB_MAX, ow_billboards_fit_frame_bb);
+ extern int ow_bb_count;
++/* credits.c (S3-CREDITS): the 30 confetti pieces' base positions at drawn frame t on a w x h screen (tests) */
++void cr_confetti_xy(uint32_t t, int w, int h, int16_t *xs, int16_t *ys);
++void cr_fans_xj(uint32_t ct, int sw, int nf, int32_t camx, int32_t *xs, int *js);   /* the fans' x and jump */
+ 
+ /* ---- S1 M5: NPC / camera scripting, the spawner, the wrongness table ----
+  * Called from story-group code (the VM's VM_EXT host, beat scripts), never
+diff --git a/core/src/ui.c b/core/src/ui.c
+index 22315d9..6932062 100644
+--- a/core/src/ui.c
++++ b/core/src/ui.c
+@@ -1343,6 +1343,33 @@ void ui_title(int cx, int y, const char *s, int style)
+     ui_sparkle(x + w - 3, y + 11, (t / 3 + 8) & 15, PAL_WHITE);
+ }
+ 
++#if UI_PANELS
++/* S3-CREDITS: see ui.h. The rect reaches the sparkles' arms (3 px above the plate at most) and the shadow (2 px below). */
++void ui_title_kept(int panel, int cx, int y, const char *s, int style)
++{
++    const UiStyle *st;
++    int tw, w, x, t;
++    if (plat_draw_skipped()) return;
++    st = ui_style(style);
++    tw = ui_text_width(s);
++    w = tw + 18;
++    x = cx - w / 2;
++    t = frame_t();
++    if (!plat_panel_begin(panel, x, y - 2, w + 2, 17,
++                          ui_key_int(ui_key_str(ui_key_int(ui_panel_key(), style), s), (t / 3) & 15))) {
++        ui_pill_shadow(x + 1, y + 2, w, 13, x, y, w, 13);       /* kept: its shading, nothing else */
++        plat_panel_end();
++        return;
++    }
++    ui_pill_shadow(x + 1, y + 2, w, 13, x, y, w, 13);
++    ui_pill(x, y, w, 13, st->title_bg, st->outline, ui_lighter(st->title_bg));
++    ui_text_shadow(x + 9, y + 3, s, st->title, st->outline);
++    ui_sparkle(x + 3, y + 1, (t / 3) & 15, PAL_WHITE);
++    ui_sparkle(x + w - 3, y + 11, (t / 3 + 8) & 15, PAL_WHITE);
++    plat_panel_end();
++}
++#endif
++
+ /* ====================================================================== */
+ /* C3: the prompt bar's pill and ui_hint. The bar's text is built in ui_prompt.c
+  * (not every frame: a memo), so it is out of this per-frame file (the PS1 compiles
+diff --git a/core/tests/test_panel.c b/core/tests/test_panel.c
+index 5bcaeca..969e207 100644
+--- a/core/tests/test_panel.c
++++ b/core/tests/test_panel.c
+@@ -285,6 +285,17 @@ static uint32_t p_workshop(int f)
+     return 0;
+ }
+ 
++/* (S3-CREDITS) the credits parade: the card's title plate (ui_title_kept: its sparkles twinkle every 3 frames) and the
++ * ticker bar (new every RANK_TICKS ticks) over the moving parade. A is held for most of the run (the parade runs six
++ * ticks a frame: the cards, the ranks and the confetti all change), let go for a stretch (one tick a frame: the
++ * ticker keeps its panel for 11 frames), held again. */
++static void s_credits(void) { story_town(); scene_set(&SCENE_CREDITS, 0); }
++static uint32_t p_credits(int f)
++{
++    if (f >= 150 && f < 230) return 0;
++    return BTN_A;
++}
++
+ /* the language switch: Spanish from frame 120 on */
+ static uint32_t p_visit_lang(int f)
+ {
+@@ -615,6 +626,11 @@ TEST(panel_style_use_sets_the_style_widgets_read)
+     CHECK(rect_hash(10, 20, 120, 50) != a);
+ }
+ 
++TEST(panel_credits_card_and_ticker_are_pixel_identical)
++{
++    CHECK(both("credits", s_credits, p_credits, 420, 100));
++}
++
+ TEST(panel_language_switch_redraws)
+ {
+     CHECK(both("lang", s_visit, p_visit_lang, 240, 200));
+diff --git a/core/tests/test_portrait_s27.c b/core/tests/test_portrait_s27.c
+index d868b3b..03f474f 100644
+--- a/core/tests/test_portrait_s27.c
++++ b/core/tests/test_portrait_s27.c
+@@ -8,6 +8,9 @@
+ #include "test.h"
+ #include "doomo/doomo.h"
+ #include "doomo/portrait.h"
++#include "doomo/look_pool.h"
++#include "doomo/look_fields.h"
++#include "../src/overworld_int.h"
+ 
+ #define N_LAZY 4
+ #define N_MANY 60
+@@ -121,3 +124,77 @@ TEST(s27_memo_with_more_bodies_than_slots_gives_the_right_pictures)
+     portrait_cache_reset();
+     for (i = 0; i < n; i++) town_free(ids[i]);
+ }
++
++/* ---- S3-CREDITS ------------------------------------------------------------------------------------------------ */
++/* a body lookup asked look_run_hash for every marcher on every frame: with no deep run for the id it is all zeros
++ * (a town nobody customised), which the lookup now returns without resolving and hashing 21 fields; with a run it is
++ * still the hash of what the run resolves to, and a change of the run changes it. */
++TEST(s3_run_hash_without_a_run_is_zero_and_with_one_is_the_walk)
++{
++    static const uint8_t run[] = { DF_LASH, 2, DF_MOLE, 1 };
++    DoomoDeep d;
++    int id = 37, chibi;
++    look_pool_drop(id);
++    for (chibi = 0; chibi < 2; chibi++) CHECK_EQ(look_run_hash(id, chibi), 0u);
++    CHECK(look_pool_put(id, RUN_DEEP, run, (int)sizeof(run)));
++    for (chibi = 0; chibi < 2; chibi++) {
++        look_resolve_mask(NULL, id, chibi ? LV_CHIBI : LV_ALL, &d);
++        CHECK_EQ(look_run_hash(id, chibi), deep_hash(&d, chibi));
++    }
++    CHECK(look_run_hash(id, 0) != 0u);                      /* the whole look sees the run */
++    look_pool_drop(id);
++    CHECK_EQ(look_run_hash(id, 0), 0u);                     /* and not once it is gone */
++    CHECK_EQ(look_run_hash(-1, 1), 0u);                     /* ids outside the pool's range */
++    CHECK_EQ(look_run_hash(5000, 1), 0u);
++}
++
++/* the confetti: the closed form of credits.c, 30 pieces, at both screens, over many frames, and far past a 16-bit count */
++TEST(s3_confetti_positions_match_the_formula)
++{
++    static const int dims[3][2] = { { 240, 160 }, { 320, 240 }, { 240, 200 } };
++    static const uint32_t ts[] = { 0u, 1u, 2u, 3u, 59u, 239u, 240u, 241u, 65535u, 65536u, 1000003u, 4000000u };
++    int16_t xs[30], ys[30];
++    int d, i;
++    uint32_t t, n;
++    for (d = 0; d < 3; d++) {
++        const uint32_t w = (uint32_t)dims[d][0], h = (uint32_t)dims[d][1];
++        for (n = 0; n < 1500u + (uint32_t)(sizeof(ts) / sizeof(ts[0])); n++) {
++            t = n < 1500u ? n : ts[n - 1500u];
++            cr_confetti_xy(t, (int)w, (int)h, xs, ys);
++            for (i = 0; i < 30; i++) {
++                const uint32_t x = ((uint32_t)i * 53u + t * (1u + (uint32_t)i % 3u)) % w;
++                const uint32_t y = ((uint32_t)i * 29u + t * (2u + (uint32_t)i % 4u)) % h;
++                if (xs[i] != (int16_t)x || ys[i] != (int16_t)y) {
++                    CHECK_MSG(0, "%ux%u t %u piece %d: (%d,%d) wanted (%u,%u)", w, h, t, i, xs[i], ys[i], x, y);
++                    return;
++                }
++            }
++        }
++    }
++}
++
++/* the roadside fans: x and the jump of each at every parade tick, as the closed form had them */
++TEST(s3_fans_match_the_formula)
++{
++    static const int sws[3] = { 240, 320, 256 };
++    int32_t xs[12];
++    int js[12];
++    int s, nf, i;
++    uint32_t ct;
++    for (s = 0; s < 3; s++)
++        for (nf = 11; nf <= 12; nf++)
++            for (ct = 0; ct < 2500u; ct += (ct < 800u ? 1u : 7u)) {
++                const int32_t camx = (int32_t)(ct * 5u) - 700;
++                cr_fans_xj(ct, sws[s], nf, camx, xs, js);
++                for (i = 0; i < nf; i++) {
++                    int32_t x = camx - sws[s] * 2 + 40 + i * (sws[s] * 4 - 80) / (nf - 1);
++                    int jump = (int)(((ct + (uint32_t)i * 9) / 3) % 12);
++                    jump = jump < 6 ? jump * 3 : (12 - jump) * 3;
++                    if (xs[i] != x || js[i] != jump) {
++                        CHECK_MSG(0, "sw %d nf %d ct %u fan %d: (%d,%d) wanted (%d,%d)", sws[s], nf, ct, i, (int)xs[i],
++                                  js[i], (int)x, jump);
++                        return;
++                    }
++                }
++            }
++}
+-- 
+2.43.0
+
