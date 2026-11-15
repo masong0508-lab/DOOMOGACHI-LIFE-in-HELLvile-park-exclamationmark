@@ -376,7 +376,7 @@ GBA-only. `make dc-host-test` passes.
 **S2-4b (the Fun Fair, 2026-11-13).** Nothing changes here: stamps, bands and undo lists are GBA-only (`plat_stage_stamp` and
 `plat_stage_restore_list` are the weak no-ops, `mg_stamp` returns 0 and the games draw as before). Flycast `speed2_fair` after the
 package: all 23 windows 30.0 logic ticks/s, 0 of 6,040 ticks over 33.3 ms of work (worst 15.7 ms, the Derby), as before.
-Landing (2026-11-15, on `b9e74a5`, with DC9B's kept church and DC6D; the same on `0cce022`): the results card's hold is GBA-only (`ui_modal_hold` holds only where
+Landing (2026-11-15, on `cb9df1c`, with DC9B's kept church, DC6D and DC9C; the same on `b9e74a5` and `0cce022`): the results card's hold is GBA-only (`ui_modal_hold` holds only where
 `ui_modal_hold_enable` is on, the GBA's default), and DC9B's `stage_begin` keeps only the exorcism's church, so the fair games
 still draw in full here. `speed2_fair` now has 30 windows (a results card for every game): all 30.0 logic ticks/s, 0 of 14,140
 ticks over 33.3 ms of work, worst 17.1 ms (the Gallery); `make dc-host-test` passes.
