@@ -201,7 +201,7 @@ static int fans_in_crowd(void)
 static int concert_lite(void)
 {
 #if defined(DOOMO_PLATFORM_GBA)
-    return CLITE_FLAMES | CLITE_HALF;
+    return CLITE_FLAMES | CLITE_HALF | CLITE_LEAD;
 #else
     return 0;
 #endif

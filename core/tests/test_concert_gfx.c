@@ -367,6 +367,49 @@ TEST(concert_choir_singers_drawn_smaller)
     portrait_cache_reset();
 }
 
+/* (CONCERT-30, CLITE_LEAD) the lead's figure and its shadow as one image is the same frame as the two blits: over
+ * the solo and the band, every genre's stage, her pictures changing with the tick (talk, breath, wag), a figure
+ * made again when its picture changes, and the baked copy really is drawn (the buffer holds her key) */
+TEST(concert_lead_baked_with_shadow_equals_the_two_blits)
+{
+    static ConcertCast cast;
+    static ChoirMini minis[CHOIR_MINI_N];
+    static uint8_t ref[240 * 160];
+    StageView v;
+    StageLayout L;
+    int m, k, ok = 1, baked = 0;
+    town_new(TOWN_FREEPLAY, 777, TOWN_POP_PREMADE);
+    sim_init();
+    nat_w = 240; nat_h = 160;
+    portrait_cache_reset();
+    concert_layout(&L);
+    for (m = 0; m < 2; m++) {
+        concert_cast_make(&cast, 3, m ? CMODE_BAND : CMODE_SOLO, 1, 0);
+        memset(minis, 0, sizeof(minis));
+        for (k = 0; k < 40; k++) {
+            memset(&v, 0, sizeof(v));
+            v.cast = &cast;
+            v.t = 400u + (uint32_t)k * 3u;
+            v.genre = k % MUSIC_COUNT;
+            v.stage = k % 5;
+            v.lights = 16;
+            v.lite = CLITE_LEAD;
+            v.minis = minis;
+            memset(nat_fb, 0, sizeof(ref));
+            concert_draw_performers(&v, &L);
+            memcpy(ref, nat_fb, sizeof(ref));
+            if (((LeadBake *)minis)->key) baked++;
+            v.minis = NULL;                         /* no buffer: the two blits (CLITE_LEAD spells the GBA's shadow out) */
+            memset(nat_fb, 0, sizeof(ref));
+            concert_draw_performers(&v, &L);
+            if (memcmp(ref, nat_fb, sizeof(ref)) != 0) ok = 0;
+        }
+    }
+    CHECK(ok);
+    CHECK(baked > 0);
+    portrait_cache_reset();
+}
+
 /* (G2-CO, CLITE_HALF) the LED wall, the lamps and the beams at 15 Hz: with a kept backdrop and kept rows (the native
  * platform emulates both), the first frame is drawn whole and from then on the rows down to the wall's foot are the
  * whole stage of tick tc (each picture on two frames in a row: tc = t, then t - 1); below them the stage is tick

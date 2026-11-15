@@ -254,7 +254,13 @@ typedef struct ChoirMini {
  * sets them on the GBA only, so the PS1, the Dreamcast and the native goldens draw the full stage.
  *   CLITE_FLAMES  the flame wall in 6 wider flames of 4-row bars (9 flames of 2-row bars)
  *   CLITE_HALF    the LED wall, the lamps and the beams at 15 Hz, kept between their steps (StageView.keep) */
-enum { CLITE_FLAMES = 1, CLITE_HALF = 2 };
+enum { CLITE_FLAMES = 1, CLITE_HALF = 2, CLITE_LEAD = 4 };
+/* (CONCERT-30, CLITE_LEAD, exact) the solo's and the band's lead figure with its shadow as ONE image, made again only
+ * when her picture (the image uid) changes: one blit instead of the shadow's silhouette pass plus the figure
+ * (~3.2 ms of the GBA's band tick). It lives in the choir's mini buffers, which only a choir uses. */
+#define LEAD_BAKE_W (FIGURE_W + 1)
+#define LEAD_BAKE_H (FIGURE_H + 1)
+typedef struct LeadBake { uint32_t key; uint8_t w, h, pad[2]; uint8_t pix[LEAD_BAKE_W * LEAD_BAKE_H]; } LeadBake;
 
 /* layout for this resolution */
 typedef struct StageLayout {
