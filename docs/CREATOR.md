@@ -559,6 +559,33 @@ held; on the GBA the bust's effect frames change every 16 ticks).
 * The part live counts (`doomo_part_live`, `part_live_count`, `part_live_drawable`) moved to the
   catalog files (`part_meta_data.c` / `part_meta.c`, creator overlay on the PS1).
 
+## CR5: deep parts are saved, the look pool (2026-11-15)
+
+* **The pool** (`look_pool.c`, `look_pool.h`): records `[id u16][kind u8][len u8][data]` in `LOOK_POOL_CAP` bytes: 6,144 B on the
+  GBA, PS1 (384 B, its resident RAM is full) and Dreamcast use the same code; the PS1 cap holds about 40 short runs. `put` keeps the old
+  run when the new one does not fit (returns 0); length 0 removes a run; `drop` removes every run of one id (`town_free` calls it);
+  `look_pool_raw` gives the records as they are and `look_pool_load` replaces the pool (a malformed block leaves it empty).
+  With no run stored the renderer is bit for bit what it was.
+* **The save** (`creator.c`, the `NICK` chunk, version 2): `[nicknames][gene trailer][u16 length][pool records]`. The pool part is written only
+  when the pool holds something; the gene trailer then always comes first (an empty `[0 0]` when no record has gene bits). Old
+  saves (no pool part) load with an empty pool and the same town; a chunk that would pass `DOOMO_SAVE_EXT_MAX` (8 KB) leaves the pool
+  out, and the creator refuses a commit that would grow it that far. The slot registry stays at 14.
+* **The creator** offers deep values through a new row kind `RK_DEEP` (the draft's pool-backed fields: undo ring, reset, copy and
+  randomise work). The Face tab has an "Eye makeup" block: Lashes, Eyelids, Eyeliner. `write_town` stores the run before it touches the
+  town and refuses a full pool (toast "Wardrobe full", the town and the pool stay as they were).
+* **Content live:** the 9 painted values of A1a's lashes, eyelids and eyeliner (reviewed on the slot sheets, no minor-suggestive
+  content; icons added). The 22 others of the 31 stay hidden.
+* **Tests:** `test_cr5.c` (pool put / find / drop, full pool keeps the old run, raw / load round trip and malformed, the LOOK section
+  survives `save_serialize` / `save_deserialize`, a save without it loads identical, the chunk never goes over its limit, the portrait
+  cache sees a run), `test_creator.c` (the creator offers and saves a deep choice, undo / reset, a full pool refuses the commit and leaves
+  the town and the pool unchanged), runner script `creator_deep.txt`. GBA `test-coresave` now fills the pool in its worst case and
+  `town_crc` covers it; PS1: harness `game_smoke`, `creator_deep`, `creator` pass.
+* **Memory (measured on the origin tip `b2b4a673` and that tree + CR5):** GBA `.bss` 248,748 -> 254,508 B (+5,760 B, the pool), EWRAM free
+  12,500 -> 6,740 B (the room CR5a made); IWRAM unchanged (`.iwram` 11,272, `.iwram_bss` 4,088); `.text` +2,400 B, `.rodata` +5,008 B.
+  PS1 (EXE with the boot FMV) `_end` 0x801ee580 -> 0x801ee960 = **+992 B resident** (the 384 B pool and the code; inside the CREATOR
+  4 KB share); the margin below the stack top printed by the build went 70 -> 69 KB (the tip was already under 72 KB before this
+  package). Dreamcast: no change in RAM terms (`make -C dc` builds, `dc-host-test` ok).
+
 ## CR4 batch A2: hair (2026-11-13)
 
 * **40 new parts live:** 32 hair styles (gene `hair_style` 32..63: Pixie, Shag, Space Buns, Top Knot, Braid Pair,
