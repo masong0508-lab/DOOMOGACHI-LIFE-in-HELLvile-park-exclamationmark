@@ -336,3 +336,39 @@ TEST(exorcism_host_holds_one_pose)
     CHECK_MSG(n <= 3, "the host showed %d different pictures (a held pose is 1, a re-render at most 2 more)", n);
     set_res(240, 160);
 }
+
+/* (G2-EX landing) the ritual's first pictures are fetched as before, not held: a held pose with no picture of the look
+ * to stand in was drawn at once and its sliced job pumped as well (+43 ms on the GBA's first exorcism frame). The
+ * cache runs as on the GBA: stand-ins for 4 ticks, one layer group a tick, a fake clock; the slices are counted
+ * (the native platform has no plat_portrait_slice_done of its own: this one only counts) */
+static int slices_run;
+void plat_portrait_slice_done(int cls) { (void)cls; slices_run++; }
+TEST(exorcism_first_pictures_are_not_held)
+{
+    NatOptions o;
+    int f, n[3];
+    memset(&o, 0, sizeof(o));
+    o.w = 240; o.h = 160; o.seed = 0x5EED1234u; o.quiet = 1; o.save_dir = test_tmp_dir;
+    nat_init(&o);
+    nat_stage_on = 0;
+    nat_stage_reset();
+    test_reset();
+    doomo_init();
+    scene_set(&SCENE_TITLE, 0);
+    rframe(0);
+    portrait_cache_reset();
+    portrait_cache_standin(4);
+    scene_set(&SCENE_EXORCISM, -1);
+    for (f = 0; f < 3; f++) {
+        slices_run = 0;
+        portrait_cache_clock(1000u + (uint32_t)f, 1);
+        rframe(0);
+        n[f] = slices_run;
+    }
+    CHECK(exo_probe_host_uid() != 0);
+    CHECK_MSG(n[0] == 0, "%d portrait slices ran in the ritual's first frame (a held pose's job beside the render)", n[0]);
+    CHECK_MSG(n[1] + n[2] > 0, "the held pose's job did not start after the first frame");
+    portrait_cache_reset();
+    portrait_cache_clock(0, 0);
+    set_res(240, 160);
+}

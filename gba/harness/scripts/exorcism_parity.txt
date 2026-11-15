@@ -1,0 +1,84 @@
+# exorcism_parity.txt - every frame of the practice ritual (seed 1, a failure), hashed tick by tick:
+# 1,382 frames in 38 vhash-seq windows (only the 40 ticks of `hold LEFT` are not hashed). The exact
+# check of a change to the exorcism or the retained stage (G2-EX, docs/EXORCISM_SPEED.md):
+#   make -C gba rom PSLICE_DET=1          (build/doomogachi_det.gba; once on the base, once on the change)
+#   gba/build/harness BASE_det.gba --script gba/harness/scripts/exorcism_parity.txt --no-fps-gates --quiet > base.log
+#   gba/build/harness NEW_det.gba  --script gba/harness/scripts/exorcism_parity.txt --no-fps-gates --quiet > new.log
+#   python3 gba/tools/speedtable.py --compare new.log base.log   (every window "ok: N frames identical")
+# PSLICE_DET makes the portraits' slices independent of the frame's speed; without it two ROMs of
+# different speed animate the faces at different ticks. A change that is meant to change pixels is
+# compared with those steps turned off.
+wait 40
+expect-log doomo: init
+sync on 61
+seed 1
+scene TITLE
+wait 2
+scene EXORCISM -1
+vhash-seq 40 w001
+vhash-seq 90 w002
+press A
+vhash-seq 6 w003
+press A
+vhash-seq 6 w004
+press A
+vhash-seq 6 w005
+press A
+vhash-seq 6 w006
+press A
+vhash-seq 6 w007
+press A
+vhash-seq 20 w008
+vhash-seq 90 w009
+press START
+vhash-seq 10 w010
+press A
+vhash-seq 6 w011
+press A
+vhash-seq 50 w012
+vhash-seq 120 w013
+vhash-seq 220 w014
+press A
+vhash-seq 6 w015
+press A
+vhash-seq 6 w016
+press A
+vhash-seq 6 w017
+press A
+vhash-seq 20 w018
+hold LEFT 40
+press A
+vhash-seq 14 w019
+press A
+vhash-seq 14 w020
+press A
+vhash-seq 14 w021
+press A
+vhash-seq 14 w022
+press A
+vhash-seq 14 w023
+press A
+vhash-seq 14 w024
+press A
+vhash-seq 14 w025
+press A
+vhash-seq 14 w026
+press A
+vhash-seq 80 w027
+press B
+vhash-seq 8 w028
+press B
+vhash-seq 8 w029
+press B
+vhash-seq 8 w030
+press B
+vhash-seq 20 w031
+vhash-seq 60 w032
+press A
+vhash-seq 52 w033
+vhash-seq 60 w034
+vhash-seq 20 w035
+vhash-seq 90 w036
+vhash-seq 130 tail
+press A
+vhash-seq 20 w037
