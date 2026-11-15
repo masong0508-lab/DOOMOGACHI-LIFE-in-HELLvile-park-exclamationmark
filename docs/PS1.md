@@ -1457,6 +1457,16 @@ frame; the static shows are already cheap. The band's last 0.4 fps is mostly the
 (its portrait job re-renders a talk / breath / blink phase, about 30% of the frame in the
 profile: SP2's slices, X1) and the checkers.
 
+G2-CO (2026-11-15, the GBA concert at 30; docs/GBA.md "G2-CO: the concert at 30") leaves the PS1 as
+it was: its trades and kept paths (the baked stage, the 15 Hz rows, the flame trade, the smaller
+choir, `look_run_hash`'s early return, the new weak hooks) are GBA only or compiled out here; the
+concert's code moved into `stage_parts` with the same drawing (`test_concert_gfx.c`'s golden frames
+pass). The EXE built with the boot FMV ends at 0x801ee570 before and after (72,336 B below the stack
+top, 0 B resident); the concert overlay group grew by the restructured code. `perf_concert.txt` on
+PCSX-Redux: 29.88 fps (2:117 3:2 vsyncs) on the tip `1297e931` and with G2-CO, the same frames;
+`game_smoke` passes. One thing every port shares: the setup menu's rows start one pixel further in
+(the GBA's held setup screen needs its cursor inside the window).
+
 ### Life tour (M0, `harness/scripts/perf_life.txt`)
 
 The free-play screens the life sim lives on, on the game disc (made by

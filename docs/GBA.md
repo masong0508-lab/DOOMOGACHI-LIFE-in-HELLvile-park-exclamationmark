@@ -2595,7 +2595,14 @@ rows as sprites) and the owner's choir experiment. Measured on the tip `1297e931
 
 The PS1 (P-K1: three shows at 30 on PCSX-Redux) and the Dreamcast draw the same stage as before: every trade below is
 GBA only, so **the GBA concert looks a little simpler than the PS1's** (chunkier flames, a wall and beams that move at
-15 Hz, a still stage behind the setup menu, a smaller big choir).
+15 Hz, a still stage behind the setup menu, a smaller big choir). PS1 `perf_concert.txt`: 29.88 fps (2:117 3:2 vsyncs)
+before and after, `_end` unchanged (docs/PS1.md). Dreamcast (Flycast, the four windows of `concert_profile.txt` through
+`tools/speed2.py dc`): solo, band, choir and setup 30.0 ticks/s with no tick over 33.3 ms.
+
+The speed tour (`make -C gba test-speed`, `SPEED_BASE` = the before's log): the concert 16.8 -> 30.0 drawn fps (the
+floor is 12.5); 14 of the other 16 scenes frame-identical; the hahaland visit (19 of 30 frames) and invaded (4 of
+30) show their idle-time content (chibis drawn in slices between frames) on other ticks, because a chibi lookup is
+cheaper now (`look_run_hash`): with that one change taken out, hahaland differs in 1 frame and invaded in none.
 
 **Exact steps (the same pixels):**
 * *The stage's still parts baked* (`concert_gfx.c` `stage_parts`, a new backdrop family `DOOMO_BACKDROP_CONCERT` = 5):
