@@ -333,9 +333,9 @@ TEST(studio_sanitize_and_sections)
     test_reset();
     town_new(TOWN_FREEPLAY, 1, TOWN_POP_PREMADE);
     s.singer[0] = 0;
-    RES_SET_VOICE(&doomo_town.res[0], VOICE_PITCH, 30);
+    RES_SET_VOICE(TOWN_RES(0), VOICE_PITCH, 30);
     CHECK_EQ(song_singer_section(&s, 0), SECTION_SOPRANO);
-    RES_SET_VOICE(&doomo_town.res[0], VOICE_PITCH, 2);
+    RES_SET_VOICE(TOWN_RES(0), VOICE_PITCH, 2);
     CHECK_EQ(song_singer_section(&s, 0), SECTION_BASS);
     song_set_section(&s, 0, SECTION_ALTO);
     CHECK_EQ(song_singer_section(&s, 0), SECTION_ALTO);
@@ -916,16 +916,16 @@ TEST(studio_editor_templates_inspire_and_stage)
     CHECK_EQ(studio_stats.inspired, 1);
     /* the show: raise the curtain, sing, take a bow */
     {
-        uint8_t happy0 = doomo_town.res[0].stat[STAT_HAPPY];
-        doomo_town.res[0].stat[STAT_HAPPY] = (uint8_t)DOOMO_MIN(happy0, 50);
-        happy0 = doomo_town.res[0].stat[STAT_HAPPY];
+        uint8_t happy0 = TOWN_RES(0)->stat[STAT_HAPPY];
+        TOWN_RES(0)->stat[STAT_HAPPY] = (uint8_t)DOOMO_MIN(happy0, 50);
+        happy0 = TOWN_RES(0)->stat[STAT_HAPPY];
         st_set_tab(STAB_STAGE);
         press(BTN_A);
         CHECK(stage_fullscreen());
         for (i = 0; i < 4000 && studio.show == 1; i++) frames(1, 0);
         CHECK_EQ(studio.show, 2);
         CHECK(studio.sung_lines >= 3);
-        CHECK(doomo_town.res[0].stat[STAT_HAPPY] > happy0);
+        CHECK(TOWN_RES(0)->stat[STAT_HAPPY] > happy0);
         CHECK_EQ(studio_stats.performed, 1);
         CHECK(unlock_has(UL_STUDIO_WAVE_SAW));
         frames(25, 0);

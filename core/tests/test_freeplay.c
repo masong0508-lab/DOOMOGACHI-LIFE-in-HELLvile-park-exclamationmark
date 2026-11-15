@@ -45,7 +45,7 @@ static int first_alive(int from)
 {
     int i;
     for (i = from; i < DOOMO_MAX_RESIDENTS; i++)
-        if (doomo_town.res[i].status == RES_ALIVE && sim_problem_for(i) < 0) return i;
+        if (TOWN_RES(i)->status == RES_ALIVE && sim_problem_for(i) < 0) return i;
     return -1;
 }
 
@@ -53,16 +53,16 @@ static int first_alive(int from)
 TEST(freeplay_new_island_choices)
 {
     fp_new_island(TOWN_POP_PREMADE, 1);
-    CHECK_EQ(town_count(-1), 1000);
+    CHECK_EQ(town_count(-1), DOOMO_LIVE_RESIDENTS);
     CHECK_EQ(doomo_town.mode, TOWN_FREEPLAY);
     fp_new_island(TOWN_POP_EMPTY, 1);
     CHECK_EQ(town_count(-1), 0);
     fp_new_island(TOWN_POP_RANDOM, 777);
-    CHECK_EQ(town_count(-1), 1000);
+    CHECK_EQ(town_count(-1), DOOMO_LIVE_RESIDENTS);
     {
-        uint32_t fp1 = resident_fingerprint(&doomo_town.res[123]);
+        uint32_t fp1 = resident_fingerprint(TOWN_RES(123));
         fp_new_island(TOWN_POP_RANDOM, 777);
-        CHECK_EQ_U(resident_fingerprint(&doomo_town.res[123]), fp1);
+        CHECK_EQ_U(resident_fingerprint(TOWN_RES(123)), fp1);
     }
 }
 
@@ -75,7 +75,7 @@ TEST(freeplay_new_island_scene_classic)
     frames(0, 10);
     while (!top_is(&SCENE_ISLAND) && guard++ < 20) { press(BTN_A); frames(0, 2); }
     CHECK(top_is(&SCENE_ISLAND));
-    CHECK_EQ(town_count(-1), 1000);
+    CHECK_EQ(town_count(-1), DOOMO_LIVE_RESIDENTS);
     CHECK(unlock_has(UL_FP_PREMADE_START));
     CHECK(!unlock_has(UL_FP_NAMER));
     CHECK_EQ(fp_island_name()[0], 0);
@@ -120,7 +120,7 @@ TEST(freeplay_new_island_start_names_it_first)
     frames(0, 20);
     while (!top_is(&SCENE_ISLAND) && guard++ < 20) { press(BTN_A); frames(0, 2); }   /* the welcome */
     CHECK(top_is(&SCENE_ISLAND));
-    CHECK_EQ(town_count(-1), 1000);
+    CHECK_EQ(town_count(-1), DOOMO_LIVE_RESIDENTS);
     CHECK(unlock_has(UL_FP_NAMER));
     CHECK(strcmp(fp_island_name(), "Mochi Isle") == 0);
 }
@@ -158,11 +158,11 @@ TEST(freeplay_feed_through_resident_screen)
     premade_island();
     id = first_alive(20);
     CHECK(id >= 0);
-    doomo_town.res[id].stat[STAT_HUNGER] = 30;          /* hungry: not "full" */
+    TOWN_RES(id)->stat[STAT_HUNGER] = 30;          /* hungry: not "full" */
     cup0 = inv_count(ITEM_CUPCAKE);
     CHECK(cup0 > 0);
-    hunger0 = doomo_town.res[id].stat[STAT_HUNGER];
-    lvl0 = doomo_town.res[id].level;
+    hunger0 = TOWN_RES(id)->stat[STAT_HUNGER];
+    lvl0 = TOWN_RES(id)->level;
     money0 = doomo_town.money;
     scene_push(&SCENE_RESIDENT, id);
     frames(0, 3);
@@ -176,8 +176,8 @@ TEST(freeplay_feed_through_resident_screen)
     close_dialogs();
     CHECK(top_is(&SCENE_RESIDENT));
     CHECK_EQ(inv_count(ITEM_CUPCAKE), cup0 - 1);
-    CHECK(doomo_town.res[id].stat[STAT_HUNGER] > hunger0);
-    CHECK(doomo_town.res[id].level >= lvl0);
+    CHECK(TOWN_RES(id)->stat[STAT_HUNGER] > hunger0);
+    CHECK(TOWN_RES(id)->level >= lvl0);
     CHECK_EQ_U(doomo_town.money, money0);       /* feeding is free */
 }
 
@@ -222,7 +222,7 @@ TEST(freeplay_care_list_is_decluttered)
     premade_island();
     id = first_alive(40);
     CHECK(id >= 0);
-    doomo_town.res[id].status = RES_ALIVE;
+    TOWN_RES(id)->status = RES_ALIVE;
     scene_push(&SCENE_RESIDENT, id);
     frames(0, 3);
     /* Gift and Heal became one Give bag */
@@ -252,7 +252,7 @@ TEST(freeplay_care_list_is_decluttered)
     CHECK(top_is(&SCENE_RESIDENT));
     /* Manage -> Favourite (the second row) toggles the star */
     {
-        int fav0 = (doomo_town.res[id].flags & RF_FAVORITE) != 0;
+        int fav0 = (TOWN_RES(id)->flags & RF_FAVORITE) != 0;
         CHECK(fp_resident_select(FPA_MANAGE));
         press(BTN_A);
         frames(0, 2);
@@ -263,7 +263,7 @@ TEST(freeplay_care_list_is_decluttered)
         press(BTN_A);
         frames(0, 2);
         close_dialogs();
-        CHECK_EQ((doomo_town.res[id].flags & RF_FAVORITE) != 0, !fav0);
+        CHECK_EQ((TOWN_RES(id)->flags & RF_FAVORITE) != 0, !fav0);
         CHECK(top_is(&SCENE_RESIDENT));
     }
 }
@@ -280,17 +280,17 @@ TEST(freeplay_lay_to_rest_gating)
     CHECK(fp_resident_action_count() > 5);
     CHECK(!fp_resident_has_action(FPA_REST));    /* ALIVE, no monster mode */
     /* a lost soul after three failed exorcisms: the option appears */
-    doomo_town.res[id].status = RES_SOUL_LOST;
-    doomo_town.res[id].exorcism = (uint8_t)((3 << 4) | 3);
+    TOWN_RES(id)->status = RES_SOUL_LOST;
+    TOWN_RES(id)->exorcism = (uint8_t)((3 << 4) | 3);
     frames(0, 2);
     CHECK(fp_resident_has_action(FPA_REST));
     /* possessed (not lost): still hidden */
-    doomo_town.res[id].status = RES_POSSESSED;
+    TOWN_RES(id)->status = RES_POSSESSED;
     frames(0, 2);
     CHECK(!fp_resident_has_action(FPA_REST));
     CHECK(fp_resident_has_action(FPA_EXORCISE));
     /* Monster Mode: visible even for the innocent */
-    doomo_town.res[id].status = RES_ALIVE;
+    TOWN_RES(id)->status = RES_ALIVE;
     opt_set(OPT_MONSTER_MODE, 1);
     frames(0, 2);
     CHECK(fp_resident_has_action(FPA_REST));
@@ -302,8 +302,8 @@ TEST(freeplay_lay_to_rest_lost_soul_double_confirm)
     premade_island();
     id = first_alive(60);
     CHECK(id >= 0);
-    doomo_town.res[id].status = RES_SOUL_LOST;
-    doomo_town.res[id].exorcism = (uint8_t)((3 << 4) | 3);
+    TOWN_RES(id)->status = RES_SOUL_LOST;
+    TOWN_RES(id)->exorcism = (uint8_t)((3 << 4) | 3);
     scene_push(&SCENE_RESIDENT, id);
     frames(0, 2);
     CHECK(fp_resident_select(FPA_REST));
@@ -311,7 +311,7 @@ TEST(freeplay_lay_to_rest_lost_soul_double_confirm)
     CHECK(top_is(&SCENE_CONFIRM));
     press(BTN_A);                               /* default answer is No */
     frames(0, 2);
-    CHECK_EQ(doomo_town.res[id].status, RES_SOUL_LOST);
+    CHECK_EQ(TOWN_RES(id)->status, RES_SOUL_LOST);
     CHECK(fp_resident_select(FPA_REST));
     press(BTN_A);
     press(BTN_LEFT); press(BTN_A);              /* first: Yes */
@@ -319,7 +319,7 @@ TEST(freeplay_lay_to_rest_lost_soul_double_confirm)
     CHECK(top_is(&SCENE_CONFIRM));              /* ...are you REALLY sure? */
     press(BTN_LEFT); press(BTN_A);
     frames(0, 2);
-    CHECK_EQ(doomo_town.res[id].status, RES_DEAD);
+    CHECK_EQ(TOWN_RES(id)->status, RES_DEAD);
     CHECK(fp_resident_in_farewell());
     CHECK(doomo_town.grave_count > 0);
     frames(0, 50);
@@ -344,7 +344,7 @@ TEST(freeplay_monster_mode_needs_the_words)
     for (p = "oops\n"; *p; p++) { ui_text_entry_feed(*p); frames(0, 1); }
     frames(0, 2);
     CHECK(!top_is(&SCENE_CONFIRM));             /* wrong words: nothing happens */
-    CHECK_EQ(doomo_town.res[id].status, RES_ALIVE);
+    CHECK_EQ(TOWN_RES(id)->status, RES_ALIVE);
     CHECK(fp_resident_select(FPA_REST));
     press(BTN_A);
     CHECK(top_is(&SCENE_TEXT_ENTRY));
@@ -353,8 +353,8 @@ TEST(freeplay_monster_mode_needs_the_words)
     CHECK(top_is(&SCENE_CONFIRM));
     press(BTN_LEFT); press(BTN_A);
     frames(0, 2);
-    CHECK_EQ(doomo_town.res[id].status, RES_DEAD);
-    CHECK(doomo_town.res[id].flags & RF_MONSTER_KILL);
+    CHECK_EQ(TOWN_RES(id)->status, RES_DEAD);
+    CHECK(TOWN_RES(id)->flags & RF_MONSTER_KILL);
     CHECK(doomo_town.monster_meter > 0);
 }
 
@@ -404,7 +404,7 @@ TEST(freeplay_save_load_round_trip_through_ui)
     CHECK_EQ_U(doomo_town.money, money);
     CHECK_STR(fp_island_name(), "Mochi Isle");
     CHECK_EQ(fp_flowers(7), 2);
-    CHECK_EQ(town_count(-1), 1000);
+    CHECK_EQ(town_count(-1), DOOMO_LIVE_RESIDENTS);
 }
 
 TEST(freeplay_save_too_big_keeps_old_save_and_explains)
@@ -415,9 +415,10 @@ TEST(freeplay_save_too_big_keeps_old_save_and_explains)
     CHECK(save_game(1));
     /* an island that cannot fit: every citizen fully custom & random */
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        resident_generate(&doomo_town.res[i], 99991u * (uint32_t)i + 7u);
-        doomo_town.res[i].flags |= RF_CUSTOM;
-        doomo_town.res[i].name[0] = (char)('A' + i % 26);
+        if (TOWN_RES(i)->status == RES_EMPTY) continue;    /* LIVE=500: not in town */
+        resident_generate(TOWN_RES(i), 99991u * (uint32_t)i + 7u);
+        TOWN_RES(i)->flags |= RF_CUSTOM;
+        TOWN_RES(i)->name[0] = (char)('A' + i % 26);
     }
     scene_push(&SCENE_SAVELOAD, FP_SL_ARG_MANAGE);
     frames(0, 2);
@@ -506,15 +507,15 @@ TEST(freeplay_island_town_hall_rent_once_a_day)
 TEST(freeplay_picker_kinds)
 {
     premade_island();
-    doomo_town.res[5].status = RES_POSSESSED;
+    TOWN_RES(5)->status = RES_POSSESSED;
     CHECK(fp_pick_match(PICK_POSSESSED, 5));
-    CHECK(!fp_pick_match(PICK_POSSESSED, 6) || doomo_town.res[6].status == RES_POSSESSED ||
-          doomo_town.res[6].status == RES_SOUL_LOST);
-    doomo_town.res[6].status = RES_DEAD;
+    CHECK(!fp_pick_match(PICK_POSSESSED, 6) || TOWN_RES(6)->status == RES_POSSESSED ||
+          TOWN_RES(6)->status == RES_SOUL_LOST);
+    TOWN_RES(6)->status = RES_DEAD;
     CHECK(fp_pick_match(PICK_DEAD, 6));
     CHECK(!fp_pick_match(PICK_LIVING, 6));
     CHECK(fp_pick_match(PICK_ANY, 6));
-    doomo_town.res[7].status = RES_EMPTY;
+    TOWN_RES(7)->status = RES_EMPTY;
     CHECK(!fp_pick_match(PICK_ANY, 7));
 }
 
@@ -586,7 +587,7 @@ TEST(freeplay_all_screens_smoke_both_resolutions)
             int lit = 0, p;
             premade_island();
             grave_add(9);
-            doomo_town.res[9].status = RES_DEAD;
+            TOWN_RES(9)->status = RES_DEAD;
             scene_push(scenes[i], args[i]);
             frames(0, 20);
             for (k = 0; k < DOOMO_COUNTOF(mash); k++) { press(mash[k]); frames(0, 4); }
@@ -631,7 +632,7 @@ TEST(freeplay_scene_scratch_loss_is_rebuilt)
     press(BTN_A);
     CHECK(top_is(&SCENE_RESIDENT));
     id = fp_resident_id();
-    CHECK(id >= 0 && doomo_town.res[id].status != RES_EMPTY);
+    CHECK(id >= 0 && TOWN_RES(id)->status != RES_EMPTY);
 }
 
 /* (perf, X2) the news icon in one pass gives exactly the old chain of fp_strcasestr() scans: every template with

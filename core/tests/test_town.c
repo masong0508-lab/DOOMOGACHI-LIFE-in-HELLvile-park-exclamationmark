@@ -31,31 +31,32 @@ TEST(town_new_populations)
 
     town_new(TOWN_STORY, 1, TOWN_POP_PREMADE);
     CHECK_EQ(doomo_town.mode, TOWN_STORY);
-    CHECK_EQ(town_count(-1), DOOMO_MAX_RESIDENTS);
-    CHECK_EQ(town_count_district(DISTRICT_HILLVILE, RES_ALIVE), 500);
-    CHECK_EQ(town_count_district(DISTRICT_HELLVILE, -1), 500);
+    CHECK_EQ(town_count(-1), DOOMO_LIVE_RESIDENTS);           /* (LIVE=500: res_live.h's 500) */
+    CHECK_EQ(town_count_district(DISTRICT_HILLVILE, RES_ALIVE), DOOMO_LIVE_PER_DISTRICT);
+    CHECK_EQ(town_count_district(DISTRICT_HELLVILE, -1), DOOMO_LIVE_PER_DISTRICT);
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
         DoomoResident base;
+        if (TOWN_RES(i)->status == RES_EMPTY) continue;
         town_premade_record(i, &base);
         resident_sanitize(&base);
-        CHECK(memcmp(&base, &doomo_town.res[i], sizeof(base)) == 0);
+        CHECK(memcmp(&base, TOWN_RES(i), sizeof(base)) == 0);
     }
     CHECK(edges_sorted_valid());
 
     town_new(TOWN_FREEPLAY, 777, TOWN_POP_RANDOM);
-    CHECK_EQ(town_count(-1), DOOMO_MAX_RESIDENTS);
-    CHECK(doomo_town.edge_count > 500);
+    CHECK_EQ(town_count(-1), DOOMO_LIVE_RESIDENTS);
+    CHECK(doomo_town.edge_count > 500 * DOOMO_LIVE_RESIDENTS / DOOMO_MAX_RESIDENTS);
     CHECK(edges_sorted_valid());
-    CHECK(doomo_town.res[700].flags & RF_HELLBORN);
-    CHECK(!(doomo_town.res[3].flags & RF_HELLBORN));
+    CHECK(TOWN_RES(test_live_id(700))->flags & RF_HELLBORN);
+    CHECK(!(TOWN_RES(3)->flags & RF_HELLBORN));
     {   /* deterministic per seed */
-        uint32_t fp = resident_fingerprint(&doomo_town.res[123]);
+        uint32_t fp = resident_fingerprint(TOWN_RES(123));
         int ec = doomo_town.edge_count;
         town_new(TOWN_FREEPLAY, 777, TOWN_POP_RANDOM);
-        CHECK_EQ_U(resident_fingerprint(&doomo_town.res[123]), fp);
+        CHECK_EQ_U(resident_fingerprint(TOWN_RES(123)), fp);
         CHECK_EQ(doomo_town.edge_count, ec);
         town_new(TOWN_FREEPLAY, 778, TOWN_POP_RANDOM);
-        CHECK(resident_fingerprint(&doomo_town.res[123]) != fp);
+        CHECK(resident_fingerprint(TOWN_RES(123)) != fp);
     }
 }
 
@@ -88,8 +89,8 @@ TEST(town_alloc_free_find)
     CHECK_EQ(rel_find(id, 3) == NULL, 1);
     CHECK_EQ(doomo_town.grave_count, 0);
     CHECK(!town_alive(id));
-    /* fill a district */
-    for (i = 0; i < DOOMO_DISTRICT_SIZE; i++) doomo_town.res[i].status = RES_ALIVE;
+    /* fill a district (LIVE=500: its 250 slots) */
+    for (i = 0; i < DOOMO_DISTRICT_SIZE; i++) { DoomoResident *r = test_res(i); if (r) r->status = RES_ALIVE; }
     CHECK_EQ(town_alloc(DISTRICT_HILLVILE), -1);
 }
 
@@ -98,6 +99,8 @@ TEST(relationships_basic)
     DoomoEdge *e;
     uint16_t ids[8];
     int n;
+    /* LIVE=500: an edge needs residents (an id without a slot takes none) */
+    test_res(1); test_res(2); test_res(4); test_res(5); test_res(9); test_res(10); test_res(600);
     CHECK(rel_get_or_add(5, 5) == NULL);
     CHECK(rel_get_or_add(-1, 5) == NULL);
     e = rel_get_or_add(9, 4);
@@ -218,30 +221,38 @@ TEST(relationships_evict_weakest_when_full)
 {
     int i;
     DoomoRng r;
+    /* LIVE=500: residents for every id below (all of them where 1000 live); 100 strong bonds,
+     * not 300: 250 people a district */
+    const int strong = DOOMO_RES_SLOTS ? 100 : 300;
+    if (DOOMO_RES_SLOTS) {
+        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) test_res(i);
+        for (i = 0; i < 9; i++) { town_unbind(DOOMO_DISTRICT_SIZE + i); town_bind(990 + i); }
+    }
     rng_seed(&r, 3);
     /* fill the graph with weak bonds plus a few strong ones */
-    for (i = 0; doomo_town.edge_count < DOOMO_MAX_EDGES; i++) {
+    for (i = 0; doomo_town.edge_count < DOOMO_LIVE_EDGES; i++) {
         int a = rng_range(&r, 1000), b = rng_range(&r, 1000);
         DoomoEdge *e = rel_get_or_add(a, b);
         if (e) e->value = (int8_t)rng_between(&r, -40, 40);
     }
     rel_set_kind(1, 2, REL_MARRIED);           /* may evict one weak edge */
     rel_find(1, 2)->value = 1;
-    CHECK_EQ(doomo_town.edge_count, DOOMO_MAX_EDGES);
-    for (i = 0; i < 300; i++) {
+    CHECK_EQ(doomo_town.edge_count, DOOMO_LIVE_EDGES);
+    for (i = 0; i < strong; i++) {
         DoomoEdge *e = rel_get_or_add(990 + (i % 9), 100 + i);
         CHECK(e != NULL);
         e->value = 99;
-        CHECK_EQ(doomo_town.edge_count, DOOMO_MAX_EDGES);
+        CHECK_EQ(doomo_town.edge_count, DOOMO_LIVE_EDGES);
     }
     CHECK(rel_find(1, 2) != NULL);             /* marriage survived */
-    for (i = 0; i < 300; i++) CHECK(rel_find(990 + (i % 9), 100 + i) != NULL);
+    for (i = 0; i < strong; i++) CHECK(rel_find(990 + (i % 9), 100 + i) != NULL);
     CHECK(edges_sorted_valid());
 }
 
 TEST(rel_normalize_cleans_junk)
 {
     DoomoEdge *E = doomo_town.edges;
+    test_res(0); test_res(1); test_res(3); test_res(7);   /* (LIVE=500: residents for the ends) */
     E[0].a = 7; E[0].b = 3; E[0].value = 10; E[0].kind = REL_FRIEND | REL_CRUSH_AB;
     E[1].a = 5; E[1].b = 5; E[1].value = 0; E[1].kind = 0;          /* self */
     E[2].a = 3; E[2].b = 7; E[2].value = 20; E[2].kind = REL_RIVAL; /* dup */

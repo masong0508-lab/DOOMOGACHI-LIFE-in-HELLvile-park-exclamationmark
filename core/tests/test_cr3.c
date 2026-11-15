@@ -89,11 +89,15 @@ TEST(cr3_gene_fields_survive_a_save)
 {
     static uint8_t img[DOOMO_SAVE_SLOT1_MAX];
     static uint8_t want[8][DOOMO_GENE_BYTES];
-    static const int ids[8] = { 0, 3, 77, 499, 500, 812, 999, DOOMO_PLAYER_ID };
+    static const int want_ids[8] = { 0, 3, 77, 499, 500, 812, 999, DOOMO_PLAYER_ID };
+    int ids[8];
     uint8_t chunk[128];
     uint32_t n;
     int i;
     town_new(TOWN_FREEPLAY, 4242u, TOWN_POP_PREMADE);
+    for (i = 0; i < 8; i++)     /* LIVE=500: the next id that lives here (499, 812 do not) */
+        ids[i] = want_ids[i] == DOOMO_PLAYER_ID || test_live_id(want_ids[i]) < 0 ? want_ids[i] : test_live_id(want_ids[i]);
+    if (DOOMO_RES_SLOTS) ids[3] = test_live_id(400);         /* (none after 499 in Hillvile) */
     for (i = 0; i < 8; i++) {
         DoomoResident *r = town_res(ids[i]);
         CHECK(r != NULL);

@@ -79,6 +79,16 @@ int main(int argc, char **argv)
         cur_failed = 0;
         test_reset();
         tests[i].fn();
+#if DOOMO_RES_SLOTS
+        {   /* GBA-500: nothing may write into an id that has no slot (town.h TOWN_RES) */
+            static const DoomoResident zero;
+            if (memcmp(&doomo_res_none, &zero, sizeof(zero)) != 0) {
+                fprintf(stderr, "%s: wrote into the record of an id with no slot (doomo_res_none)\n", tests[i].name);
+                memset(&doomo_res_none, 0, sizeof(doomo_res_none));
+                cur_failed++;
+            }
+        }
+#endif
         if (cur_failed) { failed++; fprintf(stderr, "FAIL  %s\n", tests[i].name); }
         else { passed++; printf("ok    %s\n", tests[i].name); }
     }

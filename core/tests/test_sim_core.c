@@ -17,7 +17,7 @@ static void fresh(int hour)
     sim_init();
     sim_seed(1);
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        DoomoResident *r = &doomo_town.res[i];
+        DoomoResident *r = TOWN_RES(i);
         if (r->status != RES_ALIVE) continue;
         r->stat[STAT_ENERGY] = 30;
         r->stat[STAT_HUNGER] = 80;
@@ -33,7 +33,7 @@ static Avg average(int hillvile_adults_only)
     Avg a = { 0, 0, 0, 0, 0 };
     int i;
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        const DoomoResident *r = &doomo_town.res[i];
+        const DoomoResident *r = TOWN_RES(i);
         if (r->status != RES_ALIVE) continue;
         if (hillvile_adults_only && (RES_DISTRICT(i) || sim_life_stage(i) != LIFE_ADULT)) continue;
         a.n++;
@@ -58,7 +58,7 @@ TEST(simcore_a_night_skipped_rests_the_town_and_empties_the_stomach)
     a = average(1);
     printf("    night skip, hillvile adults: %d, rested %d, energy %d hunger %d hygiene %d\n",
            a.n, a.rested, a.energy, a.hunger, a.hygiene);
-    CHECK(a.n > 300);
+    CHECK(a.n > 300 * DOOMO_LIVE_RESIDENTS / DOOMO_MAX_RESIDENTS);   /* (LIVE=500: half the town) */
     CHECK(a.rested * 100 >= a.n * 80);       /* most slept the night through   */
     CHECK(a.energy >= 90);
     CHECK(a.hunger < 75);                    /* a night without a meal ...     */
@@ -119,7 +119,7 @@ TEST(simcore_long_skips_keep_the_town_valid)
     for (round = 0; round < 4; round++) {
         sim_advance_minutes(round == 3 ? 5 * 1440 + 333 : 9 * 60 + round * 211);
         for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-            const DoomoResident *r = &doomo_town.res[i];
+            const DoomoResident *r = TOWN_RES(i);
             if (r->status == RES_EMPTY) continue;
             for (s = 0; s < STAT_COUNT; s++)
                 CHECK_MSG(r->stat[s] <= 100, "round %d res %d stat %d = %d", round, i, s, r->stat[s]);
@@ -128,7 +128,7 @@ TEST(simcore_long_skips_keep_the_town_valid)
         }
         CHECK_EQ(sim_possessed_count(), town_count(RES_POSSESSED));
         CHECK(sim_possessed_count() <= sim_possession_cap());
-        CHECK(doomo_town.edge_count <= DOOMO_MAX_EDGES);
+        CHECK(doomo_town.edge_count <= DOOMO_LIVE_EDGES);
         for (i = 1; i < doomo_town.edge_count; i++) {
             const DoomoEdge *p = &doomo_town.edges[i - 1], *e = &doomo_town.edges[i];
             CHECK_MSG(((uint32_t)p->a << 16 | p->b) < ((uint32_t)e->a << 16 | e->b),
@@ -154,16 +154,18 @@ TEST(simcore_skipped_days_count_as_lived)
 TEST(simcore_edge_pass_visits_every_edge_once)
 {
     enum { N = 40, VISITS = 20 };
-    int i, removed;
+    int i, removed, b_last = 0;
     fresh(10);
     doomo_town.edge_count = 0;
     sim_social_init();
     for (i = 0; i < N; i++) {
-        int a = 100 + 2 * i, b = 101 + 2 * i;
+        /* LIVE=500: the next ids that live here (100 + 2i and 101 + 2i with all 1000) */
+        int a = test_live_id(i ? b_last + 1 : 100), b = test_live_id(a + 1);
+        b_last = b;
         rel_adjust(a, b, 0);                              /* a value-0 acquaintance */
-        doomo_town.res[a].activity = ACT_HOME;            /* not at a venue: out of sight */
-        doomo_town.res[b].activity = ACT_HOME;
-        doomo_town.res[a].status = doomo_town.res[b].status = RES_ALIVE;
+        TOWN_RES(a)->activity = ACT_HOME;            /* not at a venue: out of sight */
+        TOWN_RES(b)->activity = ACT_HOME;
+        TOWN_RES(a)->status = TOWN_RES(b)->status = RES_ALIVE;
     }
     CHECK_EQ(doomo_town.edge_count, N);
     sim_s.edge_cursor = 0;
@@ -180,6 +182,7 @@ TEST(simcore_edge_pass_visits_every_edge_once)
 TEST(simcore_best_friends_and_nemeses_hold_their_rank)
 {
     town_new(TOWN_FREEPLAY, 5, TOWN_POP_EMPTY);
+    test_res(4); test_res(9);                             /* (LIVE=500: an edge needs residents) */
     CHECK_EQ(rel_kind(4, 9), -1);                         /* a clean pair */
     /* best friends until below 60 */
     rel_adjust(4, 9, 80);
@@ -221,6 +224,7 @@ TEST(simcore_a_wobbling_bond_does_not_repeat_the_headline)
 {
     int i, crossings = 0, before;
     town_new(TOWN_FREEPLAY, 99, TOWN_POP_EMPTY);
+    test_res(20); test_res(21);                           /* (LIVE=500: an edge needs residents) */
     CHECK_EQ(rel_kind(20, 21), -1);                       /* a clean pair */
     rel_adjust(20, 21, 72);
     CHECK_EQ(rel_kind(20, 21), REL_BEST_FRIEND);

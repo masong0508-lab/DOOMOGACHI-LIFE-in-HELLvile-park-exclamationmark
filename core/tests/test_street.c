@@ -7,13 +7,17 @@ static void empty_town(void)
 {
     int i;
     town_new(TOWN_FREEPLAY, 5, TOWN_POP_EMPTY);
-    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) doomo_town.res[i].status = RES_EMPTY;
+    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
+        if (TOWN_RES(i)->status != RES_EMPTY) TOWN_RES(i)->status = RES_EMPTY;
 }
 
 static void fill(int district, int from, int to)       /* occupy lots from..to-1 */
 {
     int i;
-    for (i = from; i < to; i++) doomo_town.res[district * DOOMO_DISTRICT_SIZE + i].status = RES_ALIVE;
+    for (i = from; i < to; i++) {
+        DoomoResident *r = test_res(district * DOOMO_DISTRICT_SIZE + i);   /* LIVE=500: up to 250 */
+        if (r) r->status = RES_ALIVE;
+    }
 }
 
 TEST(street_address_round_trips_for_all_1000_slots)
@@ -70,6 +74,9 @@ TEST(street_reads_the_live_town)
     fill(0, 0, 1);                                     /* one person */
     CHECK_EQ(street_extent(0), 1);
     CHECK_EQ(street_free_lots(0), STREET_FREE_LOTS);
+    /* LIVE=500: a district holds 250 people, so the 500-lot street of the rest of this test
+     * (Home Row, NEIGHBOURHOOD_ROADMAP, not built yet) is never reached on the GBA */
+    if (DOOMO_RES_SLOTS) return;
     fill(0, 0, 499);
     CHECK_EQ(street_extent(0), 499);
     CHECK_EQ(street_chunks(0), STREET_CHUNKS_MAX);
@@ -82,12 +89,17 @@ TEST(street_reads_the_live_town)
 TEST(street_full_district_has_no_free_lot_and_deleting_gives_one_back)
 {
     empty_town();
+    if (DOOMO_RES_SLOTS) {          /* LIVE=500: full at 250 people, the street is not built */
+        fill(0, 0, TEST_DISTRICT_CAP);
+        CHECK(street_is_full(0) && !street_is_full(1));
+        return;
+    }
     fill(0, 0, 500);
     fill(1, 0, 500);
     CHECK(street_is_full(0) && street_is_full(1));     /* the 1000 limit */
     CHECK_EQ(street_free_lots(0) + street_free_lots(1), 0);
     CHECK_EQ(street_lots(0), 500);
-    doomo_town.res[123].status = RES_EMPTY;            /* delete one person */
+    TOWN_RES(123)->status = RES_EMPTY;            /* delete one person */
     CHECK(!street_is_full(0));
     CHECK_EQ(street_free_lots(0), 1);
     CHECK_EQ(street_lots(0), 500);                     /* the street keeps its length ... */
@@ -101,13 +113,13 @@ TEST(street_shrinks_back_when_the_last_people_leave)
     fill(0, 0, 120);
     CHECK_EQ(street_chunks(0), 3);                     /* 130 lots -> 3 chunks */
     fill(0, 0, 0);
-    doomo_town.res[119].status = RES_EMPTY;
-    doomo_town.res[118].status = RES_EMPTY;
+    TOWN_RES(119)->status = RES_EMPTY;
+    TOWN_RES(118)->status = RES_EMPTY;
     CHECK_EQ(street_extent(0), 118);
-    doomo_town.res[117].status = RES_EMPTY;
+    TOWN_RES(117)->status = RES_EMPTY;
     CHECK_EQ(street_extent(0), 117);
     CHECK_EQ(street_chunks(0), 3);                     /* 127 lots */
-    { int i; for (i = 40; i < 120; i++) doomo_town.res[i].status = RES_EMPTY; }
+    { int i; for (i = 40; i < 120; i++) TOWN_RES(i)->status = RES_EMPTY; }
     CHECK_EQ(street_extent(0), 40);
     CHECK_EQ(street_chunks(0), 1);
 }

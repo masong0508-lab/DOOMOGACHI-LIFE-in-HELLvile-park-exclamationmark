@@ -30,6 +30,33 @@ extern int test_update_golden;
  * no toasts, scene stack cleared. */
 void test_reset(void);
 
+/* (GBA-500) the record of resident id after giving it a slot (town.h town_bind): for a
+ * test that writes a citizen into an empty id. Where all 1000 live it is town_res(id).
+ * NULL when the id's district has no free slot (LIVE=500: 250 per district). */
+static inline DoomoResident *test_res(int id) { return town_bind(id) >= 0 ? town_res(id) : NULL; }
+/* The residents a full district holds in this build (500, or 250 with LIVE=500). */
+#define TEST_DISTRICT_CAP DOOMO_LIVE_PER_DISTRICT
+/* (GBA-500) the first id >= from (in from's district) that has a resident: from itself
+ * where all 1000 live; with LIVE=500 the next one of the island's 500. -1 if none. */
+static inline int test_live_id(int from)
+{
+    int end = from < DOOMO_DISTRICT_SIZE ? DOOMO_DISTRICT_SIZE : DOOMO_MAX_RESIDENTS;
+    for (; from < end; from++) if (TOWN_RES(from)->status != RES_EMPTY) return from;
+    return -1;
+}
+/* (GBA-500) the record of id in a copy of a town (a snapshot), like TOWN_RES does for
+ * doomo_town; an id with no slot reads as an all-zero (empty) record. */
+static inline const DoomoResident *test_town_rec(const DoomoTown *t, int id)
+{
+#if DOOMO_RES_SLOTS
+    static const DoomoResident none;
+    int s = t->res_slot[id];
+    return s ? &t->res[(id >= DOOMO_DISTRICT_SIZE ? DOOMO_LIVE_PER_DISTRICT : 0) + s - 1] : &none;
+#else
+    return &t->res[id];
+#endif
+}
+
 #define TEST(name)                                                        \
     static void name(void);                                               \
     __attribute__((constructor)) static void reg_##name(void)             \

@@ -80,10 +80,12 @@ static void town_fill(uint32_t seed)
     int i;
     if (seed & 0x80000000u) {
         town_new(TOWN_STORY, seed & 0xFFFFu, TOWN_POP_PREMADE);
-        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-            doomo_town.res[i].stat[STAT_HAPPY] = (uint8_t)(i % 101);
-            doomo_town.res[i].stat[STAT_ENERGY] = (uint8_t)((i * 7) % 101);
-            doomo_town.res[i].mood = (uint8_t)(i % MOOD_COUNT);
+        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {        /* GBA-500: the ids in town */
+            DoomoResident *t = TOWN_RES(i);
+            if (t->status == RES_EMPTY) continue;
+            t->stat[STAT_HAPPY] = (uint8_t)(i % 101);
+            t->stat[STAT_ENERGY] = (uint8_t)((i * 7) % 101);
+            t->mood = (uint8_t)(i % MOOD_COUNT);
         }
         doomo_town.day = 40;
         resident_sanitize(&doomo_town.player);
@@ -105,9 +107,10 @@ static void town_fill(uint32_t seed)
          * back, so town_crc() of the loaded town would never match. */
         for (k = 0; k < sizeof(c); k++) ((uint8_t *)&c)[k] = (uint8_t)rng_next(&r);
         c.status = RES_ALIVE;
-        res_pack(&c, &doomo_town.res[i]);
+        if (town_bind(i) < 0) continue;        /* GBA-500: the first 250 ids of each district */
+        res_pack(&c, TOWN_RES(i));
     }
-    while (doomo_town.edge_count < DOOMO_MAX_EDGES) {
+    while (doomo_town.edge_count < DOOMO_LIVE_EDGES) {
         DoomoEdge *e = rel_get_or_add(rng_range(&r, 1001), rng_range(&r, 1001));
         if (e) { e->value = (int8_t)rng_between(&r, -100, 100); e->kind = (uint8_t)rng_range(&r, 9); }
     }
@@ -137,7 +140,10 @@ static uint32_t town_crc(void)
 {
     const DoomoTown *t = &doomo_town;
     uint32_t c = 0;
-    c = crc_more(c, t->res, sizeof(t->res));
+    {   /* GBA-500: by id, so the slot order of the records does not matter */
+        int i;
+        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) c = crc_more(c, TOWN_RES(i), sizeof(DoomoResident));
+    }
     c = crc_more(c, &t->player, sizeof(t->player));
     c = crc_more(c, t->edges, t->edge_count * sizeof(DoomoEdge));
     c = crc_more(c, t->graves, t->grave_count * sizeof(DoomoGrave));

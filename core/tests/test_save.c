@@ -22,7 +22,7 @@ static int towns_equal(const DoomoTown *a, const DoomoTown *b, char *why, int ca
     FIELD(progress) FIELD(player) FIELD(population)
 #undef FIELD
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
-        if (memcmp(&a->res[i], &b->res[i], sizeof(DoomoResident)) != 0) {
+        if (memcmp(test_town_rec(a, i), test_town_rec(b, i), sizeof(DoomoResident)) != 0) {
             snprintf(why, cap, "resident %d differs", i);
             return 0;
         }
@@ -115,7 +115,8 @@ TEST(save_500_custom_500_premade_changed)
     scribble_misc(1);
     rng_seed(&r, 99);
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        DoomoResident *res = &doomo_town.res[i];
+        DoomoResident *res = TOWN_RES(i);
+        if (res->status == RES_EMPTY) continue;            /* LIVE=500: not in town */
         if (i % 2 == 0) {                                  /* custom citizen */
             resident_generate(res, 50000u + (uint32_t)i);
             res->flags |= RF_CUSTOM;
@@ -133,6 +134,8 @@ TEST(save_500_custom_500_premade_changed)
     CHECK(n <= DOOMO_SAVE_SLOT1_MAX);
 }
 
+static void ext_fill_random(uint32_t seed);
+
 static void fill_random_custom(uint32_t seed, int full_edges)
 {
     int i;
@@ -141,21 +144,24 @@ static void fill_random_custom(uint32_t seed, int full_edges)
     scribble_misc(seed);
     rng_seed(&r, seed);
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        DoomoResident *res = &doomo_town.res[i];
+        DoomoResident *res = test_res(i);       /* LIVE=500: the first 250 of a district */
         DoomoCitizen c;
         size_t k;
         /* fully random v1 bytes, then made valid (res_pack clamps and sanitizes): the worst case
          * for the codec. Saves stay v1 until M1, so only v1 fields are random. */
         for (k = 0; k < sizeof(c); k++) ((uint8_t *)&c)[k] = (uint8_t)rng_next(&r);
         c.status = RES_ALIVE;
-        res_pack(&c, res);
+        if (res) res_pack(&c, res);
     }
     if (full_edges) {
-        while (doomo_town.edge_count < DOOMO_MAX_EDGES) {
+        while (doomo_town.edge_count < DOOMO_LIVE_EDGES) {
             DoomoEdge *e = rel_get_or_add(rng_range(&r, 1001), rng_range(&r, 1001));
             if (e) { e->value = (int8_t)rng_between(&r, -100, 100); e->kind = (uint8_t)rng_range(&r, 9); }
         }
     }
+    /* GBA-500: 500 random citizens fit the story slot (about 35 KB): a random 8 KB test
+     * chunk keeps this the worst case the slot limits are checked with */
+    if (DOOMO_RES_SLOTS) ext_fill_random(seed);
 }
 
 TEST(save_1000_fully_random_custom_and_slot_limits)
@@ -166,12 +172,14 @@ TEST(save_1000_fully_random_custom_and_slot_limits)
     n = roundtrip("1000 random custom + 2048 edges");
     CHECK(n > 0);
     CHECK_MSG(n <= DOOMO_SAVE_SLOT1_MAX, "worst case %u > slot 1 %u", n, DOOMO_SAVE_SLOT1_MAX);
-    CHECK(n > DOOMO_SAVE_SLOT0_MAX);              /* too custom for the story slot */
+    /* too custom for the story slot (LIVE=500: 500 citizens and 1024 edges may fit it) */
+    CHECK(DOOMO_RES_SLOTS || n > DOOMO_SAVE_SLOT0_MAX);
     /* slot 1 takes it */
     CHECK(save_game(1));
     CHECK_EQ(save_last_size(), n);
     CHECK(save_exists(1));
     /* slot 0 refuses cleanly and keeps the previous save intact */
+    if (n > DOOMO_SAVE_SLOT0_MAX) {
     {
         DoomoTown keep = doomo_town;
         town_new(TOWN_STORY, 1, TOWN_POP_PREMADE);
@@ -180,6 +188,7 @@ TEST(save_1000_fully_random_custom_and_slot_limits)
         CHECK(old != NULL);
         CHECK(plat_save_read(0, old, DOOMO_SAVE_SLOT0_MAX, &old_size));
         doomo_town = keep;
+        if (DOOMO_RES_SLOTS) ext_fill_random(4242);   /* town_new reset the test chunk */
     }
     CHECK(!save_game(0));
     CHECK(strstr(save_last_error(), "too big") != NULL);
@@ -192,6 +201,7 @@ TEST(save_1000_fully_random_custom_and_slot_limits)
         free(now);
     }
     free(old);
+    }
     /* a too-small buffer fails and reports the size it needed */
     CHECK_EQ(save_serialize(image, 1000), 0);
     CHECK_EQ(save_last_size(), n);
@@ -213,20 +223,22 @@ TEST(save_random_island_and_story)
     int i;
     town_new(TOWN_FREEPLAY, 31337, TOWN_POP_RANDOM);
     CHECK(roundtrip("random island, untouched") < 16 * 1024);
-    for (i = 0; i < DOOMO_MAX_RESIDENTS; i += 3) doomo_town.res[i].stat[STAT_HUNGER] ^= 7;
+    for (i = 0; i < DOOMO_MAX_RESIDENTS; i += 3)
+        if (TOWN_RES(i)->status != RES_EMPTY) TOWN_RES(i)->stat[STAT_HUNGER] ^= 7;
     town_free(10);
     town_free(600);
     CHECK(roundtrip("random island, lived in") > 0);
     town_new(TOWN_STORY, 1, TOWN_POP_PREMADE);
     scribble_misc(5);
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        doomo_town.res[i].stat[STAT_HAPPY] = (uint8_t)(i % 101);
-        doomo_town.res[i].stat[STAT_ENERGY] = (uint8_t)((i * 7) % 101);
-        doomo_town.res[i].mood = (uint8_t)(i % MOOD_COUNT);
+        if (TOWN_RES(i)->status == RES_EMPTY) continue;    /* LIVE=500: not in town */
+        TOWN_RES(i)->stat[STAT_HAPPY] = (uint8_t)(i % 101);
+        TOWN_RES(i)->stat[STAT_ENERGY] = (uint8_t)((i * 7) % 101);
+        TOWN_RES(i)->mood = (uint8_t)(i % MOOD_COUNT);
     }
-    doomo_town.res[3].status = RES_POSSESSED;
-    doomo_town.res[700].status = RES_DEAD;
-    doomo_town.res[700].death_cause = DEATH_MONSTER;
+    TOWN_RES(3)->status = RES_POSSESSED;
+    TOWN_RES(test_live_id(700))->status = RES_DEAD;
+    TOWN_RES(test_live_id(700))->death_cause = DEATH_MONSTER;
     {
         uint32_t n = roundtrip("story, all premade lived in");
         CHECK(n > 0 && n <= DOOMO_SAVE_SLOT0_MAX);
@@ -248,7 +260,7 @@ TEST(save_info_header)
     CHECK_EQ(info.mode, TOWN_STORY);
     CHECK_EQ(info.chapter, 3);
     CHECK_EQ(info.population, TOWN_POP_PREMADE);
-    CHECK_EQ(info.residents, 1000);
+    CHECK_EQ(info.residents, DOOMO_LIVE_RESIDENTS);
     CHECK_EQ(info.day, 12);
     CHECK_EQ(info.money, 777);
     CHECK_EQ(info.size, n);
@@ -289,7 +301,7 @@ TEST(save_rejects_corruption_without_touching_town)
     image[4] = DOOMO_SAVE_VERSION;
     CHECK(memcmp(&snapshot, &doomo_town, sizeof(snapshot)) == 0);
     CHECK(save_deserialize(image, n));
-    CHECK_EQ(town_count(-1), 1000);
+    CHECK_EQ(town_count(-1), DOOMO_LIVE_RESIDENTS);
 }
 
 TEST(save_crc32_known_vector)
@@ -388,16 +400,18 @@ TEST(save_streamed_limits_and_failures)
     CHECK(save_game(0));
     keep_size = slot_bytes(0, file_a);
     CHECK(keep_size > 0);
-    /* too big for slot 0: refused before anything is written */
+    /* too big for slot 0: refused before anything is written (LIVE=500: when it is) */
     fill_random_custom(77, 1);
     big = doomo_town;
-    nat_stream_writes = 0;
-    CHECK(!save_game(0));
-    CHECK(strstr(save_last_error(), "too big") != NULL);
-    CHECK_EQ(nat_stream_writes, 0);
-    now = slot_bytes(0, file_b);
-    CHECK_EQ(now, keep_size);
-    CHECK(memcmp(file_a, file_b, keep_size) == 0);
+    if (!DOOMO_RES_SLOTS || save_serialize(image, sizeof(image)) > DOOMO_SAVE_SLOT0_MAX) {
+        nat_stream_writes = 0;
+        CHECK(!save_game(0));
+        CHECK(strstr(save_last_error(), "too big") != NULL);
+        CHECK_EQ(nat_stream_writes, 0);
+        now = slot_bytes(0, file_b);
+        CHECK_EQ(now, keep_size);
+        CHECK(memcmp(file_a, file_b, keep_size) == 0);
+    }
     /* a write failing half-way reports an error and never leaves a valid
      * but wrong save (natively the old one survives) */
     CHECK(save_game(1));
@@ -465,6 +479,15 @@ static void t_ext_reset(void)
 static DoomoSaveExt t_ext = { SAVE_EXT_TAG('T', 'E', 'S', 'T'), 3, t_ext_size, t_ext_write,
                               t_ext_read, t_ext_reset, 0 /* max_size (S0) */ };
 const DoomoSaveExt *const doomo_save_ext_test = &t_ext;
+
+static void ext_fill_random(uint32_t seed)
+{
+    DoomoRng r;
+    uint32_t i;
+    rng_seed(&r, seed ^ 0xE7u);
+    for (i = 0; i < sizeof(ext_data); i++) ext_data[i] = (uint8_t)rng_next(&r);
+    ext_len = sizeof(ext_data);
+}
 
 static void ext_fill(uint32_t seed, uint32_t n)
 {
@@ -606,6 +629,7 @@ TEST(save_life_stage_round_trips)
     n0 = roundtrip("Classic, untouched (LS0)");
     CHECK(n0 > 0);
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
+        if (town_res(i)->status == RES_EMPTY) continue;        /* LIVE=500: not in town */
         CHECK_EQ(RES_STAGE(town_res(i)), roster_stage(i));
         resident_set_stage(town_res(i), roster_stage(i));
     }
@@ -622,7 +646,7 @@ TEST(save_life_stage_round_trips)
     /* full records (Empty island) and the player keep every stage */
     town_new(TOWN_FREEPLAY, 3, TOWN_POP_EMPTY);
     for (i = 0; i < LIFE_COUNT * ROMANCE_COUNT; i++) {
-        DoomoResident *r = town_res(i * 7);
+        DoomoResident *r = test_res(i * 7);
         resident_generate(r, 900u + (uint32_t)i);
         resident_set_stage(r, i % LIFE_COUNT);
         resident_set_romance(r, i / LIFE_COUNT);
@@ -637,10 +661,10 @@ TEST(save_life_stage_round_trips)
     /* Random island deltas */
     town_new(TOWN_FREEPLAY, 31337, TOWN_POP_RANDOM);
     resident_set_stage(town_res(10), LIFE_CHILD);
-    resident_set_stage(town_res(900), LIFE_BABY);
+    resident_set_stage(town_res(test_live_id(900)), LIFE_BABY);
     CHECK(roundtrip("Random, two stages changed") > 0);
     CHECK_EQ(RES_STAGE(town_res(10)), LIFE_CHILD);
-    CHECK_EQ(RES_STAGE(town_res(900)), LIFE_BABY);
+    CHECK_EQ(RES_STAGE(town_res(test_live_id(900))), LIFE_BABY);
     CHECK_EQ(RES_STAGE(town_res(11)), LIFE_ADULT);
 }
 

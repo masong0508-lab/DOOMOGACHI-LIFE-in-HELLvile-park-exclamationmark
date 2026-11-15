@@ -328,7 +328,8 @@ TEST(creator_full_district_refuses_politely)
 {
     int i;
     for (i = 0; i < DOOMO_DISTRICT_SIZE; i++) {
-        resident_generate(&doomo_town.res[i], (uint32_t)i);
+        DoomoResident *r = test_res(i);           /* LIVE=500: the district fills at 250 */
+        if (r) resident_generate(r, (uint32_t)i);
     }
     open_creator(-1);
     CHECK_EQ(cr.home_id, -1);
@@ -339,7 +340,7 @@ TEST(creator_full_district_refuses_politely)
     press(BTN_A);
     CHECK(scene_top() == &SCENE_CREATOR);
     CHECK(cr.phase != CRP_MOVEIN);
-    CHECK_EQ(town_count_district(DISTRICT_HILLVILE, -1), DOOMO_DISTRICT_SIZE);
+    CHECK_EQ(town_count_district(DISTRICT_HILLVILE, -1), TEST_DISTRICT_CAP);
     CHECK(ui_toast_pending() > 0);
 }
 
@@ -384,7 +385,7 @@ TEST(creator_edits_a_premade_citizen_in_place)
     }
     CHECK_EQ(doomo_town.edge_count, edges_before);
     CHECK_EQ(rel_list(id, ids, 64), rels_before);
-    CHECK_EQ(town_count(-1), DOOMO_MAX_RESIDENTS);
+    CHECK_EQ(town_count(-1), DOOMO_LIVE_RESIDENTS);
     /* edits are makeovers, not new citizens */
     CHECK_EQ(progress_get(PROG_CITIZENS_CREATED), 0);
     CHECK(unlock_has(CRU_MAKEOVER));
@@ -571,7 +572,7 @@ TEST(creator_keeps_a_locked_option_the_citizen_already_has)
     DoomoResident r;
     resident_generate(&r, 9);
     RES_SET_LOOK(&r, GF_EYE_STYLE, EYE_GOAT);                 /* locked for new choices */
-    doomo_town.res[3] = r;
+    *test_res(3) = r;
     id = 3;
     open_creator(id);
     CHECK(!cr_value_locked(cr_row_at(CR_TAB_FACE, row_index(CR_TAB_FACE,

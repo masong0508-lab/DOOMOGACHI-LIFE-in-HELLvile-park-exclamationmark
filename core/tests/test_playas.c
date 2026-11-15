@@ -910,18 +910,18 @@ TEST(mp1_ember_abilities_help_the_household_once_a_day)
     CHECK_EQ(prof_guest_add("Embie", -1, HERO_COOP_FIRST), 1);
     CHECK(prof_switch(1));
     for (i = 0; i < DOOMO_MAX_RESIDENTS && id < 0; i++)
-        if (doomo_town.res[i].status == RES_ALIVE && !family_find(i) && family_add(i, FAMROLE_HOUSEMATE, 0) >= 0) id = i;
+        if (TOWN_RES(i)->status == RES_ALIVE && !family_find(i) && family_add(i, FAMROLE_HOUSEMATE, 0) >= 0) id = i;
     CHECK(id >= 0);
-    doomo_town.res[id].stat[STAT_SANITY] = 50;
-    doomo_town.res[id].stat[STAT_HUNGER] = 40;
-    s0 = doomo_town.res[id].stat[STAT_SANITY];
+    TOWN_RES(id)->stat[STAT_SANITY] = 50;
+    TOWN_RES(id)->stat[STAT_HUNGER] = 40;
+    s0 = TOWN_RES(id)->stat[STAT_SANITY];
     CHECK_EQ(story_coop_passive(HERO_COOP_FIRST, 0), 0);                    /* daytime: nothing */
     CHECK(story_coop_passive(HERO_COOP_FIRST, 1) >= 1);
-    CHECK_EQ(doomo_town.res[id].stat[STAT_SANITY], s0 + 1);
-    h0 = doomo_town.res[id].stat[STAT_HUNGER];
+    CHECK_EQ(TOWN_RES(id)->stat[STAT_SANITY], s0 + 1);
+    h0 = TOWN_RES(id)->stat[STAT_HUNGER];
     n = story_coop_active(1, HERO_COOP_FIRST);
     CHECK(n >= 1);
-    CHECK_EQ(doomo_town.res[id].stat[STAT_HUNGER], h0 + 30);
+    CHECK_EQ(TOWN_RES(id)->stat[STAT_HUNGER], h0 + 30);
     CHECK_EQ(story_coop_active(1, HERO_COOP_FIRST), -1);                    /* once per game day */
     doomo_town.day++;
     CHECK(story_coop_active(1, HERO_COOP_FIRST) >= 1);

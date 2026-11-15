@@ -230,7 +230,7 @@ TEST(dialog_queue_paging_and_choice)
     static const char *const opts[] = { "Yes", "No", "Maybe" };
     int guard;
     scene_set(&SCENE_UI_GALLERY, 0);
-    resident_generate(town_res(1), 3);
+    resident_generate(test_res(1), 3);
     ui_say(1, "Hello there!");
     ui_say(-1, "A very long narrator line that will certainly need more than one "
                "page of the little dialogue box to be shown in full, so paging "

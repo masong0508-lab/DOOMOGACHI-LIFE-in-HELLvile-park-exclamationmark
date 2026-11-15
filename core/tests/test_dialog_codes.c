@@ -110,7 +110,7 @@ TEST(dialog_codes_pill_only_on_pill_lines)
     uint32_t before;
     int i;
     fresh(3);
-    resident_generate(town_res(1), 3);
+    resident_generate(test_res(1), 3);
     before = dbg().pill_draws;
     ui_say_ex(1, EXPR_HAPPY, 0, "Welcome!");
     for (i = 0; i < 4; i++) frame(0);

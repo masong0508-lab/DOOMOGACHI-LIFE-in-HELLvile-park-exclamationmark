@@ -6,14 +6,16 @@ expect-log doomo: init
 # the story runner commands (SPEC R20, hcmd.c): a pinned seed, a story flag
 seed 4242
 expect-flag 0 0
-# the codec's worst case: ~58 KB, slot 1 only (crosses the 64 KB bank)
+# the codec's worst case (GBA-500: 500 random custom citizens and 1024 edges, ~31 KB; it was
+# ~58 KB with 1000), slot 1 (crosses the 64 KB bank)
 town-fill 4242
 town-crc
 save 1
 expect-save 1
 verify 1
-# too big for the 40 KB story slot: refused, nothing written
-save-must-fail 0
+# GBA-500: it fits the 40 KB story slot too now (with 1000 it was refused there)
+save 0
+verify 0
 # a typical story island (premade citizens, lived in) in slot 0
 town-fill 0x80000001
 town-crc

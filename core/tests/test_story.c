@@ -374,7 +374,7 @@ TEST(story_small_talk_has_something_to_say)
     town_new(TOWN_STORY, 9, TOWN_POP_PREMADE);
     story_new_game();
     for (id = 0; id < DOOMO_MAX_RESIDENTS; id += 37)
-        for (v = 0; v < 6; v++) {
+        for (v = 0; v < 6 && TOWN_RES(id)->status != RES_EMPTY; v++) {   /* (LIVE=500: who lives here) */
             story_small_talk(id, v, buf, sizeof(buf));
             CHECK_MSG(buf[0] != 0, "citizen %d says nothing", id);
             CHECK_MSG(!strchr(buf, '{'), "unformatted: %s", buf);

@@ -192,9 +192,9 @@ TEST(lib_almanac_known_citizens)
     CHECK_EQ(lib_almanac_known(), base + 1);
     town_res(300)->level = 5;                           /* counted once */
     CHECK_EQ(lib_almanac_known(), base + 1);
-    town_res(700)->level = 3;
-    CHECK(lib_known(700));
-    CHECK_EQ(lib_almanac_known(), base + (lib_known(700) ? 2 : 1));
+    town_res(test_live_id(700))->level = 3;           /* (LIVE=500: the next one in town) */
+    CHECK(lib_known(test_live_id(700)));
+    CHECK_EQ(lib_almanac_known(), base + (lib_known(test_live_id(700)) ? 2 : 1));
     CHECK(!lib_known(5000));
 }
 
@@ -204,19 +204,19 @@ TEST(lib_almanac_shelves_sort_and_search)
     premade();
     scene_set(&SCENE_LIB_ALMANAC, 0);
     tick(0);
-    CHECK_EQ(lib_b.count, 1000);
+    CHECK_EQ(lib_b.count, DOOMO_LIVE_RESIDENTS);
     press(BTN_R);                                       /* Hillvile */
-    CHECK_EQ(lib_b.count, 500);
+    CHECK_EQ(lib_b.count, DOOMO_LIVE_PER_DISTRICT);
     for (i = 0; i < lib_b.count; i++) CHECK(lib_w.alm.idx[i] < 500);
     press(BTN_R);                                       /* Hellvile */
-    CHECK_EQ(lib_b.count, 500);
+    CHECK_EQ(lib_b.count, DOOMO_LIVE_PER_DISTRICT);
     for (i = 0; i < lib_b.count; i++) CHECK(lib_w.alm.idx[i] >= 500);
     press(BTN_R);                                       /* story cast */
     CHECK_EQ(lib_b.count, NPC_COUNT);
     press(BTN_L);
     press(BTN_L);
     press(BTN_L);                                       /* everyone */
-    CHECK_EQ(lib_b.count, 1000);
+    CHECK_EQ(lib_b.count, DOOMO_LIVE_RESIDENTS);
     press(BTN_SELECT);                                  /* sort by name */
     n = lib_b.count;
     for (i = 1; i < n; i++)
@@ -235,7 +235,7 @@ TEST(lib_almanac_shelves_sort_and_search)
     for (i = 0; i < lib_b.count; i++) CHECK(upper((unsigned char)town_res(lib_w.alm.idx[i])->name[0]) == 'B');
     press(BTN_B);                                       /* clears the search */
     CHECK_EQ(lib_w.alm.letter, 0);
-    CHECK_EQ(lib_b.count, 1000);
+    CHECK_EQ(lib_b.count, DOOMO_LIVE_RESIDENTS);
     CHECK(scene_top() == &SCENE_LIB_ALMANAC);
 }
 

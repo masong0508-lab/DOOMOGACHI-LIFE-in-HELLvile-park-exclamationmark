@@ -26,7 +26,7 @@ static int check_invariants(char *why, int cap)
 {
     int i, s;
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        const DoomoResident *r = &doomo_town.res[i];
+        const DoomoResident *r = TOWN_RES(i);
         if (r->status > RES_GHOST) { snprintf(why, cap, "res %d bad status %d", i, r->status); return 0; }
         if (r->status == RES_EMPTY) continue;
         for (s = 0; s < STAT_COUNT; s++)
@@ -38,7 +38,7 @@ static int check_invariants(char *why, int cap)
             return 0;
         }
     }
-    if (doomo_town.edge_count > DOOMO_MAX_EDGES) { snprintf(why, cap, "edge_count %d", doomo_town.edge_count); return 0; }
+    if (doomo_town.edge_count > DOOMO_LIVE_EDGES) { snprintf(why, cap, "edge_count %d", doomo_town.edge_count); return 0; }
     for (i = 0; i < doomo_town.edge_count; i++) {
         const DoomoEdge *e = &doomo_town.edges[i];
         if (e->a >= e->b || e->b > DOOMO_PLAYER_ID) { snprintf(why, cap, "edge %d ids %d,%d", i, e->a, e->b); return 0; }
@@ -98,7 +98,7 @@ TEST(sim_sixty_days_premade)
     {
         int hist[11] = { 0 }, i, hap = 0, n = 0, act[ACT_COUNT] = { 0 }, avg[STAT_COUNT] = { 0 }, k;
         for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-            const DoomoResident *r = &doomo_town.res[i];
+            const DoomoResident *r = TOWN_RES(i);
             if (r->status != RES_ALIVE) continue;
             hist[r->stat[STAT_CORRUPTION] / 10]++;
             hap += r->stat[STAT_HAPPY]; n++;
@@ -430,14 +430,17 @@ TEST(sim_babies_blend_their_parents)
     DoomoResident *a, *b, *k;
     town_new(TOWN_FREEPLAY, 11, TOWN_POP_RANDOM);
     sim_init();
-    /* make room: a free slot in Hillvile */
-    town_free(400);
+    /* make room: a free slot in Hillvile (LIVE=500: one of the 500's; the baby takes the
+     * lowest free id) */
+    town_free(test_live_id(400));
+    for (i = 0; TOWN_RES(i)->status != RES_EMPTY; i++) {}
     a = town_res(40);
     b = town_res(41);
     rel_set_kind(40, 41, REL_MARRIED);
     rel_adjust(40, 41, 90);
     baby = sim_make_baby(40, 41);
-    CHECK_EQ(baby, 400);
+    CHECK_EQ(baby, i);
+    CHECK(DOOMO_RES_SLOTS || baby == 400);
     k = town_res(baby);
     CHECK_EQ(k->status, RES_ALIVE);
     CHECK(RES_SPECIES(k) == RES_SPECIES(a) || RES_SPECIES(k) == RES_SPECIES(b));
@@ -455,13 +458,14 @@ TEST(sim_babies_blend_their_parents)
     sim_init();
     CHECK_EQ(sim_make_baby(40, 41), -1);
     /* across the wall the more devilish parent picks the district */
-    town_free(600);
-    for (i = 0; i < DOOMO_DISTRICT_SIZE; i++) if (town_res(i)->status == RES_EMPTY) break;
+    town_free(test_live_id(600));       /* (LIVE=500: ids of the 500; the baby takes the lowest free id) */
+    for (i = DOOMO_DISTRICT_SIZE; TOWN_RES(i)->status != RES_EMPTY; i++) {}
     town_res(5)->stat[STAT_CORRUPTION] = 0;
     town_res(5)->flags &= (uint8_t)~RF_HELLBORN;
-    town_res(700)->stat[STAT_CORRUPTION] = 60;
-    baby = sim_make_baby(5, 700);
-    CHECK_EQ(baby, 600);
+    town_res(test_live_id(700))->stat[STAT_CORRUPTION] = 60;
+    baby = sim_make_baby(5, test_live_id(700));
+    CHECK_EQ(baby, i);
+    CHECK(DOOMO_RES_SLOTS || baby == 600);
     CHECK(town_res(baby)->flags & RF_HELLBORN);
 }
 
@@ -554,6 +558,7 @@ TEST(sim_news_records_print_the_old_headlines)
     h = news_stream(h, 7, TOWN_POP_PREMADE, 3, &bytes);
     h = news_stream(h, 9, TOWN_POP_RANDOM, 3, &bytes);
     printf("    news stream: %u bytes, hash %08x\n", (unsigned)bytes, (unsigned)h);
+    if (DOOMO_RES_SLOTS) return;        /* LIVE=500: another town, other headlines */
     CHECK_EQ_U(bytes, 16629u);
     CHECK_EQ_U(h, 0x7bc898aeu);
 }

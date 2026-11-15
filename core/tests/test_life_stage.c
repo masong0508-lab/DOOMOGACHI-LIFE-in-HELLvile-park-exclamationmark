@@ -125,7 +125,7 @@ TEST(life_stage_pair_rules)
 /* the gate on real residents                                               */
 static void make_custom(int id, int stage, int pronoun, int romance, uint32_t seed)
 {
-    DoomoResident *r = town_res(id);
+    DoomoResident *r = test_res(id);
     resident_generate(r, seed);
     r->flags |= RF_CUSTOM;
     RES_SET_PRONOUN(r, (uint8_t)pronoun);
@@ -183,7 +183,8 @@ TEST(life_stage_canon_kids_stay_kids)
         if (sim_life_stage(i) == LIFE_ADULT && RES_ROMANCE(town_res(i)) == ROMANCE_ANY) adult = i;
     CHECK(adult >= 0);
     /* every premade stage is the roster's */
-    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) CHECK_EQ(sim_life_stage(i), roster_stage(i));
+    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
+        if (town_res(i)->status != RES_EMPTY) CHECK_EQ(sim_life_stage(i), roster_stage(i));
     /* a makeover (RF_CUSTOM, preference ANY, even a stored "Adult") never
      * ages a canon kid up while they carry their roster name */
     pip->flags |= RF_CUSTOM;
@@ -335,7 +336,7 @@ static int check_news_line(const char *line, PropSeen *seen, char *why, int cap)
     if (wedding < 0) return 1;
     seen->romance_news++;
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        const DoomoResident *r = &doomo_town.res[i];
+        const DoomoResident *r = TOWN_RES(i);
         int s;
         if (r->status == RES_EMPTY || !names_resident(line, i)) continue;
         s = st_cache[i];
@@ -412,13 +413,13 @@ static void unique_names(int keep_roster)
 {
     int i, j;
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        DoomoResident *r = &doomo_town.res[i];
+        DoomoResident *r = TOWN_RES(i);
         int dup = 0;
         if (r->status == RES_EMPTY) continue;
         if (keep_roster && strncmp(roster_name(i), r->name, DOOMO_NAME_LEN) == 0) {
             for (j = 0; j < i && !dup; j++)
-                if (doomo_town.res[j].status != RES_EMPTY &&
-                    strncmp(doomo_town.res[j].name, r->name, DOOMO_NAME_LEN) == 0) dup = 1;
+                if (TOWN_RES(j)->status != RES_EMPTY &&
+                    strncmp(TOWN_RES(j)->name, r->name, DOOMO_NAME_LEN) == 0) dup = 1;
             if (!dup) continue;
         }
         if (r->name[0] == 'Z' && atoi(r->name + 1) == i && strlen(r->name) == 4) continue;
@@ -459,8 +460,8 @@ static int add_minors(int island, int *kids, int *teens)
         int j, used = 0;
         for (j = 0; j < na; j++) if (adults[j] == slot) used = 1;
         if (used) continue;
-        if (town_res(slot)->status != RES_EMPTY) town_free(slot);
-        i++;
+        if (town_res(slot)->status != RES_EMPTY) { town_free(slot); i++; }
+        else if (!DOOMO_RES_SLOTS) i++;     /* (LIVE=500: an id not in town frees no slot) */
     }
     for (i = 0; i < 20; i++) {
         int id = town_alloc(i & 1);
@@ -771,6 +772,7 @@ TEST(life_stage_grumbleguts_never_flirts_with_minors)
     for (i = DOOMO_DISTRICT_SIZE, slot = 0; i < DOOMO_MAX_RESIDENTS; i++) {
         if (i == ROSTER_ID_GRUMBLEGUTS) continue;
         if (++slot % 50 == 0) continue;
+        if (town_res(i)->status == RES_EMPTY) continue;    /* LIVE=500: not in town */
         resident_set_stage(town_res(i), LIFE_CHILD);
         town_res(i)->flags |= RF_CUSTOM;
     }

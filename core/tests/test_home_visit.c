@@ -65,6 +65,7 @@ TEST(home_visit_determinism)
     CHECK_EQ(bad_size, 0);
     CHECK_EQ(bad_dark, 0);
     CHECK(h[0] != h[1]);
+    if (DOOMO_RES_SLOTS) return;        /* LIVE=500: the golden is of all 1000 homes */
     snprintf(path, sizeof(path), "%s/home_visit.txt", test_golden_dir);
     if (test_update_golden) {
         f = fopen(path, "w");

@@ -185,7 +185,7 @@ static int first_alive(void)
 {
     int i;
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
-        if (doomo_town.res[i].status == RES_ALIVE) return i;
+        if (TOWN_RES(i)->status == RES_ALIVE) return i;
     return -1;
 }
 

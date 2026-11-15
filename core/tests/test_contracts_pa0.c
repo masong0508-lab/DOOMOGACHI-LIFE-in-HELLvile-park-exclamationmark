@@ -95,17 +95,17 @@ TEST(pa0_fresh_town_plays_the_hero)
 TEST(pa0_gender_from_pronoun)
 {
     town_new(TOWN_STORY, 7, TOWN_POP_PREMADE);
-    RES_SET_PRONOUN(&doomo_town.res[5], PRONOUN_SHE);
+    RES_SET_PRONOUN(TOWN_RES(5), PRONOUN_SHE);
     CHECK_EQ(playas_gender(5), GENDER_F);
-    RES_SET_PRONOUN(&doomo_town.res[5], PRONOUN_HE);
+    RES_SET_PRONOUN(TOWN_RES(5), PRONOUN_HE);
     CHECK_EQ(playas_gender(5), GENDER_M);
-    RES_SET_PRONOUN(&doomo_town.res[5], PRONOUN_THEY);
+    RES_SET_PRONOUN(TOWN_RES(5), PRONOUN_THEY);
     CHECK_EQ(playas_gender(5), GENDER_N);
-    RES_SET_PRONOUN(&doomo_town.res[5], PRONOUN_IT);
+    RES_SET_PRONOUN(TOWN_RES(5), PRONOUN_IT);
     CHECK_EQ(playas_gender(5), GENDER_N);
-    RES_SET_PRONOUN(&doomo_town.res[5], PRONOUN_XE);
+    RES_SET_PRONOUN(TOWN_RES(5), PRONOUN_XE);
     CHECK_EQ(playas_gender(5), GENDER_N);
-    doomo_town.res[6].status = RES_EMPTY;
+    TOWN_RES(6)->status = RES_EMPTY;
     CHECK_EQ(playas_gender(6), GENDER_N);
     CHECK_EQ(playas_gender(-1), GENDER_N);
     CHECK_EQ(playas_gender(5000), GENDER_N);
