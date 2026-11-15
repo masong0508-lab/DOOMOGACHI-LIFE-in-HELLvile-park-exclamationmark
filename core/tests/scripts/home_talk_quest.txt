@@ -1,0 +1,65 @@
+# assert-no-stubs
+# TQ-QUESTS (TALK round 13): one request played through SCENE_TALK with the pad. The runner arms the pacing
+# (talk-quest-arm: a fresh load never raises), Nana is complimented twice, and on the second calm answer she
+# asks for a snack. The four quick replies are the request's (accept, decline, what's in it for me, tell me
+# more); "tell me more" keeps it on the table, "Sure" takes it. Leaving the talk puts one row in the quest
+# log; her snack is already in the bag, so the next talk opens with her thanks and the log is empty again.
+scene TITLE
+wait 10
+push HOME 3
+wait 4
+press B
+wait 10
+money 100
+talk-quest-arm fetch
+talk-enter Nana
+wait 20
+talk-read
+talk-say compliment
+wait 12
+talk-read
+talk-say compliment
+wait 16
+talk-read
+expect-talk-row "Sure, I'll do it."
+expect-talk-row "Sorry, I can't."
+expect-talk-row "What's in it for me?"
+expect-talk-row "Tell me more."
+expect-talk-quick yes
+expect-talk-quick no
+shot quest_0_asked
+# tell me more: the request stays, the four replies are back
+talk-quick 3
+wait 16
+talk-read
+expect-talk-row "Sure, I'll do it."
+shot quest_1_more
+# accept
+talk-quick 0
+wait 16
+talk-read
+expect-talk-row "Sorry, I can't." 0
+shot quest_2_accepted
+talk-leave
+expect-talk off
+wait 30
+expect-talk-quest 1
+# (her favourite snack is already in the new house's bag, so the log says to go back at once)
+expect-talk-quest-goal "Go back to Nana"
+shot quest_3_after
+# the quest log's Side tab lists it
+push QUESTLOG 1
+wait 10
+shot quest_4_log
+press B
+wait 10
+# the snack is in the bag: the next talk opens with her thanks and pays
+talk-enter Nana
+wait 30
+talk-read
+shot quest_5_thanks
+talk-leave
+expect-talk off
+wait 30
+expect-talk-quest 0
+expect-money 120

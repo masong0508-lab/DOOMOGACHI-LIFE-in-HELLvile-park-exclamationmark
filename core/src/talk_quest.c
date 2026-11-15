@@ -36,6 +36,9 @@
 #include "doomo/resident_acc.h"
 
 #define KIND_WEIGHT_BASE 2
+#ifdef DOOMO_TALK_DEBUG
+static struct { uint8_t armed, kind; } dbg;                  /* the native runner and the tests: raise the next one at once */
+#endif
 
 /* ---- the rules: tables --------------------------------------------------------------------- */
 int talk_quest_kind_ok(int kind, int minor_giver, int minor_room, int minor_target)
@@ -249,6 +252,16 @@ int talk_quest_pick(int giver, const int *room, int n, int minor_room, uint32_t 
         total += wt;
     }
     if (!nc) return 0;
+#ifdef DOOMO_TALK_DEBUG
+    if (dbg.armed && dbg.kind) {                              /* armed for one kind: that one or none */
+        int j, m = 0;
+        for (j = 0; j < nc; j++) if (cand[j].kind == dbg.kind) cand[m++] = cand[j];
+        total = 0;
+        for (j = 0; j < m; j++) { w[j] = 1; total++; }
+        nc = m;
+        if (!nc) return 0;
+    }
+#endif
     h = doomo_hash32(salt ^ hk(giver, 77, 0));
     pick = (int)(h % (uint32_t)total);
     for (k = 0; k < nc; k++) { if (pick < w[k]) break; pick -= w[k]; }
@@ -276,7 +289,32 @@ int talk_quest_haggle(int giver, uint32_t salt)
 /* ---- pacing ------------------------------------------------------------------------------------ */
 static struct { uint8_t since, raised; uint32_t day; uint8_t has_day; } pace;
 
-void talk_quest_reset(void) { memset(&pace, 0, sizeof pace); }
+void talk_quest_reset(void)
+{
+    memset(&pace, 0, sizeof pace);
+#ifdef DOOMO_TALK_DEBUG
+    memset(&dbg, 0, sizeof dbg);
+#endif
+}
+
+int talk_quest_raise_chance(void)
+{
+#ifdef DOOMO_TALK_DEBUG
+    if (dbg.armed) return 100;
+#endif
+    return 14;
+}
+
+#ifdef DOOMO_TALK_DEBUG
+void talk_quest_debug_arm(int kind)
+{
+    pace.since = 1;
+    pace.raised = 0;
+    pace.has_day = 0;
+    dbg.armed = 1;
+    dbg.kind = (uint8_t)kind;
+}
+#endif
 
 int talk_quest_pace_ok(void)
 {
@@ -287,6 +325,9 @@ int talk_quest_pace_ok(void)
 
 void talk_quest_note_raise(void)
 {
+#ifdef DOOMO_TALK_DEBUG
+    dbg.armed = 0;
+#endif
     pace.since = 0;
     pace.raised = 1;
     pace.day = doomo_town.day;

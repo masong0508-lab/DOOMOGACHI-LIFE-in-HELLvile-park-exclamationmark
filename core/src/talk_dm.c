@@ -426,7 +426,7 @@ static void quest_after(TalkState *s, int who, const TalkLine *L)
     if (kinds & (int)(TKM(TK_DENY) | TKM(TK_REFUSE) | TKM(TK_DEFLECT))) return;
     if (grief_here(s, id) || !talk_quest_pace_ok()) return;
     rng_for(s, &rng, 0x0E57u + (uint32_t)who);
-    if (rng_range(&rng, 100) >= 14) return;
+    if (rng_range(&rng, 100) >= talk_quest_raise_chance()) return;
     n = room_ids(s, ids);
     if (!talk_quest_pick(id, ids, n, minor_room(s), doomo_hash32(s->conv.seed ^ (uint32_t)s->turn * 7919u), &q)) return;
     at = s->plan_at;

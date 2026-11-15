@@ -1451,6 +1451,8 @@ int  talk_quest_haggle(int giver, uint32_t salt);
  * raise, none yet today, fewer than TALK_QUEST_OPEN_MAX open. note_raise when a request is said; note_end when a conversation
  * ends (talk_outcome_end does it); reset with a new town. */
 int  talk_quest_pace_ok(void);
+int  talk_quest_raise_chance(void);                     /* percent of the calm answers that raise one: 14 (100 when armed by a test) */
+void talk_quest_debug_arm(int kind);                    /* only where DOOMO_TALK_DEBUG is defined (the native host): the next calm answer raises one (of `kind`, 0 any) */
 void talk_quest_note_raise(void);
 void talk_quest_note_end(void);
 void talk_quest_reset(void);

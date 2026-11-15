@@ -39,6 +39,9 @@
  *   no-stubs            fail now if any stub has run
  *   seed N              (S2, SPEC C18) doomo_town.seed = N, and N is what
  *                       plat_entropy() returns from now (the next new town)
+ *   talk-quest-arm [KIND]  (TQ) the next calm answer raises a request (docs/TALK.md 6q)
+ *   talk-quest-give        (TQ) the item the first open request wants goes into the bag
+ *   expect-talk-quest N / expect-talk-quest-goal "TEXT"  (TQ) N open requests; the first one's goal says TEXT
  *   expect-text "TEXT"  fail unless the dialogue box's line contains TEXT
  *   expect-toast "TEXT" / expect-no-toast "TEXT"  (CL1) a queued toast says
  *                       TEXT / none does
@@ -584,6 +587,33 @@ static void talk_cmd(const char *cmd, int argc, char **argv)
         if (!home_talk_enter(who)) { fail("Talk did not start with", a1); return; }
         step(3);
         if (!talk_scene_debug(&d)) fail("Talk is not the top scene after talk-enter", a1);
+    } else if (strcmp(cmd, "talk-quest-arm") == 0) {      /* TQ: the next calm answer raises a request (KIND: fetch toy message company cheer peace secret; none = any) */
+        int k, kind = 0;
+        for (k = TQK_FETCH; a1[0] && k < TQK_COUNT; k++) if (strcmp(talk_quest_kind_name(k), a1) == 0) kind = k;
+        if (a1[0] && !kind) { fail("talk-quest-arm: no such kind", a1); return; }
+        talk_quest_debug_arm(kind);
+    } else if (strcmp(cmd, "talk-quest-give") == 0) {     /* TQ: put what the first open request wants into the bag (a fetch or a toy) */
+        TalkQuestRow r;
+        TalkQuest q;
+        if (!talk_quest_log_row(0, &r) || !talk_quest_derive(r.giver, r.kind, NULL, 0, 0, &q) || !q.item) {
+            fail("talk-quest-give: no open request that wants an item", ""); return;
+        }
+        inv_add(q.item, 1);
+    } else if (strcmp(cmd, "expect-talk-quest") == 0) {   /* TQ: N requests on the quest log (open ones) */
+        int want = argc > 1 ? atoi(a1) : 1;
+        if (talk_quest_log_count() != want) {
+            char msg[64];
+            snprintf(msg, sizeof msg, "expected %d open requests but there are %d:", want, talk_quest_log_count());
+            fail(msg, "");
+        }
+    } else if (strcmp(cmd, "expect-talk-quest-goal") == 0) {   /* TQ: the first open request's goal says TEXT (and, with READY, is ready to hand in) */
+        TalkQuestRow r;
+        if (!talk_quest_log_row(0, &r)) { fail("expect-talk-quest-goal: no open request", a1); return; }
+        if (!strstr(r.goal, a1)) {
+            char msg[96];
+            snprintf(msg, sizeof msg, "the quest log says \"%s\", not", r.goal);
+            fail(msg, a1);
+        }
     } else if (strcmp(cmd, "talk-party") == 0) {
         int ids[3], n = 0, i;
         for (i = 1; i < argc && n < 3; i++) {
