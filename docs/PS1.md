@@ -2191,3 +2191,12 @@ emulator at a time; the fps numbers are the game's own frame counts, so a busy h
   at most 40 KB of the 54 KB each), `doomo_town` (89 KB), the resident Spanish table (8 KB, L6), `model.c` once
   the house draws no 3D figure (4.3 KB, with what only it uses of `prims.c` 8.4 KB; owner decision 2026-11-12, "HOUSE
   CHARACTERS FLAT": a change of what the house shows, so not part of this package), and the 30,000 B of `HOLD`.
+
+## CR4 A1b (2026-11-15): noses, mouths, ears, blush styles
+
+Measured with clean `cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON` builds on origin `5879aa3` and on A1b rebased onto `abc4f66`: `_end` 0x801ee550
+both times, 72,368 B below the stack top (the elf2exe line prints "70 KB left"): 0 B resident added. The 51 new parts (12 noses, 12 mouths,
+16 ears, 11 blush styles) are part scripts the PS1 does not read yet (the part VM is off until CR10), age class ALL; the creator offers the PS1
+only the painted choices (`part_live_drawable`), as for every scripted part since CR3. `mat blush` is in the VM only (`portrait_script.c`,
+compiled out here). Harness (PCSX-Redux): `game_smoke`, `creator_grid`, `creator_parts_face_b` and `creator_speed` PASS (idle 30.13, grid
+scroll 29.39, rows 30.13, value 29.88: nothing resident changed).
