@@ -420,7 +420,7 @@ void rel_normalize(void)
     /* shell sort by key */
     for (g = 0; g < DOOMO_COUNTOF(gaps); g++) {
         int gap = gaps[g];
-        plat_busy_step(0, DOOMO_MAX_RESIDENTS);   /* S2-10: the sort of ~2,000 edges is 0.17 s on the GBA: a step a pass */
+        plat_busy_step(PLAT_BUSY_KEEP, 0);   /* S2-10: the sort of ~2,000 edges is 0.17 s on the GBA: a step a pass */
         for (i = gap; i < n; i++) {
             DoomoEdge t = E[i];
             uint32_t k = ekey(&t);

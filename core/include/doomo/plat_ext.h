@@ -213,11 +213,13 @@ void plat_loading(void);
  * memory card write is 11 s. The sim must not move meanwhile, so the work stays in one tick; what changes is that
  * the screen is not frozen. plat_busy(kind) is called first; plat_busy_step(done, total) is called often after
  * that (every citizen the codec or the build handles, every flash sector or card frame the platform writes: never
- * more than ~8 ms of work between two calls on the GBA). A platform may then present pictures of its own from
- * inside the call (a card with a spinner or a bar, at most 30 a second) once the work is clearly late, and the
- * next real frame ends it. Draw-side only: the saved bytes, the logic and the timing are the same (every call is
+ * more than ~8 ms of work between two calls on the GBA). done PLAT_BUSY_KEEP with total 0 is a step with no
+ * progress of its own (a pass of a sort, a run of relationships): a bar stays where it is, so it only moves
+ * forward within a pass of the work. A platform may then present pictures of its own from inside the call (a
+ * card with a spinner or a bar, at most 30 a second) once the work is clearly late, and the next real frame
+ * ends it. Draw-side only: the saved bytes, the logic and the timing are the same (every call is
  * a no-op in the host build and in a run that hashes every frame). Default: nothing. */
-enum { PLAT_BUSY_SAVE = 1, PLAT_BUSY_LOAD = 2, PLAT_BUSY_BUILD = 3 };
+enum { PLAT_BUSY_SAVE = 1, PLAT_BUSY_LOAD = 2, PLAT_BUSY_BUILD = 3, PLAT_BUSY_KEEP = -1 };
 void plat_busy(int kind);
 void plat_busy_step(int done, int total);
 

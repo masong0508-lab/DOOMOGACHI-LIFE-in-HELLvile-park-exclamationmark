@@ -10,6 +10,7 @@
 #include "doomo/plat_ext.h"
 
 static int b_calls, b_kind, b_steps, b_bad, b_max_done, b_steps_before_busy, b_busy_calls_since;
+static int b_keeps, b_back, b_last;      /* steps without progress; a bar that moved back; the last real step */
 
 void plat_busy(int kind)
 {
@@ -22,13 +23,21 @@ void plat_busy(int kind)
 void plat_busy_step(int done, int total)
 {
     b_steps++;
+    if (done == PLAT_BUSY_KEEP) {                /* a sort pass, a run of relationships: the bar stays */
+        b_keeps++;
+        if (total != 0) b_bad++;
+        return;
+    }
     if (done < 0 || done > total || total != DOOMO_MAX_RESIDENTS) b_bad++;
     if (done > b_max_done) b_max_done = done;
+    if (done < b_last) b_back++;
+    b_last = done;
 }
 
 static void busy_reset(void)
 {
     b_calls = b_kind = b_steps = b_bad = b_max_done = b_steps_before_busy = b_busy_calls_since = 0;
+    b_keeps = b_back = b_last = 0;
 }
 
 extern int nat_save_stream, nat_stream_fail_at;
@@ -45,12 +54,15 @@ TEST(busy_town_new_steps_every_citizen)
     CHECK_EQ(b_bad, 0);
     CHECK_EQ(b_max_done, DOOMO_MAX_RESIDENTS - 1);
     CHECK_EQ(b_steps_before_busy, 0);
+    CHECK(b_keeps >= 8);                             /* the sort's passes step without moving the bar ... */
+    CHECK_EQ(b_back, 0);                             /* ... so it only moves forward over a build */
 
     busy_reset();
     town_new(TOWN_FREEPLAY, 31337, TOWN_POP_RANDOM);
     CHECK_EQ(b_calls, 1);
     CHECK(b_steps >= DOOMO_MAX_RESIDENTS && b_steps <= 2 * DOOMO_MAX_RESIDENTS);
     CHECK_EQ(b_bad, 0);
+    CHECK_EQ(b_back, 0);
 
     busy_reset();
     town_new(TOWN_FREEPLAY, 1, TOWN_POP_EMPTY);       /* nothing to build: called (the platform decides if late) */
@@ -80,6 +92,7 @@ TEST(busy_save_and_load_step_every_citizen)
         CHECK(b_steps >= DOOMO_MAX_RESIDENTS * (pass ? 2 : 1));      /* every citizen, once per pass */
         CHECK(b_steps <= DOOMO_MAX_RESIDENTS * (pass ? 4 : 2));
         CHECK_EQ(b_bad, 0);
+        CHECK_EQ(b_back, pass ? 1 : 0);              /* the bar fills once per pass of the codec */
 
         memset(&doomo_town, 0x5A, sizeof(doomo_town));
         busy_reset();
@@ -89,6 +102,7 @@ TEST(busy_save_and_load_step_every_citizen)
         CHECK_EQ(b_steps_before_busy, 0);
         CHECK(b_steps >= DOOMO_MAX_RESIDENTS);       /* the applying decode rebuilds every citizen */
         CHECK_EQ(b_bad, 0);
+        CHECK(b_back <= 1);                          /* the check pass, then the applying one; the sort keeps it */
         CHECK(memcmp(&snap.res, &doomo_town.res, sizeof(snap.res)) == 0);
     }
     nat_save_stream = 0;
@@ -111,9 +125,11 @@ TEST(busy_steps_cover_the_relationship_graph)
     busy_reset();
     CHECK(load_game(1));
     CHECK(b_steps >= DOOMO_MAX_RESIDENTS + edges / 32);
+    CHECK(b_keeps >= edges / 32);                    /* the relationships step without moving the bar */
     busy_reset();
     rel_normalize();                                 /* the sort alone: a step before each of its 8 passes */
     CHECK(b_steps >= 8);
+    CHECK_EQ(b_keeps, b_steps);
 }
 
 TEST(busy_a_missing_save_does_not_start_a_busy_card)

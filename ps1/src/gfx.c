@@ -626,22 +626,26 @@ COLD void gfx_loading_screen(const char *title, const char *detail, int done, in
  * (a save's encode, 1,000 citizens built), then plat_busy_step(done, total) per citizen. Once the work has run
  * BUSY_LATE vblanks (so a quick one shows nothing) and two vblanks after the last picture, the loading screen
  * above is drawn again with the bar at done / total: 30 pictures a second over the work. The next game frame
- * (gfx_end) ends it. The memory card's own steps (memcard.c) then take over the same screen. 4 B of BSS. */
+ * (gfx_end) ends it. The memory card's own steps (memcard.c) then take over the same screen. 12 B of BSS. */
 #define BUSY_LATE 3
 static uint8_t s_busy_kind;             /* plat_busy's kind until the next frame; 0: none */
+static int s_busy_done, s_busy_total;   /* the bar's last step (a PLAT_BUSY_KEEP step keeps it) */
 
 COLD void plat_busy(int kind)
 {
     if (s_first) return;                /* nothing on screen yet (boot) */
     s_busy_kind = (uint8_t)kind;
+    s_busy_done = s_busy_total = 0;
     g_busy_v = (uint32_t)VSync(-1) + BUSY_LATE - 2;   /* the first picture BUSY_LATE vblanks from now */
 }
 
 COLD void plat_busy_step(int done, int total)
 {
     static const char *const title[] = { "", "Saving your game...", "Loading your game...", "Getting everything ready..." };
+    if (done >= 0) { s_busy_done = done; s_busy_total = total; }
     if (!s_busy_kind || (int32_t)((uint32_t)VSync(-1) - g_busy_v) < 2) return;
-    gfx_loading_screen(title[s_busy_kind], s_busy_kind == PLAT_BUSY_BUILD ? NULL : "Getting ready...", done, total);
+    gfx_loading_screen(title[s_busy_kind], s_busy_kind == PLAT_BUSY_BUILD ? NULL : "Getting ready...",
+                       s_busy_done, s_busy_total);
 }
 
 /* platform.h: the save/load scratch buffer is the display-list memory of

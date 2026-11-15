@@ -830,7 +830,7 @@ static void write_town(void)
             w8((uint8_t)e->value);
             w8(e->kind);
             pa = a; pb = b;
-            if (!(i & 31)) plat_busy_step(0, DOOMO_MAX_RESIDENTS);   /* S2-10: 2,000 edges are 0.2 s on the GBA */
+            if (!(i & 31)) plat_busy_step(PLAT_BUSY_KEEP, 0);   /* S2-10: 2,000 edges are 0.2 s on the GBA */
         }
     }
     walign();
@@ -965,7 +965,7 @@ static int read_town(int apply)
                 t->edges[i].kind = (uint8_t)k;
             }
             pa = a; pb = b;
-            if (!(i & 31)) plat_busy_step(0, DOOMO_MAX_RESIDENTS);   /* S2-10 */
+            if (!(i & 31)) plat_busy_step(PLAT_BUSY_KEEP, 0);   /* S2-10 */
         }
     }
     if (apply) t->edge_count = (uint16_t)n;
