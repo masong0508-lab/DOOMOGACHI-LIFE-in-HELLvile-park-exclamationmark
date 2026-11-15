@@ -17,11 +17,13 @@ wait 130
 fps start
 wait 90
 fps studio tabs: song idle
+shot studio_tabs_song_idle
 press START
 wait 45
 fps start
 wait 90
 fps studio tabs: song playing
+shot studio_tabs_song_playing
 press START
 wait 10
 
@@ -31,11 +33,13 @@ wait 20
 fps start
 wait 90
 fps studio tabs: notes idle
+shot studio_tabs_notes_idle
 press START
 wait 40
 fps start
 wait 90
 fps studio tabs: notes playing
+shot studio_tabs_notes_playing
 press START
 wait 10
 
@@ -51,6 +55,7 @@ wait 20
 fps start
 wait 90
 fps studio tabs: order
+shot studio_tabs_order
 down SELECT
 press R
 release
@@ -60,6 +65,7 @@ wait 10
 fps start
 wait 90
 fps studio tabs: lyrics
+shot studio_tabs_lyrics
 down SELECT
 press R
 release
@@ -67,6 +73,7 @@ wait 20
 fps start
 wait 90
 fps studio tabs: choir
+shot studio_tabs_choir
 
 # ---- PERFORM (the show) -------------------------------------------------
 press R
@@ -76,9 +83,11 @@ wait 60
 fps start
 wait 20
 fps studio tabs: perform early
+shot studio_tabs_perform_early
 fps start
 wait 90
 fps studio tabs: perform later
+shot studio_tabs_perform_later
 
 # ---- the empty song: Start card, control card, Make it!, FILE -----------------------
 scene TITLE
@@ -90,6 +99,7 @@ wait 130
 fps start
 wait 90
 fps studio tabs: start card
+shot studio_tabs_start_card
 down SELECT
 press UP
 release
@@ -97,6 +107,7 @@ wait 30
 fps start
 wait 60
 fps studio tabs: control card
+shot studio_tabs_control_card
 press B
 wait 10
 press A
@@ -104,6 +115,7 @@ wait 45
 fps start
 wait 90
 fps studio tabs: made song playing
+shot studio_tabs_made_song_playing
 press START
 wait 10
 down SELECT
@@ -133,8 +145,10 @@ wait 20
 fps start
 wait 90
 fps studio tabs: file top
+shot studio_tabs_file_top
 press UP
 wait 20
 fps start
 wait 90
 fps studio tabs: file end
+shot studio_tabs_file_end

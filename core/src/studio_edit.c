@@ -270,16 +270,27 @@ static void song_row_label(int row, char *buf, int cap)
 }
 
 /* a spinning record with the title on its label */
-static void draw_record(int cx, int cy, int r, int t, int playing)
+/* the record's still part: the shadow, the grooves and the label (a[0] = radius, a[1] = the genre's pattern). On the GBA
+ * it is painted once into the studio's bake pool and drawn with one plat_image (7 circles, ~70 rect calls, 5.5 ms:
+ * STUDIO-30); the shine that sweeps round is drawn live over it. */
+static void record_rects(int ox, int oy, const int *a)
 {
-    int a = playing ? t * 3 : t / 2;
+    int r = a[0], g = a[1], cx = ox + r + 3, cy = oy + r + 3;      /* (ox, oy): the top-left, so the bake paints on-screen */
     ui_fill_circle(cx + 2, cy + 3, r, PAL_PAINT(PAINT_GRAPE, 0));
     ui_fill_circle(cx, cy, r, PAL_PAINT(PAINT_JET, 1));
     ui_fill_circle(cx, cy, r - 3, PAL_PAINT(PAINT_CHARCOAL, 0));
     ui_fill_circle(cx, cy, r - 5, PAL_PAINT(PAINT_JET, 1));
-    ui_fill_circle(cx, cy, r / 2 - 1, st_pattern_color(SS->genre & 3, 1));
-    ui_fill_circle(cx, cy, r / 2 - 3, st_pattern_color(SS->genre & 3, 2));
+    ui_fill_circle(cx, cy, r / 2 - 1, st_pattern_color(g, 1));
+    ui_fill_circle(cx, cy, r / 2 - 3, st_pattern_color(g, 2));
     ui_fill_circle(cx, cy, 1, PAL_PAINT(PAINT_JET, 1));
+}
+
+static void draw_record(int cx, int cy, int r, int t, int playing)
+{
+    int a = playing ? t * 3 : t / 2, g[2];
+    g[0] = r; g[1] = SS->genre & 3;
+    if (!st_bake(0x40u | (uint32_t)r << 8, (uint32_t)g[1], cx - r - 3, cy - r - 3, record_rects, g, 4200))
+        record_rects(cx - r - 3, cy - r - 3, g);
     /* the shine sweeps around */
     {
         int dx = ui_wave(a, 120, r - 3), dy = ui_wave(a + 30, 120, r - 3);
