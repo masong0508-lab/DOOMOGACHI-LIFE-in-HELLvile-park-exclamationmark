@@ -2,6 +2,8 @@
 # T8: the Talk screen and the hard content rules (CLAUDE.md; docs/TALK.md section 2, TALK_DESIGN 7):
 #  * a typed line about hurting oneself gets the gentle line, no joke row is offered after it, and
 #    Talk goes on;
+#  * (K-11 care) for the next few turns after it the answer is the sincere bank, never a joke, tease or laugh, even
+#    to a joke, a compliment or an offer; the window then closes;
 #  * romance toward a child is refused: the Romance page is never listed for a child, and a typed
 #    line gets a plain "no";
 #  * a hug toward a child stays a plain hug the child may decline (Pip answers in kind either way);
@@ -36,9 +38,19 @@ expect-talk-quick insult 0
 expect-talk-quick gossip 0
 wait 4
 shot safety_1_calm_replies
+expect-talk-care 1
 talk-quick 0
+expect-talk-reply-sincere 1
 talk-read
 expect-talk on
+# the next kind lines, an offer and a compliment: still sincere, and the window is open
+talk-say offer
+expect-talk-reply-sincere 1
+talk-read
+talk-say compliment
+expect-talk-reply-sincere 1
+talk-read
+expect-talk-care 1
 talk-leave
 expect-talk off
 wait 60

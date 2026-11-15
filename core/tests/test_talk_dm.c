@@ -816,3 +816,114 @@ TEST(talk_dm_keep_going)
     CHECK_EQ(talk_safe_lint_hits(), h0);
     talk_db_close();
 }
+
+/* ---- K-11 care state (TK-CARE): no joke for a few turns after a distress line ------------------------------ */
+static int is_joke_act(int a) { return a == TA_JOKE || a == TA_LAUGH || a == TA_TEASE || a == TA_MOCK; }
+
+TEST(talk_dm_care_after_distress)
+{
+    static const uint8_t kind[] = { TA_COMFORT, TA_SYMPATHIZE, TA_OFFER, TA_ENCOURAGE, TA_HUG, TA_THANK, TA_COMPLIMENT,
+                                    TA_AGREE, TA_JOKE, TA_ASK_ABOUT, TA_TEASE, TA_GREET };
+    TalkState s;
+    TalkUtter u;
+    uint32_t h0 = talk_safe_lint_hits();
+    int i, k, n, ncast, lines = 0, free_jokes = 0, turns;
+    premade_town();
+    CHECK(open_db());
+    CHECK(sizeof(TalkState) <= TALK_STATE_MAX);
+    for (ncast = 0; talk_gen_cast_id(ncast) >= 0; ncast++) {}
+    CHECK(ncast >= 10);
+    /* every cast voice x every kind line x 3 seeds, alone and with a second resident: the turn after distress is the
+     * sincere answer alone (one line, no reaction, no beat line, no hand-off, no joke) */
+    for (i = 0; i < ncast; i++)
+        for (k = 0; k < (int)sizeof kind; k++) {
+            int seed, room;
+            for (seed = 0; seed < 3; seed++)
+                for (room = 0; room < 2; room++) {
+                    int ids[3], ni = 0, l, step;
+                    ids[ni++] = talk_gen_cast_id(i);
+                    if (room) ids[ni++] = ids[0] == ID_NANA ? ID_RIVET : ID_NANA;
+                    talk_dm_begin(&s, DOOMO_PLAYER_ID, ids, ni, 300u + (uint32_t)(i * 17 + k * 5 + seed));
+                    utter(&u, TA_ASK_ABOUT, TC_NONE, -1);
+                    u.safety = TS_DISTRESS;
+                    strcpy(u.shown, "xyzzy");
+                    talk_dm_say(&s, &u);
+                    CHECK_EQ(s.gate, TG_DISTRESS);
+                    CHECK(s.flags & TDF_CARE);
+                    while (talk_dm_step(&s, NULL)) {}
+                    for (step = 0; step < TALK_CARE_TURNS; step++) {
+                        CHECK(s.flags & TDF_CARE);
+                        n = turn(&s, kind[(k + step) % (int)sizeof kind], TC_NONE, -1, NULL);
+                        CHECK_MSG(n == 1 && s.nplan == 1, "voice %d act %d: %d lines, plan %d", ids[0], kind[k], n, s.nplan);
+                        for (l = 0; l < n; l++) {
+                            CHECK_MSG((s.line[l].flags & TLF_SINCERE) && !is_joke_act(s.line[l].act), "voice %d act %d: %s",
+                                      ids[0], kind[(k + step) % (int)sizeof kind], s.line[l].text);
+                            lines++;
+                        }
+                    }
+                    CHECK(!(s.flags & TDF_CARE));            /* the window has run out: the next turn is ordinary */
+                }
+        }
+    /* without the window the same turns do joke (the test can see one) */
+    for (i = 0; i < 60; i++) {
+        int ids[1] = { ID_RIVET };
+        talk_dm_begin(&s, DOOMO_PLAYER_ID, ids, 1, 500u + (uint32_t)i);
+        turn(&s, TA_JOKE, TC_NONE, -1, NULL);
+        free_jokes += s.nlines && !(s.line[0].flags & TLF_SINCERE);
+    }
+    CHECK(free_jokes > 30);
+    /* the window is 4 turns, then the talk is ordinary again and the idle chatter is back */
+    {
+        int ids[2] = { ID_NANA, ID_RIVET };
+        talk_dm_begin(&s, DOOMO_PLAYER_ID, ids, 2, 77u);
+        utter(&u, TA_ASK_ABOUT, TC_NONE, -1);
+        u.safety = TS_DISTRESS;
+        talk_dm_say(&s, &u);
+        while (talk_dm_step(&s, NULL)) {}
+        CHECK(!talk_dm_tick(&s, 100000));                    /* no idle banter in the window */
+        CHECK_EQ(s.care_left, TALK_CARE_TURNS);
+        for (turns = 0; turns < TALK_CARE_TURNS; turns++) turn(&s, TA_COMFORT, TC_NONE, 0, NULL);
+        CHECK_EQ(s.care_left, 0);
+        CHECK(!(s.flags & TDF_CARE));
+        n = turn(&s, TA_JOKE, TC_NONE, 0, NULL);
+        CHECK(n >= 1);
+        CHECK(!s.conv.care);
+        s.idle_frames = 0;
+        CHECK(talk_dm_tick(&s, 100000));                     /* ordinary again */
+        /* a second distress line renews it */
+        utter(&u, TA_ASK_ABOUT, TC_NONE, -1);
+        u.safety = TS_DISTRESS;
+        talk_dm_say(&s, &u);
+        CHECK_EQ(s.care_left, TALK_CARE_TURNS);
+        CHECK(s.flags & TDF_CARE);
+    }
+    CHECK_EQ(talk_safe_lint_hits(), h0);
+    printf("      K-11: %d care-window answers over %d cast voices, none a joke; %d of 60 plain jokes without it\n", lines, ncast,
+           free_jokes);
+    talk_db_close();
+}
+
+/* a grief answer opens the same window; a pet is not the one who answers inside it */
+TEST(talk_dm_care_after_grief)
+{
+    TalkState s;
+    uint32_t h0 = talk_safe_lint_hits();
+    uint16_t grief;
+    int i, n, opened = 0;
+    premade_town();
+    CHECK(open_db());
+    grief = concept("grief");
+    CHECK(grief);
+    for (i = 0; i < 20; i++) {
+        int ids[3] = { ID_NANA, ID_RIVET, TALK_PET_ID };
+        talk_dm_begin(&s, DOOMO_PLAYER_ID, ids, 3, 40u + (uint32_t)i);
+        n = turn(&s, TA_TELL, grief, -1, NULL);
+        CHECK(n >= 1 && (s.line[0].flags & TLF_SINCERE));
+        if (s.flags & TDF_CARE) opened++;
+        n = turn(&s, TA_ENCOURAGE, TC_NONE, -1, NULL);
+        CHECK_MSG(n == 1 && (s.line[0].flags & TLF_SINCERE) && !is_joke_act(s.line[0].act) && s.line[0].who != 2, "%s", s.line[0].text);
+    }
+    CHECK_EQ(opened, 20);
+    CHECK_EQ(talk_safe_lint_hits(), h0);
+    talk_db_close();
+}

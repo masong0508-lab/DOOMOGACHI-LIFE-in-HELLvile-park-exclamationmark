@@ -1023,13 +1023,32 @@ ring, live preview); the addressee ring on L2/R2 (SELECT cycles instead); hold-B
 card (the owner took the A/B hints off the screen; the last row says what B does; a card with the pad's buttons is still
 wanted by the comprehensibility rule). Four quick replies where the design says three.
 
+**The care window (K-11, TK-CARE, 2026-11-15).** The gate's distress answer used to be one line: the turn after it was
+ordinary, so a kind line ("I'm here for you", an offer, a compliment) could be answered with a joke. Now `talk_dm_say` keeps a
+**care window**: `TalkState.care_left` (4 = `TALK_CARE_TURNS`) is set by a distress line (`TG_DISTRESS`) and by a sincere
+grief answer (a TCF_GRIEF topic, K-10), `TDF_CARE` (0x20, a spare bit of `TalkState.flags`) mirrors it, and each of the next
+four player turns is answered with `TalkConv.care = 1`. In a care turn, for every voice, every age and every act that is not a
+safety act: (1) `talk_gen_line` takes the sincere `grief` bank (core part alone, a rule that answers the act, no opener,
+callback, tag or hand-off), as it does for a grief topic; (2) `react_line` makes no reaction; (3) the drama manager plans the
+answer and nothing else: no beat line, argument step, walk-out, reaction or hand-off ("anything else on your mind?"); (4) the
+pet never answers when someone else can; (5) `talk_dm_tick` makes no idle chatter or prod while the window is open. A new
+distress line or grief answer renews it; a grief answer inside the window does not (the window ends). It ends after the four
+turns, when the player says goodbye or leaves (the state is gone). Bytes: `TalkState` stays 940 B and `TalkConv` 128 B (the
+new `care` and `care_left` bytes took padding), 0 resident bytes on any port (talk is not linked on PS1). Tests, each of which
+fails without the fix: `talk_dm_care_after_distress` (all 17 cast voices x 12 kind or playful acts x 3 seeds x alone / two
+residents x the four turns = 4,896 answers: one sincere line, no joke act, window shows and then closes, no idle chat, renewal),
+`talk_dm_care_after_grief`, `talk_gen_property_care` (7,080 generator lines over every non-safety act, topics, rooms, the cast
+and a child: sincere, never a fallback, trace parts = core only, the rule's sincere flag set, no joke / tease / laugh / mock; the same sweep
+without the window finds 2,025 jokes or tags), and `home_talk_safety` (runner `expect-talk-care 0|1`, `expect-talk-reply-sincere 0|1`:
+a quick reply, an offer and a compliment after "i want to hurt myself" are all sincere answers while the window is open). The window costs
+the player nothing else: the quick replies after a sincere line were already kind only.
+
 **Findings for the Talk owner** (not changed here):
 1. Reading an answer costs 3 to 6 A presses (one box a line, an answer is two to four lines, then "Anything else on your
    mind?"). A quick reply is 1 press, an exchange is 5 to 7. Merging a speaker's consecutive lines into one box would halve it.
-2. After the gentle distress answer, the next kind line from the player (comfort, sympathize, offer, encourage) can get a
-   joke from the resident ("Let me guess, it comes with a catch. And a bow."). The gate and the quick replies stay sincere,
-   but `talk_dm_say` has no "care" state that carries K-11 past the one answer. A `TDF_CARE` flag for a few turns that
-   answers with the sincere bank (`TGE_COMFORT`) would fix it; it is the drama manager's file, so it is listed, not done.
+2. After the gentle distress answer, the next kind line from the player (comfort, sympathize, offer, encourage) could get a
+   joke from the resident ("Let me guess, it comes with a catch. And a bow."). **Fixed by TK-CARE** (the care window,
+   below).
 3. The Romance page is listed for adult pairs the gate allows without the Mature option (the gate only needs
    `talk_safe_romance_ok`; Mature is for explicit scenes). `home_talk_safety` checks the child side and one adult's answer;
    the positive path with an avatar who is an adult pair is covered by `test_talk_safety.c` (`lovers`).
@@ -1698,6 +1717,7 @@ Other measurements:
 | `core/tests/test_talk_census.c` | T7 and T5a over the English banks: the smoke census (6d) and the generator-level property tests P1-P8 (section 2; `DOOMO_TALK_PROPERTY_N` for the design's 200,000) and K-10 (`talk_gen_property_grief`: every act about every grief topic in adults', kids' and pet rooms) |
 | `core/tests/test_talk_save.c` | T6-MEM (6e): the table (find, touch, last two topics, LRU of 24, likes, who may have an entry), the day rollover (refused today only), the flags of a running conversation, the chunk (empty = 0 bytes, worst case 292 B, full save round trip, an old save without the chunk, truncated / too long / wrong version / count over 24, a gone resident, the pet, a double id, a retired concept), and the generator guards and callback through `core/tests/talk_gen/mem.tlk` (K-5 across two conversations) |
 | `core/tests/test_talk_outcome.c` | T6-OUT (6g): the daily caps, mediation, problems, news, romance asked and never forced, 100 greedy sessions, the talk memory write-back, P7 over 1,500 random sessions |
+| `core/tests/test_talk_dm.c`, `test_talk_census.c` | TK-CARE: the care window after distress (`talk_dm_care_after_distress`, `talk_dm_care_after_grief`, `talk_gen_property_care`) |
 | `core/tests/test_talk_scene.c` | T8-SCRIPTS (6j): SCENE_TALK through the pad: the debug view, a quick reply is 1 press, turning to the next person and complimenting is 4, no Romance page for a child, a typed distress line gets the distress verdict and the talk goes on, a typed romance line to a child is refused, the goodbye toast has no raw format code |
 | `make -C core talk-check` | `talkc --check` (now also TK1-TK9, the corpora and the grammar compiler) and `--selftest` (51 seeded refusals: 12 lexicon files, 4 bad edges, 13 templates, 2 rule files, 20 grammars; and `core/tests/talk_good.tlk` must lint clean) (part of `make -C core test`) |
 | `make -C core talk-census` | the full census (6d; not in `make test`: about 25-30 minutes) |

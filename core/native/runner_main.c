@@ -119,6 +119,8 @@
  *   expect-talk-gate G  (T8) what the safety gate did to the player's last line: pass refuse refuse_minor deflect hate
  *                       distress k7 (the typed line's parse is S2's gate, docs/TALK.md section 2)
  *   expect-talk-reply-romance 0|1  (T8) the answer's last line is (1) / is not (0) a romance act
+ *   expect-talk-care 0|1  (K-11) the care window is open (1: after a distress line or a grief answer) / closed (0)
+ *   expect-talk-reply-sincere 0|1  (K-11) the answer's last line is (1) / is not (0) a sincere-bank line (never a joke)
  *   expect-talk-you "TEXT" [0|1]  (T8) the header's "You: ..." line shows (1) / does not show (0) TEXT
  *   frame-time N [LABEL] (T8) run N frames (at most 4,000) and print the CPU time one frame took (update, draw
  *                       and the framebuffer end, no PNG): "frame-time: LABEL N frames avg A ms p99 P ms max M ms"
@@ -712,6 +714,13 @@ static void talk_cmd(const char *cmd, int argc, char **argv)
     } else if (strcmp(cmd, "expect-talk-reply-romance") == 0) {   /* is the last resident line a romance act? */
         int want = argc > 1 ? atoi(a1) : 0;
         if (!ok || (TA_IS_ROMANCE(d.reply_act) != 0) != (want != 0)) fail(want ? "the reply is not a romance act" : "the reply is a romance act", "");
+    } else if (strcmp(cmd, "expect-talk-care") == 0) {            /* K-11: is the care window open? */
+        int want = argc > 1 ? atoi(a1) : 1;
+        if (!ok || (d.care != 0) != (want != 0)) fail(want ? "the care window is not open" : "the care window is open", "");
+    } else if (strcmp(cmd, "expect-talk-reply-sincere") == 0) {   /* K-11: is the last resident line from the sincere bank? */
+        int want = argc > 1 ? atoi(a1) : 1;
+        if (!ok || (d.reply_sincere != 0) != (want != 0) || (want && (d.reply_act == TA_JOKE || d.reply_act == TA_TEASE || d.reply_act == TA_LAUGH)))
+            fail(want ? "the reply is not a sincere line" : "the reply is a sincere line", "");
     } else if (strcmp(cmd, "expect-talk-you") == 0) {
         int want = argc > 2 ? atoi(argv[2]) : 1;
         if (!ok || (strstr(d.you, a1) != NULL) != (want != 0)) fail(want ? "the header does not say" : "the header says", ok ? d.you : "(no talk)");

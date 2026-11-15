@@ -1359,7 +1359,7 @@ int talk_gen_line(TalkConv *c, int who, int to, int act, uint16_t topic, TalkLin
         out->act = TA_BACKCHANNEL;
         return r;
     }
-    if (grief_topic(&g) && !TA_IS_SAFETY(act)) {              /* K-10: grief is not a punchline */
+    if ((grief_topic(&g) || c->care) && !TA_IS_SAFETY(act)) { /* K-10: grief is not a punchline; K-11: nor is the turn after distress */
         r = grief_line(&g, TGE_GRIEF, out, tr);
         out->who = (int8_t)who;
         out->to = (int8_t)to;
@@ -1381,7 +1381,7 @@ static int react_line(TalkConv *c, int who, const TalkLine *prev, uint16_t topic
     int k, act = 0, sym = -1, st, pst = prev->stance, w, best = -1;
     uint32_t tot = 0;
     if (!setup(&g, c, who, prev->who, prev->act, topic)) return 0;
-    if (grief_topic(&g) || (prev->flags & TLF_SINCERE)) {
+    if (grief_topic(&g) || (prev->flags & TLF_SINCERE) || c->care) {
         /* K-10: after a sincere line, a sincere comfort line or nothing (the pet stays quiet) */
         if (c->id[who] == TALK_PET_ID || !grief_topic(&g) ||
             !(talk_gen_adjacent(prev->act, TA_AGREE) || talk_gen_adjacent(prev->act, TA_BACKCHANNEL)))

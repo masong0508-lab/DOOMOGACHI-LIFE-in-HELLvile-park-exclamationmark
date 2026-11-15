@@ -901,6 +901,12 @@ static void mem_acts(TalkState *s, int act)
     else if (act == TA_PROMISE) s->mem_earned |= TMF_PROMISED;
 }
 
+/* K-11: TDF_CARE mirrors the turns of care still to come */
+static void care_sync(TalkState *s)
+{
+    if (s->care_left) s->flags |= TDF_CARE; else s->flags &= (uint8_t)~TDF_CARE;
+}
+
 int talk_dm_say(TalkState *s, const TalkUtter *u)
 {
     TalkAudience aud;
@@ -919,6 +925,10 @@ int talk_dm_say(TalkState *s, const TalkUtter *u)
     g = talk_safe_gate(&s->in, &aud, s->conv.avatar, target_id, target >= 0 && ((s->conv.refused >> target) & 1));
     s->gate = (uint8_t)g;
     s->conv.tone = s->in.tone;
+    s->conv.care = 0;                                       /* K-11: the care window, this turn only */
+    if (s->care_left && g != TG_END_K7) { s->conv.care = 1; s->care_left--; }
+    if (g == TG_DISTRESS) s->care_left = TALK_CARE_TURNS;
+    care_sync(s);
     s->conv.turn++;
     s->turn++;
     s->exchange++;
@@ -946,8 +956,8 @@ int talk_dm_say(TalkState *s, const TalkUtter *u)
     }
 
     /* who answers */
-    resp = target >= 0 ? target : pick_responder(s, s->in.topic[0], &rng, g != TG_PASS && g != TG_DEFLECT);
-    if (resp >= 0 && is_pet(s, resp) && g != TG_PASS) resp = pick_responder(s, s->in.topic[0], &rng, 1);
+    resp = target >= 0 ? target : pick_responder(s, s->in.topic[0], &rng, (g != TG_PASS && g != TG_DEFLECT) || s->conv.care);
+    if (resp >= 0 && is_pet(s, resp) && (g != TG_PASS || s->conv.care)) resp = pick_responder(s, s->in.topic[0], &rng, 1);
     if (resp < 0) { s->flags |= TDF_OVER; return g; }
     plan_add(s, DK_ANSWER, resp, -1, 0);
 
@@ -1033,6 +1043,12 @@ int talk_dm_say(TalkState *s, const TalkUtter *u)
     s->lull = (uint8_t)(s->tension <= 1 ? (s->lull < 255 ? s->lull + 1 : 255) : 0);
     if (s->tension > s->peak_tension) { s->peak_tension = s->tension; s->peak_turn = s->turn; }
 
+    if (s->conv.care) {                                    /* K-11: the sincere answer alone, no reaction, beat line, jab or hand-off */
+        s->last_act = (uint8_t)act;
+        if (s->flags & TDF_FAREWELL) s->flags |= TDF_OVER;
+        return g;
+    }
+
     /* the lines of the exchange: the answer, then the mandatory ones (the argument, the goal line, the
      * walk-out), then what room is left goes to reactions, which are said right after the answer */
     budget = TALK_EXCHANGE_MAX - s->nplan;
@@ -1086,6 +1102,7 @@ int talk_dm_tick(TalkState *s, int frames)
     int k, a = -1, b = -1;
     if (!s || (s->flags & TDF_OVER) || frames <= 0) return 0;
     if (s->nplan > s->plan_at && s->nlines < TALK_EXCHANGE_MAX) return 0;      /* lines are still playing */
+    if (s->care_left) return 0;                                 /* K-11: no idle banter while the care window is open */
     if ((int)s->idle_frames + frames > 65000) s->idle_frames = 65000; else s->idle_frames = (uint16_t)(s->idle_frames + frames);
     if (s->idle_frames < TALK_IDLE_FRAMES) return 0;
     s->idle_frames = 0;
@@ -1161,6 +1178,10 @@ static int make_line(TalkState *s, int kind, int who, int to, int arg, TalkLine 
             int e = talk_dm_expect(s, who, s->in.act[0], s->in.tone, s->in.topic[0]);   /* how they took it, on the face */
             if (e >= 5) L->face = EXPR_HAPPY + 1;
             else if (e <= -5) L->face = (!adult(s, who) || pers(s->part[who].id, PERS_SPEECH) < 10 ? EXPR_SAD : EXPR_ANGRY) + 1;
+        }
+        if (ok && s->gate == TG_PASS && !c->care && (L->flags & TLF_SINCERE) && !(L->flags & TLF_FALLBACK)) {   /* a grief answer opens the care window (K-10/K-11) */
+            s->care_left = TALK_CARE_TURNS;
+            care_sync(s);
         }
         if (TA_IS_ROMANCE(L->act) && !(TA_IS_ROMANCE(s->in.act[0]) && s->gate == TG_PASS && ((c->consent >> who) & 1))) ok = 0;
         break;

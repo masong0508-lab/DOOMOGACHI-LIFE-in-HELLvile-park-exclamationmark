@@ -377,6 +377,63 @@ TEST(talk_gen_property_grief)
     talk_db_close();
 }
 
+/* K-11 (TK-CARE): inside the care window (conv.care, set by the drama manager after a distress line or a grief
+ * answer) every line the generator makes is the sincere core alone: no opener, callback, tag or hand-off, no joke act,
+ * never a fallback, whatever the act, the topic, the room or the speaker (the cast included). A tag-joke line, or one
+ * from a rule without the sincere flag, would be a miss. Without conv.care the same sweep finds jokes. */
+TEST(talk_gen_property_care)
+{
+    int act, it, k, ncast, lines = 0, bad = 0, free_jokes = 0, nc, cast_hit = 0;
+    uint32_t h0;
+    test_reset();
+    town_new(TOWN_FREEPLAY, 7, TOWN_POP_PREMADE);
+    CHECK(talk_db_open(lang_find("en")) == TALK_DB_OK && talk_gen_ready());
+    people();
+    h0 = talk_safe_lint_hits();
+    nc = talk_db_nconcepts();
+    for (ncast = 0; talk_gen_cast_id(ncast) >= 0; ncast++) {}
+    CHECK(ncast >= 10);
+    prs = 0xCA4E11u;
+    for (act = 1; act < TA_COUNT; act++) {
+        if (TA_IS_SAFETY(act)) continue;
+        for (it = 0; it < 120; it++) {
+            int care, ids[2], who;
+            ids[0] = it < ncast * 2 ? talk_gen_cast_id(it % ncast) : adults_g[prnd((uint32_t)nadult_g)];
+            ids[1] = it % 5 == 0 ? minors_g[prnd((uint32_t)nminor_g)] : adults_g[prnd((uint32_t)nadult_g)];
+            if (ids[1] == ids[0]) ids[1] = ids[0] == 666 ? 729 : 666;
+            who = it & 1;
+            for (care = 0; care < 2; care++) {
+                TalkConv c;
+                TalkLine l;
+                TalkTrace tr;
+                TalkAltInfo ai;
+                talk_gen_begin(&c, DOOMO_PLAYER_ID, ids, 2, 4400u + (uint32_t)(act * 131 + it));
+                c.care = (uint8_t)care;
+                memset(&tr, 0, sizeof tr);
+                talk_gen_line(&c, who, -1, act, (uint16_t)(1 + prnd((uint32_t)nc)), &l, &tr);
+                if (!care) {
+                    free_jokes += l.act == TA_JOKE || l.act == TA_TEASE || l.act == TA_LAUGH || (tr.parts & TPART_TAG);
+                    continue;
+                }
+                lines++;
+                if (!(l.flags & TLF_SINCERE) || (l.flags & (TLF_FALLBACK | TLF_SAFE)) || tr.parts != TPART_CORE ||
+                    l.act == TA_JOKE || l.act == TA_LAUGH || l.act == TA_TEASE || l.act == TA_MOCK ||
+                    !talk_gen_alt_info(tr.core_alt, &ai) || !(ai.rflags & 8u)) {
+                    if (!bad++) printf("      care miss: act %d: %s\n", act, l.text);
+                }
+                for (k = 0; k < c.n; k++) if (c.id[k] == ids[who] && ai.rflags & 16u) cast_hit++;
+            }
+        }
+    }
+    CHECK_EQ(bad, 0);
+    CHECK(lines > 3000);
+    CHECK(free_jokes > 100);                         /* the sweep can see a joke: the window is what removes it */
+    CHECK_EQ(talk_safe_lint_hits(), h0);
+    printf("      K-11: %d care-window lines over every act and the whole cast, all sincere core alone; "
+           "%d jokes or tags without the window; %d cast-voice lines\n", lines, free_jokes, cast_hit);
+    talk_db_close();
+}
+
 /* T5B-S3FIX: a template's "{x}'s" reads to the S3 lint as one word: "spice's" squeezes to a
  * hate-list plural, the line was replaced by a safe one and the lint counted (4 hits in the
  * 2,000,000-context census). The cool_blame and cool_extra lines now say {x:s}, which the filler

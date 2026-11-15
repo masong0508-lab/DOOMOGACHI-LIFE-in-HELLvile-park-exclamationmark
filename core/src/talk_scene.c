@@ -1112,6 +1112,8 @@ int talk_scene_debug(TalkSceneDebug *o)
     o->gate = T.s.gate;
     o->reply_act = T.s.nlines > 0 ? T.s.line[T.s.nlines - 1].act : 0;
     o->nlines = T.s.nlines;
+    o->care = (T.s.flags & TDF_CARE) != 0;
+    o->reply_sincere = T.s.nlines > 0 && (T.s.line[T.s.nlines - 1].flags & TLF_SINCERE) != 0;
     for (i = 0; i < T.n && i < TALK_PARTS_MAX; i++) o->ids[i] = T.ids[i];
     doomo_snprintf(o->you, sizeof o->you, "%s", T.you);
     return 1;

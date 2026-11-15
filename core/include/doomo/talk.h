@@ -620,6 +620,7 @@ typedef struct TalkConv {
     uint8_t  chapter;                            /* story_chapter() at the start     */
     uint8_t  lines;                              /* lines made (the RNG stream)      */
     uint8_t  plain;                              /* 1: the core part only, no opener, callback, tag or hand-off (tests; a short UI preview) */
+    uint8_t  care;                               /* 1: the care window (K-11, TDF_CARE): the next answer is the sincere bank, no joke, no reaction */
     TalkAudience aud;                            /* talk_safe_ctx() of the room       */
     uint16_t recent[TALK_PARTS_MAX][TALK_NOVELTY]; /* novelty rings: alternatives used, newest first */
     uint16_t room_recent[TALK_ROOM_NOVELTY];     /* the room's last core alternatives, any speaker (no line twice) */
@@ -910,6 +911,9 @@ typedef struct TalkHist { uint8_t who, act, flags; int8_t to; uint16_t topic, tm
 #define TDF_FAREWELL  0x04u        /* the player said goodbye                       */
 #define TDF_KIDSAFE   0x08u        /* a kids' room for the rest of the talk (K-2; KID_MOMENT) */
 #define TDF_NO_BEATS  0x10u        /* the database has no TB_BEATS: small talk only */
+#define TDF_CARE      0x20u        /* the care window is open (K-11): after a distress line or a grief answer the next
+                                      TALK_CARE_TURNS player turns are answered by the sincere bank alone */
+#define TALK_CARE_TURNS 4          /* player turns of care after a distress line or a grief answer */
 
 typedef struct TalkState {          /* <= TALK_STATE_MAX, in the house's scene scratch */
     TalkConv  conv;                 /* the generator's conversation (beat, consent, novelty, audience) */
@@ -919,6 +923,7 @@ typedef struct TalkState {          /* <= TALK_STATE_MAX, in the house's scene s
     uint8_t   tension, peak_tension, peak_turn, turn;
     uint8_t   flags;                /* TDF_*                                          */
     uint8_t   gate;                 /* TG_* of the last utterance                     */
+    uint8_t   care_left;            /* player turns of care still to come (TDF_CARE while > 0) */
     int8_t    beat_a, beat_b;       /* the slots the beat is about (the fan, the troubled one, the rivals), -1 */
     uint8_t   arg_step, arg_wait;   /* an argument: 0 none, 1 jab, 2 row, 3 ultimatum; turns it was ignored */
     int8_t    arg_a, arg_b;
@@ -1105,6 +1110,7 @@ typedef struct TalkSceneDebug {
     int active, busy, sel, nrows, nparts, to, to_id, tension;
     int gate;                           /* TG_* of the player's last line                */
     int reply_act, nlines;              /* the act of the last resident line, and how many lines the answer had */
+    int care, reply_sincere;            /* TDF_CARE is open (K-11); the last resident line is a sincere-bank line */
     const char *page;                   /* "main" "acts" "topic" "invite" "more" */
     int ids[TALK_PARTS_MAX];
     char you[TALK_SHOWN_MAX];
