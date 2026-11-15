@@ -104,6 +104,7 @@ void st_set_tab(int tab)
 /* ====================================================================== */
 /* undo journal                                                             */
 #define JOIN 0x8000u
+#define BIG_OFF 0xFFFEu              /* a journal record with no bytes: the before-image is StEasy.before (STUDIO-30) */
 
 static int rle_encode(const uint8_t *src, int n, uint8_t *dst, int cap)
 {
@@ -202,7 +203,7 @@ static void redo_clear(void)
 void ed_reset(void)
 {
     StEasy *ez = st_easy();
-    if (ez) ez->mk_valid = 0;
+    if (ez) { ez->mk_valid = 0; ez->before_ok = 0; }
     studio.undo_used = 0;
     studio.undo_open = 0;
     studio.undo_steps = 0;
@@ -220,6 +221,25 @@ static void touch_rec(const void *field, int len, int keep_redo)
     off = (int)(p - base);
     enc = rle_encode(p, len, NULL, 0);
     if (enc + 6 > STUDIO_UNDO_BYTES) {
+        StEasy *ez = off == 0 && len == (int)sizeof(DoomoSong) && !studio.undo_open ? st_easy() : NULL;
+        if (ez) {
+            /* STUDIO-30: a whole song too big for the journal (a composed song a take is made over): the before-image
+             * is kept raw in the scene scratch and the journal holds one record that names it. The history before it
+             * is dropped as it always was (it could not be reached past this step), the redo journal stays when a
+             * redo is replaying. */
+            uint16_t ru = ez->redo_used;
+            uint8_t rs = ez->redo_steps;
+            memcpy(ez->before, base, sizeof(DoomoSong));
+            ed_reset();
+            if (keep_redo) { ez->redo_used = ru; ez->redo_steps = rs; }
+            ez->before_ok = 1;
+            wr16(studio.undo, BIG_OFF);
+            wr16(studio.undo + 2, (uint32_t)sizeof(DoomoSong));
+            wr16(studio.undo + 4, 0);
+            studio.undo_used = 6;
+            studio.undo_open = 1;
+            return;
+        }
         /* too big to remember: the history before it is useless now */
         ed_reset();
         studio.undo_open = 2;              /* this step cannot be undone */
@@ -323,7 +343,16 @@ int ed_undo(void)
         uint32_t off = rd16(tr), ln = rd16(tr + 2), enc = rd16(tr + 4);
         int join = (ln & JOIN) != 0;
         ln &= ~JOIN;
-        if (off + ln <= sizeof(DoomoSong) && enc + 6 <= studio.undo_used) {
+        if (off == BIG_OFF && enc == 0) {
+            /* the whole-song before-image in the scene scratch (gone if another scene took the scratch: the step stays) */
+            if (ez && ez->before_ok) {
+                if (keep && !redo_push(ez, 0, (int)sizeof(DoomoSong), !first)) keep = 0;
+                first = 0;
+                memcpy(&studio.song, ez->before, sizeof(DoomoSong));
+            } else {
+                keep = 0;
+            }
+        } else if (off + ln <= sizeof(DoomoSong) && enc + 6 <= studio.undo_used) {
             /* the first record pushed is the last one a redo pops: it carries no JOIN, the rest do */
             if (keep && !redo_push(ez, (int)off, (int)ln, !first)) keep = 0;
             first = 0;
@@ -744,7 +773,7 @@ static void ez_init(StEasy *e)
     e->level = (studio_stats.lines & STUDIO_LINES_LEVEL) ? 1 : 0;
 }
 #define BAKE_ENTS  40
-#define BAKE_POOL  (10752 - STUDIO_TABSTATE)  /* BakeSt is the whole 12 KB scene scratch (CHOIR's tiles are ~750 B each) */
+#define BAKE_POOL  (10752 - STUDIO_TABSTATE - (int)sizeof(DoomoSong))  /* BakeSt is the whole 12 KB scene scratch (CHOIR's tiles are ~750 B each) */
 typedef struct { uint32_t k0, k1; DoomoImage img; int16_t bx, by; } BakeEnt;
 /* xs: the open tab's own small state (st_tab_state, the PLAY tab's pads); xs[0] is 0 on a fresh claim */
 typedef struct { uint16_t top, n; BakeEnt e[BAKE_ENTS]; uint8_t xs[STUDIO_TABSTATE]; uint8_t pix[BAKE_POOL]; StEasy ez; } BakeSt;   /* ez: ST-EASY (+448 B) */

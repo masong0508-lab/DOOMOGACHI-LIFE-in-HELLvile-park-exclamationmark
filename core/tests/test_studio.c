@@ -1229,6 +1229,48 @@ TEST(studio_make_it_undoes_and_redoes_whole)
     test_reset();
 }
 
+/* STUDIO-30: a take over an already composed song (the before-image is over the journal's 768 bytes) is undoable and
+ * redoable too; the before-image lives in the scene scratch */
+TEST(studio_take_over_a_composed_song_undoes_and_redoes)
+{
+    DoomoSong composed, take1, take2;
+    open_blank_studio();
+    ed_reset();
+    press(BTN_A);                                           /* Make it! on the blank song: a composed song */
+    {   /* hand edits make it dense: every note and lyric byte differs, so the RLE image is over the journal */
+        int i;
+        uint8_t *n = &studio.song.notes[0][0][0];
+        for (i = 0; i < (int)sizeof(studio.song.notes); i++) n[i] = (uint8_t)(2 + (i * 7 + i / 5) % 29);
+        for (i = 0; i < SONG_LYRIC_LINES; i++) {
+            int j;
+            for (j = 0; j < SONG_LYRIC_LEN - 1; j++) studio.song.lyrics[i][j] = (char)('a' + (i * 13 + j * 7 + j / 3) % 26);
+            studio.song.lyrics[i][SONG_LYRIC_LEN - 1] = 0;
+        }
+        for (i = 0; i < SONG_SINGERS; i++) studio.song.singer[i] = (uint16_t)(i * 37 + 5);
+    }
+    composed = studio.song;
+    CHECK(!studio.card);
+    ed_reset();
+    st_card_open();                                         /* the card over the composed song */
+    CHECK(studio.card);
+    press(BTN_UP);                                          /* Shuffle */
+    press(BTN_A);
+    take1 = studio.song;
+    CHECK(memcmp(&take1, &composed, sizeof composed) != 0);
+    CHECK_EQ(ed_undo_steps(), 1);
+    press(BTN_A);                                           /* a second take replaces the first */
+    take2 = studio.song;
+    CHECK(memcmp(&take2, &take1, sizeof take1) != 0);
+    CHECK_EQ(ed_undo_steps(), 1);
+    CHECK(ed_undo());                                       /* one undo: the composed song, not a half song */
+    CHECK(memcmp(&studio.song, &composed, sizeof composed) == 0);
+    CHECK(ed_redo());                                       /* and the last take comes back whole */
+    CHECK(memcmp(&studio.song, &take2, sizeof take2) == 0);
+    CHECK(ed_undo());
+    CHECK(memcmp(&studio.song, &composed, sizeof composed) == 0);
+    test_reset();
+}
+
 TEST(studio_redo_clears_when_the_scratch_is_taken)
 {
     open_blank_studio();

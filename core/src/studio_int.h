@@ -159,6 +159,8 @@ typedef struct StEasy {
     uint8_t  mk_style, mk_mood, mk_tempo, mk_length;
     uint16_t mk_mark;           /* studio.undo_used right after that step */
     uint32_t mk_seed;
+    uint8_t  before_ok;         /* STUDIO-30: `before` holds the song a take (Make it! / Shuffle / a template) was made over */
+    uint8_t  before[sizeof(DoomoSong)];   /* its raw image, for a step whose RLE image is over the journal's size */
     uint8_t  csel, style, mood, tempo, length;   /* the Start card */
     uint16_t help_t;            /* ticks of the one-line help left on the bar */
     uint32_t seed;              /* the Start card's seed */
