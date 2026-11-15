@@ -778,8 +778,7 @@ offer them (`part_live_drawable`); the new parts add no resident byte there.
 ## CR-BODY: body types and better sliders (2026-11-13)
 
 Owner request 2026-11-13 ("proper body type and better sliders, every single one of them works"). Part 1 of the
-package (the cheat "Slider range x1..x4" is CR-SLIDERX, the next package; the slider table below is where it
-plugs in).
+package (the cheat "Slider range x1..x4" is CR-SLIDERX, below; the slider table here is where it plugs in).
 
 * **16 body types.** The gene's `body` field (4 bits, already 16 wide) now offers six more after the classic ten:
   Athletic (broad shoulders, long legs), Gangly (small torso, long legs, a head a size up), Bean (short legs,
@@ -964,6 +963,70 @@ Review: the sheets (`slot_nose`, `slot_mouth`, `slot_ears`, `slot_blush`, each c
 at by the builder; the sign-off is the `A1b` lines in `core/data/parts/review.txt`. Nothing is a tongue, lips,
 tobacco, vape or drug prop, nor suggestive on any age: the plaster nose and the gap tooth sit in "Little Ones",
 the zipper mouth is a plain line with ticks (Plushie Factory, locked behind the set).
+## CR-SLIDERX: the cheat "Slider range x1 / x2 / x3 / x4" (2026-11-15)
+
+Owner request 2026-11-13 ("creator body and sliders", item 4), part 2 of CR-BODY. Options, Cheats page: **Slider range**,
+x1 (default) / x2 / x3 / x4. It multiplies both the effect and the range of the 11 build sliders (Height, Build, Head size,
+Eye size, Eye gap, Eye height, Eye tilt, Brow height, Nose size, Mouth size, Horn size). Voice and personality sliders are not
+build sliders and are not scaled.
+
+* **The option.** `OPT_SLIDER_RANGE` = 69, the next free OPT2 id (`town.h`), values 0..3, default 0. Saved in the OPT2 chunk
+  (the chunk is one byte longer; an older chunk, or a save with no chunk, reads x1; a byte past 3 reads x1). It is a world
+  setting like Stick (not machine-wide). It is ungated: unlike the twelve other cheats it has no unlock row (it gives no
+  advantage, only a different drawing), so every player can try it. Name and help are in the language packs
+  (`core/lang/es/ui_cat02.tsv`, `ui_scr00.tsv`); the values "x1".."x4" are the same in every language.
+  Presets never touch it (the Cheats page is outside them), Defaults puts it back to x1.
+* **What the slider stores never changes.** The sliders stay 0..15 (4 bits) in the gene, so a look made at x3 is the same
+  look when x1 is back: nothing is clamped on save, nothing is flagged, nothing can break an old build. The multiplier acts on the
+  **look to draw** only: `look_for_stage` for a grown-up (adult or elder; a baby, toddler, child or teen is never scaled) and
+  the creator's preview of its draft (`view_of`). Each slider goes `def + (value - def) * m`, then is clamped to its own safe
+  range. The default step stays the default at every multiplier. At x1 nothing is touched: the look, the cache keys and every
+  pixel are the same bytes as before (proved by `crsx_x1_is_bit_for_bit_what_was_drawn_before`).
+* **The table.** `portrait_age.c` `look_sliders[]`: for each of the 11 sliders the `DoomoLook` byte, the default (the test checks
+  it against `CR_SLIDERS` in `creator_data.c`) and the range the renderers draw safely. The ranges were found by moving each
+  slider through values far past the limit and keeping those where every formula in `portrait*.c` stays positive and every
+  step still changes the picture; going further crashed a renderer, so they are the real limits:
+
+  | slider | default | safe range | slider | default | safe range |
+  |---|---|---|---|---|---|
+  | Height | 7 | -14..29 | Eye tilt | 8 | -8..23 |
+  | Build | 8 | -6..27 | Brow height | 7 | -10..22 |
+  | Head size | 11 | -8..27 | Nose size | 6 | -2..27 |
+  | Eye size | 10 | -6..27 | Mouth size | 6 | -2..27 |
+  | Eye gap | 7 | -8..27 | Horn size | 7 | -10..27 |
+  | Eye height | 8 | -10..27 | | | |
+
+  So Height at x4 runs -14..29 (the 16 steps are 4 apart, the low end stops at -14: Short saturates at x3 and x4); a slider
+  whose low end cannot go lower (Mouth, Nose) gains only at the high end. A body type's head step is added after the scaling and
+  clamped to the same range. Extremes stay comic: only sizes move inside the clamp, no part is added, nothing is a body or a
+  sexual shape at any range (the creator shots of the extremes at x1 and x4 were looked at, evidence `x1_vs_x4_height_build_head.png`: a bigger head, a
+  taller or chonkier citizen in the same clothes).
+* **The renderers.** The 11 `DoomoLook` fields are `int8_t` now (`resident.h`; the saved look is still 0..15, the same bytes).
+  `portrait.c` `sanitize` clamps them with the same loop as the scaling (`look_sliders_fix`, one body): to 0..15 as it always did
+  at x1, to the safe range otherwise, so a wild raw byte is never trusted at x4. The portrait cache keys carry the look as drawn
+  (a x3 body is another key); the one thing memoised outside the key, the body hash per resident (`blh`), is dropped when the option changes.
+* **The creator.** The preview shows the range (the bust, the figure, the turntable); the bar value is the effect, so at x3 one step
+  of Height reads "+3" -> "+9" (`dist * m`), and the notch is still at the default. Reset (A) and undo work on the stored step.
+* **Tests.** `core/tests/test_cr_sliderx.c` (12 tests, host, in `make -C core test`): the table against the creator's;
+  the option (id, page, bytes shared with Stick, defaults, OPT2 round trip, an old chunk, a wild byte, no chunk); x1 bit for bit;
+  every slider at every multiplier equals the formula and stays inside its range, the saved look is untouched; a look made at x3 is the same look at x1;
+  a minor is never scaled; **every slider x every multiplier x every step**: the bust, figure, fighter and chibi change whenever
+  the slider's effective value changes and only then, nothing writes outside any picture (canary bytes; `SAN=1` adds the
+  sanitizer); the extremes on every species and body types at once; the cache after x1 -> x3 -> x1; the creator's preview and draft.
+  A table is printed (lowest-to-highest pixels per slider: Height 4,501 / 4,810 / 4,810 at x2 / x3 / x4, Build 2,175 / 2,362 / 2,362,
+  Head size 3,830 / 4,234 / 4,587 ...).
+* **The same on every platform.** `tools/slider_scripts.py` writes `creator_sliders_x2.txt`, `_x3`, `_x4` from the CR-BODY script
+  (one `opt 69 N` line in front of the creator; `--check` is part of `make -C core check-gen`, the runner and every harness fail when
+  the option does not read back). They run on the native runner at both sizes (`make -C core scripts`), the GBA ROM
+  (`make -C gba test-creator-sliders` runs x1..x4), the PS1 harness (`cmake --build --preset ps1 --target harness`) and the Dreamcast
+  (`make -C dc ui-compare`, the three are in its default list), each followed by `tools/slider_shots_check.py`: every slider's lowest
+  and highest preview must differ, and A must bring it back.
+* **Memory.** PS1: +256 B resident (`_end` 0x801ee560 -> 0x801ee660; 72,336 -> 72,080 B below the stack top with the boot FMV; inside
+  CREATOR's 4 KB share, docs/PS1.md "CR-SLIDERX"): the slider loop 216 B, the table 44 B, the option rows, minus 260 B from `sanitize`.
+  GBA: `.bss`, `.iwram`, `.iwram_bss`, `.data` identical (free EWRAM 12,164 B; the option's byte replaced a bit, docs/GBA.md ledger
+  row 52). Old saves load with x1.
+* **Not done here.** Only the build sliders scale; the voice, personality and enum rows do not. A resident drawn by a script that
+  reads a slider (none does today) would need the same table.
 
 ## Extending
 

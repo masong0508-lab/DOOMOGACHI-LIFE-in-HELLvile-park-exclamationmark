@@ -853,6 +853,11 @@ block against the native pixel in RGB565; gate 99% exact and 99.9% close).
 Shots, diff pictures (grey = exact, yellow = close, red = not) and the
 logs go to `dc/build/shots/ui/`, with `summary.txt`.
 
+CR-BODY / CR-SLIDERX: `creator_sliders` (every build slider across its range) is in the default list, and so are its generated variants
+`creator_sliders_x2`, `_x3` and `_x4` (the cheat "Slider range" set by one `opt 69 N` line, `tools/slider_scripts.py`). After the pairs,
+`ui_compare.sh` runs `tools/slider_shots_check.py` on each of the four sets of Dreamcast shots: every slider's lowest and highest preview must
+differ. The cheat is core code (`portrait_age.c`, `portrait.c`), so the Dreamcast needed no change of its own.
+
 Both sides play the same ticks: `dcrun --native-seed 0x5EED1234` holds
 the game before its first tick and gives it the native runner's start
 state (`plat_entropy`, `doomo_rng` and the start town of `runner --seed

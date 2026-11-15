@@ -2231,3 +2231,15 @@ life studio fishcook library` (PCSX-Redux, not run before the change on this mac
 65-325 ms single frames): every window of the shop, Black Market, cafe, picker, picker move, choir, cook counter, lobby and
 Almanac list reads 30.0-30.5 fps with no frame over 50 ms (a single 50 ms frame in several of the studio, cook and library windows); the known misses are the
 new island's load, the save freeze and the care reaction (2 frames of 50 ms).
+## CR-SLIDERX (2026-11-15): the cheat "Slider range x1..x4"
+
+Measured on the tip `bef8bf12` and the tip + CR-SLIDERX, 2026-11-15 (`cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON`,
+`cmake --build --preset ps1 -j2`, `PSN00BSDK_LIBS=/opt/psn00bsdk/lib/libpsn00b`): `_end` 0x801ee560 -> 0x801ee660, **+256 B resident**;
+margin below the stack top with the boot FMV **72,336 -> 72,080 B** (the elf2exe line still prints "70 KB left"; the hard gate is 64 KB, the
+plan gate stays as CR-BODY described). CREATOR's share is 4 KB (PARALLEL_WAVES section 3). Where the bytes are (map diff): the slider loop
+`look_sliders_fix` 216 B (one body for the scaling and for `sanitize`'s clamp, `noinline`), its table `look_sliders` 44 B, the option rows
+(`doomo_option2_info` +16 B, the value names 16 B, `apply2` and the OPT2 reader / reset +40 B), the hash memo reset 20 B, `look_for_stage`
++68 B (the adult call, the stages' maths now on zero-extended bytes), `pb_layout`, `ptk_place`, `face_layout` and `gen_look` +48 B together
+(signed loads of the 11 look fields, now `int8_t`), and `sanitize` -260 B (its 11 compares became the call). The first version was +608 B: the
+loop was inlined twice and the stages' signed divisions cost 150 B; the option now lives in a byte of the OPT2 array instead of bits. The creator
+and the Options page are overlay code. Harness (PCSX-Redux): `creator_sliders` and its x2, x3, x4 variants (the numbers are in the ROADMAP Done line).
