@@ -882,7 +882,7 @@ static void push_topic(TalkState *s, uint16_t t)
     s->topic_stack[0] = t;
 }
 
-static void hist_push(TalkState *s, int who, int act, int flags, int to, uint16_t topic, uint16_t tmpl)
+static void hist_push(TalkState *s, int who, int act, int flags, int to, uint16_t topic)
 {
     memmove(&s->hist[1], &s->hist[0], sizeof(s->hist[0]) * (TALK_HIST - 1));
     s->hist[0].who = (uint8_t)who;
@@ -890,7 +890,6 @@ static void hist_push(TalkState *s, int who, int act, int flags, int to, uint16_
     s->hist[0].flags = (uint8_t)flags;
     s->hist[0].to = (int8_t)to;
     s->hist[0].topic = topic;
-    s->hist[0].tmpl = tmpl;
     if (s->nhist < TALK_HIST) s->nhist++;
 }
 
@@ -936,7 +935,7 @@ int talk_dm_say(TalkState *s, const TalkUtter *u)
     s->idle_n = 0;
     s->idle_frames = 0;
     rng_for(s, &rng, 0);
-    hist_push(s, 0xFF, s->in.act[0], THF_PLAYER, target, s->in.topic[0], 0);
+    hist_push(s, 0xFF, s->in.act[0], THF_PLAYER, target, s->in.topic[0]);
     act = s->in.act[0];
     mem_acts(s, act);
     if (aud.any_minor) { s->conv.aud.any_minor = 1; s->flags |= TDF_KIDSAFE; }
@@ -1294,7 +1293,7 @@ int talk_dm_step(TalkState *s, TalkTrace *tr)
             s->conv.more = 0;
         }
         if (who >= 0 && who < s->nparts) { s->part[who].flags |= TPF_SPOKE; s->conv.spoke |= (uint8_t)(1u << who); }
-        hist_push(s, who, L->act, hf, to, L->topic, 0);
+        hist_push(s, who, L->act, hf, to, L->topic);
         if (kind == DK_EXCUSE) {                            /* walks out */
             s->part[who].flags |= TPF_LEFT;
             talk_depth_reset(&s->conv.dep[who]);                 /* a walk-out: the thread is over */

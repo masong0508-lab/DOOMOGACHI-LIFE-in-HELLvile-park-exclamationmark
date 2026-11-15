@@ -628,6 +628,9 @@ enum {
 
 /* One conversation as the generator needs it between lines (T6 keeps it in
  * its TalkState). talk_gen_begin() fills it. */
+#ifdef DOOMO_PLATFORM_GBA
+#define TALK_NO_UNK 1              /* the GBA has no typed line: TalkConv keeps no unknown-word state (see TC_* below) */
+#endif
 typedef struct TalkConv {
     uint32_t seed;                               /* the conversation seed            */
     int16_t  avatar;                             /* the player's id (play-as aware)  */
@@ -656,12 +659,15 @@ typedef struct TalkConv {
     uint8_t  mem_dep[TALK_PARTS_MAX];            /* talk memory: bits 0-1 the level reached last time, 2-5 the secrets told (TalkMem.spare) */
     uint8_t  engage;                             /* the answering resident's engagement (the drama manager sets it before the answer; 55 when unset) */
     uint16_t more;                               /* a second line the last answer asks for: bits 0-1 TMORE_*, 2-3 the slot, 8-15 the player's act; 0 none */
+#ifndef TALK_NO_UNK
     uint8_t  unk_st;                             /* the unknown word's state, packed (TC_UNK_MODE, TC_TAUGHT, TC_UNK_SAID below)        */
     uint16_t unk_guess;                          /* the nearest known concept to the unknown word (a real concept), 0 none */
     char     unk[18];                            /* the word to name, lower case (E1 to E6 held), else empty      */
     uint16_t taught_hash[4];                     /* the ring of words the player has named a kind for: hash16 (never saved)  */
     uint8_t  taught_root[4];                     /* ... and the category root they were said to be                */
+#endif
 } TalkConv;
+#ifndef TALK_NO_UNK
 /* TalkConv.unk_st: bits 0-2 how the next answer to an unknown line goes (TU_*; set by talk_gen_unk_prepare), bits 3-5 the
  * ring index + 1 of the unknown word the player has been asked the kind of (0 none), bit 6 a word was named this talk (E7: once) */
 #define TC_UNK_MODE(c)        ((unsigned)((c)->unk_st & 7u))
@@ -670,6 +676,16 @@ typedef struct TalkConv {
 #define TC_SET_TAUGHT(c, v)   ((c)->unk_st = (uint8_t)(((c)->unk_st & ~0x38u) | (((unsigned)(v) & 7u) << 3)))
 #define TC_UNK_SAID(c)        ((unsigned)(((c)->unk_st >> 6) & 1u))
 #define TC_SET_UNK_SAID(c)    ((c)->unk_st = (uint8_t)((c)->unk_st | 0x40u))
+#else
+/* The GBA has no typed line (talk_scene.c TALK_TYPING): no unknown word reaches Talk there and TalkConv keeps none of its
+ * state (33 B of the GBA's EWRAM: the TM2d fields are offset, docs/GBA.md ledger). */
+#define TC_UNK_MODE(c)        ((void)(c), 0u)
+#define TC_SET_UNK_MODE(c, m) ((void)(c), (void)(m))
+#define TC_TAUGHT(c)          ((void)(c), 0u)
+#define TC_SET_TAUGHT(c, v)   ((void)(c), (void)(v))
+#define TC_UNK_SAID(c)        ((void)(c), 0u)
+#define TC_SET_UNK_SAID(c)    ((void)(c))
+#endif
 
 /* ---- T9: the Talk screen's pointer (core/src/talk_scene.c; docs/TALK.md "The pointer") ------------
  * Only where DOOMO_POINTER (input.h): a console build declares and links none of it. The view is for the
@@ -1068,7 +1084,7 @@ typedef struct TalkEvent { uint8_t kind, a, b, turn; } TalkEvent;
 #define THF_ARGUE     0x20u        /* a jab, a row, an ultimatum                    */
 #define THF_LEAVE     0x40u        /* an excuse: the speaker walks out              */
 #define THF_SINCERE   0x80u        /* a refusal, distress, grief or K-7 line        */
-typedef struct TalkHist { uint8_t who, act, flags; int8_t to; uint16_t topic, tmpl; } TalkHist;
+typedef struct TalkHist { uint8_t who, act, flags; int8_t to; uint16_t topic; } TalkHist;      /* 6 B (TM2d: the unused `tmpl` word is gone) */
 
 /* TalkState.flags */
 #define TDF_OVER      0x01u        /* the conversation is over                      */

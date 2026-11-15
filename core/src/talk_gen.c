@@ -937,6 +937,7 @@ static void expand_str(Gen *g, int str)
             case 'P': fill_name(g, g->partner, mods, NULL); break;
             case 'Q': fill_name(g, TALK_PET_ID, mods, "Boreagotchi"); break;
             case 'G': fill_lost(g, mods); break;
+#ifndef TALK_NO_UNK
             case 'W': {                                        /* TM2d: {u}, the unknown word, quoted (E7: unk.name rules only) */
                 int start = g->len, n = (int)strlen(g->c->unk);
                 if (g->unk != TU_NAME || n < 3 || n > 16 || !g->c->unk[0]) { g->fail = 1; break; }
@@ -946,6 +947,7 @@ static void expand_str(Gen *g, int str)
                 push_fill(g, start, g->len - start, TFK_TEXT, 0);
                 break;
             }
+#endif
             case 'C': {
                 char s[40];
                 int start = g->len;
@@ -1855,6 +1857,7 @@ int talk_gen_more(TalkConv *c, TalkLine *out, TalkTrace *tr)
     return 1;
 }
 
+#ifndef TALK_NO_UNK
 /* ---- the unknown word (design 4) -------------------------------------------------------------------------- */
 /* E1 to E6 on the word the parser pointed at, from the bubble text only (E2); the kid-room length rule. 0: do not echo */
 int talk_gen_unk_word(const TalkConv *c, const TalkUtter *u, char out[18])
@@ -1984,6 +1987,19 @@ static int unk_line(Gen *g, TalkLine *out, TalkTrace *tr)
     memset(out, 0, sizeof *out);
     return 0;
 }
+#else
+/* the GBA has no typed line: nothing to name, guess or ask about */
+int talk_gen_unk_word(const TalkConv *c, const TalkUtter *u, char out[18])
+{
+    (void)c; (void)u;
+    out[0] = 0;
+    return 0;
+}
+
+void talk_gen_unk_prepare(TalkConv *c, const TalkUtter *u) { (void)c; (void)u; }
+
+static int unk_line(Gen *g, TalkLine *out, TalkTrace *tr) { (void)g; (void)out; (void)tr; return 0; }
+#endif
 
 int talk_gen_line(TalkConv *c, int who, int to, int act, uint16_t topic, TalkLine *out, TalkTrace *tr)
 {
@@ -2011,6 +2027,7 @@ int talk_gen_line(TalkConv *c, int who, int to, int act, uint16_t topic, TalkLin
         setup(&g, c, who, to, act, topic);                                      /* nothing fitted: the old bank answers */
         c->lines--;
     }
+#ifndef TALK_NO_UNK
     if (TC_TAUGHT(c) && act != TA_UNKNOWN && !TA_IS_SAFETY(act) && g.topic && !(c->plain & 1)) {   /* "it's a food": the kind it was asked */
         int root = root_of_topic(g.topic), at = (int)TC_TAUGHT(c) - 1;
         TC_SET_TAUGHT(c, 0);
@@ -2025,6 +2042,7 @@ int talk_gen_line(TalkConv *c, int who, int to, int act, uint16_t topic, TalkLin
             c->lines--;
         }
     }
+#endif
     TC_SET_TAUGHT(c, 0);
     sym = act > 0 && act < TA_COUNT ? entry_sym(&g, ENT_CORE, act) : -1;
     if (sym < 0) sym = entry_sym(&g, ENT_CORE, TA_UNKNOWN);

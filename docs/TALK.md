@@ -1620,16 +1620,22 @@ runs there; the lines are data in the Talk bank.
 
 ### Where it lives and what it costs
 
-`TalkState` 940 B -> 996 B (the assert is 1,536; the spec's budget under 1,000): `TalkConv` +36 B (`dep` 4,
-`dep_tw` 8, `mem_dep` 4, `engage` 1, `more` 2, `unk_st` 1, `unk_guess` 2, `unk[18]`, ring 12) and `TalkUtter` +2 B. The depth
-state is in `TalkConv`, not in `TalkPart.pad` as the design said, because the generator (and the census) must read it
-without the drama manager. `TalkPlan` 11 -> 14 B (depth, content, hook; stack only). `TalkOutcome` + `learned`. 0 resident
-bytes on every platform (Talk is not linked on the GBA or the PS1). `TALK_en.BIN` 902,268 B -> 907,644 B (the 119
-new alternatives in 32 rules). The generator's stack: `AVOID_MAX` 6 -> 10 and 7 parts a line.
+`TalkState` 940 B -> 964 B on native, the Dreamcast and the PS1 (the assert is 1,536; the spec's budget under 1,000),
+**932 B on the GBA**: `TalkConv` +36 B (`dep` 4, `dep_tw` 8, `mem_dep` 4, `engage` 1, `more` 2, and the unknown-word state
+33 B: `unk_st`, `unk_guess`, `unk[18]`, the ring of 12) and `TalkUtter` +2 B, less 32 B for `TalkHist.tmpl`, an unused
+word of 16 history entries that nothing read. **The GBA's EWRAM is net zero**: the Talk screen's `static struct TalkScn T`
+(`.bss`) holds a `TalkState`, so the growth was real there (+56 B, the spec's "0 resident bytes" did not count the
+scene's own state); the GBA has no typed line (`TALK_TYPING`), so `TALK_NO_UNK` (set by `DOOMO_PLATFORM_GBA`) leaves the
+unknown-word fields out of `TalkConv` there and `.bss` is 249,084 -> 249,076 B; `.iwram` 11,272, `.iwram_bss` 4,088 and
+`.data` 816 B unchanged. The depth state is in `TalkConv`, not in `TalkPart.pad` as the design said, because the generator
+(and the census) must read it without the drama manager. `TalkPlan` 11 -> 14 B (depth, content, hook; stack only).
+`TalkOutcome` + `learned`. 0 resident bytes on the PS1 (Talk is not linked there). `TALK_en.BIN` 902,268 B -> 907,644 B
+(119 new alternatives in 32 rules). The generator's stack: `gen_line` 1,536 -> 2,096 B (7 parts, `AVOID_MAX` 6 -> 10),
+`talk_gen_more` 568 B (a separate call, not nested).
 
 ### Tests and measurements
 
-`core/tests/test_talk_depth.c` (11 tests): the pure gates and steps, a best friend 0-1-2-3 with exactly one real
+`core/tests/test_talk_depth.c` (13 tests): the pure gates and steps, a best friend 0-1-2-3 with exactly one real
 secret, friend 39 against 40, engagement 69 against 70, a stranger never 2, a rival never past 1, the resets, the
 memory after a save and a load, 2,000 sessions with children (7,660 deep turns, 1,277 secrets, no lint hit, no
 register word), every stage x problem kind, the drama manager's second line and `TEV_LEARNED` applied to the sim,
