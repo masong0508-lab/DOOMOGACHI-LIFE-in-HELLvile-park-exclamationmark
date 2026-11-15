@@ -937,6 +937,15 @@ is about 5 KB of stack), GBA unchanged (not linked), PS1 margin line and `game_s
 
 ### TM2d: layer b depth, layer d hooks, the unknown word
 
+*Built 2026-11-15 (docs/TALK.md 6n). Where the build differs from this text:* the depth state is in `TalkConv`
+(`dep`, `dep_tw`), not in `TalkPart.pad`, because the generator and the census read it without the drama manager;
+the hook is a part of the answer line (not a second line) and the story and the secret are the second line
+(`talk_gen_more`, `DK_MORE`); a rival stays at 0 or 1 (the table said both "not rival" and "at 1"); the "echo allowed?"
+column is a companion file, `core/data/talk/corpus/echo_en.tsv` (the corpus reader has three columns); a word with a
+register, hate, sexual or minor word inside it is not echoed either; the 108 lines are 119 in 32 rules (the `act.*`
+lines and `hook.gift` wait for TM2e's actions; `unk.taught`, `hook.ack` and `reason.name` were added); acceptance
+7 holds for Q8c, Q8d and Q8f; Q8e is 5 of 20,000, Q8b 3.2% and Q8a 21.9% of 562 (bank labels), see the status file.
+
 *Build.* the depth state and gates (3.1) in `talk_dm.c` and `talk_plan.c`; `TalkMem.spare` bits;
 `reason.*`, `story.*`, `secret.*`, `hook.*`, `unk.*` rules (the connective lines of section 10, 108
 lines, written to the house register) and their lints (L8); `talk_lex_near`; the `{u}` slot (TK13);

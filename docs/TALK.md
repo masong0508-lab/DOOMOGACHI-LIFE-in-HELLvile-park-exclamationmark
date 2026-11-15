@@ -30,6 +30,7 @@ Contents:
 [6k The pointer (T9)](#6k-the-pointer-t9) ·
 [6l The coherence lint and the Q8 census check (TM2b)](#6l-the-coherence-lint-and-the-q8-census-check-tm2b) ·
 [6m The plan: reaction kind and effective voice (TM2c)](#6m-the-plan-reaction-kind-and-effective-voice-tm2c-plan) ·
+[6n Topic depth, hooks and the unknown word (TM2d)](#6n-topic-depth-hooks-and-the-unknown-word-tm2d-depth) ·
 [7 Sizes](#7-sizes-measured) ·
 [8 Tests](#8-tests) ·
 [9 Differences from the design](#9-differences-from-the-design) ·
@@ -135,7 +136,7 @@ What T5a adds (section 6c), each with its test:
 
 | Where | What |
 |---|---|
-| `core/include/doomo/talk.h` | `TA_*` discourse acts. Their ids are fixed (they are saved in talk memory), and `test_contracts_talk.c` locks them. There are 59 acts plus 5 gate classes, including the gesture `TA_HIGH_FIVE` and the gate rewrite `TA_DEFLECT_ROMANCE`. Also: `TONE_*`; the `TS_*` input safety bits; `TalkUtter` (106 B: the one record every input path produces); `TalkAudience`; the talk memory sizes; the `TALK_<lang>.BIN` format; the `talk_db_*` reader API; `home_talk_enter()` |
+| `core/include/doomo/talk.h` | `TA_*` discourse acts. Their ids are fixed (they are saved in talk memory), and `test_contracts_talk.c` locks them. There are 59 acts plus 5 gate classes, including the gesture `TA_HIGH_FIVE` and the gate rewrite `TA_DEFLECT_ROMANCE`. Also: `TONE_*`; the `TS_*` input safety bits; `TalkUtter` (108 B since TM2d, 106 before: the one record every input path produces; the last two bytes are the unknown word's offset and length); `TalkAudience`; the talk memory sizes; the `TALK_<lang>.BIN` format; the `talk_db_*` reader API; `home_talk_enter()` |
 | `plat_ext.h` | `PLATF_TALK` (bit 9). `plat_talk_load(code)` returns the file size, 0, or `PLAT_TALK_LOADING` while the PS1 is still staging it. `plat_talk_read(off, dst, len)`. `plat_room_project(view, x, y, z, &sx, &sy)` |
 | `platform.h` | `DoomoRoomView.zoom == 2` is "talk framing", with `focus_x`, `focus_y` and `focus_r` (tile space, 16.16). Renderers that do not know zoom 2 treat it as the close-up (the PS1 already does, and `room_ref` ignores zoom) |
 | `save_ext.h`, `save_budget.h` | The `'TALK'` chunk: slot 13, registered by `talk_save.c` where the build defines `DOOMO_HAS_TALK` (the native host), weak NULL elsewhere, `SAVE_EXT_MAX_TALK` 448 B (437 B worst case: 292 B memory + 145 B of explicit trait sets, TM1; was 320 B). The joint worst case with it fits both slots: a post-game story save at its worst is 29,139 B (figures measured before TM1 raised the cap by 128 B; `test_contracts_talk` still passes, so the slots hold, but they were not recomputed), plus the 2,048 B margin is 31,187 B, under the 32,768 B gate (36 KB minus PA10's 4 KB); free play 68,945 B of 90,112 B |
@@ -1101,7 +1102,7 @@ the people strip, and that a quick reply by pointer and by pad say the same line
 
 Owner decision 2026-11-15 (`OWNER_DECISIONS.md`, "TALK DYNAMIC, MULTILEVEL, PERSONALITY SCREEN"): the
 line bank is **frozen** (8,891 alternatives in 3,189 rules); replies are composed in layers instead of
-authored. **Layers a and c are built (TM2c, 6m)**; the rest is not: the spec is [docs/design/talk/TALK_MULTILEVEL.md](design/talk/TALK_MULTILEVEL.md),
+authored. **Layers a and c are built (TM2c, 6m), and layers b (depth) and d (the hook) and the unknown word are built too (TM2d, 6n)**; the sim actions are not (TM2e): the spec is [docs/design/talk/TALK_MULTILEVEL.md](design/talk/TALK_MULTILEVEL.md),
 cut into five one-day packages TM2a to TM2e.
 
 * **Four layers, one plan.** A `TalkPlan` (11 B, on the stack) is made after the gate says pass:
@@ -1534,6 +1535,112 @@ very first line of a fresh town can differ from the next identical call.
 
 The stack of one line grows by 200 B (`Gen` carries the plan and the trait set); the generator's
 budget is about 5 KB. Talk is not linked on the PS1 yet, so the PS1 cost is 0 B.
+
+## 6n. Topic depth, hooks and the unknown word (TM2d-DEPTH)
+
+Owner decision 2026-11-15 ("TALK DYNAMIC, MULTILEVEL, PERSONALITY SCREEN"). Design:
+`docs/design/talk/TALK_MULTILEVEL.md` 2.3 to 2.5, 3, 4, 10 and 13 (TM2d). Layer b past the surface
+(an opinion with its reason, a story, a secret), layer d (the hook), the unknown word named, guessed
+or asked about, and `TEV_LEARNED`. Files: `core/src/talk_plan.c` (the gates, pure), `talk_gen.c`
+(the parts, the second line, the unknown word), `talk_dm.c`, `talk_save.c`, `talk_outcome.c`,
+`talk_lex.c` (`talk_lex_near`), `talk_parse.c` (the unknown word's offsets), the grammar files
+`depth_reason.tlk`, `depth_story.tlk`, `depth_secret.tlk`, `hooks.tlk`, `unk.tlk`,
+`core/data/talk/corpus/echo_en.tsv`, `core/tests/test_talk_depth.c`.
+
+### Depth (design 3.1), in code
+
+`talk_depth_gate()` and `talk_depth_step()` are pure functions of a `TalkDepthIn`. A participant's
+thread is a byte and a word in `TalkConv` (`dep[]`, `dep_tw[]`): level (2 bits), thread turns (3),
+hook used (1), the thread's topic (12), the last reply kind (3). The generator fills the input from the
+room, the sim (`rel_value`) and the traits, and calls the step once for every answer line (`depth_plan`).
+
+| Level | Says | Needs |
+|---|---|---|
+| 0 | the surface: a one-line answer | nothing |
+| 1 | the opinion plus **one reason** (a `reason.*` clause joined to the answer) | not shy / paranoid with a stranger; a rival stays at 1 at most |
+| 2 | **a story** (`story.*`, a second line by the same resident) | acquaintance or better (a stranger never), 2 thread turns, engagement 50; shy / paranoid / gloomy want a friend, outgoing wants one band less (never a stranger) |
+| 3 | **a secret** (`secret.*`, a second line) | best friend, partner or family, or a friend whose bond is 40 (a loyal friend needs none); 3 thread turns; engagement 70; no trait lowers it; never on a grief topic |
+
+It rises one level at most an exchange on a thread act (ask about, ask opinion, ask feeling, tell, opine,
+continue, agree, sympathize, compliment, comfort) on the thread's topic or one hop from it; holds on a
+change of topic inside the root; falls one level after an insult, a mock, a dismissal or a threat; resets on
+another root, on a walk-out and on a K-5 refusal (the drama manager calls `talk_depth_reset`). The first
+turn on a topic is the surface: a best friend with engagement 70 is at 0, 1, 2, 3 on the first four turns.
+
+**The second line.** A story or a secret is a second line by the same speaker (`talk_gen_more`, flag
+`TLF_MORE`), made right after the answer: in `talk_dm_step` (a `DK_MORE` entry inserted after the answer,
+before the reactions, so a reply that answers beats a reaction from the side) and in the census path
+(`talk_gen_exchange`). Its reply act is the first of answer, tell, opine_pos, agree, backchannel that may
+follow the player's act (`acts.tsv`), so Q2 holds; the census checks a `TLF_MORE` line against the player's act.
+`secret.*` tells **at most one secret a talk** and never again the same day: a like, the fear or the hated
+food the player has not learned (`talk_mem_like_known`), or a small problem from the safe set (hungry,
+dirty, bored, sick, wants an item, wants a friend). Never a crush, a break-up, a proposal, possession,
+corruption, a nightmare or a fight; a child tells a child's fear, favourite or worry in a kid voice. A friend
+or partner or family that passed the gate counts as `rel=best` for the secret rules (the lint, L8, wants a
+close relationship on every depth 3 rule).
+
+**Memory.** `TalkMem.spare` (16 bits, was 0): bits 0-1 the level reached in the last talk, bits 2-5 the
+secrets told today (cleared when the town day changes). Saved in the 'TALK' chunk (the entry is 12 B as
+before; an old chunk reads 0: depth 0, nothing told; no version bump). The next talk starts one level lower
+on the last topic. `TEV_LEARNED` (a told, b the like: 0 food, 1 hobby, 2 music, 3 fear, 4 hated food, 5 a small
+problem) is raised when a secret is told; `talk_outcome_apply` calls `talk_mem_know_like` (the open item of
+T6-OUT), so the Talk screen lists the topic for the player afterwards.
+
+### Layer d: the hook (design 2.5)
+
+A hook is a short second **part of the answer line** (`hooks.tlk`, entry `TGE_HOOK`, guard `hook=`), said after
+the callback and the tag. Required after a counter (a question about the topic, or a call that names another
+resident) and after a request the resident turns down (an invitation or a favour answered with no, a dismissal
+or a change of topic: an offer, "Rather not. How about {like} instead?"). Never after a romance act, a safety
+act, a sincere line or the pet. A small acknowledgement (`hook.ack`, `hook.thank`, `.apologize`, `.compliment`,
+`.feeling`) is added to a reply under 20 visible characters (a bare "Hm.") and, 30% of the time, after a thanks,
+an apology, a compliment or a question about a feeling. The generator makes room for a required hook: the
+optional parts go first (tag, hand-off, opener, callback), then a shorter hook, then a shorter core, and only
+last the hook itself. The drama manager's `follow` line is skipped when the answer already asks something back.
+`reason.name` (depth 0) gives a topic act that was answered by a line that names nothing (a listener line) the
+topic back in a few words (Q8b).
+
+### The unknown word (design 4)
+
+`talk_parse` points at the first unknown word (`TalkUtter.unk_off`, `unk_len`, 2 B at the tail: E1, E3). The
+drama manager and the census run `talk_gen_unk_prepare` once a turn after the gate; it sets the plan of the
+answer (`TU_*`): **guess** (`talk_lex_near`: the nearest known concept by edit distance 2, 1 for a word of four
+letters or less, or a shared four-letter stem; closed vocabulary, always safe), **name** (the word said back,
+quoted and lower case, once a talk), **ask** or **ask without an echo**. Every line asks what kind of thing it is.
+The fences, in `talk_gen_unk_word`, checked on the bubble text (`shown`, S1-masked) and never on the raw input:
+E1 the parser's token is unknown, not masked, not leet, not a typo of a known word; E3 3 to 16 ASCII letters and
+at most one apostrophe or hyphen, no digit, not shouted; E4 not a hate word (`talk_safe_hate_word`, fuzzy), not
+within one edit of a register, sexual, hate, minor, distress or real-world word, and no such word inside it
+("hitlerish"); E5 no safety bit, not a K-7 room, not in the care window; E6 the word and the whole line pass the
+S3 probe (a refusal there falls back to the ask); E7 once a talk. A kid room (a minor speaks, is addressed or
+listens) echoes no word over 12 letters. `{u}` (the quoted word) is valid only in `unk.name` rules (talkc: TK13).
+"It's a food": the next turn's category is taken (`unk.taught`) and remembered for the talk in a ring of four
+(`taught_hash`, `taught_root`, 12 B in `TalkConv`, never saved). The PS1 has no typed input, so the unknown flow never
+runs there; the lines are data in the Talk bank.
+
+### Where it lives and what it costs
+
+`TalkState` 940 B -> 996 B (the assert is 1,536; the spec's budget under 1,000): `TalkConv` +36 B (`dep` 4,
+`dep_tw` 8, `mem_dep` 4, `engage` 1, `more` 2, `unk_st` 1, `unk_guess` 2, `unk[18]`, ring 12) and `TalkUtter` +2 B. The depth
+state is in `TalkConv`, not in `TalkPart.pad` as the design said, because the generator (and the census) must read it
+without the drama manager. `TalkPlan` 11 -> 14 B (depth, content, hook; stack only). `TalkOutcome` + `learned`. 0 resident
+bytes on every platform (Talk is not linked on the GBA or the PS1). `TALK_en.BIN` 902,268 B -> 907,644 B (the 119
+new alternatives in 32 rules). The generator's stack: `AVOID_MAX` 6 -> 10 and 7 parts a line.
+
+### Tests and measurements
+
+`core/tests/test_talk_depth.c` (11 tests): the pure gates and steps, a best friend 0-1-2-3 with exactly one real
+secret, friend 39 against 40, engagement 69 against 70, a stranger never 2, a rival never past 1, the resets, the
+memory after a save and a load, 2,000 sessions with children (7,660 deep turns, 1,277 secrets, no lint hit, no
+register word), every stage x problem kind, the drama manager's second line and `TEV_LEARNED` applied to the sim,
+200 invented words, the adversarial corpus and `echo_en.tsv` (no hate, register, minor, leet, fuzzy, person, digit or
+shouted word comes back out; a kid room says nothing over 12 letters), "it's a food", every refused request and every
+counter has a hook, `talk_lex_near`, the parser's offsets. The smoke census (20,000 contexts, seed 20261108):
+Q8 exchanges with a failure 1,534 (7.67%) -> 254 (1.27%); Q8a 120 of 560 -> 123 of 562 (not at budget: the failing lines carry the bank's own act labels and TM2c's plan leaves a close call to the bank), Q8b 1,071 of 3,992 (26.8%) -> 126 (3.2%), Q8c 0, Q8d 156 of 2,976 (5.2%) -> 0,
+Q8e 104 -> 5 (a three-sentence line cannot take a fourth, lower-case voices), Q8f 91 of 395 (23%) -> 0. Surface 17,094
+-> 17,146 distinct (85.7%), Skeleton 17,016 -> 17,038, Meaning 5,130 -> 5,180; S3 hits 0.
+
+---------------------------------------------------------------------------
 
 ## 7. Sizes (measured)
 
