@@ -376,6 +376,11 @@ void et_blit2_test(void)
                 if (PAGE_A[r * LINE + j] != PAGE_B[r * LINE + j]) {
                     gba_logf("ET blit2test FAIL outline case %d x %d y %d row %d hw %d: %x vs %x", i, x, y, r, j,
                              PAGE_A[r * LINE + j], PAGE_B[r * LINE + j]);
+                    bad = 1;
+                    break;
+                }
+        n++;
+    }
     /* (G2-CO) the same beams cut to rows [y0, y1) (plat_beam_rows) against the core's row-by-row cut of each band
      * (concert_gfx.c beam(): a cut band's rows one at a time, each with the parity of the band's first row) */
     for (i = 0; i < 200 && !bad; i++) {
