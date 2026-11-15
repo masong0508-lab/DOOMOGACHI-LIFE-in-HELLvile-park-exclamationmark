@@ -140,6 +140,19 @@ int talk_gen_adjacent(int act, int reply)
     return (le32(row + 4 * (reply >> 5)) >> (reply & 31)) & 1u;
 }
 
+/* TM2c: byte 14 of an act's row: the kinds it serves as a reply; byte 15: the kinds allowed after it */
+int talk_gen_kinds_of(int reply_act)
+{
+    uint8_t row[16];
+    return act_row(reply_act, row) ? row[14] : 0;
+}
+
+int talk_gen_kinds_after(int act)
+{
+    uint8_t row[16];
+    return act_row(act, row) ? row[15] : 0;
+}
+
 int talk_gen_act_class(int act)
 {
     uint8_t row[16];
@@ -222,28 +235,39 @@ static int cat_is(int cat, const char *key)
     return talk_db_cat_name(cat, n, (int)sizeof n) > 0 && strcmp(n, key) == 0;
 }
 
+/* the stance score of a speaker on a concept (TM2c: the plan reads the number, the bands read the same one):
+ * the concept's own sentiment, their likes +3, their fear and hated food -3, Hellvile-born flips holy things,
+ * what their traits and liked topics lean to, and a fixed personal lean. ts NULL: no trait term. */
+static int stance_score(int id, const DoomoResident *r, const TalkConcept *c, uint16_t topic, const uint16_t like[5],
+                        const TalkTraitSet *ts, int stage)
+{
+    int s = c->sent, k;
+    for (k = 0; k < 3; k++) if (like[k] == topic) s = 3;
+    if (like[3] == topic || like[4] == topic) s = -3;
+    if (r && ((r->flags & RF_HELLBORN) || (id < DOOMO_MAX_RESIDENTS && RES_DISTRICT(id) == DISTRICT_HELLVILE))) {
+        if (cat_is(c->cat, "lore.church")) s = -s;            /* holy things */
+        else if (talk_db_cat_root(c->cat) == TCR_HELLVILE) s += 1;
+    }
+    if (ts) s += talk_trait_topic_lean(ts, stage, talk_db_cat_root(c->cat));     /* TM1: traits and liked topics */
+    s += (int)(doomo_hash32((uint32_t)id * 7919u + topic * 104729u) % 7u) - 3;   /* a fixed personal lean */
+    return s;
+}
+
+static int stance_band(int s) { return s >= 2 ? TST_PRO : s <= -2 ? TST_CON : TST_NEUTRAL; }
+
 int talk_gen_stance(int id, uint16_t topic)
 {
     TalkConcept c;
     DoomoResident buf;
     const DoomoResident *r = res_of(id, &buf);
-    int s, k;
+    uint16_t like[5];
+    TalkTraitSet ts;
+    int k, has = 0;
     if (!topic || !talk_db_concept(topic, &c)) return TST_NEUTRAL;
-    s = c.sent;
-    for (k = 0; k < 3; k++) if (talk_gen_like(id, k) == topic) s = 3;
-    if (talk_gen_like(id, 3) == topic || talk_gen_like(id, 4) == topic) s = -3;
-    if (r && ((r->flags & RF_HELLBORN) || (id < DOOMO_MAX_RESIDENTS && RES_DISTRICT(id) == DISTRICT_HELLVILE))) {
-        if (cat_is(c.cat, "lore.church")) s = -s;            /* holy things */
-        else if (talk_db_cat_root(c.cat) == TCR_HELLVILE) s += 1;
-    }
-    if (id != TALK_PET_ID) {                                  /* TM1: what their traits and liked topics lean to */
-        TalkTraitSet ts;
-        if (talk_trait_get(id, &ts) && r)
-            s += talk_trait_topic_lean(&ts, id == TALK_PREVIEW_ID ? talk_preview_stage() : RES_STAGE(r),
-                                       talk_db_cat_root(c.cat));
-    }
-    s += (int)(doomo_hash32((uint32_t)id * 7919u + topic * 104729u) % 7u) - 3;   /* a fixed personal lean */
-    return s >= 2 ? TST_PRO : s <= -2 ? TST_CON : TST_NEUTRAL;
+    for (k = 0; k < 5; k++) like[k] = talk_gen_like(id, k);
+    if (id != TALK_PET_ID && r && talk_trait_get(id, &ts)) has = 1;
+    return stance_band(stance_score(id, r, &c, topic, like, has ? &ts : NULL,
+                                    !has ? 0 : id == TALK_PREVIEW_ID ? talk_preview_stage() : RES_STAGE(r)));
 }
 
 static int days_to_bday(const DoomoResident *r)
@@ -363,6 +387,8 @@ int talk_gen_fact(int id, int cb, uint16_t *val)
 }
 
 /* ---- the per-line context --------------------------------------------- */
+#define KF_KIND 1
+#define KF_COOL 2
 typedef struct Gen {
     GHdr h;
     TalkConv *c;
@@ -373,7 +399,12 @@ typedef struct Gen {
     uint8_t minor, stage, type, mood, rel, stance, cast, prob, mem_ok;
     uint8_t grief;                /* K-10: a sincere grief or comfort line: a TCF_GRIEF concept may be said */
     uint8_t adj;                  /* the core's rules must answer g->act (acts.tsv): the grief and comfort banks */
-    uint8_t pers[PERS_COUNT];
+    uint8_t pers[PERS_COUNT];     /* the EFFECTIVE sliders (TM2c: stored + trait deltas); the voice guards read these */
+    uint8_t kf;                   /* TM2c: while the core is picked, KF_KIND filters by the plan's kind, KF_COOL drops the cool acts */
+    uint8_t has_ts, kid_room;
+    int8_t  lean;                 /* the stance as the plan sees it, -2..2 */
+    TalkPlan plan;
+    TalkTraitSet ts;              /* the speaker's traits as they count in this room (edgy ones dropped for a minor / in a kid room) */
     uint16_t topic, like_pick, job;
     uint16_t like[5];
     TalkConcept tc;
@@ -617,6 +648,8 @@ static int pred_raw(Gen *g, int p, int v)
     case TGP_PACT: return talk_gen_act_class(g->act) == v;
     case TGP_ACT: return g->act == v;
     case TGP_PROB: return g->prob == v;
+    case TGP_KIND: return g->plan.kind == v;
+    case TGP_TRAIT: return g->has_ts && talk_traitset_has(&g->ts, v);
     default: return 0;
     }
 }
@@ -675,6 +708,16 @@ static int avoided(const int *avoid, int navoid, int a)
     return 0;
 }
 
+/* TM2c: may a core rule with reply act `act` be picked: a kid room never gets the cool acts from the plan,
+ * and the rule's reply act must serve the plan's kind (acts.tsv KINDS: byte 14 of the act's row) */
+static int kind_serves(const Gen *g, int act)
+{
+    uint8_t b = 0;
+    if (act <= 0 || act >= TA_COUNT || !talk_db_read(TB_GRAMMAR, g->h.acts + 16u * (uint32_t)act + 14u, &b, 1))
+        return 0;
+    return (b & TKM(g->plan.kind)) != 0;
+}
+
 static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid)
 {
     uint8_t s[4];
@@ -688,6 +731,10 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid)
         if (!g_u16(g->h.refs + 2u * (uint32_t)(le16(s) + i), &rk) || !rd_rule(&g->h, rk, &r)) return -1;
         if (g->adj && g->depth == 0 && !talk_gen_adjacent(g->act, r.act)) continue;      /* K-10 banks */
         if (!terms_ok(g, r.term_first, r.nterm)) continue;
+        if (g->kf && g->depth == 0) {                                                     /* TM2c: the plan's kind */
+            if ((g->kf & KF_COOL) && TALK_COOL_REPLY(r.act)) continue;                    /* a kid room: never */
+            if ((g->kf & KF_KIND) && !kind_serves(g, r.act)) continue;
+        }
         for (a = r.alt_first; a < r.alt_first + r.nalt; a++) {
             GAlt al;
             uint32_t w;
@@ -1154,6 +1201,33 @@ int talk_gen_alt_info(int alt, TalkAltInfo *out)
 }
 
 /* ---- the line ---------------------------------------------------------- */
+static int stage_for(int id)
+{
+    return id == TALK_PREVIEW_ID ? talk_preview_stage() :
+           id <= DOOMO_PLAYER_ID ? sim_life_stage(id) :
+           family_find(id) ? family_find(id)->stage : LIFE_ADULT;
+}
+
+int talk_gen_eff_persona(int id, int minor_room, uint8_t out[5])
+{
+    DoomoResident buf;
+    const DoomoResident *r = res_of(id, &buf);
+    TalkTraitSet ts;
+    int k;
+    if (!r) return 0;
+    for (k = 0; k < PERS_COUNT; k++) out[k] = (uint8_t)RES_PERSONA(r, k);
+    if (id != TALK_PET_ID && talk_trait_get(id, &ts)) {
+        int8_t d[PERS_COUNT];
+        talk_trait_room(&ts, stage_for(id), minor_room || talk_safe_minor(id));
+        talk_trait_slider_delta(&ts, d);
+        for (k = 0; k < PERS_COUNT; k++) {
+            int v = out[k] + d[k];
+            out[k] = (uint8_t)(v < 0 ? 0 : v > 15 ? 15 : v);
+        }
+    }
+    return 1;
+}
+
 static int setup(Gen *g, TalkConv *c, int who, int to, int act, uint16_t topic)
 {
     int k;
@@ -1168,9 +1242,8 @@ static int setup(Gen *g, TalkConv *c, int who, int to, int act, uint16_t topic)
     g->to_id = to >= 0 && to < c->n ? c->id[to] : to == -1 ? c->avatar : -1;
     g->r = res_of(g->sid, &g->rbuf);
     g->minor = (uint8_t)talk_safe_minor(g->sid);
-    g->stage = (uint8_t)(g->sid == TALK_PREVIEW_ID ? talk_preview_stage() :
-                         g->sid <= DOOMO_PLAYER_ID ? sim_life_stage(g->sid) :
-                         family_find(g->sid) ? family_find(g->sid)->stage : LIFE_ADULT);
+    g->stage = (uint8_t)stage_for(g->sid);
+    g->kid_room = (uint8_t)(c->aud.any_minor || c->aud.avatar_minor || c->aud.target_minor || g->minor);
     memset(g->pc, 0xFF, sizeof g->pc);
     g->cast = 0xFF;
     g->partner = -1;
@@ -1179,7 +1252,17 @@ static int setup(Gen *g, TalkConv *c, int who, int to, int act, uint16_t topic)
     c->lines++;
     if (g->r) {
         for (k = 0; k < PERS_COUNT; k++) g->pers[k] = RES_PERSONA(g->r, k);
-        g->type = (uint8_t)persona_type(g->r);
+        g->type = (uint8_t)persona_type(g->r);                /* the stored sliders: the creator's title does not shift */
+        if (g->sid != TALK_PET_ID && talk_trait_get(g->sid, &g->ts)) {      /* TM2c: the effective voice */
+            int8_t d[PERS_COUNT];
+            g->has_ts = 1;
+            talk_trait_room(&g->ts, g->stage, g->kid_room);
+            talk_trait_slider_delta(&g->ts, d);
+            for (k = 0; k < PERS_COUNT; k++) {
+                int v = g->pers[k] + d[k];
+                g->pers[k] = (uint8_t)(v < 0 ? 0 : v > 15 ? 15 : v);
+            }
+        }
         g->mood = (uint8_t)band_mood(g->r->mood);
         for (k = 0; k < 5; k++) g->like[k] = talk_gen_like(g->sid, k);
         if (g->sid < DOOMO_MAX_RESIDENTS && !(g->r->flags & RF_CUSTOM))
@@ -1200,7 +1283,12 @@ static int setup(Gen *g, TalkConv *c, int who, int to, int act, uint16_t topic)
     }
     /* the topic: only a concept that may be said here */
     if (topic && talk_gen_concept_ok(topic, &c->aud) && talk_db_concept(topic, &g->tc)) g->topic = topic;
-    g->stance = (uint8_t)(g->topic ? talk_gen_stance(g->sid, g->topic) : TST_NEUTRAL);
+    if (g->topic) {
+        int sc = stance_score(g->sid, g->r, &g->tc, g->topic, g->like, g->has_ts ? &g->ts : NULL, g->stage);
+        g->stance = (uint8_t)stance_band(sc);
+        g->lean = (int8_t)(sc >= 3 ? 2 : sc >= 2 ? 1 : sc <= -3 ? -2 : sc <= -2 ? -1 : 0);
+    }
+    memcpy(g->plan.eff, g->pers, sizeof g->plan.eff);
     g->like_pick = g->like[rng_range(&g->rng, 3)];
     g->other = other_slot(g);
     return 1;
@@ -1232,6 +1320,11 @@ static void safe_line(Gen *g, TalkLine *out, TalkTrace *tr)
 }
 
 /* write the line from entry symbol `core` (reply act fallback `act_out`) */
+static void trace_plan(const Gen *g, TalkTrace *tr)
+{
+    if (tr) tr->plan = g->plan;
+}
+
 static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr)
 {
     TalkConv *c = g->c;
@@ -1244,9 +1337,19 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
     out->to = (int8_t)g->to;
     out->stance = g->stance;
     for (try_ = 0; try_ < TRIES && !ok; try_++) {
-        int r = rng_range(&g->rng, 100), loud = g->pers[PERS_EXPRESSION];
+        int r = rng_range(&g->rng, 100), loud = g->pers[PERS_EXPRESSION], got;
         memset(use, 0, sizeof use);
-        if (!make_part_avoid(g, core, 1, &parts[1], too_long, ntoo)) continue;
+        g->kf = g->plan.kind ? (uint8_t)((g->plan.flags & (TPL_MISS | TPL_OPEN) ? 0 : KF_KIND) | (g->kid_room ? KF_COOL : 0)) : 0;
+        got = make_part_avoid(g, core, 1, &parts[1], too_long, ntoo);
+        while (!got && (g->kf & KF_KIND)) {                 /* TM2c: the soft filter: no rule of the kind passes the guards */
+            if (!talk_plan_next(&g->plan)) {                /* the next best kind, else drop the filter and count the miss */
+                g->plan.flags |= TPL_MISS;
+                g->kf &= (uint8_t)~KF_KIND;
+            }
+            got = make_part_avoid(g, core, 1, &parts[1], too_long, ntoo);
+        }
+        g->kf = 0;                                        /* the filter is for the core part only */
+        if (!got) continue;
         use[1] = 1;
         lower = talk_gen_alt_info(parts[1].alt, &ai) && (ai.rflags & RF_LOWER);
         if (optional && !lower) {
@@ -1276,6 +1379,7 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
     }
     if (!ok) {
         safe_line(g, out, tr);
+        trace_plan(g, tr);
         out->flags |= TLF_FALLBACK;
         return 0;
     }
@@ -1303,6 +1407,7 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
             else if (tr->cb) talk_gen_fact(g->sid, tr->cb, &tr->cb_val);
         }
         if (use[3] && (parts[3].flags & AF_TIC)) tr->tic = g->type;
+        trace_plan(g, tr);
     }
     /* the conversation's memory of this line */
     for (k = TALK_NOVELTY - 1; k > 0; k--) c->recent[g->who][k] = c->recent[g->who][k - 1];
@@ -1318,6 +1423,7 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
         doomo_snprintf(m, (int)sizeof m, "talk: lint %d: %s", k, out->text);   /* design 7.2: release builds log it */
         plat_log(m);
         safe_line(g, out, tr);
+        trace_plan(g, tr);
         out->flags |= TLF_SAFE;
         return 0;
     }
@@ -1346,6 +1452,62 @@ static int grief_line(Gen *g, int which, TalkLine *out, TalkTrace *tr)
     return r;
 }
 
+/* TM2c: the kinds a kid room still has after `act`: the cool reply acts (tease, mock, insult, threaten) are out,
+ * so a kind only they served is out too (the bank's own cells are in row[15], this narrows them) */
+static int kinds_kid(int act, const uint8_t row[16])
+{
+    int r, m = 0;
+    for (r = 1; r < TA_COUNT; r++)
+        if (((le32(row + 4 * (r >> 5)) >> (r & 31)) & 1u) && !TALK_COOL_REPLY(r)) m |= talk_gen_kinds_of(r);
+    (void)act;
+    return m & row[15];
+}
+
+/* TM2c: the plan of an answer line (layer a). Never for a safety act, an unknown act, grief or the pet: those
+ * keep the old path (a sincere core, no plan, no filter). The gate has already said pass. */
+static void make_plan(Gen *g, int act)
+{
+    TalkPlanIn in;
+    TalkConv *c = g->c;
+    uint8_t row[16], drow[16];
+    TalkTraitBias b;
+    int root = g->topic ? talk_db_cat_root(g->tc.cat) : 0, forced = (c->plain >> 1) & 7, i;
+    if (!g->r || c->id[g->who] == TALK_PET_ID || act <= 0 || act >= TA_COUNT || TA_IS_SAFETY(act) || act == TA_UNKNOWN ||
+        grief_topic(g) || !act_row(act, row) || !row[15] || !act_row(row[13], drow))
+        return;
+    if (g->kid_room && !kinds_kid(act, row)) return;
+    memset(&in, 0, sizeof in);
+    in.act = (uint8_t)act;
+    in.allowed = g->kid_room ? (uint8_t)kinds_kid(act, row) : row[15];
+    in.dflt = drow[14];
+    in.lean = g->lean;
+    in.rel = g->rel;
+    in.mood = g->mood;
+    in.stage = g->stage;
+    in.kid_room = g->kid_room;
+    in.consent = (uint8_t)((c->consent >> g->who) & 1);
+    in.to_minor = (uint8_t)(g->to == -1 ? (c->aud.avatar_minor != 0) :
+                            g->to_id >= 0 && g->to_id != TALK_PET_ID && talk_safe_minor(g->to_id));
+    memcpy(in.eff, g->pers, sizeof in.eff);
+    if (g->has_ts) {
+        b = talk_trait_bias(&g->ts, g->stage, act, root, g->kid_room);
+        in.accept = b.accept;
+        in.deny = b.deny;
+        for (i = 0; i < TALK_TRAIT_TOPICS; i++) {
+            if (root && g->ts.like[i] == root) in.topic_pref = 1;
+            if (root && g->ts.dislike[i] == root) in.topic_pref = -1;
+        }
+    }
+    in.seed = doomo_hash32(c->seed ^ 0x504C414Eu ^ ((uint32_t)c->turn << 8) ^ ((uint32_t)g->who * 0x9E3779B1u) ^
+                           ((uint32_t)c->lines * 0x85EBCA6Bu));
+    talk_plan_kind(&in, &g->plan);
+    if (forced && g->plan.kind && (g->plan.allowed & TKM(forced)) && !TA_IS_ROMANCE(act)) {      /* the creator's preview */
+        if (forced == TK_AGREE && g->lean < 0 && (g->plan.allowed & TKM(TK_DENY))) forced = TK_DENY;
+        g->plan.kind = (uint8_t)forced;
+        g->plan.flags = (uint8_t)((g->plan.flags | TPL_FORCED) & ~TPL_OPEN);
+    }
+}
+
 int talk_gen_line(TalkConv *c, int who, int to, int act, uint16_t topic, TalkLine *out, TalkTrace *tr)
 {
     Gen g;
@@ -1367,7 +1529,8 @@ int talk_gen_line(TalkConv *c, int who, int to, int act, uint16_t topic, TalkLin
     }
     sym = act > 0 && act < TA_COUNT ? entry_sym(&g, ENT_CORE, act) : -1;
     if (sym < 0) sym = entry_sym(&g, ENT_CORE, TA_UNKNOWN);
-    r = gen_line(&g, sym, !TA_IS_SAFETY(act) && !c->plain, out, tr);
+    make_plan(&g, act);
+    r = gen_line(&g, sym, !TA_IS_SAFETY(act) && !(c->plain & 1), out, tr);
     out->who = (int8_t)who;
     out->to = (int8_t)to;
     return r;

@@ -600,6 +600,9 @@ enum {
     TGP_PACT,                        /* the act class replied to (TAC_*)   */
     TGP_ACT,                         /* the act replied to (TA_*)          */
     TGP_PROB,                        /* the speaker's PROB_*               */
+    TGP_KIND,                        /* TM2c: the plan's reply kind, TK_* (kind=refuse) */
+    TGP_TRAIT,                       /* TM2c: the speaker has trait TT_* in this room (trait=shy); edgy
+                                        traits never hold with a non-adult speaker or in a kid room */
     TGP_COUNT
 };
 
@@ -619,7 +622,8 @@ typedef struct TalkConv {
     uint8_t  tone;                               /* the player's last TONE_*         */
     uint8_t  chapter;                            /* story_chapter() at the start     */
     uint8_t  lines;                              /* lines made (the RNG stream)      */
-    uint8_t  plain;                              /* 1: the core part only, no opener, callback, tag or hand-off (tests; a short UI preview) */
+    uint8_t  plain;                              /* bit 0: the core part only, no opener, callback, tag or hand-off (tests; a short UI preview);
+                                                    bits 1-3: a forced plan kind, TK_* (the creator's preview; 0 none) */
     uint8_t  care;                               /* 1: the care window (K-11, TDF_CARE): the next answer is the sincere bank, no joke, no reaction */
     TalkAudience aud;                            /* talk_safe_ctx() of the room       */
     uint16_t recent[TALK_PARTS_MAX][TALK_NOVELTY]; /* novelty rings: alternatives used, newest first */
@@ -715,6 +719,58 @@ typedef struct TalkLine {
     uint16_t topic;                 /* what it is about, TC_NONE                         */
 } TalkLine;
 
+/* ---- TM2c: the plan (core/src/talk_plan.c; docs/TALK.md 6j; design TALK_MULTILEVEL 2.1, 2.2) ----
+ * The reaction KIND of an answer line (layer a), chosen once per line before the core is picked, from the
+ * player's act, the stance, the relationship, the mood, the effective voice, the traits and the liked and
+ * disliked topic roots. The core is then picked among the rules whose reply act serves that kind (acts.tsv,
+ * column KINDS); if none passes the guards the filter drops and the miss is counted (TPL_MISS). */
+enum { TK_NONE = 0, TK_ACCEPT, TK_AGREE, TK_DENY, TK_REFUSE, TK_DEFLECT, TK_COUNTER, TK_ASKBACK, TK_COUNT };
+#define TKM(k) (1u << (k))                 /* a kind as a bit of a uint8_t mask */
+enum { TPL_MISS = 1,                       /* the soft filter found no rule and dropped (counted by the census) */
+       TPL_REASON = 2,                     /* the kind goes against the lean for a reason (relationship, mood, traits) */
+       TPL_KIDSAFE = 4,                    /* a minor is in the room: the cool reply acts are out, edgy traits inert */
+       TPL_FORCED = 8,                     /* the kind was forced (the creator's preview) */
+       TPL_OPEN = 16 };                    /* no kind won by a margin: the plan names a kind but filters nothing */
+typedef struct TalkPlan {
+    uint8_t kind;                          /* TK_*, 0: no plan (a safety act, grief, the pet, an unknown act) */
+    uint8_t allowed;                       /* TKM() mask of the kinds acts.tsv allows after the player's act   */
+    uint8_t flags;                         /* TPL_*                                                            */
+    int8_t  lean;                          /* -2..+2: the stance as the speaker sees it                        */
+    uint8_t eff[5];                        /* the effective sliders (stored + trait deltas), PERS_* order      */
+    uint8_t next[2];                       /* the next best kinds (kind | 0x80 when it goes against the lean for a
+                                              reason), tried when no rule of `kind` passes the guards; 0 none   */
+} TalkPlan;                                /* 11 B, on the stack; also in TalkTrace (tools only) */
+
+/* What the plan reads (talk_plan_kind is a pure function of this: a test can drive it without a database). */
+typedef struct TalkPlanIn {
+    uint8_t act;                           /* the player's act (TA_*)                                      */
+    uint8_t allowed;                       /* TKM mask of the kinds after it (acts.tsv)                    */
+    uint8_t dflt;                          /* TKM mask of the kinds the default reply act serves (base 3)  */
+    int8_t  lean;                          /* -2..+2                                                       */
+    uint8_t rel, mood;                     /* TRB_*, TMB_*                                                 */
+    uint8_t stage;                         /* the speaker's life stage                                     */
+    uint8_t kid_room;                      /* a minor speaks, is addressed or listens                      */
+    uint8_t consent;                       /* romance acts: the resident says yes (TalkConv.consent)       */
+    uint8_t to_minor;                      /* the one addressed is a minor                                 */
+    int8_t  topic_pref;                    /* +1 the topic is in a liked root, -1 a disliked root, 0 none  */
+    uint8_t eff[5];                        /* the effective sliders                                        */
+    int8_t  accept, deny;                  /* the trait bias of the room's trait set (talk_trait_bias)     */
+    uint32_t seed;                         /* the plan's own noise: the conversation seed and the turn     */
+} TalkPlanIn;
+/* Choose the kind (TK_*) and fill `out` (kind, allowed, flags, lean, eff); 0 when in->allowed is empty. */
+int  talk_plan_kind(const TalkPlanIn *in, TalkPlan *out);
+/* The soft filter found no rule of p->kind: take the next best kind (1), or 0 when none is left. */
+int  talk_plan_next(TalkPlan *p);
+/* The kinds a reply act serves, as a TKM() mask (acts.tsv KINDS; 0 for an act no kind serves), and the
+ * kinds allowed after a player's act. Read from the open database. */
+int  talk_gen_kinds_of(int reply_act);
+int  talk_gen_kinds_after(int act);
+/* The speaker's effective sliders in the room `aud` describes (stored + trait deltas, the edgy traits
+ * dropped for a minor speaker or a minor in the room), PERS_COUNT bytes; 0 if nobody has that id. */
+int  talk_gen_eff_persona(int id, int minor_room, uint8_t out[5]);
+/* The cool reply acts a kid room never gets from the plan: tease, mock, insult, threaten. */
+#define TALK_COOL_REPLY(a) ((a) == TA_TEASE || (a) == TA_MOCK || (a) == TA_INSULT || (a) == TA_THREATEN)
+
 /* What went into a line (tests, the census: Q1-Q4; NULL in the game). */
 enum { TFK_NONE = 0, TFK_NAME, TFK_CONCEPT, TFK_TEXT };
 #define TPART_OPEN    0x01u
@@ -736,6 +792,7 @@ typedef struct TalkTrace {
     uint8_t  gate;                  /* TG_* of the utterance (talk_gen_exchange)     */
     uint16_t core_alt;              /* the core part's alternative (Q5), 0xFFFF none */
     TalkFill fill[TALK_TRACE_FILLS]; /* names, concepts and catchphrases in the text */
+    TalkPlan plan;                  /* TM2c: the plan of an answer line (kind 0: none); eff is set for every line */
 } TalkTrace;
 
 /* One exchange: the player's turn and every resident line in reply. */

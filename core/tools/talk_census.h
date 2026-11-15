@@ -76,6 +76,8 @@ typedef struct CensusResult {
     uint64_t q8_n[Q8_COUNT];       /* the exchanges each check applied to                            */
     uint64_t q8_any;               /* exchanges with at least one Q8 failure                         */
     uint64_t conversations, conv_distinct, conv_q5;
+    uint64_t plan_lines, plan_miss, plan_open;  /* TM2c: answer lines with a plan, and those where the soft filter found no rule */
+    uint64_t plan_kind[TK_COUNT];     /* ... by the kind the plan chose */
     double   secs, conv_secs;
     uint32_t nres, ntopics, nacts;
 } CensusResult;

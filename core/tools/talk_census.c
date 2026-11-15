@@ -29,6 +29,7 @@
 #include <time.h>
 #include "doomo/doomo.h"
 #include "doomo/talk.h"
+#include "doomo/talk_traits.h"
 #include "doomo/lang.h"
 #include "doomo/roster.h"
 #include "doomo/sim.h"
@@ -321,8 +322,8 @@ static int q1_text(const char *text, int lower)
     return QF_NONE;
 }
 
-/* the speaker's data, read independently of the generator (Q3) */
-static int voice_term_ok(int id, int pred, int val)
+/* the speaker's data, read independently of the generator (Q3); the sliders are the EFFECTIVE ones (TM2c) */
+static int voice_term_ok(int id, int pred, int val, const uint8_t eff[5])
 {
     DoomoResident buf;
     const DoomoResident *r = NULL;
@@ -330,15 +331,15 @@ static int voice_term_ok(int id, int pred, int val)
     else if (id > DOOMO_PLAYER_ID && id != TALK_PET_ID && family_resident(id, &buf)) r = &buf;
     if (!r) return 1;
     switch (pred) {
-    case TGP_POLITE: return RES_PERSONA(r, PERS_SPEECH) <= 5;
-    case TGP_BLUNT: return RES_PERSONA(r, PERS_SPEECH) >= 10;
-    case TGP_FLAT: return RES_PERSONA(r, PERS_EXPRESSION) <= 5;
-    case TGP_LOUD: return RES_PERSONA(r, PERS_EXPRESSION) >= 10;
-    case TGP_SERIOUS: return RES_PERSONA(r, PERS_ATTITUDE) <= 4;
-    case TGP_EASYGOING: return RES_PERSONA(r, PERS_ATTITUDE) >= 11;
-    case TGP_QUIRKY: return RES_PERSONA(r, PERS_QUIRK) >= 11;
-    case TGP_QUICK: return RES_PERSONA(r, PERS_MOVEMENT) >= 11;
-    case TGP_SLOW: return RES_PERSONA(r, PERS_MOVEMENT) <= 4;
+    case TGP_POLITE: return eff[PERS_SPEECH] <= 5;
+    case TGP_BLUNT: return eff[PERS_SPEECH] >= 10;
+    case TGP_FLAT: return eff[PERS_EXPRESSION] <= 5;
+    case TGP_LOUD: return eff[PERS_EXPRESSION] >= 10;
+    case TGP_SERIOUS: return eff[PERS_ATTITUDE] <= 4;
+    case TGP_EASYGOING: return eff[PERS_ATTITUDE] >= 11;
+    case TGP_QUIRKY: return eff[PERS_QUIRK] >= 11;
+    case TGP_QUICK: return eff[PERS_MOVEMENT] >= 11;
+    case TGP_SLOW: return eff[PERS_MOVEMENT] <= 4;
     case TGP_TYPE: return persona_type(r) == val;
     case TGP_SPEAKER: return talk_gen_cast_id(val) == id && !(r->flags & RF_CUSTOM);
     case TGP_KID_SPEAKER: return talk_safe_minor(id);
@@ -432,6 +433,34 @@ static int topic_ok(const TalkConv *c, const TalkUtter *u, const TalkLine *l)
     return 0;
 }
 
+/* Q8c: does the speaker have trait `tr` in this room (the edgy traits dropped for a minor or in a kid room) */
+static int has_trait(int id, int kid, int tr)
+{
+    TalkTraitSet ts;
+    DoomoResident buf;
+    const DoomoResident *r = id <= DOOMO_PLAYER_ID ? town_res(id) : (family_resident(id, &buf) ? &buf : NULL);
+    if (!r || !talk_trait_get(id, &ts)) return 0;
+    talk_trait_room(&ts, RES_STAGE(r), kid || talk_safe_minor(id));
+    return talk_traitset_has(&ts, tr);
+}
+
+/* Q8a (TM2c): the line is what the plan chose. The reply act serves the kind (unless the soft filter recorded a
+ * miss), the kind is allowed after the player's act, a kind that goes against the lean has a reason, and the hard
+ * rules of layer a hold: a romance act is accepted, deflected or refused; a hug in a kid room is accepted or
+ * refused; a kid room gets no tease, mock, insult or threaten from the plan. */
+static int q8a_ok(const TalkConv *c, const TalkUtter *u, const TalkLine *l, const TalkTrace *t)
+{
+    int k = t->plan.kind, kid = c->aud.any_minor || c->aud.avatar_minor || c->aud.target_minor;
+    int sgn = (k == TK_ACCEPT || k == TK_AGREE) ? 1 : (k == TK_DENY || k == TK_REFUSE) ? -1 : 0;
+    if (!(t->plan.allowed & TKM(k)) || (t->plan.allowed & ~talk_gen_kinds_after(u->act[0]))) return 0;
+    if (!(t->plan.flags & (TPL_MISS | TPL_OPEN)) && !(talk_gen_kinds_of(l->act) & TKM(k))) return 0;
+    if (sgn * t->plan.lean < 0 && !(t->plan.flags & TPL_REASON)) return 0;
+    if (TA_IS_ROMANCE(u->act[0]) && k != TK_ACCEPT && k != TK_DEFLECT && k != TK_REFUSE) return 0;
+    if (u->act[0] == TA_HUG && (kid || talk_safe_minor(c->id[l->who])) && k != TK_ACCEPT && k != TK_REFUSE) return 0;
+    if (kid && TALK_COOL_REPLY(l->act)) return 0;
+    return 1;
+}
+
 int talk_census_check(const TalkConv *c, const TalkUtter *u, const TalkExchange *x, const TalkTrace *tr)
 {
     int k, i, kid = c->aud.any_minor || c->aud.avatar_minor || c->aud.target_minor;
@@ -440,6 +469,7 @@ int talk_census_check(const TalkConv *c, const TalkUtter *u, const TalkExchange 
         const TalkTrace *t = &tr[k];
         int id = l->who >= 0 && l->who < c->n ? c->id[l->who] : -1, lower = 0, q, prev_act, nex = 0, budget;
         TalkAltInfo ai;
+        uint8_t eff[5];
         if (l->flags & TLF_SAFE) return QF_Q6_LINT;
         if (l->flags & TLF_FALLBACK) return QF_Q1_FALLBACK;
         if (talk_gen_alt_info(t->core_alt, &ai) && (ai.rflags & 64u)) lower = 1;
@@ -451,14 +481,21 @@ int talk_census_check(const TalkConv *c, const TalkUtter *u, const TalkExchange 
         prev_act = k == 0 ? u->act[0] : x->line[k - 1].act;
         if (!(l->flags & TLF_END) && !talk_gen_adjacent(prev_act, l->act)) return QF_Q2_ACT;
         if (!topic_ok(c, u, l)) return QF_Q2_TOPIC;
+        /* Q8c / Q3: the effective sliders, re-derived from the room, and the plan's own record of them */
+        if (!talk_gen_eff_persona(id, kid, eff)) memset(eff, 8, sizeof eff);
+        if (memcmp(eff, t->plan.eff, sizeof eff) != 0) return QF_Q8_VOICE;
+        /* Q8a: the plan's kind (answer lines only) */
+        if (t->plan.kind && !q8a_ok(c, u, l, t)) return QF_Q8_KIND;
         /* Q3: every voice term of every alternative used holds for the speaker */
         for (i = 0; i < t->nalt; i++) {
             int j;
             if (!talk_gen_alt_info(t->alt[i], &ai)) return QF_Q3_VOICE;
             for (j = 0; j < ai.nterm; j++) {
-                int p = ai.term[2 * j] & 0x7F, neg = ai.term[2 * j] & 0x80, ok = voice_term_ok(id, p, ai.term[2 * j + 1]);
+                int p = ai.term[2 * j] & 0x7F, neg = ai.term[2 * j] & 0x80, ok = voice_term_ok(id, p, ai.term[2 * j + 1], eff);
                 if (ok < 0) continue;
-                if (neg ? ok : !ok) return QF_Q3_VOICE;
+                if (neg ? ok : !ok) return p >= TGP_POLITE && p <= TGP_SLOW ? QF_Q8_VOICE : QF_Q3_VOICE;
+                if (p == TGP_TRAIT && (neg ? has_trait(id, kid, ai.term[2 * j + 1]) : !has_trait(id, kid, ai.term[2 * j + 1])))
+                    return QF_Q8_VOICE;
             }
             /* Q6: no romance rule, no Mature variant where they may not be */
             if (kid && (ai.rflags & 4u)) return QF_Q6_KIDROOM;
@@ -467,7 +504,7 @@ int talk_census_check(const TalkConv *c, const TalkUtter *u, const TalkExchange 
         {
             DoomoResident buf;
             const DoomoResident *r = id <= DOOMO_PLAYER_ID ? town_res(id) : (family_resident(id, &buf) ? &buf : NULL);
-            budget = r ? (RES_PERSONA(r, PERS_EXPRESSION) <= 4 ? 1 : RES_PERSONA(r, PERS_EXPRESSION) <= 10 ? 2 : 3) : 3;
+            budget = r ? (eff[PERS_EXPRESSION] <= 4 ? 1 : eff[PERS_EXPRESSION] <= 10 ? 2 : 3) : 3;
             if (t->tic != 0xFF && r && t->tic != persona_type(r)) return QF_Q3_TIC;
         }
         for (i = 0; l->text[i]; i++) {
@@ -613,20 +650,21 @@ unsigned talk_census_q8(const TalkConv *c, const TalkUtter *u, const TalkExchang
         app |= 1u << Q8_CONTENT;
         if (!q8_said_topic(&tr[0], u->topic[0]) && !q8_alt_needs_topic(tr[0].core_alt)) bad |= 1u << Q8_CONTENT;
     }
-    /* Q8c: the voice guards against the sliders as the speaker has them now (effective == stored until
-     * the plan's talk_trait_effective, TM2c); an edgy trait never stings when a minor is in the room */
+    /* Q8c: the voice guards against the sliders as the speaker has them now (the effective ones, TM2c); an edgy trait never stings when a minor is in the room */
     if (want & (1u << Q8_VOICE)) {
         for (k = 0; k < x->n; k++) {
             const TalkLine *l = &x->line[k];
             int id = l->who >= 0 && l->who < c->n ? c->id[l->who] : -1, i, root = 0;
+            uint8_t eff[5];
             if (id < 0 || id == TALK_PET_ID) continue;
+            if (!talk_gen_eff_persona(id, kid, eff)) memset(eff, 8, sizeof eff);
             app |= 1u << Q8_VOICE;
             for (i = 0; i < tr[k].nalt; i++) {
                 TalkAltInfo ai;
                 int j;
                 if (!talk_gen_alt_info(tr[k].alt[i], &ai)) { bad |= 1u << Q8_VOICE; continue; }
                 for (j = 0; j < ai.nterm; j++) {
-                    int p = ai.term[2 * j] & 0x7F, neg = ai.term[2 * j] & 0x80, ok = voice_term_ok(id, p, ai.term[2 * j + 1]);
+                    int p = ai.term[2 * j] & 0x7F, neg = ai.term[2 * j] & 0x80, ok = voice_term_ok(id, p, ai.term[2 * j + 1], eff);
                     if (ok >= 0 && (neg ? ok : !ok)) bad |= 1u << Q8_VOICE;
                 }
             }
@@ -923,6 +961,15 @@ int talk_census_run(const CensusCfg *cfg, CensusResult *res, char *err, int errc
         q = ex.n ? talk_census_check(&c, &u, &ex, tr) : QF_Q1_FALLBACK;
         res->fail[q]++;
         if (ex.n) q8_count(res, cfg, i, &c, &u, &ex, tr, Q8_ALL);
+        {
+            int k;
+            for (k = 0; k < ex.n; k++) if (tr[k].plan.kind) {
+                res->plan_lines++;
+                res->plan_kind[tr[k].plan.kind]++;
+                if (tr[k].plan.flags & TPL_OPEN) res->plan_open++;
+                if (tr[k].plan.flags & TPL_MISS) res->plan_miss++;
+            }
+        }
         if (q && cfg->fails) {
             fprintf(cfg->fails, "%s\t", talk_census_qf_names[q]);
             write_sample(cfg->fails, i, &c, &u, &ex, tr);
@@ -1108,6 +1155,15 @@ void talk_census_print(const CensusResult *r, FILE *f)
                    "Q5 repeats in %llu; %.1f s\n",
                 (unsigned long long)r->conv_distinct, (unsigned long long)r->conversations,
                 r->conv_distinct >= 1000000 ? "" : "  (MISSED)", (unsigned long long)r->conv_q5, r->conv_secs);
+    if (r->plan_lines) {
+        static const char *const kn[TK_COUNT] = { "", "accept", "agree", "deny", "refuse", "deflect", "counter", "askback" };
+        int k;
+        fprintf(f, "  plan: %llu answer lines, %llu open (no kind by a margin), soft-filter misses %llu (%.2f%%);",
+                (unsigned long long)r->plan_lines, (unsigned long long)r->plan_open, (unsigned long long)r->plan_miss,
+                100.0 * (double)r->plan_miss / (double)r->plan_lines);
+        for (k = 1; k < TK_COUNT; k++) fprintf(f, " %s %llu", kn[k], (unsigned long long)r->plan_kind[k]);
+        fputc('\n', f);
+    }
     fprintf(f, "  S3 lint hits: %llu\n", (unsigned long long)r->lint_hits);
     talk_census_q8_print(r, f);
 }

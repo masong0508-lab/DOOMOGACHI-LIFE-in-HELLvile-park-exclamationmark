@@ -52,7 +52,9 @@ COMPILED (the TB_GRAMMAR bank, little endian):
   syms   nsyms x 4 B {u16 ref_first, u16 nref}; refs u16 rule ids
   entry  u16 core[nacts], react[nacts], fixed[TGE_COUNT]: symbols, 0xFFFF none
   acts   nacts x 16 B {u32 replies[3] (bit = a TA_* that may answer), u8
-         class (TAC_*), u8 default reply, u16 0}
+         class (TAC_*), u8 default reply, u8 kinds this act serves as a reply
+         (bit = a TK_*, acts.tsv KINDS), u8 kinds allowed after it (the union
+         over its replies)}
   map    u16 food[48], hobby[32], music[16], fear[24] (concept ids); u8
          catch[64] (CC_* of each catchphrase)
   cast   ncast x u16 roster id (the TGP_SPEAKER values)
@@ -211,6 +213,9 @@ class Env:
             "act": {k.lower(): v for k, v in self.acts.items()},
             "root": {k: v for k, v in c_enum(th, "TCR_").items() if k not in ("count", "none")},
             "prob": {k: v for k, v in c_enum(os.path.join(inc, "sim.h"), "PROB_").items() if k != "count"},
+            "kind": {k: v for k, v in c_enum(th, "TK_", "TK_NONE").items() if k not in ("count", "none")},
+            "trait": {k: v for k, v in c_enum(os.path.join(inc, "talk_traits.h"), "TT_", "TT_NONE").items()
+                      if k not in ("count", "none")},
             "chapter": {k: v for k, v in c_enum(os.path.join(inc, "story.h"), "STORY_CH").items()},
         }
         self.values["chapter"] = {re.sub(r"^_", "", k): v for k, v in self.values["chapter"].items()}
@@ -231,19 +236,27 @@ class Env:
         self.values["speaker"] = {k: i for i, (k, rid) in enumerate(self.cast)}
         self.catchphrases = T.c_array(cat_c, "doomo_catchphrases")
         self.cat_c = cat_c
+        self.act_kinds = {}            # ACT -> bit mask of the TK_* kinds it serves as a reply (acts.tsv KINDS)
 
 
 def load_acts(path, env, die, rel):
-    """acts.tsv -> {ACT: (class, [replies])}"""
+    """acts.tsv -> {ACT: (class, [replies])}; the KINDS column goes to env.act_kinds"""
     out = {}
     for n, line in enumerate(open(path, encoding="utf-8").read().split("\n"), 1):
         where = "%s:%d" % (rel(path), n)
         if not line.strip() or line.startswith("#"):
             continue
         cols = line.split("\t")
-        if len(cols) != 3:
-            die(where, "ACT<TAB>CLASS<TAB>REPLIES")
+        if len(cols) != 4:
+            die(where, "ACT<TAB>CLASS<TAB>REPLIES<TAB>KINDS")
         act, cls, reps = cols[0].strip(), cols[1].strip(), [r.strip() for r in cols[2].split(",") if r.strip()]
+        kinds = [k.strip() for k in cols[3].split(",") if k.strip() and k.strip() != "-"]
+        for k in kinds:
+            if k not in env.values["kind"]:
+                die(where, "KINDS %r: one of %s, or -" % (k, ", ".join(sorted(env.values["kind"]))))
+        if len(set(kinds)) != len(kinds):
+            die(where, "a kind twice")
+        env.act_kinds[act] = sum(1 << env.values["kind"][k] for k in kinds)
         if act not in env.acts or act == "NONE":
             die(where, "%s is not a talk.h TA_* act" % act)
         if act in out:
@@ -520,6 +533,7 @@ def build_grammar(b, files, die, rel, strict=True):
                             rom.add(m)
                             work.append(m)
     strings, str_index = [], {}
+    core_acts = {}                   # TM2c: entry act -> the reply acts some rule of core.<act> performs
     grief_rules = []                 # K-10: (rule name, reply act, [the guard terms of each line])
     rule_rows, alt_rows, term_rows = [], [], []
     alt_where, alt_refs, alt_min = [], [], []
@@ -550,6 +564,7 @@ def build_grammar(b, files, die, rel, strict=True):
                 act = env.acts[core_of if core_of in SAFETY_ENTRY else reps[0]]
             if by_id[act] not in reps:
                 die(where, "%s: reply act %s may not answer %s (acts.tsv)" % (rname, by_id[act], core_of))
+            core_acts.setdefault(core_of, set()).add(by_id[act])      # TM2c: the reply acts the bank really has
         if react_of:
             if act and act != env.acts[react_of]:
                 die(where, "%s: a react.<ACT> rule performs ACT" % rname)
@@ -731,15 +746,18 @@ def build_grammar(b, files, die, rel, strict=True):
     for a in range(env.nacts):
         nm = by_id.get(a)
         bits = [0, 0, 0]
-        cls, dflt = 0, 0
+        cls, dflt, served, after = 0, 0, 0, 0
         if a and nm in acts:
             c, reps = acts[nm]
             cls = CLASSES.index(c)
             dflt = env.acts[reps[0]]
+            served = env.act_kinds[nm]                     # the kinds this act serves as a reply
             for rp in reps:
                 v = env.acts[rp]
                 bits[v >> 5] |= 1 << (v & 31)
-        acts_b += _u32(bits[0]) + _u32(bits[1]) + _u32(bits[2]) + bytes((cls, dflt)) + _u16(0)
+                if rp in core_acts.get(nm, reps):          # (an empty cell of the bank allows no kind)
+                    after |= env.act_kinds[rp]             # the kinds allowed after this act
+        acts_b += _u32(bits[0]) + _u32(bits[1]) + _u32(bits[2]) + bytes((cls, dflt, served, after))
     if env.nacts > 96:
         die("talk.h", "more than 96 acts: widen the acts table")
     # pack

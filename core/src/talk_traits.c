@@ -551,6 +551,31 @@ int talk_trait_topic_lean(const TalkTraitSet *ts, int stage, int root)
     return clampi(v, -3, 3);
 }
 
+int talk_trait_edgy(int t)
+{
+    return t == TT_HOTHEADED || t == TT_ROMANTIC || t == TT_SNOB || t == TT_JEALOUS || t == TT_MEAN;
+}
+
+void talk_trait_room(TalkTraitSet *ts, int stage, int minor_room)
+{
+    int i;
+    if (!minor_room && !stage_minor(stage)) return;
+    for (i = TALK_TRAIT_MAX - 1; i >= 0; i--)
+        if (talk_trait_edgy(ts->trait[i])) talk_traitset_remove(ts, ts->trait[i]);
+}
+
+void talk_trait_slider_delta(const TalkTraitSet *ts, int8_t out[PERS_COUNT])
+{
+    int i, k, d[PERS_COUNT];
+    for (k = 0; k < PERS_COUNT; k++) d[k] = 0;
+    for (i = 0; i < TALK_TRAIT_MAX; i++) {
+        int t = ts->trait[i];
+        if (t <= TT_NONE || t >= TT_COUNT) continue;
+        for (k = 0; k < PERS_COUNT; k++) d[k] += 2 * ti[t].w[k];
+    }
+    for (k = 0; k < PERS_COUNT; k++) out[k] = (int8_t)clampi(d[k], -6, 6);
+}
+
 /* one trait's act lean, added into a, d (accept, deny) and m (mood) */
 static void trait_act(int t, int act, int *a, int *d, int *m)
 {
@@ -712,8 +737,10 @@ int talk_preview(const DoomoResident *r, const TalkTraitSet *tsin, int kind, uin
     pv_r = r; pv_ts = ts; pv_stage = stage;
     ids[0] = TALK_PREVIEW_ID;
     talk_gen_begin(&c, DOOMO_PLAYER_ID, ids, 1, doomo_hash32(seed + (uint32_t)kind * 0x9E3779B9u));
-    c.plain = 1;
     to = -1;
+    /* TM2c: one core line, and the plan's kind forced (bits 1-3 of plain): a greeting accepts, an answer agrees
+     * (or denies a topic they dislike), a refusal says no */
+    c.plain = (uint8_t)(1u | ((kind == TP_GREETING ? TK_ACCEPT : kind == TP_ANSWER ? TK_AGREE : TK_DENY) << 1));
     if (kind == TP_ANSWER) {
         act = TA_ASK_OPINION;
         root = ts.like[0] ? ts.like[0] : 0;

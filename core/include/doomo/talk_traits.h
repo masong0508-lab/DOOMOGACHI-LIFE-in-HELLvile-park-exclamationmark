@@ -128,6 +128,18 @@ int  talk_trait_take(const TalkTraitBias *b);
 /* A trait's liking for a topic root only (the stance term): -3..3. */
 int  talk_trait_topic_lean(const TalkTraitSet *ts, int stage, int root);
 
+/* ---- the plan's inputs (TM2c; docs/TALK.md 6j) ------------------------------------- */
+/* 1 for an edgy trait (hot-headed, romantic, snob, jealous, mean): it has no effect on a person who is
+ * not an adult, nor when anyone who is not an adult is in the room. */
+int  talk_trait_edgy(int t);
+/* The set as it counts in this room: the edgy traits are dropped when `stage` is a minor's or
+ * `minor_room` is 1 (a minor speaks, is addressed or listens). The engine reads only this set. */
+void talk_trait_room(TalkTraitSet *ts, int stage, int minor_room);
+/* The trait deltas to the five stored sliders (PERS_*), summed over the set and capped at +-6 each
+ * (twice the table's pull). Added to the stored sliders and clamped 0..15 they are the effective
+ * sliders the voice guards read; persona_type() still reads the stored ones. */
+void talk_trait_slider_delta(const TalkTraitSet *ts, int8_t out[PERS_COUNT]);
+
 /* ---- the live preview ------------------------------------------------------------- */
 enum { TP_GREETING = 0, TP_ANSWER, TP_REFUSAL, TP_KINDS };
 /* A line from the REAL Talk engine (talk_gen_line) in the voice of a character that need not exist

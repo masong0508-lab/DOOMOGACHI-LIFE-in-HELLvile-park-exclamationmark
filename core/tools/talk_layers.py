@@ -165,7 +165,7 @@ def load_acts():
     for raw in open(ACTS_TSV, encoding="utf-8"):
         if raw.startswith("#") or not raw.strip():
             continue
-        a, c, r = raw.rstrip("\n").split("\t")
+        a, c, r = raw.rstrip("\n").split("\t")[:3]
         d[a.lower()] = (c, [x.lower() for x in r.split(",")])
     return d
 
