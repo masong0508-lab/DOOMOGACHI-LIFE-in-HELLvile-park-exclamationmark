@@ -338,6 +338,8 @@ void fc_bubble_box(int x, int y, int w, const char *s, int tx, int ty, int b[4])
 void granny_box(int cx, int cy, int s, int b[4]);
 uint32_t granny_key(int s, int t, int mood);
 void dish_box(int r, int cx, int cy, int rw, int burnt, int b[4]);
+void ingredient_box(const CookIng *g, int cx, int cy, int rw, int b[4]);
+uint32_t ingredient_key(const CookIng *g, int t);
 #endif
 
 /* ---- test hooks (fish_scene.c, cook_scene.c) ------------------------------ */

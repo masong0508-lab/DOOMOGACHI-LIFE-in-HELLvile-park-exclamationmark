@@ -597,7 +597,7 @@ void dish_box(int r, int cx, int cy, int rw, int burnt, int b[4])
     b[0] = cx - rw - 4;
     b[1] = cy - up;
     b[2] = 2 * rw + 8 + 8;
-    b[3] = up + rw * 4 / 5 + 7;
+    b[3] = up + rw * 3 / 4 + 5;
 }
 #endif
 
@@ -689,6 +689,42 @@ static void item_art(int item, int cx, int cy, int rw, int t)
         break; }
     }
 }
+
+#if !defined(DOOMO_PLATFORM_PS1)
+/* (S2-4c) the box of everything ingredient_draw(g, cx, cy, rw, t) paints at any t, and its key:
+ * most items stand still; the pixie sugar twinkles, the blood orange drips, the coffee steams, a
+ * dish or a fish moves every tick (test_cook_kept checks every kind) */
+void ingredient_box(const CookIng *g, int cx, int cy, int rw, int b[4])
+{
+    int r;
+    b[0] = b[1] = b[2] = b[3] = 0;
+    if (!g || g->kind == ING_NONE) return;
+    if (g->kind == ING_ITEM) {
+        for (r = 0; r < RECIPE_COUNT; r++)
+            if (cook_recipes[r].item == g->id) { dish_box(r, cx, cy, rw, 0, b); return; }
+        b[0] = cx - rw - 4; b[1] = cy - rw - 3 - (g->id == ITEM_COFFEE ? 22 : 0);
+        b[2] = 2 * rw + 9; b[3] = cy + rw + 6 - b[1];
+        return;
+    }
+    r = rw + 2;                    /* a fish (half length r): its fins, tail, bubbles and smoke */
+    b[0] = cx - 2 * r - 1; b[1] = cy - 4 * r - 3; b[2] = 5 * r + 4; b[3] = 5 * r + 10;
+}
+
+uint32_t ingredient_key(const CookIng *g, int t)
+{
+    int r;
+    if (!g || g->kind == ING_NONE) return 0;
+    if (g->kind != ING_ITEM) return (uint32_t)t + 1u;
+    for (r = 0; r < RECIPE_COUNT; r++)
+        if (cook_recipes[r].item == g->id) return (uint32_t)t + 1u;
+    switch (g->id) {
+    case ITEM_PIXIE_SUGAR: return (uint32_t)ui_sparkle_size((t / 3) & 15) + 1u;
+    case ITEM_BLOOD_ORANGE: return (uint32_t)((t / 8) % 3) + 1u;
+    case ITEM_COFFEE: return (uint32_t)t + 1u;
+    default: return 1u;
+    }
+}
+#endif
 
 void ingredient_draw(const CookIng *g, int cx, int cy, int rw, int t)
 {

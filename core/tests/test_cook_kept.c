@@ -105,6 +105,41 @@ TEST(cook_kept_dish_box)
     set_res(240, 160);
 }
 
+static const CookIng *ing_cur;
+static void part_ing(int t, int rw, int unused) { (void)unused; ingredient_draw(ing_cur, nat_w / 2, nat_h / 2, rw, t); }
+
+/* every ingredient the book can show (each item of a recipe, every fish and the fish kinds) */
+TEST(cook_kept_ingredient_box_and_key)
+{
+    static const int sizes[] = { 5, 8 };
+    CookIng g;
+    int kind, id, si, t, b[4];
+    char why[160];
+    set_res(320, 240);
+    for (kind = ING_ITEM; kind <= ING_ANY_FISH; kind++)
+        for (id = 0; id < (kind == ING_ITEM ? ITEM_COUNT : kind == ING_FISH ? FISH_COUNT : 1); id++) {
+            int used = kind != ING_ITEM, r, k;
+            for (r = 0; r < RECIPE_COUNT && !used; r++)
+                for (k = 0; k < 3; k++)
+                    if (cook_recipes[r].ing[k].kind == ING_ITEM && cook_recipes[r].ing[k].id == id) used = 1;
+            if (!used) continue;
+            g.kind = (uint8_t)kind; g.id = (uint8_t)id; g.qty = 1;
+            ing_cur = &g;
+            for (si = 0; si < 2; si++) {
+                kn = 0;
+                ingredient_box(&g, nat_w / 2, nat_h / 2, sizes[si], b);
+                for (t = 0; t < 200; t++) {
+                    uint32_t h;
+                    CHECK_MSG(inside(part_ing, t, sizes[si], 0, b, &h, why, sizeof(why)), "ingredient kind %d id %d rw %d t %d: %s",
+                              kind, id, sizes[si], t, why);
+                    CHECK_MSG(key_agrees(ingredient_key(&g, t), h), "ingredient kind %d id %d t %d: same key, another picture",
+                              kind, id, t);
+                }
+            }
+        }
+    set_res(240, 160);
+}
+
 static void part_window(int t, int night, int unused) { (void)unused; kitchen_window((uint32_t)t, night); }
 static void part_pans(int t, int a, int b) { (void)a; (void)b; kitchen_draw_back((uint32_t)t, 0); }
 static void part_back_busy(int t, int a, int b) { (void)a; (void)b; kitchen_draw_back((uint32_t)t, 1); }

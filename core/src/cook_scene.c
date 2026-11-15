@@ -47,6 +47,8 @@ typedef struct {
     char     line[96];
     uint32_t bot_now, bot_prev;
     uint8_t  lpass, screen;            /* (S2-4c) the kept kitchen's pass and screen (below) */
+    const DoomoImage *cimg[FC_CUSTOMERS];  /* (S2-4c) pass 1's faces and bubbles, for pass 2 */
+    int16_t  cbub[FC_CUSTOMERS][4];
 } CookState;
 DOOMO_STATIC_ASSERT(sizeof(CookState) <= FC_STATE_MAX, cook_state_fits_scratch);
 
@@ -758,6 +760,29 @@ static void bubble_layer(int id, int x, int y, int w, const char *s, int tx, int
 }
 #endif
 
+#if COOK_KEPT
+/* the union of boxes a and b into a */
+static void box_join(int a[4], const int b[4])
+{
+    int x0, y0, x1, y1;
+    if (b[2] <= 0 || b[3] <= 0) return;
+    if (a[2] <= 0 || a[3] <= 0) { a[0] = b[0]; a[1] = b[1]; a[2] = b[2]; a[3] = b[3]; return; }
+    x0 = DOOMO_MIN(a[0], b[0]); y0 = DOOMO_MIN(a[1], b[1]);
+    x1 = DOOMO_MAX(a[0] + a[2], b[0] + b[2]); y1 = DOOMO_MAX(a[1] + a[3], b[1] + b[3]);
+    a[0] = x0; a[1] = y0; a[2] = x1 - x0; a[3] = y1 - y0;
+}
+
+/* ui_button's cursor and bounce (ui.c): what a row of buttons' picture depends on */
+static uint32_t buttons_key(int sel)
+{
+    int ft = (int)doomo_frame_count(), kind = opt_get(OPT_CURSOR);
+    return (uint32_t)sel | (uint32_t)(ui_wave(ft, 20, 1) > 0) << 4 | (uint32_t)(ui_wave(ft, 20, 2) + 2) << 5 |
+           (uint32_t)(kind & 7) << 8 | (uint32_t)(kind == 3 ? (ft / 6) % 3 : 0) << 12;
+}
+#else
+#define buttons_key(sel) 0u
+#endif
+
 static void grade_badge(int x, int y, int g)
 {
     static const uint8_t col[5] = { 0, PAL_RAMP(RAMP_STONE, 3), PAL_PAINT(PAINT_RUST, 2),
@@ -769,18 +794,19 @@ static void grade_badge(int x, int y, int g)
     plat_rect(x - 1, y - 1, 1, 1, PAL_WHITE);
 }
 
-static void draw_book(void)
+static void book_geom(int *bx, int *by, int *bw, int *bh)
 {
-    const Recipe *rc = RC();
-    int w = W(), h = H(), t = K.t, big = fc_big(), ok = cook_recipe_ok(K.recipe);
-    int bx = 6, by = big ? 24 : 18, bw = w - 12, bh = h - by - (big ? 58 : 46);
-    int lp = bx + 6, lw = bw / 2 - 10, rp = bx + bw / 2 + 6, rw = bw / 2 - 12;
-    int i, y, fl = K.flip_t;
-    char buf[64];
-    kitchen_draw_back((uint32_t)t, 0);
-    kitchen_draw_counter(counter_y() + 10, (uint32_t)t);
-    title_layers(0, "Granny's Recipe Book");
-    /* the open book: cover, two cream pages, a spine, page curl when flipping */
+    int big = fc_big();
+    *bx = 6; *by = big ? 24 : 18; *bw = W() - 12; *bh = H() - *by - (big ? 58 : 46);
+}
+
+/* the open book's still parts: cover, two cream pages, a spine, the ruled lines and the
+ * bookmark's heart (the kept book picture holds them) */
+static void book_frame(void)
+{
+    int bx, by, bw, bh, y, rp, rw;
+    book_geom(&bx, &by, &bw, &bh);
+    rp = bx + bw / 2 + 6; rw = bw / 2 - 12;
     ui_round_rect(bx - 2, by - 2, bw + 4, bh + 6, 6, PAL_PAINT(PAINT_BLOOD, 0));
     ui_round_rect(bx - 1, by - 1, bw + 2, bh + 4, 5, PAL_PAINT(PAINT_CHERRY, 1));
     ui_round_rect(bx + 2, by + 1, bw / 2 - 2, bh - 2, 3, PAL_RAMP(RAMP_CANDY, 7));
@@ -790,37 +816,165 @@ static void draw_book(void)
     for (y = by + 14; y < by + bh - 6; y += 12)                                     /* ruled lines */
         plat_rect(rp, y + 9, rw, 1, PAL_RAMP(RAMP_PASTEL_PINK, 6));
     ui_heart(bx + bw - 8, by - 1, 3, PAL_PAINT(PAINT_ROSE, 2));                    /* bookmark */
-    plat_rect(bx + bw - 9, by - 1, 3, 6 + ui_wave(t, 60, 1), PAL_PAINT(PAINT_ROSE, 1));
+}
+
+#if COOK_KEPT
+/* (S2-4c) the window and the title are drawn before the book, whose cover hides their lower
+ * rows: put the cover back over them, row by row in the cover's own spans */
+static void put_back_cover(const int b[4])
+{
+    int bx, by, bw, bh, y, y0, y1;
+    if (K.lpass != 2) return;
+    book_geom(&bx, &by, &bw, &bh);
+    y0 = DOOMO_MAX(b[1], by - 2);
+    y1 = DOOMO_MIN(b[1] + b[3], by - 2 + bh + 6);
+    for (y = y0; y < y1;) {
+        int in = ui_round_rect_inset(bw + 4, bh + 6, 6, y - (by - 2)), e = y + 1, x0, x1;
+        while (e < y1 && ui_round_rect_inset(bw + 4, bh + 6, 6, e - (by - 2)) == in) e++;
+        x0 = DOOMO_MAX(b[0], bx - 2 + in);
+        x1 = DOOMO_MIN(b[0] + b[2], bx - 2 + bw + 4 - in);
+        if (in >= 0 && x0 < x1) plat_stage_restore(x0, y, x1 - x0, e - y);
+        y = e;
+    }
+}
+
+/* the book's picture hides the pans when they hang inside the cover's straight part (they do at
+ * both screen sizes); else the book is drawn in full */
+static int book_hides_pans(void)
+{
+    int bx, by, bw, bh, p[4];
+    book_geom(&bx, &by, &bw, &bh);
+    kitchen_pans_box(p);
+    return p[0] >= bx + 4 && p[0] + p[2] <= bx + bw - 4 && p[1] >= by + 4 && p[1] + p[3] <= by + bh;
+}
+#endif
+
+static void draw_book(void)
+{
+    enum { LB_WINDOW, LB_LOGO, LB_TITLE, LB_MONEY, LB_RIBBON, LB_FLIP, LB_TOP, LB_DISH, LB_NAME, LB_ING, LB_INGT = LB_ING + 3,
+           LB_BOTTOM = LB_INGT + 3, LB_GRANNY, LB_BUBBLE, LB_HINT, LB_FX };
+    const Recipe *rc = RC();
+    int w = W(), h = H(), t = K.t, big = fc_big(), ok = cook_recipe_ok(K.recipe);
+    int bx, by, bw, bh, lp, lw, rp, rw;
+    int i, y, fl = K.flip_t, b[4] = { 0, 0, 0, 0 };
+    char buf[64];
+    book_geom(&bx, &by, &bw, &bh);
+    lp = bx + 6; lw = bw / 2 - 10; rp = bx + bw / 2 + 6; rw = bw / 2 - 12;
+    if (!K.lpass) {
+        kitchen_draw_back((uint32_t)t, 0);
+        kitchen_draw_counter(counter_y() + 10, (uint32_t)t);
+    }
+#if COOK_KEPT
+    else {
+        kitchen_window_box(b);
+        if (L(LB_WINDOW, b, kitchen_window_key((uint32_t)t, town_is_night()))) {
+            kitchen_window((uint32_t)t, town_is_night());
+            put_back_cover(b);
+        }
+        kitchen_logo_box(counter_y() + 10, b);         /* (the big book's cover hides the flames' tops) */
+        if (L(LB_LOGO, b, kitchen_logo_key((uint32_t)t))) {
+            kitchen_counter_logo(counter_y() + 10, (uint32_t)t);
+            put_back_cover(b);
+        }
+    }
+#endif
+    if (!K.lpass) title_layers(LB_TITLE, "Granny's Recipe Book");
+#if COOK_KEPT
+    else {
+        /* (title_layers, with the cover put back over the title pill's shadow) */
+        uint32_t ft = doomo_frame_count();
+        const char *s = "Granny's Recipe Book";
+        int tw = ui_text_width(s) + 18, mw;
+        b[0] = W() / 2 - tw / 2 - 1; b[1] = 0; b[2] = tw + 3; b[3] = 18;
+        if (L(LB_TITLE, b, kh_str((uint32_t)ui_sparkle_size((int)(ft / 3) & 15) << 4 | (uint32_t)ui_sparkle_size((int)(ft / 3 + 8) & 15), s))) {
+            ui_title(W() / 2, 3, s, WIN_CUTE);
+            put_back_cover(b);
+        }
+        /* the money pill's bottom row lies under the bookmark's heart, which the book's picture
+         * holds: the layer takes in the heart's box and draws the heart again over the pill (the
+         * ribbon, on that box, follows) */
+        doomo_snprintf(buf, sizeof(buf), STR_ICON_COIN "%u", (unsigned)doomo_town.money);
+        mw = ui_text_width(buf) + 10;
+        b[0] = W() - 3 - mw - 1; b[1] = 2; b[2] = mw + 2; b[3] = 14;
+        {
+            int hb[4];
+            hb[0] = bx + bw - 13; hb[1] = by - 5; hb[2] = 11; hb[3] = 9;
+            box_join(b, hb);
+        }
+        if (L(LB_MONEY, b, doomo_town.money + 1u)) {
+            fc_money_pill(W() - 3, 3);
+            put_back_cover(b);
+            ui_heart(bx + bw - 8, by - 1, 3, PAL_PAINT(PAINT_ROSE, 2));
+        }
+    }
+#endif
+    /* the open book: cover, two cream pages, a spine, page curl when flipping */
+    if (!K.lpass) book_frame();
+    b[0] = bx + bw - 9; b[1] = by - 1; b[2] = 3; b[3] = 7;
+    if (L(LB_RIBBON, b, (uint32_t)(ui_wave(t, 60, 1) + 2)))
+        plat_rect(bx + bw - 9, by - 1, 3, 6 + ui_wave(t, 60, 1), PAL_PAINT(PAINT_ROSE, 1));
     if (fl) {
         int px = K.flip_dir > 0 ? bx + bw / 2 + (bw / 2) * fl / 8 : bx + bw / 2 - (bw / 2) * fl / 8;
-        int a = px < bx + bw / 2 ? px : bx + bw / 2, b = px < bx + bw / 2 ? bx + bw / 2 : px;
-        plat_rect(a, by + 2, b - a, bh - 4, PAL_WHITE);
-        plat_rect(px, by + 2, 1, bh - 4, PAL_RAMP(RAMP_PEACH, 4));
+        int a = px < bx + bw / 2 ? px : bx + bw / 2, e = px < bx + bw / 2 ? bx + bw / 2 : px;
+        b[0] = bx; b[1] = by + 2; b[2] = bw + 1; b[3] = bh - 4;
+        if (L(LB_FLIP, b, (uint32_t)fl << 2 | (uint32_t)(K.flip_dir > 0))) {
+            plat_rect(a, by + 2, e - a, bh - 4, PAL_WHITE);
+            plat_rect(px, by + 2, 1, bh - 4, PAL_RAMP(RAMP_PEACH, 4));
+        }
     } else {
         doomo_snprintf(buf, sizeof(buf), "%d/%d", K.recipe + 1, RECIPE_COUNT);
-        ui_text(rp + rw - ui_text_width(buf), by + 4, buf, PAL_RAMP(RAMP_PEACH, 3));
-        /* left page: the dish on a doily, its name and blurb */
+        /* the page number and the right page's heading: one row */
+        b[0] = rp - 1; b[1] = by + 3; b[2] = rw + 2; b[3] = FONT_LINE + 2;
+        if (L(LB_TOP, b, (uint32_t)K.recipe + 1u)) {
+            ui_text(rp + rw - ui_text_width(buf), by + 4, buf, PAL_RAMP(RAMP_PEACH, 3));
+            ui_text(rp, by + 4, "Ingredients", PAL_PAINT(PAINT_CHERRY, 0));
+        }
+        /* left page: the dish on a doily (sparkles circling it), its name and blurb */
         {
             int cx = lp + lw / 2, cy = by + (big ? 44 : 28), r = big ? 28 : 17;
-            ui_fill_circle(cx, cy, r + 5, PAL_RAMP(RAMP_PASTEL_PINK, 7));
-            for (i = 0; i < 6; i++) {
-                int a = (t * 8 + i * 683) & DOOMO_ANG_MASK;
-                ui_sparkle(cx + FIX2INT(fx_cos(a) * (r + 8)), cy + FIX2INT(fx_sin(a) * (r / 2 + 6)), (t / 2 + i * 3) & 15,
-                           ok ? PAL_UI_GOLD : PAL_RAMP(RAMP_STONE, 4));
+            const char *name = ok ? rc->name : "Secret recipe";
+            const char *blurb = ok ? rc->desc : (unlock_by_id(rc->unlock) ? unlock_by_id(rc->unlock)->how : "");
+#if COOK_KEPT
+            if (K.lpass) {
+                int d[4];
+                b[0] = cx - r - 12; b[1] = cy - r - 6; b[2] = 2 * r + 25; b[3] = 2 * r + 12;
+                if (ok) {
+                    dish_box(K.recipe, cx, cy - 1, r, 0, d); box_join(b, d);
+                    dish_box(K.recipe, cx, cy + 1, r, 0, d); box_join(b, d);
+                } else {
+                    d[0] = cx - 8; d[1] = cy - 14; d[2] = 26; d[3] = 32; box_join(b, d);
+                }
             }
-            if (ok) dish_draw(K.recipe, cx, cy + ui_wave(t, 60, 1), r, t, 0);
-            else {
-                ui_fill_ellipse(cx, cy + 4, r, r / 3, PAL_RAMP(RAMP_STONE, 5));
-                ui_text_big(cx - 6, cy - 12, "?", 3, PAL_RAMP(RAMP_STONE, 4), PAL_WHITE);
+#endif
+            if (L(LB_DISH, b, (uint32_t)t + 1u)) {
+                ui_fill_circle(cx, cy, r + 5, PAL_RAMP(RAMP_PASTEL_PINK, 7));
+                for (i = 0; i < 6; i++) {
+                    int a = (t * 8 + i * 683) & DOOMO_ANG_MASK;
+                    ui_sparkle(cx + FIX2INT(fx_cos(a) * (r + 8)), cy + FIX2INT(fx_sin(a) * (r / 2 + 6)), (t / 2 + i * 3) & 15,
+                               ok ? PAL_UI_GOLD : PAL_RAMP(RAMP_STONE, 4));
+                }
+                if (ok) dish_draw(K.recipe, cx, cy + ui_wave(t, 60, 1), r, t, 0);
+                else {
+                    ui_fill_ellipse(cx, cy + 4, r, r / 3, PAL_RAMP(RAMP_STONE, 5));
+                    ui_text_big(cx - 6, cy - 12, "?", 3, PAL_RAMP(RAMP_STONE, 4), PAL_WHITE);
+                }
             }
             y = cy + r / 2 + (big ? 12 : 8);
-            y += FONT_LINE * ui_text_wrap(lp + 2, y, lw - 2, ok ? rc->name : "Secret recipe", PAL_PAINT(PAINT_CHERRY, 0), 1) + 1;
-            ui_text_wrap(lp + 2, y, lw - 2, ok ? rc->desc : (unlock_by_id(rc->unlock) ? unlock_by_id(rc->unlock)->how : ""),
-                         PAL_RAMP(RAMP_WOOD, 2), 1);
+            if (K.lpass) {
+                int n1 = ui_text_wrap(lp + 2, y, lw - 2, name, 0, 0);
+                int n2 = ui_text_wrap(lp + 2, y + FONT_LINE * n1 + 1, lw - 2, blurb, 0, 0);
+                b[0] = lp + 1; b[1] = y - 1; b[2] = lw; b[3] = FONT_LINE * (n1 + n2) + 4;
+            }
+#if COOK_KEPT
+            if (L(LB_NAME, b, kh_str(kh_str((uint32_t)ok, name), blurb)))
+#endif
+            {
+                y += FONT_LINE * ui_text_wrap(lp + 2, y, lw - 2, name, PAL_PAINT(PAINT_CHERRY, 0), 1) + 1;
+                ui_text_wrap(lp + 2, y, lw - 2, blurb, PAL_RAMP(RAMP_WOOD, 2), 1);
+            }
         }
         /* right page: ingredients, steps, flavour, difficulty, best grade */
         y = by + 4;
-        ui_text(rp, y, "Ingredients", PAL_PAINT(PAINT_CHERRY, 0));
         y += big ? 13 : 11;
         for (i = 0; i < 3; i++) {
             const CookIng *g = &rc->ing[i];
@@ -837,41 +991,57 @@ static void draw_book(void)
             case ING_HELL_FISH: nm = "hellish fish"; break;
             default: nm = "any fish"; break;
             }
-            if (ok) ingredient_draw(g, rp + 5, y + 3, 5, t + i * 9);
+            if (ok) {
+#if COOK_KEPT
+                if (K.lpass) ingredient_box(g, rp + 5, y + 3, 5, b);
+                if (L(LB_ING + i, b, ingredient_key(g, t + i * 9)))
+#endif
+                    ingredient_draw(g, rp + 5, y + 3, 5, t + i * 9);
+            }
             maxc = (rw - 36) / FONT_ADVANCE;
             for (k = 0; k < maxc && k < 23 && nm[k]; k++) nb[k] = nm[k];
             if (nm[k] && k > 1) nb[k - 1] = '.';
             nb[k] = 0;
-            ui_text(rp + 13, y, nb, PAL_RAMP(RAMP_WOOD, 1));
             doomo_snprintf(buf, sizeof(buf), "%d/%d", DOOMO_MIN(have, 99), need);
-            ui_text(rp + rw - ui_text_width(buf), y, buf, have >= need ? PAL_PAINT(PAINT_FOREST, 1) : PAL_PAINT(PAINT_CHERRY, 1));
+            b[0] = rp + 12; b[1] = y - 1; b[2] = rw - 11; b[3] = FONT_LINE + 2;
+#if COOK_KEPT
+            if (L(LB_INGT + i, b, kh_str(kh_str((uint32_t)(have >= need), nb), buf)))
+#endif
+            {
+                ui_text(rp + 13, y, nb, PAL_RAMP(RAMP_WOOD, 1));
+                ui_text(rp + rw - ui_text_width(buf), y, buf, have >= need ? PAL_PAINT(PAINT_FOREST, 1) : PAL_PAINT(PAINT_CHERRY, 1));
+            }
             y += big ? 13 : 11;
         }
-        doomo_snprintf(buf, sizeof(buf), "Chop" STR_ICON_ARROW_R "Stir" STR_ICON_ARROW_R "%s", cook_heat_names[rc->heat & 3]);
-        ui_text(rp, y + 1, buf, PAL_PAINT(PAINT_GRAPE, 1));
-        y += FONT_LINE + 3;
-        if (rc->food >= 0) {
-            doomo_snprintf(buf, sizeof(buf), "Tastes like %s!", doomo_food_names[rc->food]);
-            y += FONT_LINE * ui_text_wrap(rp, y, rw, buf, PAL_PAINT(PAINT_TEAL, 1), 1) + 2;
+        /* the steps, the flavour, (big) the yield, the difficulty and the best grade: one layer */
+        b[0] = rp - 1; b[1] = y; b[2] = rw + 2; b[3] = by + bh - 3 - y;
+        if (L(LB_BOTTOM, b, (uint32_t)K.recipe << 8 | (uint32_t)ok << 7 | (uint32_t)fc.grade[K.recipe])) {
+            doomo_snprintf(buf, sizeof(buf), "Chop" STR_ICON_ARROW_R "Stir" STR_ICON_ARROW_R "%s", cook_heat_names[rc->heat & 3]);
+            ui_text(rp, y + 1, buf, PAL_PAINT(PAINT_GRAPE, 1));
+            y += FONT_LINE + 3;
+            if (rc->food >= 0) {
+                doomo_snprintf(buf, sizeof(buf), "Tastes like %s!", doomo_food_names[rc->food]);
+                y += FONT_LINE * ui_text_wrap(rp, y, rw, buf, PAL_PAINT(PAINT_TEAL, 1), 1) + 2;
+            }
+            /* the big book has room for what the dish does for a citizen */
+            if (big && ok && y + 2 * FONT_LINE + 8 < by + bh - 14) {
+                const DoomoItemInfo *it = &doomo_items[rc->item];
+                doomo_snprintf(buf, sizeof(buf), "Makes %d-%d %s", cook_yield(K.recipe, GRADE_OK),
+                               cook_yield(K.recipe, GRADE_PERFECT), it->name);
+                y += 2 + FONT_LINE * ui_text_wrap(rp, y + 2, rw, buf, PAL_RAMP(RAMP_WOOD, 2), 1);
+                doomo_snprintf(buf, sizeof(buf), STR_ICON_FOOD "%s%d  " STR_ICON_SMILE "%s%d  " STR_ICON_BOLT "%s%d",
+                               it->hunger >= 0 ? "+" : "", it->hunger, it->happy >= 0 ? "+" : "", it->happy,
+                               it->energy >= 0 ? "+" : "", it->energy);
+                ui_text(rp, y + 3, buf, PAL_PAINT(PAINT_FOREST, 1));
+            }
+            y = by + bh - 12;
+            for (i = 0; i < diff(); i++) ui_heart(rp + 4 + i * 8, y + 4, 3, PAL_PAINT(PAINT_ROSE, 1));
+            if (big && fc.grade[K.recipe] > GRADE_NONE) {
+                doomo_snprintf(buf, sizeof(buf), "Best: %s", cook_grade_names[fc.grade[K.recipe]]);
+                ui_text(rp + rw - 12 - ui_text_width(buf), y + 1, buf, PAL_RAMP(RAMP_PEACH, 2));
+            }
+            grade_badge(rp + rw - 4, y + 4, fc.grade[K.recipe]);
         }
-        /* the big book has room for what the dish does for a citizen */
-        if (big && ok && y + 2 * FONT_LINE + 8 < by + bh - 14) {
-            const DoomoItemInfo *it = &doomo_items[rc->item];
-            doomo_snprintf(buf, sizeof(buf), "Makes %d-%d %s", cook_yield(K.recipe, GRADE_OK),
-                           cook_yield(K.recipe, GRADE_PERFECT), it->name);
-            y += 2 + FONT_LINE * ui_text_wrap(rp, y + 2, rw, buf, PAL_RAMP(RAMP_WOOD, 2), 1);
-            doomo_snprintf(buf, sizeof(buf), STR_ICON_FOOD "%s%d  " STR_ICON_SMILE "%s%d  " STR_ICON_BOLT "%s%d",
-                           it->hunger >= 0 ? "+" : "", it->hunger, it->happy >= 0 ? "+" : "", it->happy,
-                           it->energy >= 0 ? "+" : "", it->energy);
-            ui_text(rp, y + 3, buf, PAL_PAINT(PAINT_FOREST, 1));
-        }
-        y = by + bh - 12;
-        for (i = 0; i < diff(); i++) ui_heart(rp + 4 + i * 8, y + 4, 3, PAL_PAINT(PAINT_ROSE, 1));
-        if (big && fc.grade[K.recipe] > GRADE_NONE) {
-            doomo_snprintf(buf, sizeof(buf), "Best: %s", cook_grade_names[fc.grade[K.recipe]]);
-            ui_text(rp + rw - 12 - ui_text_width(buf), y + 1, buf, PAL_RAMP(RAMP_PEACH, 2));
-        }
-        grade_badge(rp + rw - 4, y + 4, fc.grade[K.recipe]);
     }
     /* Granny, below the book, with advice */
     {
@@ -884,11 +1054,15 @@ static void draw_book(void)
             doomo_snprintf(K.line, sizeof(K.line), "Short a bit? I'll sell you the rest for %d H$.", cost);
             say = K.line;
         } else say = "This one needs fish, dear. Off to the Lake of Fire!";
-        granny_draw(gx, gy + 6, big ? 12 : 9, t, GRAN_TALK);
-        fc_bubble(gx + (big ? 22 : 17), by + bh + 5, w - gx - (big ? 28 : 21), say, gx + 6, gy - 12, 999);
+        granny_layer(LB_GRANNY, gx, gy + 6, big ? 12 : 9, t, GRAN_TALK, h);
+        bubble_layer(LB_BUBBLE, gx + (big ? 22 : 17), by + bh + 5, w - gx - (big ? 28 : 21), say, gx + 6, gy - 12, 999);
     }
-    ui_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R "Page " STR_ICON_A "Cook START Serve " STR_ICON_B "Exit", WIN_CUTE);
+    hint_layer(LB_HINT, STR_ICON_ARROW_L STR_ICON_ARROW_R "Page " STR_ICON_A "Cook START Serve " STR_ICON_B "Exit", WIN_CUTE);
+    if (K.lpass) fx_layer(LB_FX);              /* (cook_draw draws them after the book otherwise) */
 }
+
+/* the book screen as the kept kitchen draws it: the book and its particles */
+static void draw_book_kept(void) { draw_book(); }
 
 static void draw_buy(void)
 {
@@ -1162,7 +1336,7 @@ static void app_box(int b[4])
 static void draw_cooking(void)
 {
     enum { LC_WINDOW, LC_GRANNY, LC_LOGO, LC_TITLE, LC_MONEY, LC_APP, LC_PIPS, LC_BANNER, LC_BUBBLE, LC_FX, LC_HINT };
-    int t = K.t, mood = GRAN_TALK, b[4];
+    int t = K.t, mood = GRAN_TALK, b[4] = { 0, 0, 0, 0 };
     char buf[48];
     back_layer(LC_WINDOW, t, 1);
     if (K.st == CS_STEP_DONE) mood = K.score[K.step] >= 65 ? GRAN_CHEER : K.score[K.step] < 40 ? GRAN_DISMAY : GRAN_CALM;
@@ -1217,90 +1391,161 @@ static void draw_cooking(void)
     }
 }
 
+
 static void draw_result(void)
 {
+    enum { LR_WINDOW, LR_GRANNY, LR_LOGO, LR_TITLE, LR_MONEY, LR_PLATE, LR_STAMP, LR_TEXT, LR_BUBBLE, LR_FX,
+           LR_BUTTONS, LR_HINT };
     int t = K.t, w = W(), h = H(), big = fc_big(), cx = w * 64 / 100, cy = h * 47 / 100;
-    int it = cook_result_item(K.recipe, K.grade);
+    int it = cook_result_item(K.recipe, K.grade), b[4] = { 0, 0, 0, 0 };
     char buf[48];
     static const char *const opts[3] = { "Again", "Serve", "Book" };
     int k;
-    kitchen_draw_back((uint32_t)t, 1);
-    granny_draw(gran_x(), counter_y() + 4, big ? 18 : 14, t,
-                K.grade == GRADE_BURNT ? GRAN_DISMAY : K.grade >= GRADE_GREAT ? GRAN_CHEER : GRAN_TALK);
-    kitchen_draw_counter(counter_y(), (uint32_t)t);
-    title_layers(0, K.grade == GRADE_BURNT ? "Uh oh..." : "Order up!");
-    /* a spotlight + rays behind the plate */
-    for (k = 0; k < 8; k++) {
-        int a = (t * 6 + k * 512) & DOOMO_ANG_MASK, r = big ? 70 : 52;
-        plat_line(cx, cy, cx + FIX2INT(fx_cos(a) * r), cy + FIX2INT(fx_sin(a) * r / 2), PAL_RAMP(RAMP_CANDY, 6));
+    back_layer(LR_WINDOW, t, 1);
+    granny_layer(LR_GRANNY, gran_x(), counter_y() + 4, big ? 18 : 14, t,
+                 K.grade == GRADE_BURNT ? GRAN_DISMAY : K.grade >= GRADE_GREAT ? GRAN_CHEER : GRAN_TALK, counter_y());
+    counter_layer(LR_LOGO, counter_y(), t);
+    title_layers(LR_TITLE, K.grade == GRADE_BURNT ? "Uh oh..." : "Order up!");
+    /* a spotlight + rays behind the plate (they turn every tick) */
+#if COOK_KEPT
+    if (K.lpass) {
+        int r = big ? 70 : 52, d[4], rd = (big ? 30 : 22) * 300 / 256 + 1;
+        b[0] = cx - r - 1; b[1] = cy - r / 2 - 1; b[2] = 2 * r + 3; b[3] = r + 3;
+        d[0] = cx - (big ? 52 : 40) - 1; d[1] = cy + 6 - (big ? 22 : 16) - 1; d[2] = (big ? 104 : 80) + 3; d[3] = (big ? 44 : 32) + 3;
+        box_join(b, d);
+        dish_box(K.recipe, cx, cy - 1, rd, K.grade == GRADE_BURNT, d);
+        d[3] += 2;
+        box_join(b, d);
     }
-    ui_fill_ellipse(cx, cy + 6, big ? 52 : 40, big ? 22 : 16, PAL_RAMP(RAMP_CANDY, 7));
-    {
-        int s = ui_pop_scale(t), r = (big ? 30 : 22) * s / 256;
-        if (r > 4) dish_draw(K.recipe, cx, cy + ui_wave(t, 50, 1), r, t, K.grade == GRADE_BURNT);
+#endif
+    if (L(LR_PLATE, b, (uint32_t)t + 1u)) {
+        for (k = 0; k < 8; k++) {
+            int a = (t * 6 + k * 512) & DOOMO_ANG_MASK, r = big ? 70 : 52;
+            plat_line(cx, cy, cx + FIX2INT(fx_cos(a) * r), cy + FIX2INT(fx_sin(a) * r / 2), PAL_RAMP(RAMP_CANDY, 6));
+        }
+        ui_fill_ellipse(cx, cy + 6, big ? 52 : 40, big ? 22 : 16, PAL_RAMP(RAMP_CANDY, 7));
+        {
+            int s = ui_pop_scale(t), r = (big ? 30 : 22) * s / 256;
+            if (r > 4) dish_draw(K.recipe, cx, cy + ui_wave(t, 50, 1), r, t, K.grade == GRADE_BURNT);
+        }
     }
-    if (t > 14) fc_grade_stamp(cx, cy - (big ? 54 : 40), K.grade, t - 14);
+    if (t > 14) {
+        int sy = cy - (big ? 54 : 40), sc = big ? 3 : 2;
+        int r = ui_text_big_width(cook_grade_names[DOOMO_CLAMP(K.grade, 0, 4)], sc) / 2 + 8;
+        uint32_t key = (uint32_t)DOOMO_MIN(t - 14, 12) | (uint32_t)K.grade << 4;
+        if (K.grade == GRADE_PERFECT)
+            key |= (uint32_t)ui_sparkle_size(((t - 14) / 2) & 15) << 8 | (uint32_t)ui_sparkle_size(((t - 14) / 2 + 7) & 15) << 12;
+        /* the ring (r + 2 wide, 9 sc / 2 + 4 tall), PERFECT's star above and sparkles beside it */
+        b[0] = cx - r - (K.grade == GRADE_PERFECT ? 6 : 3); b[2] = 2 * (cx - b[0]) + 1;
+        b[1] = sy - 9 * sc / 2 - (K.grade == GRADE_PERFECT ? 11 : 4); b[3] = sy + 9 * sc / 2 + 7 - b[1];
+        if (L(LR_STAMP, b, key)) fc_grade_stamp(cx, sy, K.grade, t - 14);
+    }
     doomo_snprintf(buf, sizeof(buf), "+%d %s", K.portions, doomo_items[it].name);
-    fc_textc(cx, cy + (big ? 30 : 22), buf, PAL_WHITE);
-    fc_bubble(4, big ? 28 : 22, cx - (big ? 80 : 62), grade_lines[K.grade <= GRADE_PERFECT ? K.grade : 0],
-              gran_x() + 6, counter_y() - (big ? 44 : 34), t * 2);
-    fc_fx_draw(0, 0);
+    {
+        int tw = ui_text_width(buf), ty = cy + (big ? 30 : 22);
+        b[0] = cx - tw / 2 - 2; b[1] = ty - 2; b[2] = tw + 5; b[3] = FONT_LINE + 4;
+#if COOK_KEPT
+        if (L(LR_TEXT, b, kh_str(0, buf)))
+#endif
+            fc_textc(cx, ty, buf, PAL_WHITE);
+    }
+    bubble_layer(LR_BUBBLE, 4, big ? 28 : 22, cx - (big ? 80 : 62), grade_lines[K.grade <= GRADE_PERFECT ? K.grade : 0],
+                 gran_x() + 6, counter_y() - (big ? 44 : 34), t * 2);
+    fx_layer(LR_FX);
     if (t >= 20) {
         int bw = big ? 70 : 56, bx = (w - (bw * 3 + 12)) / 2 + (big ? 20 : 14), by = counter_y() + (big ? 22 : 16);
-        for (k = 0; k < 3; k++) ui_button(bx + k * (bw + 6), by, bw, opts[k], K.sel == k, WIN_CUTE);
+        b[0] = bx - 13; b[1] = by - 2; b[2] = 3 * bw + 12 + 15; b[3] = 20;
+        if (L(LR_BUTTONS, b, buttons_key(K.sel)))
+            for (k = 0; k < 3; k++) ui_button(bx + k * (bw + 6), by, bw, opts[k], K.sel == k, WIN_CUTE);
     }
-    ui_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " Choose  " STR_ICON_A " OK  " STR_ICON_B " Book", WIN_CUTE);
+    hint_layer(LR_HINT, STR_ICON_ARROW_L STR_ICON_ARROW_R " Choose  " STR_ICON_A " OK  " STR_ICON_B " Book", WIN_CUTE);
+    (void)h;
 }
 
 static void draw_counter(void)
 {
-    int t = K.t, w = W(), cy = counter_y(), i, big = fc_big(), n = 0;
+    enum { LK_WINDOW, LK_CUST, LK_LOGO = LK_CUST + 2 * FC_CUSTOMERS, LK_PLATE, LK_TITLE = LK_PLATE + FC_CUSTOMERS, LK_MONEY,
+           LK_EMPTY, LK_FX, LK_REACT, LK_HINT };
+    int t = K.t, w = W(), cy = counter_y(), i, big = fc_big(), n = 0, b[4] = { 0, 0, 0, 0 };
     char buf[64];
-    kitchen_draw_back((uint32_t)t, 1);
+    back_layer(LK_WINDOW, t, 1);
     for (i = 0; i < FC_CUSTOMERS; i++) {
         int id = cook_customer(i), x = seat_x(i), sel = i == K.cust_sel && K.st != CS_REACT;
         const DoomoResident *r;
         int expr = EXPR_HAPPY, served = cook_customer_served(i);
+        const DoomoImage *img;
+        int bob, slot = w / FC_CUSTOMERS, lift = (!big && (i & 1)) ? 14 : 0, bw = 0, bh = 0, by = 0, bx0 = 0;
+        const char *food = NULL;
         if (id < 0) continue;
         n++;
         r = town_res(id);
         if (K.st == CS_REACT && K.react_cust == i)
             expr = K.react_kind == SERVE_FAV ? EXPR_LOVE : K.react_kind == SERVE_HATE ? EXPR_SICK : EXPR_HAPPY;
         else if (!served) expr = (t / 50 + i) % 3 == 0 ? EXPR_TALK : EXPR_NEUTRAL;
-        /* stool */
-        plat_rect(x - 10, cy - 8, 20, 4, PAL_PAINT(PAINT_CHERRY, 1));
-        {
-            const DoomoImage *img = portrait_image_ui(id, expr);     /* S3-2: NULL while a job draws it */
-            int bob = sel ? ui_wave(t * 2, 30, 1) : 0;
-            if (img) plat_image(x - PORTRAIT_W / 2, cy - PORTRAIT_H + 8 - bob, img, 1, 0, 0);
-        }
-        if (!served) {
-            /* the order bubble: what they're craving */
-            const char *food = doomo_food_names[RES_LIKE_FOOD(r) % FOOD_COUNT];
-            /* on the small screen every other bubble floats higher, so
-             * they may be wider than a seat without bumping */
-            int slot = w / FC_CUSTOMERS, lift = (!big && (i & 1)) ? 14 : 0;
-            int bw = DOOMO_MIN(big ? slot - 4 : slot * 3 / 2 - 6, ui_text_width(food) + 12);
-            int lines = ui_text_wrap(0, 0, bw - 8, food, 0, 0);
-            int bh = 6 + DOOMO_MAX(1, lines) * FONT_LINE;
-            int by = cy - PORTRAIT_H + 2 - bh - lift - ui_wave(t + i * 20, 60, 1);
-            int bx0 = DOOMO_CLAMP(x - bw / 2, 1, w - bw - 1);
-            x = bx0 + bw / 2;
-            ui_round_rect(x - bw / 2, by, bw, bh, 5, sel ? PAL_PAINT(PAINT_CHERRY, 1) : PAL_RAMP(RAMP_PASTEL_PINK, 4));
-            ui_round_rect(x - bw / 2 + 1, by + 1, bw - 2, bh - 2, 4, PAL_WHITE);
-            x = seat_x(i);
-            plat_rect(x - 2, by + bh - 1, 5, 2, PAL_WHITE);
-            plat_rect(x - 1, by + bh + 1, 3, 1 + lift / 2, PAL_WHITE);
-            x = bx0 + bw / 2;
-            ui_heart(x - bw / 2 + 1, by + 1, 2, PAL_PAINT(PAINT_ROSE, 1));
-            ui_text_wrap(x - bw / 2 + 6, by + 4, bw - 8, food, PAL_RAMP(RAMP_WOOD, 1), 1);
-            x = seat_x(i);
+        bob = sel ? ui_wave(t * 2, 30, 1) : 0;
+        if (!served) food = doomo_food_names[RES_LIKE_FOOD(r) % FOOD_COUNT];
+        if (K.lpass == 2) {                    /* (the same as pass 1 found: no second lookup) */
+            img = K.cimg[i];
+            bw = K.cbub[i][0]; bh = K.cbub[i][1]; by = K.cbub[i][2]; bx0 = K.cbub[i][3];
         } else {
-            ui_heart(x + 14, cy - PORTRAIT_H + 6 - ((t / 6 + i) % 8), 3, PAL_PAINT(PAINT_ROSE, 1));
+            img = portrait_image_ui(id, expr);     /* S3-2: NULL while a job draws it */
+            if (!served) {
+                /* the order bubble: what they're craving; on the small screen every other bubble
+                 * floats higher, so they may be wider than a seat without bumping */
+                int lines;
+                bw = DOOMO_MIN(big ? slot - 4 : slot * 3 / 2 - 6, ui_text_width(food) + 12);
+                lines = ui_text_wrap(0, 0, bw - 8, food, 0, 0);
+                bh = 6 + DOOMO_MAX(1, lines) * FONT_LINE;
+                by = cy - PORTRAIT_H + 2 - bh - lift - ui_wave(t + i * 20, 60, 1);
+                bx0 = DOOMO_CLAMP(x - bw / 2, 1, w - bw - 1);
+            }
+            K.cimg[i] = img;
+            K.cbub[i][0] = (int16_t)bw; K.cbub[i][1] = (int16_t)bh; K.cbub[i][2] = (int16_t)by; K.cbub[i][3] = (int16_t)bx0;
         }
-        if (sel) ui_cursor(x - 6, cy + 14 + ui_wave(t * 3, 20, 1));
+        /* the customer on a stool, behind the counter like Granny (the counter puts itself back
+         * over the face's bottom rows) */
+        b[0] = x - PORTRAIT_W / 2; b[1] = cy - PORTRAIT_H + 6; b[2] = PORTRAIT_W; b[3] = PORTRAIT_H + 4;
+#if COOK_KEPT
+        if (L(LK_CUST + 2 * i, b, kh(kh((uint32_t)(uintptr_t)(img ? img->pix : NULL), img ? img->uid : 0u), (uint32_t)(bob + 2))))
+#endif
+        {
+            /* stool */
+            plat_rect(x - 10, cy - 8, 20, 4, PAL_PAINT(PAINT_CHERRY, 1));
+            if (img) plat_image(x - PORTRAIT_W / 2, cy - PORTRAIT_H + 8 - bob, img, 1, 0, 0);
+#if COOK_KEPT
+            put_back_rows(b, cy, fc_h());
+#endif
+        }
+        /* the order bubble or, served, a floating heart */
+        if (!served) {                         /* (the corner heart reaches 2 px out) */
+            b[0] = bx0 - 2; b[1] = by - 2; b[2] = bw + 2; b[3] = bh + 4 + lift / 2;
+        } else {
+            b[0] = x + 10; b[1] = cy - PORTRAIT_H - 6; b[2] = 9; b[3] = 18;
+        }
+#if COOK_KEPT
+        if (L(LK_CUST + 2 * i + 1, b, kh_str((uint32_t)served << 16 | (uint32_t)sel << 15 | (uint32_t)(served ? (t / 6 + i) % 8 : by & 0xFF), food)))
+#endif
+        {
+            if (!served) {
+                x = bx0 + bw / 2;
+                ui_round_rect(x - bw / 2, by, bw, bh, 5, sel ? PAL_PAINT(PAINT_CHERRY, 1) : PAL_RAMP(RAMP_PASTEL_PINK, 4));
+                ui_round_rect(x - bw / 2 + 1, by + 1, bw - 2, bh - 2, 4, PAL_WHITE);
+                x = seat_x(i);
+                plat_rect(x - 2, by + bh - 1, 5, 2, PAL_WHITE);
+                plat_rect(x - 1, by + bh + 1, 3, 1 + lift / 2, PAL_WHITE);
+                x = bx0 + bw / 2;
+                ui_heart(x - bw / 2 + 1, by + 1, 2, PAL_PAINT(PAINT_ROSE, 1));
+                ui_text_wrap(x - bw / 2 + 6, by + 4, bw - 8, food, PAL_RAMP(RAMP_WOOD, 1), 1);
+                x = seat_x(i);
+            } else {
+                ui_heart(x + 14, cy - PORTRAIT_H + 6 - ((t / 6 + i) % 8), 3, PAL_PAINT(PAINT_ROSE, 1));
+            }
+        }
+        /* (the cursor sits at cy + 13 and lower: the counter, drawn next, hides all of it, so the
+         * kept kitchen leaves it out) */
+        if (sel && !K.lpass) ui_cursor(x - 6, cy + 14 + ui_wave(t * 3, 20, 1));
     }
-    kitchen_draw_counter(cy, (uint32_t)t);
+    counter_layer(LK_LOGO, cy, t);
     for (i = 0; i < FC_CUSTOMERS; i++) {                 /* name plates on the counter */
         int id = cook_customer(i), x = seat_x(i);
         if (id < 0) continue;
@@ -1315,17 +1560,23 @@ static void draw_counter(void)
             if (k < n && k > 2) nm[k - 1] = '.';
             nm[k] = 0;
             tw = ui_text_width(nm);
-            fc_pill(x - tw / 2 - 5, cy + 1, tw + 10, 11,
-                    sel ? PAL_PAINT(PAINT_CHERRY, 1) : served ? PAL_RAMP(RAMP_STONE, 5) : PAL_RAMP(RAMP_CANDY, 7));
-            ui_text(x - tw / 2, cy + 3, nm, sel ? PAL_WHITE : served ? PAL_RAMP(RAMP_STONE, 2) : PAL_RAMP(RAMP_WOOD, 1));
+            b[0] = x - tw / 2 - 6; b[1] = cy + 1; b[2] = tw + 12; b[3] = 11;
+#if COOK_KEPT
+            if (L(LK_PLATE + i, b, kh_str((uint32_t)sel << 1 | (uint32_t)served, nm)))
+#endif
+            {
+                fc_pill(x - tw / 2 - 5, cy + 1, tw + 10, 11,
+                        sel ? PAL_PAINT(PAINT_CHERRY, 1) : served ? PAL_RAMP(RAMP_STONE, 5) : PAL_RAMP(RAMP_CANDY, 7));
+                ui_text(x - tw / 2, cy + 3, nm, sel ? PAL_WHITE : served ? PAL_RAMP(RAMP_STONE, 2) : PAL_RAMP(RAMP_WOOD, 1));
+            }
         }
     }
     doomo_snprintf(buf, sizeof(buf), "The Counter  %d served", fc.served);
-    title_layers(0, "The Counter");
+    title_layers(LK_TITLE, "The Counter");
     if (!n) {
-        fc_bubble(w / 2 - 70, cy - 60, 140, "No customers today... the island's a bit empty, dearie.", w / 2, cy, 999);
+        bubble_layer(LK_EMPTY, w / 2 - 70, cy - 60, 140, "No customers today... the island's a bit empty, dearie.", w / 2, cy, 999);
     }
-    fc_fx_draw(0, 0);
+    fx_layer(LK_FX);
     if (K.st == CS_PICK) {
         int vis = big ? 8 : 5, pw = big ? 200 : 168, ph = vis * 13 + 30, px = (w - pw) / 2, py = big ? 30 : 22;
         const DoomoResident *r = town_res(cook_customer(K.cust_sel));
@@ -1350,10 +1601,10 @@ static void draw_counter(void)
     } else if (K.st == CS_REACT) {
         int x = seat_x(K.react_cust), bw = big ? 170 : 140;
         int bx = DOOMO_CLAMP(x - bw / 2, 4, w - bw - 4);
-        fc_bubble(bx, big ? 26 : 18, bw, K.line, x, cy - PORTRAIT_H + 8, t * 2);
-        ui_hint(STR_ICON_A " OK", WIN_CUTE);
+        bubble_layer(LK_REACT, bx, big ? 26 : 18, bw, K.line, x, cy - PORTRAIT_H + 8, t * 2);
+        hint_layer(LK_HINT, STR_ICON_A " OK", WIN_CUTE);
     } else {
-        ui_hint(STR_ICON_ARROW_L STR_ICON_ARROW_R " Customer  " STR_ICON_A " Serve  " STR_ICON_B " Back", WIN_CUTE);
+        hint_layer(LK_HINT, STR_ICON_ARROW_L STR_ICON_ARROW_R " Customer  " STR_ICON_A " Serve  " STR_ICON_B " Back", WIN_CUTE);
     }
 }
 
@@ -1363,15 +1614,19 @@ static void draw_counter(void)
  * screens) */
 static void kitchen_pic(uint32_t key)
 {
-    (void)key;
     kitchen_back_still();
-    kitchen_counter_still(counter_y());
+    if (key == KV_BOOK) {
+        kitchen_counter_still(counter_y() + 10);
+        book_frame();
+    } else {
+        kitchen_counter_still(counter_y());
+    }
 }
 
 static int kitchen_pic_keys(uint32_t *out, int cap)
 {
-    if (cap >= 1) out[0] = KV_COUNTER;
-    return 1;
+    if (cap >= 2) { out[0] = KV_COUNTER; out[1] = KV_BOOK; }
+    return 2;
 }
 const DoomoBackdrop cook_backdrop_family = { .id = DOOMO_BACKDROP_KITCHEN, .draw = kitchen_pic, .keys = kitchen_pic_keys };
 
@@ -1398,10 +1653,23 @@ static void cook_draw(void)
 {
     if (plat_draw_skipped() || !ks || !fc_scratch_mine()) return;
     switch (K.st) {
-    case CS_BOOK: draw_book(); fc_fx_draw(0, 0); break;
+    case CS_BOOK:
+#if COOK_KEPT
+        if (book_hides_pans() && kept_draw(draw_book_kept, KS_BOOK, KV_BOOK)) break;
+#endif
+        draw_book();
+        fc_fx_draw(0, 0);
+        break;
     case CS_BUY: draw_book(); draw_buy(); break;
-    case CS_RESULT: draw_result(); break;
-    case CS_COUNTER: case CS_PICK: case CS_REACT: draw_counter(); break;
+    case CS_RESULT:
+        KEPT(draw_result, KS_RESULT, KV_COUNTER);
+        draw_result();
+        break;
+    case CS_COUNTER: case CS_REACT:
+        KEPT(draw_counter, KS_COUNTER, KV_COUNTER);
+        draw_counter();
+        break;
+    case CS_PICK: draw_counter(); break;
     default:
         KEPT(draw_cooking, KS_COOKING, KV_COUNTER);
         draw_cooking();
