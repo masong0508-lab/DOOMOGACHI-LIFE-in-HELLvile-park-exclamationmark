@@ -450,3 +450,126 @@ TEST(talk_census_cool_kid_reply_rate)
                   ck.replied[a], ck.rooms[a]);
     }
 }
+
+/* TM2b: the Q8 coherence checks (design TALK_MULTILEVEL.md 7.2), report mode on the old engine.
+ *   talk_census_q8_report  the smoke census prints the Q8 table; every check applied to some exchange,
+ *                          none fails an exchange (report mode), the other quality numbers are unchanged
+ *   talk_census_q8_checks  each check fails on a built exchange that breaks its rule and passes on the
+ *                          repaired one (so each fails without the code) */
+TEST(talk_census_q8_report)
+{
+    CensusCfg cfg;
+    CensusResult r;
+    char path[512], err[256];
+    Grid g;
+    int n;
+    memset(&cfg, 0, sizeof cfg);
+    cfg.grid = grid_path(path, (int)sizeof path);
+    cfg.quiet = 1;
+    test_reset();
+    CHECK(talk_db_open(lang_find("en")) == TALK_DB_OK);
+    CHECK(load_grid(cfg.grid, &g, err, (int)sizeof err) == 0);
+    talk_db_close();
+    cfg.contexts = g.smoke_contexts;
+    CHECK_MSG(talk_census_run(&cfg, &r, err, (int)sizeof err) == 0, "%s", err);
+    talk_census_q8_print(&r, stdout);
+    for (n = 0; n < Q8_COUNT; n++) {
+        CHECK_MSG(r.q8_n[n] > 0, "Q8 check %d never applied to an exchange", n);
+        CHECK(r.q8[n] <= r.q8_n[n]);
+        CHECK_EQ(r.fail[QF_Q8_KIND + n], 0);                  /* report mode: not a quality failure */
+    }
+    CHECK(r.q8_any > 0 && r.q8_any <= r.contexts);
+    CHECK_EQ(r.q8_n[Q8_FILLER], r.contexts - r.fail[QF_Q1_FALLBACK] - r.fail[QF_Q6_LINT]);
+    CHECK_MSG((r.contexts - r.exchanges_ok) * 100 <= r.contexts, "report mode changed the quality failures");
+}
+
+static unsigned q8_run(TalkConv *c, int act, uint16_t topic, const char *text, int lact, int stance, uint16_t said,
+                       uint16_t core_alt, unsigned *app)
+{
+    TalkUtter u;
+    TalkExchange x;
+    TalkTrace tr[TALK_EXCHANGE_MAX];
+    memset(&u, 0, sizeof u);
+    memset(&x, 0, sizeof x);
+    memset(tr, 0, sizeof tr);
+    u.act[0] = (uint8_t)act;
+    u.topic[0] = topic;
+    x.n = 1;
+    x.gate = TG_PASS;
+    x.line[0].who = 0;
+    x.line[0].to = -1;
+    x.line[0].act = (uint8_t)lact;
+    x.line[0].stance = (uint8_t)stance;
+    x.line[0].topic = topic;
+    snprintf(x.line[0].text, sizeof x.line[0].text, "%s", text);
+    tr[0].parts = TPART_CORE;
+    tr[0].core_alt = core_alt;
+    tr[0].nsaid = said ? 1 : 0;
+    tr[0].said[0] = said;
+    return talk_census_q8(c, &u, &x, tr, Q8_ALL, app);
+}
+
+TEST(talk_census_q8_checks)
+{
+    TalkConv c;
+    int ids[2] = { 1, 666 };
+    uint16_t pie;
+    unsigned app, b;
+    test_reset();
+    town_new(TOWN_FREEPLAY, 7, TOWN_POP_PREMADE);
+    CHECK(talk_db_open(lang_find("en")) == TALK_DB_OK && talk_gen_ready());
+    pie = concept_by_key("pie");
+    CHECK(pie != 0);
+    talk_gen_begin(&c, DOOMO_PLAYER_ID, ids, 2, 11u);
+    /* Q8e: a filler word alone, or under 20 characters (a gesture, a greeting, a farewell, a thank you and a laugh
+     * may be short, but never a filler word alone) */
+    b = q8_run(&c, TA_TELL, 0, "Hm.", TA_BACKCHANNEL, TST_NEUTRAL, 0, 0xFFFF, &app);
+    CHECK(b & (1u << Q8_FILLER));
+    b = q8_run(&c, TA_TELL, 0, "Oh? Go on.", TA_BACKCHANNEL, TST_NEUTRAL, 0, 0xFFFF, &app);
+    CHECK(b & (1u << Q8_FILLER));
+    b = q8_run(&c, TA_TELL, 0, "Hm. That is a lot to take in, honestly.", TA_BACKCHANNEL, TST_NEUTRAL, 0, 0xFFFF, &app);
+    CHECK(!(b & (1u << Q8_FILLER)));
+    b = q8_run(&c, TA_WAVE, 0, "Hey there!", TA_GREET, TST_NEUTRAL, 0, 0xFFFF, &app);
+    CHECK(!(b & (1u << Q8_FILLER)));
+    b = q8_run(&c, TA_WAVE, 0, "Hm.", TA_BACKCHANNEL, TST_NEUTRAL, 0, 0xFFFF, &app);
+    CHECK(b & (1u << Q8_FILLER));
+    /* Q8b: a topic act with a topic is answered about the topic */
+    b = q8_run(&c, TA_TELL, pie, "Interesting. I'm picturing it now, in great detail.", TA_BACKCHANNEL, TST_NEUTRAL, 0, 0xFFFF, &app);
+    CHECK((app & (1u << Q8_CONTENT)) && (b & (1u << Q8_CONTENT)));
+    b = q8_run(&c, TA_TELL, pie, "Pie! I'm picturing it now, in great detail.", TA_BACKCHANNEL, TST_NEUTRAL, pie, 0xFFFF, &app);
+    CHECK(!(b & (1u << Q8_CONTENT)));
+    b = q8_run(&c, TA_TELL, 0, "Interesting. I'm picturing it now, in great detail.", TA_BACKCHANNEL, TST_NEUTRAL, 0, 0xFFFF, &app);
+    CHECK(!(app & (1u << Q8_CONTENT)));                      /* no topic given: not applicable */
+    /* Q8a: a no to what the speaker likes, a yes to what they dislike */
+    b = q8_run(&c, TA_ASK_OPINION, pie, "I would skip pie, honestly. Not for me at all.", TA_OPINE_NEG, TST_PRO, pie, 0xFFFF, &app);
+    CHECK((app & (1u << Q8_KIND)) && (b & (1u << Q8_KIND)));
+    b = q8_run(&c, TA_ASK_OPINION, pie, "I would skip pie, honestly. Not for me at all.", TA_OPINE_NEG, TST_CON, pie, 0xFFFF, &app);
+    CHECK(!(b & (1u << Q8_KIND)));
+    b = q8_run(&c, TA_OPINE_NEG, pie, "Exactly right. Pie is a great one, I think.", TA_DISAGREE, TST_CON, pie, 0xFFFF, &app);
+    CHECK(b & (1u << Q8_KIND));                              /* disagree with a bad opinion of what they dislike */
+    b = q8_run(&c, TA_OPINE_NEG, pie, "Exactly right. Pie is the worst, I think.", TA_AGREE, TST_CON, pie, 0xFFFF, &app);
+    CHECK(!(b & (1u << Q8_KIND)));
+    /* Q8d: a no to a request that leaves nothing behind is a dead end */
+    b = q8_run(&c, TA_ASK_FAVOR, 0, "No. I will not be doing that today, sorry.", TA_NO, TST_NEUTRAL, 0, 0xFFFF, &app);
+    CHECK((app & (1u << Q8_HOOK)) && (b & (1u << Q8_HOOK)));
+    b = q8_run(&c, TA_ASK_FAVOR, 0, "No, not today. Could you ask Vex instead?", TA_NO, TST_NEUTRAL, 0, 0xFFFF, &app);
+    CHECK(!(b & (1u << Q8_HOOK)));
+    /* Q8f: an unknown line is asked about, not joked off */
+    b = q8_run(&c, TA_UNKNOWN, 0, "Right. I'm going to nod like I understood.", TA_JOKE, TST_NEUTRAL, 0, 0xFFFF, &app);
+    CHECK((app & (1u << Q8_UNKNOWN)) && (b & (1u << Q8_UNKNOWN)));
+    b = q8_run(&c, TA_UNKNOWN, 0, "Right. Is that a new word, or a sneeze?", TA_JOKE, TST_NEUTRAL, 0, 0xFFFF, &app);
+    CHECK(!(b & (1u << Q8_UNKNOWN)));
+    /* a gated (safety) turn is not a reply the checks judge */
+    {
+        TalkUtter u;
+        TalkExchange x;
+        TalkTrace tr[TALK_EXCHANGE_MAX];
+        memset(&u, 0, sizeof u); memset(&x, 0, sizeof x); memset(tr, 0, sizeof tr);
+        u.act[0] = TA_REFUSE_SEXUAL;
+        x.n = 1; x.gate = TG_REFUSE;
+        snprintf(x.line[0].text, sizeof x.line[0].text, "No.");
+        CHECK_EQ(talk_census_q8(&c, &u, &x, tr, Q8_ALL, &app), 0u);
+        CHECK_EQ(app, 0u);
+    }
+    talk_db_close();
+}

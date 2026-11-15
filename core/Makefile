@@ -147,6 +147,7 @@ unit: $(BUILD)/tests talk
 #             read it; never committed; the disc builds make their own)
 # talk-check  every talkc.py lint and its seeded bad inputs (in test)
 TALK_DEPS := $(CORE)/tools/talkc.py $(CORE)/tools/talkc_parse.py $(CORE)/tools/talkc_safe.py $(CORE)/tools/talkc_gen.py \
+             $(CORE)/tools/talkc_lint.py \
              $(CORE)/include/doomo/talk.h $(CORE)/gen/txt_dict.c $(CORE)/data/story/register.tsv \
              $(shell find $(CORE)/data/talk -type f 2>/dev/null)
 TALK_GENTEST := $(wildcard $(CORE)/tests/talk_gen/*.tlk)

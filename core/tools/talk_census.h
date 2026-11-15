@@ -36,9 +36,22 @@ enum {
     QF_K10_GRIEF,       /* a grief or loss topic answered with anything but a sincere core line
                            (an opener, tag, callback, hand-off, a joke act), or a grief word in
                            a line that is not sincere (K-10, SCRIPT_STYLE R6) */
+    /* Q8, the coherence checks (TM2b; design TALK_MULTILEVEL.md 7.2). REPORT MODE: talk_census_q8()
+     * counts them in CensusResult.q8[], talk_census_check() never returns them, so they do not fail an
+     * exchange (TM2e turns the budget into a test). Their order is QF_Q8_KIND + Q8_*. */
+    QF_Q8_KIND,         /* Q8a  the reply says yes to what the speaker dislikes, or no to what they like  */
+    QF_Q8_CONTENT,      /* Q8b  a topic act with a topic answered by a line that never speaks of it        */
+    QF_Q8_VOICE,        /* Q8c  a voice guard against the effective sliders, a trait that stung a child    */
+    QF_Q8_HOOK,         /* Q8d  a dead end after a no / deflection, or the player's own question handed back */
+    QF_Q8_FILLER,       /* Q8e  a reply under 20 visible characters, or a filler word alone                 */
+    QF_Q8_UNKNOWN,      /* Q8f  an unknown line answered with a joke, a backchannel or a topic change unasked */
     QF_COUNT
 };
 extern const char *const talk_census_qf_names[QF_COUNT];
+
+/* the Q8 checks (QF_Q8_KIND + n) */
+enum { Q8_KIND = 0, Q8_CONTENT, Q8_VOICE, Q8_HOOK, Q8_FILLER, Q8_UNKNOWN, Q8_COUNT };
+#define Q8_ALL ((1u << Q8_COUNT) - 1u)
 
 typedef struct CensusCfg {
     const char *grid;            /* census_<lang>.tsv                                   */
@@ -48,6 +61,7 @@ typedef struct CensusCfg {
     FILE    *sample;             /* NULL, or the review sheet's source rows (talk_sample.py) */
     uint32_t sample_every;       /* write every Nth exchange to `sample`                 */
     FILE    *fails;              /* NULL, or every exchange that failed a check, with why  */
+    FILE    *q8fails;            /* NULL, or every exchange that failed a Q8 check (report mode), with why */
     int      quiet;
 } CensusCfg;
 
@@ -58,6 +72,9 @@ typedef struct CensusResult {
     CensusTier surface, skeleton, meaning;
     uint64_t fail[QF_COUNT];       /* failures by reason (an exchange counts once, for its first) */
     uint64_t lint_hits;            /* talk_safe_lint_hits() during the run                  */
+    uint64_t q8[Q8_COUNT];         /* Q8 failures by check (an exchange counts once for each check)  */
+    uint64_t q8_n[Q8_COUNT];       /* the exchanges each check applied to                            */
+    uint64_t q8_any;               /* exchanges with at least one Q8 failure                         */
     uint64_t conversations, conv_distinct, conv_q5;
     double   secs, conv_secs;
     uint32_t nres, ntopics, nacts;
@@ -70,6 +87,7 @@ int  talk_census_run(const CensusCfg *cfg, CensusResult *res, char *err, int err
  * histogram, the conversation tier). */
 void talk_census_print(const CensusResult *r, FILE *f);
 /* The design's targets for a full run: 1 if every one holds. */
+void talk_census_q8_print(const CensusResult *r, FILE *f);
 int  talk_census_targets_met(const CensusResult *r);
 
 /* The cool acts (insult, mock, tease, blame, threaten, dismiss) said in a room
@@ -84,5 +102,11 @@ int talk_census_cool_kid(const CensusCfg *cfg, uint32_t rooms_per_act, CensusCoo
  * unit tests: the first failure (QF_*) or QF_NONE. u is the utterance
  * after the gate. */
 int  talk_census_check(const TalkConv *c, const TalkUtter *u, const TalkExchange *x, const TalkTrace *tr);
+
+/* Q8 on one exchange (report mode; the old engine has no plan, so each check reads what the trace has).
+ * want: the checks to run (bit Q8_*). Returns the bits that FAILED; *applied (may be NULL) the bits the
+ * check applied to. */
+unsigned talk_census_q8(const TalkConv *c, const TalkUtter *u, const TalkExchange *x, const TalkTrace *tr,
+                        unsigned want, unsigned *applied);
 
 #endif

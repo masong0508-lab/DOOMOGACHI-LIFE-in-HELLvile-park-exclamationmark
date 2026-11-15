@@ -37,13 +37,16 @@
 #include "doomo/ending.h"
 #include "doomo/portrait.h"
 #include "doomo/resident_acc.h"
+#include "doomo/talk_traits.h"
 #include "talk_census.h"
 
 const char *const talk_census_qf_names[QF_COUNT] = {
     "ok", "Q1 fallback (nothing fitted)", "Q1 line code", "Q1 spacing", "Q1 capital", "Q1 end punctuation",
     "Q1 article", "Q1 bubble", "Q1 sentences", "Q2 reply act", "Q2 topic", "Q3 voice guard",
     "Q3 exclamations", "Q3 tic", "Q4 callback fact", "Q5 repeat", "Q6 lint", "Q6 kid room", "Q6 mature",
-    "K-10 grief punchline"
+    "K-10 grief punchline",
+    "Q8a reaction (report)", "Q8b content (report)", "Q8c colour (report)", "Q8d hook (report)",
+    "Q8e filler (report)", "Q8f unknown word (report)"
 };
 
 /* talk.h's TA_* names, in order (the grid names acts) */
@@ -485,6 +488,202 @@ int talk_census_check(const TalkConv *c, const TalkUtter *u, const TalkExchange 
     return QF_NONE;
 }
 
+/* ---- Q8: the coherence checks, report mode (TM2b; TALK_MULTILEVEL.md 7.2) ----------------------
+ * The old engine has no plan, so every check reads what the generator leaves in the trace and the
+ * lines: the speaker's stance, the core alternative's guard terms, the concepts said, the acts. When
+ * the plan lands (TM2c) the same checks read the plan's kind, lean, depth and hook as well. */
+static int q8_topic_act(int a)
+{
+    switch (a) {
+    case TA_ASK_ABOUT: case TA_ASK_OPINION: case TA_TELL: case TA_OPINE_POS: case TA_OPINE_NEG:
+    case TA_CHANGE_TOPIC: case TA_CONTINUE: case TA_AGREE: case TA_DISAGREE: case TA_ANSWER: case TA_GOSSIP:
+        return 1;
+    }
+    return 0;
+}
+
+/* which side of the topic a reply takes: +1 for it, -1 against, 0 none (an agree reads the player's side) */
+static int q8_valence(int reply, int player)
+{
+    int pv = player == TA_OPINE_POS ? 1 : player == TA_OPINE_NEG ? -1 : 0;
+    switch (reply) {
+    case TA_OPINE_POS: return 1;
+    case TA_OPINE_NEG: return -1;
+    case TA_AGREE: return pv;
+    case TA_DISAGREE: return -pv;
+    }
+    return 0;
+}
+
+/* the visible text of a line: no line codes, no *stage directions*, one space between words */
+static void q8_visible(const char *s, char *v, int cap)
+{
+    int o = 0, sp = 1;
+    for (; *s && o < cap - 1; s++) {
+        if (*s == '{') { while (*s && *s != '}') s++; if (!*s) break; continue; }
+        if (*s == '*') { s++; while (*s && *s != '*') s++; if (!*s) break; continue; }
+        if (*s == ' ') { if (!sp) v[o++] = ' '; sp = 1; continue; }
+        v[o++] = *s;
+        sp = 0;
+    }
+    while (o > 0 && v[o - 1] == ' ') o--;
+    v[o] = 0;
+}
+
+/* a filler word or phrase alone (the lint's L6 list): "Hm.", "Sure.", "I see.", "Go on." */
+static int q8_filler_word(const char *vis)
+{
+    static const char *const w[] = { "hm", "hmm", "mm", "mmm", "mhm", "uh", "um", "oh", "ah", "huh", "eh", "sure", "ok", "okay",
+        "fine", "yeah", "yep", "yes", "no", "nope", "nah", "right", "well", "wow", "cool", "nice", "whatever", "indeed",
+        "i see", "if you say so", "go on", "interesting", "really", "true", "maybe", "perhaps", "hmph", "meh", "so",
+        "anyway", "noted", "sigh", "ha", "haha", "heh", "lol" };
+    char b[64];
+    int i, o = 0;
+    unsigned k;
+    for (i = 0; vis[i] && o < 62; i++) {
+        if (isalpha((unsigned char)vis[i])) b[o++] = (char)tolower((unsigned char)vis[i]);
+        else if (vis[i] == ' ' && o && b[o - 1] != ' ') b[o++] = ' ';
+        else if (vis[i] == '\'') continue;
+    }
+    while (o && b[o - 1] == ' ') o--;
+    b[o] = 0;
+    if (vis[i]) return 0;                                    /* longer than any filler */
+    for (k = 0; k < sizeof w / sizeof w[0]; k++)
+        if (strcmp(b, w[k]) == 0) return 1;
+    return 0;
+}
+
+static int q8_has_q(const TalkExchange *x)
+{
+    int k;
+    for (k = 0; k < x->n; k++) if (strchr(x->line[k].text, '?')) return 1;
+    return 0;
+}
+
+/* the core alternative's guard needs the topic (a slot, a `topic` / likes / fears / hates / stance / root guard) */
+static int q8_alt_needs_topic(int alt)
+{
+    TalkAltInfo ai;
+    int j;
+    if (alt == 0xFFFF || !talk_gen_alt_info(alt, &ai)) return 0;
+    for (j = 0; j < ai.nterm; j++) {
+        int p = ai.term[2 * j], v = ai.term[2 * j + 1];
+        if (p & 0x80) continue;
+        if (p == TGP_TOPIC || p == TGP_LIKES_TOPIC || p == TGP_FEARS_TOPIC || p == TGP_HATES_TOPIC ||
+            (p >= TGP_X_COUNTABLE && p <= TGP_X_GRIEF) || p == TGP_ROOT || (p == TGP_STANCE && v != TST_NEUTRAL))
+            return 1;
+    }
+    return 0;
+}
+
+static int q8_said_topic(const TalkTrace *t, uint16_t topic)
+{
+    uint16_t ids[TALK_ASSOC_TOP];
+    int i, n, k;
+    for (k = 0; k < t->nsaid; k++) {
+        if (t->said[k] == topic) return 1;
+        n = talk_db_assoc(topic, ids, NULL);
+        for (i = 0; i < n; i++) if (ids[i] == t->said[k]) return 1;
+    }
+    return 0;
+}
+
+unsigned talk_census_q8(const TalkConv *c, const TalkUtter *u, const TalkExchange *x, const TalkTrace *tr,
+                        unsigned want, unsigned *applied)
+{
+    unsigned bad = 0, app = 0;
+    int pa = u->act[0], gated = x->gate != TG_PASS || TA_IS_SAFETY(pa), kid, k;
+    const TalkLine *l0 = x->n ? &x->line[0] : NULL;
+    int pet0 = l0 && l0->who >= 0 && l0->who < c->n && c->id[l0->who] == TALK_PET_ID;
+    kid = c->aud.any_minor || c->aud.avatar_minor || c->aud.target_minor;
+    if (!l0 || gated || pet0 || (l0->flags & (TLF_SAFE | TLF_FALLBACK | TLF_END | TLF_REACTION))) goto done;
+    /* Q8a: a yes to what the speaker dislikes, a no to what they like (the stance is the engine's own) */
+    if ((want & (1u << Q8_KIND)) && (pa == TA_ASK_OPINION || pa == TA_ASK_ABOUT || pa == TA_OPINE_POS || pa == TA_OPINE_NEG) &&
+        u->topic[0] && !(l0->flags & TLF_SINCERE) && !is_grief(u->topic[0])) {
+        int v = q8_valence(l0->act, pa);
+        if (v && l0->stance != TST_NEUTRAL) {
+            app |= 1u << Q8_KIND;
+            if ((l0->stance == TST_PRO && v < 0) || (l0->stance == TST_CON && v > 0)) bad |= 1u << Q8_KIND;
+        }
+    }
+    /* Q8b: the player gave a topic, the reply is a topic act reply: it names the topic (or one of its
+     * associations), or its core alternative's guard needs the topic (a pronoun line) */
+    if ((want & (1u << Q8_CONTENT)) && q8_topic_act(pa) && u->topic[0] && !(l0->flags & TLF_SINCERE) &&
+        !is_grief(u->topic[0]) && (tr[0].parts & TPART_CORE)) {
+        app |= 1u << Q8_CONTENT;
+        if (!q8_said_topic(&tr[0], u->topic[0]) && !q8_alt_needs_topic(tr[0].core_alt)) bad |= 1u << Q8_CONTENT;
+    }
+    /* Q8c: the voice guards against the sliders as the speaker has them now (effective == stored until
+     * the plan's talk_trait_effective, TM2c); an edgy trait never stings when a minor is in the room */
+    if (want & (1u << Q8_VOICE)) {
+        for (k = 0; k < x->n; k++) {
+            const TalkLine *l = &x->line[k];
+            int id = l->who >= 0 && l->who < c->n ? c->id[l->who] : -1, i, root = 0;
+            if (id < 0 || id == TALK_PET_ID) continue;
+            app |= 1u << Q8_VOICE;
+            for (i = 0; i < tr[k].nalt; i++) {
+                TalkAltInfo ai;
+                int j;
+                if (!talk_gen_alt_info(tr[k].alt[i], &ai)) { bad |= 1u << Q8_VOICE; continue; }
+                for (j = 0; j < ai.nterm; j++) {
+                    int p = ai.term[2 * j] & 0x7F, neg = ai.term[2 * j] & 0x80, ok = voice_term_ok(id, p, ai.term[2 * j + 1]);
+                    if (ok >= 0 && (neg ? ok : !ok)) bad |= 1u << Q8_VOICE;
+                }
+            }
+            if (kid) {
+                TalkConcept tc;
+                TalkTraitBias b;
+                if (l->topic && talk_db_concept(l->topic, &tc)) root = talk_db_cat_root(tc.cat);
+                b = talk_trait_bias_id(id, l->act, root, 1);
+                if (b.deny != 0 || b.mood < 0) bad |= 1u << Q8_VOICE;
+            }
+        }
+    }
+    /* Q8d: a no or a deflection of a request leaves a hook (a question or a hand-off); the player's own
+     * question is not handed straight back */
+    if (want & (1u << Q8_HOOK)) {
+        int refused = l0->act == TA_NO || l0->act == TA_DISMISS || l0->act == TA_CHANGE_TOPIC;
+        if ((pa == TA_ASK_FAVOR || pa == TA_INVITE) && refused) {
+            int hook = q8_has_q(x);
+            for (k = 0; k < x->n; k++) if (tr[k].parts & TPART_HANDOFF) hook = 1;
+            app |= 1u << Q8_HOOK;
+            if (!hook) bad |= 1u << Q8_HOOK;
+        }
+        if (talk_gen_act_class(pa) == TAC_ASK && u->topic[0]) {
+            app |= 1u << Q8_HOOK;
+            for (k = 0; k < x->n; k++)
+                if (x->line[k].act == pa && x->line[k].topic == u->topic[0] && !(x->line[k].flags & TLF_REACTION))
+                    bad |= 1u << Q8_HOOK;
+        }
+    }
+    /* Q8e: the speaker's whole reply is at least 20 visible characters (unless the player's act is a
+     * gesture, greeting, farewell, thank you or laugh) and never a filler word alone */
+    if (want & (1u << Q8_FILLER)) {
+        char all[TALK_LINE_MAX * 2], v[TALK_LINE_MAX];
+        int total = 0, exempt = talk_gen_act_class(pa) == TAC_GESTURE || pa == TA_GREET || pa == TA_FAREWELL ||
+                                pa == TA_THANK || pa == TA_LAUGH;
+        all[0] = 0;
+        for (k = 0; k < x->n; k++) {
+            if (x->line[k].who != l0->who || (x->line[k].flags & TLF_REACTION)) continue;
+            q8_visible(x->line[k].text, v, (int)sizeof v);
+            total += (int)strlen(v);
+            if (strlen(all) + strlen(v) + 2 < sizeof all) { if (all[0]) strcat(all, " "); strcat(all, v); }
+        }
+        app |= 1u << Q8_FILLER;
+        if ((total < 20 && !exempt) || q8_filler_word(all)) bad |= 1u << Q8_FILLER;
+    }
+    /* Q8f: a line the parser did not understand is named, guessed at or asked about; a joke, a backchannel
+     * or a change of topic with no question is a failure */
+    if ((want & (1u << Q8_UNKNOWN)) && pa == TA_UNKNOWN) {
+        app |= 1u << Q8_UNKNOWN;
+        if ((l0->act == TA_JOKE || l0->act == TA_BACKCHANNEL || l0->act == TA_CHANGE_TOPIC) && !q8_has_q(x))
+            bad |= 1u << Q8_UNKNOWN;
+    }
+done:
+    if (applied) *applied = app;
+    return bad;
+}
+
 /* ---- normalised hashes ------------------------------------------------------- */
 typedef struct Hashes { uint64_t surface, skeleton, meaning; } Hashes;
 
@@ -657,6 +856,27 @@ static void census_town(const Grid *g)
     town_new(TOWN_FREEPLAY, g->town ? g->town : 7u, TOWN_POP_PREMADE);
 }
 
+/* Q8 on one exchange: the counts (report mode: nothing here fails the exchange) and the --q8-fails line */
+static void q8_count(CensusResult *res, const CensusCfg *cfg, uint32_t i, const TalkConv *c, const TalkUtter *u,
+                     const TalkExchange *x, const TalkTrace *tr, unsigned want)
+{
+    unsigned app = 0, bad = talk_census_q8(c, u, x, tr, want, &app);
+    int n;
+    for (n = 0; n < Q8_COUNT; n++) {
+        res->q8_n[n] += (app >> n) & 1u;
+        res->q8[n] += (bad >> n) & 1u;
+    }
+    if (bad) {
+        res->q8_any++;
+        if (cfg->q8fails)
+            for (n = 0; n < Q8_COUNT; n++)
+                if ((bad >> n) & 1u) {
+                    fprintf(cfg->q8fails, "%s\t", talk_census_qf_names[QF_Q8_KIND + n]);
+                    write_sample(cfg->q8fails, i, c, u, x, tr);
+                }
+    }
+}
+
 int talk_census_run(const CensusCfg *cfg, CensusResult *res, char *err, int errcap)
 {
     Grid g;
@@ -702,6 +922,7 @@ int talk_census_run(const CensusCfg *cfg, CensusResult *res, char *err, int errc
         if (cfg->sample && cfg->sample_every && i % cfg->sample_every == 0) write_sample(cfg->sample, i, &c, &u, &ex, tr);
         q = ex.n ? talk_census_check(&c, &u, &ex, tr) : QF_Q1_FALLBACK;
         res->fail[q]++;
+        if (ex.n) q8_count(res, cfg, i, &c, &u, &ex, tr, Q8_ALL);
         if (q && cfg->fails) {
             fprintf(cfg->fails, "%s\t", talk_census_qf_names[q]);
             write_sample(cfg->fails, i, &c, &u, &ex, tr);
@@ -854,6 +1075,20 @@ static void tier_line(FILE *f, const char *name, const CensusTier *t, uint64_t n
             t->chao1, (unsigned long long)target, t->distinct >= target ? "" : "  (MISSED)");
 }
 
+/* the Q8 table (report mode: counted, not failing; TM2e makes the budget a test) */
+void talk_census_q8_print(const CensusResult *r, FILE *f)
+{
+    static const char *const nm[Q8_COUNT] = { "Q8a reaction (yes to a dislike, no to a like)", "Q8b content (topic unused)",
+                                              "Q8c colour (voice, trait around a child)", "Q8d hook (dead end, question handed back)",
+                                              "Q8e filler (under 20 characters, a filler word)", "Q8f unknown word (joke, backchannel, topic change)" };
+    int n;
+    fprintf(f, "  Q8 coherence (report mode, not failing): %llu of %llu exchanges with a failure (%.2f%%)\n", (unsigned long long)r->q8_any, (unsigned long long)r->contexts,
+            r->contexts ? 100.0 * (double)r->q8_any / (double)r->contexts : 0.0);
+    for (n = 0; n < Q8_COUNT; n++)
+        fprintf(f, "    %-52s %7llu of %7llu applied (%.2f%%)\n", nm[n], (unsigned long long)r->q8[n],
+                (unsigned long long)r->q8_n[n], r->q8_n[n] ? 100.0 * (double)r->q8[n] / (double)r->q8_n[n] : 0.0);
+}
+
 void talk_census_print(const CensusResult *r, FILE *f)
 {
     int q;
@@ -874,6 +1109,7 @@ void talk_census_print(const CensusResult *r, FILE *f)
                 (unsigned long long)r->conv_distinct, (unsigned long long)r->conversations,
                 r->conv_distinct >= 1000000 ? "" : "  (MISSED)", (unsigned long long)r->conv_q5, r->conv_secs);
     fprintf(f, "  S3 lint hits: %llu\n", (unsigned long long)r->lint_hits);
+    talk_census_q8_print(r, f);
 }
 
 int talk_census_targets_met(const CensusResult *r)
@@ -989,13 +1225,17 @@ int main(int argc, char **argv)
             cfg.fails = fopen(argv[++i], "w");
             if (!cfg.fails) { perror(argv[i]); return 2; }
         }
+        else if (strcmp(argv[i], "--q8-fails") == 0 && i + 1 < argc) {
+            cfg.q8fails = fopen(argv[++i], "w");
+            if (!cfg.q8fails) { perror(argv[i]); return 2; }
+        }
         else if (strcmp(argv[i], "--smoke") == 0) smoke = 1;
         else if (strcmp(argv[i], "--full") == 0) full = 1;
         else if (strcmp(argv[i], "--pick") == 0) do_pick = 1;
         else if (strcmp(argv[i], "--quiet") == 0) cfg.quiet = 1;
         else if (strcmp(argv[i], "--cool-kid") == 0) cool_kid = 1;
         else { fprintf(stderr, "usage: talk_census [--grid F] [--full|--smoke] [--contexts N] [--conversations N] "
-                               "[--seed N] [--sample F --every N] [--fails F] [--pick] [--cool-kid [--contexts N-per-act]]\n"); return 2; }
+                               "[--seed N] [--sample F --every N] [--fails F] [--q8-fails F] [--pick] [--cool-kid [--contexts N-per-act]]\n"); return 2; }
     }
     memset(&o, 0, sizeof o);
     o.w = 320; o.h = 240; o.seed = 1; o.quiet = getenv("DOOMO_TALK_LOG") ? 0 : 1; o.save_dir = "/tmp";
@@ -1043,6 +1283,7 @@ int main(int argc, char **argv)
     }
     if (cfg.sample) fclose(cfg.sample);
     if (cfg.fails) fclose(cfg.fails);
+    if (cfg.q8fails) fclose(cfg.q8fails);
     talk_census_print(&r, stdout);
     if (full) {
         int ok = talk_census_targets_met(&r);
