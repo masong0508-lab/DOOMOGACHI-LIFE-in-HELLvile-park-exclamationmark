@@ -115,7 +115,11 @@ Shared files that every stream touches (keep changes small, expect to rebase): `
    reports `needs-window`**.
    **Landing window:** a lead whose lander reports `needs-window` messages the coordinator at once. The
    coordinator tells every stream to hold its pushes (at most 60 minutes; building and gating go on), the
-   lead starts a new land agent, it lands, the coordinator sends "LANDING WINDOW CLOSED". The coordinator
+   lead starts a new land agent, it lands, the coordinator sends "LANDING WINDOW CLOSED".
+   The hold is also a file every land agent checks before each push, because a message to a lead never
+   reaches the agents it already runs: the coordinator commits `docs/design/held/LANDING_HOLD`
+   (`allowed: <package ids>`, `until: <UTC time>`) when it opens a window and deletes it when it closes
+   the window; a land agent (wave-runner.js step 7) never pushes while the file exists without its id. The coordinator
    also opens a window on its own when its check-in sees a package that has been in its land step for more
    than 90 minutes. A lead who receives a hold message never pushes until it is closed.
 4. Never revert another stream's commit. If a clean checkout of origin fails a gate because of
