@@ -5,6 +5,7 @@
  * that differs from the background in either run is painted, and must lie inside the box; two
  * ticks with the same key must paint the same picture. */
 #include "test.h"
+#include <stdlib.h>
 #include "../src/fishcook_int.h"
 #include "doomo/lang.h"
 
@@ -373,4 +374,100 @@ TEST(cook_kept_granny_poses_cycle)
     for (mood = GRAN_CALM; mood <= GRAN_DISMAY; mood++)
         for (t = 0; t < 3 * GRANNY_POSE_CYCLE; t++)
             CHECK_MSG(granny_key(14, t, mood) == granny_key(14, t % GRANNY_POSE_CYCLE, mood), "mood %d t %d", mood, t);
+}
+
+/* The GBA's baked poses: bake the file as the GBA build does (runner --bake-poses at 240x160),
+ * read it back through cook_pose_find (the lookup gba/src/cookpose.c uses) and check every pose
+ * cook_poses() lists: found, with a box and picture that are exactly what granny_draw paints above
+ * the clip row (index 0 a hole), or not in the file only when the pose paints index 0 itself. */
+static const uint8_t *pose_blob;
+static int pose_found, pose_cannot, pose_bad;
+static char pose_why[200];
+static uint32_t pose_seen[2048];
+static int16_t pose_seen_at[2048][3];
+static int pose_nseen;
+
+static void pose_check(void *ctx, int cx, int cy, int clip, int s, int t, int mood)
+{
+    int box[4], i, x0 = nat_w, y0 = nat_h, x1 = -1, y1 = -1, zero = 0, n = nat_w * nat_h;
+    const uint8_t *pix = NULL;
+    uint32_t key = granny_key(s, t, mood);
+    int idx = cook_pose_find(pose_blob, key, cx, cy, clip, box, &pix);
+    (void)ctx;
+    for (i = 0; i < pose_nseen; i++)                    /* (the same key draws the same pose: tested above) */
+        if (pose_seen[i] == key && pose_seen_at[i][0] == cx && pose_seen_at[i][1] == cy && pose_seen_at[i][2] == clip) return;
+    if (pose_nseen < 2048) {
+        pose_seen[pose_nseen] = key;
+        pose_seen_at[pose_nseen][0] = (int16_t)cx; pose_seen_at[pose_nseen][1] = (int16_t)cy; pose_seen_at[pose_nseen][2] = (int16_t)clip;
+        pose_nseen++;
+    }
+    memset(nat_fb, 0, (size_t)n);
+    granny_draw(cx, cy, s, t, mood);
+    memcpy(pa, nat_fb, (size_t)n);
+    memset(nat_fb, 1, (size_t)n);
+    granny_draw(cx, cy, s, t, mood);
+    for (i = 0; i < n; i++) {
+        int painted = pa[i] == nat_fb[i] && i / nat_w < clip;
+        pb[i] = painted ? pa[i] : 0;
+        if (!painted) continue;
+        if (!pa[i]) zero = 1;
+        x0 = DOOMO_MIN(x0, i % nat_w); x1 = DOOMO_MAX(x1, i % nat_w);
+        y0 = DOOMO_MIN(y0, i / nat_w); y1 = DOOMO_MAX(y1, i / nat_w);
+    }
+    if (idx < 0) {
+        if (zero) pose_cannot++;
+        else if (!pose_bad++) snprintf(pose_why, sizeof(pose_why), "s %d t %d mood %d at %d,%d: not in the file", s, t, mood, cx, cy);
+        return;
+    }
+    pose_found++;
+    if (zero || box[0] != x0 || box[1] != y0 || box[2] != x1 - x0 + 1 || box[3] != y1 - y0 + 1) {
+        if (!pose_bad++)
+            snprintf(pose_why, sizeof(pose_why), "s %d t %d mood %d: box %d,%d %dx%d, painted %d,%d..%d,%d%s", s, t, mood,
+                     box[0], box[1], box[2], box[3], x0, y0, x1, y1, zero ? " (paints index 0)" : "");
+        return;
+    }
+    for (i = 0; i < box[2] * box[3]; i++)
+        if (pix[i] != pb[(box[1] + i / box[2]) * nat_w + box[0] + i % box[2]]) {
+            if (!pose_bad++)
+                snprintf(pose_why, sizeof(pose_why), "s %d t %d mood %d: picture pixel %d,%d is %d, granny_draw %d", s, t, mood,
+                         i % box[2], i / box[2], pix[i], pb[(box[1] + i / box[2]) * nat_w + box[0] + i % box[2]]);
+            return;
+        }
+}
+
+TEST(cook_kept_baked_pose_file)
+{
+    char path[600];
+    FILE *f;
+    long len;
+    uint8_t *blob;
+    int n, box[4];
+    set_res(240, 160);
+    snprintf(path, sizeof(path), "%s/poses_test.bin", test_tmp_dir);
+    n = nat_bake_poses(path);
+    CHECK(n >= 100);
+    f = fopen(path, "rb");
+    CHECK(f != NULL);
+    if (!f) return;
+    fseek(f, 0, SEEK_END);
+    len = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    blob = (uint8_t *)malloc((size_t)len);
+    CHECK(blob != NULL && fread(blob, 1, (size_t)len, f) == (size_t)len);
+    fclose(f);
+    if (!blob) return;
+    CHECK(len >= 8 && memcmp(blob, "GRN1", 4) == 0);
+    CHECK_EQ(len >= 8 ? (int)((uint32_t)blob[4] | (uint32_t)blob[5] << 8 | (uint32_t)blob[6] << 16 | (uint32_t)blob[7] << 24) : -1, n);
+    pose_blob = blob;
+    pose_found = pose_cannot = pose_bad = pose_nseen = 0;
+    cook_poses(pose_check, NULL);
+    CHECK_MSG(pose_bad == 0, "%d poses wrong in the baked file, the first: %s", pose_bad, pose_why);
+    CHECK_MSG(pose_found + pose_cannot == n, "%d found + %d that cannot be images, the file holds %d", pose_found, pose_cannot, n);
+    CHECK(pose_found >= 100);
+    /* a key the file does not hold, or a place it was not baked for: "cannot" */
+    CHECK(cook_pose_find(blob, 0xFFFFFFFFu, 0, 0, 0, box, NULL) < 0);
+    CHECK(cook_pose_find(NULL, 1u, 0, 0, 0, box, NULL) < 0);
+    printf("      baked poses: %d in the file, %d images checked, %d paint index 0\n", n, pose_found, pose_cannot);
+    free(blob);
+    pose_blob = NULL;
 }

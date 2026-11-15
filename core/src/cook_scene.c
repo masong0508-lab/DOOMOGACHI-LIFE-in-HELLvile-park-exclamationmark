@@ -714,6 +714,37 @@ void cook_poses(void (*fn)(void *ctx, int cx, int cy, int clip, int s, int t, in
     }
 }
 
+/* the baked poses' file (runner --bake-poses, core/native/cookpose_native.c): "GRN1", u32 n, n x
+ * { u32 key, u32 offset, i16 cx, cy, clip, x0, y0, u16 w, h, pad } (24 B) sorted by key, then the
+ * pictures (offset 0: a pose that paints index 0, drawn in full). Little endian, read by bytes. */
+static uint32_t pose_rd32(const uint8_t *p)
+{
+    return (uint32_t)p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24;
+}
+static int pose_rd16s(const uint8_t *p) { return (int16_t)(uint16_t)(p[0] | p[1] << 8); }
+
+int cook_pose_find(const uint8_t *blob, uint32_t key, int cx, int cy, int clip, int box[4], const uint8_t **pix)
+{
+    const uint8_t *e;
+    int lo = 0, hi, mid, n;
+    if (!blob || blob[0] != 'G' || blob[1] != 'R' || blob[2] != 'N' || blob[3] != '1') return -1;
+    n = (int)pose_rd32(blob + 4);
+    hi = n - 1;
+    while (lo <= hi) {                         /* the first entry with this key */
+        mid = (lo + hi) / 2;
+        if (pose_rd32(blob + 8 + 24 * mid) < key) lo = mid + 1;
+        else hi = mid - 1;
+    }
+    for (e = blob + 8 + 24 * lo; lo < n && pose_rd32(e) == key; lo++, e += 24) {
+        if (pose_rd16s(e + 8) != cx || pose_rd16s(e + 10) != cy || pose_rd16s(e + 12) != clip) continue;
+        if (!pose_rd32(e + 4)) return -1;
+        box[0] = pose_rd16s(e + 14); box[1] = pose_rd16s(e + 16); box[2] = pose_rd16s(e + 18); box[3] = pose_rd16s(e + 20);
+        if (pix) *pix = blob + pose_rd32(e + 4);
+        return lo;
+    }
+    return -1;
+}
+
 /* the title pill (its sparkles twinkle every third tick) and the money pill: two layers */
 static void title_layers(int id, const char *s)
 {

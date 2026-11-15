@@ -352,6 +352,10 @@ int plat_cook_pose(uint32_t key, int cx, int cy, int clip, int s, int t, int moo
 /* every (cx, cy, clip, s, mood) the kept kitchen draws Granny at on this screen, with every t
  * of a cycle: fn(ctx, cx, cy, clip, s, t, mood) (cook_scene.c) */
 void cook_poses(void (*fn)(void *ctx, int cx, int cy, int clip, int s, int t, int mood), void *ctx);
+/* the baked poses' file (blob: "GRN1", cook_scene.c): the entry of the pose `key` drawn at (cx, cy)
+ * cut off at row clip: its index, with its box (x, y, w, h) and *pix its w x h picture (index 0 a
+ * hole); -1 when the file has none or the pose cannot be an image (the GBA's plat_cook_pose) */
+int cook_pose_find(const uint8_t *blob, uint32_t key, int cx, int cy, int clip, int box[4], const uint8_t **pix);
 void dish_box(int r, int cx, int cy, int rw, int burnt, int b[4]);
 void ingredient_box(const CookIng *g, int cx, int cy, int rw, int b[4]);
 uint32_t ingredient_key(const CookIng *g, int t);

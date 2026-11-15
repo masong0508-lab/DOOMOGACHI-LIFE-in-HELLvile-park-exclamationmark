@@ -5,7 +5,8 @@
  * cheering and dismayed poses at the counter, her talking poses under the recipe book) with the
  * core's own granny_draw at 240x160 and cut off where the counter covers her (cookpose_blob.s,
  * build/gen/poses.bin: "GRN1", n, a table sorted by key of { key, offset, cx, cy, clip, x0, y0, w,
- * h, pad } (24 B), then 8bpp pictures, index 0 a hole).
+ * h, pad } (24 B), then 8bpp pictures, index 0 a hole; cook_pose_find in cook_scene.c reads it, and
+ * test_cook_kept bakes the file and checks every pose found there against granny_draw).
  * A pose is one scale-1 image (~1.3 ms for her 35 x 62 px) where drawing her is ~10 ms of
  * ellipses. A key that is not baked, or baked for another place, says "cannot": the kitchen
  * draws her. No RAM. */
@@ -14,39 +15,23 @@
 
 extern const uint8_t gba_poses[];             /* cookpose_blob.s */
 
-static uint32_t rd32(const uint8_t *p)
-{
-    return (uint32_t)p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24;
-}
-static int rd16s(const uint8_t *p) { return (int16_t)(uint16_t)(p[0] | p[1] << 8); }
-
 int plat_cook_pose(uint32_t key, int cx, int cy, int clip, int s, int t, int mood, int box[4])
 {
-    const uint8_t *b = gba_poses, *e;
-    int lo = 0, hi, mid;
+    const uint8_t *pix;
+    int b[4], i;
     DoomoImage img;
     (void)s; (void)t; (void)mood;
-    if (b[0] != 'G' || b[1] != 'R' || b[2] != 'N' || b[3] != '1') return 0;
-    hi = (int)rd32(b + 4) - 1;
-    while (lo <= hi) {                         /* the first entry with this key */
-        mid = (lo + hi) / 2;
-        if (rd32(b + 8 + 24 * mid) < key) lo = mid + 1;
-        else hi = mid - 1;
-    }
-    for (e = b + 8 + 24 * lo; lo < (int)rd32(b + 4) && rd32(e) == key; lo++, e += 24) {
-        if (rd16s(e + 8) != cx || rd16s(e + 10) != cy || rd16s(e + 12) != clip) continue;
-        if (!rd32(e + 4)) return 0;            /* a pose that paints index 0: drawn in full */
-        if (box) {
-            box[0] = rd16s(e + 14); box[1] = rd16s(e + 16); box[2] = rd16s(e + 18); box[3] = rd16s(e + 20);
-            return 1;
-        }
-        if (gba_nodraw == 1) return 1;
-        img.w = (uint16_t)rd16s(e + 18);
-        img.h = (uint16_t)rd16s(e + 20);
-        img.pix = b + rd32(e + 4);
-        img.uid = 0xC00C0000u + (uint32_t)lo;
-        plat_image(rd16s(e + 14), rd16s(e + 16), &img, 1, 0, 0);
+    i = cook_pose_find(gba_poses, key, cx, cy, clip, b, &pix);   /* (the lookup: cook_scene.c, tested natively) */
+    if (i < 0) return 0;
+    if (box) {
+        box[0] = b[0]; box[1] = b[1]; box[2] = b[2]; box[3] = b[3];
         return 1;
     }
-    return 0;
+    if (gba_nodraw == 1) return 1;
+    img.w = (uint16_t)b[2];
+    img.h = (uint16_t)b[3];
+    img.pix = pix;
+    img.uid = 0xC00C0000u + (uint32_t)i;
+    plat_image(b[0], b[1], &img, 1, 0, 0);
+    return 1;
 }
