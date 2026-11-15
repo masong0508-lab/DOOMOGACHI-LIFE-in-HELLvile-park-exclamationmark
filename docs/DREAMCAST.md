@@ -2699,7 +2699,7 @@ native reference on every pixel, the title is drawn, the bar fills in proportion
 `total` is 0, and two pictures of the same card are byte-identical (nothing moves by itself; the glint hold is by code reading, the test does not advance time). The test only links with
 `vmucard.c`. `DC10A_SHOTS=dir` makes it write the shots.
 
-Measured (Flycast, `make -C dc ui-compare vmu-test talk-test family-test2`): ui-compare 177 shots pass, 0 fail,
+Measured (Flycast, `make -C dc ui-compare vmu-test talk-test family-test2`): ui-compare 426 shots pass, 0 fail,
 `known_diffs.tsv` unchanged (no Controls or Performance shot moved); vmu-test 6 of 6 ok; the only ticks over 33.3 ms
 are the three VMU save / load ticks of `fp_screens` (3.27 s, the same as before: the block I/O of a save is a
 blocking card by design). No resident PS1 byte and no GBA byte changed (the PS1 SDK is not installed on this
