@@ -58,7 +58,13 @@ Shared files that every stream touches (keep changes small, expect to rebase): `
   combat overlay group) took it from 65,952 B to 70,480 B on 2026-11-13 (+4.5 KB; on the tip at landing, 68,224 B to
   72,736 B).
   PS1-RAM landed 2026-11-15: 72,352 B -> **132,608 B** on `b9e74a51` (+60,256 B; docs/PS1.md "RAM headroom
-  2026-11-12"). The shares above are still the coordinator's to confirm.
+  2026-11-12"). That is 58,880 B above the 72 KB gate (73,728 B).
+  **Shares from 2026-11-15 (coordinator), counted from 132,608 B on `b9e74a51`:** TALK **12 KB** (Talk on the
+  PS1: TKP, the trait model, quests), LEVELS **8 KB** (LV8 level packs), COMBAT **8 KB** (the 3D view, after
+  speed audit 4), CREATOR **4 KB**, SPEED **4 KB** (UI1 and the last speed packages); **about 21 KB stays in
+  reserve** (never spent without the coordinator). Each stream keeps its running total in its status file
+  (`PS1 resident used of share: N B`) and every landing still reports its delta; a stream that needs more asks
+  the coordinator first. The margin on origin never drops below the 72 KB gate.
 * **PS1 overlay slot.** An overlay group must fit the slot (docs/PS1.md). Growing the slot costs
   resident memory: ask the coordinator first. The slot is 131,072 B. With PS1-RAM (2026-11-15) the
   combat group is 129,380 B in the link map (1,692 B of room; the planner's estimate says 129,956 B),
