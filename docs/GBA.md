@@ -2337,6 +2337,93 @@ rebuild per citizen: caching one record per citizen between the two passes (or c
 premade one without rebuilding it) would halve a save, and a premade citizen's flags could skip the build entirely.
 That is a separate package. The new island's 117 ms is S3-14's.
 
+### Speed wave 2: S2-4d, the dreams (2026-11-15)
+
+The speed audits' dreams (audit 2 rank 4, cause C3 plus the dim; audit 3 S3-6): every vignette, the nightmare and
+the wake-up choice ran at 10.6-13 fps with logic at 17.6-25 ticks a second. A dream frame drew everything every tick:
+a sky of 150 eight-pixel band rects with a `ui_wave` each (two divisions), a checkerboard floor of ~114 rects, the
+vignette, a rim of 80 circles (two passes), the caption's cloud of 32 circles, the journal badge, and over the
+nightmare's choice and every wipe a full-screen shade (14 ms). A frame of an early vignette: sky 22 ms, rim 18,
+caption 10.5, vignette 9-34, badge 3.
+
+**Exact steps** (the pixels are the same on every platform; `core/tests/test_dream_speed.c`):
+
+* `dream_draw` draws nothing on a catch-up tick (its maths cost ~5 ms a skipped tick) and asks for the UI group
+  (`plat_ui_loops`).
+* The sky: its borders' 150 waves are 20 a frame (the phases are `t + 8m`); the rows a vignette covers are not
+  drawn (`dream_sky_rows`: under the checkerboard floor, all of it under the endless doors' wall).
+* Circles and ellipses go through `plat_hshapes` (`dream_circles`, `dream_ellipses`, `dream_circles_rows`): one ARM
+  loop of row fills instead of a THUMB call per band (`hshapes_fill` fills a row's span inline now, no `vid_rect`
+  call: `dots.c`). The rim's bumps are made once for both passes, and its top and bottom bumps skip the rows their
+  band's rect has just filled with the same colour; the caption's cloud, the sky's puffs, the bubble and every circle
+  and ellipse of the vignettes take the same path. A small ellipse's half-widths come from `ui_ellipse_dx`
+  (`ui_raster.c`, the table `ellipse_draw` itself uses now).
+* The floor: `plat_tile_rows` (new, `plat_ext.h`) makes a row of tiles once on the stack and DMAs it to each of its
+  rows (ROM code: the UI group has no room left, see below).
+* Outlined text: the outline pass runs as ARM code of the UI group for a line that is on the screen whole
+  (`vid_text_dil_ui`, 344 B, `plat_text_outline`): the badge, the vignette name and the Zzz, and the welding title.
+* The thought bubble: once its disc covers the screen, the bedroom, the little bubbles and the ring are not drawn.
+
+**Pixel-changing, GBA only** (owner's speed defaults and the trades of 2026-11-13; before / after screenshots in the
+package's evidence, `pixel_changes/`):
+
+* **A simpler sky** (the owner's second trade for the dreams): straight bands at their resting rows, one full-width
+  rect a band and one checker a seam. With S2-9's weld slices the UI group had 608 B left, so the wave's per-column
+  ARM pass (424 B) no longer fit, and from ROM it was 3 ms slower than in ARM: the nightmare's frames missed again.
+  The PS1, the Dreamcast and the native build keep the wave.
+* **The wake-up choice is held** (S2-1's `ui_modal_hold`): after one full frame the platform keeps the dimmed rows
+  under the buttons (`plat_hold_band`, the rows from the buttons down, 16 KB of the arena) and a held tick puts them
+  back and draws the buttons (their bob and cursor) and the line under them, so a cursor move is a held tick too. The
+  dream under the dim and the title's shake stand still.
+* **The wipe between vignettes** darkens with the hardware fade (BLDY, `plat_post_blend`) instead of a 14 ms shade;
+  each shade level maps to the fade step that gives the same mean brightness (the colormap darkens faster than a
+  straight line; measured on the wipe's frames, within 0.03). The fade keeps more detail than the colormap, and the
+  wipe's sparkles darken with the picture.
+* **The vignettes' faces and chibis**: the dreamer's portrait holds one still pose (`portrait_hold(1)`: no blink,
+  breathing or sparkle phases, which were drawn in slices inside the frames and forced 40-60 ms frames), a new
+  expression comes in slices while the old one stays, and a chibi the cache lacks is drawn in slices
+  (`bodyspr_lazy(1)`). The next faces and chibis are asked for ahead (`portrait_prefetch`, `dream_warm`, during the
+  vignette before, the wipe and the bubble), so they are normally ready when shown.
+
+**Not taken: the sky and floor at 15 Hz, kept between their steps** (the owner's first trade). With two Mode 4 pages
+each page is drawn every other tick, so at 15 Hz every page sees a new sky step each time it is drawn and must be
+painted whole anyway; keeping a step would need a third 38,400 B picture, and there is no such RAM. It would save
+only the wave maths (~0.2 ms a frame).
+
+**Same pixels.** `test_dream_speed.c`: the sky against the old sky (kept verbatim) at both resolutions, every creep and
+tier, the platform's paths on and off (the native platform draws `plat_hshapes` / `plat_tile_rows` as `plat_ext.h`
+says while `nat_fast2d` is set); the sky's skipped rows against every vignette; the rim against the old rim (verbatim);
+`dream_circles` / `dream_ellipses` against `ui_fill_circle` / `ui_fill_ellipse` (1,500 random sets, off every side,
+radii to 300); every vignette with the paths on and off; the bubble against the old one (and the bedroom left out only
+while the disc covers it); the held choice (holds happen, nothing outside its band changes, the buttons are the full
+frame's, a cursor moved away and back leaves the band as it was). Engine test `blit2test`: `plat_hshapes`' span fill,
+`plat_tile_rows` and the outline pass against their reference fills. GBA frames: with portrait slices made eager in
+both builds (a proof build) and the GBA-only pixel changes off, 1,498 of the 1,500 frames of both dreams (every tick,
+`vhash-seq`) are identical to the base; two differ in the portrait's sparkle phase only.
+
+| window (`speed2_dream.txt`, libmgba) | before: logic / drawn fps, work avg / max, frames over 33 ms | after |
+|---|---|---|
+| dream: bedroom | 30.0 / 30.0, 24.7 / 31.0 ms, 0 | 30.0 / **30.0**, 19.8 / 26.0 ms, 0 |
+| dream: thought bubble | 27.9 / 22.3, 32.6 / 80.4 ms, 14 | 29.8 / **29.8**, 18.7 / 27.9 ms, 0 |
+| dream: vignette 1 cute | 22.8 / 12.4, 62.1 / 64.3 ms, 60 | 30.0 / **30.0**, 23.6 / 24.8 ms, 0 |
+| dream: vignette 1 twist | 24.2 / 12.8, 63.5 / 69.7 ms, 53 | 30.2 / **30.2**, 24.2 / 27.6 ms, 0 |
+| dream: vignette 2 | 22.9 / 12.5, 63.9 / 67.4 ms, 71 | 30.1 / **30.1**, 28.7 / 31.5 ms, 0 |
+| dream: nightmare vignette 1 | 20.1 / 11.4, 72.0 / 90.8 ms, 74 | 30.0 / **30.0**, 27.8 / 33.4 ms, 0 |
+| dream: nightmare vignette 2 | 22.3 / 12.2, 65.2 / 80.1 ms, 71 | 30.0 / **30.0**, 28.1 / 32.6 ms, 0 |
+| dream: nightmare vignette 3 (cute, then red) | 17.6 / 10.6, 82.0 / 88.8 ms, 60 | 30.0 / **30.0**, 6.1 / 6.5 ms, 0 |
+| dream: wake-up choice | 17.6 / 10.6, 82.6 / 86.9 ms, 36 | 30.0 / **30.0**, 6.3 / 6.9 ms, 0 |
+
+Before: `d530565`; after: `b232be8` + S2-4d. Every frame of every window is two vblanks; each window closes with
+`expect-fps 29.5` and `expect-gap 34`. The margins are thin in the nightmare (a work maximum of 33.4 ms still flips on
+its second vblank). Left: the choice's first frame is one full frame (the dim and the dream, ~45 ms) before the hold
+starts; the first frame of a vignette whose chibi was not asked for in time comes a few ticks late.
+
+**Memory.** EWRAM and resident IWRAM unchanged (the dream's state gains the held choice's row in a padding byte:
+`D` 184 B before and after; the main stack 6,288 B). The IWRAM overlay's UI group 9,740 -> 10,260 B of the 3D group's
+10,352 B slot (92 B left: `hshapes_fill` +172 B, the outline pass 344 B). PS1: the hooks are not built there (weak),
+the exact steps are; resident RAM 16 B smaller.
+
+
 ## 4b. Retained panels (G7, `src/panel.c`)
 
 The core draws its HUD pills, dialogue box, toasts and island HUD as
