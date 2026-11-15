@@ -1624,7 +1624,7 @@ rows not filled twice, the bedroom left out under the bubble's full disc. `plat_
 weak defaults, so the circles, ellipses and the floor take the core's own fills (the same pixels), and none of the
 GBA-only changes is built (the straight sky bands, the held choice, the wipe's hardware fade, the vignettes' still
 faces and lazy chibis). The nine shots of `speed2.sh dream` are byte for byte the tip's. PCSX-Redux `speed2.sh dream`,
-the tip `1297e93` and that tree + S2-4d: bedroom 30.17 / 30.17, bubble 30.25 / 30.25, vignette 1 cute 30.00 (one 50 ms
+the tip `ad06012` and that tree + S2-4d: bedroom 30.17 / 30.17, bubble 30.25 / 30.25, vignette 1 cute 30.00 (one 50 ms
 frame) -> **30.14** (none), twist 30.00 (one) -> **30.15** (none), vignette 2 and nightmare 1 30.00 / 30.00 (one 50 ms
 frame each, at the window's start), nightmare 2 29.89 / 29.89 (one 67 ms frame at the window's start, the last
 vignette's first frame and the harness's lockstep stop together), nightmare 3 (on this timing already the choice)
@@ -1633,8 +1633,8 @@ at the start); `game_smoke` passes. The 50 ms frames at a window's start are `hc
 above). A run of the nightmare alone with its windows moved off the vignette changes (scratch script, not in the
 tree) had one 50 ms frame on each build, at a window's start on the tip and a few ticks before the roar (about where the
 dreamer's face turns) with S2-4d: the red nightmare's frames are 29-31 ms of CPU here (`perf:` lines), so a new expression's
-render can tip one over. Memory: no resident data; the EXE's code 32 B smaller (`_end` 0x801ee570 -> 0x801ee550,
-72,320 -> 72,352 B below `elf2exe`'s stack top with the boot FMV; the tip is under the 72 KB gate by 1,408 B until
+render can tip one over. Memory: no resident data; the EXE's code 32 B smaller (`_end` 0x801ee560 -> 0x801ee540,
+72,336 -> 72,368 B below `elf2exe`'s stack top with the boot FMV; the tip is under the 72 KB gate by 1,392 B until
 PS1-RAM lands); the dream overlay group 39 -> 42 KB (its load 182 -> 186 ms).
 
 **S2-4 (the fair's kept playfield).** Nothing is built here: `mg.h` turns the kept-playfield mode into constants (`MGK_OFF`), so Whack draws its whole booth as before (the restore helpers and `ui_round_rect_inset` compile out); only the drawing order was regrouped (`mg_tent_sway`, `hole_back`), same pixels. 65 KB below the stack top with the boot FMV on the rebased tree (`_end` the same as without S2-4); the minigame overlay group grows by a few hundred bytes of code, the slot is unchanged (168 KB, the house's). PCSX-Redux `speed2_fair`: the Whack title, Sweet and Hellfire windows 30.17 / 30.12 / 30.12 fps (all 2-vsync frames), as before.

@@ -365,7 +365,7 @@ modes, not the workshop).
 **S2-4d (the dreams).** Nothing changes on the screen: the core's exact steps (no drawing on a catch-up tick, 20
 border waves a frame, the sky's covered rows skipped, the rim's band rows not filled twice, the bedroom left out under
 the bubble's full disc) run here too, `plat_hshapes` and `plat_tile_rows` are the weak defaults (the core's own fills),
-and the GBA-only changes are not built. `speed2.sh dream` on the tip `1297e93` and that tree + S2-4d: every window
+and the GBA-only changes are not built. `speed2.sh dream` on the tip `ad06012` and that tree + S2-4d: every window
 30.0, 0 of 1,482 ticks over 33.3 ms on both; work mean 8,318 -> 7,973 us, worst tick 16.3 -> 16.0 ms (the nightmare),
 2D prims max 1,455 -> 1,415, texture uploads 411 -> 409; the nine shots are byte for byte the tip's.
 
