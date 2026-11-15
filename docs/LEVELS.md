@@ -349,7 +349,7 @@ negative. Existing levels use no new id, so every shot is unchanged.
 EWRAM**), `.iwram` 11,272, `.iwram_bss` 4,088, `.data` 816 and the four overlay slots unchanged (GBA ledger
 row 60). PS1 (`cmake --build --preset ps1`, boot FMV): `doomogachi.exe` and `OVL.BIN` are **byte-identical**
 to the base's (`cmp`), 130,000 B below the stack top before and after (**delta 0 B**; none of the 8 KB LEVELS
-share used). Core tests 1,377 passed, 0 failed.
+share used). Core tests 1,386 passed, 0 failed.
 
 **Review sheet.** `core/build/artgen --sheet DIR --zoom 1|2` writes the contact sheets (`textures.png`,
 `tiles_a/b.png` with the 3 x 3 tiling and four light levels, `skies.png` with a 1.5 x wrap to show the
