@@ -61,7 +61,7 @@ static volatile uint8_t ld_level;    /* darkness on screen now, 0..16 */
 static volatile uint8_t ld_kind;     /* S2-10: PLAT_BUSY_* (0: a scene change) */
 static volatile uint8_t ld_card;     /* 1 once the card is painted on the page on screen: the IRQ turns its spinner */
 static volatile uint8_t ld_spin;     /* the lit spinner dot */
-static int8_t ld_card_page = -1;     /* the page a card was painted on since the last flip, -1 none */
+static uint8_t ld_card_page;         /* 1 + the page a card was painted on since the last flip, 0 none (.bss) */
 static volatile uint8_t ld_seen;     /* the fade level at the last counted picture */
 static volatile uint32_t ld_pic;     /* gba_vblanks at the last counted picture */
 
@@ -164,7 +164,7 @@ static void card_paint(void)
     REG_BG2PA = 0x100; REG_BG2PB = 0; REG_BG2PC = 0; REG_BG2PD = 0x100;   /* no squash under the card */
     REG_BG2X = 0; REG_BG2Y = 0;
     REG_DISPCNT = (uint16_t)(REG_DISPCNT | DCNT_WIN0);
-    ld_card_page = (int8_t)((REG_DISPCNT & DCNT_PAGE) != 0);
+    ld_card_page = (uint8_t)(1 + ((REG_DISPCNT & DCNT_PAGE) != 0));
     ld_card = 1;                                 /* last: from here the IRQ turns the spinner */
 }
 
@@ -184,8 +184,8 @@ void plat_busy_step(int done, int total)
  * copy). Clears it. */
 int ld_flipped(int page)
 {
-    int cp = ld_card_page, y;
-    ld_card_page = -1;
+    int cp = ld_card_page - 1, y;
+    ld_card_page = 0;
     if (cp < 0) return 0;
     if (page < 0 || cp == page) return 2;
     for (y = CARD_Y; y < CARD_Y + CARD_H; y++) {
