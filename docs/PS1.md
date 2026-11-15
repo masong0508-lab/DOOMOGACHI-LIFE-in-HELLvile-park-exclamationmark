@@ -1882,7 +1882,7 @@ stamps, the registry) 2,150 B, `part_lru.c` 3,088 B (the 2 KB arena, the 256 B w
 `partstore.c` 1,836 B (a 320 B read buffer, the set bases, the boot loader), the look pool's put / load / raw glue
 (`look_pool.c` 596 B and the resident part of `creator.c`, together about 970 B), the rest (`cutview.c`, `part_icons.c`)
 130 B. **CREATOR's PS1 share was 4 KB; the coordinator approved 21 KB (21,504 B) for CR10
-(PARALLEL_WAVES.md section 3): this package uses 21,024 B**, 480 B of the share left; the margin is 111,584 B below the stack
+(PARALLEL_WAVES.md section 3): this package uses 21,024 B**, 480 B of the share left (224 B since CR-SLIDERX added 256 B); the margin is 111,584 B below the stack
 top, 37,856 B above the 72 KB gate (73,728 B).
 **Why none of it is in an overlay group.** The part VM, the painters' scripted paths and the PartRef tables are used by the
 portrait renderer, and `ps1/tools/ovl_plan.py` leaves `portrait*.c` and `part_lru.c` outside every group (so they are resident),
