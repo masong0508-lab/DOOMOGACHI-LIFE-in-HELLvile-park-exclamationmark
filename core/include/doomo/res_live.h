@@ -12,7 +12,8 @@
  *   DEFAULT   MUST + their households (FAMILY / MARRIED / DATING roster edges) + the
  *             lowest ids, until each district has 250.
  * A Random Island takes the same 500 ids. An old save with more residents than the
- * slots keeps the 500 the player is closest to (save.c, res_live_keep); the others
+ * slots keeps the 500 the player is closest to (save.c, sv_select: the must set, the
+ * players' and the must citizens' households, a child's family as one); the others
  * move away (a news item).
  */
 #ifndef DOOMO_RES_LIVE_H
