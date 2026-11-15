@@ -2420,6 +2420,8 @@ reader.
   16.7 ms, the dialogue tick). `talk_prefetch.txt`, no `--native-seed`: 900 ticks on the title, the bank arrives by itself
   (slice max 19.2 ms), `talk-bank ready` finds it, 0 of 901 ticks over 33.3 ms (worst 11.7 ms). On the ELF (no disc) the
   first script fails at `talk-bank open`, which is how the test is known to look at the disc.
+* **`room-test`.** Its `home_visit` leg now passes in dcrun (the Talk screen is there) but still fails in the host runner
+  (`dc2d_runner` links no Talk), so `make -C dc room-test` still ends red on that one script, as on origin before TD1.
 * **Not yet (TD2, TD3).** The typed line from the keyboard queue, the pad fallback, HD-text bubbles (40 columns) and
   the `home_talk_*` scripts on dcrun with frame-time gates. The Talk screen's list and the opener's dialogue box overlap
   at 640x480 in the TD1 shots (`talk_disc_opener.png`: the dialogue box sits over the list; the native 320x240 screen
