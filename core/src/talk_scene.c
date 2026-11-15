@@ -1201,6 +1201,9 @@ void talk_scene_party(const int *ids, int n)
     for (i = 0; ids && i < n && extra_n < TALK_PARTS_MAX - 1; i++) extra_ids[extra_n++] = ids[i];
 }
 
+/* DC10B: 1 while the Talk screen is open; a platform with finer text (the Dreamcast's HD glyphs) draws with it. */
+int talk_text_hd(void) { return T.active; }
+
 /* DC10B: the bank is still being read off the disc. A short plain note (once; a second press adds none)
  * instead of silence; 1 = the note is up and the caller should do nothing else. Native: never loading. */
 int home_talk_note(void)
