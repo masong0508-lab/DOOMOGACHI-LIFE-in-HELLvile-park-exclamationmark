@@ -313,6 +313,7 @@ static void stage_begin(void)
 #if !defined(DOOMO_PLATFORM_PS1)
     C.pre = 0;
     memset(&C.keep, 0, sizeof(C.keep));
+    memset(C.minis, 0, sizeof C.minis);          /* a lead bake or choir minis never outlive a cast change */
     if (C.v.lite & CLITE_HALF) C.v.keep = &C.keep;     /* the show's stage, not the setup's (that one is held) */
 #endif
     C.v.cast = &C.cast;
