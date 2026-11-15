@@ -1857,7 +1857,7 @@ reward, +3 bond, a headline), a reminder when it is still open (`late`, 60%) or 
 * **Outcomes** (`talk_outcome_apply`): `TEV_QUEST_ACCEPT` -> `talk_quest_add` (the rules again, 4 open at most);
   `TEV_QUEST_DONE` -> `talk_quest_complete` (the item taken or the sim's own problem relieved through
   `sim_problem_resolve`, H$ paid: 20 fetch, 12 toy or message, 10 company or secret, 15 cheer, 30 peace, half again with the
-  bonus), the bond (through the daily caps like every bond change), and one headline `NT_TALK_QUEST` for an adult giver
+  bonus; the H$ has no daily cap of its own: the pace (one raise a day, 4 open) bounds it), the bond (through the daily caps like every bond change), and one headline `NT_TALK_QUEST` for an adult giver
   (never a child); `TEV_QUEST_LAPSED` -> `talk_quest_lapse_ack`. `TalkOutcome` has `quests_new / declined / done / lapsed`
   and `reward`. After the summary `talk_quest_end` marks what the talk met: a message told, someone cheered up, time
   spent, a fight made up, a secret kept a day.
