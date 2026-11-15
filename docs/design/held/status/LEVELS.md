@@ -25,3 +25,11 @@ delta, GBA sizes), in flight (package and stage), next up, blockers, needs from 
 
 - **Owner decisions 2026-11-15 (from the coordinator):** (1) declutter and beautify the screens this stream owns (level select, level HUD additions): fewer things at once, one shared style, calm motion, 30 fps holds, before/after screenshots. (2) The GBA will run 500 residents (package GBA-500, SPEED machine): any level that refers to a resident keeps working; list such resident ids here when a level adds one (none yet).
 - **RESUME state 2026-11-15 04:30 UTC:** the four paused worktrees (fut-lv3, fut-lv4, fut-lv7, fut-lv11) are intact on the machine; the Workflow launch to continue them was denied by the permission classifier, so nothing is running. Needs the Workflow tool allowed (or an explicit go-ahead to use the Agent tool).
+
+## LEVELS-2 (second machine of the LEVELS stream)
+
+- **Session:** session_01Xd63cxE5CiE8LkNQXc6Au3 (Sonnet 5.5), started 2026-11-15. Lead of the LEVELS stream: session_01Xd63cvXV9YcGJn2CBo4zvt, who keeps LV5 (kit C), LV6 (enemies, AI, bosses) and LV7b (rest of the art and audio kit).
+- **My packages, in order:** LV8 (platform delivery: `BREACH.BIN` packs with writer `tools/packbreach.py`, reader, PS1 VRAM pinning and overlay group plan; the GBA manifest and ROM / EWRAM rows; the Dreamcast pack reader), then LV9 (combat detail option in levels: per-level drop lists and awake caps per mode on each platform), then LV3 part 2 (the follow-up list in the LV3 line above), then level content once LEVELS-3 asks here.
+- **Shared files I touch (agree here, lead: add your objection under this line):** `ps1/tools/ovl_plan.py` (one regex line for the pack reader, same as LV2 did), `ps1/CMakeLists.txt` (the pack build step), `gba/Makefile` (a `memreport` row), `core/include/doomo/map.h` is NOT touched: the pack reader fills the existing `DoomoMapDef` / `DoomoMapExt` in a caller-owned arena.
+- **Budgets:** PS1 resident used of share: 0 B (of 8 KB). GBA EWRAM used of share: 0 B (of 6 KB).
+- **In flight:** LV8 stage 1 (format, writer, host reader and tests).
