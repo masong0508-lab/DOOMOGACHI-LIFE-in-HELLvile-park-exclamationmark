@@ -111,6 +111,10 @@ TEST(cr4_a1b_ears_show_on_the_chibi_and_the_fighter)
             fprintf(stderr, "    ears %d are invisible on the chibi\n", v);
             bad++;
         }
+        if (!memcmp(a, b, sizeof(a))) {
+            fprintf(stderr, "    ears %d are invisible on the fighter\n", v);
+            bad++;
+        }
     }
     CHECK_EQ(bad, 0);
 }
