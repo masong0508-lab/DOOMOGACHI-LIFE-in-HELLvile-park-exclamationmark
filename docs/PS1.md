@@ -2229,5 +2229,5 @@ with the FMV (`cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON`), inside the CREATO
 gate: any other landing that adds resident bytes must take it back first. `game_smoke` PASS. `sh ps1/harness/speed2.sh OUT
 life studio fishcook library` (PCSX-Redux, not run before the change on this machine; the audit listed these windows at
 65-325 ms single frames): every window of the shop, Black Market, cafe, picker, picker move, choir, cook counter, lobby and
-Almanac list reads 30.0-30.5 fps with no frame over 50 ms (one 50 ms frame in six of them); the known misses are the
+Almanac list reads 30.0-30.5 fps with no frame over 50 ms (a single 50 ms frame in several of the studio, cook and library windows); the known misses are the
 new island's load, the save freeze and the care reaction (2 frames of 50 ms).
