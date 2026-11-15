@@ -2696,7 +2696,7 @@ host software PVR (the card blocks the tick, so Flycast cannot take a shot of it
 
 Test: `test_card` in `dc/tests/gfx2d/test_dc2d.c` (part of `make dc-host-test`): the Dreamcast picture equals the
 native reference on every pixel, the title is drawn, the bar fills in proportion and never past full, no bar when
-`total` is 0, and two pictures of the same card are byte-identical (nothing moves by itself). It fails without
+`total` is 0, and two pictures of the same card are byte-identical (nothing moves by itself; the glint hold is by code reading, the test does not advance time). The test only links with
 `vmucard.c`. `DC10A_SHOTS=dir` makes it write the shots.
 
 Measured (Flycast, `make -C dc ui-compare vmu-test talk-test family-test2`): ui-compare 177 shots pass, 0 fail,

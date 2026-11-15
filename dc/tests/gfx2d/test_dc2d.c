@@ -202,7 +202,7 @@ static void test_card(void)
     int f0, f50, f100, x, y, textpx = 0, bad;
     /* no bar: nothing of the fill, and the picture is the same on the console path and the reference */
     frame_begin();
-    dc_card_paint("The VMU is full", "No room for two copies", 0, 0);
+    dc_card_paint("Couldn't save", "No VMU found in a controller", 0, 0);
     frame_end();
     f0 = card_fill_px(st->accent);
     bad = frame_diff(NULL);
