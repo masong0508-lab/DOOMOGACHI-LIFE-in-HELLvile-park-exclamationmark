@@ -914,7 +914,12 @@ static uint16_t sv_moved;              /* who moved away in the last load (save_
  * and the apply pass that always follows overwrites all of it (no resident RAM) */
 typedef struct {
     uint16_t  score[DOOMO_MAX_RESIDENTS];       /* SV_PRESENT | tier | points, by id         */
+    uint16_t  fam[DOOMO_MAX_RESIDENTS];         /* a child's family: union-find parent       */
+    uint16_t  fbest[DOOMO_MAX_RESIDENTS];       /* ... at its root: the best member score    */
+    uint8_t   fsize[DOOMO_MAX_RESIDENTS];       /* ... at its root: members (255 at most)    */
+    uint8_t   fout[DOOMO_MAX_RESIDENTS];        /* ... at its root: members who move away    */
     uint8_t   minor[DOOMO_MAX_RESIDENTS / 8];   /* a baby, a child or a teen                 */
+    uint8_t   skip[DOOMO_MAX_RESIDENTS / 8];    /* the cut: in a family that did not fit     */
     uint8_t   nguest;
     uint16_t  nedge;
     int16_t   avatar;                           /* the play-as avatar ('PLAY'), -1 none      */
@@ -1049,13 +1054,36 @@ static int sv_child_family(const DoomoEdge *e)
            (sv_minor(e->a) || sv_minor(e->b)) && (SV->score[e->a] & SV_PRESENT) && (SV->score[e->b] & SV_PRESENT);
 }
 
+/* A child's family: the residents joined by such edges (a kid, their parents, siblings, a
+ * grandparent). One that moves as one has 2..SV_FAMILY_MAX members: a bigger knot of FAMILY
+ * edges (a save of random citizens) is no household, its people are scored one by one. */
+#define SV_FAMILY_MAX 16
+static int sv_root(int id)
+{
+    while (SV->fam[id] != id) {
+        SV->fam[id] = SV->fam[SV->fam[id]];
+        id = SV->fam[id];
+    }
+    return id;
+}
+static int sv_family(int id)                   /* the root of a family that moves as one, or -1 */
+{
+    int r = sv_root(id);
+    return SV->fsize[r] >= 2 && SV->fsize[r] <= SV_FAMILY_MAX ? r : -1;
+}
+static void sv_keep_set(int id, int on)
+{
+    if (on) sv_keep[id >> 3] |= (uint8_t)(1 << (id & 7));
+    else sv_keep[id >> 3] &= (uint8_t)~(1 << (id & 7));
+}
+
 /* after the scan: the players, their household and memorials, the house visits, the graph
  * (the players' ties, the must citizens' households), a child's family kept together; then
  * the best DOOMO_LIVE_PER_DISTRICT of each district: the highest score, the lower id on a
  * tie. The chunks the scan read (LIFE, HOME, PLAY, PROF) came after the town. */
 static void sv_select(void)
 {
-    int id, d, i, pass, changed;
+    int id, d, i;
     sv_tier(SV->avatar, 6);
     for (i = 0; i < SV->nguest; i++) sv_tier(SV->guest[i], 6);
     for (id = 0; id < DOOMO_MAX_RESIDENTS; id++) {
@@ -1077,52 +1105,90 @@ static void sv_select(void)
             if (res_live_must(e->b)) sv_tier(e->a, 4);
         }
     }
-    /* a child's family moves as one: along every FAMILY edge with a minor end both get the
-     * higher score (a must citizen's family tier 6, so a must kid's parents always stay);
-     * three passes reach siblings through a parent */
-    for (pass = 0; pass < 3; pass++)
-        for (i = 0; i < SV->nedge; i++) {
-            const DoomoEdge *e = &SV->edge[i];
-            uint16_t sa, sb, m;
-            if (!sv_child_family(e)) continue;
-            sa = SV->score[e->a];
-            sb = SV->score[e->b];
-            m = sa > sb ? sa : sb;
-            if (SV_TIER_OF(m) == 7) m = (uint16_t)(SV_PRESENT | SV_TIER(6) | SV_POINTS);
-            if (sa < m) SV->score[e->a] = m;
-            if (sb < m) SV->score[e->b] = m;
-        }
+    /* a child's family moves as one: every member gets the family's best score (a must
+     * citizen's family tier 6, so a must kid's parents stay), the cut takes a family whole or
+     * not at all, and a family split across the two districts moves away (but a must
+     * citizen) */
+    for (id = 0; id < DOOMO_MAX_RESIDENTS; id++) SV->fam[id] = (uint16_t)id;
+    for (i = 0; i < SV->nedge; i++) {
+        const DoomoEdge *e = &SV->edge[i];
+        int ra, rb;
+        if (!sv_child_family(e)) continue;
+        ra = sv_root(e->a);
+        rb = sv_root(e->b);
+        if (ra != rb) SV->fam[ra > rb ? ra : rb] = (uint16_t)(ra < rb ? ra : rb);   /* the lowest id is the root */
+    }
+    for (id = 0; id < DOOMO_MAX_RESIDENTS; id++) {
+        int r;
+        if (!(SV->score[id] & SV_PRESENT)) continue;
+        r = sv_root(id);
+        if (SV->fsize[r] < 255) SV->fsize[r]++;
+        if (SV->fbest[r] < SV->score[id]) SV->fbest[r] = SV->score[id];
+    }
+    for (id = 0; id < DOOMO_MAX_RESIDENTS; id++) {
+        int r = (SV->score[id] & SV_PRESENT) ? sv_family(id) : -1;
+        uint16_t m;
+        if (r < 0) continue;
+        m = SV->fbest[r];
+        if (SV_TIER_OF(m) == 7) m = (uint16_t)(SV_PRESENT | SV_TIER(6) | SV_POINTS);
+        if (SV->score[id] < m) SV->score[id] = m;
+    }
     memset(sv_keep, 0, sizeof(sv_keep));
     for (d = 0; d < 2; d++) {
-        int base = d * DOOMO_DISTRICT_SIZE, lo = SV_PRESENT, hi = 0xFFFF, room = DOOMO_LIVE_PER_DISTRICT;
+        int base = d * DOOMO_DISTRICT_SIZE, end = base + DOOMO_DISTRICT_SIZE, lo = SV_PRESENT, hi = 0xFFFF,
+            room = DOOMO_LIVE_PER_DISTRICT, k;
         /* the lowest score t with count(score > t) < room: bisect over the 16-bit scores */
         while (lo < hi) {
             int mid = (lo + hi) >> 1, n = 0;
-            for (id = base; id < base + DOOMO_DISTRICT_SIZE; id++) n += SV->score[id] > mid;
+            for (id = base; id < end; id++) n += SV->score[id] > mid;
             if (n < room) hi = mid; else lo = mid + 1;
         }
-        for (id = base; id < base + DOOMO_DISTRICT_SIZE; id++)
-            if (SV->score[id] > lo) { sv_keep[id >> 3] |= (uint8_t)(1 << (id & 7)); room--; }
-        for (id = base; id < base + DOOMO_DISTRICT_SIZE && room > 0; id++)
-            if (SV->score[id] == lo && (SV->score[id] & SV_PRESENT)) {
-                sv_keep[id >> 3] |= (uint8_t)(1 << (id & 7));
-                room--;
-            }
-    }
-    /* a child's family that the cut split (equal scores, the district full) moves away
-     * together: the district keeps a free slot. Never a must citizen (their families are
-     * tier 6 and stay); the kept set only shrinks, so this ends. */
-    do {
-        changed = 0;
-        for (i = 0; i < SV->nedge; i++) {
-            const DoomoEdge *e = &SV->edge[i];
-            if (!sv_child_family(e) || sv_kept(e->a) == sv_kept(e->b)) continue;
-            id = sv_kept(e->a) ? e->a : e->b;
-            if (SV_TIER_OF(SV->score[id]) == 7) continue;
-            sv_keep[id >> 3] &= (uint8_t)~(1 << (id & 7));
-            changed = 1;
+        for (id = base; id < end; id++)
+            if (SV->score[id] > lo) { sv_keep_set(id, 1); room--; }
+        /* the tie at the cut, the lower id first; a family whole (its members here) or not */
+        for (id = base; id < end && room > 0; id++) {
+            int r, m = 0;
+            if (SV->score[id] != lo || !(SV->score[id] & SV_PRESENT) || sv_kept(id) ||
+                ((SV->skip[id >> 3] >> (id & 7)) & 1))
+                continue;
+            if ((r = sv_family(id)) < 0) { sv_keep_set(id, 1); room--; continue; }
+            for (k = id; k < end; k++) m += SV->score[k] == lo && !sv_kept(k) && sv_root(k) == r;
+            for (k = id; k < end; k++)
+                if (SV->score[k] == lo && !sv_kept(k) && sv_root(k) == r) {
+                    if (m <= room) sv_keep_set(k, 1);
+                    else SV->skip[k >> 3] |= (uint8_t)(1 << (k & 7));
+                }
+            if (m <= room) room -= m;
         }
-    } while (changed);
+    }
+    /* a family the two districts' cuts split moves away (a must citizen stays; their family
+     * is tier 6 and stays with them) */
+    for (id = 0; id < DOOMO_MAX_RESIDENTS; id++) {
+        int r;
+        if (!(SV->score[id] & SV_PRESENT) || sv_kept(id) || (r = sv_family(id)) < 0) continue;
+        if (SV->fout[r] < 255) SV->fout[r]++;
+    }
+    for (id = 0; id < DOOMO_MAX_RESIDENTS; id++) {
+        int r;
+        if (!sv_kept(id) || (r = sv_family(id)) < 0 || !SV->fout[r] || SV_TIER_OF(SV->score[id]) == 7) continue;
+        sv_keep_set(id, 0);
+    }
+    /* the room a family left (it did not fit, or it moved away) goes to the next best of
+     * the district who is in no such family */
+    for (d = 0; d < 2; d++) {
+        int base = d * DOOMO_DISTRICT_SIZE, end = base + DOOMO_DISTRICT_SIZE, room = DOOMO_LIVE_PER_DISTRICT;
+        for (id = base; id < end; id++) room -= sv_kept(id);
+        while (room > 0) {
+            int best = -1;
+            for (id = base; id < end; id++)
+                if ((SV->score[id] & SV_PRESENT) && !sv_kept(id) && sv_family(id) < 0 &&
+                    (best < 0 || SV->score[id] > SV->score[best]))
+                    best = id;
+            if (best < 0) break;
+            sv_keep_set(best, 1);
+            room--;
+        }
+    }
 }
 
 /* after the apply pass: the graves of people who moved away go; the news waits for the

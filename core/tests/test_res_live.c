@@ -399,3 +399,35 @@ TEST(save_old_moved_away_news_never_reaches_a_new_island)
     sim_init();
     CHECK(!news_has("moved away"));
 }
+
+/* The GBA's own old flash file (gba/harness/fixtures/gba500_old.flash, `make -C gba
+ * test-oldsave`): a lived-in story island in slot 0 and the old worst case in slot 1, 1,000
+ * random custom citizens and 2,048 random edges (one knot of FAMILY edges through most of
+ * them: no household, so its people are scored one by one). Both keep 250 a side. */
+TEST(save_old_gba_flash_slots_keep_250_a_side)
+{
+    char path[512];
+    static uint8_t img[128 * 1024];
+    FILE *f;
+    size_t n;
+    int slot, i;
+    snprintf(path, sizeof path, "%s/../../../gba/harness/fixtures/gba500_old.flash", test_golden_dir);
+    f = fopen(path, "rb");
+    CHECK(f != NULL);
+    if (!f) return;
+    n = fread(img, 1, sizeof img, f);
+    fclose(f);
+    CHECK_EQ((int)n, (int)sizeof img);
+    for (slot = 0; slot < 2; slot++) {
+        uint32_t off = slot ? 0x0A000u : 0u;
+        CHECK(save_deserialize(img + off, slot ? (uint32_t)sizeof img - off : off + 0x0A000u));
+        CHECK_EQ(town_count_district(0, -1), DOOMO_LIVE_PER_DISTRICT);
+        CHECK_EQ(town_count_district(1, -1), DOOMO_LIVE_PER_DISTRICT);
+        CHECK_EQ(save_moved_away(), DOOMO_MAX_RESIDENTS - DOOMO_LIVE_RESIDENTS);
+        if (doomo_town.population == TOWN_POP_PREMADE) {
+            CHECK_EQ(kids_without_their_family(), 0);
+            for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
+                if (res_live_must(i)) CHECK_MSG(in_town(i), "slot %d: must citizen %d moved away", slot, i);
+        }
+    }
+}
