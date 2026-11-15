@@ -1920,7 +1920,7 @@ game never sees them. `dc/src/view3d.c`, "the governor":
 | | Smooth | Balanced (default) | Max detail |
 |---|---|---|---|
 | most cells seen | 20 | 32 | 32 |
-| ray fan (logical columns a ray) | 4 | 2 | 2 |
+| ray fan (logical columns a ray) | 4 | 4 | 2 |
 | new textures a view may make | 3 | 4 | 6 |
 | view loses 3 cells when the last tick's work is over | 25 ms | 29 ms | 31 ms |
 | view gains 2 cells when it is under | 20 ms | 24 ms | 27 ms |

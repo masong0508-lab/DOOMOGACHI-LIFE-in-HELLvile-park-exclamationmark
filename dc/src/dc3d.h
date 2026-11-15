@@ -200,7 +200,7 @@ void dc_view3d_gov_reset(void);        /* forget the work and the distance: the 
 int  dc_gov_step(int dist, int cap, int mode, uint32_t work_us);
 int  dc_gov_cap(int mode, int near_opt);   /* the cap of a Combat detail mode and the Draw distance row */
 int  dc_gov_tex(int mode);                 /* new textures a view may make: Smooth 3, Balanced 4, Max 6 */
-int  dc_gov_rays(int mode);                /* logical columns between two visibility rays: 2, Smooth 4 */
+int  dc_gov_rays(int mode);                /* logical columns between two visibility rays: V3D_RAY_PX (4), Max detail 2 */
 #ifdef DC2D_HOST
 void dc2d_view3d_draw(const DoomoView3D *v);        /* view3d.c (console: plat_view3d) */
 const Dc3dCam *dc2d_view3d_cam(void);               /* the last view's camera (tests) */

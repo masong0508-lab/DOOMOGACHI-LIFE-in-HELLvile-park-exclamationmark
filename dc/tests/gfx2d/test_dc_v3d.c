@@ -675,8 +675,8 @@ static void test_gov_caps(void)
     CHECK(dc_gov_cap(OPT3D_BALANCED, 1) == DC_V3D_DIST_NEAR && dc_gov_cap(OPT3D_MAX, 1) == DC_V3D_DIST_NEAR,
           "gov: Draw distance Near caps the view at %d cells", DC_V3D_DIST_NEAR);
     CHECK(dc_gov_cap(OPT3D_SMOOTH, 1) == DC_V3D_DIST_NEAR, "gov: Near under Smooth is still Near");
-    CHECK(dc_gov_rays(OPT3D_SMOOTH) == 4 && dc_gov_rays(OPT3D_BALANCED) == 2 && dc_gov_rays(OPT3D_MAX) == 2,
-          "gov: ray fans 4 / 2 / 2 columns");
+    CHECK(dc_gov_rays(OPT3D_SMOOTH) == 4 && dc_gov_rays(OPT3D_BALANCED) == 4 && dc_gov_rays(OPT3D_MAX) == 2,
+          "gov: ray fans 4 (Smooth, Balanced) / 2 (Max detail) columns");
     CHECK(dc_gov_tex(OPT3D_SMOOTH) < dc_gov_tex(OPT3D_BALANCED) && dc_gov_tex(OPT3D_BALANCED) < dc_gov_tex(OPT3D_MAX),
           "gov: new textures per view must grow Smooth < Balanced < Max detail");
 }
@@ -782,7 +782,7 @@ int main(void)
     memset(&o, 0, sizeof(o));
     o.w = 320; o.h = 240; o.save_dir = "."; o.seed = 1; o.quiet = 1;
     nat_init(&o);
-    opt_defaults();                 /* DC6C: the view reads Combat detail and Draw distance */
+    opt_set(OPT_DRAW_DIST, 1); opt_set(OPT_3D_FAST, OPT3D_BALANCED);   /* DC6C: the view reads these two rows (the other options stay at 0, as the parity numbers were measured) */
     if (getenv("DC6_CELLS")) {
         int m, cx, cy, x, y;
         if (sscanf(getenv("DC6_CELLS"), "%d,%d,%d", &m, &cx, &cy) == 3) {
