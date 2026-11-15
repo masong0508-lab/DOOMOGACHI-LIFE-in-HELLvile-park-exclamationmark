@@ -130,6 +130,12 @@ shot story110
 vhash-seq 30 story map + dialogue
 
 # ---- concert: Nana's solo (setup keys of core/tests/scripts/concert_solo.txt) ---
+# (G2-CO land) the closed curtain of the intro is a held frame while the show's pictures are drawn ahead
+# (docs/GBA.md "G2-CO: the concert at 30"): its window starts two ticks after Start (the Start frame itself
+# is one long frame, measured there) and ends before the curtain opens; 3 + 55 + 142 = the 200 ticks the
+# show window always waited, so every later tick is where it was. Its floor is 29 (the window's first
+# video frame is the end of the Start frame's catch-up: 55 ticks in 112 video frames is 29.46); expect-gap
+# is the real gate: no frame over two vblanks
 seed 1
 scene CONCERT -2
 wait 20
@@ -140,10 +146,15 @@ press LEFT
 press UP
 wait 4
 press A
-wait 200
+wait 3
+fps start
+wait 55
+expect-fps 29 concert closed curtain
+expect-gap 34
+wait 142
 fps start
 wait 130
-expect-fps 12.5 concert
+expect-fps 29.5 concert
 shot concert
 vhash-seq 30 concert
 

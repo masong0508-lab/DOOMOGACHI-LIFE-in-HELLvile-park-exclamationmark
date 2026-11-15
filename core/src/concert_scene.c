@@ -54,6 +54,7 @@ typedef struct ConcertState {
 #if !defined(DOOMO_PLATFORM_PS1)
     ChoirMini minis[CHOIR_MINI_N];   /* (G2-CO) the choir's smaller singers (StageView.choir_pct) */
     ConcertKeep keep;                /* (G2-CO) the stage's rows kept at half rate (CLITE_HALF) */
+    uint8_t pre;                     /* (G2-CO land, GBA) the closed curtain's next chibi to draw ahead */
 #endif
 } ConcertState;
 DOOMO_STATIC_ASSERT(sizeof(ConcertState) <= DOOMO_SCENE_SCRATCH, concert_state_fits_the_scratch);
@@ -264,7 +265,11 @@ static void stage_begin(void);
 static void start_show(void)
 {
     C.stage = C.stage_sel >= 0 ? C.stage_sel : auto_stage();
-    recompose();
+    /* (G2-CO land) the setup composed this song already (its title is on the menu); composing it again was 180-230 ms
+     * of the Start frame on the GBA. A song made for someone else (the Hit Parade's titles) is made again */
+    if (C.song.singer != (uint16_t)C.lead || C.song.genre != (uint8_t)C.genre || C.song.take != (uint8_t)(C.take & 3) ||
+        !C.song.title[0])
+        recompose();
     recast();
     stage_begin();
 }
@@ -306,6 +311,7 @@ static void stage_begin(void)
     memset(&C.v, 0, sizeof(C.v));
     view_trades();
 #if !defined(DOOMO_PLATFORM_PS1)
+    C.pre = 0;
     memset(&C.keep, 0, sizeof(C.keep));
     if (C.v.lite & CLITE_HALF) C.v.keep = &C.keep;     /* the show's stage, not the setup's (that one is held) */
 #endif
@@ -832,9 +838,15 @@ static void setup_menu(int mx, int my, int mw, int ch, int rowh, int style, cons
                 vb[maxc - 2] = '.'; vb[maxc - 1] = '.'; vb[maxc] = 0;
                 val = vb;
             }
-            /* (G2-CO) one pixel further in than before: the bobbing cursor stays inside the window, which the
-             * setup's hold repaints alone (it used to reach one pixel past the window's left edge) */
+            /* (G2-CO, GBA) one pixel further in than before: the bobbing cursor stays inside the window, which the
+             * setup's hold repaints alone (it used to reach one pixel past the window's left edge). The PS1 and the
+             * Dreamcast hold nothing: their rows stay where they were (the native host, the GBA's test double, moves
+             * with the GBA: test_modal_hold.c) */
+#if !defined(DOOMO_PLATFORM_PS1) && !defined(DOOMO_PLATFORM_DC)
             ui_value_row(mx + 15, y, mw - 19, lab, val, C.row == i);
+#else
+            ui_value_row(mx + 14, y, mw - 18, lab, val, C.row == i);
+#endif
         }
         y += rowh;
     }
@@ -912,23 +924,34 @@ static void setup_draw(void)
     ui_modal_full(&SCENE_CONCERT, ready);
 }
 
-static void draw_bill(const StageLayout *L)
+/* the playbill's box; bob: it bobs a pixel up and down (the GBA's held intro keeps it still) */
+static void bill_box(const StageLayout *L, int bob, int *x, int *y, int *w, int *h)
+{
+    *w = L->big ? 230 : 190;
+    *h = L->big ? 96 : 82;
+    *x = (L->w - *w) / 2;
+    *y = (L->h - *h) / 2 - (L->big ? 10 : 8) + (bob ? ui_wave((int)C.t, 60, 1) : 0);
+}
+
+static void draw_bill(const StageLayout *L, int bob)
 {
     /* tonight's playbill, pinned to the curtain under a spotlight */
     char buf[48];
-    int w = L->big ? 230 : 190, h = L->big ? 96 : 82, x = (L->w - w) / 2;
-    int y = (L->h - h) / 2 - (L->big ? 10 : 8) + ui_wave((int)C.t, 60, 1), k, nw;
+    int w, h, x, y, k, nw;
     const UiStyle *st = ui_style(WIN_CREAM);
     uint8_t ink = PAL_PAINT(PAINT_CHERRY, 0), gold = PAL_PAINT(PAINT_HONEY, 2);
-    for (k = 0; k < 3; k++) {
-        int rr = (L->big ? 130 : 105) - k * 18;
+    bill_box(L, bob, &x, &y, &w, &h);
+    {
+        /* the spotlight: its inner ring (G2-CO land: the two outer rings' square roots were worked out and never
+         * drawn, ~3 ms a frame on the GBA) */
+        int rr = (L->big ? 130 : 105) - 2 * 18;
         int yy;
         for (yy = -rr / 2; yy <= rr / 2; yy += 2) {
             int dx = (int)fx_isqrt((uint32_t)(rr * rr / 4 - yy * yy)) * 2;
             int y0 = L->h / 2 + yy - 6;
             int x0 = L->w / 2 - dx, x1 = L->w / 2 + dx;
             if ((x0 + y0) & 1) x0++;
-            if (k == 2 && x1 > x0) plat_checker(x0, y0, x1 - x0, 2, PAL_PAINT(PAINT_ROSE, 2));
+            if (x1 > x0) plat_checker(x0, y0, x1 - x0, 2, PAL_PAINT(PAINT_ROSE, 2));
         }
     }
     ui_window(x, y, w, h, WIN_CREAM);
@@ -1127,17 +1150,99 @@ static void parade_draw(void)
     ui_hint(n ? STR_ICON_A " Play  SELECT Remove  " STR_ICON_B " Back" : STR_ICON_B " Back", WIN_CUTE);
 }
 
+#if defined(DOOMO_PLATFORM_GBA)
+/* (G2-CO land, GBA) while the curtain is closed: the pictures the show draws first go into the portrait cache, in
+ * the time the held frames leave. First the lead's figure (solo, band) as a patient sliced job (portrait_hold(2) with
+ * portrait_hold_patient: idle time and up to ~18 ms of the frame's work, never forced); then one chibi a tick, drawn at
+ * once (~8 ms; a held frame is ~15 ms), in the order the stage asks for them: the band, the choir, the crowd. Every
+ * tick asks for the ones drawn before again, so the cache keeps them (it holds 48 chibis' worth, the figure's phases
+ * take 10 each). C.pre: the next chibi slot. */
+enum { PRE_BAND = 0, PRE_CHOIR = BAND_COUNT, PRE_CROWD = BAND_COUNT + SONG_SINGERS, PRE_N = PRE_CROWD + CROWD_MAX };
+
+static int pre_item(int k, int *id, int *dir)
+{
+    const ConcertCast *c = &C.cast;
+    *dir = 0;
+    if (k < PRE_CHOIR) {
+        if (c->mode != CMODE_BAND) return 0;
+        *id = c->band[k] == CONCERT_NOBODY ? -1 : c->band[k];
+        *dir = k == BAND_BASS ? 2 : 0;
+    } else if (k < PRE_CROWD) {
+        if (c->mode != CMODE_CHOIR || k - PRE_CHOIR >= c->n) return 0;
+        *id = c->ids[k - PRE_CHOIR];
+    } else {
+        if (k - PRE_CROWD >= C.v.ncrowd) return 0;
+        *id = C.v.crowd[k - PRE_CROWD];
+        *dir = 3;
+    }
+    return *id >= 0 && town_res(*id) != NULL;
+}
+
+static void intro_prefetch(void)
+{
+    const ConcertCast *c = &C.cast;
+    int k, id, dir;
+    if (c->mode != CMODE_CHOIR && c->n > 0) {
+        const DoomoResident *r = town_res(c->ids[0]);
+        if (r) {
+            const DoomoImage *img;
+            portrait_hold_patient(1);
+            portrait_hold(2);
+            img = figure_image_res(r, r->status, EXPR_TALK);
+            portrait_hold(0);
+            portrait_hold_patient(0);
+            if (!img || portrait_job_on()) { portrait_pump(18); return; }
+        }
+    }
+    for (k = 0; k < C.pre; k++)
+        if (pre_item(k, &id, &dir)) bodyspr_image(id, dir, 0);       /* (cached: a look-up) */
+    for (; k < PRE_N; k++)
+        if (pre_item(k, &id, &dir)) { bodyspr_image(id, dir, 0); k++; break; }
+    C.pre = (uint8_t)k;
+}
+
+/* (G2-CO land, GBA) the intro behind the closed curtain: the curtain covers every pixel, so the stage, the performers,
+ * the fx and the crowd are not drawn (the same picture); the frame is held (S2-1's modal hold: the curtain and the bill
+ * stay on both pages, only the hint row under the bill repaints: it blinks), and the time it leaves draws the show's
+ * pictures (intro_prefetch, after the frame's own drawing), which were a 300-400 ms frame when the curtain opened.
+ * Pixel-changing: while the curtain is closed the bill does not bob and its corner sparkles stand still. */
+static int intro_held(void) { return C.state == CS_INTRO && C.v.curtain >= 256; }
+
+static void intro_closed(const StageLayout *L)
+{
+    int x, y, w, h;
+    bill_box(L, 0, &x, &y, &w, &h);
+    if (ui_modal_hold(&C.v.curtain, 1, 0, y + h + 6, L->w, 8)) {
+        concert_draw_curtain_rows(&C.v, L, y + h + 6, y + h + 14);     /* the hint's row */
+        if (C.st_t < 60 && ((C.t / 15) & 1))
+            ui_text_center(L->w / 2, y + h + 6, STR_ICON_A " Raise the curtain!", PAL_WHITE);
+        ui_modal_hold_end();
+    } else {
+        concert_draw_curtain(&C.v, L);
+        draw_bill(L, 0);
+        ui_modal_full(&C.v.curtain, 1);
+    }
+    if (C.st_t >= 2) intro_prefetch();              /* (not in the Start frame) */
+}
+#endif
+
 static void stage_draw(void)
 {
     StageLayout L;
     concert_layout(&L);
     C.v.t = C.t;
-    concert_draw_stage(&C.v, &L);
-    concert_draw_performers(&C.v, &L);
-    concert_draw_fx(&C.v, &L);
-    concert_draw_crowd(&C.v, &L);
+#if defined(DOOMO_PLATFORM_GBA)
+    if (intro_held()) { intro_closed(&L); return; }
+    if (C.v.curtain < 256)                 /* (G2-CO land) a closed curtain covers every pixel of the stage */
+#endif
+    {
+        concert_draw_stage(&C.v, &L);
+        concert_draw_performers(&C.v, &L);
+        concert_draw_fx(&C.v, &L);
+        concert_draw_crowd(&C.v, &L);
+    }
     concert_draw_curtain(&C.v, &L);
-    if (C.state == CS_INTRO && C.v.curtain > 128) draw_bill(&L);
+    if (C.state == CS_INTRO && C.v.curtain > 128) draw_bill(&L, 1);
     if (C.state == CS_SHOW || C.state == CS_ENCORE) {
         draw_karaoke(&L);
         draw_hud(&L);
@@ -1167,7 +1272,11 @@ static void concert_draw(void)
 {
     if (!scene_scratch_mine(CONCERT_SCRATCH_TAG)) { plat_clear(PAL_BLACK); return; }
     plat_ui_loops();                   /* SP6: a plain bitmap frame: the platform's faster 2D loops */
+#if defined(DOOMO_PLATFORM_GBA)
+    if (C.state != CS_SETUP && !intro_held()) ui_modal_hold(&SCENE_CONCERT, 0, 0, 0, 0, 0);   /* (G2-CO) a hold ends */
+#else
     if (C.state != CS_SETUP) ui_modal_hold(&SCENE_CONCERT, 0, 0, 0, 0, 0);   /* (G2-CO) the setup's hold ends */
+#endif
     switch (C.state) {
     case CS_SETUP: setup_draw(); break;
     case CS_PARADE: parade_draw(); break;
