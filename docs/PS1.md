@@ -2315,3 +2315,13 @@ plan gate stays as CR-BODY described). CREATOR's share is 4 KB (PARALLEL_WAVES s
 (signed loads of the 11 look fields, now `int8_t`), and `sanitize` -260 B (its 11 compares became the call). The first version was +608 B: the
 loop was inlined twice and the stages' signed divisions cost 150 B; the option now lives in a byte of the OPT2 array instead of bits. The creator
 and the Options page are overlay code. **Linker fix on the landing tree (origin `e597703e`, with S3-2):** the tip links at `_end` 0x801dfb10 (132,320 B below the stack top). With the package the home overlay group (`.ovl_03`, 0x2d008 B) passed 90 sectors by 8 bytes, and `ovl_pack` refused it ("last sector passes the slot"): `ovl_plan.py` kept the slot's end for the LAST borrowing group only (`.` moves back at each group's start), so the home group's sector-rounded end was lost. It now keeps the running end in `__ovl_hi`. Result: `_end` 0x801e0420, **130,000 B below the stack top** (the extra sector of the home group is 2,048 B of it; the 72 KB plan gate is met with 56,272 B to spare); `game_smoke`, `creator_speed` (30.13 / 29.39 / 30.13 / 29.88 fps) and `creator_sliders` with x4 pass. **Earlier on `5aa25cd1`** (the numbers below), with PS1-RAM, TM2d, DC9C and CR5 under it; the package rebased on it): `_end` 0x801dfaf0, **132,352 B below the stack top** with the boot FMV (the tip's last number was 132,608 B, so the package costs 256 B there; the 72 KB plan gate, 73,728 B, is met with 58,624 B to spare). Harness (PCSX-Redux): `game_smoke`, `creator_speed` (idle 30.13, grid scroll 29.39, rows 30.13, value 29.88 fps, unchanged) and `creator_sliders` with x2, x3, x4 pass. Harness (PCSX-Redux): `creator_sliders` and its x2, x3, x4 variants (the numbers are in the ROADMAP Done line).
+
+## LV7a (level art kit part A): resident delta 0 B
+
+Measured 2026-11-15 on `6e8363ab` and the same + LV7a (clean builds, boot FMV, `-DDOOMO_INTRO_REQUIRED=ON`): `doomogachi.exe` and
+`OVL.BIN` are byte-identical (`cmp`), `elf2exe` says 130,000 B below the stack top both times. The 7 new textures and 3 skies sit behind
+`#ifndef DOOMO_PLATFORM_PS1` in `art_data.c` (`TEX_COUNT` / `SKY_COUNT` stay 48 and 5 there; `packart.py` stops at that line, tested by
+`tools/tests/test_packart.py`); the texture bank reader, its hook in `textures.c` and the sample bank are compiled out
+(`DOOMO_TEXBANK_ACTIVE` 0). The new art and the bank blobs reach the PS1 as pack data on the disc with the level packs (LV8). The LEVELS
+share of 8 KB resident: 0 B used by LV7a. `game_smoke` PASS.
+

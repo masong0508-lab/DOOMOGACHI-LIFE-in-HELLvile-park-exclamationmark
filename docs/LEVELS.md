@@ -312,7 +312,7 @@ was the same in two runs. No resident byte changed (tools, tests and scripts onl
 
 ## LV7a: the shared textures and skies (art kit, first landing)
 
-Dreamcast RAM note: `s_tslot` / `s_tstamp` in `dc/src/view3d.c` and `overworld.c` are sized by `TEX_COUNT`, which is 55 now (was 48): about 7 x (light levels x 4 B) more static RAM, small against 16 MB. Before/after Library screenshots are not in the evidence; the artgen sheets are.
+Dreamcast RAM note: `s_tslot` / `s_tstamp` in `dc/src/view3d.c` and `overworld.c` are sized by `TEX_COUNT`, which is 55 now (was 48): about 7 x (light levels x 4 B) more static RAM, small against 16 MB.
 
 Plan section 8.6, package LV7. This landing is the art that every level can use at once; the demon
 sprite sets, the Duchess portrait, the per-level banks and all the audio are the follow-up (status
@@ -343,13 +343,62 @@ numbers in the status file); the GBA is a 32 MB cartridge. The overworld's per-f
 gone (a NULL pointer means "not looked up yet this frame"), which pays for them: net RAM change is
 negative. Existing levels use no new id, so every shot is unchanged.
 
-**Measured (2026-11-13, base `43035975`, same commands before and after).** GBA (`make -C gba sizes`):
-`.rodata` 6,591,380 -> 6,694,316 B (**+102,936 B ROM**: 7 x 4,096 + 3 x 24,576 of pixels + 512 of tables and
-text; the cartridge is 32 MB), `.text` +64 B, `.bss` 245,788 -> 245,772 B (**-16 B EWRAM**), `.iwram`,
-`.iwram_bss` and every overlay unchanged. PS1 (`cmake --build --preset ps1` with the boot FMV): the EXE is
-**byte-identical** to the base's (`cmp`), ends at 0x801ef450, 66 KB below the stack top; `packart` still packs
-60 texture + 5 sky + 194 sprite frames. Core tests 1,136 passed, 0 failed.
+**Measured (2026-11-15, base `6e8363ab`, same commands before and after, both trees built clean).** GBA
+(`make -C gba sizes`): `.rodata` 7,936,840 -> 8,039,776 B (**+102,936 B ROM**: 7 x 4,096 + 3 x 24,576 of pixels
++ 512 of tables and text; the cartridge is 32 MB), `.text` +72 B, `.bss` 254,828 -> 254,812 B (**-16 B
+EWRAM**), `.iwram` 11,272, `.iwram_bss` 4,088, `.data` 816 and the four overlay slots unchanged (GBA ledger
+row 59). PS1 (`cmake --build --preset ps1`, boot FMV): `doomogachi.exe` and `OVL.BIN` are **byte-identical**
+to the base's (`cmp`), 130,000 B below the stack top before and after (**delta 0 B**; none of the 8 KB LEVELS
+share used). Core tests 1,377 passed, 0 failed.
 
 **Review sheet.** `core/build/artgen --sheet DIR --zoom 1|2` writes the contact sheets (`textures.png`,
 `tiles_a/b.png` with the 3 x 3 tiling and four light levels, `skies.png` with a 1.5 x wrap to show the
 seam). Cuts: nothing here is adult-only; no gore; no faces.
+
+**Review sheets (2026-11-15).** `core/build/artgen --review DIR` writes pages of exactly 240 x 160 (GBA) and
+320 x 240 (PS1, Dreamcast) at 1:1: `review_tex_WxH_N.png` (the 7 new textures first, marked `+`, then the
+old ones they sit beside: metal floor, tech panel, carpet, tile floor, wood floor, rust metal, heart
+wallpaper, grass) and `review_sky_WxH_N.png` (the 3 new skies first, then night, hell, vape storm and
+sunset, the lower band of each as it shows at that size). All pages were looked at: every texture reads as
+what its name says at 1:1 (steam tile green with a grid, pipe steel a stack of pipes, office carpet dark
+speckled blue-grey, cubicle fabric flat orange with seams, felt green speckle, ledger page cream with
+ruled lines and a red margin, vault metal riveted plates), none is a copy of an old one, and the skies wrap
+without a visible seam. Nothing was redrawn.
+
+## The texture bank (LV7a, plan 8.6 and 8.8)
+
+A level has up to 8 textures of its own on the ids 56..63 (`texbank N NAME` in its map, mapc already checks
+the names). This landing adds the bytes behind those names: the format, a generator, the reader and a
+sample. No level uses a bank yet.
+
+* **Format** (`core/include/doomo/texbank.h`, version 1, little endian): `LVTB`, version, slot count 1..8,
+  total length; then 16 bytes per slot (name of at most 11 lowercase characters, frames 1..4, speed, mode
+  loop or pingpong, average colour); then 4,096 bytes of palette indices per frame, the same pixels as the
+  shared textures. At most 32 frames. 8 static textures are 32,908 B (the plan allows 300 KB of art per
+  GBA level, 96 KB per pack on the disc).
+* **Source and generator.** `core/data/texbanks/NAME.bank` is a small text file (`tex SLOT [frames=N]
+  [speed=T] [mode=...] KIND args`; kinds fill, checker, bricks, stripes, noise; colours `RAMP.shade`).
+  `tools/texbank.py` (a `make gen` generator) writes `core/gen/tb_NAME.c`, and `python3 tools/texbank.py
+  --bin NAME FILE` or `import texbank; texbank.build_file(path)` gives the raw blob: these are the
+  **pack-ready bytes** that `tools/packbreach.py` (LV8) copies into the level pack unchanged. Every refusal
+  names its line (`tools/tests/test_texbank.py`, run by `make -C core mapc-check`).
+* **Reader.** `texbank_open` checks the blob (magic, version, count, length, names, frames, modes) and fills
+  a small view; the reader keeps no state. `texbank_activate(&bank)` makes it the level's: then
+  `texture_pixels`, `texture_image`, `texture_frames`, `texture_is_animated`, `texture_avg` and
+  `texture_name` answer the ids 56..63 from it (a fresh image uid per activation, so a renderer that caches
+  by uid never shows the bank before). An id the bank lacks, or no bank, is the old fallback (grass). The
+  shared ids do not change.
+* **Where it is compiled.** The host and the Dreamcast (`DOOMO_TEXBANK_ACTIVE`). The GBA and the PS1 compile
+  nothing of it (the hook, the reader's state and `tb_sample.c` are behind the macro; GBA ROM and EWRAM and
+  the PS1 EXE are unchanged, shown above). Their level packs read the same blob with their own code (LV8,
+  when PS1-RAM's room is released; the PS1's 8 KB resident share is not touched here).
+* **Test.** `core/tests/test_texbank.c`: the sample opens and answers by name, frame and tick; every error code (a bad
+  magic, version, count, length, name, frame count, mode) is refused and leave the view untouched; the hook answers 56..63 and nothing else; a room
+  whose walls and floor are bank textures is drawn by the raycaster at 240 x 160 and at 320 x 240 (no
+  unwritten pixel, the wall's pixels are only the bank's colours, the same picture twice, a different
+  picture for another slot or no bank). Pictures: `texbank_240x160.png`, `texbank_320x240.png` in the
+  round's evidence.
+* **Not here (LV7b).** The 4 new demon sprite sets, the Duchess portrait, the prop / usable / collectible
+  banks (they need the same pack format with sprites), the 6 songs and the SFX (47,793 of 49,152 B used:
+  an owner decision), and the GBA and PS1 readers of the texture bank.
+
