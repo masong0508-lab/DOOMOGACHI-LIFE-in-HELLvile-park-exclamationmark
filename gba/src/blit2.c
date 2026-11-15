@@ -314,14 +314,16 @@ BLIT2_ARM void vid_checker_ui(int x, int y, int w, int h, uint32_t color)
 /* (SP6) plat_beam (plat_ext.h): the concert's light beam, every 3-row band in one ARM call instead of one
  * plat_checker call (and its THUMB set-up) per band: f steps by q (+1 when the remainder r carries over dy), the
  * centre and half width are the core's ax + dx * f / 256 and hw0 + dhw * f / 256, a band starts one pixel later
- * when (x0 + y) is odd, exactly concert_gfx.c's beam() + cspan(). */
+ * when (x0 + y) is odd, exactly concert_gfx.c's beam() + cspan(). (S2-4d landing: each band is an ARM-to-ARM call of
+ * vid_checker_ui instead of a second inlined copy of the checker loop: ~560 B of the group for one call a band, so
+ * the fair's ldm / stm checker and the dreams' loops both fit the slot.) */
 BLIT2_ARM void vid_beam_ui(int ax, int ay, int ty, int dx, int hw0, int dhw, int dy, int q, int r, uint32_t color)
 {
     int y, f = 0, rem = 0;
     for (y = ay; y < ty; y += 3) {
         int cx = ax + dx * f / 256, hw = hw0 + dhw * f / 256, x0 = cx - hw, x1 = cx + hw + 1;
         if ((x0 + y) & 1) x0++;
-        if (x1 > x0) checker_body(x0, y, x1 - x0, 3, color);
+        if (x1 > x0) vid_checker_ui(x0, y, x1 - x0, 3, color);
         f += q;
         rem += r;
         if (rem >= dy) { rem -= dy; f++; }
