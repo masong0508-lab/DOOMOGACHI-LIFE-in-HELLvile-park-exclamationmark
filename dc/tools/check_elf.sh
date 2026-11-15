@@ -31,8 +31,9 @@ addr=$(echo "$mb" | cut -d' ' -f1); msize=$(echo "$mb" | cut -d' ' -f2)
 # + test_flags (DC4) + 17 words of sound counters (DC5) + 8 words of 3D
 # view counters (DC7) + 8 words of house counters (DC8) + 2 words of the
 # view governor's counters (DC6B/DC6C: g3d_cut, g3d_dist_min; the check was
-# left at 4364 B, so `make -C dc test` failed here until DC9C) = 4372 B
-[ $((0x$msize)) -eq 4372 ] || fail "dc_mailbox is $((0x$msize)) B, dc/harness/dc_mailbox.h says 4372 (update this check and the harness)"
+# left at 4364 B, so `make -C dc test` failed here until DC9C) + 2 words (DC6D: g3d_held, g3d_bare;
+# the static assert in dc_mailbox.h says 284 + 4096) = 4380 B
+[ $((0x$msize)) -eq 4380 ] || fail "dc_mailbox is $((0x$msize)) B, dc/harness/dc_mailbox.h says 4380 (update this check and the harness)"
 # the unprefixed alias (misc.c) for tools that look the C name up
 alias=$(echo "$syms" | awk '$NF == "dc_mailbox" { print $1 }')
 [ "$alias" = "$addr" ] || fail "no dc_mailbox alias at 0x$addr (got '${alias}')"
