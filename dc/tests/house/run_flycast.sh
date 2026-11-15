@@ -10,7 +10,8 @@
 #    game's plat_room on Flycast (`room-parity LINE NAME`, mailbox 14), and
 #    by room_ref.c in the host test (ROOMTEST = dc/build/host/dcroom_test,
 #    DC8_PNG): compare.py, every pixel identical (gate 100 %).
-# 2. the house scripts (core/tests/scripts/home_*.txt, or $HOUSE_SCRIPTS):
+# 2. the house scripts (core/tests/scripts/home_*.txt, or $HOUSE_SCRIPTS; a copy in
+#    dc/tests/house wins):
 #    dcrun     the script on IMAGE, tick-exact from the native runner's start
 #              (--native-seed); it must pass, and drop no prim
 #    host      the same script in the host build of the Dreamcast layers
@@ -78,8 +79,9 @@ st=ok
 
 # ---- 2. the house scripts ------------------------------------------------------
 for s in $SCRIPTS; do
-    src=$root/core/tests/scripts/$s.txt
-    [ -f "$src" ] || src=$here/$s.txt
+    # a Dreamcast copy beside this script wins (home_visit.txt: no live Talk screen on the DC yet)
+    src=$here/$s.txt
+    [ -f "$src" ] || src=$root/core/tests/scripts/$s.txt
     d=$OUT/$s
     rm -rf "$d"
     mkdir -p "$d/dc" "$d/nat" "$d/host"
