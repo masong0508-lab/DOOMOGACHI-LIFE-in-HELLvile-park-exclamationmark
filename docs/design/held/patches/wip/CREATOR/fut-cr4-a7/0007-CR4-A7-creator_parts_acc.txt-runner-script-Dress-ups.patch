@@ -1,0 +1,100 @@
+From d39f9c1b64c34778663b92af34caa86ebd9c8636 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 19:57:53 +0000
+Subject: [PATCH 7/9] CR4 A7: creator_parts_acc.txt runner script (Dress-ups
+ rows, Piercings row)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvvRYHgPW3b8GJby1n
+---
+ core/tests/scripts/creator_parts_acc.txt | 78 ++++++++++++++++++++++++
+ 1 file changed, 78 insertions(+)
+ create mode 100644 core/tests/scripts/creator_parts_acc.txt
+
+diff --git a/core/tests/scripts/creator_parts_acc.txt b/core/tests/scripts/creator_parts_acc.txt
+new file mode 100644
+index 00000000..818533b2
+--- /dev/null
++++ b/core/tests/scripts/creator_parts_acc.txt
+@@ -0,0 +1,78 @@
++# CR4 A7: the accessory rows in the creator's picture grid: the Outfit tab's "Dress-ups" rows (Mask, Neckwear,
++# Backpiece, Gloves, Wristwear, Belt, Ear jewellery: the last seven rows of the tab) and the Face tab's Piercings
++# (the last row). Not run on the PS1 (it builds none of these rows: look_fields.h DOOMO_ACC_DEEP 0).
++# A new Hellvile citizen; the Outfit tab is four tabs right of Species & Body; Up from the top wraps to the last
++# row (Ear jewellery). Each row opens its grid with A, a part is found by letters (START) and worn with A, and
++# the citizen in the preview shows it (shot after each).
++scene CREATOR -1
++expect-scene CREATOR
++wait 30
++press R
++wait 4
++press R
++wait 4
++press R
++wait 4
++press R
++wait 12
++shot 01_outfit_tab
++press UP
++wait 8
++press A
++wait 14
++shot 02_ear_grid
++press START
++wait 6
++type hoop
++press START
++wait 10
++press A
++wait 14
++shot 03_hoop_earrings_worn
++press UP
++wait 2
++press UP
++wait 2
++press UP
++wait 2
++press UP
++wait 2
++press UP
++wait 2
++press UP
++wait 6
++press A
++wait 14
++shot 04_mask_grid
++press START
++wait 6
++type domino
++press START
++wait 10
++press A
++wait 14
++shot 05_domino_mask_worn
++press DOWN
++wait 6
++press A
++wait 14
++shot 06_neck_grid
++press START
++wait 6
++type scarf
++press START
++wait 10
++press A
++wait 14
++shot 07_scarf_worn
++press L
++wait 4
++press L
++wait 4
++press L
++wait 12
++press UP
++wait 8
++press A
++wait 14
++shot 08_face_tab_piercing_grid
+-- 
+2.43.0
+

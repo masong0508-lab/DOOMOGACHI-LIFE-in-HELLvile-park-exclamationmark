@@ -1,0 +1,869 @@
+diff --git a/core/data/parts/catalog/ear_acc.txt b/core/data/parts/catalog/ear_acc.txt
+index 01ad01bf..2aa65962 100644
+--- a/core/data/parts/catalog/ear_acc.txt
++++ b/core/data/parts/catalog/ear_acc.txt
+@@ -3,17 +3,17 @@
+ slot ear_acc deep=DF_EARJEW name="Ear jewellery" method=S target=28 new=S
+ 
+ 0   "None"                 set=basics tags=plain method=P
+-1   "Stud Earrings"            set=basics tags=plain,glam
+-2   "Hoop Earrings"            set=basics tags=glam
+-3   "Drop Earrings"            set=teaparty tags=fancy,glam
+-4   "Chain Dangles"            set=punk tags=punk,goth
+-5   "Pearl Studs"              set=royal tags=fancy,glam
+-6   "Star Studs"               set=concert tags=glam,magic
+-7   "Heart Studs"              set=candy tags=cute,glam
+-8   "Feather Earrings"         set=seasons tags=nature,magic
+-9   "Tassel Earrings"          set=royal tags=glam,fancy
+-10  "Gauge Plugs"              set=punk tags=punk
+-11  "Ear Climbers"             set=concert tags=glam,magic
+-12  "Bell Earrings"            set=critter tags=cute,critter
+-13  "Gem Dangles"              set=royal tags=glam,royal
++1   "Studs"            set=basics tags=plain,glam
++2   "Hoops"            set=basics tags=glam
++3   "Drops"            set=teaparty tags=fancy,glam
++4   "Chains"            set=punk tags=punk,goth
++5   "Pearls"              set=royal tags=fancy,glam
++6   "Stars"               set=concert tags=glam,magic
++7   "Hearts"              set=candy tags=cute,glam
++8   "Feathers"         set=seasons tags=nature,magic
++9   "Tassels"          set=royal tags=glam,fancy
++10  "Plugs"              set=punk tags=punk
++11  "Climbers"             set=concert tags=glam,magic
++12  "Bells"            set=critter tags=cute,critter
++13  "Gems"              set=royal tags=glam,royal
+ 14  "Odd Pair"                 set=indieart tags=silly,punk
+diff --git a/core/data/parts/catalog/face_pierce.txt b/core/data/parts/catalog/face_pierce.txt
+index ff743dcd..c53c3698 100644
+--- a/core/data/parts/catalog/face_pierce.txt
++++ b/core/data/parts/catalog/face_pierce.txt
+@@ -9,7 +9,7 @@ slot face_pierce deep=DF_PIERCE name="Face piercings" method=S target=16 new=S
+ 4   "Lip Ring"                 set=punk tags=punk,goth age=teen
+ 5   "Cheek Studs"              set=indieart tags=punk,silly age=teen
+ 6   "Bridge Bar"               set=punk tags=punk,goth age=teen
+-7   "Nostril Hoop"             set=punk tags=punk,glam age=teen
++7   "Nose Hoop"             set=punk tags=punk,glam age=teen
+ 8   "Snake Bites"              set=punk tags=punk,goth age=teen
+-9   "Temple Studs"             set=concert tags=glam,music age=teen
++9   "Temple Stud"             set=concert tags=glam,music age=teen
+ 10  "Brow Trio"                set=indieart tags=punk,silly age=teen
+diff --git a/core/data/parts/catalog/gloves.txt b/core/data/parts/catalog/gloves.txt
+index 4aa2539e..f80e5ed3 100644
+--- a/core/data/parts/catalog/gloves.txt
++++ b/core/data/parts/catalog/gloves.txt
+@@ -4,11 +4,11 @@ slot gloves deep=DF_GLOVE name="Gloves" method=S target=18 new=S
+ 
+ 0   "None"                 set=basics tags=plain method=P
+ 1   "Mittens"                  set=cozy tags=cozy,cute
+-2   "Fingerless Gloves"        set=punk tags=punk
+-3   "Boxing Gloves"            set=funfair tags=sporty
++2   "Fingerless"        set=punk tags=punk
++3   "Boxing"            set=funfair tags=sporty
+ 4   "Oven Mitts"               set=fishcook tags=food,cozy
+ 5   "Work Gloves"              set=basics tags=work,plain
+-6   "Opera Gloves"             set=teaparty tags=formal,glam
++6   "Opera Long"             set=teaparty tags=formal,glam
+ 7   "Paw Mitts"                set=critter tags=critter,cute
+ 8   "Gauntlets"                set=hellbreach tags=armor
+ 9   "Pom Mitts"                set=seasons tags=cozy,cute
+diff --git a/core/data/parts/catalog/mask.txt b/core/data/parts/catalog/mask.txt
+index 943b00a0..8a64f9f3 100644
+--- a/core/data/parts/catalog/mask.txt
++++ b/core/data/parts/catalog/mask.txt
+@@ -5,15 +5,15 @@ slot mask deep=DF_MASK name="Masks" method=S target=36 new=S
+ 0   "None"                 set=basics tags=plain method=P
+ 1   "Domino Mask"              set=funfair tags=party,fancy
+ 2   "Surgical Mask"            set=basics tags=plain,work hides=nose,mouth
+-3   "Bandit Bandana"           set=punk tags=punk hides=nose,mouth
++3   "Bandit Scarf"           set=punk tags=punk hides=nose,mouth
+ 4   "Fox Mask"                 set=seasons tags=nature,critter
+ 5   "Plague Beak"              set=graveyard tags=spooky hides=nose,mouth
+ 6   "Wrestler Mask"            set=funfair tags=party,sporty
+ 7   "Sleep Mask"               set=cozy tags=cozy,silly
+ 8   "Cat Mask"                 set=critter tags=critter,cute
+ 9   "Cyber Visor"              set=hellbreach tags=tech,armor
+-10  "Skull Half-Mask"          set=graveyard tags=spooky,goth hides=nose,mouth
+-11  "Masquerade Mask"          set=teaparty tags=fancy,glam
++10  "Half Skull"          set=graveyard tags=spooky,goth hides=nose,mouth
++11  "Masquerade"          set=teaparty tags=fancy,glam
+ 12  "Diving Mask"              set=sewers tags=sea,sporty
+ 13  "Duck Bill"                set=critter tags=critter,silly hides=mouth
+ 14  "Lace Veil"                set=royal tags=royal,fancy hides=mouth
+diff --git a/core/data/parts/catalog/neck.txt b/core/data/parts/catalog/neck.txt
+index 8fc0df21..c53d4dad 100644
+--- a/core/data/parts/catalog/neck.txt
++++ b/core/data/parts/catalog/neck.txt
+@@ -21,5 +21,5 @@ slot neck deep=DF_NECK name="Neckwear" method=S target=52 new=S
+ 16  "Stethoscope"              set=basics tags=work,tech
+ 17  "Ruff Collar"              set=cathedral tags=holy,royal hides=neck
+ 18  "Baby Bib"                 set=littleones tags=baby,cute
+-19  "Flower Garland"           set=seasons tags=nature,cute
+-20  "Neck Headphones"          set=concert tags=music,tech
++19  "Flower Chain"           set=seasons tags=nature,cute
++20  "Headphones"          set=concert tags=music,tech
+diff --git a/core/data/parts/catalog/wrist.txt b/core/data/parts/catalog/wrist.txt
+index 718b51f5..b04e806b 100644
+--- a/core/data/parts/catalog/wrist.txt
++++ b/core/data/parts/catalog/wrist.txt
+@@ -7,8 +7,8 @@ slot wrist deep=DF_WRIST name="Wristwear" method=S target=18 new=S
+ 2   "Cuff"                     set=royal tags=glam,royal
+ 3   "Sweatband"                set=funfair tags=sporty,silly
+ 4   "Wristwatch"               set=basics tags=tech,work
+-5   "Charm Bracelet"           set=candy tags=cute,glam
+-6   "Friendship Bands"         set=seasons tags=cute,nature
++5   "Charm Chain"           set=candy tags=cute,glam
++6   "Friendship"         set=seasons tags=cute,nature
+ 7   "Spike Band"               set=punk tags=punk
+ 8   "Bangles"                  set=royal tags=glam,fancy
+ 9   "Cloth Wrap"               set=graveyard tags=spooky,work
+diff --git a/core/gen/part_meta_data.c b/core/gen/part_meta_data.c
+index 47409804..890a740a 100644
+--- a/core/gen/part_meta_data.c
++++ b/core/gen/part_meta_data.c
+@@ -714,15 +714,15 @@ const char doomo_part_names[PART_NAME_BYTES] =
+     "Waterline""\0"
+     "Domino Mask""\0"
+     "Surgical Mask""\0"
+-    "Bandit Bandana""\0"
++    "Bandit Scarf""\0"
+     "Fox Mask""\0"
+     "Plague Beak""\0"
+     "Wrestler Mask""\0"
+     "Sleep Mask""\0"
+     "Cat Mask""\0"
+     "Cyber Visor""\0"
+-    "Skull Half-Mask""\0"
+-    "Masquerade Mask""\0"
++    "Half Skull""\0"
++    "Masquerade""\0"
+     "Diving Mask""\0"
+     "Duck Bill""\0"
+     "Lace Veil""\0"
+@@ -747,8 +747,7 @@ const char doomo_part_names[PART_NAME_BYTES] =
+     "Stethoscope""\0"
+     "Ruff Collar""\0"
+     "Baby Bib""\0"
+-    "Flower Garland""\0"
+-    "Neck Headphones""\0"
++    "Flower Chain""\0"
+     "Rucksack""\0"
+     "Mini Pack""\0"
+     "Round Pack""\0"
+@@ -769,11 +768,11 @@ const char doomo_part_names[PART_NAME_BYTES] =
+     "Leaf Parasol""\0"
+     "Cloud Pillow""\0"
+     "Mittens""\0"
+-    "Fingerless Gloves""\0"
+-    "Boxing Gloves""\0"
++    "Fingerless""\0"
++    "Boxing""\0"
+     "Oven Mitts""\0"
+     "Work Gloves""\0"
+-    "Opera Gloves""\0"
++    "Opera Long""\0"
+     "Paw Mitts""\0"
+     "Gauntlets""\0"
+     "Pom Mitts""\0"
+@@ -781,8 +780,8 @@ const char doomo_part_names[PART_NAME_BYTES] =
+     "Cuff""\0"
+     "Sweatband""\0"
+     "Wristwatch""\0"
+-    "Charm Bracelet""\0"
+-    "Friendship Bands""\0"
++    "Charm Chain""\0"
++    "Friendship""\0"
+     "Spike Band""\0"
+     "Bangles""\0"
+     "Cloth Wrap""\0"
+@@ -799,19 +798,15 @@ const char doomo_part_names[PART_NAME_BYTES] =
+     "Star Buckle""\0"
+     "Cross Strap""\0"
+     "Ribbon Belt""\0"
+-    "Stud Earrings""\0"
+-    "Hoop Earrings""\0"
+-    "Drop Earrings""\0"
+-    "Chain Dangles""\0"
+-    "Pearl Studs""\0"
+-    "Star Studs""\0"
+-    "Heart Studs""\0"
+-    "Feather Earrings""\0"
+-    "Tassel Earrings""\0"
+-    "Gauge Plugs""\0"
+-    "Ear Climbers""\0"
+-    "Bell Earrings""\0"
+-    "Gem Dangles""\0"
++    "Hoops""\0"
++    "Drops""\0"
++    "Pearls""\0"
++    "Feathers""\0"
++    "Tassels""\0"
++    "Plugs""\0"
++    "Climbers""\0"
++    "Bells""\0"
++    "Gems""\0"
+     "Odd Pair""\0"
+     "Nose Stud""\0"
+     "Septum Ring""\0"
+@@ -819,9 +814,9 @@ const char doomo_part_names[PART_NAME_BYTES] =
+     "Lip Ring""\0"
+     "Cheek Studs""\0"
+     "Bridge Bar""\0"
+-    "Nostril Hoop""\0"
++    "Nose Hoop""\0"
+     "Snake Bites""\0"
+-    "Temple Studs""\0"
++    "Temple Stud""\0"
+     "Brow Trio""\0"
+     "One Line""\0"
+     "Two Lines""\0"
+@@ -1667,189 +1662,189 @@ const PartMeta doomo_part_meta[PART_META_COUNT] = {
+     { 137, 1, 18, 34, 0x90, 0x0000, 0x00001100u, 6591, 2, 255 },
+     { 137, 2, 1, 34, 0x90, 0x00C0, 0x01000001u, 6603, 2, 255 },
+     { 137, 3, 5, 34, 0x90, 0x00C0, 0x00000008u, 6617, 3, 255 },
+-    { 137, 4, 22, 34, 0x90, 0x0000, 0x00010020u, 6632, 2, 255 },
+-    { 137, 5, 9, 34, 0x90, 0x00C0, 0x00000004u, 6641, 4, 255 },
+-    { 137, 6, 18, 34, 0x90, 0x0000, 0x00001200u, 6653, 7, 255 },
+-    { 137, 7, 19, 34, 0x90, 0x0000, 0x00400400u, 6667, 3, 255 },
+-    { 137, 8, 2, 34, 0x90, 0x0000, 0x00000022u, 6678, 3, 255 },
+-    { 137, 9, 15, 34, 0x90, 0x0000, 0x00820000u, 6687, 2, 255 },
+-    { 137, 10, 9, 34, 0x90, 0x00C0, 0x00200004u, 6699, 3, 255 },
+-    { 137, 11, 14, 34, 0x90, 0x0000, 0x04000100u, 6715, 3, 255 },
+-    { 137, 12, 13, 34, 0x90, 0x0000, 0x20000200u, 6731, 2, 255 },
+-    { 137, 13, 2, 34, 0x90, 0x0080, 0x00400020u, 6743, 1, 255 },
+-    { 137, 14, 24, 34, 0x90, 0x0080, 0x00000900u, 6753, 2, 255 },
+-    { 137, 15, 3, 34, 0x90, 0x0000, 0x00000044u, 6763, 2, 255 },
+-    { 137, 16, 12, 34, 0x90, 0x0040, 0x00400002u, 6772, 1, 255 },
+-    { 137, 17, 15, 34, 0x90, 0x0000, 0x01800000u, 6784, 2, 255 },
++    { 137, 4, 22, 34, 0x90, 0x0000, 0x00010020u, 6630, 2, 255 },
++    { 137, 5, 9, 34, 0x90, 0x00C0, 0x00000004u, 6639, 4, 255 },
++    { 137, 6, 18, 34, 0x90, 0x0000, 0x00001200u, 6651, 7, 255 },
++    { 137, 7, 19, 34, 0x90, 0x0000, 0x00400400u, 6665, 3, 255 },
++    { 137, 8, 2, 34, 0x90, 0x0000, 0x00000022u, 6676, 3, 255 },
++    { 137, 9, 15, 34, 0x90, 0x0000, 0x00820000u, 6685, 2, 255 },
++    { 137, 10, 9, 34, 0x90, 0x00C0, 0x00200004u, 6697, 3, 255 },
++    { 137, 11, 14, 34, 0x90, 0x0000, 0x04000100u, 6708, 3, 255 },
++    { 137, 12, 13, 34, 0x90, 0x0000, 0x20000200u, 6719, 2, 255 },
++    { 137, 13, 2, 34, 0x90, 0x0080, 0x00400020u, 6731, 1, 255 },
++    { 137, 14, 24, 34, 0x90, 0x0080, 0x00000900u, 6741, 2, 255 },
++    { 137, 15, 3, 34, 0x90, 0x0000, 0x00000044u, 6751, 2, 255 },
++    { 137, 16, 12, 34, 0x90, 0x0040, 0x00400002u, 6760, 1, 255 },
++    { 137, 17, 15, 34, 0x90, 0x0000, 0x01800000u, 6772, 2, 255 },
+     { 138, 0, 1, 35, 0x00, 0x0000, 0x00000001u, 670, 0, 255 },
+-    { 138, 1, 19, 35, 0x90, 0x0100, 0x00000400u, 6793, 2, 255 },
+-    { 138, 2, 22, 35, 0x90, 0x0100, 0x00010400u, 6804, 2, 255 },
+-    { 138, 3, 5, 35, 0x90, 0x0100, 0x01000008u, 6815, 2, 255 },
+-    { 138, 4, 1, 35, 0x90, 0x0000, 0x01000080u, 6828, 1, 255 },
+-    { 138, 5, 14, 35, 0x90, 0x0000, 0x00040100u, 6836, 0, 255 },
+-    { 138, 6, 5, 35, 0x90, 0x0100, 0x00200008u, 6845, 1, 255 },
+-    { 138, 7, 5, 35, 0x90, 0x0100, 0x00000008u, 6852, 1, 255 },
+-    { 138, 8, 2, 35, 0x90, 0x0100, 0x00000022u, 6866, 1, 255 },
+-    { 138, 9, 14, 35, 0x90, 0x0000, 0x04000100u, 6878, 1, 255 },
+-    { 138, 10, 22, 35, 0x90, 0x0000, 0x00410000u, 6891, 1, 255 },
+-    { 138, 11, 24, 35, 0x90, 0x0000, 0x04000100u, 6903, 1, 255 },
+-    { 138, 12, 16, 35, 0x90, 0x0000, 0x0C000000u, 6916, 1, 255 },
+-    { 138, 13, 14, 35, 0x90, 0x0000, 0x08040000u, 6929, 1, 255 },
+-    { 138, 14, 18, 35, 0x90, 0x0000, 0x00001200u, 6941, 3, 255 },
+-    { 138, 15, 1, 35, 0x90, 0x0000, 0x01000001u, 6954, 2, 255 },
+-    { 138, 16, 1, 35, 0x90, 0x0000, 0x01020000u, 6968, 1, 255 },
+-    { 138, 17, 10, 35, 0x90, 0x0100, 0x00000810u, 6980, 4, 255 },
+-    { 138, 18, 20, 35, 0x90, 0x0000, 0x00080002u, 6992, 2, 255 },
+-    { 138, 19, 22, 35, 0x90, 0x0000, 0x00010002u, 7001, 1, 255 },
+-    { 138, 20, 16, 35, 0x90, 0x0000, 0x00024000u, 7016, 1, 255 },
++    { 138, 1, 19, 35, 0x90, 0x0100, 0x00000400u, 6781, 2, 255 },
++    { 138, 2, 22, 35, 0x90, 0x0100, 0x00010400u, 6792, 2, 255 },
++    { 138, 3, 5, 35, 0x90, 0x0100, 0x01000008u, 6803, 2, 255 },
++    { 138, 4, 1, 35, 0x90, 0x0000, 0x01000080u, 6816, 1, 255 },
++    { 138, 5, 14, 35, 0x90, 0x0000, 0x00040100u, 6824, 0, 255 },
++    { 138, 6, 5, 35, 0x90, 0x0100, 0x00200008u, 6833, 1, 255 },
++    { 138, 7, 5, 35, 0x90, 0x0100, 0x00000008u, 6840, 1, 255 },
++    { 138, 8, 2, 35, 0x90, 0x0100, 0x00000022u, 6854, 1, 255 },
++    { 138, 9, 14, 35, 0x90, 0x0000, 0x04000100u, 6866, 1, 255 },
++    { 138, 10, 22, 35, 0x90, 0x0000, 0x00410000u, 6879, 1, 255 },
++    { 138, 11, 24, 35, 0x90, 0x0000, 0x04000100u, 6891, 1, 255 },
++    { 138, 12, 16, 35, 0x90, 0x0000, 0x0C000000u, 6904, 1, 255 },
++    { 138, 13, 14, 35, 0x90, 0x0000, 0x08040000u, 6917, 1, 255 },
++    { 138, 14, 18, 35, 0x90, 0x0000, 0x00001200u, 6929, 3, 255 },
++    { 138, 15, 1, 35, 0x90, 0x0000, 0x01000001u, 6942, 2, 255 },
++    { 138, 16, 1, 35, 0x90, 0x0000, 0x01020000u, 6956, 1, 255 },
++    { 138, 17, 10, 35, 0x90, 0x0100, 0x00000810u, 6968, 4, 255 },
++    { 138, 18, 20, 35, 0x90, 0x0000, 0x00080002u, 6980, 2, 255 },
++    { 138, 19, 22, 35, 0x90, 0x0000, 0x00010002u, 6989, 1, 255 },
++    { 138, 20, 16, 35, 0x90, 0x0000, 0x00024000u, 4049, 1, 255 },
+     { 139, 0, 1, 36, 0x00, 0x0000, 0x00000001u, 670, 0, 255 },
+-    { 139, 1, 1, 36, 0x90, 0x0000, 0x01000001u, 7032, 6, 255 },
+-    { 139, 2, 20, 36, 0x90, 0x0000, 0x00080002u, 7041, 3, 255 },
+-    { 139, 3, 18, 36, 0x90, 0x0000, 0x00001200u, 7051, 4, 255 },
+-    { 139, 4, 15, 36, 0x90, 0x0000, 0x00820000u, 7062, 2, 255 },
+-    { 139, 5, 13, 36, 0x90, 0x0000, 0x20400000u, 7070, 4, 255 },
+-    { 139, 6, 22, 36, 0x90, 0x0000, 0x00010200u, 7083, 5, 255 },
+-    { 139, 7, 16, 36, 0x90, 0x0000, 0x00004000u, 7093, 3, 255 },
+-    { 139, 8, 6, 36, 0x90, 0x0000, 0x04000002u, 7105, 2, 255 },
+-    { 139, 9, 18, 36, 0x90, 0x0000, 0x00001002u, 7115, 3, 255 },
+-    { 139, 10, 21, 36, 0x90, 0x0000, 0x00100080u, 7129, 4, 255 },
+-    { 139, 11, 22, 36, 0x90, 0x0000, 0x01010000u, 7143, 4, 255 },
+-    { 139, 12, 9, 36, 0x90, 0x0000, 0x01000004u, 7156, 2, 255 },
+-    { 139, 13, 11, 36, 0x90, 0x0000, 0x00004010u, 7169, 3, 255 },
+-    { 139, 14, 20, 36, 0x90, 0x0000, 0x00080002u, 7174, 4, 255 },
+-    { 139, 15, 21, 36, 0x90, 0x0000, 0x01100000u, 7185, 3, 255 },
+-    { 139, 16, 17, 36, 0x90, 0x0000, 0x20000200u, 7196, 7, 255 },
+-    { 139, 17, 18, 36, 0x90, 0x0000, 0x00001002u, 7208, 4, 255 },
+-    { 139, 18, 22, 36, 0x90, 0x0000, 0x00010002u, 7218, 4, 255 },
+-    { 139, 19, 19, 36, 0x90, 0x0000, 0x00000402u, 7231, 6, 255 },
++    { 139, 1, 1, 36, 0x90, 0x0000, 0x01000001u, 7002, 6, 255 },
++    { 139, 2, 20, 36, 0x90, 0x0000, 0x00080002u, 7011, 3, 255 },
++    { 139, 3, 18, 36, 0x90, 0x0000, 0x00001200u, 7021, 4, 255 },
++    { 139, 4, 15, 36, 0x90, 0x0000, 0x00820000u, 7032, 2, 255 },
++    { 139, 5, 13, 36, 0x90, 0x0000, 0x20400000u, 7040, 4, 255 },
++    { 139, 6, 22, 36, 0x90, 0x0000, 0x00010200u, 7053, 5, 255 },
++    { 139, 7, 16, 36, 0x90, 0x0000, 0x00004000u, 7063, 3, 255 },
++    { 139, 8, 6, 36, 0x90, 0x0000, 0x04000002u, 7075, 2, 255 },
++    { 139, 9, 18, 36, 0x90, 0x0000, 0x00001002u, 7085, 3, 255 },
++    { 139, 10, 21, 36, 0x90, 0x0000, 0x00100080u, 7099, 4, 255 },
++    { 139, 11, 22, 36, 0x90, 0x0000, 0x01010000u, 7113, 4, 255 },
++    { 139, 12, 9, 36, 0x90, 0x0000, 0x01000004u, 7126, 2, 255 },
++    { 139, 13, 11, 36, 0x90, 0x0000, 0x00004010u, 7139, 3, 255 },
++    { 139, 14, 20, 36, 0x90, 0x0000, 0x00080002u, 7144, 4, 255 },
++    { 139, 15, 21, 36, 0x90, 0x0000, 0x01100000u, 7155, 3, 255 },
++    { 139, 16, 17, 36, 0x90, 0x0000, 0x20000200u, 7166, 7, 255 },
++    { 139, 17, 18, 36, 0x90, 0x0000, 0x00001002u, 7178, 4, 255 },
++    { 139, 18, 22, 36, 0x90, 0x0000, 0x00010002u, 7188, 4, 255 },
++    { 139, 19, 19, 36, 0x90, 0x0000, 0x00000402u, 7201, 6, 255 },
+     { 140, 0, 1, 37, 0x00, 0x0000, 0x00000001u, 670, 0, 255 },
+-    { 140, 1, 19, 37, 0x90, 0x0000, 0x00000402u, 7244, 1, 255 },
+-    { 140, 2, 5, 37, 0x90, 0x0000, 0x00000008u, 7252, 1, 255 },
+-    { 140, 3, 18, 37, 0x90, 0x0000, 0x00000200u, 7270, 1, 255 },
+-    { 140, 4, 17, 37, 0x90, 0x0000, 0x00008400u, 7284, 1, 255 },
+-    { 140, 5, 1, 37, 0x90, 0x0000, 0x01000001u, 7295, 1, 255 },
+-    { 140, 6, 14, 37, 0x90, 0x0000, 0x04000080u, 7307, 1, 255 },
+-    { 140, 7, 2, 37, 0x90, 0x0000, 0x00000022u, 7320, 1, 255 },
+-    { 140, 8, 15, 37, 0x90, 0x0000, 0x00800000u, 7330, 2, 255 },
+-    { 140, 9, 22, 37, 0x90, 0x0000, 0x00000402u, 7340, 1, 255 },
++    { 140, 1, 19, 37, 0x90, 0x0000, 0x00000402u, 7214, 1, 255 },
++    { 140, 2, 5, 37, 0x90, 0x0000, 0x00000008u, 7222, 1, 255 },
++    { 140, 3, 18, 37, 0x90, 0x0000, 0x00000200u, 7233, 1, 255 },
++    { 140, 4, 17, 37, 0x90, 0x0000, 0x00008400u, 7240, 1, 255 },
++    { 140, 5, 1, 37, 0x90, 0x0000, 0x01000001u, 7251, 1, 255 },
++    { 140, 6, 14, 37, 0x90, 0x0000, 0x04000080u, 7263, 1, 255 },
++    { 140, 7, 2, 37, 0x90, 0x0000, 0x00000022u, 7274, 1, 255 },
++    { 140, 8, 15, 37, 0x90, 0x0000, 0x00800000u, 7284, 2, 255 },
++    { 140, 9, 22, 37, 0x90, 0x0000, 0x00000402u, 7294, 1, 255 },
+     { 141, 0, 1, 38, 0x00, 0x0000, 0x00000001u, 670, 0, 255 },
+-    { 141, 1, 1, 38, 0x90, 0x0000, 0x04000001u, 7350, 1, 255 },
+-    { 141, 2, 24, 38, 0x90, 0x0000, 0x04000800u, 7359, 1, 255 },
+-    { 141, 3, 18, 38, 0x90, 0x0000, 0x00400200u, 7364, 1, 255 },
+-    { 141, 4, 1, 38, 0x90, 0x0000, 0x01020000u, 7374, 1, 255 },
+-    { 141, 5, 6, 38, 0x90, 0x0000, 0x04000002u, 7385, 1, 255 },
+-    { 141, 6, 22, 38, 0x90, 0x0000, 0x00010002u, 7400, 1, 255 },
+-    { 141, 7, 5, 38, 0x90, 0x0000, 0x00000008u, 7417, 1, 255 },
+-    { 141, 8, 24, 38, 0x90, 0x0000, 0x04000100u, 7428, 4, 255 },
+-    { 141, 9, 9, 38, 0x90, 0x0000, 0x01000004u, 7436, 2, 255 },
++    { 141, 1, 1, 38, 0x90, 0x0000, 0x04000001u, 7304, 1, 255 },
++    { 141, 2, 24, 38, 0x90, 0x0000, 0x04000800u, 7313, 1, 255 },
++    { 141, 3, 18, 38, 0x90, 0x0000, 0x00400200u, 7318, 1, 255 },
++    { 141, 4, 1, 38, 0x90, 0x0000, 0x01020000u, 7328, 1, 255 },
++    { 141, 5, 6, 38, 0x90, 0x0000, 0x04000002u, 7339, 1, 255 },
++    { 141, 6, 22, 38, 0x90, 0x0000, 0x00010002u, 7351, 1, 255 },
++    { 141, 7, 5, 38, 0x90, 0x0000, 0x00000008u, 7362, 1, 255 },
++    { 141, 8, 24, 38, 0x90, 0x0000, 0x04000100u, 7373, 4, 255 },
++    { 141, 9, 9, 38, 0x90, 0x0000, 0x01000004u, 7381, 2, 255 },
+     { 142, 0, 1, 39, 0x00, 0x0000, 0x00000001u, 670, 0, 255 },
+-    { 142, 1, 1, 39, 0x90, 0x0000, 0x00000001u, 7447, 0, 255 },
+-    { 142, 2, 1, 39, 0x90, 0x0000, 0x01000001u, 7458, 0, 255 },
+-    { 142, 3, 5, 39, 0x90, 0x0000, 0x00000008u, 7468, 0, 255 },
+-    { 142, 4, 22, 39, 0x90, 0x0000, 0x00010400u, 7481, 0, 255 },
+-    { 142, 5, 5, 39, 0x90, 0x0000, 0x00200008u, 7491, 0, 255 },
+-    { 142, 6, 24, 39, 0x90, 0x0000, 0x00000900u, 7502, 0, 255 },
+-    { 142, 7, 14, 39, 0x90, 0x0000, 0x00000180u, 7507, 0, 255 },
+-    { 142, 8, 17, 39, 0x90, 0x0000, 0x01000000u, 7518, 0, 255 },
+-    { 142, 9, 18, 39, 0x90, 0x0000, 0x00400200u, 7528, 0, 255 },
+-    { 142, 10, 15, 39, 0x90, 0x0000, 0x00C00000u, 7539, 0, 255 },
+-    { 142, 11, 16, 39, 0x90, 0x0000, 0x04004000u, 7553, 0, 255 },
+-    { 142, 12, 15, 39, 0x90, 0x0000, 0x01800000u, 7565, 3, 255 },
+-    { 142, 13, 6, 39, 0x90, 0x0000, 0x04000002u, 7577, 0, 255 },
++    { 142, 1, 1, 39, 0x90, 0x0000, 0x00000001u, 7392, 0, 255 },
++    { 142, 2, 1, 39, 0x90, 0x0000, 0x01000001u, 7403, 0, 255 },
++    { 142, 3, 5, 39, 0x90, 0x0000, 0x00000008u, 7413, 0, 255 },
++    { 142, 4, 22, 39, 0x90, 0x0000, 0x00010400u, 7426, 0, 255 },
++    { 142, 5, 5, 39, 0x90, 0x0000, 0x00200008u, 7436, 0, 255 },
++    { 142, 6, 24, 39, 0x90, 0x0000, 0x00000900u, 7447, 0, 255 },
++    { 142, 7, 14, 39, 0x90, 0x0000, 0x00000180u, 7452, 0, 255 },
++    { 142, 8, 17, 39, 0x90, 0x0000, 0x01000000u, 7463, 0, 255 },
++    { 142, 9, 18, 39, 0x90, 0x0000, 0x00400200u, 7473, 0, 255 },
++    { 142, 10, 15, 39, 0x90, 0x0000, 0x00C00000u, 7484, 0, 255 },
++    { 142, 11, 16, 39, 0x90, 0x0000, 0x04004000u, 7498, 0, 255 },
++    { 142, 12, 15, 39, 0x90, 0x0000, 0x01800000u, 7510, 3, 255 },
++    { 142, 13, 6, 39, 0x90, 0x0000, 0x04000002u, 7522, 0, 255 },
+     { 143, 0, 1, 40, 0x00, 0x0000, 0x00000001u, 670, 0, 255 },
+-    { 143, 1, 1, 40, 0x90, 0x0000, 0x04000001u, 7589, 0, 255 },
+-    { 143, 2, 1, 40, 0x90, 0x0000, 0x04000000u, 7603, 2, 255 },
+-    { 143, 3, 14, 40, 0x90, 0x0000, 0x04000100u, 7617, 1, 255 },
+-    { 143, 4, 5, 40, 0x90, 0x0000, 0x00200008u, 7631, 1, 255 },
+-    { 143, 5, 24, 40, 0x90, 0x0000, 0x04000100u, 7645, 0, 255 },
+-    { 143, 6, 16, 40, 0x90, 0x0000, 0x0C000000u, 7657, 1, 255 },
+-    { 143, 7, 6, 40, 0x90, 0x0000, 0x04000002u, 7668, 1, 255 },
+-    { 143, 8, 22, 40, 0x90, 0x0000, 0x08010000u, 7680, 1, 255 },
+-    { 143, 9, 24, 40, 0x90, 0x0000, 0x04000100u, 7697, 0, 255 },
+-    { 143, 10, 5, 40, 0x90, 0x0000, 0x00000008u, 7713, 1, 255 },
+-    { 143, 11, 16, 40, 0x90, 0x0000, 0x0C000000u, 7725, 1, 255 },
+-    { 143, 12, 2, 40, 0x90, 0x0000, 0x00000022u, 7738, 0, 255 },
+-    { 143, 13, 24, 40, 0x90, 0x0000, 0x04000800u, 7752, 1, 255 },
+-    { 143, 14, 8, 40, 0x90, 0x0000, 0x00400008u, 7764, 1, 255 },
++    { 143, 1, 1, 40, 0x90, 0x0000, 0x04000001u, 2021, 0, 255 },
++    { 143, 2, 1, 40, 0x90, 0x0000, 0x04000000u, 7534, 2, 255 },
++    { 143, 3, 14, 40, 0x90, 0x0000, 0x04000100u, 7540, 1, 255 },
++    { 143, 4, 5, 40, 0x90, 0x0000, 0x00200008u, 4440, 1, 255 },
++    { 143, 5, 24, 40, 0x90, 0x0000, 0x04000100u, 7546, 0, 255 },
++    { 143, 6, 16, 40, 0x90, 0x0000, 0x0C000000u, 2877, 1, 255 },
++    { 143, 7, 6, 40, 0x90, 0x0000, 0x04000002u, 4507, 1, 255 },
++    { 143, 8, 22, 40, 0x90, 0x0000, 0x08010000u, 7553, 1, 255 },
++    { 143, 9, 24, 40, 0x90, 0x0000, 0x04000100u, 7562, 0, 255 },
++    { 143, 10, 5, 40, 0x90, 0x0000, 0x00000008u, 7570, 1, 255 },
++    { 143, 11, 16, 40, 0x90, 0x0000, 0x0C000000u, 7576, 1, 255 },
++    { 143, 12, 2, 40, 0x90, 0x0000, 0x00000022u, 7585, 0, 255 },
++    { 143, 13, 24, 40, 0x90, 0x0000, 0x04000800u, 7591, 1, 255 },
++    { 143, 14, 8, 40, 0x90, 0x0000, 0x00400008u, 7596, 1, 255 },
+     { 144, 0, 1, 41, 0x00, 0x0000, 0x00000001u, 670, 0, 255 },
+-    { 144, 1, 5, 41, 0x91, 0x0000, 0x04000008u, 7773, 0, 255 },
+-    { 144, 2, 5, 41, 0x91, 0x0000, 0x00000008u, 7783, 1, 255 },
+-    { 144, 3, 5, 41, 0x91, 0x0000, 0x00000008u, 7795, 0, 255 },
+-    { 144, 4, 5, 41, 0x91, 0x0000, 0x00200008u, 7807, 0, 255 },
+-    { 144, 5, 8, 41, 0x91, 0x0000, 0x00400008u, 7816, 0, 255 },
+-    { 144, 6, 5, 41, 0x91, 0x0000, 0x00200008u, 7828, 0, 255 },
+-    { 144, 7, 5, 41, 0x91, 0x0000, 0x04000008u, 7839, 0, 255 },
+-    { 144, 8, 5, 41, 0x91, 0x0000, 0x00200008u, 7852, 0, 255 },
+-    { 144, 9, 16, 41, 0x91, 0x0000, 0x04004000u, 7864, 0, 255 },
+-    { 144, 10, 8, 41, 0x91, 0x0000, 0x00400008u, 7877, 0, 255 },
++    { 144, 1, 5, 41, 0x91, 0x0000, 0x04000008u, 7605, 0, 255 },
++    { 144, 2, 5, 41, 0x91, 0x0000, 0x00000008u, 7615, 1, 255 },
++    { 144, 3, 5, 41, 0x91, 0x0000, 0x00000008u, 7627, 0, 255 },
++    { 144, 4, 5, 41, 0x91, 0x0000, 0x00200008u, 7639, 0, 255 },
++    { 144, 5, 8, 41, 0x91, 0x0000, 0x00400008u, 7648, 0, 255 },
++    { 144, 6, 5, 41, 0x91, 0x0000, 0x00200008u, 7660, 0, 255 },
++    { 144, 7, 5, 41, 0x91, 0x0000, 0x04000008u, 7671, 0, 255 },
++    { 144, 8, 5, 41, 0x91, 0x0000, 0x00200008u, 7681, 0, 255 },
++    { 144, 9, 16, 41, 0x91, 0x0000, 0x04004000u, 7693, 0, 255 },
++    { 144, 10, 8, 41, 0x91, 0x0000, 0x00400008u, 7705, 0, 255 },
+     { 145, 0, 1, 42, 0x00, 0x0000, 0x00000001u, 670, 0, 255 },
+-    { 145, 1, 21, 42, 0x04, 0x0000, 0x00100000u, 7887, 0, 255 },
+-    { 145, 2, 21, 42, 0x04, 0x0000, 0x00100000u, 7896, 0, 255 },
+-    { 145, 3, 9, 42, 0x04, 0x0000, 0x00200004u, 7906, 0, 255 },
++    { 145, 1, 21, 42, 0x04, 0x0000, 0x00100000u, 7715, 0, 255 },
++    { 145, 2, 21, 42, 0x04, 0x0000, 0x00100000u, 7724, 0, 255 },
++    { 145, 3, 9, 42, 0x04, 0x0000, 0x00200004u, 7734, 0, 255 },
+     { 146, 0, 1, 43, 0x00, 0x0000, 0x00000001u, 670, 0, 255 },
+-    { 146, 1, 1, 43, 0x04, 0x0000, 0x00000002u, 7914, 0, 255 },
+-    { 146, 2, 22, 43, 0x04, 0x0000, 0x00010002u, 7928, 0, 255 },
+-    { 146, 3, 22, 43, 0x04, 0x0000, 0x00010000u, 7938, 0, 255 },
++    { 146, 1, 1, 43, 0x04, 0x0000, 0x00000002u, 7742, 0, 255 },
++    { 146, 2, 22, 43, 0x04, 0x0000, 0x00010002u, 7756, 0, 255 },
++    { 146, 3, 22, 43, 0x04, 0x0000, 0x00010000u, 7766, 0, 255 },
+     { 147, 0, 1, 44, 0x00, 0x0000, 0x00000001u, 670, 0, 255 },
+-    { 147, 1, 14, 44, 0x04, 0x0000, 0x04000000u, 7944, 0, 255 },
+-    { 147, 2, 1, 44, 0x04, 0x0000, 0x00000001u, 7957, 0, 255 },
+-    { 147, 3, 1, 44, 0x04, 0x0000, 0x00000001u, 7971, 0, 255 },
++    { 147, 1, 14, 44, 0x04, 0x0000, 0x04000000u, 7772, 0, 255 },
++    { 147, 2, 1, 44, 0x04, 0x0000, 0x00000001u, 7785, 0, 255 },
++    { 147, 3, 1, 44, 0x04, 0x0000, 0x00000001u, 7799, 0, 255 },
+     { 148, 0, 1, 45, 0x00, 0x0000, 0x00000001u, 670, 0, 255 },
+-    { 148, 1, 5, 45, 0x04, 0x0000, 0x00000008u, 7977, 0, 255 },
+-    { 148, 2, 5, 45, 0x04, 0x0000, 0x0000000Cu, 7989, 0, 255 },
+-    { 148, 3, 5, 45, 0x04, 0x0000, 0x00000008u, 7998, 0, 255 },
++    { 148, 1, 5, 45, 0x04, 0x0000, 0x00000008u, 7805, 0, 255 },
++    { 148, 2, 5, 45, 0x04, 0x0000, 0x0000000Cu, 7817, 0, 255 },
++    { 148, 3, 5, 45, 0x04, 0x0000, 0x00000008u, 7826, 0, 255 },
+ };
+ 
+ const uint16_t doomo_part_name_order[PART_META_COUNT] = {
+     31, 188, 619, 350, 45, 93, 759, 43, 708, 700, 302, 296, 664, 96, 699, 428,
+-    10, 0, 812, 545, 178, 824, 363, 436, 539, 507, 779, 637, 853, 587, 121, 481,
++    10, 0, 812, 545, 178, 824, 363, 436, 539, 507, 637, 779, 853, 587, 121, 481,
+     264, 349, 742, 804, 135, 160, 12, 22, 65, 495, 268, 326, 752, 346, 233, 826,
+-    216, 802, 525, 881, 32, 501, 462, 164, 618, 681, 638, 25, 112, 629, 183, 15,
++    216, 802, 525, 32, 881, 501, 462, 164, 618, 681, 638, 25, 112, 629, 183, 15,
+     675, 799, 280, 88, 670, 352, 310, 830, 483, 732, 217, 523, 341, 601, 200, 535,
+     838, 846, 214, 254, 193, 445, 13, 33, 890, 641, 111, 300, 374, 643, 894, 221,
+     557, 516, 6, 139, 293, 187, 266, 321, 504, 749, 97, 351, 53, 124, 179, 904,
+     282, 741, 409, 582, 653, 385, 306, 345, 494, 544, 38, 522, 475, 47, 262, 318,
+-    505, 784, 166, 229, 630, 142, 660, 750, 860, 873, 343, 547, 850, 655, 906, 393,
+-    908, 889, 468, 508, 686, 736, 358, 250, 251, 800, 81, 568, 492, 435, 486, 854,
+-    257, 30, 834, 228, 366, 386, 288, 87, 133, 397, 116, 487, 79, 64, 140, 573,
+-    634, 500, 395, 78, 314, 594, 236, 171, 433, 61, 677, 536, 591, 867, 498, 209,
+-    120, 301, 733, 369, 847, 862, 114, 189, 215, 785, 77, 635, 628, 70, 110, 60,
+-    666, 294, 317, 26, 413, 722, 590, 622, 339, 274, 277, 788, 263, 777, 41, 123,
+-    169, 98, 712, 107, 771, 593, 378, 625, 354, 361, 763, 426, 205, 162, 56, 872,
+-    598, 789, 880, 540, 614, 261, 574, 191, 549, 909, 887, 648, 398, 533, 104, 569,
+-    283, 175, 161, 864, 602, 219, 877, 331, 511, 265, 279, 837, 567, 338, 460, 831,
++    505, 784, 166, 229, 630, 142, 660, 750, 860, 343, 547, 873, 850, 655, 906, 393,
++    908, 889, 468, 508, 686, 736, 358, 250, 251, 800, 81, 568, 492, 880, 435, 486,
++    854, 257, 30, 834, 228, 366, 386, 288, 87, 133, 397, 116, 487, 79, 64, 140,
++    573, 634, 500, 395, 78, 314, 594, 236, 171, 433, 61, 677, 536, 591, 867, 498,
++    209, 120, 301, 733, 369, 847, 862, 114, 189, 215, 785, 77, 635, 628, 70, 110,
++    60, 666, 294, 317, 26, 413, 722, 590, 622, 339, 274, 277, 788, 263, 777, 41,
++    123, 169, 98, 712, 107, 771, 593, 378, 625, 354, 361, 763, 426, 205, 162, 56,
++    598, 872, 789, 540, 614, 261, 574, 191, 549, 909, 887, 648, 398, 533, 104, 569,
++    283, 175, 161, 864, 602, 219, 331, 877, 511, 265, 279, 837, 567, 338, 460, 831,
+     206, 325, 357, 418, 86, 375, 311, 553, 579, 100, 148, 765, 554, 226, 572, 271,
+-    512, 813, 599, 382, 724, 353, 267, 319, 780, 751, 640, 851, 238, 688, 748, 149,
+-    246, 729, 405, 407, 404, 406, 679, 11, 173, 524, 543, 879, 843, 882, 69, 745,
+-    39, 340, 737, 823, 832, 647, 530, 558, 63, 48, 297, 245, 285, 174, 147, 822,
+-    517, 639, 728, 68, 223, 770, 659, 373, 305, 247, 684, 46, 650, 828, 466, 442,
+-    506, 19, 51, 717, 281, 379, 85, 805, 137, 644, 588, 876, 456, 626, 367, 555,
+-    581, 902, 769, 485, 740, 448, 29, 117, 198, 62, 762, 422, 129, 871, 489, 503,
+-    289, 253, 275, 600, 734, 5, 230, 735, 315, 454, 365, 819, 284, 807, 595, 477,
+-    431, 132, 151, 694, 145, 432, 673, 790, 464, 234, 2, 527, 827, 809, 55, 278,
+-    833, 312, 364, 429, 730, 697, 476, 28, 83, 633, 687, 201, 683, 888, 163, 320,
+-    196, 313, 131, 184, 685, 240, 106, 796, 473, 342, 713, 767, 624, 528, 725, 89,
+-    40, 439, 304, 502, 534, 787, 356, 808, 203, 237, 817, 836, 27, 182, 532, 411,
+-    227, 359, 747, 269, 328, 754, 190, 746, 561, 244, 248, 797, 814, 798, 604, 381,
++    813, 512, 599, 382, 724, 353, 267, 319, 780, 751, 640, 851, 238, 688, 748, 149,
++    246, 729, 405, 407, 404, 406, 679, 11, 173, 524, 543, 843, 69, 882, 745, 39,
++    340, 737, 823, 832, 647, 530, 558, 63, 48, 297, 245, 285, 174, 147, 822, 517,
++    639, 728, 68, 786, 223, 770, 659, 373, 305, 247, 684, 46, 650, 828, 466, 442,
++    506, 814, 19, 51, 717, 281, 379, 85, 805, 137, 644, 588, 456, 626, 367, 555,
++    581, 876, 902, 769, 485, 740, 448, 29, 117, 198, 62, 762, 422, 129, 871, 489,
++    503, 289, 253, 275, 600, 734, 5, 230, 735, 315, 454, 365, 819, 284, 807, 595,
++    477, 431, 132, 151, 694, 145, 432, 673, 790, 464, 234, 2, 527, 827, 809, 55,
++    278, 833, 312, 364, 429, 730, 697, 476, 28, 83, 633, 687, 201, 683, 888, 163,
++    320, 196, 313, 131, 184, 685, 240, 106, 796, 473, 342, 713, 767, 624, 528, 725,
++    89, 40, 439, 304, 502, 534, 787, 356, 808, 203, 237, 817, 836, 27, 182, 532,
++    411, 227, 359, 747, 269, 328, 754, 190, 746, 561, 244, 248, 797, 798, 604, 381,
+     90, 122, 242, 259, 290, 316, 348, 372, 388, 420, 469, 493, 529, 551, 631, 656,
+     661, 693, 760, 764, 768, 772, 776, 794, 815, 835, 845, 855, 869, 884, 895, 899,
+-    903, 907, 7, 258, 583, 901, 541, 910, 885, 891, 613, 291, 510, 438, 157, 204,
++    903, 907, 7, 258, 583, 901, 891, 541, 910, 885, 613, 291, 510, 438, 157, 204,
+     883, 896, 298, 791, 150, 662, 841, 559, 387, 17, 839, 674, 430, 272, 757, 542,
+     444, 225, 443, 470, 362, 371, 509, 654, 402, 690, 842, 649, 76, 597, 8, 21,
+     550, 803, 874, 255, 400, 566, 451, 333, 127, 792, 197, 520, 585, 119, 210, 781,
+-    578, 615, 856, 416, 143, 441, 491, 723, 71, 744, 457, 125, 260, 577, 702, 447,
+-    844, 707, 232, 192, 337, 663, 185, 156, 437, 499, 665, 37, 753, 761, 115, 570,
+-    273, 756, 463, 560, 667, 101, 292, 218, 360, 603, 309, 868, 370, 731, 719, 73,
+-    592, 330, 474, 287, 103, 427, 480, 743, 490, 859, 546, 1, 16, 42, 126, 709,
+-    657, 818, 816, 680, 811, 452, 704, 461, 419, 450, 484, 861, 383, 403, 538, 99,
+-    334, 467, 256, 886, 465, 617, 211, 153, 671, 270, 329, 755, 35, 705, 701, 180,
+-    672, 471, 689, 222, 194, 324, 738, 472, 23, 128, 514, 786, 537, 392, 580, 344,
++    578, 615, 856, 416, 143, 441, 491, 879, 723, 71, 744, 457, 125, 260, 577, 702,
++    447, 844, 707, 232, 192, 337, 663, 185, 156, 437, 499, 665, 37, 753, 761, 115,
++    570, 273, 756, 463, 560, 667, 101, 292, 218, 360, 603, 309, 868, 370, 731, 719,
++    73, 592, 330, 474, 287, 103, 427, 480, 743, 490, 859, 546, 1, 16, 42, 126,
++    709, 657, 818, 816, 680, 811, 452, 704, 461, 419, 450, 484, 861, 383, 403, 538,
++    99, 334, 467, 256, 886, 465, 617, 211, 153, 671, 270, 329, 755, 35, 705, 701,
++    180, 672, 471, 689, 222, 194, 324, 738, 472, 23, 128, 514, 537, 392, 580, 344,
+     651, 168, 610, 710, 783, 44, 84, 564, 202, 739, 208, 488, 584, 80, 721, 146,
+     72, 155, 556, 898, 892, 482, 141, 562, 134, 102, 714, 575, 212, 440, 335, 59,
+     611, 552, 900, 706, 645, 852, 322, 801, 181, 49, 299, 235, 565, 390, 415, 118,
+     18, 75, 658, 380, 596, 621, 58, 332, 605, 368, 307, 24, 50, 866, 396, 806,
+-    589, 563, 241, 875, 455, 627, 74, 692, 521, 376, 810, 159, 394, 3, 518, 696,
+-    703, 389, 576, 105, 243, 870, 858, 276, 425, 519, 531, 821, 778, 676, 571, 848,
++    589, 563, 241, 455, 627, 74, 692, 521, 376, 875, 810, 159, 394, 3, 518, 696,
++    703, 389, 576, 105, 243, 858, 276, 870, 425, 519, 531, 821, 778, 676, 571, 848,
+     424, 434, 479, 606, 113, 421, 678, 408, 632, 303, 620, 715, 417, 423, 878, 34,
+     67, 608, 401, 548, 829, 152, 642, 412, 893, 652, 323, 207, 92, 695, 91, 773,
+     399, 377, 513, 636, 698, 691, 4, 355, 727, 410, 154, 863, 682, 170, 496, 213,
+diff --git a/core/gen/part_meta_ids.h b/core/gen/part_meta_ids.h
+index e3f16e02..8f3d6072 100644
+--- a/core/gen/part_meta_ids.h
++++ b/core/gen/part_meta_ids.h
+@@ -6,7 +6,7 @@
+ #define PART_SET_COUNT 25
+ #define PART_TAG_COUNT 31
+ #define PART_HIDE_COUNT 16
+-#define PART_NAME_BYTES 8009
++#define PART_NAME_BYTES 7837
+ #define PART_GENE_FIELDS 83
+ #define PSLOT_BODY 0
+ #define PSLOT_HEAD 1
+diff --git a/core/src/creator_data.c b/core/src/creator_data.c
+index 3f2fb30c..24bf620d 100644
+--- a/core/src/creator_data.c
++++ b/core/src/creator_data.c
+@@ -228,7 +228,7 @@ static const CrRow rows_face[] = {
+     DEEP_ROW("Eyeliner", DF_LINER),
+ #if DOOMO_ACC_DEEP
+     HDR("Face jewellery"),
+-    DEEP_ROW("Piercings", DF_PIERCE),            /* CR4 A7 */
++    DEEP_ROW("Pierce", DF_PIERCE),            /* CR4 A7 */
+ #endif
+ #endif
+ };
+@@ -286,12 +286,12 @@ static const CrRow rows_outfit[] = {
+ #if LOOK_POOL_SAVED && DOOMO_ACC_DEEP           /* CR4 A7: deep accessory parts (the colour is the Acc. colour) */
+     HDR("Dress-ups"),
+     DEEP_ROW("Mask", DF_MASK),
+-    DEEP_ROW("Neckwear", DF_NECK),
+-    DEEP_ROW("Backpiece", DF_BACK),
++    DEEP_ROW("Neck", DF_NECK),
++    DEEP_ROW("Back", DF_BACK),
+     DEEP_ROW("Gloves", DF_GLOVE),
+-    DEEP_ROW("Wristwear", DF_WRIST),
++    DEEP_ROW("Wrist", DF_WRIST),
+     DEEP_ROW("Belt", DF_BELT),
+-    DEEP_ROW("Ear jewellery", DF_EARJEW),
++    DEEP_ROW("Earrings", DF_EARJEW),
+ #endif
+ };
+ 
+diff --git a/core/src/creator_draw.c b/core/src/creator_draw.c
+index 9f896053..22f2004f 100644
+--- a/core/src/creator_draw.c
++++ b/core/src/creator_draw.c
+@@ -1186,6 +1186,13 @@ static void draw_home_panel(int x, int y, int w, int h)
+     }
+ }
+ 
++/* TEXT FITS: the room a row's value has when the row is not selected (a list with its scroll bar), the same
++ * sum draw_list_row hands draw_value. A part name wider than this is cut with ".." in the list. */
++int cr_value_room(const CrRow *row)
++{
++    return crl.lw - 12 - 15 - ui_text_width(cr_row_label(row)) - 10 - 6;
++}
++
+ /* one (non-header) row of the list */
+ static void draw_list_row(const CrRow *row, int ry, int sel, int is_cur, int inner_r, const UiStyle *st)
+ {
+diff --git a/core/src/creator_grid.c b/core/src/creator_grid.c
+index 22998401..da839eb9 100644
+--- a/core/src/creator_grid.c
++++ b/core/src/creator_grid.c
+@@ -247,8 +247,7 @@ static int grid_footer_moves(const CrRow *row)
+         doomo_snprintf(buf, sizeof(buf), "%s: %s", part_meta_name(m), cr_lock_hint(row, v));
+         return ui_text_width(buf) > crl.lw - 24;
+     }
+-    doomo_snprintf(buf, sizeof(buf), "%s - %s", part_meta_name(m), doomo_part_sets[m->set].name);
+-    return ui_text_width(buf) > crl.lw - 16;
++    return 0;                       /* TEXT FITS: the caption is "name - set" when that fits, else the name alone: still */
+ }
+ 
+ /* the icon of a cell. S3-3 (PS1, where the icons are packed): the unpacked icon of each cell of the page stays in
+@@ -406,8 +405,11 @@ void cr_grid_draw(void)
+             ui_text(x + 8, fy, cr_fit(part_meta_name(m), w - 16, b2), st->text);
+             ui_text(x + 8, fy + 11, cr_fit(doomo_part_sets[m->set].name, w - 16, b3), st->text_dim);
+         } else {
++            /* TEXT FITS: "name - set" only when it fits whole; else the name alone (cut with ".." only past 21 letters),
++             * never a scrolling or half-cut caption */
+             doomo_snprintf(buf, sizeof(buf), "%s - %s", part_meta_name(m), doomo_part_sets[m->set].name);
+-            ui_text(x + 8, fy, cr_marquee(buf, w - 16, b2), st->text);
++            if (ui_text_width(buf) > w - 16) doomo_snprintf(buf, sizeof(buf), "%s", part_meta_name(m));
++            ui_text(x + 8, fy, cr_fit(buf, w - 16, b2), st->text);
+         }
+     }
+     grid_end(panel, pre, grid_k);
+diff --git a/core/src/creator_int.h b/core/src/creator_int.h
+index 07bb4bdc..70019fe9 100644
+--- a/core/src/creator_int.h
++++ b/core/src/creator_int.h
+@@ -452,6 +452,7 @@ void cr_menu_rect(CrMenuRect *m);
+ /* drawing helpers shared with creator_grid.c (CR6) */
+ void cr_pill(int x, int y, int w, int h, uint8_t fill, uint8_t outline, uint8_t hi);
+ void cr_padlock(int x, int y, uint8_t c, uint8_t hole);
++int cr_value_room(const CrRow *row);                           /* pixels a part name has in an unselected list row */
+ const char *cr_fit(const char *s, int maxw, char *buf);       /* buf >= 48 */
+ const char *cr_marquee(const char *s, int maxw, char *buf);   /* buf >= 48 */
+ void cr_draw_tab_icon(int x, int y, int tab);
+diff --git a/core/tests/golden/part_ids.txt b/core/tests/golden/part_ids.txt
+index 40391811..df90eb4a 100644
+--- a/core/tests/golden/part_ids.txt
++++ b/core/tests/golden/part_ids.txt
+@@ -778,15 +778,15 @@ blush 15 "Flush"
+ mask 0 "None"
+ mask 1 "Domino Mask"
+ mask 2 "Surgical Mask"
+-mask 3 "Bandit Bandana"
++mask 3 "Bandit Scarf"
+ mask 4 "Fox Mask"
+ mask 5 "Plague Beak"
+ mask 6 "Wrestler Mask"
+ mask 7 "Sleep Mask"
+ mask 8 "Cat Mask"
+ mask 9 "Cyber Visor"
+-mask 10 "Skull Half-Mask"
+-mask 11 "Masquerade Mask"
++mask 10 "Half Skull"
++mask 11 "Masquerade"
+ mask 12 "Diving Mask"
+ mask 13 "Duck Bill"
+ mask 14 "Lace Veil"
+@@ -812,8 +812,8 @@ neck 15 "Lanyard Badge"
+ neck 16 "Stethoscope"
+ neck 17 "Ruff Collar"
+ neck 18 "Baby Bib"
+-neck 19 "Flower Garland"
+-neck 20 "Neck Headphones"
++neck 19 "Flower Chain"
++neck 20 "Headphones"
+ back 0 "None"
+ back 1 "Rucksack"
+ back 2 "Mini Pack"
+@@ -836,11 +836,11 @@ back 18 "Leaf Parasol"
+ back 19 "Cloud Pillow"
+ gloves 0 "None"
+ gloves 1 "Mittens"
+-gloves 2 "Fingerless Gloves"
+-gloves 3 "Boxing Gloves"
++gloves 2 "Fingerless"
++gloves 3 "Boxing"
+ gloves 4 "Oven Mitts"
+ gloves 5 "Work Gloves"
+-gloves 6 "Opera Gloves"
++gloves 6 "Opera Long"
+ gloves 7 "Paw Mitts"
+ gloves 8 "Gauntlets"
+ gloves 9 "Pom Mitts"
+@@ -849,8 +849,8 @@ wrist 1 "Bracelet"
+ wrist 2 "Cuff"
+ wrist 3 "Sweatband"
+ wrist 4 "Wristwatch"
+-wrist 5 "Charm Bracelet"
+-wrist 6 "Friendship Bands"
++wrist 5 "Charm Chain"
++wrist 6 "Friendship"
+ wrist 7 "Spike Band"
+ wrist 8 "Bangles"
+ wrist 9 "Cloth Wrap"
+@@ -869,19 +869,19 @@ belt 11 "Star Buckle"
+ belt 12 "Cross Strap"
+ belt 13 "Ribbon Belt"
+ ear_acc 0 "None"
+-ear_acc 1 "Stud Earrings"
+-ear_acc 2 "Hoop Earrings"
+-ear_acc 3 "Drop Earrings"
+-ear_acc 4 "Chain Dangles"
+-ear_acc 5 "Pearl Studs"
+-ear_acc 6 "Star Studs"
+-ear_acc 7 "Heart Studs"
+-ear_acc 8 "Feather Earrings"
+-ear_acc 9 "Tassel Earrings"
+-ear_acc 10 "Gauge Plugs"
+-ear_acc 11 "Ear Climbers"
+-ear_acc 12 "Bell Earrings"
+-ear_acc 13 "Gem Dangles"
++ear_acc 1 "Studs"
++ear_acc 2 "Hoops"
++ear_acc 3 "Drops"
++ear_acc 4 "Chains"
++ear_acc 5 "Pearls"
++ear_acc 6 "Stars"
++ear_acc 7 "Hearts"
++ear_acc 8 "Feathers"
++ear_acc 9 "Tassels"
++ear_acc 10 "Plugs"
++ear_acc 11 "Climbers"
++ear_acc 12 "Bells"
++ear_acc 13 "Gems"
+ ear_acc 14 "Odd Pair"
+ face_pierce 0 "None"
+ face_pierce 1 "Nose Stud"
+@@ -890,7 +890,7 @@ face_pierce 3 "Eyebrow Bar"
+ face_pierce 4 "Lip Ring"
+ face_pierce 5 "Cheek Studs"
+ face_pierce 6 "Bridge Bar"
+-face_pierce 7 "Nostril Hoop"
++face_pierce 7 "Nose Hoop"
+ face_pierce 8 "Snake Bites"
+-face_pierce 9 "Temple Studs"
++face_pierce 9 "Temple Stud"
+ face_pierce 10 "Brow Trio"
+diff --git a/core/tests/scripts/creator_parts_acc.txt b/core/tests/scripts/creator_parts_acc.txt
+index 818533b2..cfcc837f 100644
+--- a/core/tests/scripts/creator_parts_acc.txt
++++ b/core/tests/scripts/creator_parts_acc.txt
+@@ -1,8 +1,8 @@
+-# CR4 A7: the accessory rows in the creator's picture grid: the Outfit tab's "Dress-ups" rows (Mask, Neckwear,
+-# Backpiece, Gloves, Wristwear, Belt, Ear jewellery: the last seven rows of the tab) and the Face tab's Piercings
++# CR4 A7: the accessory rows in the creator's picture grid: the Outfit tab's "Dress-ups" rows (Mask, Neck,
++# Back, Gloves, Wrist, Belt, Earrings: the last seven rows of the tab) and the Face tab's Piercings
+ # (the last row). Not run on the PS1 (it builds none of these rows: look_fields.h DOOMO_ACC_DEEP 0).
+ # A new Hellvile citizen; the Outfit tab is four tabs right of Species & Body; Up from the top wraps to the last
+-# row (Ear jewellery). Each row opens its grid with A, a part is found by letters (START) and worn with A, and
++# row (Earrings). Each row opens its grid with A, a part is found by letters (START) and worn with A, and
+ # the citizen in the preview shows it (shot after each).
+ scene CREATOR -1
+ expect-scene CREATOR
+diff --git a/core/tests/test_cr4_a7.c b/core/tests/test_cr4_a7.c
+index 356bd86b..82f28fc3 100644
+--- a/core/tests/test_cr4_a7.c
++++ b/core/tests/test_cr4_a7.c
+@@ -16,6 +16,7 @@
+ #include "doomo/look_fields.h"
+ #include "doomo/look_pool.h"
+ #include "doomo/portrait.h"
++#include "../src/creator_int.h"
+ 
+ typedef struct A7Slot { const char *key; int df, live, gate, age; } A7Slot;
+ /* gate: the least pixel difference between two parts of the slot summed over the views below (measured on 2026-11-15) */
+@@ -181,3 +182,46 @@ TEST(cr4_a7_the_accessory_set_is_the_registry_tail_so_the_ps1_can_drop_it)
+         CHECK_EQ(e->set == doomo_part_script_count - 1, e->list >= 128 + DF_MASK);
+     }
+ }
++
++/* TEXT FITS EVERYWHERE (owner 2026-11-15): every A7 part name fits the value column of its row (not selected, scroll bar
++ * showing: the narrowest case) and the grid caption, at 240x160 and 320x240, and every row label leaves room for it. */
++static void a7_res(int w, int h)
++{
++    NatOptions o;
++    memset(&o, 0, sizeof(o));
++    o.w = w; o.h = h; o.seed = 0x5EED1234u; o.quiet = 1;
++    o.save_dir = test_tmp_dir;
++    nat_init(&o);
++    cr_layout();
++}
++
++static int a7_fit_at(int w, int h)
++{
++    int tab, i, bad = 0, rows = 0;
++    a7_res(w, h);
++    for (tab = 0; tab < CR_TAB_COUNT; tab++) {
++        const CrRow *row;
++        for (i = 0; (row = cr_row_at(tab, i)) != NULL; i++) {
++            int n, c;
++            if (row->kind != RK_DEEP || row->field < CR_DEEP0 + DF_MASK || row->field > CR_DEEP0 + DF_PIERCE) continue;
++            rows++;
++            n = cr_row_count(row);
++            for (c = 0; c < n; c++) {
++                char b[48];
++                const char *nm = cr_choice_name(row, c, b);
++                if (ui_text_width(nm) > cr_value_room(row) || ui_text_width(nm) > crl.lw - 16) {
++                    printf("A7 text does not fit at %dx%d: row \"%s\" part \"%s\" (%d px, room %d)\n", w, h,
++                           cr_row_label(row), nm, ui_text_width(nm), cr_value_room(row));
++                    bad++;
++                }
++            }
++        }
++    }
++    return rows == 8 ? bad : 1000 + rows;      /* the eight A7 rows were all found */
++}
++
++TEST(cr4_a7_every_part_name_fits_its_row_and_the_caption_on_both_screens)
++{
++    CHECK_EQ(a7_fit_at(240, 160), 0);
++    CHECK_EQ(a7_fit_at(320, 240), 0);
++}
+diff --git a/docs/CREATOR.md b/docs/CREATOR.md
+index 3c77f4ec..31272646 100644
+--- a/docs/CREATOR.md
++++ b/docs/CREATOR.md
+@@ -1084,7 +1084,7 @@ The accessory rows of CREATOR_PLAN 3.1 are deep fields saved in the CR5 look poo
+ * **Painters.** `PS_DEEP` / `PS_DEEP_FRAME` (`portrait_int.h`): masks, piercings and ear jewellery in `ph_face_acc` (group 5), neckwear in
+   `neck_acc` (group 4), backpieces in `back_acc` (group 0, before wings and tail), belts after the top and outer layer (group 1), gloves
+   and wristwear in a frame at each hand (`hand_acc`: gloves 128 = the paw radius, wristwear a fifth up the arm). None is chibi-visible. In a profile view only the near hand wears its glove and wristwear (the far hand is behind the body).
+-* **Creator.** Outfit tab "Dress-ups" (Mask, Neckwear, Backpiece, Gloves, Wristwear, Belt, Ear jewellery) and Face tab "Face jewellery" (Piercings)
++* **Creator.** Outfit tab "Dress-ups" (rows Mask, Neck, Back, Gloves, Wrist, Belt, Earrings) and Face tab "Face jewellery" (row Pierce)
+   through `RK_DEEP` rows; their colour is the Acc. colour. Piercings are age class teen (never on a child); everything else all ages.
+ * **Pool cost.** A deep choice costs 2 bytes in a citizen's pool run, at most 22 bytes for all eleven fields.
+ * **Sheets.** `portrait_sheet --slot KEY` (`--views` for the body slots), `--interplay-acc` (`interplay_back_N`: backpieces x wings, cape,
+@@ -1105,9 +1105,13 @@ The accessory rows of CREATOR_PLAN 3.1 are deep fields saved in the CR5 look poo
+   PARTS.BIN carries the packed icons of all rows (one icon set, CR10): 145,408 -> 155,648 B of 184,320 B (+10,240 B for
+   icons the PS1 cannot show yet); room left 28,672 B. **To put A7 on the PS1 (A7-PS1):** about 1,380 B resident (the coordinator
+   releases the reserve), +5,500 B of scripts in PARTS.BIN (fits), flip `DOOMO_ACC_DEEP` and empty `PS1_SKIP`.
+-* **Known: text fit.** Several A7 names are longer than the value column of the Outfit and Face rows ("Hoop Earr...", "Surgical
+-  Mask") and the grid caption cuts "Wool Scarf - Cozy Hom" at 240x160. Names and layout are for CR-UI's TEXT FITS EVERYWHERE pass
+-  (names are catalog data: shorten there).
++* **Text fit (owner rule TEXT FITS EVERYWHERE).** Every A7 part name fits the value column of its row (not selected, scroll bar
++  showing) and the grid caption at 240x160 and 320x240; test `cr4_a7_every_part_name_fits_its_row_and_the_caption_on_both_screens`
++  measures it with `cr_value_room` (the same sum `draw_list_row` uses). To get there the row labels are short (Mask, Neck, Back,
++  Gloves, Wrist, Belt, Earrings, Pierce) and 24 names were shortened (Hoops, Studs, Half Skull, Fingerless, Friendship ...; the
++  ids did not move, the golden `part_ids.txt` follows). The small-screen grid caption is "name - set" only when that fits whole, else
++  the name alone (no scrolling, no half-cut caption); the set is still on the filter chips and on the big screens. Not done: the
++  existing (older) parts keep their names; their rows may still be cut with ".." (CR-UI's pass).
+ * **Review.** Sheets `interplay_back_0..2`, `interplay_mask_0..1` (header overprint fixed), `views_gloves`, `views_belt`, `slot_neck`,
+   `slot_face_pierce` were generated and looked at on the rebased tree: cartoon objects only, no nudity, nothing suggestive, no hate
+   symbols, no tobacco, vape or drug items. Runner script `creator_parts_acc.txt` (Dress-ups rows and Piercings; not run on the PS1).

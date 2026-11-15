@@ -1,0 +1,124 @@
+From 897fb6a63775568cfdce66599f2981beeb6bc455 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 16:14:20 +0000
+Subject: [PATCH 3/5] CR4 A8: PS1 age rows skip the left-out slot (PS1 exactly
+ the tip), docs, ROADMAP, status, GBA ledger row 58
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvvRYHgPW3b8GJby1n
+---
+ ROADMAP.md                         |  1 +
+ core/gen/part_age_data.c           |  7 +++++++
+ docs/GBA.md                        |  1 +
+ docs/PS1.md                        |  7 +++++++
+ docs/design/held/status/CREATOR.md |  1 +
+ tools/partcat_build.py             | 15 ++++++++++++---
+ 6 files changed, 29 insertions(+), 3 deletions(-)
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index b9c39615..0c370298 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -25,6 +25,7 @@ before redoing any of them; a zip without `.git` cannot tell.
+ - **Talk T9, pointer input on the Talk screen (2026-11-15, docs/TALK.md 6k):** add-only `input_set_pointer` / `input_pointer` / `input_pointer_click` (`input.h`, `DOOMO_POINTER` 0 on GBA, PS1 and Dreamcast so they link none of it); on the Talk screen a click is exactly the matching pad press (quick reply, category, act, topic, typed line, Options, invite row, goodbye, a name in the people strip, the header = B, the scroll bar = L / R); a small arrow is drawn only while a pointer is present. Runner `mouse X Y [click]`, `expect-ptr-page`, `expect-ptr-row`; script `talk_pointer.txt`, `test_talk_pointer.c`. Not done: clicking the dialogue box, a wheel.
+ - **Creator CR-BODY, body types and better sliders (2026-11-13; docs/CREATOR.md "CR-BODY", GBA ledger row 49, docs/PS1.md "CR-BODY"):** 6 new body types (gene `body` 10..15: Athletic, Gangly, Bean, Brick, Willowy, Bobble) as table rows (no new painter), one table for every slider's range (`CR_SLIDERS`, ready for the x1..x4 cheat of CR-SLIDERX), A resets a slider (own undo step), the bar shows the distance from the default, the horn size without horns and the turkey's six face sliders (they changed nothing) are not offered, and the test that moves EVERY build slider across its range (`test_cr_body.c`: each slider on every species and body, every step on the bench, canary bytes; `creator_sliders.txt` + `tools/slider_shots_check.py` on the native runner, GBA `make -C gba test-creator-sliders`, PS1 harness and Dreamcast `ui-compare`). PS1 `_end` -16 B (72,336 B below the stack top on the landed tree; the 72 KB gate is 1,392 B short, inherited from the tip), GBA EWRAM / IWRAM identical, ROM +2.9 KB; Head size repeats its last steps on the stepped bodies (Bobble 4 of 16; pinned by a test); old saves and Classic premades unchanged. Left for CR-SLIDERX: the cheat itself.
+ - **Creator CR4 batch A5, outfit (2026-11-13; docs/CREATOR.md "CR4 batch A5"):** 70 new parts live, the gene-stored part of the batch: 24 tops (gene `top` 25..48), 31 outer layers (`outer` 1..31) and 15 legwear (`legwear` 1..15; the outer layer and legwear lists were empty, so the Outfit tab gets those rows for the first time), hand-written part scripts in `core/data/parts/outfit` and the new `wardrobe`, shape gate (the gene-only lists have their own in `test_cr4_a5.c`), cost weights, frozen ids, review line A5, contact sheets incl. the new `portrait_sheet --interplay-outfit` (outer layers x tops x backpieces), runner walk-through `creator_parts_outfit.txt`. Old saves, premades and Classic islands unchanged. Not in A5: gene-stored tops 49..63 (15), bottoms (20), shoes (20) and prints (24), and the deep fields (tops / outer / bottoms / legwear / shoes page 2, socks, fabric tiles: need CR5).
++- **Creator CR4 batch A8, held props (2026-11-15; docs/CREATOR.md "CR4 batch A8"):** 59 of the 104 planned props live as one pool-backed deep field (`DF_PROP`, in the unused `DF_MAKEUP` slot): food and drink, tools, toys, instruments, books, flowers, spooky comedy props (comic toys only; no tobacco, vape or drug items), two adult-only (wine glass, beer stein; the pool-run age gate drops them on minors too), fixed prop colours (`mat wood` .. `mat peach`), a frame block at the dominant paw (`held_prop`), the Outfit tab row "Held prop", `portrait_sheet --props`, `test_cr4_a8.c`, runner script `creator_parts_props.txt`, review line A8. PS1 +0 B (tables skip the slot), GBA EWRAM / IWRAM +0. Left for A8b: 45 (more instruments, tools, toys, food and drink, spooky props, chibi stand-ins).
+ - **Done, CR4 A1b (the second face batch, docs/CREATOR.md "CR4 A1b"):** 51 new creator parts live: 12 noses (nose 12..23), 12 mouths (20..31), 16 ears (16..31), 11 blush styles (5..15) (part scripts `core/data/parts/face/a1b_*.txt`, review lines `A1b`, contact sheets viewed, `test_cr4_a1b.c`, `creator_parts_face_b.txt` runner walk-through); script material `mat blush`; small per-slot shape gates for nose / mouth / blush. Core tests 1,337 passed (also SAN=1), check-gen, xcheck, `make -C gba test` and `test-creator`, `dc-host-test`; GBA `.bss` / IWRAM identical (EWRAM net zero), PS1 `_end` 0x801ee550 before and after on the earlier tip (+0 B), 0x801df9f0 on the landing tip (132,624 B below the stack top); Re-verified on the landing tip (after CR5-FIX and TD1) (core, SAN=1, check-gen, xcheck, GBA test + test-creator, PS1 72,368 B, dc-host-test, PS1 harness all PASS). PS1 harness `game_smoke`, `creator_speed` (idle 30.13, rows 30.13, value 29.88), `creator_grid` and `creator_parts_face_b` PASS. Left: muzzles, teeth, freckles, scars (deep fields, CR5 is not on origin yet) and extra eyes 4-6 (gene change). Ear folds were already live.
+ - **Creator CR-SLIDERX, the cheat "Slider range x1 / x2 / x3 / x4" (2026-11-15; docs/CREATOR.md "CR-SLIDERX", GBA ledger row 58, docs/PS1.md "CR-SLIDERX"):** Options > Cheats, OPT2 id 69 (`OPT_SLIDER_RANGE`; an old save reads x1; ungated). It multiplies the effect and the range of the 11 build sliders through the CR-BODY slider table: the drawn look of a grown-up goes `def + (value - def) * m`, clamped to each slider's measured safe range (`look_sliders[]`, -14..29 for Height ... -2..27 for Nose and Mouth); the saved sliders stay 0..15, so a look made at x3 is the same look at x1 (nothing to clamp or flag, no save change); minors are never scaled; x1 is bit for bit what was drawn before. The 11 `DoomoLook` fields are `int8_t`. The creator preview and the bar value ("+9" at x3) follow. Tests: `test_cr_sliderx.c` (12; every slider x every multiplier x every step on bust, figure, fighter and chibi: changes exactly when the effective value changes, canary bytes, every species and body; the cache x1 -> x3 -> x1; the OPT2 round trip) and the walk-through at x2, x3, x4 (`creator_sliders_x2/x3/x4.txt`, generated by `tools/slider_scripts.py`) on the runner, GBA `make -C gba test-creator-sliders`, the PS1 harness and the Dreamcast `ui-compare`. PS1 `_end` +256 B (72,336 -> 72,080 B below the stack top); GBA `.bss`/`.iwram`/`.iwram_bss`/`.data` identical (free EWRAM 12,164 B), ROM `.text` +192 B, `.rodata` +572 B.
+ - **Creator CR4 batch A3, spooky (2026-11-13; docs/CREATOR.md "CR4 batch A3"):** 60 new parts live: 10 horns (gene `horns` 16..25), 16 tails (`tail` 16..31), 14 wings (`wings` 10..23), 4 halos (`halo` 12..15) and 16 auras (`aura` 8..23), hand-written part scripts in `core/data/parts/spooky` (no new painter code), shape gate, cost weights, frozen ids, review line A3, contact sheets incl. the new `portrait_sheet --slot tail|wings --views` (figure and the fighter's five views), runner walk-through `creator_parts_spooky.txt`, `test_cr4_a3.c`. Old saves, premades and Classic islands unchanged. Not in A3 (deep fields, need CR5): horn page 2 (6), horn / antenna bits (32), tail accessories (16), wing accessories (8), halo page 2 (6) = 68 of the batch's 134 (the other 6 are the painted halos live since CR3).
+diff --git a/core/gen/part_age_data.c b/core/gen/part_age_data.c
+index 48d82f53..0c5f0984 100644
+--- a/core/gen/part_age_data.c
++++ b/core/gen/part_age_data.c
+@@ -3,8 +3,15 @@
+  * (src/part_age.c, the renderer and the generators read it). DO NOT EDIT. */
+ #include "doomo/part_meta.h"
+ 
++#if defined(DOOMO_PLATFORM_PS1)       /* CR4 A8: the PS1 never offers or draws the slots its tables leave out */
++const PartAgeRow doomo_part_age_rows[1] = {
++    { 0xFFFF, 0, 0 },     /* none yet: a sentinel */
++};
++const uint16_t doomo_part_age_count = 0;
++#else
+ const PartAgeRow doomo_part_age_rows[2] = {
+     { 141, 15, 2 },
+     { 141, 16, 2 },
+ };
+ const uint16_t doomo_part_age_count = 2;
++#endif
+diff --git a/docs/GBA.md b/docs/GBA.md
+index c656d496..127f1c97 100644
+--- a/docs/GBA.md
++++ b/docs/GBA.md
+@@ -454,6 +454,7 @@ against the LAST row, not against a figure from an older base.
+ | 61 | LV11: content notes (the card's note page, the select's badge, two bit options; docs/LEVELS.md "LV11") | after S2-10 (row 60) | 6,420 B | **6,420 B** | 0 B | 6,288 B | measured 2026-11-15 on the tip (`9dc5e39a`) and the tip + LV11 (`make -C gba`, `make -C gba sizes`, `make -C gba test` clean): `.bss` 254,836 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, the four overlay groups identical; ROM `.text` +1,384 B, `.rodata` +1,828 B. The two options are bits in the byte the Stick option already uses. |
+ | 62 | LV7a: 7 shared textures, 3 skies, the texture bank format (docs/LEVELS.md "LV7a") | origin tip `fe410024` | 6,420 B | **6,436 B** | -16 B | 6,288 B | measured on `fe410024` and the same + LV7a (clean `make -C gba`, `make -C gba sizes`): `.bss` 254,828 -> 254,812 B (the overworld's `frame_tex_ok[TEX_COUNT]` flag array is gone, a NULL pointer means "not looked up yet"; it paid for the 7 new `frame_tex` pointers), `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B and the four overlay slots identical; `.text` 1,524,016 -> 1,524,080 B (+64), `.rodata` 8,246,748 -> 8,349,684 B (**+102,936 B ROM**: 7 x 4,096 + 3 x 24,576 of pixels and tables). The texture bank reader (`texbank.c`) and the sample bank are compiled out on the GBA (`DOOMO_TEXBANK_ACTIVE` 0): no byte. `make -C gba test` passes. |
+ | 63 | CR10: the PS1 draws scripted parts (docs/CREATOR.md "CR10"; shared code: the part store hooks `DOOMO_PARTS_SPU(_TEST)`, the packed icon set made complete) | after LV7a (row 62) | 6,436 B | **6,436 B** | 0 B | 6,288 B | measured on the rebased tree (`make -C gba`, `make -C gba sizes`): `.bss` 254,820 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, the same as row 55. The new code is `#if`ed on PS1-only macros (no GBA object changes); the packed part icons (`part_icons_rle.c`, now every icon: 121,577 B instead of the painted parts' only) are `const` ROM the GBA does not read: ROM only. PS1 side (not GBA RAM): 21,024 B resident, none in an overlay group: portraits are drawn in almost every scene and from resident code, and the one-group slot would swap the renderer in and out on every scene change (docs/PS1.md "CR10"). |
++| 64 | CR4 A8: 59 held props (`DF_PROP` takes the unused `DF_MAKEUP` slot; docs/CREATOR.md "CR4 batch A8") | after row 60 | 6,420 B | **6,420 B** | 0 B | 6,288 B | measured 2026-11-15 on the same tip with and without A8: `.bss` 254,828 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B all identical (no new resident array: `DF_COUNT` / `DF_POOL_N` unchanged); ROM `.text` +376 B, `.rodata` +30,848 B (the 59 scripts, names, icons). `make -C gba test` and `test-creator` pass (rows 29.9). |
+ 
+ Known claimants still to land (their own packages measure and add rows):
+ 
+diff --git a/docs/PS1.md b/docs/PS1.md
+index da847c54..e1e841e5 100644
+--- a/docs/PS1.md
++++ b/docs/PS1.md
+@@ -2380,6 +2380,13 @@ compiled out here). Harness (PCSX-Redux): `game_smoke`, `creator_grid`, `creator
+ scroll 29.39, rows 30.13, value 29.88: nothing resident changed).
+ 
+ 
++## CR4 A8 (2026-11-15): held props
++
++Measured with clean `cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON` builds on the origin tip `262bf2b7` and the same tree + A8: `_end` 0x801dfb10 both times, 132,320 B
++(129 KB) below the stack top: **0 B resident added** (image, bss and the overlay slot identical). The PS1 neither offers nor draws the 59 props: the slot is left out of its
++part tables, icons and age rows by `tools/partcat_build.py` (`ps1_skipped`), `held_prop()` and the fixed colours are under `DOOMO_PARTS_VM`, the Outfit row and the pool-run age gate under
++`LOOK_POOL_SAVED`. Harness: `game_smoke` and `creator_speed` PASS (value 29.88); `creator_parts_props.txt` is for builds with the look pool (the row is not on the PS1).
++
+ ## S3-2 (2026-11-15): no whole portrait or chibi inside a frame
+ 
+ UI previews (`portrait_image_ui`, `figure_image_ui`, `figure_image_res_ui`, `bodyspr_image_ui`; docs/PORTRAIT.md "UI
+diff --git a/docs/design/held/status/CREATOR.md b/docs/design/held/status/CREATOR.md
+index 7129a4be..9050fc1d 100644
+--- a/docs/design/held/status/CREATOR.md
++++ b/docs/design/held/status/CREATOR.md
+@@ -20,6 +20,7 @@ delta, GBA sizes), in flight (package and stage), next up, blockers, needs from
+ - **CR4 A4 fur and skin (resumed, ready to land, partial):** 33 new parts live: 24 fur patterns (fur_pattern 1..24) and 9 face marks (marking 23..31); sheets viewed (cute marks only, nothing suggestive, nothing real-world, fine on a child); rebased onto 3d9905df with no conflicts (landed numbers: PS1 `_end` 0x801ee570, elf2exe '70 KB left', A4 delta 0 B against the tip as measured before the last rebase, below the 72 KB rule on the tip itself, not from A4; GBA .bss 248,924 B, .iwram 11,272, .iwram_bss 4,088, no new resident arrays; GBA `make -C gba test` green; harness game_smoke and creator_parts_fur PASS); core 1,231 passed, SAN=1 passed, check-gen, xcheck (417 files), dc-host-test, GBA build + test-creator pass (`make -C gba test` stops at test-talk, talk.txt:32 expected TALK got DIALOG, the same failure on the unmodified tip), PS1 build `_end` 0x801ee580 same as the tip, harness game_smoke and creator_parts_fur PASS. GBA .text +96 B, .rodata +16,356 B, EWRAM / IWRAM identical. **Left:** 15 body tattoos (deep fields, need CR5).
+ - **CR4 A3 spooky (landed 2026-11-13, partial; docs/CREATOR.md "CR4 batch A3"):** 60 new parts live of the batch's 134: 10 horns (gene 16..25), 16 tails (16..31), 14 wings (10..23), 4 halos (12..15) and 16 auras (8..23; 16..23 use the aura's fifth bit that the NICK trailer carries); hand-written scripts in `core/data/parts/spooky`, no new painter code; sheets reviewed (incl. the new `portrait_sheet --slot tail|wings --views`), `creator_parts_spooky.txt`, `test_cr4_a3.c`. Rebased tree (after T5B-VOICE): core 1,165 passed, check-gen, xcheck (414 files, four compilers), `make dc-host-test`, GBA `test` and `test-creator` pass; GBA EWRAM / IWRAM / `.text` identical, ROM `.rodata` +31,976 B; PS1 `_end` 0x801ef580 unchanged by A3 (68,208 B below the stack top, still under the 72 KB rule until PS1-RAM); PS1 harness game_smoke passes (the creator scripts: see below). SAN=1 NOT run to the end: it was stopped after about 404 of the 1,163 unit tests (incl. all `cr4_a3` tests) and 201 of the 376 script runs (incl. `creator_parts_spooky`) because the shared machine made it take many hours; no failure and only the known UBSan reports (concert_gfx.c) before the stop. The builder's full SAN run on the pre-rebase tree passed. **Left (68 parts, deep fields, need CR5):** horn page 2 (6), horn / antenna bits (32), tail accessories (16), wing accessories (8), halo page 2 (6): each needs a `DF_` id, a painter hook and a creator row that takes a deep field. `parts_build.py` now estimates a torso block that never draws on the bust against the figure's torso (`NOMINAL_TORSO_BODY`).
+ - **CR4 A1a (landed 2026-11-13, partial, the commits "CR4 A1a: ..."; docs/CREATOR.md "CR4 A1a"):** 96 new parts live (plan about 145): 12 head shapes, 24 eye styles, 27 pupils, 13 eye whites, 20 brows; script materials `mat ink` / `mat white`; the shape gate honours per-slot `gate=`; `make -C core portrait-sheet`. Left for the next package: 31 lashes / lids / liner (CR5 deep fields) and 3 extra eyes 4-6 (a gene change). Weak gates, recorded: pupils gate 2 px, eye whites 4, brows 4 (not 24); several eyes are identical on chibis (Dash/Plus/Starburst, Smile Cups/Slot, Chomp/Heart Iris); the lead may want a bigger default iris or a pupil-size control. Landing fix: the review found the new `portrait-sheet` Makefile block had been inserted inside the `gen` recipe, so `make gen` and `check-gen` skipped textpack, talkc, PY_GENS_REST and ulgen; moved below the recipe, `check-gen` still clean with all generators running. On the tree rebased onto A2 / A3 (final): core 1,168 passed / 0 failed, SAN=1 1,168 passed (only the 4 known reports), check-gen clean, xcheck 414 files OK, GBA build + test + test-creator OK (`.text` 1,403,736, `.rodata` 6,688,236, `.iwram` 11,256, `.iwram_bss` 4,084, `.bss` 245,788: EWRAM net zero; this package's ROM growth about +44.7 KB rodata, +152 B text), PS1 EXE with the boot FMV ends 0x801ee3e0 on the tree rebased onto PS1-FLAT, 72,736 B below the stack top, equal to the origin tip's figure (before PS1-FLAT: 0x801ef580, 68,208 B, equal to a clean build of origin without this package, measured): 0 B resident added; harness game_smoke, creator_parts_face_a, creator_grid, creator_speed (rows 30.13, value 29.88) PASS; dc-host-test OK, `make -C dc` builds (no Flycast run). Part catalog 629 parts / 602 live (with A2 and A3).
++- **CR4 A8 held props (built 2026-11-15, ready to land; docs/CREATOR.md "CR4 batch A8"):** 59 of the planned 104 props live (`DF_PROP`, deep field in the look pool, Outfit tab "Held prop"); sheets viewed (`portrait_sheet --props`; cute, nothing suggestive, comic toys only, two adult-only); core 1,363 passed, check-gen, xcheck (424 files), dc-host-test, GBA test + test-creator pass; GBA `.bss` 254,828 / `.iwram` 11,272 / `.iwram_bss` 4,088 identical (`.text` +376 B, `.rodata` +30,848 B); PS1 `_end` 0x801dfb10 = the tip, 132,320 B below the stack top (+0 B), harness game_smoke and creator_speed PASS (the PS1 does not offer the row). Weak gate: slim tools are dots at bust 1x. Conflicts to expect with A7 (`look_fields.h` enum, `creator_data.c` Outfit rows, `partcat_build.py` `ps1_skipped`, `part_icons.c`, `test_part_icons.c`, `portrait_sheet.c`, `parts_build.py` HOOKS) and regenerate the generated files. **Left (A8b, 45):** see the doc.
+ - **In flight:** nothing running (PAUSED 2026-11-13 by the coordinator; allowance resets 2026-11-15 04:00 UTC). Unlanded work is saved as patches, see "How to resume".
+ - **CR4 A1b noses / mouths / ears / blush (resumed 2026-11-15, ready to land; docs/CREATOR.md "CR4 A1b"):** 51 new parts live (12 noses, 12 mouths, 16 ears, 11 blush styles); sheets viewed (cute, nothing suggestive, nothing real-world, no props); rebased onto 366ee6c1 (after CR5-FIX) (catalog, review, golden kept both sides, gen regenerated); core 1,337 passed + SAN=1, check-gen, xcheck, GBA test + test-creator, dc-host-test, PS1 harness PASS; GBA .bss / IWRAM identical, PS1 `_end` 0x801df9f0 on the landing tip (132,624 B below the stack top; +0 B from A1b). Left: muzzles, teeth, freckles, scars (wait for CR5, not on origin), extra eyes 4-6 (gene change); ear folds were already live. wip folder deleted.
+ - **CR4 A5 outfit (LANDED 2026-11-15 on origin cb7d48d9+; final numbers: core 1,289 passed, SAN=1 passed, check-gen, xcheck 420 files, full `make -C gba test` (test-talk now green), PS1 `_end` 0x801ee550 = 72,368 B below the stack top (A5 adds 0 B), GBA `.bss` 249,084 / `.iwram` 11,272 / `.iwram_bss` 4,088 unchanged by A5; reviewer's cosmetic items left: interplay header overlap, chibi blocks for tops 25..48). Earlier text (resumed 2026-11-15, partial; docs/CREATOR.md "CR4 batch A5"):** 70 new parts live (24 tops, 31 outer layers, 15 legwear), rebased onto origin 382a5fdc (A1a head/face and the Talk / music work landed meanwhile; generated files regenerated, never merged). Sheets (`slot_top|outer|legwear`, `interplay_outer_0..3`) viewed again on the rebased tree: garments only, nothing suggestive, no symbols or tobacco / vape / drug props. Rebased tree: core 1,219 passed, check-gen, xcheck (417 files), dc-host-test pass; GBA `.text` 1,456,360 / `.iwram` 11,272 / `.iwram_bss` 4,088 / `.data` 816 / `.bss` 248,748 identical to the origin tip (EWRAM / IWRAM net zero), `.rodata` +35,184 B; PS1 EXE with the FMV ends 0x801ee580 on both the origin tip and this branch (A5 adds 0 B; the margin is 70 KB on the tip already, below the 72 KB rule: not caused by A5); harness game_smoke, creator_speed (value 29.88), creator_grid pass. Known and not A5: `make -C gba test-talk` fails on the origin tip too (talk.txt:32 expected TALK, got DIALOG). CR5 is not on origin, so no deep parts.
+diff --git a/tools/partcat_build.py b/tools/partcat_build.py
+index 6da7c93b..9ff6737b 100644
+--- a/tools/partcat_build.py
++++ b/tools/partcat_build.py
+@@ -512,13 +512,22 @@ def emit(cat):
+     for s in slots:
+         if s["list"] < ngf:
+             livetab[s["list"]] = sum(1 for p in s["parts"] if p["state"] == 0)
++    ages1 = sorted((s["list"], p["value"], p["age"]) for s, p in parts if p["age"] and not ps1_skipped(s))   # CR4 A8: none of the PS1-skipped slots
+     A = ["/* part_age_data.c - GENERATED by tools/partcat_build.py from core/data/parts/catalog/ (CR12).",
+          " * The parts whose age class is not ALL, sorted by (list, value): resident on every platform",
+          " * (src/part_age.c, the renderer and the generators read it). DO NOT EDIT. */",
+-         '#include "doomo/part_meta.h"', "",
+-         "const PartAgeRow doomo_part_age_rows[%d] = {" % max(1, len(ages))]
++         '#include "doomo/part_meta.h"', ""]
++    if ages1 != ages:
++        A.append("#if defined(DOOMO_PLATFORM_PS1)       /* CR4 A8: the PS1 never offers or draws the slots its tables leave out */")
++        A += ["const PartAgeRow doomo_part_age_rows[%d] = {" % max(1, len(ages1))]
++        A += ["    { %d, %d, %d }," % r for r in ages1] or ["    { 0xFFFF, 0, 0 },     /* none yet: a sentinel */"]
++        A += ["};", "const uint16_t doomo_part_age_count = %d;" % len(ages1), "#else"]
++    A += ["const PartAgeRow doomo_part_age_rows[%d] = {" % max(1, len(ages))]
+     A += ["    { %d, %d, %d }," % r for r in ages] or ["    { 0xFFFF, 0, 0 },     /* none yet: a sentinel */"]
+-    A += ["};", "const uint16_t doomo_part_age_count = %d;" % len(ages), ""]
++    A += ["};", "const uint16_t doomo_part_age_count = %d;" % len(ages)]
++    if ages1 != ages:
++        A.append("#endif")
++    A.append("")
+     M = ["/* CR3: the live count of every gene list (index: GF_* id): its values 0..N-1 are selectable,",
+           " * saved and kept by resident_sanitize; 0 for a field that is not a catalogued part list. */",
+           "const uint8_t doomo_part_live[PART_GENE_FIELDS] = {"]
+-- 
+2.43.0
+

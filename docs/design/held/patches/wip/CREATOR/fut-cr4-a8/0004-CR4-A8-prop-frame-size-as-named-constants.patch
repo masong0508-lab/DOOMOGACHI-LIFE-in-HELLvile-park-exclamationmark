@@ -1,0 +1,32 @@
+From dd39dee1bf6ca1427dddc0022168759f70e2a65c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 16:36:35 +0000
+Subject: [PATCH 4/5] CR4 A8: prop frame size as named constants
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvvRYHgPW3b8GJby1n
+---
+ core/src/portrait_body.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/core/src/portrait_body.c b/core/src/portrait_body.c
+index 10a3523b..09b131aa 100644
+--- a/core/src/portrait_body.c
++++ b/core/src/portrait_body.c
+@@ -1852,9 +1852,12 @@ void pb_draw_neck(PCtx *c)
+  * the body, the head and the hat, under the weapon and the finish (the bust's B.unit is the tail's 14 px, so it gets its own 9). A profile holds it in the near paw, a back view in the paw
+  * that is on the other side of the picture. No chibi (DFF_CHIBI is not set: crowds pay nothing). */
+ #if DOOMO_PARTS_VM
++#define HELD_PROP_BUST_PX 12    /* frame unit on the bust, in 1x pixels */
++#define HELD_PROP_BODY_NUM 3    /* on the figure and fighter: B.unit * NUM / DEN */
++#define HELD_PROP_BODY_DEN 4
+ static void held_prop(PCtx *c)
+ {
+-    int s, u = B.view == VK_PORTRAIT ? PX(12) : B.unit * 3 / 4;
++    int s, u = B.view == VK_PORTRAIT ? PX(HELD_PROP_BUST_PX) : B.unit * HELD_PROP_BODY_NUM / HELD_PROP_BODY_DEN;
+     if (!c->d->v[DF_PROP] || B.view == VK_CHIBI) return;
+     s = c->d->v[DF_HANDED] ? 1 : 0;
+     if (B.yaw == 2) s = 0;
+-- 
+2.43.0
+

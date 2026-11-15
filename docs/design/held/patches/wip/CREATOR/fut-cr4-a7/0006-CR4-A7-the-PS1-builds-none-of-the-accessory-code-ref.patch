@@ -1,0 +1,362 @@
+From dfa093fddd5c095316f89e93320d92c2adb72603 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 19:55:26 +0000
+Subject: [PATCH 6/9] CR4 A7: the PS1 builds none of the accessory code, refs
+ or set (DOOMO_ACC_DEEP 0): resident back to the 480 B share; partsbin follows
+ the registry
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvvRYHgPW3b8GJby1n
+---
+ core/gen/parts_acc.c             |  2 +
+ core/gen/parts_index.c           | 78 ++++++++++++++++++--------------
+ core/include/doomo/look_fields.h | 10 ++++
+ core/src/creator_data.c          |  4 +-
+ core/src/look_pool.c             |  2 +
+ core/src/portrait_body.c         |  4 +-
+ core/src/portrait_int.h          |  5 ++
+ core/tests/test_cr4_a7.c         | 15 ++++++
+ ps1/tools/partsbin.py            |  2 +
+ tools/parts_build.py             | 34 ++++++++++++--
+ 10 files changed, 115 insertions(+), 41 deletions(-)
+
+diff --git a/core/gen/parts_acc.c b/core/gen/parts_acc.c
+index 1c57c74a..7b2435ba 100644
+--- a/core/gen/parts_acc.c
++++ b/core/gen/parts_acc.c
+@@ -2,6 +2,7 @@
+  * DO NOT EDIT: edit the text files and run `python3 tools/parts_build.py`. */
+ #include "doomo/doomo.h"
+ #include "doomo/parts.h"
++#if !defined(DOOMO_PLATFORM_PS1)       /* DOOMO_ACC_DEEP 0 */
+ 
+ static const PartRef refs[] = {
+     { 1, 10, 0 },
+@@ -733,3 +734,4 @@ const PartSet doomo_parts_acc = { refs, 111, ops, stamps, 0, bits, &doomo_parts_
+ #else
+ const PartSet doomo_parts_acc = { refs, 111, ops, stamps, 0, bits, 0, lists, 8 };
+ #endif
++#endif
+diff --git a/core/gen/parts_index.c b/core/gen/parts_index.c
+index 4d9f98e2..4ef3b4d7 100644
+--- a/core/gen/parts_index.c
++++ b/core/gen/parts_index.c
+@@ -3,7 +3,6 @@
+ #include "doomo/doomo.h"
+ #include "doomo/parts.h"
+ 
+-extern const PartSet doomo_parts_acc;
+ extern const PartSet doomo_parts_beard;
+ extern const PartSet doomo_parts_face;
+ extern const PartSet doomo_parts_fur;
+@@ -13,9 +12,9 @@ extern const PartSet doomo_parts_head;
+ extern const PartSet doomo_parts_outfit;
+ extern const PartSet doomo_parts_spooky;
+ extern const PartSet doomo_parts_wardrobe;
++extern const PartSet doomo_parts_acc;
+ 
+ const PartSet *const doomo_part_scripts[10] = {
+-    &doomo_parts_acc,
+     &doomo_parts_beard,
+     &doomo_parts_face,
+     &doomo_parts_fur,
+@@ -25,43 +24,56 @@ const PartSet *const doomo_part_scripts[10] = {
+     &doomo_parts_outfit,
+     &doomo_parts_spooky,
+     &doomo_parts_wardrobe,
++#if !defined(DOOMO_PLATFORM_PS1)       /* CR4 A7: not on the PS1 (DOOMO_ACC_DEEP 0) */
++    &doomo_parts_acc,
++#endif
+ };
++#if defined(DOOMO_PLATFORM_PS1)
++const uint8_t doomo_part_script_count = 9;
++#else
+ const uint8_t doomo_part_script_count = 10;
++#endif
+ 
+ const PartListSet doomo_part_script_lists[31] = {
+-    { 4, 6, 12 },
+-    { 6, 2, 24 },
+-    { 13, 2, 12 },
+-    { 15, 2, 12 },
+-    { 17, 2, 20 },
+-    { 20, 4, 32 },
+-    { 23, 1, 8 },
+-    { 24, 2, 16 },
+-    { 25, 8, 16 },
+-    { 28, 8, 16 },
+-    { 29, 8, 10 },
+-    { 30, 8, 12 },
+-    { 31, 3, 23 },
+-    { 34, 7, 24 },
+-    { 40, 5, 24 },
+-    { 42, 7, 20 },
+-    { 44, 8, 8 },
+-    { 71, 2, 5 },
+-    { 72, 2, 3 },
+-    { 73, 3, 1 },
+-    { 76, 9, 1 },
+-    { 77, 9, 1 },
+-    { 78, 2, 5 },
+-    { 137, 0, 1 },
+-    { 138, 0, 1 },
+-    { 139, 0, 1 },
+-    { 140, 0, 1 },
+-    { 141, 0, 1 },
+-    { 142, 0, 1 },
+-    { 143, 0, 1 },
+-    { 144, 0, 1 },
++    { 4, 5, 12 },
++    { 6, 1, 24 },
++    { 13, 1, 12 },
++    { 15, 1, 12 },
++    { 17, 1, 20 },
++    { 20, 3, 32 },
++    { 23, 0, 8 },
++    { 24, 1, 16 },
++    { 25, 7, 16 },
++    { 28, 7, 16 },
++    { 29, 7, 10 },
++    { 30, 7, 12 },
++    { 31, 2, 23 },
++    { 34, 6, 24 },
++    { 40, 4, 24 },
++    { 42, 6, 20 },
++    { 44, 7, 8 },
++    { 71, 1, 5 },
++    { 72, 1, 3 },
++    { 73, 2, 1 },
++    { 76, 8, 1 },
++    { 77, 8, 1 },
++    { 78, 1, 5 },
++#if !defined(DOOMO_PLATFORM_PS1)
++    { 137, 9, 1 },
++    { 138, 9, 1 },
++    { 139, 9, 1 },
++    { 140, 9, 1 },
++    { 141, 9, 1 },
++    { 142, 9, 1 },
++    { 143, 9, 1 },
++    { 144, 9, 1 },
++#endif
+ };
++#if defined(DOOMO_PLATFORM_PS1)
++const uint8_t doomo_part_script_nlists = 23;
++#else
+ const uint8_t doomo_part_script_nlists = 31;
++#endif
+ 
+ /* the smallest scripted value of each gene list (0xFF: none) */
+ const uint8_t doomo_part_minv[128] = {
+diff --git a/core/include/doomo/look_fields.h b/core/include/doomo/look_fields.h
+index 063ece6f..1184828b 100644
+--- a/core/include/doomo/look_fields.h
++++ b/core/include/doomo/look_fields.h
+@@ -33,6 +33,16 @@ enum {
+ /* CR5: the deep fields the look pool carries and the save keeps (look_pool.c, the creator's chunk): the
+  * ones with no gene field. The others (DF_PUPIL .. DF_HOOD_HEAD, DF_FUR_PATTERN .. DF_HANDED) ride in
+  * the gene (look_gene_deep). */
++/* CR4 A7: the accessory rows (DF_MASK .. DF_PIERCE) are drawn and offered on every platform but the PS1: its resident
++ * share (CREATOR 21,504 B, CR10) has 480 B left and the painters' hooks, the part refs and the age gate cost 1,376 B.
++ * The pool run, the save and the look hash carry the ids everywhere (a GBA look shows on the PS1 without them). */
++#ifndef DOOMO_ACC_DEEP
++#if defined(DOOMO_PLATFORM_PS1)
++#define DOOMO_ACC_DEEP 0
++#else
++#define DOOMO_ACC_DEEP 1
++#endif
++#endif
+ #define DF_POOL_FIRST DF_LASH
+ #define DF_POOL_N     (DF_PIERCE - DF_LASH + 1)
+ 
+diff --git a/core/src/creator_data.c b/core/src/creator_data.c
+index 856ca9d5..3f2fb30c 100644
+--- a/core/src/creator_data.c
++++ b/core/src/creator_data.c
+@@ -226,9 +226,11 @@ static const CrRow rows_face[] = {
+     DEEP_ROW("Lashes", DF_LASH),                 /* CR5: deep parts, saved in the look pool */
+     DEEP_ROW("Eyelids", DF_LID),
+     DEEP_ROW("Eyeliner", DF_LINER),
++#if DOOMO_ACC_DEEP
+     HDR("Face jewellery"),
+     DEEP_ROW("Piercings", DF_PIERCE),            /* CR4 A7 */
+ #endif
++#endif
+ };
+ 
+ static const CrRow rows_hair[] = {
+@@ -281,7 +283,7 @@ static const CrRow rows_outfit[] = {
+     PART_L("Glasses", glasses),
+     ENUM_L("Accessory", accessory, ACC_COUNT, doomo_acc_names, CLIST_ACC),
+     PAINT_L("Acc. colour", accessory_color),
+-#if LOOK_POOL_SAVED                              /* CR4 A7: deep accessory parts (the colour is the Acc. colour) */
++#if LOOK_POOL_SAVED && DOOMO_ACC_DEEP           /* CR4 A7: deep accessory parts (the colour is the Acc. colour) */
+     HDR("Dress-ups"),
+     DEEP_ROW("Mask", DF_MASK),
+     DEEP_ROW("Neckwear", DF_NECK),
+diff --git a/core/src/look_pool.c b/core/src/look_pool.c
+index 4fe0d32d..87174ca6 100644
+--- a/core/src/look_pool.c
++++ b/core/src/look_pool.c
+@@ -106,7 +106,9 @@ void look_resolve_mask(const DoomoResident *r, int id, uint32_t lv, DoomoDeep *o
+     look_gene_deep(r, lv, out);                         /* CR3: the gene's own new fields (r may be NULL) */
+     run = look_pool_find(id, RUN_DEEP, &len);
+     if (!run) return;
++#if DOOMO_ACC_DEEP                                      /* (the PS1 builds none of the accessory parts: nothing to gate) */
+     if (r) stage = (int)gene_get(r->gene, GF_AGE);
++#endif
+     for (i = 0; i + 1 < len; i += 2) {
+         int f = run[i], v = run[i + 1] & 0x7F;
+         if (f >= DF_COUNT) continue;
+diff --git a/core/src/portrait_body.c b/core/src/portrait_body.c
+index 1777020c..1b00aa40 100644
+--- a/core/src/portrait_body.c
++++ b/core/src/portrait_body.c
+@@ -1754,7 +1754,7 @@ static void back_acc(PCtx *c)
+ 
+ /* CR4 A7: gloves (frame at the hand, 256 = the paw radius) and wristwear (frame a fifth of the way up the arm,
+  * 256 = the arm radius), per hand; the far hand of a profile is behind the body */
+-#if DOOMO_PARTS_VM
++#if DOOMO_PARTS_VM && DOOMO_ACC_DEEP
+ static void hand_acc(PCtx *c, int far)
+ {
+     int s;
+@@ -1775,7 +1775,7 @@ static void hand_acc(PCtx *c, int far)
+     }
+ }
+ #else
+-#define hand_acc(c, far) ((void)(c), (void)(far))        /* the PS1 has no part VM yet (portrait_int.h) */
++#define hand_acc(c, far) ((void)(c), (void)(far))        /* the PS1 draws no accessory parts (DOOMO_ACC_DEEP 0) */
+ #endif
+ 
+ /* ---------------------------------------------------------------------- */
+diff --git a/core/src/portrait_int.h b/core/src/portrait_int.h
+index d85e9241..9eda8aa6 100644
+--- a/core/src/portrait_int.h
++++ b/core/src/portrait_int.h
+@@ -350,10 +350,15 @@ int  ps_slot_frame(PCtx *c, int list, int value, int group);
+     ((value) >= doomo_part_minv[(list)] && ps_slot((c), (list), (value), (group)))
+ #define PS_SCRIPTED(value, list) ((value) >= doomo_part_minv[(list)])
+ /* CR4 A7: the pool-backed deep accessory fields (DF_MASK .. DF_PIERCE): the worn value's blocks of group `group` */
++#if DOOMO_ACC_DEEP
+ #define PS_DEEP(c, df, group) \
+     ((c)->d->v[(df)] && ps_slot((c), 128 + (df), (c)->d->v[(df)], (group)))     /* 128 = PL_DEEP0 */
+ #define PS_DEEP_FRAME(c, df, group) \
+     ((c)->d->v[(df)] && ps_slot_frame((c), 128 + (df), (c)->d->v[(df)], (group)))
++#else
++#define PS_DEEP(c, df, group) ((void)(c), 0)                 /* the PS1 (look_fields.h DOOMO_ACC_DEEP) */
++#define PS_DEEP_FRAME(c, df, group) ((void)(c), 0)
++#endif
+ #define PS_SLOT_FRAME(c, list, value, group) \
+     ((value) >= doomo_part_minv[(list)] && ps_slot_frame((c), (list), (value), (group)))
+ #else
+diff --git a/core/tests/test_cr4_a7.c b/core/tests/test_cr4_a7.c
+index 0d2a285d..356bd86b 100644
+--- a/core/tests/test_cr4_a7.c
++++ b/core/tests/test_cr4_a7.c
+@@ -12,6 +12,7 @@
+ #include "test.h"
+ #include "doomo/doomo.h"
+ #include "doomo/part_meta.h"
++#include "doomo/parts.h"
+ #include "doomo/look_fields.h"
+ #include "doomo/look_pool.h"
+ #include "doomo/portrait.h"
+@@ -166,3 +167,17 @@ TEST(cr4_a7_a_teen_only_pool_run_does_not_resolve_on_a_minor)
+         CHECK(look_pool_put(12, RUN_DEEP, NULL, 0));
+     }
+ }
++
++/* The PS1 builds the registry without the accessory set (DOOMO_ACC_DEEP 0; parts_index.c drops the last set and the last
++ * list rows there): the set must be last and own only the highest list ids, or the PS1's prefix would hold holes. */
++extern const PartSet doomo_parts_acc;
++TEST(cr4_a7_the_accessory_set_is_the_registry_tail_so_the_ps1_can_drop_it)
++{
++    int i;
++    CHECK_EQ(doomo_part_script_count, 10);
++    CHECK(doomo_part_scripts[doomo_part_script_count - 1] == &doomo_parts_acc);
++    for (i = 0; i < doomo_part_script_nlists; i++) {
++        const PartListSet *e = &doomo_part_script_lists[i];
++        CHECK_EQ(e->set == doomo_part_script_count - 1, e->list >= 128 + DF_MASK);
++    }
++}
+diff --git a/ps1/tools/partsbin.py b/ps1/tools/partsbin.py
+index a435c776..c1e9d660 100644
+--- a/ps1/tools/partsbin.py
++++ b/ps1/tools/partsbin.py
+@@ -34,6 +34,8 @@ def main(argv):
+     gen, out = argv[1], argv[2]
+     index = open(os.path.join(gen, "parts_index.c"), encoding="utf-8").read()
+     m = re.search(r"doomo_part_scripts\[\d+\]\s*=\s*\{(.*?)\};", index, re.S)
++    if m:       # CR4 A7: the sets inside "#if !defined(DOOMO_PLATFORM_PS1)" are not built there: not in PARTS.BIN either
++        m = re.match(r"(?s)(.*?)(?:#if !defined\(DOOMO_PLATFORM_PS1\).*?#endif|$)", m.group(1))
+     dirs = re.findall(r"&doomo_parts_(\w+)", m.group(1)) if m else []
+     if not dirs:
+         sys.stderr.write("partsbin: no sets in parts_index.c\n")
+diff --git a/tools/parts_build.py b/tools/parts_build.py
+index ae6f2a2d..180ccc28 100644
+--- a/tools/parts_build.py
++++ b/tools/parts_build.py
+@@ -548,9 +548,15 @@ def lz_blocks(refs, ops, dirname):
+     return blocks
+ 
+ 
++# CR4 A7: the sets the PS1 does not build yet (DOOMO_ACC_DEEP 0, look_fields.h): no resident PartRef rows there, and
++# partsbin.py leaves them out of PARTS.BIN. They sort last, so the PS1's registry is a prefix of everyone's.
++PS1_SKIP = ("acc",)
++
++
+ def part_dirs():
+     base = os.path.join(ROOT, "core", "data", "parts")
+-    return [d for d in sorted(os.listdir(base)) if d != "catalog" and os.path.isdir(os.path.join(base, d))]
++    return sorted((d for d in os.listdir(base) if d != "catalog" and os.path.isdir(os.path.join(base, d))),
++                  key=lambda d: (d in PS1_SKIP, d))
+ 
+ 
+ def emit(dirname, fields):
+@@ -658,13 +664,28 @@ def emit_index(dirs, minvs):
+     L = ["/* parts_index.c - GENERATED by tools/parts_build.py: the registry of the part-script sets.",
+          " * DO NOT EDIT: add a dir under core/data/parts/ and run `python3 tools/parts_build.py`. */",
+          '#include "doomo/doomo.h"', '#include "doomo/parts.h"', ""]
++    nps1 = len([d for d in dirs if d not in PS1_SKIP])               # the PS1's sets: a prefix
++    skipl = [lst for lst in sorted(owner) if dirs[owner[lst]] in PS1_SKIP]
++    if skipl != sorted(owner)[len(owner) - len(skipl):]:
++        raise PartError("a skipped set's lists must have the highest list ids (the PS1 drops the table's tail)")
+     L += ["extern const PartSet doomo_parts_%s;" % d for d in dirs]
+     L += ["", "const PartSet *const doomo_part_scripts[%d] = {" % max(1, len(dirs))]
+-    L += ["    &doomo_parts_%s," % d for d in dirs] or ["    0,"]
+-    L += ["};", "const uint8_t doomo_part_script_count = %d;" % len(dirs), "",
++    for i, d in enumerate(dirs):
++        if i == nps1 and nps1 < len(dirs):
++            L.append("#if !defined(DOOMO_PLATFORM_PS1)       /* CR4 A7: not on the PS1 (DOOMO_ACC_DEEP 0) */")
++        L.append("    &doomo_parts_%s," % d)
++    L += (["#endif"] if nps1 < len(dirs) else []) + ["};"]
++    L += ["#if defined(DOOMO_PLATFORM_PS1)", "const uint8_t doomo_part_script_count = %d;" % nps1, "#else",
++          "const uint8_t doomo_part_script_count = %d;" % len(dirs), "#endif", "",
+           "const PartListSet doomo_part_script_lists[%d] = {" % max(1, len(owner))]
+-    L += ["    { %d, %d, %d }," % (lst, owner[lst], allmin[lst]) for lst in sorted(owner)] or ["    { 0xFFFF, 0, 255 },"]
+-    L += ["};", "const uint8_t doomo_part_script_nlists = %d;" % len(owner), "",
++    for lst in sorted(owner):
++        if lst == (skipl[0] if skipl else None):
++            L.append("#if !defined(DOOMO_PLATFORM_PS1)")
++        L.append("    { %d, %d, %d }," % (lst, owner[lst], allmin[lst]))
++    if not owner: L.append("    { 0xFFFF, 0, 255 },")
++    L += (["#endif"] if skipl else []) + ["};",
++          "#if defined(DOOMO_PLATFORM_PS1)", "const uint8_t doomo_part_script_nlists = %d;" % (len(owner) - len(skipl)), "#else",
++          "const uint8_t doomo_part_script_nlists = %d;" % len(owner), "#endif", "",
+           "/* the smallest scripted value of each gene list (0xFF: none) */",
+           "const uint8_t doomo_part_minv[128] = {"]
+     mv = [allmin.get(i, 255) for i in range(128)]
+@@ -789,6 +810,9 @@ def main(argv):
+         os.makedirs(os.path.join(root, "core", "gen"), exist_ok=True)
+         for d in dirs:
+             text, n, size, zsize, nblk, minvs[d] = emit(d, fields)
++            if d in PS1_SKIP:                           # CR4 A7: no resident rows on the PS1 (the includes stay: no empty unit)
++                k = text.index('#include "doomo/parts.h"\n') + len('#include "doomo/parts.h"\n')
++                text = text[:k] + "#if !defined(DOOMO_PLATFORM_PS1)       /* DOOMO_ACC_DEEP 0 */\n" + text[k:] + "#endif\n"
+             with open(os.path.join(root, "core", "gen", "parts_%s.c" % d), "w") as f:
+                 f.write(text)
+             print("parts_build: %s: %d scripts, %d B (%d B in %d LZ blocks) -> core/gen/parts_%s.c" % (d, n, size, zsize, nblk, d))
+-- 
+2.43.0
+

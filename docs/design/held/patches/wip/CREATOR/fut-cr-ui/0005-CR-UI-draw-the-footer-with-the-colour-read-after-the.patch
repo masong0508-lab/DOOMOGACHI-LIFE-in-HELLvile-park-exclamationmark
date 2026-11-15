@@ -1,0 +1,60 @@
+From adb44c81960a94b26716fe44153ff1a53ad42a34 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:13:57 +0000
+Subject: [PATCH 5/6] CR-UI: draw the footer with the colour read after the
+ text call (the native build drew it black), test
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvvRYHgPW3b8GJby1n
+---
+ core/src/creator_draw.c   |  5 ++++-
+ core/tests/test_creator.c | 17 +++++++++++++++++
+ 2 files changed, 21 insertions(+), 1 deletion(-)
+
+diff --git a/core/src/creator_draw.c b/core/src/creator_draw.c
+index 0d35e0e8..00d85f78 100644
+--- a/core/src/creator_draw.c
++++ b/core/src/creator_draw.c
+@@ -1095,7 +1095,10 @@ static void draw_footer(const CrRow *row, int x, int y, int w)
+         return;
+     }
+     /* CR-UI: a name that still does not fit scrolls here (and only here); the rest of the line is cut first */
+-    ui_text(x, y, cr_marquee(footer_text(row, w, buf, b3, &c), w, b2), c);
++    {   /* the text first: it sets c (an argument list has no evaluation order; the native build drew this line black) */
++        const char *ft = footer_text(row, w, buf, b3, &c);
++        ui_text(x, y, cr_marquee(ft, w, b2), c);
++    }
+ }
+ 
+ static void draw_persona_panel(int x, int y, int w, int h)
+diff --git a/core/tests/test_creator.c b/core/tests/test_creator.c
+index 4d35d6be..aacc4269 100644
+--- a/core/tests/test_creator.c
++++ b/core/tests/test_creator.c
+@@ -1476,6 +1476,23 @@ TEST(cr_ui_footer_names_every_value)
+     CHECK(crl.big || bare > 0);   /* the over-wide case (name kept, set and count dropped) is exercised */
+ }
+ 
++/* the footer of a part row is drawn in the full text colour, not black: the colour comes out of the text
++ * call, so it must be read after it (an argument list has no order; the native build drew it black) */
++TEST(cr_ui_footer_is_drawn_in_the_text_colour)
++{
++    const UiStyle *st;
++    int x, y, n = 0;
++    open_creator(-1);
++    cr_layout();
++    st = ui_style(cr_is_hellish() ? WIN_DARK : WIN_CUTE);
++    CHECK(cr_cur_row() && (cr_cur_row()->kind == RK_ENUM || cr_cur_row()->kind == RK_DEEP));
++    frames(3, 0);
++    for (y = crl.foot_y; y < crl.foot_y + 9; y++)
++        for (x = crl.lx + 7; x < crl.lx + crl.lw - 7; x++)
++            n += nat_fb[y * nat_w + x] == st->text;
++    CHECK_MSG(n > 20, "only %d footer pixels in the text colour", n);
++}
++
+ TEST(cr_ui_tab_strip_has_room_for_one_more_page)
+ {
+     open_creator(-1);
+-- 
+2.43.0
+

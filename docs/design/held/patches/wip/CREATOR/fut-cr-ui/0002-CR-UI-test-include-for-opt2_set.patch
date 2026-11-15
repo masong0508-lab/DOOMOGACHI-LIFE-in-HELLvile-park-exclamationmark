@@ -1,0 +1,26 @@
+From 9b1c4c0bfdcb9e161a1400785787ff3d04543b7f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 15:44:28 +0000
+Subject: [PATCH 2/6] CR-UI: test include for opt2_set
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvvRYHgPW3b8GJby1n
+---
+ core/tests/test_creator.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/core/tests/test_creator.c b/core/tests/test_creator.c
+index 89ec60bb..658ecd05 100644
+--- a/core/tests/test_creator.c
++++ b/core/tests/test_creator.c
+@@ -12,6 +12,7 @@
+ #include "doomo/playas.h"
+ #include "doomo/part_meta.h"
+ #include "doomo/look_pool.h"
++#include "doomo/options_store.h"
+ 
+ static void frames(int n, uint32_t b)
+ {
+-- 
+2.43.0
+

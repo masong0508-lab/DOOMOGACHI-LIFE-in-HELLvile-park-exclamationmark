@@ -1,0 +1,30 @@
+From 9ae74ce9838394687cddff87a8c83e64ae343bd5 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:18:18 +0000
+Subject: [PATCH 6/6] CR-UI: docs: the footer colour order bug and how it was
+ found
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvvRYHgPW3b8GJby1n
+---
+ docs/CREATOR.md | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/docs/CREATOR.md b/docs/CREATOR.md
+index e5640db5..3325b126 100644
+--- a/docs/CREATOR.md
++++ b/docs/CREATOR.md
+@@ -1077,6 +1077,10 @@ grid footer only; the panels, tabs, pane and pickers are as before):
+ * **A long value is cut hard on the row.** The selected row is cut with ".." and stands still, so a long name (a long part
+   or colour name on a narrow column) can leave only a few letters on the row. This is accepted: the footer line shows the whole
+   name, and the test keeps that true for every choice.
++* **The footer's colour is read after the text.** `draw_footer` gets the line and its colour from one call; the colour is
++  read after that call, never in the same argument list (the native runner drew the line black, the Dreamcast build did
++  not: found by the Dreamcast `ui-compare`). `cr_ui_footer_is_drawn_in_the_text_colour` checks the drawn pixels (note: it
++  passes on the test build even with the order bug, which only showed in the runner build; the `ui-compare` is the proof).
+ * **Fewer captions.** No caption repeats the tab's name: the Hair tab lost "Hair" (one more row on the GBA), the Voice tab's
+   second caption is "Tuning", the Body tab's is "Shape" (the title reads "Body > Shape").
+ * **The sliders page says the cheat.** A build slider's line shows "Short <-> Tall  x3" while Slider range is above x1.
+-- 
+2.43.0
+

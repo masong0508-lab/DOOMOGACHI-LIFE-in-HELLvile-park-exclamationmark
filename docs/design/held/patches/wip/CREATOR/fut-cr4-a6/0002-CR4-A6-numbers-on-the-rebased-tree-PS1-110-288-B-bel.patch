@@ -1,0 +1,90 @@
+From 9f4ab179d50d06fa76fdab0872ecb522b176a433 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 18:08:06 +0000
+Subject: [PATCH 2/2] CR4 A6: numbers on the rebased tree (PS1 110,288 B below
+ the stack top, GBA ledger row 64, core 1,415)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvvRYHgPW3b8GJby1n
+---
+ ROADMAP.md                         |  2 +-
+ docs/CREATOR.md                    | 14 +++++---------
+ docs/PS1.md                        | 16 +++++++---------
+ docs/design/held/status/CREATOR.md |  2 +-
+ 4 files changed, 14 insertions(+), 20 deletions(-)
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index fc2fc22d..978fc004 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -712,4 +712,4 @@ MP1 part 4 (2026-11-05, `doomo-mp1-ember-trigger-nov05t`): the co-op quest trigg
+ 
+ - **STUDIO ST-0 (2026-11-15):** the song studio plan is written: `docs/design/STUDIO_PLAN.md` (Easy by default, Advanced switch, jam / record / drum pads, note grid and selection, sections and 8 tracks, `'SNG2'` chunk, memory per platform). Packages ST-EASY, ST-PLAY, ST-TOOLS, ST-ADV, ST-USE follow.
+ **Done: DC10A** (declutter and beautify the Dreamcast-only screens: the VMU save / load / erase card is the core's window with a still bar and one plain line; the Stick help line is one sentence; the other Dreamcast-only rows and the Talk layout are the core's and were checked, not changed; docs/DREAMCAST.md "DC10A", before / after shots in docs/img/dc10a; ui-compare 426 shots pass, vmu-test, family-test2 and talk-test hold, no tick over 33.3 ms except the old VMU save blocking ticks).
+-**CR4 A6 hats and glasses (2026-11-15, partial; docs/CREATOR.md "CR4 batch A6"):** 55 new parts live, the gene-stored part: 28 hats (gene `hat` 36..63, the list is full at 64) and 27 glasses (gene `glasses` 5..31, full at 32), hand-written part scripts (`core/data/parts/hat/hats_b.txt`, `glasses/glasses_b.txt`), sheets and the new hats x long hair / hood / glasses / mask / big ears interplay sheet reviewed, `creator_parts_hats.txt`, `test_cr4_a6.c`; no resident byte on any platform (PS1: the creator group passed its slot's last sector, ovl_plan fix, slot +2 KB, 127 KB below the stack top; GBA ledger row 59). Left: the deep pages (`hat_x` 64, `glasses_x` 9) which need a `DF_` id, a painter hook and a creator row each.
++**CR4 A6 hats and glasses (2026-11-15, partial; docs/CREATOR.md "CR4 batch A6"):** 55 new parts live, the gene-stored part: 28 hats (gene `hat` 36..63, the list is full at 64) and 27 glasses (gene `glasses` 5..31, full at 32), hand-written part scripts (`core/data/parts/hat/hats_b.txt`, `glasses/glasses_b.txt`), sheets and the new hats x long hair / hood / glasses / mask / big ears interplay sheet reviewed, `creator_parts_hats.txt`, `test_cr4_a6.c`; no resident source on the GBA (ledger row 64, 0 B), PS1 107 KB (110,288 B) below the stack top on the CR10 tree (-320 B for the catalog rows). Left: the deep pages (`hat_x` 64, `glasses_x` 9) which need a `DF_` id, a painter hook and a creator row each.
+diff --git a/docs/CREATOR.md b/docs/CREATOR.md
+index e848125f..85cc1e9f 100644
+--- a/docs/CREATOR.md
++++ b/docs/CREATOR.md
+@@ -1092,15 +1092,11 @@ build sliders and are not scaled.
+ * **Tests:** `test_cr4_a6.c` (the lists full and the 55 parts catalogued and inside the cost cap; the glasses gate; glasses show on the
+   bust, the figure and the chibi; every hat shows; glasses go with every hat and the painted mask; a child may wear all of it; they survive a
+   save and sanitize; they draw on three other citizens).
+-* **PS1:** the part VM waits for CR10, so the PS1 creator keeps offering the painted hats (0..35 are painted or are family hats
+-  that the PS1 does not draw; `part_live_drawable` caps the list at the smallest scripted value) and the five painted glasses.
+-  Nothing resident was added (the scripts are overlay and ROM data). **Measured on the rebased tree (2026-11-15, origin `6e8363ab` + A6):** the creator overlay (`.ovl_03`, 183,000 -> 184,496 B:
+-  `doomo_part_meta` +880 B, `doomo_part_names` +617 B) passes the slot's last whole sector; `ovl_plan.py` lost the running end of an
+-  earlier borrowing group there (CR-SLIDERX fixed the same bug, `ff710398`, and that fix is the one in the tree). PS1 EXE ends
+-  0x801e0420, **126 KB below the stack top (130,000 B, the same as the tip without A6)**, resident code and data unchanged
+-  (docs/PS1.md "CR4 A6"). The creator group has no room left in its last sector: every further creator batch costs the slot
+-  another 2 KB until the creator's data is cut. GBA (`make -C gba sizes`): `.bss` 254,828 (the tip's), `.iwram` 11,272,
+-  `.iwram_bss` 4,088 (EWRAM 6,420 B free): no resident source changed.
++* **PS1:** with CR10 landed the PS1 reads the part scripts and icons from PARTS.BIN, so the 55 parts add no creator
++  overlay code. **Measured 2026-11-15 on origin `098f0878` + A6:** the EXE ends **110,288 B (107 KB) below the stack top**
++  (the tip alone: 110,608 B; A6 costs -320 B resident, the catalog rows and names; docs/PS1.md "CR4 A6"). PCSX-Redux harness
++  `game_smoke`, `creator_parts`, `creator_speed` (29 fps), `creator_parts_hats` PASS. GBA (`make -C gba sizes`): `.bss` 254,820,
++  `.iwram` 11,272, `.iwram_bss` 4,088 (EWRAM 6,436 B free, ledger row 64, 0 B): no resident source changed.
+ * **Review follow-ups (2026-11-15):** the chibi is gated now (glasses change at least 9 px of the sprite, gate 8); the old
+   clamp case for hat 62 cannot come back (the hat gene list is full at 64 and the field has 6 bits, so no value is left to
+   clamp; the accessory 31 case covers the path); the interplay sheet's "big glasses" column header is now "specs". Known and
+diff --git a/docs/PS1.md b/docs/PS1.md
+index bf6fe361..933d908e 100644
+--- a/docs/PS1.md
++++ b/docs/PS1.md
+@@ -2470,12 +2470,10 @@ Measured 2026-11-15 on `fe410024` and the same + LV7a (clean builds, boot FMV, `
+ (`DOOMO_TEXBANK_ACTIVE` 0). The new art and the bank blobs reach the PS1 as pack data on the disc with the level packs (LV8). The LEVELS
+ share of 8 KB resident: 0 B used by LV7a. `game_smoke` PASS.
+ 
+-### CR4 A6: the creator group at the slot's last sector (2026-11-15)
+-
+-Measured on origin `6e8363ab` (with A1b, S3-2, CR-SLIDERX) + A6, clean build (`cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON`):
+-**130,000 B (126 KB) below the stack top, `_end` 0x801e0420: the same as the tip without A6** (the tip's own number in the
+-CR-SLIDERX section above). The creator group (`.ovl_03`, which borrows `.bss`) grew 183,000 -> 184,496 B with the 55 catalog rows
+-and names (`doomo_part_meta` +880 B, `doomo_part_names` +617 B) and its last whole sector passed the slot's end: `ovl_plan.py` lost
+-the running end of an earlier borrowing group (found independently here and by CR-SLIDERX; CR-SLIDERX's fix, `ff710398`, is the one
+-in the tree). The slot's 2 KB growth is therefore already in the tip's 130,000 B. No resident code or data changed. The creator
+-group has no room left in its last sector: the next creator batch costs another 2 KB of slot.
++### CR4 A6: hats and glasses, resident margin (2026-11-15)
++
++Measured on origin `098f0878` (with CR10) and the same + A6, clean builds (`cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON`, boot FMV):
++the tip ends **110,608 B** below the stack top, with A6 **110,288 B (107 KB)**: -320 B resident (the 55 catalog rows and names; the part
++scripts and icons themselves are data, not code). Well above the 72 KB rule. Harness on PCSX-Redux: `game_smoke`, `creator_parts`,
++`creator_speed` (29 fps) and `creator_parts_hats` PASS. The earlier note that the creator group sits at the slot's last sector is
++overtaken by CR10 (the PS1 reads part scripts and icons from PARTS.BIN).
+diff --git a/docs/design/held/status/CREATOR.md b/docs/design/held/status/CREATOR.md
+index e9e1d615..be116756 100644
+--- a/docs/design/held/status/CREATOR.md
++++ b/docs/design/held/status/CREATOR.md
+@@ -20,7 +20,7 @@ delta, GBA sizes), in flight (package and stage), next up, blockers, needs from
+ - **CR4 A4 fur and skin (resumed, ready to land, partial):** 33 new parts live: 24 fur patterns (fur_pattern 1..24) and 9 face marks (marking 23..31); sheets viewed (cute marks only, nothing suggestive, nothing real-world, fine on a child); rebased onto 3d9905df with no conflicts (landed numbers: PS1 `_end` 0x801ee570, elf2exe '70 KB left', A4 delta 0 B against the tip as measured before the last rebase, below the 72 KB rule on the tip itself, not from A4; GBA .bss 248,924 B, .iwram 11,272, .iwram_bss 4,088, no new resident arrays; GBA `make -C gba test` green; harness game_smoke and creator_parts_fur PASS); core 1,231 passed, SAN=1 passed, check-gen, xcheck (417 files), dc-host-test, GBA build + test-creator pass (`make -C gba test` stops at test-talk, talk.txt:32 expected TALK got DIALOG, the same failure on the unmodified tip), PS1 build `_end` 0x801ee580 same as the tip, harness game_smoke and creator_parts_fur PASS. GBA .text +96 B, .rodata +16,356 B, EWRAM / IWRAM identical. **Left:** 15 body tattoos (deep fields, need CR5).
+ - **CR4 A3 spooky (landed 2026-11-13, partial; docs/CREATOR.md "CR4 batch A3"):** 60 new parts live of the batch's 134: 10 horns (gene 16..25), 16 tails (16..31), 14 wings (10..23), 4 halos (12..15) and 16 auras (8..23; 16..23 use the aura's fifth bit that the NICK trailer carries); hand-written scripts in `core/data/parts/spooky`, no new painter code; sheets reviewed (incl. the new `portrait_sheet --slot tail|wings --views`), `creator_parts_spooky.txt`, `test_cr4_a3.c`. Rebased tree (after T5B-VOICE): core 1,165 passed, check-gen, xcheck (414 files, four compilers), `make dc-host-test`, GBA `test` and `test-creator` pass; GBA EWRAM / IWRAM / `.text` identical, ROM `.rodata` +31,976 B; PS1 `_end` 0x801ef580 unchanged by A3 (68,208 B below the stack top, still under the 72 KB rule until PS1-RAM); PS1 harness game_smoke passes (the creator scripts: see below). SAN=1 NOT run to the end: it was stopped after about 404 of the 1,163 unit tests (incl. all `cr4_a3` tests) and 201 of the 376 script runs (incl. `creator_parts_spooky`) because the shared machine made it take many hours; no failure and only the known UBSan reports (concert_gfx.c) before the stop. The builder's full SAN run on the pre-rebase tree passed. **Left (68 parts, deep fields, need CR5):** horn page 2 (6), horn / antenna bits (32), tail accessories (16), wing accessories (8), halo page 2 (6): each needs a `DF_` id, a painter hook and a creator row that takes a deep field. `parts_build.py` now estimates a torso block that never draws on the bust against the figure's torso (`NOMINAL_TORSO_BODY`).
+ - **CR4 A1a (landed 2026-11-13, partial, the commits "CR4 A1a: ..."; docs/CREATOR.md "CR4 A1a"):** 96 new parts live (plan about 145): 12 head shapes, 24 eye styles, 27 pupils, 13 eye whites, 20 brows; script materials `mat ink` / `mat white`; the shape gate honours per-slot `gate=`; `make -C core portrait-sheet`. Left for the next package: 31 lashes / lids / liner (CR5 deep fields) and 3 extra eyes 4-6 (a gene change). Weak gates, recorded: pupils gate 2 px, eye whites 4, brows 4 (not 24); several eyes are identical on chibis (Dash/Plus/Starburst, Smile Cups/Slot, Chomp/Heart Iris); the lead may want a bigger default iris or a pupil-size control. Landing fix: the review found the new `portrait-sheet` Makefile block had been inserted inside the `gen` recipe, so `make gen` and `check-gen` skipped textpack, talkc, PY_GENS_REST and ulgen; moved below the recipe, `check-gen` still clean with all generators running. On the tree rebased onto A2 / A3 (final): core 1,168 passed / 0 failed, SAN=1 1,168 passed (only the 4 known reports), check-gen clean, xcheck 414 files OK, GBA build + test + test-creator OK (`.text` 1,403,736, `.rodata` 6,688,236, `.iwram` 11,256, `.iwram_bss` 4,084, `.bss` 245,788: EWRAM net zero; this package's ROM growth about +44.7 KB rodata, +152 B text), PS1 EXE with the boot FMV ends 0x801ee3e0 on the tree rebased onto PS1-FLAT, 72,736 B below the stack top, equal to the origin tip's figure (before PS1-FLAT: 0x801ef580, 68,208 B, equal to a clean build of origin without this package, measured): 0 B resident added; harness game_smoke, creator_parts_face_a, creator_grid, creator_speed (rows 30.13, value 29.88) PASS; dc-host-test OK, `make -C dc` builds (no Flycast run). Part catalog 629 parts / 602 live (with A2 and A3).
+-- **CR4 A6 hats and glasses (landed 2026-11-15, partial, the `CR4 A6:` commits; docs/CREATOR.md "CR4 batch A6"):** 55 new parts live: 28 hats (gene `hat` 36..63, list full) and 27 glasses (gene `glasses` 5..31, list full), scripts only, no new painter code, no resident code changed. Reviewed (sheets viewed by builder and reviewer; the reviewer's 6 findings: chibi gate, measured glasses gates (bust min 24 px gate 20, chibi min 9 px gate 8), sheet header fixed; the hat clamp case cannot return (list full); the rest listed in docs). On the rebased tree (`bebc8b8c` + A6): core 1,345 passed 0 failed incl. all scripts; SAN=1 1,345 passed on the previous tip (only the known old reports); check-gen clean; xcheck 422 files OK on 4 compilers; GBA build + test ok, `.bss` 254,828 / `.iwram` 11,272 / `.iwram_bss` 4,088, EWRAM 6,420 B free (ledger row 59, 0 B); PS1: the creator group sits at the slot's last sector (the `ovl_plan.py` fix is CR-SLIDERX's), **126 KB (130,000 B) below the stack top**, the same as the tip without A6, the full PCSX-Redux game harness 23 PASS (+ adpcm, tilerow). Left: deep pages `hat_x` (64) and `glasses_x` (9) (each needs a `DF_` id, painter hook and creator row; the creator overlay has no room in its last sector: the next batch costs the slot 2 KB).
++- **CR4 A6 hats and glasses (landed 2026-11-15, partial, the `CR4 A6:` commits; docs/CREATOR.md "CR4 batch A6"):** 55 new parts live: 28 hats (gene `hat` 36..63, list full) and 27 glasses (gene `glasses` 5..31, list full), scripts only, no new painter code, no resident code changed. Reviewed (sheets viewed by builder and reviewer; the reviewer's 6 findings: chibi gate, measured glasses gates (bust min 24 px gate 20, chibi min 9 px gate 8), sheet header fixed; the hat clamp case cannot return (list full); the rest listed in docs). On origin `098f0878` + A6 (after CR10): core 1,415 passed 0 failed incl. all scripts; SAN=1 1,415 passed (only the known old reports); check-gen clean; xcheck 426 files OK on 4 compilers; dc-host-test ok; GBA build + test ok, `.bss` 254,820 / `.iwram` 11,272 / `.iwram_bss` 4,088, EWRAM 6,436 B free (ledger row 64, 0 B); PS1: **107 KB (110,288 B) below the stack top** (tip alone 110,608 B, A6 -320 B resident), PCSX-Redux `game_smoke`, `creator_parts`, `creator_speed`, `creator_parts_hats` PASS. Left: deep pages `hat_x` (64) and `glasses_x` (9) (each needs a `DF_` id, painter hook and creator row; the PS1 reads parts from PARTS.BIN since CR10, so the overlay slot is no longer the limit).
+ - **In flight:** nothing running (PAUSED 2026-11-13 by the coordinator; allowance resets 2026-11-15 04:00 UTC). Unlanded work is saved as patches, see "How to resume".
+ - **CR4 A1b noses / mouths / ears / blush (resumed 2026-11-15, ready to land; docs/CREATOR.md "CR4 A1b"):** 51 new parts live (12 noses, 12 mouths, 16 ears, 11 blush styles); sheets viewed (cute, nothing suggestive, nothing real-world, no props); rebased onto 366ee6c1 (after CR5-FIX) (catalog, review, golden kept both sides, gen regenerated); core 1,337 passed + SAN=1, check-gen, xcheck, GBA test + test-creator, dc-host-test, PS1 harness PASS; GBA .bss / IWRAM identical, PS1 `_end` 0x801df9f0 on the landing tip (132,624 B below the stack top; +0 B from A1b). Left: muzzles, teeth, freckles, scars (wait for CR5, not on origin), extra eyes 4-6 (gene change); ear folds were already live. wip folder deleted.
+ - **CR4 A5 outfit (LANDED 2026-11-15 on origin cb7d48d9+; final numbers: core 1,289 passed, SAN=1 passed, check-gen, xcheck 420 files, full `make -C gba test` (test-talk now green), PS1 `_end` 0x801ee550 = 72,368 B below the stack top (A5 adds 0 B), GBA `.bss` 249,084 / `.iwram` 11,272 / `.iwram_bss` 4,088 unchanged by A5; reviewer's cosmetic items left: interplay header overlap, chibi blocks for tops 25..48). Earlier text (resumed 2026-11-15, partial; docs/CREATOR.md "CR4 batch A5"):** 70 new parts live (24 tops, 31 outer layers, 15 legwear), rebased onto origin 382a5fdc (A1a head/face and the Talk / music work landed meanwhile; generated files regenerated, never merged). Sheets (`slot_top|outer|legwear`, `interplay_outer_0..3`) viewed again on the rebased tree: garments only, nothing suggestive, no symbols or tobacco / vape / drug props. Rebased tree: core 1,219 passed, check-gen, xcheck (417 files), dc-host-test pass; GBA `.text` 1,456,360 / `.iwram` 11,272 / `.iwram_bss` 4,088 / `.data` 816 / `.bss` 248,748 identical to the origin tip (EWRAM / IWRAM net zero), `.rodata` +35,184 B; PS1 EXE with the FMV ends 0x801ee580 on both the origin tip and this branch (A5 adds 0 B; the margin is 70 KB on the tip already, below the 72 KB rule: not caused by A5); harness game_smoke, creator_speed (value 29.88), creator_grid pass. Known and not A5: `make -C gba test-talk` fails on the origin tip too (talk.txt:32 expected TALK, got DIALOG). CR5 is not on origin, so no deep parts.
+-- 
+2.43.0
+

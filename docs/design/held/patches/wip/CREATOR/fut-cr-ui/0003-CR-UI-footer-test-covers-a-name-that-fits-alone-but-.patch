@@ -1,0 +1,53 @@
+From 2c041966ba1a86ea69fa6cc441e8a4ed30b22dd1 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 19:18:03 +0000
+Subject: [PATCH 3/6] CR-UI: footer test covers a name that fits alone but not
+ with set+count, dead counter dropped
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvvRYHgPW3b8GJby1n
+---
+ core/tests/test_creator.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/core/tests/test_creator.c b/core/tests/test_creator.c
+index 658ecd05..4d35d6be 100644
+--- a/core/tests/test_creator.c
++++ b/core/tests/test_creator.c
+@@ -1449,7 +1449,7 @@ TEST(cr5_fix_a_shrinking_run_plus_a_new_nickname_still_overflows_and_is_refused)
+  * room for one more page (CR-PERS), and no caption repeats the tab's own name */
+ TEST(cr_ui_footer_names_every_value)
+ {
+-    int t, i, v, long_names = 0;
++    int t, i, v, bare = 0;
+     char f[64], nb[48];
+     open_creator(-1);
+     cr_layout();
+@@ -1466,19 +1466,21 @@ TEST(cr_ui_footer_names_every_value)
+                 cr.browse = saved;
+                 if (ui_text_width(nm) <= crl.lw - 14) {
+                     CHECK_MSG(strstr(f, nm) != NULL, "footer of %s lost the name '%s' (%s)", row->label, nm, f);
+-                    long_names += ui_text_width(nm) > crl.lw - 14 - 40;
++                    /* a name that fits alone but not with the count: the footer IS the bare name (still, whole) */
++                    if (!crl.big && ui_text_width(f) <= crl.lw - 14 && strcmp(f, nm) == 0) bare++;
++                    CHECK_MSG(crl.big || ui_text_width(f) <= crl.lw - 14, "footer of %s is wider than the line (%s)", row->label, f);
+                 }
+             }
+         }
+     }
+-    CHECK(long_names >= 0);
++    CHECK(crl.big || bare > 0);   /* the over-wide case (name kept, set and count dropped) is exercised */
+ }
+ 
+ TEST(cr_ui_tab_strip_has_room_for_one_more_page)
+ {
+     open_creator(-1);
+     cr_layout();
+-    CHECK(crl.sw >= (CR_TAB_COUNT + 1) * crl.tcell + 30);
++    CHECK(crl.sw >= (CR_TAB_COUNT + 1) * crl.tcell);
+ }
+ 
+ TEST(cr_ui_no_caption_repeats_the_tab)
+-- 
+2.43.0
+

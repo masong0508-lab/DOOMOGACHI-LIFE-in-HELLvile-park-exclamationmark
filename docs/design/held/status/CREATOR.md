@@ -50,3 +50,15 @@ Round 4 (CR5, CR-BODY, A5, A4) resumed from the paused worktrees. Plan additions
 - **Memory asked:** GBA EWRAM about 3.9 KB of the 6 KB share (the HOUSEHOLDS stream takes it; the CREATOR lead keeps the other 2.1 KB, `GBA EWRAM used of share` for HOUSEHOLDS is counted here); PS1 resident 3,554 B from the reserve (CREATOR's own 21 KB has 224 B left): asked of the coordinator.
 - **Files:** HOUSEHOLDS owns `core/include/doomo/household.h`, `core/src/household*.c`, `core/src/creator_house*.c`, the wizard removal in `fp_family.c`, the `HOUS` chunk. Shared with CREATOR (small hook): `creator.c` (`creator_house_open`), `creator_int.h`, the START menu in `creator_draw.c`. The CREATOR lead keeps body types, sliders, personality, parts.
 - **PS1 resident used of share:** 0 B. **GBA EWRAM used of share:** 0 B.
+
+## PAUSE 2026-11-15 20:55 UTC (lead session_01Xd63cvvRYHgPW3b8GJby1n): how to resume
+Landed since the last pause: CR-BODY, CR-SLIDERX (owner's body types and sliders request complete), A4, A5, A1b, CR5, CR5-FIX, S3-2 (parts a, c), CR10 (PS1 part VM and PARTS.BIN; PS1 CREATOR share used 21,024 of 21,504 B; margin about 110.6 KB). Live new parts about 360 plus A6/A8 when they land.
+Unlanded, saved as patches under `patches/wip/CREATOR/fut-<id>/` (worktrees may be gone after a machine rebuild: `git am -3 *.patch`, then `git apply -3 uncommitted.diff` if present, in a fresh worktree on origin; delete the folder in the landing commit):
+- `fut-cr4-a6` hats and glasses (55 parts): gated, needs a LANDING WINDOW (4 rejected pushes). Start a land-only workflow with carried reports.
+- `fut-cr4-a8` held props (59 parts): same, lands after A6.
+- `fut-cr4-a7` masks, neckwear, backpieces, gloves, belts, jewellery, piercings (111 parts): fix package built and reviewed, land step was polling the hold; request a window.
+- `fut-cr-ui` CR-UI step 1 (cleaner creator, description footer, calm motion): built, review stopped; a first step only (grid scroll 27.9 and value step 27.6 are below 30).
+Ask the coordinator for ONE window for A6, A8, A7 and CR-UI (they batch).
+Next: CR-PERS (personality page on the TALK traits API TM1; text-fit rule), CR8 (outfits and presets), CR11 (set unlocks), CR13 (prefs chunk), CR14 (docs, part names in language packs), A9 (face paint, tattoos, makeup, prints, pins: tool-made stamps), deep leftovers (A1 muzzles/teeth/freckles/scars, A2 hair_x/bangs/hair acc, A6 hat_x/glasses_x, A8b 45 props, A7b), S3-2 leftovers (scene-start prefetch, title figures), PS1 hair-grid 27.65 fps gap, the six level sets when LEVELS asks.
+Shares: HOUSEHOLDS (session_01Xd63cyoVQMX8CCuWDX8Db9) takes about 3.9 KB of CREATOR's 6 KB GBA EWRAM; CREATOR keeps about 2.1 KB; PS1 share has 480 B left (224 B per the HOUSEHOLDS lead's count). HOUSEHOLDS owns household.h/.c, creator_house*.c, the HOUS chunk; it adds one hook creator_house_open(h) to creator.c / creator_int.h / the START menu (cross-stream commits): keep edits there small and rebase over theirs.
+Rules to remember: one push per package; check docs/design/held/LANDING_HOLD before every push; text fits everywhere (every creator text, every language, no clipping).

@@ -1,0 +1,429 @@
+From 71601efc5afe0fa308df8c8a256bb9f0a6a5b930 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 15:30:54 +0000
+Subject: [PATCH 1/6] CR-UI: the footer describes the cursor's value in full,
+ the list stands still, fewer captions, the slider line names the cheat range
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvvRYHgPW3b8GJby1n
+---
+ ROADMAP.md                |   1 +
+ core/src/creator_data.c   |   7 +-
+ core/src/creator_draw.c   | 140 +++++++++++++++++++++++++-------------
+ core/src/creator_grid.c   |   5 +-
+ core/src/creator_int.h    |   2 +
+ core/tests/test_creator.c |  70 +++++++++++++++++++
+ docs/CREATOR.md           |  28 ++++++++
+ 7 files changed, 201 insertions(+), 52 deletions(-)
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index 798d4487..4961cdf5 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -21,6 +21,7 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
+ before redoing any of them; a zip without `.git` cannot tell.
+ 
+ ### Done
++- **Creator CR-UI, a calmer, clearer creator list (2026-11-15; docs/CREATOR.md "CR-UI"):** the footer names the cursor's value in full and is the only line that may scroll, the selected row stands still, redundant captions dropped (one more GBA row on Hair), the slider line shows the cheat's x2..x4, the grid footer is calm, a test keeps room for the CR-PERS tab. GBA `test-creator` floors unchanged (idle 30.0, rows 29.9, value step 27.6), EWRAM / IWRAM identical.
+ - **Speed S2-4c (2026-11-15, the kitchen on the GBA, speed audit 2 causes C3 / C1, audit 3 rank 12, partial; measured on libmgba, PCSX-Redux and Flycast on `5aa25cd1` and again on `366ee6c1`, `9dc5e39a`, `e587f9c1`, `167c08ba` (with S2-4b), `262bf2b7` (with S3-2) and the tip it landed on, `fe410024`; docs/GBA.md "Speed wave 2: S2-4c", ledger row 59, docs/PS1.md "Speed tour 2"):** the kitchen's wall, jars and counter (and, for the recipe book, the window, the book and the doily) are kept pictures baked into the GBA ROM (`DOOMO_BACKDROP_KITCHEN`), and every screen (the book, the cooking steps, the result card, the counter) is drawn as layers of SP7's retained stage, each redrawn only when its key or box changes or a changed box lies on it; Granny's 164 poses are baked too (`runner --bake-poses`, `plat_cook_pose`, the file read by `cook_pose_find`: one image instead of ~45 ellipses), cut off where the counter covers her; faces are blitted above the counter only, bubbles are two layers, boxes and keys are measured and follow the translated text; `stage_rows` copies short spans by DMA (the fair's S2-4b windows hash the same, tick for tick). All exact (`test_cook_kept`: the kitchen with the stage on / off, 5,140 frames at each of two sizes, day and night, and in Spanish, identical; the baked pose file read back and checked pose by pose; GBA `vhash-seq` against the tip: 13 windows identical, Spanish 2,479 of 2,480 frames (the tip's one differing frame is the same picture one pixel lower), the counter's windows differ only inside the faces). GBA drawn fps: recipe book 20.0 -> **30.0**, chop 21.9 -> **30.0**, fry 19.8 -> **30.0** (every frame two vblanks); stir 20.0 -> 30.0, bake 20.8 -> 29.9, simmer 21.8 -> 29.7 (one or two 50-67 ms frames at a step change); result card 15.0 -> 20.8 (21.1 before S2-4b's stage changes); with S3-2's portrait jobs counter 26.3 -> 29.2 and serving 24.3 -> 29.3 (3-6 frames of 50 ms a window); `expect-fps` floors. The approved 15 Hz trades were measured on the result card and save nothing over a kept picture (21.1 fps either way: each Mode 4 page is two ticks old), so none is taken. GBA EWRAM and IWRAM unchanged, ROM +320 KB (three pictures, the poses). PS1: compiled out, `_end` unchanged (130,000 B below the stack top with the FMV on `fe410024`, the tip's; delta 0 measured on every earlier tip), the kitchen's table the tip's. Dreamcast: all 16 windows 30.0. **Still short (open):** the result card (needs G2-EX's clipped redraw), the counter / serving's three-vblank frames (animated faces, bobbing bubbles), the step-change frames of stir, bake and simmer; on the PS1 the result card's, counter's and serving's single 50 ms frames (unlock grants, faces: S3-2).
+ - **Talk TKP0-MEASURE (2026-11-15, TALK round 13; docs/design/talk/TKP_PLAN.md, docs/TALK.md 6q):** the PS1 re-measure and a buildable plan, no resident byte. Talk linked on the PS1: 146 KB of files (92 KB as one new overlay group, 0 B of slot growth; resident +19,520 B with the group alone, +15,616 B with the typed line off, about 2 to 4 KB after the planned clean-ups, inside the 12 KB share). PS1 subset of TALK_en.BIN 577,786 B against the 319,488 B budget (9,062 alternatives); lossless levers (word-token strings, packed rows) reach about 437 KB, which does not fit: CR10's part store holds SPU RAM 0x50000-0x7DFFF, leaving Talk 278,528 B at most (decision D1 for the owner: a PS1 content tier, or drop Talk on the PS1). Measured: 2,075 database reads and 43.4 KB a line (74 KB an exchange), 661,000 instructions a line (48 % the lint probes); estimated R3000 step 12 to 30 ms typical, so the generator must be sliced. First load estimated 1.4 to 1.6 s against the 1.5 s gate. Packages TKP1 to TKP6 with acceptance tests. New tools `ps1/tools/talk_size.sh`, `core/tools/talk_reads.sh`, `core/tools/talk_steps.sh`. PS1 margin 110,560 B on the rebased tree (unchanged), GBA sizes unchanged.
+ - **Talk T9, pointer input on the Talk screen (2026-11-15, docs/TALK.md 6k):** add-only `input_set_pointer` / `input_pointer` / `input_pointer_click` (`input.h`, `DOOMO_POINTER` 0 on GBA, PS1 and Dreamcast so they link none of it); on the Talk screen a click is exactly the matching pad press (quick reply, category, act, topic, typed line, Options, invite row, goodbye, a name in the people strip, the header = B, the scroll bar = L / R); a small arrow is drawn only while a pointer is present. Runner `mouse X Y [click]`, `expect-ptr-page`, `expect-ptr-row`; script `talk_pointer.txt`, `test_talk_pointer.c`. Not done: clicking the dialogue box, a wheel.
+diff --git a/core/src/creator_data.c b/core/src/creator_data.c
+index fa4fb3ac..0ddf8933 100644
+--- a/core/src/creator_data.c
++++ b/core/src/creator_data.c
+@@ -176,7 +176,7 @@ static const CrRow rows_body[] = {
+     HDR("Species"),
+     ENUM_L("Species", species, SPECIES_COUNT, doomo_species_names, CLIST_SPECIES),
+     ACTION("Preset", CA_SPECIES_PRESET),
+-    HDR("Body"),
++    HDR("Shape"),
+     ENUM_L("Body", body, BODY_COUNT, doomo_body_names, CLIST_BODY),
+     SLIDE_L("Height", height),
+     SLIDE_L("Build", build),
+@@ -229,8 +229,7 @@ static const CrRow rows_face[] = {
+ #endif
+ };
+ 
+-static const CrRow rows_hair[] = {
+-    HDR("Hair"),
++static const CrRow rows_hair[] = {                       /* CR-UI: no caption naming the tab again */
+     ENUM_L("Style", hair_style, HAIR_COUNT, doomo_hair_names, CLIST_HAIR),
+     PAINT_L("Colour", hair_color),
+     { RK_PAINT_NONE, LK(hair_highlight), PAL_PAINT_COUNT + 1, 0, CR_NOLIST, 0, "Highlight", NULL },
+@@ -283,7 +282,7 @@ static const CrRow rows_outfit[] = {
+ 
+ static const CrRow rows_voice[] = {
+     ACTION("Preset", CA_VOICE_PRESET),
+-    HDR("Voice"),
++    HDR("Tuning"),
+     SLIDE_R("Pitch", VOICE_PITCH),
+     SLIDE_R("Speed", VOICE_SPEED),
+     SLIDE_R("Quality", VOICE_QUALITY),
+diff --git a/core/src/creator_draw.c b/core/src/creator_draw.c
+index 9f896053..0d35e0e8 100644
+--- a/core/src/creator_draw.c
++++ b/core/src/creator_draw.c
+@@ -931,6 +931,16 @@ static void draw_pane(void)
+ 
+ /* ====================================================================== */
+ /* option list                                                              */
++/* CR-UI: the footer line names the cursor's value in full (a long name is cut in its row, and the
++ * row stands still: calm motion); only the rows whose footer says something else (presets) scroll */
++static int footer_names(const CrRow *row)
++{
++    switch (row->kind) {
++    case RK_ENUM: case RK_DEEP: case RK_PAINT: case RK_PAINT_NONE: case RK_SKIN: return 1;
++    default: return 0;
++    }
++}
++
+ static void draw_value(const CrRow *row, int vx_right, int y, int maxw, int sel)
+ {
+     const UiStyle *st = ui_style(list_style());
+@@ -964,15 +974,15 @@ static void draw_value(const CrRow *row, int vx_right, int y, int maxw, int sel)
+             swatch(vx_right - 18, y, 18, 8, row->kind, idx, locked);
+             return;
+         }
+-        f = sel ? cr_marquee(nm, maxw - 14, buf) : cr_fit(nm, maxw - 14, buf);
++        f = sel && !footer_names(row) ? cr_marquee(nm, maxw - 14, buf) : cr_fit(nm, maxw - 14, buf);
+         tw = ui_text_width(f);
+         swatch(vx_right - tw - 13, y, 11, 8, row->kind, idx, locked);
+         ui_text(vx_right - tw, y, f, locked ? st->text_dim : vc);
+         return; }
+     default: {
+         const char *nm = locked ? "???" : cr_choice_name(row, idx, buf2);
+-        const char *f = sel ? cr_marquee(nm, maxw - (locked ? 8 : 0), buf)
+-                            : cr_fit(nm, maxw - (locked ? 8 : 0), buf);
++        const char *f = sel && !footer_names(row) ? cr_marquee(nm, maxw - (locked ? 8 : 0), buf)
++                                                  : cr_fit(nm, maxw - (locked ? 8 : 0), buf);
+         int tw = ui_text_width(f);
+         if (locked) cr_padlock(vx_right - tw - 8, y + 1, st->text_dim, st->fill);
+         else if (row->kind == RK_ACTION && cr_value_locked(row, idx))
+@@ -982,55 +992,49 @@ static void draw_value(const CrRow *row, int vx_right, int y, int maxw, int sel)
+     }
+ }
+ 
+-static void draw_footer(const CrRow *row, int x, int y, int w)
++/* CR-UI: "name tail" if it fits, else the name alone (the full name beats the count and the set) */
++static const char *name_tail(char *out, const char *name, const char *tail, int w)
++{
++    doomo_snprintf(out, 64, "%s%s", name, tail);
++    if (ui_text_width(out) > w) doomo_snprintf(out, 64, "%s", name);
++    return out;
++}
++
++/* the footer's text for an unlocked cursor value (its colour in *c) */
++static const char *footer_text(const CrRow *row, int w, char *buf, char *b3, uint8_t *c)
+ {
+     const UiStyle *st = ui_style(list_style());
+-    char buf[64], b2[48], b3[48];
++    char b4[48], t[24];
+     const char *s = "";
+-    uint8_t c = st->text_dim;
+-    int idx;
+-    if (!row) return;
+-    idx = cr.browse >= 0 ? cr.browse : cr_row_value(&cr.draft, row);
+-    if (cr.browse >= 0 && cr_value_locked(row, idx)) {
+-        /* CR6: the whole hint, never cut: a marquee on the GBA, two lines on big screens */
+-        const PartMeta *m = cr_choice_meta(row, idx);
+-        cr_padlock(x + 1, y + 1, PAL_PAINT(PAINT_CHERRY, 1), st->fill);
+-        if (crl.big) {
+-            ui_text(x + 9, y, cr_fit(m ? part_meta_name(m) : "Locked!", w - 10, b2), PAL_PAINT(PAINT_CHERRY, 0));
+-            ui_text(x, y + 11, cr_marquee(cr_lock_hint(row, idx), w, b3), PAL_PAINT(PAINT_CHERRY, 0));
+-        } else {
+-            doomo_snprintf(buf, sizeof(buf), "%s%s%s", m ? part_meta_name(m) : "", m ? ": " : "", cr_lock_hint(row, idx));
+-            ui_text(x + 9, y, cr_marquee(buf, w - 10, b2), PAL_PAINT(PAINT_CHERRY, 0));
+-        }
+-        return;
+-    }
++    int idx = cr.browse >= 0 ? cr.browse : cr_row_value(&cr.draft, row);
++    *c = st->text_dim;
+     switch (row->kind) {
+     case RK_SLIDER:
+-        doomo_snprintf(buf, sizeof(buf), "%s " STR_ICON_ARROW_L STR_ICON_ARROW_R " %s",
++        doomo_snprintf(buf, 64, "%s " STR_ICON_ARROW_L STR_ICON_ARROW_R " %s",
+                        row->names ? row->names[0] : "", row->names ? row->names[1] : "");
+-        s = buf;
+-        break;
++        if (RES_F_IS_LOOK(row->field) && opt2_get(OPT_SLIDER_RANGE) > 0) {   /* CR-UI: the cheat's reach, said once, on the line */
++            doomo_snprintf(t, sizeof(t), "  x%d", opt2_get(OPT_SLIDER_RANGE) + 1);
++            doomo_snprintf(b4, sizeof(b4), "%s%s", buf, t);
++            if (ui_text_width(b4) <= w) doomo_snprintf(buf, 64, "%s", b4);
++        }
++        return buf;
+     case RK_ENUM: case RK_DEEP: {
+         const PartMeta *m = cr_choice_meta(row, idx);
+-        c = st->text;
++        const char *nm = cr_choice_name(row, idx, b3);
++        *c = st->text;
+         if (m) {                              /* CR6: a part names its themed set too */
+-            doomo_snprintf(buf, sizeof(buf), "%s %d/%d - %s", cr_choice_name(row, idx, b3),
+-                           cr_visible_pos(row, idx) + 1, cr_visible_count(row), doomo_part_sets[m->set].name);
+-            /* CR9: on small screens the set only when it fits (a still footer); the grid names it */
+-            if (!crl.big && ui_text_width(buf) > w)
+-                doomo_snprintf(buf, sizeof(buf), "%s %d/%d", cr_choice_name(row, idx, b3),
+-                               cr_visible_pos(row, idx) + 1, cr_visible_count(row));
+-            ui_text(x, y, crl.big ? cr_marquee(buf, w, b2) : cr_fit(buf, w, b2), c);
+-            return;
++            doomo_snprintf(t, sizeof(t), " %d/%d", cr_visible_pos(row, idx) + 1, cr_visible_count(row));
++            doomo_snprintf(b4, sizeof(b4), "%s - %s", t, doomo_part_sets[m->set].name);
++            doomo_snprintf(buf, 64, "%s%s", nm, b4);
++            if (!crl.big && ui_text_width(buf) > w) name_tail(buf, nm, t, w);   /* CR9: the set only when it fits (a still footer) */
++            return buf;
+         }
+-        doomo_snprintf(buf, sizeof(buf), "%s  %d/%d", cr_choice_name(row, idx, b3), idx + 1,
+-                       cr_row_count(row));
+-        s = buf;
+-        break; }
++        doomo_snprintf(t, sizeof(t), "  %d/%d", idx + 1, cr_row_count(row));
++        return name_tail(buf, nm, t, w); }
+     case RK_PAINT: case RK_PAINT_NONE: case RK_SKIN:
+-        doomo_snprintf(buf, sizeof(buf), STR_ICON_A " palette  %s", cr_choice_name(row, idx, b3));
+-        s = buf;
+-        break;
++        doomo_snprintf(buf, 64, STR_ICON_A " palette  %s", cr_choice_name(row, idx, b3));
++        if (ui_text_width(buf) > w) doomo_snprintf(buf, 64, "%s", cr_choice_name(row, idx, b3));
++        return buf;
+     case RK_NAME:  s = STR_ICON_A " type  " STR_ICON_ARROW_L STR_ICON_ARROW_R " idea"; break;
+     case RK_NICK:  s = STR_ICON_A " type  " STR_ICON_ARROW_L STR_ICON_ARROW_R " idea"; break;
+     case RK_FLAG: case RK_RFLAG: s = STR_ICON_A " toggle"; break;
+@@ -1043,17 +1047,55 @@ static void draw_footer(const CrRow *row, int x, int y, int w)
+         else if (row->aux == CA_MATCH_FUR) s = STR_ICON_A " hair = fur colour";
+         else {
+             if (crl.big)
+-                doomo_snprintf(buf, sizeof(buf), STR_ICON_ARROW_L STR_ICON_ARROW_R " browse  "
++                doomo_snprintf(buf, 64, STR_ICON_ARROW_L STR_ICON_ARROW_R " browse  "
+                                STR_ICON_A " apply   %d/%d", idx + 1, cr_row_count(row));
+             else
+-                doomo_snprintf(buf, sizeof(buf), STR_ICON_ARROW_L STR_ICON_ARROW_R " browse  "
++                doomo_snprintf(buf, 64, STR_ICON_ARROW_L STR_ICON_ARROW_R " browse  "
+                                STR_ICON_A " apply");
+             s = buf;
+         }
+         break;
+     default: break;
+     }
+-    ui_text(x, y, cr_fit(s, w, b2), c);
++    return s;
++}
++
++static int value_moves(const CrRow *row, int inner_r);
++
++/* CR-UI (tests): the footer's text for the row's current value, and whether the row's own value scrolls */
++void cr_footer_text(const CrRow *row, int w, char *out)
++{
++    char b3[48];
++    uint8_t c = 0;
++    const char *s = footer_text(row, w, out, b3, &c);
++    if (s != out) doomo_snprintf(out, 64, "%s", s);
++}
++
++int cr_value_scrolls(const CrRow *row) { return value_moves(row, crl.lx + crl.lw - 12); }
++
++static void draw_footer(const CrRow *row, int x, int y, int w)
++{
++    const UiStyle *st = ui_style(list_style());
++    char buf[64], b2[48], b3[48];
++    uint8_t c = 0;
++    int idx;
++    if (!row) return;
++    idx = cr.browse >= 0 ? cr.browse : cr_row_value(&cr.draft, row);
++    if (cr.browse >= 0 && cr_value_locked(row, idx)) {
++        /* CR6: the whole hint, never cut: a marquee on the GBA, two lines on big screens */
++        const PartMeta *m = cr_choice_meta(row, idx);
++        cr_padlock(x + 1, y + 1, PAL_PAINT(PAINT_CHERRY, 1), st->fill);
++        if (crl.big) {
++            ui_text(x + 9, y, cr_fit(m ? part_meta_name(m) : "Locked!", w - 10, b2), PAL_PAINT(PAINT_CHERRY, 0));
++            ui_text(x, y + 11, cr_marquee(cr_lock_hint(row, idx), w, b3), PAL_PAINT(PAINT_CHERRY, 0));
++        } else {
++            doomo_snprintf(buf, sizeof(buf), "%s%s%s", m ? part_meta_name(m) : "", m ? ": " : "", cr_lock_hint(row, idx));
++            ui_text(x + 9, y, cr_marquee(buf, w - 10, b2), PAL_PAINT(PAINT_CHERRY, 0));
++        }
++        return;
++    }
++    /* CR-UI: a name that still does not fit scrolls here (and only here); the rest of the line is cut first */
++    ui_text(x, y, cr_marquee(footer_text(row, w, buf, b3, &c), w, b2), c);
+ }
+ 
+ static void draw_persona_panel(int x, int y, int w, int h)
+@@ -1212,6 +1254,7 @@ static int value_moves(const CrRow *row, int inner_r)
+     maxw = inner_r - crl.lx - 15 - ui_text_width(cr_row_label(row)) - 10 - 16;
+     if (cr.browse >= 0) { idx = cr.browse; locked = row->kind != RK_ACTION || cr_value_locked(row, idx); }
+     else { idx = cr_row_value(&cr.draft, row); locked = 0; }
++    if (footer_names(row)) return 0;                  /* CR-UI: cut, standing still: the footer has the name */
+     switch (row->kind) {
+     case RK_SLIDER: case RK_FLAG: return 0;
+     case RK_PAINT: case RK_PAINT_NONE: case RK_SKIN:
+@@ -1227,8 +1270,13 @@ static int footer_moves(const CrRow *row)
+     int idx;
+     if (!row) return 0;
+     idx = cr.browse >= 0 ? cr.browse : cr_row_value(&cr.draft, row);
+-    if (crl.big) return cr.browse >= 0 && cr_value_locked(row, idx) && ui_text_width(cr_lock_hint(row, idx)) > crl.lw - 14;
+-    return cr.browse >= 0 && cr_value_locked(row, idx);
++    if (cr.browse >= 0 && cr_value_locked(row, idx))
++        return crl.big ? ui_text_width(cr_lock_hint(row, idx)) > crl.lw - 14 : 1;
++    {   /* CR-UI: the unlocked line scrolls only when even the bare name is too wide */
++        char b[64], b3[48];
++        uint8_t c = 0;
++        return ui_text_width(footer_text(row, crl.lw - 14, b, b3, &c)) > crl.lw - 14;
++    }
+ }
+ 
+ /* CR9: everything the list's pixels depend on but the selected row (in the panel's hole) */
+diff --git a/core/src/creator_grid.c b/core/src/creator_grid.c
+index 22998401..e355f6a4 100644
+--- a/core/src/creator_grid.c
++++ b/core/src/creator_grid.c
+@@ -247,8 +247,8 @@ static int grid_footer_moves(const CrRow *row)
+         doomo_snprintf(buf, sizeof(buf), "%s: %s", part_meta_name(m), cr_lock_hint(row, v));
+         return ui_text_width(buf) > crl.lw - 24;
+     }
+-    doomo_snprintf(buf, sizeof(buf), "%s - %s", part_meta_name(m), doomo_part_sets[m->set].name);
+-    return ui_text_width(buf) > crl.lw - 16;
++    /* CR-UI: the set only when it fits; the name scrolls only when it alone is too wide */
++    return ui_text_width(part_meta_name(m)) > crl.lw - 16;
+ }
+ 
+ /* the icon of a cell. S3-3 (PS1, where the icons are packed): the unpacked icon of each cell of the page stays in
+@@ -407,6 +407,7 @@ void cr_grid_draw(void)
+             ui_text(x + 8, fy + 11, cr_fit(doomo_part_sets[m->set].name, w - 16, b3), st->text_dim);
+         } else {
+             doomo_snprintf(buf, sizeof(buf), "%s - %s", part_meta_name(m), doomo_part_sets[m->set].name);
++            if (ui_text_width(buf) > w - 16) doomo_snprintf(buf, sizeof(buf), "%s", part_meta_name(m));   /* CR-UI: calm: the set only when it fits */
+             ui_text(x + 8, fy, cr_marquee(buf, w - 16, b2), st->text);
+         }
+     }
+diff --git a/core/src/creator_int.h b/core/src/creator_int.h
+index 07bb4bdc..365b49e9 100644
+--- a/core/src/creator_int.h
++++ b/core/src/creator_int.h
+@@ -453,6 +453,8 @@ void cr_menu_rect(CrMenuRect *m);
+ void cr_pill(int x, int y, int w, int h, uint8_t fill, uint8_t outline, uint8_t hi);
+ void cr_padlock(int x, int y, uint8_t c, uint8_t hole);
+ const char *cr_fit(const char *s, int maxw, char *buf);       /* buf >= 48 */
++void cr_footer_text(const CrRow *row, int w, char *out);      /* CR-UI: the footer line of the row's value (out >= 64) */
++int  cr_value_scrolls(const CrRow *row);                      /* CR-UI: does the row's own value scroll? */
+ const char *cr_marquee(const char *s, int maxw, char *buf);   /* buf >= 48 */
+ void cr_draw_tab_icon(int x, int y, int tab);
+ /* G2-CR: plat_panel_begin for a creator region (CRR_*): 1 draw, 0 kept, 2 nothing to do (the held
+diff --git a/core/tests/test_creator.c b/core/tests/test_creator.c
+index 86dd7606..89ec60bb 100644
+--- a/core/tests/test_creator.c
++++ b/core/tests/test_creator.c
+@@ -1443,3 +1443,73 @@ TEST(cr5_fix_a_shrinking_run_plus_a_new_nickname_still_overflows_and_is_refused)
+     CHECK(doomo_save_ext_extra->size() <= DOOMO_SAVE_EXT_MAX);
+     look_pool_reset();
+ }
++
++/* CR-UI: the footer names the cursor's value in full (the row is cut and stands still), the tab strip has
++ * room for one more page (CR-PERS), and no caption repeats the tab's own name */
++TEST(cr_ui_footer_names_every_value)
++{
++    int t, i, v, long_names = 0;
++    char f[64], nb[48];
++    open_creator(-1);
++    cr_layout();
++    for (t = 0; t < CR_TAB_COUNT; t++) {
++        for (i = 0; i < cr_tabs[t].nrows; i++) {
++            const CrRow *row = &cr_tabs[t].rows[i];
++            if (row->kind != RK_ENUM && row->kind != RK_DEEP && row->kind != RK_PAINT && row->kind != RK_PAINT_NONE) continue;
++            CHECK_MSG(!cr_value_scrolls(row), "tab %d row %s scrolls", t, row->label);   /* calm: no marquee on these rows */
++            for (v = 0; v < cr_row_count(row); v++) {
++                const char *nm = cr_choice_name(row, v, nb);
++                int saved = cr.browse;
++                cr.browse = v;
++                cr_footer_text(row, crl.lw - 14, f);
++                cr.browse = saved;
++                if (ui_text_width(nm) <= crl.lw - 14) {
++                    CHECK_MSG(strstr(f, nm) != NULL, "footer of %s lost the name '%s' (%s)", row->label, nm, f);
++                    long_names += ui_text_width(nm) > crl.lw - 14 - 40;
++                }
++            }
++        }
++    }
++    CHECK(long_names >= 0);
++}
++
++TEST(cr_ui_tab_strip_has_room_for_one_more_page)
++{
++    open_creator(-1);
++    cr_layout();
++    CHECK(crl.sw >= (CR_TAB_COUNT + 1) * crl.tcell + 30);
++}
++
++TEST(cr_ui_no_caption_repeats_the_tab)
++{
++    int t, i;
++    for (t = 0; t < CR_TAB_COUNT; t++)
++        for (i = 0; i < cr_tabs[t].nrows; i++) {
++            const CrRow *row = &cr_tabs[t].rows[i];
++            if (row->kind != RK_HEADER) continue;
++            CHECK_MSG(strcmp(row->label, cr_tabs[t].name) != 0 && strcmp(row->label, cr_tabs[t].shortname) != 0,
++                      "tab %d caption '%s' repeats the tab", t, row->label);
++        }
++    CHECK(cr_tabs[CR_TAB_HAIR].rows[0].kind != RK_HEADER);
++}
++
++/* CR-UI: a build slider's line says the cheat's reach ("x3"); voice sliders and x1 say nothing */
++TEST(cr_ui_slider_line_names_the_range)
++{
++    const CrRow *h = NULL;
++    char f[64];
++    int i;
++    for (i = 0; i < cr_tabs[CR_TAB_BODY].nrows; i++)
++        if (strcmp(cr_tabs[CR_TAB_BODY].rows[i].label, "Height") == 0) h = &cr_tabs[CR_TAB_BODY].rows[i];
++    CHECK(h != NULL);
++    if (!h) return;
++    open_creator(-1);
++    cr_layout();
++    opt2_set(OPT_SLIDER_RANGE, 0);
++    cr_footer_text(h, crl.lw - 14, f);
++    CHECK(strstr(f, " x") == NULL);
++    opt2_set(OPT_SLIDER_RANGE, 2);
++    cr_footer_text(h, crl.lw - 14, f);
++    CHECK(strstr(f, "x3") != NULL);
++    opt2_set(OPT_SLIDER_RANGE, 0);
++}
+diff --git a/docs/CREATOR.md b/docs/CREATOR.md
+index 7d3e78d2..4dd6fd6a 100644
+--- a/docs/CREATOR.md
++++ b/docs/CREATOR.md
+@@ -1060,6 +1060,34 @@ build sliders and are not scaled.
+   `look_for_stage` is open. The style test (`crsx_extremes_stay_inside_with_every_style_randomised`) varies every style
+   with each slider at an end, so a future style that breaks a safe range is caught.
+ 
++## CR-UI: a calmer, clearer creator list (2026-11-15)
++
++Owner decision "TALK QUESTS AND A CLEANER, PRETTIER UI" item 2, first step. What changed (pixels move on the list and the
++grid footer only; the panels, tabs, pane and pickers are as before):
++
++* **The footer is the description line.** It names the cursor's value in full. When "name n/N - set" is too wide it drops the
++  set, then the count, and only a name that is still too wide scrolls (`footer_text`, `name_tail`). Before, the GBA cut the
++  name ("tars..", "Heavy Dr..") and scrolled the row.
++* **Calm motion.** The selected row of a part, list or colour value is cut with ".." and stands still (`footer_names`); only
++  the preset rows (their footer says "browse / apply") still scroll. The picture grid's footer shows the name alone when the
++  set does not fit, so it does not scroll either. `value_moves` / `footer_moves` / `grid_footer_moves` say so to the retained
++  panel keys (S3-3's recipe is kept: a still list is put back from the last frame).
++* **Fewer captions.** No caption repeats the tab's name: the Hair tab lost "Hair" (one more row on the GBA), the Voice tab's
++  second caption is "Tuning", the Body tab's is "Shape" (the title reads "Body > Shape").
++* **The sliders page says the cheat.** A build slider's line shows "Short <-> Tall  x3" while Slider range is above x1.
++* **Room for CR-PERS.** A test pins that the tab strip has room for a tenth page on 240x160.
++
++Tests (`test_creator.c`): `cr_ui_footer_names_every_value` (every part / list / colour choice: the footer has the whole name,
++the row does not scroll), `cr_ui_tab_strip_has_room_for_one_more_page`, `cr_ui_no_caption_repeats_the_tab`,
++`cr_ui_slider_line_names_the_range`. Before / after shots at 240x160 and 320x240 (creator, creator_sliders, creator_grid)
++and contact sheets were kept with the evidence.
++
++Measured on mGBA (`make -C gba test-creator`, drawn frames per second, before -> after): idle 30.0 -> 30.0, grid idle 30.0
++-> 30.0, grid scroll 28.0 -> 27.9, rows 29.9 -> 29.9, value step 27.5 -> 27.6 (logic ticks 30.0 / 29.9 throughout). GBA
++`.bss` 254,828, `.iwram` 11,272, `.iwram_bss` 4,088 unchanged; `.text` +280 B, `.rodata` -20 B. PS1 resident: no new data (code
++only, the overlay's creator module); see the commit for the margin. Left: the pickers, START menu and the Home / Persona panels
++were not reworked; CR-PERS adds its page later.
++
+ ## Extending
+ 
+ * **A new catalog option** (e.g. a new hat): nothing to do - rows use the
+-- 
+2.43.0
+
