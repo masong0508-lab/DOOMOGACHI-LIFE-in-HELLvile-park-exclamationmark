@@ -357,7 +357,8 @@ static void action_after(TalkState *s, int who, const TalkLine *L)
     if (act == TA_INVITE) {
         int v;
         if (yes && invite_plan(s, who, &v) == TAW_NONE) { tact = TACT_START; b = v; }
-    } else if (!no) {
+    } else if (!no && !(act >= TA_INSULT && act <= TA_THREATEN) && act != TA_COMFORT && act != TA_SYMPATHIZE) {
+        /* no gift, ask or call-over after a hostile or a vulnerable player act (they would read as a joke on it) */
         const DoomoResident *r = town_res(id);
         int band = talk_gen_rel_band(id, s->conv.avatar), item;
         rng_for(s, &rng, 0xAC70u + (uint32_t)who);

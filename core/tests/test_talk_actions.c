@@ -98,6 +98,9 @@ typedef struct Tally { int line[TACT_COUNT]; int start_bad_venue; } Tally;
 
 static const int speak_acts[] = { TA_INVITE, TA_INVITE, TA_THANK, TA_COMPLIMENT, TA_GREET, TA_ASK_ABOUT, TA_TELL, TA_ENCOURAGE, TA_JOKE, TA_ASK_OPINION };
 
+static const int cool_acts[] = { TA_INSULT, TA_THREATEN, TA_COMPLAIN, TA_BLAME, TA_COMFORT, TA_SYMPATHIZE, TA_DISMISS, TA_MOCK };
+static int g_cool;                                        /* 1: the player only speaks hostile or vulnerable acts */
+
 static void run_session(uint32_t seed, int avatar, const int *ids, int n, int turns, const uint16_t *topics, int ntopics,
                         Tally *t, TalkOutcome *out, TalkSummary *sum, TalkState *keep)
 {
@@ -107,7 +110,8 @@ static void run_session(uint32_t seed, int avatar, const int *ids, int n, int tu
     for (tn = 0; tn < turns && !talk_dm_over(s); tn++) {
         TalkUtter u;
         memset(&u, 0, sizeof u);
-        u.act[0] = (uint8_t)speak_acts[rnd((uint32_t)(sizeof speak_acts / sizeof speak_acts[0]))];
+        u.act[0] = g_cool ? (uint8_t)cool_acts[rnd((uint32_t)(sizeof cool_acts / sizeof cool_acts[0]))]
+                          : (uint8_t)speak_acts[rnd((uint32_t)(sizeof speak_acts / sizeof speak_acts[0]))];
         u.topic[0] = ntopics ? topics[rnd((uint32_t)ntopics)] : 0;
         u.target = (int8_t)(n == 1 ? 0 : (int)rnd((uint32_t)n + 1) - 1);
         u.conf = 15;
@@ -321,8 +325,7 @@ TEST(action_minor_rules)
                 for (hour = 0; hour < 24; hour++) {
                     int want = 0, got = talk_act_invite_ok(acts[act], venue, minor, hour);
                     if (acts[act] == TA_INVITE) {
-                        if (venue == ACT_PARK || venue == ACT_CAFE || venue == ACT_CHURCH) want = 1;
-                        else if (venue == ACT_BEACH) want = !minor || (hour >= 8 && hour < 18);
+                        if (venue == ACT_PARK || venue == ACT_CAFE || venue == ACT_CHURCH || venue == ACT_BEACH) want = !minor || (hour >= 8 && hour < 18);
                         else if (venue == ACT_SHOP || venue == ACT_WORKSHOP || venue == ACT_CONCERT || venue == ACT_VAPE_SHOP) want = !minor;
                     }
                     CHECK_MSG(got == want, "act %d venue %d minor %d hour %d: %d, want %d", acts[act], venue, minor, hour, got, want);
@@ -628,6 +631,34 @@ static int romance_edges(void)
         }
     }
     return n;
+}
+
+/* review: no gift, ask or call-over after a hostile or a vulnerable player act */
+TEST(action_not_after_hostile)
+{
+    int it, total = 0;
+    premade_town();
+    CHECK(open_en());
+    people();
+    prime();
+    g_cool = 1;
+    for (it = 0; it < 400; it++) {
+        int ids[2];
+        TalkState s;
+        TalkOutcome out;
+        TalkSummary sum;
+        Tally t;
+        ids[0] = adults[(it * 5) % nadult];
+        ids[1] = adults[(it * 5 + 2) % nadult];
+        memset(&t, 0, sizeof t);
+        talk_outcome_reset();
+        run_session(70000u + (uint32_t)it, DOOMO_PLAYER_ID, ids, 1 + it % 2, 6, NULL, 0, &t, &out, &sum, &s);
+        total++;
+        CHECK_EQ(t.line[TACT_GIFT] + t.line[TACT_ASKITEM] + t.line[TACT_CALL], 0);
+    }
+    g_cool = 0;
+    CHECK(total > 0);
+    talk_db_close();
 }
 
 TEST(action_p2_p3_p7_random)

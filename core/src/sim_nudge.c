@@ -18,7 +18,8 @@ int sim_nudge_ok(int id, int act)
     case ACT_SLEEPING: case ACT_HOSPITAL: case ACT_HAUNTING: return 0;
     default: break;
     }
-    if (r->stat[STAT_ENERGY] < 12 || r->stat[STAT_HEALTH] < 25) return 0;    /* decide_activity would send them back to bed or the hospital */
+    if (r->stat[STAT_ENERGY] < 12 || r->stat[STAT_HEALTH] < 25 ||
+        r->stat[STAT_HUNGER] < 28) return 0;     /* decide_activity would send them back to bed, the hospital or the kitchen */
     hell = RES_DISTRICT(id) || (r->flags & RF_HELLBORN);
     switch (act) {
     case ACT_PARK: case ACT_SHOP: case ACT_WORKSHOP: case ACT_BEACH: if (night) return 0; break;

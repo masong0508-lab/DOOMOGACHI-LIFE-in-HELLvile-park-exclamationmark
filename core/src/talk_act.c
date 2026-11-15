@@ -25,10 +25,8 @@ int talk_act_invite_ok(int act, int venue, int minor_room, int hour)
 {
     if (act != TA_INVITE) return 0;                      /* a date, a favour, anything else: not an invitation action */
     switch (venue) {
-    case ACT_PARK: case ACT_CAFE: case ACT_CHURCH:
-        return 1;
-    case ACT_BEACH:
-        return !minor_room || (hour >= 8 && hour < 18);   /* the beach in daytime for a child */
+    case ACT_PARK: case ACT_CAFE: case ACT_CHURCH: case ACT_BEACH:
+        return !minor_room || (hour >= 8 && hour < 18);   /* with a child: daytime only */
     case ACT_SHOP: case ACT_WORKSHOP: case ACT_CONCERT: case ACT_VAPE_SHOP:
         return !minor_room;
     default:                                             /* home, bed, the hospital, the streets, the night */
