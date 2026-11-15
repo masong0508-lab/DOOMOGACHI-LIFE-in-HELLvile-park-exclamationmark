@@ -186,7 +186,7 @@ static const char *help_of(int opt)
     if (opt == OPT_LOSS) return "Family members can be lost over a life. Off: nobody is ever lost.";
     if (opt == OPT_RUMBLE) return "Controller rumble, apart from Screen shake.";
 #if DOOMO_TRIGGERS                       /* the row only shows on a one-stick Dreamcast pad: no byte on the PS1 / GBA */
-    if (opt == OPT_STICK_MODE) return "Controls: Auto only. Turn: stick X turns, L / R strafe. Strafe: stick X strafes, L / R turn.";
+    if (opt == OPT_STICK_MODE) return "Turn: stick X turns, L / R strafe. Strafe: the other way round. Works with Controls: Auto.";
 #endif
     if (opt == OPT_SLIDER_RANGE) return "Cheat: grown-ups' build sliders go x2, x3 or x4 as far. Saved looks never change; x1 is normal.";
 #if LV_HAS_NEW                           /* (the PS1 has no dark level and no row) */
