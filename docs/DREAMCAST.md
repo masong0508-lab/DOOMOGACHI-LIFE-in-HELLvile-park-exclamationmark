@@ -732,7 +732,7 @@ tick over 33.3 ms; 3 windows do not:
 | house | 2,461 | 3.4 / 20.6 ms | 0 |
 | library | 2,632 | 8.8 / 18.9 ms | 0 |
 | life | 3,920 | 8.8 ms mean | 2: new island 125 ms, saving 4.54 s |
-| story | 3,214 | 6.2 ms mean | 1: title to new story 129 ms |
+| story | 3,214 | 6.2 ms mean | 1: title to new story 129 ms (127 ms in the family script above: two different runs) |
 | studio | 1,165 | 7.2 / 30.8 ms | 0 |
 
 The credits and the credits parade, which speed audit 2 named, hold 30 on
