@@ -1,0 +1,203 @@
+From 42af76f8cb3465901c0c7bb9c5a6dfa31a6462eb Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 18:29:44 +0000
+Subject: [PATCH 1/2] DC9D: audio-test compares with a +-12 s lag search (the
+ native seed reads Talk's bank inside a held command since TD1: music starts
+ 10.8 s after power on, was 3.4 s)
+
+Found by the DC9D sweep: harness-test failed in audio-test on every script (title r 0.49, lag +4.8 s, which was the search edge).
+Bisected to 2d9d6db3 (TD1 sector-per-tick read: hcmd's native seed pumps the whole bank, 7.4 s of silent stream). With the lag
+search widened the music lines up again: title 0.992, invasion 0.983, combat 0.940 (bar 0.8), repeat identical. Test script only.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx9wuhKv8Rqec7pX14
+---
+ dc/tests/audio/run_flycast.sh | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/dc/tests/audio/run_flycast.sh b/dc/tests/audio/run_flycast.sh
+index 8ed5003d..6d827870 100644
+--- a/dc/tests/audio/run_flycast.sh
++++ b/dc/tests/audio/run_flycast.sh
+@@ -28,6 +28,9 @@
+ #   repeat     title.txt a second time: the content hash after 600 tick
+ #              slots (dc_mailbox.snd_hash600) must be the same (the sound
+ #              is a function of the game's ticks)
++# DC9D: --max-lag is 12 s. Since TD1 the harness's --native-seed reads Talk's whole bank at once, inside the
++# held command: 7.4 s of Flycast time with the AICA stream silent, so the WAV's music starts about 10.8 s after
++# power on (3.4 s before) and a +-5 s search locked on a wrong lag (title r 0.49).
+ # OUTDIR/<check>/ gets the logs, the WAVs and the envelope plots;
+ # OUTDIR/summary.txt one line per check. Exit status 1 when one fails.
+ set -u
+@@ -62,7 +65,7 @@ for name in title invasion combat; do
+         DCSND_WAV="$d/ref.wav" "$IRQR" --quiet --script "$d/ref_script.txt" --shots "$d/ref_shots" --saves "$d/ref_saves" \
+             --w 320 --h 240 > "$d/runner_irq.log" 2>&1
+         [ $? -eq 0 ] || nr=1
+-        vsb=$(python3 -I "$here/compare.py" "$d/bridge.wav" "$d/dc.wav" --label "$name" --max-lag 5 \
++        vsb=$(python3 -I "$here/compare.py" "$d/bridge.wav" "$d/dc.wav" --label "$name" --max-lag 12 \
+               --drop-gaps 256 2>&1 | sed 's/^[A-Za-z]* //')
+         vsb="; vs bridge (not gated): $vsb"
+     fi
+@@ -72,7 +75,7 @@ for name in title invasion combat; do
+     # (sync stops) are not the game's sound (compare.py, DC8)
+     gaps="--drop-gaps 256"; bar=
+     [ -n "$IRQR" ] && { gaps=; [ $name = combat ] && bar="--min-corr 0.8"; }
+-    c=$(python3 -I "$here/compare.py" "$d/ref.wav" "$d/dc.wav" --label "$name" --max-lag 5 \
++    c=$(python3 -I "$here/compare.py" "$d/ref.wav" "$d/dc.wav" --label "$name" --max-lag 12 \
+         $gaps $bar $clip --plot "$d/envelope.png" 2>&1)
+     cr=$?
+     stats=$(grep '^dcrun: sound' "$d/dcrun.log" | sed 's/^dcrun: //')
+-- 
+2.43.0
+
+
+From 528b13d716cdf2e5abae197431a799124ee7c65c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:02:13 +0000
+Subject: [PATCH 2/2] DC9D: the closing sweep: family table, speed tour table
+ and the open list in DREAMCAST.md, how to build and test the disc in
+ BUILDING.md, ROADMAP Done: DC9, status
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx9wuhKv8Rqec7pX14
+---
+ ROADMAP.md                    |  1 +
+ docs/BUILDING.md              | 19 ++++++++++
+ docs/DREAMCAST.md             | 66 +++++++++++++++++++++++++++++++++++
+ docs/design/held/status/DC.md |  1 +
+ 4 files changed, 87 insertions(+)
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index 798d4487..4388e19b 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -709,6 +709,7 @@ MP1 part 4 (2026-11-05, `doomo-mp1-ember-trigger-nov05t`): the co-op quest trigg
+ **TD2 partly done (HD text: see DC10B below)** (Talk on the Dreamcast: dcrun's `talk-*` commands and `talk-key`, `make -C dc talk-test`, one generator step a tick so no Talk tick passes 33.3 ms, 40-column bubbles; HD text is not built and is open, docs/DREAMCAST.md "Talk on the Dreamcast").
+ **Done: TD3** (the four `home_talk_*` scripts on the Dreamcast: `make -C dc talk-test` plays six Talk scripts twice on Flycast, 6 of 6 pass, repeat byte for byte, every shot >= 98.25 % exact against the native picture, 0 ticks over 33.3 ms; dcrun gained `talk-ready`, `expect-talk-act`, `expect-toast`; the Talk frame-time table (`make -C dc talk-speed`, every window under 12 ms of work) is in docs/DREAMCAST.md "Talk scripts and frame times (TD3)"; the 7.4 s first-entry tick of the whole-bank read is closed by TD1's sliced read; the Talk-not-ready window after boot is not scripted, open).
+ **Done: DC10B** (Talk on the Dreamcast, two open items of TD1/TD2: A on a housemate before the bank is in shows the note "Talk is warming up..." instead of nothing (`home_talk_note`, cross-stream TALK; `talk_warming.txt` plays it on Flycast twice, 0 ticks over 33.3 ms), and the Talk screen draws its text with an HD glyph page (the 5x8 font through Scale2x at 10x16, one texel per screen pixel; every other screen is unchanged). `make -C dc talk-test`: 6 Talk scripts + the warming script, twice identical, 0 ticks over 33.3 ms, >= 98.15 % exact against the native picture. Honest limit: a smoothed 5x8 font, not a new face. docs/DREAMCAST.md "Talk: the warming-up note and HD text (DC10B)".)
++**Done: DC9** (the Dreamcast's closing sweep, DC9D: every script family twice on Flycast on one tip, `make -C dc family-test` 28 of 28, `family-test2` 50 of 50, `talk-test`, `disc-test` 5 of 5, `vmu-test`, `v3d-test` 188 checks, `dc-host-test`, `ui-compare` 426 shots, `room-test` and `harness-test` all pass and repeat byte for byte (the known `side_sample_a` in `ow-test` still fails, 3 of 17 shots), and speed tour 2 on 240 windows (12 groups) holds 30 in every one; found and fixed one red gate: `audio-test` locked on a wrong lag since TD1 read Talk's bank inside the harness's native-seed command (test script only, the sound is unchanged); the table of families is in docs/DREAMCAST.md "The DC9 closing sweep (DC9D)", how to build the disc and run the tests in docs/BUILDING.md. **Open, 30 fps not reached everywhere, measured:** the concert choir setup page 24 of 1,719 ticks over, worst 37.5 ms, gap 4.2 ms (needs a core kept-backdrop family, cross-stream); the exorcism key-change tick 33.4 ms, 1 tick, gap 0.1 ms (it was 1.8 ms before G2-EX); the VMU save (3.3-4.4 s of work, card gaps 184-267 ms) and title to New story (picture gap 100 ms, work 124-132 ms) belong to SPEED S2-10; DC6D's leftover first-person ticks need core. DC10A, the VMU card, was not on the tip when this was run.)
+ 
+ - **STUDIO ST-0 (2026-11-15):** the song studio plan is written: `docs/design/STUDIO_PLAN.md` (Easy by default, Advanced switch, jam / record / drum pads, note grid and selection, sections and 8 tracks, `'SNG2'` chunk, memory per platform). Packages ST-EASY, ST-PLAY, ST-TOOLS, ST-ADV, ST-USE follow.
+ **Done: DC10A** (declutter and beautify the Dreamcast-only screens: the VMU save / load / erase card is the core's window with a still bar and one plain line; the Stick help line is one sentence; the other Dreamcast-only rows and the Talk layout are the core's and were checked, not changed; docs/DREAMCAST.md "DC10A", before / after shots in docs/img/dc10a; ui-compare 426 shots pass, vmu-test, family-test2 and talk-test hold, no tick over 33.3 ms except the old VMU save blocking ticks).
+diff --git a/docs/BUILDING.md b/docs/BUILDING.md
+index f5a815db..b9a06e5d 100644
+--- a/docs/BUILDING.md
++++ b/docs/BUILDING.md
+@@ -175,6 +175,25 @@ icons and controls, and the sound mixer on the host
+ `dc/harness/vmu_check.py`, `python3-numpy` for `dc/tests/audio/compare.py`),
+ and the boot movie's decoder (`dc/tests/fmv`, `python3-numpy`; skipped with a
+ note without it).
++**The Dreamcast disc and its tests (DC9D).** `make -C dc -j2 all-disc` builds `dc/build/doomogachi.elf` and the disc
++`dc/build/doomogachi.cdi` (open it in Flycast or burn it for a console). The Flycast core for the harness is built once by
++`make -C dc/harness flycast` (or `dc/harness/build_flycast.sh`). Each target below plays Flycast headless on the CDI; the ones
++that play scripts run each twice and need the two runs to match byte for byte. Run one at a time (each owns a core for its run):
++
++| `make -C dc TARGET` | what it checks | about |
++|---|---|---|
++| `family-test` | the 28 story, free-play and side-mission scripts | 10 min |
++| `family-test2` | 50 scripts: minigames, house, creator, studio, fishing, cooking, library, dreams, concert, exorcism | 14 min |
++| `talk-test` | Talk: the bank from the disc, typed and pad Talk, the four house scripts, the warming note | 2 min |
++| `disc-test` | boot, boot movie, skip, a saved game loaded after a restart, an old VMU image | 1 min |
++| `vmu-test` | VMU saves, a full VMU, no VMU, controls | 20 s |
++| `v3d-test` | the first-person view on the host (no Flycast) | 3 min |
++| `ui-compare` | the DC3 UI scripts against the native runner | 2 min |
++| `audio-test`, `ow-test`, `room-test` | sound, overworld, house against the native references | 1 to 5 min each |
++| `harness-test` | boot, `ui-compare`, `vmu-test`, `disc-test`, `audio-test`, `ow-test`, `room-test` (`ow-test`'s `side_sample_a` is a known failure and stops it, so run `room-test` by itself) | 6 min |
++
++`sh dc/harness/speed2.sh OUTDIR [groups]` (after `all-disc`) prints a frame-time table for every scene of the speed tour; about 5
++minutes for all 12 groups. The results and the open list are in docs/DREAMCAST.md, "The DC9 closing sweep (DC9D)".
+ `dc/Makefile` sources `<prefix>/kos/environ.sh` itself, so no shell setup
+ is needed; `DC_PREFIX=<dir>` picks another install. `make all` and
+ `make test` leave the Dreamcast out for now. Details: docs/DREAMCAST.md
+diff --git a/docs/DREAMCAST.md b/docs/DREAMCAST.md
+index 5e91d874..89f907fe 100644
+--- a/docs/DREAMCAST.md
++++ b/docs/DREAMCAST.md
+@@ -1112,6 +1112,72 @@ the kept backdrop's 10 canvases of 76,800 B, section 4, and the other streams' c
+ free above `_end` (6.74 MB before; the floor is 4 MB). Video RAM: up to 10 canvas textures of 128 KB, the
+ texture cache frees them when unused.
+ 
++### The DC9 closing sweep (DC9D, 2026-11-15)
++
++Every script family on Flycast, twice, on one tip (`86b91c3d`, which has DC9A, DC9B, DC9C, DC6B-D, TD1-TD3, DC10B and G2-EX;
++DC10A, the VMU card, was still a branch and is **not** in these numbers), plus the speed tour. Two complete passes on
++the rebased tree and two before it, all with the same numbers (Flycast counts its own frames; the runs are deterministic).
++Evidence: `/tmp/claude-0/ev/DC9D/` (logs, not in the repo).
++
++| scene family | scripts | pass and identical twice | ticks over 33.3 ms | worst tick |
++|---|---:|---:|---:|---|
++| story (`story_*`) | 14 | 14 of 14 | 1 (title to a new story) | 132.2 ms, `story_newgame_hero` |
++| free play (`fp_*`) | 11 | 11 of 11 | 10 in 8 scripts (new island 124 ms; `fp_screens` 3: the VMU save and load) | 3,354.9 ms, `fp_screens` (the save) |
++| side missions (`side_*`) | 3 | 3 of 3 | 0 | 30.5 ms, `side_sample_b` |
++| minigames (`mg_*`) | 7 | 7 of 7 | 0 | 21.7 ms, `mg_gallery` |
++| house (`home_*`, without Talk) | 9 | 9 of 9 | 0 | 29.2 ms, `home_visit` |
++| Talk (`home_talk_*`, `talk_*`) | 6 | 6 of 6 | 0 | 26.9 ms, `home_talk_group` |
++| creator (`creator*`) | 16 | 16 of 16 | 0 | 21.7 ms, `creator_parts_hair` |
++| studio | 1 | 1 of 1 | 0 | 16.8 ms |
++| fishing and cooking | 2 | 2 of 2 | 0 | 18.2 ms, `cooking` |
++| library (`library_*`) | 9 | 9 of 9 | 0 | 28.0 ms, `library_help` |
++| dreams (`dream*`) | 2 | 2 of 2 | 0 | 19.1 ms, `dream_nightmare` |
++| concert (`concert_*`) | 3 | 3 of 3 | 24 (all in `concert_choir`) | **37.5 ms**, `concert_choir` setup page |
++| exorcism (`life_exorcism`) | 1 | 1 of 1 | 1 | **33.4 ms** (gap 0.1 ms) |
++
++"Pass" is the script's own expectations plus two runs equal in ticks, frames, work summary and every shot's bytes
++(`run_flycast.sh`); the Talk row also holds each shot against the native picture (lowest exact 98.15 %, gate 98 %).
++`make -C dc family-test2` now plays 50 scripts, not the 44 DC9B counted (new creator, library and concert scripts came in).
++
++The other suites, each run twice on the tip (`make -C dc TARGET`): `dc-host-test` 0 failed; `talk-test` pass twice (talk_disc,
++talk_pad, talk_typed, four `home_talk_*`, the warming note), 0 ticks over 33.3 ms; `disc-test` 5 of 5 (boot, intro, skip, e2e save and
++load, old VMU), each twice identical, intro 152 frames shown 0 skipped, e2e save 27 blocks in 2.98 s; `vmu-test` all pass;
++`v3d-test` 188 checks 0 failed; `ui-compare` 426 shots pass 0 fail; `room-test` all pass (58 golden frames equal); `harness-test`
++(boot on the ELF and the CDI, ui-compare, vmu-test, disc-test, audio-test, ow-test, room-test) passes except the known base
++failure `side_sample_a` in `ow-test` (3 of 17 shots; it stops the run, so `room-test` was run on its own).
++
++The speed tour (`sh dc/harness/speed2.sh OUT`, now 12 groups, 240 windows, run twice, the two tables equal): every window holds 30
++logic ticks a second (lowest 30.0, highest 31.4: the load window). The ticks over 33.3 ms of work are only these:
++
++| group | ticks | work mean / worst | over 33.3 ms |
++|---|---:|---|---|
++| action | 3,256 | 10.2 / 24.5 ms | 0 |
++| busy (save, load, new island) | 760 | 19.9 ms mean | 6: the saves (worst 3.45 s) and loads, S2-10 |
++| creator | 2,335 | 6.5 / 13.9 ms | 0 |
++| dream | 2,102 | 6.2 / 13.8 ms | 0 |
++| fair (minigames) | 14,140 | 6.3 / 17.1 ms | 0 |
++| fishcook | 3,335 | 4.8 / 18.2 ms | 0 |
++| house | 2,461 | 2.9 / 20.2 ms | 0 |
++| library | 2,631 | 6.9 / 17.0 ms | 0 |
++| life | 3,921 | 7.2 ms mean | 2: new island, save (4.41 s) |
++| sim | 5,784 | 7.5 ms mean | 1: the dialog entry 123.9 ms |
++| story | 3,212 | 5.0 ms mean | 1: a cutscene entry 132.4 ms |
++| studio | 1,165 | 5.8 / 12.7 ms | 0 |
++
++**Found and fixed: `audio-test` failed on every script** (title r 0.49, lag +4.8 s, so `harness-test` was red). Bisected to TD1's
++sector-per-tick bank read (`2d9d6db3`): the harness's `--native-seed` command reads Talk's whole bank inside the held command, 7.4 s of
++Flycast time with the stream silent, so the music starts about 10.8 s after power on (3.4 s before) and the +-5 s lag search locked
++on a wrong lag. The sound itself is unchanged (`hash600` equal before and after). `run_flycast.sh` searches +-12 s now: title r 0.992,
++invasion 0.983, combat 0.940 (bar 0.8), repeat identical. Test script only.
++
++**Not at 30 fps, measured (the open list of DC9):**
++
++* Concert choir setup page: 24 of 1,719 ticks over, worst 37.5 ms, gap 4.2 ms. Needs a core kept-backdrop family for the concert (cross-stream).
++* Exorcism key-change tick: 1 of 1,421 over, 33.4 ms, gap 0.1 ms (it was 2 ticks, 35.1 ms, before G2-EX).
++* The VMU save (3.3-4.4 s of work; the card redraws every vblank, picture gap 184-267 ms) and title to New story (picture gap 100 ms, work 124-132 ms): SPEED S2-10.
++* DC6D's leftover first-person ticks (breach scripts, the autopilot demo's bot replan): need core.
++* Not measured on hardware: see "Owed on hardware".
++
+ ### Owed on hardware
+ 
+ - The frame time on a real console (Flycast's timing is not exact), on
+diff --git a/docs/design/held/status/DC.md b/docs/design/held/status/DC.md
+index 4ca34201..6bcdc9d7 100644
+--- a/docs/design/held/status/DC.md
++++ b/docs/design/held/status/DC.md
+@@ -17,6 +17,7 @@ delta, GBA sizes), in flight (package and stage), next up, blockers, needs from
+ - **In flight:** nothing in round 4 (TD1-TD3 landed).
+ - **DC9B landed as PARTIAL (landed as the 'DC10B' commits on the branch; branch fut-dc9b):** `make -C dc family-test2` plays 44 scripts twice on Flycast (minigames, house, creator, studio, fishing and cooking, library, dreams, concert, exorcism): 44 of 44 pass and repeat byte for byte, 586 shots, 43,046 ticks, 25 over 33.3 ms. The four `home_talk_*` wait for the Dreamcast Talk screen (TD1-TD3); `home_visit` has a Dreamcast copy. The exorcism church is kept as one texture per key (`plat_stage_*`, `dc/src/gfx2d.c`): 1,012 of 1,421 ticks over became 2 (mean 38.1 to 12.1 ms), frames equal the native runner's; palette ARGB table and header fast paths cut every speed-tour group's mean work 5-15 %, frames identical. **30 fps not reached:** concert choir setup page 23 of 1,719 ticks over (worst 37.5 ms, gap 4.2 ms; needs a core kept-backdrop family for the concert, cross-stream), exorcism key-change ticks 2 over (the game's own max 35.1 ms, gap 1.8 ms). Rebased onto origin abc4f660: core 1289 passed (SAN=1 too, only the known UBSan reports), check-gen, xcheck 420 files OK (PS1 leg skipped, no SDK), GBA build and test green, `dc-host-test` 0 failed, dc/harness selftest ok. GBA sizes unchanged: .iwram 11,272, .iwram_bss 4,088, .data 816, .bss 249,084. PS1: not built (no SDK here); no core, gba or ps1 file changed, margin as on origin. Dreamcast .bss 5,354,740 B (+768,000 B kept-backdrop canvases), 5.95 MB free above _end (floor 4 MB), up to 10 canvas textures in VRAM; 6 key slots is more than the church's 5 (a reviewer may trim). Not re-run on the final tip: speed tour 2 (done before the last rebases: 215 of 218 windows hold 30, the 3 misses are S2-10's), ui-compare (177 of 177 on an earlier rebase).
+ - **DC9C landed as PARTIAL (landed as the 'DC10B' commits on the branch; branch fut-dc9c):** the disc carries a boot FMV (`INTRO.DMV`, 152 frames 320x176 15 fps, our own DCT codec: `dc/src/dmv.c`, `fmv.c`, `dc/tools/mkfmv.py`; START skips; off in scripted runs, `dcrun --fmv` turns it on). `make -C dc disc-test` (boot, intro, skip, e2e saved game over a restart with vmu_check.py, old VMU image; each twice identical) 5 of 5 ok on the rebased tip. CDI 8,784,563 B (7.6 MB before); movie 10,269 ms, 152 shown, 0 skipped, decode 20.2 ms mean / 30.1 max; title set 17.5 s after power-on with the movie, 7.24 s without; one audio underrun at the movie-to-synth handover. **VMU save time NOT cut:** 27 blocks 3.09 s (new island), 129 blocks 13.5 s (worst case), load 0.47-0.55 s; nothing on the Dreamcast side cuts it safely (83 ms per block write in the Maple vblank pacing); levers in docs/DREAMCAST.md; a write-behind needs S2-10's core change. Owed on hardware: GD-ROM read of INTRO.DMV, AICA latency vs the 3-tick picture lag, CRT colour, real VMU block time. `room-test` `home_visit` fails on clean origin 8bd96eeb too (expect-scene DIALOG / TALK / HOME; dcrun, native and host runner), not DC9C. PS1 margin: unchanged (no core, gba or ps1 file touched; PS1 SDK not installed here, not built). GBA sizes unchanged: .iwram 11,272, .iwram_bss 4,088, .data 816, .bss 249,084.
++- **DC9D (branch fut-dc9d, the DC9 closing sweep; docs/DREAMCAST.md "The DC9 closing sweep (DC9D)", ROADMAP "Done: DC9"):** every family twice on the tip `86b91c3d` (rebased; DC10A is not on it): family-test 28 of 28, family-test2 50 of 50, talk-test, disc-test 5 of 5, vmu-test, v3d-test 188 checks, dc-host-test, ui-compare 426 shots, room-test, harness-test (only the known `side_sample_a` in ow-test), all pass and identical twice; speed tour 240 windows all 30 (lowest 30.0). One regression fixed: `audio-test` failed since TD1 (`2d9d6db3`, the native seed reads the Talk bank in a held command: music 10.8 s after power on instead of 3.4, the +-5 s lag search missed it; `run_flycast.sh` +-12 s; title r 0.992, invasion 0.983, combat 0.940). Open, measured: concert choir setup page 24 of 1,719 ticks over (worst 37.5 ms, gap 4.2 ms, core), exorcism key-change tick 33.4 ms (1 tick, gap 0.1 ms; was 1.8 ms), save 3.3-4.4 s and title to New story 100 ms picture gap (S2-10), DC6D leftover ticks (core). Gates: core 1,459 passed (SAN=1 too, only the known UBSan reports), check-gen, xcheck 428 files OK (PS1 leg skipped, no SDK), GBA build and test green, GBA sizes .iwram 11,288, .iwram_bss 4,088, .data 816, .bss 210,508 (no gba, core or ps1 byte changed by this package). PS1: not built (no SDK here); no PS1 byte added.
+ - **DC10B (branch fut-dc10b, landed as the 'DC10B' commits on the branch; docs/DREAMCAST.md "Talk: the warming-up note and HD text (DC10B)"):** (1) A on a housemate while the Talk bank is still read off the disc shows "Talk is warming up..." (`home_talk_note`, core TALK, weak default; house only), (2) HD text: the Talk screen draws plain text from a 256x256 HD glyph page (5x8 font through Scale2x, 10x16, 1 texel per screen pixel; `talk_text_hd()` + `dc2d_text_hd_fn`; 64 KB video RAM and `.bss`, Dreamcast only; outlined text and every other screen unchanged, host fuzz still 0 pixels different). New `dc/tests/talk/talk_warming.txt` (no native seed; `run_flycast.sh` plays it twice). Flycast: warming 0 of 843 ticks over 33.3 ms (worst 23.0 ms), shots equal twice; the six Talk scripts pass twice identical, 0 ticks over 33.3 ms, lowest exact 98.15 % (gate 98 %; was 98.25 %). Limit: smoothed 5x8, not a new 10x16 face; `talk-speed` not re-run. PS1 not built (no SDK; the `home_talk_note` call is behind `DOOMO_HAS_TALK` and `talk_text_hd` is unreferenced, so no PS1 code is added); GBA sizes on the rebased tree: .iwram 11,272, .iwram_bss 4,088, .data 816, .bss 254,828 (net zero). Core 1,359 passed; Talk scripts re-run on the rebased tree with the same numbers (worst tick 26.9 ms in home_talk_group, lowest exact 98.15 % in home_talk_basic). PS1 margin not measured here (no SDK); no PS1 code added. Open: a hand-made 10x16 face; talk-speed and the other dc suites not re-run; the resident screen's Talk action still has no note.
+ - **TD3 landed (branch fut-td3, rebased onto origin 905ae8f8; landed as the 'DC10B' commits on the branch; docs/DREAMCAST.md "Talk scripts and frame times (TD3)"):** the four `home_talk_*` scripts (basic, group, safety, visit) run on dcrun (`dc/tests/talk/`), each twice byte-identical on Flycast, against the native runner at >= 98.25 % exact (gate 98 %: 40-column lines). dcrun gained `talk-ready`, `expect-talk-act`, `expect-toast` / `expect-no-toast` and settles after a said line (a note when no answer box comes in 240 ticks); fixed TD2's `expect-talk-reply-sincere` (read the romance bit). `make -C dc talk-test` plays TD1's disc test, then 6 Talk scripts (`run_screens.sh`); new `make -C dc talk-speed` (`speed2.sh OUT talk`, `speed2_talk.txt`) with work mean and worst ms per window in `tools/speed2.py`. Flycast on the landed tree: 0 ticks over 33.3 ms in every script (worst 26.8 ms, `home_talk_group`), Talk windows work mean 2.5-7.5 ms, worst 11.9 ms, logic 30.0 t/s in all eight; the one miss found (7.4 s whole-bank read at the first Talk entry) is closed by TD1's sliced read. Gates (re-run on origin e587f9c1, same numbers): core 1345 passed (SAN=1 1338 before the last rebase), check-gen, xcheck, GBA build and test, GBA sizes identical to origin (.iwram 11,272, .iwram_bss 4,088, .data 816, .bss 254,836), `dc-host-test` and `check-talkdisc` ok; no core, gba or ps1 file changed (PS1 not built, no SDK here, margin as on origin). Open: the "Talk not ready" window after boot is not scripted (`--native-seed` reads the bank at tick 0, so `talk-ready` answers at once; real GD-ROM rate is a hardware check of TD1); `talk-rows` and the act check of `expect-talk-reply-sincere` are not in dcrun; HD text still open (TD2).
+ - **TD2 landed as PARTIAL (landed as the 'DC10B' commits on the branch; branch fut-td2, rebased onto origin 9dc5e39a; HD text NOT built, still open):** Talk plays on Flycast with the typed line (Maple keyboard), the pad fallback and 40-column bubbles. dcrun has the native T8 `talk-*` commands (`DC_HC_TALKQ` id 33, `dc/src/talkhc.c`; TD1's TALK_BANK keeps 32) and `talk-key`; `make -C dc talk-test` (TD1's two scripts, then `run_screens.sh`: talk_pad, talk_typed) each twice identical; on the rebased tree talk_pad 931 ticks and talk_typed 660 ticks, 0 over 33.3 ms (worst 15.1 / 16.8 ms), shots against the native runner's 98.97 % exact at worst (the 40-column lines wrap differently from the native 26). Found: one answer was 35.0 ms in one tick (generator steps 3-17 ms each on the SH4); `talk_scene_slice(1)` (core, TALK-owned, minimal; off by default, not compiled on the GBA) runs one step a tick, the pad is dead for 1-3 ticks per answer. `TALK_BUBBLE_COLS` 40 on the DC. Landing: the talk.h constant forced to 40 on the host passes every Talk test but one hard-coded 26-column length string in `test_talk_safety.c` (lengthened). Gates on the rebased tree: core 1338 passed (SAN=1 too, only the known UBSan reports), check-gen, xcheck 421 files (PS1 leg skipped, no SDK), GBA build and test green and `make -C gba sizes` identical to origin dfaeac16 (.iwram 11,272, .iwram_bss 4,088, .data 816, .bss 254,836), dc-host-test, check-talkdisc, vmu-test, ui-compare 177 ok, `family-test` 28 of 28 (the 1 tick over is story_newgame_hero's known 129 ms), `family-test2` 45 of 45 pass twice (home_visit included), `room-test` 9 of 9 after a landing fix: origin's Dreamcast copy of home_visit failed on dcrun now that Talk is live (expect-scene HOME), so the copy is deleted and home_visit left room-test's list (family-test2 plays it, with the live Talk screen). Dreamcast .bss 5,375,732 B, 5.80 MB free above _end (floor 4 MB). PS1: not built (no SDK); no PS1 file changed and SCENE_TALK is not in the PS1 build, so the margin is as on origin. No GBA/PS1 RAM ledger row (net zero on both). Open: HD text (a finer font and an advance the dialogue box can read, plus a core hook in ui_dialog), `talk-rows` / `expect-talk-act` / `expect-toast` in dcrun (TD3), `DOOMO_TALK_DEBUG` is defined in the Dreamcast release build (a few KB, not stripped), nothing measured on hardware.
+-- 
+2.43.0
+
