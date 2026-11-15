@@ -736,3 +736,41 @@ TEST(part_store_missing_draws_nothing_and_a_set_pointer_that_is_not_a_set_is_ref
     CHECK_EQ(p[0], PH_END);
 }
 #endif
+
+#if defined(DOOMO_PARTS_SPU_TEST)
+/* The worst look the creator can build in one picture: the longest scripted entry of every list worn at once
+ * (hat, hair, ears, horns, wings, tail, eyes, top, outer, legwear...). Every entry the render reads must fit the
+ * per-render arena: a spill still draws the same picture but reads the store again for it. */
+TEST(part_store_arena_holds_the_longest_script_of_every_list_worn_at_once)
+{
+    static uint8_t img[PORTRAIT_W * PORTRAIT_H];
+    DoomoResident r;
+    DoomoLook l;
+    int i, worn = 0;
+    unsigned used = 0;
+    resident_default(&r);
+    for (i = 0; i < doomo_part_script_nlists; i++) {
+        const PartListSet *e = &doomo_part_script_lists[i];
+        const PartSet *set = doomo_part_scripts[e->set];
+        unsigned k, best = 0, bestv = 0;
+        if (e->list >= 128) continue;
+        for (k = 0; k < set->n; k++) {
+            const PartRef *pr = &set->ref[k];
+            unsigned n = entry_len(set->ops + pr->ofs);
+            if (pr->value == 0 || !ps_has(e->list, pr->value)) continue;
+            if (n > best) { best = n; bestv = pr->value; }
+        }
+        if (best == 0) continue;
+        gene_set(r.gene, e->list, bestv);
+        used += best;
+        worn++;
+    }
+    l = *RES_LOOK_VIEW(&r);
+    CHECK(worn >= 10);
+    part_store_reset();
+    portrait_render(&l, RES_ALIVE, EXPR_NEUTRAL, 0, img);
+    CHECK(part_store_fills() > 0);
+    CHECK_EQ(part_store_spills(), 0u);                    /* all of them in the arena: PART_STORE_ARENA is enough */
+    CHECK(used > 0);
+}
+#endif

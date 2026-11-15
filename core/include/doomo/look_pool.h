@@ -22,14 +22,15 @@ DOOMO_STATIC_ASSERT(sizeof(DoomoLookPool) == 8200, look_pool_is_8200_bytes);
 DOOMO_STATIC_ASSERT(LOOK_POOL_BYTES + 8 <= DOOMO_SAVE_EXT_MAX, look_pool_fits_one_chunk);
 
 /* CR5: bytes of the pool (look_pool.c). 6,144 B keeps the creator's save chunk (nicknames, gene bits, this
- * pool) under DOOMO_SAVE_EXT_MAX; the PS1 keeps 384 B (its resident RAM is full, docs/PS1.md). */
+ * pool) under DOOMO_SAVE_EXT_MAX; the PS1 keeps 384 B (about 40 short runs). CR10: the PS1 has the pool code too
+ * now (PS1-RAM made the room: about 1 KB resident), so its creator offers the deep rows (Eye makeup) and saves them;
+ * a chunk written by a console with a bigger pool loads here with an empty pool (look_pool_load refuses it). */
 #if defined(DOOMO_PLATFORM_PS1)
 #define LOOK_POOL_CAP 384
-#define LOOK_POOL_SAVED 0     /* the PS1 is 992 B short of its RAM rule: no put / save / load code there yet */
 #else
 #define LOOK_POOL_CAP 6144
-#define LOOK_POOL_SAVED 1
 #endif
+#define LOOK_POOL_SAVED 1
 
 /* The pool API (weak stubs in stubs.c until M1 allocates a pool). A run is the bytes of one kind
  * (RUN_*) for one id. These shapes are provisional: M1 may refine them before anyone calls them. */

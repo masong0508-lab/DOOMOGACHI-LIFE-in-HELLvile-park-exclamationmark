@@ -1,0 +1,124 @@
+# creator_parts.txt - CR10: the PS1 draws and offers the scripted parts (the part VM, scripts in SPU RAM:
+# docs/PS1.md "CR10"). A new citizen in the creator; each section that has scripted parts opens its picture
+# grid and the cursor is HELD on the new parts, so the citizen tries a new scripted part on every few ticks
+# (the speed that matters: the VM draws it, the store is read by SPU DMA), measured with fps / fpsend (a floor
+# of 28: the owner's target is 30); then a shot of the grid and one part kept. Sections: Face (head shape,
+# eyes), Hair (hair style), Supernatural (horns, tail), Outfit (outer layer). The icons of the scripted parts
+# come from the same store (the grid shows no "?" cell: creator_parts_check in the shots).
+#   python3 ps1/harness/run.py --cue ps1/build/doomogachi.cue --exe ps1/build/doomogachi.exe \
+#       --script ps1/harness/scripts/creator_parts.txt --out OUT
+scene CREATOR -1
+expect-scene CREATOR
+wait 30
+expect-log parts: loaded
+# ---- Face: head shapes (the cursor goes left from Round and wraps onto the new, scripted shapes) ------
+press R
+wait 14
+press A
+wait 14
+down LEFT
+fps parts_head
+wait 100
+fpsend parts_head
+release
+expect-fps 28 parts_head
+shot 01_head_grid_scripted
+press A
+wait 10
+shot 02_head_kept
+# ---- Face: eyes --------------------------------------------------------------------------------------
+press DOWN
+press DOWN
+press A
+wait 14
+down LEFT
+fps parts_eyes
+wait 100
+fpsend parts_eyes
+release
+expect-fps 28 parts_eyes
+shot 03_eyes_grid_scripted
+press A
+wait 10
+shot 04_eyes_kept
+# ---- Hair: styles (rows of the grid: DOWN tries each on; the first 32 past the painted ones are scripted) --
+press R
+wait 14
+press A
+wait 14
+press DOWN
+press DOWN
+press DOWN
+wait 4
+press DOWN
+press DOWN
+press DOWN
+wait 4
+down DOWN
+fps parts_hair
+wait 100
+fpsend parts_hair
+release
+# the hair grid is the one slow try-on: a hair is the biggest picture (the base disc, painted hair only: 21.9 on the same
+# moves, 70 of 100 frames at 50 ms; here 27.5, 14 frames at 50 ms). S3-2 (no whole portrait in a frame) is what lifts it.
+expect-fps 26 parts_hair
+shot 05_hair_grid_scripted
+press A
+wait 10
+shot 06_hair_kept
+# ---- Supernatural: horns, then tail -------------------------------------------------------------------
+press R
+wait 14
+press A
+wait 14
+down RIGHT
+fps parts_horns
+wait 100
+fpsend parts_horns
+release
+expect-fps 28 parts_horns
+shot 07_horns_grid_scripted
+press A
+wait 10
+shot 08_horns_kept
+press DOWN
+press DOWN
+press DOWN
+wait 6
+press A
+wait 14
+down RIGHT
+fps parts_tail
+wait 100
+fpsend parts_tail
+release
+expect-fps 28 parts_tail
+shot 09_tail_grid_scripted
+press A
+wait 10
+shot 10_tail_kept
+# ---- Outfit: the outer layer (31 scripted outer layers) -----------------------------------------------
+press R
+wait 14
+shot 11_outfit_tab
+press DOWN
+wait 3
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+wait 6
+press A
+wait 14
+down RIGHT
+fps parts_outer
+wait 100
+fpsend parts_outer
+release
+expect-fps 28 parts_outer
+shot 12_outer_grid_scripted
+press A
+wait 10
+shot 13_outer_kept

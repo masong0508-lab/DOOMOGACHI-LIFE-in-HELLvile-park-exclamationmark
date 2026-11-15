@@ -139,7 +139,7 @@ void part_lru_reset(void);
 #define PART_ENTRY_WIN 256
 #if defined(DOOMO_PARTS_SPU) || defined(DOOMO_PARTS_SPU_TEST)
 #define PART_STORE_ARENA 2048
-#define PART_STORE_SLOTS 24
+#define PART_STORE_SLOTS 20
 /* The entry of set `set` (its index in doomo_part_scripts[]) at raw offset `ofs`: up to its PH_END header,
  * at most PART_ENTRY_WIN bytes. Valid until the next part_arena_begin(), or, when the arena is full, until
  * the next call. */
