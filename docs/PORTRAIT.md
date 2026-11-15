@@ -564,16 +564,13 @@ tested but *hidden* until the lists flip live (CR3) and the art review signs the
 (4 KB) plus a 4 KB per-render arena: `pctx_init()` empties it, and each worn entry is copied into it
 once, so a render decodes a block once however many groups and hooks run the entry (host test: 7
 groups x 3 entries = 3 block loads, was 21 with the LRU alone). Same 8 KB. The compressed bytes come
-through `part_lz_src()`; a build with `DOOMO_PARTS_SPU` (CR10) supplies one that DMAs the block from
-SPU RAM into a staging buffer.
+through `part_lz_src()`.
 
-**The PS1 builds without the VM for now** (`DOOMO_PARTS_VM=0` in `ps1/CMakeLists.txt`): once painters
-call it, the VM, its LZ buffers and the arena are about 22 KB resident (measured: the disc ended
-7,184 B into the 64 KB stack reserve), more than the 14,976 B the tree had above the reserve. With the
-flag every hook is a constant 0 and sanitize draws a scripted value as its slot's default; the PS1
-costs +1,888 B resident for CR1/CR2/CR12 (the age gate, the hooks' call sites, the 128 B `minv`
-table). CR10 (SPEC P3 reclaims, the SPU-RAM part store) turns it on; until then CR3 must not flip a
-list live on the PS1 past its painted values.
+**The PS1 (CR10, done 2026-11-15)** builds the VM in (`DOOMO_PARTS_VM` 1) and does not use the LZ form: the raw scripts
+are in SPU RAM (`PARTS.BIN`, `ps1/src/partstore.c`) and `part_store_ops()` (`part_lru.c`, `DOOMO_PARTS_SPU`) reads a worn
+entry into a 2 KB per-render arena by SPU DMA, so the VM, the painters' scripted paths, the PartRef tables and the arena
+are 20.6 KB resident and the scripts themselves 0 (docs/PS1.md "CR10"). `DOOMO_PARTS_SPU_TEST` builds the same store on
+the host, so every portrait test draws through it. The LZ blocks stay for the host tests and as the reference form.
 
 **Shape gate.** `portrait_shape_mode(1)` forces every material onto one grey ramp (direct renders only;
 a no-op on the GBA, where it costs no RAM). `test_part_render.c` requires every scripted part to differ

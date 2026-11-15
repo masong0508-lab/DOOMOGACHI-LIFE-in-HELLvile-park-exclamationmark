@@ -299,13 +299,13 @@ compares; `make -C core part-icons-sheet` writes the contact sheet `build/sheets
   bald mannequin;
 * at most 15 colours an icon. `core/gen/part_icons_data.c` holds the raw icons (140 KB of ROM,
   GBA and native blit them from ROM); `core/gen/part_icons_rle.c` the same packed at 4 bits a pixel
-  (57 KB, `part_icon_unpack`): the PS1 links only these, in the creator overlay group
-  (`DOOMO_ICONS_RLE`), and unpacks one icon into `cr.icon_buf` before `plat_image` uploads it to
-  the VRAM image cache (each icon has its own uid). Tests (`test_part_icons.c`): one icon per live
+  (113 KB for all 718 icons, `part_icon_unpack`): the PS1 links only the tables of these in the creator
+  overlay group (`DOOMO_ICONS_RLE`), keeps the packed bytes in SPU RAM (CR10, `PARTS.BIN`), and unpacks one
+  icon into `cr.icon_buf` before `plat_image` uploads it to the VRAM image cache (each icon has its own uid). Tests (`test_part_icons.c`): one icon per live
   part, packed == raw, at most 15 colours, stable uids.
 
 When CR3 flips more lists live and CR4 adds parts, `make -C core gen` draws their icons too (the
-PS1's packed icons grow with them: past the creator overlay's room they move to the disc, CR10).
+PS1's packed icons grow with them; since CR10 their bytes are in SPU RAM, not in the creator overlay).
 
 ## Speed (CR9)
 
@@ -551,7 +551,7 @@ held; on the GBA the bust's effect frames change every 16 ticks).
   Ear fold, Blush style); the eye picker step uses the Unlocked chip so both screen sizes reach the
   same row.
 * PS1 (2026-11-13, measured on `ee686c7` + CR3): the new fields are live there too, as far as the PS1
-  can draw them. It has no part VM yet (`DOOMO_PARTS_VM=0`, until CR10), so the painted values show
+  can draw them. It has no part VM yet (`DOOMO_PARTS_VM=0`, until CR10), so the painted values show  *(Since CR10 the PS1 draws and offers them: "CR10" below.)*
   (pupils, eye whites, blush styles, ear fold, hood, handedness) and the creator offers only those
   (`part_live_drawable`); the scripted ones (glasses, outer layer, legwear, fur pattern) wait for CR10
   and their rows stay hidden. `DOOMO_GENE_EXT=0` (a `-D`) still compiles the whole feature out
@@ -639,7 +639,7 @@ held; on the GBA the bust's effect frames change every 16 ticks).
   grid paged, a style found by letters and worn, the Facial hair grid, a beard worn.
 * **Tests:** `test_cr4_a2.c` (lists full and every new part catalogued under the cost cap; hair seen from behind;
   no minor wears a new beard; every hat over every new style renders the same twice).
-* **PS1:** the part VM is still off there (CR10), so the creator's Hair and Facial hair rows keep offering the painted
+* **PS1:** the part VM is still off there (CR10), so the creator's Hair and Facial hair rows keep offering the painted  *(Since CR10 the PS1 draws and offers them: "CR10" below.)*
   values (`part_live_drawable`); the new parts are data in the creator overlay only (names, set, tags: no resident
   byte; the PS1 margin is unchanged, see `docs/PS1.md`).
 
@@ -683,7 +683,7 @@ held; on the GBA the bust's effect frames change every 16 ticks).
   Record, Confetti), the preview showing it.
 * **Tests:** `test_cr4_a3.c` (the lists full and the 60 parts catalogued and inside the cost cap; tails and wings show on
   the figure and from behind; every aura has two frames; every stage keeps them and a child may wear all; they survive a
-  save and sanitize; the old values still differ from the new). The PS1 reads none of the scripts yet (the part VM waits for
+  save and sanitize; the old values still differ from the new). The PS1 reads none of the scripts yet (the part VM waits for  *(Since CR10 the PS1 draws and offers them: "CR10" below.)*
   CR10): its creator keeps offering the painted values.
 
 ## CR4 batch A4: fur patterns and face marks (2026-11-13)
@@ -724,7 +724,7 @@ held; on the GBA the bust's effect frames change every 16 ticks).
   on the bust and no two alike; the spot colour moves every pattern; the new marks are drawn and differ from the
   old ones; every stage keeps them; they survive a save and sanitize, 25 is not a choice; patterns stay on the head).
   `creator_rows_with_nothing_to_pick_are_not_shown` expects 4 hidden rows now (the fur pattern row and its colour row
-  are shown). The PS1 reads none of the scripts yet (the part VM waits for CR10): its creator keeps offering the painted
+  are shown). The PS1 reads none of the scripts yet (the part VM waits for CR10): its creator keeps offering the painted  *(Since CR10 the PS1 draws and offers them: "CR10" below.)*
   values, so the fur pattern row stays hidden there and the marking row keeps its 23.
 
 ## CR4 A1a: head shapes, eyes, pupils, eye whites, brows (2026-11-13)
@@ -772,7 +772,7 @@ The first art batch of the part plan (CREATOR_PLAN 3.1, "Head & face" rows), dra
 Review: sheets in the stream's evidence (`slot_head`, `slot_eyes`, `slot_pupil`, `slot_sclera`,
 `slot_brows`, each colour and `_shape`) were looked at; the sign-off is the `A1a` lines in
 `core/data/parts/review.txt`. All 96 are age class ALL (plain shapes: no gore, no suggestive reading, no props).
-PS1: scripted values draw as the slot's default until CR10 (no part VM yet), so the PS1 creator does not
+PS1: scripted values draw as the slot's default until CR10 (no part VM yet), so the PS1 creator does not  *(Since CR10 the PS1 draws and offers them: "CR10" below.)*
 offer them (`part_live_drawable`); the new parts add no resident byte there.
 
 ## CR-BODY: body types and better sliders (2026-11-13)
@@ -857,6 +857,32 @@ package (the cheat "Slider range x1..x4" is CR-SLIDERX, below; the slider table 
 * **Not done here / next.** The language packs do not carry the slider and body names yet: the labels are in English
   like every creator label (the part names reach the packs with CR14). A saved look made with a new body type loads on
   an older build as the average body (its `sanitize` puts a value past its list back): new saves only.
+## CR10: the PS1 draws and offers the scripted parts (2026-11-15)
+
+* **What changed on the PS1** (docs/PS1.md "CR10" has the memory layout and numbers): the part-script VM is built in
+  (`DOOMO_PARTS_VM` 1), so every scripted part draws there: the creator offers every live part of every row
+  (`part_live_drawable` is the live count), the picture grids show every part's icon, the preview and every scene wear
+  them, and the deep look pool is on (`LOOK_POOL_SAVED` 1, 384 B: the Eye makeup rows, saved on the memory card).
+  A look made on the GBA shows the same on the PS1, and the other way round (same gene, same scripts).
+* **How:** the part scripts (17,888 B) and the packed icons (112,910 B) are not in the EXE: `ps1/tools/partsbin.py` writes
+  them to `PARTS.BIN`, `ps1/src/partstore.c` uploads them to SPU RAM at boot, and a script entry is read back by SPU
+  DMA into a 2 KB per-render arena (`core/src/part_lru.c` `part_store_ops`; an icon onto the stack in
+  `part_icon_unpack`). The host tests draw through the same code (`DOOMO_PARTS_SPU_TEST`).
+* **Generator:** `tools/parts_build.py` refuses a script entry over 256 B (`PART_ENTRY_WIN`), `core/tools/part_icons.c` a
+  packed icon over 256 B (`PART_ICON_PACK_MAX`) and packs every icon (the PS1's set was the painted parts' only).
+* **Tests:** `part_store_entries_of_the_real_sets_equal_the_raw_scripts`, `part_store_arena_keeps_each_entry_once_per_render_and_spills_when_full`,
+  `part_store_missing_draws_nothing_...`, `part_store_arena_holds_the_longest_script_of_every_list_worn_at_once`,
+  `part_icons_without_the_store_unpack_nothing` (core); PS1 harness `creator_parts.txt` (the cursor held on scripted parts
+  of six grids with fps floors), `creator_parts_face_a|hair|spooky|fur|outfit`, `creator_deep`, `creator_deep_save`
+  (Lashes through Move in / save / load / reopen on the card), `game_smoke` (`parts: loaded`), `creator_speed`.
+* **Measured (PCSX-Redux):** `creator_speed` 30.13 / 29.39 / 30.13 / 29.88 (the base's); scripted-part grids held 29.85 to
+  30.00, the hair grid 27.52 (painted hair on the base: 21.9); the speed tour's creator group all the same fps; resident
+  RAM **+20,576 B** (132,608 -> 112,032 B below the stack top; the creator group has 64,584 B of room now, was 1,852 B).
+  That is 16,480 B over CREATOR's 4 KB PS1 share: the VM and the painters' hooks are 12.7 KB of it and cannot leave the
+  resident image. GBA and Dreamcast: no RAM change (the packed icon set is bigger: +48 KB of ROM there).
+* **Left:** a save with a bigger pool than the PS1's 384 B loads there with an empty pool; the hair try-on is 27.5 (S3-2);
+  every later batch adds 4 B of resident `PartRef` per part and needs `PARTS.BIN` room (184 KB of SPU RAM, 132 KB used).
+
 ## CR4 batch A5: outfit (2026-11-13)
 
 * **70 new parts live, the gene-stored part of the plan's 224:** 24 tops (gene `top` 25..48: Breton Stripes, Turtleneck,
@@ -907,7 +933,7 @@ package (the cheat "Slider range x1..x4" is CR-SLIDERX, below; the slider table 
   11,272 B, `.iwram_bss` 4,088 B and `.bss` 249,084 B (EWRAM) on the landed tree (A5 adds no resident byte: A/B against the base was identical), `.rodata` 7,658,744 B (+35 KB for A5: scripts, icons,
   names); `make -C gba test` and `test-creator` pass (creator rows 29.9, value step 27.9 drawn fps). PS1 (`cmake --preset ps1
   -DDOOMO_INTRO_REQUIRED=ON`): `_end` 0x801ee550 on the landed tree (72,368 B below the stack top; the 72 KB gate is 1,360 B short, inherited from the tip, A5 adds 0 B), nothing resident added (the
-  part scripts are creator-overlay data the PS1 does not read before CR10); harness (PCSX-Redux, xvfb) `game_smoke`,
+  part scripts are creator-overlay data the PS1 does not read before CR10); harness (PCSX-Redux, xvfb) `game_smoke`,  *(Since CR10 the PS1 draws and offers them: "CR10" below.)*
   `creator_speed` (idle 30.13, grid scroll 29.39, rows 30.13, value 29.88: the S3-3 numbers), `creator`, `creator_grid` and the new
   `creator_parts_outfit` PASS. Core 1,289 tests pass (SAN=1 the same, the known UBSan reports only), `make -C core check-gen` clean, xcheck 420 files OK on all four compilers,
   `make dc-host-test` ok. Dreamcast `make -C dc` not run: no `dc/` or shared drawing / input / save code changed.
@@ -917,7 +943,7 @@ package (the cheat "Slider range x1..x4" is CR-SLIDERX, below; the slider table 
 * **Tests:** `test_cr4_a5.c` (the lists full and the 46 outer / legwear parts catalogued and inside the cost cap; the shape gate
   the generic test cannot run for gene-only lists; every outer layer shows on the figure and a cape from behind; legwear shows
   on the legs; a child may wear all of it; they survive a save and sanitize; they draw on three other citizens). The PS1 reads
-  none of the scripts yet (the part VM waits for CR10): its creator keeps offering the painted values (it offers no outer
+  none of the scripts yet (the part VM waits for CR10): its creator keeps offering the painted values (it offers no outer  *(Since CR10 the PS1 draws and offers them: "CR10" below.)*
   layer or legwear at all, and the 24 painted tops).
 
 ## CR4 A1b: noses, mouths, ears, blush styles (2026-11-13)
