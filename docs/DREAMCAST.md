@@ -2670,3 +2670,39 @@ reader.
   and the `home_talk_*` scripts on dcrun with frame-time gates. The Talk screen's list and the opener's dialogue box overlap
   at 640x480 in the TD1 shots (`talk_disc_opener.png`: the dialogue box sits over the list; the native 320x240 screen
   has the same layout): TD2 owns that layout.
+
+## Declutter and beautify the Dreamcast-only screens (DC10A)
+
+Owner decision 2026-11-15: fewer things at once, one shared style, calm motion, readable, 30 fps holds. The
+screens only the Dreamcast has, and what was done to each:
+
+| screen | where | what DC10A did |
+|---|---|---|
+| VMU card ("Saving your game...", "Loading...", "Erasing...", and the reason when a write fails) | `dc/src/vmusave.c`, now `dc/src/vmucard.c` | restyled (shots below) |
+| Options > Controls: the Rumble and Stick rows | core (`options_store.c`, `fp_options.c`), shown only where the console has the feature | the Stick help line shortened to one plain sentence (cross-stream: `core/src/fp_options.c`, text only) |
+| Options > Performance: the Draw distance row | core (`options.c`) | none: one row in the shared list, already in the core's style |
+| Talk screen list and the opener's dialogue box (TD1's note) | core (`core/src/talk_scene.c`, owner TALK) | none here: the box is the top scene while a line is read and the list shows when it is dismissed; TUI-TALK already hides the control card under the box. Not a Dreamcast layout; TALK owns it |
+| pad / keyboard help | none exists on the Dreamcast | the core's control card (`ui_prompts_at`) is what the screens show; nothing to add |
+| boot FMV, disc and boot messages | no text is drawn (the FMV, then the title) | none |
+
+**The VMU card.** It was two flat stripes, outlined text and a white box with a red fill, a look no other screen
+has, and it moved nothing but the bar. Now `dc_card_paint()` (portable, plain 2D calls) draws the core's cute window
+on the same pink ground: the title, a still bar (the fill is the only thing that moves; the window's sliding
+glint is held off), and one plain line under it ("Do not remove the VMU or switch off the power", or the reason a
+write failed). Same words, same timing (a save still blocks the tick for its blocks; a failed write shows its
+reason for one second, once per kind of error). Pixel changes: only this card. Before and after, 640x480 from the
+host software PVR (the card blocks the tick, so Flycast cannot take a shot of it):
+`docs/img/dc10a/vmu_card_before.png`, `vmu_card_after.png`, `vmu_card_error_after.png`.
+
+Test: `test_card` in `dc/tests/gfx2d/test_dc2d.c` (part of `make dc-host-test`): the Dreamcast picture equals the
+native reference on every pixel, the title is drawn, the bar fills in proportion and never past full, no bar when
+`total` is 0, and two pictures of the same card are byte-identical (nothing moves by itself). It fails without
+`vmucard.c`. `DC10A_SHOTS=dir` makes it write the shots.
+
+Measured (Flycast, `make -C dc ui-compare vmu-test talk-test family-test2`): ui-compare 177 shots pass, 0 fail,
+`known_diffs.tsv` unchanged (no Controls or Performance shot moved); vmu-test 6 of 6 ok; the only ticks over 33.3 ms
+are the three VMU save / load ticks of `fp_screens` (3.27 s, the same as before: the block I/O of a save is a
+blocking card by design). No resident PS1 byte and no GBA byte changed (the PS1 SDK is not installed on this
+machine; the help string is one line of text in `core/src/fp_options.c`, compiled out where `DOOMO_TRIGGERS` is 0).
+Open: the Controls page has eight rows on a one-stick pad; folding Turn buttons and Stick into one row would
+change what the options record means, so it is left to the core's UI polish package (UI1).

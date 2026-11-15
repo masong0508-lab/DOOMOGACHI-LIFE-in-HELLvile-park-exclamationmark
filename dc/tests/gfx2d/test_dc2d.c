@@ -29,6 +29,9 @@
 #include "doomo/camfx.h"
 #include "doomo/plat_ext.h"
 #include "doomo/backdrop.h"
+#include "doomo/ui.h"
+#include "vmucard.h"
+#include "png.h"
 
 static int fails, checks;
 #define CHECK(c, ...) do { checks++; if (!(c)) { fails++; printf("FAIL %s:%d: ", __FILE__, __LINE__); \
@@ -172,6 +175,69 @@ static void test_side(void)
     CHECK(n0 >= 3, "side frame: the tick kept %d prims", n0);
     CHECK(f->bg == PAL_BLACK, "side frame: the tick's clear colour changed");
     CHECK(frame_diff(NULL) == 0, "side frame: the tick's picture differs from native");
+}
+
+/* ---- the VMU card (DC10A) -------------------------------------------------------------------- */
+/* pixels in the bar's inner row that are the accent colour (the fill) */
+static int card_fill_px(uint8_t accent)
+{
+    int x, n = 0, y = DC_CARD_BAR_Y + DC_CARD_BAR_H / 2;
+    for (x = DC_CARD_BAR_X; x < DC_CARD_BAR_X + DC_CARD_BAR_W; x++) n += nat_fb[y * nat_w + x] == accent;
+    return n;
+}
+
+static void card_shot(const char *name)
+{
+    const char *dir = getenv("DC10A_SHOTS");
+    char path[512];
+    if (!dir) return;
+    swpvr_render(dc2d_last(), rgb);
+    snprintf(path, sizeof path, "%s/%s", dir, name);
+    png_write_rgb(path, rgb, DC2D_W, DC2D_H);
+}
+
+static void test_card(void)
+{
+    const UiStyle *st = ui_style(WIN_CUTE);
+    int f0, f50, f100, x, y, textpx = 0, bad;
+    /* no bar: nothing of the fill, and the picture is the same on the console path and the reference */
+    frame_begin();
+    dc_card_paint("The VMU is full", "No room for two copies", 0, 0);
+    frame_end();
+    f0 = card_fill_px(st->accent);
+    bad = frame_diff(NULL);
+    CHECK(f0 == 0, "card: no bar, but %d fill pixels", f0);
+    CHECK(bad == 0, "card: %d pixels differ from native", bad);
+    for (y = DC_CARD_Y; y < DC_CARD_Y + 30; y++)
+        for (x = DC_CARD_X + 4; x < DC_CARD_X + DC_CARD_W - 4; x++) textpx += nat_fb[y * nat_w + x] == st->text;
+    CHECK(textpx > 40, "card: the title is not drawn (%d text pixels)", textpx);
+    card_shot("card_error.png");
+    /* the bar fills in proportion, and never past full */
+    frame_begin();
+    dc_card_paint("Saving your game...", "Do not remove the VMU or switch off the power", 10, 20);
+    frame_end();
+    f50 = card_fill_px(st->accent);
+    card_shot("card_saving.png");
+    frame_begin();
+    dc_card_paint("Saving your game...", NULL, 40, 20);
+    frame_end();
+    f100 = card_fill_px(st->accent);
+    CHECK(f50 > 60 && f50 < f100, "card: half is %d px, full %d px", f50, f100);
+    CHECK(f100 > 2 * f50 - 8 && f100 <= DC_CARD_BAR_W, "card: full is %d px against half %d", f100, f50);
+    /* the same call twice draws the same picture: nothing moves by itself */
+    frame_begin();
+    dc_card_paint("Loading your game...", "Do not remove the VMU or switch off the power", 5, 20);
+    frame_end();
+    swpvr_render(dc2d_last(), rgb);
+    {
+        static uint8_t first[DC2D_W * DC2D_H * 3];
+        memcpy(first, rgb, sizeof first);
+        frame_begin();
+        dc_card_paint("Loading your game...", "Do not remove the VMU or switch off the power", 5, 20);
+        frame_end();
+        swpvr_render(dc2d_last(), rgb);
+        CHECK(memcmp(first, rgb, sizeof first) == 0, "card: two pictures of the same card differ (motion)");
+    }
 }
 
 /* ---- the exact fuzz ------------------------------------------------------------------------- */
@@ -686,6 +752,7 @@ int main(void)
     test_uv16();
     test_merge();
     test_side();
+    test_card();
     test_fuzz();
     test_shade();
     test_shade_exact();

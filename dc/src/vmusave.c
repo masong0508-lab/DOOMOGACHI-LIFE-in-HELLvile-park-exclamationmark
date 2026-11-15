@@ -45,10 +45,10 @@
 #include "dc_plat.h"
 #include "dc2d.h"
 #include "vmusave.h"
+#include "vmucard.h"
 #include "doomo/save.h"
 #include "doomo/plat_ext.h"
 #include "doomo/palette.h"
-#include "doomo/font.h"
 #include "doomo/scene.h"
 
 /* the biggest file: header, 3 icon frames, the eyecatch and slot 1 */
@@ -71,28 +71,10 @@ static const char *card_title, *card_line;
 static uint32_t card_vbl;
 static int shown_err;                   /* the last error shown (once per kind) */
 
-static void card_text(int y, const char *s, uint8_t col)
-{
-    int n = 0;
-    while (s[n]) n++;
-    plat_text_outline((DC2D_LW - n * FONT_ADVANCE) / 2, y, s, col, PAL_WHITE);
-}
-
 static void card_draw(int done, int total)
 {
-    const int bx = 60, by = 128, bw = 200, bh = 14;
     dc2d_side_begin();
-    plat_clear(PAL_UI_PINK);
-    plat_rect(0, 58, DC2D_LW, 2, PAL_UI_PINK_D);
-    plat_rect(0, 180, DC2D_LW, 2, PAL_UI_PINK_D);
-    card_text(86, card_title, PAL_BLACK);
-    if (total > 0) {
-        int fill = done >= total ? bw : bw * done / total;
-        plat_rect(bx - 2, by - 2, bw + 4, bh + 4, PAL_UI_PINK_D);
-        plat_rect(bx, by, bw, bh, PAL_WHITE);
-        if (fill > 0) plat_rect(bx, by, fill, bh, PAL_UI_RED);
-    }
-    if (card_line) card_text(158, card_line, PAL_UI_PINK_D);
+    dc_card_paint(card_title, card_line, done, total);
     dc2d_side_end();
     card_vbl = dc_vblanks;
     dc_mailbox.drawn++;                 /* S2-10: a card is a presented picture (the harness's gaps see the tick's stall) */

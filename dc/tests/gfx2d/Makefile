@@ -47,7 +47,7 @@ NATIVE_OWN  := $(CORE)/native/plat_native.c $(CORE)/native/runner_main.c \
 NATIVE_KEEP := $(filter-out $(NATIVE_OWN),$(NATIVE_ALL))
 NATIVE_OBJS := $(patsubst $(CORE)/%.c,$(CORE_BUILD)/obj/%.o,$(NATIVE_KEEP))
 
-DC2D_SRCS := $(addprefix $(ROOT)/dc/src/,gfx2d.c texcache.c font.c pal.c dc3d.c overworld.c room.c view3d.c)
+DC2D_SRCS := $(addprefix $(ROOT)/dc/src/,gfx2d.c texcache.c font.c pal.c vmucard.c dc3d.c overworld.c room.c view3d.c)
 DC2D_OBJS := $(patsubst $(ROOT)/dc/src/%.c,$(BUILD)/dc2d/%.o,$(DC2D_SRCS))
 TEE_OBJS  := $(BUILD)/tee.o $(BUILD)/swpvr.o $(BUILD)/png.o $(BUILD)/plat_native_ref.o $(BUILD)/weak_fx_ref.o \
              $(BUILD)/raycast_ref.o $(BUILD)/overworld_ref.o $(BUILD)/weak_fx_sw.o
