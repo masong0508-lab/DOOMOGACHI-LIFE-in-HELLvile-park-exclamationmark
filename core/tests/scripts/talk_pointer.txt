@@ -17,29 +17,29 @@ wait 30
 press A
 wait 30
 expect-scene TALK
-expect-talk replies
+expect-ptr-page replies
 shot talk_ptr_0_replies
 # a pointer with no click changes nothing
 mouse 100 -40
 expect-scene TALK
-expect-talk replies
+expect-ptr-page replies
 shot talk_ptr_1_hover
 # the header on the main page is not "Say goodbye": nothing happens
 mouse 100 -85 click
 expect-scene TALK
-expect-talk replies
+expect-ptr-page replies
 # a category row (slot 4, after the four replies) opens its acts; the header goes back (B)
 mouse 100 -20 click
-expect-talk acts
+expect-ptr-page acts
 shot talk_ptr_2_acts
 mouse 100 -85 click
-expect-talk replies
+expect-ptr-page replies
 # the scroll bar: lower half = R (a page down: sel 0 -> 6), upper half = L (a page up: back to 0), R again
 mouse -10 -20 click
-expect-talk-row "Be cool"
+expect-ptr-row "Be cool"
 mouse -10 -60 click
 mouse -10 -20 click
-expect-talk-row "Be cool"
+expect-ptr-row "Be cool"
 # keep going down to the last page: the last three rows are always the typed line, Options and goodbye
 mouse -10 -20 click
 mouse -10 -20 click
@@ -47,22 +47,22 @@ mouse -10 -20 click
 shot talk_ptr_3_last_page
 # Options (slot 4) -> the setup page (Topic, Invite: you are alone with Nana)
 mouse 100 -20 click
-expect-talk options
+expect-ptr-page options
 shot talk_ptr_4_options
 # Topic (slot 0) -> the topic page; the header goes back to the replies
 mouse 100 -68 click
-expect-talk topics
+expect-ptr-page topics
 shot talk_ptr_5_topics
 mouse 100 -85 click
-expect-talk replies
+expect-ptr-page replies
 mouse -10 -20 click
 mouse -10 -20 click
 mouse -10 -20 click
 mouse 100 -20 click
-expect-talk options
+expect-ptr-page options
 # Invite someone (slot 1) -> who joins in (slot 0 is the one you are closest to); a click joins them in
 mouse 100 -56 click
-expect-talk invite
+expect-ptr-page invite
 shot talk_ptr_6_invite
 mouse 100 -68 click
 expect-scene DIALOG
@@ -71,12 +71,12 @@ wait 30
 press A
 wait 30
 expect-scene TALK
-expect-talk replies 0
+expect-ptr-page replies 0
 # the people strip: the second name, then the first again (to-slot 1, then 0)
 mouse -50 10 click
-expect-talk replies 1
+expect-ptr-page replies 1
 mouse 10 10 click
-expect-talk replies 0
+expect-ptr-page replies 0
 shot talk_ptr_7_people
 # the typed line (slot 3 of the last page): the keyboard opens
 mouse -10 -20 click

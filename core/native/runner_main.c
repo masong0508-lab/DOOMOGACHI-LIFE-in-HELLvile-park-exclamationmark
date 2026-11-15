@@ -942,9 +942,9 @@ static void run_line(char *line)
             snprintf(msg, sizeof(msg), "expected the dialogue to say \"%s\" but it says", want);
             fail(msg, d.text && d.text[0] ? d.text : "(nothing)");
         }
-    } else if (strcmp(cmd, "expect-talk") == 0) {
-        /* T9: "expect-talk PAGE [TO]": the Talk screen is on page replies / acts / topics / invite / options
-         * (and speaks to slot TO, -1 everyone); "expect-talk-row TEXT": the selected row starts with TEXT */
+    } else if (strcmp(cmd, "expect-ptr-page") == 0) {
+        /* T9: "expect-ptr-page PAGE [TO]": the Talk screen is on page replies / acts / topics / invite / options
+         * (and speaks to slot TO, -1 everyone); "expect-ptr-row TEXT": the selected row starts with TEXT */
         static const char *const pages[] = { "replies", "acts", "topics", "invite", "options" };
         int page = -1, sel = 0, top = 0, to = 0, n = 0, busy = 0, k;
         char you[64];
@@ -952,11 +952,11 @@ static void run_line(char *line)
         else {
             const char *want = argc > 1 ? argv[1] : "";
             for (k = 0; k < 5 && strcmp(want, pages[k]) != 0; k++) {}
-            if (k == 5) fail("expect-talk needs replies, acts, topics, invite or options, got", want);
+            if (k == 5) fail("expect-ptr-page needs replies, acts, topics, invite or options, got", want);
             else if (k != page) fail("expected the Talk page", want);
             if (argc > 2 && atoi(argv[2]) != to) fail("expected to speak to another slot than", argv[2]);
         }
-    } else if (strcmp(cmd, "expect-talk-row") == 0) {
+    } else if (strcmp(cmd, "expect-ptr-row") == 0) {
         int sel = 0, k;
         char you[64];
         const char *want = argc > 1 ? argv[1] : "";

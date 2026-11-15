@@ -1066,8 +1066,8 @@ other screens (T9 is the Talk screen; the house's in-room Talk, T8, is not built
 **Cost (measured 2026-11-15 against the branch tip `d5305653`).** GBA: `make -C gba sizes` equal in every RAM section (`.bss`, `.data`, IWRAM, EWRAM), ROM `.text` -8 B (the panel layout is one shared function now); PS1: `doomogachi.exe` byte for byte the tip's (the elf2exe line is the same on both: "size 1252 KB (+bss 534 KB, ends 0x801ee580, 70 KB left below the stack top)"; the margin is whatever origin has, 72,736 B per the PS1-FLAT landing, unchanged by this package); Dreamcast and the host-test build, `make -C dc` and `make dc-host-test` green. The pointer is read once per Talk tick (one flag test when none is present), nothing is drawn without one. The Talk screen on the consoles is unchanged (the pointer code is compiled out, GBA RAM equal, PS1 EXE identical), so its fps is the unchanged console figure; no new fps run was made. T9 is core side only: the native runner is headless and only a script feeds the pointer; a desktop or SDL mouse source is a later step.
 
 **Runner and tests.** `mouse X Y` moves the pointer, `mouse X Y click` also clicks, `mouse off` takes it away (a
-negative number counts from the right / bottom edge, so a script fits 240x160 and 320x240); `expect-talk PAGE [TO]`
-(replies / acts / topics / invite / options) and `expect-talk-row TEXT` read the Talk screen's state.
+negative number counts from the right / bottom edge, so a script fits 240x160 and 320x240); `expect-ptr-page PAGE [TO]`
+(replies / acts / topics / invite / options) and `expect-ptr-row TEXT` read the Talk screen's state.
 `core/tests/scripts/talk_pointer.txt` reaches every target above with the pointer alone (the pad only pages the
 dialogue box); `core/tests/test_talk_pointer.c` checks the edge, the list hit test and scroll bar, every page and row,
 the people strip, and that a quick reply by pointer and by pad say the same line.
