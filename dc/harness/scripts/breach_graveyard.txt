@@ -10,21 +10,27 @@ push BREACH 4100
 wait 100
 log speed2: begin 130 breach graveyard: start room
 mark-ticks
+gaps-reset
 frames 260
 expect-ticks 0 99999
+expect-gap 99999 breach_graveyard_start_room
 log speed2: end breach graveyard: start room
 shot breach_graveyard_start_room
 wait 500
 log speed2: begin 130 breach graveyard: middle
 mark-ticks
+gaps-reset
 frames 260
 expect-ticks 0 99999
+expect-gap 99999 breach_graveyard_middle
 log speed2: end breach graveyard: middle
 shot breach_graveyard_middle
 wait 900
 log speed2: begin 130 breach graveyard: late
 mark-ticks
+gaps-reset
 frames 260
 expect-ticks 0 99999
+expect-gap 99999 breach_graveyard_late
 log speed2: end breach graveyard: late
 shot breach_graveyard_late

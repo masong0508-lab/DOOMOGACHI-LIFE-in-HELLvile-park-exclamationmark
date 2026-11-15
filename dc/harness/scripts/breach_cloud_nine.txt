@@ -10,21 +10,27 @@ push BREACH 4097
 wait 100
 log speed2: begin 130 breach cloud_nine: start room
 mark-ticks
+gaps-reset
 frames 260
 expect-ticks 0 99999
+expect-gap 99999 breach_cloud_nine_start_room
 log speed2: end breach cloud_nine: start room
 shot breach_cloud_nine_start_room
 wait 500
 log speed2: begin 130 breach cloud_nine: middle
 mark-ticks
+gaps-reset
 frames 260
 expect-ticks 0 99999
+expect-gap 99999 breach_cloud_nine_middle
 log speed2: end breach cloud_nine: middle
 shot breach_cloud_nine_middle
 wait 900
 log speed2: begin 130 breach cloud_nine: late
 mark-ticks
+gaps-reset
 frames 260
 expect-ticks 0 99999
+expect-gap 99999 breach_cloud_nine_late
 log speed2: end breach cloud_nine: late
 shot breach_cloud_nine_late

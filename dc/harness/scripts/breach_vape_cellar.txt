@@ -10,21 +10,27 @@ push BREACH 4096
 wait 100
 log speed2: begin 130 breach vape_cellar: start room
 mark-ticks
+gaps-reset
 frames 260
 expect-ticks 0 99999
+expect-gap 99999 breach_vape_cellar_start_room
 log speed2: end breach vape_cellar: start room
 shot breach_vape_cellar_start_room
 wait 500
 log speed2: begin 130 breach vape_cellar: middle
 mark-ticks
+gaps-reset
 frames 260
 expect-ticks 0 99999
+expect-gap 99999 breach_vape_cellar_middle
 log speed2: end breach vape_cellar: middle
 shot breach_vape_cellar_middle
 wait 900
 log speed2: begin 130 breach vape_cellar: late
 mark-ticks
+gaps-reset
 frames 260
 expect-ticks 0 99999
+expect-gap 99999 breach_vape_cellar_late
 log speed2: end breach vape_cellar: late
 shot breach_vape_cellar_late

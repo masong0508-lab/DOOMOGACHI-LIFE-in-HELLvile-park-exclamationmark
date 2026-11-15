@@ -10,21 +10,27 @@ push BREACH 4099
 wait 100
 log speed2: begin 130 breach factory: start room
 mark-ticks
+gaps-reset
 frames 260
 expect-ticks 0 99999
+expect-gap 99999 breach_factory_start_room
 log speed2: end breach factory: start room
 shot breach_factory_start_room
 wait 500
 log speed2: begin 130 breach factory: middle
 mark-ticks
+gaps-reset
 frames 260
 expect-ticks 0 99999
+expect-gap 99999 breach_factory_middle
 log speed2: end breach factory: middle
 shot breach_factory_middle
 wait 900
 log speed2: begin 130 breach factory: late
 mark-ticks
+gaps-reset
 frames 260
 expect-ticks 0 99999
+expect-gap 99999 breach_factory_late
 log speed2: end breach factory: late
 shot breach_factory_late

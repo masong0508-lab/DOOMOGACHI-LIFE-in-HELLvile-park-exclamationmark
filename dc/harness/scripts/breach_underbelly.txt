@@ -10,21 +10,27 @@ push BREACH 4102
 wait 100
 log speed2: begin 130 breach underbelly: start room
 mark-ticks
+gaps-reset
 frames 260
 expect-ticks 0 99999
+expect-gap 99999 breach_underbelly_start_room
 log speed2: end breach underbelly: start room
 shot breach_underbelly_start_room
 wait 500
 log speed2: begin 130 breach underbelly: middle
 mark-ticks
+gaps-reset
 frames 260
 expect-ticks 0 99999
+expect-gap 99999 breach_underbelly_middle
 log speed2: end breach underbelly: middle
 shot breach_underbelly_middle
 wait 900
 log speed2: begin 130 breach underbelly: late
 mark-ticks
+gaps-reset
 frames 260
 expect-ticks 0 99999
+expect-gap 99999 breach_underbelly_late
 log speed2: end breach underbelly: late
 shot breach_underbelly_late

@@ -131,7 +131,8 @@ OPS = {
     "core": {"scene", "push", "expect-scene", "wait", "shot", "press", "hold", "down", "up", "release"},
     "gba": {"wait", "expect-log", "sync", "seed", "scene", "push", "opt", "fps", "expect-fps", "shot", "vhash-seq"},
     "ps1": {"wait", "seed", "scene", "push", "opt", "fps", "fpsend", "shot"},
-    "dc": {"wait", "seed", "scene", "push", "opt", "log", "mark-ticks", "frames", "expect-ticks", "shot"},
+    "dc": {"wait", "seed", "scene", "push", "opt", "log", "mark-ticks", "gaps-reset", "frames", "expect-ticks",
+           "expect-gap", "shot"},   # (S2-10: speed2.py's dc windows measure the gaps between pictures)
 }
 
 
