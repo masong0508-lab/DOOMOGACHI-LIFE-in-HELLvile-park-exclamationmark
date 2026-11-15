@@ -680,3 +680,4 @@ void tab_play_draw(StRect r)
         if (head >= 0) plat_rect(gx + head * cs, gy, cs, 11, PAL_PAINT(PAINT_LEMON, 1));
         for (k = 0; k < SONG_STEPS; k += 4) plat_rect(gx + k * cs, gy + 11, 1, 2, st->text_dim);
     }
+}
