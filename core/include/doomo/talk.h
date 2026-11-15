@@ -755,6 +755,7 @@ typedef struct TalkPlanIn {
     int8_t  topic_pref;                    /* +1 the topic is in a liked root, -1 a disliked root, 0 none  */
     uint8_t eff[5];                        /* the effective sliders                                        */
     int8_t  accept, deny;                  /* the trait bias of the room's trait set (talk_trait_bias)     */
+    uint8_t margin;                        /* a kind binds (filters the core) when it wins by this much; 0: always */
     uint32_t seed;                         /* the plan's own noise: the conversation seed and the turn     */
 } TalkPlanIn;
 /* Choose the kind (TK_*) and fill `out` (kind, allowed, flags, lean, eff); 0 when in->allowed is empty. */

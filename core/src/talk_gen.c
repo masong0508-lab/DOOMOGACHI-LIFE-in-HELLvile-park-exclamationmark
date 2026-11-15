@@ -387,6 +387,12 @@ int talk_gen_fact(int id, int cb, uint16_t *val)
 }
 
 /* ---- the per-line context --------------------------------------------- */
+/* TM2c: a kind binds (filters the core) when it wins by this many points. Questions and requests (the ASK acts: an
+ * opinion, a favour, a fact) bind from 2: it costs nothing measurable; every other act binds from 8, so only a
+ * stance, a relationship or a trait that really decides binds. A filter on every line costs 4 points of Surface
+ * uniqueness in the smoke census (docs/TALK.md 6j has the table). */
+#define PLAN_MARGIN_ASK 2
+#define PLAN_MARGIN 8
 #define KF_KIND 1
 #define KF_COOL 2
 typedef struct Gen {
@@ -1498,6 +1504,7 @@ static void make_plan(Gen *g, int act)
             if (root && g->ts.dislike[i] == root) in.topic_pref = -1;
         }
     }
+    in.margin = (uint8_t)(talk_gen_act_class(act) == TAC_ASK ? PLAN_MARGIN_ASK : PLAN_MARGIN);
     in.seed = doomo_hash32(c->seed ^ 0x504C414Eu ^ ((uint32_t)c->turn << 8) ^ ((uint32_t)g->who * 0x9E3779B1u) ^
                            ((uint32_t)c->lines * 0x85EBCA6Bu));
     talk_plan_kind(&in, &g->plan);

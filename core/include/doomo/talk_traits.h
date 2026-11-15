@@ -151,6 +151,11 @@ enum { TP_GREETING = 0, TP_ANSWER, TP_REFUSAL, TP_KINDS };
  * own text). Needs talk_db_open() / talk_gen_ready(). */
 int  talk_preview(const DoomoResident *r, const TalkTraitSet *ts, int kind, uint32_t seed, char *out, int cap);
 
+/* The same, as the engine's TalkLine (text, reply act, face): TM2c. The plan takes a forced kind (a greeting
+ * accepts, an answer agrees or denies by the stance, a refusal says no), so a refusal preview really is a
+ * "no" (line.act == TA_NO when the bank has one for this voice). Returns the text length, 0 on nothing. */
+int  talk_preview_line(const DoomoResident *r, const TalkTraitSet *ts, int kind, uint32_t seed, TalkLine *out);
+
 /* ---- the save chunk's tail (talk_save.c; native only) ----------------------------------- */
 uint32_t talk_trait_save_size(void);                       /* 0, or 1 + 6 x custom_count */
 uint32_t talk_trait_save_write(uint8_t *dst, uint32_t cap);

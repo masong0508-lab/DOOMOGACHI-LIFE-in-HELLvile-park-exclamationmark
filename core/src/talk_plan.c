@@ -15,10 +15,10 @@
  * voice + trait + topic adding to 2 or more), else it only wins when nothing else is allowed. The
  * best kind and the next two are kept (TalkPlan.next): when no rule of the best kind passes the
  * guards, talk_gen.c tries the next before it drops the filter and counts a miss.
- * A kind that wins by less than OPEN_MARGIN is "open" (TPL_OPEN): it is named and recorded but the
+ * A kind that wins by less than TalkPlanIn.margin is "open" (TPL_OPEN): it is named and recorded but the
  * generator does not filter by it. Measured on the smoke census (docs/TALK.md 6j): a filter on every
  * line costs 4 points of Surface uniqueness (85.7% to 81.7%); binding only where something decides
- * (a stance, a relationship, a trait, a romance consent) keeps the bank's variety (85.4%).
+ * (a stance, a relationship, a trait, a romance consent) keeps the bank's variety (85.5%).
  *
  * The hard rules are code, not data (design 2.2): a romance act is accepted, deflected or refused
  * (consent decides), never countered or asked back; a hug toward or among children is accepted or
@@ -31,7 +31,7 @@
 #include "doomo/rng.h"
 
 #define LEAN_W 4            /* the weight of one step of lean: a stance decides unless the rest adds up */
-#define OPEN_MARGIN 8       /* a kind that wins by less than this binds nothing: the filter keeps the bank's variety (see below) */
+      /* a kind that wins by less than this binds nothing: the filter keeps the bank's variety (see below) */
 #define TRAIT_W 2           /* the weight of the trait bias (talk_trait_bias: 0..4 each way) */
 
 static int sign_of(int k)
@@ -146,7 +146,7 @@ int talk_plan_kind(const TalkPlanIn *in, TalkPlan *out)
         n++;
     }
     if (!n) return TK_NONE;
-    if (n > 1 && cs[0] - cs[1] < OPEN_MARGIN) out->flags |= TPL_OPEN;
+    if (n > 1 && cs[0] - cs[1] < in->margin) out->flags |= TPL_OPEN;
     out->kind = ck[0] & 7;
     if (ck[0] & 0x80) out->flags |= TPL_REASON;           /* against the lean: for a reason, or nothing else was left */
     for (k = 1; k < n && j2 < 2; k++)

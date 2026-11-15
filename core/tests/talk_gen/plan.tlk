@@ -1,0 +1,16 @@
+# core/tests/talk_gen/plan.tlk - the plan probes (test_talk_plan.c, TM2c). Not game text. Compiled into
+# TALK_gentest.BIN after gentest.tlk. core.invite answers a player's invitation with its own kind in the text
+# (the guards kind=); core.farewell is the trait= probe; core.ask_opinion.plan_neg is a rule no room ever lets
+# through (a ghost speaks it), so the plan's "deny" has an empty cell: the soft filter must count the miss.
+@rule core.invite act: yes
+  "Probe accept." guard: kind=accept
+@rule core.invite.no act: no
+  "Probe deny." guard: kind=deny
+  "Probe refuse." guard: kind=refuse
+@rule core.invite.joke act: joke
+  "Probe deflect." guard: kind=deflect
+@rule core.farewell act: farewell
+  "Bye plain." guard: !trait=shy
+  "Bye shy." guard: trait=shy
+@rule core.ask_opinion.plan_neg act: opine_neg
+  "Never." guard: ghost

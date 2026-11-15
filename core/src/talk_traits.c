@@ -720,16 +720,14 @@ static uint16_t pv_topic(const TalkConv *c, int root, int stage, uint32_t seed)
     return 0;
 }
 
-int talk_preview(const DoomoResident *r, const TalkTraitSet *tsin, int kind, uint32_t seed, char *out, int cap)
+int talk_preview_line(const DoomoResident *r, const TalkTraitSet *tsin, int kind, uint32_t seed, TalkLine *out)
 {
     static const uint8_t asks[] = { TA_INVITE, TA_ASK_FAVOR, TA_GIVE };
     TalkConv c;
-    TalkLine line;
     TalkTraitSet ts;
     int ids[1], stage, act = TA_GREET, k, bestd = -100, root = 0, to;
     uint16_t topic = 0;
-    if (!out || cap < 1) return 0;
-    out[0] = 0;
+    memset(out, 0, sizeof *out);
     if (!r || kind < 0 || kind >= TP_KINDS || !talk_gen_ready()) return 0;
     stage = stage_ok(RES_STAGE(r));
     if (tsin) { ts = *tsin; talk_trait_normalize(&ts, stage); }
@@ -757,12 +755,19 @@ int talk_preview(const DoomoResident *r, const TalkTraitSet *tsin, int kind, uin
         if (root) topic = pv_topic(&c, root, stage, seed);
         if (act == TA_GIVE) act = TA_INVITE;
     }
-    if (talk_gen_line(&c, 0, to, act, topic, &line, NULL) || line.text[0]) {
-        const char *s = line.text;
-        int n = 0;
-        while (*s && n < cap - 1) out[n++] = *s++;
-        out[n] = 0;
-    }
+    talk_gen_line(&c, 0, to, act, topic, out, NULL);
     pv_r = NULL;
-    return (int)strlen(out);
+    return (int)strlen(out->text);
+}
+
+int talk_preview(const DoomoResident *r, const TalkTraitSet *ts, int kind, uint32_t seed, char *out, int cap)
+{
+    TalkLine line;
+    int n = 0;
+    if (!out || cap < 1) return 0;
+    out[0] = 0;
+    if (!talk_preview_line(r, ts, kind, seed, &line)) return 0;
+    while (line.text[n] && n < cap - 1) { out[n] = line.text[n]; n++; }
+    out[n] = 0;
+    return n;
 }

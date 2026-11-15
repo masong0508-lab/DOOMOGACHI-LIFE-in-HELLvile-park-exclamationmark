@@ -56,9 +56,22 @@ TEST(talk_census_smoke)
     CHECK_MSG(failed * 100 <= r.contexts, "quality failures %llu of %llu (over 1%%)", (unsigned long long)failed,
               (unsigned long long)r.contexts);
     CHECK(r.kid_rooms * 4 >= r.contexts);               /* the grid really puts children in rooms */
+    /* TM2c, the plan: no Q8a (reply kind) and no Q8c (effective voice) failure, whatever the 1% bar; the soft filter
+     * finds a rule for the kind in 99% of the answer lines or more (docs/TALK.md 6j) */
+    CHECK_EQ(r.fail[QF_Q8_KIND], 0);
+    CHECK_EQ(r.fail[QF_Q8_VOICE], 0);
+    CHECK_MSG(r.plan_lines * 10 >= r.contexts * 8, "only %llu answer lines have a plan", (unsigned long long)r.plan_lines);
+    CHECK_MSG(r.plan_miss * 100 <= r.plan_lines, "soft-filter misses %llu of %llu (over 1%%)", (unsigned long long)r.plan_miss,
+              (unsigned long long)r.plan_lines);
+    CHECK_MSG(r.plan_lines - r.plan_open >= r.plan_lines / 10, "the plan binds under 10%% of the lines");
     /* floors for the starter bank (docs/TALK.md "The census"): a bank that
      * collapses fails here first. The design's smoke bar (90% Surface-unique
      * at 100,000 contexts) is T5b's, with its 6,000 alternatives. */
+    /* TM2c: the plan must not cost variety. The old engine measured 85.3% Surface and 85.0% Skeleton unique here
+     * (17,067 and 17,008 of 20,000); a filter on every line gave 81.7% (docs/TALK.md 6j). */
+    CHECK_MSG(r.surface.distinct * 1000 >= r.exchanges_ok * 845 && r.skeleton.distinct * 1000 >= r.exchanges_ok * 842,
+              "TM2c: Surface %llu / Skeleton %llu distinct of %llu: the plan costs variety", (unsigned long long)r.surface.distinct,
+              (unsigned long long)r.skeleton.distinct, (unsigned long long)r.exchanges_ok);
     CHECK_MSG(r.surface.distinct * 100 >= r.exchanges_ok * 50, "Surface %llu of %llu under 50%% unique",
               (unsigned long long)r.surface.distinct, (unsigned long long)r.exchanges_ok);
     CHECK_MSG(r.skeleton.distinct * 100 >= r.exchanges_ok * 30, "Skeleton %llu of %llu under 30%% unique",
