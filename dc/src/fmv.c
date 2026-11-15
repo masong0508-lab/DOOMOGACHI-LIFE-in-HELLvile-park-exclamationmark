@@ -46,10 +46,15 @@
 #define TEX_H       256
 #define MAX_REC     600
 
-static uint8_t  planes[DMV_PLANES_MAX] __attribute__((aligned(32)));
-static uint16_t rgb[TEX_W * DMV_MAX_H] __attribute__((aligned(32)));
-static int16_t  pcm[DCSND_PER_TICK * 2] __attribute__((aligned(32)));
-static uint32_t rec_off[MAX_REC + 1];
+/* The working memory comes from the heap for the length of the movie and goes
+ * back after it: nothing of the movie is resident (the .bss is as it was). */
+typedef struct FmvMem {
+    uint8_t  planes[DMV_PLANES_MAX];
+    uint16_t rgb[TEX_W * DMV_MAX_H];
+    int16_t  pcm[DCSND_PER_TICK * 2];
+    uint32_t rec_off[MAX_REC + 1];
+} FmvMem;
+static FmvMem *mem;
 
 /* tick t's sound: its half of record t / 2, 22,050 Hz mono, to 44,100 Hz stereo */
 static void make_slot(const DmvInfo *in, const uint8_t *aud, int half)
@@ -62,8 +67,8 @@ static void make_slot(const DmvInfo *in, const uint8_t *aud, int half)
         const uint8_t *q = s + i * 2 + 2;
         int b = a;
         if (q <= last) b = (int16_t)(q[0] | (q[1] << 8));
-        pcm[i * 4] = pcm[i * 4 + 1] = (int16_t)a;
-        pcm[i * 4 + 2] = pcm[i * 4 + 3] = (int16_t)((a + b) / 2);
+        mem->pcm[i * 4] = mem->pcm[i * 4 + 1] = (int16_t)a;
+        mem->pcm[i * 4 + 2] = mem->pcm[i * 4 + 3] = (int16_t)((a + b) / 2);
     }
 }
 
@@ -139,8 +144,12 @@ void dc_fmv_play(void)
     }
     size = (uint32_t)total;
     file = (uint8_t *)memalign(32, size + 32);
-    if (!file) {
-        dc_log("DC: fmv: no memory for the file, no intro");
+    mem = (FmvMem *)memalign(32, sizeof(FmvMem));
+    if (!file || !mem) {
+        dc_log("DC: fmv: no memory, no intro");
+        free(file);
+        free(mem);
+        mem = NULL;
         fs_close(fd);
         return;
     }
@@ -159,9 +168,9 @@ void dc_fmv_play(void)
         dc_log("DC: fmv: no video memory, no intro");
         goto out;
     }
-    memset(rgb, 0, sizeof(rgb));
+    memset(mem->rgb, 0, sizeof(mem->rgb));
     ticks_total = (uint32_t)in.frames * 2u + VIDEO_LAG + 1u;
-    rec_off[0] = DMV_HDR_SIZE;
+    mem->rec_off[0] = DMV_HDR_SIZE;
     dc_audio_stall(1);                  /* the first reads may take a moment */
     t_start = base = timer_us_gettime64();
     dc_logf("DC: fmv: %s, %u frames %ux%u at %u fps, %u bytes", PATH, (unsigned)in.frames, (unsigned)in.w,
@@ -187,14 +196,14 @@ void dc_fmv_play(void)
             /* the reads may have taken ticks of their own: nothing to catch up on for a picture */
         }
         while (nrec < in.frames &&
-               dmv_record(&in, file, loaded, rec_off[nrec], &v, &vlen, &a, &next)) {
-            rec_off[++nrec] = next;
+               dmv_record(&in, file, loaded, mem->rec_off[nrec], &v, &vlen, &a, &next)) {
+            mem->rec_off[++nrec] = next;
         }
         /* sound: tick t is half (t & 1) of record t / 2 */
         while (apushed < tick + AHEAD && (apushed >> 1) < nrec && (uint32_t)dcsnd_queued() < AHEAD) {
-            if (!dmv_record(&in, file, loaded, rec_off[apushed >> 1], &v, &vlen, &a, &next)) break;
+            if (!dmv_record(&in, file, loaded, mem->rec_off[apushed >> 1], &v, &vlen, &a, &next)) break;
             make_slot(&in, a, (int)(apushed & 1));
-            if (!dcsnd_push_pcm(pcm)) break;
+            if (!dcsnd_push_pcm(mem->pcm)) break;
             apushed++;
         }
         /* picture */
@@ -204,11 +213,11 @@ void dc_fmv_play(void)
                 uint64_t t0 = timer_us_gettime64();
                 uint32_t dt;
                 if (last_f != 0xFFFFFFFFu && f > last_f + 1) skipped += f - last_f - 1;
-                if (dmv_record(&in, file, loaded, rec_off[f], &v, &vlen, &a, &next) &&
-                    dmv_decode(&in, v, vlen, planes)) {
-                    dmv_to_rgb565(&in, planes, rgb, TEX_W);
+                if (dmv_record(&in, file, loaded, mem->rec_off[f], &v, &vlen, &a, &next) &&
+                    dmv_decode(&in, v, vlen, mem->planes)) {
+                    dmv_to_rgb565(&in, mem->planes, mem->rgb, TEX_W);
                     cur ^= 1;
-                    pvr_txr_load(rgb, tex[cur], (uint32_t)TEX_W * in.h * 2);
+                    pvr_txr_load(mem->rgb, tex[cur], (uint32_t)TEX_W * in.h * 2);
                     show(tex[cur], &in);
                     shown++;
                     dt = (uint32_t)(timer_us_gettime64() - t0);
@@ -239,5 +248,7 @@ out:
     if (tex[0]) pvr_mem_free(tex[0]);
     if (tex[1]) pvr_mem_free(tex[1]);
     free(file);
+    free(mem);
+    mem = NULL;
     fs_close(fd);
 }

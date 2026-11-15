@@ -30,6 +30,7 @@
  *   log TEXT | expect-log TEXT | expect-scene NAME
  *   wait-log FRAMES TEXT        DC9C: video frames until the log has TEXT (fail
  *                               after FRAMES); the boot FMV runs before tick 1
+ *   print-frames [LABEL]        DC9C: the video frames since power-on, as seconds
  *   --fmv                       DC9C: play the boot FMV (off in scripted runs)
  *   tips on | off               CL4: the first-time tip cards show in this
  *                               run / stay off (the default; test_flags)
@@ -41,6 +42,7 @@
  *   save-must-fail N            the save must be refused (result 0; DC4)
  *   shot-during FRAMES NAME     the next mailbox command takes shot NAME
  *                               FRAMES video frames in, while it runs (DC4)
+ *   expect-town-crc 0xCRC       DC9C: against the crc `town-crc` printed in an earlier run
  *   town-fill SEED | town-crc | expect-town-crc   the GBA's save-test
  *                               commands (mailbox 4 and 5; DC4)
  *   scene NAME [ARG] | push NAME [ARG] | seed N | expect-flag F [V]
@@ -1244,6 +1246,10 @@ static int run_script(FILE *f)
         } else if (!strcmp(c, "expect-log") && n >= 2) {
             const char *t = rest_of(raw, "expect-log");
             if (!glog || !strstr(glog, t)) fail("line %d: expect-log '%s' not in the log", lineno, t);
+        } else if (!strcmp(c, "print-frames")) {
+            /* DC9C: the video frames since power-on (60 Hz of emulated time), for boot times */
+            printf("frames%s%s: %lu video frames since power-on (%.2f s)\n", n >= 2 ? " " : "",
+                   n >= 2 ? v[1] : "", frames_run, frames_run / 59.83);
         } else if (!strcmp(c, "wait-log") && n >= 3) {
             /* DC9C: run video frames until the game's log has TEXT (the boot FMV
              * ends with a log line, and no tick runs before it) */
@@ -1270,7 +1276,14 @@ static int run_script(FILE *f)
             if (!mb_cmd(DC_HC_TOWN_FILL, (uint32_t)strtoul(v[1], NULL, 0), NULL, NULL)) return 0;
         } else if (!strcmp(c, "town-crc") || !strcmp(c, "expect-town-crc")) {
             if (!mb_cmd(DC_HC_TOWN_CRC, 0, NULL, &r)) return 0;
-            if (c[0] == 't') { town_crc = r; town_crc_set = 1; }
+            if (c[0] == 't') {
+                town_crc = r; town_crc_set = 1;
+                printf("town-crc 0x%08x\n", r);       /* DC9C: a later run can expect it */
+            }
+            else if (n >= 2) {                           /* DC9C: expect-town-crc 0xCRC of an earlier run */
+                uint32_t want = (uint32_t)strtoul(v[1], NULL, 0);
+                if (r != want) fail("line %d: town crc 0x%08x, expected 0x%08x", lineno, r, want);
+            }
             else if (!town_crc_set) fail("line %d: expect-town-crc before any town-crc", lineno);
             else if (r != town_crc)
                 fail("line %d: town crc 0x%08x, expected 0x%08x", lineno, r, town_crc);

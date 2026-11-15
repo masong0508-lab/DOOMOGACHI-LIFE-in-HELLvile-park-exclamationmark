@@ -1,0 +1,43 @@
+# e2e1.txt - DC9C on Flycast: a game saved to the VMU through the real menus. The
+# first run of tests/disc/run_flycast.sh, on an empty VMU: title, Free Play,
+# a new island, its menu's Save / Load, A. e2e2.txt is the same VMU after a
+# restart. (The title's menus, the island's menu and the Save / Load screen are
+# the game's own; only `wait`s and button presses drive them.)
+wait 150
+expect-scene TITLE
+expect-log DC: vmu A1: 200 blocks free, story -, free play -, settings -
+press START
+wait 24
+press DOWN
+press A
+wait 16
+expect-scene NEW_ISLAND
+press A
+wait 20
+press A
+wait 2
+press A
+wait 10
+expect-scene ISLAND
+wait 40
+shot e2e_island
+press START
+wait 20
+press DOWN
+press DOWN
+press DOWN
+press A
+wait 30
+expect-scene SAVELOAD
+shot e2e_saveload
+# A saves into the island's own slot (free play). The VMU takes 3 s and no tick
+# runs meanwhile; the press returns when the game's next tick does.
+press A
+wait 200
+expect-log DC: vmu A1 write DOOMO1.SYS
+expect-save 1
+verify 1
+shot e2e_saved
+# the island as the VMU holds it: loaded back at once, its crc kept for e2e2
+load 1
+town-crc

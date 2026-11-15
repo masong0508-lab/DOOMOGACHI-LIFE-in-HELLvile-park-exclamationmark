@@ -19,6 +19,7 @@ CFLAGS := -std=c99 -Wall -Wextra -Werror $(OPT) -g -I$(ROOT)/dc/src
 
 .PHONY: test clean
 test: $(BUILD)/test_dmv
+	@python3 -I -c "import numpy" 2>/dev/null || { echo "dc/tests/fmv: python3 numpy is missing (apt install python3-numpy): the FMV test is skipped"; exit 0; }
 	python3 -I $(HERE)/gen.py $(BUILD)/clip
 	$(BUILD)/test_dmv $(BUILD)/clip
 

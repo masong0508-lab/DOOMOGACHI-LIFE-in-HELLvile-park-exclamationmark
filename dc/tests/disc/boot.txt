@@ -1,0 +1,8 @@
+# boot.txt - DC9C: the disc boots to the title without the movie (the scripted
+# default, dcrun without --fmv) and says when. See tests/fmv/intro.txt for the
+# same with the FMV.
+wait-log 900 scene: set TITLE
+print-frames title_no_fmv
+wait 10
+expect-scene TITLE
+shot boot_title

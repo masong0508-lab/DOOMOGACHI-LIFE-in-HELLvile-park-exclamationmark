@@ -21,7 +21,7 @@
 #                   DC7's 3D batches and overworld through the software PVR, test_dc3d;
 #                   DC8's house against room_ref, test_dc_room),
 #                   the VMU saves / controls (dc/tests/vmu) and the sound mixer
-#                   against musrender (dc/tests/audio)
+#                   against musrender (dc/tests/audio), the boot FMV decoder (dc/tests/fmv)
 #   make trailer    trailer/build/trailer.mp4 (needs ffmpeg)
 #   make dist       copy the ROMs / zip the discs into dist/ (release names)
 #   make doctor     show which toolchains and tools were found
@@ -230,6 +230,7 @@ dc-host-test: need-host
 	$(MAKE) -C dc/tests/gfx2d $(J) test
 	$(MAKE) -C dc/tests/vmu $(J) test
 	$(MAKE) -C dc/tests/audio $(J) test
+	$(MAKE) -C dc/tests/fmv test
 
 need-dc:
 ifneq ($(DC_WHY),)

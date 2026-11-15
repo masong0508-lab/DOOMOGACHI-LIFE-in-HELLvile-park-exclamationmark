@@ -1,0 +1,20 @@
+# e2e2.txt - DC9C on Flycast: the restart. Same VMU image as e2e1.txt, a new power-on:
+# the title knows the save (its Continue row), loads it, and the island is the
+# one that was saved: loaded again at once, its town crc is the one e2e1.txt
+# printed (@CRC@ for run_flycast.sh). The game plays on after the Continue (rent
+# comes in, time passes), so the crc is taken on the load command, not on the
+# running island.
+wait 150
+expect-scene TITLE
+expect-log story -, free play saved
+expect-save 1
+press START
+wait 24
+shot e2e_title_menu
+press A
+wait 400
+expect-log DC: vmu read DOOMO1.SYS
+expect-scene ISLAND
+shot e2e_loaded
+load 1
+expect-town-crc @CRC@

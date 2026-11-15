@@ -17,6 +17,12 @@
 #                         trigger / keyboard against the D-pad (dc/tests/vmu/
 #                         run_flycast.sh; results in build/shots/vmu); part of
 #                         `test` when Flycast is there
+#   make -C dc disc-test  DC9C on Flycast: the CDI boots, the boot FMV (INTRO.DMV) plays and
+#                         ends in the title, START skips it, a game is saved to the VMU
+#                         through the menus and loaded after a restart, an old VMU image
+#                         loads; each twice, identical (dc/tests/disc/run_flycast.sh);
+#                         part of `make -C dc test`. INTRO=none builds the disc without
+#                         the movie, INTRO_REQUIRED=1 fails when ffmpeg / numpy are missing
 #   make -C dc audio-test DC5 on Flycast: the title, the invaded town and a
 #                         combat level with sound (expect-audio, no
 #                         underruns or late AICA refills, the effects), each
@@ -129,7 +135,7 @@ DC_OBJS   := $(call dc_obj,$(DC_SRCS))
 CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 ALL_OBJS  := $(DC_OBJS) $(CORE_OBJS)
 
-.PHONY: all elf disc all-disc test check-elf check-packdisc host-test harness-test ui-compare vmu-test audio-test ow-test room-test v3d-test family-test family-test2 sizes clean
+.PHONY: all elf disc all-disc test check-elf check-packdisc host-test harness-test ui-compare vmu-test disc-test audio-test ow-test room-test v3d-test family-test family-test2 sizes clean
 .DEFAULT_GOAL := all
 
 all: elf
@@ -230,6 +236,7 @@ harness-test: $(ELF) $(CDI) $(ELF_RUN)
 	done; \
 	$(MAKE) --no-print-directory -f $(DC)/Makefile ui-compare || exit 1; \
 	$(MAKE) --no-print-directory -f $(DC)/Makefile vmu-test || exit 1; \
+	$(MAKE) --no-print-directory -f $(DC)/Makefile disc-test || exit 1; \
 	$(MAKE) --no-print-directory -f $(DC)/Makefile audio-test || exit 1; \
 	$(MAKE) --no-print-directory -f $(DC)/Makefile ow-test || exit 1; \
 	$(MAKE) --no-print-directory -f $(DC)/Makefile room-test
@@ -249,6 +256,13 @@ vmu-test: $(CDI) $(BUILD)/doomogachi.nm
 	@if [ -z "$(FLYCAST)" ]; then echo "vmu-test: no Flycast core (make -C dc/harness flycast)" >&2; exit 1; fi
 	@$(MAKE) --no-print-directory -C $(HARNESS) all
 	sh $(DC)/tests/vmu/run_flycast.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(SHOTS)/vmu
+
+# DC9C: the disc image, the boot FMV and a game saved and loaded after a restart, each twice
+disc-test: $(CDI) $(BUILD)/doomogachi.nm
+	@if [ -z "$(FLYCAST)" ]; then echo "disc-test: no Flycast core (make -C dc/harness flycast)" >&2; exit 1; fi
+	@if [ ! -f $(BUILD)/disc/cd/INTRO.DMV ]; then echo "disc-test: the disc has no INTRO.DMV (needs ffmpeg and numpy, or INTRO=file.dmv)" >&2; exit 1; fi
+	@$(MAKE) --no-print-directory -C $(HARNESS) all
+	sh $(DC)/tests/disc/run_flycast.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(SHOTS)/disc
 
 AUDIO_IRQ_RUNNER := $(BUILD)/host-audio/dcsnd_runner_irq
 # DC5: the sound on Flycast against the native runner's musrender

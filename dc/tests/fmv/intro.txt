@@ -12,9 +12,11 @@ shot fmv_b
 frames 210
 shot fmv_c
 wait-log 600 DC: fmv: done
+print-frames fmv_done
 expect-log DC: fmv: /cd/INTRO.DMV, 152 frames
 expect-log 152 frames shown, 0 skipped
 wait-log 60 doomo: init
 wait 160
 expect-scene TITLE
+print-frames title_after_fmv
 shot fmv_title
