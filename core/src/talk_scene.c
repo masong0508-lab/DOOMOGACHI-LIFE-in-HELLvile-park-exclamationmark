@@ -1201,6 +1201,19 @@ void talk_scene_party(const int *ids, int n)
     for (i = 0; ids && i < n && extra_n < TALK_PARTS_MAX - 1; i++) extra_ids[extra_n++] = ids[i];
 }
 
+/* DC10B: the bank is still being read off the disc. A short plain note (once; a second press adds none)
+ * instead of silence; 1 = the note is up and the caller should do nothing else. Native: never loading. */
+int home_talk_note(void)
+{
+    static const char msg[] = "Talk is warming up...";
+    int i;
+    if (talk_db_is_open() || talk_db_open(lang_find("en")) != TALK_DB_LOADING) return 0;
+    for (i = 0; ui_toast_text(i); i++)
+        if (!strcmp(ui_toast_text(i), msg)) return 1;
+    ui_toast(msg);
+    return 1;
+}
+
 int home_talk_enter(int who)
 {
     if (who < 0 || who >= DOOMO_MAX_RESIDENTS || !town_alive(who)) return 0;

@@ -1373,6 +1373,9 @@ int  talk_scene_act_cat(int act);
  * through this and the feature test, so --gc-sections drops it all on the
  * GBA. */
 int  home_talk_enter(int who);
+/* DC10B: A on a housemate while the platform still stages the bank (TALK_DB_LOADING): shows "Talk is warming
+ * up..." (once) and returns 1; 0 when Talk is ready, absent or failed (the caller's own fallback runs). */
+int  home_talk_note(void);
 /* TD2: 1 = the Talk screen runs the generator one step a tick (the Dreamcast: a tick under 33.3 ms), 0 (the default) = all
  * at once. Not on the GBA (the function does not exist there). Talk's own lines are identical either way. */
 void talk_scene_slice(int on);

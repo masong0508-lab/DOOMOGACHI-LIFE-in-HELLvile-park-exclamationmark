@@ -270,6 +270,40 @@ static int ticks_to_box(UiDialogDebug *dd)
     return -1;
 }
 
+extern int plat_native_talk_loading;
+
+static int count_toast(const char *m)
+{
+    int i, n = 0;
+    for (i = 0; ui_toast_text(i); i++) if (!strcmp(ui_toast_text(i), m)) n++;
+    return n;
+}
+
+TEST(talk_note_says_warming_up_while_the_bank_loads_once)
+{
+    town();
+    talk_db_close();
+    plat_native_talk_loading = 1;
+    CHECK(!home_talk_enter(ID_NANA));                       /* not ready: no scene ... */
+    frames(0, 2);
+    {
+        TalkSceneDebug d;
+        CHECK(!talk_scene_debug(&d));
+    }
+    CHECK(home_talk_note());                                /* ... and a note instead of silence */
+    CHECK_EQ(count_toast("Talk is warming up..."), 1);
+    CHECK(home_talk_note());                                /* a second press adds no second note */
+    CHECK_EQ(count_toast("Talk is warming up..."), 1);
+    plat_native_talk_loading = 0;
+    CHECK(!home_talk_note());                               /* the bank is in: no note, Talk opens */
+    CHECK(home_talk_enter(ID_NANA));
+    frames(0, 2);
+    {
+        TalkSceneDebug d;
+        CHECK(talk_scene_debug(&d));                        /* the screen is open (the dialogue box may be on top) */
+    }
+}
+
 TEST(talk_scene_slice_runs_the_answer_one_step_a_tick)
 {
     UiDialogDebug dd;

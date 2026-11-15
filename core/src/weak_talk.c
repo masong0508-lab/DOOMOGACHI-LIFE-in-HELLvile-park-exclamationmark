@@ -25,6 +25,11 @@ WEAK uint32_t plat_talk_read(uint32_t off, void *dst, uint32_t len)
     return 0;
 }
 
+WEAK int home_talk_note(void)
+{
+    return 0;
+}
+
 WEAK int home_talk_enter(int who)
 {
     (void)who;

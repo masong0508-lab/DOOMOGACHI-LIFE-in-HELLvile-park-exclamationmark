@@ -476,9 +476,12 @@ void plat_log(const char *msg)
 static uint8_t *talk_buf;
 static uint32_t talk_size;
 
+int plat_native_talk_loading;     /* DC10B test hook: 1 = answer PLAT_TALK_LOADING (the console's sliced read) */
+
 uint32_t plat_talk_load(const char *code)
 {
     char path[700];
+    if (plat_native_talk_loading) return PLAT_TALK_LOADING;
     const char *dir = getenv("DOOMO_TALK_DIR");
     FILE *f;
     long n;

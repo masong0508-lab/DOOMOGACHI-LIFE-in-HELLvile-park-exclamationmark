@@ -1291,6 +1291,7 @@ static void live_use(void)
             DoomoResident *r = town_res(H->visit.id);
             uint8_t w[3];
             if (home_talk_enter(H->visit.id)) return;      /* native host: the live Talk screen */
+            if (home_talk_note()) return;                  /* DC10B: the bank is still loading: a note */
             home_visit_wants(H->visit.id, w);
             doomo_snprintf(H->line, sizeof(H->line), "I wish I had %s.", home_visit_want_text(w[(H->t >> 4) % 3]));
             H->react = HVR_DAWNING;
