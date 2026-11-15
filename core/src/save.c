@@ -64,6 +64,7 @@
 #include "doomo/home.h"                /* GBA-500: the 'HOME' chunk's tag */
 #include "doomo/profiles.h"            /* GBA-500: the guests' villagers ('PROF', the scan) */
 #include "doomo/resident_acc.h"        /* GBA-500: RES_STAGE (a child's family, the scan) */
+#include "doomo/look_pool.h"           /* GBA-500: the look runs of those who moved away */
 int home_visited(int id);              /* home_int.h (home_visit.c): GBA-500's sv_select */
 
 /* Every enum must fit the bit width the format gives it. Growing past a
@@ -1191,18 +1192,26 @@ static void sv_select(void)
     }
 }
 
-/* after the apply pass: whoever moved away leaves as town_free has a resident leave (their
- * graves, anything a module keeps by their id: the creator's look pool), so a newcomer who
- * gets the id later starts clean; the news waits for the sim (save_moved_away_news, from
- * sim_init: a load starts nothing itself) */
+/* after the apply pass: whoever moved away leaves what town_free takes from a resident who
+ * leaves, so a newcomer who gets the id later starts clean: their edges never came in
+ * (sv_edge), their graves go here, and so do their runs in the creator's look pool (CR5);
+ * the portraits are invalidated by every load. (town_free itself, 500 times, took 3.0 s
+ * on the GBA: rel_remove_all copies every edge.) The news waits for the sim
+ * (save_moved_away_news, from sim_init: a load starts nothing itself) */
 static uint16_t sv_news;
 static void sv_moved_away(void)
 {
-    int id;
+    int i, n;
     sv_news = sv_moved;
     if (!sv_moved) return;
-    for (id = 0; id < DOOMO_MAX_RESIDENTS; id++)
-        if (!sv_kept(id) && town_slot(id) < 0) town_free(id);
+    for (i = 0, n = 0; i < doomo_town.grave_count; i++)
+        if (doomo_town.graves[i].resident < DOOMO_MAX_RESIDENTS && town_slot(doomo_town.graves[i].resident) >= 0)
+            doomo_town.graves[n++] = doomo_town.graves[i];
+    doomo_town.grave_count = (uint16_t)n;
+#if LOOK_POOL_SAVED
+    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
+        if (town_slot(i) < 0) look_pool_drop(i);
+#endif
 }
 
 void save_moved_away_news(void)
