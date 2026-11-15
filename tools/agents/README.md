@@ -21,6 +21,9 @@ To run a round, call the Workflow tool with `scriptPath` = this file and args:
                   "after": ["PS1-RAM"] } ] }
 ```
 
+`after` makes a package's landing wait for other packages of the same round. A package resumed after
+a pause may carry `"build"` and `"review"`: the reports of the steps it already finished (from the stopped
+workflow's journal.jsonl); the runner then skips those steps and goes straight to the land agent.
 `after` makes a package's landing wait for other packages of the same round. Three packages per
 round is what a 4-core machine carries; a second round can run beside it when agents are mostly
 waiting. A good brief names the goal as a number, the files, the plan section, what must not

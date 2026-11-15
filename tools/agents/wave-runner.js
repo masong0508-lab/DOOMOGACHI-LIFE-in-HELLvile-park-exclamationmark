@@ -188,10 +188,12 @@ const landed = {}
 
 function runPackage(p) {
   const prom = (async () => {
-    const b = await agent(buildPrompt(p), { label: `build:${p.id}`, phase: 'Build', schema: BUILD_SCHEMA })
+    // A package resumed after a pause may carry the reports of its finished steps (p.build, p.review):
+    // those steps are not run again.
+    const b = p.build || await agent(buildPrompt(p), { label: `build:${p.id}`, phase: 'Build', schema: BUILD_SCHEMA })
     if (!b) { log(`${p.id}: the build agent returned nothing`); return { id: p.id, status: 'build-missing' } }
     if (b.status === 'blocked') { log(`${p.id}: build blocked: ${b.open_items}`); return { id: p.id, status: 'build-blocked', build: b } }
-    const r = await agent(reviewPrompt(p, b), { label: `review:${p.id}`, phase: 'Review', schema: REVIEW_SCHEMA })
+    const r = p.review || await agent(reviewPrompt(p, b), { label: `review:${p.id}`, phase: 'Review', schema: REVIEW_SCHEMA })
     let depNotes = ''
     for (const dep of (p.after || [])) {
       if (!landed[dep]) continue
