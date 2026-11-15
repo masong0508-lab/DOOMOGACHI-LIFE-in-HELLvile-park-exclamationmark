@@ -1063,6 +1063,8 @@ small arrow on this screen only, and a lower page's header says `< Options` (cli
 Not done: clicking to page the dialogue box (A or the pad still does), a mouse wheel, and the pointer on the
 other screens (T9 is the Talk screen; the house's in-room Talk, T8, is not built).
 
+**Cost (measured 2026-11-15 against the branch tip `d5305653`).** GBA: `make -C gba sizes` equal in every RAM section (`.bss`, `.data`, IWRAM, EWRAM), ROM `.text` -8 B (the panel layout is one shared function now); PS1: `doomogachi.exe` byte for byte the tip's (same 70 KB-left line, ends 0x801ee580, 72,736 B below the stack top as before); Dreamcast and the host-test build, `make -C dc` and `make dc-host-test` green. The pointer is read once per Talk tick (one flag test when none is present), nothing is drawn without one.
+
 **Runner and tests.** `mouse X Y` moves the pointer, `mouse X Y click` also clicks, `mouse off` takes it away (a
 negative number counts from the right / bottom edge, so a script fits 240x160 and 320x240); `expect-talk PAGE [TO]`
 (replies / acts / topics / invite / options) and `expect-talk-row TEXT` read the Talk screen's state.
