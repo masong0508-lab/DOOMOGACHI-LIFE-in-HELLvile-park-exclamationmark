@@ -1893,7 +1893,7 @@ the cooldown, a second hand-in does nothing), `quest_decline_haggle_more`, `ques
 
 `TalkState` unchanged (964 B native; `q_kind` and `q_st` sit in two padding holes of the struct). Talk memory: 0 B more
 (the request is in `spare`, the pace in the table header's spare byte). GBA: EWRAM and IWRAM identical to the base
-(`make -C gba sizes`: `.bss` 254,820 B, `.iwram` 11,272 B before and after; the quest log's list buffer is shared), ROM
+(`make -C gba sizes`: `.bss` 210,508 B, `.iwram` 11,288 B before and after; the quest log's list buffer is shared), ROM
 `.text` +9,248 B and `.rodata` +4,824 B (the quest code lives where Talk does). Dreamcast: Talk is linked there, so the
 quest code is too (`make -C dc` builds; dcrun was not run for this package). PS1: 132,608 B below the stack top before and
 after (the EXE is the same size: `talk_quest.c` is compiled only where `DOOMO_HAS_TALK` is, the quest log rows and
