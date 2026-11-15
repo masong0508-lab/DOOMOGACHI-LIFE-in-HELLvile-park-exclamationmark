@@ -1021,9 +1021,9 @@ build sliders and are not scaled.
   (`make -C gba test-creator-sliders` runs x1..x4), the PS1 harness (`cmake --build --preset ps1 --target harness`) and the Dreamcast
   (`make -C dc ui-compare`, the three are in its default list), each followed by `tools/slider_shots_check.py`: every slider's lowest
   and highest preview must differ, and A must bring it back.
-* **Memory.** PS1: +256 B resident (`_end` 0x801ee560 -> 0x801ee660; 72,336 -> 72,080 B below the stack top with the boot FMV; inside
-  CREATOR's 4 KB share, docs/PS1.md "CR-SLIDERX"): the slider loop 216 B, the table 44 B, the option rows, minus 260 B from `sanitize`.
-  GBA: `.bss`, `.iwram`, `.iwram_bss`, `.data` identical (free EWRAM 12,164 B; the option's byte replaced a bit, docs/GBA.md ledger
+* **Memory.** PS1: +272 B resident (`_end` 0x801ee550 -> 0x801ee660; 72,352 -> 72,080 B below the stack top with the boot FMV; inside
+  CREATOR's 4 KB share, docs/PS1.md "CR-SLIDERX"): the slider loop 216 B, the table 44 B, the option rows and the int8 loads, minus 260 B from `sanitize`; measured on the tip `5879aa3f` and the tip + CR-SLIDERX.
+  GBA: `.bss`, `.iwram`, `.iwram_bss`, `.data` identical (free EWRAM unchanged at 6,404 B after CR5, ROM `.text` +192 B, `.rodata` +572 B; the option's byte replaced a bit, docs/GBA.md ledger
   row 52). Old saves load with x1.
 * **Not done here.** Only the build sliders scale; the voice, personality and enum rows do not. A resident drawn by a script that
   reads a slider (none does today) would need the same table.
