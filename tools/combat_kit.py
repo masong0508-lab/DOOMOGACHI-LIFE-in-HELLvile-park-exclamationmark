@@ -3,7 +3,9 @@
 
 Windows (labels "combat WHERE MODE: WHAT", so tools/speed2.py's tables read them):
   vape fp / vape tp   the fixed Vape Cellar fight (`push COMBAT 3`), first / third person (SELECT toggles it)
-  SLUG start / mid / late   a Hell Breach level (tools/breach_scripts.py LEVELS) with the autopilot (LVF_DEMO)
+  SLUG start / mid / late   a Hell Breach level (tools/breach_scripts.py LEVELS) with the autopilot (LVF_DEMO);
+                      its BFS planner is a test driver's cost (profile: 15-35% of the cycles), so also
+  walk SLUG start / mid / late   the same level played like a player: no autopilot, forward held, turns and shots
 Modes: Balanced (option 63 = 0, the default), Smooth (1), Max detail (2).
 Every window is 130 ticks after a settle, like the speed tour. Reports: drawn fps, logic ticks/s, work ms,
 frames over 33 ms (tools/speed2.py verdicts). Reports only, never gates.
@@ -62,6 +64,18 @@ def level(lid, slug, mode):
     return "%s_%s" % (slug, MODES[mode]), s
 
 
+def walk(lid, slug, mode):
+    """a player-like window: no autopilot (its BFS planner, combat_bot.c, is a test driver's cost, 15-35% of a
+    breach window), forward held, a turn and a shot every few ticks"""
+    s = head(mode) + ["push BREACH %d" % lid, "wait 100", "down UP"]
+    for what, w in WIN:
+        s += ["wait %d" % (w if what == "start" else 150), "fps start"]
+        for _ in range(5):
+            s += ["wait 14", "press RIGHT", "wait 12", "press A", "wait 12", "press LEFT"]
+        s += ["fps combat walk %s %s: %s" % (slug, MODES[mode], what), "shot combat_walk_%s_%s_%s" % (slug, MODES[mode], what)]
+    return "walk_%s_%s" % (slug, MODES[mode]), s
+
+
 def scripts(a):
     modes = [int(m) for m in a.modes.split(",")]
     out = []
@@ -73,6 +87,7 @@ def scripts(a):
                 if a.levels and slug not in a.levels.split(","):
                     continue
                 out.append(level(lid, slug, m))
+                out.append(walk(lid, slug, m))
     return out
 
 
