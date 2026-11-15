@@ -18,6 +18,14 @@ void exo_church(int dread, uint32_t t, int floor_y);
  * seven dust motes. exo_church_part gives a part's box (x, y, w, h; w = 0: nothing drawn) and
  * the key of its pixels; exo_church_part_draw draws it. */
 uint32_t exo_church_key(int dread, uint32_t t);
+/* (G2-EX, pixel-changing under SPEED DEFAULTS) 1: the wall's drips hold one length and the host and Father Fuzz
+ * hold one pose (docs/EXORCISM_SPEED.md "G2-EX"). Only where the exact steps cannot reach 30: the GBA, the
+ * Dreamcast and native (the GBA's baker and the tests). The PS1 holds 30 in every phase with them moving: 0. */
+#if defined(DOOMO_PLATFORM_PS1)
+#define EXO_HOLD_STILL 0
+#else
+#define EXO_HOLD_STILL 1
+#endif
 void exo_church_backdrop(uint32_t key);
 int  exo_church_keys(uint32_t *out, int cap);
 enum { EXO_PART_HEART, EXO_PART_CURTAIN_L, EXO_PART_CURTAIN_R, EXO_PART_MOTE0, EXO_MOTES = 7,

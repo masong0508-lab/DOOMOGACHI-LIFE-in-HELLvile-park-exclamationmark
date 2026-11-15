@@ -811,10 +811,10 @@ static void host_layer(int cx, int cy, int scale, int expr, uint32_t t, int *w, 
     const DoomoImage *img;
     int sh = X.shake + (X.dread >= 8 && (t & 31) < 3 ? 1 : 0), fw, fh, dx = 0, dy = 0, pulse = 0;
     uint32_t k;
-    if (ly_fetch) {                                 /* (G2-EX) the host holds one pose (no blink, breath or aura frames) */
-        portrait_hold(1);
+    if (ly_fetch) {                                 /* (G2-EX) the host holds one pose (no blink, breath or aura frames; */
+        if (EXO_HOLD_STILL) portrait_hold(1);       /* not on the PS1: exorcism_int.h) */
         ly_host_img = host_image(expr);
-        portrait_hold(0);
+        if (EXO_HOLD_STILL) portrait_hold(0);
     }
     img = ly_host_img;
     fw = (img ? img->w : PORTRAIT_W) * scale + 10;
@@ -851,9 +851,9 @@ static void fuzz_layer(int cx, int foot, uint32_t t, int expr)
     const DoomoImage *img;
     int hw;
     if (ly_fetch) {                                 /* (G2-EX) Fuzz holds one pose per expression too */
-        portrait_hold(1);
+        if (EXO_HOLD_STILL) portrait_hold(1);
         ly_fuzz_img = exo_fuzz_image(expr);
-        portrait_hold(0);
+        if (EXO_HOLD_STILL) portrait_hold(0);
     }
     img = ly_fuzz_img;
     if (!img) { L(LY_FUZZ, 0, 0, 0, 0, 0); return; }
