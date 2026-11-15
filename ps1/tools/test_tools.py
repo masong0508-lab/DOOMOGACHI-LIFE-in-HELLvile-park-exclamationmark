@@ -82,6 +82,12 @@ class Elf2Exe(unittest.TestCase):
         self.assertIn("elf2exe: WARNING: only 73724 B left below the stack top: 4 B under the 72 KB plan gate", out)
         self.assertNotIn("::warning", out)
 
+    def test_one_byte_under_the_plan_gate_warns(self):
+        rc, out, made = run_elf2exe(self.TOP - 73727)
+        self.assertEqual(rc, 0)
+        self.assertTrue(made)
+        self.assertIn("elf2exe: WARNING: only 73727 B left below the stack top: 1 B under the 72 KB plan gate", out)
+
     def test_the_warning_is_an_annotation_on_github(self):
         rc, out, _ = run_elf2exe(self.TOP - 70000, env={"GITHUB_ACTIONS": "true"})
         self.assertEqual(rc, 0)
