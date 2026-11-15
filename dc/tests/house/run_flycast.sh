@@ -29,7 +29,7 @@ set -u
 FLY=$1 DCRUN=$2 IMG=$3 NM=$4 RUNNER=$5 HOSTRUN=$6 ROOMTEST=$7 OUT=$8
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../../.." && pwd)
-SCRIPTS=${HOUSE_SCRIPTS:-"home_rooms home_editor home_flats home_gallery home_haunt home_mart home_tutorial home_visit home_defend"}
+SCRIPTS=${HOUSE_SCRIPTS:-"home_rooms home_editor home_flats home_gallery home_haunt home_mart home_tutorial home_defend"}
 mkdir -p "$OUT"
 sum=$OUT/summary.txt
 : > "$sum"
@@ -79,7 +79,7 @@ st=ok
 
 # ---- 2. the house scripts ------------------------------------------------------
 for s in $SCRIPTS; do
-    # a Dreamcast copy beside this script wins (home_visit.txt: no live Talk screen on the DC yet)
+    # a Dreamcast copy beside this script wins (none now; home_visit left this list when Talk went live on the DC: the host runner links no Talk, family-test2 plays it)
     src=$here/$s.txt
     [ -f "$src" ] || src=$root/core/tests/scripts/$s.txt
     # the native runner has the live Talk screen: it always runs the core script

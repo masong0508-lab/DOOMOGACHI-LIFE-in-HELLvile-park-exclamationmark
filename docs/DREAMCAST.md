@@ -641,7 +641,7 @@ Repaired 2026-11-15 (TIP-DC-HOMEVISIT): the Dreamcast has no Talk screen, so `ro
 `run_flycast.sh` wins over `core/tests/scripts`). Only dcrun and the host runner take that copy;
 the native reference runner always takes the core script (it has the live Talk screen, and the Talk-less
 copy fails its scene checks). `dc/tests/families/scripts/home_visit_dc.txt` is a near-duplicate kept for
-family-test2. When Talk lands on the DC (TD1-TD3), delete `dc/tests/house/home_visit.txt`.
+family-test2. TD2 landing: Talk is live on the DC (TD1), so that copy failed on dcrun (`expect-scene HOME` while the Talk screen is open); the copy is deleted and `home_visit` left `room-test`'s list (the host runner links no Talk, so the three-way compare cannot hold its Talk shots). `family-test2` plays the core script on dcrun with the live Talk screen. `make -C dc room-test` is green again.
 `check-elf` expected a `dc_mailbox` of 4,364 B and the ELF's is 4,372 B since DC6B/6C: the check says
 4,372 B now (`make -C dc test` stopped at it before).
 
@@ -2462,8 +2462,7 @@ reader.
   16.7 ms, the dialogue tick). `talk_prefetch.txt`, no `--native-seed`: 900 ticks on the title, the bank arrives by itself
   (slice max 19.2 ms), `talk-bank ready` finds it, 0 of 901 ticks over 33.3 ms (worst 11.7 ms). On the ELF (no disc) the
   first script fails at `talk-bank open`, which is how the test is known to look at the disc.
-* **`room-test`.** Its `home_visit` leg now passes in dcrun (the Talk screen is there) but still fails in the host runner
-  (`dc2d_runner` links no Talk), so `make -C dc room-test` still ends red on that one script, as on origin before TD1.
+* **`room-test`.** `home_visit` passes in dcrun (the Talk screen is there) but the host runner (`dc2d_runner`) links no Talk; since the TD2 landing it is not in `room-test`'s list (family-test2 plays it) and `room-test` is green.
 * **Not yet (TD2, TD3).** The typed line from the keyboard queue, the pad fallback, HD-text bubbles (40 columns) and
   the `home_talk_*` scripts on dcrun with frame-time gates. The Talk screen's list and the opener's dialogue box overlap
   at 640x480 in the TD1 shots (`talk_disc_opener.png`: the dialogue box sits over the list; the native 320x240 screen
