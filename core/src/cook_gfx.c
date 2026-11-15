@@ -10,6 +10,11 @@
 #define PL(p) PAL_PAINT(PAINT_##p, 2)
 #define PD(p) PAL_PAINT(PAINT_##p, 0)
 #define R(r, s) PAL_RAMP(RAMP_##r, s)
+#if defined(DOOMO_PLATFORM_PS1)
+#define KEPT_STATIC static      /* (S2-4c: the PS1 keeps no kitchen; its parts stay private) */
+#else
+#define KEPT_STATIC
+#endif
 
 static uint8_t dk(uint8_t c) { return ui_darker(c); }
 static uint8_t lt(uint8_t c) { return ui_lighter(c); }
@@ -33,12 +38,15 @@ void kitchen_steam(int cx, int cy, int t, int n)
 
 /* ====================================================================== */
 /* the kitchen                                                              */
-void kitchen_draw_back(uint32_t tt, int busy)
+/* (S2-4c) The back is drawn in four parts, in this order: the wall (the wallpaper, the chair
+ * rail, the tiles), the window, the jars and, when not busy, the pans. The wall and the jars
+ * stand still: they are the kept kitchen's backdrop picture (cook_scene.c), the window and the
+ * pans are its layers (their boxes below: every pixel they paint). The window and the pans
+ * never overlap the jars, so that order and kitchen_draw_back's paint the same picture. */
+static void kitchen_wall(void)
 {
-    int w = fc_w(), h = fc_h(), t = (int)tt, x, k;
-    int night = town_is_night();
+    int w = fc_w(), h = fc_h(), x, k;
     uint8_t s1 = R(PASTEL_PINK, 7), s2 = PL(PEACH);
-    if (plat_draw_skipped()) return;
     /* striped wallpaper with tiny hearts */
     plat_rect(0, 0, w, h, s1);
     for (x = 0; x < w; x += 16) plat_rect(x, 0, 8, h, s2);
@@ -61,9 +69,21 @@ void kitchen_draw_back(uint32_t tt, int busy)
             plat_rect(((k / 12) * 37) % (w - 12) + 2, k - 9, 3, 1, R(MINT, 7));
         }
     }
-    /* the window (day or night outside) */
+}
+
+static void window_geom(int *wx, int *wy, int *ww, int *wh)
+{
+    *wx = fc_w() * 6 / 100; *wy = 8; *ww = fc_w() * 22 / 100; *wh = fc_h() * 26 / 100;
+}
+
+/* the window (day or night outside): frame, sky, sun and cloud or moon and twinkle, bars,
+ * scalloped curtains, sill and a potted flower */
+KEPT_STATIC void kitchen_window(uint32_t tt, int night)
+{
+    int t = (int)tt, k, wx, wy, ww, wh;
+    if (plat_draw_skipped()) return;
+    window_geom(&wx, &wy, &ww, &wh);
     {
-        int wx = w * 6 / 100, wy = 8, ww = w * 22 / 100, wh = h * 26 / 100;
         ui_round_rect(wx - 2, wy - 2, ww + 4, wh + 4, 4, R(WOOD, 3));
         ui_round_rect(wx, wy, ww, wh, 3, night ? R(SKY, 1) : R(SKY, 6));
         plat_rect(wx, wy + wh * 2 / 3, ww, wh / 3, night ? R(VAPE, 1) : R(PASTEL_PINK, 6));
@@ -82,7 +102,31 @@ void kitchen_draw_back(uint32_t tt, int busy)
         ui_fill_circle(wx + ww - 7, wy + wh - 9 + ui_wave(t, 80, 1), 3, P(CHERRY));
         plat_rect(wx + ww - 7, wy + wh - 9 + ui_wave(t, 80, 1), 1, 1, PL(LEMON));
     }
-    /* a shelf of jars (and one skull cookie jar) */
+}
+
+#if !defined(DOOMO_PLATFORM_PS1)
+/* (S2-4c) every pixel kitchen_window paints (the curtains reach 5 px left of the sky and 4 above,
+ * the sill 4 below the frame), and what its picture depends on */
+void kitchen_window_box(int b[4])
+{
+    int wx, wy, ww, wh;
+    window_geom(&wx, &wy, &ww, &wh);
+    b[0] = wx - 6; b[1] = wy - 5; b[2] = ww + 12; b[3] = wh + 11;
+}
+
+uint32_t kitchen_window_key(uint32_t tt, int night)
+{
+    int t = (int)tt;
+    uint32_t k = night ? 1u + ((uint32_t)ui_sparkle_size((t / 3) & 15) << 1)
+                       : 0x100u + ((uint32_t)((t / 20) % 10) << 1);
+    return k ^ (uint32_t)(ui_wave(t, 80, 1) + 2) << 12;
+}
+#endif
+
+/* a shelf of jars (and one skull cookie jar) */
+static void kitchen_jars(void)
+{
+    int w = fc_w(), h = fc_h(), k;
     {
         int sx = w * 70 / 100, sy = h * 24 / 100, sw = w * 26 / 100;
         static const uint8_t lid[4] = { P(CHERRY), P(MINT), P(LEMON), P(GRAPE) };
@@ -103,8 +147,13 @@ void kitchen_draw_back(uint32_t tt, int busy)
             plat_rect(jx + 1, sy - jh + 1, 1, jh - 2, PAL_WHITE);
         }
     }
-    /* copper pans swinging from a rail (not while a minigame needs the space) */
-    if (!busy) {
+}
+
+/* copper pans swinging from a rail (not while a minigame needs the space) */
+static void kitchen_pans(uint32_t tt)
+{
+    int w = fc_w(), h = fc_h(), t = (int)tt, k;
+    {
         int rx0 = w * 34 / 100, rx1 = w * 64 / 100, ry = h * 30 / 100;
         plat_rect(rx0, ry - 12, rx1 - rx0, 2, R(STEEL, 3));
         for (k = 0; k < 3; k++) {
@@ -117,10 +166,38 @@ void kitchen_draw_back(uint32_t tt, int busy)
     }
 }
 
-void kitchen_draw_counter(int y, uint32_t tt)
+#if !defined(DOOMO_PLATFORM_PS1)
+/* (S2-4c) every pixel kitchen_pans paints, at any swing */
+void kitchen_pans_box(int b[4])
 {
-    int w = fc_w(), h = fc_h(), x, t = (int)tt;
+    int w = fc_w(), h = fc_h(), rx0 = w * 34 / 100, rx1 = w * 64 / 100, ry = h * 30 / 100;
+    b[0] = rx0 - 1; b[1] = ry - 13; b[2] = rx1 - rx0 + 2; b[3] = 22;
+}
+#endif
+
+void kitchen_draw_back(uint32_t tt, int busy)
+{
     if (plat_draw_skipped()) return;
+    kitchen_wall();
+    kitchen_window(tt, town_is_night());
+    kitchen_jars();
+    if (!busy) kitchen_pans(tt);
+}
+
+#if !defined(DOOMO_PLATFORM_PS1)
+/* (S2-4c) the still part of the back (the kept picture's): the wall and the jars */
+void kitchen_back_still(void)
+{
+    if (plat_draw_skipped()) return;
+    kitchen_wall();
+    kitchen_jars();
+}
+#endif
+
+/* the counter: wood edge, pink front with panels; the logo is drawn after the panels */
+static void counter_body(int y)
+{
+    int w = fc_w(), h = fc_h(), x;
     plat_rect(0, y, w, 6, R(WOOD, 5));
     plat_rect(0, y, w, 1, R(WOOD, 6));
     plat_rect(0, y + 6, w, 2, R(WOOD, 2));
@@ -130,7 +207,12 @@ void kitchen_draw_counter(int y, uint32_t tt)
         ui_round_rect(x + 1, y + 14, 36, h - y - 18, 3, PL(BUBBLEGUM));
         ui_fill_circle(x + 19, y + 18, 2, PAL_UI_GOLD);
     }
-    /* Brimstone Bites' logo on the counter: a heart on fire */
+}
+
+/* Brimstone Bites' logo on the counter: a heart on fire */
+static void counter_logo(int y, int t)
+{
+    int w = fc_w(), h = fc_h();
     if (h - y > 34) {
         int cx = w / 2, cy = y + 27, k;
         for (k = -1; k <= 1; k++)
@@ -138,6 +220,39 @@ void kitchen_draw_counter(int y, uint32_t tt)
         ui_heart(cx, cy, 5, P(CHERRY));
     }
 }
+
+void kitchen_draw_counter(int y, uint32_t tt)
+{
+    if (plat_draw_skipped()) return;
+    counter_body(y);
+    counter_logo(y, (int)tt);
+}
+
+#if !defined(DOOMO_PLATFORM_PS1)
+/* (S2-4c) the counter without its logo (the kept picture's), and the logo alone with its box
+ * (the flames and the heart) and key */
+void kitchen_counter_still(int y)
+{
+    if (plat_draw_skipped()) return;
+    counter_body(y);
+}
+
+void kitchen_counter_logo(int y, uint32_t tt)
+{
+    if (plat_draw_skipped()) return;
+    counter_logo(y, (int)tt);
+}
+
+void kitchen_logo_box(int y, int b[4])
+{
+    int cx = fc_w() / 2, cy = y + 27;
+    if (fc_h() - y <= 34) { b[0] = b[1] = b[2] = b[3] = 0; return; }
+    b[0] = cx - 8; b[1] = cy - 13; b[2] = 17; b[3] = 21;
+}
+
+/* (the first four ticks differ: (t / 4 - 1) % 3 is -1 there, the left flame a pixel taller) */
+uint32_t kitchen_logo_key(uint32_t tt) { return tt < 4 ? 4u : ((tt / 4) % 3) + 1; }
+#endif
 
 /* ====================================================================== */
 /* Granny Hopscotch                                                         */
@@ -237,6 +352,30 @@ void granny_draw(int cx, int cy, int s, int t, int mood)
     }
     if (mood == GRAN_DISMAY) ui_fill_circle(hx + hr, hy - hr / 2 + (t / 5) % 4, 1, PL(SKY));
 }
+
+#if !defined(DOOMO_PLATFORM_PS1)
+/* (S2-4c) every pixel granny_draw(cx, cy, s, t, mood) paints at any t: her ears reach 1.25 u
+ * left and right, her bun and hairpin 3.1 u above cy, the cheering spoon 1.5 u, her apron u
+ * below (u = max(6, s)); test_fishcook checks the box for every mood and size */
+void granny_box(int cx, int cy, int s, int b[4])
+{
+    int u = DOOMO_MAX(6, s);
+    b[0] = cx - u * 3 / 2 - 4; b[1] = cy - u * 7 / 2 - 4;
+    b[2] = u * 3 + 12;         b[3] = u * 9 / 2 + 12;
+}
+
+/* (S2-4c) what granny_draw's picture depends on besides where she is: her breath and ear
+ * sway, the blink, the talking mouth, the spoon's wave, the dismayed tear */
+uint32_t granny_key(int s, int t, int mood)
+{
+    uint32_t k = (uint32_t)(ui_wave(t, 70, 1) + 2) | (uint32_t)(ui_wave(t + 20, 90, 2) + 3) << 2;
+    k |= (uint32_t)((t % 120) < 5) << 5 | (uint32_t)(mood & 3) << 6 | (uint32_t)(s & 63) << 8;
+    if (mood == GRAN_TALK) k |= (uint32_t)((t / 4) & 1) << 14 | (uint32_t)(ui_wave(t * 2, 40, 2) + 3) << 16;
+    else if (mood == GRAN_CHEER) k |= (uint32_t)(ui_wave(t * 4, 30, 5) + 6) << 16;
+    else if (mood == GRAN_DISMAY) k |= (uint32_t)((t / 5) % 4) << 16;
+    return k;
+}
+#endif
 
 /* ====================================================================== */
 /* dishes                                                                   */
@@ -434,6 +573,32 @@ void dish_draw(int r, int cx, int cy, int rw, int t, int burnt)
         break; }
     }
 }
+
+#if !defined(DOOMO_PLATFORM_PS1)
+/* (S2-4c) every pixel dish_draw(r, cx, cy, rw, t, burnt) paints at any t: the plate is
+ * rw + 2 wide each side; what rises above it (steam, smoke, a cherry, a candle) depends on the
+ * art; test_fishcook checks the box for every recipe at many sizes */
+void dish_box(int r, int cx, int cy, int rw, int burnt, int b[4])
+{
+    int art = (r < 0 || r >= RECIPE_COUNT) ? -1 : burnt ? DISH_LUMP : cook_recipes[r].art, up;
+    rw = DOOMO_MAX(rw, 6);
+    switch (art) {
+    case -1: b[0] = b[1] = b[2] = b[3] = 0; return;
+    case DISH_CUPCAKE: up = rw * 13 / 12 + 6; break;
+    case DISH_BOWL: case DISH_SALAD: up = art == DISH_SALAD ? rw / 2 + 6 : rw / 2 + 22; break;
+    case DISH_STACK: up = rw / 2 + 23; break;
+    case DISH_PLATE: up = rw / 4 + 23; break;
+    case DISH_STEAK: up = rw / 3 + 23; break;
+    case DISH_CAKE: up = rw * 3 / 8 + 12; break;
+    case DISH_LUMP: up = rw / 3 + 31; break;
+    default: up = rw * 3 / 4 + 6; break;           /* roll, balls, pizza, jelly, bagel, pudding */
+    }
+    b[0] = cx - rw - 4;
+    b[1] = cy - up;
+    b[2] = 2 * rw + 8 + 8;
+    b[3] = up + rw * 4 / 5 + 7;
+}
+#endif
 
 void dish_draw_item(int item, int cx, int cy, int rw, int t)
 {

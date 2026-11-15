@@ -319,6 +319,24 @@ void dish_draw(int r, int cx, int cy, int rw, int t, int burnt);
 void dish_draw_item(int item, int cx, int cy, int rw, int t);
 /* An ingredient icon (item or fish) at cx,cy. */
 void ingredient_draw(const CookIng *g, int cx, int cy, int rw, int t);
+#if !defined(DOOMO_PLATFORM_PS1)
+/* (S2-4c) the kept kitchen (cook_scene.c; docs/GBA.md "Speed wave 2: S2-4c"): the parts of the
+ * back and the counter, and the boxes (x, y, w, h: every pixel the part paints at any tick) and
+ * keys (what its picture depends on) of the parts that move. kitchen_draw_back is the wall, the
+ * window, the jars and (not busy) the pans; kitchen_draw_counter the counter and its logo. */
+void kitchen_back_still(void);                      /* the wall and the jars          */
+void kitchen_window(uint32_t t, int night);
+void kitchen_window_box(int b[4]);
+uint32_t kitchen_window_key(uint32_t t, int night);
+void kitchen_pans_box(int b[4]);
+void kitchen_counter_still(int y);                  /* the counter without its logo   */
+void kitchen_counter_logo(int y, uint32_t t);
+void kitchen_logo_box(int y, int b[4]);
+uint32_t kitchen_logo_key(uint32_t t);
+void granny_box(int cx, int cy, int s, int b[4]);
+uint32_t granny_key(int s, int t, int mood);
+void dish_box(int r, int cx, int cy, int rw, int burnt, int b[4]);
+#endif
 
 /* ---- test hooks (fish_scene.c, cook_scene.c) ------------------------------ */
 int fish_scene_state(void);       /* FS_* (fish_scene.c)                    */
