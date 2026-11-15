@@ -435,8 +435,15 @@ static void draw_card(const Layout *L, int style)
         return;
     }
     px = x + (w - (PORTRAIT_W + 6)) / 2;
-    if (rs->stable >= 6) fp_portrait(px, y + 6, id, 1, -1, WIN_MINT);
-    else {
+    if (rs->stable >= 6) {
+        int j = rs->sel + 1, k;
+        fp_portrait(px, y + 6, id, 1, -1, WIN_MINT);
+        /* S3-2: the cursor has rested: draw the next and the previous card's face in idle time, so a step lands on a
+         * cached one (nearest first; one request is kept, the next call asks for the other) */
+        for (k = 0; k < 2; k++, j = rs->sel - 1)
+            if (j >= 0 && j < n_ids && fp_res(ids[j]) &&
+                !portrait_prefetch(ids[j], fp_mood_expr(fp_res(ids[j])))) break;
+    } else {
         fp_portrait(px, y + 6, -1, 1, 0, WIN_MINT);
         fp_chibi(id, px + 3 + (PORTRAIT_W - BODYSPR_W) / 2, y + 9 + (PORTRAIT_H - BODYSPR_H) / 2,
                  0, 0, 0);

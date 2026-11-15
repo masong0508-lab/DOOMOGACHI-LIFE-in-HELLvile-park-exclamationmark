@@ -1219,6 +1219,41 @@ void portrait_idle_run(void)
 void portrait_hold(int on) { hold_on = on; }
 void portrait_hold_patient(int on) { hold_patient = (uint8_t)(on != 0); }
 
+/* S3-2: a UI preview (a card's portrait, a figure on a rug, a chibi in a row) never draws a whole image inside its
+ * frame: with nothing cached to stand in it is a job finished in a few ticks and NULL meanwhile (portrait_hold(3)).
+ * Where stand-ins are off (native, Dreamcast: a tick has room for the whole job) it is ready at once. A caller that
+ * holds (portrait_hold 1 / 2: the title, the creator) keeps its own mode. */
+const DoomoImage *portrait_image_ui(int resident_id, int expr)
+{
+    const DoomoImage *img;
+    int h = hold_on;
+    if (!h) hold_on = 3;
+    img = portrait_image(resident_id, expr);
+    hold_on = h;
+    return img;
+}
+
+const DoomoImage *figure_image_ui(const DoomoLook *l, int status, int expr)
+{
+    const DoomoImage *img;
+    int h = hold_on;
+    if (!h) hold_on = 3;
+    img = figure_image(l, status, expr);
+    hold_on = h;
+    return img;
+}
+
+const DoomoImage *figure_image_res_ui(const DoomoResident *r, int status, int expr)
+{
+    const DoomoImage *img;
+    int h = hold_on;
+    if (!h) hold_on = 3;
+    img = figure_image_res(r, status, expr);
+    hold_on = h;
+    return img;
+}
+
+
 #ifdef DOOMO_HITCHECK
 static uint32_t hit_n, hit_bad;
 /* Re-render an exact hit into a scratch buffer and compare. The shared canvas is clobbered, so it is
@@ -1724,6 +1759,16 @@ const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
         render_body_ctx(&c, dir, frame, (uint8_t *)e->img.pix);
     }
     return &e->img;
+}
+
+const DoomoImage *bodyspr_image_ui(int resident_id, int dir, int frame)
+{
+    const DoomoImage *img;
+    int l = body_lazy;
+    if (!l) body_lazy = 3;
+    img = bodyspr_image(resident_id, dir, frame);
+    body_lazy = (uint8_t)l;
+    return img;
 }
 
 const DoomoImage *fighter_image(int resident_id, int view, int anim, int weapon_frame)

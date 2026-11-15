@@ -624,7 +624,7 @@ void tab_choir_draw(StRect r)
                            ((s->section[studio.csel >> 1] >> ((studio.csel & 1) * 4)) & 15) ? "" : " (auto)");
             ui_text(r.x + 8, iy, buf, st->text);
             if (wide && res && iy + 30 < r.y + r.h) {
-                const DoomoImage *img = portrait_image(id, (singing >> studio.csel) & 1 ? EXPR_TALK : EXPR_HAPPY);
+                const DoomoImage *img = portrait_image_ui(id, (singing >> studio.csel) & 1 ? EXPR_TALK : EXPR_HAPPY);
                 if (img) plat_image(r.x + r.w - 56, iy - 2, img, 1, 0, 0);
                 doomo_snprintf(buf, sizeof(buf), "Loves %s, fears %s",
                                doomo_music_names[RES_LIKE_MUSIC(res) % MUSIC_COUNT],

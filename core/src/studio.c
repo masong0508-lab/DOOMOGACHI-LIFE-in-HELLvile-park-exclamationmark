@@ -455,10 +455,13 @@ void st_picker_draw(void)
     }
     /* the chosen one, big */
     {
-        const DoomoImage *img = portrait_image(studio.pick_id, EXPR_HAPPY);
+        const DoomoImage *img = portrait_image_ui(studio.pick_id, EXPR_HAPPY);
         int px = x + w - 52, py = y + h / 2 - 28 + ui_wave((int)studio.t, 40, 1);
         ui_round_rect(px - 2, py - 2, 52, 60, 6, st->fill_hi);
         if (img) plat_image(px, py, img, 1, 0, 0);
+        /* S3-2: the neighbours' faces are drawn in idle time, so a step of the cursor lands on a cached one */
+        if (img && portrait_prefetch(next_alive(studio.pick_id, 1), EXPR_HAPPY))
+            (void)portrait_prefetch(next_alive(studio.pick_id, -1), EXPR_HAPPY);
     }
     ui_scroll_arrows(x + lw / 2, y + 6, y + h - 6, 1, 1);
 }
@@ -486,7 +489,7 @@ void st_panel(int x, int y, int w, int h, int style)
 
 void st_chibi(int id, int x, int y, int dir, int frame, int flags, uint8_t col)
 {
-    const DoomoImage *img = bodyspr_image(id, dir, frame);
+    const DoomoImage *img = bodyspr_image_ui(id, dir, frame);   /* S3-2 */
     if (img) plat_image(x, y, img, 1, flags, col);
 }
 

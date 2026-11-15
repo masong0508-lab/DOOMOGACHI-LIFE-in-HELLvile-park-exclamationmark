@@ -768,7 +768,7 @@ int fp_chibi(int id, int x, int y, int dir, int frame, int flags)
     if (!r) return 0;
     key = 0x10000000u | ((uint32_t)id << 8) | ((uint32_t)(dir & 3) << 4) | (uint32_t)(frame & 15);
     if (memo_ok(key, res_hash(id, r), 1)) {
-        const DoomoImage *img = bodyspr_image(id, dir, frame);
+        const DoomoImage *img = bodyspr_image_ui(id, dir, frame);
         if (img) {
             plat_image(x, y, img, 1, flags, 0);
             return 1;
@@ -795,8 +795,9 @@ void fp_portrait(int x, int y, int id, int scale, int expr, int style)
     if (!r) return;
     key = 0x20000000u | ((uint32_t)id << 8) | (uint32_t)(expr & 0xFF);
     if (memo_ok(key, res_hash(id, r), 3)) {
-        const DoomoImage *img = portrait_image(id, expr);
+        const DoomoImage *img = portrait_image_ui(id, expr);
         if (img) plat_image(x + 3, y + 3, img, scale, 0, 0);
+        else placeholder(x + w / 2, y + h / 2, 10 * scale, look_skin(RES_LOOK_VIEW(r), 1));   /* S3-2: a job is drawing it */
     } else {
         placeholder(x + w / 2, y + h / 2, 10 * scale, look_skin(RES_LOOK_VIEW(r), 1));
     }
@@ -808,8 +809,9 @@ void fp_figure(int x, int y, const DoomoLook *l, int status, int expr)
     if (!l) return;
     key = 0x30000000u | ((uint32_t)status << 8) | (uint32_t)(expr & 0xFF);
     if (memo_ok(key, look_hash(l, status), 4)) {
-        const DoomoImage *img = figure_image(l, status, expr);
+        const DoomoImage *img = figure_image_ui(l, status, expr);
         if (img) plat_image(x, y, img, 1, 0, 0);
+        else placeholder(x + FIGURE_W / 2, y + FIGURE_H / 2, 12, look_skin(l, 1));   /* S3-2: a job is drawing it */
     } else {
         placeholder(x + FIGURE_W / 2, y + FIGURE_H / 2, 12, look_skin(l, 1));
     }

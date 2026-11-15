@@ -1072,9 +1072,9 @@ static void draw_counter(void)
         /* stool */
         plat_rect(x - 10, cy - 8, 20, 4, PAL_PAINT(PAINT_CHERRY, 1));
         {
-            const DoomoImage *img = portrait_image(id, expr);
+            const DoomoImage *img = portrait_image_ui(id, expr);     /* S3-2: NULL while a job draws it */
             int bob = sel ? ui_wave(t * 2, 30, 1) : 0;
-            plat_image(x - PORTRAIT_W / 2, cy - PORTRAIT_H + 8 - bob, img, 1, 0, 0);
+            if (img) plat_image(x - PORTRAIT_W / 2, cy - PORTRAIT_H + 8 - bob, img, 1, 0, 0);
         }
         if (!served) {
             /* the order bubble: what they're craving */

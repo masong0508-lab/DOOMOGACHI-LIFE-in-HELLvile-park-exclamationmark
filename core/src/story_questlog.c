@@ -278,7 +278,7 @@ static void draw_friends(int x, int y, int w, int h, int style)
         const DoomoImage *im;
         int met = r && r->level > 0;
         if (!r) continue;
-        im = bodyspr_image(cast[i], 0, 0);
+        im = bodyspr_image_ui(cast[i], 0, 0);   /* S3-2: one a few ticks, never five at once */
         if (i == sel) ui_round_rect(cx, cy, cw - 2, (h - 14) / rows - 2, 3, st->accent);
         if (im) plat_image(cx + (cw - BODYSPR_W) / 2, cy + 2, im, 1, met ? 0 : IMG_SILHOUETTE, st->text_dim);
         ui_text_center(cx + cw / 2, cy + BODYSPR_H + 4, met ? r->name : "???", met ? st->text : st->text_dim);

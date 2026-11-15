@@ -132,6 +132,13 @@ int  portrait_job_on(void);
  * measured cost fits before the next vblank (gba/src/pslice.c, ps1/src/gfx.c). */
 int  portrait_prefetch(int resident_id, int expr);      /* 1: cached already (or being drawn): nothing queued */
 int  figure_prefetch(const DoomoLook *l, int status, int expr);
+/* S3-2: portrait_image / figure_image_res / bodyspr_image for a UI preview: no whole image inside a drawn frame.
+ * With nothing cached to stand in, a job finishes it in a few ticks and NULL comes back meanwhile (hold 3 /
+ * bodyspr_lazy 3; a caller already holding keeps its mode). Ready at once where stand-ins are off. */
+const DoomoImage *portrait_image_ui(int resident_id, int expr);
+const DoomoImage *figure_image_ui(const DoomoLook *l, int status, int expr);
+const DoomoImage *figure_image_res_ui(const DoomoResident *r, int status, int expr);
+const DoomoImage *bodyspr_image_ui(int resident_id, int dir, int frame);
 #define PORTRAIT_SLICE_CLASSES 78      /* slice classes: 3 kinds (portrait, figure, chibi) x 26 slices */
 int  portrait_idle_next(void);
 void portrait_idle_run(void);

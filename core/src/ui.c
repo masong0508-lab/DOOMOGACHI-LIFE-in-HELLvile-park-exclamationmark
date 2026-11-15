@@ -1296,7 +1296,7 @@ void ui_toast_draw(void)
 void ui_portrait(int x, int y, int resident_id, int scale, int expression)
 {
     if (plat_draw_skipped()) return;
-    ui_portrait_img(x, y, portrait_image(resident_id, expression), scale);
+    ui_portrait_img(x, y, portrait_image_ui(resident_id, expression), scale);
 }
 
 /* ui_portrait() with its image already asked for (portrait_image() renders
