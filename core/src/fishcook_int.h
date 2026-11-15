@@ -333,6 +333,8 @@ void kitchen_counter_still(int y);                  /* the counter without its l
 void kitchen_counter_logo(int y, uint32_t t);
 void kitchen_logo_box(int y, int b[4]);
 uint32_t kitchen_logo_key(uint32_t t);
+void fc_fx_box(int b[4], uint32_t *key);            /* fishcook.c: the particles, now */
+void fc_bubble_box(int x, int y, int w, const char *s, int tx, int ty, int b[4]);
 void granny_box(int cx, int cy, int s, int b[4]);
 uint32_t granny_key(int s, int t, int mood);
 void dish_box(int r, int cx, int cy, int rw, int burnt, int b[4]);

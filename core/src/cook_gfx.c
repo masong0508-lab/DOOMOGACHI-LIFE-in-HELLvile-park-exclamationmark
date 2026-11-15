@@ -111,7 +111,7 @@ void kitchen_window_box(int b[4])
 {
     int wx, wy, ww, wh;
     window_geom(&wx, &wy, &ww, &wh);
-    b[0] = wx - 6; b[1] = wy - 5; b[2] = ww + 12; b[3] = wh + 11;
+    b[0] = wx - 5; b[1] = wy - 4; b[2] = ww + 10; b[3] = wh + 9;
 }
 
 uint32_t kitchen_window_key(uint32_t tt, int night)
@@ -354,14 +354,15 @@ void granny_draw(int cx, int cy, int s, int t, int mood)
 }
 
 #if !defined(DOOMO_PLATFORM_PS1)
-/* (S2-4c) every pixel granny_draw(cx, cy, s, t, mood) paints at any t: her ears reach 1.25 u
- * left and right, her bun and hairpin 3.1 u above cy, the cheering spoon 1.5 u, her apron u
- * below (u = max(6, s)); test_fishcook checks the box for every mood and size */
+/* (S2-4c) every pixel granny_draw(cx, cy, s, t, mood) paints at any t: her ears and the
+ * cheering spoon reach 1.25 u left and right (+4 for the spoon), her bun and hairpin 3 u + 2
+ * above cy, her apron u + 5 below (u = max(6, s)); test_cook_kept checks the box for every mood
+ * and size */
 void granny_box(int cx, int cy, int s, int b[4])
 {
     int u = DOOMO_MAX(6, s);
-    b[0] = cx - u * 3 / 2 - 4; b[1] = cy - u * 7 / 2 - 4;
-    b[2] = u * 3 + 12;         b[3] = u * 9 / 2 + 12;
+    b[0] = cx - u * 5 / 4 - 2; b[1] = cy - 3 * u - 3;
+    b[2] = u * 5 / 2 + 7;      b[3] = 4 * u + 9;
 }
 
 /* (S2-4c) what granny_draw's picture depends on besides where she is: her breath and ear

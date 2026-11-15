@@ -160,3 +160,155 @@ TEST(cook_kept_back_parts_box_and_key)
     }
     set_res(240, 160);
 }
+
+/* ---- the whole kitchen with the stage on and off -------------------------------------------
+ * The native platform keeps the backdrop when nat_stage_on is set and emulates the GBA's two
+ * Mode 4 pages (a frame starts from the picture of two frames ago), so a box the stage fails to
+ * put back, a layer it fails to redraw or a key that misses a change shows up as a differing
+ * frame. One tour: the recipe book (every page, a jump, the counter and back), the buy popup,
+ * a dish cooked by hand (late on every step: misses, a burnt bake, the result's buttons), the
+ * bot cooking a bake, a fry, a simmer, a scorch and a second simmer, then the counter (cursor,
+ * the dish list, serving, the reaction). Day and night, 240x160 and 320x240. */
+#include "doomo/backdrop.h"
+#define KF_MAX 6400
+
+static void kframe(uint32_t b) { plat_begin_frame(); doomo_frame(b); plat_end_frame(); }
+
+static uint32_t kfb_hash(void)
+{
+    uint32_t h = 2166136261u;
+    int i, n = nat_w * nat_h;
+    for (i = 0; i < n; i++) h = (h ^ nat_fb[i]) * 16777619u;
+    return h;
+}
+
+typedef struct { int16_t at; uint16_t b; } KPad;
+typedef struct { int arg, frames, unlock; const KPad *pad; } KSeg;
+
+static const KPad pad_book[] = {
+    { 40, BTN_RIGHT }, { 54, BTN_RIGHT }, { 68, BTN_RIGHT }, { 82, BTN_RIGHT }, { 96, BTN_RIGHT },
+    { 110, BTN_RIGHT }, { 124, BTN_RIGHT }, { 138, BTN_RIGHT }, { 152, BTN_RIGHT }, { 166, BTN_RIGHT },
+    { 180, BTN_RIGHT }, { 194, BTN_RIGHT }, { 208, BTN_RIGHT }, { 222, BTN_RIGHT }, { 236, BTN_RIGHT },
+    { 250, BTN_RIGHT }, { 264, BTN_RIGHT }, { 278, BTN_RIGHT }, { 292, BTN_RIGHT }, { 306, BTN_RIGHT },
+    { 320, BTN_RIGHT }, { 334, BTN_RIGHT }, { 348, BTN_R }, { 362, BTN_L }, { 376, BTN_LEFT },
+    { 400, BTN_START }, { 460, BTN_RIGHT }, { 480, BTN_B }, { -1, 0 }
+};
+static const KPad pad_buy[] = {
+    { 30, BTN_A }, { 70, BTN_B }, { 90, BTN_A }, { 110, BTN_A }, { 900, BTN_RIGHT }, { 920, BTN_RIGHT },
+    { 940, BTN_LEFT }, { 960, BTN_B }, { -1, 0 }
+};
+static const KPad pad_counter[] = {
+    { 60, BTN_RIGHT }, { 72, BTN_RIGHT }, { 84, BTN_LEFT }, { 96, BTN_A }, { 116, BTN_DOWN }, { 124, BTN_DOWN },
+    { 132, BTN_UP }, { 140, BTN_A }, { 180, BTN_A }, { 210, BTN_RIGHT }, { 222, BTN_A }, { 242, BTN_A },
+    { 342, BTN_A }, { 362, BTN_LEFT }, { 380, BTN_A }, { 392, BTN_B }, { -1, 0 }
+};
+static const KSeg ksegs[] = {
+    { COOK_ARG_STOCK, 520, 0, pad_book },
+    { 0, 1000, 0, pad_buy },
+    { COOK_ARG_AUTOPLAY | COOK_ARG_STOCK | COOK_ARG_RECIPE(0), 640, 0, NULL },     /* bake   */
+    { COOK_ARG_AUTOPLAY | COOK_ARG_STOCK | COOK_ARG_RECIPE(2), 640, 0, NULL },     /* fry    */
+    { COOK_ARG_AUTOPLAY | COOK_ARG_STOCK | COOK_ARG_RECIPE(1), 640, 0, NULL },     /* simmer */
+    { COOK_ARG_AUTOPLAY | COOK_ARG_STOCK | COOK_ARG_RECIPE(18), 640, 1, NULL },    /* scorch */
+    { COOK_ARG_AUTOPLAY | COOK_ARG_STOCK | COOK_ARG_RECIPE(4), 640, 0, NULL },     /* simmer */
+    { COOK_ARG_COUNTER | COOK_ARG_DEMO, 420, 0, pad_counter },
+};
+
+static uint32_t kpad(const KPad *p, int f)
+{
+    for (; p && p->at >= 0; p++)
+        if (p->at == f) return p->b;
+    return 0;
+}
+
+static int kept_frames, full_frames;
+
+static int krun(uint32_t *out, int stage, int night, int upto)
+{
+    int s, f, n = 0;
+    nat_stage_on = stage;
+    nat_stage_buffers = 2;
+    nat_stage_reset();
+    test_reset();
+    doomo_init();
+    portrait_cache_reset();             /* (the counter's faces: both runs start with none) */
+    scene_set(&SCENE_TITLE, 0);
+    kframe(0);
+    kept_frames = full_frames = 0;
+    for (s = 0; s < (int)(sizeof(ksegs) / sizeof(ksegs[0])) && n < upto && n < KF_MAX; s++) {
+        const KSeg *g = &ksegs[s];
+        if (g->unlock) {
+            int r;
+            for (r = 0; r < RECIPE_COUNT; r++)
+                if (cook_recipes[r].unlock != ACT_ALWAYS) unlock_grant(cook_recipes[r].unlock);
+            ui_toast_clear();
+        }
+        doomo_town.minute = (uint16_t)(night ? 22 * 60 : 12 * 60);
+        if (s == 0) scene_push(&SCENE_COOKING, g->arg);
+        else scene_set(&SCENE_COOKING, g->arg);
+        for (f = 0; f < g->frames && n < KF_MAX && n < upto; f++) {
+            kframe(kpad(g->pad, f));
+            out[n++] = kfb_hash();
+            if (nat_stage_kept()) {
+                StageStats st;
+                stage_stats(&st);
+                kept_frames++;
+                full_frames += st.full;
+            }
+        }
+    }
+    nat_stage_on = 0;
+    return n;
+}
+
+static int kcompare(int w, int h, int night, int *kept)
+{
+    static uint32_t off[KF_MAX], on[KF_MAX];
+    int n, f;
+    set_res(w, h);
+    n = krun(off, 0, night, KF_MAX);
+    krun(on, 1, night, KF_MAX);
+    *kept = kept_frames;
+    for (f = 0; f < n; f++)
+        if (off[f] != on[f]) {
+            static uint8_t a[NAT_MAX_W * NAT_MAX_H];
+            char m[300], path[600];
+            int i, x0 = w, y0 = h, x1 = -1, y1 = -1, nd = 0;
+            krun(off, 0, night, f + 1);
+            memcpy(a, nat_fb, (size_t)(w * h));
+            snprintf(path, sizeof(path), "%s/cook_kept_%dx%d_off.png", test_tmp_dir, w, h);
+            nat_png_write(path, nat_fb, w, h, 2);
+            krun(on, 1, night, f + 1);
+            snprintf(path, sizeof(path), "%s/cook_kept_%dx%d_on.png", test_tmp_dir, w, h);
+            nat_png_write(path, nat_fb, w, h, 2);
+            for (i = 0; i < w * h; i++)
+                if (a[i] != nat_fb[i]) {
+                    nd++;
+                    x0 = DOOMO_MIN(x0, i % w); x1 = DOOMO_MAX(x1, i % w);
+                    y0 = DOOMO_MIN(y0, i / w); y1 = DOOMO_MAX(y1, i / w);
+                }
+            snprintf(m, sizeof(m), "kitchen %dx%d night %d: frame %d (state %d) differs with the stage on (%d px in %d,%d..%d,%d)",
+                     w, h, night, f, cook_scene_state(), nd, x0, y0, x1, y1);
+            test_fail(__FILE__, __LINE__, m);
+            return 0;
+        }
+    printf("      kept kitchen %dx%d night %d: %d frames, %d over the kept picture, %d of them drawn in full\n", w, h, night, n,
+           *kept, full_frames);
+    if (full_frames * 8 > *kept) {
+        test_fail(__FILE__, __LINE__, "the stage drew too many kitchen frames in full");
+        return 0;
+    }
+    return n;
+}
+
+TEST(cook_kept_kitchen_is_pixel_identical)
+{
+    int kept, n;
+    CHECK(stage_mem_bytes() <= 2048u);
+    n = kcompare(240, 160, 0, &kept);
+    CHECK(n > 0);
+    CHECK_MSG(kept > n / 3, "only %d of %d frames over the kept picture", kept, n);
+    CHECK(kcompare(240, 160, 1, &kept) > 0);
+    CHECK(kcompare(320, 240, 0, &kept) > 0);
+    CHECK(kcompare(320, 240, 1, &kept) > 0);
+    set_res(240, 160);
+}

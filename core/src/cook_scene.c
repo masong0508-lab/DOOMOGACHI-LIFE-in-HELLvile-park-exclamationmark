@@ -19,6 +19,13 @@
  * bot play, COOK_ARG_STOCK fills the pantry, COOK_ARG_DEMO moves the
  * premade cast onto an empty island (tests / screenshots). */
 #include "fishcook_int.h"
+#if !defined(DOOMO_PLATFORM_PS1)
+#include "doomo/backdrop.h"
+#include "doomo/plat_ext.h"
+#define COOK_KEPT 1     /* (S2-4c) the kept kitchen: not on the PS1 (its stage code is resident there) */
+#else
+#define COOK_KEPT 0
+#endif
 
 enum { CS_BOOK, CS_BUY, CS_INTRO, CS_CHOP, CS_STIR, CS_HEAT, CS_STEP_DONE,
        CS_RESULT, CS_COUNTER, CS_PICK, CS_REACT };
@@ -39,14 +46,28 @@ typedef struct {
     uint8_t  picks[ITEM_COUNT];
     char     line[96];
     uint32_t bot_now, bot_prev;
+    uint8_t  lpass, screen;            /* (S2-4c) the kept kitchen's pass and screen (below) */
 } CookState;
 DOOMO_STATIC_ASSERT(sizeof(CookState) <= FC_STATE_MAX, cook_state_fits_scratch);
 
 /* The state lives in the scene scratch (fc_scratch_claim); ks points at
- * it while the scene runs. Only the music to restore stays in .bss. */
+ * it while the scene runs. Only the music to restore stays in .bss.
+ * (S2-4c) The retained stage's records follow it in the same block. */
 static CookState *ks;
 static uint8_t cook_music;
 #define K (*ks)
+#if COOK_KEPT
+#define COOK_STAGE_OFF ((sizeof(CookState) + 7u) & ~7u)
+DOOMO_STATIC_ASSERT(sizeof(CookState) + 7u + 2048u <= FC_STATE_MAX, cook_stage_fits_scratch);
+static CookState *cook_claim(void)
+{
+    CookState *c = (CookState *)fc_scratch_claim(COOK_STAGE_OFF + stage_mem_bytes());
+    stage_bind(c ? (uint8_t *)c + COOK_STAGE_OFF : NULL);
+    return c;
+}
+#else
+static CookState *cook_claim(void) { return (CookState *)fc_scratch_claim(sizeof(CookState)); }
+#endif
 
 /* ---- input ---------------------------------------------------------------------- */
 static int down(uint32_t b) { return K.autoplay ? (K.bot_now & b) != 0 : btn_down(b); }
@@ -413,7 +434,7 @@ static void cook_enter(int arg)
 {
     int r = (arg >> 8) & 0xFF;
     cook_music = (uint8_t)audio_music_current();
-    ks = (CookState *)fc_scratch_claim(sizeof(CookState));
+    ks = cook_claim();
     if (!ks) return;
     if ((arg & COOK_ARG_DEMO) && town_count(-1) == 0)
         town_new(doomo_town.mode, doomo_town.seed ? doomo_town.seed : 1234u, TOWN_POP_PREMADE);
@@ -441,7 +462,7 @@ static void cook_leave(void) { audio_music(cook_music); }
 static int cook_resume(void)
 {
     if (ks && fc_scratch_mine()) return 1;
-    ks = (CookState *)fc_scratch_claim(sizeof(CookState));
+    ks = cook_claim();
     if (!ks) return 0;
     go(CS_BOOK);
     return 1;
@@ -588,11 +609,154 @@ static void cook_update(void)
 }
 
 /* ---- drawing ------------------------------------------------------------------------ */
-static void title_bar(const char *s)
+/* ---- (S2-4c) the kept kitchen (docs/GBA.md "Speed wave 2: S2-4c") ------------------------
+ * The kitchen's wall, jars and counter stand still. Where the platform keeps a backdrop
+ * (backdrop.h: the GBA bakes the pictures into the ROM) they are one picture of the family
+ * DOOMO_BACKDROP_KITCHEN, and everything else is a layer of the retained stage: drawn again only
+ * when its key or box changed or a changed box lies on it, over the picture put back under it.
+ * A screen's draw runs twice then: pass 1 declares every layer (L() returns 0), pass 2 draws
+ * the ones the stage asks for (L() returns stage_draw). Without a kept backdrop (the PS1, the
+ * Dreamcast, native, a skipped tick) it runs once and draws everything (pass 0), as before.
+ * Each layer's box holds every pixel it paints (test_cook_kept); its key changes whenever its
+ * picture would. Two parts are drawn before still parts that cover them: Granny and the
+ * customers stand behind the counter, so their layers put the counter back over themselves
+ * (the picture holds it); test_cook_kept plays every screen with the stage on and off and
+ * compares every frame. */
+enum { KS_COOKING = 1, KS_RESULT, KS_COUNTER, KS_BOOK };
+enum { KV_COUNTER = 0, KV_BOOK = 1 };          /* the pictures: the counter at counter_y(), the book */
+
+#if COOK_KEPT
+static uint32_t kh(uint32_t h, uint32_t v)
 {
+    h = (h ^ v) * 16777619u;
+    return h ^ (h >> 13);
+}
+static uint32_t kh_str(uint32_t h, const char *s)
+{
+    while (s && *s) h = kh(h, (uint8_t)*s++);
+    return kh(h, 0x5Au);
+}
+
+/* one layer: its id (an enum of its screen), box (x, y, w, h) and key */
+static int L(int id, const int b[4], uint32_t key)
+{
+    if (K.lpass == 1) {
+        stage_layer(id, b[0], b[1], b[2], b[3], kh(kh(key, (uint32_t)K.screen << 8 | (uint32_t)id), 0xC00Cu));
+        return 0;
+    }
+    return K.lpass == 2 ? stage_draw(id) : 1;
+}
+
+/* put the kept picture back on rows [y0, y1) of box b (a part behind the counter) */
+static void put_back_rows(const int b[4], int y0, int y1)
+{
+    y0 = DOOMO_MAX(y0, b[1]);
+    y1 = DOOMO_MIN(y1, b[1] + b[3]);
+    if (K.lpass == 2 && y0 < y1) plat_stage_restore(b[0], y0, b[2], y1 - y0);
+}
+
+/* the back: the still wall and jars are in the picture, the window is a layer (the pans are
+ * hung only where the book covers them, and the book's picture holds the book) */
+static void back_layer(int id, int t, int busy)
+{
+    int b[4];
+    if (!K.lpass) { kitchen_draw_back((uint32_t)t, busy); return; }
+    kitchen_window_box(b);
+    if (L(id, b, kitchen_window_key((uint32_t)t, town_is_night()))) kitchen_window((uint32_t)t, town_is_night());
+}
+
+/* the counter: the still part is in the picture, the logo is a layer */
+static void counter_layer(int id, int y, int t)
+{
+    int b[4];
+    if (!K.lpass) { kitchen_draw_counter(y, (uint32_t)t); return; }
+    kitchen_logo_box(y, b);
+    if (L(id, b, kitchen_logo_key((uint32_t)t))) kitchen_counter_logo(y, (uint32_t)t);
+}
+
+/* Granny behind the counter (its top row cy_counter; her chest at cy) */
+static void granny_layer(int id, int cx, int cy, int s, int t, int mood, int cy_counter)
+{
+    int b[4];
+    if (!K.lpass) { granny_draw(cx, cy, s, t, mood); return; }
+    granny_box(cx, cy, s, b);
+    if (L(id, b, granny_key(s, t, mood))) {
+        granny_draw(cx, cy, s, t, mood);
+        put_back_rows(b, cy_counter, fc_h());
+    }
+}
+
+/* the title pill (its sparkles twinkle every third tick) and the money pill: two layers */
+static void title_layers(int id, const char *s)
+{
+    int b[4], w;
+    uint32_t ft = doomo_frame_count();
+    char buf[16];
+    if (!K.lpass) {
+        ui_title(W() / 2, 3, s, WIN_CUTE);
+        fc_money_pill(W() - 3, 3);
+        return;
+    }
+    w = ui_text_width(s) + 18;                  /* the pill, its shadow (to row 17) and sparkles */
+    b[0] = W() / 2 - w / 2 - 1; b[1] = 0; b[2] = w + 3; b[3] = 18;
+    if (L(id, b, kh_str((uint32_t)ui_sparkle_size((int)(ft / 3) & 15) << 4 | (uint32_t)ui_sparkle_size((int)(ft / 3 + 8) & 15), s)))
+        ui_title(W() / 2, 3, s, WIN_CUTE);
+    doomo_snprintf(buf, sizeof(buf), STR_ICON_COIN "%u", (unsigned)doomo_town.money);
+    w = ui_text_width(buf) + 10;
+    b[0] = W() - 3 - w - 1; b[1] = 2; b[2] = w + 2; b[3] = 14;
+    if (L(id + 1, b, doomo_town.money + 1u)) fc_money_pill(W() - 3, 3);
+}
+
+static void fx_layer(int id)
+{
+    int b[4];
+    uint32_t key;
+    if (!K.lpass) { fc_fx_draw(0, 0); return; }
+    fc_fx_box(b, &key);
+    if (L(id, b, key)) fc_fx_draw(0, 0);
+}
+
+static void hint_layer(int id, const char *s, int style)
+{
+    int b[4];
+    if (!K.lpass) { ui_hint(s, style); return; }
+    b[0] = 0; b[1] = H() - 14; b[2] = W(); b[3] = 14;
+    if (L(id, b, kh_str((uint32_t)style, s))) ui_hint(s, style);
+}
+
+static void bubble_layer(int id, int x, int y, int w, const char *s, int tx, int ty, int chars)
+{
+    int b[4], n;
+    if (!K.lpass) { fc_bubble(x, y, w, s, tx, ty, chars); return; }
+    n = (int)strlen(s);
+    fc_bubble_box(x, y, w, s, tx, ty, b);
+    if (L(id, b, kh_str((uint32_t)DOOMO_CLAMP(chars, 0, n + 1) << 8 ^ (uint32_t)(tx & 0xFF) << 16 ^ (uint32_t)ty, s)))
+        fc_bubble(x, y, w, s, tx, ty, chars);
+}
+#else
+/* (the PS1: one pass, everything drawn, as before S2-4c) */
+#define L(id, b, key) 1
+static void back_layer(int id, int t, int busy) { (void)id; kitchen_draw_back((uint32_t)t, busy); }
+static void counter_layer(int id, int y, int t) { (void)id; kitchen_draw_counter(y, (uint32_t)t); }
+static void granny_layer(int id, int cx, int cy, int s, int t, int mood, int cy_counter)
+{
+    (void)id; (void)cy_counter;
+    granny_draw(cx, cy, s, t, mood);
+}
+static void title_layers(int id, const char *s)
+{
+    (void)id;
     ui_title(W() / 2, 3, s, WIN_CUTE);
     fc_money_pill(W() - 3, 3);
 }
+static void fx_layer(int id) { (void)id; fc_fx_draw(0, 0); }
+static void hint_layer(int id, const char *s, int style) { (void)id; ui_hint(s, style); }
+static void bubble_layer(int id, int x, int y, int w, const char *s, int tx, int ty, int chars)
+{
+    (void)id;
+    fc_bubble(x, y, w, s, tx, ty, chars);
+}
+#endif
 
 static void grade_badge(int x, int y, int g)
 {
@@ -615,7 +779,7 @@ static void draw_book(void)
     char buf[64];
     kitchen_draw_back((uint32_t)t, 0);
     kitchen_draw_counter(counter_y() + 10, (uint32_t)t);
-    title_bar("Granny's Recipe Book");
+    title_layers(0, "Granny's Recipe Book");
     /* the open book: cover, two cream pages, a spine, page curl when flipping */
     ui_round_rect(bx - 2, by - 2, bw + 4, bh + 6, 6, PAL_PAINT(PAINT_BLOOD, 0));
     ui_round_rect(bx - 1, by - 1, bw + 2, bh + 4, 5, PAL_PAINT(PAINT_CHERRY, 1));
@@ -969,30 +1133,61 @@ static void draw_pot(int t)
     }
 }
 
+/* (S2-4c) every pixel the step's apparatus paints at any tick (its gauge window and the
+ * simmer's time bar included: measured over the bots' cooking at both screen sizes, plus a
+ * pixel or two) */
+static void app_box(int b[4])
+{
+    int big = fc_big(), cx = stage_x(), gy = big ? 34 : 28, x0, y0, x1, y1;
+    if (K.step == 0) {
+        int bx, by, bw;
+        chop_geom(&bx, &by, &bw);
+        x0 = bx - 16; x1 = bx + bw + 26; y0 = by - 45; y1 = by + 17;     /* (the knife stops past the board) */
+    } else if (K.step == 1) {
+        int rx = big ? 40 : 30, cy = counter_y() - 12;
+        x0 = cx - 59; x1 = cx + DOOMO_MAX(rx + 30, 61); y0 = gy - 7; y1 = cy + 2 * (rx / 3) + 8;
+    } else if (heat() == HEAT_FRY) {
+        int rx = big ? 34 : 26;
+        x0 = cx - 59; x1 = cx + DOOMO_MAX(2 * rx + 2, 61); y0 = gy - 7; y1 = counter_y() + 5;
+    } else if (heat() == HEAT_SIMMER) {
+        int w = big ? 64 : 50, gx = cx + w / 2 + 16, ty = counter_y() - 66;
+        x0 = DOOMO_MIN(cx - w / 2 - 8, cx - 41); x1 = gx + 9 + 4 * FONT_ADVANCE + 3;
+        y0 = DOOMO_MIN(counter_y() - (big ? 40 : 30) - 32, ty - 6); y1 = counter_y() + 18;
+    } else {
+        x0 = cx - 59; x1 = cx + 61; y0 = (big ? 36 : 30) - 9; y1 = counter_y() + 8;
+    }
+    b[0] = x0; b[1] = y0; b[2] = x1 - x0; b[3] = y1 - y0;
+}
+
 static void draw_cooking(void)
 {
-    int t = K.t, mood = GRAN_TALK;
+    enum { LC_WINDOW, LC_GRANNY, LC_LOGO, LC_TITLE, LC_MONEY, LC_APP, LC_PIPS, LC_BANNER, LC_BUBBLE, LC_FX, LC_HINT };
+    int t = K.t, mood = GRAN_TALK, b[4];
     char buf[48];
-    kitchen_draw_back((uint32_t)t, 1);
+    back_layer(LC_WINDOW, t, 1);
     if (K.st == CS_STEP_DONE) mood = K.score[K.step] >= 65 ? GRAN_CHEER : K.score[K.step] < 40 ? GRAN_DISMAY : GRAN_CALM;
     else if (K.st != CS_INTRO) mood = GRAN_CALM;
-    granny_draw(gran_x(), counter_y() + 4, fc_big() ? 18 : 14, t, mood);
-    kitchen_draw_counter(counter_y(), (uint32_t)t);
+    granny_layer(LC_GRANNY, gran_x(), counter_y() + 4, fc_big() ? 18 : 14, t, mood, counter_y());
+    counter_layer(LC_LOGO, counter_y(), t);
     doomo_snprintf(buf, sizeof(buf), "%s", RC()->name);
-    title_bar(buf);
-    switch (K.step) {
-    case 0: if (K.st != CS_INTRO) draw_board(t); break;
-    case 1: if (K.st != CS_INTRO) draw_bowl(t); break;
-    default:
-        if (K.st != CS_INTRO) {
-            if (heat() == HEAT_FRY) draw_pan(t);
-            else if (heat() == HEAT_SIMMER) draw_pot(t);
-            else draw_oven(t);
+    title_layers(LC_TITLE, buf);
+    if (K.st != CS_INTRO) {
+        app_box(b);
+        if (L(LC_APP, b, (uint32_t)t + 1u)) {
+            switch (K.step) {
+            case 0: draw_board(t); break;
+            case 1: draw_bowl(t); break;
+            default:
+                if (heat() == HEAT_FRY) draw_pan(t);
+                else if (heat() == HEAT_SIMMER) draw_pot(t);
+                else draw_oven(t);
+                break;
+            }
         }
-        break;
     }
     /* three step pips */
-    {
+    b[0] = W() / 2 - 21; b[1] = 18; b[2] = 43; b[3] = 10;
+    if (L(LC_PIPS, b, (uint32_t)K.step << 1 | (K.st == CS_STEP_DONE))) {
         int k;
         for (k = 0; k < 3; k++) {
             int x = W() / 2 - 16 + k * 16, y = 22;
@@ -1003,17 +1198,20 @@ static void draw_cooking(void)
         }
     }
     if (K.st == CS_INTRO) {
-        step_banner();
-        fc_bubble(4, fc_big() ? 30 : 24, stage_x() - (fc_big() ? 70 : 62), step_tip(), gran_x() + 8,
-                  counter_y() - (fc_big() ? 44 : 34), K.t * 2);
+        int sc = fc_big() ? 3 : 2, half = ui_text_big_width(step_name(K.step), sc) / 2 + 8;
+        b[0] = stage_x() - half; b[1] = counter_y() - (fc_big() ? 86 : 64);
+        b[2] = 2 * half; b[3] = (fc_big() ? 16 : 14) + 9 * sc + 6;
+        if (L(LC_BANNER, b, (uint32_t)ui_pop_scale(K.t) << 4 | K.step)) step_banner();
+        bubble_layer(LC_BUBBLE, 4, fc_big() ? 30 : 24, stage_x() - (fc_big() ? 70 : 62), step_tip(), gran_x() + 8,
+                     counter_y() - (fc_big() ? 44 : 34), K.t * 2);
     }
-    fc_fx_draw(0, 0);
+    fx_layer(LC_FX);
     switch (K.st) {
-    case CS_CHOP: ui_hint(STR_ICON_A " Chop on the lines!", WIN_CUTE); break;
-    case CS_STIR: ui_hint("Spin the D-pad clockwise!", WIN_CUTE); break;
+    case CS_CHOP: hint_layer(LC_HINT, STR_ICON_A " Chop on the lines!", WIN_CUTE); break;
+    case CS_STIR: hint_layer(LC_HINT, "Spin the D-pad clockwise!", WIN_CUTE); break;
     case CS_HEAT:
-        ui_hint(heat() == HEAT_SIMMER ? "Hold " STR_ICON_A " for heat" : heat() == HEAT_FRY ? STR_ICON_A " Flip!" :
-                heat() == HEAT_SCORCH ? "Wait for it... " STR_ICON_A " (if you dare)" : STR_ICON_A " Take it out!", WIN_CUTE);
+        hint_layer(LC_HINT, heat() == HEAT_SIMMER ? "Hold " STR_ICON_A " for heat" : heat() == HEAT_FRY ? STR_ICON_A " Flip!" :
+                   heat() == HEAT_SCORCH ? "Wait for it... " STR_ICON_A " (if you dare)" : STR_ICON_A " Take it out!", WIN_CUTE);
         break;
     default: break;
     }
@@ -1030,7 +1228,7 @@ static void draw_result(void)
     granny_draw(gran_x(), counter_y() + 4, big ? 18 : 14, t,
                 K.grade == GRADE_BURNT ? GRAN_DISMAY : K.grade >= GRADE_GREAT ? GRAN_CHEER : GRAN_TALK);
     kitchen_draw_counter(counter_y(), (uint32_t)t);
-    title_bar(K.grade == GRADE_BURNT ? "Uh oh..." : "Order up!");
+    title_layers(0, K.grade == GRADE_BURNT ? "Uh oh..." : "Order up!");
     /* a spotlight + rays behind the plate */
     for (k = 0; k < 8; k++) {
         int a = (t * 6 + k * 512) & DOOMO_ANG_MASK, r = big ? 70 : 52;
@@ -1123,7 +1321,7 @@ static void draw_counter(void)
         }
     }
     doomo_snprintf(buf, sizeof(buf), "The Counter  %d served", fc.served);
-    title_bar("The Counter");
+    title_layers(0, "The Counter");
     if (!n) {
         fc_bubble(w / 2 - 70, cy - 60, 140, "No customers today... the island's a bit empty, dearie.", w / 2, cy, 999);
     }
@@ -1159,6 +1357,43 @@ static void draw_counter(void)
     }
 }
 
+#if COOK_KEPT
+/* (S2-4c) the kitchen's pictures (backdrop.h DOOMO_BACKDROP_KITCHEN): the wall, the jars and the
+ * counter, all of which stand still (KV_COUNTER: the counter of the cooking, result and counter
+ * screens) */
+static void kitchen_pic(uint32_t key)
+{
+    (void)key;
+    kitchen_back_still();
+    kitchen_counter_still(counter_y());
+}
+
+static int kitchen_pic_keys(uint32_t *out, int cap)
+{
+    if (cap >= 1) out[0] = KV_COUNTER;
+    return 1;
+}
+const DoomoBackdrop cook_backdrop_family = { .id = DOOMO_BACKDROP_KITCHEN, .draw = kitchen_pic, .keys = kitchen_pic_keys };
+
+/* a screen drawn as layers over its kept picture: 1 when done that way */
+static int kept_draw(void (*screen)(void), int scr, uint32_t pic)
+{
+    K.screen = (uint8_t)scr;
+    if (!stage_begin(DOOMO_BACKDROP_KITCHEN, pic, kitchen_pic)) return 0;
+    K.lpass = 1;
+    screen();
+    stage_resolve();
+    K.lpass = 2;
+    screen();
+    K.lpass = 0;
+    stage_end();
+    return 1;
+}
+#define KEPT(screen, scr, pic) if (kept_draw(screen, scr, pic)) break
+#else
+#define KEPT(screen, scr, pic) (void)0
+#endif
+
 static void cook_draw(void)
 {
     if (plat_draw_skipped() || !ks || !fc_scratch_mine()) return;
@@ -1167,7 +1402,10 @@ static void cook_draw(void)
     case CS_BUY: draw_book(); draw_buy(); break;
     case CS_RESULT: draw_result(); break;
     case CS_COUNTER: case CS_PICK: case CS_REACT: draw_counter(); break;
-    default: draw_cooking(); break;
+    default:
+        KEPT(draw_cooking, KS_COOKING, KV_COUNTER);
+        draw_cooking();
+        break;
     }
 }
 

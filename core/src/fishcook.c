@@ -379,6 +379,69 @@ void fc_fx_draw(int ox, int oy)
     }
 }
 
+#if !defined(DOOMO_PLATFORM_PS1)
+static uint32_t fx_mix(uint32_t h, uint32_t v)
+{
+    h = (h ^ v) * 16777619u;
+    return h ^ (h >> 15);
+}
+
+/* (S2-4c) the box of every particle and popup fc_fx_draw(0, 0) paints now (an empty box when
+ * there are none) and a key that changes whenever any of them moves, ages or comes and goes */
+void fc_fx_box(int b[4], uint32_t *key)
+{
+    FcFxPool *p = pool();
+    int i, x0 = 0x7FFF, y0 = 0x7FFF, x1 = -0x7FFF, y1 = -0x7FFF;
+    uint32_t k = 2166136261u;
+    b[0] = b[1] = b[2] = b[3] = 0;
+    *key = 0;
+    if (!p) return;
+    for (i = 0; i < FC_FX_MAX; i++) {
+        const FcFx *f = &p->fx[i];
+        int x, y, m, age;
+        if (!f->life) continue;
+        x = f->x / 16;
+        y = f->y / 16;
+        age = f->max - f->life;
+        m = f->kind == FCX_RING ? 4 + age / 2 : (f->kind == FCX_STEAM || f->kind == FCX_SMOKE) ? 3 + age / 6 : 6;
+        x0 = DOOMO_MIN(x0, x - m); y0 = DOOMO_MIN(y0, y - m);
+        x1 = DOOMO_MAX(x1, x + m + 1); y1 = DOOMO_MAX(y1, y + m + 1);
+        k = fx_mix(fx_mix(k, (uint32_t)i << 16 | (uint16_t)f->x), (uint32_t)(uint16_t)f->y << 16 | f->life);
+        k = fx_mix(k, (uint32_t)f->max << 16 | (uint32_t)f->kind << 8 | f->color);
+    }
+    for (i = 0; i < FC_POP_MAX; i++) {
+        const FcPop *q = &p->pops[i];
+        int rise, tw;
+        if (!q->t) continue;
+        rise = q->t < 10 ? q->t * 2 : 20 + (q->t - 10) / 3;
+        tw = ui_text_width(q->text);
+        x0 = DOOMO_MIN(x0, q->x - tw / 2 - 3); y0 = DOOMO_MIN(y0, q->y - rise - 3);
+        x1 = DOOMO_MAX(x1, q->x - tw / 2 + tw + 3); y1 = DOOMO_MAX(y1, q->y - rise + FONT_LINE + 3);
+        k = fx_mix(fx_mix(k, (uint32_t)(i + 64) << 16 | (uint16_t)q->x), (uint32_t)(uint16_t)q->y << 16 | q->t);
+        k = fx_mix(k, (uint32_t)q->color << 8 | (uint8_t)q->text[0]);
+    }
+    if (x0 >= x1) return;
+    b[0] = x0; b[1] = y0; b[2] = x1 - x0; b[3] = y1 - y0;
+    *key = k | 1u;
+}
+
+/* (S2-4c) every pixel fc_bubble(x, y, w, s, tx, ty, ...) paints: the bubble and its tail */
+void fc_bubble_box(int x, int y, int w, const char *s, int tx, int ty, int b[4])
+{
+    int lines = ui_text_wrap(0, 0, w - 10, s, 0, 0), h = lines * FONT_LINE + 7, k;
+    int x0 = x - 2, y0 = y, x1 = x + w + 2, y1;
+    if (lines < 1) h = FONT_LINE + 7;
+    y1 = y + h;
+    for (k = 0; k < 6; k++) {
+        int px = x + w / 2 + (tx - (x + w / 2)) * k / 6;
+        int py = (ty > y + h ? y + h - 1 : y) + (ty > y + h ? k : -k);
+        x0 = DOOMO_MIN(x0, px - 5); x1 = DOOMO_MAX(x1, px + 6);
+        y0 = DOOMO_MIN(y0, py); y1 = DOOMO_MAX(y1, py + 1);
+    }
+    b[0] = x0; b[1] = y0; b[2] = x1 - x0; b[3] = y1 - y0;
+}
+#endif
+
 /* ====================================================================== */
 /* drawing helpers                                                          */
 int fc_w(void) { return plat_screen_w(); }
