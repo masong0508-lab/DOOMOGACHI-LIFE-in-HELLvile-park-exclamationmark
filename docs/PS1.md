@@ -1632,8 +1632,8 @@ choice and Cloud Concert 30.00 on both, with one 50 ms frame at the window's sta
 S2-9 above); the choice's first ticks 28.24 on both (two 50 ms frames). No frame over 50 ms in any window. Earlier, on
 `ad06012` with the old windows: the two choice windows 29.85 / 29.75 (a 67 ms frame each) -> 30.00, the last
 vignette's start one 67 ms frame on both builds (the red nightmare is 29-31 ms of CPU a frame here, `perf:` lines).
-`game_smoke` passes. Memory: no resident data; the EXE's code 32 B smaller (`_end` 0x801e0420 -> 0x801e0400,
-130,000 -> 130,032 B below `elf2exe`'s stack top with the boot FMV, on `fe410024` and the landing tip `91479d4c`; the same
+`game_smoke` passes. Memory: no resident data; the EXE's code 32 B smaller (`_end` 0x801e0610 -> 0x801e05f0,
+129,504 -> 129,536 B below `elf2exe`'s stack top with the boot FMV, on the landing tip `8fe2134f`; the same
 32 B on `5aa25cd1` and `e597703e`); the dream overlay group 39 -> 42 KB (its load 182
 -> 186 ms, measured on `ad06012`; 181 -> 195 ms before the bedroom window in this run).
 

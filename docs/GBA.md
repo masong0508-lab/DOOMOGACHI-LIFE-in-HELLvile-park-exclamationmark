@@ -463,6 +463,7 @@ against the LAST row, not against a figure from an older base.
 | S2-4d | S2-4d: the dreams (sky, shapes, floor and outlined text on faster paths, the mirror's flipped face in ARM, the caption's cloud trimmed, the held wake-up choice, the concert's beam calling the checker; docs: "Speed wave 2: S2-4d" below) | after S3-2 (`e597703e`) | 6,420 B | **6,420 B** | 0 B | 6,288 B | measured 2026-11-15 on `e597703e` and that tree + S2-4d, both built clean (`make -C gba sizes`, memreport): `.bss` 254,828 B, `.data` 816 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, all identical; 6,420 B of EWRAM free on both. The dream's state `D` stays 184 B (the held choice's top row is a padding byte). No resident IWRAM: the overlay's **UI group** 10,124 -> 10,100 B of the 3D group's 10,352 B slot (252 B left): the dreams add 584 B (`hshapes_fill`'s inline span fill +172 B, the outline pass `vid_text_dil_ui` 344 B compiled `Os`, `vid_blitn`'s scale-1 line +72 B) and `vid_beam_ui` calling `vid_checker_ui` instead of inlining S2-4b's checker a second time gives back 608 B (without it the link stops at the 6 KB main stack); `plat_tile_rows` is ROM code (a 240 B row on the stack, DMA copies). ROM 9,501,036 -> 9,507,336 B (+6,300: `.text` +6,280, `.rodata` +44, the overlay's copy -24). PS1: `_end` 0x801dfb10 -> 0x801dfaf0 (32 B less code; 132,320 -> 132,352 B below `elf2exe`'s stack top with the boot FMV) |
 | S2-4d | S2-4d: the dreams (sky, shapes, floor and outlined text on faster paths, the mirror's flipped face in ARM, the caption's cloud trimmed, the held wake-up choice, the concert's beam calling the checker; docs: "Speed wave 2: S2-4d" below) | after CR-SLIDERX (`fe410024`) | 6,420 B | **6,420 B** | 0 B | 6,288 B | measured 2026-11-15 on `fe410024` and that tree + S2-4d, both built clean (`make -C gba sizes`, memreport): `.bss` 254,828 B, `.data` 816 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, all identical; 6,420 B of EWRAM free on both. The dream's state `D` stays 184 B (the held choice's top row is a padding byte). No resident IWRAM: the overlay's **UI group** 10,124 -> 10,100 B of the 3D group's 10,352 B slot (252 B left): the dreams add 584 B (`hshapes_fill`'s inline span fill +172 B, the outline pass `vid_text_dil_ui` 344 B compiled `Os`, `vid_blitn`'s scale-1 line +72 B) and `vid_beam_ui` calling `vid_checker_ui` instead of inlining S2-4b's checker a second time gives back 608 B (without it the link stops at the 6 KB main stack); `plat_tile_rows` is ROM code (a 240 B row on the stack, DMA copies). ROM 9,502,056 -> 9,508,356 B (+6,300: `.text` +6,280, `.rodata` +44, the overlay's copy -24). PS1: `_end` 0x801e0420 -> 0x801e0400 (32 B less code; 130,000 -> 130,032 B below `elf2exe`'s stack top with the boot FMV) |
 | S2-4d | S2-4d: the dreams (sky, shapes, floor and outlined text on faster paths, the mirror's flipped face in ARM, the caption's cloud trimmed, the held wake-up choice, the concert's beam calling the checker; docs: "Speed wave 2: S2-4d" below) | after S2-4c (`91479d4c`) | 6,420 B | **6,420 B** | 0 B | 6,288 B | measured 2026-11-15 on `91479d4c` and that tree + S2-4d, both built clean (`make -C gba sizes`, memreport): `.bss` 254,828 B, `.data` 816 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, all identical; 6,420 B of EWRAM free on both. The dream's state `D` stays 184 B (the held choice's top row is a padding byte). No resident IWRAM: the overlay's **UI group** 10,124 -> 10,100 B of the 3D group's 10,352 B slot (252 B left): the dreams add 584 B (`hshapes_fill`'s inline span fill +172 B, the outline pass `vid_text_dil_ui` 344 B compiled `Os`, `vid_blitn`'s scale-1 line +72 B) and `vid_beam_ui` calling `vid_checker_ui` instead of inlining S2-4b's checker a second time gives back 608 B (without it the link stops at the 6 KB main stack); `plat_tile_rows` is ROM code (a 240 B row on the stack, DMA copies). ROM 9,822,216 -> 9,828,516 B (+6,300: `.text` +6,280, `.rodata` +44, the overlay's copy -24). PS1: `_end` 0x801e0420 -> 0x801e0400 (32 B less code; 130,000 -> 130,032 B below `elf2exe`'s stack top with the boot FMV) |
+| S2-4d | S2-4d: the dreams (sky, shapes, floor and outlined text on faster paths, the mirror's flipped face in ARM, the caption's cloud trimmed, the held wake-up choice, the concert's beam calling the checker; docs: "Speed wave 2: S2-4d" below) | after S2-10 (`8fe2134f`) | 6,412 B | **6,412 B** | 0 B | 6,288 B | measured 2026-11-15 on `8fe2134f` and that tree + S2-4d, both built clean (`make -C gba sizes`, memreport): `.bss` 254,836 B, `.data` 816 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, all identical; 6,412 B of EWRAM free on both. The dream's state `D` stays 184 B (the held choice's top row is a padding byte). No resident IWRAM: the overlay's **UI group** 10,124 -> 10,100 B of the 3D group's 10,352 B slot (252 B left): the dreams add 584 B (`hshapes_fill`'s inline span fill +172 B, the outline pass `vid_text_dil_ui` 344 B compiled `Os`, `vid_blitn`'s scale-1 line +72 B) and `vid_beam_ui` calling `vid_checker_ui` instead of inlining S2-4b's checker a second time gives back 608 B (without it the link stops at the 6 KB main stack); `plat_tile_rows` is ROM code (a 240 B row on the stack, DMA copies). ROM 9,823,708 -> 9,830,056 B (+6,348: `.text` +6,328, `.rodata` +44, the overlay's copy -24; 48 B of it the cross-stream fix to S2-10's hold below). PS1: `_end` 0x801e0610 -> 0x801e05f0 (32 B less code; 129,504 -> 129,536 B below `elf2exe`'s stack top with the boot FMV) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -2383,6 +2384,11 @@ caption 10.5, vignette 9-34, badge 3.
   `vid_checker_ui` once per 3-row band instead of holding a second inlined copy of the checker: 812 -> 204 B. Same
   pixels (`blit2test`'s beam check; the concert's four `vhash-seq` windows identical to the tip's), its work per frame
   within 0.2 ms.
+* (Landing, cross-stream, S2-10) `test-cardgone` failed on this tree: after the hub's autosave the busy card stayed
+  12 ticks. It fails on the tip too, at a hold phase the test did not reach (K = 10, 13 ticks); the dreams' code moved
+  the hub's ticks by one. Cause: `hold_settle` (`plat_hold_frame(2)`, `hold.c`) copied the shown page, card and all,
+  into the other page. It now waits a frame while a card painted since the last flip is on the shown page
+  (`loadfade.c` `ld_card_on`); every K from 0 to 11 passes (+48 B of ROM).
 
 **Pixel-changing, GBA only** (owner's speed defaults and the trades of 2026-11-13; before / after screenshots in the
 package's evidence, `pixel_changes/`):
@@ -2452,7 +2458,7 @@ choice's first frame, the choice) and Stitchwick's dream (-3: Endless Doors, The
 | dream: plush dream vignette 3 (Cloud Concert) | 23.2 / 12.6, 63.9 / 67.7 ms, 93 | 30.0 / **30.0**, 25.8 / 30.0 ms, 0 |
 
 Before: the tip `e597703e`; after: that tree + S2-4d (within 0.3 ms on `5aa25cd1`, `366ee6c1`, `249ae551`, `167c08ba` and,
-after, on the landing tip `91479d4c`). Every frame of
+after, on the landing tip `8fe2134f`). Every frame of
 the twelve windows that hold 30 is two vblanks. Thirty more vignettes of twelve other dreams (scratch scripts, 30-tick
 windows, not in the tree; demo residents -8 to -19) hold 30 too, but for the two below. The margins are thin in The
 Mirror (31-32 ms) and Wobbly Teeth (31-32 ms).
@@ -2482,10 +2488,10 @@ Mirror (31-32 ms) and Wobbly Teeth (31-32 ms).
   ROM; it would need its own check on hardware.
 
 **Memory.** EWRAM and resident IWRAM unchanged (the dream's state gains the held choice's row in a padding byte:
-`D` 184 B before and after; 6,420 B of EWRAM free; the main stack 6,288 B). The IWRAM overlay's UI group 10,124 ->
+`D` 184 B before and after; 6,412 B of EWRAM free on the landing tip; the main stack 6,288 B). The IWRAM overlay's UI group 10,124 ->
 10,100 B of the 3D group's 10,352 B slot (252 B left): the dreams add 584 B (`hshapes_fill` +172 B, the outline pass
-344 B, `vid_blitn`'s scale-1 line +72 B) and the beam's call to the checker gives back 608 B. ROM +6,300 B. PS1: the hooks are not built there (weak), the exact steps are; the EXE 32 B
-smaller (ledger row 60).
+344 B, `vid_blitn`'s scale-1 line +72 B) and the beam's call to the checker gives back 608 B. ROM +6,348 B. PS1: the hooks are not built there (weak), the exact steps are; the EXE 32 B
+smaller (ledger row 61).
 
 
 ## 4b. Retained panels (G7, `src/panel.c`)
