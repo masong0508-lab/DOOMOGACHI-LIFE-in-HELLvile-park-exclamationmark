@@ -128,7 +128,7 @@ int  talk_trait_take(const TalkTraitBias *b);
 /* A trait's liking for a topic root only (the stance term): -3..3. */
 int  talk_trait_topic_lean(const TalkTraitSet *ts, int stage, int root);
 
-/* ---- the plan's inputs (TM2c; docs/TALK.md 6j) ------------------------------------- */
+/* ---- the plan's inputs (TM2c; docs/TALK.md 6m) ------------------------------------- */
 /* 1 for an edgy trait (hot-headed, romantic, snob, jealous, mean): it has no effect on a person who is
  * not an adult, nor when anyone who is not an adult is in the room. */
 int  talk_trait_edgy(int t);

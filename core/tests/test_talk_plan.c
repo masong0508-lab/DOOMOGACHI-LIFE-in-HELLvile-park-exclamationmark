@@ -1,5 +1,5 @@
 /* test_talk_plan.c - TM2c: the plan (layer a) and the effective voice (layer c)
- * (core/src/talk_plan.c, talk_gen.c; docs/TALK.md 6j; design TALK_MULTILEVEL.md 2.2, 13 TM2c).
+ * (core/src/talk_plan.c, talk_gen.c; docs/TALK.md 6m; design TALK_MULTILEVEL.md 2.2, 13 TM2c).
  * Owner: TALK. Each test fails without the code it covers.
  *
  *   plan_pure_*                     talk_plan_kind as a pure function: the hard rules, the reason rule, the order

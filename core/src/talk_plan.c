@@ -1,5 +1,5 @@
 /* talk_plan.c - TM2c: the plan of an answer line, layer a (the reaction kind).
- * Owner: TALK. docs/TALK.md 6j; design docs/design/talk/TALK_MULTILEVEL.md 2.1 and 2.2.
+ * Owner: TALK. docs/TALK.md 6m; design docs/design/talk/TALK_MULTILEVEL.md 2.1 and 2.2.
  *
  * talk_plan_kind() is a pure function: it reads a TalkPlanIn (the player's act, the kinds acts.tsv
  * allows after it, the stance as the speaker sees it, the relationship band, the mood band, the
@@ -16,7 +16,7 @@
  * best kind and the next two are kept (TalkPlan.next): when no rule of the best kind passes the
  * guards, talk_gen.c tries the next before it drops the filter and counts a miss.
  * A kind that wins by less than TalkPlanIn.margin is "open" (TPL_OPEN): it is named and recorded but the
- * generator does not filter by it. Measured on the smoke census (docs/TALK.md 6j): a filter on every
+ * generator does not filter by it. Measured on the smoke census (docs/TALK.md 6m): a filter on every
  * line costs 4 points of Surface uniqueness (85.7% to 81.7%); binding only where something decides
  * (a stance, a relationship, a trait, a romance consent) keeps the bank's variety (85.5%).
  *

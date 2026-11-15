@@ -1088,7 +1088,7 @@ int talk_scene_person_x(int i)
 
 const DoomoScene SCENE_TALK = { "TALK", talk_enter, talk_leave, talk_update, talk_draw, 1 };
 
-/* ---- the runner's eyes (DOOMO_TALK_DEBUG: native host and tests only; TALK_DESIGN T8, docs/TALK.md 6j) ----
+/* ---- the runner's eyes (DOOMO_TALK_DEBUG: native host and tests only; TALK_DESIGN T8, docs/TALK.md 6k) ----
  * Read-only views of the screen so scripts can press the pad the way a player does (talk-quick, talk-say,
  * talk-type in core/native/runner_main.c) and the journeys can count the presses. Nothing here changes
  * the talk, and no console build defines the macro (no bytes in the GBA ROM, the PS1 EXE or the DC). */

@@ -719,7 +719,7 @@ typedef struct TalkLine {
     uint16_t topic;                 /* what it is about, TC_NONE                         */
 } TalkLine;
 
-/* ---- TM2c: the plan (core/src/talk_plan.c; docs/TALK.md 6j; design TALK_MULTILEVEL 2.1, 2.2) ----
+/* ---- TM2c: the plan (core/src/talk_plan.c; docs/TALK.md 6m; design TALK_MULTILEVEL 2.1, 2.2) ----
  * The reaction KIND of an answer line (layer a), chosen once per line before the core is picked, from the
  * player's act, the stance, the relationship, the mood, the effective voice, the traits and the liked and
  * disliked topic roots. The core is then picked among the rules whose reply act serves that kind (acts.tsv,

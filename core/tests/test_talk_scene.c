@@ -1,4 +1,4 @@
-/* test_talk_scene.c - SCENE_TALK played through the pad (owner: TK, T8; docs/TALK.md 6j).
+/* test_talk_scene.c - SCENE_TALK played through the pad (owner: TK, T8; docs/TALK.md 6k).
  *
  * The scene is opened the way the house opens it (home_talk_enter) over the real TALK_en.BIN, and every step
  * is a button press, as the runner's talk-* commands do it (core/native/runner_main.c). The runner's eyes on

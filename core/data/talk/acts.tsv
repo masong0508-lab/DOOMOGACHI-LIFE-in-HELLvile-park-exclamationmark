@@ -9,7 +9,7 @@
 #            The first is the default reply act of a core.<act> rule with no
 #            `act:`. talkc refuses a core.<ACT> rule whose reply act is not here,
 #            and a react.<R> rule is only used after a line R may answer.
-#   KINDS    TM2c (the plan, docs/TALK.md 6j): the reaction kinds a reply act serves, comma
+#   KINDS    TM2c (the plan, docs/TALK.md 6m): the reaction kinds a reply act serves, comma
 #            separated, or - for none: accept agree deny refuse deflect counter askback
 #            (talk.h TK_*). The plan picks one kind per answer line; the core is then
 #            picked among the rules whose `act:` serves it. The kinds allowed after a

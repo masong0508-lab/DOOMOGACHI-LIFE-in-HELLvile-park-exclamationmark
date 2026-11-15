@@ -57,7 +57,7 @@ TEST(talk_census_smoke)
               (unsigned long long)r.contexts);
     CHECK(r.kid_rooms * 4 >= r.contexts);               /* the grid really puts children in rooms */
     /* TM2c, the plan: no Q8a (reply kind) and no Q8c (effective voice) failure, whatever the 1% bar; the soft filter
-     * finds a rule for the kind in 99% of the answer lines or more (docs/TALK.md 6j) */
+     * finds a rule for the kind in 99% of the answer lines or more (docs/TALK.md 6m) */
     CHECK_EQ(r.fail[QF_Q8_KIND], 0);
     CHECK_EQ(r.fail[QF_Q8_VOICE], 0);
     CHECK_MSG(r.plan_lines * 10 >= r.contexts * 8, "only %llu answer lines have a plan", (unsigned long long)r.plan_lines);
@@ -68,7 +68,7 @@ TEST(talk_census_smoke)
      * collapses fails here first. The design's smoke bar (90% Surface-unique
      * at 100,000 contexts) is T5b's, with its 6,000 alternatives. */
     /* TM2c: the plan must not cost variety. The old engine measured 85.3% Surface and 85.0% Skeleton unique here
-     * (17,067 and 17,008 of 20,000); a filter on every line gave 81.7% (docs/TALK.md 6j). */
+     * (17,067 and 17,008 of 20,000); a filter on every line gave 81.7% (docs/TALK.md 6m). */
     CHECK_MSG(r.surface.distinct * 1000 >= r.exchanges_ok * 845 && r.skeleton.distinct * 1000 >= r.exchanges_ok * 842,
               "TM2c: Surface %llu / Skeleton %llu distinct of %llu: the plan costs variety", (unsigned long long)r.surface.distinct,
               (unsigned long long)r.skeleton.distinct, (unsigned long long)r.exchanges_ok);

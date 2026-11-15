@@ -1043,7 +1043,7 @@ static void run_line(char *line)
     } else if (strcmp(cmd, "money") == 0) {
         doomo_town.money = (uint32_t)strtoul(argc > 1 ? argv[1] : "0", NULL, 0);
     /* --- end H4 --- */
-    /* --- T8: SCENE_TALK through the pad (see the command list above; docs/TALK.md 6j) --- */
+    /* --- T8: SCENE_TALK through the pad (see the command list above; docs/TALK.md 6k) --- */
     } else if (strncmp(cmd, "talk-", 5) == 0 || strncmp(cmd, "expect-talk", 11) == 0 || strcmp(cmd, "frame-time") == 0) {
         talk_cmd(cmd, argc, argv);
     /* --- end T8 --- */

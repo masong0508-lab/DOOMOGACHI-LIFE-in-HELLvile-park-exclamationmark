@@ -29,6 +29,7 @@ Contents:
 [6i Traits and the personality API (TM1)](#6i-traits-and-the-personality-api-tm1-traits) ·
 [6k The pointer (T9)](#6k-the-pointer-t9) ·
 [6l The coherence lint and the Q8 census check (TM2b)](#6l-the-coherence-lint-and-the-q8-census-check-tm2b) ·
+[6m The plan: reaction kind and effective voice (TM2c)](#6m-the-plan-reaction-kind-and-effective-voice-tm2c-plan) ·
 [7 Sizes](#7-sizes-measured) ·
 [8 Tests](#8-tests) ·
 [9 Differences from the design](#9-differences-from-the-design) ·
@@ -1257,10 +1258,10 @@ a kid room: the S3 lint replaced none of 1,728 lines over every trait and life s
 On save, `talk_trait_set(id, &ts)` stores the choice for the new resident; the TALK chunk
 carries it. Limits the creator lead must know (TM1 review):
 
-* `TP_REFUSAL` is "an invite reply", not "how they turn you down": before TM2 the preview
-  picks the act, so a reply may be an acceptance (a probe: about 20 of 30 for a mean,
-  hot-headed adult). Do not label it a refusal in the UI. The trait lean on accept and
-  deny is in `talk_trait_bias` / `talk_dm_expect`.
+* `TP_REFUSAL` is a refusal since TM2c (6m): the plan's kind is forced to "no" (96 of 96
+  previews are `TA_NO`; `talk_preview_line` returns the act so you can check). Before TM2c it
+  could be an acceptance. The trait lean on accept and deny is in `talk_trait_bias` /
+  `talk_dm_expect`.
 * Determinism is per town state: the line also reads the hero, the relationship and the
   day. The greeting may name the player "You" (the preview has no avatar name).
 * Explicit trait sets persist only where the `'TALK'` chunk does (the native host). On the
@@ -1271,9 +1272,8 @@ carries it. Limits the creator lead must know (TM1 review):
   in the sim yet. The creator lead or the town move-out path must call
   `talk_mem_forget(id)` when a resident leaves, or the 24 slots fill (`TTE_FULL`).
 
-The preview traits show through the topic they talk about (their liked root)
-and the stance lines; the full multilevel composer (TM2) will make them colour the whole
-line.
+The preview traits show through the topic they talk about (their liked root), the stance
+lines and, since TM2c (6m), the effective voice and the reaction kind: a refusal preview says no.
 
 ### Tests and measurements
 
@@ -1392,6 +1392,139 @@ origin: Surface 17,078 against 17,067 distinct, Skeleton 17,016 against 17,008, 
 5,126, conversations 1,000 of 1,000 in both, quality 20,000 passed in both, Q5 repeats 1 against 3.
 
 ---------------------------------------------------------------------------
+## 6m. The plan: reaction kind and effective voice (TM2c-PLAN)
+
+Owner decision 2026-11-15 ("TALK DYNAMIC, MULTILEVEL, PERSONALITY SCREEN"). Design:
+`docs/design/talk/TALK_MULTILEVEL.md` 2.1, 2.2, 2.4 and 13 (TM2c). Layers a (the reaction)
+and c (the colour) of the composer. Layer b stays at depth 0 and layer d as it is today.
+The line bank is untouched (no line added, none deleted). Files: `core/src/talk_plan.c`,
+`talk_gen.c`, `talk_traits.c`, `core/data/talk/acts.tsv`, `talkc_gen.py`,
+`core/tests/test_talk_plan.c`, `core/tests/talk_gen/plan.tlk`.
+
+### The plan
+
+An answer line gets one reply kind before its core is picked (`TalkPlan`, 11 bytes, on the stack):
+accept, agree, deny, refuse, deflect, counter, ask back (`TK_*`). `talk_plan_kind()` is a
+pure function of a `TalkPlanIn` (a test can drive it without a database):
+
+    score(K) = base + 4*lean*sign(K) + rel + mood + voice + 2*trait + topic + noise(0..2)
+
+* `base`: 3 for the kinds the default reply act of `acts.tsv` serves, 1 for the others.
+* `lean` (-2..2): the stance as the speaker sees it. `talk_gen_stance` now keeps its score
+  (`stance_score`); the liked / disliked topic roots and the traits already moved it (TM1). Lean
+  is the score banded: +-2 is a strong stance. `sign(K)` is +1 for accept and agree, -1 for
+  deny and refuse.
+* `rel`: strangers refuse personal asks, friends accept, best friends, partners and family
+  accept and agree, rivals deny and deflect and do not accept.
+* `mood`: happy accepts, sad counters, angry denies, tired refuses invites, scared refuses or
+  deflects, weird counters.
+* `voice`: from the effective sliders (below): blunt denies, polite agrees, easygoing accepts
+  and deflects, serious does not deflect, quirky counters and deflects.
+* `trait`: `talk_trait_bias` of the speaker's set in this room (accept, deny), twice.
+* `topic`: a liked root accepts or agrees (+2), a disliked root refuses or deflects (+3).
+* `noise`: 0..2 per kind from a small RNG seeded with the conversation seed, the turn, the
+  speaker and the line count: the same talk gives the same plan on every platform.
+
+A kind against the lean (a "no" to what they like) needs a reason that is not the dice:
+rel + mood + voice + trait + topic adding to 2 or more (`TPL_REASON`); without one it only
+wins when nothing else is allowed. The best three kinds are kept: when no rule of the best kind
+passes the guards, `gen_line` tries the next (`talk_plan_next`) before it drops the filter.
+
+**Hard rules, in code.** The plan never runs for a safety act, `TA_UNKNOWN`, a grief topic
+(`TCF_GRIEF`), the pet, or a gate refusal (those keep the old sincere path, no plan, no hook).
+A romance act is accepted, deflected or refused (`TalkConv.consent` decides; +8 or -8), never
+countered or asked back. A hug toward a child or in a kid room is accepted or refused. With a
+minor anywhere (speaker, addressee, listener, avatar) the cool reply acts (tease, mock,
+insult, threaten) are never picked by a plan line, and a kind only they served is not allowed.
+
+### Which kinds a reply act serves, and what is allowed after an act
+
+`acts.tsv` has a fourth column, KINDS (`-` for none). talkc writes it into the acts table
+(`row[14]`: the kinds this act serves as a reply) and computes `row[15]`: the kinds allowed after
+a player's act, the union over the reply acts for which the bank **really has a rule** (an empty
+cell of the bank allows no kind: `ask_who` has no "answer"). `talk_gen_kinds_of` and
+`talk_gen_kinds_after` read them. `ANSWER` and `OFFER` serve accept and counter, `NO` serves deny
+and refuse, `AGREE` serves accept and agree.
+
+### The soft filter, and when the plan binds
+
+`pick()` skips a core rule whose reply act does not serve the plan's kind (`kind_serves`), for the
+core part only. No rule left: next best kind; none left: the filter drops, the line is made as
+before and `TPL_MISS` is set. The census counts misses: 3 of 19,305 answer lines (0.02%).
+
+A filter on every line costs variety: Surface uniqueness in the smoke census fell from 85.7% to
+81.7% (restricting the pool of alternatives makes repeats likelier). So a kind **binds** only when
+it wins by a margin: 2 points for questions and requests (the `ASK` class: an opinion, a favour, a
+fact; free in the census) and 8 points for every other act (only a decided stance, a
+relationship or a trait gets there). Below the margin the plan is **open** (`TPL_OPEN`): the kind
+is named and recorded but the generator does not filter by it. 4,178 of 19,305 answer lines bind
+(22%). The two constants are `PLAN_MARGIN_ASK` and `PLAN_MARGIN` in `talk_gen.c`; each point of
+margin you lower buys more coherence for about 0.1 point of Surface. A line can also use the
+kind itself: the new guard `kind=accept|agree|deny|refuse|deflect|counter|askback` holds when the
+plan has that kind (a rule that must say "no" only when the plan says no).
+
+### Layer c: the effective voice, and `trait=`
+
+`setup()` computes the speaker's effective sliders: the stored sliders plus the trait deltas
+(`talk_trait_slider_delta`: twice the table's pull per trait, capped at +-6 a slider), clamped
+0..15. The voice guards (`polite`, `blunt`, `flat`, `loud`, `serious`, `easygoing`, `quirky`,
+`quick`, `slow`), the opener odds and the exclamation budget read them. `persona_type()` (the
+title, the tics) still reads the stored sliders, as does the 16-type `type=` guard.
+`talk_gen_eff_persona(id, minor_room, out)` gives the same numbers to tools.
+
+The edgy traits (hot-headed, romantic, snob, jealous, mean) are inert for a minor speaker and when
+any minor is in the room: `talk_trait_room` drops them from the set the engine reads, so they
+change no slider, no stance, no bias, no plan and no `trait=` guard. The new guard `trait=shy`
+(and the other 23 names: `hotheaded romantic goofball snob neat slob bookworm cheerful gloomy
+jealous loyal mean kind lazy ambitious paranoid self_assured shy outgoing creative glutton morbid
+curious honest`) holds when the speaker has that trait in this room. No bank line uses it yet.
+
+### The census
+
+`QF_Q8_KIND` (Q8a): the reply act serves the plan's kind (unless a miss or an open plan), the kind
+is allowed after the player's act, a kind against the lean has a reason, a romance act is not
+countered, a hug in a kid room is accepted or refused, no cool reply act in a kid room.
+`QF_Q8_VOICE` (Q8c): every voice guard of every alternative used holds for the effective sliders
+(re-derived from the room), the trace's own record of them agrees, a `trait=` guard holds. The
+Q3 voice check and the exclamation budget now read the effective sliders. The report prints the
+plan line: answer lines, open, misses, kinds. The smoke test asserts 0 Q8a, 0 Q8c, misses under
+1%, and Surface / Skeleton at least 84.5% / 84.2% unique.
+
+### The creator's preview
+
+`talk_preview` (and the new `talk_preview_line`, which returns the engine's `TalkLine`) force the
+plan's kind: a greeting accepts, an answer agrees (or denies a topic they dislike), a refusal
+says no (bits 1-3 of `TalkConv.plain`, 0 bytes). A refusal preview says no in 96 of 96 lines
+(every trait, four seeds; `line.act == TA_NO`). The traits colour the line through the voice and
+the stance; two different trait sets give a different line in 44 of 90 previews.
+
+### Tests and measurements
+
+`test_talk_plan.c` (12 tests): the pure function (hard rules, the reason rule, the order),
+stance (lean +: 1,871 of 1,871 accept or agree; lean -: 1,163 of 1,219 deny or refuse),
+trait bias (kind accepts an invitation 100% against mean 53%; lazy refuses 91% against ambitious
+36%), relationship (rival accepts 3%, best friend 100%), sincere bypass (grief, safety, unknown,
+pet, gate refusal: no plan), kid room (no cool reply act in 1,500 lines; 5 edgy traits x 4 stages
+x 13 acts change neither plan, voice nor text), determinism, the guards `kind=` and `trait=` in the
+probe grammar `core/tests/talk_gen/plan.tlk`, the soft filter counting a miss, the effective voice,
+the preview, the acts table. Note: the sim fills some facts lazily on the first read, so the
+very first line of a fresh town can differ from the next identical call.
+
+| | base `04f41ef5` | with TM2c |
+|---|---|---|
+| smoke census Surface / Skeleton / Meaning (distinct of 20,000) | 17,067 / 17,008 / 5,126 | 17,101 / 17,034 / 5,051 |
+| conversations distinct / Q5 repeats | 1,000 / 3 | 1,000 / 1 |
+| quality failures, S3 hits | 0, 0 | 0, 0 (Q8a 0, Q8c 0) |
+| soft-filter misses | | 3 of 19,305 answer lines |
+| MIPS `talk_gen.o` `.text` (gcc -O2, r3000) | 26,664 B | 29,704 B |
+| MIPS `talk_plan.o` / `talk_traits.o` `.text` | | 2,896 B / 14,224 -> 15,008 B |
+| stack: `talk_gen_line` + `gen_line` (MIPS) | 456 + 1,472 B | 592 + 1,536 B |
+| GBA `.text` / `.rodata` (ROM) | 1,486,136 / 7,604,336 | 1,489,944 / 7,604,484 |
+| GBA `.iwram` / `.iwram_bss` / `.bss` / `.data` | 11,272 / 4,088 / 249,084 / 816 | unchanged |
+| PS1 EXE with the boot FMV, below the stack top | PS1_BASE | PS1_MINE |
+
+The stack of one line grows by 200 B (`Gen` carries the plan and the trait set); the generator's
+budget is about 5 KB. Talk is not linked on the PS1 yet, so the PS1 cost is 0 B.
 
 ## 7. Sizes (measured)
 
