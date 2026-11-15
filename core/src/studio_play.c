@@ -171,6 +171,7 @@ static PlayState *ps(void)
     int fresh = 0;
     PlayState *p = (PlayState *)st_tab_state(&fresh);
     if (p && fresh) {
+        if (studio.undo_open) ed_commit();               /* the scratch was taken by another scene mid-take: close its step */
         p->quant = Q_16;
         refresh(p);
     }
@@ -393,10 +394,12 @@ static void service(PlayState *p)
 
 /* ====================================================================== */
 /* tools menu                                                               */
+#if defined(DOOMO_PLATFORM_GBA)
 static void say_row(const PlayState *p)
 {
     st_msg(p->row ? "Pads A B L R: notes 5-8" : "Pads A B L R: notes 1-4");
 }
+#endif
 
 static void play_menu_done(int c)
 {
@@ -435,9 +438,13 @@ static void play_menu_done(int c)
         st_msg(p->chords ? "Chords: I IV V vi" : "Chords: from your song");
         break;
     case 7:
+#if defined(DOOMO_PLATFORM_GBA)
         p->row ^= 1;
         p->stale = 1;
         say_row(p);
+#else
+        rec_start(p);                       /* the route for a pad that cannot make SELECT+START (Dreamcast) */
+#endif
         break;
     default: break;
     }
@@ -446,10 +453,15 @@ static void play_menu_done(int c)
 static void open_menu(PlayState *p)
 {
     static const char *const items[8] = { "Notes / Drums", "Next track", "Quantize", "Overdub / Replace",
-                                          "Loop part", "Next pattern", "Chord set", "Notes 1-4 / 5-8" };
+                                          "Loop part", "Next pattern", "Chord set",
+#if defined(DOOMO_PLATFORM_GBA)
+                                          "Notes 1-4 / 5-8" };
+#else
+                                          "Record a take" };            /* a menu already open while recording stops the take */
+#endif
     if (p->rec) take_end(p);
     song_jam_off(-1);
-    st_popup("Play tools", items, PLAY_KEYS == 4 ? 8 : 7, 0, play_menu_done);   /* the last item is for the 4-pad GBA only */
+    st_popup("Play tools", items, 8, 0, play_menu_done);
 }
 
 /* ====================================================================== */
@@ -537,11 +549,14 @@ int play_prompts(UiPrompt *pr)
 #define PR(b, pri, v) do { pr[n].btn = (uint16_t)(b); pr[n].prio = (uint8_t)(pri); pr[n].verb = (v); n++; } while (0)
     if (studio.sel_held) {                              /* SELECT is down: the shift keys */
         if (!p || !p->mode) PR(BTN_UP | BTN_DOWN, 0, "Octave");
+#if !defined(DOOMO_PLATFORM_DC)                       /* the Dreamcast pad makes SELECT from START: record is in the menu */
         PR(BTN_START, 1, p && p->rec ? "Stop" : "Record");
+#endif
         if (!p || !p->mode) PR(BTN_A, 2, "Chords");
 #if defined(DOOMO_PLATFORM_GBA)
         if (!p || !p->mode) PR(BTN_LEFT | BTN_RIGHT, 3, "Notes");
 #endif
+        PR(BTN_B, 4, "Undo");
         return n;
     }
     if (p && p->rec) {
@@ -552,8 +567,12 @@ int play_prompts(UiPrompt *pr)
     }
     PR(BTN_A, 0, "Note");
     PR(BTN_START, 1, "Play");
+#if defined(DOOMO_PLATFORM_DC)
+    PR(BTN_SELECT, 2, "Tools, record");
+#else
     PR(BTN_SELECT | BTN_START, 2, "Record");
     PR(BTN_SELECT, 3, "Tools");
+#endif
 #undef PR
     return n;
 }

@@ -736,6 +736,32 @@ TEST(studio_play_undo_during_a_take_takes_back_what_was_recorded_so_far)
     CHECK(studio.song.notes[0][0][5] == 0);
 }
 
+TEST(studio_play_record_from_the_menu_alone_for_a_pad_without_select_start)
+{
+    /* the Dreamcast pad makes SELECT from START+Y, so SELECT+START cannot be pressed there: the menu starts the take */
+    int steps0;
+    open_play();
+    ed_reset();
+    steps0 = ed_undo_steps();
+    menu_pick(7);                                         /* Record a take */
+    CHECK(!song_playing());                               /* the count-in */
+    CHECK(run_count_in() >= 55);
+    hit_at(19, BTN_A);                                    /* step 5 */
+    frames(1, 0);
+    press(BTN_START);                                     /* START alone stops it: no chord needed */
+    CHECK(!song_playing());
+    CHECK_EQ(studio.song.notes[0][0][5], play_degree_note(&studio.song, 0, 0, 0));
+    CHECK_EQ(ed_undo_steps() - steps0, 1);
+    frames(1, BTN_SELECT);                                /* undo is named in the shift prompts */
+    {
+        UiPrompt pr[UI_PROMPTS_MAX];
+        int n = tab_prompts(STAB_PLAY, pr), i, has = 0;
+        for (i = 0; i < n; i++) if (pr[i].btn == BTN_B && !strcmp(pr[i].verb, "Undo")) has = 1;
+        CHECK(has);
+    }
+    frames(1, 0);
+}
+
 TEST(studio_play_prompt_bar_names_the_pad_buttons)
 {
     UiPrompt pr[UI_PROMPTS_MAX];

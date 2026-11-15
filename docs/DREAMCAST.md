@@ -2716,4 +2716,4 @@ Run on KallistiOS / Flycast by the lander (2026-11-15, after the review fix): `m
 `make -C dc` builds with the PLAY tab (shared core code only; no `dc/` file changed). Flycast speed tour
 (`sh dc/harness/speed2.sh OUT studio_play studio`, 2026-11-15): every PLAY window 30.0 logic ticks/s, work mean 3.5-4.8 ms (worst 7.3 ms), the
 other studio windows 3.5-9.6 ms, no tick over 33.3 ms. The pad layout is the two-row one (A B L R / X Y L2 R2, d-pad chords); on this pad Y, L2 and
-R2 are pads on the PLAY tab (undo and the tab change stay the SELECT chords, SELECT being START+Y on the Dreamcast pad: Y sounds its pad note while the chord is made). `make dc-host-test` PASS.
+R2 are pads on the PLAY tab (undo and the tab change stay the SELECT chords, SELECT being START+Y on the Dreamcast pad: Y sounds its pad note while the chord is made). SELECT+START cannot be pressed on the pad (START+Y gives SELECT with START cleared), so on the Dreamcast build a take starts from SELECT, Tools, "Record a take"; START alone stops it, and the prompt bar names that route. `make dc-host-test` PASS.
