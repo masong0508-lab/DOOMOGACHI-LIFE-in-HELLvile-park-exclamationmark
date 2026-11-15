@@ -1,0 +1,67 @@
+From 9eb990fbf757279824be42522477627153f1b7b1 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:37:51 +0000
+Subject: [PATCH 5/6] LV6a: splitter copies spawn before the kill event (event
+ waits for the last copy); test
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvXV9YcGJn2CBo4zvt
+---
+ core/src/actor.c              |  3 ++-
+ core/tests/test_levels_foes.c | 23 +++++++++++++++++++++++
+ 2 files changed, 25 insertions(+), 1 deletion(-)
+
+diff --git a/core/src/actor.c b/core/src/actor.c
+index 4df36722..a9dbf5e0 100644
+--- a/core/src/actor.c
++++ b/core/src/actor.c
+@@ -1549,10 +1549,11 @@ int actor_damage(int idx, int dmg, int src, int angle, int knock, int fx, int he
+         a->vz = INT2FIX(3);
+         actor_gore(idx, overkill);
+         audio_sfx(SFX_DEMON_DIE);
+-        combat_on_kill(idx, src == PLAYER_OWNER, headshot);
+ #if FOES_NEW
++        /* copies first: the kill group must still count them when combat_on_kill looks */
+         if (ai_st[idx] & AIF_SPLITTER) ai_split(idx);
+ #endif
++        combat_on_kill(idx, src == PLAYER_OWNER, headshot);
+         return 1;
+     }
+     if (rng_range(&doomo_rng, 256) < di->pain && a->state != AST_CHARGE && a->state != AST_WINDUP) {
+diff --git a/core/tests/test_levels_foes.c b/core/tests/test_levels_foes.c
+index f67fcae6..09c44346 100644
+--- a/core/tests/test_levels_foes.c
++++ b/core/tests/test_levels_foes.c
+@@ -117,6 +117,29 @@ TEST(foes_splitter_leaves_two_halves)
+     CHECK_EQ(alive_demons(THING_IMPLING), 0);
+ }
+ 
++/* a kill-group splitter must not fire its event until the last copy is dead */
++TEST(foes_splitter_kill_event_waits_for_copies)
++{
++    int a, i, fired9;
++    arena();
++    a = mk(THING_IMPLING, 16, 10, AIF_SPLITTER);
++    doomo_actors[a].tflags |= THF_KILL_EVENT;
++    doomo_actors[a].arg = 9;
++    actor_damage(a, 500, PLAYER_OWNER, 0, 0, 0, 0);
++    CHECK_EQ(actor_kill_group_alive(9), 2);
++    fired9 = (combat_s.fired[9 >> 3] & (1 << (9 & 7))) != 0;
++    CHECK_EQ(fired9, 0);
++    for (i = 0; i < ACTOR_MAX; i++)
++        if (i != a && (doomo_actors[i].flags & AF_USED) && doomo_actors[i].type == THING_IMPLING && doomo_actors[i].hp > 0) {
++            actor_damage(i, 500, PLAYER_OWNER, 0, 0, 0, 0);
++            fired9 = (combat_s.fired[9 >> 3] & (1 << (9 & 7))) != 0;
++            if (actor_kill_group_alive(9) > 0) CHECK_EQ(fired9, 0);
++        }
++    CHECK_EQ(actor_kill_group_alive(9), 0);
++    fired9 = (combat_s.fired[9 >> 3] & (1 << (9 & 7))) != 0;
++    CHECK_EQ(fired9, 1);
++}
++
+ /* ---- 3. thief: a melee hit steals and the thief runs ---------------------------------------------- */
+ TEST(foes_thief_steals_then_runs)
+ {
+-- 
+2.43.0
+

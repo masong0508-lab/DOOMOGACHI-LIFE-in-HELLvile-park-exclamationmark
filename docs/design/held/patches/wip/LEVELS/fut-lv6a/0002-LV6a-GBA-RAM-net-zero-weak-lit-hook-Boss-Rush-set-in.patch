@@ -1,0 +1,190 @@
+From 782b007de989cd0e20026c49b138901d58c17c7d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 18:47:09 +0000
+Subject: [PATCH 2/6] LV6a: GBA RAM net zero (weak lit hook, Boss Rush set in
+ am.boss_cycle, packed AI bytes)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cvXV9YcGJn2CBo4zvt
+---
+ core/src/actor.c              |  8 ++++----
+ core/src/arena_modes.c        | 19 +++++++++++++++----
+ core/src/combat_int.h         |  2 +-
+ core/src/levels_int.h         |  5 +++--
+ core/tests/test_levels_foes.c | 14 +++++++++-----
+ 5 files changed, 32 insertions(+), 16 deletions(-)
+
+diff --git a/core/src/actor.c b/core/src/actor.c
+index cce8e139..ffafc7b3 100644
+--- a/core/src/actor.c
++++ b/core/src/actor.c
+@@ -40,11 +40,14 @@ static uint16_t ai_st[ACTOR_MAX];
+ #define AI_LOS(i)         ((ai_st[i] & AIS_LOS) != 0)
+ #define AI_LOS_SET(i, v)  (ai_st[i] = (uint16_t)((ai_st[i] & ~AIS_LOS) | ((v) ? AIS_LOS : 0)))
+ #define AI_CLEAR_ALL()    memset(ai_st, 0, sizeof(ai_st))
++/* four bytes together (one word): the three AI globals and the corpse count */
++static uint8_t corpse_count;
+ uint8_t combat_ai_showtime, combat_ai_noise, combat_ai_stolen;
+-int (*combat_ai_lit)(int cx, int cy);
++__attribute__((weak)) int combat_ai_lit(int cx, int cy) { (void)cx; (void)cy; return 0; }
+ static int ai_step_ok(int idx, fix16 nx, fix16 ny);
+ static void ai_thief_grab(int idx);
+ #else
++static int      corpse_count;
+ static uint8_t  ai_flash[ACTOR_MAX];    /* hit flash ticks                     */
+ static uint8_t  ai_los[ACTOR_MAX];      /* cached line of sight to the target  */
+ #define AI_FLASH_CLR(i)   (ai_flash[i] = 0)
+@@ -55,7 +58,6 @@ static uint8_t  ai_los[ACTOR_MAX];      /* cached line of sight to the target  *
+ #define AI_LOS_SET(i, v)  (ai_los[i] = (uint8_t)(v))
+ #define AI_CLEAR_ALL()    (memset(ai_flash, 0, sizeof(ai_flash)), memset(ai_los, 0, sizeof(ai_los)))
+ #endif
+-static int      corpse_count;
+ 
+ #define GRAVITY_FX   ((fix16)75366)          /* 1.15 world units / tick^2 */
+ 
+@@ -234,7 +236,6 @@ void actors_clear(void)
+     AI_CLEAR_ALL();
+ #if FOES_NEW
+     combat_ai_showtime = combat_ai_noise = combat_ai_stolen = 0;
+-    combat_ai_lit = NULL;
+ #endif
+     corpse_count = 0;
+ }
+@@ -801,7 +802,6 @@ unsigned actor_ai(int idx)
+ static int ai_step_ok(int idx, fix16 nx, fix16 ny)
+ {
+     const DoomoActor *a = &doomo_actors[idx];
+-    if (!combat_ai_lit) return 1;
+     return !combat_ai_lit(FIX2INT(nx) / CELLU, FIX2INT(ny) / CELLU) ||
+            combat_ai_lit(FIX2INT(a->x) / CELLU, FIX2INT(a->y) / CELLU);
+ }
+diff --git a/core/src/arena_modes.c b/core/src/arena_modes.c
+index 0a006455..7bf456bd 100644
+--- a/core/src/arena_modes.c
++++ b/core/src/arena_modes.c
+@@ -32,10 +32,10 @@ enum { SHOP_HEART, SHOP_ARMOR, SHOP_AMMO, SHOP_ANGEL, SHOP_FURY, SHOP_GO, SHOP_C
+ 
+ #if FOES_NEW
+ /* LV6a: the lineup comes from the Boss Rush set tables (levels_foes.c); Classic 7 is the old one. */
+-static uint8_t rush_set;                                   /* RUSHSET_* of the next run */
+-#define RUSH_ROUNDS (lv_rush_set[rush_set].n)
+-#define rush_boss(i) (lv_rush_set[rush_set].boss[i])
+-void arena_rush_set(int set) { rush_set = (uint8_t)(lvf_rush_ready(set) ? set : RUSHSET_CLASSIC7); }
++/* The set of a run lives in am.boss_cycle (a Horde field, unused in Boss Rush: no new RAM); it comes in
++ * the scene arg's high bits (ARENA_RUSH_ARG, levels_int.h) and falls back to Classic 7 if not ready. */
++#define RUSH_ROUNDS (lv_rush_set[am.boss_cycle].n)
++#define rush_boss(i) (lv_rush_set[am.boss_cycle].boss[i])
+ #else
+ static const uint8_t rush_lineup[RUSH_ROUNDS] = {
+     LB_CELLAR_WRAITH, LB_GUTTERKING, LB_FLUFFNUTS, LB_WIDOW, LB_BONEBOTTOM, LB_GRUMBLEGUTS, LB_VAPULA
+@@ -171,7 +171,11 @@ static void am_start(void)
+     am.spent = am.payout = 0;
+     am.rewarded = 0;
+     am.boss_spawned = 0;
++#if FOES_NEW
++    if (am.mode != AM_BOSS_RUSH) am.boss_cycle = 0;           /* Boss Rush keeps its set across a retry */
++#else
+     am.boss_cycle = 0;
++#endif
+     am.last_kills = 0;
+     am.start_tick = 0;
+     audio_music(am.mode == AM_BOSS_RUSH ? SONG_BOSS : SONG_INVASION);
+@@ -180,6 +184,13 @@ static void am_start(void)
+ static void am_enter(int arg)
+ {
+     memset(&am, 0, sizeof(am));
++#if FOES_NEW
++    {
++        int set = (arg >> 4) & 3;
++        arg &= 15;
++        am.boss_cycle = (uint8_t)(lvf_rush_ready(set) ? set : RUSHSET_CLASSIC7);
++    }
++#endif
+     am.mode = (uint8_t)(arg >= 0 && arg < AM_COUNT ? arg : AM_HORDE);
+     lv_check_monster();
+     am_start();
+diff --git a/core/src/combat_int.h b/core/src/combat_int.h
+index f4b14561..0f8aa5e7 100644
+--- a/core/src/combat_int.h
++++ b/core/src/combat_int.h
+@@ -102,7 +102,7 @@ enum { AIF_FREEZER = 1, AIF_SPLITTER = 2, AIF_THIEF = 4, AIF_SLEEPER = 8, AIF_ST
+ extern uint8_t combat_ai_showtime;                 /* 1 = the lights are on: freezers freeze        */
+ extern uint8_t combat_ai_noise;                    /* 0..255, raised by the noise rule (LV5)         */
+ extern uint8_t combat_ai_stolen;                   /* thefts so far this session (LV5 reads it)      */
+-extern int (*combat_ai_lit)(int cx, int cy);       /* NULL = no cell is lit                          */
++int combat_ai_lit(int cx, int cy);                 /* 1 = the cell is lit; weak: nothing is lit until a dark level overrides it */
+ void actor_set_ai(int idx, unsigned flags);        /* AIF_* (0 clears)                               */
+ unsigned actor_ai(int idx);
+ 
+diff --git a/core/src/levels_int.h b/core/src/levels_int.h
+index a770b024..582086a2 100644
+--- a/core/src/levels_int.h
++++ b/core/src/levels_int.h
+@@ -260,8 +260,9 @@ typedef struct RushSet {
+     uint8_t boss[RUSH_MAX];   /* LB_* in order                                           */
+ } RushSet;
+ extern const RushSet lv_rush_set[RUSHSET_COUNT];
+-int  lvf_rush_ready(int set);
+-void arena_rush_set(int set);                      /* the set the next Boss Rush runs (Classic 7 if not ready) */                      /* 1 if n > 0 and no boss in it is LBF_UNBUILT */
++int  lvf_rush_ready(int set);                      /* 1 if n > 0 and no boss in it is LBF_UNBUILT */
++/* scene arg of SCENE_ARENA_MODE for a Boss Rush with that set (Classic 7 if the set is not ready) */
++#define ARENA_RUSH_ARG(set) (AM_BOSS_RUSH | ((set) << 4))
+ #endif
+ 
+ /* ---- runtime: one shared state for the session (levels.c) ------------------- */
+diff --git a/core/tests/test_levels_foes.c b/core/tests/test_levels_foes.c
+index 28709f61..c1ff01de 100644
+--- a/core/tests/test_levels_foes.c
++++ b/core/tests/test_levels_foes.c
+@@ -43,7 +43,9 @@ static int alive_demons(int type)
+     return n;
+ }
+ 
+-static int lit_south(int cx, int cy) { (void)cx; return cy >= 16; }
++/* the dark levels override this (weak in actor.c): here the south half of the arena is lit when asked */
++static int g_lit_south;
++int combat_ai_lit(int cx, int cy) { (void)cx; return g_lit_south && cy >= 16; }
+ 
+ /* ---- the four reserved base demons ----------------------------------------------------------- */
+ TEST(foes_new_base_demon_ids)
+@@ -184,7 +186,7 @@ TEST(foes_flee_light_stays_in_the_dark)
+ {
+     int s, c, ys = 0, yc = 0;
+     arena();
+-    combat_ai_lit = lit_south;
++    g_lit_south = 1;
+     s = mk(THING_VAPE_WRAITH, 12, 10, AIF_FLEE_LIGHT);
+     c = mk(THING_VAPE_WRAITH, 20, 10, 0);
+     for (int i = 0; i < 400; i++) {
+@@ -197,6 +199,7 @@ TEST(foes_flee_light_stays_in_the_dark)
+     }
+     CHECK(yc >= 16);                                             /* the control crosses into the light */
+     CHECK(ys < 16);                                              /* the shade never does */
++    g_lit_south = 0;
+ }
+ 
+ /* ---- 7. swimmer: under it cannot be hit, lava does not hurt it ----------------------------------- */
+@@ -284,7 +287,7 @@ TEST(foes_ai_flags_are_per_actor_and_cleared_on_reuse)
+     }
+     combat_ai_showtime = 1; combat_ai_noise = 9; combat_ai_stolen = 3;
+     combat_start_at(MAPID_ARENA, CGOAL_ENDLESS, 16, 22, 3072);   /* a new session clears the globals */
+-    CHECK(!combat_ai_showtime && !combat_ai_noise && !combat_ai_stolen && combat_ai_lit == NULL);
++    CHECK(!combat_ai_showtime && !combat_ai_noise && !combat_ai_stolen);
+ }
+ 
+ /* ---- the skin table ------------------------------------------------------------------------------- */
+@@ -405,8 +408,9 @@ TEST(foes_boss_rush_sets)
+     CHECK_EQ(lvf_rush_ready(RUSHSET_ARREARS), 0);
+     CHECK_EQ(lvf_rush_ready(-1), 0);
+     CHECK_EQ(lvf_rush_ready(RUSHSET_COUNT), 0);
+-    arena_rush_set(RUSHSET_ARREARS);                              /* not ready: falls back to Classic */
+-    arena_rush_set(RUSHSET_CLASSIC7);
++    CHECK_EQ(ARENA_RUSH_ARG(RUSHSET_CLASSIC7), AM_BOSS_RUSH);
++    CHECK_EQ(ARENA_RUSH_ARG(RUSHSET_ARREARS) & 15, AM_BOSS_RUSH);
++    CHECK_EQ(ARENA_RUSH_ARG(RUSHSET_ARREARS) >> 4, RUSHSET_ARREARS);
+ }
+ 
+ #endif /* FOES_NEW */
+-- 
+2.43.0
+
