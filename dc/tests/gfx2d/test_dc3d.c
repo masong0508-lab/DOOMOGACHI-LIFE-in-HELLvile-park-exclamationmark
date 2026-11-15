@@ -518,6 +518,75 @@ static void test_sort(void)
     CHECK(g == 40, "sort: 40 textures x 3 give %d runs, want 40", g);
 }
 
+/* DC6D: the textures a segment remembers (the LRU marks): the distinct ones in order of first appearance,
+ * a slot beyond the stamp table included, no more than DC3D_SEG_TEX with tex_more set; a stamp per slot
+ * must not leak from one segment into the next */
+static void seg_of(const int *tex, int n, const DcSeg **out, int *idx)
+{
+    DcBatch *b;
+    int i;
+    CHECK(dc3d_seg_begin(0, 0, 320, 240), "segtex: a segment opens");
+    for (i = 0; i < n; i++) {
+        DcVert *v = dc3d_poly(DC3D_OPAQUE, tex[i], 3);
+        if (v) memset(v, 0, 3 * sizeof(*v));
+    }
+    b = dc3d_batch(dc3d_cur_slot());
+    *idx = b->nseg - 1;
+    dc3d_seg_end();
+    *out = &b->seg[*idx];
+}
+
+static void test_seg_textures(void)
+{
+    static const int a[] = { 5, 3, 5, 9, 3, 200, 2500, 7, 2500, 5, -1, 7 };   /* -1: untextured, not remembered */
+    static const int want[] = { 5, 3, 9, 200, 2500, 7 };
+    static const int b[] = { 3, 7, 3 };
+    int many[100], i, idx;
+    const DcSeg *s;
+    plat_begin_frame();
+    seg_of(a, 12, &s, &idx);
+    CHECK(s->ntex == 6 && !s->tex_more, "segtex: %d textures (want 6), more %d", s->ntex, s->tex_more);
+    for (i = 0; i < 6 && i < s->ntex; i++) CHECK(s->tex[i] == want[i], "segtex: entry %d is %d, want %d", i, s->tex[i], want[i]);
+    seg_of(b, 3, &s, &idx);                         /* the next segment starts with an empty set */
+    CHECK(s->ntex == 2 && s->tex[0] == 3 && s->tex[1] == 7, "segtex: the second segment has %d textures (%d %d), want 3 7",
+          s->ntex, s->tex[0], s->tex[1]);
+    for (i = 0; i < 100; i++) many[i] = 10 + i;
+    seg_of(many, 100, &s, &idx);                    /* more than it can hold */
+    CHECK(s->ntex == DC3D_SEG_TEX && s->tex_more, "segtex: 100 textures give %d, more %d", s->ntex, s->tex_more);
+    for (i = 0; i < DC3D_SEG_TEX && i < s->ntex; i++) CHECK(s->tex[i] == 10 + i, "segtex: entry %d is %d", i, s->tex[i]);
+    plat_end_frame();
+}
+
+/* DC6D: a view call that shows an earlier segment again: only a marker, over the stored viewport */
+static int markers_of(const DcFrame *f, int slot, int seg)
+{
+    int i, n = 0;
+    for (i = 0; i < f->n; i++)
+        if (f->prims[i].mode == DC2D_VIEW3D && dc3d_marker_slot(&f->prims[i]) == slot && dc3d_marker_seg(&f->prims[i]) == seg) n++;
+    return n;
+}
+
+static void test_seg_repeat(void)
+{
+    static const int t[] = { 4, 4, 6 };
+    const DcSeg *s;
+    int idx, slot, n;
+    plat_begin_frame();
+    seg_of(t, 3, &s, &idx);
+    slot = dc3d_cur_slot();
+    plat_end_frame();
+    plat_begin_frame();                             /* the next frame: that segment is in the other slot */
+    n = (int)dc3d_stats.segs;
+    CHECK(dc3d_cur_slot() != slot, "repeat: the next frame builds in slot %d", dc3d_cur_slot());
+    CHECK(dc3d_seg_repeat(slot, idx) == 1, "repeat: the earlier segment cannot be shown again");
+    CHECK(dc3d_seg_repeat(slot, idx + 1) == 0, "repeat: a segment that does not exist was shown");
+    CHECK(dc3d_seg_repeat(dc3d_cur_slot(), 0) == 0, "repeat: the segment being built was shown");
+    CHECK(dc3d_seg_repeat(DC3D_HELD, 0) == 0, "repeat: the held batch was shown");
+    CHECK((int)dc3d_stats.segs == n, "repeat: a repeat counted as a built segment");
+    plat_end_frame();
+    CHECK(markers_of(dc2d_last(), slot, idx) == 1, "repeat: %d markers in the list, want 1", markers_of(dc2d_last(), slot, idx));
+}
+
 int main(void)
 {
     NatOptions o;
@@ -538,6 +607,8 @@ int main(void)
     test_repeat();
     test_budget();
     test_sort();
+    test_seg_textures();
+    test_seg_repeat();
     printf("dc3d tests: %d checks, %d failed\n", checks, fails);
     return fails ? 1 : 0;
 }

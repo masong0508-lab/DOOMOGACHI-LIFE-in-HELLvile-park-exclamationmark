@@ -121,6 +121,7 @@ typedef struct Dc3dStats {
     uint32_t deferred;                     /* DC6B: sprites that waited a tick for their texture (the budget) */
     uint32_t cut_n;                        /* DC6B: first-person views the tick's budget cut short */
     uint16_t cast_dist, cast_min;          /* ... the last view's ray distance in cells, the shortest of all */
+    uint32_t held_n, bare_n;               /* DC6D: views shown again from the last tick / drawn as the backdrop alone (no time left) */
 } Dc3dStats;
 extern Dc3dStats dc3d_stats;
 
@@ -148,6 +149,9 @@ void     dc3d_seg_mark(int slot, int seg, uint32_t frame);      /* texture LRU *
  * (reset first when `reset`); the new segment index, -1 if it does not fit
  * (its polygons then count in dc3d_stats.dropped) */
 int      dc3d_hold_seg(int slot, int seg, int reset);
+/* DC6D: a marker for segment `seg` of `slot` (a built earlier frame's, not the one being built), the view's
+ * call shows that picture again; 0 when there is no such segment */
+int      dc3d_seg_repeat(int slot, int seg);
 
 /* ---- the camera (dc3d.c): a pinhole looking along `fwd` ------------------------------ */
 typedef struct Dc3dCam {

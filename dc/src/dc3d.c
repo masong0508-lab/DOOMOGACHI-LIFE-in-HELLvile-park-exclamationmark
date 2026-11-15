@@ -174,17 +174,29 @@ static uint32_t seg_cost(const DcBatch *b, const DcSeg *s)
     return bytes;
 }
 
+/* the distinct textures of a segment, in the order they first appear (DC6D: a stamp per texture slot
+ * instead of a scan of the list for every polygon: 918 polygons x up to 64 textures was 2.7 ms of
+ * a 14 ms view on Flycast). Slots past the stamp table (never so far) take the scan. */
+#define SEG_STAMPS 2112                    /* texcache.c: 8 static + 2048 dynamic slots */
+static uint32_t seg_stamp[SEG_STAMPS], seg_stamp_n;
+
 static void seg_textures(const DcBatch *b, DcSeg *s)
 {
     uint32_t i;
     int k;
     s->ntex = 0;
     s->tex_more = 0;
+    if (++seg_stamp_n == 0) { memset(seg_stamp, 0, sizeof(seg_stamp)); seg_stamp_n = 1; }
     for (i = s->poly0; i < s->poly0 + s->npoly; i++) {
         uint16_t t = b->p[i].tex;
         if (t == DC2D_NOTEX || t == DC3D_TEX_BLOB) continue;
-        for (k = 0; k < s->ntex && s->tex[k] != t; k++) {}
-        if (k < s->ntex) continue;
+        if (t < SEG_STAMPS) {
+            if (seg_stamp[t] == seg_stamp_n) continue;
+            seg_stamp[t] = seg_stamp_n;
+        } else {
+            for (k = 0; k < s->ntex && s->tex[k] != t; k++) {}
+            if (k < s->ntex) continue;
+        }
         if (s->ntex == DC3D_SEG_TEX) { s->tex_more = 1; return; }
         s->tex[s->ntex++] = t;
     }
@@ -213,6 +225,19 @@ void dc3d_seg_end(void)
     if (s->bytes > dc3d_stats.bytes_max) dc3d_stats.bytes_max = s->bytes;
     dc2d_view3d(cur_slot, seg_open, s->vx0, s->vy0, s->vx1, s->vy1);
     seg_open = -1;
+}
+
+/* DC6D: a view call that shows an earlier segment again (the tick had no time to build one): the marker
+ * only, over the stored viewport. The caller keeps the segment's batch slot untouched. */
+int dc3d_seg_repeat(int slot, int seg)
+{
+    const DcBatch *b = dc3d_batch(slot);
+    const DcSeg *s;
+    if (slot == cur_slot || slot == DC3D_HELD || seg < 0 || seg >= b->nseg) return 0;
+    s = &b->seg[seg];
+    if (!s->npoly) return 0;
+    dc2d_view3d(slot, seg, s->vx0, s->vy0, s->vx1, s->vy1);
+    return 1;
 }
 
 uint32_t dc3d_seg_bytes(int slot, int seg)
