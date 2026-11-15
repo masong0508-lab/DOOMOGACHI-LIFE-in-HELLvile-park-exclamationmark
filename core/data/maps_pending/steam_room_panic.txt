@@ -1,0 +1,220 @@
+# Steam Room Panic - Hell Breach 8 (owner: LEVELS-3; plan section 3, HB8).
+# The Bath House after dark: a spa-day parody. Lobby -> changing rooms (locker 13 is a
+# secret door) -> the Great Bath (scalding pools, a balcony) -> the boiler basement (valves) ->
+# the sauna (thick steam) -> two steam jets up to the rooftop cold plunge, the Baron's hot tub.
+# Valves (A at a wheel): v1 cools the pools and channels, v2 clears the boiler's fog,
+# v3 clears the Great Bath's fog, v4 clears the sauna's. All four vented: the Baron is routed.
+# Gentlest of the 24 levels. GBA level: gba yes (budgets checked by mapc and levelcheck).
+# The thing indices of the usables are in the `on use` lines below (index 0 is the start).
+format 2
+map steam_room_panic
+title "Steam Room Panic"
+kind dungeon
+sky NIGHT_STARS
+music HELL_BREACH
+ambient 9
+view 14
+gba yes
+detail props,fx,far
+
+cell # wall=STEAM_TILE
+cell B wall=PASTEL_BRICK
+cell W wall=WOOD_WALL ch=8
+cell P wall=PIPE_STEEL
+cell . floor=TILE_FLOOR ceil=STEAM_TILE fh=0 ch=12 light=11
+cell p like=. thing=PLAYER_START angle=270
+cell l floor=WOOD_FLOOR ceil=STEAM_TILE fh=0 ch=10 light=10
+cell D floor=TILE_FLOOR ceil=DOOR_CUTE fh=0 ch=10 flags=door
+cell s floor=WOOD_FLOOR ceil=WOOD_WALL fh=0 ch=10 flags=door
+cell z floor=WOOD_FLOOR ceil=STEAM_TILE fh=0 ch=10 light=13 flags=secret
+cell L floor=WOOD_FLOOR ceil=STEAM_TILE fh=12 ch=22 light=10
+cell S floor=WOOD_FLOOR ceil=WOOD_WALL fh=12 ch=22 flags=door
+cell Z floor=WOOD_FLOOR ceil=STEAM_TILE fh=12 ch=22 light=13 flags=secret
+cell h floor=TILE_FLOOR ceil=STEAM_TILE fh=0 ch=26 light=9
+cell u floor=TILE_FLOOR ceil=STEAM_TILE fh=12 ch=26 light=10
+cell ~ floor=LAVA ceil=STEAM_TILE fh=-3 ch=26 light=12 flags=lava
+cell w floor=WATER ceil=STEAM_TILE fh=-3 ch=26 light=11 flags=water
+cell b floor=TILE_FLOOR ceil=PIPE_STEEL fh=-2 ch=12 light=8
+cell = floor=LAVA ceil=PIPE_STEEL fh=-4 ch=12 light=12 flags=lava
+cell c floor=WATER ceil=PIPE_STEEL fh=-4 ch=12 light=10 flags=water
+cell g floor=GRATE ceil=PIPE_STEEL fh=-2 ch=12 light=8
+cell f floor=WOOD_FLOOR ceil=WOOD_WALL fh=4 ch=12 light=8
+cell k floor=WOOD_FLOOR ceil=WOOD_WALL fh=10 ch=18 light=8
+cell r floor=TILE_FLOOR ceil=sky fh=16 light=14
+cell t floor=WATER ceil=sky fh=14 light=14 flags=water
+cell q floor=TILE_FLOOR ceil=sky fh=22 light=15 flags=secret
+cell e floor=TILE_FLOOR ceil=STEAM_TILE fh=16 ch=26 light=13
+cell x floor=TILE_FLOOR ceil=DOOR_HELL fh=16 ch=26 light=13 flags=door tag=20
+cell X floor=TILE_FLOOR ceil=STEAM_TILE fh=16 ch=26 light=15 flags=exit
+
+grid
+########################################
+###############rrrrrrqq#################
+###############rrrrrrqq#################
+###########eee#rrrrttrr#################
+###########Xeexrrrrttrr##fffffffffffff##
+###########eee#rrrrrrrr##fffffffffffff##
+###############rrrrrrrrkkfffffffffffff##
+###############rrrrrrrrkkffffffffBBBff##
+######LLLLZL###rrrrrrrr##ffBBBffffffff##
+######LLLLLL#############fffffffffffff##
+########S################fffffffffffff##
+#uuuuuuuuuuuuuuuuuu######fffffffffffff##
+#uuuuuuuuuuuuuuuuuu###########f#########
+#uuuuuuuuuuuuuuuuuu###########h#########
+#hhhh~~~~~~~~~~hhhh#bbbbb==bbbbbb==bbb##
+#hhhh~~~~~~~~~~hhhh#bbbbb==bbbbbb==bbb##
+#hhhh~~~~~~~~~~hhhh#bbbbb==bbbbbb==bbb##
+#hhhh~~~~~~~~~~hhhh#bbbbb==bbbbbb==bbb##
+#hhhh~~~~~~~~~~hhhh#bbbbbggbbbbbbggbbb##
+#hhhh~~~~~~~~~~hhhh#bbbbb==bbbbbb==bbb##
+#hhhhhhhhhhhhhhhhhhDbbbbb==bbbbbb==bbb##
+#hhhhhhhhhhhhhhhhhh#bbbbb==bbbbbb==bbb##
+#######D############bbbbb==bbbbbb==bbb##
+#lllllllllllll#lllllll##################
+#llWlWlWlWlWll#lllllll##################
+#lllllllllllllslllzlll##################
+#lWlWlWlWlWlWl#lllllll##################
+#lllllllllllll#lllllll##################
+#######D################################
+#.........BBB.............BBBB.........#
+#......................................#
+#..p...................................#
+#......................................#
+########################################
+end
+
+floorh
+.
+...............ggggggmm
+...............ggggggmm
+...........ggg.ggggeegg
+...........ggggggggeegg..4444444444444
+...........ggg.gggggggg..4444444444444
+...............ggggggggaa4444444444444
+...............ggggggggaa4444444444444
+...............gggggggg..4444444444444
+.........................4444444444444
+.........................4444444444444
+.cccccccccccccccccc......4444444444444
+.cccccccccccccccccc...........4
+.cccccccccccccccccc...........1
+.....CCCCCCCCCC..cc.BBBBBDDBBBBBBDDBBB
+.....CCCCCCCCCC..99.BBBBBDDBBBBBBDDBBB
+.....CCCCCCCCCC..66.BBBBBDDBBBBBBDDBBB
+.....CCCCCCCCCC..33.BBBBBDDBBBBBBDDBBB
+.....CCCCCCCCCC.....BBBBBBBBBBBBBBBBBB
+.....CCCCCCCCCC.....BBBBBDDBBBBBBDDBBB
+....................BBBBBDDBBBBBBDDBBB
+....................BBBBBDDBBBBBBDDBBB
+....................BBBBBDDBBBBBBDDBBB
+end
+
+# fog: the Great Bath (v3), the boiler basement (v2), the sauna (v4); a valve clears its fog
+zone 1 11 18 21 fog arg=8 tag=30
+zone 20 14 37 22 fog arg=7 tag=31
+zone 25 4 37 11 fog arg=5 tag=32
+# the lobby is a safe room: the valves are taught here (v3's twin is on the lobby wall sign)
+zone 1 29 38 32 safe tag=5
+# steam jets: each throws you up a level (sauna -> ledge -> roof; a third reaches the roof tank)
+zone 25 6 25 7 bounce arg=6
+zone 23 6 23 6 bounce arg=6
+zone 21 3 21 3 bounce arg=7
+
+# the pools and channels turn warm when v1 is turned
+swap pools_cool
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.....wwwwwwwwww..........cc......cc
+.....wwwwwwwwww..........cc......cc
+.....wwwwwwwwww..........cc......cc
+.....wwwwwwwwww..........cc......cc
+.....wwwwwwwwww
+.....wwwwwwwwww..........cc......cc
+.........................cc......cc
+.........................cc......cc
+.........................cc......cc
+end
+
+# things: x y TYPE [angle=deg] [arg=n] [tflags=...] [tflags2=...]
+thing 2 31 PROP_SIGN angle=90
+thing 22 15 PROP_BARREL tflags2=usable arg=1
+thing 36 21 PROP_BARREL tflags2=usable arg=2
+thing 2 15 PROP_BARREL tflags2=usable arg=3
+thing 36 5 PROP_BARREL tflags2=usable arg=4
+thing 8 31 CANDY tflags2=collect arg=1
+thing 20 31 CANDY tflags2=collect arg=2
+thing 35 31 CANDY tflags2=collect arg=3
+thing 2 25 CANDY tflags2=collect arg=4
+thing 12 25 CANDY tflags2=collect arg=5
+thing 4 16 CANDY tflags2=collect arg=6
+thing 9 16 CANDY tflags2=collect arg=7
+thing 11 12 CANDY tflags2=collect arg=8
+thing 22 16 CANDY tflags2=collect arg=9
+thing 28 20 CANDY tflags2=collect arg=10
+thing 27 6 CANDY tflags2=collect arg=11
+thing 17 5 CANDY tflags2=collect arg=12
+thing 14 31 IMPLING angle=180 tflags=not_easy
+thing 22 31 IMPLING angle=180
+thing 31 31 HEALTH_SMALL
+thing 5 30 AMMO_BULLETS
+thing 4 25 IMPLING angle=0 tflags=ambush
+thing 10 25 IMPLING angle=180
+thing 12 27 HEALTH_SMALL
+thing 17 25 HEALTH_BIG
+thing 19 25 ARMOR
+thing 16 24 AMMO_SHELLS
+thing 3 19 IMPLING angle=0
+thing 15 20 PUFF_DEMON angle=180 tflags=ambush
+thing 10 21 IMPLING angle=0 tflags=not_easy
+thing 7 12 HELLHOUND_PUP angle=0
+thing 14 12 IMPLING angle=180
+thing 4 12 HEALTH_SMALL
+thing 8 20 AMMO_BULLETS
+thing 9 9 AMMO_SHELLS
+thing 7 9 SOUL_ORB
+thing 23 17 SLIME_BELCHER angle=0
+thing 29 20 PUFF_DEMON angle=180 tflags=ambush
+thing 35 17 HELLHOUND_PUP angle=180
+thing 30 16 IMPLING angle=90
+thing 22 21 HEALTH_SMALL
+thing 30 21 AMMO_CELLS
+thing 37 16 AMMO_SHELLS
+thing 28 5 PUFF_DEMON angle=180 tflags=ambush
+thing 34 9 PUFF_DEMON angle=180 tflags=ambush
+thing 31 7 SLIME_BELCHER angle=180
+thing 36 10 HEALTH_BIG
+thing 26 10 AMMO_CELLS
+thing 19 5 BRUTE angle=270 tflags=boss,kill_event arg=20
+thing 16 3 IMPLING angle=0 tflags=kill_event arg=20
+thing 16 7 IMPLING angle=0 tflags=kill_event arg=20
+thing 21 7 HELLHOUND_PUP angle=270 tflags=kill_event arg=20
+thing 17 2 HEALTH_BIG
+thing 18 8 AMMO_SHELLS
+thing 21 5 ARMOR
+thing 7 31 PROP_FLOWERS
+thing 30 31 PROP_LAMP
+thing 5 21 PROP_BARREL
+
+# ---- level script (text ids 1000..1099: core/data/levels/steam_room_panic.txt) ----
+on start do caption 1000 ; set 0 0
+on enter 5 do bark 1004
+on use 4 do post 30 ; add 0 1 ; bark 1010
+on use 3 do post 31 ; add 0 1 ; bark 1011
+on use 5 do post 32 ; add 0 1 ; bark 1012
+on use 2 do swap pools_cool ; post 33 ; add 0 1 ; bark 1013
+on var 0 4 do caption 1020 ; post 40
+on kill 20 do caption 1030
+on timer 1800 do bark 1060

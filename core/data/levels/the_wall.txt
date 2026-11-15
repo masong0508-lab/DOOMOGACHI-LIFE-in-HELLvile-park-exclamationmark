@@ -1,0 +1,51 @@
+# HB12 The Wall (a dark level): the level's text (ids 1400..1499; the range of LV_ index 11).
+# Abandonment and what the town's deal cost, played straight. The two faces: A is Hillvile (pastel murals), B is
+# Hellvile (soot, bunks, photos pinned facing the bricks). Bleak jokes only (j). No child is harmed or in danger;
+# no self-harm. Tallyworn counts tallies: his count goes up by one with each find.
+
+# the intro caption and the card line
+1400 | THE WALL\nThe shift is not over.
+1499 | Levers flip the Wall's two\nfaces. Each face has other doors.
+
+# the gatehouse (the safe room: the levers are taught here)
+1401 | THANK YOU FOR NOT LOOKING.
+1402 | Tallyworn: "I put the chalk\ndown. Then I wrote 3,661 anyway."
+1404 | Step on a lever pad to flip the\nWall. The other face has doors.
+
+# the levers, in the order the map's script uses them
+1410 | The Wall turns over. The other\nface is waiting.
+1411 | Thirteen flips. The Wall is\ndizzy.
+1412 | Face A: Hillvile. Pastel bricks.\nA mural smiles at nothing.
+1413 | Face B: Hellvile. Soot. A bunk,\nmade up. Waiting for someone.
+
+# the Foreman (boss), the taunt and the ending
+1430 | The Foreman crumbles. Somewhere,\nsomebody sets down a trowel.
+1431 | THE FOREMAN\nTen Years on the Job
+1432 | Nobody leaves before the shift\nends.
+1433 | TALLYWORN, on the PA: "It ended."
+1434 | Daylight over the Wall. Two\ntowns. One tune, faintly.
+
+# the walls, the logs and the notes
+1440 j | Hillvile maintenance log: "Wall:\nstill there. Good."
+1441 j | A suggestion box on the Hellvile\nface. Never emptied. Full.
+1442 | Chalk, in rows of five, on and\non.
+1443 | A family photo, pinned facing\nthe bricks.
+1444 | A bunk, a tin cup, a chalk line.\nDay 1.
+1445 | Thump. Thump-thump-thump. Then\nsilence. Then, faintly, back.
+1446 | Mascotty: three, then one.\nThumpkin: one, then three.
+
+# secrets and tallies (Tallyworn's counter goes up; the last is a heart)
+1450 | A secret: Tallyworn's bunk. A\nphoto, facing the bricks.
+1451 | A secret: the crack Mascotty\nthumps through.
+1452 | A secret: the top of the Wall.\nBoth towns in view.
+1453 | A chalk tally. One more.
+1454 | Tallyworn: "That's one."
+1455 | Tallyworn: "That's five."
+1456 | Tallyworn: "That's nine."
+1457 | The tenth tally is a heart.
+
+# the rank screen (a small warm beat)
+1470 | Tallyworn writes "Day one".
+
+# the content note (core/src/levels2.c lv_notes keeps the shipped copy: keep them equal)
+1498 | Content note: this level is about people trapped by a contract and left behind by the town they worked for.

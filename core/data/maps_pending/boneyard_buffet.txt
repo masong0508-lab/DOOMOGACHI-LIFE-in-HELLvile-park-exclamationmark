@@ -1,0 +1,187 @@
+# Boneyard Buffet & Bandstand - Hell Breach 13 (owner: LEVELS-3; plan section 3, HB13).
+# The Walten Files parody: HaHaland's animatronic family restaurant, now a "historic site". Gift shop and lobby
+# -> ball pit and arcade -> dining hall -> kitchen and the walk-in (secret) -> backstage -> the stage: Gravy
+# Train Gary and the Buffet Boys. Showtime: each room's lights blaze for a few seconds every 10 s (zone `show`):
+# the animatronics freeze. Breaker boxes (A) deepen a room's dark; the three stage spotlights (A) keep Gary in it.
+# No decoding anywhere: every tape is a joke. The Party Pal base (LV6) is a BONE_JESTER here; Gary a BRUTE.
+# The thing indices of the usables are in the `on use` lines (index 0 is the start).
+format 2
+map boneyard_buffet
+title "Boneyard Buffet"
+kind dungeon
+sky NIGHT_STARS
+music HELLVILE
+ambient 9
+view 14
+gba yes
+detail props,fx,light
+
+cell # wall=WALLPAPER_HEARTS
+cell S wall=WALLPAPER_HEARTS ch=14
+cell B wall=CANDY_STRIPE
+cell . floor=CARPET ceil=TECH_PANEL fh=0 ch=12 light=10
+cell p like=. thing=PLAYER_START angle=180
+cell o floor=PLAYGROUND ceil=TECH_PANEL fh=-3 ch=11 light=11
+cell a floor=CARPET ceil=TECH_PANEL fh=0 ch=12 light=11
+cell d floor=CARPET ceil=TECH_PANEL fh=0 ch=12 light=10
+cell k floor=TILE_FLOOR ceil=TECH_PANEL fh=0 ch=12 light=11
+cell f floor=TILE_FLOOR ceil=TECH_PANEL fh=0 ch=12 light=14 flags=secret
+cell z floor=CARPET ceil=TECH_PANEL fh=0 ch=12 light=13 flags=secret
+cell v floor=CARPET ceil=TECH_PANEL fh=0 ch=5 light=9
+cell s floor=TILE_FLOOR ceil=WALLPAPER_HEARTS fh=0 ch=12 flags=door
+cell D floor=CARPET ceil=DOOR_CUTE fh=0 ch=12 flags=door
+cell h floor=CARPET ceil=TECH_PANEL fh=3 ch=14 light=9
+cell g floor=WOOD_FLOOR ceil=TECH_PANEL fh=6 ch=18 light=12
+cell b floor=WOOD_FLOOR ceil=TECH_PANEL fh=6 ch=18 light=9
+cell e floor=CARPET ceil=TECH_PANEL fh=6 ch=18 light=13
+cell Q floor=CARPET ceil=DOOR_HELL fh=6 ch=18 flags=door tag=20
+cell X floor=CARPET ceil=TECH_PANEL fh=6 ch=18 light=15 flags=exit
+
+grid
+########################################
+#eeeggggggggggggggggg###bbbbbbbbbbbbbbb#
+#eXeQgggggggggggggggg###bbbbbbbbbbbbbbb#
+#eeeggggggggggggggggg###bbbbbbbbbbbbbbb#
+#gggggggggggggggggggg###bbbbbbbbbbbbbbb#
+#ggggggggggggggggggggD##bbbbbbbbbbbbbbb#
+#gggggggggggggggggggg###bbbbbbbbbbbbbbb#
+#gggggggggggggggggggg###bbbbbbbbbbbbbbb#
+#gggggggggggggggggggg###bbbbbbbbbbbbbbb#
+#gggggggggggggggggggg###bbbbbbbbbbbbbbb#
+##########h#######################h#####
+##########h#######################h#####
+##########h#######################h#####
+##########h#######################h#####
+##########h#######################h#####
+##########h#######################h#####
+##########D#######################D#####
+#dddddddddddddddddddddddddddd#kkkkkkfff#
+#dddSSddSSddSSddSSddSSddSSddd#kkkkkkfff#
+#dddddddddddddddddddddddddddd#kkkkkkksk#
+#ddddddddddddddddddddddddddddDkkkkkkkkk#
+#dddSSddSSddSSddSSddSSddSSddd#kkkkkkkkk#
+#dddddddddddddddddddddddddddd#kkkkkkkkk#
+########D#################D###########v#
+#oooooooooooooooooo##aaaaaaaaaaaaaaaaav#
+#oooooooooooooooooo##aaSaaSaaSaaSaaaaaa#
+#oooooooooooooooooo..aaaaaaaaaaaaaaaaaa#
+#oooooooooooooooooo..aaaaaaaaaaaaaaaaaa#
+#oooooooooooooooooo##aaaaaaaaaaaaaBBBaa#
+#..................##aaaaaaaaaaaaaaaaaa#
+########D###################D###########
+#......................................#
+#..SSSSSSSSSS..........................#
+#..............S....................p..#
+#......................................#
+########################################
+end
+
+floorh
+.
+.66666666666666666666...666666666666666
+.66666666666666666666...666666666666666
+.66666666666666666666...666666666666666
+.66666666666666666666...666666666666666
+.666666666666666666666..666666666666666
+.66666666666666666666...666666666666666
+.66666666666666666666...666666666666666
+.66666666666666666666...666666666666666
+.66666666666666666666...666666666666666
+..........3.......................3
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.
+.CCCCCCCCCCCCCCCCCC
+.CCCCCCCCCCCCCCCCCC
+.CCCCCCCCCCCCCCCCCC00
+.CCCCCCCCCCCCCCCCCC00
+.CCCCCCCCCCCCCCCCCC
+.000000000000000000
+end
+
+# showtime rooms (their light blazes every 10 s for 4 s and the animatronics freeze; dim between shows)
+zone 1 24 18 29 show arg=4
+zone 21 24 38 29 show arg=5
+zone 1 17 28 22 show arg=4
+zone 1 1 20 9 show arg=5
+zone 24 1 38 9 show arg=3
+# the lobby is a safe room
+zone 1 31 38 34 safe tag=5
+
+# things: x y TYPE [angle=deg] [arg=n] [tflags=...] [tflags2=...]
+thing 15 34 PROP_SIGN angle=90
+thing 2 31 PROP_BARREL tflags2=usable arg=1
+thing 14 22 PROP_BARREL tflags2=usable arg=2
+thing 25 29 PROP_BARREL tflags2=usable arg=3
+thing 5 3 PROP_LAMP tflags2=usable arg=11
+thing 11 3 PROP_LAMP tflags2=usable arg=12
+thing 17 3 PROP_LAMP tflags2=usable arg=13
+thing 6 34 SCRAP tflags2=collect arg=1
+thing 30 33 SCRAP tflags2=collect arg=2
+thing 10 27 SCRAP tflags2=collect arg=3
+thing 2 26 SCRAP tflags2=collect arg=4
+thing 24 28 SCRAP tflags2=collect arg=5
+thing 37 25 SCRAP tflags2=collect arg=6
+thing 36 19 SCRAP tflags2=collect arg=7
+thing 22 19 SCRAP tflags2=collect arg=8
+thing 30 6 SCRAP tflags2=collect arg=9
+thing 22 33 IMPLING angle=180
+thing 30 32 IMPLING angle=180 tflags=not_easy
+thing 18 33 HEALTH_SMALL
+thing 34 34 AMMO_BULLETS
+thing 8 34 HEALTH_SMALL
+thing 6 26 SLIME_BELCHER angle=0 tflags=ambush
+thing 13 27 SLIME_BELCHER angle=180 tflags=ambush
+thing 15 25 IMPLING angle=180
+thing 3 28 HEALTH_SMALL
+thing 16 28 AMMO_SHELLS
+thing 24 27 BONE_JESTER angle=180
+thing 31 27 IMPLING angle=180
+thing 36 26 IMPLING angle=180 tflags=not_easy
+thing 22 29 AMMO_BULLETS
+thing 34 25 HEALTH_BIG
+thing 6 19 BONE_JESTER angle=0
+thing 14 20 IMPLING angle=0
+thing 18 19 BONE_JESTER angle=180 tflags=not_easy
+thing 22 20 BRUTE angle=180 tflags=not_easy
+thing 3 22 HEALTH_SMALL
+thing 27 19 AMMO_SHELLS
+thing 32 20 IMPLING angle=180
+thing 35 21 BONE_JESTER angle=180
+thing 31 18 HEALTH_BIG
+thing 38 20 AMMO_CELLS
+thing 37 18 ARMOR
+thing 37 22 SOUL_ORB
+thing 28 4 BONE_JESTER angle=180
+thing 32 7 IMPLING angle=270
+thing 36 3 HEALTH_BIG
+thing 26 8 AMMO_ROCKETS
+thing 11 6 BRUTE angle=90 tflags=boss,kill_event arg=20
+thing 6 7 BONE_JESTER angle=90 tflags=kill_event arg=20
+thing 16 7 BONE_JESTER angle=90 tflags=kill_event arg=20
+thing 3 8 HEALTH_BIG
+thing 18 8 ARMOR
+thing 8 2 AMMO_SHELLS
+
+# ---- level script (text ids 1500..1599: core/data/levels/boneyard_buffet.txt) ----
+on start do caption 1500 ; set 0 0
+on enter 5 do bark 1504
+on use 2 do zone 0 2 ; bark 1510
+on use 3 do zone 2 2 ; bark 1511
+on use 4 do zone 1 2 ; bark 1512
+on use 5 do add 0 1 ; bark 1520
+on use 6 do add 0 1 ; bark 1521
+on use 7 do add 0 1 ; bark 1522
+on var 0 3 do caption 1523 ; post 50
+on kill 20 do caption 1530
+on timer 2400 do bark 1540

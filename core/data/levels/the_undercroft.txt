@@ -1,0 +1,53 @@
+# HB9 The Undercroft (a dark level): the level's text (ids 1100..1199; the range of LV_ index 8).
+# Guilt, failure and faith that tore, played straight: two to four deadpan laughs only (marked j).
+# Mood over jokes. No child appears. No self-harm, no death of a child, no real-world matter.
+# Real residents' names on the newest files are added by the life-sim hook (LV21), adults only, with respect.
+
+# the intro caption and the card line
+1100 | THE UNDERCROFT\nFather Fuzz's room of failures.
+1199 | Your lantern keeps shades away.\nLight candles (A); they stay lit.
+
+# the vestibule (the safe room: the lantern is taught here)
+1101 | The trapdoor is open. The bell\nrang on time tonight.
+1102 | A lantern on a hook. About a\nminute of oil. Take it slowly.
+1104 | The lantern lights what is near.\nA candle, once lit, stays lit.
+
+# the candles and the oil jars, in the order the map's script uses them
+1110 | A candle for a rite that did\nnot take. It lights.
+1111 | A candle lit. The shades will\nnot cross it.
+1112 | Oil. The lantern drinks, and\nsteadies.
+1120 | Four candles lit. The dark here\nis a little less certain.
+1121 | Eight candles. The chapel is\nbright. Something loosens.
+
+# the Unhuggable (boss), the taunt and the ending
+1130 | It unclenches. For a second it\nlooks like someone.
+1131 | THE UNHUGGABLE\nEvery Hug That Didn't Take
+1132 | Go on. Hold me.
+1133 | Light through the trapdoor.\nThe bell. Eight o'clock.
+
+# the files and the shelves (storytelling, never a puzzle)
+1140 | FAILURES, A-Z. Mostly H.\nFor "hug".
+1141 j | Mr. Huggins the 4th. Fell over.\nWas buckwheat.
+1142 | SOUL LOST. In Father Fuzz's\ntidy handwriting.
+1143 | The hymnal, set down very\ncarefully.
+1144 | The newest files carry names\nfrom your town. Handle with care.
+1145 | SEALED. DO NOT. -F
+1146 j | A sign: "Please do not exorcise\nthe filing system."
+1147 | A cot. A blanket folded in four.
+
+# secrets and prayer cards (one kind sad sentence of Fuzz's each)
+1150 | A secret: the Huggins niche.
+1151 | A secret: Fuzz's cell. On the\ncot: "Day 1. I hugged wrong."
+1152 | A prayer card: "I tried to say\nthe words slowly."
+1153 | A prayer card: "I held on too\nlong. Then not long enough."
+1154 | A prayer card: "Please forgive\nthe ones who did not stay."
+1155 | A prayer card: "The bell is\nmy way of saying I am here."
+1156 | A prayer card: "Kind is not\nthe same as enough."
+1157 | A prayer card: "I wrote the\nnames so they would be kept."
+1158 | A prayer card: "Tomorrow, the\nbell again."
+
+# the rank screen (a small warm beat)
+1170 | Father Fuzz rang the bell on time\ntoday.
+
+# the content note (core/src/levels2.c lv_notes keeps the shipped copy: keep them equal)
+1198 | Content note: this level is darker than most of the game. It deals with guilt, failure and souls that could not be saved.

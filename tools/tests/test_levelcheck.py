@@ -37,7 +37,8 @@ class TestLevelcheck(unittest.TestCase):
     def test_every_shipped_map_passes(self):
         rc, out, err = check()
         self.assertEqual(rc, 0, out + err)
-        self.assertIn("levelcheck: 12 maps, 0 failed", out)
+        n = len([f for f in os.listdir(os.path.join(ROOT, "core/data/maps")) if f.endswith(".txt")])   # (grows with each level)
+        self.assertIn("levelcheck: %d maps, 0 failed" % n, out)
 
     def test_every_edge_test_map_passes_but_the_soft_lock(self):
         files = [os.path.join(TESTMAPS, f) for f in sorted(os.listdir(TESTMAPS)) if f.endswith(".txt")]

@@ -1,0 +1,182 @@
+# The Department of Contracts - Hell Breach 15 (owner: LEVELS-3; plan section 3, HB15).
+# Hell's old paperwork office, a 90s office-sim parody. Lobby (take a number) -> cubicle maze (low
+# partitions: you see over them, not through the doors) -> records and copy room -> the lift to the
+# executive floor and the Notary's corner office. Three stamp doors: RECEIVED (lobby counter) opens
+# the maze, FILED (maze desk) opens the records door, APPROVED (records) opens the lift. The queue
+# wait at the counters, the copier and "stamp a stunned demon" belong to mechanic kit C (LV5).
+# The thing indices of the usables are in the `on use` lines (index 0 is the start).
+format 2
+map department_of_contracts
+title "The Department of Contracts"
+kind dungeon
+sky NIGHT_STARS
+music HELLVILE
+ambient 10
+view 14
+gba yes
+detail props,fx,far
+
+cell # wall=CUBICLE_FABRIC
+cell B wall=WOOD_WALL
+cell K wall=WOOD_WALL ch=14
+cell . floor=OFFICE_CARPET ceil=TECH_PANEL fh=0 ch=12 light=10
+cell p like=. thing=PLAYER_START angle=180
+cell k floor=TILE_FLOOR ceil=TECH_PANEL fh=0 ch=12 light=11
+cell D floor=OFFICE_CARPET ceil=DOOR_CUTE fh=0 ch=12 flags=door
+cell P floor=OFFICE_CARPET ceil=DOOR_HELL fh=0 ch=12 flags=door tag=40
+cell c floor=CUBICLE_FABRIC ceil=TECH_PANEL fh=5 ch=14 light=10
+cell n floor=OFFICE_CARPET ceil=TECH_PANEL fh=0 ch=12 light=13 flags=secret
+cell s floor=OFFICE_CARPET ceil=CUBICLE_FABRIC fh=0 ch=12 flags=door
+cell a floor=OFFICE_CARPET ceil=TECH_PANEL fh=3 ch=12 light=13 flags=secret
+cell A floor=OFFICE_CARPET ceil=TECH_PANEL fh=0 ch=12 light=12
+cell 2 floor=OFFICE_CARPET ceil=DOOR_HELL fh=0 ch=12 flags=door tag=41
+cell 3 floor=OFFICE_CARPET ceil=DOOR_HELL fh=0 ch=12 flags=door tag=42
+cell C floor=METAL_FLOOR ceil=TECH_PANEL fh=0 ch=12 light=12
+cell L floor=METAL_FLOOR ceil=TECH_PANEL fh=0 ch=36 light=13 flags=lift tag=24
+cell E floor=OFFICE_CARPET ceil=TECH_PANEL fh=24 ch=36 light=11
+cell w floor=TILE_FLOOR ceil=TECH_PANEL fh=24 ch=36 light=13 flags=secret
+cell S floor=OFFICE_CARPET ceil=CUBICLE_FABRIC fh=24 ch=36 flags=door
+cell x floor=OFFICE_CARPET ceil=TECH_PANEL fh=24 ch=36 light=13
+cell Q floor=OFFICE_CARPET ceil=DOOR_HELL fh=24 ch=36 flags=door tag=20
+cell X floor=OFFICE_CARPET ceil=TECH_PANEL fh=24 ch=36 light=15 flags=exit
+
+grid
+########################################
+#wwwwEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE#####
+#wwwwEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE#####
+#wwwwSEEEEEEEEEEEBBBBBEEEEEEEEEEEEE#####
+#wwwwEEEEEEEEEEEEBBBBBEEEEEEEEEEEEE#####
+#####EEEEEEEEEEEEEEEEEEEEEEEEEEEEEE#####
+#####EEEEEEEEEEEEEEEEEEEEEEEEEEEEEExxxx#
+#####EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEQxXx#
+#####EEEEEEEEEEEEEEEEEEEEEEEEEEEEEExxxx#
+#####EEEEEEEEEEEEEEEEEEEEEEEEEEEEEE#####
+#####EEEEEEEEEEEEEEEEEEEEEEEEEEEEEE#####
+#####EEEEEEEEEEEEEEEEEEEEEEEEEEEEEE#####
+#####EEEEEEEEEEEEEEEEEEEEEEEEEEEEEE#####
+#####EEEEEEEEEEEEEEEEEEEEEEEEEEEEEE#####
+#####EEEEEEEEEEEEEEEEEEEEEEEEEEEEEE#####
+###################L####################
+###################3####################
+#......................................#
+#........................CCC...........#
+#.KK.KKK.KKK.KKK.........CCC...........#
+#.KK.KKK.KKK.KKK.......................#
+#a.....................................#
+#AKK.KKK.KKK.KKK.......................#
+#......................................#
+#......................................#
+#########2##############################
+#...................................nnn#
+#...................................nnn#
+#...c...c...c...c.......c...c...c..cs..#
+#...c...c...c...c...........c...c..c...#
+#......................................#
+#...c...c...c...c...........c...c..c...#
+#...c...c...c...c.......c...c...c..c...#
+#......................................#
+####################P###################
+#kkkkkkkkkkkk#............BBB..........#
+#kkkkkkkkkkkkD.........................#
+#kkkkkkkkkkkk#......................p..#
+#kkkkkkkkkkkk#.........................#
+########################################
+end
+
+floorh
+.
+.oooooooooooooooooooooooooooooooooo
+.oooooooooooooooooooooooooooooooooo
+.oooooooooooooooooooooooooooooooooo
+.oooooooooooooooooooooooooooooooooo
+.....oooooooooooooooooooooooooooooo
+.....oooooooooooooooooooooooooooooooooo
+.....oooooooooooooooooooooooooooooooooo
+.....oooooooooooooooooooooooooooooooooo
+.....oooooooooooooooooooooooooooooo
+.....oooooooooooooooooooooooooooooo
+.....oooooooooooooooooooooooooooooo
+.....oooooooooooooooooooooooooooooo
+.....oooooooooooooooooooooooooooooo
+.....oooooooooooooooooooooooooooooo
+.
+.
+.
+.
+.
+.
+.3
+end
+
+# the lobby is a safe room (the stamps are taught here); the partitions' webs slow you (Red Tape)
+zone 14 35 38 38 safe tag=5
+zone 1 26 14 33 web
+zone 28 26 38 33 web
+
+# things: x y TYPE [angle=deg] [arg=n] [tflags=...] [tflags2=...]
+thing 2 37 PROP_FOUNTAIN
+thing 18 36 PROP_SIGN angle=90
+thing 3 36 PROP_LAMP
+thing 27 36 PROP_BARREL tflags2=usable arg=1
+thing 2 27 PROP_BARREL tflags2=usable arg=2
+thing 11 18 PROP_BARREL tflags2=usable arg=3
+thing 26 20 PROP_BARREL tflags2=usable arg=4
+thing 19 5 PROP_BARREL tflags2=usable arg=5
+thing 22 36 CANDY tflags2=collect arg=1
+thing 6 37 CANDY tflags2=collect arg=2
+thing 30 30 CANDY tflags2=collect arg=3
+thing 14 27 CANDY tflags2=collect arg=4
+thing 6 18 CANDY tflags2=collect arg=5
+thing 1 21 CANDY tflags2=collect arg=6
+thing 30 22 CANDY tflags2=collect arg=7
+thing 37 27 CANDY tflags2=collect arg=8
+thing 22 37 IMPLING angle=180
+thing 32 36 IMPLING angle=180 tflags=not_easy
+thing 18 38 HEALTH_SMALL
+thing 34 38 AMMO_BULLETS
+thing 4 38 HEALTH_SMALL
+thing 10 37 AMMO_BULLETS
+thing 6 30 IMPLING angle=0
+thing 14 30 IMPLING angle=180
+thing 21 30 CYBER_PIGGY angle=180 tflags=not_easy
+thing 30 30 IMPLING angle=180
+thing 34 30 CLOUD_SPIDER angle=180 tflags=ambush
+thing 10 30 CLOUD_SPIDER angle=0 tflags=ambush
+thing 3 33 HEALTH_SMALL
+thing 18 33 AMMO_SHELLS
+thing 37 33 HEALTH_BIG
+thing 37 26 ARMOR
+thing 4 23 IMPLING angle=0
+thing 13 21 CYBER_PIGGY angle=180
+thing 8 18 CLOUD_SPIDER angle=270 tflags=ambush
+thing 15 23 IMPLING angle=180
+thing 3 24 HEALTH_SMALL
+thing 16 18 AMMO_BULLETS
+thing 24 22 IMPLING angle=180
+thing 32 20 CYBER_PIGGY angle=180 tflags=not_easy
+thing 36 23 CLOUD_SPIDER angle=180 tflags=ambush
+thing 30 18 IMPLING angle=180
+thing 23 24 AMMO_CELLS
+thing 37 18 HEALTH_BIG
+thing 20 23 HEALTH_SMALL
+thing 33 24 AMMO_SHELLS
+thing 19 7 BONE_JESTER angle=90 tflags=boss,kill_event arg=20
+thing 10 9 IMPLING angle=0 tflags=kill_event arg=20
+thing 28 9 IMPLING angle=180 tflags=kill_event arg=20
+thing 8 12 HEALTH_BIG
+thing 30 12 AMMO_ROCKETS
+thing 14 12 AMMO_SHELLS
+thing 24 12 ARMOR
+thing 2 2 SOUL_ORB
+
+# ---- level script (text ids 1700..1799: core/data/levels/department_of_contracts.txt) ----
+on start do caption 1700 ; set 0 0
+on enter 5 do bark 1704
+on use 4 do open 40 ; add 0 1 ; bark 1710
+on use 5 do open 41 ; add 0 1 ; bark 1711
+on use 6 do open 42 ; add 0 1 ; bark 1712
+on use 7 do set 2 1 ; bark 1740
+on var 0 3 do caption 1720 ; post 50
+on use 8 do post 60 ; bark 1731
+on kill 20 do caption 1730
+on timer 2400 do bark 1741

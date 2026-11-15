@@ -1,0 +1,51 @@
+# HB15 The Department of Contracts: the level's text (ids 1700..1799; the range of LV_ index 14).
+# 90s office-sim parody of the damned. PG-21: demons only in the dress-down gag; the clean alternate is the
+# cardigan line. No swearing. No child anywhere in this level.
+
+# the intro caption and the card line
+1700 | THE DEPARTMENT OF CONTRACTS\nTake a number. Get it stamped.
+1799 | Collect stamps to open doors.\nStamp a stunned demon (melee).
+
+# the lobby (the safe room: the stamps are taught here)
+1701 | TEAMWORK: because suffering\nshared is suffering doubled.
+1702 | Now serving: 1. Your number: 666.
+1703 | SIGNHERE: Sign here. No wait.\nI'm WITHDRAWING today. Lovely.
+1704 | Press A at a stamp desk. Stamps\nopen the doors marked PENDING.
+
+# the stamps, in the order the map's script uses them
+1710 | RECEIVED. Your visit has been\nreceived. Nobody is happy.
+1711 | FILED. The records door opens\nwith a sigh.
+1712 | APPROVED. The lift is yours.\nTerms and conditions apply.
+1720 | All three stamps. Paperwork!\nThe lift hums. Dreadful.
+
+# the Notary (boss), the taunt and the two ways it ends
+1730 | The Notary is notarised.\nWitnessed by everyone.
+1731 | You stamp the Notary's own\nresignation letter. It wilts.
+1732 | Sign here. And here. And here.
+1733 | THE NOTARY\nWitness. Seal. Doom.
+1734 | SIGNHERE: That's MY line.
+
+# the copier, the queue and the posters
+1740 | You unplug the Copier. It is\nvery quiet. It was a clone.
+1741 | Reminder: the hot coffee is\nlava. It was always lava.
+1742 | Take a number. Wait your turn.\nFight in the meantime.
+1743 | Your number is up. Finally.
+1744 | WHOEVER ATE MY SOUL:\nI KNOW.
+1745 | Water cooler (lava). Not for\ndrinking. Mostly.
+1746 | Never take a number: feat.
+1747 | Employee of the Month: Gary\nfrom Accounting. Again.
+1748 | The 8th photo: Gary, with horns.
+
+# the dress-down Friday gag (demons only)
+1750 a | Dress-down Friday: the demons\nwear only ties. [censor bar] | Dress-down Friday: the demons\nwear cardigans. Cosy.
+1751 | Middle Manager: "Circle back.\nWith a rocket."
+1752 | Clerk: "Have you tried filing a\ncomplaint? Neither have we."
+
+# secrets
+1760 | A secret: the supply closet!\nA nap pod. Do not nap.
+1761 | A secret: the executive washroom!
+1762 | ARREARS - DO NOT OPEN UNTIL\nNEXT TIME. It does not open.
+1763 | A red envelope, unopened.
+
+# the rank screen
+1770 | The Department reopens for\nbusiness. Signhere weeps.

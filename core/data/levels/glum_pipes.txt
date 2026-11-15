@@ -1,0 +1,50 @@
+# HB11 The Glum Pipes (a dark level): the level's text (ids 1300..1399; the range of LV_ index 10).
+# Grief and the town's deal with Hell, played straight; the plumbing's own deadpan is the only joke (j).
+# No child is harmed or in danger; the one child's note is a pet's name. No self-harm: "not okay" is said
+# plainly and kindly, never as a mechanic or a joke. The 8 letters are hash-picked from adult residents by
+# the life-sim hook (LV16): these lines are the generic fallbacks.
+
+# the intro caption and the card line
+1300 | THE GLUM PIPES\nFollow the pipes down.
+1399 | The sludge rises while you linger.\nValves (A) drain it.
+
+# the vestibule (the safe room: the tide is taught here)
+1301 | The cracked fountain is a way\ndown now. Follow the pipes.
+1302 | The sound down there is a low\nbreathing.
+1304 | Stay moving. Where the sludge\npools, it rises. Valves drain it.
+
+# the relief valves, in the order the map's script uses them
+1310 | The basin drains with a long\nsigh.
+1311 | The pool in the chamber drains.\nThe gauges settle.
+1312 | The culvert drains. It is quiet\nnow. Somewhere, light.
+1320 | All three valves open. The pipes\nbreathe out.
+
+# the Swallowed Scream (boss), the taunt and the ending
+1330 | It finally lets it out.\nIt's quieter than you'd think.
+1331 | THE SWALLOWED SCREAM\nWhat nobody said.
+1332 | Hee. Hee.
+1333 | The grate. Daylight, from the\nother side of the Wall.
+
+# the walls, the tags and the plumbing's deadpan
+1340 j | Inspection tag: "Last inspected:\nnever."
+1341 j | A valve labelled GLUMS OUT, in\nthe Mayor's handwriting.
+1342 j | A tiny stamp on every joint:\n"(it's fine.)"
+1343 | "I miss her."
+1344 | "I'm not okay."
+1345 | "Sorry about the fence."
+1346 | "I should have called."
+1347 | A pipe papered with what people\ndid not say.
+1348 | The Mayor's plumbing order:\n"Keep giggles IN."
+
+# secrets and letters
+1350 | A secret: the plumber's office.
+1351 | A secret: the crawl pipe.
+1352 | A secret: the oldest joint. In\ncrayon: "fluffy come home".
+1353 | An unsent letter. Fold it. Keep\nit safe.
+1354 | Eight letters. Someone in town\nstill needs to hear each one.
+
+# the rank screen (a small warm beat)
+1370 | A little light came through the\ngrate today.
+
+# the content note (core/src/levels2.c lv_notes keeps the shipped copy: keep them equal)
+1398 | Content note: a quieter, sadder level about grief and the things people never said.

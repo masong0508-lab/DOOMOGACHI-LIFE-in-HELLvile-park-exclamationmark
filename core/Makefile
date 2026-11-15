@@ -77,7 +77,7 @@ PLAT_OBJS   := $(call obj,$(NATIVE_PLAT))
 MAIN_OBJ    := $(call obj,$(NATIVE_MAIN))
 TEST_OBJS   := $(call obj,$(TEST_SRCS))
 
-.PHONY: all lib runner test unit scripts journeys gen check-gen xcheck sizes clean story-check talk talk-check parts-check part-icons-sheet portrait-sheet levelcheck mapc-check
+.PHONY: all lib runner test unit scripts journeys gen check-gen xcheck sizes clean story-check talk talk-check parts-check part-icons-sheet portrait-sheet levelcheck leveltext mapc-check
 .DEFAULT_GOAL := runner
 
 all: runner $(BUILD)/tests
@@ -125,7 +125,7 @@ $(BUILD)/tests: $(CORE_OBJS) $(PLAT_OBJS) $(TEST_OBJS) $(TESTMAP_OBJS)
 	$(CC) $(LDFLAGS_SAN) -o $@ $^
 
 # ---- tests ------------------------------------------------------------------
-test: story-check talk-check parts-check mapc-check levelcheck unit scripts journeys
+test: story-check talk-check parts-check mapc-check levelcheck leveltext unit scripts journeys
 
 # --- LV1: map format v2 tools (docs/LEVELS.md "Map format v2") ---
 # mapreach    the reachability search of core/tools/map_bfs.h (the code test_maps runs) as a tool
@@ -135,6 +135,8 @@ $(BUILD)/mapreach: $(CORE)/tools/mapreach.c $(CORE)/tools/map_bfs.h $(CORE)/src/
 	@mkdir -p $(dir $@)
 	$(CC) -std=c99 -Wall -Wextra -Werror -O2 -g -D_POSIX_C_SOURCE=200809L $(LDFLAGS_SAN) \
 	    -I$(CORE_INC) -I$(CORE)/tools -o $@ $(CORE)/tools/mapreach.c $(CORE)/src/levels_mapx.c
+leveltext:
+	@$(PYTHON) $(ROOT)/tools/leveltext.py
 levelcheck: $(BUILD)/mapreach
 	@$(PYTHON) $(ROOT)/tools/levelcheck.py --mapreach $(BUILD)/mapreach
 mapc-check: $(BUILD)/mapreach

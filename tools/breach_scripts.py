@@ -42,6 +42,19 @@ LEVELS = [
     (6, "underbelly", "Underbelly"),
 ]
 
+# Levels with a map and a script that the registry still lists as "not built" (LV_NO_MAP), in plan order (LEVELS-3).
+# Their scripts are NOT written by default (a script that pushes an unbuilt level would fail every harness): when the
+# level is registered with its map, move its line into LEVELS (the LV_OLD_COUNT check then asks for it). Until then
+# `breach_scripts.py --pending` writes them, so the generator and the harness op lint are proved on them already.
+PENDING = [
+    (7, "steam_room_panic", "Steam Room Panic"),
+    (8, "the_undercroft", "The Undercroft"),
+    (10, "glum_pipes", "The Glum Pipes"),
+    (11, "the_wall", "The Wall"),
+    (12, "boneyard_buffet", "Boneyard Buffet & Bandstand"),
+    (14, "department_of_contracts", "The Department of Contracts"),
+]
+
 # The three fps windows of every level, as (what, ticks to wait before it). Each window is 130 ticks after the
 # wait (the speed tour's rule; the first wait is past the 80-tick intro card). The autopilot walks the level, so the
 # middle and the late window land in other rooms. FLOORS: expect-fps floors per (slug, window name); a
@@ -157,14 +170,16 @@ def convert(gba_text, name, target, tmp):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out-root", default=os.path.dirname(HERE))
-    root = ap.parse_args().out_root
+    ap.add_argument("--pending", action="store_true", help="also write the scripts of the PENDING (unbuilt) levels")
+    args = ap.parse_args()
+    root = args.out_root
     n = level_count(os.path.dirname(HERE))
     if n is not None and n != len(LEVELS):
         sys.exit("breach_scripts: LEVELS has %d levels but core/src/levels_int.h has LV_OLD_COUNT = %d (built levels): add the new "
                  "level(s) to LEVELS so they get their scripts" % (len(LEVELS), n))
     import tempfile
     with tempfile.TemporaryDirectory() as tmp:
-        for level, slug, title in LEVELS:
+        for level, slug, title in LEVELS + (PENDING if args.pending else []):
             out = {
                 "core/tests/scripts/levels2_%s.txt" % slug: runner_script(level, slug, title),
             }

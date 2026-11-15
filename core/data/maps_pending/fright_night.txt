@@ -1,0 +1,163 @@
+# Fright Night at the Fun Fair - Hell Breach 10 (owner: LEVELS-3; plan section 3, HB10). A carnival-scam parody.
+# 52 x 52 under the night sky: the gate and ticket booth -> the midway (stalls, ring toss, its prize cupboard) ->
+# the teacups -> the swings -> the carousel (centre) -> the ferris wheel gondola column (north) -> the haunted-house
+# loop (east, roofed, staff-only secret) -> the Big Top (the exit). Ride paths (kind=ride) carry the player over the
+# cells of the carousel ring (path 1), the swing seats (path 2), the gondolas (path 3) and the teacups (path 4);
+# the operator booths (A) stop or start a ride. PS1 and Dreamcast only (`gba no`). Heights: the gondolas rise in
+# the cell floors (0..30) as a ramp for the bot and the BFS; the ride model itself is LV3 part 2.
+# The thing indices of the usables are in the `on use` lines (index 0 is the start).
+format 2
+map fright_night
+title "Fright Night"
+kind dungeon
+sky NIGHT_STARS
+music HELL_BREACH
+ambient 10
+view 22
+gba no
+detail fx,far,props
+
+cell # wall=PICKET_FENCE
+cell B wall=CANDY_STRIPE ch=5
+cell F wall=SHOP_FRONT ch=24
+cell H wall=CANDY_STRIPE ch=12
+cell W wall=CANDY_STRIPE
+cell g floor=PATH ceil=sky fh=0 light=11
+cell p floor=PATH ceil=sky fh=0 light=11 thing=PLAYER_START angle=0
+cell z floor=FLOWERS ceil=CANDY_STRIPE fh=0 ch=12 light=13 flags=secret
+cell S floor=PATH ceil=CANDY_STRIPE fh=0 ch=12 flags=door
+cell R floor=CARPET ceil=CANDY_STRIPE fh=0 ch=12 flags=door
+cell t floor=PLAYGROUND ceil=sky fh=1 light=13
+cell s floor=PLAYGROUND ceil=sky fh=3 light=13
+cell C floor=PLAYGROUND ceil=sky fh=2 light=14
+cell G floor=PLAYGROUND ceil=sky fh=0 light=13
+cell Z floor=FLOWERS ceil=sky fh=30 light=15 flags=secret
+cell h floor=CARPET ceil=CANDY_STRIPE fh=0 ch=12 light=6
+cell D floor=PATH ceil=DOOR_CUTE fh=0 ch=12 flags=door
+cell q floor=CARPET ceil=CANDY_STRIPE fh=0 ch=12 light=12 flags=secret
+cell T floor=CARPET ceil=CANDY_STRIPE fh=0 ch=18 light=13
+cell Q floor=CARPET ceil=DOOR_HELL fh=0 ch=18 flags=door tag=20
+cell X floor=CARPET ceil=CANDY_STRIPE fh=0 ch=18 light=15 flags=exit
+
+grid
+####################################################
+#gggggggggggggggggggggggggggggggggggggggggggggggggg#
+#gggggggggggggggggggggggggggggggggggggTTTTTTTTTTTTT#
+#gggggggggggggggggggggggggggggggggggggTTTTTTTTTTTTT#
+#gggggggggggggggggggggggggggggggggggggTTTTTTTTTTTTT#
+#gggggggggggFFggggggZgggggggFFggggggggTTTTTTTTTTTTT#
+#gggggggggggFFggggggGgggggggFFggggggggTTTTTTTTTTTTT#
+#gggggggggggFFggggggGgggggggFFggggggggTTTTTTTTTTTTT#
+#gggggggggggFFggggggGgggggggFFgggggggQTTTTTTTTTTTXT#
+#gggggggggggFFggggggGgggggggFFggggggggTTTTTTTTTTTTT#
+#gggggggggggFFggggggGgggggggFFggggggggTTTTTTTTTTTTT#
+#gggggggggggFFggggggGgggggggFFggggggggTTTTTTTTTTTTT#
+#gggggggggggFFggggggGgggggggFFggggggggTTTTTTTTTTTTT#
+#gggggggggggFFggggggGgggggggFFggggggggTTTTTTTTTTTTT#
+#gggggggggggFFggggggGgggggggFFggggggggTTTTTTTTTTTTT#
+#gggggggggggggggggggGgggggggggggggggggDgggggggggggg#
+#gggggggggggggggggggggggggggggggggggggggggggggggggg#
+#gggggggggggggggggggggggggggggggggggggggggggggggggg#
+#ggggggggggggggggggggggggggggggggggggghhhhhhhhhhhhh#
+#ggggggggggggggggggggggggggggggggggggghhhhhhhhhhhhh#
+#ggggggggggggggggggggggggggggggggggggghhhhhhhhhhhhh#
+#ggggggggggggggggggggggggggggggggggggghhhhWWWWWhhhh#
+#ggggggggggggggggggCgCgCgggggggggggggghhhhWWWWWhhhh#
+#ggggggggggggggggCgggggggCgggggggggggghhhhWWWWWhhhh#
+#ggggggggggggggggggggggggggggggggggggDhhhhWWWWWhhhh#
+#ggtggtgggggggggCgggggggggCggggggggggghhhhWWWWWhhhh#
+#gggggggggggggggggggHHHggggggggggggggghhhhWWWWWhhhh#
+#ggggtggtgggggggCgggHHHgggCggggggggggghhhhWWWWWhhhh#
+#ggtggtgggggggggggggHHHggggggggggggggghhhhhhhhhhqqq#
+#gggggggggggggggCgggggggggCggggggggggghhhhhhhhhRqqq#
+#ggtgggtgggggggggggggggggggggggggggggghhhhhhhhhhqqq#
+#ggggggggggggggggCgggggggCggggggggggggggggggggggggg#
+#ggggggggggggggggggCgCgCggggggggggggggggggggggggggg#
+#gggggggggsgsgsgsgsgsgsgsgsgggggggggggggggggggggggg#
+#gggggggggggggggggggggggggggggggggggggggggggggggggg#
+#gggggggggggggggggggggggggggggggggggggggggggggggggg#
+#gggggggggggggggggggggggggggggggggggggggggggggggggg#
+#gggggggggggggggggggggggggggggggggggggggggggggggggg#
+#zzzggggggggggggggggggggggggggggggggggggggggggggggg#
+#zzzSgggggggggggggggggggggggggggggggggggggggggggggg#
+#gggggggggggggggggggggggggggggggggggggggggggggggggg#
+#ggggBBBggBBBggBBBggBBBggBBBggBBBggBBBggggggggggggg#
+#gggggggggggggggggggggggggggggggggggggggggggggggggg#
+#gggggggggggggggggggggggggggggggggggggggggggggggggg#
+#gggggggggggggggggggggggggggggggggggggggggggggggggg#
+#gggggggggggggggggggggggggggggggggggggggggggggggggg#
+#gggggggggggggggggggggggggggggggggggggggggggggggggg#
+#gggggggBBBgggggggggggggggggggggggggggggggggggggggg#
+#ggpggggggggggggggggggggggggggggggggggggggggggggggg#
+#gggggggggggggggggggggggggggggggggggggggggggggggggg#
+#gggggggggggggggggggggggggggggggggggggggggggggggggg#
+####################################################
+end
+
+path 1 kind=ride 26,27 26,29 25,31 23,32 21,32 19,32 17,31 16,29 16,27 16,25 17,23 19,22 21,22 23,22 25,23 26,25
+path 2 kind=ride 10,33 12,33 14,33 16,33 18,33 20,33 22,33 24,33 26,33
+path 3 kind=ride 20,15 20,14 20,13 20,12 20,11 20,10 20,9 20,8 20,7 20,6 20,5
+path 4 kind=ride 3,25 6,25 6,28 3,28
+zone 1 46 12 50 safe tag=5
+
+# things: x y TYPE [angle=deg] [arg=n] [tflags=...] [tflags2=...]
+thing 14 27 PROP_BARREL tflags2=usable arg=1
+thing 24 33 PROP_BARREL tflags2=usable arg=2
+thing 21 16 PROP_BARREL tflags2=usable arg=3
+thing 5 44 SCRAP tflags2=collect arg=1
+thing 14 44 SCRAP tflags2=collect arg=2
+thing 30 44 SCRAP tflags2=collect arg=3
+thing 4 29 SCRAP tflags2=collect arg=4
+thing 33 30 SCRAP tflags2=collect arg=5
+thing 20 10 SCRAP tflags2=collect arg=6
+thing 40 24 SCRAP tflags2=collect arg=7
+thing 41 29 SCRAP tflags2=collect arg=8
+thing 46 6 SCRAP tflags2=collect arg=9
+thing 17 36 SCRAP tflags2=collect arg=10
+thing 5 47 PROP_SIGN angle=0
+thing 12 44 PROP_FLOWERS
+thing 2 20 PROP_LAMP
+thing 34 36 PROP_LAMP
+thing 12 45 IMPLING angle=0
+thing 20 45 CYBER_PIGGY angle=90 tflags=not_easy
+thing 28 44 SLIME_BELCHER angle=180
+thing 36 45 IMPLING angle=180
+thing 6 26 PUFF_DEMON angle=0
+thing 4 29 PUFF_DEMON angle=0
+thing 8 30 PUFF_DEMON angle=0 tflags=not_easy
+thing 14 33 HELLHOUND_PUP angle=0
+thing 24 31 HELLHOUND_PUP angle=180
+thing 18 23 HELLHOUND_PUP angle=180
+thing 28 34 CYBER_PIGGY angle=180
+thing 30 24 SLIME_BELCHER angle=180
+thing 16 12 CYBER_PIGGY angle=0
+thing 24 10 SLIME_BELCHER angle=180
+thing 34 8 IMPLING angle=180
+thing 40 20 IMPLING angle=0
+thing 44 28 PUFF_DEMON angle=180 tflags=ambush
+thing 48 20 IMPLING angle=180
+thing 44 12 HELLHOUND_PUP angle=180
+thing 40 6 IMPLING angle=0
+thing 21 22 CLOUD_SPIDER angle=90 tflags=boss,kill_event arg=20
+thing 10 44 HEALTH_SMALL
+thing 24 44 AMMO_BULLETS
+thing 3 33 HEALTH_BIG
+thing 30 28 AMMO_SHELLS
+thing 16 18 HEALTH_SMALL
+thing 26 14 AMMO_SHELLS
+thing 41 17 ARMOR
+thing 48 22 HEALTH_BIG
+thing 36 32 AMMO_CELLS
+thing 40 10 HEALTH_BIG
+thing 48 4 ARMOR
+thing 44 3 AMMO_ROCKETS
+
+# ---- level script (text ids 1600..1699: core/data/levels/fright_night.txt) ----
+on start do caption 1600 ; set 0 0
+on enter 5 do bark 1604
+on use 1 do add 0 1 ; bark 1610
+on use 2 do add 0 1 ; bark 1611
+on use 3 do add 0 1 ; bark 1612
+on var 0 3 do bark 1620
+on kill 20 do caption 1630
+on timer 3600 do bark 1640

@@ -1,0 +1,53 @@
+# HB13 Boneyard Buffet & Bandstand: the level's text (ids 1500..1599; the range of LV_ index 12).
+# The Walten Files parody: every trope gets a pie. NO decoding, nothing to solve: every tape is a joke.
+# No child is anywhere in this level or in any line. The plan's party-package gag says "one unexplained
+# disappearance"; this table uses "one (1) unexplained noise" instead (conservative choice, LEVELS-3).
+# No swearing.
+
+# the intro caption and the card line
+1500 | BONEYARD BUFFET & BANDSTAND\nDinner and a show!
+1599 | Lights on: they freeze, unhurt.\nLights off: they move.
+
+# the lobby (the safe room: showtime is taught here)
+1501 | HISTORIC SITE. The incident was\nmostly a fridge.
+1502 | Gift shop: corkboard, $12.99.\nRed string, extra.
+1503 | EMPLOYEE ORIENTATION, TAPE 3 OF 9.\n(Tapes 4 to 9 are also 3.)
+1504 | SHOWTIME! Lights on: they freeze.\nLights off: they run.
+
+# the breaker boxes and the spotlights, in the order the map's script uses them
+1510 | Breaker thrown. The ball pit gets\ndarker. So does the mood.
+1511 | Breaker thrown. The dining hall\ngoes dim. Romantic, almost.
+1512 | Breaker thrown. The arcade dims.\nThe cabinets whisper.
+1520 | A spotlight pops. Gary squints.
+1521 | A second spotlight pops. Gary\nsquints harder.
+1522 | The last spotlight pops.\nGary is in the dark.
+1523 | All three spotlights are out.\nGary has nowhere to shine.
+
+# Gary (boss), the taunt and the ending
+1530 | Gary takes a bow. His head keeps\nbowing after the rest stops.
+1531 | GRAVY TRAIN GARY\nFrontman. Forever. Contractually.
+1532 | Happy birthday to YOU.
+1533 | Bonejangles: "Ah! My Dance\nRoutine 4. Hold on. Whirr."
+
+# barks (the animatronics, the menus, the lore guy)
+1540 | The ball pit is not a pit. It is\na "play area". Please do not look.
+1541 | Menu: "pizza, cake, and one (1)\nunexplained noise."
+1542 | Menu art drawn in a moving car\nby someone who'd heard of faces.
+1543 | Lore Guy: "It's ALL connected."\nHe is selling the string.
+1544 | Party Pal: "Hi! I'm ___!"
+1545 | Prize counter: 4,000 tickets for\na plastic spider. Fair.
+1546 | Never shoot a frozen Pal: feat.
+
+# secrets and tapes (every one a joke)
+1550 | A secret: the employee lounge!
+1551 | A secret: the walk-in fridge.\nThe incident: one sad sandwich.
+1552 | A secret: the security office.\nThe monitors show you. Hi.
+1553 | Tape 1: How To Clap. Do not\nclap in the dark.
+1554 | Tape 2: Fire Safety. It is\nmostly a fridge.
+1555 | Tape 3: Orientation, again.
+1556 | Tape 7: How To Clean The Ball\nPit. It does not say how. It sobs.
+1557 | Tape 8: Employee Rights. A blank\ntape. A very short blank tape.
+1558 | The ninth tape is labelled "3".
+
+# the rank screen
+1570 | The historic site reopens as a\nhistoric site. Gift shop open.

@@ -1,0 +1,49 @@
+# HB8 Steam Room Panic: the level's text (ids 1000..1099; the range of LV_ index 7).
+# Spa-day parody. PG-21: adults and demons only in the towel gags; the clean alternate is the bathrobe line.
+# No swearing. Children appear only in the splash-hour sign, which is cancelled because of the demons.
+
+# the intro caption and the card line
+1000 | STEAM ROOM PANIC\nTurn the valves. Clear the steam.
+1099 | Turn valves (A) to clear steam.\nDon't stand in hot water.
+
+# the lobby (the safe room: the valves are taught here)
+1001 | SPA ETIQUETTE: No running. No\nscreaming. No being dragged in.
+1002 | Kids' splash hour: CANCELLED\n(demons).
+1003 | Mixed Bathing FRY-days!\nFirst fry free.
+1004 | Press A at a valve wheel. The\nsteam leaves. So will your nerves.
+
+# the valves, in the order the map's script uses them
+1010 | The bath hall steams out.\nCucumbers everywhere.
+1011 | The boiler gasps. Dials, at last.
+1012 | The sauna clears. Nobody was\nrelaxing in there.
+1013 | The pools cool to a warm bath.\nWade, don't swim.
+1014 | A valve already turned. It is\nvery proud of itself.
+1020 | All four valves open. The hot tub\ngoes cold. Something yelps.
+
+# the Baron (boss), his taunt and the two ways it ends
+1030 | The Baron fizzes away like a bath\nbomb.
+1031 | COLD! COLD! I'm leaving. I'm\nleaving a REVIEW.
+1032 | This is a PRIVATE soak.
+1033 | BARON VON BATHROBE\nLord of the Hot Tub
+
+# barks of the demons (towel gags: adults and demons only)
+1040 a | Towel Impling: "Is this towel\nbig enough?" It is not. | Towel Impling: "Is this bathrobe\nbig enough?" It is.
+1041 | Steam Puff: "Nobody can see me in\nhere." (You can.)
+1042 | Bubble Bather: "Soap is\na lifestyle."
+1043 | Wet Dog: shakes. Everyone is wet.
+
+# sights and secrets
+1050 | Complaints box: full.
+1051 | 13: do not open. It's fine.
+1052 | A secret: the staff room!
+1053 | A secret: the lost and found.
+1054 | A secret: the roof water tank!
+1055 | A rubber duck. It squeaks.
+1056 | The twelfth duck has horns.
+1057 | All 12 rubber ducks. Squeak!
+
+# the level's long timer
+1060 | Please remember to hydrate. The\nhot tub is not a drink.
+
+# the rank screen
+1070 | The bath house reopens. First bath\nfree. Mind the steam.
