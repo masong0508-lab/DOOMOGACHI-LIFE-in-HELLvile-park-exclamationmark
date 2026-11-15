@@ -2391,10 +2391,14 @@ testable on the console. The Talk screen itself is the core's (`core/src/talk_sc
 `talk_pad`, `talk_typed` (TD2) and `home_talk_basic`, `_group`, `_safety`, `_visit`, copied from
 `core/tests/scripts` (T8-SCRIPTS) and changed in three ways only:
 
-* `talk-ready` right after `scene TITLE`. The bank (`TALK_EN.BIN`, 0.9 MB) is read off the disc a sector a tick
-  by `dc_talk_pump` (TD1), so on Flycast it is in 250 ticks after the pump starts (tick 90): the command polls
-  until `talk_db_open` stops answering "loading". The native twin gets `wait N` with the same N (the title
-  art moves with the tick, so the pictures only match when both have run as long).
+* `talk-ready` right after `scene TITLE`. On the console the bank (`TALK_EN.BIN`, 0.9 MB) is read off the disc a
+  sector a tick by `dc_talk_pump` (TD1), 250 ticks after the pump starts (tick 90) on Flycast. The command polls
+  until `talk_db_open` stops answering "loading". With `--native-seed` (what `run_screens.sh` uses so the
+  shots line up tick for tick with the native runner) TD1's `DC_HC_NATIVE_SEED` reads the whole bank at tick 0,
+  so on the tree that landed `talk-ready` answers at once ("talk-ready: 0 ticks") and the native twin gets
+  `wait 0`. The wait still matters in a run without the seed (`talk-ready` is a real poll, 1,500 ticks at most).
+  So these scripts do not cover the "Talk not ready yet" window of a player who reaches a housemate in the first
+  8 s after boot; `talk_prefetch.txt` (TD1) covers only the slice read itself (0 ticks over). Open.
 * Longer waits (`wait 90`) before a shot that follows a said line. The Dreamcast makes an answer one generator
   step a tick (TD2), the native runner in one go; the shot must show the answer typed out.
 * Nothing else: the `expect-*` lines, the presses and the order are the native script's.
@@ -2406,24 +2410,27 @@ reads the core's toast queue) and `talk-ready` (`DC_TQ_READY`). After a said lin
 finished answer. Found on the way: `expect-talk-reply-sincere` read the romance bit (both names start with
 "r"), so it could only pass on a romance reply; it reads its own bit now.
 
-**Result** (`make -C dc talk-test`, Flycast, 2026-11-15): 6 of 6 pass, both runs byte for byte equal, every
-shot at least 98.2 % exact against the native 320x240 picture, no tick over 33.3 ms.
+**Result** (`make -C dc talk-test`, Flycast, 2026-11-15, on the tree rebased onto origin 905ae8f8): 6 of 6 pass,
+both runs byte for byte equal, every shot at least 98.25 % exact against the native 320x240 picture (the figure is
+bounded by the 40-column lines and the 98 % gate in `run_screens.sh`, not exact), no tick over 33.3 ms.
 
 | script | shots | ticks | over 33.3 ms | worst tick | lowest exact |
 |---|---:|---:|---:|---:|---:|
-| home_talk_basic | 8 | 1,211 | 0 | 17.2 ms | 98.3 % |
-| home_talk_group | 6 | 872 | 0 | 27.9 ms | 99.9 % |
-| home_talk_safety | 4 | 1,255 | 0 | 14.6 ms | 99.4 % |
-| home_talk_visit | 5 | 774 | 0 | 16.7 ms | 98.4 % |
-| talk_pad | 8 | 1,259 | 0 | 22.6 ms | 98.9 % |
-| talk_typed | 5 | 960 | 0 | 16.9 ms | 98.9 % |
+| home_talk_basic | 8 | 876 | 0 | 16.9 ms | 98.3 % |
+| home_talk_group | 6 | 572 | 0 | 26.8 ms | 99.9 % |
+| home_talk_safety | 4 | 955 | 0 | 14.4 ms | 98.4 % |
+| home_talk_visit | 5 | 474 | 0 | 16.8 ms | 98.4 % |
+| talk_pad | 8 | 940 | 0 | 15.8 ms | 98.9 % |
+| talk_typed | 5 | 660 | 0 | 16.9 ms | 99.0 % |
 
-**The one miss found** (not Talk's own): with TD2's tree alone, `home_talk_visit` had a tick of 7,416 ms. The first
-`home_talk_enter` read the whole bank in one call (`fs_read` of 0.9 MB, about 17 ms a sector on Flycast). The fix
-is TD1's sliced read (commit 7b9723db on `fut-td1`: `talkdisc.c`, the `dc_talk_pump` call in `plat_end_frame`,
-the host test), applied here as the part TD3's scripts cannot do without; when TD1 lands first the rebase drops it.
-A player who reaches a housemate in the first seconds after boot finds Talk "not ready" until the last slice is in
-(about 8 s after the pump starts on Flycast; the GD-ROM's real rate is the open hardware check of TD1).
+**The one miss found** (not Talk's own): on TD2's tree before TD1's sliced read, `home_talk_visit` had a tick of
+7,416 ms: the first `home_talk_enter` read the whole bank in one call (`fs_read` of 0.9 MB, about 17 ms a sector on
+Flycast). TD1's sliced read (`talkdisc.c`, `dc_talk_pump` in `plat_end_frame`) is what closes it; on the landed tree
+`home_talk_visit` has 0 of 474 ticks over (worst 16.8 ms). A player who reaches a housemate in the first seconds
+after boot finds Talk "not ready" until the last slice is in (about 8 s after the pump starts on Flycast; the
+GD-ROM's real rate is the open hardware check of TD1). `dcrun` now prints a note when a said line gets no answer
+box within 240 ticks (it was silent; the next `expect-talk-*` still decides pass or fail). Weaker than the native
+runner: `expect-talk-reply-sincere` checks the sincere bit only, not that the act is no joke / tease / laugh.
 
 **Frame times of the Talk screens** (`make -C dc talk-speed` = `sh dc/harness/speed2.sh OUT talk`, the group in
 `dc/tests/talk/speed2_talk.txt`, the CDI on Flycast; every window holds only waits and presses, so what a press
@@ -2436,7 +2443,7 @@ mean X us, worst Y us` (mean and worst of the game's per-tick work over the wind
 | list at rest | 30.0 | 3.6 | 4.1 | 0 | ok |
 | list cursor move | 30.0 | 3.6 | 4.1 | 0 | ok |
 | quick reply made and typed | 30.0 | 6.8 | 9.5 | 0 | ok |
-| category page open | 30.0 | 7.3 | 11.7 | 0 | ok |
+| category page open | 30.0 | 7.3 | 11.9 | 0 | ok |
 | act said, answer made and typed | 30.0 | 6.6 | 9.7 | 0 | ok |
 | Options page | 30.0 | 3.2 | 5.4 | 0 | ok |
 | back in the house after goodbye | 30.0 | 2.5 | 3.0 | 0 | ok |

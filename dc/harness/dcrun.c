@@ -1272,6 +1272,7 @@ static int tk_settle(void)
         if (shown) return 1;
         if (!run_ticks(1)) return 0;
     }
+    fprintf(stderr, "dcrun: note: no answer box after 240 ticks (the next expect says what is wrong)\n");
     return 1;
 }
 
