@@ -316,16 +316,18 @@ void video_flip(void)
         int page = gba_back == (uint16_t *)VRAM_PAGE1;
         REG_BG2CNT = 0;
         REG_DISPCNT = (uint16_t)(DCNT_MODE4 | DCNT_BG2 | DCNT_OBJ | DCNT_OBJ_1D | (page ? DCNT_PAGE : 0));
-        /* S2-10: a busy card was painted on the page that was shown (loadfade.c): the page the next frame is drawn
-         * into has lost whatever kept picture the trackers think it holds, so neither page keeps one */
-        int kept = ld_take_dirty() ? -1 : page;
+        /* S2-10: a busy card was painted on the page that was shown (loadfade.c): ld_flipped copies its rows back
+         * from the page shown now, so a held frame holds in both pages again (U4: the hold stays, a full redraw
+         * there was +58 ms after a load); kept panels and a stage frame are drawn again */
+        int card = ld_flipped(page);
+        int kept = card ? -1 : page;
         cv_shown_m4(page);
         pn_flipped(kept);                       /* G7: kept panels are in it */
-        hold_flipped(kept);                     /* U4 */
+        hold_flipped(card == 2 ? -1 : page);    /* U4 */
         stage_flipped(kept);                    /* SP7 */
         gba_back = page ? (uint16_t *)VRAM_PAGE0 : (uint16_t *)VRAM_PAGE1;
     } else {
-        (void)ld_take_dirty();                  /* S2-10 */
+        (void)ld_flipped(-1);                   /* S2-10 */
         pn_flipped(-1);
         hold_flipped(-1);
         stage_flipped(-1);

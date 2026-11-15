@@ -16,17 +16,20 @@
  * first and plat_busy_step(done, total) once per citizen (save.c, town.c, sim.c), every 32 relationships, once per
  * pass of rel_normalize's sort and (save_flash.c) every flash sector, so the main thread gets control every few ms. plat_busy arms the same IRQ watch
  * with a shorter fuse (BUSY_LATE vblanks) and a target: a save dims the picture to half (BLDY 8), a load or a build
- * fades it to black. The first plat_busy_step after the fuse paints a small card ("Saving..." / "Loading...") into
+ * fades it to black. The first plat_busy_step after the fuse paints a small card ("Saving..." with "Do not switch
+ * off!" under it, or "Loading...") into
  * the Mode 4 page on screen (vid_rect / vid_text, the resident IWRAM primitives that draw into gba_back, which points
  * at that page for the calls); WIN0 keeps the card out of the fade and OBJs off it. From then on the IRQ turns the
  * card's spinner one step every BUSY_EVERY vblanks with a few raw pixel writes (no call, no DMA, no overlay code: it
  * runs inside whatever the main thread was doing) and counts each step as a presented frame in the harness mailbox
  * (`drawn`), so the screen shows 30 pictures a second to the end of the wait, whatever code runs meanwhile (a flash
- * sector, a scene's enter). The flip that ends the wait lifts the fade as before and, when a card was painted, tells
- * the page trackers that neither page holds a kept picture (pn / hold / stage, as a tile frame does), because the
- * page that had the card is drawn into next. A frame being built over several ticks (I10: hold_building) or a tile
- * frame on screen (Mode 0) gets the fade only. Nothing happens while the harness hashes every frame (`draw_all`):
- * those runs see the same frames as before S2-10.
+ * sector, a scene's enter). The flip that ends the wait lifts the fade as before. The page that had the card is drawn
+ * into next: the flip copies the card's rows back from the page now shown (ld_flipped: a held frame, hold.c, keeps
+ * both pages and repaints only its window, so without it the card stayed on a held hub after an autosave), and tells
+ * the panel and stage trackers that neither page holds a kept picture (as a tile frame does). The hold is not
+ * dropped: dropping it cost the first frame after a load a full redraw (+58 ms). A frame being built over several
+ * ticks (I10: hold_building) or a tile frame on screen (Mode 0) gets the fade only. Nothing happens while the
+ * harness hashes every frame (`draw_all`): those runs see the same frames as before S2-10.
  *
  * The VBlank IRQ (irq.iwram.c) calls gba_vbl_hook while it is set: this file's THUMB code in ROM, set only from
  * plat_loading() / plat_busy() to the end of the wait, so the IRQ costs one load and test otherwise.
@@ -45,11 +48,12 @@
                                fast one (an empty island, a story save) shows nothing */
 #define BUSY_DIM  8         /* a save dims the screen to half (a load or a build: black) */
 #define BUSY_EVERY 2        /* vblanks per picture: 30 a second */
-#define CARD_W 112
-#define CARD_H 22
+#define CARD_W 144          /* x and the spinner's column stay even (spin_put writes halfwords) */
+#define CARD_H 30
 #define CARD_X ((SCREEN_W - CARD_W) / 2)
 #define CARD_Y ((SCREEN_H - CARD_H) / 2)
 #define SPIN_N 8            /* spinner dots */
+DOOMO_STATIC_ASSERT((CARD_X & 3) == 0 && (CARD_W & 3) == 0, card_rows_are_words);   /* ld_flipped copies words */
 
 void (*volatile gba_vbl_hook)(void);
 static volatile uint32_t ld_v0;      /* gba_vblanks at plat_loading() / plat_busy() */
@@ -57,7 +61,7 @@ static volatile uint8_t ld_level;    /* darkness on screen now, 0..16 */
 static volatile uint8_t ld_kind;     /* S2-10: PLAT_BUSY_* (0: a scene change) */
 static volatile uint8_t ld_card;     /* 1 once the card is painted on the page on screen: the IRQ turns its spinner */
 static volatile uint8_t ld_spin;     /* the lit spinner dot */
-static uint8_t ld_dirty;             /* a card was painted since the last flip: the pages lost their kept pictures */
+static int8_t ld_card_page = -1;     /* the page a card was painted on since the last flip, -1 none */
 static volatile uint8_t ld_seen;     /* the fade level at the last counted picture */
 static volatile uint32_t ld_pic;     /* gba_vblanks at the last counted picture */
 
@@ -144,7 +148,12 @@ static void card_paint(void)
     vid_rect(CARD_X, CARD_Y, CARD_X + CARD_W, CARD_Y + CARD_H, PAL_UI_PINK_D);
     vid_rect(CARD_X + 1, CARD_Y + 1, CARD_X + CARD_W - 1, CARD_Y + CARD_H - 1, PAL_UI_PINK);
     vid_rect(CARD_X + 2, CARD_Y + CARD_H - 3, CARD_X + CARD_W - 2, CARD_Y + CARD_H - 2, PAL_UI_PINK_D);
-    vid_text(CARD_X + 8, CARD_Y + 7, ld_kind == PLAT_BUSY_SAVE ? "Saving..." : "Loading...", PAL_WHITE);
+    if (ld_kind == PLAT_BUSY_SAVE) {             /* the flash slot has one copy: a cut late in a save loses it */
+        vid_text(CARD_X + 8, CARD_Y + 6, "Saving...", PAL_WHITE);
+        vid_text(CARD_X + 8, CARD_Y + 16, "Do not switch off!", PAL_UI_RED_D);
+    } else {
+        vid_text(CARD_X + 8, CARD_Y + 11, "Loading...", PAL_WHITE);
+    }
     for (i = 0; i < SPIN_N; i++) spin_dot(i, i == ld_spin ? PAL_WHITE : PAL_UI_PINK_D);
     gba_back = was;
     /* WIN0 = the card: no fade and no OBJ inside it, everything (faded) outside */
@@ -155,7 +164,7 @@ static void card_paint(void)
     REG_BG2PA = 0x100; REG_BG2PB = 0; REG_BG2PC = 0; REG_BG2PD = 0x100;   /* no squash under the card */
     REG_BG2X = 0; REG_BG2Y = 0;
     REG_DISPCNT = (uint16_t)(REG_DISPCNT | DCNT_WIN0);
-    ld_dirty = 1;
+    ld_card_page = (int8_t)((REG_DISPCNT & DCNT_PAGE) != 0);
     ld_card = 1;                                 /* last: from here the IRQ turns the spinner */
 }
 
@@ -169,13 +178,22 @@ void plat_busy_step(int done, int total)
     card_paint();
 }
 
-/* video_flip, before the page trackers hear of the flip: 1 when a card was painted since the last flip (the
- * page it is on lost its kept picture); clears it */
-int ld_take_dirty(void)
+/* video_flip, before the page trackers hear of the flip (page: the Mode 4 page shown now, -1 a tile frame): 0 when no
+ * card was painted since the last flip; 1 when one was, on the other page, the one drawn next: its rows are copied
+ * back from the page shown now (a held frame then holds in both pages again); 2 when it is on the page shown now (no
+ * copy). Clears it. */
+int ld_flipped(int page)
 {
-    int d = ld_dirty;
-    ld_dirty = 0;
-    return d;
+    int cp = ld_card_page, y;
+    ld_card_page = -1;
+    if (cp < 0) return 0;
+    if (page < 0 || cp == page) return 2;
+    for (y = CARD_Y; y < CARD_Y + CARD_H; y++) {
+        uint32_t row = (uint32_t)(y * SCREEN_W + CARD_X);
+        dma3_copy32((uint8_t *)(cp ? VRAM_PAGE1 : VRAM_PAGE0) + row,
+                    (const uint8_t *)(page ? VRAM_PAGE1 : VRAM_PAGE0) + row, CARD_W / 4);
+    }
+    return 1;
 }
 
 /* postfx_vblank, in the vblank of a flip, with the frame's own BLDCNT / BLDY about to be written: the wait is

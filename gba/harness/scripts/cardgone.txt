@@ -1,0 +1,24 @@
+# cardgone.txt - S2-10: an autosave while the island hub holds its frame (docs/GBA.md "Speed wave 2: S2-10").
+# The hub keeps its last full frame in both Mode 4 pages and repaints only its news strip (I7, hold.c); the save's
+# card is painted into the page on screen. gba/harness/cardgone.sh adds a wait, the fast clock and the autosave
+# option (opt 9 4, opt 8 3, opt 10 2: one about 280 ticks later), runs it once to find the autosave's tick, then
+# again with a screenshot in the middle of the save and at every tick after it (cardgone.py checks them).
+wait 40
+expect-log doomo: init
+sync on 61
+seed 1
+scene NEW_ISLAND
+wait 10
+press A
+wait 20
+press A
+wait 2
+press A
+wait 10
+expect-scene ISLAND
+wait 30
+# START, START: the quick save (it binds the autosave to slot 1)
+press START
+wait 10
+press START
+wait 30
